@@ -22,6 +22,8 @@
 | `longitudinal-health-evaluation.policy.ts` | `evaluateM3_3E_LongitudinalHealthEvaluationV1` |
 | `longitudinal-health-evaluation.golden.ts` | Pinned result + calibration fingerprints |
 | `longitudinal-health-evaluation.spec.ts` | E3 test matrix |
+| `longitudinal-health-evaluation.e31-conformance.spec.ts` | E3.1 conformance matrix |
+| `longitudinal-health-evaluation.e311-v1-closure.spec.ts` | E3.1.1 V1 comparability / context closure |
 | `longitudinal-health-evaluation.test-helpers.ts` | Fixture builders |
 
 ## 3–16. Contract summary

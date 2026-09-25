@@ -6,6 +6,28 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-25 — M3.3E E3.1.1 V1 comparability / context closure (draft PR #1778 amend)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | E3.1 @ PR #1778 — `SAME_SEGMENT_COMPARABLE` reachable on empty/non-UNKNOWN metric series; `firstRestPointAgeMs` could be derived with `observationSpanMs ?? 0`. |
+| **OBSERVATION** | E2 §6.2 marks `SAME_SEGMENT_COMPARABLE` unreachable under V1 UNSET; C1 retention requires paired `maxActualRestAgeMs` / `observationSpanMs`. |
+| **HYPOTHESIS** | Narrow closure fixes comparability + context derivation without changing estimators or calibration. |
+| **CHANGE** | UNSET profile always emits `SAME_SEGMENT_CONTEXT_LIMITED`; charge-class mirror reject; C1 E3 feature envelope + rest-age pair invariant; exact first-point-age derivation only when both inputs non-null; `longitudinal-health-evaluation.e311-v1-closure.spec.ts`. |
+| **WHY** | Final E2 V1 contract alignment before E3 merge. |
+| **EXPECTED_EFFECT** | **`E3_1_1_V1_CLOSURE=PASS`**; E3 golden updates only if comparability in canonical body changes. |
+| **VALIDATION** | E3 + E3.1 + E3.1.1 specs; E1/longitudinal regressions; graph/registry validators. |
+| **OBSERVED_EFFECT** | Pending PR #1778 amend merge. |
+| **NON_EFFECTS** | No runtime, persistence, calibration numerics, or E2 mathematics changes. |
+| **REGRESSIONS_OR_TRADEOFFS** | E3 result golden may change for metrics with empty series (comparability field). |
+| **REMAINING_GAPS** | Unchanged `CAL-M3.3E-*`; M3.3F separate. |
+| **AFTER** | **`M3_3E_PURE_LONGITUDINAL_EVALUATOR_IMPLEMENTED=YES_ON_DRAFT`** (E3.1.1 closed). |
+| **DECISION_STATUS** | **E3_1_1_ENGINEERING_DRAFT** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3E evaluator (implementation) |
+| **EVIDENCE** | PR #1778; E3.1.1 tests |
+
+---
+
 ## CL-2026-09-25 — M3.3E E3 pure longitudinal health evaluator (engineering draft)
 
 | Field | Value |

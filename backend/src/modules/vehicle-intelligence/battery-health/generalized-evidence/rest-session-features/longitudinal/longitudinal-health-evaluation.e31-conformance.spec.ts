@@ -130,7 +130,12 @@ describe('M3.3E E3.1 conformance hardening', () => {
           anchorAt: '2026-01-01T10:00:00.000Z',
           features: {
             medianRestVoltageMv: null,
+            minimumRestVoltageMv: null,
+            maximumRestVoltageMv: null,
             robustRestSlopeMvPerHour: -0.5,
+            numberOfValidRestPoints: 0,
+            maxActualRestAgeMs: null,
+            observationSpanMs: null,
           },
         }),
         sessionWithFeatures({
@@ -298,8 +303,13 @@ describe('M3.3E E3.1 conformance hardening', () => {
           anchorAt: '2026-01-01T10:00:00.000Z',
           features: {
             medianRestVoltageMv: null,
+            minimumRestVoltageMv: null,
+            maximumRestVoltageMv: null,
             robustRestSlopeMvPerHour: null,
             shutdownToFirstRestDeltaMv: null,
+            numberOfValidRestPoints: 0,
+            maxActualRestAgeMs: null,
+            observationSpanMs: null,
           },
         }),
       ]);

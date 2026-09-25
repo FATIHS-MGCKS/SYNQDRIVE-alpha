@@ -420,9 +420,9 @@ function buildContextDescriptors(
     if (obs.features.maxActualRestAgeMs !== null) {
       restDepths.push(obs.features.maxActualRestAgeMs);
     }
-    const span = obs.features.observationSpanMs ?? 0;
     const maxAge = obs.features.maxActualRestAgeMs;
-    if (maxAge !== null) {
+    const span = obs.features.observationSpanMs;
+    if (maxAge !== null && span !== null) {
       firstAges.push(maxAge - span);
     }
   }
@@ -493,10 +493,14 @@ function resolveSufficiency(
 }
 
 function resolveComparability(
-  metric: M3_3E_HEALTH_PRIMARY_METRIC_V1,
-  segmentObservations: M3_3E_AssessmentGradeObservationV1[],
+  _metric: M3_3E_HEALTH_PRIMARY_METRIC_V1,
+  _metricSeriesObservations: M3_3E_AssessmentGradeObservationV1[],
+  calibrationProfileId: string,
 ): M3_3E_HealthComparabilityState {
-  const hasUnknownCharge = segmentObservations.some(
+  if (calibrationProfileId === M3_3E_CALIBRATION_UNSET_V1) {
+    return 'SAME_SEGMENT_CONTEXT_LIMITED';
+  }
+  const hasUnknownCharge = _metricSeriesObservations.some(
     (o) => o.chargeOpportunityClass === 'UNKNOWN',
   );
   if (hasUnknownCharge) {
@@ -522,9 +526,38 @@ function isSafeNonNegativeInteger(value: unknown): value is number {
 function validateObservationNumerics(
   obs: M3_3E_AssessmentGradeObservationV1,
 ): Reject | null {
+  if (obs.chargeOpportunityClass !== obs.features.chargeOpportunityClass) {
+    return reject('M3_3E_EVALUATION_CHARGE_CLASS_MIRROR_MISMATCH');
+  }
   const f = obs.features;
   if (!Number.isSafeInteger(f.numberOfValidRestPoints) || f.numberOfValidRestPoints < 0) {
     return reject('M3_3E_EVALUATION_MALFORMED_FEATURE_NUMERIC');
+  }
+  const maxAgeNull = f.maxActualRestAgeMs === null;
+  const spanNull = f.observationSpanMs === null;
+  if (maxAgeNull !== spanNull) {
+    return reject('M3_3E_EVALUATION_MALFORMED_FEATURE_NUMERIC');
+  }
+  if (f.numberOfValidRestPoints === 0) {
+    if (
+      f.medianRestVoltageMv !== null ||
+      f.minimumRestVoltageMv !== null ||
+      f.maximumRestVoltageMv !== null ||
+      f.maxActualRestAgeMs !== null ||
+      f.observationSpanMs !== null
+    ) {
+      return reject('M3_3E_EVALUATION_MALFORMED_FEATURE_NUMERIC');
+    }
+  } else {
+    if (
+      f.medianRestVoltageMv === null ||
+      f.minimumRestVoltageMv === null ||
+      f.maximumRestVoltageMv === null ||
+      f.maxActualRestAgeMs === null ||
+      f.observationSpanMs === null
+    ) {
+      return reject('M3_3E_EVALUATION_MALFORMED_FEATURE_NUMERIC');
+    }
   }
   for (const key of [
     'medianRestVoltageMv',
@@ -902,7 +935,11 @@ function computeMetricEvaluation(input: {
 
   return {
     metric: input.metric,
-    comparability: resolveComparability(input.metric, metricSeriesObservations),
+    comparability: resolveComparability(
+      input.metric,
+      metricSeriesObservations,
+      input.calibrationProfileId,
+    ),
     sufficiency: resolveSufficiency(levelEvaluable, trendEvaluable),
     statistics: stats,
     contextDescriptors: ctx,
