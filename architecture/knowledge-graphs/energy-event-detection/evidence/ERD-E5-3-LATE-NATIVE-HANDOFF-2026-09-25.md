@@ -55,6 +55,10 @@ Rebuild expected key from **immutable anchor** on **V** via `readAnchorSegmentFi
 
 - Unit: `erd-late-native-predecessor.resolver.spec.ts`
 - PostgreSQL: `erd-e5-3-late-native-handoff.postgres.integration.spec.ts` (real E3 `persistRechargeSegment` + explicit projector; multi-client race; rollback/retry)
+- **E5.3A post-implementation closure (explicit PostgreSQL, same file):**
+  - **H15** `DUAL_PROJECTION_CONFLICT` — E3-valid supersession on **F**, VEE on **F** and independent canonical VEE on **N**; native projector fails closed with both rows unchanged.
+  - **H16** `LEGACY_DIMO_COLLISION` on handoff path — legacy non-ERD row owns **N.dimoSegmentId**; fallback VEE stays on **F**; E3 supersession metadata on **F** remains (physical authority not rolled back).
+  - **H19** real E3 **DIFFERENT** via `persistNativeWithFallbackConvergence` — no handoff; two canonical ERD projections for two physical episodes.
 - CI: `boundary-repair-postgres-ci.sh` step **10/10**
 
 ## Explicit non-goals

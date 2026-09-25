@@ -1,9 +1,16 @@
 import { randomUUID } from 'crypto';
 import {
+  EnergyEventConfidence,
   EnergyEventKind,
   PrismaClient,
   VehicleEnergyEventDetectionSource,
 } from '@prisma/client';
+import {
+  decideFallbackSupersessionForNative,
+  ERD_PHYSICAL_MATCH_RESULT,
+  nativeSideFromDimoSegment,
+} from '@modules/vehicle-intelligence/battery-health/hv-charge-session/erd-physical-episode-matcher';
+import { buildErdRechargePhysicalProjectionSourceEventKey } from './erd-recharge-projection-identity.policy';
 import { normalizeDimoRechargeSegment } from '@modules/dimo/recharge-segments/dimo-recharge-segments.normalizer';
 import {
   TESLA_RECHARGE_AUDIT_SEGMENTS_PAGE_1,
@@ -357,6 +364,292 @@ describeFn(
         });
         expect(retry.outcome).toBe(ERD_CANONICAL_RECHARGE_PROJECTOR_OUTCOME.HANDOFF_COMPLETED);
         expect(retry.vehicleEnergyEventId).toBe(created.vehicleEnergyEventId);
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
+    it('H15: dual projection conflict — fallback VEE on F and independent native VEE on N (explicit PostgreSQL)', async () => {
+      if (!dbReady) return;
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      const { convergence, persist } = buildAuthorityStack(prisma);
+      try {
+        const segmentRaw = TESLA_RECHARGE_AUDIT_SEGMENTS_PAGE_1.data.segments[0];
+        const nativeSegment = normalizeDimoRechargeSegment(
+          TESLA_RECHARGE_AUDIT_TOKEN_ID,
+          segmentRaw,
+        )!;
+        const base = new Date(nativeSegment.startAt);
+        const candidate = detectFallbackChargeSessions(
+          lteR1Observations(new Date(base.getTime() - 15 * 60_000)),
+          evaluatedAt,
+        ).sessions[0];
+        const fbPersist = await convergence.persistProvisionalFallbackUnderAuthorityLock({
+          organizationId: org.id,
+          vehicleId: vehicle.id,
+          candidate,
+          evaluatedAt,
+        });
+        const sessionF = fbPersist.session!;
+
+        const projectedF = await projectCanonicalRecharge(prisma, {
+          organizationId: org.id,
+          vehicleId: vehicle.id,
+          chargeSessionId: sessionF.id,
+        });
+        expect(projectedF.outcome).toBe(ERD_CANONICAL_RECHARGE_PROJECTOR_OUTCOME.CREATED);
+        const v1Id = projectedF.vehicleEnergyEventId!;
+        const v1Key = projectedF.vehicleEnergyEvent!.sourceEventKey!;
+
+        await persist.persistRechargeSegment({
+          organizationId: org.id,
+          vehicleId: vehicle.id,
+          segment: nativeSegment,
+          evaluatedAt,
+        });
+        const sessionN = await prisma.hvChargeSession.findFirstOrThrow({
+          where: {
+            vehicleId: vehicle.id,
+            source: 'DIMO_RECHARGE_SEGMENT',
+            segmentFingerprint: nativeSegment.fingerprint,
+          },
+        });
+        const supersededF = await prisma.hvChargeSession.findUniqueOrThrow({
+          where: { id: sessionF.id },
+        });
+        expect(
+          (supersededF.metadata as { supersededBySegmentFingerprint?: string })
+            ?.supersededBySegmentFingerprint,
+        ).toBe(nativeSegment.fingerprint);
+
+        const nativeSourceKey = buildErdRechargePhysicalProjectionSourceEventKey({
+          vehicleId: vehicle.id,
+          anchorSegmentFingerprint: sessionN.segmentFingerprint,
+        });
+        const v2 = await prisma.vehicleEnergyEvent.create({
+          data: {
+            vehicleId: vehicle.id,
+            kind: EnergyEventKind.RECHARGE,
+            detectionMechanism: 'ERD_HV_CHARGE_SESSION_PROJECTION',
+            detectionSource: VehicleEnergyEventDetectionSource.SYNQDRIVE_ERD_RECHARGE_PROJECTION,
+            sourceEventKey: nativeSourceKey,
+            canonicalChargeSessionId: sessionN.id,
+            dimoSegmentId: sessionN.dimoSegmentId,
+            startTime: sessionN.startAt,
+            endTime: sessionN.endAt!,
+            durationSeconds: 3600,
+            confidence: EnergyEventConfidence.MEDIUM,
+            rawDetectionMeta: {
+              anchorSegmentFingerprint: sessionN.segmentFingerprint,
+              projectionVersion: 1,
+            },
+          },
+        });
+        expect(v2.id).not.toBe(v1Id);
+        expect(await countErdProjections(prisma, vehicle.id)).toBe(2);
+
+        const dual = await projectCanonicalRecharge(prisma, {
+          organizationId: org.id,
+          vehicleId: vehicle.id,
+          chargeSessionId: sessionN.id,
+        });
+        expect(dual.outcome).toBe(
+          ERD_CANONICAL_RECHARGE_PROJECTOR_OUTCOME.DUAL_PROJECTION_CONFLICT,
+        );
+
+        const v1After = await prisma.vehicleEnergyEvent.findUniqueOrThrow({ where: { id: v1Id } });
+        const v2After = await prisma.vehicleEnergyEvent.findUniqueOrThrow({ where: { id: v2.id } });
+        expect(v1After.canonicalChargeSessionId).toBe(sessionF.id);
+        expect(v2After.canonicalChargeSessionId).toBe(sessionN.id);
+        expect(v1After.sourceEventKey).toBe(v1Key);
+        expect(v2After.sourceEventKey).toBe(nativeSourceKey);
+        expect(await countErdProjections(prisma, vehicle.id)).toBe(2);
+        expect(await prisma.vehicleEnergyEvent.count({ where: { vehicleId: vehicle.id } })).toBe(2);
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
+    it('H16: legacy DIMO collision on handoff — product fail-closed, E3 physical authority preserved (explicit PostgreSQL)', async () => {
+      if (!dbReady) return;
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      const { convergence, persist } = buildAuthorityStack(prisma);
+      try {
+        const segmentRaw = TESLA_RECHARGE_AUDIT_SEGMENTS_PAGE_1.data.segments[0];
+        const nativeSegment = normalizeDimoRechargeSegment(
+          TESLA_RECHARGE_AUDIT_TOKEN_ID,
+          segmentRaw,
+        )!;
+        const base = new Date(nativeSegment.startAt);
+        const candidate = detectFallbackChargeSessions(
+          lteR1Observations(new Date(base.getTime() - 15 * 60_000)),
+          evaluatedAt,
+        ).sessions[0];
+        const fbPersist = await convergence.persistProvisionalFallbackUnderAuthorityLock({
+          organizationId: org.id,
+          vehicleId: vehicle.id,
+          candidate,
+          evaluatedAt,
+        });
+        const sessionF = fbPersist.session!;
+        const projectedF = await projectCanonicalRecharge(prisma, {
+          organizationId: org.id,
+          vehicleId: vehicle.id,
+          chargeSessionId: sessionF.id,
+        });
+        expect(projectedF.outcome).toBe(ERD_CANONICAL_RECHARGE_PROJECTOR_OUTCOME.CREATED);
+        const veeId = projectedF.vehicleEnergyEventId!;
+        const veeKey = projectedF.vehicleEnergyEvent!.sourceEventKey!;
+
+        await persist.persistRechargeSegment({
+          organizationId: org.id,
+          vehicleId: vehicle.id,
+          segment: nativeSegment,
+          evaluatedAt,
+        });
+        const sessionN = await prisma.hvChargeSession.findFirstOrThrow({
+          where: { vehicleId: vehicle.id, source: 'DIMO_RECHARGE_SEGMENT' },
+        });
+        expect(sessionN.dimoSegmentId).toBeTruthy();
+
+        const legacy = await prisma.vehicleEnergyEvent.create({
+          data: {
+            vehicleId: vehicle.id,
+            dimoSegmentId: sessionN.dimoSegmentId,
+            kind: EnergyEventKind.RECHARGE,
+            detectionMechanism: 'recharge',
+            detectionSource: null,
+            sourceEventKey: null,
+            startTime: sessionN.startAt,
+            endTime: sessionN.endAt!,
+            durationSeconds: 3600,
+            confidence: EnergyEventConfidence.MEDIUM,
+          },
+        });
+
+        const handoff = await projectCanonicalRecharge(prisma, {
+          organizationId: org.id,
+          vehicleId: vehicle.id,
+          chargeSessionId: sessionN.id,
+        });
+        expect(handoff.outcome).toBe(
+          ERD_CANONICAL_RECHARGE_PROJECTOR_OUTCOME.LEGACY_DIMO_COLLISION,
+        );
+
+        const veeAfter = await prisma.vehicleEnergyEvent.findUniqueOrThrow({ where: { id: veeId } });
+        expect(veeAfter.id).toBe(veeId);
+        expect(veeAfter.sourceEventKey).toBe(veeKey);
+        expect(veeAfter.canonicalChargeSessionId).toBe(sessionF.id);
+
+        const legacyAfter = await prisma.vehicleEnergyEvent.findUniqueOrThrow({
+          where: { id: legacy.id },
+        });
+        expect(legacyAfter.dimoSegmentId).toBe(sessionN.dimoSegmentId);
+
+        const fAfter = await prisma.hvChargeSession.findUniqueOrThrow({ where: { id: sessionF.id } });
+        expect(
+          (fAfter.metadata as { supersededBySegmentFingerprint?: string })
+            ?.supersededBySegmentFingerprint,
+        ).toBe(nativeSegment.fingerprint);
+        expect(await prisma.hvChargeSession.findUnique({ where: { id: sessionN.id } })).not.toBeNull();
+        expect(await countErdProjections(prisma, vehicle.id)).toBe(1);
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
+    it('H19: real E3 DIFFERENT — no handoff, two independent canonical projections (explicit PostgreSQL)', async () => {
+      if (!dbReady) return;
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      const { convergence } = buildAuthorityStack(prisma);
+      try {
+        const segment0 = normalizeDimoRechargeSegment(
+          TESLA_RECHARGE_AUDIT_TOKEN_ID,
+          TESLA_RECHARGE_AUDIT_SEGMENTS_PAGE_1.data.segments[0],
+        )!;
+        const base = new Date(segment0.startAt);
+        const fallbackDetection = detectFallbackChargeSessions(
+          lteR1Observations(new Date(base.getTime() - 15 * 60_000)),
+          evaluatedAt,
+        );
+        expect(fallbackDetection.sessions.length).toBeGreaterThanOrEqual(1);
+
+        const fbPersist = await convergence.persistProvisionalFallbackUnderAuthorityLock({
+          organizationId: org.id,
+          vehicleId: vehicle.id,
+          candidate: fallbackDetection.sessions[0],
+          evaluatedAt,
+        });
+        const sessionF = fbPersist.session!;
+
+        const projectedF = await projectCanonicalRecharge(prisma, {
+          organizationId: org.id,
+          vehicleId: vehicle.id,
+          chargeSessionId: sessionF.id,
+        });
+        expect(projectedF.outcome).toBe(ERD_CANONICAL_RECHARGE_PROJECTOR_OUTCOME.CREATED);
+        const vfId = projectedF.vehicleEnergyEventId!;
+        const vfKey = projectedF.vehicleEnergyEvent!.sourceEventKey!;
+
+        const differentSegment = normalizeDimoRechargeSegment(
+          TESLA_RECHARGE_AUDIT_TOKEN_ID,
+          TESLA_RECHARGE_AUDIT_SEGMENTS_PAGE_1.data.segments[1],
+        )!;
+        const converge = await convergence.persistNativeWithFallbackConvergence({
+          organizationId: org.id,
+          vehicleId: vehicle.id,
+          segment: differentSegment,
+          evaluatedAt,
+        });
+        expect(converge.convergence.supersededFallbackId).toBeNull();
+        expect(converge.convergence.skippedSupersession).toBe(true);
+
+        const fallbackRows = await prisma.hvChargeSession.findMany({
+          where: { vehicleId: vehicle.id, source: 'TELEMETRY_POLL_FALLBACK' },
+        });
+        const e3Decision = decideFallbackSupersessionForNative({
+          vehicleId: vehicle.id,
+          fallbackSessions: fallbackRows,
+          native: nativeSideFromDimoSegment(differentSegment),
+          evaluatedAt,
+        });
+        expect(e3Decision.action).toBe('none');
+        expect(e3Decision.evaluatedMatches.length).toBeGreaterThanOrEqual(1);
+        expect(e3Decision.evaluatedMatches.every(
+          (entry) => entry.result === ERD_PHYSICAL_MATCH_RESULT.DIFFERENT,
+        )).toBe(true);
+
+        const fRow = await prisma.hvChargeSession.findUniqueOrThrow({ where: { id: sessionF.id } });
+        expect(
+          (fRow.metadata as { supersededBySegmentFingerprint?: string })
+            ?.supersededBySegmentFingerprint,
+        ).toBeUndefined();
+
+        const sessionN = await prisma.hvChargeSession.findFirstOrThrow({
+          where: {
+            vehicleId: vehicle.id,
+            source: 'DIMO_RECHARGE_SEGMENT',
+            segmentFingerprint: differentSegment.fingerprint,
+          },
+        });
+
+        const projectedN = await projectCanonicalRecharge(prisma, {
+          organizationId: org.id,
+          vehicleId: vehicle.id,
+          chargeSessionId: sessionN.id,
+        });
+        expect(projectedN.outcome).toBe(ERD_CANONICAL_RECHARGE_PROJECTOR_OUTCOME.CREATED);
+        expect(projectedN.vehicleEnergyEventId).not.toBe(vfId);
+        expect(projectedN.vehicleEnergyEvent?.canonicalChargeSessionId).toBe(sessionN.id);
+        expect(projectedN.vehicleEnergyEvent?.sourceEventKey).not.toBe(vfKey);
+
+        const vfAfter = await prisma.vehicleEnergyEvent.findUniqueOrThrow({ where: { id: vfId } });
+        expect(vfAfter.canonicalChargeSessionId).toBe(sessionF.id);
+        expect(vfAfter.sourceEventKey).toBe(vfKey);
+        expect(await countErdProjections(prisma, vehicle.id)).toBe(2);
       } finally {
         await cleanup(prisma, vehicle.id, org.id);
       }
