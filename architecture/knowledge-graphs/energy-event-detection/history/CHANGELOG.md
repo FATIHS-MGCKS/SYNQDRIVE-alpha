@@ -1,5 +1,12 @@
 # KG-EED Changelog
 
+## 2026-09-25 — ERD E5.2 canonical VEE RECHARGE projector idempotency
+
+- Evidence: `evidence/ERD-E5-2-CANONICAL-VEE-RECHARGE-PROJECTOR-IDEMPOTENCY-2026-09-25.md`
+- `projectCanonicalRecharge()` under E3 vehicle advisory lock; CREATE/RECONCILE/NO_OP + bounded failures
+- HANDOFF_REQUIRED boundary (E5.3); LEGACY_DIMO_COLLISION fail-closed; T1–T20 + multi-client Postgres gate (boundary step 9/9)
+- No Nest wiring, no automatic triggers, no cutover
+
 ## 2026-09-24 — ERD E5.1 canonical VEE RECHARGE projection foundation
 
 - Evidence: `evidence/ERD-E5-1-CANONICAL-VEE-RECHARGE-PROJECTION-FOUNDATION-2026-09-24.md`
