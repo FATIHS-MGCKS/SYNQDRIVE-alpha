@@ -12,6 +12,7 @@ import type {
 } from './device-connection-physical-state.types';
 import type { PhysicalStateShadowComparisonDomain } from './physical-state-shadow-comparison-domain';
 import type { ProvenSameStateProvenanceRefreshProof } from './physical-state-same-state-admissibility';
+import type { SameStateProofParentSource } from './physical-state-same-state-proof-parent';
 
 export type ShadowLegacyGateDecision = {
   accepted: boolean;
@@ -55,6 +56,7 @@ export type PhysicalStateShadowComparisonInput = {
   sameStateRefresh?: {
     previousProjection: CurrentPhysicalStateProjection | null;
     incoming: IncomingPhysicalStateEvidence;
+    parentSource?: SameStateProofParentSource;
   };
   provenSameStateRefresh?: ProvenSameStateProvenanceRefreshProof | null;
 };

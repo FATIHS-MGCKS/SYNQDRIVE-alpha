@@ -11,11 +11,17 @@ export type ShadowCutoverMetricSnapshot = {
   rawClassificationCounts: Record<string, number>;
   domainCounts: Record<string, number>;
   correctnessBlockingCounts: Record<string, number>;
+  /** Every row where correctnessBlocking === true (canonical cutover gate numerator). */
+  correctnessBlockingTotal: number;
+  blockingClassificationCounts: Record<string, number>;
   provenNonIsomorphicSameStateRefresh: number;
   unprovenSameStateRefresh: number;
   trueStateDisagreement: number;
   bindingDivergenceBlocking: number;
   conflictBlocking: number;
+  unexplainedOldRejectNewAcceptBlocking: number;
+  unexplainedOldAcceptNewRejectBlocking: number;
+  /** @deprecated Use correctnessBlockingTotal + blockingClassificationCounts */
   correctnessBlockingUnexplained: number;
 };
 
@@ -32,6 +38,12 @@ export function accumulateShadowCutoverMetrics(
   snapshot.correctnessBlockingCounts[String(blocking)] =
     (snapshot.correctnessBlockingCounts[String(blocking)] ?? 0) + 1;
 
+  if (blocking) {
+    snapshot.correctnessBlockingTotal += 1;
+    snapshot.blockingClassificationCounts[cls] =
+      (snapshot.blockingClassificationCounts[cls] ?? 0) + 1;
+  }
+
   if (isProvenNonIsomorphicSameStateClassification(cls)) {
     snapshot.provenNonIsomorphicSameStateRefresh += 1;
   }
@@ -44,12 +56,14 @@ export function accumulateShadowCutoverMetrics(
     })
   ) {
     snapshot.unprovenSameStateRefresh += 1;
+  }
+
+  if (cls === PhysicalStateShadowClassification.UNEXPLAINED_OLD_REJECT_NEW_ACCEPT && blocking) {
+    snapshot.unexplainedOldRejectNewAcceptBlocking += 1;
     snapshot.correctnessBlockingUnexplained += 1;
-  } else if (
-    isShadowClassificationCorrectnessBlocking(cls) &&
-    cls === PhysicalStateShadowClassification.UNEXPLAINED_OLD_REJECT_NEW_ACCEPT
-  ) {
-    snapshot.correctnessBlockingUnexplained += 1;
+  }
+  if (cls === PhysicalStateShadowClassification.UNEXPLAINED_OLD_ACCEPT_NEW_REJECT && blocking) {
+    snapshot.unexplainedOldAcceptNewRejectBlocking += 1;
   }
 
   if (cls === PhysicalStateShadowClassification.STATE_DIVERGENCE_CORRECTNESS_UNKNOWN) {
@@ -68,11 +82,15 @@ export function createEmptyShadowCutoverMetricSnapshot(): ShadowCutoverMetricSna
     rawClassificationCounts: {},
     domainCounts: {},
     correctnessBlockingCounts: {},
+    correctnessBlockingTotal: 0,
+    blockingClassificationCounts: {},
     provenNonIsomorphicSameStateRefresh: 0,
     unprovenSameStateRefresh: 0,
     trueStateDisagreement: 0,
     bindingDivergenceBlocking: 0,
     conflictBlocking: 0,
+    unexplainedOldRejectNewAcceptBlocking: 0,
+    unexplainedOldAcceptNewRejectBlocking: 0,
     correctnessBlockingUnexplained: 0,
   };
 }

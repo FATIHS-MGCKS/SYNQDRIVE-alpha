@@ -307,4 +307,54 @@ describe('same-state provenance refresh admissibility', () => {
     expect(result.classification).toBe(PhysicalStateShadowClassification.CONFLICT);
     expect(result.correctnessBlocking).toBe(true);
   });
+
+  it('binding — null/null cannot prove non-isomorphic refresh', () => {
+    const t = new Date('2026-09-20T10:00:00.000Z');
+    const proof = proveNonIsomorphicSameStateProvenanceRefresh({
+      comparison: baseComparison({
+        legacyBindingKey: null,
+        physicalBindingKey: null,
+        bindingKey: null,
+      }),
+      previousProjection: {
+        effectiveState: 'PLUGGED',
+        evidenceObservedAt: t,
+        evidenceSource: DeviceConnectionPhysicalEvidenceSource.WEBHOOK,
+        evidenceReferenceId: 'wh:1',
+        stateVersion: 1,
+      },
+      incoming: {
+        candidateState: 'PLUGGED',
+        evidenceObservedAt: t,
+        evidenceSource: DeviceConnectionPhysicalEvidenceSource.SNAPSHOT_OBD,
+        evidenceReferenceId: 'snap:1',
+      },
+    });
+    expect(proof).toBeNull();
+  });
+
+  it('P1B guard — SNAPSHOT→SNAPSHOT equal timestamp different ref stays unproven', () => {
+    const t = new Date('2026-09-21T16:05:44.000Z');
+    const previous = {
+      effectiveState: 'PLUGGED' as const,
+      evidenceObservedAt: t,
+      evidenceSource: DeviceConnectionPhysicalEvidenceSource.SNAPSHOT_OBD,
+      evidenceReferenceId: 'vls:v1:obd:a',
+      stateVersion: 10,
+    };
+    const incoming = {
+      candidateState: 'PLUGGED' as const,
+      evidenceObservedAt: t,
+      evidenceSource: DeviceConnectionPhysicalEvidenceSource.SNAPSHOT_OBD,
+      evidenceReferenceId: 'vls:v1:obd:b',
+    };
+    const result = comparePhysicalStateShadowDecisions({
+      ...baseComparison({ evidenceObservedAt: t }),
+      sameStateRefresh: { previousProjection: previous, incoming },
+    });
+    expect(result.classification).toBe(
+      PhysicalStateShadowClassification.UNEXPLAINED_OLD_REJECT_NEW_ACCEPT,
+    );
+    expect(result.correctnessBlocking).toBe(true);
+  });
 });

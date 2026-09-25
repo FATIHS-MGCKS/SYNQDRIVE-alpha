@@ -30,11 +30,20 @@ function normalizeLegacyReason(reason: string | null | undefined): string | null
   return trimmed.length > 0 ? trimmed : null;
 }
 
-function bindingsAligned(input: PhysicalStateShadowComparisonInput): boolean {
+function resolveComparisonBindingKeys(input: PhysicalStateShadowComparisonInput): {
+  legacy: string | null;
+  physical: string | null;
+} {
   const legacy =
     input.legacyBindingKey !== undefined ? input.legacyBindingKey : input.bindingKey ?? null;
   const physical = input.physicalBindingKey ?? input.bindingKey ?? null;
-  if (!legacy || !physical) return legacy === physical;
+  return { legacy, physical };
+}
+
+/** Non-null aligned bindings required for proven same-state refresh. */
+export function bindingsAlignedForSameStateProof(input: PhysicalStateShadowComparisonInput): boolean {
+  const { legacy, physical } = resolveComparisonBindingKeys(input);
+  if (!legacy?.trim() || !physical?.trim()) return false;
   return legacy === physical;
 }
 
@@ -71,7 +80,7 @@ export function proveNonIsomorphicSameStateProvenanceRefresh(
   if (transition !== DeviceConnectionPhysicalTransitionDecision.PROVENANCE_REFRESH) return null;
   if (!comparison.physicalDecision.accepted) return null;
   if (comparison.legacyDecision.accepted) return null;
-  if (!bindingsAligned(comparison)) return null;
+  if (!bindingsAlignedForSameStateProof(comparison)) return null;
   if (!previousProjection) return null;
   if (!isAdmissibleEvidenceSource(incoming.evidenceSource)) return null;
 
@@ -106,11 +115,16 @@ export function proveNonIsomorphicSameStateProvenanceRefresh(
         evidenceReferenceId,
       };
     }
-    return {
-      proven: true,
-      variant: 'SNAPSHOT_PLUG_NO_OPEN_EPISODE_EQUAL_TIMESTAMP_CROSS_CHANNEL',
-      evidenceReferenceId,
-    };
+    if (incomingMs === previousMs) {
+      if (sameEvidenceInstant(previousProjection, incoming)) return null;
+      if (previousProjection.evidenceSource !== 'WEBHOOK') return null;
+      return {
+        proven: true,
+        variant: 'SNAPSHOT_PLUG_NO_OPEN_EPISODE_EQUAL_TIMESTAMP_CROSS_CHANNEL',
+        evidenceReferenceId,
+      };
+    }
+    return null;
   }
 
   if (

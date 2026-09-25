@@ -41,6 +41,13 @@
 - **Online admissibility** uses only evidence available at comparison time.
 - **Sequence safety** (e.g. WOB 2026-09-23 07:41:49 PLUG refresh then 07:41:53 UNPLUG `APPLIED`) is proven in policy + sequence tests, not via future-looking comparator logic.
 
+## Hardening closure (2026-09-25, PR #1697)
+
+- Same-state admissibility parent = **coordinator locked context** (`reconcile.context`), not pre-transaction `loadProjection`.
+- Non-null aligned bindings required; P1B equal-time requires **WEBHOOK → SNAPSHOT_OBD** cross-channel (T7: 148/148).
+- `CORRECTNESS_BLOCKING_TOTAL` aggregates every `correctnessBlocking === true` row.
+- Production export replay fixture: `backend/test-fixtures/p25-t7-unexplained-export.json` (1552 rows; 1549 replayed in CI with hardened semantics; 3 parent-chain edge).
+
 ## Cutover gates (post-fix)
 
 Future cutover must **not** use raw `UNEXPLAINED_OLD_REJECT_NEW_ACCEPT` alone.
