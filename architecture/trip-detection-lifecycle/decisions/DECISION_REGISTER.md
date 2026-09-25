@@ -204,4 +204,19 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | **VALIDATION** | CI + Production read-only acceptance TDL-EVID-QS-V1-PROD-ACCEPT-001 |
 | **PRODUCTION STATUS** | **PRODUCTION_PRESENT** @ `99d722b4…` (#1753 merge `b0a7cd089…`); natural SAME_TRIP **3/3 PASS**; classification **`PASS_WITH_EVIDENCE_GAPS`** — **not** `FULLY_PRODUCTION_VALIDATED` |
 | **NON_EFFECTS** | Does not auto-repair historical trips; does not replace DIMO Segments canonical boundary authority (TDL-OQ-006); does not close TDL-OQ-007 for all R1–R8 paths |
-| **EVIDENCE** | TDL-EVID-QS-V1-PROD-ACCEPT-001 |
+| **EVIDENCE** | TDL-EVID-QS-V1-PROD-ACCEPT-001; [QUALIFIED_STOP_CONTRACT_V1_2026-09-24.md](../evidence/QUALIFIED_STOP_CONTRACT_V1_2026-09-24.md) |
+
+---
+
+## TDL-DEC-OQ001-001
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | VALIDATED |
+| **BEFORE** | TDL-OQ-001 OPEN — no canonical authority for COMPLETED → DI durable handoff |
+| **WHY** | Operators and downstream modules need a single documented contract separating trip lifecycle commit from DI V2 ingress, recovery, and legacy parallel paths |
+| **CHANGE** | **`TripPostFinalizeAnalysisProducer.produceAfterPersistedCompletion`** after persisted COMPLETED → **`DrivingAnalysisInitService.initializeForCompletedTrip`** → PG **`DrivingAnalysisRun` + `DrivingIntelligenceJob`** → BullMQ **`driving.intelligence.jobs`**; recovery via **`DrivingAnalysisReconciliationService`** |
+| **NON-EFFECTS** | Does not merge legacy `trip.behavior.enrichment` into DI V2; does not make DB completion and queue enqueue atomic |
+| **PRODUCTION STATUS** | Read-only audit @ `99d722b4…`: **0** COMPLETED trips without TRIP_ENRICHMENT run in **14d** (n=210) |
+| **VERDICT** | **`RESOLVED_WITH_BOUNDED_GAPS`** — see TDL-EVID-OQ001-HANDOFF-001 |
+| **EVIDENCE** | TDL-EVID-OQ001-HANDOFF-001 |

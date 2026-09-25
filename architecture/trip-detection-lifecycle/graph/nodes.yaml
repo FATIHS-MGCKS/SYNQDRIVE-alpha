@@ -498,9 +498,12 @@ nodes:
   - id: TDL-GAP-001
     type: gap
     title: COMPLETED to Driving Intelligence handoff
-    epistemic_status: UNKNOWN
-    summary: Exact durable handoff contract to DI V2 not reconstructed.
+    epistemic_status: CONFIRMED
+    summary: >
+      Handoff contract RESOLVED (TDL-DEC-OQ001-001); org orphan defect STRUCTURALLY_IMPOSSIBLE
+      (TDL-EVID-OQ001-1-ORG-001). Non-atomic DB vs enqueue remains documented bounded behavior.
     source_paths:
+      - architecture/trip-detection-lifecycle/evidence/TDL_OQ_001_COMPLETED_TO_DI_HANDOFF_AUDIT_2026-09-25.md
       - architecture/trip-detection-lifecycle/research/OPEN_QUESTIONS.md
 
   - id: TDL-GAP-002
@@ -728,3 +731,30 @@ nodes:
       - backend/src/config/worker.config.ts
     evidence:
       - TDL-EVID-QS-V1-PROD-ACCEPT-001
+
+  - id: TDL-EVID-OQ001-HANDOFF-001
+    type: evidence
+    title: TDL-OQ-001 COMPLETED to DI handoff audit
+    source_type: PRODUCTION_OBSERVATION
+    epistemic_status: CONFIRMED
+    summary: >
+      REPO @ f87391f79…; Production @ 99d722b4…; RESOLVED_WITH_BOUNDED_GAPS; 0/210 COMPLETED without
+      TRIP_ENRICHMENT run (14d); non-atomic handoff mitigated by PG jobs + reconciliation.
+    source_paths:
+      - architecture/trip-detection-lifecycle/evidence/TDL_OQ_001_COMPLETED_TO_DI_HANDOFF_AUDIT_2026-09-25.md
+
+  - id: TDL-DEC-OQ001-001
+    type: decision
+    title: COMPLETED trip to Driving Intelligence V2 durable handoff contract
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: >
+      TripPostFinalizeAnalysisProducer after persisted COMPLETED → DrivingAnalysisInitService →
+      DrivingAnalysisRun + DrivingIntelligenceJob → BullMQ driving.intelligence.jobs;
+      recovery via DrivingAnalysisReconciliationService (bounded 14d).
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-analysis-init/trip-post-finalize-analysis.producer.ts
+      - backend/src/modules/vehicle-intelligence/driving-analysis-init/driving-analysis-init.service.ts
+      - backend/src/workers/processors/driving-intelligence-job.processor.ts
+    evidence:
+      - TDL-EVID-OQ001-HANDOFF-001

@@ -8,7 +8,7 @@ Machine-readable graph: [`graph/`](graph/) · Validator: `bash architecture/trip
 
 | Fact | State |
 |------|-------|
-| **REPO_CURRENT** | `d6ff7e19…` @ rebaseline audit — **≠ PRODUCTION_CURRENT** |
+| **REPO_CURRENT** | `f87391f79…` @ post PR #1764 — **≠ PRODUCTION_CURRENT** |
 | **PRODUCTION_CURRENT** | `99d722b4…` @ `20260924235024_v4994` |
 | **Qualified Stop V1** | **PRODUCTION_PRESENT** (#1753); acceptance **`PASS_WITH_EVIDENCE_GAPS`** (TDL-EVID-QS-V1-PROD-ACCEPT-001) |
 | **Shadow runtime** | **PRESENT** + **ENABLED** on Production; divergences **NOT_EVALUATED_SHORT_WINDOW** |
@@ -64,6 +64,7 @@ Provider wake eligible (AVAILABLE|RENTED, DIMO CONNECTED, FSM RESTING)
 | TDL-DEC-R10-001 | End-boundary-anchored activity resume + stale finalize guards | PROPOSED |
 | TDL-DEC-R10-002 | Legacy tokenless FINALIZE admission without silent token assignment | PROPOSED |
 | TDL-DEC-QS-V1-001 | Qualified Stop Contract V1 — 300_000 ms shared same-trip/split authority | VALIDATED (Production **`PASS_WITH_EVIDENCE_GAPS`**) |
+| TDL-DEC-OQ001-001 | COMPLETED → DI V2 handoff via post-finalize producer + PG job ledger | VALIDATED (**`RESOLVED_WITH_BOUNDED_GAPS`**) |
 
 Detail: [decisions/DECISION_REGISTER.md](decisions/DECISION_REGISTER.md)
 
@@ -85,9 +86,9 @@ POSSIBLE_END (possibleEndEnteredAt clocked)
 - [`docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md`](../../docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md) — R9A–R9F implementation record
 - [R9_FIVE_VEHICLE_CANARY_2026-09-07.md](evidence/R9_FIVE_VEHICLE_CANARY_2026-09-07.md) — provider wiring PASS (cross-module)
 
-## Open boundaries (unchanged)
+## Open boundaries
 
-- COMPLETED → Driving Intelligence handoff (TDL-GAP-001)
+- COMPLETED → Driving Intelligence handoff (TDL-GAP-001) — **RESOLVED** (TDL-DEC-OQ001-001; org invariant TDL-EVID-OQ001-1-ORG-001)
 - `drive-profile/` ownership (TDL-GAP-002)
 - Natural R9 wake end-to-end delivery (TDL-GAP-013; cross-ref DIM-GAP-006)
 - DIMO Integration `AUDIT_IN_PROGRESS` — segment/trigger ownership gaps remain (TDL-CX-006 partially superseded)
