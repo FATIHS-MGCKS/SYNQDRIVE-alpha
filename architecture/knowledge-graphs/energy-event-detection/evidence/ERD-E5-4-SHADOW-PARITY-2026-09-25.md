@@ -106,3 +106,9 @@ No high-cardinality entity ids in labels.
 ## Next
 
 `ERD_E5_5_PRODUCT_READ_DEDUPE` (not started in this workstream)
+
+---
+
+## E6.1 addendum (2026-09-25)
+
+E6.1 (`ERD-E6-1-CANONICAL-RECHARGE-LOCATION-PROVENANCE-2026-09-25.md`) projects native DIMO coordinates from trusted `HvChargeSession.metadata` into canonical shadow drafts when present. E5.4 historical runs that recorded `EXPECTED_BY_DESIGN` coordinate gaps remain valid evidence for the pre-E6.1 mapper era. Post-E6.1, coordinate parity may be compared when both legacy and canonical snapshots include coordinates.

@@ -13314,6 +13314,26 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     createdAt: '2026-09-25T00:00:00.000Z',
   },
   {
+    id: 'erd-e6-1-recharge-location-provenance-2026-09-25',
+    version: '4.9.913',
+    title: 'ERD E6.1 — canonical recharge location provenance',
+    summary: [
+      'Preserves native DIMO recharge segment start/end coordinates on HvChargeSession.metadata with strict pair validation.',
+      'Projects trusted native locations into canonical ERD VehicleEnergyEvent.RECHARGE (mutable coordinate fields + rawDetectionMeta provenance).',
+      'Fallback telemetry sessions remain location-null; no fuel-station OSM resolver or charger matching.',
+      'PostgreSQL + unit gates (boundary-repair step 14/14); no schema migration; no backfill.',
+    ],
+    reason:
+      'E5.6 merged — canonical product recharge rows must carry authoritative native location evidence before E6.2 charging-station resolution.',
+    previousBehavior:
+      'DIMO segment coordinates were dropped at HvChargeSession ingest; ERD projection hard-coded null latitude/longitude on VEE.',
+    details:
+      'erd-recharge-location-provenance/*; hv-charge-session.mapper.ts; hv-charge-session.merge.ts; erd-recharge-projection-mapper.ts; architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E6-1-CANONICAL-RECHARGE-LOCATION-PROVENANCE-2026-09-25.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-25T12:00:00.000Z',
+  },
+  {
     id: 'erd-e5-6-write-authority-cutover-2026-09-25',
     version: '4.9.912',
     title: 'ERD E5.6 — recharge write-authority cutover gate',

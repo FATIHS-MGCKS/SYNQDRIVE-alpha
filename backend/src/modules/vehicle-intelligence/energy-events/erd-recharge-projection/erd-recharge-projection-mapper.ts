@@ -17,6 +17,8 @@ import {
   evaluateErdRechargeProjectionEligibility,
   type ErdRechargeProjectionEligibilityScope,
 } from './erd-recharge-projection-eligibility.policy';
+import { ERD_RECHARGE_LOCATION_AUTHORITY_VERSION } from '../erd-recharge-location-provenance/erd-recharge-location-authority.constants';
+import { projectTrustedSessionLocationsToVeeCoordinates } from '../erd-recharge-location-provenance/erd-recharge-session-location.policy';
 
 export interface ErdRechargeProjectionDraft {
   vehicleId: string;
@@ -29,10 +31,10 @@ export interface ErdRechargeProjectionDraft {
   startTime: Date;
   endTime: Date;
   durationSeconds: number;
-  startLatitude: null;
-  startLongitude: null;
-  endLatitude: null;
-  endLongitude: null;
+  startLatitude: number | null;
+  startLongitude: number | null;
+  endLatitude: number | null;
+  endLongitude: number | null;
   fuelDeltaLiters: null;
   fuelDeltaPercent: null;
   socDeltaPercent: number | null;
@@ -133,6 +135,7 @@ export function mapCanonicalHvChargeSessionToErdRechargeProjectionDraft(input: {
 
   const endTime = input.session.endAt!;
   const durationSeconds = computeDurationSeconds(input.session);
+  const location = projectTrustedSessionLocationsToVeeCoordinates(input.session);
 
   const draft: ErdRechargeProjectionDraft = {
     vehicleId: input.session.vehicleId,
@@ -145,10 +148,10 @@ export function mapCanonicalHvChargeSessionToErdRechargeProjectionDraft(input: {
     startTime: input.session.startAt,
     endTime,
     durationSeconds,
-    startLatitude: null,
-    startLongitude: null,
-    endLatitude: null,
-    endLongitude: null,
+    startLatitude: location.startLatitude,
+    startLongitude: location.startLongitude,
+    endLatitude: location.endLatitude,
+    endLongitude: location.endLongitude,
     fuelDeltaLiters: null,
     fuelDeltaPercent: null,
     socDeltaPercent: input.session.deltaSocPercent,
@@ -159,6 +162,9 @@ export function mapCanonicalHvChargeSessionToErdRechargeProjectionDraft(input: {
     confidence: mapQualityToConfidence(input.session, metadata),
     rawDetectionMeta: {
       projectionVersion: ERD_RECHARGE_PROJECTION_META_VERSION,
+      locationAuthorityVersion: ERD_RECHARGE_LOCATION_AUTHORITY_VERSION,
+      startLocationProvenance: location.startLocationProvenance,
+      endLocationProvenance: location.endLocationProvenance,
       canonicalChargeSessionId: input.session.id,
       sessionSource: input.session.source,
       segmentFingerprint: input.session.segmentFingerprint,
