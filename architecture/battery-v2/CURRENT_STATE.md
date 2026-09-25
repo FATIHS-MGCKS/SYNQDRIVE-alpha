@@ -1,7 +1,7 @@
 # Battery V2 — Current State Snapshot
 
 **Snapshot date:** 2026-09-25 (M3.3D complete on main through D4 Engineering V1; **M3.3E E0/E0.1/E0.2 on main** PR #1761 @ `658b804d7`; **M3.3E E1 COMPLETE ON MAIN** PR #1765 @ `553ba670a` + post-merge seal PR #1771 @ `a37f372bf`; **M3.3E E2 ARCHITECTURE COMPLETE** (docs-only draft PR, branched from main @ `a733a2df9`); D4 merge PR #1754 @ `9a3e457d9`; production runtime baseline unchanged `2b0ef15f`)
-**Graph:** 148 nodes / 148 edges / 11 invariants (validated 2026-09-03)  
+**Graph:** 149 nodes / 148 edges / 11 invariants (validated 2026-09-25)
 **Knowledge maturity:** Phase 4 planning complete — 20 open gaps; 1 PROPOSED decision (`BAT-V2-DEC-PH4-LV-PUB-CHAIN-001`); 5 VALIDATED PKG spec decisions (D1, D2, D3, D4, D5)
 
 ## M3.1 corrected Stage-2 activation (LIVE since `2026-09-05T23:36:12Z`)
@@ -123,6 +123,8 @@ Battery V2 authority is substantially reconstructed (Phase 2–3) and Phase 4 de
 **Current runtime:** canonical REST pipeline **ON** (`REST_SHADOW=true` per `isBatteryV2CanonicalRestPipelineEnabled`); legacy REST capture **OFF**; publication customer effects **ON** (`PUBLICATION_ENABLED=true`); reconciliation **ON**. Stage-2 contract active since `2026-09-05T23:36:12Z`. Natural REST→assess→publication E2E evidence **not yet observed** (pending T+30m / ≥6h validation).
 
 Post-#1445 soak is **PRODUCTION_VALIDATION_ONLY** (initial smoke, not strong validation; profile-stratified — ICE/HEV/PHEV as exposed). HEV product authority remains **DECISION_NOT_READY**. Provider LatestState SOH gap is **DECISION_REQUIRED** (current runtime already non-decision-fresh for VLS-only) — **not** IMPLEMENTATION_READY / not PKG-04 scope.
+
+**Drive-profile ownership (TDL-OQ-002):** `vehicle-intelligence/drive-profile/` is **Battery V2–owned**; cross-ref [TDL_OQ_002 audit](../trip-detection-lifecycle/evidence/TDL_OQ_002_DRIVE_PROFILE_OWNERSHIP_AUDIT_2026-09-25.md).
 
 ## Planning item accounting
 

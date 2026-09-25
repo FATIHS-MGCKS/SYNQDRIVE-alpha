@@ -75,6 +75,7 @@ Append-only record for this authority directory.
 | 2026-09-25 | **TDL-OQ-001** COMPLETED → DI handoff authority audit — canonical producer/queue/recovery documented; Production 14d orphan scan 0/210 | Docs-only authority | [TDL_OQ_001_COMPLETED_TO_DI_HANDOFF_AUDIT_2026-09-25.md](../evidence/TDL_OQ_001_COMPLETED_TO_DI_HANDOFF_AUDIT_2026-09-25.md) |
 | 2026-09-25 | **TDL-OQ-001.1** org invariant audit — **`STRUCTURALLY_IMPOSSIBLE`** durable org orphan; TDL-OQ-001 **RESOLVED** | Docs-only authority | [TDL_OQ_001_1_ORG_INVARIANT_AUDIT_2026-09-25.md](../evidence/TDL_OQ_001_1_ORG_INVARIANT_AUDIT_2026-09-25.md) |
 | 2026-09-25 | **TDL-OQ-006** DIMO segment vs live FSM boundary cross-authority audit | Docs-only authority | [TDL_OQ_006_DIMO_SEGMENT_FSM_BOUNDARY_AUDIT_2026-09-25.md](../evidence/TDL_OQ_006_DIMO_SEGMENT_FSM_BOUNDARY_AUDIT_2026-09-25.md) |
+| 2026-09-25 | **TDL-OQ-002** drive-profile ownership — **Battery V2 owns**; TDL explicit non-ownership | Docs-only authority | [TDL_OQ_002_DRIVE_PROFILE_OWNERSHIP_AUDIT_2026-09-25.md](../evidence/TDL_OQ_002_DRIVE_PROFILE_OWNERSHIP_AUDIT_2026-09-25.md) |
 
 **Runtime code changes** in R10 workstream (branch `cursor/trip-fsm-motor-off-pause-finalize-64c8` only — Production unchanged).
 
