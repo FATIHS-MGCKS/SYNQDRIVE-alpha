@@ -46,7 +46,8 @@
 - Same-state admissibility parent = **coordinator locked context** (`reconcile.context`), not pre-transaction `loadProjection`.
 - Non-null aligned bindings required; P1B equal-time requires **WEBHOOK → SNAPSHOT_OBD** cross-channel (T7: 148/148).
 - `CORRECTNESS_BLOCKING_TOTAL` aggregates every `correctnessBlocking === true` row.
-- Production export replay fixture: `backend/test-fixtures/p25-t7-unexplained-export.json` (1552 rows; 1549 replayed in CI with hardened semantics; 3 parent-chain edge).
+- Production export replay fixture: `backend/test-fixtures/p25-t7-unexplained-export.json` (1552 rows; **1552/1552** replayed in CI with per-row episode/webhook legacy reconstruction; `parentUnresolved=0`; `pattern_assumed=0`; 15 retention-edge P1A row-verified).
+- Read-only export: `backend/scripts/ops/p25-t7-full-evidence-export-readonly.cjs` (parent lookup by `appliedStateVersion === parentStateVersion` on full vehicle transition history).
 
 ## Cutover gates (post-fix)
 

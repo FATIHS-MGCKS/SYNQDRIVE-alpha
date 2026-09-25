@@ -19,13 +19,14 @@ export function buildSameStateProofParentFromReconcileContext(
   if (context.previousEvidenceAt == null) return null;
   if (!context.previousEvidenceSource?.trim()) return null;
   if (!context.previousEvidenceReferenceId?.trim()) return null;
+  if (context.stateVersionBefore == null) return null;
 
   return {
     effectiveState: context.previousState,
     evidenceObservedAt: context.previousEvidenceAt,
     evidenceSource: context.previousEvidenceSource,
     evidenceReferenceId: context.previousEvidenceReferenceId,
-    stateVersion: context.stateVersionBefore ?? 0,
+    stateVersion: context.stateVersionBefore,
   };
 }
 

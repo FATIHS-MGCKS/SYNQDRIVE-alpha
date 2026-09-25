@@ -78,8 +78,9 @@ async function main() {
       orderBy: { observedAt: 'asc' },
     });
 
+    const vehicleIds = [...new Set(shadows.map((s) => s.vehicleId))];
     const transitions = await prisma.deviceConnectionPhysicalStateTransition.findMany({
-      where: { createdAt: { lte: windowEnd } },
+      where: { vehicleId: { in: vehicleIds } },
       orderBy: { createdAt: 'asc' },
     });
 

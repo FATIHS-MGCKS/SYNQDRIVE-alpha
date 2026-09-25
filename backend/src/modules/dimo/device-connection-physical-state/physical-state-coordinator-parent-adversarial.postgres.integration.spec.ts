@@ -208,6 +208,125 @@ describePg('Physical state coordinator-parent adversarial (postgres)', () => {
     ).toBe(DeviceConnectionPhysicalTransitionDecision.APPLIED);
   });
 
+  it('D — webhook refresh then snapshot UNPLUG at newer time => APPLIED', async () => {
+    const tRefresh = '2026-09-23T10:00:00.000Z';
+    const tUnplug = '2026-09-23T10:00:01.000Z';
+    await repository.reconcileEvidence({
+      organizationId: fixture.org.id,
+      vehicleId: fixture.vehicle.id,
+      tokenId: fixture.tokenId,
+      binding,
+      evidence: {
+        candidateState: 'PLUGGED',
+        evidenceObservedAt: new Date('2026-09-23T09:00:00.000Z'),
+        evidenceSource: DeviceConnectionPhysicalEvidenceSource.WEBHOOK,
+        evidenceReferenceId: 'wh:base',
+      },
+    });
+
+    await writer.writeWebhookEvidence({
+      organizationId: fixture.org.id,
+      vehicleId: fixture.vehicle.id,
+      provider: 'DIMO',
+      tokenId: fixture.tokenId,
+      pluggedIn: true,
+      observedAt: new Date(tRefresh),
+      receivedAt: new Date(tRefresh),
+      rawPayload: {},
+      evidenceReferenceId: 'wh:refresh',
+      legacyShadow: legacyPlugReject('no_state_change', tRefresh),
+    });
+
+    const unplug = await writer.writeSnapshotEvidence({
+      organizationId: fixture.org.id,
+      vehicleId: fixture.vehicle.id,
+      tokenId: fixture.tokenId,
+      signals: { obdIsPluggedIn: { value: false, timestamp: tUnplug } },
+      evidenceReferenceId: `snap:unplug:${tUnplug}`,
+      legacyShadow: {
+        accepted: true,
+        diagnosticReason: null,
+        effectivePlugState: 'unplugged',
+        evidenceObservedAt: new Date(tUnplug),
+        bindingKey: binding.bindingKey,
+      },
+    });
+
+    const row = await prisma.deviceConnectionPhysicalState.findFirst({
+      where: { vehicleId: fixture.vehicle.id, bindingKey: binding.bindingKey },
+    });
+    expect(row?.effectiveState).toBe('UNPLUGGED');
+    expect(unplug.shadowComparison?.correctnessBlocking).toBe(false);
+  });
+
+  it('E — equal-time opposing SNAPSHOT after WEBHOOK PLUG => CONFLICT', async () => {
+    const t = '2026-09-20T11:30:00.000Z';
+    await repository.reconcileEvidence({
+      organizationId: fixture.org.id,
+      vehicleId: fixture.vehicle.id,
+      tokenId: fixture.tokenId,
+      binding,
+      evidence: {
+        candidateState: 'PLUGGED',
+        evidenceObservedAt: new Date(t),
+        evidenceSource: DeviceConnectionPhysicalEvidenceSource.WEBHOOK,
+        evidenceReferenceId: 'wh:plug-eq',
+      },
+    });
+
+    const result = await writer.writeSnapshotEvidence({
+      organizationId: fixture.org.id,
+      vehicleId: fixture.vehicle.id,
+      tokenId: fixture.tokenId,
+      signals: { obdIsPluggedIn: { value: false, timestamp: t } },
+      evidenceReferenceId: `snap:unplug-eq:${t}`,
+      legacyShadow: {
+        accepted: false,
+        diagnosticReason: 'obd_false',
+        effectivePlugState: 'plugged',
+        evidenceObservedAt: new Date(t),
+        bindingKey: binding.bindingKey,
+      },
+    });
+
+    expect(result.shadowComparison?.classification).toBe(PhysicalStateShadowClassification.CONFLICT);
+    expect(result.shadowComparison?.correctnessBlocking).toBe(true);
+  });
+
+  it('G — older same-state SNAPSHOT refresh => STALE (no authority mutation)', async () => {
+    const tBase = '2026-09-20T13:00:00.000Z';
+    const tOlder = '2026-09-20T12:59:00.000Z';
+    await repository.reconcileEvidence({
+      organizationId: fixture.org.id,
+      vehicleId: fixture.vehicle.id,
+      tokenId: fixture.tokenId,
+      binding,
+      evidence: {
+        candidateState: 'PLUGGED',
+        evidenceObservedAt: new Date(tBase),
+        evidenceSource: DeviceConnectionPhysicalEvidenceSource.WEBHOOK,
+        evidenceReferenceId: 'wh:base-g',
+      },
+    });
+
+    const stale = await writer.writeSnapshotEvidence({
+      organizationId: fixture.org.id,
+      vehicleId: fixture.vehicle.id,
+      tokenId: fixture.tokenId,
+      signals: { obdIsPluggedIn: { value: true, timestamp: tOlder } },
+      evidenceReferenceId: `snap:stale:${tOlder}`,
+      legacyShadow: legacyPlugReject('no_open_episode', tOlder),
+    });
+
+    const row = await prisma.deviceConnectionPhysicalState.findFirst({
+      where: { vehicleId: fixture.vehicle.id, bindingKey: binding.bindingKey },
+    });
+    expect(row?.evidenceObservedAt.toISOString()).toBe(new Date(tBase).toISOString());
+    expect(stale.coordinatorResult && isPhysicalStateCoordinatorReconciled(stale.coordinatorResult)
+      ? stale.coordinatorResult.reconcile.decision
+      : null).toBe(DeviceConnectionPhysicalTransitionDecision.STALE);
+  });
+
   it('F — equal-time opposing state remains CONFLICT / blocking shadow', async () => {
     const t = '2026-09-20T12:00:00.000Z';
     await repository.reconcileEvidence({
