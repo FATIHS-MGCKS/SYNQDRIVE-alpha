@@ -97,27 +97,6 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-24T17:15:00.000Z',
   },
   {
-    id: 'battery-v2-m3-3f-shadow-natural-calibration-architecture-2026-09-25',
-    version: '4.9.2100',
-    title: 'Battery V2 M3.3F — Production shadow + natural calibration architecture (audit)',
-    summary: [
-      'F0 architecture: separate C3 shadow flag vs proposed BATTERY_V2_LONGITUDINAL_PROFILE_MATERIALIZATION_ENABLED; no flag coupling.',
-      'D3 trigger V1: on-demand internal ops + bounded scheduled reconciliation — not every C3 append.',
-      'E3 remains non-runtime; natural calibration via read-only D3 + offline E1/E3; D4 ELIGIBLE-only admission.',
-      'Staged F0–F6 activation/rollback; NO_BACKFILL default; F_C3_T0 / F_D3_T0 assigned only at flag ON.',
-      'CAL-M3.3E-* evidence plans only — NUMERIC_CALIBRATION_VALUES_SET=NO.',
-    ],
-    reason:
-      'M3.3E complete on main; M3.3F must define activation boundaries before any production shadow writes or materialization.',
-    previousBehavior:
-      'NEXT_PHASE=M3.3F without frozen D3 trigger, flag matrix, or natural-data/calibration evidence contract.',
-    details:
-      'architecture/battery-v2/research/M3_3F_PRODUCTION_SHADOW_MATERIALIZATION_NATURAL_CALIBRATION_ARCHITECTURE_2026-09-25.md; CURRENT_STATE.md; CHANGE_LEDGER.md',
-    affectsArchitecture: true,
-    module: 'Vehicle Intelligence',
-    createdAt: '2026-09-25T21:45:00.000Z',
-  },
-  {
     id: 'tdl-post-split-finalize-quality-gate-2026-09-24',
     version: '4.9.2099',
     title: 'Trip FSM — post-split short-trip finalize quality gate',
