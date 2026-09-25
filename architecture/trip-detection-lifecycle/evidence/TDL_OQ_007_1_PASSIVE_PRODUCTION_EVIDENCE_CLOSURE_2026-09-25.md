@@ -64,26 +64,40 @@ Representative chain (`39c128…`): **7** `POSSIBLE_START_VALIDATION` runs betwe
 
 ---
 
-## R4-BEH-001 — start candidate / confirm symmetry
+## R4-BEH-001 — explicit two-phase start detection contract (R4 / P4-F01)
 
-**Contract:** candidate and confirm paths share consistent event-time anchors / scoring forensics.
+**Canonical R4 contract (not identical scoring):**
 
-**Read-only:** `raw_detection_meta.tripFsmForensics` (R8_V1) on natural completions (7d):
+| Phase | Role |
+|-------|------|
+| **START_CANDIDATE_WAKE** | Candidate-specific policy / `SnapshotEvidenceEvaluator`; provider freshness authority |
+| **START_CONFIRMATION** | Separate weighted confirmation policy (`StartConfirmationDetector` / analytics-assisted) |
+
+Candidate and confirmation scoring are **intentionally policy-separated** — R4 made the two-phase model explicit; it did **not** require numeric score symmetry.
+
+**Production evidence proven (read-only, 7d natural completions):**
+
+- **54** natural Production start cases with persisted forensics
+- **candidateClockSource = PROVIDER_EVENT_TIME** (`tripFsmForensics.start`)
+- Candidate vs confirmation **phase provenance** persisted (R8_V1 forensics + `startDetectionMode`, `startConfidence`, `lifecycleRecovery.startEpisode`)
+- **Candidate → confirmed ACTIVE_TRIP** chain observable (`candidateAt`, `recognizedAt`, `possibleStartAt`, effective start episode)
+- **Canonical start boundary / confirmation evidence path** coherent (boundary source, adjustment ms, event-time vs worker-time clocks as designed)
+- Explicit **two-phase R4 contract exercised** on Production (wake/candidate phase distinct from confirmation recognition)
+
+**Read-only fields (sample):**
 
 | Field | Observed |
 |-------|----------|
 | `start.candidateClock` | `EVENT_TIME` |
 | `start.candidateClockSource` | `PROVIDER_EVENT_TIME` |
-| `start.recognizedClock` | `WORKER_TIME` (expected separation) |
+| `start.recognizedClock` | `WORKER_TIME` (expected post-confirm recognition) |
 | `start.candidateAt` vs `possibleStartAt` / `lifecycleRecovery.startEpisode` | Coherent candidate → effective start chain |
 
-**Counts (7d completed):** **54** trips with `tripFsmForensics.start.candidateClockSource = PROVIDER_EVENT_TIME`; **73** with `lastMeaningfulMovementAt` forensics bundle.
+Example (pseudonymous trip `b874cdcd…`): `startCandidateAt` `12:57:42Z`, `possibleStartAt` `12:55:00Z`, `startDetectionMode` `IGNITION_PRIMARY`, `startConfidence` `MEDIUM` (confirmation-phase label, not candidate score equality).
 
-Example (pseudonymous trip id `b874cdcd…`): `startCandidateAt` `12:57:42Z`, `possibleStartAt` `12:55:00Z`, `startDetectionMode` `IGNITION_PRIMARY`, `startConfidence` `MEDIUM`, forensics documents candidate vs canonical boundary adjustment.
+**Promotion:** **`PRODUCTION_VALIDATED`**
 
-**Promotion:** **`PRODUCTION_VALIDATED`** — observable forensics prove intended candidate/confirm clock contract on natural starts (not “trip exists” alone).
-
-**R4_START_CASES_AUDITED=54** · **R4_SCORING_SYMMETRY_PROVEN=YES** (forensic clock + anchor fields; not every sparse-GPS edge case individually replayed)
+**R4_START_CASES_AUDITED=54** · **R4_TWO_PHASE_CONTRACT_PROVEN=YES** · **R4_IDENTICAL_SCORING_REQUIRED=NO**
 
 ---
 

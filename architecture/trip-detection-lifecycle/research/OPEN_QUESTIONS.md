@@ -28,7 +28,7 @@
 |----|--------|
 | R1-BEH-003 | PRODUCTION_VALIDATED (movement anchor vs waypoint event times) |
 | R3-BEH-002 | VALIDATED_BY_CURRENT_EQUIVALENT (persisted PS errors + fail→ACTIVE_TRIP chains; BullMQ attempt **PARTIAL**) |
-| R4-BEH-001 | PRODUCTION_VALIDATED (`tripFsmForensics.start` candidate/confirm clocks) |
+| R4-BEH-001 | PRODUCTION_VALIDATED — explicit two-phase start contract (candidate vs confirmation phase, freshness authority, anchor consistency; **not** identical scoring) |
 | R8-BEH-001 | PRODUCTION_VALIDATED (authorized metrics scrape; non-zero recognition histograms) |
 
 **Status:** **RESOLVED** — OQ-007 closed. QS acceptance remains **`PASS_WITH_EVIDENCE_GAPS`** (separate surface).

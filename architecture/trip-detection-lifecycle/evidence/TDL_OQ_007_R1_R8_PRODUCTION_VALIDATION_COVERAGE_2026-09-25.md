@@ -70,7 +70,7 @@ Each row: **BEHAVIOR_ID**, owner, code path, test authority, success/failure sig
 | **R2-BEH-002** | R2 | ACTIVE_UNCHANGED | Invariant matrix | CONFLICT_* classes | recovery specs | Scheduler/orchestration refuses silent multi-ONGOING | Duplicate ONGOING rows per vehicle |
 | **R3-BEH-001** | R3 | ACTIVE_HARDENED | Confirm path | schedule ACTIVE_TICK before battery proxy | R3 artifact ordering tests | ACTIVE_TICK job scheduled before blocking battery await | Battery await blocks first ACTIVE_TICK |
 | **R3-BEH-002** | R3 | ACTIVE_UNCHANGED | PS processor | rethrow after log on PS failure | R3 BullMQ retry tests | PS failures surface retry / recovery | PS exception swallowed → SUCCESS without FSM progress |
-| **R4-BEH-001** | R4 | ACTIVE_UNCHANGED | Start evaluation | confirm scoring symmetry | R4 tests | Confirm path uses consistent anchor/score contract | Candidate vs confirm asymmetry false negatives |
+| **R4-BEH-001** | R4 | ACTIVE_UNCHANGED | Start evaluation (two-phase) | Explicit candidate-vs-confirmation phase contract, freshness authority, anchor consistency | R4 tests | START_CANDIDATE_WAKE then START_CONFIRMATION; policies intentionally distinct | Collapsed phases / false-negative confirm from stale candidate policy |
 | **R4-BEH-002** | R4 | ACTIVE_HARDENED | Merge/reopen + QS | merge/reopen + QS policy alignment (#1753) | QS production acceptance + merge tests | Reopen/merge respects end/start anchors; QS SAME_TRIP when ≤300s | False split on traffic stop (QS regression class) |
 | **R5-BEH-001** | R5 | **SUPERSEDED** (PEC/EV core) | — | Pre-R10 PEC step semantics | R5 historical tests | — | — |
 | **R5-BEH-002** | R5 | ACTIVE_REIMPLEMENTED | R10–R12 + #1627/#1674 | end-cycle orchestration, CUSUM/CH handoff | R10–R12 CI matrix + #1674 unit/proof | End attempts bounded; metadata reset on resume; boundary preserved | Retry budget reset loop; boundary stripped on CUSUM reopen (pre-#1617 class) |
@@ -112,7 +112,7 @@ Read-only probes before recomputing verdict (no new physical drives):
 |-------------|---------------|--------|-------------------|
 | **R1-BEH-003** | FSM `last_meaningful_movement_at` vs `last_activity_at` (7d); trip `raw_detection_meta` keys | `movement_le_activity_violations=0` (n=1 FSM row with movement in 7d); meta lacks per-tick movement trace — cannot prove ACTIVE_TICK writer used provider event time only | **PRODUCTION_PRESENT_NOT_VALIDATED** |
 | **R3-BEH-002** | `vehicle_trip_tracking_runs` `POSSIBLE_START_VALIDATION` errors (14d) | `69` runs with `error_message` (single class: Prisma `dimo_` unique on create); **2** vehicles with fail→success within 2h — proves errors are **persisted**, not proof of BullMQ retry contract for all failure classes | **PRODUCTION_PRESENT_NOT_VALIDATED** |
-| **R4-BEH-001** | Completed trips (7d) with `startConfidence` in meta | **72/98** have `startConfidence` — does **not** expose candidate vs confirm scoring decision trace | **PRODUCTION_PRESENT_NOT_VALIDATED** |
+| **R4-BEH-001** | Completed trips (7d) with start forensics | Phase 2b: `startConfidence` alone insufficient; OQ-007.1 closed via two-phase forensics | **PRODUCTION_VALIDATED** (OQ-007.1) |
 | **R8-BEH-001** | `GET http://127.0.0.1:3001/metrics` on VPS | HTTP 200 but **764 B** body; `/api/v1/metrics` → **401** missing bearer — **cannot** verify non-zero `synqdrive_trip_*_recognition_latency_seconds` samples without authorized scrape | **PRODUCTION_PRESENT_NOT_VALIDATED** |
 
 **PASSIVE_EVIDENCE_NEWLY_FOUND:** partial only (R3 error persistence + 2 fail→ok vehicles); **insufficient** to reclassify any of the four gaps to PRODUCTION_VALIDATED or VALIDATED_BY_CURRENT_EQUIVALENT.
@@ -175,7 +175,7 @@ Historical **PRE_HARDENING_R12** deploy @ `157b3c722…` is **SUPERSEDED_BEFORE_
 | R2-BEH-002 | R2 | YES | ACTIVE_UNCHANGED | YES | dup ONGOING=0 @ audit | **PRODUCTION_VALIDATED** |
 | R3-BEH-001 | R3 | YES | ACTIVE_HARDENED | YES | KS661 R9 wake + ACTIVE_TRIP entry | **VALIDATED_BY_CURRENT_EQUIVALENT** |
 | R3-BEH-002 | R3 | YES | ACTIVE_UNCHANGED | YES | PS errors persisted; no full retry-signature proof (Phase 2b) | **PRODUCTION_PRESENT_NOT_VALIDATED** |
-| R4-BEH-001 | R4 | YES | ACTIVE_UNCHANGED | YES | `startConfidence` present; scoring symmetry not observable (Phase 2b) | **PRODUCTION_PRESENT_NOT_VALIDATED** |
+| R4-BEH-001 | R4 | YES | ACTIVE_UNCHANGED | YES | Two-phase forensics (OQ-007.1); not identical scoring | **PRODUCTION_VALIDATED** (OQ-007.1) |
 | R4-BEH-002 | R4 | YES | ACTIVE_HARDENED | YES | QS 3/3 SAME_TRIP | **PRODUCTION_VALIDATED** |
 | R5-BEH-001 | R5 | NO | SUPERSEDED | n/a | n/a | **SUPERSEDED_NO_LONGER_REQUIRES_VALIDATION** |
 | R5-BEH-002 | R5 | YES | ACTIVE_REIMPLEMENTED | YES | WOB/#1627/#1674 + no regression in QS scan | **VALIDATED_BY_CURRENT_EQUIVALENT** |
@@ -327,7 +327,7 @@ Historical R1–R8 paths that are **SUPERSEDED** or **DEAD** no longer require n
 |-------------|------------------|--------------------------|----------------------------|-------------------------|---------------------------|
 | R1-BEH-003 | Movement anchor still written on ACTIVE ticks | Per-trip/provider trace that `lastMeaningfulMovementAt` advances only on event timestamps during ACTIVE | YES | NO | Provider-timestamp-ordered movement samples on a completed trip window |
 | R3-BEH-002 | PS failure must not be swallowed | Documented BullMQ retry / recovery after PS `error_message` for a representative failure class | YES | NO | Failed PS run → retried job → FSM progress without silent SUCCESS |
-| R4-BEH-001 | Start scoring symmetry | Production-visible candidate vs confirm decision (sparse GPS case if available) | YES | NO (rare edge may need natural sparse case) | Meta or run forensics showing confirm aligned with candidate policy |
+| R4-BEH-001 | Explicit two-phase start contract on Production | `tripFsmForensics` + start episode provenance (54 cases / 7d) | YES | NO | Candidate PROVIDER_EVENT_TIME + confirm recognition chain without phase collapse |
 | R8-BEH-001 | Recognition latency metrics | Authorized Prometheus scrape: non-zero `_count` on `synqdrive_trip_start_recognition_latency_seconds` / end counterpart | YES | NO | Bearer-authenticated `/api/v1/metrics` sample with expected histogram labels |
 
 **PHYSICAL_DRIVE_REQUIRED=NO** (gaps closable via passive observation / metrics / run forensics)
