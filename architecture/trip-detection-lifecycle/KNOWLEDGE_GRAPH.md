@@ -8,10 +8,14 @@ Machine-readable graph: [`graph/`](graph/) · Validator: `bash architecture/trip
 
 | Fact | State |
 |------|-------|
-| R9 on `origin/main` | **YES** — merged #1553 @ `4bef60463…` |
-| R9 runtime on Production | **YES** — @ `0ba96e03…` |
-| Provider speed+ignition wiring | **5/5** active cohort (190497 excluded) |
-| Natural R9 wake observed | **NO** — **NEXT_GATE** `NATURAL_R9_WAKE_OBSERVATION` |
+| **REPO_CURRENT** | `d6ff7e19…` @ rebaseline audit — **≠ PRODUCTION_CURRENT** |
+| **PRODUCTION_CURRENT** | `99d722b4…` @ `20260924235024_v4994` |
+| **Qualified Stop V1** | **PRODUCTION_PRESENT** (#1753); acceptance **`PASS_WITH_EVIDENCE_GAPS`** (TDL-EVID-QS-V1-PROD-ACCEPT-001) |
+| **Shadow runtime** | **PRESENT** + **ENABLED** on Production; divergences **NOT_EVALUATED_SHORT_WINDOW** |
+| R9 on `origin/main` | **YES** — merged #1553 |
+| R9 runtime on Production | **YES** — ancestor of `99d722b4…` |
+| Provider speed+ignition wiring | **5/5** active cohort (190497 excluded) — historical canary |
+| Natural R9 wake observed | **PARTIAL** — see KS MS 661 records; full end-path wake **OPEN** |
 
 ## Canonical lifecycle flow
 
@@ -59,6 +63,7 @@ Provider wake eligible (AVAILABLE|RENTED, DIMO CONNECTED, FSM RESTING)
 
 | TDL-DEC-R10-001 | End-boundary-anchored activity resume + stale finalize guards | PROPOSED |
 | TDL-DEC-R10-002 | Legacy tokenless FINALIZE admission without silent token assignment | PROPOSED |
+| TDL-DEC-QS-V1-001 | Qualified Stop Contract V1 — 300_000 ms shared same-trip/split authority | VALIDATED (Production **`PASS_WITH_EVIDENCE_GAPS`**) |
 
 Detail: [decisions/DECISION_REGISTER.md](decisions/DECISION_REGISTER.md)
 
