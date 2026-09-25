@@ -15,6 +15,7 @@
 | `backend/.../longitudinal-assessment-input.golden.ts` | Frozen E1 consumption fingerprint literal |
 | `backend/.../longitudinal-assessment-input.adapter.spec.ts` | Unit + golden tests |
 | `backend/.../longitudinal-assessment-input.adapter.e11-matrix.spec.ts` | E1.1 frozen minimum test matrix (explicit pairing/eligibility/coverage/segments/fingerprint) |
+| `backend/.../longitudinal-assessment-input.adapter.e12-fingerprint-preimage.spec.ts` | E1.2 isolated `computeM3_3E_ConsumptionInputFingerprintV1` field sensitivity (fixed `canonicalProfileFingerprint`) |
 | `backend/.../longitudinal-assessment-input.test-helpers.ts` | Deterministic D3/D4 pairing fixtures (tests only) |
 
 ## Public entry point
@@ -84,6 +85,15 @@ Regressions (minimum): D3 parser, D3 fingerprint, D4 self-integrity, D4 service,
 | C3 / D3 upstream goldens | **`e7b6e05a…`** / **`e2d39c60…`** (unchanged) |
 | Frozen minimum test matrix | **`E1_TEST_MATRIX_COMPLETE=YES`** (85 E1 unit tests across base + E1.1 spec) |
 | Pure determinism | **`E1_PURE_OUTPUT_DETERMINISTIC=YES`** |
+
+## E1.2 merge-gate closure (2026-09-25, PR #1765)
+
+| Gate | Result |
+|------|--------|
+| Sync with current `origin/main` | Rebased; **`MAIN_INCLUDED=YES`** |
+| Frontend runtime diff | **`FRONTEND_RUNTIME_FILES_CHANGED=NO`** (Architektur/Changes restored to main) |
+| Isolated fingerprint preimage tests | **`FINGERPRINT_FIELD_SENSITIVITY_ISOLATED=YES`** (`e12-fingerprint-preimage.spec.ts`) |
+| Observation / object key canonicalization | **`FINGERPRINT_OBSERVATION_ORDER_CANONICALIZED=YES`** · **`FINGERPRINT_OBJECT_KEY_ORDER_CANONICALIZED=YES`** |
 
 ## Remaining work (post-E1 merge)
 

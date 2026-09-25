@@ -6,6 +6,17 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-25 — M3.3E E1.2 final merge-gate closure (engineering draft)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | PR #1765 behind current main; frontend Architektur/Changes runtime diffs; E1.1 fingerprint e2e mutations coupled to `canonicalProfileFingerprint`. |
+| **CHANGE** | Rebase onto `origin/main`; restore frontend files to main; add `longitudinal-assessment-input.adapter.e12-fingerprint-preimage.spec.ts` with direct isolated `computeM3_3E_ConsumptionInputFingerprintV1` mutations. |
+| **AFTER** | **`MAIN_INCLUDED=YES`**; **`FRONTEND_RUNTIME_FILES_CHANGED=NO`**; **`FINGERPRINT_FIELD_SENSITIVITY_ISOLATED=YES`**; golden unchanged. |
+| **NON_EFFECTS** | No contract/preimage/policy change; no health model; no materialization; no deploy. |
+| **DECISION_STATUS** | **E1_2_MERGE_GATE_DRAFT** |
+| **AFFECTED_GRAPH** | Battery V2 M3.3E longitudinal assessment input |
+
 ## CL-2026-09-25 — M3.3E E1.1 determinism + frozen test matrix closure (engineering draft amend)
 
 | Field | Value |
