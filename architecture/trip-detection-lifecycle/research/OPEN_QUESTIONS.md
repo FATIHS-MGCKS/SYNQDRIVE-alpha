@@ -103,7 +103,7 @@
 - **H1a:** Six detection-state rows = current scheduler-eligible DIMO live-FSM cohort — **CONFIRMED** @ `2026-09-25` (TDL-OQ-003).
 - **H1b:** “Most fleet vehicles lack live FSM rows until connected” — **NOT CONFIRMED** (6/9 have rows; 3 non-DIMO only).
 - **H2:** High `MISSING_TRIP` repair PROPOSED count is reconciliation scanning historical DIMO gaps, not live FSM failure.
-- **H3:** Route artifact gap is eligibility/timing (post-finalize pipeline) rather than Mapbox outage — **PARTIALLY_CONFIRMED** @ `2026-09-25` (TDL-OQ-004): Route V2 **policy** cohort **374/374 (100%)**; **33** missing rows = pre-first-artifact job execution (**26** pre-R2-merge UTC, **7** unknown historical); Mapbox → **FILTERED**, not missing artifacts.
+- **H3:** Route artifact gap is eligibility/timing (post-finalize pipeline) rather than Mapbox outage — **PARTIALLY_CONFIRMED** @ `2026-09-25` (TDL-OQ-004): **7d** **100%**; **observed materialization era** **374/374**; exact Route-V2 **30d policy** **NOT_EXACTLY_COMPUTABLE** (R2 deploy **UNKNOWN**); **33** missing = **26** pre-R2-merge execution + **7** unknown runtime.
 
 ## TDL-OQ-004 — resolution (2026-09-25)
 

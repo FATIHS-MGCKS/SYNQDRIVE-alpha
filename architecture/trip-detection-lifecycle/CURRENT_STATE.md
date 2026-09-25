@@ -21,7 +21,7 @@
 | **REPO_CURRENT (legacy)** | `567a5766f…` @ post #1779 | **Stale** — do not use for OQ-004 |
 | **OQ007_R1_R8_PROD_COVERAGE** | TDL-EVID-OQ007-R1R8-COV-001 + TDL-EVID-OQ007-1-PASSIVE-CLOSURE-001 | **`RESOLVED_BY_SCOPE_REDUCTION`** — 0 active PP_NOT_VALIDATED after OQ-007.1 |
 | **OQ003_DETECTION_STATE_CARDINALITY** | TDL-EVID-OQ003-CARDINALITY-001 | **`RESOLVED_EXPECTED_CARDINALITY`** — 6 FSM rows = 6 scheduler-eligible; tracking runs are execution multiplicity |
-| **OQ004_ROUTE_ARTIFACT_COVERAGE** | TDL-EVID-OQ004-ROUTE-COV-001 | **`RESOLVED_WITH_BOUNDED_GAPS`** — Route V2 policy **374/374 (100%)**; 33 historical rows reclassified; code contract gap ≠ Production defect |
+| **OQ004_ROUTE_ARTIFACT_COVERAGE** | TDL-EVID-OQ004-ROUTE-COV-001 | **`RESOLVED_WITH_BOUNDED_GAPS`** — **7d 100%**; materialization-era **374/374**; exact Route-V2 30d policy **NOT_EXACTLY_COMPUTABLE** (deploy **UNKNOWN**) |
 | **OQ006_DIMO_FSM_BOUNDARY** | TDL-EVID-OQ006-BOUNDARY-001 | **`RESOLVED_WITH_BOUNDED_GAPS`** — live FSM canonical; DIMO segments repair evidence only |
 | **PRODUCTION_CURRENT** | `8a1d9c658…` @ `20260925182907_v4994` | **VERIFIED_READ_ONLY** — post `99d722b4…` release |
 | **QS_V1_PRODUCTION_ACCEPTANCE** | TDL-EVID-QS-V1-PROD-ACCEPT-001 | **`PASS_WITH_EVIDENCE_GAPS`** — 3/3 natural SAME_TRIP; no natural >300s SPLIT / POST_SPLIT_TRIP2 in window |

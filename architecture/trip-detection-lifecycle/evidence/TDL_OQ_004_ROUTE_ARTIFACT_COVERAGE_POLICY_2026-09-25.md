@@ -18,10 +18,10 @@ What is the **target route-artifact coverage policy** and the **actual bottlenec
 **`RESOLVED_WITH_BOUNDED_GAPS`**
 
 - **Canonical matcher:** Route V2 **`TripRouteChunkedMatcherService`** (Mapbox Matching API via chunked pipeline). **FMM is scaffold-only** — not a Production bottleneck.
-- **Missing artifacts (recent):** **0** in the last **7d** among route-eligible completed trips. **33** historical cases in the rolling **30d** window had **ROUTE** stage + job **COMPLETED** and **no artifact** — reclassified by **job `completed_at` (UTC)**, not trip `end_time` alone (see **Historical correction** below). **None** of the 33 have route-job execution **after** the first persisted artifact observation; they are **not** proof of the post–Route-V2 handler contract gap in Production.
-- **Route V2 policy coverage (30d):** **`ROUTE_V2_ARTIFACT_POLICY_COVERAGE_30D = 100%`** (**374/374**) — denominator = DI-eligible trips whose latest **`DRIVING_ROUTE_ENRICH`** job **`completed_at ≥`** first observed artifact persistence (**2026-08-29 21:21:23 UTC**). Do **not** score **375/408 (91.91%)** against a policy that did not apply to pre-materialization jobs.
+- **Missing artifacts (recent):** **0** in the last **7d** among route-eligible completed trips (**`CURRENT_7D_ARTIFACT_COVERAGE=100%`**, 105/105). **33** historical cases in the rolling **30d** window had **ROUTE** stage + job **COMPLETED** and **no artifact** — reclassified by **job `completed_at` (UTC)** (see **Historical correction**). **None** have jobs **`completed_at ≥`** first observed artifact while still missing a row (**`CURRENT_CODE_CONTRACT_GAP_OBSERVED_AFTER_FIRST_ARTIFACT=NO`**).
+- **Observed materialization era (30d proxy):** **`OBSERVED_MATERIALIZATION_ERA_COVERAGE_30D=100%`** (**374/374**) — latest route job **`completed_at ≥`** first observed **`processed_at`** (**2026-08-29 21:21:23.67 UTC**). This is **not** a proven R2 Production deploy boundary. **`ROUTE_V2_ARTIFACT_POLICY_COVERAGE_30D=NOT_EXACTLY_COMPUTABLE_DEPLOY_ANCHOR_UNKNOWN`**. Do **not** score **375/408 (91.91%)** as policy failure for the pre-era cohort.
 - **MATCHED vs artifact coverage:** Mapbox quality gates drive **MATCHED → FILTERED** fallback; **artifacts persist**. Dominant FILTERED causes: **`match_confidence_below_threshold`**, **`distance_ratio_out_of_bounds`**, **`tracepoint_coverage_below_threshold`** — a **quality SLO** surface, not missing-row coverage.
-- **Handler contract (code):** **`CURRENT_CODE_CONTRACT_GAP_PRESENT=YES`** — job/stage can **COMPLETED** without artifact. **`CURRENT_CODE_CONTRACT_GAP_PRODUCTION_OBSERVED_7D=NO`** and **`CURRENT_CODE_CONTRACT_GAP_HISTORICALLY_OBSERVED_POST_R2=NO`** (proxy: **0** missing artifacts with job **`completed_at ≥`** first artifact timestamp).
+- **Handler contract (code):** **`CURRENT_CODE_CONTRACT_GAP_PRESENT=YES`**. **`CURRENT_CODE_CONTRACT_GAP_PRODUCTION_OBSERVED_7D=NO`**. **`CURRENT_CODE_CONTRACT_GAP_HISTORICALLY_OBSERVED_POST_R2=UNKNOWN`** (7 jobs in **`UNKNOWN_HISTORICAL_RUNTIME`** — may pre- or post-date actual R2 deploy). **`CURRENT_CODE_CONTRACT_GAP_OBSERVED_AFTER_FIRST_ARTIFACT=NO`**.
 
 **OQ004_STATUS_AFTER = `RESOLVED`**
 
@@ -64,11 +64,11 @@ Classification vs **R2 merge instant** (**2026-08-29 14:26:08 UTC**) and **first
 
 | Class | Count | Rule |
 |-------|------:|------|
-| **PRE_ROUTE_V2_RUNTIME** | **26** | Route job **`completed_at` < 2026-08-29 14:26:08 UTC** — artifact table / R2 writer not expected on Production |
-| **UNKNOWN_HISTORICAL_RUNTIME** | **7** | Job **`completed_at` ∈ [14:26:08, 21:21:23) UTC** — after R2 **merge** but before first persisted artifact; **Production deploy of R2 not proven**; may be deploy lag or pre-first-success materialization |
-| **POST_ROUTE_V2_HANDLER_COMPLETED_NO_ARTIFACT** | **0** | No missing-artifact trip with job **`completed_at ≥`** first artifact timestamp |
+| **PRE_R2_MAIN_MERGE_EXECUTION** | **26** | Route job **`completed_at` < 2026-08-29 14:26:08 UTC** (R2 #1413 merge instant) — **not** a proven Production runtime version without deploy record |
+| **UNKNOWN_HISTORICAL_RUNTIME** | **7** | Job **`completed_at` ∈ [14:26:08, 21:21:23) UTC** — after R2 **merge to `main`** but before first persisted artifact; **actual R2 Production deploy time unknown** |
+| **PROVEN_POST_R2_HANDLER_GAP** | **0** | No missing-artifact trip with job **`completed_at ≥`** first artifact timestamp (**does not** prove the 7 unknowns were pre-R2 deploy) |
 
-**Correction:** Prior wording **`HANDLER_COMPLETED_NO_ARTIFACT` (33/33)** conflated stage/job completion with the **current** handler contract defect. Completing enrichment **without** `VehicleTripRouteArtifact` was **expected before R2 runtime**; the **7** interim rows are **not** established post-R2 handler-gap evidence without deploy proof.
+**Naming note (final epistemic pass):** Do **not** label the 374/374 cohort **`POST_ROUTE_V2_ARTIFACT_COVERAGE`** while **`ROUTE_V2_R2_PRODUCTION_ANCHOR=UNKNOWN`**. Use **`OBSERVED_MATERIALIZATION_ERA_*`** metrics instead.
 
 ### Artifact vs latest-stage count delta (375 vs 374)
 
@@ -78,17 +78,18 @@ Classification vs **R2 merge instant** (**2026-08-29 14:26:08 UTC**) and **first
 | **ARTIFACT_STAGE_COUNT_DELTA_EXPLAINED** | **YES** |
 | **ARTIFACT_STAGE_COUNT_DELTA_REASON** | Trip prefix **`af8bc4d7…`** has a **persisted route artifact** while the **latest** TRIP_ENRICHMENT run’s **ROUTE** stage is **`PENDING`** (superseded run / recompute — canonical **1:1 artifact per trip** retained; not a missing-artifact defect). |
 
-### Route V2 artifact policy denominator (30d)
+### Observed materialization era vs Route V2 policy denominator (30d)
 
 | Metric | Value |
 |--------|------:|
 | **ROUTE_PIPELINE_ELIGIBLE_30D** (generic DI) | 408 |
-| **ROUTE_V2_ARTIFACT_POLICY_ELIGIBLE_30D** | **374** (token + TRIP_ENRICHMENT run + latest route job **`completed_at ≥`** first artifact UTC) |
-| **ROUTE_V2_ARTIFACT_POLICY_WITH_ARTIFACT_30D** | **374** |
-| **ROUTE_V2_ARTIFACT_POLICY_COVERAGE_30D** | **100%** |
-| **POST_ROUTE_V2_ARTIFACT_COVERAGE** | **100%** (same cohort; **0** policy-eligible missing rows) |
+| **OBSERVED_MATERIALIZATION_ERA_ELIGIBLE_30D** | **374** (token + TRIP_ENRICHMENT run + latest route job **`completed_at ≥`** first observed artifact UTC) |
+| **OBSERVED_MATERIALIZATION_ERA_WITH_ARTIFACT_30D** | **374** |
+| **OBSERVED_MATERIALIZATION_ERA_COVERAGE_30D** | **100%** |
+| **ROUTE_V2_ARTIFACT_POLICY_COVERAGE_30D** | **`NOT_EXACTLY_COMPUTABLE_DEPLOY_ANCHOR_UNKNOWN`** |
+| **CURRENT_7D_ARTIFACT_COVERAGE** | **100%** (105/105) |
 
-Generic **375/408** mixes **34** trips whose route jobs ran **before** artifact materialization was observable in Production (33 without artifact + **1** artifact trip **`af8bc4d7…`** with overlapping history).
+Generic **375/408** mixes trips whose route jobs ran before the observed materialization era (33 without artifact + **`af8bc4d7…`** history).
 
 ---
 
@@ -186,7 +187,8 @@ Retryable failures → **`TripRouteMatchRetryableError`** → job retry (max **3
 |--------|-------|
 | **CURRENT_CODE_CONTRACT_GAP_PRESENT** | **YES** (handler + processor + non-critical ROUTE stage) |
 | **CURRENT_CODE_CONTRACT_GAP_PRODUCTION_OBSERVED_7D** | **NO** (all 7d eligible trips have artifacts) |
-| **CURRENT_CODE_CONTRACT_GAP_HISTORICALLY_OBSERVED_POST_R2** | **NO** (proxy: **0/33** missing with job **`completed_at ≥`** first artifact; deploy anchor **UNKNOWN**) |
+| **CURRENT_CODE_CONTRACT_GAP_HISTORICALLY_OBSERVED_POST_R2** | **UNKNOWN** (7 **`UNKNOWN_HISTORICAL_RUNTIME`** jobs; R2 deploy anchor unavailable) |
+| **CURRENT_CODE_CONTRACT_GAP_OBSERVED_AFTER_FIRST_ARTIFACT** | **NO** (**0** missing artifacts with job **`completed_at ≥`** first observed artifact) |
 
 ---
 
@@ -207,15 +209,17 @@ Generic DI: **maxAttempts=3**, exponential backoff. **ROUTE** not critical — r
 | MATCHED / FILTERED / RAW | 74 / 29 / 2 | 255 / 116 / 4 |
 | ELIGIBLE (token + TRIP_ENRICHMENT run) | 105 | 408 |
 | ELIGIBLE with artifact | 105 | 375 |
-| **Generic artifact / eligible (not Route V2 policy)** | **100%** | **91.91%** (375/408 — includes pre-materialization jobs) |
-| **Route V2 policy coverage** | **100%** (7d ⊆ post-anchor cohort) | **100%** (**374/374** — see Historical correction) |
+| **Generic artifact / eligible (not materialization-era policy)** | **100%** | **91.91%** (375/408) |
+| **CURRENT_7D_ARTIFACT_COVERAGE** | **100%** (105/105) | — |
+| **OBSERVED_MATERIALIZATION_ERA_COVERAGE** | **100%** (7d ⊆ era) | **100%** (**374/374**) |
+| **ROUTE_V2_ARTIFACT_POLICY_COVERAGE (exact 30d)** | — | **NOT_EXACTLY_COMPUTABLE_DEPLOY_ANCHOR_UNKNOWN** |
 | ROUTE stage COMPLETED, no artifact | **0** | **33** (all pre-first-artifact job execution) |
 | CANONICAL ready (processed_at) | 105 | — |
 | Renderable proxy | 104 | — |
 
 **Rollout anchors:** first **`driving_analysis_runs`:** `2026-07-17`; first **`vehicle_trip_route_artifacts.processed_at` (observed UTC):** `2026-08-29 21:21:23.67`.
 
-**Phase 12 — completed without artifact (30d, n=33):** Reclassified — **26** **`PRE_ROUTE_V2_RUNTIME`**, **7** **`UNKNOWN_HISTORICAL_RUNTIME`**, **0** **`POST_ROUTE_V2_HANDLER_COMPLETED_NO_ARTIFACT`** (see Historical correction). All had **≥2 waypoints**; jobs completed **2026-08-27 21:00 – 2026-08-29 16:01 UTC**.
+**Phase 12 — completed without artifact (30d, n=33):** **26** **`PRE_R2_MAIN_MERGE_EXECUTION`**, **7** **`UNKNOWN_HISTORICAL_RUNTIME`**, **0** **`PROVEN_POST_R2_HANDLER_GAP`**. All had **≥2 waypoints**; jobs completed **2026-08-27 21:00 – 2026-08-29 16:01 UTC**.
 
 ---
 
@@ -251,11 +255,12 @@ Generic DI: **maxAttempts=3**, exponential backoff. **ROUTE** not critical — r
 
 | Policy | Target |
 |--------|--------|
-| **Artifact coverage** | **100%** of route-eligible completed trips whose **ROUTE stage terminates COMPLETED** after Route V2 rollout anchor — **met in 7d**; **30d gap explained** by pre-anchor cohort |
+| **Artifact coverage (target)** | **100%** for route-eligible trips whose **ROUTE stage completes** while **Route V2 artifact materialization is active on Production** |
+| **Empirical evidence** | **7d:** 105/105 (**100%**). **After first observed artifact (30d proxy):** 374/374 (**100%**). **Exact full 30d Route-V2 policy denominator:** not reconstructible — **first R2 Production deploy timestamp unavailable** (bounded **provenance gap**, not current runtime defect) |
 | **Canonical route availability** | Eligible trip with **≥2** valid measured points → renderable **MATCHED → else FILTERED → else RAW** |
 | **MATCHED quality** | **Observational KPI** — calibrate SLO from FILTERED reason histogram; **do not** treat as correctness gate |
 
-**PRIMARY_COVERAGE_CAUSE (recent):** **None** — post-anchor policy cohort **100%**. **Historical:** **33** trips before first artifact observation / unproven R2 deploy window — **not** Mapbox outage. **Quality mix:** Mapbox **quality gates** → FILTERED.
+**PRIMARY_COVERAGE_CAUSE (recent):** **None** — **7d** and **observed materialization era** cohorts **100%**. **Historical:** **33** pre-era / unknown-runtime rows — **not** Mapbox outage. **Quality mix:** Mapbox **quality gates** → FILTERED.
 
 ---
 
@@ -286,9 +291,9 @@ Generic DI: **maxAttempts=3**, exponential backoff. **ROUTE** not critical — r
 
 | Bucket | Count |
 |--------|------:|
-| PRE_ROUTE_V2_RUNTIME (job before R2 merge UTC) | 26 |
-| UNKNOWN_HISTORICAL_RUNTIME (job after R2 merge, before first artifact) | 7 |
-| POST_ROUTE_V2_HANDLER_COMPLETED_NO_ARTIFACT | 0 |
+| PRE_R2_MAIN_MERGE_EXECUTION | 26 |
+| UNKNOWN_HISTORICAL_RUNTIME | 7 |
+| PROVEN_POST_R2_HANDLER_GAP | 0 |
 | MISSING_ARTIFACT_DEAD_LETTER | 0 |
 
 ---
@@ -297,7 +302,7 @@ Generic DI: **maxAttempts=3**, exponential backoff. **ROUTE** not critical — r
 
 | Finding | Status |
 |---------|--------|
-| **ROUTE job completes without artifact** | **Code YES** (`CURRENT_CODE_CONTRACT_GAP`); **Production post-anchor observation NO** |
+| **ROUTE job completes without artifact** | **Code YES**; **`OBSERVED_AFTER_FIRST_ARTIFACT=NO`**; post-R2 historical observation **UNKNOWN** |
 | **NEW_RUNTIME_DEFECT_FOUND** | **NO** |
 | **DEFECT_CLASS** | **`CURRENT_CODE_CONTRACT_GAP`** (optional hardening slice — not proven Production regression) |
 
@@ -308,13 +313,18 @@ Generic DI: **maxAttempts=3**, exponential backoff. **ROUTE** not critical — r
 ```
 TDL_OQ_004_AUDIT_RESULT=RESOLVED_WITH_BOUNDED_GAPS
 ROUTE_V2_R2_PRODUCTION_ANCHOR=UNKNOWN
-MISSING_33_PRE_ROUTE_V2_RUNTIME=26
-MISSING_33_POST_ROUTE_V2_HANDLER_NO_ARTIFACT=0
+MISSING_33_PRE_R2_MAIN_MERGE=26
 MISSING_33_UNKNOWN_RUNTIME=7
-ROUTE_V2_ARTIFACT_POLICY_COVERAGE_30D=100%
+MISSING_33_PROVEN_POST_R2_HANDLER_GAP=0
+OBSERVED_MATERIALIZATION_ERA_ELIGIBLE_30D=374
+OBSERVED_MATERIALIZATION_ERA_WITH_ARTIFACT_30D=374
+OBSERVED_MATERIALIZATION_ERA_COVERAGE_30D=100%
+ROUTE_V2_ARTIFACT_POLICY_COVERAGE_30D=NOT_EXACTLY_COMPUTABLE_DEPLOY_ANCHOR_UNKNOWN
+CURRENT_7D_ARTIFACT_COVERAGE=100%
 CURRENT_CODE_CONTRACT_GAP_PRESENT=YES
 CURRENT_CODE_CONTRACT_GAP_PRODUCTION_OBSERVED_7D=NO
-CURRENT_CODE_CONTRACT_GAP_HISTORICALLY_OBSERVED_POST_R2=NO
+CURRENT_CODE_CONTRACT_GAP_HISTORICALLY_OBSERVED_POST_R2=UNKNOWN
+CURRENT_CODE_CONTRACT_GAP_OBSERVED_AFTER_FIRST_ARTIFACT=NO
 MAPBOX_QUALITY_REJECTIONS_OBSERVED=YES
 H3_ROUTE_GAP_HYPOTHESIS=PARTIALLY_CONFIRMED
 ```
