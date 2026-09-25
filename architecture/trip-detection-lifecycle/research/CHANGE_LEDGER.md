@@ -77,6 +77,8 @@ Append-only record for this authority directory.
 | 2026-09-25 | **TDL-OQ-006** DIMO segment vs live FSM boundary cross-authority audit | Docs-only authority | [TDL_OQ_006_DIMO_SEGMENT_FSM_BOUNDARY_AUDIT_2026-09-25.md](../evidence/TDL_OQ_006_DIMO_SEGMENT_FSM_BOUNDARY_AUDIT_2026-09-25.md) |
 | 2026-09-25 | **TDL-OQ-002** drive-profile ownership — **Battery V2 owns**; TDL explicit non-ownership | Docs-only authority | [TDL_OQ_002_DRIVE_PROFILE_OWNERSHIP_AUDIT_2026-09-25.md](../evidence/TDL_OQ_002_DRIVE_PROFILE_OWNERSHIP_AUDIT_2026-09-25.md) |
 | 2026-09-25 | **TDL-OQ-007.1** passive Production evidence — closes 4 active gaps; OQ-007 **RESOLVED** | Docs-only | [TDL_OQ_007_1_PASSIVE_PRODUCTION_EVIDENCE_CLOSURE_2026-09-25.md](../evidence/TDL_OQ_007_1_PASSIVE_PRODUCTION_EVIDENCE_CLOSURE_2026-09-25.md) |
+| 2026-09-25 | **TDL-OQ-003** detection-state cardinality lifecycle — **`RESOLVED_EXPECTED_CARDINALITY`** | Docs-only | [TDL_OQ_003_DETECTION_STATE_CARDINALITY_LIFECYCLE_2026-09-25.md](../evidence/TDL_OQ_003_DETECTION_STATE_CARDINALITY_LIFECYCLE_2026-09-25.md) |
+| 2026-09-25 | **TDL-OQ-003** PR #1780 scope correction — remove frontend Changes entry; H1 **PARTIALLY_CONFIRMED**; tracking-run Vehicle cascade wording | Docs-only | Same evidence artifact |
 
 **Runtime code changes** in R10 workstream (branch `cursor/trip-fsm-motor-off-pause-finalize-64c8` only — Production unchanged).
 

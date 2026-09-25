@@ -4,7 +4,7 @@
 |-------|----------|----------|---------------------|---------------------|
 | **TDL-OQ-001** | What is the exact durable handoff from `TripDecisionEngine.finalizeTrip()` COMPLETED to Driving Intelligence analysis (`tripAnalysisStatus`, `driving.intelligence.jobs`)? | High | No — contract + org invariant closed | **RESOLVED** — see §TDL-OQ-001 below | **CLOSED** (2026-09-25) |
 | **TDL-OQ-002** | Does `backend/src/modules/vehicle-intelligence/drive-profile/` belong to Trip Detection, Battery V2, or a shared profile layer? | High | Yes (boundary) | **RESOLVED** — see §TDL-OQ-002 below | **CLOSED** (2026-09-25) |
-| **TDL-OQ-003** | Why does Production have only 6 `vehicle_trip_detection_states` rows while tracking runs are in the thousands per week? | Medium | No | OPEN (historical aggregate; re-verify on `99d722b4…` when needed) |
+| **TDL-OQ-003** | Why does Production have only a small number of `vehicle_trip_detection_states` rows while tracking runs are in the thousands? | Medium | No | **RESOLVED** — see §TDL-OQ-003 below | **CLOSED** (2026-09-25) |
 | **TDL-OQ-004** | What is the target route-artifact coverage policy and current bottleneck (Mapbox, FMM, eligibility gates)? | Medium | No | OPEN |
 | **TDL-OQ-005** | Should Prisma `TripDetectionState.ENDED` be removed or repurposed? | Low | No | OPEN |
 | **TDL-OQ-006** | How do DIMO Segments reconcile with live FSM boundaries when both exist — which wins in conflict? | High | No — boundary contract documented | **RESOLVED** — see §TDL-OQ-006 below | **CLOSED** (2026-09-25) |
@@ -12,6 +12,14 @@
 | **TDL-OQ-008** | What is the complete trip-related feature-flag matrix and default values per environment? | Medium | No | OPEN |
 | **TDL-OQ-009** | Does tiered snapshot polling (pre-R9 on Production) match documented ingress on `main`? | Medium | No until R9 scope | OPEN |
 | **TDL-OQ-010** | What dead/legacy trip code paths remain (pre-V2 segmentation, duplicate enrichment)? | Medium | No | OPEN |
+
+## TDL-OQ-003 — resolution (2026-09-25)
+
+**Evidence:** [TDL_OQ_003_DETECTION_STATE_CARDINALITY_LIFECYCLE_2026-09-25.md](../evidence/TDL_OQ_003_DETECTION_STATE_CARDINALITY_LIFECYCLE_2026-09-25.md) (TDL-EVID-OQ003-CARDINALITY-001) @ Production `99d722b4…`.
+
+**Verdict:** **`RESOLVED_EXPECTED_CARDINALITY`** (TDL-DEC-OQ003-001) — one lazy FSM row per vehicle (unique `vehicleId`); tracking runs append-only during Vehicle lifetime (cascade-delete on Vehicle delete); scheduler-eligible cohort **6/6** has state rows; **3** non-DIMO fleet vehicles correctly have zero rows; **0** eligible-without-state; comparing run count to state count is not a coverage metric.
+
+**Status:** **RESOLVED** — historical H1 **`PARTIALLY_CONFIRMED`** (H1a cohort **CONFIRMED**; H1b “most fleet … until connected” **NOT CONFIRMED**).
 
 ## TDL-OQ-007 — resolution (2026-09-25, OQ-007.1 passive closure)
 
@@ -72,7 +80,7 @@
 
 **Verdict:** **`RESOLVED_WITH_BOUNDED_GAPS`** — JWT-empty vs fetch-failure indistinguishable in reconciliation fetch; overlap coverage default `shadow`.
 
-**Status:** **RESOLVED** for authority; promotion to `AUTHORITY_ACTIVE` still blocked by other open OQs (e.g. TDL-OQ-003).
+**Status:** **RESOLVED** for authority; promotion to `AUTHORITY_ACTIVE` still blocked by other open OQs (e.g. TDL-OQ-004, TDL-OQ-008–010).
 
 ## TDL-OQ-002 — resolution (2026-09-25)
 
@@ -92,7 +100,8 @@
 
 ## Hypotheses (not confirmed)
 
-- **H1:** Six detection-state rows reflect vehicles with active DIMO snapshot polling only — most fleet vehicles lack live FSM rows until connected.
+- **H1a:** Six detection-state rows = current scheduler-eligible DIMO live-FSM cohort — **CONFIRMED** @ `2026-09-25` (TDL-OQ-003).
+- **H1b:** “Most fleet vehicles lack live FSM rows until connected” — **NOT CONFIRMED** (6/9 have rows; 3 non-DIMO only).
 - **H2:** High `MISSING_TRIP` repair PROPOSED count is reconciliation scanning historical DIMO gaps, not live FSM failure.
 - **H3:** Route artifact gap is eligibility/timing (post-finalize pipeline) rather than Mapbox outage.
 
