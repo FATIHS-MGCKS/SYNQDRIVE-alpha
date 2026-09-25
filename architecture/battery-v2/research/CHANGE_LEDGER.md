@@ -43,7 +43,7 @@ Append-only scientific record. Newest entries first.
 | **REGRESSIONS_OR_TRADEOFFS** | None — wording/authority only. |
 | **REMAINING_GAPS** | Unchanged `CAL-M3.3E-*`, `PROD-M3.3G-*`, `NAT-M3.3F-*`; **`M3_3E_CONCLUSION_BEARING_MODEL_READY=NO`**. |
 | **AFTER** | **`M3_3E_E2_COMPLETE_ON_MAIN=YES`**; **`M3_3E_E2_POST_MERGE_SEAL=PASS`**; **`M3_3E_E3_IMPLEMENTATION_READY=YES`**; **`M3_3E_HEALTH_MODEL_IMPLEMENTED=NO`**; **`M3_3E_CONCLUSION_BEARING_MODEL_READY=NO`**; **`M3_3F_REMAINS_PENDING=YES`**. |
-| **EVIDENCE** | PR #1773 head `8502928af…`; merge `d7cb2d1e8…`; ancestor proof; E2 contract on main unchanged; **`SEAL_PR_NUMBER=1775`**; **`SEAL_PR_HEAD=`bccb90d503093b790fc52b40ab3fe123faf86c3a0`**. |
+| **EVIDENCE** | PR #1773 head `8502928af…`; merge `d7cb2d1e8…`; ancestor proof; E2 contract on main unchanged; **`SEAL_PR_NUMBER=1775`**; **`SEAL_PR_HEAD=`8b000a6e07f9fce501b201bdf156a1d7dece95e4`**. |
 | **DECISION_STATUS** | **E2_COMPLETE_ON_MAIN** |
 | **AFFECTED_GRAPH** | Battery V2 M3.3E longitudinal health model (no graph node change) |
 
