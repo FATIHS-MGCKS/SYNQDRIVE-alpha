@@ -7,10 +7,11 @@
  *   npm run battery:longitudinal-profile:materialize -- \
  *     --organization-id=<uuid> --vehicle-id=<uuid> [--session-limit=<n>]
  */
-import { Test } from '@nestjs/testing';
-import { PrismaModule } from '@shared/database/prisma.module';
-import { BatteryGeneralizedEvidenceModule } from '../../src/modules/vehicle-intelligence/battery-health/generalized-evidence/generalized-evidence.module';
-import { LongitudinalProfileMaterializationRuntimeService } from '../../src/modules/vehicle-intelligence/battery-health/generalized-evidence/rest-session-features/longitudinal/longitudinal-profile-materialization.runtime.service';
+import {
+  closeLongitudinalProfileMaterializationOpsContext,
+  createLongitudinalProfileMaterializationOpsContext,
+} from '../../src/modules/vehicle-intelligence/battery-health/generalized-evidence/rest-session-features/longitudinal/longitudinal-profile-materialization.ops-bootstrap';
+import { parseCliSessionLimitArg } from '../../src/modules/vehicle-intelligence/battery-health/generalized-evidence/rest-session-features/longitudinal/longitudinal-profile-materialization.runtime-config';
 import {
   describeLongitudinalMaterializationSessionLimitForOps,
   runLongitudinalProfileMaterializeOps,
@@ -21,39 +22,40 @@ function parseArg(prefix: string): string | undefined {
   return hit?.split('=').slice(1).join('=').trim();
 }
 
-function parseOptionalSessionLimit(): number | undefined {
-  const raw = parseArg('--session-limit');
-  if (raw == null || raw === '') return undefined;
-  const parsed = parseInt(raw, 10);
-  if (!Number.isFinite(parsed)) return undefined;
-  return parsed;
-}
-
 async function main(): Promise<void> {
   const organizationId = parseArg('--organization-id');
   const vehicleId = parseArg('--vehicle-id');
-  const sessionLimitOverride = parseOptionalSessionLimit();
+  const sessionLimitRaw = parseArg('--session-limit');
 
   if (!organizationId || !vehicleId) {
     console.error(
-      'Usage: battery-longitudinal-profile-materialize.ts --organization-id=... --vehicle-id=... [--session-limit=<1-100>]',
+      'Usage: battery-longitudinal-profile-materialize.ts --organization-id=... --vehicle-id=... [--session-limit=<positive-int>]',
     );
     process.exit(1);
   }
 
+  const cliLimit = parseCliSessionLimitArg(sessionLimitRaw);
+  if (cliLimit.status === 'INVALID') {
+    console.error(cliLimit.message);
+    process.exit(1);
+  }
+
+  const sessionLimitOverride = cliLimit.status === 'OK' ? cliLimit.value : undefined;
+
   const limitInfo = describeLongitudinalMaterializationSessionLimitForOps(sessionLimitOverride);
+  if ('status' in limitInfo) {
+    console.error(limitInfo.message);
+    process.exit(1);
+  }
+
   console.error(
     `longitudinal_materialization_ops session_limit=${limitInfo.sessionLimit} configured_default=${limitInfo.configuredDefault}`,
   );
 
-  const moduleRef = await Test.createTestingModule({
-    imports: [BatteryGeneralizedEvidenceModule, PrismaModule],
-  }).compile();
-
-  const runtime = moduleRef.get(LongitudinalProfileMaterializationRuntimeService);
+  const ctx = await createLongitudinalProfileMaterializationOpsContext();
 
   try {
-    const result = await runLongitudinalProfileMaterializeOps(runtime, {
+    const result = await runLongitudinalProfileMaterializeOps(ctx.runtime, {
       organizationId,
       vehicleId,
       sessionLimitOverride,
@@ -72,7 +74,7 @@ async function main(): Promise<void> {
     console.error(error instanceof Error ? error.message : String(error));
     process.exit(1);
   } finally {
-    await moduleRef.close().catch(() => undefined);
+    await closeLongitudinalProfileMaterializationOpsContext(ctx).catch(() => undefined);
   }
 }
 

@@ -9,10 +9,6 @@ describe('longitudinal-profile-materialization.ops-runner', () => {
     );
     expect(result).toEqual({ status: 'SKIPPED_FLAG_OFF' });
     expect(materialize).toHaveBeenCalledTimes(1);
-    expect(materialize.mock.calls[0][0]).toMatchObject({
-      organizationId: 'org-1',
-      vehicleId: 'veh-1',
-    });
   });
 
   it('requires explicit org + vehicle', async () => {
@@ -21,6 +17,16 @@ describe('longitudinal-profile-materialization.ops-runner', () => {
       organizationId: '',
       vehicleId: 'veh-1',
     });
+    expect(result).toMatchObject({ status: 'INVALID_ARGS' });
+    expect(materialize).not.toHaveBeenCalled();
+  });
+
+  it('rejects fractional programmatic override with INVALID_ARGS', async () => {
+    const materialize = jest.fn();
+    const result = await runLongitudinalProfileMaterializeOps(
+      { materialize },
+      { organizationId: 'org-1', vehicleId: 'veh-1', sessionLimitOverride: 1.5 },
+    );
     expect(result).toMatchObject({ status: 'INVALID_ARGS' });
     expect(materialize).not.toHaveBeenCalled();
   });

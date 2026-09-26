@@ -8,6 +8,17 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-26 — M3.3F F1.1 pre-merge ops bootstrap + strict session limits
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Ops materialize CLI uses production Nest application context + backend `.env` load; strict integer parsing for materialization session limit env/CLI/override. |
+| **WHY** | Standalone ts-node must see production shared env; partial `parseInt` acceptance violated positive-integer-only policy. |
+| **NON_EFFECTS** | No D3 scientific/persistence change; no flag enable; no scheduler. |
+| **VALIDATION** | ops-bootstrap + runtime-config tests; F1 regressions. |
+
 ## CL-2026-09-26 — M3.3F F1 D3 materialization runtime foundation (engineering draft)
 
 | Field | Value |

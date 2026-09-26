@@ -1,7 +1,7 @@
 import type { LongitudinalProfileMaterializationRuntimeService } from './longitudinal-profile-materialization.runtime.service';
 import {
   getBatteryV2LongitudinalMaterializationSessionLimit,
-  normalizeLongitudinalMaterializationSessionLimitOverride,
+  resolveLongitudinalMaterializationSessionLimitOverride,
 } from './longitudinal-profile-materialization.runtime-config';
 
 export type LongitudinalProfileMaterializeOpsInput = {
@@ -28,23 +28,33 @@ export async function runLongitudinalProfileMaterializeOps(
     };
   }
 
-  const sessionLimit = normalizeLongitudinalMaterializationSessionLimitOverride(
+  const limitResolution = resolveLongitudinalMaterializationSessionLimitOverride(
     input.sessionLimitOverride,
   );
+  if (limitResolution.status === 'INVALID_OVERRIDE') {
+    return {
+      status: 'INVALID_ARGS',
+      message: limitResolution.message,
+    };
+  }
 
   return runtime.materialize({
     organizationId,
     vehicleId,
-    sessionLimit,
+    sessionLimit: limitResolution.sessionLimit,
     profileGeneratedAt: new Date().toISOString(),
   });
 }
 
 export function describeLongitudinalMaterializationSessionLimitForOps(
   sessionLimitOverride: number | undefined,
-): { sessionLimit: number; configuredDefault: number } {
+): { sessionLimit: number; configuredDefault: number } | { status: 'INVALID_ARGS'; message: string } {
+  const resolved = resolveLongitudinalMaterializationSessionLimitOverride(sessionLimitOverride);
+  if (resolved.status === 'INVALID_OVERRIDE') {
+    return { status: 'INVALID_ARGS', message: resolved.message };
+  }
   return {
-    sessionLimit: normalizeLongitudinalMaterializationSessionLimitOverride(sessionLimitOverride),
+    sessionLimit: resolved.sessionLimit,
     configuredDefault: getBatteryV2LongitudinalMaterializationSessionLimit(),
   };
 }

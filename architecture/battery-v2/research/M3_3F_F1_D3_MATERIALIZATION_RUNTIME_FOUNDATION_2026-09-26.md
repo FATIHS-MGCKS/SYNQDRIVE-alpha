@@ -40,7 +40,11 @@ Prometheus idempotency ratio derived at query time:
 
 `REVISIONS_PER_VEHICLE_PROMETHEUS_METRIC=DEFERRED_TO_F5_AGGREGATE_ANALYSIS` (no vehicleId labels).
 
-## Test evidence
+## F1.1 pre-merge hardening (same PR)
+
+- Ops CLI uses `NestFactory.createApplicationContext(LongitudinalProfileMaterializationOpsModule.forOps())` with `ConfigModule.forRoot` + `loadBackendEnvIntoProcessEnv` (no `@nestjs/testing`).
+- Strict positive-integer grammar for env/CLI session limits (`^[1-9][0-9]*$`, `Number.isSafeInteger`); malformed values fail closed.
+
 
 Focused F1 unit tests: config flag matrix, session limit authority, gated facade outcomes, module exports, ops runner flag-off path, metric helper bounded labels.
 
