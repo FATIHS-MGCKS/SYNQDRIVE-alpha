@@ -1,4 +1,4 @@
-# Trip Detection & Lifecycle — Change Ledger (Bootstrap)
+# Trip Detection & Lifecycle — Change Ledger
 
 Append-only record for this authority directory.
 
@@ -90,9 +90,17 @@ Append-only record for this authority directory.
 | 2026-09-26 | TDL-OQ-009 cohort semantics correction + DIMO authority sync (PR #1789) — separate DB scheduler cohort vs R9 authorized cohort | Docs-only | Same evidence + `architecture/dimo-integration/**` current-state |
 | 2026-09-26 | **TDL-OQ-010** dead/legacy/duplicate trip runtime path inventory — read-only Production SQL @ `8a1d9c658…`; closes OQ-010 | Docs-only audit | [TDL_OQ_010_LEGACY_DUPLICATE_PATH_INVENTORY_2026-09-26.md](../evidence/TDL_OQ_010_LEGACY_DUPLICATE_PATH_INVENTORY_2026-09-26.md) |
 | 2026-09-26 | **TDL-OQ-005** `TripDetectionState.ENDED` lifecycle audit — read-only Production SQL; **`ENDED_HISTORICAL_COMPAT_ONLY`** | Docs-only audit | [TDL_OQ_005_ENDED_STATE_LIFECYCLE_AUDIT_2026-09-26.md](../evidence/TDL_OQ_005_ENDED_STATE_LIFECYCLE_AUDIT_2026-09-26.md) |
+| 2026-09-26 | **Phase 5** full live FSM graph — 5 live states + `ENDED` `SCHEMA_COMPAT_ONLY`; 14 `transitions_to` edges (trigger/guard/authority/writer/queue/recovery/source/evidence) derived from 34 `transitionState` call sites @ `0b44b146…`; execution / persistence / recovery / Route V2 / boundary nodes; 7 FSM/authority invariants | Docs-only (graph) | TDL-EVID-PHASE5-FSM-CODE-001 |
+| 2026-09-26 | **Phase 5** validator extension — `transitions_to` required fields, pinned state/transition counts, zero transitions for schema-compat states, structural orphan check, OQ-010 P001–P041 exactly-once mapping (14 graph + 27 boundary, 0 unmapped), `TDL-FAIL-*` index resolution | Docs-only (validator) | `scripts/validate-graph.mjs` |
+| 2026-09-26 | **Phase 5** edge-direction correction — `WAKE-INTAKE → PENDING-MAILBOX`, `WAKE-COORD → QUEUE-WAKE-HANDOFF`, `WORK-SNAPSHOT → ORCH-TRIP-DETECTION` changed `downstream_of` → `upstream_of` (source feeds target); relation direction now defined in AGENT_CONTRACT | Docs-only (graph) | `graph/edges.yaml` notes |
+| 2026-09-26 | **Phase 5** decision register completion — added TDL-DEC-P1-001, TDL-DEC-R1R8-001, TDL-DEC-ROUTE-V2-001, TDL-DEC-PHASE5-001; TDL-DEC-R10-001/002, R11-001, R12-001 **PROPOSED → VALIDATED** (present in live `2b54a357…`; not `PRODUCTION_VALIDATED`); prior status preserved in **STATUS HISTORY**; TDL-GAP-010/011 **RESOLVED**; failed approaches R9A-002/R9C-001/R9F-001 indexed in graph | Docs-only | [DECISION_REGISTER.md](../decisions/DECISION_REGISTER.md) |
+| 2026-09-26 | **Phase 5** Production baseline refresh @ `2b54a357…` / `20260926094359_v4994` (read-only); CX-004 `HISTORICAL_NON_BLOCKING`; CX-005/006 + GAP-005/008/013/014/015 `EXPLICIT_NON_BLOCKING_LIMITATION`; HYP-001 CONFIRMED, HYP-002 superseded | Docs-only audit | TDL-EVID-PHASE5-PROD-BASELINE-001 |
+| 2026-09-26 | **Phase 5** Gate A 17/17 PASS — registry coverage **`AUDIT_IN_PROGRESS` → `AUTHORITY_ACTIVE`** | Docs-only governance | [TDL_PHASE_5_AUTHORITY_PROMOTION_AUDIT_2026-09-26.md](../evidence/TDL_PHASE_5_AUTHORITY_PROMOTION_AUDIT_2026-09-26.md) |
 
-## Planned later phases (Standard 1.0)
+## Standard 1.0 phases
 
-- Phase 3: Reconciliation and classification (ongoing)
-- Phase 4: Authority construction (graphs, decisions, validators)
-- Phase 5: Validation and promotion gate → `AUTHORITY_ACTIVE`
+- Phase 0–2: Bootstrap, repository + Production baselines — complete (2026-09-06)
+- Phase 3: Reconciliation and classification — complete (TDL-OQ-001…010 closed by 2026-09-26)
+- Phase 4: Authority construction (graphs, decisions, validators) — complete (2026-09-26)
+- Phase 5: Validation and promotion gate → **`AUTHORITY_ACTIVE`** — complete (2026-09-26, TDL-DEC-PHASE5-001)
+- Ongoing: maintain as living authority per [AGENT_CONTRACT.md](../AGENT_CONTRACT.md)

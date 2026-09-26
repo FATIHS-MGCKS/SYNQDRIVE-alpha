@@ -1,21 +1,23 @@
 # Trip Detection & Lifecycle — Open Contradictions
 
-Contradictions remain **open** until resolved by code + evidence in a later phase.
+Contradictions remain **open** until resolved by code + evidence in a later phase. Rows are never deleted; resolution is recorded in place.
 
-| ID | Contradiction | Evidence | Status |
-|----|---------------|----------|--------|
-| **TDL-CX-001** | **Repo vs Production trip FSM version** — at historical release `01541c2ab…`, `main` included R8/R9 not yet deployed | [AUDIT_MANIFEST.md](../AUDIT_MANIFEST.md), [PRODUCTION_BASELINE.md](../evidence/PRODUCTION_BASELINE.md) | **RESOLVED @ `0ba96e03…`** — historical drift preserved; R8/R9 now deployed |
-| **TDL-CX-002** | **P2 Production SQL vs 2026-09-06 Production baseline** — P2 cited stale counts; fresh aggregates differ | TDL-EV-P2-001 vs PRODUCTION_BASELINE | **RESOLVED for audit** — P2 Production claims marked HISTORICAL |
-| **TDL-CX-003** | **`ENDED` enum vs live engine** — schema includes `ENDED`; zero runtime writers | TDL-EVID-OQ005-ENDED-001 | **BOUNDED RESOLVED** — historical compat only; optional enum-removal migration slice |
-| **TDL-CX-004** | **Historical audit SHA vs current `main`** — P2–P5 audited pre-R1 baseline `3d5040b67…` | EVIDENCE_INDEX classifications | **OPEN as documentation drift** — mitigated by PARTIALLY_CURRENT labels |
-| **TDL-CX-005** | **Repair PROPOSED volume (8472) vs 0 ONGOING trips** — large proposed repair backlog with no live ONGOING | TDL-EV-PROD-008, TDL-EV-PROD-006 | **OPEN** — reconciliation cadence vs live FSM cohort mismatch; not root-caused |
-| **TDL-CX-006** | **Neighbor registry: segment boundary split** — Driving Intelligence cites "Trip Detection / DIMO Segments own boundaries"; DIMO Integration was `NOT_STARTED` during prior alignment | SYNQDRIVE_RENTAL_ARCHITECTURE.md DI boundary; [DIMO Integration](../../dimo-integration/) now `AUDIT_IN_PROGRESS` | **PARTIALLY SUPERSEDED** — mutation ownership documented TDL-DEC-OQ006-001; DI validation remains read-only compare |
+**Promotion class** (Phase 5, 2026-09-26 — [TDL_PHASE_5_AUTHORITY_PROMOTION_AUDIT_2026-09-26.md](../evidence/TDL_PHASE_5_AUTHORITY_PROMOTION_AUDIT_2026-09-26.md)): `RESOLVED` · `HISTORICAL_NON_BLOCKING` · `EXPLICIT_NON_BLOCKING_LIMITATION` · `BLOCKING`. No contradiction is `BLOCKING`.
+
+| ID | Contradiction | Evidence | Status | Promotion class |
+|----|---------------|----------|--------|-----------------|
+| **TDL-CX-001** | **Repo vs Production trip FSM version** — at historical release `01541c2ab…`, `main` included R8/R9 not yet deployed | [AUDIT_MANIFEST.md](../AUDIT_MANIFEST.md), [PRODUCTION_BASELINE.md](../evidence/PRODUCTION_BASELINE.md) | **RESOLVED @ `0ba96e03…`** — historical drift preserved; R8/R9 now deployed | RESOLVED |
+| **TDL-CX-002** | **P2 Production SQL vs 2026-09-06 Production baseline** — P2 cited stale counts; fresh aggregates differ | TDL-EV-P2-001 vs PRODUCTION_BASELINE | **RESOLVED for audit** — P2 Production claims marked HISTORICAL | RESOLVED |
+| **TDL-CX-003** | **`ENDED` enum vs live engine** — schema includes `ENDED`; zero runtime writers | TDL-EVID-OQ005-ENDED-001 | **BOUNDED RESOLVED** — historical compat only; optional enum-removal migration slice | RESOLVED (optional enum cleanup is not a blocker) |
+| **TDL-CX-004** | **Historical audit SHA vs current `main`** — P2–P5 audited pre-R1 baseline `3d5040b67…` | EVIDENCE_INDEX classifications; TDL-EVID-PHASE5-FSM-CODE-001 | Prior: **OPEN as documentation drift** — mitigated by PARTIALLY_CURRENT labels. Phase 5: current FSM, execution and writer graph re-derived from code @ `0b44b146…`; no current claim depends on the pre-R1 audits | HISTORICAL_NON_BLOCKING |
+| **TDL-CX-005** | **Repair PROPOSED volume (8472) vs 0 ONGOING trips** — large proposed repair backlog with no live ONGOING | TDL-EV-PROD-008, TDL-EV-PROD-006; TDL-EVID-PHASE5-PROD-BASELINE-001 | Prior: **OPEN** — not root-caused. Phase 5: `PROPOSED` = low-confidence repair candidates recorded for review; they **never** mutate `VehicleTrip` (8595 all-time, 0 ONGOING @ `2b54a357…`). Not a live-state contradiction. Remaining: unbounded audit backlog; `TripReconciliationService` class comment promises "auto-expiry" but no expiry/review path exists | EXPLICIT_NON_BLOCKING_LIMITATION |
+| **TDL-CX-006** | **Neighbor registry: segment boundary split** — Driving Intelligence cites "Trip Detection / DIMO Segments own boundaries"; DIMO Integration was `NOT_STARTED` during prior alignment | SYNQDRIVE_RENTAL_ARCHITECTURE.md DI boundary; [DIMO Integration](../../dimo-integration/) now `AUDIT_IN_PROGRESS`; TDL-EVID-OQ006-BOUNDARY-001 | **PARTIALLY SUPERSEDED** — mutation ownership documented TDL-DEC-OQ006-001; DI validation remains read-only compare. Phase 5: TDL states the hierarchy precisely; imprecise wording lives in neighbor docs (DI registry section, project rules) owned by other workstreams | EXPLICIT_NON_BLOCKING_LIMITATION |
 
 ## Non-contradictions (explicitly closed this phase)
 
 | Item | Resolution |
 |------|------------|
-| P1 sole lifecycle writer | Reconfirmed via `TRIP_OWNERSHIP.ts` + `TripDecisionEngine` |
-| Five reachable FSM states | Reconfirmed — `ENDED` unused |
+| P1 sole lifecycle writer | Reconfirmed via `TRIP_OWNERSHIP.ts` + `TripDecisionEngine`; Phase 5 decision TDL-DEC-P1-001 |
+| Five reachable FSM states | Reconfirmed — `ENDED` unused; Phase 5 graph encodes `ENDED` as `SCHEMA_COMPAT_ONLY` with zero transitions |
 | Production SSH access | Gate passed — contradicts P2/P3 "SSH failed" session notes |
 | Process count vs PM2 (two vs three PIDs) | **RESOLVED** at `2026-09-06T23:47:41Z` — `pgrep` with path-specific pattern returned **two** PIDs, each 1:1 with PM2 `synqdrive` / `synqdrive-b` (TDL-EV-PROD-003) |
