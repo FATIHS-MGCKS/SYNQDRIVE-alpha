@@ -10472,7 +10472,8 @@ model VehicleEnergyEvent {
 
   vehicle               Vehicle                                  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   canonicalChargeSession HvChargeSession?                        @relation(fields: [canonicalChargeSessionId], references: [id], onDelete: SetNull)
-  fuelStationEnrichment VehicleEnergyEventFuelStationEnrichment?
+  fuelStationEnrichment     VehicleEnergyEventFuelStationEnrichment?
+  chargingStationEnrichment VehicleEnergyEventChargingStationEnrichment?
   refuelReconciliation  VehicleEnergyEventRefuelReconciliation?
 
   @@unique([vehicleId, sourceEventKey])
@@ -10706,6 +10707,78 @@ model VehicleEnergyEventFuelStationEnrichment {
   @@index([resolutionStatus])
   @@index([createdAt])
   @@map("vehicle_energy_event_fuel_station_enrichments")
+}
+
+/// Async OSM charging-station resolution for canonical ERD RECHARGE energy events (E6.3).
+enum ChargingStationEnrichmentProcessingStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum ChargingStationEnrichmentResolutionStatus {
+  MATCHED
+  AMBIGUOUS
+  NOT_FOUND
+  NO_COORDINATES
+  INCONSISTENT_COORDINATES
+  INVALID_COORDINATES
+  ERROR
+}
+
+enum ChargingStationMatchConfidence {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+model VehicleEnergyEventChargingStationEnrichment {
+  id                              String                                    @id @default(uuid())
+  energyEventId                   String                                    @unique @map("energy_event_id")
+  processingStatus                ChargingStationEnrichmentProcessingStatus @default(PENDING) @map("processing_status")
+  resolutionStatus                ChargingStationEnrichmentResolutionStatus? @map("resolution_status")
+  matchConfidence                 ChargingStationMatchConfidence?           @map("match_confidence")
+  matchScore                      Float?                                    @map("match_score")
+  osmType                         String?                                   @map("osm_type")
+  osmId                           String?                                   @map("osm_id")
+  stationName                     String?                                   @map("station_name")
+  brand                           String?                                   @map("brand")
+  operator                        String?                                   @map("operator")
+  network                         String?                                   @map("network")
+  address                         String?                                   @map("address")
+  stationLatitude                 Float?                                    @map("station_latitude")
+  stationLongitude                Float?                                    @map("station_longitude")
+  geometryDistanceMeters          Float?                                    @map("geometry_distance_meters")
+  pointDistanceMeters             Float?                                    @map("point_distance_meters")
+  access                          String?                                   @map("access")
+  fee                             String?                                   @map("fee")
+  capacity                        String?                                   @map("capacity")
+  connectors                      Json?                                     @map("connectors")
+  stationMaxOutputKw              Float?                                    @map("station_max_output_kw")
+  inputLatitude                   Float?                                    @map("input_latitude")
+  inputLongitude                  Float?                                    @map("input_longitude")
+  inputCoordinateSource           String?                                   @map("input_coordinate_source")
+  inputCoordinateSelectorVersion  String?                                   @map("input_coordinate_selector_version")
+  inputFingerprint                String?                                   @map("input_fingerprint")
+  resolverVersion                 String?                                   @map("resolver_version")
+  osmDatasetVersion               String?                                   @map("osm_dataset_version")
+  resolverDiagnostics             Json?                                     @map("resolver_diagnostics")
+  attemptCount                    Int                                       @default(0) @map("attempt_count")
+  lastAttemptAt                   DateTime?                                 @map("last_attempt_at")
+  resolvedAt                      DateTime?                                 @map("resolved_at")
+  failedAt                        DateTime?                                 @map("failed_at")
+  errorCode                       String?                                   @map("error_code")
+  errorMessage                    String?                                   @map("error_message")
+  createdAt                       DateTime                                  @default(now()) @map("created_at")
+  updatedAt                       DateTime                                  @updatedAt @map("updated_at")
+
+  energyEvent VehicleEnergyEvent @relation(fields: [energyEventId], references: [id], onDelete: Cascade)
+
+  @@index([processingStatus])
+  @@index([resolutionStatus])
+  @@index([createdAt])
+  @@map("vehicle_energy_event_charging_station_enrichments")
 }
 
 // ── Trip Behavior Events (post-trip HF enrichment) ──

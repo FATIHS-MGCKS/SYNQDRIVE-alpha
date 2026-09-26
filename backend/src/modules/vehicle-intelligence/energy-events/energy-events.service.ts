@@ -128,6 +128,7 @@ export class EnergyEventsService {
       where: this.buildEnergyEventListWhere(vehicleId, options),
       include: {
         fuelStationEnrichment: true,
+        chargingStationEnrichment: true,
       },
       orderBy: { startTime: 'asc' },
     });
@@ -141,6 +142,7 @@ export class EnergyEventsService {
       where: this.buildEnergyEventListWhere(vehicleId, options),
       include: {
         fuelStationEnrichment: true,
+        chargingStationEnrichment: true,
         refuelReconciliation: true,
       },
       orderBy: { startTime: 'asc' },

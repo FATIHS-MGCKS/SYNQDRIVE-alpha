@@ -3,11 +3,16 @@ import type {
   EnergyEventConfidence,
   VehicleEnergyEvent,
   VehicleEnergyEventFuelStationEnrichment,
+  VehicleEnergyEventChargingStationEnrichment,
 } from '@prisma/client';
 import {
   type EnergyEventStationEnrichmentDto,
   toStationEnrichmentDto,
 } from './energy-events-station-enrichment.dto';
+import {
+  type EnergyEventChargingStationEnrichmentDto,
+  toChargingStationEnrichmentDto,
+} from './energy-events-charging-station-enrichment.dto';
 
 // ── Canonical shapes for the Trips-Tab timeline ───────────────────────────
 // Kept intentionally distinct from `VehicleTrip` so the frontend can render a
@@ -46,10 +51,15 @@ export interface EnergyEventDto {
    * Omitted when no enrichment row exists or event is not REFUEL.
    */
   stationEnrichment?: EnergyEventStationEnrichmentDto;
+  /**
+   * RECHARGE only: persisted charging-station enrichment (E6.3 read projection).
+   */
+  chargingStationEnrichment?: EnergyEventChargingStationEnrichmentDto;
 }
 
 export type VehicleEnergyEventRow = VehicleEnergyEvent & {
   fuelStationEnrichment?: VehicleEnergyEventFuelStationEnrichment | null;
+  chargingStationEnrichment?: VehicleEnergyEventChargingStationEnrichment | null;
 };
 
 export type TimelineItem =
@@ -84,6 +94,10 @@ export function toEnergyEventDto(row: VehicleEnergyEventRow): EnergyEventDto {
 
   if (row.kind === 'REFUEL' && row.fuelStationEnrichment) {
     dto.stationEnrichment = toStationEnrichmentDto(row.fuelStationEnrichment);
+  }
+
+  if (row.kind === 'RECHARGE' && row.chargingStationEnrichment) {
+    dto.chargingStationEnrichment = toChargingStationEnrichmentDto(row.chargingStationEnrichment);
   }
 
   return dto;

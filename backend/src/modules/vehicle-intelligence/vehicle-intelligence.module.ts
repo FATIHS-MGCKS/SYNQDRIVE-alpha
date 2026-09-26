@@ -253,6 +253,9 @@ import { ChargingStationCandidateRepository } from './charging-stations/charging
 import { ChargingStationLocationResolverService } from './charging-stations/charging-station-location-resolver.service';
 import { FuelStationEnrichmentProducerService } from './fuel-stations/enrichment/fuel-station-enrichment-producer.service';
 import { FuelStationEnrichmentOrchestratorService } from './fuel-stations/enrichment/fuel-station-enrichment-orchestrator.service';
+import { ChargingStationEnrichmentProducerService } from './charging-stations/enrichment/charging-station-enrichment-producer.service';
+import { ChargingStationEnrichmentOrchestratorService } from './charging-stations/enrichment/charging-station-enrichment-orchestrator.service';
+import { ChargingStationEnrichmentMetricsService } from './charging-stations/enrichment/charging-station-enrichment.metrics';
 import { LvBatteryChemistryResolverService } from './lv-battery-chemistry/lv-battery-chemistry-resolver.service';
 import { BatteryPolicyProfileService } from './battery-policy-profile/battery-policy-profile.service';
 import { BatteryCapabilityPreflightRepository } from './battery-health/capability-preflight/battery-capability-preflight.repository';
@@ -307,6 +310,7 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
       { name: QUEUE_NAMES.BATTERY_V2 },
       { name: QUEUE_NAMES.BRAKE_RECALCULATION },
       { name: QUEUE_NAMES.ENERGY_REFUEL_STATION_ENRICH },
+      { name: QUEUE_NAMES.ENERGY_RECHARGE_STATION_ENRICH },
       { name: QUEUE_NAMES.REFERENCE_CAPTURE },
       { name: QUEUE_NAMES.REFERENCE_CAPTURE_SETTLEMENT_SHADOW },
       { name: QUEUE_NAMES.REFERENCE_CAPTURE_EXP021_MATURATION_SHADOW },
@@ -438,6 +442,9 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     ChargingStationLocationResolverService,
     FuelStationEnrichmentProducerService,
     FuelStationEnrichmentOrchestratorService,
+    ChargingStationEnrichmentProducerService,
+    ChargingStationEnrichmentOrchestratorService,
+    ChargingStationEnrichmentMetricsService,
     PhysicalRefuelCoordinateRuntimeService,
     PhysicalRefuelReconciliationRuntimeService,
     LvBatteryChemistryResolverService,
@@ -678,6 +685,9 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     ChargingStationLocationResolverService,
     FuelStationEnrichmentProducerService,
     FuelStationEnrichmentOrchestratorService,
+    ChargingStationEnrichmentProducerService,
+    ChargingStationEnrichmentOrchestratorService,
+    ChargingStationEnrichmentMetricsService,
     PhysicalRefuelCoordinateRuntimeService,
     PhysicalRefuelReconciliationRuntimeService,
     LvBatteryChemistryResolverService,

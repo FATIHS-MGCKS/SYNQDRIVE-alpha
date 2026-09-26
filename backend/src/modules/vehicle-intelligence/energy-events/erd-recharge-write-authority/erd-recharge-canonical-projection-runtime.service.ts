@@ -10,6 +10,8 @@ import {
 } from './erd-recharge-write-authority.constants';
 import { shouldProjectCanonicalRechargeSession } from './erd-recharge-write-gate.policy';
 import { ErdRechargeWriteAuthorityMetricsService } from './erd-recharge-write-authority.metrics';
+import { ChargingStationEnrichmentProducerService } from '../../charging-stations/enrichment/charging-station-enrichment-producer.service';
+import { shouldAttemptChargingEnrichmentEnqueueAfterProjection } from '../../charging-stations/enrichment/erd-recharge-charging-enrichment-projection-hook.policy';
 
 @Injectable()
 export class ErdRechargeCanonicalProjectionRuntimeService {
@@ -19,6 +21,8 @@ export class ErdRechargeCanonicalProjectionRuntimeService {
     private readonly prisma: PrismaService,
     @Optional()
     private readonly metrics?: ErdRechargeWriteAuthorityMetricsService,
+    @Optional()
+    private readonly chargingStationEnrichmentProducer?: ChargingStationEnrichmentProducerService,
   ) {}
 
   /**
@@ -84,6 +88,7 @@ export class ErdRechargeCanonicalProjectionRuntimeService {
 
       const mapped = mapProjectorOutcomeToRuntime(result.outcome);
       this.metrics?.recordProjectionRuntime(mapped);
+      await this.tryEnqueueChargingEnrichmentAfterProjection(result.outcome, result.vehicleEnergyEventId);
       return mapped;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -94,6 +99,28 @@ export class ErdRechargeCanonicalProjectionRuntimeService {
         ERD_RECHARGE_PROJECTION_RUNTIME_OUTCOME.FAILED_ISOLATED,
       );
       return ERD_RECHARGE_PROJECTION_RUNTIME_OUTCOME.FAILED_ISOLATED;
+    }
+  }
+
+  private async tryEnqueueChargingEnrichmentAfterProjection(
+    projectorOutcome: string,
+    vehicleEnergyEventId: string | undefined,
+  ): Promise<void> {
+    if (!vehicleEnergyEventId || !this.chargingStationEnrichmentProducer) return;
+    if (!shouldAttemptChargingEnrichmentEnqueueAfterProjection(projectorOutcome)) return;
+
+    try {
+      await this.chargingStationEnrichmentProducer.enqueueAfterProjection(vehicleEnergyEventId);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        JSON.stringify({
+          event: 'charging_station_enrichment_enqueue_isolated_failure',
+          energyEventId: vehicleEnergyEventId,
+          projectorOutcome,
+          message,
+        }),
+      );
     }
   }
 }
