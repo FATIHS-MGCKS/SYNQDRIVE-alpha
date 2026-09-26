@@ -11,7 +11,7 @@
 | **TDL-OQ-007** | Are R1–R8 behaviors validated on Production post-deploy, or only on `main` via tests? | Medium | Yes for PRODUCTION_VALIDATED claims | **RESOLVED** — see §TDL-OQ-007 below | **CLOSED** (2026-09-25) |
 | **TDL-OQ-008** | What is the complete trip-related feature-flag matrix and default values per environment? | Medium | No | **RESOLVED** — see §TDL-OQ-008 below | **CLOSED** (2026-09-25) |
 | **TDL-OQ-009** | Does tiered snapshot polling match the documented R9 provider-wake ingress model on current `main` and Production? | Medium | No | **RESOLVED** — see §TDL-OQ-009 below | **CLOSED** (2026-09-26) |
-| **TDL-OQ-010** | What dead/legacy trip code paths remain (pre-V2 segmentation, duplicate enrichment)? | Medium | No | OPEN |
+| **TDL-OQ-010** | What dead/legacy trip code paths remain (pre-V2 segmentation, duplicate enrichment)? | Medium | No | **RESOLVED** — see §TDL-OQ-010 below | **CLOSED** (2026-09-26) |
 
 ## TDL-OQ-003 — resolution (2026-09-25)
 
@@ -80,7 +80,7 @@
 
 **Verdict:** **`RESOLVED_WITH_BOUNDED_GAPS`** — JWT-empty vs fetch-failure indistinguishable in reconciliation fetch; overlap coverage default `shadow`.
 
-**Status:** **RESOLVED** for authority; promotion to `AUTHORITY_ACTIVE` still blocked by other open OQs (e.g. TDL-OQ-005, TDL-OQ-010).
+**Status:** **RESOLVED** for authority; promotion to `AUTHORITY_ACTIVE` still blocked by other open OQs (e.g. TDL-OQ-005).
 
 ## TDL-OQ-008 — resolution (2026-09-25)
 
@@ -113,6 +113,16 @@
 **Verdict:** **`BATTERY_V2_OWNER`** — folder name is misleading (`LAYERING_SMELL`); optional future relocate/rename slice documented, **not required** for OQ-002 closure.
 
 **Status:** **RESOLVED** for TDL authority boundary; **`AUTHORITY_ACTIVE` promotion** still blocked by other OQs.
+
+**Status:** **RESOLVED**
+
+## TDL-OQ-010 — resolution (2026-09-26)
+
+**Evidence:** [TDL_OQ_010_LEGACY_DUPLICATE_PATH_INVENTORY_2026-09-26.md](../evidence/TDL_OQ_010_LEGACY_DUPLICATE_PATH_INVENTORY_2026-09-26.md) (TDL-EVID-OQ010-LEGACY-INV-001) @ `origin/main` `79102e516…`, Production @ `8a1d9c658…`.
+
+**Verdict:** **`RESOLVED_WITH_BOUNDED_DEBT`** — **41-row** productive path matrix; **`TripDecisionEngine`** sole lifecycle writer; Route V2 via **`matchMapboxChunkDetailed`**; **`mapMatchRoute()`** dead; pre-V2 segment detectors **ACTIVE_REPAIR**; **DI V2 + legacy HF** parallel with bounded duplicate route/impact semantics.
+
+**Status:** **RESOLVED**
 
 ## Hypotheses (not confirmed)
 

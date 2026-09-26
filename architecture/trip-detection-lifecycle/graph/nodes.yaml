@@ -651,10 +651,11 @@ nodes:
   - id: TDL-GAP-012
     type: gap
     title: Legacy duplicate trip paths
-    epistemic_status: INFERRED
-    summary: Reconciliation-heavy repair counts suggest historical gaps.
+    epistemic_status: CONFIRMED
+    summary: RESOLVED — TDL-EVID-OQ010-LEGACY-INV-001; DI V2 parallel legacy HF; no unknown lifecycle writer; bounded duplicate route/impact debt.
     source_paths:
       - architecture/trip-detection-lifecycle/contradictions/KNOWLEDGE_GAPS.md
+      - architecture/trip-detection-lifecycle/evidence/TDL_OQ_010_LEGACY_DUPLICATE_PATH_INVENTORY_2026-09-26.md
 
   - id: TDL-HYP-001
     type: hypothesis
@@ -946,3 +947,26 @@ nodes:
       - architecture/trip-detection-lifecycle/decisions/DECISION_REGISTER.md
     evidence:
       - TDL-EVID-OQ009-R9-INGRESS-001
+
+  - id: TDL-EVID-OQ010-LEGACY-INV-001
+    type: evidence
+    title: TDL-OQ-010 legacy/duplicate trip runtime path inventory
+    source_type: PRODUCTION_OBSERVATION
+    epistemic_status: CONFIRMED
+    summary: >
+      Sole TripDecisionEngine lifecycle writer; segment detectors ACTIVE_REPAIR; DI V2 + legacy HF post-finalize;
+      Route V2 matchMapboxChunkDetailed; mapMatchRoute dead; 41-row productive matrix; RESOLVED_WITH_BOUNDED_DEBT.
+    source_paths:
+      - architecture/trip-detection-lifecycle/evidence/TDL_OQ_010_LEGACY_DUPLICATE_PATH_INVENTORY_2026-09-26.md
+
+  - id: TDL-DEC-OQ010-001
+    type: decision
+    title: Legacy/duplicate trip runtime path inventory authority
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: >
+      Closes TDL-OQ-010; documents intentional parallel pipelines and removal candidates without runtime deletion.
+    source_paths:
+      - architecture/trip-detection-lifecycle/decisions/DECISION_REGISTER.md
+    evidence:
+      - TDL-EVID-OQ010-LEGACY-INV-001
