@@ -13434,6 +13434,25 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     createdAt: '2026-09-25T09:35:00.000Z',
   },
   {
+    id: 'erd-e5-4-null-safe-legacy-cohort-2026-09-26',
+    version: '4.9.995',
+    title: 'ERD E5.4 — NULL-safe legacy recharge cohort Prisma query',
+    summary: [
+      'Remove redundant NOT detectionSource filter from buildLegacyDirectDimoRechargeWhere that dropped detection_source IS NULL legacy rows under SQL three-valued logic.',
+      'Positive whitelist unchanged (NULL | DIMO_NATIVE); isLegacyDirectDimoRechargeRow unchanged; no tolerance or pairing semantic changes.',
+      'PostgreSQL regressions R1–R4 plus full E5.4 S1–S28 matrix.',
+    ],
+    reason:
+      'Production shadow dry-run could not load legacy DIMO RECHARGE rows (LEGACY_EPISODE_COUNT=0) despite valid NULL detection_source episodes.',
+    previousBehavior:
+      'Prisma legacy cohort query returned zero rows for common Production legacy RECHARGE rows with detection_source NULL.',
+    details:
+      'legacy-recharge-cohort.policy.ts; erd-e5-4-recharge-shadow-parity.postgres.integration.spec.ts; architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E5-4-SHADOW-PARITY-2026-09-25.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-26T22:15:00.000Z',
+  },
+  {
     id: 'erd-e5-4-recharge-shadow-parity-2026-09-25',
     version: '4.9.910',
     title: 'ERD E5.4 — canonical vs legacy recharge shadow parity',

@@ -103,6 +103,16 @@ No high-cardinality entity ids in labels.
 
 - E5.5 product-read dedupe, E5.6 cutover, legacy writer disable, backfill, Production flag enablement
 
+## Defect fix — NULL-safe legacy cohort query (2026-09-26, EED-EV-0090)
+
+**Observed:** Production shadow dry-run with `evaluateVehicleWindow(persist=false)` returned `LEGACY_EPISODE_COUNT=0` while direct-DIMO legacy RECHARGE rows exist with `detection_source IS NULL`.
+
+**Root cause:** `buildLegacyDirectDimoRechargeWhere` combined `NOT { detectionSource: SYNQDRIVE_ERD_RECHARGE_PROJECTION }` with `OR [null, DIMO_NATIVE]`. Prisma/SQL NULL semantics excluded NULL `detection_source` rows before the OR could admit them.
+
+**Fix:** Remove redundant `NOT` clause; retain positive whitelist only (same intended cohort as `isLegacyDirectDimoRechargeRow`).
+
+**Validation:** Postgres regressions R1–R4 + full E5.4 S1–S28 matrix.
+
 ## Next
 
 `ERD_E5_5_PRODUCT_READ_DEDUPE` (not started in this workstream)
