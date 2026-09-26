@@ -316,6 +316,165 @@ describeFn(
       }
     });
 
+    it('R1: NULL detectionSource legacy row returned by Prisma cohort query and pairs EXACT_NATIVE_DIMO_ID', async () => {
+      if (!dbReady) return;
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      const service = buildShadowParityService(prisma);
+      try {
+        const session = await createNativeSession(prisma, org.id, vehicle.id, suffix);
+        const legacy = await createLegacyRechargeVee(prisma, vehicle.id, session.dimoSegmentId!, {
+          detectionSource: null,
+        });
+
+        const legacyRows = await prisma.vehicleEnergyEvent.findMany({
+          where: buildLegacyDirectDimoRechargeWhere({
+            vehicleId: vehicle.id,
+            windowFrom: WINDOW_FROM,
+            windowTo: WINDOW_TO,
+          }),
+        });
+
+        expect(legacyRows).toHaveLength(1);
+        expect(legacyRows[0]!.id).toBe(legacy.id);
+        expect(isLegacyDirectDimoRechargeRow(legacyRows[0]!)).toBe(true);
+
+        const out = await service.evaluateVehicleWindow({
+          ...evaluateInput(org.id, vehicle.id),
+          persist: false,
+        });
+
+        expect(out.observations).toHaveLength(1);
+        expect(out.observations[0]!.pairingEvidence).toBe(
+          ERD_RECHARGE_SHADOW_PAIRING_EVIDENCE.EXACT_NATIVE_DIMO_ID,
+        );
+        expect(out.observations[0]!.parityClass).toBe(
+          ERD_RECHARGE_SHADOW_PARITY_CLASS.EXACT_MATCH,
+        );
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
+    it('R2: SYNQDRIVE_ERD_RECHARGE_PROJECTION rows excluded from legacy cohort query', async () => {
+      if (!dbReady) return;
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      try {
+        const session = await createNativeSession(prisma, org.id, vehicle.id, suffix);
+        await prisma.vehicleEnergyEvent.create({
+          data: {
+            vehicleId: vehicle.id,
+            dimoSegmentId: session.dimoSegmentId,
+            kind: EnergyEventKind.RECHARGE,
+            detectionMechanism: 'ERD_HV_CHARGE_SESSION_PROJECTION',
+            detectionSource: VehicleEnergyEventDetectionSource.SYNQDRIVE_ERD_RECHARGE_PROJECTION,
+            canonicalChargeSessionId: session.id,
+            sourceEventKey: `erd:physical:v1:${vehicle.id}:${session.segmentFingerprint}`,
+            startTime: SESSION_START,
+            endTime: SESSION_END,
+            durationSeconds: 3600,
+            socDeltaPercent: 40,
+            energyDeltaKwh: 22,
+            confidence: EnergyEventConfidence.MEDIUM,
+          },
+        });
+
+        const legacyRows = await prisma.vehicleEnergyEvent.findMany({
+          where: buildLegacyDirectDimoRechargeWhere({
+            vehicleId: vehicle.id,
+            windowFrom: WINDOW_FROM,
+            windowTo: WINDOW_TO,
+          }),
+        });
+
+        expect(legacyRows).toHaveLength(0);
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
+    it('R3: non-whitelist detectionSource excluded (pure predicate; RAW_FUEL_FALLBACK not seedable on RECHARGE)', async () => {
+      if (!dbReady) return;
+      expect(
+        isLegacyDirectDimoRechargeRow({
+          kind: EnergyEventKind.RECHARGE,
+          detectionMechanism: 'recharge',
+          canonicalChargeSessionId: null,
+          dimoSegmentId: 'dimo-segment',
+          detectionSource: VehicleEnergyEventDetectionSource.SYNQDRIVE_RAW_FUEL_FALLBACK,
+        }),
+      ).toBe(false);
+      expect(
+        isLegacyDirectDimoRechargeRow({
+          kind: EnergyEventKind.RECHARGE,
+          detectionMechanism: 'recharge',
+          canonicalChargeSessionId: null,
+          dimoSegmentId: 'dimo-segment',
+          detectionSource:
+            VehicleEnergyEventDetectionSource.SYNQDRIVE_ERD_RECHARGE_PROJECTION,
+        }),
+      ).toBe(false);
+    });
+
+    it('R4: pure predicate and Prisma cohort query agree on whitelist semantics', async () => {
+      if (!dbReady) return;
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      try {
+        const session = await createNativeSession(prisma, org.id, vehicle.id, suffix);
+        const nullLegacy = await createLegacyRechargeVee(
+          prisma,
+          vehicle.id,
+          session.dimoSegmentId!,
+          { detectionSource: null },
+        );
+        const dimoNativeLegacy = await createLegacyRechargeVee(
+          prisma,
+          vehicle.id,
+          `dimo-native-other-${suffix}`,
+        );
+        await prisma.vehicleEnergyEvent.create({
+          data: {
+            vehicleId: vehicle.id,
+            dimoSegmentId: `refuel-${suffix}`,
+            kind: EnergyEventKind.REFUEL,
+            detectionMechanism: 'refuel',
+            detectionSource: null,
+            canonicalChargeSessionId: null,
+            startTime: SESSION_START,
+            endTime: SESSION_END,
+            durationSeconds: 3600,
+            confidence: EnergyEventConfidence.HIGH,
+          },
+        });
+
+        const legacyRows = await prisma.vehicleEnergyEvent.findMany({
+          where: buildLegacyDirectDimoRechargeWhere({
+            vehicleId: vehicle.id,
+            windowFrom: WINDOW_FROM,
+            windowTo: WINDOW_TO,
+          }),
+        });
+
+        expect(legacyRows.map((r) => r.id).sort()).toEqual(
+          [nullLegacy.id, dimoNativeLegacy.id].sort(),
+        );
+        for (const row of legacyRows) {
+          expect(isLegacyDirectDimoRechargeRow(row)).toBe(true);
+        }
+        const allVehicleRows = await prisma.vehicleEnergyEvent.findMany({
+          where: { vehicleId: vehicle.id },
+        });
+        for (const row of allVehicleRows) {
+          const inCohort = legacyRows.some((l) => l.id === row.id);
+          expect(isLegacyDirectDimoRechargeRow(row)).toBe(inCohort);
+        }
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
     it('S5: fallback-only canonical → PENDING_SETTLEMENT', async () => {
       if (!dbReady) return;
       const suffix = randomUUID().slice(0, 8);

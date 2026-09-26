@@ -1,5 +1,12 @@
 # KG-EED Changelog
 
+## 2026-09-26 — ERD E5.4 legacy cohort NULL-safe Prisma query (defect fix)
+
+- `buildLegacyDirectDimoRechargeWhere`: remove redundant `NOT { detectionSource: SYNQDRIVE_ERD_RECHARGE_PROJECTION }` that excluded `detection_source IS NULL` rows under SQL three-valued logic
+- Positive whitelist unchanged (`NULL` | `DIMO_NATIVE` only); `isLegacyDirectDimoRechargeRow` unchanged
+- PostgreSQL regressions R1–R4 in `erd-e5-4-recharge-shadow-parity.postgres.integration.spec.ts`; full S1–S28 matrix green
+- Evidence note appended in `evidence/ERD-E5-4-SHADOW-PARITY-2026-09-25.md` (EED-EV-0090)
+
 ## 2026-09-26 — ERD E6.3 charging location enrichment runtime (acceptance closure)
 
 - E6.3 P/Q/R required gates: PostgreSQL P matrix, real BullMQ Q1–Q10, recovery R1–R12 wired in boundary steps 16–18.
