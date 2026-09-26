@@ -89,16 +89,17 @@ describe('ChargingStationEnrichmentOrchestratorService (O1–O14)', () => {
 
   it('O10: resolver ERROR is retryable', async () => {
     prisma.vehicleEnergyEvent.findUnique.mockResolvedValue(canonicalRecharge);
-    prisma.vehicleEnergyEventChargingStationEnrichment.upsert.mockResolvedValue({});
+    prisma.vehicleEnergyEventChargingStationEnrichment.upsert
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({
+        processingStatus: 'PROCESSING',
+        resolutionStatus: 'ERROR',
+        errorMessage: 'boom',
+      });
     resolver.resolve.mockResolvedValue({
       status: 'ERROR',
       errorMessage: 'boom',
       resolverVersion: CHARGING_STATION_RESOLVER_VERSION,
-    });
-    prisma.vehicleEnergyEventChargingStationEnrichment.upsert.mockResolvedValueOnce({
-      processingStatus: 'PROCESSING',
-      resolutionStatus: 'ERROR',
-      errorMessage: 'boom',
     });
     await expect(service.processEnergyEvent('evt-r1')).rejects.toThrow('boom');
   });
