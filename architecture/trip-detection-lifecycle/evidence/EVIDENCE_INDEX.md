@@ -2,9 +2,13 @@
 
 **origin/main (historical @ R9 rebase):** `a4725514866a03099e7a1e485ccf0b7ea37d6fec` — **does not contain R9**
 
-**REPO_CURRENT (@ rebaseline audit):** `d6ff7e198110ff7401d03389c232398af47766f0`
+**REPO_CURRENT (@ Phase 5 promotion audit):** `0b44b146fe82997a04940d7e03c4f8c198490501`
 
-**PRODUCTION_CURRENT (verified):** `8a1d9c6586cbddc41bb6c94870f9d51226d71aa2` @ `/opt/synqdrive/releases/20260925182907_v4994`
+**PRODUCTION_CURRENT (verified read-only 2026-09-26, Phase 5):** `2b54a357854c9d44f638ee857f72936967c04992` @ `/opt/synqdrive/releases/20260926094359_v4994`
+
+**REPO (historical @ rebaseline audit):** `d6ff7e198110ff7401d03389c232398af47766f0`
+
+**Production release (historical — last TDL anchor before Phase 5):** `8a1d9c6586cbddc41bb6c94870f9d51226d71aa2` @ `/opt/synqdrive/releases/20260925182907_v4994`
 
 **origin/main (historical @ R12 hardening #1594 merged):** `f4109e34c24f1eb497e2023f4b4bb997abfc159f` — includes R12 pre-drive hardening (AUD-002/003/004/007)
 
@@ -200,6 +204,8 @@ Detail: [PRODUCTION_BASELINE.md](PRODUCTION_BASELINE.md).
 | TDL-EVID-OQ001-1-ORG-001 | CODE + PRODUCTION_OBSERVATION | [TDL_OQ_001_1_ORG_INVARIANT_AUDIT_2026-09-25.md](TDL_OQ_001_1_ORG_INVARIANT_AUDIT_2026-09-25.md) | `2026-09-25T08:05:00Z` | Production @ `99d722b4…` | Org invariant **`STRUCTURALLY_IMPOSSIBLE`** for durable orphan; 0 vehicles null org; 0/14d COMPLETED without DI run | **CONFIRMED** | 30 historical no-DI trips Jun–Jul 2026 outside 14d window |
 | TDL-EVID-OQ006-BOUNDARY-001 | CODE + PRODUCTION_OBSERVATION | [TDL_OQ_006_DIMO_SEGMENT_FSM_BOUNDARY_AUDIT_2026-09-25.md](TDL_OQ_006_DIMO_SEGMENT_FSM_BOUNDARY_AUDIT_2026-09-25.md) | `2026-09-25T08:30:00Z` | REPO @ `51b4590e4…`; Production @ `99d722b4…` | TDL-OQ-006 DIMO segment vs FSM boundary authority; **`RESOLVED_WITH_BOUNDED_GAPS`** | **CONFIRMED** | JWT-empty vs fetch failure; overlap coverage shadow default |
 | TDL-EVID-OQ002-DRIVE-PROFILE-001 | CODE | [TDL_OQ_002_DRIVE_PROFILE_OWNERSHIP_AUDIT_2026-09-25.md](TDL_OQ_002_DRIVE_PROFILE_OWNERSHIP_AUDIT_2026-09-25.md) | `2026-09-25T08:45:00Z` | REPO @ `51b4590e4…` | TDL-OQ-002 **`BATTERY_V2_OWNER`**; TDL **NO_TDL_RUNTIME_DEPENDENCY**; naming = vehicle propulsion profile | **CONFIRMED** | Optional relocate/rename slice; `confirmedDriveProfile` not wired in input builder |
+| TDL-EVID-PHASE5-FSM-CODE-001 | CURRENT_CODE | [TDL_PHASE_5_AUTHORITY_PROMOTION_AUDIT_2026-09-26.md](TDL_PHASE_5_AUTHORITY_PROMOTION_AUDIT_2026-09-26.md) | `2026-09-26T12:30:00Z` | REPO @ `0b44b146…` | Phase 5 transition matrix (34 `transitionState` call sites → 14 transitions), execution / writer / recovery graph, OQ-010 path mapping | **CONFIRMED** | Graph: `TDL-STATE-*`, `TDL-TR-*` edges |
+| TDL-EVID-PHASE5-PROD-BASELINE-001 | PRODUCTION_OBSERVATION | [TDL_PHASE_5_AUTHORITY_PROMOTION_AUDIT_2026-09-26.md](TDL_PHASE_5_AUTHORITY_PROMOTION_AUDIT_2026-09-26.md) · [PRODUCTION_BASELINE.md](PRODUCTION_BASELINE.md) | `2026-09-26T12:22:00Z`–`12:27:00Z` | Production @ `2b54a357…` / `20260926094359_v4994` | Read-only re-observation: PM2, flags, FSM rows, trips, tracking runs, queues, TripRepair; supports Gate A | **CONFIRMED** (`VERIFIED_READ_ONLY`) | CURRENTLY_REOBSERVED vs CARRIED_FORWARD separated |
 
 ---
 

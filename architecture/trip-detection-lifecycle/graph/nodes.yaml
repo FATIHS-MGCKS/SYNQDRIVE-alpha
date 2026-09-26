@@ -1,4 +1,4 @@
-# Trip Detection & Lifecycle — Knowledge Graph Nodes (Phase 4 partial, post-R9, R10 partial)
+# Trip Detection & Lifecycle — Knowledge Graph Nodes (Phase 5 complete — full live FSM, execution, recovery, boundary graph)
 # Validate: bash architecture/trip-detection-lifecycle/scripts/validate-graph.sh
 
 nodes:
@@ -18,28 +18,43 @@ nodes:
     type: authority
     title: TripDecisionEngine lifecycle authority
     epistemic_status: CONFIRMED
-    summary: Sole writer of vehicleTrip.tripStatus and terminal lifecycle commits.
+    summary: >
+      Sole writer of vehicleTrip.tripStatus and terminal lifecycle commits: createTrip, reopenTripForMerge,
+      splitTripAtGap, finalizeTrip, discardTrip, createRepairedTrip, finalizeRepairedTrip, repairTripBoundaries(WithAudit).
+      evaluate* methods are pure decision functions.
     source_paths:
       - backend/src/modules/vehicle-intelligence/trips/decision/trip-decision.engine.ts
       - backend/src/modules/vehicle-intelligence/trips/TRIP_OWNERSHIP.ts
+    oq010_paths: [P004]
     evidence:
       - TDL-EVID-CODE-OWNERSHIP-001
+      - TDL-EVID-OQ010-LEGACY-INV-001
 
   - id: TDL-AUTH-FSM-PERSIST-001
     type: authority
     title: TripDetectionOrchestrationService persisted FSM authority
     epistemic_status: CONFIRMED
-    summary: Owns VehicleTripDetectionState transitions and orchestration entry points.
+    summary: >
+      Sole live FSM state writer — transitionState (prisma.vehicleTripDetectionState.update) is the only state
+      mutation; getOrCreateDetectionState creates the row (default RESTING); acquire/releaseWorkerLock touch lock columns only.
     source_paths:
       - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+    evidence:
+      - TDL-EVID-PHASE5-FSM-CODE-001
 
   - id: TDL-ORCH-TRIP-DETECTION-001
     type: orchestrator
     title: TripDetectionOrchestrationService
     epistemic_status: CONFIRMED
-    summary: Canonical trip lifecycle orchestration from snapshot and tracking triggers.
+    summary: >
+      Canonical trip lifecycle orchestration from snapshot and tracking triggers: evaluateSnapshotForTripStart,
+      processPossibleStart, processActiveTick, processPossibleEndCheck, processEndValidation, processFinalize,
+      executeLifecycleRecoveryAction. Ongoing-trip writes (metrics, waypoints, tracking runs).
     source_paths:
       - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+    oq010_paths: [P005]
+    evidence:
+      - TDL-EVID-PHASE5-FSM-CODE-001
 
   - id: TDL-PIPE-WAKE-INTAKE-001
     type: pipeline
@@ -68,9 +83,12 @@ nodes:
     type: worker
     title: DimoSnapshotProcessor
     epistemic_status: CONFIRMED
-    summary: Canonical serialized snapshot fetch per vehicle; invokes afterSnapshotJob wake hooks.
+    summary: >
+      Canonical serialized snapshot fetch per vehicle; writes VehicleLatestState; calls
+      TripDetectionOrchestrationService.evaluateSnapshotForTripStart (TDL-TR-001); invokes afterSnapshotJob wake hooks.
     source_paths:
       - backend/src/workers/processors/dimo-snapshot.processor.ts
+    oq010_paths: [P001]
 
   - id: TDL-WORK-HANDOFF-001
     type: worker
@@ -79,6 +97,7 @@ nodes:
     summary: Lightweight BullMQ handoff worker; never provider-fetches; dispatches canonical snapshot path.
     source_paths:
       - backend/src/workers/processors/snapshot-wake-handoff.processor.ts
+    oq010_paths: [P002]
 
   - id: TDL-QUEUE-SNAPSHOT-POLL-001
     type: queue
@@ -239,12 +258,13 @@ nodes:
   - id: TDL-DEC-R10-001
     type: decision
     title: End-boundary-anchored activity resume + stale finalize guards
-    decision_status: PROPOSED
+    decision_status: VALIDATED
     epistemic_status: CONFIRMED
     summary: >
       Anchor resume to possibleEndAt; endCycleToken=possibleEndEnteredAt on ev/fin jobs; recycle waiting
       finalize slot before enqueue; cancel pending end-cycle jobs on resume; abort stale jobs via
-      isEndCycleTokenStale. Not deployed.
+      isEndCycleTokenStale. Status history: PROPOSED / not deployed (2026-09-08) → deployed @ 684950419…
+      (TDL-EV-R10-PROD-DEPLOY-001) → present in live 2b54a357… → VALIDATED (Phase 5, 2026-09-26).
     source_paths:
       - backend/src/modules/vehicle-intelligence/trips/trip-end-cycle-reset.ts
       - backend/src/modules/vehicle-intelligence/trips/trip-evidence.helpers.ts
@@ -255,12 +275,12 @@ nodes:
   - id: TDL-DEC-R10-002
     type: decision
     title: Legacy tokenless FINALIZE admission without silent token assignment
-    decision_status: PROPOSED
+    decision_status: VALIDATED
     epistemic_status: CONFIRMED
     summary: >
       Tokenless FINALIZE jobs require requestedAt >= possibleEndEnteredAt; pre-write admission re-check
       before finalizeTrip; never assign current endCycleToken to tokenless jobs at consume time.
-      Not deployed.
+      Status history: PROPOSED / not deployed → present in live 2b54a357… → VALIDATED (Phase 5, 2026-09-26).
     source_paths:
       - backend/src/modules/vehicle-intelligence/trips/trip-end-cycle-reset.ts
       - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
@@ -270,12 +290,13 @@ nodes:
   - id: TDL-DEC-R11-001
     type: decision
     title: Empty-core evidence contract (pause, provider anchor, stop boundary)
-    decision_status: PROPOSED
+    decision_status: VALIDATED
     epistemic_status: CONFIRMED
     summary: >
       Provider operational anchor; stopBoundaryAt with explicit ignition-OFF VLS anchoring;
       pause tagging; inner/outer forensics; fetch taxonomy; bounded backoff; no PD-2;
-      no default 45s TTL. Merged to main @ 32526c95a (#1584) IMPLEMENTED (CI); not deployed.
+      no default 45s TTL. Merged @ 32526c95a (#1584); deployed @ f7eb94cb… (TDL-EV-R11-PROD-DEPLOY-001);
+      present in live 2b54a357…. Status history: PROPOSED → VALIDATED (Phase 5, 2026-09-26); not PRODUCTION_VALIDATED.
     source_paths:
       - backend/src/modules/vehicle-intelligence/trips/trip-empty-core-end-gate.ts
       - backend/src/modules/vehicle-intelligence/trips/trip-fsm-evidence-state.ts
@@ -347,12 +368,14 @@ nodes:
   - id: TDL-DEC-R12-001
     type: decision
     title: Provider-time stop boundary + boundary-backed end liveness
-    decision_status: PROPOSED
+    decision_status: VALIDATED
     epistemic_status: CONFIRMED
     summary: >
       resolveProviderStopBoundaryCandidate on ACTIVE_TRIP; boundary-backed silence for vls_stale_provider_observation
       only; credible post-boundary movement filter; resolvePossibleEndBoundaryCandidate prefers stopBoundaryAt.
-      Motivated by TDL-EVID-KS-MS-661-R11-NATURAL-001 Axis E FAIL. Not deployed.
+      Motivated by TDL-EVID-KS-MS-661-R11-NATURAL-001 Axis E FAIL. Deployed (pre-hardening @ 157b3c72…,
+      TDL-EV-R12-PROD-DEPLOY-001; hardening follow-ups) and present in live 2b54a357…. Status history:
+      PROPOSED / not deployed → VALIDATED (Phase 5, 2026-09-26); not PRODUCTION_VALIDATED for every path.
     source_paths:
       - backend/src/modules/vehicle-intelligence/trips/trip-fsm-evidence-state.ts
       - backend/src/modules/vehicle-intelligence/trips/trip-empty-core-end-gate.ts
@@ -550,15 +573,20 @@ nodes:
     type: gap
     title: Route artifact coverage
     epistemic_status: CONFIRMED
-    summary: ~4.7% completed trips have route artifacts; root cause unknown.
+    summary: >
+      RESOLVED — TDL-DEC-OQ004-001; historical ~4.7% all-time ratio explained by eligibility + pre-Route-V2 era;
+      7d route-eligible artifact coverage 100% (TDL-EVID-OQ004-ROUTE-COV-001).
     source_paths:
       - architecture/trip-detection-lifecycle/contradictions/KNOWLEDGE_GAPS.md
+      - architecture/trip-detection-lifecycle/evidence/TDL_OQ_004_ROUTE_ARTIFACT_COVERAGE_POLICY_2026-09-25.md
 
   - id: TDL-GAP-005
     type: gap
     title: ClickHouse trip-assist runtime
-    epistemic_status: UNKNOWN
-    summary: Flag present on Production; contents not queried.
+    epistemic_status: CONFIRMED
+    summary: >
+      EXPLICIT_NON_BLOCKING_LIMITATION — runtime path reconstructed (tryApplyClickHouseAssistedEnd in TDL-TR-008/010/011;
+      CUSUM fallback); CLICKHOUSE_TRIP_ASSIST_ENABLED=true on live 2b54a357…; mirror contents not audited.
     source_paths:
       - architecture/trip-detection-lifecycle/contradictions/KNOWLEDGE_GAPS.md
 
@@ -582,7 +610,9 @@ nodes:
     type: gap
     title: Natural R9 webhook wake end-to-end delivery
     epistemic_status: INFERRED
-    summary: Start wake observed KS MS 661 @ 684950419…; efficiency and payload archive gaps remain.
+    summary: >
+      EXPLICIT_NON_BLOCKING_LIMITATION — start wake observed KS MS 661 @ 684950419…; recent fleet wake KPIs and
+      payload archive not measured.
     source_paths:
       - architecture/trip-detection-lifecycle/evidence/KS_MS_661_NATURAL_DRIVE_2026-09-08.md
       - architecture/trip-detection-lifecycle/contradictions/KNOWLEDGE_GAPS.md
@@ -591,7 +621,9 @@ nodes:
     type: gap
     title: Empty-core no_core_data_keep_open end block on natural drive
     epistemic_status: CONFIRMED
-    summary: TDL-GAP-014 — natural drive blocked POSSIBLE_END @ 684950419; R11 merged CI addresses reconstructed path; natural validation pending deploy.
+    summary: >
+      EXPLICIT_NON_BLOCKING_LIMITATION — natural drive blocked POSSIBLE_END @ 684950419; R11/R12 address the
+      reconstructed path and are present in live 2b54a357…; natural LTE empty-core re-drive not re-observed.
     source_paths:
       - architecture/trip-detection-lifecycle/evidence/KS_MS_661_DECISION_REPRODUCTION_2026-09-08.md
       - architecture/trip-detection-lifecycle/evidence/KS_MS_661_TEMPORAL_FLOW_2026-09-08.md
@@ -601,7 +633,9 @@ nodes:
     type: gap
     title: VLS single sourceTimestamp masks per-field freshness
     epistemic_status: CONFIRMED
-    summary: Engine load rejuvenation under shared timestamp; PROPOSED positive TTL decay phase 1; per-field PD-4 phase 2.
+    summary: >
+      EXPLICIT_NON_BLOCKING_LIMITATION — engine load rejuvenation under shared timestamp; PROPOSED positive TTL decay
+      phase 1; per-field PD-4 phase 2 (design proposal only).
     source_paths:
       - architecture/trip-detection-lifecycle/evidence/KS_MS_661_EMPTY_CORE_SOLUTION_PROPOSAL_2026-09-08.md
       - architecture/trip-detection-lifecycle/contradictions/KNOWLEDGE_GAPS.md
@@ -627,24 +661,30 @@ nodes:
   - id: TDL-GAP-008
     type: gap
     title: Mapbox/FMM failure recovery paths
-    epistemic_status: UNKNOWN
-    summary: Route V2 failure taxonomy not reconstructed.
+    epistemic_status: CONFIRMED
+    summary: >
+      EXPLICIT_NON_BLOCKING_LIMITATION — failure taxonomy reconstructed (TDL-EVID-OQ004-ROUTE-COV-001; MATCHED→FILTERED→RAW);
+      canonical matcher matchMapboxChunkDetailed; FMM scaffold without Production callsite; handler artifact contract follow-up.
     source_paths:
       - architecture/trip-detection-lifecycle/contradictions/KNOWLEDGE_GAPS.md
 
   - id: TDL-GAP-010
     type: gap
     title: Machine-readable FSM graph completeness
-    epistemic_status: INFERRED
-    summary: Initial graph created post-R9; full FSM node coverage incomplete.
+    epistemic_status: CONFIRMED
+    summary: >
+      RESOLVED (Phase 5, TDL-DEC-PHASE5-001) — 5 live states + ENDED SCHEMA_COMPAT_ONLY; 14 validator-checked
+      transitions_to edges; execution, recovery, boundary graph; OQ-010 P001–P041 mapped (14 graph + 27 boundary, 0 unmapped).
     source_paths:
       - architecture/trip-detection-lifecycle/KNOWLEDGE_GRAPH.md
 
   - id: TDL-GAP-011
     type: gap
     title: Decision register completeness beyond R9
-    epistemic_status: INFERRED
-    summary: R9–R10 decisions indexed; R1-R8 WHY reconstruction ongoing Phase 3.
+    epistemic_status: CONFIRMED
+    summary: >
+      RESOLVED (Phase 5) — declared scope complete: P1 single writer (TDL-DEC-P1-001), R1–R8 (TDL-DEC-R1R8-001),
+      R9–R12, QS V1, OQ-001…010, Route V2 (TDL-DEC-ROUTE-V2-001), promotion (TDL-DEC-PHASE5-001).
     source_paths:
       - architecture/trip-detection-lifecycle/decisions/DECISION_REGISTER.md
 
@@ -660,16 +700,20 @@ nodes:
   - id: TDL-HYP-001
     type: hypothesis
     title: Small telematics cohort drives FSM rows
-    epistemic_status: INFERRED
-    summary: Hypothesis for 6 FSM rows vs ~2000 trips.
+    epistemic_status: CONFIRMED
+    summary: >
+      CONFIRMED by TDL-DEC-OQ003-001 — FSM rows are lazily created for the scheduler-eligible telematics cohort;
+      re-observed 6 rows = 6 eligible @ 2b54a357… (Phase 5).
     source_paths:
       - architecture/trip-detection-lifecycle/research/OPEN_HYPOTHESES.md
 
   - id: TDL-HYP-002
     type: hypothesis
     title: Route artifact gap correlates with Mapbox/FMM failures
-    epistemic_status: UNKNOWN
-    summary: Unconfirmed root cause hypothesis.
+    epistemic_status: HISTORICAL
+    summary: >
+      SUPERSEDED by TDL-DEC-OQ004-001 — gap explained by eligibility + pre-Route-V2 era; Mapbox affects MATCHED
+      quality, not artifact existence (Mapbox-causation part rejected).
     source_paths:
       - architecture/trip-detection-lifecycle/research/OPEN_HYPOTHESES.md
 
@@ -694,7 +738,9 @@ nodes:
     type: contradiction
     title: DIMO Integration segment boundary vs DI registry claim
     epistemic_status: CONFIRMED
-    summary: DI registry cites Trip Detection/DIMO segments; DIMO authority AUDIT_IN_PROGRESS; segment split gaps remain.
+    summary: >
+      EXPLICIT_NON_BLOCKING_LIMITATION — TDL-DEC-OQ006-001 states the hierarchy (live FSM + TripDecisionEngine own
+      boundaries; DIMO segments repair evidence); imprecise wording remains in neighbor docs (DI registry section, project rules).
     source_paths:
       - architecture/trip-detection-lifecycle/contradictions/OPEN_CONTRADICTIONS.md
 
@@ -718,8 +764,10 @@ nodes:
   - id: TDL-CX-004
     type: contradiction
     title: Historical audit SHA vs current main
-    epistemic_status: CONFIRMED
-    summary: P2-P5 audited pre-R1 baseline; mitigated by PARTIALLY_CURRENT labels.
+    epistemic_status: HISTORICAL
+    summary: >
+      HISTORICAL_NON_BLOCKING — P2-P5 audited pre-R1 3d5040b67…; current FSM, execution and writer graph re-derived
+      from code @ 0b44b146… (TDL-EVID-PHASE5-FSM-CODE-001); no current claim depends on the historical audits.
     source_paths:
       - architecture/trip-detection-lifecycle/contradictions/OPEN_CONTRADICTIONS.md
 
@@ -727,7 +775,9 @@ nodes:
     type: contradiction
     title: Repair PROPOSED volume vs zero ONGOING trips
     epistemic_status: CONFIRMED
-    summary: Large proposed repair backlog; not root-caused.
+    summary: >
+      EXPLICIT_NON_BLOCKING_LIMITATION — PROPOSED = low-confidence repair candidates that never mutate VehicleTrip
+      (8595 all-time @ 2b54a357…, 0 ONGOING); class comment promises auto-expiry but no expiry/review path exists.
     source_paths:
       - architecture/trip-detection-lifecycle/contradictions/OPEN_CONTRADICTIONS.md
 
@@ -993,3 +1043,591 @@ nodes:
       - architecture/trip-detection-lifecycle/decisions/DECISION_REGISTER.md
     evidence:
       - TDL-EVID-OQ005-ENDED-001
+
+  # ── Phase 5: live FSM states (TDL-EVID-PHASE5-FSM-CODE-001) ──────────────────────────
+  - id: TDL-STATE-RESTING-001
+    type: state
+    title: RESTING
+    enum_value: RESTING
+    fsm_role: LIVE_RUNTIME_STATE
+    runtime_reachable: true
+    epistemic_status: CONFIRMED
+    summary: >
+      Initial state (Prisma default on lazy getOrCreateDetectionState, 1:0..1 per vehicle) and terminal rest state
+      after finalize/discard/timeout/reset. Resting reason (discard | timeout | complete) drives start cooldown.
+    source_paths:
+      - backend/prisma/schema.prisma
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+    evidence:
+      - TDL-EVID-PHASE5-FSM-CODE-001
+      - TDL-EVID-OQ003-CARDINALITY-001
+
+  - id: TDL-STATE-POSSIBLE-START-001
+    type: state
+    title: POSSIBLE_START
+    enum_value: POSSIBLE_START
+    fsm_role: LIVE_RUNTIME_STATE
+    runtime_reachable: true
+    epistemic_status: CONFIRMED
+    summary: Start candidate awaiting confirmation within CONFIRM_MAX_WAIT_MS; no VehicleTrip row yet.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+    evidence:
+      - TDL-EVID-PHASE5-FSM-CODE-001
+
+  - id: TDL-STATE-ACTIVE-TRIP-001
+    type: state
+    title: ACTIVE_TRIP
+    enum_value: ACTIVE_TRIP
+    fsm_role: LIVE_RUNTIME_STATE
+    runtime_reachable: true
+    epistemic_status: CONFIRMED
+    summary: ONGOING VehicleTrip referenced by activeTripId; ACTIVE_TICK continuity tracking.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+    evidence:
+      - TDL-EVID-PHASE5-FSM-CODE-001
+
+  - id: TDL-STATE-IDLE-WITHIN-TRIP-001
+    type: state
+    title: IDLE_WITHIN_TRIP
+    enum_value: IDLE_WITHIN_TRIP
+    fsm_role: LIVE_RUNTIME_STATE
+    runtime_reachable: true
+    epistemic_status: CONFIRMED
+    summary: Pause inside an ONGOING trip (continuity IDLE); may resume, split (Qualified Stop), or move to POSSIBLE_END.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+    evidence:
+      - TDL-EVID-PHASE5-FSM-CODE-001
+
+  - id: TDL-STATE-POSSIBLE-END-001
+    type: state
+    title: POSSIBLE_END
+    enum_value: POSSIBLE_END
+    fsm_role: LIVE_RUNTIME_STATE
+    runtime_reachable: true
+    epistemic_status: CONFIRMED
+    summary: >
+      End candidate; possibleEndEnteredAt = end-cycle token; POSSIBLE_END_CHECK → END_VALIDATION (CUSUM / CH assist)
+      → FINALIZE. Only state from which FINALIZE may commit.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-end-cycle-reset.ts
+    evidence:
+      - TDL-EVID-PHASE5-FSM-CODE-001
+
+  - id: TDL-STATE-ENDED-001
+    type: state
+    title: ENDED (schema compatibility only)
+    enum_value: ENDED
+    fsm_role: SCHEMA_COMPAT_ONLY
+    runtime_reachable: false
+    epistemic_status: CONFIRMED
+    summary: >
+      NOT_RUNTIME_REACHABLE — enum label retained for historical compatibility (TDL-DEC-OQ005-001); zero runtime
+      readers/writers; 0 Production rows. Zero transitions (validator-enforced).
+    source_paths:
+      - backend/prisma/schema.prisma
+    evidence:
+      - TDL-EVID-OQ005-ENDED-001
+
+  # ── Phase 5: execution graph ───────────────────────────────────────────────────────
+  - id: TDL-PIPE-DIMO-WEBHOOK-BOUNDARY-001
+    type: pipeline
+    title: DIMO webhook ingress (DIMO Integration boundary)
+    owner_module: DIMO Integration
+    epistemic_status: CONFIRMED
+    summary: >
+      DimoWebhookController (DIMO-owned endpoint/auth/envelope; optional HMAC, Vehicle Triggers unsigned) delegates
+      speed/ignition triggers to SnapshotWakeIntakeService (TDL-DEC-R9-CX-001).
+    source_paths:
+      - backend/src/modules/dimo/dimo-webhook.controller.ts
+
+  - id: TDL-PIPE-SNAPSHOT-SCHEDULER-001
+    type: pipeline
+    title: DimoSnapshotScheduler (ACTIVITY_TIERED)
+    epistemic_status: CONFIRMED
+    summary: >
+      @Interval(30000) leader-gated scheduler; ACTIVITY_TIERED per-vehicle due time (Production); enqueues the same
+      canonical dimo.snapshot.poll job (stable jobId snapshot-{vehicleId}). Fallback when no provider wake arrives.
+    source_paths:
+      - backend/src/workers/schedulers/dimo-snapshot.scheduler.ts
+    evidence:
+      - TDL-EVID-OQ009-R9-INGRESS-001
+
+  - id: TDL-QUEUE-TRIP-TRACKING-001
+    type: queue
+    title: dimo.trip-tracking
+    epistemic_status: CONFIRMED
+    summary: >
+      FSM job queue — POSSIBLE_START (trip-ps-{vehicleId}), ACTIVE_TICK, POSSIBLE_END_CHECK, END_VALIDATION, FINALIZE
+      (trip-{phase}-{vehicleId}-{tripId}); END_VALIDATION/FINALIZE carry endCycleToken.
+    source_paths:
+      - backend/src/workers/queues/queue-names.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+
+  - id: TDL-WORK-TRIP-TRACKING-001
+    type: worker
+    title: TripTrackingProcessor
+    epistemic_status: CONFIRMED
+    summary: >
+      Consumes dimo.trip-tracking (concurrency WORKER_TRIP_TRACKING_CONCURRENCY, Production 5) and dispatches to
+      processPossibleStart / processActiveTick / processPossibleEndCheck / processEndValidation / processFinalize.
+    source_paths:
+      - backend/src/workers/processors/trip-tracking.processor.ts
+    oq010_paths: [P003]
+
+  - id: TDL-ORCH-ROUTE-ARTIFACT-001
+    type: orchestrator
+    title: Route V2 artifact materialization (TripsService.enrichTrip)
+    epistemic_status: CONFIRMED
+    summary: >
+      TDL-owned route artifact path: TripsService.enrichTrip → TripRouteArtifactMaterializerService.materializeFromMeasuredRoute
+      → chunked matcher → VehicleTripRouteArtifact. Called by three downstream entry points (legacy HF P010, DI P014,
+      manual HTTP P034); behavior/scoring on routes is not TDL.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trips.service.ts
+      - backend/src/modules/vehicle-intelligence/trips/route-artifact/trip-route-artifact-materializer.service.ts
+    evidence:
+      - TDL-EVID-OQ004-ROUTE-COV-001
+
+  # ── Phase 5: persistence ──────────────────────────────────────────────────────────
+  - id: TDL-PERSIST-FSM-STATE-001
+    type: persist
+    title: VehicleTripDetectionState
+    epistemic_status: CONFIRMED
+    summary: One row max per vehicle (organizationId carried); state, activeTripId, clocks, worker lock columns.
+    source_paths:
+      - backend/prisma/schema.prisma
+    evidence:
+      - TDL-EVID-OQ003-CARDINALITY-001
+
+  - id: TDL-PERSIST-TRACKING-RUN-001
+    type: persist
+    title: VehicleTripTrackingRun
+    epistemic_status: CONFIRMED
+    summary: Append-only forensic run per tracking job/decision during Vehicle lifetime.
+    source_paths:
+      - backend/prisma/schema.prisma
+
+  - id: TDL-PERSIST-VEHICLE-TRIP-001
+    type: persist
+    title: VehicleTrip
+    epistemic_status: CONFIRMED
+    summary: Canonical trip row; tripStatus written only by TripDecisionEngine (ONGOING → COMPLETED | CANCELLED).
+    source_paths:
+      - backend/prisma/schema.prisma
+
+  - id: TDL-PERSIST-WAYPOINT-001
+    type: persist
+    title: VehicleTripWaypoint
+    epistemic_status: CONFIRMED
+    summary: Measured route points persisted during ACTIVE_TICK tracking.
+    source_paths:
+      - backend/prisma/schema.prisma
+
+  - id: TDL-PERSIST-TRIP-REPAIR-001
+    type: persist
+    title: TripRepair audit
+    epistemic_status: CONFIRMED
+    summary: >
+      Reconciliation audit rows (APPLIED / PROPOSED / REJECTED / SUPPRESSED). PROPOSED rows never mutate VehicleTrip
+      (TDL-CX-005).
+    source_paths:
+      - backend/prisma/schema.prisma
+
+  - id: TDL-PERSIST-ROUTE-ARTIFACT-001
+    type: persist
+    title: VehicleTripRouteArtifact
+    epistemic_status: CONFIRMED
+    summary: Route V2 artifact (MATCHED → FILTERED → RAW canonical render hierarchy).
+    source_paths:
+      - backend/prisma/schema.prisma
+
+  - id: TDL-PERSIST-VLS-001
+    type: persist
+    title: VehicleLatestState
+    epistemic_status: CONFIRMED
+    summary: Latest snapshot core written by DimoSnapshotProcessor; single sourceTimestamp (TDL-GAP-015).
+    source_paths:
+      - backend/prisma/schema.prisma
+
+  # ── Phase 5: recovery ─────────────────────────────────────────────────────────────
+  - id: TDL-REC-TRACKING-RECOVERY-001
+    type: recovery
+    title: TripTrackingRecoveryScheduler
+    epistemic_status: CONFIRMED
+    summary: >
+      @Interval(120_000) re-enqueues the expected job for each non-RESTING FSM row; onStuckTrip / SUSPICIOUS_LONG_OPEN
+      escalate to reconciliation.
+    source_paths:
+      - backend/src/workers/schedulers/trip-tracking-recovery.scheduler.ts
+    oq010_paths: [P037]
+
+  - id: TDL-REC-LIFECYCLE-INVARIANT-001
+    type: recovery
+    title: Lifecycle invariant recovery (R2/R7)
+    epistemic_status: CONFIRMED
+    summary: >
+      evaluateTripLifecycleInvariant + TripLifecycleRecoveryService → ADOPT_ONGOING / REPOINT_ACTIVE_TRIP /
+      RESET_TO_RESTING (FSM only); CONFLICT_* fail closed (e.g. RESTING + ONGOING = CONFLICT_MISMATCH).
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-lifecycle-invariant.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-lifecycle-recovery.service.ts
+    evidence:
+      - TDL-EVID-OQ007-R1R8-COV-001
+
+  - id: TDL-REC-RECONCILIATION-001
+    type: recovery
+    title: TripReconciliationService + scheduler
+    epistemic_status: CONFIRMED
+    summary: >
+      Repair windows (15 min fast, 4 h warm, 03:00 daily, manual/event); STALE_ONGOING, missing-trip and partial
+      boundary repair through TripDecisionEngine repair APIs; low-confidence candidates left PROPOSED.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service.ts
+      - backend/src/workers/schedulers/trip-reconciliation.scheduler.ts
+    oq010_paths: [P024]
+    evidence:
+      - TDL-EVID-OQ006-BOUNDARY-001
+
+  - id: TDL-REC-WAKE-HANDOFF-RECOVERY-001
+    type: recovery
+    title: SnapshotWakeHandoffRecoveryScheduler
+    epistemic_status: CONFIRMED
+    summary: "@Interval(60_000) re-arms orphaned successor handoffs from Redis mailboxes."
+    source_paths:
+      - backend/src/workers/schedulers/snapshot-wake-handoff-recovery.scheduler.ts
+
+  - id: TDL-REC-BOUNDARY-REFRESH-001
+    type: recovery
+    title: BoundaryRefreshLifecycleService
+    epistemic_status: CONFIRMED
+    summary: Post-repair downstream refresh lease + stale-lease recovery after boundary changes.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/boundary-refresh-lifecycle.service.ts
+    oq010_paths: [P031]
+
+  - id: TDL-REC-EMPTY-CORE-001
+    type: recovery
+    title: Empty-core deferral + provider-silence end gate (R11/R12)
+    epistemic_status: CONFIRMED
+    summary: >
+      Same-state deferral with bounded exponential backoff + jitter when no fresh core points; stop boundary /
+      provider-silence candidate admits POSSIBLE_END (TDL-TR-006/007/008/009).
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-empty-core-end-gate.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-fsm-evidence-state.ts
+    evidence:
+      - TDL-EVID-R11-IMPL-001
+      - TDL-EVID-R12-IMPL-001
+
+  # ── Phase 5: resolvers (pure decision inputs; commit only via TripDecisionEngine) ─
+  - id: TDL-RES-START-POLICY-001
+    type: resolver
+    title: Start detection policy + start detectors
+    epistemic_status: CONFIRMED
+    summary: >
+      trip-start-detection-policy + StartConfirmationDetector + snapshot evidence evaluator; TripDecisionEngine.evaluateStartCandidate
+      (pure). Drives TDL-TR-001 and TDL-TR-002 confirmation.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-start-detection-policy.ts
+      - backend/src/modules/vehicle-intelligence/trips/detectors/start-confirmation.detector.ts
+      - backend/src/modules/vehicle-intelligence/trips/detectors/snapshot-evidence.evaluator.ts
+
+  - id: TDL-RES-CONTINUITY-001
+    type: resolver
+    title: Live FSM detector bundle — continuity (ACTIVE / IDLE / POSSIBLE_END)
+    epistemic_status: CONFIRMED
+    summary: >
+      TripDecisionEngine.evaluateContinuity with EndContinuityDetector + continuity assessment; represents the OQ-010
+      live detector policy bundle (P006; speed / ignition / CUSUM detectors are read-only, commits via P004).
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/detectors/end-continuity.detector.ts
+      - backend/src/modules/vehicle-intelligence/trips/detectors/continuity-assessment.detector.ts
+    oq010_paths: [P006]
+
+  - id: TDL-RES-END-CUSUM-001
+    type: resolver
+    title: End validation (ChangePointEndDetector / CUSUM)
+    epistemic_status: CONFIRMED
+    summary: >
+      TripDecisionEngine.evaluateEndCandidate; validated → FINALIZE; still ongoing → TDL-TR-010; inconclusive → retry
+      with bounded budget; max attempts → COMPOSITE_INACTIVITY LOW fallback.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/detectors/change-point-end.detector.ts
+
+  - id: TDL-RES-CH-END-ASSIST-001
+    type: resolver
+    title: ClickHouse-assisted end (CLICKHOUSE_TRIP_ASSIST_ENABLED)
+    epistemic_status: CONFIRMED
+    summary: >
+      tryApplyClickHouseAssistedEnd reads the ClickHouse trip evidence mirror; HIGH confidence → POSSIBLE_END +
+      scheduleFinalize; cancelled by resumed DIMO activity; CUSUM fallback. Mirror contents not audited (TDL-GAP-005).
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+      - backend/src/modules/clickhouse/trip-evidence-read.service.ts
+
+  - id: TDL-RES-MID-GAP-SPLIT-001
+    type: resolver
+    title: Live mid-gap Qualified Stop split
+    epistemic_status: CONFIRMED
+    summary: Gap > 300 000 ms with known drift → TripDecisionEngine.splitTripAtGap; drift==null fails closed (R6).
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-mid-gap-split.util.ts
+
+  - id: TDL-RES-MAPBOX-CHUNK-MATCH-001
+    type: resolver
+    title: Route V2 chunked Mapbox matching
+    epistemic_status: CONFIRMED
+    summary: >
+      TripRouteChunkedMatcherService → MapboxChunkMatchingClientService → MapboxService.matchMapboxChunkDetailed;
+      legacy mapMatchRoute dead; FMM scaffold without Production callsite.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/route-artifact/chunked-matching/trip-route-chunked-matcher.service.ts
+      - backend/src/modules/vehicle-intelligence/trips/route-artifact/chunked-matching/mapbox-chunk-matching.client.service.ts
+      - backend/src/modules/vehicle-intelligence/trips/mapbox.service.ts
+    evidence:
+      - TDL-EVID-OQ010-LEGACY-INV-001
+
+  - id: TDL-RES-SEGMENT-DETECTORS-001
+    type: resolver
+    title: Repair segment detectors (Ignition / Motion / ActivityWindow)
+    epistemic_status: CONFIRMED
+    summary: ACTIVE_REPAIR evidence detectors used by reconciliation; not a standalone live trip engine.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/detectors/ignition-segment.detector.ts
+      - backend/src/modules/vehicle-intelligence/trips/detectors/motion-segment.detector.ts
+      - backend/src/modules/vehicle-intelligence/trips/detectors/activity-window.detector.ts
+      - backend/src/modules/vehicle-intelligence/trips/detectors/detector.registry.ts
+    oq010_paths: [P025, P026, P027]
+
+  # ── Phase 5: data sources ─────────────────────────────────────────────────────────
+  - id: TDL-DATA-DIMO-SEGMENTS-001
+    type: data
+    title: DIMO segments (DimoSegmentsService transport)
+    owner_module: DIMO Integration
+    epistemic_status: CONFIRMED
+    summary: Provider segment transport/normalization; TDL consumes as repair evidence only (TDL-DEC-OQ006-001).
+    source_paths:
+      - backend/src/modules/dimo/dimo-segments.service.ts
+
+  - id: TDL-DATA-CLICKHOUSE-TRIP-ASSIST-001
+    type: data
+    title: ClickHouse trip evidence mirror
+    epistemic_status: CONFIRMED
+    summary: Optional (CLICKHOUSE_URL) trip evidence read model used by CH-assisted end; contents not audited.
+    source_paths:
+      - backend/src/modules/clickhouse/trip-evidence-read.service.ts
+
+  # ── Phase 5: authorities ──────────────────────────────────────────────────────────
+  - id: TDL-AUTH-DIMO-SEGMENT-EVIDENCE-001
+    type: authority
+    title: DIMO segments = repair/validation evidence (not live boundary authority)
+    epistemic_status: CONFIRMED
+    summary: >
+      Reconciliation fetches DIMO segments as repair evidence; mutations only via TripDecisionEngine gates; DIMO alone
+      cannot overwrite a completed FSM trip.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service.ts
+      - backend/src/modules/dimo/dimo-segments.service.ts
+    oq010_paths: [P029]
+    evidence:
+      - TDL-EVID-OQ006-BOUNDARY-001
+
+  - id: TDL-AUTH-END-CYCLE-TOKEN-001
+    type: authority
+    title: End-cycle token admission (R10)
+    epistemic_status: CONFIRMED
+    summary: >
+      isEndCycleTokenStale / evaluateEndCycleJobAdmission — ACTIVE_TRIP → stale_active_trip; token must match
+      possibleEndEnteredAt; tokenless jobs need requestedAt ≥ possibleEndEnteredAt; pre-write admission re-check.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-end-cycle-reset.ts
+    evidence:
+      - TDL-EVID-R10-KS-MX-001
+
+  - id: TDL-AUTH-WORKER-LOCK-001
+    type: authority
+    title: Per-vehicle DB worker lock
+    epistemic_status: CONFIRMED
+    summary: >
+      workerLockedUntil / workerRunToken serialize FSM processing per vehicle; handoff jobs throw
+      TripTrackingHandoffLockContentionError → BullMQ retry; non-handoff jobs return and rely on next schedule.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+
+  # ── Phase 5: policies ─────────────────────────────────────────────────────────────
+  - id: TDL-POL-UNCOVERED-SPAN-001
+    type: policy
+    title: MAX_IGNORABLE_UNCOVERED_SPAN_SECONDS=180 (repair coverage)
+    epistemic_status: CONFIRMED
+    summary: >
+      Repair/coverage tolerance in trip-coverage.util — independent of the Qualified Stop V1 300 000 ms duration
+      contract (TDL-INV-UNCOVERED-SPAN-SEPARATE-001).
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/detectors/trip-coverage.util.ts
+    oq010_paths: [P028]
+
+  # ── Phase 5: downstream / neighbor consumers (module boundaries) ─────────────────
+  - id: TDL-CONS-DI-V2-001
+    type: consumer
+    title: Driving Intelligence V2 (post-finalize analysis)
+    owner_module: Driving Intelligence
+    epistemic_status: CONFIRMED
+    summary: >
+      Downstream of COMPLETED trips via TripPostFinalizeAnalysisProducer → DrivingAnalysisInitService → DI job stages;
+      DI reconciliation owns retry. Not a lifecycle writer.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-analysis-init/trip-post-finalize-analysis.producer.ts
+      - backend/src/modules/vehicle-intelligence/driving-analysis-init/driving-analysis-init.service.ts
+      - backend/src/modules/vehicle-intelligence/driving-analysis-reconciliation/driving-analysis-reconciliation.service.ts
+    oq010_paths: [P007, P013, P014, P015, P016, P017, P018, P019, P020, P021, P022, P023, P033, P039, P041]
+    evidence:
+      - TDL-EVID-OQ001-HANDOFF-001
+      - TDL-EVID-OQ010-LEGACY-INV-001
+
+  - id: TDL-CONS-ATE-LEGACY-001
+    type: consumer
+    title: Automatic Trip Enrichment legacy HF pipeline
+    owner_module: Automatic Trip Enrichment
+    epistemic_status: CONFIRMED
+    summary: >
+      enqueueBehaviorEnrichment → trip.behavior.enrichment → HF orchestrator, legacy impact/analysis/misuse, manual
+      enrich endpoints, backfill, analysis recovery. Parallel to DI V2 (TDL-DEC-OQ010-001). Not a lifecycle writer.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-enrichment-orchestrator.service.ts
+      - backend/src/workers/processors/trip-behavior-enrichment.processor.ts
+      - backend/src/workers/schedulers/trip-analysis-recovery.scheduler.ts
+    oq010_paths: [P008, P009, P010, P011, P012, P034, P035, P036, P038, P040]
+    evidence:
+      - TDL-EVID-OQ010-LEGACY-INV-001
+
+  - id: TDL-CONS-TRIP-METADATA-001
+    type: consumer
+    title: Trip metadata consumers (assignment, tire usage)
+    owner_module: Rental / Tires
+    epistemic_status: CONFIRMED
+    summary: TripAssignmentService and TireTripUsageService read trips; not boundary authorities.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-assignment.service.ts
+      - backend/src/modules/vehicle-intelligence/tires/tire-trip-usage.service.ts
+    oq010_paths: [P030, P032]
+    evidence:
+      - TDL-EVID-OQ010-LEGACY-INV-001
+
+  # ── Phase 5: evidence ─────────────────────────────────────────────────────────────
+  - id: TDL-EVID-PHASE5-FSM-CODE-001
+    type: evidence
+    title: Phase 5 FSM transition matrix, execution and writer graph (code @ 0b44b146…)
+    source_type: CURRENT_CODE
+    epistemic_status: CONFIRMED
+    summary: >
+      34 transitionState call sites mapped to 14 transitions (11 state-changing + 3 same-state); ENDED unreachable;
+      sole state writer transitionState; sole VehicleTrip lifecycle writer TripDecisionEngine.
+    source_paths:
+      - architecture/trip-detection-lifecycle/evidence/TDL_PHASE_5_AUTHORITY_PROMOTION_AUDIT_2026-09-26.md
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-lifecycle-invariant.ts
+
+  - id: TDL-EVID-PHASE5-PROD-BASELINE-001
+    type: evidence
+    title: Phase 5 Production baseline re-observation @ 2b54a357…
+    source_type: PRODUCTION_OBSERVATION
+    epistemic_status: CONFIRMED
+    summary: >
+      Read-only @ 2026-09-26T12:22–12:27Z, release 20260926094359_v4994: 6/6 RESTING, 0 ONGOING, 625 tracking runs/24h,
+      queues idle (2 historical failed), flags ACTIVITY_TIERED / CH assist on / QS default 300000.
+    source_paths:
+      - architecture/trip-detection-lifecycle/evidence/TDL_PHASE_5_AUTHORITY_PROMOTION_AUDIT_2026-09-26.md
+      - architecture/trip-detection-lifecycle/evidence/PRODUCTION_BASELINE.md
+
+  # ── Phase 5: decisions ────────────────────────────────────────────────────────────
+  - id: TDL-DEC-P1-001
+    type: decision
+    title: Single lifecycle writer + FSM persistence split
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: >
+      TripDecisionEngine sole VehicleTrip lifecycle writer; TripDetectionOrchestrationService.transitionState sole FSM
+      state writer; detectors/resolvers read-only.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/TRIP_OWNERSHIP.ts
+      - backend/src/modules/vehicle-intelligence/trips/decision/trip-decision.engine.ts
+    evidence:
+      - TDL-EVID-CODE-OWNERSHIP-001
+      - TDL-EVID-OQ010-LEGACY-INV-001
+      - TDL-EVID-PHASE5-FSM-CODE-001
+
+  - id: TDL-DEC-R1R8-001
+    type: decision
+    title: R1–R8 FSM behavioral contracts (consolidated)
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: >
+      Event-time authority (R1), lifecycle invariants (R2), start liveness ordering (R3), start detection consistency (R4),
+      end validation semantics (R5, partly superseded by R10–R12), mid-gap split safety (R6), terminal resting recovery (R7),
+      observability/forensics (R8).
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-lifecycle-invariant.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-mid-gap-split.util.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-start-detection-policy.ts
+    evidence:
+      - TDL-EVID-OQ007-R1R8-COV-001
+      - TDL-EVID-OQ007-1-PASSIVE-CLOSURE-001
+      - TDL-EVID-PHASE5-FSM-CODE-001
+
+  - id: TDL-DEC-ROUTE-V2-001
+    type: decision
+    title: Route V2 chunked matching authority
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: >
+      Route artifacts TDL-owned via TripRouteArtifactMaterializerService + chunked matcher → matchMapboxChunkDetailed;
+      legacy mapMatchRoute dead; FMM scaffold; three downstream enrich entry points.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/route-artifact/trip-route-artifact-materializer.service.ts
+      - backend/src/modules/vehicle-intelligence/trips/mapbox.service.ts
+    evidence:
+      - TDL-EVID-OQ004-ROUTE-COV-001
+      - TDL-EVID-OQ010-LEGACY-INV-001
+
+  - id: TDL-DEC-PHASE5-001
+    type: decision
+    title: Promote Trip Detection & Lifecycle authority to AUTHORITY_ACTIVE
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: >
+      MODULE_AUTHORITY_STANDARD Gate A 17/17 PASS on 2026-09-26; full live FSM graph; remaining items are explicit
+      non-blocking limitations.
+    source_paths:
+      - architecture/trip-detection-lifecycle/evidence/TDL_PHASE_5_AUTHORITY_PROMOTION_AUDIT_2026-09-26.md
+    evidence:
+      - TDL-EVID-PHASE5-FSM-CODE-001
+      - TDL-EVID-PHASE5-PROD-BASELINE-001
+
+  # ── Phase 5: failed approaches indexed from FAILED_APPROACHES.md ────────────────
+  - id: TDL-FAIL-R9A-002
+    type: failed_approach
+    title: Destructive pending consume before durable snapshot completion
+    epistemic_status: HISTORICAL
+    summary: Lost wakes under ACTIVE canonical job races; superseded by TDL-DEC-R9A-001.
+    source_paths:
+      - docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md
+
+  - id: TDL-FAIL-R9C-001
+    type: failed_approach
+    title: Return success from handoff on UNKNOWN continuation
+    epistemic_status: HISTORICAL
+    summary: Handoff job completed with successor Redis stranded; superseded by TDL-DEC-R9E-001.
+    source_paths:
+      - docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md
+
+  - id: TDL-FAIL-R9F-001
+    type: failed_approach
+    title: Preserve UNKNOWN pending without scheduling retry handoff
+    epistemic_status: HISTORICAL
+    summary: No bounded liveness path outside dispatchSuccessorHandoff defer; superseded by TDL-DEC-R9F-001.
+    source_paths:
+      - docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md

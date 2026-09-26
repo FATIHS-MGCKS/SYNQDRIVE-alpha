@@ -2,8 +2,9 @@
 
 edges:
   - from: TDL-PIPE-WAKE-INTAKE-001
-    relation: downstream_of
+    relation: upstream_of
     to: TDL-PERSIST-PENDING-MAILBOX-001
+    notes: Direction corrected Phase 5 (was downstream_of) — intake writes the pending mailbox.
   - from: TDL-PIPE-WAKE-INTAKE-001
     relation: enqueues
     to: TDL-QUEUE-SNAPSHOT-POLL-001
@@ -14,8 +15,9 @@ edges:
     relation: persists
     to: TDL-PERSIST-SUCCESSOR-MAILBOX-001
   - from: TDL-ORCH-WAKE-COORD-001
-    relation: downstream_of
+    relation: upstream_of
     to: TDL-QUEUE-WAKE-HANDOFF-001
+    notes: Direction corrected Phase 5 (was downstream_of) — coordinator dispatches successor handoff jobs.
   - from: TDL-QUEUE-WAKE-HANDOFF-001
     relation: consumed_by
     to: TDL-WORK-HANDOFF-001
@@ -23,8 +25,9 @@ edges:
     relation: consumed_by
     to: TDL-WORK-SNAPSHOT-001
   - from: TDL-WORK-SNAPSHOT-001
-    relation: downstream_of
+    relation: upstream_of
     to: TDL-ORCH-TRIP-DETECTION-001
+    notes: Direction corrected Phase 5 (was downstream_of) — snapshot worker calls evaluateSnapshotForTripStart.
   - from: TDL-ORCH-TRIP-DETECTION-001
     relation: uses
     to: TDL-AUTH-FSM-PERSIST-001
@@ -180,3 +183,467 @@ edges:
   - from: TDL-DEC-OQ005-001
     relation: validates
     to: TDL-CX-003
+
+  # ── Phase 5: execution graph (relation direction: A upstream_of B = A's output feeds B) ──
+  - from: TDL-PIPE-DIMO-WEBHOOK-BOUNDARY-001
+    relation: upstream_of
+    to: TDL-PIPE-WAKE-INTAKE-001
+    notes: DIMO Integration boundary — provider trigger delegated to Trip wake intake (TDL-DEC-R9-CX-001).
+  - from: TDL-PIPE-SNAPSHOT-SCHEDULER-001
+    relation: enqueues
+    to: TDL-QUEUE-SNAPSHOT-POLL-001
+  - from: TDL-WORK-HANDOFF-001
+    relation: upstream_of
+    to: TDL-QUEUE-SNAPSHOT-POLL-001
+    notes: Handoff worker enqueues the canonical snapshot job; never provider-fetches.
+  - from: TDL-ORCH-WAKE-COORD-001
+    relation: upstream_of
+    to: TDL-QUEUE-SNAPSHOT-POLL-001
+    notes: Coalesce into QUEUED/ACTIVE canonical job or request a new one.
+  - from: TDL-WORK-SNAPSHOT-001
+    relation: upstream_of
+    to: TDL-ORCH-WAKE-COORD-001
+    notes: afterSnapshotJob wake hooks.
+  - from: TDL-PERSIST-VLS-001
+    relation: produced_by
+    to: TDL-WORK-SNAPSHOT-001
+  - from: TDL-PERSIST-VLS-001
+    relation: upstream_of
+    to: TDL-ORCH-TRIP-DETECTION-001
+  - from: TDL-ORCH-TRIP-DETECTION-001
+    relation: upstream_of
+    to: TDL-QUEUE-TRIP-TRACKING-001
+    notes: scheduleActiveTick / schedulePossibleEndCheck / scheduleEndValidation / scheduleFinalize / POSSIBLE_START enqueue.
+  - from: TDL-QUEUE-TRIP-TRACKING-001
+    relation: consumed_by
+    to: TDL-WORK-TRIP-TRACKING-001
+  - from: TDL-WORK-TRIP-TRACKING-001
+    relation: upstream_of
+    to: TDL-ORCH-TRIP-DETECTION-001
+  - from: TDL-ORCH-TRIP-DETECTION-001
+    relation: persists
+    to: TDL-PERSIST-FSM-STATE-001
+  - from: TDL-ORCH-TRIP-DETECTION-001
+    relation: persists
+    to: TDL-PERSIST-TRACKING-RUN-001
+  - from: TDL-ORCH-TRIP-DETECTION-001
+    relation: persists
+    to: TDL-PERSIST-WAYPOINT-001
+  - from: TDL-PERSIST-VEHICLE-TRIP-001
+    relation: produced_by
+    to: TDL-AUTH-LIFECYCLE-001
+  - from: TDL-ORCH-TRIP-DETECTION-001
+    relation: uses
+    to: TDL-AUTH-END-CYCLE-TOKEN-001
+  - from: TDL-ORCH-TRIP-DETECTION-001
+    relation: uses
+    to: TDL-AUTH-WORKER-LOCK-001
+  - from: TDL-WORK-TRIP-TRACKING-001
+    relation: uses
+    to: TDL-AUTH-WORKER-LOCK-001
+  - from: TDL-AUTH-FSM-PERSIST-001
+    relation: governs
+    to: TDL-PERSIST-FSM-STATE-001
+  - from: TDL-AUTH-LIFECYCLE-001
+    relation: governs
+    to: TDL-PERSIST-VEHICLE-TRIP-001
+
+  # ── Phase 5: decision resolvers ───────────────────────────────────────────────────
+  - from: TDL-ORCH-TRIP-DETECTION-001
+    relation: invokes
+    to: TDL-RES-START-POLICY-001
+  - from: TDL-RES-START-POLICY-001
+    relation: returns_to
+    to: TDL-ORCH-TRIP-DETECTION-001
+  - from: TDL-ORCH-TRIP-DETECTION-001
+    relation: invokes
+    to: TDL-RES-CONTINUITY-001
+  - from: TDL-RES-CONTINUITY-001
+    relation: returns_to
+    to: TDL-ORCH-TRIP-DETECTION-001
+  - from: TDL-ORCH-TRIP-DETECTION-001
+    relation: invokes
+    to: TDL-RES-END-CUSUM-001
+  - from: TDL-RES-END-CUSUM-001
+    relation: returns_to
+    to: TDL-ORCH-TRIP-DETECTION-001
+  - from: TDL-ORCH-TRIP-DETECTION-001
+    relation: invokes
+    to: TDL-RES-CH-END-ASSIST-001
+  - from: TDL-RES-CH-END-ASSIST-001
+    relation: returns_to
+    to: TDL-ORCH-TRIP-DETECTION-001
+  - from: TDL-RES-CH-END-ASSIST-001
+    relation: queries
+    to: TDL-DATA-CLICKHOUSE-TRIP-ASSIST-001
+  - from: TDL-ORCH-TRIP-DETECTION-001
+    relation: invokes
+    to: TDL-RES-MID-GAP-SPLIT-001
+  - from: TDL-RES-MID-GAP-SPLIT-001
+    relation: returns_to
+    to: TDL-ORCH-TRIP-DETECTION-001
+  - from: TDL-POL-QS-V1-001
+    relation: gates
+    to: TDL-ORCH-TRIP-DETECTION-001
+    notes: Mid-gap split and merge/reopen use the 300 000 ms Qualified Stop contract.
+  - from: TDL-POL-QS-V1-001
+    relation: governs
+    to: TDL-REC-RECONCILIATION-001
+  - from: TDL-POL-UNCOVERED-SPAN-001
+    relation: governs
+    to: TDL-REC-RECONCILIATION-001
+    notes: 180 s uncovered-span tolerance — separate from QS duration (TDL-INV-UNCOVERED-SPAN-SEPARATE-001).
+
+  # ── Phase 5: recovery graph ───────────────────────────────────────────────────────
+  - from: TDL-REC-TRACKING-RECOVERY-001
+    relation: recovers
+    to: TDL-QUEUE-TRIP-TRACKING-001
+  - from: TDL-REC-TRACKING-RECOVERY-001
+    relation: upstream_of
+    to: TDL-REC-RECONCILIATION-001
+    notes: onStuckTrip / SUSPICIOUS_LONG_OPEN escalation.
+  - from: TDL-REC-LIFECYCLE-INVARIANT-001
+    relation: recovers
+    to: TDL-PERSIST-FSM-STATE-001
+  - from: TDL-REC-LIFECYCLE-INVARIANT-001
+    relation: uses
+    to: TDL-AUTH-FSM-PERSIST-001
+  - from: TDL-REC-RECONCILIATION-001
+    relation: uses
+    to: TDL-AUTH-LIFECYCLE-001
+  - from: TDL-REC-RECONCILIATION-001
+    relation: uses
+    to: TDL-AUTH-DIMO-SEGMENT-EVIDENCE-001
+  - from: TDL-DATA-DIMO-SEGMENTS-001
+    relation: upstream_of
+    to: TDL-AUTH-DIMO-SEGMENT-EVIDENCE-001
+    notes: DIMO Integration transport → TDL repair evidence (TDL-DEC-OQ006-001).
+  - from: TDL-RES-SEGMENT-DETECTORS-001
+    relation: upstream_of
+    to: TDL-REC-RECONCILIATION-001
+  - from: TDL-PERSIST-TRIP-REPAIR-001
+    relation: produced_by
+    to: TDL-REC-RECONCILIATION-001
+  - from: TDL-REC-RECONCILIATION-001
+    relation: upstream_of
+    to: TDL-REC-BOUNDARY-REFRESH-001
+  - from: TDL-REC-WAKE-HANDOFF-RECOVERY-001
+    relation: recovers
+    to: TDL-QUEUE-WAKE-HANDOFF-001
+  - from: TDL-REC-EMPTY-CORE-001
+    relation: recovers
+    to: TDL-ORCH-TRIP-DETECTION-001
+    notes: Bounded same-state deferral; provider-silence / stop boundary end gate.
+
+  # ── Phase 5: Route V2 ─────────────────────────────────────────────────────────────
+  - from: TDL-ORCH-ROUTE-ARTIFACT-001
+    relation: invokes
+    to: TDL-RES-MAPBOX-CHUNK-MATCH-001
+  - from: TDL-RES-MAPBOX-CHUNK-MATCH-001
+    relation: returns_to
+    to: TDL-ORCH-ROUTE-ARTIFACT-001
+  - from: TDL-ORCH-ROUTE-ARTIFACT-001
+    relation: persists
+    to: TDL-PERSIST-ROUTE-ARTIFACT-001
+  - from: TDL-PERSIST-WAYPOINT-001
+    relation: upstream_of
+    to: TDL-ORCH-ROUTE-ARTIFACT-001
+
+  # ── Phase 5: module boundaries (downstream consumers are not lifecycle writers) ──
+  - from: TDL-ORCH-TRIP-DETECTION-001
+    relation: upstream_of
+    to: TDL-CONS-DI-V2-001
+    notes: Post-finalize TripPostFinalizeAnalysisProducer (TDL-DEC-OQ001-001).
+  - from: TDL-ORCH-TRIP-DETECTION-001
+    relation: upstream_of
+    to: TDL-CONS-ATE-LEGACY-001
+    notes: Post-finalize enqueueBehaviorEnrichment (legacy HF, parallel to DI V2).
+  - from: TDL-PERSIST-VEHICLE-TRIP-001
+    relation: upstream_of
+    to: TDL-CONS-TRIP-METADATA-001
+  - from: TDL-CONS-DI-V2-001
+    relation: upstream_of
+    to: TDL-ORCH-ROUTE-ARTIFACT-001
+    notes: DI DRIVING_ROUTE_ENRICH (P014) calls TripsService.enrichTrip.
+  - from: TDL-CONS-ATE-LEGACY-001
+    relation: upstream_of
+    to: TDL-ORCH-ROUTE-ARTIFACT-001
+    notes: Legacy HF runRouteSafetyEnrichment (P010) and manual HTTP enrich (P034).
+  - from: TDL-DEC-OQ005-001
+    relation: governs
+    to: TDL-STATE-ENDED-001
+    notes: ENDED retained as schema compatibility only; NOT_RUNTIME_REACHABLE.
+
+  # ── Phase 5: evidence / decisions ─────────────────────────────────────────────────
+  - from: TDL-EVID-PHASE5-FSM-CODE-001
+    relation: supports
+    to: TDL-DEC-P1-001
+  - from: TDL-EVID-CODE-OWNERSHIP-001
+    relation: supports
+    to: TDL-DEC-P1-001
+  - from: TDL-EVID-OQ007-R1R8-COV-001
+    relation: supports
+    to: TDL-DEC-R1R8-001
+  - from: TDL-EVID-OQ004-ROUTE-COV-001
+    relation: supports
+    to: TDL-DEC-ROUTE-V2-001
+  - from: TDL-EVID-OQ010-LEGACY-INV-001
+    relation: supports
+    to: TDL-DEC-ROUTE-V2-001
+  - from: TDL-EVID-PHASE5-FSM-CODE-001
+    relation: supports
+    to: TDL-DEC-PHASE5-001
+  - from: TDL-EVID-PHASE5-PROD-BASELINE-001
+    relation: supports
+    to: TDL-DEC-PHASE5-001
+  - from: TDL-DEC-PHASE5-001
+    relation: validates
+    to: TDL-GAP-010
+  - from: TDL-DEC-PHASE5-001
+    relation: validates
+    to: TDL-GAP-011
+  - from: TDL-DEC-OQ004-001
+    relation: validates
+    to: TDL-GAP-004
+
+  # ── Phase 5: live FSM transitions (validator-enforced; TDL-EVID-PHASE5-FSM-CODE-001) ──
+  - id: TDL-TR-001
+    from: TDL-STATE-RESTING-001
+    relation: transitions_to
+    to: TDL-STATE-POSSIBLE-START-001
+    trigger: "dimo.snapshot.poll job (ACTIVITY_TIERED tick or R9 wake handoff) → DimoSnapshotProcessor → evaluateSnapshotForTripStart"
+    guard: "FSM RESTING; resting-reason cooldown (discard/timeout/complete) unless bypass; live-start freshness; positive start decision"
+    decision_authority: "TripDecisionEngine.evaluateStartCandidate (pure) + start detectors"
+    persistence_writer: "TripDetectionOrchestrationService.transitionState (prisma.vehicleTripDetectionState.update) under per-vehicle DB worker lock"
+    queue_job: "enqueue POSSIBLE_START (trip-ps-{vehicleId}) on dimo.trip-tracking"
+    failure_recovery: "Snapshot fetch failure → no transition; next tier tick or R9 successor snapshot re-evaluates"
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+      - backend/src/workers/processors/dimo-snapshot.processor.ts
+    evidence:
+      - TDL-EVID-PHASE5-FSM-CODE-001
+      - TDL-EVID-OQ009-R9-INGRESS-001
+      - TDL-EVID-OQ007-R1R8-COV-001
+  - id: TDL-TR-002
+    from: TDL-STATE-POSSIBLE-START-001
+    relation: transitions_to
+    to: TDL-STATE-ACTIVE-TRIP-001
+    trigger: "POSSIBLE_START job → processPossibleStart confirmation; or lifecycle recovery ADOPT_ONGOING"
+    guard: "Lock acquired; FSM POSSIBLE_START; elapsed ≤ CONFIRM_MAX_WAIT_MS; confirmation policy; Qualified Stop merge check"
+    decision_authority: "TripDecisionEngine.createTrip or reopenTripForMerge (previous trip within ≤ 300 000 ms)"
+    persistence_writer: "TripDetectionOrchestrationService.transitionState (prisma.vehicleTripDetectionState.update) under per-vehicle DB worker lock"
+    queue_job: "schedule ACTIVE_TICK before battery await (R3)"
+    failure_recovery: "Exception rethrown → BullMQ retry (R3); committed trip without FSM advance → R2 ADOPT_ONGOING; lost job → tracking recovery re-enqueue"
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+      - backend/src/modules/vehicle-intelligence/trips/decision/trip-decision.engine.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-lifecycle-invariant.ts
+      - backend/src/workers/processors/trip-tracking.processor.ts
+    evidence:
+      - TDL-EVID-PHASE5-FSM-CODE-001
+      - TDL-EVID-OQ007-R1R8-COV-001
+      - TDL-EVID-QS-V1-PROD-ACCEPT-001
+  - id: TDL-TR-003
+    from: TDL-STATE-POSSIBLE-START-001
+    relation: transitions_to
+    to: TDL-STATE-RESTING-001
+    trigger: "POSSIBLE_START job → processPossibleStart"
+    guard: "Elapsed since confirmation anchor > CONFIRM_MAX_WAIT_MS (early expiry + post-evaluation expiry)"
+    decision_authority: "Orchestration timeout policy (no trip row exists)"
+    persistence_writer: "TripDetectionOrchestrationService.transitionState (prisma.vehicleTripDetectionState.update) under per-vehicle DB worker lock"
+    queue_job: "none (resting reason timeout drives cooldown)"
+    failure_recovery: "Lost job → tracking recovery re-enqueues POSSIBLE_START"
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+    evidence:
+      - TDL-EVID-PHASE5-FSM-CODE-001
+      - TDL-EVID-OQ007-R1R8-COV-001
+  - id: TDL-TR-004
+    from: TDL-STATE-ACTIVE-TRIP-001
+    relation: transitions_to
+    to: TDL-STATE-IDLE-WITHIN-TRIP-001
+    trigger: "ACTIVE_TICK → processActiveTick"
+    guard: "Continuity verdict IDLE"
+    decision_authority: "TripDecisionEngine.evaluateContinuity (EndContinuityDetector)"
+    persistence_writer: "TripDetectionOrchestrationService.transitionState (prisma.vehicleTripDetectionState.update) under per-vehicle DB worker lock"
+    queue_job: "reschedule ACTIVE_TICK"
+    failure_recovery: "Fetch error → same-state empty-core deferral with bounded backoff (R11)"
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+      - backend/src/modules/vehicle-intelligence/trips/decision/trip-decision.engine.ts
+    evidence:
+      - TDL-EVID-PHASE5-FSM-CODE-001
+      - TDL-EVID-R11-IMPL-001
+      - TDL-EVID-R12-IMPL-001
+  - id: TDL-TR-005
+    from: TDL-STATE-IDLE-WITHIN-TRIP-001
+    relation: transitions_to
+    to: TDL-STATE-ACTIVE-TRIP-001
+    trigger: "ACTIVE_TICK → processActiveTick; lifecycle recovery"
+    guard: "Continuity ACTIVE (credible post-pause movement); or live mid-gap Qualified Stop split (gap > 300 000 ms, drift known) repoints to second trip; or R2 REPOINT_ACTIVE_TRIP / ADOPT_ONGOING"
+    decision_authority: "evaluateContinuity; TripDecisionEngine.splitTripAtGap; evaluateTripLifecycleInvariant"
+    persistence_writer: "TripDetectionOrchestrationService.transitionState (prisma.vehicleTripDetectionState.update) under per-vehicle DB worker lock"
+    queue_job: "reschedule ACTIVE_TICK"
+    failure_recovery: "Split commit phase tracked (POST_COMMIT); split committed + FSM stale → R2 repoint"
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-mid-gap-split.util.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-lifecycle-invariant.ts
+    evidence:
+      - TDL-EVID-PHASE5-FSM-CODE-001
+      - TDL-EVID-R10-KS-MX-001
+      - TDL-EVID-QS-V1-PROD-ACCEPT-001
+  - id: TDL-TR-006
+    from: TDL-STATE-ACTIVE-TRIP-001
+    relation: transitions_to
+    to: TDL-STATE-ACTIVE-TRIP-001
+    trigger: "ACTIVE_TICK → processActiveTick; lifecycle recovery"
+    guard: "Continuity ACTIVE metrics/anchor update; empty-core deferral evidence; mid-gap QS split (gap > 300 000 ms; drift==null fails closed — R6); R2 repoint / missing-pointer adopt"
+    decision_authority: "evaluateContinuity; TripDecisionEngine.splitTripAtGap; Qualified Stop V1 policy"
+    persistence_writer: "TripDetectionOrchestrationService.transitionState (prisma.vehicleTripDetectionState.update) under per-vehicle DB worker lock"
+    queue_job: "reschedule ACTIVE_TICK (backoff when empty core)"
+    failure_recovery: "Empty-core bounded backoff; fetch-error deferral"
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-mid-gap-split.util.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-empty-core-end-gate.ts
+    evidence:
+      - TDL-EVID-PHASE5-FSM-CODE-001
+      - TDL-EVID-QS-V1-PROD-ACCEPT-001
+      - TDL-EVID-OQ007-R1R8-COV-001
+  - id: TDL-TR-007
+    from: TDL-STATE-IDLE-WITHIN-TRIP-001
+    relation: transitions_to
+    to: TDL-STATE-IDLE-WITHIN-TRIP-001
+    trigger: "ACTIVE_TICK → processActiveTick"
+    guard: "Continuity IDLE (pause evidence refresh); empty-core deferral"
+    decision_authority: "evaluateContinuity"
+    persistence_writer: "TripDetectionOrchestrationService.transitionState (prisma.vehicleTripDetectionState.update) under per-vehicle DB worker lock"
+    queue_job: "reschedule ACTIVE_TICK"
+    failure_recovery: "Empty-core bounded backoff"
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-empty-core-end-gate.ts
+    evidence:
+      - TDL-EVID-PHASE5-FSM-CODE-001
+      - TDL-EVID-R11-IMPL-001
+  - id: TDL-TR-008
+    from: TDL-STATE-ACTIVE-TRIP-001
+    relation: transitions_to
+    to: TDL-STATE-POSSIBLE-END-001
+    trigger: "ACTIVE_TICK → processActiveTick"
+    guard: "Continuity POSSIBLE_END; or empty-core end gate with provider stop boundary / provider-silence candidate (R11/R12); or ClickHouse-assisted end (CLICKHOUSE_TRIP_ASSIST_ENABLED)"
+    decision_authority: "evaluateContinuity; resolvePossibleEndBoundaryCandidate; tryApplyClickHouseAssistedEnd"
+    persistence_writer: "TripDetectionOrchestrationService.transitionState (prisma.vehicleTripDetectionState.update) under per-vehicle DB worker lock"
+    queue_job: "schedule POSSIBLE_END_CHECK; CH assist HIGH → scheduleFinalize"
+    failure_recovery: "POSSIBLE_END clock durability reconciled on later ticks (#1600)"
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-empty-core-end-gate.ts
+    evidence:
+      - TDL-EVID-PHASE5-FSM-CODE-001
+      - TDL-EVID-R12-IMPL-001
+      - TDL-EVID-R11-IMPL-001
+  - id: TDL-TR-009
+    from: TDL-STATE-IDLE-WITHIN-TRIP-001
+    relation: transitions_to
+    to: TDL-STATE-POSSIBLE-END-001
+    trigger: "ACTIVE_TICK → processActiveTick"
+    guard: "Same as TDL-TR-008 (continuity POSSIBLE_END; empty-core stop boundary / provider silence; CH-assisted end)"
+    decision_authority: "evaluateContinuity; resolvePossibleEndBoundaryCandidate; tryApplyClickHouseAssistedEnd"
+    persistence_writer: "TripDetectionOrchestrationService.transitionState (prisma.vehicleTripDetectionState.update) under per-vehicle DB worker lock"
+    queue_job: "schedule POSSIBLE_END_CHECK; CH assist HIGH → scheduleFinalize"
+    failure_recovery: "POSSIBLE_END clock durability reconciled on later ticks (#1600)"
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-empty-core-end-gate.ts
+    evidence:
+      - TDL-EVID-PHASE5-FSM-CODE-001
+      - TDL-EVID-R12-IMPL-001
+  - id: TDL-TR-010
+    from: TDL-STATE-POSSIBLE-END-001
+    relation: transitions_to
+    to: TDL-STATE-ACTIVE-TRIP-001
+    trigger: "POSSIBLE_END_CHECK / END_VALIDATION; CH assist cancellation; lifecycle recovery"
+    guard: "Activity resumed after end boundary (R10); CUSUM still ongoing; CH skip-resume revalidation resumed (#1674); CH assist HIGH cancelled by resumed DIMO activity; R2 repoint"
+    decision_authority: "buildPossibleEndToActiveReset; TripDecisionEngine.evaluateEndCandidate"
+    persistence_writer: "TripDetectionOrchestrationService.transitionState (prisma.vehicleTripDetectionState.update) under per-vehicle DB worker lock"
+    queue_job: "cancelPendingEndCycleJobs; schedule ACTIVE_TICK"
+    failure_recovery: "Stale END_VALIDATION/FINALIZE jobs rejected by end-cycle token (R10)"
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-end-cycle-reset.ts
+      - backend/src/modules/vehicle-intelligence/trips/decision/trip-decision.engine.ts
+    evidence:
+      - TDL-EVID-PHASE5-FSM-CODE-001
+      - TDL-EVID-R10-KS-MX-001
+      - TDL-EVID-R12-IMPL-001
+  - id: TDL-TR-011
+    from: TDL-STATE-POSSIBLE-END-001
+    relation: transitions_to
+    to: TDL-STATE-POSSIBLE-END-001
+    trigger: "POSSIBLE_END_CHECK / END_VALIDATION / scheduleFinalize"
+    guard: "Clock durability reconcile; EV scheduled/started evidence; CUSUM inconclusive (attempt++); detector/fetch failure evidence; CH skip-resume deferral; end validated (cusumValidatedAt); max-attempt fallback (COMPOSITE_INACTIVITY, LOW); pending-finalize stamp"
+    decision_authority: "TripDecisionEngine.evaluateEndCandidate (ChangePointEndDetector); ClickHouse end assist"
+    persistence_writer: "TripDetectionOrchestrationService.transitionState (prisma.vehicleTripDetectionState.update) under per-vehicle DB worker lock"
+    queue_job: "reschedule POSSIBLE_END_CHECK / END_VALIDATION; enqueue FINALIZE with endCycleToken"
+    failure_recovery: "Bounded CUSUM retry budget (#1627); fetch failures recorded, not terminal; tracking recovery onStuckTrip"
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+      - backend/src/modules/vehicle-intelligence/trips/decision/trip-decision.engine.ts
+    evidence:
+      - TDL-EVID-PHASE5-FSM-CODE-001
+      - TDL-EVID-R12-IMPL-001
+      - TDL-EVID-OQ007-R1R8-COV-001
+  - id: TDL-TR-012
+    from: TDL-STATE-POSSIBLE-END-001
+    relation: transitions_to
+    to: TDL-STATE-RESTING-001
+    trigger: "FINALIZE job → processFinalize; lifecycle recovery"
+    guard: "End-cycle admission (token match, or tokenless requestedAt ≥ possibleEndEnteredAt; never from ACTIVE_TRIP); pre-write admission re-check; quality check; or R2/R7 RESET_TO_RESTING (referenced trip terminal)"
+    decision_authority: "TripDecisionEngine.finalizeTrip (COMPLETED) or discardTrip (CANCELLED)"
+    persistence_writer: "TripDetectionOrchestrationService.transitionState (prisma.vehicleTripDetectionState.update) under per-vehicle DB worker lock"
+    queue_job: "post-finalize handoff: TripPostFinalizeAnalysisProducer (DI V2), enqueueBehaviorEnrichment (legacy HF), Battery V2 rest window"
+    failure_recovery: "Lock contention → TripTrackingHandoffLockContentionError → BullMQ retry; stale token → skip + tracking run; COMPLETED but RESTING write failed → R7 RESET_TO_RESTING on next preflight"
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-end-cycle-reset.ts
+      - backend/src/modules/vehicle-intelligence/trips/decision/trip-decision.engine.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-lifecycle-invariant.ts
+    evidence:
+      - TDL-EVID-PHASE5-FSM-CODE-001
+      - TDL-EVID-R10-KS-MX-001
+      - TDL-EVID-OQ001-HANDOFF-001
+      - TDL-EVID-OQ005-ENDED-001
+  - id: TDL-TR-013
+    from: TDL-STATE-ACTIVE-TRIP-001
+    relation: transitions_to
+    to: TDL-STATE-RESTING-001
+    trigger: "ACTIVE_TICK → processActiveTick; lifecycle recovery"
+    guard: "activeTripId missing and invariant preflight returns continue; or R2 RESET_TO_RESTING (referenced trip already terminal, e.g. after STALE_ONGOING repair)"
+    decision_authority: "evaluateTripLifecycleInvariant"
+    persistence_writer: "TripDetectionOrchestrationService.transitionState (prisma.vehicleTripDetectionState.update) under per-vehicle DB worker lock"
+    queue_job: "none"
+    failure_recovery: "Fail closed on CONFLICT_* (blocked, logged; no silent write)"
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-lifecycle-invariant.ts
+    evidence:
+      - TDL-EVID-PHASE5-FSM-CODE-001
+      - TDL-EVID-OQ007-R1R8-COV-001
+  - id: TDL-TR-014
+    from: TDL-STATE-IDLE-WITHIN-TRIP-001
+    relation: transitions_to
+    to: TDL-STATE-RESTING-001
+    trigger: "ACTIVE_TICK → processActiveTick; lifecycle recovery"
+    guard: "Same as TDL-TR-013 (missing activeTripId, or R2 RESET_TO_RESTING)"
+    decision_authority: "evaluateTripLifecycleInvariant"
+    persistence_writer: "TripDetectionOrchestrationService.transitionState (prisma.vehicleTripDetectionState.update) under per-vehicle DB worker lock"
+    queue_job: "none"
+    failure_recovery: "Fail closed on CONFLICT_* (blocked, logged; no silent write)"
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-lifecycle-invariant.ts
+    evidence:
+      - TDL-EVID-PHASE5-FSM-CODE-001
+      - TDL-EVID-OQ007-R1R8-COV-001

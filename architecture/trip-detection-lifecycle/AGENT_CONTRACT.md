@@ -1,8 +1,8 @@
-# Trip Detection & Lifecycle — Agent Contract (Partial, `AUDIT_IN_PROGRESS`)
+# Trip Detection & Lifecycle — Agent Contract (`AUTHORITY_ACTIVE`)
 
 **Effective:** 2026-09-06
-**Registry coverage:** `AUDIT_IN_PROGRESS`
-**Authority maturity:** `PARTIAL_RECONSTRUCTION` — not yet `AUTHORITY_ACTIVE`
+**Registry coverage:** `AUTHORITY_ACTIVE` (promoted 2026-09-26 — TDL-DEC-PHASE5-001)
+**Authority maturity:** `PHASE_0_5_COMPLETE` — explicit non-blocking limitations tracked in [contradictions/](contradictions/)
 
 ## Mandatory read-first sequence
 
@@ -15,12 +15,15 @@
 
 Any **substantive** Trip Detection & Lifecycle change **must** update this authority in the **same workstream/PR**.
 
-Until promotion to `AUTHORITY_ACTIVE`:
+Maintenance rules (`AUTHORITY_ACTIVE`):
 
 - Treat [`docs/audits/trip-fsm/`](../../docs/audits/trip-fsm/) as **supporting evidence**, not canonical authority.
 - Do **not** create competing authorities at `docs/architecture/trip-fsm/` or `architecture/trip-fsm/`.
-- Do **not** promote to `AUTHORITY_ACTIVE` without completing Standard-1.0 phases 3–5 and passing the Phase 5 promotion gate.
-- Do **not** treat `UNKNOWN` or partially reconstructed surfaces as canonical behavior.
+- Any change to FSM states/transitions, `transitionState` call sites, or `TripDecisionEngine` lifecycle writers **must** update `graph/nodes.yaml`, `graph/edges.yaml` (`transitions_to`), `graph/schema.yaml` pinned counts, and [KNOWLEDGE_GRAPH.md](KNOWLEDGE_GRAPH.md) in the same PR.
+- Do **not** treat `UNKNOWN` surfaces or **EXPLICIT_NON_BLOCKING_LIMITATION** items as canonical behavior.
+- Never silently rewrite historical decisions, contradictions, failed approaches, or evidence — append status history instead.
+
+**Graph relation direction:** `A upstream_of B` means A's output feeds B; `A transitions_to B` is a live FSM state change from A to B.
 
 ## Same-PR registry synchronization duty
 
@@ -107,7 +110,7 @@ bash architecture/trip-detection-lifecycle/scripts/validate-graph.sh
 git diff --check
 ```
 
-Module graph validator: `validate-graph.sh` (Phase 4 partial).
+Module graph validator: `validate-graph.sh` (FSM transitions, OQ-010 mapping, orphans, invariants, decisions).
 
 ## Required final `ARCHITECTURE_GOVERNANCE` report
 
