@@ -67,7 +67,7 @@ Scaling Process owns leader election and budget **algorithms**; DIMO module **co
 | PM2 apps | `synqdrive`, `synqdrive-b` (+ logrotate) | DIM-EV-PROD-003 |
 | Webhook route in build | present (`webhooks/dimo`) | DIM-EV-PROD-004 |
 | R9 wake runtime in deployed build | **present** (`SnapshotWakeIntakeService` in webhook controller) | DIM-EV-PROD-R9-001 |
-| R9 speed/ignition trigger coverage (active cohort) | **5/5** subscribed to both triggers (stableIds `9eeb7158afee`, `5d611d470eab`; tokenId **190497** excluded — former fleet) | DIM-EV-R9-CANARY-001 |
+| R9 speed/ignition trigger coverage (authorized cohort) | **5/5** subscribed to both triggers (stableIds `9eeb7158afee`, `5d611d470eab`; **`HISTORICALLY_EXCLUDED_FORMER_FLEET_ASSET`** not in cohort B) | DIM-EV-R9-CANARY-001; re-read TDL-EVID-OQ009-R9-INGRESS-001 |
 | Legacy OBD/RPM webhooks | **unchanged** (3 definitions) | DIM-EV-R9-CANARY-001 |
 | Redis `bull:dimo.snapshot*` keys | 5 (prefix scan) | DIM-EV-PROD-006 |
 | Redis `bull:snapshot.wake*` keys | present post-R9 deploy | DIM-EV-PROD-007 (re-verify on next session) |
