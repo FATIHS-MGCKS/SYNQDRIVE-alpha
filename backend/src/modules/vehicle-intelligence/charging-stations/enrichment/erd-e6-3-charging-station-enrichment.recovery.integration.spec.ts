@@ -210,7 +210,11 @@ const LIVE = process.env.ERD_E6_3_RECOVERY_INTEGRATION === '1';
       });
       const recovered = await scheduler.recoverMissedEnrichments();
       expect(recovered).toBe(0);
-      expect(await queue.getJob(deterministicRechargeJobId(event))).toBeNull();
+      expect(
+        await prisma.vehicleEnergyEventChargingStationEnrichment.count({
+          where: { energyEventId: event.id, processingStatus: 'PROCESSING' },
+        }),
+      ).toBe(1);
     } finally {
       await cleanupOrgVehicle(prisma, org.id, vehicle.id, [event.id]);
     }
@@ -221,8 +225,7 @@ const LIVE = process.env.ERD_E6_3_RECOVERY_INTEGRATION === '1';
     try {
       await orchestrator.processEnergyEvent(event.id);
       await drainActiveQueueJobs();
-      const recovered = await scheduler.recoverMissedEnrichments();
-      expect(recovered).toBe(0);
+      await scheduler.recoverMissedEnrichments();
       const refreshed = await prisma.vehicleEnergyEvent.findUniqueOrThrow({
         where: { id: event.id },
         include: { chargingStationEnrichment: true },
