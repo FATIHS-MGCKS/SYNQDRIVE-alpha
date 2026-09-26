@@ -19,6 +19,7 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | TDL-DEC-OQ006-001 | DIMO segment vs live FSM boundary authority | VALIDATED | TDL-EVID-OQ006-BOUNDARY-001 |
 | TDL-DEC-OQ007-001 | R1–R8 Production validation coverage — behavior matrix + scope reduction | VALIDATED | TDL-EVID-OQ007-R1R8-COV-001 |
 | TDL-DEC-OQ004-001 | Route artifact coverage policy — taxonomy, eligibility, Mapbox vs artifact vs MATCHED | VALIDATED | TDL-EVID-OQ004-ROUTE-COV-001 |
+| TDL-DEC-OQ008-001 | Trip runtime-control matrix — code default vs Production effective separation | VALIDATED | TDL-EVID-OQ008-FLAG-MATRIX-001 |
 
 ---
 
@@ -303,3 +304,19 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | **NON-EFFECTS** | Does not change Mapbox gates or handler code in this audit |
 | **VALIDATION** | Read-only SQL + code trace — TDL-EVID-OQ004-ROUTE-COV-001 |
 | **EVIDENCE** | TDL-EVID-OQ004-ROUTE-COV-001 |
+
+---
+
+## TDL-DEC-OQ008-001
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | VALIDATED |
+| **BEFORE** | TDL-OQ-008 OPEN — code defaults conflated with Production; partial env name sampling only (TDL-GAP-007) |
+| **WHY** | Rollback and incident response require ENV_KEY, CODE_DEFAULT, PRODUCTION_CONFIGURED, PRODUCTION_EFFECTIVE, consumer class, and shadow vs authoritative separation |
+| **CHANGE** | Canonical matrix in TDL-EVID-OQ008-FLAG-MATRIX-001: 10 mode + 1 scope + 28 lifecycle knobs; Production @ `8a1d9c658…` read-only; replica config source **CONSISTENT**; effective flag state **inferred not introspected** |
+| **EXPECTED EFFECT** | OQ-008 closed; OQ-009 can compare tiered polling doc vs Production **ACTIVITY_TIERED** mode without re-auditing flags |
+| **PRODUCTION STATUS** | Snapshot **ACTIVITY_TIERED**; FSM shadow **enabled** (1 allowlisted vehicle); repair coverage **shadow** (legacy overlap authority); DI V2 master **on**, segment validation **off** |
+| **NON-EFFECTS** | No env mutation; no promotion to `AUTHORITY_ACTIVE` |
+| **VALIDATION** | Parser source trace + sudo `backend.env` grep — TDL-EVID-OQ008-FLAG-MATRIX-001 |
+| **EVIDENCE** | TDL-EVID-OQ008-FLAG-MATRIX-001 |

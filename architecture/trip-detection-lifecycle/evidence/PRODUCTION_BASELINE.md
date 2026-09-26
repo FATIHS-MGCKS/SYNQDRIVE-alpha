@@ -149,14 +149,21 @@ ssh synqdrive-admin@srv1374778.hstgr.cloud 'redis-cli --scan --pattern "bull:dim
 
 ## Trip-adjacent configuration (names only; values redacted)
 
-Observed keys in `/opt/synqdrive/shared/backend.env` (not re-grepped in this session; names unchanged from prior read-only sample):
+Observed keys in `/opt/synqdrive/shared/backend.env` (read-only @ `2026-09-25T22:43:57Z`, release `8a1d9c658…` — normalized values in [TDL_OQ_008_FEATURE_FLAG_RUNTIME_MATRIX_2026-09-25.md](TDL_OQ_008_FEATURE_FLAG_RUNTIME_MATRIX_2026-09-25.md)):
 
-- `CLICKHOUSE_TRIP_ASSIST_ENABLED`
-- `TRIP_PARTIAL_BOUNDARY_REPAIR_ENABLED`
-- `WORKER_SNAPSHOT_ACTIVITY_TIER_POLLING_ENABLED`
-- `WORKER_SNAPSHOT_CONCURRENCY`
-- `WORKER_SNAPSHOT_INTERVAL_MS`
-- `WORKER_TRIP_TRACKING_CONCURRENCY`
+- `CLICKHOUSE_TRIP_ASSIST_ENABLED=true`
+- `TRIP_PARTIAL_BOUNDARY_REPAIR_ENABLED=true`
+- `WORKER_SNAPSHOT_ACTIVITY_TIER_POLLING_ENABLED=true`
+- `WORKER_SNAPSHOT_CONCURRENCY=8`
+- `WORKER_SNAPSHOT_INTERVAL_MS=30000`
+- `WORKER_TRIP_TRACKING_CONCURRENCY=5`
+- `TRIP_FSM_SHADOW_OBSERVABILITY_ENABLED=true` (allowlist count **1**)
+- `DRIVING_INTELLIGENCE_V2_ENABLED=true`
+- `DRIVING_V2_DIMO_SEGMENT_VALIDATION_ENABLED=false`
+- `DRIVING_V2_ENGINE_DETECTOR_SHADOW_ENABLED=true`
+- `DRIVING_V2_HF_DETECTOR_SHADOW_ENABLED=true`
+
+Absent keys use code defaults (e.g. `TRIP_REPAIR_COVERAGE_MODE=shadow`, tier MS defaults, `WORKER_SNAPSHOT_LEGACY_FIXED_CADENCE=false`).
 
 ## Bounded SQL aggregates — `2026-09-06T23:47:41Z`
 
