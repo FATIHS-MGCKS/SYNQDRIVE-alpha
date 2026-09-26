@@ -12,6 +12,21 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-26 — M3.3F F2 flag-OFF production deploy + zero-write smoke (PASS)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | F1 on main (`2b54a357854c9d44f638ee857f72936967c04992`); production behind F1 @ `8a1d9c6586cbddc41bb6c94870f9d51226d71aa2`; C3/D3 flags absent (effective OFF). |
+| **OBSERVATION** | F2 requires exact-SHA deploy when production lacks F1, then flag-OFF proof: ops CLI, DB deltas, metrics, scheduler/health, no automatic D3. |
+| **CHANGE** | Production deploy to F1 merge SHA (`20260926094359_v4994`); read-only validation only — **no** env flag edits, **no** F3/C3 activation, **no** backfill. |
+| **WHY** | Close M3.3F F2 gate before any controlled C3 shadow activation (F3). |
+| **VALIDATION** | `research/M3_3F_F2_FLAG_OFF_PRODUCTION_DEPLOY_2026-09-26.md` — dual-replica health; SHA invariant; C3/D3 effective FALSE; ops `SKIPPED_FLAG_OFF`; C3/D3 row deltas 0 over 180s; D3/D4 metric HELP/TYPE; rollback assets present. |
+| **OBSERVED_EFFECT** | **`M3_3F_F2_PRODUCTION_GATE=PASS`**; **`F3_ALLOWED=YES`**; **`F3_EXECUTED=NO`**. |
+| **NON_EFFECTS** | C3/D3 production activation; D4/E3 runtime reachability; assessment/publication/readiness changes; numeric calibration; `F_C3_T0` / `F_D3_T0` assignment. |
+| **REMAINING_GAPS** | Flag-ON / natural-event authoritative equivalence **NOT_PROVEN_IN_F2**; M3.3F product phases F3–H remain pending. |
+| **DECISION_STATUS** | **PRODUCTION_VALIDATED** (F2 flag-OFF scope only) |
+| **EVIDENCE** | F1 PR #1787; deploy backup `db-pre-deploy-20260926094359.sql.gz`; probe org/veh SHA256 only in evidence doc. |
+
 ## CL-2026-09-26 — M3.3F F1.2 ops CLI exit lifecycle (merge gate)
 
 | Field | Value |
