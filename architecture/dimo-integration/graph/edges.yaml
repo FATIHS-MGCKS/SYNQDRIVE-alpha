@@ -17,6 +17,12 @@ edges:
   - from: DIM-EVID-R9-CANARY-001
     relation: supports
     to: DIM-API-WEBHOOK-001
+  - from: DIM-EVID-OQ009-CROSS-001
+    relation: supports
+    to: DIM-GAP-002
+  - from: DIM-EVID-OQ009-CROSS-001
+    relation: supports
+    to: DIM-DEC-R9-001
   - from: DIM-EVID-CODE-WEBHOOK-001
     relation: supports
     to: DIM-API-WEBHOOK-001

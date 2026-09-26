@@ -10,7 +10,7 @@
 | **TDL-OQ-006** | How do DIMO Segments reconcile with live FSM boundaries when both exist — which wins in conflict? | High | No — boundary contract documented | **RESOLVED** — see §TDL-OQ-006 below | **CLOSED** (2026-09-25) |
 | **TDL-OQ-007** | Are R1–R8 behaviors validated on Production post-deploy, or only on `main` via tests? | Medium | Yes for PRODUCTION_VALIDATED claims | **RESOLVED** — see §TDL-OQ-007 below | **CLOSED** (2026-09-25) |
 | **TDL-OQ-008** | What is the complete trip-related feature-flag matrix and default values per environment? | Medium | No | **RESOLVED** — see §TDL-OQ-008 below | **CLOSED** (2026-09-25) |
-| **TDL-OQ-009** | Does tiered snapshot polling (pre-R9 on Production) match documented ingress on `main`? | Medium | No until R9 scope | OPEN |
+| **TDL-OQ-009** | Does tiered snapshot polling match the documented R9 provider-wake ingress model on current `main` and Production? | Medium | No | **RESOLVED** — see §TDL-OQ-009 below | **CLOSED** (2026-09-26) |
 | **TDL-OQ-010** | What dead/legacy trip code paths remain (pre-V2 segmentation, duplicate enrichment)? | Medium | No | OPEN |
 
 ## TDL-OQ-003 — resolution (2026-09-25)
@@ -80,13 +80,21 @@
 
 **Verdict:** **`RESOLVED_WITH_BOUNDED_GAPS`** — JWT-empty vs fetch-failure indistinguishable in reconciliation fetch; overlap coverage default `shadow`.
 
-**Status:** **RESOLVED** for authority; promotion to `AUTHORITY_ACTIVE` still blocked by other open OQs (e.g. TDL-OQ-005, TDL-OQ-009–010).
+**Status:** **RESOLVED** for authority; promotion to `AUTHORITY_ACTIVE` still blocked by other open OQs (e.g. TDL-OQ-005, TDL-OQ-010).
 
 ## TDL-OQ-008 — resolution (2026-09-25)
 
 **Evidence:** [TDL_OQ_008_FEATURE_FLAG_RUNTIME_MATRIX_2026-09-25.md](../evidence/TDL_OQ_008_FEATURE_FLAG_RUNTIME_MATRIX_2026-09-25.md) (TDL-EVID-OQ008-FLAG-MATRIX-001) @ `origin/main` `6af181bf9…`, Production @ `8a1d9c658…` / `20260925182907_v4994`.
 
 **Verdict:** **`RESOLVED_COMPLETE_MATRIX`** — 10 mode + 1 scope allowlist + 28 lifecycle knobs; Production effective values read-only from shared `backend.env`; **`REPLICA_CONFIG_SOURCE_CONSISTENT=YES`**; **`REPLICA_EFFECTIVE_FLAG_STATE_CONSISTENT=INFERRED_NOT_DIRECTLY_INTROSPECTED`**; FSM shadow **observability-only**; repair **`shadow`** mode (legacy overlap authority); snapshot **`ACTIVITY_TIERED`**.
+
+**Status:** **RESOLVED**
+
+## TDL-OQ-009 — resolution (2026-09-26)
+
+**Evidence:** [TDL_OQ_009_TIERED_POLLING_R9_INGRESS_2026-09-26.md](../evidence/TDL_OQ_009_TIERED_POLLING_R9_INGRESS_2026-09-26.md) (TDL-EVID-OQ009-R9-INGRESS-001) @ `origin/main` `47a3b42b8…`, Production @ `8a1d9c658…`.
+
+**Verdict:** **`RESOLVED_INGRESS_CONTRACT_ALIGNED`** — R9 **present** on current Production (ancestor `4bef6046…`); **ACTIVITY_TIERED** polling + shared `snapshot-{vehicleId}` coordinator aligned with code; provider wake **RESTING-only**; tier fallback nominal 30s/60s/5m/30m; **R9 authorized cohort 5/5 subscribed (100%)**; **1** stale former-fleet scheduler mirror (DIM-GAP-005, not R9 defect); recent operational wake counters **INSUFFICIENT_EVIDENCE**.
 
 **Status:** **RESOLVED**
 

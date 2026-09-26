@@ -8,16 +8,21 @@ Machine-readable graph: [`graph/`](graph/) · Validator: `bash architecture/trip
 
 | Fact | State |
 |------|-------|
-| **REPO_CURRENT** | `bca9579a1…` @ post PR #1769 — **≠ PRODUCTION_CURRENT** |
+| **REPO_CURRENT** | `47a3b42b8…` @ post PR #1786 (OQ-008 on main) — **≠ live agent head until OQ-009 PR merges** |
 | **TDL-OQ-007** | **RESOLVED** — OQ-007.1 passive closure @ `2026-09-25T13:25Z` |
 | **TDL-OQ-003** | **RESOLVED** — detection-state cardinality @ `2026-09-25T18:05Z` (TDL-EVID-OQ003-CARDINALITY-001) |
 | **TDL-OQ-004** | **RESOLVED** — route artifact coverage policy @ `2026-09-25` (TDL-EVID-OQ004-ROUTE-COV-001; epistemic correction same day) |
+| **TDL-OQ-008** | **RESOLVED** — feature-flag matrix @ `2026-09-25` (TDL-EVID-OQ008-FLAG-MATRIX-001) |
+| **TDL-OQ-009** | **RESOLVED** — tiered polling + R9 ingress @ `2026-09-26` (TDL-EVID-OQ009-R9-INGRESS-001) |
 | **PRODUCTION_CURRENT** | `8a1d9c658…` @ `20260925182907_v4994` |
 | **Shadow runtime** | **LAST_VERIFIED @ `99d722b4…`** — not re-checked @ `8a1d9c658…` in OQ-004 |
-| R9 on `origin/main` | **YES** — merged #1553 |
-| R9 runtime on Production | **YES** — ancestor of `99d722b4…` |
-| Provider speed+ignition wiring | **5/5** active cohort (190497 excluded) — historical canary |
-| Natural R9 wake observed | **PARTIAL** — see KS MS 661 records; full end-path wake **OPEN** |
+| R9 on `origin/main` | **YES** — merged #1553 (`4bef6046…` ancestor of `47a3b42b8…`) |
+| R9 runtime on Production | **YES** — ancestor of `8a1d9c658…` (not pre-R9) |
+| Activity-tier snapshot polling | **ACTIVITY_TIERED** @ Production — scheduler tick **30s** ≠ per-vehicle poll every 30s |
+| R9 provider authorized cohort | **5/5** speed+ignition (`R9_AUTHORIZED_COHORT_COVERAGE=100%`) |
+| SynqDrive scheduler DB cohort | **6** rows — includes **1** **`HISTORICALLY_EXCLUDED_FORMER_FLEET_ASSET`** stale mirror (DIM-GAP-005) |
+| R9 five-vehicle canary @ 2026-09-07 | **HISTORICAL_CORRECT** — authorized provider cohort **5** |
+| Natural R9 wake observed | **YES (historical)** — KS MS 661 @ R10/R11 releases; **recent fleet KPIs unknown** (OQ-009) |
 
 ## Canonical lifecycle flow
 
@@ -68,6 +73,8 @@ Provider wake eligible (AVAILABLE|RENTED, DIMO CONNECTED, FSM RESTING)
 | TDL-DEC-QS-V1-001 | Qualified Stop Contract V1 — 300_000 ms shared same-trip/split authority | VALIDATED (Production **`PASS_WITH_EVIDENCE_GAPS`**) |
 | TDL-DEC-OQ001-001 | COMPLETED → DI V2 handoff via post-finalize producer + PG job ledger | VALIDATED (**`RESOLVED_WITH_BOUNDED_GAPS`**) |
 | TDL-DEC-OQ006-001 | DIMO segment vs live FSM boundary authority (repair evidence, not live override) | VALIDATED (**`RESOLVED_WITH_BOUNDED_GAPS`**) |
+| TDL-DEC-OQ008-001 | Trip runtime-control matrix (defaults vs Production effective) | VALIDATED |
+| TDL-DEC-OQ009-001 | Tiered polling + R9 provider-wake ingress contract | VALIDATED (**`RESOLVED_INGRESS_CONTRACT_ALIGNED`**) |
 
 Detail: [decisions/DECISION_REGISTER.md](decisions/DECISION_REGISTER.md)
 
@@ -93,5 +100,6 @@ POSSIBLE_END (possibleEndEnteredAt clocked)
 
 - COMPLETED → Driving Intelligence handoff (TDL-GAP-001) — **RESOLVED** (TDL-DEC-OQ001-001; org invariant TDL-EVID-OQ001-1-ORG-001)
 - ~~`drive-profile/` ownership (TDL-GAP-002)~~ — **RESOLVED** Battery V2 owns (TDL-EVID-OQ002-DRIVE-PROFILE-001)
-- Natural R9 wake end-to-end delivery (TDL-GAP-013; cross-ref DIM-GAP-006)
+- Natural R9 wake end-to-end delivery (TDL-GAP-013; cross-ref DIM-GAP-006) — **historical start wake proven**; recent operational rates **unknown**
+- ~~Tiered polling vs R9 ingress (TDL-GAP-016)~~ — **RESOLVED** (TDL-EVID-OQ009-R9-INGRESS-001)
 - DIMO Integration `AUDIT_IN_PROGRESS` — segment/trigger ownership gaps remain (TDL-CX-006 partially superseded)

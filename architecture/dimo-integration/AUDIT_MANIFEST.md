@@ -23,11 +23,11 @@ Standard: [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) v1.0
 | **PRE_CORRECTION_GOVERNANCE_HEAD** | `5383391c27c8265c2bff12c068a6f8d527a1102e` |
 | **PRODUCTION_AUDITED_AT** | `2026-09-07T22:35:00Z` (read-only SSH + provider GET audit) |
 | **PRODUCTION_ACCESS** | `VERIFIED_READ_ONLY` |
-| **PRODUCTION_RELEASE_SHA (current)** | `0ba96e03fc2f1551db79d2dae151c928a9fd936a` |
-| **PRODUCTION_RELEASE_PATH (current)** | `/opt/synqdrive/releases/20260907204434_v4994` |
+| **PRODUCTION_RELEASE_SHA (current)** | `8a1d9c6586cbddc41bb6c94870f9d51226d71aa2` @ `/opt/synqdrive/releases/20260925182907_v4994` (TDL-OQ-009 read-only @ `2026-09-26`) |
+| **PRODUCTION_RELEASE_SHA (historical R9 canary)** | `0ba96e03fc2f1551db79d2dae151c928a9fd936a` @ `/opt/synqdrive/releases/20260907204434_v4994` |
 | **PRODUCTION_RELEASE_SHA (historical pre-R9)** | `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac` @ `/opt/synqdrive/releases/20260906213654_v4994` |
 | **REPO_PRODUCTION_DRIFT (historical @ 01541c2ab…)** | R8 #1549 and R9 were **NOT_ON_PRODUCTION** at pre-R9 release — **HISTORICAL** |
-| **REPO_PRODUCTION_DRIFT (current @ 0ba96e03…)** | R9 runtime **deployed**; provider R9 trigger wiring **validated** (five-vehicle canary PASS); natural wake delivery **not yet validated** |
+| **REPO_PRODUCTION_DRIFT (current @ `8a1d9c658…`)** | R9 runtime **present**; **R9 authorized provider cohort 5/5** subscribed (TDL-OQ-009 re-read); natural R9 **start** wake **observed** historically; fleet-wide wake-rate KPI **unknown**; **1** stale former-fleet scheduler mirror (DIM-GAP-005) |
 | **AUDIT_MODE** | `READ_ONLY` |
 | **VALIDATION_STATUS** | `PASS` — authority graph + registry validators (latest semantic cleanup pass) |
 
@@ -48,17 +48,16 @@ Standard: [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) v1.0
 
 ## Provider subscription state (current)
 
-**Verified read-only for active R9 cohort** @ `2026-09-07T22:35:00Z`:
+**Verified read-only @ `2026-09-07T22:35:00Z` (canary) and re-read @ `2026-09-26` (TDL-OQ-009 / `8a1d9c658…`):**
 
-| Metric | Value |
-|--------|------:|
-| Active cohort | **5** (186946, 187336, 187361, 187784, 192922) |
-| subscribed_speed | **5** |
-| subscribed_ignition | **5** |
-| subscribed_both | **5** |
-| missing_both | **0** |
-| tokenId 190497 R9 subscribed | **NO** (`FORMER_FLEET_VEHICLE`) |
+| Metric | Authorized R9 cohort (B) | DB scheduler view (A) |
+|--------|-------------------------:|----------------------:|
+| Cohort size | **5** | **6** (`SCHEDULER_ELIGIBLE_DB_ROWS`) |
+| subscribed_speed / ignition / both | **5 / 5 / 5** | **5 / 5 / 5** among DB rows |
+| `R9_AUTHORIZED_COHORT_COVERAGE` | **100%** | N/A |
+| `STALE_FORMER_FLEET_SCHEDULER_MIRROR_COUNT` | **0** (excluded from B) | **1** (`HISTORICALLY_EXCLUDED_FORMER_FLEET_ASSET`) |
+| `SCHEDULER_COHORT_WITH_BOTH_R9_TRIGGERS` | — | **5/6** (`DB_COHORT_VIEW` only) |
 
-Method: GET `/v1/webhooks` + per-asset subscription audit (see `backend/scripts/ops/r9-post-get-audit.mjs`, `r9-five-vehicle-canary-bootstrap.mjs`). Detail: [evidence/R9_FIVE_VEHICLE_CANARY_2026-09-07.md](evidence/R9_FIVE_VEHICLE_CANARY_2026-09-07.md).
+Method: GET `/v1/webhooks` + per-asset subscription audit (`backend/scripts/ops/r9-post-get-audit.mjs`). Historical canary detail: [evidence/R9_FIVE_VEHICLE_CANARY_2026-09-07.md](evidence/R9_FIVE_VEHICLE_CANARY_2026-09-07.md). Cross-ref: [TDL_OQ_009](../trip-detection-lifecycle/evidence/TDL_OQ_009_TIERED_POLLING_R9_INGRESS_2026-09-26.md).
 
-**Natural R9 wake delivery:** not yet observed — **NEXT_GATE** `NATURAL_R9_WAKE_OBSERVATION`.
+**Natural R9 start wake:** **PRODUCTION_OBSERVED / PARTIALLY_VALIDATED** (KS MS 661). **Fleet-wide wake-rate KPI:** not established in OQ-009 read-only pass.
