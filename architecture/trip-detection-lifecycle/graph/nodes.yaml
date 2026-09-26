@@ -978,8 +978,8 @@ nodes:
     source_type: PRODUCTION_OBSERVATION
     epistemic_status: CONFIRMED
     summary: >
-      Zero runtime read/write; finalize to RESTING; Production 0 live and 0 tracking ENDED rows;
-      ENDED_HISTORICAL_COMPAT_ONLY; SAFE_TO_REMOVE_AFTER_DATA_MIGRATION follow-up.
+      Zero runtime read/write; finalize to RESTING; live Production 0 ENDED rows @ 2b54a357…;
+      RETAIN_HISTORICAL_COMPATIBILITY; REPURPOSE_NOT_JUSTIFIED; ENDED_HISTORICAL_COMPAT_ONLY.
     source_paths:
       - architecture/trip-detection-lifecycle/evidence/TDL_OQ_005_ENDED_STATE_LIFECYCLE_AUDIT_2026-09-26.md
 

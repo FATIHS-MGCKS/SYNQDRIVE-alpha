@@ -4,9 +4,12 @@
 |-------|-------|
 | **Evidence ID** | TDL-EVID-OQ005-ENDED-001 |
 | **Observed at (UTC)** | `2026-09-26` |
-| **Repository baseline** | `origin/main` @ `97cfde3d6679e9230e10a0d39ee73403f32b9b35` (task-creation anchor; audit executed on descendant `f16ae03c0…` — no `TripDetectionState.ENDED` delta in between) |
-| **Production baseline (task)** | `8a1d9c6586cbddc41bb6c94870f9d51226d71aa2` @ `20260925182907_v4994` |
-| **Production DB observation** | Read-only SQL @ live VPS DB `2026-09-26T~10:55Z` (current release on VPS `20260926094359_v4994` / `2b54a357…` — same PostgreSQL fleet data) |
+| **TASK_REPO_ANCHOR_SHA** | `97cfde3d6679e9230e10a0d39ee73403f32b9b35` (task-creation anchor — **not** current `main`) |
+| **AUDIT_REPO_SHA** | `f16ae03c0ffe9cf8d94fa4d796b59c5c451aef6c` (PR #1793 base / audit execution) |
+| **ENDED semantic delta** | **None** between task repo anchor and audit repo (`TripDetectionState.ENDED` never referenced in TS on either) |
+| **TASK_PRODUCTION_ANCHOR_SHA** | `8a1d9c6586cbddc41bb6c94870f9d51226d71aa2` @ `20260925182907_v4994` (historical task / prior OQ audit anchor — preserved) |
+| **LIVE_PRODUCTION_SHA** | `2b54a357854c9d44f638ee857f72936967c04992` @ **`LIVE_RELEASE_ID=20260926094359_v4994`** (VPS `current` at DB observation) |
+| **Production DB observation** | Read-only SQL @ live PostgreSQL **`2026-09-26T~10:55Z`** (same fleet DB; release pointer advanced since task anchor) |
 | **Audit mode** | READ_ONLY |
 | **Verdict** | **`ENDED_HISTORICAL_COMPAT_ONLY`** |
 
@@ -14,7 +17,11 @@
 
 `TripDetectionState.ENDED` is a **PostgreSQL / Prisma enum label** present since the trip FSM bootstrap migration. **Current TypeScript has zero reads or writes** of `TripDetectionState.ENDED`. The live FSM completes trips at **`VehicleTrip.tripStatus=COMPLETED`** and returns the per-vehicle detector to **`RESTING`** (not `ENDED`).
 
-Production read-only counts: **`0`** live `vehicle_trip_detection_states` rows in `ENDED`; **`0`** historical `vehicle_trip_tracking_runs` with `state_at_run` or `result_state` = `ENDED` (all-time). Removal is **not** a runtime delete in this PR — it requires a **separate PostgreSQL enum migration + Prisma regen** slice (`SAFE_TO_REMOVE_AFTER_DATA_MIGRATION`). **Repurpose is unsafe** (`REPURPOSE_UNSAFE`).
+Production read-only counts @ **live DB observation**: **`0`** live `vehicle_trip_detection_states` rows in `ENDED`; **`0`** historical `vehicle_trip_tracking_runs` with `state_at_run` or `result_state` = `ENDED` (all-time).
+
+**Retention (OQ-005):** **`ENDED_REMOVAL_CLASSIFICATION=RETAIN_HISTORICAL_COMPATIBILITY`** — label remains in Prisma/PostgreSQL as schema compatibility debt. **Future optional removal:** **`FUTURE_SCHEMA_REMOVAL_CANDIDATE=YES`**, **`POSTGRES_ENUM_SCHEMA_MIGRATION_REQUIRED=YES`**, **`ENDED_DATA_BACKFILL_REQUIRED_CURRENTLY=NO`** (no ENDED rows to migrate).
+
+**Repurpose:** **`REPURPOSE_DECISION=REPURPOSE_NOT_JUSTIFIED`** — terminality belongs on **`VehicleTrip`**; detector returns to **`RESTING`**; no new lifecycle semantic needs the `ENDED` label.
 
 ---
 
@@ -181,25 +188,33 @@ Historical design reference (supporting, not authority): P2 audit documents inte
 
 ## Phase 9 — Repurpose test
 
-No new lifecycle semantic requires recycling the **`ENDED`** label. Historical enum + Prisma client + potential admin logbook string would inherit old meaning.
+No proposed new lifecycle semantic requires the **`ENDED`** label.
 
-**`REPURPOSE_DECISION=REPURPOSE_UNSAFE`**
+- Trip terminality: **`VehicleTrip.COMPLETED` / `CANCELLED`**
+- Live detector after finalize: **`RESTING`**
+- Reusing **`ENDED`** would add semantic ambiguity without benefit
+
+**`REPURPOSE_DECISION=REPURPOSE_NOT_JUSTIFIED`**
 
 ---
 
-## Phase 10 — Removal safety
+## Phase 10 — Removal / retention (schema debt)
 
-| Classification | **`SAFE_TO_REMOVE_AFTER_DATA_MIGRATION`** |
+| Field | Value |
+|-------|-------|
+| **`ENDED_REMOVAL_CLASSIFICATION`** | **`RETAIN_HISTORICAL_COMPATIBILITY`** |
+| **`FUTURE_SCHEMA_REMOVAL_CANDIDATE`** | **YES** (optional follow-up PR — not OQ-005) |
+| **`POSTGRES_ENUM_SCHEMA_MIGRATION_REQUIRED`** | **YES** (enum label drop + Prisma regen + rollback plan) |
+| **`ENDED_DATA_BACKFILL_REQUIRED_CURRENTLY`** | **NO** |
 
 Rationale:
 
-- **Live + tracking Production counts = 0** → no row backfill required **today**
-- **PostgreSQL `ALTER TYPE … DROP VALUE`** (or rebuild enum) still mandatory — not equivalent to deleting a TS enum member
-- **Prisma client regen** + any raw SQL / dashboards referencing `'ENDED'`
-- **Rollback:** retained releases through `8a1d9c658…` also **lack** TS writers — **`ROLLBACK_RELEASE_CAN_USE_ENDED=NO`** (read-only enum in schema only)
-- **`ROLLBACK_COMPATIBILITY_BLOCKS_REMOVAL=NO`** for runtime behavior; **YES** for conservative enum migration discipline (verify older app versions tolerate client without `ENDED`)
+- **Live + tracking Production counts = 0** → **no row data migration** today
+- Removing the enum **label** still requires **PostgreSQL enum mechanics** and staged deploy — not “data backfill”
+- **Rollback:** task-anchor release `8a1d9c658…` and live `2b54a357…` both **lack** TS writers — **`ROLLBACK_RELEASE_CAN_USE_ENDED=NO`**
+- **`ROLLBACK_COMPATIBILITY_BLOCKS_REMOVAL=NO`** for runtime execution; staged schema migration discipline still applies
 
-**Not** `SAFE_TO_REMOVE_NOW` — schema/migration slice required.
+**Do not** classify as `SAFE_TO_REMOVE_AFTER_DATA_MIGRATION` — misleading when **zero** ENDED rows exist.
 
 ---
 
@@ -239,17 +254,16 @@ Map to user options:
 
 ## Phase 13 — Follow-up plan (docs only — do not execute)
 
-Future **runtime/schema PR** (separate workstream):
+Optional future **schema-only PR** (separate workstream):
 
-1. Re-run Production SQL gate: `LIVE_ENDED_STATE_ROWS=0` and tracking ENDED counts = 0.
+1. Re-run Production SQL gate on **live** release: `LIVE_ENDED_STATE_ROWS=0` and tracking ENDED counts = 0.
 2. Confirm no external dashboards reference `'ENDED'::"TripDetectionState"`.
-3. Choose PostgreSQL strategy: new enum type + column cast, or `ALTER TYPE … DROP VALUE` on PG ≥ version supporting safe drop (with transaction lock window).
+3. PostgreSQL enum label removal strategy (rebuild type or supported `DROP VALUE`) + transaction window.
 4. Remove `ENDED` from Prisma enum; `prisma migrate` + `generate`.
 5. Update tests, admin logbook copy, authority docs.
-6. Deploy migration **before** or **with** app that no longer references enum member.
-7. Rollback plan: forward-only migration or retain compat view until dual-write window ends.
+6. Staged deploy + rollback plan (no ENDED **row** backfill expected).
 
-Until then: mark **`ENDED`** **deprecated** in authority (this document); **do not** remove from schema in OQ-005.
+Until then: **`RETAIN_HISTORICAL_COMPATIBILITY`** — deprecated in authority; **no** schema change in OQ-005.
 
 ---
 
@@ -262,8 +276,13 @@ After OQ-005 closure: **TDL-OQ-001 … TDL-OQ-010** all **CLOSED**.
 | **`OPEN_TDL_OQ_COUNT_AFTER`** | **0** |
 | **`ALL_TDL_OPEN_QUESTIONS_CLOSED`** | **YES** |
 | **`AUTHORITY_ACTIVE_PROMOTION_READY`** | **NO** |
-| **`PROMOTION_BLOCKERS`** | Module remains **`AUDIT_IN_PROGRESS`** per [`MODULE_AUTHORITY_STANDARD.md`](../../MODULE_AUTHORITY_STANDARD.md) Phase 5 gate; full FSM graph incomplete; QS V1 **`PASS_WITH_EVIDENCE_GAPS`**; central registry not promoted; ENDED removal is optional future slice — **not** a blocker once documented |
+| **`PROMOTION_BLOCKERS`** | **`FULL_MACHINE_READABLE_FSM_GRAPH_INCOMPLETE`**; **`PHASE_5_PROMOTION_GATE_NOT_EXECUTED`**; **`CURRENT_AUTHORITY_BASELINE_REGISTRY_SYNC_PENDING`** |
+| **`QS_V1_EVIDENCE_GAPS_PROMOTION_CLASS`** | **`EXPLICIT_LIMITATION_NOT_AUTOMATIC_BLOCKER`** (per [`MODULE_AUTHORITY_STANDARD.md`](../../MODULE_AUTHORITY_STANDARD.md) — QS **`PASS_WITH_EVIDENCE_GAPS`** is documented limitation, not an automatic promotion veto) |
+
+**Open contradictions (not force-closed):** **TDL-CX-004**, **TDL-CX-005**, **TDL-CX-006** remain with current classifications. Phase 5 promotion pass must label each **`BLOCKING`** or **`EXPLICIT_NON_BLOCKING_LIMITATION`**. **TDL-CX-003** bounded by this audit (schema compat only).
+
+**Registry note:** **`AUDIT_IN_PROGRESS`** is the **current** registry coverage state Phase 5 may transition from — **not** listed as a circular blocker above.
 
 **BLOCKERS=NONE** for OQ-005 closure.
 
-**NEXT_ACTION=** Optional follow-up schema PR to drop `ENDED` after enum migration design; resolve TDL-CX-003 schema-debt contradiction in authority when migration lands.
+**NEXT_ACTION=** Phase 5 promotion gate execution; optional future PostgreSQL enum removal PR; classify CX-004/005/006 at promotion time.

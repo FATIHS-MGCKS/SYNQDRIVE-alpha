@@ -367,8 +367,8 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | **STATUS** | VALIDATED |
 | **BEFORE** | TDL-OQ-005 OPEN — unclear whether `TripDetectionState.ENDED` is live, historical, or safe to delete |
 | **WHY** | Promotion gate and schema cleanup require code + Production + migration evidence, not naming inference |
-| **CHANGE** | TDL-EVID-OQ005-ENDED-001: **0** runtime read/write; finalize → **RESTING**; Production **0** live + **0** tracking ENDED rows; **`ENDED_HISTORICAL_COMPAT_ONLY`**; removal **`SAFE_TO_REMOVE_AFTER_DATA_MIGRATION`**; **`REPURPOSE_UNSAFE`** |
-| **ALTERNATIVES REJECTED** | Treat ENDED as active FSM state; repurpose label; `SAFE_TO_REMOVE_NOW` without PostgreSQL enum migration |
+| **CHANGE** | TDL-EVID-OQ005-ENDED-001: **0** runtime read/write; finalize → **RESTING**; Production **0** live + **0** tracking ENDED rows @ live DB; **`ENDED_HISTORICAL_COMPAT_ONLY`**; **`RETAIN_HISTORICAL_COMPATIBILITY`**; **`REPURPOSE_NOT_JUSTIFIED`**; optional future enum removal = **`POSTGRES_ENUM_SCHEMA_MIGRATION_REQUIRED`** (no row backfill) |
+| **ALTERNATIVES REJECTED** | Treat ENDED as active FSM state; repurpose label; `SAFE_TO_REMOVE_AFTER_DATA_MIGRATION` wording (no ENDED rows to migrate) |
 | **EXPECTED EFFECT** | OQ-005 closed; TDL-CX-003 bounded; all TDL-OQ-001…010 closed |
 | **PRODUCTION STATUS** | Read-only SQL @ 2026-09-26 — six FSM rows all **RESTING** |
 | **NON-EFFECTS** | No Prisma/schema change in OQ-005 PR |

@@ -126,11 +126,11 @@
 
 ## TDL-OQ-005 — resolution (2026-09-26)
 
-**Evidence:** [TDL_OQ_005_ENDED_STATE_LIFECYCLE_AUDIT_2026-09-26.md](../evidence/TDL_OQ_005_ENDED_STATE_LIFECYCLE_AUDIT_2026-09-26.md) (TDL-EVID-OQ005-ENDED-001) @ `origin/main` `97cfde3d…`, Production DB read-only @ `2026-09-26`.
+**Evidence:** [TDL_OQ_005_ENDED_STATE_LIFECYCLE_AUDIT_2026-09-26.md](../evidence/TDL_OQ_005_ENDED_STATE_LIFECYCLE_AUDIT_2026-09-26.md) (TDL-EVID-OQ005-ENDED-001). **TASK_REPO_ANCHOR_SHA** `97cfde3d…`; **AUDIT_REPO_SHA** `f16ae03c0…`. DB observation @ live Production **`2b54a357…`** / `20260926094359_v4994` (task production anchor **`8a1d9c658…`** unchanged in prior OQs).
 
-**Verdict:** **`ENDED_HISTORICAL_COMPAT_ONLY`** — zero TS read/write; finalize → **`RESTING`**; Production **`0`** live and **`0`** tracking ENDED rows; removal = **`SAFE_TO_REMOVE_AFTER_DATA_MIGRATION`** follow-up only; **`REPURPOSE_UNSAFE`**.
+**Verdict:** **`ENDED_HISTORICAL_COMPAT_ONLY`** — **`RETAIN_HISTORICAL_COMPATIBILITY`**; **`REPURPOSE_NOT_JUSTIFIED`**; future enum drop = schema migration only (**`ENDED_DATA_BACKFILL_REQUIRED_CURRENTLY=NO`**).
 
-**Status:** **RESOLVED** — all TDL-OQ-001…010 now **CLOSED**; **`AUTHORITY_ACTIVE`** promotion still **not** auto-ready (Phase 5 gate + graph completeness).
+**Status:** **RESOLVED** — all TDL-OQ-001…010 **CLOSED**. **`AUTHORITY_ACTIVE`** requires Phase 5 gate (see evidence Phase 14 blockers — QS gaps **not** automatic veto).
 
 ## Hypotheses (not confirmed)
 
