@@ -1710,6 +1710,8 @@ model Organization {
   tripAssessabilities                                       TripAssessability[]
   drivingEvidence                                           DrivingEvidence[]
   drivingAnalysisRuns                                       DrivingAnalysisRun[]
+  diV0ShadowRuns                                            DiV0ShadowRun[]
+  diV0ShadowIntervals                                       DiV0ShadowInterval[]
   driverAttributions                                        DriverAttribution[]
   drivingDecisionAudits                                     DrivingDecisionAudit[]
   drivingAnalysisStages                                     DrivingAnalysisStage[]
@@ -3058,6 +3060,8 @@ model Vehicle {
   tripAssessabilities                    TripAssessability[]
   drivingEvidence                        DrivingEvidence[]
   drivingAnalysisRuns                    DrivingAnalysisRun[]
+  diV0ShadowRuns                         DiV0ShadowRun[]
+  diV0ShadowIntervals                  DiV0ShadowInterval[]
   driverAttributions                     DriverAttribution[]
   drivingIntelligenceJobs                DrivingIntelligenceJob[]
 
@@ -10317,6 +10321,8 @@ model VehicleTrip {
   tripAssessabilities                 TripAssessability[]
   drivingEvidence                     DrivingEvidence[]
   drivingAnalysisRuns                 DrivingAnalysisRun[]
+  diV0ShadowRuns                      DiV0ShadowRun[]
+  diV0ShadowIntervals                 DiV0ShadowInterval[]
   drivingIntelligenceJobs             DrivingIntelligenceJob[]
   driverAttributions                  DriverAttribution[]
   repairs                             TripRepair[]
@@ -11759,6 +11765,94 @@ model DrivingAnalysisRun {
   @@index([inputFingerprint])
   @@index([supersedesRunId])
   @@map("driving_analysis_runs")
+}
+
+/// EXP-021 DI V0 shadow run ledger (non-authoritative; isolated from canonical trip scoring).
+model DiV0ShadowRun {
+  id                        String    @id @default(uuid())
+  organizationId            String    @map("organization_id")
+  vehicleId                 String    @map("vehicle_id")
+  tripId                    String    @map("trip_id")
+  sourceFamily              String    @map("source_family")
+  structuralVersion         String    @map("structural_version")
+  estimatorVersion          String    @map("estimator_version")
+  calibrationVersion        String    @map("calibration_version")
+  sourceFamilyPolicyVersion String    @map("source_family_policy_version")
+  inputEvidenceVersion      String    @map("input_evidence_version")
+  idempotencyKey            String    @map("idempotency_key")
+  status                    String    @default("PENDING")
+  startedAt                 DateTime? @map("started_at")
+  completedAt               DateTime? @map("completed_at")
+  failedAt                  DateTime? @map("failed_at")
+  intervalCount             Int       @default(0) @map("interval_count")
+  numericSpeedCount         Int       @default(0) @map("numeric_speed_count")
+  abstentionCount           Int       @default(0) @map("abstention_count")
+  conflictCount             Int       @default(0) @map("conflict_count")
+  failureCode               String?   @map("failure_code")
+  failureDetailSafe         String?   @map("failure_detail_safe")
+  createdAt                 DateTime  @default(now()) @map("created_at")
+  updatedAt                 DateTime  @updatedAt @map("updated_at")
+
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle              @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  trip         VehicleTrip          @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  intervals    DiV0ShadowInterval[]
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([tripId])
+  @@index([vehicleId, createdAt])
+  @@index([organizationId, createdAt])
+  @@index([status, createdAt])
+  @@index([tripId, structuralVersion, estimatorVersion, calibrationVersion, sourceFamilyPolicyVersion, inputEvidenceVersion])
+  @@map("di_v0_shadow_runs")
+}
+
+/// EXP-021 DI V0 shadow interval rows (append-only per run; not customer-facing truth).
+model DiV0ShadowInterval {
+  id                        String   @id @default(uuid())
+  shadowRunId               String   @map("shadow_run_id")
+  organizationId            String   @map("organization_id")
+  vehicleId                 String   @map("vehicle_id")
+  tripId                    String   @map("trip_id")
+  intervalStart             DateTime @map("interval_start")
+  intervalEnd               DateTime @map("interval_end")
+  referenceTime             DateTime @map("reference_time")
+  motionState               String   @map("motion_state")
+  positionState             String   @map("position_state")
+  causalPositionState       String   @map("causal_position_state")
+  estimatedSpeedKmh         Float?   @map("estimated_speed_kmh")
+  speedRangeMinKmh          Float?   @map("speed_range_min_kmh")
+  speedRangeMaxKmh          Float?   @map("speed_range_max_kmh")
+  speedEvidenceState        String?  @map("speed_evidence_state")
+  temporalConfidence        String   @map("temporal_confidence")
+  valueConfidence           String   @map("value_confidence")
+  sourceRelation            String   @map("source_relation")
+  claimLevel                String   @map("claim_level")
+  abstentionReason          String?  @map("abstention_reason")
+  evidenceSources           Json     @default("[]") @map("evidence_sources")
+  sourceQualityFlags        Json     @default("[]") @map("source_quality_flags")
+  supportIntervalStart      DateTime? @map("support_interval_start")
+  supportIntervalEnd        DateTime? @map("support_interval_end")
+  derivationMethod          String   @map("derivation_method")
+  derivationVersion         String   @map("derivation_version")
+  structuralVersion         String   @map("structural_version")
+  estimatorVersion          String   @map("estimator_version")
+  calibrationVersion        String   @map("calibration_version")
+  sourceFamilyPolicyVersion String   @map("source_family_policy_version")
+  provenance                Json     @map("provenance")
+  legacyComparison          Json?    @map("legacy_comparison")
+  createdAt                 DateTime @default(now()) @map("created_at")
+
+  shadowRun    DiV0ShadowRun @relation(fields: [shadowRunId], references: [id], onDelete: Cascade)
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle       @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  trip         VehicleTrip   @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@unique([shadowRunId, intervalStart])
+  @@index([tripId])
+  @@index([vehicleId, createdAt])
+  @@index([organizationId, createdAt])
+  @@map("di_v0_shadow_intervals")
 }
 
 /// Materialized driver attribution snapshot per trip (Driving Intelligence V2 P54).

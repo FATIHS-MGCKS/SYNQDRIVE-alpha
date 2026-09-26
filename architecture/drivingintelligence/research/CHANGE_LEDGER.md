@@ -1000,6 +1000,23 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Status | `VALIDATED` (code/tests) — draft PR, not deployed |
 | Evidence | `evidence/reference-capture/EXP_021_C05_CG01_COLD_ENGINE_FULL_THROTTLE_2026-09-24.md` |
 
+### EXP-021 C1D.6 — DI V0 shadow persistence S2 (2026-09-26)
+
+| Field | Value |
+|-------|--------|
+| Trigger | C1D.5 S0/S1 merged; C1D.4 storage design |
+| Change | `di_v0_shadow_runs` / `di_v0_shadow_intervals` + `shadow-persistence/` adapter (no runtime caller) |
+| Versions | Structural / estimator contracts unchanged; storage append-only |
+
+### EXP-021 C1D.6B — shadow persistence hardening closure (2026-09-26)
+
+| Field | Value |
+|-------|--------|
+| Trigger | C1D.6A pre-merge audit `BLOCKED` (cross-tenant association, tx client, summary authority, DB CHECK gaps) |
+| Change | Trip identity guard; tx-scoped repository; DB CHECK constraints; status machine; completion counts from DB; redundant index removed; integration harness bootstrap script |
+| NON_EFFECTS | No S3 worker, no canonical trip mutation, no production migration |
+| Evidence | `evidence/EXP_021_C1D6_S2_SHADOW_PERSISTENCE_2026-09-26.md` (updated) |
+
 ### EXP-021 C1D.5B — pure core pre-merge fail-safe closure (2026-09-26)
 
 | Field | Value |
