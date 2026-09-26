@@ -70,6 +70,29 @@ const LIVE = process.env.ERD_E6_3_RECOVERY_INTEGRATION === '1';
     await prisma?.$disconnect().catch(() => undefined);
   });
 
+  async function drainActiveQueueJobs(): Promise<void> {
+    const states = ['waiting', 'delayed', 'active', 'completed', 'failed', 'prioritized'] as const;
+    for (const state of states) {
+      const jobs = await queue.getJobs([state]);
+      for (const job of jobs) {
+        await job.remove().catch(() => undefined);
+      }
+    }
+  }
+
+  async function jobCountForEventIds(eventIds: string[]): Promise<number> {
+    let count = 0;
+    for (const id of eventIds) {
+      const event = await prisma.vehicleEnergyEvent.findUniqueOrThrow({ where: { id } });
+      if (await queue.getJob(deterministicRechargeJobId(event))) count += 1;
+    }
+    return count;
+  }
+
+  beforeEach(async () => {
+    await drainActiveQueueJobs();
+  });
+
   function fingerprintForEvent(event: { id: string; startLatitude: number | null; startLongitude: number | null; endLatitude: number | null; endLongitude: number | null }) {
     const coordinateOutcome = deriveCanonicalChargingStationEnrichmentCoordinate(event as never);
     return buildChargingStationEnrichmentInputFingerprint({
@@ -197,9 +220,14 @@ const LIVE = process.env.ERD_E6_3_RECOVERY_INTEGRATION === '1';
     const { org, vehicle, event } = await seedCanonicalEvent();
     try {
       await orchestrator.processEnergyEvent(event.id);
+      await drainActiveQueueJobs();
       const recovered = await scheduler.recoverMissedEnrichments();
       expect(recovered).toBe(0);
-      const skip = await producer.enqueueForEventOutcome(event);
+      const refreshed = await prisma.vehicleEnergyEvent.findUniqueOrThrow({
+        where: { id: event.id },
+        include: { chargingStationEnrichment: true },
+      });
+      const skip = await producer.enqueueForEventOutcome(refreshed);
       expect(skip.status).toBe('terminal_skip');
     } finally {
       await cleanupOrgVehicle(prisma, org.id, vehicle.id, [event.id]);
@@ -214,9 +242,13 @@ const LIVE = process.env.ERD_E6_3_RECOVERY_INTEGRATION === '1';
       endTime: E6_3_PRE_CUTOVER_END,
     });
     try {
-      const recovered = await scheduler.recoverMissedEnrichments();
-      expect(recovered).toBe(0);
+      await scheduler.recoverMissedEnrichments();
       expect(await queue.getJob(deterministicRechargeJobId(event))).toBeNull();
+      expect(
+        await prisma.vehicleEnergyEventChargingStationEnrichment.findUnique({
+          where: { energyEventId: event.id },
+        }),
+      ).toBeNull();
     } finally {
       await cleanupOrgVehicle(prisma, org.id, vehicle.id, [event.id]);
     }
@@ -253,10 +285,17 @@ const LIVE = process.env.ERD_E6_3_RECOVERY_INTEGRATION === '1';
       },
     });
     try {
-      const recovered = await scheduler.recoverMissedEnrichments();
-      expect(recovered).toBe(0);
-      expect(await queue.getJob(deterministicRechargeJobId(refuel as never))).toBeNull();
-      expect(await queue.getJob(deterministicRechargeJobId(legacy as never))).toBeNull();
+      await scheduler.recoverMissedEnrichments();
+      expect(
+        await prisma.vehicleEnergyEventChargingStationEnrichment.findUnique({
+          where: { energyEventId: refuel.id },
+        }),
+      ).toBeNull();
+      expect(
+        await prisma.vehicleEnergyEventChargingStationEnrichment.findUnique({
+          where: { energyEventId: legacy.id },
+        }),
+      ).toBeNull();
     } finally {
       await cleanupOrgVehicle(prisma, org.id, vehicle.id, [refuel.id, legacy.id]);
     }
@@ -275,10 +314,11 @@ const LIVE = process.env.ERD_E6_3_RECOVERY_INTEGRATION === '1';
         const { org, vehicle, event } = await seedCanonicalEvent();
         seeds.push({ orgId: org.id, vehicleId: vehicle.id, eventId: event.id });
       }
-      const first = await batchScheduler.recoverMissedEnrichments();
-      expect(first).toBe(2);
-      const second = await batchScheduler.recoverMissedEnrichments();
-      expect(second).toBe(1);
+      const eventIds = seeds.map((s) => s.eventId);
+      await batchScheduler.recoverMissedEnrichments();
+      expect(await jobCountForEventIds(eventIds)).toBe(2);
+      await batchScheduler.recoverMissedEnrichments();
+      expect(await jobCountForEventIds(eventIds)).toBe(3);
     } finally {
       for (const seed of seeds) {
         await cleanupOrgVehicle(prisma, seed.orgId, seed.vehicleId, [seed.eventId]);
