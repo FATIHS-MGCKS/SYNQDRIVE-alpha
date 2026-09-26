@@ -710,9 +710,10 @@ nodes:
     type: contradiction
     title: ENDED enum vs live engine
     epistemic_status: CONFIRMED
-    summary: Schema includes ENDED; zero runtime writers.
+    summary: BOUNDED RESOLVED — ENDED historical compat only; zero runtime writers; Production 0 ENDED rows; optional enum migration follow-up.
     source_paths:
       - architecture/trip-detection-lifecycle/contradictions/OPEN_CONTRADICTIONS.md
+      - architecture/trip-detection-lifecycle/evidence/TDL_OQ_005_ENDED_STATE_LIFECYCLE_AUDIT_2026-09-26.md
 
   - id: TDL-CX-004
     type: contradiction
@@ -970,3 +971,25 @@ nodes:
       - architecture/trip-detection-lifecycle/decisions/DECISION_REGISTER.md
     evidence:
       - TDL-EVID-OQ010-LEGACY-INV-001
+
+  - id: TDL-EVID-OQ005-ENDED-001
+    type: evidence
+    title: TDL-OQ-005 TripDetectionState.ENDED lifecycle audit
+    source_type: PRODUCTION_OBSERVATION
+    epistemic_status: CONFIRMED
+    summary: >
+      Zero runtime read/write; finalize to RESTING; Production 0 live and 0 tracking ENDED rows;
+      ENDED_HISTORICAL_COMPAT_ONLY; SAFE_TO_REMOVE_AFTER_DATA_MIGRATION follow-up.
+    source_paths:
+      - architecture/trip-detection-lifecycle/evidence/TDL_OQ_005_ENDED_STATE_LIFECYCLE_AUDIT_2026-09-26.md
+
+  - id: TDL-DEC-OQ005-001
+    type: decision
+    title: TripDetectionState.ENDED historical compatibility
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: Closes TDL-OQ-005; deprecates ENDED in authority; no schema change in audit PR.
+    source_paths:
+      - architecture/trip-detection-lifecycle/decisions/DECISION_REGISTER.md
+    evidence:
+      - TDL-EVID-OQ005-ENDED-001

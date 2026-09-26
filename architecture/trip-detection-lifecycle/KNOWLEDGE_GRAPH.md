@@ -14,6 +14,8 @@ Machine-readable graph: [`graph/`](graph/) · Validator: `bash architecture/trip
 | **TDL-OQ-004** | **RESOLVED** — route artifact coverage policy @ `2026-09-25` (TDL-EVID-OQ004-ROUTE-COV-001; epistemic correction same day) |
 | **TDL-OQ-008** | **RESOLVED** — feature-flag matrix @ `2026-09-25` (TDL-EVID-OQ008-FLAG-MATRIX-001) |
 | **TDL-OQ-009** | **RESOLVED** — tiered polling + R9 ingress @ `2026-09-26` (TDL-EVID-OQ009-R9-INGRESS-001) |
+| **TDL-OQ-010** | **RESOLVED** — legacy/duplicate path inventory @ `2026-09-26` (TDL-EVID-OQ010-LEGACY-INV-001) |
+| **TDL-OQ-005** | **RESOLVED** — `TripDetectionState.ENDED` @ `2026-09-26` (TDL-EVID-OQ005-ENDED-001) |
 | **TDL-OQ-010** | **RESOLVED** — legacy/duplicate runtime inventory @ `2026-09-26` (TDL-EVID-OQ010-LEGACY-INV-001; **`RESOLVED_WITH_BOUNDED_DEBT`**) |
 | **PRODUCTION_CURRENT** | `8a1d9c658…` @ `20260925182907_v4994` |
 | **Shadow runtime** | **LAST_VERIFIED @ `99d722b4…`** — not re-checked @ `8a1d9c658…` in OQ-004 |
@@ -77,6 +79,7 @@ Provider wake eligible (AVAILABLE|RENTED, DIMO CONNECTED, FSM RESTING)
 | TDL-DEC-OQ008-001 | Trip runtime-control matrix (defaults vs Production effective) | VALIDATED |
 | TDL-DEC-OQ009-001 | Tiered polling + R9 provider-wake ingress contract | VALIDATED (**`RESOLVED_INGRESS_CONTRACT_ALIGNED`**) |
 | TDL-DEC-OQ010-001 | Legacy/duplicate trip runtime path inventory — dual post-finalize pipelines | VALIDATED (**`RESOLVED_WITH_BOUNDED_DEBT`**) |
+| TDL-DEC-OQ005-001 | `TripDetectionState.ENDED` historical compat; RESTING terminal FSM | VALIDATED (**`ENDED_HISTORICAL_COMPAT_ONLY`**) |
 
 Detail: [decisions/DECISION_REGISTER.md](decisions/DECISION_REGISTER.md)
 

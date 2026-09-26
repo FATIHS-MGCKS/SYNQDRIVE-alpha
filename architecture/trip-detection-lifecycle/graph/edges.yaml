@@ -173,3 +173,10 @@ edges:
   - from: TDL-DEC-OQ010-001
     relation: validates
     to: TDL-GAP-012
+
+  - from: TDL-EVID-OQ005-ENDED-001
+    relation: supports
+    to: TDL-DEC-OQ005-001
+  - from: TDL-DEC-OQ005-001
+    relation: validates
+    to: TDL-CX-003
