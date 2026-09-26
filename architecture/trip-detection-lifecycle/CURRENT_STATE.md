@@ -73,7 +73,7 @@ Prisma enum `TripDetectionState`:
 | `ACTIVE_TRIP` | Confirmed movement trip |
 | `IDLE_WITHIN_TRIP` | Stopped but trip still open |
 | `POSSIBLE_END` | End candidate (trip still ONGOING) |
-| `ENDED` | **Schema-only — no runtime writer** (zero `TripDetectionState.ENDED` in `trips/`) |
+| `ENDED` | **Schema-only — deprecated compat label** (TDL-OQ-005); **zero** runtime read/write; Production **0** rows @ 2026-09-26 |
 
 Successful finalize → **`RESTING`**, not `ENDED` (TDL-EV-P2-001 + code reconfirmation).
 
@@ -298,6 +298,8 @@ See [contradictions/OPEN_CONTRADICTIONS.md](contradictions/OPEN_CONTRADICTIONS.m
 | **Battery V2** | Downstream trip hooks |
 | **DIMO Integration** | Provider transport/auth/webhook gateway ([`architecture/dimo-integration/`](../dimo-integration/), `AUDIT_IN_PROGRESS`) — R9 webhook wiring documented on both authorities |
 
-**Open:** TDL-OQ-005 only (schema enum `ENDED`).
+**Open OQs:** **none** — TDL-OQ-001…010 **CLOSED** (OQ-005 @ 2026-09-26).
+
+**OQ-005 (2026-09-26):** `TripDetectionState.ENDED` — [TDL_OQ_005_ENDED_STATE_LIFECYCLE_AUDIT_2026-09-26.md](evidence/TDL_OQ_005_ENDED_STATE_LIFECYCLE_AUDIT_2026-09-26.md). **Historical compat only**; optional enum-removal follow-up.
 
 **OQ-010 (2026-09-26):** Legacy/duplicate path inventory — see [TDL_OQ_010_LEGACY_DUPLICATE_PATH_INVENTORY_2026-09-26.md](evidence/TDL_OQ_010_LEGACY_DUPLICATE_PATH_INVENTORY_2026-09-26.md). DI V2 + legacy HF parallel; segment detectors **repair**, not dead.

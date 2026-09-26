@@ -6,7 +6,7 @@
 | **TDL-OQ-002** | Does `backend/src/modules/vehicle-intelligence/drive-profile/` belong to Trip Detection, Battery V2, or a shared profile layer? | High | Yes (boundary) | **RESOLVED** — see §TDL-OQ-002 below | **CLOSED** (2026-09-25) |
 | **TDL-OQ-003** | Why does Production have only a small number of `vehicle_trip_detection_states` rows while tracking runs are in the thousands? | Medium | No | **RESOLVED** — see §TDL-OQ-003 below | **CLOSED** (2026-09-25) |
 | **TDL-OQ-004** | What is the target route-artifact coverage policy and current bottleneck (Mapbox, FMM, eligibility gates)? | Medium | No | **RESOLVED** — see §TDL-OQ-004 below | **CLOSED** (2026-09-25) |
-| **TDL-OQ-005** | Should Prisma `TripDetectionState.ENDED` be removed or repurposed? | Low | No | OPEN |
+| **TDL-OQ-005** | Should Prisma `TripDetectionState.ENDED` be removed or repurposed? | Low | No | **RESOLVED** — see §TDL-OQ-005 below | **CLOSED** (2026-09-26) |
 | **TDL-OQ-006** | How do DIMO Segments reconcile with live FSM boundaries when both exist — which wins in conflict? | High | No — boundary contract documented | **RESOLVED** — see §TDL-OQ-006 below | **CLOSED** (2026-09-25) |
 | **TDL-OQ-007** | Are R1–R8 behaviors validated on Production post-deploy, or only on `main` via tests? | Medium | Yes for PRODUCTION_VALIDATED claims | **RESOLVED** — see §TDL-OQ-007 below | **CLOSED** (2026-09-25) |
 | **TDL-OQ-008** | What is the complete trip-related feature-flag matrix and default values per environment? | Medium | No | **RESOLVED** — see §TDL-OQ-008 below | **CLOSED** (2026-09-25) |
@@ -123,6 +123,14 @@
 **Verdict:** **`RESOLVED_WITH_BOUNDED_DEBT`** — **41-row** productive path matrix; **`TripDecisionEngine`** sole lifecycle writer; Route V2 via **`matchMapboxChunkDetailed`**; **`mapMatchRoute()`** dead; pre-V2 segment detectors **ACTIVE_REPAIR**; **DI V2 + legacy HF** parallel with bounded duplicate route/impact semantics.
 
 **Status:** **RESOLVED**
+
+## TDL-OQ-005 — resolution (2026-09-26)
+
+**Evidence:** [TDL_OQ_005_ENDED_STATE_LIFECYCLE_AUDIT_2026-09-26.md](../evidence/TDL_OQ_005_ENDED_STATE_LIFECYCLE_AUDIT_2026-09-26.md) (TDL-EVID-OQ005-ENDED-001). **TASK_REPO_ANCHOR_SHA** `97cfde3d…`; **AUDIT_REPO_SHA** `f16ae03c0…`. DB observation @ live Production **`2b54a357…`** / `20260926094359_v4994` (task production anchor **`8a1d9c658…`** unchanged in prior OQs).
+
+**Verdict:** **`ENDED_HISTORICAL_COMPAT_ONLY`** — **`RETAIN_HISTORICAL_COMPATIBILITY`**; **`REPURPOSE_NOT_JUSTIFIED`**; future enum drop = schema migration only (**`ENDED_DATA_BACKFILL_REQUIRED_CURRENTLY=NO`**).
+
+**Status:** **RESOLVED** — all TDL-OQ-001…010 **CLOSED**. **`AUTHORITY_ACTIVE`** requires Phase 5 gate (see evidence Phase 14 blockers — QS gaps **not** automatic veto).
 
 ## Hypotheses (not confirmed)
 
