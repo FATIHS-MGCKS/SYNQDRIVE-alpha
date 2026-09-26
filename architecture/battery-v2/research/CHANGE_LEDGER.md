@@ -6,6 +6,74 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+---
+
+---
+
+## CL-2026-09-26 — M3.3F F3 controlled C3 shadow activation (runtime PASS, natural PENDING)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | F2 PASS on main; production C3/D3 effective OFF; `battery_rest_session_features` count **0**; F1 code @ `2b54a357854c9d44f638ee857f72936967c04992`. |
+| **OBSERVATION** | F3 authorized env-only C3 enablement with canary + dual-replica convergence; D3 must remain OFF; `F_C3_T0` immutable after full success. |
+| **CHANGE** | Atomic `BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED=true` in shared `backend.env`; rolling PM2 restart (A canary → B); **`F_C3_T0=2026-09-26T11:09:12Z`**. |
+| **WHY** | First production C3 shadow path under M3.3F gate without D3 materialization. |
+| **VALIDATION** | `research/M3_3F_F3_C3_SHADOW_ACTIVATION_2026-09-26.md` — health/SHA/scheduler; D3 delta **0**; `FAILED_ISOLATED` delta **0**; 360s post-T0 window. |
+| **OBSERVED_EFFECT** | **`F3_RUNTIME_ACTIVATION_RESULT=PASS`**; **`C3_PRODUCTION_ACTIVATED=YES`**; **`F3_NATURAL_C3_VALIDATION=PENDING`** (0 post-T0 rows in window); **`F4_ALLOWED=NO`**. |
+| **NON_EFFECTS** | D3 flag/scheduler/reconciliation; D4/E3 runtime; assessment/publication/readiness policy; backfill; `F_D3_T0`. |
+| **REMAINING_GAPS** | Natural post-T0 C3 rows + C5A on first sample before F4; not fleet-scale calibration. |
+| **DECISION_STATUS** | **PRODUCTION_VALIDATED** (C3 runtime activation scope) |
+| **EVIDENCE** | Env backup `backend.env.bak-f3-c3-20260926110619`; DB backup `db-pre-f3-c3-20260926110619.sql.gz`. |
+
+## CL-2026-09-26 — M3.3F F2 flag-OFF production deploy + zero-write smoke (PASS)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | F1 on main (`2b54a357854c9d44f638ee857f72936967c04992`); production behind F1 @ `8a1d9c6586cbddc41bb6c94870f9d51226d71aa2`; C3/D3 flags absent (effective OFF). |
+| **OBSERVATION** | F2 requires exact-SHA deploy when production lacks F1, then flag-OFF proof: ops CLI, DB deltas, metrics, scheduler/health, no automatic D3. |
+| **CHANGE** | Production deploy to F1 merge SHA (`20260926094359_v4994`); read-only validation only — **no** env flag edits, **no** F3/C3 activation, **no** backfill. |
+| **WHY** | Close M3.3F F2 gate before any controlled C3 shadow activation (F3). |
+| **VALIDATION** | `research/M3_3F_F2_FLAG_OFF_PRODUCTION_DEPLOY_2026-09-26.md` — dual-replica health; SHA invariant; C3/D3 effective FALSE; ops `SKIPPED_FLAG_OFF`; C3/D3 row deltas 0 over 180s; D3/D4 metric HELP/TYPE; rollback assets present. |
+| **OBSERVED_EFFECT** | **`M3_3F_F2_PRODUCTION_GATE=PASS`**; **`F3_ALLOWED=YES`**; **`F3_EXECUTED=NO`**. |
+| **NON_EFFECTS** | C3/D3 production activation; D4/E3 runtime reachability; assessment/publication/readiness changes; numeric calibration; `F_C3_T0` / `F_D3_T0` assignment. |
+| **REMAINING_GAPS** | Flag-ON / natural-event authoritative equivalence **NOT_PROVEN_IN_F2**; M3.3F product phases F3–H remain pending. |
+| **DECISION_STATUS** | **PRODUCTION_VALIDATED** (F2 flag-OFF scope only) |
+| **EVIDENCE** | F1 PR #1787; deploy backup `db-pre-deploy-20260926094359.sql.gz`; probe org/veh SHA256 only in evidence doc. |
+
+## CL-2026-09-26 — M3.3F F1.2 ops CLI exit lifecycle (merge gate)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | D3 materialize ops CLI returns exit codes via `process.exitCode`; guaranteed Nest/Prisma close in `finally` (no post-bootstrap `process.exit`). |
+| **WHY** | `process.exit` bypasses async cleanup of application context. |
+| **NON_EFFECTS** | No scientific or flag changes. |
+
+## CL-2026-09-26 — M3.3F F1.1 pre-merge ops bootstrap + strict session limits
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Ops materialize CLI uses production Nest application context + backend `.env` load; strict integer parsing for materialization session limit env/CLI/override. |
+| **WHY** | Standalone ts-node must see production shared env; partial `parseInt` acceptance violated positive-integer-only policy. |
+| **NON_EFFECTS** | No D3 scientific/persistence change; no flag enable; no scheduler. |
+| **VALIDATION** | ops-bootstrap + runtime-config tests; F1 regressions. |
+
+## CL-2026-09-26 — M3.3F F1 D3 materialization runtime foundation (engineering draft)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | M3.3F F0 on main; D3 scientific stack internal-only; not Nest-registered; no D3 materialization env flag. |
+| **OBSERVATION** | F0 requires F1 safe runtime foundation before flag-OFF deploy and scheduled reconciliation. |
+| **CHANGE** | D3 flag + session limit authority; `BatteryGeneralizedEvidenceModule` DI; gated `LongitudinalProfileMaterializationRuntimeService`; D3/D4 Prometheus helpers; ops CLI skeleton; focused unit tests. |
+| **WHY** | Prevent ungated D3 writes; establish observability and on-demand ops path without automatic production execution. |
+| **EXPECTED_EFFECT** | **`D3_CODE_DI_REGISTERED=YES`**; **`D3_AUTOMATIC_RUNTIME_CALL_SITES=0`**; flag OFF → zero materialization work. |
+| **VALIDATION** | F1 unit tests; longitudinal/C3 regressions; `validate-graph.sh`; `validate-module-registry.sh`; backend build. |
+| **NON_EFFECTS** | No production flag enable; no scheduler; no C3/E3/D4 runtime coupling; no Prisma/migration; no backfill/T0 assignment. |
+| **AFTER** | **`M3_3F_F1_ENGINEERING_DRAFT`** (pending merge); **`PRODUCTION_MATERIALIZATION_READY=NO`**. |
+| **DECISION_STATUS** | **M3_3F_F1_ENGINEERING_DRAFT** |
+| **EVIDENCE** | `M3_3F_F1_D3_MATERIALIZATION_RUNTIME_FOUNDATION_2026-09-26.md` |
+
 ## CL-2026-09-25 — M3.3F production shadow + natural calibration architecture (draft)
 
 | Field | Value |

@@ -9,7 +9,7 @@ import type {
 import type { LongitudinalInputReaderService } from './longitudinal-input.reader';
 
 /**
- * M3.3D D3 foundation — internal only; not registered in Nest modules until M3.3F.
+ * M3.3D D3 foundation — scientific materialization orchestration (Nest-registered in M3.3F F1; callers must use gated runtime facade).
  */
 export class LongitudinalProfileMaterializationService {
   constructor(

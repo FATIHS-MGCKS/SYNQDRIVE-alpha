@@ -31,7 +31,7 @@
 
 ## Phase status (this document)
 
-Phase **1** documents an **initial consolidated baseline** — not a claim that repository audit is fully complete. Outstanding gaps include dead/legacy path inventory (TDL-OQ-010). **Feature-flag / runtime-control matrix closed** via TDL-OQ-008 (TDL-EVID-OQ008-FLAG-MATRIX-001). **Tiered snapshot polling + R9 provider-wake ingress closed** via TDL-OQ-009 (TDL-EVID-OQ009-R9-INGRESS-001). **Route V2 Mapbox/FMM failure taxonomy closed** via TDL-OQ-004 (TDL-EVID-OQ004-ROUTE-COV-001); handler artifact contract remains optional follow-up.
+Phase **1** documents an **initial consolidated baseline** — not a claim that repository audit is fully complete. **Dead/legacy path inventory closed** via TDL-OQ-010 (TDL-EVID-OQ010-LEGACY-INV-001). **Feature-flag / runtime-control matrix closed** via TDL-OQ-008 (TDL-EVID-OQ008-FLAG-MATRIX-001). **Tiered snapshot polling + R9 provider-wake ingress closed** via TDL-OQ-009 (TDL-EVID-OQ009-R9-INGRESS-001). **Route V2 Mapbox/FMM failure taxonomy closed** via TDL-OQ-004 (TDL-EVID-OQ004-ROUTE-COV-001); handler artifact contract remains optional follow-up.
 
 ---
 
@@ -73,7 +73,7 @@ Prisma enum `TripDetectionState`:
 | `ACTIVE_TRIP` | Confirmed movement trip |
 | `IDLE_WITHIN_TRIP` | Stopped but trip still open |
 | `POSSIBLE_END` | End candidate (trip still ONGOING) |
-| `ENDED` | **Schema-only — no runtime writer** (zero `TripDetectionState.ENDED` in `trips/`) |
+| `ENDED` | **Schema-only — deprecated compat label** (TDL-OQ-005); **zero** runtime read/write; Production **0** rows @ 2026-09-26 |
 
 Successful finalize → **`RESTING`**, not `ENDED` (TDL-EV-P2-001 + code reconfirmation).
 
@@ -298,6 +298,8 @@ See [contradictions/OPEN_CONTRADICTIONS.md](contradictions/OPEN_CONTRADICTIONS.m
 | **Battery V2** | Downstream trip hooks |
 | **DIMO Integration** | Provider transport/auth/webhook gateway ([`architecture/dimo-integration/`](../dimo-integration/), `AUDIT_IN_PROGRESS`) — R9 webhook wiring documented on both authorities |
 
-**Open:** TDL-OQ-005, TDL-OQ-010; legacy path inventory.
+**Open OQs:** **none** — TDL-OQ-001…010 **CLOSED** (OQ-005 @ 2026-09-26).
 
-**OQ-009 (2026-09-26):** Tiered polling + R9 ingress **aligned** on `main` and Production @ `8a1d9c658…` — see [TDL_OQ_009_TIERED_POLLING_R9_INGRESS_2026-09-26.md](evidence/TDL_OQ_009_TIERED_POLLING_R9_INGRESS_2026-09-26.md). Scheduler tick **30s** ≠ per-vehicle poll every 30s. **R9 authorized provider cohort 5/5 subscribed**; **6** scheduler DB rows include **1** stale former-fleet mirror (DIM-GAP-005).
+**OQ-005 (2026-09-26):** `TripDetectionState.ENDED` — [TDL_OQ_005_ENDED_STATE_LIFECYCLE_AUDIT_2026-09-26.md](evidence/TDL_OQ_005_ENDED_STATE_LIFECYCLE_AUDIT_2026-09-26.md). **Historical compat only**; optional enum-removal follow-up.
+
+**OQ-010 (2026-09-26):** Legacy/duplicate path inventory — see [TDL_OQ_010_LEGACY_DUPLICATE_PATH_INVENTORY_2026-09-26.md](evidence/TDL_OQ_010_LEGACY_DUPLICATE_PATH_INVENTORY_2026-09-26.md). DI V2 + legacy HF parallel; segment detectors **repair**, not dead.

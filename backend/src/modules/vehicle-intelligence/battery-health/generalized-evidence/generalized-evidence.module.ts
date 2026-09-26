@@ -10,6 +10,10 @@ import { RestSessionFeatureComputationService } from './rest-session-features/re
 import { RestSessionFeatureShadowTriggerService } from './rest-session-features/rest-session-feature-shadow-trigger.service';
 import { RestSessionFeatureShadowInspectionService } from './rest-session-features/rest-session-feature-shadow-inspection.service';
 import { LongitudinalInputReaderService } from './rest-session-features/longitudinal/longitudinal-input.reader';
+import { LongitudinalProfileMaterializationRepository } from './rest-session-features/longitudinal/longitudinal-profile-materialization.repository';
+import { LongitudinalProfileMaterializationService } from './rest-session-features/longitudinal/longitudinal-profile-materialization.service';
+import { LongitudinalProfileMaterializationRuntimeService } from './rest-session-features/longitudinal/longitudinal-profile-materialization.runtime.service';
+import { PrismaService } from '@shared/database/prisma.service';
 
 @Module({
   imports: [ProviderObservabilityGapModule, PrismaModule],
@@ -20,6 +24,21 @@ import { LongitudinalInputReaderService } from './rest-session-features/longitud
     RestSessionFeatureShadowTriggerService,
     RestSessionFeatureShadowInspectionService,
     LongitudinalInputReaderService,
+    {
+      provide: LongitudinalProfileMaterializationRepository,
+      useFactory: (prisma: PrismaService) =>
+        new LongitudinalProfileMaterializationRepository(prisma),
+      inject: [PrismaService],
+    },
+    {
+      provide: LongitudinalProfileMaterializationService,
+      useFactory: (
+        inputReader: LongitudinalInputReaderService,
+        materializationRepository: LongitudinalProfileMaterializationRepository,
+      ) => new LongitudinalProfileMaterializationService(inputReader, materializationRepository),
+      inject: [LongitudinalInputReaderService, LongitudinalProfileMaterializationRepository],
+    },
+    LongitudinalProfileMaterializationRuntimeService,
     BatteryRestSessionService,
     LateTripAssociationService,
     GeneralizedEvidenceCaptureService,
@@ -31,6 +50,7 @@ import { LongitudinalInputReaderService } from './rest-session-features/longitud
     GeneralizedEvidenceCaptureService,
     RestSessionFeatureShadowInspectionService,
     LongitudinalInputReaderService,
+    LongitudinalProfileMaterializationRuntimeService,
     ProviderObservabilityGapModule,
   ],
 })

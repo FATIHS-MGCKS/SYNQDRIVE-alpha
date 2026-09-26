@@ -32,6 +32,7 @@
     "test:battery:v2:longitudinal-profile-materialization:postgres": "bash scripts/test/battery-longitudinal-profile-materialization-postgres-ci.sh",
     "test:battery:v2:longitudinal-integrity-inspection:postgres": "bash scripts/test/battery-longitudinal-integrity-inspection-postgres-ci.sh",
     "battery:rest-feature:inspect": "ts-node -r tsconfig-paths/register scripts/ops/battery-rest-session-feature-shadow-inspect.ts",
+    "battery:longitudinal-profile:materialize": "ts-node -r tsconfig-paths/register scripts/ops/battery-longitudinal-profile-materialize.ts",
     "test:stations:v2": "jest --testPathPattern='stations-v2|station-access|station-rule-engine|station-validation|station-geofence-shadow' --testPathIgnorePatterns=integration",
     "test:battery:v2:verify": "bash scripts/test/battery-health-v2-verify.sh all",
     "test:battery:v2:verify:unit": "bash scripts/test/battery-health-v2-verify.sh unit",

@@ -21,11 +21,11 @@ Per [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md):
 | **2 — Production read-only audit** | **Verified** — **PRODUCTION_CURRENT** @ `99d722b4…` + TDL-EVID-QS-V1-PROD-ACCEPT-001; historical releases preserved |
 | **3 — Reconciliation and classification** | **In progress** — Qualified Stop V1 Production acceptance classified **`PASS_WITH_EVIDENCE_GAPS`** |
 | **4 — Authority construction** | **Partial** — R9 wake subgraph, R10–R12 decisions, Qualified Stop V1 decision + graph hooks; full FSM graph incomplete |
-| **5 — Validation and promotion gate** | **Pending** — **not** `AUTHORITY_ACTIVE` (other open OQs) |
+| **5 — Validation and promotion gate** | **Pending** — Phase 5 not executed; see OQ-005 evidence Phase 14 for precise blockers (open OQs **not** blocking per standard) |
 
-Phase 1 gaps remain: dead/legacy inventory (TDL-OQ-010), Mapbox handler contract follow-up. Feature-flag matrix **closed** (TDL-OQ-008). Tiered polling + R9 ingress **closed** (TDL-OQ-009).
+Phase 1 gaps remain: Mapbox handler contract follow-up; **legacy path consolidation** (migration slices in OQ-010). Feature-flag matrix **closed** (TDL-OQ-008). Tiered polling + R9 ingress **closed** (TDL-OQ-009). Legacy path inventory **closed** (TDL-OQ-010).
 
-**Reconstruction reality (2026-09-26):** Production @ `8a1d9c658…` / `20260925182907_v4994`. **TDL-OQ-001**, **TDL-OQ-002**, **TDL-OQ-006**, **TDL-OQ-008**, and **TDL-OQ-009** **RESOLVED**. Promotion to `AUTHORITY_ACTIVE` remains blocked by other open OQs (e.g. TDL-OQ-005, TDL-OQ-010).
+**Reconstruction reality (2026-09-26):** Task production anchor @ `8a1d9c658…` / `20260925182907_v4994` preserved in prior OQ evidence; **live** Production @ `2b54a357…` / `20260926094359_v4994` at OQ-005 DB read. **TDL-OQ-001** through **TDL-OQ-010** **CLOSED**. **`AUTHORITY_ACTIVE`** awaits Phase 5 promotion gate (see TDL-EVID-OQ005-ENDED-001 Phase 14).
 
 Historical FSM audits under [`docs/audits/trip-fsm/`](../../docs/audits/trip-fsm/) are **supporting evidence only** — linked via [`evidence/EVIDENCE_INDEX.md`](evidence/EVIDENCE_INDEX.md).
 

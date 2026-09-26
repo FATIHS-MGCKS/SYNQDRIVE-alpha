@@ -21,6 +21,8 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | TDL-DEC-OQ004-001 | Route artifact coverage policy — taxonomy, eligibility, Mapbox vs artifact vs MATCHED | VALIDATED | TDL-EVID-OQ004-ROUTE-COV-001 |
 | TDL-DEC-OQ008-001 | Trip runtime-control matrix — code default vs Production effective separation | VALIDATED | TDL-EVID-OQ008-FLAG-MATRIX-001 |
 | TDL-DEC-OQ009-001 | Tiered snapshot polling + R9 provider-wake ingress contract | VALIDATED | TDL-EVID-OQ009-R9-INGRESS-001 |
+| TDL-DEC-OQ010-001 | Legacy/duplicate trip runtime path inventory — bounded dual post-finalize pipelines | VALIDATED | TDL-EVID-OQ010-LEGACY-INV-001 |
+| TDL-DEC-OQ005-001 | TripDetectionState.ENDED — historical compat only; RESTING terminal FSM | VALIDATED | TDL-EVID-OQ005-ENDED-001 |
 
 ---
 
@@ -338,3 +340,37 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | **NON-EFFECTS** | No subscription mutation; no deploy; no change to tier env defaults |
 | **VALIDATION** | Code trace + read-only Prisma cohort + `r9-post-get-audit.mjs` — TDL-EVID-OQ009-R9-INGRESS-001 |
 | **EVIDENCE** | TDL-EVID-OQ009-R9-INGRESS-001 |
+
+---
+
+## TDL-DEC-OQ010-001
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | VALIDATED |
+| **BEFORE** | TDL-OQ-010 OPEN — unknown dead vs repair vs duplicate enrichment/route paths; risk of silent removal of reconciliation segment detectors or parallel DI/HF stacks |
+| **WHY** | Promotion and cleanup slices require a complete productive-path inventory with lifecycle-writer proof, duplicate idempotency, and Production activity bounds |
+| **CHANGE** | Canonical inventory in TDL-EVID-OQ010-LEGACY-INV-001: **`TripDecisionEngine`** sole `vehicleTrip.create` / `tripStatus` writer; pre-V2 segment detectors **ACTIVE_REPAIR**; post-finalize **DI V2 + legacy HF** both active; Route V2 via **`matchMapboxChunkDetailed`** (not `mapMatchRoute`); legacy Mapbox port + `mapMatchRoute()` **dead**; route enrich **3 entrypoints** with **DUPLICATE_EXECUTION_WASTEFUL_BUT_SAFE**; **41-row productive matrix** |
+| **ALTERNATIVES REJECTED** | Treating `IgnitionSegmentDetector` / `MotionSegmentDetector` as dead legacy; treating orchestrator as globally sole behavior authority while DI V2 runs; removing legacy HF before V2 parity proven |
+| **EXPECTED EFFECT** | OQ-010 closed; bounded debt tracked (wasteful duplicate provider fetch, stale orchestrator header comment); safe removal candidates isolated |
+| **PRODUCTION STATUS** | @ `8a1d9c658…` — 7d **109** COMPLETED trips with behavior enrichment complete; **124** `DRIVING_ROUTE_ENRICH` DI jobs; dual pipelines observed |
+| **NON-EFFECTS** | No runtime deletion; no promotion to `AUTHORITY_ACTIVE` |
+| **VALIDATION** | Repository trace + read-only Production SQL — TDL-EVID-OQ010-LEGACY-INV-001 |
+| **EVIDENCE** | TDL-EVID-OQ010-LEGACY-INV-001 |
+
+---
+
+## TDL-DEC-OQ005-001
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | VALIDATED |
+| **BEFORE** | TDL-OQ-005 OPEN — unclear whether `TripDetectionState.ENDED` is live, historical, or safe to delete |
+| **WHY** | Promotion gate and schema cleanup require code + Production + migration evidence, not naming inference |
+| **CHANGE** | TDL-EVID-OQ005-ENDED-001: **0** runtime read/write; finalize → **RESTING**; Production **0** live + **0** tracking ENDED rows @ live DB; **`ENDED_HISTORICAL_COMPAT_ONLY`**; **`RETAIN_HISTORICAL_COMPATIBILITY`**; **`REPURPOSE_NOT_JUSTIFIED`**; optional future enum removal = **`POSTGRES_ENUM_SCHEMA_MIGRATION_REQUIRED`** (no row backfill) |
+| **ALTERNATIVES REJECTED** | Treat ENDED as active FSM state; repurpose label; `SAFE_TO_REMOVE_AFTER_DATA_MIGRATION` wording (no ENDED rows to migrate) |
+| **EXPECTED EFFECT** | OQ-005 closed; TDL-CX-003 bounded; all TDL-OQ-001…010 closed |
+| **PRODUCTION STATUS** | Read-only SQL @ 2026-09-26 — six FSM rows all **RESTING** |
+| **NON-EFFECTS** | No Prisma/schema change in OQ-005 PR |
+| **VALIDATION** | Repo grep + migration bootstrap + VPS read-only SQL |
+| **EVIDENCE** | TDL-EVID-OQ005-ENDED-001 |
