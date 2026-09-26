@@ -41,8 +41,8 @@ export const E6_3_PRE_CUTOVER_END = new Date('2026-08-15T11:00:00.000Z');
 
 export const E6_3_MATCH_LAT = 50.001;
 export const E6_3_MATCH_LON = 8.001;
-export const E6_3_AMBIGUOUS_LAT = 50.00108;
-export const E6_3_AMBIGUOUS_LON = 8.00108;
+export const E6_3_AMBIGUOUS_LAT = 50.00106;
+export const E6_3_AMBIGUOUS_LON = 8.00106;
 export const E6_3_NOT_FOUND_LAT = 70.0;
 export const E6_3_NOT_FOUND_LON = 70.0;
 
