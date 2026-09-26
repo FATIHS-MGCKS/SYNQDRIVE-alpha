@@ -139,10 +139,25 @@ Plus repository-wide required checks (RFRF stage 3/4, module registry, i18n, veh
 
 ## Production boundary
 
-Flags remain **OFF**. No deploy, no backfill, no OSM production dataset import, no SynqDrive Code → Changes/Architektur presentation seal in this technical PR (deferred post-merge per E6.2 pattern).
+Flags remain **OFF**. No deploy, no backfill, no OSM production dataset import. SynqDrive Code presentation seal was **deferred** in technical PR #1791 (same pattern as E6.2 post-#1781).
 
 `AUTOMATIC_DATASET_REFRESH_REENRICHMENT=NO` in V1 — fingerprint changes on coordinate/resolver version only.
 
 ## Unit coverage (supplementary)
 
 Coordinate selector C*, cutover T*, orchestrator O*, projection hook H* — not substitutes for P/Q/R gates.
+
+## Presentation seal addendum (2026-09-26)
+
+| Item | Status |
+|------|--------|
+| Technical E6.3 merged | PR **#1791** → merge SHA `b73aca3d9c28999ddf911d663c921d4b83fabf01` |
+| SynqDrive Code → Architektur | E6.3 entry added adjacent to E6.1/E6.2; E6.1/E6.2 boundary denominators corrected to **14/18** and **15/18** (presentation only) |
+| SynqDrive Code → Changes | E6.3 release entry (`4.9.915`) — merged technical state, not Production activation |
+| Presentation deferral (technical #1791) | **CLOSED** |
+| Technical E6.3 evidence (P/Q/R matrices, CI map) | **Unchanged** — this addendum does not rewrite acceptance proof |
+| Production deployment | **NO** |
+| Feature flags | **OFF** (default) |
+| Historical backfill | **NO** |
+| OSM Production charging dataset import | **NO** |
+| Customer-facing Trips / TripTimeline charging UI | **Out of scope** — not part of this presentation seal |

@@ -13314,13 +13314,34 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     createdAt: '2026-09-25T00:00:00.000Z',
   },
   {
+    id: 'erd-e6-3-charging-location-enrichment-runtime-2026-09-26',
+    version: '4.9.915',
+    title: 'ERD E6.3 — charging location enrichment runtime',
+    summary: [
+      'Canonical ERD RECHARGE `VehicleEnergyEvent` rows can hold a separate durable `VehicleEnergyEventChargingStationEnrichment` row (independent from REFUEL fuel-station enrichment).',
+      'Uses E6.1 canonical coordinates + E6.2 charging-station resolver; async BullMQ queue `energy.recharge.station.enrich` with recovery for missed/stale work; fingerprint/idempotency prevents duplicate logical enrichment.',
+      'Read API exposes nested `chargingStationEnrichment` on energy events; post-projection enqueue is fail-open relative to canonical RECHARGE projection.',
+      'Acceptance: PostgreSQL P matrix + P-ERROR/cutover/fingerprint cases; real Redis/BullMQ Q1–Q10; recovery R1–R12; E6.1 P1–P15 + E6.2 PG1–PG15 regression (boundary steps 14–18/18); 42/42 required checks green before merge PR #1791.',
+      'Feature flags remain OFF — no Production dataset import, no Production flag activation, no historical backfill; not live in Production.',
+    ],
+    reason:
+      'E6.2 merged — reference resolver exists; E6.3 durably attaches resolver outcomes to canonical RECHARGE product rows without changing E5.6 write authority or REFUEL semantics.',
+    previousBehavior:
+      'No charging-station enrichment persistence, queue worker, recovery, or API projection on canonical RECHARGE events (E6.2 resolver only).',
+    details:
+      'backend/src/modules/vehicle-intelligence/charging-stations/enrichment/*; migration `20260926120000_vehicle_energy_event_charging_station_enrichment`; architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E6-3-CHARGING-LOCATION-ENRICHMENT-RUNTIME-2026-09-26.md; EED-EV-0089; merged PR #1791 (merge SHA b73aca3d9)',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-26T13:30:00.000Z',
+  },
+  {
     id: 'erd-e6-2-charging-station-reference-resolver-2026-09-25',
     version: '4.9.914',
     title: 'ERD E6.2 — charging station reference dataset and resolver',
     summary: [
       'Independent OSM charging-station domain: Geofabrik import (node/way/relation), `amenity=charging_station` only; fuel/device_charging_station/motorcar=no excluded.',
       '`charging-station-resolver-v1`: geometry-first PostGIS match, station-level authority, fail-open ambiguity; metadata cannot override distance; no external runtime lookup.',
-      'Importer/validation I1–I14 + refresh safety (invalid geometry + failed validation preserves last-good); Required CI PostGIS; boundary-repair PG1–PG15 PASS (merged PR #1781).',
+      'Importer/validation I1–I14 + refresh safety (invalid geometry + failed validation preserves last-good); Required CI PostGIS; boundary-repair step 15/18 PG1–PG15 PASS (merged PR #1781).',
       'No Production charging dataset import; no Recharge event enrichment or customer-facing charging resolution runtime (E6.3 next stage).',
     ],
     reason:
@@ -13341,7 +13362,7 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
       'Preserves native DIMO recharge segment start/end coordinates on HvChargeSession.metadata with strict pair validation.',
       'Projects trusted native locations into canonical ERD VehicleEnergyEvent.RECHARGE (mutable coordinate fields + rawDetectionMeta provenance).',
       'Fallback telemetry sessions remain location-null; no fuel-station OSM resolver or charger matching.',
-      'PostgreSQL + unit gates (boundary-repair step 14/15); no schema migration; no backfill.',
+      'PostgreSQL + unit gates (boundary-repair step 14/18); no schema migration; no backfill.',
     ],
     reason:
       'E5.6 merged — canonical product recharge rows must carry authoritative native location evidence before E6.2 charging-station resolution.',
