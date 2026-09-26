@@ -1,7 +1,9 @@
-# M3.3F F1 — D3 materialization runtime foundation (engineering draft)
+# M3.3F F1 — D3 materialization runtime foundation
 
-**Status:** Engineering draft on branch (not complete on main).  
-**Starting main:** `6d8198fa1d5b8dbf915b7676d86269a0595ae756` (M3.3F F0 merged PR #1784).  
+**Status:** **COMPLETE ON MAIN** (merged PR **#1787**).  
+**PR head:** `ad2a933db78153e8e36bce0005ec3e73c7c5168c`  
+**Merge SHA:** `2b54a357854c9d44f638ee857f72936967c04992`  
+**Starting main (F0):** `6d8198fa1d5b8dbf915b7676d86269a0595ae756` (M3.3F F0 merged PR #1784).  
 **Mode:** Default OFF — no production activation, no scheduler, no backfill.
 
 ## Scope delivered in F1
@@ -53,4 +55,5 @@ Regression: existing D1/D2/D3/D4/E1/E3/C3 suites unchanged (no golden changes).
 
 ## Next
 
-**F2:** flag-OFF production deploy/smoke, then bounded scheduled reconciliation behind the same D3 flag (per F0 trigger V1).
+**F2:** flag-OFF production deploy/smoke — **PASS** (`research/M3_3F_F2_FLAG_OFF_PRODUCTION_DEPLOY_2026-09-26.md`).  
+**F3:** controlled C3 shadow activation (authorized separately; not executed in F2).
