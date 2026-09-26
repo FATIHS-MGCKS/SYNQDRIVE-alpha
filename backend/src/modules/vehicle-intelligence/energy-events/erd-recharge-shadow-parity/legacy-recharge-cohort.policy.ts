@@ -44,10 +44,8 @@ export function buildLegacyDirectDimoRechargeWhere(input: {
     detectionMechanism: 'recharge',
     canonicalChargeSessionId: null,
     dimoSegmentId: { not: null },
-    NOT: {
-      detectionSource:
-        VehicleEnergyEventDetectionSource.SYNQDRIVE_ERD_RECHARGE_PROJECTION,
-    },
+    // Positive whitelist only — do NOT combine with NOT { detectionSource: … } because
+    // SQL NULL semantics exclude detection_source IS NULL rows before OR can admit them.
     OR: [{ detectionSource: null }, { detectionSource: VehicleEnergyEventDetectionSource.DIMO_NATIVE }],
     startTime: { lte: input.windowTo },
     endTime: { gte: input.windowFrom },
