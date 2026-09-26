@@ -100,14 +100,21 @@ const LIVE = process.env.ERD_E6_3_BULLMQ_REDIS_INTEGRATION === '1';
     }
   });
 
-  it('Q3: completed job + terminal DB row suppresses re-enqueue', async () => {
+  it('Q3: completed BullMQ job dedupes re-enqueue (terminal DB row present)', async () => {
     const { org, vehicle, event } = await seedEvent();
     const jobId = deterministicRechargeJobId(event);
     try {
       await producer.enqueueForEventOutcome(event);
       await waitForJobState(queue, jobId, 'completed', 20_000);
       const again = await producer.enqueueForEventOutcome(event);
-      expect(again.status).toBe('terminal_skip');
+      expect(again.status).toBe('deduped');
+      await (await queue.getJob(jobId))?.remove();
+      const refreshed = await prisma.vehicleEnergyEvent.findUniqueOrThrow({
+        where: { id: event.id },
+        include: { chargingStationEnrichment: true },
+      });
+      const afterCompletedRemoved = await producer.enqueueForEventOutcome(refreshed);
+      expect(afterCompletedRemoved.status).toBe('terminal_skip');
     } finally {
       await cleanupOrgVehicle(prisma, org.id, vehicle.id, [event.id]);
     }
@@ -260,26 +267,29 @@ const LIVE = process.env.ERD_E6_3_BULLMQ_REDIS_INTEGRATION === '1';
   });
 
   it('Q-FAILED-REMOVE: failed BullMQ job removed before re-enqueue when lifecycle permits', async () => {
+    const failQueue = createE6_3IsolatedQueue(redisStack.connection, `q-fr-${randomUUID().slice(0, 6)}`);
+    const failProducer = createE6_3Producer(failQueue, prisma);
     const { org, vehicle, event } = await seedEvent();
     const jobId = deterministicRechargeJobId(event);
+    const failWorker = new Worker(
+      failQueue.name,
+      async () => {
+        throw new Error('fail-once');
+      },
+      { connection: failQueue.opts.connection as never, prefix: failQueue.opts.prefix },
+    );
     try {
-      await queue.add(
+      await failQueue.add(
         RECHARGE_STATION_ENRICHMENT_JOB_NAME,
         { energyEventId: event.id },
         { jobId, attempts: 1 },
       );
-      const failWorker = new Worker(
-        queue.name,
-        async () => {
-          throw new Error('fail-once');
-        },
-        { connection: queue.opts.connection as never, prefix: queue.opts.prefix },
-      );
-      await waitForJobState(queue, jobId, 'failed', 15_000);
+      await waitForJobState(failQueue, jobId, 'failed', 15_000);
       await failWorker.close();
-      const outcome = await producer.enqueueForEventOutcome(event);
+      const outcome = await failProducer.enqueueForEventOutcome(event);
       expect(outcome.status).toBe('enqueued');
     } finally {
+      await drainQueue(failQueue);
       await cleanupOrgVehicle(prisma, org.id, vehicle.id, [event.id]);
     }
   });
