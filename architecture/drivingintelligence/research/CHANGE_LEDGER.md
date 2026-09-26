@@ -1000,6 +1000,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Status | `VALIDATED` (code/tests) — draft PR, not deployed |
 | Evidence | `evidence/reference-capture/EXP_021_C05_CG01_COLD_ENGINE_FULL_THROTTLE_2026-09-24.md` |
 
+### EXP-021 C1D.5B — pure core pre-merge fail-safe closure (2026-09-26)
+
+| Field | Value |
+|-------|--------|
+| Trigger | C1D.5A red-team `NEEDS_CLOSURE` (duplicate bucketLabel L3, malformed-input tests) |
+| Change | L3 temporal support validation + duplicate label grid flag + closure Jest matrix |
+| Versions | `DI_SOURCE_QUALITY_CONTRACT_V0_1` / `DI_KINEMATIC_ESTIMATE_V0_1` unchanged |
+
 ### EXP-021 C1D.5 — DI V0 pure shadow core S0/S1 (2026-09-26)
 
 | Event | Detail |

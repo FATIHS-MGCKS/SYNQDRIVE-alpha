@@ -60,6 +60,13 @@ export function classifyPositionRows(
   calibration: DiV0CalibrationBundle,
 ): ClassifiedPositionRow[] {
   const sorted = [...positions].sort((a, b) => a.bucketLabel.localeCompare(b.bucketLabel));
+  const labelCounts = new Map<string, number>();
+  for (const obs of sorted) {
+    labelCounts.set(obs.bucketLabel, (labelCounts.get(obs.bucketLabel) ?? 0) + 1);
+  }
+  const duplicateBucketLabels = new Set(
+    [...labelCounts.entries()].filter(([, count]) => count > 1).map(([label]) => label),
+  );
   const rows: ClassifiedPositionRow[] = sorted.map((obs, idx) => {
     const prev = idx > 0 ? sorted[idx - 1] : null;
     const gap =
@@ -72,7 +79,7 @@ export function classifyPositionRows(
       positionState: obs.availability === 'ROW_ABSENT' ? 'ROW_ABSENT' : obs.availability === 'SIGNAL_NULL' ? 'SIGNAL_NULL' : 'FRESH',
       causalPositionState:
         obs.availability === 'ROW_ABSENT' ? 'ROW_ABSENT' : obs.availability === 'SIGNAL_NULL' ? 'SIGNAL_NULL' : 'FRESH',
-      gridFlag: null,
+      gridFlag: duplicateBucketLabels.has(obs.bucketLabel) ? 'DUPLICATE_BUCKET_LABEL' : null,
       holdRunId: null,
       releaseOfHoldRunId: null,
       coord,

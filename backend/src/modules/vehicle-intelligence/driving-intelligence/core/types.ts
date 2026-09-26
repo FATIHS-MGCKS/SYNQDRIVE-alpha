@@ -12,7 +12,7 @@ export type PositionState =
   | 'SIGNAL_NULL';
 
 /** Label immediately after a row gap in the densified grid (structural; not a C0.4 display state). */
-export type StructuralGridPositionFlag = 'FIRST_OR_AFTER_ROW_GAP';
+export type StructuralGridPositionFlag = 'FIRST_OR_AFTER_ROW_GAP' | 'DUPLICATE_BUCKET_LABEL';
 
 export type TemporalConfidence = 'EXACT_PROVEN' | 'BUCKET_BOUNDED' | 'INTERVAL_ONLY' | 'UNKNOWN';
 

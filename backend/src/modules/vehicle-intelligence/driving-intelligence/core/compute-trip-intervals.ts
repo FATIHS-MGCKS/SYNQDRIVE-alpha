@@ -113,8 +113,11 @@ export function computeDiV0TripIntervals(
       ctx.calibration,
     );
 
-    const estimatedSpeedKmh =
+    let estimatedSpeedKmh =
       motionState === 'MOVING_SPEED_ESTIMATED' && l3.eligible ? l3.speedKmh : null;
+    if (estimatedSpeedKmh != null && !Number.isFinite(estimatedSpeedKmh)) {
+      estimatedSpeedKmh = null;
+    }
 
     if (row.positionState === 'RELEASE' && estimatedSpeedKmh != null) {
       throw new Error('RELEASE_SAFETY_VIOLATION: numeric speed on RELEASE row');

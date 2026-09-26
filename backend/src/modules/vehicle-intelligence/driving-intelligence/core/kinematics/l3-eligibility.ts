@@ -11,7 +11,18 @@ import type { AbstentionReason } from '../types';
 const MS_PER_SECOND = 1000;
 
 function labelMs(label: string): number {
-  return Date.parse(label);
+  const ms = Date.parse(label);
+  if (Number.isNaN(ms)) {
+    throw new Error(`Invalid bucketLabel: ${label}`);
+  }
+  return ms;
+}
+
+function supportLabelsAreCalendarSecondsApart(prevLabel: string, centerLabel: string, nextLabel: string): boolean {
+  const prevMs = labelMs(prevLabel);
+  const centerMs = labelMs(centerLabel);
+  const nextMs = labelMs(nextLabel);
+  return centerMs - prevMs === MS_PER_SECOND && nextMs - centerMs === MS_PER_SECOND;
 }
 
 function bucketLabelMinusSeconds(label: string, seconds: number): string {
@@ -58,11 +69,49 @@ export function evaluateL3AtCenter(
     };
   }
 
+  if (prevIndex === centerIndex || centerIndex === nextIndex || prevIndex === nextIndex) {
+    return {
+      eligible: false,
+      speedKmh: null,
+      abstentionReason: 'TEMPORAL_SEMANTICS_INSUFFICIENT',
+      supportIntervalStart: null,
+      supportIntervalEnd: null,
+      flags: ['L3_SUPPORT_NONPOSITIVE_TIME_DELTA'],
+    };
+  }
+
   const prev = rows[prevIndex];
   const next = rows[nextIndex];
   const supportRows = [prev, center, next];
 
+  if (
+    !supportLabelsAreCalendarSecondsApart(
+      prev.observation.bucketLabel,
+      center.observation.bucketLabel,
+      next.observation.bucketLabel,
+    )
+  ) {
+    return {
+      eligible: false,
+      speedKmh: null,
+      abstentionReason: 'ROW_GAP_IN_SUPPORT',
+      supportIntervalStart: prev.observation.intervalStart,
+      supportIntervalEnd: next.observation.intervalEnd,
+      flags: ['L3_SUPPORT_CROSSES_GAP'],
+    };
+  }
+
   for (const row of supportRows) {
+    if (row.gridFlag === 'DUPLICATE_BUCKET_LABEL') {
+      return {
+        eligible: false,
+        speedKmh: null,
+        abstentionReason: 'TEMPORAL_SEMANTICS_INSUFFICIENT',
+        supportIntervalStart: prev.observation.intervalStart,
+        supportIntervalEnd: next.observation.intervalEnd,
+        flags: ['L3_SUPPORT_DUPLICATE_BUCKET_LABEL'],
+      };
+    }
     if (row.observation.availability === 'ROW_ABSENT') {
       return {
         eligible: false,
