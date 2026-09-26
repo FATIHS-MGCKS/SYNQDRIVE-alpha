@@ -36,7 +36,7 @@ Do **not** say "HF Recovery V2 not deployed" — say **code deployed, feature di
 | **Contract** | `DI_SOURCE_QUALITY_CONTRACT_V0_1` + `DI_KINEMATIC_ESTIMATE_V0_1`; calibration `CALIBRATION_UNSET_V0` (injected bundle) |
 | **L3** | Centred-path haversine mean × 3.6; support labels **calendar** t−1 s, t, t+1; all FRESH; no hold/release/gap |
 | **Invariant** | Driving Intelligence derives claims only from evidence whose availability, temporal semantics, source family and provenance are explicit; unsupported point values are withheld |
-| **Shadow persistence (S2)** | `di_v0_shadow_runs` + `di_v0_shadow_intervals` — **library + Prisma only**; no runtime caller; not customer-facing |
+| **Shadow persistence (S2)** | `di_v0_shadow_runs` + `di_v0_shadow_intervals` — **library + Prisma only**; tenant identity verified at write boundary; DB CHECK constraints; tx-scoped persistence; completion counts derived from stored intervals; no runtime caller; not customer-facing |
 | **Next slice** | S3 input acquisition / normalization worker wiring — not started |
 
 ## System boundary (confirmed)

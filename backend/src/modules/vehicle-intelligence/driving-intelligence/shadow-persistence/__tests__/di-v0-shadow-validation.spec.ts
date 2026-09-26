@@ -47,7 +47,7 @@ describe('DiV0Shadow validation', () => {
         baseInterval({ estimatedSpeedKmh: Number.NaN }),
         DEFAULT_DI_V0_VERSION_TUPLE,
       ),
-    ).toThrow(/NONFINITE/);
+    ).toThrow(/INVALID_ESTIMATED_SPEED_KMH/);
   });
 
   it('rejects invalid motion state', () => {
@@ -59,12 +59,70 @@ describe('DiV0Shadow validation', () => {
     ).toThrow(/MOTION_STATE/);
   });
 
+  it('rejects negative estimated speed', () => {
+    expect(() =>
+      validateShadowIntervalRow({
+        intervalStart: new Date('2026-01-01T00:00:00Z'),
+        intervalEnd: new Date('2026-01-01T00:00:01Z'),
+        referenceTime: new Date('2026-01-01T00:00:00.500Z'),
+        motionState: 'MOVING_SPEED_ESTIMATED',
+        positionState: 'FRESH',
+        causalPositionState: 'FRESH',
+        estimatedSpeedKmh: -1,
+        speedRangeMinKmh: null,
+        speedRangeMaxKmh: null,
+        speedEvidenceState: null,
+        temporalConfidence: 'BUCKET_BOUNDED',
+        valueConfidence: 'HIGH',
+        sourceRelation: 'SUPPORTED',
+        claimLevel: 'L2',
+        abstentionReason: null,
+        evidenceSources: [],
+        sourceQualityFlags: [],
+        supportIntervalStart: null,
+        supportIntervalEnd: null,
+        derivationMethod: 'L3_CENTERED_PATH',
+        derivationVersion: 'v',
+        provenance: {},
+      }),
+    ).toThrow(/INVALID_ESTIMATED_SPEED_KMH/);
+  });
+
+  it('rejects speed range min greater than max', () => {
+    expect(() =>
+      validateShadowIntervalRow({
+        intervalStart: new Date('2026-01-01T00:00:00Z'),
+        intervalEnd: new Date('2026-01-01T00:00:01Z'),
+        referenceTime: new Date('2026-01-01T00:00:00.500Z'),
+        motionState: 'MOVING_SPEED_ESTIMATED',
+        positionState: 'FRESH',
+        causalPositionState: 'FRESH',
+        estimatedSpeedKmh: null,
+        speedRangeMinKmh: 50,
+        speedRangeMaxKmh: 10,
+        speedEvidenceState: null,
+        temporalConfidence: 'BUCKET_BOUNDED',
+        valueConfidence: 'HIGH',
+        sourceRelation: 'SUPPORTED',
+        claimLevel: 'L2',
+        abstentionReason: null,
+        evidenceSources: [],
+        sourceQualityFlags: [],
+        supportIntervalStart: null,
+        supportIntervalEnd: null,
+        derivationMethod: 'L3_CENTERED_PATH',
+        derivationVersion: 'v',
+        provenance: {},
+      }),
+    ).toThrow(/INVALID_SPEED_RANGE_ORDER/);
+  });
+
   it('rejects L3 claim with numeric L3 speed', () => {
     expect(() =>
       validateShadowIntervalRow({
-        intervalStart: new Date(),
-        intervalEnd: new Date(),
-        referenceTime: new Date(),
+        intervalStart: new Date('2026-01-01T00:00:00Z'),
+        intervalEnd: new Date('2026-01-01T00:00:01Z'),
+        referenceTime: new Date('2026-01-01T00:00:00.500Z'),
         motionState: 'MOVING_SPEED_ESTIMATED',
         positionState: 'FRESH',
         causalPositionState: 'FRESH',

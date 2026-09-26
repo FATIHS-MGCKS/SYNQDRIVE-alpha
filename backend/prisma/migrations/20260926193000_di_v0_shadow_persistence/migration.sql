@@ -1,4 +1,5 @@
 -- EXP-021 C1D.6 — DI V0 shadow persistence (isolated; non-authoritative)
+-- CHECK constraints are authoritative at DB layer; Prisma schema uses String fields.
 
 CREATE TABLE "di_v0_shadow_runs" (
     "id" TEXT NOT NULL,
@@ -25,7 +26,9 @@ CREATE TABLE "di_v0_shadow_runs" (
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "di_v0_shadow_runs_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "di_v0_shadow_runs_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "di_v0_shadow_runs_status_check" CHECK ("status" IN ('PENDING', 'RUNNING', 'COMPLETED', 'FAILED')),
+    CONSTRAINT "di_v0_shadow_runs_source_family_check" CHECK ("source_family" IN ('RUPTELA_R1', 'API_SYNTHETIC', 'UNKNOWN'))
 );
 
 CREATE TABLE "di_v0_shadow_intervals" (
@@ -63,7 +66,58 @@ CREATE TABLE "di_v0_shadow_intervals" (
     "legacy_comparison" JSONB,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "di_v0_shadow_intervals_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "di_v0_shadow_intervals_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "di_v0_shadow_intervals_interval_time_check" CHECK ("interval_start" < "interval_end"),
+    CONSTRAINT "di_v0_shadow_intervals_support_time_check" CHECK (
+      ("support_interval_start" IS NULL AND "support_interval_end" IS NULL)
+      OR ("support_interval_start" < "support_interval_end")
+    ),
+    CONSTRAINT "di_v0_shadow_intervals_motion_state_check" CHECK ("motion_state" IN (
+      'STATIONARY_SUPPORTED', 'MOVING_SPEED_ESTIMATED', 'MOVING_SPEED_UNKNOWN', 'TRANSITION_UNCERTAIN', 'NO_MOTION_EVIDENCE'
+    )),
+    CONSTRAINT "di_v0_shadow_intervals_position_state_check" CHECK ("position_state" IN (
+      'FRESH', 'FROZEN_UNRESOLVED', 'FROZEN_MOVEMENT_SUPPORTED', 'FROZEN_STOP_SUPPORTED', 'RELEASE', 'ROW_ABSENT', 'SIGNAL_NULL'
+    )),
+    CONSTRAINT "di_v0_shadow_intervals_causal_position_state_check" CHECK ("causal_position_state" IN (
+      'FRESH', 'FROZEN_UNRESOLVED', 'FROZEN_MOVEMENT_SUPPORTED', 'FROZEN_STOP_SUPPORTED', 'RELEASE', 'ROW_ABSENT', 'SIGNAL_NULL'
+    )),
+    CONSTRAINT "di_v0_shadow_intervals_temporal_confidence_check" CHECK ("temporal_confidence" IN (
+      'EXACT_PROVEN', 'BUCKET_BOUNDED', 'INTERVAL_ONLY', 'UNKNOWN'
+    )),
+    CONSTRAINT "di_v0_shadow_intervals_value_confidence_check" CHECK ("value_confidence" IN (
+      'HIGH', 'MODERATE', 'LOW', 'UNAVAILABLE'
+    )),
+    CONSTRAINT "di_v0_shadow_intervals_source_relation_check" CHECK ("source_relation" IN (
+      'SUPPORTED', 'CONFLICTING', 'CONFLICT_EXPLAINED', 'UNASSESSABLE'
+    )),
+    CONSTRAINT "di_v0_shadow_intervals_claim_level_check" CHECK ("claim_level" IN ('L0', 'L1', 'L2', 'L3')),
+    CONSTRAINT "di_v0_shadow_intervals_abstention_reason_check" CHECK ("abstention_reason" IS NULL OR "abstention_reason" IN (
+      'ROW_ABSENT', 'POSITION_FROZEN', 'POSITION_RELEASE', 'INCOMPLETE_SUPPORT', 'INVALID_POSITION',
+      'GEOMETRY_DISCONTINUITY', 'TEMPORAL_SEMANTICS_INSUFFICIENT', 'NO_KINEMATIC_EVIDENCE', 'CALIBRATION_REQUIRED',
+      'UNSUPPORTED_SOURCE_FAMILY', 'ROW_GAP_IN_SUPPORT', 'SIGNAL_NULL_IN_SUPPORT'
+    )),
+    CONSTRAINT "di_v0_shadow_intervals_speed_evidence_state_check" CHECK ("speed_evidence_state" IS NULL OR "speed_evidence_state" IN (
+      'NUMERIC_HIGH', 'NUMERIC_MODERATE', 'MOVEMENT_ONLY', 'STATIONARY_BAND', 'ABSTAINED', 'NONE'
+    )),
+    CONSTRAINT "di_v0_shadow_intervals_derivation_method_check" CHECK ("derivation_method" IN (
+      'L3_CENTERED_PATH', 'HOLD_INTERVAL_LB', 'NONE'
+    )),
+    CONSTRAINT "di_v0_shadow_intervals_estimated_speed_kmh_check" CHECK (
+      "estimated_speed_kmh" IS NULL OR ("estimated_speed_kmh" >= 0 AND "estimated_speed_kmh" = "estimated_speed_kmh")
+    ),
+    CONSTRAINT "di_v0_shadow_intervals_speed_range_min_kmh_check" CHECK (
+      "speed_range_min_kmh" IS NULL OR ("speed_range_min_kmh" >= 0 AND "speed_range_min_kmh" = "speed_range_min_kmh")
+    ),
+    CONSTRAINT "di_v0_shadow_intervals_speed_range_max_kmh_check" CHECK (
+      "speed_range_max_kmh" IS NULL OR ("speed_range_max_kmh" >= 0 AND "speed_range_max_kmh" = "speed_range_max_kmh")
+    ),
+    CONSTRAINT "di_v0_shadow_intervals_speed_range_pair_check" CHECK (
+      ("speed_range_min_kmh" IS NULL AND "speed_range_max_kmh" IS NULL)
+      OR (
+        "speed_range_min_kmh" IS NOT NULL AND "speed_range_max_kmh" IS NOT NULL
+        AND "speed_range_min_kmh" <= "speed_range_max_kmh"
+      )
+    )
 );
 
 CREATE UNIQUE INDEX "di_v0_shadow_runs_organization_id_idempotency_key_key" ON "di_v0_shadow_runs"("organization_id", "idempotency_key");
@@ -79,8 +133,6 @@ CREATE INDEX "di_v0_shadow_runs_status_created_at_idx" ON "di_v0_shadow_runs"("s
 CREATE INDEX "di_v0_shadow_runs_trip_id_structural_version_estimator_version_idx" ON "di_v0_shadow_runs"("trip_id", "structural_version", "estimator_version", "calibration_version", "source_family_policy_version", "input_evidence_version");
 
 CREATE UNIQUE INDEX "di_v0_shadow_intervals_shadow_run_id_interval_start_key" ON "di_v0_shadow_intervals"("shadow_run_id", "interval_start");
-
-CREATE INDEX "di_v0_shadow_intervals_shadow_run_id_interval_start_idx" ON "di_v0_shadow_intervals"("shadow_run_id", "interval_start");
 
 CREATE INDEX "di_v0_shadow_intervals_trip_id_idx" ON "di_v0_shadow_intervals"("trip_id");
 

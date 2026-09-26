@@ -55,32 +55,4 @@ export function mapComputeOutputToPersistRows(
   return output.intervals.map((interval) => mapIntervalResultToPersistRow(interval, versions));
 }
 
-export function deriveCompletionCounts(
-  rows: DiV0ShadowPersistedIntervalInput[],
-): {
-  intervalCount: number;
-  numericSpeedCount: number;
-  abstentionCount: number;
-  conflictCount: number;
-} {
-  let numericSpeedCount = 0;
-  let abstentionCount = 0;
-  let conflictCount = 0;
-  for (const row of rows) {
-    if (row.estimatedSpeedKmh != null) {
-      numericSpeedCount += 1;
-    }
-    if (row.abstentionReason != null) {
-      abstentionCount += 1;
-    }
-    if (row.sourceRelation === 'CONFLICTING' || row.sourceRelation === 'CONFLICT_EXPLAINED') {
-      conflictCount += 1;
-    }
-  }
-  return {
-    intervalCount: rows.length,
-    numericSpeedCount,
-    abstentionCount,
-    conflictCount,
-  };
-}
+export { deriveCompletionCountsFromRows as deriveCompletionCounts } from './di-v0-shadow-completion';

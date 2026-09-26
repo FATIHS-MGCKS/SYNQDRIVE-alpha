@@ -11849,7 +11849,6 @@ model DiV0ShadowInterval {
   trip         VehicleTrip   @relation(fields: [tripId], references: [id], onDelete: Cascade)
 
   @@unique([shadowRunId, intervalStart])
-  @@index([shadowRunId, intervalStart])
   @@index([tripId])
   @@index([vehicleId, createdAt])
   @@index([organizationId, createdAt])

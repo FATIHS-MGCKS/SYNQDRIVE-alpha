@@ -36,10 +36,15 @@ describe('DI V0 shadow persistence schema', () => {
     expect(schema).not.toMatch(/model VehicleTrip[\s\S]*shadow_interval_count/);
   });
 
-  it('migration creates only shadow tables', () => {
+  it('migration creates only shadow tables with CHECK constraints', () => {
     const sql = fs.readFileSync(MIGRATION_PATH, 'utf8');
     expect(sql).toContain('CREATE TABLE "di_v0_shadow_runs"');
     expect(sql).toContain('CREATE TABLE "di_v0_shadow_intervals"');
     expect(sql).not.toMatch(/ALTER TABLE "vehicle_trips"/);
+    expect(sql).toContain('di_v0_shadow_runs_status_check');
+    expect(sql).toContain('di_v0_shadow_intervals_interval_time_check');
+    expect(sql).not.toContain('di_v0_shadow_intervals_shadow_run_id_interval_start_idx');
+    const indexCreates = sql.match(/^CREATE (UNIQUE )?INDEX/gm) ?? [];
+    expect(indexCreates.length).toBe(10);
   });
 });

@@ -49,9 +49,3 @@ export interface DiV0ShadowPersistedIntervalInput {
   legacyComparison?: Record<string, unknown> | null;
 }
 
-export interface DiV0ShadowCompletionCounts {
-  intervalCount: number;
-  numericSpeedCount: number;
-  abstentionCount: number;
-  conflictCount: number;
-}

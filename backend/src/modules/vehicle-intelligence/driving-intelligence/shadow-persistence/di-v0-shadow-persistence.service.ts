@@ -3,7 +3,7 @@ import type { DiV0ShadowRun } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import type { DiV0TripComputeOutput } from '../core/types';
 import type { DiV0VersionTuple } from '../core/versions';
-import { deriveCompletionCounts, mapComputeOutputToPersistRows } from './di-v0-shadow-mapper';
+import { mapComputeOutputToPersistRows } from './di-v0-shadow-mapper';
 import { DiV0ShadowPersistenceRepository } from './di-v0-shadow-persistence.repository';
 import type { DiV0ShadowRunIdentity } from './di-v0-shadow-types';
 
@@ -25,7 +25,6 @@ export class DiV0ShadowPersistenceService {
 
   async persistCompletedRun(input: PersistDiV0ShadowRunInput): Promise<DiV0ShadowRun> {
     const rows = mapComputeOutputToPersistRows(input.computeOutput, input.versions);
-    const counts = deriveCompletionCounts(rows);
     const run = await this.repository.createOrGetRun(input.identity);
     if (run.status === 'COMPLETED') {
       return run;
@@ -34,14 +33,35 @@ export class DiV0ShadowPersistenceService {
       throw new Error('DI_V0_SHADOW_RUN_PREVIOUSLY_FAILED');
     }
     try {
-      return await this.prisma.$transaction(async () => {
-        await this.repository.markRunRunning(run.id);
-        await this.repository.insertIntervalBatch(run, rows, input.versions);
-        return await this.repository.completeRun(run.id, counts);
-      });
+      return await this.prisma.$transaction(
+        async (tx) => {
+          const latest = await tx.diV0ShadowRun.findUnique({ where: { id: run.id } });
+          if (latest?.status === 'COMPLETED') {
+            return latest;
+          }
+          if (latest?.status === 'FAILED') {
+            throw new Error('DI_V0_SHADOW_RUN_PREVIOUSLY_FAILED');
+          }
+          try {
+            await this.repository.markRunRunning(run.id, tx);
+          } catch (markError) {
+            const raced = await tx.diV0ShadowRun.findUnique({ where: { id: run.id } });
+            if (raced?.status === 'COMPLETED') {
+              return raced;
+            }
+            throw markError;
+          }
+          await this.repository.insertIntervalBatch(run, rows, input.versions, tx);
+          return await this.repository.completeRun(run.id, tx);
+        },
+        { timeout: 120_000 },
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : 'unknown_error';
-      await this.repository.markRunFailed(run.id, 'PERSISTENCE_FAILED', message);
+      const latest = await this.prisma.diV0ShadowRun.findUnique({ where: { id: run.id } });
+      if (latest?.status === 'RUNNING') {
+        await this.repository.markRunFailed(run.id, 'PERSISTENCE_FAILED', message);
+      }
       throw error;
     }
   }

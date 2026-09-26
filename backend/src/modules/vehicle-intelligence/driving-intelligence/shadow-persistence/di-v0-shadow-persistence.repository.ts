@@ -2,9 +2,11 @@ import { Injectable } from '@nestjs/common';
 import type { DiV0ShadowRun, Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { isPrismaUniqueViolation } from '@shared/database/prisma-error.util';
+import { deriveCompletionCountsFromPersistedIntervals } from './di-v0-shadow-completion';
 import { buildDiV0ShadowRunIdempotencyKey } from './di-v0-shadow-idempotency';
+import { canTransitionRunStatus, isDiV0ShadowRunStatus } from './di-v0-shadow-run-status';
+import { assertShadowRunTripIdentity } from './di-v0-shadow-tenant';
 import type {
-  DiV0ShadowCompletionCounts,
   DiV0ShadowPersistedIntervalInput,
   DiV0ShadowRunIdentity,
   DiV0ShadowRunStatus,
@@ -13,23 +15,31 @@ import { validateShadowIntervalRow, validateShadowSourceFamily } from './di-v0-s
 
 const INTERVAL_BATCH_SIZE = 500;
 
+export type DiV0ShadowPrismaClient = PrismaService | Prisma.TransactionClient;
+
 @Injectable()
 export class DiV0ShadowPersistenceRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  private client(tx?: DiV0ShadowPrismaClient): DiV0ShadowPrismaClient {
+    return tx ?? this.prisma;
+  }
+
   async findRunByIdempotencyKey(
     organizationId: string,
     idempotencyKey: string,
+    tx?: DiV0ShadowPrismaClient,
   ): Promise<DiV0ShadowRun | null> {
-    return this.prisma.diV0ShadowRun.findUnique({
+    return this.client(tx).diV0ShadowRun.findUnique({
       where: { organizationId_idempotencyKey: { organizationId, idempotencyKey } },
     });
   }
 
   async findRunByTripVersionTuple(
     identity: DiV0ShadowRunIdentity,
+    tx?: DiV0ShadowPrismaClient,
   ): Promise<DiV0ShadowRun | null> {
-    return this.prisma.diV0ShadowRun.findFirst({
+    return this.client(tx).diV0ShadowRun.findFirst({
       where: {
         tripId: identity.tripId,
         structuralVersion: identity.versions.structuralVersion,
@@ -42,15 +52,20 @@ export class DiV0ShadowPersistenceRepository {
     });
   }
 
-  async createOrGetRun(identity: DiV0ShadowRunIdentity): Promise<DiV0ShadowRun> {
+  async createOrGetRun(
+    identity: DiV0ShadowRunIdentity,
+    tx?: DiV0ShadowPrismaClient,
+  ): Promise<DiV0ShadowRun> {
     validateShadowSourceFamily(identity.sourceFamily);
+    await assertShadowRunTripIdentity(this.client(tx), identity);
+
     const idempotencyKey = buildDiV0ShadowRunIdempotencyKey(identity);
-    const existing = await this.findRunByIdempotencyKey(identity.organizationId, idempotencyKey);
+    const existing = await this.findRunByIdempotencyKey(identity.organizationId, idempotencyKey, tx);
     if (existing) {
       return existing;
     }
     try {
-      return await this.prisma.diV0ShadowRun.create({
+      return await this.client(tx).diV0ShadowRun.create({
         data: {
           organizationId: identity.organizationId,
           vehicleId: identity.vehicleId,
@@ -67,7 +82,7 @@ export class DiV0ShadowPersistenceRepository {
       });
     } catch (error) {
       if (isPrismaUniqueViolation(error)) {
-        const raced = await this.findRunByIdempotencyKey(identity.organizationId, idempotencyKey);
+        const raced = await this.findRunByIdempotencyKey(identity.organizationId, idempotencyKey, tx);
         if (raced) {
           return raced;
         }
@@ -76,20 +91,57 @@ export class DiV0ShadowPersistenceRepository {
     }
   }
 
-  async markRunRunning(runId: string): Promise<DiV0ShadowRun> {
-    return this.prisma.diV0ShadowRun.update({
-      where: { id: runId },
+  async markRunRunning(runId: string, tx?: DiV0ShadowPrismaClient): Promise<DiV0ShadowRun> {
+    const db = this.client(tx);
+    const run = await db.diV0ShadowRun.findUnique({ where: { id: runId } });
+    if (!run) {
+      throw new Error('DI_V0_SHADOW_RUN_NOT_FOUND');
+    }
+    if (!isDiV0ShadowRunStatus(run.status)) {
+      throw new Error('DI_V0_SHADOW_INVALID_RUN_STATUS');
+    }
+    if (run.status === 'RUNNING') {
+      return run;
+    }
+    if (!canTransitionRunStatus(run.status, 'RUNNING')) {
+      throw new Error(`DI_V0_SHADOW_ILLEGAL_RUN_STATUS_TRANSITION:${run.status}->RUNNING`);
+    }
+    const updated = await db.diV0ShadowRun.updateMany({
+      where: { id: runId, status: run.status },
       data: { status: 'RUNNING', startedAt: new Date(), failureCode: null, failureDetailSafe: null },
     });
+    if (updated.count !== 1) {
+      const current = await db.diV0ShadowRun.findUnique({ where: { id: runId } });
+      if (current?.status === 'RUNNING') {
+        return current;
+      }
+      if (current?.status === 'COMPLETED') {
+        throw new Error('DI_V0_SHADOW_RUN_ALREADY_COMPLETED');
+      }
+      throw new Error('DI_V0_SHADOW_RUN_STATUS_RACE');
+    }
+    return db.diV0ShadowRun.findUniqueOrThrow({ where: { id: runId } });
   }
 
   async markRunFailed(
     runId: string,
     failureCode: string,
     failureDetailSafe: string,
+    tx?: DiV0ShadowPrismaClient,
   ): Promise<DiV0ShadowRun> {
-    return this.prisma.diV0ShadowRun.update({
-      where: { id: runId },
+    const db = this.client(tx);
+    const run = await db.diV0ShadowRun.findUnique({ where: { id: runId } });
+    if (!run) {
+      throw new Error('DI_V0_SHADOW_RUN_NOT_FOUND');
+    }
+    if (run.status === 'FAILED') {
+      return run;
+    }
+    if (!canTransitionRunStatus(run.status, 'FAILED')) {
+      throw new Error(`DI_V0_SHADOW_ILLEGAL_RUN_STATUS_TRANSITION:${run.status}->FAILED`);
+    }
+    const updated = await db.diV0ShadowRun.updateMany({
+      where: { id: runId, status: 'RUNNING' },
       data: {
         status: 'FAILED',
         failedAt: new Date(),
@@ -97,25 +149,36 @@ export class DiV0ShadowPersistenceRepository {
         failureDetailSafe: failureDetailSafe.slice(0, 500),
       },
     });
+    if (updated.count !== 1) {
+      throw new Error('DI_V0_SHADOW_RUN_STATUS_RACE');
+    }
+    return db.diV0ShadowRun.findUniqueOrThrow({ where: { id: runId } });
   }
 
-  async completeRun(runId: string, counts: DiV0ShadowCompletionCounts): Promise<DiV0ShadowRun> {
-    const run = await this.prisma.diV0ShadowRun.findUnique({ where: { id: runId } });
+  async completeRun(runId: string, tx?: DiV0ShadowPrismaClient): Promise<DiV0ShadowRun> {
+    const db = this.client(tx);
+    const run = await db.diV0ShadowRun.findUnique({ where: { id: runId } });
     if (!run) {
       throw new Error('DI_V0_SHADOW_RUN_NOT_FOUND');
     }
     if (run.status === 'COMPLETED') {
       return run;
     }
-    if (run.status === 'FAILED') {
-      throw new Error('DI_V0_SHADOW_RUN_ALREADY_FAILED');
+    if (!canTransitionRunStatus(run.status, 'COMPLETED')) {
+      throw new Error(`DI_V0_SHADOW_ILLEGAL_RUN_STATUS_TRANSITION:${run.status}->COMPLETED`);
     }
-    const persisted = await this.prisma.diV0ShadowInterval.count({ where: { shadowRunId: runId } });
-    if (persisted !== counts.intervalCount) {
-      throw new Error('DI_V0_SHADOW_INTERVAL_COUNT_MISMATCH');
+
+    const intervals = await db.diV0ShadowInterval.findMany({
+      where: { shadowRunId: runId },
+      select: { estimatedSpeedKmh: true, abstentionReason: true, sourceRelation: true },
+    });
+    const counts = deriveCompletionCountsFromPersistedIntervals(intervals);
+    if (counts.intervalCount === 0) {
+      throw new Error('DI_V0_SHADOW_CANNOT_COMPLETE_WITHOUT_INTERVALS');
     }
-    return this.prisma.diV0ShadowRun.update({
-      where: { id: runId },
+
+    const updated = await db.diV0ShadowRun.updateMany({
+      where: { id: runId, status: 'RUNNING' },
       data: {
         status: 'COMPLETED',
         completedAt: new Date(),
@@ -125,6 +188,14 @@ export class DiV0ShadowPersistenceRepository {
         conflictCount: counts.conflictCount,
       },
     });
+    if (updated.count !== 1) {
+      const current = await db.diV0ShadowRun.findUnique({ where: { id: runId } });
+      if (current?.status === 'COMPLETED') {
+        return current;
+      }
+      throw new Error('DI_V0_SHADOW_RUN_STATUS_RACE');
+    }
+    return db.diV0ShadowRun.findUniqueOrThrow({ where: { id: runId } });
   }
 
   async insertIntervalBatch(
@@ -136,6 +207,7 @@ export class DiV0ShadowPersistenceRepository {
       calibrationVersion: string;
       sourceFamilyPolicyVersion: string;
     },
+    tx?: DiV0ShadowPrismaClient,
   ): Promise<number> {
     if (rows.length === 0) {
       return 0;
@@ -143,6 +215,7 @@ export class DiV0ShadowPersistenceRepository {
     for (const row of rows) {
       validateShadowIntervalRow(row);
     }
+    const db = this.client(tx);
     let inserted = 0;
     for (let offset = 0; offset < rows.length; offset += INTERVAL_BATCH_SIZE) {
       const chunk = rows.slice(offset, offset + INTERVAL_BATCH_SIZE);
@@ -179,22 +252,23 @@ export class DiV0ShadowPersistenceRepository {
         provenance: row.provenance as Prisma.InputJsonValue,
         legacyComparison: (row.legacyComparison ?? undefined) as Prisma.InputJsonValue | undefined,
       }));
-      const result = await this.prisma.diV0ShadowInterval.createMany({ data, skipDuplicates: true });
+      const result = await db.diV0ShadowInterval.createMany({ data, skipDuplicates: true });
       inserted += result.count;
     }
     return inserted;
   }
 
-  async listIntervalsByRunOrdered(shadowRunId: string) {
-    return this.prisma.diV0ShadowInterval.findMany({
+  async listIntervalsByRunOrdered(shadowRunId: string, tx?: DiV0ShadowPrismaClient) {
+    return this.client(tx).diV0ShadowInterval.findMany({
       where: { shadowRunId },
       orderBy: { intervalStart: 'asc' },
     });
   }
 
-  async deleteRunForTest(shadowRunId: string): Promise<void> {
-    await this.prisma.diV0ShadowInterval.deleteMany({ where: { shadowRunId } });
-    await this.prisma.diV0ShadowRun.deleteMany({ where: { id: shadowRunId } });
+  async deleteRunForTest(shadowRunId: string, tx?: DiV0ShadowPrismaClient): Promise<void> {
+    const db = this.client(tx);
+    await db.diV0ShadowInterval.deleteMany({ where: { shadowRunId } });
+    await db.diV0ShadowRun.deleteMany({ where: { id: shadowRunId } });
   }
 }
 
