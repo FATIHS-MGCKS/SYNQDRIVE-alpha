@@ -1,5 +1,11 @@
 # KG-EED Changelog
 
+## 2026-09-26 — ERD E6.3 charging location enrichment runtime
+
+- Dedicated `VehicleEnergyEventChargingStationEnrichment` + BullMQ queue `energy.recharge.station.enrich`.
+- Post-projection enqueue hook; cutover on VEE `endTime`; flags default OFF; no backfill/UI.
+- Evidence: `ERD-E6-3-CHARGING-LOCATION-ENRICHMENT-RUNTIME-2026-09-26.md` (EED-EV-0089).
+
 ## 2026-09-25 — ERD E6.2 charging station reference resolver
 
 - Independent OSM charging-station dataset (`osm.charging_stations`, separate metadata lifecycle from fuel).

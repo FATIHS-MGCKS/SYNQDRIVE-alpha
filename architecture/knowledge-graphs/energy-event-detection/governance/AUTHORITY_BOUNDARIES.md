@@ -12,7 +12,8 @@
 | RECHARGE product-read dedupe (E5.5) | EED_OWNS | KG-EED / **ERD** | `listCanonicalEnergyEvents` strict identity v1 (exact DIMO + coalesced lineage); fail-open; flag default OFF | Shadow parity observations as product authority; time-window dedupe |
 | RECHARGE write-authority cutover gate (E5.6) | EED_OWNS | KG-EED / **ERD** | Single env cutover resolver; physical evidence end boundary; legacy gate + canonical projection runtime; default OFF | Independent legacy/canonical flags; shadow as write authority; Production activation in code stage |
 | RECHARGE location provenance (E6.1) | EED_OWNS | KG-EED / **ERD** | Native DIMO segment → HvChargeSession metadata → VEE projection; strict validation; fallback no-location | Fuel-station OSM resolver; charger matching; REFUEL enrichment model reuse |
-| EV charging-station reference (E6.2) | EED_OWNS | KG-EED / **ERD** | Independent OSM `amenity=charging_station` dataset + geometry-first resolver v1; connector summary as reference metadata only | Fuel OSM tables/resolver; charge_point standalone V1; VEE enrichment wiring (E6.3) |
+| EV charging-station reference (E6.2) | EED_OWNS | KG-EED / **ERD** | Independent OSM `amenity=charging_station` dataset + geometry-first resolver v1; connector summary as reference metadata only | Fuel OSM tables/resolver; charge_point standalone V1 |
+| EV charging-station enrichment runtime (E6.3) | EED_OWNS | KG-EED / **ERD** | Async attach of E6.2 resolution to canonical ERD RECHARGE VEE; separate persistence/API from fuel enrichment | Fuel enrichment queue/model; physical identity; E5.6 write authority |
 | `durationSeconds` REFUEL meaning | EED_OWNS | KG-EED | Detection envelope, not pump time | Trip wall-clock duration |
 | `fuelLevelRise*` semantics | EED_OWNS | KG-EED | Observed telemetry transition | Physical nozzle duration |
 | Sibling reconciliation | EED_OWNS | KG-EED | Token-scoped REFUEL delete rules | Trip row deletion |
