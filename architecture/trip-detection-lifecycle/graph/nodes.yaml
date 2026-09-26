@@ -955,8 +955,7 @@ nodes:
     epistemic_status: CONFIRMED
     summary: >
       Sole TripDecisionEngine lifecycle writer; segment detectors ACTIVE_REPAIR; DI V2 + legacy HF post-finalize;
-      route enrich triple entrypoint with safe artifact fingerprint; FMM scaffold + unused Mapbox port dead;
-      RESOLVED_WITH_BOUNDED_DEBT.
+      Route V2 matchMapboxChunkDetailed; mapMatchRoute dead; 41-row productive matrix; RESOLVED_WITH_BOUNDED_DEBT.
     source_paths:
       - architecture/trip-detection-lifecycle/evidence/TDL_OQ_010_LEGACY_DUPLICATE_PATH_INVENTORY_2026-09-26.md
 

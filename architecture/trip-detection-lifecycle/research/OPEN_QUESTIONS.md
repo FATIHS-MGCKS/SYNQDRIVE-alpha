@@ -120,7 +120,7 @@
 
 **Evidence:** [TDL_OQ_010_LEGACY_DUPLICATE_PATH_INVENTORY_2026-09-26.md](../evidence/TDL_OQ_010_LEGACY_DUPLICATE_PATH_INVENTORY_2026-09-26.md) (TDL-EVID-OQ010-LEGACY-INV-001) @ `origin/main` `79102e516…`, Production @ `8a1d9c658…`.
 
-**Verdict:** **`RESOLVED_WITH_BOUNDED_DEBT`** — full runtime inventory; **`TripDecisionEngine`** sole lifecycle writer; pre-V2 segment detectors **ACTIVE_REPAIR**; **DI V2 + legacy HF** pipelines both active with **safe duplicate** route/impact paths; **FMM + unused Mapbox port** dead/scaffold only.
+**Verdict:** **`RESOLVED_WITH_BOUNDED_DEBT`** — **41-row** productive path matrix; **`TripDecisionEngine`** sole lifecycle writer; Route V2 via **`matchMapboxChunkDetailed`**; **`mapMatchRoute()`** dead; pre-V2 segment detectors **ACTIVE_REPAIR**; **DI V2 + legacy HF** parallel with bounded duplicate route/impact semantics.
 
 **Status:** **RESOLVED**
 
