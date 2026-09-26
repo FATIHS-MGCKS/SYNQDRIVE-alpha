@@ -27,6 +27,17 @@ Do **not** say "HF Recovery V2 not deployed" — say **code deployed, feature di
 
 **Cross-authority handoff (TDL-OQ-001, 2026-09-25):** Trip Detection invokes `TripPostFinalizeAnalysisProducer` after persisted `COMPLETED`; DI owns `initializeForCompletedTrip`, durable runs/jobs, BullMQ `driving.intelligence.jobs`, and `DrivingAnalysisReconciliationService` recovery. Evidence: [TDL_OQ_001_COMPLETED_TO_DI_HANDOFF_AUDIT_2026-09-25.md](../trip-detection-lifecycle/evidence/TDL_OQ_001_COMPLETED_TO_DI_HANDOFF_AUDIT_2026-09-25.md) (TDL-EVID-OQ001-HANDOFF-001). Verdict: **`RESOLVED_WITH_BOUNDED_GAPS`** (not DB⊕queue atomic).
 
+### DI V0 shadow pure core (EXP-021 C1D.5 S0/S1 — 2026-09-26)
+
+| Item | State |
+|------|-------|
+| **Path** | `backend/src/modules/vehicle-intelligence/driving-intelligence/core/` |
+| **Runtime caller** | **None** — library only; not registered in Nest workers |
+| **Contract** | `DI_SOURCE_QUALITY_CONTRACT_V0_1` + `DI_KINEMATIC_ESTIMATE_V0_1`; calibration `CALIBRATION_UNSET_V0` (injected bundle) |
+| **L3** | Centred-path haversine mean × 3.6; support labels **calendar** t−1 s, t, t+1; all FRESH; no hold/release/gap |
+| **Invariant** | Driving Intelligence derives claims only from evidence whose availability, temporal semantics, source family and provenance are explicit; unsupported point values are withheld |
+| **Next slice** | S2 persistence (`di_v0_shadow_*`) — not started |
+
 ## System boundary (confirmed)
 
 | Inside DI | Outside DI (interface only) |

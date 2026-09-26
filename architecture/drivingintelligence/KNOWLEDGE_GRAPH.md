@@ -236,6 +236,7 @@ Full record: [decisions/DECISION_REGISTER.md](./decisions/DECISION_REGISTER.md).
 | DI-DEC-NATIVE-LTE-001 | Native events LTE_R1 misuse authority | VALIDATED |
 | DI-DEC-ALIGN-HARD-BOUNDS-001 | Reject implausible alignments | VALIDATED |
 | DI-DEC-R1-TEMPORAL-CONTAINMENT-001 | R1 temporal-safety containment (active containment) | VALIDATED |
+| DI-DEC-V0-SHADOW-PURE-CORE-001 | DI V0 shadow pure core (library only, C1D.5) | PROPOSED |
 
 ## Open gaps (canonical)
 

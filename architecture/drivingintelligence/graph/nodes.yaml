@@ -1217,6 +1217,51 @@ nodes:
       - DI-EVID-EXP021-C03-001
       - DI-TEST-R1-CONTAINMENT-001
 
+  - id: DI-EVID-EXP021-C1D5-001
+    type: evidence
+    title: EXP-021 C1D.5 DI V0 pure shadow core (S0/S1)
+    epistemic_status: CONFIRMED
+    source_type: AUDIT_DOCUMENT
+    summary: >
+      C1D.4 readiness implementation slice S1 — pure library, L3 calendar-second support, hold/release,
+      no DB/queue/DIMO; merge review only.
+    source_paths:
+      - architecture/drivingintelligence/evidence/EXP_021_C1D5_V0_PURE_CORE_2026-09-26.md
+
+  - id: DI-TEST-V0-CORE-001
+    type: test_evidence
+    title: DI V0 pure core Jest suites
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: Unit, invariant, golden fixture, and static side-effect boundary tests for driving-intelligence/core.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/core/__tests__/
+
+  - id: DI-SVC-V0-SHADOW-CORE-001
+    type: service
+    title: DI V0 pure shadow kinematic core (library)
+    epistemic_status: CONFIRMED
+    summary: >
+      Deterministic normalized-evidence → interval kinematic results; no runtime caller in S1.
+      L3 centred-path DI_KINEMATIC_ESTIMATE_V0_1; CALIBRATION_UNSET_V0 injected only.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/core/
+    evidence:
+      - DI-EVID-EXP021-C1D5-001
+      - DI-TEST-V0-CORE-001
+
+  - id: DI-DEC-V0-SHADOW-PURE-CORE-001
+    type: decision
+    title: DI V0 shadow pure core (EXP-021 C1D.5 S0/S1)
+    epistemic_status: INFERRED
+    decision_status: PROPOSED
+    summary: >
+      Isolate structural DI V0 evaluation in a side-effect-free library before shadow persistence/workers.
+    source_paths:
+      - architecture/drivingintelligence/decisions/DECISION_REGISTER.md
+    evidence:
+      - DI-EVID-EXP021-C1D5-001
+
   - id: DI-DEC-R1-TEMPORAL-CONTAINMENT-001
     type: decision
     title: Minimal reversible R1 temporal-safety containment (EXP-021 C0.3)
