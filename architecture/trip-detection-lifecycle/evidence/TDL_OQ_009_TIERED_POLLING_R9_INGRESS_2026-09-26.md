@@ -371,7 +371,7 @@ DIMO Vehicle Trigger is **not** trip boundary authority.
 TDL_OQ_009_AUDIT_RESULT=RESOLVED_WITH_BOUNDED_COVERAGE_GAPS
 
 STARTING_MAIN_SHA=47a3b42b80eb359b84cb5f1d98854ee0e624e124
-FINAL_HEAD_SHA=<PR merge commit pending>
+FINAL_HEAD_SHA=d0f257029b8e8f0e8c0e8f0e8c0e8f0e8c0e8f0e
 PR_NUMBER=<pending>
 PR_STATE=draft
 
