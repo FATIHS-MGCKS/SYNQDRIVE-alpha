@@ -12,6 +12,21 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-26 — M3.3F F3 controlled C3 shadow activation (runtime PASS, natural PENDING)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | F2 PASS on main; production C3/D3 effective OFF; `battery_rest_session_features` count **0**; F1 code @ `2b54a357854c9d44f638ee857f72936967c04992`. |
+| **OBSERVATION** | F3 authorized env-only C3 enablement with canary + dual-replica convergence; D3 must remain OFF; `F_C3_T0` immutable after full success. |
+| **CHANGE** | Atomic `BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED=true` in shared `backend.env`; rolling PM2 restart (A canary → B); **`F_C3_T0=2026-09-26T11:09:12Z`**. |
+| **WHY** | First production C3 shadow path under M3.3F gate without D3 materialization. |
+| **VALIDATION** | `research/M3_3F_F3_C3_SHADOW_ACTIVATION_2026-09-26.md` — health/SHA/scheduler; D3 delta **0**; `FAILED_ISOLATED` delta **0**; 360s post-T0 window. |
+| **OBSERVED_EFFECT** | **`F3_RUNTIME_ACTIVATION_RESULT=PASS`**; **`C3_PRODUCTION_ACTIVATED=YES`**; **`F3_NATURAL_C3_VALIDATION=PENDING`** (0 post-T0 rows in window); **`F4_ALLOWED=NO`**. |
+| **NON_EFFECTS** | D3 flag/scheduler/reconciliation; D4/E3 runtime; assessment/publication/readiness policy; backfill; `F_D3_T0`. |
+| **REMAINING_GAPS** | Natural post-T0 C3 rows + C5A on first sample before F4; not fleet-scale calibration. |
+| **DECISION_STATUS** | **PRODUCTION_VALIDATED** (C3 runtime activation scope) |
+| **EVIDENCE** | Env backup `backend.env.bak-f3-c3-20260926110619`; DB backup `db-pre-f3-c3-20260926110619.sql.gz`. |
+
 ## CL-2026-09-26 — M3.3F F2 flag-OFF production deploy + zero-write smoke (PASS)
 
 | Field | Value |
