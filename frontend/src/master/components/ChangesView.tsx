@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'di-exp021-c1d5-v0-pure-shadow-core-2026-09-26',
+    version: '4.9.2200',
+    title: 'Driving Intelligence — EXP-021 C1D.5 DI V0 pure shadow core (S0/S1)',
+    summary: [
+      'New isolated driving-intelligence/core pure library: normalized evidence → DI V0 interval kinematic results.',
+      'Frozen L3 centred-path estimator (DI_KINEMATIC_ESTIMATE_V0_1) with calendar-second support t−1,t,t+1; hold/release/ROW_ABSENT abstention.',
+      'R1 OBD INTERVAL_ONLY corroboration only; uncalibrated native events typed, max claim L1; numeric L3 capped at L2.',
+      'No runtime caller, DB, queue, DIMO, flags, or customer API — merge review only.',
+    ],
+    reason:
+      'C1D.4 shadow implementation readiness requires a side-effect-free core before persistence and workers.',
+    previousBehavior: 'No DI V0 structural evaluator in repository; legacy HF detectors only.',
+    details:
+      'backend/src/modules/vehicle-intelligence/driving-intelligence/core/*; architecture/drivingintelligence/evidence/EXP_021_C1D5_V0_PURE_CORE_2026-09-26.md; DI-DEC-V0-SHADOW-PURE-CORE-001.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-26T18:30:00.000Z',
+  },
+  {
     id: 'di-exp021-c05-cg01-cold-engine-full-throttle-2026-09-24',
     version: '4.9.2101',
     title: 'Driving Intelligence — EXP-021 C0.5 CG-01 COLD_ENGINE_FULL_THROTTLE containment (draft)',

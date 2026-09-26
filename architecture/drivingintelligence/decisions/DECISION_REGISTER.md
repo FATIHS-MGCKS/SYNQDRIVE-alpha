@@ -317,3 +317,19 @@ Validate graph consistency: `bash architecture/drivingintelligence/scripts/valid
 | **GRAPH NODES** | DI-POL-R1-TEMPORAL-CONTAINMENT-001, DI-INV-R1-OBD-NO-POINT-CLAIM-001 |
 | **EPISTEMIC** | CONFIRMED |
 | **EVIDENCE** | DI-EVID-EXP021-C03-001 |
+
+## DI-DEC-V0-SHADOW-PURE-CORE-001
+
+| Field | Value |
+|-------|-------|
+| **TITLE** | DI V0 shadow pure core (EXP-021 C1D.5 S0/S1) |
+| **ERA** | EXP-021 C1D architecture freeze → implementation |
+| **STATUS** | PROPOSED |
+| **PROBLEM** | Need deterministic, side-effect-free kinematic evaluation aligned to C1D.3 before shadow worker/persistence |
+| **DECISION** | Add isolated `driving-intelligence/core` pure library: normalized evidence in, DI V0 interval results out; no DB/queue/DIMO/runtime flags; L3 centred-path estimator frozen at `DI_KINEMATIC_ESTIMATE_V0_1`; calibration `CALIBRATION_UNSET_V0` injected only |
+| **RATIONALE** | Preserves legacy zero-impact until shadow slice; enables replay/golden tests; separates structural contract from calibration |
+| **CONSEQUENCES** | No production behavior change; no runtime caller in S1; S2+ may persist/enqueue behind flags |
+| **GRAPH NODES** | DI-DEC-V0-SHADOW-PURE-CORE-001, DI-SVC-V0-SHADOW-CORE-001 |
+| **EPISTEMIC** | INFERRED → CONFIRMED after unit tests |
+| **EVIDENCE** | `evidence/EXP_021_C1D5_V0_PURE_CORE_2026-09-26.md` |
+| **BOUNDARY** | Consulted: DIMO (no provider category yet), ATE/TDL/VDC (read-only semantics only) — no cross-module code change |

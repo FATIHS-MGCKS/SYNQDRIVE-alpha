@@ -405,3 +405,8 @@ edges:
     relation: contradicts
     to: DI-DEC-PROVIDER-TS-001
     notes: Recorded, not resolved — R1 OBD family only
+
+  - id: DI-EDGE-135
+    from: DI-DEC-V0-SHADOW-PURE-CORE-001
+    relation: governs
+    to: DI-SVC-V0-SHADOW-CORE-001

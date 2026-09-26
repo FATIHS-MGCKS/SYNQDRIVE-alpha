@@ -999,3 +999,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | NON_EFFECTS | CG-02…CG-10, COLD_ENGINE_HIGH_RPM, Tesla/API_SYNTHETIC, no DB mutation |
 | Status | `VALIDATED` (code/tests) — draft PR, not deployed |
 | Evidence | `evidence/reference-capture/EXP_021_C05_CG01_COLD_ENGINE_FULL_THROTTLE_2026-09-24.md` |
+
+### EXP-021 C1D.5 — DI V0 pure shadow core S0/S1 (2026-09-26)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | C1D.4 implementation readiness gate `C1D4_GATE_SHADOW_IMPLEMENTATION_READY` |
+| CHANGE | New `backend/src/modules/vehicle-intelligence/driving-intelligence/core/` pure library: types, hold/release, calendar-second L3 eligibility, motion/claim/confidence, R1 INTERVAL_ONLY relation rules, `computeDiV0TripIntervals`; Jest coverage + side-effect static audit |
+| NON_EFFECTS | No Prisma migration, BullMQ, DIMO fetch, feature flags, HTTP, customer DTOs, trip/scoring/event side effects |
+| Status | `PROPOSED` — merge review only; no deploy authorization |
+| Evidence | `evidence/EXP_021_C1D5_V0_PURE_CORE_2026-09-26.md` |
+| Decision | `DI-DEC-V0-SHADOW-PURE-CORE-001` |
