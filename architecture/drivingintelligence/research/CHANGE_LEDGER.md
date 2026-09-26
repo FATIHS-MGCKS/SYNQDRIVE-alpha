@@ -1000,6 +1000,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Status | `VALIDATED` (code/tests) — draft PR, not deployed |
 | Evidence | `evidence/reference-capture/EXP_021_C05_CG01_COLD_ENGINE_FULL_THROTTLE_2026-09-24.md` |
 
+### EXP-021 C1D.6 — DI V0 shadow persistence S2 (2026-09-26)
+
+| Field | Value |
+|-------|--------|
+| Trigger | C1D.5 S0/S1 merged; C1D.4 storage design |
+| Change | `di_v0_shadow_runs` / `di_v0_shadow_intervals` + `shadow-persistence/` adapter (no runtime caller) |
+| Versions | Structural / estimator contracts unchanged; storage append-only |
+
 ### EXP-021 C1D.5B — pure core pre-merge fail-safe closure (2026-09-26)
 
 | Field | Value |
