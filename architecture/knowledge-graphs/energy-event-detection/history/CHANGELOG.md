@@ -1,5 +1,11 @@
 # KG-EED Changelog
 
+## 2026-09-25 — ERD E6.2 charging station reference resolver
+
+- Independent OSM charging-station dataset (`osm.charging_stations`, separate metadata lifecycle from fuel).
+- Deterministic geometry-first resolver `charging-station-resolver-v1`; no VEE enrichment wiring.
+- Evidence: `ERD-E6-2-CHARGING-STATION-REFERENCE-RESOLVER-2026-09-25.md` (EED-EV-0088). No Production import.
+
 ## 2026-09-25 — ERD E6.1 canonical recharge location provenance
 
 - Native DIMO coordinates preserved on `HvChargeSession.metadata` and projected to canonical VEE (mutable fields + handoff/reconcile).

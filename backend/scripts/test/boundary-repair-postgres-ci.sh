@@ -58,8 +58,12 @@ log "Step 13/14: ERD E5.6 write authority cutover PostgreSQL gate"
 ERD_E5_6_POSTGRES_INTEGRATION=1 ERD_E5_6_POSTGRES_REQUIRED=1 \
   npx jest erd-e5-6-write-authority-cutover.postgres.integration --runInBand --verbose
 
-log "Step 14/14: ERD E6.1 recharge location provenance PostgreSQL gate"
+log "Step 14/15: ERD E6.1 recharge location provenance PostgreSQL gate"
 ERD_E6_1_POSTGRES_INTEGRATION=1 ERD_E6_1_POSTGRES_REQUIRED=1 \
   npx jest erd-e6-1-recharge-location-provenance.postgres.integration --runInBand --verbose
+
+log "Step 15/15: ERD E6.2 charging station reference resolver PostgreSQL gate"
+ERD_E6_2_POSTGRES_INTEGRATION=1 ERD_E6_2_POSTGRES_REQUIRED=1 \
+  npx jest charging-station-location-resolver.postgres.integration --runInBand --verbose
 
 log "boundary-repair-postgres-ci completed successfully"

@@ -249,6 +249,8 @@ import { BatteryV2JobsProducerModule } from './battery-health/jobs/battery-v2-jo
 import { DriveProfileResolverService } from './drive-profile/drive-profile-resolver.service';
 import { FuelStationCandidateRepository } from './fuel-stations/fuel-station-candidate.repository';
 import { FuelStationLocationResolverService } from './fuel-stations/fuel-station-location-resolver.service';
+import { ChargingStationCandidateRepository } from './charging-stations/charging-station-candidate.repository';
+import { ChargingStationLocationResolverService } from './charging-stations/charging-station-location-resolver.service';
 import { FuelStationEnrichmentProducerService } from './fuel-stations/enrichment/fuel-station-enrichment-producer.service';
 import { FuelStationEnrichmentOrchestratorService } from './fuel-stations/enrichment/fuel-station-enrichment-orchestrator.service';
 import { LvBatteryChemistryResolverService } from './lv-battery-chemistry/lv-battery-chemistry-resolver.service';
@@ -432,6 +434,8 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     DriveProfileResolverService,
     FuelStationCandidateRepository,
     FuelStationLocationResolverService,
+    ChargingStationCandidateRepository,
+    ChargingStationLocationResolverService,
     FuelStationEnrichmentProducerService,
     FuelStationEnrichmentOrchestratorService,
     PhysicalRefuelCoordinateRuntimeService,
@@ -670,6 +674,8 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     DriveProfileResolverService,
     FuelStationCandidateRepository,
     FuelStationLocationResolverService,
+    ChargingStationCandidateRepository,
+    ChargingStationLocationResolverService,
     FuelStationEnrichmentProducerService,
     FuelStationEnrichmentOrchestratorService,
     PhysicalRefuelCoordinateRuntimeService,
