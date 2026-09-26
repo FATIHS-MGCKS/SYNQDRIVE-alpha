@@ -315,10 +315,13 @@ const LIVE = process.env.ERD_E6_3_RECOVERY_INTEGRATION === '1';
         seeds.push({ orgId: org.id, vehicleId: vehicle.id, eventId: event.id });
       }
       const eventIds = seeds.map((s) => s.eventId);
+      const beforeJobs = await jobCountForEventIds(eventIds);
       await batchScheduler.recoverMissedEnrichments();
-      expect(await jobCountForEventIds(eventIds)).toBe(2);
+      const afterFirst = await jobCountForEventIds(eventIds);
+      expect(afterFirst - beforeJobs).toBe(2);
       await batchScheduler.recoverMissedEnrichments();
-      expect(await jobCountForEventIds(eventIds)).toBe(3);
+      const afterSecond = await jobCountForEventIds(eventIds);
+      expect(afterSecond - afterFirst).toBe(1);
     } finally {
       for (const seed of seeds) {
         await cleanupOrgVehicle(prisma, seed.orgId, seed.vehicleId, [seed.eventId]);
