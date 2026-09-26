@@ -1350,3 +1350,83 @@ nodes:
     source_paths:
       - architecture/drivingintelligence/decisions/DECISION_REGISTER.md
       - architecture/drivingintelligence/evidence/reference-capture/EXP_021_C03_R1_TEMPORAL_CONTAINMENT_2026-09-24.md
+
+  - id: DI-EVID-EXP021-C1D7-001
+    type: evidence
+    title: EXP-021 C1D.7 DI V0 S3A position acquisition + normalization
+    epistemic_status: CONFIRMED
+    source_type: AUDIT_DOCUMENT
+    summary: >
+      Dormant S3A library record — query spec, grid/availability semantics, snapshot identity, error model,
+      test matrix, scale measurements, recorded gaps; no runtime caller.
+    source_paths:
+      - architecture/drivingintelligence/evidence/EXP021_C1D7_S3A_INPUT_NORMALIZATION_REPORT.md
+
+  - id: DI-TEST-V0-POSITION-ACQ-001
+    type: test_evidence
+    title: DI V0 S3A position acquisition Jest suites
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: Normalization, error model, identity/S2 coupling, S1 integration, scale, and static boundary tests (no network).
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/position-acquisition/__tests__/
+
+  - id: DI-SVC-V0-POSITION-ACQ-001
+    type: service
+    title: DI V0 S3A historical position acquisition (library)
+    epistemic_status: CONFIRMED
+    summary: >
+      DIMO 1 s location query → expected grid → PRESENT / SIGNAL_NULL / ROW_ABSENT normalized observations
+      + SHA-256 inputEvidenceVersion; dormant, no runtime caller.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/position-acquisition/
+    evidence:
+      - DI-EVID-EXP021-C1D7-001
+      - DI-TEST-V0-POSITION-ACQ-001
+
+  - id: DI-DEC-V0-POSITION-ACQ-001
+    type: decision
+    title: DI V0 S3A primary position acquisition + normalization (EXP-021 C1D.7)
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: >
+      Explicit bucket-label semantics and availability tri-state for position evidence before any S3B worker.
+    source_paths:
+      - architecture/drivingintelligence/decisions/DECISION_REGISTER.md
+    evidence:
+      - DI-EVID-EXP021-C1D7-001
+
+  - id: DI-GAP-S3A-AGG-001
+    type: gap
+    title: S3A location aggregation AVG may synthesize a midpoint in multi-sample buckets
+    epistemic_status: UNKNOWN
+    summary: >
+      LocationAggregation enum verified (DIMO public schema); multi-sample-per-second frequency unknown;
+      FIRST/LAST alternative deferred to S3B calibration.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/position-acquisition/di-v0-position-acquisition.versions.ts
+      - architecture/drivingintelligence/evidence/EXP021_C1D7_S3A_INPUT_NORMALIZATION_REPORT.md
+
+  - id: DI-GAP-S3A-REFTIME-001
+    type: gap
+    title: S1 referenceTime rendering equals bucket label (midpoint truncated to whole second)
+    epistemic_status: CONFIRMED
+    summary: S3A matches S1 densify-grid rendering byte-for-byte; S1 unchanged; semantics to be revisited before persistence use.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/core/grid/densify-grid.ts
+
+  - id: DI-GAP-S3A-LIVE-001
+    type: gap
+    title: S3A query not validated against a live provider response
+    epistemic_status: INFERRED
+    summary: Live DIMO calls not authorized in C1D.7; shape grounded in public schema + production route-enrichment selection.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/position-acquisition/di-v0-position-query.ts
+
+  - id: DI-GAP-S3A-ARTIFACTS-001
+    type: gap
+    title: C1C / C1D.2–C1D.4 artifacts not committed in repository
+    epistemic_status: CONFIRMED
+    summary: WOB golden fixture provenance relies on ledger references only.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/core/__tests__/fixtures/wob-pilot-golden.fixture.ts

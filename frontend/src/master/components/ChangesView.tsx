@@ -36,6 +36,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'di-exp021-c1d7-s3a-position-acquisition-2026-09-26',
+    version: '4.9.2201',
+    title: 'Driving Intelligence — EXP-021 C1D.7 DI V0 S3A position acquisition + normalization (dormant)',
+    summary: [
+      'New driving-intelligence/position-acquisition dormant library: DIMO signals(interval:"1s") currentLocationCoordinates(agg: AVG) over a strict [from, to) second grid.',
+      'PRESENT / SIGNAL_NULL / ROW_ABSENT kept distinct; row timestamp is a bucket label (BUCKET_BOUNDED, never EXACT_PROVEN); no interpolation, fill-forward or snapping.',
+      'Coordinate validation (0,0 valid), duplicate fail-safe, source family via canonical DIMO-identity resolver (never hardwareType), SHA-256 snapshot → S2 inputEvidenceVersion.',
+      'Typed redacted error model (403 explicit, empty = all ROW_ABSENT); no runtime caller, DB write, live provider call or customer effect.',
+    ],
+    reason: 'S1 core and S2 persistence need normalized position evidence with explicit availability and temporal semantics before any S3B worker.',
+    previousBehavior: 'No DI V0 input slice; inputEvidenceVersion had no producer.',
+    details:
+      'backend/src/modules/vehicle-intelligence/driving-intelligence/position-acquisition/*; architecture/drivingintelligence/evidence/EXP021_C1D7_S3A_INPUT_NORMALIZATION_REPORT.md; DI-DEC-V0-POSITION-ACQ-001.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-26T22:00:00.000Z',
+  },
+  {
     id: 'di-exp021-c1d5-v0-pure-shadow-core-2026-09-26',
     version: '4.9.2200',
     title: 'Driving Intelligence — EXP-021 C1D.5 DI V0 pure shadow core (S0/S1)',
