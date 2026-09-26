@@ -22,6 +22,7 @@ import {
   createE6_3Worker,
   deterministicRechargeJobId,
   drainQueue,
+  E6_3_CUTOVER_ISO,
   E6_3_MATCH_LAT,
   E6_3_MATCH_LON,
   E6_3_POST_CUTOVER_END,
@@ -87,6 +88,41 @@ const LIVE = process.env.ERD_E6_3_RECOVERY_INTEGRATION === '1';
       if (await queue.getJob(deterministicRechargeJobId(event))) count += 1;
     }
     return count;
+  }
+
+  async function listRecoveryCandidateIds(): Promise<string[]> {
+    const cutoverAt = new Date(E6_3_CUTOVER_ISO);
+    const rows = await prisma.vehicleEnergyEvent.findMany({
+      where: {
+        kind: EnergyEventKind.RECHARGE,
+        detectionSource: VehicleEnergyEventDetectionSource.SYNQDRIVE_ERD_RECHARGE_PROJECTION,
+        endTime: { gte: cutoverAt },
+        OR: [
+          { chargingStationEnrichment: { is: null } },
+          {
+            chargingStationEnrichment: {
+              is: {
+                OR: [
+                  { processingStatus: 'PENDING' },
+                  {
+                    processingStatus: 'PROCESSING',
+                    lastAttemptAt: {
+                      lt: new Date(Date.now() - CHARGING_STATION_ENRICHMENT_STALE_PROCESSING_MS),
+                    },
+                  },
+                  {
+                    processingStatus: 'PROCESSING',
+                    resolutionStatus: 'ERROR',
+                  },
+                ],
+              },
+            },
+          },
+        ],
+      },
+      select: { id: true },
+    });
+    return rows.map((row) => row.id);
   }
 
   beforeEach(async () => {
@@ -246,12 +282,13 @@ const LIVE = process.env.ERD_E6_3_RECOVERY_INTEGRATION === '1';
     });
     try {
       await scheduler.recoverMissedEnrichments();
-      expect(await queue.getJob(deterministicRechargeJobId(event))).toBeNull();
-      expect(
-        await prisma.vehicleEnergyEventChargingStationEnrichment.findUnique({
-          where: { energyEventId: event.id },
-        }),
-      ).toBeNull();
+      const candidates = await listRecoveryCandidateIds();
+      expect(candidates).not.toContain(event.id);
+      const outcome = await producer.enqueueForEventOutcome(event);
+      expect(outcome.status).toBe('skipped');
+      if (outcome.status === 'skipped') {
+        expect(outcome.reason).toBe('before_cutover');
+      }
     } finally {
       await cleanupOrgVehicle(prisma, org.id, vehicle.id, [event.id]);
     }
