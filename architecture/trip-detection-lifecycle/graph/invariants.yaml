@@ -1,4 +1,4 @@
-# Trip Detection & Lifecycle — Graph Invariants (post-R9)
+# Trip Detection & Lifecycle — Graph Invariants (post-R9 + Phase 5 FSM/authority invariants)
 
 invariants:
   - id: TDL-INV-R9-DURABLE-FIRST-001
@@ -60,3 +60,84 @@ invariants:
       - backend/src/modules/vehicle-intelligence/trips/TRIP_OWNERSHIP.ts
     evidence:
       - TDL-EVID-CODE-OWNERSHIP-001
+
+  - id: TDL-INV-FSM-SINGLE-STATE-WRITER-001
+    kind: CONFIRMED_INVARIANT
+    epistemic_status: CONFIRMED
+    title: Single live FSM state writer
+    statement: >
+      Only TripDetectionOrchestrationService.transitionState updates VehicleTripDetectionState.state;
+      getOrCreateDetectionState creates the row (default RESTING); worker lock methods touch lock columns only.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts
+    evidence:
+      - TDL-EVID-PHASE5-FSM-CODE-001
+
+  - id: TDL-INV-DIMO-SEGMENT-EVIDENCE-ONLY-001
+    kind: CONFIRMED_INVARIANT
+    epistemic_status: CONFIRMED
+    title: DIMO segments are repair evidence, not live boundary authority
+    statement: >
+      DIMO segments enter trip lifecycle only through TripReconciliationService repair evidence and TripDecisionEngine
+      repair gates; they never drive live FSM transitions.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service.ts
+    evidence:
+      - TDL-EVID-OQ006-BOUNDARY-001
+
+  - id: TDL-INV-DOWNSTREAM-NOT-LIFECYCLE-WRITER-001
+    kind: CONFIRMED_INVARIANT
+    epistemic_status: CONFIRMED
+    title: Downstream consumers never write trip lifecycle
+    statement: >
+      Driving Intelligence V2, legacy HF enrichment (ATE) and trip metadata consumers read COMPLETED trips; none
+      writes vehicleTrip.tripStatus or FSM state.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/TRIP_OWNERSHIP.ts
+    evidence:
+      - TDL-EVID-OQ010-LEGACY-INV-001
+
+  - id: TDL-INV-QS-V1-DURATION-001
+    kind: CONFIRMED_INVARIANT
+    epistemic_status: CONFIRMED
+    title: Qualified Stop V1 duration contract
+    statement: Stop duration ≤ 300 000 ms → SAME_TRIP; > 300 000 ms → SPLIT (CANONICAL_MAX_SAME_TRIP_QUALIFIED_STOP_MS).
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-qualified-stop-duration.policy.ts
+    evidence:
+      - TDL-EVID-QS-V1-PROD-ACCEPT-001
+
+  - id: TDL-INV-UNCOVERED-SPAN-SEPARATE-001
+    kind: CONFIRMED_INVARIANT
+    epistemic_status: CONFIRMED
+    title: Uncovered-span tolerance independent of Qualified Stop
+    statement: >
+      MAX_IGNORABLE_UNCOVERED_SPAN_SECONDS=180 is a repair/coverage tolerance and is not the Qualified Stop V1
+      same-trip duration contract.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/detectors/trip-coverage.util.ts
+    evidence:
+      - TDL-EVID-QS-V1-PROD-ACCEPT-001
+
+  - id: TDL-INV-FINALIZE-ONLY-FROM-POSSIBLE-END-001
+    kind: CONFIRMED_INVARIANT
+    epistemic_status: CONFIRMED
+    title: FINALIZE commits only from an admitted POSSIBLE_END cycle
+    statement: >
+      evaluateEndCycleJobAdmission rejects FINALIZE / END_VALIDATION jobs when FSM is ACTIVE_TRIP (stale_active_trip),
+      when the end-cycle token mismatches, or when a tokenless job predates possibleEndEnteredAt.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-end-cycle-reset.ts
+    evidence:
+      - TDL-EVID-R10-KS-MX-001
+      - TDL-EVID-PHASE5-FSM-CODE-001
+
+  - id: TDL-INV-ENDED-UNREACHABLE-001
+    kind: CONFIRMED_INVARIANT
+    epistemic_status: CONFIRMED
+    title: ENDED is not runtime reachable
+    statement: No runtime code path reads or writes TripDetectionState.ENDED; the graph carries zero ENDED transitions.
+    source_paths:
+      - backend/prisma/schema.prisma
+    evidence:
+      - TDL-EVID-OQ005-ENDED-001
