@@ -19,7 +19,9 @@ Machine-readable graph: [`graph/`](graph/) · Validator: `bash architecture/trip
 | R9 on `origin/main` | **YES** — merged #1553 (`4bef6046…` ancestor of `47a3b42b8…`) |
 | R9 runtime on Production | **YES** — ancestor of `8a1d9c658…` (not pre-R9) |
 | Activity-tier snapshot polling | **ACTIVITY_TIERED** @ Production — scheduler tick **30s** ≠ per-vehicle poll every 30s |
-| Provider speed+ignition wiring | **5/6** scheduler-eligible (**190497** excluded — historical); canary **5/5** @ 2026-09-07 remains **HISTORICAL_CORRECT** |
+| R9 provider authorized cohort | **5/5** speed+ignition (`R9_AUTHORIZED_COHORT_COVERAGE=100%`) |
+| SynqDrive scheduler DB cohort | **6** rows — includes **1** **`HISTORICALLY_EXCLUDED_FORMER_FLEET_ASSET`** stale mirror (DIM-GAP-005) |
+| R9 five-vehicle canary @ 2026-09-07 | **HISTORICAL_CORRECT** — authorized provider cohort **5** |
 | Natural R9 wake observed | **YES (historical)** — KS MS 661 @ R10/R11 releases; **recent fleet KPIs unknown** (OQ-009) |
 
 ## Canonical lifecycle flow
@@ -72,7 +74,7 @@ Provider wake eligible (AVAILABLE|RENTED, DIMO CONNECTED, FSM RESTING)
 | TDL-DEC-OQ001-001 | COMPLETED → DI V2 handoff via post-finalize producer + PG job ledger | VALIDATED (**`RESOLVED_WITH_BOUNDED_GAPS`**) |
 | TDL-DEC-OQ006-001 | DIMO segment vs live FSM boundary authority (repair evidence, not live override) | VALIDATED (**`RESOLVED_WITH_BOUNDED_GAPS`**) |
 | TDL-DEC-OQ008-001 | Trip runtime-control matrix (defaults vs Production effective) | VALIDATED |
-| TDL-DEC-OQ009-001 | Tiered polling + R9 provider-wake ingress contract | VALIDATED (**`RESOLVED_WITH_BOUNDED_COVERAGE_GAPS`**) |
+| TDL-DEC-OQ009-001 | Tiered polling + R9 provider-wake ingress contract | VALIDATED (**`RESOLVED_INGRESS_CONTRACT_ALIGNED`**) |
 
 Detail: [decisions/DECISION_REGISTER.md](decisions/DECISION_REGISTER.md)
 

@@ -94,7 +94,7 @@
 
 **Evidence:** [TDL_OQ_009_TIERED_POLLING_R9_INGRESS_2026-09-26.md](../evidence/TDL_OQ_009_TIERED_POLLING_R9_INGRESS_2026-09-26.md) (TDL-EVID-OQ009-R9-INGRESS-001) @ `origin/main` `47a3b42b8…`, Production @ `8a1d9c658…`.
 
-**Verdict:** **`RESOLVED_WITH_BOUNDED_COVERAGE_GAPS`** — R9 **present** on current Production (ancestor `4bef6046…`); **ACTIVITY_TIERED** polling + shared `snapshot-{vehicleId}` coordinator aligned with code; provider wake **RESTING-only**; tier fallback nominal 30s/60s/5m/30m; subscription **5/6** both speed+ignition (tokenId **190497** missing — historical exclusion); recent operational wake counters **INSUFFICIENT_EVIDENCE**.
+**Verdict:** **`RESOLVED_INGRESS_CONTRACT_ALIGNED`** — R9 **present** on current Production (ancestor `4bef6046…`); **ACTIVITY_TIERED** polling + shared `snapshot-{vehicleId}` coordinator aligned with code; provider wake **RESTING-only**; tier fallback nominal 30s/60s/5m/30m; **R9 authorized cohort 5/5 subscribed (100%)**; **1** stale former-fleet scheduler mirror (DIM-GAP-005, not R9 defect); recent operational wake counters **INSUFFICIENT_EVIDENCE**.
 
 **Status:** **RESOLVED**
 

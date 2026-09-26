@@ -89,7 +89,7 @@ nodes:
     title: Five-vehicle R9 provider canary PASS
     source_type: PRODUCTION_OBSERVATION
     epistemic_status: CONFIRMED
-    summary: 5/5 speed+ignition subscriptions; stableIds 9eeb7158afee, 5d611d470eab; 190497 excluded; natural wake not observed.
+    summary: 5/5 speed+ignition subscriptions on authorized cohort; stableIds 9eeb7158afee, 5d611d470eab; historically excluded former-fleet asset not in cohort B.
     source_paths:
       - architecture/dimo-integration/evidence/R9_FIVE_VEHICLE_CANARY_2026-09-07.md
 
@@ -137,7 +137,7 @@ nodes:
     type: gap
     title: Provider trigger subscription inventory
     epistemic_status: UNKNOWN
-    summary: R9 active cohort 5/5 verified via GET audit; broader fleet inventory remains partial.
+    summary: R9 authorized cohort 5/5; scheduler DB 6 incl. stale mirror; re-read @ 8a1d9c658… via TDL-OQ-009.
     source_paths:
       - architecture/dimo-integration/contradictions/KNOWLEDGE_GAPS.md
 
@@ -159,9 +159,9 @@ nodes:
 
   - id: DIM-GAP-005
     type: gap
-    title: Stale SynqDrive mirror for former fleet tokenId 190497
+    title: Stale SynqDrive mirror for HISTORICALLY_EXCLUDED_FORMER_FLEET_ASSET
     epistemic_status: CONFIRMED
-    summary: DB shows AVAILABLE/CONNECTED with active consent/link; Identity privileged absent; excluded from R9 cohort; cleanup deferred.
+    summary: STALE_FORMER_FLEET_SCHEDULER_MIRROR_COUNT=1; DB AVAILABLE/CONNECTED drift; excluded from R9 authorized cohort; cleanup deferred.
     source_paths:
       - architecture/dimo-integration/contradictions/KNOWLEDGE_GAPS.md
 
@@ -169,7 +169,7 @@ nodes:
     type: gap
     title: Natural R9 webhook wake end-to-end delivery
     epistemic_status: INFERRED
-    summary: First natural start wake observed tokenId 187361 @ 684950419…; payload archive and efficiency gaps remain.
+    summary: Natural R9 start wake PRODUCTION_OBSERVED (KS MS 661); fleet-wide KPI unknown; payload archive gaps remain.
     source_paths:
       - architecture/dimo-integration/evidence/KS_MS_661_R9_WAKE_2026-09-08.md
       - architecture/dimo-integration/contradictions/KNOWLEDGE_GAPS.md
@@ -186,9 +186,18 @@ nodes:
     type: hypothesis
     title: Production receives speed/ignition webhooks for active R9 cohort
     epistemic_status: INFERRED
-    summary: Provider wiring 5/5 validated; natural delivery not yet observed.
+    summary: Provider wiring 5/5 validated; natural start wake observed historically; fleet-wide delivery KPI unknown.
     source_paths:
       - architecture/dimo-integration/research/OPEN_HYPOTHESES.md
+
+  - id: DIM-EVID-OQ009-CROSS-001
+    type: evidence
+    title: TDL-OQ-009 cross-ref subscription and cohort semantics
+    source_type: PRODUCTION_OBSERVATION
+    epistemic_status: CONFIRMED
+    summary: R9 authorized cohort 5/5 @ 8a1d9c658…; scheduler DB 6 with one stale former-fleet mirror; ingress contract aligned.
+    source_paths:
+      - architecture/trip-detection-lifecycle/evidence/TDL_OQ_009_TIERED_POLLING_R9_INGRESS_2026-09-26.md
 
   - id: DIM-FAIL-GOV-001
     type: failed_approach

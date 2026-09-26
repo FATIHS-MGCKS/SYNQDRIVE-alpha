@@ -300,4 +300,4 @@ See [contradictions/OPEN_CONTRADICTIONS.md](contradictions/OPEN_CONTRADICTIONS.m
 
 **Open:** TDL-OQ-005, TDL-OQ-010; legacy path inventory.
 
-**OQ-009 (2026-09-26):** Tiered polling + R9 ingress **aligned** on `main` and Production @ `8a1d9c658…` — see [TDL_OQ_009_TIERED_POLLING_R9_INGRESS_2026-09-26.md](evidence/TDL_OQ_009_TIERED_POLLING_R9_INGRESS_2026-09-26.md). Scheduler tick **30s** ≠ per-vehicle poll every 30s.
+**OQ-009 (2026-09-26):** Tiered polling + R9 ingress **aligned** on `main` and Production @ `8a1d9c658…` — see [TDL_OQ_009_TIERED_POLLING_R9_INGRESS_2026-09-26.md](evidence/TDL_OQ_009_TIERED_POLLING_R9_INGRESS_2026-09-26.md). Scheduler tick **30s** ≠ per-vehicle poll every 30s. **R9 authorized provider cohort 5/5 subscribed**; **6** scheduler DB rows include **1** stale former-fleet mirror (DIM-GAP-005).

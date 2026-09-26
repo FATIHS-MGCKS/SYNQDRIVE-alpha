@@ -8,7 +8,8 @@
 | **Production baseline** | `8a1d9c6586cbddc41bb6c94870f9d51226d71aa2` @ `20260925182907_v4994` |
 | **R9 merge (PR #1553)** | `4bef604633e159297eec0fb1b72485ecb1a608be` — **ancestor of both `main` and Production SHA** |
 | **Audit mode** | READ_ONLY |
-| **Verdict** | **`RESOLVED_WITH_BOUNDED_COVERAGE_GAPS`** |
+| **Verdict** | **`RESOLVED_INGRESS_CONTRACT_ALIGNED`** |
+| **Cross-module gap (non-blocking)** | **`STALE_FORMER_FLEET_SCHEDULER_MIRROR_COUNT=1`** — `HISTORICALLY_EXCLUDED_FORMER_FLEET_ASSET` (DIM-GAP-005); not an R9 provider coverage defect |
 
 ## Executive separation (required)
 
@@ -109,11 +110,23 @@ flowchart TB
 | `DIMO_LINKED` | 6 |
 | `CONNECTED` | 6 |
 | `CONNECTED_WITH_TOKEN` | 6 |
-| `SCHEDULER_ELIGIBLE` | **6** |
+| `SCHEDULER_ELIGIBLE_DB_ROWS` | **6** |
 
 Cross-check OQ-003: **6/6** scheduler-eligible vehicles have `vehicle_trip_detection_states` rows (unchanged cardinality contract).
 
-**Wake intake eligibility** uses the same vehicle predicate (plus FSM gate below).
+### Cohort denominator separation (required)
+
+Do **not** conflate SynqDrive DB scheduler eligibility with the **authorized R9 provider subscription cohort**.
+
+| Denominator | Meaning | Count @ `2026-09-26` |
+|-------------|---------|---------------------:|
+| **A — `SCHEDULER_ELIGIBLE_DB_ROWS`** | SynqDrive Prisma: AVAILABLE/RENTED, DIMO CONNECTED, token present | **6** |
+| **B — `R9_PROVIDER_AUTHORIZED_COHORT`** | Current fleet authorized for R9 speed/ignition triggers (excludes historically excluded former-fleet asset) | **5** |
+| **C — `STALE_FORMER_FLEET_SCHEDULER_MIRROR_COUNT`** | One DB-eligible row mirrors stale AVAILABLE/CONNECTED state for **`HISTORICALLY_EXCLUDED_FORMER_FLEET_ASSET`** — tracked as **existing cross-module data-integrity gap** (DIM-GAP-005); must **not** be reauthorized to “fix” R9 coverage | **1** |
+
+**DB cohort forensic view (not R9 coverage):** `SCHEDULER_COHORT_WITH_BOTH_R9_TRIGGERS=5/6` — label **`DB_COHORT_VIEW`** only.
+
+**Wake intake vehicle predicate** matches scheduler DB eligibility (plus FSM RESTING gate for primary start wake). Provider subscription coverage is evaluated against denominator **B**, not raw DB rows alone.
 
 ---
 
@@ -212,24 +225,30 @@ It only enqueues **canonical snapshot fetch** with optional Redis pending wake c
 
 ---
 
-## Phase 8 — Provider subscription coverage (current cohort)
+## Phase 8 — Provider subscription coverage (authorized R9 cohort)
 
 **Method:** read-only `sudo node scripts/ops/r9-post-get-audit.mjs` @ Production (`2026-09-26`) — DIMO Vehicle Triggers GET, no mutations.
 
-**Cohort:** scheduler-eligible tokenIds (6 vehicles).
+### R9 provider authorized cohort (denominator B)
 
 | Metric | Count |
 |--------|------:|
-| `PROVIDER_WAKE_ELIGIBLE_VEHICLES` | **6** |
-| `SUBSCRIBED_SPEED` | **5** |
-| `SUBSCRIBED_IGNITION` | **5** |
-| `SUBSCRIBED_BOTH` | **5** |
-| `MISSING_SPEED` | **1** |
-| `MISSING_IGNITION` | **1** |
-| `MISSING_BOTH` | **1** |
+| `R9_PROVIDER_AUTHORIZED_COHORT` | **5** |
+| `R9_SUBSCRIBED_SPEED` | **5** |
+| `R9_SUBSCRIBED_IGNITION` | **5** |
+| `R9_SUBSCRIBED_BOTH` | **5** |
+| `R9_AUTHORIZED_COHORT_COVERAGE` | **100%** |
 | `PROVIDER_SUBSCRIPTION_READ_ERRORS` | **0** |
 
-**Coverage gap (bounded):** tokenId **190497** (pseudonymous; historical **former fleet** in R9 audits) is **scheduler-eligible** but has **no** R9 speed/ignition subscriptions (`linkCount=3`, OBD/RPM only). **Not** classified as runtime defect — documented rollout exclusion + tier polling fallback remains.
+**Interpretation:** All **five** authorized current-fleet assets have both R9 speed and ignition trigger subscriptions. There is **no** missing subscription among the authorized rollout cohort.
+
+### Stale SynqDrive mirror (denominator C — not R9 coverage)
+
+| Metric | Count |
+|--------|------:|
+| `STALE_FORMER_FLEET_SCHEDULER_MIRROR_COUNT` | **1** |
+| `STALE_MIRROR_ALREADY_TRACKED_IN_DIMO_AUTHORITY` | **YES** (DIM-GAP-005; DIM-EV-R9-PERM-001) |
+| `EXISTING_CROSS_MODULE_DATA_INTEGRITY_GAP` | **YES** — **`HISTORICALLY_EXCLUDED_FORMER_FLEET_ASSET`** remains scheduler-DB-eligible with stale mirrors; OBD/RPM links only; **must not** be treated as an ordinary “missing R9 subscription” member of cohort B |
 
 **R9 trigger definitions (stableIds):** `9eeb7158afee` (speed), `5d611d470eab` (ignition) — **enabled**.
 
@@ -254,8 +273,8 @@ It only enqueues **canonical snapshot fetch** with optional Redis pending wake c
 | Field | Value |
 |-------|-------|
 | `NATURAL_R9_START_WAKE_EVIDENCE_PRESENT` | **YES** (historical KS MS 661) |
-| `RECENT_PROVIDER_WAKE_SAMPLE_COUNT` | **INSUFFICIENT_EVIDENCE** (metrics unavailable; SQL trip meta 0) |
-| `RECENT_DIMO_TRIGGER_START_COUNT` | **0** in SQL 30d window (bounded observation) |
+| `RECENT_PERSISTED_DIMO_TRIGGER_START_COUNT_30D` | **0** (COMPLETED-trip `raw_detection_meta` / `startWake` SQL — bounded; does **not** imply zero webhooks) |
+| `RECENT_PROVIDER_WAKE_SAMPLE_COUNT` | **INSUFFICIENT_EVIDENCE** (Prometheus wake counters unavailable in read-only pass) |
 
 ---
 
@@ -335,7 +354,8 @@ DIMO Vehicle Trigger is **not** trip boundary authority.
 |----------------|----------------|
 | `OPEN_QUESTIONS` OQ-009 row “pre-R9 on Production” | **STALE_CURRENT_CLAIM** — fix in this PR |
 | `AUDIT_MANIFEST` PRODUCTION_CURRENT @ `99d722b4…` only | **STALE_CURRENT_CLAIM** — superseded by `8a1d9c658…` for current-runtime (historical rows remain **HISTORICAL_CORRECT**) |
-| R9 five-vehicle canary @ 2026-09-07 | **HISTORICAL_CORRECT** — not current cohort size (now **6** eligible) |
+| R9 five-vehicle canary @ 2026-09-07 | **HISTORICAL_CORRECT** — authorized provider cohort **5**; not “6-vehicle R9 rollout” |
+| SynqDrive scheduler DB cohort @ 2026-09-26 | **CURRENT_CORRECT** — **6** rows including **1** stale former-fleet mirror (DIM-GAP-005) |
 | `KNOWLEDGE_GRAPH` “natural wake not yet observed” | **STALE_CURRENT_CLAIM** — historical KS MS 661 observed; recent rates unknown |
 | Pre-R9 release @ `01541c2ab…` “R9 NOT_ON_PRODUCTION” | **HISTORICAL_CORRECT** |
 | Tiered polling + R9 on current Production | **CURRENT_CORRECT** (this audit) |
@@ -351,95 +371,15 @@ DIMO Vehicle Trigger is **not** trip boundary authority.
 | Polling mode proven | YES — ACTIVITY_TIERED @ Production |
 | R9 ingress path proven | YES — code + Production ancestry |
 | Wake vs poll fallback proven | YES — Phase 11 |
-| Subscription coverage | **BOUNDED** — 5/6 both triggers; 190497 excluded |
+| R9 authorized provider coverage | **100%** (5/5 both triggers) |
+| Cross-module stale mirror | **1** — existing data-integrity gap (not new R9 defect) |
 | Authority conflict | NONE |
-| Docs corrected | YES (this workstream) |
+| Docs corrected | YES (TDL + DIMO current-state sync in PR #1789) |
 
-**OQ-009 status:** **CLOSED** — `RESOLVED_WITH_BOUNDED_COVERAGE_GAPS`
+**OQ-009 status:** **CLOSED** — `RESOLVED_INGRESS_CONTRACT_ALIGNED`
 
 **NEW_RUNTIME_DEFECT_FOUND=NO**
 
 **BLOCKERS=NONE** — optional follow-up: refresh `AUDIT_MANIFEST` PRODUCTION_CURRENT pointer; expose wake metrics scrape for operational KPIs.
 
-**NEXT_ACTION=** TDL-OQ-010 legacy path inventory; optional DIMO authority row update for 6-vehicle subscription cohort.
-
----
-
-## Required audit output (TDL-OQ-009)
-
-```
-TDL_OQ_009_AUDIT_RESULT=RESOLVED_WITH_BOUNDED_COVERAGE_GAPS
-
-STARTING_MAIN_SHA=47a3b42b80eb359b84cb5f1d98854ee0e624e124
-FINAL_HEAD_SHA=865ae7b7d1dbeec6ec6c8f99e15e0fb5e46a344e
-PR_NUMBER=1789
-PR_STATE=draft
-
-LIVE_PRODUCTION_SHA=8a1d9c6586cbddc41bb6c94870f9d51226d71aa2
-LIVE_RELEASE_ID=20260925182907_v4994
-
-R9_PRESENT_ON_CURRENT_MAIN=YES
-R9_PRESENT_ON_PRODUCTION=YES
-
-PRODUCTION_SNAPSHOT_POLLING_MODE=ACTIVITY_TIERED
-SCHEDULER_TICK_MS=30000
-
-SCHEDULER_ELIGIBLE_VEHICLES=6
-
-SNAPSHOT_ACTIVE_MS=30000
-SNAPSHOT_RECENT_MS=60000
-SNAPSHOT_STANDBY_MS=300000
-SNAPSHOT_LONG_IDLE_MS=1800000
-
-PROVIDER_WAKE_ACCEPTED_SIGNALS=SPEED_MOVEMENT,IGNITION_ON
-PROVIDER_WAKE_MOVEMENT_THRESHOLD_KMH=3
-PROVIDER_WAKE_PRIMARY_FSM_STATE=RESTING
-
-PROVIDER_WAKE_ELIGIBLE_VEHICLES=6
-SUBSCRIBED_SPEED=5
-SUBSCRIBED_IGNITION=5
-SUBSCRIBED_BOTH=5
-MISSING_SPEED=1
-MISSING_IGNITION=1
-MISSING_BOTH=1
-PROVIDER_SUBSCRIPTION_READ_ERRORS=0
-
-SCHEDULED_AND_WAKE_SHARE_CANONICAL_QUEUE=YES
-CAN_SCHEDULED_AND_WAKE_CREATE_PARALLEL_PROVIDER_FETCHES=NO
-CAN_PROVIDER_WAKE_BYPASS_CANONICAL_SNAPSHOT_FETCH=NO
-CAN_WAKE_DIRECTLY_MUTATE_TRIP=NO
-
-MAX_WAKE_PROBE_GENERATION=1
-WAKE_PROBE_DELAY_MS=60000
-CAN_PROBE_CHAIN_UNBOUNDED=NO
-
-NATURAL_R9_START_WAKE_EVIDENCE_PRESENT=YES
-RECENT_PROVIDER_WAKE_SAMPLE_COUNT=INSUFFICIENT_EVIDENCE
-RECENT_DIMO_TRIGGER_START_COUNT=0
-
-PROVIDER_WAKE_ROLE=LOW_LATENCY_FETCH_TRIGGER
-TRIP_START_AUTHORITY=TRIP_FSM_FROM_CANONICAL_SNAPSHOT_EVIDENCE
-TRIP_BOUNDARY_AUTHORITY=TRIP_FSM_PLUS_TRIP_DECISION_ENGINE
-
-POLLING_FALLBACK_PRESENT=YES
-LONG_IDLE_MAX_NOMINAL_POLL_INTERVAL_MS=1800000
-
-MULTI_REPLICA_WAKE_SAFE=YES
-DUPLICATE_PROVIDER_FETCH_DEFECT_FOUND=NO
-
-STALE_CURRENT_DOCUMENTATION_FOUND=YES
-CURRENT_INGRESS_CONTRACT_MISMATCH_FOUND=NO
-
-OQ009_STATUS_AFTER=CLOSED
-
-NEW_RUNTIME_DEFECT_FOUND=NO
-DEFECT_CLASS=N/A
-
-RUNTIME_FILES_CHANGED=NO
-FRONTEND_FILES_CHANGED=NO
-PRISMA_CHANGED=NO
-PRODUCTION_MUTATED=NO
-PROVIDER_MUTATED=NO
-ENV_MUTATED=NO
-DEPLOY_EXECUTED=NO
-```
+**NEXT_ACTION=** TDL-OQ-010 legacy path inventory; optional SynqDrive cleanup for **`HISTORICALLY_EXCLUDED_FORMER_FLEET_ASSET`** mirror (DIM-GAP-005).

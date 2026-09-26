@@ -619,7 +619,7 @@ nodes:
     type: gap
     title: Tiered polling vs R9 provider-wake ingress contract
     epistemic_status: CONFIRMED
-    summary: RESOLVED — TDL-DEC-OQ009-001; shared snapshot coordinator; ACTIVITY_TIERED fallback; 5/6 trigger subscription coverage.
+    summary: RESOLVED — TDL-DEC-OQ009-001; shared snapshot coordinator; ACTIVITY_TIERED fallback; R9 authorized cohort 100% subscribed; stale mirror DIM-GAP-005 separate.
     source_paths:
       - architecture/trip-detection-lifecycle/evidence/TDL_OQ_009_TIERED_POLLING_R9_INGRESS_2026-09-26.md
       - architecture/trip-detection-lifecycle/contradictions/KNOWLEDGE_GAPS.md
@@ -931,7 +931,7 @@ nodes:
     epistemic_status: CONFIRMED
     summary: >
       Separates SCHEDULER_TICK, PER_VEHICLE_POLL, PROVIDER_WAKE, CANONICAL_SNAPSHOT_FETCH, TRIP_START_EVALUATION;
-      ACTIVITY_TIERED Production; shared snapshot job coalescing; RESTING-only wake; 5/6 R9 subscriptions; RESOLVED_WITH_BOUNDED_COVERAGE_GAPS.
+      ACTIVITY_TIERED Production; shared snapshot job coalescing; RESTING-only wake; R9 authorized cohort 5/5; RESOLVED_INGRESS_CONTRACT_ALIGNED.
     source_paths:
       - architecture/trip-detection-lifecycle/evidence/TDL_OQ_009_TIERED_POLLING_R9_INGRESS_2026-09-26.md
 

@@ -71,7 +71,7 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | **NON_EFFECTS** | DIMO does not become Trip FSM authority; Trip Detection does not own DIMO provider transport |
 | **EVIDENCE** | TDL-EVID-R9-AUDIT-001; DIM-DEC-R9-001 |
 | **PRODUCTION STATUS** | Runtime **deployed** @ `0ba96e03…`; provider R9 trigger wiring **validated** (5/5 active cohort — TDL-EV-R9-CANARY-001). **Natural end-to-end wake not PRODUCTION_VALIDATED.** |
-| **OPEN GAPS** | Natural R9 wake observation (DIM-GAP-006 cross-ref); segment reconciliation split (TDL-CX-006 partial); stale mirror for 190497 (DIM-GAP-005 cross-ref) |
+| **OPEN GAPS** | Natural R9 wake observation (DIM-GAP-006 cross-ref); segment reconciliation split (TDL-CX-006 partial); stale mirror for **`HISTORICALLY_EXCLUDED_FORMER_FLEET_ASSET`** (DIM-GAP-005 cross-ref) |
 
 ---
 
@@ -331,9 +331,9 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | **STATUS** | VALIDATED |
 | **BEFORE** | TDL-OQ-009 OPEN — tiered polling doc vs R9 ingress conflated SCHEDULER_TICK with PER_VEHICLE_POLL; stale claims of pre-R9 Production and five-vehicle cohort as current |
 | **WHY** | Operators need explicit separation of scheduler tick, tier due-time, provider wake, canonical snapshot fetch, and trip-start evaluation; fallback when R9 subscription missing must be provable |
-| **CHANGE** | Canonical ingress graph in TDL-EVID-OQ009-R9-INGRESS-001: shared `snapshot-{vehicleId}` coordinator; RESTING-only provider wake; ACTIVITY_TIERED fallback 30s/60s/5m/30m; subscription coverage **5/6** both triggers (190497 excluded) |
-| **ALTERNATIVES REJECTED** | Provider wake as trip boundary authority; parallel provider fetch without coalescing; ignition-off / low-speed as start wake |
-| **EXPECTED EFFECT** | OQ-009 closed; agents do not describe fleet-wide 30s DIMO poll or pre-R9 Production for current release |
+| **CHANGE** | Canonical ingress graph in TDL-EVID-OQ009-R9-INGRESS-001: shared `snapshot-{vehicleId}` coordinator; RESTING-only provider wake; ACTIVITY_TIERED fallback 30s/60s/5m/30m; **R9_PROVIDER_AUTHORIZED_COHORT=5** with **100%** speed+ignition subscription coverage; **1** stale former-fleet scheduler mirror cross-ref DIM-GAP-005 |
+| **ALTERNATIVES REJECTED** | Provider wake as trip boundary authority; parallel provider fetch without coalescing; ignition-off / low-speed as start wake; treating stale mirror as missing R9 subscription in cohort B |
+| **EXPECTED EFFECT** | OQ-009 closed; agents separate DB scheduler cohort (6) from authorized R9 provider cohort (5) |
 | **PRODUCTION STATUS** | R9 ancestor of `8a1d9c658…`; **ACTIVITY_TIERED**; movement threshold **3 km/h** default; recent wake KPIs **INSUFFICIENT_EVIDENCE** |
 | **NON-EFFECTS** | No subscription mutation; no deploy; no change to tier env defaults |
 | **VALIDATION** | Code trace + read-only Prisma cohort + `r9-post-get-audit.mjs` — TDL-EVID-OQ009-R9-INGRESS-001 |

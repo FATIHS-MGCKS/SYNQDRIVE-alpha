@@ -87,6 +87,7 @@ Append-only record for this authority directory.
 | 2026-09-25 | TDL-OQ-008 trip feature-flag / runtime-control matrix — read-only Production `backend.env` @ `8a1d9c658…`; closes OQ-008 | Docs-only audit | [TDL_OQ_008_FEATURE_FLAG_RUNTIME_MATRIX_2026-09-25.md](../evidence/TDL_OQ_008_FEATURE_FLAG_RUNTIME_MATRIX_2026-09-25.md) |
 | 2026-09-25 | TDL-OQ-008 PR #1786 consistency pass — control counts, replica wording, DI subflag explicit config, stale-doc classification | Docs-only | Same evidence doc + QS acceptance historical anchor wording |
 | 2026-09-26 | TDL-OQ-009 tiered snapshot polling vs R9 provider-wake ingress — read-only Production cohort + subscription audit @ `8a1d9c658…`; closes OQ-009 | Docs-only audit | [TDL_OQ_009_TIERED_POLLING_R9_INGRESS_2026-09-26.md](../evidence/TDL_OQ_009_TIERED_POLLING_R9_INGRESS_2026-09-26.md) |
+| 2026-09-26 | TDL-OQ-009 cohort semantics correction + DIMO authority sync (PR #1789) — separate DB scheduler cohort vs R9 authorized cohort | Docs-only | Same evidence + `architecture/dimo-integration/**` current-state |
 
 ## Planned later phases (Standard 1.0)
 

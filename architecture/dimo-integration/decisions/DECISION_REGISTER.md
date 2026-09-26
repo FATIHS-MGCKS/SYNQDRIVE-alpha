@@ -19,8 +19,8 @@
 | **NON-EFFECTS** | DIMO does not become trip lifecycle authority; Trip Detection does not own provider gateway/auth/telemetry transport |
 | **EVIDENCE** | DIM-EVID-R9-AUDIT-001; DIM-EVID-PROD-R9-001; DIM-EVID-R9-CANARY-001 |
 | **VALIDATION** | `dimo-webhook.controller.spec.ts`, R9 focused suites, BullMQ integration; Production build grep @ `0ba96e03…`; five-vehicle provider canary GET audit |
-| **PRODUCTION STATUS** | Runtime **deployed** @ `0ba96e03…` (DIM-EVID-PROD-R9-001). Provider speed/ignition trigger wiring **validated** — 5/5 active cohort (DIM-EVID-R9-CANARY-001). **Natural end-to-end wake not PRODUCTION_VALIDATED** — awaits observed drive/ignition event. |
-| **OPEN GAPS** | Natural R9 wake delivery (DIM-GAP-006); stale mirror for 190497 (DIM-GAP-005) |
+| **PRODUCTION STATUS** | Runtime on Production @ `8a1d9c658…` (R9 ancestor). **R9 authorized cohort 5/5** speed+ignition subscribed (DIM-EVID-R9-CANARY-001; TDL-EVID-OQ009-R9-INGRESS-001 re-read). Natural R9 **start** wake **PRODUCTION_OBSERVED / PARTIALLY_VALIDATED** (KS MS 661). Fleet-wide wake-rate KPI + full end-to-end closure **not** established. |
+| **OPEN GAPS** | Fleet-wide wake KPI + payload archive (DIM-GAP-006); stale scheduler mirror for **`HISTORICALLY_EXCLUDED_FORMER_FLEET_ASSET`** (DIM-GAP-005) |
 
 Cross-authority: [Trip Detection TDL-DEC-R9-CX-001](../../trip-detection-lifecycle/decisions/DECISION_REGISTER.md)
 
