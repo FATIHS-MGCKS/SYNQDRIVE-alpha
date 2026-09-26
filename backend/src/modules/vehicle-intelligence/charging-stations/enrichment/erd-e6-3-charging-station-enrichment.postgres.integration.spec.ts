@@ -49,7 +49,6 @@ async function seedOrgVehicle(prisma: PrismaClient) {
 async function createCanonicalRecharge(
   prisma: PrismaClient,
   vehicleId: string,
-  organizationId: string,
   coords: {
     startLatitude?: number | null;
     startLongitude?: number | null;
@@ -59,7 +58,6 @@ async function createCanonicalRecharge(
 ) {
   return prisma.vehicleEnergyEvent.create({
     data: {
-      organizationId,
       vehicleId,
       kind: EnergyEventKind.RECHARGE,
       detectionMechanism: ERD_RECHARGE_PROJECTION_DETECTION_MECHANISM,
@@ -104,7 +102,7 @@ async function createCanonicalRecharge(
 
   it('P1/P2/P3: canonical VEE → one MATCHED enrichment row', async () => {
     const { org, vehicle } = await seedOrgVehicle(prisma);
-    const event = await createCanonicalRecharge(prisma, vehicle.id, org.id, {
+    const event = await createCanonicalRecharge(prisma, vehicle.id, {
       startLatitude: 50.001,
       startLongitude: 8.001,
     });
@@ -124,7 +122,7 @@ async function createCanonicalRecharge(
 
   it('P5/P6: NO_COORDINATES upgrades to MATCHED after coordinates arrive', async () => {
     const { org, vehicle } = await seedOrgVehicle(prisma);
-    const event = await createCanonicalRecharge(prisma, vehicle.id, org.id, {});
+    const event = await createCanonicalRecharge(prisma, vehicle.id, {});
     await orchestrator.processEnergyEvent(event.id);
     let row = await prisma.vehicleEnergyEventChargingStationEnrichment.findUnique({
       where: { energyEventId: event.id },
@@ -149,7 +147,6 @@ async function createCanonicalRecharge(
     const { org, vehicle } = await seedOrgVehicle(prisma);
     const refuel = await prisma.vehicleEnergyEvent.create({
       data: {
-        organizationId: org.id,
         vehicleId: vehicle.id,
         kind: EnergyEventKind.REFUEL,
         detectionMechanism: 'test',
@@ -166,7 +163,6 @@ async function createCanonicalRecharge(
 
     const legacy = await prisma.vehicleEnergyEvent.create({
       data: {
-        organizationId: org.id,
         vehicleId: vehicle.id,
         kind: EnergyEventKind.RECHARGE,
         detectionMechanism: 'legacy',
@@ -188,7 +184,7 @@ async function createCanonicalRecharge(
 
   it('P16: canonical read exposes chargingStationEnrichment', async () => {
     const { org, vehicle } = await seedOrgVehicle(prisma);
-    const event = await createCanonicalRecharge(prisma, vehicle.id, org.id, {
+    const event = await createCanonicalRecharge(prisma, vehicle.id, {
       startLatitude: 50.001,
       startLongitude: 8.001,
     });
@@ -204,7 +200,7 @@ async function createCanonicalRecharge(
 
   it('P15: delete VEE cascades charging enrichment', async () => {
     const { org, vehicle } = await seedOrgVehicle(prisma);
-    const event = await createCanonicalRecharge(prisma, vehicle.id, org.id, {
+    const event = await createCanonicalRecharge(prisma, vehicle.id, {
       startLatitude: 50.001,
       startLongitude: 8.001,
     });
