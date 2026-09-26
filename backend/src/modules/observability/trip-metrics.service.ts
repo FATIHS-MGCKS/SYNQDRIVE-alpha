@@ -204,6 +204,10 @@ export class TripMetricsService implements OnModuleInit {
   readonly batteryRestSessionFeatureTriggerTotal: Counter<'reason' | 'outcome'>;
   readonly batteryRestSessionFeatureTriggerDurationSeconds: Histogram<'reason' | 'outcome'>;
   readonly batteryRestSessionFeatureRowCreatedTotal: Counter<'phase' | 'trust'>;
+  readonly batteryLongitudinalProfileMaterializationAttemptsTotal: Counter<'outcome'>;
+  readonly batteryLongitudinalProfileMaterializationDurationSeconds: Histogram<'outcome'>;
+  readonly batteryLongitudinalProfileIntegrityInspectionTotal: Counter<'disposition'>;
+  readonly batteryLongitudinalProfileSelfIntegrityFailureTotal: Counter<string>;
   readonly batteryProviderObservabilityGapOpenedTotal: Counter<string>;
   readonly batteryProviderObservabilityGapExtendedTotal: Counter<string>;
   readonly batteryProviderObservabilityGapFailureTotal: Counter<string>;
@@ -1739,6 +1743,34 @@ export class TripMetricsService implements OnModuleInit {
       name: 'synqdrive_battery_rest_session_feature_row_created_total',
       help: 'M3.3C C5A append-only rest-session feature rows created by C3',
       labelNames: ['phase', 'trust'],
+      registers: [this.registry],
+    });
+
+    this.batteryLongitudinalProfileMaterializationAttemptsTotal = new Counter({
+      name: 'synqdrive_battery_longitudinal_profile_materialization_attempts_total',
+      help: 'M3.3F D3 gated materialization attempts by scientific outcome (flag OFF skips entirely)',
+      labelNames: ['outcome'],
+      registers: [this.registry],
+    });
+
+    this.batteryLongitudinalProfileMaterializationDurationSeconds = new Histogram({
+      name: 'synqdrive_battery_longitudinal_profile_materialization_duration_seconds',
+      help: 'M3.3F D3 gated materialization duration by outcome',
+      labelNames: ['outcome'],
+      buckets: [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 30],
+      registers: [this.registry],
+    });
+
+    this.batteryLongitudinalProfileIntegrityInspectionTotal = new Counter({
+      name: 'synqdrive_battery_longitudinal_profile_integrity_inspection_total',
+      help: 'M3.3D D4 integrity inspection disposition (helpers only in F1 — no automatic runtime)',
+      labelNames: ['disposition'],
+      registers: [this.registry],
+    });
+
+    this.batteryLongitudinalProfileSelfIntegrityFailureTotal = new Counter({
+      name: 'synqdrive_battery_longitudinal_profile_self_integrity_failure_total',
+      help: 'M3.3D D4 revision self-integrity failures (helpers only in F1)',
       registers: [this.registry],
     });
 

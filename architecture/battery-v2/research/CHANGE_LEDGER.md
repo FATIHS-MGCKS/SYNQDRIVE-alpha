@@ -6,6 +6,44 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+---
+
+---
+
+## CL-2026-09-26 — M3.3F F1.2 ops CLI exit lifecycle (merge gate)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | D3 materialize ops CLI returns exit codes via `process.exitCode`; guaranteed Nest/Prisma close in `finally` (no post-bootstrap `process.exit`). |
+| **WHY** | `process.exit` bypasses async cleanup of application context. |
+| **NON_EFFECTS** | No scientific or flag changes. |
+
+## CL-2026-09-26 — M3.3F F1.1 pre-merge ops bootstrap + strict session limits
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Ops materialize CLI uses production Nest application context + backend `.env` load; strict integer parsing for materialization session limit env/CLI/override. |
+| **WHY** | Standalone ts-node must see production shared env; partial `parseInt` acceptance violated positive-integer-only policy. |
+| **NON_EFFECTS** | No D3 scientific/persistence change; no flag enable; no scheduler. |
+| **VALIDATION** | ops-bootstrap + runtime-config tests; F1 regressions. |
+
+## CL-2026-09-26 — M3.3F F1 D3 materialization runtime foundation (engineering draft)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | M3.3F F0 on main; D3 scientific stack internal-only; not Nest-registered; no D3 materialization env flag. |
+| **OBSERVATION** | F0 requires F1 safe runtime foundation before flag-OFF deploy and scheduled reconciliation. |
+| **CHANGE** | D3 flag + session limit authority; `BatteryGeneralizedEvidenceModule` DI; gated `LongitudinalProfileMaterializationRuntimeService`; D3/D4 Prometheus helpers; ops CLI skeleton; focused unit tests. |
+| **WHY** | Prevent ungated D3 writes; establish observability and on-demand ops path without automatic production execution. |
+| **EXPECTED_EFFECT** | **`D3_CODE_DI_REGISTERED=YES`**; **`D3_AUTOMATIC_RUNTIME_CALL_SITES=0`**; flag OFF → zero materialization work. |
+| **VALIDATION** | F1 unit tests; longitudinal/C3 regressions; `validate-graph.sh`; `validate-module-registry.sh`; backend build. |
+| **NON_EFFECTS** | No production flag enable; no scheduler; no C3/E3/D4 runtime coupling; no Prisma/migration; no backfill/T0 assignment. |
+| **AFTER** | **`M3_3F_F1_ENGINEERING_DRAFT`** (pending merge); **`PRODUCTION_MATERIALIZATION_READY=NO`**. |
+| **DECISION_STATUS** | **M3_3F_F1_ENGINEERING_DRAFT** |
+| **EVIDENCE** | `M3_3F_F1_D3_MATERIALIZATION_RUNTIME_FOUNDATION_2026-09-26.md` |
+
 ## CL-2026-09-25 — M3.3F production shadow + natural calibration architecture (draft)
 
 | Field | Value |
