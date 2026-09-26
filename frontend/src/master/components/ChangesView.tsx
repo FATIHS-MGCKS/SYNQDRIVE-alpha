@@ -36,6 +36,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'tdl-oq010-legacy-path-inventory-2026-09-26',
+    version: '4.9.4994',
+    title: 'Trip Detection — TDL-OQ-010 legacy/duplicate runtime path inventory (docs-only)',
+    summary: [
+      'Read-only audit @ main `79102e516…`, Production @ `8a1d9c658…` / release `20260925182907_v4994`.',
+      'TripDecisionEngine remains sole vehicleTrip.create / tripStatus writer; pre-V2 segment detectors classified ACTIVE_REPAIR (reconciliation).',
+      'Post-finalize: Driving Intelligence V2 job graph runs in parallel with legacy HF behavior + driving-impact queues until migration slices land.',
+      'Route enrichment: TripsService.enrichTrip reachable from orchestrator post-HF, DI DRIVING_ROUTE_ENRICH, and manual HTTP — duplicate provider work possible; artifact writes idempotent (fingerprint UNCHANGED).',
+      'Dead/scaffold only: FmmRouteMatcherService (null scaffold); MapboxRouteMatcherService / ROUTE_MAP_MATCHER port has zero inject consumers — safe follow-up removal candidates.',
+    ],
+    reason:
+      'Close TDL-OQ-010 with a complete productive-path inventory before any runtime cleanup; separate dead, repair, compatibility, and intentional duplicate pipelines.',
+    previousBehavior:
+      'Authority listed legacy path consolidation as open; orchestrator header implied single global behavior enrichment entry point while DI V2 also runs.',
+    details:
+      'architecture/trip-detection-lifecycle/evidence/TDL_OQ_010_LEGACY_DUPLICATE_PATH_INVENTORY_2026-09-26.md (TDL-EVID-OQ010-LEGACY-INV-001); TDL-DEC-OQ010-001; no runtime code changes.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-26T09:15:00.000Z',
+  },
+  {
     id: 'di-exp021-c05-cg01-cold-engine-full-throttle-2026-09-24',
     version: '4.9.2101',
     title: 'Driving Intelligence — EXP-021 C0.5 CG-01 COLD_ENGINE_FULL_THROTTLE containment (draft)',

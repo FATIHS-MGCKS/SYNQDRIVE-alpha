@@ -19,7 +19,7 @@ Gaps are **explicit unknowns** — not planned improvements disguised as facts.
 | **TDL-GAP-015** | VLS single `sourceTimestamp` masks per-field freshness (engine load rejuvenation) | **OPEN** | PROPOSED phase-1 positive TTL decay; phase-2 per-field timestamps (PD-4) |
 | **TDL-GAP-010** | Machine-readable FSM graph | PARTIAL | Phase 4 partial — R9 wake subgraph in `graph/*.yaml` + [KNOWLEDGE_GRAPH.md](../KNOWLEDGE_GRAPH.md); full FSM graph incomplete |
 | **TDL-GAP-011** | Decision register / WHY reconstruction | PARTIAL | Phase 4 partial — [decisions/DECISION_REGISTER.md](../decisions/DECISION_REGISTER.md) includes R9 wake decisions; full Phase 3 reconstruction ongoing |
-| **TDL-GAP-012** | Legacy duplicate trip paths | INFERRED | Reconciliation-heavy repair counts suggest historical gaps; dead paths not fully catalogued |
+| **TDL-GAP-012** | Legacy duplicate trip paths | **RESOLVED** | TDL-EVID-OQ010-LEGACY-INV-001 — inventory + bounded debt (DI V2 ∥ legacy HF); no unknown lifecycle writer |
 
 ## Standard-1.0 files — partial (Phase 4 in progress)
 

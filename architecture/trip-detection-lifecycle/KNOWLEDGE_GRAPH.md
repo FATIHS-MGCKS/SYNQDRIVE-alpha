@@ -8,12 +8,13 @@ Machine-readable graph: [`graph/`](graph/) · Validator: `bash architecture/trip
 
 | Fact | State |
 |------|-------|
-| **REPO_CURRENT** | `47a3b42b8…` @ post PR #1786 (OQ-008 on main) — **≠ live agent head until OQ-009 PR merges** |
+| **REPO_CURRENT** | `79102e516…` @ post PR #1789 (OQ-009) + OQ-010 inventory branch |
 | **TDL-OQ-007** | **RESOLVED** — OQ-007.1 passive closure @ `2026-09-25T13:25Z` |
 | **TDL-OQ-003** | **RESOLVED** — detection-state cardinality @ `2026-09-25T18:05Z` (TDL-EVID-OQ003-CARDINALITY-001) |
 | **TDL-OQ-004** | **RESOLVED** — route artifact coverage policy @ `2026-09-25` (TDL-EVID-OQ004-ROUTE-COV-001; epistemic correction same day) |
 | **TDL-OQ-008** | **RESOLVED** — feature-flag matrix @ `2026-09-25` (TDL-EVID-OQ008-FLAG-MATRIX-001) |
 | **TDL-OQ-009** | **RESOLVED** — tiered polling + R9 ingress @ `2026-09-26` (TDL-EVID-OQ009-R9-INGRESS-001) |
+| **TDL-OQ-010** | **RESOLVED** — legacy/duplicate runtime inventory @ `2026-09-26` (TDL-EVID-OQ010-LEGACY-INV-001; **`RESOLVED_WITH_BOUNDED_DEBT`**) |
 | **PRODUCTION_CURRENT** | `8a1d9c658…` @ `20260925182907_v4994` |
 | **Shadow runtime** | **LAST_VERIFIED @ `99d722b4…`** — not re-checked @ `8a1d9c658…` in OQ-004 |
 | R9 on `origin/main` | **YES** — merged #1553 (`4bef6046…` ancestor of `47a3b42b8…`) |
@@ -75,6 +76,7 @@ Provider wake eligible (AVAILABLE|RENTED, DIMO CONNECTED, FSM RESTING)
 | TDL-DEC-OQ006-001 | DIMO segment vs live FSM boundary authority (repair evidence, not live override) | VALIDATED (**`RESOLVED_WITH_BOUNDED_GAPS`**) |
 | TDL-DEC-OQ008-001 | Trip runtime-control matrix (defaults vs Production effective) | VALIDATED |
 | TDL-DEC-OQ009-001 | Tiered polling + R9 provider-wake ingress contract | VALIDATED (**`RESOLVED_INGRESS_CONTRACT_ALIGNED`**) |
+| TDL-DEC-OQ010-001 | Legacy/duplicate trip runtime path inventory — dual post-finalize pipelines | VALIDATED (**`RESOLVED_WITH_BOUNDED_DEBT`**) |
 
 Detail: [decisions/DECISION_REGISTER.md](decisions/DECISION_REGISTER.md)
 
@@ -102,4 +104,5 @@ POSSIBLE_END (possibleEndEnteredAt clocked)
 - ~~`drive-profile/` ownership (TDL-GAP-002)~~ — **RESOLVED** Battery V2 owns (TDL-EVID-OQ002-DRIVE-PROFILE-001)
 - Natural R9 wake end-to-end delivery (TDL-GAP-013; cross-ref DIM-GAP-006) — **historical start wake proven**; recent operational rates **unknown**
 - ~~Tiered polling vs R9 ingress (TDL-GAP-016)~~ — **RESOLVED** (TDL-EVID-OQ009-R9-INGRESS-001)
+- ~~Legacy duplicate trip paths (TDL-GAP-012)~~ — **RESOLVED** (TDL-EVID-OQ010-LEGACY-INV-001)
 - DIMO Integration `AUDIT_IN_PROGRESS` — segment/trigger ownership gaps remain (TDL-CX-006 partially superseded)
