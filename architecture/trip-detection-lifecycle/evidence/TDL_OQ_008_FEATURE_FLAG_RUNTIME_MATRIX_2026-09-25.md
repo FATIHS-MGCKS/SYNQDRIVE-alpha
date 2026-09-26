@@ -9,7 +9,6 @@
 | **Audit mode** | READ_ONLY — no env/deploy/DB/Redis mutation |
 | **Verdict** | **`RESOLVED_COMPLETE_MATRIX`** |
 | **Control inventory (productive)** | **10** mode/boolean · **1** scope allowlist · **28** runtime knobs · **1** dead unused surface |
-| **PR head (OQ-008 docs)** | `cf617f834f4f21e2dee7048ba296a2d4c2d81743` (#1786) |
 
 ## Control count contract (OQ-008)
 
