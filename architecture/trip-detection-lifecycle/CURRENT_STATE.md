@@ -1,15 +1,19 @@
-# Trip Detection & Lifecycle — Current State (Partial, `AUDIT_IN_PROGRESS`)
+# Trip Detection & Lifecycle — Current State (`AUTHORITY_ACTIVE`)
+
+**Promoted 2026-09-26** via Gate A — [TDL_PHASE_5_AUTHORITY_PROMOTION_AUDIT_2026-09-26.md](evidence/TDL_PHASE_5_AUTHORITY_PROMOTION_AUDIT_2026-09-26.md) (TDL-DEC-PHASE5-001).
 
 | Field | Value |
 |-------|-------|
-| **REPO_CURRENT_AT_OQ004_AUDIT** | `55fcbe7a229db9858cecc1538b9ec1919ff30fbc` — `origin/main` at TDL-OQ-004 read-only audit (PR #1783 base; **not** a claim that PR head equals live `origin/main` after further merges) |
+| **REPO_CURRENT** | `0b44b146f…` — `origin/main` at Phase 5 promotion audit (post #1793) |
+| **PRODUCTION_CURRENT (verified release)** | `2b54a357…` @ `/opt/synqdrive/releases/20260926094359_v4994` — **VERIFIED_READ_ONLY** 2026-09-26 (TDL-EVID-PHASE5-PROD-BASELINE-001) |
+| **REPO_CURRENT_AT_OQ004_AUDIT (historical)** | `55fcbe7a229db9858cecc1538b9ec1919ff30fbc` — `origin/main` at TDL-OQ-004 read-only audit (PR #1783 base; **not** a claim that PR head equals live `origin/main` after further merges) |
 | **REPO_CURRENT (legacy table row — stale)** | `567a5766f…` — pre-OQ-004 axis; superseded for route coverage claims by **REPO_CURRENT_AT_OQ004_AUDIT** |
-| **PRODUCTION_CURRENT (verified release)** | `8a1d9c6586cbddc41bb6c94870f9d51226d71aa2` @ `/opt/synqdrive/releases/20260925182907_v4994` (`LIVE_RELEASE_ID=20260925182907_v4994`) |
+| **Production baseline (historical — OQ-004 audit)** | `8a1d9c6586cbddc41bb6c94870f9d51226d71aa2` @ `/opt/synqdrive/releases/20260925182907_v4994` (`LIVE_RELEASE_ID=20260925182907_v4994`) |
 | **origin/main baseline (historical @ R9 rebase)** | `a4725514866a03099e7a1e485ccf0b7ea37d6fec` — **does not contain R9** |
 | **origin/main (historical @ R12 hardening #1594 merged)** | `f4109e34c24f1eb497e2023f4b4bb997abfc159f` — superseded on main by later merges |
 | **Production baseline (historical — PRE_HARDENING_R12)** | `157b3c72226869e4e35d1a9398b78cab50d3fa54` @ `20260909190912_v4994` — **HISTORICAL** |
 | **Production baseline (historical — QS-active)** | `e30de7591d97868e24d6e1f379a71b52ada8a3eb` @ `20260924201136_v4994` — **HISTORICAL** (superseded by `99d722b4…`) |
-| **Last verified Production evidence** | `2026-09-25` — TDL-EVID-QS-V1-PROD-ACCEPT-001 @ `99d722b4…`; deploy audit TDL-EV-R12-PROD-DEPLOY-001 @ `157b3c722…` remains **HISTORICAL** |
+| **Last verified Production evidence** | `2026-09-26` — TDL-EVID-PHASE5-PROD-BASELINE-001 @ `2b54a357…`; QS acceptance TDL-EVID-QS-V1-PROD-ACCEPT-001 @ `99d722b4…` (`2026-09-25`, carried forward); deploy audit TDL-EV-R12-PROD-DEPLOY-001 @ `157b3c722…` remains **HISTORICAL** |
 | **Qualified stop duration (Production @ `99d722b4…`)** | **300_000 ms** threshold; `durationMs <= max` → SAME_TRIP; `durationMs > max` → SPLIT; config **`CANONICAL_DEFAULT`**; orchestration + mid-gap + merge/reopen + reconciliation + `TripQualityDetector` **aligned** |
 | **Epistemic policy** | Claims separated below — do not merge axes |
 
@@ -17,21 +21,24 @@
 
 | Axis | SHA / status | Classification |
 |------|--------------|----------------|
-| **REPO_CURRENT_AT_OQ004_AUDIT** | `55fcbe7a…` | OQ-004 code trace baseline |
+| **REPO_CURRENT** | `0b44b146f…` | Phase 5 code trace baseline (TDL-EVID-PHASE5-FSM-CODE-001) |
+| **FSM_GRAPH** | 5 live states · 14 transitions (11 state-changing + 3 self) · `ENDED` SCHEMA_COMPAT_ONLY | **COMPLETE** — machine-validated (`scripts/validate-graph.sh`) |
+| **REPO_CURRENT_AT_OQ004_AUDIT** | `55fcbe7a…` | **Historical** — OQ-004 code trace baseline |
 | **REPO_CURRENT (legacy)** | `567a5766f…` @ post #1779 | **Stale** — do not use for OQ-004 |
 | **OQ007_R1_R8_PROD_COVERAGE** | TDL-EVID-OQ007-R1R8-COV-001 + TDL-EVID-OQ007-1-PASSIVE-CLOSURE-001 | **`RESOLVED_BY_SCOPE_REDUCTION`** — 0 active PP_NOT_VALIDATED after OQ-007.1 |
 | **OQ003_DETECTION_STATE_CARDINALITY** | TDL-EVID-OQ003-CARDINALITY-001 | **`RESOLVED_EXPECTED_CARDINALITY`** — 6 FSM rows = 6 scheduler-eligible; tracking runs are execution multiplicity |
 | **OQ004_ROUTE_ARTIFACT_COVERAGE** | TDL-EVID-OQ004-ROUTE-COV-001 | **`RESOLVED_WITH_BOUNDED_GAPS`** — **7d 100%**; materialization-era **374/374**; exact Route-V2 30d policy **NOT_EXACTLY_COMPUTABLE** (deploy **UNKNOWN**) |
 | **OQ006_DIMO_FSM_BOUNDARY** | TDL-EVID-OQ006-BOUNDARY-001 | **`RESOLVED_WITH_BOUNDED_GAPS`** — live FSM canonical; DIMO segments repair evidence only |
-| **PRODUCTION_CURRENT** | `8a1d9c658…` @ `20260925182907_v4994` | **VERIFIED_READ_ONLY** — post `99d722b4…` release |
+| **PRODUCTION_CURRENT** | `2b54a357…` @ `20260926094359_v4994` | **VERIFIED_READ_ONLY** 2026-09-26 (TDL-EVID-PHASE5-PROD-BASELINE-001) |
+| **PRODUCTION (historical — OQ-004)** | `8a1d9c658…` @ `20260925182907_v4994` | **HISTORICAL** VERIFIED_READ_ONLY |
 | **QS_V1_PRODUCTION_ACCEPTANCE** | TDL-EVID-QS-V1-PROD-ACCEPT-001 | **`PASS_WITH_EVIDENCE_GAPS`** — 3/3 natural SAME_TRIP; no natural >300s SPLIT / POST_SPLIT_TRIP2 in window |
 | **OQ001_COMPLETED_TO_DI_HANDOFF** | TDL-EVID-OQ001-HANDOFF-001 + TDL-EVID-OQ001-1-ORG-001 | **`RESOLVED`** — handoff contract + org invariant; non-atomic enqueue accepted |
 | **PRE_HARDENING_R12_PRODUCTION (historical)** | `157b3c722…` | **HISTORICAL** deploy — TDL-EV-R12-PROD-DEPLOY-001 |
-| **SHADOW_RUNTIME (Production)** | **LAST_VERIFIED @ `99d722b4…`** (`20260924235024_v4994`) | **PRESENT** + **ENABLED** on that release — **NOT re-verified @ `8a1d9c658…`** in OQ-004 pass |
+| **SHADOW_RUNTIME (Production)** | **LAST_VERIFIED @ `99d722b4…`** (`20260924235024_v4994`) | **CARRIED_FORWARD_FROM_RECENT_VERIFIED_EVIDENCE** — see [PRODUCTION_BASELINE.md](evidence/PRODUCTION_BASELINE.md) current-section class column |
 
 ## Phase status (this document)
 
-Phase **1** documents an **initial consolidated baseline** — not a claim that repository audit is fully complete. **Dead/legacy path inventory closed** via TDL-OQ-010 (TDL-EVID-OQ010-LEGACY-INV-001). **Feature-flag / runtime-control matrix closed** via TDL-OQ-008 (TDL-EVID-OQ008-FLAG-MATRIX-001). **Tiered snapshot polling + R9 provider-wake ingress closed** via TDL-OQ-009 (TDL-EVID-OQ009-R9-INGRESS-001). **Route V2 Mapbox/FMM failure taxonomy closed** via TDL-OQ-004 (TDL-EVID-OQ004-ROUTE-COV-001); handler artifact contract remains optional follow-up.
+**Phases 0–5 complete** (Standard 1.0) — Gate A passed 2026-09-26. Phase **1** consolidated baseline is extended by the closures below; remaining items are **explicit non-blocking limitations** (see [contradictions/KNOWLEDGE_GAPS.md](contradictions/KNOWLEDGE_GAPS.md)). **Dead/legacy path inventory closed** via TDL-OQ-010 (TDL-EVID-OQ010-LEGACY-INV-001). **Feature-flag / runtime-control matrix closed** via TDL-OQ-008 (TDL-EVID-OQ008-FLAG-MATRIX-001). **Tiered snapshot polling + R9 provider-wake ingress closed** via TDL-OQ-009 (TDL-EVID-OQ009-R9-INGRESS-001). **Route V2 Mapbox/FMM failure taxonomy closed** via TDL-OQ-004 (TDL-EVID-OQ004-ROUTE-COV-001); handler artifact contract remains optional follow-up.
 
 ---
 
@@ -76,6 +83,16 @@ Prisma enum `TripDetectionState`:
 | `ENDED` | **Schema-only — deprecated compat label** (TDL-OQ-005); **zero** runtime read/write; Production **0** rows @ 2026-09-26 |
 
 Successful finalize → **`RESTING`**, not `ENDED` (TDL-EV-P2-001 + code reconfirmation).
+
+### Live FSM transitions (TDL-TR-001…014)
+
+Sole state writer: `TripDetectionOrchestrationService.transitionState` (34 call sites). Full per-transition trigger / guard / decision authority / persistence writer / queue job / failure-recovery / source paths / evidence in [graph/edges.yaml](graph/edges.yaml) (`transitions_to`) and [KNOWLEDGE_GRAPH.md](KNOWLEDGE_GRAPH.md). `ENDED` has **zero** transitions (SCHEMA_COMPAT_ONLY / NOT_RUNTIME_REACHABLE).
+
+| Class | Count |
+|-------|-------|
+| Live runtime states | 5 (`RESTING`, `POSSIBLE_START`, `ACTIVE_TRIP`, `IDLE_WITHIN_TRIP`, `POSSIBLE_END`) |
+| State-changing transitions | 11 |
+| Self transitions (`ACTIVE_TRIP`, `IDLE_WITHIN_TRIP`, `POSSIBLE_END`) | 3 |
 
 ### BullMQ execution phases (not persisted as FSM state)
 
@@ -122,7 +139,7 @@ R1–R8 merged through #1549 on `origin/main`. R9 merged via #1553 @ `4bef60463�
 
 ## CONFIRMED — R9 runtime on main (@ `4bef60463…`)
 
-**Epistemic note:** R9 code merged to `origin/main` via #1553. **PRODUCTION_CURRENT** is @ `99d722b4…` — see authority axes above. Historical R9 Production snapshot @ `0ba96e03…` preserved below.
+**Epistemic note:** R9 code merged to `origin/main` via #1553. **PRODUCTION_CURRENT** is @ `2b54a357…` — see authority axes above. Historical R9 Production snapshot @ `0ba96e03…` preserved below.
 
 ### R9 wake subsystem entry points
 
@@ -152,9 +169,17 @@ See [evidence/EVIDENCE_INDEX.md](evidence/EVIDENCE_INDEX.md) TDL-EV-R9-*.
 
 ---
 
-## CONFIRMED — Current verified Production (read-only)
+## CONFIRMED — Current verified Production @ `2b54a357…` (read-only, 2026-09-26)
 
-**PRODUCTION_CURRENT authority:** `99d722b4cac865e59e30ad23c82cec11fd9fc9b1` @ `/opt/synqdrive/releases/20260924235024_v4994`.
+**PRODUCTION_CURRENT authority:** `2b54a357…` @ `/opt/synqdrive/releases/20260926094359_v4994` — **VERIFIED_READ_ONLY** (TDL-EVID-PHASE5-PROD-BASELINE-001). Per-fact classes (**CURRENTLY_REOBSERVED** vs **CARRIED_FORWARD_FROM_RECENT_VERIFIED_EVIDENCE**) in [evidence/PRODUCTION_BASELINE.md](evidence/PRODUCTION_BASELINE.md).
+
+---
+
+## HISTORICAL — QS acceptance Production @ `99d722b4…`
+
+**Not current Production.** Superseded by `8a1d9c658…` → `2b54a357…`. QS acceptance facts below are **carried forward** where `PRODUCTION_BASELINE.md` marks them so.
+
+**Historical PRODUCTION_CURRENT authority (2026-09-25):** `99d722b4cac865e59e30ad23c82cec11fd9fc9b1` @ `/opt/synqdrive/releases/20260924235024_v4994`.
 
 Canonical acceptance evidence: [QUALIFIED_STOP_V1_PRODUCTION_ACCEPTANCE_2026-09-25.md](evidence/QUALIFIED_STOP_V1_PRODUCTION_ACCEPTANCE_2026-09-25.md) (**TDL-EVID-QS-V1-PROD-ACCEPT-001** @ `2026-09-25`).
 
@@ -229,7 +254,7 @@ See [evidence/PRODUCTION_BASELINE.md](evidence/PRODUCTION_BASELINE.md) § Histor
 |-----------|-------|
 | Small telematics cohort drives live FSM rows (historical @ `01541c2ab…` session) | TDL-EV-PROD-005 vs PROD-009 @ `2026-09-06T23:47:41Z` |
 | Reconciliation scans broader history than live FSM (historical session) | TDL-EV-PROD-008 vs PROD-006 @ `2026-09-06T23:47:41Z` |
-| Production trip FSM deploy (historical chain) | R8/R9 **were deployed** on historical releases; **PRODUCTION_CURRENT** @ `99d722b4…` includes R12 fixes through #1753 |
+| Production trip FSM deploy (historical chain) | R8/R9 **were deployed** on historical releases; **PRODUCTION_CURRENT** @ `2b54a357…` includes R12 fixes through #1753 (ancestor chain via `99d722b4…`) |
 | Natural trip processing active (historical session inference) | TDL-EV-PROD-009 @ `2026-09-06T23:47:41Z` — not current fleet state |
 
 ---
@@ -247,8 +272,9 @@ See [evidence/PRODUCTION_BASELINE.md](evidence/PRODUCTION_BASELINE.md) § Histor
 - ~~`drive-profile/` ownership (TDL-OQ-002)~~ → **RESOLVED** — Battery V2 owns; TDL-EVID-OQ002-DRIVE-PROFILE-001
 - ~~ClickHouse trip-assist runtime on Production~~ → **documented** @ `8a1d9c658…`: `CLICKHOUSE_TRIP_ASSIST_ENABLED=true` (TDL-EVID-OQ008-FLAG-MATRIX-001)
 - ~~Complete trip feature-flag matrix~~ → **RESOLVED** — TDL-OQ-008 / TDL-EVID-OQ008-FLAG-MATRIX-001
-- Full dead/legacy/competing path inventory (**Phase 1 incomplete**)
-- Mapbox/FMM failure taxonomy (**Phase 1 incomplete**)
+- ~~Full dead/legacy/competing path inventory~~ → **RESOLVED** — TDL-OQ-010 (41 productive paths; graph-mapped 14 / boundary-mapped 27 / unmapped 0)
+- ~~Mapbox/FMM failure taxonomy~~ → **RESOLVED** — TDL-OQ-004 (TDL-EVID-OQ004-ROUTE-COV-001)
+- Exact Route-V2 30d policy coverage — **NOT_EXACTLY_COMPUTABLE** (TDL-GAP-005; explicit non-blocking limitation)
 
 ---
 
@@ -280,19 +306,19 @@ See [contradictions/OPEN_CONTRADICTIONS.md](contradictions/OPEN_CONTRADICTIONS.m
 - PR #1753 Qualified Stop Contract V1 — **MERGED / PRODUCTION_PRESENT**; 3/3 natural SAME_TRIP controls **PASS**; natural >300s SPLIT acceptance **evidence-gapped**
 - PR #1757 accidental squash merge @ `301e4a32…` — **NO_RUNTIME_DELTA_INTRODUCED** (test harness + provenance only); isolated candidate `9f346230…` **DEPLOY_REQUIRED=NO**
 - KS MS 661 **2026-09-09** natural drive (`3b26019d…`) — **ONGOING** @ audit; end path blocked (empty-core + stale VLS); historical 2026-09-08 trip (`e324ee8c…`) completed via **`STALE_ONGOING` repair** — separate incident (TDL-EVID-KS-MS-661-001)
-- Promotion to `AUTHORITY_ACTIVE`
-- Complete machine-readable FSM graph (Phase 4 partial — R9 wake subgraph indexed; full FSM graph incomplete)
+- R10/R11/R12 decisions are **VALIDATED** (code + CI + deploy evidence), **not** `PRODUCTION_VALIDATED` for every natural end-path branch
+- _Removed 2026-09-26 (Phase 5):_ "Promotion to `AUTHORITY_ACTIVE`" and "Complete machine-readable FSM graph" non-claims — both now satisfied (TDL-DEC-PHASE5-001)
 - Resolved DIMO Integration vs trip reconciliation ownership — **TDL-OQ-006 / DIM-GAP-001 RESOLVED** (TDL-EVID-OQ006-BOUNDARY-001); TDL-CX-006 DI registry wording remains open
 
 ---
 
-## Ownership boundaries (preliminary)
+## Ownership boundaries
 
 | Owner | Scope |
 |-------|-------|
 | **Trip Detection & Lifecycle** | Live FSM, start/end detection, tracking queue, boundary persistence, recovery/reconciliation, route artifacts |
 | **Driving Intelligence** | Post-trip behavior — consumes boundaries |
-| **KG-ATE** | Post-finalize enrichment |
+| **KG-ATE** | Post-finalize enrichment (legacy HF analysis consumers — OQ-010 boundary-mapped) |
 | **KG-EED** | REFUEL/RECHARGE |
 | **Scaling Process** | Leader election, DIMO budget, generic mutex |
 | **Battery V2** | Downstream trip hooks |

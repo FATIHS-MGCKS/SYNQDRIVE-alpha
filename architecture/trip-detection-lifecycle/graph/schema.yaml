@@ -118,6 +118,7 @@ relation_types:
   - validates
   - derives_from
   - enables
+  - transitions_to
 
 relation_semantics_doc: architecture/trip-detection-lifecycle/AGENT_CONTRACT.md
 
@@ -175,9 +176,27 @@ node_fields:
     - non_effects
     - superseded_by
     - notes
+    - fsm_role
+    - runtime_reachable
+    - enum_value
+    - oq010_paths
+    - owner_module
 
 evidence_required_fields:
   - source_type
+
+# FSM state nodes (type=state) must declare fsm_role + runtime_reachable.
+fsm_role_values:
+  - LIVE_RUNTIME_STATE
+  - SCHEMA_COMPAT_ONLY
+
+# Pinned from the Phase 5 code census (TDL-EVID-PHASE5-FSM-CODE-001); change only with new code evidence.
+fsm_expected_live_state_count: 5
+fsm_expected_transition_count: 14
+
+# OQ-010 productive path matrix (TDL-EVID-OQ010-LEGACY-INV-001): P001..P041, each mapped exactly once.
+# Nodes of type consumer count as BOUNDARY_MAPPED; all other node types count as GRAPH_MAPPED.
+oq010_productive_path_count: 41
 
 edge_fields:
   required:
@@ -186,3 +205,24 @@ edge_fields:
     - to
   optional:
     - notes
+    - id
+    - trigger
+    - guard
+    - decision_authority
+    - persistence_writer
+    - queue_job
+    - failure_recovery
+    - source_paths
+    - evidence
+
+# relation=transitions_to (state → state) must carry every field below.
+transition_required_fields:
+  - id
+  - trigger
+  - guard
+  - decision_authority
+  - persistence_writer
+  - queue_job
+  - failure_recovery
+  - source_paths
+  - evidence

@@ -6,7 +6,7 @@
 
 **Central registry validator:** `bash architecture/scripts/validate-module-registry.sh`
 
-**Last updated:** 2026-09-11 (Vehicle & Device Connectivity Phase 3 reconciliation complete — `AUDIT_IN_PROGRESS`)
+**Last updated:** 2026-09-26 (Trip Detection & Lifecycle promoted to `AUTHORITY_ACTIVE` — Phase 5 Gate A)
 
 ---
 
@@ -72,7 +72,7 @@ Canonical overview of known modules. **Every row includes module name, mini desc
 | Tasks & Work Orders | Work orders, task domain V2, and task automation outbox processing. | `NOT_STARTED` | N/A — inventory only | — |
 | Technical Observations | Operator technical observation records feeding notifications and workflow triggers. | `NOT_STARTED` | N/A — inventory only | — |
 | Tires Health | Tire wear modeling, lifecycle, measurements, health alerts, and tire trip-usage ledger. | `NOT_STARTED` | N/A — inventory only | — |
-| Trip Detection & Lifecycle | Live trip FSM, start/end detection, Qualified Stop V1, R9 wake ingress, reconciliation, route artifacts. | `AUDIT_IN_PROGRESS` | Partial reconstruction · QS V1 Production acceptance rebaselined 2026-09-25 | [`architecture/trip-detection-lifecycle/`](trip-detection-lifecycle/) |
+| Trip Detection & Lifecycle | Live trip FSM, start/end detection, Qualified Stop V1, R9 wake ingress, reconciliation, route artifacts. | `AUTHORITY_ACTIVE` | Phase 0–5 complete · Gate A 2026-09-26 · Production VERIFIED_READ_ONLY @ `2b54a357…` | [`architecture/trip-detection-lifecycle/`](trip-detection-lifecycle/) |
 | Users & Invites | Org user management, custom roles, invites, and IAM audit outbox scheduling. | `NOT_STARTED` | N/A — inventory only | — |
 | Vehicle & Device Connectivity | Provider-neutral vehicle and connectivity-device lifecycle, hardware/provider freshness, standby/disconnect/reconnect semantics, physical/device evidence, fault classification, and connectivity-state projection across DIMO hardware and OEM/cloud providers. | `AUDIT_IN_PROGRESS` | Phase 1–3 complete (2026-09-11): repo audit, Production LTE_R1 forensics, reconciliation/decisions/backlog · promotion deferred | [`architecture/vehicle-device-connectivity/`](vehicle-device-connectivity/) |
 | Vehicle Health Summary | Aggregated vehicle health summary, dashboard warning lights, and AI health-care projection layer. | `NOT_STARTED` | N/A — inventory only | — |
@@ -243,13 +243,13 @@ Detailed sections for modules with usable living authorities. See [Module invent
 
 | Field | Value |
 |-------|-------|
-| **Registry coverage status** | `AUDIT_IN_PROGRESS` — partial reconstruction **in progress**; **not** a complete usable authority |
+| **Registry coverage status** | `AUTHORITY_ACTIVE` — promoted 2026-09-26 via Phase 5 Gate A (17/17; TDL-DEC-PHASE5-001); explicit non-blocking limitations tracked in authority |
 | **Scope** | Live trip FSM (`VehicleTripDetectionState`), snapshot-triggered start evaluation, **R9 adaptive provider-wake start-liveness ingress** (`SnapshotWakeIntakeService`, `SnapshotWakeCoordinatorService`, durable Redis mailboxes, handoff queue), BullMQ `dimo.trip-tracking` execution loop, start/end detection policies and detectors, `TripDecisionEngine` lifecycle mutations, terminal recovery, reconciliation/repair (`TripRepair`), route artifacts (Route V2), trip API read models and rental UI trip surfaces. |
 | **Authority directory** | [`architecture/trip-detection-lifecycle/`](trip-detection-lifecycle/) |
-| **Authority-native status** | Partial reconstruction — Production @ `99d722b4…` (Qualified Stop V1 **`PASS_WITH_EVIDENCE_GAPS`**, TDL-EVID-QS-V1-PROD-ACCEPT-001); **not** promoted to `AUTHORITY_ACTIVE` (TDL-OQ-001, TDL-OQ-006 open) · updated 2026-09-25 |
+| **Authority-native status** | Phase 0–5 complete — full live FSM graph (5 states / 14 transitions; `ENDED` SCHEMA_COMPAT_ONLY); TDL-OQ-001…010 closed; Production **VERIFIED_READ_ONLY** @ `2b54a357…` / `20260926094359_v4994`; Qualified Stop V1 **`PASS_WITH_EVIDENCE_GAPS`** (explicit limitation) · updated 2026-09-26 |
 | **Ownership boundary** | **Owns** canonical trip start/end, live FSM, lifecycle state, tracking queue, boundary persistence, recovery/reconciliation, canonical route artifacts, **R9 wake ingress/handoff** (merged #1553), **Qualified Stop Contract V1** shared duration authority (#1753 on Production). **Does NOT own** post-trip behavior/scoring (→ Driving Intelligence), post-finalize enrichment orchestration (→ KG-ATE), REFUEL/RECHARGE semantics (→ KG-EED), multi-replica leader/mutex algorithms (→ Scaling Process), battery health (→ Battery V2), DIMO provider transport/auth/webhook gateway (→ [DIMO Integration](dimo-integration/), `AUDIT_IN_PROGRESS`). Historical FSM audits under `docs/audits/trip-fsm/` are **supporting evidence only**. |
-| **Reconstruction status** | Phase **0** complete; Phase **1** consolidated baseline @ `REPO_CURRENT` `d6ff7e19…`; Phase **2** verified read-only Production @ `99d722b4…` + QS acceptance evidence; Phase **3** in progress (OQ-007 partial); Phase **4** partial (R9–R12 + QS V1 graph/decisions); Phase **5** pending. |
-| **Mandatory entry documents (partial)** | [README.md](trip-detection-lifecycle/README.md) · [AUDIT_MANIFEST.md](trip-detection-lifecycle/AUDIT_MANIFEST.md) · [CURRENT_STATE.md](trip-detection-lifecycle/CURRENT_STATE.md) · [AGENT_CONTRACT.md](trip-detection-lifecycle/AGENT_CONTRACT.md) · [KNOWLEDGE_GRAPH.md](trip-detection-lifecycle/KNOWLEDGE_GRAPH.md) · [decisions/DECISION_REGISTER.md](trip-detection-lifecycle/decisions/DECISION_REGISTER.md) · [evidence/EVIDENCE_INDEX.md](trip-detection-lifecycle/evidence/EVIDENCE_INDEX.md) · [evidence/PRODUCTION_BASELINE.md](trip-detection-lifecycle/evidence/PRODUCTION_BASELINE.md) |
+| **Reconstruction status** | Phases **0–5** complete — Phase **1** @ `REPO_CURRENT` `0b44b146f…`; Phase **2** read-only Production @ `2b54a357…`; Phase **3** CX/GAP promotion-classified; Phase **4** full FSM/execution/authority/failure graph + decision register; Phase **5** Gate A PASS ([evidence](trip-detection-lifecycle/evidence/TDL_PHASE_5_AUTHORITY_PROMOTION_AUDIT_2026-09-26.md)). |
+| **Mandatory entry documents** | [README.md](trip-detection-lifecycle/README.md) · [AUDIT_MANIFEST.md](trip-detection-lifecycle/AUDIT_MANIFEST.md) · [CURRENT_STATE.md](trip-detection-lifecycle/CURRENT_STATE.md) · [AGENT_CONTRACT.md](trip-detection-lifecycle/AGENT_CONTRACT.md) · [KNOWLEDGE_GRAPH.md](trip-detection-lifecycle/KNOWLEDGE_GRAPH.md) · [decisions/DECISION_REGISTER.md](trip-detection-lifecycle/decisions/DECISION_REGISTER.md) · [evidence/EVIDENCE_INDEX.md](trip-detection-lifecycle/evidence/EVIDENCE_INDEX.md) · [evidence/PRODUCTION_BASELINE.md](trip-detection-lifecycle/evidence/PRODUCTION_BASELINE.md) |
 | **Validation** | `bash architecture/scripts/validate-module-registry.sh` · `bash architecture/trip-detection-lifecycle/scripts/validate-graph.sh` |
 
 ---
