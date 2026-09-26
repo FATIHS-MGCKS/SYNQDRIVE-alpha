@@ -410,3 +410,14 @@ edges:
     from: DI-DEC-V0-SHADOW-PURE-CORE-001
     relation: governs
     to: DI-SVC-V0-SHADOW-CORE-001
+
+  - id: DI-EDGE-136
+    from: DI-DEC-V0-POSITION-ACQ-001
+    relation: governs
+    to: DI-SVC-V0-POSITION-ACQ-001
+
+  - id: DI-EDGE-137
+    from: DI-SVC-V0-POSITION-ACQ-001
+    relation: input_to
+    to: DI-SVC-V0-SHADOW-CORE-001
+    notes: Test-only integration in S3A; no runtime caller

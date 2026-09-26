@@ -37,7 +37,8 @@ Do **not** say "HF Recovery V2 not deployed" — say **code deployed, feature di
 | **L3** | Centred-path haversine mean × 3.6; support labels **calendar** t−1 s, t, t+1; all FRESH; no hold/release/gap |
 | **Invariant** | Driving Intelligence derives claims only from evidence whose availability, temporal semantics, source family and provenance are explicit; unsupported point values are withheld |
 | **Shadow persistence (S2)** | `di_v0_shadow_runs` + `di_v0_shadow_intervals` — **library + Prisma only**; tenant identity verified at write boundary; DB CHECK constraints; tx-scoped persistence; completion counts derived from stored intervals; no runtime caller; not customer-facing |
-| **Next slice** | S3 input acquisition / normalization worker wiring — not started |
+| **Position acquisition (S3A)** | `driving-intelligence/position-acquisition/` — **dormant library only** (C1D.7): DIMO `signals(interval:"1s")` `currentLocationCoordinates(agg: AVG)` via shared auth + telemetry transport adapter (not Nest-registered); strict `[from, to)` 1 s grid; PRESENT / SIGNAL_NULL / ROW_ABSENT kept distinct; BUCKET_BOUNDED only; coordinate validation (0,0 valid); duplicate fail-safe; source family via canonical `telemetry-source-family.ts` (never `hardwareType`); SHA-256 snapshot → S2 `inputEvidenceVersion`; typed redacted failures, no self-retry; no runtime caller, no DB write. Evidence: [EXP021_C1D7_S3A_INPUT_NORMALIZATION_REPORT.md](evidence/EXP021_C1D7_S3A_INPUT_NORMALIZATION_REPORT.md) |
+| **Next slice** | S3B worker/caller wiring (+ speed / R1 OBD / native event adapters) — not started, not authorized |
 
 ## System boundary (confirmed)
 

@@ -333,3 +333,20 @@ Validate graph consistency: `bash architecture/drivingintelligence/scripts/valid
 | **EPISTEMIC** | INFERRED → CONFIRMED after unit tests |
 | **EVIDENCE** | `evidence/EXP_021_C1D5_V0_PURE_CORE_2026-09-26.md` |
 | **BOUNDARY** | Consulted: DIMO (no provider category yet), ATE/TDL/VDC (read-only semantics only) — no cross-module code change |
+
+## DI-DEC-V0-POSITION-ACQ-001
+
+| Field | Value |
+|-------|-------|
+| **TITLE** | DI V0 S3A primary position acquisition + normalization (EXP-021 C1D.7) |
+| **ERA** | EXP-021 C1D implementation (S3A after S1/S2) |
+| **STATUS** | PROPOSED |
+| **PROBLEM** | S1 consumes normalized position evidence and S2 keys runs by `inputEvidenceVersion`, but no slice acquired or normalized provider positions with explicit availability and temporal semantics |
+| **DECISION** | Dormant library over the shared DIMO transport: one `signals(interval:"1s")` location query per `[from, to)` window; row `timestamp` treated as query-bucket label only (BUCKET_BOUNDED, never EXACT_PROVEN); PRESENT / SIGNAL_NULL / ROW_ABSENT distinct with no fill/interpolation/snapping; malformed coordinates stay PRESENT with coordinates withheld; conflicting duplicates withheld; source family from canonical DIMO-identity resolver; deterministic SHA-256 snapshot identity excluding wall-clock/tenant/secrets |
+| **ALTERNATIVES** | `agg: RAND` (production route-enrichment precedent) rejected — non-deterministic snapshot identity; `FIRST`/`LAST` deferred to S3B calibration; reusing `DimoSegmentsService.fetchHighFrequency` rejected — no location field, implicit window semantics |
+| **RATIONALE** | Makes acquisition semantics testable and replayable before any worker; preserves DIMO Integration ownership of transport/auth/budget |
+| **CONSEQUENCES** | No production behavior change; S3B must wire caller + persistence behind flags; AVG multi-sample midpoint risk recorded (DI-GAP-S3A-AGG-001) |
+| **GRAPH NODES** | DI-DEC-V0-POSITION-ACQ-001, DI-SVC-V0-POSITION-ACQ-001 |
+| **EPISTEMIC** | CONFIRMED (code/tests); provider multi-sample behaviour UNKNOWN |
+| **EVIDENCE** | DI-EVID-EXP021-C1D7-001, DI-TEST-V0-POSITION-ACQ-001 |
+| **BOUNDARY** | Consulted: DIMO Integration (transport reused, call-site audit), R1 temporal containment resolver (consumed, unchanged) — no cross-module code change |
