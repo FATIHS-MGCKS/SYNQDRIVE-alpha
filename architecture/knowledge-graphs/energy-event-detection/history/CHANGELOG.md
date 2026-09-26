@@ -1,5 +1,10 @@
 # KG-EED Changelog
 
+## 2026-09-26 — ERD E6.3 charging location enrichment runtime (acceptance closure)
+
+- E6.3 P/Q/R required gates: PostgreSQL P matrix, real BullMQ Q1–Q10, recovery R1–R12 wired in boundary steps 16–18.
+- Evidence: `ERD-E6-3-CHARGING-LOCATION-ENRICHMENT-RUNTIME-2026-09-26.md` (EED-EV-0089) updated with full matrices and CI proof map.
+
 ## 2026-09-26 — ERD E6.3 charging location enrichment runtime
 
 - Dedicated `VehicleEnergyEventChargingStationEnrichment` + BullMQ queue `energy.recharge.station.enrich`.

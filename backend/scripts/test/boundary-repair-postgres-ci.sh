@@ -66,9 +66,15 @@ log "Step 15/16: ERD E6.2 charging station reference resolver PostgreSQL gate"
 ERD_E6_2_POSTGRES_INTEGRATION=1 ERD_E6_2_POSTGRES_REQUIRED=1 \
   npx jest charging-station-location-resolver.postgres.integration --runInBand --verbose
 
-log "Step 16/16: ERD E6.3 charging location enrichment runtime gate"
+log "Step 16/18: ERD E6.3 charging location enrichment runtime gate (migration + PostgreSQL P matrix)"
 bash scripts/test/erd-e6-3-migration-ephemeral-gate.sh
 ERD_E6_3_POSTGRES_INTEGRATION=1 ERD_E6_3_POSTGRES_REQUIRED=1 \
   npx jest erd-e6-3-charging-station-enrichment.postgres.integration --runInBand --verbose
+
+log "Step 17/18: ERD E6.3 BullMQ + Redis Q1–Q10 gate"
+bash scripts/test/erd-e6-3-bullmq-redis-ci.sh
+
+log "Step 18/18: ERD E6.3 recovery R1–R12 gate"
+bash scripts/test/erd-e6-3-recovery-ci.sh
 
 log "boundary-repair-postgres-ci completed successfully"

@@ -8,139 +8,142 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import { ChargingStationCandidateRepository } from '../charging-station-candidate.repository';
 import { ChargingStationLocationResolverService } from '../charging-station-location-resolver.service';
-import { ChargingStationEnrichmentOrchestratorService } from '../enrichment/charging-station-enrichment-orchestrator.service';
+import { isTrustedChargingStationAssignment } from '../enrichment/charging-station-enrichment-trust.policy';
+import {
+  buildChargingStationEnrichmentInputFingerprint,
+} from '../enrichment/charging-station-enrichment-fingerprint.util';
+import { deriveCanonicalChargingStationEnrichmentCoordinate } from '../enrichment/derive-canonical-charging-station-enrichment-coordinate';
+import { ChargingStationEnrichmentProducerService } from '../enrichment/charging-station-enrichment-producer.service';
+import { isChargingStationEnrichmentEventAfterCutover } from '../enrichment/charging-station-enrichment-cutover.util';
 import { EnergyEventsService } from '../../energy-events/energy-events.service';
 import {
-  ensureChargingStationOsmSchema,
-  probeChargingStationPostgresDatabase,
-  seedSyntheticChargingDataset,
-} from '../testing/charging-station-resolver-postgres.integration.harness';
-import { ERD_RECHARGE_PROJECTION_DETECTION_MECHANISM } from '../../energy-events/erd-recharge-projection/erd-recharge-projection.constants';
+  E6_3_AMBIGUOUS_LAT,
+  E6_3_AMBIGUOUS_LON,
+  E6_3_CUTOVER_ISO,
+  E6_3_MATCH_LAT,
+  E6_3_MATCH_LON,
+  E6_3_NOT_FOUND_LAT,
+  E6_3_NOT_FOUND_LON,
+  E6_3_POST_CUTOVER_END,
+  E6_3_PRE_CUTOVER_END,
+  bootstrapE6_3PostgresOrchestrator,
+  cleanupOrgVehicle,
+  createCanonicalRechargeEvent,
+  createE6_3EnrichmentConfig,
+  createE6_3Producer,
+  seedOrgVehicle,
+  CHARGING_STATION_RESOLVER_VERSION,
+} from '../testing/erd-e6-3-charging-enrichment.integration.harness';
+import type { ChargingStationEnrichmentOrchestratorService } from '../enrichment/charging-station-enrichment-orchestrator.service';
+import { ChargingStationEnrichmentOrchestratorService as OrchestratorService } from '../enrichment/charging-station-enrichment-orchestrator.service';
+import { Queue } from 'bullmq';
 
 const LIVE = process.env.ERD_E6_3_POSTGRES_INTEGRATION === '1';
 const REQUIRED = process.env.ERD_E6_3_POSTGRES_REQUIRED === '1';
 
-const CUTOVER = new Date('2026-09-01T00:00:00.000Z');
-
-async function seedOrgVehicle(prisma: PrismaClient) {
-  const suffix = randomUUID().slice(0, 8);
-  const org = await prisma.organization.create({
-    data: {
-      companyName: `E6.3 ${suffix}`,
-      businessType: 'RENTAL',
-      status: 'ACTIVE',
-    },
-  });
-  const vehicle = await prisma.vehicle.create({
-    data: {
-      organizationId: org.id,
-      vin: `E63${suffix}`.slice(0, 17).padEnd(17, '0'),
-      licensePlate: `E63-${suffix}`.slice(0, 12),
-      make: 'Test',
-      model: 'EV',
-      year: 2025,
-      fuelType: 'ELECTRIC',
-      status: 'AVAILABLE',
-    },
-  });
-  return { org, vehicle };
-}
-
-async function createCanonicalRecharge(
-  prisma: PrismaClient,
-  vehicleId: string,
-  coords: {
-    startLatitude?: number | null;
-    startLongitude?: number | null;
-    endLatitude?: number | null;
-    endLongitude?: number | null;
-  },
-) {
-  return prisma.vehicleEnergyEvent.create({
-    data: {
-      vehicleId,
-      kind: EnergyEventKind.RECHARGE,
-      detectionMechanism: ERD_RECHARGE_PROJECTION_DETECTION_MECHANISM,
-      detectionSource: VehicleEnergyEventDetectionSource.SYNQDRIVE_ERD_RECHARGE_PROJECTION,
-      confidence: EnergyEventConfidence.HIGH,
-      startTime: new Date('2026-09-10T10:00:00.000Z'),
-      endTime: new Date('2026-09-10T11:00:00.000Z'),
-      durationSeconds: 3600,
-      startLatitude: coords.startLatitude ?? null,
-      startLongitude: coords.startLongitude ?? null,
-      endLatitude: coords.endLatitude ?? null,
-      endLongitude: coords.endLongitude ?? null,
-      energyDeltaKwh: 12,
-    },
-  });
-}
-
-(LIVE ? describe : describe.skip)('ERD E6.3 charging station enrichment postgres integration', () => {
+(LIVE ? describe : describe.skip)('ERD E6.3 charging enrichment postgres matrix (P1–P20)', () => {
   let prisma: PrismaClient;
   let orchestrator: ChargingStationEnrichmentOrchestratorService;
+  let resolver: ChargingStationLocationResolverService;
 
   beforeAll(async () => {
-    const ok = await probeChargingStationPostgresDatabase();
-    if (!ok) {
-      if (REQUIRED) throw new Error('ERD E6.3 postgres integration requires DATABASE_URL + PostGIS');
-      return;
+    try {
+      const boot = await bootstrapE6_3PostgresOrchestrator();
+      prisma = boot.prisma;
+      orchestrator = boot.orchestrator;
+      resolver = boot.resolver;
+    } catch (error) {
+      if (REQUIRED) throw error;
+      throw error;
     }
-    prisma = new PrismaClient();
-    await ensureChargingStationOsmSchema(prisma);
-    await seedSyntheticChargingDataset(prisma);
-    const repo = new ChargingStationCandidateRepository(prisma as unknown as PrismaService);
-    const resolver = new ChargingStationLocationResolverService(repo);
-    orchestrator = new ChargingStationEnrichmentOrchestratorService(
-      prisma as unknown as PrismaService,
-      resolver,
-    );
-  });
+  }, 120_000);
 
   afterAll(async () => {
     await prisma?.$disconnect().catch(() => undefined);
   });
 
-  it('P1/P2/P3: canonical VEE → one MATCHED enrichment row', async () => {
+  it('P1/P2/P3: canonical enrichment + MATCHED metadata + idempotent row', async () => {
     const { org, vehicle } = await seedOrgVehicle(prisma);
-    const event = await createCanonicalRecharge(prisma, vehicle.id, {
-      startLatitude: 50.001,
-      startLongitude: 8.001,
+    const event = await createCanonicalRechargeEvent(prisma, vehicle.id, {
+      startLatitude: E6_3_MATCH_LAT,
+      startLongitude: E6_3_MATCH_LON,
     });
     await orchestrator.processEnergyEvent(event.id);
+    await orchestrator.processEnergyEvent(event.id);
+    const rows = await prisma.vehicleEnergyEventChargingStationEnrichment.findMany({
+      where: { energyEventId: event.id },
+    });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.resolutionStatus).toBe('MATCHED');
+    expect(rows[0]?.osmDatasetVersion).toBeTruthy();
+    expect(rows[0]?.stationName).toBeTruthy();
+    await cleanupOrgVehicle(prisma, org.id, vehicle.id, [event.id]);
+  });
+
+  it('P4: coordinate change updates same enrichment row', async () => {
+    const { org, vehicle } = await seedOrgVehicle(prisma);
+    const event = await createCanonicalRechargeEvent(prisma, vehicle.id, {
+      startLatitude: E6_3_MATCH_LAT,
+      startLongitude: E6_3_MATCH_LON,
+    });
+    await orchestrator.processEnergyEvent(event.id);
+    const first = await prisma.vehicleEnergyEventChargingStationEnrichment.findUnique({
+      where: { energyEventId: event.id },
+    });
+    await prisma.vehicleEnergyEvent.update({
+      where: { id: event.id },
+      data: { startLatitude: 51.0, startLongitude: 9.0 },
+    });
+    await orchestrator.processEnergyEvent(event.id);
+    const second = await prisma.vehicleEnergyEventChargingStationEnrichment.findUnique({
+      where: { energyEventId: event.id },
+    });
+    expect(second?.id).toBe(first?.id);
+    expect(second?.inputFingerprint).not.toBe(first?.inputFingerprint);
+    await cleanupOrgVehicle(prisma, org.id, vehicle.id, [event.id]);
+  });
+
+  it('P5/P6: NO_COORDINATES then late coordinate upgrade to MATCHED', async () => {
+    const { org, vehicle } = await seedOrgVehicle(prisma);
+    const event = await createCanonicalRechargeEvent(prisma, vehicle.id, {});
+    await orchestrator.processEnergyEvent(event.id);
+    expect(
+      (
+        await prisma.vehicleEnergyEventChargingStationEnrichment.findUnique({
+          where: { energyEventId: event.id },
+        })
+      )?.resolutionStatus,
+    ).toBe('NO_COORDINATES');
+    await prisma.vehicleEnergyEvent.update({
+      where: { id: event.id },
+      data: { startLatitude: E6_3_MATCH_LAT, startLongitude: E6_3_MATCH_LON },
+    });
+    await orchestrator.processEnergyEvent(event.id);
+    expect(
+      (
+        await prisma.vehicleEnergyEventChargingStationEnrichment.findUnique({
+          where: { energyEventId: event.id },
+        })
+      )?.resolutionStatus,
+    ).toBe('MATCHED');
+    await cleanupOrgVehicle(prisma, org.id, vehicle.id, [event.id]);
+  });
+
+  it('P7: INCONSISTENT_COORDINATES without station assignment', async () => {
+    const { org, vehicle } = await seedOrgVehicle(prisma);
+    const event = await createCanonicalRechargeEvent(prisma, vehicle.id, {
+      startLatitude: 50,
+      startLongitude: 8,
+      endLatitude: 51,
+      endLongitude: 9,
+    });
     await orchestrator.processEnergyEvent(event.id);
     const row = await prisma.vehicleEnergyEventChargingStationEnrichment.findUnique({
       where: { energyEventId: event.id },
     });
-    expect(row).not.toBeNull();
-    expect(row?.resolutionStatus).toBe('MATCHED');
-    expect(row?.osmDatasetVersion).toBeTruthy();
-    expect(row?.stationName).toBeTruthy();
-    await prisma.vehicleEnergyEvent.delete({ where: { id: event.id } });
-    await prisma.vehicle.delete({ where: { id: vehicle.id } });
-    await prisma.organization.delete({ where: { id: org.id } });
-  });
-
-  it('P5/P6: NO_COORDINATES upgrades to MATCHED after coordinates arrive', async () => {
-    const { org, vehicle } = await seedOrgVehicle(prisma);
-    const event = await createCanonicalRecharge(prisma, vehicle.id, {});
-    await orchestrator.processEnergyEvent(event.id);
-    let row = await prisma.vehicleEnergyEventChargingStationEnrichment.findUnique({
-      where: { energyEventId: event.id },
-    });
-    expect(row?.resolutionStatus).toBe('NO_COORDINATES');
-
-    await prisma.vehicleEnergyEvent.update({
-      where: { id: event.id },
-      data: { startLatitude: 50.001, startLongitude: 8.001 },
-    });
-    await orchestrator.processEnergyEvent(event.id);
-    row = await prisma.vehicleEnergyEventChargingStationEnrichment.findUnique({
-      where: { energyEventId: event.id },
-    });
-    expect(row?.resolutionStatus).toBe('MATCHED');
-    await prisma.vehicleEnergyEvent.delete({ where: { id: event.id } });
-    await prisma.vehicle.delete({ where: { id: vehicle.id } });
-    await prisma.organization.delete({ where: { id: org.id } });
+    expect(row?.resolutionStatus).toBe('INCONSISTENT_COORDINATES');
+    expect(row?.osmId).toBeNull();
+    await cleanupOrgVehicle(prisma, org.id, vehicle.id, [event.id]);
   });
 
   it('P8/P9: REFUEL and legacy RECHARGE firewall', async () => {
@@ -153,14 +156,13 @@ async function createCanonicalRecharge(
         detectionSource: VehicleEnergyEventDetectionSource.DIMO_NATIVE,
         confidence: EnergyEventConfidence.MEDIUM,
         startTime: new Date('2026-09-10T10:00:00.000Z'),
-        endTime: new Date('2026-09-10T11:00:00.000Z'),
+        endTime: E6_3_POST_CUTOVER_END,
         durationSeconds: 3600,
-        startLatitude: 50.001,
-        startLongitude: 8.001,
+        startLatitude: E6_3_MATCH_LAT,
+        startLongitude: E6_3_MATCH_LON,
       },
     });
     expect((await orchestrator.processEnergyEvent(refuel.id)).skipped).toBe(true);
-
     const legacy = await prisma.vehicleEnergyEvent.create({
       data: {
         vehicleId: vehicle.id,
@@ -169,54 +171,274 @@ async function createCanonicalRecharge(
         detectionSource: VehicleEnergyEventDetectionSource.DIMO_NATIVE,
         confidence: EnergyEventConfidence.MEDIUM,
         startTime: new Date('2026-09-10T10:00:00.000Z'),
-        endTime: new Date('2026-09-10T11:00:00.000Z'),
+        endTime: E6_3_POST_CUTOVER_END,
         durationSeconds: 3600,
-        startLatitude: 50.001,
-        startLongitude: 8.001,
+        startLatitude: E6_3_MATCH_LAT,
+        startLongitude: E6_3_MATCH_LON,
       },
     });
     expect((await orchestrator.processEnergyEvent(legacy.id)).skipped).toBe(true);
-
-    await prisma.vehicleEnergyEvent.deleteMany({ where: { id: { in: [refuel.id, legacy.id] } } });
-    await prisma.vehicle.delete({ where: { id: vehicle.id } });
-    await prisma.organization.delete({ where: { id: org.id } });
+    await cleanupOrgVehicle(prisma, org.id, vehicle.id, [refuel.id, legacy.id]);
   });
 
-  it('P16: canonical read exposes chargingStationEnrichment', async () => {
+  it('P10: AMBIGUOUS persists no chosen station assignment', async () => {
     const { org, vehicle } = await seedOrgVehicle(prisma);
-    const event = await createCanonicalRecharge(prisma, vehicle.id, {
-      startLatitude: 50.001,
-      startLongitude: 8.001,
+    const event = await createCanonicalRechargeEvent(prisma, vehicle.id, {
+      startLatitude: E6_3_AMBIGUOUS_LAT,
+      startLongitude: E6_3_AMBIGUOUS_LON,
     });
     await orchestrator.processEnergyEvent(event.id);
-    const svc = new EnergyEventsService(prisma as unknown as PrismaService, {} as never);
-    const listed = await svc.listCanonicalEnergyEvents(vehicle.id);
-    const dto = listed.find((e) => e.id === event.id);
-    expect(dto?.chargingStationEnrichment?.resolutionStatus).toBe('MATCHED');
-    await prisma.vehicleEnergyEvent.delete({ where: { id: event.id } });
-    await prisma.vehicle.delete({ where: { id: vehicle.id } });
-    await prisma.organization.delete({ where: { id: org.id } });
+    const row = await prisma.vehicleEnergyEventChargingStationEnrichment.findUnique({
+      where: { energyEventId: event.id },
+    });
+    expect(row?.resolutionStatus).toBe('AMBIGUOUS');
+    expect(row?.osmId).toBeNull();
+    await cleanupOrgVehicle(prisma, org.id, vehicle.id, [event.id]);
+  });
+
+  it('P11: LOW match is untrusted in API projection', async () => {
+    const { org, vehicle } = await seedOrgVehicle(prisma);
+    const event = await createCanonicalRechargeEvent(prisma, vehicle.id, {
+      startLatitude: E6_3_MATCH_LAT,
+      startLongitude: E6_3_MATCH_LON,
+    });
+    await prisma.vehicleEnergyEventChargingStationEnrichment.create({
+      data: {
+        energyEventId: event.id,
+        processingStatus: 'COMPLETED',
+        resolutionStatus: 'MATCHED',
+        matchConfidence: 'LOW',
+        matchScore: 10,
+        inputFingerprint: 'test-low',
+        resolverVersion: CHARGING_STATION_RESOLVER_VERSION,
+        osmId: '1',
+        stationName: 'Low',
+      },
+    });
+    const row = await prisma.vehicleEnergyEventChargingStationEnrichment.findUnique({
+      where: { energyEventId: event.id },
+    });
+    expect(
+      isTrustedChargingStationAssignment({
+        resolutionStatus: row?.resolutionStatus,
+        matchConfidence: row?.matchConfidence,
+      }),
+    ).toBe(false);
+    await cleanupOrgVehicle(prisma, org.id, vehicle.id, [event.id]);
+  });
+
+  it('P12/P13: datasetVersion and connector metadata on MATCHED row', async () => {
+    const { org, vehicle } = await seedOrgVehicle(prisma);
+    const event = await createCanonicalRechargeEvent(prisma, vehicle.id, {
+      startLatitude: E6_3_MATCH_LAT,
+      startLongitude: E6_3_MATCH_LON,
+    });
+    await orchestrator.processEnergyEvent(event.id);
+    const row = await prisma.vehicleEnergyEventChargingStationEnrichment.findUnique({
+      where: { energyEventId: event.id },
+    });
+    expect(row?.osmDatasetVersion).toBeTruthy();
+    expect(row?.connectors).toBeTruthy();
+    await cleanupOrgVehicle(prisma, org.id, vehicle.id, [event.id]);
+  });
+
+  it('P14: fuel enrichment table untouched by charging orchestrator', async () => {
+    const fuelBefore = await prisma.vehicleEnergyEventFuelStationEnrichment.count();
+    const { org, vehicle } = await seedOrgVehicle(prisma);
+    const event = await createCanonicalRechargeEvent(prisma, vehicle.id, {
+      startLatitude: E6_3_MATCH_LAT,
+      startLongitude: E6_3_MATCH_LON,
+    });
+    await orchestrator.processEnergyEvent(event.id);
+    expect(await prisma.vehicleEnergyEventFuelStationEnrichment.count()).toBe(fuelBefore);
+    await cleanupOrgVehicle(prisma, org.id, vehicle.id, [event.id]);
   });
 
   it('P15: delete VEE cascades charging enrichment', async () => {
     const { org, vehicle } = await seedOrgVehicle(prisma);
-    const event = await createCanonicalRecharge(prisma, vehicle.id, {
-      startLatitude: 50.001,
-      startLongitude: 8.001,
+    const event = await createCanonicalRechargeEvent(prisma, vehicle.id, {
+      startLatitude: E6_3_MATCH_LAT,
+      startLongitude: E6_3_MATCH_LON,
     });
     await orchestrator.processEnergyEvent(event.id);
     await prisma.vehicleEnergyEvent.delete({ where: { id: event.id } });
+    expect(
+      await prisma.vehicleEnergyEventChargingStationEnrichment.findUnique({
+        where: { energyEventId: event.id },
+      }),
+    ).toBeNull();
+    await cleanupOrgVehicle(prisma, org.id, vehicle.id, []);
+  });
+
+  it('P16/P17: canonical and raw reads expose chargingStationEnrichment', async () => {
+    const { org, vehicle } = await seedOrgVehicle(prisma);
+    const event = await createCanonicalRechargeEvent(prisma, vehicle.id, {
+      startLatitude: E6_3_MATCH_LAT,
+      startLongitude: E6_3_MATCH_LON,
+    });
+    await orchestrator.processEnergyEvent(event.id);
+    const svc = new EnergyEventsService(prisma as unknown as PrismaService, {} as never);
+    const canonical = await svc.listCanonicalEnergyEvents(vehicle.id);
+    expect(canonical.find((e) => e.id === event.id)?.chargingStationEnrichment?.resolutionStatus).toBe(
+      'MATCHED',
+    );
+    const raw = await svc.listEnergyEvents(vehicle.id);
+    expect(raw.find((e) => e.id === event.id)?.chargingStationEnrichment?.resolutionStatus).toBe(
+      'MATCHED',
+    );
+    await cleanupOrgVehicle(prisma, org.id, vehicle.id, [event.id]);
+  });
+
+  it('P18: product dedupe still surfaces canonical row with enrichment', async () => {
+    const { org, vehicle } = await seedOrgVehicle(prisma);
+    const event = await createCanonicalRechargeEvent(prisma, vehicle.id, {
+      startLatitude: E6_3_MATCH_LAT,
+      startLongitude: E6_3_MATCH_LON,
+    });
+    await orchestrator.processEnergyEvent(event.id);
+    const svc = new EnergyEventsService(prisma as unknown as PrismaService, {} as never);
+    const listed = await svc.listCanonicalEnergyEvents(vehicle.id);
+    expect(listed.filter((e) => e.id === event.id)).toHaveLength(1);
+    await cleanupOrgVehicle(prisma, org.id, vehicle.id, [event.id]);
+  });
+
+  it('P19: orchestrator does not mutate VEE identity fields', async () => {
+    const { org, vehicle } = await seedOrgVehicle(prisma);
+    const event = await createCanonicalRechargeEvent(prisma, vehicle.id, {
+      startLatitude: E6_3_MATCH_LAT,
+      startLongitude: E6_3_MATCH_LON,
+    });
+    const before = await prisma.vehicleEnergyEvent.findUnique({ where: { id: event.id } });
+    await orchestrator.processEnergyEvent(event.id);
+    const after = await prisma.vehicleEnergyEvent.findUnique({ where: { id: event.id } });
+    expect(after?.detectionSource).toBe(before?.detectionSource);
+    expect(after?.kind).toBe(before?.kind);
+    expect(after?.endTime.toISOString()).toBe(before?.endTime.toISOString());
+    await cleanupOrgVehicle(prisma, org.id, vehicle.id, [event.id]);
+  });
+
+  it('P20: two clients converge to one enrichment row', async () => {
+    const prismaB = new PrismaClient();
+    const repoB = new ChargingStationCandidateRepository(prismaB as unknown as PrismaService);
+    const resolverB = new ChargingStationLocationResolverService(repoB);
+    const orchestratorB = new OrchestratorService(
+      prismaB as unknown as PrismaService,
+      resolverB,
+    );
+    const { org, vehicle } = await seedOrgVehicle(prisma);
+    const event = await createCanonicalRechargeEvent(prisma, vehicle.id, {
+      startLatitude: E6_3_MATCH_LAT,
+      startLongitude: E6_3_MATCH_LON,
+    });
+    try {
+      await Promise.all([
+        orchestrator.processEnergyEvent(event.id),
+        orchestratorB.processEnergyEvent(event.id),
+      ]);
+    } finally {
+      await prismaB.$disconnect().catch(() => undefined);
+    }
+    expect(
+      await prisma.vehicleEnergyEventChargingStationEnrichment.count({
+        where: { energyEventId: event.id },
+      }),
+    ).toBe(1);
+    await cleanupOrgVehicle(prisma, org.id, vehicle.id, [event.id]);
+  });
+
+  it('P-NOT_FOUND: far coordinate resolves NOT_FOUND terminal row', async () => {
+    const { org, vehicle } = await seedOrgVehicle(prisma);
+    const event = await createCanonicalRechargeEvent(prisma, vehicle.id, {
+      startLatitude: E6_3_NOT_FOUND_LAT,
+      startLongitude: E6_3_NOT_FOUND_LON,
+    });
+    await orchestrator.processEnergyEvent(event.id);
     const row = await prisma.vehicleEnergyEventChargingStationEnrichment.findUnique({
       where: { energyEventId: event.id },
     });
-    expect(row).toBeNull();
-    await prisma.vehicle.delete({ where: { id: vehicle.id } });
-    await prisma.organization.delete({ where: { id: org.id } });
+    expect(row?.resolutionStatus).toBe('NOT_FOUND');
+    await cleanupOrgVehicle(prisma, org.id, vehicle.id, [event.id]);
   });
-});
 
-describe('E6.3 producer cutover gate (integration helper)', () => {
-  it('uses endTime not startTime for cutover', () => {
-    expect(CUTOVER.toISOString()).toBe('2026-09-01T00:00:00.000Z');
+  it('P-CUTOVER: endTime before cutover blocked for producer eligibility', async () => {
+    expect(
+      isChargingStationEnrichmentEventAfterCutover(
+        E6_3_PRE_CUTOVER_END,
+        new Date(E6_3_CUTOVER_ISO),
+      ),
+    ).toBe(false);
+    const { org, vehicle } = await seedOrgVehicle(prisma);
+    const event = await createCanonicalRechargeEvent(prisma, vehicle.id, {
+      startLatitude: E6_3_MATCH_LAT,
+      startLongitude: E6_3_MATCH_LON,
+      endTime: E6_3_PRE_CUTOVER_END,
+    });
+    const producer = createE6_3Producer({ add: jest.fn() } as unknown as Queue, prisma, {
+      ...createE6_3EnrichmentConfig(),
+      enabled: true,
+    });
+    const outcome = await producer.enqueueForEventOutcome(event);
+    expect(outcome.status).toBe('skipped');
+    if (outcome.status === 'skipped') {
+      expect(outcome.reason).toBe('before_cutover');
+    }
+    await cleanupOrgVehicle(prisma, org.id, vehicle.id, [event.id]);
+  });
+
+  it('P-ERROR: resolver ERROR persists retryable row then succeeds on retry', async () => {
+    const { org, vehicle } = await seedOrgVehicle(prisma);
+    const event = await createCanonicalRechargeEvent(prisma, vehicle.id, {
+      startLatitude: E6_3_MATCH_LAT,
+      startLongitude: E6_3_MATCH_LON,
+    });
+    const originalResolve = resolver.resolve.bind(resolver);
+    let calls = 0;
+    const spy = jest.spyOn(resolver, 'resolve').mockImplementation((input) => {
+      calls += 1;
+      if (calls === 1) {
+        return Promise.resolve({
+          status: 'ERROR',
+          errorMessage: 'integration-resolver-error',
+          diagnostics: { reason: 'test' },
+        } as never);
+      }
+      return originalResolve(input);
+    });
+    try {
+      await expect(orchestrator.processEnergyEvent(event.id)).rejects.toThrow();
+      const errorRow = await prisma.vehicleEnergyEventChargingStationEnrichment.findUnique({
+        where: { energyEventId: event.id },
+      });
+      expect(errorRow?.resolutionStatus).toBe('ERROR');
+      await orchestrator.processEnergyEvent(event.id);
+      const matched = await prisma.vehicleEnergyEventChargingStationEnrichment.findUnique({
+        where: { energyEventId: event.id },
+      });
+      expect(matched?.resolutionStatus).toBe('MATCHED');
+    } finally {
+      spy.mockRestore();
+      await cleanupOrgVehicle(prisma, org.id, vehicle.id, [event.id]);
+    }
+  });
+
+  it('P-FINGERPRINT: same fingerprint terminal skip on reprocess', async () => {
+    const { org, vehicle } = await seedOrgVehicle(prisma);
+    const event = await createCanonicalRechargeEvent(prisma, vehicle.id, {
+      startLatitude: E6_3_MATCH_LAT,
+      startLongitude: E6_3_MATCH_LON,
+    });
+    await orchestrator.processEnergyEvent(event.id);
+    const second = await orchestrator.processEnergyEvent(event.id);
+    expect(second.skipped).toBe(true);
+    const outcome = deriveCanonicalChargingStationEnrichmentCoordinate(event);
+    const fp = buildChargingStationEnrichmentInputFingerprint({
+      energyEventId: event.id,
+      coordinateOutcome: outcome,
+    });
+    const row = await prisma.vehicleEnergyEventChargingStationEnrichment.findUnique({
+      where: { energyEventId: event.id },
+    });
+    expect(row?.inputFingerprint).toBe(fp);
+    await cleanupOrgVehicle(prisma, org.id, vehicle.id, [event.id]);
   });
 });
