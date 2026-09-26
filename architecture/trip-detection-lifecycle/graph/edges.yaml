@@ -159,3 +159,10 @@ edges:
   - from: TDL-DEC-OQ008-001
     relation: validates
     to: TDL-GAP-007
+
+  - from: TDL-EVID-OQ009-R9-INGRESS-001
+    relation: supports
+    to: TDL-DEC-OQ009-001
+  - from: TDL-DEC-OQ009-001
+    relation: validates
+    to: TDL-GAP-016

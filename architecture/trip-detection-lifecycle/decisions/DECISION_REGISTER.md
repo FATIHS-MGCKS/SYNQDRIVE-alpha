@@ -20,6 +20,7 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | TDL-DEC-OQ007-001 | R1–R8 Production validation coverage — behavior matrix + scope reduction | VALIDATED | TDL-EVID-OQ007-R1R8-COV-001 |
 | TDL-DEC-OQ004-001 | Route artifact coverage policy — taxonomy, eligibility, Mapbox vs artifact vs MATCHED | VALIDATED | TDL-EVID-OQ004-ROUTE-COV-001 |
 | TDL-DEC-OQ008-001 | Trip runtime-control matrix — code default vs Production effective separation | VALIDATED | TDL-EVID-OQ008-FLAG-MATRIX-001 |
+| TDL-DEC-OQ009-001 | Tiered snapshot polling + R9 provider-wake ingress contract | VALIDATED | TDL-EVID-OQ009-R9-INGRESS-001 |
 
 ---
 
@@ -320,3 +321,20 @@ Append-only architectural decisions. R9 packages indexed at abstraction level; d
 | **NON-EFFECTS** | No env mutation; no promotion to `AUTHORITY_ACTIVE` |
 | **VALIDATION** | Parser source trace + sudo `backend.env` grep — TDL-EVID-OQ008-FLAG-MATRIX-001 |
 | **EVIDENCE** | TDL-EVID-OQ008-FLAG-MATRIX-001 |
+
+---
+
+## TDL-DEC-OQ009-001
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | VALIDATED |
+| **BEFORE** | TDL-OQ-009 OPEN — tiered polling doc vs R9 ingress conflated SCHEDULER_TICK with PER_VEHICLE_POLL; stale claims of pre-R9 Production and five-vehicle cohort as current |
+| **WHY** | Operators need explicit separation of scheduler tick, tier due-time, provider wake, canonical snapshot fetch, and trip-start evaluation; fallback when R9 subscription missing must be provable |
+| **CHANGE** | Canonical ingress graph in TDL-EVID-OQ009-R9-INGRESS-001: shared `snapshot-{vehicleId}` coordinator; RESTING-only provider wake; ACTIVITY_TIERED fallback 30s/60s/5m/30m; subscription coverage **5/6** both triggers (190497 excluded) |
+| **ALTERNATIVES REJECTED** | Provider wake as trip boundary authority; parallel provider fetch without coalescing; ignition-off / low-speed as start wake |
+| **EXPECTED EFFECT** | OQ-009 closed; agents do not describe fleet-wide 30s DIMO poll or pre-R9 Production for current release |
+| **PRODUCTION STATUS** | R9 ancestor of `8a1d9c658…`; **ACTIVITY_TIERED**; movement threshold **3 km/h** default; recent wake KPIs **INSUFFICIENT_EVIDENCE** |
+| **NON-EFFECTS** | No subscription mutation; no deploy; no change to tier env defaults |
+| **VALIDATION** | Code trace + read-only Prisma cohort + `r9-post-get-audit.mjs` — TDL-EVID-OQ009-R9-INGRESS-001 |
+| **EVIDENCE** | TDL-EVID-OQ009-R9-INGRESS-001 |

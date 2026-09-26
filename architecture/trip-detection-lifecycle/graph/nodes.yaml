@@ -615,6 +615,15 @@ nodes:
       - architecture/trip-detection-lifecycle/evidence/TDL_OQ_008_FEATURE_FLAG_RUNTIME_MATRIX_2026-09-25.md
       - architecture/trip-detection-lifecycle/contradictions/KNOWLEDGE_GAPS.md
 
+  - id: TDL-GAP-016
+    type: gap
+    title: Tiered polling vs R9 provider-wake ingress contract
+    epistemic_status: CONFIRMED
+    summary: RESOLVED — TDL-DEC-OQ009-001; shared snapshot coordinator; ACTIVITY_TIERED fallback; 5/6 trigger subscription coverage.
+    source_paths:
+      - architecture/trip-detection-lifecycle/evidence/TDL_OQ_009_TIERED_POLLING_R9_INGRESS_2026-09-26.md
+      - architecture/trip-detection-lifecycle/contradictions/KNOWLEDGE_GAPS.md
+
   - id: TDL-GAP-008
     type: gap
     title: Mapbox/FMM failure recovery paths
@@ -667,9 +676,10 @@ nodes:
     type: hypothesis
     title: R9 wake reduces start validation latency post-deploy
     epistemic_status: UNKNOWN
-    summary: Runtime deployed and provider wiring validated; natural wake not yet observed on Production.
+    summary: Historical natural start wake on KS MS 661; recent fleet wake KPIs not measured in OQ-009 read-only pass.
     source_paths:
       - architecture/trip-detection-lifecycle/research/OPEN_HYPOTHESES.md
+      - architecture/trip-detection-lifecycle/evidence/TDL_OQ_009_TIERED_POLLING_R9_INGRESS_2026-09-26.md
 
   - id: TDL-CX-001
     type: contradiction
@@ -913,3 +923,26 @@ nodes:
       - architecture/trip-detection-lifecycle/decisions/DECISION_REGISTER.md
     evidence:
       - TDL-EVID-OQ008-FLAG-MATRIX-001
+
+  - id: TDL-EVID-OQ009-R9-INGRESS-001
+    type: evidence
+    title: TDL-OQ-009 tiered polling vs R9 ingress audit
+    source_type: PRODUCTION_OBSERVATION
+    epistemic_status: CONFIRMED
+    summary: >
+      Separates SCHEDULER_TICK, PER_VEHICLE_POLL, PROVIDER_WAKE, CANONICAL_SNAPSHOT_FETCH, TRIP_START_EVALUATION;
+      ACTIVITY_TIERED Production; shared snapshot job coalescing; RESTING-only wake; 5/6 R9 subscriptions; RESOLVED_WITH_BOUNDED_COVERAGE_GAPS.
+    source_paths:
+      - architecture/trip-detection-lifecycle/evidence/TDL_OQ_009_TIERED_POLLING_R9_INGRESS_2026-09-26.md
+
+  - id: TDL-DEC-OQ009-001
+    type: decision
+    title: Tiered polling + R9 provider-wake ingress contract
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: >
+      Closes TDL-OQ-009; documents tier fallback vs low-latency wake; provider wake is fetch trigger not trip boundary authority.
+    source_paths:
+      - architecture/trip-detection-lifecycle/decisions/DECISION_REGISTER.md
+    evidence:
+      - TDL-EVID-OQ009-R9-INGRESS-001

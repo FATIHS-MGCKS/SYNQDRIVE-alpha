@@ -6,7 +6,7 @@
 | **Authority maturity** | `PARTIAL_RECONSTRUCTION` |
 | **Authority directory** | `architecture/trip-detection-lifecycle/` |
 | **Canonical target** | This directory — **not** `docs/architecture/trip-fsm/` or `architecture/trip-fsm/` |
-| **Last updated** | 2026-09-25 |
+| **Last updated** | 2026-09-26 |
 
 ## Status banner
 
@@ -23,9 +23,9 @@ Per [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md):
 | **4 — Authority construction** | **Partial** — R9 wake subgraph, R10–R12 decisions, Qualified Stop V1 decision + graph hooks; full FSM graph incomplete |
 | **5 — Validation and promotion gate** | **Pending** — **not** `AUTHORITY_ACTIVE` (other open OQs) |
 
-Phase 1 gaps remain: dead/legacy inventory (TDL-OQ-010), Mapbox handler contract follow-up. Feature-flag matrix **closed** (TDL-OQ-008).
+Phase 1 gaps remain: dead/legacy inventory (TDL-OQ-010), Mapbox handler contract follow-up. Feature-flag matrix **closed** (TDL-OQ-008). Tiered polling + R9 ingress **closed** (TDL-OQ-009).
 
-**Reconstruction reality (2026-09-25):** Production @ `99d722b4…`. **TDL-OQ-001**, **TDL-OQ-002**, and **TDL-OQ-006** **RESOLVED** (TDL-EVID-OQ002-DRIVE-PROFILE-001; TDL-EVID-OQ006-BOUNDARY-001). Promotion to `AUTHORITY_ACTIVE` remains blocked by other open OQs.
+**Reconstruction reality (2026-09-26):** Production @ `8a1d9c658…` / `20260925182907_v4994`. **TDL-OQ-001**, **TDL-OQ-002**, **TDL-OQ-006**, **TDL-OQ-008**, and **TDL-OQ-009** **RESOLVED**. Promotion to `AUTHORITY_ACTIVE` remains blocked by other open OQs (e.g. TDL-OQ-005, TDL-OQ-010).
 
 Historical FSM audits under [`docs/audits/trip-fsm/`](../../docs/audits/trip-fsm/) are **supporting evidence only** — linked via [`evidence/EVIDENCE_INDEX.md`](evidence/EVIDENCE_INDEX.md).
 
