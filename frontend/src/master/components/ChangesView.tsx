@@ -13314,6 +13314,26 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     createdAt: '2026-09-25T00:00:00.000Z',
   },
   {
+    id: 'erd-e6-2-charging-station-reference-resolver-2026-09-25',
+    version: '4.9.914',
+    title: 'ERD E6.2 — charging station reference dataset and resolver',
+    summary: [
+      'Independent OSM charging-station domain: Geofabrik import (node/way/relation), `amenity=charging_station` only; fuel/device_charging_station/motorcar=no excluded.',
+      '`charging-station-resolver-v1`: geometry-first PostGIS match, station-level authority, fail-open ambiguity; metadata cannot override distance; no external runtime lookup.',
+      'Importer/validation I1–I14 + refresh safety (invalid geometry + failed validation preserves last-good); Required CI PostGIS; boundary-repair PG1–PG15 PASS (merged PR #1781).',
+      'No Production charging dataset import; no Recharge event enrichment or customer-facing charging resolution runtime (E6.3 next stage).',
+    ],
+    reason:
+      'E6.1 merged — native recharge coordinates exist on canonical VEE; E6.2 adds reference OSM station dataset + resolver without wiring enrichment.',
+    previousBehavior:
+      'No independent charging-station OSM tables or resolver; fuel-station OSM pipeline remained the only station reference domain.',
+    details:
+      'backend/scripts/ops/osm-charging-stations/*; backend/src/modules/vehicle-intelligence/charging-stations/*; architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E6-2-CHARGING-STATION-REFERENCE-RESOLVER-2026-09-25.md; EED-EV-0088',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-26T07:00:00.000Z',
+  },
+  {
     id: 'erd-e6-1-recharge-location-provenance-2026-09-25',
     version: '4.9.913',
     title: 'ERD E6.1 — canonical recharge location provenance',
@@ -13321,7 +13341,7 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
       'Preserves native DIMO recharge segment start/end coordinates on HvChargeSession.metadata with strict pair validation.',
       'Projects trusted native locations into canonical ERD VehicleEnergyEvent.RECHARGE (mutable coordinate fields + rawDetectionMeta provenance).',
       'Fallback telemetry sessions remain location-null; no fuel-station OSM resolver or charger matching.',
-      'PostgreSQL + unit gates (boundary-repair step 14/14); no schema migration; no backfill.',
+      'PostgreSQL + unit gates (boundary-repair step 14/15); no schema migration; no backfill.',
     ],
     reason:
       'E5.6 merged — canonical product recharge rows must carry authoritative native location evidence before E6.2 charging-station resolution.',
