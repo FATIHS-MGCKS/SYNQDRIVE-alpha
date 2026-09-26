@@ -242,7 +242,7 @@ Architectural debt: **parallel post-finalize pipelines** with **wasteful but saf
 |-------|-------|
 | **TDL_OQ_010_AUDIT_RESULT** | **`RESOLVED_WITH_BOUNDED_DEBT`** |
 | **STARTING_MAIN_SHA** | `79102e516eeaa4617d98a8437a28f3f681d99716` |
-| **FINAL_HEAD_SHA** | `c0e8f6f1a` *(full: `c0e8f6f1a` — see branch head at PR open)* |
+| **FINAL_HEAD_SHA** | `c0e8f6f1a9f65528b28792be8b136df3af456a76` |
 | **LIVE_PRODUCTION_SHA** | `8a1d9c6586cbddc41bb6c94870f9d51226d71aa2` |
 | **LIVE_RELEASE_ID** | `20260925182907_v4994` |
 | **PRODUCTIVE_TRIP_RUNTIME_PATH_COUNT** | **41** (inventoried lifecycle, segmentation-repair, enrichment, route, queue, HTTP, recovery entrypoints — excludes test-only and zero-callsite scaffold) |
