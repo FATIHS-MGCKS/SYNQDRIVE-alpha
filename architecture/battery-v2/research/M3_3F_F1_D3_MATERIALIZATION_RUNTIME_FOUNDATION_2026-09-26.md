@@ -44,6 +44,7 @@ Prometheus idempotency ratio derived at query time:
 
 - Ops CLI uses `NestFactory.createApplicationContext(LongitudinalProfileMaterializationOpsModule.forOps())` with `ConfigModule.forRoot` + `loadBackendEnvIntoProcessEnv` (no `@nestjs/testing`).
 - Strict positive-integer grammar for env/CLI session limits (`^[1-9][0-9]*$`, `Number.isSafeInteger`); malformed values fail closed.
+- Ops CLI uses `runBatteryLongitudinalProfileMaterializeCli` + `process.exitCode` (no `process.exit` after Nest bootstrap) so Prisma/context always closes in `finally`.
 
 
 Focused F1 unit tests: config flag matrix, session limit authority, gated facade outcomes, module exports, ops runner flag-off path, metric helper bounded labels.

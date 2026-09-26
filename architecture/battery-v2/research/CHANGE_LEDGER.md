@@ -10,6 +10,16 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-26 — M3.3F F1.2 ops CLI exit lifecycle (merge gate)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | D3 materialize ops CLI returns exit codes via `process.exitCode`; guaranteed Nest/Prisma close in `finally` (no post-bootstrap `process.exit`). |
+| **WHY** | `process.exit` bypasses async cleanup of application context. |
+| **NON_EFFECTS** | No scientific or flag changes. |
+
 ## CL-2026-09-26 — M3.3F F1.1 pre-merge ops bootstrap + strict session limits
 
 | Field | Value |
