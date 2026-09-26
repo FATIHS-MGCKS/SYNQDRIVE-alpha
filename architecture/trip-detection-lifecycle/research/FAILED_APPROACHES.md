@@ -10,6 +10,6 @@ Historical intermediate designs superseded during R9 remediation. Preserved per 
 | **TDL-FAIL-R9E-001** | R9E | ACK latest pending/successor under stale obsolete classification | Newer valid wakes deleted after transient ACTIVE read | TDL-DEC-R9E-001 |
 | **TDL-FAIL-R9F-001** | R9F | Preserve UNKNOWN pending without scheduling retry handoff | No bounded liveness path outside dispatchSuccessorHandoff defer | TDL-DEC-R9F-001 |
 
-Graph nodes: [`graph/nodes.yaml`](graph/nodes.yaml) (`TDL-FAIL-*`)
+Graph nodes: [`graph/nodes.yaml`](../graph/nodes.yaml) (`TDL-FAIL-*`)
 
-Full narrative: [`docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md`](../../docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md)
+Full narrative: [`docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md`](../../../docs/audits/trip-fsm/R9_ADAPTIVE_POLLING_WAKE_IMPLEMENTATION_2026-09-07.md)

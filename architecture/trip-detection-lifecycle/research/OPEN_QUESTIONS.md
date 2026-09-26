@@ -80,7 +80,7 @@
 
 **Verdict:** **`RESOLVED_WITH_BOUNDED_GAPS`** — JWT-empty vs fetch-failure indistinguishable in reconciliation fetch; overlap coverage default `shadow`.
 
-**Status:** **RESOLVED** for authority; promotion to `AUTHORITY_ACTIVE` still blocked by other open OQs (e.g. TDL-OQ-005).
+**Status:** **RESOLVED** for authority; promotion to `AUTHORITY_ACTIVE` still blocked by other open OQs (e.g. TDL-OQ-005). _Update 2026-09-26: all OQs closed; promoted via Phase 5 Gate A (TDL-DEC-PHASE5-001)._
 
 ## TDL-OQ-008 — resolution (2026-09-25)
 
@@ -112,7 +112,7 @@
 
 **Verdict:** **`BATTERY_V2_OWNER`** — folder name is misleading (`LAYERING_SMELL`); optional future relocate/rename slice documented, **not required** for OQ-002 closure.
 
-**Status:** **RESOLVED** for TDL authority boundary; **`AUTHORITY_ACTIVE` promotion** still blocked by other OQs.
+**Status:** **RESOLVED** for TDL authority boundary; **`AUTHORITY_ACTIVE` promotion** still blocked by other OQs. _Update 2026-09-26: promoted via Phase 5 Gate A (TDL-DEC-PHASE5-001)._
 
 **Status:** **RESOLVED**
 
@@ -130,7 +130,7 @@
 
 **Verdict:** **`ENDED_HISTORICAL_COMPAT_ONLY`** — **`RETAIN_HISTORICAL_COMPATIBILITY`**; **`REPURPOSE_NOT_JUSTIFIED`**; future enum drop = schema migration only (**`ENDED_DATA_BACKFILL_REQUIRED_CURRENTLY=NO`**).
 
-**Status:** **RESOLVED** — all TDL-OQ-001…010 **CLOSED**. **`AUTHORITY_ACTIVE`** requires Phase 5 gate (see evidence Phase 14 blockers — QS gaps **not** automatic veto).
+**Status:** **RESOLVED** — all TDL-OQ-001…010 **CLOSED**. **`AUTHORITY_ACTIVE`** requires Phase 5 gate (see evidence Phase 14 blockers — QS gaps **not** automatic veto). _Update 2026-09-26: Phase 5 Gate A 17/17 PASS → `AUTHORITY_ACTIVE` ([TDL_PHASE_5_AUTHORITY_PROMOTION_AUDIT_2026-09-26.md](../evidence/TDL_PHASE_5_AUTHORITY_PROMOTION_AUDIT_2026-09-26.md))._
 
 ## Hypotheses (not confirmed)
 

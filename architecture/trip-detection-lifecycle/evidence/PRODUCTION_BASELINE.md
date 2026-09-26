@@ -4,13 +4,43 @@ Chronological Production baseline index. **Do not conflate** `REPO_CURRENT`, `PR
 
 ---
 
-## Current verified Production (Qualified Stop V1 + post-#1750 lineage)
+## Current verified Production @ `2b54a357…` (Phase 5 promotion baseline)
+
+| Field | Value | Class |
+|-------|-------|-------|
+| **Evidence** | **TDL-EVID-PHASE5-PROD-BASELINE-001** — [TDL_PHASE_5_AUTHORITY_PROMOTION_AUDIT_2026-09-26.md](TDL_PHASE_5_AUTHORITY_PROMOTION_AUDIT_2026-09-26.md) Phase 10 | — |
+| **Evidence class** | `VERIFIED_READ_ONLY` (SSH `synqdrive-admin`; `readlink`, `git rev-parse`, `pm2 ls`, env `grep`, read-only SQL, Redis read commands) | — |
+| **Observation window** | `2026-09-26T12:22Z` – `2026-09-26T12:27Z` | — |
+| **Production release** | `2b54a357854c9d44f638ee857f72936967c04992` @ `/opt/synqdrive/releases/20260926094359_v4994` | CURRENTLY_REOBSERVED |
+| **Prior TDL anchor** | `8a1d9c658…` @ `20260925182907_v4994` — ancestor; delta `8a1d9c658…` → `2b54a357…` has **no TDL runtime change** (Battery V2 / charging / config only) | CURRENTLY_REOBSERVED |
+| **Repo ↔ Production** | `origin/main` `0b44b146…` = live + docs-only commits | CURRENTLY_REOBSERVED |
+| **PM2** | `synqdrive` + `synqdrive-b` fork mode (1 instance each) + `pm2-logrotate`; both online | CURRENTLY_REOBSERVED |
+| **Snapshot polling** | `WORKER_SNAPSHOT_ACTIVITY_TIER_POLLING_ENABLED=true` → **ACTIVITY_TIERED**; interval 30000; concurrency 8 | CURRENTLY_REOBSERVED |
+| **Trip tracking concurrency** | `WORKER_TRIP_TRACKING_CONCURRENCY=5` | CURRENTLY_REOBSERVED |
+| **FSM shadow** | Enabled with vehicle allowlist (value not recorded) | CURRENTLY_REOBSERVED |
+| **Repair mode** | `TRIP_REPAIR_COVERAGE_MODE` unset → `shadow`; `TRIP_PARTIAL_BOUNDARY_REPAIR_ENABLED=true` | CURRENTLY_REOBSERVED |
+| **Qualified Stop threshold** | env unset → `CANONICAL_DEFAULT` 300 000 ms | CURRENTLY_REOBSERVED |
+| **ClickHouse trip assist / DI V2** | `CLICKHOUSE_TRIP_ASSIST_ENABLED=true`; `DRIVING_INTELLIGENCE_V2_ENABLED=true`; `DRIVING_V2_DIMO_SEGMENT_VALIDATION_ENABLED=false` | CURRENTLY_REOBSERVED |
+| **FSM rows** | 6 — all `RESTING`; 0 with `active_trip_id`; 0 worker-locked; scheduler-eligible cohort 6 | CURRENTLY_REOBSERVED |
+| **Trips** | 2284 COMPLETED / 20 CANCELLED / 0 ONGOING; 20 completed per 24 h; 105 per 7 d | CURRENTLY_REOBSERVED |
+| **Tracking runs (24 h)** | 625 (ACTIVE_TRACKING 372, POSSIBLE_END_CHECK 127, POSSIBLE_START_VALIDATION 63, END_VALIDATION 47, FINALIZATION_CHECK 16) | CURRENTLY_REOBSERVED |
+| **Queues** | snapshot delayed 1; trip-tracking failed 2 (retained from 2026-06-22 / 2026-07-11 — historical); handoff 0; wake mailboxes 0 | CURRENTLY_REOBSERVED |
+| **TripRepair** | all-time APPLIED 1223 / PROPOSED 8595 / REJECTED 25 / SUPPRESSED 1088 | CURRENTLY_REOBSERVED |
+| **ENDED rows** | 0 live / 0 tracking all-time (TDL-EVID-OQ005-ENDED-001, same release) | CARRIED_FORWARD_FROM_RECENT_VERIFIED_EVIDENCE |
+| **R9 authorized provider cohort** | 5/5 speed+ignition (TDL-EVID-OQ009-R9-INGRESS-001) | CARRIED_FORWARD_FROM_RECENT_VERIFIED_EVIDENCE |
+| **QS V1 natural acceptance** | `PASS_WITH_EVIDENCE_GAPS` (TDL-EVID-QS-V1-PROD-ACCEPT-001) | CARRIED_FORWARD_FROM_RECENT_VERIFIED_EVIDENCE |
+
+**Mutations:** none. A temporary SQL file was copied to VPS `/tmp` for `psql -f` and removed in the same command.
+
+---
+
+## Historical — Qualified Stop V1 + post-#1750 lineage @ `8a1d9c658…` (superseded as current by Phase 5 baseline)
 
 | Field | Value |
 |-------|-------|
 | **Evidence class** | `VERIFIED_READ_ONLY` (release SHA + read-only acceptance audit) |
 | **Observation window (natural QS acceptance)** | Anchored from QS-active release `2026-09-24T20:11:36+00` through rebaseline `2026-09-25` |
-| **Production release (current verified)** | `8a1d9c6586cbddc41bb6c94870f9d51226d71aa2` @ `/opt/synqdrive/releases/20260925182907_v4994` |
+| **Production release (verified at the time; historical since 2026-09-26)** | `8a1d9c6586cbddc41bb6c94870f9d51226d71aa2` @ `/opt/synqdrive/releases/20260925182907_v4994` |
 | **Prior verified release (superseded)** | `99d722b4cac865e59e30ad23c82cec11fd9fc9b1` @ `20260924235024_v4994` |
 | **Classification** | **PRODUCTION_PRESENT** (#1750, #1753 ancestors); Qualified Stop V1 acceptance **`PASS_WITH_EVIDENCE_GAPS`** |
 | **Canonical detailed evidence** | [QUALIFIED_STOP_V1_PRODUCTION_ACCEPTANCE_2026-09-25.md](QUALIFIED_STOP_V1_PRODUCTION_ACCEPTANCE_2026-09-25.md) — **TDL-EVID-QS-V1-PROD-ACCEPT-001** |
