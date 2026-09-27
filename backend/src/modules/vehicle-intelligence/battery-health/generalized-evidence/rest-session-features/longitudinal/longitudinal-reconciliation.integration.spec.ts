@@ -30,6 +30,7 @@ import {
   REST_SESSION_LONGITUDINAL_PROFILE_CONTRACT_VERSION,
   REST_SESSION_LONGITUDINAL_PROFILE_POLICY_VERSION,
 } from './longitudinal-profile.constants';
+import { getBatteryV2LongitudinalMaterializationSessionLimit } from './longitudinal-profile-materialization.runtime-config';
 import { buildMinimalLongitudinalInputSummary } from './longitudinal-input.test-fixtures';
 
 const LIVE = process.env.BATTERY_V2_LONGITUDINAL_RECONCILIATION_INTEGRATION === '1';
@@ -207,6 +208,7 @@ async function positionFleetCursorBeforeVehicle(
     const sessionLimit = 10;
 
     beforeAll(async () => {
+      process.env.BATTERY_V2_LONGITUDINAL_MATERIALIZATION_SESSION_LIMIT = String(sessionLimit);
       dbOk = await probePostgresDatabase();
       if (!dbOk) return;
       prisma = new PrismaClient();
@@ -723,11 +725,15 @@ async function positionFleetCursorBeforeVehicle(
     it('scheduler vs ops — concurrent materialization is idempotent', async () => {
       if (!dbOk) return;
       const envBackup = process.env.BATTERY_V2_LONGITUDINAL_PROFILE_MATERIALIZATION_ENABLED;
+      const batchBackup = process.env.BATTERY_V2_LONGITUDINAL_RECONCILIATION_BATCH_SIZE;
       process.env.BATTERY_V2_LONGITUDINAL_PROFILE_MATERIALIZATION_ENABLED = 'true';
+      process.env.BATTERY_V2_LONGITUDINAL_RECONCILIATION_BATCH_SIZE = '1';
       try {
         const { organizationId, vehicleId } = await createOrgVehicle(prisma, 'SCHED-OPS');
         await positionFleetCursorBeforeVehicle(prisma, organizationId);
         const profileGeneratedAt = '2026-05-07T12:00:00.000Z';
+        const alignedSessionLimit = getBatteryV2LongitudinalMaterializationSessionLimit();
+        expect(alignedSessionLimit).toBe(sessionLimit);
         const session = await createRestSession(prisma, {
           organizationId,
           vehicleId,
@@ -762,14 +768,20 @@ async function positionFleetCursorBeforeVehicle(
         const request = {
           organizationId,
           vehicleId,
-          sessionLimit,
+          sessionLimit: alignedSessionLimit,
           profileGeneratedAt,
         };
+
+        const toIsoSpy = jest
+          .spyOn(Date.prototype, 'toISOString')
+          .mockReturnValue(profileGeneratedAt);
 
         const [schedulerOutcome, opsOutcome] = await Promise.all([
           reconciliation.runBoundedReconciliationTick(),
           materialization.materialize(request),
         ]);
+
+        toIsoSpy.mockRestore();
 
         expect(schedulerOutcome.errorCount).toBe(0);
         expect(opsOutcome.outcome === 'CREATED' || opsOutcome.outcome === 'EXISTING').toBe(true);
@@ -796,6 +808,11 @@ async function positionFleetCursorBeforeVehicle(
         expect(ackCount).toBe(1);
       } finally {
         process.env.BATTERY_V2_LONGITUDINAL_PROFILE_MATERIALIZATION_ENABLED = envBackup;
+        if (batchBackup === undefined) {
+          delete process.env.BATTERY_V2_LONGITUDINAL_RECONCILIATION_BATCH_SIZE;
+        } else {
+          process.env.BATTERY_V2_LONGITUDINAL_RECONCILIATION_BATCH_SIZE = batchBackup;
+        }
       }
     });
 
