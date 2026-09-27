@@ -14,6 +14,19 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-27 — M3.3F F4.2 read-only D3 production activation preflight
+
+| Field | Value |
+|-------|-------|
+| **OBSERVATION** | F4.1 merged on main (#1806, #1812) but live prod release `7d3b7ed9` lacks F4.1 code; production DB missing F4.1 ack/fleet-cursor tables; 2 F4.1 migrations pending; C3 shadow ON with 27 rows / 0 D3 / 0 ack; D3 env flag unset → OFF both replicas. |
+| **CHANGE** | Documentation-only authority closure: mark F4.1 COMPLETE ON MAIN + SEALED; record preflight evidence; **`NEXT_STAGE=F4_2_EXACT_SHA_FLAG_OFF_PRODUCTION_DEPLOY`**. No runtime mutation in this record. |
+| **WHY** | Establish evidence-driven next production action before any D3 flag ON or `F_D3_T0`. |
+| **VALIDATION** | Read-only VPS SSH + production SQL; candidate `prisma validate` + backend build; F4.1 unit tests; `validate-graph.sh` + `validate-module-registry.sh`. |
+| **DECISION_STATUS** | **PROPOSED** (awaiting human-authorized flag-off deploy) |
+| **EVIDENCE** | `M3_3F_F4_2_D3_PRODUCTION_ACTIVATION_PREFLIGHT_2026-09-27.md` |
+
 ## CL-2026-09-27 — M3.3F F4.1 final ack target-version scope + D4 inspect + concurrency gates
 
 | Field | Value |
