@@ -1061,3 +1061,32 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Validation | position-acquisition 121 tests; S1/S2 regression; graph + registry validators |
 | Gaps | DI-GAP-S3A-AGG-001 → **PARTIALLY_CLOSED** (documented); DI-GAP-S3A-ARTIFACTS-001 partially mitigated |
 | Status | `PROPOSED` — closes red-team P1 on draft PR #1800 |
+
+### EXP-021 C1D.8 — S3B R1 OBD + native event evidence adapters (2026-09-27)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | S3A merged; S1 already accepts `NormalizedR1ObdObservation` / `NativeEventObservation` but had no acquisition libraries |
+| CHANGE | `r1-obd-acquisition/` (Channel A) + `native-event-evidence/` (Channel B) + `evidence-input/di-v0-combined-input-identity.ts`; governance + SynqDrive Code views |
+| WHY | Separate normalized evidence channels with deterministic snapshot identities before S4 shadow orchestration |
+| NON_EFFECTS | No worker, queue, scheduler, Nest registration, DB write, fusion, product accel/brake/coasting logic, L3 override, deploy |
+| Validation | S3B + S1/S2/S3A regression; typecheck/build/lint; graph + registry validators |
+| Status | `PROPOSED` — draft PR, pre-merge review only |
+| Evidence | `evidence/EXP021_C1D8_S3B_R1_OBD_NATIVE_EVENT_ADAPTERS.md` (DI-EVID-EXP021-C1D8-001) |
+| Decision | `DI-DEC-V0-S3B-R1-NATIVE-EVIDENCE-001` |
+
+### EXP-021 C1D.8B — S3B contract hardening / red-team closure (2026-09-27)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | C1D.8A read-only red-team of PR #1805: NEEDS_CLOSURE (P1 ×4, P2 ×5) |
+| BEFORE | Caller-set native `VALIDATED` → L2; no native context binding; duplicate eventIds double-counted; `[]` ≡ NO_EVENT with no failure concept; combined identity `[channel, version]` with optional channels; R1 duplicate buckets first-row-wins; `isIgnitionOn(agg: AVG)` queried; WOB control synthetic; test R1 identity resolved to UNKNOWN |
+| CHANGE | Native: fixed UNCALIBRATED/L1, expected-context binding (`CONTEXT_MISMATCH`), eventId dedup (`CONFLICTING_DUPLICATE`), source envelope + `EVENT_SOURCE_FAILURE`, `readDiV0NativeEventSource`; combined identity V0_2 with explicit channel state; R1 per-signal duplicate merge; ignition removed from query (V0_2); field authority matrix; golden-bound WOB + HOLD/RELEASE/post-release tests |
+| WHY | Close P1/P2 fail-closed before any S4 caller |
+| ALTERNATIVES | Trusted-authority object (design B), drop-silently, first-row/average/majority, keep ignition labelled — all rejected (see decision) |
+| NON_EFFECTS | No S1 core change; no worker/scheduler/queue/DB/migration/API/UI/provider mutation/deploy/S4/fusion weights/accel-brake-coasting logic; legacy HF + trip-detection ignition queries unchanged |
+| Validation | S1/S2/S3A/S3B 254 passed (1 pre-existing integration suite skipped); tsc clean; ESLint clean on S3B; graph + registry validators |
+| Gaps | DI-GAP-S3B-R1-FIELD-AUTHORITY-001 (no field provider-schema verified; ignition excluded); no captured R1 OBD rows for FULL-R1-002 in repo (structural fixture) |
+| Status | `PROPOSED` — draft PR #1805, pre-merge |
+| Evidence | `evidence/EXP021_C1D8B_S3B_CONTRACT_HARDENING.md` (DI-EVID-EXP021-C1D8B-001) |
+| Decision | `DI-DEC-V0-S3B-CONTRACT-HARDENING-001` |

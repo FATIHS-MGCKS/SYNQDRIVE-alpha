@@ -36,6 +36,44 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'di-exp021-c1d8b-s3b-contract-hardening-2026-09-27',
+    version: '4.9.2204',
+    title: 'Driving Intelligence — EXP-021 C1D.8B DI V0 S3B contract hardening (red-team closure)',
+    summary: [
+      'Native events: calibration fixed UNCALIBRATED / max L1 (no caller field); expected org/vehicle/trip/window/family/provider context enforced per record → CONTEXT_MISMATCH (audited).',
+      'Native eventId dedup: identical collapse, differing duplicates → CONFLICTING_DUPLICATE (L0, preserved); order-independent.',
+      'Source envelope: NO_EVENT only for a successful empty read; read failure → EVENT_SOURCE_FAILURE; readDiV0NativeEventSource defines the future S4 boundary.',
+      'Combined input identity V0_2 pins all three channels with explicit state (PRESENT / NO_EVENT / SOURCE_FAILURE / NOT_AVAILABLE).',
+      'R1 OBD: per-signal duplicate-bucket merge (CONFLICTING_DUPLICATE withheld, no first-row-wins/averaging); isIgnitionOn removed from query V0_2; field authority REPO_CONTRACT_ONLY; FULL-R1-002 golden-bound HOLD/RELEASE tests.',
+    ],
+    reason: 'Close C1D.8A red-team P1/P2 findings on PR #1805 fail-closed before any S4 caller.',
+    previousBehavior:
+      'Caller-set native VALIDATED escalated to L2; no native context binding; duplicate eventIds double-counted; empty ≡ NO_EVENT with no failure state; R1 duplicate buckets first-row-wins; isIgnitionOn(agg: AVG) queried.',
+    details:
+      'backend/src/modules/vehicle-intelligence/driving-intelligence/{native-event-evidence,r1-obd-acquisition,evidence-input}/*; architecture/drivingintelligence/evidence/EXP021_C1D8B_S3B_CONTRACT_HARDENING.md; DI-DEC-V0-S3B-CONTRACT-HARDENING-001.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-27T14:00:00.000Z',
+  },
+  {
+    id: 'di-exp021-c1d8-s3b-r1-obd-native-events-2026-09-27',
+    version: '4.9.2203',
+    title: 'Driving Intelligence — EXP-021 C1D.8 DI V0 S3B R1 OBD + native event evidence (dormant)',
+    summary: [
+      'Channel A: r1-obd-acquisition — DIMO HF OBD subset over strict 1 s grid; INTERVAL_ONLY; VALUE_PRESENT / SIGNAL_NULL / ROW_ABSENT per signal; no fixed time correction; RUPTELA_R1 only.',
+      'Channel B: native-event-evidence — normalizes ingested driving_events-shaped records; NATIVE_EVENT_OBSERVATION; UNCALIBRATED max claim L1; zero events = NO_EVENT.',
+      'Separate provenance channels; SHA-256 snapshot identities + combined input identity helper for future S2 worker pinning.',
+      'No runtime caller, worker, queue, DB write, fusion, or product accel/brake logic.',
+    ],
+    reason: 'Prepare normalized R1 historical OBD and native provider event evidence for future shadow orchestration without overriding S3A→S1 L3.',
+    previousBehavior: 'S1 accepted manual NormalizedR1ObdObservation / NativeEventObservation fixtures only; no acquisition libraries.',
+    details:
+      'backend/src/modules/vehicle-intelligence/driving-intelligence/r1-obd-acquisition/*; native-event-evidence/*; evidence-input/di-v0-combined-input-identity.ts; architecture/drivingintelligence/evidence/EXP021_C1D8_S3B_R1_OBD_NATIVE_EVENT_ADAPTERS.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-27T08:30:00.000Z',
+  },
+  {
     id: 'di-exp021-c1d7-s3a-position-acquisition-2026-09-26',
     version: '4.9.2201',
     title: 'Driving Intelligence — EXP-021 C1D.7 DI V0 S3A position acquisition + normalization (dormant)',
