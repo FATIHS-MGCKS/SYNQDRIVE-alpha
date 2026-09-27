@@ -16,6 +16,19 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-27 — M3.3F F4.3 D3 activation observability closure (Prometheus)
+
+| Field | Value |
+|-------|-------|
+| **OBSERVATION** | F4.2 deploy complete with D3 OFF; first activation blocked on insufficient dedicated reconciliation/ack Prometheus signals (logs-only). |
+| **CHANGE** | Low-cardinality reconciliation tick/candidate/processed/ack/duration/last-success metrics; fail-open recording; scheduler + service + ack boundary instrumentation; activation query contract doc. |
+| **WHY** | Make first D3 production activation directly observable and fail-closed without changing scientific or freshness authority. |
+| **VALIDATION** | F4.3 unit tests; retained F4.1 unit + Postgres suites; `validate-graph.sh`; `validate-module-registry.sh`. |
+| **DECISION_STATUS** | **PROPOSED** |
+| **EVIDENCE** | `M3_3F_F4_3_D3_ACTIVATION_OBSERVABILITY_CLOSURE_2026-09-27.md` |
+
 ## CL-2026-09-27 — M3.3F F4.2 read-only D3 production activation preflight
 
 | Field | Value |

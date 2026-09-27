@@ -8,6 +8,8 @@ import type {
   LongitudinalProfileMaterializationRequest,
 } from './longitudinal-profile-materialization.types';
 import type { LongitudinalInputReaderService } from './longitudinal-input.reader';
+import type { TripMetricsService } from '@modules/observability/trip-metrics.service';
+import { recordLongitudinalReconciliationAckOutcome } from './longitudinal-reconciliation.metrics';
 
 /**
  * M3.3D D3 foundation — scientific materialization orchestration (Nest-registered in M3.3F F1; callers must use gated runtime facade).
@@ -17,6 +19,7 @@ export class LongitudinalProfileMaterializationService {
     private readonly inputReader: LongitudinalInputReaderService,
     private readonly materializationRepository: LongitudinalProfileMaterializationRepository,
     private readonly sourceEvidenceAckRepository: LongitudinalSourceEvidenceAckRepository,
+    private readonly metrics?: TripMetricsService,
   ) {}
 
   async materialize(
@@ -57,7 +60,7 @@ export class LongitudinalProfileMaterializationService {
       insertOutcome.persistenceOutcome === 'CREATED' ||
       insertOutcome.persistenceOutcome === 'EXISTING'
     ) {
-      await this.sourceEvidenceAckRepository.acknowledgeSourceEvidence({
+      const ackOutcome = await this.sourceEvidenceAckRepository.acknowledgeSourceEvidence({
         organizationId: request.organizationId,
         vehicleId: request.vehicleId,
         sourceEvidenceFingerprint: inventoryOutcome.result.sourceEvidenceFingerprint,
@@ -68,6 +71,7 @@ export class LongitudinalProfileMaterializationService {
         revisionId: insertOutcome.revision.id,
         materializationOutcome: insertOutcome.persistenceOutcome,
       });
+      recordLongitudinalReconciliationAckOutcome(this.metrics, ackOutcome);
     }
 
     return {

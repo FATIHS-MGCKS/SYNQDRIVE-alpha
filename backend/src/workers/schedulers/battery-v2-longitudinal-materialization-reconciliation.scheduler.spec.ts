@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { isBatteryV2LongitudinalProfileMaterializationEnabled } from '@config/battery-health-v2.config';
+import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 import { LongitudinalReconciliationService } from '@modules/vehicle-intelligence/battery-health/generalized-evidence/rest-session-features/longitudinal/longitudinal-reconciliation.service';
 import { BatteryV2LongitudinalMaterializationReconciliationScheduler } from './battery-v2-longitudinal-materialization-reconciliation.scheduler';
@@ -14,6 +15,8 @@ describe('BatteryV2LongitudinalMaterializationReconciliationScheduler', () => {
   let scheduler: BatteryV2LongitudinalMaterializationReconciliationScheduler;
   let shouldRun: jest.Mock;
   let runBoundedReconciliationTick: jest.Mock;
+  let metrics: TripMetricsService;
+  let ticksInc: jest.SpyInstance;
 
   beforeEach(async () => {
     enabledMock.mockReturnValue(true);
@@ -29,6 +32,9 @@ describe('BatteryV2LongitudinalMaterializationReconciliationScheduler', () => {
       errorCount: 0,
     });
 
+    metrics = new TripMetricsService();
+    ticksInc = jest.spyOn(metrics.batteryLongitudinalReconciliationTicksTotal, 'inc');
+
     const moduleRef = await Test.createTestingModule({
       providers: [
         BatteryV2LongitudinalMaterializationReconciliationScheduler,
@@ -40,25 +46,28 @@ describe('BatteryV2LongitudinalMaterializationReconciliationScheduler', () => {
           provide: SchedulerLeaderGuardService,
           useValue: { shouldRun },
         },
+        { provide: TripMetricsService, useValue: metrics },
       ],
     }).compile();
 
     scheduler = moduleRef.get(BatteryV2LongitudinalMaterializationReconciliationScheduler);
   });
 
-  it('non-leader — zero reconciliation work', async () => {
+  it('T20 non-leader — NOT_LEADER metric and zero reconciliation work', async () => {
     shouldRun.mockReturnValue(false);
     await scheduler.reconcileLongitudinalProfiles();
     expect(runBoundedReconciliationTick).not.toHaveBeenCalled();
+    expect(ticksInc).toHaveBeenCalledWith({ result: 'NOT_LEADER' });
   });
 
-  it('D3 flag OFF — scheduler returns before service', async () => {
+  it('T2 D3 flag OFF — FLAG_OFF metric and scheduler returns before service', async () => {
     enabledMock.mockReturnValue(false);
     await scheduler.reconcileLongitudinalProfiles();
     expect(runBoundedReconciliationTick).not.toHaveBeenCalled();
+    expect(ticksInc).toHaveBeenCalledWith({ result: 'FLAG_OFF' });
   });
 
-  it('overlap — second tick skips while first in progress', async () => {
+  it('overlap — OVERLAP metric and second tick skips while first in progress', async () => {
     let releaseFirst: (() => void) | undefined;
     const gate = new Promise<void>((resolve) => {
       releaseFirst = resolve;
@@ -81,8 +90,16 @@ describe('BatteryV2LongitudinalMaterializationReconciliationScheduler', () => {
     await Promise.resolve();
     await scheduler.reconcileLongitudinalProfiles();
     expect(runBoundedReconciliationTick).toHaveBeenCalledTimes(1);
+    expect(ticksInc).toHaveBeenCalledWith({ result: 'OVERLAP' });
 
     releaseFirst?.();
     await first;
+    expect(ticksInc).toHaveBeenCalledWith({ result: 'COMPLETED' });
+  });
+
+  it('T6 FAILED — records FAILED when service throws', async () => {
+    runBoundedReconciliationTick.mockRejectedValue(new Error('boom'));
+    await scheduler.reconcileLongitudinalProfiles();
+    expect(ticksInc).toHaveBeenCalledWith({ result: 'FAILED' });
   });
 });

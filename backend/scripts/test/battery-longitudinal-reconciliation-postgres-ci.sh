@@ -38,6 +38,7 @@ log "F4.1 reconciliation unit tests"
 npx jest \
   longitudinal-reconciliation.config.spec \
   longitudinal-reconciliation.service.spec \
+  longitudinal-reconciliation.metrics.spec \
   battery-v2-longitudinal-materialization-reconciliation.scheduler.spec \
   longitudinal-source-evidence-ack.repository.spec \
   --runInBand
