@@ -61,7 +61,20 @@ describe('erd-recharge-projection-mapper', () => {
     expect(result.draft.fuelDeltaLiters).toBeNull();
     expect(result.draft.startLatitude).toBeNull();
     expect(result.draft.energyDeltaKwh).toBe(30);
-    expect(result.draft.rawDetectionMeta.projectionVersion).toBe(1);
+    expect(result.draft.rawDetectionMeta.projectionVersion).toBe(2);
+    expect(result.draft.rawDetectionMeta.energyDeltaSemantic).toBe(
+      'STORED_TRACTION_BATTERY_ENERGY_DELTA',
+    );
+  });
+
+  it('E1: stored delta differs from energyAddedKwh on native session', () => {
+    const result = mapCanonicalHvChargeSessionToErdRechargeProjectionDraft({
+      session: session({ startEnergyKwh: 10, endEnergyKwh: 40, energyAddedKwh: 47 }),
+      scope,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.draft.energyDeltaKwh).toBe(30);
   });
 
   it('maps fallback session without fake dimoSegmentId', () => {
@@ -76,6 +89,40 @@ describe('erd-recharge-projection-mapper', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.draft.dimoSegmentId).toBeNull();
+  });
+
+  it('fallback F1: stored delta from start/end, not energyAddedKwh', () => {
+    const result = mapCanonicalHvChargeSessionToErdRechargeProjectionDraft({
+      session: session({
+        source: 'TELEMETRY_POLL_FALLBACK',
+        dimoSegmentId: null,
+        segmentFingerprint: 'poll-charge:veh-1:1000',
+        startEnergyKwh: 20,
+        endEnergyKwh: 32,
+        energyAddedKwh: 18,
+      }),
+      scope,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.draft.energyDeltaKwh).toBe(12);
+  });
+
+  it('fallback F2: missing stored evidence → null energyDeltaKwh', () => {
+    const result = mapCanonicalHvChargeSessionToErdRechargeProjectionDraft({
+      session: session({
+        source: 'TELEMETRY_POLL_FALLBACK',
+        dimoSegmentId: null,
+        segmentFingerprint: 'poll-charge:veh-1:1001',
+        startEnergyKwh: null,
+        endEnergyKwh: null,
+        energyAddedKwh: 18,
+      }),
+      scope,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.draft.energyDeltaKwh).toBeNull();
   });
 
   it('fail-closes ineligible session', () => {

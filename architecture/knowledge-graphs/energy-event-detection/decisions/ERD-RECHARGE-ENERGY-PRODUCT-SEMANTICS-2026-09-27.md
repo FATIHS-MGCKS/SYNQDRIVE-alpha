@@ -224,3 +224,20 @@ Additive `chargingEnergyAddedKwh` may ship before or after cutover depending on 
 
 - Topology ADR: `ERD-E5-4A-SHADOW-PARITY-PHYSICAL-EPISODE-TOPOLOGY-2026-09-27.md`
 - Evidence: `evidence/ERD-E5-4-FRAGMENT-TOPOLOGY-PRODUCTION-CLOSURE-2026-09-27.md`
+
+---
+
+## 18. Implementation appendix — Step 2 stored-energy alignment (2026-09-27)
+
+**Status:** `STEP_2_STORED_ENERGY_ALIGNMENT_IMPLEMENTED=YES` (partial Option C; full decision remains **PROPOSED** until `chargingEnergyAddedKwh` Step 5)
+
+| Item | Value |
+|------|--------|
+| Helper | `deriveStoredTractionEnergyDeltaKwh` in `erd-recharge-energy-semantics.policy.ts` |
+| Canonical pre-fix source | `HvChargeSession.energyAddedKwh` |
+| Canonical post-fix source | stored extrema `max(0, endEnergyKwh - startEnergyKwh)` |
+| Projection meta | `ERD_RECHARGE_PROJECTION_META_VERSION` **2** |
+| Identity | `ERD_RECHARGE_PROJECTION_IDENTITY_VERSION` **v1** unchanged |
+| Evidence | EED-EV-0094 — `evidence/ERD-E5-4B-CANONICAL-STORED-ENERGY-ALIGNMENT-2026-09-27.md` |
+
+Decision B5 “Not implemented in this ADR” superseded for **energyDeltaKwh mapping only** by Step 2 runtime; B6 additive field still **not** implemented.

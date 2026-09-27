@@ -2,7 +2,7 @@
 export const ERD_RECHARGE_PROJECTION_DETECTION_MECHANISM =
   'ERD_HV_CHARGE_SESSION_PROJECTION' as const;
 
-export const ERD_RECHARGE_PROJECTION_META_VERSION = 1 as const;
+export const ERD_RECHARGE_PROJECTION_META_VERSION = 2 as const;
 
 /** Immutable physical product projection identity version (E5.1 foundation). */
 export const ERD_RECHARGE_PROJECTION_IDENTITY_VERSION = 'v1' as const;

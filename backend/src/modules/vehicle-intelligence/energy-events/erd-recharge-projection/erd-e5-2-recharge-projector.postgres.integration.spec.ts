@@ -10,6 +10,7 @@ import {
 } from './erd-canonical-recharge-projector.types';
 import { projectCanonicalRecharge } from './erd-canonical-recharge-projector';
 import { buildErdRechargePhysicalProjectionSourceEventKey } from './erd-recharge-projection-identity.policy';
+import { ERD_RECHARGE_PROJECTION_META_VERSION } from './erd-recharge-projection.constants';
 
 const LIVE = process.env.ERD_E5_2_POSTGRES_INTEGRATION === '1';
 const REQUIRED = process.env.ERD_E5_2_POSTGRES_REQUIRED === '1';
@@ -248,6 +249,8 @@ describeFn(
         const session = await createNativeSession(prisma, org.id, vehicle.id, suffix, {
           deltaSocPercent: 20,
           energyAddedKwh: 10,
+          startEnergyKwh: 10,
+          endEnergyKwh: 20,
         });
         const created = await projectCanonicalRecharge(
           prisma,
@@ -255,7 +258,12 @@ describeFn(
         );
         await prisma.hvChargeSession.update({
           where: { id: session.id },
-          data: { deltaSocPercent: 45, energyAddedKwh: 28 },
+          data: {
+            deltaSocPercent: 45,
+            energyAddedKwh: 28,
+            startEnergyKwh: 10,
+            endEnergyKwh: 55,
+          },
         });
         const reconciled = await projectCanonicalRecharge(
           prisma,
@@ -573,6 +581,129 @@ describeFn(
         });
         expect(unchanged.kind).toBe(EnergyEventKind.REFUEL);
         expect(unchanged.detectionSource).toBeNull();
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
+    it('PG-E1: native session stored delta != added delta → projected energyDeltaKwh uses stored', async () => {
+      if (!dbReady) return;
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      try {
+        const session = await createNativeSession(prisma, org.id, vehicle.id, suffix, {
+          startEnergyKwh: 10,
+          endEnergyKwh: 40,
+          energyAddedKwh: 47,
+        });
+        const result = await projectCanonicalRecharge(
+          prisma,
+          projectInput(org.id, vehicle.id, session.id),
+        );
+        expect(result.outcome).toBe(ERD_CANONICAL_RECHARGE_PROJECTOR_OUTCOME.CREATED);
+        expect(result.vehicleEnergyEvent?.energyDeltaKwh).toBe(30);
+        const meta = result.vehicleEnergyEvent?.rawDetectionMeta as Record<string, unknown>;
+        expect(meta.projectionVersion).toBe(ERD_RECHARGE_PROJECTION_META_VERSION);
+        expect(meta.energyDeltaSemantic).toBe('STORED_TRACTION_BATTERY_ENERGY_DELTA');
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
+    it('PG-E2: old added-energy canonical row reconciles in place then NO_OP', async () => {
+      if (!dbReady) return;
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      try {
+        const session = await createNativeSession(prisma, org.id, vehicle.id, suffix, {
+          startEnergyKwh: 10,
+          endEnergyKwh: 40,
+          energyAddedKwh: 47,
+        });
+        const sourceEventKey = buildErdRechargePhysicalProjectionSourceEventKey({
+          vehicleId: vehicle.id,
+          anchorSegmentFingerprint: session.segmentFingerprint,
+        });
+        const existing = await prisma.vehicleEnergyEvent.create({
+          data: {
+            vehicleId: vehicle.id,
+            kind: EnergyEventKind.RECHARGE,
+            detectionMechanism: 'ERD_HV_CHARGE_SESSION_PROJECTION',
+            detectionSource: VehicleEnergyEventDetectionSource.SYNQDRIVE_ERD_RECHARGE_PROJECTION,
+            sourceEventKey,
+            canonicalChargeSessionId: session.id,
+            dimoSegmentId: session.dimoSegmentId,
+            startTime: session.startAt,
+            endTime: session.endAt!,
+            durationSeconds: 3600,
+            socDeltaPercent: session.deltaSocPercent,
+            energyDeltaKwh: 47,
+            confidence: EnergyEventConfidence.HIGH,
+            rawDetectionMeta: {
+              anchorSegmentFingerprint: session.segmentFingerprint,
+              projectionVersion: 1,
+            },
+          },
+        });
+        const reconciled = await projectCanonicalRecharge(
+          prisma,
+          projectInput(org.id, vehicle.id, session.id),
+        );
+        expect(reconciled.outcome).toBe(ERD_CANONICAL_RECHARGE_PROJECTOR_OUTCOME.RECONCILED);
+        expect(reconciled.vehicleEnergyEventId).toBe(existing.id);
+        expect(reconciled.vehicleEnergyEvent?.energyDeltaKwh).toBe(30);
+        expect(
+          (reconciled.vehicleEnergyEvent?.rawDetectionMeta as Record<string, unknown>)
+            .projectionVersion,
+        ).toBe(2);
+        const second = await projectCanonicalRecharge(
+          prisma,
+          projectInput(org.id, vehicle.id, session.id),
+        );
+        expect(second.outcome).toBe(ERD_CANONICAL_RECHARGE_PROJECTOR_OUTCOME.NO_OP);
+        expect(await countErdProjections(prisma, vehicle.id)).toBe(1);
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
+    it('PG-E3: fallback with stored-energy evidence projects stored delta', async () => {
+      if (!dbReady) return;
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      try {
+        const session = await createFallbackSession(prisma, org.id, vehicle.id, suffix, {
+          startEnergyKwh: 20,
+          endEnergyKwh: 32,
+          energyAddedKwh: 18,
+        });
+        const result = await projectCanonicalRecharge(
+          prisma,
+          projectInput(org.id, vehicle.id, session.id),
+        );
+        expect(result.outcome).toBe(ERD_CANONICAL_RECHARGE_PROJECTOR_OUTCOME.CREATED);
+        expect(result.vehicleEnergyEvent?.energyDeltaKwh).toBe(12);
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
+    it('PG-E4: fallback without stored-energy evidence → energyDeltaKwh null', async () => {
+      if (!dbReady) return;
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      try {
+        const session = await createFallbackSession(prisma, org.id, vehicle.id, suffix, {
+          startEnergyKwh: null,
+          endEnergyKwh: null,
+          energyAddedKwh: 18,
+        });
+        const result = await projectCanonicalRecharge(
+          prisma,
+          projectInput(org.id, vehicle.id, session.id),
+        );
+        expect(result.outcome).toBe(ERD_CANONICAL_RECHARGE_PROJECTOR_OUTCOME.CREATED);
+        expect(result.vehicleEnergyEvent?.energyDeltaKwh).toBeNull();
       } finally {
         await cleanup(prisma, vehicle.id, org.id);
       }

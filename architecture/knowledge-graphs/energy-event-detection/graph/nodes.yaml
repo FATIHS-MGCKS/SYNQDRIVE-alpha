@@ -1899,9 +1899,23 @@ nodes:
       energyDeltaKwh = stored traction delta (legacy lock); additive chargingEnergyAddedKwh
       for provider added-energy; no backfill; billing firewall; shadow stored vs stored.
     authority_class: EED_OWNS
-    evidence: [EED-EV-0091, EED-EV-0092]
+    evidence: [EED-EV-0091, EED-EV-0092, EED-EV-0094]
     source_paths:
       - architecture/knowledge-graphs/energy-event-detection/decisions/ERD-RECHARGE-ENERGY-PRODUCT-SEMANTICS-2026-09-27.md
+
+  - id: EED-EV-0094
+    type: evidence
+    title: ERD E5.4B canonical stored-energy alignment Step 2
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E5-4B-CANONICAL-STORED-ENERGY-ALIGNMENT-2026-09-27.md
+      - backend/src/modules/vehicle-intelligence/energy-events/erd-recharge-projection/erd-recharge-energy-semantics.policy.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/erd-recharge-projection/erd-recharge-projection-mapper.ts
+    evidence_maturity: PROVEN_BY_TEST
+    summary: >
+      Canonical energyDeltaKwh from stored extrema only; projection meta v2; PG-E1–E4;
+      shadow stored-vs-stored regression; chargingEnergyAddedKwh product field not added.
 
   - id: EED-EV-0091
     type: evidence

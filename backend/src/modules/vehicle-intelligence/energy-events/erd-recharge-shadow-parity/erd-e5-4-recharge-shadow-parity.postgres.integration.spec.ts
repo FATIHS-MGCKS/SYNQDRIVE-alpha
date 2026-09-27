@@ -681,6 +681,8 @@ describeFn(
       const service = buildShadowParityService(prisma);
       try {
         const session = await createNativeSession(prisma, org.id, vehicle.id, suffix, {
+          startEnergyKwh: 10,
+          endEnergyKwh: 40,
           energyAddedKwh: 30,
         });
         await createLegacyRechargeVee(prisma, vehicle.id, session.dimoSegmentId!, {
