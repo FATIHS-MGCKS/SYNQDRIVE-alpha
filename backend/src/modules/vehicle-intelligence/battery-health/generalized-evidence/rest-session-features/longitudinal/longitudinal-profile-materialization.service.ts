@@ -2,6 +2,7 @@ import { assembleLongitudinalProfileV1 } from './longitudinal-profile.assembler'
 import { computeLongitudinalScientificProfileFingerprintV1 } from './longitudinal-profile-fingerprint';
 import { buildLongitudinalProfileMaterializationPersistenceInput } from './longitudinal-profile-materialization.mapper';
 import { LongitudinalProfileMaterializationRepository } from './longitudinal-profile-materialization.repository';
+import { LongitudinalSourceEvidenceAckRepository } from './longitudinal-source-evidence-ack.repository';
 import type {
   LongitudinalProfileMaterializationOutcome,
   LongitudinalProfileMaterializationRequest,
@@ -15,6 +16,7 @@ export class LongitudinalProfileMaterializationService {
   constructor(
     private readonly inputReader: LongitudinalInputReaderService,
     private readonly materializationRepository: LongitudinalProfileMaterializationRepository,
+    private readonly sourceEvidenceAckRepository: LongitudinalSourceEvidenceAckRepository,
   ) {}
 
   async materialize(
@@ -42,11 +44,31 @@ export class LongitudinalProfileMaterializationService {
     const fingerprint = computeLongitudinalScientificProfileFingerprintV1(
       assemblyOutcome.profile,
     );
-    const persistenceInput = buildLongitudinalProfileMaterializationPersistenceInput(fingerprint);
+    const persistenceInput = buildLongitudinalProfileMaterializationPersistenceInput(
+      fingerprint,
+      inventoryOutcome.result.sourceEvidenceFingerprint,
+    );
 
     const insertOutcome = await this.materializationRepository.insertIdempotent(
       persistenceInput,
     );
+
+    if (
+      insertOutcome.persistenceOutcome === 'CREATED' ||
+      insertOutcome.persistenceOutcome === 'EXISTING'
+    ) {
+      await this.sourceEvidenceAckRepository.acknowledgeSourceEvidence({
+        organizationId: request.organizationId,
+        vehicleId: request.vehicleId,
+        sourceEvidenceFingerprint: inventoryOutcome.result.sourceEvidenceFingerprint,
+        longitudinalProfileContractVersion:
+          insertOutcome.revision.longitudinalProfileContractVersion,
+        profilePolicyVersion: insertOutcome.revision.profilePolicyVersion,
+        canonicalProfileFingerprint: insertOutcome.revision.canonicalProfileFingerprint,
+        revisionId: insertOutcome.revision.id,
+        materializationOutcome: insertOutcome.persistenceOutcome,
+      });
+    }
 
     return {
       outcome: insertOutcome.persistenceOutcome,

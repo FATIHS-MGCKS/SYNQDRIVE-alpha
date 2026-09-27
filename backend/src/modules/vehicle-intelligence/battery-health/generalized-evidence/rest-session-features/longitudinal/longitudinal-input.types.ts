@@ -95,6 +95,8 @@ export type LongitudinalInputReadResultV1 = {
   dbSafetyMaxSessions: number;
   requestedSessionLimit: number;
   appliedSessionLimit: number;
+  /** Canonical SHA-256 hex fence of D1 source evidence at read time (F4.1). */
+  sourceEvidenceFingerprint: string;
   sessions: LongitudinalInputSessionInventoryItem[];
 };
 

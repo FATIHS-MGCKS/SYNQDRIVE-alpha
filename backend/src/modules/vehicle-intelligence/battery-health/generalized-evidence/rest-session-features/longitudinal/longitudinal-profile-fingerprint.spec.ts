@@ -25,6 +25,7 @@ import {
   PROFILE_TEST_GENERATED_AT,
   PROFILE_TEST_ORG,
   PROFILE_TEST_VEHICLE,
+  PROFILE_TEST_SOURCE_EVIDENCE_FINGERPRINT,
 } from './longitudinal-profile.test-fixtures';
 
 const assemble = (
@@ -355,7 +356,10 @@ describe('longitudinal-profile D3 scientific projection + fingerprint', () => {
         }),
       ]);
       const fp = computeLongitudinalScientificProfileFingerprintV1(profile);
-      const row = buildLongitudinalProfileMaterializationPersistenceInput(fp);
+      const row = buildLongitudinalProfileMaterializationPersistenceInput(
+        fp,
+        PROFILE_TEST_SOURCE_EVIDENCE_FINGERPRINT,
+      );
       expect(row.includedSessionCount).toBe(profile.coverage.includedSessionCount);
       expect(row.organizationId).toBe(PROFILE_TEST_ORG);
       expect(row.vehicleId).toBe(PROFILE_TEST_VEHICLE);

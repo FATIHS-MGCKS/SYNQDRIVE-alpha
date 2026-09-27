@@ -16,6 +16,7 @@ import {
   buildProfileTestInventory,
   buildProfileTestInventoryItem,
   PROFILE_TEST_GENERATED_AT,
+  PROFILE_TEST_SOURCE_EVIDENCE_FINGERPRINT,
 } from './longitudinal-profile.test-fixtures';
 
 const LIVE = process.env.BATTERY_V2_LONGITUDINAL_PROFILE_MATERIALIZATION_INTEGRATION === '1';
@@ -44,7 +45,7 @@ function buildPersistencePair(
   });
   if (assembled.status !== 'OK') throw new Error(assembled.reason);
   const fingerprint = computeLongitudinalScientificProfileFingerprintV1(assembled.profile);
-  const input = buildLongitudinalProfileMaterializationPersistenceInput(fingerprint);
+  const input = buildLongitudinalProfileMaterializationPersistenceInput(fingerprint, PROFILE_TEST_SOURCE_EVIDENCE_FINGERPRINT);
   return { projection: fingerprint.scientificProjection, fingerprint, input };
 }
 
@@ -63,7 +64,7 @@ async function rawInsertRevision(
       requested_session_limit, applied_session_limit,
       candidate_rest_session_count, included_session_count,
       provisional_session_count, excluded_session_count,
-      profile_status
+      profile_status, source_evidence_fingerprint
     ) VALUES (
       ${randomUUID()},
       ${organizationId},
@@ -78,7 +79,8 @@ async function rawInsertRevision(
       ${input.includedSessionCount},
       ${input.provisionalSessionCount},
       ${input.excludedSessionCount},
-      ${input.profileStatus}
+      ${input.profileStatus},
+      ${input.sourceEvidenceFingerprint}
     )
   `;
 }
@@ -319,8 +321,14 @@ async function createOrgVehicle(prisma: PrismaClient, label: string) {
       if (p1.status !== 'OK' || p2.status !== 'OK') throw new Error('assemble failed');
       const f1 = computeLongitudinalScientificProfileFingerprintV1(p1.profile);
       const f2 = computeLongitudinalScientificProfileFingerprintV1(p2.profile);
-      const row1 = buildLongitudinalProfileMaterializationPersistenceInput(f1);
-      const row2 = buildLongitudinalProfileMaterializationPersistenceInput(f2);
+      const row1 = buildLongitudinalProfileMaterializationPersistenceInput(
+        f1,
+        PROFILE_TEST_SOURCE_EVIDENCE_FINGERPRINT,
+      );
+      const row2 = buildLongitudinalProfileMaterializationPersistenceInput(
+        f2,
+        PROFILE_TEST_SOURCE_EVIDENCE_FINGERPRINT,
+      );
       await repo.insertIdempotent(row1);
       await repo.insertIdempotent(row2);
       expect(f1.canonicalProfileFingerprint).not.toBe(f2.canonicalProfileFingerprint);

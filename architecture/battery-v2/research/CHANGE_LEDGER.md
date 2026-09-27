@@ -12,6 +12,43 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-27 — M3.3F F4.1 final ack target-version scope + D4 inspect + concurrency gates
+
+| Field | Value |
+|-------|-------|
+| **OBSERVATION** | Ack uniqueness omitted D2/D3 contract/policy; D4 presented revision `sourceEvidenceFingerprint` as if authoritative; scheduler/ops + leader overlap Postgres gates missing; vehicle scan table unused. |
+| **CHANGE** | Ack fence unique key includes contract+policy; candidate lookup uses current D2 constants; D4 exposes creation provenance + ack list; remove `battery_longitudinal_reconciliation_vehicle_scans`; Postgres scheduler/ops + leader overlap + ack version scope tests. |
+| **WHY** | Prevent old-policy ack from suppressing new target materialization; close mandatory F4.1 concurrency matrix before merge. |
+| **VALIDATION** | Postgres reconciliation suite; engineering doc candidate-scope precision. |
+| **DECISION_STATUS** | **EXPERIMENTAL** (exact-head CI gate) |
+| **EVIDENCE** | PR #1806 |
+
+## CL-2026-09-27 — M3.3F F4.1 pre-merge correctness hardening (ack fence + fleet cursor)
+
+| Field | Value |
+|-------|-------|
+| **OBSERVATION** | External review: same-science/new-source metadata drift; MIN(computed_at) prefilter starvation; candidate fingerprint ReadCommitted vs D1 RepeatableRead. |
+| **CHANGE** | `battery_longitudinal_source_evidence_acks` + reconciliation fleet cursor/scan tables; candidate repo keyset sweep; materialization ack after CREATED/EXISTING; metadata mirror excludes `sourceEvidenceFingerprint`; RR snapshot for candidate fingerprint; Postgres suite + CI workflow. |
+| **WHY** | Close permanent stale hot loop without weakening D3 scientific uniqueness or mutating append-only revisions. |
+| **VALIDATION** | `M3_3F_F4_1_RACE_SAFE_D3_RECONCILIATION_ENGINEERING_2026-09-27.md` (hardening section); unit + `test:battery:v2:longitudinal-reconciliation:postgres`; `.github/workflows/battery-v2-longitudinal-postgres-ci.yml`. |
+| **NON_EFFECTS** | D3 activation; production deploy; backfill; C3 hook; E3 runtime. |
+| **DECISION_STATUS** | **EXPERIMENTAL** (pre-merge gate — merge blocked until exact-head CI) |
+| **EVIDENCE** | PR #1806 |
+
+## CL-2026-09-27 — M3.3F F4.1 race-safe bounded D3 reconciliation (engineering)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | F3 OBSERVED; D3 flag default OFF; F1 ops-only materialization; **no** scheduled D3 reconciliation; F4.0 audit proposed naive timestamp freshness (not implemented). |
+| **CHANGE** | Additive `source_evidence_fingerprint` on D3 revisions; bounded candidate repository; reconciliation service + scheduler; strict reconciliation env config; D4 revision read-only ops CLI; Postgres race/invalidation integration tests. |
+| **WHY** | Close lost-update + invalidation blind spots before any F4 D3 activation; F0 trigger `ON_DEMAND_INTERNAL_OPS_PLUS_BOUNDED_SCHEDULED_RECONCILIATION`. |
+| **VALIDATION** | `research/M3_3F_F4_1_RACE_SAFE_D3_RECONCILIATION_ENGINEERING_2026-09-27.md`; unit tests; optional Postgres integration env. |
+| **NON_EFFECTS** | Production deploy; D3 flag; `F_D3_T0`; backfill; C3 hooks; customer HTTP; E3 runtime. |
+| **DECISION_STATUS** | **EXPERIMENTAL** (engineering — activation separate) |
+| **EVIDENCE** | PR branch `cursor/battery-v2-m3-3f-f4-1-race-safe-d3-reconciliation-90ec`. |
+
 ## CL-2026-09-27 — M3.3F F3 natural C3 validation OBSERVED (~21h read-only follow-up)
 
 | Field | Value |

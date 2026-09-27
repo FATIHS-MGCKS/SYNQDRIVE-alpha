@@ -5,6 +5,7 @@ import {
   buildProfileTestInventory,
   buildProfileTestInventoryItem,
   PROFILE_TEST_GENERATED_AT,
+  PROFILE_TEST_SOURCE_EVIDENCE_FINGERPRINT,
 } from './longitudinal-profile.test-fixtures';
 
 describe('longitudinal-profile-materialization.mapper', () => {
@@ -27,7 +28,7 @@ describe('longitudinal-profile-materialization.mapper', () => {
     });
     if (assembled.status !== 'OK') throw new Error(assembled.reason);
     const fingerprint = computeLongitudinalScientificProfileFingerprintV1(assembled.profile);
-    const row = buildLongitudinalProfileMaterializationPersistenceInput(fingerprint);
+    const row = buildLongitudinalProfileMaterializationPersistenceInput(fingerprint, PROFILE_TEST_SOURCE_EVIDENCE_FINGERPRINT);
     const projection = fingerprint.scientificProjection;
 
     expect(row.organizationId).toBe(projection.organizationId);
@@ -66,7 +67,10 @@ describe('longitudinal-profile-materialization.mapper', () => {
     });
     if (profileA.status !== 'OK' || profileB.status !== 'OK') throw new Error('assemble failed');
     const fpB = computeLongitudinalScientificProfileFingerprintV1(profileB.profile);
-    const rowFromB = buildLongitudinalProfileMaterializationPersistenceInput(fpB);
+    const rowFromB = buildLongitudinalProfileMaterializationPersistenceInput(
+      fpB,
+      PROFILE_TEST_SOURCE_EVIDENCE_FINGERPRINT,
+    );
 
     expect(rowFromB.includedSessionCount).toBe(fpB.scientificProjection.coverage.includedSessionCount);
     expect(rowFromB.includedSessionCount).toBe(1);

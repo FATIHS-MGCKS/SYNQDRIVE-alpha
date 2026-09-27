@@ -7,6 +7,7 @@ import { selectCanonicalRestSessionFeatureShadowRow } from '../rest-session-feat
 import {
   LONGITUDINAL_INPUT_DB_SAFETY_MAX_SESSIONS,
   REST_SESSION_LONGITUDINAL_INPUT_CONTRACT_VERSION,
+  LONGITUDINAL_INPUT_SNAPSHOT_ISOLATION,
 } from './longitudinal-input.constants';
 import { classifyLongitudinalInputInclusion } from './longitudinal-input.policy';
 import {
@@ -15,6 +16,9 @@ import {
   type LongitudinalInputSnapshotHooks,
 } from './longitudinal-input.repository';
 import { parseLongitudinalInputSnapshotSummary } from './longitudinal-input.snapshot-parser';
+import {
+  computeLongitudinalSourceEvidenceFingerprint,
+} from './longitudinal-source-evidence-fingerprint';
 import type {
   LongitudinalInputReadOutcome,
   LongitudinalInputReadRequest,
@@ -141,7 +145,7 @@ export class LongitudinalInputReaderService {
           hooks,
         ),
       {
-        isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
+        isolationLevel: LONGITUDINAL_INPUT_SNAPSHOT_ISOLATION,
       },
     );
 
@@ -183,6 +187,14 @@ export class LongitudinalInputReaderService {
         });
       });
 
+    const sourceEvidence = computeLongitudinalSourceEvidenceFingerprint({
+      organizationId: request.organizationId,
+      vehicleId: request.vehicleId,
+      appliedSessionLimit,
+      sessions: snapshot.sessions,
+      canonicalCandidates: snapshot.canonicalCandidates,
+    });
+
     return {
       status: 'OK',
       result: {
@@ -193,6 +205,7 @@ export class LongitudinalInputReaderService {
         dbSafetyMaxSessions: LONGITUDINAL_INPUT_DB_SAFETY_MAX_SESSIONS,
         requestedSessionLimit: request.sessionLimit,
         appliedSessionLimit,
+        sourceEvidenceFingerprint: sourceEvidence.fingerprint,
         sessions,
       },
     };

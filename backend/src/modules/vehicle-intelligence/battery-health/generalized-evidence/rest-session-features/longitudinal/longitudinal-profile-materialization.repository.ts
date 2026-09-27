@@ -97,7 +97,8 @@ export class LongitudinalProfileMaterializationRepository {
             excluded_session_count,
             first_included_anchor_at,
             last_included_anchor_at,
-            profile_status
+            profile_status,
+            source_evidence_fingerprint
           ) VALUES (
             ${id},
             ${input.organizationId},
@@ -114,7 +115,8 @@ export class LongitudinalProfileMaterializationRepository {
             ${input.excludedSessionCount},
             ${input.firstIncludedAnchorAt},
             ${input.lastIncludedAnchorAt},
-            ${input.profileStatus}
+            ${input.profileStatus},
+            ${input.sourceEvidenceFingerprint}
           )
           ON CONFLICT (
             organization_id,
