@@ -54,6 +54,23 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-26T22:00:00.000Z',
   },
   {
+    id: 'di-exp021-c1d7b-s3a-doc-closure-golden-2026-09-27',
+    version: '4.9.2202',
+    title: 'Driving Intelligence — EXP-021 C1D.7B PR #1800 S3A doc closure + full-R1-002 golden',
+    summary: [
+      'Authority closure: C1G aggregation evidence (DI-GAP-S3A-AGG-001 PARTIALLY_CLOSED), provider historical mutability, pinned DI_NORMALIZED_INPUT_IDENTITY replay vs live re-query.',
+      'Committed C1-MOBILE-FULL-R1-002 compact provider-row golden + S3A/S1 structural regression tests; mutability identity contract tests.',
+      'No S3A runtime/query/aggregator/normalization change; draft PR #1800 remains dormant (no runtime caller).',
+    ],
+    reason: 'Close pre-merge red-team P1 documentation gap without changing S3A semantics.',
+    previousBehavior: 'AGG-001 documented as UNKNOWN; no full-trip S3A golden in repo; mutability/replay contract implicit only.',
+    details:
+      'architecture/drivingintelligence/*; position-acquisition/__tests__/fixtures/full-r1-002-golden.fixture.ts; new golden/mutability/S1 specs.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-27T07:45:00.000Z',
+  },
+  {
     id: 'di-exp021-c1d5-v0-pure-shadow-core-2026-09-26',
     version: '4.9.2200',
     title: 'Driving Intelligence — EXP-021 C1D.5 DI V0 pure shadow core (S0/S1)',

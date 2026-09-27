@@ -48,9 +48,29 @@ No DIMO Integration code changed. S3A never retries (executor already bounds tra
 - **Source family:** from stored DIMO identity via canonical resolver, never `hardwareType`. Deceptive case (routed `LTE_R1`, synthetic identity) → `API_SYNTHETIC`. UNKNOWN is normalized; S1 abstains (`UNSUPPORTED_SOURCE_FAMILY`).
 - **Empty:** `signals: []` → all `ROW_ABSENT` + `NO_PROVIDER_ROWS` (not a failure); `signals: null` → same + `PROVIDER_SIGNALS_NULL`; missing / non-array `signals` → `MALFORMED_RESPONSE`.
 
-## 4. Snapshot identity
+## 4. Snapshot identity (`DI_NORMALIZED_INPUT_IDENTITY`)
 
-Newline-delimited JSON arrays (no object keys → key-order independent): snapshot version, adapter version, query spec, subject (`DIMO`, tokenId, vehicleId), window, source family + policy version, `providerSignalsNull`, one line per bucket in grid order (label, availability, coordinate status, canonical lat/lon, providerRowCount, sorted conflict keys), sorted rejected rows. **Excluded:** `acquiredAt`, organizationId, tripId, JWT / authorization. `inputEvidenceVersion = DI_V0_POSITION_EVIDENCE_SNAPSHOT_V0_1:sha256:<hex>` — verified to change the S2 run idempotency key (`buildDiV0ShadowRunIdempotencyKey`) without invoking persistence.
+**`DI_NORMALIZED_INPUT_IDENTITY` ≠ `PROVIDER_RESPONSE_IDENTITY`.** The snapshot seals the normalized DI-consumed evidence used for S1/S2, not the raw GraphQL body or unused provider fields.
+
+Newline-delimited JSON arrays (no object keys → key-order independent): snapshot version, adapter version, query spec, subject (`DIMO`, tokenId, vehicleId), window, source family + policy version, `providerSignalsNull`, one line per bucket in grid order (label, availability, coordinate status, canonical lat/lon, providerRowCount, sorted conflict keys), sorted rejected rows.
+
+**Included in the hash:** adapter/query specification, token + vehicle identity, requested window, source family policy, per-bucket availability, coordinate status, canonical lat/lon, conflict keys, rejected-row semantics.
+
+**Excluded (by design):** `acquiredAt`, organizationId, tripId, JWT / authorization, HDOP, altitude, and any other provider field S3A does not consume. A provider-only change in an unused field may therefore leave `DI_NORMALIZED_INPUT_IDENTITY` unchanged.
+
+`inputEvidenceVersion = DI_V0_POSITION_EVIDENCE_SNAPSHOT_V0_1:sha256:<hex>` — verified to change the S2 run idempotency key (`buildDiV0ShadowRunIdempotencyKey`) without invoking persistence.
+
+### 4.1 Provider historical mutability and pinned replay
+
+DIMO historical responses are **not immutable**. C1G re-played sealed C0 windows and observed changed HDOP/altitude aggregates for co-timestamped buckets while coordinates stayed identical.
+
+Therefore:
+
+- **A live provider re-query is a NEW ACQUISITION**, not a replay of an earlier run.
+- A reproducible DI computation must use the **pinned normalized input snapshot** (`inputEvidenceVersion`) from that run.
+- A later live re-query may yield a new normalized snapshot and a new `inputEvidenceVersion`; it must **not** silently replace the original pinned evidence.
+
+Executable tests: `di-v0-position-acquisition.mutability-identity.spec.ts`.
 
 ## 5. Error model
 
@@ -74,7 +94,7 @@ Newline-delimited JSON arrays (no object keys → key-order independent): snapsh
 
 | Command | Result |
 |---------|--------|
-| `npx jest src/modules/vehicle-intelligence/driving-intelligence/position-acquisition` | 6 suites / 110 tests PASS |
+| `npx jest src/modules/vehicle-intelligence/driving-intelligence/position-acquisition` | 9 suites / 121 tests PASS (C1D.7B: full-R1-002 golden + mutability identity) |
 | `npx jest --testPathPattern='driving-intelligence/(core\|shadow-persistence\|position-acquisition)\|dimo-provider-call-site-audit\|telemetry-source-family' --testPathIgnorePatterns=postgres` | 16 suites / 169 tests PASS (S1 + S2 non-Postgres regression + call-site audit) |
 | `npx tsc --noEmit -p tsconfig.json` | PASS |
 | `npx nest build` | PASS |
@@ -96,15 +116,25 @@ Bound asserted: < 5 s. Measurements are indicative (CI host variance), not SLOs.
 
 | ID | Gap | Epistemic |
 |----|-----|-----------|
-| DI-GAP-S3A-AGG-001 | `currentLocationCoordinates(agg: AVG)` may yield a synthetic midpoint if DIMO places > 1 sample in a 1 s bucket. Enum verified against DIMO public schema (`DIMO-Network/telemetry-api` `schema/base.graphqls` @ `294fc2a7`: `LocationAggregation { AVG RAND FIRST LAST }`; `signals(...)` returns nullable `[SignalAggregations!]`; field requires `VEHICLE_ALL_TIME_LOCATION`). DIMO MCP unavailable in this session (discovery error). AVG chosen for consistency with the repo 1 s HF convention (`high-frequency.query.ts`: all floats `agg: AVG`); the only repo production precedent for historical location is `agg: RAND` (`route-enrichment.query.ts`) — rejected (non-deterministic). No committed EXP-021 artifact shows which location aggregation produced the C1C/C1D pilot coordinates. `FIRST`/`LAST` (real samples, deterministic) remain the alternative for S3B calibration. | UNKNOWN (multi-sample bucket frequency) |
+| DI-GAP-S3A-AGG-001 | **PARTIALLY_CLOSED** (C1G fleet aggregation audit, 2026-09-27). Read-only DIMO historical comparison: **26,629/26,629** common coordinate buckets identical across `AVG` / `FIRST` / `LAST` (0 m spatial delta); **30** trips; **5** accessible vehicles (**4** RUPTELA_R1, **1** API_SYNTHETIC); **1** R1 vehicle 403-blocked; **UNKNOWN** family absent from cohort; **0** frozen-core L3 differences and **0** hold/release differences across aggregators (467 hold runs / 418 release rows compared). **Decision:** keep `currentLocationCoordinates(agg: AVG)` unchanged — not because AVG is mathematically always safe, but because no coordinate-level difference was observed in the current accessible cohort. **Residual theory:** if one bucket ever contains multiple *differing* coordinates, AVG could synthesize a midpoint (not observed in C1G). RUPTELA_R1: strongly supported; API_SYNTHETIC: one fleet device only; UNKNOWN: no evidence. Optional aliased FIRST/LAST guard remains P2. Not fleet-universal closure. | CONFIRMED (coordinate identity); PARTIALLY_CLOSED (gap status) |
 | DI-GAP-S3A-REFTIME-001 | S1 canonical `referenceTime` rendering (`densify-grid.ts`) formats label+500 ms with whole-second output, i.e. equal to the label. S3A matches it byte-for-byte for S1 compatibility; S1 not changed. | CONFIRMED |
 | DI-GAP-S3A-LIVE-001 | No live provider response validated for this query in S3A (not authorized). Row shape (`timestamp` + `currentLocationCoordinates { latitude longitude }`) grounded in DIMO public schema and the production `route-enrichment.query.ts` selection; `hdop` not selected in V0_1. | INFERRED |
-| DI-GAP-S3A-ARTIFACTS-001 | C1C and C1D.2–C1D.4 artifacts referenced by the golden fixture are not committed in the repository (ledger references only). | CONFIRMED |
+| DI-GAP-S3A-ARTIFACTS-001 | C1C and C1D.2–C1D.4 full artifacts remain external; C1D.7B adds a compact committed **C1-MOBILE-FULL-R1-002** provider-row golden subset + S3A/S1 regression tests (`full-r1-002-golden.fixture.ts`). | CONFIRMED (external archives); mitigated for S3A regression |
 
 ## 8. Non-effects
 
 No Nest registration, controller, processor, BullMQ, Redis, scheduler, Prisma, migration, DB write, feature flag, `process.env`, logging, customer API/UI, trip/score/event/misuse mutation, R1 OBD adapter, native event adapter, or S3B worker. No DIMO Integration code change. S2 migration remains unapplied to Production.
 
-## 9. Next slice
+## 9. Future runtime caller contract (S3 / S4 invariant — documented only)
+
+S3A accepts full provider context (`organizationId`, `vehicleId`, `dimoTokenId`) and passes it to the shared DIMO transport (`FULL_CONTEXT_REQUIRED`). It does **not** validate that org/vehicle/token are mutually consistent — that enforcement belongs at the **future S3 runtime caller** boundary, which must source all three from one canonically validated vehicle context and must not independently combine caller-supplied identifiers.
+
+## 10. C1D.7B closure (2026-09-27)
+
+Documentation closure for PR #1800 pre-merge red-team P1: C1G aggregation evidence, provider mutability, pinned normalized replay, and `DI_NORMALIZED_INPUT_IDENTITY` vs raw provider identity (sections 4–4.1, gap table). No S3A runtime semantic change.
+
+Committed golden: 67 s window from **C1-MOBILE-FULL-R1-002** sealed C1E AVG coordinates — exercises ROW_ABSENT gap, hold-like identical coordinates, release/movement tail, deterministic snapshot `2ab565e2…`, and structural S3A→S1 regression (no MAE / cluster / iPhone calibration assertions).
+
+## 11. Next slice
 
 S3B (not started, not authorized): worker/caller wiring behind flags, persistence via S2, speed/R1 OBD adapters.

@@ -1398,11 +1398,16 @@ nodes:
 
   - id: DI-GAP-S3A-AGG-001
     type: gap
-    title: S3A location aggregation AVG may synthesize a midpoint in multi-sample buckets
-    epistemic_status: UNKNOWN
+    title: S3A location aggregation AVG — fleet evidence partial closure (C1G)
+    epistemic_status: CONFIRMED
     summary: >
-      LocationAggregation enum verified (DIMO public schema); multi-sample-per-second frequency unknown;
-      FIRST/LAST alternative deferred to S3B calibration.
+      C1G fleet read-only audit (PR #1800): 26,629/26,629 common coordinate buckets identical across
+      AVG/FIRST/LAST (0 m delta); 30 trips; 5 accessible vehicles (4 RUPTELA_R1, 1 API_SYNTHETIC);
+      one R1 vehicle 403-blocked; UNKNOWN family absent from cohort; 0 L3 and 0 hold/release
+      differences across aggregators. RUPTELA_R1 strongly supported; API_SYNTHETIC supported on one
+      device only; UNKNOWN has no evidence. `agg: AVG` unchanged. Residual theory: differing
+      coordinates in one bucket could still blend under AVG (not observed). Optional FIRST/LAST guard
+      remains P2. Not fleet-universal closure.
     source_paths:
       - backend/src/modules/vehicle-intelligence/driving-intelligence/position-acquisition/di-v0-position-acquisition.versions.ts
       - architecture/drivingintelligence/evidence/EXP021_C1D7_S3A_INPUT_NORMALIZATION_REPORT.md
@@ -1427,6 +1432,10 @@ nodes:
     type: gap
     title: C1C / C1D.2–C1D.4 artifacts not committed in repository
     epistemic_status: CONFIRMED
-    summary: WOB golden fixture provenance relies on ledger references only.
+    summary: >
+      Pilot-scale WOB snippets remain ledger-referenced; C1D.7B adds a compact committed
+      C1-MOBILE-FULL-R1-002-derived S3A golden fixture (provider row subset + tests). Full sealed
+      video/raw provider archives are still external.
     source_paths:
       - backend/src/modules/vehicle-intelligence/driving-intelligence/core/__tests__/fixtures/wob-pilot-golden.fixture.ts
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/position-acquisition/__tests__/fixtures/full-r1-002-golden.fixture.ts
