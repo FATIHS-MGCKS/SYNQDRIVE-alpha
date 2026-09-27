@@ -463,3 +463,63 @@ edges:
     relation: gates
     to: DI-DEC-V0-S4A-CONTRACT-V2-001
     notes: Blocks TINY_ACTIVATION only; not S4A dormant schema merge
+
+  - id: DI-EDGE-145
+    from: DI-DEC-V0-S4A-IMPL-001
+    relation: governs
+    to: DI-SVC-V0-S4A-FOUNDATION-001
+    notes: Dormant foundation implemented from contract v2; 0 runtime call sites
+
+  - id: DI-EDGE-146
+    from: DI-DEC-V0-S4A-CONTRACT-V2-001
+    relation: governs
+    to: DI-DEC-V0-S4A-IMPL-001
+    notes: Implementation follows DI_V0_S4A_CONTRACT_V2 without semantic change
+
+  - id: DI-EDGE-147
+    from: DI-SVC-V0-S4A-FOUNDATION-001
+    relation: tested_by
+    to: DI-EVID-EXP021-S4A-IMPL-001
+    notes: 175/175 incl. 51 real-Postgres race/kill tests and 10 migration cases
+
+  - id: DI-EDGE-148
+    from: DI-SVC-V0-S4A-FOUNDATION-001
+    relation: writes
+    to: DI-SVC-V0-SHADOW-CORE-001
+    notes: Fenced S2 persistence (INSERT ON CONFLICT DO NOTHING + execution-identity compare); library only, no caller
+
+  - id: DI-EDGE-149
+    from: DI-CONTRA-S4A-T13-SUCCESSOR-WRITE-BINDING-001
+    relation: contradicts
+    to: DI-EVID-EXP021-S4A-IMPL-001
+    notes: OPEN — stricter reading implemented
+
+  - id: DI-EDGE-150
+    from: DI-CONTRA-S4A-CONTAINER-VERSION-NAMING-001
+    relation: contradicts
+    to: DI-EVID-EXP021-S4A-IMPL-001
+    notes: OPEN — naming only
+
+  - id: DI-EDGE-151
+    from: DI-CONTRA-S4A-ON-UPDATE-CASCADE-IMMUTABILITY-001
+    relation: contradicts
+    to: DI-EVID-EXP021-S4A-IMPL-001
+    notes: OPEN P2 — canonical PK updates inferred absent
+
+  - id: DI-EDGE-152
+    from: DI-GAP-S4A-BOUNDARY-REVERT-SUCCESSOR-001
+    relation: gates
+    to: DI-DEC-V0-S4A-IMPL-001
+    notes: Blocks S4B discovery activation, not dormant merge
+
+  - id: DI-EDGE-153
+    from: DI-GAP-S4A-POSTGRES-CI-WIRING-001
+    relation: gates
+    to: DI-DEC-V0-S4A-IMPL-001
+    notes: Race suites run locally/ephemerally only
+
+  - id: DI-EDGE-154
+    from: DI-GAP-S4A-CONTROL-ROW-SERIALIZATION-001
+    relation: gates
+    to: DI-DEC-V0-S4A-IMPL-001
+    notes: P2 throughput ceiling before multi-worker scale

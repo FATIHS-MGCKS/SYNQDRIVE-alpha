@@ -93,3 +93,34 @@ Record disagreements between sources. **Do not resolve by guessing.**
 | **Cause** | Design written against an assumed denormalized column; v1 validator did not check schema existence | |
 | **Lesson** | Tenancy SQL in a contract must be validated against the real schema; precedent `vehicle_trip_route_artifact_scope_guard` (migration `20260829140000`) | |
 | **Graph** | DI-CONTRA-S4A-TENANCY-SCHEMA-001, DI-EVID-EXP021-C1D10A-001, DI-EVID-EXP021-C1D10C-001 |
+
+## DI-CONTRA-S4A-T13-SUCCESSOR-WRITE-BINDING-001 — T13 successor guard vs write registry binding
+
+| Side | Claim | Source |
+|------|-------|--------|
+| A | T13 `HOLDER_SUPERSEDE` carries guard `SUCCESSOR_SAME_TENANT_AND_TRIP_OR_NULL`; fixture R24 expects `itemCount: 2` after a holder supersede | `design/s4a/s4a-contract.v2.json` `transitions[T13]`, `fixtures.races[R24]` |
+| B | `authoritativeWrites.W_SUCCESSOR_PRIMARY_INSERT` is bound only to `T11_SUPERSEDE`; no write class allows T13 to insert a successor | `s4a-contract.v2.json` `authoritativeWrites` |
+| **Status** | **OPEN** (2026-09-27) — S4A implements B (T13 writes no successor, the `OR_NULL` branch); the R24 harness appends a separate T01 `create` step, which produces the second item. No contract semantics changed | `evidence/EXP021_S4A_DORMANT_FOUNDATION_IMPLEMENTATION.md` §4 |
+| **Cause** | C1D.10E froze the write registry after the T13 guard list was written | |
+| **Resolution path** | Authority clarification: either bind `W_SUCCESSOR_PRIMARY_INSERT` to T13, or drop the successor guard from T13 and rewrite R24 with an explicit create step | |
+| **Graph** | DI-CONTRA-S4A-T13-SUCCESSOR-WRITE-BINDING-001, DI-EVID-EXP021-S4A-IMPL-001 |
+
+## DI-CONTRA-S4A-CONTAINER-VERSION-NAMING-001 — Evidence container version name
+
+| Side | Claim | Source |
+|------|-------|--------|
+| A | Pipeline manifest fixture `evidenceSnapshotContainerVersion = DI_V0_S4_EVIDENCE_SNAPSHOT_V1` | `s4a-contract.v2.json` `fixtures.pipelineVersionBase` (also v1) |
+| B | Container header, DB CHECK `di_v0_s4_es_container_version_ck` and design doc use `DI_V0_S4_EVIDENCE_CONTAINER_V1` | `design/s4a/S4A_REPLAY_AND_EVIDENCE_PINNING.md` §2, `S4A_CONTRACT_DESIGN.md`, `s4a-contract.v2.json` `replay.serializer` |
+| **Status** | **OPEN** (2026-09-27) — the fixture hash must stay reproducible, so the fixture keeps A; the runtime manifest check deliberately does not compare this key | `evidence/EXP021_S4A_DORMANT_FOUNDATION_IMPLEMENTATION.md` §1.2 |
+| **Resolution path** | Align the manifest name in a future contract version (changes `pipelineVersionExpectedKey`) | |
+| **Graph** | DI-CONTRA-S4A-CONTAINER-VERSION-NAMING-001, DI-EVID-EXP021-S4A-IMPL-001 |
+
+## DI-CONTRA-S4A-ON-UPDATE-CASCADE-IMMUTABILITY-001 — Canonical `ON UPDATE CASCADE` vs S4 immutability triggers
+
+| Side | Claim | Source |
+|------|-------|--------|
+| A | Zero-impact invariant `NO_CONSTRAINT_THAT_CAN_FAIL_A_CANONICAL_WRITE_OR_DELETE` | `s4a-contract.v2.json` `zeroImpactInvariants` |
+| B | S4 FKs to `organizations` / `vehicles` / `vehicle_trips` are `ON UPDATE CASCADE`, while the work-item immutability trigger and the scope triggers reject scope-column changes, so a canonical **primary-key update** of a row with S4 rows would fail | `backend/prisma/migrations/20260927200000_di_v0_s4a_dormant_foundation/migration.sql` |
+| **Status** | **OPEN (P2)** (2026-09-27) — canonical PK updates are INFERRED not to happen (no code path found); deletes cascade and never fail; tables are empty while dormant | `evidence/EXP021_S4A_DORMANT_FOUNDATION_IMPLEMENTATION.md` §4 |
+| **Resolution path** | Before activation, either prove no canonical PK update path exists (audit) or make the guards permit RI-cascade updates | |
+| **Graph** | DI-CONTRA-S4A-ON-UPDATE-CASCADE-IMMUTABILITY-001, DI-EVID-EXP021-S4A-IMPL-001 |

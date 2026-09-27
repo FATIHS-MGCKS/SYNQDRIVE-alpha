@@ -438,3 +438,20 @@ Validate graph consistency: `bash architecture/drivingintelligence/scripts/valid
 | **EPISTEMIC** | CONFIRMED for Production facts (read-only: S2 empty, DB TimeZone Etc/UTC, ID formats, `vehicle_trips` columns); contract properties validated by machine model + red-team suite, not yet by Postgres |
 | **EVIDENCE** | DI-EVID-EXP021-C1D10C-001 |
 | **BOUNDARY** | Consulted: DIMO Integration (provider budget authority `DimoProviderBudgetService` / `DimoRequestExecutor` named for S4C; no change), Trips (`vehicle_trips` / `trip_repairs` schema read-only) — no code change in either module |
+
+## DI-DEC-V0-S4A-IMPL-001
+
+| Field | Value |
+|-------|-------|
+| **TITLE** | DI V0 S4A dormant execution foundation — implementation of contract v2 (EXP-021 S4A) |
+| **ERA** | EXP-021 S4A (CONTROLLED_IMPLEMENTATION, post-C1D.10I merge of PR #1810) |
+| **STATUS** | PROPOSED |
+| **PROBLEM** | Contract `DI_V0_S4A_CONTRACT_V2` was frozen and machine-validated but had no schema, repository, or Postgres-level proof of fencing, kill serialization, tenancy and migration safety |
+| **DECISION** | (1) One migration `20260927200000_di_v0_s4a_dormant_foundation`: explicit `BEGIN/COMMIT`, `lock_timeout 5s` / `statement_timeout 60s`, `SHARE ROW EXCLUSIVE` on S2 tables, then a `DO` block refusing non-empty S2; 4 TEXT+CHECK tables; scope-guard triggers on S4 and S2 tables; composite `(id, organization_id, trip_id)` FKs; immutability triggers; no seed row (missing kill row = KILLED). (2) `DiV0S4WorkItemRepository` — one method per transition T01–T13, raw SQL only, no Prisma delegates, no generic status setter, READ COMMITTED, lock order work item → control row `FOR UPDATE` → registry `FOR SHARE`, all lease arithmetic on `clock_timestamp()`. (3) T06 fenced S2: `INSERT … ON CONFLICT DO NOTHING` then full execution-identity compare (fail closed), S2 key function unchanged. (4) Pure control plane (env snapshot injected, never read). (5) Fail-closed choices stricter than the contract (T01 COMPLETED+end_time, replay fingerprint match, T05 RUNNABLE, T06 re-hash/re-verify, runtime manifest binding, reason/trip consistency). (6) Channel policy V1 source-family rule enforced. (7) Real multi-connection Postgres tests with lock-queue barriers (no sleeps) |
+| **ALTERNATIVES** | Prisma model delegates (rejected: cannot express fenced predicates + lock order atomically, invites generic status writes); advisory locks for kill serialization (rejected: contract binds the kill proof to the DB control row); per-transaction `SERIALIZABLE` (rejected: retry storms, contract specifies row locks); seeding a `NOT_KILLED` control row in the migration (rejected: dormant by construction, missing = KILLED); `ON DELETE RESTRICT` to canonical (rejected by `migrationRules`); sleep-based race tests (rejected: nondeterministic) |
+| **RATIONALE** | Prove every contract guarantee (no stale write, ≤1 active PRIMARY, kill-before-fence, tenant isolation, empty-S2 precondition, no canonical rewrite) in real PostgreSQL while keeping zero runtime reachability |
+| **CONSEQUENCES** | Merge + ordinary deploy applies the migration to Production (S2 empty at 2026-09-27T21:52Z). Tables stay empty and unreachable; S4B/S4C (discovery, acquisition, workers) remain unauthorized. New contradictions DI-CONTRA-S4A-T13-SUCCESSOR-WRITE-BINDING-001, DI-CONTRA-S4A-CONTAINER-VERSION-NAMING-001, DI-CONTRA-S4A-ON-UPDATE-CASCADE-IMMUTABILITY-001; new gaps DI-GAP-S4A-BOUNDARY-REVERT-SUCCESSOR-001, DI-GAP-S4A-POSTGRES-CI-WIRING-001, DI-GAP-S4A-CONTROL-ROW-SERIALIZATION-001 |
+| **GRAPH NODES** | DI-DEC-V0-S4A-IMPL-001, DI-DEC-V0-S4A-CONTRACT-V2-001, DI-SVC-V0-S4A-FOUNDATION-001, DI-EVID-EXP021-S4A-IMPL-001 |
+| **EPISTEMIC** | CONFIRMED for code/test behavior on local PostgreSQL 16 and the read-only Production baseline; Production migration effect not yet observed |
+| **EVIDENCE** | DI-EVID-EXP021-S4A-IMPL-001 |
+| **BOUNDARY** | Consulted: Trips (`vehicle_trips` read-only; FKs `ON DELETE CASCADE` only; no trigger/index/constraint on canonical tables), DIMO Integration (no call, no change), S2 shadow persistence (guards added to S2 tables; S2 library unchanged) |

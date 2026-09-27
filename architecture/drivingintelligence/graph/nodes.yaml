@@ -1700,3 +1700,106 @@ nodes:
     source_paths:
       - architecture/drivingintelligence/design/s4a/S4A_CONTROL_PLANE.md
       - architecture/drivingintelligence/design/s4a/s4a-contract.v2.json
+
+  - id: DI-SVC-V0-S4A-FOUNDATION-001
+    type: service
+    title: DI V0 S4A dormant execution foundation (library + schema, 0 runtime call sites)
+    epistemic_status: CONFIRMED
+    summary: >
+      Work-item table, evidence snapshots, pipeline-version registry, DB kill row and S2 scope guards; exact
+      13-transition fenced repository (no generic setStatus), identities incl. DI_V0_S4_EXECUTION_IDENTITY_V1,
+      clock_timestamp() lease/fencing, fail-closed control plane, atomic S2 fenced persistence. Not registered in
+      any Nest module, scheduler, queue or worker (DI_S4A_RUNTIME_CALL_SITE_COUNT=0).
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/s4a-foundation/
+      - backend/prisma/schema.prisma
+    evidence:
+      - DI-EVID-EXP021-S4A-IMPL-001
+
+  - id: DI-DEC-V0-S4A-IMPL-001
+    type: decision
+    title: Implement S4A dormant execution foundation from DI_V0_S4A_CONTRACT_V2 (EXP-021 S4A)
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: >
+      Implements contract v2 without semantic change: schema + migration, exact state machine, identities,
+      DB+repository tenancy, lease/fencing/takeover, kill serialization, supersession, fenced S2 persistence.
+      Dormant — no discovery, scheduler, queue, worker, endpoint, provider call or activation. Draft PR, unmerged.
+    source_paths:
+      - architecture/drivingintelligence/decisions/DECISION_REGISTER.md
+      - architecture/drivingintelligence/evidence/EXP021_S4A_DORMANT_FOUNDATION_IMPLEMENTATION.md
+    evidence:
+      - DI-EVID-EXP021-S4A-IMPL-001
+
+  - id: DI-EVID-EXP021-S4A-IMPL-001
+    type: evidence
+    title: EXP-021 S4A dormant foundation implementation — tests, races, migration cases, Production baseline
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: >
+      175/175 S4A tests (parity 9, fixtures 98, dormant audit 7, Postgres races R01-R25 + K01-K18 = 51, migration
+      M01-M08 = 10); races stable over 3 reruns; barrier-based (pg_stat_activity lock waiters, no sleeps).
+      Read-only Production 2026-09-27T21:52Z: S2 0 runs / 0 intervals / 0 inserts, S4A not applied.
+    source_paths:
+      - architecture/drivingintelligence/evidence/EXP021_S4A_DORMANT_FOUNDATION_IMPLEMENTATION.md
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/s4a-foundation/__tests__/
+
+  - id: DI-CONTRA-S4A-T13-SUCCESSOR-WRITE-BINDING-001
+    type: contradiction
+    title: T13 successor guard vs write-class registry binding in contract v2
+    epistemic_status: CONFIRMED
+    summary: >
+      OPEN. T13 HOLDER_SUPERSEDE carries guard SUCCESSOR_SAME_TENANT_AND_TRIP_OR_NULL and fixture R24 expects 2
+      items, but W_SUCCESSOR_PRIMARY_INSERT is bound only to T11. S4A implements the write registry (T13 inserts no
+      successor); the R24 harness adds an explicit T01 create. No contract semantics changed.
+    source_paths:
+      - architecture/drivingintelligence/contradictions/CONTRADICTION_REGISTER.md
+
+  - id: DI-CONTRA-S4A-CONTAINER-VERSION-NAMING-001
+    type: contradiction
+    title: Evidence container version name — DI_V0_S4_EVIDENCE_SNAPSHOT_V1 vs DI_V0_S4_EVIDENCE_CONTAINER_V1
+    epistemic_status: CONFIRMED
+    summary: >
+      OPEN. Pipeline manifest fixture uses DI_V0_S4_EVIDENCE_SNAPSHOT_V1; container header, DB CHECK and design
+      use DI_V0_S4_EVIDENCE_CONTAINER_V1. Fixture kept for hash reproducibility; runtime manifest check skips the key.
+    source_paths:
+      - architecture/drivingintelligence/contradictions/CONTRADICTION_REGISTER.md
+
+  - id: DI-CONTRA-S4A-ON-UPDATE-CASCADE-IMMUTABILITY-001
+    type: contradiction
+    title: Canonical ON UPDATE CASCADE foreign keys vs S4 immutability triggers
+    epistemic_status: INFERRED
+    summary: >
+      OPEN (P2). A canonical primary-key update would cascade into S4 rows whose immutability triggers reject it.
+      Canonical PK updates are INFERRED absent (no code path found); preserved as a gap.
+    source_paths:
+      - architecture/drivingintelligence/contradictions/CONTRADICTION_REGISTER.md
+
+  - id: DI-GAP-S4A-BOUNDARY-REVERT-SUCCESSOR-001
+    type: gap
+    title: Boundary revert to an earlier fingerprint gets no successor work item
+    epistemic_status: CONFIRMED
+    summary: >
+      T11 only creates a successor when the logical key is free; a revert to a fingerprint held by a SUPERSEDED
+      row gets no successor (proven by the race suite). Must be resolved before S4B discovery.
+    source_paths:
+      - architecture/drivingintelligence/evidence/EXP021_S4A_DORMANT_FOUNDATION_IMPLEMENTATION.md
+
+  - id: DI-GAP-S4A-POSTGRES-CI-WIRING-001
+    type: gap
+    title: S4A Postgres race and migration suites not wired into GitHub CI
+    epistemic_status: CONFIRMED
+    summary: >
+      npm run test:di:s4a:postgres runs them on ephemeral local DBs; default npm test skips them.
+    source_paths:
+      - backend/scripts/test/di-v0-s4a-postgres-ci.sh
+      - architecture/drivingintelligence/evidence/EXP021_S4A_DORMANT_FOUNDATION_IMPLEMENTATION.md
+
+  - id: DI-GAP-S4A-CONTROL-ROW-SERIALIZATION-001
+    type: gap
+    title: Singleton control row FOR UPDATE serializes all S4 writes globally
+    epistemic_status: CONFIRMED
+    summary: >
+      P2. Correct for kill serialization; a throughput ceiling to revisit before multi-worker scale.
+    source_paths:
+      - architecture/drivingintelligence/evidence/EXP021_S4A_DORMANT_FOUNDATION_IMPLEMENTATION.md
