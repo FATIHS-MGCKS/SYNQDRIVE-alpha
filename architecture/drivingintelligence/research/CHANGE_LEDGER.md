@@ -1090,3 +1090,19 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Status | `PROPOSED` — draft PR #1805, pre-merge |
 | Evidence | `evidence/EXP021_C1D8B_S3B_CONTRACT_HARDENING.md` (DI-EVID-EXP021-C1D8B-001) |
 | Decision | `DI-DEC-V0-S3B-CONTRACT-HARDENING-001` |
+
+### EXP-021 C1D.9 / C1D.9A — S3B R1 field authority + V0_3 correction (2026-09-27)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | C1D.9 read-only provider authority audit: PARTIAL (5/6 fields verified; gear AVG unsafe) |
+| BEFORE | Query `DI_V0_R1_OBD_QUERY_V0_2`: speed, rpm, throttle, load, ECT, `powertrainTransmissionCurrentGear`, all `agg: AVG`, all `REPO_CONTRACT_ONLY`; gear normalized to `NormalizedR1ObdObservation.gear` (fractional values passed through); adapter/snapshot V0_2 |
+| CHANGE | Query/adapter/R1 snapshot **V0_3**: gear removed from query, normalizer and S1 type; 5 fields `PROVIDER_SCHEMA_VERIFIED` with documented unit + value scale; snapshot serializes authority metadata; `DI_V0_R1_OBD_EXCLUDED_PROVIDER_FIELDS` (gear, isIgnitionOn); `DI_V0_R1_OBD_SUPERSEDED_VERSIONS`; combined input identity unchanged V0_2 |
+| WHY | Every queried field must be provider-verified and semantically valid under its aggregation before S4 R1 use |
+| ALTERNATIVES | Gear FIRST/LAST + integer guard; keep gear labelled; runtime allowlist over V0_2; combined identity bump — all rejected (see decision) |
+| NON_EFFECTS | No worker/scheduler/queue/DB/migration/API/UI/provider mutation/deploy/S4; no native-event change; no L3 tuning; no acceleration/braking/coasting/speeding logic; shared DIMO transport/auth and legacy HF/trip-detection queries unchanged |
+| Validation | DI suites green incl. new `di-v0-s3b-r1-v03-authority.spec.ts` (49 tests); tsc clean; ESLint clean; DI/DIMO graph + docs + registry validators |
+| Gaps | DI-GAP-S3B-R1-FIELD-AUTHORITY-001 **PARTIALLY_CLOSED** — residual gear (no categorical strategy, no R1 evidence); multi-sample 1 s AVG behaviour unobserved |
+| Status | `PROPOSED` — draft PR, pre-merge |
+| Evidence | `evidence/EXP021_C1D9_R1_FIELD_AUTHORITY_V03_CORRECTION.md` (DI-EVID-EXP021-C1D9-001) |
+| Decision | `DI-DEC-V0-S3B-R1-V03-FIELD-AUTHORITY-001` |

@@ -1409,7 +1409,8 @@ nodes:
     title: DI V0 S3B R1 historical OBD evidence acquisition (library)
     epistemic_status: CONFIRMED
     summary: >
-      HF OBD subset normalization (query V0_2, isIgnitionOn excluded); INTERVAL_ONLY; RUPTELA_R1 only;
+      HF OBD subset normalization (query V0_3: speed, rpm, throttle, load, ECT — all AVG, all
+      PROVIDER_SCHEMA_VERIFIED; currentGear removed and isIgnitionOn excluded); INTERVAL_ONLY; RUPTELA_R1 only;
       per-signal duplicate merge (CONFLICTING_DUPLICATE withheld, no first-row-wins); no L3 override.
     source_paths:
       - backend/src/modules/vehicle-intelligence/driving-intelligence/r1-obd-acquisition/
@@ -1460,16 +1461,52 @@ nodes:
 
   - id: DI-GAP-S3B-R1-FIELD-AUTHORITY-001
     type: gap
-    title: S3B R1 OBD fields not provider-schema verified; ignition excluded
+    title: S3B R1 OBD field authority — PARTIALLY_CLOSED (C1D.9A; residual currentGear)
     epistemic_status: CONFIRMED
     summary: >
-      All six queried R1 OBD fields are REPO_CONTRACT_ONLY (DIMO MCP unavailable in C1D.8B).
-      isIgnitionOn removed from the S3B query because AVG semantics are unverified (repo uses AVG and
-      MAX with a >= 0.5 coercion). No captured R1 OBD rows for FULL-R1-002 in repo; golden hook uses a
-      STRUCTURAL_DERIVED fixture.
+      PARTIALLY_CLOSED (C1D.9 / C1D.9A). Closed: provider authority established for the five active
+      V0_3 fields (speed km/h, rpm, throttle percent 0..100, load percent 0..100, ECT celsius) via DIMO
+      telemetry GraphQL introspection, DIMO VSS 4.2 spec and read-only R1 responses; AVG valid as an
+      interval mean. Residual: powertrainTransmissionCurrentGear excluded until a scientifically valid
+      categorical acquisition strategy and actual R1 evidence exist (AVG unsafe; 0/4 R1 devices expose
+      it). isIgnitionOn excluded independently (boolean exposed as Float). The residual gear item does
+      NOT block use of the five-field allowlist. Also open: multi-sample 1 s AVG behaviour unobserved;
+      no captured R1 OBD rows for FULL-R1-002 in repo (STRUCTURAL_DERIVED fixture).
+    notes: >
+      Original C1D.8B definition (historical): all six queried R1 OBD fields REPO_CONTRACT_ONLY (DIMO MCP
+      unavailable); isIgnitionOn removed because AVG semantics unverified (repo uses AVG and MAX with a
+      >= 0.5 coercion); S4 provider-backed R1 activation blocked.
+    evidence:
+      - DI-EVID-EXP021-C1D8B-001
+      - DI-EVID-EXP021-C1D9-001
     source_paths:
       - backend/src/modules/vehicle-intelligence/driving-intelligence/r1-obd-acquisition/di-v0-r1-obd-acquisition.versions.ts
       - architecture/drivingintelligence/evidence/EXP021_C1D8B_S3B_CONTRACT_HARDENING.md
+      - architecture/drivingintelligence/evidence/EXP021_C1D9_R1_FIELD_AUTHORITY_V03_CORRECTION.md
+
+  - id: DI-EVID-EXP021-C1D9-001
+    type: evidence
+    title: EXP-021 C1D.9 / C1D.9A S3B R1 field authority audit + V0_3 correction
+    epistemic_status: CONFIRMED
+    source_type: AUDIT_DOCUMENT
+    summary: >
+      Read-only provider authority (GraphQL introspection sha256 a10f4729…, model-garage VSS spec @ 6f5d8aa6,
+      4 Ruptela R1 vehicles) → 5/6 fields verified; currentGear AVG unsafe and unavailable on R1.
+      V0_3 correction: gear removed, five fields PROVIDER_SCHEMA_VERIFIED, AVG kept, combined identity V0_2.
+    source_paths:
+      - architecture/drivingintelligence/evidence/EXP021_C1D9_R1_FIELD_AUTHORITY_V03_CORRECTION.md
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/r1-obd-acquisition/__tests__/di-v0-s3b-r1-v03-authority.spec.ts
+
+  - id: DI-DEC-V0-S3B-R1-V03-FIELD-AUTHORITY-001
+    type: decision
+    title: DI V0 S3B R1 query V0_3 — provider field authority + currentGear removal (EXP-021 C1D.9A)
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: Five provider-verified AVG fields; currentGear removed (AVG unsafe, absent on R1); isIgnitionOn excluded; query/adapter/snapshot V0_3; combined identity V0_2; INTERVAL_ONLY unchanged.
+    source_paths:
+      - architecture/drivingintelligence/decisions/DECISION_REGISTER.md
+    evidence:
+      - DI-EVID-EXP021-C1D9-001
 
   - id: DI-GAP-S3A-AGG-001
     type: gap

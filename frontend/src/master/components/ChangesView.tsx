@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'di-exp021-c1d9a-s3b-r1-v03-field-authority-2026-09-27',
+    version: '4.9.2205',
+    title: 'Driving Intelligence — EXP-021 C1D.9A DI V0 S3B R1 query V0_3 (provider field authority, currentGear removed)',
+    summary: [
+      'R1 query/adapter/snapshot bumped to V0_3: exactly five fields (speed, rpm, throttle, engine load, ECT), all agg: AVG, all PROVIDER_SCHEMA_VERIFIED.',
+      'Authority from C1D.9 read-only audit: DIMO telemetry GraphQL introspection + DIMO VSS 4.2 spec + read-only responses from 4 Ruptela R1 vehicles; units km/h, rpm, percent 0..100, percent 0..100, °C — no rescaling, no range thresholds.',
+      'powertrainTransmissionCurrentGear removed from query, normalizer and S1 type: signed gear index where AVG synthesizes non-existent or false-Neutral gears; not exposed by any audited R1 device. isIgnitionOn stays excluded.',
+      'Temporal authority unchanged (INTERVAL_ONLY, never overrides L3); combined input identity stays V0_2; V0_2 R1 identifiers superseded and never aliased.',
+    ],
+    reason: 'Close DI-GAP-S3B-R1-FIELD-AUTHORITY-001 for the five safe fields (PARTIALLY_CLOSED; residual gear) before any S4 R1 shadow orchestration.',
+    previousBehavior:
+      'Query V0_2 carried six REPO_CONTRACT_ONLY fields including powertrainTransmissionCurrentGear(agg: AVG); fractional gear values could reach normalized evidence.',
+    details:
+      'backend/src/modules/vehicle-intelligence/driving-intelligence/r1-obd-acquisition/*; core/types.ts; architecture/drivingintelligence/evidence/EXP021_C1D9_R1_FIELD_AUTHORITY_V03_CORRECTION.md; DI-DEC-V0-S3B-R1-V03-FIELD-AUTHORITY-001.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-27T12:30:00.000Z',
+  },
+  {
     id: 'di-exp021-c1d8b-s3b-contract-hardening-2026-09-27',
     version: '4.9.2204',
     title: 'Driving Intelligence — EXP-021 C1D.8B DI V0 S3B contract hardening (red-team closure)',

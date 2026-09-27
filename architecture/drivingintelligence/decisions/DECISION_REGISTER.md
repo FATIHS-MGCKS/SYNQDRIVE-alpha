@@ -385,3 +385,21 @@ Validate graph consistency: `bash architecture/drivingintelligence/scripts/valid
 | **EPISTEMIC** | CONFIRMED (unit + golden-bound tests); field semantics INFERRED (repo contract only) |
 | **EVIDENCE** | DI-EVID-EXP021-C1D8B-001 |
 | **BOUNDARY** | Consulted: DIMO Integration (query ownership; legacy HF/trip-detection ignition queries unchanged), `DrivingEvent` persistence schema (read-only inspection) — no cross-module code change |
+| **AMENDED BY** | DI-DEC-V0-S3B-R1-V03-FIELD-AUTHORITY-001 (C1D.9A, 2026-09-27) — item (7) R1 query V0_2 / all `REPO_CONTRACT_ONLY` is the historical C1D.8B contract; superseded by query V0_3 (gear removed, five fields provider-verified) |
+
+## DI-DEC-V0-S3B-R1-V03-FIELD-AUTHORITY-001
+
+| Field | Value |
+|-------|-------|
+| **TITLE** | DI V0 S3B R1 query V0_3 — provider field authority + currentGear removal (EXP-021 C1D.9 / C1D.9A) |
+| **ERA** | EXP-021 C1D implementation (post-S3B merge, pre-S4) |
+| **STATUS** | PROPOSED |
+| **PROBLEM** | V0_2 queried six fields, all `REPO_CONTRACT_ONLY` (DI-GAP-S3B-R1-FIELD-AUTHORITY-001), blocking provider-backed S4 R1 activation. C1D.9 read-only audit found `powertrainTransmissionCurrentGear` is a signed int8 gear index exposed as `Float`; `agg: AVG` can synthesize non-existent (3.5) or false-Neutral (0 from −1/1) gears; the normalizer passed fractional values through; 0/4 R1 devices expose the field |
+| **DECISION** | (1) Remove `powertrainTransmissionCurrentGear` from the query and normalizer; drop the unused `gear` field from S1 `NormalizedR1ObdObservation`. (2) Keep `agg: AVG` for speed, rpm, throttle, load, ECT (interval mean of continuous quantities). (3) Mark those five `PROVIDER_SCHEMA_VERIFIED` with documented unit + value scale (km/h, rpm, percent 0..100, percent 0..100, °C); no rescaling; no range thresholds. (4) Bump query/adapter/R1 snapshot to V0_3; list V0_2 as superseded; combined input identity stays V0_2. (5) Five-field allowlist is architectural authority for future S4; gear + isIgnitionOn blocked. (6) Temporal authority unchanged: INTERVAL_ONLY, never overrides L3 |
+| **ALTERNATIVES** | Gear with FIRST/LAST + integer guard — rejected now (no R1 device exposes gear; no evidence to validate); keep gear as `REPO_CONTRACT_ONLY` — rejected (unsafe aggregation would enter evidence identity); runtime allowlist over V0_2 query — rejected (query would still request unsafe AVG gear); bump combined identity — rejected (it already hashes each pinned channel version) |
+| **RATIONALE** | Smallest correction that makes every queried field provider-verified and semantically valid under its aggregation |
+| **CONSEQUENCES** | R1 evidence identities change (V0_3); gear absent from S3B until a categorical acquisition strategy + real R1 evidence exist; S4 R1 five-field gate READY_FOR_SHADOW_ORCHESTRATION_DESIGN (no activation) |
+| **GRAPH NODES** | DI-DEC-V0-S3B-R1-V03-FIELD-AUTHORITY-001, DI-SVC-V0-R1-OBD-ACQ-001, DI-GAP-S3B-R1-FIELD-AUTHORITY-001, DI-EVID-EXP021-C1D9-001 |
+| **EPISTEMIC** | CONFIRMED (provider schema, official spec, read-only R1 responses, unit tests); multi-sample 1 s AVG behaviour UNKNOWN (not observed) |
+| **EVIDENCE** | DI-EVID-EXP021-C1D9-001 |
+| **BOUNDARY** | Consulted: DIMO Integration (provider telemetry schema facts recorded cross-module; shared transport/auth untouched; legacy HF/trip-detection queries unchanged) — no DIMO Integration code change |
