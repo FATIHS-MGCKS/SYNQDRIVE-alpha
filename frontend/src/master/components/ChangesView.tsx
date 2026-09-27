@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'di-exp021-c1d10c-s4a-contract-v2-authority-closure-2026-09-27',
+    version: '4.9.2207',
+    title: 'Driving Intelligence — EXP-021 C1D.10C DI V0 S4A contract v2 + enforcing validator (design only)',
+    summary: [
+      'S2 execution identity: DI_V0_S4_EXECUTION_IDENTITY_V1 (org, vehicle, trip, boundary fingerprint, pipeline version key, calibration bundle hash, orchestration version, purpose, discriminator, pinned snapshot, combined input identity) is written as S2 inputEvidenceVersion; a collision with a different identity fails closed. S2 key function unchanged.',
+      'Tenancy: TRIP_VEHICLE_ORGANIZATION (vehicle_trips → vehicles.organization_id); the C1D.10A guard referenced a nonexistent vehicle_trips.organization_id column (DI-CONTRA-S4A-TENANCY-SCHEMA-001 resolved).',
+      'Control plane: 6 flags default OFF (position mandatory), org/vehicle allowlists EMPTY = NONE and intersected, DB kill row di_v0_s4_control (missing or unreadable = KILLED, disable-only), pipeline registry + retirement; 13-transition state machine with DB-clock lease expiry on every holder write; lease 240/300/60/900 s.',
+      'Red-team validator: 47 negative cases (0 false accepts) and 21 positive cases (0 false rejects); frozen v1 contract rejected. Production re-read: S2 still empty, DB TimeZone Etc/UTC.',
+    ],
+    reason: 'Close the four C1D.10B P1 findings (execution identity, non-enforcing validator, tenancy schema, control plane) by construction before any S4A code exists.',
+    previousBehavior:
+      'Contract v1: S2 inputEvidenceVersion = combined input identity only; 11 transitions without expiry checks on T07–T09; replay could become SKIPPED; no retirement; validator accepted 8 of 13 invalid mutations.',
+    details:
+      'architecture/drivingintelligence/design/s4a/s4a-contract.v2.json; design/s4a/S4A_CONTROL_PLANE.md; scripts/validate-s4a-contract*.mjs; evidence/EXP021_C1D10C_AUTHORITY_CLOSURE.md; DI-DEC-V0-S4A-CONTRACT-V2-001; DI-GAP-S4-PROVIDER-BACKPRESSURE-001. No runtime code, migration, worker or deploy.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-27T17:10:00.000Z',
+  },
+  {
     id: 'di-exp021-c1d10a-authority-correction-s4a-contract-2026-09-27',
     version: '4.9.2206',
     title: 'Driving Intelligence — EXP-021 C1D.10A authority correction + frozen DI V0 S4A contract (design only)',
