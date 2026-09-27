@@ -65,6 +65,11 @@ describe('S3A dormant boundary (static)', () => {
   });
 
   it('no runtime caller: nothing outside the package references S3A', () => {
+    const siblingAllow = [
+      path.join(BACKEND_SRC, 'modules/vehicle-intelligence/driving-intelligence/r1-obd-acquisition'),
+      path.join(BACKEND_SRC, 'modules/vehicle-intelligence/driving-intelligence/native-event-evidence'),
+      path.join(BACKEND_SRC, 'modules/vehicle-intelligence/driving-intelligence/evidence-input'),
+    ];
     const markers = [
       'position-acquisition',
       'acquireDiV0HistoricalPositions',
@@ -73,6 +78,7 @@ describe('S3A dormant boundary (static)', () => {
     ];
     const hits = walkTs(BACKEND_SRC)
       .filter((f) => !f.startsWith(PACKAGE_DIR))
+      .filter((f) => !siblingAllow.some((prefix) => f.startsWith(prefix)))
       .filter((f) => {
         const content = fs.readFileSync(f, 'utf8');
         return markers.some((m) => content.includes(m));

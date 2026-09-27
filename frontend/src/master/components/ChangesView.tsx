@@ -36,6 +36,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'di-exp021-c1d8-s3b-r1-obd-native-events-2026-09-27',
+    version: '4.9.2203',
+    title: 'Driving Intelligence — EXP-021 C1D.8 DI V0 S3B R1 OBD + native event evidence (dormant)',
+    summary: [
+      'Channel A: r1-obd-acquisition — DIMO HF OBD subset over strict 1 s grid; INTERVAL_ONLY; VALUE_PRESENT / SIGNAL_NULL / ROW_ABSENT per signal; no fixed time correction; RUPTELA_R1 only.',
+      'Channel B: native-event-evidence — normalizes ingested driving_events-shaped records; NATIVE_EVENT_OBSERVATION; UNCALIBRATED max claim L1; zero events = NO_EVENT.',
+      'Separate provenance channels; SHA-256 snapshot identities + combined input identity helper for future S2 worker pinning.',
+      'No runtime caller, worker, queue, DB write, fusion, or product accel/brake logic.',
+    ],
+    reason: 'Prepare normalized R1 historical OBD and native provider event evidence for future shadow orchestration without overriding S3A→S1 L3.',
+    previousBehavior: 'S1 accepted manual NormalizedR1ObdObservation / NativeEventObservation fixtures only; no acquisition libraries.',
+    details:
+      'backend/src/modules/vehicle-intelligence/driving-intelligence/r1-obd-acquisition/*; native-event-evidence/*; evidence-input/di-v0-combined-input-identity.ts; architecture/drivingintelligence/evidence/EXP021_C1D8_S3B_R1_OBD_NATIVE_EVENT_ADAPTERS.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-27T08:30:00.000Z',
+  },
+  {
     id: 'di-exp021-c1d7-s3a-position-acquisition-2026-09-26',
     version: '4.9.2201',
     title: 'Driving Intelligence — EXP-021 C1D.7 DI V0 S3A position acquisition + normalization (dormant)',

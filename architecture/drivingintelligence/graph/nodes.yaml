@@ -1396,6 +1396,41 @@ nodes:
     evidence:
       - DI-EVID-EXP021-C1D7-001
 
+  - id: DI-EVID-EXP021-C1D8-001
+    type: evidence
+    title: EXP-021 C1D.8 S3B R1 OBD + native event evidence adapters
+    epistemic_status: CONFIRMED
+    summary: Dormant Channel A (R1 OBD INTERVAL_ONLY) and Channel B (native events, L1 ceiling) with snapshot identities.
+    source_paths:
+      - architecture/drivingintelligence/evidence/EXP021_C1D8_S3B_R1_OBD_NATIVE_EVENT_ADAPTERS.md
+
+  - id: DI-SVC-V0-R1-OBD-ACQ-001
+    type: service
+    title: DI V0 S3B R1 historical OBD evidence acquisition (library)
+    epistemic_status: CONFIRMED
+    summary: HF OBD subset normalization; INTERVAL_ONLY; RUPTELA_R1 only; no L3 override.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/r1-obd-acquisition/
+
+  - id: DI-SVC-V0-NATIVE-EVENT-EVIDENCE-001
+    type: service
+    title: DI V0 S3B native event evidence normalization (library)
+    epistemic_status: CONFIRMED
+    summary: Ingested native events → NATIVE_EVENT_OBSERVATION; UNCALIBRATED max L1; NO_EVENT when empty.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/native-event-evidence/
+
+  - id: DI-DEC-V0-S3B-R1-NATIVE-EVIDENCE-001
+    type: decision
+    title: DI V0 S3B R1 OBD + native event evidence adapters (EXP-021 C1D.8)
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: Separate dormant evidence channels before S4 shadow orchestration.
+    source_paths:
+      - architecture/drivingintelligence/decisions/DECISION_REGISTER.md
+    evidence:
+      - DI-EVID-EXP021-C1D8-001
+
   - id: DI-GAP-S3A-AGG-001
     type: gap
     title: S3A location aggregation AVG — fleet evidence partial closure (C1G)

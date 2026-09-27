@@ -350,3 +350,20 @@ Validate graph consistency: `bash architecture/drivingintelligence/scripts/valid
 | **EPISTEMIC** | CONFIRMED (code/tests/C1G coordinate audit); residual AVG midpoint theory if differing multi-sample coordinates appear |
 | **EVIDENCE** | DI-EVID-EXP021-C1D7-001, DI-TEST-V0-POSITION-ACQ-001 |
 | **BOUNDARY** | Consulted: DIMO Integration (transport reused, call-site audit), R1 temporal containment resolver (consumed, unchanged) — no cross-module code change |
+
+## DI-DEC-V0-S3B-R1-NATIVE-EVIDENCE-001
+
+| Field | Value |
+|-------|-------|
+| **TITLE** | DI V0 S3B R1 historical OBD + native event evidence adapters (EXP-021 C1D.8) |
+| **ERA** | EXP-021 C1D implementation (S3B after S3A) |
+| **STATUS** | PROPOSED |
+| **PROBLEM** | S1 can relate R1 OBD and native events but no library acquires/normalizes those channels with explicit temporal semantics, availability, calibration ceilings, and snapshot identity |
+| **DECISION** | Two dormant adapters: (A) R1 HF OBD subset on 1 s grid, `INTERVAL_ONLY`, per-signal VALUE_PRESENT/SIGNAL_NULL/ROW_ABSENT, `RUPTELA_R1` only, no fixed timing offsets; (B) native events from ingested `driving_events`-shaped records, `NATIVE_EVENT_OBSERVATION`, default `UNCALIBRATED` max claim `L1`, `NO_EVENT` when empty. Separate provenance types (`R1ObdEvidence` vs `NativeEventEvidence`). Combined input identity helper for future S2 pinning. |
+| **ALTERNATIVES** | Merging OBD + native into one normalized union rejected — erases provenance; using R1 OBD as continuous speed authority rejected — contradicts C0.3/C1F findings |
+| **RATIONALE** | Evidence-only slice; preserves S3A→S1 L3 authority; enables deterministic replay before any worker |
+| **CONSEQUENCES** | No production behavior change; S4 must wire caller + pin snapshots; native fusion remains NEEDS_VALIDATION; accel/braking production detectors remain NOT_SAFE |
+| **GRAPH NODES** | DI-DEC-V0-S3B-R1-NATIVE-EVIDENCE-001, DI-SVC-V0-R1-OBD-ACQ-001, DI-SVC-V0-NATIVE-EVENT-EVIDENCE-001 |
+| **EPISTEMIC** | CONFIRMED (unit tests); native accuracy on WOB not validated (0 events) |
+| **EVIDENCE** | DI-EVID-EXP021-C1D8-001 |
+| **BOUNDARY** | Consulted: DIMO Integration (transport), dimo-native-driving-events mapper (event type keys), R1 temporal containment — no production read-path change |

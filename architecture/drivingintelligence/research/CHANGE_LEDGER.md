@@ -1061,3 +1061,16 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Validation | position-acquisition 121 tests; S1/S2 regression; graph + registry validators |
 | Gaps | DI-GAP-S3A-AGG-001 → **PARTIALLY_CLOSED** (documented); DI-GAP-S3A-ARTIFACTS-001 partially mitigated |
 | Status | `PROPOSED` — closes red-team P1 on draft PR #1800 |
+
+### EXP-021 C1D.8 — S3B R1 OBD + native event evidence adapters (2026-09-27)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | S3A merged; S1 already accepts `NormalizedR1ObdObservation` / `NativeEventObservation` but had no acquisition libraries |
+| CHANGE | `r1-obd-acquisition/` (Channel A) + `native-event-evidence/` (Channel B) + `evidence-input/di-v0-combined-input-identity.ts`; governance + SynqDrive Code views |
+| WHY | Separate normalized evidence channels with deterministic snapshot identities before S4 shadow orchestration |
+| NON_EFFECTS | No worker, queue, scheduler, Nest registration, DB write, fusion, product accel/brake/coasting logic, L3 override, deploy |
+| Validation | S3B + S1/S2/S3A regression; typecheck/build/lint; graph + registry validators |
+| Status | `PROPOSED` — draft PR, pre-merge review only |
+| Evidence | `evidence/EXP021_C1D8_S3B_R1_OBD_NATIVE_EVENT_ADAPTERS.md` (DI-EVID-EXP021-C1D8-001) |
+| Decision | `DI-DEC-V0-S3B-R1-NATIVE-EVIDENCE-001` |
