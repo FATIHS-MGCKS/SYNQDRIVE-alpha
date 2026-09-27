@@ -851,6 +851,10 @@ edges:
     relation: PROVEN_BY
     to: EED-EV-0094
 
+  - from: EED-DEC-ERD-002
+    relation: PROVEN_BY
+    to: EED-EV-0095
+
   - from: EED-DEC-ERD-003
     relation: REFERENCES
     to: EED-DEC-ERD-001

@@ -1,5 +1,12 @@
 # KG-EED Changelog
 
+## 2026-09-27 — ERD E5.4C controlled single-vehicle shadow persist canary (Production)
+
+- Authorized Production mutation: one org/vehicle/window; `ErdRechargeShadowParityService.evaluateVehicleWindow({ persist: true })` run twice (12 created, then 12 deduped)
+- Release `20260927132448_v4994` @ `9322a5d6b6d10240f9af8491cc0106ad8c7ea98d`; runtime hook **not** used; `ERD_RECHARGE_SHADOW_PARITY_ENABLED` remained false
+- Evidence: `ERD-E5-4C-CONTROLLED-SHADOW-PERSIST-CANARY-2026-09-27.md` (EED-EV-0095)
+- No canonical VEE / legacy / HV / E6.3 product mutation; no env/deploy; **does not** authorize global automatic persistence
+
 ## 2026-09-27 — ERD E5.4B canonical stored-energy alignment (Step 2)
 
 - Canonical `VehicleEnergyEvent.energyDeltaKwh` from `HvChargeSession` stored extrema (`deriveStoredTractionEnergyDeltaKwh`); no `energyAddedKwh` fallback

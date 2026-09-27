@@ -1886,7 +1886,7 @@ nodes:
       unchanged; fragment siblings as MULTIPLE_LEGACY_ONE_CANONICAL diagnostic;
       LEGACY_ONLY for true orphan clusters only; multiplicity excluded from settled denominator.
     authority_class: EED_OWNS
-    evidence: [EED-EV-0091, EED-EV-0092, EED-EV-0093]
+    evidence: [EED-EV-0091, EED-EV-0092, EED-EV-0093, EED-EV-0095]
     source_paths:
       - architecture/knowledge-graphs/energy-event-detection/decisions/ERD-E5-4A-SHADOW-PARITY-PHYSICAL-EPISODE-TOPOLOGY-2026-09-27.md
 
@@ -1916,6 +1916,18 @@ nodes:
     summary: >
       Canonical energyDeltaKwh from stored extrema only; projection meta v2; PG-E1–E4;
       shadow stored-vs-stored regression; chargingEnergyAddedKwh product field not added.
+
+  - id: EED-EV-0095
+    type: evidence
+    title: ERD E5.4C controlled single-vehicle shadow persist canary
+    epistemic_status: HISTORICAL
+    source_type: PRODUCTION
+    source_paths:
+      - architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E5-4C-CONTROLLED-SHADOW-PERSIST-CANARY-2026-09-27.md
+    evidence_maturity: PROVEN_IN_PRODUCTION
+    summary: >
+      Direct service persist:true for one org/vehicle/window on release v4994; 12 shadow rows;
+      idempotent dedupe; global shadow flag OFF; LEGACY write authority; zero product/provider mutation.
 
   - id: EED-EV-0091
     type: evidence
