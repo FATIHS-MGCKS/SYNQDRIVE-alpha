@@ -178,6 +178,24 @@ function wireLongitudinalStack(prisma: PrismaClient) {
   return { reader, materialization, candidates, ackRepo };
 }
 
+async function positionFleetCursorBeforeVehicle(
+  prisma: PrismaClient,
+  organizationId: string,
+) {
+  await prisma.batteryLongitudinalReconciliationFleetCursor.upsert({
+    where: { id: 1 },
+    create: {
+      id: 1,
+      lastOrganizationId: organizationId,
+      lastVehicleId: '00000000-0000-4000-8000-000000000000',
+    },
+    update: {
+      lastOrganizationId: organizationId,
+      lastVehicleId: '00000000-0000-4000-8000-000000000000',
+    },
+  });
+}
+
 (LIVE ? describe : describe.skip)(
   'longitudinal reconciliation PostgreSQL (F4.1)',
   () => {
@@ -300,7 +318,6 @@ function wireLongitudinalStack(prisma: PrismaClient) {
         restSessionId: session.id,
       });
       const profileGeneratedAt = '2026-05-03T12:00:00.000Z';
-      const sharedDigest = `digest-same-science-${randomUUID()}`;
       await createFeatureRow(prisma, {
         organizationId,
         vehicleId,
@@ -309,7 +326,6 @@ function wireLongitudinalStack(prisma: PrismaClient) {
         computationPhase: BatteryRestSessionFeatureComputationPhase.FINAL,
         sessionTrust: BatteryRestSessionFeatureSessionTrust.VALID,
         inputSummary: summary,
-        inputDigest: sharedDigest,
         computedAt: new Date('2026-05-03T09:00:00.000Z'),
       });
 
@@ -329,7 +345,6 @@ function wireLongitudinalStack(prisma: PrismaClient) {
         computationPhase: BatteryRestSessionFeatureComputationPhase.FINAL,
         sessionTrust: BatteryRestSessionFeatureSessionTrust.VALID,
         inputSummary: summary,
-        inputDigest: sharedDigest,
         computedAt: new Date('2026-05-03T10:00:00.000Z'),
       });
 
@@ -708,7 +723,11 @@ function wireLongitudinalStack(prisma: PrismaClient) {
       const envBackup = process.env.BATTERY_V2_LONGITUDINAL_PROFILE_MATERIALIZATION_ENABLED;
       process.env.BATTERY_V2_LONGITUDINAL_PROFILE_MATERIALIZATION_ENABLED = 'true';
       try {
-        const { organizationId, vehicleId } = await createOrgVehicle(prisma, 'SCHED-OPS');
+        const org = await createOrg(prisma, 'SCHED-OPS');
+        const organizationId = org.id;
+        const vehicleId = await createDeterministicFleetVehicle(prisma, organizationId, 1);
+        await positionFleetCursorBeforeVehicle(prisma, organizationId);
+        const profileGeneratedAt = '2026-05-07T12:00:00.000Z';
         const session = await createRestSession(prisma, {
           organizationId,
           vehicleId,
@@ -743,7 +762,7 @@ function wireLongitudinalStack(prisma: PrismaClient) {
           organizationId,
           vehicleId,
           sessionLimit,
-          profileGeneratedAt: new Date().toISOString(),
+          profileGeneratedAt,
         };
 
         const [schedulerOutcome, opsOutcome] = await Promise.all([
@@ -759,10 +778,16 @@ function wireLongitudinalStack(prisma: PrismaClient) {
         });
         expect(revisionCount).toBe(1);
 
+        const currentFp = await candidates.computeCurrentSourceEvidenceFingerprint({
+          organizationId,
+          vehicleId,
+          sessionLimit,
+        });
         const ackCount = await prisma.batteryLongitudinalSourceEvidenceAck.count({
           where: {
             organizationId,
             vehicleId,
+            sourceEvidenceFingerprint: currentFp.fingerprint,
             longitudinalProfileContractVersion: REST_SESSION_LONGITUDINAL_PROFILE_CONTRACT_VERSION,
             profilePolicyVersion: REST_SESSION_LONGITUDINAL_PROFILE_POLICY_VERSION,
           },
@@ -775,7 +800,11 @@ function wireLongitudinalStack(prisma: PrismaClient) {
 
     it('leader turnover mid-tick — overlapping ticks converge without duplicate science', async () => {
       if (!dbOk) return;
-      const { organizationId, vehicleId } = await createOrgVehicle(prisma, 'LEADER');
+      const org = await createOrg(prisma, 'LEADER');
+      const organizationId = org.id;
+      const vehicleId = await createDeterministicFleetVehicle(prisma, organizationId, 1);
+      await positionFleetCursorBeforeVehicle(prisma, organizationId);
+      const profileGeneratedAt = '2026-05-08T12:00:00.000Z';
       const session = await createRestSession(prisma, {
         organizationId,
         vehicleId,
@@ -798,12 +827,6 @@ function wireLongitudinalStack(prisma: PrismaClient) {
         inputSummary: summary,
       });
 
-      await prisma.batteryLongitudinalReconciliationFleetCursor.upsert({
-        where: { id: 1 },
-        create: { id: 1, lastOrganizationId: null, lastVehicleId: null },
-        update: { lastOrganizationId: null, lastVehicleId: null },
-      });
-
       const [tickA, tickB] = await Promise.all([
         candidates.findCandidates({ batchSize: 2, sessionLimit }),
         candidates.findCandidates({ batchSize: 2, sessionLimit }),
@@ -817,7 +840,7 @@ function wireLongitudinalStack(prisma: PrismaClient) {
         organizationId,
         vehicleId,
         sessionLimit,
-        profileGeneratedAt: new Date().toISOString(),
+        profileGeneratedAt,
       };
       const outcomes = await Promise.allSettled([
         materialization.materialize(request),
