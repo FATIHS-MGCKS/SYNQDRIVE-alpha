@@ -255,6 +255,56 @@ function restoreShadowEnv(saved: Record<string, string | undefined>): void {
   }
 }
 
+const E5_4_ASYNC_WAIT_TIMEOUT_MS = 5000;
+const E5_4_ASYNC_WAIT_INTERVAL_MS = 25;
+
+async function waitForCondition(
+  predicate: () => boolean | Promise<boolean>,
+  options?: { timeoutMs?: number; intervalMs?: number; description?: string },
+): Promise<void> {
+  const timeoutMs = options?.timeoutMs ?? E5_4_ASYNC_WAIT_TIMEOUT_MS;
+  const intervalMs = options?.intervalMs ?? E5_4_ASYNC_WAIT_INTERVAL_MS;
+  const description = options?.description ?? 'condition';
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (await predicate()) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+  throw new Error(`Timed out after ${timeoutMs}ms waiting for ${description}`);
+}
+
+async function waitForShadowRowCount(
+  client: PrismaClient,
+  vehicleId: string,
+  minCount: number,
+  description?: string,
+): Promise<void> {
+  await waitForCondition(
+    async () => (await countShadowRows(client, vehicleId)) >= minCount,
+    {
+      description:
+        description ?? `shadow row count >= ${minCount} for vehicle ${vehicleId}`,
+    },
+  );
+}
+
+async function flushMicrotasks(): Promise<void> {
+  await Promise.resolve();
+  await Promise.resolve();
+}
+
+async function waitForMetricRunResult(
+  metrics: { recordRun: jest.Mock },
+  result: string,
+): Promise<void> {
+  await waitForCondition(
+    () => metrics.recordRun.mock.calls.some((call) => call[0] === result),
+    { description: `metrics.recordRun(${result})` },
+  );
+}
+
 const describeFn = LIVE ? describe : describe.skip;
 
 describeFn(
@@ -1072,7 +1122,7 @@ describeFn(
           windowFrom: WINDOW_FROM,
           windowTo: WINDOW_TO,
         });
-        await new Promise((resolve) => setTimeout(resolve, 150));
+        await waitForShadowRowCount(prisma, vehicle.id, 1, 'PG-SCOPE-1 shadow persist');
 
         expect(await countShadowRows(prisma, vehicle.id)).toBeGreaterThanOrEqual(1);
         expect(await countVee(prisma, vehicle.id)).toBe(veeBefore);
@@ -1114,7 +1164,7 @@ describeFn(
           windowFrom: WINDOW_FROM,
           windowTo: WINDOW_TO,
         });
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        await flushMicrotasks();
 
         expect(await countShadowRows(prisma, vehicle.id)).toBe(0);
       } finally {
@@ -1143,7 +1193,7 @@ describeFn(
           windowFrom: WINDOW_FROM,
           windowTo: WINDOW_TO,
         });
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        await flushMicrotasks();
 
         expect(await countShadowRows(prisma, vehicle.id)).toBe(0);
       } finally {
@@ -1171,7 +1221,7 @@ describeFn(
           windowFrom: WINDOW_FROM,
           windowTo: WINDOW_TO,
         });
-        await new Promise((resolve) => setTimeout(resolve, 150));
+        await waitForShadowRowCount(prisma, vehicle.id, 1, 'PG-SCOPE-4 shadow persist');
 
         expect(await countShadowRows(prisma, vehicle.id)).toBeGreaterThanOrEqual(1);
       } finally {
@@ -1185,7 +1235,8 @@ describeFn(
       const suffix = randomUUID().slice(0, 8);
       const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
       const service = buildShadowParityService(prisma);
-      const runtime = new ErdRechargeShadowParityRuntimeService(service);
+      const runtimeMetrics = { recordRun: jest.fn(), recordObservation: jest.fn() };
+      const runtime = new ErdRechargeShadowParityRuntimeService(service, runtimeMetrics as never);
       const previousFlag = process.env.ERD_RECHARGE_SHADOW_PARITY_ENABLED;
       process.env.ERD_RECHARGE_SHADOW_PARITY_ENABLED = '1';
       const realEvaluate = service.evaluateVehicleWindow.bind(service);
@@ -1204,7 +1255,13 @@ describeFn(
           }),
         ).not.toThrow();
 
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        await waitForMetricRunResult(
+          runtimeMetrics,
+          ERD_RECHARGE_SHADOW_RUN_RESULT.FAILED_ISOLATED,
+        );
+        expect(runtimeMetrics.recordRun).toHaveBeenCalledWith(
+          ERD_RECHARGE_SHADOW_RUN_RESULT.FAILED_ISOLATED,
+        );
       } finally {
         jest.restoreAllMocks();
         if (previousFlag === undefined) {
@@ -1221,7 +1278,8 @@ describeFn(
       const suffix = randomUUID().slice(0, 8);
       const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
       const service = buildShadowParityService(prisma);
-      const runtime = new ErdRechargeShadowParityRuntimeService(service);
+      const runtimeMetrics = { recordRun: jest.fn(), recordObservation: jest.fn() };
+      const runtime = new ErdRechargeShadowParityRuntimeService(service, runtimeMetrics as never);
       const savedEnv = snapshotShadowEnv();
       delete process.env[ERD_RECHARGE_SHADOW_PARITY_ENV_FLAG];
       process.env[ERD_RECHARGE_SHADOW_PARITY_CANARY_ALLOWLIST_ENV] = `${org.id}:${vehicle.id}`;
@@ -1241,7 +1299,13 @@ describeFn(
           }),
         ).not.toThrow();
 
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        await waitForMetricRunResult(
+          runtimeMetrics,
+          ERD_RECHARGE_SHADOW_RUN_RESULT.FAILED_ISOLATED,
+        );
+        expect(runtimeMetrics.recordRun).toHaveBeenCalledWith(
+          ERD_RECHARGE_SHADOW_RUN_RESULT.FAILED_ISOLATED,
+        );
       } finally {
         jest.restoreAllMocks();
         restoreShadowEnv(savedEnv);

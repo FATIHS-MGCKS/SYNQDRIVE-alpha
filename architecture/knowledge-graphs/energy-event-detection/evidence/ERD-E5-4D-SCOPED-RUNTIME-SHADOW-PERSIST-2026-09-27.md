@@ -37,7 +37,7 @@ Comparator / pairing / parity versions **unchanged** (v2 / v1 / v2).
 |-------|----------|
 | `erd-recharge-shadow-runtime-scope.policy.spec.ts` | C1–C16 policy matrix |
 | `erd-recharge-shadow-parity.runtime.spec.ts` | R1–R7 runtime unit matrix |
-| `erd-e5-4-recharge-shadow-parity.postgres.integration.spec.ts` | PG-SCOPE-1..4, S25b scoped fail-open; S25/S26 regression |
+| `erd-e5-4-recharge-shadow-parity.postgres.integration.spec.ts` | PG-SCOPE-1..4, S25b scoped fail-open; S25/S26 regression; bounded `waitForCondition` / row-count polling (no fixed post-hook sleeps) |
 
 ## Metrics
 

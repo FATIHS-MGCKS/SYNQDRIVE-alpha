@@ -12,6 +12,22 @@ const VEH_Y = '22222222-2222-4222-8222-222222222222';
 const WINDOW_FROM = new Date('2026-06-01T00:00:00.000Z');
 const WINDOW_TO = new Date('2026-06-02T23:59:59.999Z');
 
+async function waitForMetricRunResult(
+  metrics: { recordRun: jest.Mock },
+  result: string,
+  timeoutMs = 2000,
+  intervalMs = 5,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (metrics.recordRun.mock.calls.some((call) => call[0] === result)) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+  throw new Error(`Timed out waiting for metrics.recordRun(${result})`);
+}
+
 function saveEnv(keys: string[]): Record<string, string | undefined> {
   const saved: Record<string, string | undefined> = {};
   for (const key of keys) {
@@ -103,7 +119,7 @@ describe('ErdRechargeShadowParityRuntimeService', () => {
     process.env[ERD_RECHARGE_SHADOW_PARITY_CANARY_ALLOWLIST_ENV] = `${ORG_A}:${VEH_X}`;
     evaluateVehicleWindow.mockRejectedValue(new Error('injectPersistenceFailure'));
     expect(() => runtime.runAfterEnergyDetectionSafe(hookInput)).not.toThrow();
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await waitForMetricRunResult(metrics, ERD_RECHARGE_SHADOW_RUN_RESULT.FAILED_ISOLATED);
     expect(metrics.recordRun).toHaveBeenCalledWith(
       ERD_RECHARGE_SHADOW_RUN_RESULT.FAILED_ISOLATED,
     );
