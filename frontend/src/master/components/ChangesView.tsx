@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'di-exp021-c1d10a-authority-correction-s4a-contract-2026-09-27',
+    version: '4.9.2206',
+    title: 'Driving Intelligence — EXP-021 C1D.10A authority correction + frozen DI V0 S4A contract (design only)',
+    summary: [
+      'Authority corrected: the S2 shadow persistence migration was applied in Production on 2026-09-26 23:46 UTC by an unrelated deploy (#1801); tables empty, 0 inserts ever. Schema present ≠ S4 runtime active ≠ shadow runs executed ≠ customer use.',
+      'S4A contract frozen as design + machine contract (s4a-contract.v1.json, validate-s4a-contract.sh): 7-state work item, DB lease with epoch fencing (BullMQ only a wake-up hint), logical key + active-PRIMARY partial unique, pipeline version key incl. calibration bundle hash and channel enablement.',
+      'Settlement: 24 h quiet period after max(endTime, createdAt, latest applied repair) + 10-day drift horizon (60-day Production distribution; max late mutation ~6.4 days).',
+      'Native events fail closed: provider failures are swallowed today, so NO_EVENT is unprovable; READY_* requires a future ingest attestation. Combined input identity V0_3 separates DISABLED / NOT_APPLICABLE / NOT_READY / SOURCE_FAILURE; replay only from pinned snapshots.',
+    ],
+    reason: 'Close the four C1D.10 P1 findings at contract level and freeze a machine-testable S4A contract before any S4 code; merge = Production migration, so dormant-deploy safety is designed first.',
+    previousBehavior:
+      'C1D.6/C1D.7 authority said the S2 migration was unapplied; no frozen S4 identity/fencing/channel/pinning contract; settlement delay derived from a 5-row sample.',
+    details:
+      'architecture/drivingintelligence/design/s4a/*; evidence/EXP021_C1D10A_AUTHORITY_CORRECTION.md; evidence/EXP021_C1D10A_P2_TRIAGE.md; DI-DEC-V0-S4A-CONTRACT-001; DI-CONTRA-S2-PROD-MIGRATION-001. No runtime code, migration, worker or deploy.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-27T16:00:00.000Z',
+  },
+  {
     id: 'di-exp021-c1d9a-s3b-r1-v03-field-authority-2026-09-27',
     version: '4.9.2205',
     title: 'Driving Intelligence — EXP-021 C1D.9A DI V0 S3B R1 query V0_3 (provider field authority, currentGear removed)',
