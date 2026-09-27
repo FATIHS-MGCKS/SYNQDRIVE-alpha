@@ -1035,3 +1035,29 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Status | `PROPOSED` — merge review only; no deploy authorization |
 | Evidence | `evidence/EXP_021_C1D5_V0_PURE_CORE_2026-09-26.md` |
 | Decision | `DI-DEC-V0-SHADOW-PURE-CORE-001` |
+
+### EXP-021 C1D.7 — DI V0 S3A position acquisition + normalization (2026-09-26)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | C1D.6 S2 merged (`090c9383…`); S1 needs normalized position evidence + snapshot identity |
+| BEFORE | S1 core + S2 persistence had no input slice; `inputEvidenceVersion` had no producer |
+| CHANGE | New `driving-intelligence/position-acquisition/` dormant library: request/window validation, 1 s location query (`agg: AVG`), grid normalizer, coordinate validation, duplicate fail-safe, canonical source-family consumption, SHA-256 snapshot identity, typed redacted error model, DIMO transport adapter (type-only service imports, full request context) |
+| WHY | Keep acquisition semantics explicit (bucket label ≠ source timestamp; availability tri-state) before any worker exists |
+| NON_EFFECTS | No runtime caller, Nest registration, BullMQ, Redis, Prisma, migration, DB write, live provider call, customer/UI, trip/score/event/misuse effect; S1 contract unchanged; DIMO Integration code unchanged |
+| Validation | 110 new tests; 169-test S1/S2/call-site regression; `tsc`; `nest build` |
+| Gaps | DI-GAP-S3A-AGG-001, DI-GAP-S3A-REFTIME-001, DI-GAP-S3A-LIVE-001, DI-GAP-S3A-ARTIFACTS-001 |
+| Status | `PROPOSED` — draft PR, merge review only; no deploy authorization |
+| Evidence | `evidence/EXP021_C1D7_S3A_INPUT_NORMALIZATION_REPORT.md` (DI-EVID-EXP021-C1D7-001) |
+| Decision | `DI-DEC-V0-POSITION-ACQ-001` |
+
+### EXP-021 C1D.7B — PR #1800 S3A documentation closure + full-trip golden (2026-09-27)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | Pre-merge red-team P1: authority missing C1G aggregation + provider mutability + pinned replay semantics |
+| CHANGE | Docs/graph/CURRENT_STATE/DECISION_REGISTER; C1-MOBILE-FULL-R1-002 compact golden fixture + 11 new tests (S3A golden, mutability identity, S3A→S1 structural); SynqDrive Code views |
+| NON_EFFECTS | No S3A runtime/query/aggregator/normalization/snapshot algorithm change; no merge/deploy/S3B |
+| Validation | position-acquisition 121 tests; S1/S2 regression; graph + registry validators |
+| Gaps | DI-GAP-S3A-AGG-001 → **PARTIALLY_CLOSED** (documented); DI-GAP-S3A-ARTIFACTS-001 partially mitigated |
+| Status | `PROPOSED` — closes red-team P1 on draft PR #1800 |
