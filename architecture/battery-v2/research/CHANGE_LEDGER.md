@@ -12,6 +12,20 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-27 — M3.3F F4.1 race-safe bounded D3 reconciliation (engineering)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | F3 OBSERVED; D3 flag default OFF; F1 ops-only materialization; **no** scheduled D3 reconciliation; F4.0 audit proposed naive timestamp freshness (not implemented). |
+| **CHANGE** | Additive `source_evidence_fingerprint` on D3 revisions; bounded candidate repository; reconciliation service + scheduler; strict reconciliation env config; D4 revision read-only ops CLI; Postgres race/invalidation integration tests. |
+| **WHY** | Close lost-update + invalidation blind spots before any F4 D3 activation; F0 trigger `ON_DEMAND_INTERNAL_OPS_PLUS_BOUNDED_SCHEDULED_RECONCILIATION`. |
+| **VALIDATION** | `research/M3_3F_F4_1_RACE_SAFE_D3_RECONCILIATION_ENGINEERING_2026-09-27.md`; unit tests; optional Postgres integration env. |
+| **NON_EFFECTS** | Production deploy; D3 flag; `F_D3_T0`; backfill; C3 hooks; customer HTTP; E3 runtime. |
+| **DECISION_STATUS** | **EXPERIMENTAL** (engineering — activation separate) |
+| **EVIDENCE** | PR branch `cursor/battery-v2-m3-3f-f4-1-race-safe-d3-reconciliation-90ec`. |
+
 ## CL-2026-09-27 — M3.3F F3 natural C3 validation OBSERVED (~21h read-only follow-up)
 
 | Field | Value |

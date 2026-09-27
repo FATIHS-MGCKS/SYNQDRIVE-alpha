@@ -10,6 +10,7 @@ import {
   buildProfileTestInventory,
   buildProfileTestInventoryItem,
   PROFILE_TEST_GENERATED_AT,
+  PROFILE_TEST_SOURCE_EVIDENCE_FINGERPRINT,
 } from './longitudinal-profile.test-fixtures';
 
 function validPersistenceInput() {
@@ -25,7 +26,7 @@ function validPersistenceInput() {
   });
   if (assembled.status !== 'OK') throw new Error(assembled.reason);
   const fingerprint = computeLongitudinalScientificProfileFingerprintV1(assembled.profile);
-  return buildLongitudinalProfileMaterializationPersistenceInput(fingerprint);
+  return buildLongitudinalProfileMaterializationPersistenceInput(fingerprint, PROFILE_TEST_SOURCE_EVIDENCE_FINGERPRINT);
 }
 
 function mockRepo() {

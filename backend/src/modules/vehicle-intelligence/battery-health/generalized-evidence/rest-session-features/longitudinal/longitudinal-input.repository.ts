@@ -23,6 +23,8 @@ export type LongitudinalInputReadSnapshot = {
 
 export type LongitudinalInputSnapshotHooks = {
   pauseAfterSessionReadInSnapshot?: () => Promise<void>;
+  /** Invoked after sessions + canonical candidates are loaded (still inside snapshot tx). */
+  pauseAfterSnapshotLoaded?: () => Promise<void>;
 };
 
 export class LongitudinalInputRepository {
@@ -136,6 +138,7 @@ export class LongitudinalInputRepository {
       vehicleId: input.vehicleId,
       restSessionIds,
     });
+    await hooks?.pauseAfterSnapshotLoaded?.();
     return { sessions, canonicalCandidates };
   }
 }

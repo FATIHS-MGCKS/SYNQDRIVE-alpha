@@ -20,6 +20,7 @@ export const SINGLETON_GLOBAL_SCHEDULER_NAMES = [
   'data_retention',
   'storage_orphan_sweep',
   'battery_v2_reconciliation',
+  'battery_v2_longitudinal_materialization_reconciliation',
   'battery_v2_retention',
   'voice_retention',
   'iam_data_retention',

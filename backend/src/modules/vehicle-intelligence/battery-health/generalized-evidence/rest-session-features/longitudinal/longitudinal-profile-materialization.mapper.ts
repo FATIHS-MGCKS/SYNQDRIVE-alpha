@@ -17,6 +17,7 @@ export type LongitudinalProfileMaterializationPersistenceInput = {
   firstIncludedAnchorAt: Date | null;
   lastIncludedAnchorAt: Date | null;
   profileStatus: string;
+  sourceEvidenceFingerprint: string;
 };
 
 function parseOptionalAnchor(iso: string | null): Date | null {
@@ -29,6 +30,7 @@ function parseOptionalAnchor(iso: string | null): Date | null {
  */
 export function buildLongitudinalProfileMaterializationPersistenceInput(
   fingerprint: LongitudinalScientificProfileFingerprintV1,
+  sourceEvidenceFingerprint: string,
 ): LongitudinalProfileMaterializationPersistenceInput {
   const projection = fingerprint.scientificProjection;
   return {
@@ -47,5 +49,6 @@ export function buildLongitudinalProfileMaterializationPersistenceInput(
     firstIncludedAnchorAt: parseOptionalAnchor(projection.window.firstIncludedAnchorAt),
     lastIncludedAnchorAt: parseOptionalAnchor(projection.window.lastIncludedAnchorAt),
     profileStatus: projection.profileStatus,
+    sourceEvidenceFingerprint,
   };
 }

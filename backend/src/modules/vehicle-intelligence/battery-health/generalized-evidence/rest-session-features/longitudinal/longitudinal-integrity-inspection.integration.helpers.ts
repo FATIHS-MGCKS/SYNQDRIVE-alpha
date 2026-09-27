@@ -32,7 +32,7 @@ import type {
   LongitudinalInputVersionTuple,
 } from './longitudinal-input.types';
 import { REST_SESSION_LONGITUDINAL_INPUT_CONTRACT_VERSION } from './longitudinal-input.constants';
-import { PROFILE_TEST_GENERATED_AT, versionTuple } from './longitudinal-profile.test-fixtures';
+import { PROFILE_TEST_GENERATED_AT, PROFILE_TEST_SOURCE_EVIDENCE_FINGERPRINT, versionTuple } from './longitudinal-profile.test-fixtures';
 import { LongitudinalIntegrityInspectionService } from './longitudinal-integrity-inspection.service';
 
 export type D4IntegrationSessionSeed = {
@@ -368,7 +368,7 @@ export async function seedLongitudinalRevision(
   }
 
   const fingerprint = computeLongitudinalScientificProfileFingerprintV1(assembled.profile);
-  const persistence = buildLongitudinalProfileMaterializationPersistenceInput(fingerprint);
+  const persistence = buildLongitudinalProfileMaterializationPersistenceInput(fingerprint, PROFILE_TEST_SOURCE_EVIDENCE_FINGERPRINT);
   const outcome = await materializationRepo.insertIdempotent(persistence);
   return {
     organizationId,

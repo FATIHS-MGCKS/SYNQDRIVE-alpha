@@ -104,6 +104,7 @@ export function buildProfileTestInventory(
     dbSafetyMaxSessions: LONGITUDINAL_INPUT_DB_SAFETY_MAX_SESSIONS,
     requestedSessionLimit: requested,
     appliedSessionLimit: applied,
+    sourceEvidenceFingerprint: PROFILE_TEST_SOURCE_EVIDENCE_FINGERPRINT,
     sessions,
   };
 }
@@ -115,3 +116,5 @@ export function versionTuple(overrides: Partial<LongitudinalInputVersionTuple>):
 export const PROFILE_TEST_ORG = ORG;
 export const PROFILE_TEST_VEHICLE = VEHICLE;
 export const PROFILE_TEST_GENERATED_AT = '2026-09-24T12:00:00.000Z';
+export const PROFILE_TEST_SOURCE_EVIDENCE_FINGERPRINT =
+  'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';

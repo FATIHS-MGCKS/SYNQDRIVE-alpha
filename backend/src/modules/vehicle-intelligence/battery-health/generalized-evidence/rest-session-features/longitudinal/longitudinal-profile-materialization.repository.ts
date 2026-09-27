@@ -64,6 +64,21 @@ export class LongitudinalProfileMaterializationRepository {
     });
   }
 
+  async findLatestSourceEvidenceFingerprint(input: {
+    organizationId: string;
+    vehicleId: string;
+  }): Promise<string | null> {
+    const row = await this.db.batteryLongitudinalProfileRevision.findFirst({
+      where: {
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+      },
+      orderBy: { materializedAt: 'desc' },
+      select: { sourceEvidenceFingerprint: true },
+    });
+    return row?.sourceEvidenceFingerprint ?? null;
+  }
+
   findById(id: string): Promise<BatteryLongitudinalProfileRevision | null> {
     return this.db.batteryLongitudinalProfileRevision.findUnique({ where: { id } });
   }
@@ -97,7 +112,8 @@ export class LongitudinalProfileMaterializationRepository {
             excluded_session_count,
             first_included_anchor_at,
             last_included_anchor_at,
-            profile_status
+            profile_status,
+            source_evidence_fingerprint
           ) VALUES (
             ${id},
             ${input.organizationId},
@@ -114,7 +130,8 @@ export class LongitudinalProfileMaterializationRepository {
             ${input.excludedSessionCount},
             ${input.firstIncludedAnchorAt},
             ${input.lastIncludedAnchorAt},
-            ${input.profileStatus}
+            ${input.profileStatus},
+            ${input.sourceEvidenceFingerprint}
           )
           ON CONFLICT (
             organization_id,

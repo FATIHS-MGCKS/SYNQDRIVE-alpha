@@ -15,6 +15,9 @@ import {
   type LongitudinalInputSnapshotHooks,
 } from './longitudinal-input.repository';
 import { parseLongitudinalInputSnapshotSummary } from './longitudinal-input.snapshot-parser';
+import {
+  computeLongitudinalSourceEvidenceFingerprint,
+} from './longitudinal-source-evidence-fingerprint';
 import type {
   LongitudinalInputReadOutcome,
   LongitudinalInputReadRequest,
@@ -183,6 +186,14 @@ export class LongitudinalInputReaderService {
         });
       });
 
+    const sourceEvidence = computeLongitudinalSourceEvidenceFingerprint({
+      organizationId: request.organizationId,
+      vehicleId: request.vehicleId,
+      appliedSessionLimit,
+      sessions: snapshot.sessions,
+      canonicalCandidates: snapshot.canonicalCandidates,
+    });
+
     return {
       status: 'OK',
       result: {
@@ -193,6 +204,7 @@ export class LongitudinalInputReaderService {
         dbSafetyMaxSessions: LONGITUDINAL_INPUT_DB_SAFETY_MAX_SESSIONS,
         requestedSessionLimit: request.sessionLimit,
         appliedSessionLimit,
+        sourceEvidenceFingerprint: sourceEvidence.fingerprint,
         sessions,
       },
     };

@@ -9084,6 +9084,8 @@ model BatteryLongitudinalProfileRevision {
   firstIncludedAnchorAt              DateTime? @map("first_included_anchor_at")
   lastIncludedAnchorAt               DateTime? @map("last_included_anchor_at")
   profileStatus                      String   @map("profile_status")
+  /// SHA-256 hex of canonical D1 source-evidence snapshot at materialization (F4.1 freshness fence).
+  sourceEvidenceFingerprint          String?  @db.Char(64) @map("source_evidence_fingerprint")
   materializedAt                     DateTime @default(now()) @map("materialized_at")
   createdAt                          DateTime @default(now()) @map("created_at")
 

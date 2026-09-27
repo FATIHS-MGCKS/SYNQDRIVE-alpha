@@ -8,6 +8,7 @@ import {
   PROFILE_TEST_GENERATED_AT,
   PROFILE_TEST_ORG,
   PROFILE_TEST_VEHICLE,
+  PROFILE_TEST_SOURCE_EVIDENCE_FINGERPRINT,
 } from './longitudinal-profile.test-fixtures';
 import { evaluateMaterializedRevisionSelfIntegrity } from './longitudinal-integrity-inspection.self-integrity';
 
@@ -24,7 +25,7 @@ function revisionFromProfile(): BatteryLongitudinalProfileRevision {
   });
   if (assembled.status !== 'OK') throw new Error(assembled.reason);
   const fingerprint = computeLongitudinalScientificProfileFingerprintV1(assembled.profile);
-  const persistence = buildLongitudinalProfileMaterializationPersistenceInput(fingerprint);
+  const persistence = buildLongitudinalProfileMaterializationPersistenceInput(fingerprint, PROFILE_TEST_SOURCE_EVIDENCE_FINGERPRINT);
   return {
     id: 'rev-1',
     organizationId: PROFILE_TEST_ORG,
@@ -42,6 +43,7 @@ function revisionFromProfile(): BatteryLongitudinalProfileRevision {
     firstIncludedAnchorAt: persistence.firstIncludedAnchorAt,
     lastIncludedAnchorAt: persistence.lastIncludedAnchorAt,
     profileStatus: persistence.profileStatus,
+    sourceEvidenceFingerprint: persistence.sourceEvidenceFingerprint,
     createdAt: new Date('2026-09-24T12:00:00.000Z'),
     updatedAt: new Date('2026-09-24T12:00:00.000Z'),
     materializedAt: new Date('2026-09-24T12:00:00.000Z'),

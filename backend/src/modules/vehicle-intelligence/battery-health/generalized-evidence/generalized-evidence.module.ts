@@ -13,6 +13,9 @@ import { LongitudinalInputReaderService } from './rest-session-features/longitud
 import { LongitudinalProfileMaterializationRepository } from './rest-session-features/longitudinal/longitudinal-profile-materialization.repository';
 import { LongitudinalProfileMaterializationService } from './rest-session-features/longitudinal/longitudinal-profile-materialization.service';
 import { LongitudinalProfileMaterializationRuntimeService } from './rest-session-features/longitudinal/longitudinal-profile-materialization.runtime.service';
+import { LongitudinalReconciliationCandidateRepository } from './rest-session-features/longitudinal/longitudinal-reconciliation-candidate.repository';
+import { LongitudinalReconciliationService } from './rest-session-features/longitudinal/longitudinal-reconciliation.service';
+import { LongitudinalProfileRevisionInspectionService } from './rest-session-features/longitudinal/longitudinal-profile-revision-inspection.service';
 import { PrismaService } from '@shared/database/prisma.service';
 
 @Module({
@@ -39,6 +42,21 @@ import { PrismaService } from '@shared/database/prisma.service';
       inject: [LongitudinalInputReaderService, LongitudinalProfileMaterializationRepository],
     },
     LongitudinalProfileMaterializationRuntimeService,
+    {
+      provide: LongitudinalReconciliationCandidateRepository,
+      useFactory: (
+        prisma: PrismaService,
+        materializationRepository: LongitudinalProfileMaterializationRepository,
+      ) => new LongitudinalReconciliationCandidateRepository(prisma, materializationRepository),
+      inject: [PrismaService, LongitudinalProfileMaterializationRepository],
+    },
+    {
+      provide: LongitudinalProfileRevisionInspectionService,
+      useFactory: (materializationRepository: LongitudinalProfileMaterializationRepository) =>
+        new LongitudinalProfileRevisionInspectionService(materializationRepository),
+      inject: [LongitudinalProfileMaterializationRepository],
+    },
+    LongitudinalReconciliationService,
     BatteryRestSessionService,
     LateTripAssociationService,
     GeneralizedEvidenceCaptureService,
@@ -51,6 +69,7 @@ import { PrismaService } from '@shared/database/prisma.service';
     RestSessionFeatureShadowInspectionService,
     LongitudinalInputReaderService,
     LongitudinalProfileMaterializationRuntimeService,
+    LongitudinalReconciliationService,
     ProviderObservabilityGapModule,
   ],
 })

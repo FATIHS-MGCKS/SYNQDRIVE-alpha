@@ -30,7 +30,8 @@ export function revisionMetadataMirrorsPersistenceInput(
     revision.excludedSessionCount === expected.excludedSessionCount &&
     anchorTimesEqual(revision.firstIncludedAnchorAt, expected.firstIncludedAnchorAt) &&
     anchorTimesEqual(revision.lastIncludedAnchorAt, expected.lastIncludedAnchorAt) &&
-    revision.profileStatus === expected.profileStatus
+    revision.profileStatus === expected.profileStatus &&
+    revision.sourceEvidenceFingerprint === expected.sourceEvidenceFingerprint
   );
 }
 

@@ -10,6 +10,7 @@ import { PaymentsModule } from '@modules/payments/payments.module';
 import { BillingModule } from '@modules/billing/billing.module';
 import { TaskAutomationOutboxModule } from '@modules/tasks/outbox/task-automation-outbox.module';
 import { BatteryV2JobsModule } from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-jobs.module';
+import { BatteryGeneralizedEvidenceModule } from '@modules/vehicle-intelligence/battery-health/generalized-evidence/generalized-evidence.module';
 import { BatteryV2JobsProducerModule } from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-jobs-producer.module';
 import { VoiceWebhookIngestionModule } from '@modules/voice-webhook-ingestion/voice-webhook-ingestion.module';
 import { VoiceAssistantModule } from '@modules/voice-assistant/voice-assistant.module';
@@ -70,6 +71,7 @@ import { DataRetentionScheduler } from './schedulers/data-retention.scheduler';
 import { StorageOrphanSweepScheduler } from './schedulers/storage-orphan-sweep.scheduler';
 import { BatteryV2RetentionScheduler } from './schedulers/battery-v2-retention.scheduler';
 import { BatteryV2ReconciliationScheduler } from './schedulers/battery-v2-reconciliation.scheduler';
+import { BatteryV2LongitudinalMaterializationReconciliationScheduler } from './schedulers/battery-v2-longitudinal-materialization-reconciliation.scheduler';
 import { VoiceRetentionScheduler } from './schedulers/voice-retention.scheduler';
 import { IamDataRetentionScheduler } from './schedulers/iam-data-retention.scheduler';
 import { IamDataRetentionModule } from '@modules/iam-data-retention/iam-data-retention.module';
@@ -114,6 +116,7 @@ import { VehicleWarningGdprModule } from '@modules/vehicle-warning-gdpr/vehicle-
     TaskAutomationOutboxModule,
     BatteryV2JobsProducerModule,
     BatteryV2JobsModule,
+    BatteryGeneralizedEvidenceModule,
     VoiceWebhookIngestionModule,
     VoiceAssistantModule,
     IamDataRetentionModule,
@@ -166,6 +169,7 @@ import { VehicleWarningGdprModule } from '@modules/vehicle-warning-gdpr/vehicle-
     DataRetentionScheduler,
     StorageOrphanSweepScheduler,
     BatteryV2ReconciliationScheduler,
+    BatteryV2LongitudinalMaterializationReconciliationScheduler,
     BatteryV2RetentionScheduler,
     VoiceRetentionScheduler,
     IamDataRetentionScheduler,
