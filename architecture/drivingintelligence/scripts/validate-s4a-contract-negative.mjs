@@ -68,6 +68,24 @@ const NEGATIVE = [
   ['N44', 'contract claims every boundary mutation re-arms the 24 h timer', (c) => { c.settlement.everyBoundaryMutationRearmsQuietTimer = true; }, /must not claim every boundary mutation re-arms/],
   ['N45', 'malformed allowlist entry ignored instead of failing closed', (c) => { c.controlPlane.allowlists.vehicle.malformedEntry = 'DROP_ENTRY'; }, /malformed vehicle allowlist must fail closed/],
   ['N46', 'frozen C1D.10A v1 contract under v2 invariants', 'V1', /required section missing/],
+  ['N47', 'T03 heartbeat permitted while killed (kill guard removed)', (c) => drop(c, 'T03_HEARTBEAT', 'CONTROL_PLANE_DB_NOT_KILLED'), /T03_HEARTBEAT must include CONTROL_PLANE_DB_NOT_KILLED/],
+  ['N48', 'T08 fail-terminal permitted while killed', (c) => drop(c, 'T08_FAIL_TERMINAL', 'CONTROL_PLANE_DB_NOT_KILLED'), /T08_FAIL_TERMINAL must include CONTROL_PLANE_DB_NOT_KILLED/],
+  ['N49', 'T09 skip permitted while killed', (c) => drop(c, 'T09_SKIP_INELIGIBLE', 'CONTROL_PLANE_DB_NOT_KILLED'), /T09_SKIP_INELIGIBLE must include CONTROL_PLANE_DB_NOT_KILLED/],
+  ['N50', 'arbitrary extra transition permitted while killed', (c) => { c.controlPlane.writesAllowedWhileKilled.push('T03_HEARTBEAT'); c.killPolicy.writesAllowedWhileKilled.push('T03_HEARTBEAT'); }, /writesAllowedWhileKilled must be exactly/],
+  ['N51', 'non-transition S2 write omitted from kill policy registry', (c) => { c.authoritativeWrites = c.authoritativeWrites.filter((w) => w.writeId !== 'W_S2_RUN_INSERT'); }, /W_S2_RUN_INSERT|authoritativeWrites|transition .* missing authoritativeWrites/],
+  ['N52', 'non-transition snapshot write omitted from registry', (c) => { c.authoritativeWrites = c.authoritativeWrites.filter((w) => w.writeId !== 'W_EVIDENCE_SNAPSHOT_INSERT'); }, /W_EVIDENCE_SNAPSHOT_INSERT|authoritativeWrites/],
+  ['N53', 'unknown transition in writesAllowedWhileKilled', (c) => { c.controlPlane.writesAllowedWhileKilled = ['T07_FAIL_RETRYABLE', 'T99_FAKE']; }, /writesAllowedWhileKilled must be exactly/],
+  ['N54', 'duplicate kill-policy declarations', (c) => { c.controlPlane.writesAllowedWhileDisabled = ['T07_FAIL_RETRYABLE']; }, /writesAllowedWhileDisabled is superseded/],
+  ['N55', 'missing kill policy section', (c) => { delete c.killPolicy; }, /killPolicy section missing|required section missing: killPolicy/],
+  ['N56', 'kill check outside authoritative transaction only', (c) => { c.killPolicy.serialization.killCheckSameTxAsAuthoritativeWrite = false; }, /kill check must occur in same transaction/],
+  ['N57', 'missing control row interpreted as enabled', (c) => { c.controlPlane.dbKillRow.missingRow = 'NOT_KILLED'; }, /missingRow must fail closed/],
+  ['N58', 'read failure interpreted as enabled', (c) => { c.controlPlane.dbKillRow.readError = 'NOT_KILLED'; }, /readError must fail closed/],
+  ['N59', 'malformed row interpreted as enabled', (c) => { c.controlPlane.dbKillRow.parseError = 'NOT_KILLED'; }, /parseError must fail closed/],
+  ['N60', 'T07 includes kill guard (cannot relinquish while killed)', (c) => { T(c, 'T07_FAIL_RETRYABLE').guards.push('CONTROL_PLANE_DB_NOT_KILLED'); }, /must not include CONTROL_PLANE_DB_NOT_KILLED/],
+  ['N61', 'default-allow: all transitions drop kill guard', (c) => { for (const t of c.transitions) t.guards = t.guards.filter((g) => g !== 'CONTROL_PLANE_DB_NOT_KILLED'); }, /must include CONTROL_PLANE_DB_NOT_KILLED/],
+  ['N62', 'duplicate authoritative write classification', (c) => { c.authoritativeWrites.push({ ...c.authoritativeWrites[0], writeId: c.authoritativeWrites[0].writeId }); }, /duplicate or missing id/],
+  ['N63', 'wildcard kill-policy allowlist', (c) => { c.controlPlane.writesAllowedWhileKilled = ['*']; }, /writesAllowedWhileKilled must be exactly/],
+  ['N64', 'unpinned kill race fixture removed', (c) => { delete c.fixtures.requiredKillRaceIds; c.fixtures.killRaces = c.fixtures.killRaces.filter((r) => r.id !== 'K18'); }, /required pinned race missing: K18|K01/],
 ];
 
 const POSITIVE_VARIANTS = [
@@ -92,7 +110,10 @@ const POSITIVE_SCENARIOS = [
   ['native SOURCE_FAILURE', ['ch:native SOURCE_FAILURE']],
   ['mixed-version replica refusal', ['race:R15_MIXED_VERSION_CLAIM_REFUSED', 'race:R16_MIXED_VERSION_COMPLETE_REFUSED']],
   ['boundary supersession', ['race:R10_CONCURRENT_SUPERSESSION', 'race:R11_SUPERSEDE_DURING_LEASE', 'race:R24_HOLDER_SUPERSEDE_ON_BOUNDARY_CHANGE']],
-  ['DB kill active', ['cp:DB kill active', 'race:R17_DB_KILL_BLOCKS_CLAIM_AND_COMPLETE']],
+  ['DB kill active', ['cp:DB kill active', 'race:R17_DB_KILL_BLOCKS_CLAIM_AND_COMPLETE', 'race:K11', 'race:K12']],
+  ['kill blocks heartbeat', ['race:K04', 'race:K03']],
+  ['T07 safe relinquish while killed', ['race:K10', 'race:K18', 'race:R17_DB_KILL_BLOCKS_CLAIM_AND_COMPLETE']],
+  ['kill row missing fails closed', ['race:K15', 'race:K16']],
   ['env master OFF', ['cp:env master OFF', 'cp:DB NOT_KILLED cannot enable with env master OFF']],
   ['empty allowlist', ['cp:empty org allowlist', 'cp:empty vehicle allowlist', 'cp:both allowlists empty']],
   ['explicit allowed vehicle/org', ['cp:explicit allowed vehicle/org', 'cp:duplicate allowlist entries']],
@@ -135,7 +156,7 @@ console.log(`NEGATIVE_CONTRACT_CASES=${negCount}`);
 console.log(`NEGATIVE_CONTRACT_FALSE_ACCEPT_COUNT=${falseAccepts + wrongReason} (false accepts ${falseAccepts}, wrong-reason rejections ${wrongReason})`);
 console.log(`POSITIVE_CONTRACT_CASES=${posCount}`);
 console.log(`POSITIVE_CONTRACT_FALSE_REJECT_COUNT=${falseRejects}`);
-if (negCount < 22 || falseAccepts + wrongReason > 0 || falseRejects > 0) {
+if (negCount < 47 || falseAccepts + wrongReason > 0 || falseRejects > 0) {
   console.error('==> S4A NEGATIVE CONTRACT SUITE FAILED');
   process.exit(1);
 }

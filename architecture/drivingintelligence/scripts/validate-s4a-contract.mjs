@@ -18,12 +18,14 @@ const sha256 = (s) => crypto.createHash('sha256').update(s, 'utf8').digest('hex'
 const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 const REQUIRED_SECTIONS = [
-  'contractVersion', 'limits', 'executionAuthority', 'controlPlane', 'states', 'transitions', 'mustBeIllegal',
-  'runPurposes', 'identity', 'identityLayers', 's2ExecutionIdentity', 'pipelineVersion', 'boundaryFingerprint',
-  'pipelineRetirement', 'channelOutcomes', 'channelRules', 'nativeReadiness', 'combinedInputIdentity', 'replay',
-  'tenancy', 'settlement', 'providerBackpressure', 'activationGates', 'migration', 'migrationRules',
+  'contractVersion', 'limits', 'executionAuthority', 'controlPlane', 'killPolicy', 'authoritativeWrites', 'states',
+  'transitions', 'mustBeIllegal', 'runPurposes', 'identity', 'identityLayers', 's2ExecutionIdentity', 'pipelineVersion',
+  'boundaryFingerprint', 'pipelineRetirement', 'channelOutcomes', 'channelRules', 'nativeReadiness', 'combinedInputIdentity',
+  'replay', 'tenancy', 'settlement', 'providerBackpressure', 'activationGates', 'migration', 'migrationRules',
   'zeroImpactInvariants', 'fixtures',
 ];
+const KILL_GUARD = 'CONTROL_PLANE_DB_NOT_KILLED';
+const WRITES_ALLOWED_WHILE_KILLED = ['T07_FAIL_RETRYABLE'];
 const MIN_ILLEGAL = [
   'SUPERSEDED->PENDING', 'SUPERSEDED->LEASED', 'SUPERSEDED->COMPLETED', 'COMPLETED->LEASED', 'COMPLETED->PENDING',
   'COMPLETED->FAILED_RETRYABLE', 'COMPLETED->FAILED_TERMINAL', 'FAILED_TERMINAL->LEASED', 'FAILED_TERMINAL->PENDING',
@@ -411,7 +413,17 @@ export function validateContract(c, { docs = [], printHashes = false } = {}) {
     for (const t of CP_REQUIRED_TERMS) if (!cp.effectiveEnabledRequires?.includes(t)) fail(`effective enablement must require ${t}${t === 'POSITION' ? ' (position disabled must make the run non-executable)' : ''}`);
     for (const t of ['MASTER', 'DB_NOT_KILLED']) if (!cp.maintenanceActorsRequire?.includes(t)) fail(`maintenance actors must require ${t}`);
     if (cp.dbCanEnable !== false) fail('DB control must not be able to enable S4');
-    for (const w of cp.writesAllowedWhileDisabled ?? []) if (T(w)?.to === 'COMPLETED' || T(w)?.leaseEpoch === 'INCREMENT') fail(`${w} must not be allowed while disabled`);
+    const allowedKilled = cp.writesAllowedWhileKilled ?? cp.writesAllowedWhileDisabled ?? [];
+    if (!eq(allowedKilled, WRITES_ALLOWED_WHILE_KILLED)) fail(`writesAllowedWhileKilled must be exactly ${WRITES_ALLOWED_WHILE_KILLED.join(', ')}`);
+    if (cp.writesAllowedWhileDisabled !== undefined) fail('writesAllowedWhileDisabled is superseded by writesAllowedWhileKilled (C1D.10E)');
+    for (const w of allowedKilled) if (T(w)?.to === 'COMPLETED' || T(w)?.leaseEpoch === 'INCREMENT') fail(`${w} must not be allowed while killed`);
+    if (T('T07_FAIL_RETRYABLE')?.lease !== 'CLEAR') fail('T07 must CLEAR lease (safe relinquish only)');
+    if (has('T07_FAIL_RETRYABLE', 'S2_WRITTEN_SAME_TX') || has('T07_FAIL_RETRYABLE', KILL_GUARD)) fail('T07 must not persist S2 or bypass kill guard semantics');
+    for (const t of c.transitions) {
+      const mustKill = !WRITES_ALLOWED_WHILE_KILLED.includes(t.id);
+      if (mustKill && !t.guards.includes(KILL_GUARD)) fail(`${t.id} must include ${KILL_GUARD}`);
+      if (!mustKill && t.guards.includes(KILL_GUARD)) fail(`${t.id} is the only transition permitted while killed and must not include ${KILL_GUARD}`);
+    }
     for (const key of ['organization', 'vehicle']) {
       const a = cp.allowlists?.[key];
       if (!a) { fail(`${key} allowlist missing`); continue; }
@@ -444,6 +456,51 @@ export function validateContract(c, { docs = [], printHashes = false } = {}) {
       if (got !== cs.expect) fail(`control-plane scenario "${cs.name}" expected ${cs.expect} got ${got}`);
     }
     log.push(`Control plane: ${Object.keys(flags).length} flags default OFF, ${sc.cases.length} scenarios OK`);
+  });
+
+  // ── Kill policy + authoritative write-set (P1-E exhaustive) ───────────────
+  section('kill write-set', () => {
+    const kp = c.killPolicy;
+    if (!kp) fail('killPolicy section missing');
+    if (!eq(kp.writesAllowedWhileKilled, WRITES_ALLOWED_WHILE_KILLED)) fail('killPolicy.writesAllowedWhileKilled mismatch');
+    if (kp.serialization?.killCheckSameTxAsAuthoritativeWrite !== true) fail('kill check must occur in same transaction as authoritative write');
+    if (kp.serialization?.controlRowLock !== "SELECT kill_state FROM di_v0_s4_control WHERE id = 'GLOBAL' FOR UPDATE") fail('kill control row lock contract missing');
+    const writes = c.authoritativeWrites ?? [];
+    if (!writes.length) fail('authoritativeWrites registry empty');
+    const ids = new Set();
+    const byTransition = new Map();
+    for (const w of writes) {
+      if (!w.writeId || ids.has(w.writeId)) fail(`authoritative write duplicate or missing id: ${w.writeId}`);
+      ids.add(w.writeId);
+      const computedAllowed = w.transitionId
+        ? WRITES_ALLOWED_WHILE_KILLED.includes(w.transitionId)
+        : w.writeId === 'W_CONTROL_ROW_OPERATOR_UPDATE';
+      if (w.allowedWhileKilled !== computedAllowed) fail(`${w.writeId}: allowedWhileKilled inconsistent with transition binding`);
+      if (w.transitionId) {
+        if (!T(w.transitionId)) fail(`${w.writeId}: unknown transitionId ${w.transitionId}`);
+        if (byTransition.has(w.transitionId)) fail(`duplicate authoritative write for transition ${w.transitionId}`);
+        byTransition.set(w.transitionId, w);
+      }
+    }
+    for (const t of c.transitions) {
+      if (!byTransition.has(t.id)) fail(`transition ${t.id} missing authoritativeWrites row`);
+      const row = byTransition.get(t.id);
+      if (row.requiresDbNotKilled !== !WRITES_ALLOWED_WHILE_KILLED.includes(t.id)) fail(`${t.id}: requiresDbNotKilled inconsistent`);
+    }
+    const boundOnly = writes.filter((w) => w.boundTo);
+    const requiredBoundWriteIds = [
+      'W_EVIDENCE_SNAPSHOT_INSERT', 'W_S2_RUN_INSERT', 'W_S2_INTERVAL_INSERT', 'W_PIPELINE_REGISTRY_UPSERT', 'W_SUCCESSOR_PRIMARY_INSERT',
+    ];
+    for (const id of requiredBoundWriteIds) if (!writes.some((w) => w.writeId === id)) fail(`authoritative write missing required bound write: ${id}`);
+    for (const w of boundOnly) {
+      if (!T(w.boundTo)) fail(`${w.writeId}: boundTo unknown transition ${w.boundTo}`);
+      if (w.allowedWhileKilled) fail(`${w.writeId}: non-transition write must not be allowed while killed`);
+      if (!w.requiresDbNotKilled) fail(`${w.writeId}: bound write must require DB_NOT_KILLED`);
+    }
+    if (writes.length !== 19) fail(`authoritativeWrites must classify exactly 19 writes (got ${writes.length})`);
+    const transitionIds = new Set(c.transitions.map((t) => t.id));
+    for (const id of WRITES_ALLOWED_WHILE_KILLED) if (!transitionIds.has(id)) fail(`writesAllowedWhileKilled references missing transition ${id}`);
+    log.push(`Kill write-set: ${writes.length} authoritative writes classified, ${WRITES_ALLOWED_WHILE_KILLED.length} allowed while killed`);
   });
 
   // ── Channel run scenarios (flags x outcomes) ──────────────────────────────
@@ -537,7 +594,15 @@ export function validateContract(c, { docs = [], printHashes = false } = {}) {
 
   // ── Race model (guard-driven: removing a guard changes behavior) ──────────
   section('race model', () => {
-    for (const race of f.races) {
+    const pinnedKill = Array.from({ length: 18 }, (_, i) => `K${String(i + 1).padStart(2, '0')}`);
+    if (!f.requiredKillRaceIds || !eq(f.requiredKillRaceIds, pinnedKill)) fail('fixtures.requiredKillRaceIds must pin K01..K18');
+    if (!f.requiredRaceIds?.length) fail('fixtures.requiredRaceIds must pin core R## races');
+    const required = [...f.requiredRaceIds, ...f.requiredKillRaceIds];
+    const allRaces = [...(f.races ?? []), ...(f.killRaces ?? [])];
+    const seen = new Set(allRaces.map((r) => r.id));
+    for (const id of required) if (!seen.has(id)) fail(`required pinned race missing: ${id}`);
+    for (const race of allRaces) {
+      if (!race.id || (!/^R\d{2}_/.test(race.id) && !/^K\d{2}$/.test(race.id))) fail(`race fixture must have pinned id (R##_… or K##), got ${race.id}`);
       const r = runRace(race);
       const e = race.expect;
       const first = r.items[0];
@@ -563,13 +628,19 @@ export function validateContract(c, { docs = [], printHashes = false } = {}) {
       for (const x of r.rejected) if (!expected.some((tok) => x === tok || x.startsWith(`${tok}:`))) fail(`${race.id}: unexpected rejection ${x}`);
       results[`race:${race.id}`] = errors.length === before ? 'PASS' : 'FAIL';
     }
-    log.push(`Race model: ${f.races.length} races OK`);
+    log.push(`Race model: ${allRaces.length} races OK (${f.killRaces?.length ?? 0} kill)`);
   });
 
   function runRace(race) {
     let now = 0;
     let currentFp = 'fp-1';
     let killed = false;
+    let killMode = 'NOT_KILLED';
+    const dbKillState = () => {
+      if (killMode === 'MISSING' || killMode === 'READ_ERROR' || killMode === 'MALFORMED' || killMode === 'KILLED') return 'KILLED';
+      return 'NOT_KILLED';
+    };
+    const killBlocks = (tid) => has(tid, KILL_GUARD) && dbKillState() === 'KILLED';
     let registry = 'ACTIVE';
     let s2Conflict = null;
     const items = [];
@@ -588,7 +659,8 @@ export function validateContract(c, { docs = [], printHashes = false } = {}) {
       if (has('T01_CREATE', 'LOGICAL_KEY_UNIQUE') && byLogical.has(key)) return false;
       if (has('T01_CREATE', 'ACTIVE_PRIMARY_UNIQUE') && purpose === 'PRIMARY' && activePrimaryExists()) return false;
       if (has('T01_CREATE', 'PIPELINE_VERSION_ACTIVE') && registry !== 'ACTIVE') return false;
-      if (has('T01_CREATE', 'CONTROL_PLANE_DISCOVERY_ENABLED') && killed) return false;
+      if (has('T01_CREATE', 'CONTROL_PLANE_DISCOVERY_ENABLED') && dbKillState() === 'KILLED') return false;
+      if (has('T01_CREATE', KILL_GUARD) && dbKillState() === 'KILLED') return false;
       byLogical.add(key);
       applied('NONE', 'PENDING', 'T01');
       items.push({
@@ -603,7 +675,8 @@ export function validateContract(c, { docs = [], printHashes = false } = {}) {
       if (!token || !token.startsWith(`${it.id}#`)) return false;
       if (has(tid, 'EPOCH_MATCH') && token !== `${it.id}#${it.epoch}`) return false;
       if (has(tid, 'LEASE_NOT_EXPIRED_DB_CLOCK') && !(it.expires != null && now < it.expires)) return false;
-      if (has(tid, 'CONTROL_PLANE_WORKER_ENABLED') && killed) return false;
+      if (killBlocks(tid)) return false;
+      if (has(tid, 'CONTROL_PLANE_WORKER_ENABLED') && dbKillState() === 'KILLED') return false;
       return true;
     };
     const release = (it) => { it.owner = null; it.expires = null; it.acquiredAt = null; };
@@ -621,7 +694,10 @@ export function validateContract(c, { docs = [], printHashes = false } = {}) {
       switch (op) {
         case 'create': ok = create(a1, a2); break;
         case 'advance': now += actor; continue;
-        case 'kill': killed = true; continue;
+        case 'kill': killed = true; killMode = 'KILLED'; continue;
+        case 'setKillMissing': killMode = 'MISSING'; continue;
+        case 'setKillMalformed': killMode = 'MALFORMED'; continue;
+        case 'setKillReadError': killMode = 'READ_ERROR'; continue;
         case 'retireRegistry': registry = 'RETIRED'; continue;
         case 'tripChange': currentFp = a1; continue;
         case 's2Preexisting': s2Conflict = a1; continue;
@@ -634,7 +710,8 @@ export function validateContract(c, { docs = [], printHashes = false } = {}) {
           if (allowed && has(tid, 'ATTEMPTS_REMAINING')) allowed = it.attempts < L.maxAttempts;
           if (allowed && has(tid, 'PIPELINE_VERSION_MATCH')) allowed = it.pvk === workerPvk;
           if (allowed && has(tid, 'PIPELINE_VERSION_ACTIVE')) allowed = registry === 'ACTIVE';
-          if (allowed && has(tid, 'CONTROL_PLANE_WORKER_ENABLED')) allowed = !killed;
+          if (allowed && has(tid, KILL_GUARD)) allowed = dbKillState() === 'NOT_KILLED';
+          if (allowed && has(tid, 'CONTROL_PLANE_WORKER_ENABLED')) allowed = dbKillState() === 'NOT_KILLED';
           if (allowed) {
             applied(it.status, 'LEASED', tid);
             it.status = 'LEASED'; it.epoch += 1; it.attempts += 1; it.owner = actor; it.acquiredAt = now; it.expires = now + L.leaseDurationSeconds;
@@ -696,7 +773,7 @@ export function validateContract(c, { docs = [], printHashes = false } = {}) {
         }
         case 'supersede': {
           const active = items.find((i) => i.purpose === 'PRIMARY' && i.status !== 'SUPERSEDED' && i.fp !== a1);
-          if (!active || !T('T11_SUPERSEDE').from.includes(active.status) || (has('T11_SUPERSEDE', 'CONTROL_PLANE_MAINTENANCE_ENABLED') && killed)) { ok = false; break; }
+          if (!active || !T('T11_SUPERSEDE').from.includes(active.status) || (has('T11_SUPERSEDE', KILL_GUARD) && dbKillState() === 'KILLED') || (has('T11_SUPERSEDE', 'CONTROL_PLANE_MAINTENANCE_ENABLED') && dbKillState() === 'KILLED')) { ok = false; break; }
           supersede(active, 'BOUNDARY_CHANGED', a1);
           break;
         }
@@ -705,7 +782,8 @@ export function validateContract(c, { docs = [], printHashes = false } = {}) {
           let allowed = Boolean(T(tid)) && Boolean(it) && T(tid).from.includes(it.status);
           if (allowed && has(tid, 'PIPELINE_VERSION_RETIRED')) allowed = registry === 'RETIRED';
           if (allowed && has(tid, 'LEASE_EXPIRED_OR_NOT_LEASED')) allowed = it.status !== 'LEASED' || now >= it.expires;
-          if (allowed && has(tid, 'CONTROL_PLANE_MAINTENANCE_ENABLED')) allowed = !killed;
+          if (allowed && has(tid, KILL_GUARD)) allowed = dbKillState() === 'NOT_KILLED';
+          if (allowed && has(tid, 'CONTROL_PLANE_MAINTENANCE_ENABLED')) allowed = dbKillState() === 'NOT_KILLED';
           if (allowed) supersede(it, 'PIPELINE_RETIRED', null); else ok = false;
           break;
         }
