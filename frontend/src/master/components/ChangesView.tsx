@@ -90,6 +90,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-26T18:30:00.000Z',
   },
   {
+    id: 'battery-v2-m3-3f-f3-natural-c3-closure-2026-09-27',
+    version: '4.9.2102',
+    title: 'Battery V2 M3.3F F3 — natural C3 validation OBSERVED (~21h read-only follow-up)',
+    summary: [
+      'Read-only production audit since F_C3_T0=2026-09-26T11:09:12Z: 15 natural append-only C3 rows (0 D3); earliest sample C5A integrity OK.',
+      'F3_COMPLETE=YES; F3_NATURAL_C3_VALIDATION=OBSERVED; F4_ALLOWED=YES — D3 activation prep only (not executed).',
+      'Preserves original 360s post-T0 zero-row activation window in F3 evidence doc; ~21h follow-up appended.',
+    ],
+    reason:
+      'Close M3.3F F3 natural calibration gate before any authorized F4 D3 materialization activation work.',
+    previousBehavior:
+      'F3 runtime activation PASS with F3_NATURAL_C3_VALIDATION=PENDING and F4_ALLOWED=NO after empty 360s window.',
+    details:
+      'architecture/battery-v2/research/M3_3F_F3_C3_SHADOW_ACTIVATION_2026-09-26.md (follow-up section); CURRENT_STATE.md; CHANGE_LEDGER.md CL-2026-09-27',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-27T08:30:00.000Z',
+  },
+  {
     id: 'di-exp021-c05-cg01-cold-engine-full-throttle-2026-09-24',
     version: '4.9.2101',
     title: 'Driving Intelligence — EXP-021 C0.5 CG-01 COLD_ENGINE_FULL_THROTTLE containment (draft)',

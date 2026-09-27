@@ -12,6 +12,21 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-27 — M3.3F F3 natural C3 validation OBSERVED (~21h read-only follow-up)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | F3 runtime activation PASS @ `F_C3_T0=2026-09-26T11:09:12Z`; 360s window **0** post-T0 C3 rows; **`F3_NATURAL_C3_VALIDATION=PENDING`**; **`F4_ALLOWED=NO`**. |
+| **OBSERVATION** | ~21h read-only audit: production C3/D3 flags, health, scheduler; DB post-T0 counts; exposure audit; C5A on earliest natural row; Prometheus trigger counters (authenticated scrape). |
+| **CHANGE** | Documentation-only closure — **no** production mutation, **no** F4 execution. |
+| **WHY** | M3.3F gate requires natural append-only C3 evidence + C5A integrity before F4 D3 activation preparation. |
+| **VALIDATION** | `research/M3_3F_F3_C3_SHADOW_ACTIVATION_2026-09-26.md` (~21h section); **`D3_POST_T0_ROWS=0`**; C5A **`overallStatus=OK`**; digest/lineage **YES**. |
+| **OBSERVED_EFFECT** | **`F3_COMPLETE=YES`**; **`F3_NATURAL_C3_VALIDATION=OBSERVED`**; **`F4_ALLOWED=YES`**; **`C3_NATURAL_POST_T0_ROWS=15`**. |
+| **NON_EFFECTS** | D3 production activation; assessment/publication/readiness; numeric calibration; backfill/replay. |
+| **REMAINING_GAPS** | F4 controlled D3 activation + natural D3 evidence (`F_D3_T0`); M3.3G–H. |
+| **DECISION_STATUS** | **PRODUCTION_VALIDATED** (natural C3 shadow scope) |
+| **EVIDENCE** | Read-only VPS audit 2026-09-27; live SHA `1b5a7f6cd91d` / release `20260926234014_v4994`. |
+
 ## CL-2026-09-26 — M3.3F F3 controlled C3 shadow activation (runtime PASS, natural PENDING)
 
 | Field | Value |

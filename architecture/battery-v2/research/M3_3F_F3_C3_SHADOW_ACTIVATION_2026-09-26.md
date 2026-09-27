@@ -164,3 +164,69 @@ No natural post-T0 C3 row → **C5A sample not run** (`FIRST_NATURAL_C3_INSPECTI
 ## Next action
 
 **`READ_ONLY_F3_NATURAL_EVIDENCE_FOLLOWUP`** — continue read-only observation until `C3_NATURAL_POST_T0_ROWS ≥ 1`, then C5A on first natural sample before F4 D3 activation engineering/runtime gate.
+
+---
+
+## ~21h read-only natural follow-up (2026-09-27 UTC)
+
+**Mode:** strictly read-only — no deploy, env mutation, manual C3/D3, backfill, or synthetic data.  
+**Immutable boundary:** **`F_C3_T0=2026-09-26T11:09:12Z`** (unchanged).  
+**Live production at audit:** SHA `1b5a7f6cd91d175e82f9ee0df111d4df015b3555` / release `20260926234014_v4994` (post–F3-evidence deploy; C3 env activation unchanged since F3).
+
+### Preserved prior window (360s post-T0)
+
+The activation record above remains authoritative for the **initial bounded window** (`C3_NATURAL_POST_T0_ROWS=0`, `F3_NATURAL_C3_VALIDATION=PENDING`). This follow-up does **not** rewrite that observation.
+
+### Post-T0 natural C3 materialization (DB, read-only)
+
+| Field | Value |
+|-------|-------|
+| `C3_NATURAL_POST_T0_ROWS` | **15** |
+| Distinct orgs / vehicles / sessions | **1** / **3** / **9** |
+| Incremental / final / valid / invalidated | **8** / **7** / **15** / **0** |
+| `D3_POST_T0_ROWS` | **0** (required) |
+
+### C5A on earliest natural row (read-only ops CLI)
+
+Earliest row by `(created_at ASC, id ASC)` — org/vehicle/session identifiers used transiently on VPS only (not recorded here).
+
+| Field | Value |
+|-------|-------|
+| `FIRST_NATURAL_C3_INSPECTION_STATUS` | **OK** |
+| Digest mismatch / checked / scope | **0** / **1** / **FULL** |
+| Semantic revision gaps / duplicate revisions | **0** / **0** |
+| Canonical selection / count aggregate | **CANONICAL_SELECTED** / **true** |
+| `FIRST_NATURAL_C3_DIGEST_VALID` | **YES** |
+| `FIRST_NATURAL_C3_REVISION_LINEAGE_VALID` | **YES** |
+
+### Runtime safety (read-only)
+
+| Field | Value |
+|-------|-------|
+| C3 / D3 effective (shared + both replicas) | **TRUE** / **FALSE** |
+| Replica A/B + external health | **PASS** |
+| `SCHEDULER_LEADER_COUNT` | **1** |
+| `C3_FAILED_ISOLATED_SINCE_T0` | **0** |
+| `C3_PRISMA_ERRORS_SINCE_T0` | **0** |
+
+### Exposure audit (context for zero-row → row transition)
+
+| Field | Value |
+|-------|-------|
+| Rest sessions created / updated post-T0 | **7** / **3** |
+| With valid rest observations (post-T0 activity) | **2** |
+| Terminated (`ended_at` post-T0) | **7** |
+| Late trip associated (`confirmed_at` post-T0) | **5** |
+| `C4_QUALIFYING_OPPORTUNITY_OBSERVED` | **YES** |
+| `C4_TRIGGER_EXECUTION_OBSERVED` | **YES** (15 append-only feature rows) |
+
+Prometheus `synqdrive_battery_rest_session_feature_trigger_total` (authenticated scrape, both replicas): process-local counters — **`CREATED` sum = 2** since last replica restarts (~8h uptime at audit); DB row count is the authoritative natural materialization evidence for the full post-T0 interval.
+
+### F3 closure (natural axis)
+
+| Field | Value |
+|-------|-------|
+| **`F3_COMPLETE`** | **YES** |
+| **`F3_NATURAL_C3_VALIDATION`** | **OBSERVED** |
+| **`F4_ALLOWED`** | **YES** |
+| **`NEXT_PHASE`** | **M3.3F F4 — D3 materialization activation preparation** (not executed in this follow-up) |
