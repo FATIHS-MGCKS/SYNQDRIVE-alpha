@@ -1239,6 +1239,74 @@ describeFn(
       }
     });
 
+    it('PG-A1: one canonical / two competing legacy rows → ambiguity-only, no ONLY leakage', async () => {
+      if (!dbReady) return;
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      const service = buildShadowParityService(prisma);
+      try {
+        const session = await createNativeSession(prisma, org.id, vehicle.id, suffix);
+        await createLegacyRechargeVee(prisma, vehicle.id, session.dimoSegmentId!);
+        await createLegacyRechargeVee(prisma, vehicle.id, `dimo-compete-${suffix}`, {
+          rawDetectionMeta: { coalescedFromSegmentIds: [session.dimoSegmentId] },
+        });
+        const out = await service.evaluateVehicleWindow({
+          ...evaluateInput(org.id, vehicle.id),
+          persist: false,
+        });
+        expect(out.report.ambiguousPhysicalClusterGroupCount).toBe(1);
+        expect(out.report.legacyPhysicalClusterCount).toBeNull();
+        expect(out.report.settledParityDenominator).toBe(0);
+        expect(
+          out.observations.filter(
+            (o) => o.parityClass === ERD_RECHARGE_SHADOW_PARITY_CLASS.LEGACY_ONLY,
+          ).length,
+        ).toBe(0);
+        expect(
+          out.observations.filter(
+            (o) => o.parityClass === ERD_RECHARGE_SHADOW_PARITY_CLASS.CANONICAL_ONLY,
+          ).length,
+        ).toBe(0);
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
+    it('PG-A2: two canonicals / one coalesced legacy → exact cluster count 1', async () => {
+      if (!dbReady) return;
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      const service = buildShadowParityService(prisma);
+      try {
+        const sessionA = await createNativeSession(prisma, org.id, vehicle.id, `${suffix}-a`);
+        const sessionB = await createNativeSession(prisma, org.id, vehicle.id, `${suffix}-b`, {
+          dimoSegmentId: `dimo-b-${suffix}`,
+        });
+        await createLegacyRechargeVee(prisma, vehicle.id, `dimo-coalesced-${suffix}`, {
+          startTime: new Date('2026-06-01T10:00:00.000Z'),
+          endTime: new Date('2026-06-01T11:00:00.000Z'),
+          durationSeconds: 3600,
+          rawDetectionMeta: {
+            coalescedFromSegmentIds: [sessionA.dimoSegmentId, sessionB.dimoSegmentId],
+          },
+        });
+        const out = await service.evaluateVehicleWindow({
+          ...evaluateInput(org.id, vehicle.id),
+          persist: false,
+        });
+        expect(out.report.ambiguousPhysicalClusterGroupCount).toBe(1);
+        expect(out.report.legacyPhysicalClusterCount).toBe(1);
+        expect(out.report.settledParityDenominator).toBe(0);
+        expect(
+          out.observations.filter(
+            (o) => o.parityClass === ERD_RECHARGE_SHADOW_PARITY_CLASS.CANONICAL_ONLY,
+          ).length,
+        ).toBe(0);
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
     it('PG-T8: bounded production-shaped fragment fixture through service path', async () => {
       if (!dbReady) return;
       const suffix = randomUUID().slice(0, 8);

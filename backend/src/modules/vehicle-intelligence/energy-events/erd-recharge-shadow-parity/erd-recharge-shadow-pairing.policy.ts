@@ -70,6 +70,108 @@ export function proposeCoalescedLineagePairs(
   return proposals;
 }
 
+export interface ErdRechargeShadowAmbiguityComponent {
+  canonicalSessionIds: string[];
+  legacyVehicleEnergyEventIds: string[];
+}
+
+function buildAmbiguityComponents(input: {
+  dedupedAll: ErdRechargeShadowPairProposal[];
+  proposalsByCanonical: Map<string, ErdRechargeShadowPairProposal[]>;
+  proposalsByLegacy: Map<string, ErdRechargeShadowPairProposal[]>;
+}): ErdRechargeShadowAmbiguityComponent[] {
+  const seedCanonical = new Set(
+    [...input.proposalsByCanonical.entries()]
+      .filter(([, proposals]) => proposals.length > 1)
+      .map(([sessionId]) => sessionId),
+  );
+  const seedLegacy = new Set(
+    [...input.proposalsByLegacy.entries()]
+      .filter(([, proposals]) => proposals.length > 1)
+      .map(([legacyId]) => legacyId),
+  );
+  if (seedCanonical.size === 0 && seedLegacy.size === 0) {
+    return [];
+  }
+
+  const canonicalToLegacy = new Map<string, Set<string>>();
+  const legacyToCanonical = new Map<string, Set<string>>();
+  for (const proposal of input.dedupedAll) {
+    const canonicalId = proposal.canonical.sessionId;
+    const legacyId = proposal.legacy.vehicleEnergyEventId;
+    if (!canonicalToLegacy.has(canonicalId)) {
+      canonicalToLegacy.set(canonicalId, new Set());
+    }
+    canonicalToLegacy.get(canonicalId)!.add(legacyId);
+    if (!legacyToCanonical.has(legacyId)) {
+      legacyToCanonical.set(legacyId, new Set());
+    }
+    legacyToCanonical.get(legacyId)!.add(canonicalId);
+  }
+
+  const visitedCanonical = new Set<string>();
+  const visitedLegacy = new Set<string>();
+  const components: ErdRechargeShadowAmbiguityComponent[] = [];
+
+  const walkComponent = (startCanonicalId?: string, startLegacyId?: string): void => {
+    const compCanonical = new Set<string>();
+    const compLegacy = new Set<string>();
+    const stack: Array<{ kind: 'c' | 'l'; id: string }> = [];
+    if (startCanonicalId != null) {
+      stack.push({ kind: 'c', id: startCanonicalId });
+    }
+    if (startLegacyId != null) {
+      stack.push({ kind: 'l', id: startLegacyId });
+    }
+    while (stack.length > 0) {
+      const node = stack.pop()!;
+      if (node.kind === 'c') {
+        if (visitedCanonical.has(node.id)) continue;
+        visitedCanonical.add(node.id);
+        compCanonical.add(node.id);
+        for (const legacyId of canonicalToLegacy.get(node.id) ?? []) {
+          if (!visitedLegacy.has(legacyId)) {
+            stack.push({ kind: 'l', id: legacyId });
+          }
+        }
+      } else {
+        if (visitedLegacy.has(node.id)) continue;
+        visitedLegacy.add(node.id);
+        compLegacy.add(node.id);
+        for (const canonicalId of legacyToCanonical.get(node.id) ?? []) {
+          if (!visitedCanonical.has(canonicalId)) {
+            stack.push({ kind: 'c', id: canonicalId });
+          }
+        }
+      }
+    }
+    if (compCanonical.size === 0 && compLegacy.size === 0) {
+      return;
+    }
+    components.push({
+      canonicalSessionIds: [...compCanonical].sort(),
+      legacyVehicleEnergyEventIds: [...compLegacy].sort(),
+    });
+  };
+
+  for (const canonicalId of [...seedCanonical].sort()) {
+    if (!visitedCanonical.has(canonicalId)) {
+      walkComponent(canonicalId, undefined);
+    }
+  }
+  for (const legacyId of [...seedLegacy].sort()) {
+    if (!visitedLegacy.has(legacyId)) {
+      walkComponent(undefined, legacyId);
+    }
+  }
+
+  return components.sort((a, b) => {
+    const keyA = `${a.canonicalSessionIds.join(',')}|${a.legacyVehicleEnergyEventIds.join(',')}`;
+    const keyB = `${b.canonicalSessionIds.join(',')}|${b.legacyVehicleEnergyEventIds.join(',')}`;
+    return keyA.localeCompare(keyB);
+  });
+}
+
 export function proposeUniqueWindowPairs(
   canonical: ErdRechargeShadowCanonicalCandidate[],
   legacy: ErdRechargeShadowLegacyCandidate[],
@@ -113,6 +215,7 @@ export function resolveShadowPairings(input: {
   pairs: ErdRechargeShadowPairProposal[];
   ambiguousCanonicalIds: string[];
   ambiguousLegacyIds: string[];
+  ambiguityComponents: ErdRechargeShadowAmbiguityComponent[];
 } {
   const all = [
     ...proposeExactDimoPairs(input.canonical, input.legacy),
@@ -147,12 +250,17 @@ export function resolveShadowPairings(input: {
     ]);
   }
 
-  const ambiguousCanonicalIds = input.canonical
-    .filter((c) => (proposalsByCanonical.get(c.sessionId)?.length ?? 0) > 1)
-    .map((c) => c.sessionId);
-  const ambiguousLegacyIds = input.legacy
-    .filter((l) => (proposalsByLegacy.get(l.vehicleEnergyEventId)?.length ?? 0) > 1)
-    .map((l) => l.vehicleEnergyEventId);
+  const ambiguityComponents = buildAmbiguityComponents({
+    dedupedAll,
+    proposalsByCanonical,
+    proposalsByLegacy,
+  });
+  const ambiguousCanonicalIds = [
+    ...new Set(ambiguityComponents.flatMap((component) => component.canonicalSessionIds)),
+  ].sort();
+  const ambiguousLegacyIds = [
+    ...new Set(ambiguityComponents.flatMap((component) => component.legacyVehicleEnergyEventIds)),
+  ].sort();
 
   for (const proposal of dedupedAll) {
     if (ambiguousCanonicalIds.includes(proposal.canonical.sessionId)) continue;
@@ -164,5 +272,5 @@ export function resolveShadowPairings(input: {
     pairs.push(proposal);
   }
 
-  return { pairs, ambiguousCanonicalIds, ambiguousLegacyIds };
+  return { pairs, ambiguousCanonicalIds, ambiguousLegacyIds, ambiguityComponents };
 }

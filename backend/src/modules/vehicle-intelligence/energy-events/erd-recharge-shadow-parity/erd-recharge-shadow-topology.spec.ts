@@ -322,6 +322,10 @@ describe('erd-recharge-shadow topology (E5.4 Step 1)', () => {
     expect(report.canonicalPhysicalEpisodeCount).toBe(1);
     expect(report.pairedPhysicalEpisodeCount).toBe(1);
     expect(report.legacyFragmentRowCount).toBe(64);
+    expect(report.resolvedLegacyPhysicalClusterCount).toBe(1);
+    expect(report.ambiguousPhysicalClusterGroupCount).toBe(0);
+    expect(report.legacyPhysicalClusterLowerBound).toBe(1);
+    expect(report.legacyPhysicalClusterUpperBound).toBe(1);
     expect(report.legacyPhysicalClusterCount).toBe(1);
     expect(report.trueLegacyOnlyPhysicalClusterCount).toBe(0);
     expect(report.multipleLegacyOneCanonicalCount).toBe(1);

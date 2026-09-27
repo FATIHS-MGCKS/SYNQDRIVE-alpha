@@ -175,7 +175,11 @@ Topology diagnostics (`MULTIPLE_LEGACY_ONE_CANONICAL` for fragment siblings) are
 | Report field | Meaning |
 |--------------|---------|
 | `legacyRowCount` | Unique legacy cohort rows in scope/window |
-| `legacyPhysicalClusterCount` | Distinct legacy **physical** clusters |
+| `legacyPhysicalClusterCount` | Exact distinct legacy **physical** clusters when bounds collapse; **`null`** when ambiguity leaves cardinality underdetermined |
+| `resolvedLegacyPhysicalClusterCount` | Deterministically resolved legacy physical clusters (paired, true orphan, structural) |
+| `ambiguousPhysicalClusterGroupCount` | Connected ambiguity components in pairing proposal graph |
+| `ambiguousLegacyRowCount` | Unique legacy rows participating in ambiguity components |
+| `legacyPhysicalClusterLowerBound` / `legacyPhysicalClusterUpperBound` | Epistemic bounds; exact count when equal |
 | `canonicalPhysicalEpisodeCount` | Eligible canonical sessions compared |
 | `pairedPhysicalEpisodeCount` | Canonical sessions with primary legacy pair |
 | `legacyFragmentRowCount` | Rows classified as fragment siblings (not primary) |

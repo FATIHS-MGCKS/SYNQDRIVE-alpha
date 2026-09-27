@@ -12,6 +12,7 @@ import {
   resolveLegacyFragmentSiblingsByPrimaryPair,
 } from './erd-recharge-shadow-fragment.policy';
 import { intervalsOverlap, resolveShadowPairings } from './erd-recharge-shadow-pairing.policy';
+import type { ErdRechargeShadowAmbiguityComponent } from './erd-recharge-shadow-pairing.policy';
 import {
   ERD_RECHARGE_SHADOW_FINALITY,
   ERD_RECHARGE_SHADOW_PAIRING_EVIDENCE,
@@ -109,6 +110,25 @@ function sortObservationDrafts(
   });
 }
 
+function buildAmbiguityComponentFieldDiff(
+  component: ErdRechargeShadowAmbiguityComponent,
+): NonNullable<ErdRechargeShadowObservationDraft['fieldDiff']> {
+  return {
+    numericDeltas: {
+      startDeltaSeconds: null,
+      endDeltaSeconds: null,
+      durationDeltaSeconds: null,
+      socDeltaDifferencePercent: null,
+      energyDeltaDifferenceKwh: null,
+      odometerStartDifferenceKm: null,
+      odometerEndDifferenceKm: null,
+    },
+    mismatches: [],
+    relatedCanonicalSessionIds: [...component.canonicalSessionIds],
+    relatedLegacyVehicleEnergyEventIds: [...component.legacyVehicleEnergyEventIds],
+  };
+}
+
 export function evaluateRechargeShadowParity(input: {
   organizationId: string;
   vehicleId: string;
@@ -127,15 +147,29 @@ export function evaluateRechargeShadowParity(input: {
   const legacy = buildLegacyCandidates(input.legacyRows);
   const sessionById = new Map(input.sessions.map((s) => [s.id, s]));
 
-  const { pairs, ambiguousCanonicalIds, ambiguousLegacyIds } = resolveShadowPairings({
-    canonical,
-    legacy,
-  });
+  const { pairs, ambiguousCanonicalIds, ambiguousLegacyIds, ambiguityComponents } =
+    resolveShadowPairings({
+      canonical,
+      legacy,
+    });
+  const ambiguousConsumedCanonicalIds = new Set(ambiguousCanonicalIds);
+  const ambiguousConsumedLegacyIds = new Set(ambiguousLegacyIds);
+  const componentByCanonicalId = new Map<string, ErdRechargeShadowAmbiguityComponent>();
+  const componentByLegacyId = new Map<string, ErdRechargeShadowAmbiguityComponent>();
+  for (const component of ambiguityComponents) {
+    for (const canonicalId of component.canonicalSessionIds) {
+      componentByCanonicalId.set(canonicalId, component);
+    }
+    for (const legacyId of component.legacyVehicleEnergyEventIds) {
+      componentByLegacyId.set(legacyId, component);
+    }
+  }
 
   const drafts: ErdRechargeShadowObservationDraft[] = [];
 
   for (const canonicalId of [...ambiguousCanonicalIds].sort()) {
     const c = canonical.find((row) => row.sessionId === canonicalId)!;
+    const component = componentByCanonicalId.get(canonicalId)!;
     pushDraft(drafts, {
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
@@ -149,13 +183,14 @@ export function evaluateRechargeShadowParity(input: {
         finality: ERD_RECHARGE_SHADOW_FINALITY.OBSERVED,
         canonicalProjectionSnapshot: c.snapshot,
         legacyProjectionSnapshot: null,
-        fieldDiff: null,
+        fieldDiff: buildAmbiguityComponentFieldDiff(component),
       },
     });
   }
 
   for (const legacyId of [...ambiguousLegacyIds].sort()) {
     const l = legacy.find((row) => row.vehicleEnergyEventId === legacyId)!;
+    const component = componentByLegacyId.get(legacyId)!;
     pushDraft(drafts, {
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
@@ -169,7 +204,7 @@ export function evaluateRechargeShadowParity(input: {
         finality: ERD_RECHARGE_SHADOW_FINALITY.SETTLED,
         canonicalProjectionSnapshot: null,
         legacyProjectionSnapshot: l.snapshot,
-        fieldDiff: null,
+        fieldDiff: buildAmbiguityComponentFieldDiff(component),
       },
     });
   }
@@ -243,11 +278,12 @@ export function evaluateRechargeShadowParity(input: {
 
   for (const c of canonical) {
     if (pairedCanonicalIds.has(c.sessionId)) continue;
-    if (ambiguousCanonicalIds.includes(c.sessionId)) continue;
+    if (ambiguousConsumedCanonicalIds.has(c.sessionId)) continue;
     const overlappingLegacyUnpaired = legacy.filter(
       (l) =>
         !pairedLegacyIds.has(l.vehicleEnergyEventId) &&
         !provenFragmentLegacyIds.has(l.vehicleEnergyEventId) &&
+        !ambiguousConsumedLegacyIds.has(l.vehicleEnergyEventId) &&
         intervalsOverlap(
           c.snapshot.draft.startTime,
           c.snapshot.draft.endTime,
@@ -288,7 +324,7 @@ export function evaluateRechargeShadowParity(input: {
   for (const l of legacy) {
     if (pairedLegacyIds.has(l.vehicleEnergyEventId)) continue;
     if (provenFragmentLegacyIds.has(l.vehicleEnergyEventId)) continue;
-    if (ambiguousLegacyIds.includes(l.vehicleEnergyEventId)) continue;
+    if (ambiguousConsumedLegacyIds.has(l.vehicleEnergyEventId)) continue;
 
     const overlappingCanonical = canonical.filter((c) =>
       intervalsOverlap(
@@ -353,10 +389,12 @@ export function evaluateRechargeShadowParity(input: {
 
   for (const c of canonical) {
     if (pairedCanonicalIds.has(c.sessionId)) continue;
+    if (ambiguousConsumedCanonicalIds.has(c.sessionId)) continue;
     const overlappingLegacy = legacy.filter(
       (l) =>
         !pairedLegacyIds.has(l.vehicleEnergyEventId) &&
         !provenFragmentLegacyIds.has(l.vehicleEnergyEventId) &&
+        !ambiguousConsumedLegacyIds.has(l.vehicleEnergyEventId) &&
         intervalsOverlap(
           c.snapshot.draft.startTime,
           c.snapshot.draft.endTime,

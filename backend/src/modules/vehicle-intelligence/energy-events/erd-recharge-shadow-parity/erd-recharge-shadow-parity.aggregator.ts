@@ -10,7 +10,13 @@ export interface ErdRechargeShadowParityReport {
   /** Compatibility field — raw legacy cohort row count (not physical cluster count). */
   legacyEpisodeCount: number;
   legacyRowCount: number;
-  legacyPhysicalClusterCount: number;
+  /** Exact legacy physical cluster count when bounds collapse; null when ambiguous. */
+  legacyPhysicalClusterCount: number | null;
+  resolvedLegacyPhysicalClusterCount: number;
+  ambiguousPhysicalClusterGroupCount: number;
+  ambiguousLegacyRowCount: number;
+  legacyPhysicalClusterLowerBound: number;
+  legacyPhysicalClusterUpperBound: number;
   canonicalPhysicalEpisodeCount: number;
   pairedPhysicalEpisodeCount: number;
   legacyFragmentRowCount: number;
@@ -51,6 +57,33 @@ function isFragmentTopologyDiagnostic(
     o.canonicalChargeSessionId != null &&
     primaryPairedCanonicalIds.has(o.canonicalChargeSessionId)
   );
+}
+
+function deriveAmbiguityComponentStats(obs: ErdRechargeShadowObservationDraft[]): {
+  ambiguousPhysicalClusterGroupCount: number;
+  ambiguousLegacyRowCount: number;
+} {
+  const componentKeys = new Set<string>();
+  const ambiguousLegacyIds = new Set<string>();
+  for (const observation of obs) {
+    if (observation.parityClass !== ERD_RECHARGE_SHADOW_PARITY_CLASS.AMBIGUOUS_MATCH) {
+      continue;
+    }
+    const canonicalIds = observation.fieldDiff?.relatedCanonicalSessionIds ?? [];
+    const legacyIds = observation.fieldDiff?.relatedLegacyVehicleEnergyEventIds ?? [];
+    if (canonicalIds.length === 0 && legacyIds.length === 0) {
+      continue;
+    }
+    const key = `${[...canonicalIds].sort().join(',')}|${[...legacyIds].sort().join(',')}`;
+    componentKeys.add(key);
+    for (const legacyId of legacyIds) {
+      ambiguousLegacyIds.add(legacyId);
+    }
+  }
+  return {
+    ambiguousPhysicalClusterGroupCount: componentKeys.size,
+    ambiguousLegacyRowCount: ambiguousLegacyIds.size,
+  };
 }
 
 export function aggregateRechargeShadowParityReport(input: {
@@ -128,11 +161,23 @@ export function aggregateRechargeShadowParityReport(input: {
   const canonicalPhysicalEpisodeCount = input.canonicalEpisodeCount;
   const legacyFragmentRowCount = fragmentLegacyIds.size;
   const trueLegacyOnlyPhysicalClusterCount = legacyOnlySettledCount + legacyOnlyObservedCount;
-  const legacyPhysicalClusterCount =
+  const resolvedLegacyPhysicalClusterCount =
     pairedPhysicalEpisodeCount +
     trueLegacyOnlyPhysicalClusterCount +
     legacyCoalescedMultipleCanonicalCount +
     unresolvedMultipleLegacyOneCanonicalCount;
+
+  const { ambiguousPhysicalClusterGroupCount, ambiguousLegacyRowCount } =
+    deriveAmbiguityComponentStats(obs);
+
+  const legacyPhysicalClusterLowerBound =
+    resolvedLegacyPhysicalClusterCount + ambiguousPhysicalClusterGroupCount;
+  const legacyPhysicalClusterUpperBound =
+    resolvedLegacyPhysicalClusterCount + ambiguousLegacyRowCount;
+  const legacyPhysicalClusterCount =
+    legacyPhysicalClusterLowerBound === legacyPhysicalClusterUpperBound
+      ? legacyPhysicalClusterLowerBound
+      : null;
 
   const settledEligible = obs.filter(
     (o) => o.finality === ERD_RECHARGE_SHADOW_FINALITY.SETTLED,
@@ -164,6 +209,11 @@ export function aggregateRechargeShadowParityReport(input: {
     legacyEpisodeCount: input.legacyEpisodeCount,
     legacyRowCount,
     legacyPhysicalClusterCount,
+    resolvedLegacyPhysicalClusterCount,
+    ambiguousPhysicalClusterGroupCount,
+    ambiguousLegacyRowCount,
+    legacyPhysicalClusterLowerBound,
+    legacyPhysicalClusterUpperBound,
     canonicalPhysicalEpisodeCount,
     pairedPhysicalEpisodeCount,
     legacyFragmentRowCount,
