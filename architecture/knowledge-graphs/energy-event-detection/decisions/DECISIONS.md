@@ -460,7 +460,7 @@ Detail below follows governance: decision, rationale, alternatives, consequences
 | **Decision** | **Option C:** lock `energyDeltaKwh` = stored traction-battery delta (legacy-compatible); additive nullable **`chargingEnergyAddedKwh`** = provider charging-added delta; no historical backfill/reinterpretation; billing firewall on both; shadow compares stored vs stored only. |
 | **Why** | Six-session Production gap ~15.6 kWh explained by signal semantics, not legacy mapping defect; Trips/API stability. |
 | **Alternatives** | Redefine `energyDeltaKwh` to added energy (rejected — breaks history); single blended field (rejected) |
-| **Evidence** | EED-EV-0091, EED-EV-0092 |
+| **Evidence** | EED-EV-0091, EED-EV-0092, EED-EV-0094 |
 | **Consequences** | Step 2 mapper alignment + future schema for `chargingEnergyAddedKwh`; tests E1–E6; cutover blocked until topology + stored mapper + dry-run clean |
 | **Related nodes** | EED-DEC-ERD-001, EED-DEC-ERD-002 |
 | **Detail ADR** | [ERD-RECHARGE-ENERGY-PRODUCT-SEMANTICS-2026-09-27.md](../decisions/ERD-RECHARGE-ENERGY-PRODUCT-SEMANTICS-2026-09-27.md) |
