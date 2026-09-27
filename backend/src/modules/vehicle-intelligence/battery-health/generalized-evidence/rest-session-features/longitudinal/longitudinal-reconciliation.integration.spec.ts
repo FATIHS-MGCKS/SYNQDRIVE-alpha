@@ -337,15 +337,17 @@ async function positionFleetCursorBeforeVehicle(
       });
       expect(first.outcome).toBe('CREATED');
 
-      await createFeatureRow(prisma, {
-        organizationId,
-        vehicleId,
-        restSessionId: session.id,
-        semanticRevision: 2,
-        computationPhase: BatteryRestSessionFeatureComputationPhase.FINAL,
-        sessionTrust: BatteryRestSessionFeatureSessionTrust.VALID,
-        inputSummary: summary,
-        computedAt: new Date('2026-05-03T10:00:00.000Z'),
+      const rev1Row = await prisma.batteryRestSessionFeature.findFirstOrThrow({
+        where: {
+          organizationId,
+          restSessionId: session.id,
+          semanticRevision: 1,
+        },
+      });
+      // D1 source-evidence fence includes canonical computedAt; D2 scientific projection does not.
+      await prisma.batteryRestSessionFeature.update({
+        where: { id: rev1Row.id },
+        data: { computedAt: new Date('2026-05-03T10:00:00.000Z') },
       });
 
       expect(
