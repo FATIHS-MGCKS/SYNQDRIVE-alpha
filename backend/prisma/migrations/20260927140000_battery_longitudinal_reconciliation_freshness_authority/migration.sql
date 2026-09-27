@@ -1,7 +1,7 @@
 -- M3.3F F4.1 hardening — durable source-evidence ack fence (separate from D3 scientific revision).
 
 CREATE TABLE "battery_longitudinal_source_evidence_acks" (
-  "id" UUID NOT NULL,
+  "id" TEXT NOT NULL,
   "organization_id" TEXT NOT NULL,
   "vehicle_id" TEXT NOT NULL,
   "source_evidence_fingerprint" CHAR(64) NOT NULL,
