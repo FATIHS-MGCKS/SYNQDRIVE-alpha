@@ -6,6 +6,10 @@ export const ERD_RECHARGE_SHADOW_PARITY_CLASSIFICATION_VERSION =
 
 export const ERD_RECHARGE_SHADOW_PARITY_ENV_FLAG = 'ERD_RECHARGE_SHADOW_PARITY_ENABLED';
 
+/** Scoped runtime canary allowlist — `organizationId:vehicleId` pairs, comma-separated. */
+export const ERD_RECHARGE_SHADOW_PARITY_CANARY_ALLOWLIST_ENV =
+  'ERD_RECHARGE_SHADOW_PARITY_CANARY_ALLOWLIST';
+
 /** Material field comparison tolerances (not bit equality). */
 export const ERD_RECHARGE_SHADOW_SOC_TOLERANCE_PERCENT = 0.05;
 export const ERD_RECHARGE_SHADOW_ENERGY_TOLERANCE_KWH = 0.05;

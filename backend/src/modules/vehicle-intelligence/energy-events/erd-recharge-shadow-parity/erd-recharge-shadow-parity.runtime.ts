@@ -1,7 +1,7 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ErdRechargeShadowParityService } from './erd-recharge-shadow-parity.service';
-import { isErdRechargeShadowParityEnabled } from './erd-recharge-shadow-parity.config';
 import { ErdRechargeShadowParityMetricsService } from './erd-recharge-shadow-parity.metrics';
+import { resolveErdRechargeShadowRuntimeAuthorization } from './erd-recharge-shadow-runtime-scope.policy';
 import { ERD_RECHARGE_SHADOW_RUN_RESULT } from './erd-recharge-shadow-parity.types';
 
 @Injectable()
@@ -22,10 +22,17 @@ export class ErdRechargeShadowParityRuntimeService {
     windowFrom: Date;
     windowTo: Date;
   }): void {
-    if (!isErdRechargeShadowParityEnabled(process.env)) {
+    const authorization = resolveErdRechargeShadowRuntimeAuthorization({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      env: process.env,
+    });
+
+    if (!authorization.authorized) {
       this.metrics?.recordRun(ERD_RECHARGE_SHADOW_RUN_RESULT.SKIPPED_FLAG_OFF);
       return;
     }
+
     void this.parityService
       .evaluateVehicleWindow({
         ...input,

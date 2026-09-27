@@ -1886,7 +1886,7 @@ nodes:
       unchanged; fragment siblings as MULTIPLE_LEGACY_ONE_CANONICAL diagnostic;
       LEGACY_ONLY for true orphan clusters only; multiplicity excluded from settled denominator.
     authority_class: EED_OWNS
-    evidence: [EED-EV-0091, EED-EV-0092, EED-EV-0093, EED-EV-0095]
+    evidence: [EED-EV-0091, EED-EV-0092, EED-EV-0093, EED-EV-0095, EED-EV-0096]
     source_paths:
       - architecture/knowledge-graphs/energy-event-detection/decisions/ERD-E5-4A-SHADOW-PARITY-PHYSICAL-EPISODE-TOPOLOGY-2026-09-27.md
 
@@ -1929,6 +1929,20 @@ nodes:
       Direct service persist:true for one org/vehicle/window on release v4994; 12 shadow rows;
       idempotent dedupe; global shadow flag OFF; LEGACY write authority; zero product/provider mutation;
       pre-write pg_dump control failed; post-canary backup not a pre-state rollback snapshot.
+
+  - id: EED-EV-0096
+    type: evidence
+    title: ERD E5.4D scoped runtime shadow persist canary gate
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E5-4D-SCOPED-RUNTIME-SHADOW-PERSIST-2026-09-27.md
+      - backend/src/modules/vehicle-intelligence/energy-events/erd-recharge-shadow-parity/erd-recharge-shadow-runtime-scope.policy.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/erd-recharge-shadow-parity/erd-recharge-shadow-parity.runtime.ts
+    evidence_maturity: PROVEN_BY_TEST
+    summary: >
+      Env allowlist org:vehicle pairs; fail-closed parser; runtime hook SCOPED_CANARY vs GLOBAL;
+      unit + PG tests; metrics taxonomy unchanged; no Production activation.
 
   - id: EED-EV-0091
     type: evidence
