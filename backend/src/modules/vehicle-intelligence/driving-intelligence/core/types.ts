@@ -97,7 +97,6 @@ export interface NormalizedR1ObdObservation {
   throttlePct?: number | null;
   loadPct?: number | null;
   coolantC?: number | null;
-  gear?: number | null;
   odometerKm?: number | null;
   provenance: Pick<DiV0ProvenanceRef, 'sourceSignal' | 'derivedFrom'>;
 }

@@ -4,9 +4,9 @@ import type { DiV0ValidatedPositionWindow } from '../position-acquisition/di-v0-
 import { canonicalNumber } from '../position-acquisition/di-v0-position-snapshot';
 import type { DiV0R1ObdAcquiredBucket, DiV0R1ObdSnapshotIdentity } from './di-v0-r1-obd-acquisition.types';
 import {
-  DI_V0_R1_OBD_ACQUISITION_ADAPTER_V0_2,
-  DI_V0_R1_OBD_EVIDENCE_SNAPSHOT_V0_2,
-  DI_V0_R1_OBD_QUERY_SPEC_V0_2,
+  DI_V0_R1_OBD_ACQUISITION_ADAPTER_V0_3,
+  DI_V0_R1_OBD_EVIDENCE_SNAPSHOT_V0_3,
+  DI_V0_R1_OBD_QUERY_SPEC_V0_3,
 } from './di-v0-r1-obd-acquisition.versions';
 
 export interface DiV0R1ObdSnapshotMaterial {
@@ -31,10 +31,10 @@ function serializeSignalValues(bucket: DiV0R1ObdAcquiredBucket): unknown[] {
 }
 
 export function serializeDiV0R1ObdSnapshot(material: DiV0R1ObdSnapshotMaterial): string {
-  const spec = DI_V0_R1_OBD_QUERY_SPEC_V0_2;
+  const spec = DI_V0_R1_OBD_QUERY_SPEC_V0_3;
   const lines: string[] = [
-    DI_V0_R1_OBD_EVIDENCE_SNAPSHOT_V0_2,
-    JSON.stringify(['adapter', DI_V0_R1_OBD_ACQUISITION_ADAPTER_V0_2]),
+    DI_V0_R1_OBD_EVIDENCE_SNAPSHOT_V0_3,
+    JSON.stringify(['adapter', DI_V0_R1_OBD_ACQUISITION_ADAPTER_V0_3]),
     JSON.stringify([
       'query',
       spec.id,
@@ -42,7 +42,16 @@ export function serializeDiV0R1ObdSnapshot(material: DiV0R1ObdSnapshotMaterial):
       spec.queryFamily,
       spec.interval,
       spec.gridBoundary,
-      spec.signals.map((s) => [s.id, s.unit, s.aggregation, s.fieldAuthority]),
+      spec.temporalSemantics,
+      spec.fieldAuthoritySource,
+      spec.signals.map((s) => [
+        s.id,
+        s.unit,
+        s.providerDocumentedUnit,
+        s.valueScale,
+        s.aggregation,
+        s.fieldAuthority,
+      ]),
     ]),
     JSON.stringify(['subject', spec.provider, String(material.dimoTokenId), material.vehicleId]),
     JSON.stringify(['window', material.window.fromUtc, material.window.toUtc]),
@@ -68,9 +77,9 @@ export function serializeDiV0R1ObdSnapshot(material: DiV0R1ObdSnapshotMaterial):
 export function computeDiV0R1ObdSnapshotIdentity(material: DiV0R1ObdSnapshotMaterial): DiV0R1ObdSnapshotIdentity {
   const digest = createHash('sha256').update(serializeDiV0R1ObdSnapshot(material), 'utf8').digest('hex');
   return {
-    version: DI_V0_R1_OBD_EVIDENCE_SNAPSHOT_V0_2,
+    version: DI_V0_R1_OBD_EVIDENCE_SNAPSHOT_V0_3,
     algorithm: 'sha256',
     digest,
-    inputEvidenceVersion: `${DI_V0_R1_OBD_EVIDENCE_SNAPSHOT_V0_2}:sha256:${digest}`,
+    inputEvidenceVersion: `${DI_V0_R1_OBD_EVIDENCE_SNAPSHOT_V0_3}:sha256:${digest}`,
   };
 }

@@ -16,8 +16,8 @@ import type {
   DiV0ValidatedR1ObdRequest,
 } from './di-v0-r1-obd-acquisition.types';
 import {
-  DI_V0_R1_OBD_ACQUISITION_ADAPTER_V0_2,
-  DI_V0_R1_OBD_QUERY_SPEC_V0_2,
+  DI_V0_R1_OBD_ACQUISITION_ADAPTER_V0_3,
+  DI_V0_R1_OBD_QUERY_SPEC_V0_3,
 } from './di-v0-r1-obd-acquisition.versions';
 
 const PROVIDER_LABEL = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.(\d+))?(?:Z|[+-]\d{2}:\d{2})$/;
@@ -42,7 +42,7 @@ function evaluateNumericSignal(
   field: string,
   rowAbsent: boolean,
 ): DiV0R1ObdScalarSignal {
-  const spec = DI_V0_R1_OBD_QUERY_SPEC_V0_2.signals.find((s) => s.providerField === field)!;
+  const spec = DI_V0_R1_OBD_QUERY_SPEC_V0_3.signals.find((s) => s.providerField === field)!;
   if (rowAbsent) {
     return { signal: spec.id, unit: spec.unit, availability: 'ROW_ABSENT', value: null };
   }
@@ -101,8 +101,8 @@ function toNormalizedObservation(bucket: DiV0R1ObdAcquiredBucket): NormalizedR1O
     bucketLabel: bucket.bucketLabel,
     temporalConfidence: 'INTERVAL_ONLY',
     provenance: {
-      sourceSignal: 'DI_V0_R1_OBD_QUERY_V0_2',
-      derivedFrom: [DI_V0_R1_OBD_QUERY_SPEC_V0_2.id, 'INTERVAL_ONLY'],
+      sourceSignal: DI_V0_R1_OBD_QUERY_SPEC_V0_3.id,
+      derivedFrom: [DI_V0_R1_OBD_QUERY_SPEC_V0_3.id, 'INTERVAL_ONLY'],
     },
   };
   const speed = get('speed');
@@ -115,8 +115,6 @@ function toNormalizedObservation(bucket: DiV0R1ObdAcquiredBucket): NormalizedR1O
   if (load?.availability === 'VALUE_PRESENT' && load.value != null) obs.loadPct = load.value;
   const ect = get('powertrainCombustionEngineECT');
   if (ect?.availability === 'VALUE_PRESENT' && ect.value != null) obs.coolantC = ect.value;
-  const gear = get('powertrainTransmissionCurrentGear');
-  if (gear?.availability === 'VALUE_PRESENT' && gear.value != null) obs.gear = gear.value;
   return obs;
 }
 
@@ -183,12 +181,12 @@ export function normalizeDiV0R1ObdResponse(input: NormalizeDiV0R1ObdInput): Norm
 
   const { request, sourceFamilyResolution, longGapThresholdSeconds } = input;
   const { window } = request;
-  const intervalMs = DI_V0_R1_OBD_QUERY_SPEC_V0_2.intervalMs;
+  const intervalMs = DI_V0_R1_OBD_QUERY_SPEC_V0_3.intervalMs;
   const rowsByIndex = new Map<number, Record<string, unknown>[]>();
 
   for (const row of extracted.rows) {
     if (!isPlainObject(row)) continue;
-    const parsed = parseProviderLabel(row[DI_V0_R1_OBD_QUERY_SPEC_V0_2.bucketLabelField]);
+    const parsed = parseProviderLabel(row[DI_V0_R1_OBD_QUERY_SPEC_V0_3.bucketLabelField]);
     if (!parsed.ok) continue;
     if (parsed.ms < window.fromMs || parsed.ms >= window.toMs) continue;
     const index = (parsed.ms - window.fromMs) / intervalMs;
@@ -212,7 +210,7 @@ export function normalizeDiV0R1ObdResponse(input: NormalizeDiV0R1ObdInput): Norm
     if (rowAbsentBucket) rowAbsent += 1;
     else rowPresent += 1;
 
-    const signals = DI_V0_R1_OBD_QUERY_SPEC_V0_2.signals.map((s) =>
+    const signals = DI_V0_R1_OBD_QUERY_SPEC_V0_3.signals.map((s) =>
       rows.length > 1
         ? mergeDuplicateSignal(rows, s.providerField)
         : evaluateNumericSignal(rows[0] ?? {}, s.providerField, rowAbsentBucket),
@@ -271,8 +269,8 @@ export function normalizeDiV0R1ObdResponse(input: NormalizeDiV0R1ObdInput): Norm
   return {
     ok: true,
     result: {
-      adapterVersion: DI_V0_R1_OBD_ACQUISITION_ADAPTER_V0_2,
-      querySpecId: DI_V0_R1_OBD_QUERY_SPEC_V0_2.id,
+      adapterVersion: DI_V0_R1_OBD_ACQUISITION_ADAPTER_V0_3,
+      querySpecId: DI_V0_R1_OBD_QUERY_SPEC_V0_3.id,
       sourceFamily: sourceFamilyResolution.sourceFamily,
       sourceFamilyResolution,
       window,
