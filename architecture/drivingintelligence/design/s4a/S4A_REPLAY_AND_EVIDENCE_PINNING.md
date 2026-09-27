@@ -1,6 +1,6 @@
 # S4A — Replay and evidence pinning (P2-5 promoted to P1-5, closed at contract level)
 
-**Parent:** [S4A_CONTRACT_DESIGN.md](S4A_CONTRACT_DESIGN.md) §2.2 · **Gaps:** DI-GAP-S4-REPLAY-DESERIALIZER-001, DI-GAP-S4-LOCATION-RETENTION-001, DI-GAP-S4-SHADOW-DELETION-AUDIT-001
+**Parent:** [S4A_CONTRACT_DESIGN.md](S4A_CONTRACT_DESIGN.md) §2.2 · **Contract:** `replay`, `runPurposes`, `activationGates` in [`s4a-contract.v2.json`](s4a-contract.v2.json) (AMENDED BY C1D.10C) · **Gaps:** DI-GAP-S4-REPLAY-DESERIALIZER-001, DI-GAP-S4-LOCATION-RETENTION-001, DI-GAP-S4-SHADOW-DELETION-AUDIT-001
 
 ## 1. Principle
 
@@ -14,7 +14,7 @@ A canonical serialization, UTF-8 and newline-separated:
 
 1. The container version.
 2. `JSON.stringify([organizationId, vehicleId, tripId, boundaryFingerprint, windowStartIso, windowEndIso])`.
-3. For each channel in the order NATIVE_EVENT, POSITION, R1_OBD: a header `JSON.stringify([channel, outcome, reason, channelSnapshotVersion, channelPayloadSha256OrNull, attestationRefOrNull])`, followed by the channel payload in its existing canonical form (for example, position `DI_V0_POSITION_EVIDENCE_SNAPSHOT_V0_1` is a newline JSON-array form).
+3. For each channel in the order NATIVE_EVENT, POSITION, R1_OBD: a header `JSON.stringify([channel, outcome, reason, channelSnapshotFormatVersionOrNull, channelPayloadSha256OrNull, attestationRefOrNull])` (C1D.10C: the format version and the payload hash are separate fields here, so each field has one meaning; the combined identity's `channelEvidenceHash` is `<format version>:sha256:<payload hash>`), followed by the channel payload in its existing canonical form (for example, position `DI_V0_POSITION_EVIDENCE_SNAPSHOT_V0_1` is a newline JSON-array form).
 
 `snapshot_hash = DI_V0_S4_EVIDENCE_V1:sha256(container)`. `payload_gzip = gzip(container)`. Wall-clock acquisition time, worker id and request ids are excluded (identity §1).
 
@@ -28,10 +28,13 @@ A canonical serialization, UTF-8 and newline-separated:
 | Retry after pin | a crash or failure keeps the pin. The next claim **loads the pin and skips acquisition** (race G). Changed provider evidence after the pin is ignored for this item |
 | Load | decompress, **re-hash, and require equality**. On a mismatch → T08 terminal `SNAPSHOT_HASH_MISMATCH` (corruption never silently computes) |
 | Replay | RECALIBRATION_REPLAY is created pinned to an existing hash (CHECK) and never acquires |
+| Replay ineligible (C1D.10C) | an invalid or unusable replay (source snapshot fails re-hash, unsupported container version, S1 invariant) → T08 FAILED_TERMINAL `REPLAY_INELIGIBLE`, never SKIPPED_INELIGIBLE (which forbids a pin). Any other item that becomes ineligible after its pin also goes to T08 |
 
 ## 4. Deserializer (implementation prerequisite)
 
 No deserializer exists for the position/R1/native snapshot forms. They are currently write-only canonical strings used for hashing. **DI-GAP-S4-REPLAY-DESERIALIZER-001:** S4D must implement `parse(serialize(x)) = x` (property-tested) for all three channel forms and the container, and prove that `S1(parse(pin)) = S1(original normalized input)` bit-for-bit on fixtures. Until then, completion may use the in-memory normalized input of the same attempt, and retry-after-pin is impossible (the item fails retryable and waits). This is why the deserializer is required **before tiny activation**, not before S4A.
+
+**Machine-encoded (C1D.10C):** `replay.deserializerImplemented=false`, `DI-GAP-S4-REPLAY-DESERIALIZER-001=OPEN`. `activationGates.REPLAY_CAPABLE_SHADOW` and `activationGates.TINY_ACTIVATION` both require the gap closed **and** snapshot re-hash verification implemented. The S4A dormant schema merge does not require it, because no runtime reads snapshots. The validator rejects a contract that removes this dependency (negative case N32).
 
 ## 5. Storage, size and retention
 

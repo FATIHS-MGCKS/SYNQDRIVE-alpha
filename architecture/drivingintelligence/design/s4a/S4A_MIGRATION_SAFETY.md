@@ -1,6 +1,6 @@
 # S4A — Migration safety (dormant deploy)
 
-**Contract:** `migrationRules`, `zeroImpactInvariants` · **Evidence:** [authority correction §2](../../evidence/EXP021_C1D10A_AUTHORITY_CORRECTION.md) (DI-CONTRA-S2-PROD-MIGRATION-001)
+**Contract:** `migration`, `migrationRules`, `zeroImpactInvariants`, `activationGates.S4A_DORMANT_SCHEMA_MERGE` in [`s4a-contract.v2.json`](s4a-contract.v2.json) (AMENDED BY C1D.10C) · **Evidence:** [authority correction §2](../../evidence/EXP021_C1D10A_AUTHORITY_CORRECTION.md) (DI-CONTRA-S2-PROD-MIGRATION-001)
 
 ## 1. Premise: merge = Production migration
 
@@ -37,7 +37,13 @@ DO $$ BEGIN
 END $$;
 ```
 
-(Production today: 0/0 rows, 0 inserts ever.) If S2 ever gets rows before S4A deploys, the migration fails closed and a separate backfill-safe variant is needed.
+(Production today: 0/0 rows, 0 inserts ever; re-read read-only in C1D.10C on 2026-09-27: `di_v0_shadow_runs=0`, `di_v0_shadow_intervals=0`, `n_tup_ins=0`.) If S2 ever gets rows before S4A deploys, the migration fails closed and a separate backfill-safe variant is needed.
+
+**Machine contract (C1D.10C):** `migration.preconditions = [S2_SHADOW_RUNS_EMPTY, S2_SHADOW_INTERVALS_EMPTY]`, `preconditionEnforcement = IN_MIGRATION_DO_BLOCK_RAISE_EXCEPTION`, `effect = DORMANT_ONLY`, `seedRows = NONE` (the kill row is **not** seeded, so a migrated DB is effectively KILLED), rules `REQUIRES_EMPTY_S2_TABLES_PRECONDITION` and `DORMANT_ONLY_NO_SEED_ROWS`. The validator rejects a contract without them (N13, N43).
+
+**Tables (C1D.10C):** four new tables (`di_v0_s4_work_items`, `di_v0_s4_evidence_snapshots`, `di_v0_s4_control`, `di_v0_s4_pipeline_versions`). The two control tables have no canonical FK and take no canonical lock.
+
+**Scope guards (C1D.10C, P1-C):** every trip-anchored guard joins `vehicle_trips t JOIN vehicles v ON v.id = t.vehicle_id` and checks `t.id = NEW.trip_id AND t.vehicle_id = NEW.vehicle_id AND v.organization_id = NEW.organization_id`. The trigger reads canonical rows with a plain `SELECT` (no lock beyond the FK check) and fires only on shadow-table writes.
 
 ## 4. Why CASCADE into shadow tables is the only safe delete behavior
 
@@ -54,4 +60,4 @@ Can a new constraint fail a canonical **write**? The scope-guard triggers are on
 
 ## 6. Rollback
 
-`DROP TABLE di_v0_s4_work_items, di_v0_s4_evidence_snapshots; DROP TRIGGER di_v0_shadow_run_scope_guard …; DROP INDEX …` via a new down-migration file only, if ever needed. No canonical table changes, so no data restore is needed.
+`DROP TABLE di_v0_s4_work_items, di_v0_s4_evidence_snapshots, di_v0_s4_control, di_v0_s4_pipeline_versions; DROP TRIGGER di_v0_shadow_run_scope_guard …; DROP INDEX …` via a new down-migration file only, if ever needed. No canonical table changes, so no data restore is needed.
