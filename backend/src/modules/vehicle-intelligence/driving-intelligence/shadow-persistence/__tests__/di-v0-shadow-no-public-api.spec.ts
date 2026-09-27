@@ -30,7 +30,11 @@ describe('DI V0 shadow public API isolation', () => {
     const hits: string[] = [];
     for (const root of roots) {
       for (const file of walkTsFiles(root)) {
-        if (file.includes('driving-intelligence/shadow-persistence')) {
+        // s4a-foundation is the fenced S2 writer; its own isolation is proven by di-v0-s4a-dormant-audit.spec.ts.
+        if (
+          file.includes('driving-intelligence/shadow-persistence') ||
+          file.includes('driving-intelligence/s4a-foundation')
+        ) {
           continue;
         }
         const content = fs.readFileSync(file, 'utf8');
