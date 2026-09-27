@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-m3-3f-f4-1-race-safe-d3-reconciliation-2026-09-27',
+    version: '4.9.2206',
+    title: 'Battery V2 M3.3F F4.1 — race-safe bounded D3 reconciliation',
+    summary: [
+      'Version-scoped durable source-evidence acknowledgement (`battery_longitudinal_source_evidence_acks`) is the D3 freshness authority; `BatteryLongitudinalProfileRevision.sourceEvidenceFingerprint` is non-authoritative creation provenance only.',
+      'Bounded keyset fleet inspection with durable cursor closes fixed-prefix starvation while remaining bounded — fair across the fleet and eventually live through cursor wrap; not a global oldest-outstanding guarantee.',
+      'PostgreSQL integration evidence covers lost-update, same-science/new-evidence settlement, INVALIDATED C3 staleness, out-of-order completion, scheduler/ops idempotency, and leader-turnover overlap convergence.',
+      'D3 materialization flag `BATTERY_V2_LONGITUDINAL_PROFILE_MATERIALIZATION_ENABLED` remains default OFF; F4.1 does not production-activate D3 (no F_D3_T0, backfill, historical C3 replay, customer D3 endpoint, or E3 runtime).',
+    ],
+    reason:
+      'Establish safe, bounded, restart-/replica-safe D3 reconciliation before any explicit production activation gate.',
+    previousBehavior:
+      'D3 was internal/on-demand only and had no race-safe scheduled durable freshness reconciliation authority.',
+    details:
+      'Merged PR #1806; architecture/battery-v2/research/M3_3F_F4_1_RACE_SAFE_D3_RECONCILIATION_ENGINEERING_2026-09-27.md; npm run test:battery:v2:longitudinal-reconciliation:postgres.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-27T18:15:00.000Z',
+  },
+  {
     id: 'di-exp021-c1d9a-s3b-r1-v03-field-authority-2026-09-27',
     version: '4.9.2205',
     title: 'Driving Intelligence — EXP-021 C1D.9A DI V0 S3B R1 query V0_3 (provider field authority, currentGear removed)',
