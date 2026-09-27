@@ -1,5 +1,12 @@
 # KG-EED Changelog
 
+## 2026-09-27 — ERD E5.4A shadow parity topology implementation (Step 1)
+
+- Comparator v2 + parity classification v2; pairing model v1 unchanged
+- Fragment sibling policy; physical settled denominator; raw vs physical report fields
+- Evidence: `ERD-E5-4A-SHADOW-PARITY-TOPOLOGY-IMPLEMENTATION-2026-09-27.md` (EED-EV-0093); EED-DEC-ERD-002 → VALIDATED
+- No energy mapper / schema / Production changes
+
 ## 2026-09-27 — ERD E5.4 comparator topology + recharge energy semantics ADR
 
 - Dual ADR: `ERD-E5-4A-SHADOW-PARITY-PHYSICAL-EPISODE-TOPOLOGY-2026-09-27.md` (`EED-DEC-ERD-002`); `ERD-RECHARGE-ENERGY-PRODUCT-SEMANTICS-2026-09-27.md` (`EED-DEC-ERD-003`, Option C)

@@ -90,7 +90,10 @@ describe('erd-recharge-shadow-pairing.policy', () => {
     ];
     const resolved = resolveShadowPairings({ canonical: c, legacy: l });
     expect(resolved.pairs).toHaveLength(0);
-    expect(resolved.ambiguousCanonicalIds).toContain('c1');
+    expect(resolved.ambiguousCanonicalIds).toEqual(['c1']);
+    expect(resolved.ambiguousLegacyIds).toEqual(['l1', 'l2']);
+    expect(resolved.ambiguityComponents).toHaveLength(1);
+    expect(resolved.ambiguityComponents[0]?.legacyVehicleEnergyEventIds).toEqual(['l1', 'l2']);
   });
 
   it('S3: unique window overlap pairs deterministically', () => {

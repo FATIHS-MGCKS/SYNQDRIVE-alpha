@@ -7,7 +7,12 @@ import {
   classifyPairedParity,
   compareShadowProjectionFields,
 } from './erd-recharge-shadow-field-diff.policy';
+import {
+  emptyShadowFieldDiffForTopologyDiagnostic,
+  resolveLegacyFragmentSiblingsByPrimaryPair,
+} from './erd-recharge-shadow-fragment.policy';
 import { intervalsOverlap, resolveShadowPairings } from './erd-recharge-shadow-pairing.policy';
+import type { ErdRechargeShadowAmbiguityComponent } from './erd-recharge-shadow-pairing.policy';
 import {
   ERD_RECHARGE_SHADOW_FINALITY,
   ERD_RECHARGE_SHADOW_PAIRING_EVIDENCE,
@@ -50,7 +55,8 @@ function buildLegacyCandidates(rows: VehicleEnergyEvent[]): ErdRechargeShadowLeg
     .map((row) => ({
       vehicleEnergyEventId: row.id,
       snapshot: toLegacySnapshot(row),
-    }));
+    }))
+    .sort((a, b) => a.vehicleEnergyEventId.localeCompare(b.vehicleEnergyEventId));
 }
 
 function resolveUnpairedCanonicalFinality(input: {
@@ -64,6 +70,63 @@ function resolveUnpairedCanonicalFinality(input: {
     return ERD_RECHARGE_SHADOW_FINALITY.SETTLED;
   }
   return ERD_RECHARGE_SHADOW_FINALITY.OBSERVED;
+}
+
+function pushDraft(
+  drafts: ErdRechargeShadowObservationDraft[],
+  input: {
+    organizationId: string;
+    vehicleId: string;
+    draftBase: Omit<ErdRechargeShadowObservationDraft, 'comparisonFingerprint'>;
+  },
+): void {
+  drafts.push({
+    ...input.draftBase,
+    comparisonFingerprint: buildShadowComparisonFingerprint({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      draft: input.draftBase,
+    }),
+  });
+}
+
+function sortObservationDrafts(
+  drafts: ErdRechargeShadowObservationDraft[],
+): ErdRechargeShadowObservationDraft[] {
+  return [...drafts].sort((a, b) => {
+    const keyA = [
+      a.canonicalChargeSessionId ?? '',
+      a.legacyVehicleEnergyEventId ?? '',
+      a.parityClass,
+      a.pairingEvidence,
+    ].join('\0');
+    const keyB = [
+      b.canonicalChargeSessionId ?? '',
+      b.legacyVehicleEnergyEventId ?? '',
+      b.parityClass,
+      b.pairingEvidence,
+    ].join('\0');
+    return keyA.localeCompare(keyB);
+  });
+}
+
+function buildAmbiguityComponentFieldDiff(
+  component: ErdRechargeShadowAmbiguityComponent,
+): NonNullable<ErdRechargeShadowObservationDraft['fieldDiff']> {
+  return {
+    numericDeltas: {
+      startDeltaSeconds: null,
+      endDeltaSeconds: null,
+      durationDeltaSeconds: null,
+      socDeltaDifferencePercent: null,
+      energyDeltaDifferenceKwh: null,
+      odometerStartDifferenceKm: null,
+      odometerEndDifferenceKm: null,
+    },
+    mismatches: [],
+    relatedCanonicalSessionIds: [...component.canonicalSessionIds],
+    relatedLegacyVehicleEnergyEventIds: [...component.legacyVehicleEnergyEventIds],
+  };
 }
 
 export function evaluateRechargeShadowParity(input: {
@@ -80,102 +143,147 @@ export function evaluateRechargeShadowParity(input: {
     vehicleId: input.vehicleId,
     windowFrom: input.windowFrom,
     windowTo: input.windowTo,
-  });
+  }).sort((a, b) => a.sessionId.localeCompare(b.sessionId));
   const legacy = buildLegacyCandidates(input.legacyRows);
   const sessionById = new Map(input.sessions.map((s) => [s.id, s]));
 
-  const { pairs, ambiguousCanonicalIds, ambiguousLegacyIds } = resolveShadowPairings({
-    canonical,
-    legacy,
-  });
+  const { pairs, ambiguousCanonicalIds, ambiguousLegacyIds, ambiguityComponents } =
+    resolveShadowPairings({
+      canonical,
+      legacy,
+    });
+  const ambiguousConsumedCanonicalIds = new Set(ambiguousCanonicalIds);
+  const ambiguousConsumedLegacyIds = new Set(ambiguousLegacyIds);
+  const componentByCanonicalId = new Map<string, ErdRechargeShadowAmbiguityComponent>();
+  const componentByLegacyId = new Map<string, ErdRechargeShadowAmbiguityComponent>();
+  for (const component of ambiguityComponents) {
+    for (const canonicalId of component.canonicalSessionIds) {
+      componentByCanonicalId.set(canonicalId, component);
+    }
+    for (const legacyId of component.legacyVehicleEnergyEventIds) {
+      componentByLegacyId.set(legacyId, component);
+    }
+  }
 
   const drafts: ErdRechargeShadowObservationDraft[] = [];
 
-  for (const canonicalId of ambiguousCanonicalIds) {
+  for (const canonicalId of [...ambiguousCanonicalIds].sort()) {
     const c = canonical.find((row) => row.sessionId === canonicalId)!;
-    const draftBase = {
+    const component = componentByCanonicalId.get(canonicalId)!;
+    pushDraft(drafts, {
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
-      canonicalChargeSessionId: c.sessionId,
-      legacyVehicleEnergyEventId: null,
-      pairingEvidence: ERD_RECHARGE_SHADOW_PAIRING_EVIDENCE.AMBIGUOUS,
-      parityClass: ERD_RECHARGE_SHADOW_PARITY_CLASS.AMBIGUOUS_MATCH,
-      finality: ERD_RECHARGE_SHADOW_FINALITY.OBSERVED,
-      canonicalProjectionSnapshot: c.snapshot,
-      legacyProjectionSnapshot: null,
-      fieldDiff: null,
-    };
-    drafts.push({
-      ...draftBase,
-      comparisonFingerprint: buildShadowComparisonFingerprint({
+      draftBase: {
         organizationId: input.organizationId,
         vehicleId: input.vehicleId,
-        draft: draftBase,
-      }),
+        canonicalChargeSessionId: c.sessionId,
+        legacyVehicleEnergyEventId: null,
+        pairingEvidence: ERD_RECHARGE_SHADOW_PAIRING_EVIDENCE.AMBIGUOUS,
+        parityClass: ERD_RECHARGE_SHADOW_PARITY_CLASS.AMBIGUOUS_MATCH,
+        finality: ERD_RECHARGE_SHADOW_FINALITY.OBSERVED,
+        canonicalProjectionSnapshot: c.snapshot,
+        legacyProjectionSnapshot: null,
+        fieldDiff: buildAmbiguityComponentFieldDiff(component),
+      },
     });
   }
 
-  for (const legacyId of ambiguousLegacyIds) {
+  for (const legacyId of [...ambiguousLegacyIds].sort()) {
     const l = legacy.find((row) => row.vehicleEnergyEventId === legacyId)!;
-    const draftBase = {
+    const component = componentByLegacyId.get(legacyId)!;
+    pushDraft(drafts, {
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
-      canonicalChargeSessionId: null,
-      legacyVehicleEnergyEventId: l.vehicleEnergyEventId,
-      pairingEvidence: ERD_RECHARGE_SHADOW_PAIRING_EVIDENCE.AMBIGUOUS,
-      parityClass: ERD_RECHARGE_SHADOW_PARITY_CLASS.AMBIGUOUS_MATCH,
-      finality: ERD_RECHARGE_SHADOW_FINALITY.SETTLED,
-      canonicalProjectionSnapshot: null,
-      legacyProjectionSnapshot: l.snapshot,
-      fieldDiff: null,
-    };
-    drafts.push({
-      ...draftBase,
-      comparisonFingerprint: buildShadowComparisonFingerprint({
+      draftBase: {
         organizationId: input.organizationId,
         vehicleId: input.vehicleId,
-        draft: draftBase,
-      }),
+        canonicalChargeSessionId: null,
+        legacyVehicleEnergyEventId: l.vehicleEnergyEventId,
+        pairingEvidence: ERD_RECHARGE_SHADOW_PAIRING_EVIDENCE.AMBIGUOUS,
+        parityClass: ERD_RECHARGE_SHADOW_PARITY_CLASS.AMBIGUOUS_MATCH,
+        finality: ERD_RECHARGE_SHADOW_FINALITY.SETTLED,
+        canonicalProjectionSnapshot: null,
+        legacyProjectionSnapshot: l.snapshot,
+        fieldDiff: buildAmbiguityComponentFieldDiff(component),
+      },
     });
   }
 
   const pairedCanonicalIds = new Set(pairs.map((p) => p.canonical.sessionId));
   const pairedLegacyIds = new Set(pairs.map((p) => p.legacy.vehicleEnergyEventId));
 
-  for (const pair of pairs) {
+  const fragmentSiblingsByCanonical = resolveLegacyFragmentSiblingsByPrimaryPair({
+    pairs,
+    canonical,
+    legacy,
+    pairedLegacyIds,
+    ambiguousLegacyIds,
+  });
+  const provenFragmentLegacyIds = new Set<string>();
+  for (const ids of fragmentSiblingsByCanonical.values()) {
+    for (const id of ids) {
+      provenFragmentLegacyIds.add(id);
+    }
+  }
+
+  for (const pair of [...pairs].sort((a, b) =>
+    a.canonical.sessionId.localeCompare(b.canonical.sessionId),
+  )) {
     const fieldDiff = compareShadowProjectionFields({
       canonical: pair.canonical.snapshot,
       legacy: pair.legacy.snapshot,
     });
     const parityClass = classifyPairedParity(fieldDiff);
-    const draftBase = {
+    pushDraft(drafts, {
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
-      canonicalChargeSessionId: pair.canonical.sessionId,
-      legacyVehicleEnergyEventId: pair.legacy.vehicleEnergyEventId,
-      pairingEvidence: pair.pairingEvidence,
-      parityClass,
-      finality: ERD_RECHARGE_SHADOW_FINALITY.SETTLED,
-      canonicalProjectionSnapshot: pair.canonical.snapshot,
-      legacyProjectionSnapshot: pair.legacy.snapshot,
-      fieldDiff,
-    };
-    drafts.push({
-      ...draftBase,
-      comparisonFingerprint: buildShadowComparisonFingerprint({
+      draftBase: {
         organizationId: input.organizationId,
         vehicleId: input.vehicleId,
-        draft: draftBase,
-      }),
+        canonicalChargeSessionId: pair.canonical.sessionId,
+        legacyVehicleEnergyEventId: pair.legacy.vehicleEnergyEventId,
+        pairingEvidence: pair.pairingEvidence,
+        parityClass,
+        finality: ERD_RECHARGE_SHADOW_FINALITY.SETTLED,
+        canonicalProjectionSnapshot: pair.canonical.snapshot,
+        legacyProjectionSnapshot: pair.legacy.snapshot,
+        fieldDiff,
+      },
+    });
+  }
+
+  for (const canonicalId of [...fragmentSiblingsByCanonical.keys()].sort()) {
+    const fragmentIds = fragmentSiblingsByCanonical.get(canonicalId)!;
+    if (fragmentIds.length === 0) continue;
+    const c = canonical.find((row) => row.sessionId === canonicalId)!;
+    const fieldDiff = emptyShadowFieldDiffForTopologyDiagnostic();
+    fieldDiff.relatedLegacyVehicleEnergyEventIds = fragmentIds;
+    pushDraft(drafts, {
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      draftBase: {
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        canonicalChargeSessionId: c.sessionId,
+        legacyVehicleEnergyEventId: null,
+        pairingEvidence: ERD_RECHARGE_SHADOW_PAIRING_EVIDENCE.NONE,
+        parityClass: ERD_RECHARGE_SHADOW_PARITY_CLASS.MULTIPLE_LEGACY_ONE_CANONICAL,
+        finality: ERD_RECHARGE_SHADOW_FINALITY.SETTLED,
+        canonicalProjectionSnapshot: c.snapshot,
+        legacyProjectionSnapshot: null,
+        fieldDiff,
+      },
     });
   }
 
   for (const c of canonical) {
     if (pairedCanonicalIds.has(c.sessionId)) continue;
-    if (ambiguousCanonicalIds.includes(c.sessionId)) continue;
+    if (ambiguousConsumedCanonicalIds.has(c.sessionId)) continue;
     const overlappingLegacyUnpaired = legacy.filter(
       (l) =>
         !pairedLegacyIds.has(l.vehicleEnergyEventId) &&
+        !provenFragmentLegacyIds.has(l.vehicleEnergyEventId) &&
+        !ambiguousConsumedLegacyIds.has(l.vehicleEnergyEventId) &&
         intervalsOverlap(
           c.snapshot.draft.startTime,
           c.snapshot.draft.endTime,
@@ -195,31 +303,28 @@ export function evaluateRechargeShadowParity(input: {
       finality === ERD_RECHARGE_SHADOW_FINALITY.PENDING_SETTLEMENT
         ? ERD_RECHARGE_SHADOW_PARITY_CLASS.PENDING_SETTLEMENT
         : ERD_RECHARGE_SHADOW_PARITY_CLASS.CANONICAL_ONLY;
-    const draftBase = {
+    pushDraft(drafts, {
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
-      canonicalChargeSessionId: c.sessionId,
-      legacyVehicleEnergyEventId: null,
-      pairingEvidence: ERD_RECHARGE_SHADOW_PAIRING_EVIDENCE.NONE,
-      parityClass,
-      finality,
-      canonicalProjectionSnapshot: c.snapshot,
-      legacyProjectionSnapshot: null,
-      fieldDiff: null,
-    };
-    drafts.push({
-      ...draftBase,
-      comparisonFingerprint: buildShadowComparisonFingerprint({
+      draftBase: {
         organizationId: input.organizationId,
         vehicleId: input.vehicleId,
-        draft: draftBase,
-      }),
+        canonicalChargeSessionId: c.sessionId,
+        legacyVehicleEnergyEventId: null,
+        pairingEvidence: ERD_RECHARGE_SHADOW_PAIRING_EVIDENCE.NONE,
+        parityClass,
+        finality,
+        canonicalProjectionSnapshot: c.snapshot,
+        legacyProjectionSnapshot: null,
+        fieldDiff: null,
+      },
     });
   }
 
   for (const l of legacy) {
     if (pairedLegacyIds.has(l.vehicleEnergyEventId)) continue;
-    if (ambiguousLegacyIds.includes(l.vehicleEnergyEventId)) continue;
+    if (provenFragmentLegacyIds.has(l.vehicleEnergyEventId)) continue;
+    if (ambiguousConsumedLegacyIds.has(l.vehicleEnergyEventId)) continue;
 
     const overlappingCanonical = canonical.filter((c) =>
       intervalsOverlap(
@@ -251,88 +356,74 @@ export function evaluateRechargeShadowParity(input: {
             odometerEndDifferenceKm: null,
           },
           mismatches: [],
-          relatedCanonicalSessionIds: overlappingCanonical.map((c) => c.sessionId),
+          relatedCanonicalSessionIds: overlappingCanonical
+            .map((c) => c.sessionId)
+            .sort(),
         },
       };
-      drafts.push({
-        ...draftBase,
-        comparisonFingerprint: buildShadowComparisonFingerprint({
-          organizationId: input.organizationId,
-          vehicleId: input.vehicleId,
-          draft: draftBase,
-        }),
+      pushDraft(drafts, {
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        draftBase,
       });
       continue;
     }
 
-    const draftBase = {
+    pushDraft(drafts, {
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
-      canonicalChargeSessionId: null,
-      legacyVehicleEnergyEventId: l.vehicleEnergyEventId,
-      pairingEvidence: ERD_RECHARGE_SHADOW_PAIRING_EVIDENCE.NONE,
-      parityClass: ERD_RECHARGE_SHADOW_PARITY_CLASS.LEGACY_ONLY,
-      finality: ERD_RECHARGE_SHADOW_FINALITY.SETTLED,
-      canonicalProjectionSnapshot: null,
-      legacyProjectionSnapshot: l.snapshot,
-      fieldDiff: null,
-    };
-    drafts.push({
-      ...draftBase,
-      comparisonFingerprint: buildShadowComparisonFingerprint({
+      draftBase: {
         organizationId: input.organizationId,
         vehicleId: input.vehicleId,
-        draft: draftBase,
-      }),
+        canonicalChargeSessionId: null,
+        legacyVehicleEnergyEventId: l.vehicleEnergyEventId,
+        pairingEvidence: ERD_RECHARGE_SHADOW_PAIRING_EVIDENCE.NONE,
+        parityClass: ERD_RECHARGE_SHADOW_PARITY_CLASS.LEGACY_ONLY,
+        finality: ERD_RECHARGE_SHADOW_FINALITY.SETTLED,
+        canonicalProjectionSnapshot: null,
+        legacyProjectionSnapshot: l.snapshot,
+        fieldDiff: null,
+      },
     });
   }
 
   for (const c of canonical) {
     if (pairedCanonicalIds.has(c.sessionId)) continue;
-    const overlappingLegacy = legacy.filter((l) =>
-      intervalsOverlap(
-        c.snapshot.draft.startTime,
-        c.snapshot.draft.endTime,
-        new Date(l.snapshot.startTime),
-        new Date(l.snapshot.endTime),
-      ),
+    if (ambiguousConsumedCanonicalIds.has(c.sessionId)) continue;
+    const overlappingLegacy = legacy.filter(
+      (l) =>
+        !pairedLegacyIds.has(l.vehicleEnergyEventId) &&
+        !provenFragmentLegacyIds.has(l.vehicleEnergyEventId) &&
+        !ambiguousConsumedLegacyIds.has(l.vehicleEnergyEventId) &&
+        intervalsOverlap(
+          c.snapshot.draft.startTime,
+          c.snapshot.draft.endTime,
+          new Date(l.snapshot.startTime),
+          new Date(l.snapshot.endTime),
+        ),
     );
     if (overlappingLegacy.length <= 1) continue;
-    const draftBase = {
+    const fieldDiff = emptyShadowFieldDiffForTopologyDiagnostic();
+    fieldDiff.relatedLegacyVehicleEnergyEventIds = overlappingLegacy
+      .map((row) => row.vehicleEnergyEventId)
+      .sort();
+    pushDraft(drafts, {
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
-      canonicalChargeSessionId: c.sessionId,
-      legacyVehicleEnergyEventId: null,
-      pairingEvidence: ERD_RECHARGE_SHADOW_PAIRING_EVIDENCE.NONE,
-      parityClass: ERD_RECHARGE_SHADOW_PARITY_CLASS.MULTIPLE_LEGACY_ONE_CANONICAL,
-      finality: ERD_RECHARGE_SHADOW_FINALITY.SETTLED,
-      canonicalProjectionSnapshot: c.snapshot,
-      legacyProjectionSnapshot: null,
-      fieldDiff: {
-        numericDeltas: {
-          startDeltaSeconds: null,
-          endDeltaSeconds: null,
-          durationDeltaSeconds: null,
-          socDeltaDifferencePercent: null,
-          energyDeltaDifferenceKwh: null,
-          odometerStartDifferenceKm: null,
-          odometerEndDifferenceKm: null,
-        },
-        mismatches: [],
-        relatedLegacyVehicleEnergyEventIds: overlappingLegacy.map(
-          (l) => l.vehicleEnergyEventId,
-        ),
-      },
-    };
-    drafts.push({
-      ...draftBase,
-      comparisonFingerprint: buildShadowComparisonFingerprint({
+      draftBase: {
         organizationId: input.organizationId,
         vehicleId: input.vehicleId,
-        draft: draftBase,
-      }),
+        canonicalChargeSessionId: c.sessionId,
+        legacyVehicleEnergyEventId: null,
+        pairingEvidence: ERD_RECHARGE_SHADOW_PAIRING_EVIDENCE.NONE,
+        parityClass: ERD_RECHARGE_SHADOW_PARITY_CLASS.MULTIPLE_LEGACY_ONE_CANONICAL,
+        finality: ERD_RECHARGE_SHADOW_FINALITY.SETTLED,
+        canonicalProjectionSnapshot: c.snapshot,
+        legacyProjectionSnapshot: null,
+        fieldDiff,
+      },
     });
   }
 
-  return drafts;
+  return sortObservationDrafts(drafts);
 }

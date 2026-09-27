@@ -175,7 +175,11 @@ Topology diagnostics (`MULTIPLE_LEGACY_ONE_CANONICAL` for fragment siblings) are
 | Report field | Meaning |
 |--------------|---------|
 | `legacyRowCount` | Unique legacy cohort rows in scope/window |
-| `legacyPhysicalClusterCount` | Distinct legacy **physical** clusters |
+| `legacyPhysicalClusterCount` | Exact distinct legacy **physical** clusters when bounds collapse; **`null`** when ambiguity leaves cardinality underdetermined |
+| `resolvedLegacyPhysicalClusterCount` | Deterministically resolved legacy physical clusters (paired, true orphan, structural) |
+| `ambiguousPhysicalClusterGroupCount` | Connected ambiguity components in pairing proposal graph |
+| `ambiguousLegacyRowCount` | Unique legacy rows participating in ambiguity components |
+| `legacyPhysicalClusterLowerBound` / `legacyPhysicalClusterUpperBound` | Epistemic bounds; exact count when equal |
 | `canonicalPhysicalEpisodeCount` | Eligible canonical sessions compared |
 | `pairedPhysicalEpisodeCount` | Canonical sessions with primary legacy pair |
 | `legacyFragmentRowCount` | Rows classified as fragment siblings (not primary) |
@@ -259,3 +263,7 @@ Existing `MULTIPLE_LEGACY_ONE_CANONICAL` + `relatedLegacyVehicleEnergyEventIds` 
 - Evidence: `evidence/ERD-E5-4-FRAGMENT-TOPOLOGY-PRODUCTION-CLOSURE-2026-09-27.md`
 - Energy semantics (orthogonal): `ERD-RECHARGE-ENERGY-PRODUCT-SEMANTICS-2026-09-27.md`
 - Runtime baseline: `evidence/ERD-E5-4-SHADOW-PARITY-2026-09-25.md`
+
+## 17. Implementation status (2026-09-27, Step 1)
+
+**IMPLEMENTED** — comparator topology v2 in `erd-recharge-shadow-parity/*` (see `evidence/ERD-E5-4A-SHADOW-PARITY-TOPOLOGY-IMPLEMENTATION-2026-09-27.md`, EED-EV-0093). Energy semantics (Step 2) **not** implemented.
