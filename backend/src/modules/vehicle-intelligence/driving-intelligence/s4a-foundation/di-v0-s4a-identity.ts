@@ -3,6 +3,8 @@ import {
   DI_V0_COMBINED_INPUT_IDENTITY_V0_3,
   DI_V0_S4_BOUNDARY_FP_VERSION,
   DI_V0_S4_CHANNEL_OUTCOMES,
+  DI_V0_S4_CHANNEL_POLICY_V1,
+  DI_V0_S4_ORCHESTRATION_CONTRACT_VERSION,
   DI_V0_S4_CHANNEL_RULES,
   DI_V0_S4_EVIDENCE_CHANNEL_ORDER,
   DI_V0_S4_EVIDENCE_CONTAINER_VERSION,
@@ -56,6 +58,31 @@ export function buildDiV0S4PipelineVersionKey(manifest: DiV0S4PipelineManifest):
 /** Channel flags enter the pipeline version (`controlPlane.channelFlagsEnterPipelineVersion`). */
 export function deriveDiV0S4ChannelEnablement(flags: { r1Enabled: boolean; nativeEnabled: boolean }): string {
   return ['POSITION', ...(flags.r1Enabled ? ['R1_OBD'] : []), ...(flags.nativeEnabled ? ['NATIVE_EVENT'] : [])].join('+');
+}
+
+/**
+ * A replica may only create, claim or complete under a manifest that this S4A build can honour:
+ * its channel enablement equals the replica's channel flags and every contract-owned version is
+ * the one implemented here. `evidenceSnapshotContainerVersion` is deliberately not compared
+ * (DI-CONTRA-S4A-CONTAINER-VERSION-NAMING-001).
+ */
+export function assertDiV0S4RuntimePipelineManifest(
+  manifest: unknown,
+  flags: { r1Enabled: boolean; nativeEnabled: boolean },
+): asserts manifest is DiV0S4PipelineManifest {
+  assertDiV0S4PipelineManifest(manifest);
+  const expected: Partial<Record<keyof DiV0S4PipelineManifest, string>> = {
+    channelEnablement: deriveDiV0S4ChannelEnablement(flags),
+    s4OrchestrationContractVersion: DI_V0_S4_ORCHESTRATION_CONTRACT_VERSION,
+    combinedInputIdentityVersion: DI_V0_COMBINED_INPUT_IDENTITY_V0_3,
+    boundaryFingerprintVersion: DI_V0_S4_BOUNDARY_FP_VERSION,
+    channelPolicyVersion: DI_V0_S4_CHANNEL_POLICY_V1,
+  };
+  for (const [key, value] of Object.entries(expected)) {
+    if (manifest[key as keyof DiV0S4PipelineManifest] !== value) {
+      throw new DiV0S4IdentityError(`manifest ${key} must be ${value}`);
+    }
+  }
 }
 
 // ── Boundary fingerprint (DI_V0_S4_BOUNDARY_FP_V1) ────────────────────────
