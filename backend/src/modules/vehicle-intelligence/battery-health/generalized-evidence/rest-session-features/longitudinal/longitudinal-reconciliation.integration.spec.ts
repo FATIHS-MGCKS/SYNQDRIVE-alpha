@@ -725,9 +725,7 @@ async function positionFleetCursorBeforeVehicle(
       const envBackup = process.env.BATTERY_V2_LONGITUDINAL_PROFILE_MATERIALIZATION_ENABLED;
       process.env.BATTERY_V2_LONGITUDINAL_PROFILE_MATERIALIZATION_ENABLED = 'true';
       try {
-        const org = await createOrg(prisma, 'SCHED-OPS');
-        const organizationId = org.id;
-        const vehicleId = await createDeterministicFleetVehicle(prisma, organizationId, 1);
+        const { organizationId, vehicleId } = await createOrgVehicle(prisma, 'SCHED-OPS');
         await positionFleetCursorBeforeVehicle(prisma, organizationId);
         const profileGeneratedAt = '2026-05-07T12:00:00.000Z';
         const session = await createRestSession(prisma, {
@@ -750,6 +748,7 @@ async function positionFleetCursorBeforeVehicle(
           computationPhase: BatteryRestSessionFeatureComputationPhase.FINAL,
           sessionTrust: BatteryRestSessionFeatureSessionTrust.VALID,
           inputSummary: summary,
+          computedAt: new Date('2026-05-07T09:00:00.000Z'),
         });
 
         expect(
@@ -802,9 +801,7 @@ async function positionFleetCursorBeforeVehicle(
 
     it('leader turnover mid-tick — overlapping ticks converge without duplicate science', async () => {
       if (!dbOk) return;
-      const org = await createOrg(prisma, 'LEADER');
-      const organizationId = org.id;
-      const vehicleId = await createDeterministicFleetVehicle(prisma, organizationId, 1);
+      const { organizationId, vehicleId } = await createOrgVehicle(prisma, 'LEADER');
       await positionFleetCursorBeforeVehicle(prisma, organizationId);
       const profileGeneratedAt = '2026-05-08T12:00:00.000Z';
       const session = await createRestSession(prisma, {
