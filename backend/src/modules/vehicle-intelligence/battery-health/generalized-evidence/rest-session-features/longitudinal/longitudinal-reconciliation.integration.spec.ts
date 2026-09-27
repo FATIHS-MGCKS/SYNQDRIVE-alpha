@@ -824,6 +824,7 @@ async function positionFleetCursorBeforeVehicle(
         computationPhase: BatteryRestSessionFeatureComputationPhase.FINAL,
         sessionTrust: BatteryRestSessionFeatureSessionTrust.VALID,
         inputSummary: summary,
+        computedAt: new Date('2026-05-08T09:00:00.000Z'),
       });
 
       const [tickA, tickB] = await Promise.all([
