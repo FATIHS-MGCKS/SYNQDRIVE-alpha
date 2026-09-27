@@ -1,5 +1,12 @@
 # KG-EED Changelog
 
+## 2026-09-27 — ERD E5.4D scoped runtime shadow persist canary gate
+
+- `ERD_RECHARGE_SHADOW_PARITY_CANARY_ALLOWLIST` env contract (`organizationId:vehicleId`, comma-separated; fail-closed parser)
+- Runtime hook authorization: `GLOBAL` | `SCOPED_CANARY` | `DISABLED` | `INVALID_SCOPED_CONFIG`; global flag semantics unchanged
+- Evidence: `ERD-E5-4D-SCOPED-RUNTIME-SHADOW-PERSIST-2026-09-27.md` (EED-EV-0096); policy + runtime unit tests; PG-SCOPE-1..4
+- No Production env activation; pre-write backup mandatory before future Production scoped activation (EED-EV-0095)
+
 ## 2026-09-27 — ERD E5.4C controlled single-vehicle shadow persist canary (Production)
 
 - Authorized Production mutation: one org/vehicle/window; `ErdRechargeShadowParityService.evaluateVehicleWindow({ persist: true })` run twice (12 created, then 12 deduped)

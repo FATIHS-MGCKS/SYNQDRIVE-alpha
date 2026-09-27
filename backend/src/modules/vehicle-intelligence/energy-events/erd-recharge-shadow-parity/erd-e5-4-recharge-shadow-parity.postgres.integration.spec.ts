@@ -16,6 +16,10 @@ import { ErdRechargeShadowParityRepository } from './erd-recharge-shadow-parity.
 import { ErdRechargeShadowParityRuntimeService } from './erd-recharge-shadow-parity.runtime';
 import { ErdRechargeShadowParityService } from './erd-recharge-shadow-parity.service';
 import {
+  ERD_RECHARGE_SHADOW_PARITY_CANARY_ALLOWLIST_ENV,
+  ERD_RECHARGE_SHADOW_PARITY_ENV_FLAG,
+} from './erd-recharge-shadow-parity.constants';
+import {
   ERD_RECHARGE_SHADOW_FIELD_SEVERITY,
   ERD_RECHARGE_SHADOW_FINALITY,
   ERD_RECHARGE_SHADOW_PAIRING_EVIDENCE,
@@ -231,6 +235,74 @@ async function loadCohortCounts(
     isLegacyDirectDimoRechargeRow(row),
   ).length;
   return { canonicalEpisodeCount, legacyEpisodeCount, sessions, legacyRows };
+}
+
+function snapshotShadowEnv(): Record<string, string | undefined> {
+  return {
+    [ERD_RECHARGE_SHADOW_PARITY_ENV_FLAG]: process.env[ERD_RECHARGE_SHADOW_PARITY_ENV_FLAG],
+    [ERD_RECHARGE_SHADOW_PARITY_CANARY_ALLOWLIST_ENV]:
+      process.env[ERD_RECHARGE_SHADOW_PARITY_CANARY_ALLOWLIST_ENV],
+  };
+}
+
+function restoreShadowEnv(saved: Record<string, string | undefined>): void {
+  for (const [key, value] of Object.entries(saved)) {
+    if (value === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = value;
+    }
+  }
+}
+
+const E5_4_ASYNC_WAIT_TIMEOUT_MS = 5000;
+const E5_4_ASYNC_WAIT_INTERVAL_MS = 25;
+
+async function waitForCondition(
+  predicate: () => boolean | Promise<boolean>,
+  options?: { timeoutMs?: number; intervalMs?: number; description?: string },
+): Promise<void> {
+  const timeoutMs = options?.timeoutMs ?? E5_4_ASYNC_WAIT_TIMEOUT_MS;
+  const intervalMs = options?.intervalMs ?? E5_4_ASYNC_WAIT_INTERVAL_MS;
+  const description = options?.description ?? 'condition';
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (await predicate()) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+  throw new Error(`Timed out after ${timeoutMs}ms waiting for ${description}`);
+}
+
+async function waitForShadowRowCount(
+  client: PrismaClient,
+  vehicleId: string,
+  minCount: number,
+  description?: string,
+): Promise<void> {
+  await waitForCondition(
+    async () => (await countShadowRows(client, vehicleId)) >= minCount,
+    {
+      description:
+        description ?? `shadow row count >= ${minCount} for vehicle ${vehicleId}`,
+    },
+  );
+}
+
+async function flushMicrotasks(): Promise<void> {
+  await Promise.resolve();
+  await Promise.resolve();
+}
+
+async function waitForMetricRunResult(
+  metrics: { recordRun: jest.Mock },
+  result: string,
+): Promise<void> {
+  await waitForCondition(
+    () => metrics.recordRun.mock.calls.some((call) => call[0] === result),
+    { description: `metrics.recordRun(${result})` },
+  );
 }
 
 const describeFn = LIVE ? describe : describe.skip;
@@ -1030,12 +1102,141 @@ describeFn(
       }
     });
 
-    it('S25: runAfterEnergyDetectionSafe swallows injectPersistenceFailure (no throw)', async () => {
+    it('PG-SCOPE-1: scoped allowlist authorizes runtime persist for exact org+vehicle', async () => {
       if (!dbReady) return;
       const suffix = randomUUID().slice(0, 8);
       const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
       const service = buildShadowParityService(prisma);
       const runtime = new ErdRechargeShadowParityRuntimeService(service);
+      const savedEnv = snapshotShadowEnv();
+      delete process.env[ERD_RECHARGE_SHADOW_PARITY_ENV_FLAG];
+      process.env[ERD_RECHARGE_SHADOW_PARITY_CANARY_ALLOWLIST_ENV] = `${org.id}:${vehicle.id}`;
+      try {
+        const session = await createNativeSession(prisma, org.id, vehicle.id, suffix);
+        await createLegacyRechargeVee(prisma, vehicle.id, session.dimoSegmentId!);
+        const veeBefore = await countVee(prisma, vehicle.id);
+
+        runtime.runAfterEnergyDetectionSafe({
+          organizationId: org.id,
+          vehicleId: vehicle.id,
+          windowFrom: WINDOW_FROM,
+          windowTo: WINDOW_TO,
+        });
+        await waitForShadowRowCount(prisma, vehicle.id, 1, 'PG-SCOPE-1 shadow persist');
+
+        expect(await countShadowRows(prisma, vehicle.id)).toBeGreaterThanOrEqual(1);
+        expect(await countVee(prisma, vehicle.id)).toBe(veeBefore);
+      } finally {
+        restoreShadowEnv(savedEnv);
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
+    it('PG-SCOPE-2: scoped allowlist wrong vehicle → zero shadow rows from runtime', async () => {
+      if (!dbReady) return;
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      const otherVehicle = await prisma.vehicle.create({
+        data: {
+          organizationId: org.id,
+          vin: `E54O${suffix}`.slice(0, 17).padEnd(17, '0'),
+          licensePlate: `E54O-${suffix}`.slice(0, 12),
+          make: 'Test',
+          model: 'ERD',
+          year: 2024,
+          fuelType: 'ELECTRIC',
+          status: 'AVAILABLE',
+        },
+        select: { id: true },
+      });
+      const service = buildShadowParityService(prisma);
+      const runtime = new ErdRechargeShadowParityRuntimeService(service);
+      const savedEnv = snapshotShadowEnv();
+      delete process.env[ERD_RECHARGE_SHADOW_PARITY_ENV_FLAG];
+      process.env[ERD_RECHARGE_SHADOW_PARITY_CANARY_ALLOWLIST_ENV] = `${org.id}:${otherVehicle.id}`;
+      try {
+        const session = await createNativeSession(prisma, org.id, vehicle.id, suffix);
+        await createLegacyRechargeVee(prisma, vehicle.id, session.dimoSegmentId!);
+
+        runtime.runAfterEnergyDetectionSafe({
+          organizationId: org.id,
+          vehicleId: vehicle.id,
+          windowFrom: WINDOW_FROM,
+          windowTo: WINDOW_TO,
+        });
+        await flushMicrotasks();
+
+        expect(await countShadowRows(prisma, vehicle.id)).toBe(0);
+      } finally {
+        restoreShadowEnv(savedEnv);
+        await prisma.vehicle.deleteMany({ where: { id: otherVehicle.id } }).catch(() => undefined);
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
+    it('PG-SCOPE-3: malformed allowlist with valid pair → zero shadow rows', async () => {
+      if (!dbReady) return;
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      const service = buildShadowParityService(prisma);
+      const runtime = new ErdRechargeShadowParityRuntimeService(service);
+      const savedEnv = snapshotShadowEnv();
+      delete process.env[ERD_RECHARGE_SHADOW_PARITY_ENV_FLAG];
+      process.env[ERD_RECHARGE_SHADOW_PARITY_CANARY_ALLOWLIST_ENV] = `${org.id}:${vehicle.id},badtoken`;
+      try {
+        const session = await createNativeSession(prisma, org.id, vehicle.id, suffix);
+        await createLegacyRechargeVee(prisma, vehicle.id, session.dimoSegmentId!);
+
+        runtime.runAfterEnergyDetectionSafe({
+          organizationId: org.id,
+          vehicleId: vehicle.id,
+          windowFrom: WINDOW_FROM,
+          windowTo: WINDOW_TO,
+        });
+        await flushMicrotasks();
+
+        expect(await countShadowRows(prisma, vehicle.id)).toBe(0);
+      } finally {
+        restoreShadowEnv(savedEnv);
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
+    it('PG-SCOPE-4: global flag on without allowlist → runtime persistence unchanged', async () => {
+      if (!dbReady) return;
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      const service = buildShadowParityService(prisma);
+      const runtime = new ErdRechargeShadowParityRuntimeService(service);
+      const savedEnv = snapshotShadowEnv();
+      process.env[ERD_RECHARGE_SHADOW_PARITY_ENV_FLAG] = '1';
+      delete process.env[ERD_RECHARGE_SHADOW_PARITY_CANARY_ALLOWLIST_ENV];
+      try {
+        const session = await createNativeSession(prisma, org.id, vehicle.id, suffix);
+        await createLegacyRechargeVee(prisma, vehicle.id, session.dimoSegmentId!);
+
+        runtime.runAfterEnergyDetectionSafe({
+          organizationId: org.id,
+          vehicleId: vehicle.id,
+          windowFrom: WINDOW_FROM,
+          windowTo: WINDOW_TO,
+        });
+        await waitForShadowRowCount(prisma, vehicle.id, 1, 'PG-SCOPE-4 shadow persist');
+
+        expect(await countShadowRows(prisma, vehicle.id)).toBeGreaterThanOrEqual(1);
+      } finally {
+        restoreShadowEnv(savedEnv);
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
+    it('S25: runAfterEnergyDetectionSafe swallows injectPersistenceFailure (no throw)', async () => {
+      if (!dbReady) return;
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      const service = buildShadowParityService(prisma);
+      const runtimeMetrics = { recordRun: jest.fn(), recordObservation: jest.fn() };
+      const runtime = new ErdRechargeShadowParityRuntimeService(service, runtimeMetrics as never);
       const previousFlag = process.env.ERD_RECHARGE_SHADOW_PARITY_ENABLED;
       process.env.ERD_RECHARGE_SHADOW_PARITY_ENABLED = '1';
       const realEvaluate = service.evaluateVehicleWindow.bind(service);
@@ -1054,7 +1255,13 @@ describeFn(
           }),
         ).not.toThrow();
 
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        await waitForMetricRunResult(
+          runtimeMetrics,
+          ERD_RECHARGE_SHADOW_RUN_RESULT.FAILED_ISOLATED,
+        );
+        expect(runtimeMetrics.recordRun).toHaveBeenCalledWith(
+          ERD_RECHARGE_SHADOW_RUN_RESULT.FAILED_ISOLATED,
+        );
       } finally {
         jest.restoreAllMocks();
         if (previousFlag === undefined) {
@@ -1062,6 +1269,46 @@ describeFn(
         } else {
           process.env.ERD_RECHARGE_SHADOW_PARITY_ENABLED = previousFlag;
         }
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
+    it('S25b: scoped allowlist runtime swallows injectPersistenceFailure (no throw)', async () => {
+      if (!dbReady) return;
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      const service = buildShadowParityService(prisma);
+      const runtimeMetrics = { recordRun: jest.fn(), recordObservation: jest.fn() };
+      const runtime = new ErdRechargeShadowParityRuntimeService(service, runtimeMetrics as never);
+      const savedEnv = snapshotShadowEnv();
+      delete process.env[ERD_RECHARGE_SHADOW_PARITY_ENV_FLAG];
+      process.env[ERD_RECHARGE_SHADOW_PARITY_CANARY_ALLOWLIST_ENV] = `${org.id}:${vehicle.id}`;
+      const realEvaluate = service.evaluateVehicleWindow.bind(service);
+      jest.spyOn(service, 'evaluateVehicleWindow').mockImplementation((input) =>
+        realEvaluate({ ...input, injectPersistenceFailure: true }),
+      );
+      try {
+        await createNativeSession(prisma, org.id, vehicle.id, suffix);
+
+        expect(() =>
+          runtime.runAfterEnergyDetectionSafe({
+            organizationId: org.id,
+            vehicleId: vehicle.id,
+            windowFrom: WINDOW_FROM,
+            windowTo: WINDOW_TO,
+          }),
+        ).not.toThrow();
+
+        await waitForMetricRunResult(
+          runtimeMetrics,
+          ERD_RECHARGE_SHADOW_RUN_RESULT.FAILED_ISOLATED,
+        );
+        expect(runtimeMetrics.recordRun).toHaveBeenCalledWith(
+          ERD_RECHARGE_SHADOW_RUN_RESULT.FAILED_ISOLATED,
+        );
+      } finally {
+        jest.restoreAllMocks();
+        restoreShadowEnv(savedEnv);
         await cleanup(prisma, vehicle.id, org.id);
       }
     });
