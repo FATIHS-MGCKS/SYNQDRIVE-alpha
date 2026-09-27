@@ -7,6 +7,8 @@
 
 > READ-ONLY AUDIT · NO RUNTIME CHANGE · NO PRODUCTION WRITE · NO DEPLOY · NO PROVIDER CALL · NO CUSTOMER EFFECT
 
+> **AMENDED BY** [EXP021_C1D10C_AUTHORITY_CLOSURE.md](EXP021_C1D10C_AUTHORITY_CLOSURE.md) (C1D.10C, 2026-09-27): the S4A contract review here refers to machine contract v1; C1D.10B found P1-A..P1-D in it (S2 execution identity, non-enforcing validator, nonexistent `vehicle_trips.organization_id`, incomplete control plane). Current contract: `design/s4a/s4a-contract.v2.json`. Text below is preserved as written.
+
 ## 1. Re-anchored state
 
 | Item | Value | Method |

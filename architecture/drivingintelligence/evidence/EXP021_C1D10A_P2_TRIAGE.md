@@ -4,6 +4,8 @@
 
 > READ-ONLY AUDIT · DESIGN ONLY · NO RUNTIME CHANGE
 
+> **AMENDED BY** [EXP021_C1D10C_AUTHORITY_CLOSURE.md §9](EXP021_C1D10C_AUTHORITY_CLOSURE.md) (C1D.10C, 2026-09-27): P2 items reconciled with the C1D.10B findings under the classes CLOSED / OPEN_ACCEPTED_FOR_S4A / PROMOTED_P1 / NOT_APPLICABLE. The "CLOSED_AT_CONTRACT_LEVEL" results for P1-2 below were re-opened by C1D.10B (P1-A, P1-B) and closed again in contract v2. Text below is preserved as written.
+
 Classes: `CLOSED` · `MUST_BE_DESIGNED_IN_S4A` (frozen in the contract; implemented in S4A) · `MUST_CLOSE_BEFORE_TINY_ACTIVATION` · `CAN_REMAIN_DOCUMENTED_P2` · `PROMOTED_TO_P1`.
 
 ## 1. P1 closure

@@ -439,3 +439,27 @@ edges:
     relation: contradicts
     to: DI-EVID-EXP021-C1D10A-001
     notes: Resolved — historical C1D.6/C1D.7 claims amended, not rewritten
+
+  - id: DI-EDGE-141
+    from: DI-DEC-V0-S4A-CONTRACT-V2-001
+    relation: supersedes
+    to: DI-DEC-V0-S4A-CONTRACT-001
+    notes: Partial supersession (C1D.10C) — state machine, S2 guard, tenancy and machine contract v1; v1 decision history preserved with AMENDED BY
+
+  - id: DI-EDGE-142
+    from: DI-DEC-V0-S4A-CONTRACT-V2-001
+    relation: governs
+    to: DI-SVC-V0-SHADOW-CORE-001
+    notes: S4 writes S2 with inputEvidenceVersion = DI_V0_S4_EXECUTION_IDENTITY_V1; S2 key function unchanged
+
+  - id: DI-EDGE-143
+    from: DI-CONTRA-S4A-TENANCY-SCHEMA-001
+    relation: contradicts
+    to: DI-EVID-EXP021-C1D10A-001
+    notes: Resolved in contract v2 — tenancy TRIP_VEHICLE_ORGANIZATION; vehicle_trips.organization_id does not exist
+
+  - id: DI-EDGE-144
+    from: DI-GAP-S4-PROVIDER-BACKPRESSURE-001
+    relation: gates
+    to: DI-DEC-V0-S4A-CONTRACT-V2-001
+    notes: Blocks TINY_ACTIVATION only; not S4A dormant schema merge

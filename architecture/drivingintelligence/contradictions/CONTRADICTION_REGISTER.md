@@ -82,3 +82,14 @@ Record disagreements between sources. **Do not resolve by guessing.**
 | **Cause** | `vps-deploy-release.sh` runs `prisma migrate deploy` on every deploy; merge = Production migration | |
 | **Lesson** | Schema present ≠ S4 runtime active ≠ shadow runs executed ≠ customer use; migration safety is a separate, earlier gate than activation (`design/s4a/S4A_MIGRATION_SAFETY.md`) | |
 | **Graph** | DI-CONTRA-S2-PROD-MIGRATION-001, DI-EVID-EXP021-C1D10A-001 |
+
+## DI-CONTRA-S4A-TENANCY-SCHEMA-001 — S4A scope guard vs nonexistent `vehicle_trips.organization_id`
+
+| Side | Claim | Source |
+|------|-------|--------|
+| A | S4A tenant scope guard checks `NEW.organization_id` against `vehicle_trips.organization_id` | C1D.10A `design/s4a/S4A_CONTRACT_DESIGN.md` + `s4a-contract.v1.json` `tenantScope` (historical, preserved) |
+| B | `vehicle_trips` has no `organization_id` column; organization is reachable only via `vehicle_trips.vehicle_id` → `vehicles.organization_id` | `backend/prisma/schema.prisma` (`VehicleTrip`), Production `information_schema.columns` (C1D.10B / C1D.10C read-only) |
+| **Status** | **RESOLVED** (2026-09-27) — contract v2 tenancy authority `TRIP_VEHICLE_ORGANIZATION` (`vehicle_trips JOIN vehicles`); validator rejects any unmarked reference to the nonexistent column | `evidence/EXP021_C1D10C_AUTHORITY_CLOSURE.md` §3 |
+| **Cause** | Design written against an assumed denormalized column; v1 validator did not check schema existence | |
+| **Lesson** | Tenancy SQL in a contract must be validated against the real schema; precedent `vehicle_trip_route_artifact_scope_guard` (migration `20260829140000`) | |
+| **Graph** | DI-CONTRA-S4A-TENANCY-SCHEMA-001, DI-EVID-EXP021-C1D10A-001, DI-EVID-EXP021-C1D10C-001 |

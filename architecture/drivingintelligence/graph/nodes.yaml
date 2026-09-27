@@ -1640,3 +1640,63 @@ nodes:
     source_paths:
       - backend/src/modules/vehicle-intelligence/driving-intelligence/shadow-persistence/di-v0-shadow-persistence.repository.ts
       - architecture/drivingintelligence/design/s4a/S4A_IDENTITY_AND_FENCING.md
+
+  - id: DI-EVID-EXP021-C1D10C-001
+    type: evidence
+    title: EXP-021 C1D.10C S4 authority / contract / validator closure (C1D.10B P1-A..P1-D)
+    epistemic_status: CONFIRMED
+    source_type: AUDIT_DOCUMENT
+    summary: >
+      Closes the four C1D.10B P1s in contract v2 (DI_V0_S4A_CONTRACT_V2): S2 execution identity, trip→vehicle
+      tenancy, control plane, enforcing validator (47 negative / 21 positive cases, 0 false accepts / rejects).
+      Read-only Production re-read 2026-09-27: S2 still 0 runs / 0 intervals / 0 tuples written; DB TimeZone
+      Etc/UTC, trip_repairs.applied_at written as UTC; all org/vehicle/trip IDs match the allowlist token
+      pattern. P2 reconciliation for all C1D.10A / C1D.10B items. No runtime code.
+    source_paths:
+      - architecture/drivingintelligence/evidence/EXP021_C1D10C_AUTHORITY_CLOSURE.md
+      - architecture/drivingintelligence/design/s4a/s4a-contract.v2.json
+      - architecture/drivingintelligence/design/s4a/S4A_CONTROL_PLANE.md
+      - architecture/drivingintelligence/scripts/validate-s4a-contract.mjs
+      - architecture/drivingintelligence/scripts/validate-s4a-contract-negative.mjs
+
+  - id: DI-DEC-V0-S4A-CONTRACT-V2-001
+    type: decision
+    title: DI V0 S4A contract v2 — S2 execution identity, trip→vehicle tenancy, control plane, enforcing validator (EXP-021 C1D.10C)
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: >
+      Amends DI-DEC-V0-S4A-CONTRACT-001. DI_V0_S4_EXECUTION_IDENTITY_V1 as S2 inputEvidenceVersion (collision
+      fails closed); tenancy TRIP_VEHICLE_ORGANIZATION; 6 flags default OFF, EMPTY=NONE intersected allowlists,
+      DB kill row (missing = KILLED), pipeline registry + retirement; 13 transitions with DB-clock lease expiry
+      on every holder write; replay never SKIPPED; UTC settlement time authority.
+    source_paths:
+      - architecture/drivingintelligence/decisions/DECISION_REGISTER.md
+      - architecture/drivingintelligence/design/s4a/S4A_CONTRACT_DESIGN.md
+      - architecture/drivingintelligence/design/s4a/S4A_CONTROL_PLANE.md
+      - architecture/drivingintelligence/design/s4a/s4a-contract.v2.json
+    evidence:
+      - DI-EVID-EXP021-C1D10C-001
+
+  - id: DI-CONTRA-S4A-TENANCY-SCHEMA-001
+    type: contradiction
+    title: C1D.10A S4A tenant scope guard referenced nonexistent vehicle_trips.organization_id
+    epistemic_status: CONFIRMED
+    summary: >
+      C1D.10A design + contract v1 checked NEW.organization_id against vehicle_trips.organization_id; the column
+      does not exist (repo schema + Production information_schema). RESOLVED in contract v2 — tenancy via
+      vehicle_trips.vehicle_id → vehicles.organization_id (TRIP_VEHICLE_ORGANIZATION); v1 preserved as history.
+    source_paths:
+      - architecture/drivingintelligence/contradictions/CONTRADICTION_REGISTER.md
+      - architecture/drivingintelligence/evidence/EXP021_C1D10C_AUTHORITY_CLOSURE.md
+
+  - id: DI-GAP-S4-PROVIDER-BACKPRESSURE-001
+    type: gap
+    title: S4 provider acquisition backpressure / circuit breaking not yet implemented
+    epistemic_status: CONFIRMED
+    summary: >
+      S4C must acquire via the shared DimoRequestExecutor under DimoProviderBudgetService with category
+      POST_TRIP_ENRICHMENT / priority BACKGROUND and no S4 in-attempt retry; a provider circuit breaker is
+      OPEN_ACCEPTED_FOR_S4C. Blocks tiny activation (contract v2 activationGates.TINY_ACTIVATION), not S4A.
+    source_paths:
+      - architecture/drivingintelligence/design/s4a/S4A_CONTROL_PLANE.md
+      - architecture/drivingintelligence/design/s4a/s4a-contract.v2.json

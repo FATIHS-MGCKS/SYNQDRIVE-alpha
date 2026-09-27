@@ -1122,3 +1122,19 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Status | `PROPOSED` — draft PR, design only |
 | Evidence | `evidence/EXP021_C1D10A_AUTHORITY_CORRECTION.md`, `evidence/EXP021_C1D10A_P2_TRIAGE.md` (DI-EVID-EXP021-C1D10A-001) |
 | Decision | `DI-DEC-V0-S4A-CONTRACT-001` |
+
+### EXP-021 C1D.10C — S4 authority / contract / validator closure (2026-09-27)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | C1D.10B read-only red-team of C1D.10A: 4 P1 (P1-A S2 execution identity under-bound; P1-B contract/validator non-enforcing, 8/13 false accepts; P1-C tenancy on nonexistent `vehicle_trips.organization_id`; P1-D control plane incomplete) |
+| BEFORE | Contract v1: S2 `inputEvidenceVersion` = combined input identity only; 7 states / 11 transitions without DB-clock expiry on T07–T09; replay could reach SKIPPED; no retirement path; tenancy guard on a nonexistent column; no flag/allowlist/kill-switch semantics; validator accepted invalid mutations |
+| CHANGE | Contract **v2** `s4a-contract.v2.json` (`DI_V0_S4A_CONTRACT_V2`; v1 kept): `DI_V0_S4_EXECUTION_IDENTITY_V1` as S2 `inputEvidenceVersion`; tenancy TRIP_VEHICLE_ORGANIZATION; `S4A_CONTROL_PLANE.md` (6 flags default OFF, EMPTY=NONE intersected allowlists, DB kill row missing=KILLED, pipeline registry + retirement); 13 transitions; lease 240/300/60/900 semantics; UTC time authority; recorded-only quiet re-arm + fingerprint for unrecorded mutations; enforcing validator + red-team suite (`validate-s4a-contract-negative.mjs`); design docs amended with AMENDED BY log; DI-CONTRA-S4A-TENANCY-SCHEMA-001 (RESOLVED); DI-GAP-S4-PROVIDER-BACKPRESSURE-001 (OPEN); P2 reconciliation; SynqDrive Code views |
+| WHY | Every C1D.10B P1 must be closed by construction and proven by a validator that rejects each invalid mutation before any S4A code exists |
+| ALTERNATIVES | See DI-DEC-V0-S4A-CONTRACT-V2-001 (change S2 key fn, denormalize org onto trips, env-only kill switch, EMPTY=ALL allowlist, ceiling-less lease — all rejected) |
+| NON_EFFECTS | No backend/prisma change, migration, table, flag, seed, worker, scheduler, BullMQ wiring, provider call, Production write, deploy or customer path; S1/S2/S3A/S3B unchanged; DIMO Integration + Trips consulted only |
+| Validation | `validate-s4a-contract.sh`: 47 negative (0 false accepts) / 21 positive (0 false rejects); DI graph + docs, DIMO graph, module registry validators; frontend tsc + `i18n:check`; backend typecheck |
+| Gaps | DI-GAP-S4-PROVIDER-BACKPRESSURE-001 (new, OPEN); DI-GAP-S4-REPLAY-DESERIALIZER-001, DI-GAP-S4-NATIVE-READINESS-001, DI-GAP-S4-LOCATION-RETENTION-001, DI-GAP-S4-SHADOW-DELETION-AUDIT-001 unchanged (OPEN) |
+| Status | `PROPOSED` — draft PR #1810, design only |
+| Evidence | `evidence/EXP021_C1D10C_AUTHORITY_CLOSURE.md` (DI-EVID-EXP021-C1D10C-001) |
+| Decision | `DI-DEC-V0-S4A-CONTRACT-V2-001` (amends `DI-DEC-V0-S4A-CONTRACT-001`) |
