@@ -91,6 +91,7 @@ Stable IDs: `EED-EV-####`. Each item: source, path, what it proves, what it does
 | EED-EV-0090 | CODE+TEST | ERD E5.4 NULL-safe legacy cohort 2026-09-26 | `ERD-E5-4-SHADOW-PARITY-2026-09-25.md` § defect fix, `legacy-recharge-cohort.policy.ts` | Positive whitelist loads NULL detection_source legacy rows; R1–R4 + S1–S28 | Topology ADR | PROVEN_BY_TEST | 2026-09-26 |
 | EED-EV-0091 | PRODUCTION | ERD E5.4 fragment topology + energy closure 2026-09-27 | `ERD-E5-4-FRAGMENT-TOPOLOGY-PRODUCTION-CLOSURE-2026-09-27.md` | 6/6 physical pairs; 64 fragments; energy semantic gap; comparator denominator gap documented | Comparator fix deployed | PROVEN_IN_PRODUCTION | 2026-09-27 |
 | EED-EV-0092 | ARCHITECTURE_DOC | ERD E5.4 dual ADR 2026-09-27 | `ERD-E5-4A-SHADOW-PARITY-PHYSICAL-EPISODE-TOPOLOGY-2026-09-27.md`, `ERD-RECHARGE-ENERGY-PRODUCT-SEMANTICS-2026-09-27.md` | EED-DEC-ERD-002/003; Option C energy contract; implementation sequence | Runtime implementation | ARCHITECTURE_AUTHORITY | 2026-09-27 |
+| EED-EV-0093 | CODE+TEST | ERD E5.4A topology implementation Step 1 2026-09-27 | `ERD-E5-4A-SHADOW-PARITY-TOPOLOGY-IMPLEMENTATION-2026-09-27.md`, `erd-recharge-shadow-fragment.policy.ts`, `erd-recharge-shadow-topology.spec.ts` | Comparator v2 fragment diagnostics; physical denominator; T1–T8 + PG-T2/T3/T5/T8 | Energy Step 2 | PROVEN_BY_TEST | 2026-09-27 |
 
 ## Negative results (first-class)
 

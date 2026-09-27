@@ -259,3 +259,7 @@ Existing `MULTIPLE_LEGACY_ONE_CANONICAL` + `relatedLegacyVehicleEnergyEventIds` 
 - Evidence: `evidence/ERD-E5-4-FRAGMENT-TOPOLOGY-PRODUCTION-CLOSURE-2026-09-27.md`
 - Energy semantics (orthogonal): `ERD-RECHARGE-ENERGY-PRODUCT-SEMANTICS-2026-09-27.md`
 - Runtime baseline: `evidence/ERD-E5-4-SHADOW-PARITY-2026-09-25.md`
+
+## 17. Implementation status (2026-09-27, Step 1)
+
+**IMPLEMENTED** — comparator topology v2 in `erd-recharge-shadow-parity/*` (see `evidence/ERD-E5-4A-SHADOW-PARITY-TOPOLOGY-IMPLEMENTATION-2026-09-27.md`, EED-EV-0093). Energy semantics (Step 2) **not** implemented.

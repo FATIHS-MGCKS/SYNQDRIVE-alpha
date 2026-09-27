@@ -1880,13 +1880,13 @@ nodes:
     type: decision
     title: E5.4 shadow parity physical-episode topology
     epistemic_status: CONFIRMED
-    decision_status: PROPOSED
+    decision_status: VALIDATED
     summary: >
       Settled parity at physical recharge episode cardinality; primary legacy pair
       unchanged; fragment siblings as MULTIPLE_LEGACY_ONE_CANONICAL diagnostic;
       LEGACY_ONLY for true orphan clusters only; multiplicity excluded from settled denominator.
     authority_class: EED_OWNS
-    evidence: [EED-EV-0091, EED-EV-0092]
+    evidence: [EED-EV-0091, EED-EV-0092, EED-EV-0093]
     source_paths:
       - architecture/knowledge-graphs/energy-event-detection/decisions/ERD-E5-4A-SHADOW-PARITY-PHYSICAL-EPISODE-TOPOLOGY-2026-09-27.md
 
@@ -1914,6 +1914,20 @@ nodes:
     summary: >
       6 canonical sessions; 70 legacy rows = 6 anchors + 64 fragments; 6/6 exact pairs;
       energy gap from dual DIMO semantics; pre-fix LEGACY_ONLY inflation documented.
+
+  - id: EED-EV-0093
+    type: evidence
+    title: ERD E5.4A shadow parity topology implementation Step 1
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E5-4A-SHADOW-PARITY-TOPOLOGY-IMPLEMENTATION-2026-09-27.md
+      - backend/src/modules/vehicle-intelligence/energy-events/erd-recharge-shadow-parity/erd-recharge-shadow-fragment.policy.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/erd-recharge-shadow-parity/erd-recharge-shadow-topology.spec.ts
+    evidence_maturity: PROVEN_BY_TEST
+    summary: >
+      Comparator v2 fragment-aware topology; physical settled denominator; unit T1–T8;
+      PG-T2/T3/T5/T8; pairing model v1 unchanged; no energy/schema changes.
 
   - id: EED-EV-0092
     type: evidence

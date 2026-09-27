@@ -5,8 +5,16 @@ import {
 } from './erd-recharge-shadow-parity.types';
 
 export interface ErdRechargeShadowParityReport {
+  /** Compatibility alias — canonical physical episode count in scope. */
   canonicalEpisodeCount: number;
+  /** Compatibility field — raw legacy cohort row count (not physical cluster count). */
   legacyEpisodeCount: number;
+  legacyRowCount: number;
+  legacyPhysicalClusterCount: number;
+  canonicalPhysicalEpisodeCount: number;
+  pairedPhysicalEpisodeCount: number;
+  legacyFragmentRowCount: number;
+  trueLegacyOnlyPhysicalClusterCount: number;
   pairedExactCount: number;
   pairedSemanticCount: number;
   ambiguousCount: number;
@@ -23,12 +31,39 @@ export interface ErdRechargeShadowParityReport {
   settledParityRate: number | null;
 }
 
+function isPrimaryPairObservation(o: ErdRechargeShadowObservationDraft): boolean {
+  if (o.canonicalChargeSessionId == null || o.legacyVehicleEnergyEventId == null) {
+    return false;
+  }
+  return (
+    o.parityClass === ERD_RECHARGE_SHADOW_PARITY_CLASS.EXACT_MATCH ||
+    o.parityClass === ERD_RECHARGE_SHADOW_PARITY_CLASS.SEMANTIC_MATCH ||
+    o.parityClass === ERD_RECHARGE_SHADOW_PARITY_CLASS.FIELD_MISMATCH
+  );
+}
+
+function isFragmentTopologyDiagnostic(
+  o: ErdRechargeShadowObservationDraft,
+  primaryPairedCanonicalIds: Set<string>,
+): boolean {
+  return (
+    o.parityClass === ERD_RECHARGE_SHADOW_PARITY_CLASS.MULTIPLE_LEGACY_ONE_CANONICAL &&
+    o.canonicalChargeSessionId != null &&
+    primaryPairedCanonicalIds.has(o.canonicalChargeSessionId)
+  );
+}
+
 export function aggregateRechargeShadowParityReport(input: {
   observations: ErdRechargeShadowObservationDraft[];
   canonicalEpisodeCount: number;
   legacyEpisodeCount: number;
 }): ErdRechargeShadowParityReport {
   const obs = input.observations;
+  const primaryPairedCanonicalIds = new Set(
+    obs.filter(isPrimaryPairObservation).map((o) => o.canonicalChargeSessionId!),
+  );
+  const pairedPhysicalEpisodeCount = primaryPairedCanonicalIds.size;
+
   const pairedExactCount = obs.filter(
     (o) => o.parityClass === ERD_RECHARGE_SHADOW_PARITY_CLASS.EXACT_MATCH,
   ).length;
@@ -74,12 +109,43 @@ export function aggregateRechargeShadowParityReport(input: {
     (o) => o.parityClass === ERD_RECHARGE_SHADOW_PARITY_CLASS.PENDING_SETTLEMENT,
   ).length;
 
+  const fragmentLegacyIds = new Set<string>();
+  for (const o of obs) {
+    if (!isFragmentTopologyDiagnostic(o, primaryPairedCanonicalIds)) continue;
+    for (const id of o.fieldDiff?.relatedLegacyVehicleEnergyEventIds ?? []) {
+      fragmentLegacyIds.add(id);
+    }
+  }
+
+  const unresolvedMultipleLegacyOneCanonicalCount = obs.filter(
+    (o) =>
+      o.parityClass === ERD_RECHARGE_SHADOW_PARITY_CLASS.MULTIPLE_LEGACY_ONE_CANONICAL &&
+      o.canonicalChargeSessionId != null &&
+      !primaryPairedCanonicalIds.has(o.canonicalChargeSessionId),
+  ).length;
+
+  const legacyRowCount = input.legacyEpisodeCount;
+  const canonicalPhysicalEpisodeCount = input.canonicalEpisodeCount;
+  const legacyFragmentRowCount = fragmentLegacyIds.size;
+  const trueLegacyOnlyPhysicalClusterCount = legacyOnlySettledCount + legacyOnlyObservedCount;
+  const legacyPhysicalClusterCount =
+    pairedPhysicalEpisodeCount +
+    trueLegacyOnlyPhysicalClusterCount +
+    legacyCoalescedMultipleCanonicalCount +
+    unresolvedMultipleLegacyOneCanonicalCount;
+
   const settledEligible = obs.filter(
     (o) => o.finality === ERD_RECHARGE_SHADOW_FINALITY.SETTLED,
   );
-  const settledParityDenominator = settledEligible.filter(
-    (o) => o.parityClass !== ERD_RECHARGE_SHADOW_PARITY_CLASS.AMBIGUOUS_MATCH,
-  ).length;
+  const settledParityDenominator = settledEligible.filter((o) => {
+    if (o.parityClass === ERD_RECHARGE_SHADOW_PARITY_CLASS.AMBIGUOUS_MATCH) {
+      return false;
+    }
+    if (isFragmentTopologyDiagnostic(o, primaryPairedCanonicalIds)) {
+      return false;
+    }
+    return true;
+  }).length;
   const settledParityNumerator = settledEligible.filter((o) =>
     (
       [
@@ -96,6 +162,12 @@ export function aggregateRechargeShadowParityReport(input: {
   return {
     canonicalEpisodeCount: input.canonicalEpisodeCount,
     legacyEpisodeCount: input.legacyEpisodeCount,
+    legacyRowCount,
+    legacyPhysicalClusterCount,
+    canonicalPhysicalEpisodeCount,
+    pairedPhysicalEpisodeCount,
+    legacyFragmentRowCount,
+    trueLegacyOnlyPhysicalClusterCount,
     pairedExactCount,
     pairedSemanticCount,
     ambiguousCount,

@@ -1144,5 +1144,134 @@ describeFn(
         await cleanup(prisma, vehicle.id, org.id);
       }
     });
+
+    it('PG-T2: exact anchor + contained sibling → primary + topology diagnostic, zero fragment LEGACY_ONLY', async () => {
+      if (!dbReady) return;
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      const service = buildShadowParityService(prisma);
+      try {
+        const session = await createNativeSession(prisma, org.id, vehicle.id, suffix);
+        await createLegacyRechargeVee(prisma, vehicle.id, session.dimoSegmentId!);
+        await createLegacyRechargeVee(prisma, vehicle.id, `dimo-frag-${suffix}`, {
+          startTime: new Date('2026-06-01T10:15:00.000Z'),
+          endTime: new Date('2026-06-01T10:45:00.000Z'),
+          durationSeconds: 1800,
+        });
+        const out = await service.evaluateVehicleWindow({
+          ...evaluateInput(org.id, vehicle.id),
+          persist: false,
+        });
+        expect(
+          out.observations.some(
+            (o) =>
+              o.parityClass === ERD_RECHARGE_SHADOW_PARITY_CLASS.LEGACY_ONLY &&
+              o.legacyVehicleEnergyEventId != null,
+          ),
+        ).toBe(false);
+        expect(out.report.multipleLegacyOneCanonicalCount).toBe(1);
+        expect(out.report.pairedPhysicalEpisodeCount).toBe(1);
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
+    it('PG-T3: anchor + multiple contained siblings → deterministic related IDs', async () => {
+      if (!dbReady) return;
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      const service = buildShadowParityService(prisma);
+      try {
+        const session = await createNativeSession(prisma, org.id, vehicle.id, suffix);
+        await createLegacyRechargeVee(prisma, vehicle.id, session.dimoSegmentId!);
+        await createLegacyRechargeVee(prisma, vehicle.id, `dimo-f-b-${suffix}`, {
+          startTime: new Date('2026-06-01T10:20:00.000Z'),
+          endTime: new Date('2026-06-01T10:25:00.000Z'),
+          durationSeconds: 300,
+        });
+        await createLegacyRechargeVee(prisma, vehicle.id, `dimo-f-a-${suffix}`, {
+          startTime: new Date('2026-06-01T10:10:00.000Z'),
+          endTime: new Date('2026-06-01T10:15:00.000Z'),
+          durationSeconds: 300,
+        });
+        const out = await service.evaluateVehicleWindow({
+          ...evaluateInput(org.id, vehicle.id),
+          persist: false,
+        });
+        const diagnostic = out.observations.find(
+          (o) =>
+            o.parityClass === ERD_RECHARGE_SHADOW_PARITY_CLASS.MULTIPLE_LEGACY_ONE_CANONICAL &&
+            o.canonicalChargeSessionId === session.id,
+        );
+        const related = diagnostic?.fieldDiff?.relatedLegacyVehicleEnergyEventIds ?? [];
+        expect(related.length).toBe(2);
+        expect(related).toEqual([...related].sort());
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
+    it('PG-T5: unrelated legacy row remains LEGACY_ONLY', async () => {
+      if (!dbReady) return;
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      const service = buildShadowParityService(prisma);
+      try {
+        const session = await createNativeSession(prisma, org.id, vehicle.id, suffix);
+        await createLegacyRechargeVee(prisma, vehicle.id, session.dimoSegmentId!);
+        await createLegacyRechargeVee(prisma, vehicle.id, `dimo-unrelated-${suffix}`, {
+          startTime: new Date('2026-06-01T14:00:00.000Z'),
+          endTime: new Date('2026-06-01T15:00:00.000Z'),
+          durationSeconds: 3600,
+        });
+        const out = await service.evaluateVehicleWindow({
+          ...evaluateInput(org.id, vehicle.id),
+          persist: false,
+        });
+        expect(out.report.trueLegacyOnlyPhysicalClusterCount).toBe(1);
+        expect(
+          out.observations.filter(
+            (o) => o.parityClass === ERD_RECHARGE_SHADOW_PARITY_CLASS.LEGACY_ONLY,
+          ).length,
+        ).toBe(1);
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
+    it('PG-T8: bounded production-shaped fragment fixture through service path', async () => {
+      if (!dbReady) return;
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      const service = buildShadowParityService(prisma);
+      try {
+        const session = await createNativeSession(prisma, org.id, vehicle.id, suffix);
+        await createLegacyRechargeVee(prisma, vehicle.id, session.dimoSegmentId!);
+        for (let i = 0; i < 16; i += 1) {
+          const fragmentStart = new Date(SESSION_START.getTime() + (i + 1) * 30_000);
+          const fragmentEnd = new Date(fragmentStart.getTime() + 20_000);
+          await createLegacyRechargeVee(prisma, vehicle.id, `dimo-frag-${suffix}-${i}`, {
+            startTime: fragmentStart,
+            endTime: fragmentEnd,
+            durationSeconds: 20,
+          });
+        }
+        const out = await service.evaluateVehicleWindow({
+          ...evaluateInput(org.id, vehicle.id),
+          persist: false,
+        });
+        expect(out.report.legacyRowCount).toBe(17);
+        expect(out.report.legacyFragmentRowCount).toBe(16);
+        expect(out.report.pairedPhysicalEpisodeCount).toBe(1);
+        expect(out.report.settledParityDenominator).toBe(1);
+        expect(
+          out.observations.filter(
+            (o) => o.parityClass === ERD_RECHARGE_SHADOW_PARITY_CLASS.LEGACY_ONLY,
+          ).length,
+        ).toBe(0);
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
   },
 );

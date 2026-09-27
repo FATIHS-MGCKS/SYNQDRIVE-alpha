@@ -436,13 +436,13 @@ Detail below follows governance: decision, rationale, alternatives, consequences
 | Field | Value |
 |-------|-------|
 | **ID** | EED-DEC-ERD-002 |
-| **Status** | **PROPOSED** |
+| **Status** | **VALIDATED** |
 | **Date** | 2026-09-27 |
 | **Question** | At what cardinality should E5.4 settled parity be measured when legacy RECHARGE history fragments inside one physical charge? |
 | **Decision** | Parity authority at **physical recharge episode** level; one **primary** legacy pair per canonical session (pairing P1–P3 unchanged); proven contained siblings → **`MULTIPLE_LEGACY_ONE_CANONICAL`** topology diagnostic with `relatedLegacyVehicleEnergyEventIds` (fragments only, sorted); **`LEGACY_ONLY`** only for true orphan legacy clusters; **`MULTIPLICITY_DIAGNOSTIC_IN_SETTLED_DENOMINATOR=NO`**; separate raw vs physical count fields. |
 | **Why** | Production audit: 6/6 exact pairs, 64 contained fragments misclassified as `LEGACY_ONLY`, denominator 70 → rate 0 not physically meaningful. |
 | **Alternatives** | Count every legacy row in settled denominator (rejected); new parity enum for fragments (rejected — reuse `MULTIPLE_LEGACY_ONE_CANONICAL`) |
-| **Evidence** | EED-EV-0090, EED-EV-0091, EED-EV-0092 |
+| **Evidence** | EED-EV-0090, EED-EV-0091, EED-EV-0092, EED-EV-0093 |
 | **Consequences** | Comparator + aggregator implementation; future tests T1–T8; no Prisma migration for shadow observations |
 | **Related nodes** | EED-DEC-ERD-001, EED-EV-0084 |
 | **Detail ADR** | [ERD-E5-4A-SHADOW-PARITY-PHYSICAL-EPISODE-TOPOLOGY-2026-09-27.md](../decisions/ERD-E5-4A-SHADOW-PARITY-PHYSICAL-EPISODE-TOPOLOGY-2026-09-27.md) |
