@@ -48,9 +48,29 @@ export function hasStrongLegacyIdentityToCanonical(input: {
   return readCoalescedFromSegmentIds(input.legacy).includes(nativeDimo);
 }
 
+function hasStrongIdentityConflictWithOtherCanonical(input: {
+  ownerCanonicalId: string;
+  legacy: ErdRechargeShadowLegacySnapshot;
+  canonical: ErdRechargeShadowCanonicalCandidate[];
+}): boolean {
+  for (const candidate of input.canonical) {
+    if (candidate.sessionId === input.ownerCanonicalId) continue;
+    if (
+      hasStrongLegacyIdentityToCanonical({
+        canonical: candidate,
+        legacy: input.legacy,
+      })
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function countPrimaryPairedContainmentOwners(input: {
   legacy: ErdRechargeShadowLegacyCandidate;
   pairs: ErdRechargeShadowPairProposal[];
+  canonical: ErdRechargeShadowCanonicalCandidate[];
   canonicalById: Map<string, ErdRechargeShadowCanonicalCandidate>;
 }): string[] {
   const owners: string[] = [];
@@ -67,16 +87,14 @@ function countPrimaryPairedContainmentOwners(input: {
     return [];
   }
   const ownerId = uniqueOwners[0]!;
-  for (const pair of input.pairs) {
-    if (pair.canonical.sessionId === ownerId) continue;
-    if (
-      hasStrongLegacyIdentityToCanonical({
-        canonical: pair.canonical,
-        legacy: input.legacy.snapshot,
-      })
-    ) {
-      return [];
-    }
+  if (
+    hasStrongIdentityConflictWithOtherCanonical({
+      ownerCanonicalId: ownerId,
+      legacy: input.legacy.snapshot,
+      canonical: input.canonical,
+    })
+  ) {
+    return [];
   }
   return uniqueOwners;
 }
@@ -106,6 +124,7 @@ export function resolveLegacyFragmentSiblingsByPrimaryPair(input: {
     const owners = countPrimaryPairedContainmentOwners({
       legacy: legacyRow,
       pairs: input.pairs,
+      canonical: input.canonical,
       canonicalById,
     });
     if (owners.length !== 1) continue;

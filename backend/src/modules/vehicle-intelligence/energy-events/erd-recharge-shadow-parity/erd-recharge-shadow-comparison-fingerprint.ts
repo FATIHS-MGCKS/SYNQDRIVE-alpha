@@ -44,7 +44,24 @@ export function buildShadowComparisonFingerprint(input: {
     finality: input.draft.finality,
     canonicalProjectionSnapshot: input.draft.canonicalProjectionSnapshot,
     legacyProjectionSnapshot: input.draft.legacyProjectionSnapshot,
-    fieldDiff: input.draft.fieldDiff,
+    fieldDiff: normalizeFieldDiffForFingerprint(input.draft.fieldDiff),
   };
   return createHash('sha256').update(stableJson(payload)).digest('hex');
+}
+
+function normalizeFieldDiffForFingerprint(
+  fieldDiff: ErdRechargeShadowObservationDraft['fieldDiff'],
+): ErdRechargeShadowObservationDraft['fieldDiff'] {
+  if (fieldDiff == null) return null;
+  const relatedLegacy = fieldDiff.relatedLegacyVehicleEnergyEventIds
+    ? [...fieldDiff.relatedLegacyVehicleEnergyEventIds].sort()
+    : undefined;
+  const relatedCanonical = fieldDiff.relatedCanonicalSessionIds
+    ? [...fieldDiff.relatedCanonicalSessionIds].sort()
+    : undefined;
+  return {
+    ...fieldDiff,
+    ...(relatedLegacy ? { relatedLegacyVehicleEnergyEventIds: relatedLegacy } : {}),
+    ...(relatedCanonical ? { relatedCanonicalSessionIds: relatedCanonical } : {}),
+  };
 }

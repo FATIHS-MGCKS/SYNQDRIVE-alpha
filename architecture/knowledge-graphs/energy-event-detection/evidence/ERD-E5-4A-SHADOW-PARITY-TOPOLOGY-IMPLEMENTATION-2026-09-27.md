@@ -28,6 +28,10 @@
 - No Prisma schema or migration.
 - No Shadow Parity enablement, cutover, dedupe, E6.3, Production mutation.
 
+## Step 1.1 micro-closure (same PR)
+
+Fragment cross-canonical strong-identity firewall evaluates **all** canonical shadow candidates (paired, unpaired, ambiguous, structural) — not primary `pairs` only. Within v2, topology diagnostic fingerprints change when `fieldDiff.relatedLegacyVehicleEnergyEventIds` membership changes (independent of comparator version bump v1→v2).
+
 ## Tests
 
 | ID | Coverage |
