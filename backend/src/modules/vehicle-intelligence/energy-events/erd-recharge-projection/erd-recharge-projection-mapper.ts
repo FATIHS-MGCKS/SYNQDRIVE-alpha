@@ -19,6 +19,11 @@ import {
 } from './erd-recharge-projection-eligibility.policy';
 import { ERD_RECHARGE_LOCATION_AUTHORITY_VERSION } from '../erd-recharge-location-provenance/erd-recharge-location-authority.constants';
 import { projectTrustedSessionLocationsToVeeCoordinates } from '../erd-recharge-location-provenance/erd-recharge-session-location.policy';
+import {
+  deriveStoredTractionEnergyDeltaKwhFromSession,
+  ERD_RECHARGE_ENERGY_DELTA_EVIDENCE,
+  ERD_RECHARGE_ENERGY_DELTA_SEMANTIC,
+} from './erd-recharge-energy-semantics.policy';
 
 export interface ErdRechargeProjectionDraft {
   vehicleId: string;
@@ -155,13 +160,15 @@ export function mapCanonicalHvChargeSessionToErdRechargeProjectionDraft(input: {
     fuelDeltaLiters: null,
     fuelDeltaPercent: null,
     socDeltaPercent: input.session.deltaSocPercent,
-    energyDeltaKwh: input.session.energyAddedKwh,
+    energyDeltaKwh: deriveStoredTractionEnergyDeltaKwhFromSession(input.session),
     odometerStartKm:
       typeof metadata.odometerStartKm === 'number' ? metadata.odometerStartKm : null,
     odometerEndKm: typeof metadata.odometerEndKm === 'number' ? metadata.odometerEndKm : null,
     confidence: mapQualityToConfidence(input.session, metadata),
     rawDetectionMeta: {
       projectionVersion: ERD_RECHARGE_PROJECTION_META_VERSION,
+      energyDeltaSemantic: ERD_RECHARGE_ENERGY_DELTA_SEMANTIC,
+      energyDeltaEvidence: ERD_RECHARGE_ENERGY_DELTA_EVIDENCE,
       locationAuthorityVersion: ERD_RECHARGE_LOCATION_AUTHORITY_VERSION,
       startLocationProvenance: location.startLocationProvenance,
       endLocationProvenance: location.endLocationProvenance,

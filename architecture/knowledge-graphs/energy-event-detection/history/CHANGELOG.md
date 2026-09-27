@@ -1,5 +1,12 @@
 # KG-EED Changelog
 
+## 2026-09-27 — ERD E5.4B canonical stored-energy alignment (Step 2)
+
+- Canonical `VehicleEnergyEvent.energyDeltaKwh` from `HvChargeSession` stored extrema (`deriveStoredTractionEnergyDeltaKwh`); no `energyAddedKwh` fallback
+- `ERD_RECHARGE_PROJECTION_META_VERSION` 1 → 2; identity `v1` unchanged; `rawDetectionMeta.energyDeltaSemantic=STORED_TRACTION_BATTERY_ENERGY_DELTA`
+- Evidence: `ERD-E5-4B-CANONICAL-STORED-ENERGY-ALIGNMENT-2026-09-27.md` (EED-EV-0094); EED-DEC-ERD-003 remains PROPOSED (partial Option C)
+- No Prisma/schema/API/`chargingEnergyAddedKwh`; no legacy mapper changes; no Production mutation
+
 ## 2026-09-27 — ERD E5.4A shadow parity topology implementation (Step 1)
 
 - Comparator v2 + parity classification v2; pairing model v1 unchanged
