@@ -33,6 +33,10 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Install backend dependencies (js-yaml for graph validators)
+        run: npm ci
+        working-directory: backend
+
       - name: S4A machine contract + red-team suite
         run: bash architecture/drivingintelligence/scripts/validate-s4a-contract.sh
 
