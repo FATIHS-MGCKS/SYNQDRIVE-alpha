@@ -1,4 +1,4 @@
-import { DI_V0_R1_OBD_QUERY_SPEC_V0_2 } from './di-v0-r1-obd-acquisition.versions';
+import { DI_V0_R1_OBD_QUERY_SPEC_V0_3 } from './di-v0-r1-obd-acquisition.versions';
 import type { DiV0ValidatedPositionWindow } from '../position-acquisition/di-v0-position-acquisition.types';
 
 /**
@@ -9,7 +9,7 @@ export function buildDiV0HistoricalR1ObdQuery(
   tokenId: number,
   window: DiV0ValidatedPositionWindow,
 ): string {
-  const signalLines = DI_V0_R1_OBD_QUERY_SPEC_V0_2.signals
+  const signalLines = DI_V0_R1_OBD_QUERY_SPEC_V0_3.signals
     .map((s) => `        ${s.providerField}(agg: ${s.aggregation})`)
     .join('\n');
   return `
@@ -18,7 +18,7 @@ export function buildDiV0HistoricalR1ObdQuery(
         tokenId: ${tokenId}
         from: "${window.fromUtc}"
         to: "${window.toUtc}"
-        interval: "${DI_V0_R1_OBD_QUERY_SPEC_V0_2.interval}"
+        interval: "${DI_V0_R1_OBD_QUERY_SPEC_V0_3.interval}"
       ) {
         timestamp
 ${signalLines}

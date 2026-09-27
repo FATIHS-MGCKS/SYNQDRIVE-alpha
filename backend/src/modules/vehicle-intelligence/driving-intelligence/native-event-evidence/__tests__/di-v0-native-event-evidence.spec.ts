@@ -283,7 +283,7 @@ describe('S3B native — NO_EVENT vs source failure (P1-4)', () => {
 
 describe('S3B combined input identity — explicit channel state', () => {
   const POS = 'DI_V0_POSITION_SNAPSHOT:sha256:aaa';
-  const R1 = 'DI_V0_R1_OBD_EVIDENCE_SNAPSHOT_V0_2:sha256:bbb';
+  const R1 = 'DI_V0_R1_OBD_EVIDENCE_SNAPSHOT_V0_3:sha256:bbb';
 
   function pins(native: DiV0EvidenceChannelPin, r1: DiV0EvidenceChannelPin = { channel: 'R1_OBD', state: 'PRESENT', inputEvidenceVersion: R1 }) {
     return [{ channel: 'POSITION', state: 'PRESENT', inputEvidenceVersion: POS } as DiV0EvidenceChannelPin, r1, native];

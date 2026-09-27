@@ -199,6 +199,19 @@ nodes:
     source_paths:
       - architecture/trip-detection-lifecycle/evidence/TDL_OQ_009_TIERED_POLLING_R9_INGRESS_2026-09-26.md
 
+  - id: DIM-EVID-DI-S3B-R1-SCHEMA-001
+    type: evidence
+    title: DIMO telemetry schema facts for DI S3B R1 OBD fields (EXP-021 C1D.9)
+    source_type: AUDIT_DOCUMENT
+    epistemic_status: CONFIRMED
+    summary: >
+      Public telemetry GraphQL introspection + DIMO VSS 4.2 spec — speed/rpm/obdThrottlePosition/obdEngineLoad/
+      powertrainCombustionEngineECT/powertrainTransmissionCurrentGear/isIgnitionOn are nullable Float with
+      FloatAggregation (AVG, MED, MAX, MIN, RAND, FIRST, LAST); gear is a signed int8 index and ignition a
+      boolean, both unsafe under AVG. Consumed by the dormant DI S3B R1 adapter (query V0_3).
+    source_paths:
+      - architecture/drivingintelligence/evidence/EXP021_C1D9_R1_FIELD_AUTHORITY_V03_CORRECTION.md
+
   - id: DIM-FAIL-GOV-001
     type: failed_approach
     title: Defer DIMO authority for R9 webhook changes

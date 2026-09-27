@@ -13,7 +13,7 @@ import {
   staticTransport,
 } from '../../position-acquisition/__tests__/position-acquisition-test-helpers';
 import { acquireDiV0HistoricalR1Obd, toDiV0S1R1ObdInput } from '../di-v0-r1-obd-acquisition';
-import { DI_V0_R1_OBD_QUERY_SPEC_V0_2 } from '../di-v0-r1-obd-acquisition.versions';
+import { DI_V0_R1_OBD_QUERY_SPEC_V0_3 } from '../di-v0-r1-obd-acquisition.versions';
 import { normalizeDiV0R1ObdFromProviderRows } from '../di-v0-r1-obd-normalizer';
 import { buildDiV0HistoricalR1ObdQuery } from '../di-v0-r1-obd-query';
 import type { DiV0R1ObdAcquisitionResult } from '../di-v0-r1-obd-acquisition.types';
@@ -47,12 +47,12 @@ describe('S3B closure — R1 fixture identity + query subset', () => {
     expect(normalize([]).sourceFamily).toBe('RUPTELA_R1');
   });
 
-  it('isIgnitionOn is not queried (AVG semantics not provider-schema verified)', () => {
+  it('isIgnitionOn is not queried (boolean exposed as Float; AVG can be fractional)', () => {
     const request = validateDiV0PositionAcquisitionRequest(baseR1Request(FROM, TO));
     const query = buildDiV0HistoricalR1ObdQuery(7503, request.window);
     expect(query).not.toContain('isIgnitionOn');
-    expect(DI_V0_R1_OBD_QUERY_SPEC_V0_2.signals.map((s) => s.id)).not.toContain('isIgnitionOn');
-    expect(DI_V0_R1_OBD_QUERY_SPEC_V0_2.signals.every((s) => s.fieldAuthority === 'REPO_CONTRACT_ONLY')).toBe(true);
+    expect(DI_V0_R1_OBD_QUERY_SPEC_V0_3.signals.map((s) => s.id)).not.toContain('isIgnitionOn');
+    expect(DI_V0_R1_OBD_QUERY_SPEC_V0_3.signals.every((s) => s.fieldAuthority === 'PROVIDER_SCHEMA_VERIFIED')).toBe(true);
   });
 
   it('unqueried provider fields in a row are ignored', () => {

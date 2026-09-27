@@ -56,7 +56,7 @@ export function legacyStaleSpeedingRow(label: string): Record<string, unknown> {
   };
 }
 
-/** Carries an unqueried `isIgnitionOn` field: S3B must ignore it (ignition is not in the V0_2 query). */
+/** Carries unqueried `isIgnitionOn` + `powertrainTransmissionCurrentGear` fields: S3B V0_3 must ignore both. */
 export function engineIgnitionDropoutRow(label: string): Record<string, unknown> {
   return {
     timestamp: label,
