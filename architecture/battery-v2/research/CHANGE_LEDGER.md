@@ -14,6 +14,17 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-27 — M3.3F F4.1 final ack target-version scope + D4 inspect + concurrency gates
+
+| Field | Value |
+|-------|-------|
+| **OBSERVATION** | Ack uniqueness omitted D2/D3 contract/policy; D4 presented revision `sourceEvidenceFingerprint` as if authoritative; scheduler/ops + leader overlap Postgres gates missing; vehicle scan table unused. |
+| **CHANGE** | Ack fence unique key includes contract+policy; candidate lookup uses current D2 constants; D4 exposes creation provenance + ack list; remove `battery_longitudinal_reconciliation_vehicle_scans`; Postgres scheduler/ops + leader overlap + ack version scope tests. |
+| **WHY** | Prevent old-policy ack from suppressing new target materialization; close mandatory F4.1 concurrency matrix before merge. |
+| **VALIDATION** | Postgres reconciliation suite; engineering doc candidate-scope precision. |
+| **DECISION_STATUS** | **EXPERIMENTAL** (exact-head CI gate) |
+| **EVIDENCE** | PR #1806 |
+
 ## CL-2026-09-27 — M3.3F F4.1 pre-merge correctness hardening (ack fence + fleet cursor)
 
 | Field | Value |

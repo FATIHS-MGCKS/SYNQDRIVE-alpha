@@ -9084,7 +9084,7 @@ model BatteryLongitudinalProfileRevision {
   firstIncludedAnchorAt              DateTime? @map("first_included_anchor_at")
   lastIncludedAnchorAt               DateTime? @map("last_included_anchor_at")
   profileStatus                      String   @map("profile_status")
-  /// SHA-256 hex of canonical D1 source-evidence snapshot at materialization (F4.1 freshness fence).
+  /// Immutable D1 source-evidence fingerprint at revision creation (audit only — not F4.1 freshness authority).
   sourceEvidenceFingerprint          String?  @db.Char(64) @map("source_evidence_fingerprint")
   materializedAt                     DateTime @default(now()) @map("materialized_at")
   createdAt                          DateTime @default(now()) @map("created_at")
@@ -9114,20 +9114,10 @@ model BatteryLongitudinalSourceEvidenceAck {
 
   revision BatteryLongitudinalProfileRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
 
-  @@unique([organizationId, vehicleId, sourceEvidenceFingerprint], map: "battery_longitudinal_source_evidence_ack_fence")
+  @@unique([organizationId, vehicleId, sourceEvidenceFingerprint, longitudinalProfileContractVersion, profilePolicyVersion], map: "battery_longitudinal_source_evidence_ack_fence")
   @@index([organizationId, vehicleId, acknowledgedAt(sort: Desc)], map: "battery_longitudinal_source_evidence_acks_vehicle_ack_idx")
+  @@index([revisionId], map: "battery_longitudinal_source_evidence_acks_revision_idx")
   @@map("battery_longitudinal_source_evidence_acks")
-}
-
-/// M3.3F F4.1 — durable fairness rotation for bounded candidate inspection (not freshness authority).
-model BatteryLongitudinalReconciliationVehicleScan {
-  organizationId String   @map("organization_id")
-  vehicleId      String   @map("vehicle_id")
-  lastScanAt     DateTime @default(now()) @map("last_scan_at")
-
-  @@id([organizationId, vehicleId])
-  @@index([lastScanAt(sort: Asc)], map: "battery_longitudinal_reconciliation_vehicle_scans_last_scan_idx")
-  @@map("battery_longitudinal_reconciliation_vehicle_scans")
 }
 
 /// M3.3F F4.1 — global keyset cursor for fleet-wide bounded inspection liveness.

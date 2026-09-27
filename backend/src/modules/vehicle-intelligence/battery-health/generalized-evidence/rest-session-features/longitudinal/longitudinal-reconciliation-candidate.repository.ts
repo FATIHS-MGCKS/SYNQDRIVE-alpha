@@ -10,6 +10,10 @@ import { LongitudinalInputRepository } from './longitudinal-input.repository';
 import { computeLongitudinalSourceEvidenceFingerprint } from './longitudinal-source-evidence-fingerprint';
 import { LongitudinalSourceEvidenceAckRepository } from './longitudinal-source-evidence-ack.repository';
 import { LONGITUDINAL_RECONCILIATION_BATCH_MAX } from './longitudinal-reconciliation.config';
+import {
+  REST_SESSION_LONGITUDINAL_PROFILE_CONTRACT_VERSION,
+  REST_SESSION_LONGITUDINAL_PROFILE_POLICY_VERSION,
+} from './longitudinal-profile.constants';
 
 export type LongitudinalReconciliationCandidate = {
   organizationId: string;
@@ -22,7 +26,6 @@ export type LongitudinalReconciliationCandidateRepositoryDb = Pick<
   PrismaService,
   | '$queryRaw'
   | '$transaction'
-  | 'batteryLongitudinalReconciliationVehicleScan'
   | 'batteryLongitudinalReconciliationFleetCursor'
 >;
 
@@ -123,23 +126,14 @@ export class LongitudinalReconciliationCandidateRepository {
     return [...firstPage, ...wrapPage];
   }
 
-  async touchVehicleScan(key: VehicleKey): Promise<void> {
-    await this.db.batteryLongitudinalReconciliationVehicleScan.upsert({
-      where: {
-        organizationId_vehicleId: {
-          organizationId: key.organizationId,
-          vehicleId: key.vehicleId,
-        },
-      },
-      create: {
-        organizationId: key.organizationId,
-        vehicleId: key.vehicleId,
-        lastScanAt: new Date(),
-      },
-      update: {
-        lastScanAt: new Date(),
-      },
-    });
+  private currentTargetProfileIdentity(): {
+    longitudinalProfileContractVersion: typeof REST_SESSION_LONGITUDINAL_PROFILE_CONTRACT_VERSION;
+    profilePolicyVersion: typeof REST_SESSION_LONGITUDINAL_PROFILE_POLICY_VERSION;
+  } {
+    return {
+      longitudinalProfileContractVersion: REST_SESSION_LONGITUDINAL_PROFILE_CONTRACT_VERSION,
+      profilePolicyVersion: REST_SESSION_LONGITUDINAL_PROFILE_POLICY_VERSION,
+    };
   }
 
   async getLatestSourceChangeAtMs(key: VehicleKey): Promise<number> {
@@ -205,18 +199,20 @@ export class LongitudinalReconciliationCandidateRepository {
 
     for (const key of inspectionKeys) {
       lastInspected = key;
-      await this.touchVehicleScan(key);
 
       const current = await this.computeCurrentSourceEvidenceFingerprint({
         organizationId: key.organizationId,
         vehicleId: key.vehicleId,
         sessionLimit: input.sessionLimit,
       });
+      const target = this.currentTargetProfileIdentity();
       const acknowledged =
         await this.sourceEvidenceAckRepository.isSourceEvidenceAcknowledged({
           organizationId: key.organizationId,
           vehicleId: key.vehicleId,
           sourceEvidenceFingerprint: current.fingerprint,
+          longitudinalProfileContractVersion: target.longitudinalProfileContractVersion,
+          profilePolicyVersion: target.profilePolicyVersion,
         });
 
       if (!acknowledged) {

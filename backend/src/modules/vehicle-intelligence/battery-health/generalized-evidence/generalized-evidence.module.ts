@@ -70,9 +70,18 @@ import { PrismaService } from '@shared/database/prisma.service';
     },
     {
       provide: LongitudinalProfileRevisionInspectionService,
-      useFactory: (materializationRepository: LongitudinalProfileMaterializationRepository) =>
-        new LongitudinalProfileRevisionInspectionService(materializationRepository),
-      inject: [LongitudinalProfileMaterializationRepository],
+      useFactory: (
+        materializationRepository: LongitudinalProfileMaterializationRepository,
+        sourceEvidenceAckRepository: LongitudinalSourceEvidenceAckRepository,
+      ) =>
+        new LongitudinalProfileRevisionInspectionService(
+          materializationRepository,
+          sourceEvidenceAckRepository,
+        ),
+      inject: [
+        LongitudinalProfileMaterializationRepository,
+        LongitudinalSourceEvidenceAckRepository,
+      ],
     },
     LongitudinalReconciliationService,
     BatteryRestSessionService,

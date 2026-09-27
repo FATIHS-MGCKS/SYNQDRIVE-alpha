@@ -20,22 +20,13 @@ CREATE UNIQUE INDEX "battery_longitudinal_source_evidence_ack_fence"
   ON "battery_longitudinal_source_evidence_acks"(
     "organization_id",
     "vehicle_id",
-    "source_evidence_fingerprint"
+    "source_evidence_fingerprint",
+    "longitudinal_profile_contract_version",
+    "profile_policy_version"
   );
 
 CREATE INDEX "battery_longitudinal_source_evidence_acks_vehicle_ack_idx"
   ON "battery_longitudinal_source_evidence_acks"("organization_id", "vehicle_id", "acknowledged_at" DESC);
-
-CREATE TABLE "battery_longitudinal_reconciliation_vehicle_scans" (
-  "organization_id" TEXT NOT NULL,
-  "vehicle_id" TEXT NOT NULL,
-  "last_scan_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT "battery_longitudinal_reconciliation_vehicle_scans_pkey"
-    PRIMARY KEY ("organization_id", "vehicle_id")
-);
-
-CREATE INDEX "battery_longitudinal_reconciliation_vehicle_scans_last_scan_idx"
-  ON "battery_longitudinal_reconciliation_vehicle_scans"("last_scan_at" ASC);
 
 CREATE TABLE "battery_longitudinal_reconciliation_fleet_cursor" (
   "id" INTEGER NOT NULL DEFAULT 1,

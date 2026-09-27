@@ -22,8 +22,14 @@ import { LongitudinalInputReaderService } from './longitudinal-input.reader';
 import { computeLongitudinalSourceEvidenceFingerprint } from './longitudinal-source-evidence-fingerprint';
 import { LongitudinalProfileMaterializationRepository } from './longitudinal-profile-materialization.repository';
 import { LongitudinalProfileMaterializationService } from './longitudinal-profile-materialization.service';
+import { LongitudinalProfileMaterializationRuntimeService } from './longitudinal-profile-materialization.runtime.service';
 import { LongitudinalReconciliationCandidateRepository } from './longitudinal-reconciliation-candidate.repository';
+import { LongitudinalReconciliationService } from './longitudinal-reconciliation.service';
 import { LongitudinalSourceEvidenceAckRepository } from './longitudinal-source-evidence-ack.repository';
+import {
+  REST_SESSION_LONGITUDINAL_PROFILE_CONTRACT_VERSION,
+  REST_SESSION_LONGITUDINAL_PROFILE_POLICY_VERSION,
+} from './longitudinal-profile.constants';
 import { buildMinimalLongitudinalInputSummary } from './longitudinal-input.test-fixtures';
 
 const LIVE = process.env.BATTERY_V2_LONGITUDINAL_RECONCILIATION_INTEGRATION === '1';
@@ -625,6 +631,202 @@ function wireLongitudinalStack(prisma: PrismaClient) {
           (c) => c.vehicleId === vehicleId,
         ),
       ).toBe(true);
+    });
+
+    it('ack version scope — legacy policy ack does not satisfy current target policy freshness', async () => {
+      if (!dbOk) return;
+      const { organizationId, vehicleId } = await createOrgVehicle(prisma, 'ACK-VER');
+      const session = await createRestSession(prisma, {
+        organizationId,
+        vehicleId,
+        anchorAt: new Date('2026-05-06T08:00:00.000Z'),
+        sessionStatus: BatteryRestSessionStatus.ENDED,
+        endReason: BatteryRestSessionEndReason.VEHICLE_ACTIVITY,
+      });
+      const summary = buildMinimalLongitudinalInputSummary({
+        organizationId,
+        vehicleId,
+        restSessionId: session.id,
+      });
+      await createFeatureRow(prisma, {
+        organizationId,
+        vehicleId,
+        restSessionId: session.id,
+        semanticRevision: 1,
+        computationPhase: BatteryRestSessionFeatureComputationPhase.FINAL,
+        sessionTrust: BatteryRestSessionFeatureSessionTrust.VALID,
+        inputSummary: summary,
+      });
+
+      const outcome = await materialization.materialize({
+        organizationId,
+        vehicleId,
+        sessionLimit,
+        profileGeneratedAt: new Date().toISOString(),
+      });
+      expect(outcome.outcome).toBe('CREATED');
+
+      const legacyPolicy = 'M3_3D_PROFILE_POLICY_V0_LEGACY_TEST';
+      await prisma.$executeRaw`
+        UPDATE battery_longitudinal_source_evidence_acks
+        SET profile_policy_version = ${legacyPolicy}
+        WHERE organization_id = ${organizationId}
+          AND vehicle_id = ${vehicleId}
+      `;
+
+      const prismaService = prisma as unknown as PrismaService;
+      const ackRepo = new LongitudinalSourceEvidenceAckRepository(prismaService);
+      const currentFp = await candidates.computeCurrentSourceEvidenceFingerprint({
+        organizationId,
+        vehicleId,
+        sessionLimit,
+      });
+      expect(
+        await ackRepo.isSourceEvidenceAcknowledged({
+          organizationId,
+          vehicleId,
+          sourceEvidenceFingerprint: currentFp.fingerprint,
+          longitudinalProfileContractVersion: REST_SESSION_LONGITUDINAL_PROFILE_CONTRACT_VERSION,
+          profilePolicyVersion: REST_SESSION_LONGITUDINAL_PROFILE_POLICY_VERSION,
+        }),
+      ).toBe(false);
+
+      expect(
+        (await candidates.findCandidates({ batchSize: 5, sessionLimit })).some(
+          (c) => c.vehicleId === vehicleId,
+        ),
+      ).toBe(true);
+    });
+
+    it('scheduler vs ops — concurrent materialization is idempotent', async () => {
+      if (!dbOk) return;
+      const envBackup = process.env.BATTERY_V2_LONGITUDINAL_PROFILE_MATERIALIZATION_ENABLED;
+      process.env.BATTERY_V2_LONGITUDINAL_PROFILE_MATERIALIZATION_ENABLED = 'true';
+      try {
+        const { organizationId, vehicleId } = await createOrgVehicle(prisma, 'SCHED-OPS');
+        const session = await createRestSession(prisma, {
+          organizationId,
+          vehicleId,
+          anchorAt: new Date('2026-05-07T08:00:00.000Z'),
+          sessionStatus: BatteryRestSessionStatus.ENDED,
+          endReason: BatteryRestSessionEndReason.VEHICLE_ACTIVITY,
+        });
+        const summary = buildMinimalLongitudinalInputSummary({
+          organizationId,
+          vehicleId,
+          restSessionId: session.id,
+        });
+        await createFeatureRow(prisma, {
+          organizationId,
+          vehicleId,
+          restSessionId: session.id,
+          semanticRevision: 1,
+          computationPhase: BatteryRestSessionFeatureComputationPhase.FINAL,
+          sessionTrust: BatteryRestSessionFeatureSessionTrust.VALID,
+          inputSummary: summary,
+        });
+
+        expect(
+          (await candidates.findCandidates({ batchSize: 5, sessionLimit })).some(
+            (c) => c.vehicleId === vehicleId,
+          ),
+        ).toBe(true);
+
+        const runtime = new LongitudinalProfileMaterializationRuntimeService(materialization);
+        const reconciliation = new LongitudinalReconciliationService(candidates, runtime);
+        const request = {
+          organizationId,
+          vehicleId,
+          sessionLimit,
+          profileGeneratedAt: new Date().toISOString(),
+        };
+
+        const [schedulerOutcome, opsOutcome] = await Promise.all([
+          reconciliation.runBoundedReconciliationTick(),
+          materialization.materialize(request),
+        ]);
+
+        expect(schedulerOutcome.errorCount).toBe(0);
+        expect(opsOutcome.outcome === 'CREATED' || opsOutcome.outcome === 'EXISTING').toBe(true);
+
+        const revisionCount = await prisma.batteryLongitudinalProfileRevision.count({
+          where: { organizationId, vehicleId },
+        });
+        expect(revisionCount).toBe(1);
+
+        const ackCount = await prisma.batteryLongitudinalSourceEvidenceAck.count({
+          where: {
+            organizationId,
+            vehicleId,
+            longitudinalProfileContractVersion: REST_SESSION_LONGITUDINAL_PROFILE_CONTRACT_VERSION,
+            profilePolicyVersion: REST_SESSION_LONGITUDINAL_PROFILE_POLICY_VERSION,
+          },
+        });
+        expect(ackCount).toBe(1);
+      } finally {
+        process.env.BATTERY_V2_LONGITUDINAL_PROFILE_MATERIALIZATION_ENABLED = envBackup;
+      }
+    });
+
+    it('leader turnover mid-tick — overlapping ticks converge without duplicate science', async () => {
+      if (!dbOk) return;
+      const { organizationId, vehicleId } = await createOrgVehicle(prisma, 'LEADER');
+      const session = await createRestSession(prisma, {
+        organizationId,
+        vehicleId,
+        anchorAt: new Date('2026-05-08T08:00:00.000Z'),
+        sessionStatus: BatteryRestSessionStatus.ENDED,
+        endReason: BatteryRestSessionEndReason.VEHICLE_ACTIVITY,
+      });
+      const summary = buildMinimalLongitudinalInputSummary({
+        organizationId,
+        vehicleId,
+        restSessionId: session.id,
+      });
+      await createFeatureRow(prisma, {
+        organizationId,
+        vehicleId,
+        restSessionId: session.id,
+        semanticRevision: 1,
+        computationPhase: BatteryRestSessionFeatureComputationPhase.FINAL,
+        sessionTrust: BatteryRestSessionFeatureSessionTrust.VALID,
+        inputSummary: summary,
+      });
+
+      const [tickA, tickB] = await Promise.all([
+        candidates.findCandidates({ batchSize: 2, sessionLimit }),
+        candidates.findCandidates({ batchSize: 2, sessionLimit }),
+      ]);
+      expect(tickA.some((c) => c.vehicleId === vehicleId)).toBe(true);
+      expect(tickB.some((c) => c.vehicleId === vehicleId)).toBe(true);
+
+      const request = {
+        organizationId,
+        vehicleId,
+        sessionLimit,
+        profileGeneratedAt: new Date().toISOString(),
+      };
+      const outcomes = await Promise.allSettled([
+        materialization.materialize(request),
+        materialization.materialize(request),
+      ]);
+      expect(outcomes.every((o) => o.status === 'fulfilled')).toBe(true);
+
+      const revisionCount = await prisma.batteryLongitudinalProfileRevision.count({
+        where: { organizationId, vehicleId },
+      });
+      expect(revisionCount).toBe(1);
+
+      const ackCount = await prisma.batteryLongitudinalSourceEvidenceAck.count({
+        where: { organizationId, vehicleId },
+      });
+      expect(ackCount).toBe(1);
+
+      expect(
+        (await candidates.findCandidates({ batchSize: 5, sessionLimit })).some(
+          (c) => c.vehicleId === vehicleId,
+        ),
+      ).toBe(false);
     });
   },
 );

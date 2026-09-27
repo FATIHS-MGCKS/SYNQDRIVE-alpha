@@ -8,6 +8,7 @@
  */
 import { PrismaClient } from '@prisma/client';
 import { LongitudinalProfileMaterializationRepository } from '../../src/modules/vehicle-intelligence/battery-health/generalized-evidence/rest-session-features/longitudinal/longitudinal-profile-materialization.repository';
+import { LongitudinalSourceEvidenceAckRepository } from '../../src/modules/vehicle-intelligence/battery-health/generalized-evidence/rest-session-features/longitudinal/longitudinal-source-evidence-ack.repository';
 import { LongitudinalProfileRevisionInspectionService } from '../../src/modules/vehicle-intelligence/battery-health/generalized-evidence/rest-session-features/longitudinal/longitudinal-profile-revision-inspection.service';
 import { assertLongitudinalProfileRevisionInspectDatabaseAllowed } from '../../src/modules/vehicle-intelligence/battery-health/generalized-evidence/rest-session-features/longitudinal/longitudinal-profile-revision-inspect.env';
 
@@ -34,7 +35,8 @@ async function main(): Promise<void> {
 
   const prisma = new PrismaClient();
   const repo = new LongitudinalProfileMaterializationRepository(prisma as never);
-  const inspector = new LongitudinalProfileRevisionInspectionService(repo);
+  const ackRepo = new LongitudinalSourceEvidenceAckRepository(prisma as never);
+  const inspector = new LongitudinalProfileRevisionInspectionService(repo, ackRepo);
 
   try {
     const result = await inspector.inspectRevision({ revisionId });
@@ -42,16 +44,23 @@ async function main(): Promise<void> {
       console.log(JSON.stringify({ status: 'NOT_FOUND' }, null, 2));
       process.exit(2);
     }
+    const view = result.view!;
     console.log(
       JSON.stringify(
         {
           status: 'OK',
-          revisionId: result.revision!.id,
-          organizationId: result.revision!.organizationId,
-          vehicleId: result.revision!.vehicleId,
-          canonicalProfileFingerprint: result.revision!.canonicalProfileFingerprint,
-          sourceEvidenceFingerprint: result.revision!.sourceEvidenceFingerprint,
-          materializedAt: result.revision!.materializedAt.toISOString(),
+          revisionId: view.revision.id,
+          organizationId: view.revision.organizationId,
+          vehicleId: view.revision.vehicleId,
+          canonicalProfileFingerprint: view.revision.canonicalProfileFingerprint,
+          longitudinalProfileContractVersion: view.revision.longitudinalProfileContractVersion,
+          profilePolicyVersion: view.revision.profilePolicyVersion,
+          materializedAt: view.revision.materializedAt.toISOString(),
+          creationSourceEvidenceFingerprint: view.creationSourceEvidenceFingerprint,
+          creationSourceEvidenceFingerprintAuthority:
+            view.creationSourceEvidenceFingerprintAuthority,
+          sourceEvidenceAcknowledgements: view.sourceEvidenceAcknowledgements,
+          ackCount: view.ackCount,
         },
         null,
         2,
