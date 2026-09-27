@@ -113,9 +113,13 @@ No high-cardinality entity ids in labels.
 
 **Validation:** Postgres regressions R1–R4 + full E5.4 S1–S28 matrix.
 
+## Topology + energy semantic closure (2026-09-27, EED-EV-0091)
+
+Production read-only audit at SHA `1b5a7f6cd91d175e82f9ee0df111d4df015b3555`: 6/6 exact pairs; 70 legacy rows = 6 anchors + 64 contained fragments; pre-fix comparator emits fragments as `LEGACY_ONLY` (denominator 70, rate 0 not authoritative). ADR: `EED-DEC-ERD-002` + `EED-DEC-ERD-003`. Evidence: `ERD-E5-4-FRAGMENT-TOPOLOGY-PRODUCTION-CLOSURE-2026-09-27.md`.
+
 ## Next
 
-`ERD_E5_5_PRODUCT_READ_DEDUPE` (not started in this workstream)
+Implementation: E5.4 comparator topology (Step 1), then canonical stored-energy mapper (Step 2), then dry-run gate (Step 3)
 
 ---
 

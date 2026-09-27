@@ -1,5 +1,12 @@
 # KG-EED Changelog
 
+## 2026-09-27 — ERD E5.4 comparator topology + recharge energy semantics ADR
+
+- Dual ADR: `ERD-E5-4A-SHADOW-PARITY-PHYSICAL-EPISODE-TOPOLOGY-2026-09-27.md` (`EED-DEC-ERD-002`); `ERD-RECHARGE-ENERGY-PRODUCT-SEMANTICS-2026-09-27.md` (`EED-DEC-ERD-003`, Option C)
+- Production closure evidence: `evidence/ERD-E5-4-FRAGMENT-TOPOLOGY-PRODUCTION-CLOSURE-2026-09-27.md` (EED-EV-0091, EED-EV-0092)
+- Physical-episode parity authority; fragment siblings via `MULTIPLE_LEGACY_ONE_CANONICAL`; settled denominator excludes multiplicity diagnostics; raw vs physical count fields
+- No runtime code, schema, migration, or Production mutation
+
 ## 2026-09-26 — ERD E5.4 legacy cohort NULL-safe Prisma query (defect fix)
 
 - `buildLegacyDirectDimoRechargeWhere`: remove redundant `NOT { detectionSource: SYNQDRIVE_ERD_RECHARGE_PROJECTION }` that excluded `detection_source IS NULL` rows under SQL three-valued logic

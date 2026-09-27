@@ -1876,6 +1876,56 @@ nodes:
     source_paths:
       - architecture/knowledge-graphs/energy-event-detection/decisions/ERD-E1-CANONICAL-PHYSICAL-CHARGE-AUTHORITY-2026-09-24.md
 
+  - id: EED-DEC-ERD-002
+    type: decision
+    title: E5.4 shadow parity physical-episode topology
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: >
+      Settled parity at physical recharge episode cardinality; primary legacy pair
+      unchanged; fragment siblings as MULTIPLE_LEGACY_ONE_CANONICAL diagnostic;
+      LEGACY_ONLY for true orphan clusters only; multiplicity excluded from settled denominator.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0091, EED-EV-0092]
+    source_paths:
+      - architecture/knowledge-graphs/energy-event-detection/decisions/ERD-E5-4A-SHADOW-PARITY-PHYSICAL-EPISODE-TOPOLOGY-2026-09-27.md
+
+  - id: EED-DEC-ERD-003
+    type: decision
+    title: Recharge energy product semantics Option C
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: >
+      energyDeltaKwh = stored traction delta (legacy lock); additive chargingEnergyAddedKwh
+      for provider added-energy; no backfill; billing firewall; shadow stored vs stored.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0091, EED-EV-0092]
+    source_paths:
+      - architecture/knowledge-graphs/energy-event-detection/decisions/ERD-RECHARGE-ENERGY-PRODUCT-SEMANTICS-2026-09-27.md
+
+  - id: EED-EV-0091
+    type: evidence
+    title: ERD E5.4 Production fragment topology + energy closure 2026-09-27
+    epistemic_status: HISTORICAL
+    source_type: PRODUCTION
+    source_paths:
+      - architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E5-4-FRAGMENT-TOPOLOGY-PRODUCTION-CLOSURE-2026-09-27.md
+    evidence_maturity: PROVEN_IN_PRODUCTION
+    summary: >
+      6 canonical sessions; 70 legacy rows = 6 anchors + 64 fragments; 6/6 exact pairs;
+      energy gap from dual DIMO semantics; pre-fix LEGACY_ONLY inflation documented.
+
+  - id: EED-EV-0092
+    type: evidence
+    title: ERD E5.4 topology + energy dual ADR 2026-09-27
+    epistemic_status: INFERRED
+    source_type: ARCHITECTURE_DOC
+    source_paths:
+      - architecture/knowledge-graphs/energy-event-detection/decisions/ERD-E5-4A-SHADOW-PARITY-PHYSICAL-EPISODE-TOPOLOGY-2026-09-27.md
+      - architecture/knowledge-graphs/energy-event-detection/decisions/ERD-RECHARGE-ENERGY-PRODUCT-SEMANTICS-2026-09-27.md
+    evidence_maturity: ARCHITECTURE_AUTHORITY
+    summary: EED-DEC-ERD-002/003 contracts; implementation sequence Steps 1–5; tests T1–T8 E1–E6.
+
   - id: EED-EV-0076
     type: evidence
     title: ERD E0 architecture and Production forensics 2026-09-24

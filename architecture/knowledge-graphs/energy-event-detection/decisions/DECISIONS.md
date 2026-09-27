@@ -1,6 +1,6 @@
 # KG-EED Decision History
 
-Canonical decision nodes: `graph/nodes.yaml` (`EED-DEC-001` … `EED-DEC-012`, `EED-DEC-PHYSICAL-REFUEL-IDENTITY-001`).  
+Canonical decision nodes: `graph/nodes.yaml` (`EED-DEC-001` … `EED-DEC-012`, `EED-DEC-PHYSICAL-REFUEL-IDENTITY-001`, `EED-DEC-ERD-001` … `EED-DEC-ERD-003`).  
 Detail below follows governance: decision, rationale, alternatives, consequences, evidence, status.
 
 ---
@@ -428,3 +428,39 @@ Detail below follows governance: decision, rationale, alternatives, consequences
 | **Consequences** | E2–E8 roadmap; legacy Production VEE rows = `LEGACY_PRODUCT_HISTORY`; ongoing sessions: no VEE projection until completed (Option 1) |
 | **Related invariants** | EED-INV-014, EED-INV-015, EED-INV-016, EED-INV-017 |
 | **Detail ADR** | [ERD-E1-CANONICAL-PHYSICAL-CHARGE-AUTHORITY-2026-09-24.md](../decisions/ERD-E1-CANONICAL-PHYSICAL-CHARGE-AUTHORITY-2026-09-24.md) |
+
+---
+
+## EED-DEC-ERD-002 — E5.4 shadow parity physical-episode topology (2026-09-27)
+
+| Field | Value |
+|-------|-------|
+| **ID** | EED-DEC-ERD-002 |
+| **Status** | **PROPOSED** |
+| **Date** | 2026-09-27 |
+| **Question** | At what cardinality should E5.4 settled parity be measured when legacy RECHARGE history fragments inside one physical charge? |
+| **Decision** | Parity authority at **physical recharge episode** level; one **primary** legacy pair per canonical session (pairing P1–P3 unchanged); proven contained siblings → **`MULTIPLE_LEGACY_ONE_CANONICAL`** topology diagnostic with `relatedLegacyVehicleEnergyEventIds` (fragments only, sorted); **`LEGACY_ONLY`** only for true orphan legacy clusters; **`MULTIPLICITY_DIAGNOSTIC_IN_SETTLED_DENOMINATOR=NO`**; separate raw vs physical count fields. |
+| **Why** | Production audit: 6/6 exact pairs, 64 contained fragments misclassified as `LEGACY_ONLY`, denominator 70 → rate 0 not physically meaningful. |
+| **Alternatives** | Count every legacy row in settled denominator (rejected); new parity enum for fragments (rejected — reuse `MULTIPLE_LEGACY_ONE_CANONICAL`) |
+| **Evidence** | EED-EV-0090, EED-EV-0091, EED-EV-0092 |
+| **Consequences** | Comparator + aggregator implementation; future tests T1–T8; no Prisma migration for shadow observations |
+| **Related nodes** | EED-DEC-ERD-001, EED-EV-0084 |
+| **Detail ADR** | [ERD-E5-4A-SHADOW-PARITY-PHYSICAL-EPISODE-TOPOLOGY-2026-09-27.md](../decisions/ERD-E5-4A-SHADOW-PARITY-PHYSICAL-EPISODE-TOPOLOGY-2026-09-27.md) |
+
+---
+
+## EED-DEC-ERD-003 — Recharge energy product semantics Option C (2026-09-27)
+
+| Field | Value |
+|-------|-------|
+| **ID** | EED-DEC-ERD-003 |
+| **Status** | **PROPOSED** |
+| **Date** | 2026-09-27 |
+| **Question** | How should canonical RECHARGE VEE expose DIMO stored-energy vs charging-added energy? |
+| **Decision** | **Option C:** lock `energyDeltaKwh` = stored traction-battery delta (legacy-compatible); additive nullable **`chargingEnergyAddedKwh`** = provider charging-added delta; no historical backfill/reinterpretation; billing firewall on both; shadow compares stored vs stored only. |
+| **Why** | Six-session Production gap ~15.6 kWh explained by signal semantics, not legacy mapping defect; Trips/API stability. |
+| **Alternatives** | Redefine `energyDeltaKwh` to added energy (rejected — breaks history); single blended field (rejected) |
+| **Evidence** | EED-EV-0091, EED-EV-0092 |
+| **Consequences** | Step 2 mapper alignment + future schema for `chargingEnergyAddedKwh`; tests E1–E6; cutover blocked until topology + stored mapper + dry-run clean |
+| **Related nodes** | EED-DEC-ERD-001, EED-DEC-ERD-002 |
+| **Detail ADR** | [ERD-RECHARGE-ENERGY-PRODUCT-SEMANTICS-2026-09-27.md](../decisions/ERD-RECHARGE-ENERGY-PRODUCT-SEMANTICS-2026-09-27.md) |
