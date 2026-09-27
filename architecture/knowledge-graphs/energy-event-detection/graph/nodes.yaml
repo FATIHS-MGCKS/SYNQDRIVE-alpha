@@ -1927,7 +1927,8 @@ nodes:
     evidence_maturity: PROVEN_IN_PRODUCTION
     summary: >
       Direct service persist:true for one org/vehicle/window on release v4994; 12 shadow rows;
-      idempotent dedupe; global shadow flag OFF; LEGACY write authority; zero product/provider mutation.
+      idempotent dedupe; global shadow flag OFF; LEGACY write authority; zero product/provider mutation;
+      pre-write pg_dump control failed; post-canary backup not a pre-state rollback snapshot.
 
   - id: EED-EV-0091
     type: evidence

@@ -42,14 +42,62 @@ All required ERD/E6.3 cutover and shadow-global flags **absent/false**. Effectiv
 
 ## Database backup (Phase D)
 
-The ephemeral runner’s inline `pg_dump "$DATABASE_URL"` failed pre-mutation because the Prisma URI includes a `schema` query parameter (`invalid URI query parameter: "schema"`). **No rows were deleted to recover.**
+### Pre-write backup (intended, before authorized mutation)
 
-Post-canary remediation (URI stripped before `?`):
+| Field | Value |
+|-------|--------|
+| `PRE_WRITE_DB_BACKUP_ATTEMPTED` | YES |
+| `PRE_WRITE_DB_BACKUP_VERIFIED` | NO |
+| `PRE_WRITE_DB_BACKUP_FAILURE_REASON` | `PRISMA_URI_SCHEMA_QUERY_PARAM_UNSUPPORTED_BY_PG_DUMP` |
+| Intended path (invalid / do not use) | `/opt/synqdrive/shared/backups/db-pre-erd-e5-4-controlled-persist-20260927143711.sql.gz` |
 
-- **Verified backup:** `/opt/synqdrive/shared/backups/db-pre-erd-e5-4-controlled-persist-20260927143711-retry.sql.gz` (~86 MB, non-empty)
-- Inline path recorded by runner (empty/failed): `/opt/synqdrive/shared/backups/db-pre-erd-e5-4-controlled-persist-20260927143711.sql.gz`
+The ephemeral runner invoked `pg_dump "$DATABASE_URL"` with the Prisma `DATABASE_URL`, which includes a query parameter such as `?schema=…`. `pg_dump` rejected the URI: `invalid URI query parameter: "schema"`. The file at the intended path is **not** a valid backup and must not be used for rollback.
 
-Ops should treat the **retry** artifact as the durable snapshot reference for this canary; future runners must strip `DATABASE_URL` query params before `pg_dump`.
+`AUTHORIZED_MUTATION_PROCEEDED_WITHOUT_VALID_PREWRITE_DB_BACKUP=YES` — the canary mutation ran after this failure. **No rows were deleted to recover.**
+
+### Post-canary backup (after mutation completed)
+
+| Field | Value |
+|-------|--------|
+| `POST_CANARY_DB_BACKUP_VERIFIED` | YES |
+| `POST_CANARY_DB_BACKUP_PATH` | `/opt/synqdrive/shared/backups/db-pre-erd-e5-4-controlled-persist-20260927143711-retry.sql.gz` |
+| Size | ~86 MB, non-empty gzip |
+| `POST_CANARY_BACKUP_IS_VALID_ROLLBACK_SNAPSHOT_FOR_PRE_CANARY_STATE` | **NO** |
+
+This retry used a pg_dump-compatible PostgreSQL URI (Prisma-only query parameters stripped before `?`). It confirms a corrected `pg_dump` invocation works on Production. It was captured **after** the 12 shadow rows were persisted. It is a valid **post-canary** database backup only; it **cannot** reconstruct the exact pre-canary database state (pre-canary had zero shadow rows; post-canary has twelve).
+
+## Operational control deviation
+
+This section records process deviation separately from the functional canary outcome.
+
+| Field | Value |
+|-------|--------|
+| `PREWRITE_BACKUP_CONTROL` | FAILED |
+| `CANARY_EXECUTION_AFTER_BACKUP_FAILURE` | YES |
+| `FUNCTIONAL_CANARY_RESULT` | PASS (`CONTROLLED_PERSIST_CANARY_PASS`) |
+| `ROLLBACK_SNAPSHOT_PRE_CANARY_AVAILABLE` | NO |
+
+Classification: **operational process deviation**, not a runtime correctness failure. Durable behavior was still independently proven (12 authorized rows, idempotent dedupe, stable fingerprints/row IDs, no product/provider mutation, global flag off, LEGACY write authority).
+
+## Future Production mutation hard gate
+
+Before **any** further EED Production mutation that requires a database backup:
+
+1. Convert Prisma `DATABASE_URL` into a pg_dump-compatible PostgreSQL URI by safely removing Prisma-only query parameters (e.g. `schema`) without logging or printing credentials.
+2. Run `pg_dump`, gzip output, and verify the artifact exists and is non-empty **before** the mutation starts.
+
+`FUTURE_PRODUCTION_MUTATION_WITHOUT_VERIFIED_PREWRITE_BACKUP_ALLOWED=NO`
+
+## Backup tooling follow-up (no implementation in this evidence PR)
+
+Register follow-up (separate workstream): create or reuse a safe helper aligned with existing deployment backup patterns (e.g. `vps-deploy-release.sh` uses `sudo -u postgres pg_dump synqdrive`) that:
+
+- Preserves host, port, user, password, and database name
+- Strips Prisma-only URI query parameters
+- Never prints credentials
+- Fails closed on empty or missing gzip output
+
+No Production mutation is authorized by this follow-up note alone.
 
 ## Step 3 prewrite seal (`persist: false`)
 
