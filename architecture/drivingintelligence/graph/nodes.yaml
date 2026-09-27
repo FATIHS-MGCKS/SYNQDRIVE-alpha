@@ -1551,3 +1551,92 @@ nodes:
     source_paths:
       - backend/src/modules/vehicle-intelligence/driving-intelligence/core/__tests__/fixtures/wob-pilot-golden.fixture.ts
       - backend/src/modules/vehicle-intelligence/driving-intelligence/position-acquisition/__tests__/fixtures/full-r1-002-golden.fixture.ts
+
+  - id: DI-EVID-EXP021-C1D10A-001
+    type: evidence
+    title: EXP-021 C1D.10A authority correction + Production re-anchor + S4A contract review
+    epistemic_status: CONFIRMED
+    source_type: AUDIT_DOCUMENT
+    summary: >
+      Read-only Production audit (2026-09-27): S2 migration applied 2026-09-26 23:46:11 UTC via release
+      20260926234014_v4994 (#1801), 0 rows / 0 inserts ever; native ingest failures swallowed to [] (no
+      readiness marker); 60-day late boundary mutation distribution (max ~6.4 d). P2 triage (11 items, 1
+      promoted) and new findings N1–N10. Machine contract + validator for S4A.
+    source_paths:
+      - architecture/drivingintelligence/evidence/EXP021_C1D10A_AUTHORITY_CORRECTION.md
+      - architecture/drivingintelligence/evidence/EXP021_C1D10A_P2_TRIAGE.md
+      - architecture/drivingintelligence/design/s4a/s4a-contract.v1.json
+
+  - id: DI-DEC-V0-S4A-CONTRACT-001
+    type: decision
+    title: DI V0 S4A orchestration contract — work items, identity, fencing, channel outcomes, pinning (EXP-021 C1D.10A)
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: >
+      DB lease with epoch fencing is the execution authority (BullMQ is a hint only); logical key (org, trip,
+      boundary fp, pipeline version key, purpose, discriminator) + active-PRIMARY partial unique; 7-state
+      machine; 24 h settlement quiet anchor + 10 d drift horizon; per-channel outcomes with native
+      fail-closed; combined identity V0_3; content-addressed evidence pinning; dormant-safe migration rules.
+    source_paths:
+      - architecture/drivingintelligence/decisions/DECISION_REGISTER.md
+      - architecture/drivingintelligence/design/s4a/S4A_CONTRACT_DESIGN.md
+    evidence:
+      - DI-EVID-EXP021-C1D10A-001
+
+  - id: DI-CONTRA-S2-PROD-MIGRATION-001
+    type: contradiction
+    title: S2 shadow persistence migration "not applied to Production" vs applied 2026-09-26 23:46 UTC
+    epistemic_status: CONFIRMED
+    summary: >
+      C1D.6 / C1D.7 recorded the S2 migration as unapplied; it reached Production with the unrelated #1801
+      deploy (vps-deploy-release.sh runs prisma migrate deploy unconditionally). RESOLVED — authority amended
+      (AMENDED BY, history preserved); schema present ≠ runtime active ≠ runs executed ≠ customer use.
+    source_paths:
+      - architecture/drivingintelligence/contradictions/CONTRADICTION_REGISTER.md
+      - architecture/drivingintelligence/evidence/EXP021_C1D10A_AUTHORITY_CORRECTION.md
+
+  - id: DI-GAP-S4-NATIVE-READINESS-001
+    type: gap
+    title: No durable native-event ingest attestation (NO_EVENT cannot be proven)
+    epistemic_status: CONFIRMED
+    summary: >
+      fetchDrivingEventsChunkWithRetry / fetchEventDataSummary swallow failures to []; behaviorEnrichedAt,
+      nativeQuerySucceeded and V2 NATIVE_EVENTS COMPLETED are reachable after failure. S4 native channel stays
+      NOT_READY until the native-ingest owner provides a per-(trip, fingerprint) attestation with strict
+      failure propagation.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/lte-r1-behavior-enrichment.service.ts
+      - architecture/drivingintelligence/design/s4a/S4A_CHANNEL_OUTCOME_MODEL.md
+
+  - id: DI-GAP-S4-REPLAY-DESERIALIZER-001
+    type: gap
+    title: No deserializer for DI V0 channel evidence snapshots (replay / retry-after-pin impossible)
+    epistemic_status: CONFIRMED
+    summary: Snapshot forms are hash-only canonical strings; S4D must add parse(serialize(x)) = x and S1 bit-equality before tiny activation.
+    source_paths:
+      - architecture/drivingintelligence/design/s4a/S4A_REPLAY_AND_EVIDENCE_PINNING.md
+
+  - id: DI-GAP-S4-SHADOW-DELETION-AUDIT-001
+    type: gap
+    title: Canonical trip/vehicle/org deletion cascades S4/S2 shadow rows without tombstone
+    epistemic_status: CONFIRMED
+    summary: CASCADE is required so shadow rows never block canonical deletes; the audit loss is accepted as P2.
+    source_paths:
+      - architecture/drivingintelligence/design/s4a/S4A_MIGRATION_SAFETY.md
+
+  - id: DI-GAP-S4-LOCATION-RETENTION-001
+    type: gap
+    title: Retention of pinned 1 Hz location evidence not governed
+    epistemic_status: CONFIRMED
+    summary: Design default 90 days + purge; governance note before tiny activation; privacy review before scale-up; no legal conclusion.
+    source_paths:
+      - architecture/drivingintelligence/design/s4a/S4A_REPLAY_AND_EVIDENCE_PINNING.md
+
+  - id: DI-GAP-S2-IN-TX-CREATE-RACE-001
+    type: gap
+    title: S2 createOrGetRun catch-and-reread unusable inside a PostgreSQL transaction
+    epistemic_status: CONFIRMED
+    summary: A caught unique violation aborts the transaction; S4 completion must use INSERT … ON CONFLICT DO NOTHING (designed in S4A).
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/shadow-persistence/di-v0-shadow-persistence.repository.ts
+      - architecture/drivingintelligence/design/s4a/S4A_IDENTITY_AND_FENCING.md

@@ -403,3 +403,20 @@ Validate graph consistency: `bash architecture/drivingintelligence/scripts/valid
 | **EPISTEMIC** | CONFIRMED (provider schema, official spec, read-only R1 responses, unit tests); multi-sample 1 s AVG behaviour UNKNOWN (not observed) |
 | **EVIDENCE** | DI-EVID-EXP021-C1D9-001 |
 | **BOUNDARY** | Consulted: DIMO Integration (provider telemetry schema facts recorded cross-module; shared transport/auth untouched; legacy HF/trip-detection queries unchanged) — no DIMO Integration code change |
+
+## DI-DEC-V0-S4A-CONTRACT-001
+
+| Field | Value |
+|-------|-------|
+| **TITLE** | DI V0 S4A orchestration contract — work items, identity, fencing, channel outcomes, evidence pinning (EXP-021 C1D.10A) |
+| **ERA** | EXP-021 C1D design (post-S3B V0_3 merge, pre-S4 implementation) |
+| **STATUS** | PROPOSED |
+| **PROBLEM** | C1D.10 S4 design review: NEEDS_CLOSURE with 4 P1 (stale S2 migration authority; logical identity/idempotency/fencing under two replicas; native NO_EVENT unprovable; settlement delay based on a 5-row sample) and 11 P2 |
+| **DECISION** | (1) DB work-item row with `lease_epoch` fencing is the execution authority; BullMQ only a wake-up hint; S2 idempotency the final guard. (2) Logical key (org, trip, boundary fingerprint, pipeline version key, run purpose, discriminator) + active-PRIMARY partial unique; purposes PRIMARY / RECALIBRATION_REPLAY / REACQUISITION. (3) 7 states / 11 transitions; completion in one fenced transaction (row lock, epoch, DB-clock expiry, fingerprint re-check, S2 `ON CONFLICT DO NOTHING`, rowcount 1). (4) Pipeline version key over 20 keys incl. `calibrationBundleHash` + `channelEnablement`; `PIPELINE_VERSION_MATCH` on claim/takeover/complete. (5) Boundary fingerprint V1 over 9 boundary fields. (6) 24 h settlement quiet anchor `max(endTime, createdAt, latest applied repair)` + 10 d drift horizon with supersession. (7) Per-channel outcomes; POSITION required; R1/NATIVE optional; native fails closed (READY_* requires an ingest attestation; unreachable in channel policy V1); combined input identity V0_3. (8) Content-addressed Postgres evidence pinning; replay only from pins. (9) Dormant-safe migration rules; tenant scope-guard triggers + composite FKs; S2 guards |
+| **ALTERNATIVES** | BullMQ jobId as idempotency (rejected: Redis is not durable authority, jobs duplicate); advisory locks (rejected: session-bound, invisible after crash); 16 h fixed delay after endTime (rejected: 1.7 % trips still mutate); legacy `behaviorEnrichedAt` as native readiness (rejected: set after swallowed failures); live DIMO re-query as replay (rejected: non-reproducible); object-store pins (rejected now: `STORAGE_DRIVER=local`, node-local); Postgres enums (rejected: ALTER TYPE); RESTRICT FKs (rejected: would fail canonical deletes) |
+| **RATIONALE** | Smallest contract that makes stale writes and double PRIMARY completion impossible by DB construction, fails closed where evidence is unprovable, and can be deployed dormant because merge = Production migration |
+| **CONSEQUENCES** | S4A may implement schema + repository + builders + race tests only; tiny activation additionally needs the S4C DIMO priority wrapper, S4D deserializer and a retention governance note; native stays NOT_READY until DI-GAP-S4-NATIVE-READINESS-001 closes |
+| **GRAPH NODES** | DI-DEC-V0-S4A-CONTRACT-001, DI-SVC-V0-SHADOW-CORE-001, DI-SVC-V0-NATIVE-EVENT-EVIDENCE-001, DI-CONTRA-S2-PROD-MIGRATION-001, DI-GAP-S4-NATIVE-READINESS-001, DI-GAP-S4-REPLAY-DESERIALIZER-001, DI-GAP-S4-SHADOW-DELETION-AUDIT-001, DI-GAP-S4-LOCATION-RETENTION-001, DI-GAP-S2-IN-TX-CREATE-RACE-001 |
+| **EPISTEMIC** | CONFIRMED for Production facts and code paths (read-only); contract properties validated by the machine model (`validate-s4a-contract.sh`), not yet by Postgres; snapshot size INFERRED |
+| **EVIDENCE** | DI-EVID-EXP021-C1D10A-001 |
+| **BOUNDARY** | Consulted: DIMO Integration (request category/priority ALS context; native ingest failure swallowing recorded, not changed), Trips (mutation paths, `trip_repairs`; read-only) — no code change in either module |

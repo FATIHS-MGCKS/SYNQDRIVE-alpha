@@ -71,3 +71,14 @@ Record disagreements between sources. **Do not resolve by guessing.**
 | **Status** | Open — DI-DEC-PROVIDER-TS-001 **not** superseded in C0.3 (historical decision preserved) | Formal revision requires a source-quality decision |
 | **Mitigation** | R1 point-in-time claims contained (DI-INV-R1-OBD-NO-POINT-CLAIM-001); wording debt DI-GAP-R1-OVERCLAIM-WORDING-001 |
 | **Graph** | DI-CONTRA-PROVIDER-TS-R1-OBD-001, DI-DEC-PROVIDER-TS-001 |
+
+## DI-CONTRA-S2-PROD-MIGRATION-001 — S2 migration "not applied to Production" vs applied
+
+| Side | Claim | Source |
+|------|-------|--------|
+| A | S2 migration `20260926193000_di_v0_shadow_persistence` not applied to Production / remains unapplied | C1D.6 evidence (line 9), C1D.7 report §non-effects (both historical, true when written) |
+| B | Applied 2026-09-26 23:46:11 UTC by release `20260926234014_v4994` (`1b5a7f6c`, #1801, unrelated ERD fix); tables empty, 0 inserts ever | `_prisma_migrations`, `pg_stat_user_tables` (C1D.10A read-only) |
+| **Status** | **RESOLVED** (2026-09-27) — A amended in place with AMENDED BY notes; original text preserved | `EXP021_C1D10A_AUTHORITY_CORRECTION.md` §2 |
+| **Cause** | `vps-deploy-release.sh` runs `prisma migrate deploy` on every deploy; merge = Production migration | |
+| **Lesson** | Schema present ≠ S4 runtime active ≠ shadow runs executed ≠ customer use; migration safety is a separate, earlier gate than activation (`design/s4a/S4A_MIGRATION_SAFETY.md`) | |
+| **Graph** | DI-CONTRA-S2-PROD-MIGRATION-001, DI-EVID-EXP021-C1D10A-001 |

@@ -1106,3 +1106,19 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Status | `PROPOSED` — draft PR, pre-merge |
 | Evidence | `evidence/EXP021_C1D9_R1_FIELD_AUTHORITY_V03_CORRECTION.md` (DI-EVID-EXP021-C1D9-001) |
 | Decision | `DI-DEC-V0-S3B-R1-V03-FIELD-AUTHORITY-001` |
+
+### EXP-021 C1D.10A — Authority correction + S4A contract design review (2026-09-27)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | C1D.10 read-only S4 design: NEEDS_CLOSURE (P1 ×4, P2 ×11) |
+| BEFORE | C1D.6 / C1D.7 authority said the S2 migration was unapplied (it was applied 2026-09-26 23:46:11 UTC via #1801); `CURRENT_STATE` said V2 flag "default OFF" without noting Production ON; S4 design had no frozen identity/fencing/channel/pinning contract; settlement delay 16 h from a 5-row sample; native `NO_EVENT` assumed derivable from legacy markers |
+| CHANGE | Authority corrected with AMENDED BY notes (history preserved); DI-CONTRA-S2-PROD-MIGRATION-001 (RESOLVED); `design/s4a/` (contract design, state machine, identity + fencing, channel outcomes, replay + pinning, migration safety, threat model); machine contract `s4a-contract.v1.json` + `validate-s4a-contract.sh` (state machine, hashes, channel pins, tenant scope, race model R01–R14, invariants); P2 triage (P2-5 promoted to P1-5); 5 gaps; SynqDrive Code views |
+| WHY | Close P1 at contract level and freeze a machine-testable S4A contract before any S4 code; merge = Production migration, so dormant-deploy safety must be designed first |
+| ALTERNATIVES | See DI-DEC-V0-S4A-CONTRACT-001 (BullMQ idempotency, advisory locks, 16 h fixed delay, legacy readiness markers, live re-query replay, object-store pins, enums, RESTRICT FKs — all rejected) |
+| NON_EFFECTS | No S4 runtime, worker, sweeper, scheduler, queue, Nest registration, migration, Prisma schema change, provider call, Production write, deploy, flag change, customer path, trip mutation, calibration, threshold or detector change; S1/S2/S3A/S3B code unchanged |
+| Validation | `validate-s4a-contract.sh` (+ negative copies), DI graph + docs, DIMO graph, module registry validators; S1/S2/S3A/S3B Jest regression; frontend tsc; `i18n:check` |
+| Gaps | DI-GAP-S4-NATIVE-READINESS-001, DI-GAP-S4-REPLAY-DESERIALIZER-001, DI-GAP-S4-SHADOW-DELETION-AUDIT-001, DI-GAP-S4-LOCATION-RETENTION-001, DI-GAP-S2-IN-TX-CREATE-RACE-001 |
+| Status | `PROPOSED` — draft PR, design only |
+| Evidence | `evidence/EXP021_C1D10A_AUTHORITY_CORRECTION.md`, `evidence/EXP021_C1D10A_P2_TRIAGE.md` (DI-EVID-EXP021-C1D10A-001) |
+| Decision | `DI-DEC-V0-S4A-CONTRACT-001` |

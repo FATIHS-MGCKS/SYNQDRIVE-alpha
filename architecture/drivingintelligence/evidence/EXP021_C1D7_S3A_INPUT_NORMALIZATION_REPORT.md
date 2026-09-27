@@ -125,6 +125,8 @@ Bound asserted: < 5 s. Measurements are indicative (CI host variance), not SLOs.
 
 No Nest registration, controller, processor, BullMQ, Redis, scheduler, Prisma, migration, DB write, feature flag, `process.env`, logging, customer API/UI, trip/score/event/misuse mutation, R1 OBD adapter, native event adapter, or S3B worker. No DIMO Integration code change. S2 migration remains unapplied to Production.
 
+> **AMENDED BY EXP-021 C1D.10A (2026-09-27):** the preceding sentence is contradicted by Production. The S2 migration had already been applied at 2026-09-26 23:46:11 UTC by an ordinary deploy (release `20260926234014_v4994`), before this report was written. The S3A statements about no caller, no DB write and no customer effect remain correct. See [EXP021_C1D10A_AUTHORITY_CORRECTION.md](EXP021_C1D10A_AUTHORITY_CORRECTION.md).
+
 ## 9. Future runtime caller contract (S3 / S4 invariant — documented only)
 
 S3A accepts full provider context (`organizationId`, `vehicleId`, `dimoTokenId`) and passes it to the shared DIMO transport (`FULL_CONTEXT_REQUIRED`). It does **not** validate that org/vehicle/token are mutually consistent — that enforcement belongs at the **future S3 runtime caller** boundary, which must source all three from one canonically validated vehicle context and must not independently combine caller-supplied identifiers.

@@ -7,6 +7,7 @@
 ## Scope
 
 - Prisma models + migration `20260926193000_di_v0_shadow_persistence` (amended pre-merge; not applied to Production)
+  - **AMENDED BY EXP-021 C1D.10A (2026-09-27):** the statement above was true when this record was written (pre-merge, 2026-09-26). After PR #1799 merged, the ordinary deploy of release `20260926234014_v4994` (`1b5a7f6c`, PR #1801) ran `prisma:migrate:deploy` and applied this migration to Production at **2026-09-26 23:46:11 UTC**. DI V0 remained **dormant**: no runtime caller, 0 shadow rows ever written. See [EXP021_C1D10A_AUTHORITY_CORRECTION.md](EXP021_C1D10A_AUTHORITY_CORRECTION.md) (DI-CONTRA-S2-PROD-MIGRATION-001).
 - `shadow-persistence/` repository + service (persist pre-computed S1 output only)
 - Tests: schema, idempotency, validation, tenant matrix, DB CHECK probes, transaction rollback, Postgres integration (`DI_V0_SHADOW_PERSISTENCE_INTEGRATION=1`)
 

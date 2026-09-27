@@ -421,3 +421,21 @@ edges:
     relation: input_to
     to: DI-SVC-V0-SHADOW-CORE-001
     notes: Test-only integration in S3A; no runtime caller
+
+  - id: DI-EDGE-138
+    from: DI-DEC-V0-S4A-CONTRACT-001
+    relation: governs
+    to: DI-SVC-V0-SHADOW-CORE-001
+    notes: S4 orchestrates the unchanged S1 core on pinned inputs; reads vehicle_trips for the boundary fingerprint only, never writes
+
+  - id: DI-EDGE-139
+    from: DI-GAP-S4-NATIVE-READINESS-001
+    relation: gates
+    to: DI-SVC-V0-NATIVE-EVENT-EVIDENCE-001
+    notes: Native channel READY_* unreachable in channel policy V1 until an ingest attestation exists
+
+  - id: DI-EDGE-140
+    from: DI-CONTRA-S2-PROD-MIGRATION-001
+    relation: contradicts
+    to: DI-EVID-EXP021-C1D10A-001
+    notes: Resolved — historical C1D.6/C1D.7 claims amended, not rewritten
