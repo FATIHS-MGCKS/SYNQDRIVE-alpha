@@ -1138,3 +1138,12 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Status | `PROPOSED` — draft PR #1810, design only |
 | Evidence | `evidence/EXP021_C1D10C_AUTHORITY_CLOSURE.md` (DI-EVID-EXP021-C1D10C-001) |
 | Decision | `DI-DEC-V0-S4A-CONTRACT-V2-001` (amends `DI-DEC-V0-S4A-CONTRACT-001`) |
+
+### EXP-021 C1D.10E — DB kill write-set closure (2026-09-27)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | C1D.10D re-seal P1-E: T03/T08/T09 writable while DB killed despite writesAllowedWhileDisabled=[T07] |
+| CHANGE | Contract v2 amendment (no version bump): `CONTROL_PLANE_DB_NOT_KILLED` on T01–T06,T08–T13; `killPolicy` + `authoritativeWrites` (19); K01–K18 kill races; validator exhaustiveness; 18 new negative cases; CI workflow `s4a-authority-governance.yml` |
+| NON_EFFECTS | No runtime, migration, worker, provider, Production write |
+| Evidence | `evidence/EXP021_C1D10E_KILL_WRITESET_CLOSURE.md` (DI-EVID-EXP021-C1D10E-001) |

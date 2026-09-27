@@ -34,7 +34,11 @@ effectiveEnabled(role, workItem) =
   AND dbKillState = NOT_KILLED
 ```
 
-Maintenance actors (reaper T10, drift watcher T11, retirement reaper T12) require `MASTER AND dbKillState = NOT_KILLED`. While disabled, the only permitted write is T07 by a holder of a still-valid lease (release). No DB value can turn any term from false to true: `dbCanEnable=false`.
+Maintenance actors (reaper T10, drift watcher T11, retirement reaper T12) require `MASTER AND dbKillState = NOT_KILLED`.
+
+**While KILLED** (`kill_state=KILLED`, or row missing / unreadable / malformed — all fail closed), **no authoritative S4 mutation may proceed** except **`T07_FAIL_RETRYABLE`** by the current lease holder with a still-valid fence. T07 is a safe relinquish only: it **clears** the lease and moves to `FAILED_RETRYABLE` with retry backoff. It must **not** extend the lease, claim work, pin evidence, persist S2, complete, fail terminal, skip, supersede, create a successor, or perform provider I/O. Every other transition **T01–T06** and **T08–T13** carries guard `CONTROL_PLANE_DB_NOT_KILLED` and is rejected when killed (contract races **K01–K18**, validator-enforced write-set in `authoritativeWrites` + `killPolicy`). **AMENDED BY C1D.10E (2026-09-27):** C1D.10C incorrectly allowed T03 heartbeat, T08 and T09 while killed; closed in contract v2 amendment without bumping execution identity.
+
+No DB value can turn any env term from false to true: `dbCanEnable=false`. Operator updates to `di_v0_s4_control` use a separate write class (`W_CONTROL_ROW_OPERATOR_UPDATE`) and serialize against holder transactions via `FOR UPDATE` on the control row.
 
 ## 3. Allowlists (independent, intersection)
 
@@ -71,7 +75,7 @@ Table `di_v0_s4_control` (created by S4A, **no seed row**):
 | row can disable S4 | yes (`KILLED`) |
 | row can enable S4 when env is OFF | **no**: the row has no enable column; it is one AND-term |
 | missing row / read error / parse error / unknown value | **KILLED** (fail closed) |
-| where read | inside each gated transition's transaction (T01, T02, T04, T05, T06, T10–T13), joined in SQL |
+| where read | inside **every** authoritative transition's transaction (all T01–T13 except T07 omits the kill guard but T07 still runs inside a tx); `SELECT … FOR UPDATE` on `di_v0_s4_control` before mutation |
 | cache | may only report KILLED; a cache never re-enables after a kill |
 | scope | global: one row read by both replicas, so a committed kill applies to every replica's next gated transaction |
 | writer | operator SQL runbook only; no API, no customer path |

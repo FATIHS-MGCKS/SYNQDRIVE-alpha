@@ -214,3 +214,10 @@ Historical C1D.10A statements are preserved in git history and in `s4a-contract.
 | Replay vs SKIPPED | replay pinned at create but SKIPPED requires no pin (unreachable CHECK) | replay/pinned ineligibility → FAILED_TERMINAL (`REPLAY_INELIGIBLE`); SKIPPED only for unpinned PRIMARY/REACQUISITION |
 | Old pipeline versions | "superseded with `PIPELINE_RETIRED` by an operator step" | registry `di_v0_s4_pipeline_versions` + T12_RETIRE by the retirement reaper; claims require an ACTIVE pvk |
 | Orchestration version | `DI_V0_S4_ORCHESTRATION_CONTRACT_V1` | `DI_V0_S4_ORCHESTRATION_CONTRACT_V2` (fixture pvk changed accordingly) |
+
+## 10. C1D.10E amendment log (P1-E kill write-set)
+
+| Finding | BEFORE (C1D.10C) | AFTER (C1D.10E) |
+|---------|------------------|-----------------|
+| P1-E kill while disabled | prose + `writesAllowedWhileDisabled=[T07]` but T03/T08/T09 had no `CONTROL_PLANE_DB_NOT_KILLED`; race model allowed heartbeat/terminal/skip after kill | `writesAllowedWhileKilled=[T07_FAIL_RETRYABLE]` only; all other transitions include `CONTROL_PLANE_DB_NOT_KILLED`; `authoritativeWrites` (19 classes) + `killPolicy.serialization` (kill read in same tx as mutation); pinned races **K01–K18**; validator exhaustiveness (65 negative cases) |
+| Contract version | — | **unchanged** `DI_V0_S4A_CONTRACT_V2` (control-plane closure only; S2 execution identity / pvk / orchestration version unchanged) |

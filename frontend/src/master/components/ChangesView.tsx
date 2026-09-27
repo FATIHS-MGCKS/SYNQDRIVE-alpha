@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'di-exp021-c1d10e-kill-writeset-closure-2026-09-27',
+    version: '4.9.2208',
+    title: 'Driving Intelligence — EXP-021 C1D.10E S4A DB kill write-set closure (design only)',
+    summary: [
+      'Closes C1D.10D P1-E: while the DB kill row is active (or missing/unreadable), only T07_FAIL_RETRYABLE may mutate S4 state — a safe lease release without S2, evidence or lease extension.',
+      'All other transitions T01–T06 and T08–T13 now require CONTROL_PLANE_DB_NOT_KILLED; authoritativeWrites registry (19 classes) and killPolicy serialization (kill read in same transaction).',
+      'Pinned kill races K01–K18 plus validator exhaustiveness; red-team suite 65 negative / 24 positive, 0 false accepts.',
+      'GitHub CI workflow s4a-authority-governance.yml runs S4A contract + DI/DIMO graph/docs + module registry validators.',
+    ],
+    reason: 'Prevent any authoritative S4 write (heartbeat, terminal, skip, complete, etc.) from bypassing a DB kill switch except the explicitly safe T07 relinquish path.',
+    previousBehavior:
+      'Contract prose allowed only T07 while disabled, but T03 heartbeat, T08 and T09 had no kill guard and the race model accepted them after kill.',
+    details:
+      'architecture/drivingintelligence/design/s4a/s4a-contract.v2.json; evidence/EXP021_C1D10E_KILL_WRITESET_CLOSURE.md; .github/workflows/s4a-authority-governance.yml. Contract remains DI_V0_S4A_CONTRACT_V2. No runtime code.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-27T18:30:00.000Z',
+  },
+  {
     id: 'di-exp021-c1d10c-s4a-contract-v2-authority-closure-2026-09-27',
     version: '4.9.2207',
     title: 'Driving Intelligence — EXP-021 C1D.10C DI V0 S4A contract v2 + enforcing validator (design only)',
