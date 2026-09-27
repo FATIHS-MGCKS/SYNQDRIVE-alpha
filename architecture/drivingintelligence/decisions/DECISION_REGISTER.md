@@ -367,3 +367,21 @@ Validate graph consistency: `bash architecture/drivingintelligence/scripts/valid
 | **EPISTEMIC** | CONFIRMED (unit tests); native accuracy on WOB not validated (0 events) |
 | **EVIDENCE** | DI-EVID-EXP021-C1D8-001 |
 | **BOUNDARY** | Consulted: DIMO Integration (transport), dimo-native-driving-events mapper (event type keys), R1 temporal containment — no production read-path change |
+| **AMENDED BY** | DI-DEC-V0-S3B-CONTRACT-HARDENING-001 (C1D.8B, 2026-09-27) — caller-supplied native `calibrationState` default and optional-channel combined identity above are the historical C1D.8 contract, now superseded in part |
+
+## DI-DEC-V0-S3B-CONTRACT-HARDENING-001
+
+| Field | Value |
+|-------|-------|
+| **TITLE** | DI V0 S3B contract hardening — red-team closure (EXP-021 C1D.8B) |
+| **ERA** | EXP-021 C1D implementation (S3B closure, pre-merge) |
+| **STATUS** | PROPOSED |
+| **PROBLEM** | C1D.8A red-team: caller could set native `VALIDATED` → L2; native records not bound to org/vehicle/trip/window; duplicate eventIds double-counted; `[]` indistinguishable from read failure; combined identity could not distinguish omitted/empty/failed channels; R1 duplicate buckets first-row-wins; `isIgnitionOn` AVG semantics unverified |
+| **DECISION** | (1) Native calibration design A: no calibration field on input; adapter constant `UNCALIBRATED`/L1; future trusted authority = separate reviewed contract. (2) Expected context passed separately; per-record org/vehicle/trip/provider/family/window check; mismatches `CONTEXT_MISMATCH` L0 audited in snapshot; nullable relations unprovable → mismatch. (3) eventId dedup: identical collapse, any field difference → `CONFLICTING_DUPLICATE` L0 excluded + preserved; order-independent. (4) Source envelope; `EVENT_SOURCE_FAILURE` ≠ `NO_EVENT`; `readDiV0NativeEventSource` S4 boundary. (5) Combined identity V0_2 with explicit per-channel state, all channels required. (6) R1 per-signal duplicate merge, `CONFLICTING_DUPLICATE` withheld, no averaging/majority. (7) `isIgnitionOn` removed from S3B query (V0_2); field authority matrix all `REPO_CONTRACT_ONLY` |
+| **ALTERNATIVES** | Design B (typed trusted-authority object) rejected for now — no runtime authority exists; silently dropping foreign records rejected — loses audit; first-row-wins / averaging / majority for duplicates rejected — invents values; keeping ignition with repo-contract label rejected — S3B would carry an unsupported semantic |
+| **RATIONALE** | Fail-closed evidence contracts before any S4 caller; smallest safe design |
+| **CONSEQUENCES** | Snapshot versions bumped (native V0_2, R1 V0_2, combined V0_2); S4 must supply expected context + source envelope and pin all three channels with state; native fusion remains NEEDS_VALIDATION; ignition absent from S3B until provider-schema verified |
+| **GRAPH NODES** | DI-DEC-V0-S3B-CONTRACT-HARDENING-001, DI-SVC-V0-R1-OBD-ACQ-001, DI-SVC-V0-NATIVE-EVENT-EVIDENCE-001, DI-GAP-S3B-R1-FIELD-AUTHORITY-001 |
+| **EPISTEMIC** | CONFIRMED (unit + golden-bound tests); field semantics INFERRED (repo contract only) |
+| **EVIDENCE** | DI-EVID-EXP021-C1D8B-001 |
+| **BOUNDARY** | Consulted: DIMO Integration (query ownership; legacy HF/trip-detection ignition queries unchanged), `DrivingEvent` persistence schema (read-only inspection) — no cross-module code change |
