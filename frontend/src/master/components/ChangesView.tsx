@@ -13434,6 +13434,26 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     createdAt: '2026-09-25T09:35:00.000Z',
   },
   {
+    id: 'erd-e5-4-topology-energy-adr-2026-09-27',
+    version: '4.9.996',
+    title: 'ERD E5.4 — shadow parity topology + recharge energy semantics ADR',
+    summary: [
+      'Architecture-only dual ADR: physical-episode shadow parity (EED-DEC-ERD-002) and Option C recharge energy contract (EED-DEC-ERD-003).',
+      'Production closure: 6/6 exact pairs; 70 legacy rows = 6 physical clusters + 64 contained fragments; pre-fix comparator LEGACY_ONLY inflation (denominator 70, rate 0 not authoritative).',
+      'Reuse MULTIPLE_LEGACY_ONE_CANONICAL for fragment siblings; settled denominator excludes multiplicity diagnostics; lock energyDeltaKwh stored delta + additive chargingEnergyAddedKwh (future schema).',
+      'No runtime code, Prisma migration, Production mutation, or shadow enablement in this change.',
+    ],
+    reason:
+      'Close E5.4 measurement semantics before comparator topology + canonical stored-energy mapper implementation and cutover gating.',
+    previousBehavior:
+      'Shadow aggregator treated each legacy row as independent settled opportunity; energy mismatch interpreted as mapping defect rather than dual DIMO signal semantics.',
+    details:
+      'decisions/ERD-E5-4A-SHADOW-PARITY-PHYSICAL-EPISODE-TOPOLOGY-2026-09-27.md; decisions/ERD-RECHARGE-ENERGY-PRODUCT-SEMANTICS-2026-09-27.md; evidence/ERD-E5-4-FRAGMENT-TOPOLOGY-PRODUCTION-CLOSURE-2026-09-27.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-27T07:30:00.000Z',
+  },
+  {
     id: 'erd-e5-4-null-safe-legacy-cohort-2026-09-26',
     version: '4.9.995',
     title: 'ERD E5.4 — NULL-safe legacy recharge cohort Prisma query',
