@@ -36,63 +36,6 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-    id: 'di-exp021-c1d10e-kill-writeset-closure-2026-09-27',
-    version: '4.9.2208',
-    title: 'Driving Intelligence — EXP-021 C1D.10E S4A DB kill write-set closure (design only)',
-    summary: [
-      'Closes C1D.10D P1-E: while the DB kill row is active (or missing/unreadable), only T07_FAIL_RETRYABLE may mutate S4 state — a safe lease release without S2, evidence or lease extension.',
-      'All other transitions T01–T06 and T08–T13 now require CONTROL_PLANE_DB_NOT_KILLED; authoritativeWrites registry (19 classes) and killPolicy serialization (kill read in same transaction).',
-      'Pinned kill races K01–K18 plus validator exhaustiveness; red-team suite 65 negative / 24 positive, 0 false accepts.',
-      'GitHub CI workflow s4a-authority-governance.yml runs S4A contract + DI/DIMO graph/docs + module registry validators.',
-    ],
-    reason: 'Prevent any authoritative S4 write (heartbeat, terminal, skip, complete, etc.) from bypassing a DB kill switch except the explicitly safe T07 relinquish path.',
-    previousBehavior:
-      'Contract prose allowed only T07 while disabled, but T03 heartbeat, T08 and T09 had no kill guard and the race model accepted them after kill.',
-    details:
-      'architecture/drivingintelligence/design/s4a/s4a-contract.v2.json; evidence/EXP021_C1D10E_KILL_WRITESET_CLOSURE.md; .github/workflows/s4a-authority-governance.yml. Contract remains DI_V0_S4A_CONTRACT_V2. No runtime code.',
-    affectsArchitecture: true,
-    module: 'Vehicle Intelligence',
-    createdAt: '2026-09-27T18:30:00.000Z',
-  },
-  {
-    id: 'di-exp021-c1d10c-s4a-contract-v2-authority-closure-2026-09-27',
-    version: '4.9.2207',
-    title: 'Driving Intelligence — EXP-021 C1D.10C DI V0 S4A contract v2 + enforcing validator (design only)',
-    summary: [
-      'S2 execution identity: DI_V0_S4_EXECUTION_IDENTITY_V1 (org, vehicle, trip, boundary fingerprint, pipeline version key, calibration bundle hash, orchestration version, purpose, discriminator, pinned snapshot, combined input identity) is written as S2 inputEvidenceVersion; a collision with a different identity fails closed. S2 key function unchanged.',
-      'Tenancy: TRIP_VEHICLE_ORGANIZATION (vehicle_trips → vehicles.organization_id); the C1D.10A guard referenced a nonexistent vehicle_trips.organization_id column (DI-CONTRA-S4A-TENANCY-SCHEMA-001 resolved).',
-      'Control plane: 6 flags default OFF (position mandatory), org/vehicle allowlists EMPTY = NONE and intersected, DB kill row di_v0_s4_control (missing or unreadable = KILLED, disable-only), pipeline registry + retirement; 13-transition state machine with DB-clock lease expiry on every holder write; lease 240/300/60/900 s.',
-      'Red-team validator: 47 negative cases (0 false accepts) and 21 positive cases (0 false rejects); frozen v1 contract rejected. Production re-read: S2 still empty, DB TimeZone Etc/UTC.',
-    ],
-    reason: 'Close the four C1D.10B P1 findings (execution identity, non-enforcing validator, tenancy schema, control plane) by construction before any S4A code exists.',
-    previousBehavior:
-      'Contract v1: S2 inputEvidenceVersion = combined input identity only; 11 transitions without expiry checks on T07–T09; replay could become SKIPPED; no retirement; validator accepted 8 of 13 invalid mutations.',
-    details:
-      'architecture/drivingintelligence/design/s4a/s4a-contract.v2.json; design/s4a/S4A_CONTROL_PLANE.md; scripts/validate-s4a-contract*.mjs; evidence/EXP021_C1D10C_AUTHORITY_CLOSURE.md; DI-DEC-V0-S4A-CONTRACT-V2-001; DI-GAP-S4-PROVIDER-BACKPRESSURE-001. No runtime code, migration, worker or deploy.',
-    affectsArchitecture: true,
-    module: 'Vehicle Intelligence',
-    createdAt: '2026-09-27T17:10:00.000Z',
-  },
-  {
-    id: 'di-exp021-c1d10a-authority-correction-s4a-contract-2026-09-27',
-    version: '4.9.2206',
-    title: 'Driving Intelligence — EXP-021 C1D.10A authority correction + frozen DI V0 S4A contract (design only)',
-    summary: [
-      'Authority corrected: the S2 shadow persistence migration was applied in Production on 2026-09-26 23:46 UTC by an unrelated deploy (#1801); tables empty, 0 inserts ever. Schema present ≠ S4 runtime active ≠ shadow runs executed ≠ customer use.',
-      'S4A contract frozen as design + machine contract (s4a-contract.v1.json, validate-s4a-contract.sh): 7-state work item, DB lease with epoch fencing (BullMQ only a wake-up hint), logical key + active-PRIMARY partial unique, pipeline version key incl. calibration bundle hash and channel enablement.',
-      'Settlement: 24 h quiet period after max(endTime, createdAt, latest applied repair) + 10-day drift horizon (60-day Production distribution; max late mutation ~6.4 days).',
-      'Native events fail closed: provider failures are swallowed today, so NO_EVENT is unprovable; READY_* requires a future ingest attestation. Combined input identity V0_3 separates DISABLED / NOT_APPLICABLE / NOT_READY / SOURCE_FAILURE; replay only from pinned snapshots.',
-    ],
-    reason: 'Close the four C1D.10 P1 findings at contract level and freeze a machine-testable S4A contract before any S4 code; merge = Production migration, so dormant-deploy safety is designed first.',
-    previousBehavior:
-      'C1D.6/C1D.7 authority said the S2 migration was unapplied; no frozen S4 identity/fencing/channel/pinning contract; settlement delay derived from a 5-row sample.',
-    details:
-      'architecture/drivingintelligence/design/s4a/*; evidence/EXP021_C1D10A_AUTHORITY_CORRECTION.md; evidence/EXP021_C1D10A_P2_TRIAGE.md; DI-DEC-V0-S4A-CONTRACT-001; DI-CONTRA-S2-PROD-MIGRATION-001. No runtime code, migration, worker or deploy.',
-    affectsArchitecture: true,
-    module: 'Vehicle Intelligence',
-    createdAt: '2026-09-27T16:00:00.000Z',
-  },
-  {
     id: 'di-exp021-c1d9a-s3b-r1-v03-field-authority-2026-09-27',
     version: '4.9.2205',
     title: 'Driving Intelligence — EXP-021 C1D.9A DI V0 S3B R1 query V0_3 (provider field authority, currentGear removed)',
