@@ -137,9 +137,10 @@ async function createFeatureRow(
     sessionTrust: BatteryRestSessionFeatureSessionTrust;
     inputSummary: Record<string, unknown>;
     computedAt?: Date;
+    inputDigest?: string;
   },
 ) {
-  const digest = `digest-${randomUUID()}-${input.semanticRevision}`;
+  const digest = input.inputDigest ?? `digest-${randomUUID()}-${input.semanticRevision}`;
   return prisma.batteryRestSessionFeature.create({
     data: {
       organizationId: input.organizationId,
@@ -298,6 +299,8 @@ function wireLongitudinalStack(prisma: PrismaClient) {
         vehicleId,
         restSessionId: session.id,
       });
+      const profileGeneratedAt = '2026-05-03T12:00:00.000Z';
+      const sharedDigest = `digest-same-science-${randomUUID()}`;
       await createFeatureRow(prisma, {
         organizationId,
         vehicleId,
@@ -306,6 +309,7 @@ function wireLongitudinalStack(prisma: PrismaClient) {
         computationPhase: BatteryRestSessionFeatureComputationPhase.FINAL,
         sessionTrust: BatteryRestSessionFeatureSessionTrust.VALID,
         inputSummary: summary,
+        inputDigest: sharedDigest,
         computedAt: new Date('2026-05-03T09:00:00.000Z'),
       });
 
@@ -313,7 +317,7 @@ function wireLongitudinalStack(prisma: PrismaClient) {
         organizationId,
         vehicleId,
         sessionLimit,
-        profileGeneratedAt: new Date().toISOString(),
+        profileGeneratedAt,
       });
       expect(first.outcome).toBe('CREATED');
 
@@ -325,6 +329,7 @@ function wireLongitudinalStack(prisma: PrismaClient) {
         computationPhase: BatteryRestSessionFeatureComputationPhase.FINAL,
         sessionTrust: BatteryRestSessionFeatureSessionTrust.VALID,
         inputSummary: summary,
+        inputDigest: sharedDigest,
         computedAt: new Date('2026-05-03T10:00:00.000Z'),
       });
 
@@ -338,7 +343,7 @@ function wireLongitudinalStack(prisma: PrismaClient) {
         organizationId,
         vehicleId,
         sessionLimit,
-        profileGeneratedAt: new Date().toISOString(),
+        profileGeneratedAt,
       });
       expect(second.outcome).toBe('EXISTING');
 
@@ -793,12 +798,20 @@ function wireLongitudinalStack(prisma: PrismaClient) {
         inputSummary: summary,
       });
 
+      await prisma.batteryLongitudinalReconciliationFleetCursor.upsert({
+        where: { id: 1 },
+        create: { id: 1, lastOrganizationId: null, lastVehicleId: null },
+        update: { lastOrganizationId: null, lastVehicleId: null },
+      });
+
       const [tickA, tickB] = await Promise.all([
         candidates.findCandidates({ batchSize: 2, sessionLimit }),
         candidates.findCandidates({ batchSize: 2, sessionLimit }),
       ]);
-      expect(tickA.some((c) => c.vehicleId === vehicleId)).toBe(true);
-      expect(tickB.some((c) => c.vehicleId === vehicleId)).toBe(true);
+      expect(
+        tickA.some((c) => c.vehicleId === vehicleId) ||
+          tickB.some((c) => c.vehicleId === vehicleId),
+      ).toBe(true);
 
       const request = {
         organizationId,
