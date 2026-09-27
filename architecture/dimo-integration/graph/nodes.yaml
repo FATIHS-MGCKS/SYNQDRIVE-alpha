@@ -174,6 +174,20 @@ nodes:
       - architecture/dimo-integration/evidence/KS_MS_661_R9_WAKE_2026-09-08.md
       - architecture/dimo-integration/contradictions/KNOWLEDGE_GAPS.md
 
+  - id: DIM-GAP-007
+    type: gap
+    title: Driving-events / event-summary fetch failures swallowed to empty results (no ingest attestation)
+    epistemic_status: CONFIRMED
+    summary: >
+      DimoSegmentsService fetchDrivingEventsChunkWithRetry returns [] after 3 failed retries and
+      fetchEventDataSummary returns [] on error, so a provider failure is indistinguishable from zero
+      events. Recorded cross-module by DI (EXP-021 C1D.10A, DI-GAP-S4-NATIVE-READINESS-001); no DIMO code
+      change. Closure (strict failure propagation + per-trip attestation) belongs to a separately
+      authorized native-ingest slice.
+    source_paths:
+      - architecture/drivingintelligence/evidence/EXP021_C1D10A_AUTHORITY_CORRECTION.md
+      - architecture/dimo-integration/contradictions/KNOWLEDGE_GAPS.md
+
   - id: DIM-CX-001
     type: contradiction
     title: DI boundary vs DIMO authority bootstrap delay
