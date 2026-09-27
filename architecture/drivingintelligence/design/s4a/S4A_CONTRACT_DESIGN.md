@@ -94,7 +94,7 @@ All identifiers are `text` (matching existing Prisma `String @id` UUID usage). A
 
 **Triggers (new table only):**
 
-- `di_v0_s4_work_item_scope_guard` (BEFORE INSERT OR UPDATE OF `organization_id`, `vehicle_id`, `trip_id`): `vehicles.organization_id = NEW.organization_id` and `vehicle_trips.vehicle_id = NEW.vehicle_id` and `vehicle_trips.organization_id = NEW.organization_id`. Follows the `vehicle_trip_route_artifact_scope_guard` precedent.
+- `di_v0_s4_work_item_scope_guard` (BEFORE INSERT OR UPDATE OF `organization_id`, `vehicle_id`, `trip_id`) — **AMENDED BY C1D.10C (P1-C)**. The organization is derived through the trip's vehicle, because `vehicle_trips` has no organization column (C1D.10B proved it; the v1 text referenced a NONEXISTENT trip-level organization column). The guard raises unless `EXISTS (SELECT 1 FROM vehicle_trips t JOIN vehicles v ON v.id = t.vehicle_id WHERE t.id = NEW.trip_id AND t.vehicle_id = NEW.vehicle_id AND v.organization_id = NEW.organization_id)`. This is the same relation as the `vehicle_trip_route_artifact_scope_guard` precedent (migration `20260829140000`: vehicle→organization, then trip→vehicle), expressed as one join. Contract: `tenancy.scopeGuards`.
 - `di_v0_s4_work_item_immutable_guard` (BEFORE UPDATE): rejects any change to `organization_id`, `vehicle_id`, `trip_id`, `source_family`, `run_purpose`, `purpose_discriminator`, `replay_source_snapshot_hash`, `reacquisition_request_id`, `boundary_fingerprint`, `pipeline_version_key`, `pipeline_version_manifest`, `settlement_anchor_at`, `eligible_at`. Also rejects a `pinned_snapshot_hash` change once non-NULL, a `lease_epoch` decrease, and any update of a row whose OLD status is SUPERSEDED.
 
 ### 2.2 `di_v0_s4_evidence_snapshots`

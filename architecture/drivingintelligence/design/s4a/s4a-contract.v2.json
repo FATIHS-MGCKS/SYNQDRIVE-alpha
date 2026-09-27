@@ -1,0 +1,2886 @@
+{
+  "contractVersion": "DI_V0_S4A_CONTRACT_V2",
+  "supersedes": "DI_V0_S4A_CONTRACT_V1",
+  "amendment": "EXP-021 C1D.10C (closes C1D.10B P1-A, P1-B, P1-C, P1-D)",
+  "status": "FROZEN_DESIGN_NOT_IMPLEMENTED",
+  "authority": "architecture/drivingintelligence/design/s4a/S4A_CONTRACT_DESIGN.md",
+  "limits": {
+    "maxAcquisitionWindowSeconds": 28800,
+    "leaseDurationSeconds": 300,
+    "heartbeatIntervalSeconds": 60,
+    "workExecutionBudgetSeconds": 240,
+    "absoluteLeaseLifetimeCeilingSeconds": 900,
+    "maxAttempts": 5,
+    "retryBackoffSeconds": [
+      900,
+      3600,
+      14400,
+      14400,
+      14400
+    ]
+  },
+  "executionAuthority": {
+    "authority": "DB_WORK_ITEM_ROW",
+    "bullmqRole": "WAKEUP_HINT_ONLY",
+    "bullmqIsIdempotencyAuthority": false,
+    "bullmqPayloadFields": [
+      "workItemId"
+    ],
+    "dbClockSource": "clock_timestamp()",
+    "workerWallClockAllowedForExpiry": false,
+    "fencingToken": [
+      "workItemId",
+      "leaseEpoch"
+    ],
+    "leaseEpochMonotonic": true,
+    "s2IdempotencyIsFinalPersistenceGuard": true,
+    "schedulerLeadershipIsCorrectnessRequirement": false,
+    "workBudgetSemantics": "SINGLE_ATTEMPT_COMPUTE_BUDGET_WORKER_SELF_ABORT",
+    "leaseCeilingSemantics": "MAX_CUMULATIVE_LEASE_LIFETIME_FROM_ATTEMPT_CLAIM",
+    "leaseCeilingAnchorColumn": "lease_acquired_at",
+    "leaseCeilingRule": "T03 sets lease_expires_at = LEAST(clock_timestamp() + leaseDurationSeconds, lease_acquired_at + absoluteLeaseLifetimeCeilingSeconds); lease_acquired_at is set by T02/T04 only; T03 is refused when the lease is already expired",
+    "expiredLeaseWorkerWritePossible": false,
+    "postExpiryStatusActors": [
+      "WORKER",
+      "REAPER",
+      "RETIREMENT_REAPER",
+      "DRIFT_WATCHER"
+    ]
+  },
+  "controlPlane": {
+    "flagParsing": "repository parseBooleanEnv(value, false) convention: missing, empty or unrecognized value -> false; only 1/true/yes/on (case-insensitive) -> true",
+    "flags": {
+      "DI_V0_S4_MASTER_ENABLED": {
+        "default": false,
+        "kind": "MASTER",
+        "gates": [
+          "ALL_S4_ACTORS"
+        ]
+      },
+      "DI_V0_S4_DISCOVERY_ENABLED": {
+        "default": false,
+        "kind": "ROLE",
+        "role": "DISCOVERY",
+        "gates": [
+          "T01_CREATE"
+        ]
+      },
+      "DI_V0_S4_WORKER_ENABLED": {
+        "default": false,
+        "kind": "ROLE",
+        "role": "WORKER",
+        "gates": [
+          "T02_CLAIM",
+          "T04_TAKEOVER",
+          "T05_PIN",
+          "T06_COMPLETE",
+          "T13_HOLDER_SUPERSEDE"
+        ]
+      },
+      "DI_V0_S4_POSITION_ENABLED": {
+        "default": false,
+        "kind": "CHANNEL",
+        "channel": "POSITION",
+        "mandatory": true
+      },
+      "DI_V0_S4_R1_ENABLED": {
+        "default": false,
+        "kind": "CHANNEL",
+        "channel": "R1_OBD",
+        "mandatory": false,
+        "offOutcome": "DISABLED"
+      },
+      "DI_V0_S4_NATIVE_ENABLED": {
+        "default": false,
+        "kind": "CHANNEL",
+        "channel": "NATIVE_EVENT",
+        "mandatory": false,
+        "offOutcome": "DISABLED"
+      }
+    },
+    "effectiveEnabledRequires": [
+      "MASTER",
+      "ROLE_FLAG",
+      "POSITION",
+      "ORG_ALLOWLISTED",
+      "VEHICLE_ALLOWLISTED",
+      "VEHICLE_BELONGS_TO_ORG",
+      "DB_NOT_KILLED"
+    ],
+    "effectiveEnabledFormula": "effectiveEnabled = MASTER AND ROLE_FLAG AND POSITION AND orgAllowlisted AND vehicleAllowlisted AND vehicle.organization_id == work_item.organization_id AND dbKillState == NOT_KILLED",
+    "maintenanceActorsRequire": [
+      "MASTER",
+      "DB_NOT_KILLED"
+    ],
+    "writesAllowedWhileDisabled": [
+      "T07_FAIL_RETRYABLE"
+    ],
+    "dbCanEnable": false,
+    "channelFlagsEnterPipelineVersion": true,
+    "allowlists": {
+      "organization": {
+        "env": "DI_V0_S4_ORGANIZATION_ALLOWLIST",
+        "emptyMeans": "NONE",
+        "format": "COMMA_SEPARATED_EXACT_IDS",
+        "idPattern": "^[A-Za-z0-9_-]{1,128}$",
+        "malformedEntry": "WHOLE_LIST_INVALID_MEANS_NONE",
+        "duplicates": "SET_SEMANTICS_DEDUP",
+        "wildcard": "FORBIDDEN_TREATED_AS_MALFORMED",
+        "matchedAgainst": "work_item.organization_id (repository-resolved from trip -> vehicle -> organization)"
+      },
+      "vehicle": {
+        "env": "DI_V0_S4_VEHICLE_ALLOWLIST",
+        "emptyMeans": "NONE",
+        "format": "COMMA_SEPARATED_EXACT_IDS",
+        "idPattern": "^[A-Za-z0-9_-]{1,128}$",
+        "malformedEntry": "WHOLE_LIST_INVALID_MEANS_NONE",
+        "duplicates": "SET_SEMANTICS_DEDUP",
+        "wildcard": "FORBIDDEN_TREATED_AS_MALFORMED",
+        "matchedAgainst": "work_item.vehicle_id"
+      },
+      "combination": "INTERSECTION_BOTH_REQUIRED"
+    },
+    "dbKillRow": {
+      "table": "di_v0_s4_control",
+      "singletonId": "GLOBAL",
+      "columns": {
+        "id": "text PRIMARY KEY CHECK (id = 'GLOBAL')",
+        "kill_state": "text NOT NULL CHECK (kill_state IN ('KILLED','NOT_KILLED'))",
+        "reason": "text NOT NULL",
+        "actor": "text NOT NULL",
+        "updated_at": "timestamptz NOT NULL DEFAULT now()"
+      },
+      "disableOnly": true,
+      "canEnableWhenEnvOff": false,
+      "missingRow": "KILLED",
+      "readError": "KILLED",
+      "parseError": "KILLED",
+      "unknownValue": "KILLED",
+      "seededByMigration": false,
+      "readPoint": "INSIDE_EACH_GATED_TRANSITION_TRANSACTION",
+      "cacheMayEnable": false,
+      "cacheMayOnlyReport": "KILLED",
+      "scope": "GLOBAL_ALL_REPLICAS",
+      "customerPath": false,
+      "writer": "OPERATOR_SQL_RUNBOOK_ONLY"
+    }
+  },
+  "states": {
+    "PENDING": {
+      "terminal": false,
+      "leaseRequired": false,
+      "shadowRunId": "FORBIDDEN",
+      "pinnedSnapshot": "OPTIONAL_IMMUTABLE_ONCE_SET",
+      "nextAttemptAt": "REQUIRED"
+    },
+    "LEASED": {
+      "terminal": false,
+      "leaseRequired": true,
+      "shadowRunId": "FORBIDDEN",
+      "pinnedSnapshot": "OPTIONAL_IMMUTABLE_ONCE_SET",
+      "nextAttemptAt": "NULL"
+    },
+    "FAILED_RETRYABLE": {
+      "terminal": false,
+      "leaseRequired": false,
+      "shadowRunId": "FORBIDDEN",
+      "pinnedSnapshot": "OPTIONAL_IMMUTABLE_ONCE_SET",
+      "nextAttemptAt": "REQUIRED"
+    },
+    "COMPLETED": {
+      "terminal": false,
+      "leaseRequired": false,
+      "shadowRunId": "REQUIRED",
+      "pinnedSnapshot": "REQUIRED",
+      "nextAttemptAt": "NULL"
+    },
+    "FAILED_TERMINAL": {
+      "terminal": false,
+      "leaseRequired": false,
+      "shadowRunId": "FORBIDDEN",
+      "pinnedSnapshot": "OPTIONAL_IMMUTABLE_ONCE_SET",
+      "nextAttemptAt": "NULL"
+    },
+    "SKIPPED_INELIGIBLE": {
+      "terminal": false,
+      "leaseRequired": false,
+      "shadowRunId": "FORBIDDEN",
+      "pinnedSnapshot": "FORBIDDEN",
+      "nextAttemptAt": "NULL",
+      "allowedRunPurposes": [
+        "PRIMARY",
+        "REACQUISITION"
+      ]
+    },
+    "SUPERSEDED": {
+      "terminal": true,
+      "leaseRequired": false,
+      "shadowRunId": "RETAINED_IF_PRESENT",
+      "pinnedSnapshot": "RETAINED_IF_PRESENT",
+      "nextAttemptAt": "NULL"
+    }
+  },
+  "executionTerminalStates": [
+    "COMPLETED",
+    "FAILED_TERMINAL",
+    "SKIPPED_INELIGIBLE",
+    "SUPERSEDED"
+  ],
+  "transitions": [
+    {
+      "id": "T01_CREATE",
+      "from": [
+        "NONE"
+      ],
+      "to": "PENDING",
+      "actor": "DISCOVERY",
+      "leaseEpoch": "INIT_ZERO",
+      "attemptCount": "INIT_ZERO",
+      "lease": "NONE",
+      "guards": [
+        "TENANT_SCOPE_VALID",
+        "LOGICAL_KEY_UNIQUE",
+        "ACTIVE_PRIMARY_UNIQUE",
+        "CONTROL_PLANE_DISCOVERY_ENABLED",
+        "PIPELINE_VERSION_ACTIVE"
+      ]
+    },
+    {
+      "id": "T02_CLAIM",
+      "from": [
+        "PENDING",
+        "FAILED_RETRYABLE"
+      ],
+      "to": "LEASED",
+      "actor": "WORKER",
+      "leaseEpoch": "INCREMENT",
+      "attemptCount": "INCREMENT",
+      "lease": "SET",
+      "guards": [
+        "NEXT_ATTEMPT_DUE",
+        "ATTEMPTS_REMAINING",
+        "SKIP_LOCKED",
+        "PIPELINE_VERSION_MATCH",
+        "CONTROL_PLANE_WORKER_ENABLED",
+        "PIPELINE_VERSION_ACTIVE"
+      ]
+    },
+    {
+      "id": "T03_HEARTBEAT",
+      "from": [
+        "LEASED"
+      ],
+      "to": "LEASED",
+      "actor": "LEASE_HOLDER",
+      "leaseEpoch": "KEEP",
+      "attemptCount": "KEEP",
+      "lease": "EXTEND",
+      "guards": [
+        "EPOCH_MATCH",
+        "LEASE_NOT_EXPIRED_DB_CLOCK",
+        "LEASE_CEILING_APPLIED"
+      ]
+    },
+    {
+      "id": "T04_TAKEOVER",
+      "from": [
+        "LEASED"
+      ],
+      "to": "LEASED",
+      "actor": "WORKER",
+      "leaseEpoch": "INCREMENT",
+      "attemptCount": "INCREMENT",
+      "lease": "SET",
+      "guards": [
+        "LEASE_EXPIRED_DB_CLOCK",
+        "ATTEMPTS_REMAINING",
+        "SKIP_LOCKED",
+        "PIPELINE_VERSION_MATCH",
+        "CONTROL_PLANE_WORKER_ENABLED",
+        "PIPELINE_VERSION_ACTIVE"
+      ]
+    },
+    {
+      "id": "T05_PIN",
+      "from": [
+        "LEASED"
+      ],
+      "to": "LEASED",
+      "actor": "LEASE_HOLDER",
+      "leaseEpoch": "KEEP",
+      "attemptCount": "KEEP",
+      "lease": "KEEP",
+      "guards": [
+        "EPOCH_MATCH",
+        "LEASE_NOT_EXPIRED_DB_CLOCK",
+        "PIN_NOT_SET",
+        "SNAPSHOT_SAME_TENANT",
+        "CONTROL_PLANE_WORKER_ENABLED"
+      ]
+    },
+    {
+      "id": "T06_COMPLETE",
+      "from": [
+        "LEASED"
+      ],
+      "to": "COMPLETED",
+      "actor": "LEASE_HOLDER",
+      "leaseEpoch": "KEEP",
+      "attemptCount": "KEEP",
+      "lease": "CLEAR",
+      "guards": [
+        "ROW_LOCK",
+        "EPOCH_MATCH",
+        "LEASE_NOT_EXPIRED_DB_CLOCK",
+        "PIN_SET",
+        "BOUNDARY_FINGERPRINT_UNCHANGED",
+        "TENANT_SCOPE_VALID",
+        "S2_WRITTEN_SAME_TX",
+        "PIPELINE_VERSION_MATCH",
+        "CONTROL_PLANE_WORKER_ENABLED",
+        "PIPELINE_VERSION_ACTIVE",
+        "S2_EXECUTION_IDENTITY_MATCH"
+      ]
+    },
+    {
+      "id": "T07_FAIL_RETRYABLE",
+      "from": [
+        "LEASED"
+      ],
+      "to": "FAILED_RETRYABLE",
+      "actor": "LEASE_HOLDER",
+      "leaseEpoch": "KEEP",
+      "attemptCount": "KEEP",
+      "lease": "CLEAR",
+      "guards": [
+        "ROW_LOCK",
+        "EPOCH_MATCH",
+        "LEASE_NOT_EXPIRED_DB_CLOCK",
+        "ATTEMPTS_REMAINING",
+        "FAILURE_RETRYABLE"
+      ]
+    },
+    {
+      "id": "T08_FAIL_TERMINAL",
+      "from": [
+        "LEASED"
+      ],
+      "to": "FAILED_TERMINAL",
+      "actor": "LEASE_HOLDER",
+      "leaseEpoch": "KEEP",
+      "attemptCount": "KEEP",
+      "lease": "CLEAR",
+      "guards": [
+        "ROW_LOCK",
+        "EPOCH_MATCH",
+        "LEASE_NOT_EXPIRED_DB_CLOCK",
+        "FAILURE_REASON_SET"
+      ]
+    },
+    {
+      "id": "T09_SKIP_INELIGIBLE",
+      "from": [
+        "LEASED"
+      ],
+      "to": "SKIPPED_INELIGIBLE",
+      "actor": "LEASE_HOLDER",
+      "leaseEpoch": "KEEP",
+      "attemptCount": "KEEP",
+      "lease": "CLEAR",
+      "guards": [
+        "ROW_LOCK",
+        "EPOCH_MATCH",
+        "LEASE_NOT_EXPIRED_DB_CLOCK",
+        "PIN_NOT_SET",
+        "RUN_PURPOSE_NOT_RECALIBRATION_REPLAY",
+        "PERMANENT_INELIGIBILITY_FOR_FINGERPRINT"
+      ]
+    },
+    {
+      "id": "T10_EXHAUST",
+      "from": [
+        "LEASED"
+      ],
+      "to": "FAILED_TERMINAL",
+      "actor": "REAPER",
+      "leaseEpoch": "INCREMENT",
+      "attemptCount": "KEEP",
+      "lease": "CLEAR",
+      "guards": [
+        "LEASE_EXPIRED_DB_CLOCK",
+        "ATTEMPTS_EXHAUSTED",
+        "SKIP_LOCKED",
+        "CONTROL_PLANE_MAINTENANCE_ENABLED"
+      ]
+    },
+    {
+      "id": "T11_SUPERSEDE",
+      "from": [
+        "PENDING",
+        "LEASED",
+        "FAILED_RETRYABLE",
+        "COMPLETED",
+        "FAILED_TERMINAL",
+        "SKIPPED_INELIGIBLE"
+      ],
+      "to": "SUPERSEDED",
+      "actor": "DRIFT_WATCHER",
+      "leaseEpoch": "INCREMENT",
+      "attemptCount": "KEEP",
+      "lease": "CLEAR",
+      "guards": [
+        "ROW_LOCK",
+        "BOUNDARY_FINGERPRINT_CHANGED",
+        "SUPERSESSION_REASON_SET",
+        "SUCCESSOR_SAME_TENANT_AND_TRIP_OR_NULL",
+        "CONTROL_PLANE_MAINTENANCE_ENABLED"
+      ]
+    },
+    {
+      "id": "T12_RETIRE",
+      "from": [
+        "PENDING",
+        "LEASED",
+        "FAILED_RETRYABLE"
+      ],
+      "to": "SUPERSEDED",
+      "actor": "RETIREMENT_REAPER",
+      "leaseEpoch": "INCREMENT",
+      "attemptCount": "KEEP",
+      "lease": "CLEAR",
+      "guards": [
+        "ROW_LOCK",
+        "SKIP_LOCKED",
+        "PIPELINE_VERSION_RETIRED",
+        "LEASE_EXPIRED_OR_NOT_LEASED",
+        "SUPERSESSION_REASON_PIPELINE_RETIRED",
+        "NO_SUCCESSOR",
+        "CONTROL_PLANE_MAINTENANCE_ENABLED"
+      ]
+    },
+    {
+      "id": "T13_HOLDER_SUPERSEDE",
+      "from": [
+        "LEASED"
+      ],
+      "to": "SUPERSEDED",
+      "actor": "LEASE_HOLDER",
+      "leaseEpoch": "INCREMENT",
+      "attemptCount": "KEEP",
+      "lease": "CLEAR",
+      "guards": [
+        "ROW_LOCK",
+        "EPOCH_MATCH",
+        "LEASE_NOT_EXPIRED_DB_CLOCK",
+        "BOUNDARY_FINGERPRINT_CHANGED",
+        "SUPERSESSION_REASON_SET",
+        "SUCCESSOR_SAME_TENANT_AND_TRIP_OR_NULL",
+        "CONTROL_PLANE_WORKER_ENABLED"
+      ]
+    }
+  ],
+  "mustBeIllegal": [
+    "SUPERSEDED->PENDING",
+    "SUPERSEDED->LEASED",
+    "SUPERSEDED->COMPLETED",
+    "SUPERSEDED->FAILED_TERMINAL",
+    "COMPLETED->LEASED",
+    "COMPLETED->PENDING",
+    "COMPLETED->FAILED_RETRYABLE",
+    "COMPLETED->FAILED_TERMINAL",
+    "COMPLETED->SKIPPED_INELIGIBLE",
+    "FAILED_TERMINAL->LEASED",
+    "FAILED_TERMINAL->PENDING",
+    "SKIPPED_INELIGIBLE->LEASED",
+    "SKIPPED_INELIGIBLE->PENDING",
+    "PENDING->COMPLETED",
+    "FAILED_RETRYABLE->COMPLETED",
+    "PENDING->SKIPPED_INELIGIBLE",
+    "NONE->LEASED",
+    "NONE->COMPLETED",
+    "NONE->SUPERSEDED"
+  ],
+  "runPurposes": {
+    "PRIMARY": {
+      "discriminator": "CONSTANT_PRIMARY",
+      "providerAcquisitionAllowed": true,
+      "authoritative": true,
+      "pinSource": "FIRST_TERMINAL_ACQUISITION",
+      "pinnedAtCreate": false,
+      "ineligibleBeforePin": "T09_SKIP_INELIGIBLE",
+      "ineligibleAfterPin": "T08_FAIL_TERMINAL"
+    },
+    "RECALIBRATION_REPLAY": {
+      "discriminator": "REPLAY_SOURCE_SNAPSHOT_HASH",
+      "providerAcquisitionAllowed": false,
+      "authoritative": false,
+      "pinSource": "EXISTING_SNAPSHOT_AT_CREATE",
+      "pinnedAtCreate": true,
+      "ineligibleBeforePin": "NOT_REACHABLE_PINNED_AT_CREATE",
+      "ineligibleAfterPin": "T08_FAIL_TERMINAL",
+      "ineligibleReason": "REPLAY_INELIGIBLE"
+    },
+    "REACQUISITION": {
+      "discriminator": "REACQUISITION_REQUEST_ID",
+      "providerAcquisitionAllowed": true,
+      "authoritative": false,
+      "pinSource": "FIRST_TERMINAL_ACQUISITION",
+      "pinnedAtCreate": false,
+      "ineligibleBeforePin": "T09_SKIP_INELIGIBLE",
+      "ineligibleAfterPin": "T08_FAIL_TERMINAL"
+    }
+  },
+  "identity": {
+    "logicalKey": [
+      "organizationId",
+      "tripId",
+      "boundaryFingerprint",
+      "pipelineVersionKey",
+      "runPurpose",
+      "purposeDiscriminator"
+    ],
+    "activePrimaryKey": [
+      "organizationId",
+      "tripId",
+      "pipelineVersionKey"
+    ],
+    "activePrimaryPredicate": "runPurpose = 'PRIMARY' AND status <> 'SUPERSEDED'",
+    "evidenceKey": [
+      "organizationId",
+      "snapshotHash"
+    ],
+    "excludedFromEveryHash": [
+      "createdAt",
+      "updatedAt",
+      "leaseOwner",
+      "leaseEpoch",
+      "workerId",
+      "hostname",
+      "attemptCount",
+      "acquiredAtWallClock",
+      "bullmqJobId",
+      "workItemId"
+    ]
+  },
+  "identityLayers": {
+    "WORK_ITEM_LOGICAL_IDENTITY": "identity.logicalKey",
+    "EVIDENCE_IDENTITY": "identity.evidenceKey",
+    "S2_RESULT_EXECUTION_IDENTITY": "s2ExecutionIdentity",
+    "distinct": true
+  },
+  "s2ExecutionIdentity": {
+    "version": "DI_V0_S4_EXECUTION_IDENTITY_V1",
+    "components": [
+      "organizationId",
+      "vehicleId",
+      "tripId",
+      "boundaryFingerprint",
+      "pipelineVersionKey",
+      "calibrationBundleHash",
+      "s4OrchestrationContractVersion",
+      "runPurpose",
+      "purposeDiscriminator",
+      "pinnedEvidenceSnapshotHash",
+      "combinedInputIdentity"
+    ],
+    "serialization": "JSON.stringify of positional array [version, ...components in listed order], UTF-8, no whitespace",
+    "hash": "sha256 hex, prefixed 'DI_V0_S4_EXECUTION_IDENTITY_V1:sha256:'",
+    "forbiddenComponents": [
+      "workerId",
+      "leaseOwner",
+      "leaseEpoch",
+      "attemptCount",
+      "acquiredAtWallClock",
+      "createdAt",
+      "updatedAt",
+      "hostname",
+      "bullmqJobId",
+      "workItemId",
+      "channelSnapshotVersion"
+    ],
+    "componentConsistency": {
+      "calibrationBundleHash": "must equal pipeline_version_manifest.calibrationBundleHash",
+      "s4OrchestrationContractVersion": "must equal pipeline_version_manifest.s4OrchestrationContractVersion",
+      "organizationId": "repository-resolved trip -> vehicle -> organization; caller value never trusted",
+      "pinnedEvidenceSnapshotHash": "work_item.pinned_snapshot_hash (re-hashed on load)",
+      "combinedInputIdentity": "V0_3 hash derived from the pinned snapshot channel manifest"
+    },
+    "s2Binding": {
+      "s2Field": "inputEvidenceVersion",
+      "value": "FULL_EXECUTION_IDENTITY_STRING",
+      "s2KeyFunction": "buildDiV0ShadowRunIdempotencyKey(tripId|sourceFamily|structural|estimator|calibration|policy|inputEvidenceVersion)",
+      "s2RuntimeChangeRequired": false
+    },
+    "collision": {
+      "detection": "INSERT ... ON CONFLICT (organization_id, idempotency_key) DO NOTHING RETURNING id; on no row SELECT the stored run",
+      "comparison": "stored input_evidence_version, organization_id, vehicle_id, trip_id == requested",
+      "onConflictSameIdentity": "REUSE_SAME_EXECUTION_ONLY",
+      "onConflictDifferentIdentity": "FAIL_CLOSED_TERMINAL_CONTRACT_VIOLATION",
+      "reasonCode": "S2_EXECUTION_IDENTITY_MISMATCH",
+      "transition": "T08_FAIL_TERMINAL"
+    }
+  },
+  "pipelineVersion": {
+    "prefix": "DI_V0_S4_PIPELINE_V1",
+    "serialization": "JSON.stringify of [key, value] pairs sorted by key (UTF-16 code unit order), UTF-8, no whitespace",
+    "hash": "sha256 hex",
+    "requiredKeys": [
+      "boundaryFingerprintVersion",
+      "calibrationBundleHash",
+      "calibrationVersion",
+      "channelEnablement",
+      "channelPolicyVersion",
+      "combinedInputIdentityVersion",
+      "estimatorVersion",
+      "evidenceSnapshotContainerVersion",
+      "nativeAdapterVersion",
+      "nativeSnapshotVersion",
+      "positionAdapterVersion",
+      "positionQuerySpecId",
+      "positionSnapshotVersion",
+      "r1AdapterVersion",
+      "r1QuerySpecId",
+      "r1SnapshotVersion",
+      "s4OrchestrationContractVersion",
+      "shadowRecordVersion",
+      "sourceFamilyPolicyVersion",
+      "structuralVersion"
+    ]
+  },
+  "boundaryFingerprint": {
+    "version": "DI_V0_S4_BOUNDARY_FP_V1",
+    "serialization": "JSON.stringify of positional array [version, organizationId, vehicleId, tripId, tripStatus, startTimeIso, endTimeIsoOrNull, dimoSegmentIdOrNull, mergeParentTripIdOrNull, boundaryRepairGenerationOrNull], UTF-8",
+    "hash": "sha256 hex, prefixed 'DI_V0_S4_BOUNDARY_FP_V1:sha256:'",
+    "timestampFormat": "Date.prototype.toISOString (UTC, millisecond precision)",
+    "fields": [
+      "organizationId",
+      "vehicleId",
+      "tripId",
+      "tripStatus",
+      "startTime",
+      "endTime",
+      "dimoSegmentId",
+      "mergeParentTripId",
+      "boundaryRepairGeneration"
+    ],
+    "excluded": [
+      "rawDetectionMeta.boundaryRefresh.state",
+      "rawDetectionMeta.boundaryRefresh.stages",
+      "rawDetectionMeta.boundaryRefresh.attempts",
+      "tripSource",
+      "isRepaired",
+      "distanceKm",
+      "avgSpeedKmh",
+      "maxSpeedKmh",
+      "durationMinutes",
+      "behaviorEnrichedAt",
+      "analysis statuses"
+    ],
+    "organizationIdSource": "vehicles.organization_id of vehicle_trips.vehicle_id (repository-resolved); caller-supplied organization never trusted"
+  },
+  "pipelineRetirement": {
+    "registryTable": "di_v0_s4_pipeline_versions",
+    "registryStatuses": [
+      "ACTIVE",
+      "RETIRED"
+    ],
+    "registeredBy": "DISCOVERY upserts ACTIVE for its own pipeline_version_key before T01",
+    "retiredBy": "OPERATOR_RUNBOOK (retired_at, retired_by, retired_reason recorded)",
+    "retiredToActive": "FORBIDDEN",
+    "detectedBy": "RETIREMENT_REAPER (leader-guarded maintenance actor)",
+    "transition": "T12_RETIRE",
+    "targetState": "SUPERSEDED",
+    "supersededReason": "PIPELINE_RETIRED",
+    "successorCreated": false,
+    "evidencePreserved": true,
+    "s2HistoryPreserved": true,
+    "crossVersionProcessingAllowed": false,
+    "claimRequiresPipelineActive": true,
+    "distinguishes": {
+      "NO_ACTIVE_REPLICA_TEMPORARY": "registry ACTIVE, no replica computes this key: item waits unchanged (PENDING / FAILED_RETRYABLE / expired LEASED); S4F liveness metric only",
+      "PIPELINE_RETIRED": "registry RETIRED: T12 moves every non-terminal item to SUPERSEDED(PIPELINE_RETIRED)"
+    }
+  },
+  "channelOutcomes": {
+    "POSITION": [
+      "PRESENT",
+      "SOURCE_FAILURE",
+      "AUTHORIZATION_FAILURE",
+      "INVALID_REQUEST",
+      "MALFORMED",
+      "UNSUPPORTED_SOURCE"
+    ],
+    "R1_OBD": [
+      "PRESENT",
+      "PRESENT_SPARSE",
+      "SOURCE_FAILURE",
+      "NOT_APPLICABLE",
+      "DISABLED"
+    ],
+    "NATIVE_EVENT": [
+      "READY_WITH_EVENTS",
+      "READY_NO_EVENT",
+      "NOT_READY",
+      "SOURCE_FAILURE",
+      "NOT_APPLICABLE",
+      "DISABLED",
+      "CONTEXT_REJECTED"
+    ]
+  },
+  "channelRules": {
+    "positionRunnableOutcomes": [
+      "PRESENT"
+    ],
+    "snapshotRequiredOutcomes": [
+      "PRESENT",
+      "PRESENT_SPARSE",
+      "READY_WITH_EVENTS",
+      "READY_NO_EVENT",
+      "CONTEXT_REJECTED"
+    ],
+    "snapshotForbiddenOutcomes": [
+      "NOT_APPLICABLE",
+      "DISABLED",
+      "NOT_READY"
+    ],
+    "reasonCodeRequiredOutcomes": [
+      "SOURCE_FAILURE",
+      "AUTHORIZATION_FAILURE",
+      "INVALID_REQUEST",
+      "MALFORMED",
+      "UNSUPPORTED_SOURCE",
+      "NOT_READY",
+      "NOT_APPLICABLE",
+      "DISABLED",
+      "CONTEXT_REJECTED"
+    ],
+    "nativeReadyOutcomesRequireAttestation": [
+      "READY_WITH_EVENTS",
+      "READY_NO_EVENT"
+    ],
+    "channelPolicyV1NativeReadinessAuthority": "NONE",
+    "channelPolicyV1ReachableNativeOutcomes": [
+      "NOT_READY",
+      "NOT_APPLICABLE",
+      "DISABLED",
+      "SOURCE_FAILURE",
+      "CONTEXT_REJECTED"
+    ],
+    "channelPolicyV1R1ApplicableFamilies": [
+      "RUPTELA_R1"
+    ],
+    "channelPolicyV1NativeApplicableFamilies": [
+      "RUPTELA_R1"
+    ]
+  },
+  "nativeReadiness": {
+    "authority": "NONE_EXISTING",
+    "legacyMarkersAreAttestation": false,
+    "legacyMarkers": [
+      "behaviorEnrichedAt",
+      "nativeQuerySucceeded",
+      "V2_STAGE_NATIVE_EVENTS_COMPLETED",
+      "EVENT_COUNT_ZERO"
+    ],
+    "legacyEmptyResultMapsTo": "NOT_READY",
+    "readyNoEventRequires": "NATIVE_INGEST_ATTESTATION",
+    "gaps": [
+      "DI-GAP-S4-NATIVE-READINESS-001",
+      "DIM-GAP-007"
+    ]
+  },
+  "combinedInputIdentity": {
+    "version": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3",
+    "fields": [
+      "channel",
+      "outcome",
+      "reasonCode",
+      "channelEvidenceHash",
+      "attestationRef"
+    ],
+    "channelEvidenceHashFormat": "<channelSnapshotFormatVersion>:sha256:<hex> (content hash of the normalized channel payload; the format version is only its prefix)",
+    "channelEvidenceHashPattern": "^[A-Z0-9_]+:sha256:[0-9a-f]+$",
+    "forbiddenFieldNames": [
+      "channelSnapshotVersion"
+    ],
+    "serialization": "lines: version, then per channel in order [NATIVE_EVENT, POSITION, R1_OBD] JSON.stringify([channel, outcome, reasonCodeOrNull, channelEvidenceHashOrNull, attestationRefOrNull]) joined by \\n",
+    "hash": "sha256 hex, prefixed 'DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:'",
+    "renameNote": "C1D.10C renamed the 4th field from channelSnapshotVersion to channelEvidenceHash; serialized values are unchanged (they were always content hashes), so V0_3 hashes are unchanged"
+  },
+  "replay": {
+    "liveProviderRequeryIsReplay": false,
+    "sourceOfTruth": "PINNED_NORMALIZED_EVIDENCE_SNAPSHOT",
+    "rehashOnLoadRequired": true,
+    "serializer": "DESIGNED_DI_V0_S4_EVIDENCE_CONTAINER_V1",
+    "deserializerImplemented": false,
+    "deserializerGap": {
+      "id": "DI-GAP-S4-REPLAY-DESERIALIZER-001",
+      "status": "OPEN"
+    },
+    "replayIneligibleTransition": "T08_FAIL_TERMINAL",
+    "replayIneligibleReason": "REPLAY_INELIGIBLE"
+  },
+  "tenancy": {
+    "organizationSource": "TRIP_VEHICLE_ORGANIZATION",
+    "derivation": [
+      "vehicle_trips.id = NEW.trip_id",
+      "vehicle_trips.vehicle_id = NEW.vehicle_id",
+      "vehicles.id = vehicle_trips.vehicle_id",
+      "vehicles.organization_id = NEW.organization_id"
+    ],
+    "callerSuppliedOrganizationTrusted": false,
+    "nonexistentColumns": [
+      "vehicle_trips.organization_id"
+    ],
+    "dbEnforcementExistsToday": false,
+    "precedent": "vehicle_trip_route_artifact_scope_guard (migration 20260829140000): vehicle->organization, then trip->vehicle",
+    "scopeGuards": {
+      "di_v0_s4_work_items": {
+        "trigger": "di_v0_s4_work_item_scope_guard",
+        "checks": [
+          "VEHICLE_BELONGS_TO_ORGANIZATION",
+          "TRIP_BELONGS_TO_VEHICLE"
+        ],
+        "sql": "EXISTS (SELECT 1 FROM vehicle_trips t JOIN vehicles v ON v.id = t.vehicle_id WHERE t.id = NEW.trip_id AND t.vehicle_id = NEW.vehicle_id AND v.organization_id = NEW.organization_id)"
+      },
+      "di_v0_s4_evidence_snapshots": {
+        "trigger": "di_v0_s4_evidence_snapshot_scope_guard",
+        "checks": [
+          "VEHICLE_BELONGS_TO_ORGANIZATION",
+          "TRIP_BELONGS_TO_VEHICLE"
+        ],
+        "sql": "EXISTS (SELECT 1 FROM vehicle_trips t JOIN vehicles v ON v.id = t.vehicle_id WHERE t.id = NEW.trip_id AND t.vehicle_id = NEW.vehicle_id AND v.organization_id = NEW.organization_id)"
+      },
+      "di_v0_shadow_runs": {
+        "trigger": "di_v0_shadow_run_scope_guard",
+        "checks": [
+          "VEHICLE_BELONGS_TO_ORGANIZATION",
+          "TRIP_BELONGS_TO_VEHICLE"
+        ],
+        "sql": "EXISTS (SELECT 1 FROM vehicle_trips t JOIN vehicles v ON v.id = t.vehicle_id WHERE t.id = NEW.trip_id AND t.vehicle_id = NEW.vehicle_id AND v.organization_id = NEW.organization_id)"
+      },
+      "di_v0_shadow_intervals": {
+        "trigger": "di_v0_shadow_interval_scope_guard",
+        "checks": [
+          "PARENT_RUN_SAME_ORGANIZATION_VEHICLE_TRIP"
+        ],
+        "sql": "EXISTS (SELECT 1 FROM di_v0_shadow_runs r WHERE r.id = NEW.shadow_run_id AND r.organization_id = NEW.organization_id AND r.vehicle_id = NEW.vehicle_id AND r.trip_id = NEW.trip_id)"
+      }
+    },
+    "compositeScopeFks": [
+      "work_item(shadow_run_id, organization_id, trip_id) -> di_v0_shadow_runs(id, organization_id, trip_id)",
+      "work_item(organization_id, trip_id, pinned_snapshot_hash) -> di_v0_s4_evidence_snapshots(organization_id, trip_id, snapshot_hash)",
+      "work_item(organization_id, trip_id, replay_source_snapshot_hash) -> di_v0_s4_evidence_snapshots(organization_id, trip_id, snapshot_hash)",
+      "work_item(superseded_by_work_item_id, organization_id, trip_id) -> di_v0_s4_work_items(id, organization_id, trip_id)"
+    ]
+  },
+  "settlement": {
+    "quietPeriodSeconds": 86400,
+    "anchor": "max(vehicle_trips.end_time, vehicle_trips.created_at, max(trip_repairs.applied_at WHERE status = 'APPLIED'))",
+    "timeAuthority": {
+      "naiveColumns": [
+        "vehicle_trips.start_time",
+        "vehicle_trips.end_time",
+        "vehicle_trips.created_at",
+        "trip_repairs.applied_at",
+        "trip_repairs.created_at"
+      ],
+      "interpretation": "UTC",
+      "comparisonRule": "naive column AT TIME ZONE 'UTC' before any comparison with timestamptz; S4 columns are timestamptz",
+      "proof": "EXP021_C1D10C_AUTHORITY_CLOSURE.md section 4 (server TimeZone Etc/UTC from configuration file, no role/db override; Prisma writes JS Date as UTC; 209 APPLIED rows: applied_at - DB-default created_at in [-0.002 s, 0.738 s])"
+    },
+    "driftHorizonSeconds": 864000,
+    "fingerprintRecheckPoints": [
+      "ATTEMPT_START_AFTER_CLAIM",
+      "COMPLETION_TX_BEFORE_S2_WRITE"
+    ],
+    "driftWatcherRehash": true,
+    "unrecordedBoundaryMutationDetection": "BOUNDARY_FINGERPRINT_DIFFERENCE",
+    "everyBoundaryMutationRearmsQuietTimer": false,
+    "supersessionTransaction": "T11 or T13 plus successor PRIMARY insert in the same transaction"
+  },
+  "providerBackpressure": {
+    "requestContext": {
+      "category": "POST_TRIP_ENRICHMENT",
+      "priority": "BACKGROUND"
+    },
+    "accountingAuthority": "DimoProviderBudgetService via DimoRequestExecutor (shared DIMO path; no S4-local budget)",
+    "s4InAttemptRetryLoop": false,
+    "retryOwner": "STATE_MACHINE_T07_WITH_RETRY_BACKOFF",
+    "on429": "POSITION/R1 SOURCE_FAILURE reason RATE_LIMITED; position -> T07",
+    "on401or403": "AUTHORIZATION_FAILURE -> T08 (never retried)",
+    "globalCircuitBreaker": {
+      "status": "OPEN_ACCEPTED_FOR_S4C",
+      "gap": "DI-GAP-S4-PROVIDER-BACKPRESSURE-001"
+    }
+  },
+  "activationGates": {
+    "S4A_DORMANT_SCHEMA_MERGE": {
+      "requires": [
+        "S2_TABLES_EMPTY",
+        "ALL_FLAGS_DEFAULT_OFF",
+        "NO_RUNTIME_CALLER"
+      ]
+    },
+    "REPLAY_CAPABLE_SHADOW": {
+      "requires": [
+        "DI-GAP-S4-REPLAY-DESERIALIZER-001:CLOSED",
+        "SNAPSHOT_REHASH_VERIFICATION:IMPLEMENTED"
+      ]
+    },
+    "TINY_ACTIVATION": {
+      "requires": [
+        "DI-GAP-S4-REPLAY-DESERIALIZER-001:CLOSED",
+        "SNAPSHOT_REHASH_VERIFICATION:IMPLEMENTED",
+        "DI-GAP-S4-PROVIDER-BACKPRESSURE-001:CLOSED",
+        "DI-GAP-S4-LOCATION-RETENTION-001:GOVERNANCE_NOTE",
+        "EXPLICIT_OPERATOR_AUTHORIZATION"
+      ]
+    },
+    "NATIVE_CHANNEL_ENABLE": {
+      "requires": [
+        "DI-GAP-S4-NATIVE-READINESS-001:CLOSED",
+        "DIM-GAP-007:CLOSED",
+        "CHANNEL_POLICY_V2"
+      ]
+    }
+  },
+  "migration": {
+    "preconditions": [
+      "S2_SHADOW_RUNS_EMPTY",
+      "S2_SHADOW_INTERVALS_EMPTY"
+    ],
+    "preconditionEnforcement": "IN_MIGRATION_DO_BLOCK_RAISE_EXCEPTION",
+    "effect": "DORMANT_ONLY",
+    "seedRows": "NONE",
+    "newTables": [
+      "di_v0_s4_work_items",
+      "di_v0_s4_evidence_snapshots",
+      "di_v0_s4_control",
+      "di_v0_s4_pipeline_versions"
+    ],
+    "guardedExistingTables": [
+      "di_v0_shadow_runs",
+      "di_v0_shadow_intervals"
+    ],
+    "productionS2CountsAtC1D10C": {
+      "di_v0_shadow_runs": 0,
+      "di_v0_shadow_intervals": 0
+    },
+    "migrationCreated": false
+  },
+  "migrationRules": [
+    "NEW_TABLES_ONLY_PLUS_S2_SHADOW_TABLE_GUARDS",
+    "NO_ALTER_OF_CANONICAL_TABLES",
+    "NO_INDEX_ON_CANONICAL_TABLES",
+    "NO_TRIGGER_ON_CANONICAL_TABLES",
+    "NO_BACKFILL",
+    "NO_SCAN_OF_CANONICAL_TABLES",
+    "FK_TO_CANONICAL_ONLY_INSIDE_CREATE_TABLE_ON_DELETE_CASCADE",
+    "NO_ON_DELETE_RESTRICT_OR_NO_ACTION_TO_CANONICAL",
+    "NO_ON_DELETE_SET_NULL_INTO_CHECK_GUARDED_COLUMN",
+    "TEXT_PLUS_CHECK_NOT_ENUM",
+    "EXPLICIT_BEGIN_COMMIT_WITH_LOCAL_LOCK_TIMEOUT_5S_AND_STATEMENT_TIMEOUT_60S",
+    "REVERSIBLE_BY_DROP_OF_NEW_OBJECTS_ONLY",
+    "REQUIRES_EMPTY_S2_TABLES_PRECONDITION",
+    "DORMANT_ONLY_NO_SEED_ROWS"
+  ],
+  "zeroImpactInvariants": [
+    "NO_VEHICLE_TRIP_WRITE",
+    "NO_TRIP_FSM_CALL",
+    "NO_TRIP_FINALIZE_HOOK",
+    "NO_LEGACY_DRIVING_EVENT_WRITE",
+    "NO_MISUSE_CASE_WRITE",
+    "NO_SPEEDING_SECTION_WRITE",
+    "NO_HEALTH_STATE_WRITE",
+    "NO_TELEMETRY_WRITE",
+    "NO_ROUTE_GEOMETRY_WRITE",
+    "NO_LEGACY_TRIP_METRIC_WRITE",
+    "NO_CUSTOMER_ENDPOINT",
+    "NO_NOTIFICATION",
+    "NO_AUTOMATIC_CALIBRATION_OR_THRESHOLD_CHANGE",
+    "NO_CANONICAL_TABLE_TRIGGER",
+    "NO_CONSTRAINT_THAT_CAN_FAIL_A_CANONICAL_WRITE_OR_DELETE"
+  ],
+  "fixtures": {
+    "pipelineVersionBase": {
+      "boundaryFingerprintVersion": "DI_V0_S4_BOUNDARY_FP_V1",
+      "calibrationBundleHash": "sha256:FIXTURE_CALIBRATION_BUNDLE_CONTENT_HASH",
+      "calibrationVersion": "CALIBRATION_UNSET_V0",
+      "channelEnablement": "POSITION+R1_OBD+NATIVE_EVENT",
+      "channelPolicyVersion": "DI_V0_S4_CHANNEL_POLICY_V1",
+      "combinedInputIdentityVersion": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3",
+      "estimatorVersion": "DI_KINEMATIC_ESTIMATE_V0_1",
+      "evidenceSnapshotContainerVersion": "DI_V0_S4_EVIDENCE_SNAPSHOT_V1",
+      "nativeAdapterVersion": "DI_V0_NATIVE_EVENT_EVIDENCE_ADAPTER_V0_2",
+      "nativeSnapshotVersion": "DI_V0_NATIVE_EVENT_EVIDENCE_SNAPSHOT_V0_2",
+      "positionAdapterVersion": "DI_V0_POSITION_ACQUISITION_ADAPTER_V0_1",
+      "positionQuerySpecId": "DIMO_SIGNALS_HISTORICAL_LOCATION_1S_AVG_V0_1",
+      "positionSnapshotVersion": "DI_V0_POSITION_EVIDENCE_SNAPSHOT_V0_1",
+      "r1AdapterVersion": "DI_V0_R1_OBD_ACQUISITION_ADAPTER_V0_3",
+      "r1QuerySpecId": "DI_V0_R1_OBD_QUERY_V0_3",
+      "r1SnapshotVersion": "DI_V0_R1_OBD_EVIDENCE_SNAPSHOT_V0_3",
+      "s4OrchestrationContractVersion": "DI_V0_S4_ORCHESTRATION_CONTRACT_V2",
+      "shadowRecordVersion": "DI_SHADOW_RECORD_V0_1",
+      "sourceFamilyPolicyVersion": "SOURCE_FAMILY_POLICY_V0_1",
+      "structuralVersion": "DI_SOURCE_QUALITY_CONTRACT_V0_1"
+    },
+    "pipelineVersionExpectedKey": "DI_V0_S4_PIPELINE_V1:sha256:4d09bc46d440b319b7d14738c352554d5769ab87773f713e2595e452de5a4b67",
+    "pipelineVersionMutations": [
+      {
+        "name": "calibration label change",
+        "set": {
+          "calibrationVersion": "CALIBRATION_V1"
+        },
+        "expect": "DISTINCT"
+      },
+      {
+        "name": "calibration bundle content change under same label",
+        "set": {
+          "calibrationBundleHash": "sha256:other"
+        },
+        "expect": "DISTINCT"
+      },
+      {
+        "name": "R1 query bump",
+        "set": {
+          "r1QuerySpecId": "DI_V0_R1_OBD_QUERY_V0_4"
+        },
+        "expect": "DISTINCT"
+      },
+      {
+        "name": "native channel disabled by flag",
+        "set": {
+          "channelEnablement": "POSITION+R1_OBD"
+        },
+        "expect": "DISTINCT"
+      },
+      {
+        "name": "orchestration contract bump",
+        "set": {
+          "s4OrchestrationContractVersion": "DI_V0_S4_ORCHESTRATION_CONTRACT_V3"
+        },
+        "expect": "DISTINCT"
+      },
+      {
+        "name": "channel policy bump (native attestation available)",
+        "set": {
+          "channelPolicyVersion": "DI_V0_S4_CHANNEL_POLICY_V2"
+        },
+        "expect": "DISTINCT"
+      }
+    ],
+    "pipelineVersionForbiddenKeys": [
+      "createdAt",
+      "workerId",
+      "leaseOwner",
+      "hostname",
+      "randomId"
+    ],
+    "boundaryBase": {
+      "organizationId": "org-A",
+      "vehicleId": "veh-A1",
+      "tripId": "trip-A1-1",
+      "tripStatus": "COMPLETED",
+      "startTime": "2026-09-20T08:00:00.000Z",
+      "endTime": "2026-09-20T08:20:00.000Z",
+      "dimoSegmentId": "seg-1",
+      "mergeParentTripId": null,
+      "boundaryRepairGeneration": null
+    },
+    "boundaryExpectedFingerprint": "DI_V0_S4_BOUNDARY_FP_V1:sha256:2b549f4f37879c88217a337bceb7e7153242e28e94651d6bad66e26f4d642901",
+    "boundaryMutations": [
+      {
+        "name": "boundary extension (end later)",
+        "set": {
+          "endTime": "2026-09-20T08:31:00.000Z"
+        },
+        "expect": "DISTINCT"
+      },
+      {
+        "name": "boundary shortening (start later)",
+        "set": {
+          "startTime": "2026-09-20T08:05:00.000Z"
+        },
+        "expect": "DISTINCT"
+      },
+      {
+        "name": "merge reopen (ONGOING, end null)",
+        "set": {
+          "tripStatus": "ONGOING",
+          "endTime": null
+        },
+        "expect": "DISTINCT"
+      },
+      {
+        "name": "cancelled",
+        "set": {
+          "tripStatus": "CANCELLED"
+        },
+        "expect": "DISTINCT"
+      },
+      {
+        "name": "segment replacement",
+        "set": {
+          "dimoSegmentId": "seg-2"
+        },
+        "expect": "DISTINCT"
+      },
+      {
+        "name": "populated segment becomes null",
+        "set": {
+          "dimoSegmentId": null
+        },
+        "expect": "DISTINCT"
+      },
+      {
+        "name": "repair generation appears (same times)",
+        "set": {
+          "boundaryRepairGeneration": "audit-1|seg-1|2026-09-20T08:00:00.000Z|2026-09-20T08:20:00.000Z"
+        },
+        "expect": "DISTINCT"
+      },
+      {
+        "name": "merge parent linked",
+        "set": {
+          "mergeParentTripId": "trip-A1-0"
+        },
+        "expect": "DISTINCT"
+      },
+      {
+        "name": "vehicle moved to another org",
+        "set": {
+          "organizationId": "org-B"
+        },
+        "expect": "DISTINCT"
+      },
+      {
+        "name": "no material change",
+        "set": {},
+        "expect": "EQUAL"
+      }
+    ],
+    "combinedIdentityCases": [
+      {
+        "name": "native DISABLED vs NOT_APPLICABLE",
+        "a": {
+          "NATIVE_EVENT": [
+            "DISABLED",
+            "FLAG_OFF",
+            null,
+            null
+          ]
+        },
+        "b": {
+          "NATIVE_EVENT": [
+            "NOT_APPLICABLE",
+            "FAMILY_NOT_APPLICABLE",
+            null,
+            null
+          ]
+        },
+        "expect": "DISTINCT"
+      },
+      {
+        "name": "native NOT_READY vs READY_NO_EVENT",
+        "a": {
+          "NATIVE_EVENT": [
+            "NOT_READY",
+            "NO_READINESS_AUTHORITY",
+            null,
+            null
+          ]
+        },
+        "b": {
+          "NATIVE_EVENT": [
+            "READY_NO_EVENT",
+            null,
+            "DI_V0_NATIVE_EVENT_EVIDENCE_SNAPSHOT_V0_2:sha256:aa",
+            "nia-1"
+          ]
+        },
+        "expect": "DISTINCT"
+      },
+      {
+        "name": "R1 SOURCE_FAILURE rate-limited vs authorization",
+        "a": {
+          "R1_OBD": [
+            "SOURCE_FAILURE",
+            "RATE_LIMITED",
+            null,
+            null
+          ]
+        },
+        "b": {
+          "R1_OBD": [
+            "SOURCE_FAILURE",
+            "AUTHORIZATION",
+            null,
+            null
+          ]
+        },
+        "expect": "DISTINCT"
+      },
+      {
+        "name": "R1 DISABLED vs NOT_APPLICABLE",
+        "a": {
+          "R1_OBD": [
+            "DISABLED",
+            "FLAG_OFF",
+            null,
+            null
+          ]
+        },
+        "b": {
+          "R1_OBD": [
+            "NOT_APPLICABLE",
+            "FAMILY_NOT_APPLICABLE",
+            null,
+            null
+          ]
+        },
+        "expect": "DISTINCT"
+      },
+      {
+        "name": "identical pins",
+        "a": {},
+        "b": {},
+        "expect": "EQUAL"
+      }
+    ],
+    "combinedIdentityBase": {
+      "NATIVE_EVENT": [
+        "DISABLED",
+        "FLAG_OFF",
+        null,
+        null
+      ],
+      "POSITION": [
+        "PRESENT",
+        null,
+        "DI_V0_POSITION_EVIDENCE_SNAPSHOT_V0_1:sha256:11",
+        null
+      ],
+      "R1_OBD": [
+        "PRESENT",
+        null,
+        "DI_V0_R1_OBD_EVIDENCE_SNAPSHOT_V0_3:sha256:22",
+        null
+      ]
+    },
+    "invalidChannelPins": [
+      {
+        "name": "READY_NO_EVENT without attestation",
+        "channel": "NATIVE_EVENT",
+        "pin": [
+          "READY_NO_EVENT",
+          null,
+          "DI_V0_NATIVE_EVENT_EVIDENCE_SNAPSHOT_V0_2:sha256:aa",
+          null
+        ]
+      },
+      {
+        "name": "READY_WITH_EVENTS without attestation",
+        "channel": "NATIVE_EVENT",
+        "pin": [
+          "READY_WITH_EVENTS",
+          null,
+          "DI_V0_NATIVE_EVENT_EVIDENCE_SNAPSHOT_V0_2:sha256:aa",
+          null
+        ]
+      },
+      {
+        "name": "DISABLED carrying snapshot",
+        "channel": "R1_OBD",
+        "pin": [
+          "DISABLED",
+          "FLAG_OFF",
+          "DI_V0_R1_OBD_EVIDENCE_SNAPSHOT_V0_3:sha256:22",
+          null
+        ]
+      },
+      {
+        "name": "SOURCE_FAILURE without reason",
+        "channel": "R1_OBD",
+        "pin": [
+          "SOURCE_FAILURE",
+          null,
+          null,
+          null
+        ]
+      },
+      {
+        "name": "PRESENT without snapshot",
+        "channel": "POSITION",
+        "pin": [
+          "PRESENT",
+          null,
+          null,
+          null
+        ]
+      },
+      {
+        "name": "NO_EVENT legacy state name",
+        "channel": "NATIVE_EVENT",
+        "pin": [
+          "NO_EVENT",
+          null,
+          "x",
+          null
+        ]
+      },
+      {
+        "name": "R1 outcome on native channel",
+        "channel": "NATIVE_EVENT",
+        "pin": [
+          "PRESENT_SPARSE",
+          null,
+          "x",
+          null
+        ]
+      }
+    ],
+    "tenantScope": {
+      "organizations": {
+        "org-A": {},
+        "org-B": {}
+      },
+      "vehicles": {
+        "veh-A1": "org-A",
+        "veh-B1": "org-B"
+      },
+      "trips": {
+        "trip-A1-1": "veh-A1",
+        "trip-B1-1": "veh-B1"
+      },
+      "snapshots": {
+        "snap-A": {
+          "organizationId": "org-A",
+          "tripId": "trip-A1-1"
+        },
+        "snap-B": {
+          "organizationId": "org-B",
+          "tripId": "trip-B1-1"
+        }
+      },
+      "cases": [
+        {
+          "name": "consistent A",
+          "organizationId": "org-A",
+          "vehicleId": "veh-A1",
+          "tripId": "trip-A1-1",
+          "expect": "ACCEPT"
+        },
+        {
+          "name": "org A + trip of org B",
+          "organizationId": "org-A",
+          "vehicleId": "veh-B1",
+          "tripId": "trip-B1-1",
+          "expect": "REJECT"
+        },
+        {
+          "name": "org A + vehicle A + trip of vehicle B",
+          "organizationId": "org-A",
+          "vehicleId": "veh-A1",
+          "tripId": "trip-B1-1",
+          "expect": "REJECT"
+        },
+        {
+          "name": "org B + vehicle A + trip A",
+          "organizationId": "org-B",
+          "vehicleId": "veh-A1",
+          "tripId": "trip-A1-1",
+          "expect": "REJECT"
+        },
+        {
+          "name": "unknown trip",
+          "organizationId": "org-A",
+          "vehicleId": "veh-A1",
+          "tripId": "trip-missing",
+          "expect": "REJECT"
+        },
+        {
+          "name": "pin snapshot of other tenant",
+          "organizationId": "org-A",
+          "vehicleId": "veh-A1",
+          "tripId": "trip-A1-1",
+          "pinSnapshot": "snap-B",
+          "expect": "REJECT"
+        },
+        {
+          "name": "pin own snapshot",
+          "organizationId": "org-A",
+          "vehicleId": "veh-A1",
+          "tripId": "trip-A1-1",
+          "pinSnapshot": "snap-A",
+          "expect": "ACCEPT"
+        },
+        {
+          "name": "caller-supplied org not owning the vehicle",
+          "organizationId": "org-B",
+          "vehicleId": "veh-A1",
+          "tripId": "trip-A1-1",
+          "expect": "REJECT"
+        }
+      ]
+    },
+    "races": [
+      {
+        "id": "R01_TWO_DISCOVERERS",
+        "steps": [
+          [
+            "create",
+            "d1",
+            "PRIMARY"
+          ],
+          [
+            "create",
+            "d2",
+            "PRIMARY"
+          ]
+        ],
+        "expect": {
+          "itemCount": 1,
+          "rejected": [
+            "d2"
+          ]
+        }
+      },
+      {
+        "id": "R02_TWO_REPLICAS_CLAIM",
+        "steps": [
+          [
+            "create",
+            "d1",
+            "PRIMARY"
+          ],
+          [
+            "claim",
+            "w1"
+          ],
+          [
+            "claim",
+            "w2"
+          ]
+        ],
+        "expect": {
+          "status": "LEASED",
+          "leaseOwner": "w1",
+          "leaseEpoch": 1,
+          "rejected": [
+            "w2"
+          ]
+        }
+      },
+      {
+        "id": "R03_EXPIRY_TAKEOVER_STALE_COMPLETE",
+        "steps": [
+          [
+            "create",
+            "d1",
+            "PRIMARY"
+          ],
+          [
+            "claim",
+            "w1"
+          ],
+          [
+            "pin",
+            "w1",
+            "snap-A"
+          ],
+          [
+            "advance",
+            301
+          ],
+          [
+            "claim",
+            "w2"
+          ],
+          [
+            "complete",
+            "w1",
+            "run-stale"
+          ],
+          [
+            "complete",
+            "w2",
+            "run-good"
+          ]
+        ],
+        "expect": {
+          "status": "COMPLETED",
+          "shadowRunId": "run-good",
+          "leaseEpoch": 2,
+          "rejected": [
+            "w1"
+          ],
+          "s2WritesCommitted": [
+            "w2"
+          ]
+        }
+      },
+      {
+        "id": "R04_HEARTBEAT_AFTER_TAKEOVER",
+        "steps": [
+          [
+            "create",
+            "d1",
+            "PRIMARY"
+          ],
+          [
+            "claim",
+            "w1"
+          ],
+          [
+            "advance",
+            301
+          ],
+          [
+            "claim",
+            "w2"
+          ],
+          [
+            "heartbeat",
+            "w1"
+          ],
+          [
+            "heartbeat",
+            "w2"
+          ]
+        ],
+        "expect": {
+          "status": "LEASED",
+          "leaseOwner": "w2",
+          "leaseEpoch": 2,
+          "rejected": [
+            "w1"
+          ]
+        }
+      },
+      {
+        "id": "R05_HEARTBEAT_KEEPS_LEASE",
+        "steps": [
+          [
+            "create",
+            "d1",
+            "PRIMARY"
+          ],
+          [
+            "claim",
+            "w1"
+          ],
+          [
+            "pin",
+            "w1",
+            "snap-A"
+          ],
+          [
+            "advance",
+            200
+          ],
+          [
+            "heartbeat",
+            "w1"
+          ],
+          [
+            "advance",
+            200
+          ],
+          [
+            "claim",
+            "w2"
+          ],
+          [
+            "complete",
+            "w1",
+            "run-1"
+          ]
+        ],
+        "expect": {
+          "status": "COMPLETED",
+          "shadowRunId": "run-1",
+          "leaseEpoch": 1,
+          "rejected": [
+            "w2"
+          ]
+        }
+      },
+      {
+        "id": "R06_DUPLICATE_QUEUE_JOB_AFTER_COMPLETE",
+        "steps": [
+          [
+            "create",
+            "d1",
+            "PRIMARY"
+          ],
+          [
+            "claim",
+            "w1"
+          ],
+          [
+            "pin",
+            "w1",
+            "snap-A"
+          ],
+          [
+            "complete",
+            "w1",
+            "run-1"
+          ],
+          [
+            "claim",
+            "w1"
+          ],
+          [
+            "claim",
+            "w2"
+          ]
+        ],
+        "expect": {
+          "status": "COMPLETED",
+          "shadowRunId": "run-1",
+          "leaseEpoch": 1,
+          "rejected": [
+            "w1",
+            "w2"
+          ]
+        }
+      },
+      {
+        "id": "R07_CRASH_BEFORE_PIN",
+        "steps": [
+          [
+            "create",
+            "d1",
+            "PRIMARY"
+          ],
+          [
+            "claim",
+            "w1"
+          ],
+          [
+            "advance",
+            301
+          ],
+          [
+            "claim",
+            "w2"
+          ],
+          [
+            "pin",
+            "w2",
+            "snap-A"
+          ],
+          [
+            "complete",
+            "w2",
+            "run-1"
+          ]
+        ],
+        "expect": {
+          "status": "COMPLETED",
+          "shadowRunId": "run-1",
+          "pinned": "snap-A",
+          "attemptCount": 2
+        }
+      },
+      {
+        "id": "R08_CRASH_AFTER_PIN_REUSES_PIN",
+        "steps": [
+          [
+            "create",
+            "d1",
+            "PRIMARY"
+          ],
+          [
+            "claim",
+            "w1"
+          ],
+          [
+            "pin",
+            "w1",
+            "snap-A"
+          ],
+          [
+            "advance",
+            301
+          ],
+          [
+            "claim",
+            "w2"
+          ],
+          [
+            "pin",
+            "w2",
+            "snap-A2"
+          ],
+          [
+            "complete",
+            "w2",
+            "run-1"
+          ]
+        ],
+        "expect": {
+          "status": "COMPLETED",
+          "pinned": "snap-A",
+          "shadowRunId": "run-1",
+          "rejected": [
+            "w2:pin"
+          ]
+        }
+      },
+      {
+        "id": "R09_CRASH_INSIDE_S2_TX",
+        "steps": [
+          [
+            "create",
+            "d1",
+            "PRIMARY"
+          ],
+          [
+            "claim",
+            "w1"
+          ],
+          [
+            "pin",
+            "w1",
+            "snap-A"
+          ],
+          [
+            "completeRollback",
+            "w1",
+            "run-1"
+          ],
+          [
+            "advance",
+            301
+          ],
+          [
+            "claim",
+            "w2"
+          ],
+          [
+            "complete",
+            "w2",
+            "run-1"
+          ]
+        ],
+        "expect": {
+          "status": "COMPLETED",
+          "shadowRunId": "run-1",
+          "pinned": "snap-A",
+          "s2WritesCommitted": [
+            "w2"
+          ]
+        }
+      },
+      {
+        "id": "R10_CONCURRENT_SUPERSESSION",
+        "steps": [
+          [
+            "create",
+            "d1",
+            "PRIMARY"
+          ],
+          [
+            "supersede",
+            "s1",
+            "fp-2"
+          ],
+          [
+            "supersede",
+            "s2",
+            "fp-2"
+          ]
+        ],
+        "expect": {
+          "oldStatus": "SUPERSEDED",
+          "activePrimaryCount": 1,
+          "rejected": [
+            "s2"
+          ]
+        }
+      },
+      {
+        "id": "R11_SUPERSEDE_DURING_LEASE",
+        "steps": [
+          [
+            "create",
+            "d1",
+            "PRIMARY"
+          ],
+          [
+            "claim",
+            "w1"
+          ],
+          [
+            "pin",
+            "w1",
+            "snap-A"
+          ],
+          [
+            "supersede",
+            "s1",
+            "fp-2"
+          ],
+          [
+            "complete",
+            "w1",
+            "run-1"
+          ]
+        ],
+        "expect": {
+          "oldStatus": "SUPERSEDED",
+          "activePrimaryCount": 1,
+          "rejected": [
+            "w1"
+          ]
+        }
+      },
+      {
+        "id": "R12_CONCURRENT_REACQUISITION",
+        "steps": [
+          [
+            "create",
+            "d1",
+            "PRIMARY"
+          ],
+          [
+            "create",
+            "d2",
+            "REACQUISITION",
+            "req-1"
+          ],
+          [
+            "create",
+            "d3",
+            "REACQUISITION",
+            "req-1"
+          ],
+          [
+            "create",
+            "d4",
+            "REACQUISITION",
+            "req-2"
+          ]
+        ],
+        "expect": {
+          "itemCount": 3,
+          "rejected": [
+            "d3"
+          ]
+        }
+      },
+      {
+        "id": "R13_REPLAY_WHILE_PRIMARY_EXISTS",
+        "steps": [
+          [
+            "create",
+            "d1",
+            "PRIMARY"
+          ],
+          [
+            "create",
+            "d2",
+            "RECALIBRATION_REPLAY",
+            "snap-A"
+          ],
+          [
+            "create",
+            "d3",
+            "RECALIBRATION_REPLAY",
+            "snap-A"
+          ]
+        ],
+        "expect": {
+          "itemCount": 2,
+          "rejected": [
+            "d3"
+          ],
+          "activePrimaryCount": 1
+        }
+      },
+      {
+        "id": "R14_EXHAUSTED_ATTEMPTS",
+        "steps": [
+          [
+            "create",
+            "d1",
+            "PRIMARY"
+          ],
+          [
+            "claim",
+            "w1"
+          ],
+          [
+            "advance",
+            301
+          ],
+          [
+            "claim",
+            "w1"
+          ],
+          [
+            "advance",
+            301
+          ],
+          [
+            "claim",
+            "w1"
+          ],
+          [
+            "advance",
+            301
+          ],
+          [
+            "claim",
+            "w1"
+          ],
+          [
+            "advance",
+            301
+          ],
+          [
+            "claim",
+            "w1"
+          ],
+          [
+            "advance",
+            301
+          ],
+          [
+            "claim",
+            "w2"
+          ],
+          [
+            "reap",
+            "r1"
+          ]
+        ],
+        "expect": {
+          "status": "FAILED_TERMINAL",
+          "attemptCount": 5,
+          "rejected": [
+            "w2"
+          ]
+        }
+      },
+      {
+        "id": "R15_MIXED_VERSION_CLAIM_REFUSED",
+        "steps": [
+          [
+            "create",
+            "d1",
+            "PRIMARY"
+          ],
+          [
+            "claim",
+            "w-old",
+            null,
+            "pvk-0"
+          ],
+          [
+            "claim",
+            "w1"
+          ]
+        ],
+        "expect": {
+          "status": "LEASED",
+          "leaseOwner": "w1",
+          "leaseEpoch": 1,
+          "rejected": [
+            "w-old"
+          ]
+        }
+      },
+      {
+        "id": "R16_MIXED_VERSION_COMPLETE_REFUSED",
+        "steps": [
+          [
+            "create",
+            "d1",
+            "PRIMARY"
+          ],
+          [
+            "claim",
+            "w1"
+          ],
+          [
+            "pin",
+            "w1",
+            "snap-A"
+          ],
+          [
+            "complete",
+            "w1",
+            "run-x",
+            "pvk-0"
+          ],
+          [
+            "complete",
+            "w1",
+            "run-1"
+          ]
+        ],
+        "expect": {
+          "status": "COMPLETED",
+          "shadowRunId": "run-1",
+          "rejected": [
+            "w1:complete"
+          ]
+        }
+      },
+      {
+        "id": "R17_DB_KILL_BLOCKS_CLAIM_AND_COMPLETE",
+        "steps": [
+          [
+            "create",
+            "d1",
+            "PRIMARY"
+          ],
+          [
+            "claim",
+            "w1"
+          ],
+          [
+            "pin",
+            "w1",
+            "snap-A"
+          ],
+          [
+            "kill",
+            "op"
+          ],
+          [
+            "complete",
+            "w1",
+            "run-1"
+          ],
+          [
+            "failRetryable",
+            "w1"
+          ],
+          [
+            "claim",
+            "w2"
+          ]
+        ],
+        "expect": {
+          "status": "FAILED_RETRYABLE",
+          "rejected": [
+            "w1:complete",
+            "w2"
+          ]
+        }
+      },
+      {
+        "id": "R18_EXPIRED_LEASE_STATUS_WRITES_REJECTED",
+        "steps": [
+          [
+            "create",
+            "d1",
+            "PRIMARY"
+          ],
+          [
+            "claim",
+            "w1"
+          ],
+          [
+            "advance",
+            301
+          ],
+          [
+            "failRetryable",
+            "w1"
+          ],
+          [
+            "failTerminal",
+            "w1"
+          ],
+          [
+            "skip",
+            "w1"
+          ],
+          [
+            "holderSupersede",
+            "w1",
+            "fp-2"
+          ]
+        ],
+        "expect": {
+          "status": "LEASED",
+          "leaseOwner": "w1",
+          "leaseEpoch": 1,
+          "rejected": [
+            "w1:failRetryable",
+            "w1:failTerminal",
+            "w1:skip",
+            "w1:holderSupersede"
+          ]
+        }
+      },
+      {
+        "id": "R19_LEASE_CEILING",
+        "steps": [
+          [
+            "create",
+            "d1",
+            "PRIMARY"
+          ],
+          [
+            "claim",
+            "w1"
+          ],
+          [
+            "advance",
+            250
+          ],
+          [
+            "heartbeat",
+            "w1"
+          ],
+          [
+            "advance",
+            250
+          ],
+          [
+            "heartbeat",
+            "w1"
+          ],
+          [
+            "advance",
+            250
+          ],
+          [
+            "heartbeat",
+            "w1"
+          ],
+          [
+            "advance",
+            200
+          ],
+          [
+            "heartbeat",
+            "w1"
+          ],
+          [
+            "claim",
+            "w2"
+          ]
+        ],
+        "expect": {
+          "status": "LEASED",
+          "leaseOwner": "w2",
+          "leaseEpoch": 2,
+          "rejected": [
+            "w1:heartbeat"
+          ]
+        }
+      },
+      {
+        "id": "R20_RETIRE_PIPELINE",
+        "steps": [
+          [
+            "create",
+            "d1",
+            "PRIMARY"
+          ],
+          [
+            "retire",
+            "rr1"
+          ],
+          [
+            "retireRegistry",
+            "op"
+          ],
+          [
+            "retire",
+            "rr1"
+          ],
+          [
+            "claim",
+            "w1"
+          ]
+        ],
+        "expect": {
+          "oldStatus": "SUPERSEDED",
+          "supersededReason": "PIPELINE_RETIRED",
+          "itemCount": 1,
+          "activePrimaryCount": 0,
+          "rejected": [
+            "rr1:retire",
+            "w1"
+          ]
+        }
+      },
+      {
+        "id": "R21_RETIRE_REFUSED_WHILE_LEASE_VALID",
+        "steps": [
+          [
+            "create",
+            "d1",
+            "PRIMARY"
+          ],
+          [
+            "claim",
+            "w1"
+          ],
+          [
+            "retireRegistry",
+            "op"
+          ],
+          [
+            "retire",
+            "rr1"
+          ],
+          [
+            "advance",
+            301
+          ],
+          [
+            "retire",
+            "rr1"
+          ]
+        ],
+        "expect": {
+          "oldStatus": "SUPERSEDED",
+          "supersededReason": "PIPELINE_RETIRED",
+          "rejected": [
+            "rr1:retire"
+          ]
+        }
+      },
+      {
+        "id": "R22_REPLAY_INELIGIBLE_IS_TERMINAL_NOT_SKIPPED",
+        "steps": [
+          [
+            "create",
+            "d1",
+            "RECALIBRATION_REPLAY",
+            "snap-A"
+          ],
+          [
+            "claim",
+            "w1"
+          ],
+          [
+            "skip",
+            "w1"
+          ],
+          [
+            "failTerminal",
+            "w1",
+            "REPLAY_INELIGIBLE"
+          ]
+        ],
+        "expect": {
+          "status": "FAILED_TERMINAL",
+          "failureReason": "REPLAY_INELIGIBLE",
+          "rejected": [
+            "w1:skip"
+          ]
+        }
+      },
+      {
+        "id": "R23_PRIMARY_SKIP_BEFORE_PIN_ONLY",
+        "steps": [
+          [
+            "create",
+            "d1",
+            "PRIMARY"
+          ],
+          [
+            "claim",
+            "w1"
+          ],
+          [
+            "pin",
+            "w1",
+            "snap-A"
+          ],
+          [
+            "skip",
+            "w1"
+          ],
+          [
+            "failTerminal",
+            "w1",
+            "WINDOW_EXCEEDS_MAX_8H"
+          ]
+        ],
+        "expect": {
+          "status": "FAILED_TERMINAL",
+          "rejected": [
+            "w1:skip"
+          ]
+        }
+      },
+      {
+        "id": "R24_HOLDER_SUPERSEDE_ON_BOUNDARY_CHANGE",
+        "steps": [
+          [
+            "create",
+            "d1",
+            "PRIMARY"
+          ],
+          [
+            "claim",
+            "w1"
+          ],
+          [
+            "tripChange",
+            "canon",
+            "fp-2"
+          ],
+          [
+            "complete",
+            "w1",
+            "run-1"
+          ],
+          [
+            "holderSupersede",
+            "w1",
+            "fp-2"
+          ]
+        ],
+        "expect": {
+          "oldStatus": "SUPERSEDED",
+          "activePrimaryCount": 1,
+          "itemCount": 2,
+          "rejected": [
+            "w1:complete"
+          ]
+        }
+      },
+      {
+        "id": "R25_S2_IDENTITY_COLLISION_FAILS_CLOSED",
+        "steps": [
+          [
+            "create",
+            "d1",
+            "PRIMARY"
+          ],
+          [
+            "claim",
+            "w1"
+          ],
+          [
+            "pin",
+            "w1",
+            "snap-A"
+          ],
+          [
+            "s2Preexisting",
+            "op",
+            "OTHER_IDENTITY"
+          ],
+          [
+            "complete",
+            "w1",
+            "run-1"
+          ],
+          [
+            "failTerminal",
+            "w1",
+            "S2_EXECUTION_IDENTITY_MISMATCH"
+          ]
+        ],
+        "expect": {
+          "status": "FAILED_TERMINAL",
+          "failureReason": "S2_EXECUTION_IDENTITY_MISMATCH",
+          "rejected": [
+            "w1:complete"
+          ]
+        }
+      }
+    ],
+    "s2ExecutionIdentityBase": {
+      "organizationId": "org-A",
+      "vehicleId": "veh-A1",
+      "tripId": "trip-A1-1",
+      "boundaryFingerprint": "DI_V0_S4_BOUNDARY_FP_V1:sha256:2b549f4f37879c88217a337bceb7e7153242e28e94651d6bad66e26f4d642901",
+      "pipelineVersionKey": "DI_V0_S4_PIPELINE_V1:sha256:4d09bc46d440b319b7d14738c352554d5769ab87773f713e2595e452de5a4b67",
+      "calibrationBundleHash": "sha256:FIXTURE_CALIBRATION_BUNDLE_CONTENT_HASH",
+      "s4OrchestrationContractVersion": "DI_V0_S4_ORCHESTRATION_CONTRACT_V2",
+      "runPurpose": "PRIMARY",
+      "purposeDiscriminator": "PRIMARY",
+      "pinnedEvidenceSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:ab",
+      "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:804865fd2a0e628b51cb38aba9965630b66e6bfa454c9303378958d7f66dfbc0"
+    },
+    "s2ExecutionIdentityExpected": "DI_V0_S4_EXECUTION_IDENTITY_V1:sha256:63a5c5636dc2162a257ddf310355a1f29ce2f8dadb91a1bc8c8ce22dc69861a1",
+    "s2ExecutionIdentityMutations": [
+      {
+        "name": "different pipelineVersionKey",
+        "set": {
+          "pipelineVersionKey": "DI_V0_S4_PIPELINE_V1:sha256:00"
+        },
+        "expect": "DISTINCT"
+      },
+      {
+        "name": "different calibrationBundleHash",
+        "set": {
+          "calibrationBundleHash": "sha256:other"
+        },
+        "expect": "DISTINCT"
+      },
+      {
+        "name": "different boundaryFingerprint",
+        "set": {
+          "boundaryFingerprint": "DI_V0_S4_BOUNDARY_FP_V1:sha256:00"
+        },
+        "expect": "DISTINCT"
+      },
+      {
+        "name": "different runPurpose",
+        "set": {
+          "runPurpose": "REACQUISITION",
+          "purposeDiscriminator": "req-1"
+        },
+        "expect": "DISTINCT"
+      },
+      {
+        "name": "different purposeDiscriminator",
+        "set": {
+          "runPurpose": "REACQUISITION",
+          "purposeDiscriminator": "req-2"
+        },
+        "expect": "DISTINCT"
+      },
+      {
+        "name": "different pinned evidence",
+        "set": {
+          "pinnedEvidenceSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:cd"
+        },
+        "expect": "DISTINCT"
+      },
+      {
+        "name": "different combined input identity",
+        "set": {
+          "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:00"
+        },
+        "expect": "DISTINCT"
+      },
+      {
+        "name": "different orchestration version",
+        "set": {
+          "s4OrchestrationContractVersion": "DI_V0_S4_ORCHESTRATION_CONTRACT_V3"
+        },
+        "expect": "DISTINCT"
+      },
+      {
+        "name": "different organization",
+        "set": {
+          "organizationId": "org-B"
+        },
+        "expect": "DISTINCT"
+      },
+      {
+        "name": "worker / wall clock / epoch noise",
+        "set": {
+          "workerId": "w-9",
+          "acquiredAtWallClock": "2026-09-27T00:00:00.000Z",
+          "leaseEpoch": 7,
+          "attemptCount": 3,
+          "workItemId": "wi-9"
+        },
+        "expect": "EQUAL"
+      },
+      {
+        "name": "same exact semantic execution",
+        "set": {},
+        "expect": "EQUAL"
+      }
+    ],
+    "controlPlaneScenarios": {
+      "vehicleOrganizations": {
+        "00000000-0000-4000-8000-000000000001": "00000000-0000-4000-8000-000000000008",
+        "00000000-0000-4000-8000-000000000002": "00000000-0000-4000-8000-000000000008",
+        "00000000-0000-4000-8000-000000000003": "00000000-0000-4000-8000-000000000009"
+      },
+      "base": {
+        "env": {
+          "DI_V0_S4_MASTER_ENABLED": "true",
+          "DI_V0_S4_DISCOVERY_ENABLED": "true",
+          "DI_V0_S4_WORKER_ENABLED": "true",
+          "DI_V0_S4_POSITION_ENABLED": "true",
+          "DI_V0_S4_R1_ENABLED": "true",
+          "DI_V0_S4_NATIVE_ENABLED": "false",
+          "DI_V0_S4_ORGANIZATION_ALLOWLIST": "00000000-0000-4000-8000-000000000008",
+          "DI_V0_S4_VEHICLE_ALLOWLIST": "00000000-0000-4000-8000-000000000001"
+        },
+        "killRow": {
+          "kill_state": "NOT_KILLED"
+        },
+        "role": "WORKER",
+        "workItem": {
+          "organizationId": "00000000-0000-4000-8000-000000000008",
+          "vehicleId": "00000000-0000-4000-8000-000000000001"
+        }
+      },
+      "cases": [
+        {
+          "name": "explicit allowed vehicle/org",
+          "set": {},
+          "expect": "ENABLED"
+        },
+        {
+          "name": "discovery role allowed",
+          "set": {
+            "role": "DISCOVERY"
+          },
+          "expect": "ENABLED"
+        },
+        {
+          "name": "all env flags unset (defaults)",
+          "set": {
+            "env": {}
+          },
+          "expect": "DISABLED"
+        },
+        {
+          "name": "env master OFF",
+          "set": {
+            "env": {
+              "DI_V0_S4_MASTER_ENABLED": "false"
+            }
+          },
+          "expect": "DISABLED"
+        },
+        {
+          "name": "master malformed value",
+          "set": {
+            "env": {
+              "DI_V0_S4_MASTER_ENABLED": "enabled"
+            }
+          },
+          "expect": "DISABLED"
+        },
+        {
+          "name": "worker flag OFF",
+          "set": {
+            "env": {
+              "DI_V0_S4_WORKER_ENABLED": "false"
+            }
+          },
+          "expect": "DISABLED"
+        },
+        {
+          "name": "discovery flag OFF (discovery role)",
+          "set": {
+            "role": "DISCOVERY",
+            "env": {
+              "DI_V0_S4_DISCOVERY_ENABLED": "false"
+            }
+          },
+          "expect": "DISABLED"
+        },
+        {
+          "name": "position channel OFF",
+          "set": {
+            "env": {
+              "DI_V0_S4_POSITION_ENABLED": "false"
+            }
+          },
+          "expect": "DISABLED"
+        },
+        {
+          "name": "R1 OFF keeps run executable",
+          "set": {
+            "env": {
+              "DI_V0_S4_R1_ENABLED": "false"
+            }
+          },
+          "expect": "ENABLED"
+        },
+        {
+          "name": "empty org allowlist",
+          "set": {
+            "env": {
+              "DI_V0_S4_ORGANIZATION_ALLOWLIST": ""
+            }
+          },
+          "expect": "DISABLED"
+        },
+        {
+          "name": "empty vehicle allowlist",
+          "set": {
+            "env": {
+              "DI_V0_S4_VEHICLE_ALLOWLIST": ""
+            }
+          },
+          "expect": "DISABLED"
+        },
+        {
+          "name": "both allowlists empty",
+          "set": {
+            "env": {
+              "DI_V0_S4_ORGANIZATION_ALLOWLIST": "",
+              "DI_V0_S4_VEHICLE_ALLOWLIST": ""
+            }
+          },
+          "expect": "DISABLED"
+        },
+        {
+          "name": "org allowed, vehicle not allowed",
+          "set": {
+            "env": {
+              "DI_V0_S4_VEHICLE_ALLOWLIST": "00000000-0000-4000-8000-000000000002"
+            }
+          },
+          "expect": "DISABLED"
+        },
+        {
+          "name": "vehicle allowed, org not allowed",
+          "set": {
+            "env": {
+              "DI_V0_S4_ORGANIZATION_ALLOWLIST": "00000000-0000-4000-8000-000000000009"
+            }
+          },
+          "expect": "DISABLED"
+        },
+        {
+          "name": "malformed org allowlist entry",
+          "set": {
+            "env": {
+              "DI_V0_S4_ORGANIZATION_ALLOWLIST": "00000000-0000-4000-8000-000000000008,bad id!"
+            }
+          },
+          "expect": "DISABLED"
+        },
+        {
+          "name": "wildcard org allowlist",
+          "set": {
+            "env": {
+              "DI_V0_S4_ORGANIZATION_ALLOWLIST": "*"
+            }
+          },
+          "expect": "DISABLED"
+        },
+        {
+          "name": "duplicate allowlist entries",
+          "set": {
+            "env": {
+              "DI_V0_S4_VEHICLE_ALLOWLIST": "00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000001"
+            }
+          },
+          "expect": "ENABLED"
+        },
+        {
+          "name": "vehicle belongs to a different org",
+          "set": {
+            "env": {
+              "DI_V0_S4_VEHICLE_ALLOWLIST": "00000000-0000-4000-8000-000000000001,00000000-0000-4000-8000-000000000003"
+            },
+            "workItem": {
+              "organizationId": "00000000-0000-4000-8000-000000000008",
+              "vehicleId": "00000000-0000-4000-8000-000000000003"
+            }
+          },
+          "expect": "DISABLED"
+        },
+        {
+          "name": "DB kill active",
+          "set": {
+            "killRow": {
+              "kill_state": "KILLED"
+            }
+          },
+          "expect": "DISABLED"
+        },
+        {
+          "name": "DB kill row missing",
+          "set": {
+            "killRow": "MISSING"
+          },
+          "expect": "DISABLED"
+        },
+        {
+          "name": "DB kill row read error",
+          "set": {
+            "killRow": "READ_ERROR"
+          },
+          "expect": "DISABLED"
+        },
+        {
+          "name": "DB kill row parse error",
+          "set": {
+            "killRow": {
+              "kill_state": "maybe"
+            }
+          },
+          "expect": "DISABLED"
+        },
+        {
+          "name": "DB NOT_KILLED cannot enable with env master OFF",
+          "set": {
+            "env": {
+              "DI_V0_S4_MASTER_ENABLED": ""
+            },
+            "killRow": {
+              "kill_state": "NOT_KILLED"
+            }
+          },
+          "expect": "DISABLED"
+        }
+      ]
+    },
+    "channelRunScenarios": [
+      {
+        "name": "PRIMARY full channels",
+        "flags": {
+          "R1_OBD": true,
+          "NATIVE_EVENT": false
+        },
+        "pins": {},
+        "expect": "RUNNABLE"
+      },
+      {
+        "name": "position-only degraded (R1 source failure)",
+        "flags": {
+          "R1_OBD": true,
+          "NATIVE_EVENT": false
+        },
+        "pins": {
+          "R1_OBD": [
+            "SOURCE_FAILURE",
+            "RATE_LIMITED",
+            null,
+            null
+          ]
+        },
+        "expect": "RUNNABLE"
+      },
+      {
+        "name": "R1 enabled present",
+        "flags": {
+          "R1_OBD": true,
+          "NATIVE_EVENT": false
+        },
+        "pins": {},
+        "expect": "RUNNABLE"
+      },
+      {
+        "name": "R1 disabled",
+        "flags": {
+          "R1_OBD": false,
+          "NATIVE_EVENT": false
+        },
+        "pins": {
+          "R1_OBD": [
+            "DISABLED",
+            "FLAG_OFF",
+            null,
+            null
+          ]
+        },
+        "expect": "RUNNABLE"
+      },
+      {
+        "name": "native disabled",
+        "flags": {
+          "R1_OBD": true,
+          "NATIVE_EVENT": false
+        },
+        "pins": {
+          "NATIVE_EVENT": [
+            "DISABLED",
+            "FLAG_OFF",
+            null,
+            null
+          ]
+        },
+        "expect": "RUNNABLE"
+      },
+      {
+        "name": "native NOT_READY",
+        "flags": {
+          "R1_OBD": true,
+          "NATIVE_EVENT": true
+        },
+        "pins": {
+          "NATIVE_EVENT": [
+            "NOT_READY",
+            "NO_READINESS_AUTHORITY",
+            null,
+            null
+          ]
+        },
+        "expect": "RUNNABLE"
+      },
+      {
+        "name": "native SOURCE_FAILURE",
+        "flags": {
+          "R1_OBD": true,
+          "NATIVE_EVENT": true
+        },
+        "pins": {
+          "NATIVE_EVENT": [
+            "SOURCE_FAILURE",
+            "ATTESTED_INGEST_FAILED",
+            null,
+            null
+          ]
+        },
+        "expect": "RUNNABLE"
+      },
+      {
+        "name": "position source failure not runnable",
+        "flags": {
+          "R1_OBD": true,
+          "NATIVE_EVENT": false
+        },
+        "pins": {
+          "POSITION": [
+            "SOURCE_FAILURE",
+            "TIMEOUT",
+            null,
+            null
+          ]
+        },
+        "expect": "NOT_RUNNABLE"
+      },
+      {
+        "name": "R1 flag off but R1 pinned PRESENT",
+        "flags": {
+          "R1_OBD": false,
+          "NATIVE_EVENT": false
+        },
+        "pins": {},
+        "expect": "INVALID"
+      },
+      {
+        "name": "native flag off but native NOT_READY",
+        "flags": {
+          "R1_OBD": true,
+          "NATIVE_EVENT": false
+        },
+        "pins": {
+          "NATIVE_EVENT": [
+            "NOT_READY",
+            "NO_READINESS_AUTHORITY",
+            null,
+            null
+          ]
+        },
+        "expect": "INVALID"
+      },
+      {
+        "name": "native READY_NO_EVENT under policy V1",
+        "flags": {
+          "R1_OBD": true,
+          "NATIVE_EVENT": true
+        },
+        "pins": {
+          "NATIVE_EVENT": [
+            "READY_NO_EVENT",
+            null,
+            "DI_V0_NATIVE_EVENT_EVIDENCE_SNAPSHOT_V0_2:sha256:aa",
+            "nia-1"
+          ]
+        },
+        "expect": "INVALID"
+      }
+    ]
+  }
+}
