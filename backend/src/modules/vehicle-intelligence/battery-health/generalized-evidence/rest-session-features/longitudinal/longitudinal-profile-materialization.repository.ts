@@ -64,21 +64,6 @@ export class LongitudinalProfileMaterializationRepository {
     });
   }
 
-  async findLatestSourceEvidenceFingerprint(input: {
-    organizationId: string;
-    vehicleId: string;
-  }): Promise<string | null> {
-    const row = await this.db.batteryLongitudinalProfileRevision.findFirst({
-      where: {
-        organizationId: input.organizationId,
-        vehicleId: input.vehicleId,
-      },
-      orderBy: { materializedAt: 'desc' },
-      select: { sourceEvidenceFingerprint: true },
-    });
-    return row?.sourceEvidenceFingerprint ?? null;
-  }
-
   findById(id: string): Promise<BatteryLongitudinalProfileRevision | null> {
     return this.db.batteryLongitudinalProfileRevision.findUnique({ where: { id } });
   }

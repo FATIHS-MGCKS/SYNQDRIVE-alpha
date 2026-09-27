@@ -9091,11 +9091,53 @@ model BatteryLongitudinalProfileRevision {
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  sourceEvidenceAcks BatteryLongitudinalSourceEvidenceAck[]
 
   @@unique([organizationId, vehicleId, longitudinalProfileContractVersion, profilePolicyVersion, canonicalProfileFingerprint], map: "battery_longitudinal_profile_revision_scientific_identity")
   @@index([vehicleId, materializedAt(sort: Desc)], map: "battery_longitudinal_profile_revisions_vehicle_materialized_idx")
   @@index([organizationId, createdAt(sort: Desc)], map: "battery_longitudinal_profile_revisions_org_created_idx")
   @@map("battery_longitudinal_profile_revisions")
+}
+
+/// M3.3F F4.1 — append-only acknowledgement that a D1 source-evidence fingerprint was processed (freshness fence).
+model BatteryLongitudinalSourceEvidenceAck {
+  id                                 String   @id @default(uuid())
+  organizationId                     String   @map("organization_id")
+  vehicleId                          String   @map("vehicle_id")
+  sourceEvidenceFingerprint          String   @db.Char(64) @map("source_evidence_fingerprint")
+  longitudinalProfileContractVersion String   @map("longitudinal_profile_contract_version")
+  profilePolicyVersion               String   @map("profile_policy_version")
+  canonicalProfileFingerprint        String   @db.Char(64) @map("canonical_profile_fingerprint")
+  revisionId                         String   @map("revision_id")
+  materializationOutcome             String   @map("materialization_outcome")
+  acknowledgedAt                     DateTime @default(now()) @map("acknowledged_at")
+
+  revision BatteryLongitudinalProfileRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, vehicleId, sourceEvidenceFingerprint], map: "battery_longitudinal_source_evidence_ack_fence")
+  @@index([organizationId, vehicleId, acknowledgedAt(sort: Desc)], map: "battery_longitudinal_source_evidence_acks_vehicle_ack_idx")
+  @@map("battery_longitudinal_source_evidence_acks")
+}
+
+/// M3.3F F4.1 — durable fairness rotation for bounded candidate inspection (not freshness authority).
+model BatteryLongitudinalReconciliationVehicleScan {
+  organizationId String   @map("organization_id")
+  vehicleId      String   @map("vehicle_id")
+  lastScanAt     DateTime @default(now()) @map("last_scan_at")
+
+  @@id([organizationId, vehicleId])
+  @@index([lastScanAt(sort: Asc)], map: "battery_longitudinal_reconciliation_vehicle_scans_last_scan_idx")
+  @@map("battery_longitudinal_reconciliation_vehicle_scans")
+}
+
+/// M3.3F F4.1 — global keyset cursor for fleet-wide bounded inspection liveness.
+model BatteryLongitudinalReconciliationFleetCursor {
+  id                 Int       @id @default(1)
+  lastOrganizationId String?   @map("last_organization_id")
+  lastVehicleId      String?   @map("last_vehicle_id")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  @@map("battery_longitudinal_reconciliation_fleet_cursor")
 }
 
 /// Preflight capability state per provider signal / measurement kind.

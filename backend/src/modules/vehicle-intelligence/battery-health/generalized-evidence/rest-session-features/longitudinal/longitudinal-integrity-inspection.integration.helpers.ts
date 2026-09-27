@@ -357,6 +357,7 @@ export async function seedLongitudinalRevision(
     requestedSessionLimit: Math.min(100, Math.max(sessionSeeds.length, 10)),
     appliedSessionLimit: Math.min(100, Math.max(sessionSeeds.length, 10)),
     sessions: inventoryItems,
+    sourceEvidenceFingerprint: PROFILE_TEST_SOURCE_EVIDENCE_FINGERPRINT,
   };
 
   const assembled = assembleLongitudinalProfileV1({

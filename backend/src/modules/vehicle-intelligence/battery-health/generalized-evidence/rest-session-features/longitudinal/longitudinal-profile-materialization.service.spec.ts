@@ -10,6 +10,7 @@ import {
 } from './longitudinal-profile.test-fixtures';
 import type { LongitudinalInputReaderService } from './longitudinal-input.reader';
 import type { LongitudinalProfileMaterializationRepository } from './longitudinal-profile-materialization.repository';
+import type { LongitudinalSourceEvidenceAckRepository } from './longitudinal-source-evidence-ack.repository';
 
 describe('LongitudinalProfileMaterializationService', () => {
   const inventory = buildProfileTestInventory([
@@ -23,10 +24,15 @@ describe('LongitudinalProfileMaterializationService', () => {
   function createService(deps: {
     reader: Pick<LongitudinalInputReaderService, 'readInventory'>;
     repository: Pick<LongitudinalProfileMaterializationRepository, 'insertIdempotent'>;
+    ack?: Pick<LongitudinalSourceEvidenceAckRepository, 'acknowledgeSourceEvidence'>;
   }) {
+    const acknowledgeSourceEvidence =
+      deps.ack?.acknowledgeSourceEvidence ??
+      jest.fn().mockResolvedValue('CREATED');
     return new LongitudinalProfileMaterializationService(
       deps.reader as LongitudinalInputReaderService,
       deps.repository as LongitudinalProfileMaterializationRepository,
+      { acknowledgeSourceEvidence } as LongitudinalSourceEvidenceAckRepository,
     );
   }
 
@@ -116,6 +122,44 @@ describe('LongitudinalProfileMaterializationService', () => {
     });
   });
 
+  it('C2 — CREATED acknowledges source evidence fingerprint', async () => {
+    const readInventory = jest.fn().mockResolvedValue({
+      status: 'OK',
+      result: inventory,
+    });
+    const insertIdempotent = jest.fn().mockResolvedValue({
+      persistenceOutcome: 'CREATED',
+      revision: {
+        id: 'rev-ack',
+        canonicalProfileFingerprint: 'c'.repeat(64),
+        longitudinalProfileContractVersion: 'M3_3D_LONGITUDINAL_PROFILE_V1',
+        profilePolicyVersion: 'M3_3D_PROFILE_POLICY_V1',
+      },
+    });
+    const acknowledgeSourceEvidence = jest.fn().mockResolvedValue('CREATED');
+    const service = createService({
+      reader: { readInventory },
+      repository: { insertIdempotent },
+      ack: { acknowledgeSourceEvidence },
+    });
+
+    await service.materialize({
+      organizationId: PROFILE_TEST_ORG,
+      vehicleId: PROFILE_TEST_VEHICLE,
+      sessionLimit: 10,
+      profileGeneratedAt: PROFILE_TEST_GENERATED_AT,
+    });
+
+    expect(acknowledgeSourceEvidence).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: PROFILE_TEST_ORG,
+        vehicleId: PROFILE_TEST_VEHICLE,
+        sourceEvidenceFingerprint: inventory.sourceEvidenceFingerprint,
+        materializationOutcome: 'CREATED',
+      }),
+    );
+  });
+
   it('D — EXISTING propagates repository outcome', async () => {
     const readInventory = jest.fn().mockResolvedValue({
       status: 'OK',
@@ -146,6 +190,42 @@ describe('LongitudinalProfileMaterializationService', () => {
     if (outcome.outcome === 'EXISTING') {
       expect(outcome.revisionId).toBe('rev-existing');
     }
+  });
+
+  it('D2 — EXISTING acknowledges source evidence without metadata drift on revision row', async () => {
+    const readInventory = jest.fn().mockResolvedValue({
+      status: 'OK',
+      result: inventory,
+    });
+    const insertIdempotent = jest.fn().mockResolvedValue({
+      persistenceOutcome: 'EXISTING',
+      revision: {
+        id: 'rev-existing',
+        canonicalProfileFingerprint: 'a'.repeat(64),
+        longitudinalProfileContractVersion: 'M3_3D_LONGITUDINAL_PROFILE_V1',
+        profilePolicyVersion: 'M3_3D_PROFILE_POLICY_V1',
+      },
+    });
+    const acknowledgeSourceEvidence = jest.fn().mockResolvedValue('CREATED');
+    const service = createService({
+      reader: { readInventory },
+      repository: { insertIdempotent },
+      ack: { acknowledgeSourceEvidence },
+    });
+
+    await service.materialize({
+      organizationId: PROFILE_TEST_ORG,
+      vehicleId: PROFILE_TEST_VEHICLE,
+      sessionLimit: 10,
+      profileGeneratedAt: PROFILE_TEST_GENERATED_AT,
+    });
+
+    expect(acknowledgeSourceEvidence).toHaveBeenCalledWith(
+      expect.objectContaining({
+        materializationOutcome: 'EXISTING',
+        sourceEvidenceFingerprint: inventory.sourceEvidenceFingerprint,
+      }),
+    );
   });
 
   it('E — forwards explicit profileGeneratedAt to D2 assembly', async () => {

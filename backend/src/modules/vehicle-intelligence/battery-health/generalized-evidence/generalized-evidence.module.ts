@@ -15,6 +15,7 @@ import { LongitudinalProfileMaterializationService } from './rest-session-featur
 import { LongitudinalProfileMaterializationRuntimeService } from './rest-session-features/longitudinal/longitudinal-profile-materialization.runtime.service';
 import { LongitudinalReconciliationCandidateRepository } from './rest-session-features/longitudinal/longitudinal-reconciliation-candidate.repository';
 import { LongitudinalReconciliationService } from './rest-session-features/longitudinal/longitudinal-reconciliation.service';
+import { LongitudinalSourceEvidenceAckRepository } from './rest-session-features/longitudinal/longitudinal-source-evidence-ack.repository';
 import { LongitudinalProfileRevisionInspectionService } from './rest-session-features/longitudinal/longitudinal-profile-revision-inspection.service';
 import { PrismaService } from '@shared/database/prisma.service';
 
@@ -34,21 +35,38 @@ import { PrismaService } from '@shared/database/prisma.service';
       inject: [PrismaService],
     },
     {
+      provide: LongitudinalSourceEvidenceAckRepository,
+      useFactory: (prisma: PrismaService) =>
+        new LongitudinalSourceEvidenceAckRepository(prisma),
+      inject: [PrismaService],
+    },
+    {
       provide: LongitudinalProfileMaterializationService,
       useFactory: (
         inputReader: LongitudinalInputReaderService,
         materializationRepository: LongitudinalProfileMaterializationRepository,
-      ) => new LongitudinalProfileMaterializationService(inputReader, materializationRepository),
-      inject: [LongitudinalInputReaderService, LongitudinalProfileMaterializationRepository],
+        sourceEvidenceAckRepository: LongitudinalSourceEvidenceAckRepository,
+      ) =>
+        new LongitudinalProfileMaterializationService(
+          inputReader,
+          materializationRepository,
+          sourceEvidenceAckRepository,
+        ),
+      inject: [
+        LongitudinalInputReaderService,
+        LongitudinalProfileMaterializationRepository,
+        LongitudinalSourceEvidenceAckRepository,
+      ],
     },
     LongitudinalProfileMaterializationRuntimeService,
     {
       provide: LongitudinalReconciliationCandidateRepository,
       useFactory: (
         prisma: PrismaService,
-        materializationRepository: LongitudinalProfileMaterializationRepository,
-      ) => new LongitudinalReconciliationCandidateRepository(prisma, materializationRepository),
-      inject: [PrismaService, LongitudinalProfileMaterializationRepository],
+        sourceEvidenceAckRepository: LongitudinalSourceEvidenceAckRepository,
+      ) =>
+        new LongitudinalReconciliationCandidateRepository(prisma, sourceEvidenceAckRepository),
+      inject: [PrismaService, LongitudinalSourceEvidenceAckRepository],
     },
     {
       provide: LongitudinalProfileRevisionInspectionService,

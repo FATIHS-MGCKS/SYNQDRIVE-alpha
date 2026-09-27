@@ -14,6 +14,18 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-27 — M3.3F F4.1 pre-merge correctness hardening (ack fence + fleet cursor)
+
+| Field | Value |
+|-------|-------|
+| **OBSERVATION** | External review: same-science/new-source metadata drift; MIN(computed_at) prefilter starvation; candidate fingerprint ReadCommitted vs D1 RepeatableRead. |
+| **CHANGE** | `battery_longitudinal_source_evidence_acks` + reconciliation fleet cursor/scan tables; candidate repo keyset sweep; materialization ack after CREATED/EXISTING; metadata mirror excludes `sourceEvidenceFingerprint`; RR snapshot for candidate fingerprint; Postgres suite + CI workflow. |
+| **WHY** | Close permanent stale hot loop without weakening D3 scientific uniqueness or mutating append-only revisions. |
+| **VALIDATION** | `M3_3F_F4_1_RACE_SAFE_D3_RECONCILIATION_ENGINEERING_2026-09-27.md` (hardening section); unit + `test:battery:v2:longitudinal-reconciliation:postgres`; `.github/workflows/battery-v2-longitudinal-postgres-ci.yml`. |
+| **NON_EFFECTS** | D3 activation; production deploy; backfill; C3 hook; E3 runtime. |
+| **DECISION_STATUS** | **EXPERIMENTAL** (pre-merge gate — merge blocked until exact-head CI) |
+| **EVIDENCE** | PR #1806 |
+
 ## CL-2026-09-27 — M3.3F F4.1 race-safe bounded D3 reconciliation (engineering)
 
 | Field | Value |

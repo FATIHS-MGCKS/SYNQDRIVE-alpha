@@ -7,6 +7,7 @@ import { selectCanonicalRestSessionFeatureShadowRow } from '../rest-session-feat
 import {
   LONGITUDINAL_INPUT_DB_SAFETY_MAX_SESSIONS,
   REST_SESSION_LONGITUDINAL_INPUT_CONTRACT_VERSION,
+  LONGITUDINAL_INPUT_SNAPSHOT_ISOLATION,
 } from './longitudinal-input.constants';
 import { classifyLongitudinalInputInclusion } from './longitudinal-input.policy';
 import {
@@ -144,7 +145,7 @@ export class LongitudinalInputReaderService {
           hooks,
         ),
       {
-        isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
+        isolationLevel: LONGITUDINAL_INPUT_SNAPSHOT_ISOLATION,
       },
     );
 

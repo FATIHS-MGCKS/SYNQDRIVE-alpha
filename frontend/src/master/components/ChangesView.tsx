@@ -170,16 +170,16 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     version: '4.9.2103',
     title: 'Battery V2 M3.3F F4.1 — race-safe bounded D3 reconciliation (engineering)',
     summary: [
-      'Durable D3 freshness via sourceEvidenceFingerprint on revisions; rejects VALID-only candidates and naive C3.created_at vs materialized_at rules.',
+      'Pre-merge hardening: durable source-evidence ack fence (separate from D3 scientific revision); fleet keyset cursor for bounded scan liveness; RepeatableRead candidate fingerprint aligned with D1.',
       'Scheduler battery_v2_longitudinal_materialization_reconciliation (leader + flag + overlap); batch default 2 max 5; D3 flag remains default OFF.',
-      'D4 read-only revision inspect ops CLI with production-readonly gate; Postgres lost-update + invalidation integration tests.',
+      'CI workflow battery-v2-longitudinal-postgres-ci; Postgres race, same-science/new-evidence, starvation, snapshot isolation, invalidation tests.',
     ],
     reason:
-      'Implement F0 bounded scheduled reconciliation safely before any F4 D3 production activation.',
+      'Implement F0 bounded scheduled reconciliation safely before any F4 D3 production activation; close same-science metadata drift and prefilter starvation before merge.',
     previousBehavior:
-      'D3 materialization ops-only (F1); no scheduled reconciliation; no persisted D1 source-evidence fence on D3 rows.',
+      'D3 materialization ops-only (F1); no scheduled reconciliation; revision-bound sourceEvidenceFingerprint caused drift on EXISTING scientific rows.',
     details:
-      'architecture/battery-v2/research/M3_3F_F4_1_RACE_SAFE_D3_RECONCILIATION_ENGINEERING_2026-09-27.md; migration source_evidence_fingerprint',
+      'architecture/battery-v2/research/M3_3F_F4_1_RACE_SAFE_D3_RECONCILIATION_ENGINEERING_2026-09-27.md; migrations source_evidence_fingerprint + reconciliation_freshness_authority',
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
     createdAt: '2026-09-27T11:30:00.000Z',
