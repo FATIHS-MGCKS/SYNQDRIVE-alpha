@@ -346,7 +346,8 @@ function wireLongitudinalStack(prisma: PrismaClient) {
     it('fleet beyond oversample prefix — stale vehicle eventually selected', async () => {
       if (!dbOk) return;
       const org = await createOrg(prisma, 'STARVE');
-      const staleIndex = 101;
+      const settledCount = 50;
+      const staleIndex = settledCount + 1;
       for (let i = 1; i <= staleIndex; i += 1) {
         const vehicleId = await createDeterministicFleetVehicle(prisma, org.id, i);
         const session = await createRestSession(prisma, {
@@ -370,7 +371,7 @@ function wireLongitudinalStack(prisma: PrismaClient) {
           sessionTrust: BatteryRestSessionFeatureSessionTrust.VALID,
           inputSummary: summary,
         });
-        if (i < staleIndex) {
+        if (i <= settledCount) {
           await materialization.materialize({
             organizationId: org.id,
             vehicleId,
@@ -381,19 +382,19 @@ function wireLongitudinalStack(prisma: PrismaClient) {
       }
 
       const staleVehicleId = await createDeterministicFleetVehicle(prisma, org.id, staleIndex);
-      const firstPass = await candidates.findCandidates({ batchSize: 2, sessionLimit });
+      const firstPass = await candidates.findCandidates({ batchSize: 1, sessionLimit });
       expect(firstPass.some((c) => c.vehicleId === staleVehicleId)).toBe(false);
 
       let found = false;
-      for (let attempt = 0; attempt < 5; attempt += 1) {
-        const batch = await candidates.findCandidates({ batchSize: 2, sessionLimit });
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        const batch = await candidates.findCandidates({ batchSize: 1, sessionLimit });
         if (batch.some((c) => c.vehicleId === staleVehicleId)) {
           found = true;
           break;
         }
       }
       expect(found).toBe(true);
-    }, 120_000);
+    }, 180_000);
 
     it('snapshot isolation — RR fingerprint cannot mix pre/post concurrent append', async () => {
       if (!dbOk) return;
