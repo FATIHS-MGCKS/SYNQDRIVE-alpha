@@ -1,12 +1,14 @@
 import type { DiV0R1ObdAcquisitionRequest } from '../../di-v0-r1-obd-acquisition.types';
 
+/** Canonical `DimoVehicle.rawJson` device shape — resolves to RUPTELA_R1 via the shared resolver. */
 export const RUPTELA_DEVICE_IDENTITY = {
-  aftermarketDeviceSerial: 'R1-TEST-7503',
-  hardwareType: 'RUPTELA',
+  aftermarketDevice: { serial: 'R1-TEST-7503' },
+  syntheticDevice: null,
 };
 
 export const SYNTHETIC_DEVICE_IDENTITY = {
-  provider: 'API_SYNTHETIC',
+  aftermarketDevice: null,
+  syntheticDevice: { id: 'synthetic-test' },
 };
 
 export function baseR1Request(fromUtc: string, toUtc: string): DiV0R1ObdAcquisitionRequest {
@@ -36,7 +38,6 @@ export function wobSparseR1Rows(fromUtc: string): Record<string, unknown>[] {
       obdEngineLoad: 30,
       powertrainCombustionEngineECT: 88,
       powertrainTransmissionCurrentGear: 4,
-      isIgnitionOn: 1,
     });
   }
   return rows;
@@ -52,10 +53,10 @@ export function legacyStaleSpeedingRow(label: string): Record<string, unknown> {
     obdEngineLoad: 55,
     powertrainCombustionEngineECT: 90,
     powertrainTransmissionCurrentGear: 5,
-    isIgnitionOn: 1,
   };
 }
 
+/** Carries an unqueried `isIgnitionOn` field: S3B must ignore it (ignition is not in the V0_2 query). */
 export function engineIgnitionDropoutRow(label: string): Record<string, unknown> {
   return {
     timestamp: label,

@@ -26,14 +26,26 @@ function bench(seconds: number): number {
   const t0 = performance.now();
   normalizeDiV0R1ObdFromProviderRows(request, resolution, rows);
   acquireDiV0NativeEventEvidence({
-    vehicleId: 'v-perf',
-    sourceFamily: 'RUPTELA_R1',
-    records: Array.from({ length: Math.min(500, Math.floor(seconds / 2)) }, (_, i) => ({
-      id: `e-${i}`,
-      providerEventName: 'harshBraking',
-      providerTimestamp: new Date(Date.parse(from) + i * 2000).toISOString().replace(/\.\d{3}Z$/, 'Z'),
-      sourceFamily: 'RUPTELA_R1' as const,
-    })),
+    context: {
+      organizationId: 'org-perf',
+      vehicleId: 'v-perf',
+      tripId: null,
+      windowStart: from,
+      windowEnd: to,
+      sourceFamily: 'RUPTELA_R1',
+      provider: null,
+    },
+    source: {
+      kind: 'SOURCE_SUCCESS',
+      records: Array.from({ length: Math.min(1000, Math.floor(seconds / 2)) }, (_, i) => ({
+        id: `e-${i}`,
+        organizationId: 'org-perf',
+        vehicleId: 'v-perf',
+        providerEventName: 'harshBraking',
+        providerTimestamp: new Date(Date.parse(from) + i * 2000).toISOString().replace(/\.\d{3}Z$/, 'Z'),
+        sourceFamily: 'RUPTELA_R1' as const,
+      })),
+    },
   });
   return performance.now() - t0;
 }

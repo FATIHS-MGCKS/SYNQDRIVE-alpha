@@ -7,7 +7,12 @@ import type { DiV0ValidatedPositionRequest } from '../position-acquisition/di-v0
 import type { DiV0R1ObdQuerySpecification } from './di-v0-r1-obd-acquisition.versions';
 
 /** Distinct from core `EvidenceAvailability.PRESENT` — task vocabulary alias documented in S3B contract. */
-export type DiV0R1SignalAvailability = 'VALUE_PRESENT' | 'SIGNAL_NULL' | 'ROW_ABSENT';
+/**
+ * `CONFLICTING_DUPLICATE`: several provider rows share one bucket label and disagree on this
+ * signal. The value is withheld (no first-row-wins, no averaging); the distinct observed values
+ * are preserved in `conflictingValues` for provenance.
+ */
+export type DiV0R1SignalAvailability = 'VALUE_PRESENT' | 'SIGNAL_NULL' | 'ROW_ABSENT' | 'CONFLICTING_DUPLICATE';
 
 export type DiV0R1ObdQualityFlag =
   | 'NO_PROVIDER_ROWS'
@@ -17,18 +22,24 @@ export type DiV0R1ObdQualityFlag =
   | 'APPARENT_STALE_SEQUENCE'
   | 'APPARENT_BACKLOG'
   | 'TEMPORAL_UNCERTAINTY'
-  | 'UNSUPPORTED_SOURCE_FAMILY';
+  | 'UNSUPPORTED_SOURCE_FAMILY'
+  | 'DUPLICATE_BUCKET_IDENTICAL'
+  | 'DUPLICATE_BUCKET_CONFLICTING';
 
 export interface DiV0R1ObdScalarSignal<T = number> {
   signal: DiV0R1ObdQuerySpecification['signals'][number]['id'];
   unit: string;
   availability: DiV0R1SignalAvailability;
   value: T | null;
+  /** Present only for `CONFLICTING_DUPLICATE`; sorted distinct values (`null` = row carried no usable value). */
+  conflictingValues?: (T | null)[];
 }
 
 export interface DiV0R1ObdAcquiredBucket {
   bucketLabel: string;
   rowAvailability: 'ROW_PRESENT' | 'ROW_ABSENT';
+  /** Number of in-window provider rows mapped to this label (0 when ROW_ABSENT). */
+  providerRowCount: number;
   temporalSemantics: 'INTERVAL_ONLY';
   signals: DiV0R1ObdScalarSignal[];
   qualityFlags: DiV0R1ObdQualityFlag[];
@@ -66,6 +77,8 @@ export interface DiV0R1ObdAcquisitionCounters {
   rowAbsent: number;
   rowPresent: number;
   speedValuePresent: number;
+  duplicateBuckets: number;
+  conflictingDuplicateBuckets: number;
 }
 
 export interface DiV0R1ObdAcquisitionResult {

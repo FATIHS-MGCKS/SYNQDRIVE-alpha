@@ -5,6 +5,7 @@ const REPO_ROOT = path.join(__dirname, '../../../../../../..');
 const S3B_ROOTS = [
   'backend/src/modules/vehicle-intelligence/driving-intelligence/r1-obd-acquisition',
   'backend/src/modules/vehicle-intelligence/driving-intelligence/native-event-evidence',
+  'backend/src/modules/vehicle-intelligence/driving-intelligence/evidence-input',
 ];
 
 function walkTs(dir: string, acc: string[] = []): string[] {

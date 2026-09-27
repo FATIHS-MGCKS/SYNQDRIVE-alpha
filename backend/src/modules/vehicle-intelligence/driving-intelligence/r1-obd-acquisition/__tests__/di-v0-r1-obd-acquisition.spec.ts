@@ -106,9 +106,11 @@ describe('S3B R1 OBD acquisition', () => {
     const b = normalizeRows('2026-01-01T00:00:00Z', '2026-01-01T00:00:05Z', wobSparseR1Rows('2026-01-01T00:00:00Z'));
     expect(a.snapshotIdentity.digest).toBe(b.snapshotIdentity.digest);
     const combined = computeDiV0CombinedInputEvidenceVersion([
-      { channel: 'R1_OBD', inputEvidenceVersion: a.snapshotIdentity.inputEvidenceVersion },
+      { channel: 'POSITION', state: 'NOT_AVAILABLE', inputEvidenceVersion: null },
+      { channel: 'R1_OBD', state: 'PRESENT', inputEvidenceVersion: a.snapshotIdentity.inputEvidenceVersion },
+      { channel: 'NATIVE_EVENT', state: 'NOT_AVAILABLE', inputEvidenceVersion: null },
     ]);
-    expect(combined).toMatch(/^DI_V0_COMBINED_INPUT_IDENTITY_V0_1:sha256:/);
+    expect(combined).toMatch(/^DI_V0_COMBINED_INPUT_IDENTITY_V0_2:sha256:/);
   });
 
 });

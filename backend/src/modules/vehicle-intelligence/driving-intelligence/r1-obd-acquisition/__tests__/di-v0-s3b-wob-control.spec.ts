@@ -1,29 +1,51 @@
 import { acquireDiV0NativeEventEvidence } from '../../native-event-evidence/di-v0-native-event-acquisition';
-import { toDiV0S1R1ObdInput } from '../di-v0-r1-obd-acquisition';
-import { normalizeDiV0R1ObdFromProviderRows } from '../di-v0-r1-obd-normalizer';
-import { validateDiV0PositionAcquisitionRequest } from '../../position-acquisition/di-v0-position-window';
-import { resolveDiV0SourceFamily } from '../../position-acquisition/di-v0-position-source-family';
-import { baseR1Request, RUPTELA_DEVICE_IDENTITY, wobSparseR1Rows } from './fixtures/s3b-r1-fixtures';
+import { FULL_R1_002_GOLDEN } from '../../position-acquisition/__tests__/fixtures/full-r1-002-golden.fixture';
+import { buildRequest } from '../../position-acquisition/__tests__/position-acquisition-test-helpers';
+import { acquireDiV0HistoricalR1Obd, toDiV0S1R1ObdInput } from '../di-v0-r1-obd-acquisition';
+import {
+  FULL_R1_002_S3B_DEVICE_IDENTITY,
+  FULL_R1_002_S3B_PROVENANCE,
+  FULL_R1_002_S3B_STRUCTURAL_R1_ROWS,
+} from './fixtures/full-r1-002-s3b-structural.fixture';
 
-describe('WOB FULL-R1-002 structural control (synthetic sparse fixture)', () => {
-  it('R1 sparse; native NO_EVENT; no invented events', () => {
-    const from = '2026-01-01T00:00:00Z';
-    const to = '2026-01-01T00:01:40Z';
-    const request = validateDiV0PositionAcquisitionRequest(baseR1Request(from, to));
-    const resolution = resolveDiV0SourceFamily(RUPTELA_DEVICE_IDENTITY);
-    const r1 = normalizeDiV0R1ObdFromProviderRows(request, resolution, wobSparseR1Rows(from));
-    expect(r1.ok).toBe(true);
-    if (!r1.ok) return;
-    const observations = toDiV0S1R1ObdInput(r1.result);
-    expect(observations.length).toBeLessThan(r1.result.counters.requestedBuckets);
+describe('WOB FULL-R1-002 S3B control (bound to committed S3A golden; structural R1 rows)', () => {
+  it('R1 sparse INTERVAL_ONLY over golden window; native NO_EVENT; no invented events', async () => {
+    const g = FULL_R1_002_GOLDEN;
+    expect(FULL_R1_002_S3B_PROVENANCE.capturedR1ObdRowsInRepo).toBe(false);
+    const r1 = await acquireDiV0HistoricalR1Obd(
+      buildRequest(g.fromUtc, g.toUtc, {
+        organizationId: g.organizationId,
+        vehicleId: g.vehicleId,
+        tripId: g.tripId,
+        dimoTokenId: g.dimoTokenId,
+        dimoDeviceIdentity: FULL_R1_002_S3B_DEVICE_IDENTITY,
+      }),
+      { executeHistoricalR1ObdQuery: async () => ({ data: { signals: [...FULL_R1_002_S3B_STRUCTURAL_R1_ROWS] } }) },
+    );
+    expect(r1.status).toBe('ACQUIRED');
+    if (r1.status !== 'ACQUIRED') return;
+    expect(r1.result.sourceFamily).toBe('RUPTELA_R1');
+    expect(r1.result.counters.requestedBuckets).toBe(g.expectedBucketCount);
+    expect(r1.result.counters.rowPresent).toBe(FULL_R1_002_S3B_STRUCTURAL_R1_ROWS.length);
     expect(r1.result.qualityFlags).toContain('SPARSE_SIGNAL');
+    expect(r1.result.buckets.every((b) => b.temporalSemantics === 'INTERVAL_ONLY')).toBe(true);
+    const observations = toDiV0S1R1ObdInput(r1.result);
+    expect(observations.length).toBe(FULL_R1_002_S3B_STRUCTURAL_R1_ROWS.length);
 
     const native = acquireDiV0NativeEventEvidence({
-      vehicleId: 'vehicle-golden-c1-mobile-full-r1-002',
-      sourceFamily: 'RUPTELA_R1',
-      records: [],
+      context: {
+        organizationId: g.organizationId,
+        vehicleId: g.vehicleId,
+        tripId: g.tripId,
+        windowStart: g.fromUtc,
+        windowEnd: g.toUtc,
+        sourceFamily: 'RUPTELA_R1',
+        provider: 'DIMO',
+      },
+      source: { kind: 'SOURCE_SUCCESS', records: [] },
     });
     expect(native.status).toBe('NO_EVENT');
+    expect(native.channelState).toBe('NO_EVENT');
     expect(native.events).toHaveLength(0);
   });
 });

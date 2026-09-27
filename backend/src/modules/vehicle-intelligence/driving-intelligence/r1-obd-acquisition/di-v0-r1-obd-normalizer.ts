@@ -16,8 +16,8 @@ import type {
   DiV0ValidatedR1ObdRequest,
 } from './di-v0-r1-obd-acquisition.types';
 import {
-  DI_V0_R1_OBD_ACQUISITION_ADAPTER_V0_1,
-  DI_V0_R1_OBD_QUERY_SPEC_V0_1,
+  DI_V0_R1_OBD_ACQUISITION_ADAPTER_V0_2,
+  DI_V0_R1_OBD_QUERY_SPEC_V0_2,
 } from './di-v0-r1-obd-acquisition.versions';
 
 const PROVIDER_LABEL = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.(\d+))?(?:Z|[+-]\d{2}:\d{2})$/;
@@ -42,7 +42,7 @@ function evaluateNumericSignal(
   field: string,
   rowAbsent: boolean,
 ): DiV0R1ObdScalarSignal {
-  const spec = DI_V0_R1_OBD_QUERY_SPEC_V0_1.signals.find((s) => s.providerField === field)!;
+  const spec = DI_V0_R1_OBD_QUERY_SPEC_V0_2.signals.find((s) => s.providerField === field)!;
   if (rowAbsent) {
     return { signal: spec.id, unit: spec.unit, availability: 'ROW_ABSENT', value: null };
   }
@@ -62,6 +62,37 @@ function evaluateNumericSignal(
   return { signal: spec.id, unit: spec.unit, availability: 'VALUE_PRESENT', value: raw };
 }
 
+function compareNullableNumber(a: number | null, b: number | null): number {
+  if (a === b) return 0;
+  if (a === null) return -1;
+  if (b === null) return 1;
+  return a - b;
+}
+
+/**
+ * Per-signal merge of all rows sharing one bucket label. Agreeing rows collapse; any
+ * disagreement (including value vs null) withholds only that signal. Order-independent.
+ */
+function mergeDuplicateSignal(rows: Record<string, unknown>[], field: string): DiV0R1ObdScalarSignal {
+  const evaluated = rows.map((row) => evaluateNumericSignal(row, field, false));
+  const first = evaluated[0];
+  const agrees = evaluated.every((s) => s.availability === first.availability && s.value === first.value);
+  if (agrees) return first;
+  const distinct: (number | null)[] = [];
+  for (const s of evaluated) {
+    const v = s.availability === 'VALUE_PRESENT' ? s.value : null;
+    if (!distinct.some((d) => d === v)) distinct.push(v);
+  }
+  distinct.sort(compareNullableNumber);
+  return {
+    signal: first.signal,
+    unit: first.unit,
+    availability: 'CONFLICTING_DUPLICATE',
+    value: null,
+    conflictingValues: distinct,
+  };
+}
+
 function toNormalizedObservation(bucket: DiV0R1ObdAcquiredBucket): NormalizedR1ObdObservation | null {
   if (bucket.rowAvailability === 'ROW_ABSENT') return null;
   const get = (id: DiV0R1ObdScalarSignal['signal']) =>
@@ -70,8 +101,8 @@ function toNormalizedObservation(bucket: DiV0R1ObdAcquiredBucket): NormalizedR1O
     bucketLabel: bucket.bucketLabel,
     temporalConfidence: 'INTERVAL_ONLY',
     provenance: {
-      sourceSignal: 'DI_V0_R1_OBD_QUERY_V0_1',
-      derivedFrom: [DI_V0_R1_OBD_QUERY_SPEC_V0_1.id, 'INTERVAL_ONLY'],
+      sourceSignal: 'DI_V0_R1_OBD_QUERY_V0_2',
+      derivedFrom: [DI_V0_R1_OBD_QUERY_SPEC_V0_2.id, 'INTERVAL_ONLY'],
     },
   };
   const speed = get('speed');
@@ -152,44 +183,62 @@ export function normalizeDiV0R1ObdResponse(input: NormalizeDiV0R1ObdInput): Norm
 
   const { request, sourceFamilyResolution, longGapThresholdSeconds } = input;
   const { window } = request;
-  const intervalMs = DI_V0_R1_OBD_QUERY_SPEC_V0_1.intervalMs;
-  const rowsByIndex = new Map<number, Record<string, unknown>>();
+  const intervalMs = DI_V0_R1_OBD_QUERY_SPEC_V0_2.intervalMs;
+  const rowsByIndex = new Map<number, Record<string, unknown>[]>();
 
   for (const row of extracted.rows) {
     if (!isPlainObject(row)) continue;
-    const parsed = parseProviderLabel(row[DI_V0_R1_OBD_QUERY_SPEC_V0_1.bucketLabelField]);
+    const parsed = parseProviderLabel(row[DI_V0_R1_OBD_QUERY_SPEC_V0_2.bucketLabelField]);
     if (!parsed.ok) continue;
     if (parsed.ms < window.fromMs || parsed.ms >= window.toMs) continue;
     const index = (parsed.ms - window.fromMs) / intervalMs;
-    if (!rowsByIndex.has(index)) rowsByIndex.set(index, row);
+    const existing = rowsByIndex.get(index);
+    if (existing) existing.push(row);
+    else rowsByIndex.set(index, [row]);
   }
 
   const buckets: DiV0R1ObdAcquiredBucket[] = [];
   let rowAbsent = 0;
   let rowPresent = 0;
   let speedValuePresent = 0;
+  let duplicateBuckets = 0;
+  let conflictingDuplicateBuckets = 0;
 
   for (let i = 0; i < window.expectedBucketCount; i++) {
     const labelMs = window.fromMs + i * intervalMs;
     const label = formatBucketLabel(labelMs);
-    const row = rowsByIndex.get(i);
-    const rowAbsentBucket = row == null;
+    const rows = rowsByIndex.get(i) ?? [];
+    const rowAbsentBucket = rows.length === 0;
     if (rowAbsentBucket) rowAbsent += 1;
     else rowPresent += 1;
 
-    const signals = DI_V0_R1_OBD_QUERY_SPEC_V0_1.signals.map((s) =>
-      evaluateNumericSignal(row ?? {}, s.providerField, rowAbsentBucket),
+    const signals = DI_V0_R1_OBD_QUERY_SPEC_V0_2.signals.map((s) =>
+      rows.length > 1
+        ? mergeDuplicateSignal(rows, s.providerField)
+        : evaluateNumericSignal(rows[0] ?? {}, s.providerField, rowAbsentBucket),
     );
     if (signals.find((s) => s.signal === 'speed')?.availability === 'VALUE_PRESENT') {
       speedValuePresent += 1;
     }
 
+    const qualityFlags: DiV0R1ObdQualityFlag[] = ['TEMPORAL_UNCERTAINTY'];
+    if (rows.length > 1) {
+      duplicateBuckets += 1;
+      if (signals.some((s) => s.availability === 'CONFLICTING_DUPLICATE')) {
+        conflictingDuplicateBuckets += 1;
+        qualityFlags.push('DUPLICATE_BUCKET_CONFLICTING');
+      } else {
+        qualityFlags.push('DUPLICATE_BUCKET_IDENTICAL');
+      }
+    }
+
     buckets.push({
       bucketLabel: label,
       rowAvailability: rowAbsentBucket ? 'ROW_ABSENT' : 'ROW_PRESENT',
+      providerRowCount: rows.length,
       temporalSemantics: 'INTERVAL_ONLY',
       signals,
-      qualityFlags: ['TEMPORAL_UNCERTAINTY'],
+      qualityFlags,
     });
   }
 
@@ -201,6 +250,10 @@ export function normalizeDiV0R1ObdResponse(input: NormalizeDiV0R1ObdInput): Norm
   if (extracted.signalsNull) qualityFlags.push('PROVIDER_SIGNALS_NULL');
   if (coverage < 0.15) qualityFlags.push('SPARSE_SIGNAL');
   if (buckets.some((b) => b.qualityFlags.includes('LONG_GAP'))) qualityFlags.push('LONG_GAP');
+  if (buckets.some((b) => b.qualityFlags.includes('DUPLICATE_BUCKET_IDENTICAL'))) {
+    qualityFlags.push('DUPLICATE_BUCKET_IDENTICAL');
+  }
+  if (conflictingDuplicateBuckets > 0) qualityFlags.push('DUPLICATE_BUCKET_CONFLICTING');
 
   const observations = buckets
     .map(toNormalizedObservation)
@@ -218,8 +271,8 @@ export function normalizeDiV0R1ObdResponse(input: NormalizeDiV0R1ObdInput): Norm
   return {
     ok: true,
     result: {
-      adapterVersion: DI_V0_R1_OBD_ACQUISITION_ADAPTER_V0_1,
-      querySpecId: DI_V0_R1_OBD_QUERY_SPEC_V0_1.id,
+      adapterVersion: DI_V0_R1_OBD_ACQUISITION_ADAPTER_V0_2,
+      querySpecId: DI_V0_R1_OBD_QUERY_SPEC_V0_2.id,
       sourceFamily: sourceFamilyResolution.sourceFamily,
       sourceFamilyResolution,
       window,
@@ -232,6 +285,8 @@ export function normalizeDiV0R1ObdResponse(input: NormalizeDiV0R1ObdInput): Norm
         rowAbsent,
         rowPresent,
         speedValuePresent,
+        duplicateBuckets,
+        conflictingDuplicateBuckets,
       },
       snapshotIdentity,
       fixedTimeCorrectionApplied: false,
