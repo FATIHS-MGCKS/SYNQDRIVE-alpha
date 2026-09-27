@@ -3,7 +3,7 @@
 **Date:** 2026-09-27  
 **Mode:** Engineering + **pre-merge correctness hardening** — **no production deploy**, **no D3 activation**, **no `F_D3_T0`**, **no backfill**  
 **PR:** #1806  
-**Post-hardening base main (rebase):** resolve at execution time (e.g. `8ce2ee8e1313bc39dd7bc1e866b1da75ba5e9201`)
+**Post-hardening base main (rebase):** resolve at execution time (e.g. `9fece014adbfe5b2278275b6840c4bb698479b59`)
 
 ## Pre-merge review defects (corrected in hardening)
 
@@ -11,7 +11,7 @@
 |--------|---------|-----|
 | **Ack version scope** | Ack lookup ignored D2/D3 contract/policy → old policy ack could suppress new target materialization | Fence identity includes **profile contract + profile policy** aligned with current D2 constants |
 | **Same science / new source evidence** | Metadata mirror on revision `sourceEvidenceFingerprint` → drift on EXISTING scientific rows | Separate ack fence; ack on CREATED/EXISTING; revision column is creation provenance only |
-| **Bounded prefilter starvation** | `ORDER BY MIN(computed_at) LIMIT oversample` fixed prefix never inspects later stale vehicles | **Keyset fleet cursor** + wrap (`battery_longitudinal_reconciliation_fleet_cursor`); scan touch table; staleness = live fingerprint **not acked** |
+| **Bounded prefilter starvation** | `ORDER BY MIN(computed_at) LIMIT oversample` fixed prefix never inspects later stale vehicles | **Keyset fleet cursor** + wrap (`battery_longitudinal_reconciliation_fleet_cursor`); staleness = live fingerprint **not acked** for current D2/D3 target versions |
 | **Snapshot isolation mismatch** | Candidate fingerprint used ReadCommitted multi-read | **`RepeatableRead`** (`LONGITUDINAL_INPUT_SNAPSHOT_ISOLATION`) — same as D1 `readInventory` |
 
 ## Rejected naive candidate / freshness rules
@@ -31,8 +31,8 @@
 | `FRESHNESS_FENCE_SEPARATE_FROM_SCIENTIFIC_REVISION` | **YES** |
 | `SCIENTIFIC_UNIQUENESS_UNCHANGED` | **YES** — D3 scientific unique index unchanged |
 | `APPEND_ONLY_D3_SEMANTICS_PRESERVED` | **YES** — no in-place rewrite of historical D3 rows |
-| `D3_FRESHNESS_AUTHORITY_RACE_SAFE` | **Claim only after exact-head Postgres + CI** — not asserted in doc alone |
-| `LOST_UPDATE_RACE_CLOSED` | **Claim only after exact-head Postgres + CI** |
+| `D3_FRESHNESS_AUTHORITY_RACE_SAFE` | **YES** — exact-head `Battery V2 — Longitudinal Postgres CI` green (F4.1 reconciliation suite 9/9) |
+| `LOST_UPDATE_RACE_CLOSED` | **YES** — Postgres lost-update + related F4.1 integration cases executed on exact head |
 
 **Candidate discovery**
 
@@ -63,7 +63,7 @@
 | Migration | Purpose |
 |-----------|---------|
 | `20260927120000_battery_longitudinal_profile_source_evidence_fingerprint` | Optional audit column on D3 revisions (not freshness fence) |
-| `20260927140000_battery_longitudinal_reconciliation_freshness_authority` | Acks + fleet cursor + vehicle scan fairness |
+| `20260927140000_battery_longitudinal_reconciliation_freshness_authority` | Acks + durable fleet cursor (`battery_longitudinal_reconciliation_fleet_cursor`) |
 
 ## Runtime
 
@@ -123,4 +123,4 @@ bash architecture/battery-v2/scripts/validate-graph.sh
 | `F_D3_T0_ASSIGNED` | **NO** |
 | `BACKFILL_EXECUTED` | **NO** |
 
-**Do not mark `F4.1 COMPLETE` until PR exact-head CI is green on Postgres reconciliation suite.**
+**Postgres reconciliation suite:** exact-head CI green on PR #1806 (F4.1 integration 9/9 + D3 materialization Postgres jobs). Merge and production activation remain separate gates.

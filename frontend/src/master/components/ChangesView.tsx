@@ -166,25 +166,6 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-27T08:30:00.000Z',
   },
   {
-    id: 'battery-v2-m3-3f-f4-1-race-safe-d3-reconciliation-2026-09-27',
-    version: '4.9.2103',
-    title: 'Battery V2 M3.3F F4.1 — race-safe bounded D3 reconciliation (engineering)',
-    summary: [
-      'Durable D3 freshness via sourceEvidenceFingerprint on revisions; rejects VALID-only candidates and naive C3.created_at vs materialized_at rules.',
-      'Scheduler battery_v2_longitudinal_materialization_reconciliation (leader + flag + overlap); batch default 2 max 5; D3 flag remains default OFF.',
-      'D4 read-only revision inspect ops CLI with production-readonly gate; Postgres lost-update + invalidation integration tests.',
-    ],
-    reason:
-      'Implement F0 bounded scheduled reconciliation safely before any F4 D3 production activation.',
-    previousBehavior:
-      'D3 materialization ops-only (F1); no scheduled reconciliation; no persisted D1 source-evidence fence on D3 rows.',
-    details:
-      'architecture/battery-v2/research/M3_3F_F4_1_RACE_SAFE_D3_RECONCILIATION_ENGINEERING_2026-09-27.md; migration source_evidence_fingerprint',
-    affectsArchitecture: true,
-    module: 'Vehicle Intelligence',
-    createdAt: '2026-09-27T11:30:00.000Z',
-  },
-  {
     id: 'di-exp021-c05-cg01-cold-engine-full-throttle-2026-09-24',
     version: '4.9.2101',
     title: 'Driving Intelligence — EXP-021 C0.5 CG-01 COLD_ENGINE_FULL_THROTTLE containment (draft)',
