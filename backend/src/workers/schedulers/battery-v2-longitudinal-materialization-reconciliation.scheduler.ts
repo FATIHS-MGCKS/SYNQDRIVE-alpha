@@ -5,7 +5,10 @@ import { TripMetricsService } from '@modules/observability/trip-metrics.service'
 import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 import { getBatteryV2LongitudinalReconciliationIntervalMs } from '@modules/vehicle-intelligence/battery-health/generalized-evidence/rest-session-features/longitudinal/longitudinal-reconciliation.config';
 import { LongitudinalReconciliationService } from '@modules/vehicle-intelligence/battery-health/generalized-evidence/rest-session-features/longitudinal/longitudinal-reconciliation.service';
-import { recordLongitudinalReconciliationSchedulerTick } from '@modules/vehicle-intelligence/battery-health/generalized-evidence/rest-session-features/longitudinal/longitudinal-reconciliation.metrics';
+import {
+  recordLongitudinalMaterializationFlagEnabledGauge,
+  recordLongitudinalReconciliationSchedulerTick,
+} from '@modules/vehicle-intelligence/battery-health/generalized-evidence/rest-session-features/longitudinal/longitudinal-reconciliation.metrics';
 
 @Injectable()
 export class BatteryV2LongitudinalMaterializationReconciliationScheduler {
@@ -22,6 +25,9 @@ export class BatteryV2LongitudinalMaterializationReconciliationScheduler {
 
   @Interval(getBatteryV2LongitudinalReconciliationIntervalMs())
   async reconcileLongitudinalProfiles(): Promise<void> {
+    const flagEnabled = isBatteryV2LongitudinalProfileMaterializationEnabled();
+    recordLongitudinalMaterializationFlagEnabledGauge(this.metrics, flagEnabled);
+
     if (!this.leaderGuard.shouldRun('battery_v2_longitudinal_materialization_reconciliation')) {
       recordLongitudinalReconciliationSchedulerTick(this.metrics, { result: 'NOT_LEADER' });
       return;

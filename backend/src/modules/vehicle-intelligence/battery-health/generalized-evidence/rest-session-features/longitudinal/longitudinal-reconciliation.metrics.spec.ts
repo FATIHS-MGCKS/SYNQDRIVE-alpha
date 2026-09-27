@@ -2,10 +2,15 @@ import { TripMetricsService } from '@modules/observability/trip-metrics.service'
 import type { LongitudinalReconciliationTickOutcome } from './longitudinal-reconciliation.service';
 import {
   assertLongitudinalReconciliationProcessedOutcomeSum,
+  recordLongitudinalMaterializationFlagEnabledGauge,
   recordLongitudinalReconciliationAckOutcome,
+  recordLongitudinalReconciliationInvariantFailure,
   recordLongitudinalReconciliationSchedulerTick,
   recordLongitudinalReconciliationTickOutcomes,
 } from './longitudinal-reconciliation.metrics';
+import { LongitudinalReconciliationInvariantViolationError } from './longitudinal-reconciliation.invariants';
+import * as fs from 'fs';
+import * as path from 'path';
 
 function createMetricsSpy() {
   const metrics = new TripMetricsService();
@@ -156,6 +161,8 @@ describe('longitudinal-reconciliation.metrics', () => {
       'synqdrive_battery_longitudinal_reconciliation_ack_total',
       'synqdrive_battery_longitudinal_reconciliation_duration_seconds',
       'synqdrive_battery_longitudinal_reconciliation_last_success_timestamp',
+      'synqdrive_battery_longitudinal_materialization_flag_enabled',
+      'synqdrive_battery_longitudinal_reconciliation_invariant_failures_total',
     ];
     for (const family of families) {
       expect(text).toContain(family);
@@ -182,5 +189,64 @@ describe('longitudinal-reconciliation.metrics', () => {
     );
     const { metrics } = createMetricsSpy();
     expect(() => recordLongitudinalReconciliationTickOutcomes(metrics, bad)).not.toThrow();
+  });
+
+  it('T21 flag gauge OFF', () => {
+    const metrics = new TripMetricsService();
+    const set = jest.spyOn(metrics.batteryLongitudinalMaterializationFlagEnabled, 'set');
+    recordLongitudinalMaterializationFlagEnabledGauge(metrics, false);
+    expect(set).toHaveBeenCalledWith(0);
+  });
+
+  it('T22 flag gauge ON', () => {
+    const metrics = new TripMetricsService();
+    const set = jest.spyOn(metrics.batteryLongitudinalMaterializationFlagEnabled, 'set');
+    recordLongitudinalMaterializationFlagEnabledGauge(metrics, true);
+    expect(set).toHaveBeenCalledWith(1);
+  });
+
+  it('T28 invariant metric uses bounded type label only', async () => {
+    const metrics = new TripMetricsService();
+    recordLongitudinalReconciliationInvariantFailure(metrics, 'VEHICLE_ORGANIZATION_MISMATCH');
+    const text = await metrics.getMetrics();
+    expect(text).toContain(
+      'synqdrive_battery_longitudinal_reconciliation_invariant_failures_total',
+    );
+    expect(text).toContain('type="VEHICLE_ORGANIZATION_MISMATCH"');
+    expect(text).not.toContain('organizationId=');
+  });
+
+  it('T29 scheduler tick metric operations are independently fail-open', () => {
+    const metrics = new TripMetricsService();
+    jest.spyOn(metrics.batteryLongitudinalReconciliationTicksTotal, 'inc').mockImplementation(() => {
+      throw new Error('ticks broken');
+    });
+    const candidatesObserve = jest.spyOn(
+      metrics.batteryLongitudinalReconciliationCandidates,
+      'observe',
+    );
+    const lastSuccessSet = jest.spyOn(
+      metrics.batteryLongitudinalReconciliationLastSuccessTimestamp,
+      'set',
+    );
+    expect(() =>
+      recordLongitudinalReconciliationSchedulerTick(metrics, {
+        result: 'COMPLETED',
+        durationSeconds: 0.1,
+        candidateCount: 2,
+      }),
+    ).not.toThrow();
+    expect(candidatesObserve).toHaveBeenCalledWith(2);
+    expect(lastSuccessSet).toHaveBeenCalled();
+  });
+
+  it('T30 candidate total observation query documented in F4.3 evidence', () => {
+    const docPath = path.join(
+      process.cwd(),
+      '../architecture/battery-v2/research/M3_3F_F4_3_D3_ACTIVATION_OBSERVABILITY_CLOSURE_2026-09-27.md',
+    );
+    const doc = fs.readFileSync(docPath, 'utf8');
+    expect(doc).toContain('synqdrive_battery_longitudinal_reconciliation_candidates_sum');
+    expect(doc).toContain('MEDIAN_QUERY_NOT_PRESENTED_AS_TOTAL');
   });
 });

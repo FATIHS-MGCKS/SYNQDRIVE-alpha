@@ -212,6 +212,8 @@ export class TripMetricsService implements OnModuleInit {
   readonly batteryLongitudinalReconciliationAckTotal: Counter<'outcome'>;
   readonly batteryLongitudinalReconciliationDurationSeconds: Histogram<'result'>;
   readonly batteryLongitudinalReconciliationLastSuccessTimestamp: Gauge<string>;
+  readonly batteryLongitudinalMaterializationFlagEnabled: Gauge<string>;
+  readonly batteryLongitudinalReconciliationInvariantFailuresTotal: Counter<'type'>;
   readonly batteryLongitudinalProfileIntegrityInspectionTotal: Counter<'disposition'>;
   readonly batteryLongitudinalProfileSelfIntegrityFailureTotal: Counter<string>;
   readonly batteryProviderObservabilityGapOpenedTotal: Counter<string>;
@@ -1790,7 +1792,7 @@ export class TripMetricsService implements OnModuleInit {
 
     this.batteryLongitudinalReconciliationAckTotal = new Counter({
       name: 'synqdrive_battery_longitudinal_reconciliation_ack_total',
-      help: 'M3.3F F4.1 durable source-evidence acknowledgement append outcomes',
+      help: 'M3.3F F4.1 authoritative D3 source-evidence acknowledgement append outcomes (all materialization paths including authorized internal ops; freshness-authority scope)',
       labelNames: ['outcome'],
       registers: [this.registry],
     });
@@ -1806,6 +1808,19 @@ export class TripMetricsService implements OnModuleInit {
     this.batteryLongitudinalReconciliationLastSuccessTimestamp = new Gauge({
       name: 'synqdrive_battery_longitudinal_reconciliation_last_success_timestamp',
       help: 'Unix seconds of last completed D3 reconciliation scheduler tick on this process',
+      registers: [this.registry],
+    });
+
+    this.batteryLongitudinalMaterializationFlagEnabled = new Gauge({
+      name: 'synqdrive_battery_longitudinal_materialization_flag_enabled',
+      help: 'M3.3F F4.3 effective D3 materialization flag on this process (0=OFF, 1=ON); updated each reconciliation scheduler tick before leader guard',
+      registers: [this.registry],
+    });
+
+    this.batteryLongitudinalReconciliationInvariantFailuresTotal = new Counter({
+      name: 'synqdrive_battery_longitudinal_reconciliation_invariant_failures_total',
+      help: 'M3.3F F4.3 typed reconciliation safety invariant violations (fail-closed)',
+      labelNames: ['type'],
       registers: [this.registry],
     });
 

@@ -3,6 +3,7 @@ import { isBatteryV2LongitudinalProfileMaterializationEnabled } from '@config/ba
 import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 import { LongitudinalReconciliationService } from '@modules/vehicle-intelligence/battery-health/generalized-evidence/rest-session-features/longitudinal/longitudinal-reconciliation.service';
+import { LongitudinalReconciliationInvariantViolationError } from '@modules/vehicle-intelligence/battery-health/generalized-evidence/rest-session-features/longitudinal/longitudinal-reconciliation.invariants';
 import { BatteryV2LongitudinalMaterializationReconciliationScheduler } from './battery-v2-longitudinal-materialization-reconciliation.scheduler';
 
 jest.mock('@config/battery-health-v2.config', () => ({
@@ -17,6 +18,7 @@ describe('BatteryV2LongitudinalMaterializationReconciliationScheduler', () => {
   let runBoundedReconciliationTick: jest.Mock;
   let metrics: TripMetricsService;
   let ticksInc: jest.SpyInstance;
+  let flagGaugeSet: jest.SpyInstance;
 
   beforeEach(async () => {
     enabledMock.mockReturnValue(true);
@@ -34,6 +36,7 @@ describe('BatteryV2LongitudinalMaterializationReconciliationScheduler', () => {
 
     metrics = new TripMetricsService();
     ticksInc = jest.spyOn(metrics.batteryLongitudinalReconciliationTicksTotal, 'inc');
+    flagGaugeSet = jest.spyOn(metrics.batteryLongitudinalMaterializationFlagEnabled, 'set');
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -54,10 +57,44 @@ describe('BatteryV2LongitudinalMaterializationReconciliationScheduler', () => {
   });
 
   it('T20 non-leader — NOT_LEADER metric and zero reconciliation work', async () => {
+    enabledMock.mockReturnValue(false);
     shouldRun.mockReturnValue(false);
     await scheduler.reconcileLongitudinalProfiles();
     expect(runBoundedReconciliationTick).not.toHaveBeenCalled();
+    expect(flagGaugeSet).toHaveBeenCalledWith(0);
     expect(ticksInc).toHaveBeenCalledWith({ result: 'NOT_LEADER' });
+  });
+
+  it('F3A leader + OFF — gauge 0', async () => {
+    enabledMock.mockReturnValue(false);
+    await scheduler.reconcileLongitudinalProfiles();
+    expect(flagGaugeSet).toHaveBeenCalledWith(0);
+    expect(ticksInc).toHaveBeenCalledWith({ result: 'FLAG_OFF' });
+  });
+
+  it('F3C leader + ON — gauge 1', async () => {
+    enabledMock.mockReturnValue(true);
+    await scheduler.reconcileLongitudinalProfiles();
+    expect(flagGaugeSet).toHaveBeenCalledWith(1);
+  });
+
+  it('F3D non-leader + ON — gauge 1 and NOT_LEADER', async () => {
+    enabledMock.mockReturnValue(true);
+    shouldRun.mockReturnValue(false);
+    await scheduler.reconcileLongitudinalProfiles();
+    expect(flagGaugeSet).toHaveBeenCalledWith(1);
+    expect(ticksInc).toHaveBeenCalledWith({ result: 'NOT_LEADER' });
+    expect(runBoundedReconciliationTick).not.toHaveBeenCalled();
+  });
+
+  it('F3E flag gauge failure does not change scheduler behavior', async () => {
+    flagGaugeSet.mockImplementation(() => {
+      throw new Error('gauge down');
+    });
+    enabledMock.mockReturnValue(false);
+    await expect(scheduler.reconcileLongitudinalProfiles()).resolves.toBeUndefined();
+    expect(ticksInc).toHaveBeenCalledWith({ result: 'FLAG_OFF' });
+    expect(runBoundedReconciliationTick).not.toHaveBeenCalled();
   });
 
   it('T2 D3 flag OFF — FLAG_OFF metric and scheduler returns before service', async () => {
@@ -98,7 +135,9 @@ describe('BatteryV2LongitudinalMaterializationReconciliationScheduler', () => {
   });
 
   it('T6 FAILED — records FAILED when service throws', async () => {
-    runBoundedReconciliationTick.mockRejectedValue(new Error('boom'));
+    runBoundedReconciliationTick.mockRejectedValue(
+      new LongitudinalReconciliationInvariantViolationError('VEHICLE_ORGANIZATION_MISMATCH'),
+    );
     await scheduler.reconcileLongitudinalProfiles();
     expect(ticksInc).toHaveBeenCalledWith({ result: 'FAILED' });
   });

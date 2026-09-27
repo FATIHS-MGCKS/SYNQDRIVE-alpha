@@ -1,6 +1,8 @@
 import { LongitudinalReconciliationService } from './longitudinal-reconciliation.service';
+import { LongitudinalReconciliationInvariantViolationError } from './longitudinal-reconciliation.invariants';
 import type { LongitudinalReconciliationCandidateRepository } from './longitudinal-reconciliation-candidate.repository';
 import type { LongitudinalProfileMaterializationRuntimeService } from './longitudinal-profile-materialization.runtime.service';
+import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 
 describe('LongitudinalReconciliationService', () => {
   const envBackup = process.env.BATTERY_V2_LONGITUDINAL_PROFILE_MATERIALIZATION_ENABLED;
@@ -116,5 +118,29 @@ describe('LongitudinalReconciliationService', () => {
     expect(outcome.errorCount).toBe(1);
     expect(outcome.createdCount).toBe(1);
     expect(materialize).toHaveBeenCalledTimes(2);
+  });
+
+  it('T24–T27 typed org/vehicle mismatch — invariant metric, no materialization', async () => {
+    process.env.BATTERY_V2_LONGITUDINAL_PROFILE_MATERIALIZATION_ENABLED = 'true';
+    const findCandidates = jest
+      .fn()
+      .mockRejectedValue(
+        new LongitudinalReconciliationInvariantViolationError('VEHICLE_ORGANIZATION_MISMATCH'),
+      );
+    const materialize = jest.fn();
+    const metrics = new TripMetricsService();
+    const invariantInc = jest.spyOn(
+      metrics.batteryLongitudinalReconciliationInvariantFailuresTotal,
+      'inc',
+    );
+    await expect(
+      new LongitudinalReconciliationService(
+        { findCandidates } as unknown as LongitudinalReconciliationCandidateRepository,
+        { materialize } as unknown as LongitudinalProfileMaterializationRuntimeService,
+        metrics,
+      ).runBoundedReconciliationTick(),
+    ).rejects.toBeInstanceOf(LongitudinalReconciliationInvariantViolationError);
+    expect(invariantInc).toHaveBeenCalledWith({ type: 'VEHICLE_ORGANIZATION_MISMATCH' });
+    expect(materialize).not.toHaveBeenCalled();
   });
 });

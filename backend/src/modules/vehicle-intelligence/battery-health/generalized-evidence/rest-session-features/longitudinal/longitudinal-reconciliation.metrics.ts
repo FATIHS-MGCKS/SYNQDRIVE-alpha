@@ -1,4 +1,5 @@
 import type { TripMetricsService } from '@modules/observability/trip-metrics.service';
+import type { LongitudinalReconciliationInvariantType } from './longitudinal-reconciliation.invariants';
 import type { LongitudinalReconciliationTickOutcome } from './longitudinal-reconciliation.service';
 
 export const LONGITUDINAL_RECONCILIATION_TICK_RESULTS = [
@@ -36,6 +37,17 @@ function failOpen(record: () => void): void {
   }
 }
 
+/** Per-process effective D3 materialization flag (0=OFF, 1=ON); updated every scheduler tick on all replicas. */
+export function recordLongitudinalMaterializationFlagEnabledGauge(
+  metrics: TripMetricsService | undefined,
+  enabled: boolean,
+): void {
+  if (!metrics) return;
+  failOpen(() => {
+    metrics.batteryLongitudinalMaterializationFlagEnabled.set(enabled ? 1 : 0);
+  });
+}
+
 export function recordLongitudinalReconciliationSchedulerTick(
   metrics: TripMetricsService | undefined,
   input: {
@@ -47,18 +59,34 @@ export function recordLongitudinalReconciliationSchedulerTick(
   if (!metrics) return;
   failOpen(() => {
     metrics.batteryLongitudinalReconciliationTicksTotal.inc({ result: input.result });
-    if (input.durationSeconds != null) {
+  });
+  if (input.durationSeconds != null) {
+    failOpen(() => {
       metrics.batteryLongitudinalReconciliationDurationSeconds.observe(
         { result: input.result },
-        input.durationSeconds,
+        input.durationSeconds!,
       );
+    });
+  }
+  if (input.result === 'COMPLETED') {
+    if (input.candidateCount != null) {
+      failOpen(() => {
+        metrics.batteryLongitudinalReconciliationCandidates.observe(input.candidateCount!);
+      });
     }
-    if (input.result === 'COMPLETED') {
-      if (input.candidateCount != null) {
-        metrics.batteryLongitudinalReconciliationCandidates.observe(input.candidateCount);
-      }
+    failOpen(() => {
       metrics.batteryLongitudinalReconciliationLastSuccessTimestamp.set(Date.now() / 1000);
-    }
+    });
+  }
+}
+
+export function recordLongitudinalReconciliationInvariantFailure(
+  metrics: TripMetricsService | undefined,
+  type: LongitudinalReconciliationInvariantType,
+): void {
+  if (!metrics) return;
+  failOpen(() => {
+    metrics.batteryLongitudinalReconciliationInvariantFailuresTotal.inc({ type });
   });
 }
 
@@ -102,6 +130,7 @@ export function recordLongitudinalReconciliationTickOutcomes(
   });
 }
 
+/** Authoritative ack append at materialization boundary (scheduler + authorized internal ops). */
 export function recordLongitudinalReconciliationAckOutcome(
   metrics: TripMetricsService | undefined,
   outcome: LongitudinalReconciliationAckOutcome,

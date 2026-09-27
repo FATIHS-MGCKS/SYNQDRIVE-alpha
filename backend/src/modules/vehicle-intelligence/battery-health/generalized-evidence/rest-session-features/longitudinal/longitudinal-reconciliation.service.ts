@@ -7,7 +7,11 @@ import {
   getBatteryV2LongitudinalReconciliationBatchSize,
 } from './longitudinal-reconciliation.config';
 import { LongitudinalReconciliationCandidateRepository } from './longitudinal-reconciliation-candidate.repository';
-import { recordLongitudinalReconciliationTickOutcomes } from './longitudinal-reconciliation.metrics';
+import {
+  recordLongitudinalReconciliationInvariantFailure,
+  recordLongitudinalReconciliationTickOutcomes,
+} from './longitudinal-reconciliation.metrics';
+import { LongitudinalReconciliationInvariantViolationError } from './longitudinal-reconciliation.invariants';
 
 export type LongitudinalReconciliationTickOutcome = {
   status: 'SKIPPED_FLAG_OFF' | 'COMPLETED';
@@ -49,10 +53,21 @@ export class LongitudinalReconciliationService {
 
     const batchSize = getBatteryV2LongitudinalReconciliationBatchSize();
     const sessionLimit = getBatteryV2LongitudinalMaterializationSessionLimit();
-    const candidateList = await this.candidates.findCandidates({
-      batchSize,
-      sessionLimit,
-    });
+    let candidateList;
+    try {
+      candidateList = await this.candidates.findCandidates({
+        batchSize,
+        sessionLimit,
+      });
+    } catch (error) {
+      if (error instanceof LongitudinalReconciliationInvariantViolationError) {
+        recordLongitudinalReconciliationInvariantFailure(this.metrics, error.code);
+        this.logger.error(
+          `longitudinal_reconciliation_invariant_violation type=${error.code}`,
+        );
+      }
+      throw error;
+    }
 
     let processedCount = 0;
     let createdCount = 0;
