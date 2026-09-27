@@ -160,16 +160,26 @@ export type DiV0S4ChannelRunVerdict = 'RUNNABLE' | 'NOT_RUNNABLE' | 'INVALID';
 /**
  * Channel policy V1 run verdict: flag-off channels must be DISABLED, flag-on channels must not be,
  * native outcomes must be reachable without a readiness authority, and only POSITION=PRESENT runs.
+ * With a source family, a flag-on optional channel is NOT_APPLICABLE exactly when the family is
+ * outside `channelPolicyV1{R1,Native}ApplicableFamilies`.
  */
 export function evaluateDiV0S4ChannelRun(
   flags: { r1Enabled: boolean; nativeEnabled: boolean },
   pins: DiV0S4ChannelPins,
+  sourceFamily?: string,
 ): DiV0S4ChannelRunVerdict {
   try {
     const flagOf: Record<'R1_OBD' | 'NATIVE_EVENT', boolean> = { R1_OBD: flags.r1Enabled, NATIVE_EVENT: flags.nativeEnabled };
+    const applicable: Record<'R1_OBD' | 'NATIVE_EVENT', readonly string[]> = {
+      R1_OBD: DI_V0_S4_CHANNEL_RULES.channelPolicyV1R1ApplicableFamilies,
+      NATIVE_EVENT: DI_V0_S4_CHANNEL_RULES.channelPolicyV1NativeApplicableFamilies,
+    };
     for (const channel of ['R1_OBD', 'NATIVE_EVENT'] as const) {
-      const disabled = pins[channel]?.[0] === 'DISABLED';
-      if (flagOf[channel] === disabled) return 'INVALID';
+      const outcome = pins[channel]?.[0];
+      if (flagOf[channel] === (outcome === 'DISABLED')) return 'INVALID';
+      if (flagOf[channel] && sourceFamily !== undefined) {
+        if (applicable[channel].includes(sourceFamily) === (outcome === 'NOT_APPLICABLE')) return 'INVALID';
+      }
     }
     if (!(DI_V0_S4_CHANNEL_RULES.channelPolicyV1ReachableNativeOutcomes as readonly string[]).includes(pins.NATIVE_EVENT[0])) {
       return 'INVALID';

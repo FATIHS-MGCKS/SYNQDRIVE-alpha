@@ -186,7 +186,7 @@ interface ScenarioResult {
           const purpose = a2 as DiV0S4RunPurpose;
           const created = await repo(actor).createWorkItem({
             tripId: tenant.tripId,
-            sourceFamily: 'API_SYNTHETIC',
+            sourceFamily: 'RUPTELA_R1',
             runPurpose: purpose,
             replaySourceSnapshotHash: purpose === 'RECALIBRATION_REPLAY' ? await snapshotFor(String(a3)) : null,
             reacquisitionRequestId: purpose === 'REACQUISITION' ? String(a3) : null,
@@ -333,7 +333,7 @@ interface ScenarioResult {
       organizationId: tenant.organizationId,
       vehicleId: tenant.vehicleId,
       tripId: tenant.tripId,
-      sourceFamily: 'API_SYNTHETIC',
+      sourceFamily: 'RUPTELA_R1',
       versions,
       inputEvidenceVersion: executionIdentity,
     });
@@ -341,7 +341,7 @@ interface ScenarioResult {
       INSERT INTO di_v0_shadow_runs (id, organization_id, vehicle_id, trip_id, source_family, structural_version,
         estimator_version, calibration_version, source_family_policy_version, input_evidence_version, idempotency_key,
         status, created_at, updated_at)
-      VALUES (gen_random_uuid()::text, ${tenant.organizationId}, ${tenant.vehicleId}, ${tenant.tripId}, 'API_SYNTHETIC',
+      VALUES (gen_random_uuid()::text, ${tenant.organizationId}, ${tenant.vehicleId}, ${tenant.tripId}, 'RUPTELA_R1',
         ${versions.structuralVersion}, ${versions.estimatorVersion}, ${versions.calibrationVersion},
         ${versions.sourceFamilyPolicyVersion}, 'OTHER_IDENTITY', ${key}, 'COMPLETED', now(), now())`;
   }
@@ -414,7 +414,7 @@ interface ScenarioResult {
   async function leasedAndPinned(config: DiV0S4ControlPlaneConfig) {
     const manifest = s4aManifestFor(config, { calibrationBundleHash: salt() });
     const repo = new DiV0S4WorkItemRepository(client('w1'), config);
-    await repo.createWorkItem({ tripId: tenant.tripId, sourceFamily: 'API_SYNTHETIC', runPurpose: 'PRIMARY', pipelineManifest: manifest });
+    await repo.createWorkItem({ tripId: tenant.tripId, sourceFamily: 'RUPTELA_R1', runPurpose: 'PRIMARY', pipelineManifest: manifest });
     const lease = await repo.claim({ leaseOwner: 'w1', pipelineManifest: manifest });
     await repo.pinEvidence(lease, { windowStart: tenant.startTime, windowEnd: tenant.endTime, channels: s4aChannels('snap-A') });
     return { repo, lease, manifest };
@@ -507,7 +507,7 @@ interface ScenarioResult {
     const manifestOn = s4aManifestFor(on, { calibrationBundleHash: salt() });
     const created = await new DiV0S4WorkItemRepository(client('d1'), on).createWorkItem({
       tripId: tenant.tripId,
-      sourceFamily: 'API_SYNTHETIC',
+      sourceFamily: 'RUPTELA_R1',
       runPurpose: 'PRIMARY',
       pipelineManifest: manifestOn,
     });
@@ -518,7 +518,7 @@ interface ScenarioResult {
       () =>
         off.createWorkItem({
           tripId: tenant.tripId,
-          sourceFamily: 'API_SYNTHETIC',
+          sourceFamily: 'RUPTELA_R1',
           runPurpose: 'REACQUISITION',
           reacquisitionRequestId: 'r1',
           pipelineManifest: manifestOff,
@@ -545,7 +545,7 @@ interface ScenarioResult {
       const config = s4aConfigFor([tenant, other]);
       const manifest = s4aManifestFor(config, { calibrationBundleHash: salt() });
       const repo = new DiV0S4WorkItemRepository(client('d1'), config);
-      const base = { sourceFamily: 'API_SYNTHETIC' as const, runPurpose: 'REACQUISITION' as const, pipelineManifest: manifest };
+      const base = { sourceFamily: 'RUPTELA_R1' as const, runPurpose: 'REACQUISITION' as const, pipelineManifest: manifest };
       await expect(
         repo.createWorkItem({ ...base, reacquisitionRequestId: 'x1', tripId: other.tripId, expectedOrganizationId: tenant.organizationId }),
       ).rejects.toThrow(/TENANT_SCOPE_INVALID/);
@@ -584,7 +584,7 @@ interface ScenarioResult {
         admin.$executeRaw`INSERT INTO di_v0_shadow_runs (id, organization_id, vehicle_id, trip_id, source_family, structural_version,
             estimator_version, calibration_version, source_family_policy_version, input_evidence_version, idempotency_key, status,
             created_at, updated_at)
-          VALUES (gen_random_uuid()::text, ${other.organizationId}, ${tenant.vehicleId}, ${tenant.tripId}, 'API_SYNTHETIC', 'a', 'b', 'c',
+          VALUES (gen_random_uuid()::text, ${other.organizationId}, ${tenant.vehicleId}, ${tenant.tripId}, 'RUPTELA_R1', 'a', 'b', 'c',
             'd', 'e', 'f', 'PENDING', now(), now())`,
       ).rejects.toThrow(/di_v0_shadow_runs: trip .* scope mismatch/);
       await expect(
@@ -638,7 +638,7 @@ interface ScenarioResult {
     const manifest = s4aManifestFor(config, { calibrationBundleHash: salt() });
     const repo = new DiV0S4WorkItemRepository(client('s1'), config);
     const fp1 = await currentFingerprint(admin, tenant.tripId);
-    const created = await repo.createWorkItem({ tripId: tenant.tripId, sourceFamily: 'API_SYNTHETIC', runPurpose: 'PRIMARY', pipelineManifest: manifest });
+    const created = await repo.createWorkItem({ tripId: tenant.tripId, sourceFamily: 'RUPTELA_R1', runPurpose: 'PRIMARY', pipelineManifest: manifest });
     expect(created.boundaryFingerprint).toBe(fp1);
     await expect(repo.supersedeOnDrift({ workItemId: created.workItemId, reason: 'BOUNDARY_CHANGED' })).rejects.toThrow(
       /BOUNDARY_FINGERPRINT_UNCHANGED/,

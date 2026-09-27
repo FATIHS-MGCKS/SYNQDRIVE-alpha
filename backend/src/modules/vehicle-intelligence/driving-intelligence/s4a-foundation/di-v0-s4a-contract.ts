@@ -461,6 +461,8 @@ export const DI_V0_S4_CHANNEL_RULES = {
   ],
   nativeReadyOutcomesRequireAttestation: ['READY_WITH_EVENTS', 'READY_NO_EVENT'],
   channelPolicyV1ReachableNativeOutcomes: ['NOT_READY', 'NOT_APPLICABLE', 'DISABLED', 'SOURCE_FAILURE', 'CONTEXT_REJECTED'],
+  channelPolicyV1R1ApplicableFamilies: ['RUPTELA_R1'],
+  channelPolicyV1NativeApplicableFamilies: ['RUPTELA_R1'],
   channelEvidenceHashPattern: /^[A-Z0-9_]+:sha256:[0-9a-f]+$/,
 } as const;
 

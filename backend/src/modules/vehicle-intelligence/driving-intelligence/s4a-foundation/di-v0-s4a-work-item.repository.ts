@@ -350,7 +350,7 @@ export class DiV0S4WorkItemRepository {
       } catch (error) {
         return reject(tid, 'SNAPSHOT_INVALID', error instanceof Error ? error.message : undefined);
       }
-      if (evaluateDiV0S4ChannelRun(this.config, serialized.pins) !== 'RUNNABLE') reject(tid, 'CHANNEL_SET_NOT_RUNNABLE');
+      if (evaluateDiV0S4ChannelRun(this.config, serialized.pins, row.source_family) !== 'RUNNABLE') reject(tid, 'CHANNEL_SET_NOT_RUNNABLE');
 
       const uncompressed = Buffer.from(serialized.container, 'utf8');
       const gzip = gzipSync(uncompressed, { level: 9 });
@@ -402,7 +402,7 @@ export class DiV0S4WorkItemRepository {
       if (this.fingerprintOf(scope) !== row.boundary_fingerprint) reject(tid, 'BOUNDARY_FINGERPRINT_CHANGED');
 
       const pins = await this.loadPinnedSnapshotPins(db, tid, row, row.pinned_snapshot_hash);
-      if (evaluateDiV0S4ChannelRun(this.config, pins) !== 'RUNNABLE') reject(tid, 'CHANNEL_SET_NOT_RUNNABLE');
+      if (evaluateDiV0S4ChannelRun(this.config, pins, row.source_family) !== 'RUNNABLE') reject(tid, 'CHANNEL_SET_NOT_RUNNABLE');
       const combinedInputIdentity = buildDiV0CombinedInputIdentityV03(pins);
 
       const manifest = row.pipeline_version_manifest;
