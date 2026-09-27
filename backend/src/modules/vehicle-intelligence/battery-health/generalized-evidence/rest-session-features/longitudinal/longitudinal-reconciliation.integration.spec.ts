@@ -772,16 +772,10 @@ async function positionFleetCursorBeforeVehicle(
           profileGeneratedAt,
         };
 
-        const toIsoSpy = jest
-          .spyOn(Date.prototype, 'toISOString')
-          .mockReturnValue(profileGeneratedAt);
-
         const [schedulerOutcome, opsOutcome] = await Promise.all([
           reconciliation.runBoundedReconciliationTick(),
           materialization.materialize(request),
         ]);
-
-        toIsoSpy.mockRestore();
 
         expect(schedulerOutcome.errorCount).toBe(0);
         expect(opsOutcome.outcome === 'CREATED' || opsOutcome.outcome === 'EXISTING').toBe(true);
@@ -794,7 +788,7 @@ async function positionFleetCursorBeforeVehicle(
         const currentFp = await candidates.computeCurrentSourceEvidenceFingerprint({
           organizationId,
           vehicleId,
-          sessionLimit,
+          sessionLimit: alignedSessionLimit,
         });
         const ackCount = await prisma.batteryLongitudinalSourceEvidenceAck.count({
           where: {
