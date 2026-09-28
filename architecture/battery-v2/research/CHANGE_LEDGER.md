@@ -25,7 +25,7 @@ Append-only scientific record. Newest entries first.
 | **BEFORE** | F5.0 used ephemeral `/tmp` analysis; **`REUSABLE_F5_ANALYSIS_TOOL_EXISTS=NO`**. |
 | **CHANGE** | Operator CLI + **`M3_3F_F5_NATURAL_CALIBRATION_REPORT_V1`**; read-only Postgres txn; bounded defaults; pure maturity engine. |
 | **WHY** | Deterministic, auditable F5 science without Nest runtime / customer API. |
-| **VALIDATION** | Unit tests + Postgres integration (`battery-v2-longitudinal-postgres-ci` F5.1 job); production requires **`BATTERY_F5_ALLOW_PRODUCTION_READONLY=true`**. |
+| **VALIDATION** | Unit tests + Postgres integration (embedded in D3 longitudinal Postgres CI job); production requires **`BATTERY_F5_ALLOW_PRODUCTION_READONLY=true`**. |
 | **NON_EFFECTS** | No D3/E3/env/deploy/schema changes; **`M3_3E_CALIBRATION_UNSET_V1`** unchanged. |
 | **DECISION_STATUS** | **`IMPLEMENTED`** |
 | **EVIDENCE** | `M3_3F_F5_1_BOUNDED_READ_ONLY_NATURAL_CALIBRATION_REPORT_2026-09-28.md` |

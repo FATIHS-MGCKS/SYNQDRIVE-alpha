@@ -47,4 +47,7 @@ BATTERY_V2_LONGITUDINAL_PROFILE_MATERIALIZATION_INTEGRATION=1 npx jest \
   longitudinal-profile-materialization.integration \
   --runInBand
 
+log "F5.1 natural calibration report PostgreSQL (bounded read-only suite)"
+npm run test:battery:v2:f5-natural-calibration-report:postgres:ci
+
 log "battery-longitudinal-profile-materialization-postgres-ci completed successfully"

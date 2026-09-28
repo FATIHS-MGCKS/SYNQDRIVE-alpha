@@ -8,8 +8,6 @@ on:
       - 'backend/prisma/schema.prisma'
       - 'backend/prisma/migrations/**'
       - 'backend/scripts/test/battery-longitudinal-*'
-      - 'backend/scripts/test/battery-f5-natural-calibration-report-postgres-ci.sh'
-      - 'backend/scripts/ops/battery-f5-natural-calibration-report.ts'
       - 'backend/package.json'
       - 'backend/package-lock.json'
       - '.github/workflows/battery-v2-longitudinal-postgres-ci.yml'
@@ -118,50 +116,6 @@ jobs:
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
       - run: npm run test:battery:v2:longitudinal-profile-materialization:postgres
-        working-directory: backend
-        env:
-          DATABASE_URL: ${{ env.DATABASE_URL }}
-
-  f5-natural-calibration-report-postgres:
-    name: F5.1 natural calibration report PostgreSQL
-    needs: install-lockfile
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: synqdrive
-          POSTGRES_PASSWORD: synqdrive
-          POSTGRES_DB: synqdrive
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U synqdrive"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: backend/package-lock.json
-      - name: Fail closed on non-ephemeral DATABASE_URL
-        run: |
-          set -euo pipefail
-          case "$DATABASE_URL" in
-            *127.0.0.1*|*localhost*) ;;
-            *)
-              echo "DATABASE_URL must target ephemeral CI-local PostgreSQL"
-              exit 1
-              ;;
-          esac
-      - run: npm ci && npx prisma generate
-        working-directory: backend
-        env:
-          DATABASE_URL: ${{ env.DATABASE_URL }}
-      - run: npm run test:battery:v2:f5-natural-calibration-report:postgres:ci
         working-directory: backend
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}

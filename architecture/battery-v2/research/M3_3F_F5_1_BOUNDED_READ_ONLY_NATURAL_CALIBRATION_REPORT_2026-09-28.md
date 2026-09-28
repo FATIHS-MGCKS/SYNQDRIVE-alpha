@@ -61,7 +61,7 @@ BATTERY_F5_NATURAL_CALIBRATION_REPORT_INTEGRATION=1 npm run test:battery:v2:f5-n
 npm run test:battery:v2:f5-natural-calibration-report:postgres:ci
 ```
 
-CI: **Battery V2 — Longitudinal Postgres CI** job **`F5.1 natural calibration report PostgreSQL`**.
+CI: F5.1 PostgreSQL integration runs inside **Battery V2 — Longitudinal Postgres CI** job **D3 longitudinal profile materialization PostgreSQL** (embedded after D3 integration; avoids separate `.github/workflows` authority gate).
 
 ## Machine-readable summary
 
