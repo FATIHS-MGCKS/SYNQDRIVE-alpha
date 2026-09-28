@@ -13,6 +13,7 @@ import {
   computeF5NaturalEvidenceMaturity,
 } from './f5-calibration-maturity';
 import { computeNumericStats } from './f5-descriptive-statistics';
+import { computeDefaultEligibleObservationPercent } from './f5-d4-metrics';
 import type {
   F5ReportBuildOptions,
   M3_3F_F5_NaturalCalibrationReportV1,
@@ -233,10 +234,10 @@ export async function runF5NaturalCalibrationReport(
         }
       }
 
-      const eligibleObservationPercent =
-        defaultObservationTotal > 0
-          ? (100 * eligibleObservationCount) / defaultObservationTotal
-          : null;
+      const eligibleObservationPercent = computeDefaultEligibleObservationPercent(
+        eligibleObservationCount,
+        defaultObservationTotal,
+      );
 
       const f46Revs = primaryRevisions;
       const f46Span =

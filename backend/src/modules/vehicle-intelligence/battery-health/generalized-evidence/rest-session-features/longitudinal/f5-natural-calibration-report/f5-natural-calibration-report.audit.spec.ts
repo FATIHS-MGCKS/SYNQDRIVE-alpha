@@ -15,6 +15,16 @@ describe('F5 report contract', () => {
     for (const file of files) {
       const src = fs.readFileSync(path.join(dir, file), 'utf8');
       expect(src).not.toMatch(/@Controller|@Interval|BullModule|publish/i);
+      if (file === 'f5-natural-calibration-report.service.ts') {
+        expect(src).not.toMatch(/\.(create|update|delete|upsert)\(/i);
+        expect(src).not.toMatch(/\$executeRawUnsafe\(\s*'(?!SET TRANSACTION READ ONLY)/);
+      }
     }
+  });
+
+  it('Q. classifies timeout failures with F5ReportTimeoutError', () => {
+    const { F5ReportTimeoutError } = require('./f5-natural-calibration-report.types') as typeof import('./f5-natural-calibration-report.types');
+    const err = new F5ReportTimeoutError('F5 report timeout exceeded');
+    expect(err.name).toBe('F5ReportTimeoutError');
   });
 });

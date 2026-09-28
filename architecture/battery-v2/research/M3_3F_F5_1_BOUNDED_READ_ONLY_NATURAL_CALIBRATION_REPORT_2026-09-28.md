@@ -58,7 +58,10 @@ Reusable operator CLI that reproduces F5.0 scientific analysis **deterministical
 cd backend
 npm run test:battery:v2:f5-natural-calibration-report
 BATTERY_F5_NATURAL_CALIBRATION_REPORT_INTEGRATION=1 npm run test:battery:v2:f5-natural-calibration-report:postgres
+npm run test:battery:v2:f5-natural-calibration-report:postgres:ci
 ```
+
+CI: **Battery V2 — Longitudinal Postgres CI** job **`F5.1 natural calibration report PostgreSQL`**.
 
 ## Machine-readable summary
 
