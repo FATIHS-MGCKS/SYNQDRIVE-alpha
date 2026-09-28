@@ -1,5 +1,10 @@
 import type { RawRefuelCandidate } from '@prisma/client';
 import type { RefuelRowForMatcher } from '../../physical-refuel-identity.matcher';
+import type { RawFuelSignalSample } from '../../raw-fuel-rise-detector/raw-fuel-signal-sample.types';
+import {
+  sampleAt,
+  stablePlateauSamples,
+} from '../../raw-fuel-rise-detector/testing/raw-fuel-rise-detector-test.util';
 
 /** WOB L 7503 — 2026-09-19 sparse-bridge fallback candidate (production-shaped). */
 export const WOB_2026_09_19_STRETCHED_END_CANDIDATE_ID =
@@ -122,6 +127,18 @@ export function buildWob20260927EventBCandidate(
     updatedAt: new Date('2026-09-27T23:04:09.127Z'),
     ...overrides,
   } as RawRefuelCandidate;
+}
+
+/** Production-shaped DIMO samples for WOB Event B (~4 L → ~13 L, ~23:30 Europe/Berlin). */
+export function buildWob20260927EventBSamples(): RawFuelSignalSample[] {
+  const pre = stablePlateauSamples('2026-09-27T21:30:46.923Z', 4, 3, 50);
+  const rise = [
+    sampleAt('2026-09-27T21:34:16.923Z', 6),
+    sampleAt('2026-09-27T21:35:30.000Z', 10),
+    sampleAt('2026-09-27T21:36:46.923Z', 13),
+  ];
+  const post = stablePlateauSamples('2026-09-27T21:37:30.000Z', 13, 5, 45);
+  return [...pre, ...rise, ...post];
 }
 
 /** KS MX 2024 stale-baseline READY fragment (separate defect — must not converge here). */

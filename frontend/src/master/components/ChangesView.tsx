@@ -648,6 +648,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-21T12:00:00.000Z',
   },
   {
+    id: 'eed-rfrf-ready-evidence-refresh-2026-09-28',
+    version: '4.9.4997',
+    title: 'RFRF — READY candidate evidence refresh before promotion',
+    summary: [
+      'Versioned READY refresh policy + evidenceMeta.readyEvidenceRefresh before convergence/promotion.',
+      'Bounded historical DIMO reload via existing recovery window; same-observation reconcile only.',
+      'Idempotent provider calls when refresh metadata current (UNKNOWN trust alone does not refetch forever).',
+      'Stage-4 PostgreSQL gate rfrf-ready-evidence-refresh-postgres-gate.sh; trust authority still OFF (EED-INV-020).',
+    ],
+    reason:
+      'Legacy READY_FOR_PERSIST rows could promote with stale detector/trust/baseline provenance without reloading DIMO evidence.',
+    previousBehavior:
+      'recoverReadyCandidate skipped historical sample fetch and reused first-maturity evidence/trust snapshots.',
+    details:
+      'raw-refuel-ready-evidence-refresh.policy.ts; EED-EV-0099; rfrf-ready-evidence-refresh-postgres-gate.sh',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-28T14:45:00.000Z',
+  },
+  {
     id: 'eed-rfrf-baseline-recency-guard-2026-09-28',
     version: '4.9.4996',
     title: 'RFRF — pre-fill baseline recency safety guard',
