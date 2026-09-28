@@ -111,6 +111,7 @@ interface WorkItemRow {
   run_purpose: string;
   purpose_discriminator: string;
   boundary_fingerprint: string;
+  boundary_occurrence: number;
   pipeline_version_key: string;
   pipeline_version_manifest: DiV0S4PipelineManifest;
   status: string;
@@ -215,17 +216,21 @@ export class DiV0S4WorkItemRepository {
 
       const id = randomUUID();
       const replay = purpose.runPurpose === 'RECALIBRATION_REPLAY';
+      const boundaryOccurrence =
+        purpose.runPurpose === 'PRIMARY' && purpose.purposeDiscriminator === 'PRIMARY'
+          ? await this.allocatePrimaryBoundaryOccurrence(db, scope.organization_id, scope.trip_id)
+          : 0;
       const inserted = await db.$queryRaw<Array<{ id: string }>>`
         INSERT INTO di_v0_s4_work_items (
           id, organization_id, vehicle_id, trip_id, source_family, run_purpose, purpose_discriminator,
-          replay_source_snapshot_hash, reacquisition_request_id, boundary_fingerprint,
+          replay_source_snapshot_hash, reacquisition_request_id, boundary_fingerprint, boundary_occurrence,
           pipeline_version_key, pipeline_version_manifest, status, lease_epoch, attempt_count,
           next_attempt_at, settlement_anchor_at, eligible_at, pinned_snapshot_hash, pinned_at, pinned_epoch
         )
         SELECT ${id}, ${scope.organization_id}, ${scope.vehicle_id}, ${scope.trip_id}, ${input.sourceFamily},
           ${purpose.runPurpose}, ${purpose.purposeDiscriminator}, ${purpose.replaySourceSnapshotHash}::text,
-          ${purpose.reacquisitionRequestId}::text, ${boundaryFingerprint}, ${pipelineVersionKey},
-          ${JSON.stringify(input.pipelineManifest)}::jsonb, 'PENDING', 0, 0,
+          ${purpose.reacquisitionRequestId}::text, ${boundaryFingerprint}, ${boundaryOccurrence},
+          ${pipelineVersionKey}, ${JSON.stringify(input.pipelineManifest)}::jsonb, 'PENDING', 0, 0,
           a.anchor + interval '24 hours', a.anchor, a.anchor + interval '24 hours',
           ${purpose.replaySourceSnapshotHash}::text,
           CASE WHEN ${replay}::boolean THEN clock_timestamp() END,
@@ -411,6 +416,7 @@ export class DiV0S4WorkItemRepository {
         vehicleId: row.vehicle_id,
         tripId: row.trip_id,
         boundaryFingerprint: row.boundary_fingerprint,
+        boundaryOccurrence: row.boundary_occurrence,
         pipelineVersionKey: row.pipeline_version_key,
         calibrationBundleHash: manifest.calibrationBundleHash,
         s4OrchestrationContractVersion: manifest.s4OrchestrationContractVersion,
@@ -580,15 +586,16 @@ export class DiV0S4WorkItemRepository {
         WHERE id = ${row.id} AND status = ${row.status} AND lease_epoch = ${row.lease_epoch}`;
       if (updated !== 1) reject(tid, 'CONDITIONAL_UPDATE_LOST');
       if (successorId) {
+        const successorOccurrence = await this.allocatePrimaryBoundaryOccurrence(db, row.organization_id, row.trip_id);
         try {
           await db.$executeRaw`
             INSERT INTO di_v0_s4_work_items (
               id, organization_id, vehicle_id, trip_id, source_family, run_purpose, purpose_discriminator,
-              boundary_fingerprint, pipeline_version_key, pipeline_version_manifest, status, lease_epoch,
+              boundary_fingerprint, boundary_occurrence, pipeline_version_key, pipeline_version_manifest, status, lease_epoch,
               attempt_count, next_attempt_at, settlement_anchor_at, eligible_at
             )
             SELECT ${successorId}, ${row.organization_id}, ${row.vehicle_id}, ${row.trip_id}, ${row.source_family},
-              'PRIMARY', 'PRIMARY', ${currentFingerprint}, ${row.pipeline_version_key},
+              'PRIMARY', 'PRIMARY', ${currentFingerprint}, ${successorOccurrence}, ${row.pipeline_version_key},
               ${JSON.stringify(row.pipeline_version_manifest)}::jsonb, 'PENDING', 0, 0,
               a.anchor + interval '24 hours', a.anchor, a.anchor + interval '24 hours'
             FROM (${this.settlementAnchorSql(row.trip_id)}) a`;
@@ -761,7 +768,7 @@ export class DiV0S4WorkItemRepository {
 
   private rowColumns(): Prisma.Sql {
     return Prisma.sql`id, organization_id, vehicle_id, trip_id, source_family, run_purpose, purpose_discriminator,
-      boundary_fingerprint, pipeline_version_key, pipeline_version_manifest, status, lease_epoch, lease_owner,
+      boundary_fingerprint, boundary_occurrence, pipeline_version_key, pipeline_version_manifest, status, lease_epoch, lease_owner,
       attempt_count, pinned_snapshot_hash,
       (lease_expires_at IS NOT NULL AND lease_expires_at > clock_timestamp()) AS lease_valid,
       (lease_expires_at IS NOT NULL AND lease_expires_at < clock_timestamp()) AS lease_expired`;
@@ -771,7 +778,12 @@ export class DiV0S4WorkItemRepository {
     const rows = await db.$queryRaw<WorkItemRow[]>`
       SELECT ${this.rowColumns()} FROM di_v0_s4_work_items WHERE id = ${workItemId} FOR UPDATE`;
     if (rows.length !== 1) return reject(tid, 'WORK_ITEM_NOT_FOUND');
-    return { ...rows[0], lease_epoch: BigInt(rows[0].lease_epoch), attempt_count: Number(rows[0].attempt_count) };
+    return {
+      ...rows[0],
+      lease_epoch: BigInt(rows[0].lease_epoch),
+      attempt_count: Number(rows[0].attempt_count),
+      boundary_occurrence: Number(rows[0].boundary_occurrence),
+    };
   }
 
   /** Source state, then (`id`, `lease_epoch`, `lease_owner`), then DB-clock lease validity. */
@@ -827,17 +839,30 @@ export class DiV0S4WorkItemRepository {
     if (reason === 'TRIP_NOT_COMPLETED' && scope.trip_status !== 'ONGOING') reject(tid, 'REASON_INVALID', 'trip is not ONGOING');
   }
 
+  /** Allocates the next PRIMARY boundary_occurrence under row lock on the per-trip sequence table. */
+  private async allocatePrimaryBoundaryOccurrence(db: Db, organizationId: string, tripId: string): Promise<number> {
+    const rows = await db.$queryRaw<Array<{ allocated: number }>>`
+      INSERT INTO di_v0_s4_trip_primary_boundary_seq (organization_id, trip_id, next_boundary_occurrence)
+      VALUES (${organizationId}, ${tripId}, 1)
+      ON CONFLICT (organization_id, trip_id) DO UPDATE
+        SET next_boundary_occurrence = di_v0_s4_trip_primary_boundary_seq.next_boundary_occurrence + 1
+      RETURNING (di_v0_s4_trip_primary_boundary_seq.next_boundary_occurrence - 1) AS allocated`;
+    if (rows.length !== 1) {
+      throw new Error('di_v0_s4_allocate_primary_boundary_occurrence: allocation failed');
+    }
+    return Number(rows[0].allocated);
+  }
+
   /**
    * A successor PRIMARY exists only for a PRIMARY predecessor whose trip is again COMPLETED in the
-   * same tenant, under a still-ACTIVE pipeline, and only when that logical key is free. A reverted
-   * boundary (fp1 → fp2 → fp1) finds its old key taken and gets no successor
-   * (DI-GAP-S4A-BOUNDARY-REVERT-SUCCESSOR-001).
+   * same tenant, under a still-ACTIVE pipeline. boundary_occurrence is allocated on insert so a
+   * reverted fingerprint still receives a fresh generation (S4A_BOUNDARY_REVERT_AUTHORITY §5).
    */
   private async successorIdIfEligible(
     db: Db,
     row: WorkItemRow,
     scope: TripScopeRow,
-    currentFingerprint: string,
+    _currentFingerprint: string,
   ): Promise<string | null> {
     if (row.run_purpose !== 'PRIMARY') return null;
     if (scope.trip_status !== 'COMPLETED' || scope.end_time == null) return null;
@@ -845,12 +870,7 @@ export class DiV0S4WorkItemRepository {
     const registry = await db.$queryRaw<Array<{ status: string }>>`
       SELECT status FROM di_v0_s4_pipeline_versions WHERE pipeline_version_key = ${row.pipeline_version_key} FOR SHARE`;
     if (registry[0]?.status !== 'ACTIVE') return null;
-    const taken = await db.$queryRaw<Array<{ id: string }>>`
-      SELECT id FROM di_v0_s4_work_items
-      WHERE organization_id = ${row.organization_id} AND trip_id = ${row.trip_id}
-        AND boundary_fingerprint = ${currentFingerprint} AND pipeline_version_key = ${row.pipeline_version_key}
-        AND run_purpose = 'PRIMARY' AND purpose_discriminator = 'PRIMARY'`;
-    return taken.length === 0 ? randomUUID() : null;
+    return randomUUID();
   }
 
   /** Re-hash on load (`replay.rehashOnLoadRequired`) and rebuild the channel pins from the container. */

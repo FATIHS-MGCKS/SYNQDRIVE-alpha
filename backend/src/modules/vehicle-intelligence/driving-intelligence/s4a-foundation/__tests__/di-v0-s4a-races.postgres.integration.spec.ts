@@ -300,8 +300,15 @@ interface ScenarioResult {
 
   async function insertCollidingS2Run(manifest: DiV0S4PipelineManifest): Promise<void> {
     const [item] = await admin.$queryRaw<
-      Array<{ id: string; boundary_fingerprint: string; pinned_snapshot_hash: string; run_purpose: DiV0S4RunPurpose; purpose_discriminator: string }>
-    >`SELECT id, boundary_fingerprint, pinned_snapshot_hash, run_purpose, purpose_discriminator
+      Array<{
+        id: string;
+        boundary_fingerprint: string;
+        boundary_occurrence: number;
+        pinned_snapshot_hash: string;
+        run_purpose: DiV0S4RunPurpose;
+        purpose_discriminator: string;
+      }>
+    >`SELECT id, boundary_fingerprint, boundary_occurrence, pinned_snapshot_hash, run_purpose, purpose_discriminator
       FROM di_v0_s4_work_items WHERE trip_id = ${tenant.tripId} ORDER BY created_at LIMIT 1`;
     const [snapshot] = await admin.$queryRaw<Array<{ channel_manifest: unknown }>>`
       SELECT channel_manifest FROM di_v0_s4_evidence_snapshots
@@ -312,6 +319,7 @@ interface ScenarioResult {
       vehicleId: tenant.vehicleId,
       tripId: tenant.tripId,
       boundaryFingerprint: item.boundary_fingerprint,
+      boundaryOccurrence: Number(item.boundary_occurrence),
       pipelineVersionKey: buildDiV0S4PipelineVersionKey(manifest),
       calibrationBundleHash: manifest.calibrationBundleHash,
       s4OrchestrationContractVersion: manifest.s4OrchestrationContractVersion,
@@ -630,24 +638,27 @@ interface ScenarioResult {
     await admin.$executeRaw`DELETE FROM di_v0_s4_pipeline_versions WHERE pipeline_version_key = ${pvk}`;
   }, 60_000);
 
-  it('boundary fingerprint is recomputed from canonical rows and a revert gets no duplicate successor', async () => {
+  it('boundary fingerprint is recomputed from canonical rows and a revert allocates a new PRIMARY generation', async () => {
     const config = s4aConfigFor([tenant]);
     const manifest = s4aManifestFor(config, { calibrationBundleHash: salt() });
     const repo = new DiV0S4WorkItemRepository(client('s1'), config);
     const fp1 = await currentFingerprint(admin, tenant.tripId);
     const created = await repo.createWorkItem({ tripId: tenant.tripId, sourceFamily: 'RUPTELA_R1', runPurpose: 'PRIMARY', pipelineManifest: manifest });
     expect(created.boundaryFingerprint).toBe(fp1);
-    await expect(repo.supersedeOnDrift({ workItemId: created.workItemId, reason: 'BOUNDARY_CHANGED' })).rejects.toThrow(
-      /BOUNDARY_FINGERPRINT_UNCHANGED/,
-    );
     await changeTripBoundary(admin, tenant.tripId);
     const first = await repo.supersedeOnDrift({ workItemId: created.workItemId, reason: 'BOUNDARY_CHANGED' });
     expect(first.successorWorkItemId).not.toBeNull();
     await admin.$executeRaw`UPDATE vehicle_trips SET end_time = end_time - interval '5 minutes' WHERE id = ${tenant.tripId}`;
     const second = await repo.supersedeOnDrift({ workItemId: first.successorWorkItemId!, reason: 'BOUNDARY_CHANGED' });
-    expect(second.successorWorkItemId).toBeNull();
-    const items = await itemsOfTrip();
-    expect(items.filter((i) => i.status !== 'SUPERSEDED')).toHaveLength(0);
-    expect(items.find((i) => i.id === created.workItemId)?.superseded_by_work_item_id).toBe(first.successorWorkItemId);
+    expect(second.successorWorkItemId).not.toBeNull();
+    const items = await admin.$queryRaw<
+      Array<{ id: string; status: string; boundary_fingerprint: string; boundary_occurrence: number; superseded_by_work_item_id: string | null }>
+    >`SELECT id, status, boundary_fingerprint, boundary_occurrence, superseded_by_work_item_id FROM di_v0_s4_work_items
+      WHERE trip_id = ${tenant.tripId} ORDER BY boundary_occurrence`;
+    const active = items.filter((i) => i.status !== 'SUPERSEDED');
+    expect(active).toHaveLength(1);
+    expect(active[0].boundary_fingerprint).toBe(fp1);
+    expect(active[0].boundary_occurrence).toBe(2);
+    expect(items.map((i) => i.boundary_occurrence)).toEqual([0, 1, 2]);
   }, 60_000);
 });

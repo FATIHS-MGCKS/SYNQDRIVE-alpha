@@ -9,7 +9,8 @@ import {
   DI_V0_S4_EVIDENCE_CHANNEL_ORDER,
   DI_V0_S4_EVIDENCE_CONTAINER_VERSION,
   DI_V0_S4_EVIDENCE_SNAPSHOT_HASH_PREFIX,
-  DI_V0_S4_EXECUTION_IDENTITY_VERSION,
+  DI_V0_S4_EXECUTION_IDENTITY_V1_VERSION,
+  DI_V0_S4_EXECUTION_IDENTITY_V2_VERSION,
   DI_V0_S4_LIMITS,
   DI_V0_S4_PIPELINE_KEY_PREFIX,
   DI_V0_S4_PIPELINE_MANIFEST_KEYS,
@@ -193,13 +194,14 @@ export function evaluateDiV0S4ChannelRun(
     : 'NOT_RUNNABLE';
 }
 
-// ── S2 execution identity (DI_V0_S4_EXECUTION_IDENTITY_V1) ────────────────
+// ── S2 execution identity (V1 historical, V2 active) ─────────────────────
 
 export interface DiV0S4ExecutionIdentityInput {
   organizationId: string;
   vehicleId: string;
   tripId: string;
   boundaryFingerprint: string;
+  boundaryOccurrence?: number;
   pipelineVersionKey: string;
   calibrationBundleHash: string;
   s4OrchestrationContractVersion: string;
@@ -209,7 +211,7 @@ export interface DiV0S4ExecutionIdentityInput {
   combinedInputIdentity: string;
 }
 
-const EXECUTION_IDENTITY_COMPONENTS = [
+const EXECUTION_IDENTITY_V1_COMPONENTS = [
   'organizationId',
   'vehicleId',
   'tripId',
@@ -223,9 +225,46 @@ const EXECUTION_IDENTITY_COMPONENTS = [
   'combinedInputIdentity',
 ] as const satisfies readonly (keyof DiV0S4ExecutionIdentityInput)[];
 
+const EXECUTION_IDENTITY_V2_COMPONENTS = [
+  'organizationId',
+  'vehicleId',
+  'tripId',
+  'boundaryFingerprint',
+  'boundaryOccurrence',
+  'pipelineVersionKey',
+  'calibrationBundleHash',
+  's4OrchestrationContractVersion',
+  'runPurpose',
+  'purposeDiscriminator',
+  'pinnedEvidenceSnapshotHash',
+  'combinedInputIdentity',
+] as const satisfies readonly (keyof DiV0S4ExecutionIdentityInput)[];
+
+function buildExecutionIdentityWithVersion(
+  version: string,
+  components: readonly (keyof DiV0S4ExecutionIdentityInput)[],
+  input: DiV0S4ExecutionIdentityInput,
+): string {
+  const payload = [version, ...components.map((key) => input[key] ?? null)];
+  return `${version}:sha256:${sha256Hex(JSON.stringify(payload))}`;
+}
+
+/** Historical V1 (no boundaryOccurrence). Preserved for fixture parity and pre-S4B references. */
+export function buildDiV0S4ExecutionIdentityV1(input: DiV0S4ExecutionIdentityInput): string {
+  return buildExecutionIdentityWithVersion(DI_V0_S4_EXECUTION_IDENTITY_V1_VERSION, EXECUTION_IDENTITY_V1_COMPONENTS, input);
+}
+
+/** Active runtime identity (includes boundaryOccurrence). */
+export function buildDiV0S4ExecutionIdentityV2(input: DiV0S4ExecutionIdentityInput): string {
+  if (input.boundaryOccurrence === undefined) {
+    throw new DiV0S4IdentityError('boundaryOccurrence is required for execution identity V2');
+  }
+  return buildExecutionIdentityWithVersion(DI_V0_S4_EXECUTION_IDENTITY_V2_VERSION, EXECUTION_IDENTITY_V2_COMPONENTS, input);
+}
+
+/** Default builder: V2 for new S4A repository writes. */
 export function buildDiV0S4ExecutionIdentity(input: DiV0S4ExecutionIdentityInput): string {
-  const payload = [DI_V0_S4_EXECUTION_IDENTITY_VERSION, ...EXECUTION_IDENTITY_COMPONENTS.map((key) => input[key] ?? null)];
-  return `${DI_V0_S4_EXECUTION_IDENTITY_VERSION}:sha256:${sha256Hex(JSON.stringify(payload))}`;
+  return buildDiV0S4ExecutionIdentityV2(input);
 }
 
 /** Execution-identity components that are also pipeline-manifest values must agree with the manifest. */
