@@ -151,7 +151,7 @@ assertS4aPostgresCiEnv();
       runPurpose: 'PRIMARY',
       pipelineManifest: manifest,
     })]);
-    const successes = outcomes.filter((o) => o.status === 'fulfilled').length;
+    const successes = outcomes.filter((o) => o.ok).length;
     expect(successes).toBeGreaterThanOrEqual(1);
     const active = (await tripItems()).filter((i) => i.status !== 'SUPERSEDED');
     expect(active.length).toBeLessThanOrEqual(1);

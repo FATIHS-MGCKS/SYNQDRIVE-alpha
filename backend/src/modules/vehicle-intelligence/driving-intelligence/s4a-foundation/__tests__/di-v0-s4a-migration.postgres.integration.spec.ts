@@ -26,7 +26,13 @@ const MIGRATION_NAME = '20260927200000_di_v0_s4a_dormant_foundation';
 const MIGRATION_FILE = path.join(REPO_ROOT, 'backend/prisma/migrations', MIGRATION_NAME, 'migration.sql');
 const S4B_MIGRATION_NAME = '20260928120000_di_v0_s4b_boundary_occurrence_and_execution_v2';
 const S4B_MIGRATION_FILE = path.join(REPO_ROOT, 'backend/prisma/migrations', S4B_MIGRATION_NAME, 'migration.sql');
-const S4_TABLES = ['di_v0_s4_control', 'di_v0_s4_evidence_snapshots', 'di_v0_s4_pipeline_versions', 'di_v0_s4_work_items'];
+const S4_TABLES = [
+  'di_v0_s4_control',
+  'di_v0_s4_evidence_snapshots',
+  'di_v0_s4_pipeline_versions',
+  'di_v0_s4_trip_primary_boundary_seq',
+  'di_v0_s4_work_items',
+];
 const S2_TABLES = ['di_v0_shadow_intervals', 'di_v0_shadow_runs'];
 
 interface ProcessResult {
@@ -419,6 +425,7 @@ async function insertShadowRun(prisma: PrismaClient, tenant: S4aTenant, organiza
     const first = await viaPrisma.applyWithPrisma();
     expect(first.code).toBe(0);
     expect(first.output).toContain(MIGRATION_NAME);
+    expect(first.output).toContain(S4B_MIGRATION_NAME);
     expect(await s4TablesPresent(viaPrisma.prisma)).toEqual(S4_TABLES);
     const second = await viaPrisma.applyWithPrisma();
     expect(second.code).toBe(0);
@@ -581,9 +588,9 @@ async function insertShadowRun(prisma: PrismaClient, tenant: S4aTenant, organiza
           boundary_fingerprint, boundary_occurrence, pipeline_version_key, pipeline_version_manifest, status, next_attempt_at,
           settlement_anchor_at, eligible_at, execution_identity)
         VALUES (gen_random_uuid()::text, ${tenant.organizationId}, ${tenant.vehicleId}, ${tenant.tripId}, 'RUPTELA_R1', 'PRIMARY', 'PRIMARY',
-          'DI_V0_S4_BOUNDARY_FP_V1:sha256:' || repeat('g', 64), 2,
+          'DI_V0_S4_BOUNDARY_FP_V1:sha256:' || repeat('a', 64), 2,
           'DI_V0_S4_PIPELINE_V1:sha256:' || repeat('f', 64), '{}'::jsonb, 'PENDING', now(), now(), now() + interval '24 hours',
-          'DI_V0_S4_EXECUTION_IDENTITY_V2:sha256:' || repeat('h', 64))`,
+          'DI_V0_S4_EXECUTION_IDENTITY_V2:sha256:' || repeat('b', 64))`,
     ).resolves.toBeDefined();
   });
 });
