@@ -18,6 +18,20 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-28 — M3.3F F4.5R1 observability-complete single-tick D3 canary (PASS)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | F4.5R closed production write path @ `68a05e41…` but **`F4_5R_PROMETHEUS_FIRST_TICK_EVIDENCE=INCOMPLETE`**; F4.5R1A accepted production @ **`7f5f8fdf…`** without rollback. |
+| **OBSERVATION** | Bounded root-PM2 canary with bearer-authenticated `/metrics` on both replicas; one leader completed tick; CREATED +1 revision/ack; pause within 13s; no second executed tick. |
+| **CHANGE** | Docs-only authority: **`F4_5R1_OBSERVABILITY_RESULT=PASS`**; **`F4_5R_PROMETHEUS_FIRST_TICK_EVIDENCE=CLOSED_BY_F4_5R1`**; **`SUSTAINED_D3_ACTIVATION_GATE_READY=YES`** (gate only); **`F_D3_T0` unchanged**. |
+| **WHY** | Close frozen F4.5R Prometheus contract gap without rewriting F4.5R historical runtime anchor. |
+| **VALIDATION** | Ephemeral VPS observer + Postgres row counts + authenticated metric deltas; backup gzip verified. |
+| **OBSERVED_EFFECT** | Second fleet revision (vehicle `8c850ff1…`) @ `15:00:09Z`; D3 returned OFF; flag gauges 0. |
+| **NON_EFFECTS** | No deploy of `origin/main`; no sustained D3; no E3 runtime; no manual materialization. |
+| **DECISION_STATUS** | **`PASS`** — sustained activation **not** executed |
+| **EVIDENCE** | `M3_3F_F4_5R1_OBSERVABILITY_COMPLETE_SINGLE_TICK_CANARY_2026-09-28.md` |
+
 ## CL-2026-09-28 — M3.3F F4.5R controlled D3 first-tick canary retry (PASS_WITH_OBSERVABILITY_EXCEPTION)
 
 | Field | Value |
