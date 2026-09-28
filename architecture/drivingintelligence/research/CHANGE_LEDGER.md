@@ -1185,3 +1185,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Gaps | DI-GAP-S4A-POSTGRES-CI-WIRING-001 **CLOSED**; all other P2 gaps preserved |
 | Evidence | `evidence/EXP021_S4A_POSTGRES_CI_WIRING.md` (DI-EVID-EXP021-S4A-POSTGRES-CI-001) |
 | Next slice | `S4A_DORMANT_DEPLOY_PRECHECK` (operator + branch protection required check) |
+
+### EXP-021 S4A — Dormant Production schema apply (2026-09-28)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | `EXP021_S4A_DORMANT_PRODUCTION_DEPLOY_AUTHORIZATION_RESULT=AUTHORIZED` |
+| CHANGE | Standard `vps-deploy-release.sh` @ `7f5f8fdf2` applied **only** migration `20260927200000_di_v0_s4a_dormant_foundation` (`2026-09-28T10:01:25Z`); release `20260928095512_v4994`; pre-deploy backup `db-pre-deploy-20260928095512.sql.gz` |
+| NON_EFFECTS | No S4 runtime, discovery, worker, flags, allowlisting, control-row seed, shadow runs, provider/DIMO S4 traffic, S4B, S4C |
+| Post state | S2 0/0; S4A 4 tables empty; control table empty (KILLED); pending migrations 0 |
+| Evidence | `evidence/EXP021_S4A_POST_MERGE_DEPLOY_GATE.md` §Production apply record |
+| Next slice | `S4A_POST_DEPLOY_DORMANT_SEAL` |
