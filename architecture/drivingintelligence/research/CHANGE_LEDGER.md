@@ -1197,3 +1197,13 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | NON_EFFECTS | No Production write/migration/deploy; no S4B runtime |
 | Evidence | `evidence/EXP021_S4B_PRECONDITION_CLOSURE.md` (DI-EVID-EXP021-S4B-PRECOND-001) |
 | Next slice | `S4B_PRECONDITION_IMPLEMENTATION` (schema + repository + BR/T13 Postgres tests) |
+
+### EXP-021 S4B — Discovery + claim orchestration engineering start (2026-09-28)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | `EXP021_S4B_ENGINEERING_START` (implementation; dormant / default-OFF) |
+| CHANGE | `s4b-orchestration/` — discovery service (T01 only), leader-guarded `di_v0_s4_discovery`, replica-local claim loop, executor port, canonical pipeline manifest builder; scheduler registry entries; `npm run test:di:s4b*` |
+| NON_EFFECTS | No AppModule registration, no deploy, no Production env/control row, no provider acquisition (S4C), no BullMQ, no schema migration |
+| Evidence | `evidence/EXP021_S4B_ENGINEERING_START.md` |
+| Next slice | `S4B_IMPLEMENTATION_PREMERGE_AUDIT` (draft PR; no merge/deploy/activation) |

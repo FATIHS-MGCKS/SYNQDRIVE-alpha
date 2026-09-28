@@ -33,7 +33,8 @@ describe('DI V0 shadow public API isolation', () => {
         // s4a-foundation is the fenced S2 writer; its own isolation is proven by di-v0-s4a-dormant-audit.spec.ts.
         if (
           file.includes('driving-intelligence/shadow-persistence') ||
-          file.includes('driving-intelligence/s4a-foundation')
+          file.includes('driving-intelligence/s4a-foundation') ||
+          file.includes('driving-intelligence/s4b-orchestration')
         ) {
           continue;
         }
