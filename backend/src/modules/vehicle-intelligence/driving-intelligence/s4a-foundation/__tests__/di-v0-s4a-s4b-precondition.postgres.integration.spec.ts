@@ -143,18 +143,14 @@ assertS4aPostgresCiEnv();
     const config = s4aConfigFor([tenant]);
     const repoA = new DiV0S4WorkItemRepository(client('a'), config);
     const repoB = new DiV0S4WorkItemRepository(client('b'), config);
-    const step = () =>
-      repoA.createWorkItem({ tripId: tenant.tripId, sourceFamily: 'RUPTELA_R1', runPurpose: 'PRIMARY', pipelineManifest: manifest });
-    const outcomes = await raceThroughControlGate(client('gate'), observer, [step, () => repoB.createWorkItem({
-      tripId: tenant.tripId,
-      sourceFamily: 'RUPTELA_R1',
-      runPurpose: 'PRIMARY',
-      pipelineManifest: manifest,
-    })]);
+    const outcomes = await raceThroughControlGate(client('gate'), observer, [
+      () => repoA.createWorkItem({ tripId: tenant.tripId, sourceFamily: 'RUPTELA_R1', runPurpose: 'PRIMARY', pipelineManifest: manifest }),
+      () => repoB.createWorkItem({ tripId: tenant.tripId, sourceFamily: 'RUPTELA_R1', runPurpose: 'PRIMARY', pipelineManifest: manifest }),
+    ]);
     const successes = outcomes.filter((o) => o.ok).length;
-    expect(successes).toBeGreaterThanOrEqual(1);
+    expect(successes).toBe(0);
     const active = (await tripItems()).filter((i) => i.status !== 'SUPERSEDED');
-    expect(active.length).toBeLessThanOrEqual(1);
+    expect(active).toHaveLength(1);
   }, 60_000);
 
   it('BR04 completion then drift supersede leaves a single successor generation', async () => {
@@ -243,14 +239,15 @@ assertS4aPostgresCiEnv();
       const config = s4aConfigFor([tenant, other]);
       const manifest = s4aManifestFor(config, { calibrationBundleHash: salt() });
       const repo = new DiV0S4WorkItemRepository(client('x'), config);
-      const created = await repo.createWorkItem({ tripId: tenant.tripId, sourceFamily: 'RUPTELA_R1', runPurpose: 'PRIMARY', pipelineManifest: manifest });
-      await changeTripBoundary(admin, tenant.tripId);
       await expect(
-        repo.supersedeOnDrift({ workItemId: created.workItemId, reason: 'BOUNDARY_CHANGED' }),
-      ).resolves.toBeDefined();
-      await expect(
-        admin.$executeRaw`UPDATE di_v0_s4_work_items SET organization_id = ${other.organizationId} WHERE id = ${created.workItemId}`,
-      ).rejects.toThrow(/identity columns|scope mismatch/);
+        repo.createWorkItem({
+          tripId: other.tripId,
+          sourceFamily: 'RUPTELA_R1',
+          runPurpose: 'PRIMARY',
+          pipelineManifest: manifest,
+          expectedOrganizationId: tenant.organizationId,
+        }),
+      ).rejects.toThrow(/TENANT_SCOPE_INVALID/);
     } finally {
       await cleanupS4aTenant(admin, other);
     }
