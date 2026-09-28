@@ -15,10 +15,18 @@ import { RawRefuelCandidateRecoveryRepository } from './raw-refuel-candidate-rec
 import { RawRefuelCandidateRecoveryService } from './raw-refuel-candidate-recovery.service';
 import { RawRefuelCandidateService } from './raw-refuel-candidate.service';
 import {
+  RAW_FUEL_RISE_DETECTOR_CONFIG_V1,
   RFRF_RISE_DETECTION_VERSION,
   RFRF_RISE_DETECTOR_VERSION,
 } from '../raw-fuel-rise-detector/raw-fuel-rise-detector.config';
-import { RFRF_HYBRID_ABSOLUTE_SIGNAL_TRUST_AUTHORITY_VERSION } from '../raw-fuel-refuel-fallback/raw-fuel-hybrid-absolute-signal-trust.authority';
+import {
+  buildHybridAbsoluteSignalTrustEvidence,
+  mergeHybridAbsoluteSignalTrustEvidence,
+} from '../raw-fuel-refuel-fallback/raw-fuel-hybrid-trust-evidence-metadata';
+import {
+  RFRF_HYBRID_ABSOLUTE_SIGNAL_TRUST_AUTHORITY_VERSION,
+  type RawFuelHybridTrustReasonCode,
+} from '../raw-fuel-refuel-fallback/raw-fuel-hybrid-absolute-signal-trust.authority';
 import { readBaselineRecencyFromEvidenceMeta } from '../raw-fuel-rise-detector/raw-fuel-pre-plateau-baseline-recency.policy';
 import {
   buildReadyEvidenceRefreshMeta,
@@ -173,20 +181,61 @@ function syntheticRiseSamples() {
     const baseline = readBaselineRecencyFromEvidenceMeta(row.evidenceMeta);
     expect(baseline).toBe('FRESH');
 
+    const materialRiseLiters = RAW_FUEL_RISE_DETECTOR_CONFIG_V1.absolute.materialRiseLiters;
+    const materialRisePercent = RAW_FUEL_RISE_DETECTOR_CONFIG_V1.relative.materialRisePercent;
+    const absoluteDeltaLiters =
+      row.deltaAbsoluteLiters ??
+      (row.preFuelAbsoluteLiters != null && row.postFuelAbsoluteLiters != null
+        ? row.postFuelAbsoluteLiters - row.preFuelAbsoluteLiters
+        : materialRiseLiters + 1);
+
     const relativeSignalAvailable = row.relativeSignalAvailable ?? false;
+    const hybridReasonCode: RawFuelHybridTrustReasonCode =
+      absoluteSignalTrust === 'TRUSTED' ? 'CORROBORATED_RISE' : 'RELATIVE_CONTRADICTS_ABSOLUTE';
+    const corroboratingRelativeDelta =
+      row.deltaRelativePercent != null &&
+      Number.isFinite(row.deltaRelativePercent) &&
+      row.deltaRelativePercent >= materialRisePercent
+        ? row.deltaRelativePercent
+        : materialRisePercent + 1;
+    const contradictingRelativeDelta = -materialRisePercent;
+    const relativeDeltaPercent =
+      absoluteSignalTrust === 'TRUSTED' ? corroboratingRelativeDelta : contradictingRelativeDelta;
+
+    const hybridProvenance = {
+      authorityVersion: RFRF_HYBRID_ABSOLUTE_SIGNAL_TRUST_AUTHORITY_VERSION,
+      classification: absoluteSignalTrust,
+      reasonCode: hybridReasonCode,
+      absoluteDetectionAdmissibility: 'ADMISSIBLE' as const,
+      relativeSampleCoverage: 'SUFFICIENT' as const,
+      baselineRecencyClassification: 'FRESH' as const,
+      absoluteDeltaLiters,
+      relativeDeltaPercent,
+      materialRiseLiters,
+      materialRisePercent,
+      relativePrePlateauLocal: 'VALID' as const,
+      relativePostPlateauLocal: 'VALID' as const,
+      absolutePostPlateauLocal: 'VALID' as const,
+    };
+    const hybridBlock = buildHybridAbsoluteSignalTrustEvidence(hybridProvenance, {
+      relativePrePlateauLocal: 'VALID',
+      relativePostPlateauLocal: 'VALID',
+      absolutePostPlateauLocal: 'VALID',
+    });
+
     const refreshMeta = buildReadyEvidenceRefreshMeta({
       baselineRecencyClassification: 'FRESH',
       absoluteSignalTrust,
       absoluteDetectionAdmissibility: 'ADMISSIBLE',
       relativeSignalAvailable,
-      hybridTrustReasonCode:
-        absoluteSignalTrust === 'TRUSTED' ? 'CORROBORATED_RISE' : 'RELATIVE_COVERAGE_INSUFFICIENT',
+      hybridTrustReasonCode: hybridReasonCode,
       hybridTrustAuthorityVersion: RFRF_HYBRID_ABSOLUTE_SIGNAL_TRUST_AUTHORITY_VERSION,
     });
-    const evidenceMeta = mergeReadyEvidenceRefreshIntoEvidenceMeta(
+    let evidenceMeta = mergeReadyEvidenceRefreshIntoEvidenceMeta(
       (row.evidenceMeta as Record<string, unknown> | null) ?? null,
       refreshMeta,
     );
+    evidenceMeta = mergeHybridAbsoluteSignalTrustEvidence(evidenceMeta, hybridBlock);
     const qualityMeta = {
       ...((row.qualityMeta as Record<string, unknown> | null) ?? {}),
       absoluteDetectionAdmissibility: 'ADMISSIBLE',
@@ -216,7 +265,9 @@ function syntheticRiseSamples() {
     });
 
     const persisted = await prisma.rawRefuelCandidate.findUniqueOrThrow({ where: { id: row.id } });
-    expect(evaluateReadyCandidateRefreshRequirement(persisted).status).toBe('REFRESH_CURRENT');
+    const refreshEval = evaluateReadyCandidateRefreshRequirement(persisted);
+    expect(refreshEval.status).toBe('REFRESH_CURRENT');
+    expect(refreshEval.reason).toBe('ready_evidence_refresh_current');
     expect(buildEvidenceRevisionFingerprint(candidateRowToEvidenceSlice(persisted))).toBe(
       persisted.evidenceRevisionFingerprint,
     );
