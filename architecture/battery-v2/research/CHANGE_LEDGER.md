@@ -18,6 +18,20 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-28 — M3.3F F4.5 controlled D3 first-tick canary (ERROR)
+
+| Field | Value |
+|-------|-------|
+| **OBSERVATION** | Shared env D3 true→false + batch 1; activation used synqdrive-admin PM2 (EACCES on release `.env`); authoritative root PM2 not restarted during ON window; 25m wait with no COMPLETED/FAILED leader tick; D3/ack rows remain 0. |
+| **CHANGE** | Final pre-canary backup `db-pre-f45-d3-canary-20260928014025.sql.gz`; recovery: stop admin PM2, root `pm2 restart --update-env`, D3 OFF converged. |
+| **WHY** | Execute F4.4 frozen first-tick canary with automatic pause. |
+| **VALIDATION** | Production DB/metrics/logs; external health post-recovery. |
+| **OBSERVED_EFFECT** | **No authoritative D3 materialization path exercised.** |
+| **NON_EFFECTS** | No deploy; no E3; C3 shadow continued (+1 row). |
+| **REGRESSIONS_OR_TRADEOFFS** | Transient parallel admin PM2 crash-loop on 3001/3002 until killed. |
+| **DECISION_STATUS** | **ERROR** (infra/operator identity — retry required) |
+| **EVIDENCE** | `M3_3F_F4_5_CONTROLLED_D3_FIRST_TICK_CANARY_2026-09-28.md` |
+
 ## CL-2026-09-28 — M3.3F F4.4 controlled D3 activation preflight (read-only)
 
 | Field | Value |
