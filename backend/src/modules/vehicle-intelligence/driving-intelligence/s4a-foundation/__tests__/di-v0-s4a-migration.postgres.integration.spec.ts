@@ -679,10 +679,9 @@ async function insertShadowRun(prisma: PrismaClient, tenant: S4aTenant, organiza
     await s4bArtifactsAbsent(clone.prisma);
   });
 
-  async function assertWriteBlockedByMigrationLocks(
-    clone: Clone,
-    startWrite: (writer: PrismaClient) => Promise<unknown>,
-  ): Promise<void> {
+  it('S4B-M13 empty-state lock phase holds ShareRowExclusiveLock on all guarded tables before DDL', async () => {
+    const clone = await freshClone();
+    await applyS4a(clone);
     const locker = client(clone.name);
     const writer = client(clone.name);
     const observer = client(clone.name);
@@ -691,7 +690,7 @@ async function insertShadowRun(prisma: PrismaClient, tenant: S4aTenant, organiza
     const lockTx = locker.$transaction(
       async (tx) => {
         await tx.$executeRawUnsafe(`
-          SET LOCAL lock_timeout = '60s';
+          SET LOCAL lock_timeout = '5s';
           SET LOCAL statement_timeout = '60s';
           LOCK TABLE "di_v0_s4_work_items", "di_v0_shadow_runs", "di_v0_shadow_intervals" IN SHARE ROW EXCLUSIVE MODE`);
         locked.resolve();
@@ -700,13 +699,27 @@ async function insertShadowRun(prisma: PrismaClient, tenant: S4aTenant, organiza
       { timeout: 30_000 },
     );
     await locked.promise;
-    const writePromise = startWrite(writer);
+    const tenant = await seedS4aTenant(clone.prisma);
+    const writePromise = writer.$executeRaw`
+      INSERT INTO di_v0_shadow_runs (id, organization_id, vehicle_id, trip_id, source_family, structural_version,
+        estimator_version, calibration_version, source_family_policy_version, input_evidence_version, idempotency_key, updated_at)
+      VALUES (${randomUUID()}, ${tenant.organizationId}, ${tenant.vehicleId}, ${tenant.tripId}, 'RUPTELA_R1', 'S', 'E', 'C', 'P', 'IEV',
+        ${randomUUID()}, now())`;
     try {
       await waitForLockWaiters(observer, 1, 15_000);
-      const [{ blocked }] = await observer.$queryRaw<Array<{ blocked: bigint }>>`
-        SELECT count(*)::bigint AS blocked FROM pg_stat_activity
-        WHERE datname = current_database() AND wait_event_type = 'Lock' AND pid <> pg_backend_pid()`;
-      expect(Number(blocked)).toBeGreaterThanOrEqual(1);
+      const lockedTables = await clone.prisma.$queryRaw<Array<{ relname: string }>>`
+        SELECT c.relname FROM pg_locks l
+        JOIN pg_class c ON c.oid = l.relation
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public'
+          AND l.mode = 'ShareRowExclusiveLock'
+          AND c.relname IN ('di_v0_s4_work_items', 'di_v0_shadow_runs', 'di_v0_shadow_intervals')
+        ORDER BY c.relname`;
+      expect(lockedTables.map((r) => r.relname)).toEqual([
+        'di_v0_s4_work_items',
+        'di_v0_shadow_intervals',
+        'di_v0_shadow_runs',
+      ]);
       release.resolve();
       await lockTx;
       await writePromise;
@@ -716,48 +729,6 @@ async function insertShadowRun(prisma: PrismaClient, tenant: S4aTenant, organiza
       await writePromise.catch(() => undefined);
       throw error;
     }
-  }
-
-  it('S4B-M13a empty-state serialization blocks concurrent shadow_runs insert', async () => {
-    const clone = await freshClone();
-    await applyS4a(clone);
-    const tenant = await seedS4aTenant(clone.prisma);
-    await assertWriteBlockedByMigrationLocks(clone, (writer) =>
-      writer.$executeRaw`
-        INSERT INTO di_v0_shadow_runs (id, organization_id, vehicle_id, trip_id, source_family, structural_version,
-          estimator_version, calibration_version, source_family_policy_version, input_evidence_version, idempotency_key, updated_at)
-        VALUES (${randomUUID()}, ${tenant.organizationId}, ${tenant.vehicleId}, ${tenant.tripId}, 'RUPTELA_R1', 'S', 'E', 'C', 'P', 'IEV',
-          ${randomUUID()}, now())`,
-    );
-  });
-
-  it('S4B-M13b empty-state serialization blocks concurrent work_items insert', async () => {
-    const clone = await freshClone();
-    await applyS4a(clone);
-    const tenant = await seedS4aTenant(clone.prisma);
-    const pvk = `DI_V0_S4_PIPELINE_V1:sha256:${'a'.repeat(64)}`;
-    await clone.prisma.$executeRaw`
-      INSERT INTO di_v0_s4_pipeline_versions (pipeline_version_key, manifest, status)
-      VALUES (${pvk}, '{}'::jsonb, 'ACTIVE')`;
-    await assertWriteBlockedByMigrationLocks(clone, (writer) =>
-      writer.$executeRaw`
-        INSERT INTO di_v0_s4_work_items (id, organization_id, vehicle_id, trip_id, source_family, run_purpose, purpose_discriminator,
-          boundary_fingerprint, pipeline_version_key, pipeline_version_manifest, status, next_attempt_at, settlement_anchor_at, eligible_at)
-        VALUES (gen_random_uuid()::text, ${tenant.organizationId}, ${tenant.vehicleId}, ${tenant.tripId}, 'RUPTELA_R1', 'PRIMARY', 'PRIMARY',
-          ${'DI_V0_S4_BOUNDARY_FP_V1:sha256:' + 'b'.repeat(64)}, ${pvk}, '{}'::jsonb, 'PENDING', now(), now(), now() + interval '24 hours')`,
-    );
-  });
-
-  it('S4B-M13c empty-state serialization blocks concurrent shadow_intervals insert', async () => {
-    const clone = await freshClone();
-    await applyS4a(clone);
-    const tenant = await seedS4aTenant(clone.prisma);
-    const preRunId = await insertShadowRun(clone.prisma, tenant);
-    await assertWriteBlockedByMigrationLocks(clone, (writer) =>
-      writer.$executeRaw`
-        INSERT INTO di_v0_shadow_intervals (id, shadow_run_id, organization_id, vehicle_id, trip_id)
-        VALUES (${randomUUID()}, ${preRunId}, ${tenant.organizationId}, ${tenant.vehicleId}, ${tenant.tripId})`,
-    );
   });
 
   it('S4B-M14 lock timeout: open S2 shadow_intervals writer blocks migration with no partial V2 schema', async () => {
