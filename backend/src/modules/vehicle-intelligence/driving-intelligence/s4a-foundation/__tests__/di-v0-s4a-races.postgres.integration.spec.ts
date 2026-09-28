@@ -61,14 +61,8 @@ const CONCURRENT_GROUPS: Record<string, number[]> = {
   R13_REPLAY_WHILE_PRIMARY_EXISTS: [1, 2],
 };
 
-/**
- * R24 expects itemCount 2 / activePrimaryCount 1 after T13. The registry binds the successor insert
- * to T11 only, so the successor comes from the next discovery pass
- * (DI-CONTRA-S4A-T13-SUCCESSOR-WRITE-BINDING-001); the harness appends that T01 step.
- */
-const APPENDED_STEPS: Record<string, Step[]> = {
-  R24_HOLDER_SUPERSEDE_ON_BOUNDARY_CHANGE: [['create', 'd-next', 'PRIMARY']],
-};
+/** Extra steps not encoded in the machine contract fixture (none currently). */
+const APPENDED_STEPS: Record<string, Step[]> = {};
 
 interface ScenarioResult {
   rejections: Array<{ label: string; code: string }>;

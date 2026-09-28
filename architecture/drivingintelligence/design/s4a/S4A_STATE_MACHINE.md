@@ -34,7 +34,9 @@ A pin can exist in PENDING or FAILED_RETRYABLE: the worker pinned, then failed o
 | T10_EXHAUST | LEASED | FAILED_TERMINAL | reaper | +1 | keep | lease expired, attempts exhausted, SKIP LOCKED, maintenance control plane enabled |
 | T11_SUPERSEDE | PENDING, LEASED, FAILED_RETRYABLE, COMPLETED, FAILED_TERMINAL, SKIPPED_INELIGIBLE | SUPERSEDED | drift watcher | +1 | keep | row lock, fingerprint changed, reason set, successor same org/trip or NULL, maintenance control plane enabled |
 | T12_RETIRE | PENDING, LEASED, FAILED_RETRYABLE | SUPERSEDED | retirement reaper | +1 | keep | row lock, SKIP LOCKED, pvk RETIRED in registry, lease expired or not leased, reason `PIPELINE_RETIRED`, no successor, maintenance control plane enabled |
-| T13_HOLDER_SUPERSEDE | LEASED | SUPERSEDED | lease holder | +1 | keep | row lock, epoch match, not expired, fingerprint changed (detected at attempt start or in the completion tx), reason set, successor same org/trip or NULL, worker control plane enabled |
+| T13_HOLDER_SUPERSEDE | LEASED | SUPERSEDED | lease holder | +1 | keep | row lock, epoch match, not expired, fingerprint changed, reason set, **superseded_by pointer NULL** (no successor insert — see [S4A_T13_HOLDER_SUPERSEDE_AUTHORITY.md](S4A_T13_HOLDER_SUPERSEDE_AUTHORITY.md)), worker control plane enabled |
+
+**AMENDED BY C1D.10F (2026-09-28):** T13 does not perform `W_SUCCESSOR_PRIMARY_INSERT`; next PRIMARY is T01 (discovery) or T11 drift watcher.
 
 C1D.10C changes against v1: T11's actor was "drift watcher or lease holder". The lease-holder path is now the separate T13 with full fencing, so the validator can require `EPOCH_MATCH` and `LEASE_NOT_EXPIRED_DB_CLOCK` on **every** lease-holder transition. T12 replaces the unspecified "operator step" for retired pipeline versions. The "kill switch open" guard is replaced by the control-plane guards ([S4A_CONTROL_PLANE.md](S4A_CONTROL_PLANE.md)).
 

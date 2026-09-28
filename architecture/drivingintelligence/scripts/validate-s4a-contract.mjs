@@ -151,7 +151,7 @@ export function validateContract(c, { docs = [], printHashes = false } = {}) {
     }
     for (const g of ['TENANT_SCOPE_VALID', 'LOGICAL_KEY_UNIQUE', 'ACTIVE_PRIMARY_UNIQUE', 'PIPELINE_VERSION_ACTIVE']) if (!has('T01_CREATE', g)) fail(`T01_CREATE lacks ${g}`);
     if (!has('T05_PIN', 'SNAPSHOT_SAME_TENANT') || !has('T05_PIN', 'PIN_NOT_SET')) fail('T05_PIN must require PIN_NOT_SET and SNAPSHOT_SAME_TENANT (tenancy guard)');
-    if (!eq(c.identity.logicalKey, ['organizationId', 'tripId', 'boundaryFingerprint', 'pipelineVersionKey', 'runPurpose', 'purposeDiscriminator'])) fail('logical key changed');
+    if (!eq(c.identity.logicalKey, ['organizationId', 'tripId', 'boundaryFingerprint', 'pipelineVersionKey', 'runPurpose', 'purposeDiscriminator', 'boundaryOccurrence'])) fail('logical key changed');
     if (!eq(c.identity.activePrimaryKey, ['organizationId', 'tripId', 'pipelineVersionKey'])) fail('active-PRIMARY unique key missing or changed (duplicate active PRIMARY)');
     if (c.identity.activePrimaryPredicate !== "runPurpose = 'PRIMARY' AND status <> 'SUPERSEDED'") fail('active-PRIMARY predicate missing or changed');
     if (!eq(c.identity.evidenceKey, ['organizationId', 'snapshotHash'])) fail('evidence key changed');
@@ -289,10 +289,22 @@ export function validateContract(c, { docs = [], printHashes = false } = {}) {
   const s2Key = (tripId, iev) => sha256([tripId, 'RUPTELA_R1', 'S', 'E', 'C', 'P', iev].join('|'));
   section('S2 execution identity', () => {
     if (s2.version !== 'DI_V0_S4_EXECUTION_IDENTITY_V1') fail('S2 execution identity version must be DI_V0_S4_EXECUTION_IDENTITY_V1');
+    const s2Target = c.s2ExecutionIdentityImplementationTarget;
+    if (!s2Target || s2Target.version !== 'DI_V0_S4_EXECUTION_IDENTITY_V2') {
+      fail('s2ExecutionIdentityImplementationTarget must declare DI_V0_S4_EXECUTION_IDENTITY_V2 for boundaryOccurrence');
+    }
+    if (!s2Target.components.includes('boundaryOccurrence')) fail('implementation target must include boundaryOccurrence');
+    for (const k of c.identity.logicalKey) if (k !== 'boundaryOccurrence' && !s2Target.components.includes(k)) {
+      fail(`implementation target must contain logical-key component ${k}`);
+    }
     for (const k of S2_REQUIRED_COMPONENTS) if (!s2.components.includes(k)) fail(`S2 execution identity omits ${k}`);
     for (const k of [...c.identity.excludedFromEveryHash, ...(s2.forbiddenComponents ?? [])]) if (s2.components.includes(k)) fail(`S2 execution identity must not include ${k}`);
     if (!s2.forbiddenComponents?.includes('channelSnapshotVersion')) fail('S2 execution identity must forbid ambiguous channelSnapshotVersion');
-    for (const k of c.identity.logicalKey) if (!s2.components.includes(k)) fail(`S2 execution identity must contain logical-key component ${k}`);
+    for (const k of c.identity.logicalKey) {
+      if (k === 'boundaryOccurrence') {
+        if (s2.components.includes(k)) fail('boundaryOccurrence belongs in implementation target V2, not current V1 identity');
+      } else if (!s2.components.includes(k)) fail(`S2 execution identity must contain logical-key component ${k}`);
+    }
     const layers = c.identityLayers;
     if (layers.distinct !== true || layers.WORK_ITEM_LOGICAL_IDENTITY !== 'identity.logicalKey' || layers.EVIDENCE_IDENTITY !== 'identity.evidenceKey' || layers.S2_RESULT_EXECUTION_IDENTITY !== 's2ExecutionIdentity') {
       fail('identity layers must be distinct: work item logical != evidence != S2 execution');
@@ -648,6 +660,7 @@ export function validateContract(c, { docs = [], printHashes = false } = {}) {
     const rejected = [];
     const committed = [];
     const byLogical = new Set();
+    let nextBoundaryOccurrence = 0;
     const applied = (from, to, id) => {
       if (!legal.has(`${from}->${to}`)) fail(`${race.id}: model applied illegal ${from}->${to} (${id})`);
     };
@@ -655,7 +668,10 @@ export function validateContract(c, { docs = [], printHashes = false } = {}) {
     const target = () => items.find((i) => i.purpose === 'PRIMARY' && i.status !== 'SUPERSEDED') ?? items[items.length - 1] ?? items[0];
     const create = (purpose, disc, fpv = currentFp) => {
       const discriminator = purpose === 'PRIMARY' ? 'PRIMARY' : disc;
-      const key = ['org-A', 'trip-A1-1', fpv, 'pvk-1', purpose, discriminator].join('|');
+      const occurrence = purpose === 'PRIMARY' ? nextBoundaryOccurrence++ : 0;
+      const key = purpose === 'PRIMARY'
+        ? ['org-A', 'trip-A1-1', fpv, 'pvk-1', purpose, discriminator, occurrence].join('|')
+        : ['org-A', 'trip-A1-1', fpv, 'pvk-1', purpose, discriminator].join('|');
       if (has('T01_CREATE', 'LOGICAL_KEY_UNIQUE') && byLogical.has(key)) return false;
       if (has('T01_CREATE', 'ACTIVE_PRIMARY_UNIQUE') && purpose === 'PRIMARY' && activePrimaryExists()) return false;
       if (has('T01_CREATE', 'PIPELINE_VERSION_ACTIVE') && registry !== 'ACTIVE') return false;
@@ -768,7 +784,14 @@ export function validateContract(c, { docs = [], printHashes = false } = {}) {
           const tid = 'T13_HOLDER_SUPERSEDE';
           let allowed = Boolean(T(tid)) && holder(tid, it, actor);
           if (allowed && has(tid, 'BOUNDARY_FINGERPRINT_CHANGED')) allowed = it.fp !== currentFp;
-          if (allowed) supersede(it, 'BOUNDARY_CHANGED', a1); else ok = false;
+          if (allowed) {
+            applied(it.status, 'SUPERSEDED', tid);
+            it.status = 'SUPERSEDED';
+            it.epoch += 1;
+            it.supersededReason = 'BOUNDARY_CHANGED';
+            release(it);
+            if (a1) currentFp = a1;
+          } else ok = false;
           break;
         }
         case 'supersede': {

@@ -100,9 +100,9 @@ Record disagreements between sources. **Do not resolve by guessing.**
 |------|-------|--------|
 | A | T13 `HOLDER_SUPERSEDE` carries guard `SUCCESSOR_SAME_TENANT_AND_TRIP_OR_NULL`; fixture R24 expects `itemCount: 2` after a holder supersede | `design/s4a/s4a-contract.v2.json` `transitions[T13]`, `fixtures.races[R24]` |
 | B | `authoritativeWrites.W_SUCCESSOR_PRIMARY_INSERT` is bound only to `T11_SUPERSEDE`; no write class allows T13 to insert a successor | `s4a-contract.v2.json` `authoritativeWrites` |
-| **Status** | **OPEN** (2026-09-27) — S4A implements B (T13 writes no successor, the `OR_NULL` branch); the R24 harness appends a separate T01 `create` step, which produces the second item. No contract semantics changed | `evidence/EXP021_S4A_DORMANT_FOUNDATION_IMPLEMENTATION.md` §4 |
+| **Status** | **RESOLVED** (2026-09-28, C1D.10F) — T13 is supersede-only (`W_T13_HOLDER_SUPERSEDE`); guard `SUPERSEDED_BY_POINTER_MUST_BE_NULL`; `W_SUCCESSOR_PRIMARY_INSERT` remains T11-only; R24 fixture includes explicit post-T13 `create` step | `design/s4a/S4A_T13_HOLDER_SUPERSEDE_AUTHORITY.md`, `evidence/EXP021_S4B_PRECONDITION_CLOSURE.md` |
 | **Cause** | C1D.10E froze the write registry after the T13 guard list was written | |
-| **Resolution path** | Authority clarification: either bind `W_SUCCESSOR_PRIMARY_INSERT` to T13, or drop the successor guard from T13 and rewrite R24 with an explicit create step | |
+| **Resolution** | Authority clarification (option B): no successor write on T13; discovery T01 materializes next PRIMARY | |
 | **Graph** | DI-CONTRA-S4A-T13-SUCCESSOR-WRITE-BINDING-001, DI-EVID-EXP021-S4A-IMPL-001 |
 
 ## DI-CONTRA-S4A-CONTAINER-VERSION-NAMING-001 — Evidence container version name

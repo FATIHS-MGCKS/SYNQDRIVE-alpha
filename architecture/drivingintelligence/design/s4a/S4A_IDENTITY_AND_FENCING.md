@@ -9,10 +9,10 @@
 | 1. Trip anchor | (`organization_id`, `vehicle_id`, `trip_id`) | tenant and trip | canonical FKs + scope-guard trigger |
 | 2. Boundary fingerprint | `DI_V0_S4_BOUNDARY_FP_V1:sha256:…` | which boundary version of the trip | builder (pure), drift watcher re-hash |
 | 3. Pipeline version key | `DI_V0_S4_PIPELINE_V1:sha256:…` | which code/config computed it | builder (pure), manifest stored next to the key |
-| 4. **Logical key** (`LOGICAL_KEY_FINAL`) | (`organization_id`, `trip_id`, `boundary_fingerprint`, `pipeline_version_key`, `run_purpose`, `purpose_discriminator`) | one work item per logical question | `di_v0_s4_wi_logical_key_uq` |
+| 4. **Logical key** (`LOGICAL_KEY_FINAL`) | (`organization_id`, `trip_id`, `boundary_fingerprint`, `pipeline_version_key`, `run_purpose`, `purpose_discriminator`, `boundary_occurrence`) — occurrence monotonic per trip for **PRIMARY** only ([S4A_BOUNDARY_REVERT_AUTHORITY.md](S4A_BOUNDARY_REVERT_AUTHORITY.md)) | one work item per logical question | `di_v0_s4_wi_logical_key_uq` |
 | 5. Active PRIMARY | (`organization_id`, `trip_id`, `pipeline_version_key`) WHERE PRIMARY ∧ ≠ SUPERSEDED | at most one live authoritative answer | `di_v0_s4_wi_active_primary_uq` |
 | 6. Evidence key | (`organization_id`, `snapshot_hash`) | content-addressed input | unique + re-hash on load |
-| 7. **S2 result execution identity** (C1D.10C) | `DI_V0_S4_EXECUTION_IDENTITY_V1:sha256:…`, carried in S2 `inputEvidenceVersion`, enforced through (`organization_id`, `idempotencyKey`) | one persisted S2 run per semantic execution | existing S2 unique + identity comparison on conflict (§4a) |
+| 7. **S2 result execution identity** (C1D.10C, **AMENDED C1D.10F**) | `DI_V0_S4_EXECUTION_IDENTITY_V2:sha256:…` (adds `boundaryOccurrence`), carried in S2 `inputEvidenceVersion`, enforced through (`organization_id`, `idempotencyKey`) | one persisted S2 run per semantic execution | existing S2 unique + identity comparison on conflict (§4a) |
 | 8. Fencing token | (`work_item_id`, `lease_epoch`) | which lease holder may write | conditional updates + row lock |
 
 `WORK_ITEM_LOGICAL_IDENTITY` (level 4) ≠ `EVIDENCE_IDENTITY` (level 6) ≠ `S2_RESULT_EXECUTION_IDENTITY` (level 7): the logical key names the question, the evidence key names the input bytes, the execution identity names the complete semantic computation (question + input + versions). Contract `identityLayers`; the validator rejects evidence components in the logical key and requires every logical-key component inside the execution identity.
@@ -62,7 +62,13 @@
 
 **Known fragility.** `discardTrip` and `splitTripAtGap` overwrite `rawDetectionMeta`, which can erase `boundaryRepair` and change `boundaryRepairGeneration` to NULL. That is a fingerprint change and leads to supersession: fail-safe (an extra item) rather than fail-silent.
 
-## 4a. S2 execution identity (`DI_V0_S4_EXECUTION_IDENTITY_V1`, P1-A, C1D.10C)
+## 4a. S2 execution identity (`DI_V0_S4_EXECUTION_IDENTITY_V2`, P1-A, C1D.10C, C1D.10F)
+
+**AMENDED BY C1D.10F:** V2 adds `boundaryOccurrence` after `boundaryFingerprint` so a boundary revert cannot alias a prior COMPLETED S2 row. V1 remains historical for pre-amendment references only.
+
+**Definition (V2).** Same component list as V1 with `boundaryOccurrence` inserted after `boundaryFingerprint` (see `s2ExecutionIdentity.components` in contract v2).
+
+## 4a-hist. S2 execution identity V1 (`DI_V0_S4_EXECUTION_IDENTITY_V1`, superseded by V2)
 
 **Problem (C1D.10B).** The S2 key is `sha256(tripId|sourceFamily|structural|estimator|calibrationVersion|sourceFamilyPolicy|inputEvidenceVersion)`. In C1D.10A, `inputEvidenceVersion` was the combined input identity, so two work items differing only in `pipelineVersionKey`, `calibrationBundleHash`, S4 orchestration version, boundary fingerprint or run purpose could alias to one persisted S2 run.
 
