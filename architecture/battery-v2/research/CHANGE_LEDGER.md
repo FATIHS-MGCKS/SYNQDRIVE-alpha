@@ -18,6 +18,20 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-28 — M3.3F F5.0 natural-data calibration evidence bootstrap (PASS)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | F4.6 left D3 sustained ON; **`M3_3F_F4_COMPLETE=YES`**; all **`CAL-M3.3E-*`** + **`NAT-M3.3F-001..003`** maturity **unset**. |
+| **OBSERVATION** | Read-only Postgres + offline D4→E1→E3 on cohort **C** (**7** revisions); charge class **100% UNKNOWN**; repeatability **insufficient**; **`M3_3E_CALIBRATION_UNSET_V1`** unchanged. |
+| **CHANGE** | **`F5_DATA_PIPELINE_RESULT=PASS`**; **`F5_CALIBRATION_MATURITY=DISTRIBUTIONS_EMERGING`**; CAL/NAT maturity matrix recorded; **`F5_1_ENGINEERING_RECOMMENDED=YES`**. |
+| **WHY** | Start M3.3F natural-data calibration science on live D3 shadow output without thresholds or E3 runtime. |
+| **VALIDATION** | `BEGIN READ ONLY` DB gate; ephemeral VPS analysis JSON; integrity/tenant **0** defects. |
+| **OBSERVED_EFFECT** | Descriptive distributions for **6/11** CAL items; **5/11** still **COLLECTING**. |
+| **NON_EFFECTS** | No env/PM2/deploy/DB write; no E3 persistence; no customer health. |
+| **DECISION_STATUS** | **`PASS`** (pipeline) — calibration remains **early** |
+| **EVIDENCE** | `M3_3F_F5_0_NATURAL_DATA_CALIBRATION_EVIDENCE_BOOTSTRAP_2026-09-28.md` |
+
 ## CL-2026-09-28 — M3.3F F4.6 sustained D3 shadow activation (PASS)
 
 | Field | Value |
