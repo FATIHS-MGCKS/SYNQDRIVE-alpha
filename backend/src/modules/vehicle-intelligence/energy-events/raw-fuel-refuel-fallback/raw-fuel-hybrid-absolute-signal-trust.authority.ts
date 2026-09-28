@@ -26,6 +26,31 @@ export type RawFuelHybridTrustReasonCode =
   | 'CORROBORATED_RISE'
   | 'INSUFFICIENT_CORROBORATION';
 
+/** Authoritative runtime domain for persisted hybrid trust reason codes. */
+export const RAW_FUEL_HYBRID_TRUST_REASON_CODE_VALUES: readonly RawFuelHybridTrustReasonCode[] = [
+  'NO_EVIDENCE',
+  'ABSOLUTE_MALFORMED',
+  'ABSOLUTE_INADMISSIBLE',
+  'RISE_INCOHERENT',
+  'RISE_RESET_PATTERN',
+  'BASELINE_NOT_FRESH',
+  'BASELINE_PROVENANCE_MISSING',
+  'RELATIVE_COVERAGE_INSUFFICIENT',
+  'RELATIVE_CORROBORATES',
+  'RELATIVE_CONTRADICTS_ABSOLUTE',
+  'CORROBORATED_RISE',
+  'INSUFFICIENT_CORROBORATION',
+] as const;
+
+export function isRawFuelHybridTrustReasonCode(
+  value: unknown,
+): value is RawFuelHybridTrustReasonCode {
+  return (
+    typeof value === 'string' &&
+    (RAW_FUEL_HYBRID_TRUST_REASON_CODE_VALUES as readonly string[]).includes(value)
+  );
+}
+
 export interface RawFuelHybridTrustSample {
   timestamp: Date;
   absoluteLiters?: number | null;
