@@ -23,11 +23,21 @@ import {
   isRfrfNativeFallbackConvergenceAuthorized,
 } from '@config/raw-fuel-refuel-fallback.config';
 import { buildReadyEvidenceRefreshMeta } from './raw-refuel-ready-evidence-refresh-metadata';
+import {
+  buildHybridAbsoluteSignalTrustEvidence,
+  mergeHybridAbsoluteSignalTrustEvidence,
+} from './raw-fuel-hybrid-trust-evidence-metadata';
 import { evaluateReadyCandidateRefreshRequirement } from './raw-refuel-ready-evidence-refresh.policy';
 import {
   buildWob20260927EventBCandidate,
   buildWob20260927EventBSamples,
 } from './testing/wob-2026-09-19-stretched-end.fixture';
+import {
+  buildEventBDistantRelativeSamples,
+  buildEventBDualChannelCorroboratedSamples,
+  buildEventBContradictoryDualChannelSamples,
+} from './testing/hybrid-trust-event-b-samples.fixture';
+import { buildRawFuelSignalTrustObservationContext } from './raw-fuel-signal-trust.resolver';
 
 function readyReadiness(): RawRefuelCandidateReadinessResult {
   return {
@@ -62,37 +72,10 @@ function freshObservationContext() {
   };
 }
 
-function buildCorroboratedDualChannelSamples() {
-  const preAbs = stablePlateauSamples('2026-09-27T21:30:46.923Z', 4, 3, 50, 'absolute');
-  const preRel = stablePlateauSamples('2026-09-27T21:30:46.923Z', 8, 3, 50, 'relative');
-  const rise = [
-    sampleAt('2026-09-27T21:34:16.923Z', 6, 12),
-    sampleAt('2026-09-27T21:35:30.000Z', 10, 18),
-    sampleAt('2026-09-27T21:36:46.923Z', 13, 25),
-  ];
-  const postAbs = stablePlateauSamples('2026-09-27T21:37:30.000Z', 13, 5, 45, 'absolute');
-  const postRel = stablePlateauSamples('2026-09-27T21:37:30.000Z', 25, 5, 45, 'relative');
-  const merged = [...preAbs];
-  for (let i = 0; i < preRel.length; i++) {
-    merged[i] = {
-      ...merged[i]!,
-      relativePercent: preRel[i]!.relativePercent,
-    };
-  }
-  for (const r of rise) merged.push(r);
-  for (let i = 0; i < postAbs.length; i++) {
-    merged.push({
-      ...postAbs[i]!,
-      relativePercent: postRel[i]!.relativePercent,
-    });
-  }
-  return merged;
-}
-
-describe('Hybrid absolute signal trust authority v1', () => {
+describe('Hybrid absolute signal trust authority v2', () => {
   it('T1 corroborated absolute + relative rise => TRUSTED (hybrid authority)', () => {
     const provenance = evaluateHybridAbsoluteSignalTrust({
-      samples: buildCorroboratedDualChannelSamples(),
+      samples: buildEventBDualChannelCorroboratedSamples(),
       scanWindowStart: windowStart,
       scanWindowEnd: windowEnd,
       observation: freshObservationContext(),
@@ -112,6 +95,35 @@ describe('Hybrid absolute signal trust authority v1', () => {
     expect(provenance.reasonCode).toBe('RELATIVE_COVERAGE_INSUFFICIENT');
   });
 
+  it('T2b distant relative samples cannot earn TRUSTED', () => {
+    const provenance = evaluateHybridAbsoluteSignalTrust({
+      samples: buildEventBDistantRelativeSamples(),
+      scanWindowStart: windowStart,
+      scanWindowEnd: windowEnd,
+      observation: freshObservationContext(),
+    });
+    expect(provenance.classification).toBe('UNKNOWN');
+    expect(provenance.reasonCode).toBe('RELATIVE_COVERAGE_INSUFFICIENT');
+  });
+
+  it('missing persisted baseline uses BASELINE_PROVENANCE_MISSING not NON-FRESH', () => {
+    const ctx = buildRawFuelSignalTrustObservationContext({
+      evidenceMeta: {},
+      riseOnsetAt: riseOnset,
+      riseEndAt: riseEnd,
+      preFuelAbsoluteLiters: 4,
+      postFuelAbsoluteLiters: 13,
+    });
+    expect(ctx.baselineRecencyClassification).toBeUndefined();
+    const provenance = evaluateHybridAbsoluteSignalTrust({
+      samples: buildEventBDualChannelCorroboratedSamples(),
+      scanWindowStart: windowStart,
+      scanWindowEnd: windowEnd,
+      observation: ctx,
+    });
+    expect(provenance.reasonCode).toBe('BASELINE_PROVENANCE_MISSING');
+  });
+
   it('T3 partial relative coverage => UNKNOWN', () => {
     const samples = buildWob20260927EventBSamples().map((s, i) =>
       i < 2 ? { ...s, relativePercent: 8 } : s,
@@ -129,27 +141,8 @@ describe('Hybrid absolute signal trust authority v1', () => {
   });
 
   it('T4 absolute rise + contradictory relative fall => UNTRUSTED', () => {
-    const preAbs = stablePlateauSamples('2026-09-27T21:30:46.923Z', 4, 3, 50, 'absolute');
-    const preRel = stablePlateauSamples('2026-09-27T21:30:46.923Z', 40, 3, 50, 'relative');
-    const rise = [
-      sampleAt('2026-09-27T21:34:16.923Z', 12, 35),
-      sampleAt('2026-09-27T21:36:46.923Z', 13, 8),
-    ];
-    const postAbs = stablePlateauSamples('2026-09-27T21:37:30.000Z', 13, 5, 45, 'absolute');
-    const postRel = stablePlateauSamples('2026-09-27T21:37:30.000Z', 5, 5, 45, 'relative');
-    const samples = [...preAbs];
-    for (let i = 0; i < preRel.length; i++) {
-      samples[i] = { ...samples[i]!, relativePercent: preRel[i]!.relativePercent };
-    }
-    samples.push(...rise);
-    for (let i = 0; i < postAbs.length; i++) {
-      samples.push({
-        ...postAbs[i]!,
-        relativePercent: postRel[i]!.relativePercent,
-      });
-    }
     const provenance = evaluateHybridAbsoluteSignalTrust({
-      samples,
+      samples: buildEventBContradictoryDualChannelSamples(),
       scanWindowStart: windowStart,
       scanWindowEnd: windowEnd,
       observation: freshObservationContext(),
@@ -170,7 +163,7 @@ describe('Hybrid absolute signal trust authority v1', () => {
 
   it('T6 stale baseline => hybrid cannot TRUSTED', () => {
     const provenance = evaluateHybridAbsoluteSignalTrust({
-      samples: buildCorroboratedDualChannelSamples(),
+      samples: buildEventBDualChannelCorroboratedSamples(),
       scanWindowStart: windowStart,
       scanWindowEnd: windowEnd,
       observation: { ...freshObservationContext(), baselineRecencyClassification: 'STALE' },
@@ -181,7 +174,7 @@ describe('Hybrid absolute signal trust authority v1', () => {
 
   it('T7 missing baseline provenance => UNKNOWN', () => {
     const provenance = evaluateHybridAbsoluteSignalTrust({
-      samples: buildCorroboratedDualChannelSamples(),
+      samples: buildEventBDualChannelCorroboratedSamples(),
       scanWindowStart: windowStart,
       scanWindowEnd: windowEnd,
       observation: {
@@ -231,34 +224,59 @@ describe('Hybrid absolute signal trust authority v1', () => {
       hybridTrustReasonCode: 'RELATIVE_COVERAGE_INSUFFICIENT',
       hybridTrustAuthorityVersion: RFRF_HYBRID_ABSOLUTE_SIGNAL_TRUST_AUTHORITY_VERSION,
     });
+    const hybridBlock = buildHybridAbsoluteSignalTrustEvidence(
+      {
+        authorityVersion: RFRF_HYBRID_ABSOLUTE_SIGNAL_TRUST_AUTHORITY_VERSION,
+        classification: 'UNKNOWN',
+        reasonCode: 'RELATIVE_COVERAGE_INSUFFICIENT',
+        absoluteDetectionAdmissibility: 'ADMISSIBLE',
+        relativeSampleCoverage: 'PARTIAL',
+        baselineRecencyClassification: 'FRESH',
+        absoluteDeltaLiters: 9,
+        relativeDeltaPercent: null,
+        materialRiseLiters: 5,
+        materialRisePercent: 5,
+        relativePrePlateauLocal: 'INVALID',
+        relativePostPlateauLocal: 'UNKNOWN',
+        absolutePostPlateauLocal: 'VALID',
+      },
+      {
+        relativePrePlateauLocal: 'INVALID',
+        relativePostPlateauLocal: 'UNKNOWN',
+        absolutePostPlateauLocal: 'VALID',
+      },
+    );
     const candidate = buildWob20260927EventBCandidate({
-      evidenceMeta: {
-        baselineRecency: buildBaselineRecencyEvidenceMeta({
-          classification: 'FRESH',
-          reason: 'test',
-          bridgeGapSeconds: 100,
-          prePlateauStartAt: riseOnset,
-          prePlateauEndAt: riseOnset,
-          riseOnsetAt: riseOnset,
-          interveningPrimarySampleCount: 0,
-          interveningContradictionCount: 0,
-        }),
-        readyEvidenceRefresh: refresh,
-      } as never,
+      evidenceMeta: mergeHybridAbsoluteSignalTrustEvidence(
+        {
+          baselineRecency: buildBaselineRecencyEvidenceMeta({
+            classification: 'FRESH',
+            reason: 'test',
+            bridgeGapSeconds: 100,
+            prePlateauStartAt: riseOnset,
+            prePlateauEndAt: riseOnset,
+            riseOnsetAt: riseOnset,
+            interveningPrimarySampleCount: 0,
+            interveningContradictionCount: 0,
+          }),
+          readyEvidenceRefresh: refresh,
+        },
+        hybridBlock,
+      ) as never,
     });
     expect(evaluateReadyCandidateRefreshRequirement(candidate).status).toBe('REFRESH_CURRENT');
   });
 
   it('T10 resolver gates TRUSTED while authority unavailable (promotion UNKNOWN)', () => {
     const hybrid = evaluateHybridAbsoluteSignalTrust({
-      samples: buildCorroboratedDualChannelSamples(),
+      samples: buildEventBDualChannelCorroboratedSamples(),
       scanWindowStart: windowStart,
       scanWindowEnd: windowEnd,
       observation: freshObservationContext(),
     });
     expect(hybrid.classification).toBe('TRUSTED');
     const resolved = resolveRawFuelSignalTrust({
-      samples: buildCorroboratedDualChannelSamples(),
+      samples: buildEventBDualChannelCorroboratedSamples(),
       scanWindowStart: windowStart,
       scanWindowEnd: windowEnd,
       observation: freshObservationContext(),
@@ -341,7 +359,7 @@ describe('Hybrid absolute signal trust authority v1', () => {
 
   it('T15 identical input => deterministic provenance', () => {
     const input = {
-      samples: buildCorroboratedDualChannelSamples(),
+      samples: buildEventBDualChannelCorroboratedSamples(),
       scanWindowStart: windowStart,
       scanWindowEnd: windowEnd,
       observation: freshObservationContext(),
@@ -353,7 +371,7 @@ describe('Hybrid absolute signal trust authority v1', () => {
 
   it('T16 contradictory evidence never TRUSTED', () => {
     const provenance = evaluateHybridAbsoluteSignalTrust({
-      samples: buildCorroboratedDualChannelSamples().map((s) => ({
+      samples: buildEventBDualChannelCorroboratedSamples().map((s) => ({
         ...s,
         relativePercent: s.relativePercent != null ? 2 : null,
       })),

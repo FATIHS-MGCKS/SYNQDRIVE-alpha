@@ -3,9 +3,12 @@
 **Date:** 2026-09-28  
 **Scope:** Observation-local promotion trust for absolute-liter fallback refuel candidates.
 
-## Change
+## Change (v2 locality hardening)
 
-- Introduced `evaluateHybridAbsoluteSignalTrust` (`raw-fuel-hybrid-absolute-signal-trust.authority.ts`) with version `rfrf-hybrid-absolute-trust-v1`.
+- Hybrid authority bumped to `rfrf-hybrid-absolute-trust-v2` with **local** relative pre/post plateau corroboration (F3 relative thresholds: gap, tolerance, persistence, min samples).
+- Durable `evidenceMeta.hybridAbsoluteSignalTrust` block persisted on READY refresh (computed classification, reason, deltas, locality assessments).
+- `evaluateReadyCandidateRefreshRequirement` requires current hybrid provenance for trust resolver v2.
+- Isolated localhost PostgreSQL gate creates ephemeral DB/role; rejects production-like `DATABASE_URL`.
 - Bumped `RFRF_SIGNAL_TRUST_RESOLVER_VERSION` to `rfrf-signal-trust-v2` (stale READY refresh → `REFRESH_REQUIRED`).
 - `resolveRawFuelSignalTrust` computes hybrid provenance but **promotion output remains UNKNOWN** while `ABSOLUTE_SIGNAL_TRUST_AUTHORITY_AVAILABLE=false`.
 - TRUSTED requires: admissible absolute rise coherence, **FRESH** baseline recency provenance, sufficient in-window relative sample coverage with directional corroboration, and no material contradiction.

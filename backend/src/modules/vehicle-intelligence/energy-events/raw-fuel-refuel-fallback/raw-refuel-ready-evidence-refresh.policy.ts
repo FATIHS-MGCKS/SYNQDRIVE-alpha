@@ -3,9 +3,12 @@ import {
   RFRF_RISE_DETECTION_VERSION,
   RFRF_RISE_DETECTOR_VERSION,
 } from '../raw-fuel-rise-detector/raw-fuel-rise-detector.config';
+import { readBaselineRecencyFromEvidenceMeta } from '../raw-fuel-rise-detector/raw-fuel-pre-plateau-baseline-recency.policy';
+import { RFRF_HYBRID_ABSOLUTE_SIGNAL_TRUST_AUTHORITY_VERSION } from './raw-fuel-hybrid-absolute-signal-trust.authority';
 import {
-  readBaselineRecencyFromEvidenceMeta,
-} from '../raw-fuel-rise-detector/raw-fuel-pre-plateau-baseline-recency.policy';
+  isHybridAbsoluteSignalTrustEvidenceComplete,
+  readHybridAbsoluteSignalTrustEvidence,
+} from './raw-fuel-hybrid-trust-evidence-metadata';
 import { RFRF_SIGNAL_TRUST_RESOLVER_VERSION } from './raw-fuel-signal-trust.resolver';
 import {
   readReadyEvidenceRefreshFromEvidenceMeta,
@@ -36,12 +39,49 @@ function refreshMetaMatchesCurrentAuthority(meta: ReadyEvidenceRefreshMeta): boo
   );
 }
 
+function hybridTrustProvenanceIsCurrent(
+  evidenceMeta: RawRefuelCandidate['evidenceMeta'],
+  refreshMeta: ReadyEvidenceRefreshMeta,
+): { ok: true } | { ok: false; status: ReadyCandidateRefreshRequirementStatus; reason: string } {
+  if (refreshMeta.trustResolverVersion !== RFRF_SIGNAL_TRUST_RESOLVER_VERSION) {
+    return { ok: false, status: 'REFRESH_REQUIRED', reason: 'trust_resolver_version_stale' };
+  }
+
+  const hybrid = readHybridAbsoluteSignalTrustEvidence(evidenceMeta);
+  if (!hybrid) {
+    return { ok: false, status: 'REFRESH_REQUIRED', reason: 'hybrid_trust_provenance_missing' };
+  }
+
+  if (
+    refreshMeta.hybridTrustAuthorityVersion != null &&
+    refreshMeta.hybridTrustAuthorityVersion !== RFRF_HYBRID_ABSOLUTE_SIGNAL_TRUST_AUTHORITY_VERSION
+  ) {
+    return { ok: false, status: 'REFRESH_REQUIRED', reason: 'hybrid_trust_authority_stale' };
+  }
+
+  if (
+    !isHybridAbsoluteSignalTrustEvidenceComplete(
+      hybrid,
+      RFRF_HYBRID_ABSOLUTE_SIGNAL_TRUST_AUTHORITY_VERSION,
+    )
+  ) {
+    return { ok: false, status: 'FAIL_CLOSED', reason: 'hybrid_trust_provenance_malformed' };
+  }
+
+  if (hybrid.authorityVersion !== RFRF_HYBRID_ABSOLUTE_SIGNAL_TRUST_AUTHORITY_VERSION) {
+    return { ok: false, status: 'REFRESH_REQUIRED', reason: 'hybrid_trust_authority_stale' };
+  }
+
+  if (refreshMeta.hybridTrustReasonCode !== hybrid.reasonCode) {
+    return { ok: false, status: 'REFRESH_REQUIRED', reason: 'hybrid_trust_reason_stale' };
+  }
+
+  return { ok: true };
+}
+
 /**
  * Determines whether a READY_FOR_PERSIST row must reload historical DIMO evidence
  * under the current detector/trust refresh authorities.
- *
- * UNKNOWN trust alone does not force refresh once metadata is current for
- * {@link RFRF_SIGNAL_TRUST_RESOLVER_VERSION}.
  */
 export function evaluateReadyCandidateRefreshRequirement(
   candidate: Pick<RawRefuelCandidate, 'evidenceMeta' | 'detectorVersion' | 'detectionVersion'>,
@@ -85,6 +125,11 @@ export function evaluateReadyCandidateRefreshRequirement(
   }
   if (refreshMeta.baselineRecencyClassification !== 'FRESH') {
     return { status: 'REFRESH_REQUIRED', reason: 'stored_refresh_baseline_not_fresh' };
+  }
+
+  const hybridCheck = hybridTrustProvenanceIsCurrent(candidate.evidenceMeta, refreshMeta);
+  if (!hybridCheck.ok) {
+    return { status: hybridCheck.status, reason: hybridCheck.reason };
   }
 
   if (!refreshMetaMatchesCurrentAuthority(refreshMeta)) {

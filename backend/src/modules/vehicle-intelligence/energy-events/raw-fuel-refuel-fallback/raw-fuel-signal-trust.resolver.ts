@@ -6,8 +6,6 @@ import type {
 } from './raw-fuel-refuel-fallback.types';
 import { evaluateHybridAbsoluteSignalTrust } from './raw-fuel-hybrid-absolute-signal-trust.authority';
 import { readBaselineRecencyFromEvidenceMeta } from '../raw-fuel-rise-detector/raw-fuel-pre-plateau-baseline-recency.policy';
-
-/** F4 contract: hybrid authority implemented; production promotion output stays fail-closed until explicit activation. */
 export const ABSOLUTE_SIGNAL_TRUST_AUTHORITY_AVAILABLE = false;
 
 /** Bump when promotion-trust semantics change; stale READY refresh metadata becomes REFRESH_REQUIRED. */
@@ -91,9 +89,9 @@ export function buildRawFuelSignalTrustObservationContext(observation: {
   preFuelAbsoluteLiters?: number | null;
   postFuelAbsoluteLiters?: number | null;
 }): NonNullable<RawFuelSignalTrustInput['observation']> {
+  const baselineRecency = readBaselineRecencyFromEvidenceMeta(observation.evidenceMeta);
   return {
-    baselineRecencyClassification:
-      readBaselineRecencyFromEvidenceMeta(observation.evidenceMeta) ?? 'INSUFFICIENT_EVIDENCE',
+    ...(baselineRecency != null ? { baselineRecencyClassification: baselineRecency } : {}),
     riseOnsetAt: observation.riseOnsetAt,
     riseEndAt: observation.riseEndAt,
     preFuelAbsoluteLiters: observation.preFuelAbsoluteLiters,

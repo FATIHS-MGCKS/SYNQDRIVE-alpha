@@ -255,9 +255,9 @@ invariants:
     epistemic_status: CONFIRMED
     statement: >
       A fallback candidate may receive absoluteSignalTrust=TRUSTED only from the versioned
-      hybrid trust authority using sufficient current evidence; fuel capability, absolute field
-      presence, detection admissibility, or candidate readiness alone can never establish
-      promotion trust.
+      hybrid trust authority using sufficient current evidence with locality-bounded relative
+      corroboration adjacent to the physical rise; fuel capability, absolute field presence,
+      detection admissibility, or candidate readiness alone can never establish promotion trust.
     evidence: [EED-EV-0100]
     source_paths:
       - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-fuel-hybrid-absolute-signal-trust.authority.ts
