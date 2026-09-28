@@ -1,5 +1,12 @@
 # KG-EED Changelog
 
+## 2026-09-28 — RFRF pre-fill baseline recency safety guard (EED-OQ-017)
+
+- `evaluateRawFuelPrePlateauRecency` + detector skip of stale pre↔rise pairings
+- Promotion `BLOCKED_BASELINE_RECENCY` unless explicit FRESH provenance (EED-INV-019)
+- Evidence: `EED-EV-0098-RFRF-BASELINE-RECENCY-GUARD-2026-09-28.md`; Stage-4 PG gate
+- Trust authority not implemented
+
 ## 2026-09-28 — RFRF OQ-015 stretched-end fallback↔native convergence
 
 - Bounded `classifyFallbackAgainstAuthoritativeNativeRefuel` — canonical G2 `endTimeSec=60` unchanged

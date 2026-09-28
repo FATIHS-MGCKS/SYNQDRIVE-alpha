@@ -870,3 +870,7 @@ edges:
   - from: EED-EV-0097
     relation: REFERENCES
     to: EED-OQ-015
+
+  - from: EED-EV-0098
+    relation: REFERENCES
+    to: EED-OQ-017

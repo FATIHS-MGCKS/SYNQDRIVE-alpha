@@ -34,4 +34,8 @@ echo "==> RFRF OQ-015 stretched-end PostgreSQL convergence gate"
 bash "${SCRIPT_DIR}/rfrf-oq015-stretched-end-postgres-gate.sh"
 echo "STAGE4_OQ015_STRETCHED_END_POSTGRES=PASS"
 
+echo "==> RFRF baseline recency promotion firewall PostgreSQL gate"
+bash "${SCRIPT_DIR}/rfrf-baseline-recency-postgres-gate.sh"
+echo "STAGE4_BASELINE_RECENCY_POSTGRES=PASS"
+
 echo "RFRF_STAGE4_CONVERGENCE_READINESS_CI_GATE=PASS"

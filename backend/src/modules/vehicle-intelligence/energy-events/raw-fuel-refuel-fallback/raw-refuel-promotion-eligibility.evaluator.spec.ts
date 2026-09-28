@@ -25,6 +25,10 @@ describe('evaluateRawRefuelPromotionEligibility', () => {
     detail: 'none',
   };
 
+  const freshBaselineMeta = {
+    baselineRecency: { baselineRecencyClassification: 'FRESH' as const },
+  };
+
   it('F5 gate defaults false — always BLOCKED_F5_CONVERGENCE_NOT_AUTHORIZED when otherwise eligible', () => {
     expect(isRfrfNativeFallbackConvergenceAuthorized()).toBe(false);
     expect(canCreateFallbackVehicleEnergyEvent()).toBe(false);
@@ -34,6 +38,7 @@ describe('evaluateRawRefuelPromotionEligibility', () => {
       absoluteDetectionAdmissibility: 'ADMISSIBLE',
       absoluteSignalTrust: 'TRUSTED',
       nativeOverlap: noOverlap,
+      candidateEvidenceMeta: freshBaselineMeta,
     });
     expect(result.status).toBe('BLOCKED_F5_CONVERGENCE_NOT_AUTHORIZED');
     expect(result.blockedPendingF5).toBe(true);
@@ -58,6 +63,7 @@ describe('evaluateRawRefuelPromotionEligibility', () => {
         advisoryClassification: 'SAME',
         sameNativeEventIds: ['native-1'],
       },
+      candidateEvidenceMeta: freshBaselineMeta,
     });
     expect(result.status).toBe('BLOCKED_NATIVE_OVERLAP_REVIEW');
     expect(result.blockedPendingF5).toBe(true);
@@ -69,6 +75,7 @@ describe('evaluateRawRefuelPromotionEligibility', () => {
       absoluteDetectionAdmissibility: 'ADMISSIBLE',
       absoluteSignalTrust: 'UNKNOWN',
       nativeOverlap: noOverlap,
+      candidateEvidenceMeta: freshBaselineMeta,
     });
     expect(result.status).toBe('BLOCKED_PROMOTION_TRUST');
   });
@@ -82,6 +89,7 @@ describe('evaluateRawRefuelPromotionEligibility', () => {
         ...noOverlap,
         advisoryClassification: 'AMBIGUOUS_MULTIPLE_SAME',
       },
+      candidateEvidenceMeta: freshBaselineMeta,
     });
     expect(result.status).toBe('AMBIGUOUS');
   });
@@ -98,6 +106,7 @@ describe('evaluateRawRefuelPromotionEligibility', () => {
         insufficientNativeEventIds: ['native-insufficient'],
         detail: 'same_with_insufficient_native_siblings',
       },
+      candidateEvidenceMeta: freshBaselineMeta,
     });
     expect(result.status).toBe('AMBIGUOUS');
     expect(result.blockedPendingF5).toBe(true);

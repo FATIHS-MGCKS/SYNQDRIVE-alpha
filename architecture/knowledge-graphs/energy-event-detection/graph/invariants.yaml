@@ -222,3 +222,16 @@ invariants:
     source_paths:
       - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-refuel-promotion.service.ts
       - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-refuel-native-fallback-stretched-end.policy.ts
+
+  - id: EED-INV-019
+    kind: CONFIRMED_INVARIANT
+    title: RFRF fallback promotion requires fresh pre-fill baseline authority
+    epistemic_status: CONFIRMED
+    statement: >
+      SYNQDRIVE_RAW_FUEL_FALLBACK promotion must not proceed unless persisted baseline recency
+      classification is explicitly FRESH; legacy READY rows without provenance remain held
+      (BLOCKED_BASELINE_RECENCY) even if trust becomes available later.
+    evidence: [EED-EV-0098]
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-refuel-promotion-eligibility.evaluator.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-rise-detector/raw-fuel-pre-plateau-baseline-recency.policy.ts

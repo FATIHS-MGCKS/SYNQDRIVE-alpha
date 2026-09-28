@@ -3,6 +3,7 @@ import {
   isRfrfNativeFallbackConvergenceAuthorized,
 } from '@config/raw-fuel-refuel-fallback.config';
 import type { RawRefuelCandidateReadinessResult } from './raw-refuel-candidate-readiness.types';
+import { isBaselineRecencyProvenFreshForPromotion } from './raw-refuel-baseline-recency-promotion.policy';
 import type { RawRefuelNativeOverlapAdvisoryResult } from './raw-refuel-native-overlap.types';
 import type {
   RawRefuelPromotionEligibilityResult,
@@ -16,6 +17,8 @@ export interface RawRefuelPromotionEligibilityContext {
   absoluteDetectionAdmissibility?: RawFuelAbsoluteDetectionAdmissibility;
   absoluteSignalTrust?: 'TRUSTED' | 'UNTRUSTED' | 'UNKNOWN' | null;
   nativeOverlap: RawRefuelNativeOverlapAdvisoryResult;
+  /** Required for baseline-recency promotion firewall (EED-INV-019). */
+  candidateEvidenceMeta?: unknown;
 }
 
 function buildEligibility(
@@ -37,6 +40,18 @@ export function evaluateRawRefuelPromotionEligibility(
 ): RawRefuelPromotionEligibilityResult {
   if (!readiness.ready) {
     return buildEligibility('NOT_READY', false, readiness.detail);
+  }
+
+  if (
+    !isBaselineRecencyProvenFreshForPromotion({
+      evidenceMeta: context.candidateEvidenceMeta ?? null,
+    })
+  ) {
+    return buildEligibility(
+      'BLOCKED_BASELINE_RECENCY',
+      true,
+      'baseline_recency_not_proven_fresh',
+    );
   }
 
   if (context.capability === 'NON_FUEL_CAPABLE') {
