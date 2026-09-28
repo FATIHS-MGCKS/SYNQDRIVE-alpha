@@ -648,6 +648,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-21T12:00:00.000Z',
   },
   {
+    id: 'eed-rfrf-hybrid-absolute-signal-trust-2026-09-28',
+    version: '4.9.4998',
+    title: 'RFRF — hybrid absolute signal trust authority v1',
+    summary: [
+      'Observation-local TRUSTED/UNTRUSTED/UNKNOWN from absolute rise + FRESH baseline + relative corroboration.',
+      'Resolver bumped to rfrf-signal-trust-v2; hybrid provenance on readyEvidenceRefresh; promotion gate still OFF.',
+      'WOB Event B fixture remains UNKNOWN (absolute-only samples); Stage-4 hybrid-trust PG gate.',
+    ],
+    reason:
+      'Promotion trust must be earned from corroborating evidence, not fuel type, admissibility, or READY alone.',
+    previousBehavior:
+      'resolveRawFuelSignalTrust always returned promotion UNKNOWN without structured corroboration assessment.',
+    details:
+      'raw-fuel-hybrid-absolute-signal-trust.authority.ts; EED-EV-0100; EED-INV-021; rfrf-hybrid-trust-postgres-gate.sh',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-28T19:30:00.000Z',
+  },
+  {
     id: 'eed-rfrf-ready-evidence-refresh-2026-09-28',
     version: '4.9.4997',
     title: 'RFRF — READY candidate evidence refresh before promotion',

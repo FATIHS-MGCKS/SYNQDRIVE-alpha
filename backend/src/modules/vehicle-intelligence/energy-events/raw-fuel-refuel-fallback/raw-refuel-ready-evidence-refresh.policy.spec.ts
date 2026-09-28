@@ -4,6 +4,7 @@ import {
   RFRF_RISE_DETECTION_VERSION,
   RFRF_RISE_DETECTOR_VERSION,
 } from '../raw-fuel-rise-detector/raw-fuel-rise-detector.config';
+import { RFRF_HYBRID_ABSOLUTE_SIGNAL_TRUST_AUTHORITY_VERSION } from './raw-fuel-hybrid-absolute-signal-trust.authority';
 import { RFRF_SIGNAL_TRUST_RESOLVER_VERSION } from './raw-fuel-signal-trust.resolver';
 import {
   buildReadyEvidenceRefreshMeta,
@@ -24,6 +25,8 @@ function readyWithRefreshMeta(
     absoluteSignalTrust: 'UNKNOWN',
     absoluteDetectionAdmissibility: 'ADMISSIBLE',
     relativeSignalAvailable: true,
+    hybridTrustReasonCode: 'RELATIVE_COVERAGE_INSUFFICIENT',
+    hybridTrustAuthorityVersion: RFRF_HYBRID_ABSOLUTE_SIGNAL_TRUST_AUTHORITY_VERSION,
     ...overrides,
   });
   const baselineMeta = buildBaselineRecencyEvidenceMeta({
@@ -86,7 +89,7 @@ describe('evaluateReadyCandidateRefreshRequirement', () => {
 
   it('exports versioned policy and trust resolver constants', () => {
     expect(RFRF_READY_EVIDENCE_REFRESH_POLICY_VERSION).toBe('rfrf-ready-evidence-refresh-v1');
-    expect(RFRF_SIGNAL_TRUST_RESOLVER_VERSION).toBe('rfrf-signal-trust-v1');
+    expect(RFRF_SIGNAL_TRUST_RESOLVER_VERSION).toBe('rfrf-signal-trust-v2');
   });
 });
 

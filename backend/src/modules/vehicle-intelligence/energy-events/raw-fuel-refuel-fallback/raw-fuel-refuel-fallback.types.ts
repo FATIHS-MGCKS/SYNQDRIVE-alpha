@@ -1,4 +1,6 @@
 import type { FuelType } from '@prisma/client';
+import type { RawFuelHybridTrustProvenance } from './raw-fuel-hybrid-absolute-signal-trust.authority';
+import type { RawFuelPrePlateauBaselineRecencyClassification } from '../raw-fuel-rise-detector/raw-fuel-pre-plateau-baseline-recency.policy';
 
 /** Case-22 vehicle-level fuel telemetry capability (separate from signal trust). */
 export type RawFuelCapability = 'FUEL_CAPABLE' | 'NON_FUEL_CAPABLE' | 'UNKNOWN';
@@ -33,6 +35,14 @@ export interface RawFuelSignalTrustInput {
   fuelType?: FuelType | null;
   /** Must never be used to grant TRUSTED in F4-PR1 — kept for negative-test contracts. */
   samplePresenceOnly?: boolean;
+  /** Observation-local corroboration context (recovery/detector); never fuelType alone. */
+  observation?: {
+    baselineRecencyClassification?: RawFuelPrePlateauBaselineRecencyClassification;
+    riseOnsetAt?: Date | null;
+    riseEndAt?: Date | null;
+    preFuelAbsoluteLiters?: number | null;
+    postFuelAbsoluteLiters?: number | null;
+  };
 }
 
 export interface RawFuelSignalTrustResult {
@@ -41,6 +51,8 @@ export interface RawFuelSignalTrustResult {
   /** Detection-admissibility axis — may be ADMISSIBLE while promotion trust stays UNKNOWN. */
   absoluteDetectionAdmissibility: RawFuelAbsoluteDetectionAdmissibility;
   relativeSignalAvailable: boolean;
+  /** Structured hybrid-trust audit trail (classification may be gated off for promotion). */
+  hybridTrustProvenance: RawFuelHybridTrustProvenance;
 }
 
 /** F4 source semantics contract — documentation-only in PR1 (no runtime writes). */

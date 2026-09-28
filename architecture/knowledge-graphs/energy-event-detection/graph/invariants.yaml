@@ -248,3 +248,17 @@ invariants:
     evidence: [EED-EV-0099]
     source_paths:
       - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-refuel-ready-evidence-refresh.policy.ts
+
+  - id: EED-INV-021
+    kind: CONFIRMED_INVARIANT
+    title: RFRF promotion TRUSTED requires hybrid corroboration authority
+    epistemic_status: CONFIRMED
+    statement: >
+      A fallback candidate may receive absoluteSignalTrust=TRUSTED only from the versioned
+      hybrid trust authority using sufficient current evidence; fuel capability, absolute field
+      presence, detection admissibility, or candidate readiness alone can never establish
+      promotion trust.
+    evidence: [EED-EV-0100]
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-fuel-hybrid-absolute-signal-trust.authority.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-fuel-signal-trust.resolver.ts

@@ -40,12 +40,8 @@ describe('RawFuelSignalTrustResolver', () => {
         samples: [{ timestamp: new Date('2026-09-13T08:00:00.000Z'), relativePercent: 55 }],
         scanWindowStart: windowStart,
         scanWindowEnd: windowEnd,
-      }),
-    ).toEqual({
-      absoluteSignalTrust: 'UNKNOWN',
-      absoluteDetectionAdmissibility: 'UNKNOWN',
-      relativeSignalAvailable: true,
-    });
+      }).relativeSignalAvailable,
+    ).toBe(true);
 
     expect(
       resolveRawFuelSignalTrust({

@@ -21,6 +21,8 @@ export interface ReadyEvidenceRefreshMeta {
   absoluteSignalTrust: RawFuelAbsoluteSignalTrust;
   absoluteDetectionAdmissibility: RawFuelAbsoluteDetectionAdmissibility;
   relativeSignalAvailable: boolean;
+  hybridTrustReasonCode?: string;
+  hybridTrustAuthorityVersion?: string;
 }
 
 export function buildReadyEvidenceRefreshMeta(input: {
@@ -28,6 +30,8 @@ export function buildReadyEvidenceRefreshMeta(input: {
   absoluteSignalTrust: RawFuelAbsoluteSignalTrust;
   absoluteDetectionAdmissibility: RawFuelAbsoluteDetectionAdmissibility;
   relativeSignalAvailable: boolean;
+  hybridTrustReasonCode?: string;
+  hybridTrustAuthorityVersion?: string;
 }): ReadyEvidenceRefreshMeta {
   return {
     refreshPolicyVersion: RFRF_READY_EVIDENCE_REFRESH_POLICY_VERSION,
@@ -38,6 +42,12 @@ export function buildReadyEvidenceRefreshMeta(input: {
     absoluteSignalTrust: input.absoluteSignalTrust,
     absoluteDetectionAdmissibility: input.absoluteDetectionAdmissibility,
     relativeSignalAvailable: input.relativeSignalAvailable,
+    ...(input.hybridTrustReasonCode
+      ? { hybridTrustReasonCode: input.hybridTrustReasonCode }
+      : {}),
+    ...(input.hybridTrustAuthorityVersion
+      ? { hybridTrustAuthorityVersion: input.hybridTrustAuthorityVersion }
+      : {}),
   };
 }
 
@@ -64,7 +74,17 @@ export function readReadyEvidenceRefreshFromEvidenceMeta(
   ) {
     return null;
   }
-  return meta as unknown as ReadyEvidenceRefreshMeta;
+  const hybridTrustReasonCode =
+    typeof meta.hybridTrustReasonCode === 'string' ? meta.hybridTrustReasonCode : undefined;
+  const hybridTrustAuthorityVersion =
+    typeof meta.hybridTrustAuthorityVersion === 'string'
+      ? meta.hybridTrustAuthorityVersion
+      : undefined;
+  return {
+    ...(meta as unknown as ReadyEvidenceRefreshMeta),
+    ...(hybridTrustReasonCode ? { hybridTrustReasonCode } : {}),
+    ...(hybridTrustAuthorityVersion ? { hybridTrustAuthorityVersion } : {}),
+  } as ReadyEvidenceRefreshMeta;
 }
 
 export function mergeReadyEvidenceRefreshIntoEvidenceMeta(

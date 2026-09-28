@@ -42,4 +42,8 @@ echo "==> RFRF READY evidence refresh PostgreSQL gate"
 bash "${SCRIPT_DIR}/rfrf-ready-evidence-refresh-postgres-gate.sh"
 echo "STAGE4_READY_EVIDENCE_REFRESH_POSTGRES=PASS"
 
+echo "==> RFRF hybrid absolute signal trust PostgreSQL gate"
+bash "${SCRIPT_DIR}/rfrf-hybrid-trust-postgres-gate.sh"
+echo "STAGE4_HYBRID_TRUST_POSTGRES=PASS"
+
 echo "RFRF_STAGE4_CONVERGENCE_READINESS_CI_GATE=PASS"

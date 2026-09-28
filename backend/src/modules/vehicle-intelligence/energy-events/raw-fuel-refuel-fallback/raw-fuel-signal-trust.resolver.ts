@@ -4,12 +4,14 @@ import type {
   RawFuelSignalTrustInput,
   RawFuelSignalTrustResult,
 } from './raw-fuel-refuel-fallback.types';
+import { evaluateHybridAbsoluteSignalTrust } from './raw-fuel-hybrid-absolute-signal-trust.authority';
+import { readBaselineRecencyFromEvidenceMeta } from '../raw-fuel-rise-detector/raw-fuel-pre-plateau-baseline-recency.policy';
 
-/** F4 contract: no fleet-wide absolute-trust authority exists yet. */
+/** F4 contract: hybrid authority implemented; production promotion output stays fail-closed until explicit activation. */
 export const ABSOLUTE_SIGNAL_TRUST_AUTHORITY_AVAILABLE = false;
 
 /** Bump when promotion-trust semantics change; stale READY refresh metadata becomes REFRESH_REQUIRED. */
-export const RFRF_SIGNAL_TRUST_RESOLVER_VERSION = 'rfrf-signal-trust-v1';
+export const RFRF_SIGNAL_TRUST_RESOLVER_VERSION = 'rfrf-signal-trust-v2';
 
 const RELATIVE_VALID_RANGE = { min: 0, max: 100 } as const;
 
@@ -47,45 +49,11 @@ function hasSemanticallyValidRelativeSample(
   return false;
 }
 
-
-function resolveAbsoluteDetectionAdmissibility(
-  input: RawFuelSignalTrustInput,
-): RawFuelAbsoluteDetectionAdmissibility {
-  const samples = input.samples ?? [];
-  if (samples.length === 0) return 'UNKNOWN';
-
-  const windowStart = input.scanWindowStart?.getTime();
-  const windowEnd = input.scanWindowEnd?.getTime();
-  let sawAbsoluteField = false;
-  let sawInvalidAbsolute = false;
-
-  for (const sample of samples) {
-    if (!(sample.timestamp instanceof Date) || Number.isNaN(sample.timestamp.getTime())) {
-      continue;
-    }
-    const ts = sample.timestamp.getTime();
-    if (windowStart != null && ts < windowStart) continue;
-    if (windowEnd != null && ts > windowEnd) continue;
-
-    if (sample.absoluteLiters == null) continue;
-    sawAbsoluteField = true;
-
-    if (!isFiniteNumber(sample.absoluteLiters) || sample.absoluteLiters < 0) {
-      sawInvalidAbsolute = true;
-      continue;
-    }
-    return 'ADMISSIBLE';
-  }
-
-  if (sawInvalidAbsolute) return 'INADMISSIBLE';
-  if (sawAbsoluteField) return 'INADMISSIBLE';
-  return 'UNKNOWN';
-}
-
 /**
  * Resolves absolute promotion trust vs detection admissibility separately.
  * Promotion TRUSTED is never derived from fuelType or sample presence alone.
- * Detection ADMISSIBLE requires semantically valid absolute samples in-window.
+ * Hybrid v2 computes observation-local trust; promotion output remains UNKNOWN until
+ * {@link ABSOLUTE_SIGNAL_TRUST_AUTHORITY_AVAILABLE} is explicitly enabled.
  */
 export function resolveRawFuelSignalTrust(
   input: RawFuelSignalTrustInput = {},
@@ -93,12 +61,42 @@ export function resolveRawFuelSignalTrust(
   void input.fuelType;
   void input.samplePresenceOnly;
 
-  const absoluteSignalTrust: RawFuelAbsoluteSignalTrust = 'UNKNOWN';
-  const absoluteDetectionAdmissibility = resolveAbsoluteDetectionAdmissibility(input);
+  const hybridTrustProvenance = evaluateHybridAbsoluteSignalTrust({
+    samples: input.samples,
+    scanWindowStart: input.scanWindowStart,
+    scanWindowEnd: input.scanWindowEnd,
+    observation: input.observation,
+  });
+
+  const absoluteDetectionAdmissibility: RawFuelAbsoluteDetectionAdmissibility =
+    hybridTrustProvenance.absoluteDetectionAdmissibility;
+
+  const absoluteSignalTrust: RawFuelAbsoluteSignalTrust =
+    ABSOLUTE_SIGNAL_TRUST_AUTHORITY_AVAILABLE
+      ? hybridTrustProvenance.classification
+      : 'UNKNOWN';
 
   return {
     absoluteSignalTrust,
     absoluteDetectionAdmissibility,
     relativeSignalAvailable: hasSemanticallyValidRelativeSample(input),
+    hybridTrustProvenance,
+  };
+}
+
+export function buildRawFuelSignalTrustObservationContext(observation: {
+  evidenceMeta?: unknown;
+  riseOnsetAt?: Date | null;
+  riseEndAt?: Date | null;
+  preFuelAbsoluteLiters?: number | null;
+  postFuelAbsoluteLiters?: number | null;
+}): NonNullable<RawFuelSignalTrustInput['observation']> {
+  return {
+    baselineRecencyClassification:
+      readBaselineRecencyFromEvidenceMeta(observation.evidenceMeta) ?? 'INSUFFICIENT_EVIDENCE',
+    riseOnsetAt: observation.riseOnsetAt,
+    riseEndAt: observation.riseEndAt,
+    preFuelAbsoluteLiters: observation.preFuelAbsoluteLiters,
+    postFuelAbsoluteLiters: observation.postFuelAbsoluteLiters,
   };
 }

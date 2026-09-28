@@ -18,6 +18,7 @@ import {
   RFRF_RISE_DETECTION_VERSION,
   RFRF_RISE_DETECTOR_VERSION,
 } from '../raw-fuel-rise-detector/raw-fuel-rise-detector.config';
+import { RFRF_HYBRID_ABSOLUTE_SIGNAL_TRUST_AUTHORITY_VERSION } from '../raw-fuel-refuel-fallback/raw-fuel-hybrid-absolute-signal-trust.authority';
 import { readBaselineRecencyFromEvidenceMeta } from '../raw-fuel-rise-detector/raw-fuel-pre-plateau-baseline-recency.policy';
 import {
   buildReadyEvidenceRefreshMeta,
@@ -178,6 +179,9 @@ function syntheticRiseSamples() {
       absoluteSignalTrust,
       absoluteDetectionAdmissibility: 'ADMISSIBLE',
       relativeSignalAvailable,
+      hybridTrustReasonCode:
+        absoluteSignalTrust === 'TRUSTED' ? 'CORROBORATED_RISE' : 'RELATIVE_COVERAGE_INSUFFICIENT',
+      hybridTrustAuthorityVersion: RFRF_HYBRID_ABSOLUTE_SIGNAL_TRUST_AUTHORITY_VERSION,
     });
     const evidenceMeta = mergeReadyEvidenceRefreshIntoEvidenceMeta(
       (row.evidenceMeta as Record<string, unknown> | null) ?? null,
