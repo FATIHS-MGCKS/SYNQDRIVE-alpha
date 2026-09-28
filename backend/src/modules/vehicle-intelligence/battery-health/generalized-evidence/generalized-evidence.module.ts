@@ -18,6 +18,7 @@ import { LongitudinalReconciliationService } from './rest-session-features/longi
 import { LongitudinalSourceEvidenceAckRepository } from './rest-session-features/longitudinal/longitudinal-source-evidence-ack.repository';
 import { LongitudinalProfileRevisionInspectionService } from './rest-session-features/longitudinal/longitudinal-profile-revision-inspection.service';
 import { PrismaService } from '@shared/database/prisma.service';
+import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 
 @Module({
   imports: [ProviderObservabilityGapModule, PrismaModule],
@@ -46,16 +47,19 @@ import { PrismaService } from '@shared/database/prisma.service';
         inputReader: LongitudinalInputReaderService,
         materializationRepository: LongitudinalProfileMaterializationRepository,
         sourceEvidenceAckRepository: LongitudinalSourceEvidenceAckRepository,
+        metrics?: TripMetricsService,
       ) =>
         new LongitudinalProfileMaterializationService(
           inputReader,
           materializationRepository,
           sourceEvidenceAckRepository,
+          metrics,
         ),
       inject: [
         LongitudinalInputReaderService,
         LongitudinalProfileMaterializationRepository,
         LongitudinalSourceEvidenceAckRepository,
+        { token: TripMetricsService, optional: true },
       ],
     },
     LongitudinalProfileMaterializationRuntimeService,

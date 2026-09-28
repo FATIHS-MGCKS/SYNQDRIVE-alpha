@@ -10,6 +10,7 @@ import {
   PrismaClient,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import { probePostgresDatabase } from '../../../provider-observability-gap/provider-observability-gap-postgres.fixture';
 import {
   REST_SESSION_CHARGE_OPPORTUNITY_POLICY_VERSION,
@@ -25,6 +26,7 @@ import { LongitudinalProfileMaterializationService } from './longitudinal-profil
 import { LongitudinalProfileMaterializationRuntimeService } from './longitudinal-profile-materialization.runtime.service';
 import { LongitudinalReconciliationCandidateRepository } from './longitudinal-reconciliation-candidate.repository';
 import { LongitudinalReconciliationService } from './longitudinal-reconciliation.service';
+import { LongitudinalReconciliationInvariantViolationError } from './longitudinal-reconciliation.invariants';
 import { LongitudinalSourceEvidenceAckRepository } from './longitudinal-source-evidence-ack.repository';
 import {
   REST_SESSION_LONGITUDINAL_PROFILE_CONTRACT_VERSION,
@@ -874,6 +876,67 @@ async function positionFleetCursorBeforeVehicle(
           (c) => c.vehicleId === vehicleId,
         ),
       ).toBe(false);
+    });
+
+    it('cross-tenant feature org vs vehicle org — typed invariant, no D3/ack', async () => {
+      if (!dbOk) return;
+      const envBackup = process.env.BATTERY_V2_LONGITUDINAL_PROFILE_MATERIALIZATION_ENABLED;
+      process.env.BATTERY_V2_LONGITUDINAL_PROFILE_MATERIALIZATION_ENABLED = 'true';
+      try {
+        const orgA = await createOrg(prisma, 'XORG-A');
+        const { organizationId: orgB, vehicleId } = await createOrgVehicle(prisma, 'XORG-B');
+        await positionFleetCursorBeforeVehicle(prisma, orgA.id);
+
+        const session = await createRestSession(prisma, {
+          organizationId: orgB,
+          vehicleId,
+          anchorAt: new Date('2026-05-09T08:00:00.000Z'),
+          sessionStatus: BatteryRestSessionStatus.ENDED,
+          endReason: BatteryRestSessionEndReason.VEHICLE_ACTIVITY,
+        });
+        const summary = buildMinimalLongitudinalInputSummary({
+          organizationId: orgB,
+          vehicleId,
+          restSessionId: session.id,
+        });
+        await createFeatureRow(prisma, {
+          organizationId: orgA.id,
+          vehicleId,
+          restSessionId: session.id,
+          semanticRevision: 1,
+          computationPhase: BatteryRestSessionFeatureComputationPhase.FINAL,
+          sessionTrust: BatteryRestSessionFeatureSessionTrust.VALID,
+          inputSummary: summary,
+          computedAt: new Date('2026-05-09T09:00:00.000Z'),
+        });
+
+        const metrics = new TripMetricsService();
+        const invariantInc = jest.spyOn(
+          metrics.batteryLongitudinalReconciliationInvariantFailuresTotal,
+          'inc',
+        );
+        const { materialization, candidates } = wireLongitudinalStack(prisma);
+        const runtime = new LongitudinalProfileMaterializationRuntimeService(materialization);
+        const reconciliation = new LongitudinalReconciliationService(
+          candidates,
+          runtime,
+          metrics,
+        );
+
+        await expect(reconciliation.runBoundedReconciliationTick()).rejects.toBeInstanceOf(
+          LongitudinalReconciliationInvariantViolationError,
+        );
+        expect(invariantInc).toHaveBeenCalledWith({ type: 'VEHICLE_ORGANIZATION_MISMATCH' });
+
+        expect(
+          await prisma.batteryLongitudinalProfileRevision.count({ where: { vehicleId } }),
+        ).toBe(0);
+        expect(
+          await prisma.batteryLongitudinalSourceEvidenceAck.count({ where: { vehicleId } }),
+        ).toBe(0);
+      } finally {
+        process.env.BATTERY_V2_LONGITUDINAL_PROFILE_MATERIALIZATION_ENABLED = envBackup;
+      }
     });
   },
 );

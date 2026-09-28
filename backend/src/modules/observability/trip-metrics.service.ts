@@ -206,6 +206,14 @@ export class TripMetricsService implements OnModuleInit {
   readonly batteryRestSessionFeatureRowCreatedTotal: Counter<'phase' | 'trust'>;
   readonly batteryLongitudinalProfileMaterializationAttemptsTotal: Counter<'outcome'>;
   readonly batteryLongitudinalProfileMaterializationDurationSeconds: Histogram<'outcome'>;
+  readonly batteryLongitudinalReconciliationTicksTotal: Counter<'result'>;
+  readonly batteryLongitudinalReconciliationCandidates: Histogram<string>;
+  readonly batteryLongitudinalReconciliationProcessedTotal: Counter<'outcome'>;
+  readonly batteryLongitudinalReconciliationAckTotal: Counter<'outcome'>;
+  readonly batteryLongitudinalReconciliationDurationSeconds: Histogram<'result'>;
+  readonly batteryLongitudinalReconciliationLastSuccessTimestamp: Gauge<string>;
+  readonly batteryLongitudinalMaterializationFlagEnabled: Gauge<string>;
+  readonly batteryLongitudinalReconciliationInvariantFailuresTotal: Counter<'type'>;
   readonly batteryLongitudinalProfileIntegrityInspectionTotal: Counter<'disposition'>;
   readonly batteryLongitudinalProfileSelfIntegrityFailureTotal: Counter<string>;
   readonly batteryProviderObservabilityGapOpenedTotal: Counter<string>;
@@ -1758,6 +1766,61 @@ export class TripMetricsService implements OnModuleInit {
       help: 'M3.3F D3 gated materialization duration by outcome',
       labelNames: ['outcome'],
       buckets: [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 30],
+      registers: [this.registry],
+    });
+
+    this.batteryLongitudinalReconciliationTicksTotal = new Counter({
+      name: 'synqdrive_battery_longitudinal_reconciliation_ticks_total',
+      help: 'M3.3F F4.1 bounded D3 reconciliation scheduler tick decisions (low-cardinality result only)',
+      labelNames: ['result'],
+      registers: [this.registry],
+    });
+
+    this.batteryLongitudinalReconciliationCandidates = new Histogram({
+      name: 'synqdrive_battery_longitudinal_reconciliation_candidates',
+      help: 'M3.3F F4.1 candidate vehicles considered per completed reconciliation tick',
+      buckets: [0, 1, 2, 3, 4, 5, 10],
+      registers: [this.registry],
+    });
+
+    this.batteryLongitudinalReconciliationProcessedTotal = new Counter({
+      name: 'synqdrive_battery_longitudinal_reconciliation_processed_total',
+      help: 'M3.3F F4.1 per-candidate reconciliation processing outcomes',
+      labelNames: ['outcome'],
+      registers: [this.registry],
+    });
+
+    this.batteryLongitudinalReconciliationAckTotal = new Counter({
+      name: 'synqdrive_battery_longitudinal_reconciliation_ack_total',
+      help: 'M3.3F F4.1 authoritative D3 source-evidence acknowledgement append outcomes (all materialization paths including authorized internal ops; freshness-authority scope)',
+      labelNames: ['outcome'],
+      registers: [this.registry],
+    });
+
+    this.batteryLongitudinalReconciliationDurationSeconds = new Histogram({
+      name: 'synqdrive_battery_longitudinal_reconciliation_duration_seconds',
+      help: 'M3.3F F4.1 reconciliation scheduler tick duration by result',
+      labelNames: ['result'],
+      buckets: [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 30, 60],
+      registers: [this.registry],
+    });
+
+    this.batteryLongitudinalReconciliationLastSuccessTimestamp = new Gauge({
+      name: 'synqdrive_battery_longitudinal_reconciliation_last_success_timestamp',
+      help: 'Unix seconds of last completed D3 reconciliation scheduler tick on this process',
+      registers: [this.registry],
+    });
+
+    this.batteryLongitudinalMaterializationFlagEnabled = new Gauge({
+      name: 'synqdrive_battery_longitudinal_materialization_flag_enabled',
+      help: 'M3.3F F4.3 effective D3 materialization flag on this process (0=OFF, 1=ON); updated each reconciliation scheduler tick before leader guard',
+      registers: [this.registry],
+    });
+
+    this.batteryLongitudinalReconciliationInvariantFailuresTotal = new Counter({
+      name: 'synqdrive_battery_longitudinal_reconciliation_invariant_failures_total',
+      help: 'M3.3F F4.3 typed reconciliation safety invariant violations (fail-closed)',
+      labelNames: ['type'],
       registers: [this.registry],
     });
 

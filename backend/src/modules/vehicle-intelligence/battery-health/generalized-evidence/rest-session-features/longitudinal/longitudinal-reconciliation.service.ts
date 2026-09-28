@@ -1,11 +1,17 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { isBatteryV2LongitudinalProfileMaterializationEnabled } from '@config/battery-health-v2.config';
+import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import { getBatteryV2LongitudinalMaterializationSessionLimit } from './longitudinal-profile-materialization.runtime-config';
 import { LongitudinalProfileMaterializationRuntimeService } from './longitudinal-profile-materialization.runtime.service';
 import {
   getBatteryV2LongitudinalReconciliationBatchSize,
 } from './longitudinal-reconciliation.config';
 import { LongitudinalReconciliationCandidateRepository } from './longitudinal-reconciliation-candidate.repository';
+import {
+  recordLongitudinalReconciliationInvariantFailure,
+  recordLongitudinalReconciliationTickOutcomes,
+} from './longitudinal-reconciliation.metrics';
+import { LongitudinalReconciliationInvariantViolationError } from './longitudinal-reconciliation.invariants';
 
 export type LongitudinalReconciliationTickOutcome = {
   status: 'SKIPPED_FLAG_OFF' | 'COMPLETED';
@@ -28,6 +34,7 @@ export class LongitudinalReconciliationService {
   constructor(
     private readonly candidates: LongitudinalReconciliationCandidateRepository,
     private readonly materializationRuntime: LongitudinalProfileMaterializationRuntimeService,
+    @Optional() private readonly metrics?: TripMetricsService,
   ) {}
 
   async runBoundedReconciliationTick(): Promise<LongitudinalReconciliationTickOutcome> {
@@ -46,10 +53,21 @@ export class LongitudinalReconciliationService {
 
     const batchSize = getBatteryV2LongitudinalReconciliationBatchSize();
     const sessionLimit = getBatteryV2LongitudinalMaterializationSessionLimit();
-    const candidateList = await this.candidates.findCandidates({
-      batchSize,
-      sessionLimit,
-    });
+    let candidateList;
+    try {
+      candidateList = await this.candidates.findCandidates({
+        batchSize,
+        sessionLimit,
+      });
+    } catch (error) {
+      if (error instanceof LongitudinalReconciliationInvariantViolationError) {
+        recordLongitudinalReconciliationInvariantFailure(this.metrics, error.code);
+        this.logger.error(
+          `longitudinal_reconciliation_invariant_violation type=${error.code}`,
+        );
+      }
+      throw error;
+    }
 
     let processedCount = 0;
     let createdCount = 0;
@@ -94,8 +112,8 @@ export class LongitudinalReconciliationService {
       }
     }
 
-    return {
-      status: 'COMPLETED',
+    const result = {
+      status: 'COMPLETED' as const,
       candidateCount: candidateList.length,
       processedCount,
       createdCount,
@@ -104,5 +122,7 @@ export class LongitudinalReconciliationService {
       d2RejectedCount,
       errorCount,
     };
+    recordLongitudinalReconciliationTickOutcomes(this.metrics, result);
+    return result;
   }
 }

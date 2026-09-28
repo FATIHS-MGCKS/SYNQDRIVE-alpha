@@ -16,6 +16,30 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-27 — M3.3F F4.3 pre-merge observability hardening (PR #1817 amend)
+
+| Field | Value |
+|-------|-------|
+| **OBSERVATION** | Per-replica D3 flag state not observable on NOT_LEADER path; cross-tenant org/vehicle mismatch not DB-forbidden; activation doc median query conflated with total candidates; `F4_D3_ACTIVATION_ALLOWED` must not be YES before F4.3 deploy. |
+| **CHANGE** | `synqdrive_battery_longitudinal_materialization_flag_enabled` gauge (pre-leader); typed `VEHICLE_ORGANIZATION_MISMATCH` + invariant metric at bounded candidate SQL; independent fail-open scheduler metric writes; ack metric scope documented; total-candidates `_sum` query contract. |
+| **WHY** | Close first-activation observability gaps without D3 activation or scientific change. |
+| **VALIDATION** | T21–T30 + F3A–F3E; Postgres adversarial mismatch integration; retained F4.1/D3 Postgres CI. |
+| **DECISION_STATUS** | **PROPOSED** |
+| **EVIDENCE** | `M3_3F_F4_3_D3_ACTIVATION_OBSERVABILITY_CLOSURE_2026-09-27.md` |
+
+## CL-2026-09-27 — M3.3F F4.3 D3 activation observability closure (Prometheus)
+
+| Field | Value |
+|-------|-------|
+| **OBSERVATION** | F4.2 deploy complete with D3 OFF; first activation blocked on insufficient dedicated reconciliation/ack Prometheus signals (logs-only). |
+| **CHANGE** | Low-cardinality reconciliation tick/candidate/processed/ack/duration/last-success metrics; fail-open recording; scheduler + service + ack boundary instrumentation; activation query contract doc. |
+| **WHY** | Make first D3 production activation directly observable and fail-closed without changing scientific or freshness authority. |
+| **VALIDATION** | F4.3 unit tests; retained F4.1 unit + Postgres suites; `validate-graph.sh`; `validate-module-registry.sh`. |
+| **DECISION_STATUS** | **PROPOSED** |
+| **EVIDENCE** | `M3_3F_F4_3_D3_ACTIVATION_OBSERVABILITY_CLOSURE_2026-09-27.md` |
+
 ## CL-2026-09-27 — M3.3F F4.2 read-only D3 production activation preflight
 
 | Field | Value |
