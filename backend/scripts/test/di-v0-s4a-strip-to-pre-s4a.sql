@@ -5,6 +5,7 @@
 BEGIN;
 
 DROP TABLE "di_v0_s4_work_items";
+DROP TABLE "di_v0_s4_trip_primary_boundary_seq";
 DROP TABLE "di_v0_s4_evidence_snapshots";
 DROP TABLE "di_v0_s4_control";
 DROP TABLE "di_v0_s4_pipeline_versions";
@@ -20,7 +21,11 @@ DROP FUNCTION di_v0_s4_evidence_snapshot_scope_guard();
 DROP FUNCTION di_v0_shadow_interval_scope_guard();
 DROP FUNCTION di_v0_shadow_run_scope_guard();
 DROP FUNCTION di_v0_s4_pipeline_version_guard();
+DROP FUNCTION di_v0_s4_trip_primary_boundary_seq_scope_guard();
 
-DELETE FROM "_prisma_migrations" WHERE migration_name = '20260927200000_di_v0_s4a_dormant_foundation';
+DELETE FROM "_prisma_migrations" WHERE migration_name IN (
+  '20260927200000_di_v0_s4a_dormant_foundation',
+  '20260928120000_di_v0_s4b_boundary_occurrence_and_execution_v2'
+);
 
 COMMIT;
