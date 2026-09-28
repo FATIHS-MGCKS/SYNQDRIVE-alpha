@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'di-exp021-s4b-discovery-claim-orchestration-2026-09-28',
+    version: '4.9.2207',
+    title: 'Driving Intelligence — EXP-021 S4B discovery + claim orchestration (dormant)',
+    summary: [
+      'S4B orchestration library: bounded PRIMARY discovery via T01 only, leader-guarded di_v0_s4_discovery, replica-local DB claim loop with T03 heartbeat and 240s work budget, executor registry (no S4C yet).',
+      'Canonical runtime pipeline manifest builder (calibrationBundleHash over numeric bundle content); env parsing isolated to di-v0-s4b-config.ts.',
+      'DiV0S4bOrchestrationModule defined but not registered in AppModule — Production remains KILLED with zero S4 rows.',
+    ],
+    reason: 'Start S4B engineering behind default-OFF control plane without provider acquisition or Production activation.',
+    previousBehavior: 'S4A repository only; no discovery scheduler or claim orchestration.',
+    details:
+      'backend/src/modules/vehicle-intelligence/driving-intelligence/s4b-orchestration/*; architecture/drivingintelligence/evidence/EXP021_S4B_ENGINEERING_START.md; npm run test:di:s4b.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-28T19:50:00.000Z',
+  },
+  {
     id: 'battery-v2-m3-3f-f4-1-race-safe-d3-reconciliation-2026-09-27',
     version: '4.9.2206',
     title: 'Battery V2 M3.3F F4.1 — race-safe bounded D3 reconciliation',

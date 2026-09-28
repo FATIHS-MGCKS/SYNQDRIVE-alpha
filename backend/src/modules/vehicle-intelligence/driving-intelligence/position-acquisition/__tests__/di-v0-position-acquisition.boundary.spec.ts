@@ -69,6 +69,8 @@ describe('S3A dormant boundary (static)', () => {
       path.join(BACKEND_SRC, 'modules/vehicle-intelligence/driving-intelligence/r1-obd-acquisition'),
       path.join(BACKEND_SRC, 'modules/vehicle-intelligence/driving-intelligence/native-event-evidence'),
       path.join(BACKEND_SRC, 'modules/vehicle-intelligence/driving-intelligence/evidence-input'),
+      path.join(BACKEND_SRC, 'modules/vehicle-intelligence/driving-intelligence/s4a-foundation'),
+      path.join(BACKEND_SRC, 'modules/vehicle-intelligence/driving-intelligence/s4b-orchestration'),
     ];
     const markers = [
       'position-acquisition',

@@ -25,6 +25,17 @@ import {
 import { DI_V0_S4_ENV_ALLOWLISTS, DI_V0_S4_ENV_FLAGS } from '../di-v0-s4a-control-plane';
 import { DiV0S4WorkItemRepository } from '../di-v0-s4a-work-item.repository';
 
+/** Public repository APIs that perform reads only (must not appear in DI_V0_S4_REPOSITORY_WRITE_MAP). */
+const PUBLIC_READ_ONLY_REPOSITORY_METHODS = ['evaluateAttemptStartBoundary', 'readExecutionPostcondition'] as const;
+
+const REPOSITORY_SOURCE = fs.readFileSync(
+  path.join(__dirname, '../di-v0-s4a-work-item.repository.ts'),
+  'utf8',
+);
+
+const AUTHORITATIVE_MUTATION_PATTERN =
+  /\b(INSERT|UPDATE|DELETE|UPSERT)\b|\.executeRaw\s*\(|\.(create|update|delete|upsert)\s*\(/i;
+
 const CONTRACT = JSON.parse(
   fs.readFileSync(
     path.join(__dirname, '../../../../../../..', 'architecture/drivingintelligence/design/s4a/s4a-contract.v2.json'),
@@ -116,11 +127,30 @@ describe('DI V0 S4A contract parity (TS mirror == s4a-contract.v2.json)', () => 
     expect([...mapped].sort()).toEqual(codePath);
     expect(mapped.has('W_CONTROL_ROW_OPERATOR_UPDATE')).toBe(false);
 
+    const writeMapMethods = Object.keys(DI_V0_S4_REPOSITORY_WRITE_MAP);
+    const readOnlyMethods = [...PUBLIC_READ_ONLY_REPOSITORY_METHODS];
+    expect(readOnlyMethods).toHaveLength(2);
+
+    for (const m of readOnlyMethods) {
+      expect(writeMapMethods).not.toContain(m);
+    }
+
     const methods = Object.getOwnPropertyNames(DiV0S4WorkItemRepository.prototype).filter(
       (m) => m !== 'constructor' && !isPrivateHelper(m),
     );
-    expect(methods.sort()).toEqual(Object.keys(DI_V0_S4_REPOSITORY_WRITE_MAP).sort());
+    const classified = new Set([...writeMapMethods, ...readOnlyMethods]);
+    const unclassified = methods.filter((m) => !classified.has(m));
+    expect(unclassified).toEqual([]);
+
+    expect(methods.sort()).toEqual([...classified].sort());
     expect(methods.some((m) => /status/i.test(m))).toBe(false);
+  });
+
+  it('read-only repository helpers perform no authoritative mutations', () => {
+    const evaluateWrites = countAuthoritativeMutationsInMethod('evaluateAttemptStartBoundary');
+    const postconditionWrites = countAuthoritativeMutationsInMethod('readExecutionPostcondition');
+    expect(evaluateWrites).toBe(0);
+    expect(postconditionWrites).toBe(0);
   });
 
   it('control plane flag and allowlist names', () => {
@@ -166,4 +196,29 @@ const PRIVATE_HELPERS = new Set([
 
 function isPrivateHelper(name: string): boolean {
   return PRIVATE_HELPERS.has(name);
+}
+
+function extractMethodSource(methodName: string): string {
+  const marker = `async ${methodName}(`;
+  const start = REPOSITORY_SOURCE.indexOf(marker);
+  if (start < 0) {
+    throw new Error(`method not found in repository source: ${methodName}`);
+  }
+  const braceStart = REPOSITORY_SOURCE.indexOf('{', start);
+  let depth = 0;
+  for (let i = braceStart; i < REPOSITORY_SOURCE.length; i++) {
+    const ch = REPOSITORY_SOURCE[i];
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) return REPOSITORY_SOURCE.slice(braceStart, i + 1);
+    }
+  }
+  throw new Error(`unbalanced braces for method: ${methodName}`);
+}
+
+function countAuthoritativeMutationsInMethod(methodName: string): number {
+  const body = extractMethodSource(methodName);
+  const matches = body.match(new RegExp(AUTHORITATIVE_MUTATION_PATTERN.source, 'gi'));
+  return matches?.length ?? 0;
 }

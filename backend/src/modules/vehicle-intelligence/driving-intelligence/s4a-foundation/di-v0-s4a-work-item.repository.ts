@@ -13,8 +13,10 @@ import {
   DI_V0_S4_SOURCE_FAMILIES,
   type DiV0S4PipelineManifest,
   type DiV0S4RunPurpose,
+  DI_V0_S4_EXECUTOR_TERMINAL_STATES,
   type DiV0S4SkipReason,
   type DiV0S4SourceFamily,
+  type DiV0S4State,
   type DiV0S4SupersededReason,
   type DiV0S4TransitionId,
 } from './di-v0-s4a-contract';
@@ -100,6 +102,18 @@ export interface DiV0S4CompleteResult {
   reusedExistingRun: boolean;
   executionIdentity: string;
   combinedInputIdentity: string;
+}
+
+/** Read-only attempt-start boundary recheck (`fingerprintRecheckPoints.ATTEMPT_START_AFTER_CLAIM`). */
+export type DiV0S4AttemptStartRecheckResult =
+  | { kind: 'CURRENT' }
+  | { kind: 'SUPERSEDE'; reason: DiV0S4SupersededReason }
+  | { kind: 'LEASE_LOST'; code: DiV0S4RejectionCode };
+
+export interface DiV0S4ExecutionPostcondition {
+  status: DiV0S4State;
+  terminal: boolean;
+  leaseActivelyHeld: boolean;
 }
 
 interface WorkItemRow {
@@ -666,6 +680,61 @@ export class DiV0S4WorkItemRepository {
         WHERE ${this.holderPredicate(lease)}`;
       if (updated !== 1) reject(tid, 'CONDITIONAL_UPDATE_LOST');
     });
+  }
+
+  // ── S4B read helpers (no authoritative writes) ───────────────────────────
+
+  /**
+   * Post-claim, pre-acquisition boundary fingerprint recheck. Unlocked canonical trip read;
+   * compares through `buildDiV0S4BoundaryFingerprint` (same as T06 / T13).
+   */
+  async evaluateAttemptStartBoundary(lease: DiV0S4Lease): Promise<DiV0S4AttemptStartRecheckResult> {
+    const rows = await this.prisma.$queryRaw<
+      Array<{
+        status: string;
+        lease_epoch: bigint;
+        lease_owner: string | null;
+        boundary_fingerprint: string;
+        trip_id: string;
+        lease_valid: boolean;
+      }>
+    >`
+      SELECT status, lease_epoch, lease_owner, boundary_fingerprint, trip_id,
+        (lease_expires_at IS NOT NULL AND lease_expires_at > clock_timestamp()) AS lease_valid
+      FROM di_v0_s4_work_items WHERE id = ${lease.workItemId}`;
+    const row = rows[0];
+    if (!row || row.status !== 'LEASED' || row.lease_epoch !== lease.leaseEpoch || row.lease_owner !== lease.leaseOwner) {
+      return { kind: 'LEASE_LOST', code: 'LEASE_NOT_HELD' };
+    }
+    if (!row.lease_valid) return { kind: 'LEASE_LOST', code: 'LEASE_EXPIRED' };
+
+    const scope = await this.readTripScope(this.prisma, row.trip_id);
+    if (!scope) return { kind: 'LEASE_LOST', code: 'TENANT_SCOPE_INVALID' };
+
+    const current = this.fingerprintOf(scope);
+    if (current === row.boundary_fingerprint) return { kind: 'CURRENT' };
+
+    let reason: DiV0S4SupersededReason = 'BOUNDARY_CHANGED';
+    if (scope.trip_status === 'CANCELLED') reason = 'TRIP_CANCELLED';
+    else if (scope.trip_status === 'ONGOING') reason = 'TRIP_NOT_COMPLETED';
+    return { kind: 'SUPERSEDE', reason };
+  }
+
+  /** Durable terminal postcondition for S4B after an executor reports SETTLED. */
+  async readExecutionPostcondition(workItemId: string): Promise<DiV0S4ExecutionPostcondition> {
+    const rows = await this.prisma.$queryRaw<
+      Array<{ status: string; lease_valid: boolean }>
+    >`
+      SELECT status,
+        (status = 'LEASED' AND lease_expires_at IS NOT NULL AND lease_expires_at > clock_timestamp()) AS lease_valid
+      FROM di_v0_s4_work_items WHERE id = ${workItemId}`;
+    const row = rows[0];
+    if (!row) {
+      return { status: 'PENDING', terminal: false, leaseActivelyHeld: false };
+    }
+    const status = row.status as DiV0S4State;
+    const terminal = (DI_V0_S4_EXECUTOR_TERMINAL_STATES as readonly string[]).includes(status);
+    return { status, terminal, leaseActivelyHeld: row.lease_valid === true };
   }
 
   // ── internals ────────────────────────────────────────────────────────────
