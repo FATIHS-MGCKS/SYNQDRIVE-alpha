@@ -11,6 +11,7 @@ import type { DiV0S4RuntimePipeline } from './di-v0-s4b-pipeline-manifest';
 export const DI_V0_S4B_RELEASE_REASONS = [
   'EXECUTOR_ERROR',
   'EXECUTOR_RELEASED',
+  'EXECUTOR_POSTCONDITION_FAILED',
   'WORK_BUDGET_EXCEEDED',
   'CONTROL_PLANE_RELINQUISH',
   'SHUTDOWN_RELINQUISH',
@@ -50,6 +51,7 @@ export type DiV0S4ClaimLoopStatus =
   | 'IDLE'
   | 'CLAIM_REFUSED'
   | 'SETTLED'
+  | 'BOUNDARY_SUPERSEDED'
   | 'RELEASED'
   | 'LEASE_LOST'
   | 'RELEASE_REFUSED'
@@ -139,6 +141,29 @@ export class DiV0S4ClaimLoop {
       }
       result.workItemId = lease.workItemId;
       result.transitionId = lease.transitionId;
+
+      const recheck = await this.repository.evaluateAttemptStartBoundary(lease);
+      if (recheck.kind === 'LEASE_LOST') {
+        return { ...result, status: 'LEASE_LOST', refusalCode: recheck.code };
+      }
+      if (recheck.kind === 'SUPERSEDE') {
+        try {
+          await this.repository.holderSupersede(lease, recheck.reason);
+          return { ...result, status: 'BOUNDARY_SUPERSEDED' };
+        } catch (error) {
+          if (isDiV0S4Rejection(error) && LEASE_LOST_CODES.includes(error.code)) {
+            return { ...result, status: 'LEASE_LOST', refusalCode: error.code };
+          }
+          if (isDiV0S4Rejection(error)) {
+            return { ...result, status: 'RELEASE_REFUSED', refusalCode: error.code };
+          }
+          this.logger.warn(
+            `DI V0 S4 attempt-start supersede failed: ${error instanceof Error ? error.message.slice(0, 200) : 'unknown'}`,
+          );
+          return { ...result, status: 'RELEASE_FAILED', refusalCode: 'UNEXPECTED_ERROR' };
+        }
+      }
+
       return await this.runAttempt(executor, lease, result);
     } finally {
       this.inFlight = false;
@@ -199,7 +224,7 @@ export class DiV0S4ClaimLoop {
     }
     if (state.stopCause === 'LEASE_LOST') return { ...result, status: 'LEASE_LOST' };
     if (end.kind === 'ERROR') return this.release(lease, 'EXECUTOR_ERROR', result);
-    if (end.outcome?.kind === 'SETTLED') return { ...result, status: 'SETTLED' };
+    if (end.outcome?.kind === 'SETTLED') return this.acceptSettled(lease, result);
     return this.release(lease, 'EXECUTOR_RELEASED', result);
   }
 
@@ -219,6 +244,15 @@ export class DiV0S4ClaimLoop {
       }
       // Transient errors: the next beat retries; DB-clock expiry turns a persistent failure into LEASE_EXPIRED.
     }
+  }
+
+  /** SETTLED is accepted only when the DB row is in a durable terminal state (not an active lease). */
+  private async acceptSettled(lease: DiV0S4ClaimResult, result: DiV0S4ClaimLoopResult): Promise<DiV0S4ClaimLoopResult> {
+    const post = await this.repository.readExecutionPostcondition(lease.workItemId);
+    if (post.terminal && !post.leaseActivelyHeld) return { ...result, status: 'SETTLED' };
+    if (post.leaseActivelyHeld) return this.release(lease, 'EXECUTOR_POSTCONDITION_FAILED', result);
+    if (post.terminal) return { ...result, status: 'SETTLED' };
+    return { ...result, status: 'LEASE_LOST' };
   }
 
   /** T07: the only holder write allowed while killed; refusals mean the lease is already gone. */

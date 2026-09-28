@@ -46,6 +46,15 @@ export const DI_V0_S4_STATES = [
 export type DiV0S4State = (typeof DI_V0_S4_STATES)[number];
 export type DiV0S4FromState = DiV0S4State | 'NONE';
 
+/** Terminal work-item states an executor may reach before reporting SETTLED (contract v2). */
+export const DI_V0_S4_EXECUTOR_TERMINAL_STATES = [
+  'COMPLETED',
+  'FAILED_TERMINAL',
+  'SKIPPED_INELIGIBLE',
+  'SUPERSEDED',
+] as const satisfies readonly DiV0S4State[];
+export type DiV0S4ExecutorTerminalState = (typeof DI_V0_S4_EXECUTOR_TERMINAL_STATES)[number];
+
 export const DI_V0_S4_RUN_PURPOSES = ['PRIMARY', 'RECALIBRATION_REPLAY', 'REACQUISITION'] as const;
 export type DiV0S4RunPurpose = (typeof DI_V0_S4_RUN_PURPOSES)[number];
 

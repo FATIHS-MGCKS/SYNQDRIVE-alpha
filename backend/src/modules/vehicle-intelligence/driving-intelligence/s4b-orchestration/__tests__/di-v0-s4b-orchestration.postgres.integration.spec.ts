@@ -1,12 +1,15 @@
 import { randomUUID } from 'crypto';
 import type { PrismaClient } from '@prisma/client';
 import { parseDiV0S4ControlPlaneConfig, type DiV0S4ControlPlaneConfig } from '../../s4a-foundation/di-v0-s4a-control-plane';
+import { DiV0S4TransitionRejectedError } from '../../s4a-foundation/di-v0-s4a-errors';
 import { DiV0S4WorkItemRepository } from '../../s4a-foundation/di-v0-s4a-work-item.repository';
 import {
   assertS4aPostgresCiEnv,
   advanceS4aClock,
   changeTripBoundary,
   cleanupS4aTenant,
+  s4aChannels,
+  s4aIntervals,
   deferred,
   deleteKillRow,
   newS4aClient,
@@ -40,6 +43,7 @@ interface ItemRow {
   lease_owner: string | null;
   attempt_count: number;
   failure_reason: string | null;
+  superseded_reason: string | null;
   eligible_at_passed: boolean;
   anchor_matches_end: boolean;
   retry_delay_s: number | null;
@@ -132,7 +136,7 @@ type FakeExecute = (ctx: DiV0S4ExecutionContext) => Promise<DiV0S4ExecutionOutco
   async function items(t: S4aTenant): Promise<ItemRow[]> {
     const rows = await admin.$queryRaw<ItemRow[]>`
       SELECT w.id, w.status, w.run_purpose, w.source_family, w.boundary_fingerprint, w.boundary_occurrence,
-        w.pipeline_version_key, w.lease_epoch, w.lease_owner, w.attempt_count, w.failure_reason,
+        w.pipeline_version_key, w.lease_epoch, w.lease_owner, w.attempt_count, w.failure_reason, w.superseded_reason,
         (w.eligible_at <= clock_timestamp()) AS eligible_at_passed,
         (w.settlement_anchor_at = (t.end_time AT TIME ZONE 'UTC')) AS anchor_matches_end,
         CASE WHEN w.next_attempt_at IS NULL THEN NULL
@@ -614,5 +618,231 @@ type FakeExecute = (ctx: DiV0S4ExecutionContext) => Promise<DiV0S4ExecutionOutco
     }).runOnce();
     expect(result).toMatchObject({ status: 'RELEASE_REFUSED', releaseReason: 'EXECUTOR_ERROR', refusalCode: 'ATTEMPTS_EXHAUSTED' });
     expect((await items(t))[0]).toMatchObject({ status: 'LEASED', attempt_count: 5 });
+  });
+
+  // ── P1 closure (attempt-start recheck + SETTLED postcondition) ─────────────
+
+  describe('S4B P1 closure', () => {
+    it('S4B-P1A-01 unchanged boundary -> executor called once', async () => {
+      const t = await tenant();
+      const config = configFor([t]);
+      await discovery(config).service.runDiscoveryPass();
+      const execute = jest.fn(settleTerminal);
+      await expect(claimLoop(config, execute).runOnce()).resolves.toMatchObject({ status: 'SETTLED' });
+      expect(execute).toHaveBeenCalledTimes(1);
+    });
+
+    it('S4B-P1A-02 changed boundary -> T13, executor 0', async () => {
+      const t = await tenant();
+      const config = configFor([t]);
+      await discovery(config).service.runDiscoveryPass();
+      await changeTripBoundary(admin, t.tripId);
+      const execute = jest.fn(settleTerminal);
+      await expect(claimLoop(config, execute).runOnce()).resolves.toMatchObject({ status: 'BOUNDARY_SUPERSEDED' });
+      expect(execute).not.toHaveBeenCalled();
+      expect((await items(t))[0]).toMatchObject({ status: 'SUPERSEDED', superseded_reason: 'BOUNDARY_CHANGED' });
+    });
+
+    it('S4B-P1A-03 trip reopened to ONGOING -> TRIP_NOT_COMPLETED supersede, executor 0', async () => {
+      const t = await tenant();
+      const config = configFor([t]);
+      await discovery(config).service.runDiscoveryPass();
+      await admin.$executeRaw`UPDATE vehicle_trips SET trip_status = 'ONGOING', end_time = NULL WHERE id = ${t.tripId}`;
+      const execute = jest.fn(settleTerminal);
+      await expect(claimLoop(config, execute).runOnce()).resolves.toMatchObject({ status: 'BOUNDARY_SUPERSEDED' });
+      expect(execute).not.toHaveBeenCalled();
+      expect((await items(t))[0]).toMatchObject({ status: 'SUPERSEDED', superseded_reason: 'TRIP_NOT_COMPLETED' });
+    });
+
+    it('S4B-P1A-04 cancelled trip -> TRIP_CANCELLED supersede when enum exists', async () => {
+      const labels = await admin.$queryRaw<Array<{ label: string }>>`
+        SELECT e.enumlabel AS label FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid WHERE t.typname = 'TripStatus'`;
+      if (!labels.some((l) => l.label === 'CANCELLED')) return;
+      const t = await tenant();
+      const config = configFor([t]);
+      await discovery(config).service.runDiscoveryPass();
+      await admin.$executeRaw`UPDATE vehicle_trips SET trip_status = 'CANCELLED' WHERE id = ${t.tripId}`;
+      const execute = jest.fn(settleTerminal);
+      await expect(claimLoop(config, execute).runOnce()).resolves.toMatchObject({ status: 'BOUNDARY_SUPERSEDED' });
+      expect(execute).not.toHaveBeenCalled();
+      expect((await items(t))[0]).toMatchObject({ status: 'SUPERSEDED', superseded_reason: 'TRIP_CANCELLED' });
+    });
+
+    it('S4B-P1A-05 APPLIED repair after T01 before claim -> executor 0, later discovery creates successor PRIMARY', async () => {
+      const t = await tenant(3 * 86_400);
+      const config = configFor([t]);
+      await discovery(config).service.runDiscoveryPass();
+      expect((await items(t))).toHaveLength(1);
+      await admin.$executeRaw`
+        INSERT INTO trip_repairs (id, vehicle_id, trip_id, repair_type, status, reason, confidence, window_from, window_to, applied_at, created_at)
+        VALUES (${randomUUID()}, ${t.vehicleId}, ${t.tripId}, 'MISSING_END', 'APPLIED', 'S4B_P1A_05', 'HIGH',
+          (now() AT TIME ZONE 'UTC') - interval '2 days', (now() AT TIME ZONE 'UTC') - interval '1 day',
+          clock_timestamp(), clock_timestamp())`;
+      await changeTripBoundary(admin, t.tripId);
+      const execute = jest.fn(settleTerminal);
+      await expect(claimLoop(config, execute).runOnce()).resolves.toMatchObject({ status: 'BOUNDARY_SUPERSEDED' });
+      expect(execute).not.toHaveBeenCalled();
+      await admin.$executeRaw`
+        UPDATE trip_repairs SET applied_at = applied_at - interval '25 hours', created_at = created_at - interval '25 hours'
+        WHERE trip_id = ${t.tripId} AND status = 'APPLIED'`;
+      await discovery(config).service.runDiscoveryPass();
+      const rows = await items(t);
+      expect(rows.filter((r) => r.status !== 'SUPERSEDED')).toHaveLength(1);
+      expect(rows.find((r) => r.status !== 'SUPERSEDED')).toMatchObject({ boundary_occurrence: 1 });
+    });
+
+    it('S4B-P1A-06 concurrent boundary change during claim/recheck window -> no stale execution', async () => {
+      const t = await tenant();
+      const config = configFor([t]);
+      await discovery(config).service.runDiscoveryPass();
+      const execute = jest.fn(settleTerminal);
+      const [result] = await Promise.all([
+        claimLoop(config, execute).runOnce(),
+        (async () => {
+          await changeTripBoundary(admin, t.tripId);
+        })(),
+      ]);
+      expect(['BOUNDARY_SUPERSEDED', 'SETTLED']).toContain(result.status);
+      if (result.status === 'BOUNDARY_SUPERSEDED') expect(execute).not.toHaveBeenCalled();
+    });
+
+    it('S4B-P1A-07 lost lease before recheck completion -> executor 0', async () => {
+      const t = await tenant();
+      const config = configFor([t]);
+      const db = client();
+      const repo = new DiV0S4WorkItemRepository(db, config);
+      const manifest = buildDiV0S4RuntimePipelineManifest(config);
+      await discovery(config).service.runDiscoveryPass();
+      const lease = await repo.claim({ leaseOwner: 'p1a-07', pipelineManifest: manifest.manifest });
+      await advanceS4aClock(admin, t.tripId, 400);
+      expect(await repo.evaluateAttemptStartBoundary(lease)).toEqual({ kind: 'LEASE_LOST', code: 'LEASE_EXPIRED' });
+      const execute = jest.fn(settleTerminal);
+      const registry = new DiV0S4ExecutorRegistry();
+      registry.register({ executorId: 'FAKE_S4B_EXECUTOR', isReady: () => true, execute });
+      const loop = new DiV0S4ClaimLoop(repo, config, manifest, registry, { leaseOwner: 'p1a-07-loop', workBudgetMs: 240_000 });
+      jest.spyOn(repo, 'evaluateAttemptStartBoundary').mockResolvedValueOnce({ kind: 'LEASE_LOST', code: 'LEASE_EXPIRED' });
+      await expect(loop.runOnce()).resolves.toMatchObject({ status: 'LEASE_LOST' });
+      expect(execute).not.toHaveBeenCalled();
+    });
+
+    it('S4B-P1A-08 post-recheck boundary mutation remains covered by T06 completion check', async () => {
+      const t = await tenant();
+      await linkDimo(t, { aftermarketDevice: { serial: 'R1-P1A08' } }, 'SMART5');
+      const config = configFor([t]);
+      await discovery(config).service.runDiscoveryPass();
+      const execute: FakeExecute = async (ctx) => {
+        await ctx.repository.pinEvidence(ctx.lease, {
+          windowStart: t.startTime,
+          windowEnd: t.endTime,
+          channels: s4aChannels('p1a-08'),
+        });
+        await changeTripBoundary(admin, t.tripId);
+        let completionError: unknown;
+        try {
+          await ctx.repository.completeWithS2(ctx.lease, { pipelineManifest: ctx.pipelineManifest, intervals: s4aIntervals() });
+        } catch (error) {
+          completionError = error;
+        }
+        expect(completionError).toBeInstanceOf(DiV0S4TransitionRejectedError);
+        await ctx.repository.failTerminal(ctx.lease, 'P1A08_ABORT');
+        return { kind: 'SETTLED' };
+      };
+      await expect(claimLoop(config, execute).runOnce()).resolves.toMatchObject({ status: 'SETTLED' });
+    });
+
+    it('S4B-P1B-01 T06 COMPLETED + SETTLED -> accepted', async () => {
+      const t = await tenant();
+      await linkDimo(t, { aftermarketDevice: { serial: 'R1-P1B01' } }, 'SMART5');
+      const config = configFor([t]);
+      await discovery(config).service.runDiscoveryPass();
+      const execute: FakeExecute = async (ctx) => {
+        await ctx.repository.pinEvidence(ctx.lease, {
+          windowStart: t.startTime,
+          windowEnd: t.endTime,
+          channels: s4aChannels('p1b-01'),
+        });
+        await ctx.repository.completeWithS2(ctx.lease, { pipelineManifest: ctx.pipelineManifest, intervals: s4aIntervals() });
+        return { kind: 'SETTLED' };
+      };
+      await expect(claimLoop(config, execute).runOnce()).resolves.toMatchObject({ status: 'SETTLED' });
+      expect((await items(t))[0]).toMatchObject({ status: 'COMPLETED', source_family: 'RUPTELA_R1' });
+    });
+
+    it('S4B-P1B-02 T08 FAILED_TERMINAL + SETTLED -> accepted', async () => {
+      const t = await tenant();
+      const config = configFor([t]);
+      await discovery(config).service.runDiscoveryPass();
+      await expect(claimLoop(config, settleTerminal).runOnce()).resolves.toMatchObject({ status: 'SETTLED' });
+      expect((await items(t))[0]).toMatchObject({ status: 'FAILED_TERMINAL' });
+    });
+
+    it('S4B-P1B-03 T09 SKIPPED_INELIGIBLE + SETTLED -> accepted', async () => {
+      const t = await tenant();
+      const config = configFor([t]);
+      await discovery(config).service.runDiscoveryPass();
+      const execute: FakeExecute = async (ctx) => {
+        await ctx.repository.skipIneligible(ctx.lease, 'WINDOW_EXCEEDS_MAX_8H');
+        return { kind: 'SETTLED' };
+      };
+      await expect(claimLoop(config, execute).runOnce()).resolves.toMatchObject({ status: 'SETTLED' });
+      expect((await items(t))[0]).toMatchObject({ status: 'SKIPPED_INELIGIBLE' });
+    });
+
+    it('S4B-P1B-04 T13 SUPERSEDED + SETTLED -> accepted', async () => {
+      const t = await tenant();
+      const config = configFor([t]);
+      await discovery(config).service.runDiscoveryPass();
+      const execute: FakeExecute = async (ctx) => {
+        await changeTripBoundary(admin, t.tripId);
+        await ctx.repository.holderSupersede(ctx.lease, 'BOUNDARY_CHANGED');
+        return { kind: 'SETTLED' };
+      };
+      await expect(claimLoop(config, execute).runOnce()).resolves.toMatchObject({ status: 'SETTLED' });
+      expect((await items(t))[0]).toMatchObject({ status: 'SUPERSEDED' });
+    });
+
+    it('S4B-P1B-05 SETTLED with row still LEASED -> rejected + safe T07', async () => {
+      const t = await tenant();
+      const config = configFor([t]);
+      await discovery(config).service.runDiscoveryPass();
+      const result = await claimLoop(config, async () => ({ kind: 'SETTLED' })).runOnce();
+      expect(result).toMatchObject({ status: 'RELEASED', releaseReason: 'EXECUTOR_POSTCONDITION_FAILED' });
+      expect((await items(t))[0]).toMatchObject({ status: 'FAILED_RETRYABLE', failure_reason: 'EXECUTOR_POSTCONDITION_FAILED' });
+    });
+
+    it('S4B-P1B-06 false SETTLED after lease loss -> no stale write', async () => {
+      const t = await tenant();
+      const config = configFor([t]);
+      const manifest = buildDiV0S4RuntimePipelineManifest(config);
+      await discovery(config).service.runDiscoveryPass();
+      const db = client();
+      const repo = new DiV0S4WorkItemRepository(db, config);
+      const lease = await repo.claim({ leaseOwner: 'p1b-06', pipelineManifest: manifest.manifest });
+      await advanceS4aClock(admin, t.tripId, 400);
+      const post = await repo.readExecutionPostcondition(lease.workItemId);
+      expect(post.leaseActivelyHeld).toBe(false);
+    });
+
+    it('S4B-P1B-07 terminalized concurrently -> accept SETTLED without duplicate terminal write', async () => {
+      const t = await tenant();
+      const config = configFor([t]);
+      await discovery(config).service.runDiscoveryPass();
+      const execute: FakeExecute = async (ctx) => {
+        await changeTripBoundary(admin, t.tripId);
+        await ctx.repository.holderSupersede(ctx.lease, 'BOUNDARY_CHANGED');
+        return { kind: 'SETTLED' };
+      };
+      await expect(claimLoop(config, execute).runOnce()).resolves.toMatchObject({ status: 'SETTLED' });
+      expect((await items(t)).filter((r) => r.status === 'COMPLETED')).toHaveLength(0);
+    });
+
+    it('S4B-P1B-08 executor throws unchanged -> T07 EXECUTOR_ERROR', async () => {
+      const t = await tenant();
+      const config = configFor([t]);
+      await discovery(config).service.runDiscoveryPass();
+      await expect(claimLoop(config, async () => {
+        throw new Error('p1b-08');
+      }).runOnce()).resolves.toMatchObject({ status: 'RELEASED', releaseReason: 'EXECUTOR_ERROR' });
+    });
   });
 });

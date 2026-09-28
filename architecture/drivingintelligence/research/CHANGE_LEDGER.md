@@ -1207,3 +1207,13 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | NON_EFFECTS | No AppModule registration, no deploy, no Production env/control row, no provider acquisition (S4C), no BullMQ, no schema migration |
 | Evidence | `evidence/EXP021_S4B_ENGINEERING_START.md` |
 | Next slice | `S4B_IMPLEMENTATION_PREMERGE_AUDIT` (draft PR; no merge/deploy/activation) |
+
+### EXP-021 S4B — P1 pre-merge closure (2026-09-28)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | Independent pre-merge audit P1-A (attempt-start boundary recheck) + P1-B (SETTLED durable terminal postcondition) |
+| CHANGE | `evaluateAttemptStartBoundary` + `readExecutionPostcondition` (S4A repository read helpers); claim loop invokes T13 on mismatch; `EXECUTOR_POSTCONDITION_FAILED` T07 reason; tests `S4B-P1A-*` / `S4B-P1B-*` |
+| NON_EFFECTS | No new transitions/schema; no S4C; no deploy/Production write |
+| Evidence | `evidence/EXP021_S4B_ENGINEERING_START.md` §P1 pre-merge closure |
+| Next slice | `S4B_FINAL_RESEAL` (re-audit PR #1833; still draft, no merge) |

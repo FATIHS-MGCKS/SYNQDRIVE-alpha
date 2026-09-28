@@ -44,7 +44,15 @@
 
 ## T07 release reason codes (bounded)
 
-`EXECUTOR_ERROR`, `EXECUTOR_RELEASED`, `WORK_BUDGET_EXCEEDED`, `CONTROL_PLANE_RELINQUISH`, `SHUTDOWN_RELINQUISH`
+`EXECUTOR_ERROR`, `EXECUTOR_RELEASED`, `EXECUTOR_POSTCONDITION_FAILED`, `WORK_BUDGET_EXCEEDED`, `CONTROL_PLANE_RELINQUISH`, `SHUTDOWN_RELINQUISH`
+
+## P1 pre-merge closure (2026-09-28)
+
+| Item | Implementation |
+|------|----------------|
+| **P1-A attempt-start** | After T02/T04 `claim`, `evaluateAttemptStartBoundary` (read-only) compares live canonical trip fingerprint via `buildDiV0S4BoundaryFingerprint`; mismatch → `holderSupersede` (T13) with `BOUNDARY_CHANGED` / `TRIP_NOT_COMPLETED` / `TRIP_CANCELLED`; executor never invoked |
+| **P1-B SETTLED** | `readExecutionPostcondition` requires durable terminal state (`COMPLETED`, `FAILED_TERMINAL`, `SKIPPED_INELIGIBLE`, `SUPERSEDED`); false SETTLED → T07 `EXECUTOR_POSTCONDITION_FAILED` when lease still held |
+| **Tests** | `S4B-P1A-01`…`08`, `S4B-P1B-01`…`08` (PostgreSQL + unit gates) |
 
 ## Production dormancy (read-only 2026-09-28)
 

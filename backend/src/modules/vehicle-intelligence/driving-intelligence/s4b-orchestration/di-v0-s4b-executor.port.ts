@@ -11,7 +11,8 @@ export interface DiV0S4ExecutionContext {
 }
 
 /**
- * `SETTLED`: the executor itself committed a terminal holder transition.
+ * `SETTLED`: the executor believes it committed a terminal holder transition (T06/T08/T09/T13).
+ * S4B verifies durable terminal DB state via `readExecutionPostcondition` before accepting SETTLED.
  * `RELEASE`: the executor wants the lease returned through T07 (`EXECUTOR_RELEASED`).
  * A thrown error is released through T07 as `EXECUTOR_ERROR`.
  */

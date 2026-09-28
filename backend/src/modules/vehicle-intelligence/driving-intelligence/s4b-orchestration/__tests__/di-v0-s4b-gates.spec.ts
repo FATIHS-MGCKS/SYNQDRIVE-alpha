@@ -27,6 +27,13 @@ function fakeRepository(overrides: Partial<Record<keyof DiV0S4WorkItemRepository
   const repo = {
     createWorkItem: jest.fn(),
     claim: jest.fn(async () => ({ workItemId: 'wi-1', leaseEpoch: 1n, leaseOwner: 'owner', attemptCount: 1, transitionId: 'T02_CLAIM' })),
+    evaluateAttemptStartBoundary: jest.fn(async () => ({ kind: 'CURRENT' as const })),
+    readExecutionPostcondition: jest.fn(async () => ({
+      status: 'FAILED_TERMINAL' as const,
+      terminal: true,
+      leaseActivelyHeld: false,
+    })),
+    holderSupersede: jest.fn(async () => undefined),
     heartbeat: jest.fn(async () => ({ leaseExpiresAt: new Date() })),
     failRetryable: jest.fn(async () => ({ nextAttemptAt: new Date() })),
     ...overrides,
@@ -159,5 +166,48 @@ describe('DI V0 S4B claim loop gates', () => {
   it('C16d lease owner matches the repository pattern', () => {
     expect(buildDiV0S4LeaseOwner('host.example:1 x', 42)).toMatch(/^[A-Za-z0-9_-]{1,128}$/);
     expect(buildDiV0S4LeaseOwner('a'.repeat(300), 1).length).toBeLessThanOrEqual(128);
+  });
+
+  it('S4B-P1A-02 unit: boundary mismatch supersedes via T13 and never calls the executor', async () => {
+    const execute = jest.fn(async () => ({ kind: 'SETTLED' as const }));
+    const repo = fakeRepository({
+      evaluateAttemptStartBoundary: jest.fn(async () => ({ kind: 'SUPERSEDE' as const, reason: 'BOUNDARY_CHANGED' as const })),
+    });
+    const registry = new DiV0S4ExecutorRegistry();
+    registry.register(executor({ execute }));
+    await expect(loop(ON, repo, registry).runOnce()).resolves.toMatchObject({ status: 'BOUNDARY_SUPERSEDED' });
+    expect(repo.holderSupersede).toHaveBeenCalledWith(expect.objectContaining({ workItemId: 'wi-1' }), 'BOUNDARY_CHANGED');
+    expect(execute).not.toHaveBeenCalled();
+  });
+
+  it('S4B-P1B-05 unit: false SETTLED with active lease triggers EXECUTOR_POSTCONDITION_FAILED T07', async () => {
+    const repo = fakeRepository({
+      readExecutionPostcondition: jest.fn(async () => ({
+        status: 'LEASED' as const,
+        terminal: false,
+        leaseActivelyHeld: true,
+      })),
+    });
+    const registry = new DiV0S4ExecutorRegistry();
+    registry.register(executor());
+    await expect(loop(ON, repo, registry).runOnce()).resolves.toMatchObject({
+      status: 'RELEASED',
+      releaseReason: 'EXECUTOR_POSTCONDITION_FAILED',
+    });
+    expect(repo.failRetryable).toHaveBeenCalledWith(expect.objectContaining({ workItemId: 'wi-1' }), 'EXECUTOR_POSTCONDITION_FAILED');
+  });
+
+  it('S4B-P1B-06 unit: false SETTLED after lease loss performs no T07 write', async () => {
+    const repo = fakeRepository({
+      readExecutionPostcondition: jest.fn(async () => ({
+        status: 'LEASED' as const,
+        terminal: false,
+        leaseActivelyHeld: false,
+      })),
+    });
+    const registry = new DiV0S4ExecutorRegistry();
+    registry.register(executor());
+    await expect(loop(ON, repo, registry).runOnce()).resolves.toMatchObject({ status: 'LEASE_LOST' });
+    expect(repo.failRetryable).not.toHaveBeenCalled();
   });
 });

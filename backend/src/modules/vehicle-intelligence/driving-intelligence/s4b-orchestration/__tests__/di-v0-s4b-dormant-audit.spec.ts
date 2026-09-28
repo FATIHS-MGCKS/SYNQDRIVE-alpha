@@ -139,7 +139,15 @@ describe('DI V0 S4B dormant-by-construction audit', () => {
     for (const file of productionFiles) {
       for (const m of code(file).matchAll(/this\.repository\.(\w+)\s*\(/g)) repositoryCalls.add(m[1]);
     }
-    expect([...repositoryCalls].sort()).toEqual(['claim', 'createWorkItem', 'failRetryable', 'heartbeat']);
+    expect([...repositoryCalls].sort()).toEqual([
+      'claim',
+      'createWorkItem',
+      'evaluateAttemptStartBoundary',
+      'failRetryable',
+      'heartbeat',
+      'holderSupersede',
+      'readExecutionPostcondition',
+    ]);
   });
 
   it('discovery never allocates boundary occurrence and never uses hardwareType', () => {
