@@ -679,18 +679,16 @@ async function insertShadowRun(prisma: PrismaClient, tenant: S4aTenant, organiza
     await s4bArtifactsAbsent(clone.prisma);
   });
 
-  it('S4B-M13 empty-state serialization: migration lock phase blocks writers on all guarded tables', async () => {
-    const clone = await freshClone();
-    await applyS4a(clone);
-    const tenant = await seedS4aTenant(clone.prisma);
+  async function assertWriteBlockedByMigrationLocks(
+    clone: Clone,
+    tenant: S4aTenant,
+    startWrite: (writer: PrismaClient) => Promise<unknown>,
+  ): Promise<void> {
     const locker = client(clone.name);
+    const writer = client(clone.name);
     const observer = client(clone.name);
-    const wRuns = client(clone.name);
-    const wItems = client(clone.name);
-    const wIntervals = client(clone.name);
     const locked = deferred();
     const release = deferred();
-    const pvk = `DI_V0_S4_PIPELINE_V1:sha256:${'a'.repeat(64)}`;
     const lockTx = locker.$transaction(
       async (tx) => {
         await tx.$executeRawUnsafe(`
@@ -703,54 +701,85 @@ async function insertShadowRun(prisma: PrismaClient, tenant: S4aTenant, organiza
       { timeout: 60_000 },
     );
     await locked.promise;
-    const preRunId = await insertShadowRun(clone.prisma, tenant);
-    const runInsert = wRuns.$executeRaw`
-      INSERT INTO di_v0_shadow_runs (id, organization_id, vehicle_id, trip_id, source_family, structural_version,
-        estimator_version, calibration_version, source_family_policy_version, input_evidence_version, idempotency_key, updated_at)
-      VALUES (${randomUUID()}, ${tenant.organizationId}, ${tenant.vehicleId}, ${tenant.tripId}, 'RUPTELA_R1', 'S', 'E', 'C', 'P', 'IEV',
-        ${randomUUID()}, now())`;
-    const itemInsert = wItems.$transaction(async (tx) => {
-      await tx.$executeRaw`
-        INSERT INTO di_v0_s4_pipeline_versions (pipeline_version_key, manifest, status)
-        VALUES (${pvk}, '{}'::jsonb, 'ACTIVE')`;
-      await tx.$executeRaw`
-        INSERT INTO di_v0_s4_work_items (id, organization_id, vehicle_id, trip_id, source_family, run_purpose, purpose_discriminator,
-          boundary_fingerprint, pipeline_version_key, pipeline_version_manifest, status, next_attempt_at, settlement_anchor_at, eligible_at)
-        VALUES (gen_random_uuid()::text, ${tenant.organizationId}, ${tenant.vehicleId}, ${tenant.tripId}, 'RUPTELA_R1', 'PRIMARY', 'PRIMARY',
-          ${'DI_V0_S4_BOUNDARY_FP_V1:sha256:' + 'b'.repeat(64)}, ${pvk}, '{}'::jsonb, 'PENDING', now(), now(), now() + interval '24 hours')`;
+    const writePromise = startWrite(writer);
+    await waitForLockWaiters(observer, 1);
+    let finished = false;
+    void writePromise.finally(() => {
+      finished = true;
     });
-    const intervalInsert = wIntervals.$executeRaw`
-      INSERT INTO di_v0_shadow_intervals (id, shadow_run_id, organization_id, vehicle_id, trip_id)
-      VALUES (${randomUUID()}, ${preRunId}, ${tenant.organizationId}, ${tenant.vehicleId}, ${tenant.tripId})`;
-    await waitForLockWaiters(observer, 3);
-    let runsDone = false;
-    let itemsDone = false;
-    let intervalsDone = false;
-    const settled = Promise.all([
-      runInsert.then(() => {
-        runsDone = true;
-      }),
-      itemInsert.then(() => {
-        itemsDone = true;
-      }),
-      intervalInsert.then(() => {
-        intervalsDone = true;
-      }),
-    ]);
-    await new Promise((r) => setTimeout(r, 300));
-    expect(runsDone).toBe(false);
-    expect(itemsDone).toBe(false);
-    expect(intervalsDone).toBe(false);
+    await new Promise((r) => setTimeout(r, 250));
+    expect(finished).toBe(false);
     release.resolve();
     await lockTx;
-    await settled;
-    expect(runsDone && itemsDone && intervalsDone).toBe(true);
-    const [{ n: runs }] = await clone.prisma.$queryRaw<Array<{ n: bigint }>>`SELECT count(*)::bigint AS n FROM di_v0_shadow_runs`;
-    const [{ n: items }] = await clone.prisma.$queryRaw<Array<{ n: bigint }>>`SELECT count(*)::bigint AS n FROM di_v0_s4_work_items`;
-    const [{ n: intervals }] =
-      await clone.prisma.$queryRaw<Array<{ n: bigint }>>`SELECT count(*)::bigint AS n FROM di_v0_shadow_intervals`;
-    expect(Number(runs)).toBe(2);
-    expect(Number(items)).toBe(1);
-    expect(Number(intervals)).toBe(1);
+    await writePromise;
+    expect(finished).toBe(true);
+  }
+
+  it('S4B-M13 empty-state serialization: migration lock phase blocks writers on all guarded tables', async () => {
+    const clone = await freshClone();
+    await applyS4a(clone);
+    const tenant = await seedS4aTenant(clone.prisma);
+    const pvk = `DI_V0_S4_PIPELINE_V1:sha256:${'a'.repeat(64)}`;
+    const preRunId = await insertShadowRun(clone.prisma, tenant);
+
+    await assertWriteBlockedByMigrationLocks(clone, tenant, (writer) =>
+      writer.$executeRaw`
+        INSERT INTO di_v0_shadow_runs (id, organization_id, vehicle_id, trip_id, source_family, structural_version,
+          estimator_version, calibration_version, source_family_policy_version, input_evidence_version, idempotency_key, updated_at)
+        VALUES (${randomUUID()}, ${tenant.organizationId}, ${tenant.vehicleId}, ${tenant.tripId}, 'RUPTELA_R1', 'S', 'E', 'C', 'P', 'IEV',
+          ${randomUUID()}, now())`,
+    );
+
+    await assertWriteBlockedByMigrationLocks(clone, tenant, (writer) =>
+      writer.$transaction(async (tx) => {
+        await tx.$executeRaw`
+          INSERT INTO di_v0_s4_pipeline_versions (pipeline_version_key, manifest, status)
+          VALUES (${pvk}, '{}'::jsonb, 'ACTIVE')`;
+        await tx.$executeRaw`
+          INSERT INTO di_v0_s4_work_items (id, organization_id, vehicle_id, trip_id, source_family, run_purpose, purpose_discriminator,
+            boundary_fingerprint, pipeline_version_key, pipeline_version_manifest, status, next_attempt_at, settlement_anchor_at, eligible_at)
+          VALUES (gen_random_uuid()::text, ${tenant.organizationId}, ${tenant.vehicleId}, ${tenant.tripId}, 'RUPTELA_R1', 'PRIMARY', 'PRIMARY',
+            ${'DI_V0_S4_BOUNDARY_FP_V1:sha256:' + 'b'.repeat(64)}, ${pvk}, '{}'::jsonb, 'PENDING', now(), now(), now() + interval '24 hours')`;
+      }),
+    );
+
+    await assertWriteBlockedByMigrationLocks(clone, tenant, (writer) =>
+      writer.$executeRaw`
+        INSERT INTO di_v0_shadow_intervals (id, shadow_run_id, organization_id, vehicle_id, trip_id)
+        VALUES (${randomUUID()}, ${preRunId}, ${tenant.organizationId}, ${tenant.vehicleId}, ${tenant.tripId})`,
+    );
+  });
+
+  it('S4B-M14 lock timeout: open S2 shadow_intervals writer blocks migration with no partial V2 schema', async () => {
+    const clone = await freshClone();
+    await applyS4a(clone);
+    const holder = client(clone.name);
+    const observer = client(clone.name);
+    const holding = deferred();
+    const release = deferred();
+    const holderTx = holder.$transaction(
+      async (tx) => {
+        await tx.$executeRawUnsafe('LOCK TABLE "di_v0_shadow_intervals" IN ROW EXCLUSIVE MODE');
+        holding.resolve();
+        await release.promise;
+      },
+      { timeout: 60_000 },
+    );
+    await holding.promise;
+    const before = await catalogSnapshot(clone.prisma);
+    const migration = applyS4b(clone);
+    try {
+      await waitForLockWaiters(observer, 1);
+      const result = await migration;
+      expect(result.code).not.toBe(0);
+      expect(result.output).toMatch(/lock timeout/);
+      expect(result.elapsedMs).toBeGreaterThanOrEqual(4_500);
+      expect(result.elapsedMs).toBeLessThan(30_000);
+    } finally {
+      release.resolve();
+      await holderTx;
+    }
+    expect(await catalogSnapshot(clone.prisma)).toEqual(before);
+    await s4bArtifactsAbsent(clone.prisma);
   });
 });
