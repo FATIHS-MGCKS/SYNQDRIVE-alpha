@@ -1,5 +1,12 @@
 # KG-EED Changelog
 
+## 2026-09-28 — RFRF OQ-015 stretched-end fallback↔native convergence
+
+- Bounded `classifyFallbackAgainstAuthoritativeNativeRefuel` — canonical G2 `endTimeSec=60` unchanged
+- Closes WOB 09-19 duplicate Product REFUEL risk when trust is enabled later (EED-INV-018)
+- Evidence: `EED-EV-0097-RFRF-STRETCHED-END-CONVERGENCE-2026-09-28.md`; EED-OQ-015 resolved
+- Trust authority not implemented (`ABSOLUTE_SIGNAL_TRUST_AUTHORITY_AVAILABLE` remains false)
+
 ## 2026-09-27 — ERD E5.4D scoped runtime shadow persist canary gate
 
 - `ERD_RECHARGE_SHADOW_PARITY_CANARY_ALLOWLIST` env contract (`organizationId:vehicleId`, comma-separated; fail-closed parser)

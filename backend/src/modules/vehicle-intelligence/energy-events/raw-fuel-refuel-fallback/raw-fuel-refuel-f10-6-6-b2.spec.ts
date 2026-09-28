@@ -265,7 +265,7 @@ describe('F10.6.6-B.2 authoritative loader + pending INSUFFICIENT', () => {
       classifyPhysicalRefuelSibling(candidateRow, distinctNative).classification,
     ).toBe('DISTINCT_PHYSICAL_REFUEL');
     expect(
-      nativePhysicalRelationshipImpliesPendingReconciliation(candidateRow, distinctNative),
+      nativePhysicalRelationshipImpliesPendingReconciliation(cand, distinctNative),
     ).toBe(false);
   });
 });

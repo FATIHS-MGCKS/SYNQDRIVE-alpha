@@ -8,6 +8,7 @@ import {
   classifyPhysicalRefuelSibling,
   type RefuelRowForMatcher,
 } from '../physical-refuel-identity.matcher';
+import { classifyFallbackAgainstAuthoritativeNativeRefuel } from './raw-refuel-native-fallback-stretched-end.policy';
 import {
   isEnrichmentEligibleFinality,
   isV2OwnedRefuelEvent,
@@ -26,10 +27,13 @@ import { rawRefuelCandidateToRefuelRowForMatcher } from './raw-refuel-native-ove
 
 /** Candidate cannot treat native as absent while physical relationship is uncertain (Stage-4 safety). */
 export function nativePhysicalRelationshipImpliesPendingReconciliation(
-  candidateRow: RefuelRowForMatcher,
+  candidate: RawRefuelCandidate,
   nativeRow: RefuelRowForMatcher,
 ): boolean {
-  const { classification } = classifyPhysicalRefuelSibling(candidateRow, nativeRow);
+  const { classification } = classifyFallbackAgainstAuthoritativeNativeRefuel(
+    candidate,
+    nativeRow,
+  );
   if (classification === 'DISTINCT_PHYSICAL_REFUEL') return false;
   if (classification === 'SAME_PHYSICAL_REFUEL') return true;
   if (classification === 'INSUFFICIENT_EVIDENCE') return true;
@@ -98,7 +102,7 @@ export function resolveAuthoritativeNativeRefuelSiblingsFromLoaded(input: {
 
   for (const unreconciled of v2UnreconciledEvents) {
     const row = vehicleEnergyEventToRefuelRow(unreconciled);
-    if (nativePhysicalRelationshipImpliesPendingReconciliation(candidateRow, row)) {
+    if (nativePhysicalRelationshipImpliesPendingReconciliation(candidate, row)) {
       pendingPhysicalMatch = true;
     }
   }
@@ -129,7 +133,7 @@ export function resolveAuthoritativeNativeRefuelSiblingsFromLoaded(input: {
 
     const matchesCandidate = members.some((member) => {
       const row = vehicleEnergyEventToRefuelRow(member);
-      return nativePhysicalRelationshipImpliesPendingReconciliation(candidateRow, row);
+      return nativePhysicalRelationshipImpliesPendingReconciliation(candidate, row);
     });
     if (matchesCandidate) {
       pendingPhysicalMatch = true;

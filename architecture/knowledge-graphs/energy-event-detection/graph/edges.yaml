@@ -866,3 +866,7 @@ edges:
   - from: EED-DEC-ERD-003
     relation: REFERENCES
     to: EED-DEC-ERD-002
+
+  - from: EED-EV-0097
+    relation: REFERENCES
+    to: EED-OQ-015

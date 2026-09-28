@@ -209,3 +209,16 @@ invariants:
     source_paths:
       - backend/src/modules/vehicle-intelligence/battery-health/hv-method-profile/hv-method-profile.resolver.ts
       - backend/src/modules/vehicle-intelligence/battery-health/capability-preflight/battery-capability-signals.registry.ts
+
+  - id: EED-INV-018
+    kind: CONFIRMED_INVARIANT
+    title: RFRF promotion trust never bypasses native convergence
+    epistemic_status: CONFIRMED
+    statement: >
+      Even when absoluteSignalTrust becomes TRUSTED in a future slice, SYNQDRIVE_RAW_FUEL_FALLBACK
+      promotion must not create a Product REFUEL when authoritative native convergence classifies
+      the same physical refuel (including bounded stretched-end SAME_NATIVE).
+    evidence: [EED-EV-0097]
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-refuel-promotion.service.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-refuel-native-fallback-stretched-end.policy.ts
