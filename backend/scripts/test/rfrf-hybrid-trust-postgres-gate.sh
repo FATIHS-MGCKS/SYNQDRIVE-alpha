@@ -54,9 +54,31 @@ sync_schema_drift_if_needed() {
     echo "TEST_SCHEMA_DRIFT_SYNC=NONE"
     return 0
   fi
+
   echo "TEST_SCHEMA_DRIFT_SYNC=DB_PUSH_TEST_ONLY"
-  npx prisma db push --accept-data-loss --skip-generate
-  verify_rfrf_schema
+  local log
+  log="$(mktemp /tmp/rfrf-hybrid-trust-dbpush.XXXXXX.log)"
+  set +e
+  npx prisma db push --accept-data-loss --skip-generate 2>&1 | tee "$log"
+  local db_push_exit=${PIPESTATUS[0]}
+  set -e
+
+  if verify_rfrf_schema; then
+    if [[ "$db_push_exit" -ne 0 ]]; then
+      if grep -Eq 'already exists|duplicate' "$log"; then
+        echo "TEST_SCHEMA_DRIFT_SYNC_NOTE=db_push exit=${db_push_exit} with duplicate-object noise; schema resolved"
+      else
+        echo "db push failed and schema verification still failing (exit=${db_push_exit})" >&2
+        cat "$log" >&2
+        exit "$db_push_exit"
+      fi
+    fi
+    return 0
+  fi
+
+  echo "schema drift unresolved after db push (exit=${db_push_exit})" >&2
+  cat "$log" >&2
+  exit 1
 }
 
 cleanup() {
@@ -64,18 +86,15 @@ cleanup() {
   rfrf_test_psql_superuser_quiet "DROP ROLE IF EXISTS ${PG_USER};"
 }
 
-if [[ "${RFRF_HYBRID_TRUST_GATE_SELFTEST:-}" != "1" ]]; then
-  export RFRF_HYBRID_TRUST_GATE_SELFTEST=1
-  export DATABASE_URL="postgresql://u:p@app.synqdrive.eu/synqdrive?schema=public"
-  set +e
-  assert_test_db_isolation >/dev/null 2>&1
-  reject_exit=$?
-  set -e
-  if [[ "${reject_exit}" -eq 0 ]]; then
+if [[ "${RFRF_HYBRID_TRUST_GATE_PRODUCTION_REJECT_SELFTEST_DONE:-}" != "1" ]]; then
+  export RFRF_HYBRID_TRUST_GATE_PRODUCTION_REJECT_SELFTEST_DONE=1
+  if (
+    export DATABASE_URL="postgresql://u:p@app.synqdrive.eu/synqdrive?schema=public"
+    assert_test_db_isolation >/dev/null 2>&1
+  ); then
     echo "RFRF hybrid trust gate self-test FAILED: production-like DATABASE_URL was accepted" >&2
     exit 1
   fi
-  unset DATABASE_URL
   echo "RFRF_HYBRID_TRUST_GATE_PRODUCTION_URL_REJECT=PASS"
 fi
 
@@ -87,6 +106,11 @@ rfrf_test_psql_superuser "CREATE DATABASE ${PG_DB} OWNER ${PG_USER};"
 export DATABASE_URL="postgresql://${PG_USER}:${PG_PASS}@${PG_HOST}:${PG_PORT}/${PG_DB}?schema=public"
 assert_test_db_isolation
 
+echo "TEST_POSTGRES_HOST=${PG_HOST}"
+echo "TEST_POSTGRES_PORT=${PG_PORT}"
+echo "TEST_POSTGRES_DATABASE=${PG_DB}"
+echo "TEST_POSTGRES_IS_PRODUCTION=NO"
+
 cd "${BACKEND_ROOT}"
 npx prisma generate
 PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 bash scripts/test/prisma-migrate-deploy-resilient.sh
@@ -96,5 +120,10 @@ export RAW_REFUEL_HYBRID_TRUST_INTEGRATION=1
 
 npm test -- --runInBand --forceExit \
   --testPathPattern=raw-fuel-hybrid-trust.postgres.integration.spec.ts
+test_exit=$?
+if [[ "${test_exit}" -ne 0 ]]; then
+  echo "RFRF hybrid trust PostgreSQL integration tests failed (exit=${test_exit})" >&2
+  exit "${test_exit}"
+fi
 
 echo "RFRF_HYBRID_TRUST_POSTGRES_GATE=PASS"

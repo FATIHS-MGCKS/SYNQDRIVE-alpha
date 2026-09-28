@@ -1,30 +1,26 @@
 import type { RawFuelSignalSample } from '../../raw-fuel-rise-detector/raw-fuel-signal-sample.types';
 import {
-  sampleAt,
   stablePlateauSamples,
 } from '../../raw-fuel-rise-detector/testing/raw-fuel-rise-detector-test.util';
 import { buildWob20260927EventBSamples } from './wob-2026-09-19-stretched-end.fixture';
 
-/** Local dual-channel corroboration aligned to WOB Event B rise window. */
+/** Local dual-channel corroboration aligned to WOB Event B rise window (detector-identical absolute spine). */
 export function buildEventBDualChannelCorroboratedSamples(): RawFuelSignalSample[] {
-  const preAbs = stablePlateauSamples('2026-09-27T21:30:46.923Z', 4, 3, 50, 'absolute');
-  const preRel = stablePlateauSamples('2026-09-27T21:30:46.923Z', 8, 3, 50, 'relative');
-  const rise = [
-    sampleAt('2026-09-27T21:34:16.923Z', 6, 12),
-    sampleAt('2026-09-27T21:35:30.000Z', 10, 18),
-    sampleAt('2026-09-27T21:36:46.923Z', 13, 25),
-  ];
-  const postAbs = stablePlateauSamples('2026-09-27T21:37:30.000Z', 13, 5, 45, 'absolute');
-  const postRel = stablePlateauSamples('2026-09-27T21:37:30.000Z', 25, 5, 45, 'relative');
-  const merged = [...preAbs];
-  for (let i = 0; i < preRel.length; i++) {
-    merged[i] = { ...merged[i]!, relativePercent: preRel[i]!.relativePercent };
-  }
-  merged.push(...rise);
-  for (let i = 0; i < postAbs.length; i++) {
-    merged.push({ ...postAbs[i]!, relativePercent: postRel[i]!.relativePercent });
-  }
-  return merged;
+  const abs = buildWob20260927EventBSamples();
+  return abs.map((s) => {
+    const t = s.timestamp.getTime();
+    const preStart = new Date('2026-09-27T21:30:46.923Z').getTime();
+    const riseOn = new Date('2026-09-27T21:34:16.923Z').getTime();
+    const riseEnd = new Date('2026-09-27T21:36:46.923Z').getTime();
+    const postStart = new Date('2026-09-27T21:37:30.000Z').getTime();
+    let relativePercent: number | null = null;
+    if (t < riseOn) relativePercent = 8;
+    else if (t <= riseEnd) {
+      const frac = (t - riseOn) / (riseEnd - riseOn);
+      relativePercent = 8 + frac * (25 - 8);
+    } else if (t >= postStart) relativePercent = 25;
+    return { ...s, relativePercent };
+  });
 }
 
 /** Absolute Event B rise with relative samples only far from rise (must not TRUST). */
@@ -35,24 +31,19 @@ export function buildEventBDistantRelativeSamples(): RawFuelSignalSample[] {
   return [...distantPre, ...abs, ...distantPost];
 }
 
-/** Material absolute rise with local relative contradiction. */
+/** Material absolute rise with local relative contradiction (same absolute spine as Event B). */
 export function buildEventBContradictoryDualChannelSamples(): RawFuelSignalSample[] {
-  const preAbs = stablePlateauSamples('2026-09-27T21:30:46.923Z', 4, 3, 50, 'absolute');
-  const preRel = stablePlateauSamples('2026-09-27T21:30:46.923Z', 40, 3, 50, 'relative');
-  const rise = [
-    sampleAt('2026-09-27T21:34:16.923Z', 12, 35),
-    sampleAt('2026-09-27T21:35:30.000Z', 11, 20),
-    sampleAt('2026-09-27T21:36:46.923Z', 13, null),
-  ];
-  const postAbs = stablePlateauSamples('2026-09-27T21:37:30.000Z', 13, 5, 45, 'absolute');
-  const postRel = stablePlateauSamples('2026-09-27T21:37:30.000Z', 5, 5, 45, 'relative');
-  const merged = [...preAbs];
-  for (let i = 0; i < preRel.length; i++) {
-    merged[i] = { ...merged[i]!, relativePercent: preRel[i]!.relativePercent };
-  }
-  merged.push(...rise);
-  for (let i = 0; i < postAbs.length; i++) {
-    merged.push({ ...postAbs[i]!, relativePercent: postRel[i]!.relativePercent });
-  }
-  return merged;
+  const abs = buildWob20260927EventBSamples();
+  return abs.map((s) => {
+    const t = s.timestamp.getTime();
+    const riseOn = new Date('2026-09-27T21:34:16.923Z').getTime();
+    const riseEnd = new Date('2026-09-27T21:36:46.923Z').getTime();
+    if (t < riseOn) {
+      return { ...s, relativePercent: 40 };
+    }
+    if (t <= riseEnd) {
+      return { ...s, relativePercent: null };
+    }
+    return { ...s, relativePercent: 5 };
+  });
 }
