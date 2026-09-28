@@ -1,8 +1,32 @@
 # M3.3G G1 — Ground-truth persistence & admission engineering
 
-**Date:** 2026-09-29  
+**Date:** 2026-09-29 (G1.1 correctness hardening on PR **#1837**)  
 **Baseline:** G0 `M3_3G_ARCHITECTURE_RESULT=PASS` on main (PR **#1836**)  
-**Storage:** **OPTION_C** — append-only `BatteryGroundTruthEvent` + `BatteryGroundTruthRevocation`
+**Storage:** **OPTION_C** — scientific `BatteryGroundTruthEvent` + append-only `BatteryGroundTruthRevocation`
+
+## G1.1 correctness hardening (PR #1837)
+
+```text
+REVOCATION_DB_TRANSACTION_ATOMIC=YES
+SUPERSESSION_DB_TRANSACTION_ATOMIC=YES
+ONE_ACTIVE_SUCCESSOR_PER_PRIOR=YES
+REVOKED_GT_AUTO_RESURRECTION=NO
+SUPERSEDED_GT_AUTO_RESURRECTION=NO
+SOURCE_BINDING_FAIL_CLOSED=YES
+FINGERPRINT_FREEZES_NUMERIC_SOURCE_CONTENT=YES
+GT_PARENT_DELETE_POLICY=RESTRICT_ON_ORG_AND_VEHICLE
+SCIENTIFIC_PAYLOAD_IMMUTABLE=YES
+LIFECYCLE_STATUS_MUTABLE=YES
+LIFECYCLE_TRANSITIONS_HAVE_APPEND_ONLY_EVIDENCE=YES
+```
+
+- Repository methods accept transaction client (`tx`) for atomic revoke/supersede.
+- Supersession persists replacement **inside** the same transaction that marks prior `SUPERSEDED` (with `FOR UPDATE` lock).
+- Partial unique index `battery_ground_truth_one_confirmed_successor_per_prior` enforces one active successor.
+- Prior `REVOKED`/`SUPERSEDED` fingerprint cannot re-admit via `admitAndPersist` (typed reasons).
+- Source resolver requires bound org/vehicle on service events, documents, and evidence; cross-pointer provenance checks.
+- Fingerprint `M3_3G_GROUND_TRUTH_FINGERPRINT_V1` hashes full admitted scientific source identity (including numeric fields) without duplicating columns on GT rows.
+- GT parent FKs: `ON DELETE RESTRICT` for `organization_id` / `vehicle_id` (no silent cascade delete).
 
 ## G1 scope (delivered)
 
@@ -37,11 +61,11 @@ NAT-009_INFRASTRUCTURE_COMPLETE=NO
 
 ```text
 GROUND_TRUTH_APPEND_ONLY_MODEL=
-  INSERT-only scientific rows on BatteryGroundTruthEvent;
-  material fields never updated in ordinary flows;
-  limited verificationStatus transition to SUPERSEDED/REVOKED via explicit supersede/revoke operations;
-  corrections use new row + supersedesGroundTruthEventId;
-  revocation append-only BatteryGroundTruthRevocation + REVOKED status.
+  Scientific payload fields on BatteryGroundTruthEvent are write-once at insert;
+  LIFECYCLE_STATUS_MUTABLE=YES for verificationStatus only via explicit supersede/revoke;
+  LIFECYCLE_TRANSITIONS_HAVE_APPEND_ONLY_EVIDENCE=YES (BatteryGroundTruthRevocation + supersession chain);
+  corrections use new CONFIRMED row + supersedesGroundTruthEventId;
+  no silent payload rewrite.
 ```
 
 ## Revocation

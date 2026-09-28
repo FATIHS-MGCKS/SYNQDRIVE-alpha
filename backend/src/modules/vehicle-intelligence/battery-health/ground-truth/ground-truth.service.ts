@@ -4,12 +4,14 @@ import {
   BatteryGroundTruthRevocationReasonCode,
   BatteryGroundTruthSourceAuthority,
   BatteryGroundTruthType,
+  BatteryGroundTruthVerificationStatus,
   Prisma,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { projectGroundTruthAdmissionV1 } from './ground-truth-admission.projector';
 import {
   GROUND_TRUTH_ADMISSION_LEVEL,
+  GROUND_TRUTH_ADMISSION_REASON,
   type GroundTruthAdmissionDecisionV1,
   type GroundTruthSourceIdentityV1,
 } from './ground-truth-admission.types';
@@ -58,6 +60,14 @@ export type AdmitGroundTruthResultV1 =
       admission: GroundTruthAdmissionDecisionV1;
     };
 
+type PreparedAdmitPayload = {
+  candidate: AdmitGroundTruthCandidateV1;
+  admission: GroundTruthAdmissionDecisionV1;
+  effectiveAt: Date;
+  fingerprint: string;
+  createInput: Parameters<BatteryGroundTruthRepository['createConfirmedEvent']>[0];
+};
+
 @Injectable()
 export class BatteryGroundTruthService {
   constructor(
@@ -85,9 +95,21 @@ export class BatteryGroundTruthService {
     return null;
   }
 
-  async evaluateAdmission(
+  private terminationReasonForStatus(
+    status: BatteryGroundTruthVerificationStatus,
+  ): (typeof GROUND_TRUTH_ADMISSION_REASON)[keyof typeof GROUND_TRUTH_ADMISSION_REASON] | null {
+    if (status === BatteryGroundTruthVerificationStatus.REVOKED) {
+      return GROUND_TRUTH_ADMISSION_REASON.GROUND_TRUTH_SOURCE_PREVIOUSLY_REVOKED;
+    }
+    if (status === BatteryGroundTruthVerificationStatus.SUPERSEDED) {
+      return GROUND_TRUTH_ADMISSION_REASON.GROUND_TRUTH_SOURCE_SUPERSEDED;
+    }
+    return null;
+  }
+
+  async prepareAdmitPayload(
     candidate: AdmitGroundTruthCandidateV1,
-  ): Promise<AdmitGroundTruthResultV1> {
+  ): Promise<AdmitGroundTruthResultV1 | PreparedAdmitPayload> {
     let vehicleOrganizationId: string;
     try {
       vehicleOrganizationId = await this.sourceResolver.resolveVehicleOrganization(
@@ -124,13 +146,13 @@ export class BatteryGroundTruthService {
       const reason =
         error instanceof GroundTruthSourceResolutionError
           ? error.reason
-          : 'SOURCE_MISSING';
+          : GROUND_TRUTH_ADMISSION_REASON.SOURCE_MISSING;
       return {
         outcome: 'RESOLUTION_FAILED',
         admission: {
           contractVersion: 'M3_3G_GROUND_TRUTH_ADMISSION_V1',
           level: GROUND_TRUTH_ADMISSION_LEVEL.EXCLUDED,
-          reasons: [reason as never],
+          reasons: [reason],
         },
       };
     }
@@ -193,21 +215,31 @@ export class BatteryGroundTruthService {
       sourceIdentity,
     });
 
-    const existing = await this.repository.findConfirmedByFingerprint(
+    const historical = await this.repository.findLatestByFingerprint(
       candidate.organizationId,
       fingerprint,
     );
-    if (existing) {
-      return {
-        outcome: 'IDEMPOTENT_EXISTING',
-        groundTruthEventId: existing.id,
-        fingerprint,
-        admission,
-      };
+    if (historical) {
+      const termination = this.terminationReasonForStatus(historical.verificationStatus);
+      if (termination) {
+        return {
+          outcome: 'NOT_ADMITTED',
+          fingerprint,
+          admission: {
+            contractVersion: 'M3_3G_GROUND_TRUTH_ADMISSION_V1',
+            level: GROUND_TRUTH_ADMISSION_LEVEL.EXCLUDED,
+            reasons: [termination],
+          },
+        };
+      }
     }
 
-    try {
-      const created = await this.repository.createConfirmedEvent({
+    return {
+      candidate,
+      admission,
+      effectiveAt,
+      fingerprint,
+      createInput: {
         organizationId: candidate.organizationId,
         vehicleId: candidate.vehicleId,
         groundTruthType: candidate.groundTruthType,
@@ -222,12 +254,38 @@ export class BatteryGroundTruthService {
         confirmedByUserId: candidate.confirmedByUserId,
         confirmedAt: candidate.confirmedAt,
         supersedesGroundTruthEventId: candidate.supersedesGroundTruthEventId,
-      });
+      },
+    };
+  }
+
+  async evaluateAdmission(
+    candidate: AdmitGroundTruthCandidateV1,
+  ): Promise<AdmitGroundTruthResultV1> {
+    const prepared = await this.prepareAdmitPayload(candidate);
+    if ('outcome' in prepared) {
+      return prepared;
+    }
+
+    const existing = await this.repository.findConfirmedByFingerprint(
+      prepared.candidate.organizationId,
+      prepared.fingerprint,
+    );
+    if (existing) {
+      return {
+        outcome: 'IDEMPOTENT_EXISTING',
+        groundTruthEventId: existing.id,
+        fingerprint: prepared.fingerprint,
+        admission: prepared.admission,
+      };
+    }
+
+    try {
+      const created = await this.repository.createConfirmedEvent(prepared.createInput);
       return {
         outcome: 'PERSISTED',
         groundTruthEventId: created.id,
-        fingerprint,
-        admission,
+        fingerprint: prepared.fingerprint,
+        admission: prepared.admission,
       };
     } catch (error) {
       if (
@@ -235,15 +293,15 @@ export class BatteryGroundTruthService {
         error.code === 'P2002'
       ) {
         const raced = await this.repository.findConfirmedByFingerprint(
-          candidate.organizationId,
-          fingerprint,
+          prepared.candidate.organizationId,
+          prepared.fingerprint,
         );
         if (raced) {
           return {
             outcome: 'IDEMPOTENT_EXISTING',
             groundTruthEventId: raced.id,
-            fingerprint,
-            admission,
+            fingerprint: prepared.fingerprint,
+            admission: prepared.admission,
           };
         }
       }
@@ -260,47 +318,92 @@ export class BatteryGroundTruthService {
     vehicleId: string;
     priorGroundTruthEventId: string;
     replacementCandidate: AdmitGroundTruthCandidateV1;
-  }) {
-    const prior = await this.repository.findById(
-      input.organizationId,
-      input.priorGroundTruthEventId,
-    );
-    if (!prior) {
-      throw new BadRequestException('Prior ground-truth event not found');
-    }
-    if (prior.vehicleId !== input.vehicleId || prior.organizationId !== input.organizationId) {
-      throw new BadRequestException('Supersession tenant mismatch');
-    }
-    const admit = await this.evaluateAdmission({
+  }): Promise<AdmitGroundTruthResultV1> {
+    const prepared = await this.prepareAdmitPayload({
       ...input.replacementCandidate,
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
       supersedesGroundTruthEventId: input.priorGroundTruthEventId,
-      pointers: {
-        ...input.replacementCandidate.pointers,
-      },
     });
-    if (admit.outcome !== 'PERSISTED' && admit.outcome !== 'IDEMPOTENT_EXISTING') {
+    if ('outcome' in prepared) {
       throw new BadRequestException('Replacement candidate not admitted');
     }
-    if (admit.groundTruthEventId === input.priorGroundTruthEventId) {
-      throw new BadRequestException('Self-supersession rejected');
-    }
 
-    if (admit.outcome === 'PERSISTED') {
-      await this.prisma.$transaction(async (tx) => {
-        await tx.batteryGroundTruthEvent.update({
-          where: { id: prior.id },
-          data: {
-            verificationStatus: 'SUPERSEDED',
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        await this.repository.lockGroundTruthRowForUpdate(input.priorGroundTruthEventId, tx);
+        const prior = await this.repository.findById(
+          input.organizationId,
+          input.priorGroundTruthEventId,
+          tx,
+        );
+        if (!prior) {
+          throw new BadRequestException('Prior ground-truth event not found');
+        }
+        if (prior.vehicleId !== input.vehicleId || prior.organizationId !== input.organizationId) {
+          throw new BadRequestException('Supersession tenant mismatch');
+        }
+        if (!this.repository.isActiveRow(prior)) {
+          throw new BadRequestException('Prior ground-truth event is not active');
+        }
+
+        const existing = await this.repository.findConfirmedByFingerprint(
+          input.organizationId,
+          prepared.fingerprint,
+          tx,
+        );
+        if (existing) {
+          if (existing.id === input.priorGroundTruthEventId) {
+            throw new BadRequestException('Self-supersession rejected');
+          }
+          await this.repository.markSuperseded(prior.id, tx);
+          await tx.batteryGroundTruthEvent.update({
+            where: { id: existing.id },
+            data: { supersedesGroundTruthEventId: prior.id },
+          });
+          return {
+            outcome: 'IDEMPOTENT_EXISTING',
+            groundTruthEventId: existing.id,
+            fingerprint: prepared.fingerprint,
+            admission: prepared.admission,
+          };
+        }
+
+        const created = await this.repository.createConfirmedEvent(
+          {
+            ...prepared.createInput,
+            supersedesGroundTruthEventId: prior.id,
           },
-        });
-        await tx.batteryGroundTruthEvent.update({
-          where: { id: admit.groundTruthEventId },
-          data: { supersedesGroundTruthEventId: prior.id },
-        });
+          tx,
+        );
+        await this.repository.markSuperseded(prior.id, tx);
+        return {
+          outcome: 'PERSISTED',
+          groundTruthEventId: created.id,
+          fingerprint: prepared.fingerprint,
+          admission: prepared.admission,
+        };
       });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        const raced = await this.repository.findConfirmedByFingerprint(
+          input.organizationId,
+          prepared.fingerprint,
+        );
+        if (raced) {
+          return {
+            outcome: 'IDEMPOTENT_EXISTING',
+            groundTruthEventId: raced.id,
+            fingerprint: prepared.fingerprint,
+            admission: prepared.admission,
+          };
+        }
+      }
+      throw error;
     }
-
-    return admit;
   }
 
   async revokeGroundTruth(input: {
@@ -309,21 +412,24 @@ export class BatteryGroundTruthService {
     reasonCode: BatteryGroundTruthRevocationReasonCode;
     revokedByUserId?: string | null;
     revokedAt?: Date;
-  }) {
+  }): Promise<void> {
     const row = await this.repository.findById(input.organizationId, input.groundTruthEventId);
     if (!row) {
       throw new BadRequestException('Ground-truth event not found');
     }
     const revokedAt = input.revokedAt ?? new Date();
-    await this.prisma.$transaction(async () => {
-      await this.repository.appendRevocation({
-        organizationId: input.organizationId,
-        groundTruthEventId: input.groundTruthEventId,
-        reasonCode: input.reasonCode,
-        revokedByUserId: input.revokedByUserId,
-        revokedAt,
-      });
-      await this.repository.markRevoked(input.groundTruthEventId);
+    await this.prisma.$transaction(async (tx) => {
+      await this.repository.appendRevocation(
+        {
+          organizationId: input.organizationId,
+          groundTruthEventId: input.groundTruthEventId,
+          reasonCode: input.reasonCode,
+          revokedByUserId: input.revokedByUserId,
+          revokedAt,
+        },
+        tx,
+      );
+      await this.repository.markRevoked(input.groundTruthEventId, tx);
     });
   }
 

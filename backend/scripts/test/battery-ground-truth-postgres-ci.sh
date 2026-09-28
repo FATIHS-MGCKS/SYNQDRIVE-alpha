@@ -27,6 +27,7 @@ log "G1 unit tests"
 npx jest \
   ground-truth-admission.projector.spec \
   ground-truth-fingerprint.spec \
+  ground-truth.service.spec \
   --runInBand
 
 log "G1 PostgreSQL integration"

@@ -7,7 +7,8 @@ function stableIso(date: Date): string {
 }
 
 /**
- * Deterministic canonical payload for admitted ground-truth identity (no PII / no numeric truth).
+ * Deterministic canonical payload for admitted ground-truth identity.
+ * Hashes scientific source content (via sourceIdentity) but does not duplicate into GT columns.
  */
 export function buildGroundTruthFingerprintCanonicalPayloadV1(
   input: GroundTruthFingerprintInputV1,

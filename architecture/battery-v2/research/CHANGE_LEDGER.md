@@ -18,6 +18,16 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-29 — M3.3G G1.1 PR #1837 correctness hardening
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Transaction-aware repository; atomic supersede/revoke; strict source binding + cross-pointer checks; fingerprint includes scientific numeric content; anti-resurrection; RESTRICT parent FKs; expanded PG-A–Q tests. |
+| **WHY** | Close atomicity, binding, fingerprint, cascade, and migration-proof gaps before G1 merge. |
+| **VALIDATION** | Unit + Postgres CI (PG-G–Q). |
+| **DECISION_STATUS** | **IMPLEMENTED** |
+| **EVIDENCE** | `M3_3G_G1_GROUND_TRUTH_PERSISTENCE_ADMISSION_ENGINEERING_2026-09-29.md` (G1.1 section) |
+
 ## CL-2026-09-29 — M3.3G G1 ground-truth persistence & admission engineering
 
 | Field | Value |

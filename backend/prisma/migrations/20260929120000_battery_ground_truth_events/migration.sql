@@ -82,6 +82,11 @@ CREATE UNIQUE INDEX "battery_ground_truth_events_active_fingerprint_key"
 ON "battery_ground_truth_events" ("organization_id", "source_content_fingerprint")
 WHERE "verification_status" = 'CONFIRMED';
 
+-- At most one CONFIRMED successor per superseded prior row
+CREATE UNIQUE INDEX "battery_ground_truth_one_confirmed_successor_per_prior"
+ON "battery_ground_truth_events" ("supersedes_ground_truth_event_id")
+WHERE "verification_status" = 'CONFIRMED' AND "supersedes_ground_truth_event_id" IS NOT NULL;
+
 -- CreateIndex
 CREATE INDEX "battery_ground_truth_revocations_organization_id_idx" ON "battery_ground_truth_revocations"("organization_id");
 
@@ -89,10 +94,10 @@ CREATE INDEX "battery_ground_truth_revocations_organization_id_idx" ON "battery_
 CREATE INDEX "battery_ground_truth_revocations_ground_truth_event_id_idx" ON "battery_ground_truth_revocations"("ground_truth_event_id");
 
 -- AddForeignKey
-ALTER TABLE "battery_ground_truth_events" ADD CONSTRAINT "battery_ground_truth_events_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "battery_ground_truth_events" ADD CONSTRAINT "battery_ground_truth_events_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "battery_ground_truth_events" ADD CONSTRAINT "battery_ground_truth_events_vehicle_id_fkey" FOREIGN KEY ("vehicle_id") REFERENCES "vehicles"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "battery_ground_truth_events" ADD CONSTRAINT "battery_ground_truth_events_vehicle_id_fkey" FOREIGN KEY ("vehicle_id") REFERENCES "vehicles"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "battery_ground_truth_events" ADD CONSTRAINT "battery_ground_truth_events_confirmed_by_user_id_fkey" FOREIGN KEY ("confirmed_by_user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -116,7 +121,7 @@ ALTER TABLE "battery_ground_truth_events" ADD CONSTRAINT "battery_ground_truth_e
 ALTER TABLE "battery_ground_truth_revocations" ADD CONSTRAINT "battery_ground_truth_revocations_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "battery_ground_truth_revocations" ADD CONSTRAINT "battery_ground_truth_revocations_ground_truth_event_id_fkey" FOREIGN KEY ("ground_truth_event_id") REFERENCES "battery_ground_truth_events"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "battery_ground_truth_revocations" ADD CONSTRAINT "battery_ground_truth_revocations_ground_truth_event_id_fkey" FOREIGN KEY ("ground_truth_event_id") REFERENCES "battery_ground_truth_events"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "battery_ground_truth_revocations" ADD CONSTRAINT "battery_ground_truth_revocations_revoked_by_user_id_fkey" FOREIGN KEY ("revoked_by_user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;

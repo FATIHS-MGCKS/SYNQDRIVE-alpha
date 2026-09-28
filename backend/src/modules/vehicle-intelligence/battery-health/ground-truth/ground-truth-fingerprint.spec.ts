@@ -17,6 +17,14 @@ describe('computeGroundTruthSourceContentFingerprintV1', () => {
         sourceType: 'WORKSHOP_MEASUREMENT' as const,
         valueType: 'VOLTAGE_V',
         observedAtIso: '2026-06-01T12:00:00.000Z',
+        numericValue: 12.4,
+        unit: 'V',
+        confidence: null,
+        quality: 'workshop_measurement',
+        measurementId: null,
+        serviceEventId: null,
+        documentExtractionId: null,
+        vehicleId: 'veh-22222222-2222-2222-2222-222222222222',
       },
     },
   };
@@ -25,25 +33,35 @@ describe('computeGroundTruthSourceContentFingerprintV1', () => {
     const fp = computeGroundTruthSourceContentFingerprintV1(base);
     expect(fp).toMatch(/^[a-f0-9]{64}$/);
     expect(fp).toBe(computeGroundTruthSourceContentFingerprintV1(base));
-    expect(fp).toBe('0dc27a0b9299fad9ad291058114926da22c008c31613a9d0da35b813b49ab7f0');
+    expect(fp).toBe('5583b93e25c6223df77e93ab526198b44b8cf376319526706b8f725698756377');
   });
 
-  it('O — fingerprint changes on material source identity change', () => {
+  it('O/P — numeric, unit, and quality change fingerprint', () => {
     const a = computeGroundTruthSourceContentFingerprintV1(base);
-    const b = computeGroundTruthSourceContentFingerprintV1({
+    const numericChanged = computeGroundTruthSourceContentFingerprintV1({
       ...base,
       sourceIdentity: {
-        ...base.sourceIdentity,
-        batteryEvidence: {
-          ...base.sourceIdentity.batteryEvidence!,
-          id: 'ev-2',
-        },
+        batteryEvidence: { ...base.sourceIdentity.batteryEvidence!, numericValue: 12.5 },
       },
     });
-    expect(a).not.toBe(b);
+    const unitChanged = computeGroundTruthSourceContentFingerprintV1({
+      ...base,
+      sourceIdentity: {
+        batteryEvidence: { ...base.sourceIdentity.batteryEvidence!, unit: 'volt' },
+      },
+    });
+    const qualityChanged = computeGroundTruthSourceContentFingerprintV1({
+      ...base,
+      sourceIdentity: {
+        batteryEvidence: { ...base.sourceIdentity.batteryEvidence!, quality: 'updated' },
+      },
+    });
+    expect(a).not.toBe(numericChanged);
+    expect(a).not.toBe(unitChanged);
+    expect(a).not.toBe(qualityChanged);
   });
 
-  it('P — createdAt is not part of fingerprint payload', () => {
+  it('P — confirmation fields affect fingerprint; version constant stable', () => {
     expect(M3_3G_GROUND_TRUTH_FINGERPRINT_VERSION).toBe('M3_3G_GROUND_TRUTH_FINGERPRINT_V1');
     const withConfirm = computeGroundTruthSourceContentFingerprintV1({
       ...base,

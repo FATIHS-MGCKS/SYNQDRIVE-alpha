@@ -6,6 +6,8 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 
+export type GroundTruthDbClient = PrismaService | Prisma.TransactionClient;
+
 export type CreateGroundTruthEventInput = {
   organizationId: string;
   vehicleId: string;
@@ -27,8 +29,16 @@ export type CreateGroundTruthEventInput = {
 export class BatteryGroundTruthRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findConfirmedByFingerprint(organizationId: string, fingerprint: string) {
-    return this.prisma.batteryGroundTruthEvent.findFirst({
+  private client(db?: GroundTruthDbClient): GroundTruthDbClient {
+    return db ?? this.prisma;
+  }
+
+  async findConfirmedByFingerprint(
+    organizationId: string,
+    fingerprint: string,
+    db?: GroundTruthDbClient,
+  ) {
+    return this.client(db).batteryGroundTruthEvent.findFirst({
       where: {
         organizationId,
         sourceContentFingerprint: fingerprint,
@@ -37,8 +47,15 @@ export class BatteryGroundTruthRepository {
     });
   }
 
-  async createConfirmedEvent(input: CreateGroundTruthEventInput) {
-    return this.prisma.batteryGroundTruthEvent.create({
+  async findLatestByFingerprint(organizationId: string, fingerprint: string) {
+    return this.prisma.batteryGroundTruthEvent.findFirst({
+      where: { organizationId, sourceContentFingerprint: fingerprint },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async createConfirmedEvent(input: CreateGroundTruthEventInput, db?: GroundTruthDbClient) {
+    return this.client(db).batteryGroundTruthEvent.create({
       data: {
         organizationId: input.organizationId,
         vehicleId: input.vehicleId,
@@ -59,28 +76,31 @@ export class BatteryGroundTruthRepository {
     });
   }
 
-  async markSuperseded(eventId: string) {
-    return this.prisma.batteryGroundTruthEvent.update({
+  async markSuperseded(eventId: string, db?: GroundTruthDbClient) {
+    return this.client(db).batteryGroundTruthEvent.update({
       where: { id: eventId },
       data: { verificationStatus: BatteryGroundTruthVerificationStatus.SUPERSEDED },
     });
   }
 
-  async markRevoked(eventId: string) {
-    return this.prisma.batteryGroundTruthEvent.update({
+  async markRevoked(eventId: string, db?: GroundTruthDbClient) {
+    return this.client(db).batteryGroundTruthEvent.update({
       where: { id: eventId },
       data: { verificationStatus: BatteryGroundTruthVerificationStatus.REVOKED },
     });
   }
 
-  async appendRevocation(input: {
-    organizationId: string;
-    groundTruthEventId: string;
-    reasonCode: BatteryGroundTruthRevocationReasonCode;
-    revokedByUserId?: string | null;
-    revokedAt: Date;
-  }) {
-    return this.prisma.batteryGroundTruthRevocation.create({
+  async appendRevocation(
+    input: {
+      organizationId: string;
+      groundTruthEventId: string;
+      reasonCode: BatteryGroundTruthRevocationReasonCode;
+      revokedByUserId?: string | null;
+      revokedAt: Date;
+    },
+    db?: GroundTruthDbClient,
+  ) {
+    return this.client(db).batteryGroundTruthRevocation.create({
       data: {
         organizationId: input.organizationId,
         groundTruthEventId: input.groundTruthEventId,
@@ -91,11 +111,17 @@ export class BatteryGroundTruthRepository {
     });
   }
 
-  async findById(organizationId: string, id: string) {
-    return this.prisma.batteryGroundTruthEvent.findFirst({
+  async findById(organizationId: string, id: string, db?: GroundTruthDbClient) {
+    return this.client(db).batteryGroundTruthEvent.findFirst({
       where: { id, organizationId },
       include: { revocations: true },
     });
+  }
+
+  async lockGroundTruthRowForUpdate(id: string, db: GroundTruthDbClient) {
+    await db.$queryRaw`
+      SELECT id FROM battery_ground_truth_events WHERE id = ${id} FOR UPDATE
+    `;
   }
 
   async listForVehicle(organizationId: string, vehicleId: string, limit = 100) {
