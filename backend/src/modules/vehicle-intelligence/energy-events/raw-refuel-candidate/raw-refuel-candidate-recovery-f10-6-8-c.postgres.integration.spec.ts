@@ -511,6 +511,7 @@ function syntheticRiseSamples() {
       const candidate = await persistReadyCandidate(vehicle.id, { absoluteSignalTrust: 'UNTRUSTED' });
       await repo.claimDueCandidates(1, t0, new Date(t0.getTime() + 60_000));
       const result = await buildRecovery({ now: t0 }).recoverCandidateById(candidate.id, t0);
+      expect(result.dimoFetchPerformed).toBe(false);
       expect(result.outcome).toBe('AMBIGUOUS_RECOVERY_OBSERVATION');
       expect(await prisma.vehicleEnergyEvent.count({
         where: { vehicleId: vehicle.id, detectionSource: 'SYNQDRIVE_RAW_FUEL_FALLBACK' },
