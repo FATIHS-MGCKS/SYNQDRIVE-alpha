@@ -18,6 +18,19 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-29 — M3.3G G1 ground-truth persistence & admission engineering
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | G0 OPTION_C design only; mutable `VehicleServiceEvent`; no GT table. |
+| **CHANGE** | `BatteryGroundTruthEvent` + revocation append model; admission projector + fingerprint; internal service/repository; manual service-event org populate; legacy org backfill SQL; inspect CLI + Postgres CI. |
+| **WHY** | Scientific calibration labels require immutable, tenant-safe, scope-explicit authority without wiring production emission yet. |
+| **VALIDATION** | Unit tests (admission + fingerprint); Postgres integration PG-A–F; `npm run build`; embedded in longitudinal Postgres CI. |
+| **NON_EFFECTS** | No document/UI auto-emit; no F5 GT flags; no deploy; **GT_ROWS_CREATED_BY_MIGRATION=0**. |
+| **REMAINING_GAPS** | G2 emission; G3 F5 correlation; NAT-008/009 infrastructure flags; optional `organizationId NOT NULL` on service events. |
+| **DECISION_STATUS** | **`IMPLEMENTED`** (G1 foundation) |
+| **EVIDENCE** | `M3_3G_G1_GROUND_TRUTH_PERSISTENCE_ADMISSION_ENGINEERING_2026-09-29.md` |
+
 ## CL-2026-09-29 — M3.3G G0 ground-truth & intervention label architecture audit (PASS)
 
 | Field | Value |

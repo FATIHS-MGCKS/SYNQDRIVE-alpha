@@ -85,6 +85,10 @@ import { BatteryHealthService } from './battery-health/battery-health.service';
 import { HvBatteryHealthService } from './battery-health/hv-battery-health.service';
 import { BatteryV2Service } from './battery-health/battery-v2.service';
 import { BatteryEvidenceService } from './battery-health/battery-evidence.service';
+import { BatteryGroundTruthRepository } from './battery-health/ground-truth/ground-truth.repository';
+import { BatteryGroundTruthSourceResolver } from './battery-health/ground-truth/ground-truth-source.resolver';
+import { BatteryGroundTruthService } from './battery-health/ground-truth/ground-truth.service';
+import { BatteryGroundTruthInspectionService } from './battery-health/ground-truth/ground-truth-inspection.service';
 import { CanonicalBatteryHealthService } from './battery-health/canonical-battery-health.service';
 import { BatteryMeasurementSessionRepository } from './battery-health/battery-measurement-session.repository';
 import { BatteryMeasurementSessionService } from './battery-health/battery-measurement-session.service';
@@ -406,6 +410,10 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     HvBatteryHealthService,
     BatteryV2Service,
     BatteryEvidenceService,
+    BatteryGroundTruthRepository,
+    BatteryGroundTruthSourceResolver,
+    BatteryGroundTruthService,
+    BatteryGroundTruthInspectionService,
     CanonicalBatteryHealthService,
     BatteryMeasurementSessionRepository,
     BatteryMeasurementSessionService,
@@ -649,6 +657,10 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     HvBatteryHealthService,
     BatteryV2Service,
     BatteryEvidenceService,
+    BatteryGroundTruthRepository,
+    BatteryGroundTruthSourceResolver,
+    BatteryGroundTruthService,
+    BatteryGroundTruthInspectionService,
     CanonicalBatteryHealthService,
     BatteryMeasurementSessionRepository,
     BatteryMeasurementSessionService,

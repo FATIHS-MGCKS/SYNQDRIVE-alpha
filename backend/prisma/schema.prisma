@@ -1773,6 +1773,8 @@ model Organization {
   batteryRestSessions                                       BatteryRestSession[]
   batteryRestSessionFeatures                                BatteryRestSessionFeature[]
   batteryLongitudinalProfileRevisions                     BatteryLongitudinalProfileRevision[]
+  batteryGroundTruthEvents                                  BatteryGroundTruthEvent[]
+  batteryGroundTruthRevocations                             BatteryGroundTruthRevocation[]
   batteryProviderObservabilityGaps                          BatteryProviderObservabilityGap[]
   vehicleBatteryCapabilities                                VehicleBatteryCapability[]
   vehicleBatteryCapabilityChanges                           VehicleBatteryCapabilityChange[]
@@ -1934,6 +1936,8 @@ model User {
   tireRentalHealthReviewGrants         TireRentalHealthReviewOverride[]        @relation("TireRentalHealthReviewGrants")
   verifiedBatteryReferenceCapacities   VehicleBatteryReferenceCapacity[]
   batteryReferenceCapacityChanges      VehicleBatteryReferenceCapacityChange[]
+  batteryGroundTruthEventsConfirmed    BatteryGroundTruthEvent[]             @relation("BatteryGroundTruthConfirmedBy")
+  batteryGroundTruthRevocationsPerformed BatteryGroundTruthRevocation[]      @relation("BatteryGroundTruthRevokedBy")
   brakeRentalHealthReviewGrants        BrakeRentalHealthReviewOverride[]       @relation("BrakeRentalHealthReviewGrants")
   assignedCommunicationConversations   CommunicationConversation[]             @relation("CommunicationConversationAssignee")
 
@@ -2987,6 +2991,7 @@ model Vehicle {
   batteryRestSessions                    BatteryRestSession[]
   batteryRestSessionFeatures             BatteryRestSessionFeature[]
   batteryLongitudinalProfileRevisions    BatteryLongitudinalProfileRevision[]
+  batteryGroundTruthEvents               BatteryGroundTruthEvent[]
   batteryProviderObservabilityGaps       BatteryProviderObservabilityGap[]
   vehicleBatteryCapabilities             VehicleBatteryCapability[]
   vehicleBatteryCapabilityChanges        VehicleBatteryCapabilityChange[]
@@ -4004,6 +4009,7 @@ model VehicleServiceEvent {
   vehicle                           Vehicle                           @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   documentExtraction                VehicleDocumentExtraction?        @relation(fields: [documentExtractionId], references: [id], onDelete: SetNull)
   batteryEvidence                   BatteryEvidence[]
+  batteryGroundTruthEvents          BatteryGroundTruthEvent[]
   brakeEvidence                     BrakeEvidence[]
   vehicleBatteryReferenceCapacities VehicleBatteryReferenceCapacity[]
   brakeComponentInstallations       BrakeComponentInstallation[]
@@ -4087,6 +4093,7 @@ model VehicleDocumentExtraction {
   relatedReuploads                  VehicleDocumentExtraction[]       @relation("UploadDuplicateRelated")
   contentAnchor                     DocumentExtractionContentAnchor?  @relation("ContentAnchorCanonical")
   batteryEvidence                   BatteryEvidence[]
+  batteryGroundTruthEvents          BatteryGroundTruthEvent[]
   brakeEvidence                     BrakeEvidence[]
   vehicleBatteryReferenceCapacities VehicleBatteryReferenceCapacity[]
   fines                             Fine[]
@@ -8635,6 +8642,7 @@ model BatteryMeasurement {
   supersededBy BatteryMeasurement?        @relation("BatteryMeasurementSupersede", fields: [supersededById], references: [id], onDelete: SetNull)
   supersedes   BatteryMeasurement[]       @relation("BatteryMeasurementSupersede")
   evidenceRows BatteryEvidence[]
+  batteryGroundTruthEvents BatteryGroundTruthEvent[]
   generalizedEvidenceObservations BatteryGeneralizedEvidenceObservation[]
   providerGapLastFreshLinks         BatteryProviderObservabilityGap[] @relation("GapLastFreshObservation")
   providerGapFirstFreshAfterLinks   BatteryProviderObservabilityGap[] @relation("GapFirstFreshAfterGap")
@@ -9545,6 +9553,7 @@ model BatteryEvidence {
   measurement        BatteryMeasurement?        @relation(fields: [measurementId], references: [id], onDelete: SetNull)
   documentExtraction VehicleDocumentExtraction? @relation(fields: [documentExtractionId], references: [id], onDelete: SetNull)
   serviceEvent       VehicleServiceEvent?       @relation(fields: [serviceEventId], references: [id], onDelete: SetNull)
+  batteryGroundTruthEvents BatteryGroundTruthEvent[]
 
   @@unique([vehicleId, scope, valueType, sourceType, observedAt], name: "battery_evidence_dedup_key", map: "battery_evidence_dedup_key")
   @@index([vehicleId, scope, valueType, observedAt])
@@ -9553,6 +9562,93 @@ model BatteryEvidence {
   @@index([serviceEventId])
   @@index([measurementId])
   @@map("battery_evidence")
+}
+
+// ── M3.3G ground-truth scientific authority (append-only) ──
+
+enum BatteryGroundTruthType {
+  WORKSHOP_MEASUREMENT
+  BATTERY_REPLACEMENT
+  OTHER_CONFIRMED_INTERVENTION
+}
+
+enum BatteryGroundTruthSourceAuthority {
+  WORKSHOP
+  CONFIRMED_DOCUMENT
+  OEM
+  MANUAL_CONFIRMED
+  OTHER
+}
+
+enum BatteryGroundTruthVerificationStatus {
+  CONFIRMED
+  SUPERSEDED
+  REVOKED
+}
+
+enum BatteryGroundTruthRevocationReasonCode {
+  SOURCE_DELETED
+  OPERATOR_REVOKE
+  DATA_CORRECTION
+  OTHER
+}
+
+model BatteryGroundTruthEvent {
+  id                         String                               @id @default(uuid())
+  organizationId             String                               @map("organization_id")
+  vehicleId                  String                               @map("vehicle_id")
+  groundTruthType            BatteryGroundTruthType               @map("ground_truth_type")
+  batteryScope               BatteryEvidenceScope                 @map("battery_scope")
+  effectiveAt                DateTime                             @map("effective_at")
+  sourceAuthority            BatteryGroundTruthSourceAuthority    @map("source_authority")
+  verificationStatus         BatteryGroundTruthVerificationStatus @default(CONFIRMED) @map("verification_status")
+  sourceServiceEventId       String?                              @map("source_service_event_id")
+  sourceDocumentExtractionId String?                            @map("source_document_extraction_id")
+  sourceBatteryEvidenceId    String?                              @map("source_battery_evidence_id")
+  sourceMeasurementId        String?                              @map("source_measurement_id")
+  sourceContentFingerprint   String                               @map("source_content_fingerprint") @db.Char(64)
+  confirmedByUserId          String?                              @map("confirmed_by_user_id")
+  confirmedAt                DateTime?                            @map("confirmed_at")
+  supersedesGroundTruthEventId String?                            @map("supersedes_ground_truth_event_id")
+  createdAt                  DateTime                             @default(now()) @map("created_at")
+
+  organization         Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle              Vehicle                   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  confirmedByUser      User?                     @relation("BatteryGroundTruthConfirmedBy", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
+  sourceServiceEvent   VehicleServiceEvent?      @relation(fields: [sourceServiceEventId], references: [id], onDelete: SetNull)
+  sourceDocumentExtraction VehicleDocumentExtraction? @relation(fields: [sourceDocumentExtractionId], references: [id], onDelete: SetNull)
+  sourceBatteryEvidence BatteryEvidence?         @relation(fields: [sourceBatteryEvidenceId], references: [id], onDelete: SetNull)
+  sourceMeasurement    BatteryMeasurement?       @relation(fields: [sourceMeasurementId], references: [id], onDelete: SetNull)
+  supersedesGroundTruthEvent BatteryGroundTruthEvent? @relation("BatteryGroundTruthSupersede", fields: [supersedesGroundTruthEventId], references: [id], onDelete: SetNull)
+  supersededByGroundTruthEvents BatteryGroundTruthEvent[] @relation("BatteryGroundTruthSupersede")
+  revocations          BatteryGroundTruthRevocation[]
+
+  @@index([organizationId])
+  @@index([vehicleId, effectiveAt(sort: Desc)])
+  @@index([groundTruthType])
+  @@index([batteryScope])
+  @@index([verificationStatus])
+  @@index([sourceContentFingerprint])
+  @@index([supersedesGroundTruthEventId])
+  @@map("battery_ground_truth_events")
+}
+
+model BatteryGroundTruthRevocation {
+  id                  String                             @id @default(uuid())
+  organizationId      String                             @map("organization_id")
+  groundTruthEventId  String                             @map("ground_truth_event_id")
+  reasonCode          BatteryGroundTruthRevocationReasonCode @map("reason_code")
+  revokedByUserId     String?                            @map("revoked_by_user_id")
+  revokedAt           DateTime                           @map("revoked_at")
+  createdAt           DateTime                           @default(now()) @map("created_at")
+
+  organization     Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  groundTruthEvent BatteryGroundTruthEvent @relation(fields: [groundTruthEventId], references: [id], onDelete: Cascade)
+  revokedByUser    User?                   @relation("BatteryGroundTruthRevokedBy", fields: [revokedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([groundTruthEventId])
+  @@map("battery_ground_truth_revocations")
 }
 
 // ------------------------------------------------
