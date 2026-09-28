@@ -15,6 +15,19 @@ import { RawRefuelCandidateRecoveryRepository } from './raw-refuel-candidate-rec
 import { RawRefuelCandidateRecoveryService } from './raw-refuel-candidate-recovery.service';
 import { RawRefuelCandidateService } from './raw-refuel-candidate.service';
 import {
+  RFRF_RISE_DETECTION_VERSION,
+  RFRF_RISE_DETECTOR_VERSION,
+} from '../raw-fuel-rise-detector/raw-fuel-rise-detector.config';
+import { readBaselineRecencyFromEvidenceMeta } from '../raw-fuel-rise-detector/raw-fuel-pre-plateau-baseline-recency.policy';
+import {
+  buildReadyEvidenceRefreshMeta,
+  mergeReadyEvidenceRefreshIntoEvidenceMeta,
+} from '../raw-fuel-refuel-fallback/raw-refuel-ready-evidence-refresh-metadata';
+import { evaluateReadyCandidateRefreshRequirement } from '../raw-fuel-refuel-fallback/raw-refuel-ready-evidence-refresh.policy';
+import type { RawFuelAbsoluteSignalTrust } from '../raw-fuel-refuel-fallback/raw-fuel-refuel-fallback.types';
+import { buildEvidenceRevisionFingerprint } from './raw-refuel-candidate-evidence-fingerprint';
+import { candidateRowToEvidenceSlice } from './raw-refuel-candidate-evidence-merge';
+import {
   linearRiseSamples,
   stablePlateauSamples,
 } from '../raw-fuel-rise-detector/testing/raw-fuel-rise-detector-test.util';
@@ -149,21 +162,75 @@ function syntheticRiseSamples() {
     return { energyEvents };
   }
 
-  async function persistReadyCandidate(vehicleId: string): Promise<RawRefuelCandidate> {
+  type PromotionFixtureTrust = Extract<RawFuelAbsoluteSignalTrust, 'TRUSTED' | 'UNTRUSTED'>;
+
+  /** READY row with current refresh authority for downstream promotion/convergence tests (no DIMO refetch). */
+  async function makeReadyCandidateRefreshCurrentForPromotionFixture(
+    row: RawRefuelCandidate,
+    absoluteSignalTrust: PromotionFixtureTrust,
+  ): Promise<RawRefuelCandidate> {
+    const baseline = readBaselineRecencyFromEvidenceMeta(row.evidenceMeta);
+    expect(baseline).toBe('FRESH');
+
+    const relativeSignalAvailable = row.relativeSignalAvailable ?? false;
+    const refreshMeta = buildReadyEvidenceRefreshMeta({
+      baselineRecencyClassification: 'FRESH',
+      absoluteSignalTrust,
+      absoluteDetectionAdmissibility: 'ADMISSIBLE',
+      relativeSignalAvailable,
+    });
+    const evidenceMeta = mergeReadyEvidenceRefreshIntoEvidenceMeta(
+      (row.evidenceMeta as Record<string, unknown> | null) ?? null,
+      refreshMeta,
+    );
+    const qualityMeta = {
+      ...((row.qualityMeta as Record<string, unknown> | null) ?? {}),
+      absoluteDetectionAdmissibility: 'ADMISSIBLE',
+    };
+
+    const evidenceSlice = candidateRowToEvidenceSlice({
+      ...row,
+      detectorVersion: RFRF_RISE_DETECTOR_VERSION,
+      detectionVersion: RFRF_RISE_DETECTION_VERSION,
+      absoluteSignalTrust,
+      evidenceMeta: evidenceMeta as never,
+      qualityMeta: qualityMeta as never,
+    });
+    const evidenceRevisionFingerprint = buildEvidenceRevisionFingerprint(evidenceSlice);
+
+    await prisma.rawRefuelCandidate.update({
+      where: { id: row.id },
+      data: {
+        detectorVersion: RFRF_RISE_DETECTOR_VERSION,
+        detectionVersion: RFRF_RISE_DETECTION_VERSION,
+        absoluteSignalTrust,
+        evidenceMeta: evidenceMeta as never,
+        qualityMeta: qualityMeta as never,
+        evidenceRevisionFingerprint,
+        recoveryNextAttemptAt: new Date('2026-09-06T10:00:00.000Z'),
+      },
+    });
+
+    const persisted = await prisma.rawRefuelCandidate.findUniqueOrThrow({ where: { id: row.id } });
+    expect(evaluateReadyCandidateRefreshRequirement(persisted).status).toBe('REFRESH_CURRENT');
+    expect(buildEvidenceRevisionFingerprint(candidateRowToEvidenceSlice(persisted))).toBe(
+      persisted.evidenceRevisionFingerprint,
+    );
+    return persisted;
+  }
+
+  async function persistReadyCandidate(
+    vehicleId: string,
+    options: { absoluteSignalTrust?: PromotionFixtureTrust } = {},
+  ): Promise<RawRefuelCandidate> {
+    const absoluteSignalTrust = options.absoluteSignalTrust ?? 'TRUSTED';
     const { energyEvents } = await buildRuntimeStack();
     await energyEvents.detectEnergyEvents(vehicleId, {
       from: new Date('2026-09-06T07:00:00.000Z'),
       to: new Date('2026-09-06T12:00:00.000Z'),
     });
     const row = await prisma.rawRefuelCandidate.findFirstOrThrow({ where: { vehicleId } });
-    await prisma.rawRefuelCandidate.update({
-      where: { id: row.id },
-      data: {
-        absoluteSignalTrust: 'TRUSTED',
-        recoveryNextAttemptAt: new Date('2026-09-06T10:00:00.000Z'),
-      },
-    });
-    return prisma.rawRefuelCandidate.findUniqueOrThrow({ where: { id: row.id } });
+    return makeReadyCandidateRefreshCurrentForPromotionFixture(row, absoluteSignalTrust);
   }
 
   function buildRecovery(clockRef: { now: Date }) {
@@ -208,6 +275,7 @@ function syntheticRiseSamples() {
       const recovery = buildRecovery(clockRef);
       const result = await recovery.recoverCandidateById(candidate.id, t0);
       expect(result.outcome).toBe('SUCCESS_PROMOTED');
+      expect(result.dimoFetchPerformed).toBe(false);
       expect(await prisma.vehicleEnergyEvent.count({
         where: { vehicleId: vehicle.id, detectionSource: 'SYNQDRIVE_RAW_FUEL_FALLBACK' },
       })).toBe(1);
@@ -440,11 +508,7 @@ function syntheticRiseSamples() {
     const t0 = new Date('2026-09-06T10:50:00.000Z');
     const repo = new RawRefuelCandidateRecoveryRepository(prisma as unknown as PrismaService);
     try {
-      const candidate = await persistReadyCandidate(vehicle.id);
-      await prisma.rawRefuelCandidate.update({
-        where: { id: candidate.id },
-        data: { absoluteSignalTrust: 'UNTRUSTED' },
-      });
+      const candidate = await persistReadyCandidate(vehicle.id, { absoluteSignalTrust: 'UNTRUSTED' });
       await repo.claimDueCandidates(1, t0, new Date(t0.getTime() + 60_000));
       const result = await buildRecovery({ now: t0 }).recoverCandidateById(candidate.id, t0);
       expect(result.outcome).toBe('AMBIGUOUS_RECOVERY_OBSERVATION');
