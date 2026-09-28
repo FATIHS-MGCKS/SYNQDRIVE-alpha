@@ -1,7 +1,7 @@
 {
   "contractVersion": "DI_V0_S4A_CONTRACT_V2",
   "supersedes": "DI_V0_S4A_CONTRACT_V1",
-  "amendment": "EXP-021 C1D.10C (closes C1D.10B P1-A..P1-D); AMENDED BY C1D.10E (2026-09-27): exhaustive DB kill write-set — only T07 permitted while KILLED",
+  "amendment": "EXP-021 C1D.10C (closes C1D.10B P1-A..P1-D); AMENDED BY C1D.10E (2026-09-27): exhaustive DB kill write-set — only T07 permitted while KILLED; AMENDED BY C1D.10F (2026-09-28): boundaryOccurrence logical key + EXECUTION_IDENTITY_V2; T13 holder supersede guard/registry clarification (S4B preconditions)",
   "status": "FROZEN_DESIGN_NOT_IMPLEMENTED",
   "authority": "architecture/drivingintelligence/design/s4a/S4A_CONTRACT_DESIGN.md",
   "limits": {
@@ -485,7 +485,7 @@
         "LEASE_NOT_EXPIRED_DB_CLOCK",
         "BOUNDARY_FINGERPRINT_CHANGED",
         "SUPERSESSION_REASON_SET",
-        "SUCCESSOR_SAME_TENANT_AND_TRIP_OR_NULL",
+        "SUPERSEDED_BY_POINTER_MUST_BE_NULL",
         "CONTROL_PLANE_WORKER_ENABLED",
         "CONTROL_PLANE_DB_NOT_KILLED"
       ]
@@ -549,8 +549,20 @@
       "boundaryFingerprint",
       "pipelineVersionKey",
       "runPurpose",
-      "purposeDiscriminator"
+      "purposeDiscriminator",
+      "boundaryOccurrence"
     ],
+    "boundaryOccurrence": {
+      "column": "boundary_occurrence",
+      "scope": [
+        "organizationId",
+        "tripId"
+      ],
+      "monotonic": "MAX(boundary_occurrence)+1 per trip on each PRIMARY insert (T01 or W_SUCCESSOR_PRIMARY_INSERT); first PRIMARY uses 0",
+      "notInBoundaryFingerprint": true,
+      "authority": "architecture/drivingintelligence/design/s4a/S4A_BOUNDARY_REVERT_AUTHORITY.md",
+      "closesGap": "DI-GAP-S4A-BOUNDARY-REVERT-SUCCESSOR-001"
+    },
     "activePrimaryKey": [
       "organizationId",
       "tripId",
@@ -581,12 +593,14 @@
     "distinct": true
   },
   "s2ExecutionIdentity": {
-    "version": "DI_V0_S4_EXECUTION_IDENTITY_V1",
+    "version": "DI_V0_S4_EXECUTION_IDENTITY_V2",
+    "supersedes": "DI_V0_S4_EXECUTION_IDENTITY_V1",
     "components": [
       "organizationId",
       "vehicleId",
       "tripId",
       "boundaryFingerprint",
+      "boundaryOccurrence",
       "pipelineVersionKey",
       "calibrationBundleHash",
       "s4OrchestrationContractVersion",
@@ -596,7 +610,7 @@
       "combinedInputIdentity"
     ],
     "serialization": "JSON.stringify of positional array [version, ...components in listed order], UTF-8, no whitespace",
-    "hash": "sha256 hex, prefixed 'DI_V0_S4_EXECUTION_IDENTITY_V1:sha256:'",
+    "hash": "sha256 hex, prefixed 'DI_V0_S4_EXECUTION_IDENTITY_V2:sha256:'",
     "forbiddenComponents": [
       "workerId",
       "leaseOwner",
@@ -909,7 +923,7 @@
     "driftWatcherRehash": true,
     "unrecordedBoundaryMutationDetection": "BOUNDARY_FINGERPRINT_DIFFERENCE",
     "everyBoundaryMutationRearmsQuietTimer": false,
-    "supersessionTransaction": "T11 or T13 plus successor PRIMARY insert in the same transaction"
+    "supersessionTransaction": "T11: supersede plus optional W_SUCCESSOR_PRIMARY_INSERT in one transaction. T13: supersede only (superseded_by_work_item_id MUST be NULL); next PRIMARY via T01 discovery or T11 drift watcher — never W_SUCCESSOR_PRIMARY_INSERT under T13"
   },
   "providerBackpressure": {
     "requestContext": {
@@ -2354,6 +2368,11 @@
             "holderSupersede",
             "w1",
             "fp-2"
+          ],
+          [
+            "create",
+            "d-next",
+            "PRIMARY"
           ]
         ],
         "expect": {
@@ -2412,6 +2431,7 @@
       "vehicleId": "veh-A1",
       "tripId": "trip-A1-1",
       "boundaryFingerprint": "DI_V0_S4_BOUNDARY_FP_V1:sha256:2b549f4f37879c88217a337bceb7e7153242e28e94651d6bad66e26f4d642901",
+      "boundaryOccurrence": 0,
       "pipelineVersionKey": "DI_V0_S4_PIPELINE_V1:sha256:4d09bc46d440b319b7d14738c352554d5769ab87773f713e2595e452de5a4b67",
       "calibrationBundleHash": "sha256:FIXTURE_CALIBRATION_BUNDLE_CONTENT_HASH",
       "s4OrchestrationContractVersion": "DI_V0_S4_ORCHESTRATION_CONTRACT_V2",
@@ -2420,7 +2440,7 @@
       "pinnedEvidenceSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:ab",
       "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:804865fd2a0e628b51cb38aba9965630b66e6bfa454c9303378958d7f66dfbc0"
     },
-    "s2ExecutionIdentityExpected": "DI_V0_S4_EXECUTION_IDENTITY_V1:sha256:63a5c5636dc2162a257ddf310355a1f29ce2f8dadb91a1bc8c8ce22dc69861a1",
+    "s2ExecutionIdentityExpected": "DI_V0_S4_EXECUTION_IDENTITY_V2:sha256:2a9ee3149c0ad2ada4cdd001e5073c0e0e1fc155818f2a500677587fba5cdb29",
     "s2ExecutionIdentityMutations": [
       {
         "name": "different pipelineVersionKey",
