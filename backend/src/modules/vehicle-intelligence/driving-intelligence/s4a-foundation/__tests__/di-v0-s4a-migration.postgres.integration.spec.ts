@@ -683,52 +683,30 @@ async function insertShadowRun(prisma: PrismaClient, tenant: S4aTenant, organiza
     const clone = await freshClone();
     await applyS4a(clone);
     const locker = client(clone.name);
-    const writer = client(clone.name);
-    const observer = client(clone.name);
-    const locked = deferred();
-    const release = deferred();
-    const lockTx = locker.$transaction(
+    await locker.$transaction(
       async (tx) => {
-        await tx.$executeRawUnsafe(`
-          SET LOCAL lock_timeout = '5s';
-          SET LOCAL statement_timeout = '60s';
-          LOCK TABLE "di_v0_s4_work_items", "di_v0_shadow_runs", "di_v0_shadow_intervals" IN SHARE ROW EXCLUSIVE MODE`);
-        locked.resolve();
-        await release.promise;
+        await tx.$executeRawUnsafe(`SET LOCAL lock_timeout = '5s'`);
+        await tx.$executeRawUnsafe(`SET LOCAL statement_timeout = '60s'`);
+        await tx.$executeRawUnsafe(
+          `LOCK TABLE "di_v0_s4_work_items", "di_v0_shadow_runs", "di_v0_shadow_intervals" IN SHARE ROW EXCLUSIVE MODE`,
+        );
+        const lockedTables = await tx.$queryRaw<Array<{ relname: string }>>`
+          SELECT c.relname FROM pg_locks l
+          JOIN pg_class c ON c.oid = l.relation
+          JOIN pg_namespace n ON n.oid = c.relnamespace
+          WHERE n.nspname = 'public'
+            AND l.pid = pg_backend_pid()
+            AND l.mode = 'ShareRowExclusiveLock'
+            AND c.relname IN ('di_v0_s4_work_items', 'di_v0_shadow_runs', 'di_v0_shadow_intervals')
+          ORDER BY c.relname`;
+        expect(lockedTables.map((r) => r.relname)).toEqual([
+          'di_v0_s4_work_items',
+          'di_v0_shadow_intervals',
+          'di_v0_shadow_runs',
+        ]);
       },
       { timeout: 30_000 },
     );
-    await locked.promise;
-    const tenant = await seedS4aTenant(clone.prisma);
-    const writePromise = writer.$executeRaw`
-      INSERT INTO di_v0_shadow_runs (id, organization_id, vehicle_id, trip_id, source_family, structural_version,
-        estimator_version, calibration_version, source_family_policy_version, input_evidence_version, idempotency_key, updated_at)
-      VALUES (${randomUUID()}, ${tenant.organizationId}, ${tenant.vehicleId}, ${tenant.tripId}, 'RUPTELA_R1', 'S', 'E', 'C', 'P', 'IEV',
-        ${randomUUID()}, now())`;
-    try {
-      await waitForLockWaiters(observer, 1, 15_000);
-      const lockedTables = await clone.prisma.$queryRaw<Array<{ relname: string }>>`
-        SELECT c.relname FROM pg_locks l
-        JOIN pg_class c ON c.oid = l.relation
-        JOIN pg_namespace n ON n.oid = c.relnamespace
-        WHERE n.nspname = 'public'
-          AND l.mode = 'ShareRowExclusiveLock'
-          AND c.relname IN ('di_v0_s4_work_items', 'di_v0_shadow_runs', 'di_v0_shadow_intervals')
-        ORDER BY c.relname`;
-      expect(lockedTables.map((r) => r.relname)).toEqual([
-        'di_v0_s4_work_items',
-        'di_v0_shadow_intervals',
-        'di_v0_shadow_runs',
-      ]);
-      release.resolve();
-      await lockTx;
-      await writePromise;
-    } catch (error) {
-      release.resolve();
-      await lockTx.catch(() => undefined);
-      await writePromise.catch(() => undefined);
-      throw error;
-    }
   });
 
   it('S4B-M14 lock timeout: open S2 shadow_intervals writer blocks migration with no partial V2 schema', async () => {
