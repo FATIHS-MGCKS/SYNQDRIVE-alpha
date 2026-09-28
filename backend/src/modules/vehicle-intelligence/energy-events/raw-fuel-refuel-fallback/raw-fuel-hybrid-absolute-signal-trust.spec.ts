@@ -19,6 +19,8 @@ import type { RawRefuelNativeOverlapAdvisoryResult } from './raw-refuel-native-o
 import {
   RFRF_FALLBACK_PROMOTION_EXECUTION_AUTHORIZED_ENV,
   RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED_ENV,
+  canCreateFallbackVehicleEnergyEvent,
+  isRfrfNativeFallbackConvergenceAuthorized,
 } from '@config/raw-fuel-refuel-fallback.config';
 import { buildReadyEvidenceRefreshMeta } from './raw-refuel-ready-evidence-refresh-metadata';
 import { evaluateReadyCandidateRefreshRequirement } from './raw-refuel-ready-evidence-refresh.policy';
@@ -266,32 +268,6 @@ describe('Hybrid absolute signal trust authority v1', () => {
     expect(resolved.hybridTrustProvenance.classification).toBe('TRUSTED');
   });
 
-  it('T11 TRUSTED hybrid still blocked without F5 authorization', () => {
-    const eligibility = evaluateRawRefuelPromotionEligibility(
-      readyReadiness(),
-      {
-        capability: 'FUEL_CAPABLE',
-        absoluteDetectionAdmissibility: 'ADMISSIBLE',
-        absoluteSignalTrust: 'TRUSTED',
-        nativeOverlap: noNativeOverlap,
-        candidateEvidenceMeta: {
-          baselineRecency: buildBaselineRecencyEvidenceMeta({
-            classification: 'FRESH',
-            reason: 'test',
-            bridgeGapSeconds: 100,
-            prePlateauStartAt: riseOnset,
-            prePlateauEndAt: riseOnset,
-            riseOnsetAt: riseOnset,
-            interveningPrimarySampleCount: 0,
-            interveningContradictionCount: 0,
-          }),
-        },
-      },
-      { [RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED_ENV]: 'false' },
-    );
-    expect(eligibility.status).toBe('BLOCKED_F5_CONVERGENCE_NOT_AUTHORIZED');
-  });
-
   it('T12 TRUSTED still blocked on native SAME overlap', () => {
     const eligibility = evaluateRawRefuelPromotionEligibility(
       readyReadiness(),
@@ -319,6 +295,48 @@ describe('Hybrid absolute signal trust authority v1', () => {
       },
     );
     expect(eligibility.status).toBe('BLOCKED_NATIVE_OVERLAP_REVIEW');
+  });
+
+  it('T11 TRUSTED hybrid still blocked without F5 authorization', () => {
+    const eligibility = evaluateRawRefuelPromotionEligibility(
+      readyReadiness(),
+      {
+        capability: 'FUEL_CAPABLE',
+        absoluteDetectionAdmissibility: 'ADMISSIBLE',
+        absoluteSignalTrust: 'TRUSTED',
+        nativeOverlap: noNativeOverlap,
+        candidateEvidenceMeta: {
+          baselineRecency: buildBaselineRecencyEvidenceMeta({
+            classification: 'FRESH',
+            reason: 'test',
+            bridgeGapSeconds: 100,
+            prePlateauStartAt: riseOnset,
+            prePlateauEndAt: riseOnset,
+            riseOnsetAt: riseOnset,
+            interveningPrimarySampleCount: 0,
+            interveningContradictionCount: 0,
+          }),
+        },
+      },
+      { [RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED_ENV]: 'false' },
+    );
+    expect(eligibility.status).toBe('BLOCKED_F5_CONVERGENCE_NOT_AUTHORIZED');
+  });
+
+  it('T13 TRUSTED does not bypass F5 convergence authorization env gate', () => {
+    expect(
+      isRfrfNativeFallbackConvergenceAuthorized({
+        [RFRF_NATIVE_FALLBACK_CONVERGENCE_AUTHORIZED_ENV]: 'false',
+      }),
+    ).toBe(false);
+  });
+
+  it('T14 TRUSTED does not enable fallback VEE creation without promotion authorization', () => {
+    expect(
+      canCreateFallbackVehicleEnergyEvent({
+        [RFRF_FALLBACK_PROMOTION_EXECUTION_AUTHORIZED_ENV]: 'false',
+      }),
+    ).toBe(false);
   });
 
   it('T15 identical input => deterministic provenance', () => {
