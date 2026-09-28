@@ -23,7 +23,7 @@ Append-only scientific record. Newest entries first.
 | Field | Value |
 |-------|-------|
 | **BEFORE** | F4.5R1 closed observability gate; **`SUSTAINED_D3_ACTIVATION_GATE_READY=YES`**; production D3 **OFF** @ **`7f5f8fdf…`**. |
-| **OBSERVATION** | Root-PM2 follower-first enable; effective interval **900000 ms**; two consecutive leader **COMPLETED** ticks; failed/error/invariant deltas **0**; cross-tenant / partial-ack **0**. |
+| **OBSERVATION** | Root-PM2 follower-first enable; effective interval **900000 ms**; sustained window **5** leader **COMPLETED** ticks (**+5** revision/ack, batch=1); post-hoc forensics corrected earlier “two consecutive ticks” wording; failed/error/invariant deltas **0**; cross-tenant / partial-ack **0**. |
 | **CHANGE** | **`F4_6_SUSTAINED_D3_ACTIVATION_RESULT=PASS`**; **`D3_SUSTAINED_SHADOW_ACTIVE=YES`**; **`M3_3F_F4_COMPLETE=YES`**; **`F4_6_T0`** assigned; **`F_D3_T0` unchanged**. |
 | **WHY** | Explicit sustained shadow activation after F4.5R1 Prometheus closure — still **not** customer health / E3. |
 | **VALIDATION** | VPS backup + authenticated metrics + PM2 reconciliation logs + Postgres integrity queries. |
