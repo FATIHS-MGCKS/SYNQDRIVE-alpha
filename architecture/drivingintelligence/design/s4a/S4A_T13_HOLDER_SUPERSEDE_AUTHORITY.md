@@ -17,7 +17,7 @@
 | 5 | `backend/.../di-v0-s4a-work-item.repository.ts` → `holderSupersede` | Runtime mapping (supersede only) |
 | 6 | `design/s4a/s4a-contract.v2.json` → `fixtures.races` → `R24_HOLDER_SUPERSEDE_ON_BOUNDARY_CHANGE` | Race fixture |
 | 7 | `S4A_CONTROL_PLANE.md` | Worker enablement + kill rules for T13 |
-| 8 | `contradictions/CONTRADICTION_REGISTER.md` → DI-CONTRA-S4A-T13-… | Recorded A/B sides |
+| 8 | `contradictions/CONTRADICTION_REGISTER.md` (T13 successor section) | Recorded A/B sides |
 | 9 | `graph/nodes.yaml` → DI-CONTRA-S4A-T13-SUCCESSOR-WRITE-BINDING-001 | Graph node |
 
 Orchestration contract `DI_V0_S4_ORCHESTRATION_CONTRACT_V2` does **not** define a separate T13; S4 orchestration defers to S4A state machine.
