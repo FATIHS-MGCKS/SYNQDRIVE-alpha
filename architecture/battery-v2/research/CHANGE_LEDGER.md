@@ -18,6 +18,17 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-28 — M3.3F F4.3 post-deploy production evidence seal
+
+| Field | Value |
+|-------|-------|
+| **OBSERVATION** | F4.3 exact-SHA flag-OFF deploy completed @ `20260928001456_v4994`; `origin/main` advanced with unrelated DI S4A runtime + migration. |
+| **CHANGE** | Authoritative production evidence doc; CURRENT_STATE production vs main boundary; F4.4 runtime SHA pinned to deployed `68a05e41`. |
+| **WHY** | Prevent treating current `main` as Battery deploy candidate; preserve activation gate discipline before F4.4 preflight. |
+| **VALIDATION** | Governance validators; production facts from deploy smoke (read-only). |
+| **DECISION_STATUS** | **PRODUCTION_VALIDATED** (F4.3 flag-OFF deploy + observability smoke only) |
+| **EVIDENCE** | `M3_3F_F4_3_FLAG_OFF_PRODUCTION_DEPLOY_EVIDENCE_2026-09-28.md` |
+
 ## CL-2026-09-27 — M3.3F F4.3 pre-merge observability hardening (PR #1817 amend)
 
 | Field | Value |
