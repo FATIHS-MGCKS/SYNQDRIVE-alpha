@@ -27,6 +27,7 @@ import { loadAuthoritativeNativeRefuelSiblings } from './authoritative-native-re
 import type { RawRefuelNativeFallbackConvergenceEvaluation } from './raw-refuel-native-fallback-convergence.types';
 import { computeNativeOverlapQueryWindow } from './raw-refuel-native-overlap.advisory';
 import { evaluateRawRefuelPromotionCutover } from './raw-refuel-promotion-cutover.util';
+import { resolveEffectivePromotionTrustForCandidate } from './raw-fuel-hybrid-trust-activation.authority';
 import { buildRfrfPromotionLockKey } from './raw-refuel-promotion-lock.util';
 import type {
   RawRefuelPromotionApplyResult,
@@ -347,7 +348,9 @@ export class RawRefuelPromotionService {
           };
         }
 
-        const promotionTrust = context.absoluteSignalTrust ?? locked.absoluteSignalTrust;
+        const promotionTrust =
+          context.absoluteSignalTrust ??
+          resolveEffectivePromotionTrustForCandidate(locked);
         if (promotionTrust !== 'TRUSTED') {
           this.metrics?.recordPromotionBlockedByTrust();
           return {

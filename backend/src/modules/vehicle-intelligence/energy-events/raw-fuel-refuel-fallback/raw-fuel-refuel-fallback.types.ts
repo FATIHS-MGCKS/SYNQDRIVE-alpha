@@ -1,5 +1,6 @@
 import type { FuelType } from '@prisma/client';
 import type { RawFuelHybridTrustProvenance } from './raw-fuel-hybrid-absolute-signal-trust.authority';
+import type { HybridTrustActivationDecision } from './raw-fuel-hybrid-trust-activation.authority';
 import type { RawFuelPrePlateauBaselineRecencyClassification } from '../raw-fuel-rise-detector/raw-fuel-pre-plateau-baseline-recency.policy';
 
 /** Case-22 vehicle-level fuel telemetry capability (separate from signal trust). */
@@ -43,6 +44,9 @@ export interface RawFuelSignalTrustInput {
     preFuelAbsoluteLiters?: number | null;
     postFuelAbsoluteLiters?: number | null;
   };
+  /** Authoritative tenant scope for scoped production activation (DB-sourced only). */
+  organizationId?: string | null;
+  vehicleId?: string | null;
 }
 
 export interface RawFuelSignalTrustResult {
@@ -53,6 +57,8 @@ export interface RawFuelSignalTrustResult {
   relativeSignalAvailable: boolean;
   /** Structured hybrid-trust audit trail (classification may be gated off for promotion). */
   hybridTrustProvenance: RawFuelHybridTrustProvenance;
+  /** Scoped activation audit trail — separate from semantic hybrid authority. */
+  hybridTrustActivation: HybridTrustActivationDecision;
 }
 
 /** F4 source semantics contract — documentation-only in PR1 (no runtime writes). */

@@ -262,3 +262,17 @@ invariants:
     source_paths:
       - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-fuel-hybrid-absolute-signal-trust.authority.ts
       - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-fuel-signal-trust.resolver.ts
+
+  - id: EED-INV-022
+    kind: CONFIRMED_INVARIANT
+    title: RFRF hybrid trust production activation is scoped and fail-closed
+    epistemic_status: CONFIRMED
+    statement: >
+      Effective promotion trust from hybrid TRUSTED classification requires an explicit
+      versioned activation policy match (ALPHA_ALLOWLIST organization or vehicle UUID);
+      absent/malformed mode, empty allowlists, and non-allowlisted tenants remain UNKNOWN
+      for promotion; semantic hybrid evaluation stays organization-agnostic.
+    evidence: [EED-EV-0101]
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-fuel-hybrid-trust-activation.authority.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-refuel-promotion.service.ts

@@ -242,6 +242,8 @@ export class RawFuelRefuelFallbackRuntimeService {
       scanWindowStart: input.windowFrom,
       scanWindowEnd: input.windowTo,
       fuelType: input.fuelType,
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
     });
 
     const context: RawFuelRiseDetectionContext = {
