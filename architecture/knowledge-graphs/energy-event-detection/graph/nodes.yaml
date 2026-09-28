@@ -1802,6 +1802,16 @@ nodes:
     authority_class: EED_OWNS
     evidence: [EED-EV-0041]
 
+  - id: EED-OQ-015
+    type: open_question
+    title: Stretched-end native↔fallback convergence identity
+    epistemic_status: INFERRED
+    summary: >
+      RESOLVED — bounded fallback classifier (EED-EV-0097) closes WOB 09-19 duplicate
+      Product REFUEL risk without relaxing global G2 endTimeSec=60.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0097]
+
   # ── ERD (EV Recharge Detection) sub-domain ───────────────────────────────────
   - id: EED-SYS-002
     type: system
@@ -1943,6 +1953,19 @@ nodes:
     summary: >
       Env allowlist org:vehicle pairs; fail-closed parser; runtime hook SCOPED_CANARY vs GLOBAL;
       unit + PG tests; metrics taxonomy unchanged; no Production activation.
+
+  - id: EED-EV-0097
+    type: evidence
+    title: RFRF OQ-015 stretched-end fallback↔native convergence
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - architecture/knowledge-graphs/energy-event-detection/evidence/EED-EV-0097-RFRF-STRETCHED-END-CONVERGENCE-2026-09-28.md
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-refuel-native-fallback-stretched-end.policy.ts
+    evidence_maturity: PROVEN_BY_TEST
+    summary: >
+      classifyFallbackAgainstAuthoritativeNativeRefuel; canonical matcher unchanged;
+      WOB 09-19 SAME_NATIVE in tests; trust authority still UNKNOWN.
 
   - id: EED-EV-0091
     type: evidence

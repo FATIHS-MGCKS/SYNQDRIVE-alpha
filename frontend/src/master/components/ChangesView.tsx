@@ -648,6 +648,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-21T12:00:00.000Z',
   },
   {
+    id: 'eed-rfrf-oq015-stretched-end-convergence-2026-09-28',
+    version: '4.9.4995',
+    title: 'RFRF OQ-015 — stretched-end fallback↔native convergence',
+    summary: [
+      'classifyFallbackAgainstAuthoritativeNativeRefuel closes WOB 09-19 duplicate Product REFUEL risk without raising global G2 endTimeSec.',
+      'Pre-merge hardening: stretch requires maxSampleGapSeconds > F3 continuity (360s) + native physical envelope bracketing; post-plateau extension alone is not stretch proof.',
+      'OQ-015 PostgreSQL gate wired into Stage-4 CI (rfrf-oq015-stretched-end-postgres-gate.sh).',
+      'Trust authority unchanged (UNKNOWN); EED-INV-018 documents convergence firewall.',
+    ],
+    reason:
+      'Production forensic audit: READY fallback candidate DISTINCT_FROM_NATIVE solely on stretched end_time_mismatch vs authoritative native canonical row.',
+    previousBehavior:
+      'Strict classifyPhysicalRefuelSibling endTimeSec=60 blocked SAME_NATIVE for sparse-bridge refuels with delayed native segment end.',
+    details:
+      'raw-refuel-native-fallback-stretched-end.policy.ts; EED-EV-0097; architecture/knowledge-graphs/energy-event-detection/evidence/EED-EV-0097-RFRF-STRETCHED-END-CONVERGENCE-2026-09-28.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-28T00:15:00.000Z',
+  },
+  {
     id: 'eed-rfrf-f10-6-8-c-recovery-promotion-liveness-2026-09-21',
     version: '4.9.1157',
     title: 'RFRF F10.6.8-C — recovered READY promotion liveness + atomic SUCCESS_PROMOTED',

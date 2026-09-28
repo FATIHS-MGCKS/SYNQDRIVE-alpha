@@ -28,6 +28,7 @@ All 12 discovery open questions classified. **Separate current-state facts from 
 | EED-OQ-012 | Observability SLOs for rise null rate? | **OPEN** | Metrics exist; no SLO thresholds | NO | LOW |
 | EED-OQ-013 | Physical refuel identity vs dimoSegmentId? | **RESOLVED** (design) | F1.2: `RawRefuelCandidate.id` + semantic rediscovery + G2 matcher; `IMPLEMENTATION_PROOF_PENDING` F2/F5 | NO | HIGH |
 | EED-OQ-014 | RFRF threshold fleet calibration? | **OPEN** | PROVISIONAL detector thresholds; KS MS 661 positive only | NO | HIGH |
+| EED-OQ-015 | Stretched-end native↔fallback convergence identity? | **RESOLVED** (design+code) | EED-EV-0097; bounded fallback classifier; canonical matcher strict | NO | HIGH |
 
 ## Deferred (reference only)
 

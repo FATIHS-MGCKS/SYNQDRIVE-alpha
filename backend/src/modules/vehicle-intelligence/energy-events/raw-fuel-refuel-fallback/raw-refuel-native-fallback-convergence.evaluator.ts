@@ -1,10 +1,9 @@
 import type { RawRefuelCandidate } from '@prisma/client';
 import type { RefuelRowForMatcher } from '../physical-refuel-identity.matcher';
-import { classifyPhysicalRefuelSibling } from '../physical-refuel-identity.matcher';
 import {
-  rawRefuelCandidateToRefuelRowForMatcher,
   type ClassifyRawRefuelNativeOverlapInput,
 } from './raw-refuel-native-overlap.advisory';
+import { classifyFallbackAgainstAuthoritativeNativeRefuel } from './raw-refuel-native-fallback-stretched-end.policy';
 import type { RawRefuelNativeFallbackConvergenceEvaluation } from './raw-refuel-native-fallback-convergence.types';
 
 /** Bounded authoritative native sibling load — overflow MUST fail closed (F5-PR1.1). */
@@ -93,13 +92,12 @@ export function buildNativeSiblingRawLoadIncompleteEvaluation(): RawRefuelNative
 }
 
 /**
- * F5 authoritative native↔fallback convergence — uses G2 classifyPhysicalRefuelSibling().
- * NOT the F4 advisory aggregate.
+ * F5 authoritative native↔fallback convergence — canonical G2 matcher plus bounded
+ * stretched-end fallback assessment (EED-OQ-015). NOT the F4 advisory aggregate.
  */
 export function evaluateRawRefuelNativeFallbackConvergence(
   input: ClassifyRawRefuelNativeOverlapInput,
 ): RawRefuelNativeFallbackConvergenceEvaluation {
-  const candidateRow = rawRefuelCandidateToRefuelRowForMatcher(input.candidate);
   const siblingAssessments: RawRefuelNativeFallbackConvergenceEvaluation['siblingAssessments'] =
     [];
   const sameNativeEventIds: string[] = [];
@@ -113,7 +111,7 @@ export function evaluateRawRefuelNativeFallbackConvergence(
     if (!isAuthoritativeNativeRefuelRow(nativeRow)) {
       continue;
     }
-    const result = classifyPhysicalRefuelSibling(candidateRow, nativeRow);
+    const result = classifyFallbackAgainstAuthoritativeNativeRefuel(input.candidate, nativeRow);
     siblingAssessments.push({
       nativeEventId: nativeRow.id,
       classification: result.classification,

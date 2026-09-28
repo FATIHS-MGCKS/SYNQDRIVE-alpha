@@ -13,6 +13,11 @@ export function rawRefuelCandidateToRefuelRowForMatcher(
   candidate: RawRefuelCandidate,
 ): RefuelRowForMatcher {
   const draft = mapRawRefuelCandidateToPromotionDraft(candidate);
+  const meta = candidate.evidenceMeta as Record<string, unknown> | null | undefined;
+  const odometerEndKm =
+    typeof meta?.odometerEndKm === 'number' && Number.isFinite(meta.odometerEndKm)
+      ? meta.odometerEndKm
+      : null;
   return {
     id: candidate.id,
     vehicleId: candidate.vehicleId,
@@ -26,7 +31,7 @@ export function rawRefuelCandidateToRefuelRowForMatcher(
     fuelDeltaLiters: candidate.deltaAbsoluteLiters,
     fuelDeltaPercent: candidate.deltaRelativePercent,
     durationSeconds: draft.durationSeconds,
-    odometerEndKm: null,
+    odometerEndKm,
     dimoSegmentId: draft.dimoSegmentIdPlaceholder,
   };
 }

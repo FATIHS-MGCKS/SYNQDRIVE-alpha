@@ -30,4 +30,8 @@ echo "==> RFRF F10.6.8-C recovery-owned promotion PostgreSQL gate"
 bash "${SCRIPT_DIR}/rfrf-f10-6-8-c-recovery-promotion-gate.sh"
 echo "STAGE4_F10_6_8_C_RECOVERY_PROMOTION_PG=PASS"
 
+echo "==> RFRF OQ-015 stretched-end PostgreSQL convergence gate"
+bash "${SCRIPT_DIR}/rfrf-oq015-stretched-end-postgres-gate.sh"
+echo "STAGE4_OQ015_STRETCHED_END_POSTGRES=PASS"
+
 echo "RFRF_STAGE4_CONVERGENCE_READINESS_CI_GATE=PASS"
