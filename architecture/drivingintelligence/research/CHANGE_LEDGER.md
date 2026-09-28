@@ -1161,6 +1161,16 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Validation | 175/175 S4A tests (parity 9, fixtures 98, dormant audit 7, Postgres races R01–R25 + K01–K18 = 51, migration M01–M08 = 10); races stable over 3 reruns; backend tsc/build 0; all architecture validators pass |
 | Gaps | OPEN: DI-GAP-S4A-BOUNDARY-REVERT-SUCCESSOR-001, DI-GAP-S4A-POSTGRES-CI-WIRING-001, DI-GAP-S4A-CONTROL-ROW-SERIALIZATION-001 (P2); contradictions DI-CONTRA-S4A-T13-SUCCESSOR-WRITE-BINDING-001, DI-CONTRA-S4A-CONTAINER-VERSION-NAMING-001, DI-CONTRA-S4A-ON-UPDATE-CASCADE-IMMUTABILITY-001 (P2). All prior P2 gaps preserved |
 | Incident | Running `npm run i18n:check` regenerated the untracked-in-scope working-tree file `frontend/src/i18n/hardcoded-copy-inventory.json` (md5 e68ad5b6… → 4a8de450…); the prior local content was not recoverable. It was never staged or committed. Future runs use `node scripts/i18n-check.mjs --read-only` |
-| Status | PROPOSED — draft PR, not merged; merge + ordinary deploy would apply the migration to Production (S2 empty at 2026-09-27T21:52Z) |
+| Status | MERGED — PR #1816 → `main` @ `2c321823a` (2026-09-28); Production migration apply gated — see post-merge deploy gate |
 | Evidence | `evidence/EXP021_S4A_DORMANT_FOUNDATION_IMPLEMENTATION.md` (DI-EVID-EXP021-S4A-IMPL-001) |
 | Decision | DI-DEC-V0-S4A-IMPL-001 |
+
+### EXP-021 S4A — Merge to main + post-merge deploy gate (2026-09-28)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | `EXP021_S4A_FINAL_PREMERGE_SEAL_RESULT=PASS`; authorized controlled merge of PR #1816 |
+| CHANGE | Merged PR #1816 (`77d112dba`) via merge commit `2c321823a`; activated operational gate `DO_NOT_DEPLOY_S4A_MIGRATION_TO_PRODUCTION` until Postgres CI wiring + deploy-readiness seal |
+| NON_EFFECTS | No deploy, no Production migration, no S4 runtime, no shadow activation, no flags, no allowlisting |
+| Evidence | `evidence/EXP021_S4A_POST_MERGE_DEPLOY_GATE.md` (DI-EVID-EXP021-S4A-POST-MERGE-GATE-001) |
+| Next slice | `S4A_POSTGRES_CI_WIRING_AND_DORMANT_DEPLOY_READINESS` |

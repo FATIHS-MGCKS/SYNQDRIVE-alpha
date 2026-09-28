@@ -5,7 +5,7 @@
 | **Evidence ID** | DI-EVID-EXP021-S4A-IMPL-001 |
 | **Slice** | EXP-021 S4A (CONTROLLED_IMPLEMENTATION) |
 | **Authority built from** | `design/s4a/s4a-contract.v2.json` (`DI_V0_S4A_CONTRACT_V2`) on `main` @ `5bcecc6c6` (merge of PR #1810) — **unchanged by this slice** |
-| **Branch / PR** | `cursor/exp021-s4a-dormant-foundation-7d78` — draft PR "feat(di): implement S4A dormant execution foundation" (not merged) |
+| **Branch / PR** | Merged PR #1816 → `main` @ merge commit `2c321823a` (2026-09-28); implementation head `77d112dbab1a49e3f1b3c62a5b313c4b77da5f46` |
 | **Epistemic** | CONFIRMED for code/test facts and the read-only Production baseline; INFERRED where marked |
 | **Decision** | DI-DEC-V0-S4A-IMPL-001 (`PROPOSED`) |
 | **Runtime effect** | None. No caller, no Nest provider, no worker, no queue, no scheduler, no provider call, no flag change, no Production write or deploy |
