@@ -18,6 +18,18 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-28 — M3.3F F4.3 exact-SHA flag-OFF production deploy + observability smoke
+
+| Field | Value |
+|-------|-------|
+| **OBSERVATION** | PR #1817 merged; production remained F4.2 SHA until authorized exact deploy. |
+| **CHANGE** | Rolling deploy `68a05e4156db28568ad5b7718ca1f9ad2d799884` (release `20260928001456_v4994`); D3 env unchanged/absent; zero migrations applied. |
+| **WHY** | Ship F4.3 observability/safety to production while keeping D3 OFF. |
+| **VALIDATION** | Two-replica health; 8/8 metric families; natural tick smoke (leader FLAG_OFF, follower NOT_LEADER); D3/ack/cursor inertness. |
+| **OBSERVED_EFFECT** | C3 29→30 natural; D3/ack 0; fleet cursor unchanged. |
+| **DECISION_STATUS** | **PRODUCTION_VALIDATED** (flag-OFF deploy + smoke only) |
+| **EVIDENCE** | `M3_3F_F4_3_EXACT_SHA_FLAG_OFF_PRODUCTION_DEPLOY_2026-09-28.md` |
+
 ## CL-2026-09-27 — M3.3F F4.3 pre-merge observability hardening (PR #1817 amend)
 
 | Field | Value |
