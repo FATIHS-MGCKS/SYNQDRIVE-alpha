@@ -1,0 +1,110 @@
+name: S4A PostgreSQL integration
+
+on:
+  pull_request:
+    paths:
+      - 'backend/src/modules/vehicle-intelligence/driving-intelligence/s4a-foundation/**'
+      - 'backend/src/modules/vehicle-intelligence/driving-intelligence/shadow-persistence/**'
+      - 'backend/scripts/test/di-v0-s4a-*.sh'
+      - 'backend/scripts/test/prisma-migrate-deploy-resilient.sh'
+      - 'backend/prisma/migrations/20260927200000_di_v0_s4a_dormant_foundation/**'
+      - 'backend/prisma/schema.prisma'
+      - 'backend/package.json'
+      - 'backend/package-lock.json'
+      - 'architecture/drivingintelligence/design/s4a/**'
+      - 'architecture/drivingintelligence/scripts/validate-s4a-contract.sh'
+      - '.github/workflows/s4a-postgres-integration.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/src/modules/vehicle-intelligence/driving-intelligence/s4a-foundation/**'
+      - 'backend/src/modules/vehicle-intelligence/driving-intelligence/shadow-persistence/**'
+      - 'backend/scripts/test/di-v0-s4a-*.sh'
+      - 'backend/scripts/test/prisma-migrate-deploy-resilient.sh'
+      - 'backend/prisma/migrations/20260927200000_di_v0_s4a_dormant_foundation/**'
+      - 'backend/prisma/schema.prisma'
+      - 'backend/package.json'
+      - 'backend/package-lock.json'
+      - 'architecture/drivingintelligence/design/s4a/**'
+      - 'architecture/drivingintelligence/scripts/validate-s4a-contract.sh'
+      - '.github/workflows/s4a-postgres-integration.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '22'
+  S4A_PG_USER: s4a_ci_test
+  S4A_PG_PASSWORD: s4a_ci_test_local
+  S4A_PG_DB: postgres
+  DI_V0_S4A_PG_ADMIN_URL: postgresql://s4a_ci_test:s4a_ci_test_local@127.0.0.1:5432/postgres
+  DI_V0_S4A_DB_PREFIX: synqdrive_s4a_ci
+  DI_V0_S4A_POSTGRES_INTEGRATION: '1'
+  DI_V0_S4A_POSTGRES_REQUIRED: '1'
+
+jobs:
+  s4a-postgres-integration:
+    name: S4A PostgreSQL integration
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: s4a_ci_test
+          POSTGRES_PASSWORD: s4a_ci_test_local
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U s4a_ci_test -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Fail closed on non-ephemeral admin URL
+        run: |
+          set -euo pipefail
+          case "$DI_V0_S4A_PG_ADMIN_URL" in
+            *127.0.0.1*|*localhost*) ;;
+            *) echo "DI_V0_S4A_PG_ADMIN_URL must target ephemeral CI PostgreSQL"; exit 1 ;;
+          esac
+          case "$DI_V0_S4A_PG_ADMIN_URL" in
+            *srv1374778*|*app.synqdrive.eu*|*hstgr.cloud*|*mein-vps*)
+              echo "DI_V0_S4A_PG_ADMIN_URL must not reference production"; exit 1 ;;
+            esac
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Install backend dependencies and generate Prisma client
+        working-directory: backend
+        run: npm ci && npx prisma generate
+
+      - name: Run S4A PostgreSQL integration suite (migration M01–M08 + races R/K + KS)
+        working-directory: backend
+        env:
+          DI_V0_S4A_PG_ADMIN_URL: ${{ env.DI_V0_S4A_PG_ADMIN_URL }}
+          DI_V0_S4A_DB_PREFIX: ${{ env.DI_V0_S4A_DB_PREFIX }}
+          DI_V0_S4A_POSTGRES_INTEGRATION: ${{ env.DI_V0_S4A_POSTGRES_INTEGRATION }}
+          DI_V0_S4A_POSTGRES_REQUIRED: ${{ env.DI_V0_S4A_POSTGRES_REQUIRED }}
+        run: npm run test:di:s4a:postgres:ci
+
+  s4a-postgres-ci-gate:
+    name: S4A PostgreSQL CI gate
+    runs-on: ubuntu-latest
+    needs:
+      - s4a-postgres-integration
+    steps:
+      - run: echo "S4A PostgreSQL integration gate passed (61 real-Postgres tests)."

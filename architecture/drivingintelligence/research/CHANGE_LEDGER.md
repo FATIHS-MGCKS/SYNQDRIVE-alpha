@@ -1174,3 +1174,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | NON_EFFECTS | No deploy, no Production migration, no S4 runtime, no shadow activation, no flags, no allowlisting |
 | Evidence | `evidence/EXP021_S4A_POST_MERGE_DEPLOY_GATE.md` (DI-EVID-EXP021-S4A-POST-MERGE-GATE-001) |
 | Next slice | `S4A_POSTGRES_CI_WIRING_AND_DORMANT_DEPLOY_READINESS` |
+
+### EXP-021 S4A — PostgreSQL CI wiring + dormant deploy readiness (2026-09-28)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | Post-merge gate; `S4A_POSTGRES_CI_WIRING_AND_DORMANT_DEPLOY_READINESS` |
+| CHANGE | `.github/workflows/s4a-postgres-integration.yml`; `test:di:s4a:postgres:ci` with `DI_V0_S4A_POSTGRES_REQUIRED=1`; fail-closed harness; deploy gate → `READY_FOR_SEPARATE_OPERATOR_DEPLOY_DECISION` |
+| NON_EFFECTS | No deploy, no Production migration, no S4 runtime |
+| Gaps | DI-GAP-S4A-POSTGRES-CI-WIRING-001 **CLOSED**; all other P2 gaps preserved |
+| Evidence | `evidence/EXP021_S4A_POSTGRES_CI_WIRING.md` (DI-EVID-EXP021-S4A-POSTGRES-CI-001) |
+| Next slice | `S4A_DORMANT_DEPLOY_PRECHECK` (operator + branch protection required check) |

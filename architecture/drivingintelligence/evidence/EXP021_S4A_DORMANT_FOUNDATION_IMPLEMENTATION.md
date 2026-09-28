@@ -110,7 +110,7 @@ Session: `sudo -u postgres psql -d synqdrive` with `default_transaction_read_onl
 | ID | Status | Note |
 |----|--------|------|
 | DI-GAP-S4A-BOUNDARY-REVERT-SUCCESSOR-001 | OPEN (new) | T11 creates a successor only when the predecessor is PRIMARY, the trip is COMPLETED, the tenant is the same, the registry is ACTIVE and the logical key is free. A boundary revert to an earlier fingerprint whose key is taken by a SUPERSEDED row gets no successor (proven by the race suite) |
-| DI-GAP-S4A-POSTGRES-CI-WIRING-001 | OPEN (new) | The Postgres race and migration suites run through `npm run test:di:s4a:postgres` (ephemeral local DBs) but are not wired into a GitHub workflow. Default `npm test` skips them |
+| DI-GAP-S4A-POSTGRES-CI-WIRING-001 | **CLOSED** (2026-09-28) | `.github/workflows/s4a-postgres-integration.yml` + `npm run test:di:s4a:postgres:ci`; evidence [EXP021_S4A_POSTGRES_CI_WIRING.md](EXP021_S4A_POSTGRES_CI_WIRING.md) |
 | DI-GAP-S4A-CONTROL-ROW-SERIALIZATION-001 | OPEN (new, P2) | Every transition takes the singleton control row `FOR UPDATE`, which serializes all S4 writes globally. This is correct for kill serialization, but it is a throughput ceiling to revisit before multi-worker scale |
 | DI-GAP-S4-REPLAY-DESERIALIZER-001 | OPEN (unchanged) | No deserializer; replay-capable shadow and tiny activation stay blocked |
 | DI-GAP-S4-PROVIDER-BACKPRESSURE-001 | OPEN (unchanged) | S4C scope |

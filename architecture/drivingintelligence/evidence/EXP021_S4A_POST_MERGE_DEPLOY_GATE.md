@@ -7,16 +7,23 @@
 | **Epistemic** | CONFIRMED |
 | **Type** | Operational deployment gate (not a product feature flag) |
 
-## `DO_NOT_DEPLOY_S4A_MIGRATION_TO_PRODUCTION`
+## Deploy gate status
 
-**Status: ACTIVE**
+| Gate | Status |
+|------|--------|
+| `DO_NOT_DEPLOY_S4A_MIGRATION_TO_PRODUCTION` | **SUPERSEDED** (2026-09-28) by readiness below — historical record only |
+| `S4A_DORMANT_MIGRATION_DEPLOY_GATE` | **READY_FOR_SEPARATE_OPERATOR_DEPLOY_DECISION** |
 
-Ordinary Production deploy (`vps-deploy-release.sh` → `prisma migrate deploy`) **must not** be executed for the purpose of landing migration `20260927200000_di_v0_s4a_dormant_foundation` until the following closure gate is satisfied:
+PostgreSQL CI wiring and dormant migration re-seal are documented in [EXP021_S4A_POSTGRES_CI_WIRING.md](EXP021_S4A_POSTGRES_CI_WIRING.md) (DI-EVID-EXP021-S4A-POSTGRES-CI-001).
 
-1. **PostgreSQL CI wiring (DI-GAP-S4A-POSTGRES-CI-WIRING-001):** `npm run test:di:s4a:postgres` (61 tests: migration M01–M08 + real-Postgres races R01–R25 + K01–K18) runs in **required** GitHub CI on every change that touches S4A schema, migration, repository, or race harness — not only via local/ephemeral bootstrap.
-2. **Independent deploy-readiness seal** after CI wiring (slice: `S4A_POSTGRES_CI_WIRING_AND_DORMANT_DEPLOY_READINESS`).
+**This is not deploy authorization.** Ordinary Production deploy still requires an explicit operator decision. S4 runtime, S4B, S4C, shadow activation, flags, and allowlisting remain **unauthorized**.
 
-This gate does **not** block merging dormant library code to `main`. It blocks **Production migration apply** until concurrency/database correctness is CI-enforced.
+### Closure criteria met (2026-09-28)
+
+1. **DI-GAP-S4A-POSTGRES-CI-WIRING-001 CLOSED:** GitHub workflow `.github/workflows/s4a-postgres-integration.yml` runs `npm run test:di:s4a:postgres:ci` (61 real-Postgres tests, `DI_V0_S4A_POSTGRES_REQUIRED=1`, fail-closed on missing DB).
+2. **Dormant deploy readiness seal:** empty-S2 precondition, bounded locks, no backfill, 0 runtime callers — READY for schema-only migration apply when operator chooses.
+
+**Operator follow-up:** add GitHub required check **S4A PostgreSQL integration** to branch protection so merges cannot bypass the suite.
 
 ## Preserved P2 deadlines (unchanged by merge)
 

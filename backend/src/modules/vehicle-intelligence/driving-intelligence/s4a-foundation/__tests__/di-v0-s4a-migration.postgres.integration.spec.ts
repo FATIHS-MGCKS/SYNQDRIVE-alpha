@@ -2,7 +2,16 @@ import { spawn } from 'child_process';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
 import { PrismaClient } from '@prisma/client';
-import { REPO_ROOT, deferred, seedS4aTenant, waitForLockWaiters, type S4aTenant } from './di-v0-s4a-postgres-harness';
+import {
+  REPO_ROOT,
+  assertS4aPostgresCiEnv,
+  deferred,
+  seedS4aTenant,
+  waitForLockWaiters,
+  type S4aTenant,
+} from './di-v0-s4a-postgres-harness';
+
+assertS4aPostgresCiEnv();
 
 /**
  * S4A migration behaviour on disposable clones of a pre-S4A template database

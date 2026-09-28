@@ -25,6 +25,7 @@ import {
   restoreKillCheck,
   retireRegistry,
   S4A_CONTRACT,
+  assertS4aPostgresCiEnv,
   S4A_POSTGRES_LIVE,
   s4aChannels,
   s4aConfigFor,
@@ -45,6 +46,8 @@ interface Fixture {
   steps: Step[];
   expect: Record<string, unknown>;
 }
+
+assertS4aPostgresCiEnv();
 
 const RACES: Fixture[] = S4A_CONTRACT.fixtures.races;
 const KILL_RACES: Fixture[] = S4A_CONTRACT.fixtures.killRaces;
