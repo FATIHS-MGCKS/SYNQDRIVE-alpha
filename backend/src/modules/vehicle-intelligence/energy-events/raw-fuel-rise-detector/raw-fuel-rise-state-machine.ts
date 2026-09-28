@@ -17,6 +17,10 @@ import {
   withinTolerance,
 } from './raw-fuel-rise-normalizer';
 import { readCorroborationAt } from './raw-fuel-rise-channel-authority';
+import {
+  buildBaselineRecencyEvidenceMeta,
+  evaluateRawFuelPrePlateauRecency,
+} from './raw-fuel-pre-plateau-baseline-recency.policy';
 
 interface ChannelPoint {
   timestamp: Date;
@@ -43,6 +47,8 @@ interface DetectedRiseDraft {
   maxSampleGapSeconds: number;
   sensorResetSuspected: boolean;
   returnedToBaselineBeforePost: boolean;
+  baselineRecencyReason: string | null;
+  baselineRecencyMeta: Record<string, unknown>;
 }
 
 /** F3.1 — every sample must lie within tolerance of the final robust median. */
@@ -429,6 +435,29 @@ export function detectChannelRises(
       continue;
     }
 
+    const riseOnsetAt = series[rise.riseStartIdx].timestamp;
+    const interveningPrimarySamples = series
+      .slice(pre.endIdx + 1, rise.riseStartIdx)
+      .map((p) => ({ timestamp: p.timestamp, value: p.value }));
+
+    const baselineRecency = evaluateRawFuelPrePlateauRecency({
+      prePlateauStartAt: pre.samples[0]?.timestamp,
+      prePlateauEndAt: pre.samples[pre.samples.length - 1]?.timestamp,
+      riseOnsetAt,
+      riseOnsetPrimaryValue: series[rise.riseStartIdx].value,
+      prePlateauMedian: pre.median,
+      interveningPrimarySamples,
+      signalChannel: channel,
+      config,
+    });
+
+    if (baselineRecency.classification !== 'FRESH') {
+      cursor = pre.startIdx + 1;
+      continue;
+    }
+
+    const baselineRecencyMeta = buildBaselineRecencyEvidenceMeta(baselineRecency);
+
     const peakValue = Math.max(...rise.risePoints.map((p) => p.value));
     const post = findLocalPostPlateauAfterRise(
       series,
@@ -451,6 +480,8 @@ export function detectChannelRises(
         : series[rise.peakIdx].timestamp,
       sensorResetSuspected: rise.sensorResetSuspected,
       returnedToBaselineBeforePost: rise.returnedToBaseline,
+      baselineRecencyReason: baselineRecency.reason,
+      baselineRecencyMeta,
     };
 
     const lifecycle = classifyLifecycle(baseDraft, channel, config);
@@ -464,6 +495,8 @@ export function detectChannelRises(
       ...baseDraft,
       ...lifecycle,
       maxSampleGapSeconds: maxGapSeconds(criticalPath),
+      baselineRecencyReason: baselineRecency.reason,
+      baselineRecencyMeta,
     });
 
     cursor = post ? post.endIdx + 1 : rise.peakIdx + 1;
@@ -503,6 +536,8 @@ export function draftToObservationFields(
   const risePeak = Math.max(...draft.risePoints.map((p) => p.value));
   const primaryPost = draft.postPlateau?.median ?? risePeak;
   const primaryDelta = primaryPost - primaryPre;
+
+  const baselineRecencyMeta = draft.baselineRecencyMeta;
 
   const absoluteFields =
     draft.channel === 'ABSOLUTE_LITERS'
@@ -547,6 +582,7 @@ export function draftToObservationFields(
       thresholdProvenance: config.thresholdProvenance,
       providerSampleSpacingNotPhysicalDuration: true,
       provisionalPostContinuationGraceMs: config.provisionalPostContinuationGraceMs,
+      baselineRecency: baselineRecencyMeta,
     },
     qualityMeta: {
       maxSampleGapSeconds: draft.maxSampleGapSeconds,

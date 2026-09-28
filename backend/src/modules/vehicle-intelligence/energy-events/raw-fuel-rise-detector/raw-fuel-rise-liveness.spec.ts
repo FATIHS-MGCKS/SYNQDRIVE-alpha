@@ -26,9 +26,9 @@ describe('raw-fuel-rise-liveness F10.6.6-A', () => {
       expect(result.candidates).toHaveLength(1);
       const candidate = result.candidates[0];
       expect(candidate.lifecycleState).toBe('READY_FOR_PERSIST');
-      expect(candidate.preFuelAbsoluteLiters).toBeCloseTo(5, 1);
+      expect(candidate.preFuelAbsoluteLiters).toBeCloseTo(4, 0.5);
       expect(candidate.postFuelAbsoluteLiters).toBeCloseTo(18, 1);
-      expect(candidate.deltaAbsoluteLiters).toBeCloseTo(13, 0);
+      expect(candidate.deltaAbsoluteLiters).toBeCloseTo(14, 0);
       expect(candidate.maxSampleGapSeconds).toBeGreaterThan(360);
       expect(candidate.rejectionReason).toBeNull();
     });

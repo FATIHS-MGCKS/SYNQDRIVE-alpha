@@ -1812,6 +1812,16 @@ nodes:
     authority_class: EED_OWNS
     evidence: [EED-EV-0097]
 
+  - id: EED-OQ-017
+    type: open_question
+    title: Stale pre-fill baseline authority for RFRF promotion
+    epistemic_status: INFERRED
+    summary: >
+      RESOLVED — pre-fill baseline recency guard (EED-EV-0098); promotion requires explicit FRESH
+      provenance; detector skips stale pre plateaus.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0098]
+
   # ── ERD (EV Recharge Detection) sub-domain ───────────────────────────────────
   - id: EED-SYS-002
     type: system
@@ -1966,6 +1976,20 @@ nodes:
     summary: >
       classifyFallbackAgainstAuthoritativeNativeRefuel; canonical matcher unchanged;
       WOB 09-19 SAME_NATIVE in tests; trust authority still UNKNOWN.
+
+  - id: EED-EV-0098
+    type: evidence
+    title: RFRF pre-fill baseline recency safety guard
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - architecture/knowledge-graphs/energy-event-detection/evidence/EED-EV-0098-RFRF-BASELINE-RECENCY-GUARD-2026-09-28.md
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-rise-detector/raw-fuel-pre-plateau-baseline-recency.policy.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-refuel-baseline-recency-promotion.policy.ts
+    evidence_maturity: PROVEN_BY_TEST
+    summary: >
+      evaluateRawFuelPrePlateauRecency; detector skips stale pre plateaus; promotion
+      BLOCKED_BASELINE_RECENCY unless FRESH provenance; KS MX false deltas blocked.
 
   - id: EED-EV-0091
     type: evidence

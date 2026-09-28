@@ -648,6 +648,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-21T12:00:00.000Z',
   },
   {
+    id: 'eed-rfrf-baseline-recency-guard-2026-09-28',
+    version: '4.9.4996',
+    title: 'RFRF — pre-fill baseline recency safety guard',
+    summary: [
+      'evaluateRawFuelPrePlateauRecency blocks stale pre plateaus (KS MX 2026-09-16 false deltas).',
+      'Long silent PRE→RISE bridges (>360s, zero intervening samples) fail closed as INSUFFICIENT_EVIDENCE — not FRESH via rise inference.',
+      'WOB 09-19 fixture aligned to read-only Production DIMO extract (fresh pre ~16:07:45Z, 210s before rise).',
+      'Promotion BLOCKED_BASELINE_RECENCY unless FRESH; trust remains OFF (EED-INV-019).',
+    ],
+    reason:
+      'READY fallback candidates could reuse hours-old pre-fill plateaus; trust enablement would promote false deltas without this firewall.',
+    previousBehavior:
+      'findPlateauFrom + scanPhysicalRiseNeighborhood allowed stale pre baselines when sparse PRE→RISE bridges tolerated long silence.',
+    details:
+      'raw-fuel-pre-plateau-baseline-recency.policy.ts; EED-EV-0098; rfrf-baseline-recency-postgres-gate.sh',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-28T02:00:00.000Z',
+  },
+  {
     id: 'eed-rfrf-oq015-stretched-end-convergence-2026-09-28',
     version: '4.9.4995',
     title: 'RFRF OQ-015 — stretched-end fallback↔native convergence',
