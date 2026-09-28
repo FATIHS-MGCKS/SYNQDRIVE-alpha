@@ -1749,9 +1749,8 @@ nodes:
     title: T13 successor guard vs write-class registry binding in contract v2
     epistemic_status: CONFIRMED
     summary: >
-      OPEN. T13 HOLDER_SUPERSEDE carries guard SUCCESSOR_SAME_TENANT_AND_TRIP_OR_NULL and fixture R24 expects 2
-      items, but W_SUCCESSOR_PRIMARY_INSERT is bound only to T11. S4A implements the write registry (T13 inserts no
-      successor); the R24 harness adds an explicit T01 create. No contract semantics changed.
+      RESOLVED (C1D.10F 2026-09-28). T13 is supersede-only; guard SUPERSEDED_BY_POINTER_MUST_BE_NULL; W_SUCCESSOR_PRIMARY_INSERT
+      remains T11-only; R24 fixture documents explicit post-T13 T01 create.
     source_paths:
       - architecture/drivingintelligence/contradictions/CONTRADICTION_REGISTER.md
 
@@ -1780,8 +1779,8 @@ nodes:
     title: Boundary revert to an earlier fingerprint gets no successor work item
     epistemic_status: CONFIRMED
     summary: >
-      T11 only creates a successor when the logical key is free; a revert to a fingerprint held by a SUPERSEDED
-      row gets no successor (proven by the race suite). Must be resolved before S4B discovery.
+      CLOSED at authority (C1D.10F 2026-09-28). boundaryOccurrence monotonic per trip for PRIMARY; implementation migration
+      tracked in EXP021_S4B_PRECONDITION_CLOSURE.md.
     source_paths:
       - architecture/drivingintelligence/evidence/EXP021_S4A_DORMANT_FOUNDATION_IMPLEMENTATION.md
 
@@ -1790,10 +1789,13 @@ nodes:
     title: S4A Postgres race and migration suites not wired into GitHub CI
     epistemic_status: CONFIRMED
     summary: >
-      npm run test:di:s4a:postgres runs them on ephemeral local DBs; default npm test skips them.
+      CLOSED 2026-09-28. Workflow s4a-postgres-integration.yml runs npm run test:di:s4a:postgres:ci (61 tests,
+      DI_V0_S4A_POSTGRES_REQUIRED=1). Branch protection must still list job S4A PostgreSQL integration as required
+      (operator). Evidence DI-EVID-EXP021-S4A-POSTGRES-CI-001.
     source_paths:
+      - .github/workflows/s4a-postgres-integration.yml
       - backend/scripts/test/di-v0-s4a-postgres-ci.sh
-      - architecture/drivingintelligence/evidence/EXP021_S4A_DORMANT_FOUNDATION_IMPLEMENTATION.md
+      - architecture/drivingintelligence/evidence/EXP021_S4A_POSTGRES_CI_WIRING.md
 
   - id: DI-GAP-S4A-CONTROL-ROW-SERIALIZATION-001
     type: gap

@@ -18,6 +18,34 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-28 — M3.3F F4.5R controlled D3 first-tick canary retry (PASS_WITH_OBSERVABILITY_EXCEPTION)
+
+| Field | Value |
+|-------|-------|
+| **OBSERVATION** | F4.5R attempt 3 (root PM2) executed one D3 leader tick @ `09:33:42Z` (CREATED + revision + ack); observer wait loop used unauthenticated `/metrics` → HTTP **401**; `FIRST_TICK_METRIC_EVIDENCE_CAPTURED_PRE_PAUSE=NO`. |
+| **CHANGE** | Docs-only authority: **`F4_5R_CANARY_RESULT=PASS_WITH_OBSERVABILITY_EXCEPTION`**; separate **`F4_5R_PRODUCTION_PATH_RESULT=PASS`**; metric fields **`NOT_CAPTURED`** vs **`DB_FORENSIC_*`**; **`NEXT_STAGE=F4_5R1_OBSERVABILITY_COMPLETE_SINGLE_TICK_CANARY`**. |
+| **WHY** | Preserve true production-path proof without overstating Prometheus compliance with frozen F4.5R contract. |
+| **VALIDATION** | Production Postgres rows + attempt-3 operator log; metrics auth root cause documented (no token in repo). |
+| **OBSERVED_EFFECT** | **First production D3 write path exercised once**; fleet cursor advanced one vehicle; D3 returned OFF. |
+| **NON_EFFECTS** | No sustained D3; no deploy in docs PR; no metric instrumentation change. |
+| **REGRESSIONS_OR_TRADEOFFS** | Frozen canary observability gate **not** closed until F4.5R1. |
+| **DECISION_STATUS** | **`PASS_WITH_OBSERVABILITY_EXCEPTION`** — **`SUSTAINED_D3_ACTIVATION_ALLOWED=NO`** |
+| **EVIDENCE** | `M3_3F_F4_5R_CONTROLLED_D3_FIRST_TICK_CANARY_RETRY_2026-09-28.md` (PR #1824) |
+
+## CL-2026-09-28 — M3.3F F4.5 controlled D3 first-tick canary (ERROR)
+
+| Field | Value |
+|-------|-------|
+| **OBSERVATION** | Shared env D3 true→false + batch 1; activation used synqdrive-admin PM2 (EACCES on release `.env`); authoritative root PM2 not restarted during ON window; 25m wait with no COMPLETED/FAILED leader tick; D3/ack rows remain 0. |
+| **CHANGE** | Final pre-canary backup `db-pre-f45-d3-canary-20260928014025.sql.gz`; recovery: stop admin PM2, root `pm2 restart --update-env`, D3 OFF converged. |
+| **WHY** | Execute F4.4 frozen first-tick canary with automatic pause. |
+| **VALIDATION** | Production DB/metrics/logs; external health post-recovery. |
+| **OBSERVED_EFFECT** | **No authoritative D3 materialization path exercised.** |
+| **NON_EFFECTS** | No deploy; no E3; C3 shadow continued (+1 row). |
+| **REGRESSIONS_OR_TRADEOFFS** | Transient parallel admin PM2 crash-loop on 3001/3002 until killed. |
+| **DECISION_STATUS** | **ERROR** (infra/operator identity — retry required) |
+| **EVIDENCE** | `M3_3F_F4_5_CONTROLLED_D3_FIRST_TICK_CANARY_2026-09-28.md` |
+
 ## CL-2026-09-28 — M3.3F F4.4 controlled D3 activation preflight (read-only)
 
 | Field | Value |

@@ -1,7 +1,7 @@
 {
   "contractVersion": "DI_V0_S4A_CONTRACT_V2",
   "supersedes": "DI_V0_S4A_CONTRACT_V1",
-  "amendment": "EXP-021 C1D.10C (closes C1D.10B P1-A..P1-D); AMENDED BY C1D.10E (2026-09-27): exhaustive DB kill write-set — only T07 permitted while KILLED",
+  "amendment": "EXP-021 C1D.10C (closes C1D.10B P1-A..P1-D); AMENDED BY C1D.10E (2026-09-27): exhaustive DB kill write-set — only T07 permitted while KILLED; AMENDED BY C1D.10F (2026-09-28): boundaryOccurrence logical key + EXECUTION_IDENTITY_V2; T13 holder supersede guard/registry clarification (S4B preconditions)",
   "status": "FROZEN_DESIGN_NOT_IMPLEMENTED",
   "authority": "architecture/drivingintelligence/design/s4a/S4A_CONTRACT_DESIGN.md",
   "limits": {
@@ -485,7 +485,7 @@
         "LEASE_NOT_EXPIRED_DB_CLOCK",
         "BOUNDARY_FINGERPRINT_CHANGED",
         "SUPERSESSION_REASON_SET",
-        "SUCCESSOR_SAME_TENANT_AND_TRIP_OR_NULL",
+        "SUPERSEDED_BY_POINTER_MUST_BE_NULL",
         "CONTROL_PLANE_WORKER_ENABLED",
         "CONTROL_PLANE_DB_NOT_KILLED"
       ]
@@ -549,8 +549,20 @@
       "boundaryFingerprint",
       "pipelineVersionKey",
       "runPurpose",
-      "purposeDiscriminator"
+      "purposeDiscriminator",
+      "boundaryOccurrence"
     ],
+    "boundaryOccurrence": {
+      "column": "boundary_occurrence",
+      "scope": [
+        "organizationId",
+        "tripId"
+      ],
+      "monotonic": "MAX(boundary_occurrence)+1 per trip on each PRIMARY insert (T01 or W_SUCCESSOR_PRIMARY_INSERT); first PRIMARY uses 0",
+      "notInBoundaryFingerprint": true,
+      "authority": "architecture/drivingintelligence/design/s4a/S4A_BOUNDARY_REVERT_AUTHORITY.md",
+      "closesGap": "DI-GAP-S4A-BOUNDARY-REVERT-SUCCESSOR-001"
+    },
     "activePrimaryKey": [
       "organizationId",
       "tripId",
@@ -623,6 +635,7 @@
       "s2KeyFunction": "buildDiV0ShadowRunIdempotencyKey(tripId|sourceFamily|structural|estimator|calibration|policy|inputEvidenceVersion)",
       "s2RuntimeChangeRequired": false
     },
+    "implementationTarget": "s2ExecutionIdentityImplementationTarget",
     "collision": {
       "detection": "INSERT ... ON CONFLICT (organization_id, idempotency_key) DO NOTHING RETURNING id; on no row SELECT the stored run",
       "comparison": "stored input_evidence_version, organization_id, vehicle_id, trip_id == requested",
@@ -631,6 +644,28 @@
       "reasonCode": "S2_EXECUTION_IDENTITY_MISMATCH",
       "transition": "T08_FAIL_TERMINAL"
     }
+  },
+  "s2ExecutionIdentityImplementationTarget": {
+    "version": "DI_V0_S4_EXECUTION_IDENTITY_V2",
+    "supersedes": "DI_V0_S4_EXECUTION_IDENTITY_V1",
+    "requiredFor": "S4B_PRECONDITION_IMPLEMENTATION boundaryOccurrence logical identity",
+    "components": [
+      "organizationId",
+      "vehicleId",
+      "tripId",
+      "boundaryFingerprint",
+      "boundaryOccurrence",
+      "pipelineVersionKey",
+      "calibrationBundleHash",
+      "s4OrchestrationContractVersion",
+      "runPurpose",
+      "purposeDiscriminator",
+      "pinnedEvidenceSnapshotHash",
+      "combinedInputIdentity"
+    ],
+    "hash": "sha256 hex, prefixed 'DI_V0_S4_EXECUTION_IDENTITY_V2:sha256:'",
+    "s2RuntimeChangeRequired": true,
+    "authority": "architecture/drivingintelligence/design/s4a/S4A_BOUNDARY_REVERT_AUTHORITY.md"
   },
   "pipelineVersion": {
     "prefix": "DI_V0_S4_PIPELINE_V1",
@@ -909,7 +944,7 @@
     "driftWatcherRehash": true,
     "unrecordedBoundaryMutationDetection": "BOUNDARY_FINGERPRINT_DIFFERENCE",
     "everyBoundaryMutationRearmsQuietTimer": false,
-    "supersessionTransaction": "T11 or T13 plus successor PRIMARY insert in the same transaction"
+    "supersessionTransaction": "T11: supersede plus optional W_SUCCESSOR_PRIMARY_INSERT in one transaction. T13: supersede only (superseded_by_work_item_id MUST be NULL); next PRIMARY via T01 discovery or T11 drift watcher — never W_SUCCESSOR_PRIMARY_INSERT under T13"
   },
   "providerBackpressure": {
     "requestContext": {
@@ -2354,6 +2389,11 @@
             "holderSupersede",
             "w1",
             "fp-2"
+          ],
+          [
+            "create",
+            "d-next",
+            "PRIMARY"
           ]
         ],
         "expect": {

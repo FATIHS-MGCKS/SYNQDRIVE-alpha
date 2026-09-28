@@ -23,6 +23,20 @@ import {
  * production code has no such path.
  */
 export const S4A_POSTGRES_LIVE = process.env.DI_V0_S4A_POSTGRES_INTEGRATION === '1';
+export const S4A_POSTGRES_REQUIRED = process.env.DI_V0_S4A_POSTGRES_REQUIRED === '1';
+
+/** Fail closed when CI sets DI_V0_S4A_POSTGRES_REQUIRED=1 but integration env is incomplete (no silent skip). */
+export function assertS4aPostgresCiEnv(): void {
+  if (!S4A_POSTGRES_REQUIRED) return;
+  const missing: string[] = [];
+  if (!S4A_POSTGRES_LIVE) missing.push('DI_V0_S4A_POSTGRES_INTEGRATION=1');
+  if (!process.env.DATABASE_URL) missing.push('DATABASE_URL');
+  if (!process.env.DI_V0_S4A_PG_ADMIN_URL) missing.push('DI_V0_S4A_PG_ADMIN_URL');
+  if (!process.env.DI_V0_S4A_PG_TEMPLATE_DB) missing.push('DI_V0_S4A_PG_TEMPLATE_DB');
+  if (missing.length > 0) {
+    throw new Error(`DI_V0_S4A_POSTGRES_REQUIRED=1 but S4A Postgres CI env incomplete: ${missing.join(', ')}`);
+  }
+}
 
 export const REPO_ROOT = path.join(__dirname, '../../../../../../..');
 export const S4A_CONTRACT = JSON.parse(

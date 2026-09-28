@@ -100,7 +100,7 @@ Session: `sudo -u postgres psql -d synqdrive` with `default_transaction_read_onl
 
 | ID | Summary | Status |
 |----|---------|--------|
-| DI-CONTRA-S4A-T13-SUCCESSOR-WRITE-BINDING-001 | T13 lists `SUCCESSOR_SAME_TENANT_AND_TRIP_OR_NULL` and R24 expects `itemCount: 2`, but `W_SUCCESSOR_PRIMARY_INSERT` is bound only to T11. The implementation writes no successor in T13; the R24 harness creates the successor as a separate T01 | OPEN (authority clarification; no semantic change made) |
+| DI-CONTRA-S4A-T13-SUCCESSOR-WRITE-BINDING-001 | T13 lists `SUCCESSOR_SAME_TENANT_AND_TRIP_OR_NULL` and R24 expects `itemCount: 2`, but `W_SUCCESSOR_PRIMARY_INSERT` is bound only to T11. The implementation writes no successor in T13; the R24 harness creates the successor as a separate T01 | **RESOLVED** (2026-09-28 C1D.10F) — see `S4A_T13_HOLDER_SUPERSEDE_AUTHORITY.md` |
 | DI-CONTRA-S4A-CONTAINER-VERSION-NAMING-001 | Fixture manifest `evidenceSnapshotContainerVersion = DI_V0_S4_EVIDENCE_SNAPSHOT_V1`, but the container, DB CHECK and design doc use `DI_V0_S4_EVIDENCE_CONTAINER_V1`. The runtime manifest check does not compare this key | OPEN |
 | DI-CONTRA-S4A-ON-UPDATE-CASCADE-IMMUTABILITY-001 | Canonical FKs use `ON UPDATE CASCADE`, while S4 immutability and scope triggers reject changes to scope columns, so an update to a canonical PK (`organizations.id`, `vehicles.id`, `vehicle_trips.id`) that has S4 rows would fail. This conflicts with `NO_CONSTRAINT_THAT_CAN_FAIL_A_CANONICAL_WRITE_OR_DELETE`. Canonical PK updates are INFERRED not to happen (no code path found); deletes cascade normally | OPEN (P2) |
 | Drift: contract `migration.migrationCreated: false` | The migration now exists. The field is a C1D.10C historical snapshot and is left unchanged, because changing the contract is out of scope | RECORDED |
@@ -109,8 +109,8 @@ Session: `sudo -u postgres psql -d synqdrive` with `default_transaction_read_onl
 
 | ID | Status | Note |
 |----|--------|------|
-| DI-GAP-S4A-BOUNDARY-REVERT-SUCCESSOR-001 | OPEN (new) | T11 creates a successor only when the predecessor is PRIMARY, the trip is COMPLETED, the tenant is the same, the registry is ACTIVE and the logical key is free. A boundary revert to an earlier fingerprint whose key is taken by a SUPERSEDED row gets no successor (proven by the race suite) |
-| DI-GAP-S4A-POSTGRES-CI-WIRING-001 | OPEN (new) | The Postgres race and migration suites run through `npm run test:di:s4a:postgres` (ephemeral local DBs) but are not wired into a GitHub workflow. Default `npm test` skips them |
+| DI-GAP-S4A-BOUNDARY-REVERT-SUCCESSOR-001 | **CLOSED** (authority 2026-09-28) | `boundaryOccurrence` monotonic per trip for PRIMARY; see `S4A_BOUNDARY_REVERT_AUTHORITY.md`. **Implementation + migration follow-up required** before S4B runtime |
+| DI-GAP-S4A-POSTGRES-CI-WIRING-001 | **CLOSED** (2026-09-28) | `.github/workflows/s4a-postgres-integration.yml` + `npm run test:di:s4a:postgres:ci`; evidence [EXP021_S4A_POSTGRES_CI_WIRING.md](EXP021_S4A_POSTGRES_CI_WIRING.md) |
 | DI-GAP-S4A-CONTROL-ROW-SERIALIZATION-001 | OPEN (new, P2) | Every transition takes the singleton control row `FOR UPDATE`, which serializes all S4 writes globally. This is correct for kill serialization, but it is a throughput ceiling to revisit before multi-worker scale |
 | DI-GAP-S4-REPLAY-DESERIALIZER-001 | OPEN (unchanged) | No deserializer; replay-capable shadow and tiny activation stay blocked |
 | DI-GAP-S4-PROVIDER-BACKPRESSURE-001 | OPEN (unchanged) | S4C scope |
