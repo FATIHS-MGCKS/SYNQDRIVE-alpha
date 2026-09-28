@@ -10,6 +10,7 @@ import type { RawFuelSignalTrustInput } from '../../raw-fuel-refuel-fallback/raw
 import {
   resolveRawFuelSignalTrust,
 } from '../../raw-fuel-refuel-fallback/raw-fuel-signal-trust.resolver';
+import { buildWob20260919ObservedRefuelEpisodeSamples } from '../../raw-fuel-refuel-fallback/testing/wob-2026-09-19-observed-fuel.fixture';
 
 /**
  * Runtime-faithful defaults (F4.1): promotion trust UNKNOWN, admissibility UNKNOWN.
@@ -109,24 +110,5 @@ export function linearRiseSamples(
 export function buildSparseBridgeRefuelEpisodeSamples(
   includeDelayedPost: boolean,
 ): RawFuelSignalSample[] {
-  const pre = [
-    sampleAt('2026-09-19T15:40:26.000Z', 5),
-    sampleAt('2026-09-19T15:42:26.000Z', 5),
-    sampleAt('2026-09-19T15:44:26.000Z', 5),
-    sampleAt('2026-09-19T15:46:26.000Z', 5),
-    sampleAt('2026-09-19T15:48:26.000Z', 5),
-  ];
-  const rise = [
-    sampleAt('2026-09-19T16:11:24.000Z', 16),
-    sampleAt('2026-09-19T16:13:26.000Z', 17),
-    sampleAt('2026-09-19T16:15:27.000Z', 18),
-  ];
-  const post = includeDelayedPost
-    ? [
-        sampleAt('2026-09-19T16:53:59.000Z', 18),
-        sampleAt('2026-09-19T16:56:15.000Z', 18),
-        sampleAt('2026-09-19T16:58:31.000Z', 18),
-      ]
-    : [];
-  return [...pre, ...rise, ...post];
+  return buildWob20260919ObservedRefuelEpisodeSamples(includeDelayedPost);
 }

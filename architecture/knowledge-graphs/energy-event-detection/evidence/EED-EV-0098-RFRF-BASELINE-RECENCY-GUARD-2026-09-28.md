@@ -11,14 +11,14 @@
 
 ## Change
 
-- `evaluateRawFuelPrePlateauRecency()` — temporal bound from `RAW_FUEL_RISE_DETECTOR_CONFIG_V1.absolute.maxSampleGapMs` (360s); semantic invalidation on intervening material state change; sparse-bridge material-rise onset without contradiction remains FRESH (WOB 09-19).
+- `evaluateRawFuelPrePlateauRecency()` — temporal bound from `RAW_FUEL_RISE_DETECTOR_CONFIG_V1.absolute.maxSampleGapMs` (360s); semantic invalidation on intervening material state change; **silent** PRE→RISE bridges longer than the bound with zero intervening samples → `INSUFFICIENT_EVIDENCE` (fail closed — no material-rise inference after long silence). WOB 09-19 uses observed DIMO pre plateau ending 2026-09-19T16:07:45Z (210s before rise) → `FRESH` via ordinary recency.
 - `detectChannelRises()` skips stale pre↔rise pairings and searches for fresher pre plateaus.
 - Baseline provenance persisted under `evidenceMeta.baselineRecency` (no Prisma migration).
 - Promotion eligibility: `BLOCKED_BASELINE_RECENCY` unless classification is explicitly `FRESH` (EED-INV-019).
 
 ## Validation
 
-- Unit: `raw-fuel-pre-plateau-baseline-recency.policy.spec.ts` (B1–B16, KS MX, WOB regressions).
+- Unit: `raw-fuel-pre-plateau-baseline-recency.policy.spec.ts` (B1–B16, S1–S8 silent-bridge matrix, KS MX, WOB regressions).
 - Postgres (Stage-4 CI): `rfrf-baseline-recency-postgres-gate.sh` → `raw-refuel-baseline-recency.postgres.integration.spec.ts`.
 
 ## Non-effects

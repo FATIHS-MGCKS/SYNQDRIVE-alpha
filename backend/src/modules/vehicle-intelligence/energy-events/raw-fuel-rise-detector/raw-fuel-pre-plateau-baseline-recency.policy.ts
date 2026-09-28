@@ -1,7 +1,6 @@
 import type { RawRefuelCandidateSignalChannel } from '@prisma/client';
 import type { RawFuelRiseDetectorConfig } from './raw-fuel-rise-detector.config';
 import { RAW_FUEL_RISE_DETECTOR_CONFIG_V1 } from './raw-fuel-rise-detector.config';
-import { withinTolerance } from './raw-fuel-rise-normalizer';
 
 export type RawFuelPrePlateauBaselineRecencyClassification =
   | 'FRESH'
@@ -86,8 +85,8 @@ function isInterveningContradiction(
 
 /**
  * Pre-fill baseline may represent immediate pre-refuel fuel only when temporally and
- * semantically recent. Sparse PRE→RISE bridges without intervening contradiction remain
- * valid (WOB sparse-bridge); stale plateaus with intervening material state change do not.
+ * semantically recent. Long silent PRE→RISE bridges without intervening samples fail
+ * closed (INSUFFICIENT_EVIDENCE); stale plateaus with intervening material change → STALE.
  */
 export function evaluateRawFuelPrePlateauRecency(input: {
   prePlateauStartAt: Date | null | undefined;
@@ -166,39 +165,16 @@ export function evaluateRawFuelPrePlateauRecency(input: {
   }
 
   if (intervening.length === 0 && bridgeGapSeconds > maxBridgeSeconds) {
-    const platTol = plateauTolerance(input.signalChannel, config);
-    const material = materialThreshold(input.signalChannel, config);
-    const riseValue = input.riseOnsetPrimaryValue;
-    if (
-      riseValue != null &&
-      riseValue >= input.prePlateauMedian + material - platTol
-    ) {
-      return {
-        classification: 'FRESH',
-        reason: 'sparse_bridge_material_rise_onset_after_silent_pre_plateau',
-        bridgeGapSeconds,
-        interveningPrimarySampleCount: 0,
-        interveningContradictionCount: 0,
-        prePlateauStartAt: input.prePlateauStartAt ?? null,
-        prePlateauEndAt: input.prePlateauEndAt,
-        riseOnsetAt: input.riseOnsetAt,
-      };
-    }
-    if (
-      riseValue == null ||
-      !withinTolerance(riseValue, input.prePlateauMedian, platTol)
-    ) {
-      return {
-        classification: 'STALE',
-        reason: 'sparse_bridge_rise_onset_not_aligned_with_pre_plateau',
-        bridgeGapSeconds,
-        interveningPrimarySampleCount: 0,
-        interveningContradictionCount: 0,
-        prePlateauStartAt: input.prePlateauStartAt ?? null,
-        prePlateauEndAt: input.prePlateauEndAt,
-        riseOnsetAt: input.riseOnsetAt,
-      };
-    }
+    return {
+      classification: 'INSUFFICIENT_EVIDENCE',
+      reason: 'pre_to_rise_silent_bridge_exceeds_continuity_without_intervening_samples',
+      bridgeGapSeconds,
+      interveningPrimarySampleCount: 0,
+      interveningContradictionCount: 0,
+      prePlateauStartAt: input.prePlateauStartAt ?? null,
+      prePlateauEndAt: input.prePlateauEndAt,
+      riseOnsetAt: input.riseOnsetAt,
+    };
   }
 
   return {

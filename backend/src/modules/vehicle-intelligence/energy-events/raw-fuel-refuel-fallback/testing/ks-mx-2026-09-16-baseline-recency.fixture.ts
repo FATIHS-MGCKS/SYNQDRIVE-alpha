@@ -15,7 +15,7 @@ export const KS_MX_2026_09_16_TRUE_DELTA_L = 22;
  */
 export function buildKsMx20260916StalePre10Samples(): RawFuelSignalSample[] {
   const stalePre = stablePlateauSamples('2026-09-16T11:42:00.008Z', 10, 4, 120);
-  const actualPre = stablePlateauSamples('2026-09-16T20:40:00.008Z', 5, 3, 120);
+  const actualPre = stablePlateauSamples('2026-09-16T20:46:00.008Z', 5, 4, 60);
   const rise = [
     sampleAt('2026-09-16T20:52:30.008Z', 12),
     sampleAt('2026-09-16T20:53:00.008Z', 18),
@@ -27,7 +27,7 @@ export function buildKsMx20260916StalePre10Samples(): RawFuelSignalSample[] {
 
 export function buildKsMx20260916StalePre17Samples(): RawFuelSignalSample[] {
   const stalePre = stablePlateauSamples('2026-09-16T12:00:00.008Z', 17, 4, 120);
-  const actualPre = stablePlateauSamples('2026-09-16T20:40:00.008Z', 5, 3, 120);
+  const actualPre = stablePlateauSamples('2026-09-16T20:46:00.008Z', 5, 4, 60);
   const rise = [
     sampleAt('2026-09-16T20:52:30.008Z', 12),
     sampleAt('2026-09-16T20:53:00.008Z', 22),
@@ -39,7 +39,7 @@ export function buildKsMx20260916StalePre17Samples(): RawFuelSignalSample[] {
 
 export function buildKsMx20260916StalePre14Samples(): RawFuelSignalSample[] {
   const stalePre = stablePlateauSamples('2026-09-16T12:30:00.008Z', 14, 4, 120);
-  const actualPre = stablePlateauSamples('2026-09-16T20:40:00.008Z', 5, 3, 120);
+  const actualPre = stablePlateauSamples('2026-09-16T20:46:00.008Z', 5, 4, 60);
   const rise = [
     sampleAt('2026-09-16T20:52:30.008Z', 15),
     sampleAt('2026-09-16T20:53:00.008Z', 22),
@@ -51,7 +51,7 @@ export function buildKsMx20260916StalePre14Samples(): RawFuelSignalSample[] {
 
 /** Fresh ~5 L pre plateau immediately before material rise (expected post-fix). */
 export function buildKsMx20260916FreshPre5Samples(): RawFuelSignalSample[] {
-  const freshPre = stablePlateauSamples('2026-09-16T20:40:00.008Z', 5, 4, 120);
+  const freshPre = stablePlateauSamples('2026-09-16T20:46:00.008Z', 5, 4, 60);
   const rise = [
     sampleAt('2026-09-16T20:52:30.008Z', 12),
     sampleAt('2026-09-16T20:53:00.008Z', 18),

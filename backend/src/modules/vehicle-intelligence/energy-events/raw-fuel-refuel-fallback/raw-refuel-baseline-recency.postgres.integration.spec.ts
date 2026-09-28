@@ -8,6 +8,7 @@ import {
   buildDetectorPhysicsContext,
 } from '../raw-fuel-rise-detector/testing/raw-fuel-rise-detector-test.util';
 import { buildKsMx20260916FreshPre5Samples } from './testing/ks-mx-2026-09-16-baseline-recency.fixture';
+import { buildBaselineRecencyEvidenceMeta } from '../raw-fuel-rise-detector/raw-fuel-pre-plateau-baseline-recency.policy';
 import { RawRefuelCandidateService } from '../raw-refuel-candidate/raw-refuel-candidate.service';
 
 const LIVE = process.env.RAW_FUEL_REFUEL_BASELINE_RECENCY_INTEGRATION === '1';
@@ -140,6 +141,37 @@ async function cleanup(
         });
         expect(result?.eligibility.status).toBe('BLOCKED_PROMOTION_TRUST');
         expect(result?.eligibility.status).not.toBe('BLOCKED_BASELINE_RECENCY');
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id, dimoVehicleId);
+      }
+    });
+
+    it('long silent-bridge baseline (INSUFFICIENT) READY cannot promote', async () => {
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle, dimoVehicleId } = await seedOrgVehicle(prisma, suffix);
+      try {
+        const insufficientMeta = buildBaselineRecencyEvidenceMeta({
+          classification: 'INSUFFICIENT_EVIDENCE',
+          reason: 'pre_to_rise_silent_bridge_exceeds_continuity_without_intervening_samples',
+          bridgeGapSeconds: 23 * 60,
+          interveningPrimarySampleCount: 0,
+          interveningContradictionCount: 0,
+          prePlateauStartAt: new Date('2026-09-19T15:40:26.000Z'),
+          prePlateauEndAt: new Date('2026-09-19T15:48:26.000Z'),
+          riseOnsetAt: new Date('2026-09-19T16:11:24.000Z'),
+        });
+        const stale = buildKsMx20240916StaleBaselineCandidate({
+          vehicleId: vehicle.id,
+          organizationId: org.id,
+          lifecycleState: 'READY_FOR_PERSIST',
+          evidenceMeta: { baselineRecency: insufficientMeta } as never,
+        });
+        await prisma.rawRefuelCandidate.create({ data: stale as never });
+        const result = await preparation.preparePromotionById(stale.id, {
+          capability: 'FUEL_CAPABLE',
+          absoluteSignalTrust: 'TRUSTED',
+        });
+        expect(result?.eligibility.status).toBe('BLOCKED_BASELINE_RECENCY');
       } finally {
         await cleanup(prisma, vehicle.id, org.id, dimoVehicleId);
       }

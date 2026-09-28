@@ -653,7 +653,8 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'RFRF — pre-fill baseline recency safety guard',
     summary: [
       'evaluateRawFuelPrePlateauRecency blocks stale pre plateaus (KS MX 2026-09-16 false deltas).',
-      'Detector advances to fresher pre plateaus; provenance in evidenceMeta.baselineRecency.',
+      'Long silent PRE→RISE bridges (>360s, zero intervening samples) fail closed as INSUFFICIENT_EVIDENCE — not FRESH via rise inference.',
+      'WOB 09-19 fixture aligned to read-only Production DIMO extract (fresh pre ~16:07:45Z, 210s before rise).',
       'Promotion BLOCKED_BASELINE_RECENCY unless FRESH; trust remains OFF (EED-INV-019).',
     ],
     reason:
