@@ -602,9 +602,13 @@ export class RawRefuelCandidateRecoveryService {
     }
 
     this.metrics?.recordCandidateRecoverySameObservationMatched();
+    let maturityObservation = match.observation;
+    if (maturityObservation.lifecycleState === 'READY_FOR_PERSIST') {
+      maturityObservation = this.enrichObservationForReadyRefresh(maturityObservation, trust);
+    }
     const reconcile = await this.candidateService.reconcileExistingCandidateByIdForRecoveryClaim(
       candidate.id,
-      match.observation,
+      maturityObservation,
       this.recoveryMutationContext(claim),
     );
     if (reconcile.kind === 'STALE_CLAIM') {
