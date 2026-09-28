@@ -36,27 +36,6 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-    id: 'battery-v2-m3-3f-f4-4-controlled-d3-activation-preflight-2026-09-28',
-    version: '4.9.2207',
-    title: 'Battery V2 M3.3F F4.4 — controlled D3 activation preflight (read-only)',
-    summary: [
-      'Read-only production preflight @ release 20260928001456_v4994 / SHA 68a05e41: D3 OFF both replicas, D3 revisions 0, source-evidence acks 0, fleet cursor null|null, migrations pending 0 for deployed runtime.',
-      'Strong pre-D3-write backup db-pre-d3-activation-20260928010930.sql.gz (86859398 bytes, SHA256 67787da8…, gzip -t PASS, dump completion trailer present); post-backup D3/ack counts unchanged.',
-      'Eligible cohort: 1 org / 4 vehicles with current-version C3; cross-tenant mismatch count 0; global D3 flag scope (no per-vehicle/org allowlist).',
-      'Frozen first activation: batch size 1 + unchanged 15m interval; follower-first PM2 rollout; F_D3_T0 = earliest effective D3 TRUE; first-tick acceptance + hard abort contracts; rollback without data/schema delete.',
-      'F4_4_PREFLIGHT=PASS and F4_D3_ACTIVATION_ALLOWED=YES for a future explicit activation command only — this artifact does not enable D3.',
-    ],
-    reason:
-      'Gate controlled D3 production activation with verified runtime identity, DB baseline, backup, cohort safety, and frozen operator runbooks before any env mutation.',
-    previousBehavior:
-      'F4.3 proved flag-OFF observability in production but F4_D3_ACTIVATION_ALLOWED remained NO until preflight backup and activation contracts were sealed.',
-    details:
-      'architecture/battery-v2/research/M3_3F_F4_4_CONTROLLED_D3_ACTIVATION_PREFLIGHT_2026-09-28.md; VPS read-only script output archived in agent run; no deploy, no env change, no D3 writes.',
-    affectsArchitecture: true,
-    module: 'Vehicle Intelligence',
-    createdAt: '2026-09-28T01:15:00.000Z',
-  },
-  {
     id: 'battery-v2-m3-3f-f4-1-race-safe-d3-reconciliation-2026-09-27',
     version: '4.9.2206',
     title: 'Battery V2 M3.3F F4.1 — race-safe bounded D3 reconciliation',
