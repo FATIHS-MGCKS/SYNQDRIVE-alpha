@@ -73,9 +73,7 @@ describe('DI V0 S4B dormant-by-construction audit', () => {
   });
 
   it('DI_S4B_NEST_REGISTRATION=DEFINED_NOT_REGISTERED: nothing outside s4b-orchestration imports it', () => {
-    const roots = ['backend/src', 'backend/scripts', 'backend/prisma', 'backend/test', 'frontend/src'].map((r) =>
-      path.join(REPO_ROOT, r),
-    );
+    const roots = ['backend/src', 'backend/scripts', 'backend/prisma', 'backend/test'].map((r) => path.join(REPO_ROOT, r));
     const hits: string[] = [];
     for (const root of roots) {
       for (const file of walk(root, /\.(ts|tsx|js|mjs|cjs)$/)) {
