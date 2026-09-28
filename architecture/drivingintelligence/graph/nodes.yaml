@@ -1790,10 +1790,13 @@ nodes:
     title: S4A Postgres race and migration suites not wired into GitHub CI
     epistemic_status: CONFIRMED
     summary: >
-      npm run test:di:s4a:postgres runs them on ephemeral local DBs; default npm test skips them.
+      CLOSED 2026-09-28. Workflow s4a-postgres-integration.yml runs npm run test:di:s4a:postgres:ci (61 tests,
+      DI_V0_S4A_POSTGRES_REQUIRED=1). Branch protection must still list job S4A PostgreSQL integration as required
+      (operator). Evidence DI-EVID-EXP021-S4A-POSTGRES-CI-001.
     source_paths:
+      - .github/workflows/s4a-postgres-integration.yml
       - backend/scripts/test/di-v0-s4a-postgres-ci.sh
-      - architecture/drivingintelligence/evidence/EXP021_S4A_DORMANT_FOUNDATION_IMPLEMENTATION.md
+      - architecture/drivingintelligence/evidence/EXP021_S4A_POSTGRES_CI_WIRING.md
 
   - id: DI-GAP-S4A-CONTROL-ROW-SERIALIZATION-001
     type: gap
