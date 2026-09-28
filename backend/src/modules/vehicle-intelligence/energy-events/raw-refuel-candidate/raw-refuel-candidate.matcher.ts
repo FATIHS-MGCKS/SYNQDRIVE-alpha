@@ -81,6 +81,7 @@ function candidateToEvidenceSlice(row: RawRefuelCandidate): RawRefuelCandidateEv
     organizationId: row.organizationId,
     vehicleId: row.vehicleId,
     detectionVersion: row.detectionVersion,
+    detectorVersion: row.detectorVersion,
     signalChannel: row.signalChannel,
     physicalEvidenceStart: row.physicalEvidenceStart,
     physicalEvidenceEnd: row.physicalEvidenceEnd,

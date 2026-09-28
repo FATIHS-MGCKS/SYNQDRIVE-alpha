@@ -81,6 +81,16 @@ export class RawFuelRefuelFallbackMetricsService {
   readonly candidateRecoveryErrorTotal: Counter<string>;
   readonly candidateRecoverySkippedDisabledTotal: Counter<string>;
   readonly candidateRecoveryStaleClaimRejectedTotal: Counter<string>;
+  readonly readyEvidenceRefreshRequiredTotal: Counter<string>;
+  readonly readyEvidenceRefreshCurrentTotal: Counter<string>;
+  readonly readyEvidenceRefreshFailClosedTotal: Counter<string>;
+  readonly readyEvidenceRefreshFetchSuccessTotal: Counter<string>;
+  readonly readyEvidenceRefreshFetchFailureTotal: Counter<string>;
+  readonly readyEvidenceRefreshMatchedTotal: Counter<string>;
+  readonly readyEvidenceRefreshNoMatchTotal: Counter<string>;
+  readonly readyEvidenceRefreshAmbiguousTotal: Counter<string>;
+  readonly readyEvidenceRefreshEvidenceChangedTotal: Counter<string>;
+  readonly readyEvidenceRefreshEvidenceUnchangedTotal: Counter<string>;
 
   constructor(private readonly tripMetrics: TripMetricsService) {
     const register = this.tripMetrics.registry;
@@ -535,6 +545,57 @@ export class RawFuelRefuelFallbackMetricsService {
       help: 'F10.6.8-B recovery mutation/completion rejected due to stale claim generation or expired lease',
       registers: [register],
     });
+
+    this.readyEvidenceRefreshRequiredTotal = new Counter({
+      name: 'synqdrive_rfrf_ready_evidence_refresh_required_total',
+      help: 'READY recovery evaluated REFRESH_REQUIRED before convergence/promotion',
+      registers: [register],
+    });
+    this.readyEvidenceRefreshCurrentTotal = new Counter({
+      name: 'synqdrive_rfrf_ready_evidence_refresh_current_total',
+      help: 'READY recovery evaluated REFRESH_CURRENT (no DIMO refetch for refresh authority alone)',
+      registers: [register],
+    });
+    this.readyEvidenceRefreshFailClosedTotal = new Counter({
+      name: 'synqdrive_rfrf_ready_evidence_refresh_fail_closed_total',
+      help: 'READY recovery refresh requirement evaluation fail-closed',
+      registers: [register],
+    });
+    this.readyEvidenceRefreshFetchSuccessTotal = new Counter({
+      name: 'synqdrive_rfrf_ready_evidence_refresh_fetch_success_total',
+      help: 'READY evidence refresh historical sample fetch succeeded',
+      registers: [register],
+    });
+    this.readyEvidenceRefreshFetchFailureTotal = new Counter({
+      name: 'synqdrive_rfrf_ready_evidence_refresh_fetch_failure_total',
+      help: 'READY evidence refresh historical sample fetch failed',
+      registers: [register],
+    });
+    this.readyEvidenceRefreshMatchedTotal = new Counter({
+      name: 'synqdrive_rfrf_ready_evidence_refresh_matched_total',
+      help: 'READY evidence refresh matched exactly one SAME observation',
+      registers: [register],
+    });
+    this.readyEvidenceRefreshNoMatchTotal = new Counter({
+      name: 'synqdrive_rfrf_ready_evidence_refresh_no_match_total',
+      help: 'READY evidence refresh found no SAME observation',
+      registers: [register],
+    });
+    this.readyEvidenceRefreshAmbiguousTotal = new Counter({
+      name: 'synqdrive_rfrf_ready_evidence_refresh_ambiguous_total',
+      help: 'READY evidence refresh ambiguous observation match',
+      registers: [register],
+    });
+    this.readyEvidenceRefreshEvidenceChangedTotal = new Counter({
+      name: 'synqdrive_rfrf_ready_evidence_refresh_evidence_changed_total',
+      help: 'READY evidence refresh reconciled material evidence changes',
+      registers: [register],
+    });
+    this.readyEvidenceRefreshEvidenceUnchangedTotal = new Counter({
+      name: 'synqdrive_rfrf_ready_evidence_refresh_evidence_unchanged_total',
+      help: 'READY evidence refresh reconcile idempotent (no material evidence delta)',
+      registers: [register],
+    });
   }
 
   recordBranchInvocation(): void {
@@ -843,5 +904,45 @@ export class RawFuelRefuelFallbackMetricsService {
 
   recordCandidateRecoveryStaleClaimRejected(): void {
     this.candidateRecoveryStaleClaimRejectedTotal.inc();
+  }
+
+  recordReadyEvidenceRefreshRequired(): void {
+    this.readyEvidenceRefreshRequiredTotal.inc();
+  }
+
+  recordReadyEvidenceRefreshCurrent(): void {
+    this.readyEvidenceRefreshCurrentTotal.inc();
+  }
+
+  recordReadyEvidenceRefreshFailClosed(): void {
+    this.readyEvidenceRefreshFailClosedTotal.inc();
+  }
+
+  recordReadyEvidenceRefreshFetchSuccess(): void {
+    this.readyEvidenceRefreshFetchSuccessTotal.inc();
+  }
+
+  recordReadyEvidenceRefreshFetchFailure(): void {
+    this.readyEvidenceRefreshFetchFailureTotal.inc();
+  }
+
+  recordReadyEvidenceRefreshMatched(): void {
+    this.readyEvidenceRefreshMatchedTotal.inc();
+  }
+
+  recordReadyEvidenceRefreshNoMatch(): void {
+    this.readyEvidenceRefreshNoMatchTotal.inc();
+  }
+
+  recordReadyEvidenceRefreshAmbiguous(): void {
+    this.readyEvidenceRefreshAmbiguousTotal.inc();
+  }
+
+  recordReadyEvidenceRefreshEvidenceChanged(): void {
+    this.readyEvidenceRefreshEvidenceChangedTotal.inc();
+  }
+
+  recordReadyEvidenceRefreshEvidenceUnchanged(): void {
+    this.readyEvidenceRefreshEvidenceUnchangedTotal.inc();
   }
 }

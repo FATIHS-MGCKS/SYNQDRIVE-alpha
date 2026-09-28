@@ -19,6 +19,7 @@ export function buildEvidenceRevisionFingerprint(
 ): string {
   const payload = {
     detectionVersion: evidence.detectionVersion,
+    detectorVersion: evidence.detectorVersion,
     signalChannel: evidence.signalChannel,
     physicalEvidenceStart: iso(evidence.physicalEvidenceStart),
     physicalEvidenceEnd: iso(evidence.physicalEvidenceEnd),
@@ -60,6 +61,7 @@ export function observationToEvidenceSlice(
     organizationId: observation.organizationId,
     vehicleId: observation.vehicleId,
     detectionVersion: observation.detectionVersion,
+    detectorVersion: observation.detectorVersion,
     signalChannel: observation.signalChannel,
     physicalEvidenceStart: observation.physicalEvidenceStart,
     physicalEvidenceEnd: observation.physicalEvidenceEnd,

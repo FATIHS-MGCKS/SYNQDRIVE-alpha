@@ -30,6 +30,7 @@ All 12 discovery open questions classified. **Separate current-state facts from 
 | EED-OQ-014 | RFRF threshold fleet calibration? | **OPEN** | PROVISIONAL detector thresholds; KS MS 661 positive only | NO | HIGH |
 | EED-OQ-015 | Stretched-end native↔fallback convergence identity? | **RESOLVED** (design+code) | EED-EV-0097; bounded fallback classifier; canonical matcher strict | NO | HIGH |
 | EED-OQ-017 | Stale pre-fill baseline authority for RFRF promotion? | **RESOLVED** (design+code) | EED-EV-0098; baseline recency guard; promotion BLOCKED_BASELINE_RECENCY | NO | HIGH |
+| EED-OQ-018 | READY candidate stale evidence/trust refresh gap? | **RESOLVED** (design+code) | EED-EV-0099; versioned READY refresh before promotion; trust still UNKNOWN | NO | HIGH |
 
 ## Deferred (reference only)
 

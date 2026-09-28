@@ -48,6 +48,7 @@ export interface RawRefuelCandidateEvidenceSlice {
   organizationId: string;
   vehicleId: string;
   detectionVersion: string;
+  detectorVersion: string;
   signalChannel: RawRefuelCandidateSignalChannel;
   physicalEvidenceStart?: Date | null;
   physicalEvidenceEnd?: Date | null;

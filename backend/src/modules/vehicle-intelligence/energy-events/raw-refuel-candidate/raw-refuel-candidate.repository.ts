@@ -227,6 +227,8 @@ export class RawRefuelCandidateRepository {
         lifecycleState: data.lifecycleState,
         rejectionReason: data.rejectionReason,
         evidenceRevisionFingerprint: data.evidenceRevisionFingerprint,
+        detectionVersion: mergedEvidence.detectionVersion,
+        detectorVersion: mergedEvidence.detectorVersion,
         physicalEvidenceStart: mergedEvidence.physicalEvidenceStart,
         physicalEvidenceEnd: mergedEvidence.physicalEvidenceEnd,
         riseOnsetAt: mergedEvidence.riseOnsetAt,

@@ -8,6 +8,9 @@ import type {
 /** F4 contract: no fleet-wide absolute-trust authority exists yet. */
 export const ABSOLUTE_SIGNAL_TRUST_AUTHORITY_AVAILABLE = false;
 
+/** Bump when promotion-trust semantics change; stale READY refresh metadata becomes REFRESH_REQUIRED. */
+export const RFRF_SIGNAL_TRUST_RESOLVER_VERSION = 'rfrf-signal-trust-v1';
+
 const RELATIVE_VALID_RANGE = { min: 0, max: 100 } as const;
 
 function isFiniteNumber(value: unknown): value is number {

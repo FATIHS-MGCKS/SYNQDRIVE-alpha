@@ -24,7 +24,14 @@ import { RawRefuelPromotionService } from '../raw-fuel-refuel-fallback/raw-refue
 import type { RawRefuelPromotionApplyResult } from '../raw-fuel-refuel-fallback/raw-refuel-promotion.types';
 import { resolveRawFuelCapability } from '../raw-fuel-refuel-fallback/raw-fuel-capability.resolver';
 import { resolveRawFuelSignalTrust } from '../raw-fuel-refuel-fallback/raw-fuel-signal-trust.resolver';
+import {
+  buildReadyEvidenceRefreshMeta,
+  mergeReadyEvidenceRefreshIntoEvidenceMeta,
+} from '../raw-fuel-refuel-fallback/raw-refuel-ready-evidence-refresh-metadata';
+import { evaluateReadyCandidateRefreshRequirement } from '../raw-fuel-refuel-fallback/raw-refuel-ready-evidence-refresh.policy';
+import { readBaselineRecencyFromEvidenceMeta } from '../raw-fuel-rise-detector/raw-fuel-pre-plateau-baseline-recency.policy';
 import { RawFuelRefuelFallbackMetricsService } from '../raw-fuel-refuel-fallback/raw-fuel-refuel-fallback-metrics.service';
+import { readPersistedAbsoluteDetectionAdmissibility } from '../raw-fuel-refuel-fallback/raw-refuel-persisted-detection-admissibility';
 import type { RawFuelAbsoluteDetectionAdmissibility } from '../raw-fuel-refuel-fallback/raw-fuel-refuel-fallback.types';
 import { isRawRefuelCandidateTerminal } from './raw-refuel-candidate-lifecycle';
 import { classifyRawRefuelCandidateOverlap } from './raw-refuel-candidate.matcher';
@@ -312,11 +319,10 @@ export class RawRefuelCandidateRecoveryService {
       };
     }
 
-    const readiness = evaluateRawRefuelCandidateReadiness(candidate, {
-      capability: vehicleContext.capability,
-      absoluteDetectionAdmissibility: vehicleContext.absoluteDetectionAdmissibility,
-    });
-    if (!readiness.ready) {
+    const refreshRequirement = evaluateReadyCandidateRefreshRequirement(candidate);
+    this.recordReadyRefreshRequirementMetric(refreshRequirement.status);
+
+    if (refreshRequirement.status === 'FAIL_CLOSED') {
       const applied = await this.finishRecovery(candidate.id, now, claim, 'NO_NEW_EVIDENCE');
       const stale = this.staleIfNotApplied(applied, candidate.id, false);
       if (stale) return stale;
@@ -324,16 +330,64 @@ export class RawRefuelCandidateRecoveryService {
         candidateId: candidate.id,
         outcome: 'NO_NEW_EVIDENCE',
         dimoFetchPerformed: false,
+        detail: refreshRequirement.reason,
+      };
+    }
+
+    let activeCandidate = candidate;
+    let dimoFetchPerformed = false;
+
+    if (refreshRequirement.status === 'REFRESH_REQUIRED') {
+      const refreshPass = await this.executeHistoricalSampleRecoveryPass(
+        candidate,
+        now,
+        claim,
+        vehicleContext,
+        { attachReadyEvidenceRefreshMeta: true },
+      );
+      if (refreshPass.status === 'STALE_CLAIM') {
+        return this.staleClaimAttempt(candidate.id, refreshPass.dimoFetchPerformed);
+      }
+      if (refreshPass.status === 'TERMINAL') {
+        return refreshPass.result;
+      }
+      activeCandidate = refreshPass.candidate;
+      dimoFetchPerformed = refreshPass.dimoFetchPerformed;
+      if (activeCandidate.lifecycleState !== 'READY_FOR_PERSIST') {
+        const outcome =
+          activeCandidate.lifecycleState === 'SETTLING'
+            ? 'NO_NEW_EVIDENCE'
+            : 'NO_NEW_EVIDENCE';
+        const applied = await this.finishRecovery(candidate.id, now, claim, outcome);
+        const stale = this.staleIfNotApplied(applied, candidate.id, dimoFetchPerformed);
+        if (stale) return stale;
+        return {
+          candidateId: candidate.id,
+          outcome,
+          dimoFetchPerformed,
+          detail: `refresh_lifecycle_${activeCandidate.lifecycleState}`,
+        };
+      }
+    }
+
+    const authorityContext = buildRecoveryAuthorityContext(activeCandidate, vehicleContext);
+
+    const readiness = evaluateRawRefuelCandidateReadiness(activeCandidate, authorityContext);
+    if (!readiness.ready) {
+      const applied = await this.finishRecovery(candidate.id, now, claim, 'NO_NEW_EVIDENCE');
+      const stale = this.staleIfNotApplied(applied, candidate.id, dimoFetchPerformed);
+      if (stale) return stale;
+      return {
+        candidateId: candidate.id,
+        outcome: 'NO_NEW_EVIDENCE',
+        dimoFetchPerformed,
         detail: readiness.detail,
       };
     }
 
     const convergence = await this.convergenceService.evaluateAndApplyConvergenceById(
-      candidate.id,
-      {
-        capability: vehicleContext.capability,
-        absoluteDetectionAdmissibility: vehicleContext.absoluteDetectionAdmissibility,
-      },
+      activeCandidate.id,
+      authorityContext,
       env,
       this.recoveryMutationContext(claim),
     );
@@ -407,16 +461,13 @@ export class RawRefuelCandidateRecoveryService {
     }
 
     return this.runRecoveryPromotionForReadyCandidate(
-      candidate,
+      activeCandidate,
       now,
       env,
       claim,
-      {
-        capability: vehicleContext.capability,
-        absoluteDetectionAdmissibility: vehicleContext.absoluteDetectionAdmissibility,
-      },
+      { capability: vehicleContext.capability },
       convergence,
-      false,
+      dimoFetchPerformed,
     );
   }
 
@@ -551,9 +602,13 @@ export class RawRefuelCandidateRecoveryService {
     }
 
     this.metrics?.recordCandidateRecoverySameObservationMatched();
+    let maturityObservation = match.observation;
+    if (maturityObservation.lifecycleState === 'READY_FOR_PERSIST') {
+      maturityObservation = this.enrichObservationForReadyRefresh(maturityObservation, trust);
+    }
     const reconcile = await this.candidateService.reconcileExistingCandidateByIdForRecoveryClaim(
       candidate.id,
-      match.observation,
+      maturityObservation,
       this.recoveryMutationContext(claim),
     );
     if (reconcile.kind === 'STALE_CLAIM') {
@@ -578,19 +633,15 @@ export class RawRefuelCandidateRecoveryService {
 
     this.metrics?.recordCandidateRecoveryEvidenceMatured();
 
-    const readiness = evaluateRawRefuelCandidateReadiness(refreshed, {
-      capability: vehicleContext.capability,
-      absoluteDetectionAdmissibility: vehicleContext.absoluteDetectionAdmissibility,
-    });
+    const maturityAuthority = buildRecoveryAuthorityContext(refreshed, vehicleContext);
+
+    const readiness = evaluateRawRefuelCandidateReadiness(refreshed, maturityAuthority);
 
     if (readiness.ready && refreshed.lifecycleState === 'READY_FOR_PERSIST') {
       this.metrics?.recordCandidateRecoveryBecameReady();
       const convergence = await this.convergenceService.evaluateAndApplyConvergenceById(
         refreshed.id,
-        {
-          capability: vehicleContext.capability,
-          absoluteDetectionAdmissibility: vehicleContext.absoluteDetectionAdmissibility,
-        },
+        maturityAuthority,
         env,
         this.recoveryMutationContext(claim),
       );
@@ -639,10 +690,7 @@ export class RawRefuelCandidateRecoveryService {
           now,
           env,
           claim,
-          {
-            capability: vehicleContext.capability,
-            absoluteDetectionAdmissibility: vehicleContext.absoluteDetectionAdmissibility,
-          },
+          { capability: vehicleContext.capability },
           convergence,
           true,
         );
@@ -672,10 +720,7 @@ export class RawRefuelCandidateRecoveryService {
         now,
         env,
         claim,
-        {
-          capability: vehicleContext.capability,
-          absoluteDetectionAdmissibility: vehicleContext.absoluteDetectionAdmissibility,
-        },
+        { capability: vehicleContext.capability },
         convergence,
         true,
       );
@@ -707,7 +752,6 @@ export class RawRefuelCandidateRecoveryService {
     claim: RawRefuelCandidateRecoveryClaimIdentity,
     vehicleContext: {
       capability: 'FUEL_CAPABLE' | 'NON_FUEL_CAPABLE' | 'UNKNOWN';
-      absoluteDetectionAdmissibility: RawFuelAbsoluteDetectionAdmissibility;
     },
     convergence: RawRefuelConvergenceApplyResult,
     dimoFetchPerformed: boolean,
@@ -748,11 +792,13 @@ export class RawRefuelCandidateRecoveryService {
       };
     }
 
+    const promotionAuthority = buildRecoveryAuthorityContext(candidate, vehicleContext);
+
     const promotion = await this.promotionService.evaluateAndApplyPromotionById(
       candidate.id,
       {
-        capability: vehicleContext.capability,
-        absoluteDetectionAdmissibility: vehicleContext.absoluteDetectionAdmissibility,
+        capability: promotionAuthority.capability,
+        absoluteDetectionAdmissibility: promotionAuthority.absoluteDetectionAdmissibility,
         absoluteSignalTrust: candidate.absoluteSignalTrust,
       },
       env,
@@ -1020,13 +1066,236 @@ export class RawRefuelCandidateRecoveryService {
     };
   }
 
+  private recordReadyRefreshRequirementMetric(
+    status: 'REFRESH_REQUIRED' | 'REFRESH_CURRENT' | 'FAIL_CLOSED',
+  ): void {
+    switch (status) {
+      case 'REFRESH_REQUIRED':
+        this.metrics?.recordReadyEvidenceRefreshRequired();
+        break;
+      case 'REFRESH_CURRENT':
+        this.metrics?.recordReadyEvidenceRefreshCurrent();
+        break;
+      case 'FAIL_CLOSED':
+        this.metrics?.recordReadyEvidenceRefreshFailClosed();
+        break;
+      default:
+        break;
+    }
+  }
+
+  private enrichObservationForReadyRefresh(
+    observation: RawRefuelCandidateObservation,
+    trust: ReturnType<typeof resolveRawFuelSignalTrust>,
+  ): RawRefuelCandidateObservation {
+    const baseline =
+      readBaselineRecencyFromEvidenceMeta(observation.evidenceMeta) ?? 'INSUFFICIENT_EVIDENCE';
+    const refreshMeta = buildReadyEvidenceRefreshMeta({
+      baselineRecencyClassification: baseline,
+      absoluteSignalTrust: trust.absoluteSignalTrust,
+      absoluteDetectionAdmissibility: trust.absoluteDetectionAdmissibility,
+      relativeSignalAvailable: trust.relativeSignalAvailable,
+    });
+    return {
+      ...observation,
+      absoluteSignalTrust: trust.absoluteSignalTrust,
+      relativeSignalAvailable: trust.relativeSignalAvailable,
+      qualityMeta: {
+        ...(observation.qualityMeta ?? {}),
+        absoluteDetectionAdmissibility: trust.absoluteDetectionAdmissibility,
+      },
+      evidenceMeta: mergeReadyEvidenceRefreshIntoEvidenceMeta(
+        (observation.evidenceMeta as Record<string, unknown> | null) ?? null,
+        refreshMeta,
+      ),
+    };
+  }
+
+  private async executeHistoricalSampleRecoveryPass(
+    candidate: RawRefuelCandidate,
+    now: Date,
+    claim: RawRefuelCandidateRecoveryClaimIdentity,
+    vehicleContext: {
+      tokenId: number;
+      fuelType: FuelType;
+      capability: 'FUEL_CAPABLE' | 'NON_FUEL_CAPABLE' | 'UNKNOWN';
+    },
+    options: { attachReadyEvidenceRefreshMeta: boolean },
+  ): Promise<
+    | { status: 'STALE_CLAIM'; dimoFetchPerformed: boolean }
+    | { status: 'TERMINAL'; result: RawRefuelCandidateRecoveryAttemptResult }
+    | {
+        status: 'REFRESHED';
+        candidate: RawRefuelCandidate;
+        dimoFetchPerformed: boolean;
+        evidenceUpdated: boolean;
+      }
+  > {
+    const window = computeRawRefuelCandidateRecoveryWindow(candidate, now);
+    const fetch = await this.fetchHistoricalSamples(
+      vehicleContext.tokenId,
+      window.start,
+      window.end,
+      candidate.vehicleId,
+    );
+
+    if (this.isLeaseExpiredForMutation(claim)) {
+      return { status: 'STALE_CLAIM', dimoFetchPerformed: fetch.status !== 'ERROR' };
+    }
+
+    if (fetch.status === 'ERROR') {
+      this.metrics?.recordReadyEvidenceRefreshFetchFailure();
+      this.metrics?.recordCandidateRecoverySampleFetchFailure(fetch.errorClass);
+      const applied = await this.finishRecovery(candidate.id, now, claim, 'SAMPLE_FETCH_FAILED');
+      if (!applied) {
+        return {
+          status: 'STALE_CLAIM',
+          dimoFetchPerformed: true,
+        };
+      }
+      return {
+        status: 'TERMINAL',
+        result: {
+          candidateId: candidate.id,
+          outcome: 'SAMPLE_FETCH_FAILED',
+          dimoFetchPerformed: true,
+          detail: fetch.message,
+        },
+      };
+    }
+
+    this.metrics?.recordReadyEvidenceRefreshFetchSuccess();
+    this.metrics?.recordCandidateRecoverySampleFetchSuccess();
+
+    if (fetch.status === 'EMPTY' || fetch.samples.length === 0) {
+      this.metrics?.recordReadyEvidenceRefreshNoMatch();
+      this.metrics?.recordCandidateRecoveryNoMatchingObservation();
+      const applied = await this.finishRecovery(candidate.id, now, claim, 'NO_MATCHING_OBSERVATION');
+      if (!applied) {
+        return { status: 'STALE_CLAIM', dimoFetchPerformed: true };
+      }
+      return {
+        status: 'TERMINAL',
+        result: {
+          candidateId: candidate.id,
+          outcome: 'NO_MATCHING_OBSERVATION',
+          dimoFetchPerformed: true,
+        },
+      };
+    }
+
+    const trust = resolveRawFuelSignalTrust({
+      samples: fetch.samples,
+      scanWindowStart: window.start,
+      scanWindowEnd: window.end,
+      fuelType: vehicleContext.fuelType,
+    });
+
+    const context: RawFuelRiseDetectionContext = {
+      organizationId: candidate.organizationId,
+      vehicleId: candidate.vehicleId,
+      scanWindowStart: window.start,
+      scanWindowEnd: window.end,
+      absoluteSignalTrust: trust.absoluteSignalTrust,
+      absoluteDetectionAdmissibility: trust.absoluteDetectionAdmissibility,
+      relativeSignalAvailable: trust.relativeSignalAvailable,
+      signalProvider: 'DIMO',
+      detectionVersion: RFRF_RISE_DETECTION_VERSION,
+      detectorVersion: RFRF_RISE_DETECTOR_VERSION,
+      routeEvidenceAvailable: candidate.routeEvidenceAvailable ?? false,
+      stationaryEvidenceAvailable: candidate.stationaryEvidenceAvailable ?? false,
+    };
+
+    const detection = detectRawFuelRisesForPersistedSignalChannel(
+      { context, samples: fetch.samples },
+      candidate.signalChannel,
+    );
+
+    const match = selectRecoverySameObservation(candidate, detection.candidates);
+    if (match.kind === 'NONE') {
+      this.metrics?.recordReadyEvidenceRefreshNoMatch();
+      this.metrics?.recordCandidateRecoveryNoMatchingObservation();
+      const applied = await this.finishRecovery(candidate.id, now, claim, 'NO_MATCHING_OBSERVATION');
+      if (!applied) {
+        return { status: 'STALE_CLAIM', dimoFetchPerformed: true };
+      }
+      return {
+        status: 'TERMINAL',
+        result: {
+          candidateId: candidate.id,
+          outcome: 'NO_MATCHING_OBSERVATION',
+          dimoFetchPerformed: true,
+        },
+      };
+    }
+    if (match.kind === 'AMBIGUOUS') {
+      this.metrics?.recordReadyEvidenceRefreshAmbiguous();
+      this.metrics?.recordCandidateRecoveryAmbiguousObservation();
+      const applied = await this.finishRecovery(
+        candidate.id,
+        now,
+        claim,
+        'AMBIGUOUS_RECOVERY_OBSERVATION',
+      );
+      if (!applied) {
+        return { status: 'STALE_CLAIM', dimoFetchPerformed: true };
+      }
+      return {
+        status: 'TERMINAL',
+        result: {
+          candidateId: candidate.id,
+          outcome: 'AMBIGUOUS_RECOVERY_OBSERVATION',
+          dimoFetchPerformed: true,
+        },
+      };
+    }
+
+    this.metrics?.recordReadyEvidenceRefreshMatched();
+    this.metrics?.recordCandidateRecoverySameObservationMatched();
+    let observation = match.observation;
+    if (options.attachReadyEvidenceRefreshMeta) {
+      observation = this.enrichObservationForReadyRefresh(observation, trust);
+    }
+
+    const reconcile = await this.candidateService.reconcileExistingCandidateByIdForRecoveryClaim(
+      candidate.id,
+      observation,
+      this.recoveryMutationContext(claim),
+    );
+    if (reconcile.kind === 'STALE_CLAIM') {
+      return { status: 'STALE_CLAIM', dimoFetchPerformed: true };
+    }
+
+    const refreshed = await this.prisma.rawRefuelCandidate.findUniqueOrThrow({
+      where: { id: candidate.id },
+    });
+
+    if (!reconcile.result.updated) {
+      this.metrics?.recordReadyEvidenceRefreshEvidenceUnchanged();
+      return {
+        status: 'REFRESHED',
+        candidate: refreshed,
+        dimoFetchPerformed: true,
+        evidenceUpdated: false,
+      };
+    }
+
+    this.metrics?.recordReadyEvidenceRefreshEvidenceChanged();
+    this.metrics?.recordCandidateRecoveryEvidenceMatured();
+    return {
+      status: 'REFRESHED',
+      candidate: refreshed,
+      dimoFetchPerformed: true,
+      evidenceUpdated: true,
+    };
+  }
+
   private async loadVehicleRecoveryContext(vehicleId: string): Promise<
     | {
         ok: true;
         tokenId: number;
         fuelType: FuelType;
         capability: 'FUEL_CAPABLE' | 'NON_FUEL_CAPABLE' | 'UNKNOWN';
-        absoluteDetectionAdmissibility: RawFuelAbsoluteDetectionAdmissibility;
       }
     | { ok: false; outcome: RawRefuelCandidateRecoveryOutcome; detail?: string }
   > {
@@ -1054,9 +1323,23 @@ export class RawRefuelCandidateRecoveryService {
       tokenId,
       fuelType: vehicle.fuelType,
       capability,
-      absoluteDetectionAdmissibility: 'ADMISSIBLE',
     };
   }
+}
+
+function buildRecoveryAuthorityContext(
+  candidate: RawRefuelCandidate,
+  vehicleContext: {
+    capability: 'FUEL_CAPABLE' | 'NON_FUEL_CAPABLE' | 'UNKNOWN';
+  },
+): {
+  capability: 'FUEL_CAPABLE' | 'NON_FUEL_CAPABLE' | 'UNKNOWN';
+  absoluteDetectionAdmissibility: RawFuelAbsoluteDetectionAdmissibility;
+} {
+  return {
+    capability: vehicleContext.capability,
+    absoluteDetectionAdmissibility: readPersistedAbsoluteDetectionAdmissibility(candidate),
+  };
 }
 
 function selectRecoverySameObservation(

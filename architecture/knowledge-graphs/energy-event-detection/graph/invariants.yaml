@@ -235,3 +235,16 @@ invariants:
     source_paths:
       - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-refuel-promotion-eligibility.evaluator.ts
       - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-rise-detector/raw-fuel-pre-plateau-baseline-recency.policy.ts
+
+  - id: EED-INV-020
+    kind: CONFIRMED_INVARIANT
+    title: RFRF READY promotion uses evidence refreshed under current authority versions
+    epistemic_status: CONFIRMED
+    statement: >
+      A READY_FOR_PERSIST fallback candidate may proceed toward promotion only when
+      evidenceMeta.readyEvidenceRefresh is current for the active refresh policy,
+      trust resolver, and detector/detection versions; stale refresh proofs require
+      bounded historical DIMO reload before convergence/promotion.
+    evidence: [EED-EV-0099]
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-refuel-ready-evidence-refresh.policy.ts

@@ -38,4 +38,8 @@ echo "==> RFRF baseline recency promotion firewall PostgreSQL gate"
 bash "${SCRIPT_DIR}/rfrf-baseline-recency-postgres-gate.sh"
 echo "STAGE4_BASELINE_RECENCY_POSTGRES=PASS"
 
+echo "==> RFRF READY evidence refresh PostgreSQL gate"
+bash "${SCRIPT_DIR}/rfrf-ready-evidence-refresh-postgres-gate.sh"
+echo "STAGE4_READY_EVIDENCE_REFRESH_POSTGRES=PASS"
+
 echo "RFRF_STAGE4_CONVERGENCE_READINESS_CI_GATE=PASS"
