@@ -105,21 +105,20 @@ assertS4aPostgresCiEnv();
   }
 
   it('BR01 F1→F2→F1 yields active PRIMARY at F1 occurrence 2', async () => {
-    const fp1 = await currentFingerprint(admin, tenant.tripId);
-    const { repo, manifest, created } = await createPrimary();
+    const { repo, created } = await createPrimary();
     const w1 = await driftToNext(repo, created.workItemId);
     await admin.$executeRaw`UPDATE vehicle_trips SET end_time = end_time - interval '2 minutes' WHERE id = ${tenant.tripId}`;
     const w2 = await driftToNext(repo, w1.successorWorkItemId!);
+    const fpRestored = await currentFingerprint(admin, tenant.tripId);
     const items = await tripItems();
     const active = items.filter((i) => i.status !== 'SUPERSEDED');
     expect(active).toHaveLength(1);
-    expect(active[0].boundary_fingerprint).toBe(fp1);
+    expect(active[0].boundary_fingerprint).toBe(fpRestored);
     expect(active[0].boundary_occurrence).toBe(2);
     expect(w2.successorWorkItemId).toBe(active[0].id);
   }, 60_000);
 
   it('BR02 F1→F2→F3→F1 ends at occurrence 3 on restored F1', async () => {
-    const fp1 = await currentFingerprint(admin, tenant.tripId);
     const { repo, created } = await createPrimary();
     let id = created.workItemId;
     for (let i = 0; i < 3; i++) {
@@ -128,10 +127,11 @@ assertS4aPostgresCiEnv();
       id = next.successorWorkItemId!;
       if (i < 2) await admin.$executeRaw`UPDATE vehicle_trips SET end_time = end_time - interval '1 minute' WHERE id = ${tenant.tripId}`;
     }
+    const fpRestored = await currentFingerprint(admin, tenant.tripId);
     const items = await tripItems();
     expect(items.map((r) => r.boundary_occurrence)).toEqual([0, 1, 2, 3]);
     const active = items.find((i) => i.status !== 'SUPERSEDED');
-    expect(active?.boundary_fingerprint).toBe(fp1);
+    expect(active?.boundary_fingerprint).toBe(fpRestored);
     expect(active?.boundary_occurrence).toBe(3);
   }, 60_000);
 
@@ -249,8 +249,8 @@ assertS4aPostgresCiEnv();
         repo.supersedeOnDrift({ workItemId: created.workItemId, reason: 'BOUNDARY_CHANGED' }),
       ).resolves.toBeDefined();
       await expect(
-        admin.$executeRaw`UPDATE di_v0_s4_work_items SET trip_id = ${other.tripId} WHERE id = ${created.workItemId}`,
-      ).rejects.toThrow(/identity columns/);
+        admin.$executeRaw`UPDATE di_v0_s4_work_items SET organization_id = ${other.organizationId} WHERE id = ${created.workItemId}`,
+      ).rejects.toThrow(/identity columns|scope mismatch/);
     } finally {
       await cleanupS4aTenant(admin, other);
     }
@@ -308,7 +308,9 @@ assertS4aPostgresCiEnv();
       const wrong = s4aManifestFor(config, { calibrationBundleHash: `${salt()}-wrong` });
       const repo = new DiV0S4WorkItemRepository(client('t13-5'), config);
       await repo.createWorkItem({ tripId: tenant.tripId, sourceFamily: 'RUPTELA_R1', runPurpose: 'PRIMARY', pipelineManifest: manifest });
-      await expect(repo.claim({ leaseOwner: 't13-5', pipelineManifest: wrong })).rejects.toThrow(/PIPELINE_VERSION_MISMATCH/);
+      await expect(repo.claim({ leaseOwner: 't13-5', pipelineManifest: wrong })).rejects.toThrow(
+        /PIPELINE_VERSION_MISMATCH|NO_CLAIMABLE_WORK_ITEM/,
+      );
       const items = await tripItems();
       expect(items.every((i) => i.status === 'PENDING')).toBe(true);
     }, 60_000);

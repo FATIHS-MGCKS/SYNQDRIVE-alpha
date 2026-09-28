@@ -26,13 +26,13 @@ const MIGRATION_NAME = '20260927200000_di_v0_s4a_dormant_foundation';
 const MIGRATION_FILE = path.join(REPO_ROOT, 'backend/prisma/migrations', MIGRATION_NAME, 'migration.sql');
 const S4B_MIGRATION_NAME = '20260928120000_di_v0_s4b_boundary_occurrence_and_execution_v2';
 const S4B_MIGRATION_FILE = path.join(REPO_ROOT, 'backend/prisma/migrations', S4B_MIGRATION_NAME, 'migration.sql');
-const S4_TABLES = [
+const S4A_FOUNDATION_TABLES = [
   'di_v0_s4_control',
   'di_v0_s4_evidence_snapshots',
   'di_v0_s4_pipeline_versions',
-  'di_v0_s4_trip_primary_boundary_seq',
   'di_v0_s4_work_items',
 ];
+const S4_FULL_TABLES = [...S4A_FOUNDATION_TABLES, 'di_v0_s4_trip_primary_boundary_seq'].sort();
 const S2_TABLES = ['di_v0_shadow_intervals', 'di_v0_shadow_runs'];
 
 interface ProcessResult {
@@ -183,8 +183,8 @@ async function insertShadowRun(prisma: PrismaClient, tenant: S4aTenant, organiza
     const clone = await freshClone();
     const result = await clone.applyWithPsql();
     expect({ code: result.code, output: result.output }).toEqual({ code: 0, output: '' });
-    expect(await s4TablesPresent(clone.prisma)).toEqual(S4_TABLES);
-    for (const table of [...S4_TABLES, ...S2_TABLES]) {
+    expect(await s4TablesPresent(clone.prisma)).toEqual(S4A_FOUNDATION_TABLES);
+    for (const table of [...S4A_FOUNDATION_TABLES, ...S2_TABLES]) {
       const [{ n }] = await clone.prisma.$queryRawUnsafe<Array<{ n: bigint }>>(`SELECT count(*)::bigint AS n FROM "${table}"`);
       expect({ table, rows: Number(n) }).toEqual({ table, rows: 0 });
     }
@@ -316,7 +316,7 @@ async function insertShadowRun(prisma: PrismaClient, tenant: S4aTenant, organiza
     await loop;
     expect(errors).toEqual([]);
     expect(result.code).toBe(0);
-    expect(await s4TablesPresent(clone.prisma)).toEqual(S4_TABLES);
+    expect(await s4TablesPresent(clone.prisma)).toEqual(S4A_FOUNDATION_TABLES);
     const [{ n }] = await clone.prisma.$queryRaw<Array<{ n: bigint }>>`
       SELECT count(*)::bigint AS n FROM vehicle_trips WHERE vehicle_id = ${tenant.vehicleId} AND trip_status = 'ONGOING'`;
     expect(Number(n)).toBe(committed);
@@ -334,10 +334,10 @@ async function insertShadowRun(prisma: PrismaClient, tenant: S4aTenant, organiza
     for (const [table, state] of Object.entries(before.tables)) {
       expect({ table, state: after.tables[table] }).toEqual({ table, state });
     }
-    expect(Object.keys(after.tables).filter((t) => !(t in before.tables)).sort()).toEqual(S4_TABLES);
+    expect(Object.keys(after.tables).filter((t) => !(t in before.tables)).sort()).toEqual(S4A_FOUNDATION_TABLES);
 
     const onlyNew = (entries: string[]) =>
-      entries.every((e) => S4_TABLES.some((t) => e.startsWith(`${t}.`)) || S2_TABLES.some((t) => e.startsWith(`${t}.`)));
+      entries.every((e) => S4A_FOUNDATION_TABLES.some((t) => e.startsWith(`${t}.`)) || S2_TABLES.some((t) => e.startsWith(`${t}.`)));
     const triggers = diff(before.triggers, after.triggers);
     expect(triggers.removed).toEqual([]);
     expect(onlyNew(triggers.added)).toBe(true);
@@ -366,7 +366,7 @@ async function insertShadowRun(prisma: PrismaClient, tenant: S4aTenant, organiza
       ],
       removed: [],
     });
-    for (const table of S4_TABLES) {
+    for (const table of S4A_FOUNDATION_TABLES) {
       const [{ n }] = await clone.prisma.$queryRawUnsafe<Array<{ n: bigint }>>(`SELECT count(*)::bigint AS n FROM "${table}"`);
       expect({ table, rows: Number(n) }).toEqual({ table, rows: 0 });
     }
@@ -426,7 +426,7 @@ async function insertShadowRun(prisma: PrismaClient, tenant: S4aTenant, organiza
     expect(first.code).toBe(0);
     expect(first.output).toContain(MIGRATION_NAME);
     expect(first.output).toContain(S4B_MIGRATION_NAME);
-    expect(await s4TablesPresent(viaPrisma.prisma)).toEqual(S4_TABLES);
+    expect(await s4TablesPresent(viaPrisma.prisma)).toEqual(S4_FULL_TABLES);
     const second = await viaPrisma.applyWithPrisma();
     expect(second.code).toBe(0);
     expect(second.output).toContain('No pending migrations to apply');
