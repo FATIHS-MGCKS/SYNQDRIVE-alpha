@@ -1832,6 +1832,16 @@ nodes:
     authority_class: EED_OWNS
     evidence: [EED-EV-0099]
 
+  - id: EED-OQ-019
+    type: open_question
+    title: RFRF scoped hybrid trust activation and durable vehicle calibration
+    epistemic_status: INFERRED
+    summary: >
+      OPEN — hybrid v1 is observation-local; ABSOLUTE_SIGNAL_TRUST_AUTHORITY_AVAILABLE remains false;
+      no durable fleet/vehicle trust store; explicit scoped activation policy pending.
+    authority_class: EED_OWNS
+    evidence: [EED-EV-0100]
+
   # ── ERD (EV Recharge Detection) sub-domain ───────────────────────────────────
   - id: EED-SYS-002
     type: system
