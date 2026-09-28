@@ -18,7 +18,7 @@ import {
   assertDiV0S4RuntimePipelineManifest,
   buildDiV0CombinedInputIdentityV03,
   buildDiV0S4BoundaryFingerprint,
-  buildDiV0S4ExecutionIdentity,
+  buildDiV0S4ExecutionIdentityV1,
   buildDiV0S4PipelineVersionKey,
   deriveDiV0S4ChannelEnablement,
   evaluateDiV0S4ChannelRun,
@@ -238,7 +238,7 @@ describe('DI V0 S4A S2 execution identity (fixtures)', () => {
   const base: DiV0S4ExecutionIdentityInput = F.s2ExecutionIdentityBase;
 
   it('reproduces s2ExecutionIdentityExpected and binds the fixture pipeline key and combined identity', () => {
-    expect(buildDiV0S4ExecutionIdentity(base)).toBe(F.s2ExecutionIdentityExpected);
+    expect(buildDiV0S4ExecutionIdentityV1(base)).toBe(F.s2ExecutionIdentityExpected);
     expect(base.pipelineVersionKey).toBe(F.pipelineVersionExpectedKey);
     expect(base.boundaryFingerprint).toBe(F.boundaryExpectedFingerprint);
     expect(base.combinedInputIdentity).toBe(buildDiV0CombinedInputIdentityV03(F.combinedIdentityBase));
@@ -246,7 +246,7 @@ describe('DI V0 S4A S2 execution identity (fixtures)', () => {
 
   it.each(F.s2ExecutionIdentityMutations.map((m: { name: string }) => [m.name, m]))('mutation %s', (_name, m) => {
     const mm = m as { set: object; expect: string };
-    const same = buildDiV0S4ExecutionIdentity({ ...base, ...mm.set } as DiV0S4ExecutionIdentityInput) === F.s2ExecutionIdentityExpected;
+    const same = buildDiV0S4ExecutionIdentityV1({ ...base, ...mm.set } as DiV0S4ExecutionIdentityInput) === F.s2ExecutionIdentityExpected;
     expect(same).toBe(mm.expect === 'EQUAL');
   });
 

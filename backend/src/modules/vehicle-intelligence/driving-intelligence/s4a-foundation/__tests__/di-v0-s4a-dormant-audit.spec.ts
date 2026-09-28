@@ -48,6 +48,7 @@ const ALLOWED_MUTATION_TABLES = new Set([
   'di_v0_s4_work_items',
   'di_v0_s4_evidence_snapshots',
   'di_v0_s4_pipeline_versions',
+  'di_v0_s4_trip_primary_boundary_seq',
   'di_v0_shadow_runs',
 ]);
 

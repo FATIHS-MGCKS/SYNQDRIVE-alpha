@@ -11968,6 +11968,7 @@ model DiV0S4WorkItem {
   replaySourceSnapshotHash String?   @map("replay_source_snapshot_hash")
   reacquisitionRequestId   String?   @map("reacquisition_request_id")
   boundaryFingerprint      String    @map("boundary_fingerprint")
+  boundaryOccurrence       Int       @default(0) @map("boundary_occurrence")
   pipelineVersionKey       String    @map("pipeline_version_key")
   pipelineVersionManifest  Json      @map("pipeline_version_manifest")
   status                   String    @map("status")
@@ -12006,7 +12007,7 @@ model DiV0S4WorkItem {
   supersededBy    DiV0S4WorkItem?         @relation("DiV0S4WorkItemSupersession", fields: [supersededByWorkItemId, organizationId, tripId], references: [id, organizationId, tripId], onDelete: Cascade, onUpdate: NoAction, map: "di_v0_s4_wi_superseded_by_scope_fkey")
   supersedes      DiV0S4WorkItem[]        @relation("DiV0S4WorkItemSupersession")
 
-  @@unique([organizationId, tripId, boundaryFingerprint, pipelineVersionKey, runPurpose, purposeDiscriminator], map: "di_v0_s4_wi_logical_key_uq")
+  @@unique([organizationId, tripId, boundaryFingerprint, pipelineVersionKey, runPurpose, purposeDiscriminator, boundaryOccurrence], map: "di_v0_s4_wi_logical_key_uq")
   @@unique([id, organizationId, tripId], map: "di_v0_s4_wi_id_scope_uq")
   @@index([organizationId, tripId], map: "di_v0_s4_wi_org_trip_idx")
   @@map("di_v0_s4_work_items")

@@ -17,6 +17,8 @@ import {
   DI_V0_S4_TRANSITIONS,
   DI_V0_S4_WRITES_ALLOWED_WHILE_KILLED,
   DI_V0_S4_BOUNDARY_FP_VERSION,
+  DI_V0_S4_EXECUTION_IDENTITY_V1_VERSION,
+  DI_V0_S4_EXECUTION_IDENTITY_V2_VERSION,
   DI_V0_S4_EXECUTION_IDENTITY_VERSION,
   DI_V0_COMBINED_INPUT_IDENTITY_V0_3,
 } from '../di-v0-s4a-contract';
@@ -35,7 +37,9 @@ describe('DI V0 S4A contract parity (TS mirror == s4a-contract.v2.json)', () => 
     expect(CONTRACT.contractVersion).toBe(DI_V0_S4A_CONTRACT_VERSION);
     expect(CONTRACT.pipelineVersion.prefix).toBe(DI_V0_S4_PIPELINE_KEY_PREFIX);
     expect(CONTRACT.boundaryFingerprint.version).toBe(DI_V0_S4_BOUNDARY_FP_VERSION);
-    expect(CONTRACT.s2ExecutionIdentity.version).toBe(DI_V0_S4_EXECUTION_IDENTITY_VERSION);
+    expect(CONTRACT.s2ExecutionIdentity.version).toBe(DI_V0_S4_EXECUTION_IDENTITY_V1_VERSION);
+    expect(CONTRACT.s2ExecutionIdentityImplementationTarget.version).toBe(DI_V0_S4_EXECUTION_IDENTITY_V2_VERSION);
+    expect(DI_V0_S4_EXECUTION_IDENTITY_VERSION).toBe(DI_V0_S4_EXECUTION_IDENTITY_V2_VERSION);
     expect(CONTRACT.combinedInputIdentity.version).toBe(DI_V0_COMBINED_INPUT_IDENTITY_V0_3);
   });
 
@@ -156,6 +160,7 @@ const PRIVATE_HELPERS = new Set([
   'settlementAnchorSql',
   'requireReasonMatchesTrip',
   'successorIdIfEligible',
+  'allocatePrimaryBoundaryOccurrence',
   'loadPinnedSnapshotPins',
 ]);
 

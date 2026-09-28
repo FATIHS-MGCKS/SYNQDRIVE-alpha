@@ -24,7 +24,15 @@ const LIVE =
 
 const MIGRATION_NAME = '20260927200000_di_v0_s4a_dormant_foundation';
 const MIGRATION_FILE = path.join(REPO_ROOT, 'backend/prisma/migrations', MIGRATION_NAME, 'migration.sql');
-const S4_TABLES = ['di_v0_s4_control', 'di_v0_s4_evidence_snapshots', 'di_v0_s4_pipeline_versions', 'di_v0_s4_work_items'];
+const S4B_MIGRATION_NAME = '20260928120000_di_v0_s4b_boundary_occurrence_and_execution_v2';
+const S4B_MIGRATION_FILE = path.join(REPO_ROOT, 'backend/prisma/migrations', S4B_MIGRATION_NAME, 'migration.sql');
+const S4A_FOUNDATION_TABLES = [
+  'di_v0_s4_control',
+  'di_v0_s4_evidence_snapshots',
+  'di_v0_s4_pipeline_versions',
+  'di_v0_s4_work_items',
+];
+const S4_FULL_TABLES = [...S4A_FOUNDATION_TABLES, 'di_v0_s4_trip_primary_boundary_seq'].sort();
 const S2_TABLES = ['di_v0_shadow_intervals', 'di_v0_shadow_runs'];
 
 interface ProcessResult {
@@ -175,8 +183,8 @@ async function insertShadowRun(prisma: PrismaClient, tenant: S4aTenant, organiza
     const clone = await freshClone();
     const result = await clone.applyWithPsql();
     expect({ code: result.code, output: result.output }).toEqual({ code: 0, output: '' });
-    expect(await s4TablesPresent(clone.prisma)).toEqual(S4_TABLES);
-    for (const table of [...S4_TABLES, ...S2_TABLES]) {
+    expect(await s4TablesPresent(clone.prisma)).toEqual(S4A_FOUNDATION_TABLES);
+    for (const table of [...S4A_FOUNDATION_TABLES, ...S2_TABLES]) {
       const [{ n }] = await clone.prisma.$queryRawUnsafe<Array<{ n: bigint }>>(`SELECT count(*)::bigint AS n FROM "${table}"`);
       expect({ table, rows: Number(n) }).toEqual({ table, rows: 0 });
     }
@@ -308,7 +316,7 @@ async function insertShadowRun(prisma: PrismaClient, tenant: S4aTenant, organiza
     await loop;
     expect(errors).toEqual([]);
     expect(result.code).toBe(0);
-    expect(await s4TablesPresent(clone.prisma)).toEqual(S4_TABLES);
+    expect(await s4TablesPresent(clone.prisma)).toEqual(S4A_FOUNDATION_TABLES);
     const [{ n }] = await clone.prisma.$queryRaw<Array<{ n: bigint }>>`
       SELECT count(*)::bigint AS n FROM vehicle_trips WHERE vehicle_id = ${tenant.vehicleId} AND trip_status = 'ONGOING'`;
     expect(Number(n)).toBe(committed);
@@ -326,10 +334,10 @@ async function insertShadowRun(prisma: PrismaClient, tenant: S4aTenant, organiza
     for (const [table, state] of Object.entries(before.tables)) {
       expect({ table, state: after.tables[table] }).toEqual({ table, state });
     }
-    expect(Object.keys(after.tables).filter((t) => !(t in before.tables)).sort()).toEqual(S4_TABLES);
+    expect(Object.keys(after.tables).filter((t) => !(t in before.tables)).sort()).toEqual(S4A_FOUNDATION_TABLES);
 
     const onlyNew = (entries: string[]) =>
-      entries.every((e) => S4_TABLES.some((t) => e.startsWith(`${t}.`)) || S2_TABLES.some((t) => e.startsWith(`${t}.`)));
+      entries.every((e) => S4A_FOUNDATION_TABLES.some((t) => e.startsWith(`${t}.`)) || S2_TABLES.some((t) => e.startsWith(`${t}.`)));
     const triggers = diff(before.triggers, after.triggers);
     expect(triggers.removed).toEqual([]);
     expect(onlyNew(triggers.added)).toBe(true);
@@ -358,7 +366,7 @@ async function insertShadowRun(prisma: PrismaClient, tenant: S4aTenant, organiza
       ],
       removed: [],
     });
-    for (const table of S4_TABLES) {
+    for (const table of S4A_FOUNDATION_TABLES) {
       const [{ n }] = await clone.prisma.$queryRawUnsafe<Array<{ n: bigint }>>(`SELECT count(*)::bigint AS n FROM "${table}"`);
       expect({ table, rows: Number(n) }).toEqual({ table, rows: 0 });
     }
@@ -417,9 +425,320 @@ async function insertShadowRun(prisma: PrismaClient, tenant: S4aTenant, organiza
     const first = await viaPrisma.applyWithPrisma();
     expect(first.code).toBe(0);
     expect(first.output).toContain(MIGRATION_NAME);
-    expect(await s4TablesPresent(viaPrisma.prisma)).toEqual(S4_TABLES);
+    expect(first.output).toContain(S4B_MIGRATION_NAME);
+    expect(await s4TablesPresent(viaPrisma.prisma)).toEqual(S4_FULL_TABLES);
     const second = await viaPrisma.applyWithPrisma();
     expect(second.code).toBe(0);
     expect(second.output).toContain('No pending migrations to apply');
+  });
+});
+
+(LIVE ? describe : describe.skip)('DI V0 S4B follow-up migration (boundary_occurrence + execution V2)', () => {
+  jest.setTimeout(180_000);
+  const admin = new PrismaClient({ datasources: { db: { url: process.env.DI_V0_S4A_PG_ADMIN_URL } } });
+  const clones: Clone[] = [];
+  const extraClients: PrismaClient[] = [];
+
+  async function freshClone(): Promise<Clone> {
+    const name = `${process.env.DI_V0_S4A_PG_TEMPLATE_DB}_s4b_${randomUUID().replace(/-/g, '').slice(0, 10)}`;
+    await admin.$executeRawUnsafe(`CREATE DATABASE "${name}" TEMPLATE "${process.env.DI_V0_S4A_PG_TEMPLATE_DB}"`);
+    const prisma = new PrismaClient({ datasources: { db: { url: dbUrl(name, true) } } });
+    const clone: Clone = {
+      name,
+      prisma,
+      applyWithPsql: (file = MIGRATION_FILE) => run('psql', [dbUrl(name, false), '-v', 'ON_ERROR_STOP=1', '-q', '-f', file]),
+      applyWithPrisma: () => run('npx', ['prisma', 'migrate', 'deploy'], { DATABASE_URL: dbUrl(name, true) }),
+    };
+    clones.push(clone);
+    return clone;
+  }
+
+  async function applyS4a(clone: Clone): Promise<void> {
+    const result = await clone.applyWithPsql(MIGRATION_FILE);
+    expect(result.code).toBe(0);
+  }
+
+  async function applyS4b(clone: Clone): Promise<ProcessResult> {
+    return clone.applyWithPsql(S4B_MIGRATION_FILE);
+  }
+
+  function client(dbName: string): PrismaClient {
+    const prisma = new PrismaClient({ datasources: { db: { url: dbUrl(dbName, true) } } });
+    extraClients.push(prisma);
+    return prisma;
+  }
+
+  async function s4bArtifactsAbsent(prisma: PrismaClient): Promise<void> {
+    const cols = await prisma.$queryRaw<Array<{ column_name: string }>>`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'di_v0_s4_work_items' AND column_name = 'boundary_occurrence'`;
+    expect(cols).toHaveLength(0);
+    expect(await s4TablesPresent(prisma)).not.toContain('di_v0_s4_trip_primary_boundary_seq');
+    const rows = await prisma.$queryRaw<Array<{ indexdef: string }>>`
+      SELECT indexdef FROM pg_indexes WHERE indexname = 'di_v0_s4_wi_logical_key_uq'`;
+    expect(rows[0]?.indexdef ?? '').not.toContain('boundary_occurrence');
+  }
+
+  afterAll(async () => {
+    for (const c of extraClients) await c.$disconnect();
+    for (const clone of clones) {
+      await clone.prisma.$disconnect();
+      await admin.$executeRawUnsafe(`DROP DATABASE IF EXISTS "${clone.name}" WITH (FORCE)`);
+    }
+    await admin.$disconnect();
+  });
+
+  it('S4B-M01 current S4A schema then follow-up migration succeeds on empty S4/S2', async () => {
+    const clone = await freshClone();
+    await applyS4a(clone);
+    const result = await applyS4b(clone);
+    expect(result.code).toBe(0);
+    const cols = await clone.prisma.$queryRaw<Array<{ column_name: string }>>`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'di_v0_s4_work_items' AND column_name = 'boundary_occurrence'`;
+    expect(cols).toHaveLength(1);
+  });
+
+  it('S4B-M02 non-empty S4 work items refuse follow-up migration', async () => {
+    const clone = await freshClone();
+    await applyS4a(clone);
+    const tenant = await seedS4aTenant(clone.prisma);
+    await clone.prisma.$executeRaw`
+      INSERT INTO di_v0_s4_pipeline_versions (pipeline_version_key, manifest, status)
+      VALUES ('DI_V0_S4_PIPELINE_V1:sha256:' || repeat('a', 64), '{}'::jsonb, 'ACTIVE')`;
+    await clone.prisma.$executeRaw`
+      INSERT INTO di_v0_s4_work_items (id, organization_id, vehicle_id, trip_id, source_family, run_purpose, purpose_discriminator,
+        boundary_fingerprint, pipeline_version_key, pipeline_version_manifest, status, next_attempt_at, settlement_anchor_at, eligible_at)
+      VALUES (gen_random_uuid()::text, ${tenant.organizationId}, ${tenant.vehicleId}, ${tenant.tripId}, 'RUPTELA_R1', 'PRIMARY', 'PRIMARY',
+        'DI_V0_S4_BOUNDARY_FP_V1:sha256:' || repeat('b', 64),
+        'DI_V0_S4_PIPELINE_V1:sha256:' || repeat('a', 64), '{}'::jsonb, 'PENDING', now(), now(), now() + interval '24 hours')`;
+    const result = await applyS4b(clone);
+    expect(result.code).not.toBe(0);
+    expect(result.output).toMatch(/requires empty S4 work items/);
+  });
+
+  it('S4B-M03 non-empty S2 refuses follow-up migration', async () => {
+    const clone = await freshClone();
+    await applyS4a(clone);
+    const tenant = await seedS4aTenant(clone.prisma);
+    await insertShadowRun(clone.prisma, tenant);
+    const result = await applyS4b(clone);
+    expect(result.code).not.toBe(0);
+    expect(result.output).toMatch(/requires empty/);
+  });
+
+  it('S4B-M04 logical unique index includes boundary_occurrence', async () => {
+    const clone = await freshClone();
+    await applyS4a(clone);
+    await applyS4b(clone);
+    const rows = await clone.prisma.$queryRaw<Array<{ indexdef: string }>>`
+      SELECT indexdef FROM pg_indexes WHERE indexname = 'di_v0_s4_wi_logical_key_uq'`;
+    expect(rows[0]?.indexdef).toContain('boundary_occurrence');
+  });
+
+  it('S4B-M05 old-runtime compatibility: nullable execution_identity still allows V1 pattern', async () => {
+    const clone = await freshClone();
+    await applyS4a(clone);
+    await applyS4b(clone);
+    const tenant = await seedS4aTenant(clone.prisma);
+    await clone.prisma.$executeRaw`
+      INSERT INTO di_v0_s4_pipeline_versions (pipeline_version_key, manifest, status)
+      VALUES ('DI_V0_S4_PIPELINE_V1:sha256:' || repeat('c', 64), '{}'::jsonb, 'ACTIVE')`;
+    await expect(
+      clone.prisma.$executeRaw`
+        INSERT INTO di_v0_s4_work_items (id, organization_id, vehicle_id, trip_id, source_family, run_purpose, purpose_discriminator,
+          boundary_fingerprint, boundary_occurrence, pipeline_version_key, pipeline_version_manifest, status, next_attempt_at,
+          settlement_anchor_at, eligible_at, execution_identity)
+        VALUES (gen_random_uuid()::text, ${tenant.organizationId}, ${tenant.vehicleId}, ${tenant.tripId}, 'RUPTELA_R1', 'PRIMARY', 'PRIMARY',
+          'DI_V0_S4_BOUNDARY_FP_V1:sha256:' || repeat('d', 64), 0,
+          'DI_V0_S4_PIPELINE_V1:sha256:' || repeat('c', 64), '{}'::jsonb, 'PENDING', now(), now(), now() + interval '24 hours',
+          'DI_V0_S4_EXECUTION_IDENTITY_V1:sha256:' || repeat('e', 64))`,
+    ).resolves.toBeDefined();
+  });
+
+  it('S4B-M06 follow-up migration is wrapped in a transaction (rerun fails atomically)', async () => {
+    const clone = await freshClone();
+    await applyS4a(clone);
+    expect((await applyS4b(clone)).code).toBe(0);
+    const rerun = await applyS4b(clone);
+    expect(rerun.code).not.toBe(0);
+  });
+
+  it('S4B-M07 sequence table exists for occurrence allocation', async () => {
+    const clone = await freshClone();
+    await applyS4a(clone);
+    await applyS4b(clone);
+    const tables = await s4TablesPresent(clone.prisma);
+    expect(tables).toContain('di_v0_s4_trip_primary_boundary_seq');
+  });
+
+  it('S4B-M08 follow-up migration creates no runtime control rows', async () => {
+    const clone = await freshClone();
+    await applyS4a(clone);
+    await applyS4b(clone);
+    const [{ n }] = await clone.prisma.$queryRaw<Array<{ n: bigint }>>`SELECT count(*)::bigint AS n FROM di_v0_s4_control`;
+    expect(Number(n)).toBe(0);
+  });
+
+  it('S4B-M09 cross-tenant scope guard on sequence table', async () => {
+    const clone = await freshClone();
+    await applyS4a(clone);
+    await applyS4b(clone);
+    const tenant = await seedS4aTenant(clone.prisma);
+    const other = await seedS4aTenant(clone.prisma);
+    await expect(
+      clone.prisma.$executeRaw`
+        INSERT INTO di_v0_s4_trip_primary_boundary_seq (organization_id, trip_id, next_boundary_occurrence)
+        VALUES (${other.organizationId}, ${tenant.tripId}, 1)`,
+    ).rejects.toThrow(/scope mismatch/);
+  });
+
+  it('S4B-M10 V2 execution_identity CHECK accepts V2 prefix', async () => {
+    const clone = await freshClone();
+    await applyS4a(clone);
+    await applyS4b(clone);
+    const tenant = await seedS4aTenant(clone.prisma);
+    await clone.prisma.$executeRaw`
+      INSERT INTO di_v0_s4_pipeline_versions (pipeline_version_key, manifest, status)
+      VALUES ('DI_V0_S4_PIPELINE_V1:sha256:' || repeat('f', 64), '{}'::jsonb, 'ACTIVE')`;
+    await expect(
+      clone.prisma.$executeRaw`
+        INSERT INTO di_v0_s4_work_items (id, organization_id, vehicle_id, trip_id, source_family, run_purpose, purpose_discriminator,
+          boundary_fingerprint, boundary_occurrence, pipeline_version_key, pipeline_version_manifest, status, next_attempt_at,
+          settlement_anchor_at, eligible_at, execution_identity)
+        VALUES (gen_random_uuid()::text, ${tenant.organizationId}, ${tenant.vehicleId}, ${tenant.tripId}, 'RUPTELA_R1', 'PRIMARY', 'PRIMARY',
+          'DI_V0_S4_BOUNDARY_FP_V1:sha256:' || repeat('a', 64), 2,
+          'DI_V0_S4_PIPELINE_V1:sha256:' || repeat('f', 64), '{}'::jsonb, 'PENDING', now(), now(), now() + interval '24 hours',
+          'DI_V0_S4_EXECUTION_IDENTITY_V2:sha256:' || repeat('b', 64))`,
+    ).resolves.toBeDefined();
+  });
+
+  it('S4B-M11 lock timeout: open S4 writer blocks migration bounded with no partial V2 schema', async () => {
+    const clone = await freshClone();
+    await applyS4a(clone);
+    const holder = client(clone.name);
+    const observer = client(clone.name);
+    const holding = deferred();
+    const release = deferred();
+    const holderTx = holder.$transaction(
+      async (tx) => {
+        await tx.$executeRawUnsafe('LOCK TABLE "di_v0_s4_work_items" IN ROW EXCLUSIVE MODE');
+        holding.resolve();
+        await release.promise;
+      },
+      { timeout: 60_000 },
+    );
+    await holding.promise;
+    const before = await catalogSnapshot(clone.prisma);
+    const migration = applyS4b(clone);
+    try {
+      await waitForLockWaiters(observer, 1);
+      const result = await migration;
+      expect(result.code).not.toBe(0);
+      expect(result.output).toMatch(/lock timeout/);
+      expect(result.elapsedMs).toBeGreaterThanOrEqual(4_500);
+      expect(result.elapsedMs).toBeLessThan(30_000);
+    } finally {
+      release.resolve();
+      await holderTx;
+    }
+    expect(await catalogSnapshot(clone.prisma)).toEqual(before);
+    await s4bArtifactsAbsent(clone.prisma);
+  });
+
+  it('S4B-M12 lock timeout: open S2 shadow_runs writer blocks migration with no partial V2 schema', async () => {
+    const clone = await freshClone();
+    await applyS4a(clone);
+    const holder = client(clone.name);
+    const observer = client(clone.name);
+    const holding = deferred();
+    const release = deferred();
+    const holderTx = holder.$transaction(
+      async (tx) => {
+        await tx.$executeRawUnsafe('LOCK TABLE "di_v0_shadow_runs" IN ROW EXCLUSIVE MODE');
+        holding.resolve();
+        await release.promise;
+      },
+      { timeout: 60_000 },
+    );
+    await holding.promise;
+    const before = await catalogSnapshot(clone.prisma);
+    const migration = applyS4b(clone);
+    try {
+      await waitForLockWaiters(observer, 1);
+      const result = await migration;
+      expect(result.code).not.toBe(0);
+      expect(result.output).toMatch(/lock timeout/);
+      expect(result.elapsedMs).toBeGreaterThanOrEqual(4_500);
+      expect(result.elapsedMs).toBeLessThan(30_000);
+    } finally {
+      release.resolve();
+      await holderTx;
+    }
+    expect(await catalogSnapshot(clone.prisma)).toEqual(before);
+    await s4bArtifactsAbsent(clone.prisma);
+  });
+
+  it('S4B-M13 empty-state lock phase holds ShareRowExclusiveLock on all guarded tables before DDL', async () => {
+    const clone = await freshClone();
+    await applyS4a(clone);
+    const locker = client(clone.name);
+    await locker.$transaction(
+      async (tx) => {
+        await tx.$executeRawUnsafe(`SET LOCAL lock_timeout = '5s'`);
+        await tx.$executeRawUnsafe(`SET LOCAL statement_timeout = '60s'`);
+        await tx.$executeRawUnsafe(
+          `LOCK TABLE "di_v0_s4_work_items", "di_v0_shadow_runs", "di_v0_shadow_intervals" IN SHARE ROW EXCLUSIVE MODE`,
+        );
+        const lockedTables = await tx.$queryRaw<Array<{ relname: string }>>`
+          SELECT c.relname FROM pg_locks l
+          JOIN pg_class c ON c.oid = l.relation
+          JOIN pg_namespace n ON n.oid = c.relnamespace
+          WHERE n.nspname = 'public'
+            AND l.pid = pg_backend_pid()
+            AND l.mode = 'ShareRowExclusiveLock'
+            AND c.relname IN ('di_v0_s4_work_items', 'di_v0_shadow_runs', 'di_v0_shadow_intervals')
+          ORDER BY c.relname`;
+        expect(lockedTables.map((r) => r.relname)).toEqual([
+          'di_v0_s4_work_items',
+          'di_v0_shadow_intervals',
+          'di_v0_shadow_runs',
+        ]);
+      },
+      { timeout: 30_000 },
+    );
+  });
+
+  it('S4B-M14 lock timeout: open S2 shadow_intervals writer blocks migration with no partial V2 schema', async () => {
+    const clone = await freshClone();
+    await applyS4a(clone);
+    const holder = client(clone.name);
+    const observer = client(clone.name);
+    const holding = deferred();
+    const release = deferred();
+    const holderTx = holder.$transaction(
+      async (tx) => {
+        await tx.$executeRawUnsafe('LOCK TABLE "di_v0_shadow_intervals" IN ROW EXCLUSIVE MODE');
+        holding.resolve();
+        await release.promise;
+      },
+      { timeout: 60_000 },
+    );
+    await holding.promise;
+    const before = await catalogSnapshot(clone.prisma);
+    const migration = applyS4b(clone);
+    try {
+      await waitForLockWaiters(observer, 1);
+      const result = await migration;
+      expect(result.code).not.toBe(0);
+      expect(result.output).toMatch(/lock timeout/);
+      expect(result.elapsedMs).toBeGreaterThanOrEqual(4_500);
+      expect(result.elapsedMs).toBeLessThan(30_000);
+    } finally {
+      release.resolve();
+      await holderTx;
+    }
+    expect(await catalogSnapshot(clone.prisma)).toEqual(before);
+    await s4bArtifactsAbsent(clone.prisma);
   });
 });
