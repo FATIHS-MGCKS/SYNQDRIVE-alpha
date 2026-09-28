@@ -18,7 +18,8 @@
 - Canonical G2 matcher unchanged (`DEFAULT_PHYSICAL_REFUEL_MATCHER_TOLERANCES.endTimeSec` still 60)
 - Bounded override only when:
   - canonical failure reason is **only** `end_time_mismatch` (after hard-contradiction pre-check)
-  - telemetry stretch evidence (`maxSampleGapSeconds` or `physicalEvidenceEnd` beyond `riseEndAt`)
+  - **explicit telemetry-gap evidence**: persisted `maxSampleGapSeconds` **strictly exceeds** F3 detector normal continuity (`RAW_FUEL_RISE_DETECTOR_CONFIG_V1.absolute.maxSampleGapMs` → 360s), or optional persisted `evidenceMeta.telemetryGapStretchAuthorized === true` — **not** healthy post-plateau extension alone (`physicalEvidenceEnd` past `riseEndAt` is expected for READY events with ≥2 min post-plateau persistence)
+  - native episode bracketed within candidate `physicalEvidenceStart`/`physicalEvidenceEnd` envelope (with bounded slack)
   - rise onset compatible with native episode
   - terminal fuel + transition start/delta compatible
 - `evaluateRawRefuelNativeFallbackConvergence` uses fallback-specific classifier
@@ -26,8 +27,8 @@
 
 ## Validation
 
-- Unit: `raw-refuel-native-fallback-stretched-end.policy.spec.ts` (WOB 09-19, Event B, KS MX stale baseline negative)
-- Postgres (opt-in): `raw-refuel-oq015-stretched-end.postgres.integration.spec.ts` (`RAW_FUEL_REFUEL_OQ015_INTEGRATION=1`)
+- Unit: `raw-refuel-native-fallback-stretched-end.policy.spec.ts` (WOB 09-19, H1–H8 matrix, Event B, KS MX stale baseline negative)
+- Postgres (Stage-4 CI): `rfrf-oq015-stretched-end-postgres-gate.sh` → `raw-refuel-oq015-stretched-end.postgres.integration.spec.ts` (`RAW_FUEL_REFUEL_OQ015_INTEGRATION=1`)
 - Existing F5/F9/F10.6.6 regression suites unchanged semantics for non-stretched pairs
 
 ## Non-effects

@@ -7,20 +7,27 @@ import {
   type PhysicalRefuelMatcherTolerances,
   type RefuelRowForMatcher,
 } from '../physical-refuel-identity.matcher';
+import { RAW_FUEL_RISE_DETECTOR_CONFIG_V1 } from '../raw-fuel-rise-detector/raw-fuel-rise-detector.config';
 import { rawRefuelCandidateToRefuelRowForMatcher } from './raw-refuel-native-overlap.advisory';
+
+/**
+ * F3 continuity authority — gaps at or below this are normal for in-event sample stitching.
+ * Historical READY candidates may persist larger observed gaps (sparse bridge episodes) even
+ * though current detector rules treat continuity beyond this as abnormal telemetry stretch.
+ */
+export const RFRF_DETECTOR_MAX_NORMAL_SAMPLE_GAP_SECONDS =
+  RAW_FUEL_RISE_DETECTOR_CONFIG_V1.absolute.maxSampleGapMs / 1000;
 
 /** Bounded fallback↔native convergence when canonical matcher fails only on end time. */
 export const DEFAULT_STRETCHED_END_FALLBACK_CONVERGENCE_LIMITS = {
-  /** Minimum intra-candidate sample gap (seconds) evidencing telemetry stretch. */
-  minSampleGapSeconds: 120,
-  /** physicalEvidenceEnd must extend at least this many seconds beyond riseEndAt. */
-  minPhysicalEvidenceBeyondRiseSec: 60,
   /** Native end may trail riseEndAt by at most this (delayed native segment end). */
   maxNativeEndAfterRiseEndSec: 2 * 60 * 60,
   /** Rise onset may precede native start by at most this. */
   maxRiseOnsetBeforeNativeStartSec: 15 * 60,
   /** Rise onset may follow native end by at most this when gap evidence exists. */
   maxRiseOnsetAfterNativeEndSec: 5 * 60,
+  /** Clock/sample alignment slack when bracketing native episode inside candidate physical envelope. */
+  nativePhysicalEnvelopeSlackSec: 120,
 } as const;
 
 export type StretchedEndFallbackConvergenceLimits =
@@ -40,23 +47,50 @@ export function buildRiseBoundedFallbackMatcherRow(
   };
 }
 
+function hasExplicitPersistedTelemetryGapAuthority(candidate: RawRefuelCandidate): boolean {
+  const meta = candidate.evidenceMeta;
+  if (!meta || typeof meta !== 'object' || Array.isArray(meta)) {
+    return false;
+  }
+  const record = meta as Record<string, unknown>;
+  return record.telemetryGapStretchAuthorized === true;
+}
+
+/**
+ * Stretch authority requires abnormal sparse-bridge / sample-gap evidence — not healthy post-plateau
+ * extension alone (READY post-plateau persistence routinely extends physicalEvidenceEnd past riseEndAt).
+ */
 export function hasFallbackTelemetryStretchEvidence(
   candidate: RawRefuelCandidate,
-  limits: StretchedEndFallbackConvergenceLimits = DEFAULT_STRETCHED_END_FALLBACK_CONVERGENCE_LIMITS,
 ): boolean {
   const gapSeconds = candidate.maxSampleGapSeconds ?? 0;
-  if (gapSeconds >= limits.minSampleGapSeconds) {
+  if (gapSeconds > RFRF_DETECTOR_MAX_NORMAL_SAMPLE_GAP_SECONDS) {
     return true;
   }
-  if (
-    candidate.riseEndAt &&
-    candidate.physicalEvidenceEnd &&
-    candidate.physicalEvidenceEnd.getTime() - candidate.riseEndAt.getTime() >=
-      limits.minPhysicalEvidenceBeyondRiseSec * 1000
-  ) {
-    return true;
+  return hasExplicitPersistedTelemetryGapAuthority(candidate);
+}
+
+/** Native episode must remain plausibly contained within the candidate physical evidence envelope. */
+export function isNativeEpisodeBracketedWithinCandidatePhysicalEvidence(
+  candidate: RawRefuelCandidate,
+  nativeRow: RefuelRowForMatcher,
+  limits: StretchedEndFallbackConvergenceLimits = DEFAULT_STRETCHED_END_FALLBACK_CONVERGENCE_LIMITS,
+): boolean {
+  if (!candidate.physicalEvidenceStart || !candidate.physicalEvidenceEnd) {
+    return false;
   }
-  return false;
+  const slackMs = limits.nativePhysicalEnvelopeSlackSec * 1000;
+  const envelopeStartMs = candidate.physicalEvidenceStart.getTime() - slackMs;
+  const envelopeEndMs = candidate.physicalEvidenceEnd.getTime() + slackMs;
+  const nativeStartMs = new Date(nativeRow.startTime).getTime();
+  const nativeEndMs = new Date(nativeRow.endTime).getTime();
+  if (nativeStartMs < envelopeStartMs) {
+    return false;
+  }
+  if (nativeEndMs > envelopeEndMs) {
+    return false;
+  }
+  return true;
 }
 
 function terminalFuelCompatible(
@@ -180,7 +214,10 @@ function evaluateStretchedEndSamePhysicalRefuel(
   if (candidateRow.vehicleId !== nativeRow.vehicleId) {
     return null;
   }
-  if (!hasFallbackTelemetryStretchEvidence(candidate, limits)) {
+  if (!hasFallbackTelemetryStretchEvidence(candidate)) {
+    return null;
+  }
+  if (!isNativeEpisodeBracketedWithinCandidatePhysicalEvidence(candidate, nativeRow, limits)) {
     return null;
   }
   if (!riseOnsetTemporallyCompatibleWithNative(candidate, nativeRow, limits)) {

@@ -5,6 +5,7 @@
 - Bounded `classifyFallbackAgainstAuthoritativeNativeRefuel` — canonical G2 `endTimeSec=60` unchanged
 - Closes WOB 09-19 duplicate Product REFUEL risk when trust is enabled later (EED-INV-018)
 - Evidence: `EED-EV-0097-RFRF-STRETCHED-END-CONVERGENCE-2026-09-28.md`; EED-OQ-015 resolved
+- Pre-merge safety (PR #1818): stretch authority = `maxSampleGapSeconds` > F3 `maxSampleGapMs` (360s) + native episode bracketed in candidate physical envelope; H1–H8 tests; Stage-4 `rfrf-oq015-stretched-end-postgres-gate.sh`
 - Trust authority not implemented (`ABSOLUTE_SIGNAL_TRUST_AUTHORITY_AVAILABLE` remains false)
 
 ## 2026-09-27 — ERD E5.4D scoped runtime shadow persist canary gate

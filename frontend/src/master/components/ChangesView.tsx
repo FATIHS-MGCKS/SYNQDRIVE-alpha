@@ -653,7 +653,8 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'RFRF OQ-015 — stretched-end fallback↔native convergence',
     summary: [
       'classifyFallbackAgainstAuthoritativeNativeRefuel closes WOB 09-19 duplicate Product REFUEL risk without raising global G2 endTimeSec.',
-      'Telemetry-gap evidence required; hard terminal/odometer/start contradictions still DISTINCT.',
+      'Pre-merge hardening: stretch requires maxSampleGapSeconds > F3 continuity (360s) + native physical envelope bracketing; post-plateau extension alone is not stretch proof.',
+      'OQ-015 PostgreSQL gate wired into Stage-4 CI (rfrf-oq015-stretched-end-postgres-gate.sh).',
       'Trust authority unchanged (UNKNOWN); EED-INV-018 documents convergence firewall.',
     ],
     reason:

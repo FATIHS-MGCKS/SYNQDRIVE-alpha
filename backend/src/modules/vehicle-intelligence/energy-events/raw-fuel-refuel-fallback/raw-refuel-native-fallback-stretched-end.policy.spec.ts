@@ -7,6 +7,8 @@ import { evaluateRawRefuelNativeFallbackConvergence } from './raw-refuel-native-
 import {
   classifyFallbackAgainstAuthoritativeNativeRefuel,
   hasFallbackTelemetryStretchEvidence,
+  isNativeEpisodeBracketedWithinCandidatePhysicalEvidence,
+  RFRF_DETECTOR_MAX_NORMAL_SAMPLE_GAP_SECONDS,
 } from './raw-refuel-native-fallback-stretched-end.policy';
 import { rawRefuelCandidateToRefuelRowForMatcher } from './raw-refuel-native-overlap.advisory';
 import { ABSOLUTE_SIGNAL_TRUST_AUTHORITY_AVAILABLE } from './raw-fuel-signal-trust.resolver';
@@ -18,6 +20,7 @@ import {
   buildWob20260927EventBCandidate,
   WOB_2026_09_19_AUTHORITATIVE_NATIVE_EVENT_ID,
   WOB_2026_09_19_STRETCHED_END_CANDIDATE_ID,
+  WOB_VEHICLE_ID,
 } from './testing/wob-2026-09-19-stretched-end.fixture';
 
 describe('RFRF OQ-015 stretched-end fallback↔native convergence', () => {
@@ -55,7 +58,112 @@ describe('RFRF OQ-015 stretched-end fallback↔native convergence', () => {
       const result = classifyFallbackAgainstAuthoritativeNativeRefuel(wobCandidate, wobNative);
       expect(result.classification).toBe('SAME_PHYSICAL_REFUEL');
       expect(result.reason).toMatch(/stretched_end_/);
+      expect(wobCandidate.maxSampleGapSeconds).toBe(990);
       expect(hasFallbackTelemetryStretchEvidence(wobCandidate)).toBe(true);
+      expect(
+        isNativeEpisodeBracketedWithinCandidatePhysicalEvidence(wobCandidate, wobNative),
+      ).toBe(true);
+    });
+  });
+
+  describe('H1–H8 — pre-merge stretch safety matrix', () => {
+    const nativeSame: RefuelRowForMatcher = {
+      id: 'native-h',
+      vehicleId: WOB_VEHICLE_ID,
+      kind: 'REFUEL',
+      startTime: '2026-09-19T16:09:00.000Z',
+      endTime: '2026-09-19T16:54:00.000Z',
+      fuelStartLiters: 5,
+      fuelEndLiters: 18,
+      fuelDeltaLiters: 13,
+      dimoSegmentId: 'dimo-h',
+    };
+
+    it('H1 normal READY post-plateau extension alone does not authorize stretch', () => {
+      const healthyReady = buildWob20260919StretchedEndCandidate({
+        maxSampleGapSeconds: 45,
+        riseEndAt: new Date('2026-09-19T16:15:27.000Z'),
+        physicalEvidenceEnd: new Date('2026-09-19T16:58:31.000Z'),
+        postPlateauSampleCount: 5,
+      });
+      expect(healthyReady.maxSampleGapSeconds!).toBeLessThanOrEqual(
+        RFRF_DETECTOR_MAX_NORMAL_SAMPLE_GAP_SECONDS,
+      );
+      expect(
+        healthyReady.physicalEvidenceEnd!.getTime() - healthyReady.riseEndAt!.getTime(),
+      ).toBeGreaterThan(60_000);
+      expect(hasFallbackTelemetryStretchEvidence(healthyReady)).toBe(false);
+      const result = classifyFallbackAgainstAuthoritativeNativeRefuel(healthyReady, nativeSame);
+      expect(result.classification).toBe('DISTINCT_PHYSICAL_REFUEL');
+      expect(result.reason).toBe('end_time_mismatch');
+    });
+
+    it('H2 large gap but native end outside physical envelope => DISTINCT', () => {
+      const cand = buildWob20260919StretchedEndCandidate({ maxSampleGapSeconds: 990 });
+      const nativeOutside = {
+        ...nativeSame,
+        endTime: '2026-09-19T17:30:00.000Z',
+      };
+      expect(hasFallbackTelemetryStretchEvidence(cand)).toBe(true);
+      expect(isNativeEpisodeBracketedWithinCandidatePhysicalEvidence(cand, nativeOutside)).toBe(
+        false,
+      );
+      const result = classifyFallbackAgainstAuthoritativeNativeRefuel(cand, nativeOutside);
+      expect(result.classification).toBe('DISTINCT_PHYSICAL_REFUEL');
+      expect(result.reason).toBe('end_time_mismatch');
+    });
+
+    it('H3 large gap + bracketed native + compatible fuel => SAME', () => {
+      const result = classifyFallbackAgainstAuthoritativeNativeRefuel(wobCandidate, wobNative);
+      expect(result.classification).toBe('SAME_PHYSICAL_REFUEL');
+    });
+
+    it('H4 large gap + terminal fuel mismatch => DISTINCT', () => {
+      const result = classifyFallbackAgainstAuthoritativeNativeRefuel(wobCandidate, {
+        ...wobNative,
+        fuelEndLiters: 9,
+      });
+      expect(result.classification).toBe('DISTINCT_PHYSICAL_REFUEL');
+      expect(result.reason).toBe('terminal_fuel_liters_mismatch');
+    });
+
+    it('H5 large gap + odometer contradiction => DISTINCT', () => {
+      const cand = buildWob20260919StretchedEndCandidate({
+        evidenceMeta: { odometerEndKm: 120 },
+      });
+      const result = classifyFallbackAgainstAuthoritativeNativeRefuel(cand, {
+        ...wobNative,
+        odometerEndKm: 50,
+      });
+      expect(result.reason).toBe('odometer_mismatch');
+    });
+
+    it('H6 two plausible SAME natives => AMBIGUOUS fail closed', () => {
+      const evaluation = evaluateRawRefuelNativeFallbackConvergence({
+        candidate: wobCandidate,
+        nativeRefuelRows: [
+          wobNative,
+          { ...wobNative, id: 'second-native-same-episode', dimoSegmentId: 'dimo-2' },
+        ],
+      });
+      expect(evaluation.classification).toBe('AMBIGUOUS');
+      expect(evaluation.shouldConvergeToNative).toBe(false);
+    });
+
+    it('H7 Event B no native siblings => NO_NATIVE_SIBLINGS', () => {
+      const evaluation = evaluateRawRefuelNativeFallbackConvergence({
+        candidate: buildWob20260927EventBCandidate(),
+        nativeRefuelRows: [],
+      });
+      expect(evaluation.classification).toBe('NO_NATIVE_SIBLINGS');
+    });
+
+    it('H8 KS MX stale baseline stays DISTINCT', () => {
+      const evaluation = evaluateRawRefuelNativeFallbackConvergence({
+        candidate: buildKsMx20240916StaleBaselineCandidate(),
+        nativeRefuelRows: [buildKsMx20240916NativeRow()],
+      });
+      expect(evaluation.classification).toBe('DISTINCT_FROM_NATIVE');
     });
   });
 
