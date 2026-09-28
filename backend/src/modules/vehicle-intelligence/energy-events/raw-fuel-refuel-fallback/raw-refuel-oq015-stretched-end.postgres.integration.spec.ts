@@ -3,7 +3,6 @@ import {
   FuelType,
   PhysicalRefuelFinalityState,
   PrismaClient,
-  type RawRefuelCandidate,
 } from '@prisma/client';
 import {
   RAW_FUEL_REFUEL_FALLBACK_ENABLED_ENV,
@@ -12,11 +11,14 @@ import {
 } from '@config/raw-fuel-refuel-fallback.config';
 import { PHYSICAL_REFUEL_RECONCILIATION_V2_CUTOVER_AT_ENV } from '@config/physical-refuel-reconciliation.config';
 import { PrismaService } from '@shared/database/prisma.service';
-import { RawRefuelConvergenceService } from './raw-refuel-convergence.service';
+import { detectRawFuelRises } from '../raw-fuel-rise-detector/raw-fuel-rise-detector';
 import {
-  buildWob20260919AuthoritativeNativeRow,
-  buildWob20260919StretchedEndCandidate,
-} from './testing/wob-2026-09-19-stretched-end.fixture';
+  buildDetectorPhysicsContext,
+  buildSparseBridgeRefuelEpisodeSamples,
+} from '../raw-fuel-rise-detector/testing/raw-fuel-rise-detector-test.util';
+import { RawRefuelCandidateService } from '../raw-refuel-candidate/raw-refuel-candidate.service';
+import { RawRefuelConvergenceService } from './raw-refuel-convergence.service';
+import { buildWob20260919AuthoritativeNativeRow } from './testing/wob-2026-09-19-stretched-end.fixture';
 
 const LIVE = process.env.RAW_FUEL_REFUEL_OQ015_INTEGRATION === '1';
 
@@ -64,7 +66,6 @@ async function seedOrgVehicle(prisma: PrismaClient, suffix: string) {
       externalId: `dimo-oq015-${suffix}`,
       tokenId: 930000 + Math.floor(Math.random() * 10000),
       fuelType: 'GASOLINE',
-      powertrainType: 'ICE',
     },
   });
   const vehicle = await prisma.vehicle.create({
@@ -97,19 +98,40 @@ async function cleanup(
   await prisma.organization.deleteMany({ where: { id: orgId } });
 }
 
-function candidateCreateData(
+async function seedWobSparseBridgeReadyCandidate(
+  prisma: PrismaClient,
+  orgId: string,
   vehicleId: string,
-  organizationId: string,
-  candidate: RawRefuelCandidate,
 ) {
-  const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = candidate;
-  return {
-    ...rest,
+  const scanContext = buildDetectorPhysicsContext({
+    organizationId: orgId,
     vehicleId,
-    organizationId,
-    firstObservedAt: candidate.firstObservedAt,
-    lastObservedAt: candidate.lastObservedAt,
-  };
+    scanWindowStart: new Date('2026-09-19T15:00:00.000Z'),
+    scanWindowEnd: new Date('2026-09-19T18:00:00.000Z'),
+  });
+  const partial = detectRawFuelRises({
+    context: scanContext,
+    samples: buildSparseBridgeRefuelEpisodeSamples(true),
+  });
+  const service = RawRefuelCandidateService.withFixedClock(
+    prisma as unknown as PrismaService,
+    '2026-09-19T17:00:00.000Z',
+  );
+  const resolved = await service.resolveOrCreateCandidate(partial.candidates[0]);
+  const row = await prisma.rawRefuelCandidate.findUniqueOrThrow({
+    where: { id: resolved.candidateId },
+  });
+  return prisma.rawRefuelCandidate.update({
+    where: { id: row.id },
+    data: {
+      lifecycleState: 'READY_FOR_PERSIST',
+      maxSampleGapSeconds: 990,
+      preFuelRelativePercent: 9.804,
+      postFuelRelativePercent: 32.549,
+      deltaRelativePercent: 22.745,
+      relativeSignalAvailable: true,
+    },
+  });
 }
 
 (LIVE ? describe : describe.skip)(
@@ -133,17 +155,17 @@ function candidateCreateData(
     it('09-19 stretched-end candidate converges to authoritative native without fallback VEE', async () => {
       const restore = setEnv();
       const suffix = randomUUID().slice(0, 8);
-      const fixture = buildWob20260919StretchedEndCandidate();
       const nativeRow = buildWob20260919AuthoritativeNativeRow();
       const { org, vehicle, dimoVehicleId } = await seedOrgVehicle(prisma, suffix);
       try {
-        const candidate = await prisma.rawRefuelCandidate.create({
-          data: candidateCreateData(vehicle.id, org.id, fixture),
-        });
+        const candidate = await seedWobSparseBridgeReadyCandidate(
+          prisma,
+          org.id,
+          vehicle.id,
+        );
         const native = await prisma.vehicleEnergyEvent.create({
           data: {
             vehicleId: vehicle.id,
-            organizationId: org.id,
             detectionSource: 'DIMO_NATIVE',
             dimoSegmentId: nativeRow.dimoSegmentId,
             kind: 'REFUEL',
