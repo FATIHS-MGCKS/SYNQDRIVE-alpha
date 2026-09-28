@@ -1,5 +1,11 @@
 -- EXP-021 S4B precondition: boundary_occurrence logical key + execution identity V2 (dormant, empty-state guarded).
+-- Prisma does not wrap migrations in a transaction; explicit BEGIN/COMMIT with bounded locks (S4A_MIGRATION_SAFETY).
 BEGIN;
+SET LOCAL lock_timeout = '5s';
+SET LOCAL statement_timeout = '60s';
+
+-- Serialize empty-state proof and DDL against concurrent S4/S2 writers (same discipline as S4A on S2).
+LOCK TABLE "di_v0_s4_work_items", "di_v0_shadow_runs", "di_v0_shadow_intervals" IN SHARE ROW EXCLUSIVE MODE;
 
 DO $$
 DECLARE

@@ -12,4 +12,5 @@
 - Concurrency-safe allocation via `di_v0_s4_trip_primary_boundary_seq` (`INSERT … ON CONFLICT DO UPDATE` per trip).
 - `buildDiV0S4ExecutionIdentityV2` + repository T06 writes V2; V1 builder preserved.
 - T11 `W_SUCCESSOR_PRIMARY_INSERT` allocates occurrence on revert; T13 remains supersede-only.
-- PostgreSQL: BR01–BR10, T13-01–T13-07, S4B migration M01–M10; CI expected count 88.
+- PostgreSQL: BR01–BR10, T13-01–T13-07, S4B migration M01–M13 (incl. lock-timeout + empty-state serialization); CI expected count 91.
+- S4B migration uses `lock_timeout` / `statement_timeout` and `LOCK TABLE` on `di_v0_s4_work_items`, `di_v0_shadow_runs`, `di_v0_shadow_intervals` before the empty-state proof (aligned with S4A migration safety).
