@@ -37,7 +37,7 @@ export type LongitudinalIntegrityInspectionRepositoryDb = Pick<
 
 export type LongitudinalIntegrityInspectionTx = Pick<
   PrismaService,
-  'batteryRestSessionFeature' | '$queryRaw'
+  'batteryRestSessionFeature' | 'batteryLongitudinalProfileRevision' | '$queryRaw'
 >;
 
 type RawD4FeatureRow = {

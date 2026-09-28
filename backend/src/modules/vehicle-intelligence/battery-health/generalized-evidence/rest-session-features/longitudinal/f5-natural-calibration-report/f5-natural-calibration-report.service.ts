@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import {
   F45R1_COHORT_START_ISO,
   F4_6_T0_ISO,
@@ -20,6 +21,7 @@ import type {
 } from './f5-natural-calibration-report.types';
 import { F5ReportBoundExceededError, F5ReportTimeoutError } from './f5-natural-calibration-report.types';
 import { LongitudinalIntegrityInspectionService } from '../longitudinal-integrity-inspection.service';
+import type { LongitudinalIntegrityInspectionTx } from '../longitudinal-integrity-inspection.repository';
 import { buildLongitudinalAssessmentInputV1 } from '../longitudinal-assessment-input.adapter';
 import { evaluateM3_3E_LongitudinalHealthEvaluationV1 } from '../longitudinal-health-evaluation.policy';
 import { M3_3E_CALIBRATION_UNSET_V1 } from '../longitudinal-health-calibration-profile';
@@ -150,7 +152,7 @@ export async function runF5NaturalCalibrationReport(
         isPrimaryCohortRevision(classifyRevisionCohort(r.materializedAt), r.materializedAt, options.asOf),
       );
 
-      const inspector = new LongitudinalIntegrityInspectionService(tx as never);
+      const inspector = new LongitudinalIntegrityInspectionService(prisma);
 
       let eligibleObservationCount = 0;
       let quarantinedCount = 0;
@@ -176,7 +178,7 @@ export async function runF5NaturalCalibrationReport(
           (revisionsPerVehicle.get(rev.vehicleId) ?? 0) + 1,
         );
 
-        const d4 = await inspector.inspectRevision({
+        const d4 = await inspector.inspectRevisionInTransaction(tx as LongitudinalIntegrityInspectionTx, {
           revisionId: rev.id,
           organizationId: rev.organizationId,
           vehicleId: rev.vehicleId,
@@ -333,6 +335,9 @@ export async function runF5NaturalCalibrationReport(
         },
       };
     },
-    { timeout: options.timeoutMs + 5_000 },
+    {
+      timeout: options.timeoutMs + 5_000,
+      isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
+    },
   );
 }

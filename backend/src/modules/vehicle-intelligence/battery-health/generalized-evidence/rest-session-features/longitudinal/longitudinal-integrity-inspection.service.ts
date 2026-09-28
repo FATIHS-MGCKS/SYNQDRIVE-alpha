@@ -42,100 +42,114 @@ export class LongitudinalIntegrityInspectionService {
   }
 
   async inspectRevision(request: D4InspectionRequest): Promise<D4InspectionOutcome> {
-    const budget = new D4InspectionDbRoundTripBudget();
     let outcome: D4InspectionOutcome = { status: 'REVISION_NOT_FOUND' };
 
     await this.prisma.$transaction(
       async (tx) => {
-        budget.increment();
-        const revision = await tx.batteryLongitudinalProfileRevision.findFirst({
-          where: {
-            id: request.revisionId,
-            organizationId: request.organizationId,
-            vehicleId: request.vehicleId,
-          },
-        });
-        if (!revision) {
-          outcome = { status: 'REVISION_NOT_FOUND' };
-          this.lastInspectionDbRoundTrips = budget.getCount();
-          return;
-        }
-
-        const selfCheck = evaluateMaterializedRevisionSelfIntegrity(revision);
-        if (selfCheck.status === 'PARSE_FAILED') {
-          const failure: D4RevisionSelfIntegrityFailureV1 = {
-            inspectionContractVersion:
-              REST_SESSION_LONGITUDINAL_INTEGRITY_INSPECTION_CONTRACT_VERSION,
-            inspectionGeneratedAt: this.clock.nowIso(),
-            snapshotIsolation: 'REPEATABLE_READ',
-            identity: {
-              organizationId: request.organizationId,
-              vehicleId: request.vehicleId,
-              revisionId: request.revisionId,
-            },
-            storedRevisionEnvelope: {
-              canonicalProfileFingerprint: revision.canonicalProfileFingerprint,
-              longitudinalProfileContractVersion: revision.longitudinalProfileContractVersion,
-              profilePolicyVersion: revision.profilePolicyVersion,
-            },
-            selfIntegrity: 'SELF_INTEGRITY_FAILED',
-            reasons: selfCheck.reasons,
-          };
-          outcome = { status: 'REVISION_SELF_INTEGRITY_FAILED', failure };
-          this.lastInspectionDbRoundTrips = budget.getCount();
-          return;
-        }
-
-        const projection = selfCheck.projection;
-        const selfIntegrityFailed = selfCheck.status === 'SELF_INTEGRITY_FAILED';
-        const selfIntegrityReasons =
-          selfCheck.status === 'SELF_INTEGRITY_FAILED' ? selfCheck.reasons : [];
-
-        const { sessionKeys, referencedRowIds } = buildD4SessionKeysFromProjection({
-          organizationId: projection.organizationId,
-          vehicleId: projection.vehicleId,
-          observations: projection.observations,
-          provisionalObservations: projection.provisionalObservations,
-          excludedSessions: projection.excludedSessions,
-        });
-
-        const batch = await this.repository.readSourceEvidenceBatchInTransaction(
+        outcome = await this.inspectRevisionInTransaction(
           tx as LongitudinalIntegrityInspectionTx,
-          {
-            request,
-            sessionKeys,
-            referencedRowIds,
-          },
-          budget,
+          request,
         );
-
-        budget.assertWithinBound();
-
-        const inspection = aggregateD4InspectionOverlay({
-          projection,
-          revisionId: request.revisionId,
-          canonicalProfileFingerprint: revision.canonicalProfileFingerprint,
-          inspectionGeneratedAt: this.clock.nowIso(),
-          selfIntegrityFailed,
-          selfIntegrityReasons,
-          batchContext: {
-            organizationId: request.organizationId,
-            vehicleId: request.vehicleId,
-            revisionCreatedAt: revision.createdAt,
-            selfIntegrityFailed,
-            sourceRowsById: batch.sourceRowsById,
-            aggregatesBySessionKey: batch.aggregatesBySessionKey,
-            totalRowsBySessionKey: batch.totalRowsBySessionKey,
-            latestRowsBySessionKey: batch.latestRowsBySessionKey,
-          },
-        });
-
-        outcome = { status: 'OK', inspection };
-        this.lastInspectionDbRoundTrips = budget.getCount();
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
 
+    return outcome;
+  }
+
+  /** Same D4 rules as `inspectRevision`, without opening a nested Prisma transaction (F5 read-only report). */
+  async inspectRevisionInTransaction(
+    tx: LongitudinalIntegrityInspectionTx,
+    request: D4InspectionRequest,
+  ): Promise<D4InspectionOutcome> {
+    const budget = new D4InspectionDbRoundTripBudget();
+    let outcome: D4InspectionOutcome = { status: 'REVISION_NOT_FOUND' };
+
+    budget.increment();
+    const revision = await tx.batteryLongitudinalProfileRevision.findFirst({
+      where: {
+        id: request.revisionId,
+        organizationId: request.organizationId,
+        vehicleId: request.vehicleId,
+      },
+    });
+    if (!revision) {
+      outcome = { status: 'REVISION_NOT_FOUND' };
+      this.lastInspectionDbRoundTrips = budget.getCount();
+      return outcome;
+    }
+
+    const selfCheck = evaluateMaterializedRevisionSelfIntegrity(revision);
+    if (selfCheck.status === 'PARSE_FAILED') {
+      const failure: D4RevisionSelfIntegrityFailureV1 = {
+        inspectionContractVersion:
+          REST_SESSION_LONGITUDINAL_INTEGRITY_INSPECTION_CONTRACT_VERSION,
+        inspectionGeneratedAt: this.clock.nowIso(),
+        snapshotIsolation: 'REPEATABLE_READ',
+        identity: {
+          organizationId: request.organizationId,
+          vehicleId: request.vehicleId,
+          revisionId: request.revisionId,
+        },
+        storedRevisionEnvelope: {
+          canonicalProfileFingerprint: revision.canonicalProfileFingerprint,
+          longitudinalProfileContractVersion: revision.longitudinalProfileContractVersion,
+          profilePolicyVersion: revision.profilePolicyVersion,
+        },
+        selfIntegrity: 'SELF_INTEGRITY_FAILED',
+        reasons: selfCheck.reasons,
+      };
+      outcome = { status: 'REVISION_SELF_INTEGRITY_FAILED', failure };
+      this.lastInspectionDbRoundTrips = budget.getCount();
+      return outcome;
+    }
+
+    const projection = selfCheck.projection;
+    const selfIntegrityFailed = selfCheck.status === 'SELF_INTEGRITY_FAILED';
+    const selfIntegrityReasons =
+      selfCheck.status === 'SELF_INTEGRITY_FAILED' ? selfCheck.reasons : [];
+
+    const { sessionKeys, referencedRowIds } = buildD4SessionKeysFromProjection({
+      organizationId: projection.organizationId,
+      vehicleId: projection.vehicleId,
+      observations: projection.observations,
+      provisionalObservations: projection.provisionalObservations,
+      excludedSessions: projection.excludedSessions,
+    });
+
+    const batch = await this.repository.readSourceEvidenceBatchInTransaction(
+      tx,
+      {
+        request,
+        sessionKeys,
+        referencedRowIds,
+      },
+      budget,
+    );
+
+    budget.assertWithinBound();
+
+    const inspection = aggregateD4InspectionOverlay({
+      projection,
+      revisionId: request.revisionId,
+      canonicalProfileFingerprint: revision.canonicalProfileFingerprint,
+      inspectionGeneratedAt: this.clock.nowIso(),
+      selfIntegrityFailed,
+      selfIntegrityReasons,
+      batchContext: {
+        organizationId: request.organizationId,
+        vehicleId: request.vehicleId,
+        revisionCreatedAt: revision.createdAt,
+        selfIntegrityFailed,
+        sourceRowsById: batch.sourceRowsById,
+        aggregatesBySessionKey: batch.aggregatesBySessionKey,
+        totalRowsBySessionKey: batch.totalRowsBySessionKey,
+        latestRowsBySessionKey: batch.latestRowsBySessionKey,
+      },
+    });
+
+    outcome = { status: 'OK', inspection };
+    this.lastInspectionDbRoundTrips = budget.getCount();
     return outcome;
   }
 }
