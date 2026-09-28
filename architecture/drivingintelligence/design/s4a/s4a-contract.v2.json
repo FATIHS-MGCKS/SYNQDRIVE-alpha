@@ -593,14 +593,12 @@
     "distinct": true
   },
   "s2ExecutionIdentity": {
-    "version": "DI_V0_S4_EXECUTION_IDENTITY_V2",
-    "supersedes": "DI_V0_S4_EXECUTION_IDENTITY_V1",
+    "version": "DI_V0_S4_EXECUTION_IDENTITY_V1",
     "components": [
       "organizationId",
       "vehicleId",
       "tripId",
       "boundaryFingerprint",
-      "boundaryOccurrence",
       "pipelineVersionKey",
       "calibrationBundleHash",
       "s4OrchestrationContractVersion",
@@ -610,7 +608,7 @@
       "combinedInputIdentity"
     ],
     "serialization": "JSON.stringify of positional array [version, ...components in listed order], UTF-8, no whitespace",
-    "hash": "sha256 hex, prefixed 'DI_V0_S4_EXECUTION_IDENTITY_V2:sha256:'",
+    "hash": "sha256 hex, prefixed 'DI_V0_S4_EXECUTION_IDENTITY_V1:sha256:'",
     "forbiddenComponents": [
       "workerId",
       "leaseOwner",
@@ -637,6 +635,7 @@
       "s2KeyFunction": "buildDiV0ShadowRunIdempotencyKey(tripId|sourceFamily|structural|estimator|calibration|policy|inputEvidenceVersion)",
       "s2RuntimeChangeRequired": false
     },
+    "implementationTarget": "s2ExecutionIdentityImplementationTarget",
     "collision": {
       "detection": "INSERT ... ON CONFLICT (organization_id, idempotency_key) DO NOTHING RETURNING id; on no row SELECT the stored run",
       "comparison": "stored input_evidence_version, organization_id, vehicle_id, trip_id == requested",
@@ -645,6 +644,28 @@
       "reasonCode": "S2_EXECUTION_IDENTITY_MISMATCH",
       "transition": "T08_FAIL_TERMINAL"
     }
+  },
+  "s2ExecutionIdentityImplementationTarget": {
+    "version": "DI_V0_S4_EXECUTION_IDENTITY_V2",
+    "supersedes": "DI_V0_S4_EXECUTION_IDENTITY_V1",
+    "requiredFor": "S4B_PRECONDITION_IMPLEMENTATION boundaryOccurrence logical identity",
+    "components": [
+      "organizationId",
+      "vehicleId",
+      "tripId",
+      "boundaryFingerprint",
+      "boundaryOccurrence",
+      "pipelineVersionKey",
+      "calibrationBundleHash",
+      "s4OrchestrationContractVersion",
+      "runPurpose",
+      "purposeDiscriminator",
+      "pinnedEvidenceSnapshotHash",
+      "combinedInputIdentity"
+    ],
+    "hash": "sha256 hex, prefixed 'DI_V0_S4_EXECUTION_IDENTITY_V2:sha256:'",
+    "s2RuntimeChangeRequired": true,
+    "authority": "architecture/drivingintelligence/design/s4a/S4A_BOUNDARY_REVERT_AUTHORITY.md"
   },
   "pipelineVersion": {
     "prefix": "DI_V0_S4_PIPELINE_V1",
@@ -2431,7 +2452,6 @@
       "vehicleId": "veh-A1",
       "tripId": "trip-A1-1",
       "boundaryFingerprint": "DI_V0_S4_BOUNDARY_FP_V1:sha256:2b549f4f37879c88217a337bceb7e7153242e28e94651d6bad66e26f4d642901",
-      "boundaryOccurrence": 0,
       "pipelineVersionKey": "DI_V0_S4_PIPELINE_V1:sha256:4d09bc46d440b319b7d14738c352554d5769ab87773f713e2595e452de5a4b67",
       "calibrationBundleHash": "sha256:FIXTURE_CALIBRATION_BUNDLE_CONTENT_HASH",
       "s4OrchestrationContractVersion": "DI_V0_S4_ORCHESTRATION_CONTRACT_V2",
@@ -2440,7 +2460,7 @@
       "pinnedEvidenceSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:ab",
       "combinedInputIdentity": "DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:804865fd2a0e628b51cb38aba9965630b66e6bfa454c9303378958d7f66dfbc0"
     },
-    "s2ExecutionIdentityExpected": "DI_V0_S4_EXECUTION_IDENTITY_V2:sha256:2a9ee3149c0ad2ada4cdd001e5073c0e0e1fc155818f2a500677587fba5cdb29",
+    "s2ExecutionIdentityExpected": "DI_V0_S4_EXECUTION_IDENTITY_V1:sha256:63a5c5636dc2162a257ddf310355a1f29ce2f8dadb91a1bc8c8ce22dc69861a1",
     "s2ExecutionIdentityMutations": [
       {
         "name": "different pipelineVersionKey",

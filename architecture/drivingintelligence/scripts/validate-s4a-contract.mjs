@@ -32,7 +32,7 @@ const MIN_ILLEGAL = [
   'SKIPPED_INELIGIBLE->LEASED', 'PENDING->COMPLETED', 'FAILED_RETRYABLE->COMPLETED', 'NONE->LEASED', 'NONE->COMPLETED',
 ];
 const S2_REQUIRED_COMPONENTS = [
-  'organizationId', 'tripId', 'boundaryFingerprint', 'boundaryOccurrence', 'pipelineVersionKey', 'runPurpose', 'purposeDiscriminator',
+  'organizationId', 'tripId', 'boundaryFingerprint', 'pipelineVersionKey', 'runPurpose', 'purposeDiscriminator',
   'calibrationBundleHash', 's4OrchestrationContractVersion', 'pinnedEvidenceSnapshotHash', 'combinedInputIdentity',
 ];
 const CP_REQUIRED_TERMS = ['MASTER', 'ROLE_FLAG', 'POSITION', 'ORG_ALLOWLISTED', 'VEHICLE_ALLOWLISTED', 'VEHICLE_BELONGS_TO_ORG', 'DB_NOT_KILLED'];
@@ -288,11 +288,23 @@ export function validateContract(c, { docs = [], printHashes = false } = {}) {
   const execIdentity = (x) => `${s2.version}:sha256:${sha256(JSON.stringify([s2.version, ...s2.components.map((k) => x[k] ?? null)]))}`;
   const s2Key = (tripId, iev) => sha256([tripId, 'RUPTELA_R1', 'S', 'E', 'C', 'P', iev].join('|'));
   section('S2 execution identity', () => {
-    if (s2.version !== 'DI_V0_S4_EXECUTION_IDENTITY_V2') fail('S2 execution identity version must be DI_V0_S4_EXECUTION_IDENTITY_V2');
+    if (s2.version !== 'DI_V0_S4_EXECUTION_IDENTITY_V1') fail('S2 execution identity version must be DI_V0_S4_EXECUTION_IDENTITY_V1');
+    const s2Target = c.s2ExecutionIdentityImplementationTarget;
+    if (!s2Target || s2Target.version !== 'DI_V0_S4_EXECUTION_IDENTITY_V2') {
+      fail('s2ExecutionIdentityImplementationTarget must declare DI_V0_S4_EXECUTION_IDENTITY_V2 for boundaryOccurrence');
+    }
+    if (!s2Target.components.includes('boundaryOccurrence')) fail('implementation target must include boundaryOccurrence');
+    for (const k of c.identity.logicalKey) if (k !== 'boundaryOccurrence' && !s2Target.components.includes(k)) {
+      fail(`implementation target must contain logical-key component ${k}`);
+    }
     for (const k of S2_REQUIRED_COMPONENTS) if (!s2.components.includes(k)) fail(`S2 execution identity omits ${k}`);
     for (const k of [...c.identity.excludedFromEveryHash, ...(s2.forbiddenComponents ?? [])]) if (s2.components.includes(k)) fail(`S2 execution identity must not include ${k}`);
     if (!s2.forbiddenComponents?.includes('channelSnapshotVersion')) fail('S2 execution identity must forbid ambiguous channelSnapshotVersion');
-    for (const k of c.identity.logicalKey) if (!s2.components.includes(k)) fail(`S2 execution identity must contain logical-key component ${k}`);
+    for (const k of c.identity.logicalKey) {
+      if (k === 'boundaryOccurrence') {
+        if (s2.components.includes(k)) fail('boundaryOccurrence belongs in implementation target V2, not current V1 identity');
+      } else if (!s2.components.includes(k)) fail(`S2 execution identity must contain logical-key component ${k}`);
+    }
     const layers = c.identityLayers;
     if (layers.distinct !== true || layers.WORK_ITEM_LOGICAL_IDENTITY !== 'identity.logicalKey' || layers.EVIDENCE_IDENTITY !== 'identity.evidenceKey' || layers.S2_RESULT_EXECUTION_IDENTITY !== 's2ExecutionIdentity') {
       fail('identity layers must be distinct: work item logical != evidence != S2 execution');
