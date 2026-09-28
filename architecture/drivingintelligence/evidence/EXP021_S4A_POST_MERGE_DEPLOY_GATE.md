@@ -12,9 +12,21 @@
 | Gate | Status |
 |------|--------|
 | `DO_NOT_DEPLOY_S4A_MIGRATION_TO_PRODUCTION` | **SUPERSEDED** (2026-09-28) by readiness below — historical record only |
-| `S4A_DORMANT_MIGRATION_DEPLOY_GATE` | **READY_FOR_SEPARATE_OPERATOR_DEPLOY_DECISION** |
+| `S4A_DORMANT_MIGRATION_DEPLOY_GATE` | **DORMANT_SCHEMA_APPLIED** (2026-09-28) — see §Production apply record |
 
 PostgreSQL CI wiring and dormant migration re-seal are documented in [EXP021_S4A_POSTGRES_CI_WIRING.md](EXP021_S4A_POSTGRES_CI_WIRING.md) (DI-EVID-EXP021-S4A-POSTGRES-CI-001).
+
+## Production apply record (2026-09-28)
+
+| Field | Value |
+|-------|-------|
+| **Release** | `20260928095512_v4994` |
+| **Deploy SHA** | `7f5f8fdf2d158c59e19323efee979aee1a0757e0` (PR #1819 merge lineage) |
+| **Migration** | `20260927200000_di_v0_s4a_dormant_foundation` applied `2026-09-28T10:01:25Z` |
+| **Pre-deploy backup** | `/opt/synqdrive/shared/backups/db-pre-deploy-20260928095512.sql.gz` |
+| **S2 rows after apply** | 0 runs / 0 intervals |
+| **S4A tables** | 4 present; 0 work items / 0 snapshots / 0 control rows / 0 pipeline versions |
+| **S4 runtime** | **not authorized** (no callers, flags absent, control empty ⇒ KILLED) |
 
 **This is not deploy authorization.** Ordinary Production deploy still requires an explicit operator decision. S4 runtime, S4B, S4C, shadow activation, flags, and allowlisting remain **unauthorized**.
 
