@@ -18,6 +18,18 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-28 — M3.3F F4.4 controlled D3 activation preflight (read-only)
+
+| Field | Value |
+|-------|-------|
+| **OBSERVATION** | Production @ `68a05e41` / `20260928001456_v4994`; D3 OFF; 0 D3 revisions; 0 acks; 4 current-version C3 vehicles; 0 cross-tenant mismatches; leader 3001 FLAG_OFF ticks=2, follower 3002 NOT_LEADER=2. |
+| **CHANGE** | Strong pre-D3 backup `db-pre-d3-activation-20260928010930.sql.gz`; frozen batch-size-1 activation, follower-first rollout, rollback, first-tick acceptance, hard aborts; **`F4_D3_ACTIVATION_ALLOWED=YES`** for future explicit activation only. |
+| **WHY** | Close activation gate with backup + operator contracts before any D3 env mutation. |
+| **VALIDATION** | Read-only VPS inspection; gzip + dump trailer; prisma migrate status up to date @ deployed release; governance validators. |
+| **NON_EFFECTS** | D3 not enabled; **`F_D3_T0` unset**; no deploy; no reconciliation with D3 ON; no backfill/replay. |
+| **DECISION_STATUS** | **PRODUCTION_VALIDATED** (preflight read-only + backup) |
+| **EVIDENCE** | `M3_3F_F4_4_CONTROLLED_D3_ACTIVATION_PREFLIGHT_2026-09-28.md` |
+
 ## CL-2026-09-28 — M3.3F F4.3 post-deploy production evidence seal
 
 | Field | Value |
