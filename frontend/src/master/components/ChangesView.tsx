@@ -648,6 +648,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-21T12:00:00.000Z',
   },
   {
+    id: 'eed-rfrf-hybrid-absolute-signal-trust-2026-09-28',
+    version: '4.9.4998',
+    title: 'RFRF — hybrid absolute signal trust authority v2 (pre-merge hardening)',
+    summary: [
+      'Local relative pre/post plateau corroboration (v2); durable hybridAbsoluteSignalTrust provenance on READY refresh.',
+      'READY refresh policy requires current hybrid authority + provenance block; baseline provenance missing vs not-FRESH distinguished.',
+      'Isolated localhost PG gate + recovery/promotion pipeline proofs P1–P7; promotion gate still OFF.',
+      'WOB Event B fixture remains UNKNOWN (absolute-only samples).',
+    ],
+    reason:
+      'Promotion trust must be earned from corroborating evidence, not fuel type, admissibility, or READY alone.',
+    previousBehavior:
+      'resolveRawFuelSignalTrust always returned promotion UNKNOWN without structured corroboration assessment.',
+    details:
+      'raw-fuel-hybrid-absolute-signal-trust.authority.ts (v2); hybridAbsoluteSignalTrust evidence block; isolated rfrf-hybrid-trust-postgres-gate.sh; EED-EV-0100; EED-INV-021',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-28T19:30:00.000Z',
+  },
+  {
     id: 'eed-rfrf-ready-evidence-refresh-2026-09-28',
     version: '4.9.4997',
     title: 'RFRF — READY candidate evidence refresh before promotion',

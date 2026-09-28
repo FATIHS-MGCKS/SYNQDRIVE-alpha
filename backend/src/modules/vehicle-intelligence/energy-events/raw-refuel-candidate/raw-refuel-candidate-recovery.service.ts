@@ -23,11 +23,15 @@ import type { RawRefuelConvergenceApplyResult } from '../raw-fuel-refuel-fallbac
 import { RawRefuelPromotionService } from '../raw-fuel-refuel-fallback/raw-refuel-promotion.service';
 import type { RawRefuelPromotionApplyResult } from '../raw-fuel-refuel-fallback/raw-refuel-promotion.types';
 import { resolveRawFuelCapability } from '../raw-fuel-refuel-fallback/raw-fuel-capability.resolver';
-import { resolveRawFuelSignalTrust } from '../raw-fuel-refuel-fallback/raw-fuel-signal-trust.resolver';
+import { resolveRawFuelSignalTrust, buildRawFuelSignalTrustObservationContext } from '../raw-fuel-refuel-fallback/raw-fuel-signal-trust.resolver';
 import {
   buildReadyEvidenceRefreshMeta,
   mergeReadyEvidenceRefreshIntoEvidenceMeta,
 } from '../raw-fuel-refuel-fallback/raw-refuel-ready-evidence-refresh-metadata';
+import {
+  buildHybridAbsoluteSignalTrustEvidence,
+  mergeHybridAbsoluteSignalTrustEvidence,
+} from '../raw-fuel-refuel-fallback/raw-fuel-hybrid-trust-evidence-metadata';
 import { evaluateReadyCandidateRefreshRequirement } from '../raw-fuel-refuel-fallback/raw-refuel-ready-evidence-refresh.policy';
 import { readBaselineRecencyFromEvidenceMeta } from '../raw-fuel-rise-detector/raw-fuel-pre-plateau-baseline-recency.policy';
 import { RawFuelRefuelFallbackMetricsService } from '../raw-fuel-refuel-fallback/raw-fuel-refuel-fallback-metrics.service';
@@ -604,7 +608,17 @@ export class RawRefuelCandidateRecoveryService {
     this.metrics?.recordCandidateRecoverySameObservationMatched();
     let maturityObservation = match.observation;
     if (maturityObservation.lifecycleState === 'READY_FOR_PERSIST') {
-      maturityObservation = this.enrichObservationForReadyRefresh(maturityObservation, trust);
+      const promotionTrust = resolveRawFuelSignalTrust({
+        samples: fetch.samples,
+        scanWindowStart: window.start,
+        scanWindowEnd: window.end,
+        fuelType: vehicleContext.fuelType,
+        observation: buildRawFuelSignalTrustObservationContext(maturityObservation),
+      });
+      maturityObservation = this.enrichObservationForReadyRefresh(
+        maturityObservation,
+        promotionTrust,
+      );
     }
     const reconcile = await this.candidateService.reconcileExistingCandidateByIdForRecoveryClaim(
       candidate.id,
@@ -1095,7 +1109,18 @@ export class RawRefuelCandidateRecoveryService {
       absoluteSignalTrust: trust.absoluteSignalTrust,
       absoluteDetectionAdmissibility: trust.absoluteDetectionAdmissibility,
       relativeSignalAvailable: trust.relativeSignalAvailable,
+      hybridTrustReasonCode: trust.hybridTrustProvenance.reasonCode,
+      hybridTrustAuthorityVersion: trust.hybridTrustProvenance.authorityVersion,
     });
+    const hybridEvidence = buildHybridAbsoluteSignalTrustEvidence(trust.hybridTrustProvenance, {
+      relativePrePlateauLocal: trust.hybridTrustProvenance.relativePrePlateauLocal,
+      relativePostPlateauLocal: trust.hybridTrustProvenance.relativePostPlateauLocal,
+      absolutePostPlateauLocal: trust.hybridTrustProvenance.absolutePostPlateauLocal,
+    });
+    const withRefresh = mergeReadyEvidenceRefreshIntoEvidenceMeta(
+      (observation.evidenceMeta as Record<string, unknown> | null) ?? null,
+      refreshMeta,
+    );
     return {
       ...observation,
       absoluteSignalTrust: trust.absoluteSignalTrust,
@@ -1104,10 +1129,7 @@ export class RawRefuelCandidateRecoveryService {
         ...(observation.qualityMeta ?? {}),
         absoluteDetectionAdmissibility: trust.absoluteDetectionAdmissibility,
       },
-      evidenceMeta: mergeReadyEvidenceRefreshIntoEvidenceMeta(
-        (observation.evidenceMeta as Record<string, unknown> | null) ?? null,
-        refreshMeta,
-      ),
+      evidenceMeta: mergeHybridAbsoluteSignalTrustEvidence(withRefresh, hybridEvidence),
     };
   }
 
@@ -1254,7 +1276,14 @@ export class RawRefuelCandidateRecoveryService {
     this.metrics?.recordCandidateRecoverySameObservationMatched();
     let observation = match.observation;
     if (options.attachReadyEvidenceRefreshMeta) {
-      observation = this.enrichObservationForReadyRefresh(observation, trust);
+      const promotionTrust = resolveRawFuelSignalTrust({
+        samples: fetch.samples,
+        scanWindowStart: window.start,
+        scanWindowEnd: window.end,
+        fuelType: vehicleContext.fuelType,
+        observation: buildRawFuelSignalTrustObservationContext(observation),
+      });
+      observation = this.enrichObservationForReadyRefresh(observation, promotionTrust);
     }
 
     const reconcile = await this.candidateService.reconcileExistingCandidateByIdForRecoveryClaim(
