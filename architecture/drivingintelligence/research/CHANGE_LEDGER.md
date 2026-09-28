@@ -1147,3 +1147,20 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | Contract v2 amendment (no version bump): `CONTROL_PLANE_DB_NOT_KILLED` on T01–T06,T08–T13; `killPolicy` + `authoritativeWrites` (19); K01–K18 kill races; validator exhaustiveness; 18 new negative cases; CI workflow `s4a-authority-governance.yml` |
 | NON_EFFECTS | No runtime, migration, worker, provider, Production write |
 | Evidence | `evidence/EXP021_C1D10E_KILL_WRITESET_CLOSURE.md` (DI-EVID-EXP021-C1D10E-001) |
+
+### EXP-021 S4A — Dormant execution foundation implementation (2026-09-27)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | S4A CONTROLLED_IMPLEMENTATION from merged authority `DI_V0_S4A_CONTRACT_V2` (PR #1810) |
+| BEFORE | S4 existed as design + machine contract only; no schema, no repository, no S4 tables in repo or Production |
+| CHANGE | Migration `20260927200000_di_v0_s4a_dormant_foundation` (work items, evidence snapshots, pipeline-version registry, DB kill row, tenancy + immutability + S2 scope triggers); library `driving-intelligence/s4a-foundation/` (exact 13-transition fenced repository, no generic setStatus; identities incl. `DI_V0_S4_EXECUTION_IDENTITY_V1`; `clock_timestamp()` lease/fencing/takeover; fail-closed control plane; supersession; atomic fenced S2 persistence); channel-policy V1 family applicability; test-only Postgres bootstrap + npm scripts `test:di:s4a`, `test:di:s4a:postgres` |
+| WHY | Contract v2 requires a DB-enforced, provably race-safe foundation before any S4B/S4C runtime |
+| ALTERNATIVES | Application-only tenancy (rejected: contract requires DB enforcement); advisory-lock kill (rejected: control row `FOR UPDATE` makes kill serialization provable); generic status update (forbidden by contract) |
+| NON_EFFECTS | No discovery, scheduler, cron, BullMQ queue/producer/consumer, worker, Nest provider, endpoint, DIMO call, R1/native acquisition, S1/S2 runtime invocation, flag activation, allowlisting, threshold or calibration; no Production write, migration or deploy. `DI_S4A_RUNTIME_CALL_SITE_COUNT=0` |
+| Validation | 175/175 S4A tests (parity 9, fixtures 98, dormant audit 7, Postgres races R01–R25 + K01–K18 = 51, migration M01–M08 = 10); races stable over 3 reruns; backend tsc/build 0; all architecture validators pass |
+| Gaps | OPEN: DI-GAP-S4A-BOUNDARY-REVERT-SUCCESSOR-001, DI-GAP-S4A-POSTGRES-CI-WIRING-001, DI-GAP-S4A-CONTROL-ROW-SERIALIZATION-001 (P2); contradictions DI-CONTRA-S4A-T13-SUCCESSOR-WRITE-BINDING-001, DI-CONTRA-S4A-CONTAINER-VERSION-NAMING-001, DI-CONTRA-S4A-ON-UPDATE-CASCADE-IMMUTABILITY-001 (P2). All prior P2 gaps preserved |
+| Incident | Running `npm run i18n:check` regenerated the untracked-in-scope working-tree file `frontend/src/i18n/hardcoded-copy-inventory.json` (md5 e68ad5b6… → 4a8de450…); the prior local content was not recoverable. It was never staged or committed. Future runs use `node scripts/i18n-check.mjs --read-only` |
+| Status | PROPOSED — draft PR, not merged; merge + ordinary deploy would apply the migration to Production (S2 empty at 2026-09-27T21:52Z) |
+| Evidence | `evidence/EXP021_S4A_DORMANT_FOUNDATION_IMPLEMENTATION.md` (DI-EVID-EXP021-S4A-IMPL-001) |
+| Decision | DI-DEC-V0-S4A-IMPL-001 |

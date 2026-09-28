@@ -1712,6 +1712,8 @@ model Organization {
   drivingAnalysisRuns                                       DrivingAnalysisRun[]
   diV0ShadowRuns                                            DiV0ShadowRun[]
   diV0ShadowIntervals                                       DiV0ShadowInterval[]
+  diV0S4WorkItems                                           DiV0S4WorkItem[]
+  diV0S4EvidenceSnapshots                                   DiV0S4EvidenceSnapshot[]
   driverAttributions                                        DriverAttribution[]
   drivingDecisionAudits                                     DrivingDecisionAudit[]
   drivingAnalysisStages                                     DrivingAnalysisStage[]
@@ -3062,6 +3064,8 @@ model Vehicle {
   drivingAnalysisRuns                    DrivingAnalysisRun[]
   diV0ShadowRuns                         DiV0ShadowRun[]
   diV0ShadowIntervals                  DiV0ShadowInterval[]
+  diV0S4WorkItems                      DiV0S4WorkItem[]
+  diV0S4EvidenceSnapshots              DiV0S4EvidenceSnapshot[]
   driverAttributions                     DriverAttribution[]
   drivingIntelligenceJobs                DrivingIntelligenceJob[]
 
@@ -10357,6 +10361,8 @@ model VehicleTrip {
   drivingAnalysisRuns                 DrivingAnalysisRun[]
   diV0ShadowRuns                      DiV0ShadowRun[]
   diV0ShadowIntervals                 DiV0ShadowInterval[]
+  diV0S4WorkItems                     DiV0S4WorkItem[]
+  diV0S4EvidenceSnapshots             DiV0S4EvidenceSnapshot[]
   drivingIntelligenceJobs             DrivingIntelligenceJob[]
   driverAttributions                  DriverAttribution[]
   repairs                             TripRepair[]
@@ -11831,8 +11837,10 @@ model DiV0ShadowRun {
   vehicle      Vehicle              @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   trip         VehicleTrip          @relation(fields: [tripId], references: [id], onDelete: Cascade)
   intervals    DiV0ShadowInterval[]
+  s4WorkItems  DiV0S4WorkItem[]
 
   @@unique([organizationId, idempotencyKey])
+  @@unique([id, organizationId, tripId], map: "di_v0_shadow_runs_id_scope_uq")
   @@index([tripId])
   @@index([vehicleId, createdAt])
   @@index([organizationId, createdAt])
@@ -11887,6 +11895,121 @@ model DiV0ShadowInterval {
   @@index([vehicleId, createdAt])
   @@index([organizationId, createdAt])
   @@map("di_v0_shadow_intervals")
+}
+
+/// EXP-021 S4A dormant pipeline-version registry (DI_V0_S4A_CONTRACT_V2). Written only by the
+/// S4A repository; RETIRED->ACTIVE forbidden by DB trigger.
+model DiV0S4PipelineVersion {
+  pipelineVersionKey String    @id @map("pipeline_version_key")
+  manifest           Json      @map("manifest")
+  status             String    @map("status")
+  registeredAt       DateTime  @default(now()) @map("registered_at") @db.Timestamptz(6)
+  retiredAt          DateTime? @map("retired_at") @db.Timestamptz(6)
+  retiredBy          String?   @map("retired_by")
+  retiredReason      String?   @map("retired_reason")
+
+  workItems DiV0S4WorkItem[]
+
+  @@map("di_v0_s4_pipeline_versions")
+}
+
+/// EXP-021 S4A singleton DB kill row (id = 'GLOBAL'). Not seeded: a missing row means KILLED.
+/// Operator SQL runbook is the only writer.
+model DiV0S4Control {
+  id        String   @id @map("id")
+  killState String   @map("kill_state")
+  reason    String   @map("reason")
+  actor     String   @map("actor")
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("di_v0_s4_control")
+}
+
+/// EXP-021 S4A content-addressed evidence snapshot (immutable; UPDATE forbidden by DB trigger).
+model DiV0S4EvidenceSnapshot {
+  id                     String   @id @map("id")
+  organizationId         String   @map("organization_id")
+  vehicleId              String   @map("vehicle_id")
+  tripId                 String   @map("trip_id")
+  snapshotHash           String   @map("snapshot_hash")
+  containerVersion       String   @map("container_version")
+  boundaryFingerprint    String   @map("boundary_fingerprint")
+  acquisitionWindowStart DateTime @map("acquisition_window_start") @db.Timestamptz(6)
+  acquisitionWindowEnd   DateTime @map("acquisition_window_end") @db.Timestamptz(6)
+  channelManifest        Json     @map("channel_manifest")
+  payloadGzip            Bytes    @map("payload_gzip")
+  payloadBytes           Int      @map("payload_bytes")
+  uncompressedBytes      Int      @map("uncompressed_bytes")
+  retentionUntil         DateTime @map("retention_until") @db.Timestamptz(6)
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade, map: "di_v0_s4_es_organization_id_fkey")
+  vehicle         Vehicle          @relation(fields: [vehicleId], references: [id], onDelete: Cascade, map: "di_v0_s4_es_vehicle_id_fkey")
+  trip            VehicleTrip      @relation(fields: [tripId], references: [id], onDelete: Cascade, map: "di_v0_s4_es_trip_id_fkey")
+  pinnedWorkItems DiV0S4WorkItem[] @relation("DiV0S4WorkItemPinnedSnapshot")
+  replayWorkItems DiV0S4WorkItem[] @relation("DiV0S4WorkItemReplaySnapshot")
+
+  @@unique([organizationId, snapshotHash], map: "di_v0_s4_es_org_hash_uq")
+  @@unique([organizationId, tripId, snapshotHash], map: "di_v0_s4_es_scope_hash_uq")
+  @@map("di_v0_s4_evidence_snapshots")
+}
+
+/// EXP-021 S4A work item (DI_V0_S4A_CONTRACT_V2). Every status change goes through a
+/// transition-specific S4A repository method; the partial unique index
+/// di_v0_s4_wi_active_primary_uq, CHECK constraints and guard triggers live in the migration only.
+model DiV0S4WorkItem {
+  id                       String    @id @map("id")
+  organizationId           String    @map("organization_id")
+  vehicleId                String    @map("vehicle_id")
+  tripId                   String    @map("trip_id")
+  sourceFamily             String    @map("source_family")
+  runPurpose               String    @map("run_purpose")
+  purposeDiscriminator     String    @map("purpose_discriminator")
+  replaySourceSnapshotHash String?   @map("replay_source_snapshot_hash")
+  reacquisitionRequestId   String?   @map("reacquisition_request_id")
+  boundaryFingerprint      String    @map("boundary_fingerprint")
+  pipelineVersionKey       String    @map("pipeline_version_key")
+  pipelineVersionManifest  Json      @map("pipeline_version_manifest")
+  status                   String    @map("status")
+  leaseEpoch               BigInt    @default(0) @map("lease_epoch")
+  leaseOwner               String?   @map("lease_owner")
+  leaseExpiresAt           DateTime? @map("lease_expires_at") @db.Timestamptz(6)
+  leaseAcquiredAt          DateTime? @map("lease_acquired_at") @db.Timestamptz(6)
+  lastHeartbeatAt          DateTime? @map("last_heartbeat_at") @db.Timestamptz(6)
+  attemptCount             Int       @default(0) @map("attempt_count")
+  nextAttemptAt            DateTime? @map("next_attempt_at") @db.Timestamptz(6)
+  settlementAnchorAt       DateTime  @map("settlement_anchor_at") @db.Timestamptz(6)
+  eligibleAt               DateTime  @map("eligible_at") @db.Timestamptz(6)
+  pinnedSnapshotHash       String?   @map("pinned_snapshot_hash")
+  pinnedAt                 DateTime? @map("pinned_at") @db.Timestamptz(6)
+  pinnedEpoch              BigInt?   @map("pinned_epoch")
+  combinedInputIdentity    String?   @map("combined_input_identity")
+  shadowRunId              String?   @map("shadow_run_id")
+  executionIdentity        String?   @map("execution_identity")
+  failureClass             String?   @map("failure_class")
+  failureReason            String?   @map("failure_reason")
+  skipReason               String?   @map("skip_reason")
+  supersededReason         String?   @map("superseded_reason")
+  supersededByWorkItemId   String?   @map("superseded_by_work_item_id")
+  supersededAt             DateTime? @map("superseded_at") @db.Timestamptz(6)
+  completedAt              DateTime? @map("completed_at") @db.Timestamptz(6)
+  createdAt                DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  organization    Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade, map: "di_v0_s4_wi_organization_id_fkey")
+  vehicle         Vehicle                 @relation(fields: [vehicleId], references: [id], onDelete: Cascade, map: "di_v0_s4_wi_vehicle_id_fkey")
+  trip            VehicleTrip             @relation(fields: [tripId], references: [id], onDelete: Cascade, map: "di_v0_s4_wi_trip_id_fkey")
+  pipelineVersion DiV0S4PipelineVersion   @relation(fields: [pipelineVersionKey], references: [pipelineVersionKey], onDelete: Restrict, onUpdate: Restrict, map: "di_v0_s4_wi_pipeline_version_fkey")
+  shadowRun       DiV0ShadowRun?          @relation(fields: [shadowRunId, organizationId, tripId], references: [id, organizationId, tripId], onDelete: Cascade, onUpdate: NoAction, map: "di_v0_s4_wi_shadow_run_scope_fkey")
+  pinnedSnapshot  DiV0S4EvidenceSnapshot? @relation("DiV0S4WorkItemPinnedSnapshot", fields: [organizationId, tripId, pinnedSnapshotHash], references: [organizationId, tripId, snapshotHash], onDelete: Cascade, onUpdate: NoAction, map: "di_v0_s4_wi_pinned_snapshot_scope_fkey")
+  replaySnapshot  DiV0S4EvidenceSnapshot? @relation("DiV0S4WorkItemReplaySnapshot", fields: [organizationId, tripId, replaySourceSnapshotHash], references: [organizationId, tripId, snapshotHash], onDelete: Cascade, onUpdate: NoAction, map: "di_v0_s4_wi_replay_snapshot_scope_fkey")
+  supersededBy    DiV0S4WorkItem?         @relation("DiV0S4WorkItemSupersession", fields: [supersededByWorkItemId, organizationId, tripId], references: [id, organizationId, tripId], onDelete: Cascade, onUpdate: NoAction, map: "di_v0_s4_wi_superseded_by_scope_fkey")
+  supersedes      DiV0S4WorkItem[]        @relation("DiV0S4WorkItemSupersession")
+
+  @@unique([organizationId, tripId, boundaryFingerprint, pipelineVersionKey, runPurpose, purposeDiscriminator], map: "di_v0_s4_wi_logical_key_uq")
+  @@unique([id, organizationId, tripId], map: "di_v0_s4_wi_id_scope_uq")
+  @@index([organizationId, tripId], map: "di_v0_s4_wi_org_trip_idx")
+  @@map("di_v0_s4_work_items")
 }
 
 /// Materialized driver attribution snapshot per trip (Driving Intelligence V2 P54).
