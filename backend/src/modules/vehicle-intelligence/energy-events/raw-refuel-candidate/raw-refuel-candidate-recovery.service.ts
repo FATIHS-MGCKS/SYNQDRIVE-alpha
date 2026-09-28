@@ -31,6 +31,7 @@ import {
 import { evaluateReadyCandidateRefreshRequirement } from '../raw-fuel-refuel-fallback/raw-refuel-ready-evidence-refresh.policy';
 import { readBaselineRecencyFromEvidenceMeta } from '../raw-fuel-rise-detector/raw-fuel-pre-plateau-baseline-recency.policy';
 import { RawFuelRefuelFallbackMetricsService } from '../raw-fuel-refuel-fallback/raw-fuel-refuel-fallback-metrics.service';
+import { readPersistedAbsoluteDetectionAdmissibility } from '../raw-fuel-refuel-fallback/raw-refuel-persisted-detection-admissibility';
 import type { RawFuelAbsoluteDetectionAdmissibility } from '../raw-fuel-refuel-fallback/raw-fuel-refuel-fallback.types';
 import { isRawRefuelCandidateTerminal } from './raw-refuel-candidate-lifecycle';
 import { classifyRawRefuelCandidateOverlap } from './raw-refuel-candidate.matcher';
@@ -369,10 +370,9 @@ export class RawRefuelCandidateRecoveryService {
       }
     }
 
-    const readiness = evaluateRawRefuelCandidateReadiness(activeCandidate, {
-      capability: vehicleContext.capability,
-      absoluteDetectionAdmissibility: vehicleContext.absoluteDetectionAdmissibility,
-    });
+    const authorityContext = buildRecoveryAuthorityContext(activeCandidate, vehicleContext);
+
+    const readiness = evaluateRawRefuelCandidateReadiness(activeCandidate, authorityContext);
     if (!readiness.ready) {
       const applied = await this.finishRecovery(candidate.id, now, claim, 'NO_NEW_EVIDENCE');
       const stale = this.staleIfNotApplied(applied, candidate.id, dimoFetchPerformed);
@@ -387,10 +387,7 @@ export class RawRefuelCandidateRecoveryService {
 
     const convergence = await this.convergenceService.evaluateAndApplyConvergenceById(
       activeCandidate.id,
-      {
-        capability: vehicleContext.capability,
-        absoluteDetectionAdmissibility: vehicleContext.absoluteDetectionAdmissibility,
-      },
+      authorityContext,
       env,
       this.recoveryMutationContext(claim),
     );
@@ -468,10 +465,7 @@ export class RawRefuelCandidateRecoveryService {
       now,
       env,
       claim,
-      {
-        capability: vehicleContext.capability,
-        absoluteDetectionAdmissibility: vehicleContext.absoluteDetectionAdmissibility,
-      },
+      { capability: vehicleContext.capability },
       convergence,
       dimoFetchPerformed,
     );
@@ -635,19 +629,15 @@ export class RawRefuelCandidateRecoveryService {
 
     this.metrics?.recordCandidateRecoveryEvidenceMatured();
 
-    const readiness = evaluateRawRefuelCandidateReadiness(refreshed, {
-      capability: vehicleContext.capability,
-      absoluteDetectionAdmissibility: vehicleContext.absoluteDetectionAdmissibility,
-    });
+    const maturityAuthority = buildRecoveryAuthorityContext(refreshed, vehicleContext);
+
+    const readiness = evaluateRawRefuelCandidateReadiness(refreshed, maturityAuthority);
 
     if (readiness.ready && refreshed.lifecycleState === 'READY_FOR_PERSIST') {
       this.metrics?.recordCandidateRecoveryBecameReady();
       const convergence = await this.convergenceService.evaluateAndApplyConvergenceById(
         refreshed.id,
-        {
-          capability: vehicleContext.capability,
-          absoluteDetectionAdmissibility: vehicleContext.absoluteDetectionAdmissibility,
-        },
+        maturityAuthority,
         env,
         this.recoveryMutationContext(claim),
       );
@@ -696,10 +686,7 @@ export class RawRefuelCandidateRecoveryService {
           now,
           env,
           claim,
-          {
-            capability: vehicleContext.capability,
-            absoluteDetectionAdmissibility: vehicleContext.absoluteDetectionAdmissibility,
-          },
+          { capability: vehicleContext.capability },
           convergence,
           true,
         );
@@ -729,10 +716,7 @@ export class RawRefuelCandidateRecoveryService {
         now,
         env,
         claim,
-        {
-          capability: vehicleContext.capability,
-          absoluteDetectionAdmissibility: vehicleContext.absoluteDetectionAdmissibility,
-        },
+        { capability: vehicleContext.capability },
         convergence,
         true,
       );
@@ -764,7 +748,6 @@ export class RawRefuelCandidateRecoveryService {
     claim: RawRefuelCandidateRecoveryClaimIdentity,
     vehicleContext: {
       capability: 'FUEL_CAPABLE' | 'NON_FUEL_CAPABLE' | 'UNKNOWN';
-      absoluteDetectionAdmissibility: RawFuelAbsoluteDetectionAdmissibility;
     },
     convergence: RawRefuelConvergenceApplyResult,
     dimoFetchPerformed: boolean,
@@ -805,11 +788,13 @@ export class RawRefuelCandidateRecoveryService {
       };
     }
 
+    const promotionAuthority = buildRecoveryAuthorityContext(candidate, vehicleContext);
+
     const promotion = await this.promotionService.evaluateAndApplyPromotionById(
       candidate.id,
       {
-        capability: vehicleContext.capability,
-        absoluteDetectionAdmissibility: vehicleContext.absoluteDetectionAdmissibility,
+        capability: promotionAuthority.capability,
+        absoluteDetectionAdmissibility: promotionAuthority.absoluteDetectionAdmissibility,
         absoluteSignalTrust: candidate.absoluteSignalTrust,
       },
       env,
@@ -1130,7 +1115,6 @@ export class RawRefuelCandidateRecoveryService {
       tokenId: number;
       fuelType: FuelType;
       capability: 'FUEL_CAPABLE' | 'NON_FUEL_CAPABLE' | 'UNKNOWN';
-      absoluteDetectionAdmissibility: RawFuelAbsoluteDetectionAdmissibility;
     },
     options: { attachReadyEvidenceRefreshMeta: boolean },
   ): Promise<
@@ -1308,7 +1292,6 @@ export class RawRefuelCandidateRecoveryService {
         tokenId: number;
         fuelType: FuelType;
         capability: 'FUEL_CAPABLE' | 'NON_FUEL_CAPABLE' | 'UNKNOWN';
-        absoluteDetectionAdmissibility: RawFuelAbsoluteDetectionAdmissibility;
       }
     | { ok: false; outcome: RawRefuelCandidateRecoveryOutcome; detail?: string }
   > {
@@ -1336,9 +1319,23 @@ export class RawRefuelCandidateRecoveryService {
       tokenId,
       fuelType: vehicle.fuelType,
       capability,
-      absoluteDetectionAdmissibility: 'ADMISSIBLE',
     };
   }
+}
+
+function buildRecoveryAuthorityContext(
+  candidate: RawRefuelCandidate,
+  vehicleContext: {
+    capability: 'FUEL_CAPABLE' | 'NON_FUEL_CAPABLE' | 'UNKNOWN';
+  },
+): {
+  capability: 'FUEL_CAPABLE' | 'NON_FUEL_CAPABLE' | 'UNKNOWN';
+  absoluteDetectionAdmissibility: RawFuelAbsoluteDetectionAdmissibility;
+} {
+  return {
+    capability: vehicleContext.capability,
+    absoluteDetectionAdmissibility: readPersistedAbsoluteDetectionAdmissibility(candidate),
+  };
 }
 
 function selectRecoverySameObservation(

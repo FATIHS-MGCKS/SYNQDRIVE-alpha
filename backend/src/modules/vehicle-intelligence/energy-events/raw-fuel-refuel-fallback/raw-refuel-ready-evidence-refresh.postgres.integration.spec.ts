@@ -16,7 +16,13 @@ import {
   buildKsMx20240916StaleBaselineCandidate,
   buildWob20260927EventBCandidate,
   buildWob20260927EventBSamples,
+  buildWob20260927EventBSettlingSamples,
 } from './testing/wob-2026-09-19-stretched-end.fixture';
+import {
+  RFRF_RISE_DETECTION_VERSION,
+  RFRF_RISE_DETECTOR_VERSION,
+} from '../raw-fuel-rise-detector/raw-fuel-rise-detector.config';
+import { readPersistedAbsoluteDetectionAdmissibility } from './raw-refuel-persisted-detection-admissibility';
 import {
   buildKsMx20260916StalePre10Samples,
   buildKsMx20260916StalePre17Samples,
@@ -122,6 +128,7 @@ function buildRecoveryStack(
   prisma: PrismaClient,
   samples: () => ReturnType<typeof buildWob20260927EventBSamples>,
   recoveryNow: () => Date,
+  spy?: { convergenceCalls: { count: number }; promotionCalls: { count: number } },
 ) {
   let fetchCount = 0;
   const candidateService = RawRefuelCandidateService.withFixedClock(
@@ -130,6 +137,18 @@ function buildRecoveryStack(
   );
   const convergence = new RawRefuelConvergenceService(prisma as unknown as PrismaService);
   const promotion = new RawRefuelPromotionService(prisma as unknown as PrismaService);
+  if (spy) {
+    const baseConvergence = convergence.evaluateAndApplyConvergenceById.bind(convergence);
+    convergence.evaluateAndApplyConvergenceById = async (...args) => {
+      spy.convergenceCalls.count += 1;
+      return baseConvergence(...args);
+    };
+    const basePromotion = promotion.evaluateAndApplyPromotionById.bind(promotion);
+    promotion.evaluateAndApplyPromotionById = async (...args) => {
+      spy.promotionCalls.count += 1;
+      return basePromotion(...args);
+    };
+  }
   const recovery = new RawRefuelCandidateRecoveryService(
     prisma as unknown as PrismaService,
     candidateService,
@@ -229,6 +248,7 @@ async function seedLegacyEventBReady(
           where: { id: candidate.id },
         });
         expect(readBaselineRecencyFromEvidenceMeta(after1.evidenceMeta)).toBe('FRESH');
+        expect(readPersistedAbsoluteDetectionAdmissibility(after1)).toBe('ADMISSIBLE');
         expect(after1.absoluteSignalTrust).toBe('UNKNOWN');
         expect(
           await prisma.vehicleEnergyEvent.count({
@@ -321,6 +341,105 @@ async function seedLegacyEventBReady(
       const obs = detection.candidates[0];
       const { selectRecoverySameObservation } = require('../raw-refuel-candidate/raw-refuel-candidate-recovery.service') as typeof import('../raw-refuel-candidate/raw-refuel-candidate-recovery.service');
       expect(selectRecoverySameObservation(candidate, [obs, obs]).kind).toBe('AMBIGUOUS');
+    });
+
+    it('R7 — READY refresh regresses to SETTLING without convergence or promotion', async () => {
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle, dimoVehicleId } = await seedOrgVehicle(prisma, suffix);
+      const now = new Date('2026-09-28T02:45:00.000Z');
+      const spy = {
+        convergenceCalls: { count: 0 },
+        promotionCalls: { count: 0 },
+      };
+      try {
+        const candidate = await seedLegacyEventBReady(prisma, org.id, vehicle.id);
+        const settlingSamples = buildWob20260927EventBSettlingSamples();
+        const windowStart = candidate.scanWindowStart!;
+        const windowEnd = candidate.scanWindowEnd!;
+        const trust = resolveRawFuelSignalTrust({
+          samples: settlingSamples,
+          scanWindowStart: windowStart,
+          scanWindowEnd: windowEnd,
+          fuelType: FuelType.GASOLINE,
+        });
+        const detection = detectRawFuelRisesForPersistedSignalChannel(
+          {
+            context: buildDetectorPhysicsContext({
+              organizationId: org.id,
+              vehicleId: vehicle.id,
+              scanWindowStart: windowStart,
+              scanWindowEnd: windowEnd,
+              absoluteSignalTrust: trust.absoluteSignalTrust,
+              absoluteDetectionAdmissibility: trust.absoluteDetectionAdmissibility,
+              relativeSignalAvailable: trust.relativeSignalAvailable,
+            }),
+            samples: settlingSamples,
+          },
+          candidate.signalChannel,
+        );
+        expect(detection.candidates[0]?.lifecycleState).toBe('SETTLING');
+
+        const { recovery, getFetchCount } = buildRecoveryStack(
+          prisma,
+          () => settlingSamples,
+          () => now,
+          spy,
+        );
+        const result = await recovery.recoverCandidateById(candidate.id, now);
+        expect(getFetchCount()).toBe(1);
+        expect(result.dimoFetchPerformed).toBe(true);
+        expect(result.detail).toBe('refresh_lifecycle_SETTLING');
+        const row = await prisma.rawRefuelCandidate.findUniqueOrThrow({
+          where: { id: candidate.id },
+        });
+        expect(row.lifecycleState).toBe('SETTLING');
+        expect(spy.convergenceCalls.count).toBe(0);
+        expect(spy.promotionCalls.count).toBe(0);
+        expect(
+          await prisma.vehicleEnergyEvent.count({
+            where: { vehicleId: vehicle.id, detectionSource: 'SYNQDRIVE_RAW_FUEL_FALLBACK' },
+          }),
+        ).toBe(0);
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id, dimoVehicleId);
+      }
+    });
+
+    it('H — legacy detectorVersion refreshes once then REFRESH_CURRENT without second fetch', async () => {
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle, dimoVehicleId } = await seedOrgVehicle(prisma, suffix);
+      const clockRef = { now: new Date('2026-09-28T06:00:00.000Z') };
+      try {
+        const legacy = buildWob20260927EventBCandidate({
+          organizationId: org.id,
+          vehicleId: vehicle.id,
+          id: randomUUID(),
+          detectorVersion: 'legacy-detector-v0',
+          detectionVersion: RFRF_RISE_DETECTION_VERSION,
+          evidenceMeta: {},
+        });
+        await prisma.rawRefuelCandidate.create({ data: legacy as never });
+        const { recovery, getFetchCount } = buildRecoveryStack(
+          prisma,
+          buildWob20260927EventBSamples,
+          () => clockRef.now,
+        );
+        const run1 = await recovery.recoverCandidateById(legacy.id, clockRef.now);
+        expect(run1.dimoFetchPerformed).toBe(true);
+        expect(getFetchCount()).toBe(1);
+        const after1 = await prisma.rawRefuelCandidate.findUniqueOrThrow({
+          where: { id: legacy.id },
+        });
+        expect(after1.detectorVersion).toBe(RFRF_RISE_DETECTOR_VERSION);
+        expect(evaluateReadyCandidateRefreshRequirement(after1).status).toBe('REFRESH_CURRENT');
+
+        clockRef.now = new Date(clockRef.now.getTime() + 60_000);
+        const run2 = await recovery.recoverCandidateById(legacy.id, clockRef.now);
+        expect(run2.dimoFetchPerformed).toBe(false);
+        expect(getFetchCount()).toBe(1);
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id, dimoVehicleId);
+      }
     });
 
     it('R8 — stale lease prevents refresh mutation', async () => {

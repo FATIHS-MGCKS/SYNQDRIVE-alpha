@@ -141,6 +141,19 @@ export function buildWob20260927EventBSamples(): RawFuelSignalSample[] {
   return [...pre, ...rise, ...post];
 }
 
+/** Same physical rise as Event B but insufficient post plateau → SETTLING lifecycle. */
+export function buildWob20260927EventBSettlingSamples(): RawFuelSignalSample[] {
+  const pre = stablePlateauSamples('2026-09-27T21:30:46.923Z', 4, 3, 50);
+  const rise = [
+    sampleAt('2026-09-27T21:34:16.923Z', 6),
+    sampleAt('2026-09-27T21:35:30.000Z', 10),
+    sampleAt('2026-09-27T21:36:46.923Z', 13),
+  ];
+  /** Three post samples with sub-min persistence (2×45s < 2min) → SETTLING on reconcile. */
+  const post = stablePlateauSamples('2026-09-27T21:37:30.000Z', 13, 3, 45);
+  return [...pre, ...rise, ...post];
+}
+
 /** KS MX 2024 stale-baseline READY fragment (separate defect — must not converge here). */
 export function buildKsMx20240916StaleBaselineCandidate(
   overrides: Partial<RawRefuelCandidate> = {},

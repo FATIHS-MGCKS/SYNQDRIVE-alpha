@@ -83,6 +83,15 @@ describe('evaluateRawRefuelCandidateReadiness', () => {
     expect(result.reasonCode).toBe('DETECTION_NOT_ADMISSIBLE');
   });
 
+  it('persisted UNKNOWN admissibility => not ready', () => {
+    const result = evaluateRawRefuelCandidateReadiness(
+      baseCandidate({ qualityMeta: { absoluteDetectionAdmissibility: 'UNKNOWN' } }),
+      { capability: 'FUEL_CAPABLE' },
+    );
+    expect(result.ready).toBe(false);
+    expect(result.detail).toBe('detection_admissibility_unknown');
+  });
+
   it('identical replay is deterministic', () => {
     const candidate = baseCandidate();
     const a = evaluateRawRefuelCandidateReadiness(candidate);

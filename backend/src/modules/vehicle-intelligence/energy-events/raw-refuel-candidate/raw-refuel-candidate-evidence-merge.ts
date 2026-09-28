@@ -8,6 +8,7 @@ export interface MergedRawRefuelCandidateEvidence {
   organizationId: string;
   vehicleId: string;
   detectionVersion: string;
+  detectorVersion: string;
   signalChannel: RawRefuelCandidateEvidenceSlice['signalChannel'];
   physicalEvidenceStart: Date | null;
   physicalEvidenceEnd: Date | null;
@@ -39,6 +40,7 @@ export function candidateRowToEvidenceSlice(row: RawRefuelCandidate): MergedRawR
     organizationId: row.organizationId,
     vehicleId: row.vehicleId,
     detectionVersion: row.detectionVersion,
+    detectorVersion: row.detectorVersion,
     signalChannel: row.signalChannel,
     physicalEvidenceStart: row.physicalEvidenceStart,
     physicalEvidenceEnd: row.physicalEvidenceEnd,
@@ -76,6 +78,7 @@ export function mergeCandidateEvidence(
     organizationId,
     vehicleId: observation.vehicleId,
     detectionVersion: observation.detectionVersion,
+    detectorVersion: observation.detectorVersion,
     signalChannel: observation.signalChannel,
     physicalEvidenceStart: minDate(base?.physicalEvidenceStart ?? null, observation.physicalEvidenceStart),
     physicalEvidenceEnd: maxDate(base?.physicalEvidenceEnd ?? null, observation.physicalEvidenceEnd),

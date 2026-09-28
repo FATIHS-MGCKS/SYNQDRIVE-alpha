@@ -192,7 +192,9 @@ export class RawRefuelCandidateService {
       existing.evidenceRevisionFingerprint !== evidenceRevisionFingerprint ||
       existing.lifecycleState !== nextLifecycle ||
       existing.rejectionReason !== nextRejectionReason ||
-      existing.candidateIdentityKey !== candidateIdentityKey;
+      existing.candidateIdentityKey !== candidateIdentityKey ||
+      existing.detectionVersion !== mergedEvidence.detectionVersion ||
+      existing.detectorVersion !== mergedEvidence.detectorVersion;
 
     if (!evidenceChanged && nextLastObservedAt.getTime() === existing.lastObservedAt.getTime()) {
       return toResolveResult(existing, { created: false, updated: false });

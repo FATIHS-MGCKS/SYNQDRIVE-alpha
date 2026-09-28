@@ -229,6 +229,13 @@ function findLocalPostPlateauAfterRise(
           samples: window,
         };
       }
+      /** Provisional post plateau — classifyLifecycle may hold SETTLING until persistence matures. */
+      return {
+        startIdx: i,
+        endIdx: i + window.length - 1,
+        median: center,
+        samples: window,
+      };
     }
   }
   return null;

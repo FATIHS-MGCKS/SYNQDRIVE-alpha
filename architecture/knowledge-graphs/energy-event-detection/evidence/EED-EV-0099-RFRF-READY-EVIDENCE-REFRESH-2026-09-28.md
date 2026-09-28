@@ -15,11 +15,12 @@ Legacy `READY_FOR_PERSIST` rows could enter `recoverReadyCandidate()` and procee
 - READY recovery ordering: **refresh → readiness → convergence → promotion**; bounded `computeRawRefuelCandidateRecoveryWindow`; same-observation reconcile only (no second candidate insert).
 - Idempotent provider calls: second recovery pass with current refresh metadata does **not** refetch solely because trust remains UNKNOWN.
 - Future trust bump: increment `RFRF_SIGNAL_TRUST_RESOLVER_VERSION` → prior READY refresh proofs become `REFRESH_REQUIRED`.
+- **Pre-merge hardening (PR #1828):** recovery readiness/convergence/promotion use **persisted** `qualityMeta.absoluteDetectionAdmissibility` (no fuel-capability ADMISSIBLE synthesis); evidence reconcile persists current `detectorVersion`/`detectionVersion`; fingerprint includes `detectorVersion`; PG proof for READY→SETTLING regression without convergence/promotion.
 
 ## Validation
 
-- Unit: `raw-refuel-ready-evidence-refresh.policy.spec.ts`
-- Postgres (Stage-4 CI): `rfrf-ready-evidence-refresh-postgres-gate.sh` → `raw-refuel-ready-evidence-refresh.postgres.integration.spec.ts` (R1–R12 matrix subset + Event B replay fixture)
+- Unit: `raw-refuel-ready-evidence-refresh.policy.spec.ts`, `raw-refuel-ready-recovery-admissibility.spec.ts`
+- Postgres (Stage-4 CI): `rfrf-ready-evidence-refresh-postgres-gate.sh` → `raw-refuel-ready-evidence-refresh.postgres.integration.spec.ts` (R1–R12 + legacy detector idempotency + R7 SETTLING)
 - Production read-only anchor: WOB Event B candidate `96cf018d-50fa-4bc5-9fba-e676c08c4eef` (READY, 4→13 L, trust UNKNOWN, baseline recency missing in `evidenceMeta`)
 
 ## Non-effects

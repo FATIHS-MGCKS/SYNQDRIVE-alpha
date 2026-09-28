@@ -28,6 +28,7 @@ describe('raw-refuel-candidate-evidence-fingerprint nested canonicalization', ()
       organizationId: base.organizationId,
       vehicleId: base.vehicleId,
       detectionVersion: base.detectionVersion,
+      detectorVersion: base.detectorVersion,
       signalChannel: base.signalChannel,
       riseOnsetAt: base.riseOnsetAt,
       preFuelAbsoluteLiters: base.preFuelAbsoluteLiters,
@@ -44,6 +45,7 @@ describe('raw-refuel-candidate-evidence-fingerprint nested canonicalization', ()
       organizationId: base.organizationId,
       vehicleId: base.vehicleId,
       detectionVersion: base.detectionVersion,
+      detectorVersion: base.detectorVersion,
       signalChannel: base.signalChannel,
       riseOnsetAt: base.riseOnsetAt,
       preFuelAbsoluteLiters: base.preFuelAbsoluteLiters,
@@ -61,6 +63,7 @@ describe('raw-refuel-candidate-evidence-merge fingerprint parity', () => {
       organizationId: 'org-1',
       vehicleId: 'veh-1',
       detectionVersion: 'rfrf-v1',
+      detectorVersion: 'rfrf-rise-detector-v1',
       signalChannel: 'ABSOLUTE_LITERS',
       physicalEvidenceStart: new Date('2026-09-06T09:28:30.000Z'),
       physicalEvidenceEnd: new Date('2026-09-06T09:43:00.000Z'),
@@ -100,10 +103,26 @@ describe('raw-refuel-candidate-evidence-merge fingerprint parity', () => {
 
     const persisted = {
       ...existing,
-      physicalEvidenceStart: merged.physicalEvidenceStart,
-      riseOnsetAt: merged.riseOnsetAt,
-    };
+      ...merged,
+    } as RawRefuelCandidate;
     const fingerprint = buildEvidenceRevisionFingerprint(merged);
     expect(fingerprint).toBe(buildEvidenceRevisionFingerprint(candidateRowToEvidenceSlice(persisted)));
+  });
+
+  it('changes fingerprint when detectorVersion changes', () => {
+    const base = buildTestObservation({ organizationId: 'org-1', vehicleId: 'veh-1' });
+    const legacy = {
+      organizationId: base.organizationId,
+      vehicleId: base.vehicleId,
+      detectionVersion: base.detectionVersion,
+      detectorVersion: 'legacy-detector-v0',
+      signalChannel: base.signalChannel,
+      riseOnsetAt: base.riseOnsetAt,
+      preFuelAbsoluteLiters: base.preFuelAbsoluteLiters,
+    };
+    const current = { ...legacy, detectorVersion: base.detectorVersion };
+    expect(buildEvidenceRevisionFingerprint(legacy)).not.toBe(
+      buildEvidenceRevisionFingerprint(current),
+    );
   });
 });
