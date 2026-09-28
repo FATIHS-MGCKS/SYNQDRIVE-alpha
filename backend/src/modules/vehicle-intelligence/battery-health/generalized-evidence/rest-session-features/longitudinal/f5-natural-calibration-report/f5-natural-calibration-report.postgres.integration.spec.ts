@@ -22,8 +22,8 @@ const integrationEnabled = process.env.BATTERY_F5_NATURAL_CALIBRATION_REPORT_INT
   it('enforces transaction_read_only inside report transaction', async () => {
     await prisma.$transaction(async (tx) => {
       await assertTransactionReadOnly(tx as never);
-      const rows = await tx.$queryRaw<{ setting: string }[]>`SHOW transaction_read_only`;
-      expect(rows[0]?.setting).toBe('on');
+      const rows = await tx.$queryRaw<{ transaction_read_only: string }[]>`SHOW transaction_read_only`;
+      expect(rows[0]?.transaction_read_only).toBe('on');
     });
   });
 

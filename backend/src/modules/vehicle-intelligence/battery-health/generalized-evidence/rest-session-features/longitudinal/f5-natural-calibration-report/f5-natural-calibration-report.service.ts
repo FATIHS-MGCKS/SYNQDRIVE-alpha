@@ -59,10 +59,10 @@ type ReadOnlyTx = Omit<
 
 export async function assertTransactionReadOnly(tx: ReadOnlyTx): Promise<void> {
   await tx.$executeRawUnsafe('SET TRANSACTION READ ONLY');
-  const rows = await tx.$queryRaw<{ setting: string }[]>`
+  const rows = await tx.$queryRaw<{ transaction_read_only: string }[]>`
     SHOW transaction_read_only
   `;
-  const value = rows[0]?.setting?.toLowerCase();
+  const value = rows[0]?.transaction_read_only?.toLowerCase();
   if (value !== 'on') {
     throw new Error(`F5 read-only guard failed: transaction_read_only=${value ?? 'unknown'}`);
   }
