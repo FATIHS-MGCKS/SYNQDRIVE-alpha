@@ -2,18 +2,6 @@ name: S4A PostgreSQL integration
 
 on:
   pull_request:
-    paths:
-      - 'backend/src/modules/vehicle-intelligence/driving-intelligence/s4a-foundation/**'
-      - 'backend/src/modules/vehicle-intelligence/driving-intelligence/shadow-persistence/**'
-      - 'backend/scripts/test/di-v0-s4a-*.sh'
-      - 'backend/scripts/test/prisma-migrate-deploy-resilient.sh'
-      - 'backend/prisma/migrations/20260927200000_di_v0_s4a_dormant_foundation/**'
-      - 'backend/prisma/schema.prisma'
-      - 'backend/package.json'
-      - 'backend/package-lock.json'
-      - 'architecture/drivingintelligence/design/s4a/**'
-      - 'architecture/drivingintelligence/scripts/validate-s4a-contract.sh'
-      - '.github/workflows/s4a-postgres-integration.yml'
   push:
     branches:
       - main
@@ -45,9 +33,83 @@ env:
   DI_V0_S4A_POSTGRES_REQUIRED: '1'
 
 jobs:
-  s4a-postgres-integration:
-    name: S4A PostgreSQL integration
+  detect-s4a-changes:
+    name: Detect S4A-relevant changes
     runs-on: ubuntu-latest
+    outputs:
+      run_s4a: ${{ steps.detect.outputs.run_s4a }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: detect
+        name: Detect whether S4A PostgreSQL suite should run
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          is_s4a_relevant_path() {
+            local f="$1"
+            case "$f" in
+              backend/src/modules/vehicle-intelligence/driving-intelligence/s4a-foundation/*) return 0 ;;
+              backend/src/modules/vehicle-intelligence/driving-intelligence/shadow-persistence/*) return 0 ;;
+              backend/scripts/test/di-v0-s4a-*) return 0 ;;
+              backend/scripts/test/prisma-migrate-deploy-resilient.sh) return 0 ;;
+              backend/prisma/migrations/20260927200000_di_v0_s4a_dormant_foundation/*) return 0 ;;
+              backend/prisma/schema.prisma) return 0 ;;
+              backend/package.json) return 0 ;;
+              backend/package-lock.json) return 0 ;;
+              architecture/drivingintelligence/design/s4a/*) return 0 ;;
+              architecture/drivingintelligence/scripts/validate-s4a-contract.sh) return 0 ;;
+              .github/workflows/s4a-postgres-integration.yml) return 0 ;;
+              *) return 1 ;;
+            esac
+          }
+
+          if [[ "$EVENT_NAME" == "workflow_dispatch" || "$EVENT_NAME" == "push" ]]; then
+            echo "S4A_RELEVANT_CHANGE=true"
+            echo "run_s4a=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ "$EVENT_NAME" != "pull_request" ]]; then
+            echo "Unsupported event for change detection: $EVENT_NAME" >&2
+            exit 1
+          fi
+
+          if [[ -z "$PR_BASE_SHA" || -z "$PR_HEAD_SHA" ]]; then
+            echo "Missing pull_request base/head SHA" >&2
+            exit 1
+          fi
+
+          mapfile -t changed < <(git diff --name-only "$PR_BASE_SHA" "$PR_HEAD_SHA")
+          relevant=false
+          for path in "${changed[@]}"; do
+            if is_s4a_relevant_path "$path"; then
+              relevant=true
+              echo "S4A-relevant path: $path"
+            fi
+          done
+
+          if [[ "$relevant" == true ]]; then
+            echo "S4A_RELEVANT_CHANGE=true"
+            echo "run_s4a=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "S4A_RELEVANT_CHANGE=false"
+            echo "run_s4a=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  s4a-postgres-tests:
+    name: S4A PostgreSQL test suite
+    runs-on: ubuntu-latest
+    needs:
+      - detect-s4a-changes
+    if: needs.detect-s4a-changes.outputs.run_s4a == 'true'
     services:
       postgres:
         image: postgres:16-alpine
@@ -76,7 +138,7 @@ jobs:
           case "$DI_V0_S4A_PG_ADMIN_URL" in
             *srv1374778*|*app.synqdrive.eu*|*hstgr.cloud*|*mein-vps*)
               echo "DI_V0_S4A_PG_ADMIN_URL must not reference production"; exit 1 ;;
-            esac
+          esac
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -101,10 +163,47 @@ jobs:
           DI_V0_S4A_POSTGRES_REQUIRED: ${{ env.DI_V0_S4A_POSTGRES_REQUIRED }}
         run: npm run test:di:s4a:postgres:ci
 
-  s4a-postgres-ci-gate:
-    name: S4A PostgreSQL CI gate
+  s4a-postgres-integration:
+    name: S4A PostgreSQL integration
     runs-on: ubuntu-latest
     needs:
-      - s4a-postgres-integration
+      - detect-s4a-changes
+      - s4a-postgres-tests
+    if: ${{ always() }}
     steps:
-      - run: echo "S4A PostgreSQL integration gate passed (61 real-Postgres tests)."
+      - name: Required S4A PostgreSQL integration gate (fail closed)
+        env:
+          DETECT_RESULT: ${{ needs.detect-s4a-changes.result }}
+          RUN_S4A: ${{ needs.detect-s4a-changes.outputs.run_s4a }}
+          TEST_RESULT: ${{ needs.s4a-postgres-tests.result }}
+        run: |
+          set -euo pipefail
+          echo "detect-s4a-changes.result=${DETECT_RESULT}"
+          echo "run_s4a=${RUN_S4A}"
+          echo "s4a-postgres-tests.result=${TEST_RESULT}"
+
+          if [[ "$DETECT_RESULT" != "success" ]]; then
+            echo "Change detection did not succeed; required S4A gate FAIL" >&2
+            exit 1
+          fi
+
+          if [[ "$RUN_S4A" == "true" ]]; then
+            if [[ "$TEST_RESULT" == "success" ]]; then
+              echo "S4A PostgreSQL test suite passed; required gate satisfied."
+              exit 0
+            fi
+            echo "S4A-relevant changes require successful PostgreSQL suite; got result=${TEST_RESULT}" >&2
+            exit 1
+          fi
+
+          if [[ "$RUN_S4A" == "false" ]]; then
+            if [[ "$TEST_RESULT" == "skipped" ]]; then
+              echo "No S4A-relevant changes; required S4A gate satisfied without running the PostgreSQL suite."
+              exit 0
+            fi
+            echo "Expected PostgreSQL test suite to be skipped when run_s4a=false; got result=${TEST_RESULT}" >&2
+            exit 1
+          fi
+
+          echo "Unexpected run_s4a value: ${RUN_S4A}" >&2
+          exit 1
