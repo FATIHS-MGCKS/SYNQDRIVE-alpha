@@ -18,6 +18,20 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-29 — M3.3G G0 ground-truth & intervention label architecture audit (PASS)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | F5.1 reported **`linkageAvailable=false`** / **`replacementLabelsAvailable=false`**; NAT-008/009 owned by M3.3G without GT architecture. |
+| **OBSERVATION** | `VehicleServiceEvent` supports `BATTERY_REPLACEMENT` but is mutable/deletable and **scope-ambiguous** without linked `BatteryEvidence`; manual create omits `organizationId`; production read-only inventory **0** replacement rows. |
+| **CHANGE** | G0 architecture doc; taxonomy + admission matrix; **OPTION_C** append-only scientific authority; tenant/time/CAL-007/NAT closure criteria; staging **G0–G4**. |
+| **WHY** | Minimal scientifically defensible path to validate longitudinal calibration without treating telemetry or mutable ops rows as ground truth. |
+| **VALIDATION** | Repo schema/service audit; production `BEGIN READ ONLY` counts; PR **#1835** on main @ `bee79fb7c`. |
+| **NON_EFFECTS** | No runtime/schema/deploy/D3/E3/customer health. |
+| **REMAINING_GAPS** | G1 engineering (GT table + projector); tenant org backfill; manual LV/HV capture; F5 GT correlation (G3). |
+| **DECISION_STATUS** | **`M3_3G_ARCHITECTURE_RESULT=PASS`** |
+| **EVIDENCE** | `M3_3G_G0_GROUND_TRUTH_INTERVENTION_ARCHITECTURE_2026-09-29.md` |
+
 ## CL-2026-09-28 — M3.3F F5.1 bounded read-only natural calibration report (engineering)
 
 | Field | Value |

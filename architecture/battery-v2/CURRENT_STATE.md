@@ -1,6 +1,6 @@
 # Battery V2 — Current State Snapshot
 
-**Snapshot date:** 2026-09-28 (M3.3F **F5.1 bounded read-only natural calibration report** + **F5.0 bootstrap PASS**; **D3 sustained ON**; **`F5_CALIBRATION_MATURITY=DISTRIBUTIONS_EMERGING`**; E3 **OFF**)
+**Snapshot date:** 2026-09-29 (M3.3G **G0 ground-truth & intervention label architecture audit**; M3.3F **F5.1** on main; **D3 sustained ON**; **`F5_CALIBRATION_MATURITY=DISTRIBUTIONS_EMERGING`**; E3 **OFF**)
 **Graph:** 149 nodes / 148 edges / 11 invariants (validated 2026-09-25)
 **Knowledge maturity:** Phase 4 planning complete — 20 open gaps; 1 PROPOSED decision (`BAT-V2-DEC-PH4-LV-PUB-CHAIN-001`); 5 VALIDATED PKG spec decisions (D1, D2, D3, D4, D5)
 
@@ -76,12 +76,13 @@
 | **M3.3F F4.6 (sustained D3 shadow)** | **`F4_6_SUSTAINED_D3_ACTIVATION_RESULT=PASS`** @ **`7f5f8fdf…`**; **`F4_6_T0=2026-09-28T17:31:48.494Z`**; sustained window **5+** healthy leader ticks; **`D3_SUSTAINED_SHADOW_ACTIVE=YES`**; **`M3_3F_F4_COMPLETE=YES`**; **D3 intentionally ON** (shadow); E3 **OFF** — `research/M3_3F_F4_6_SUSTAINED_D3_SHADOW_ACTIVATION_2026-09-28.md` (PR #1831) |
 | **M3.3F F5.0 (calibration bootstrap)** | **`F5_DATA_PIPELINE_RESULT=PASS`** @ read-only analysis **`2026-09-28T20:22Z`**; cohort **C** sustained revisions; **`F5_CALIBRATION_MATURITY=DISTRIBUTIONS_EMERGING`** — `research/M3_3F_F5_0_NATURAL_DATA_CALIBRATION_EVIDENCE_BOOTSTRAP_2026-09-28.md` |
 | **M3.3F F5.1 (calibration report CLI)** | **`M3_3F_F5_NATURAL_CALIBRATION_REPORT_V1`** via **`npm run battery:f5:natural-calibration-report`**; read-only txn + **`BATTERY_F5_ALLOW_PRODUCTION_READONLY`**; D4/E1/E3 offline reuse — `research/M3_3F_F5_1_BOUNDED_READ_ONLY_NATURAL_CALIBRATION_REPORT_2026-09-28.md` |
-| **M3.3C roadmap (planning)** | **F4.2 flag-off deploy of F4.1 engineering** → controlled D3 activation gate (not executed); **M3.3G–H pending** |
+| **M3.3G G0 (architecture)** | Ground-truth & intervention label audit — **`M3_3G_ARCHITECTURE_RESULT=PASS`**; **`RECOMMENDED_GROUND_TRUTH_STORAGE_OPTION=OPTION_C`** (append-only `BatteryGroundTruthEvent`); production inventory read-only (**0** `BATTERY_REPLACEMENT` rows); **NAT-008/009** owners unchanged — `research/M3_3G_G0_GROUND_TRUTH_INTERVENTION_ARCHITECTURE_2026-09-29.md` |
+| **M3.3C roadmap (planning)** | **F4.2 flag-off deploy of F4.1 engineering** → controlled D3 activation gate (not executed); **M3.3G G1+ / M3.3H pending** |
 | **M3.3C** | **`OPEN`** — C1–C5B + **M3.3D + M3.3E E0–E0.2 + M3.3E E1 + M3.3E E2 + M3.3E E3 on main**; **M3.3F–H pending**; **`BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED=true`** (production C3 shadow since `F_C3_T0`) |
 | **`AUTHORITATIVE_REST_LIVENESS_GUARANTEED`** | **NO** (unchanged post §13) |
 | **`STATE_MACHINE_LIVENESS_GUARANTEED`** | **YES** (provider observability-gap validation gate) |
 | Provider-gap metrics follow-up | **`synqdrive_battery_provider_observability_gap_opened_total`** PM2 aggregation semantics — non-blocking observability debt |
-| `NEXT_PHASE` | **`M3_3F_F5_1_COMPLETE=YES`** — operate **`battery:f5:natural-calibration-report`** while **D3 sustained ON**; continue cohort-**C** accumulation; **M3.3G** for NAT-008/009 ground truth; **no** F6 numeric calibration / **no** E3 runtime |
+| `NEXT_PHASE` | **`M3_3G_G1_IMPLEMENTATION_READY=YES`** — minimal GT persistence + admission (OPTION_C); continue F5 cohort-**C** while **D3 sustained ON**; **NAT-008/009** infrastructure in M3.3G; **no** F6 numeric calibration / **no** E3 runtime |
 | `PIPELINE_HEALTH` | **PASS** (control plane / lifecycle / scheduler — distinct from evidence observability) |
 | `EVIDENCE_OBSERVABILITY_BLOCKED` | **NO** (F4.3 reconciliation/ack/flag-gauge observability **proven in production** @ `68a05e41`; D3 activation still gated separately) |
 | `IMPLEMENTATION_DECISION` | **HYBRID_MODEL_NEEDS_MORE_NATURAL_DATA** |
