@@ -5,9 +5,12 @@ import { DiV0S4WorkItemRepository } from '../s4a-foundation/di-v0-s4a-work-item.
 import { loadDiV0S4eControlPlaneConfig } from './di-v0-s4e-config';
 import { DiV0S4DriftWatcherScheduler } from './di-v0-s4e-drift-watcher.scheduler';
 import { DiV0S4DriftWatcherService } from './di-v0-s4e-drift-watcher.service';
+import { DiV0S4MaintenanceScheduler } from './di-v0-s4e-maintenance.scheduler';
+import { DiV0S4MaintenanceService } from './di-v0-s4e-maintenance.service';
 import {
   DI_V0_S4E_CONTROL_PLANE_CONFIG,
   DI_V0_S4E_DRIFT_WATCHER_SERVICE,
+  DI_V0_S4E_MAINTENANCE_SERVICE,
   DI_V0_S4E_WORK_ITEM_REPOSITORY,
 } from './di-v0-s4e-tokens';
 
@@ -29,7 +32,14 @@ import {
         new DiV0S4DriftWatcherService(prisma, repository, config),
       inject: [PrismaService, DI_V0_S4E_WORK_ITEM_REPOSITORY, DI_V0_S4E_CONTROL_PLANE_CONFIG],
     },
+    {
+      provide: DI_V0_S4E_MAINTENANCE_SERVICE,
+      useFactory: (prisma: PrismaService, repository: DiV0S4WorkItemRepository, config: DiV0S4ControlPlaneConfig) =>
+        new DiV0S4MaintenanceService(prisma, repository, config),
+      inject: [PrismaService, DI_V0_S4E_WORK_ITEM_REPOSITORY, DI_V0_S4E_CONTROL_PLANE_CONFIG],
+    },
     DiV0S4DriftWatcherScheduler,
+    DiV0S4MaintenanceScheduler,
   ],
 })
 export class DiV0S4eDriftWatcherModule {}

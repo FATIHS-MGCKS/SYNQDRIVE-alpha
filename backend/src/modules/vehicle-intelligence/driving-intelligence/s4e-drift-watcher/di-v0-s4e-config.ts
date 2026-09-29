@@ -8,8 +8,13 @@ export const DI_V0_S4E_DRIFT_HORIZON_SECONDS = 864_000;
 
 export const DI_V0_S4E_TUNING = {
   driftWatchIntervalMs: 5 * 60_000,
+  maintenanceIntervalMs: 5 * 60_000,
   defaultBatchLimit: 50,
   maxBatchLimit: 500,
+  t10BatchLimit: 50,
+  t12MaxPipelinesPerTick: 10,
+  t12BatchLimitPerPipeline: 50,
+  maxRetiredPipelineKeysPerRead: 100,
 } as const;
 
 /**
@@ -21,7 +26,9 @@ export function loadDiV0S4eControlPlaneConfig(
   return parseDiV0S4ControlPlaneConfig(env);
 }
 
-/** Maintenance scheduling gate: contract `maintenanceActorsRequire` = MASTER ∧ NOT_KILLED (enforced in repository T11). */
-export function isDiV0S4DriftWatcherConfigured(config: DiV0S4ControlPlaneConfig): boolean {
+/** Maintenance scheduling gate: contract `maintenanceActorsRequire` = MASTER ∧ NOT_KILLED (enforced in repository T10/T11/T12). */
+export function isDiV0S4eMaintenanceConfigured(config: DiV0S4ControlPlaneConfig): boolean {
   return config.masterEnabled;
 }
+
+export const isDiV0S4DriftWatcherConfigured = isDiV0S4eMaintenanceConfigured;
