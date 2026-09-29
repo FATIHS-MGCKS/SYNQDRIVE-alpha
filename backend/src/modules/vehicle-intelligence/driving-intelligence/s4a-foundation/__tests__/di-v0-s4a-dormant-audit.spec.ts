@@ -46,6 +46,7 @@ const ALLOWED_IMPORTS = new Set([
   '../shadow-persistence/di-v0-shadow-persistence.repository',
   '../shadow-persistence/di-v0-shadow-types',
   '../shadow-persistence/di-v0-shadow-validation',
+  '../s4d-replay/di-v0-s4d-replay-types',
   '../s4d-replay/di-v0-s4d-verified-snapshot',
 ]);
 

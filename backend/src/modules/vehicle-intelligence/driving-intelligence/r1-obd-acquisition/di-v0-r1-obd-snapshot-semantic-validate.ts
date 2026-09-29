@@ -1,4 +1,4 @@
-import { DI_V0_S4_LIMITS } from '../s4a-foundation/di-v0-s4a-contract';
+import { DI_V0_R1_OBD_DEFAULT_MAX_WINDOW_SECONDS } from './di-v0-r1-obd-acquisition.versions';
 import { formatBucketLabel, validateDiV0PositionWindow } from '../position-acquisition/di-v0-position-window';
 import type { DiV0R1ObdAcquiredBucket, DiV0R1ObdQualityFlag, DiV0R1ObdScalarSignal } from './di-v0-r1-obd-acquisition.types';
 import type { DiV0R1ObdSnapshotMaterial } from './di-v0-r1-obd-snapshot';
@@ -64,7 +64,7 @@ export function assertDiV0R1AdapterLine(adapter: unknown[]): void {
 }
 
 export function parseDiV0R1WindowFromSnapshot(fromUtc: unknown, toUtc: unknown) {
-  return validateDiV0PositionWindow(fromUtc, toUtc, DI_V0_S4_LIMITS.maxAcquisitionWindowSeconds);
+  return validateDiV0PositionWindow(fromUtc, toUtc, DI_V0_R1_OBD_DEFAULT_MAX_WINDOW_SECONDS);
 }
 
 export function expectedR1BucketLabel(windowFromMs: number, index: number): string {

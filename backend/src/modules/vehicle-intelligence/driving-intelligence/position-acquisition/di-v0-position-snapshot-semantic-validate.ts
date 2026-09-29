@@ -1,5 +1,5 @@
 import type { EvidenceAvailability } from '../core/types';
-import { DI_V0_S4_LIMITS } from '../s4a-foundation/di-v0-s4a-contract';
+import { DI_V0_POSITION_DEFAULT_MAX_WINDOW_SECONDS } from './di-v0-position-acquisition.versions';
 import type {
   DiV0AcquiredPositionBucket,
   DiV0CoordinateStatus,
@@ -58,7 +58,7 @@ export function assertDiV0PositionAdapterLine(adapter: unknown[]): void {
 }
 
 export function parseDiV0PositionWindowFromSnapshot(fromUtc: unknown, toUtc: unknown) {
-  return validateDiV0PositionWindow(fromUtc, toUtc, DI_V0_S4_LIMITS.maxAcquisitionWindowSeconds);
+  return validateDiV0PositionWindow(fromUtc, toUtc, DI_V0_POSITION_DEFAULT_MAX_WINDOW_SECONDS);
 }
 
 export function assertDiV0PositionSubject(dimoTokenId: number, vehicleId: string): void {
