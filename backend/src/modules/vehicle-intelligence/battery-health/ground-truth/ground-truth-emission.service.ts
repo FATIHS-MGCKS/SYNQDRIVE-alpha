@@ -3,7 +3,6 @@ import {
   BatteryEvidenceScope,
   BatteryEvidenceSourceType,
   BatteryEvidenceValueType,
-  BatteryGroundTruthType,
   DocumentExtractionStatus,
   ServiceEventType,
 } from '@prisma/client';
@@ -18,6 +17,7 @@ import type { DocumentApplyConfirmationAuthorityV1 } from './document-ground-tru
 import {
   GroundTruthEmissionFailedError,
   ManualGroundTruthConfirmationConflictError,
+  ReplacementGroundTruthScopeConflictError,
 } from './ground-truth-emission.errors';
 import { BatteryGroundTruthRepository } from './ground-truth.repository';
 import { BatteryGroundTruthService } from './ground-truth.service';
@@ -171,26 +171,15 @@ export class BatteryGroundTruthEmissionService {
       );
     }
 
-    const existingActive = await this.groundTruthRepository.findActiveReplacementBySourceScope(
+    const sourceResolution = await this.resolveReplacementBySourceEvent(
       input.organizationId,
       input.serviceEventId,
       input.batteryScope,
     );
-    if (existingActive) {
-      return { groundTruthEventId: existingActive.id };
+    if (sourceResolution.kind === 'converge') {
+      return { groundTruthEventId: sourceResolution.groundTruthEventId };
     }
-
-    const conflictingScope = await this.prisma.batteryGroundTruthEvent.findFirst({
-      where: {
-        organizationId: input.organizationId,
-        sourceServiceEventId: input.serviceEventId,
-        groundTruthType: BatteryGroundTruthType.BATTERY_REPLACEMENT,
-        verificationStatus: 'CONFIRMED',
-        batteryScope: { not: input.batteryScope },
-      },
-      select: { id: true, batteryScope: true },
-    });
-    if (conflictingScope) {
+    if (sourceResolution.kind === 'scope_conflict') {
       throw new ManualGroundTruthConfirmationConflictError(
         'MANUAL_CONFIRMATION_SCOPE_CONFLICT',
         'Service event already has confirmed ground truth for a different battery scope',
@@ -198,7 +187,9 @@ export class BatteryGroundTruthEmissionService {
     }
 
     const confirmedAt = new Date();
-    const result = await this.groundTruth.admitAndPersist({
+    let result;
+    try {
+      result = await this.groundTruth.admitAndPersist({
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
       groundTruthType: 'BATTERY_REPLACEMENT',
@@ -210,6 +201,15 @@ export class BatteryGroundTruthEmissionService {
       manualConfirmationTrusted: true,
       pointers: { sourceServiceEventId: input.serviceEventId },
     });
+    } catch (error) {
+      if (error instanceof ReplacementGroundTruthScopeConflictError) {
+        throw new ManualGroundTruthConfirmationConflictError(
+          'MANUAL_CONFIRMATION_SCOPE_CONFLICT',
+          error.message,
+        );
+      }
+      throw error;
+    }
 
     if (result.outcome === 'PERSISTED' || result.outcome === 'IDEMPOTENT_EXISTING') {
       return { groundTruthEventId: result.groundTruthEventId };
@@ -295,16 +295,28 @@ export class BatteryGroundTruthEmissionService {
     confirmedAt: Date;
     confirmedByUserId: string | null;
   }): Promise<string | null> {
-    const existing = await this.groundTruthRepository.findActiveReplacementBySourceScope(
+    const sourceResolution = await this.resolveReplacementBySourceEvent(
       params.organizationId,
       params.serviceEventId,
       params.batteryScope,
     );
-    if (existing) {
-      return existing.id;
+    if (sourceResolution.kind === 'converge') {
+      return sourceResolution.groundTruthEventId;
+    }
+    if (sourceResolution.kind === 'scope_conflict') {
+      throw new GroundTruthEmissionFailedError(
+        'GT_REPLACEMENT_SCOPE_CONFLICT',
+        'Service event already has confirmed replacement ground truth for a different battery scope; use revoke/supersede correction workflow',
+        {
+          existingGroundTruthEventId: sourceResolution.existingId,
+          existingScope: sourceResolution.existingScope,
+        },
+      );
     }
 
-    const result = await this.groundTruth.admitAndPersist({
+    let result;
+    try {
+      result = await this.groundTruth.admitAndPersist({
       organizationId: params.organizationId,
       vehicleId: params.vehicleId,
       groundTruthType: 'BATTERY_REPLACEMENT',
@@ -318,6 +330,16 @@ export class BatteryGroundTruthEmissionService {
         sourceDocumentExtractionId: params.documentExtractionId,
       },
     });
+    } catch (error) {
+      if (error instanceof ReplacementGroundTruthScopeConflictError) {
+        throw new GroundTruthEmissionFailedError(
+          'GT_REPLACEMENT_SCOPE_CONFLICT',
+          error.message,
+          { code: error.code },
+        );
+      }
+      throw error;
+    }
 
     if (result.outcome === 'PERSISTED' || result.outcome === 'IDEMPOTENT_EXISTING') {
       return result.groundTruthEventId;
@@ -399,5 +421,35 @@ export class BatteryGroundTruthEmissionService {
     }
 
     return ids;
+  }
+
+  private async resolveReplacementBySourceEvent(
+    organizationId: string,
+    sourceServiceEventId: string,
+    requestedScope: BatteryEvidenceScope,
+  ): Promise<
+    | { kind: 'none' }
+    | { kind: 'converge'; groundTruthEventId: string }
+    | {
+        kind: 'scope_conflict';
+        existingScope: BatteryEvidenceScope;
+        existingId: string;
+      }
+  > {
+    const active = await this.groundTruthRepository.findActiveReplacementBySourceEvent(
+      organizationId,
+      sourceServiceEventId,
+    );
+    if (!active) {
+      return { kind: 'none' };
+    }
+    if (active.batteryScope === requestedScope) {
+      return { kind: 'converge', groundTruthEventId: active.id };
+    }
+    return {
+      kind: 'scope_conflict',
+      existingScope: active.batteryScope,
+      existingId: active.id,
+    };
   }
 }

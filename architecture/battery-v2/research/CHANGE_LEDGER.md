@@ -20,6 +20,17 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-29 — M3.3G G2.2 active replacement per source event (cross-scope seal)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | G2.1 partial unique index `(organization_id, source_service_event_id, battery_scope)` allowed concurrent LV+HV active replacement GT for same service event. |
+| **CHANGE** | Amended unmerged migration to unique `(organization_id, source_service_event_id)` for active CONFIRMED BATTERY_REPLACEMENT; `findActiveReplacementBySourceEvent`; scope conflict via `ReplacementGroundTruthScopeConflictError`; P2002 race convergence; G2H-K/L postgres tests. |
+| **WHY** | One BATTERY_REPLACEMENT service event = one active scientific replacement fact; scope change requires revoke/supersede, not a second active row. |
+| **VALIDATION** | `battery-ground-truth-postgres-ci.sh` G2.2 suite; unit specs. |
+| **NON_EFFECTS** | No production deploy/migration apply; D3/E3 unchanged. |
+| **DECISION_STATUS** | **`IMPLEMENTED`** (G2.2, PR #1840) |
+
 ## CL-2026-09-29 — M3.3G G2.1 document apply ordering + replacement concurrency (engineering)
 
 | Field | Value |

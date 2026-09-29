@@ -114,6 +114,17 @@ EFFECTIVE_AT_SEMANTICS=MEASUREMENT_OR_INTERVENTION_TIME (observedAt / eventDate)
 ONE_ACTIVE_REPLACEMENT_GT_PER_SOURCE_EVENT_SCOPE=YES
   → partial unique index battery_ground_truth_one_active_replacement_per_source_scope
 GT_ROWS_CREATED_BY_G2_1_MIGRATION=0
+GT_ROWS_CREATED_BY_G2_2_MIGRATION=0
+```
+
+## G2.2 — Active replacement per source event (cross-scope authority seal)
+
+```text
+CURRENT_ACTIVE_REPLACEMENT_UNIQUE_KEY=organizationId+sourceServiceEventId+batteryScope (G2.1 — superseded)
+ACTIVE_REPLACEMENT_UNIQUE_KEY=organizationId+sourceServiceEventId
+ONE_ACTIVE_REPLACEMENT_GT_PER_SOURCE_EVENT=YES
+CONCURRENT_DIFFERENT_SCOPE_RACE_POSSIBLE=NO (after G2.2 index + admission)
+SCOPE_CHANGE_REQUIRES_CORRECTION_WORKFLOW=YES
 ```
 
 Authority chain: `ApplyBatteryMeasurementDocumentActionExecutor` passes `confirmationAuthority` from `context.plan` → `BatteryHealthService.applyFromDocumentExtraction` → `convergeDocumentApplyGroundTruth`. Orchestrator `toApplyResult` exposes `groundTruthEventIds` in apply detail.

@@ -30,6 +30,7 @@ describe('BatteryGroundTruthEmissionService', () => {
     const groundTruth = { admitAndPersist: jest.fn() };
     const groundTruthRepository = {
       findActiveReplacementBySourceScope: jest.fn().mockResolvedValue(null),
+      findActiveReplacementBySourceEvent: jest.fn().mockResolvedValue(null),
     };
     const svc = new BatteryGroundTruthEmissionService(
       prisma as any,
@@ -355,7 +356,7 @@ describe('BatteryGroundTruthEmissionService', () => {
     it('MAN-B/C — explicit confirmed replacement admitted', async () => {
       const { svc, prisma, groundTruth, groundTruthRepository } = createHarness();
       prisma.vehicleServiceEvent.findFirst.mockResolvedValue(eventRow);
-      groundTruthRepository.findActiveReplacementBySourceScope.mockResolvedValue(null);
+      groundTruthRepository.findActiveReplacementBySourceEvent.mockResolvedValue(null);
       prisma.batteryGroundTruthEvent.findFirst.mockResolvedValue(null);
       groundTruth.admitAndPersist.mockResolvedValue({
         outcome: 'PERSISTED',
@@ -402,7 +403,7 @@ describe('BatteryGroundTruthEmissionService', () => {
     it('MAN-H — repeated confirm is idempotent', async () => {
       const { svc, prisma, groundTruth, groundTruthRepository } = createHarness();
       prisma.vehicleServiceEvent.findFirst.mockResolvedValue(eventRow);
-      groundTruthRepository.findActiveReplacementBySourceScope.mockResolvedValue({
+      groundTruthRepository.findActiveReplacementBySourceEvent.mockResolvedValue({
         id: 'gt-existing',
         batteryScope: BatteryEvidenceScope.LV,
       });
@@ -422,8 +423,7 @@ describe('BatteryGroundTruthEmissionService', () => {
     it('MAN-I — conflicting scope fails closed', async () => {
       const { svc, prisma, groundTruthRepository } = createHarness();
       prisma.vehicleServiceEvent.findFirst.mockResolvedValue(eventRow);
-      groundTruthRepository.findActiveReplacementBySourceScope.mockResolvedValue(null);
-      prisma.batteryGroundTruthEvent.findFirst.mockResolvedValue({
+      groundTruthRepository.findActiveReplacementBySourceEvent.mockResolvedValue({
         id: 'gt-hv',
         batteryScope: BatteryEvidenceScope.HV,
       });

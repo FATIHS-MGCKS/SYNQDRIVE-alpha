@@ -138,9 +138,9 @@ export function createGtDocumentServiceEventsService(
           id, vehicle_id, organization_id, event_type, event_date, origin,
           document_extraction_id, created_at, updated_at
         ) VALUES (
-          ${id}::uuid,
-          ${input.vehicleId}::uuid,
-          ${input.organizationId}::uuid,
+          ${id},
+          ${input.vehicleId},
+          ${input.organizationId},
           ${input.eventType}::"ServiceEventType",
           ${new Date(input.eventDate)},
           ${ServiceEventOrigin.AI_UPLOAD}::"ServiceEventOrigin",

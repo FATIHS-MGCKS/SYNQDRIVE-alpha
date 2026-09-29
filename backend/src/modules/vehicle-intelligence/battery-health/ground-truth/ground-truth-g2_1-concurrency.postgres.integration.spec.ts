@@ -188,7 +188,7 @@ async function insertBatteryReplacementEvent(
   it('PG-G2_1 — replacement source-scope unique index exists', async () => {
     const indexes = await prisma.$queryRaw<{ indexname: string }[]>`
       SELECT indexname FROM pg_indexes
-      WHERE indexname = 'battery_ground_truth_one_active_replacement_per_source_scope'
+      WHERE indexname = 'battery_ground_truth_one_active_replacement_per_source_event'
     `;
     expect(indexes).toHaveLength(1);
   });

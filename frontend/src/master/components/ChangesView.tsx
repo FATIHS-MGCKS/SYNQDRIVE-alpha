@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-m3-3g-g2-2-cross-scope-replacement-authority-2026-09-29',
+    version: '4.9.2210',
+    title: 'Battery V2 M3.3G G2.2 — one active replacement GT per source service event',
+    summary: [
+      'Active CONFIRMED BATTERY_REPLACEMENT identity is organization + source service event; battery scope is fact content, not a second concurrent truth key.',
+      'Partial unique index battery_ground_truth_one_active_replacement_per_source_event replaces scope-inclusive G2.1 index (same unmerged migration folder; GT_ROWS_CREATED_BY_MIGRATION=0).',
+      'findActiveReplacementBySourceEvent + evaluateAdmission/emission P2002 handling: same scope idempotent converge; cross scope typed REPLACEMENT_SCOPE_CONFLICT (no raw P2002).',
+      'Postgres G2H-K/L concurrent LV/HV and document↔manual cross-scope races; G2.1 same-scope convergence tests preserved.',
+    ],
+    reason:
+      'Concurrent LV + HV confirmation on the same BATTERY_REPLACEMENT service event could create two active GT rows under G2.1 scope unique key — violates G2 one-replacement-fact contract.',
+    previousBehavior:
+      'Unique on organization + source service event + battery scope allowed parallel LV and HV active replacements for one service event.',
+    details:
+      'PR #1840 G2.2; migration 20260929140000_battery_ground_truth_replacement_source_scope_unique amended; ground-truth-g2_2-cross-scope.postgres.integration.spec.ts; battery-ground-truth-postgres-ci.sh.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-29T16:00:00.000Z',
+  },
+  {
     id: 'battery-v2-m3-3g-g2-1-ordering-concurrency-hardening-2026-09-29',
     version: '4.9.2209',
     title: 'Battery V2 M3.3G G2.1 — document apply GT ordering + replacement concurrency',

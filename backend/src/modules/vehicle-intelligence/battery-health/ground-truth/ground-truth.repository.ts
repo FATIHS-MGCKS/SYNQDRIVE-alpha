@@ -47,19 +47,41 @@ export class BatteryGroundTruthRepository {
     });
   }
 
-  async findActiveReplacementBySourceScope(
+  async findActiveReplacementBySourceEvent(
     organizationId: string,
     sourceServiceEventId: string,
-    batteryScope: Prisma.BatteryGroundTruthEventCreateInput['batteryScope'],
     db?: GroundTruthDbClient,
   ) {
     return this.client(db).batteryGroundTruthEvent.findFirst({
       where: {
         organizationId,
         sourceServiceEventId,
-        batteryScope,
         groundTruthType: 'BATTERY_REPLACEMENT',
         verificationStatus: BatteryGroundTruthVerificationStatus.CONFIRMED,
+      },
+      select: { id: true, batteryScope: true },
+    });
+  }
+
+  /** @deprecated Prefer findActiveReplacementBySourceEvent — scope is not part of active identity. */
+  async findActiveReplacementBySourceScope(
+    organizationId: string,
+    sourceServiceEventId: string,
+    batteryScope: Prisma.BatteryGroundTruthEventCreateInput['batteryScope'],
+    db?: GroundTruthDbClient,
+  ) {
+    const row = await this.findActiveReplacementBySourceEvent(
+      organizationId,
+      sourceServiceEventId,
+      db,
+    );
+    if (!row || row.batteryScope !== batteryScope) {
+      return null;
+    }
+    return this.client(db).batteryGroundTruthEvent.findFirst({
+      where: {
+        id: row.id,
+        organizationId,
       },
     });
   }

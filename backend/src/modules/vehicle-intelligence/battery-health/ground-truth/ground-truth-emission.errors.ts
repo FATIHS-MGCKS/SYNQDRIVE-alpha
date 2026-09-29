@@ -19,6 +19,17 @@ export class ManualGroundTruthConfirmationConflictError extends Error {
   }
 }
 
+/** Active replacement already exists for source service event with a different battery scope. */
+export class ReplacementGroundTruthScopeConflictError extends Error {
+  constructor(
+    readonly code: 'REPLACEMENT_SCOPE_CONFLICT',
+    message: string,
+  ) {
+    super(message);
+    this.name = 'ReplacementGroundTruthScopeConflictError';
+  }
+}
+
 export class GroundTruthSourceCorrectionRequiredError extends Error {
   constructor(
     readonly code: 'GT_SOURCE_CORRECTION_REQUIRED',
