@@ -239,10 +239,19 @@ export class ServiceEventsService {
     dto: CreateVehicleServiceEventDto,
     ctx: ServiceEventMutationContext = {},
   ): Promise<VehicleServiceEvent> {
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { id: true, organizationId: true },
+    });
+    if (!vehicle) {
+      throw new NotFoundException(`Vehicle ${vehicleId} not found`);
+    }
+
     const eventDate = new Date(dto.eventDate);
     const created = await this.prisma.vehicleServiceEvent.create({
       data: {
         vehicleId,
+        organizationId: vehicle.organizationId,
         eventType: dto.eventType,
         eventDate,
         odometerKm: dto.odometerKm ?? null,
