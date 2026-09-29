@@ -11,6 +11,7 @@ import {
   GroundTruthEmissionFailedError,
   ManualGroundTruthConfirmationConflictError,
 } from './ground-truth-emission.errors';
+import { PIPELINE_PLAUSIBILITY_KEY } from '@modules/document-extraction/document-content-cache.util';
 import { GROUND_TRUTH_ADMISSION_LEVEL } from './ground-truth-admission.types';
 
 describe('BatteryGroundTruthEmissionService', () => {
@@ -24,11 +25,18 @@ describe('BatteryGroundTruthEmissionService', () => {
       vehicleDocumentExtraction: { findUnique: jest.fn() },
       batteryEvidence: { findMany: jest.fn() },
       vehicleServiceEvent: { findFirst: jest.fn() },
-      batteryGroundTruthEvent: { findMany: jest.fn() },
+      batteryGroundTruthEvent: { findFirst: jest.fn() },
     };
     const groundTruth = { admitAndPersist: jest.fn() };
-    const svc = new BatteryGroundTruthEmissionService(prisma as any, groundTruth as any);
-    return { svc, prisma, groundTruth };
+    const groundTruthRepository = {
+      findActiveReplacementBySourceScope: jest.fn().mockResolvedValue(null),
+    };
+    const svc = new BatteryGroundTruthEmissionService(
+      prisma as any,
+      groundTruth as any,
+      groundTruthRepository as any,
+    );
+    return { svc, prisma, groundTruth, groundTruthRepository };
   }
 
   beforeEach(() => jest.clearAllMocks());
@@ -41,11 +49,106 @@ describe('BatteryGroundTruthEmissionService', () => {
         organizationId: org,
         vehicleId: veh,
         contentSha256: 'sha-doc',
-        appliedAt: observedAt,
+        confirmedById: 'user-confirmer',
         appliedById: 'user-applier',
-        confirmedById: null,
+        plausibility: {
+          [PIPELINE_PLAUSIBILITY_KEY]: {
+            actionPlan: {
+              confirmedAt: '2026-05-20T08:00:00.000Z',
+              fingerprint: 'fp-doc',
+            },
+          },
+        },
       };
     }
+
+    function confirmedExecutionAuthority() {
+      return {
+        mode: 'CONFIRMED_ACTION_EXECUTION' as const,
+        confirmedAt: new Date('2026-05-20T08:00:00.000Z'),
+        confirmedByUserId: 'user-confirmer',
+        actionPlanFingerprint: 'fp-doc',
+        documentActionIdempotencyKey: 'idem-1',
+      };
+    }
+
+    it('G2H-D — CONFIRMED status with action authority emits GT', async () => {
+      const { svc, prisma, groundTruth } = createHarness();
+      prisma.vehicleDocumentExtraction.findUnique.mockResolvedValue({
+        ...appliedDocument(),
+        status: DocumentExtractionStatus.CONFIRMED,
+      });
+      groundTruth.admitAndPersist.mockResolvedValue({
+        outcome: 'PERSISTED',
+        groundTruthEventId: 'gt-confirmed',
+        admission: { level: GROUND_TRUTH_ADMISSION_LEVEL.ADMIT_VALIDATION_GROUND_TRUTH, reasons: [] },
+      });
+
+      const ids = await svc.convergeDocumentApplyGroundTruth({
+        organizationId: org,
+        vehicleId: veh,
+        documentExtractionId: docId,
+        confirmationAuthority: confirmedExecutionAuthority(),
+        scope: BatteryEvidenceScope.LV,
+        isReplacement: true,
+        observedAt,
+        odometerKm: null,
+        workshopName: null,
+        notes: null,
+        measurementType: 'REPLACEMENT',
+        sohPercent: null,
+        voltageV: null,
+        restingVoltage: null,
+        crankingVoltage: null,
+        chargingVoltage: null,
+        temperatureC: null,
+        serviceEventId: 'evt-1',
+        evidenceIds: [],
+      });
+      expect(ids).toEqual(['gt-confirmed']);
+    });
+
+    it('G2H-E — confirmedAt is not derived from observedAt', async () => {
+      const { svc, prisma, groundTruth } = createHarness();
+      prisma.vehicleDocumentExtraction.findUnique.mockResolvedValue({
+        ...appliedDocument(),
+        status: DocumentExtractionStatus.CONFIRMED,
+      });
+      groundTruth.admitAndPersist.mockResolvedValue({
+        outcome: 'PERSISTED',
+        groundTruthEventId: 'gt-time',
+        admission: { level: GROUND_TRUTH_ADMISSION_LEVEL.ADMIT_VALIDATION_GROUND_TRUTH, reasons: [] },
+      });
+
+      await svc.convergeDocumentApplyGroundTruth({
+        organizationId: org,
+        vehicleId: veh,
+        documentExtractionId: docId,
+        confirmationAuthority: confirmedExecutionAuthority(),
+        scope: BatteryEvidenceScope.LV,
+        isReplacement: true,
+        observedAt: new Date('2010-01-01T00:00:00.000Z'),
+        odometerKm: null,
+        workshopName: null,
+        notes: null,
+        measurementType: 'REPLACEMENT',
+        sohPercent: null,
+        voltageV: null,
+        restingVoltage: null,
+        crankingVoltage: null,
+        chargingVoltage: null,
+        temperatureC: null,
+        serviceEventId: 'evt-1',
+        evidenceIds: [],
+      });
+
+      expect(groundTruth.admitAndPersist).toHaveBeenCalledWith(
+        expect.objectContaining({
+          effectiveAt: new Date('2010-01-01T00:00:00.000Z'),
+          confirmedAt: new Date('2026-05-20T08:00:00.000Z'),
+        }),
+      );
+    });
 
     it('DOC-A/DOC-C — confirmed LV/HV replacement emits one GT without numeric evidence', async () => {
       for (const scope of [BatteryEvidenceScope.LV, BatteryEvidenceScope.HV]) {
@@ -83,35 +186,35 @@ describe('BatteryGroundTruthEmissionService', () => {
       }
     });
 
-    it('DOC-D — unapplied document emits zero GT', async () => {
+    it('DOC-D — unapplied / unconfirmed document emits zero GT or fails closed', async () => {
       const { svc, prisma, groundTruth } = createHarness();
       prisma.vehicleDocumentExtraction.findUnique.mockResolvedValue({
         ...appliedDocument(),
-        status: DocumentExtractionStatus.CONFIRMED,
+        status: DocumentExtractionStatus.READY_FOR_REVIEW,
       });
 
-      const ids = await svc.convergeDocumentApplyGroundTruth({
-        organizationId: org,
-        vehicleId: veh,
-        documentExtractionId: docId,
-        scope: BatteryEvidenceScope.LV,
-        isReplacement: true,
-        observedAt,
-        odometerKm: null,
-        workshopName: null,
-        notes: null,
-        measurementType: null,
-        sohPercent: null,
-        voltageV: null,
-        restingVoltage: null,
-        crankingVoltage: null,
-        chargingVoltage: null,
-        temperatureC: null,
-        serviceEventId: 'evt-1',
-        evidenceIds: [],
-      });
-
-      expect(ids).toEqual([]);
+      await expect(
+        svc.convergeDocumentApplyGroundTruth({
+          organizationId: org,
+          vehicleId: veh,
+          documentExtractionId: docId,
+          scope: BatteryEvidenceScope.LV,
+          isReplacement: true,
+          observedAt,
+          odometerKm: null,
+          workshopName: null,
+          notes: null,
+          measurementType: null,
+          sohPercent: null,
+          voltageV: null,
+          restingVoltage: null,
+          crankingVoltage: null,
+          chargingVoltage: null,
+          temperatureC: null,
+          serviceEventId: 'evt-1',
+          evidenceIds: [],
+        }),
+      ).rejects.toMatchObject({ code: 'GT_DOCUMENT_STATUS_NOT_ELIGIBLE' });
       expect(groundTruth.admitAndPersist).not.toHaveBeenCalled();
     });
 
@@ -250,9 +353,10 @@ describe('BatteryGroundTruthEmissionService', () => {
     };
 
     it('MAN-B/C — explicit confirmed replacement admitted', async () => {
-      const { svc, prisma, groundTruth } = createHarness();
+      const { svc, prisma, groundTruth, groundTruthRepository } = createHarness();
       prisma.vehicleServiceEvent.findFirst.mockResolvedValue(eventRow);
-      prisma.batteryGroundTruthEvent.findMany.mockResolvedValue([]);
+      groundTruthRepository.findActiveReplacementBySourceScope.mockResolvedValue(null);
+      prisma.batteryGroundTruthEvent.findFirst.mockResolvedValue(null);
       groundTruth.admitAndPersist.mockResolvedValue({
         outcome: 'PERSISTED',
         groundTruthEventId: 'gt-man',
@@ -296,11 +400,12 @@ describe('BatteryGroundTruthEmissionService', () => {
     });
 
     it('MAN-H — repeated confirm is idempotent', async () => {
-      const { svc, prisma, groundTruth } = createHarness();
+      const { svc, prisma, groundTruth, groundTruthRepository } = createHarness();
       prisma.vehicleServiceEvent.findFirst.mockResolvedValue(eventRow);
-      prisma.batteryGroundTruthEvent.findMany.mockResolvedValue([
-        { id: 'gt-existing', batteryScope: BatteryEvidenceScope.LV },
-      ]);
+      groundTruthRepository.findActiveReplacementBySourceScope.mockResolvedValue({
+        id: 'gt-existing',
+        batteryScope: BatteryEvidenceScope.LV,
+      });
 
       const result = await svc.confirmManualBatteryReplacement({
         organizationId: org,
@@ -315,11 +420,13 @@ describe('BatteryGroundTruthEmissionService', () => {
     });
 
     it('MAN-I — conflicting scope fails closed', async () => {
-      const { svc, prisma } = createHarness();
+      const { svc, prisma, groundTruthRepository } = createHarness();
       prisma.vehicleServiceEvent.findFirst.mockResolvedValue(eventRow);
-      prisma.batteryGroundTruthEvent.findMany.mockResolvedValue([
-        { id: 'gt-hv', batteryScope: BatteryEvidenceScope.HV },
-      ]);
+      groundTruthRepository.findActiveReplacementBySourceScope.mockResolvedValue(null);
+      prisma.batteryGroundTruthEvent.findFirst.mockResolvedValue({
+        id: 'gt-hv',
+        batteryScope: BatteryEvidenceScope.HV,
+      });
 
       await expect(
         svc.confirmManualBatteryReplacement({

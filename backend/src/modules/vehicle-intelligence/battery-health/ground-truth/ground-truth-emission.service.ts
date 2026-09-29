@@ -3,21 +3,23 @@ import {
   BatteryEvidenceScope,
   BatteryEvidenceSourceType,
   BatteryEvidenceValueType,
-  BatteryGroundTruthSourceAuthority,
   BatteryGroundTruthType,
   DocumentExtractionStatus,
   ServiceEventType,
 } from '@prisma/client';
+import { readDocumentActionPlanState } from '@modules/document-extraction/document-action-plan.store';
 import { PrismaService } from '@shared/database/prisma.service';
 import type { ApplyBatteryFromDocumentExtractionInput } from '../battery-health.service';
 import {
   GROUND_TRUTH_ADMISSION_LEVEL,
   type GroundTruthSourceIdentityV1,
 } from './ground-truth-admission.types';
+import type { DocumentApplyConfirmationAuthorityV1 } from './document-ground-truth-confirmation.types';
 import {
   GroundTruthEmissionFailedError,
   ManualGroundTruthConfirmationConflictError,
 } from './ground-truth-emission.errors';
+import { BatteryGroundTruthRepository } from './ground-truth.repository';
 import { BatteryGroundTruthService } from './ground-truth.service';
 
 const MEASUREMENT_VALUE_TYPES = new Set<BatteryEvidenceValueType>([
@@ -27,6 +29,11 @@ const MEASUREMENT_VALUE_TYPES = new Set<BatteryEvidenceValueType>([
   BatteryEvidenceValueType.CRANKING_VOLTAGE_V,
   BatteryEvidenceValueType.CHARGING_VOLTAGE_V,
   BatteryEvidenceValueType.BATTERY_TEMPERATURE_C,
+]);
+
+const APPLIED_STATUSES = new Set<DocumentExtractionStatus>([
+  DocumentExtractionStatus.APPLIED,
+  DocumentExtractionStatus.PARTIALLY_APPLIED,
 ]);
 
 export type DocumentApplyGroundTruthConvergenceInput = ApplyBatteryFromDocumentExtractionInput & {
@@ -47,6 +54,7 @@ export class BatteryGroundTruthEmissionService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly groundTruth: BatteryGroundTruthService,
+    private readonly groundTruthRepository: BatteryGroundTruthRepository,
   ) {}
 
   async convergeDocumentApplyGroundTruth(
@@ -60,9 +68,9 @@ export class BatteryGroundTruthEmissionService {
         organizationId: true,
         vehicleId: true,
         contentSha256: true,
-        appliedAt: true,
-        appliedById: true,
+        plausibility: true,
         confirmedById: true,
+        appliedById: true,
       },
     });
 
@@ -71,10 +79,6 @@ export class BatteryGroundTruthEmissionService {
         'GT_DOCUMENT_SOURCE_MISSING',
         'Document extraction not found for ground-truth emission',
       );
-    }
-
-    if (document.status !== DocumentExtractionStatus.APPLIED) {
-      return [];
     }
 
     if (
@@ -87,8 +91,12 @@ export class BatteryGroundTruthEmissionService {
       );
     }
 
-    const confirmedAt = document.appliedAt ?? input.observedAt;
-    const confirmedByUserId = document.appliedById ?? document.confirmedById ?? null;
+    this.assertDocumentStatusAllowsEmission(document.status, input.confirmationAuthority);
+
+    const { confirmedAt, confirmedByUserId } = this.resolveConfirmationTiming(
+      document,
+      input.confirmationAuthority,
+    );
 
     const emitted: string[] = [];
 
@@ -108,9 +116,6 @@ export class BatteryGroundTruthEmissionService {
         effectiveAt: input.observedAt,
         confirmedAt,
         confirmedByUserId,
-        documentActionIdempotencyKey: input.documentActionIdempotencyKey ?? null,
-        measurementType: input.measurementType,
-        contentSha256: document.contentSha256,
       });
       if (replacementId) {
         emitted.push(replacementId);
@@ -126,9 +131,6 @@ export class BatteryGroundTruthEmissionService {
         confirmedAt,
         confirmedByUserId,
         evidenceIds: input.evidenceIds,
-        documentActionIdempotencyKey: input.documentActionIdempotencyKey ?? null,
-        measurementType: input.measurementType,
-        contentSha256: document.contentSha256,
       });
       emitted.push(...measurementIds);
     }
@@ -169,28 +171,33 @@ export class BatteryGroundTruthEmissionService {
       );
     }
 
-    const existingForEvent = await this.prisma.batteryGroundTruthEvent.findMany({
+    const existingActive = await this.groundTruthRepository.findActiveReplacementBySourceScope(
+      input.organizationId,
+      input.serviceEventId,
+      input.batteryScope,
+    );
+    if (existingActive) {
+      return { groundTruthEventId: existingActive.id };
+    }
+
+    const conflictingScope = await this.prisma.batteryGroundTruthEvent.findFirst({
       where: {
         organizationId: input.organizationId,
         sourceServiceEventId: input.serviceEventId,
         groundTruthType: BatteryGroundTruthType.BATTERY_REPLACEMENT,
         verificationStatus: 'CONFIRMED',
+        batteryScope: { not: input.batteryScope },
       },
       select: { id: true, batteryScope: true },
     });
-
-    const sameScope = existingForEvent.find((row) => row.batteryScope === input.batteryScope);
-    if (sameScope) {
-      return { groundTruthEventId: sameScope.id };
-    }
-
-    if (existingForEvent.length > 0) {
+    if (conflictingScope) {
       throw new ManualGroundTruthConfirmationConflictError(
         'MANUAL_CONFIRMATION_SCOPE_CONFLICT',
         'Service event already has confirmed ground truth for a different battery scope',
       );
     }
 
+    const confirmedAt = new Date();
     const result = await this.groundTruth.admitAndPersist({
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
@@ -199,7 +206,7 @@ export class BatteryGroundTruthEmissionService {
       effectiveAt: event.eventDate,
       sourceAuthority: 'MANUAL_CONFIRMED',
       confirmedByUserId: input.actorUserId,
-      confirmedAt: new Date(),
+      confirmedAt,
       manualConfirmationTrusted: true,
       pointers: { sourceServiceEventId: input.serviceEventId },
     });
@@ -215,6 +222,69 @@ export class BatteryGroundTruthEmissionService {
     );
   }
 
+  private assertDocumentStatusAllowsEmission(
+    status: DocumentExtractionStatus,
+    authority: DocumentApplyConfirmationAuthorityV1 | null | undefined,
+  ): void {
+    if (APPLIED_STATUSES.has(status)) {
+      return;
+    }
+    if (status === DocumentExtractionStatus.CONFIRMED) {
+      if (authority?.mode !== 'CONFIRMED_ACTION_EXECUTION') {
+        throw new GroundTruthEmissionFailedError(
+          'GT_DOCUMENT_CONFIRMATION_AUTHORITY_REQUIRED',
+          'Ground-truth emission during CONFIRMED apply requires confirmed action-plan authority',
+        );
+      }
+      return;
+    }
+    throw new GroundTruthEmissionFailedError(
+      'GT_DOCUMENT_STATUS_NOT_ELIGIBLE',
+      `Document extraction status ${status} is not eligible for ground-truth emission`,
+    );
+  }
+
+  private resolveConfirmationTiming(
+    document: {
+      plausibility: unknown;
+      confirmedById: string | null;
+      appliedById: string | null;
+    },
+    authority: DocumentApplyConfirmationAuthorityV1 | null | undefined,
+  ): { confirmedAt: Date; confirmedByUserId: string | null } {
+    if (authority?.mode === 'CONFIRMED_ACTION_EXECUTION') {
+      const planState = readDocumentActionPlanState(document.plausibility);
+      const storedFingerprint = planState.actionPlan?.fingerprint;
+      if (
+        storedFingerprint &&
+        storedFingerprint !== authority.actionPlanFingerprint
+      ) {
+        throw new GroundTruthEmissionFailedError(
+          'GT_DOCUMENT_PLAN_FINGERPRINT_MISMATCH',
+          'Confirmed action plan fingerprint mismatch for ground-truth emission',
+        );
+      }
+      return {
+        confirmedAt: authority.confirmedAt,
+        confirmedByUserId: authority.confirmedByUserId ?? document.confirmedById,
+      };
+    }
+
+    const planState = readDocumentActionPlanState(document.plausibility);
+    const planConfirmedAt = planState.actionPlan?.confirmedAt;
+    if (planConfirmedAt) {
+      return {
+        confirmedAt: new Date(planConfirmedAt),
+        confirmedByUserId: document.confirmedById ?? document.appliedById ?? null,
+      };
+    }
+
+    throw new GroundTruthEmissionFailedError(
+      'GT_DOCUMENT_CONFIRMATION_TIME_MISSING',
+      'Human confirmation time could not be resolved for ground-truth emission',
+    );
+  }
+
   private async emitDocumentReplacementGroundTruth(params: {
     organizationId: string;
     vehicleId: string;
@@ -224,10 +294,16 @@ export class BatteryGroundTruthEmissionService {
     effectiveAt: Date;
     confirmedAt: Date;
     confirmedByUserId: string | null;
-    documentActionIdempotencyKey: string | null;
-    measurementType: string | null;
-    contentSha256: string | null;
   }): Promise<string | null> {
+    const existing = await this.groundTruthRepository.findActiveReplacementBySourceScope(
+      params.organizationId,
+      params.serviceEventId,
+      params.batteryScope,
+    );
+    if (existing) {
+      return existing.id;
+    }
+
     const result = await this.groundTruth.admitAndPersist({
       organizationId: params.organizationId,
       vehicleId: params.vehicleId,
@@ -268,9 +344,6 @@ export class BatteryGroundTruthEmissionService {
     confirmedAt: Date;
     confirmedByUserId: string | null;
     evidenceIds: string[];
-    documentActionIdempotencyKey: string | null;
-    measurementType: string | null;
-    contentSha256: string | null;
   }): Promise<string[]> {
     if (params.evidenceIds.length === 0) {
       return [];

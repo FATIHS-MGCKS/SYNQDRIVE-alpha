@@ -15,6 +15,12 @@ import { BatteryGroundTruthEmissionService } from './ground-truth-emission.servi
 import { BatteryGroundTruthRepository } from './ground-truth.repository';
 import { BatteryGroundTruthService } from './ground-truth.service';
 import { BatteryGroundTruthSourceResolver } from './ground-truth-source.resolver';
+import { buildActionPlanPlausibility, createGtTestUser } from './ground-truth-postgres.fixture';
+
+const planPlausibility = buildActionPlanPlausibility({
+  confirmedAt: '2026-04-10T08:00:00.000Z',
+  fingerprint: 'fp-g2',
+});
 
 const LIVE = process.env.BATTERY_V2_GROUND_TRUTH_INTEGRATION === '1';
 
@@ -94,7 +100,7 @@ async function insertBatteryReplacementEvent(
     const gtRepo = new BatteryGroundTruthRepository(prismaService);
     const resolver = new BatteryGroundTruthSourceResolver(prismaService);
     const gtService = new BatteryGroundTruthService(prismaService, gtRepo, resolver);
-    emission = new BatteryGroundTruthEmissionService(prismaService, gtService);
+    emission = new BatteryGroundTruthEmissionService(prismaService, gtService, gtRepo);
     guard = new BatteryGroundTruthBackedSourceGuard(prismaService);
   });
 
@@ -113,6 +119,7 @@ async function insertBatteryReplacementEvent(
         effectiveDocumentType: 'BATTERY',
         contentSha256: 'sha-g2-a',
         appliedAt: observedAt,
+        plausibility: planPlausibility,
       },
     });
     const serviceEventId = await insertBatteryReplacementEvent(prisma, {
@@ -162,6 +169,7 @@ async function insertBatteryReplacementEvent(
         effectiveDocumentType: 'BATTERY',
         contentSha256: 'sha-g2-b',
         appliedAt: observedAt,
+        plausibility: planPlausibility,
       },
     });
     const serviceEventId = await insertBatteryReplacementEvent(prisma, {
@@ -199,6 +207,7 @@ async function insertBatteryReplacementEvent(
 
   it('PG-G2-C — manual confirmed idempotency', async () => {
     const { organizationId, vehicleId } = await createOrgVehicle(prisma);
+    const actor = await createGtTestUser(prisma, organizationId);
     const eventDate = new Date('2026-04-12T09:00:00.000Z');
     const serviceEventId = await insertBatteryReplacementEvent(prisma, {
       organizationId,
@@ -210,7 +219,7 @@ async function insertBatteryReplacementEvent(
       vehicleId,
       serviceEventId,
       batteryScope: BatteryEvidenceScope.LV,
-      actorUserId: randomUUID(),
+      actorUserId: actor.id,
     };
     const a = await emission.confirmManualBatteryReplacement(params);
     const b = await emission.confirmManualBatteryReplacement(params);
@@ -219,6 +228,7 @@ async function insertBatteryReplacementEvent(
 
   it('PG-G2-D — conflicting manual confirmation scope', async () => {
     const { organizationId, vehicleId } = await createOrgVehicle(prisma);
+    const actor = await createGtTestUser(prisma, organizationId);
     const serviceEventId = await insertBatteryReplacementEvent(prisma, {
       organizationId,
       vehicleId,
@@ -229,7 +239,7 @@ async function insertBatteryReplacementEvent(
       vehicleId,
       serviceEventId,
       batteryScope: BatteryEvidenceScope.HV,
-      actorUserId: randomUUID(),
+      actorUserId: actor.id,
     });
     await expect(
       emission.confirmManualBatteryReplacement({
@@ -237,7 +247,7 @@ async function insertBatteryReplacementEvent(
         vehicleId,
         serviceEventId,
         batteryScope: BatteryEvidenceScope.LV,
-        actorUserId: randomUUID(),
+        actorUserId: actor.id,
       }),
     ).rejects.toBeInstanceOf(ManualGroundTruthConfirmationConflictError);
   });
@@ -245,6 +255,7 @@ async function insertBatteryReplacementEvent(
   it('PG-G2-E — cross-tenant manual confirmation fails', async () => {
     const orgA = await createOrgVehicle(prisma);
     const orgB = await createOrgVehicle(prisma);
+    const actorB = await createGtTestUser(prisma, orgB.organizationId);
     const serviceEventId = await insertBatteryReplacementEvent(prisma, {
       organizationId: orgA.organizationId,
       vehicleId: orgA.vehicleId,
@@ -256,13 +267,14 @@ async function insertBatteryReplacementEvent(
         vehicleId: orgB.vehicleId,
         serviceEventId,
         batteryScope: BatteryEvidenceScope.LV,
-        actorUserId: randomUUID(),
+        actorUserId: actorB.id,
       }),
     ).rejects.toMatchObject({ code: 'GT_SERVICE_EVENT_NOT_FOUND' });
   });
 
   it('PG-G2-F — source delete does not cascade GT', async () => {
     const { organizationId, vehicleId } = await createOrgVehicle(prisma);
+    const actor = await createGtTestUser(prisma, organizationId);
     const serviceEventId = await insertBatteryReplacementEvent(prisma, {
       organizationId,
       vehicleId,
@@ -273,7 +285,7 @@ async function insertBatteryReplacementEvent(
       vehicleId,
       serviceEventId,
       batteryScope: BatteryEvidenceScope.LV,
-      actorUserId: randomUUID(),
+      actorUserId: actor.id,
     });
     await expect(
       guard.assertServiceEventMutable(vehicleId, serviceEventId, 'delete'),
@@ -284,6 +296,7 @@ async function insertBatteryReplacementEvent(
 
   it('PG-G2-G — GT-backed source update requires correction workflow', async () => {
     const { organizationId, vehicleId } = await createOrgVehicle(prisma);
+    const actor = await createGtTestUser(prisma, organizationId);
     const serviceEventId = await insertBatteryReplacementEvent(prisma, {
       organizationId,
       vehicleId,
@@ -294,7 +307,7 @@ async function insertBatteryReplacementEvent(
       vehicleId,
       serviceEventId,
       batteryScope: BatteryEvidenceScope.LV,
-      actorUserId: randomUUID(),
+      actorUserId: actor.id,
     });
     await expect(
       guard.assertServiceEventMutable(vehicleId, serviceEventId, 'update', {

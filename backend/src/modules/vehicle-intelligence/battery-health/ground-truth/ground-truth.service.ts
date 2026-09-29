@@ -304,6 +304,24 @@ export class BatteryGroundTruthService {
             admission: prepared.admission,
           };
         }
+        if (
+          prepared.candidate.groundTruthType === 'BATTERY_REPLACEMENT' &&
+          prepared.candidate.pointers.sourceServiceEventId
+        ) {
+          const bySource = await this.repository.findActiveReplacementBySourceScope(
+            prepared.candidate.organizationId,
+            prepared.candidate.pointers.sourceServiceEventId,
+            prepared.candidate.batteryScope,
+          );
+          if (bySource) {
+            return {
+              outcome: 'IDEMPOTENT_EXISTING',
+              groundTruthEventId: bySource.id,
+              fingerprint: prepared.fingerprint,
+              admission: prepared.admission,
+            };
+          }
+        }
       }
       throw error;
     }

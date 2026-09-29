@@ -38,4 +38,8 @@ BATTERY_V2_GROUND_TRUTH_INTEGRATION=1 npx jest ground-truth.postgres.integration
 log "G2 PostgreSQL integration"
 BATTERY_V2_GROUND_TRUTH_INTEGRATION=1 npx jest ground-truth-g2.postgres.integration --runInBand
 
+log "G2.1 PostgreSQL integration"
+BATTERY_V2_GROUND_TRUTH_INTEGRATION=1 npx jest ground-truth-g2_1-orchestration.postgres.integration --runInBand
+BATTERY_V2_GROUND_TRUTH_INTEGRATION=1 npx jest ground-truth-g2_1-concurrency.postgres.integration --runInBand
+
 log "battery-ground-truth-postgres-ci completed successfully"

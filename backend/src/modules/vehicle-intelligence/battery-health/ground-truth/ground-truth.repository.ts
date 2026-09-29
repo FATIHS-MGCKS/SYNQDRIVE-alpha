@@ -47,6 +47,23 @@ export class BatteryGroundTruthRepository {
     });
   }
 
+  async findActiveReplacementBySourceScope(
+    organizationId: string,
+    sourceServiceEventId: string,
+    batteryScope: Prisma.BatteryGroundTruthEventCreateInput['batteryScope'],
+    db?: GroundTruthDbClient,
+  ) {
+    return this.client(db).batteryGroundTruthEvent.findFirst({
+      where: {
+        organizationId,
+        sourceServiceEventId,
+        batteryScope,
+        groundTruthType: 'BATTERY_REPLACEMENT',
+        verificationStatus: BatteryGroundTruthVerificationStatus.CONFIRMED,
+      },
+    });
+  }
+
   async findLatestByFingerprint(organizationId: string, fingerprint: string) {
     return this.prisma.batteryGroundTruthEvent.findFirst({
       where: { organizationId, sourceContentFingerprint: fingerprint },
