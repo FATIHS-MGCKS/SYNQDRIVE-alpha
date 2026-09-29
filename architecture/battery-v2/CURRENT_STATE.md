@@ -1,6 +1,6 @@
 # Battery V2 — Current State Snapshot
 
-**Snapshot date:** 2026-09-29 (M3.3G **G3 F5↔GT correlation/segmentation** engineering; **G2.2/G2.1/G2/G1** on main via PR #1840/#1837; G0; M3.3F **F5.1→V2 report**; **D3 sustained ON**; E3 **OFF**)
+**Snapshot date:** 2026-09-29 (post-G4 roadmap audit; M3.3G **G4 infra deployed** @ `1dd422403`; **G3/G3.1/G3.1.1** on main; **D3 sustained ON**; E3 **OFF**; **0 natural GT**)
 **Graph:** 149 nodes / 148 edges / 11 invariants (validated 2026-09-25)
 **Knowledge maturity:** Phase 4 planning complete — 20 open gaps; 1 PROPOSED decision (`BAT-V2-DEC-PH4-LV-PUB-CHAIN-001`); 5 VALIDATED PKG spec decisions (D1, D2, D3, D4, D5)
 
@@ -90,7 +90,8 @@
 | **`AUTHORITATIVE_REST_LIVENESS_GUARANTEED`** | **NO** (unchanged post §13) |
 | **`STATE_MACHINE_LIVENESS_GUARANTEED`** | **YES** (provider observability-gap validation gate) |
 | Provider-gap metrics follow-up | **`synqdrive_battery_provider_observability_gap_opened_total`** PM2 aggregation semantics — non-blocking observability debt |
-| `NEXT_PHASE` | **`M3_3G_G4`** — re-run after first natural GT on production (post G1–G3 deploy); continue F5 cohort-**C** / D3 sustained ON; **no** F6 numeric calibration / **no** E3 runtime |
+| **Post-G4 roadmap (LV/HV)** | **M3.3-LV-H0** + **M3.3-HV-H0** in parallel; **`G4_STATUS=WAITING_FOR_FIRST_NATURAL_GT`** (async read-only re-audit); see [`BATTERY_INTELLIGENCE_ARCHITECTURE.md`](BATTERY_INTELLIGENCE_ARCHITECTURE.md) + `research/BATTERY_INTELLIGENCE_POST_G4_ROADMAP_AUDIT_2026-09-29.md` |
+| `NEXT_PHASE` | **`M3_3G_G4_WAIT`** (observation only) **∥** **`M3_3_LV_H0`** **∥** **`M3_3_HV_H0`** — D3/F5 cohort-**C** continues; **no** F6 / **no** E3 runtime until gates |
 | `PIPELINE_HEALTH` | **PASS** (control plane / lifecycle / scheduler — distinct from evidence observability) |
 | `EVIDENCE_OBSERVABILITY_BLOCKED` | **NO** (F4.3 reconciliation/ack/flag-gauge observability **proven in production** @ `68a05e41`; D3 activation still gated separately) |
 | `IMPLEMENTATION_DECISION` | **HYBRID_MODEL_NEEDS_MORE_NATURAL_DATA** |

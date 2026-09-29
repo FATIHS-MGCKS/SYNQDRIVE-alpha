@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-intelligence-post-g4-roadmap-audit-2026-09-29',
+    version: '4.9.2214',
+    title: 'Battery Intelligence — post-G4 LV/HV roadmap audit',
+    summary: [
+      'Top-level BATTERY_INTELLIGENCE_ARCHITECTURE.md: Shared Core vs LV vs HV domains; G4 async wait does not block LV/HV engineering.',
+      'Historical M3.3A–G status matrix (engineering vs production vs scientific validation); signal inventory with BATTERY_SCOPE.',
+      'NEXT_PHASE: M3_3G_G4_WAIT ∥ M3_3_LV_H0 ∥ M3_3_HV_H0; F6/E3/customer health claims remain gated.',
+    ],
+    reason:
+      'After G4 production GT infra (0 rows), reconstruct authoritative forward roadmap with explicit LV/HV separation.',
+    previousBehavior:
+      'Roadmap implied single battery model; NEXT_PHASE=M3_3G_G4 only; no consolidated LV/HV product architecture doc.',
+    details:
+      'architecture/battery-v2/BATTERY_INTELLIGENCE_ARCHITECTURE.md; architecture/battery-v2/research/BATTERY_INTELLIGENCE_POST_G4_ROADMAP_AUDIT_2026-09-29.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-29T23:30:00.000Z',
+  },
+  {
     id: 'battery-v2-m3-3g-g4-first-natural-validation-evidence-audit-2026-09-29',
     version: '4.9.2213',
     title: 'Battery V2 M3.3G G4 — first natural GT validation preparation audit',

@@ -20,6 +20,15 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-29 — Post-G4 Battery Intelligence roadmap audit (LV / HV / Shared Core)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Added `BATTERY_INTELLIGENCE_ARCHITECTURE.md` + `research/BATTERY_INTELLIGENCE_POST_G4_ROADMAP_AUDIT_2026-09-29.md`; `CURRENT_STATE` `NEXT_PHASE` → parallel LV-H0 / HV-H0 + async G4 wait; SynqDrive Code views. |
+| **WHY** | Product requirement: LV and HV are distinct scientific domains; G4 must not block unrelated engineering. |
+| **NON_EFFECTS** | No runtime, schema, deploy, E3, F6, synthetic GT. |
+| **EVIDENCE** | `research/BATTERY_INTELLIGENCE_POST_G4_ROADMAP_AUDIT_2026-09-29.md` |
+
 ## CL-2026-09-29 — M3.3G G4 production deploy + verification (authorized SHA)
 
 | Field | Value |

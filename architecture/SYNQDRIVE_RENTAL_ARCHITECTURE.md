@@ -293,7 +293,7 @@ Detailed sections for modules with usable living authorities. See [Module invent
 | **Authority directory** | [`architecture/battery-v2/`](battery-v2/) |
 | **Authority-native status** | **Phase 4 resolution planning** (2026-09-01) · Incremental / open scientific workstream — implementation packages defined, gaps remain open · Runtime impact: documentation and knowledge graph only |
 | **Ownership boundary** | Owns Battery V2 behavior, policy, lifecycle, signals, health model, queues, persistence, scheduling, reconciliation, publication, and safety boundaries. **ERD (KG-EED)** owns physical HV charge **session semantics**; Battery V2 **consumes** session evidence — implementation code remains under `battery-health/hv-charge-session/*` (transitional host). |
-| **Mandatory entry documents** | [README.md](battery-v2/README.md) · [CURRENT_STATE.md](battery-v2/CURRENT_STATE.md) · [KNOWLEDGE_GRAPH.md](battery-v2/KNOWLEDGE_GRAPH.md) · [AGENT_CONTRACT.md](battery-v2/AGENT_CONTRACT.md) · [resolution/README.md](battery-v2/resolution/README.md) · [research/CHANGE_LEDGER.md](battery-v2/research/CHANGE_LEDGER.md) |
+| **Mandatory entry documents** | [README.md](battery-v2/README.md) · [BATTERY_INTELLIGENCE_ARCHITECTURE.md](battery-v2/BATTERY_INTELLIGENCE_ARCHITECTURE.md) · [CURRENT_STATE.md](battery-v2/CURRENT_STATE.md) · [KNOWLEDGE_GRAPH.md](battery-v2/KNOWLEDGE_GRAPH.md) · [AGENT_CONTRACT.md](battery-v2/AGENT_CONTRACT.md) · [resolution/README.md](battery-v2/resolution/README.md) · [research/CHANGE_LEDGER.md](battery-v2/research/CHANGE_LEDGER.md) |
 | **Validation** | `bash architecture/battery-v2/scripts/validate-graph.sh` (or `node architecture/battery-v2/scripts/validate-graph.mjs`) |
 
 ---
