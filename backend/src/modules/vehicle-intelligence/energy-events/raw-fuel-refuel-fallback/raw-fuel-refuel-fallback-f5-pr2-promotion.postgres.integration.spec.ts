@@ -28,6 +28,7 @@ import {
 } from '../raw-fuel-rise-detector/testing/raw-fuel-rise-detector-test.util';
 import {
   ensurePersistedCandidateLabHybridTrustEvidence,
+  ensureVehicleCandidatesLabHybridTrustEvidence,
   registerLabHybridTrustOrganization,
 } from './testing/rfrf-lab-hybrid-trust-promotion.harness';
 
@@ -684,6 +685,7 @@ async function readPromotionAttemptedTotal(
           from: new Date('2026-09-06T07:00:00.000Z'),
           to: new Date('2026-09-06T12:00:00.000Z'),
         });
+        await ensureVehicleCandidatesLabHybridTrustEvidence(prisma, vehicle.id);
         const candidate = await prisma.rawRefuelCandidate.findFirstOrThrow({ where: { vehicleId: vehicle.id } });
         const first = await promotion.evaluateAndApplyPromotion(candidate, promotionContext, process.env);
         expect(first.status).toBe('PROMOTED');
@@ -929,6 +931,7 @@ async function readPromotionAttemptedTotal(
             qualityMeta: { absoluteDetectionAdmissibility: 'ADMISSIBLE' },
           },
         });
+        await ensureVehicleCandidatesLabHybridTrustEvidence(prisma, vehicle.id);
         const detect = await energyEvents.detectEnergyEvents(vehicle.id, {
           from: new Date('2026-09-06T07:00:00.000Z'),
           to: new Date('2026-09-06T12:00:00.000Z'),
@@ -1199,6 +1202,7 @@ async function readPromotionAttemptedTotal(
             qualityMeta: { absoluteDetectionAdmissibility: 'ADMISSIBLE' },
           },
         });
+        await ensureVehicleCandidatesLabHybridTrustEvidence(prisma, vehicle.id);
         const second = await energyEvents.detectEnergyEvents(vehicle.id, {
           from: new Date('2026-09-06T07:00:00.000Z'),
           to: new Date('2026-09-06T12:00:00.000Z'),
@@ -1249,6 +1253,7 @@ async function readPromotionAttemptedTotal(
             qualityMeta: { absoluteDetectionAdmissibility: 'ADMISSIBLE' },
           },
         });
+        await ensureVehicleCandidatesLabHybridTrustEvidence(prisma, vehicle.id);
         const before = await readPromotionAttemptedTotal(registry);
         const detect = await energyEvents.detectEnergyEvents(vehicle.id, {
           from: new Date('2026-09-06T07:00:00.000Z'),

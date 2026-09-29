@@ -88,3 +88,13 @@ export async function ensurePersistedCandidateLabHybridTrustEvidence(
     },
   });
 }
+
+export async function ensureVehicleCandidatesLabHybridTrustEvidence(
+  prisma: PrismaClient,
+  vehicleId: string,
+): Promise<void> {
+  const candidates = await prisma.rawRefuelCandidate.findMany({ where: { vehicleId } });
+  for (const candidate of candidates) {
+    await ensurePersistedCandidateLabHybridTrustEvidence(prisma, candidate);
+  }
+}
