@@ -321,6 +321,9 @@ async function createOrgVehicle(prisma: PrismaClient) {
       sourceAuthority: 'WORKSHOP',
       pointers: { sourceBatteryEvidenceId: ev2.id },
     });
+    if (!('createInput' in prepared)) {
+      throw new Error(`expected prepared payload, got ${prepared.outcome}`);
+    }
     await expect(
       prisma.$transaction(async (tx) => {
         await gtRepo.createConfirmedEvent(
