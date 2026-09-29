@@ -44,21 +44,35 @@ export async function createGtOrgVehicle(prisma: PrismaClient) {
 
 export async function createGtTestUser(prisma: PrismaClient, organizationId: string) {
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-  return prisma.user.create({
-    data: {
-      email: `gt-actor-${suffix}@example.com`,
-      name: `GT Actor ${suffix}`,
-      status: 'ACTIVE',
-      memberships: {
-        create: {
-          organizationId,
-          role: 'ORG_ADMIN',
-          status: 'ACTIVE',
-          permissions: { fleet: { read: true, write: true } },
-        },
-      },
-    },
-  });
+  const userId = randomUUID();
+  const email = `gt-actor-${suffix}@example.com`;
+  const name = `GT Actor ${suffix}`;
+  await prisma.$executeRaw`
+    INSERT INTO users (id, email, name, status, created_at, updated_at)
+    VALUES (
+      ${userId}::uuid,
+      ${email},
+      ${name},
+      'ACTIVE'::"UserStatus",
+      NOW(),
+      NOW()
+    )
+  `;
+  await prisma.$executeRaw`
+    INSERT INTO organization_memberships (
+      id, user_id, organization_id, role, status, permissions, created_at, updated_at
+    ) VALUES (
+      ${randomUUID()}::uuid,
+      ${userId}::uuid,
+      ${organizationId}::uuid,
+      'ORG_ADMIN'::"MembershipRole",
+      'ACTIVE'::"MembershipStatus",
+      ${JSON.stringify({ fleet: { read: true, write: true } })}::jsonb,
+      NOW(),
+      NOW()
+    )
+  `;
+  return { id: userId, email, name };
 }
 
 export function buildGroundTruthStack(prisma: PrismaClient) {
