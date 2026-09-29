@@ -48,12 +48,10 @@ export class DiV0S4cExecutor {
       return { kind: 'SETTLED' };
     }
 
-    const resolved = await resolveDiV0S4cAcquisitionContext(this.deps.prisma, lease);
-    if (!resolved.ok) {
-      await repository.failTerminal(lease, `CONTEXT_${resolved.failure.code}`);
-      return { kind: 'SETTLED' };
+    const route = await repository.readReplayRoutingContext(lease);
+    if (!route.ok) {
+      return { kind: 'RELEASE' };
     }
-    const ctx = resolved.context;
 
     const boundaryRecheck = await repository.evaluateAttemptStartBoundary(lease);
     if (boundaryRecheck.kind === 'LEASE_LOST') {
@@ -64,9 +62,16 @@ export class DiV0S4cExecutor {
       return { kind: 'SETTLED' };
     }
 
-    if (ctx.pinnedSnapshotHash != null) {
-      return executeDiV0S4dPinnedReplay(context, ctx, computeBinding, this.deps.controlPlane);
+    if (route.mode === 'REPLAY') {
+      return executeDiV0S4dPinnedReplay(context, route.context, computeBinding, this.deps.controlPlane);
     }
+
+    const resolved = await resolveDiV0S4cAcquisitionContext(this.deps.prisma, lease);
+    if (!resolved.ok) {
+      await repository.failTerminal(lease, `CONTEXT_${resolved.failure.code}`);
+      return { kind: 'SETTLED' };
+    }
+    const ctx = resolved.context;
 
     const windowSeconds = (ctx.windowEnd.getTime() - ctx.windowStart.getTime()) / 1000;
     if (windowSeconds > DI_V0_S4_LIMITS.maxAcquisitionWindowSeconds) {

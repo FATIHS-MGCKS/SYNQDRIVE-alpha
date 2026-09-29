@@ -309,7 +309,9 @@ function apiSyntheticDeps(db: PrismaClient, config: ReturnType<typeof s4aConfigF
     ])}\n${JSON.stringify(['NATIVE_EVENT', 'DISABLED', 'FLAG_OFF', null, null, null])}\n${JSON.stringify(['POSITION', 'SOURCE_FAILURE', 'TIMEOUT', null, null, null])}\n${JSON.stringify(['R1_OBD', 'NOT_APPLICABLE', 'SOURCE_FAMILY', null, null, null])}`;
     const gzip = gzipSync(Buffer.from(container, 'utf8'));
     const contentHash = buildDiV0S4EvidenceSnapshotHash(container);
-    const wrongHash = `${contentHash.slice(0, -1)}0`;
+    const last = contentHash.slice(-1);
+    const wrongHash = `${contentHash.slice(0, -1)}${last === 'a' ? 'b' : 'a'}`;
+    expect(wrongHash).not.toBe(contentHash);
     await db.$executeRaw`
       INSERT INTO di_v0_s4_evidence_snapshots (id, organization_id, vehicle_id, trip_id, snapshot_hash, container_version,
         boundary_fingerprint, acquisition_window_start, acquisition_window_end, channel_manifest, payload_gzip,
@@ -544,6 +546,74 @@ function apiSyntheticDeps(db: PrismaClient, config: ReturnType<typeof s4aConfigF
     await loop.runOnce();
     const runs = await db.$queryRaw<Array<{ n: number }>>`SELECT COUNT(*)::int AS n FROM di_v0_shadow_runs WHERE trip_id = ${tenant.tripId}`;
     expect(runs[0]?.n).toBe(1);
+    await admin.$executeRaw`DELETE FROM di_v0_s4_work_items WHERE vehicle_id = ${tenant.vehicleId}`;
+    await cleanupS4aTenant(admin, tenant);
+  });
+
+  it('D-17 provider link removed after pin → replay still succeeds', async () => {
+    const tenant = await seedS4aTenant(admin);
+    await linkDimo(admin, tenant.vehicleId, API_SYNTHETIC_IDENTITY);
+    const config = s4aConfigFor([tenant]);
+    const pipeline = buildDiV0S4RuntimePipelineManifest(config);
+    const db = await trackClient();
+    const positionCalls = { n: 0 };
+    const { loop } = await setupS4dTenantRun(admin, tenant, config, pipeline, apiSyntheticDeps(db, config, tenant, positionCalls));
+    await loop.runOnce();
+    const mid = positionCalls.n;
+    expect(mid).toBeGreaterThanOrEqual(1);
+    await admin.$executeRaw`UPDATE vehicles SET dimo_vehicle_id = NULL WHERE id = ${tenant.vehicleId}`;
+    await releaseS4dWorkItemsForRetry(db, tenant.tripId);
+    await loop.runOnce();
+    expect(positionCalls.n).toBe(mid);
+    const wi = await db.$queryRaw<Array<{ status: string }>>`SELECT status FROM di_v0_s4_work_items WHERE trip_id = ${tenant.tripId}`;
+    expect(wi[0]?.status).toBe('COMPLETED');
+    await admin.$executeRaw`DELETE FROM di_v0_s4_work_items WHERE vehicle_id = ${tenant.vehicleId}`;
+    await cleanupS4aTenant(admin, tenant);
+  });
+
+  it('D-18 current raw_json family changed after pin → replay stays API_SYNTHETIC', async () => {
+    const tenant = await seedS4aTenant(admin);
+    await linkDimo(admin, tenant.vehicleId, API_SYNTHETIC_IDENTITY);
+    const config = s4aConfigFor([tenant]);
+    const pipeline = buildDiV0S4RuntimePipelineManifest(config);
+    const db = await trackClient();
+    const positionCalls = { n: 0 };
+    const { loop } = await setupS4dTenantRun(admin, tenant, config, pipeline, apiSyntheticDeps(db, config, tenant, positionCalls));
+    await loop.runOnce();
+    const mid = positionCalls.n;
+    const [veh] = await db.$queryRaw<Array<{ dimo_vehicle_id: string }>>`SELECT dimo_vehicle_id FROM vehicles WHERE id = ${tenant.vehicleId}`;
+    if (veh?.dimo_vehicle_id) {
+      await admin.$executeRaw`UPDATE dimo_vehicles SET raw_json = ${JSON.stringify(RUPTELA_DEVICE_IDENTITY)}::jsonb WHERE id = ${veh.dimo_vehicle_id}`;
+    }
+    await releaseS4dWorkItemsForRetry(db, tenant.tripId);
+    await loop.runOnce();
+    expect(positionCalls.n).toBe(mid);
+    const wi = await db.$queryRaw<Array<{ status: string; source_family: string }>>`
+      SELECT status, source_family::text FROM di_v0_s4_work_items WHERE trip_id = ${tenant.tripId}`;
+    expect(wi[0]?.status).toBe('COMPLETED');
+    expect(wi[0]?.source_family).toBe('API_SYNTHETIC');
+    await admin.$executeRaw`DELETE FROM di_v0_s4_work_items WHERE vehicle_id = ${tenant.vehicleId}`;
+    await cleanupS4aTenant(admin, tenant);
+  });
+
+  it('D-19 token relink after pin → replay unchanged', async () => {
+    const tenant = await seedS4aTenant(admin);
+    await linkDimo(admin, tenant.vehicleId, API_SYNTHETIC_IDENTITY);
+    const config = s4aConfigFor([tenant]);
+    const pipeline = buildDiV0S4RuntimePipelineManifest(config);
+    const db = await trackClient();
+    const positionCalls = { n: 0 };
+    const { loop } = await setupS4dTenantRun(admin, tenant, config, pipeline, apiSyntheticDeps(db, config, tenant, positionCalls));
+    await loop.runOnce();
+    const mid = positionCalls.n;
+    const [veh] = await db.$queryRaw<Array<{ dimo_vehicle_id: string }>>`SELECT dimo_vehicle_id FROM vehicles WHERE id = ${tenant.vehicleId}`;
+    if (veh?.dimo_vehicle_id) {
+      await admin.$executeRaw`UPDATE dimo_vehicles SET token_id = ${Math.floor(Math.random() * 1_000_000_000) + 2} WHERE id = ${veh.dimo_vehicle_id}`;
+    }
+    await releaseS4dWorkItemsForRetry(db, tenant.tripId);
+    await loop.runOnce();
+    expect(positionCalls.n).toBe(mid);
+    expect((await db.$queryRaw<Array<{ status: string }>>`SELECT status FROM di_v0_s4_work_items WHERE trip_id = ${tenant.tripId}`)[0]?.status).toBe('COMPLETED');
     await admin.$executeRaw`DELETE FROM di_v0_s4_work_items WHERE vehicle_id = ${tenant.vehicleId}`;
     await cleanupS4aTenant(admin, tenant);
   });

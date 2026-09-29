@@ -51,6 +51,7 @@ import {
   verifyAndParseDiV0PinnedEvidenceSnapshot,
   type DiV0S4dVerifiedSnapshotFailureCode,
 } from '../s4d-replay/di-v0-s4d-verified-snapshot';
+import type { DiV0S4ReplayRoutingContext } from '../s4d-replay/di-v0-s4d-replay-types';
 
 type Db = Prisma.TransactionClient;
 
@@ -187,6 +188,11 @@ const reject = (transitionId: DiV0S4TransitionId, code: DiV0S4RejectionCode, det
 export type DiV0S4ReadVerifiedPinnedEvidenceResult =
   | { ok: true; parsed: DiV0S4ParsedEvidenceContainer }
   | { ok: false; code: 'LEASE_LOST' | 'PIN_NOT_SET' | DiV0S4dVerifiedSnapshotFailureCode };
+
+export type DiV0S4ReadReplayRoutingContextResult =
+  | { ok: false; code: 'LEASE_LOST' }
+  | { ok: true; mode: 'FRESH' }
+  | { ok: true; mode: 'REPLAY'; context: DiV0S4ReplayRoutingContext };
 
 export class DiV0S4WorkItemRepository {
   constructor(
@@ -730,6 +736,58 @@ export class DiV0S4WorkItemRepository {
   }
 
   /**
+   * S4D read-only: work-item replay routing (no DIMO join). Authoritative sourceFamily is work_item.source_family.
+   */
+  async readReplayRoutingContext(lease: DiV0S4Lease): Promise<DiV0S4ReadReplayRoutingContextResult> {
+    const rows = await this.prisma.$queryRaw<
+      Array<{
+        status: string;
+        lease_epoch: bigint;
+        lease_owner: string | null;
+        lease_valid: boolean;
+        organization_id: string;
+        vehicle_id: string;
+        trip_id: string;
+        boundary_fingerprint: string;
+        source_family: string;
+        run_purpose: string;
+        pinned_snapshot_hash: string | null;
+      }>
+    >`
+      SELECT status, lease_epoch, lease_owner, organization_id, vehicle_id, trip_id, boundary_fingerprint,
+        source_family::text AS source_family, run_purpose::text AS run_purpose, pinned_snapshot_hash,
+        (lease_expires_at IS NOT NULL AND lease_expires_at > clock_timestamp()) AS lease_valid
+      FROM di_v0_s4_work_items WHERE id = ${lease.workItemId}`;
+    const row = rows[0];
+    if (
+      !row ||
+      row.status !== 'LEASED' ||
+      row.lease_epoch !== lease.leaseEpoch ||
+      row.lease_owner !== lease.leaseOwner ||
+      !row.lease_valid
+    ) {
+      return { ok: false, code: 'LEASE_LOST' };
+    }
+    const sourceFamily = row.source_family as DiV0S4SourceFamily;
+    if (row.pinned_snapshot_hash == null) {
+      return { ok: true, mode: 'FRESH' };
+    }
+    return {
+      ok: true,
+      mode: 'REPLAY',
+      context: {
+        organizationId: row.organization_id,
+        vehicleId: row.vehicle_id,
+        tripId: row.trip_id,
+        sourceFamily,
+        boundaryFingerprint: row.boundary_fingerprint,
+        runPurpose: row.run_purpose as DiV0S4RunPurpose,
+        pinnedSnapshotHash: row.pinned_snapshot_hash,
+      },
+    };
+  }
+
+  /**
    * S4D read-only: lease-fenced verified pinned snapshot load (gunzip, re-hash, strict parse).
    * Must not perform authoritative writes.
    */
@@ -744,11 +802,12 @@ export class DiV0S4WorkItemRepository {
         vehicle_id: string;
         trip_id: string;
         boundary_fingerprint: string;
+        source_family: string;
         pinned_snapshot_hash: string | null;
       }>
     >`
       SELECT status, lease_epoch, lease_owner, organization_id, vehicle_id, trip_id, boundary_fingerprint,
-        pinned_snapshot_hash,
+        source_family::text AS source_family, pinned_snapshot_hash,
         (lease_expires_at IS NOT NULL AND lease_expires_at > clock_timestamp()) AS lease_valid
       FROM di_v0_s4_work_items WHERE id = ${lease.workItemId}`;
     const row = rows[0];
@@ -776,6 +835,7 @@ export class DiV0S4WorkItemRepository {
       tripId: row.trip_id,
       boundaryFingerprint: row.boundary_fingerprint,
       snapshotHash: row.pinned_snapshot_hash,
+      sourceFamily: row.source_family as DiV0S4SourceFamily,
     });
     if (!verified.ok) return verified;
     return { ok: true, parsed: verified.parsed };

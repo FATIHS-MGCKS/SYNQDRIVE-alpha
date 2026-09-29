@@ -1,10 +1,13 @@
 import { gunzipSync } from 'zlib';
 import { DI_V0_S4_EVIDENCE_CONTAINER_VERSION, DI_V0_S4_LIMITS } from '../s4a-foundation/di-v0-s4a-contract';
-import { buildDiV0S4EvidenceSnapshotHash, type DiV0S4EvidenceChannelManifestEntry } from '../s4a-foundation/di-v0-s4a-identity';
+import type { DiV0S4SourceFamily } from '../s4a-foundation/di-v0-s4a-contract';
+import { buildDiV0S4EvidenceSnapshotHash } from '../s4a-foundation/di-v0-s4a-identity';
 import {
   parseDiV0S4EvidenceContainer,
   type DiV0S4ParsedEvidenceContainer,
 } from '../s4a-foundation/di-v0-s4a-evidence-container-parse';
+import { assertDbChannelManifestMatchesParsed } from './di-v0-s4d-manifest-parity';
+import { validateDiV0S4dReplayScopeBinding } from './di-v0-s4d-replay-scope-bind';
 
 export type DiV0S4dVerifiedSnapshotFailureCode =
   | 'SNAPSHOT_HASH_MISMATCH'
@@ -22,6 +25,7 @@ export interface DiV0S4dSnapshotScopeExpectation {
   tripId: string;
   boundaryFingerprint: string;
   snapshotHash: string;
+  sourceFamily: DiV0S4SourceFamily;
 }
 
 export interface DiV0S4dSnapshotRow {
@@ -36,7 +40,7 @@ export interface DiV0S4dSnapshotRow {
   uncompressed_bytes: number | bigint;
 }
 
-/** Bounded gunzip → re-hash → strict container parse (pre-compute verification). */
+/** Bounded gunzip → re-hash → strict container parse → DB manifest parity → scope bind (pre-compute). */
 export function verifyAndParseDiV0PinnedEvidenceSnapshot(
   row: DiV0S4dSnapshotRow,
   scope: DiV0S4dSnapshotScopeExpectation,
@@ -62,38 +66,21 @@ export function verifyAndParseDiV0PinnedEvidenceSnapshot(
   if (buildDiV0S4EvidenceSnapshotHash(container) !== scope.snapshotHash) {
     return { ok: false, code: 'SNAPSHOT_HASH_MISMATCH' };
   }
-  const header = `${DI_V0_S4_EVIDENCE_CONTAINER_VERSION}\n${JSON.stringify([
-    scope.organizationId,
-    scope.vehicleId,
-    scope.tripId,
-    scope.boundaryFingerprint,
-    new Date(row.acquisition_window_start).toISOString(),
-    new Date(row.acquisition_window_end).toISOString(),
-  ])}\n`;
-  if (!container.startsWith(header)) {
-    return { ok: false, code: 'SNAPSHOT_INVALID', detail: 'container header scope mismatch' };
+  if (!container.startsWith(`${DI_V0_S4_EVIDENCE_CONTAINER_VERSION}\n`)) {
+    return { ok: false, code: 'SNAPSHOT_INVALID', detail: 'container version mismatch' };
   }
   try {
-    const manifest = row.channel_manifest as DiV0S4EvidenceChannelManifestEntry[];
-    const lines = new Set(container.split('\n'));
-    for (const entry of manifest) {
-      const line = JSON.stringify([
-        entry.channel,
-        entry.outcome,
-        entry.reasonCode,
-        entry.formatVersion,
-        entry.payloadSha256,
-        entry.attestationRef,
-      ]);
-      const expectedHash = entry.payloadSha256 == null ? null : `${entry.formatVersion}:sha256:${entry.payloadSha256}`;
-      if (!lines.has(line) || expectedHash !== entry.channelEvidenceHash) {
-        return { ok: false, code: 'SNAPSHOT_INVALID', detail: `manifest entry ${entry.channel} mismatch` };
-      }
-    }
     const parsed = parseDiV0S4EvidenceContainer(container);
     if (parsed.snapshotHash !== scope.snapshotHash) {
       return { ok: false, code: 'SNAPSHOT_HASH_MISMATCH' };
     }
+    assertDbChannelManifestMatchesParsed(row.channel_manifest, parsed.channelManifest);
+    validateDiV0S4dReplayScopeBinding(parsed, {
+      organizationId: scope.organizationId,
+      vehicleId: scope.vehicleId,
+      tripId: scope.tripId,
+      sourceFamily: scope.sourceFamily,
+    });
     return { ok: true, parsed };
   } catch (error) {
     return { ok: false, code: 'SNAPSHOT_INVALID', detail: error instanceof Error ? error.message : undefined };

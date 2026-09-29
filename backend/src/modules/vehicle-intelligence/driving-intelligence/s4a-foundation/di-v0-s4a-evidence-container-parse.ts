@@ -43,6 +43,9 @@ function findPayloadSlice(lines: string[], start: number, expectedPayloadSha256:
 }
 
 export interface DiV0S4ParsedEvidenceContainer extends DiV0S4SerializedEvidenceContainer {
+  organizationId: string;
+  vehicleId: string;
+  tripId: string;
   channelPayloads: Partial<Record<DiV0S4EvidenceChannel, string>>;
 }
 
@@ -96,5 +99,11 @@ export function parseDiV0S4EvidenceContainer(container: string): DiV0S4ParsedEvi
   if (buildDiV0CombinedInputIdentityV03(reserialized.pins) !== reserialized.combinedInputIdentity) {
     throw new DiV0S4EvidenceContainerParseError('combined identity mismatch');
   }
-  return { ...reserialized, channelPayloads };
+  return {
+    ...reserialized,
+    organizationId: String(organizationId),
+    vehicleId: String(vehicleId),
+    tripId: String(tripId),
+    channelPayloads,
+  };
 }

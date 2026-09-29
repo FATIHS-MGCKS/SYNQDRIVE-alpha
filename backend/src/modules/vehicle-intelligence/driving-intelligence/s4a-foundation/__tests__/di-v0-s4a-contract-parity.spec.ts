@@ -29,6 +29,7 @@ import { DiV0S4WorkItemRepository } from '../di-v0-s4a-work-item.repository';
 const PUBLIC_READ_ONLY_REPOSITORY_METHODS = [
   'evaluateAttemptStartBoundary',
   'readExecutionPostcondition',
+  'readReplayRoutingContext',
   'readVerifiedPinnedEvidence',
 ] as const;
 
@@ -133,7 +134,7 @@ describe('DI V0 S4A contract parity (TS mirror == s4a-contract.v2.json)', () => 
 
     const writeMapMethods = Object.keys(DI_V0_S4_REPOSITORY_WRITE_MAP);
     const readOnlyMethods = [...PUBLIC_READ_ONLY_REPOSITORY_METHODS];
-    expect(readOnlyMethods).toHaveLength(3);
+    expect(readOnlyMethods).toHaveLength(4);
 
     for (const m of readOnlyMethods) {
       expect(writeMapMethods).not.toContain(m);
@@ -153,8 +154,12 @@ describe('DI V0 S4A contract parity (TS mirror == s4a-contract.v2.json)', () => 
   it('read-only repository helpers perform no authoritative mutations', () => {
     const evaluateWrites = countAuthoritativeMutationsInMethod('evaluateAttemptStartBoundary');
     const postconditionWrites = countAuthoritativeMutationsInMethod('readExecutionPostcondition');
+    const replayRoutingWrites = countAuthoritativeMutationsInMethod('readReplayRoutingContext');
+    const verifiedPinWrites = countAuthoritativeMutationsInMethod('readVerifiedPinnedEvidence');
     expect(evaluateWrites).toBe(0);
     expect(postconditionWrites).toBe(0);
+    expect(replayRoutingWrites).toBe(0);
+    expect(verifiedPinWrites).toBe(0);
   });
 
   it('control plane flag and allowlist names', () => {

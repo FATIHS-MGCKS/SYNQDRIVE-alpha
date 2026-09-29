@@ -1237,3 +1237,13 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | NON_EFFECTS | No deploy, no AppModule, no S4E/S4F, no schema migration |
 | Evidence | `evidence/EXP021_S4D_ENGINEERING_START.md` |
 | Next slice | Complete S4D postgres matrix D-02–D-16 + R1/container equivalence tests; then `S4D_IMPLEMENTATION_PREMERGE_AUDIT` |
+
+### EXP-021 S4D — P1 independent-audit closure (2026-09-29)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | `EXP021_S4D_P1_CLOSURE` on PR #1841 @ `b9761a55` |
+| CHANGE | Provider-independent replay routing (`readReplayRoutingContext`); DB manifest exact parity; inner POSITION/R1 scope cross-bind; S4D abort guards; strict POSITION/R1 semantic parsers; postgres D-17–D-19 + adversarial unit matrix |
+| NON_EFFECTS | No deploy, no schema/migration, no AppModule, no S4E/S4F |
+| Evidence | `evidence/EXP021_S4D_P1_CLOSURE.md` |
+| Gap | `DI-GAP-S4-REPLAY-DESERIALIZER-001` CLOSED after P1-A..P1-E gates |

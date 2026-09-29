@@ -50,6 +50,7 @@ function baseContext(repository: object, env: Record<string, string> = { DI_V0_S
   const boundaryOk = jest.fn().mockResolvedValue({ kind: 'CURRENT' });
   const merged = {
     evaluateAttemptStartBoundary: boundaryOk,
+    readReplayRoutingContext: jest.fn().mockResolvedValue({ ok: true, mode: 'FRESH' as const }),
     ...(repository as object),
   };
   return {

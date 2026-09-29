@@ -6,12 +6,20 @@ import type {
 } from './di-v0-position-acquisition.types';
 import type { DiV0PositionSnapshotMaterial } from './di-v0-position-snapshot';
 import {
-  DI_V0_POSITION_ACQUISITION_ADAPTER_V0_1,
   DI_V0_POSITION_EVIDENCE_SNAPSHOT_V0_1,
   DI_V0_POSITION_QUERY_SPEC_V0_1,
 } from './di-v0-position-acquisition.versions';
 import { buildDiV0PositionNormalizedObservation } from './di-v0-position-normalizer';
 import { serializeDiV0PositionSnapshot } from './di-v0-position-snapshot';
+import {
+  assertDiV0PositionAdapterLine,
+  assertDiV0PositionQueryLine,
+  assertDiV0PositionRejectedRowsCanonicalOrder,
+  assertDiV0PositionSubject,
+  expectedPositionBucketLabel,
+  parseDiV0PositionWindowFromSnapshot,
+  validateDiV0PositionSnapshotSemantics,
+} from './di-v0-position-snapshot-semantic-validate';
 
 export class DiV0PositionSnapshotParseError extends Error {
   constructor(message: string) {
@@ -43,11 +51,12 @@ export function parseDiV0PositionSnapshot(payload: string): DiV0PositionSnapshot
   if (lines[i++] !== DI_V0_POSITION_EVIDENCE_SNAPSHOT_V0_1) {
     throw new DiV0PositionSnapshotParseError('version mismatch');
   }
-  expectTuple(parseJsonLine(lines[i++], 'adapter'), 'adapter', 2, 'adapter');
+  const adapter = expectTuple(parseJsonLine(lines[i++], 'adapter'), 'adapter', 2, 'adapter');
+  assertDiV0PositionAdapterLine(adapter);
   const query = expectTuple(parseJsonLine(lines[i++], 'query'), 'query', 8, 'query');
-  if (query[1] !== DI_V0_POSITION_QUERY_SPEC_V0_1.id) throw new DiV0PositionSnapshotParseError('query spec mismatch');
+  assertDiV0PositionQueryLine(query);
   const subject = expectTuple(parseJsonLine(lines[i++], 'subject'), 'subject', 4, 'subject');
-  const window = expectTuple(parseJsonLine(lines[i++], 'window'), 'window', 3, 'window');
+  const windowLine = expectTuple(parseJsonLine(lines[i++], 'window'), 'window', 3, 'window');
   const sourceFamilyLine = expectTuple(parseJsonLine(lines[i++], 'sourceFamily'), 'sourceFamily', 3, 'sourceFamily');
   const providerSignalsNullLine = expectTuple(
     parseJsonLine(lines[i++], 'providerSignalsNull'),
@@ -57,20 +66,25 @@ export function parseDiV0PositionSnapshot(payload: string): DiV0PositionSnapshot
   );
   const dimoTokenId = Number(subject[2]);
   const vehicleId = String(subject[3]);
+  assertDiV0PositionSubject(dimoTokenId, vehicleId);
   const sourceFamily = sourceFamilyLine[1] as TelemetrySourceFamily;
   const sourceFamilyPolicyVersion = String(sourceFamilyLine[2]);
   const providerSignalsNull = providerSignalsNullLine[1] === true;
+  const window = parseDiV0PositionWindowFromSnapshot(windowLine[1], windowLine[2]);
   const buckets: DiV0AcquiredPositionBucket[] = [];
   const conflictKeysByLabel = new Map<string, string[]>();
   const rejectedProviderRows: DiV0RejectedProviderRow[] = [];
-  const seenBuckets = new Set<string>();
+  let bucketIndex = 0;
+  let inRejectedSection = false;
   while (i < lines.length) {
     const parsed = parseJsonLine(lines[i], 'bucket or rejected');
     if (Array.isArray(parsed) && parsed[0] === 'b') {
+      if (inRejectedSection) throw new DiV0PositionSnapshotParseError('bucket after rejected section');
       if (parsed.length !== 8) throw new DiV0PositionSnapshotParseError('bucket tuple length');
       const bucketLabel = String(parsed[1]);
-      if (seenBuckets.has(bucketLabel)) throw new DiV0PositionSnapshotParseError('duplicate bucket');
-      seenBuckets.add(bucketLabel);
+      const expectedLabel = expectedPositionBucketLabel(window.fromMs, bucketIndex);
+      if (bucketLabel !== expectedLabel) throw new DiV0PositionSnapshotParseError('bucket label off-grid');
+      bucketIndex += 1;
       const availability = parsed[2] as NormalizedPositionObservation['availability'];
       const coordinateStatus = parsed[3] as DiV0CoordinateStatus;
       const lat = parsed[4] == null ? null : Number(parsed[4]);
@@ -80,7 +94,11 @@ export function parseDiV0PositionSnapshot(payload: string): DiV0PositionSnapshot
       if (!Array.isArray(conflictKeys) || conflictKeys.some((k) => typeof k !== 'string')) {
         throw new DiV0PositionSnapshotParseError('conflict keys malformed');
       }
-      if (conflictKeys.length > 0) conflictKeysByLabel.set(bucketLabel, [...conflictKeys].sort());
+      const sortedKeys = [...conflictKeys].sort();
+      if (sortedKeys.join('\0') !== conflictKeys.join('\0')) {
+        throw new DiV0PositionSnapshotParseError('conflict keys not sorted');
+      }
+      if (conflictKeys.length > 0) conflictKeysByLabel.set(bucketLabel, sortedKeys);
       const labelMs = Date.parse(bucketLabel);
       if (!Number.isFinite(labelMs)) throw new DiV0PositionSnapshotParseError('bucket label unparseable');
       const coords =
@@ -109,6 +127,7 @@ export function parseDiV0PositionSnapshot(payload: string): DiV0PositionSnapshot
       continue;
     }
     if (Array.isArray(parsed) && parsed[0] === 'r') {
+      inRejectedSection = true;
       if (parsed.length !== 3) throw new DiV0PositionSnapshotParseError('rejected tuple length');
       rejectedProviderRows.push({ reason: parsed[1] as DiV0RejectedProviderRow['reason'], rawLabel: parsed[2] as string | null });
       i += 1;
@@ -116,19 +135,14 @@ export function parseDiV0PositionSnapshot(payload: string): DiV0PositionSnapshot
     }
     throw new DiV0PositionSnapshotParseError('unexpected line');
   }
-  const fromUtc = String(window[1]);
-  const toUtc = String(window[2]);
-  const fromMs = Date.parse(fromUtc);
-  const toMs = Date.parse(toUtc);
-  const intervalMs = DI_V0_POSITION_QUERY_SPEC_V0_1.intervalMs;
-  const expectedBucketCount = (toMs - fromMs) / intervalMs;
-  if (!Number.isInteger(expectedBucketCount) || expectedBucketCount !== buckets.length) {
+  if (bucketIndex !== window.expectedBucketCount) {
     throw new DiV0PositionSnapshotParseError('bucket count does not match window grid');
   }
+  assertDiV0PositionRejectedRowsCanonicalOrder(rejectedProviderRows);
   const material: DiV0PositionSnapshotMaterial = {
     dimoTokenId,
     vehicleId,
-    window: { fromUtc, toUtc, fromMs, toMs, expectedBucketCount, boundary: DI_V0_POSITION_QUERY_SPEC_V0_1.gridBoundary },
+    window: { ...window, boundary: DI_V0_POSITION_QUERY_SPEC_V0_1.gridBoundary },
     sourceFamily,
     sourceFamilyPolicyVersion,
     providerSignalsNull,
@@ -136,6 +150,12 @@ export function parseDiV0PositionSnapshot(payload: string): DiV0PositionSnapshot
     conflictKeysByLabel,
     rejectedProviderRows,
   };
+  try {
+    validateDiV0PositionSnapshotSemantics(material);
+  } catch (error) {
+    const msg = error instanceof Error ? error.message.replace(/^DI_V0_POSITION_SNAPSHOT_PARSE:/, '') : 'semantic validation failed';
+    throw new DiV0PositionSnapshotParseError(msg);
+  }
   const roundTrip = serializeDiV0PositionSnapshot(material);
   if (roundTrip !== payload) throw new DiV0PositionSnapshotParseError('round-trip byte mismatch');
   return material;

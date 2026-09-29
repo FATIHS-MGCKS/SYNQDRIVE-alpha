@@ -54,6 +54,7 @@ describe('DiV0S4cExecutor (unit)', () => {
     });
     const repository = {
       evaluateAttemptStartBoundary: jest.fn().mockResolvedValue({ kind: 'CURRENT' }),
+      readReplayRoutingContext: jest.fn().mockResolvedValue({ ok: true, mode: 'FRESH' }),
       pinEvidence,
       completeWithS2: jest.fn(async () => ({ shadowRunId: 'run', executionIdentity: 'e', combinedInputIdentity: 'id' })),
       failTerminal: jest.fn(),
@@ -155,6 +156,19 @@ describe('DiV0S4cExecutor (unit)', () => {
       pipelineManifest: buildDiV0S4RuntimePipelineManifest(controlPlane).manifest,
       repository: {
         evaluateAttemptStartBoundary: jest.fn().mockResolvedValue({ kind: 'CURRENT' }),
+        readReplayRoutingContext: jest.fn().mockResolvedValue({
+          ok: true,
+          mode: 'REPLAY',
+          context: {
+            organizationId: 'org-1',
+            vehicleId: 'veh-1',
+            tripId: 'trip-1',
+            sourceFamily: 'API_SYNTHETIC',
+            boundaryFingerprint: fp,
+            runPurpose: 'PRIMARY',
+            pinnedSnapshotHash: 'existing-snap',
+          },
+        }),
         readVerifiedPinnedEvidence,
         failTerminal,
       } as unknown as DiV0S4ExecutionContext['repository'],
