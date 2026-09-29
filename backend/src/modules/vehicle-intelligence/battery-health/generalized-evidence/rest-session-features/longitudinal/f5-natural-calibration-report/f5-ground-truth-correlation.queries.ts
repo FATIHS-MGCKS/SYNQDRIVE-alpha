@@ -7,20 +7,28 @@ type ReadOnlyTx = Omit<
   '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
 >;
 
+export type F5PrimaryCohortVehicleRef = {
+  organizationId: string;
+  vehicleId: string;
+};
+
 export async function loadGroundTruthRowsForF5Report(
   tx: ReadOnlyTx,
   input: {
     asOf: Date;
-    organizationIds: string[];
+    cohortVehicles: F5PrimaryCohortVehicleRef[];
   },
 ): Promise<F5GroundTruthRowForCorrelation[]> {
-  if (input.organizationIds.length === 0) {
+  if (input.cohortVehicles.length === 0) {
     return [];
   }
 
   const rows = await tx.batteryGroundTruthEvent.findMany({
     where: {
-      organizationId: { in: input.organizationIds },
+      OR: input.cohortVehicles.map((v) => ({
+        organizationId: v.organizationId,
+        vehicleId: v.vehicleId,
+      })),
       createdAt: { lte: input.asOf },
       effectiveAt: { lte: input.asOf },
     },
@@ -30,9 +38,11 @@ export async function loadGroundTruthRowsForF5Report(
       vehicleId: true,
       groundTruthType: true,
       batteryScope: true,
+      sourceAuthority: true,
       effectiveAt: true,
       createdAt: true,
       verificationStatus: true,
+      supersedesGroundTruthEventId: true,
       revocations: { select: { revokedAt: true } },
     },
     orderBy: [{ effectiveAt: 'asc' }, { id: 'asc' }],

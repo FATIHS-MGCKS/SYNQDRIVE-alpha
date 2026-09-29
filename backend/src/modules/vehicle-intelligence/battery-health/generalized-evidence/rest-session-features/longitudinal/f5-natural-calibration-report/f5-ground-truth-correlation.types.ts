@@ -1,5 +1,4 @@
-import type { BatteryGroundTruthType } from '@prisma/client';
-import type { F5MaturityStateV1 } from './f5-natural-calibration-report.types';
+import type { BatteryGroundTruthType, BatteryGroundTruthSourceAuthority } from '@prisma/client';
 import type { F5_LONGITUDINAL_SCOPE_AUTHORITY } from './f5-ground-truth-correlation.constants';
 
 export type F5GroundTruthTemporalRegionV1 =
@@ -7,6 +6,9 @@ export type F5GroundTruthTemporalRegionV1 =
   | 'INTERVENTION_WINDOW'
   | 'POST_EVENT'
   | 'UNKNOWN';
+
+export type F5NatNaturalEvidenceStatusV1 = 'NONE' | 'PRESENT';
+export type F5NatValidationSampleMaturityV1 = 'NOT_EVALUATED';
 
 export type F5GroundTruthCorrelationBlockV2 = {
   linkageAvailable: boolean;
@@ -22,26 +24,35 @@ export type F5GroundTruthCorrelationBlockV2 = {
     segmentationAvailable: boolean;
     activeReplacementBoundaryCount: number;
     deterministicSegmentEpochCount: number;
-    prePostReplacementPoolingBlocked: true;
-    temporalRegionCorrelationCounts: {
+    segmentAssignedRevisionCount: number;
+    interventionCrossingRevisionCount: number;
+    unlabeledRevisionCount: number;
+    missingAnchorRevisionCount: number;
+    totalDerivedSegmentCount: number;
+    maxSegmentCountPerVehicle: number;
+    continuityMetricsSegmentAware: true;
+    prePostReplacementPoolingBlockedBySegmentAssignment: boolean;
+    temporalRegionRevisionBoundaryPairCounts: {
       preEvent: number;
       interventionWindow: number;
       postEvent: number;
-      unknown: number;
+      missingAnchorInterval: number;
     };
-    rejectedCrossTenantCount: number;
-    rejectedCrossVehicleCount: number;
+    temporalRegionPairDenominator: 'primary_cohort_revision_x_admissible_replacement_boundary';
     rejectedCrossScopeCount: number;
-    rejectedNotActiveAtReadCount: number;
-    rejectedKnowledgeAfterAsOfCount: number;
+    gtQueryScope: 'PRIMARY_COHORT_ORG_VEHICLE_PAIRS';
   };
   nat008: {
     infrastructureStatus: 'IMPLEMENTED';
-    naturalEvidenceStatus: F5MaturityStateV1;
+    naturalEvidenceStatus: F5NatNaturalEvidenceStatusV1;
+    naturalEvidenceCount: number;
+    validationSampleMaturity: F5NatValidationSampleMaturityV1;
   };
   nat009: {
     infrastructureStatus: 'IMPLEMENTED';
-    naturalEvidenceStatus: F5MaturityStateV1;
+    naturalEvidenceStatus: F5NatNaturalEvidenceStatusV1;
+    naturalEvidenceCount: number;
+    validationSampleMaturity: F5NatValidationSampleMaturityV1;
   };
   cal007: {
     nonCausal: true;
@@ -50,7 +61,8 @@ export type F5GroundTruthCorrelationBlockV2 = {
   temporalAuthority: {
     interventionTimeField: 'effectiveAt';
     evidenceIntervalFields: ['firstIncludedAnchorAt', 'lastIncludedAnchorAt'];
-    groundTruthKnowledgeCutoff: 'createdAt<=asOf AND effectiveAt<=asOf';
+    groundTruthHistoricalAuthority: 'isGroundTruthActiveAtAsOf';
+    groundTruthKnowledgeCutoff: 'createdAt<=asOf AND effectiveAt<=asOf AND no revocation/supersession by asOf';
     numericInterventionEnvelope: 'NONE';
   };
 };
@@ -61,9 +73,11 @@ export type F5GroundTruthRowForCorrelation = {
   vehicleId: string;
   groundTruthType: BatteryGroundTruthType;
   batteryScope: import('@prisma/client').BatteryEvidenceScope;
+  sourceAuthority: BatteryGroundTruthSourceAuthority;
   effectiveAt: Date;
   createdAt: Date;
   verificationStatus: import('@prisma/client').BatteryGroundTruthVerificationStatus;
+  supersedesGroundTruthEventId: string | null;
   revocations: { revokedAt: Date }[];
 };
 
@@ -73,4 +87,14 @@ export type F5RevisionEvidenceInterval = {
   vehicleId: string;
   firstIncludedAnchorAt: Date | null;
   lastIncludedAnchorAt: Date | null;
+};
+
+export type F5SegmentationSummaryForCorrelation = {
+  segmentAssignedRevisionCount: number;
+  interventionCrossingRevisionCount: number;
+  unlabeledRevisionCount: number;
+  missingAnchorRevisionCount: number;
+  totalDerivedSegmentCount: number;
+  maxSegmentCountPerVehicle: number;
+  prePostReplacementPoolingBlockedBySegmentAssignment: boolean;
 };

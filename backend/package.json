@@ -42,7 +42,7 @@
     "test:battery:v2:longitudinal-reconciliation:postgres": "bash scripts/test/battery-longitudinal-reconciliation-postgres-ci.sh",
     "test:battery:v2:longitudinal-integrity-inspection:postgres": "bash scripts/test/battery-longitudinal-integrity-inspection-postgres-ci.sh",
     "test:battery:v2:f5-natural-calibration-report": "jest f5-natural-calibration-report --testPathIgnorePatterns=postgres.integration",
-    "test:battery:v2:f5-natural-calibration-report:postgres": "BATTERY_F5_NATURAL_CALIBRATION_REPORT_INTEGRATION=1 jest f5-natural-calibration-report.postgres.integration --runInBand",
+    "test:battery:v2:f5-natural-calibration-report:postgres": "BATTERY_F5_NATURAL_CALIBRATION_REPORT_INTEGRATION=1 jest f5-natural-calibration-report.postgres.integration f5-ground-truth-historical.postgres.integration --runInBand",
     "test:battery:v2:f5-natural-calibration-report:postgres:ci": "bash scripts/test/battery-f5-natural-calibration-report-postgres-ci.sh",
     "test:battery:v2:ground-truth": "jest ground-truth-admission.projector.spec ground-truth-fingerprint.spec ground-truth.service.spec --runInBand",
     "test:battery:v2:ground-truth:postgres": "BATTERY_V2_GROUND_TRUTH_INTEGRATION=1 jest ground-truth.postgres.integration --runInBand",
