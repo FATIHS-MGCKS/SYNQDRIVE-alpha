@@ -26,7 +26,6 @@ export const RAW_FUEL_REFUEL_F9_REDIS_REQUIRED_ENV = 'RAW_FUEL_REFUEL_F9_REDIS_R
 export const F9_PROMOTION_CONTEXT = {
   capability: 'FUEL_CAPABLE' as const,
   absoluteDetectionAdmissibility: 'ADMISSIBLE' as const,
-  absoluteSignalTrust: 'TRUSTED' as const,
 };
 
 export interface F9PromotionReplica {

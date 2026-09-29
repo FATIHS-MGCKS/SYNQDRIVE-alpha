@@ -26,6 +26,10 @@ import {
   linearRiseSamples,
   stablePlateauSamples,
 } from '../raw-fuel-rise-detector/testing/raw-fuel-rise-detector-test.util';
+import {
+  ensurePersistedCandidateLabHybridTrustEvidence,
+  registerLabHybridTrustOrganization,
+} from './testing/rfrf-lab-hybrid-trust-promotion.harness';
 
 const LIVE = process.env.RAW_FUEL_REFUEL_F5_PR2_INTEGRATION === '1';
 const DEFAULT_CUTOVER = '2026-09-06T08:00:00.000Z';
@@ -139,6 +143,7 @@ async function seedOrgVehicle(prisma: PrismaClient, suffix: string, tokenId = 93
       status: 'AVAILABLE',
     },
   });
+  registerLabHybridTrustOrganization(org.id);
   return { org, vehicle, tokenId, dimoVehicleId: dimoVehicle.id };
 }
 
@@ -342,13 +347,12 @@ async function persistReadyCandidate(
   });
   const persisted = await prisma.rawRefuelCandidate.findFirst({ where: { vehicleId } });
   if (!persisted) throw new Error('expected candidate');
-  return persisted;
+  return ensurePersistedCandidateLabHybridTrustEvidence(prisma, persisted);
 }
 
 const promotionContext = {
   capability: 'FUEL_CAPABLE' as const,
   absoluteDetectionAdmissibility: 'ADMISSIBLE' as const,
-  absoluteSignalTrust: 'TRUSTED' as const,
 };
 
 function buildRediscoveryObservation(
