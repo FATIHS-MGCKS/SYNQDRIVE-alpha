@@ -160,6 +160,8 @@ export interface DiV0PositionAcquisitionResult {
   buckets: DiV0AcquiredPositionBucket[];
   observations: NormalizedPositionObservation[];
   snapshotIdentity: DiV0PositionSnapshotIdentity;
+  /** Canonical normalized evidence bytes (same material as `snapshotIdentity`). */
+  canonicalSnapshotPayload: string;
   acquisitionProvenance: DiV0PositionAcquisitionProvenance;
 }
 

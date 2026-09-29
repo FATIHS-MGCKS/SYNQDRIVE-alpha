@@ -3,8 +3,9 @@ import * as path from 'path';
 
 const REPO_ROOT = path.join(__dirname, '../../../../../../..');
 const FOUNDATION_DIR = path.join(__dirname, '..');
-/** The only permitted consumer; its own dormant audit proves nothing in the application graph imports it. */
+/** Permitted dormant consumers; each has its own dormant audit (not AppModule-registered). */
 const S4B_DIR = path.join(__dirname, '../../s4b-orchestration');
+const S4C_DIR = path.join(__dirname, '../../s4c-executor');
 
 function walk(dir: string, pattern: RegExp, acc: string[] = []): string[] {
   if (!fs.existsSync(dir)) return acc;
@@ -67,14 +68,20 @@ describe('DI V0 S4A dormant-by-construction audit', () => {
     ]);
   });
 
-  it('DI_S4A_RUNTIME_CALL_SITE_COUNT=0: nothing outside s4a-foundation and the unregistered S4B orchestration imports it', () => {
+  it('DI_S4A_RUNTIME_CALL_SITE_COUNT=0: nothing outside s4a-foundation and unregistered S4B/S4C packages imports it', () => {
     const roots = ['backend/src', 'backend/scripts', 'backend/prisma', 'backend/test', 'frontend/src'].map((r) =>
       path.join(REPO_ROOT, r),
     );
     const hits: string[] = [];
     for (const root of roots) {
       for (const file of walk(root, /\.(ts|tsx|js|mjs|cjs)$/)) {
-        if (file.startsWith(FOUNDATION_DIR + path.sep) || file.startsWith(S4B_DIR + path.sep)) continue;
+        if (
+          file.startsWith(FOUNDATION_DIR + path.sep) ||
+          file.startsWith(S4B_DIR + path.sep) ||
+          file.startsWith(S4C_DIR + path.sep)
+        ) {
+          continue;
+        }
         const source = fs.readFileSync(file, 'utf8');
         const importsFoundation = importsOf(source).some((spec) => /s4a-foundation|di-v0-s4a-/.test(spec));
         const namesFoundation = /\b(DiV0S4WorkItemRepository|persistDiV0S4FencedS2Run)\b/.test(stripComments(source));

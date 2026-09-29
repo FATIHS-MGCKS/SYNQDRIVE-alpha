@@ -1217,3 +1217,13 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | NON_EFFECTS | No new transitions/schema; no S4C; no deploy/Production write |
 | Evidence | `evidence/EXP021_S4B_ENGINEERING_START.md` §P1 pre-merge closure |
 | Next slice | `S4B_FINAL_RESEAL` (re-audit PR #1833; still draft, no merge) |
+
+### EXP-021 S4C — Live same-attempt shadow executor (2026-09-29)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | `EXP021_S4C_ENGINEERING_START` (dormant; no AppModule / no Production activation) |
+| CHANGE | `s4c-executor/` — DB read-only acquisition context, DIMO `POST_TRIP_ENRICHMENT`/`BACKGROUND` ports, S3A position + optional S3B R1, T05 pin + same-attempt S1 + T06; `npm run test:di:s4c*`; dormant audits updated for S4C consumer |
+| NON_EFFECTS | No deploy, no control row, no S4D replay, no schema migration, no customer paths |
+| Evidence | `evidence/EXP021_S4C_ENGINEERING_START.md` |
+| Next slice | `S4C_IMPLEMENTATION_PREMERGE_AUDIT` |
