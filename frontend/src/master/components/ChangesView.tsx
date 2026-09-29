@@ -36,6 +36,44 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-m3-3g-g3-1-f5-correctness-seal-2026-09-29',
+    version: '4.9.2212',
+    title: 'Battery V2 M3.3G G3.1 — F5 GT correlation correctness seal',
+    summary: [
+      'Segment-aware F5 continuity: revisions assigned to deterministic replacement epochs; intervention-crossing revisions excluded from repeatability; proof counters on correlation block.',
+      'F5 asOf uses isGroundTruthActiveAtAsOf (revocation/supersession by timestamp); G1/G2 present-tense authority unchanged.',
+      'NAT-008/NAT-009 report NONE|PRESENT + NOT_EVALUATED validation maturity; GT query bounded to primary-cohort org+vehicle pairs.',
+    ],
+    reason:
+      'Close independent review gaps on PR #1842 before merge — true segmentation, historical asOf stability, NAT semantic separation.',
+    previousBehavior:
+      'G3 V2 blocked pooling via metadata only while maturity metrics pooled by vehicle; present-tense GT active checks could shift past asOf reports after later lifecycle changes.',
+    details:
+      'architecture/battery-v2/research/M3_3G_G3_F5_GROUND_TRUTH_CORRELATION_SEGMENTATION_2026-09-29.md §G3.1; f5-longitudinal-segmentation.policy.ts; ground-truth-historical-authority.util.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-29T20:00:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3g-g3-f5-ground-truth-correlation-segmentation-2026-09-29',
+    version: '4.9.2211',
+    title: 'Battery V2 M3.3G G3 — F5 ground-truth correlation + LV segmentation',
+    summary: [
+      'F5 natural calibration report contract bumped to M3_3F_F5_NATURAL_CALIBRATION_REPORT_V2 with read-only Ground Truth linkage block (counts, segmentation epochs, PRE/INTERVENTION/POST temporal regions).',
+      'Correlates active CONFIRMED LV Ground Truth to primary f46_sustained D3 revisions using effectiveAt + first/lastIncludedAnchorAt — no numeric intervention envelope.',
+      'Replacement GT defines longitudinal segment boundaries in report interpretation only; workshop measurement GT links without segment boundary; CAL-007 remains non-causal.',
+    ],
+    reason:
+      'M3.3G G3 connects merged G1/G2 Ground Truth authority to bounded F5 natural calibration without D3 mutation or production GT writes.',
+    previousBehavior:
+      'F5 V1 reported groundTruth.linkageAvailable=false and replacementLabelsAvailable=false as frozen stubs.',
+    details:
+      'architecture/battery-v2/research/M3_3G_G3_F5_GROUND_TRUTH_CORRELATION_SEGMENTATION_2026-09-29.md; f5-ground-truth-correlation.policy.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-29T18:00:00.000Z',
+  },
+  {
     id: 'battery-v2-m3-3g-g2-2-cross-scope-replacement-authority-2026-09-29',
     version: '4.9.2210',
     title: 'Battery V2 M3.3G G2.2 — one active replacement GT per source service event',

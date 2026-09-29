@@ -20,6 +20,35 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-29 — M3.3G G3.1.1 historical postgres cleanup + lifecycle query seal
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Prisma vehicle cleanup in historical postgres tests; F5 GT load uses `createdAt<=asOf` lifecycle only; admissibility `effectiveAt<=asOf` in authority; G3.1-A5/A6; CI order F5 then G1. |
+| **VALIDATION** | F5 unit 41/41; historical unit A1–A6; longitudinal postgres CI on GitHub. |
+| **DECISION_STATUS** | **`IN_REVIEW`** (PR #1842) |
+
+## CL-2026-09-29 — M3.3G G3.1 F5 correctness seal (segmentation + historical asOf + NAT semantics)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | G3 V2 used present-tense GT active checks for F5 `asOf`; `prePostReplacementPoolingBlocked` metadata-only; vehicle-level F5 maturity pooling; NAT-008/009 misused calibration maturity labels. |
+| **CHANGE** | Segment-aware continuity (`f5-longitudinal-segmentation.policy.ts`); `isGroundTruthActiveAtAsOf`; primary-cohort bounded GT query; correlation proof counters; NAT `NONE\|PRESENT` + `NOT_EVALUATED`; tests G3.1-S1…S6, A1…A5. |
+| **WHY** | Independent review gaps on scientific correctness before merge of PR #1842. |
+| **VALIDATION** | F5 unit + postgres CI; ground-truth postgres regression; D3/F4.1 postgres unchanged. |
+| **DECISION_STATUS** | **`IN_REVIEW`** (G3.1 seal; PR #1842) |
+
+## CL-2026-09-29 — M3.3G G3 F5 ground-truth correlation + longitudinal segmentation
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | F5 V1 `groundTruth.linkageAvailable=false` stub; no GT↔D3 revision correlation or replacement segment boundaries in report. |
+| **CHANGE** | Report contract **V2**; `f5-ground-truth-correlation.policy.ts` + bounded GT reads; LV scope authority; PRE/INTERVENTION/POST vs `effectiveAt` + D3 anchor interval; segment epoch metadata; CAL-007 non-causal ack; unit G3-A…M. |
+| **WHY** | M3.3G must link confirmed GT to F5 natural calibration without mutating D3 or inventing numeric intervention windows. |
+| **VALIDATION** | `npm run test:battery:v2:f5-natural-calibration-report`; F5 postgres CI; ground-truth regression unchanged on main. |
+| **NON_EFFECTS** | No migration; no production GT writes; D3/E3/customer UI unchanged. |
+| **DECISION_STATUS** | **`IMPLEMENTED`** (G3 engineering) |
+
 ## CL-2026-09-29 — M3.3G G2.2 active replacement per source event (cross-scope seal)
 
 | Field | Value |

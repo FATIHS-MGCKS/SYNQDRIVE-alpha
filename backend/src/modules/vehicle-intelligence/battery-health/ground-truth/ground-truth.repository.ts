@@ -5,6 +5,7 @@ import {
   Prisma,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { isActiveGroundTruthEvent } from './ground-truth-active-authority.util';
 
 export type GroundTruthDbClient = PrismaService | Prisma.TransactionClient;
 
@@ -182,12 +183,6 @@ export class BatteryGroundTruthRepository {
     revocations: { id: string }[];
     id: string;
   }): boolean {
-    if (row.verificationStatus !== BatteryGroundTruthVerificationStatus.CONFIRMED) {
-      return false;
-    }
-    if (row.revocations.length > 0) {
-      return false;
-    }
-    return true;
+    return isActiveGroundTruthEvent(row);
   }
 }

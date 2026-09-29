@@ -38,10 +38,11 @@ const integrationEnabled = process.env.BATTERY_F5_NATURAL_CALIBRATION_REPORT_INT
       generatedAt: fixedGenerated,
     });
     expect(report.meta.readOnly).toBe(true);
-    expect(report.meta.reportContractVersion).toBe('M3_3F_F5_NATURAL_CALIBRATION_REPORT_V1');
+    expect(report.meta.reportContractVersion).toBe('M3_3F_F5_NATURAL_CALIBRATION_REPORT_V2');
     expect(report.safety.e3RuntimeCalls).toBe(0);
     expect(report.safety.customerEffect).toBe(false);
-    expect(report.groundTruth.linkageAvailable).toBe(false);
+    expect(report.groundTruth.linkageAvailable).toBe(true);
+    expect(report.groundTruth.cal007.causalityIntroduced).toBe(false);
     const { generatedAt: _g, ...metaRest } = report.meta;
     const stable = { ...report, meta: metaRest };
     const again = await runF5NaturalCalibrationReport(prisma, {

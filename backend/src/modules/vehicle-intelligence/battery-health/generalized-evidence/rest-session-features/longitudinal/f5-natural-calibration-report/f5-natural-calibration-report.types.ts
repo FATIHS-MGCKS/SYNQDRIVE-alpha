@@ -1,4 +1,8 @@
-import type { M3_3F_F5_NATURAL_CALIBRATION_REPORT_CONTRACT_VERSION } from './f5-natural-calibration-report.constants';
+import type {
+  M3_3F_F5_NATURAL_CALIBRATION_REPORT_CONTRACT_VERSION,
+  M3_3F_F5_NATURAL_CALIBRATION_REPORT_CONTRACT_VERSION_V1,
+} from './f5-natural-calibration-report.constants';
+import type { F5GroundTruthCorrelationBlockV2 } from './f5-ground-truth-correlation.types';
 
 export type F5MaturityStateV1 =
   | 'COLLECTING'
@@ -16,7 +20,7 @@ export type F5CalBlockV1 = {
 
 export type M3_3F_F5_NaturalCalibrationReportV1 = {
   meta: {
-    reportContractVersion: typeof M3_3F_F5_NATURAL_CALIBRATION_REPORT_CONTRACT_VERSION;
+    reportContractVersion: typeof M3_3F_F5_NATURAL_CALIBRATION_REPORT_CONTRACT_VERSION_V1;
     generatedAt: string;
     asOf: string;
     cohort: string;
@@ -79,14 +83,28 @@ export type M3_3F_F5_NaturalCalibrationReportV1 = {
   };
 };
 
+export type M3_3F_F5_NaturalCalibrationReportV2 = Omit<M3_3F_F5_NaturalCalibrationReportV1, 'meta' | 'groundTruth'> & {
+  meta: {
+    reportContractVersion: typeof M3_3F_F5_NATURAL_CALIBRATION_REPORT_CONTRACT_VERSION;
+    generatedAt: string;
+    asOf: string;
+    cohort: string;
+    readOnly: true;
+  };
+  groundTruth: F5GroundTruthCorrelationBlockV2;
+};
+
 export type F5ReportBuildOptions = {
   asOf: Date;
   cohort: typeof import('./f5-natural-calibration-report.constants').F5_PRIMARY_COHORT_V1;
   maxRevisions: number;
   timeoutMs: number;
   generatedAt: string;
-  runtimeAuthority?: Partial<M3_3F_F5_NaturalCalibrationReportV1['runtimeAuthority']>;
+  runtimeAuthority?: Partial<M3_3F_F5_NaturalCalibrationReportV2['runtimeAuthority']>;
 };
+
+/** Current F5 report shape (G3 V2). */
+export type M3_3F_F5_NaturalCalibrationReport = M3_3F_F5_NaturalCalibrationReportV2;
 
 export class F5ReportBoundExceededError extends Error {
   constructor(message: string) {
