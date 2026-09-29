@@ -7,6 +7,7 @@ const FOUNDATION_DIR = path.join(__dirname, '..');
 const S4B_DIR = path.join(__dirname, '../../s4b-orchestration');
 const S4C_DIR = path.join(__dirname, '../../s4c-executor');
 const S4D_DIR = path.join(__dirname, '../../s4d-replay');
+const S4E_DIR = path.join(__dirname, '../../s4e-drift-watcher');
 
 function walk(dir: string, pattern: RegExp, acc: string[] = []): string[] {
   if (!fs.existsSync(dir)) return acc;
@@ -72,7 +73,7 @@ describe('DI V0 S4A dormant-by-construction audit', () => {
     ]);
   });
 
-  it('DI_S4A_RUNTIME_CALL_SITE_COUNT=0: nothing outside s4a-foundation and unregistered S4B/S4C packages imports it', () => {
+  it('DI_S4A_RUNTIME_CALL_SITE_COUNT=0: nothing outside s4a-foundation and unregistered S4B/S4C/S4D/S4E packages imports it', () => {
     const roots = ['backend/src', 'backend/scripts', 'backend/prisma', 'backend/test', 'frontend/src'].map((r) =>
       path.join(REPO_ROOT, r),
     );
@@ -83,7 +84,8 @@ describe('DI V0 S4A dormant-by-construction audit', () => {
           file.startsWith(FOUNDATION_DIR + path.sep) ||
           file.startsWith(S4B_DIR + path.sep) ||
           file.startsWith(S4C_DIR + path.sep) ||
-          file.startsWith(S4D_DIR + path.sep)
+          file.startsWith(S4D_DIR + path.sep) ||
+          file.startsWith(S4E_DIR + path.sep)
         ) {
           continue;
         }

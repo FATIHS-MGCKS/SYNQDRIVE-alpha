@@ -57,6 +57,7 @@ export const SINGLETON_GLOBAL_SCHEDULER_NAMES = [
   'reference_capture_exp021_fleet_coordinator',
   'reference_capture_exp021_canary_live_window_activation',
   'di_v0_s4_discovery',
+  'di_v0_s4_drift_watcher',
 ] as const;
 
 export type SingletonGlobalSchedulerName =
