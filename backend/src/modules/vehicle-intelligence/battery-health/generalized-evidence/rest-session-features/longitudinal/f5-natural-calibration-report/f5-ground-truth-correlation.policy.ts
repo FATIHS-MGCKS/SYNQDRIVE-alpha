@@ -226,7 +226,7 @@ export function computeF5GroundTruthCorrelationBlockV2(
       evidenceIntervalFields: ['firstIncludedAnchorAt', 'lastIncludedAnchorAt'],
       groundTruthHistoricalAuthority: 'isGroundTruthActiveAtAsOf',
       groundTruthKnowledgeCutoff:
-        'createdAt<=asOf AND effectiveAt<=asOf AND no revocation/supersession by asOf',
+        'createdAt<=asOf lifecycle knowledge; effectiveAt<=asOf admissible GT; no revocation/supersession by asOf',
       numericInterventionEnvelope: 'NONE',
     },
   };

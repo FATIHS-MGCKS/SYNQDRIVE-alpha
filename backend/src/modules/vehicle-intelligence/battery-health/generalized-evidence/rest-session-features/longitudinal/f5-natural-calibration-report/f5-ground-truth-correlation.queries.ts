@@ -30,7 +30,6 @@ export async function loadGroundTruthRowsForF5Report(
         vehicleId: v.vehicleId,
       })),
       createdAt: { lte: input.asOf },
-      effectiveAt: { lte: input.asOf },
     },
     select: {
       id: true,

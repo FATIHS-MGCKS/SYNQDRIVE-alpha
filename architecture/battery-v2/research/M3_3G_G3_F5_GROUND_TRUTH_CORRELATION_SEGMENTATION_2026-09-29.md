@@ -37,12 +37,15 @@ D3/F5 primary cohort uses rest-session longitudinal profiles (LV rest evidence d
 
 F5 **`asOf`** reports use **`isGroundTruthActiveAtAsOf`** (revocation/supersession reconstructed from timestamps + `supersedesGroundTruthEventId`). Present-tense **`isActiveGroundTruthEvent`** remains for G1/G2 operational admission.
 
-- `createdAt <= asOf` and `effectiveAt <= asOf`
+- bounded lifecycle load: `createdAt <= asOf` (includes successors not yet effective)
+- admissible GT facts additionally require `effectiveAt <= asOf` via `isGroundTruthActiveAtAsOf`
 - no `revokedAt <= asOf`
 - no successor with `createdAt <= asOf` for the same prior id
 - `batteryScope=LV` for F5 correlation (HV → `rejectedCrossScopeCount`)
 
-**G3.1 closure:** Re-running the same **`asOf`** against the same DB snapshot yields the same admissible GT set (unit **G3.1-A5**, postgres **G3.1-A1–A5**). Future revocation/supersession does **not** alter a past **`asOf`** report when lifecycle timestamps are known.
+**G3.1.1:** Successor with `createdAt <= asOf` but `effectiveAt > asOf` participates in supersession reconstruction but is not an admissible GT fact until effective ( **G3.1-A6** ).
+
+**G3.1 closure:** Re-running the same **`asOf`** against the same DB snapshot yields the same admissible GT set (unit **G3.1-A5**, postgres **G3.1-A1–A6**). Future revocation/supersession does **not** alter a past **`asOf`** report when lifecycle timestamps are known.
 
 ## Temporal classification (no numeric window)
 

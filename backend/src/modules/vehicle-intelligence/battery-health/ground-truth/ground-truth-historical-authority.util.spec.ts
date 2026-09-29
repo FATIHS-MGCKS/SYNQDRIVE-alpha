@@ -71,4 +71,30 @@ describe('ground-truth historical asOf authority G3.1', () => {
     const successors = buildGroundTruthSuccessorsByPriorId([prior, successor]);
     expect(isGroundTruthActiveAtAsOf(prior, asOf, successors)).toBe(true);
   });
+
+  it('G3.1-A6 — successor created by asOf with future effectiveAt supersedes prior but is not yet admissible', () => {
+    const prior = {
+      id: 'gt-prior',
+      createdAt: new Date('2026-06-01T00:00:00.000Z'),
+      effectiveAt: new Date('2026-06-01T00:00:00.000Z'),
+      verificationStatus: 'SUPERSEDED' as const,
+      revocations: [],
+      supersedesGroundTruthEventId: null,
+    };
+    const successor = {
+      id: 'gt-new',
+      createdAt: new Date('2026-06-20T00:00:00.000Z'),
+      effectiveAt: new Date('2026-07-01T00:00:00.000Z'),
+      verificationStatus: 'CONFIRMED' as const,
+      revocations: [],
+      supersedesGroundTruthEventId: 'gt-prior',
+    };
+    const asOf = new Date('2026-06-25T00:00:00.000Z');
+    const successors = buildGroundTruthSuccessorsByPriorId([prior, successor]);
+    expect(isGroundTruthActiveAtAsOf(prior, asOf, successors)).toBe(false);
+    expect(isGroundTruthActiveAtAsOf(successor, asOf, successors)).toBe(false);
+
+    const afterEffective = new Date('2026-07-05T00:00:00.000Z');
+    expect(isGroundTruthActiveAtAsOf(successor, afterEffective, successors)).toBe(true);
+  });
 });

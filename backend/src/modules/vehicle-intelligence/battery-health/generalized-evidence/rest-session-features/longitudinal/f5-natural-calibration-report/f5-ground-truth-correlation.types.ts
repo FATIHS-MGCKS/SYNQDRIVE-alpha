@@ -62,7 +62,7 @@ export type F5GroundTruthCorrelationBlockV2 = {
     interventionTimeField: 'effectiveAt';
     evidenceIntervalFields: ['firstIncludedAnchorAt', 'lastIncludedAnchorAt'];
     groundTruthHistoricalAuthority: 'isGroundTruthActiveAtAsOf';
-    groundTruthKnowledgeCutoff: 'createdAt<=asOf AND effectiveAt<=asOf AND no revocation/supersession by asOf';
+    groundTruthKnowledgeCutoff: 'createdAt<=asOf lifecycle knowledge; effectiveAt<=asOf admissible GT; no revocation/supersession by asOf';
     numericInterventionEnvelope: 'NONE';
   };
 };

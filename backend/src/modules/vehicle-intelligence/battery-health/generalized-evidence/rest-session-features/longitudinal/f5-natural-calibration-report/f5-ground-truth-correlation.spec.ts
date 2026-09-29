@@ -260,4 +260,27 @@ describe('F5 ground-truth correlation G3', () => {
     const b = filterAdmissibleGroundTruthAtAsOf(rows, asOf, keys);
     expect(JSON.stringify(a)).toBe(JSON.stringify(b));
   });
+
+  it('G3.1-A6 — future-effective successor in lifecycle set excludes prior and successor at mid asOf', () => {
+    const prior = gtRow({
+      id: 'gt-prior',
+      createdAt: new Date('2026-06-01T00:00:00.000Z'),
+      effectiveAt: new Date('2026-06-01T00:00:00.000Z'),
+      verificationStatus: 'SUPERSEDED',
+    });
+    const successor = gtRow({
+      id: 'gt-new',
+      createdAt: new Date('2026-06-20T00:00:00.000Z'),
+      effectiveAt: new Date('2026-07-01T00:00:00.000Z'),
+      supersedesGroundTruthEventId: 'gt-prior',
+    });
+    const midAsOf = new Date('2026-06-25T00:00:00.000Z');
+    const keys = new Set(['org-a::veh-a']);
+    const mid = filterAdmissibleGroundTruthAtAsOf([prior, successor], midAsOf, keys);
+    expect(mid.admissible).toHaveLength(0);
+
+    const laterAsOf = new Date('2026-07-05T00:00:00.000Z');
+    const later = filterAdmissibleGroundTruthAtAsOf([prior, successor], laterAsOf, keys);
+    expect(later.admissible.map((r) => r.id)).toEqual(['gt-new']);
+  });
 });
