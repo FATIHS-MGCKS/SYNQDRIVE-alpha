@@ -28,9 +28,14 @@ npx jest \
   ground-truth-admission.projector.spec \
   ground-truth-fingerprint.spec \
   ground-truth.service.spec \
+  ground-truth-emission.service.spec \
+  ground-truth-backed-source.guard.spec \
   --runInBand
 
 log "G1 PostgreSQL integration"
 BATTERY_V2_GROUND_TRUTH_INTEGRATION=1 npx jest ground-truth.postgres.integration --runInBand
+
+log "G2 PostgreSQL integration"
+BATTERY_V2_GROUND_TRUTH_INTEGRATION=1 npx jest ground-truth-g2.postgres.integration --runInBand
 
 log "battery-ground-truth-postgres-ci completed successfully"

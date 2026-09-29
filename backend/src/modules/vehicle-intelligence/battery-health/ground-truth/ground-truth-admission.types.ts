@@ -63,6 +63,7 @@ export type GroundTruthSourceIdentityV1 = {
     status: string;
     organizationId: string;
     vehicleId: string;
+    contentSha256?: string | null;
   } | null;
   batteryEvidence?: {
     id: string;

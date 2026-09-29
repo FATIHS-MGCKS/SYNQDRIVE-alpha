@@ -34,8 +34,15 @@ describe('ServiceEventsService.createFromDocumentExtraction', () => {
       },
     };
 
-    const svc = new ServiceEventsService(prisma as any, serviceOverdueTasks as any);
-    return { svc, prisma };
+    const groundTruthBackedSourceGuard = {
+      assertServiceEventMutable: jest.fn().mockResolvedValue(undefined),
+    };
+    const svc = new ServiceEventsService(
+      prisma as any,
+      serviceOverdueTasks as any,
+      groundTruthBackedSourceGuard as any,
+    );
+    return { svc, prisma, groundTruthBackedSourceGuard };
   }
 
   beforeEach(() => {
@@ -128,9 +135,13 @@ describe('ServiceEventsService.create', () => {
         count: jest.fn(),
       },
     };
-    const svc = new ServiceEventsService(prisma as any, {
-      onServiceHistoryChanged: jest.fn().mockResolvedValue(undefined),
-    } as any);
+    const svc = new ServiceEventsService(
+      prisma as any,
+      {
+        onServiceHistoryChanged: jest.fn().mockResolvedValue(undefined),
+      } as any,
+      { assertServiceEventMutable: jest.fn().mockResolvedValue(undefined) } as any,
+    );
     return { svc, prisma };
   }
 
@@ -186,7 +197,11 @@ describe('ServiceEventsService.applyComplianceVehicleUpdateFromExtraction', () =
         update: jest.fn(),
       },
     };
-    const svc = new ServiceEventsService(prisma as any, { onServiceHistoryChanged: jest.fn() } as any);
+    const svc = new ServiceEventsService(
+      prisma as any,
+      { onServiceHistoryChanged: jest.fn() } as any,
+      { assertServiceEventMutable: jest.fn().mockResolvedValue(undefined) } as any,
+    );
     return { svc, prisma };
   }
 

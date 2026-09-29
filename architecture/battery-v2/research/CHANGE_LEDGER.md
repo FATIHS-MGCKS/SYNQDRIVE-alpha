@@ -18,6 +18,21 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-29 — M3.3G G2 confirmed capture + document GT emission (engineering)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | G1 persistence/admission only; document apply wrote operational rows without GT emission; plain manual replacement unverified. |
+| **CHANGE** | `BatteryGroundTruthEmissionService` wired to confirmed document apply + manual confirm API; replacement admission without mandatory numeric evidence; retry GT convergence; executor `groundTruthEventIds`; GT-backed source mutation guard; DOC/MAN + PG-G2 tests. |
+| **WHY** | Scientific ground truth must follow explicit human/document confirmation, not AI extraction or mutable ops history alone. |
+| **VALIDATION** | Unit + Postgres CI (`battery-ground-truth-postgres-ci.sh`); backend build/typecheck. |
+| **NON_EFFECTS** | No production deploy; no production GT writes; D3 sustained ON unchanged; E3 OFF; no F5 linkage flags; no customer UI. |
+| **REMAINING_GAPS** | G3 F5 correlation; NAT-008/009 infrastructure. |
+| **DECISION_STATUS** | **`IMPLEMENTED`** (G2 engineering) |
+| **EVIDENCE** | `M3_3G_G2_CONFIRMED_CAPTURE_DOCUMENT_GT_EMISSION_2026-09-29.md` |
+
 ## CL-2026-09-29 — M3.3G G1.1 PR #1837 correctness hardening
 
 | Field | Value |

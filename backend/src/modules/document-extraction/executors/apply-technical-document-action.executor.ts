@@ -256,6 +256,7 @@ export class ApplyBatteryMeasurementDocumentActionExecutor implements DocumentAc
         output: {
           serviceEventId: result.serviceEventId,
           batteryEvidenceIds: result.evidenceIds,
+          groundTruthEventIds: result.groundTruthEventIds,
           snapshotId: result.snapshotId,
           scope: payload.scope,
           measurementType: payload.measurementType,

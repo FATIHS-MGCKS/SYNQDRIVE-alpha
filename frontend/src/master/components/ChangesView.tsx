@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-m3-3g-g2-confirmed-gt-emission-2026-09-29',
+    version: '4.9.2208',
+    title: 'Battery V2 M3.3G G2 — confirmed capture + document GT emission',
+    summary: [
+      'BatteryGroundTruthEmissionService converges ground truth after APPLIED document battery apply and via POST battery/ground-truth/confirm-replacement (fleet.write).',
+      'BATTERY_REPLACEMENT admission no longer requires numeric BatteryEvidence when scope is explicit on confirmed document or manual confirmation path.',
+      'Document apply retry converges missing GT idempotently; GT emission failure surfaces typed BadRequestException for recoverable retry; executor exposes groundTruthEventIds.',
+      'GT-backed service event material update/delete blocked pending explicit supersede/revoke workflow.',
+    ],
+    reason:
+      'Wire G1 scientific authority to confirmed operational capture without AI-pre-confirm emission, production deploy, or F5 correlation changes.',
+    previousBehavior:
+      'G1 GT table and admission existed but document apply and manual service history did not emit ground truth.',
+    details:
+      'architecture/battery-v2/research/M3_3G_G2_CONFIRMED_CAPTURE_DOCUMENT_GT_EMISSION_2026-09-29.md; backend/scripts/test/battery-ground-truth-postgres-ci.sh.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-29T02:30:00.000Z',
+  },
+  {
     id: 'di-exp021-s4b-discovery-claim-orchestration-2026-09-28',
     version: '4.9.2207',
     title: 'Driving Intelligence — EXP-021 S4B discovery + claim orchestration (dormant)',

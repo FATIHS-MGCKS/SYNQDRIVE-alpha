@@ -8,6 +8,8 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import { ServiceEventsService } from '../service-events/service-events.service';
 import { BatteryEvidenceService, BatteryEvidenceWriteInput } from './battery-evidence.service';
+import { BatteryGroundTruthEmissionService } from './ground-truth/ground-truth-emission.service';
+import { GroundTruthEmissionFailedError } from './ground-truth/ground-truth-emission.errors';
 
 export type ApplyBatteryFromDocumentExtractionInput = {
   organizationId: string;
@@ -35,6 +37,7 @@ export type ApplyBatteryFromDocumentExtractionResult = {
   serviceEventId: string | null;
   evidenceIds: string[];
   snapshotId: string | null;
+  groundTruthEventIds: string[];
 };
 
 /**
@@ -57,6 +60,7 @@ export class BatteryHealthService {
     private readonly prisma: PrismaService,
     private readonly batteryEvidence: BatteryEvidenceService,
     private readonly serviceEvents: ServiceEventsService,
+    private readonly groundTruthEmission: BatteryGroundTruthEmissionService,
   ) {}
 
   async findByVehicle(vehicleId: string, limit = 50) {
@@ -198,11 +202,28 @@ export class BatteryHealthService {
         input.organizationId,
         input.documentExtractionId,
       );
-      return {
-        serviceEventId: serviceEvent?.id ?? null,
-        evidenceIds: existingEvidence.map((row) => row.id),
-        snapshotId: null,
-      };
+      try {
+        const groundTruthEventIds = await this.groundTruthEmission.convergeDocumentApplyGroundTruth({
+          ...input,
+          serviceEventId: serviceEvent?.id ?? null,
+          evidenceIds: existingEvidence.map((row) => row.id),
+        });
+        return {
+          serviceEventId: serviceEvent?.id ?? null,
+          evidenceIds: existingEvidence.map((row) => row.id),
+          snapshotId: null,
+          groundTruthEventIds,
+        };
+      } catch (error) {
+        if (error instanceof GroundTruthEmissionFailedError) {
+          throw new BadRequestException({
+            message: error.message,
+            code: error.code,
+            details: error.details,
+          });
+        }
+        throw error;
+      }
     }
 
     let serviceEventId: string | null = null;
@@ -298,11 +319,29 @@ export class BatteryHealthService {
       }
     }
 
-    return {
+    const result = {
       serviceEventId,
       evidenceIds: persistedEvidence.map((row) => row.id),
       snapshotId,
     };
+
+    try {
+      const groundTruthEventIds = await this.groundTruthEmission.convergeDocumentApplyGroundTruth({
+        ...input,
+        serviceEventId: result.serviceEventId,
+        evidenceIds: result.evidenceIds,
+      });
+      return { ...result, groundTruthEventIds };
+    } catch (error) {
+      if (error instanceof GroundTruthEmissionFailedError) {
+        throw new BadRequestException({
+          message: error.message,
+          code: error.code,
+          details: error.details,
+        });
+      }
+      throw error;
+    }
   }
 
   async getSohTrend(vehicleId: string, days = 30) {

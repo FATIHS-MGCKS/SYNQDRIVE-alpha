@@ -113,16 +113,47 @@ describe('projectGroundTruthAdmissionV1', () => {
     }
   });
 
-  it('E — generic replacement without scope evidence is unverified', () => {
+  it('E — confirmed document replacement with explicit scope admitted without numeric evidence', () => {
     const d = projectGroundTruthAdmissionV1(
       ctx({
         groundTruthType: 'BATTERY_REPLACEMENT',
+        batteryScope: 'LV',
         sourceAuthority: 'CONFIRMED_DOCUMENT',
         sourceIdentity: { serviceEvent: serviceEvent({ origin: ServiceEventOrigin.AI_UPLOAD }) },
       }),
     );
+    expect(d.level).toBe(GROUND_TRUTH_ADMISSION_LEVEL.ADMIT_VALIDATION_GROUND_TRUTH);
+  });
+
+  it('E2 — evidence scope mismatch blocks replacement', () => {
+    const d = projectGroundTruthAdmissionV1(
+      ctx({
+        groundTruthType: 'BATTERY_REPLACEMENT',
+        batteryScope: 'LV',
+        sourceAuthority: 'CONFIRMED_DOCUMENT',
+        sourceIdentity: {
+          serviceEvent: serviceEvent({ origin: ServiceEventOrigin.AI_UPLOAD }),
+          batteryEvidence: evidence({ scope: 'HV', sourceType: 'DOCUMENT_CONFIRMED' }),
+        },
+      }),
+    );
     expect(d.level).toBe(GROUND_TRUTH_ADMISSION_LEVEL.UNVERIFIED_EVIDENCE);
     expect(d.reasons).toContain(GROUND_TRUTH_ADMISSION_REASON.REPLACEMENT_SCOPE_AMBIGUOUS);
+  });
+
+  it('E3 — manual confirmed trusted path admitted', () => {
+    const d = projectGroundTruthAdmissionV1(
+      ctx({
+        groundTruthType: 'BATTERY_REPLACEMENT',
+        batteryScope: 'HV',
+        sourceAuthority: 'MANUAL_CONFIRMED',
+        manualConfirmationTrusted: true,
+        sourceIdentity: {
+          serviceEvent: serviceEvent({ origin: ServiceEventOrigin.MANUAL }),
+        },
+      }),
+    );
+    expect(d.level).toBe(GROUND_TRUTH_ADMISSION_LEVEL.ADMIT_VALIDATION_GROUND_TRUTH);
   });
 
   it('F — BEV drive profile does not auto-admit HV replacement without evidence', () => {

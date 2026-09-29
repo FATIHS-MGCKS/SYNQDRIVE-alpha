@@ -40,8 +40,16 @@ describe('BatteryHealthService.applyFromDocumentExtraction', () => {
       findByDocumentExtractionId: jest.fn(),
       createFromDocumentExtraction: jest.fn(),
     };
-    const svc = new BatteryHealthService(prisma as any, batteryEvidence as any, serviceEvents as any);
-    return { svc, prisma, batteryEvidence, serviceEvents };
+    const groundTruthEmission = {
+      convergeDocumentApplyGroundTruth: jest.fn().mockResolvedValue([]),
+    };
+    const svc = new BatteryHealthService(
+      prisma as any,
+      batteryEvidence as any,
+      serviceEvents as any,
+      groundTruthEmission as any,
+    );
+    return { svc, prisma, batteryEvidence, serviceEvents, groundTruthEmission };
   }
 
   beforeEach(() => {
@@ -49,7 +57,7 @@ describe('BatteryHealthService.applyFromDocumentExtraction', () => {
   });
 
   it('returns existing evidence on retry without duplicate writes', async () => {
-    const { svc, prisma, batteryEvidence, serviceEvents } = createHarness();
+    const { svc, prisma, batteryEvidence, serviceEvents, groundTruthEmission } = createHarness();
     prisma.batteryEvidence.findMany.mockResolvedValue([{ id: 'ev-1' }, { id: 'ev-2' }]);
     serviceEvents.findByDocumentExtractionId.mockResolvedValue(null);
 
@@ -57,6 +65,34 @@ describe('BatteryHealthService.applyFromDocumentExtraction', () => {
 
     expect(result.evidenceIds).toEqual(['ev-1', 'ev-2']);
     expect(batteryEvidence.recordMany).not.toHaveBeenCalled();
+    expect(groundTruthEmission.convergeDocumentApplyGroundTruth).toHaveBeenCalled();
+  });
+
+  it('DOC-G — retry converges ground truth when evidence already exists', async () => {
+    const { svc, prisma, serviceEvents, groundTruthEmission } = createHarness();
+    prisma.batteryEvidence.findMany.mockResolvedValue([{ id: 'ev-1' }]);
+    serviceEvents.findByDocumentExtractionId.mockResolvedValue({ id: 'evt-1' });
+    groundTruthEmission.convergeDocumentApplyGroundTruth.mockResolvedValue(['gt-1']);
+
+    const result = await svc.applyFromDocumentExtraction({ ...baseInput, isReplacement: true });
+
+    expect(result.groundTruthEventIds).toEqual(['gt-1']);
+  });
+
+  it('DOC-L — ground truth emission failure surfaces typed recoverable error', async () => {
+    const { svc, prisma, serviceEvents, groundTruthEmission } = createHarness();
+    prisma.batteryEvidence.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([{ id: 'ev-1' }]);
+    serviceEvents.createFromDocumentExtraction.mockResolvedValue({ id: 'evt-1' });
+    const { GroundTruthEmissionFailedError } = await import(
+      './ground-truth/ground-truth-emission.errors'
+    );
+    groundTruthEmission.convergeDocumentApplyGroundTruth.mockRejectedValue(
+      new GroundTruthEmissionFailedError('GT_REPLACEMENT_EMISSION_FAILED', 'failed'),
+    );
+
+    await expect(
+      svc.applyFromDocumentExtraction({ ...baseInput, isReplacement: true }),
+    ).rejects.toMatchObject({ response: { code: 'GT_REPLACEMENT_EMISSION_FAILED' } });
   });
 
   it('writes evidence with full provenance and no SOH override on LV snapshot path', async () => {
