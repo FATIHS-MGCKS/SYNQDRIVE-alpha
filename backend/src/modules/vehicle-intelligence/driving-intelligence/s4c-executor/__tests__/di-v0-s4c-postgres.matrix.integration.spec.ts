@@ -343,6 +343,52 @@ function failingR1Transport() {
     await cleanupS4aTenant(admin, t);
   });
 
+  it('PG-08 abort before provider: no S2 completion', async () => {
+    const tenant = await seedS4aTenant(admin);
+    dimoIds.push(await linkDimo(admin, tenant, API_SYNTHETIC_IDENTITY));
+    const config = s4aConfigFor([tenant]);
+    const pipeline = buildDiV0S4RuntimePipelineManifest(config);
+    const db = newS4aClient();
+    clients.push(db);
+    const repo = new DiV0S4WorkItemRepository(db, config);
+    await new DiV0S4DiscoveryService(db, repo, config, pipeline).runDiscoveryPass();
+    const lease = await repo.claim({ leaseOwner: 'pg08', pipelineManifest: pipeline.manifest });
+    const controller = new AbortController();
+    controller.abort();
+    const executor = new DiV0S4cExecutor({
+      prisma: db,
+      controlPlane: config,
+      ports: {
+        runDimo: async (_m, fn) => fn(),
+        positionTransport: staticTransport(signalsBody([])),
+        r1Transport: r1Transport([]),
+      },
+    });
+    await expect(
+      executor.execute({ lease, pipelineManifest: pipeline.manifest, repository: repo, signal: controller.signal }),
+    ).rejects.toThrow('DI_V0_S4C_ABORTED');
+    const wi = await db.$queryRaw<Array<{ status: string }>>`SELECT status FROM di_v0_s4_work_items WHERE id = ${lease.workItemId}`;
+    expect(wi[0]?.status).not.toBe('COMPLETED');
+    const runs = await db.$queryRaw<Array<{ n: number }>>`SELECT COUNT(*)::int AS n FROM di_v0_shadow_runs WHERE trip_id = ${tenant.tripId}`;
+    expect(runs[0]?.n).toBe(0);
+    await admin.$executeRaw`DELETE FROM di_v0_s4_work_items WHERE vehicle_id = ${tenant.vehicleId}`;
+    await cleanupS4aTenant(admin, tenant);
+  });
+
+  it('PG-10 tenant scope: work item organization matches vehicle trip scope', async () => {
+    const tenant = await seedS4aTenant(admin);
+    const ts = new Date(tenant.startTime.getTime() + 1000).toISOString().replace(/\.\d{3}Z$/, 'Z');
+    const { db, tenant: t } = await runS4c(tenant, API_SYNTHETIC_IDENTITY, {
+      positionTransport: staticTransport(signalsBody([{ timestamp: ts, currentLocationCoordinates: { latitude: 52, longitude: 9 } }])),
+      r1Transport: r1Transport([]),
+    });
+    const [row] = await db.$queryRaw<Array<{ organization_id: string; vehicle_id: string }>>`
+      SELECT organization_id, vehicle_id FROM di_v0_s4_work_items WHERE trip_id = ${t.tripId}`;
+    expect(row).toMatchObject({ organization_id: t.organizationId, vehicle_id: t.vehicleId });
+    await admin.$executeRaw`DELETE FROM di_v0_s4_work_items WHERE vehicle_id = ${t.vehicleId}`;
+    await cleanupS4aTenant(admin, t);
+  });
+
   it('PG-07 stale lease: old holder cannot complete after expiry', async () => {
     const tenant = await seedS4aTenant(admin);
     const config = s4aConfigFor([tenant]);
