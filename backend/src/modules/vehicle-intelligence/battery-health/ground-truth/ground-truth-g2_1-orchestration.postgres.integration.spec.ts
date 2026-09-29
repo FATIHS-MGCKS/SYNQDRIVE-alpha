@@ -10,7 +10,6 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { DocumentActionExecutorRegistry } from '@modules/document-extraction/document-action-executor.registry';
 import { DocumentActionOrchestratorService } from '@modules/document-extraction/document-action-orchestrator.service';
 import { DocumentExtractionObservabilityService } from '@modules/document-extraction/document-extraction-observability.service';
-import { DocumentFollowUpSuggestionService } from '@modules/document-extraction/document-follow-up-suggestion.service';
 import { ArchiveDocumentActionExecutor } from '@modules/document-extraction/executors/archive-document-action.executor';
 import { ApplyBatteryMeasurementDocumentActionExecutor } from '@modules/document-extraction/executors/apply-technical-document-action.executor';
 import { LinkEntityDocumentActionExecutor } from '@modules/document-extraction/executors/link-entity-document-action.executor';
@@ -90,8 +89,9 @@ const BATTERY_LV_REPLACEMENT_CONFIRMED = {
       noop,
       noop,
       noop,
+      noop,
       new ApplyBatteryMeasurementDocumentActionExecutor(batteryHealth),
-      { syncForActionPlan: jest.fn().mockResolvedValue(undefined) } as DocumentFollowUpSuggestionService,
+      { syncForActionPlan: jest.fn().mockResolvedValue(undefined) } as any,
       {
         recordActionPlan: jest.fn(),
         recordActionExecution: jest.fn(),
@@ -148,9 +148,10 @@ const BATTERY_LV_REPLACEMENT_CONFIRMED = {
     const afterPlan = await prisma.vehicleDocumentExtraction.findUnique({
       where: { id: extractionId },
     });
+    const detail = result.detail as { groundTruthEventIds?: string[] | null };
     expect(afterPlan?.status).toBe(DocumentExtractionStatus.CONFIRMED);
-    expect(result.detail?.groundTruthEventIds?.length).toBe(1);
-    expect(result.detail?.groundTruthEventIds?.[0]).toBeTruthy();
+    expect(detail?.groundTruthEventIds?.length).toBe(1);
+    expect(detail?.groundTruthEventIds?.[0]).toBeTruthy();
     expect(await prisma.batteryGroundTruthEvent.count({ where: { vehicleId } })).toBe(1);
 
     await prisma.vehicleDocumentExtraction.updateMany({
@@ -221,7 +222,8 @@ const BATTERY_LV_REPLACEMENT_CONFIRMED = {
       plausibility: mid?.plausibility ?? {},
     });
 
-    expect(retry.detail?.groundTruthEventIds?.length).toBe(1);
+    const retryDetail = retry.detail as { groundTruthEventIds?: string[] | null };
+    expect(retryDetail?.groundTruthEventIds?.length).toBe(1);
     expect(await prisma.batteryGroundTruthEvent.count({ where: { vehicleId } })).toBe(1);
   });
 
