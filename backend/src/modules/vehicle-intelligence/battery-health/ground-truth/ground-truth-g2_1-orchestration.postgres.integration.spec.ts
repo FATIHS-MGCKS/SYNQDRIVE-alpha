@@ -15,11 +15,11 @@ import { ApplyBatteryMeasurementDocumentActionExecutor } from '@modules/document
 import { LinkEntityDocumentActionExecutor } from '@modules/document-extraction/executors/link-entity-document-action.executor';
 import { BatteryEvidenceService } from '../battery-evidence.service';
 import { BatteryHealthService } from '../battery-health.service';
-import { ServiceEventsService } from '../../service-events/service-events.service';
 import { GroundTruthEmissionFailedError } from './ground-truth-emission.errors';
 import {
   assertGtPostgresReachable,
   buildGroundTruthStack,
+  createGtDocumentServiceEventsService,
   createGtOrgVehicle,
   createGtTestUser,
 } from './ground-truth-postgres.fixture';
@@ -49,13 +49,8 @@ const BATTERY_LV_REPLACEMENT_CONFIRMED = {
 
   function buildBatteryOrchestrator() {
     const prismaService = prisma as unknown as PrismaService;
-    const { emission, gtService } = buildGroundTruthStack(prisma);
-    const guard = buildGroundTruthStack(prisma).guard;
-    const serviceEvents = new ServiceEventsService(
-      prismaService,
-      { onServiceHistoryChanged: jest.fn().mockResolvedValue(undefined) } as any,
-      guard,
-    );
+    const { emission, gtService, guard } = buildGroundTruthStack(prisma);
+    const serviceEvents = createGtDocumentServiceEventsService(prisma, guard);
     const batteryEvidence = new BatteryEvidenceService(prismaService);
     const batteryHealth = new BatteryHealthService(
       prismaService,

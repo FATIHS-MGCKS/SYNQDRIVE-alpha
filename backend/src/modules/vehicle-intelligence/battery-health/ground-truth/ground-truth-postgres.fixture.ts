@@ -1,9 +1,11 @@
 import { randomUUID } from 'crypto';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, ServiceEventOrigin } from '@prisma/client';
 import { PIPELINE_PLAUSIBILITY_KEY } from '@modules/document-extraction/document-content-cache.util';
 import { PrismaService } from '@shared/database/prisma.service';
 import { probePostgresDatabase } from '../provider-observability-gap/provider-observability-gap-postgres.fixture';
 import { BatteryGroundTruthBackedSourceGuard } from './ground-truth-backed-source.guard';
+import type { CreateServiceEventFromDocumentExtractionInput } from '../../service-events/service-events.service';
+import { ServiceEventsService } from '../../service-events/service-events.service';
 import { BatteryGroundTruthEmissionService } from './ground-truth-emission.service';
 import { BatteryGroundTruthRepository } from './ground-truth.repository';
 import { BatteryGroundTruthService } from './ground-truth.service';
@@ -98,4 +100,56 @@ export function buildActionPlanPlausibility(actionPlan: {
   return {
     [PIPELINE_PLAUSIBILITY_KEY]: { actionPlan },
   };
+}
+
+/** Raw-SQL service-event helper for Postgres CI where Prisma selects columns absent from ephemeral DB. */
+export function createGtDocumentServiceEventsService(
+  prisma: PrismaClient,
+  guard: BatteryGroundTruthBackedSourceGuard,
+): ServiceEventsService {
+  const prismaService = prisma as unknown as PrismaService;
+  const base = new ServiceEventsService(
+    prismaService,
+    { onServiceHistoryChanged: jest.fn().mockResolvedValue(undefined) } as any,
+    guard,
+  );
+  return {
+    ...base,
+    async findByDocumentExtractionId(organizationId: string, documentExtractionId: string) {
+      const rows = await prisma.$queryRaw<{ id: string }[]>`
+        SELECT id FROM vehicle_service_events
+        WHERE organization_id = ${organizationId}::uuid
+          AND document_extraction_id = ${documentExtractionId}::uuid
+        LIMIT 1
+      `;
+      return rows[0] ? ({ id: rows[0].id } as any) : null;
+    },
+    async createFromDocumentExtraction(input: CreateServiceEventFromDocumentExtractionInput) {
+      const existing = await this.findByDocumentExtractionId(
+        input.organizationId,
+        input.documentExtractionId,
+      );
+      if (existing) {
+        return existing as any;
+      }
+      const id = randomUUID();
+      await prisma.$executeRaw`
+        INSERT INTO vehicle_service_events (
+          id, vehicle_id, organization_id, event_type, event_date, origin,
+          document_extraction_id, created_at, updated_at
+        ) VALUES (
+          ${id}::uuid,
+          ${input.vehicleId}::uuid,
+          ${input.organizationId}::uuid,
+          ${input.eventType}::"ServiceEventType",
+          ${new Date(input.eventDate)},
+          ${ServiceEventOrigin.AI_UPLOAD}::"ServiceEventOrigin",
+          ${input.documentExtractionId}::uuid,
+          NOW(),
+          NOW()
+        )
+      `;
+      return { id } as any;
+    },
+  } as ServiceEventsService;
 }
