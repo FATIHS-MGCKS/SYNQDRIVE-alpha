@@ -1227,3 +1227,13 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | NON_EFFECTS | No deploy, no control row, no S4D replay, no schema migration, no customer paths |
 | Evidence | `evidence/EXP021_S4C_ENGINEERING_START.md` |
 | Next slice | `S4C_IMPLEMENTATION_PREMERGE_AUDIT` |
+
+### EXP-021 S4D — Verified pin replay (2026-09-29)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | `EXP021_S4D_ENGINEERING_START` after S4C merge @ `78ee9909` |
+| CHANGE | `s4d-replay/` verified gunzip+rehash+parse; position/R1/container strict parsers; `readVerifiedPinnedEvidence`; S4C executor routes pinned work to S4D (single registry executor); contract gap `DI-GAP-S4-REPLAY-DESERIALIZER-001` CLOSED |
+| NON_EFFECTS | No deploy, no AppModule, no S4E/S4F, no schema migration |
+| Evidence | `evidence/EXP021_S4D_ENGINEERING_START.md` |
+| Next slice | Complete S4D postgres matrix D-02–D-16 + R1/container equivalence tests; then `S4D_IMPLEMENTATION_PREMERGE_AUDIT` |
