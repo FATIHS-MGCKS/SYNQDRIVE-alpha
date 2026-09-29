@@ -118,7 +118,7 @@ export function createGtDocumentServiceEventsService(
     async findByDocumentExtractionId(organizationId: string, documentExtractionId: string) {
       const rows = await prisma.$queryRaw<{ id: string }[]>`
         SELECT id FROM vehicle_service_events
-        WHERE organization_id = ${organizationId}::uuid
+        WHERE organization_id = ${organizationId}
           AND document_extraction_id = ${documentExtractionId}
         LIMIT 1
       `;
