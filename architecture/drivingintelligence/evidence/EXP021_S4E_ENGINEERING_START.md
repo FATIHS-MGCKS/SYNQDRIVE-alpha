@@ -4,8 +4,8 @@ Date: 2026-09-29
 
 ## Base SHA
 
-- **Starting main:** `06955ea65b15ab2801865893eebb1c387d17b327` (includes merged PR #1841 / S4D)
-- **Pre-S4E main tip at branch:** `1dd4224037a84417c5d605575bb6d288ac93184e` (Battery V2 only; no S4 overlap)
+- **S4E branch base (starting main for this PR):** `1dd4224037a84417c5d605575bb6d288ac93184e` (Battery V2 `#1842` only; no S4 overlap with S4E diff)
+- **S4D merge / seal ancestor (context only, not S4E branch base):** `06955ea65b15ab2801865893eebb1c387d17b327` (merged PR #1841 / S4D on earlier main)
 
 ## Scope (S4E-1)
 
