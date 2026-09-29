@@ -1267,3 +1267,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | NON_EFFECTS | No deploy, no AppModule, no schema migration, no S4F, no contract change to T11 successor rules |
 | Evidence | `evidence/EXP021_S4E2_MAINTENANCE_REAPERS.md` |
 | Race | T11↔T12 TOCTOU documented; claim blocked + T12 cleanup; S4E2-M19/M20 |
+
+### EXP-021 S4E-2 — CLASS A retirement hardening (2026-09-29)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | Adversarial audit PR #1845; gap `DI-GAP-S4A-T11-RETIRED-SUCCESSOR-TOCTOU-001` |
+| BEFORE | CLASS B: `retireRegistry` test DML + T11 `FOR SHARE`; durable PENDING successor under RETIRED possible |
+| CHANGE | `retirePipelineVersion` authoritative retirement; T11 registry `FOR UPDATE` before work item; harness `retireRegistry` → repository; tests S4E2-A01..A10 |
+| WHY | Strong serialized invariant required before S4E complete; refinement within BR07 / pipeline retirement authority (no `s4a-contract.v2.json` amendment) |
+| NON_EFFECTS | S4 dormant; bounded T12 scheduler unchanged for RETIRED stragglers; no schema migration |
+| Evidence | `evidence/EXP021_S4E2_MAINTENANCE_REAPERS.md` (invariant class table) |

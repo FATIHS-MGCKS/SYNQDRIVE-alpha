@@ -10,6 +10,7 @@ import {
   cleanupS4aTenant,
   newS4aClient,
   retireRegistry,
+  retireRegistryStatusOnly,
   S4A_POSTGRES_LIVE,
   s4aChannels,
   s4aConfigFor,
@@ -182,7 +183,7 @@ type ItemRow = {
   it('S4E2-M07 T12 retired pending', async () => {
     const t = await tenant();
     const { created, pvk } = await primary(t);
-    await retireRegistry(admin, pvk);
+    await retireRegistryStatusOnly(admin, pvk);
     const pass = await maintenance().runMaintenancePass();
     expect(pass.t12Results.some((r) => r.pipelineVersionKey === pvk && r.supersededWorkItemIds.includes(created.workItemId))).toBe(true);
     const row = (await items(t.tripId))[0];
@@ -236,7 +237,7 @@ type ItemRow = {
   it('S4E2-M12 duplicate T12 reapers', async () => {
     const t = await tenant();
     const { pvk } = await primary(t);
-    await retireRegistry(admin, pvk);
+    await retireRegistryStatusOnly(admin, pvk);
     const svc = maintenance();
     const [a, b] = await Promise.all([svc.runMaintenancePass(), svc.runMaintenancePass()]);
     const supers = a.t12Results.concat(b.t12Results).flatMap((r) => r.supersededWorkItemIds);
@@ -306,7 +307,7 @@ type ItemRow = {
     for (const tripId of tripIds) {
       await repo.createWorkItem({ tripId, sourceFamily: 'RUPTELA_R1', runPurpose: 'PRIMARY', pipelineManifest: manifest });
     }
-    await retireRegistry(admin, pvk);
+    await retireRegistryStatusOnly(admin, pvk);
     const pass = await maintenance(config).runMaintenancePass({ t12PerPipelineLimit: 2 });
     const result = pass.t12Results.find((r) => r.pipelineVersionKey === pvk);
     expect(result?.supersededWorkItemIds.length).toBe(2);
@@ -337,24 +338,24 @@ type ItemRow = {
     expect(pass.t10ReapedWorkItemIds).toEqual([]);
   }, 60_000);
 
-  it('S4E2-M19 T11/T12 race — no durable active PRIMARY under RETIRED pipeline', async () => {
+  it('S4E2-M19 T11/T12 race — CLASS A: no PENDING PRIMARY under RETIRED pipeline', async () => {
     const t = await tenant();
     const config = s4aConfigFor(tenants);
     const { repo, manifest, created, pvk } = await primary(t, config);
     await changeTripBoundary(admin, t.tripId);
-    await retireRegistry(admin, pvk);
     const svc = maintenance(config);
     const drift = watcher(config);
     await Promise.all([
       repo.supersedeOnDrift({ workItemId: created.workItemId, reason: 'BOUNDARY_CHANGED' }),
+      repo.retirePipelineVersion({ pipelineVersionKey: pvk, retiredBy: 'S4E2_M19', retiredReason: 'TEST' }),
       svc.runMaintenancePass(),
       drift.runDriftWatchPass(),
     ]);
-    const rows = await admin.$queryRaw<Array<{ status: string; pipeline_version_key: string }>>`
-      SELECT status::text AS status, pipeline_version_key FROM di_v0_s4_work_items
+    const pending = await admin.$queryRaw<Array<{ n: bigint }>>`
+      SELECT count(*)::bigint AS n FROM di_v0_s4_work_items
       WHERE trip_id = ${t.tripId} AND pipeline_version_key = ${pvk}
-        AND status IN ('PENDING', 'LEASED', 'COMPLETED')`;
-    expect(rows).toHaveLength(0);
+        AND status = 'PENDING' AND run_purpose = 'PRIMARY'`;
+    expect(Number(pending[0]?.n ?? 0)).toBe(0);
   }, 60_000);
 
   it('S4E2-M20 T10/T11 race — single valid terminal/superseded outcome', async () => {

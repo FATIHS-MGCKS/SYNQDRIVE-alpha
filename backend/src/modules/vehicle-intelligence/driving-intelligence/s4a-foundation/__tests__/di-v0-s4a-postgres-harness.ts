@@ -9,6 +9,7 @@ import { mapComputeOutputToPersistRows } from '../../shadow-persistence/di-v0-sh
 import type { DiV0ShadowPersistedIntervalInput } from '../../shadow-persistence/di-v0-shadow-types';
 import { DI_V0_S4_EVIDENCE_CONTAINER_VERSION, type DiV0S4PipelineManifest } from '../di-v0-s4a-contract';
 import { parseDiV0S4ControlPlaneConfig, type DiV0S4ControlPlaneConfig } from '../di-v0-s4a-control-plane';
+import { DiV0S4WorkItemRepository } from '../di-v0-s4a-work-item.repository';
 import {
   buildDiV0S4BoundaryFingerprint,
   deriveDiV0S4ChannelEnablement,
@@ -254,7 +255,26 @@ export async function restoreControlTable(prisma: PrismaClient): Promise<void> {
   await prisma.$executeRawUnsafe(`ALTER TABLE di_v0_s4_control_unreadable RENAME TO di_v0_s4_control`);
 }
 
-export async function retireRegistry(prisma: PrismaClient, pipelineVersionKey: string): Promise<void> {
+export async function retireRegistry(
+  prisma: PrismaClient,
+  pipelineVersionKey: string,
+  config?: DiV0S4ControlPlaneConfig,
+): Promise<void> {
+  const cfg =
+    config ??
+    parseDiV0S4ControlPlaneConfig({
+      DI_V0_S4_MASTER_ENABLED: 'true',
+    });
+  const repo = new DiV0S4WorkItemRepository(prisma, cfg);
+  await repo.retirePipelineVersion({
+    pipelineVersionKey,
+    retiredBy: 'S4A_TEST',
+    retiredReason: 'S4A_TEST',
+  });
+}
+
+/** Registry-only RETIRED (no work-item supersession). For T12 bounded-reaper tests simulating pre-cleanup stragglers. */
+export async function retireRegistryStatusOnly(prisma: PrismaClient, pipelineVersionKey: string): Promise<void> {
   await prisma.$executeRaw`
     UPDATE di_v0_s4_pipeline_versions
     SET status = 'RETIRED', retired_at = now(), retired_by = 'S4A_TEST', retired_reason = 'S4A_TEST'

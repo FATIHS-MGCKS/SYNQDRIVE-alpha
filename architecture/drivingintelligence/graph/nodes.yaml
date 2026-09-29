@@ -1805,3 +1805,15 @@ nodes:
       P2. Correct for kill serialization; a throughput ceiling to revisit before multi-worker scale.
     source_paths:
       - architecture/drivingintelligence/evidence/EXP021_S4A_DORMANT_FOUNDATION_IMPLEMENTATION.md
+
+  - id: DI-GAP-S4A-T11-RETIRED-SUCCESSOR-TOCTOU-001
+    type: gap
+    title: T11 successor insert vs concurrent pipeline retirement (TOCTOU)
+    epistemic_status: CONFIRMED
+    summary: >
+      CLOSED 2026-09-29 (S4E-2 CLASS A). Pre-fix CLASS B: FOR SHARE registry read + raw retire DML allowed durable
+      PENDING PRIMARY under RETIRED until T12. Post-fix: retirePipelineVersion + T11 registry FOR UPDATE ordering;
+      evidence EXP021_S4E2_MAINTENANCE_REAPERS.md; tests S4E2-A01..A10. No production impact (S4 dormant).
+    source_paths:
+      - architecture/drivingintelligence/evidence/EXP021_S4E2_MAINTENANCE_REAPERS.md
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/s4a-foundation/di-v0-s4a-work-item.repository.ts

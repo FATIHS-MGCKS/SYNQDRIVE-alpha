@@ -201,6 +201,9 @@ const PRIVATE_HELPERS = new Set([
   'successorIdIfEligible',
   'allocatePrimaryBoundaryOccurrence',
   'loadPinnedSnapshotPins',
+  'lockPipelineRegistryForUpdate',
+  'selectRetirablePipelineWorkItemsForUpdate',
+  'supersedePipelineRetirementWorkItems',
 ]);
 
 function isPrivateHelper(name: string): boolean {
