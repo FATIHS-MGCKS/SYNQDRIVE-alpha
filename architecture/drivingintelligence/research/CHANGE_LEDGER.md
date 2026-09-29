@@ -1247,3 +1247,13 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | NON_EFFECTS | No deploy, no schema/migration, no AppModule, no S4E/S4F |
 | Evidence | `evidence/EXP021_S4D_P1_CLOSURE.md` |
 | Gap | `DI-GAP-S4-REPLAY-DESERIALIZER-001` CLOSED after P1-A..P1-E gates |
+
+### EXP-021 S4E-1 — Dormant boundary drift watcher (2026-09-29)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | `EXP021_S4E_ENGINEERING_START` after S4D merge @ `06955ea65` |
+| CHANGE | `s4e-drift-watcher/` bounded candidate scan, canonical boundary re-hash, `DiV0S4DriftWatcherService` → `supersedeOnDrift` (T11 only); leader scheduler `di_v0_s4_drift_watcher`; CI `test:di:s4e` + postgres matrix S4E-D01..D15 |
+| NON_EFFECTS | No deploy, no AppModule, no schema migration, no T10/T12 schedulers, no S4F |
+| Evidence | `evidence/EXP021_S4E_ENGINEERING_START.md` |
+| Inventory | T10 `reapExhausted` + T12 `retirePipelineItems` repository-ready; scheduling deferred |

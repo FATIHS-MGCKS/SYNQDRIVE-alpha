@@ -10,6 +10,7 @@ const REPO_ROOT = path.join(__dirname, '../../../../../../..');
 const S4B_DIR = path.join(__dirname, '..');
 const S4C_DIR = path.join(__dirname, '../../s4c-executor');
 const S4D_DIR = path.join(__dirname, '../../s4d-replay');
+const S4E_DIR = path.join(__dirname, '../../s4e-drift-watcher');
 
 function walk(dir: string, pattern: RegExp, acc: string[] = []): string[] {
   if (!fs.existsSync(dir)) return acc;
@@ -79,7 +80,12 @@ describe('DI V0 S4B dormant-by-construction audit', () => {
     const hits: string[] = [];
     for (const root of roots) {
       for (const file of walk(root, /\.(ts|tsx|js|mjs|cjs)$/)) {
-        if (file.startsWith(S4B_DIR + path.sep) || file.startsWith(S4C_DIR + path.sep) || file.startsWith(S4D_DIR + path.sep)) {
+        if (
+          file.startsWith(S4B_DIR + path.sep) ||
+          file.startsWith(S4C_DIR + path.sep) ||
+          file.startsWith(S4D_DIR + path.sep) ||
+          file.startsWith(S4E_DIR + path.sep)
+        ) {
           continue;
         }
         const source = fs.readFileSync(file, 'utf8');
