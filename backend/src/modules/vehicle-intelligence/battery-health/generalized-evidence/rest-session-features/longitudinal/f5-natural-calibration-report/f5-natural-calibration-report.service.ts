@@ -17,9 +17,11 @@ import { computeNumericStats } from './f5-descriptive-statistics';
 import { computeDefaultEligibleObservationPercent } from './f5-d4-metrics';
 import type {
   F5ReportBuildOptions,
-  M3_3F_F5_NaturalCalibrationReportV1,
+  M3_3F_F5_NaturalCalibrationReportV2,
 } from './f5-natural-calibration-report.types';
 import { F5ReportBoundExceededError, F5ReportTimeoutError } from './f5-natural-calibration-report.types';
+import { computeF5GroundTruthCorrelationBlockV2 } from './f5-ground-truth-correlation.policy';
+import { loadGroundTruthRowsForF5Report } from './f5-ground-truth-correlation.queries';
 import { LongitudinalIntegrityInspectionService } from '../longitudinal-integrity-inspection.service';
 import type { LongitudinalIntegrityInspectionTx } from '../longitudinal-integrity-inspection.repository';
 import { buildLongitudinalAssessmentInputV1 } from '../longitudinal-assessment-input.adapter';
@@ -73,7 +75,7 @@ export async function assertTransactionReadOnly(tx: ReadOnlyTx): Promise<void> {
 export async function runF5NaturalCalibrationReport(
   prisma: PrismaClient,
   options: F5ReportBuildOptions,
-): Promise<M3_3F_F5_NaturalCalibrationReportV1> {
+): Promise<M3_3F_F5_NaturalCalibrationReportV2> {
   const started = Date.now();
   const deadline = started + options.timeoutMs;
 
@@ -272,6 +274,32 @@ export async function runF5NaturalCalibrationReport(
       const calibration = computeF5CalibrationMaturityBlocks(maturityInput);
       const naturalEvidence = computeF5NaturalEvidenceMaturity(maturityInput);
 
+      const primaryVehicleKeys = new Set(
+        f46Revs.map((r) => `${r.organizationId}::${r.vehicleId}`),
+      );
+      const primaryOrgIds = [...new Set(f46Revs.map((r) => r.organizationId))];
+
+      assertDeadline();
+      const gtRows = await loadGroundTruthRowsForF5Report(tx as ReadOnlyTx, {
+        asOf: options.asOf,
+        organizationIds: primaryOrgIds,
+      });
+
+      const primaryRevisionIntervals = f46Revs.map((r) => ({
+        revisionId: r.id,
+        organizationId: r.organizationId,
+        vehicleId: r.vehicleId,
+        firstIncludedAnchorAt: r.firstIncludedAnchorAt,
+        lastIncludedAnchorAt: r.lastIncludedAnchorAt,
+      }));
+
+      const groundTruth = computeF5GroundTruthCorrelationBlockV2({
+        asOf: options.asOf,
+        primaryRevisionIntervals,
+        groundTruthRows: gtRows,
+        primaryVehicleKeys,
+      });
+
       const runtime = options.runtimeAuthority ?? {};
 
       return {
@@ -320,12 +348,7 @@ export async function runF5NaturalCalibrationReport(
         },
         calibration,
         naturalEvidence,
-        groundTruth: {
-          linkageAvailable: false,
-          replacementLabelsAvailable: false,
-          nat008Owner: 'M3.3G',
-          nat009Owner: 'M3.3G',
-        },
+        groundTruth,
         safety: {
           crossTenantMismatchCount: Number(crossRows[0]?.c ?? 0),
           partialRevisionWithoutAckCount: Number(partialRows[0]?.c ?? 0),

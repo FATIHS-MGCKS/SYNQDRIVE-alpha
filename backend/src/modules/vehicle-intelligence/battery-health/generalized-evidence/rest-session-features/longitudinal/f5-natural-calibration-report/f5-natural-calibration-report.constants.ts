@@ -7,8 +7,12 @@ export const F45R1_COHORT_START_ISO = '2026-09-28T14:00:00.000Z';
 export const ACCEPTED_BATTERY_RUNTIME_SHA =
   '7f5f8fdf2d158c59e19323efee979aee1a0757e0';
 
-export const M3_3F_F5_NATURAL_CALIBRATION_REPORT_CONTRACT_VERSION =
+export const M3_3F_F5_NATURAL_CALIBRATION_REPORT_CONTRACT_VERSION_V1 =
   'M3_3F_F5_NATURAL_CALIBRATION_REPORT_V1' as const;
+
+/** G3 — Ground Truth correlation + longitudinal segmentation (additive groundTruth block). */
+export const M3_3F_F5_NATURAL_CALIBRATION_REPORT_CONTRACT_VERSION =
+  'M3_3F_F5_NATURAL_CALIBRATION_REPORT_V2' as const;
 
 export const F5_PRIMARY_COHORT_V1 = 'f46_sustained' as const;
 
