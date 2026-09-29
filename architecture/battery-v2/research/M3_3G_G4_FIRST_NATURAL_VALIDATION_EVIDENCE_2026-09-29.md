@@ -183,12 +183,12 @@ G4_DECISION=WAIT_FOR_NATURAL_GT
 
 Engineering status on **`origin/main`** (code is authority where docs lag). **Production** @ `6952fdf` has **not** deployed this tranche — do **not** label G3 **PRODUCTION_VALIDATED**.
 
-| Phase | Main repo | Production deploy |
-|-------|-----------|-------------------|
-| G1 | **MERGED** (#1837) · **CI_VALIDATED** | **NOT_YET_PRODUCTION_DEPLOYED** |
-| G2 / G2.1 / G2.2 | **MERGED** (#1840) · **CI_VALIDATED** | **NOT_YET_PRODUCTION_DEPLOYED** |
-| G3 / G3.1 / G3.1.1 | **MERGED** (#1842) · **CI_VALIDATED** | **NOT_YET_PRODUCTION_DEPLOYED** |
-| `NEXT_PHASE` | **`M3_3G_G4`** — this audit; enablement preflight in `M3_3G_G4_PRODUCTION_ENABLEMENT_PREFLIGHT_2026-09-29.md` |
+| Phase | Main repo | Production @ `20260929224455_v4994` |
+|-------|-----------|----------------------------------------|
+| G1 | **MERGED** · **CI_VALIDATED** | **PRODUCTION_DEPLOYED** · **PRODUCTION_VERIFIED** (schema) |
+| G2 / G2.1 / G2.2 | **MERGED** · **CI_VALIDATED** | **PRODUCTION_DEPLOYED** · **PRODUCTION_VERIFIED** (emission paths live) |
+| G3 / G3.1 / G3.1.1 | **MERGED** · **CI_VALIDATED** | **PRODUCTION_DEPLOYED** · **PRODUCTION_VERIFIED** (F5 V2 CLI; **0** natural GT) |
+| G4 science | **`NATURAL_GT_PRESENT=NO`** | **`G4_COLLECTION_INFRASTRUCTURE_READY=YES`** — see `M3_3G_G4_PRODUCTION_DEPLOY_VERIFICATION_2026-09-29.md` |
 
 ```
 M3_3G_G4_PREPARATION_AUDIT_RESULT=PASS

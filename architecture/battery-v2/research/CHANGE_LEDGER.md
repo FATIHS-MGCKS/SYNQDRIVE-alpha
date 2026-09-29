@@ -20,6 +20,15 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-29 — M3.3G G4 production deploy + verification (authorized SHA)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Exact SHA deploy `1dd422403` @ release `20260929224455_v4994`; GT migrations applied; post-deploy verification PASS; **0** GT rows. |
+| **VALIDATION** | CI on target SHA 0 failed / 0 pending; `backend.env` SHA256 unchanged; D3 flag unchanged; no DI_V0_S4 keys. |
+| **OBSERVED_EFFECT** | **`G4_COLLECTION_INFRASTRUCTURE_READY=YES`**; **`NATURAL_GT_PRESENT=NO`**. |
+| **DECISION_STATUS** | **`PRODUCTION_DEPLOYED`** · **`PRODUCTION_VERIFIED`** (infrastructure — not natural GT science) |
+
 ## CL-2026-09-29 — M3.3G G4 production enablement preflight
 
 | Field | Value |

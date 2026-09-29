@@ -17,7 +17,7 @@ On **`origin/main`**, G3 engineering is:
 |-------|---------|
 | **MERGED** | PR **#1842** @ `1dd422403` |
 | **CI_VALIDATED** | Battery longitudinal Postgres CI, F5 unit/historical postgres, module registry (main push) |
-| **NOT_YET_PRODUCTION_DEPLOYED** | Production DB has **no** `battery_ground_truth_events`; deploy SHA **≠** main |
+| **NOT_YET_PRODUCTION_DEPLOYED** | Superseded for **`1dd422403`** — see **`M3_3G_G4_PRODUCTION_DEPLOY_VERIFICATION_2026-09-29.md`** |
 
 Do **not** call G3 **PRODUCTION_VALIDATED** until post-deploy verification confirms schema + intended runtime on production.
 
