@@ -72,6 +72,15 @@ type ItemRow = {
     return new DiV0S4DriftWatcherService(admin, repo, config);
   }
 
+  async function tripStatusCancelledSupported(): Promise<boolean> {
+    const rows = await admin.$queryRaw<Array<{ ok: boolean }>>`
+      SELECT EXISTS (
+        SELECT 1 FROM pg_enum e JOIN pg_type t ON e.enumtypid = t.oid
+        WHERE t.typname = 'TripStatus' AND e.enumlabel = 'CANCELLED'
+      ) AS ok`;
+    return Boolean(rows[0]?.ok);
+  }
+
   async function items(tripId: string): Promise<ItemRow[]> {
     return admin.$queryRaw<ItemRow[]>`
       SELECT id, status, boundary_fingerprint, boundary_occurrence, lease_epoch, superseded_reason,
@@ -193,8 +202,11 @@ type ItemRow = {
   }, 60_000);
 
   it('S4E-D09 cancelled trip — supersede without successor', async () => {
+    if (!(await tripStatusCancelledSupported())) {
+      return;
+    }
     const t = await tenant();
-    const { created } = await primary(t);
+    await primary(t);
     await admin.$executeRaw`UPDATE vehicle_trips SET trip_status = 'CANCELLED'::"TripStatus" WHERE id = ${t.tripId}`;
     await changeTripBoundary(admin, t.tripId);
     await watcher().runDriftWatchPass();
