@@ -30,6 +30,7 @@ It is **not** a finalized static architecture document. It is a continuously evo
 
 | File | Purpose |
 |------|---------|
+| [BATTERY_INTELLIGENCE_ARCHITECTURE.md](./BATTERY_INTELLIGENCE_ARCHITECTURE.md) | **LV / HV / Shared Core** navigation, dependency graph, post-G4 roadmap |
 | [CURRENT_STATE.md](./CURRENT_STATE.md) | Best-known snapshot of Battery V2 today |
 | [KNOWLEDGE_GRAPH.md](./KNOWLEDGE_GRAPH.md) | Human-readable graph overview (must align with machine graph) |
 | [AGENT_CONTRACT.md](./AGENT_CONTRACT.md) | **Mandatory rules for future agents** |
