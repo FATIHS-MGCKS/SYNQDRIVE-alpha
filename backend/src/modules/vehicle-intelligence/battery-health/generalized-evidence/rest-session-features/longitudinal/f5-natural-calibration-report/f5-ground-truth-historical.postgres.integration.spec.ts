@@ -12,17 +12,34 @@ const integrationEnabled = process.env.BATTERY_F5_NATURAL_CALIBRATION_REPORT_INT
 
 (integrationEnabled ? describe : describe.skip)('F5 ground-truth historical asOf postgres G3.1', () => {
   let prisma: PrismaClient;
+  const createdOrganizationIds: string[] = [];
 
   beforeAll(() => {
     prisma = new PrismaClient();
+  });
+
+  afterEach(async () => {
+    for (const organizationId of createdOrganizationIds) {
+      await prisma.batteryGroundTruthRevocation.deleteMany({ where: { organizationId } });
+      await prisma.batteryGroundTruthEvent.deleteMany({ where: { organizationId } });
+      await prisma.$executeRaw`DELETE FROM vehicles WHERE organization_id = ${organizationId}::uuid`;
+      await prisma.organization.deleteMany({ where: { id: organizationId } });
+    }
+    createdOrganizationIds.length = 0;
   });
 
   afterAll(async () => {
     await prisma.$disconnect();
   });
 
+  async function createIsolatedOrgVehicle() {
+    const ref = await createGtOrgVehicle(prisma);
+    createdOrganizationIds.push(ref.organizationId);
+    return ref;
+  }
+
   it('G3.1-A1/A2 — revocation after asOf visible at asOf; revocation before later asOf excludes row', async () => {
-    const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
+    const { organizationId, vehicleId } = await createIsolatedOrgVehicle();
     const gtId = randomUUID();
     const fingerprint = randomUUID().replace(/-/g, '');
     await prisma.batteryGroundTruthEvent.create({
@@ -88,7 +105,7 @@ const integrationEnabled = process.env.BATTERY_F5_NATURAL_CALIBRATION_REPORT_INT
   });
 
   it('G3.1-A3/A4 — supersession after asOf leaves prior admissible; before later asOf excludes prior', async () => {
-    const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
+    const { organizationId, vehicleId } = await createIsolatedOrgVehicle();
     const priorId = randomUUID();
     const fp1 = randomUUID().replace(/-/g, '');
     await prisma.batteryGroundTruthEvent.create({
@@ -161,7 +178,7 @@ const integrationEnabled = process.env.BATTERY_F5_NATURAL_CALIBRATION_REPORT_INT
   });
 
   it('G3.1-A5 — same rows + asOf yields deterministic admissible ordering', async () => {
-    const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
+    const { organizationId, vehicleId } = await createIsolatedOrgVehicle();
     await prisma.batteryGroundTruthEvent.create({
       data: {
         id: randomUUID(),
