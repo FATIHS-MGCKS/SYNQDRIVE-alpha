@@ -39,7 +39,13 @@ Rolling restart: PM2 `synqdrive` (3001) then `synqdrive-b` (3002) with `--update
 
 ## EED-OQ-019
 
-Remains **PARTIALLY_RESOLVED** — Production scoped activation is live; durable fleet calibration store still open.
+Remains **PARTIALLY_RESOLVED** — Production scoped activation is live (`ALPHA_ALLOWLIST`, F.S Mobility org only). Remaining work is **first natural Production refuel end-to-end evidence** and **durable fleet calibration store** design/implementation — not missing activation infrastructure.
+
+**Post-activation:** `READY_FOR_FIRST_NATURAL_REFUEL_VALIDATION=YES`
+
+**Explicitly not performed:** backfill; manual VEE creation; manual candidate promotion; provider test writes; Production source deploy; global Hybrid Trust (`ABSOLUTE_SIGNAL_TRUST_AUTHORITY_AVAILABLE` remains **false**).
+
+**Authority versions on release:** `rfrf-signal-trust-v2`, `rfrf-hybrid-absolute-trust-v2`, `rfrf-hybrid-trust-activation-v1`.
 
 ## Rollback
 
