@@ -20,6 +20,18 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-29 — M3.3G G2.1 document apply ordering + replacement concurrency (engineering)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | G2 emitted GT only when document status was APPLIED, but real confirm flow runs battery apply while status is still CONFIRMED → first-pass GT skipped; concurrent manual confirms could race duplicate active replacement rows; PG manual tests used non-existent actor UUIDs. |
+| **CHANGE** | `DocumentApplyConfirmationAuthorityV1` from action plan through executor → `applyFromDocumentExtraction` → emission; status gate CONFIRMED+authority or APPLIED retry; partial unique index `(organization_id, source_service_event_id, battery_scope)` for active CONFIRMED BATTERY_REPLACEMENT; repository pre-check + P2002 convergence; orchestrator `toApplyResult` preserves `groundTruthEventIds`; G2H-A–J postgres + unit tests; real User fixtures. |
+| **WHY** | Scientific confirmation time must be human/plan authority, not measurement observedAt; one active replacement fact per source service event + scope. |
+| **VALIDATION** | `battery-ground-truth-postgres-ci.sh` (G2 + G2.1); unit emission/service specs; backend build. |
+| **NON_EFFECTS** | No production deploy/migration apply; no GT backfill; D3/E3 unchanged. |
+| **DECISION_STATUS** | **`IMPLEMENTED`** (G2.1 hardening, PR #1840) |
+| **EVIDENCE** | G2.1 section in `M3_3G_G2_CONFIRMED_CAPTURE_DOCUMENT_GT_EMISSION_2026-09-29.md` |
+
 ## CL-2026-09-29 — M3.3G G2 confirmed capture + document GT emission (engineering)
 
 | Field | Value |

@@ -1,6 +1,6 @@
 # Battery V2 — Current State Snapshot
 
-**Snapshot date:** 2026-09-29 (M3.3G **G2 confirmed GT emission** engineering; **G1** on main PR #1837; G0; M3.3F **F5.1**; **D3 sustained ON**; E3 **OFF**)
+**Snapshot date:** 2026-09-29 (M3.3G **G2.1 ordering/concurrency hardening** on PR #1840; **G2** + **G1** on main; G0; M3.3F **F5.1**; **D3 sustained ON**; E3 **OFF**)
 **Graph:** 149 nodes / 148 edges / 11 invariants (validated 2026-09-25)
 **Knowledge maturity:** Phase 4 planning complete — 20 open gaps; 1 PROPOSED decision (`BAT-V2-DEC-PH4-LV-PUB-CHAIN-001`); 5 VALIDATED PKG spec decisions (D1, D2, D3, D4, D5)
 
@@ -78,6 +78,7 @@
 | **M3.3F F5.1 (calibration report CLI)** | **`M3_3F_F5_NATURAL_CALIBRATION_REPORT_V1`** via **`npm run battery:f5:natural-calibration-report`**; read-only txn + **`BATTERY_F5_ALLOW_PRODUCTION_READONLY`**; D4/E1/E3 offline reuse — `research/M3_3F_F5_1_BOUNDED_READ_ONLY_NATURAL_CALIBRATION_REPORT_2026-09-28.md` |
 | **M3.3G G0 (architecture)** | Ground-truth & intervention label audit — **`M3_3G_ARCHITECTURE_RESULT=PASS`**; **`RECOMMENDED_GROUND_TRUTH_STORAGE_OPTION=OPTION_C`** — `research/M3_3G_G0_GROUND_TRUTH_INTERVENTION_ARCHITECTURE_2026-09-29.md` |
 | **M3.3G G1 (engineering)** | Append-only **`BatteryGroundTruthEvent`** + admission **`M3_3G_GROUND_TRUTH_ADMISSION_V1`** + fingerprint **`M3_3G_GROUND_TRUTH_FINGERPRINT_V1`**; manual service-event **`organizationId`** populate; legacy org backfill migration; inspect CLI — **merged PR #1837** @ **`3253b0575`** — `research/M3_3G_G1_GROUND_TRUTH_PERSISTENCE_ADMISSION_ENGINEERING_2026-09-29.md` |
+| **M3.3G G2.1 (engineering, PR #1840)** | CONFIRMED action-plan authority for GT during document apply; partial unique replacement per source event + scope; G2H orchestration/concurrency postgres — **no production deploy** — G2.1 section in `research/M3_3G_G2_CONFIRMED_CAPTURE_DOCUMENT_GT_EMISSION_2026-09-29.md` |
 | **M3.3G G2 (engineering)** | Confirmed document apply + manual confirmation → **`BatteryGroundTruthEmissionService`**; replacement admission without mandatory numeric evidence; retry GT convergence; GT-backed source guard — **no production deploy / no F5 linkage** — `research/M3_3G_G2_CONFIRMED_CAPTURE_DOCUMENT_GT_EMISSION_2026-09-29.md` |
 | **M3.3C roadmap (planning)** | **F4.2 flag-off deploy of F4.1 engineering** → controlled D3 activation gate (not executed); **M3.3G G3 / M3.3H pending** |
 | **M3.3C** | **`OPEN`** — C1–C5B + **M3.3D + M3.3E E0–E0.2 + M3.3E E1 + M3.3E E2 + M3.3E E3 on main**; **M3.3F–H pending**; **`BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED=true`** (production C3 shadow since `F_C3_T0`) |

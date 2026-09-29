@@ -36,11 +36,31 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-m3-3g-g2-1-ordering-concurrency-hardening-2026-09-29',
+    version: '4.9.2209',
+    title: 'Battery V2 M3.3G G2.1 — document apply GT ordering + replacement concurrency',
+    summary: [
+      'Ground truth emits during CONFIRMED action-plan execution when authoritative confirmation context is passed from ApplyBatteryMeasurementDocumentActionExecutor (confirmedAt from plan, not measurement observedAt).',
+      'APPLIED/PARTIALLY_APPLIED remain eligible for GT retry convergence; READY_FOR_REVIEW and pre-confirm paths cannot emit GT.',
+      'Partial unique index enforces one active CONFIRMED BATTERY_REPLACEMENT per organization + source service event + battery scope; P2002 races converge to the same GT id.',
+      'Postgres G2H-A/B orchestration + G2H-F–I concurrency suites; manual confirm fixtures use real User FK rows.',
+    ],
+    reason:
+      'Close G2 defect where APPLIED-only gate skipped first-pass GT during real confirm→action ordering; harden concurrent manual/document replacement convergence before merge.',
+    previousBehavior:
+      'convergeDocumentApplyGroundTruth required APPLIED status while battery executor ran under CONFIRMED; concurrent confirms could insert duplicate active replacement GT rows.',
+    details:
+      'PR #1840; migration 20260929140000_battery_ground_truth_replacement_source_scope_unique (schema only, GT_ROWS_CREATED_BY_G2_1_MIGRATION=0); backend/scripts/test/battery-ground-truth-postgres-ci.sh (G2.1).',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-29T03:00:00.000Z',
+  },
+  {
     id: 'battery-v2-m3-3g-g2-confirmed-gt-emission-2026-09-29',
     version: '4.9.2208',
     title: 'Battery V2 M3.3G G2 — confirmed capture + document GT emission',
     summary: [
-      'BatteryGroundTruthEmissionService converges ground truth after APPLIED document battery apply and via POST battery/ground-truth/confirm-replacement (fleet.write).',
+      'BatteryGroundTruthEmissionService converges ground truth after confirmed document battery apply (CONFIRMED action execution or APPLIED retry) and via POST battery/ground-truth/confirm-replacement (fleet.write).',
       'BATTERY_REPLACEMENT admission no longer requires numeric BatteryEvidence when scope is explicit on confirmed document or manual confirmation path.',
       'Document apply retry converges missing GT idempotently; GT emission failure surfaces typed BadRequestException for recoverable retry; executor exposes groundTruthEventIds.',
       'GT-backed service event material update/delete blocked pending explicit supersede/revoke workflow.',
