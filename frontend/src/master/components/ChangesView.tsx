@@ -36,6 +36,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-m3-3g-g4-first-natural-validation-evidence-audit-2026-09-29',
+    version: '4.9.2213',
+    title: 'Battery V2 M3.3G G4 — first natural GT validation preparation audit',
+    summary: [
+      'Read-only production audit (TRANSACTION READ ONLY): pre-registered Q1–Q10 before data review; conservative G4 data-availability maturity states only.',
+      'Production PostgreSQL has no battery_ground_truth_events table at deploy 20260928175908 — TOTAL_GT_ROWS=0; NATURAL_GT_PROVEN=NO; G4_DECISION=WAIT_FOR_NATURAL_GT.',
+      'Enablement preflight: main is 43 commits / 213 files ahead (Battery + DI S4D + RFRF); 2 additive GT migrations; DEPLOYMENT_READINESS=READY_WITH_EXPLICIT_GATES; G3 MERGED/CI_VALIDATED/NOT_YET_PRODUCTION_DEPLOYED.',
+      'No runtime, deploy, synthetic GT, E3 activation, or F6 calibration; re-run G4 after authorized deploy and first natural CONFIRMED GT.',
+    ],
+    reason:
+      'G4 observes the first naturally occurring admissible Ground Truth to validate or falsify longitudinal pipeline assumptions — zero GT is a valid pass outcome.',
+    previousBehavior:
+      'G3.1.1 merged on main but production naturality and F5↔GT correlation on live DB were unmeasured.',
+    details:
+      'architecture/battery-v2/research/M3_3G_G4_FIRST_NATURAL_VALIDATION_EVIDENCE_2026-09-29.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-29T22:00:00.000Z',
+  },
+  {
     id: 'battery-v2-m3-3g-g3-1-f5-correctness-seal-2026-09-29',
     version: '4.9.2212',
     title: 'Battery V2 M3.3G G3.1 — F5 GT correlation correctness seal',

@@ -20,13 +20,51 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-29 — M3.3G G4 production deploy + verification (authorized SHA)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Exact SHA deploy `1dd422403` @ release `20260929224455_v4994`; GT migrations applied; post-deploy verification PASS; **0** GT rows. |
+| **VALIDATION** | CI on target SHA 0 failed / 0 pending; `backend.env` SHA256 unchanged; D3 flag unchanged; no DI_V0_S4 keys. |
+| **OBSERVED_EFFECT** | **`G4_COLLECTION_INFRASTRUCTURE_READY=YES`**; **`NATURAL_GT_PRESENT=NO`**. |
+| **DECISION_STATUS** | **`PRODUCTION_DEPLOYED`** · **`PRODUCTION_VERIFIED`** (infrastructure — not natural GT science) |
+
+## CL-2026-09-29 — M3.3G G4 production enablement preflight
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Read-only prod→main delta audit (43 commits, 213 files); GT migration characterization; G1–G3 activation/backfill proof; D3/E3/F6/S4D gates; post-deploy verification plan (design only). |
+| **VALIDATION** | Git diff + migration SQL review + emission call-site grep + production env read (no writes). |
+| **OBSERVED_EFFECT** | **`DEPLOYMENT_READINESS=READY_WITH_EXPLICIT_GATES`**; **`GT_SCHEMA_CURRENT_PRODUCTION=ABSENT`**; G3 **`NOT_YET_PRODUCTION_DEPLOYED`**. |
+| **DECISION_STATUS** | **`COMPLETE`** (preflight — deploy not authorized here) |
+
+## CL-2026-09-29 — M3.3G G4 preparation audit (first natural GT validation evidence)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | G3.1.1 merged on main; production GT naturality unobserved. |
+| **CHANGE** | Read-only production audit doc; pre-registered Q1–Q10; production `psql` READ ONLY — **`battery_ground_truth_events` absent**; zero GT rows; **`G4_DECISION=WAIT_FOR_NATURAL_GT`**. |
+| **VALIDATION** | `SHOW transaction_read_only=on`; no INSERT/UPDATE/DELETE; naturality guard documented. |
+| **OBSERVED_EFFECT** | **`NO_NATURAL_GT`** @ production DB; deploy **`6952fdf`** behind main **`1dd422403`**. |
+| **NON_EFFECTS** | No runtime, migration, deploy, E3, F6, synthetic GT. |
+| **DECISION_STATUS** | **`PASS`** (valid wait state) |
+| **EVIDENCE** | `research/M3_3G_G4_FIRST_NATURAL_VALIDATION_EVIDENCE_2026-09-29.md` |
+
+## CL-2026-09-29 — M3.3G G3 / G3.1 / G3.1.1 merged (PR #1842)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | F5 report V2 ground-truth correlation + LV segmentation; G3.1 historical asOf authority; G3.1.1 postgres lifecycle seal. |
+| **VALIDATION** | Battery longitudinal postgres CI; F5 unit + historical postgres A1–A6. |
+| **DECISION_STATUS** | **`MERGED`** @ **`1dd422403`** · **`CI_VALIDATED`** · **`NOT_YET_PRODUCTION_DEPLOYED`** |
+
 ## CL-2026-09-29 — M3.3G G3.1.1 historical postgres cleanup + lifecycle query seal
 
 | Field | Value |
 |-------|-------|
 | **CHANGE** | Prisma vehicle cleanup in historical postgres tests; F5 GT load uses `createdAt<=asOf` lifecycle only; admissibility `effectiveAt<=asOf` in authority; G3.1-A5/A6; CI order F5 then G1. |
 | **VALIDATION** | F5 unit 41/41; historical unit A1–A6; longitudinal postgres CI on GitHub. |
-| **DECISION_STATUS** | **`IN_REVIEW`** (PR #1842) |
+| **DECISION_STATUS** | **`MERGED`** (PR #1842 @ **`1dd422403`**) |
 
 ## CL-2026-09-29 — M3.3G G3.1 F5 correctness seal (segmentation + historical asOf + NAT semantics)
 
@@ -36,7 +74,7 @@ Append-only scientific record. Newest entries first.
 | **CHANGE** | Segment-aware continuity (`f5-longitudinal-segmentation.policy.ts`); `isGroundTruthActiveAtAsOf`; primary-cohort bounded GT query; correlation proof counters; NAT `NONE\|PRESENT` + `NOT_EVALUATED`; tests G3.1-S1…S6, A1…A5. |
 | **WHY** | Independent review gaps on scientific correctness before merge of PR #1842. |
 | **VALIDATION** | F5 unit + postgres CI; ground-truth postgres regression; D3/F4.1 postgres unchanged. |
-| **DECISION_STATUS** | **`IN_REVIEW`** (G3.1 seal; PR #1842) |
+| **DECISION_STATUS** | **`MERGED`** (PR #1842 @ **`1dd422403`**) |
 
 ## CL-2026-09-29 — M3.3G G3 F5 ground-truth correlation + longitudinal segmentation
 
@@ -47,7 +85,7 @@ Append-only scientific record. Newest entries first.
 | **WHY** | M3.3G must link confirmed GT to F5 natural calibration without mutating D3 or inventing numeric intervention windows. |
 | **VALIDATION** | `npm run test:battery:v2:f5-natural-calibration-report`; F5 postgres CI; ground-truth regression unchanged on main. |
 | **NON_EFFECTS** | No migration; no production GT writes; D3/E3/customer UI unchanged. |
-| **DECISION_STATUS** | **`IMPLEMENTED`** (G3 engineering) |
+| **DECISION_STATUS** | **`MERGED`** (PR #1842 @ **`1dd422403`**) |
 
 ## CL-2026-09-29 — M3.3G G2.2 active replacement per source event (cross-scope seal)
 
