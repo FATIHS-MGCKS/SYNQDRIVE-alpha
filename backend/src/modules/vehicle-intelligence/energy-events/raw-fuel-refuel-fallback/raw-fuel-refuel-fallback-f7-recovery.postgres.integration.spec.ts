@@ -325,8 +325,21 @@ describe('RFRF F7 recovery completeness + post-commit crash-window closure (real
     const stack = buildF5Pr3Stack(prisma, jest.fn().mockResolvedValue(syntheticRiseSamples()));
     try {
       const candidate = await persistReadyCandidate(stack, vehicle.id);
-      const refreshed = await prisma.rawRefuelCandidate.findUniqueOrThrow({ where: { id: candidate.id } });
-      const { fallbackVeeId } = await promoteCandidateViaRuntime(stack, vehicle.id);
+      const promotion = await stack.promotion.evaluateAndApplyPromotionById(candidate.id, {
+        capability: 'FUEL_CAPABLE',
+        absoluteDetectionAdmissibility: 'ADMISSIBLE',
+      });
+      if (promotion.status !== 'PROMOTED' && promotion.status !== 'ALREADY_PROMOTED') {
+        throw new Error(`expected promotion, got ${promotion.status}`);
+      }
+      const fallbackVeeId = promotion.fallbackVehicleEnergyEventId;
+      if (fallbackVeeId) {
+        await backdateEnergyEventObservation(
+          prisma,
+          fallbackVeeId,
+          F5_PR3_SETTLED_OBSERVATION_AT,
+        );
+      }
       expect(await countReconciliationRows(prisma, vehicle.id)).toBe(0);
 
       await stack.g2Runtime.runRecoveryBatch(F7_RECOVERY_AS_OF_MS);
@@ -341,6 +354,9 @@ describe('RFRF F7 recovery completeness + post-commit crash-window closure (real
       expect(fallbackReconAfterCompleted.enrichmentEligible).toBe(true);
       expect(await countOperationalEnrichmentOwners(prisma, vehicle.id)).toBe(1);
 
+      const refreshed = await prisma.rawRefuelCandidate.findUniqueOrThrow({
+        where: { id: candidate.id },
+      });
       const pre = refreshed.preFuelAbsoluteLiters ?? 10;
       const post = refreshed.postFuelAbsoluteLiters ?? 30;
       const native = await prisma.vehicleEnergyEvent.create({
