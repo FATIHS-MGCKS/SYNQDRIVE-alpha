@@ -39,8 +39,6 @@ env:
   S4A_PG_DB: postgres
   DI_V0_S4A_PG_ADMIN_URL: postgresql://s4a_ci_test:s4a_ci_test_local@127.0.0.1:5432/postgres
   DI_V0_S4A_DB_PREFIX: synqdrive_s4a_ci
-  DI_V0_S4A_POSTGRES_INTEGRATION: '1'
-  DI_V0_S4A_POSTGRES_REQUIRED: '1'
 
 jobs:
   detect-s4a-changes:
@@ -209,10 +207,12 @@ jobs:
         env:
           DI_V0_S4A_PG_ADMIN_URL: ${{ env.DI_V0_S4A_PG_ADMIN_URL }}
           DI_V0_S4A_DB_PREFIX: ${{ env.DI_V0_S4A_DB_PREFIX }}
-          DI_V0_S4A_POSTGRES_INTEGRATION: ${{ env.DI_V0_S4A_POSTGRES_INTEGRATION }}
-          DI_V0_S4A_POSTGRES_REQUIRED: ${{ env.DI_V0_S4A_POSTGRES_REQUIRED }}
+          DI_V0_S4A_POSTGRES_INTEGRATION: '1'
+          DI_V0_S4A_POSTGRES_REQUIRED: '1'
         run: |
           set -euo pipefail
+          exports="$(bash scripts/test/di-v0-s4a-postgres-bootstrap.sh | grep '^export ')"
+          eval "$exports"
           npm run test:di:s4a:postgres:ci
           npm run test:di:s4b:postgres
           npm run test:di:s4c:postgres
