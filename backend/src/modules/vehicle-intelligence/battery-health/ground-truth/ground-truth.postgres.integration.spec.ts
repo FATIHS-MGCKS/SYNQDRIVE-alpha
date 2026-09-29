@@ -17,16 +17,22 @@ import { BatteryGroundTruthSourceResolver } from './ground-truth-source.resolver
 
 const LIVE = process.env.BATTERY_V2_GROUND_TRUTH_INTEGRATION === '1';
 
-const LEGACY_ORG_BACKFILL_SQL = readFileSync(
-  join(
-    __dirname,
-    '../../../../../prisma/migrations/20260929120000_battery_ground_truth_events/migration.sql',
-  ),
-  'utf8',
-)
-  .split('\n')
-  .filter((line) => line.startsWith('UPDATE vehicle_service_events'))
-  .join('\n');
+const LEGACY_ORG_BACKFILL_SQL = (() => {
+  const migration = readFileSync(
+    join(
+      __dirname,
+      '../../../../../prisma/migrations/20260929120000_battery_ground_truth_events/migration.sql',
+    ),
+    'utf8',
+  );
+  const match = migration.match(
+    /UPDATE vehicle_service_events AS se[\s\S]*?AND v\.organization_id IS NOT NULL;/,
+  );
+  if (!match) {
+    throw new Error('legacy org backfill UPDATE not found in GT migration');
+  }
+  return match[0];
+})();
 
 async function createOrgVehicle(prisma: PrismaClient) {
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
