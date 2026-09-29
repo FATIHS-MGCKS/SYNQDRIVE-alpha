@@ -26,7 +26,11 @@ import { DI_V0_S4_ENV_ALLOWLISTS, DI_V0_S4_ENV_FLAGS } from '../di-v0-s4a-contro
 import { DiV0S4WorkItemRepository } from '../di-v0-s4a-work-item.repository';
 
 /** Public repository APIs that perform reads only (must not appear in DI_V0_S4_REPOSITORY_WRITE_MAP). */
-const PUBLIC_READ_ONLY_REPOSITORY_METHODS = ['evaluateAttemptStartBoundary', 'readExecutionPostcondition'] as const;
+const PUBLIC_READ_ONLY_REPOSITORY_METHODS = [
+  'evaluateAttemptStartBoundary',
+  'readExecutionPostcondition',
+  'readVerifiedPinnedEvidence',
+] as const;
 
 const REPOSITORY_SOURCE = fs.readFileSync(
   path.join(__dirname, '../di-v0-s4a-work-item.repository.ts'),
@@ -129,7 +133,7 @@ describe('DI V0 S4A contract parity (TS mirror == s4a-contract.v2.json)', () => 
 
     const writeMapMethods = Object.keys(DI_V0_S4_REPOSITORY_WRITE_MAP);
     const readOnlyMethods = [...PUBLIC_READ_ONLY_REPOSITORY_METHODS];
-    expect(readOnlyMethods).toHaveLength(2);
+    expect(readOnlyMethods).toHaveLength(3);
 
     for (const m of readOnlyMethods) {
       expect(writeMapMethods).not.toContain(m);

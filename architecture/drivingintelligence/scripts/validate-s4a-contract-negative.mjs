@@ -53,7 +53,7 @@ const NEGATIVE = [
   ['N29', '900 s ceiling read as single compute permission', (c) => { c.executionAuthority.leaseCeilingSemantics = 'SINGLE_ATTEMPT_COMPUTE_PERMISSION'; }, /lease ceiling semantics/],
   ['N30', 'S2 identity includes workerId / wall clock', (c) => { c.s2ExecutionIdentity.components.push('workerId', 'acquiredAtWallClock'); }, /must not include (workerId|acquiredAtWallClock)/],
   ['N31', 'fingerprint re-check at attempt start removed', (c) => { c.settlement.fingerprintRecheckPoints = ['COMPLETION_TX_BEFORE_S2_WRITE']; }, /re-check missing at ATTEMPT_START_AFTER_CLAIM/],
-  ['N32', 'tiny activation not blocked by deserializer', (c) => { c.activationGates.TINY_ACTIVATION.requires = c.activationGates.TINY_ACTIVATION.requires.filter((r) => !r.startsWith('DI-GAP-S4-REPLAY-DESERIALIZER-001')); }, /TINY_ACTIVATION must be blocked until the snapshot deserializer/],
+  ['N32', 'tiny activation not blocked by deserializer', (c) => { c.activationGates.TINY_ACTIVATION.requires = c.activationGates.TINY_ACTIVATION.requires.filter((r) => !r.startsWith('DI-GAP-S4-REPLAY-DESERIALIZER-001')); }, /TINY_ACTIVATION must require DI-GAP-S4-REPLAY-DESERIALIZER-001:CLOSED/],
   ['N33', 'legacy native markers accepted as attestation', (c) => { c.nativeReadiness.legacyMarkersAreAttestation = true; }, /legacy native markers/],
   ['N34', 'S2 collision reuses a different execution', (c) => { c.s2ExecutionIdentity.collision.onConflictDifferentIdentity = 'REUSE_EXISTING_RUN'; }, /different identity must fail closed/],
   ['N35', 'DB row can enable S4', (c) => { c.controlPlane.dbCanEnable = true; c.controlPlane.dbKillRow.canEnableWhenEnvOff = true; }, /must not be able to enable|disable-only/],

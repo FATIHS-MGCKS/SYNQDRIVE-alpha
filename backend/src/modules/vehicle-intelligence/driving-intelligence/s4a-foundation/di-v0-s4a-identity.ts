@@ -26,7 +26,7 @@ export class DiV0S4IdentityError extends Error {
   }
 }
 
-const sha256Hex = (value: string): string => createHash('sha256').update(value, 'utf8').digest('hex');
+export const sha256Hex = (value: string): string => createHash('sha256').update(value, 'utf8').digest('hex');
 
 // ── Pipeline version key (DI_V0_S4_PIPELINE_V1) ───────────────────────────
 

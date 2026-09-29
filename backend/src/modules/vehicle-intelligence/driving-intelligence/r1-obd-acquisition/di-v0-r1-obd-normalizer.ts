@@ -93,7 +93,7 @@ function mergeDuplicateSignal(rows: Record<string, unknown>[], field: string): D
   };
 }
 
-function toNormalizedObservation(bucket: DiV0R1ObdAcquiredBucket): NormalizedR1ObdObservation | null {
+export function diV0R1BucketToNormalizedObservation(bucket: DiV0R1ObdAcquiredBucket): NormalizedR1ObdObservation | null {
   if (bucket.rowAvailability === 'ROW_ABSENT') return null;
   const get = (id: DiV0R1ObdScalarSignal['signal']) =>
     bucket.signals.find((s) => s.signal === id);
@@ -254,7 +254,7 @@ export function normalizeDiV0R1ObdResponse(input: NormalizeDiV0R1ObdInput): Norm
   if (conflictingDuplicateBuckets > 0) qualityFlags.push('DUPLICATE_BUCKET_CONFLICTING');
 
   const observations = buckets
-    .map(toNormalizedObservation)
+    .map(diV0R1BucketToNormalizedObservation)
     .filter((o): o is NormalizedR1ObdObservation => o != null);
 
   const snapshotIdentity = computeDiV0R1ObdSnapshotIdentity({

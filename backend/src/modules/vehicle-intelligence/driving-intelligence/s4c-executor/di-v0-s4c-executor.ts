@@ -13,6 +13,7 @@ import {
 import { bindDiV0S4cPipelineManifest, DiV0S4cPipelineBindError } from './di-v0-s4c-pipeline-bind';
 import { mapDiV0S4cPositionFailure } from './di-v0-s4c-position-failure-map';
 import type { DiV0S4cExecutorDeps } from './di-v0-s4c-types';
+import { executeDiV0S4dPinnedReplay } from '../s4d-replay/di-v0-s4d-pinned-replay';
 
 export const DI_V0_S4C_EXECUTOR_ID = 'DI_V0_S4C_LIVE_SHADOW_V1';
 
@@ -64,7 +65,7 @@ export class DiV0S4cExecutor {
     }
 
     if (ctx.pinnedSnapshotHash != null) {
-      return { kind: 'RELEASE' };
+      return executeDiV0S4dPinnedReplay(context, ctx, computeBinding, this.deps.controlPlane);
     }
 
     const windowSeconds = (ctx.windowEnd.getTime() - ctx.windowStart.getTime()) / 1000;

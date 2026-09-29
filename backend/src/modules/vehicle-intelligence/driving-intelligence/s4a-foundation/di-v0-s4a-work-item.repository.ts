@@ -46,6 +46,11 @@ import {
 } from './di-v0-s4a-identity';
 import { persistDiV0S4FencedS2Run } from './di-v0-s4a-s2-fenced-persistence';
 import { assertDiV0S4TransitionFrom } from './di-v0-s4a-state-machine';
+import type { DiV0S4ParsedEvidenceContainer } from './di-v0-s4a-evidence-container-parse';
+import {
+  verifyAndParseDiV0PinnedEvidenceSnapshot,
+  type DiV0S4dVerifiedSnapshotFailureCode,
+} from '../s4d-replay/di-v0-s4d-verified-snapshot';
 
 type Db = Prisma.TransactionClient;
 
@@ -179,6 +184,10 @@ const reject = (transitionId: DiV0S4TransitionId, code: DiV0S4RejectionCode, det
  *
  * Dormant: nothing in the application graph constructs this class (S4A dormant audit spec).
  */
+export type DiV0S4ReadVerifiedPinnedEvidenceResult =
+  | { ok: true; parsed: DiV0S4ParsedEvidenceContainer }
+  | { ok: false; code: 'LEASE_LOST' | 'PIN_NOT_SET' | DiV0S4dVerifiedSnapshotFailureCode };
+
 export class DiV0S4WorkItemRepository {
   constructor(
     private readonly prisma: PrismaClient,
@@ -720,7 +729,58 @@ export class DiV0S4WorkItemRepository {
     return { kind: 'SUPERSEDE', reason };
   }
 
-  /** Durable terminal postcondition for S4B after an executor reports SETTLED. */
+  /**
+   * S4D read-only: lease-fenced verified pinned snapshot load (gunzip, re-hash, strict parse).
+   * Must not perform authoritative writes.
+   */
+  async readVerifiedPinnedEvidence(lease: DiV0S4Lease): Promise<DiV0S4ReadVerifiedPinnedEvidenceResult> {
+    const rows = await this.prisma.$queryRaw<
+      Array<{
+        status: string;
+        lease_epoch: bigint;
+        lease_owner: string | null;
+        lease_valid: boolean;
+        organization_id: string;
+        vehicle_id: string;
+        trip_id: string;
+        boundary_fingerprint: string;
+        pinned_snapshot_hash: string | null;
+      }>
+    >`
+      SELECT status, lease_epoch, lease_owner, organization_id, vehicle_id, trip_id, boundary_fingerprint,
+        pinned_snapshot_hash,
+        (lease_expires_at IS NOT NULL AND lease_expires_at > clock_timestamp()) AS lease_valid
+      FROM di_v0_s4_work_items WHERE id = ${lease.workItemId}`;
+    const row = rows[0];
+    if (
+      !row ||
+      row.status !== 'LEASED' ||
+      row.lease_epoch !== lease.leaseEpoch ||
+      row.lease_owner !== lease.leaseOwner ||
+      !row.lease_valid
+    ) {
+      return { ok: false, code: 'LEASE_LOST' };
+    }
+    if (row.pinned_snapshot_hash == null) return { ok: false, code: 'PIN_NOT_SET' };
+    const snapshots = await this.prisma.$queryRaw<SnapshotRow[]>`
+      SELECT organization_id, vehicle_id, trip_id, boundary_fingerprint, acquisition_window_start,
+        acquisition_window_end, channel_manifest, payload_gzip, uncompressed_bytes
+      FROM di_v0_s4_evidence_snapshots
+      WHERE organization_id = ${row.organization_id} AND trip_id = ${row.trip_id}
+        AND snapshot_hash = ${row.pinned_snapshot_hash}`;
+    const snapshot = snapshots[0];
+    if (!snapshot) return { ok: false, code: 'SNAPSHOT_NOT_FOUND' };
+    const verified = verifyAndParseDiV0PinnedEvidenceSnapshot(snapshot, {
+      organizationId: row.organization_id,
+      vehicleId: row.vehicle_id,
+      tripId: row.trip_id,
+      boundaryFingerprint: row.boundary_fingerprint,
+      snapshotHash: row.pinned_snapshot_hash,
+    });
+    if (!verified.ok) return verified;
+    return { ok: true, parsed: verified.parsed };
+  }
+
   async readExecutionPostcondition(workItemId: string): Promise<DiV0S4ExecutionPostcondition> {
     const rows = await this.prisma.$queryRaw<
       Array<{ status: string; lease_valid: boolean }>
