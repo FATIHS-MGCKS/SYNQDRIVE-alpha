@@ -13,6 +13,7 @@ import {
 import { bindDiV0S4cPipelineManifest, DiV0S4cPipelineBindError } from './di-v0-s4c-pipeline-bind';
 import { mapDiV0S4cPositionFailure } from './di-v0-s4c-position-failure-map';
 import type { DiV0S4cExecutorDeps } from './di-v0-s4c-types';
+import { executeDiV0S4dPinnedReplay } from '../s4d-replay/di-v0-s4d-pinned-replay';
 
 export const DI_V0_S4C_EXECUTOR_ID = 'DI_V0_S4C_LIVE_SHADOW_V1';
 
@@ -47,12 +48,10 @@ export class DiV0S4cExecutor {
       return { kind: 'SETTLED' };
     }
 
-    const resolved = await resolveDiV0S4cAcquisitionContext(this.deps.prisma, lease);
-    if (!resolved.ok) {
-      await repository.failTerminal(lease, `CONTEXT_${resolved.failure.code}`);
-      return { kind: 'SETTLED' };
+    const route = await repository.readReplayRoutingContext(lease);
+    if (!route.ok) {
+      return { kind: 'RELEASE' };
     }
-    const ctx = resolved.context;
 
     const boundaryRecheck = await repository.evaluateAttemptStartBoundary(lease);
     if (boundaryRecheck.kind === 'LEASE_LOST') {
@@ -63,9 +62,16 @@ export class DiV0S4cExecutor {
       return { kind: 'SETTLED' };
     }
 
-    if (ctx.pinnedSnapshotHash != null) {
-      return { kind: 'RELEASE' };
+    if (route.mode === 'REPLAY') {
+      return executeDiV0S4dPinnedReplay(context, route.context, computeBinding, this.deps.controlPlane);
     }
+
+    const resolved = await resolveDiV0S4cAcquisitionContext(this.deps.prisma, lease);
+    if (!resolved.ok) {
+      await repository.failTerminal(lease, `CONTEXT_${resolved.failure.code}`);
+      return { kind: 'SETTLED' };
+    }
+    const ctx = resolved.context;
 
     const windowSeconds = (ctx.windowEnd.getTime() - ctx.windowStart.getTime()) / 1000;
     if (windowSeconds > DI_V0_S4_LIMITS.maxAcquisitionWindowSeconds) {

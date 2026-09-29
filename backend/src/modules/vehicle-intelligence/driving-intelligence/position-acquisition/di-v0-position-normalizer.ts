@@ -109,7 +109,8 @@ function parseProviderLabel(raw: unknown): LabelParse {
   return { ok: true, ms };
 }
 
-function buildObservation(
+/** Exported for S4D snapshot parse → S1 replay (must match serialize materialization). */
+export function buildDiV0PositionNormalizedObservation(
   label: string,
   labelMs: number,
   availability: NormalizedPositionObservation['availability'],
@@ -250,7 +251,7 @@ export function normalizeDiV0PositionResponse(input: NormalizeDiV0PositionInput)
         temporalConfidence: 'UNKNOWN',
         providerRowCount: 0,
         anomalies,
-        observation: buildObservation(label, labelMs, 'ROW_ABSENT', sourceFamily, null),
+        observation: buildDiV0PositionNormalizedObservation(label, labelMs, 'ROW_ABSENT', sourceFamily, null),
       };
       continue;
     }
@@ -308,7 +309,7 @@ export function normalizeDiV0PositionResponse(input: NormalizeDiV0PositionInput)
       temporalConfidence,
       providerRowCount: rows.length,
       anomalies,
-      observation: buildObservation(label, labelMs, availability, sourceFamily, coords),
+      observation: buildDiV0PositionNormalizedObservation(label, labelMs, availability, sourceFamily, coords),
     };
   }
 

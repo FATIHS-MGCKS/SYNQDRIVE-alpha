@@ -7,6 +7,13 @@ on:
       - main
     paths:
       - 'backend/src/modules/vehicle-intelligence/driving-intelligence/s4a-foundation/**'
+      - 'backend/src/modules/vehicle-intelligence/driving-intelligence/s4b-orchestration/**'
+      - 'backend/src/modules/vehicle-intelligence/driving-intelligence/s4c-executor/**'
+      - 'backend/src/modules/vehicle-intelligence/driving-intelligence/s4d-replay/**'
+      - 'backend/src/modules/vehicle-intelligence/driving-intelligence/position-acquisition/di-v0-position-snapshot-parse.ts'
+      - 'backend/src/modules/vehicle-intelligence/driving-intelligence/position-acquisition/di-v0-position-snapshot-semantic-validate.ts'
+      - 'backend/src/modules/vehicle-intelligence/driving-intelligence/r1-obd-acquisition/di-v0-r1-obd-snapshot-parse.ts'
+      - 'backend/src/modules/vehicle-intelligence/driving-intelligence/r1-obd-acquisition/di-v0-r1-obd-snapshot-semantic-validate.ts'
       - 'backend/src/modules/vehicle-intelligence/driving-intelligence/shadow-persistence/**'
       - 'backend/scripts/test/di-v0-s4a-*.sh'
       - 'backend/scripts/test/prisma-migrate-deploy-resilient.sh'
@@ -15,6 +22,9 @@ on:
       - 'backend/package.json'
       - 'backend/package-lock.json'
       - 'architecture/drivingintelligence/design/s4a/**'
+      - 'architecture/drivingintelligence/design/s4b/**'
+      - 'architecture/drivingintelligence/design/s4c/**'
+      - 'architecture/drivingintelligence/design/s4d/**'
       - 'architecture/drivingintelligence/scripts/validate-s4a-contract.sh'
       - '.github/workflows/s4a-postgres-integration.yml'
   workflow_dispatch:
@@ -29,12 +39,10 @@ env:
   S4A_PG_DB: postgres
   DI_V0_S4A_PG_ADMIN_URL: postgresql://s4a_ci_test:s4a_ci_test_local@127.0.0.1:5432/postgres
   DI_V0_S4A_DB_PREFIX: synqdrive_s4a_ci
-  DI_V0_S4A_POSTGRES_INTEGRATION: '1'
-  DI_V0_S4A_POSTGRES_REQUIRED: '1'
 
 jobs:
   detect-s4a-changes:
-    name: Detect S4A-relevant changes
+    name: Detect S4 foundation-relevant changes
     runs-on: ubuntu-latest
     outputs:
       run_s4a: ${{ steps.detect.outputs.run_s4a }}
@@ -45,7 +53,7 @@ jobs:
           fetch-depth: 0
 
       - id: detect
-        name: Detect whether S4A PostgreSQL suite should run
+        name: Detect whether S4 foundation/runtime suites should run
         env:
           EVENT_NAME: ${{ github.event_name }}
           PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -53,10 +61,17 @@ jobs:
         run: |
           set -euo pipefail
 
-          is_s4a_relevant_path() {
+          is_s4_relevant_path() {
             local f="$1"
             case "$f" in
               backend/src/modules/vehicle-intelligence/driving-intelligence/s4a-foundation/*) return 0 ;;
+              backend/src/modules/vehicle-intelligence/driving-intelligence/s4b-orchestration/*) return 0 ;;
+              backend/src/modules/vehicle-intelligence/driving-intelligence/s4c-executor/*) return 0 ;;
+              backend/src/modules/vehicle-intelligence/driving-intelligence/s4d-replay/*) return 0 ;;
+              backend/src/modules/vehicle-intelligence/driving-intelligence/position-acquisition/di-v0-position-snapshot-parse.ts) return 0 ;;
+              backend/src/modules/vehicle-intelligence/driving-intelligence/position-acquisition/di-v0-position-snapshot-semantic-validate.ts) return 0 ;;
+              backend/src/modules/vehicle-intelligence/driving-intelligence/r1-obd-acquisition/di-v0-r1-obd-snapshot-parse.ts) return 0 ;;
+              backend/src/modules/vehicle-intelligence/driving-intelligence/r1-obd-acquisition/di-v0-r1-obd-snapshot-semantic-validate.ts) return 0 ;;
               backend/src/modules/vehicle-intelligence/driving-intelligence/shadow-persistence/*) return 0 ;;
               backend/scripts/test/di-v0-s4a-*) return 0 ;;
               backend/scripts/test/prisma-migrate-deploy-resilient.sh) return 0 ;;
@@ -65,6 +80,9 @@ jobs:
               backend/package.json) return 0 ;;
               backend/package-lock.json) return 0 ;;
               architecture/drivingintelligence/design/s4a/*) return 0 ;;
+              architecture/drivingintelligence/design/s4b/*) return 0 ;;
+              architecture/drivingintelligence/design/s4c/*) return 0 ;;
+              architecture/drivingintelligence/design/s4d/*) return 0 ;;
               architecture/drivingintelligence/scripts/validate-s4a-contract.sh) return 0 ;;
               .github/workflows/s4a-postgres-integration.yml) return 0 ;;
               *) return 1 ;;
@@ -72,7 +90,7 @@ jobs:
           }
 
           if [[ "$EVENT_NAME" == "workflow_dispatch" || "$EVENT_NAME" == "push" ]]; then
-            echo "S4A_RELEVANT_CHANGE=true"
+            echo "S4_RELEVANT_CHANGE=true"
             echo "run_s4a=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -90,22 +108,52 @@ jobs:
           mapfile -t changed < <(git diff --name-only "$PR_BASE_SHA" "$PR_HEAD_SHA")
           relevant=false
           for path in "${changed[@]}"; do
-            if is_s4a_relevant_path "$path"; then
+            if is_s4_relevant_path "$path"; then
               relevant=true
-              echo "S4A-relevant path: $path"
+              echo "S4-relevant path: $path"
             fi
           done
 
           if [[ "$relevant" == true ]]; then
-            echo "S4A_RELEVANT_CHANGE=true"
+            echo "S4_RELEVANT_CHANGE=true"
             echo "run_s4a=true" >> "$GITHUB_OUTPUT"
           else
-            echo "S4A_RELEVANT_CHANGE=false"
+            echo "S4_RELEVANT_CHANGE=false"
             echo "run_s4a=false" >> "$GITHUB_OUTPUT"
           fi
 
+  s4-unit-tests:
+    name: S4 unit test suites (S4A–S4D)
+    runs-on: ubuntu-latest
+    needs:
+      - detect-s4a-changes
+    if: needs.detect-s4a-changes.outputs.run_s4a == 'true'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies and generate Prisma client
+        working-directory: backend
+        run: npm ci && npx prisma generate
+
+      - name: Run S4A–S4D unit suites
+        working-directory: backend
+        run: |
+          set -euo pipefail
+          npm run test:di:s4a
+          npm run test:di:s4b
+          npm run test:di:s4c
+          npm run test:di:s4d
+
   s4a-postgres-tests:
-    name: S4A PostgreSQL test suite
+    name: S4 PostgreSQL test suites (S4A–S4D)
     runs-on: ubuntu-latest
     needs:
       - detect-s4a-changes
@@ -154,54 +202,64 @@ jobs:
         working-directory: backend
         run: npm ci && npx prisma generate
 
-      - name: Run S4A PostgreSQL integration suite (migration M01–M08 + races R/K + KS)
+      - name: Run S4A–S4D PostgreSQL suites
         working-directory: backend
         env:
           DI_V0_S4A_PG_ADMIN_URL: ${{ env.DI_V0_S4A_PG_ADMIN_URL }}
           DI_V0_S4A_DB_PREFIX: ${{ env.DI_V0_S4A_DB_PREFIX }}
-          DI_V0_S4A_POSTGRES_INTEGRATION: ${{ env.DI_V0_S4A_POSTGRES_INTEGRATION }}
-          DI_V0_S4A_POSTGRES_REQUIRED: ${{ env.DI_V0_S4A_POSTGRES_REQUIRED }}
-        run: npm run test:di:s4a:postgres:ci
+          DI_V0_S4A_POSTGRES_INTEGRATION: '1'
+          DI_V0_S4A_POSTGRES_REQUIRED: '1'
+        run: |
+          set -euo pipefail
+          exports="$(bash scripts/test/di-v0-s4a-postgres-bootstrap.sh | grep '^export ')"
+          eval "$exports"
+          npm run test:di:s4a:postgres:ci
+          npm run test:di:s4b:postgres
+          npm run test:di:s4c:postgres
+          npm run test:di:s4d:postgres
 
   s4a-postgres-integration:
     name: S4A PostgreSQL integration
     runs-on: ubuntu-latest
     needs:
       - detect-s4a-changes
+      - s4-unit-tests
       - s4a-postgres-tests
     if: ${{ always() }}
     steps:
-      - name: Required S4A PostgreSQL integration gate (fail closed)
+      - name: Required S4 foundation gate (fail closed)
         env:
           DETECT_RESULT: ${{ needs.detect-s4a-changes.result }}
           RUN_S4A: ${{ needs.detect-s4a-changes.outputs.run_s4a }}
+          UNIT_RESULT: ${{ needs.s4-unit-tests.result }}
           TEST_RESULT: ${{ needs.s4a-postgres-tests.result }}
         run: |
           set -euo pipefail
           echo "detect-s4a-changes.result=${DETECT_RESULT}"
           echo "run_s4a=${RUN_S4A}"
+          echo "s4-unit-tests.result=${UNIT_RESULT}"
           echo "s4a-postgres-tests.result=${TEST_RESULT}"
 
           if [[ "$DETECT_RESULT" != "success" ]]; then
-            echo "Change detection did not succeed; required S4A gate FAIL" >&2
+            echo "Change detection did not succeed; required S4 gate FAIL" >&2
             exit 1
           fi
 
           if [[ "$RUN_S4A" == "true" ]]; then
-            if [[ "$TEST_RESULT" == "success" ]]; then
-              echo "S4A PostgreSQL test suite passed; required gate satisfied."
+            if [[ "$UNIT_RESULT" == "success" && "$TEST_RESULT" == "success" ]]; then
+              echo "S4 unit + PostgreSQL suites passed; required gate satisfied."
               exit 0
             fi
-            echo "S4A-relevant changes require successful PostgreSQL suite; got result=${TEST_RESULT}" >&2
+            echo "S4-relevant changes require successful unit and PostgreSQL suites; unit=${UNIT_RESULT} postgres=${TEST_RESULT}" >&2
             exit 1
           fi
 
           if [[ "$RUN_S4A" == "false" ]]; then
-            if [[ "$TEST_RESULT" == "skipped" ]]; then
-              echo "No S4A-relevant changes; required S4A gate satisfied without running the PostgreSQL suite."
+            if [[ "$UNIT_RESULT" == "skipped" && "$TEST_RESULT" == "skipped" ]]; then
+              echo "No S4-relevant changes; required S4 gate satisfied without running suites."
               exit 0
             fi
-            echo "Expected PostgreSQL test suite to be skipped when run_s4a=false; got result=${TEST_RESULT}" >&2
+            echo "Expected unit and PostgreSQL suites to be skipped when run_s4a=false; unit=${UNIT_RESULT} postgres=${TEST_RESULT}" >&2
             exit 1
           fi
 

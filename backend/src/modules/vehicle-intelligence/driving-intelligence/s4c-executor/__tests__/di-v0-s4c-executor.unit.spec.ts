@@ -54,6 +54,7 @@ describe('DiV0S4cExecutor (unit)', () => {
     });
     const repository = {
       evaluateAttemptStartBoundary: jest.fn().mockResolvedValue({ kind: 'CURRENT' }),
+      readReplayRoutingContext: jest.fn().mockResolvedValue({ ok: true, mode: 'FRESH' }),
       pinEvidence,
       completeWithS2: jest.fn(async () => ({ shadowRunId: 'run', executionIdentity: 'e', combinedInputIdentity: 'id' })),
       failTerminal: jest.fn(),
@@ -98,7 +99,7 @@ describe('DiV0S4cExecutor (unit)', () => {
     expect(r1?.outcome).toBe('NOT_APPLICABLE');
   });
 
-  it('C-R1-08: existing pin → RELEASE without provider calls', async () => {
+  it('C-R1-08 / S4D: existing pin → verified replay without provider calls', async () => {
     const start = new Date('2030-01-01T00:00:00Z');
     const end = new Date('2030-01-01T00:10:00Z');
     const fp = buildDiV0S4BoundaryFingerprint({
@@ -145,15 +146,37 @@ describe('DiV0S4cExecutor (unit)', () => {
       },
     });
 
+    const readVerifiedPinnedEvidence = jest.fn().mockResolvedValue({
+      ok: false,
+      code: 'SNAPSHOT_NOT_FOUND',
+    });
+    const failTerminal = jest.fn().mockResolvedValue(undefined);
     const outcome = await executor.execute({
       lease: { workItemId: 'wi', leaseEpoch: BigInt(1), leaseOwner: 'o', attemptCount: 1, transitionId: 'T02_CLAIM' as const },
       pipelineManifest: buildDiV0S4RuntimePipelineManifest(controlPlane).manifest,
       repository: {
         evaluateAttemptStartBoundary: jest.fn().mockResolvedValue({ kind: 'CURRENT' }),
+        readReplayRoutingContext: jest.fn().mockResolvedValue({
+          ok: true,
+          mode: 'REPLAY',
+          context: {
+            organizationId: 'org-1',
+            vehicleId: 'veh-1',
+            tripId: 'trip-1',
+            sourceFamily: 'API_SYNTHETIC',
+            boundaryFingerprint: fp,
+            runPurpose: 'PRIMARY',
+            pinnedSnapshotHash: 'existing-snap',
+          },
+        }),
+        readVerifiedPinnedEvidence,
+        failTerminal,
       } as unknown as DiV0S4ExecutionContext['repository'],
       signal: new AbortController().signal,
     });
-    expect(outcome).toEqual({ kind: 'RELEASE' });
+    expect(outcome).toEqual({ kind: 'SETTLED' });
     expect(positionCalls).toBe(0);
+    expect(readVerifiedPinnedEvidence).toHaveBeenCalled();
+    expect(failTerminal).toHaveBeenCalledWith(expect.anything(), 'REPLAY_INELIGIBLE');
   });
 });

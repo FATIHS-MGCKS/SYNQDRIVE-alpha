@@ -593,9 +593,13 @@ export function validateContract(c, { docs = [], printHashes = false } = {}) {
   section('activation gates', () => {
     const g = c.activationGates;
     const req = (gate, item) => g[gate]?.requires?.includes(item);
-    if (c.replay.deserializerImplemented === false) {
-      for (const gate of ['TINY_ACTIVATION', 'REPLAY_CAPABLE_SHADOW']) if (!req(gate, 'DI-GAP-S4-REPLAY-DESERIALIZER-001:CLOSED')) fail(`${gate} must be blocked until the snapshot deserializer exists`);
-      for (const gate of ['TINY_ACTIVATION', 'REPLAY_CAPABLE_SHADOW']) if (!req(gate, 'SNAPSHOT_REHASH_VERIFICATION:IMPLEMENTED')) fail(`${gate} must require snapshot hash verification`);
+    for (const gate of ['TINY_ACTIVATION', 'REPLAY_CAPABLE_SHADOW']) {
+      if (!req(gate, 'DI-GAP-S4-REPLAY-DESERIALIZER-001:CLOSED')) {
+        fail(`${gate} must require DI-GAP-S4-REPLAY-DESERIALIZER-001:CLOSED`);
+      }
+      if (!req(gate, 'SNAPSHOT_REHASH_VERIFICATION:IMPLEMENTED')) {
+        fail(`${gate} must require snapshot hash verification`);
+      }
     }
     if (!req('NATIVE_CHANNEL_ENABLE', 'DI-GAP-S4-NATIVE-READINESS-001:CLOSED') || !req('NATIVE_CHANNEL_ENABLE', 'DIM-GAP-007:CLOSED')) fail('native channel enablement must require the native readiness gaps closed');
     if (!req('S4A_DORMANT_SCHEMA_MERGE', 'S2_TABLES_EMPTY') || !req('S4A_DORMANT_SCHEMA_MERGE', 'ALL_FLAGS_DEFAULT_OFF')) fail('dormant schema merge must require empty S2 and default-off flags');

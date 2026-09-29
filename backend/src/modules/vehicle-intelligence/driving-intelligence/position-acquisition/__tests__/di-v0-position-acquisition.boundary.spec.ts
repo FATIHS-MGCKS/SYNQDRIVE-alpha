@@ -64,7 +64,7 @@ describe('S3A dormant boundary (static)', () => {
     expect(adapter).toMatch(/import type \{ DimoTelemetryService \}/);
   });
 
-  it('no runtime caller: nothing outside the package references S3A', () => {
+  it('no runtime caller: nothing outside the package references S3A acquisition', () => {
     const siblingAllow = [
       path.join(BACKEND_SRC, 'modules/vehicle-intelligence/driving-intelligence/r1-obd-acquisition'),
       path.join(BACKEND_SRC, 'modules/vehicle-intelligence/driving-intelligence/native-event-evidence'),
@@ -73,20 +73,67 @@ describe('S3A dormant boundary (static)', () => {
       path.join(BACKEND_SRC, 'modules/vehicle-intelligence/driving-intelligence/s4b-orchestration'),
       path.join(BACKEND_SRC, 'modules/vehicle-intelligence/driving-intelligence/s4c-executor'),
     ];
-    const markers = [
-      'position-acquisition',
+    const s4dPureParserAllowlist = [
+      path.join(
+        BACKEND_SRC,
+        'modules/vehicle-intelligence/driving-intelligence/s4d-replay/di-v0-s4d-replay-s1.ts',
+      ),
+      path.join(
+        BACKEND_SRC,
+        'modules/vehicle-intelligence/driving-intelligence/s4d-replay/di-v0-s4d-replay-scope-bind.ts',
+      ),
+    ];
+    const acquisitionMarkers = [
       'acquireDiV0HistoricalPositions',
       'DimoTelemetryDiV0HistoricalPositionTransport',
       'normalizeDiV0PositionResponse',
     ];
-    const hits = walkTs(BACKEND_SRC)
+    const s4dForbiddenAcquisitionMarkers = [
+      ...acquisitionMarkers,
+      'DimoTelemetryService',
+      'runDimo',
+    ];
+    const parserConsumptionMarkers = [
+      'parseDiV0PositionSnapshot',
+      'diV0PositionSnapshotToS1Observations',
+      'DI_V0_POSITION_EVIDENCE_SNAPSHOT_V0_1',
+      'di-v0-position-snapshot-parse',
+      'di-v0-position-acquisition.versions',
+    ];
+
+    const productionOutsidePackage = walkTs(BACKEND_SRC)
       .filter((f) => !f.startsWith(PACKAGE_DIR))
+      .filter((f) => !isTestFile(f));
+
+    const acquisitionViolations = productionOutsidePackage
       .filter((f) => !siblingAllow.some((prefix) => f.startsWith(prefix)))
+      .filter((f) => !s4dPureParserAllowlist.includes(f))
       .filter((f) => {
         const content = fs.readFileSync(f, 'utf8');
-        return markers.some((m) => content.includes(m));
+        return acquisitionMarkers.some((m) => content.includes(m));
       });
-    expect(hits).toEqual([]);
+
+    const parserViolations = productionOutsidePackage
+      .filter((f) => !siblingAllow.some((prefix) => f.startsWith(prefix)))
+      .filter((f) => !s4dPureParserAllowlist.includes(f))
+      .filter((f) => {
+        const content = fs.readFileSync(f, 'utf8');
+        return parserConsumptionMarkers.some((m) => content.includes(m));
+      });
+
+    for (const file of s4dPureParserAllowlist) {
+      const content = fs.readFileSync(file, 'utf8');
+      for (const marker of s4dForbiddenAcquisitionMarkers) {
+        expect({ file: path.basename(file), marker, found: content.includes(marker) }).toEqual({
+          file: path.basename(file),
+          marker,
+          found: false,
+        });
+      }
+    }
+
+    expect(acquisitionViolations).toEqual([]);
+    expect(parserViolations).toEqual([]);
   });
 
   it('DIMO call-site audit classifies the adapter as FULL_CONTEXT_REQUIRED', () => {

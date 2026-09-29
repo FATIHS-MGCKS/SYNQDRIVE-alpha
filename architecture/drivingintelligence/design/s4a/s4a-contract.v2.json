@@ -859,10 +859,10 @@
     "sourceOfTruth": "PINNED_NORMALIZED_EVIDENCE_SNAPSHOT",
     "rehashOnLoadRequired": true,
     "serializer": "DESIGNED_DI_V0_S4_EVIDENCE_CONTAINER_V1",
-    "deserializerImplemented": false,
+    "deserializerImplemented": true,
     "deserializerGap": {
       "id": "DI-GAP-S4-REPLAY-DESERIALIZER-001",
-      "status": "OPEN"
+      "status": "CLOSED"
     },
     "replayIneligibleTransition": "T08_FAIL_TERMINAL",
     "replayIneligibleReason": "REPLAY_INELIGIBLE"

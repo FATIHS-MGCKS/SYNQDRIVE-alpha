@@ -26,7 +26,12 @@ import { DI_V0_S4_ENV_ALLOWLISTS, DI_V0_S4_ENV_FLAGS } from '../di-v0-s4a-contro
 import { DiV0S4WorkItemRepository } from '../di-v0-s4a-work-item.repository';
 
 /** Public repository APIs that perform reads only (must not appear in DI_V0_S4_REPOSITORY_WRITE_MAP). */
-const PUBLIC_READ_ONLY_REPOSITORY_METHODS = ['evaluateAttemptStartBoundary', 'readExecutionPostcondition'] as const;
+const PUBLIC_READ_ONLY_REPOSITORY_METHODS = [
+  'evaluateAttemptStartBoundary',
+  'readExecutionPostcondition',
+  'readReplayRoutingContext',
+  'readVerifiedPinnedEvidence',
+] as const;
 
 const REPOSITORY_SOURCE = fs.readFileSync(
   path.join(__dirname, '../di-v0-s4a-work-item.repository.ts'),
@@ -129,7 +134,7 @@ describe('DI V0 S4A contract parity (TS mirror == s4a-contract.v2.json)', () => 
 
     const writeMapMethods = Object.keys(DI_V0_S4_REPOSITORY_WRITE_MAP);
     const readOnlyMethods = [...PUBLIC_READ_ONLY_REPOSITORY_METHODS];
-    expect(readOnlyMethods).toHaveLength(2);
+    expect(readOnlyMethods).toHaveLength(4);
 
     for (const m of readOnlyMethods) {
       expect(writeMapMethods).not.toContain(m);
@@ -149,8 +154,12 @@ describe('DI V0 S4A contract parity (TS mirror == s4a-contract.v2.json)', () => 
   it('read-only repository helpers perform no authoritative mutations', () => {
     const evaluateWrites = countAuthoritativeMutationsInMethod('evaluateAttemptStartBoundary');
     const postconditionWrites = countAuthoritativeMutationsInMethod('readExecutionPostcondition');
+    const replayRoutingWrites = countAuthoritativeMutationsInMethod('readReplayRoutingContext');
+    const verifiedPinWrites = countAuthoritativeMutationsInMethod('readVerifiedPinnedEvidence');
     expect(evaluateWrites).toBe(0);
     expect(postconditionWrites).toBe(0);
+    expect(replayRoutingWrites).toBe(0);
+    expect(verifiedPinWrites).toBe(0);
   });
 
   it('control plane flag and allowlist names', () => {
