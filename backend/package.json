@@ -29,7 +29,7 @@
     "test:di:s4a:postgres:ci": "DI_V0_S4A_POSTGRES_REQUIRED=1 bash scripts/test/di-v0-s4a-postgres-ci.sh",
     "test:di:s4b": "jest s4b-orchestration --testPathIgnorePatterns=postgres.integration",
     "test:di:s4b:postgres": "DI_V0_S4A_POSTGRES_INTEGRATION=1 jest --runInBand --forceExit src/modules/vehicle-intelligence/driving-intelligence/s4b-orchestration/__tests__/di-v0-s4b-orchestration.postgres.integration.spec.ts",
-    "test:di:s4c": "jest s4c-executor --testPathIgnorePatterns=postgres.integration",
+    "test:di:s4c": "jest s4c-executor --testPathIgnorePatterns=postgres",
     "test:di:s4c:postgres": "DI_V0_S4A_POSTGRES_INTEGRATION=1 jest --runInBand --forceExit src/modules/vehicle-intelligence/driving-intelligence/s4c-executor/__tests__/di-v0-s4c-orchestration.postgres.integration.spec.ts src/modules/vehicle-intelligence/driving-intelligence/s4c-executor/__tests__/di-v0-s4c-postgres.matrix.integration.spec.ts",
     "test:di:s4d": "jest s4d-replay --testPathIgnorePatterns=postgres",
     "test:di:s4d:postgres": "DI_V0_S4A_POSTGRES_INTEGRATION=1 jest --runInBand --forceExit src/modules/vehicle-intelligence/driving-intelligence/s4d-replay/__tests__/di-v0-s4d-postgres.matrix.integration.spec.ts",
