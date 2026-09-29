@@ -20,6 +20,15 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-29 — M3.3G G4 production enablement preflight
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Read-only prod→main delta audit (43 commits, 213 files); GT migration characterization; G1–G3 activation/backfill proof; D3/E3/F6/S4D gates; post-deploy verification plan (design only). |
+| **VALIDATION** | Git diff + migration SQL review + emission call-site grep + production env read (no writes). |
+| **OBSERVED_EFFECT** | **`DEPLOYMENT_READINESS=READY_WITH_EXPLICIT_GATES`**; **`GT_SCHEMA_CURRENT_PRODUCTION=ABSENT`**; G3 **`NOT_YET_PRODUCTION_DEPLOYED`**. |
+| **DECISION_STATUS** | **`COMPLETE`** (preflight — deploy not authorized here) |
+
 ## CL-2026-09-29 — M3.3G G4 preparation audit (first natural GT validation evidence)
 
 | Field | Value |
@@ -38,7 +47,7 @@ Append-only scientific record. Newest entries first.
 |-------|-------|
 | **CHANGE** | F5 report V2 ground-truth correlation + LV segmentation; G3.1 historical asOf authority; G3.1.1 postgres lifecycle seal. |
 | **VALIDATION** | Battery longitudinal postgres CI; F5 unit + historical postgres A1–A6. |
-| **DECISION_STATUS** | **`PRODUCTION_VALIDATED`** (engineering) / **`MERGED`** @ **`1dd422403`** |
+| **DECISION_STATUS** | **`MERGED`** @ **`1dd422403`** · **`CI_VALIDATED`** · **`NOT_YET_PRODUCTION_DEPLOYED`** |
 
 ## CL-2026-09-29 — M3.3G G3.1.1 historical postgres cleanup + lifecycle query seal
 

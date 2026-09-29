@@ -42,7 +42,8 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'Read-only production audit (TRANSACTION READ ONLY): pre-registered Q1–Q10 before data review; conservative G4 data-availability maturity states only.',
       'Production PostgreSQL has no battery_ground_truth_events table at deploy 20260928175908 — TOTAL_GT_ROWS=0; NATURAL_GT_PROVEN=NO; G4_DECISION=WAIT_FOR_NATURAL_GT.',
-      'No runtime, deploy, synthetic GT, E3 activation, or F6 calibration; re-run G4 after authorized G1–G3 deploy and first natural CONFIRMED GT.',
+      'Enablement preflight: main is 43 commits / 213 files ahead (Battery + DI S4D + RFRF); 2 additive GT migrations; DEPLOYMENT_READINESS=READY_WITH_EXPLICIT_GATES; G3 MERGED/CI_VALIDATED/NOT_YET_PRODUCTION_DEPLOYED.',
+      'No runtime, deploy, synthetic GT, E3 activation, or F6 calibration; re-run G4 after authorized deploy and first natural CONFIRMED GT.',
     ],
     reason:
       'G4 observes the first naturally occurring admissible Ground Truth to validate or falsify longitudinal pipeline assumptions — zero GT is a valid pass outcome.',

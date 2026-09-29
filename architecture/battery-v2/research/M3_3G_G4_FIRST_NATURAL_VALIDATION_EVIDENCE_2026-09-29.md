@@ -181,18 +181,14 @@ G4_DECISION=WAIT_FOR_NATURAL_GT
 
 ## Upstream phase completion (repository main @ `1dd422403`)
 
-Verified via merged PRs + implementation on main (code is authority where docs lag):
+Engineering status on **`origin/main`** (code is authority where docs lag). **Production** @ `6952fdf` has **not** deployed this tranche — do **not** label G3 **PRODUCTION_VALIDATED**.
 
-| Phase | Status |
-|-------|--------|
-| G1 | **COMPLETE** (PR #1837) |
-| G2 | **COMPLETE** (PR #1840 / G2 doc) |
-| G2.1 | **COMPLETE** (PR #1840) |
-| G2.2 | **COMPLETE** (PR #1840) |
-| G3 | **COMPLETE** (PR #1842) |
-| G3.1 | **COMPLETE** (PR #1842) |
-| G3.1.1 | **COMPLETE** (PR #1842) |
-| `NEXT_PHASE` | **`M3_3G_G4`** (this audit) → continue waiting for natural GT after deploy |
+| Phase | Main repo | Production deploy |
+|-------|-----------|-------------------|
+| G1 | **MERGED** (#1837) · **CI_VALIDATED** | **NOT_YET_PRODUCTION_DEPLOYED** |
+| G2 / G2.1 / G2.2 | **MERGED** (#1840) · **CI_VALIDATED** | **NOT_YET_PRODUCTION_DEPLOYED** |
+| G3 / G3.1 / G3.1.1 | **MERGED** (#1842) · **CI_VALIDATED** | **NOT_YET_PRODUCTION_DEPLOYED** |
+| `NEXT_PHASE` | **`M3_3G_G4`** — this audit; enablement preflight in `M3_3G_G4_PRODUCTION_ENABLEMENT_PREFLIGHT_2026-09-29.md` |
 
 ```
 M3_3G_G4_PREPARATION_AUDIT_RESULT=PASS
