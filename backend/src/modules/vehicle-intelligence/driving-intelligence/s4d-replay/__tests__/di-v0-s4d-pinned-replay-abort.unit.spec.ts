@@ -5,7 +5,11 @@ import { parseDiV0S4ControlPlaneConfig } from '../../s4a-foundation/di-v0-s4a-co
 import { executeDiV0S4dPinnedReplay } from '../di-v0-s4d-pinned-replay';
 import type { DiV0S4ReplayRoutingContext } from '../di-v0-s4d-replay-types';
 import { acquireDiV0HistoricalPositions } from '../../position-acquisition/di-v0-position-acquisition';
-import { buildDiV0S4cPositionPresentChannel } from '../../s4c-executor/di-v0-s4c-evidence-channels';
+import {
+  buildDiV0S4cNativeChannelInput,
+  buildDiV0S4cPositionPresentChannel,
+  buildDiV0S4cR1ChannelInput,
+} from '../../s4c-executor/di-v0-s4c-evidence-channels';
 import { buildRequest, labelAt, row, staticTransport, signalsBody } from '../../position-acquisition/__tests__/position-acquisition-test-helpers';
 import { serializeDiV0S4EvidenceContainer } from '../../s4a-foundation/di-v0-s4a-identity';
 import { parseDiV0S4EvidenceContainer } from '../../s4a-foundation/di-v0-s4a-evidence-container-parse';
@@ -13,13 +17,13 @@ import { parseDiV0S4EvidenceContainer } from '../../s4a-foundation/di-v0-s4a-evi
 const BASE = '2030-01-01T00:00:00Z';
 
 async function minimalParsedApiSynthetic() {
+  const control = parseDiV0S4ControlPlaneConfig({ DI_V0_S4_MASTER_ENABLED: 'true' });
   const acquired = await acquireDiV0HistoricalPositions(
     buildRequest(BASE, labelAt(BASE, 2)),
     staticTransport(signalsBody([row(labelAt(BASE, 1), 52, 9)])),
     {},
   );
   if (acquired.status !== 'ACQUIRED') throw new Error('acquire failed');
-  const positionChannel = buildDiV0S4cPositionPresentChannel(acquired.result);
   const container = serializeDiV0S4EvidenceContainer({
     organizationId: 'org-1',
     vehicleId: 'veh-1',
@@ -28,9 +32,9 @@ async function minimalParsedApiSynthetic() {
     windowStart: new Date(BASE),
     windowEnd: new Date(labelAt(BASE, 2)),
     channels: [
-      { channel: 'NATIVE_EVENT', outcome: 'DISABLED', reasonCode: 'FLAG_OFF', formatVersion: null, payload: null, attestationRef: null },
-      positionChannel,
-      { channel: 'R1_OBD', outcome: 'NOT_APPLICABLE', reasonCode: 'SOURCE_FAMILY', formatVersion: null, payload: null, attestationRef: null },
+      buildDiV0S4cNativeChannelInput(control, 'API_SYNTHETIC'),
+      buildDiV0S4cPositionPresentChannel(acquired.result),
+      buildDiV0S4cR1ChannelInput(control, 'API_SYNTHETIC', 1, 'veh-1', null, null),
     ],
   });
   return parseDiV0S4EvidenceContainer(container.container);
@@ -99,17 +103,13 @@ describe('S4D pinned replay abort authority', () => {
     expect(failTerminal).not.toHaveBeenCalled();
   });
 
-  it('aborts after deserialize before compute', async () => {
+  it('aborts before failTerminal without terminal write', async () => {
     const ac = new AbortController();
-    const parsed = await minimalParsedApiSynthetic();
     const completeWithS2 = jest.fn();
     const failTerminal = jest.fn();
-    const readVerifiedPinnedEvidence = jest.fn().mockResolvedValue({ ok: true, parsed });
-    const replayS1 = await import('../di-v0-s4d-replay-s1');
-    const realBuild = replayS1.buildDiV0S4dS1InputFromParsedContainer;
-    jest.spyOn(replayS1, 'buildDiV0S4dS1InputFromParsedContainer').mockImplementation((...args) => {
+    const readVerifiedPinnedEvidence = jest.fn().mockImplementation(async () => {
       ac.abort();
-      return realBuild(...args);
+      return { ok: false as const, code: 'SNAPSHOT_HASH_MISMATCH' };
     });
     const outcome = await executeDiV0S4dPinnedReplay(
       baseCtx({ readVerifiedPinnedEvidence, completeWithS2, failTerminal }, ac.signal),
@@ -120,6 +120,37 @@ describe('S4D pinned replay abort authority', () => {
     expect(outcome).toEqual({ kind: 'RELEASE' });
     expect(completeWithS2).not.toHaveBeenCalled();
     expect(failTerminal).not.toHaveBeenCalled();
-    jest.restoreAllMocks();
+  });
+
+  it('aborts before holderSupersede without T13 write', async () => {
+    let abortReads = 0;
+    const signal = {
+      get aborted() {
+        abortReads += 1;
+        return abortReads >= 2;
+      },
+    } as AbortSignal;
+    const completeWithS2 = jest.fn();
+    const failTerminal = jest.fn();
+    const holderSupersede = jest.fn();
+    const outcome = await executeDiV0S4dPinnedReplay(
+      baseCtx(
+        {
+          evaluateAttemptStartBoundary: jest.fn().mockResolvedValue({ kind: 'SUPERSEDE', reason: 'stale' }),
+          holderSupersede,
+          readVerifiedPinnedEvidence: jest.fn(),
+          completeWithS2,
+          failTerminal,
+        },
+        signal,
+      ),
+      route,
+      computeBinding,
+      controlPlane,
+    );
+    expect(outcome).toEqual({ kind: 'RELEASE' });
+    expect(holderSupersede).not.toHaveBeenCalled();
+    expect(completeWithS2).not.toHaveBeenCalled();
+    expect(failTerminal).not.toHaveBeenCalled();
   });
 });

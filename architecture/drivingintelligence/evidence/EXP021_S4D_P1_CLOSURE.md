@@ -22,3 +22,9 @@ Independent pre-merge audit P1-A through P1-E on verified pin replay (S4D).
 ## Non-effects
 
 No production deploy, no AppModule registration, no Prisma migration, no S4E/S4F.
+
+## Final test / governance closure (2026-09-29)
+
+- S4D abort tests: RUNNABLE `API_SYNTHETIC` fixture via `buildDiV0S4cNativeChannelInput` / `buildDiV0S4cR1ChannelInput`; post-deserialize abort via module-bound `jest.mock('./di-v0-s4d-replay-s1')` + dynamic import of pinned replay; post-compute abort via read-count `AbortSignal` at guard #6.
+- S3A dormant boundary: narrow allowlist for pure parser consumers (`di-v0-s4d-replay-s1.ts`, `di-v0-s4d-replay-scope-bind.ts`); acquisition markers forbidden elsewhere.
+- Required CI: `.github/workflows/s4a-postgres-integration.yml` runs `test:di:s4a`–`s4d` unit + PostgreSQL suites when S4 paths change; gate fails closed on unit or postgres failure.
