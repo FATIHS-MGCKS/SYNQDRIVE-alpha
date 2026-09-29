@@ -20,6 +20,15 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-29 — PR #1846 Battery Intelligence authority hardening
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | GT maturity semantics (`CONFIRMED_GROUND_TRUTH_FACT` vs `GROUND_TRUTH_VALIDATED`); G4 graph without false H0→G4 dependencies; **M3.3-H0** umbrella + subtracks; roadmap order; M3.3H UI naming collision avoided. |
+| **WHY** | Prevent conflating confirmed GT facts with derived-model validation; G4 must run immediately on first natural GT. |
+| **NON_EFFECTS** | No runtime, schema, deploy, E3, F6, production changes. |
+| **EVIDENCE** | `BATTERY_INTELLIGENCE_ARCHITECTURE.md`; `research/BATTERY_INTELLIGENCE_POST_G4_ROADMAP_AUDIT_2026-09-29.md` |
+
 ## CL-2026-09-29 — Post-G4 Battery Intelligence roadmap audit (LV / HV / Shared Core)
 
 | Field | Value |

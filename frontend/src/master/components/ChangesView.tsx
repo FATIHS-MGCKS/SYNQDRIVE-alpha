@@ -42,7 +42,9 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'Top-level BATTERY_INTELLIGENCE_ARCHITECTURE.md: Shared Core vs LV vs HV domains; G4 async wait does not block LV/HV engineering.',
       'Historical M3.3A–G status matrix (engineering vs production vs scientific validation); signal inventory with BATTERY_SCOPE.',
-      'NEXT_PHASE: M3_3G_G4_WAIT ∥ M3_3_LV_H0 ∥ M3_3_HV_H0; F6/E3/customer health claims remain gated.',
+      'GT maturity: CONFIRMED_GROUND_TRUTH_FACT for confirmed GT rows; GROUND_TRUTH_VALIDATED reserved for derived BI after G4.',
+      'M3.3-H0 umbrella (SHARED/LV/HV/CROSS-SCOPE-SEAL); G4 async with no H0 prerequisite; G4→F6 scientific dependency only.',
+      'NEXT_PHASE: M3_3_H0 ∥ M3_3G_G4_WAIT ∥ M3_3_LV_SIGNAL_OBS; distinct from historical M3.3H customer UI label.',
     ],
     reason:
       'After G4 production GT infra (0 rows), reconstruct authoritative forward roadmap with explicit LV/HV separation.',

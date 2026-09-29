@@ -1,10 +1,10 @@
 # Battery Intelligence — domain architecture (LV / HV / Shared Core)
 
-**Status:** **AUDIT / ROADMAP** (post-G4, 2026-09-29)  
+**Status:** **AUDIT / ROADMAP** (post-G4 authority hardening, 2026-09-29)  
 **Repository:** `origin/main` @ **`a99592a7d7462cc100d5311c35201951d8d35263`**  
 **Production:** release **`20260929224455_v4994`** @ **`1dd4224037a84417c5d605575bb6d288ac93184e`**
 
-This document is the **top-level navigation layer** for Battery Intelligence. Historical stage letters **M3.3A–G** remain unchanged. Forward work uses **`M3.3-LV-*`** and **`M3.3-HV-*`** prefixes (see §Phase naming).
+This document is the **top-level navigation layer** for Battery Intelligence. Historical stage letters **M3.3A–G** remain unchanged. Forward domain work is sealed under **`M3.3-H0`**, then continues as **`M3.3-LV-*`** / **`M3.3-HV-*`**. Do **not** confuse **`M3.3-H0`** (domain separation) with historical/planned **M3.3H** (customer Battery Health UI).
 
 ---
 
@@ -24,6 +24,16 @@ Battery Intelligence
 - Do **not** treat LV rest-session degradation models as HV traction models.
 - Do **not** pool LV longitudinal D3/F5 cohort science with HV without an explicit HV pipeline authority.
 - **Ground Truth** is shared persistence with **`battery_scope` = LV | HV** on each fact.
+- A **CONFIRMED** GT row is authoritative **input/evidence** (`CONFIRMED_GROUND_TRUTH_FACT`). It is **not** `GROUND_TRUTH_VALIDATED` maturity for derived Battery Intelligence.
+
+**Pipeline scope (unchanged):**
+
+| Pipeline | Scope |
+|----------|-------|
+| D3 longitudinal materialization | **LV_ONLY** |
+| F5 natural calibration + G3 LV GT correlation | **LV_ONLY** |
+| E2 / E3 longitudinal health model | **LV_ONLY** |
+| HV degradation | **Does not reuse LV logic** |
 
 ---
 
@@ -38,6 +48,8 @@ Battery Intelligence
 | Service-event + document provenance | SHARED | PRODUCTION |
 | Org/vehicle tenant isolation | SHARED | PRODUCTION |
 | AI Upload → confirm → apply (no auto-GT) | SHARED | PRODUCTION |
+
+**Shared Core explicitly includes:** scope, GT persistence/admission, correction/supersession, historical `asOf`, provenance, org/vehicle isolation.
 
 **Not shared (domain-specific inference):**
 
@@ -65,25 +77,26 @@ Authoritative detail: `CURRENT_STATE.md`, `research/M3_3G_*`, `research/M3_3F_*`
 
 ### 3.2 LV signal inventory (conceptual)
 
-| Signal / feature | Scope | Source | Pipeline | Persisted | Customer |
-|------------------|-------|--------|----------|-----------|----------|
-| LIVE_VOLTAGE / resting voltage | LV_ONLY | DIMO / document | Stage-2 REST + generalized evidence | YES | Partial (legacy boxes) |
-| Rest sessions / shutdown / parked | LV_ONLY | Telemetry + gap FSM | M3.3A/B/C | YES (shadow features) | NO (internal) |
-| Rest-session feature rows | LV_ONLY | C3 computation | C3 shadow | YES | NO |
-| Longitudinal profile revisions | LV_ONLY | D1→D2→D3 | D3 sustained | YES | NO |
-| F5 cohort statistics | LV_ONLY | D3 revisions | F5 read-only report | NO (report) | NO |
-| GT workshop / replacement | LV in F5 correlation | Human confirm | G2 emission | YES | NO |
-| E3 evaluation output | LV_ONLY | Pure policy | F5 offline only | NO | NO |
+| Signal / feature | Scope | Source | Pipeline | Persisted | Customer | Scientific maturity |
+|------------------|-------|--------|----------|-----------|----------|---------------------|
+| LIVE_VOLTAGE / resting voltage | LV_ONLY | DIMO / document | Stage-2 REST + generalized evidence | YES | Partial (legacy boxes) | DERIVED_EVIDENCE |
+| Rest sessions / shutdown / parked | LV_ONLY | Telemetry + gap FSM | M3.3A/B/C | YES (shadow features) | NO | LONGITUDINAL_EVIDENCE |
+| Rest-session feature rows | LV_ONLY | C3 computation | C3 shadow | YES | NO | LONGITUDINAL_EVIDENCE |
+| Longitudinal profile revisions | LV_ONLY | D1→D2→D3 | D3 sustained | YES | NO | LONGITUDINAL_EVIDENCE |
+| F5 cohort statistics | LV_ONLY | D3 revisions | F5 read-only report | NO (report) | NO | DISTRIBUTIONS_EMERGING |
+| GT workshop / replacement facts | LV or HV on row | Human confirm | G2 emission | YES | NO | **CONFIRMED_GROUND_TRUTH_FACT** (when confirmed) |
+| F5↔GT correlation report | LV_ONLY | GT + D3 | G3 report V2 | NO | NO | **NOT_EVALUATED** until G4; may become **GROUND_TRUTH_VALIDATED** for *derived* linkage conclusions only after G4 |
+| E3 evaluation output | LV_ONLY | Pure policy | F5 offline only | NO | NO | NOT customer-safe |
 
 ### 3.3 LV remaining engineering (not blocked by G4)
 
 | Item | Type | Notes |
 |------|------|-------|
-| **M3.3-LV-H0** | ENGINEERING | Domain boundary doc + API/UI contract prep (extends this file) |
-| **M3.3-LV-SIGNAL** | ENGINEERING | REST observability / hybrid shutdown (M3.2 arch debt) |
-| **M3.3H** | PLANNED | Customer Battery Health UI — **not** authorized for conclusion-bearing LV claims |
-| **M3.3F-F6** | BLOCKED | Numeric calibration — requires F6 gate + natural GT samples |
-| **G4 validation re-run** | WAITING_FOR_NATURAL_GT | Read-only; **does not block** rows above |
+| **M3.3-H0** (umbrella) | ENGINEERING | Domain separation seal — see §7; subtracks define Shared Core once |
+| **M3.3-LV-SIGNAL-OBS** | ENGINEERING | REST observability / hybrid shutdown (M3.2 arch debt); parallel within H0 where safe |
+| **M3.3H** (historical UI label) | PLANNED | Customer Battery Health UI — **distinct from M3.3-H0**; not authorized for conclusion-bearing claims |
+| **M3.3F-F6** | BLOCKED | Numeric calibration — requires natural GT + G4 + F6 gate |
+| **G4 validation re-run** | WAITING_FOR_NATURAL_GT | Read-only; **independent** of H0 completion; **does not block** engineering |
 
 ---
 
@@ -116,9 +129,9 @@ Authoritative detail: `CURRENT_STATE.md`, `research/M3_3G_*`, `research/M3_3F_*`
 
 | Gap | Priority |
 |-----|----------|
-| **M3.3-HV-H0** architecture audit (signals, persistence, boundaries vs ERD) | **NEXT parallel track** |
-| HV longitudinal / health model authority (do **not** clone LV E2 blindly) | PLANNED |
-| HV F5 or equivalent natural-evidence register | PLANNED after H0 |
+| **M3.3-H0-HV** subtrack | **Coordinated under M3.3-H0** — signals, persistence, ERD vs BI ownership |
+| HV longitudinal / health model authority (do **not** clone LV E2 blindly) | After H0 seal → **M3.3-HV-H1** |
+| HV F5 or equivalent natural-evidence register | PLANNED after H0-HV |
 | HV customer-visible health fields | BLOCKED until maturity gates |
 
 **LV algorithms safe to reuse for HV:** **NO** for degradation/rest-session/longitudinal health. **YES** for Shared Core only (scope, GT admission patterns, provenance types).
@@ -127,14 +140,13 @@ Authoritative detail: `CURRENT_STATE.md`, `research/M3_3G_*`, `research/M3_3F_*`
 
 ## 5. Customer-facing target (future — maturity gates)
 
-Every future UI field requires a maturity class:
-
 | Maturity | Meaning |
 |----------|---------|
 | RAW_TELEMETRY | Live signal only |
 | DERIVED_EVIDENCE | Computed, not longitudinal |
 | LONGITUDINAL_EVIDENCE | D3/F5-style cohort |
-| GROUND_TRUTH_VALIDATED | Independent GT corroboration |
+| **CONFIRMED_GROUND_TRUTH_FACT** | Human-confirmed GT row in Shared Core (authoritative fact; **not** model validation) |
+| **GROUND_TRUTH_VALIDATED** | **Derived** Battery Intelligence output corroborated against independent GT (e.g. post-G4 F5 linkage conclusions) |
 | CALIBRATED | F6-approved thresholds |
 | CUSTOMER_SAFE | Publication + legal/product sign-off |
 
@@ -146,76 +158,105 @@ Every future UI field requires a maturity class:
 
 ## 6. Dependency graph (what can run in parallel)
 
+G4 is **asynchronous observation**. If the first legitimate natural GT arrives tomorrow, G4 may run **immediately** — no H0 prerequisite.
+
 ```mermaid
 flowchart TB
-  subgraph parallel [PARALLEL NOW]
-    LVENG[M3.3-LV engineering: signal/UI contract]
-    HVH0[M3.3-HV-H0 foundation audit]
-    CORE[Shared Core hardening docs/tests]
+  subgraph parallel [PARALLEL ENGINEERING]
+    H0[M3.3-H0 Domain Separation]
+    LVSOBS[M3.3-LV-SIGNAL-OBS]
+    HVPROV[HV provider capability evidence]
+    LVPOST[M3.3-LV-* after H0 seal]
+    HVPOST[M3.3-HV-H1+ after H0 seal]
   end
-  subgraph waitGT [WAITING FOR NATURAL GT]
+  subgraph asyncG4 [ASYNC — NATURAL GT TRIGGER]
+    NATGT[First legitimate natural CONFIRMED GT]
     G4[G4 read-only validation audit]
   end
-  subgraph waitF6 [BLOCKED]
+  subgraph blocked [SCIENTIFICALLY BLOCKED]
     F6[M3.3F-F6 numeric calibration]
   end
-  subgraph waitProv [PROVIDER / DATA]
-    HVTELEM[HV provider capability matrix]
-  end
-  LVENG --> G4
-  HVH0 --> HVTELEM
+  H0 --> LVPOST
+  H0 --> HVPOST
+  LVSOBS --- H0
+  HVPROV --- H0
+  NATGT --> G4
   G4 --> F6
-  CORE --> G4
 ```
 
 | Track | G4 blocks? |
 |-------|------------|
 | LV engineering | **NO** |
-| HV foundation | **NO** |
-| F6 | **YES** (needs natural GT + F6 gate) |
-| Customer health claims | **YES** (GT + calibration + E3 policy) |
+| HV engineering | **NO** |
+| M3.3-H0 | **NO** |
+| F6 | **YES** (needs natural GT / G4 evidence + F6 gate) |
+| Customer health claims | **YES** (GT validation path + calibration + E3 policy) |
+
+```
+G4_BLOCKS_LV_ENGINEERING=NO
+G4_BLOCKS_HV_ENGINEERING=NO
+G4_CAN_RUN_IMMEDIATELY_ON_FIRST_NATURAL_GT=YES
+```
 
 ---
 
-## 7. Recommended stage sequence (post-G4)
+## 7. M3.3-H0 — Battery Intelligence domain separation (umbrella)
 
-1. **M3.3-LV-H0** — Freeze LV/HV boundaries in authority + consumer contracts (this document + CURRENT_STATE `NEXT_PHASE`).
-2. **M3.3-HV-H0** — HV signal/provider audit + persistence map (parallel).
-3. **M3.3-LV-SIGNAL-OBS** — Continue REST/hybrid evidence engineering (M3.2 debt) without waiting for GT.
-4. **M3.3H (scoped)** — Read models / Master Admin or internal surfaces only; **no** conclusion-bearing customer copy.
-5. **G4** — Async read-only re-audit on first natural GT (LV first; HV when HV GT exists).
-6. **M3.3F-F6 prep** — Documentation + gate criteria only until G4 produces samples.
-7. **M3.3-HV-H1** — HV evidence quality + session linkage (after H0).
+**M3.3-H0** is one coordinated seal. Subtracks must **not** independently redefine Shared Core.
+
+| Subtrack | Scope |
+|----------|--------|
+| **M3.3-H0-SHARED** | Shared evidence/provenance authority; GT authority; temporal semantics; tenant/vehicle isolation; scope contract |
+| **M3.3-H0-LV** | Freeze LV producers/consumers; D3/F5/E2/E3 explicitly LV; API/read-model/UI scope contracts |
+| **M3.3-H0-HV** | Inventory HV producers/consumers; provider capability matrix; ERD vs Battery Intelligence ownership; persistence map; future HV longitudinal boundary |
+| **M3.3-H0-CROSS-SCOPE-SEAL** | No implicit HV consumption of LV D3/F5/E3; no implicit LV consumption of HV health/shadow outputs; Shared Core access requires explicit `battery_scope`; list **UNKNOWN_SCOPE** consumers for remediation |
+
+After H0 seal: forward engineering under **`M3.3-LV-*`** and **`M3.3-HV-*`**.
 
 ---
 
-## 8. G4 parallel track
+## 8. Recommended stage sequence (post-G4)
+
+1. **M3.3-H0 Domain Separation** — H0-SHARED, H0-LV, H0-HV, H0-CROSS-SCOPE-SEAL (single umbrella).
+2. **Parallel where safe (within/after H0 start):** **M3.3-LV-SIGNAL-OBS**; HV provider capability evidence gathering.
+3. **After H0 seal:** next **M3.3-LV-*** engineering; **M3.3-HV-H1**.
+4. **G4:** asynchronous — runs **immediately** upon first legitimate natural GT (no H0 dependency).
+5. **M3.3F-F6:** remains blocked by scientific gates / natural evidence (`G4 → F6` dependency only).
+6. **Customer conclusion-bearing health:** remains blocked.
+
+---
+
+## 9. G4 parallel track
 
 ```
 G4_STATUS=WAITING_FOR_FIRST_NATURAL_GT
 G4_COLLECTION_INFRASTRUCTURE_READY=YES (production @ 1dd422403)
 NATURAL_GT_PRESENT=NO
+E3_RUNTIME=OFF
+F6=NOT ACTIVE
 ```
 
 Trigger: first admissible **CONFIRMED** GT row → read-only G4 correlation (F5 V2 + `BATTERY_F5_ALLOW_PRODUCTION_READONLY`).
 
 ---
 
-## 9. Knowledge graph recommendation
+## 10. Knowledge graph strategy
 
 | Artifact | Recommendation |
 |----------|----------------|
 | This file (`BATTERY_INTELLIGENCE_ARCHITECTURE.md`) | **YES** — mandatory navigation |
-| Separate `LV_BATTERY_INTELLIGENCE_KG` | **NO** — partition existing `architecture/battery-v2/graph/*` with LV/HV tags |
-| Separate `HV_BATTERY_INTELLIGENCE_KG` | **DEFER** until **M3.3-HV-H0** completes |
+| Separate LV / HV knowledge graphs | **NO** yet |
+| **M3.3-H0 graph work** | Tag/partition existing `architecture/battery-v2/graph/*` with **`LV` \| `HV` \| `SHARED` \| `UNKNOWN_SCOPE`** |
+| HV-specific KG | Reconsider **only after M3.3-H0-HV** if complexity justifies |
 
 ---
 
-## 10. Machine-readable audit anchor
+## 11. Machine-readable audit anchor
 
 ```
 BATTERY_INTELLIGENCE_POST_G4_ROADMAP_AUDIT=COMPLETE
-FORWARD_PHASE_NAMING=M3.3-LV-* and M3.3-HV-* (preserve M3.3A–G history)
+PR1846_AUTHORITY_HARDENING=YES
+FORWARD_PHASE_NAMING=M3.3-H0 umbrella; then M3.3-LV-* / M3.3-HV-* (preserve M3.3A–G history)
 ```
 
 See also: `research/BATTERY_INTELLIGENCE_POST_G4_ROADMAP_AUDIT_2026-09-29.md` (full tables + historical reconstruction).

@@ -25,7 +25,16 @@ Status axes are **separate**: engineering completion ≠ production activation �
 
 **Related pre-M3.3C tracks (not renamed):** M3.1 Stage-2 (**PRODUCTION_ACTIVE**, **PENDING_NATURAL_E2E_EVIDENCE**), M3.2 REST observability audit (**COMPLETE**, **IMPLEMENTATION_READY=NO** for hybrid), M3.2B shutdown shadow (**DEPLOYED**, natural evidence pending), M3.3 R1 8h REST audit (**COMPLETE**).
 
-**Superseded / deferred naming:** M3.3H customer UI referenced in planning — **PLANNED**, not merged as customer health product.
+**Superseded / deferred naming:** Historical **M3.3H** customer Battery Health UI — **PLANNED**, distinct from **`M3.3-H0`** domain separation seal.
+
+---
+
+## 2a. Scientific maturity semantics (PR #1846 hardening)
+
+| Term | Applies to |
+|------|------------|
+| **CONFIRMED_GROUND_TRUTH_FACT** | Raw confirmed workshop/replacement (or measurement) GT rows in Shared Core |
+| **GROUND_TRUTH_VALIDATED** | **Derived** Battery Intelligence outputs corroborated against independent GT (e.g. G4 F5 linkage conclusions) — **not** the GT fact itself |
 
 ---
 
@@ -49,8 +58,8 @@ Status axes are **separate**: engineering completion ≠ production activation �
 | Longitudinal profile revisions (D3) | LV_ONLY | D1→D2→D3 | policy V1 | D3 sustained | YES | NO | LONGITUDINAL_EVIDENCE |
 | E1/E3 longitudinal health | LV_ONLY | Pure offline | — | F5 report only | NO (E3) | NO | NOT customer-safe |
 | F5 cohort stats | LV_ONLY | D3 + offline E1/E3 | — | CLI read-only | NO | NO | DISTRIBUTIONS_EMERGING |
-| GT events (workshop/replacement) | LV or HV on row | Confirmed capture | — | G2 emission | YES (0 prod rows) | NO | GROUND_TRUTH_VALIDATED (when confirmed) |
-| F5↔GT correlation | LV_ONLY in F5 | GT + D3 | — | G3 report V2 | NO | NO | NOT_EVALUATED until G4 |
+| GT events (workshop/replacement) | LV or HV on row | Confirmed capture | — | G2 emission | YES (0 prod rows) | NO | **CONFIRMED_GROUND_TRUTH_FACT** (when confirmed) — authoritative fact, not derived-model validation |
+| F5↔GT correlation | LV_ONLY in F5 | GT + D3 | — | G3 report V2 | NO | NO | NOT_EVALUATED until G4; **GROUND_TRUTH_VALIDATED** reserved for post-G4 *derived* linkage conclusions only |
 | HV SOC / energy / power | HV_ONLY | DIMO mapper | % / kWh / kW | Live snapshot + methods | YES | Partial (vehicle state) | RAW_TELEMETRY / DERIVED |
 | Provider HV SOH | HV_ONLY | DIMO / workshop / document | % | Canonical health compose | YES | Policy-gated | DERIVED_EVIDENCE |
 | HV charge sessions | HV_ONLY | DIMO segments + ERD host | — | `hv-charge-session/*` | YES | NO dedicated BI UI | DERIVED_EVIDENCE |
@@ -71,12 +80,12 @@ Status axes are **separate**: engineering completion ≠ production activation �
 
 **LV remaining engineering (not blocked by G4):**
 
-- M3.3-LV-H0 — authority + API/UI contract boundaries (this audit)
-- M3.3-LV-SIGNAL-OBS — M3.2 hybrid REST/shutdown observability
-- M3.3H (internal/read models only until maturity)
-- Shared Core documentation hardening (scope tags on graph nodes)
+- **M3.3-H0** umbrella (H0-SHARED, H0-LV, H0-HV, H0-CROSS-SCOPE-SEAL) — single Shared Core definition
+- M3.3-LV-SIGNAL-OBS — M3.2 hybrid REST/shutdown observability (parallel within H0 where safe)
+- Historical **M3.3H** customer UI planning (internal/read models only until maturity) — **not** M3.3-H0
+- Graph scope tags (LV | HV | SHARED | UNKNOWN_SCOPE) under H0-SHARED
 
-**LV blocked only by natural GT:**
+**LV blocked only by natural GT / scientific gates:**
 
 - G4 read-only validation re-run
 - F6 numeric calibration (also requires F6 gate doc)
@@ -113,7 +122,20 @@ Status axes are **separate**: engineering completion ≠ production activation �
 
 **SHARED_CORE_REFACTOR_REQUIRED:** **YES (documentation + graph tagging)** — not a runtime rewrite.
 
-**SHARED_CORE_REFACTOR_SCOPE:** Tag graph nodes/edges LV|HV|SHARED; consumer contracts name scope; prevent HV consumers from reading LV D3 outputs without explicit adapter.
+**SHARED_CORE_REFACTOR_SCOPE:** Under **M3.3-H0-SHARED**: tag graph nodes/edges **LV | HV | SHARED | UNKNOWN_SCOPE**; consumer contracts name scope; H0-CROSS-SCOPE-SEAL proves no implicit cross-domain reads.
+
+---
+
+## 7a. G4 dependency (no false H0 → G4 edges)
+
+G4 runs on **first natural CONFIRMED GT** only. Engineering tracks (H0, LV-SIGNAL-OBS, HV provider work) do **not** gate G4.
+
+Scientific dependency preserved: **natural GT / G4 evidence → future F6 calibration gate**.
+
+```
+G4_CAN_RUN_IMMEDIATELY_ON_FIRST_NATURAL_GT=YES
+G4_FALSE_DEPENDENCY_ON_H0=REMOVED
+```
 
 ---
 
@@ -135,29 +157,31 @@ Trigger: first admissible CONFIRMED GT → read-only G4 audit + bounded F5 V2 wi
 
 | Bucket | Work |
 |--------|------|
-| **PARALLEL NOW** | M3.3-LV-H0, M3.3-HV-H0, M3.3-LV-SIGNAL-OBS, shared Core doc/graph tags, internal M3.3H read models |
-| **WAITING FOR NATURAL GT** | G4 validation, F6 calibration inputs |
+| **PARALLEL NOW** | **M3.3-H0** (all subtracks); M3.3-LV-SIGNAL-OBS; HV provider capability evidence; graph scope tags |
+| **ASYNC (natural GT trigger)** | G4 validation — **immediate** on first GT; **not** blocked by H0 |
+| **WAITING FOR NATURAL GT / G4** | F6 calibration inputs |
 | **WAITING FOR PROVIDER** | HV fleet capability matrix, thermal/cell-level signals |
-| **BLOCKED BY PRIOR ENGINEERING** | Customer-safe LV/HV health UI, E3 runtime, F6 activation |
+| **BLOCKED** | Customer-safe LV/HV health UI, E3 runtime, F6 activation |
 
 ---
 
 ## 9. Recommended sequence
 
-1. M3.3-LV-H0 + publish [`BATTERY_INTELLIGENCE_ARCHITECTURE.md`](../BATTERY_INTELLIGENCE_ARCHITECTURE.md)
-2. M3.3-HV-H0 (signal + persistence map; provider audit checklist)
-3. M3.3-LV-SIGNAL-OBS (M3.2 debt; parallel)
-4. M3.3H scoped internal surfaces
-5. G4 async on first GT
-6. M3.3F-F6 **prep docs only** (gate criteria)
-7. M3.3-HV-H1 evidence quality after H0
+1. **M3.3-H0 Domain Separation** — H0-SHARED, H0-LV, H0-HV, H0-CROSS-SCOPE-SEAL.
+2. **Parallel where safe:** M3.3-LV-SIGNAL-OBS; HV provider capability evidence gathering.
+3. **After H0 seal:** M3.3-LV-* next engineering; **M3.3-HV-H1**.
+4. **G4:** asynchronous — **immediately** upon first legitimate natural GT (no H0 prerequisite).
+5. **M3.3F-F6:** prep/gates only; activation blocked until G4 evidence.
+6. **Customer conclusion-bearing health:** blocked.
 
 ---
 
 ## 10. Forward phase naming
 
 - **Preserve** historical **M3.3A–G** references unchanged.
-- **Forward:** `M3.3-LV-*`, `M3.3-HV-*`, optional umbrella **M3.3H** = domain separation doc pass (not renaming old M3.3H UI planning without explicit DEC).
+- **Umbrella:** **`M3.3-H0`** (domain separation) — subtracks `-SHARED`, `-LV`, `-HV`, `-CROSS-SCOPE-SEAL`.
+- **After H0:** **`M3.3-LV-*`**, **`M3.3-HV-*`**.
+- **Do not collide** with historical/planned **M3.3H** customer UI label.
 
 ---
 
