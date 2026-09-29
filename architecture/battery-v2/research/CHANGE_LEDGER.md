@@ -20,6 +20,16 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-29 — M3.3G G3.1 F5 correctness seal (segmentation + historical asOf + NAT semantics)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | G3 V2 used present-tense GT active checks for F5 `asOf`; `prePostReplacementPoolingBlocked` metadata-only; vehicle-level F5 maturity pooling; NAT-008/009 misused calibration maturity labels. |
+| **CHANGE** | Segment-aware continuity (`f5-longitudinal-segmentation.policy.ts`); `isGroundTruthActiveAtAsOf`; primary-cohort bounded GT query; correlation proof counters; NAT `NONE\|PRESENT` + `NOT_EVALUATED`; tests G3.1-S1…S6, A1…A5. |
+| **WHY** | Independent review gaps on scientific correctness before merge of PR #1842. |
+| **VALIDATION** | F5 unit + postgres CI; ground-truth postgres regression; D3/F4.1 postgres unchanged. |
+| **DECISION_STATUS** | **`IN_REVIEW`** (G3.1 seal; PR #1842) |
+
 ## CL-2026-09-29 — M3.3G G3 F5 ground-truth correlation + longitudinal segmentation
 
 | Field | Value |

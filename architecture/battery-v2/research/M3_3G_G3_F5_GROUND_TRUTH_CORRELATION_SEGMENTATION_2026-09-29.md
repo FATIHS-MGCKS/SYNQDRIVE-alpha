@@ -33,16 +33,16 @@ CROSS_SCOPE_SEGMENTATION_POSSIBLE=NO
 
 D3/F5 primary cohort uses rest-session longitudinal profiles (LV rest evidence domain). HV GT rows are rejected (`rejectedCrossScopeCount`).
 
-## Active GT eligibility (reuses G1)
+## Active GT eligibility (F5 asOf — G3.1 historical authority)
 
-- `verificationStatus=CONFIRMED`
-- no revocations (present-tense active authority)
-- not superseded
-- `batteryScope=LV` for F5 correlation
-- `createdAt <= asOf` and `effectiveAt <= asOf` (knowledge + intervention time fence)
-- revocations with `revokedAt <= asOf` excluded when present
+F5 **`asOf`** reports use **`isGroundTruthActiveAtAsOf`** (revocation/supersession reconstructed from timestamps + `supersedesGroundTruthEventId`). Present-tense **`isActiveGroundTruthEvent`** remains for G1/G2 operational admission.
 
-**Note:** Full historical reconstruction of supersession timing at past `asOf` is **not** attempted; re-running a past `asOf` after later GT lifecycle changes may differ (documented limitation).
+- `createdAt <= asOf` and `effectiveAt <= asOf`
+- no `revokedAt <= asOf`
+- no successor with `createdAt <= asOf` for the same prior id
+- `batteryScope=LV` for F5 correlation (HV → `rejectedCrossScopeCount`)
+
+**G3.1 closure:** Re-running the same **`asOf`** against the same DB snapshot yields the same admissible GT set (unit **G3.1-A5**, postgres **G3.1-A1–A5**). Future revocation/supersession does **not** alter a past **`asOf`** report when lifecycle timestamps are known.
 
 ## Temporal classification (no numeric window)
 
@@ -57,17 +57,25 @@ Intervention time authority: GT `effectiveAt` (not `createdAt`, not `materialize
 | INTERVENTION_WINDOW | otherwise (interval crosses/intersects `effectiveAt`) |
 | UNKNOWN | missing anchor bounds |
 
-## Segmentation
+## Segmentation (G3.1 — mechanical continuity block)
 
 ```
 REPLACEMENT_CREATES_LONGITUDINAL_SEGMENT_BOUNDARY=YES
+PRE_POST_REPLACEMENT_POOLING_BLOCKED=SEGMENT_ASSIGNMENT (not metadata-only)
 ```
 
-Active confirmed **LV** `BATTERY_REPLACEMENT` rows per vehicle sorted by `(effectiveAt asc, id asc)` define epoch count `replacements + 1`. Read/report interpretation only — **D3 rows are not rewritten**.
+Active confirmed **LV** `BATTERY_REPLACEMENT` boundaries per vehicle (`effectiveAt asc`, `id asc`) assign each primary-cohort revision to a deterministic epoch segment, **`INTERVENTION_WINDOW`**, **`unlabeled_no_replacement_boundaries`**, or **`missing_anchor_bounds`**. F5 continuity metrics (**`maxRevisionsPerSegment`**, **`repeatabilityPairCount`**) use **segment keys**, not vehicle-only pooling. Report exposes **`segmentAssignedRevisionCount`**, **`interventionCrossingRevisionCount`**, **`unlabeledRevisionCount`**, **`totalDerivedSegmentCount`**, **`maxSegmentCountPerVehicle`**, **`prePostReplacementPoolingBlockedBySegmentAssignment`**.
 
-```
-PRE_POST_REPLACEMENT_POOLING_BLOCKED=YES (report metadata)
-```
+Bounded GT load: **`PRIMARY_COHORT_ORG_VEHICLE_PAIRS`** (`OR` org+vehicle), not org-only.
+
+## NAT-008 / NAT-009 (G3.1 semantic separation)
+
+Correlation block fields (not **`F5MaturityStateV1`**):
+
+- **`infrastructureStatus`**: `IMPLEMENTED`
+- **`naturalEvidenceStatus`**: `NONE` | `PRESENT` (admissible natural workshop/document GT for NAT-008; admissible confirmed replacement GT for NAT-009)
+- **`naturalEvidenceCount`**: number
+- **`validationSampleMaturity`**: `NOT_EVALUATED` (G4/F6 own sample maturity)
 
 ## Implementation map
 
@@ -77,7 +85,12 @@ PRE_POST_REPLACEMENT_POOLING_BLOCKED=YES (report metadata)
 | Bounded GT read | `f5-ground-truth-correlation.queries.ts` |
 | Active row util | `ground-truth-active-authority.util.ts` |
 | F5 service integration | `f5-natural-calibration-report.service.ts` |
-| Unit tests | `f5-ground-truth-correlation.spec.ts` (G3-A…M) |
+| Unit tests | `f5-ground-truth-correlation.spec.ts` (G3-A…M); `f5-longitudinal-segmentation.spec.ts` (G3.1-S1…S6); `ground-truth-historical-authority.util.spec.ts` (G3.1-A1–A4) |
+| Postgres | `f5-ground-truth-historical.postgres.integration.spec.ts` (G3.1-A1–A5) |
+
+## G3.1 correctness seal (PR #1842)
+
+Engineering closure for true segmentation, historical **`asOf`** authority, NAT semantic separation, bounded primary-cohort GT query, temporal pair denominators. **`NEXT_STAGE=G4`** only after G3.1 CI seal passes.
 
 ## Explicit non-actions
 
@@ -85,4 +98,4 @@ No production deploy/migration/GT writes; D3/E3 production state unchanged; no c
 
 ## Next stage
 
-**G4** — first natural validation evidence (NAT maturity beyond infrastructure); natural D3/F5 collection continues.
+**G4** — first natural validation evidence (NAT maturity beyond infrastructure); blocked until **G3.1 correctness seal** on PR **#1842** is green.

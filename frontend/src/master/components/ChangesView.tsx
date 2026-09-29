@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-m3-3g-g3-1-f5-correctness-seal-2026-09-29',
+    version: '4.9.2212',
+    title: 'Battery V2 M3.3G G3.1 — F5 GT correlation correctness seal',
+    summary: [
+      'Segment-aware F5 continuity: revisions assigned to deterministic replacement epochs; intervention-crossing revisions excluded from repeatability; proof counters on correlation block.',
+      'F5 asOf uses isGroundTruthActiveAtAsOf (revocation/supersession by timestamp); G1/G2 present-tense authority unchanged.',
+      'NAT-008/NAT-009 report NONE|PRESENT + NOT_EVALUATED validation maturity; GT query bounded to primary-cohort org+vehicle pairs.',
+    ],
+    reason:
+      'Close independent review gaps on PR #1842 before merge — true segmentation, historical asOf stability, NAT semantic separation.',
+    previousBehavior:
+      'G3 V2 blocked pooling via metadata only while maturity metrics pooled by vehicle; present-tense GT active checks could shift past asOf reports after later lifecycle changes.',
+    details:
+      'architecture/battery-v2/research/M3_3G_G3_F5_GROUND_TRUTH_CORRELATION_SEGMENTATION_2026-09-29.md §G3.1; f5-longitudinal-segmentation.policy.ts; ground-truth-historical-authority.util.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-29T20:00:00.000Z',
+  },
+  {
     id: 'battery-v2-m3-3g-g3-f5-ground-truth-correlation-segmentation-2026-09-29',
     version: '4.9.2211',
     title: 'Battery V2 M3.3G G3 — F5 ground-truth correlation + LV segmentation',
