@@ -20,6 +20,14 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-29 — M3.3G G3.1.1 historical postgres cleanup + lifecycle query seal
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Prisma vehicle cleanup in historical postgres tests; F5 GT load uses `createdAt<=asOf` lifecycle only; admissibility `effectiveAt<=asOf` in authority; G3.1-A5/A6; CI order F5 then G1. |
+| **VALIDATION** | F5 unit 41/41; historical unit A1–A6; longitudinal postgres CI on GitHub. |
+| **DECISION_STATUS** | **`IN_REVIEW`** (PR #1842) |
+
 ## CL-2026-09-29 — M3.3G G3.1 F5 correctness seal (segmentation + historical asOf + NAT semantics)
 
 | Field | Value |
