@@ -671,7 +671,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'Versioned activation authority RFRF_HYBRID_TRUST_ACTIVATION_MODE (OFF | ALPHA_ALLOWLIST) with explicit org/vehicle UUID allowlists.',
       'Effective promotion trust = hybrid semantic classification gated by scoped activation; ABSOLUTE_SIGNAL_TRUST_AUTHORITY_AVAILABLE stays false.',
-      'Activation audit metadata on READY refresh; promotion re-validates effective trust from persisted hybrid provenance + DB tenant scope.',
+      'Promotion-time revalidation: DB Vehicle org ownership, monotonic context trust combine, fail-closed allowlist parse, qualityMeta promotion audit (no raw allowlist secrets).',
       'Isolated PG gate rfrf-hybrid-trust-activation-postgres-gate.sh (P1–P7); default OFF — production activation requires explicit env + allowlist.',
     ],
     reason:

@@ -821,7 +821,6 @@ export class RawRefuelCandidateRecoveryService {
       {
         capability: promotionAuthority.capability,
         absoluteDetectionAdmissibility: promotionAuthority.absoluteDetectionAdmissibility,
-        absoluteSignalTrust: candidate.absoluteSignalTrust,
       },
       env,
       undefined,

@@ -23,10 +23,11 @@ import { RawRefuelPromotionService } from './raw-refuel-promotion.service';
 import { RawRefuelCandidateRecoveryRepository } from '../raw-refuel-candidate/raw-refuel-candidate-recovery.repository';
 import { RawRefuelCandidateRecoveryService } from '../raw-refuel-candidate/raw-refuel-candidate-recovery.service';
 import { RawRefuelCandidateService } from '../raw-refuel-candidate/raw-refuel-candidate.service';
-import { readHybridTrustActivationFromEvidenceMeta } from './raw-fuel-hybrid-trust-activation-metadata';
 import {
   buildHybridTrustActivationEvidenceMeta,
   mergeHybridTrustActivationIntoEvidenceMeta,
+  readHybridTrustActivationFromEvidenceMeta,
+  readPromotionTimeHybridTrustActivationFromQualityMeta,
 } from './raw-fuel-hybrid-trust-activation-metadata';
 import {
   resolveHybridTrustActivationDecision,
@@ -50,6 +51,7 @@ import {
 } from '../raw-fuel-rise-detector/raw-fuel-rise-detector.config';
 import { buildEvidenceRevisionFingerprint } from '../raw-refuel-candidate/raw-refuel-candidate-evidence-fingerprint';
 import { candidateRowToEvidenceSlice } from '../raw-refuel-candidate/raw-refuel-candidate-evidence-merge';
+import { nativeSameSiblingFromCandidate } from './testing/f5-pr3-g2-handoff.harness';
 import type { RawFuelAbsoluteSignalTrust } from './raw-fuel-refuel-fallback.types';
 import type { RawFuelHybridTrustReasonCode } from './raw-fuel-hybrid-absolute-signal-trust.authority';
 
@@ -142,36 +144,45 @@ function setEnv(allowOrgId: string | null, promotion = true): () => void {
     return { org, vehicle, dimoVehicle };
   }
 
+  type SeedCandidateTrustShape = {
+    rowAbsoluteSignalTrust: RawFuelAbsoluteSignalTrust;
+    computedHybrid: RawFuelAbsoluteSignalTrust;
+    /** intentionally stale activation audit persisted at seed time */
+    embedStaleActivationAudit?: boolean;
+    omitHybridProvenance?: boolean;
+  };
+
   async function seedReadyCandidate(
     orgId: string,
     vehicleId: string,
-    effectiveTrust: RawFuelAbsoluteSignalTrust,
-    options: { computedHybrid?: RawFuelAbsoluteSignalTrust } = {},
+    trust: SeedCandidateTrustShape,
   ): Promise<RawRefuelCandidate> {
     const now = new Date('2026-09-06T09:00:00.000Z');
     const materialRiseLiters = RAW_FUEL_RISE_DETECTOR_CONFIG_V1.absolute.materialRiseLiters;
     const materialRisePercent = RAW_FUEL_RISE_DETECTOR_CONFIG_V1.relative.materialRisePercent;
-    const computed: RawFuelAbsoluteSignalTrust =
-      options.computedHybrid ??
-      (effectiveTrust === 'UNTRUSTED'
-        ? 'UNTRUSTED'
-        : effectiveTrust === 'UNKNOWN'
-          ? 'UNKNOWN'
-          : 'TRUSTED');
+    const computed = trust.computedHybrid;
+    const rowTrust = trust.rowAbsoluteSignalTrust;
     const hybridReasonCode: RawFuelHybridTrustReasonCode =
       computed === 'UNTRUSTED'
         ? 'RELATIVE_CONTRADICTS_ABSOLUTE'
         : computed === 'TRUSTED'
           ? 'CORROBORATED_RISE'
           : 'RELATIVE_COVERAGE_INSUFFICIENT';
-    const activationDecision = {
-      ...resolveHybridTrustActivationDecision({
-        organizationId: orgId,
-        vehicleId,
-        computedHybridClassification: computed === 'UNKNOWN' ? 'UNKNOWN' : computed,
-      }),
-      effectiveAbsoluteSignalTrust: effectiveTrust,
-    };
+
+    const staleActivationDecision = trust.embedStaleActivationAudit
+      ? {
+          activationPolicyVersion: RFRF_HYBRID_TRUST_ACTIVATION_POLICY_VERSION,
+          activationMode: 'OFF' as const,
+          activationAuthorized: true,
+          activationScopeType: 'ORGANIZATION' as const,
+          computedHybridClassification: 'TRUSTED' as const,
+          effectiveAbsoluteSignalTrust: 'TRUSTED' as const,
+        }
+      : resolveHybridTrustActivationDecision({
+          organizationId: orgId,
+          vehicleId,
+          computedHybridClassification: computed,
+        });
 
     const baselineMeta = buildBaselineRecencyEvidenceMeta({
       classification: 'FRESH',
@@ -185,40 +196,42 @@ function setEnv(allowOrgId: string | null, promotion = true): () => void {
     });
     const refreshMeta = buildReadyEvidenceRefreshMeta({
       baselineRecencyClassification: 'FRESH',
-      absoluteSignalTrust: effectiveTrust,
+      absoluteSignalTrust: rowTrust,
       absoluteDetectionAdmissibility: 'ADMISSIBLE',
       relativeSignalAvailable: true,
       hybridTrustReasonCode: hybridReasonCode,
       hybridTrustAuthorityVersion: RFRF_HYBRID_ABSOLUTE_SIGNAL_TRUST_AUTHORITY_VERSION,
     });
-    const hybridBlock = buildHybridAbsoluteSignalTrustEvidence(
-      {
-        authorityVersion: RFRF_HYBRID_ABSOLUTE_SIGNAL_TRUST_AUTHORITY_VERSION,
-        classification: computed === 'UNKNOWN' ? 'UNKNOWN' : computed,
-        reasonCode: hybridReasonCode,
-        absoluteDetectionAdmissibility: 'ADMISSIBLE',
-        relativeSampleCoverage: 'SUFFICIENT',
-        baselineRecencyClassification: 'FRESH',
-        absoluteDeltaLiters: 20,
-        relativeDeltaPercent:
-          computed === 'UNTRUSTED' ? -materialRisePercent : materialRisePercent + 1,
-        materialRiseLiters,
-        materialRisePercent,
-        relativePrePlateauLocal: 'VALID',
-        relativePostPlateauLocal: 'VALID',
-        absolutePostPlateauLocal: 'VALID',
-      },
-      {
-        relativePrePlateauLocal: 'VALID',
-        relativePostPlateauLocal: 'VALID',
-        absolutePostPlateauLocal: 'VALID',
-      },
-    );
     let evidenceMeta = mergeReadyEvidenceRefreshIntoEvidenceMeta(baselineMeta, refreshMeta);
-    evidenceMeta = mergeHybridAbsoluteSignalTrustEvidence(evidenceMeta, hybridBlock);
+    if (!trust.omitHybridProvenance) {
+      const hybridBlock = buildHybridAbsoluteSignalTrustEvidence(
+        {
+          authorityVersion: RFRF_HYBRID_ABSOLUTE_SIGNAL_TRUST_AUTHORITY_VERSION,
+          classification: computed,
+          reasonCode: hybridReasonCode,
+          absoluteDetectionAdmissibility: 'ADMISSIBLE',
+          relativeSampleCoverage: 'SUFFICIENT',
+          baselineRecencyClassification: 'FRESH',
+          absoluteDeltaLiters: 20,
+          relativeDeltaPercent:
+            computed === 'UNTRUSTED' ? -materialRisePercent : materialRisePercent + 1,
+          materialRiseLiters,
+          materialRisePercent,
+          relativePrePlateauLocal: 'VALID',
+          relativePostPlateauLocal: 'VALID',
+          absolutePostPlateauLocal: 'VALID',
+        },
+        {
+          relativePrePlateauLocal: 'VALID',
+          relativePostPlateauLocal: 'VALID',
+          absolutePostPlateauLocal: 'VALID',
+        },
+      );
+      evidenceMeta = mergeHybridAbsoluteSignalTrustEvidence(evidenceMeta, hybridBlock);
+    }
     evidenceMeta = mergeHybridTrustActivationIntoEvidenceMeta(
       evidenceMeta,
-      buildHybridTrustActivationEvidenceMeta(activationDecision),
+      buildHybridTrustActivationEvidenceMeta(staleActivationDecision),
     );
     const qualityMeta = { absoluteDetectionAdmissibility: 'ADMISSIBLE' };
     const slice = {
@@ -241,7 +254,7 @@ function setEnv(allowOrgId: string | null, promotion = true): () => void {
       postPlateauSampleCount: 3,
       totalSampleCount: 10,
       maxSampleGapSeconds: 120,
-      absoluteSignalTrust: effectiveTrust,
+      absoluteSignalTrust: rowTrust,
       relativeSignalAvailable: true,
       routeEvidenceAvailable: false,
       stationaryEvidenceAvailable: false,
@@ -261,7 +274,7 @@ function setEnv(allowOrgId: string | null, promotion = true): () => void {
         signalChannel: 'ABSOLUTE_LITERS',
         detectionVersion: RFRF_RISE_DETECTION_VERSION,
         detectorVersion: RFRF_RISE_DETECTOR_VERSION,
-        absoluteSignalTrust: effectiveTrust,
+        absoluteSignalTrust: rowTrust,
         relativeSignalAvailable: true,
         riseOnsetAt: slice.riseOnsetAt,
         riseEndAt: slice.riseEndAt,
@@ -309,16 +322,18 @@ function setEnv(allowOrgId: string | null, promotion = true): () => void {
     await prisma.organization.deleteMany({ where: { id: orgId } });
   }
 
-  it('P1 allowed Alpha org + TRUSTED + gates ON => one fallback VEE', async () => {
-    const restore = setEnv(null);
+  it('P1 allowed Alpha org + hybrid TRUSTED + stale row UNKNOWN => one fallback VEE', async () => {
     const suffix = randomUUID().slice(0, 8);
     const { org, vehicle, dimoVehicle } = await seedVehicle(suffix);
-    restore();
-    const restore2 = setEnv(org.id, true);
+    const restore = setEnv(org.id, true);
     const t0 = new Date('2026-09-06T10:00:00.000Z');
     const repo = new RawRefuelCandidateRecoveryRepository(prisma as unknown as PrismaService);
     try {
-      const candidate = await seedReadyCandidate(org.id, vehicle.id, 'TRUSTED');
+      const candidate = await seedReadyCandidate(org.id, vehicle.id, {
+        rowAbsoluteSignalTrust: 'UNKNOWN',
+        computedHybrid: 'TRUSTED',
+        embedStaleActivationAudit: true,
+      });
       await repo.claimDueCandidates(1, t0, new Date(t0.getTime() + 60_000));
       const result = await buildRecovery(t0).recoverCandidateById(candidate.id, t0);
       expect(result.outcome).toBe('SUCCESS_PROMOTED');
@@ -327,13 +342,19 @@ function setEnv(allowOrgId: string | null, promotion = true): () => void {
           where: { vehicleId: vehicle.id, detectionSource: 'SYNQDRIVE_RAW_FUEL_FALLBACK' },
         }),
       ).toBe(1);
-      const meta = readHybridTrustActivationFromEvidenceMeta(
-        (await prisma.rawRefuelCandidate.findUniqueOrThrow({ where: { id: candidate.id } }))
-          .evidenceMeta,
+      const after = await prisma.rawRefuelCandidate.findUniqueOrThrow({
+        where: { id: candidate.id },
+      });
+      const promotionAudit = readPromotionTimeHybridTrustActivationFromQualityMeta(
+        after.qualityMeta,
       );
-      expect(meta?.activationAuthorized).toBe(true);
+      expect(promotionAudit?.activationAuthorized).toBe(true);
+      expect(promotionAudit?.effectiveAbsoluteSignalTrust).toBe('TRUSTED');
+      expect(promotionAudit?.computedHybridClassification).toBe('TRUSTED');
+      const staleEvidenceAudit = readHybridTrustActivationFromEvidenceMeta(after.evidenceMeta);
+      expect(staleEvidenceAudit?.effectiveAbsoluteSignalTrust).toBe('TRUSTED');
     } finally {
-      restore2();
+      restore();
       await cleanup(vehicle.id, org.id, dimoVehicle.id);
     }
   });
@@ -345,7 +366,10 @@ function setEnv(allowOrgId: string | null, promotion = true): () => void {
     const t0 = new Date('2026-09-06T10:00:00.000Z');
     const repo = new RawRefuelCandidateRecoveryRepository(prisma as unknown as PrismaService);
     try {
-      const candidate = await seedReadyCandidate(org.id, vehicle.id, 'TRUSTED');
+      const candidate = await seedReadyCandidate(org.id, vehicle.id, {
+        rowAbsoluteSignalTrust: 'UNKNOWN',
+        computedHybrid: 'TRUSTED',
+      });
       await repo.claimDueCandidates(1, t0, new Date(t0.getTime() + 60_000));
       const recovery = buildRecovery(t0);
       const first = await recovery.recoverCandidateById(candidate.id, t0);
@@ -363,14 +387,17 @@ function setEnv(allowOrgId: string | null, promotion = true): () => void {
     }
   });
 
-  it('P3 non-allowlisted org + effective UNKNOWN => zero VEE', async () => {
+  it('P3 non-allowlisted org + hybrid TRUSTED + stale row TRUSTED => zero VEE', async () => {
     const suffix = randomUUID().slice(0, 8);
     const { org, vehicle, dimoVehicle } = await seedVehicle(suffix);
     const otherOrg = randomUUID();
     const restore = setEnv(otherOrg, true);
     const t0 = new Date('2026-09-06T10:00:00.000Z');
     try {
-      const candidate = await seedReadyCandidate(org.id, vehicle.id, 'UNKNOWN');
+      const candidate = await seedReadyCandidate(org.id, vehicle.id, {
+        rowAbsoluteSignalTrust: 'TRUSTED',
+        computedHybrid: 'TRUSTED',
+      });
       const repo = new RawRefuelCandidateRecoveryRepository(prisma as unknown as PrismaService);
       await repo.claimDueCandidates(1, t0, new Date(t0.getTime() + 60_000));
       const result = await buildRecovery(t0).recoverCandidateById(candidate.id, t0);
@@ -386,15 +413,15 @@ function setEnv(allowOrgId: string | null, promotion = true): () => void {
     }
   });
 
-  it('P4 allowlisted UNKNOWN => zero VEE', async () => {
+  it('P4 allowlisted semantic UNKNOWN + stale row TRUSTED => zero VEE', async () => {
     const suffix = randomUUID().slice(0, 8);
     const { org, vehicle, dimoVehicle } = await seedVehicle(suffix);
     const restore = setEnv(org.id, true);
     const t0 = new Date('2026-09-06T10:00:00.000Z');
     try {
-      const candidate = await prisma.rawRefuelCandidate.update({
-        where: { id: (await seedReadyCandidate(org.id, vehicle.id, 'TRUSTED')).id },
-        data: { absoluteSignalTrust: 'UNKNOWN' },
+      const candidate = await seedReadyCandidate(org.id, vehicle.id, {
+        rowAbsoluteSignalTrust: 'TRUSTED',
+        computedHybrid: 'UNKNOWN',
       });
       const repo = new RawRefuelCandidateRecoveryRepository(prisma as unknown as PrismaService);
       await repo.claimDueCandidates(1, t0, new Date(t0.getTime() + 60_000));
@@ -407,18 +434,56 @@ function setEnv(allowOrgId: string | null, promotion = true): () => void {
     }
   });
 
-  it('P5 allowlisted UNTRUSTED => zero VEE', async () => {
+  it('P5 allowlisted UNTRUSTED + stale row TRUSTED => zero VEE', async () => {
     const suffix = randomUUID().slice(0, 8);
     const { org, vehicle, dimoVehicle } = await seedVehicle(suffix);
     const restore = setEnv(org.id, true);
     const t0 = new Date('2026-09-06T10:00:00.000Z');
     try {
-      const candidate = await seedReadyCandidate(org.id, vehicle.id, 'UNTRUSTED');
+      const candidate = await seedReadyCandidate(org.id, vehicle.id, {
+        rowAbsoluteSignalTrust: 'TRUSTED',
+        computedHybrid: 'UNTRUSTED',
+      });
       const repo = new RawRefuelCandidateRecoveryRepository(prisma as unknown as PrismaService);
       await repo.claimDueCandidates(1, t0, new Date(t0.getTime() + 60_000));
       const result = await buildRecovery(t0).recoverCandidateById(candidate.id, t0);
       expect(result.outcome).not.toBe('SUCCESS_PROMOTED');
       expect(await prisma.vehicleEnergyEvent.count({ where: { vehicleId: vehicle.id } })).toBe(0);
+    } finally {
+      restore();
+      await cleanup(vehicle.id, org.id, dimoVehicle.id);
+    }
+  });
+
+  it('P6 native SAME + activated hybrid TRUSTED => CONVERGED_NATIVE, zero fallback duplicate', async () => {
+    const suffix = randomUUID().slice(0, 8);
+    const { org, vehicle, dimoVehicle } = await seedVehicle(suffix);
+    const restore = setEnv(org.id, true);
+    const t0 = new Date('2026-09-06T10:00:00.000Z');
+    const promotion = new RawRefuelPromotionService(prisma as unknown as PrismaService);
+    try {
+      const candidate = await seedReadyCandidate(org.id, vehicle.id, {
+        rowAbsoluteSignalTrust: 'UNKNOWN',
+        computedHybrid: 'TRUSTED',
+      });
+      await prisma.vehicleEnergyEvent.create({
+        data: nativeSameSiblingFromCandidate(candidate, suffix),
+      });
+      const result = await promotion.evaluateAndApplyPromotion(
+        candidate,
+        {
+          capability: 'FUEL_CAPABLE',
+          absoluteDetectionAdmissibility: 'ADMISSIBLE',
+          absoluteSignalTrust: 'TRUSTED',
+        },
+        process.env,
+      );
+      expect(result.status).toBe('CONVERGED_NATIVE');
+      expect(
+        await prisma.vehicleEnergyEvent.count({
+          where: { vehicleId: vehicle.id, detectionSource: 'SYNQDRIVE_RAW_FUEL_FALLBACK' },
+        }),
+      ).toBe(0);
     } finally {
       restore();
       await cleanup(vehicle.id, org.id, dimoVehicle.id);
@@ -432,7 +497,8 @@ function setEnv(allowOrgId: string | null, promotion = true): () => void {
     const restore = setEnv(a.org.id, true);
     const t0 = new Date('2026-09-06T10:00:00.000Z');
     try {
-      const candidate = await seedReadyCandidate(b.org.id, b.vehicle.id, 'UNKNOWN', {
+      const candidate = await seedReadyCandidate(b.org.id, b.vehicle.id, {
+        rowAbsoluteSignalTrust: 'TRUSTED',
         computedHybrid: 'TRUSTED',
       });
       const repo = new RawRefuelCandidateRecoveryRepository(prisma as unknown as PrismaService);
@@ -444,6 +510,39 @@ function setEnv(allowOrgId: string | null, promotion = true): () => void {
       restore();
       await cleanup(a.vehicle.id, a.org.id, a.dimoVehicle.id);
       await cleanup(b.vehicle.id, b.org.id, b.dimoVehicle.id);
+    }
+  });
+
+  it('P7b candidate organizationId mismatch vs vehicle row => zero VEE', async () => {
+    const suffix = randomUUID().slice(0, 8);
+    const { org, vehicle, dimoVehicle } = await seedVehicle(suffix);
+    const foreignOrg = await prisma.organization.create({
+      data: { companyName: `Foreign ${suffix}`, businessType: 'RENTAL', status: 'ACTIVE' },
+    });
+    const restore = setEnv(org.id, true);
+    const t0 = new Date('2026-09-06T10:00:00.000Z');
+    try {
+      const candidate = await seedReadyCandidate(org.id, vehicle.id, {
+        rowAbsoluteSignalTrust: 'UNKNOWN',
+        computedHybrid: 'TRUSTED',
+      });
+      await prisma.rawRefuelCandidate.update({
+        where: { id: candidate.id },
+        data: { organizationId: foreignOrg.id },
+      });
+      const repo = new RawRefuelCandidateRecoveryRepository(prisma as unknown as PrismaService);
+      await repo.claimDueCandidates(1, t0, new Date(t0.getTime() + 60_000));
+      const result = await buildRecovery(t0).recoverCandidateById(candidate.id, t0);
+      expect(result.outcome).not.toBe('SUCCESS_PROMOTED');
+      expect(
+        await prisma.vehicleEnergyEvent.count({
+          where: { vehicleId: vehicle.id, detectionSource: 'SYNQDRIVE_RAW_FUEL_FALLBACK' },
+        }),
+      ).toBe(0);
+    } finally {
+      restore();
+      await prisma.organization.deleteMany({ where: { id: foreignOrg.id } });
+      await cleanup(vehicle.id, org.id, dimoVehicle.id);
     }
   });
 });

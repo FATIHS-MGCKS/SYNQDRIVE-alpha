@@ -268,10 +268,13 @@ invariants:
     title: RFRF hybrid trust production activation is scoped and fail-closed
     epistemic_status: CONFIRMED
     statement: >
-      Effective promotion trust from hybrid TRUSTED classification requires an explicit
-      versioned activation policy match (ALPHA_ALLOWLIST organization or vehicle UUID);
-      absent/malformed mode, empty allowlists, and non-allowlisted tenants remain UNKNOWN
-      for promotion; semantic hybrid evaluation stays organization-agnostic.
+      Effective promotion trust from hybrid TRUSTED classification requires promotion-time
+      revalidation against the current versioned activation policy (ALPHA_ALLOWLIST organization
+      or vehicle UUID) using persisted hybrid provenance and DB-authoritative vehicle
+      organization ownership; candidate row absoluteSignalTrust and caller context must never
+      elevate trust; missing/malformed hybrid provenance yields UNKNOWN; malformed allowlist
+      tokens fail closed for the entire list; tenant mismatch between candidate.organizationId
+      and Vehicle.organizationId fails closed.
     evidence: [EED-EV-0101]
     source_paths:
       - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-fuel-hybrid-trust-activation.authority.ts

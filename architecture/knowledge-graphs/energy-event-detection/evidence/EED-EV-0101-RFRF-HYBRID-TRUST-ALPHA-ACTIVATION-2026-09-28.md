@@ -18,3 +18,12 @@ Introduces **scoped production activation** for hybrid absolute signal trust v2:
 SynqDrive-owned **Alpha test fleet** only via `ALPHA_ALLOWLIST` — not fleet-wide activation.
 
 Activation does not bypass convergence, promotion execution, baseline recency, READY refresh, OQ-015, or native duplicate firewalls.
+
+## Promotion-time authority hardening (2026-09-29)
+
+- `RawRefuelPromotionService` recomputes activation from **current env** + **persisted hybrid provenance** + **Vehicle.organizationId** at promotion; stale `evidenceMeta.hybridTrustActivation` is not authoritative alone.
+- `combineAuthoritativeAndContextPromotionTrust`: caller/recovery context may only **restrict**, never elevate.
+- Missing/malformed `hybridAbsoluteSignalTrust` provenance ⇒ effective `UNKNOWN` (no fallback to row `absoluteSignalTrust`).
+- Malformed allowlist token invalidates the **entire** configured list (no partial UUID acceptance).
+- Promotion audit persisted in `qualityMeta.promotionTimeHybridTrustActivation` (+ timestamp); raw allowlist values are never persisted.
+- `RFRF_SIGNAL_TRUST_RESOLVER_VERSION` unchanged: activation policy version (`rfrf-hybrid-trust-activation-v1`) is the separate boundary; READY refresh does not require provider refetch solely for activation env changes.

@@ -1,15 +1,24 @@
+import type { RawRefuelCandidate } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import {
   RFRF_HYBRID_TRUST_ACTIVATION_MODE_ENV,
   RFRF_HYBRID_TRUST_ALLOWED_ORGANIZATION_IDS_ENV,
   RFRF_HYBRID_TRUST_ALLOWED_VEHICLE_IDS_ENV,
+  combineAuthoritativeAndContextPromotionTrust,
   deriveEffectiveAbsoluteSignalTrust,
   evaluateHybridTrustActivationAuthorization,
   loadHybridTrustActivationConfig,
   parseHybridTrustActivationMode,
   parseHybridTrustActivationUuidAllowlist,
+  resolveEffectivePromotionTrustForCandidate,
   resolveHybridTrustActivationDecision,
+  resolvePromotionTimeHybridTrustDecision,
 } from './raw-fuel-hybrid-trust-activation.authority';
+import {
+  buildHybridAbsoluteSignalTrustEvidence,
+  mergeHybridAbsoluteSignalTrustEvidence,
+} from './raw-fuel-hybrid-trust-evidence-metadata';
+import { RFRF_HYBRID_ABSOLUTE_SIGNAL_TRUST_AUTHORITY_VERSION } from './raw-fuel-hybrid-absolute-signal-trust.authority';
 import {
   evaluateFallbackPromotionAuthority,
   RFRF_FALLBACK_PROMOTION_EXECUTION_AUTHORIZED_ENV,
@@ -174,7 +183,9 @@ describe('raw-fuel-hybrid-trust-activation.authority', () => {
   });
 
   it('A9 malformed allowlist => nobody authorized', () => {
-    expect(parseHybridTrustActivationUuidAllowlist('not-a-uuid,also-bad').size).toBe(0);
+    const parsed = parseHybridTrustActivationUuidAllowlist('not-a-uuid,also-bad');
+    expect(parsed.parseValid).toBe(false);
+    expect(parsed.ids.size).toBe(0);
     const cfg = loadHybridTrustActivationConfig(
       env({
         [RFRF_HYBRID_TRUST_ACTIVATION_MODE_ENV]: 'ALPHA_ALLOWLIST',
@@ -182,6 +193,27 @@ describe('raw-fuel-hybrid-trust-activation.authority', () => {
       }),
     );
     expect(cfg.allowedOrganizationIds.size).toBe(0);
+    expect(cfg.organizationAllowlistParseValid).toBe(false);
+    expect(
+      resolveHybridTrustActivationDecision({
+        organizationId: orgA,
+        computedHybridClassification: 'TRUSTED',
+        config: cfg,
+      }).activationAuthorized,
+    ).toBe(false);
+  });
+
+  it('A9b mixed valid + invalid org allowlist => entire list invalid, nobody authorized', () => {
+    const parsed = parseHybridTrustActivationUuidAllowlist(`${orgA},not-a-uuid`);
+    expect(parsed.parseValid).toBe(false);
+    expect(parsed.ids.size).toBe(0);
+    const cfg = loadHybridTrustActivationConfig(
+      env({
+        [RFRF_HYBRID_TRUST_ACTIVATION_MODE_ENV]: 'ALPHA_ALLOWLIST',
+        [RFRF_HYBRID_TRUST_ALLOWED_ORGANIZATION_IDS_ENV]: `${orgA},not-a-uuid`,
+      }),
+    );
+    expect(cfg.organizationAllowlistParseValid).toBe(false);
     expect(
       resolveHybridTrustActivationDecision({
         organizationId: orgA,
@@ -208,22 +240,96 @@ describe('raw-fuel-hybrid-trust-activation.authority', () => {
     expect(decision.activationAuthorized).toBe(false);
   });
 
-  it('A11 allowed vehicle override => authorized via VEHICLE scope', () => {
+  it('A11 allowed vehicle override => authorized via VEHICLE scope when tenant consistent', () => {
     const cfg = loadHybridTrustActivationConfig(
       env({
         [RFRF_HYBRID_TRUST_ACTIVATION_MODE_ENV]: 'ALPHA_ALLOWLIST',
         [RFRF_HYBRID_TRUST_ALLOWED_VEHICLE_IDS_ENV]: vehicleA,
       }),
     );
-    const decision = resolveHybridTrustActivationDecision({
-      organizationId: orgB,
-      vehicleId: vehicleA,
-      computedHybridClassification: 'TRUSTED',
+    const hybridEvidence = mergeHybridAbsoluteSignalTrustEvidence(
+      {},
+      buildHybridAbsoluteSignalTrustEvidence(
+        {
+          authorityVersion: RFRF_HYBRID_ABSOLUTE_SIGNAL_TRUST_AUTHORITY_VERSION,
+          classification: 'TRUSTED',
+          reasonCode: 'CORROBORATED_RISE',
+          absoluteDetectionAdmissibility: 'ADMISSIBLE',
+          relativeSampleCoverage: 'SUFFICIENT',
+          baselineRecencyClassification: 'FRESH',
+          absoluteDeltaLiters: 10,
+          relativeDeltaPercent: 5,
+          materialRiseLiters: 5,
+          materialRisePercent: 5,
+          relativePrePlateauLocal: 'VALID',
+          relativePostPlateauLocal: 'VALID',
+          absolutePostPlateauLocal: 'VALID',
+        },
+        {
+          relativePrePlateauLocal: 'VALID',
+          relativePostPlateauLocal: 'VALID',
+          absolutePostPlateauLocal: 'VALID',
+        },
+      ),
+    ) as RawRefuelCandidate['evidenceMeta'];
+    const decision = resolvePromotionTimeHybridTrustDecision({
+      candidate: {
+        organizationId: orgA,
+        vehicleId: vehicleA,
+        evidenceMeta: hybridEvidence,
+      },
+      authoritativeVehicleOrganizationId: orgA,
       config: cfg,
     });
+    expect(decision.tenantConsistent).toBe(true);
     expect(decision.activationAuthorized).toBe(true);
     expect(decision.activationScopeType).toBe('VEHICLE');
     expect(decision.effectiveAbsoluteSignalTrust).toBe('TRUSTED');
+  });
+
+  it('A11b vehicle allowlist does not bypass tenant mismatch', () => {
+    const cfg = loadHybridTrustActivationConfig(
+      env({
+        [RFRF_HYBRID_TRUST_ACTIVATION_MODE_ENV]: 'ALPHA_ALLOWLIST',
+        [RFRF_HYBRID_TRUST_ALLOWED_VEHICLE_IDS_ENV]: vehicleA,
+      }),
+    );
+    const hybridEvidence = mergeHybridAbsoluteSignalTrustEvidence(
+      {},
+      buildHybridAbsoluteSignalTrustEvidence(
+        {
+          authorityVersion: RFRF_HYBRID_ABSOLUTE_SIGNAL_TRUST_AUTHORITY_VERSION,
+          classification: 'TRUSTED',
+          reasonCode: 'CORROBORATED_RISE',
+          absoluteDetectionAdmissibility: 'ADMISSIBLE',
+          relativeSampleCoverage: 'SUFFICIENT',
+          baselineRecencyClassification: 'FRESH',
+          absoluteDeltaLiters: 10,
+          relativeDeltaPercent: 5,
+          materialRiseLiters: 5,
+          materialRisePercent: 5,
+          relativePrePlateauLocal: 'VALID',
+          relativePostPlateauLocal: 'VALID',
+          absolutePostPlateauLocal: 'VALID',
+        },
+        {
+          relativePrePlateauLocal: 'VALID',
+          relativePostPlateauLocal: 'VALID',
+          absolutePostPlateauLocal: 'VALID',
+        },
+      ),
+    ) as RawRefuelCandidate['evidenceMeta'];
+    const decision = resolvePromotionTimeHybridTrustDecision({
+      candidate: {
+        organizationId: orgB,
+        vehicleId: vehicleA,
+        evidenceMeta: hybridEvidence,
+      },
+      authoritativeVehicleOrganizationId: orgA,
+      config: cfg,
+    });
+    expect(decision.tenantConsistent).toBe(false);
+    expect(decision.effectiveAbsoluteSignalTrust).toBe('UNKNOWN');
   });
 
   it('A12 tenant isolation — org allowlist does not authorize other org vehicle context', () => {
@@ -287,5 +393,178 @@ describe('raw-fuel-hybrid-trust-activation.authority', () => {
       nativeOverlap: noNativeOverlap,
     });
     expect(eligibility.status).not.toBe('ELIGIBLE');
+  });
+
+  function hybridEvidenceMeta(computed: 'TRUSTED' | 'UNTRUSTED' | 'UNKNOWN') {
+    return mergeHybridAbsoluteSignalTrustEvidence(
+      {},
+      buildHybridAbsoluteSignalTrustEvidence(
+        {
+          authorityVersion: RFRF_HYBRID_ABSOLUTE_SIGNAL_TRUST_AUTHORITY_VERSION,
+          classification: computed,
+          reasonCode:
+            computed === 'UNTRUSTED'
+              ? 'RELATIVE_CONTRADICTS_ABSOLUTE'
+              : computed === 'TRUSTED'
+                ? 'CORROBORATED_RISE'
+                : 'RELATIVE_COVERAGE_INSUFFICIENT',
+          absoluteDetectionAdmissibility: 'ADMISSIBLE',
+          relativeSampleCoverage: 'SUFFICIENT',
+          baselineRecencyClassification: 'FRESH',
+          absoluteDeltaLiters: 10,
+          relativeDeltaPercent: 5,
+          materialRiseLiters: 5,
+          materialRisePercent: 5,
+          relativePrePlateauLocal: 'VALID',
+          relativePostPlateauLocal: 'VALID',
+          absolutePostPlateauLocal: 'VALID',
+        },
+        {
+          relativePrePlateauLocal: 'VALID',
+          relativePostPlateauLocal: 'VALID',
+          absolutePostPlateauLocal: 'VALID',
+        },
+      ),
+    ) as RawRefuelCandidate['evidenceMeta'];
+  }
+
+  function alphaOrgCfg(allowedOrg: string) {
+    return loadHybridTrustActivationConfig(
+      env({
+        [RFRF_HYBRID_TRUST_ACTIVATION_MODE_ENV]: 'ALPHA_ALLOWLIST',
+        [RFRF_HYBRID_TRUST_ALLOWED_ORGANIZATION_IDS_ENV]: allowedOrg,
+      }),
+    );
+  }
+
+  it('B1 caller context TRUSTED cannot elevate non-allowlisted hybrid TRUSTED candidate', () => {
+    const cfg = alphaOrgCfg(orgA);
+    const authoritative = resolvePromotionTimeHybridTrustDecision({
+      candidate: {
+        organizationId: orgB,
+        vehicleId: vehicleB,
+        evidenceMeta: hybridEvidenceMeta('TRUSTED'),
+      },
+      authoritativeVehicleOrganizationId: orgB,
+      config: cfg,
+    }).effectiveAbsoluteSignalTrust;
+    expect(
+      combineAuthoritativeAndContextPromotionTrust(authoritative, 'TRUSTED'),
+    ).toBe('UNKNOWN');
+  });
+
+  it('B2 caller context TRUSTED cannot elevate hybrid UNKNOWN', () => {
+    const cfg = alphaOrgCfg(orgA);
+    const authoritative = resolvePromotionTimeHybridTrustDecision({
+      candidate: {
+        organizationId: orgA,
+        vehicleId: vehicleA,
+        evidenceMeta: hybridEvidenceMeta('UNKNOWN'),
+      },
+      authoritativeVehicleOrganizationId: orgA,
+      config: cfg,
+    }).effectiveAbsoluteSignalTrust;
+    expect(
+      combineAuthoritativeAndContextPromotionTrust(authoritative, 'TRUSTED'),
+    ).toBe('UNKNOWN');
+  });
+
+  it('B3 caller context TRUSTED cannot elevate hybrid UNTRUSTED', () => {
+    const cfg = alphaOrgCfg(orgA);
+    const authoritative = resolvePromotionTimeHybridTrustDecision({
+      candidate: {
+        organizationId: orgA,
+        vehicleId: vehicleA,
+        evidenceMeta: hybridEvidenceMeta('UNTRUSTED'),
+      },
+      authoritativeVehicleOrganizationId: orgA,
+      config: cfg,
+    }).effectiveAbsoluteSignalTrust;
+    expect(
+      combineAuthoritativeAndContextPromotionTrust(authoritative, 'TRUSTED'),
+    ).toBe('UNTRUSTED');
+  });
+
+  it('B4 stale row TRUSTED with missing hybrid provenance => no promotion trust', () => {
+    expect(
+      resolveEffectivePromotionTrustForCandidate(
+        {
+          organizationId: orgA,
+          vehicleId: vehicleA,
+          evidenceMeta: {},
+          absoluteSignalTrust: 'TRUSTED',
+        },
+        alphaOrgCfg(orgA),
+      ),
+    ).toBe('UNKNOWN');
+  });
+
+  it('B5 stale row TRUSTED outside allowlist => no promotion trust', () => {
+    expect(
+      resolvePromotionTimeHybridTrustDecision({
+        candidate: {
+          organizationId: orgB,
+          vehicleId: vehicleB,
+          evidenceMeta: hybridEvidenceMeta('TRUSTED'),
+        },
+        authoritativeVehicleOrganizationId: orgB,
+        config: alphaOrgCfg(orgA),
+      }).effectiveAbsoluteSignalTrust,
+    ).toBe('UNKNOWN');
+  });
+
+  it('B6 activation OFF before promotion blocks previously allowlisted hybrid TRUSTED', () => {
+    const offCfg = loadHybridTrustActivationConfig(
+      env({ [RFRF_HYBRID_TRUST_ACTIVATION_MODE_ENV]: 'OFF' }),
+    );
+    expect(
+      resolvePromotionTimeHybridTrustDecision({
+        candidate: {
+          organizationId: orgA,
+          vehicleId: vehicleA,
+          evidenceMeta: hybridEvidenceMeta('TRUSTED'),
+        },
+        authoritativeVehicleOrganizationId: orgA,
+        config: offCfg,
+      }).effectiveAbsoluteSignalTrust,
+    ).toBe('UNKNOWN');
+  });
+
+  it('B7 allowlist changes from Org A to Org B before promotion', () => {
+    const cfgB = alphaOrgCfg(orgB);
+    expect(
+      resolvePromotionTimeHybridTrustDecision({
+        candidate: {
+          organizationId: orgA,
+          vehicleId: vehicleA,
+          evidenceMeta: hybridEvidenceMeta('TRUSTED'),
+        },
+        authoritativeVehicleOrganizationId: orgA,
+        config: cfgB,
+      }).effectiveAbsoluteSignalTrust,
+    ).toBe('UNKNOWN');
+  });
+
+  it('B8 candidate org/vehicle ownership mismatch => fail closed', () => {
+    expect(
+      resolvePromotionTimeHybridTrustDecision({
+        candidate: {
+          organizationId: orgA,
+          vehicleId: vehicleA,
+          evidenceMeta: hybridEvidenceMeta('TRUSTED'),
+        },
+        authoritativeVehicleOrganizationId: orgB,
+        config: alphaOrgCfg(orgA),
+      }),
+    ).toMatchObject({ tenantConsistent: false, effectiveAbsoluteSignalTrust: 'UNKNOWN' });
+  });
+
+  it('combineAuthoritativeAndContextPromotionTrust stricter-only contract', () => {
+    expect(combineAuthoritativeAndContextPromotionTrust('TRUSTED', 'TRUSTED')).toBe('TRUSTED');
+    expect(combineAuthoritativeAndContextPromotionTrust('TRUSTED', undefined)).toBe('TRUSTED');
+    expect(combineAuthoritativeAndContextPromotionTrust('UNKNOWN', 'TRUSTED')).toBe('UNKNOWN');
+    expect(combineAuthoritativeAndContextPromotionTrust('UNTRUSTED', 'TRUSTED')).toBe('UNTRUSTED');
+    expect(combineAuthoritativeAndContextPromotionTrust('TRUSTED', 'UNKNOWN')).toBe('UNKNOWN');
+    expect(combineAuthoritativeAndContextPromotionTrust('TRUSTED', 'UNTRUSTED')).toBe('UNTRUSTED');
   });
 });
