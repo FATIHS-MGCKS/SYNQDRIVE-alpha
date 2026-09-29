@@ -43,6 +43,7 @@ import {
 import { RawFuelRefuelFallbackRuntimeService } from '../raw-fuel-refuel-fallback/raw-fuel-refuel-fallback-runtime.service';
 import { RawRefuelPromotionPreparationService } from '../raw-fuel-refuel-fallback/raw-refuel-promotion-preparation.service';
 import { EnergyEventsService } from '../energy-events.service';
+import { registerLabHybridTrustOrganization } from '../raw-fuel-refuel-fallback/testing/rfrf-lab-hybrid-trust-promotion.harness';
 
 const LIVE = process.env.RAW_REFUEL_CANDIDATE_RECOVERY_F10_6_8_C_INTEGRATION === '1';
 const DEFAULT_CUTOVER = '2026-09-06T08:00:00.000Z';
@@ -128,6 +129,7 @@ function syntheticRiseSamples() {
         status: 'AVAILABLE',
       },
     });
+    registerLabHybridTrustOrganization(org.id);
     return { org, vehicle, dimoVehicle };
   }
 

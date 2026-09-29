@@ -665,6 +665,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-21T12:00:00.000Z',
   },
   {
+    id: 'eed-rfrf-hybrid-trust-alpha-activation-2026-09-28',
+    version: '4.9.4999',
+    title: 'RFRF — scoped hybrid trust Alpha fleet activation (EED-OQ-019)',
+    summary: [
+      'Versioned activation authority RFRF_HYBRID_TRUST_ACTIVATION_MODE (OFF | ALPHA_ALLOWLIST) with explicit org/vehicle UUID allowlists.',
+      'Effective promotion trust = hybrid semantic classification gated by scoped activation; ABSOLUTE_SIGNAL_TRUST_AUTHORITY_AVAILABLE stays false.',
+      'Promotion-time revalidation: DB Vehicle org ownership, monotonic context trust combine, fail-closed allowlist parse, qualityMeta promotion audit (no raw allowlist secrets).',
+      'Isolated PG gate rfrf-hybrid-trust-activation-postgres-gate.sh (P1–P7); default OFF — production activation requires explicit env + allowlist.',
+    ],
+    reason:
+      'Enable real Production fallback promotion trust only for SynqDrive-owned Alpha fleet without global or org-specific hybrid algorithms.',
+    previousBehavior:
+      'Hybrid TRUSTED classification was computed but promotion effective trust remained UNKNOWN globally.',
+    details:
+      'raw-fuel-hybrid-trust-activation.authority.ts; EED-EV-0101; EED-INV-022; stage-4 activation gate',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-28T23:15:00.000Z',
+  },
+  {
     id: 'eed-rfrf-hybrid-absolute-signal-trust-2026-09-28',
     version: '4.9.4998',
     title: 'RFRF — hybrid absolute signal trust authority v2 (pre-merge hardening)',

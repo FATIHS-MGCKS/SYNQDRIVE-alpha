@@ -32,6 +32,10 @@ import {
   buildHybridAbsoluteSignalTrustEvidence,
   mergeHybridAbsoluteSignalTrustEvidence,
 } from '../raw-fuel-refuel-fallback/raw-fuel-hybrid-trust-evidence-metadata';
+import {
+  buildHybridTrustActivationEvidenceMeta,
+  mergeHybridTrustActivationIntoEvidenceMeta,
+} from '../raw-fuel-refuel-fallback/raw-fuel-hybrid-trust-activation-metadata';
 import { evaluateReadyCandidateRefreshRequirement } from '../raw-fuel-refuel-fallback/raw-refuel-ready-evidence-refresh.policy';
 import { readBaselineRecencyFromEvidenceMeta } from '../raw-fuel-rise-detector/raw-fuel-pre-plateau-baseline-recency.policy';
 import { RawFuelRefuelFallbackMetricsService } from '../raw-fuel-refuel-fallback/raw-fuel-refuel-fallback-metrics.service';
@@ -554,6 +558,8 @@ export class RawRefuelCandidateRecoveryService {
       scanWindowStart: window.start,
       scanWindowEnd: window.end,
       fuelType: vehicleContext.fuelType,
+      organizationId: candidate.organizationId,
+      vehicleId: candidate.vehicleId,
     });
 
     const context: RawFuelRiseDetectionContext = {
@@ -613,6 +619,8 @@ export class RawRefuelCandidateRecoveryService {
         scanWindowStart: window.start,
         scanWindowEnd: window.end,
         fuelType: vehicleContext.fuelType,
+        organizationId: candidate.organizationId,
+        vehicleId: candidate.vehicleId,
         observation: buildRawFuelSignalTrustObservationContext(maturityObservation),
       });
       maturityObservation = this.enrichObservationForReadyRefresh(
@@ -813,7 +821,6 @@ export class RawRefuelCandidateRecoveryService {
       {
         capability: promotionAuthority.capability,
         absoluteDetectionAdmissibility: promotionAuthority.absoluteDetectionAdmissibility,
-        absoluteSignalTrust: candidate.absoluteSignalTrust,
       },
       env,
       undefined,
@@ -1121,6 +1128,8 @@ export class RawRefuelCandidateRecoveryService {
       (observation.evidenceMeta as Record<string, unknown> | null) ?? null,
       refreshMeta,
     );
+    const withHybrid = mergeHybridAbsoluteSignalTrustEvidence(withRefresh, hybridEvidence);
+    const activationMeta = buildHybridTrustActivationEvidenceMeta(trust.hybridTrustActivation);
     return {
       ...observation,
       absoluteSignalTrust: trust.absoluteSignalTrust,
@@ -1129,7 +1138,7 @@ export class RawRefuelCandidateRecoveryService {
         ...(observation.qualityMeta ?? {}),
         absoluteDetectionAdmissibility: trust.absoluteDetectionAdmissibility,
       },
-      evidenceMeta: mergeHybridAbsoluteSignalTrustEvidence(withRefresh, hybridEvidence),
+      evidenceMeta: mergeHybridTrustActivationIntoEvidenceMeta(withHybrid, activationMeta),
     };
   }
 
@@ -1211,6 +1220,8 @@ export class RawRefuelCandidateRecoveryService {
       scanWindowStart: window.start,
       scanWindowEnd: window.end,
       fuelType: vehicleContext.fuelType,
+      organizationId: candidate.organizationId,
+      vehicleId: candidate.vehicleId,
     });
 
     const context: RawFuelRiseDetectionContext = {
@@ -1281,6 +1292,8 @@ export class RawRefuelCandidateRecoveryService {
         scanWindowStart: window.start,
         scanWindowEnd: window.end,
         fuelType: vehicleContext.fuelType,
+        organizationId: candidate.organizationId,
+        vehicleId: candidate.vehicleId,
         observation: buildRawFuelSignalTrustObservationContext(observation),
       });
       observation = this.enrichObservationForReadyRefresh(observation, promotionTrust);

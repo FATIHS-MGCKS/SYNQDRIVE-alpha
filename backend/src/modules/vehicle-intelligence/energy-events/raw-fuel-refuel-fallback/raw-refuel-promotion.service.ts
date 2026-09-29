@@ -27,6 +27,13 @@ import { loadAuthoritativeNativeRefuelSiblings } from './authoritative-native-re
 import type { RawRefuelNativeFallbackConvergenceEvaluation } from './raw-refuel-native-fallback-convergence.types';
 import { computeNativeOverlapQueryWindow } from './raw-refuel-native-overlap.advisory';
 import { evaluateRawRefuelPromotionCutover } from './raw-refuel-promotion-cutover.util';
+import {
+  combineAuthoritativeAndContextPromotionTrust,
+  loadHybridTrustActivationConfig,
+  resolvePromotionTimeHybridTrustDecision,
+  type HybridTrustActivationDecision,
+} from './raw-fuel-hybrid-trust-activation.authority';
+import { mergePromotionTimeHybridTrustActivationIntoQualityMeta } from './raw-fuel-hybrid-trust-activation-metadata';
 import { buildRfrfPromotionLockKey } from './raw-refuel-promotion-lock.util';
 import type {
   RawRefuelPromotionApplyResult,
@@ -347,7 +354,50 @@ export class RawRefuelPromotionService {
           };
         }
 
-        const promotionTrust = context.absoluteSignalTrust ?? locked.absoluteSignalTrust;
+        const vehicleRow = await tx.vehicle.findUnique({
+          where: { id: locked.vehicleId },
+          select: { organizationId: true },
+        });
+        if (!vehicleRow) {
+          return {
+            status: 'FAIL_CLOSED',
+            evaluation: null,
+            candidateId: locked.id,
+            fallbackVehicleEnergyEventId: null,
+            convergedNativeEventId: null,
+            detail: 'vehicle_not_found',
+          };
+        }
+
+        const activationConfig = loadHybridTrustActivationConfig(env);
+        const promotionTrustDecision = resolvePromotionTimeHybridTrustDecision({
+          candidate: locked,
+          authoritativeVehicleOrganizationId: vehicleRow.organizationId,
+          config: activationConfig,
+        });
+
+        if (!promotionTrustDecision.tenantConsistent) {
+          this.metrics?.recordPromotionBlockedByTrust();
+          return {
+            status: 'FAIL_CLOSED',
+            evaluation: null,
+            candidateId: locked.id,
+            fallbackVehicleEnergyEventId: null,
+            convergedNativeEventId: null,
+            detail: 'candidate_vehicle_organization_mismatch',
+          };
+        }
+
+        const authoritativePromotionTrust = promotionTrustDecision.effectiveAbsoluteSignalTrust;
+        const promotionTrust = combineAuthoritativeAndContextPromotionTrust(
+          authoritativePromotionTrust,
+          context.absoluteSignalTrust,
+        );
+        const promotionTrustAuditQualityMeta = buildPromotionTrustAuditQualityMeta(
+          locked.qualityMeta,
+          promotionTrustDecision,
+        );
+
         if (promotionTrust !== 'TRUSTED') {
           this.metrics?.recordPromotionBlockedByTrust();
           return {
@@ -386,7 +436,7 @@ export class RawRefuelPromotionService {
             where: { id: locked.id },
             data: {
               lifecycleState: nextLifecycle,
-              qualityMeta: mergePromotionMeta(locked.qualityMeta, {
+              qualityMeta: mergePromotionMeta(promotionTrustAuditQualityMeta, {
                 convergedNativeEnergyEventId: convergedNativeEventId,
                 convergedAt: new Date().toISOString(),
                 promotionAuthorityEnv: RFRF_FALLBACK_PROMOTION_EXECUTION_AUTHORIZED_ENV,
@@ -454,7 +504,7 @@ export class RawRefuelPromotionService {
             };
           }
           const nextLifecycle = resolveNextLifecycleState(locked.lifecycleState, 'PROMOTED');
-          const promotedMeta = mergePromotionMeta(locked.qualityMeta, {
+          const promotedMeta = mergePromotionMeta(promotionTrustAuditQualityMeta, {
             promotedVehicleEnergyEventId: existingBySourceKey.id,
             promotedAt: new Date().toISOString(),
             promotionAuthorityEnv: RFRF_FALLBACK_PROMOTION_EXECUTION_AUTHORIZED_ENV,
@@ -540,7 +590,7 @@ export class RawRefuelPromotionService {
         }
 
         const nextLifecycle = resolveNextLifecycleState(locked.lifecycleState, 'PROMOTED');
-        const promotedMeta = mergePromotionMeta(locked.qualityMeta, {
+        const promotedMeta = mergePromotionMeta(promotionTrustAuditQualityMeta, {
           promotedVehicleEnergyEventId: createdVee.id,
           promotedAt: new Date().toISOString(),
           promotionAuthorityEnv: RFRF_FALLBACK_PROMOTION_EXECUTION_AUTHORIZED_ENV,
@@ -696,7 +746,7 @@ function readConvergedNativeEventId(candidate: RawRefuelCandidate): string | nul
 }
 
 function mergePromotionMeta(
-  existing: RawRefuelCandidate['qualityMeta'],
+  existing: RawRefuelCandidate['qualityMeta'] | Record<string, unknown>,
   patch: Record<string, unknown>,
 ): Record<string, unknown> {
   const base =
@@ -704,4 +754,19 @@ function mergePromotionMeta(
       ? (existing as Record<string, unknown>)
       : {};
   return { ...base, ...patch };
+}
+
+function buildPromotionTrustAuditQualityMeta(
+  existing: RawRefuelCandidate['qualityMeta'],
+  decision: HybridTrustActivationDecision,
+): Record<string, unknown> {
+  const base =
+    existing && typeof existing === 'object' && !Array.isArray(existing)
+      ? (existing as Record<string, unknown>)
+      : {};
+  return mergePromotionTimeHybridTrustActivationIntoQualityMeta(
+    base,
+    decision,
+    new Date().toISOString(),
+  );
 }

@@ -46,4 +46,8 @@ echo "==> RFRF hybrid absolute signal trust PostgreSQL gate"
 bash "${SCRIPT_DIR}/rfrf-hybrid-trust-postgres-gate.sh"
 echo "STAGE4_HYBRID_TRUST_POSTGRES=PASS"
 
+echo "==> RFRF hybrid trust scoped activation PostgreSQL gate"
+bash "${SCRIPT_DIR}/rfrf-hybrid-trust-activation-postgres-gate.sh"
+echo "STAGE4_HYBRID_TRUST_ACTIVATION_POSTGRES=PASS"
+
 echo "RFRF_STAGE4_CONVERGENCE_READINESS_CI_GATE=PASS"

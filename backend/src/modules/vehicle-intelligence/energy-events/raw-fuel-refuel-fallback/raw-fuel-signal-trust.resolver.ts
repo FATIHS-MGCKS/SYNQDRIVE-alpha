@@ -5,7 +5,13 @@ import type {
   RawFuelSignalTrustResult,
 } from './raw-fuel-refuel-fallback.types';
 import { evaluateHybridAbsoluteSignalTrust } from './raw-fuel-hybrid-absolute-signal-trust.authority';
+import { resolveHybridTrustActivationDecision } from './raw-fuel-hybrid-trust-activation.authority';
 import { readBaselineRecencyFromEvidenceMeta } from '../raw-fuel-rise-detector/raw-fuel-pre-plateau-baseline-recency.policy';
+
+/**
+ * @deprecated Global promotion trust is gated by {@link resolveHybridTrustActivationDecision}
+ * (`RFRF_HYBRID_TRUST_ACTIVATION_MODE`). This flag remains false — do not flip to global true.
+ */
 export const ABSOLUTE_SIGNAL_TRUST_AUTHORITY_AVAILABLE = false;
 
 /** Bump when promotion-trust semantics change; stale READY refresh metadata becomes REFRESH_REQUIRED. */
@@ -50,8 +56,7 @@ function hasSemanticallyValidRelativeSample(
 /**
  * Resolves absolute promotion trust vs detection admissibility separately.
  * Promotion TRUSTED is never derived from fuelType or sample presence alone.
- * Hybrid v2 computes observation-local trust; promotion output remains UNKNOWN until
- * {@link ABSOLUTE_SIGNAL_TRUST_AUTHORITY_AVAILABLE} is explicitly enabled.
+ * Hybrid v2 computes observation-local classification; scoped activation yields effective promotion trust.
  */
 export function resolveRawFuelSignalTrust(
   input: RawFuelSignalTrustInput = {},
@@ -69,16 +74,21 @@ export function resolveRawFuelSignalTrust(
   const absoluteDetectionAdmissibility: RawFuelAbsoluteDetectionAdmissibility =
     hybridTrustProvenance.absoluteDetectionAdmissibility;
 
+  const hybridTrustActivation = resolveHybridTrustActivationDecision({
+    organizationId: input.organizationId,
+    vehicleId: input.vehicleId,
+    computedHybridClassification: hybridTrustProvenance.classification,
+  });
+
   const absoluteSignalTrust: RawFuelAbsoluteSignalTrust =
-    ABSOLUTE_SIGNAL_TRUST_AUTHORITY_AVAILABLE
-      ? hybridTrustProvenance.classification
-      : 'UNKNOWN';
+    hybridTrustActivation.effectiveAbsoluteSignalTrust;
 
   return {
     absoluteSignalTrust,
     absoluteDetectionAdmissibility,
     relativeSignalAvailable: hasSemanticallyValidRelativeSample(input),
     hybridTrustProvenance,
+    hybridTrustActivation,
   };
 }
 
