@@ -15,7 +15,11 @@ import {
   DI_V0_POSITION_QUERY_SPEC_V0_1,
 } from './di-v0-position-acquisition.versions';
 import { buildFailure } from './di-v0-position-errors';
-import { canonicalNumber, computeDiV0PositionSnapshotIdentity } from './di-v0-position-snapshot';
+import {
+  canonicalNumber,
+  computeDiV0PositionSnapshotIdentity,
+  serializeDiV0PositionSnapshot,
+} from './di-v0-position-snapshot';
 import { formatBucketLabel, type DiV0ValidatedPositionRequest } from './di-v0-position-window';
 
 const PROVIDER_LABEL = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.(\d+))?(?:Z|[+-]\d{2}:\d{2})$/;
@@ -317,7 +321,7 @@ export function normalizeDiV0PositionResponse(input: NormalizeDiV0PositionInput)
   if (counters.duplicateConflictingBuckets > 0) qualityFlags.push('CONFLICTING_DUPLICATE_BUCKETS');
   if (counters.invalidCoordinate > 0) qualityFlags.push('INVALID_COORDINATES_PRESENT');
 
-  const snapshotIdentity = computeDiV0PositionSnapshotIdentity({
+  const snapshotMaterial = {
     dimoTokenId: request.dimoTokenId,
     vehicleId: request.vehicleId,
     window,
@@ -327,7 +331,9 @@ export function normalizeDiV0PositionResponse(input: NormalizeDiV0PositionInput)
     buckets,
     conflictKeysByLabel,
     rejectedProviderRows,
-  });
+  };
+  const canonicalSnapshotPayload = serializeDiV0PositionSnapshot(snapshotMaterial);
+  const snapshotIdentity = computeDiV0PositionSnapshotIdentity(snapshotMaterial);
 
   return {
     ok: true,
@@ -349,6 +355,7 @@ export function normalizeDiV0PositionResponse(input: NormalizeDiV0PositionInput)
       buckets,
       observations: buckets.map((b) => b.observation),
       snapshotIdentity,
+      canonicalSnapshotPayload,
       acquisitionProvenance: {
         provider: DI_V0_POSITION_QUERY_SPEC_V0_1.provider,
         queryFamily: DI_V0_POSITION_QUERY_SPEC_V0_1.queryFamily,

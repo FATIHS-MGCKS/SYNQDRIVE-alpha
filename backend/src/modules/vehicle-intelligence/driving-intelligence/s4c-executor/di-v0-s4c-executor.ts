@@ -2,15 +2,15 @@ import { DI_V0_S4_LIMITS } from '../s4a-foundation/di-v0-s4a-contract';
 import type { DiV0S4ExecutionContext, DiV0S4ExecutionOutcome } from '../s4b-orchestration/di-v0-s4b-executor.port';
 import { acquireDiV0HistoricalPositions, toDiV0S1PositionInput } from '../position-acquisition/di-v0-position-acquisition';
 import { acquireDiV0HistoricalR1Obd, toDiV0S1R1ObdInput } from '../r1-obd-acquisition/di-v0-r1-obd-acquisition';
-import { CALIBRATION_UNSET_V0_BUNDLE, computeDiV0TripIntervals, DEFAULT_DI_V0_VERSION_TUPLE } from '../core';
+import { computeDiV0TripIntervals } from '../core';
 import { mapComputeOutputToPersistRows } from '../shadow-persistence/di-v0-shadow-mapper';
 import { resolveDiV0S4cAcquisitionContext } from './di-v0-s4c-acquisition-context';
 import {
   buildDiV0S4cNativeChannelInput,
-  buildDiV0S4cPositionOutcomeChannel,
   buildDiV0S4cPositionPresentChannel,
   buildDiV0S4cR1ChannelInput,
 } from './di-v0-s4c-evidence-channels';
+import { bindDiV0S4cPipelineManifest, DiV0S4cPipelineBindError } from './di-v0-s4c-pipeline-bind';
 import { mapDiV0S4cPositionFailure } from './di-v0-s4c-position-failure-map';
 import type { DiV0S4cExecutorDeps } from './di-v0-s4c-types';
 
@@ -20,6 +20,10 @@ function assertNotAborted(signal: AbortSignal): void {
   if (signal.aborted) throw new Error('DI_V0_S4C_ABORTED');
 }
 
+/**
+ * Ready when this build can run fresh same-attempt acquisition when composed into a registry.
+ * Does not imply retry-from-pin / S4D replay capability.
+ */
 export class DiV0S4cExecutor {
   readonly executorId = DI_V0_S4C_EXECUTOR_ID;
 
@@ -33,12 +37,31 @@ export class DiV0S4cExecutor {
     const { lease, pipelineManifest, repository, signal } = context;
     assertNotAborted(signal);
 
+    let computeBinding;
+    try {
+      computeBinding = bindDiV0S4cPipelineManifest(pipelineManifest, this.deps.controlPlane);
+    } catch (error) {
+      const reason =
+        error instanceof DiV0S4cPipelineBindError ? 'PIPELINE_MANIFEST_INCOMPATIBLE' : 'PIPELINE_MANIFEST_INCOMPATIBLE';
+      await repository.failTerminal(lease, reason);
+      return { kind: 'SETTLED' };
+    }
+
     const resolved = await resolveDiV0S4cAcquisitionContext(this.deps.prisma, lease);
     if (!resolved.ok) {
       await repository.failTerminal(lease, `CONTEXT_${resolved.failure.code}`);
       return { kind: 'SETTLED' };
     }
     const ctx = resolved.context;
+
+    const boundaryRecheck = await repository.evaluateAttemptStartBoundary(lease);
+    if (boundaryRecheck.kind === 'LEASE_LOST') {
+      return { kind: 'RELEASE' };
+    }
+    if (boundaryRecheck.kind === 'SUPERSEDE') {
+      await repository.holderSupersede(lease, boundaryRecheck.reason);
+      return { kind: 'SETTLED' };
+    }
 
     if (ctx.pinnedSnapshotHash != null) {
       return { kind: 'RELEASE' };
@@ -76,6 +99,15 @@ export class DiV0S4cExecutor {
 
     assertNotAborted(signal);
 
+    const boundaryAfterPosition = await repository.evaluateAttemptStartBoundary(lease);
+    if (boundaryAfterPosition.kind === 'LEASE_LOST') {
+      return { kind: 'RELEASE' };
+    }
+    if (boundaryAfterPosition.kind === 'SUPERSEDE') {
+      await repository.holderSupersede(lease, boundaryAfterPosition.reason);
+      return { kind: 'SETTLED' };
+    }
+
     if (positionOutcome.status === 'FAILED') {
       const mapped = mapDiV0S4cPositionFailure(positionOutcome.failure);
       if (mapped.action === 'RETRYABLE_RELEASE') {
@@ -92,9 +124,7 @@ export class DiV0S4cExecutor {
 
     const positionResult = positionOutcome.result;
     let r1Result: Awaited<ReturnType<typeof acquireDiV0HistoricalR1Obd>> | null = null;
-    const r1Applicable =
-      this.deps.controlPlane.r1Enabled &&
-      ctx.sourceFamily === 'RUPTELA_R1';
+    const r1Applicable = this.deps.controlPlane.r1Enabled && ctx.sourceFamily === 'RUPTELA_R1';
 
     if (r1Applicable) {
       assertNotAborted(signal);
@@ -103,16 +133,23 @@ export class DiV0S4cExecutor {
         () => acquireDiV0HistoricalR1Obd(acquisitionRequest, this.deps.ports.r1Transport, {}),
       );
       assertNotAborted(signal);
+
+      const boundaryAfterR1 = await repository.evaluateAttemptStartBoundary(lease);
+      if (boundaryAfterR1.kind === 'LEASE_LOST') {
+        return { kind: 'RELEASE' };
+      }
+      if (boundaryAfterR1.kind === 'SUPERSEDE') {
+        await repository.holderSupersede(lease, boundaryAfterR1.reason);
+        return { kind: 'SETTLED' };
+      }
     }
 
     const r1Failed =
-      r1Result?.status === 'FAILED'
-        ? { reasonCode: r1Result.failure.code }
-        : null;
+      r1Result?.status === 'FAILED' ? { reasonCode: r1Result.failure.code } : null;
 
     const channels = [
-      buildDiV0S4cNativeChannelInput(this.deps.controlPlane),
-      buildDiV0S4cPositionPresentChannel(ctx.dimoTokenId, ctx.vehicleId, positionResult),
+      buildDiV0S4cNativeChannelInput(this.deps.controlPlane, ctx.sourceFamily),
+      buildDiV0S4cPositionPresentChannel(positionResult),
       buildDiV0S4cR1ChannelInput(
         this.deps.controlPlane,
         ctx.sourceFamily,
@@ -134,9 +171,9 @@ export class DiV0S4cExecutor {
     const r1Obd = r1Result?.status === 'ACQUIRED' ? toDiV0S1R1ObdInput(r1Result.result) : [];
     const computeOutput = computeDiV0TripIntervals(
       { sourceFamily: s1Input.sourceFamily, positions: s1Input.positions, r1Obd, nativeEvents: [] },
-      { versions: DEFAULT_DI_V0_VERSION_TUPLE, calibration: CALIBRATION_UNSET_V0_BUNDLE },
+      { versions: computeBinding.versions, calibration: computeBinding.calibration },
     );
-    const intervals = mapComputeOutputToPersistRows(computeOutput, DEFAULT_DI_V0_VERSION_TUPLE);
+    const intervals = mapComputeOutputToPersistRows(computeOutput, computeBinding.versions);
 
     assertNotAborted(signal);
     await repository.completeWithS2(lease, { pipelineManifest, intervals });

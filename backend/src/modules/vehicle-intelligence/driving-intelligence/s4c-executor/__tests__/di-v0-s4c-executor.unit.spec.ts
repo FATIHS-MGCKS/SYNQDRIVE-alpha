@@ -2,6 +2,7 @@ import { DiV0S4cExecutor } from '../di-v0-s4c-executor';
 import type { DiV0S4ExecutionContext } from '../../s4b-orchestration/di-v0-s4b-executor.port';
 import { API_SYNTHETIC_IDENTITY, signalsBody, staticTransport } from '../../position-acquisition/__tests__/position-acquisition-test-helpers';
 import { parseDiV0S4ControlPlaneConfig } from '../../s4a-foundation/di-v0-s4a-control-plane';
+import { buildDiV0S4RuntimePipelineManifest } from '../../s4b-orchestration/di-v0-s4b-pipeline-manifest';
 import { buildDiV0S4BoundaryFingerprint } from '../../s4a-foundation/di-v0-s4a-identity';
 
 describe('DiV0S4cExecutor (unit)', () => {
@@ -46,7 +47,13 @@ describe('DiV0S4cExecutor (unit)', () => {
     const r1Transport = { executeHistoricalR1ObdQuery: jest.fn(async () => { r1Calls += 1; return {}; }) };
 
     const pinEvidence = jest.fn(async () => ({ snapshotHash: 'snap', combinedInputIdentity: 'id' }));
+    const controlPlane = parseDiV0S4ControlPlaneConfig({
+      DI_V0_S4_MASTER_ENABLED: 'true',
+      DI_V0_S4_R1_ENABLED: 'true',
+      DI_V0_S4_NATIVE_ENABLED: 'false',
+    });
     const repository = {
+      evaluateAttemptStartBoundary: jest.fn().mockResolvedValue({ kind: 'CURRENT' }),
       pinEvidence,
       completeWithS2: jest.fn(async () => ({ shadowRunId: 'run', executionIdentity: 'e', combinedInputIdentity: 'id' })),
       failTerminal: jest.fn(),
@@ -56,11 +63,7 @@ describe('DiV0S4cExecutor (unit)', () => {
 
     const executor = new DiV0S4cExecutor({
       prisma,
-      controlPlane: parseDiV0S4ControlPlaneConfig({
-        DI_V0_S4_MASTER_ENABLED: 'true',
-        DI_V0_S4_R1_ENABLED: 'true',
-        DI_V0_S4_NATIVE_ENABLED: 'false',
-      }),
+      controlPlane,
       ports: {
         runDimo: async (meta, fn) => {
           dimoCalls.push(meta);
@@ -81,7 +84,7 @@ describe('DiV0S4cExecutor (unit)', () => {
 
     const outcome = await executor.execute({
       lease,
-      pipelineManifest: {} as DiV0S4ExecutionContext['pipelineManifest'],
+      pipelineManifest: buildDiV0S4RuntimePipelineManifest(controlPlane).manifest,
       repository: repository as unknown as DiV0S4ExecutionContext['repository'],
       signal: new AbortController().signal,
     });
@@ -131,9 +134,10 @@ describe('DiV0S4cExecutor (unit)', () => {
     } as unknown as import('@prisma/client').PrismaClient;
 
     let positionCalls = 0;
+    const controlPlane = parseDiV0S4ControlPlaneConfig({ DI_V0_S4_MASTER_ENABLED: 'true' });
     const executor = new DiV0S4cExecutor({
       prisma,
-      controlPlane: parseDiV0S4ControlPlaneConfig({ DI_V0_S4_MASTER_ENABLED: 'true' }),
+      controlPlane,
       ports: {
         runDimo: async (_m, fn) => fn(),
         positionTransport: { executeHistoricalPositionQuery: async () => { positionCalls += 1; return {}; } },
@@ -143,8 +147,10 @@ describe('DiV0S4cExecutor (unit)', () => {
 
     const outcome = await executor.execute({
       lease: { workItemId: 'wi', leaseEpoch: BigInt(1), leaseOwner: 'o', attemptCount: 1, transitionId: 'T02_CLAIM' as const },
-      pipelineManifest: {} as DiV0S4ExecutionContext['pipelineManifest'],
-      repository: {} as DiV0S4ExecutionContext['repository'],
+      pipelineManifest: buildDiV0S4RuntimePipelineManifest(controlPlane).manifest,
+      repository: {
+        evaluateAttemptStartBoundary: jest.fn().mockResolvedValue({ kind: 'CURRENT' }),
+      } as unknown as DiV0S4ExecutionContext['repository'],
       signal: new AbortController().signal,
     });
     expect(outcome).toEqual({ kind: 'RELEASE' });

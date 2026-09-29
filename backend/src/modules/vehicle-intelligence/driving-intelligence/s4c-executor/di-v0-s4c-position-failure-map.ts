@@ -10,7 +10,11 @@ export type DiV0S4cPositionChannelOutcome =
 
 export type DiV0S4cPositionFailureAction =
   | { action: 'RETRYABLE_RELEASE'; reasonCode: string }
-  | { action: 'TERMINAL_T08'; failureReason: string; outcome: 'AUTHORIZATION_FAILURE' | 'INVALID_REQUEST' | 'MALFORMED' }
+  | {
+      action: 'TERMINAL_T08';
+      failureReason: string;
+      outcome: 'AUTHORIZATION_FAILURE' | 'INVALID_REQUEST' | 'MALFORMED' | 'SOURCE_FAILURE';
+    }
   | { action: 'SKIP_T09'; skipReason: 'POSITION_UNSUPPORTED_SOURCE' };
 
 const RETRYABLE_REASON: Record<string, string> = {
@@ -49,7 +53,7 @@ export function mapDiV0S4cPositionFailure(failure: DiV0PositionAcquisitionFailur
           reasonCode: RETRYABLE_REASON[failure.failureClass] ?? failure.failureClass,
         };
       }
-      return { action: 'TERMINAL_T08', failureReason: 'POSITION_SOURCE_FAILURE', outcome: 'MALFORMED' };
+      return { action: 'TERMINAL_T08', failureReason: 'POSITION_SOURCE_FAILURE', outcome: 'SOURCE_FAILURE' };
     default: {
       const exhaustive: never = failure.failureClass;
       throw new Error(`unmapped position failure class: ${exhaustive}`);

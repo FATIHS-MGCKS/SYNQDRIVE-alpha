@@ -1,6 +1,4 @@
 import type { PrismaClient } from '@prisma/client';
-import { buildDiV0S4BoundaryFingerprint } from '../s4a-foundation/di-v0-s4a-identity';
-import { readCurrentBoundaryRepairGeneration } from '../../trips/boundary-repair.state.util';
 import { deriveSecondAlignedEnclosingWindow } from '../position-acquisition/di-v0-position-window';
 import { resolveDiV0SourceFamily } from '../position-acquisition/di-v0-position-source-family';
 import type { DiV0S4ClaimResult } from '../s4a-foundation/di-v0-s4a-work-item.repository';
@@ -59,21 +57,6 @@ export async function resolveDiV0S4cAcquisitionContext(
   }
   if (!row.raw_json) {
     return { ok: false, failure: { code: 'MISSING_DIMO_LINK', safeMessage: 'vehicle has no DIMO link' } };
-  }
-
-  const fingerprint = buildDiV0S4BoundaryFingerprint({
-    organizationId: row.organization_id,
-    vehicleId: row.vehicle_id,
-    tripId: row.trip_id,
-    tripStatus: row.trip_status,
-    startTime: row.start_time,
-    endTime: row.end_time,
-    dimoSegmentId: row.dimo_segment_id,
-    mergeParentTripId: row.merge_parent_trip_id,
-    boundaryRepairGeneration: readCurrentBoundaryRepairGeneration(row.raw_detection_meta),
-  });
-  if (fingerprint !== row.boundary_fingerprint) {
-    return { ok: false, failure: { code: 'TENANT_MISMATCH', safeMessage: 'boundary fingerprint drift' } };
   }
 
   const startMs = row.start_time.getTime();

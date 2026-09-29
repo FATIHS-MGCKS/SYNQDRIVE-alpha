@@ -72,8 +72,16 @@ async function linkDimo(admin: PrismaClient, tenant: S4aTenant, rawJson: unknown
     });
     const loop = new DiV0S4ClaimLoop(repo, config, pipeline, registry, { leaseOwner: `s4c-${randomUUID().slice(0, 8)}` });
     await expect(loop.runOnce()).resolves.toMatchObject({ status: 'SETTLED' });
-    const rows = await db.$queryRaw<Array<{ status: string }>>`SELECT status FROM di_v0_s4_work_items WHERE trip_id = ${tenant.tripId}`;
-    expect(rows[0]?.status).toBe('COMPLETED');
+    const rows = await db.$queryRaw<
+      Array<{ status: string; source_family: string }>
+    >`SELECT status, source_family::text FROM di_v0_s4_work_items WHERE trip_id = ${tenant.tripId}`;
+    expect(rows[0]).toMatchObject({ status: 'COMPLETED', source_family: 'API_SYNTHETIC' });
+    const snaps = await db.$queryRaw<Array<{ n: number }>>`
+      SELECT COUNT(*)::int AS n FROM di_v0_s4_evidence_snapshots WHERE trip_id = ${tenant.tripId}`;
+    expect(snaps[0]?.n).toBe(1);
+    const runs = await db.$queryRaw<Array<{ n: number }>>`
+      SELECT COUNT(*)::int AS n FROM di_v0_shadow_runs WHERE trip_id = ${tenant.tripId}`;
+    expect(runs[0]?.n).toBe(1);
     await admin.$executeRaw`DELETE FROM di_v0_s4_work_items WHERE vehicle_id = ${tenant.vehicleId}`;
     await cleanupS4aTenant(admin, tenant);
   });

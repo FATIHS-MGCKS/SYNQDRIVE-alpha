@@ -2,6 +2,7 @@ import { DiV0S4cExecutor } from '../di-v0-s4c-executor';
 import type { DiV0S4ExecutionContext } from '../../s4b-orchestration/di-v0-s4b-executor.port';
 import { API_SYNTHETIC_IDENTITY, R1_IDENTITY, UNKNOWN_IDENTITY, signalsBody, staticTransport } from '../../position-acquisition/__tests__/position-acquisition-test-helpers';
 import { parseDiV0S4ControlPlaneConfig } from '../../s4a-foundation/di-v0-s4a-control-plane';
+import { buildDiV0S4RuntimePipelineManifest } from '../../s4b-orchestration/di-v0-s4b-pipeline-manifest';
 import { buildDiV0S4BoundaryFingerprint } from '../../s4a-foundation/di-v0-s4a-identity';
 import * as positionAcquisition from '../../position-acquisition/di-v0-position-acquisition';
 import * as r1Acquisition from '../../r1-obd-acquisition/di-v0-r1-obd-acquisition';
@@ -40,11 +41,21 @@ function prismaFor(rawJson: unknown, start: Date, end: Date, pinned: string | nu
   } as unknown as import('@prisma/client').PrismaClient;
 }
 
-function baseContext(repository: object): DiV0S4ExecutionContext {
+function controlPlane(env: Record<string, string> = { DI_V0_S4_MASTER_ENABLED: 'true' }) {
+  return parseDiV0S4ControlPlaneConfig(env);
+}
+
+function baseContext(repository: object, env: Record<string, string> = { DI_V0_S4_MASTER_ENABLED: 'true' }): DiV0S4ExecutionContext {
+  const cp = controlPlane(env);
+  const boundaryOk = jest.fn().mockResolvedValue({ kind: 'CURRENT' });
+  const merged = {
+    evaluateAttemptStartBoundary: boundaryOk,
+    ...(repository as object),
+  };
   return {
     lease: { workItemId: 'wi', leaseEpoch: BigInt(1), leaseOwner: 'o', attemptCount: 1, transitionId: 'T02_CLAIM' },
-    pipelineManifest: {} as DiV0S4ExecutionContext['pipelineManifest'],
-    repository: repository as DiV0S4ExecutionContext['repository'],
+    pipelineManifest: buildDiV0S4RuntimePipelineManifest(cp).manifest,
+    repository: merged as unknown as DiV0S4ExecutionContext['repository'],
     signal: new AbortController().signal,
   };
 }
@@ -71,7 +82,9 @@ describe('DiV0S4cExecutor matrix (unit)', () => {
         r1Transport: { executeHistoricalR1ObdQuery: async () => ({}) },
       },
     });
-    const outcome = await executor.execute({ ...baseContext({ skipIneligible }), repository: { skipIneligible } as never });
+    const outcome = await executor.execute(
+      baseContext({ skipIneligible }, { DI_V0_S4_MASTER_ENABLED: 'true', DI_V0_S4_R1_ENABLED: 'true' }),
+    );
     expect(outcome).toEqual({ kind: 'SETTLED' });
     expect(skipIneligible).toHaveBeenCalledWith(expect.anything(), 'WINDOW_EXCEEDS_MAX_8H');
     expect(dimoRuns).toBe(0);
@@ -94,7 +107,7 @@ describe('DiV0S4cExecutor matrix (unit)', () => {
         r1Transport: { executeHistoricalR1ObdQuery: async () => ({}) },
       },
     });
-    await executor.execute({ ...baseContext({ skipIneligible }), repository: { skipIneligible } as never });
+    await executor.execute(baseContext({ skipIneligible }));
     expect(skipIneligible).toHaveBeenCalledWith(expect.anything(), 'POSITION_UNSUPPORTED_SOURCE');
     expect(dimoRuns).toBe(0);
   });
@@ -110,7 +123,7 @@ describe('DiV0S4cExecutor matrix (unit)', () => {
       controlPlane: parseDiV0S4ControlPlaneConfig({ DI_V0_S4_MASTER_ENABLED: 'true' }),
       ports: { runDimo: async (_m, fn) => fn(), positionTransport: staticTransport({}), r1Transport: { executeHistoricalR1ObdQuery: async () => ({}) } },
     });
-    const outcome = await executor.execute({ ...baseContext({ failRetryable }), repository: { failRetryable } as never });
+    const outcome = await executor.execute(baseContext({ failRetryable }));
     expect(outcome).toEqual({ kind: 'RELEASE' });
     expect(failRetryable).toHaveBeenCalled();
   });
@@ -126,7 +139,7 @@ describe('DiV0S4cExecutor matrix (unit)', () => {
       controlPlane: parseDiV0S4ControlPlaneConfig({ DI_V0_S4_MASTER_ENABLED: 'true' }),
       ports: { runDimo: async (_m, fn) => fn(), positionTransport: staticTransport({}), r1Transport: { executeHistoricalR1ObdQuery: async () => ({}) } },
     });
-    const outcome = await executor.execute({ ...baseContext({ failTerminal }), repository: { failTerminal } as never });
+    const outcome = await executor.execute(baseContext({ failTerminal }));
     expect(outcome).toEqual({ kind: 'SETTLED' });
     expect(failTerminal).toHaveBeenCalledWith(expect.anything(), 'POSITION_AUTHORIZATION');
   });
@@ -149,10 +162,7 @@ describe('DiV0S4cExecutor matrix (unit)', () => {
         r1Transport: { executeHistoricalR1ObdQuery: async () => ({}) },
       },
     });
-    const outcome = await executor.execute({
-      ...baseContext({ pinEvidence, completeWithS2 }),
-      repository: { pinEvidence, completeWithS2 } as never,
-    });
+    const outcome = await executor.execute(baseContext({ pinEvidence, completeWithS2 }, { DI_V0_S4_MASTER_ENABLED: 'true', DI_V0_S4_R1_ENABLED: 'true' }));
     expect(outcome).toEqual({ kind: 'SETTLED' });
     const channels = (pinEvidence.mock.calls[0] as unknown as [{}, { channels: Array<{ channel: string; outcome: string }> }])[1].channels;
     expect(channels.find((c) => c.channel === 'R1_OBD')?.outcome).toBe('SOURCE_FAILURE');
@@ -175,6 +185,27 @@ describe('DiV0S4cExecutor matrix (unit)', () => {
     expect(acq).not.toHaveBeenCalled();
   });
 
+  it('P1-A: boundary drift → holderSupersede, no provider', async () => {
+    const holderSupersede = jest.fn();
+    const acq = jest.spyOn(positionAcquisition, 'acquireDiV0HistoricalPositions');
+    const prisma = prismaFor(API_SYNTHETIC_IDENTITY, new Date('2030-01-01T00:00:00Z'), new Date('2030-01-01T00:10:00Z'));
+    const executor = new DiV0S4cExecutor({
+      prisma,
+      controlPlane: parseDiV0S4ControlPlaneConfig({ DI_V0_S4_MASTER_ENABLED: 'true' }),
+      ports: { runDimo: async (_m, fn) => fn(), positionTransport: staticTransport({}), r1Transport: { executeHistoricalR1ObdQuery: async () => ({}) } },
+    });
+    const repository = {
+      evaluateAttemptStartBoundary: jest.fn().mockResolvedValue({ kind: 'SUPERSEDE', reason: 'BOUNDARY_CHANGED' }),
+      holderSupersede,
+      failTerminal: jest.fn(),
+    };
+    const outcome = await executor.execute(baseContext(repository));
+    expect(outcome).toEqual({ kind: 'SETTLED' });
+    expect(holderSupersede).toHaveBeenCalledWith(expect.anything(), 'BOUNDARY_CHANGED');
+    expect(acq).not.toHaveBeenCalled();
+    expect(repository.failTerminal).not.toHaveBeenCalled();
+  });
+
   it('DIMO budget: runDimo receives POST_TRIP_ENRICHMENT BACKGROUND', async () => {
     const metas: Array<{ category: string; priority: string }> = [];
     const executor = new DiV0S4cExecutor({
@@ -193,7 +224,7 @@ describe('DiV0S4cExecutor matrix (unit)', () => {
     });
     const pinEvidence = jest.fn(async () => ({ snapshotHash: 'snap', combinedInputIdentity: 'id' }));
     const completeWithS2 = jest.fn(async () => ({ shadowRunId: 'run', executionIdentity: 'e', combinedInputIdentity: 'id' }));
-    await executor.execute({ ...baseContext({ pinEvidence, completeWithS2 }), repository: { pinEvidence, completeWithS2 } as never });
+    await executor.execute(baseContext({ pinEvidence, completeWithS2 }));
     expect(metas.every((m) => m.category === 'POST_TRIP_ENRICHMENT' && m.priority === 'BACKGROUND')).toBe(true);
   });
 });

@@ -37,3 +37,16 @@ S4C uses the existing DIMO stack (`DimoTelemetryService` → gateway → `DimoRe
 
 - `npm run test:di:s4c`
 - `npm run test:di:s4c:postgres` (requires S4A Postgres bootstrap)
+
+## P1 pre-merge closure (PR #1839)
+
+| Area | Closure |
+|------|---------|
+| P1-A | S4C `evaluateAttemptStartBoundary` → `holderSupersede` (T13); no fingerprint `TENANT_MISMATCH` terminal |
+| P1-B | `buildDiV0S4cNativeChannelInput(config, sourceFamily)` — API_SYNTHETIC + native ON → `NOT_APPLICABLE` |
+| P1-C | R1 `PRESENT_SPARSE` from zero usable `VALUE_PRESENT` fields (not `SPARSE_SIGNAL` coverage) |
+| P1-D | S3A `canonicalSnapshotPayload` pinned verbatim in S4C (no empty `conflictKeysByLabel` rebuild) |
+| P1-E | `bindDiV0S4cPipelineManifest` → S1 compute versions from claimed manifest |
+| P1-F | Expanded real Postgres matrix (`di-v0-s4c-postgres.matrix.integration.spec.ts` + orchestration E2E) |
+
+Residual (S4E/S4D out of scope): drift not observed by active holder; pin replay / full abort matrix deferred to S4D activation tests.
