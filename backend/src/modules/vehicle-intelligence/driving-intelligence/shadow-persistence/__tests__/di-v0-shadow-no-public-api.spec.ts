@@ -34,7 +34,9 @@ describe('DI V0 shadow public API isolation', () => {
         if (
           file.includes('driving-intelligence/shadow-persistence') ||
           file.includes('driving-intelligence/s4a-foundation') ||
-          file.includes('driving-intelligence/s4b-orchestration')
+          file.includes('driving-intelligence/s4b-orchestration') ||
+          file.includes('driving-intelligence/s4c-executor') ||
+          file.includes('driving-intelligence/s4d-replay')
         ) {
           continue;
         }
