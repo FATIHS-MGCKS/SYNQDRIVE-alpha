@@ -73,7 +73,7 @@ export function projectGroundTruthAdmissionV1(
       ]);
     }
 
-    if (!evidence || evidence.scope !== ctx.batteryScope) {
+    if (evidence && evidence.scope !== ctx.batteryScope) {
       return decision(GROUND_TRUTH_ADMISSION_LEVEL.UNVERIFIED_EVIDENCE, [
         GROUND_TRUTH_ADMISSION_REASON.REPLACEMENT_SCOPE_AMBIGUOUS,
       ]);

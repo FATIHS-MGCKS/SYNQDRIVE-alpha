@@ -23,8 +23,21 @@ const SERVICE_EVENT_GROUND_TRUTH_SELECT = {
   documentExtractionId: true,
 } as const;
 
+const DOCUMENT_EXTRACTION_GROUND_TRUTH_SELECT = {
+  id: true,
+  effectiveDocumentType: true,
+  status: true,
+  organizationId: true,
+  vehicleId: true,
+  contentSha256: true,
+} as const;
+
 type LoadedServiceEventForGroundTruth = Prisma.VehicleServiceEventGetPayload<{
   select: typeof SERVICE_EVENT_GROUND_TRUTH_SELECT;
+}>;
+
+type LoadedDocumentForGroundTruth = Prisma.VehicleDocumentExtractionGetPayload<{
+  select: typeof DOCUMENT_EXTRACTION_GROUND_TRUTH_SELECT;
 }>;
 
 export class GroundTruthSourceResolutionError extends Error {
@@ -68,9 +81,7 @@ export class BatteryGroundTruthSourceResolver {
   ): Promise<GroundTruthSourceIdentityV1> {
     const identity: GroundTruthSourceIdentityV1 = {};
     let loadedEvidence: Awaited<ReturnType<typeof this.prisma.batteryEvidence.findUnique>> = null;
-    let loadedDocument: Awaited<
-      ReturnType<typeof this.prisma.vehicleDocumentExtraction.findUnique>
-    > = null;
+    let loadedDocument: LoadedDocumentForGroundTruth | null = null;
     let loadedServiceEvent: LoadedServiceEventForGroundTruth | null = null;
 
     if (pointers.sourceServiceEventId) {
@@ -116,6 +127,7 @@ export class BatteryGroundTruthSourceResolver {
     if (pointers.sourceDocumentExtractionId) {
       const row = await this.prisma.vehicleDocumentExtraction.findUnique({
         where: { id: pointers.sourceDocumentExtractionId },
+        select: DOCUMENT_EXTRACTION_GROUND_TRUTH_SELECT,
       });
       if (!row) {
         throw new GroundTruthSourceResolutionError(
@@ -152,8 +164,9 @@ export class BatteryGroundTruthSourceResolver {
         id: row.id,
         effectiveDocumentType: row.effectiveDocumentType,
         status: row.status,
-        organizationId: row.organizationId,
-        vehicleId: row.vehicleId,
+        organizationId: row.organizationId!,
+        vehicleId: row.vehicleId!,
+        contentSha256: row.contentSha256,
       };
     }
 
@@ -244,7 +257,7 @@ export class BatteryGroundTruthSourceResolver {
   private assertCrossPointerProvenance(
     pointers: GroundTruthSourcePointers,
     evidence: Awaited<ReturnType<typeof this.prisma.batteryEvidence.findUnique>>,
-    document: Awaited<ReturnType<typeof this.prisma.vehicleDocumentExtraction.findUnique>>,
+    document: LoadedDocumentForGroundTruth | null,
     serviceEvent: LoadedServiceEventForGroundTruth | null,
   ): void {
     if (evidence) {

@@ -17,6 +17,7 @@ import {
 } from './ground-truth-admission.types';
 import { computeGroundTruthSourceContentFingerprintV1 } from './ground-truth-fingerprint';
 import { BatteryGroundTruthRepository } from './ground-truth.repository';
+import { ReplacementGroundTruthScopeConflictError } from './ground-truth-emission.errors';
 import {
   BatteryGroundTruthSourceResolver,
   GroundTruthSourceResolutionError,
@@ -279,6 +280,31 @@ export class BatteryGroundTruthService {
       };
     }
 
+    if (
+      prepared.candidate.groundTruthType === 'BATTERY_REPLACEMENT' &&
+      prepared.candidate.pointers.sourceServiceEventId
+    ) {
+      const sourceResolution = await this.resolveReplacementBySourceEvent(
+        prepared.candidate.organizationId,
+        prepared.candidate.pointers.sourceServiceEventId,
+        prepared.candidate.batteryScope,
+      );
+      if (sourceResolution.kind === 'converge') {
+        return {
+          outcome: 'IDEMPOTENT_EXISTING',
+          groundTruthEventId: sourceResolution.groundTruthEventId,
+          fingerprint: prepared.fingerprint,
+          admission: prepared.admission,
+        };
+      }
+      if (sourceResolution.kind === 'scope_conflict') {
+        throw new ReplacementGroundTruthScopeConflictError(
+          'REPLACEMENT_SCOPE_CONFLICT',
+          'Service event already has confirmed replacement ground truth for a different battery scope; use revoke/supersede correction workflow',
+        );
+      }
+    }
+
     try {
       const created = await this.repository.createConfirmedEvent(prepared.createInput);
       return {
@@ -304,9 +330,59 @@ export class BatteryGroundTruthService {
             admission: prepared.admission,
           };
         }
+        if (
+          prepared.candidate.groundTruthType === 'BATTERY_REPLACEMENT' &&
+          prepared.candidate.pointers.sourceServiceEventId
+        ) {
+          const sourceResolution = await this.resolveReplacementBySourceEvent(
+            prepared.candidate.organizationId,
+            prepared.candidate.pointers.sourceServiceEventId,
+            prepared.candidate.batteryScope,
+          );
+          if (sourceResolution.kind === 'converge') {
+            return {
+              outcome: 'IDEMPOTENT_EXISTING',
+              groundTruthEventId: sourceResolution.groundTruthEventId,
+              fingerprint: prepared.fingerprint,
+              admission: prepared.admission,
+            };
+          }
+          if (sourceResolution.kind === 'scope_conflict') {
+            throw new ReplacementGroundTruthScopeConflictError(
+              'REPLACEMENT_SCOPE_CONFLICT',
+              'Service event already has confirmed replacement ground truth for a different battery scope; use revoke/supersede correction workflow',
+            );
+          }
+        }
       }
       throw error;
     }
+  }
+
+  private async resolveReplacementBySourceEvent(
+    organizationId: string,
+    sourceServiceEventId: string,
+    requestedScope: BatteryEvidenceScope,
+  ): Promise<
+    | { kind: 'none' }
+    | { kind: 'converge'; groundTruthEventId: string }
+    | { kind: 'scope_conflict'; existingScope: BatteryEvidenceScope; existingId: string }
+  > {
+    const active = await this.repository.findActiveReplacementBySourceEvent(
+      organizationId,
+      sourceServiceEventId,
+    );
+    if (!active) {
+      return { kind: 'none' };
+    }
+    if (active.batteryScope === requestedScope) {
+      return { kind: 'converge', groundTruthEventId: active.id };
+    }
+    return {
+      kind: 'scope_conflict',
+      existingScope: active.batteryScope,
+      existingId: active.id,
+    };
   }
 
   async admitAndPersist(candidate: AdmitGroundTruthCandidateV1): Promise<AdmitGroundTruthResultV1> {

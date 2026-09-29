@@ -89,6 +89,8 @@ import { BatteryGroundTruthRepository } from './battery-health/ground-truth/grou
 import { BatteryGroundTruthSourceResolver } from './battery-health/ground-truth/ground-truth-source.resolver';
 import { BatteryGroundTruthService } from './battery-health/ground-truth/ground-truth.service';
 import { BatteryGroundTruthInspectionService } from './battery-health/ground-truth/ground-truth-inspection.service';
+import { BatteryGroundTruthEmissionService } from './battery-health/ground-truth/ground-truth-emission.service';
+import { BatteryGroundTruthBackedSourceGuard } from './battery-health/ground-truth/ground-truth-backed-source.guard';
 import { CanonicalBatteryHealthService } from './battery-health/canonical-battery-health.service';
 import { BatteryMeasurementSessionRepository } from './battery-health/battery-measurement-session.repository';
 import { BatteryMeasurementSessionService } from './battery-health/battery-measurement-session.service';
@@ -414,6 +416,8 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     BatteryGroundTruthSourceResolver,
     BatteryGroundTruthService,
     BatteryGroundTruthInspectionService,
+    BatteryGroundTruthEmissionService,
+    BatteryGroundTruthBackedSourceGuard,
     CanonicalBatteryHealthService,
     BatteryMeasurementSessionRepository,
     BatteryMeasurementSessionService,
@@ -661,6 +665,8 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     BatteryGroundTruthSourceResolver,
     BatteryGroundTruthService,
     BatteryGroundTruthInspectionService,
+    BatteryGroundTruthEmissionService,
+    BatteryGroundTruthBackedSourceGuard,
     CanonicalBatteryHealthService,
     BatteryMeasurementSessionRepository,
     BatteryMeasurementSessionService,

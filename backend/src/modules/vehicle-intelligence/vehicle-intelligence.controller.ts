@@ -49,6 +49,9 @@ import {
   UpdateDamageDto,
 } from './damages/dto';
 import { BatteryHealthService } from './battery-health/battery-health.service';
+import { BatteryGroundTruthEmissionService } from './battery-health/ground-truth/ground-truth-emission.service';
+import { ConfirmBatteryReplacementGroundTruthDto } from './battery-health/ground-truth/dto/confirm-battery-replacement-ground-truth.dto';
+import { ManualGroundTruthConfirmationConflictError } from './battery-health/ground-truth/ground-truth-emission.errors';
 import { HvBatteryHealthService } from './battery-health/hv-battery-health.service';
 import { BatteryV2Service } from './battery-health/battery-v2.service';
 import { presentLegacyCrankFeatures } from './battery-health/battery-crank-policy';
@@ -151,6 +154,7 @@ export class VehicleIntelligenceController {
     private readonly tripReconciliation: TripReconciliationService,
     private readonly damagesService: DamagesService,
     private readonly batteryHealthService: BatteryHealthService,
+    private readonly batteryGroundTruthEmission: BatteryGroundTruthEmissionService,
     private readonly hvBatteryHealthService: HvBatteryHealthService,
     private readonly batteryV2Service: BatteryV2Service,
     private readonly canonicalBatteryHealthService: CanonicalBatteryHealthService,
@@ -932,6 +936,36 @@ export class VehicleIntelligenceController {
   ) {
     await this.serviceEventsService.remove(vehicleId, id);
     return { ok: true };
+  }
+
+  @Post('battery/ground-truth/confirm-replacement')
+  async confirmBatteryReplacementGroundTruth(
+    @Param('vehicleId') vehicleId: string,
+    @Body() body: ConfirmBatteryReplacementGroundTruthDto,
+    @Req() req: { user?: { id?: string; organizationId?: string; platformRole?: string } },
+  ) {
+    const organizationId = await this.resolveOrganizationId(req, vehicleId);
+    const actorUserId = req.user?.id;
+    if (!actorUserId) {
+      throw new BadRequestException('Authenticated user required for ground-truth confirmation');
+    }
+    try {
+      return await this.batteryGroundTruthEmission.confirmManualBatteryReplacement({
+        organizationId,
+        vehicleId,
+        serviceEventId: body.serviceEventId,
+        batteryScope: body.batteryScope,
+        actorUserId,
+      });
+    } catch (error) {
+      if (error instanceof ManualGroundTruthConfirmationConflictError) {
+        throw new BadRequestException({
+          message: error.message,
+          code: error.code,
+        });
+      }
+      throw error;
+    }
   }
 
   // --- Enrichment Jobs ---
