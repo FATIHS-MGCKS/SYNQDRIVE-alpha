@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   GROUND_TRUTH_ADMISSION_REASON,
@@ -11,6 +12,20 @@ export type GroundTruthSourcePointers = {
   sourceBatteryEvidenceId?: string | null;
   sourceMeasurementId?: string | null;
 };
+
+const SERVICE_EVENT_GROUND_TRUTH_SELECT = {
+  id: true,
+  vehicleId: true,
+  organizationId: true,
+  eventType: true,
+  eventDate: true,
+  origin: true,
+  documentExtractionId: true,
+} as const;
+
+type LoadedServiceEventForGroundTruth = Prisma.VehicleServiceEventGetPayload<{
+  select: typeof SERVICE_EVENT_GROUND_TRUTH_SELECT;
+}>;
 
 export class GroundTruthSourceResolutionError extends Error {
   constructor(
@@ -56,13 +71,12 @@ export class BatteryGroundTruthSourceResolver {
     let loadedDocument: Awaited<
       ReturnType<typeof this.prisma.vehicleDocumentExtraction.findUnique>
     > = null;
-    let loadedServiceEvent: Awaited<
-      ReturnType<typeof this.prisma.vehicleServiceEvent.findUnique>
-    > = null;
+    let loadedServiceEvent: LoadedServiceEventForGroundTruth | null = null;
 
     if (pointers.sourceServiceEventId) {
       const row = await this.prisma.vehicleServiceEvent.findUnique({
         where: { id: pointers.sourceServiceEventId },
+        select: SERVICE_EVENT_GROUND_TRUTH_SELECT,
       });
       if (!row) {
         throw new GroundTruthSourceResolutionError(
@@ -231,7 +245,7 @@ export class BatteryGroundTruthSourceResolver {
     pointers: GroundTruthSourcePointers,
     evidence: Awaited<ReturnType<typeof this.prisma.batteryEvidence.findUnique>>,
     document: Awaited<ReturnType<typeof this.prisma.vehicleDocumentExtraction.findUnique>>,
-    serviceEvent: Awaited<ReturnType<typeof this.prisma.vehicleServiceEvent.findUnique>>,
+    serviceEvent: LoadedServiceEventForGroundTruth | null,
   ): void {
     if (evidence) {
       if (

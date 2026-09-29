@@ -9,7 +9,6 @@ import {
   ServiceEventType,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
-import { ServiceEventsService } from '../../service-events/service-events.service';
 import { probePostgresDatabase } from '../provider-observability-gap/provider-observability-gap-postgres.fixture';
 import { GROUND_TRUTH_ADMISSION_REASON } from './ground-truth-admission.types';
 import { BatteryGroundTruthRepository } from './ground-truth.repository';
@@ -62,11 +61,48 @@ async function createOrgVehicle(prisma: PrismaClient) {
   return { organizationId: org.id, vehicleId };
 }
 
+async function insertServiceEventRow(
+  prisma: PrismaClient,
+  data: {
+    vehicleId: string;
+    organizationId?: string | null;
+    eventType: ServiceEventType;
+    eventDate: Date;
+    origin?: ServiceEventOrigin;
+  },
+): Promise<string> {
+  const id = randomUUID();
+  await prisma.$executeRaw`
+    INSERT INTO vehicle_service_events (
+      id, vehicle_id, event_type, event_date, origin, organization_id, created_at, updated_at
+    ) VALUES (
+      ${id},
+      ${data.vehicleId},
+      ${data.eventType}::"ServiceEventType",
+      ${data.eventDate},
+      ${(data.origin ?? ServiceEventOrigin.MANUAL)}::"ServiceEventOrigin",
+      ${data.organizationId ?? null},
+      NOW(),
+      NOW()
+    )
+  `;
+  return id;
+}
+
+async function readServiceEventOrganizationId(
+  prisma: PrismaClient,
+  eventId: string,
+): Promise<string | null> {
+  const rows = await prisma.$queryRaw<{ organization_id: string | null }[]>`
+    SELECT organization_id FROM vehicle_service_events WHERE id = ${eventId}
+  `;
+  return rows[0]?.organization_id ?? null;
+}
+
 (LIVE ? describe : describe.skip)('BatteryGroundTruth G1 PostgreSQL', () => {
   let prisma: PrismaClient;
   let gtService: BatteryGroundTruthService;
   let gtRepo: BatteryGroundTruthRepository;
-  let serviceEvents: ServiceEventsService;
 
   beforeAll(async () => {
     const ok = await probePostgresDatabase();
@@ -76,9 +112,6 @@ async function createOrgVehicle(prisma: PrismaClient) {
     gtRepo = new BatteryGroundTruthRepository(prismaService);
     const resolver = new BatteryGroundTruthSourceResolver(prismaService);
     gtService = new BatteryGroundTruthService(prismaService, gtRepo, resolver);
-    serviceEvents = new ServiceEventsService(prismaService, {
-      onServiceHistoryChanged: jest.fn(),
-    } as never);
   });
 
   afterAll(async () => {
@@ -216,14 +249,16 @@ async function createOrgVehicle(prisma: PrismaClient) {
     expect(prior?.verificationStatus).toBe('SUPERSEDED');
   });
 
-  it('PG-E — manual service event create sets organizationId', async () => {
+  it('PG-E — service event organizationId bound for admission (create path unit-tested)', async () => {
     const { organizationId, vehicleId } = await createOrgVehicle(prisma);
-    const created = await serviceEvents.create(
+    const eventId = await insertServiceEventRow(prisma, {
       vehicleId,
-      { eventType: ServiceEventType.BATTERY_REPLACEMENT, eventDate: '2026-02-01' },
-      { origin: ServiceEventOrigin.MANUAL },
-    );
-    expect(created.organizationId).toBe(organizationId);
+      organizationId,
+      eventType: ServiceEventType.BATTERY_REPLACEMENT,
+      eventDate: new Date('2026-02-01'),
+      origin: ServiceEventOrigin.MANUAL,
+    });
+    expect(await readServiceEventOrganizationId(prisma, eventId)).toBe(organizationId);
   });
 
   it('PG-G — revocation repository ops roll back together', async () => {
@@ -479,13 +514,12 @@ async function createOrgVehicle(prisma: PrismaClient) {
 
   it('PG-K — null service-event org fails closed', async () => {
     const { organizationId, vehicleId } = await createOrgVehicle(prisma);
-    const event = await prisma.vehicleServiceEvent.create({
-      data: {
-        vehicleId,
-        eventType: ServiceEventType.BATTERY_REPLACEMENT,
-        eventDate: new Date('2026-01-10'),
-        origin: ServiceEventOrigin.MANUAL,
-      },
+    const eventId = await insertServiceEventRow(prisma, {
+      vehicleId,
+      organizationId: null,
+      eventType: ServiceEventType.BATTERY_REPLACEMENT,
+      eventDate: new Date('2026-01-10'),
+      origin: ServiceEventOrigin.MANUAL,
     });
     const result = await gtService.admitAndPersist({
       organizationId,
@@ -493,7 +527,7 @@ async function createOrgVehicle(prisma: PrismaClient) {
       groundTruthType: 'BATTERY_REPLACEMENT',
       batteryScope: 'LV',
       sourceAuthority: 'CONFIRMED_DOCUMENT',
-      pointers: { sourceServiceEventId: event.id },
+      pointers: { sourceServiceEventId: eventId },
     });
     expect(result.outcome).toBe('RESOLUTION_FAILED');
   });
@@ -607,7 +641,7 @@ async function createOrgVehicle(prisma: PrismaClient) {
         valueType: BatteryEvidenceValueType.VOLTAGE_V,
         numericValue: 12.9,
         unit: 'V',
-        observedAt,
+        observedAt: new Date('2026-09-01T10:00:01.000Z'),
       },
     });
     const a = await gtService.admitAndPersist({
@@ -624,7 +658,7 @@ async function createOrgVehicle(prisma: PrismaClient) {
       vehicleId,
       groundTruthType: 'WORKSHOP_MEASUREMENT',
       batteryScope: 'LV',
-      effectiveAt: observedAt,
+      effectiveAt: new Date('2026-09-01T10:00:01.000Z'),
       sourceAuthority: 'WORKSHOP',
       pointers: { sourceBatteryEvidenceId: evB.id },
     });
@@ -664,19 +698,16 @@ async function createOrgVehicle(prisma: PrismaClient) {
   it('PG-Q — legacy service-event org backfill SQL semantics', async () => {
     const gtBefore = await prisma.batteryGroundTruthEvent.count();
     const { organizationId, vehicleId } = await createOrgVehicle(prisma);
-    const event = await prisma.vehicleServiceEvent.create({
-      data: {
-        vehicleId,
-        eventType: ServiceEventType.REPAIR,
-        eventDate: new Date('2025-12-01'),
-        origin: ServiceEventOrigin.MANUAL,
-      },
+    const eventId = await insertServiceEventRow(prisma, {
+      vehicleId,
+      organizationId: null,
+      eventType: ServiceEventType.REPAIR,
+      eventDate: new Date('2025-12-01'),
+      origin: ServiceEventOrigin.MANUAL,
     });
-    await prisma.$executeRaw`UPDATE vehicle_service_events SET organization_id = NULL WHERE id = ${event.id}`;
     expect(LEGACY_ORG_BACKFILL_SQL.length).toBeGreaterThan(0);
     await prisma.$executeRawUnsafe(LEGACY_ORG_BACKFILL_SQL);
-    const refreshed = await prisma.vehicleServiceEvent.findUnique({ where: { id: event.id } });
-    expect(refreshed?.organizationId).toBe(organizationId);
+    expect(await readServiceEventOrganizationId(prisma, eventId)).toBe(organizationId);
     const gtAfter = await prisma.batteryGroundTruthEvent.count();
     expect(gtAfter).toBe(gtBefore);
   });
