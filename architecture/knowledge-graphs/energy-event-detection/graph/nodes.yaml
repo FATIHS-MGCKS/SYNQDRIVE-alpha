@@ -2037,6 +2037,20 @@ nodes:
       Observation-local TRUSTED/UNTRUSTED/UNKNOWN; relative corroboration required;
       resolver v2; production promotion trust gate remains OFF; EED-INV-021.
 
+  - id: EED-EV-0101
+    type: evidence
+    title: RFRF hybrid trust Alpha fleet scoped activation v1
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - architecture/knowledge-graphs/energy-event-detection/evidence/EED-EV-0101-RFRF-HYBRID-TRUST-ALPHA-ACTIVATION-2026-09-28.md
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-fuel-hybrid-trust-activation.authority.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-fuel-hybrid-trust-activation.postgres.integration.spec.ts
+    evidence_maturity: PROVEN_BY_TEST
+    summary: >
+      ALPHA_ALLOWLIST scoped activation default OFF; promotion-time revalidation;
+      context cannot elevate; EED-INV-022; ABSOLUTE_SIGNAL_TRUST_AUTHORITY_AVAILABLE false.
+
   - id: EED-EV-0091
     type: evidence
     title: ERD E5.4 Production fragment topology + energy closure 2026-09-27
