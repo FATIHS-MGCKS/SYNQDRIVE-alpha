@@ -119,7 +119,7 @@ export function createGtDocumentServiceEventsService(
       const rows = await prisma.$queryRaw<{ id: string }[]>`
         SELECT id FROM vehicle_service_events
         WHERE organization_id = ${organizationId}::uuid
-          AND document_extraction_id = ${documentExtractionId}::uuid
+          AND document_extraction_id = ${documentExtractionId}
         LIMIT 1
       `;
       return rows[0] ? ({ id: rows[0].id } as any) : null;
@@ -144,7 +144,7 @@ export function createGtDocumentServiceEventsService(
           ${input.eventType}::"ServiceEventType",
           ${new Date(input.eventDate)},
           ${ServiceEventOrigin.AI_UPLOAD}::"ServiceEventOrigin",
-          ${input.documentExtractionId}::uuid,
+          ${input.documentExtractionId},
           NOW(),
           NOW()
         )
