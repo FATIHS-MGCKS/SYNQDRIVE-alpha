@@ -6,6 +6,7 @@ const FOUNDATION_DIR = path.join(__dirname, '..');
 /** Permitted dormant consumers; each has its own dormant audit (not AppModule-registered). */
 const S4B_DIR = path.join(__dirname, '../../s4b-orchestration');
 const S4C_DIR = path.join(__dirname, '../../s4c-executor');
+const S4D_DIR = path.join(__dirname, '../../s4d-replay');
 
 function walk(dir: string, pattern: RegExp, acc: string[] = []): string[] {
   if (!fs.existsSync(dir)) return acc;
@@ -45,6 +46,7 @@ const ALLOWED_IMPORTS = new Set([
   '../shadow-persistence/di-v0-shadow-persistence.repository',
   '../shadow-persistence/di-v0-shadow-types',
   '../shadow-persistence/di-v0-shadow-validation',
+  '../s4d-replay/di-v0-s4d-verified-snapshot',
 ]);
 
 const ALLOWED_MUTATION_TABLES = new Set([
@@ -61,6 +63,7 @@ describe('DI V0 S4A dormant-by-construction audit', () => {
       'di-v0-s4a-contract.ts',
       'di-v0-s4a-control-plane.ts',
       'di-v0-s4a-errors.ts',
+      'di-v0-s4a-evidence-container-parse.ts',
       'di-v0-s4a-identity.ts',
       'di-v0-s4a-s2-fenced-persistence.ts',
       'di-v0-s4a-state-machine.ts',
@@ -78,7 +81,8 @@ describe('DI V0 S4A dormant-by-construction audit', () => {
         if (
           file.startsWith(FOUNDATION_DIR + path.sep) ||
           file.startsWith(S4B_DIR + path.sep) ||
-          file.startsWith(S4C_DIR + path.sep)
+          file.startsWith(S4C_DIR + path.sep) ||
+          file.startsWith(S4D_DIR + path.sep)
         ) {
           continue;
         }
