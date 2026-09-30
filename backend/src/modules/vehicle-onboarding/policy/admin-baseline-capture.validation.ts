@@ -1,6 +1,15 @@
 import { VEHICLE_ADMIN_BASELINE_DRAFT_VERSION } from '../contracts/vo-document-versions';
 import type { VehicleAdministrativeBaselineDraftV1 } from '../contracts/vehicle-admin-baseline-draft.v1';
 import { VehicleOnboardingError } from '../errors/vehicle-onboarding.errors';
+import { assertExactObjectKeys } from './capture-strict-keys.util';
+
+const ADMIN_BASELINE_ALLOWED_KEYS = [
+  'version',
+  'vehicleName',
+  'licensePlate',
+  'stationId',
+  'notes',
+] as const;
 
 function normalizeNullableString(val: unknown): string | null {
   if (val === undefined || val === null) return null;
@@ -18,6 +27,7 @@ export function parseAdminBaselineCapturePayload(
     throw new VehicleOnboardingError('INVALID_CAPTURE_PAYLOAD', 'Admin baseline body must be an object');
   }
   const raw = body as Record<string, unknown>;
+  assertExactObjectKeys(raw, ADMIN_BASELINE_ALLOWED_KEYS, 'admin baseline');
   if (raw.version !== VEHICLE_ADMIN_BASELINE_DRAFT_VERSION) {
     throw new VehicleOnboardingError(
       'UNSUPPORTED_CONTRACT_VERSION',

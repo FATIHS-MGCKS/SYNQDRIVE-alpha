@@ -12,6 +12,11 @@ import { parseTechnicalBaselineDraft } from '../policy/technical-baseline-draft.
 import type { VehicleValidationFindingsV1 } from '../contracts/vehicle-validation-findings.v1';
 import { VEHICLE_VALIDATION_FINDINGS_VERSION } from '../contracts/vo-document-versions';
 
+/**
+ * Safe source-ref summary for authorized tenant operators.
+ * `externalVehicleIdentity` is the tenant-adopted operational provider key already bound
+ * to this case (not a platform secret, token, or raw snapshot payload).
+ */
 export interface VehicleOnboardingSourceRefSummaryDto {
   provider: string;
   connectionScope: string | null;

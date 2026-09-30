@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, ProductSlug, type VehicleOnboardingCase } from '@prisma/client';
+import {
+  OnboardingCaseStatus,
+  Prisma,
+  ProductSlug,
+  type VehicleOnboardingCase,
+} from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '@shared/database/prisma.service';
 import { AuditService } from '@modules/activity-log/audit.service';
@@ -16,6 +21,7 @@ import {
   adminBaselineSemanticEquals,
   parseAdminBaselineCapturePayload,
 } from '../policy/admin-baseline-capture.validation';
+import type { ValidatedCaseListQuery } from '../policy/capture-request.validation';
 import {
   assertExpectedConcurrencyToken,
   assertCaseMutable,
@@ -29,25 +35,30 @@ import {
 } from '../policy/technical-baseline-capture.validation';
 import { invalidateReadinessSealIfReady } from '../readiness/readiness-invalidation';
 import { readinessMutationLockKey } from '../readiness/readiness-mutation-lock';
+import { getCaptureMutationTestCoordinator } from '../testing/capture-mutation-test-coordinator';
 import { VehicleOnboardingReadinessService } from './vehicle-onboarding-readiness.service';
-
-export interface ListOnboardingCasesQuery {
-  status?: string;
-  sourceMode?: string;
-  limit?: number;
-  cursor?: string;
-}
 
 export interface CaptureMutationResult {
   case: VehicleOnboardingCaseProjectionDto;
   semanticNoop: boolean;
 }
 
+type PendingCaptureAudit = {
+  actorUserId: string | null;
+  organizationId: string;
+  caseId: string;
+  mutationType: 'ADMIN_BASELINE_UPDATED' | 'TECHNICAL_BASELINE_UPDATED' | 'READINESS_SEALED';
+};
+
 @Injectable()
 export class VehicleOnboardingCaptureService {
   private static readonly DEFAULT_LIMIT = 50;
   private static readonly MAX_LIMIT = 100;
-  private static readonly DEFAULT_ACTIVE_STATUSES = ['OPEN', 'IN_PROGRESS', 'READY_FOR_ACTIVATION'];
+  private static readonly DEFAULT_ACTIVE_STATUSES: OnboardingCaseStatus[] = [
+    'OPEN',
+    'IN_PROGRESS',
+    'READY_FOR_ACTIVATION',
+  ];
 
   constructor(
     private readonly prisma: PrismaService,
@@ -57,22 +68,21 @@ export class VehicleOnboardingCaptureService {
 
   async listCases(
     organizationId: string,
-    query: ListOnboardingCasesQuery,
+    query: ValidatedCaseListQuery,
   ): Promise<{ items: VehicleOnboardingCaseProjectionDto[]; nextCursor: string | null }> {
     const limit = Math.min(
       Math.max(query.limit ?? VehicleOnboardingCaptureService.DEFAULT_LIMIT, 1),
       VehicleOnboardingCaptureService.MAX_LIMIT,
     );
-    const statusFilter =
-      query.status != null && query.status.trim() !== ''
-        ? [query.status.trim()]
-        : VehicleOnboardingCaptureService.DEFAULT_ACTIVE_STATUSES;
+    const statusFilter: OnboardingCaseStatus[] = query.status
+      ? [query.status]
+      : VehicleOnboardingCaptureService.DEFAULT_ACTIVE_STATUSES;
 
     const rows = await this.prisma.vehicleOnboardingCase.findMany({
       where: {
         organizationId,
-        status: { in: statusFilter as any },
-        ...(query.sourceMode ? { sourceMode: query.sourceMode as any } : {}),
+        status: { in: statusFilter },
+        ...(query.sourceMode ? { sourceMode: query.sourceMode } : {}),
         ...(query.cursor ? { id: { lt: query.cursor } } : {}),
       },
       orderBy: { id: 'desc' },
@@ -107,54 +117,61 @@ export class VehicleOnboardingCaptureService {
     expectedConcurrencyToken: string | null;
   }): Promise<CaptureMutationResult> {
     const adminDraft = parseAdminBaselineCapturePayload(input.body);
-    return this.mutateDraft(input.organizationId, input.caseId, input.actorUserId, input.expectedConcurrencyToken, async (tx, caseRow) => {
-      const current = parseValidatedAdminDraft(caseRow);
-      const currentNorm =
-        current ??
-        ({
-          version: VEHICLE_ADMIN_BASELINE_DRAFT_VERSION,
-          vehicleName: null,
-          licensePlate: null,
-          stationId: null,
-          notes: null,
-        } as const);
-      if (adminBaselineSemanticEquals(currentNorm, adminDraft)) {
-        return { semanticNoop: true };
-      }
-      if (adminDraft.stationId) {
-        const station = await tx.station.findFirst({
-          where: { id: adminDraft.stationId, organizationId: input.organizationId },
-          select: { id: true },
-        });
-        if (!station) {
-          throw new VehicleOnboardingError(
-            'STATION_SCOPE_MISMATCH',
-            'Station is not available for this organization',
-          );
+    const { result, pendingAudit } = await this.mutateDraft(
+      input.organizationId,
+      input.caseId,
+      input.expectedConcurrencyToken,
+      async (tx, caseRow) => {
+        const current = parseValidatedAdminDraft(caseRow);
+        const currentNorm =
+          current ??
+          ({
+            version: VEHICLE_ADMIN_BASELINE_DRAFT_VERSION,
+            vehicleName: null,
+            licensePlate: null,
+            stationId: null,
+            notes: null,
+          } as const);
+        if (adminBaselineSemanticEquals(currentNorm, adminDraft)) {
+          return { semanticNoop: true, pendingAudit: null };
         }
-      }
-      await invalidateReadinessSealIfReady(tx, caseRow);
-      await tx.vehicleOnboardingCase.update({
-        where: { id: caseRow.id },
-        data: {
-          draftAdminBaselineJson: adminDraft as unknown as Prisma.InputJsonValue,
-          draftAdminBaselineVersion: VEHICLE_ADMIN_BASELINE_DRAFT_VERSION,
-          lastActorUserId: input.actorUserId,
-          concurrencyToken: randomUUID(),
-          ...(caseRow.status === 'OPEN' ? { status: 'IN_PROGRESS' } : {}),
-        },
-      });
-      void this.audit.record({
-        actorUserId: input.actorUserId ?? undefined,
-        actorOrganizationId: input.organizationId,
-        action: 'UPDATE',
-        entity: 'VEHICLE',
-        entityId: caseRow.id,
-        description: 'Vehicle onboarding admin baseline updated',
-        metaJson: { mutationType: 'ADMIN_BASELINE_UPDATED', caseId: caseRow.id },
-      });
-      return { semanticNoop: false };
-    });
+        if (adminDraft.stationId) {
+          const station = await tx.station.findFirst({
+            where: { id: adminDraft.stationId, organizationId: input.organizationId },
+            select: { id: true },
+          });
+          if (!station) {
+            throw new VehicleOnboardingError(
+              'STATION_SCOPE_MISMATCH',
+              'Station is not available for this organization',
+            );
+          }
+        }
+        await invalidateReadinessSealIfReady(tx, caseRow);
+        await tx.vehicleOnboardingCase.update({
+          where: { id: caseRow.id },
+          data: {
+            draftAdminBaselineJson: adminDraft as unknown as Prisma.InputJsonValue,
+            draftAdminBaselineVersion: VEHICLE_ADMIN_BASELINE_DRAFT_VERSION,
+            lastActorUserId: input.actorUserId,
+            concurrencyToken: randomUUID(),
+            ...(caseRow.status === 'OPEN' ? { status: 'IN_PROGRESS' } : {}),
+          },
+        });
+        return {
+          semanticNoop: false,
+          pendingAudit: {
+            actorUserId: input.actorUserId,
+            organizationId: input.organizationId,
+            caseId: caseRow.id,
+            mutationType: 'ADMIN_BASELINE_UPDATED',
+          },
+        };
+      },
+    );
+    this.recordPendingAudit(pendingAudit);
+    const caseProjection = await this.getCase(input.organizationId, input.caseId);
+    return { case: caseProjection, semanticNoop: result.semanticNoop };
   }
 
   async updateTechnicalBaseline(input: {
@@ -165,40 +182,47 @@ export class VehicleOnboardingCaptureService {
     expectedConcurrencyToken: string | null;
   }): Promise<CaptureMutationResult> {
     const technicalDraft = parseTechnicalBaselineCapturePayload(input.body);
-    return this.mutateDraft(input.organizationId, input.caseId, input.actorUserId, input.expectedConcurrencyToken, async (tx, caseRow) => {
-      await assertTechnicalBaselineCaptureValidForCase(tx, caseRow, technicalDraft);
-      const currentParsed = parseTechnicalBaselineDraft(caseRow);
-      if (currentParsed.version !== 2) {
-        throw new VehicleOnboardingError(
-          'UNSUPPORTED_CONTRACT_VERSION',
-          'Technical baseline capture requires V2 draft storage',
-        );
-      }
-      if (technicalBaselineSemanticEquals(currentParsed.draft, technicalDraft)) {
-        return { semanticNoop: true };
-      }
-      await invalidateReadinessSealIfReady(tx, caseRow);
-      await tx.vehicleOnboardingCase.update({
-        where: { id: caseRow.id },
-        data: {
-          draftTechnicalBaselineJson: technicalDraft as unknown as Prisma.InputJsonValue,
-          draftTechnicalBaselineVersion: VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION_V2,
-          lastActorUserId: input.actorUserId,
-          concurrencyToken: randomUUID(),
-          ...(caseRow.status === 'OPEN' ? { status: 'IN_PROGRESS' } : {}),
-        },
-      });
-      void this.audit.record({
-        actorUserId: input.actorUserId ?? undefined,
-        actorOrganizationId: input.organizationId,
-        action: 'UPDATE',
-        entity: 'VEHICLE',
-        entityId: caseRow.id,
-        description: 'Vehicle onboarding technical baseline updated',
-        metaJson: { mutationType: 'TECHNICAL_BASELINE_UPDATED', caseId: caseRow.id },
-      });
-      return { semanticNoop: false };
-    });
+    const { result, pendingAudit } = await this.mutateDraft(
+      input.organizationId,
+      input.caseId,
+      input.expectedConcurrencyToken,
+      async (tx, caseRow) => {
+        await assertTechnicalBaselineCaptureValidForCase(tx, caseRow, technicalDraft);
+        const currentParsed = parseTechnicalBaselineDraft(caseRow);
+        if (currentParsed.version !== 2) {
+          throw new VehicleOnboardingError(
+            'UNSUPPORTED_CONTRACT_VERSION',
+            'Technical baseline capture requires V2 draft storage',
+          );
+        }
+        if (technicalBaselineSemanticEquals(currentParsed.draft, technicalDraft)) {
+          return { semanticNoop: true, pendingAudit: null };
+        }
+        await invalidateReadinessSealIfReady(tx, caseRow);
+        await tx.vehicleOnboardingCase.update({
+          where: { id: caseRow.id },
+          data: {
+            draftTechnicalBaselineJson: technicalDraft as unknown as Prisma.InputJsonValue,
+            draftTechnicalBaselineVersion: VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION_V2,
+            lastActorUserId: input.actorUserId,
+            concurrencyToken: randomUUID(),
+            ...(caseRow.status === 'OPEN' ? { status: 'IN_PROGRESS' } : {}),
+          },
+        });
+        return {
+          semanticNoop: false,
+          pendingAudit: {
+            actorUserId: input.actorUserId,
+            organizationId: input.organizationId,
+            caseId: caseRow.id,
+            mutationType: 'TECHNICAL_BASELINE_UPDATED',
+          },
+        };
+      },
+    );
+    this.recordPendingAudit(pendingAudit);
+    const caseProjection = await this.getCase(input.organizationId, input.caseId);
+    return { case: caseProjection, semanticNoop: result.semanticNoop };
   }
 
   async evaluateReadinessPreview(input: {
@@ -224,8 +248,14 @@ export class VehicleOnboardingCaptureService {
     expectedConcurrencyToken: string | null;
   }): Promise<{ case: VehicleOnboardingCaseProjectionDto; snapshot: VehicleOnboardingReadinessSnapshotV2 }> {
     const newToken = randomUUID();
-    const snapshot = await this.prisma.$transaction(async (tx) => {
+    const coordinator = getCaptureMutationTestCoordinator();
+    let pendingAudit: PendingCaptureAudit | null = null;
+    const snapshot = await this.prisma.$transaction(
+      async (tx) => {
       await acquirePgAdvisoryXactLock64(tx, readinessMutationLockKey(input.caseId));
+      if (coordinator?.onSealLockAcquired) {
+        await coordinator.onSealLockAcquired();
+      }
       const caseRow = await tx.vehicleOnboardingCase.findFirst({
         where: { id: input.caseId, organizationId: input.organizationId },
       });
@@ -242,45 +272,79 @@ export class VehicleOnboardingCaptureService {
         seal: true,
         newConcurrencyToken: newToken,
       });
-      void this.audit.record({
-        actorUserId: input.actorUserId ?? undefined,
-        actorOrganizationId: input.organizationId,
-        action: 'UPDATE',
-        entity: 'VEHICLE',
-        entityId: caseRow.id,
-        description: 'Vehicle onboarding readiness sealed',
-        metaJson: { mutationType: 'READINESS_SEALED', caseId: caseRow.id },
-      });
+      if (coordinator?.beforeSealCommit) {
+        await coordinator.beforeSealCommit();
+      }
+      pendingAudit = {
+        actorUserId: input.actorUserId,
+        organizationId: input.organizationId,
+        caseId: caseRow.id,
+        mutationType: 'READINESS_SEALED',
+      };
       return snap;
-    });
+      },
+      { maxWait: 30_000, timeout: 60_000 },
+    );
+    this.recordPendingAudit(pendingAudit);
     const caseProjection = await this.getCase(input.organizationId, input.caseId);
     return { case: caseProjection, snapshot };
+  }
+
+  private recordPendingAudit(pending: PendingCaptureAudit | null): void {
+    if (!pending) return;
+    const descriptions: Record<PendingCaptureAudit['mutationType'], string> = {
+      ADMIN_BASELINE_UPDATED: 'Vehicle onboarding admin baseline updated',
+      TECHNICAL_BASELINE_UPDATED: 'Vehicle onboarding technical baseline updated',
+      READINESS_SEALED: 'Vehicle onboarding readiness sealed',
+    };
+    void this.audit.record({
+      actorUserId: pending.actorUserId ?? undefined,
+      actorOrganizationId: pending.organizationId,
+      action: 'UPDATE',
+      entity: 'VEHICLE',
+      entityId: pending.caseId,
+      description: descriptions[pending.mutationType],
+      metaJson: { mutationType: pending.mutationType, caseId: pending.caseId },
+    });
   }
 
   private async mutateDraft(
     organizationId: string,
     caseId: string,
-    actorUserId: string | null,
     expectedConcurrencyToken: string | null,
     apply: (
       tx: Prisma.TransactionClient,
       caseRow: VehicleOnboardingCase,
-    ) => Promise<{ semanticNoop: boolean }>,
-  ): Promise<CaptureMutationResult> {
-    const result = await this.prisma.$transaction(async (tx) => {
-      await acquirePgAdvisoryXactLock64(tx, readinessMutationLockKey(caseId));
-      const caseRow = await tx.vehicleOnboardingCase.findFirst({
-        where: { id: caseId, organizationId },
-      });
-      if (!caseRow) {
-        throw new VehicleOnboardingError('CASE_NOT_FOUND', 'Onboarding case not found');
-      }
-      assertCaseMutable(caseRow.status);
-      assertExpectedConcurrencyToken(caseRow.concurrencyToken, expectedConcurrencyToken);
-      const { semanticNoop } = await apply(tx, caseRow);
-      return { semanticNoop };
-    });
-    const caseProjection = await this.getCase(organizationId, caseId);
-    return { case: caseProjection, semanticNoop: result.semanticNoop };
+    ) => Promise<{ semanticNoop: boolean; pendingAudit: PendingCaptureAudit | null }>,
+  ): Promise<{
+    result: { semanticNoop: boolean };
+    pendingAudit: PendingCaptureAudit | null;
+  }> {
+    const coordinator = getCaptureMutationTestCoordinator();
+    let pendingAudit: PendingCaptureAudit | null = null;
+    const result = await this.prisma.$transaction(
+      async (tx) => {
+        await acquirePgAdvisoryXactLock64(tx, readinessMutationLockKey(caseId));
+        if (coordinator?.onMutationLockAcquired) {
+          await coordinator.onMutationLockAcquired();
+        }
+        const caseRow = await tx.vehicleOnboardingCase.findFirst({
+          where: { id: caseId, organizationId },
+        });
+        if (!caseRow) {
+          throw new VehicleOnboardingError('CASE_NOT_FOUND', 'Onboarding case not found');
+        }
+        assertCaseMutable(caseRow.status);
+        assertExpectedConcurrencyToken(caseRow.concurrencyToken, expectedConcurrencyToken);
+        const applyResult = await apply(tx, caseRow);
+        pendingAudit = applyResult.pendingAudit;
+        if (coordinator?.beforeMutationCommit) {
+          await coordinator.beforeMutationCommit();
+        }
+        return { semanticNoop: applyResult.semanticNoop };
+      },
+      { maxWait: 30_000, timeout: 60_000 },
+    );
+    return { result, pendingAudit };
   }
 }

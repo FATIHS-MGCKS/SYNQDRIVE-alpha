@@ -4,6 +4,15 @@ import { VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION_V2 } from '../contracts/vo-doc
 import type { VehicleTechnicalBaselineDraftV2 } from '../contracts/vehicle-technical-baseline-draft.v2';
 import { VehicleOnboardingError } from '../errors/vehicle-onboarding.errors';
 import { buildTechnicalBaselineDraftV2FromRaw } from './technical-baseline-draft.v2.runtime';
+import { assertExactObjectKeys } from './capture-strict-keys.util';
+
+const TECHNICAL_BASELINE_TOP_LEVEL_KEYS = [
+  'version',
+  'tireReferenceSpec',
+  'tireInstalledConfig',
+  'brakeReference',
+  'hvBatteryReference',
+] as const;
 import {
   assessBrakeBaselineState,
   assessHvBatteryBaselineState,
@@ -19,6 +28,7 @@ export function parseTechnicalBaselineCapturePayload(body: unknown): VehicleTech
     );
   }
   const raw = body as Record<string, unknown>;
+  assertExactObjectKeys(raw, TECHNICAL_BASELINE_TOP_LEVEL_KEYS, 'technical baseline');
   if (raw.version !== VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION_V2) {
     throw new VehicleOnboardingError(
       'UNSUPPORTED_CONTRACT_VERSION',

@@ -11,24 +11,16 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
-import { ProductSlug } from '@prisma/client';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { RequirePermission } from '@shared/decorators/require-permission.decorator';
 import { runVehicleOnboardingHttp } from '../http/vehicle-onboarding-http.util';
+import {
+  parseCaseListQuery,
+  parseRequiredConcurrencyToken,
+  parseSelectedProductRuntime,
+} from '../policy/capture-request.validation';
 import { VehicleOnboardingCaptureService } from '../services/vehicle-onboarding-capture.service';
-
-class ExpectedConcurrencyBody {
-  expectedConcurrencyToken!: string | null;
-}
-
-class ReadinessEvaluateBody {
-  selectedProduct!: ProductSlug;
-}
-
-class ReadinessSealBody extends ExpectedConcurrencyBody {
-  selectedProduct!: ProductSlug;
-}
 
 @Controller('organizations/:orgId/vehicle-onboarding')
 @UseGuards(OrgScopingGuard, PermissionsGuard)
@@ -52,14 +44,8 @@ export class VehicleOnboardingCaptureController {
     @Query('limit') limit?: string,
     @Query('cursor') cursor?: string,
   ) {
-    return runVehicleOnboardingHttp(() =>
-      this.captureService.listCases(orgId, {
-        status,
-        sourceMode,
-        limit: limit ? parseInt(limit, 10) : undefined,
-        cursor,
-      }),
-    );
+    const query = parseCaseListQuery({ status, sourceMode, limit, cursor });
+    return runVehicleOnboardingHttp(() => this.captureService.listCases(orgId, query));
   }
 
   @Get('cases/:caseId')
@@ -73,17 +59,18 @@ export class VehicleOnboardingCaptureController {
   async updateAdminBaseline(
     @Param('orgId') orgId: string,
     @Param('caseId') caseId: string,
-    @Body() body: Record<string, unknown> & ExpectedConcurrencyBody,
+    @Body() body: Record<string, unknown>,
     @Req() req: Request & { user?: { id?: string; sub?: string } },
   ) {
-    const { expectedConcurrencyToken, ...adminBody } = body;
+    const expectedConcurrencyToken = parseRequiredConcurrencyToken(body);
+    const { expectedConcurrencyToken: _drop, ...adminBody } = body;
     return runVehicleOnboardingHttp(() =>
       this.captureService.updateAdminBaseline({
         organizationId: orgId,
         caseId,
         actorUserId: this.actorUserId(req),
         body: adminBody,
-        expectedConcurrencyToken: expectedConcurrencyToken ?? null,
+        expectedConcurrencyToken,
       }),
     );
   }
@@ -93,17 +80,18 @@ export class VehicleOnboardingCaptureController {
   async updateTechnicalBaseline(
     @Param('orgId') orgId: string,
     @Param('caseId') caseId: string,
-    @Body() body: Record<string, unknown> & ExpectedConcurrencyBody,
+    @Body() body: Record<string, unknown>,
     @Req() req: Request & { user?: { id?: string; sub?: string } },
   ) {
-    const { expectedConcurrencyToken, ...technicalBody } = body;
+    const expectedConcurrencyToken = parseRequiredConcurrencyToken(body);
+    const { expectedConcurrencyToken: _drop, ...technicalBody } = body;
     return runVehicleOnboardingHttp(() =>
       this.captureService.updateTechnicalBaseline({
         organizationId: orgId,
         caseId,
         actorUserId: this.actorUserId(req),
         body: technicalBody,
-        expectedConcurrencyToken: expectedConcurrencyToken ?? null,
+        expectedConcurrencyToken,
       }),
     );
   }
@@ -113,14 +101,15 @@ export class VehicleOnboardingCaptureController {
   async evaluateReadiness(
     @Param('orgId') orgId: string,
     @Param('caseId') caseId: string,
-    @Body() body: ReadinessEvaluateBody,
+    @Body() body: Record<string, unknown>,
     @Req() req: Request & { user?: { id?: string; sub?: string } },
   ) {
+    const selectedProduct = parseSelectedProductRuntime(body.selectedProduct);
     return runVehicleOnboardingHttp(() =>
       this.captureService.evaluateReadinessPreview({
         organizationId: orgId,
         caseId,
-        selectedProduct: body.selectedProduct,
+        selectedProduct,
         actorUserId: this.actorUserId(req),
       }),
     );
@@ -131,16 +120,18 @@ export class VehicleOnboardingCaptureController {
   async sealReadiness(
     @Param('orgId') orgId: string,
     @Param('caseId') caseId: string,
-    @Body() body: ReadinessSealBody,
+    @Body() body: Record<string, unknown>,
     @Req() req: Request & { user?: { id?: string; sub?: string } },
   ) {
+    const expectedConcurrencyToken = parseRequiredConcurrencyToken(body);
+    const selectedProduct = parseSelectedProductRuntime(body.selectedProduct);
     return runVehicleOnboardingHttp(() =>
       this.captureService.sealReadiness({
         organizationId: orgId,
         caseId,
-        selectedProduct: body.selectedProduct,
+        selectedProduct,
         actorUserId: this.actorUserId(req),
-        expectedConcurrencyToken: body.expectedConcurrencyToken ?? null,
+        expectedConcurrencyToken,
       }),
     );
   }

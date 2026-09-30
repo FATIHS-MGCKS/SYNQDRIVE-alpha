@@ -9,6 +9,12 @@ import {
 } from '../http/vehicle-onboarding-case.projection';
 import { toVehicleOnboardingHttpException } from '../http/vehicle-onboarding-http.util';
 import { assertExpectedConcurrencyToken } from '../policy/onboarding-concurrency.util';
+import {
+  parseCaseListQuery,
+  parseRequiredConcurrencyToken,
+  parseSelectedProductRuntime,
+} from '../policy/capture-request.validation';
+import { ProductSlug } from '@prisma/client';
 
 describe('vehicle onboarding capture API (unit)', () => {
   it('parses strict admin baseline', () => {
@@ -64,6 +70,52 @@ describe('vehicle onboarding capture API (unit)', () => {
       VehicleOnboardingError,
     );
     assertExpectedConcurrencyToken(null, null);
+  });
+
+  it('rejects admin unknown keys', () => {
+    expect(() =>
+      parseAdminBaselineCapturePayload({
+        version: VEHICLE_ADMIN_BASELINE_DRAFT_VERSION,
+        vehicleName: 'Car',
+        arbitraryField: true,
+      }),
+    ).toThrow(VehicleOnboardingError);
+  });
+
+  it('rejects technical unknown top-level keys', () => {
+    expect(() =>
+      parseTechnicalBaselineCapturePayload({
+        version: VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION_V2,
+        extra: true,
+      }),
+    ).toThrow(VehicleOnboardingError);
+  });
+
+  it('rejects brake unknown nested keys', () => {
+    expect(() =>
+      parseTechnicalBaselineCapturePayload({
+        version: VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION_V2,
+        brakeReference: { frontPadNominalThicknessMm: 10, evil: true },
+      }),
+    ).toThrow(VehicleOnboardingError);
+  });
+
+  it('requires explicit concurrency token property', () => {
+    expect(() => parseRequiredConcurrencyToken({})).toThrow(VehicleOnboardingError);
+    expect(parseRequiredConcurrencyToken({ expectedConcurrencyToken: null })).toBeNull();
+    expect(() => parseRequiredConcurrencyToken({ expectedConcurrencyToken: 1 })).toThrow(
+      VehicleOnboardingError,
+    );
+  });
+
+  it('validates selectedProduct at runtime', () => {
+    expect(() => parseSelectedProductRuntime('NOT_A_PRODUCT')).toThrow(VehicleOnboardingError);
+    expect(parseSelectedProductRuntime(ProductSlug.RENTAL)).toBe(ProductSlug.RENTAL);
+  });
+
+  it('validates list query params', () => {
+    expect(() => parseCaseListQuery({ status: 'BROKEN' })).toThrow(VehicleOnboardingError);
+    expect(() => parseCaseListQuery({ limit: 'abc' })).toThrow(VehicleOnboardingError);
   });
 
   it('projection omits raw provider snapshot payloads', () => {
