@@ -112,6 +112,31 @@ async function applyResolvableDimoIdentity(prisma: PrismaClient, caseId: string,
     expect(activated.vehicleId).toBeTruthy();
   });
 
+  it('manual case seals READY when identity and VIN satisfied', async () => {
+    const orgId = await createOrg(prisma);
+    const vin = `MAN${randomUUID().replace(/-/g, '').slice(0, 14)}`;
+    const caseRow = await caseService.openOrResumeManual(
+      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      {
+        vin,
+        make: 'VW',
+        model: 'Golf',
+        year: 2020,
+        fuelType: 'GASOLINE',
+        vehicleName: 'Fleet',
+        licensePlate: null,
+        stationId: null,
+        notes: null,
+      },
+    );
+    const snap = await readinessService.evaluateAndSealReadiness({
+      organizationId: orgId,
+      onboardingCaseId: caseRow.id,
+      actorUserId: null,
+    });
+    expect(snap.decision).toBe('READY');
+  });
+
   it('HM_ONLY approved case seals READY', async () => {
     const orgId = await createOrg(prisma);
     const hmId = randomUUID();
