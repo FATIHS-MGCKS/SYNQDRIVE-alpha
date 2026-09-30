@@ -20,6 +20,13 @@ async function createFixtureOrg(prisma: PrismaClient): Promise<string> {
 }
 
 /** Minimal vehicle row via SQL (avoids Prisma/schema columns not yet in migration history). */
+async function createFixtureDimoVehicle(prisma: PrismaClient, dimoId: string): Promise<void> {
+  await prisma.$executeRaw`
+    INSERT INTO dimo_vehicles (id, external_id, connection_status, created_at, updated_at)
+    VALUES (${dimoId}, ${`vo2-test-${dimoId}`}, 'CONNECTED'::"DimoConnectionStatus", NOW(), NOW())
+  `;
+}
+
 async function createFixtureVehicle(
   prisma: PrismaClient,
   organizationId: string,
@@ -225,13 +232,7 @@ async function createFixtureVehicle(
     await createFixtureVehicle(prisma, orgId, vehicleId);
 
     const dimoId = randomUUID();
-    await prisma.dimoVehicle.create({
-      data: {
-        id: dimoId,
-        externalId: `vo2-test-${dimoId}`,
-        connectionStatus: 'CONNECTED',
-      },
-    });
+    await createFixtureDimoVehicle(prisma, dimoId);
 
     const link1 = randomUUID();
     const link2 = randomUUID();
@@ -255,6 +256,9 @@ async function createFixtureVehicle(
       data: { isActive: false, deactivatedAt: new Date() },
     });
 
+    const dimoId2 = randomUUID();
+    await createFixtureDimoVehicle(prisma, dimoId2);
+
     await prisma.vehicleDataSourceLink.create({
       data: {
         id: link2,
@@ -262,11 +266,15 @@ async function createFixtureVehicle(
         provider: 'DIMO',
         sourceType: 'DIMO',
         sourceSubtype: null,
+        dimoVehicleId: dimoId2,
         isActive: false,
         activatedAt: new Date(),
         deactivatedAt: new Date(),
       },
     });
+
+    const dimoId3 = randomUUID();
+    await createFixtureDimoVehicle(prisma, dimoId3);
 
     await prisma.vehicleDataSourceLink.create({
       data: {
@@ -275,10 +283,14 @@ async function createFixtureVehicle(
         provider: 'DIMO',
         sourceType: 'DIMO',
         sourceSubtype: null,
+        dimoVehicleId: dimoId3,
         isActive: true,
         activatedAt: new Date(),
       },
     });
+
+    const dimoId4 = randomUUID();
+    await createFixtureDimoVehicle(prisma, dimoId4);
 
     await expect(
       prisma.vehicleDataSourceLink.create({
@@ -288,6 +300,7 @@ async function createFixtureVehicle(
           provider: 'DIMO',
           sourceType: 'DIMO',
           sourceSubtype: null,
+          dimoVehicleId: dimoId4,
           isActive: true,
           activatedAt: new Date(),
         },
@@ -295,6 +308,9 @@ async function createFixtureVehicle(
     ).rejects.toMatchObject({ code: 'P2002' });
 
     await prisma.vehicleDataSourceLink.deleteMany({ where: { vehicleId } });
+    for (const id of [dimoId, dimoId2, dimoId3, dimoId4]) {
+      await prisma.$executeRaw`DELETE FROM dimo_vehicles WHERE id = ${id}`;
+    }
     await prisma.$executeRaw`DELETE FROM vehicles WHERE id = ${vehicleId}`;
   });
 
