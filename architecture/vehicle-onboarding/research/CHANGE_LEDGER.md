@@ -11,6 +11,7 @@
 | 2026-09-30 | **VO-3.1** — Tenant HM isolation, composite VIN fix, readiness fail-closed DI, contract validation, HM consent/history, outbox semantic idempotency | Hardening only; no cutover |
 | 2026-09-30 | **VO-3.2** — Secure source attach APIs, private validated attach, Postgres concurrent/wrong-org/rollback proofs, manual idempotency fingerprint, DIMO cutover auth invariant | Hardening only; no cutover |
 | 2026-09-30 | **VO-4** — Readiness profile engine, snapshot V2, input fingerprint seal, stale-seal protection, production readiness authority; no public cutover | Internal readiness only |
+| 2026-09-30 | **VO-4.5** — Technical baseline draft V2, materializable readiness rules, activation TX materialization (brake + HV reference); tire reference blocked; no public cutover | Onboarding activation + readiness; tire reference gap documented |
 
 ## VO-0B — REUSE-FIRST components (do not replace without VO-1+ proof)
 
