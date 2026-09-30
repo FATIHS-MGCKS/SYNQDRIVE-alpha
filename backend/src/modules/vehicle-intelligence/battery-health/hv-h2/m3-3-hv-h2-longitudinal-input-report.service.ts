@@ -16,8 +16,29 @@ import {
 } from './m3-3-hv-h2.constants';
 import { buildM3_3HvH2LongitudinalInputReportV1 } from './m3-3-hv-h2-candidate-builder';
 import type { M3_3HvH2LoadedDataV1 } from './m3-3-hv-h2-loaded-data.types';
+import { resolveM3_3HvH2ReportBound } from './m3-3-hv-h2-report-bounds.util';
 import { runM3_3HvH2ReadOnlyTransaction, type HvH2ReadOnlyTx } from './m3-3-hv-h2-readonly-transaction';
 import type { M3_3HvH2LongitudinalInputReportV1 } from './m3-3-hv-h2.types';
+
+export { resolveM3_3HvH2ReportBound, M3_3HvH2InvalidReportBoundError } from './m3-3-hv-h2-report-bounds.util';
+
+export function m3_3HvH2GroundTruthEventsWhereClause(
+  organizationId: string,
+  vehicleId: string,
+  evaluationAt: Date,
+): {
+  organizationId: string;
+  vehicleId: string;
+  effectiveAt: { lte: Date };
+  createdAt: { lte: Date };
+} {
+  return {
+    organizationId,
+    vehicleId,
+    effectiveAt: { lte: evaluationAt },
+    createdAt: { lte: evaluationAt },
+  };
+}
 
 export interface RunM3_3HvH2LongitudinalInputReportInput {
   organizationId: string;
@@ -27,10 +48,6 @@ export interface RunM3_3HvH2LongitudinalInputReportInput {
   maxProviderSohRows?: number;
   maxGtRows?: number;
   maxSessions?: number;
-}
-
-function clamp(max: number | undefined, defaultVal: number, hard: number): number {
-  return Math.min(max ?? defaultVal, hard);
 }
 
 async function assertVehicleInOrganization(
@@ -56,21 +73,29 @@ async function loadReportDataInTransaction(
 ): Promise<M3_3HvH2LoadedDataV1> {
   await assertVehicleInOrganization(tx, input.organizationId, input.vehicleId);
 
-  const maxObs = clamp(
+  const maxObs = resolveM3_3HvH2ReportBound(
     input.maxCapacityObservations,
     M3_3_HV_H2_MAX_CAPACITY_OBSERVATIONS_DEFAULT,
     M3_3_HV_H2_MAX_CAPACITY_OBSERVATIONS_HARD,
+    'maxCapacityObservations',
   );
-  const maxSoh = clamp(
+  const maxSoh = resolveM3_3HvH2ReportBound(
     input.maxProviderSohRows,
     M3_3_HV_H2_MAX_PROVIDER_SOH_ROWS_DEFAULT,
     M3_3_HV_H2_MAX_PROVIDER_SOH_ROWS_HARD,
+    'maxProviderSohRows',
   );
-  const maxGt = clamp(input.maxGtRows, M3_3_HV_H2_MAX_GT_ROWS_DEFAULT, M3_3_HV_H2_MAX_GT_ROWS_HARD);
-  const maxSessions = clamp(
+  const maxGt = resolveM3_3HvH2ReportBound(
+    input.maxGtRows,
+    M3_3_HV_H2_MAX_GT_ROWS_DEFAULT,
+    M3_3_HV_H2_MAX_GT_ROWS_HARD,
+    'maxGtRows',
+  );
+  const maxSessions = resolveM3_3HvH2ReportBound(
     input.maxSessions,
     M3_3_HV_H2_MAX_SESSIONS_DEFAULT,
     M3_3_HV_H2_MAX_SESSIONS_HARD,
+    'maxSessions',
   );
 
   const capacityObservations = await tx.hvCapacityObservation.findMany({
@@ -103,11 +128,11 @@ async function loadReportDataInTransaction(
   const providerSohEvidence = providerTruncated ? providerSohRows.slice(0, maxSoh) : providerSohRows;
 
   const groundTruthEvents = await tx.batteryGroundTruthEvent.findMany({
-    where: {
-      organizationId: input.organizationId,
-      vehicleId: input.vehicleId,
-      effectiveAt: { lte: evaluationAt },
-    },
+    where: m3_3HvH2GroundTruthEventsWhereClause(
+      input.organizationId,
+      input.vehicleId,
+      evaluationAt,
+    ),
     orderBy: [{ effectiveAt: 'asc' }, { createdAt: 'asc' }],
     take: maxGt + 1,
     include: {

@@ -42,6 +42,23 @@ grep -q 'isHvH2GroundTruthActiveAtEvaluationAt' "$HV_H2/m3-3-hv-h2-candidate-bui
   || fail "H2 must use GT as-of active projector"
 grep -q 'healthConclusion: null' "$HV_H2/m3-3-hv-h2-candidate-builder.ts" \
   || fail "H2 candidates must keep healthConclusion null"
+grep -q 'createdAt: { lte: evaluationAt }' "$HV_H2/m3-3-hv-h2-longitudinal-input-report.service.ts" \
+  || fail "GT query must filter createdAt <= evaluationAt before take/limit"
+grep -q 'verificationStatusAtEvaluationAt' "$HV_H2/m3-3-hv-h2-candidate-builder.ts" \
+  || fail "validation anchors must project verificationStatusAtEvaluationAt"
+grep -q 'SESSION_STATE_NOT_KNOWABLE_AT_EVALUATION_AT' "$HV_H2/m3-3-hv-h2.types.ts" \
+  || fail "missing SESSION_STATE_NOT_KNOWABLE_AT_EVALUATION_AT reason"
+grep -q 'compareM3_3HvH2LifecycleSegmentIds' "$HV_H2/m3-3-hv-h2-fingerprint.ts" \
+  || fail "candidate ordering must use numeric lifecycle segment order"
+grep -q 'resolveM3_3HvH2ReportBound' "$HV_H2/m3-3-hv-h2-longitudinal-input-report.service.ts" \
+  || fail "H2 report bounds must use resolveM3_3HvH2ReportBound"
+if grep -q '\-\-as-of' "$ROOT/backend/scripts/ops/battery-hv-h2-longitudinal-input-report.ts"; then
+  fail "H2 CLI must not retain misleading --as-of alias"
+fi
+grep -q 'OBSERVATION_EVENT_TIME_FILTERED' "$HV_H2/m3-3-hv-h2.constants.ts" \
+  || fail "H2 temporal semantics must document observation/GT/session authority"
+grep -q 'SESSION_MISSING' "$HV_H2/m3-3-hv-h2-candidate-builder.ts" \
+  || fail "M2 must fail closed on missing chargeSessionId"
 grep -q 'customerPublicationEligible: false' "$HV_H2/m3-3-hv-h2-candidate-builder.ts" \
   || fail "H2 report must set customerPublicationEligible false"
 

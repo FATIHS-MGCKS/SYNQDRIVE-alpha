@@ -27,6 +27,7 @@ export const M3_3_HV_H2_ELIGIBILITY_REASONS = {
   SESSION_SCOPE_MISMATCH: 'SESSION_SCOPE_MISMATCH',
   SESSION_ONGOING: 'SESSION_ONGOING',
   SESSION_NOT_QUALIFIED: 'SESSION_NOT_QUALIFIED',
+  SESSION_STATE_NOT_KNOWABLE_AT_EVALUATION_AT: 'SESSION_STATE_NOT_KNOWABLE_AT_EVALUATION_AT',
   CAPACITY_VALIDATION_NOT_ELIGIBLE: 'CAPACITY_VALIDATION_NOT_ELIGIBLE',
   M2_OUTLIER: 'M2_OUTLIER',
   M2_GATE_BLOCKED: 'M2_GATE_BLOCKED',
@@ -102,7 +103,10 @@ export interface M3_3HvH2ValidationAnchorV1 {
   effectiveAt: string;
   createdAt: string;
   sourceProvenance: string;
+  /** Verification status reconstructed as active at evaluationAt (not current DB row status). */
   verificationStatus: string;
+  verificationStatusAtEvaluationAt: string;
+  currentVerificationStatus: string;
   maturity: 'CONFIRMED_GROUND_TRUTH_FACT';
 }
 

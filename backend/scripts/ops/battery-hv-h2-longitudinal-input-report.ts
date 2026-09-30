@@ -28,7 +28,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const evaluationAtRaw = parseArg('--evaluation-at') ?? parseArg('--as-of');
+  const evaluationAtRaw = parseArg('--evaluation-at');
   const evaluationAt = evaluationAtRaw ? new Date(evaluationAtRaw) : new Date();
   if (Number.isNaN(evaluationAt.getTime())) {
     console.error(`Invalid --evaluation-at: ${evaluationAtRaw}`);

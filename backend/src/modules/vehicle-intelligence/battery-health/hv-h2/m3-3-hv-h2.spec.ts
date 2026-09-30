@@ -725,22 +725,289 @@ describe('M3.3-HV-H2 fingerprint and ordering', () => {
     expect(computeM3_3HvH2CandidateFingerprint({ ...input, modelVersion: null })).toHaveLength(64);
   });
 
-  it('orders by lifecycle segment, observedAt, method, sourceEntityId', () => {
+  it('orders lifecycle segments numerically (HV_SEGMENT_2 before HV_SEGMENT_10)', () => {
     const ordered = sortM3_3HvH2Candidates([
       {
-        lifecycleSegmentId: 'HV_SEGMENT_1',
+        lifecycleSegmentId: 'HV_SEGMENT_10',
         observedAt: '2026-01-02T00:00:00.000Z',
         method: 'M2_CURRENT_ENERGY_SOC',
-        sourceEntityId: 'b',
+        sourceEntityId: 'z',
+      } as never,
+      {
+        lifecycleSegmentId: 'HV_SEGMENT_2',
+        observedAt: '2026-01-03T00:00:00.000Z',
+        method: 'M2_CURRENT_ENERGY_SOC',
+        sourceEntityId: 'a',
       } as never,
       {
         lifecycleSegmentId: 'HV_SEGMENT_0',
-        observedAt: '2026-01-02T00:00:00.000Z',
+        observedAt: '2026-01-04T00:00:00.000Z',
         method: 'PROVIDER_HV_SOH',
-        sourceEntityId: 'a',
+        sourceEntityId: 'b',
       } as never,
     ]);
-    expect(ordered[0]!.lifecycleSegmentId).toBe('HV_SEGMENT_0');
-    expect(ordered[1]!.lifecycleSegmentId).toBe('HV_SEGMENT_1');
+    expect(ordered.map((c) => c.lifecycleSegmentId)).toEqual([
+      'HV_SEGMENT_0',
+      'HV_SEGMENT_2',
+      'HV_SEGMENT_10',
+    ]);
+  });
+
+  it('orders eleven-plus segment indices in numeric order', () => {
+    const ids = Array.from({ length: 12 }, (_, i) => `HV_SEGMENT_${i}`);
+    const shuffled = [...ids].reverse();
+    const ordered = sortM3_3HvH2Candidates(
+      shuffled.map((lifecycleSegmentId, i) => ({
+        lifecycleSegmentId,
+        observedAt: `2026-01-${String(i + 1).padStart(2, '0')}T00:00:00.000Z`,
+        method: 'M2_CURRENT_ENERGY_SOC',
+        sourceEntityId: `id-${i}`,
+      })) as never,
+    );
+    expect(ordered.map((c) => c.lifecycleSegmentId)).toEqual(ids);
+  });
+});
+
+describe('M3.3-HV-H2 M2 session linkage', () => {
+  it('marks M2 SHADOW with null chargeSessionId ineligible with SESSION_MISSING', () => {
+    const report = buildM3_3HvH2LongitudinalInputReportV1(
+      emptyLoaded({
+        capacityObservations: [
+          {
+            id: randomUUID(),
+            organizationId: orgId,
+            vehicleId: vehId,
+            method: HV_M2_CAPACITY_METHOD,
+            observedAt: new Date('2026-09-20T09:00:00.000Z'),
+            receivedAt: new Date('2026-09-20T09:01:00.000Z'),
+            idempotencyKey: 'm2-no-session',
+            quality: BatteryMeasurementQuality.SHADOW,
+            modelVersion: HV_M2_MODEL_VERSION,
+            estimatedCapacityKwh: 58,
+            chargeSessionId: null,
+            referenceCapacityKwh: null,
+            estimatedSohPct: null,
+            deltaSocPercent: null,
+            deltaEnergyKwh: null,
+            metadata: { outlier: false, gateReasonCodes: [] },
+            createdAt: new Date(),
+          } as never,
+        ],
+      }),
+    );
+    const m2 = report.candidates.find((c) => c.method === 'M2_CURRENT_ENERGY_SOC');
+    expect(m2?.eligibility).toBe('ineligible');
+    expect(m2?.reasonCodes).toContain(M3_3_HV_H2_ELIGIBILITY_REASONS.SESSION_MISSING);
+  });
+});
+
+describe('M3.3-HV-H2 GT validation anchor as-of status', () => {
+  it('projects CONFIRMED as-of status when DB row is REVOKED after evaluationAt', () => {
+    const report = buildM3_3HvH2LongitudinalInputReportV1(
+      emptyLoaded({
+        evaluationAt: new Date('2026-06-15T12:00:00.000Z'),
+        groundTruthEvents: [
+          {
+            id: 'gt-revoked-later',
+            organizationId: orgId,
+            vehicleId: vehId,
+            groundTruthType: BatteryGroundTruthType.BATTERY_REPLACEMENT,
+            batteryScope: BatteryEvidenceScope.HV,
+            effectiveAt: new Date('2026-01-01T00:00:00.000Z'),
+            sourceAuthority: BatteryGroundTruthSourceAuthority.MANUAL_CONFIRMED,
+            verificationStatus: BatteryGroundTruthVerificationStatus.REVOKED,
+            sourceServiceEventId: randomUUID(),
+            sourceDocumentExtractionId: null,
+            sourceBatteryEvidenceId: null,
+            sourceMeasurementId: null,
+            sourceContentFingerprint: 'f'.repeat(64),
+            confirmedByUserId: null,
+            confirmedAt: null,
+            supersedesGroundTruthEventId: null,
+            createdAt: new Date('2026-01-02T00:00:00.000Z'),
+            revocations: [{ revokedAt: new Date('2026-08-01T00:00:00.000Z') } as never],
+            supersededByGroundTruthEvents: [],
+          },
+        ],
+      }),
+    );
+    expect(report.validationAnchors).toHaveLength(1);
+    const anchor = report.validationAnchors[0]!;
+    expect(anchor.verificationStatus).toBe(BatteryGroundTruthVerificationStatus.CONFIRMED);
+    expect(anchor.verificationStatusAtEvaluationAt).toBe(
+      BatteryGroundTruthVerificationStatus.CONFIRMED,
+    );
+    expect(anchor.currentVerificationStatus).toBe(
+      BatteryGroundTruthVerificationStatus.REVOKED,
+    );
+  });
+
+  it('projects CONFIRMED as-of status when DB row is SUPERSEDED after evaluationAt', () => {
+    const report = buildM3_3HvH2LongitudinalInputReportV1(
+      emptyLoaded({
+        evaluationAt: new Date('2026-06-15T12:00:00.000Z'),
+        groundTruthEvents: [
+          {
+            id: 'gt-superseded-later',
+            organizationId: orgId,
+            vehicleId: vehId,
+            groundTruthType: BatteryGroundTruthType.BATTERY_REPLACEMENT,
+            batteryScope: BatteryEvidenceScope.HV,
+            effectiveAt: new Date('2026-01-01T00:00:00.000Z'),
+            sourceAuthority: BatteryGroundTruthSourceAuthority.MANUAL_CONFIRMED,
+            verificationStatus: BatteryGroundTruthVerificationStatus.SUPERSEDED,
+            sourceServiceEventId: randomUUID(),
+            sourceDocumentExtractionId: null,
+            sourceBatteryEvidenceId: null,
+            sourceMeasurementId: null,
+            sourceContentFingerprint: 'g'.repeat(64),
+            confirmedByUserId: null,
+            confirmedAt: null,
+            supersedesGroundTruthEventId: null,
+            createdAt: new Date('2026-01-02T00:00:00.000Z'),
+            revocations: [],
+            supersededByGroundTruthEvents: [{ id: 'gt-new', createdAt: new Date('2026-09-01T00:00:00.000Z') }],
+          },
+        ],
+      }),
+    );
+    expect(report.validationAnchors[0]?.verificationStatus).toBe(
+      BatteryGroundTruthVerificationStatus.CONFIRMED,
+    );
+    expect(report.validationAnchors[0]?.currentVerificationStatus).toBe(
+      BatteryGroundTruthVerificationStatus.SUPERSEDED,
+    );
+  });
+});
+
+describe('M3.3-HV-H2 session evaluation-at safety', () => {
+  it('does not treat a session completed after evaluationAt as eligible', () => {
+    const sessionId = randomUUID();
+    const evalDuring = new Date('2026-09-19T09:00:00.000Z');
+    const session = qualifiedSession(
+      sessionId,
+      new Date('2026-09-19T08:00:00.000Z'),
+      new Date('2026-09-19T10:00:00.000Z'),
+    );
+    session.updatedAt = new Date('2026-09-19T10:00:00.000Z');
+    const report = buildM3_3HvH2LongitudinalInputReportV1(
+      emptyLoaded({
+        evaluationAt: evalDuring,
+        capacityObservations: [
+          {
+            id: randomUUID(),
+            organizationId: orgId,
+            vehicleId: vehId,
+            method: HV_M2_CAPACITY_METHOD,
+            observedAt: evalDuring,
+            receivedAt: evalDuring,
+            idempotencyKey: 'm2-mid-session',
+            quality: BatteryMeasurementQuality.SHADOW,
+            modelVersion: HV_M2_MODEL_VERSION,
+            estimatedCapacityKwh: 58,
+            chargeSessionId: sessionId,
+            referenceCapacityKwh: null,
+            estimatedSohPct: null,
+            deltaSocPercent: null,
+            deltaEnergyKwh: null,
+            metadata: {},
+            createdAt: evalDuring,
+          } as never,
+        ],
+        sessionsById: new Map([[sessionId, session as never]]),
+      }),
+    );
+    const m2 = report.candidates[0];
+    expect(m2?.eligibility).toBe('ineligible');
+    expect(m2?.reasonCodes).toContain(M3_3_HV_H2_ELIGIBILITY_REASONS.SESSION_ONGOING);
+  });
+
+  it('fails closed when session qualification updated after evaluationAt', () => {
+    const sessionId = randomUUID();
+    const evaluationAtLocal = new Date('2026-09-19T09:00:00.000Z');
+    const session = qualifiedSession(
+      sessionId,
+      new Date('2026-09-19T08:00:00.000Z'),
+      new Date('2026-09-19T08:30:00.000Z'),
+    );
+    session.updatedAt = new Date('2026-09-30T12:00:00.000Z');
+    const report = buildM3_3HvH2LongitudinalInputReportV1(
+      emptyLoaded({
+        evaluationAt: evaluationAtLocal,
+        capacityObservations: [
+          {
+            id: randomUUID(),
+            organizationId: orgId,
+            vehicleId: vehId,
+            method: HV_M2_CAPACITY_METHOD,
+            observedAt: evaluationAtLocal,
+            receivedAt: evaluationAtLocal,
+            idempotencyKey: 'm2-future-session-state',
+            quality: BatteryMeasurementQuality.SHADOW,
+            modelVersion: HV_M2_MODEL_VERSION,
+            estimatedCapacityKwh: 58,
+            chargeSessionId: sessionId,
+            referenceCapacityKwh: null,
+            estimatedSohPct: null,
+            deltaSocPercent: null,
+            deltaEnergyKwh: null,
+            metadata: {},
+            createdAt: evaluationAtLocal,
+          } as never,
+        ],
+        sessionsById: new Map([[sessionId, session as never]]),
+      }),
+    );
+    expect(report.candidates[0]?.reasonCodes).toContain(
+      M3_3_HV_H2_ELIGIBILITY_REASONS.SESSION_STATE_NOT_KNOWABLE_AT_EVALUATION_AT,
+    );
+  });
+
+  it('allows eligible session when end and updatedAt are knowable by evaluationAt', () => {
+    const sessionId = randomUUID();
+    const evaluationAtLocal = new Date('2026-09-30T12:00:00.000Z');
+    const session = qualifiedSession(
+      sessionId,
+      new Date('2026-09-19T08:00:00.000Z'),
+      new Date('2026-09-19T10:00:00.000Z'),
+    );
+    session.updatedAt = new Date('2026-09-19T10:00:00.000Z');
+    const report = buildM3_3HvH2LongitudinalInputReportV1(
+      emptyLoaded({
+        evaluationAt: evaluationAtLocal,
+        capacityObservations: [
+          {
+            id: randomUUID(),
+            organizationId: orgId,
+            vehicleId: vehId,
+            method: HV_M2_CAPACITY_METHOD,
+            observedAt: new Date('2026-09-19T09:00:00.000Z'),
+            receivedAt: new Date('2026-09-19T09:01:00.000Z'),
+            idempotencyKey: 'm2-historical-ok',
+            quality: BatteryMeasurementQuality.SHADOW,
+            modelVersion: HV_M2_MODEL_VERSION,
+            estimatedCapacityKwh: 58,
+            chargeSessionId: sessionId,
+            referenceCapacityKwh: null,
+            estimatedSohPct: null,
+            deltaSocPercent: null,
+            deltaEnergyKwh: null,
+            metadata: {},
+            createdAt: new Date('2026-09-19T09:00:00.000Z'),
+          } as never,
+        ],
+        sessionsById: new Map([[sessionId, session as never]]),
+      }),
+    );
+    expect(report.candidates[0]?.eligibility).toBe('eligible');
+  });
+});
+
+describe('M3.3-HV-H2 report temporal semantics', () => {
+  it('documents observation/GT/session temporal authority separately', () => {
+    const report = buildM3_3HvH2LongitudinalInputReportV1(emptyLoaded());
+    expect(report.temporalSemantics).toContain('OBSERVATION_EVENT_TIME_FILTERED');
+    expect(report.temporalSemantics).toContain('GT_KNOWLEDGE_AS_OF');
+    expect(report.temporalSemantics).toContain('SESSION_CONTEXT_CURRENT_OR_FAIL_CLOSED');
   });
 });

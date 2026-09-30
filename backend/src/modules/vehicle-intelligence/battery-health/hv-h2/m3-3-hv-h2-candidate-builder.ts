@@ -1,4 +1,4 @@
-import { BatteryMeasurementQuality } from '@prisma/client';
+import { BatteryMeasurementQuality, BatteryGroundTruthVerificationStatus } from '@prisma/client';
 import { BatteryEvidenceStrengthTier, BatteryMeasurementScope } from '../battery-v2-domain';
 import { HV_M2_CAPACITY_METHOD } from '../hv-capacity-shadow/hv-capacity-m2.types';
 import { HV_M3_CAPACITY_METHOD, HV_M3_METHOD_ROLE } from '../hv-capacity-shadow/hv-capacity-m3.types';
@@ -33,6 +33,7 @@ import {
 } from './m3-3-hv-h2-lifecycle-segmentation';
 import type { M3_3HvH2LoadedDataV1 } from './m3-3-hv-h2-loaded-data.types';
 import { mapHvChargeSessionToM3Input } from './m3-3-hv-h2-session-m3-input';
+import { evaluateHvChargeSessionAsOf } from './m3-3-hv-h2-session-asof.util';
 import {
   M3_3_HV_H2_ELIGIBILITY_REASONS,
   type M3_3HvH2EligibilityReasonCode,
@@ -109,9 +110,56 @@ function buildValidationAnchors(
       effectiveAt: e.effectiveAt.toISOString(),
       createdAt: e.createdAt.toISOString(),
       sourceProvenance: e.sourceAuthority,
-      verificationStatus: e.verificationStatus,
+      verificationStatus: BatteryGroundTruthVerificationStatus.CONFIRMED,
+      verificationStatusAtEvaluationAt: BatteryGroundTruthVerificationStatus.CONFIRMED,
+      currentVerificationStatus: e.verificationStatus,
       maturity: 'CONFIRMED_GROUND_TRUTH_FACT' as const,
     }));
+}
+
+function applySessionContextAtEvaluationAt(
+  session: NonNullable<ReturnType<M3_3HvH2LoadedDataV1['sessionsById']['get']>>,
+  data: M3_3HvH2LoadedDataV1,
+  reasonCodes: M3_3HvH2EligibilityReasonCode[],
+  options: { requireQualifiedForM2: boolean; evaluateM3Gate: boolean },
+): void {
+  if (
+    session.organizationId !== data.organizationId ||
+    session.vehicleId !== data.vehicleId
+  ) {
+    pushReason(reasonCodes, M3_3_HV_H2_ELIGIBILITY_REASONS.SESSION_SCOPE_MISMATCH);
+    return;
+  }
+
+  const asOf = evaluateHvChargeSessionAsOf(session, data.evaluationAt);
+  if (asOf.notStartedAtEvaluationAt) {
+    pushReason(reasonCodes, M3_3_HV_H2_ELIGIBILITY_REASONS.SESSION_MISSING);
+    return;
+  }
+  if (asOf.ongoingAtEvaluationAt) {
+    pushReason(reasonCodes, M3_3_HV_H2_ELIGIBILITY_REASONS.SESSION_ONGOING);
+    return;
+  }
+  if (!asOf.sessionStateKnowableAtEvaluationAt) {
+    pushReason(
+      reasonCodes,
+      M3_3_HV_H2_ELIGIBILITY_REASONS.SESSION_STATE_NOT_KNOWABLE_AT_EVALUATION_AT,
+    );
+    return;
+  }
+
+  const sm = (session.metadata ?? {}) as unknown as HvChargeSessionMetadata;
+  if (options.requireQualifiedForM2) {
+    if (sm.qualityStatus !== HV_CHARGE_SESSION_QUALITY_STATUS.QUALIFIED) {
+      pushReason(reasonCodes, M3_3_HV_H2_ELIGIBILITY_REASONS.SESSION_NOT_QUALIFIED);
+    }
+  }
+  if (options.evaluateM3Gate) {
+    const gate = evaluateHvM3SessionGate(mapHvChargeSessionToM3Input(session, sm));
+    if (!gate.eligible) {
+      pushReason(reasonCodes, M3_3_HV_H2_ELIGIBILITY_REASONS.M3_GATE_BLOCKED);
+    }
+  }
 }
 
 function pushReason(codes: M3_3HvH2EligibilityReasonCode[], code: M3_3HvH2EligibilityReasonCode) {
@@ -162,21 +210,17 @@ function buildM2Candidate(
   }
 
   let sessionId: string | null = obs.chargeSessionId;
-  if (sessionId) {
+  if (!sessionId) {
+    pushReason(reasonCodes, M3_3_HV_H2_ELIGIBILITY_REASONS.SESSION_MISSING);
+  } else {
     const session = data.sessionsById.get(sessionId);
     if (!session) {
       pushReason(reasonCodes, M3_3_HV_H2_ELIGIBILITY_REASONS.SESSION_MISSING);
-    } else if (
-      session.organizationId !== data.organizationId ||
-      session.vehicleId !== data.vehicleId
-    ) {
-      pushReason(reasonCodes, M3_3_HV_H2_ELIGIBILITY_REASONS.SESSION_SCOPE_MISMATCH);
     } else {
-      if (session.isOngoing) pushReason(reasonCodes, M3_3_HV_H2_ELIGIBILITY_REASONS.SESSION_ONGOING);
-      const sm = (session.metadata ?? {}) as unknown as HvChargeSessionMetadata;
-      if (sm.qualityStatus !== HV_CHARGE_SESSION_QUALITY_STATUS.QUALIFIED) {
-        pushReason(reasonCodes, M3_3_HV_H2_ELIGIBILITY_REASONS.SESSION_NOT_QUALIFIED);
-      }
+      applySessionContextAtEvaluationAt(session, data, reasonCodes, {
+        requireQualifiedForM2: true,
+        evaluateM3Gate: false,
+      });
       if (
         sessionCrossesReplacementBoundary({
           sessionStartAt: session.startAt,
@@ -289,17 +333,10 @@ function buildM3Candidate(
     if (!session) {
       pushReason(reasonCodes, M3_3_HV_H2_ELIGIBILITY_REASONS.SESSION_MISSING);
     } else {
-      if (
-        session.organizationId !== data.organizationId ||
-        session.vehicleId !== data.vehicleId
-      ) {
-        pushReason(reasonCodes, M3_3_HV_H2_ELIGIBILITY_REASONS.SESSION_SCOPE_MISMATCH);
-      }
-      const sm = (session.metadata ?? {}) as unknown as HvChargeSessionMetadata;
-      const gate = evaluateHvM3SessionGate(mapHvChargeSessionToM3Input(session, sm));
-      if (!gate.eligible) {
-        pushReason(reasonCodes, M3_3_HV_H2_ELIGIBILITY_REASONS.M3_GATE_BLOCKED);
-      }
+      applySessionContextAtEvaluationAt(session, data, reasonCodes, {
+        requireQualifiedForM2: false,
+        evaluateM3Gate: true,
+      });
       if (
         sessionCrossesReplacementBoundary({
           sessionStartAt: session.startAt,

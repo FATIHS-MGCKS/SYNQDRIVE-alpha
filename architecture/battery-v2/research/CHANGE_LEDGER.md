@@ -22,6 +22,27 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-30 — M3.3-HV-H2 final temporal/session authority + VO-4 rebase (PR #1857)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | GT bounded query before knowledge-time filter; M2 allowed null sessions; anchors exposed current verificationStatus; lexicographic segment sort; permissive report bounds |
+| **OBSERVATION** | Future-created GT could crowd historical bounds; session completion/qualification after evaluationAt could leak into historical candidates |
+| **HYPOTHESIS** | Fail-closed session/GT temporal rules + explicit anchor as-of status preserve historical report integrity without session version history |
+| **CHANGE** | GT `createdAt` pre-limit filter; M2 SESSION_MISSING for null chargeSessionId; anchor verificationStatusAtEvaluationAt; session as-of util; numeric segment ordering; bound rejection; removed CLI `--as-of`; rebased on VO-4 main |
+| **WHY** | Close remaining scientific leaks before human i18n governance reapproval |
+| **EXPECTED_EFFECT** | Historical evaluationAt reports do not inherit post-hoc session/GT knowledge |
+| **VALIDATION** | hv-h2 unit/service/as-of tests; hv-h2 postgres CI; validate-h2-longitudinal-input-contracts.sh |
+| **OBSERVED_EFFECT** | Pending exact-head CI |
+| **NON_EFFECTS** | No schema, customer publication, or automatic runtime |
+| **REGRESSIONS_OR_TRADEOFFS** | Historical reports may mark more session-linked candidates ineligible when session row updated after evaluationAt |
+| **REMAINING_GAPS** | Full session point-in-time reconstruction unsupported (explicit in temporal semantics) |
+| **DECISION_STATUS** | EXPERIMENTAL |
+| **AFFECTED_GRAPH** | Battery V2 HV H2 research authority |
+| **EVIDENCE** | PR #1857 final authority seal commit |
+
+---
+
 ## CL-2026-09-30 — M3.3-HV-H2 scientific authority hardening (PR #1857)
 
 | Field | Value |

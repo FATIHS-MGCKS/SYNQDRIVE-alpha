@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { compareM3_3HvH2LifecycleSegmentIds } from './m3-3-hv-h2-lifecycle-segment-order.util';
 import type { M3_3HvH2LongitudinalInputCandidateV1 } from './m3-3-hv-h2.types';
 
 export interface HvH2CandidateFingerprintInput {
@@ -38,7 +39,10 @@ export function sortM3_3HvH2Candidates(
   candidates: M3_3HvH2LongitudinalInputCandidateV1[],
 ): M3_3HvH2LongitudinalInputCandidateV1[] {
   return [...candidates].sort((a, b) => {
-    const seg = a.lifecycleSegmentId.localeCompare(b.lifecycleSegmentId);
+    const seg = compareM3_3HvH2LifecycleSegmentIds(
+      a.lifecycleSegmentId,
+      b.lifecycleSegmentId,
+    );
     if (seg !== 0) return seg;
     const t = a.observedAt.localeCompare(b.observedAt);
     if (t !== 0) return t;
