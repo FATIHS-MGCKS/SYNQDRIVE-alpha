@@ -1,11 +1,15 @@
 import type { VehicleOnboardingCase } from '@prisma/client';
 import type { VehicleOnboardingReadinessSnapshotV1 } from '../contracts/readiness-snapshot.v1';
+import type { VehicleOnboardingReadinessSnapshotV2 } from '../contracts/readiness-snapshot.v2';
 import { parseValidatedReadinessSnapshot } from '../policy/persisted-contract.validation';
 import type { VehicleOnboardingReadinessAuthority } from './vehicle-onboarding-readiness-authority';
 import { VehicleOnboardingError } from '../errors/vehicle-onboarding.errors';
 
 export class TestVehicleOnboardingReadinessAuthority implements VehicleOnboardingReadinessAuthority {
-  assertReadyForActivation(caseRow: VehicleOnboardingCase): VehicleOnboardingReadinessSnapshotV1 {
+  async assertReadyForActivation(
+    caseRow: VehicleOnboardingCase,
+    _ctx: import('./vehicle-onboarding-readiness-authority').ReadinessActivationContext,
+  ): Promise<VehicleOnboardingReadinessSnapshotV2> {
     if (caseRow.status !== 'READY_FOR_ACTIVATION') {
       throw new VehicleOnboardingError(
         'READINESS_NOT_SEALED',
@@ -20,7 +24,7 @@ export class TestVehicleOnboardingReadinessAuthority implements VehicleOnboardin
     if (!snap.schemaRequiredFieldsMet) {
       throw new VehicleOnboardingError('READINESS_NOT_SEALED', 'Schema-required fields not met');
     }
-    return snap;
+    return snap as unknown as VehicleOnboardingReadinessSnapshotV2;
   }
 }
 
