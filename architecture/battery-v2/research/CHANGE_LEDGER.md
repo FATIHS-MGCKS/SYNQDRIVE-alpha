@@ -22,6 +22,21 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-30 — M3.3-HV-H2 longitudinal input candidate construction
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | H1 sealed capability/evidence foundation only; no HV longitudinal input dataset |
+| **OBSERVATION** | H1 longitudinal candidate type lacked typed value, lifecycle segment, and durable provider SOH source alignment |
+| **CHANGE** | `hv-h2/` pure builder + read-only report service/CLI; M2/M3/provider candidates; GT lifecycle segmentation; H1 provider SOH count → `BatteryEvidence` |
+| **WHY** | Scientific traceability before any HV degradation model |
+| **VALIDATION** | `test:battery:v2:hv-h2`; `test:battery:v2:hv-h2:postgres:ci`; `validate-h2-longitudinal-input-contracts.sh` |
+| **DECISION_STATUS** | EXPERIMENTAL (operator read path only) |
+| **REMAINING_GAPS** | No materialized H2 store; no customer HV health score |
+| **AFFECTED_GRAPH** | Battery V2 HV longitudinal input (research authority) |
+
+---
+
 ## CL-2026-09-30 — M3.3-HV-H1 CI decoupled from LV D3 (PR #1852 seal)
 
 | Field | Value |
