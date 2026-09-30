@@ -28,12 +28,18 @@ Append-only scientific record. Newest entries first.
 |-------|-------|
 | **BEFORE** | H1 sealed capability/evidence foundation only; no HV longitudinal input dataset |
 | **OBSERVATION** | H1 longitudinal candidate type lacked typed value, lifecycle segment, and durable provider SOH source alignment |
+| **HYPOTHESIS** | Pure read-only composition from persisted M2/M3 observations + BatteryEvidence + HV GT boundaries yields auditable input without a degradation model |
 | **CHANGE** | `hv-h2/` pure builder + read-only report service/CLI; M2/M3/provider candidates; GT lifecycle segmentation; H1 provider SOH count → `BatteryEvidence` |
 | **WHY** | Scientific traceability before any HV degradation model |
+| **EXPECTED_EFFECT** | Operator can emit bounded `M3_3_HV_H2_LONGITUDINAL_INPUT_REPORT_V1` with method-separated candidates and lifecycle segments |
 | **VALIDATION** | `test:battery:v2:hv-h2`; `test:battery:v2:hv-h2:postgres:ci`; `validate-h2-longitudinal-input-contracts.sh` |
-| **DECISION_STATUS** | EXPERIMENTAL (operator read path only) |
+| **OBSERVED_EFFECT** | Unit + contract validators PASS locally; Postgres job on dedicated HV-H2 workflow |
+| **NON_EFFECTS** | No customer SOH, canonical health, LV pipelines, schema, or automatic runtime |
+| **REGRESSIONS_OR_TRADEOFFS** | H1 provider SOH readiness may read false until BatteryEvidence rows exist (semantically correct) |
 | **REMAINING_GAPS** | No materialized H2 store; no customer HV health score |
+| **DECISION_STATUS** | EXPERIMENTAL (operator read path only) |
 | **AFFECTED_GRAPH** | Battery V2 HV longitudinal input (research authority) |
+| **EVIDENCE** | `research/M3_3_HV_H2_LONGITUDINAL_INPUT_CONSTRUCTION_2026-09-30.md`; `backend/.../hv-h2/*` |
 
 ---
 
