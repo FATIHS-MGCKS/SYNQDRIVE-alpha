@@ -20,6 +20,29 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-30 — M3.3-HV-H1 scientific correctness + read-only hardening (PR #1852)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | H1 foundation with duplicated method requirements, matrix field loss, fake unit/range validation, arbitrary readiness counts, capability-only M2/M3 evidence flags |
+| **OBSERVATION** | Scientific eligibility and operator report authority were weaker than HvMethodProfile and F5 read-only patterns |
+| **HYPOTHESIS** | Single method-requirement authority + fail-closed quality/freshness + Prisma READ ONLY transaction restores H1 trust without schema/runtime |
+| **CHANGE** | `hv-capacity-method-signal-requirements.ts`; matrix listing/data status; evidence quality UNKNOWN fail-closed; per-method readiness; session quality/linkage; `runM3_3HvH1ReadOnlyTransaction`; expanded unit + postgres isolation tests |
+| **WHY** | PR #1852 hardening gate before HV-H2 |
+| **EXPECTED_EFFECT** | H1 report cannot claim scientific eligibility without validated unit/range; M2/M3 evidence requires observations; tenant-scoped read-only reads |
+| **VALIDATION** | `npm run test:battery:v2:hv-h1`; `validate-h1-provider-evidence-contracts.sh`; CI postgres harness when DATABASE_URL set |
+| **OBSERVED_EFFECT** | Unit 16 PASS; validators PASS; postgres harness authored (CI) |
+| **NON_EFFECTS** | SCHEMA_CHANGE=NO; PRODUCTION_ENV_CHANGE=NO; H1_AUTOMATIC_RUNTIME_REACHABLE=NO |
+| **REGRESSIONS_OR_TRADEOFFS** | `scientificEligible` remains false until mapper unit/range propagation (explicit UNKNOWN fail-closed) |
+| **REMAINING_GAPS** | Longitudinal input candidate construction not implemented in H1 report |
+| **DECISION_STATUS** | VALIDATED (engineering) |
+| **AFFECTED_GRAPH** | BAT-V2-AUTH-H1-001 (authority semantics) |
+| **EVIDENCE** | `research/M3_3_HV_H1_PROVIDER_CAPABILITY_EVIDENCE_FOUNDATION_2026-09-30.md` |
+
+---
+
 ## CL-2026-09-30 — M3.3-HV-H1 provider capability + evidence foundation
 
 | Field | Value |
