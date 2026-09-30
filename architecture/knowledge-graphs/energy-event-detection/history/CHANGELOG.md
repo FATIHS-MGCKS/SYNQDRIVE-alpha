@@ -1,5 +1,11 @@
 # KG-EED Changelog
 
+## 2026-09-30 — RFRF settled post-refuel F3 design + offline replay (EED-OQ-014 / OQ-019)
+
+- Human-authorized **ROBUST_SETTLED_POST_REFUEL_LEVEL** architecture (peak diagnostic; settled median authoritative)
+- Design-only policy + replay harness; EED-EV-0103; Alpha ABSOLUTE_ONLY Option C unchanged
+- OQ-014 remains OPEN (numeric calibration); OQ-019 remains PARTIALLY_RESOLVED
+
 ## 2026-09-28 — RFRF pre-fill baseline recency safety guard (EED-OQ-017)
 
 - `evaluateRawFuelPrePlateauRecency` + detector skip of stale pre↔rise pairings
