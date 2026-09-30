@@ -22,6 +22,19 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-30 — M3.3-HV-H1 CI decoupled from LV D3 (PR #1852 seal)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | HV-H1 postgres suite invoked from `battery-longitudinal-profile-materialization-postgres-ci.sh` |
+| **CHANGE** | Dedicated `.github/workflows/battery-v2-hv-h1-ci.yml` job `HV-H1 read-only report PostgreSQL`; H0 validator forbids hv-h1 in D3 CI script |
+| **WHY** | M3.3-H0 LV/HV domain separation — LV D3 CI must not depend on HV-H1 validation |
+| **VALIDATION** | `validate-h0-domain-separation-contracts.sh`; `npm run test:battery:v2:hv-h1:postgres:ci` |
+| **DECISION_STATUS** | VALIDATED |
+| **NON_EFFECTS** | H1 scientific contracts unchanged |
+
+---
+
 ## CL-2026-09-30 — M3.3-HV-H1 scientific correctness + read-only hardening (PR #1852)
 
 | Field | Value |
