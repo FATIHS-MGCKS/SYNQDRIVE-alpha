@@ -14,8 +14,9 @@ describe('DI V0 S4E dormant-by-construction audit', () => {
     expect(app.includes('DiV0S4e')).toBe(false);
   });
 
-  it('registers drift watcher scheduler name for leader guard', () => {
+  it('registers S4E scheduler names for leader guard', () => {
     expect(SINGLETON_GLOBAL_SCHEDULER_NAMES).toContain('di_v0_s4_drift_watcher');
+    expect(SINGLETON_GLOBAL_SCHEDULER_NAMES).toContain('di_v0_s4_maintenance_reaper');
   });
 
   it('PROVIDER_CALL_PATH_FROM_S4E=0 and no trip FSM mutation paths', () => {

@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-m3-3-h0-domain-separation-audit-2026-09-30',
+    version: '4.9.2215',
+    title: 'Battery V2 M3.3-H0 — domain separation audit + seal (PASS)',
+    summary: [
+      'Code-derived inventory: SHARED/LV_ONLY/HV_ONLY/UNKNOWN_SCOPE components; GT G2.2 replacement identity org+sourceEvent (scope on fact).',
+      'Cross-scope seal A–J PASS: D3/F5/E2/E3 LV-only; no HV→longitudinal path; ERD vs HV BI boundary documented.',
+      'Static validator validate-h0-domain-separation-contracts.sh; graph node BAT-V2-AUTH-H0-001; NEXT_PHASE → M3_3_HV_H1 + async G4.',
+    ],
+    reason:
+      'M3.3-H0 forward umbrella requires audited domain ownership before HV foundation engineering (not historical M3.3H customer UI).',
+    previousBehavior:
+      'LV/HV separation documented at roadmap level without full code consumer/query inventory or H0 seal checklist.',
+    details:
+      'architecture/battery-v2/research/M3_3_H0_BATTERY_INTELLIGENCE_DOMAIN_SEPARATION_AUDIT_2026-09-30.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-30T00:45:00.000Z',
+  },
+  {
     id: 'battery-intelligence-post-g4-roadmap-audit-2026-09-29',
     version: '4.9.2214',
     title: 'Battery Intelligence — post-G4 LV/HV roadmap audit',
@@ -153,6 +172,23 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
     createdAt: '2026-09-29T03:00:00.000Z',
+  },
+  {
+    id: 'di-exp021-s4e2-class-a-retirement-hardening-2026-09-29',
+    version: '4.9.2209',
+    title: 'Driving Intelligence — EXP-021 S4E-2 CLASS A pipeline retirement hardening (dormant)',
+    summary: [
+      'Authoritative `retirePipelineVersion`: registry ACTIVE→RETIRED and full retirable work-item supersession in one PostgreSQL transaction (closes DI-GAP-S4A-T11-RETIRED-SUCCESSOR-TOCTOU-001).',
+      'T11 `supersedeOnDrift` locks pipeline registry FOR UPDATE before work-item row (canonical order: registry → work items).',
+      'Postgres matrix S4E2-A01..A10 concurrent retirement vs T11/T10/T12; harness `retireRegistry` delegates to repository (no raw DML).',
+    ],
+    reason: 'Strong serialized durable invariant before S4E complete; refinement within existing pipeline retirement authority (no contract v2 amendment).',
+    previousBehavior: 'CLASS B: FOR SHARE registry read + operator DML could leave durable PENDING PRIMARY under RETIRED until a later T12 tick.',
+    details:
+      'backend/src/modules/vehicle-intelligence/driving-intelligence/s4a-foundation/di-v0-s4a-work-item.repository.ts; s4e-drift-watcher/__tests__/di-v0-s4e-class-a-retirement.postgres.integration.spec.ts; architecture/drivingintelligence/evidence/EXP021_S4E2_MAINTENANCE_REAPERS.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-29T22:50:00.000Z',
   },
   {
     id: 'battery-v2-m3-3g-g2-confirmed-gt-emission-2026-09-29',

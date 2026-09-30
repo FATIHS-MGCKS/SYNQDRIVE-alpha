@@ -418,6 +418,7 @@ export const DI_V0_S4_REPOSITORY_WRITE_MAP = {
   reapExhausted: ['W_T10_EXHAUST'],
   supersedeOnDrift: ['W_T11_SUPERSEDE', 'W_SUCCESSOR_PRIMARY_INSERT'],
   retirePipelineItems: ['W_T12_RETIRE'],
+  retirePipelineVersion: ['W_T12_RETIRE'],
   holderSupersede: ['W_T13_HOLDER_SUPERSEDE'],
 } as const satisfies Record<string, readonly DiV0S4WriteId[]>;
 

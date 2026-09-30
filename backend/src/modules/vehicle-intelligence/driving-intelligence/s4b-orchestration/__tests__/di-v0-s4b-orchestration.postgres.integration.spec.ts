@@ -15,6 +15,7 @@ import {
   newS4aClient,
   raceThroughControlGate,
   retireRegistry,
+  retireRegistryStatusOnly,
   S4A_POSTGRES_LIVE,
   seedS4aTenant,
   setKillState,
@@ -589,12 +590,12 @@ type FakeExecute = (ctx: DiV0S4ExecutionContext) => Promise<DiV0S4ExecutionOutco
     expect((await items(t))[0].failure_reason).toBeNull();
   });
 
-  it('C15 retired pipeline version: claim refuses without leasing (PIPELINE_VERSION_NOT_ACTIVE)', async () => {
+  it('C15 authoritative retirement: eligible PENDING superseded; claim loop IDLE (CLASS A)', async () => {
     const t = await tenant();
     const config = configFor([t]);
     const { pipeline } = discovery(config);
     await discovery(config).service.runDiscoveryPass();
-    await retireRegistry(admin, pipeline.pipelineVersionKey);
+    await retireRegistry(admin, pipeline.pipelineVersionKey, config);
     const registry = new DiV0S4ExecutorRegistry();
     registry.register({ executorId: 'RETIRED', isReady: () => true, execute: settleTerminal });
     const result = await new DiV0S4ClaimLoop(
@@ -603,6 +604,29 @@ type FakeExecute = (ctx: DiV0S4ExecutionContext) => Promise<DiV0S4ExecutionOutco
       pipeline,
       registry,
       { leaseOwner: 's4b-c15' },
+    ).runOnce();
+    expect(result).toMatchObject({ status: 'IDLE', refusalCode: null });
+    expect((await items(t))[0]).toMatchObject({
+      status: 'SUPERSEDED',
+      superseded_reason: 'PIPELINE_RETIRED',
+      lease_epoch: 1n,
+    });
+  });
+
+  it('C15 legacy RETIRED straggler: T02 claim refuses PIPELINE_VERSION_NOT_ACTIVE without leasing', async () => {
+    const t = await tenant();
+    const config = configFor([t]);
+    const { pipeline } = discovery(config);
+    await discovery(config).service.runDiscoveryPass();
+    await retireRegistryStatusOnly(admin, pipeline.pipelineVersionKey);
+    const registry = new DiV0S4ExecutorRegistry();
+    registry.register({ executorId: 'RETIRED', isReady: () => true, execute: settleTerminal });
+    const result = await new DiV0S4ClaimLoop(
+      new DiV0S4WorkItemRepository(client(), config),
+      config,
+      pipeline,
+      registry,
+      { leaseOwner: 's4b-c15b-straggler' },
     ).runOnce();
     expect(result).toMatchObject({ status: 'CLAIM_REFUSED', refusalCode: 'PIPELINE_VERSION_NOT_ACTIVE' });
     expect((await items(t))[0]).toMatchObject({ status: 'PENDING', lease_epoch: 0n });
