@@ -265,7 +265,7 @@ async function sealHmCaseReady(
       },
     });
     const dimoId = randomUUID();
-    await createDimoMirror(prisma, dimoId, `ext-b`, null);
+    await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 8)}`, null);
     const caseB = await harness.caseService.openOrResumeFromDimo(
       { organizationId: orgB, actorUserId: null, idempotencyKey: randomUUID() },
       dimoId,
@@ -294,7 +294,7 @@ async function sealHmCaseReady(
       },
     });
     const dimoId = randomUUID();
-    await createDimoMirror(prisma, dimoId, `ext-g`, null);
+    await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 8)}`, null);
     const caseRow = await harness.caseService.openOrResumeFromDimo(
       { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
       dimoId,
@@ -323,7 +323,7 @@ async function sealHmCaseReady(
       },
     });
     const dimoId = randomUUID();
-    await createDimoMirror(prisma, dimoId, `ext-g2`, null);
+    await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 8)}`, null);
     const caseRow = await harness.caseService.openOrResumeFromDimo(
       { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
       dimoId,
@@ -632,8 +632,8 @@ async function sealHmCaseReady(
     const orgId = await createOrg(prisma);
     const dimo1 = randomUUID();
     const dimo2 = randomUUID();
-    await createDimoMirror(prisma, dimo1, `ext-1`, null);
-    await createDimoMirror(prisma, dimo2, `ext-2`, null);
+    await createDimoMirror(prisma, dimo1, `ext-${dimo1.slice(0, 8)}`, null);
+    await createDimoMirror(prisma, dimo2, `ext-${dimo2.slice(0, 8)}`, null);
     const caseRow = await harness.caseService.openOrResumeFromDimo(
       { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
       dimo1,

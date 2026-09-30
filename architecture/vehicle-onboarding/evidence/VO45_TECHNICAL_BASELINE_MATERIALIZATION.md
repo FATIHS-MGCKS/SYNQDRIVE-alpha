@@ -56,7 +56,18 @@ Inside `VehicleOnboardingActivationService` transaction, after vehicle insert:
 
 **Non-authority:** onboarding does not create health conclusions, measurements, or synthetic service events.
 
+## VO-4.6 integrity seal (same PR lineage)
+
+- **Strict V2 runtime validation** — `technical-baseline-draft.v2.runtime.ts` rejects malformed supplied sections (invalid ≠ absent).
+- **Brake parity** — `validateOnboardingBrakeReference` + identity-derived `SpecVehicleFitContext` for readiness and activation.
+- **Battery evidence** — `documentId` scoped to onboarding org and vehicle (`TECHNICAL_BASELINE_EVIDENCE_SCOPE_MISMATCH`).
+- **serviceEventId** — `ONBOARDING_HV_REFERENCE_SERVICE_EVENT_ID_SUPPORTED=NO` (rejected in V2 parser).
+- **Concurrent activation** — `vo46-baseline-integrity.postgres.integration.spec.ts`.
+- **Full rollback artifact assertions** and health/measurement non-write Postgres proofs.
+- **VO-3 test isolation** — unique DIMO `external_id` per mirror in `vo3-orchestrator.postgres.integration.spec.ts`.
+- **Tire REQUIRED gate** — `VO-INV-TIRE-REQUIRED-GATE-001` / readiness `TIRE_REFERENCE_AUTHORITY_MISSING`.
+
 ## Tests
 
 - Unit: `technical-baseline-draft.validation.unit.spec.ts`
-- Postgres: `vo45-baseline.postgres.integration.spec.ts` (also runs when `VO4_READINESS_PG=1`)
+- Postgres: `vo45-baseline.postgres.integration.spec.ts`, `vo46-baseline-integrity.postgres.integration.spec.ts` (also runs when `VO4_READINESS_PG=1`)

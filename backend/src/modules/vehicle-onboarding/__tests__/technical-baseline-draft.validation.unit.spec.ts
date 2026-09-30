@@ -1,9 +1,9 @@
 import {
+  assessBrakeBaselineState,
   assessHvBatteryBaselineState,
-  isBrakeReferenceMaterializable,
-  isHvBatteryReferenceMaterializable,
   parseTechnicalBaselineDraft,
 } from '../policy/technical-baseline-draft.validation';
+import { validateOnboardingBrakeReference } from '../policy/technical-baseline-brake.validation';
 import {
   BatteryReferenceCapacitySource,
   BatteryReferenceCapacityType,
@@ -14,6 +14,18 @@ function caseRowFromTechnical(version: number, json: object) {
   return {
     draftTechnicalBaselineVersion: version,
     draftTechnicalBaselineJson: json,
+    draftIdentityJson: {
+      version: 1,
+      vin: 'VIN123',
+      vinProvenance: 'MANUAL',
+      vinVerificationState: 'UNVERIFIED',
+      make: 'Audi',
+      model: 'A4',
+      year: 2022,
+      fuelType: 'GASOLINE',
+      sourceEvidenceRefs: [],
+    },
+    draftIdentityVersion: 1,
   } as never;
 }
 
@@ -42,6 +54,20 @@ describe('technical baseline draft V2 validation', () => {
     expect(assessHvBatteryBaselineState(parsed, row)).toBe('invalid');
   });
 
+  it('rejects serviceEventId in HV section', () => {
+    const row = caseRowFromTechnical(2, {
+      version: 2,
+      hvBatteryReference: {
+        capacityKwh: 60,
+        capacityType: BatteryReferenceCapacityType.USABLE,
+        source: BatteryReferenceCapacitySource.MANUAL_VERIFIED,
+        serviceEventId: 'evt-1',
+      },
+    });
+    const parsed = parseTechnicalBaselineDraft(row);
+    expect(assessHvBatteryBaselineState(parsed, row)).toBe('invalid');
+  });
+
   it('treats V1 opaque hvBatteryReferenceId as non-materializable', () => {
     const parsed = parseTechnicalBaselineDraft(
       caseRowFromTechnical(1, {
@@ -52,24 +78,25 @@ describe('technical baseline draft V2 validation', () => {
     expect(assessHvBatteryBaselineState(parsed)).toBe('v1_opaque_only');
   });
 
-  it('validates brake reference via domain plausibility', () => {
-    expect(
-      isBrakeReferenceMaterializable({
-        frontPadNominalThicknessMm: 12,
-        sourceType: 'manufacturer',
-      }),
-    ).toBe(true);
-    expect(isBrakeReferenceMaterializable({ sourceType: 'x' })).toBe(false);
-  });
-
-  it('rejects non-positive battery capacity', () => {
-    expect(
-      isHvBatteryReferenceMaterializable({
-        capacityKwh: 0,
-        capacityType: BatteryReferenceCapacityType.USABLE,
-        source: BatteryReferenceCapacitySource.MANUAL_VERIFIED,
-      }),
-    ).toBe(false);
+  it('brake vehicle-fit parity rejects year mismatch', () => {
+    const brake = {
+      frontPadNominalThicknessMm: 12,
+      sourceType: 'catalog',
+      sourcePartNumber: 'pads',
+      sourceProvider: 'oem-catalog 2010',
+    };
+    const result = validateOnboardingBrakeReference(brake, {
+      make: 'Audi',
+      model: 'A4',
+      modelYear: 2022,
+    });
+    expect(result.ok).toBe(false);
+    const row = caseRowFromTechnical(2, {
+      version: 2,
+      brakeReference: brake,
+    });
+    const parsed = parseTechnicalBaselineDraft(row);
+    expect(assessBrakeBaselineState(parsed, row)).toBe('invalid');
   });
 
   it('V2 empty draft has absent HV section', () => {

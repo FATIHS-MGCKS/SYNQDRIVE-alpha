@@ -301,14 +301,26 @@ export function evaluateReadinessRules(ctx: ReadinessEvaluationContext): {
   const powertrain = classifyPowertrainFromFuelType(identity.fuelType);
   const technicalParsed = parseTechnicalBaselineDraft(ctx.caseRow);
   const tirePolicy = ctx.profile.tireBaseline;
-  results.push(
-    evaluateBaselineMaterializationRule(
-      'VO-RDY-TIRE-001',
-      tirePolicy,
-      assessTireBaselineState(technicalParsed, ctx.caseRow),
-      'TIRE_REFERENCE',
-    ),
-  );
+  if (tirePolicy === 'REQUIRED') {
+    results.push(
+      result(
+        'VO-RDY-TIRE-001',
+        'MANDATORY_FOR_SELECTED_PRODUCT',
+        'FAIL',
+        true,
+        'TIRE_REFERENCE_AUTHORITY_MISSING',
+      ),
+    );
+  } else {
+    results.push(
+      evaluateBaselineMaterializationRule(
+        'VO-RDY-TIRE-001',
+        tirePolicy,
+        assessTireBaselineState(technicalParsed, ctx.caseRow),
+        'TIRE_REFERENCE',
+      ),
+    );
+  }
 
   const brakePolicy = ctx.profile.brakeBaseline;
   results.push(

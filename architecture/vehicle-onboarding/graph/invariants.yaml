@@ -148,6 +148,15 @@ invariants:
     source_paths:
       - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
 
+  - id: VO-INV-TIRE-REQUIRED-GATE-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: Required tire baseline blocked without reference authority
+    statement: Readiness profiles with tireBaseline REQUIRED must fail closed until a safe canonical tire reference authority exists; current Rental/Fleet profiles remain DEFERRED_ALLOWED
+    source_paths:
+      - architecture/vehicle-onboarding/evidence/VO45_TECHNICAL_BASELINE_MATERIALIZATION.md
+      - backend/src/modules/vehicle-onboarding/readiness/readiness-rule-engine.ts
+
   - id: VO-INV-BASELINE-MATERIALIZATION-001
     kind: CANDIDATE_INVARIANT
     epistemic_status: INFERRED

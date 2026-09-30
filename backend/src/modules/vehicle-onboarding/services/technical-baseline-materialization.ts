@@ -1,11 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import type { Prisma, VehicleOnboardingCase } from '@prisma/client';
 import { ReferenceCapacityVerificationStatus } from '@prisma/client';
-import {
-  normalizeReferenceSpecWriteInput,
-  validateSpecVehicleFit,
-} from '@modules/vehicle-intelligence/brakes/brake-reference-spec.domain';
+import { normalizeReferenceSpecWriteInput } from '@modules/vehicle-intelligence/brakes/brake-reference-spec.domain';
 import type { SpecVehicleFitContext } from '@modules/vehicle-intelligence/brakes/brake-reference-spec.types';
+import { validateOnboardingBrakeReference } from '../policy/technical-baseline-brake.validation';
+import { buildBrakeSpecVehicleFitContextFromCase } from '../policy/technical-baseline-vehicle-context';
 import {
   evaluateReferenceCapacityCreate,
   REFERENCE_CAPACITY_CHANGE_ACTIONS,
@@ -14,13 +13,12 @@ import {
 import { VehicleOnboardingError } from '../errors/vehicle-onboarding.errors';
 import type { VehicleTechnicalBaselineDraftV2 } from '../contracts/vehicle-technical-baseline-draft.v2';
 import {
-  assessBrakeBaselineState,
   assessHvBatteryBaselineState,
-  assessTireBaselineState,
-  isBrakeReferenceMaterializable,
   isHvBatteryReferenceMaterializable,
   parseTechnicalBaselineDraft,
 } from '../policy/technical-baseline-draft.validation';
+import { buildTechnicalBaselineDraftV2FromRaw } from '../policy/technical-baseline-draft.v2.runtime';
+import { isOnboardingBrakeReferenceMaterializable } from '../policy/technical-baseline-brake.validation';
 import { classifyPowertrainFromFuelType } from '../readiness/powertrain-classification';
 import {
   parseValidatedIdentityDraft,
@@ -58,14 +56,22 @@ export async function materializeTechnicalBaselineInActivationTx(
     return;
   }
 
+  const rawJson = input.caseRow.draftTechnicalBaselineJson as unknown;
+  if (rawJson && typeof rawJson === 'object' && !Array.isArray(rawJson)) {
+    const { hasInvalidSection } = buildTechnicalBaselineDraftV2FromRaw(
+      rawJson as Record<string, unknown>,
+    );
+    if (hasInvalidSection) {
+      throw new VehicleOnboardingError(
+        'TECHNICAL_BASELINE_MATERIALIZATION_FAILED',
+        'Invalid technical baseline v2 section',
+      );
+    }
+  }
+
   const draft = parsed.draft;
   const identity = parseValidatedIdentityDraft(input.caseRow);
-  const vehicleContext: SpecVehicleFitContext = {
-    make: identity.make,
-    model: identity.model,
-    modelYear: identity.year,
-    powertrain: classifyPowertrainFromFuelType(identity.fuelType),
-  };
+  const vehicleContext = buildBrakeSpecVehicleFitContextFromCase(input.caseRow);
 
   await materializeBrakeIfPresent(tx, input.vehicleId, draft, vehicleContext);
   await materializeHvBatteryIfPresent(tx, {
@@ -88,15 +94,10 @@ export async function materializeTechnicalBaselineInActivationTx(
       draft,
       input.vehicleId,
       tx,
+      vehicleContext,
     );
   }
 
-  // Tire reference: blocked by VehicleTireSetup health defaults (VO-4.5 audit).
-  // Installed config: same — do not write VehicleTireSetup from onboarding.
-  const tireState = assessTireBaselineState(parsed);
-  if (tireState === 'materializable' && draft.tireInstalledConfig) {
-    // Explicit installed evidence exists but schema cannot represent without health conclusions.
-  }
 }
 
 function assertNoRequiredBaselineMaterializationObligation(
@@ -135,7 +136,7 @@ async function materializeBrakeIfPresent(
   vehicleContext: SpecVehicleFitContext,
 ): Promise<void> {
   const brake = draft.brakeReference;
-  if (!brake || !isBrakeReferenceMaterializable(brake)) return;
+  if (!brake || !isOnboardingBrakeReferenceMaterializable(brake, vehicleContext)) return;
 
   const existing = await tx.vehicleBrakeReferenceSpec.findFirst({
     where: { vehicleId },
@@ -143,11 +144,11 @@ async function materializeBrakeIfPresent(
   });
   if (existing) return;
 
-  const fit = validateSpecVehicleFit(brake, vehicleContext, undefined);
-  if (!fit.valid) {
+  const validated = validateOnboardingBrakeReference(brake, vehicleContext);
+  if (!validated.ok) {
     throw new VehicleOnboardingError(
       'TECHNICAL_BASELINE_MATERIALIZATION_FAILED',
-      fit.errors.join('; '),
+      validated.reason,
     );
   }
   let normalized: { data: Record<string, unknown>; warnings: string[] };
@@ -182,6 +183,20 @@ async function materializeHvBatteryIfPresent(
 ): Promise<void> {
   const hv = input.draft.hvBatteryReference;
   if (!hv || !isHvBatteryReferenceMaterializable(hv)) return;
+
+  if (hv.documentId) {
+    await assertBatteryDocumentScope(tx, {
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      documentId: hv.documentId,
+    });
+  }
+  if (hv.serviceEventId != null) {
+    throw new VehicleOnboardingError(
+      'TECHNICAL_BASELINE_MATERIALIZATION_FAILED',
+      'Onboarding HV reference does not support serviceEventId',
+    );
+  }
 
   const policy = evaluateReferenceCapacityCreate(hv);
   if (!policy.ok) {
@@ -275,12 +290,41 @@ async function materializeHvBatteryIfPresent(
   });
 }
 
+async function assertBatteryDocumentScope(
+  tx: Prisma.TransactionClient,
+  input: { organizationId: string; vehicleId: string; documentId: string },
+): Promise<void> {
+  const doc = await tx.vehicleDocumentExtraction.findUnique({
+    where: { id: input.documentId },
+    select: { organizationId: true, vehicleId: true },
+  });
+  if (!doc) {
+    throw new VehicleOnboardingError(
+      'TECHNICAL_BASELINE_EVIDENCE_SCOPE_MISMATCH',
+      'Document evidence not found',
+    );
+  }
+  if (doc.organizationId !== input.organizationId) {
+    throw new VehicleOnboardingError(
+      'TECHNICAL_BASELINE_EVIDENCE_SCOPE_MISMATCH',
+      'Document evidence organization scope mismatch',
+    );
+  }
+  if (doc.vehicleId != null && doc.vehicleId !== input.vehicleId) {
+    throw new VehicleOnboardingError(
+      'TECHNICAL_BASELINE_EVIDENCE_SCOPE_MISMATCH',
+      'Document evidence vehicle scope mismatch',
+    );
+  }
+}
+
 async function assertRequiredBaselinesMaterialized(
   profile: VehicleOnboardingReadinessProfileV1,
   powertrain: ReturnType<typeof classifyPowertrainFromFuelType>,
   draft: VehicleTechnicalBaselineDraftV2,
   vehicleId: string,
   tx: Prisma.TransactionClient,
+  vehicleContext: SpecVehicleFitContext,
 ): Promise<void> {
   const hvPolicy = profile.hvBatteryByPowertrain[powertrain];
   if (hvPolicy === 'REQUIRED') {
@@ -302,7 +346,13 @@ async function assertRequiredBaselinesMaterialized(
   }
 
   const brakePolicy = profile.brakeBaseline;
-  if (brakePolicy === 'REQUIRED' && isBrakeReferenceMaterializable(draft.brakeReference ?? null)) {
+  if (brakePolicy === 'REQUIRED') {
+    if (!isOnboardingBrakeReferenceMaterializable(draft.brakeReference ?? null, vehicleContext)) {
+      throw new VehicleOnboardingError(
+        'TECHNICAL_BASELINE_MATERIALIZATION_FAILED',
+        'Required brake baseline missing at activation',
+      );
+    }
     const row = await tx.vehicleBrakeReferenceSpec.findFirst({ where: { vehicleId } });
     if (!row) {
       throw new VehicleOnboardingError(
@@ -310,5 +360,13 @@ async function assertRequiredBaselinesMaterialized(
         'VO-INV-BASELINE-MATERIALIZATION-001 brake row missing',
       );
     }
+  }
+
+  const tirePolicy = profile.tireBaseline;
+  if (tirePolicy === 'REQUIRED') {
+    throw new VehicleOnboardingError(
+      'TECHNICAL_BASELINE_MATERIALIZATION_FAILED',
+      'Required tire baseline has no safe reference authority',
+    );
   }
 }
