@@ -1,5 +1,11 @@
 import type { PrismaClient } from '@prisma/client';
-import { Prisma } from '@prisma/client';
+import {
+  BatteryCapabilityStatus,
+  BatteryEvidenceScope,
+  BatteryEvidenceSourceType,
+  BatteryEvidenceValueType,
+  Prisma,
+} from '@prisma/client';
 import { RECHARGE_SEGMENTS_SIGNAL_KEY } from '../capability-preflight/battery-capability-signals.registry';
 import { HV_M2_CAPACITY_METHOD } from '../hv-capacity-shadow/hv-capacity-m2.types';
 import { HV_M3_CAPACITY_METHOD } from '../hv-capacity-shadow/hv-capacity-m3.types';
@@ -186,11 +192,13 @@ async function buildReportInTransaction(
     },
   });
 
-  const providerSohObservationCount = await tx.hvCapacityObservation.count({
+  const providerSohObservationCount = await tx.batteryEvidence.count({
     where: {
-      organizationId: input.organizationId,
       vehicleId: input.vehicleId,
-      estimatedSohPct: { not: null },
+      vehicle: { organizationId: input.organizationId },
+      scope: BatteryEvidenceScope.HV,
+      valueType: BatteryEvidenceValueType.SOH_PERCENT,
+      sourceType: BatteryEvidenceSourceType.PROVIDER_REPORTED,
       observedAt: { lte: evaluationAt },
     },
   });
