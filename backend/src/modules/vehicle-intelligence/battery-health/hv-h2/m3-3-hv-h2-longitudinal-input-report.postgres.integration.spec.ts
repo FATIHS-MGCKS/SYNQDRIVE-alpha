@@ -9,7 +9,7 @@ import {
   BatteryMeasurementQuality,
   PrismaClient,
 } from '@prisma/client';
-import { createGtOrgVehicle } from '../ground-truth/ground-truth-postgres.fixture';
+import { createGtOrgVehicle, insertGtBatteryReplacementServiceEvent } from '../ground-truth/ground-truth-postgres.fixture';
 import { HV_M2_CAPACITY_METHOD } from '../hv-capacity-shadow/hv-capacity-m2.types';
 import { HV_M3_CAPACITY_METHOD } from '../hv-capacity-shadow/hv-capacity-m3.types';
 import { HV_CHARGE_SESSION_QUALITY_STATUS } from '../hv-charge-session/hv-charge-session-quality.status';
@@ -159,7 +159,11 @@ const integrationEnabled = process.env.BATTERY_HV_H2_REPORT_INTEGRATION === '1';
           sourceAuthority: BatteryGroundTruthSourceAuthority.MANUAL_CONFIRMED,
           verificationStatus: BatteryGroundTruthVerificationStatus.CONFIRMED,
           sourceContentFingerprint: 'c'.repeat(64),
-          sourceServiceEventId: randomUUID(),
+          sourceServiceEventId: await insertGtBatteryReplacementServiceEvent(prisma, {
+            organizationId,
+            vehicleId,
+            eventDate: new Date('2026-01-01T00:00:00.000Z'),
+          }),
         },
       });
 

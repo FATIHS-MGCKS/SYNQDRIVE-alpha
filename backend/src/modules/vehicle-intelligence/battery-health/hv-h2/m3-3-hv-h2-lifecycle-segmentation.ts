@@ -75,6 +75,6 @@ export function sessionCrossesReplacementBoundary(input: {
   const end = input.sessionEndAt.getTime();
   return input.replacementBoundaries.some((b) => {
     const bt = b.effectiveAt.getTime();
-    return bt > start && bt < end;
+    return bt >= start && bt <= end;
   });
 }

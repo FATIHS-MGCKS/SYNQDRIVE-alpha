@@ -9,7 +9,7 @@ export interface HvH2CandidateFingerprintInput {
   sourceEntityType: string;
   sourceEntityId: string;
   observedAt: string;
-  modelVersion: number;
+  modelVersion: number | null;
   valueSemantic: string;
   lifecycleSegmentId: string;
 }
@@ -25,7 +25,9 @@ export function computeM3_3HvH2CandidateFingerprint(
     input.sourceEntityType,
     input.sourceEntityId,
     input.observedAt,
-    String(input.modelVersion),
+    input.modelVersion === null || input.modelVersion === undefined
+      ? 'none'
+      : String(input.modelVersion),
     input.valueSemantic,
     input.lifecycleSegmentId,
   ].join('|');

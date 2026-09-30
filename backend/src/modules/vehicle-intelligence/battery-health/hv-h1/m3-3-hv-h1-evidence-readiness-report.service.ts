@@ -23,6 +23,7 @@ import { evaluateM3_3HvH1EvidenceQualityV1 } from './m3-3-hv-h1-evidence-quality
 import { buildM3_3HvH1ProviderCapabilityMatrixV1 } from './m3-3-hv-h1-provider-capability-matrix.builder';
 import type { M3_3HvH1CapabilityMatrixPersistedRow } from './m3-3-hv-h1-provider-capability-matrix.types';
 import { evaluateM3_3HvH1Readiness } from './m3-3-hv-h1-readiness.model';
+import { isHvH1QualifiedProviderSohEvidenceRow } from './m3-3-hv-h1-provider-soh-evidence.util';
 import {
   buildM3_3HvH1SessionEvidenceLinkageV1,
   sessionFieldPresenceFromRecord,
@@ -192,7 +193,7 @@ async function buildReportInTransaction(
     },
   });
 
-  const providerSohObservationCount = await tx.batteryEvidence.count({
+  const providerSohRows = await tx.batteryEvidence.findMany({
     where: {
       vehicleId: input.vehicleId,
       vehicle: { organizationId: input.organizationId },
@@ -201,7 +202,19 @@ async function buildReportInTransaction(
       sourceType: BatteryEvidenceSourceType.PROVIDER_REPORTED,
       observedAt: { lte: evaluationAt },
     },
+    select: {
+      scope: true,
+      valueType: true,
+      sourceType: true,
+      numericValue: true,
+      observedAt: true,
+      provider: true,
+    },
   });
+  const providerSohObservationCount = providerSohRows.length;
+  const providerSohQualifiedEvidenceCount = providerSohRows.filter((row) =>
+    isHvH1QualifiedProviderSohEvidenceRow(row, evaluationAt),
+  ).length;
 
   const sampleLinkages = sessions.map((session) => {
     const isFallback = session.source !== 'DIMO_RECHARGE_SEGMENT';
@@ -222,6 +235,7 @@ async function buildReportInTransaction(
     m2ShadowObservationCount,
     m3ShadowObservationCount,
     providerSohObservationCount,
+    providerSohQualifiedEvidenceCount,
     longitudinalCandidateCount: 0,
   });
 

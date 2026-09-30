@@ -112,7 +112,7 @@ async function loadReportDataInTransaction(
     take: maxGt + 1,
     include: {
       revocations: true,
-      supersededByGroundTruthEvents: { select: { id: true } },
+      supersededByGroundTruthEvents: { select: { id: true, createdAt: true } },
     },
   });
   const gtTruncated = groundTruthEvents.length > maxGt;
@@ -124,17 +124,21 @@ async function loadReportDataInTransaction(
   }
 
   const sessionsById = new Map<string, HvChargeSession>();
-  if (sessionIds.size > 0) {
+  const sortedSessionIds = [...sessionIds].sort();
+  const sessionsTruncated = sortedSessionIds.length > maxSessions;
+  const sessionIdsToLoad = sessionsTruncated
+    ? sortedSessionIds.slice(0, maxSessions)
+    : sortedSessionIds;
+  if (sessionIdsToLoad.length > 0) {
     const sessions = await tx.hvChargeSession.findMany({
       where: {
-        id: { in: [...sessionIds] },
+        id: { in: sessionIdsToLoad },
         organizationId: input.organizationId,
         vehicleId: input.vehicleId,
       },
-      take: maxSessions + 1,
+      orderBy: { id: 'asc' },
     });
-    const sessionsTruncated = sessions.length > maxSessions;
-    for (const s of sessionsTruncated ? sessions.slice(0, maxSessions) : sessions) {
+    for (const s of sessions) {
       sessionsById.set(s.id, s);
     }
   }
@@ -151,7 +155,7 @@ async function loadReportDataInTransaction(
       capacityObservations: capacityTruncated,
       providerSoh: providerTruncated,
       groundTruth: gtTruncated,
-      sessions: sessionIds.size > maxSessions,
+      sessions: sessionsTruncated,
     },
   };
 }

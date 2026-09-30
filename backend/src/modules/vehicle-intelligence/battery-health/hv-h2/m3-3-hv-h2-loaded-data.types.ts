@@ -8,7 +8,7 @@ import type {
 
 export type M3_3HvH2GroundTruthEventRow = BatteryGroundTruthEvent & {
   revocations: BatteryGroundTruthRevocation[];
-  supersededByGroundTruthEvents: { id: string }[];
+  supersededByGroundTruthEvents: { id: string; createdAt: Date }[];
 };
 
 export interface M3_3HvH2LoadedDataV1 {

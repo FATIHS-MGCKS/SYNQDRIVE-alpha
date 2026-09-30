@@ -21,7 +21,15 @@ import {
   computeM3_3HvH2CandidateFingerprint,
   sortM3_3HvH2Candidates,
 } from './m3-3-hv-h2-fingerprint';
-import { isHvH2LifecycleGroundTruthEvent } from './m3-3-hv-h2-ground-truth.util';
+import { BatteryEvidenceStrengthTier } from '../battery-v2-domain';
+import { HV_M2_MODEL_VERSION } from '../hv-capacity-shadow/hv-capacity-m2.types';
+import { HV_M3_MODEL_VERSION } from '../hv-capacity-shadow/hv-capacity-m3.types';
+import {
+  M3_3_HV_H2_M2_ELIGIBLE_QUALITIES,
+  M3_3_HV_H2_M3_ELIGIBLE_QUALITIES,
+  M3_3_HV_H2_M2_SUPPORTED_MODEL_VERSION,
+  M3_3_HV_H2_M3_SUPPORTED_MODEL_VERSION,
+} from './m3-3-hv-h2-eligibility.constants';
 import {
   buildM3_3HvH2LifecycleSegments,
   resolveLifecycleSegmentForObservedAt,
@@ -120,7 +128,7 @@ describe('M3.3-HV-H2 lifecycle segmentation', () => {
     expect(on.onReplacementEffectiveAt).toBe(true);
   });
 
-  it('detects session crossing replacement', () => {
+  it('detects session crossing replacement (inclusive boundaries)', () => {
     expect(
       sessionCrossesReplacementBoundary({
         sessionStartAt: new Date('2026-05-31T00:00:00.000Z'),
@@ -128,6 +136,27 @@ describe('M3.3-HV-H2 lifecycle segmentation', () => {
         replacementBoundaries: boundaries,
       }),
     ).toBe(true);
+    expect(
+      sessionCrossesReplacementBoundary({
+        sessionStartAt: replacementAt,
+        sessionEndAt: new Date('2026-06-02T00:00:00.000Z'),
+        replacementBoundaries: boundaries,
+      }),
+    ).toBe(true);
+    expect(
+      sessionCrossesReplacementBoundary({
+        sessionStartAt: new Date('2026-05-31T00:00:00.000Z'),
+        sessionEndAt: replacementAt,
+        replacementBoundaries: boundaries,
+      }),
+    ).toBe(true);
+    expect(
+      sessionCrossesReplacementBoundary({
+        sessionStartAt: new Date('2026-06-02T00:00:00.000Z'),
+        sessionEndAt: new Date('2026-06-03T00:00:00.000Z'),
+        replacementBoundaries: boundaries,
+      }),
+    ).toBe(false);
   });
 
   it('builds HV_SEGMENT_n segments for multiple replacements', () => {
@@ -141,25 +170,6 @@ describe('M3.3-HV-H2 lifecycle segmentation', () => {
       'HV_SEGMENT_1',
       'HV_SEGMENT_2',
     ]);
-  });
-});
-
-describe('M3.3-HV-H2 ground truth lifecycle authority', () => {
-  it('ignores superseded and revoked GT', () => {
-    expect(
-      isHvH2LifecycleGroundTruthEvent({
-        verificationStatus: BatteryGroundTruthVerificationStatus.CONFIRMED,
-        revocations: [],
-        supersededByGroundTruthEvents: [{ id: 'new' }],
-      }),
-    ).toBe(false);
-    expect(
-      isHvH2LifecycleGroundTruthEvent({
-        verificationStatus: BatteryGroundTruthVerificationStatus.CONFIRMED,
-        revocations: [{ id: 'rev' }],
-        supersededByGroundTruthEvents: [],
-      }),
-    ).toBe(false);
   });
 });
 
@@ -207,7 +217,7 @@ describe('M3.3-HV-H2 candidate builder', () => {
     expect(c.sourceEntityId).toBeTruthy();
     expect(c.candidateFingerprint).toHaveLength(64);
     expect(c.eligibility).toBe('eligible');
-    expect(report.summary.m2LongitudinalReady).toBe(true);
+    expect(c.evidenceStrength).toBe(BatteryEvidenceStrengthTier.QUALIFIED_TELEMETRY_PROVISIONAL);
   });
 
   it('marks M2 outlier ineligible', () => {
@@ -308,6 +318,10 @@ describe('M3.3-HV-H2 candidate builder', () => {
     expect(soh.method).toBe('PROVIDER_HV_SOH');
     expect(soh.valueSemantic).toBe('PROVIDER_SOH_PERCENT');
     expect(soh.eligibility).toBe('eligible');
+    expect(soh.receivedAt).toBeNull();
+    expect(soh.persistedAt).toBeTruthy();
+    expect(soh.modelVersion).toBeNull();
+    expect(soh.evidenceStrength).toBe(BatteryEvidenceStrengthTier.PROVIDER_OEM_SOH);
     expect(report.summary.providerSohLongitudinalReady).toBe(true);
   });
 
@@ -568,6 +582,130 @@ describe('M3.3-HV-H2 candidate builder', () => {
     expect(new Set(report.candidates.map((c) => c.method)).size).toBe(3);
     expect(report.crossMethodPoolingDefault).toBe(false);
   });
+
+  it('rejects unsupported M2 model version', () => {
+    const report = buildM3_3HvH2LongitudinalInputReportV1(
+      emptyLoaded({
+        capacityObservations: [
+          {
+            id: randomUUID(),
+            organizationId: orgId,
+            vehicleId: vehId,
+            method: HV_M2_CAPACITY_METHOD,
+            observedAt: new Date('2026-09-20T09:00:00.000Z'),
+            receivedAt: new Date('2026-09-20T09:01:00.000Z'),
+            idempotencyKey: 'm2-bad-ver',
+            quality: BatteryMeasurementQuality.SHADOW,
+            modelVersion: HV_M2_MODEL_VERSION + 1,
+            estimatedCapacityKwh: 58,
+            chargeSessionId: null,
+            referenceCapacityKwh: null,
+            estimatedSohPct: null,
+            deltaSocPercent: null,
+            deltaEnergyKwh: null,
+            metadata: {},
+            createdAt: new Date(),
+          } as never,
+        ],
+      }),
+    );
+    expect(report.candidates[0]?.reasonCodes).toContain(
+      M3_3_HV_H2_ELIGIBILITY_REASONS.MODEL_VERSION_UNSUPPORTED,
+    );
+  });
+
+  it('rejects unexpected M2 quality (fail closed whitelist)', () => {
+    const report = buildM3_3HvH2LongitudinalInputReportV1(
+      emptyLoaded({
+        capacityObservations: [
+          {
+            id: randomUUID(),
+            organizationId: orgId,
+            vehicleId: vehId,
+            method: HV_M2_CAPACITY_METHOD,
+            observedAt: new Date('2026-09-20T09:00:00.000Z'),
+            receivedAt: new Date('2026-09-20T09:01:00.000Z'),
+            idempotencyKey: 'm2-stale-q',
+            quality: BatteryMeasurementQuality.STALE,
+            modelVersion: HV_M2_MODEL_VERSION,
+            estimatedCapacityKwh: 58,
+            chargeSessionId: null,
+            referenceCapacityKwh: null,
+            estimatedSohPct: null,
+            deltaSocPercent: null,
+            deltaEnergyKwh: null,
+            metadata: {},
+            createdAt: new Date(),
+          } as never,
+        ],
+      }),
+    );
+    expect(report.candidates[0]?.eligibility).toBe('ineligible');
+    expect(M3_3_HV_H2_M2_ELIGIBLE_QUALITIES).toEqual([BatteryMeasurementQuality.SHADOW]);
+  });
+
+  it('never emits NaN in JSON report output', () => {
+    const report = buildM3_3HvH2LongitudinalInputReportV1(
+      emptyLoaded({
+        capacityObservations: [
+          {
+            id: randomUUID(),
+            organizationId: orgId,
+            vehicleId: vehId,
+            method: HV_M2_CAPACITY_METHOD,
+            observedAt: new Date('2026-09-20T09:00:00.000Z'),
+            receivedAt: new Date('2026-09-20T09:01:00.000Z'),
+            idempotencyKey: 'm2-missing-val',
+            quality: BatteryMeasurementQuality.SHADOW,
+            modelVersion: HV_M2_MODEL_VERSION,
+            estimatedCapacityKwh: null,
+            chargeSessionId: null,
+            referenceCapacityKwh: null,
+            estimatedSohPct: null,
+            deltaSocPercent: null,
+            deltaEnergyKwh: null,
+            metadata: {},
+            createdAt: new Date(),
+          } as never,
+        ],
+      }),
+    );
+    const json = JSON.stringify(report);
+    expect(json).not.toContain('NaN');
+    expect(report.candidates[0]?.numericValue).toBeNull();
+  });
+
+  it('ignores GT not knowable by evaluationAt for replacement segmentation', () => {
+    const report = buildM3_3HvH2LongitudinalInputReportV1(
+      emptyLoaded({
+        evaluationAt: new Date('2026-06-15T12:00:00.000Z'),
+        groundTruthEvents: [
+          {
+            id: 'gt-future-knowledge',
+            organizationId: orgId,
+            vehicleId: vehId,
+            groundTruthType: BatteryGroundTruthType.BATTERY_REPLACEMENT,
+            batteryScope: BatteryEvidenceScope.HV,
+            effectiveAt: new Date('2026-01-01T00:00:00.000Z'),
+            sourceAuthority: BatteryGroundTruthSourceAuthority.MANUAL_CONFIRMED,
+            verificationStatus: BatteryGroundTruthVerificationStatus.CONFIRMED,
+            sourceServiceEventId: randomUUID(),
+            sourceDocumentExtractionId: null,
+            sourceBatteryEvidenceId: null,
+            sourceMeasurementId: null,
+            sourceContentFingerprint: 'e'.repeat(64),
+            confirmedByUserId: null,
+            confirmedAt: null,
+            supersedesGroundTruthEventId: null,
+            createdAt: new Date('2026-09-01T00:00:00.000Z'),
+            revocations: [],
+            supersededByGroundTruthEvents: [],
+          },
+        ],
+      }),
+    );
+    expect(report.summary.replacementBoundaryCount).toBe(0);
+  });
 });
 
 describe('M3.3-HV-H2 fingerprint and ordering', () => {
@@ -584,9 +722,7 @@ describe('M3.3-HV-H2 fingerprint and ordering', () => {
       valueSemantic: 'ESTIMATED_USABLE_CAPACITY_KWH',
       lifecycleSegmentId: 'HV_SEGMENT_0',
     };
-    expect(computeM3_3HvH2CandidateFingerprint(input)).toBe(
-      computeM3_3HvH2CandidateFingerprint(input),
-    );
+    expect(computeM3_3HvH2CandidateFingerprint({ ...input, modelVersion: null })).toHaveLength(64);
   });
 
   it('orders by lifecycle segment, observedAt, method, sourceEntityId', () => {

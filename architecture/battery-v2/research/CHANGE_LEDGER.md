@@ -22,6 +22,27 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-30 — M3.3-HV-H2 scientific authority hardening (PR #1857)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | H2 V1 read-only builder with permissive eligibility and current-state GT filtering |
+| **OBSERVATION** | Postgres GT FK failure; future revocation/supersession could leak into historical reports |
+| **HYPOTHESIS** | As-of GT projector + strict M2/M3 gates preserve scientific traceability without schema changes |
+| **CHANGE** | GT as-of projector; model-version fail-closed; quality whitelists; provider SOH receivedAt/modelVersion semantics; canonical evidence tiers; Postgres GT FK fixture; H1 qualified provider SOH readiness |
+| **WHY** | Prevent future-knowledge leak and silent eligibility permissiveness before longitudinal model work |
+| **EXPECTED_EFFECT** | Repeated historical reports stable; ineligible evidence visible with explicit reason codes |
+| **VALIDATION** | hv-h2 + hv-h1 unit tests; hv-h2 postgres CI; validate-h2-longitudinal-input-contracts.sh |
+| **OBSERVED_EFFECT** | Unit/contract validators PASS locally; postgres CI expected green on FK fix |
+| **NON_EFFECTS** | No customer publication, schema, or automatic runtime |
+| **REGRESSIONS_OR_TRADEOFFS** | Stricter readiness may show provider SOH not ready until rows pass qualification |
+| **REMAINING_GAPS** | No materialized H2 store |
+| **DECISION_STATUS** | EXPERIMENTAL |
+| **AFFECTED_GRAPH** | Battery V2 HV H2 research authority |
+| **EVIDENCE** | PR #1857 commits on branch cursor/m3-3-hv-h2-longitudinal-input-90ec |
+
+---
+
 ## CL-2026-09-30 — M3.3-HV-H2 longitudinal input candidate construction
 
 | Field | Value |

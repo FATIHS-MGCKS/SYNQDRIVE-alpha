@@ -28,6 +28,18 @@ grep -q 'SET TRANSACTION READ ONLY' "$HV_H2/m3-3-hv-h2-readonly-transaction.ts" 
   || fail "H2 must enforce SET TRANSACTION READ ONLY"
 grep -q 'runM3_3HvH2ReadOnlyTransaction' "$HV_H2/m3-3-hv-h2-longitudinal-input-report.service.ts" \
   || fail "H2 report must use runM3_3HvH2ReadOnlyTransaction"
+grep -q 'modelVersion: null' "$HV_H2/m3-3-hv-h2-candidate-builder.ts" \
+  || fail "provider SOH modelVersion must be null when no provider model exists"
+grep -q 'receivedAt: null' "$HV_H2/m3-3-hv-h2-candidate-builder.ts" \
+  || fail "provider SOH must not fabricate receivedAt from persistence time"
+grep -q 'numericValue: number | null' "$HV_H2/m3-3-hv-h2.types.ts" \
+  || fail "candidate numericValue must allow null"
+grep -q 'MODEL_VERSION_UNSUPPORTED' "$HV_H2/m3-3-hv-h2-candidate-builder.ts" \
+  || fail "H2 must enforce MODEL_VERSION_UNSUPPORTED"
+grep -q 'BatteryEvidenceStrengthTier' "$HV_H2/m3-3-hv-h2-candidate-builder.ts" \
+  || fail "H2 must use canonical BatteryEvidenceStrengthTier vocabulary"
+grep -q 'isHvH2GroundTruthActiveAtEvaluationAt' "$HV_H2/m3-3-hv-h2-candidate-builder.ts" \
+  || fail "H2 must use GT as-of active projector"
 grep -q 'healthConclusion: null' "$HV_H2/m3-3-hv-h2-candidate-builder.ts" \
   || fail "H2 candidates must keep healthConclusion null"
 grep -q 'customerPublicationEligible: false' "$HV_H2/m3-3-hv-h2-candidate-builder.ts" \

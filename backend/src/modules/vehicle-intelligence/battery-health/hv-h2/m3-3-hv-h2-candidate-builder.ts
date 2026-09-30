@@ -1,12 +1,21 @@
 import { BatteryMeasurementQuality } from '@prisma/client';
-import { BatteryMeasurementScope } from '../battery-v2-domain';
+import { BatteryEvidenceStrengthTier, BatteryMeasurementScope } from '../battery-v2-domain';
 import { HV_M2_CAPACITY_METHOD } from '../hv-capacity-shadow/hv-capacity-m2.types';
 import { HV_M3_CAPACITY_METHOD, HV_M3_METHOD_ROLE } from '../hv-capacity-shadow/hv-capacity-m3.types';
 import { evaluateHvM3SessionGate } from '../hv-capacity-shadow/hv-capacity-m3.policy';
 import type { HvChargeSessionMetadata } from '../hv-charge-session/hv-charge-session.types';
 import { HV_CHARGE_SESSION_QUALITY_STATUS } from '../hv-charge-session/hv-charge-session-quality.status';
-import { isHvH2LifecycleGroundTruthEvent } from './m3-3-hv-h2-ground-truth.util';
 import { BatteryEvidenceScope } from '@prisma/client';
+import {
+  isM3_3HvH2M2QualityEligible,
+  isM3_3HvH2M3QualityEligible,
+  M3_3_HV_H2_M2_SUPPORTED_MODEL_VERSION,
+  M3_3_HV_H2_M3_SUPPORTED_MODEL_VERSION,
+} from './m3-3-hv-h2-eligibility.constants';
+import {
+  isHvH2GroundTruthActiveAtEvaluationAt,
+  isHvH2GroundTruthKnowableAtEvaluationAt,
+} from './m3-3-hv-h2-ground-truth-asof.util';
 import {
   M3_3_HV_H2_LONGITUDINAL_INPUT_CANDIDATE_V1,
   M3_3_HV_H2_LONGITUDINAL_INPUT_REPORT_V1,
@@ -63,13 +72,16 @@ function classifyFreshness(observedAt: Date, evaluationAt: Date): 'FRESH' | 'STA
 
 function hvReplacementBoundaries(
   events: M3_3HvH2LoadedDataV1['groundTruthEvents'],
+  evaluationAt: Date,
 ): HvH2ReplacementBoundary[] {
   return events
     .filter(
       (e) =>
-        isHvH2LifecycleGroundTruthEvent(e) &&
+        isHvH2GroundTruthKnowableAtEvaluationAt(e, evaluationAt) &&
+        isHvH2GroundTruthActiveAtEvaluationAt(e, evaluationAt) &&
         e.batteryScope === BatteryEvidenceScope.HV &&
-        e.groundTruthType === 'BATTERY_REPLACEMENT',
+        e.groundTruthType === 'BATTERY_REPLACEMENT' &&
+        e.effectiveAt.getTime() <= evaluationAt.getTime(),
     )
     .map((e) => ({
       effectiveAt: e.effectiveAt,
@@ -83,9 +95,10 @@ function buildValidationAnchors(
   return data.groundTruthEvents
     .filter(
       (e) =>
-        isHvH2LifecycleGroundTruthEvent(e) &&
+        isHvH2GroundTruthKnowableAtEvaluationAt(e, data.evaluationAt) &&
+        isHvH2GroundTruthActiveAtEvaluationAt(e, data.evaluationAt) &&
         e.batteryScope === BatteryEvidenceScope.HV &&
-        e.effectiveAt <= data.evaluationAt,
+        e.effectiveAt.getTime() <= data.evaluationAt.getTime(),
     )
     .map((e) => ({
       groundTruthEventId: e.id,
@@ -103,6 +116,21 @@ function buildValidationAnchors(
 
 function pushReason(codes: M3_3HvH2EligibilityReasonCode[], code: M3_3HvH2EligibilityReasonCode) {
   if (!codes.includes(code)) codes.push(code);
+}
+
+function resolveCapacityNumericValue(
+  raw: number | null | undefined,
+  reasonCodes: M3_3HvH2EligibilityReasonCode[],
+): number | null {
+  if (raw == null) {
+    pushReason(reasonCodes, M3_3_HV_H2_ELIGIBILITY_REASONS.VALUE_MISSING);
+    return null;
+  }
+  if (!Number.isFinite(raw)) {
+    pushReason(reasonCodes, M3_3_HV_H2_ELIGIBILITY_REASONS.VALUE_NON_FINITE);
+    return null;
+  }
+  return raw;
 }
 
 function buildM2Candidate(
@@ -165,19 +193,14 @@ function buildM2Candidate(
   if (meta.gateReasonCodes.length > 0) {
     pushReason(reasonCodes, M3_3_HV_H2_ELIGIBILITY_REASONS.M2_GATE_BLOCKED);
   }
-  if (
-    obs.quality === BatteryMeasurementQuality.INSUFFICIENT_COVERAGE ||
-    obs.quality === BatteryMeasurementQuality.NO_DATA
-  ) {
+  if (obs.modelVersion !== M3_3_HV_H2_M2_SUPPORTED_MODEL_VERSION) {
+    pushReason(reasonCodes, M3_3_HV_H2_ELIGIBILITY_REASONS.MODEL_VERSION_UNSUPPORTED);
+  }
+  if (!isM3_3HvH2M2QualityEligible(obs.quality)) {
     pushReason(reasonCodes, M3_3_HV_H2_ELIGIBILITY_REASONS.M2_GATE_BLOCKED);
   }
 
-  const numericValue = obs.estimatedCapacityKwh;
-  if (numericValue == null) {
-    pushReason(reasonCodes, M3_3_HV_H2_ELIGIBILITY_REASONS.VALUE_MISSING);
-  } else if (!Number.isFinite(numericValue)) {
-    pushReason(reasonCodes, M3_3_HV_H2_ELIGIBILITY_REASONS.VALUE_NON_FINITE);
-  }
+  const numericValue = resolveCapacityNumericValue(obs.estimatedCapacityKwh, reasonCodes);
 
   const eligibility = reasonCodes.length === 0 ? 'eligible' : 'ineligible';
   const freshness = classifyFreshness(observedAt, data.evaluationAt);
@@ -193,7 +216,7 @@ function buildM2Candidate(
     method: 'M2_CURRENT_ENERGY_SOC',
     methodRole: 'METHOD_SHADOW_EVIDENCE',
     valueSemantic: 'ESTIMATED_USABLE_CAPACITY_KWH',
-    numericValue: numericValue ?? NaN,
+    numericValue,
     unit: 'kWh',
     observedAt: observedAt.toISOString(),
     receivedAt: obs.receivedAt?.toISOString() ?? null,
@@ -201,11 +224,9 @@ function buildM2Candidate(
     provider: null,
     quality: obs.quality,
     freshness,
-    evidenceStrength:
-      obs.quality === BatteryMeasurementQuality.SHADOW ||
-      obs.quality === BatteryMeasurementQuality.VALID
-        ? 'STRONG'
-        : 'WEAK',
+    evidenceStrength: isM3_3HvH2M2QualityEligible(obs.quality)
+      ? BatteryEvidenceStrengthTier.QUALIFIED_TELEMETRY_PROVISIONAL
+      : BatteryEvidenceStrengthTier.UNKNOWN,
     modelVersion: obs.modelVersion,
     sourceProvenance: 'hv_capacity_shadow_m2',
     eligibility,
@@ -297,17 +318,14 @@ function buildM3Candidate(
   if (meta.gateReasonCodes.length > 0) {
     pushReason(reasonCodes, M3_3_HV_H2_ELIGIBILITY_REASONS.M3_GATE_BLOCKED);
   }
-  if (
-    obs.quality === BatteryMeasurementQuality.INSUFFICIENT_COVERAGE ||
-    obs.quality === BatteryMeasurementQuality.NO_DATA
-  ) {
+  if (obs.modelVersion !== M3_3_HV_H2_M3_SUPPORTED_MODEL_VERSION) {
+    pushReason(reasonCodes, M3_3_HV_H2_ELIGIBILITY_REASONS.MODEL_VERSION_UNSUPPORTED);
+  }
+  if (!isM3_3HvH2M3QualityEligible(obs.quality)) {
     pushReason(reasonCodes, M3_3_HV_H2_ELIGIBILITY_REASONS.M3_GATE_BLOCKED);
   }
 
-  const numericValue = obs.estimatedCapacityKwh;
-  if (numericValue == null || !Number.isFinite(numericValue)) {
-    pushReason(reasonCodes, M3_3_HV_H2_ELIGIBILITY_REASONS.VALUE_MISSING);
-  }
+  const numericValue = resolveCapacityNumericValue(obs.estimatedCapacityKwh, reasonCodes);
 
   const eligibility = reasonCodes.length === 0 ? 'eligible' : 'ineligible';
   const freshness = classifyFreshness(observedAt, data.evaluationAt);
@@ -323,7 +341,7 @@ function buildM3Candidate(
     method: 'M3_ADDED_ENERGY_DELTA_SOC',
     methodRole: 'VALIDATION_ONLY',
     valueSemantic: 'ESTIMATED_USABLE_CAPACITY_KWH',
-    numericValue: numericValue ?? NaN,
+    numericValue,
     unit: 'kWh',
     observedAt: observedAt.toISOString(),
     receivedAt: obs.receivedAt?.toISOString() ?? null,
@@ -331,11 +349,9 @@ function buildM3Candidate(
     provider: null,
     quality: obs.quality,
     freshness,
-    evidenceStrength:
-      obs.quality === BatteryMeasurementQuality.VALID_PROXY ||
-      obs.quality === BatteryMeasurementQuality.VALID
-        ? 'STRONG'
-        : 'WEAK',
+    evidenceStrength: isM3_3HvH2M3QualityEligible(obs.quality)
+      ? BatteryEvidenceStrengthTier.QUALIFIED_TELEMETRY_PROVISIONAL
+      : BatteryEvidenceStrengthTier.UNKNOWN,
     modelVersion: obs.modelVersion,
     sourceProvenance: `hv_capacity_shadow_m3:${HV_M3_METHOD_ROLE}`,
     eligibility,
@@ -384,9 +400,10 @@ function buildProviderSohCandidate(
   if (!row.provider) {
     pushReason(reasonCodes, M3_3_HV_H2_ELIGIBILITY_REASONS.PROVIDER_PROVENANCE_MISSING);
   }
-  const numericValue = row.numericValue;
+  let numericValue: number | null = row.numericValue;
   if (!Number.isFinite(numericValue)) {
     pushReason(reasonCodes, M3_3_HV_H2_ELIGIBILITY_REASONS.VALUE_NON_FINITE);
+    numericValue = null;
   } else if (numericValue < 0 || numericValue > 100) {
     pushReason(reasonCodes, M3_3_HV_H2_ELIGIBILITY_REASONS.PROVIDER_SOH_RANGE_INVALID);
   }
@@ -416,13 +433,17 @@ function buildProviderSohCandidate(
     numericValue,
     unit: row.unit ?? 'percent',
     observedAt: observedAt.toISOString(),
-    receivedAt: row.createdAt?.toISOString() ?? null,
+    receivedAt: null,
+    persistedAt: row.createdAt?.toISOString() ?? null,
     sessionId: null,
     provider: row.provider,
     quality: row.quality ?? 'UNKNOWN',
     freshness,
-    evidenceStrength: row.sourceType === 'PROVIDER_REPORTED' ? 'STRONG' : 'WEAK',
-    modelVersion: 1,
+    evidenceStrength:
+      row.sourceType === 'PROVIDER_REPORTED'
+        ? BatteryEvidenceStrengthTier.PROVIDER_OEM_SOH
+        : BatteryEvidenceStrengthTier.UNKNOWN,
+    modelVersion: null,
     sourceProvenance: `BatteryEvidence:${row.sourceType}`,
     eligibility,
     reasonCodes,
@@ -464,7 +485,7 @@ function countMultiPointSeries(candidates: M3_3HvH2LongitudinalInputCandidateV1[
 export function buildM3_3HvH2LongitudinalInputReportV1(
   data: M3_3HvH2LoadedDataV1,
 ): M3_3HvH2LongitudinalInputReportV1 {
-  const replacementBoundaries = hvReplacementBoundaries(data.groundTruthEvents);
+  const replacementBoundaries = hvReplacementBoundaries(data.groundTruthEvents, data.evaluationAt);
   const lifecycleSegments = buildM3_3HvH2LifecycleSegments(replacementBoundaries);
   const validationAnchors = buildValidationAnchors(data);
 
