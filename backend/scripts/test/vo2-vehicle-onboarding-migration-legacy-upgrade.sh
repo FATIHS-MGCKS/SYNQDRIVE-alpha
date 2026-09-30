@@ -11,7 +11,7 @@ HELD_MIGRATIONS=(
 )
 STAGING_DIR="${VO2_HELD_MIGRATIONS_DIR:-/tmp/vo2-held-migrations}"
 TEMP_DB="vo2_legacy_upg_${RANDOM}_$(date +%s)"
-FIXTURE_IDS="/tmp/vo2-fixture-ids-${TEMP_DB}.json"
+FIXTURE_IDS="${ROOT}/scripts/test/vo2-pre-vo2-fixture-ids.json"
 
 log() { printf '[vo2-legacy-upgrade] %s\n' "$*"; }
 fail() { printf '[vo2-legacy-upgrade][FAIL] %s\n' "$*" >&2; exit 1; }
@@ -68,7 +68,6 @@ cleanup() {
     "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${TEMP_DB}' AND pid <> pg_backend_pid();" \
     >/dev/null 2>&1 || true
   psql "${ADMIN_URL}" -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS \"${TEMP_DB}\";" >/dev/null 2>&1 || true
-  rm -f "${FIXTURE_IDS}" 2>/dev/null || true
 }
 trap cleanup EXIT
 
@@ -86,11 +85,8 @@ vo2_present="$(psql_atc "SELECT COUNT(*) FROM information_schema.tables WHERE ta
 vo2_present="$(echo "${vo2_present}" | tr -d '[:space:]')"
 [[ "${vo2_present}" == "0" ]] || fail "vehicle_onboarding_cases must not exist before VO-2"
 
-log "Seed pre-VO-2 legacy fixture"
-DATABASE_URL="${MIGRATION_DATABASE_URL}" VO2_FIXTURE_IDS_PATH="${FIXTURE_IDS}" \
-  npx ts-node -r tsconfig-paths/register scripts/test/vo2-pre-vo2-fixture.seed.ts
-
-[[ -f "${FIXTURE_IDS}" ]] || fail "fixture IDs file missing"
+log "Seed pre-VO-2 legacy fixture (SQL — pre-VO-2 column surface only)"
+psql "${PSQL_URL}" -v ON_ERROR_STOP=1 -f "${ROOT}/scripts/test/vo2-pre-vo2-fixture.sql"
 
 log "Restore VO-2 migrations and apply VO-2 + VO-2.1"
 restore_migrations
