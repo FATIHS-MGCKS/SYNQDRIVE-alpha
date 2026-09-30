@@ -72,6 +72,47 @@ async function seedQualifiedSession(
     it('chains H2 → H3 read-only with deterministic repeat and no DB writes', async () => {
       const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
       const evaluationAt = new Date('2027-06-01T00:00:00.000Z');
+
+      const sessionPre = randomUUID();
+      await seedQualifiedSession(
+        prisma,
+        organizationId,
+        vehicleId,
+        sessionPre,
+        new Date('2025-11-01T08:00:00.000Z'),
+      );
+      await prisma.hvCapacityObservation.create({
+        data: {
+          organizationId,
+          vehicleId,
+          method: HV_M2_CAPACITY_METHOD,
+          observedAt: new Date('2025-11-01T10:00:00.000Z'),
+          idempotencyKey: `m2-pre-${randomUUID()}`,
+          quality: BatteryMeasurementQuality.SHADOW,
+          modelVersion: 1,
+          estimatedCapacityKwh: 52,
+          chargeSessionId: sessionPre,
+        },
+      });
+
+      await prisma.batteryGroundTruthEvent.create({
+        data: {
+          organizationId,
+          vehicleId,
+          groundTruthType: BatteryGroundTruthType.BATTERY_REPLACEMENT,
+          batteryScope: BatteryEvidenceScope.HV,
+          effectiveAt: new Date('2026-01-01T00:00:00.000Z'),
+          sourceAuthority: BatteryGroundTruthSourceAuthority.MANUAL_CONFIRMED,
+          verificationStatus: BatteryGroundTruthVerificationStatus.CONFIRMED,
+          sourceContentFingerprint: 'd'.repeat(64),
+          sourceServiceEventId: await insertGtBatteryReplacementServiceEvent(prisma, {
+            organizationId,
+            vehicleId,
+            eventDate: new Date('2026-01-01T00:00:00.000Z'),
+          }),
+        },
+      });
+
       const sessionId = randomUUID();
       await seedQualifiedSession(
         prisma,
@@ -143,6 +184,7 @@ async function seedQualifiedSession(
           chargeSessionId: sessionId,
           deltaSocPercent: 50,
           deltaEnergyKwh: 28,
+          metadata: { methodConflict: false, outlier: false, gateReasonCodes: [] },
         },
       });
 
@@ -237,6 +279,7 @@ async function seedQualifiedSession(
       expect(providerSeries.length).toBeGreaterThanOrEqual(2);
       expect(new Set(providerSeries.map((s) => s.provider)).size).toBeGreaterThanOrEqual(2);
 
+      expect(a.lifecycleSegments.length).toBeGreaterThanOrEqual(2);
       const segmentIds = new Set(m2Series.map((s) => s.lifecycleSegmentId));
       expect(segmentIds.size).toBeGreaterThanOrEqual(2);
     });
