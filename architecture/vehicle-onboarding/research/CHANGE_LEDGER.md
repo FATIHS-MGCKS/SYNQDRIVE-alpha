@@ -8,6 +8,8 @@
 | 2026-09-30 | **VO-2** — Persistence foundation migration; compile-only nullable VIN types | Schema + migration; registration paths unchanged |
 | 2026-09-30 | **VO-2.1** — Integrity constraints, link history fix, legacy-upgrade harness, VO-2 Postgres CI; nullable VIN display-only compat | Schema migration + tests; VO-3 not started |
 | 2026-09-30 | **VO-3** — Provider-neutral orchestrator, adapters, atomic activation TX, readiness authority placeholder, Postgres proofs; **no public cutover** | Runtime module added; legacy registration unchanged |
+| 2026-09-30 | **VO-3.1** — Tenant HM isolation, composite VIN fix, readiness fail-closed DI, contract validation, HM consent/history, outbox semantic idempotency | Hardening only; no cutover |
+| 2026-09-30 | **VO-3.2** — Secure source attach APIs, private validated attach, Postgres concurrent/wrong-org/rollback proofs, manual idempotency fingerprint, DIMO cutover auth invariant | Hardening only; no cutover |
 
 ## VO-0B — REUSE-FIRST components (do not replace without VO-1+ proof)
 

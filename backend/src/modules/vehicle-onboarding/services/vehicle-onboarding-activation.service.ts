@@ -21,6 +21,7 @@ import {
   materializeDimoConsentIdempotent,
   materializeHmConsentIdempotent,
 } from './vehicle-onboarding-consent.writer';
+import { insertActivatedVehicleRow } from './vehicle-onboarding-activation.persistence';
 import { appendHmCanonicalRegistrationHistoryIfNeeded } from './hm-canonical-activation.binding';
 import {
   logActivationAttempt,
@@ -134,27 +135,12 @@ export class VehicleOnboardingActivationService {
         const activatedAt = new Date();
         const dimoVehicleId: string | null = dimoRef?.sourceMirrorId ?? null;
 
-        const vehicle = await tx.vehicle.create({
-          data: {
-            organizationId: input.organizationId,
-            vin: fields.vin,
-            vinProvenance: fields.vinProvenance,
-            vinVerificationState: fields.vinVerificationState,
-            registryLifecycle: 'ACTIVE',
-            make: fields.make,
-            model: fields.model,
-            year: fields.year,
-            fuelType: fields.fuelType,
-            vehicleName: fields.vehicleName,
-            licensePlate: fields.licensePlate || null,
-            notes: fields.notes,
-            status: 'AVAILABLE',
-            ...(dimoVehicleId ? { dimoVehicleId } : {}),
-            ...(fields.stationId
-              ? { homeStationId: fields.stationId, currentStationId: fields.stationId }
-              : {}),
-          },
+        const vehicleId = await insertActivatedVehicleRow(tx, {
+          organizationId: input.organizationId,
+          fields,
+          dimoVehicleId,
         });
+        const vehicle = { id: vehicleId };
 
         if (input.faultAfterStage === 'AFTER_VEHICLE_CREATE') {
           logActivationRollback(input.onboardingCaseId, input.faultAfterStage);

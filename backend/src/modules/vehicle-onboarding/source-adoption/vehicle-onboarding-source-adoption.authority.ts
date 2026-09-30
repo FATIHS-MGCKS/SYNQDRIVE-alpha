@@ -8,8 +8,14 @@ import type { SourceAdoptionContext } from './source-adoption.context';
 export class VehicleOnboardingSourceAdoptionAuthority {
   /**
    * DIMO mirrors are platform/developer-license scoped — not tenant-owned rows.
-   * Tenant onboarding may reference a platform mirror; arbitrary ID guessing must
-   * still pass mirror existence + this adoption gate (future HTTP must use IAM).
+   *
+   * DIMO_MIRROR_SCOPE=PLATFORM_DEVELOPER_LICENSE
+   * DIMO_TENANT_ADOPTION_AUTHORIZATION=NOT_PROVEN_BY_DIMO_ROW
+   *
+   * Accepting TENANT_ONBOARDING here only means the mirror exists and the call
+   * uses a governed adoption context — it does NOT prove the actor may assign
+   * that platform mirror to the target organization. Public cutover must enforce
+   * controller/IAM authorization separately.
    */
   assertDimoPlatformMirrorAdoptable(
     dimo: Pick<DimoVehicle, 'id'>,

@@ -7,6 +7,7 @@ import {
   type VehicleOnboardingCaseSourceRef,
 } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
+import { manualOnboardingRequestFingerprint } from '../policy/manual-onboarding-idempotency.fingerprint';
 import { isPrismaUniqueViolation } from '@shared/database/prisma-error.util';
 import {
   buildDimoOnboardingSourceSnapshot,
@@ -66,24 +67,23 @@ function scopeKeyFromConnectionScope(scope: string | null): string {
   return scope ?? '';
 }
 
-function manualIdentityFingerprint(input: ManualOnboardingInput): string {
-  return [
-    input.vin ?? '',
-    input.make ?? '',
-    input.model ?? '',
-    input.year ?? '',
-    input.fuelType ?? '',
-  ].join('|');
-}
-
-function identityDraftFingerprint(draft: VehicleIdentityDraftV1): string {
-  return [
-    draft.vin ?? '',
-    draft.make ?? '',
-    draft.model ?? '',
-    draft.year ?? '',
-    draft.fuelType ?? '',
-  ].join('|');
+function identityDraftFingerprint(draft: VehicleIdentityDraftV1, admin: {
+  vehicleName: string | null;
+  licensePlate: string | null;
+  stationId: string | null;
+  notes: string | null;
+} | null): string {
+  return manualOnboardingRequestFingerprint({
+    vin: draft.vin,
+    make: draft.make,
+    model: draft.model,
+    year: draft.year,
+    fuelType: draft.fuelType,
+    vehicleName: admin?.vehicleName,
+    licensePlate: admin?.licensePlate,
+    stationId: admin?.stationId,
+    notes: admin?.notes,
+  });
 }
 
 @Injectable()
@@ -113,10 +113,7 @@ export class VehicleOnboardingCaseService {
     dimoVehicleId: string,
   ): Promise<VehicleOnboardingCase> {
     const adoption = ctx.sourceAdoption ?? DEFAULT_TENANT_SOURCE_ADOPTION;
-    const dimo = await this.prisma.dimoVehicle.findUnique({ where: { id: dimoVehicleId } });
-    if (!dimo) {
-      throw new VehicleOnboardingError('SOURCE_NOT_AVAILABLE', 'DIMO source not available');
-    }
+    const dimo = await this.loadDimoMirrorForOnboarding(dimoVehicleId);
     this.sourceAdoptionAuthority.assertDimoPlatformMirrorAdoptable(
       dimo,
       ctx.organizationId,
@@ -186,11 +183,49 @@ export class VehicleOnboardingCaseService {
       snapshot,
       identity,
       admin,
-      requestFingerprint: manualIdentityFingerprint(input),
+      requestFingerprint: manualOnboardingRequestFingerprint(input),
     });
   }
 
-  async attachSourceRef(
+  async attachDimoSource(
+    ctx: Pick<OnboardingActorContext, 'organizationId' | 'sourceAdoption'>,
+    caseId: string,
+    dimoVehicleId: string,
+    opts: { isPrimary?: boolean } = {},
+  ): Promise<void> {
+    const adoption = ctx.sourceAdoption ?? DEFAULT_TENANT_SOURCE_ADOPTION;
+    const dimo = await this.loadDimoMirrorForOnboarding(dimoVehicleId);
+    this.sourceAdoptionAuthority.assertDimoPlatformMirrorAdoptable(
+      dimo,
+      ctx.organizationId,
+      adoption,
+    );
+    const snapshot = buildDimoOnboardingSourceSnapshot(dimo);
+    await this.attachValidatedSourceRef(ctx.organizationId, caseId, snapshot, opts);
+  }
+
+  async attachHighMobilitySource(
+    ctx: Pick<OnboardingActorContext, 'organizationId' | 'sourceAdoption'>,
+    caseId: string,
+    hmVehicleId: string,
+    opts: { isPrimary?: boolean } = {},
+  ): Promise<void> {
+    const adoption = ctx.sourceAdoption ?? DEFAULT_TENANT_SOURCE_ADOPTION;
+    const hm = await this.prisma.highMobilityVehicle.findUnique({ where: { id: hmVehicleId } });
+    if (!hm) {
+      throw new VehicleOnboardingError('SOURCE_NOT_AVAILABLE', 'High Mobility source not available');
+    }
+    this.sourceAdoptionAuthority.assertHighMobilityMirrorAdoptable(
+      hm,
+      ctx.organizationId,
+      adoption,
+    );
+    const snapshot = buildHmOnboardingSourceSnapshot(hm, ctx.organizationId);
+    await this.attachValidatedSourceRef(ctx.organizationId, caseId, snapshot, opts);
+  }
+
+  /** Internal persistence only — snapshot must already pass adoption authority. */
+  private async attachValidatedSourceRef(
     organizationId: string,
     caseId: string,
     snapshot: OnboardingSourceSnapshotV1,
@@ -307,7 +342,13 @@ export class VehicleOnboardingCaseService {
     }
     if (requestFingerprint && existing.draftIdentityJson) {
       const draft = existing.draftIdentityJson as unknown as VehicleIdentityDraftV1;
-      if (identityDraftFingerprint(draft) !== requestFingerprint) {
+      const admin = existing.draftAdminBaselineJson as {
+        vehicleName: string | null;
+        licensePlate: string | null;
+        stationId: string | null;
+        notes: string | null;
+      } | null;
+      if (identityDraftFingerprint(draft, admin) !== requestFingerprint) {
         throw new VehicleOnboardingError(
           'IDEMPOTENCY_KEY_REUSED_FOR_DIFFERENT_REQUEST',
           'Idempotency key was already used for a different manual onboarding request',
@@ -436,6 +477,27 @@ export class VehicleOnboardingCaseService {
       }
       throw error;
     }
+  }
+
+  /** Prisma-safe mirror load (integration DBs may lag schema columns such as powertrain_type). */
+  private async loadDimoMirrorForOnboarding(dimoVehicleId: string) {
+    const dimo = await this.prisma.dimoVehicle.findUnique({
+      where: { id: dimoVehicleId },
+      select: {
+        id: true,
+        externalId: true,
+        vin: true,
+        make: true,
+        model: true,
+        year: true,
+        fuelType: true,
+        updatedAt: true,
+      },
+    });
+    if (!dimo) {
+      throw new VehicleOnboardingError('SOURCE_NOT_AVAILABLE', 'DIMO source not available');
+    }
+    return dimo;
   }
 
   async markInProgress(organizationId: string, caseId: string, actorUserId: string | null): Promise<void> {
