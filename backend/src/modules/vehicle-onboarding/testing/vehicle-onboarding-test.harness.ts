@@ -9,6 +9,7 @@ import { buildTestReadinessSnapshot } from '../readiness/test-readiness-authorit
 import { READINESS_SNAPSHOT_VERSION } from '../contracts/vo-document-versions';
 import type { VehicleOnboardingReadinessAuthority } from '../readiness/vehicle-onboarding-readiness-authority';
 import type { Vo3ActivationFaultStage } from '../services/vehicle-onboarding-activation.service';
+import type { ActivationTestHooks } from '../readiness/vehicle-onboarding-readiness-authority';
 
 export function createVehicleOnboardingTestHarness(
   prisma: PrismaClient,
@@ -54,6 +55,7 @@ export interface TestActivateInput {
   onboardingCaseId: string;
   actorUserId: string | null;
   faultAfterStage?: Vo3ActivationFaultStage;
+  activationTestHooks?: ActivationTestHooks;
 }
 
 export async function activateForTest(
@@ -65,5 +67,6 @@ export async function activateForTest(
     onboardingCaseId: input.onboardingCaseId,
     actorUserId: input.actorUserId,
     faultAfterStage: input.faultAfterStage,
+    activationTestHooks: input.activationTestHooks,
   });
 }

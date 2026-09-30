@@ -16,6 +16,7 @@ import { assertOrganizationProductEntitledForActivation } from './product-entitl
 /** Integration-test hooks for activation serialization proofs (not used in production HTTP). */
 export interface ActivationTestHooks {
   afterEntitlementRowLock?: () => void | Promise<void>;
+  forceTechnicalBaselineMaterializationFailure?: boolean;
 }
 
 export interface ReadinessActivationContext {

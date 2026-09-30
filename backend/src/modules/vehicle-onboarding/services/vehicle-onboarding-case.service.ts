@@ -29,10 +29,10 @@ import {
   ONBOARDING_SOURCE_SNAPSHOT_VERSION,
   VEHICLE_ADMIN_BASELINE_DRAFT_VERSION,
   VEHICLE_IDENTITY_DRAFT_VERSION,
-  VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION,
   VEHICLE_VALIDATION_FINDINGS_VERSION,
 } from '../contracts/vo-document-versions';
-import type { VehicleTechnicalBaselineDraftV1 } from '../contracts/vehicle-technical-baseline-draft.v1';
+import type { VehicleTechnicalBaselineDraftV2 } from '../contracts/vehicle-technical-baseline-draft.v2';
+import { VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION_V2 } from '../contracts/vo-document-versions';
 import type { VehicleValidationFindingsV1 } from '../contracts/vehicle-validation-findings.v1';
 import type { VehicleIdentityDraftV1 } from '../contracts/vehicle-identity-draft.v1';
 import { VehicleOnboardingError } from '../errors/vehicle-onboarding.errors';
@@ -60,8 +60,8 @@ export interface OnboardingActorContext {
   sourceAdoption?: SourceAdoptionContext;
 }
 
-function emptyTechnicalDraft(): VehicleTechnicalBaselineDraftV1 {
-  return { version: VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION, referenceInputs: {} };
+function emptyTechnicalDraft(): VehicleTechnicalBaselineDraftV2 {
+  return { version: VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION_V2 };
 }
 
 function emptyValidationFindings(): VehicleValidationFindingsV1 {
@@ -496,7 +496,7 @@ export class VehicleOnboardingCaseService {
           }) as unknown as Prisma.InputJsonValue,
           draftAdminBaselineVersion: VEHICLE_ADMIN_BASELINE_DRAFT_VERSION,
           draftTechnicalBaselineJson: emptyTechnicalDraft() as unknown as Prisma.InputJsonValue,
-          draftTechnicalBaselineVersion: VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION,
+          draftTechnicalBaselineVersion: VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION_V2,
           validationFindingsJson: emptyValidationFindings() as unknown as Prisma.InputJsonValue,
           validationFindingsVersion: VEHICLE_VALIDATION_FINDINGS_VERSION,
           idempotencyKey: ctx.idempotencyKey,

@@ -147,3 +147,21 @@ invariants:
     statement: Committed registry activation or offboarding transition must include a durable idempotently consumable lifecycle fact in the same database transaction as the state change
     source_paths:
       - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+
+  - id: VO-INV-TIRE-REQUIRED-GATE-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: Required tire baseline blocked without reference authority
+    statement: Readiness profiles with tireBaseline REQUIRED must fail closed until a safe canonical tire reference authority exists; current Rental/Fleet profiles remain DEFERRED_ALLOWED
+    source_paths:
+      - architecture/vehicle-onboarding/evidence/VO45_TECHNICAL_BASELINE_MATERIALIZATION.md
+      - backend/src/modules/vehicle-onboarding/readiness/readiness-rule-engine.ts
+
+  - id: VO-INV-BASELINE-MATERIALIZATION-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: Required technical baseline PASS implies materialized reference
+    statement: When VO-4 readiness marks a technical baseline rule REQUIRED with PASS, canonical activation must materialize the corresponding downstream reference authority in the same transaction or roll back entirely
+    source_paths:
+      - architecture/vehicle-onboarding/evidence/VO45_TECHNICAL_BASELINE_MATERIALIZATION.md
+      - backend/src/modules/vehicle-onboarding/services/technical-baseline-materialization.ts
