@@ -36,6 +36,44 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-onboarding-vo3-2-source-adoption-seal-2026-09-30',
+    version: '4.9.2217',
+    title: 'Vehicle Onboarding VO-3.2 — secure source attach + Postgres activation seal (internal)',
+    summary: [
+      'Removed generic attachSourceRef(snapshot) bypass; attachDimoSource / attachHighMobilitySource enforce VehicleOnboardingSourceAdoptionAuthority before persistence.',
+      'PostgreSQL proofs: HM cross-org, global HM tenant vs platform, concurrent activation, wrong-org isolation, DIMO/HM rollback matrix, manual admin idempotency fingerprint.',
+      'DIMO platform mirror scope documented; tenant ownership not proven by dimo_vehicles row (cutover IAM prerequisite).',
+    ],
+    reason:
+      'VO-3.1 correctness left a structural adoption bypass and missing concurrency/isolation Postgres proofs before VO-4 readiness work.',
+    previousBehavior:
+      'Tests and callers could attach provider snapshots without mirror load + adoption checks; concurrent activation proof deferred.',
+    details:
+      'backend/src/modules/vehicle-onboarding/*; architecture/vehicle-onboarding/evidence/VO3_2_FINAL_RUNTIME_SEAL.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Onboarding',
+    createdAt: '2026-09-30T05:00:00.000Z',
+  },
+  {
+    id: 'vehicle-onboarding-vo3-orchestrator-2026-09-30',
+    version: '4.9.2216',
+    title: 'Vehicle Onboarding VO-3 — provider-neutral orchestrator + atomic activation (internal)',
+    summary: [
+      'VehicleOnboardingModule: DIMO/HM/MANUAL source adapters, case open/resume, transactional activation (vehicle, org assignment, plate, links, consent, VEHICLE_ACTIVATED outbox).',
+      'Canonical path never writes synthetic DIMO VIN; production readiness fail-closed until VO-4.',
+      'No public cutover: registerFromDimo, HM_ONLY, and manual create remain legacy.',
+    ],
+    reason:
+      'VO-2 persistence required a runtime orchestration core before readiness engine (VO-4) and public registration cutover.',
+    previousBehavior:
+      'Only VO-2 schema/onboarding tables; registration still via legacy VehiclesService / HM registration paths.',
+    details:
+      'backend/src/modules/vehicle-onboarding/*; architecture/vehicle-onboarding/evidence/VO3_ORCHESTRATOR_ACTIVATION.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Onboarding',
+    createdAt: '2026-09-30T00:00:00.000Z',
+  },
+  {
     id: 'battery-v2-m3-3-h0-domain-separation-audit-2026-09-30',
     version: '4.9.2215',
     title: 'Battery V2 M3.3-H0 — domain separation audit + seal (PASS)',
@@ -172,23 +210,6 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
     createdAt: '2026-09-29T03:00:00.000Z',
-  },
-  {
-    id: 'di-exp021-s4f2-provider-backpressure-closure-2026-09-30',
-    version: '4.9.2212',
-    title: 'Driving Intelligence — EXP-021 S4F-2 provider backpressure certification',
-    summary: [
-      'Real Redis multi-replica certification with production-valid config (globalLeaseMs≥5000); PB01/PB11 use 3 BACKGROUND + 1 HIGH saturation.',
-      'PB27–29 document global 429 cooldown blocking all priorities (P1.3 acquire step 2); reserved HIGH proven under normal admission only.',
-      'DI-GAP-S4-PROVIDER-BACKPRESSURE-001 CLOSURE_CANDIDATE — Tiny activation still NOT_READY (gap CLOSED + budget ENABLED + operator auth).',
-    ],
-    reason: 'Remediate certification defects on draft PR #1855; executable backpressure proof without activating S4 or claiming Tiny Activation ready.',
-    previousBehavior: 'Invalid cert lease ms; four-BACKGROUND saturation tests; gap prematurely marked CLOSED.',
-    details:
-      'provider-budget multi-replica redis integration; s4f-observability certification; s4a-contract.v2.json; EXP021_S4F2 evidence.',
-    affectsArchitecture: true,
-    module: 'Vehicle Intelligence',
-    createdAt: '2026-09-30T06:00:00.000Z',
   },
   {
     id: 'di-exp021-s4f1-evidence-hardening-h1-h4-2026-09-30',
