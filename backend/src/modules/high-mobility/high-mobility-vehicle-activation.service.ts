@@ -28,7 +28,7 @@ export type HmActivationState =
 export interface HmVehicleStatusDto {
   state: HmActivationState;
   hmVehicleId: string | null;
-  vin: string;
+  vin: string | null;
   brand: string | null;
   clearanceStatus: string | null;
   eligibilityStatus: string | null;
@@ -120,7 +120,10 @@ export class HmVehicleActivationService {
       };
     }
 
-    // No active link — look for HM record by VIN
+    // No active link — look for HM record by VIN (unknown VIN: display-only status, no HM lookup)
+    if (!vin) {
+      return this.buildNotConfiguredStatus(null, brand, oemPath);
+    }
     const availability = await this.linkService.checkAvailability(vin);
 
     if (!availability.available && !availability.hmVehicleId) {
@@ -351,7 +354,7 @@ export class HmVehicleActivationService {
     }
   }
 
-  private buildNotConfiguredStatus(vin: string, brand: string, oemPath: HmOemPath): HmVehicleStatusDto {
+  private buildNotConfiguredStatus(vin: string | null, brand: string, oemPath: HmOemPath): HmVehicleStatusDto {
     const directClearance = usesDirectFleetClearance(brand);
     return {
       state: 'NOT_CONFIGURED',

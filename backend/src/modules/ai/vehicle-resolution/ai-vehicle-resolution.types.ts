@@ -10,7 +10,7 @@ export interface AiVehicleResolutionRecord {
   readonly make: string;
   readonly model: string;
   readonly year: number;
-  readonly vin: string;
+  readonly vin: string | null;
   readonly fuelType: string;
   readonly tokenId: number | null;
   readonly status: VehicleStatus;

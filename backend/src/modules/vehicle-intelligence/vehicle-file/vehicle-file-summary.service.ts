@@ -266,7 +266,7 @@ export class VehicleFileSummaryService {
 
   private buildTechnicalSpecs(
     vehicle: {
-      vin: string;
+      vin: string | null;
       licensePlate: string | null;
       make: string;
       model: string;

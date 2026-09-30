@@ -90,7 +90,8 @@ export interface FleetDeviceConnectionDto {
 
 export interface FleetConnectivityVehicleDto {
   vehicleId: string;
-  vin: string;
+  /** Null when registry VIN is unknown (VO-2 nullable VIN); never coerced to empty string for identity. */
+  vin: string | null;
   licensePlate: string | null;
   make: string;
   model: string;

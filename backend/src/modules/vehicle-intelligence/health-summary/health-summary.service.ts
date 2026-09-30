@@ -29,7 +29,7 @@ export interface HealthSummaryAgentInput {
     make: string;
     model: string;
     year: number | null;
-    vin: string;
+    vin: string | null;
     fuelType?: string | null;
   };
   healthModules: {

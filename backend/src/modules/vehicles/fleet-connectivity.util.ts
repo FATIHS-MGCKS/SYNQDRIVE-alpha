@@ -345,7 +345,7 @@ export function buildJammingSnapshotNote(count: number): string | null {
 
 export interface FleetConnectivityVehicleInput {
   id: string;
-  vin: string;
+  vin: string | null;
   licensePlate: string | null;
   make: string;
   model: string;
