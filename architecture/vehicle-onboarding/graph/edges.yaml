@@ -1,0 +1,9 @@
+# Vehicle Onboarding — Knowledge Graph Edges (bootstrap)
+
+edges:
+  - from: VO-EVID-0B-001
+    relation: supports
+    to: VO-DEC-0B-001
+  - from: VO-EVID-0B-001
+    relation: supports
+    to: VO-DOM-001

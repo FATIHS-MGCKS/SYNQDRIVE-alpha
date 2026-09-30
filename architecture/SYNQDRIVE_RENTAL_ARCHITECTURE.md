@@ -6,7 +6,7 @@
 
 **Central registry validator:** `bash architecture/scripts/validate-module-registry.sh`
 
-**Last updated:** 2026-09-26 (Trip Detection & Lifecycle promoted to `AUTHORITY_ACTIVE` — Phase 5 Gate A)
+**Last updated:** 2026-09-30 (Vehicle Onboarding / Vehicle Registry bootstrap — `AUDIT_IN_PROGRESS` VO-0B)
 
 ---
 
@@ -76,6 +76,7 @@ Canonical overview of known modules. **Every row includes module name, mini desc
 | Users & Invites | Org user management, custom roles, invites, and IAM audit outbox scheduling. | `NOT_STARTED` | N/A — inventory only | — |
 | Vehicle & Device Connectivity | Provider-neutral vehicle and connectivity-device lifecycle, hardware/provider freshness, standby/disconnect/reconnect semantics, physical/device evidence, fault classification, and connectivity-state projection across DIMO hardware and OEM/cloud providers. | `AUDIT_IN_PROGRESS` | Phase 1–3 complete (2026-09-11): repo audit, Production LTE_R1 forensics, reconciliation/decisions/backlog · promotion deferred | [`architecture/vehicle-device-connectivity/`](vehicle-device-connectivity/) |
 | Vehicle Health Summary | Aggregated vehicle health summary, dashboard warning lights, and AI health-care projection layer. | `NOT_STARTED` | N/A — inventory only | — |
+| Vehicle Onboarding / Vehicle Registry | Governed path from provider discovery to canonical tenant `Vehicle`; identity, provider mappings, org/station baseline, onboarding readiness (design). | `AUDIT_IN_PROGRESS` | VO-0B governance bootstrap (2026-09-30) · current-state sealed from VO-0A | [`architecture/vehicle-onboarding/`](vehicle-onboarding/) |
 | Vehicles (Fleet Operations) | Core vehicle CRUD, fleet map, connectivity consent, and operational vehicle projections. | `NOT_STARTED` | N/A — inventory only | — |
 | Vendors | Third-party vendor and workshop directory including geocoding helpers for fleet operations. | `NOT_STARTED` | N/A — inventory only | — |
 | Voice Assistant Platform | Voice agent control plane, webhook ingestion, call orchestration, MCP gateway, billing, and protection. | `NOT_STARTED` | N/A — inventory only | — |
@@ -266,6 +267,22 @@ Detailed sections for modules with usable living authorities. See [Module invent
 | **Reconstruction status** | Phase **0–3** complete; Phase **4** graph validators active; Phase **5** promotion gate satisfied (authority coverage). Remaining **product debt**: partial locales, 1,658 enforce-clean findings (current scan), Master surface migration, no per-locale Production UX probe. |
 | **Mandatory entry documents** | [README.md](internationalization/README.md) · [AUDIT_MANIFEST.md](internationalization/AUDIT_MANIFEST.md) · [CURRENT_STATE.md](internationalization/CURRENT_STATE.md) · [AGENT_CONTRACT.md](internationalization/AGENT_CONTRACT.md) · [KNOWLEDGE_GRAPH.md](internationalization/KNOWLEDGE_GRAPH.md) · [decisions/DECISION_REGISTER.md](internationalization/decisions/DECISION_REGISTER.md) · [evidence/EVIDENCE_INDEX.md](internationalization/evidence/EVIDENCE_INDEX.md) · [evidence/PRODUCTION_BASELINE.md](internationalization/evidence/PRODUCTION_BASELINE.md) |
 | **Validation** | `bash architecture/internationalization/scripts/validate-graph.sh` · `bash architecture/scripts/validate-module-registry.sh` · `cd frontend && npm run i18n:check:ci && npm run i18n:pr-gate:test` |
+
+---
+
+### Vehicle Onboarding / Vehicle Registry
+
+| Field | Value |
+|-------|-------|
+| **Registry coverage status** | `AUDIT_IN_PROGRESS` — VO-0B bootstrap; **not** a complete usable authority; **not** implementation-complete |
+| **Module key** | `VEHICLE_ONBOARDING` |
+| **Scope** | Provider-discovered or manually introduced vehicle → canonical tenant-operational `Vehicle`; canonical identity and VIN policy; provider mapping (`VehicleDataSourceLink`, `Vehicle.dimoVehicleId`, HM linkage); organization/station baseline at onboarding; technical/administrative baseline orchestration; onboarding readiness and activation contract (target). **Does not** own telemetry freshness, trip FSM, driving/battery/health conclusions, booking lifecycle, billing policy, or provider transport. |
+| **Authority directory** | [`architecture/vehicle-onboarding/`](vehicle-onboarding/) |
+| **Authority-native status** | **VO-0B governance bootstrap** (2026-09-30) · repository current-state sealed at SHA `312d9f54a2b4c0b0740061d3e2b74897e78eacb0` (VO-0A) · Production Phase 2 audit **pending** |
+| **Ownership boundary** | **Owns/coordinates** canonical `Vehicle` establishment, registration identity, provider mapping into `Vehicle`, org/station onboarding baseline, baseline orchestration into tire/brake/battery/service modules. **Does NOT own** normalized telemetry (→ VDC), DIMO/HM provider runtime (→ DIMO Integration / HM), trip boundaries (→ Trip Detection), driving/battery/health conclusions, billing semantics, rental readiness calculations owned elsewhere. External Book II IDs B2-04-013, B2-04-014, B2-05-020, B2-05-021, B2-06-023–026 recorded as **external** references — normative text **not** in repository at VO-0B anchor. |
+| **Reconstruction status** | Phase **0–1** complete (VO-0A repo discovery + VO-0B seal); Phase **2** Production read-only **not** started for this module; Phase **5** promotion **not** eligible. |
+| **Mandatory entry documents (partial)** | [README.md](vehicle-onboarding/README.md) · [AUDIT_MANIFEST.md](vehicle-onboarding/AUDIT_MANIFEST.md) · [CURRENT_STATE.md](vehicle-onboarding/CURRENT_STATE.md) · [governance/AUTHORITY_BOUNDARIES.md](vehicle-onboarding/governance/AUTHORITY_BOUNDARIES.md) · [AGENT_CONTRACT.md](vehicle-onboarding/AGENT_CONTRACT.md) · [contradictions/KNOWLEDGE_GAPS.md](vehicle-onboarding/contradictions/KNOWLEDGE_GAPS.md) · [research/OPEN_QUESTIONS.md](vehicle-onboarding/research/OPEN_QUESTIONS.md) |
+| **Validation** | `bash architecture/scripts/validate-module-registry.sh` · `bash architecture/vehicle-onboarding/scripts/validate-graph.sh` |
 
 ---
 
