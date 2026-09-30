@@ -5,7 +5,7 @@
 | **Sealed from** | VO-0A discovery audit |
 | **Repository anchor SHA** | `312d9f54a2b4c0b0740061d3e2b74897e78eacb0` |
 | **Authority status** | `AUDIT_IN_PROGRESS` — **not** `AUTHORITY_ACTIVE` |
-| **Last updated** | 2026-09-30 (VO-3 orchestrator + activation core on main; **no public cutover**) |
+| **Last updated** | 2026-09-30 (VO-3.2 secure source attach + Postgres seal on PR #1854; **no public cutover**) |
 
 ## Executive summary
 
@@ -20,6 +20,7 @@ SynqDrive today separates **provider mirrors** (`DimoVehicle`, `HighMobilityVehi
 - **HM provider state:** `HighMobilityVehicle` (`high_mobility_vehicles`) — clearance, streaming, optional `synqdriveVehicleId`.
 - **Provider-neutral bindings:** `VehicleDataSourceLink`, `VehicleProviderConsent` (schema comments designate extensible provider binding).
 - **VO-3 (2026-09-30):** `VehicleOnboardingModule` — internal case orchestration + atomic activation; legacy `registerFromDimo` / HM_ONLY / manual create **unchanged** (see [VO3_ORCHESTRATOR_ACTIVATION.md](./evidence/VO3_ORCHESTRATOR_ACTIVATION.md)).
+- **VO-3.2 (2026-09-30):** Governed `attachDimoSource` / `attachHighMobilitySource` only (no public arbitrary snapshot attach); DIMO cutover auth invariant `VO-INV-DIMO-CUTOVER-AUTH-001` (see [VO3_2_FINAL_RUNTIME_SEAL.md](./evidence/VO3_2_FINAL_RUNTIME_SEAL.md)).
 
 ---
 

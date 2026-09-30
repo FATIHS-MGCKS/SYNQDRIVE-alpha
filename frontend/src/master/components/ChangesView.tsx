@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-onboarding-vo3-2-source-adoption-seal-2026-09-30',
+    version: '4.9.2217',
+    title: 'Vehicle Onboarding VO-3.2 — secure source attach + Postgres activation seal (internal)',
+    summary: [
+      'Removed generic attachSourceRef(snapshot) bypass; attachDimoSource / attachHighMobilitySource enforce VehicleOnboardingSourceAdoptionAuthority before persistence.',
+      'PostgreSQL proofs: HM cross-org, global HM tenant vs platform, concurrent activation, wrong-org isolation, DIMO/HM rollback matrix, manual admin idempotency fingerprint.',
+      'DIMO platform mirror scope documented; tenant ownership not proven by dimo_vehicles row (cutover IAM prerequisite).',
+    ],
+    reason:
+      'VO-3.1 correctness left a structural adoption bypass and missing concurrency/isolation Postgres proofs before VO-4 readiness work.',
+    previousBehavior:
+      'Tests and callers could attach provider snapshots without mirror load + adoption checks; concurrent activation proof deferred.',
+    details:
+      'backend/src/modules/vehicle-onboarding/*; architecture/vehicle-onboarding/evidence/VO3_2_FINAL_RUNTIME_SEAL.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Onboarding',
+    createdAt: '2026-09-30T05:00:00.000Z',
+  },
+  {
     id: 'vehicle-onboarding-vo3-orchestrator-2026-09-30',
     version: '4.9.2216',
     title: 'Vehicle Onboarding VO-3 — provider-neutral orchestrator + atomic activation (internal)',
