@@ -49,7 +49,7 @@ const integrationEnabled = process.env.BATTERY_HV_H2_REPORT_INTEGRATION === '1';
     it('scopes reads to organizationId + vehicleId (tenant isolation)', async () => {
       const orgA = await createGtOrgVehicle(prisma);
       const orgB = await createGtOrgVehicle(prisma);
-      const evaluationAt = new Date('2026-09-30T12:00:00.000Z');
+      const evaluationAt = new Date('2027-06-01T00:00:00.000Z');
 
       await prisma.batteryEvidence.create({
         data: {
@@ -86,7 +86,7 @@ const integrationEnabled = process.env.BATTERY_HV_H2_REPORT_INTEGRATION === '1';
 
     it('loads M2/M3 observations and provider SOH with deterministic repeat', async () => {
       const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
-      const evaluationAt = new Date('2026-09-30T12:00:00.000Z');
+      const evaluationAt = new Date('2027-06-01T00:00:00.000Z');
       const sessionId = randomUUID();
 
       await prisma.hvChargeSession.create({
