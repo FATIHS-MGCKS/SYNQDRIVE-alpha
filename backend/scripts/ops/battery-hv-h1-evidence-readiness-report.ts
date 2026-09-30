@@ -23,15 +23,19 @@ async function main(): Promise<void> {
   const vehicleId = parseArg('--vehicle-id');
   if (!organizationId || !vehicleId) {
     console.error(
-      'Usage: battery-hv-h1-evidence-readiness-report.ts --organization-id=<uuid> --vehicle-id=<uuid> [--as-of=<ISO>]',
+      'Usage: battery-hv-h1-evidence-readiness-report.ts --organization-id=<uuid> --vehicle-id=<uuid> [--evaluation-at=<ISO>]',
+    );
+    console.error(
+      'Note: --evaluation-at bounds session/observation cutoff only; capability rows are CURRENT_STATE_AT_QUERY (not historical snapshot).',
     );
     process.exit(1);
   }
 
-  const asOfRaw = parseArg('--as-of');
-  const asOf = asOfRaw ? new Date(asOfRaw) : new Date();
-  if (Number.isNaN(asOf.getTime())) {
-    console.error(`Invalid --as-of: ${asOfRaw}`);
+  const evaluationAtRaw =
+    parseArg('--evaluation-at') ?? parseArg('--as-of');
+  const evaluationAt = evaluationAtRaw ? new Date(evaluationAtRaw) : new Date();
+  if (Number.isNaN(evaluationAt.getTime())) {
+    console.error(`Invalid --evaluation-at: ${evaluationAtRaw}`);
     process.exit(1);
   }
 
@@ -40,7 +44,7 @@ async function main(): Promise<void> {
     const report = await runM3_3HvH1EvidenceReadinessReport(prisma, {
       organizationId,
       vehicleId,
-      asOf,
+      evaluationAt,
     });
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
   } finally {

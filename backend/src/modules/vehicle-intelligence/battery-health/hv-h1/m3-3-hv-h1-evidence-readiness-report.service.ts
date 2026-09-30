@@ -1,13 +1,29 @@
 import type { PrismaClient } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { RECHARGE_SEGMENTS_SIGNAL_KEY } from '../capability-preflight/battery-capability-signals.registry';
 import { resolveHvMethodProfile } from '../hv-method-profile/hv-method-profile.resolver';
 import type { HvMethodProfileCapabilityInput } from '../hv-method-profile/hv-method-profile.types';
-import { HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE } from '../hv-charge-session/hv-charge-session.types';
-import { M3_3_HV_H1_EVIDENCE_READINESS_REPORT_V1 } from './m3-3-hv-h1.constants';
+import {
+  M3_3_HV_H1_EVIDENCE_READINESS_REPORT_V1,
+  M3_3_HV_H1_HISTORICAL_ASOF_SUPPORTED,
+  M3_3_HV_H1_MAX_SESSIONS_DEFAULT,
+  M3_3_HV_H1_MAX_SESSIONS_HARD,
+  M3_3_HV_H1_REPORT_TEMPORAL_SEMANTICS,
+  M3_3_HV_H1_REPORT_TIMEOUT_MS,
+} from './m3-3-hv-h1.constants';
 import { evaluateM3_3HvH1EvidenceQualityV1 } from './m3-3-hv-h1-evidence-quality.evaluator';
 import { buildM3_3HvH1ProviderCapabilityMatrixV1 } from './m3-3-hv-h1-provider-capability-matrix.builder';
+import type { M3_3HvH1CapabilityMatrixPersistedRow } from './m3-3-hv-h1-provider-capability-matrix.types';
 import { evaluateM3_3HvH1Readiness } from './m3-3-hv-h1-readiness.model';
-import { buildM3_3HvH1SessionEvidenceLinkageV1 } from './m3-3-hv-h1-session-evidence-linkage';
+import {
+  buildM3_3HvH1SessionEvidenceLinkageV1,
+  sessionFieldPresenceFromRecord,
+} from './m3-3-hv-h1-session-evidence-linkage';
+import { runM3_3HvH1ReadOnlyTransaction, type HvH1ReadOnlyTx } from './m3-3-hv-h1-readonly-transaction';
+import {
+  summarizeHvChargeSessionsForH1,
+  type M3_3HvH1SessionSummaryCounts,
+} from './m3-3-hv-h1-session-summary';
 import {
   HV_DISTINCT_CURRENT_SURFACE_COUNT,
   HV_MAPPER_FIELD_COUNT,
@@ -18,15 +34,17 @@ import {
 export interface RunM3_3HvH1EvidenceReadinessReportInput {
   organizationId: string;
   vehicleId: string;
-  asOf?: Date;
   maxSessions?: number;
+  evaluationAt?: Date;
 }
 
 export interface M3_3HvH1EvidenceReadinessReportV1 {
   contractVersion: typeof M3_3_HV_H1_EVIDENCE_READINESS_REPORT_V1;
   organizationId: string;
   vehicleId: string;
-  generatedAt: string;
+  evaluationAt: string;
+  temporalSemantics: typeof M3_3_HV_H1_REPORT_TEMPORAL_SEMANTICS;
+  historicalAsOfSupported: typeof M3_3_HV_H1_HISTORICAL_ASOF_SUPPORTED;
   inventory: {
     hvRegistryKeyCount: number;
     hvMapperFieldCount: number;
@@ -36,21 +54,19 @@ export interface M3_3HvH1EvidenceReadinessReportV1 {
   capabilityMatrix: ReturnType<typeof buildM3_3HvH1ProviderCapabilityMatrixV1>;
   methodProfile: ReturnType<typeof resolveHvMethodProfile>;
   evidenceQuality: ReturnType<typeof evaluateM3_3HvH1EvidenceQualityV1>[];
-  sessionSummary: {
-    totalSessions: number;
-    strongDimoSessions: number;
-    weakOrFallbackSessions: number;
+  sessionSummary: M3_3HvH1SessionSummaryCounts & {
     sampleLinkages: ReturnType<typeof buildM3_3HvH1SessionEvidenceLinkageV1>[];
   };
   readiness: ReturnType<typeof evaluateM3_3HvH1Readiness>;
   methodIdentityRequired: true;
   crossMethodPoolingDefault: false;
   customerHvHealthScore: null;
+  dbReadOnlyTransactionEnforced: true;
 }
 
-function mapCapabilityRows(
+function mapPersistedCapabilityRows(
   rows: Awaited<ReturnType<PrismaClient['vehicleBatteryCapability']['findMany']>>,
-): HvMethodProfileCapabilityInput[] {
+): M3_3HvH1CapabilityMatrixPersistedRow[] {
   return rows
     .filter(
       (row) => row.signalKey.startsWith('hv.') || row.signalKey === RECHARGE_SEGMENTS_SIGNAL_KEY,
@@ -58,6 +74,8 @@ function mapCapabilityRows(
     .map((row) => ({
       signalKey: row.signalKey,
       status: row.status,
+      provider: row.provider,
+      measurementType: row.measurementType,
       checkedAt: row.checkedAt,
       lastSeenAt: row.lastSeenAt,
       sourceTimestamp: row.sourceTimestamp,
@@ -65,33 +83,46 @@ function mapCapabilityRows(
     }));
 }
 
-export async function runM3_3HvH1EvidenceReadinessReport(
-  prisma: PrismaClient,
-  input: RunM3_3HvH1EvidenceReadinessReportInput,
-): Promise<M3_3HvH1EvidenceReadinessReportV1> {
-  const asOf = input.asOf ?? new Date();
-  const maxSessions = Math.min(input.maxSessions ?? 5, 20);
+function mapMethodProfileInput(
+  persisted: M3_3HvH1CapabilityMatrixPersistedRow[],
+): HvMethodProfileCapabilityInput[] {
+  return persisted.map((row) => ({
+    signalKey: row.signalKey,
+    status: row.status,
+    checkedAt: row.checkedAt,
+    lastSeenAt: row.lastSeenAt,
+    sourceTimestamp: row.sourceTimestamp,
+    lastValue: row.lastValue,
+  }));
+}
 
-  const capabilityRows = await prisma.vehicleBatteryCapability.findMany({
+async function buildReportInTransaction(
+  tx: HvH1ReadOnlyTx,
+  input: RunM3_3HvH1EvidenceReadinessReportInput,
+  evaluationAt: Date,
+  maxSessions: number,
+): Promise<M3_3HvH1EvidenceReadinessReportV1> {
+  const capabilityRows = await tx.vehicleBatteryCapability.findMany({
     where: {
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
     },
   });
 
-  const capabilities = mapCapabilityRows(capabilityRows);
+  const persisted = mapPersistedCapabilityRows(capabilityRows);
+  const capabilities = mapMethodProfileInput(persisted);
   const methodProfile = resolveHvMethodProfile({
     vehicleId: input.vehicleId,
     capabilities,
-    now: asOf,
+    now: evaluationAt,
   });
 
   const matrix = buildM3_3HvH1ProviderCapabilityMatrixV1({
     organizationId: input.organizationId,
     vehicleId: input.vehicleId,
-    capabilities,
+    persistedRows: persisted,
     methodProfile,
-    now: asOf,
+    evaluationAt,
   });
 
   const contextOnly = new Set(['hv.is_charging', 'hv.cable_connected', 'hv.charge_limit']);
@@ -101,7 +132,8 @@ export async function runM3_3HvH1EvidenceReadinessReport(
       signalKey: row.signalKey,
       freshnessClass: row.freshnessClass,
       qualityClass: row.qualityClass,
-      providerListed: row.providerListed,
+      providerListingStatus: row.providerListingStatus,
+      vehicleDataStatus: row.vehicleDataStatus,
       lastProviderValuePresent: row.lastProviderValuePresent,
       lastProviderTimestampPresent: row.lastProviderTimestampPresent,
       methodEligible: row.methodEligibility.length > 0,
@@ -109,53 +141,87 @@ export async function runM3_3HvH1EvidenceReadinessReport(
     }),
   );
 
-  const sessions = await prisma.hvChargeSession.findMany({
+  const sessions = await tx.hvChargeSession.findMany({
     where: {
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
+      startAt: { lte: evaluationAt },
     },
     orderBy: { startAt: 'desc' },
     take: maxSessions,
   });
 
-  const strongDimoCount = await prisma.hvChargeSession.count({
+  const allSessionsForCounts = await tx.hvChargeSession.findMany({
     where: {
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
-      source: HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE,
+      startAt: { lte: evaluationAt },
+    },
+    select: {
+      source: true,
+      isOngoing: true,
+      metadata: true,
     },
   });
-  const totalCount = await prisma.hvChargeSession.count({
-    where: { organizationId: input.organizationId, vehicleId: input.vehicleId },
+
+  const sessionCounts = summarizeHvChargeSessionsForH1(allSessionsForCounts);
+
+  const m2ShadowObservationCount = await tx.hvCapacityObservation.count({
+    where: {
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      method: 'M2_CURRENT_ENERGY_SOC',
+      observedAt: { lte: evaluationAt },
+    },
   });
-  const weakOrFallbackCount = totalCount - strongDimoCount;
+
+  const m3ShadowObservationCount = await tx.hvCapacityObservation.count({
+    where: {
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      method: 'M3_ADDED_ENERGY_DELTA_SOC',
+      observedAt: { lte: evaluationAt },
+    },
+  });
+
+  const providerSohObservationCount = await tx.hvCapacityObservation.count({
+    where: {
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      method: 'PROVIDER_HV_SOH',
+      observedAt: { lte: evaluationAt },
+    },
+  });
 
   const sampleLinkages = sessions.map((session) => {
-    const meta = session.metadata as Record<string, unknown> | null;
-    const isFallback = session.source !== HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE;
+    const isFallback = session.source !== 'DIMO_RECHARGE_SEGMENT';
     return buildM3_3HvH1SessionEvidenceLinkageV1({
       sessionId: session.id,
       segmentFingerprint: session.segmentFingerprint,
       source: session.source,
       isFallback,
       hasDimoSegmentId: session.dimoSegmentId != null,
-      metadataHasM2: meta?.m2CapacitySummary != null,
-      metadataHasM3: meta?.m3Validation != null,
+      presence: sessionFieldPresenceFromRecord(session),
     });
   });
 
   const readiness = evaluateM3_3HvH1Readiness({
-    matrix,
     methodProfile,
-    strongSessionCount: strongDimoCount,
-    weakSessionCount: weakOrFallbackCount,
+    matrix,
+    sessionCounts,
+    m2ShadowObservationCount,
+    m3ShadowObservationCount,
+    providerSohObservationCount,
+    longitudinalCandidateCount: 0,
   });
 
   return {
     contractVersion: M3_3_HV_H1_EVIDENCE_READINESS_REPORT_V1,
     organizationId: input.organizationId,
     vehicleId: input.vehicleId,
-    generatedAt: asOf.toISOString(),
+    evaluationAt: evaluationAt.toISOString(),
+    temporalSemantics: M3_3_HV_H1_REPORT_TEMPORAL_SEMANTICS,
+    historicalAsOfSupported: M3_3_HV_H1_HISTORICAL_ASOF_SUPPORTED,
     inventory: {
       hvRegistryKeyCount: HV_REGISTRY_KEY_COUNT,
       hvMapperFieldCount: HV_MAPPER_FIELD_COUNT,
@@ -166,14 +232,30 @@ export async function runM3_3HvH1EvidenceReadinessReport(
     methodProfile,
     evidenceQuality,
     sessionSummary: {
-      totalSessions: totalCount,
-      strongDimoSessions: strongDimoCount,
-      weakOrFallbackSessions: weakOrFallbackCount,
+      ...sessionCounts,
       sampleLinkages,
     },
     readiness,
     methodIdentityRequired: true,
     crossMethodPoolingDefault: false,
     customerHvHealthScore: null,
+    dbReadOnlyTransactionEnforced: true,
   };
 }
+
+export async function runM3_3HvH1EvidenceReadinessReport(
+  prisma: PrismaClient,
+  input: RunM3_3HvH1EvidenceReadinessReportInput,
+): Promise<M3_3HvH1EvidenceReadinessReportV1> {
+  const evaluationAt = input.evaluationAt ?? new Date();
+  const maxSessions = Math.min(
+    input.maxSessions ?? M3_3_HV_H1_MAX_SESSIONS_DEFAULT,
+    M3_3_HV_H1_MAX_SESSIONS_HARD,
+  );
+
+  return runM3_3HvH1ReadOnlyTransaction(prisma, (tx) =>
+    buildReportInTransaction(tx, input, evaluationAt, maxSessions),
+  );
+}
+
+export { assertHvH1TransactionReadOnly } from './m3-3-hv-h1-readonly-transaction';

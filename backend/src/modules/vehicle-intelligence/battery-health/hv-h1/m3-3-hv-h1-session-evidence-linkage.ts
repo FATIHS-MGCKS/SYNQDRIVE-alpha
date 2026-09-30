@@ -11,26 +11,28 @@ export const M3_3_HV_H1_SESSION_LINKAGE_KINDS = [
 
 export type M3_3HvH1SessionLinkageKind = (typeof M3_3_HV_H1_SESSION_LINKAGE_KINDS)[number];
 
-export const M3_3_HV_H1_SESSION_EVIDENCE_FIELDS = [
-  'recharge_segment_identity',
-  'soc_start',
-  'soc_end',
-  'current_energy_start',
-  'current_energy_end',
-  'added_energy',
-  'charging_power',
-  'provider_timestamp',
-  'capacity_m2',
-  'capacity_m3',
-  'provider_soh',
-  'ground_truth',
-] as const;
+export interface M3_3HvH1SessionEvidenceFieldPresence {
+  socStart: boolean;
+  socEnd: boolean;
+  currentEnergyStart: boolean;
+  currentEnergyEnd: boolean;
+  addedEnergy: boolean;
+  providerTimestamp: boolean;
+  capacityM2: boolean;
+  capacityM3: boolean;
+}
 
-export type M3_3HvH1SessionEvidenceField =
-  (typeof M3_3_HV_H1_SESSION_EVIDENCE_FIELDS)[number];
+export interface ClassifySessionEvidenceLinkageInput {
+  sessionId: string;
+  segmentFingerprint: string;
+  source: string;
+  isFallback: boolean;
+  hasDimoSegmentId: boolean;
+  presence: M3_3HvH1SessionEvidenceFieldPresence;
+}
 
 export interface M3_3HvH1SessionEvidenceLinkageRowV1 {
-  field: M3_3HvH1SessionEvidenceField;
+  field: string;
   linkage: M3_3HvH1SessionLinkageKind;
   authority: string;
   provenanceField?: string;
@@ -44,17 +46,6 @@ export interface M3_3HvH1SessionEvidenceLinkageV1 {
   linkages: M3_3HvH1SessionEvidenceLinkageRowV1[];
 }
 
-export interface ClassifySessionEvidenceLinkageInput {
-  sessionId: string;
-  segmentFingerprint: string;
-  source: string;
-  isFallback: boolean;
-  hasDimoSegmentId: boolean;
-  metadataHasM2: boolean;
-  metadataHasM3: boolean;
-}
-
-/** Pure authority map — no DB access. */
 export function buildM3_3HvH1SessionEvidenceLinkageV1(
   input: ClassifySessionEvidenceLinkageInput,
 ): M3_3HvH1SessionEvidenceLinkageV1 {
@@ -64,69 +55,72 @@ export function buildM3_3HvH1SessionEvidenceLinkageV1(
       ? 'FALLBACK'
       : 'UNLINKED';
 
+  const link = (
+    field: string,
+    present: boolean,
+    whenPresent: M3_3HvH1SessionLinkageKind,
+    authority: string,
+    provenanceField?: string,
+  ): M3_3HvH1SessionEvidenceLinkageRowV1 => ({
+    field,
+    linkage: present ? whenPresent : 'UNLINKED',
+    authority,
+    provenanceField,
+  });
+
+  const p = input.presence;
+
   const linkages: M3_3HvH1SessionEvidenceLinkageRowV1[] = [
     {
       field: 'recharge_segment_identity',
-      linkage: segmentLinkage,
-      authority: 'ERD physical segment boundary; BI persists HvChargeSession.segmentFingerprint',
+      linkage: input.hasDimoSegmentId || input.isFallback ? segmentLinkage : 'UNLINKED',
+      authority: 'ERD segment boundary; BI persists segmentFingerprint',
       provenanceField: 'segmentFingerprint / dimoSegmentId',
     },
-    {
-      field: 'soc_start',
-      linkage: 'DIRECT',
-      authority: 'HvChargeSession.startSocPercent',
-    },
-    {
-      field: 'soc_end',
-      linkage: 'DIRECT',
-      authority: 'HvChargeSession.endSocPercent',
-    },
-    {
-      field: 'current_energy_start',
-      linkage: input.isFallback ? 'WINDOW_DERIVED' : 'DIRECT',
-      authority: 'HvChargeSession.startEnergyKwh',
-      provenanceField: 'metadata.currentEnergyProvenance',
-    },
-    {
-      field: 'current_energy_end',
-      linkage: input.isFallback ? 'WINDOW_DERIVED' : 'DIRECT',
-      authority: 'HvChargeSession.endEnergyKwh',
-    },
-    {
-      field: 'added_energy',
-      linkage: 'SESSION_AGGREGATE',
-      authority: 'HvChargeSession.energyAddedKwh (segment semantics)',
-      provenanceField: 'metadata.addedEnergyProvenance',
-    },
-    {
-      field: 'charging_power',
-      linkage: 'WINDOW_DERIVED',
-      authority: 'Poll window / session aggregates (not simultaneous snapshot proof)',
-    },
-    {
-      field: 'provider_timestamp',
-      linkage: 'DIRECT',
-      authority: 'HvChargeSession.providerObservedAt',
-    },
-    {
-      field: 'capacity_m2',
-      linkage: input.metadataHasM2 ? 'SESSION_AGGREGATE' : 'UNLINKED',
-      authority: 'hv-capacity-shadow M2 shadow (metadata.m2CapacitySummary)',
-    },
-    {
-      field: 'capacity_m3',
-      linkage: input.metadataHasM3 ? 'SESSION_AGGREGATE' : 'UNLINKED',
-      authority: 'hv-capacity-shadow M3 validation (metadata.m3Validation)',
-    },
+    link('soc_start', p.socStart, 'DIRECT', 'HvChargeSession.startSocPercent'),
+    link('soc_end', p.socEnd, 'DIRECT', 'HvChargeSession.endSocPercent'),
+    link(
+      'current_energy_start',
+      p.currentEnergyStart,
+      input.isFallback ? 'WINDOW_DERIVED' : 'DIRECT',
+      'HvChargeSession.startEnergyKwh',
+      'metadata.currentEnergyProvenance',
+    ),
+    link(
+      'current_energy_end',
+      p.currentEnergyEnd,
+      input.isFallback ? 'WINDOW_DERIVED' : 'DIRECT',
+      'HvChargeSession.endEnergyKwh',
+    ),
+    link(
+      'added_energy',
+      p.addedEnergy,
+      'SESSION_AGGREGATE',
+      'HvChargeSession.energyAddedKwh',
+      'metadata.addedEnergyProvenance',
+    ),
+    link(
+      'provider_timestamp',
+      p.providerTimestamp,
+      'DIRECT',
+      'HvChargeSession.providerObservedAt',
+    ),
+    link(
+      'capacity_m2',
+      p.capacityM2,
+      'SESSION_AGGREGATE',
+      'metadata.m2CapacitySummary',
+    ),
+    link('capacity_m3', p.capacityM3, 'SESSION_AGGREGATE', 'metadata.m3Validation'),
     {
       field: 'provider_soh',
       linkage: 'UNLINKED',
-      authority: 'Provider SOH observations via snapshots/measurements — not session-embedded by default',
+      authority: 'Provider SOH via snapshots/measurements — not session-embedded by default',
     },
     {
       field: 'ground_truth',
       linkage: 'UNLINKED',
-      authority: 'BatteryGroundTruthEvent (batteryScope=HV) — future G4 correlation only',
+      authority: 'BatteryGroundTruthEvent (batteryScope=HV) — future correlation only',
     },
   ];
 
@@ -136,5 +130,27 @@ export function buildM3_3HvH1SessionEvidenceLinkageV1(
     segmentFingerprint: input.segmentFingerprint,
     source: input.source,
     linkages,
+  };
+}
+
+export function sessionFieldPresenceFromRecord(session: {
+  startSocPercent: number | null;
+  endSocPercent: number | null;
+  startEnergyKwh: number | null;
+  endEnergyKwh: number | null;
+  energyAddedKwh: number | null;
+  providerObservedAt: Date | null;
+  metadata: unknown;
+}): M3_3HvH1SessionEvidenceFieldPresence {
+  const meta = session.metadata as Record<string, unknown> | null;
+  return {
+    socStart: session.startSocPercent != null,
+    socEnd: session.endSocPercent != null,
+    currentEnergyStart: session.startEnergyKwh != null,
+    currentEnergyEnd: session.endEnergyKwh != null,
+    addedEnergy: session.energyAddedKwh != null,
+    providerTimestamp: session.providerObservedAt != null,
+    capacityM2: meta?.m2CapacitySummary != null,
+    capacityM3: meta?.m3Validation != null,
   };
 }

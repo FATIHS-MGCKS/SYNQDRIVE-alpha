@@ -1,27 +1,20 @@
 import { DEFAULT_CAPABILITY_STALE_THRESHOLD_MS } from '../capability-preflight/battery-capability-preflight.assess';
-import { RECHARGE_SEGMENTS_SIGNAL_KEY } from '../capability-preflight/battery-capability-signals.registry';
 import { BatteryCapabilityStatus } from '../battery-v2-domain';
 import {
-  HV_CAPACITY_METHODS,
-  type HvCapacityMethod,
-  type HvMethodProfile,
-} from '../hv-method-profile/hv-method-profile.types';
-import type { HvMethodProfileCapabilityInput } from '../hv-method-profile/hv-method-profile.types';
-import { M3_3_HV_H1_PROVIDER_CAPABILITY_MATRIX_V1 } from './m3-3-hv-h1.constants';
+  hvCapacityMethodsRequiringSignal,
+  methodRequiresSignal,
+} from '../hv-method-profile/hv-capacity-method-signal-requirements';
+import type { HvCapacityMethod, HvMethodProfile } from '../hv-method-profile/hv-method-profile.types';
+import { HV_H1_MAX_FUTURE_TIMESTAMP_SKEW_MS, M3_3_HV_H1_PROVIDER_CAPABILITY_MATRIX_V1 } from './m3-3-hv-h1.constants';
 import type {
+  M3_3HvH1CapabilityMatrixPersistedRow,
   M3_3HvH1FreshnessClass,
   M3_3HvH1ProviderCapabilityMatrixRowV1,
   M3_3HvH1ProviderCapabilityMatrixV1,
+  M3_3HvH1ProviderListingStatus,
   M3_3HvH1QualityClass,
+  M3_3HvH1VehicleDataStatus,
 } from './m3-3-hv-h1-provider-capability-matrix.types';
-
-const METHOD_SIGNAL_REQUIREMENTS: Partial<Record<HvCapacityMethod, string[]>> = {
-  M2_CURRENT_ENERGY_SOC: ['hv.soc', 'hv.current_energy'],
-  M3_ADDED_ENERGY_DELTA_SOC: ['hv.soc', 'hv.added_energy', RECHARGE_SEGMENTS_SIGNAL_KEY],
-  PROVIDER_HV_SOH: ['hv.provider_soh'],
-  SESSION_CHARGE_CAPACITY: ['hv.soc', 'hv.current_energy'],
-  GROSS_CAPACITY_REFERENCE: ['hv.gross_capacity'],
-};
 
 function parseDate(value: Date | string | null | undefined): Date | null {
   if (value == null) return null;
@@ -29,32 +22,83 @@ function parseDate(value: Date | string | null | undefined): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+export function classifyHvH1ProviderListingStatus(
+  status: BatteryCapabilityStatus,
+): M3_3HvH1ProviderListingStatus {
+  switch (status) {
+    case BatteryCapabilityStatus.NOT_LISTED:
+    case BatteryCapabilityStatus.UNAVAILABLE:
+      return 'NOT_LISTED';
+    case BatteryCapabilityStatus.QUERY_ERROR:
+      return 'UNKNOWN';
+    case BatteryCapabilityStatus.AVAILABLE:
+    case BatteryCapabilityStatus.AVAILABLE_STALE:
+    case BatteryCapabilityStatus.AVAILABLE_NULL:
+    case BatteryCapabilityStatus.DEGRADED:
+    default:
+      return 'LISTED';
+  }
+}
+
+export function classifyHvH1VehicleDataStatus(
+  status: BatteryCapabilityStatus,
+): M3_3HvH1VehicleDataStatus {
+  switch (status) {
+    case BatteryCapabilityStatus.AVAILABLE:
+      return 'AVAILABLE_WITH_DATA';
+    case BatteryCapabilityStatus.AVAILABLE_NULL:
+      return 'LISTED_NO_VALUE';
+    case BatteryCapabilityStatus.AVAILABLE_STALE:
+      return 'STALE';
+    case BatteryCapabilityStatus.DEGRADED:
+      return 'DEGRADED';
+    case BatteryCapabilityStatus.NOT_LISTED:
+    case BatteryCapabilityStatus.UNAVAILABLE:
+      return 'UNAVAILABLE';
+    case BatteryCapabilityStatus.QUERY_ERROR:
+    default:
+      return 'UNKNOWN';
+  }
+}
+
 export function classifyHvH1Freshness(input: {
   sourceTimestamp: Date | null;
   lastSeenAt: Date | null;
   checkedAt: Date;
   capabilityStatus: BatteryCapabilityStatus;
-  now: Date;
+  evaluationAt: Date;
   staleThresholdMs?: number;
+  maxFutureSkewMs?: number;
 }): M3_3HvH1FreshnessClass {
   const threshold = input.staleThresholdMs ?? DEFAULT_CAPABILITY_STALE_THRESHOLD_MS;
+  const maxFuture = input.maxFutureSkewMs ?? HV_H1_MAX_FUTURE_TIMESTAMP_SKEW_MS;
   const source = input.sourceTimestamp;
   const lastSeen = input.lastSeenAt ?? input.sourceTimestamp;
 
   if (source) {
-    const age = input.now.getTime() - source.getTime();
+    const skewMs = source.getTime() - input.evaluationAt.getTime();
+    if (skewMs > maxFuture) return 'FUTURE_PROVIDER_TIMESTAMP';
+    const age = input.evaluationAt.getTime() - source.getTime();
+    if (age < 0) return 'FUTURE_PROVIDER_TIMESTAMP';
     if (age <= threshold) return 'FRESH_PROVIDER_TIMESTAMP';
     return 'STALE_PROVIDER_TIMESTAMP';
   }
 
   if (lastSeen) {
-    const age = input.now.getTime() - lastSeen.getTime();
+    const skewMs = lastSeen.getTime() - input.evaluationAt.getTime();
+    if (skewMs > maxFuture) return 'FUTURE_PROVIDER_TIMESTAMP';
+    const age = input.evaluationAt.getTime() - lastSeen.getTime();
+    if (age < 0) return 'INVALID_PROVIDER_TIMESTAMP';
     if (age <= threshold) return 'COLLECTION_LAST_SEEN_ONLY';
     return 'STALE_PROVIDER_TIMESTAMP';
   }
 
-  const checkAge = input.now.getTime() - input.checkedAt.getTime();
-  if (checkAge <= threshold && input.capabilityStatus !== BatteryCapabilityStatus.NOT_LISTED) {
+  const checkAge = input.evaluationAt.getTime() - input.checkedAt.getTime();
+  if (
+    checkAge <= threshold &&
+    input.capabilityStatus !== BatteryCapabilityStatus.NOT_LISTED &&
+    input.capabilityStatus !== BatteryCapabilityStatus.QUERY_ERROR
+  ) {
     return 'CAPABILITY_CHECK_RECENT';
   }
 
@@ -63,7 +107,6 @@ export function classifyHvH1Freshness(input: {
 
 export function classifyHvH1Quality(input: {
   capabilityStatus: BatteryCapabilityStatus;
-  lastValue: number | null | undefined;
 }): M3_3HvH1QualityClass {
   switch (input.capabilityStatus) {
     case BatteryCapabilityStatus.AVAILABLE:
@@ -88,70 +131,56 @@ function methodsEligibleForSignal(
   methodProfile: HvMethodProfile,
 ): HvCapacityMethod[] {
   const supported = new Set(methodProfile.supportedCapacityMethods);
-  return HV_CAPACITY_METHODS.filter((method) => {
-    if (!supported.has(method)) return false;
-    const reqs = METHOD_SIGNAL_REQUIREMENTS[method] ?? [];
-    return reqs.includes(signalKey);
-  });
-}
-
-function vehicleAvailable(row: HvMethodProfileCapabilityInput): boolean {
-  return (
-    row.status === BatteryCapabilityStatus.AVAILABLE ||
-    row.status === BatteryCapabilityStatus.AVAILABLE_STALE ||
-    row.status === BatteryCapabilityStatus.AVAILABLE_NULL
-  );
-}
-
-function providerListed(row: HvMethodProfileCapabilityInput): boolean {
-  return row.status !== BatteryCapabilityStatus.NOT_LISTED;
+  return hvCapacityMethodsRequiringSignal(signalKey).filter((method) => supported.has(method));
 }
 
 export function buildM3_3HvH1ProviderCapabilityMatrixV1(input: {
   organizationId: string;
   vehicleId: string;
-  providerDefault?: string;
-  capabilities: HvMethodProfileCapabilityInput[];
+  persistedRows: M3_3HvH1CapabilityMatrixPersistedRow[];
   methodProfile: HvMethodProfile;
-  now?: Date;
+  evaluationAt?: Date;
 }): M3_3HvH1ProviderCapabilityMatrixV1 {
-  const now = input.now ?? new Date();
-  const rows: M3_3HvH1ProviderCapabilityMatrixRowV1[] = input.capabilities.map((row) => {
-    const checkedAt = parseDate(row.checkedAt) ?? now;
+  const evaluationAt = input.evaluationAt ?? new Date();
+  const rows: M3_3HvH1ProviderCapabilityMatrixRowV1[] = input.persistedRows.map((row) => {
+    const checkedAt = parseDate(row.checkedAt) ?? evaluationAt;
     const sourceTimestamp = parseDate(row.sourceTimestamp);
     const lastSeenAt = parseDate(row.lastSeenAt);
+    const providerListingStatus = classifyHvH1ProviderListingStatus(row.status);
+    const vehicleDataStatus = classifyHvH1VehicleDataStatus(row.status);
     const freshnessClass = classifyHvH1Freshness({
       sourceTimestamp,
       lastSeenAt,
       checkedAt,
       capabilityStatus: row.status,
-      now,
+      evaluationAt,
     });
-    const qualityClass = classifyHvH1Quality({
-      capabilityStatus: row.status,
-      lastValue: row.lastValue,
-    });
+    const qualityClass = classifyHvH1Quality({ capabilityStatus: row.status });
     const methodEligibility = methodsEligibleForSignal(row.signalKey, input.methodProfile);
 
     return {
       contractVersion: M3_3_HV_H1_PROVIDER_CAPABILITY_MATRIX_V1,
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
-      provider: input.providerDefault ?? 'DIMO',
+      provider: row.provider,
       signalKey: row.signalKey,
       capabilityStatus: row.status,
       checkedAt: checkedAt.toISOString(),
       lastSeenAt: lastSeenAt?.toISOString() ?? null,
       sourceTimestamp: sourceTimestamp?.toISOString() ?? null,
-      measurementType: null,
-      providerListed: providerListed(row),
-      vehicleAvailable: vehicleAvailable(row),
+      lastValue: row.lastValue ?? null,
+      measurementType: row.measurementType ?? null,
+      providerListingStatus,
+      vehicleDataStatus,
+      providerListed: providerListingStatus === 'LISTED',
+      vehicleSignalListed: providerListingStatus === 'LISTED',
       lastProviderValuePresent: row.lastValue != null,
       lastProviderTimestampPresent: sourceTimestamp != null,
       currentStatus: row.status,
       methodEligibility,
       freshnessClass,
       qualityClass,
+      capabilityStateSemantics: 'CURRENT_STATE_AT_QUERY',
     };
   });
 
@@ -159,7 +188,10 @@ export function buildM3_3HvH1ProviderCapabilityMatrixV1(input: {
     contractVersion: M3_3_HV_H1_PROVIDER_CAPABILITY_MATRIX_V1,
     organizationId: input.organizationId,
     vehicleId: input.vehicleId,
-    resolvedAt: now.toISOString(),
+    evaluationAt: evaluationAt.toISOString(),
+    temporalSemantics: 'CURRENT_STATE_AT_QUERY',
     rows,
   };
 }
+
+export { methodRequiresSignal, hvCapacityMethodsRequiringSignal };

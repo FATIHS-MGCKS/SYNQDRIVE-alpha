@@ -30,6 +30,8 @@ export interface M3_3HvH1SignalInventoryEntry {
   collectionTimestampFallbackAllowed: boolean;
   persisted: boolean;
   persistenceTarget: string;
+  /** Code/registry surface — not per-VIN availability. */
+  staticSurfaceRole: 'IMPLEMENTED_SIGNAL_SURFACE';
   h1Classification: M3_3HvH1SignalClassification;
   qualityAuthority: string;
   freshnessAuthority: string;
@@ -74,7 +76,7 @@ function defaultClassification(signalKey: string): M3_3HvH1SignalClassification 
   if (signalKey === 'dimo.segments.recharge') {
     return 'PROVIDER_DEPENDENT';
   }
-  return 'AVAILABLE_VERIFIED';
+  return 'PROVIDER_DEPENDENT';
 }
 
 const MAPPER_DIMO_NAMES = new Set<string>(
@@ -100,6 +102,7 @@ export function buildM3_3HvH1SignalInventory(): M3_3HvH1SignalInventoryEntry[] {
     collectionTimestampFallbackAllowed: def.signalKey !== 'dimo.segments.recharge',
     persisted: true,
     persistenceTarget: 'vehicle_battery_capabilities',
+    staticSurfaceRole: 'IMPLEMENTED_SIGNAL_SURFACE',
     h1Classification: defaultClassification(def.signalKey),
     qualityAuthority: 'VehicleBatteryCapability.status + HvMethodProfile',
     freshnessAuthority: 'sourceTimestamp > lastSeenAt > checkedAt (capability preflight)',
@@ -118,6 +121,7 @@ export function buildM3_3HvH1SignalInventory(): M3_3HvH1SignalInventoryEntry[] {
     collectionTimestampFallbackAllowed: true,
     persisted: false,
     persistenceTarget: 'none (mapper-only; optional BatteryMeasurement path)',
+    staticSurfaceRole: 'IMPLEMENTED_SIGNAL_SURFACE',
     h1Classification: 'UNKNOWN_NEEDS_PROVIDER_AUDIT',
     qualityAuthority: 'BatteryMeasurement when ingested; no capability row',
     freshnessAuthority: 'per-signal provider timestamp on poll map',
