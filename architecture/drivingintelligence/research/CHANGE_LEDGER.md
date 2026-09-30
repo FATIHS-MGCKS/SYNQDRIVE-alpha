@@ -1344,3 +1344,11 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | Production `/opt/synqdrive/shared/backend.env` lacks explicit `DIMO_GLOBAL_BUDGET_ENABLED` → Tiny budget gate NOT_SATISFIED; operator auth remains UNKNOWN |
 | NON_EFFECTS | No deploy, no env mutation, no S4 activation, no operator grant |
 | Gap | Location retention: GOVERNANCE_NOTE for Tiny satisfied; purge/scale-up privacy still open |
+
+### EXP-021 S4F-3 runtime evidence hardening (2026-09-30, PR #1861)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Split `GLOBAL_BUDGET_CONFIG_FILE_STATE` vs `GLOBAL_BUDGET_ACTIVE_RUNTIME_STATE`; audit script CONFIG_FILE_ONLY; resolver for evaluator ENABLED; future ops sequence documents rolling restart authority |
+| FINDING | File audit alone cannot satisfy Tiny global-budget gate; Production config currently MISSING explicit var |
+| NON_EFFECTS | No Production mutation/restart/deploy |

@@ -1,8 +1,11 @@
 import type { DiV0S4fProviderGlobalBudgetEnabledEvidence } from './di-v0-s4f-activation-evidence';
 
 /**
- * Tiny Activation gate evidence for DIMO_GLOBAL_BUDGET_ENABLED.
+ * Classifies a **supplied raw config value** (e.g. from a deployment env file line).
+ *
  * Does NOT apply DimoProviderBudgetConfig parseBool(..., true) — missing must be UNKNOWN.
+ * Does NOT prove Production PM2 replicas loaded that value after bootstrap; pair with
+ * `DiV0S4fGlobalBudgetActiveRuntimeState` via `resolveTinyActivationProviderGlobalBudgetEvidence`.
  */
 export function classifyDiV0S4fTinyActivationGlobalBudgetEnv(
   raw: string | undefined,
