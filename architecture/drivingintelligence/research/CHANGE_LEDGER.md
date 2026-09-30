@@ -1312,7 +1312,15 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Event | Detail |
 |-------|--------|
 | Trigger | Tiny activation gate `DI-GAP-S4-PROVIDER-BACKPRESSURE-001:CLOSED` on main @ `60f925b2c` |
-| CHANGE | Real Redis two-replica budget certification; S4C frozen DIMO context (no bypass inheritance); `providerGlobalBudgetEnabled` activation evidence; contract `globalCircuitBreaker.status=CLOSED` |
+| CHANGE | Real Redis two-replica budget certification; S4C frozen DIMO context (no bypass inheritance); `providerGlobalBudgetEnabled` activation evidence |
 | NON_EFFECTS | No S4 activation, no deploy, no production provider calls, no AppModule registration |
 | Evidence | `EXP021_S4F2_PROVIDER_BACKPRESSURE_CLOSURE.md` |
-| Gap | `DI-GAP-S4-PROVIDER-BACKPRESSURE-001` → **CLOSED** |
+
+### EXP-021 S4F-2 remediation — certification defects (2026-09-30, PR #1855)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | Independent review: invalid lease test config, PB01/PB11 saturation composition, cooldown vs reserved-slot authority |
+| CHANGE | `globalLeaseMs≥5000` + real wait; 3 BACKGROUND + 1 HIGH global cap tests; PB27–29 cooldown priority behavior; contract `globalCircuitBreaker.status=CLOSURE_CANDIDATE`; `globalProviderCooldown` block |
+| AUTHORITY | P1.3 acquire step 2 — global cooldown before priority; **no** new `DI-GAP-S4-PROVIDER-COOLDOWN-PRIORITY-001` |
+| Gap | `DI-GAP-S4-PROVIDER-BACKPRESSURE-001` → **CLOSURE_CANDIDATE** (Tiny Activation requires **CLOSED**) |

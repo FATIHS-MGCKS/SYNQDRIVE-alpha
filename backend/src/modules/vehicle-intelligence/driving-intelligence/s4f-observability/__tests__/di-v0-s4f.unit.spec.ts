@@ -61,7 +61,7 @@ describe('DI V0 S4F unit', () => {
 
   it('F17 provider backpressure OPEN => NOT_READY', () => {
     const audit = auditDiV0S4ProviderBackpressure();
-    expect(audit.gapStatus).toBe('CLOSED');
+    expect(audit.gapStatus).toBe('CLOSURE_CANDIDATE');
     const r = evaluateDiV0S4fTinyActivationReadiness({
       replayDeserializerGap: 'CLOSED',
       snapshotRehashVerification: 'IMPLEMENTED',

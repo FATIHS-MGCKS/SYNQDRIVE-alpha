@@ -957,14 +957,19 @@
     "on429": "POSITION/R1 SOURCE_FAILURE reason RATE_LIMITED; position -> T07",
     "on401or403": "AUTHORIZATION_FAILURE -> T08 (never retried)",
     "globalCircuitBreaker": {
-      "status": "CLOSED",
+      "status": "CLOSURE_CANDIDATE",
       "gap": {
         "id": "DI-GAP-S4-PROVIDER-BACKPRESSURE-001",
-        "status": "CLOSED",
+        "status": "CLOSURE_CANDIDATE",
         "closureEvidence": "EXP021_S4F2_PROVIDER_BACKPRESSURE_CLOSURE.md",
         "certificationScope": "ATOMIC_REDIS_INVARIANT_MULTI_REPLICA_SERVICE_OBJECTS",
         "productionLoadCertification": "NOT_CLAIMED"
       }
+    },
+    "globalProviderCooldown": {
+      "blocksAllPrioritiesDuringActiveCooldown": true,
+      "authorityRef": "architecture/P1_3_GLOBAL_DIMO_PROVIDER_BUDGET_FINAL_RESPONSE_2026-08-29.md",
+      "reservedHighSlotsApplyDuring": "NORMAL_ADMISSION_ONLY"
     },
     "tinyActivationGlobalBudgetRequirement": {
       "env": "DIMO_GLOBAL_BUDGET_ENABLED",

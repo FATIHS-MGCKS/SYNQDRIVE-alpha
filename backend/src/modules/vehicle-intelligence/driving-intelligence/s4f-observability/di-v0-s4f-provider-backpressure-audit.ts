@@ -5,7 +5,7 @@
 
 import { DI_V0_S4F2_PROVIDER_BACKPRESSURE_CERTIFICATION } from './di-v0-s4f-provider-backpressure-certification';
 
-export type DiV0S4fProviderBackpressureGapStatus = 'OPEN_CONFIRMED' | 'CLOSED';
+export type DiV0S4fProviderBackpressureGapStatus = 'OPEN_CONFIRMED' | 'CLOSURE_CANDIDATE' | 'CLOSED';
 
 export interface DiV0S4fProviderBackpressureAudit {
   gapId: 'DI-GAP-S4-PROVIDER-BACKPRESSURE-001';
@@ -19,25 +19,24 @@ export interface DiV0S4fProviderBackpressureAudit {
 }
 
 export function auditDiV0S4ProviderBackpressure(): DiV0S4fProviderBackpressureAudit {
-  const closed = DI_V0_S4F2_PROVIDER_BACKPRESSURE_CERTIFICATION.gapStatus === 'CLOSED';
-  const notes: string[] = closed
-    ? [
-        'S4C acquisition uses frozen DI_V0_S4C_DIMO_REQUEST_CONTEXT (POST_TRIP_ENRICHMENT / BACKGROUND) — parent bypass cannot inherit.',
-        'Shared request executor owns HTTP retries; S4 state machine owns cross-attempt retry (T07).',
-        'Multi-replica Redis integration proves global in-flight cap, reserved HIGH slots, lease recovery, shared 429 cooldown, Redis fail-closed, acquire timeout.',
-        'Tiny activation additionally requires explicit providerGlobalBudgetEnabled=ENABLED evidence (DIMO_GLOBAL_BUDGET_ENABLED=true).',
-        'Production N≈1000 load certification is not claimed — atomic Redis invariants only.',
-      ]
-    : [
-        'Certification markers not CLOSED — gap remains open.',
-      ];
+  const status = DI_V0_S4F2_PROVIDER_BACKPRESSURE_CERTIFICATION.gapStatus;
+  const candidate = status === 'CLOSURE_CANDIDATE';
+  const closed = status === 'CLOSED';
+  const notes: string[] = [
+    'S4C acquisition uses frozen DI_V0_S4C_DIMO_REQUEST_CONTEXT (POST_TRIP_ENRICHMENT / BACKGROUND) — parent bypass cannot inherit.',
+    'Shared request executor owns HTTP retries; S4 state machine owns cross-attempt retry (T07).',
+    'Multi-replica Redis integration proves global in-flight cap, reserved HIGH slots under normal admission, lease recovery, shared 429 cooldown, Redis fail-closed.',
+    'Global provider cooldown blocks all priorities before cap logic (P1.3 acquire step 2) — reserved slots do not protect HIGH/CRITICAL during cooldown.',
+    'Tiny activation requires explicit providerGlobalBudgetEnabled=ENABLED and gap status CLOSED in contract gates — CLOSURE_CANDIDATE is not sufficient.',
+    'Production N≈1000 load certification is not claimed — atomic Redis invariants only.',
+  ];
 
   return {
     gapId: 'DI-GAP-S4-PROVIDER-BACKPRESSURE-001',
-    gapStatus: closed ? 'CLOSED' : 'OPEN_CONFIRMED',
+    gapStatus: closed ? 'CLOSED' : candidate ? 'CLOSURE_CANDIDATE' : 'OPEN_CONFIRMED',
     endToEndBudgetPathProven: true,
     s4BackgroundPriorityProven: true,
-    s4BudgetBypassPossible: !closed,
+    s4BudgetBypassPossible: !(candidate || closed),
     multiReplicaBackpressureProven: DI_V0_S4F2_PROVIDER_BACKPRESSURE_CERTIFICATION.multiReplicaRedisIntegrationProven,
     authorityChangeRequiredForClosure: !closed,
     notes,

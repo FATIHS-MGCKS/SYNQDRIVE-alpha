@@ -178,12 +178,12 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     version: '4.9.2212',
     title: 'Driving Intelligence — EXP-021 S4F-2 provider backpressure certification',
     summary: [
-      'Real Redis multi-replica DimoProviderBudgetService certification (global cap, reserved HIGH, lease recovery, shared 429 cooldown).',
-      'S4C frozen DI_V0_S4C_DIMO_REQUEST_CONTEXT — parent bypass cannot infect ALS context.',
-      'DI-GAP-S4-PROVIDER-BACKPRESSURE-001 CLOSED; Tiny activation also requires providerGlobalBudgetEnabled=ENABLED.',
+      'Real Redis multi-replica certification with production-valid config (globalLeaseMs≥5000); PB01/PB11 use 3 BACKGROUND + 1 HIGH saturation.',
+      'PB27–29 document global 429 cooldown blocking all priorities (P1.3 acquire step 2); reserved HIGH proven under normal admission only.',
+      'DI-GAP-S4-PROVIDER-BACKPRESSURE-001 CLOSURE_CANDIDATE — Tiny activation still NOT_READY (gap CLOSED + budget ENABLED + operator auth).',
     ],
-    reason: 'Close frozen tiny-activation provider backpressure gap with executable evidence while keeping S4 dormant.',
-    previousBehavior: 'Gap OPEN_CONFIRMED; globalCircuitBreaker OPEN_ACCEPTED_FOR_S4C; no multi-replica Redis proof.',
+    reason: 'Remediate certification defects on draft PR #1855; executable backpressure proof without activating S4 or claiming Tiny Activation ready.',
+    previousBehavior: 'Invalid cert lease ms; four-BACKGROUND saturation tests; gap prematurely marked CLOSED.',
     details:
       'provider-budget multi-replica redis integration; s4f-observability certification; s4a-contract.v2.json; EXP021_S4F2 evidence.',
     affectsArchitecture: true,

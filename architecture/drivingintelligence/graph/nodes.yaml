@@ -1693,12 +1693,11 @@ nodes:
     type: gap
     title: S4 provider acquisition backpressure certification
     epistemic_status: CONFIRMED
-    validation_status: CLOSED
+    validation_status: CLOSURE_CANDIDATE
     summary: >
-      CLOSED 2026-09-30 (S4F-2): shared DimoProviderBudgetService + DimoRequestExecutor proven under real Redis
-      with two service replicas (global cap, reserved HIGH slots, lease recovery, shared 429 cooldown, Redis fail-closed).
-      S4C uses frozen DI_V0_S4C_DIMO_REQUEST_CONTEXT (POST_TRIP_ENRICHMENT/BACKGROUND, no bypass inheritance).
-      Tiny activation still requires providerGlobalBudgetEnabled=ENABLED and operator authorization.
+      S4F-2 (2026-09-30): Redis two-replica certification for global cap, reserved HIGH under normal admission,
+      lease recovery, shared 429 cooldown, Redis fail-closed. Global cooldown blocks all priorities (P1.3 acquire step 2).
+      Gap CLOSURE_CANDIDATE — Tiny activation still requires contract CLOSED + providerGlobalBudgetEnabled=ENABLED + operator auth.
     source_paths:
       - architecture/drivingintelligence/evidence/EXP021_S4F2_PROVIDER_BACKPRESSURE_CLOSURE.md
       - architecture/drivingintelligence/design/s4a/s4a-contract.v2.json

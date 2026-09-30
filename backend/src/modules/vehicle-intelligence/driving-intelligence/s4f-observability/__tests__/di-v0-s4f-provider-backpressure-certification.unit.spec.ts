@@ -107,12 +107,57 @@ describe('S4F-2 provider backpressure certification (unit)', () => {
     expect(r.tinyActivationReady).toBe(false);
   });
 
-  it('audit reflects S4F-2 CLOSED certification markers', () => {
+  it('audit reflects S4F-2 CLOSURE_CANDIDATE certification markers', () => {
     const audit = auditDiV0S4ProviderBackpressure();
-    expect(DI_V0_S4F2_PROVIDER_BACKPRESSURE_CERTIFICATION.gapStatus).toBe('CLOSED');
-    expect(audit.gapStatus).toBe('CLOSED');
+    expect(DI_V0_S4F2_PROVIDER_BACKPRESSURE_CERTIFICATION.gapStatus).toBe('CLOSURE_CANDIDATE');
+    expect(audit.gapStatus).toBe('CLOSURE_CANDIDATE');
     expect(audit.multiReplicaBackpressureProven).toBe(true);
     expect(audit.s4BudgetBypassPossible).toBe(false);
+    expect(DI_V0_S4F2_PROVIDER_BACKPRESSURE_CERTIFICATION.globalCooldownBlocksAllPriorities).toBe(true);
+  });
+
+  it('PB11 T07 mapping: saturated budget ACQUIRE_TIMEOUT via executor without provider execute', async () => {
+    const acquire = jest.fn().mockRejectedValue(
+      new DimoProviderBudgetError('timeout', 'ACQUIRE_TIMEOUT', 'POST_TRIP_ENRICHMENT'),
+    );
+    let providerCalled = false;
+    const executor = new DimoRequestExecutor({
+      isEnabled: () => true,
+      getConfig: () => ({ globalMaxRetries: 0, globalRetryAfterMaxMs: 60_000 }),
+      getMetrics: () => ({
+        requestsTotal: { inc: jest.fn() },
+        requestDurationSeconds: { observe: jest.fn() },
+        rateLimitedTotal: { inc: jest.fn() },
+        retryAfterSeconds: { observe: jest.fn() },
+      }),
+      acquirePermit: acquire,
+      releasePermit: jest.fn(),
+      record429: jest.fn(),
+    } as unknown as import('@modules/dimo/provider-budget/dimo-provider-budget.service').DimoProviderBudgetService);
+
+    const ports = buildDiV0S4cDimoAcquisitionPorts({
+      auth: { getVehicleJwt: async () => 'jwt' },
+      telemetry: {
+        queryGraphQL: async () => {
+          providerCalled = true;
+          return {};
+        },
+      },
+    });
+
+    await expect(
+      ports.runDimo({ category: 'POST_TRIP_ENRICHMENT', priority: 'BACKGROUND' }, async () => {
+        await executor.execute({
+          category: 'POST_TRIP_ENRICHMENT',
+          priority: 'BACKGROUND',
+          execute: async () => {
+            providerCalled = true;
+            return 'ok';
+          },
+        });
+      }),
+    ).rejects.toMatchObject({ code: 'ACQUIRE_TIMEOUT' });
+    expect(providerCalled).toBe(false);
   });
 
   it('PB12/PB13 shared transport maps budget errors to retryable classes (no HTTP)', async () => {

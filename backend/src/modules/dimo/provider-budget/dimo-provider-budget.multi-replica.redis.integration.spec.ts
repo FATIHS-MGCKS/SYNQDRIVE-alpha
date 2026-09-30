@@ -2,7 +2,10 @@ import { Registry } from 'prom-client';
 import IORedis from 'ioredis';
 import { RedisService } from '@shared/redis/redis.service';
 import { DimoProviderBudgetService } from './dimo-provider-budget.service';
-import type { DimoProviderBudgetConfigShape } from './dimo-provider-budget.config';
+import {
+  validateDimoProviderBudgetConfig,
+  type DimoProviderBudgetConfigShape,
+} from './dimo-provider-budget.config';
 import {
   DIMO_BUDGET_COOLDOWN_KEY,
   DIMO_BUDGET_LEASES_KEY,
@@ -39,12 +42,13 @@ async function probeRedis(): Promise<boolean> {
   }
 }
 
+/** Certification config — must pass production `validateDimoProviderBudgetConfig` (lease >= 5000ms). */
 function certConfig(overrides: Partial<DimoProviderBudgetConfigShape> = {}): DimoProviderBudgetConfigShape {
-  return {
+  const config: DimoProviderBudgetConfigShape = {
     globalBudgetEnabled: true,
     globalMaxInFlight: 4,
     globalAcquireTimeoutMs: 2_000,
-    globalLeaseMs: 400,
+    globalLeaseMs: 5_000,
     globalRetryAfterMaxMs: 60_000,
     globalMaxRetries: 3,
     reservedHighPrioritySlots: 1,
@@ -54,6 +58,11 @@ function certConfig(overrides: Partial<DimoProviderBudgetConfigShape> = {}): Dim
     acquirePollIntervalMs: 10,
     ...overrides,
   };
+  const errors = validateDimoProviderBudgetConfig(config);
+  if (errors.length > 0) {
+    throw new Error(`Invalid certification config: ${errors.join('; ')}`);
+  }
+  return config;
 }
 
 function createReplica(
@@ -73,6 +82,16 @@ async function cleanupBudgetKeys(redis: RedisService): Promise<void> {
   for (let offset = -2; offset <= 2; offset += 1) {
     await redis.del(`${DIMO_BUDGET_429_WINDOW_KEY}:${windowBase + offset}`);
   }
+}
+
+async function acquireBackground(
+  svc: DimoProviderBudgetService,
+  replica: 'A' | 'B',
+  permits: Awaited<ReturnType<DimoProviderBudgetService['acquirePermit']>>[],
+): Promise<void> {
+  permits.push(
+    await svc.acquirePermit({ category: 'POST_TRIP_ENRICHMENT', priority: 'BACKGROUND' }),
+  );
 }
 
 (LIVE ? describe : describe.skip)('DimoProviderBudgetService multi-replica (real Redis)', () => {
@@ -105,22 +124,24 @@ async function cleanupBudgetKeys(redis: RedisService): Promise<void> {
     }
   });
 
-  it('PB01/MR01 global hard limit across two service instances', async () => {
-    const permits = [];
-    let observedMax = 0;
-    for (let i = 0; i < 4; i += 1) {
+  it('PB01/MR01 global hard limit: 3 BACKGROUND + 1 HIGH, fifth permit rejected', async () => {
+    const lowCap = config.globalMaxInFlight - config.reservedHighPrioritySlots;
+    const permits: Awaited<ReturnType<DimoProviderBudgetService['acquirePermit']>>[] = [];
+    let backgroundMaxObserved = 0;
+
+    for (let i = 0; i < lowCap; i += 1) {
       const svc = i % 2 === 0 ? replicaA : replicaB;
-      permits.push(
-        await svc.acquirePermit({ category: 'POST_TRIP_ENRICHMENT', priority: 'BACKGROUND' }),
-      );
-      const inFlight = await replicaA.getInFlightCount();
-      observedMax = Math.max(observedMax, inFlight);
+      await acquireBackground(svc, i % 2 === 0 ? 'A' : 'B', permits);
+      backgroundMaxObserved = Math.max(backgroundMaxObserved, await replicaA.getInFlightCount());
     }
-    expect(observedMax).toBeLessThanOrEqual(config.globalMaxInFlight);
-    expect(observedMax).toBe(4);
+    expect(backgroundMaxObserved).toBe(lowCap);
+
+    const high = await replicaB.acquirePermit({ category: 'LIVE_SNAPSHOT', priority: 'HIGH' });
+    permits.push(high);
+    expect(await replicaA.getInFlightCount()).toBe(config.globalMaxInFlight);
 
     await expect(
-      replicaB.acquirePermit({
+      replicaA.acquirePermit({
         category: 'POST_TRIP_ENRICHMENT',
         priority: 'BACKGROUND',
         acquireTimeoutMs: 80,
@@ -132,7 +153,7 @@ async function cleanupBudgetKeys(redis: RedisService): Promise<void> {
     }
   });
 
-  it('PB02/MR02 BACKGROUND low-priority cap preserves reserved HIGH slot', async () => {
+  it('PB02/MR02 BACKGROUND low-priority cap preserves reserved HIGH slot (normal admission)', async () => {
     const lowCap = config.globalMaxInFlight - config.reservedHighPrioritySlots;
     const backgroundPermits = [];
     for (let i = 0; i < lowCap; i += 1) {
@@ -187,23 +208,28 @@ async function cleanupBudgetKeys(redis: RedisService): Promise<void> {
     expect(await replicaA.getInFlightCount()).toBe(0);
   });
 
-  it('PB06/MR04 lease expiry recovery without explicit release', async () => {
-    const shortLease = createReplica(certConfig({ globalLeaseMs: 200 }));
-    const permit = await shortLease.service.acquirePermit({
-      category: 'POST_TRIP_ENRICHMENT',
-      priority: 'BACKGROUND',
-    });
-    expect(await replicaA.getInFlightCount()).toBe(1);
-    await new Promise((r) => setTimeout(r, 280));
-    expect(await replicaA.getInFlightCount()).toBe(0);
-    const recovered = await replicaB.acquirePermit({
-      category: 'POST_TRIP_ENRICHMENT',
-      priority: 'BACKGROUND',
-    });
-    await replicaB.releasePermit(recovered);
-    await shortLease.redis.onModuleDestroy?.();
-    expect(permit.token).toBeTruthy();
-  });
+  it(
+    'PB06/MR04 lease expiry recovery without explicit release (valid globalLeaseMs)',
+    async () => {
+      const leaseMs = 5_000;
+      const leaseReplica = createReplica(certConfig({ globalLeaseMs: leaseMs }));
+      const permit = await leaseReplica.service.acquirePermit({
+        category: 'POST_TRIP_ENRICHMENT',
+        priority: 'BACKGROUND',
+      });
+      expect(await replicaA.getInFlightCount()).toBe(1);
+      await new Promise((r) => setTimeout(r, leaseMs + 250));
+      expect(await replicaA.getInFlightCount()).toBe(0);
+      const recovered = await replicaB.acquirePermit({
+        category: 'POST_TRIP_ENRICHMENT',
+        priority: 'BACKGROUND',
+      });
+      await replicaB.releasePermit(recovered);
+      await leaseReplica.redis.onModuleDestroy?.();
+      expect(permit.token).toBeTruthy();
+    },
+    15_000,
+  );
 
   it('PB07/PB08/MR05 shared 429 threshold and cooldown across replicas', async () => {
     await replicaA.record429('POST_TRIP_ENRICHMENT', 100);
@@ -228,6 +254,43 @@ async function cleanupBudgetKeys(redis: RedisService): Promise<void> {
     await replicaB.releasePermit(after);
   });
 
+  it('PB27 global cooldown blocks HIGH acquisition', async () => {
+    await replicaA.record429('POST_TRIP_ENRICHMENT', 100);
+    await replicaB.record429('POST_TRIP_ENRICHMENT', 100);
+
+    await expect(
+      replicaB.acquirePermit({
+        category: 'LIVE_SNAPSHOT',
+        priority: 'HIGH',
+        acquireTimeoutMs: 120,
+      }),
+    ).rejects.toMatchObject({ code: 'ACQUIRE_TIMEOUT' });
+  });
+
+  it('PB28 global cooldown blocks CRITICAL acquisition', async () => {
+    await replicaA.record429('POST_TRIP_ENRICHMENT', 100);
+    await replicaB.record429('POST_TRIP_ENRICHMENT', 100);
+
+    await expect(
+      replicaB.acquirePermit({
+        category: 'ACTIVE_TRIP',
+        priority: 'CRITICAL',
+        acquireTimeoutMs: 120,
+      }),
+    ).rejects.toMatchObject({ code: 'ACQUIRE_TIMEOUT' });
+  });
+
+  it('PB29 HIGH and CRITICAL recover after cooldown expiry', async () => {
+    await replicaA.record429('POST_TRIP_ENRICHMENT', 100);
+    await replicaB.record429('POST_TRIP_ENRICHMENT', 100);
+    await new Promise((r) => setTimeout(r, config.providerCooldownMs + 120));
+
+    const high = await replicaA.acquirePermit({ category: 'LIVE_SNAPSHOT', priority: 'HIGH' });
+    const critical = await replicaB.acquirePermit({ category: 'ACTIVE_TRIP', priority: 'CRITICAL' });
+    await replicaA.releasePermit(high);
+    await replicaB.releasePermit(critical);
+  });
+
   it('PB10/MR06 Redis unavailable fails closed at acquire', async () => {
     const broken = createReplica(config);
     await broken.redis.onModuleDestroy?.();
@@ -239,14 +302,17 @@ async function cleanupBudgetKeys(redis: RedisService): Promise<void> {
     ).rejects.toMatchObject({ code: 'REDIS_UNAVAILABLE' });
   });
 
-  it('PB11/MR07 acquire timeout under saturation without provider execute', async () => {
-    const held = [];
-    for (let i = 0; i < config.globalMaxInFlight; i += 1) {
+  it('PB11/MR07 acquire timeout under 3 BACKGROUND + 1 HIGH saturation', async () => {
+    const lowCap = config.globalMaxInFlight - config.reservedHighPrioritySlots;
+    const held: Awaited<ReturnType<DimoProviderBudgetService['acquirePermit']>>[] = [];
+    for (let i = 0; i < lowCap; i += 1) {
       held.push(
         await replicaA.acquirePermit({ category: 'POST_TRIP_ENRICHMENT', priority: 'BACKGROUND' }),
       );
     }
-    let providerCalled = false;
+    held.push(await replicaA.acquirePermit({ category: 'LIVE_SNAPSHOT', priority: 'HIGH' }));
+    expect(await replicaA.getInFlightCount()).toBe(config.globalMaxInFlight);
+
     await expect(
       replicaB.acquirePermit({
         category: 'POST_TRIP_ENRICHMENT',
@@ -254,7 +320,7 @@ async function cleanupBudgetKeys(redis: RedisService): Promise<void> {
         acquireTimeoutMs: 60,
       }),
     ).rejects.toMatchObject({ code: 'ACQUIRE_TIMEOUT' });
-    expect(providerCalled).toBe(false);
+
     for (const p of held) {
       await replicaA.releasePermit(p);
     }
