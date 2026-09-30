@@ -8,7 +8,7 @@ export type DiV0S4f2ProviderBackpressureGapStatus = 'CLOSURE_CANDIDATE' | 'CLOSE
 
 export const DI_V0_S4F2_PROVIDER_BACKPRESSURE_CERTIFICATION = {
   gapId: DI_V0_S4F2_PROVIDER_BACKPRESSURE_GAP_ID,
-  gapStatus: 'CLOSURE_CANDIDATE' as DiV0S4f2ProviderBackpressureGapStatus,
+  gapStatus: 'CLOSED' as DiV0S4f2ProviderBackpressureGapStatus,
   /** Reserved HIGH slots apply during normal admission only — not during global provider cooldown (P1.3 acquire step 2). */
   highPriorityReservedCapacityAppliesDuring: 'NORMAL_ADMISSION_ONLY' as const,
   globalCooldownBlocksAllPriorities: true,

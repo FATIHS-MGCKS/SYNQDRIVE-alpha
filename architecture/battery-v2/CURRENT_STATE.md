@@ -1,7 +1,7 @@
 # Battery V2 — Current State Snapshot
 
 **Snapshot date:** 2026-09-30 (M3.3-H0 domain separation seal PASS; M3.3G G4 infra @ `1dd422403`; D3 sustained ON; E3 **OFF**; **0 natural GT**)
-**Graph:** 150 nodes / 148 edges / 11 invariants (validated 2026-09-30; +BAT-V2-AUTH-H0-001)
+**Graph:** 151 nodes / 148 edges / 11 invariants (validated 2026-09-30; +BAT-V2-AUTH-H0-001, +BAT-V2-AUTH-H1-001)
 **Knowledge maturity:** Phase 4 planning complete — 20 open gaps; 1 PROPOSED decision (`BAT-V2-DEC-PH4-LV-PUB-CHAIN-001`); 5 VALIDATED PKG spec decisions (D1, D2, D3, D4, D5)
 
 ## M3.1 corrected Stage-2 activation (LIVE since `2026-09-05T23:36:12Z`)
@@ -91,8 +91,9 @@
 | **`STATE_MACHINE_LIVENESS_GUARANTEED`** | **YES** (provider observability-gap validation gate) |
 | Provider-gap metrics follow-up | **`synqdrive_battery_provider_observability_gap_opened_total`** PM2 aggregation semantics — non-blocking observability debt |
 | **M3.3-H0 domain separation** | **SEAL PASS** @ audit `2026-09-30` — `research/M3_3_H0_BATTERY_INTELLIGENCE_DOMAIN_SEPARATION_AUDIT_2026-09-30.md`; static contract validator `scripts/validate-h0-domain-separation-contracts.sh` |
+| **M3.3-HV-H1 evidence foundation** | **CONTRACTS + READ_ONLY_REPORT** @ `2026-09-30` — `research/M3_3_HV_H1_PROVIDER_CAPABILITY_EVIDENCE_FOUNDATION_2026-09-30.md`; `backend/.../hv-h1/*`; CLI `battery:hv-h1:evidence-readiness-report`; validator `validate-h1-provider-evidence-contracts.sh`; **H1_RUNTIME_REACHABLE=NO** |
 | **Post-G4 roadmap (LV/HV)** | **`M3.3-H0`** sealed; **`G4_STATUS=WAITING_FOR_FIRST_NATURAL_GT`** (async); see [`BATTERY_INTELLIGENCE_ARCHITECTURE.md`](BATTERY_INTELLIGENCE_ARCHITECTURE.md) |
-| `NEXT_PHASE` | **`M3_3_HV_H1`** (recommended) **∥** **`M3_3G_G4_WAIT`** **∥** **`M3_3_LV_SIGNAL_OBS`** — D3/F5 cohort-**C** continues; **no** F6 / **no** E3 runtime |
+| `NEXT_PHASE` | **`M3_3_HV_H2`** (longitudinal input engineering) **∥** **`M3_3G_G4_WAIT`** **∥** **`M3_3_LV_SIGNAL_OBS`** — H1 foundation complete; **no** F6 / **no** E3 runtime |
 | `PIPELINE_HEALTH` | **PASS** (control plane / lifecycle / scheduler — distinct from evidence observability) |
 | `EVIDENCE_OBSERVABILITY_BLOCKED` | **NO** (F4.3 reconciliation/ack/flag-gauge observability **proven in production** @ `68a05e41`; D3 activation still gated separately) |
 | `IMPLEMENTATION_DECISION` | **HYBRID_MODEL_NEEDS_MORE_NATURAL_DATA** |

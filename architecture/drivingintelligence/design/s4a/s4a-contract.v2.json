@@ -957,10 +957,10 @@
     "on429": "POSITION/R1 SOURCE_FAILURE reason RATE_LIMITED; position -> T07",
     "on401or403": "AUTHORIZATION_FAILURE -> T08 (never retried)",
     "globalCircuitBreaker": {
-      "status": "CLOSURE_CANDIDATE",
+      "status": "CLOSED",
       "gap": {
         "id": "DI-GAP-S4-PROVIDER-BACKPRESSURE-001",
-        "status": "CLOSURE_CANDIDATE",
+        "status": "CLOSED",
         "closureEvidence": "EXP021_S4F2_PROVIDER_BACKPRESSURE_CLOSURE.md",
         "certificationScope": "ATOMIC_REDIS_INVARIANT_MULTI_REPLICA_SERVICE_OBJECTS",
         "productionLoadCertification": "NOT_CLAIMED"

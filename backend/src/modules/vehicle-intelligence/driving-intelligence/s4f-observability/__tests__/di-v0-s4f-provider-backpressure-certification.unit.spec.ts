@@ -107,10 +107,10 @@ describe('S4F-2 provider backpressure certification (unit)', () => {
     expect(r.tinyActivationReady).toBe(false);
   });
 
-  it('audit reflects S4F-2 CLOSURE_CANDIDATE certification markers', () => {
+  it('audit reflects S4F-2 CLOSED certification markers', () => {
     const audit = auditDiV0S4ProviderBackpressure();
-    expect(DI_V0_S4F2_PROVIDER_BACKPRESSURE_CERTIFICATION.gapStatus).toBe('CLOSURE_CANDIDATE');
-    expect(audit.gapStatus).toBe('CLOSURE_CANDIDATE');
+    expect(DI_V0_S4F2_PROVIDER_BACKPRESSURE_CERTIFICATION.gapStatus).toBe('CLOSED');
+    expect(audit.gapStatus).toBe('CLOSED');
     expect(audit.multiReplicaBackpressureProven).toBe(true);
     expect(audit.s4BudgetBypassPossible).toBe(false);
     expect(DI_V0_S4F2_PROVIDER_BACKPRESSURE_CERTIFICATION.globalCooldownBlocksAllPriorities).toBe(true);

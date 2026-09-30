@@ -1693,11 +1693,11 @@ nodes:
     type: gap
     title: S4 provider acquisition backpressure certification
     epistemic_status: CONFIRMED
-    validation_status: CLOSURE_CANDIDATE
+    validation_status: CLOSED
     summary: >
-      S4F-2 (2026-09-30): Redis two-replica certification for global cap, reserved HIGH under normal admission,
-      lease recovery, shared 429 cooldown, Redis fail-closed. Global cooldown blocks all priorities (P1.3 acquire step 2).
-      Gap CLOSURE_CANDIDATE — Tiny activation still requires contract CLOSED + providerGlobalBudgetEnabled=ENABLED + operator auth.
+      S4F-2 (2026-09-30): Redis two-replica certification closed the gap (run 36735099353; 10/10 real Redis tests).
+      Reserved HIGH under normal admission; global cooldown blocks all priorities (P1.3 acquire step 2).
+      Tiny activation remains NOT_READY without providerGlobalBudgetEnabled=ENABLED and operator authorization.
     source_paths:
       - architecture/drivingintelligence/evidence/EXP021_S4F2_PROVIDER_BACKPRESSURE_CLOSURE.md
       - architecture/drivingintelligence/design/s4a/s4a-contract.v2.json

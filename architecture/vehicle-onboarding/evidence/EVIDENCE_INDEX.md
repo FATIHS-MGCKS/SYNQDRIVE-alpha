@@ -6,6 +6,10 @@
 | VO-EVID-1-001 | VO-1 target architecture package | REPO_DOCUMENTATION | [TARGET_ARCHITECTURE.md](../TARGET_ARCHITECTURE.md), [VO1_QUESTION_RESOLUTIONS.md](../research/VO1_QUESTION_RESOLUTIONS.md) |
 | VO-EVID-2-001 | VO-2 persistence migration + schema | REPO_CODE | `backend/prisma/migrations/20260930130000_vehicle_onboarding_vo2_persistence/`, [VO2_LINK_HISTORY_AUDIT.md](./VO2_LINK_HISTORY_AUDIT.md) |
 | VO-EVID-2-002 | VO-2.1 integrity constraints + legacy upgrade proof | REPO_CODE | `backend/prisma/migrations/20260930140000_vehicle_onboarding_vo2_1_integrity/`, [VO2_1_PERSISTENCE_INTEGRITY.md](./VO2_1_PERSISTENCE_INTEGRITY.md) |
+| VO-EVID-3-001 | VO-3 orchestrator + atomic activation (no public cutover) | REPO_CODE | [VO3_ORCHESTRATOR_ACTIVATION.md](./VO3_ORCHESTRATOR_ACTIVATION.md), [CURRENT_RUNTIME_ACTIVATION_MATRIX.md](./CURRENT_RUNTIME_ACTIVATION_MATRIX.md) |
+| VO-EVID-3-001B | VO-3.1 correctness / tenant isolation seal | REPO_CODE | [VO3_1_CORRECTNESS_SEAL.md](./VO3_1_CORRECTNESS_SEAL.md) |
+| VO-EVID-3-001C | VO-3.2 source-adoption security + Postgres final seal | REPO_CODE | [VO3_2_FINAL_RUNTIME_SEAL.md](./VO3_2_FINAL_RUNTIME_SEAL.md) |
+| VO-EVID-4-001 | VO-4 readiness authority + profile engine | REPO_CODE | [VO4_READINESS_AUTHORITY.md](./VO4_READINESS_AUTHORITY.md) |
 | VO-EVID-0A-001 | VO-0A repository discovery anchor | REPO_AUDIT | Anchor SHA `312d9f54a2b4c0b0740061d3e2b74897e78eacb0` cited in CURRENT_STATE |
 
 Supporting UI audit (not VO authority): `docs/ui/master-admin-connected-vehicles-dimo-deep-audit.md`

@@ -1,51 +1,53 @@
-# EXP-021 S4F-2 — Provider backpressure certification (remediation)
+# EXP-021 S4F-2 — Provider backpressure gap closure seal
 
-**Base main:** `60f925b2c9720bf4b7ccd16949ef8acf0330e4a8`  
-**Gap:** `DI-GAP-S4-PROVIDER-BACKPRESSURE-001` → **CLOSURE_CANDIDATE** (not promoted to CLOSED for Tiny Activation in this PR)
+**Closure date:** 2026-09-30  
+**Gap:** `DI-GAP-S4-PROVIDER-BACKPRESSURE-001` → **CLOSED** (certification seal; Tiny Activation remains NOT_READY)
 
-## Certification config (R1)
+## Pre-seal exact-head evidence
 
-Redis integration uses `validateDimoProviderBudgetConfig`-valid shapes only:
+| Field | Value |
+|-------|--------|
+| Pre-seal head | `e5902f89a96f98b153b6e26af178442cf72e95c9` |
+| S4A PostgreSQL integration run | [36735099353](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/36735099353) — **PASS** |
+| Redis env | `DIMO_PROVIDER_BUDGET_REDIS_INTEGRATION=1` |
+| Redis suite | `dimo-provider-budget.multi-replica.redis.integration.spec.ts` |
+| Redis tests | **10 executed / 10 passed / 0 skipped** |
 
-- `globalLeaseMs >= 5000` (lease expiry test waits real duration)
-- `globalMaxInFlight=4`, `reservedHighPrioritySlots=1` → BACKGROUND cap = **3**
+### Certified Redis cases (PB01–PB29 subset)
 
-## Proven invariants (atomic Redis, two service replicas)
+PB01, PB02, PB05, PB06 (valid `globalLeaseMs≥5000`), PB07/PB08, PB10, PB11, PB27, PB28, PB29.
 
-| ID | Property |
-|----|----------|
-| PB01 | 3× BACKGROUND + 1× HIGH → global in-flight 4; 5th permit `ACQUIRE_TIMEOUT` |
-| PB02 | Reserved HIGH slot under **normal admission** (no cooldown) |
-| PB11 | Saturation 3 BACKGROUND + 1 HIGH → extra BACKGROUND `ACQUIRE_TIMEOUT` |
-| PB06 | Lease expiry with valid `globalLeaseMs` |
-| PB07–08 | Shared 429 threshold + cooldown across replicas |
-| PB10 | Redis unavailable → `REDIS_UNAVAILABLE` |
-| PB27–29 | **Descriptive:** global cooldown blocks HIGH + CRITICAL; recovery after expiry |
+## Deterministic S4E Class-A race (same pre-seal head)
 
-## Admission vs cooldown (R7)
+S4E2-A1 hardened with explicit control + pipeline registry locks and independent retirement connection (not `Promise.all` scheduling).
+
+## i18n governance
+
+Pre-seal authority approval: run **36740380917** — PASS (trusted actor FATIHS-MGCKS).  
+Post-seal heads with authority-path changes may require label reapplication (`i18n-governance-authority-change`).
+
+## Admission vs cooldown
 
 | Layer | Behavior |
 |-------|----------|
-| **Normal admission** | `HIGH_PRIORITY_RESERVED_CAPACITY_PROVEN_NORMAL_ADMISSION=YES` (PB02) |
-| **Global provider cooldown** | `HIGH_PRIORITY_AVAILABLE_DURING_GLOBAL_COOLDOWN=NO`, `CRITICAL_AVAILABLE_DURING_GLOBAL_COOLDOWN=NO` (PB27–28) |
+| **Normal admission** | Reserved HIGH capacity proven (PB02) |
+| **Global provider cooldown** | Blocks **all** priorities (PB27–28); authority P1.3 acquire step 2 |
 
-Reserved slots do **not** guarantee HIGH/CRITICAL availability during active global cooldown.
+Reference: `architecture/P1_3_GLOBAL_DIMO_PROVIDER_BUDGET_FINAL_RESPONSE_2026-08-29.md` §3 acquire algorithm step 2.
 
-## Global cooldown authority (R4)
-
-**EXISTING_ALL_PRIORITY_COOLDOWN_AUTHORITY_FOUND=YES**
-
-- `architecture/P1_3_GLOBAL_DIMO_PROVIDER_BUDGET_FINAL_RESPONSE_2026-08-29.md` — acquire algorithm step 2: cooldown checked before priority / cap logic
-- `architecture/scaling-process/DIMO_GLOBAL_PROVIDER_BUDGET.md` — global 429 cooldown metric
-
-**NEW_COOLDOWN_PRIORITY_GAP_REQUIRED=NO** — behavior is documented platform policy; S4 certification is consistent.
-
-**DIMO_429_SCOPE_KNOWN=PARTIAL** — repo documents global Redis cooldown window (`dimo:provider:budget:429_window:{minute}`); external DIMO provider quota scope (global vs endpoint) not verified here.
+**DIMO policy authority change:** not required (existing platform policy).
 
 ## Tiny activation
 
-Requires contract gate `DI-GAP-S4-PROVIDER-BACKPRESSURE-001:CLOSED` plus `providerGlobalBudgetEnabled=ENABLED` and operator authorization. **CLOSURE_CANDIDATE ≠ Tiny Activation ready.**
+Closing this gap satisfies `providerBackpressureGap:CLOSED` in the readiness evaluator when evidence is supplied.
+
+**Tiny Activation is NOT ready** without:
+
+- `providerGlobalBudgetEnabled=ENABLED` (fail-closed on DISABLED/UNKNOWN/missing)
+- location retention governance note
+- explicit operator authorization
+- remaining gates (e.g. replay deserializer CLOSED)
 
 ## Not claimed
 
-Production N≈1000 load certification.
+`productionLoadCertification = NOT_CLAIMED` — no production N≈1000 load certification.

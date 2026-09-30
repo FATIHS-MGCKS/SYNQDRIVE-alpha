@@ -1,6 +1,6 @@
 # Battery Intelligence — domain architecture (LV / HV / Shared Core)
 
-**Status:** **M3.3-H0 SEAL PASS** (2026-09-30 audit) · post-G4 roadmap  
+**Status:** **M3.3-H0 SEAL PASS** · **M3.3-HV-H1 foundation** (2026-09-30 contracts) · post-G4 roadmap  
 **Repository:** `origin/main` @ **`312d9f54a2b4c0b0740061d3e2b74897e78eacb0`** (H0 baseline; see audit for drift)  
 **Production:** release **`20260929224455_v4994`** @ **`1dd4224037a84417c5d605575bb6d288ac93184e`**
 
@@ -130,7 +130,7 @@ Authoritative detail: `CURRENT_STATE.md`, `research/M3_3G_*`, `research/M3_3F_*`
 | Gap | Priority |
 |-----|----------|
 | **M3.3-H0-HV** subtrack | **Coordinated under M3.3-H0** — signals, persistence, ERD vs BI ownership |
-| HV longitudinal / health model authority (do **not** clone LV E2 blindly) | After H0 seal → **M3.3-HV-H1** |
+| HV longitudinal / health model authority (do **not** clone LV E2 blindly) | **M3.3-HV-H1** foundation (capability + evidence quality) → **M3.3-HV-H2+** |
 | HV F5 or equivalent natural-evidence register | PLANNED after H0-HV |
 | HV customer-visible health fields | BLOCKED until maturity gates |
 

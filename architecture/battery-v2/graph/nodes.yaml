@@ -1867,3 +1867,18 @@ nodes:
       - backend/src/modules/vehicle-intelligence/battery-health/generalized-evidence/rest-session-features/longitudinal/f5-natural-calibration-report/f5-ground-truth-correlation.constants.ts
     evidence:
       - BAT-V2-EVID-CODE-ANCHOR-001
+
+  - id: BAT-V2-AUTH-H1-001
+    type: authority
+    title: M3.3-HV-H1 provider capability and evidence foundation
+    epistemic_status: CONFIRMED
+    summary: >
+      Per-vehicle HV capability matrix from VehicleBatteryCapability + HvMethodProfile;
+      orthogonal freshness semantics; fail-closed evidence quality; session↔evidence linkage;
+      read-only evidence readiness report CLI; no customer HV health score; no schema change;
+      H1_RUNTIME_REACHABLE=NO.
+    source_paths:
+      - architecture/battery-v2/research/M3_3_HV_H1_PROVIDER_CAPABILITY_EVIDENCE_FOUNDATION_2026-09-30.md
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-h1/
+    evidence:
+      - BAT-V2-EVID-CODE-ANCHOR-001

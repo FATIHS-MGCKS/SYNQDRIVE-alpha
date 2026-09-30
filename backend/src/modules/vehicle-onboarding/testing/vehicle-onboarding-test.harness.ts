@@ -1,0 +1,69 @@
+import type { PrismaClient, VehicleOnboardingCase } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import { VehicleOnboardingCaseService } from '../services/vehicle-onboarding-case.service';
+import { VehicleOnboardingActivationService } from '../services/vehicle-onboarding-activation.service';
+import { DimoVehicleDataSourceLinkService } from '@modules/dimo/dimo-vehicle-data-source-link.service';
+import { VehicleOnboardingSourceAdoptionAuthority } from '../source-adoption/vehicle-onboarding-source-adoption.authority';
+import { TestVehicleOnboardingReadinessAuthority } from '../readiness/test-readiness-authority';
+import { buildTestReadinessSnapshot } from '../readiness/test-readiness-authority';
+import { READINESS_SNAPSHOT_VERSION } from '../contracts/vo-document-versions';
+import type { VehicleOnboardingReadinessAuthority } from '../readiness/vehicle-onboarding-readiness-authority';
+import type { Vo3ActivationFaultStage } from '../services/vehicle-onboarding-activation.service';
+
+export function createVehicleOnboardingTestHarness(
+  prisma: PrismaClient,
+  readiness: VehicleOnboardingReadinessAuthority = new TestVehicleOnboardingReadinessAuthority(),
+) {
+  const caseService = new VehicleOnboardingCaseService(
+    prisma as any,
+    new VehicleOnboardingSourceAdoptionAuthority(),
+  );
+  const activationService = new VehicleOnboardingActivationService(
+    prisma as any,
+    new DimoVehicleDataSourceLinkService(prisma as any),
+    readiness,
+  );
+  return { caseService, activationService };
+}
+
+export async function sealCaseReadyForTest(
+  prisma: PrismaClient,
+  organizationId: string,
+  caseId: string,
+  actorUserId: string | null = null,
+): Promise<VehicleOnboardingCase> {
+  const row = await prisma.vehicleOnboardingCase.findFirst({
+    where: { id: caseId, organizationId },
+  });
+  if (!row) throw new Error('case not found for test seal');
+  const readiness = buildTestReadinessSnapshot(actorUserId);
+  return prisma.vehicleOnboardingCase.update({
+    where: { id: caseId },
+    data: {
+      status: 'READY_FOR_ACTIVATION',
+      readinessSnapshotJson: readiness as unknown as Prisma.InputJsonValue,
+      readinessSnapshotVersion: READINESS_SNAPSHOT_VERSION,
+      readinessProfileVersion: readiness.profileVersion,
+      lastActorUserId: actorUserId,
+    },
+  });
+}
+
+export interface TestActivateInput {
+  organizationId: string;
+  onboardingCaseId: string;
+  actorUserId: string | null;
+  faultAfterStage?: Vo3ActivationFaultStage;
+}
+
+export async function activateForTest(
+  harness: ReturnType<typeof createVehicleOnboardingTestHarness>,
+  input: TestActivateInput,
+) {
+  return harness.activationService.activateVehicle({
+    organizationId: input.organizationId,
+    onboardingCaseId: input.onboardingCaseId,
+    actorUserId: input.actorUserId,
+    faultAfterStage: input.faultAfterStage,
+  });
+}

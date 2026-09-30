@@ -27,7 +27,7 @@ export function auditDiV0S4ProviderBackpressure(): DiV0S4fProviderBackpressureAu
     'Shared request executor owns HTTP retries; S4 state machine owns cross-attempt retry (T07).',
     'Multi-replica Redis integration proves global in-flight cap, reserved HIGH slots under normal admission, lease recovery, shared 429 cooldown, Redis fail-closed.',
     'Global provider cooldown blocks all priorities before cap logic (P1.3 acquire step 2) — reserved slots do not protect HIGH/CRITICAL during cooldown.',
-    'Tiny activation requires explicit providerGlobalBudgetEnabled=ENABLED and gap status CLOSED in contract gates — CLOSURE_CANDIDATE is not sufficient.',
+    'Tiny activation still requires providerGlobalBudgetEnabled=ENABLED, operator authorization, and remaining contract gates even when this gap is CLOSED.',
     'Production N≈1000 load certification is not claimed — atomic Redis invariants only.',
   ];
 
