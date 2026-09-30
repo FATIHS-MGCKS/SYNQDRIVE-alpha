@@ -11,6 +11,7 @@ on:
       - 'backend/src/modules/vehicle-intelligence/driving-intelligence/s4c-executor/**'
       - 'backend/src/modules/vehicle-intelligence/driving-intelligence/s4d-replay/**'
       - 'backend/src/modules/vehicle-intelligence/driving-intelligence/s4e-drift-watcher/**'
+      - 'backend/src/modules/vehicle-intelligence/driving-intelligence/s4f-observability/**'
       - 'backend/src/modules/vehicle-intelligence/driving-intelligence/position-acquisition/di-v0-position-snapshot-parse.ts'
       - 'backend/src/modules/vehicle-intelligence/driving-intelligence/position-acquisition/di-v0-position-snapshot-semantic-validate.ts'
       - 'backend/src/modules/vehicle-intelligence/driving-intelligence/r1-obd-acquisition/di-v0-r1-obd-snapshot-parse.ts'
@@ -70,6 +71,7 @@ jobs:
               backend/src/modules/vehicle-intelligence/driving-intelligence/s4c-executor/*) return 0 ;;
               backend/src/modules/vehicle-intelligence/driving-intelligence/s4d-replay/*) return 0 ;;
               backend/src/modules/vehicle-intelligence/driving-intelligence/s4e-drift-watcher/*) return 0 ;;
+              backend/src/modules/vehicle-intelligence/driving-intelligence/s4f-observability/*) return 0 ;;
               backend/src/modules/vehicle-intelligence/driving-intelligence/position-acquisition/di-v0-position-snapshot-parse.ts) return 0 ;;
               backend/src/modules/vehicle-intelligence/driving-intelligence/position-acquisition/di-v0-position-snapshot-semantic-validate.ts) return 0 ;;
               backend/src/modules/vehicle-intelligence/driving-intelligence/r1-obd-acquisition/di-v0-r1-obd-snapshot-parse.ts) return 0 ;;
@@ -125,7 +127,7 @@ jobs:
           fi
 
   s4-unit-tests:
-    name: S4 unit test suites (S4A–S4E)
+    name: S4 unit test suites (S4A–S4F)
     runs-on: ubuntu-latest
     needs:
       - detect-s4a-changes
@@ -145,7 +147,7 @@ jobs:
         working-directory: backend
         run: npm ci && npx prisma generate
 
-      - name: Run S4A–S4E unit suites
+      - name: Run S4A–S4F unit suites
         working-directory: backend
         run: |
           set -euo pipefail
@@ -154,9 +156,10 @@ jobs:
           npm run test:di:s4c
           npm run test:di:s4d
           npm run test:di:s4e
+          npm run test:di:s4f
 
   s4a-postgres-tests:
-    name: S4 PostgreSQL test suites (S4A–S4E)
+    name: S4 PostgreSQL test suites (S4A–S4F)
     runs-on: ubuntu-latest
     needs:
       - detect-s4a-changes
@@ -205,7 +208,7 @@ jobs:
         working-directory: backend
         run: npm ci && npx prisma generate
 
-      - name: Run S4A–S4E PostgreSQL suites
+      - name: Run S4A–S4F PostgreSQL suites
         working-directory: backend
         env:
           DI_V0_S4A_PG_ADMIN_URL: ${{ env.DI_V0_S4A_PG_ADMIN_URL }}
@@ -221,6 +224,7 @@ jobs:
           npm run test:di:s4c:postgres
           npm run test:di:s4d:postgres
           npm run test:di:s4e:postgres
+          npm run test:di:s4f:postgres
 
   s4a-postgres-integration:
     name: S4A PostgreSQL integration

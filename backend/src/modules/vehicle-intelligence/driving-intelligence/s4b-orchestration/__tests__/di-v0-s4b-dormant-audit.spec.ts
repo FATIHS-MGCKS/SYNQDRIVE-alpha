@@ -11,6 +11,7 @@ const S4B_DIR = path.join(__dirname, '..');
 const S4C_DIR = path.join(__dirname, '../../s4c-executor');
 const S4D_DIR = path.join(__dirname, '../../s4d-replay');
 const S4E_DIR = path.join(__dirname, '../../s4e-drift-watcher');
+const S4F_DIR = path.join(__dirname, '../../s4f-observability');
 
 function walk(dir: string, pattern: RegExp, acc: string[] = []): string[] {
   if (!fs.existsSync(dir)) return acc;
@@ -84,7 +85,8 @@ describe('DI V0 S4B dormant-by-construction audit', () => {
           file.startsWith(S4B_DIR + path.sep) ||
           file.startsWith(S4C_DIR + path.sep) ||
           file.startsWith(S4D_DIR + path.sep) ||
-          file.startsWith(S4E_DIR + path.sep)
+          file.startsWith(S4E_DIR + path.sep) ||
+          file.startsWith(S4F_DIR + path.sep)
         ) {
           continue;
         }
