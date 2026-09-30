@@ -22,6 +22,12 @@ import {
   setKillState,
   type S4aTenant,
 } from '../../s4a-foundation/__tests__/di-v0-s4a-postgres-harness';
+import { DI_V0_S4_LIMITS } from '../../s4a-foundation/di-v0-s4a-contract';
+import { DiV0S4MaintenanceService } from '../../s4e-drift-watcher/di-v0-s4e-maintenance.service';
+import {
+  advanceS4aClock,
+  deleteKillRow,
+} from '../../s4a-foundation/__tests__/di-v0-s4a-postgres-harness';
 import { reconcileDiV0S4BeyondDriftHorizonBatch } from '../di-v0-s4f-beyond-horizon';
 import { DiV0S4fReconciliationService } from '../di-v0-s4f-reconciliation.service';
 assertS4aPostgresCiEnv();
@@ -122,11 +128,11 @@ const BEYOND_HORIZON_AGE_SECONDS = 11 * 86_400;
       UPDATE di_v0_s4_work_items SET next_attempt_at = clock_timestamp() + interval '1 hour' WHERE id = ${created.workItemId}`;
     const snap1 = await svc.buildObservabilitySnapshot({ organizationId: t.organizationId });
     expect(snap1.operational.leaseHealth.retryableFutureCount).toBe(1);
-    expect(snap1.operational.leaseHealth.retryableDueCount).toBe(0);
+    expect(snap1.operational.leaseHealth.retryableDueClaimableCount).toBe(0);
     await admin.$executeRaw`
       UPDATE di_v0_s4_work_items SET next_attempt_at = clock_timestamp() - interval '1 minute' WHERE id = ${created.workItemId}`;
     const snap2 = await svc.buildObservabilitySnapshot({ organizationId: t.organizationId });
-    expect(snap2.operational.leaseHealth.retryableDueCount).toBe(1);
+    expect(snap2.operational.leaseHealth.retryableDueClaimableCount).toBe(1);
   });
 
   it('F05 CLASS-A retirement → zero retired/PENDING PRIMARY anomaly', async () => {
@@ -138,10 +144,10 @@ const BEYOND_HORIZON_AGE_SECONDS = 11 * 86_400;
     const pvk = buildDiV0S4PipelineVersionKey(manifest);
     await retireRegistry(admin, pvk, config);
     const snap = await svc.buildObservabilitySnapshot({ organizationId: t.organizationId });
-    expect(snap.operational.pipelineHealth.retiredPendingPrimaryCount).toBe(0);
+    expect(snap.operational.pipelineHealth.retiredPendingPrimaryClassAViolationCount).toBe(0);
   });
 
-  it('F06 legacy status-only retired straggler classified', async () => {
+  it('F06/F35 status-only retirement straggler — severe invariant, provenance not inferable', async () => {
     const t = await tenant();
     const config = s4aConfigFor(tenants);
     const manifest = s4aManifestFor(config);
@@ -150,8 +156,9 @@ const BEYOND_HORIZON_AGE_SECONDS = 11 * 86_400;
     const pvk = buildDiV0S4PipelineVersionKey(manifest);
     await retireRegistryStatusOnly(admin, pvk);
     const snap = await svc.buildObservabilitySnapshot({ organizationId: t.organizationId });
-    expect(snap.operational.pipelineHealth.retiredPendingPrimaryCount).toBe(1);
-    expect(snap.anomalySamples.RETIRED_PENDING_PRIMARY?.length).toBeGreaterThan(0);
+    expect(snap.operational.pipelineHealth.retiredPendingPrimaryClassAViolationCount).toBe(1);
+    expect(snap.anomalySamples.RETIRED_PENDING_PRIMARY_CLASS_A_VIOLATION?.length).toBeGreaterThan(0);
+    expect(snap.operational.pipelineHealth.retiredNonterminalProvenanceUnknownCount).toBe(0);
   });
 
   it('F07 evidence byte/count metrics accurate', async () => {
@@ -201,7 +208,7 @@ const BEYOND_HORIZON_AGE_SECONDS = 11 * 86_400;
     await r.createWorkItem({ tripId: t.tripId, sourceFamily: 'RUPTELA_R1', runPurpose: 'PRIMARY', pipelineManifest: manifest });
     await changeTripBoundary(admin, t.tripId);
     const batch = await reconcileDiV0S4BeyondDriftHorizonBatch(admin, 50, { settlementAnchorAt: null, workItemId: null }, t.organizationId);
-    expect(batch.mismatchCount).toBe(1);
+    expect(batch.boundaryMismatchCount).toBe(1);
   });
 
   it('F10 beyond-horizon mismatch causes ZERO mutation and ZERO T11', async () => {
@@ -237,7 +244,7 @@ const BEYOND_HORIZON_AGE_SECONDS = 11 * 86_400;
     await changeTripBoundary(admin, t.tripId);
     const batch = await reconcileDiV0S4BeyondDriftHorizonBatch(admin, 50, { settlementAnchorAt: null, workItemId: null }, t.organizationId);
     expect(batch.scannedCount).toBe(0);
-    expect(batch.mismatchCount).toBe(0);
+    expect(batch.boundaryMismatchCount).toBe(0);
   });
 
   it('F12 cross-tenant isolation', async () => {
@@ -279,11 +286,165 @@ const BEYOND_HORIZON_AGE_SECONDS = 11 * 86_400;
     expect(seen.size).toBe(5);
   });
 
-  it('F14 read-only transaction accepts reconciliation', async () => {
+  it('F32 real single-connection READ ONLY transaction proof', async () => {
     const t = await tenant();
-    await admin.$executeRaw`BEGIN READ ONLY`;
-    const snap = await svc.buildObservabilitySnapshot({ organizationId: t.organizationId });
-    await admin.$executeRaw`COMMIT`;
+    const snap = await admin.$transaction(async (tx) => {
+      await tx.$executeRaw`SET TRANSACTION READ ONLY`;
+      return await svc.buildObservabilitySnapshotOnDb(tx, { organizationId: t.organizationId });
+    });
     expect(snap.reconciliation.readOnly).toBe(true);
+    expect(snap.reconciliation.diagnosticReconciliation.bounded).toBe(true);
+    expect(snap.reconciliation.operationalAggregates.bounded).toBe(false);
+  });
+
+  async function seatExhaustedLeased(
+    r: DiV0S4WorkItemRepository,
+    tripId: string,
+    workItemId: string,
+    manifest: ReturnType<typeof s4aManifestFor>,
+  ): Promise<void> {
+    for (let i = 0; i < DI_V0_S4_LIMITS.maxAttempts; i++) {
+      await r.claim({ leaseOwner: `ex-${i}`, pipelineManifest: manifest, workItemId });
+      await advanceS4aClock(admin, tripId, DI_V0_S4_LIMITS.leaseDurationSeconds + 60);
+    }
+  }
+
+  it('F28/F29 authoritative T10 exhausted predicate parity and retryable separation', async () => {
+    const t = await tenant();
+    const config = s4aConfigFor(tenants);
+    const manifest = s4aManifestFor(config);
+    const r = repo(config);
+    const created = await r.createWorkItem({
+      tripId: t.tripId,
+      sourceFamily: 'RUPTELA_R1',
+      runPurpose: 'PRIMARY',
+      pipelineManifest: manifest,
+    });
+    await seatExhaustedLeased(r, t.tripId, created.workItemId, manifest);
+    const before = await svc.buildObservabilitySnapshot({ organizationId: t.organizationId });
+    expect(before.operational.leaseHealth.t10ExhaustedCandidateCount).toBe(1);
+    expect(before.operational.leaseHealth.retryableDueClaimableCount).toBe(0);
+    const maintenance = new DiV0S4MaintenanceService(admin, r, config);
+    await maintenance.runMaintenancePass();
+    const after = await svc.buildObservabilitySnapshot({ organizationId: t.organizationId });
+    expect(after.operational.leaseHealth.t10ExhaustedCandidateCount).toBe(0);
+    expect(after.operational.workLifecycle.FAILED_TERMINAL).toBe(1);
+  }, 60_000);
+
+  it('F30 >10d same-org vehicle reassignment detected as scope corruption', async () => {
+    const t = await seedS4aTenant(admin, BEYOND_HORIZON_AGE_SECONDS);
+    tenants.push(t);
+    const config = s4aConfigFor(tenants);
+    const manifest = s4aManifestFor(config);
+    const r = repo(config);
+    await r.createWorkItem({ tripId: t.tripId, sourceFamily: 'RUPTELA_R1', runPurpose: 'PRIMARY', pipelineManifest: manifest });
+    const newVehicleId = randomUUID();
+    await admin.$executeRawUnsafe(
+      `INSERT INTO vehicles (id, organization_id, vin, license_plate, make, model, year, fuel_type, status, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, 'Test', 'S4F', 2024, 'GASOLINE', 'AVAILABLE', now(), now())`,
+      newVehicleId,
+      t.organizationId,
+      `V${randomUUID().slice(0, 15)}`.padEnd(17, '0'),
+      `PL-${randomUUID().slice(0, 6)}`,
+    );
+    await admin.$executeRaw`UPDATE vehicle_trips SET vehicle_id = ${newVehicleId} WHERE id = ${t.tripId}`;
+    const batch = await reconcileDiV0S4BeyondDriftHorizonBatch(
+      admin,
+      50,
+      { settlementAnchorAt: null, workItemId: null },
+      t.organizationId,
+    );
+    expect(batch.scopeCorruptionCount).toBe(1);
+    expect(batch.scopeCorruptionWorkItemIds[0]?.code).toBe('VEHICLE_MISMATCH');
+    expect(batch.boundaryMismatchCount).toBe(0);
+    await admin.$executeRaw`DELETE FROM vehicles WHERE id = ${newVehicleId}`;
+  });
+
+  it('F31 >10d organization scope corruption detected', async () => {
+    const t = await seedS4aTenant(admin, BEYOND_HORIZON_AGE_SECONDS);
+    tenants.push(t);
+    const config = s4aConfigFor(tenants);
+    const manifest = s4aManifestFor(config);
+    const r = repo(config);
+    await r.createWorkItem({
+      tripId: t.tripId,
+      sourceFamily: 'RUPTELA_R1',
+      runPurpose: 'PRIMARY',
+      pipelineManifest: manifest,
+    });
+    const otherOrg = randomUUID();
+    await admin.$executeRawUnsafe(
+      `INSERT INTO organizations (id, company_name, business_type, status, created_at, updated_at)
+       VALUES ($1, 'S4F-ORG', 'RENTAL', 'ACTIVE', now(), now())`,
+      otherOrg,
+    );
+    await admin.$executeRaw`UPDATE vehicles SET organization_id = ${otherOrg} WHERE id = ${t.vehicleId}`;
+    const batch = await reconcileDiV0S4BeyondDriftHorizonBatch(
+      admin,
+      50,
+      { settlementAnchorAt: null, workItemId: null },
+      t.organizationId,
+    );
+    expect(batch.scopeCorruptionCount).toBe(1);
+    expect(batch.scopeCorruptionWorkItemIds[0]?.code).toBe('ORGANIZATION_MISMATCH');
+    await admin.$executeRaw`UPDATE vehicles SET organization_id = ${t.organizationId} WHERE id = ${t.vehicleId}`;
+    await admin.$executeRaw`DELETE FROM organizations WHERE id = ${otherOrg}`;
+  });
+
+  it('F33 retired valid unexpired lease classification', async () => {
+    const t = await tenant();
+    const config = s4aConfigFor(tenants);
+    const manifest = s4aManifestFor(config);
+    const r = repo(config);
+    const created = await r.createWorkItem({
+      tripId: t.tripId,
+      sourceFamily: 'RUPTELA_R1',
+      runPurpose: 'PRIMARY',
+      pipelineManifest: manifest,
+    });
+    await r.claim({ leaseOwner: 'S4F_LEASE', pipelineManifest: manifest, workItemId: created.workItemId });
+    const pvk = buildDiV0S4PipelineVersionKey(manifest);
+    await retireRegistryStatusOnly(admin, pvk);
+    const snap = await svc.buildObservabilitySnapshot({ organizationId: t.organizationId });
+    expect(snap.operational.pipelineHealth.retiredValidUnexpiredLeasedCount).toBe(1);
+  });
+
+  it('F34 retired expired lease T12-eligible classification', async () => {
+    const t = await tenant();
+    const config = s4aConfigFor(tenants);
+    const manifest = s4aManifestFor(config);
+    const r = repo(config);
+    const created = await r.createWorkItem({
+      tripId: t.tripId,
+      sourceFamily: 'RUPTELA_R1',
+      runPurpose: 'PRIMARY',
+      pipelineManifest: manifest,
+    });
+    await r.claim({ leaseOwner: 'S4F_LEASE', pipelineManifest: manifest, workItemId: created.workItemId });
+    await admin.$executeRaw`
+      UPDATE di_v0_s4_work_items SET lease_expires_at = clock_timestamp() - interval '1 minute'
+      WHERE id = ${created.workItemId}`;
+    const pvk = buildDiV0S4PipelineVersionKey(manifest);
+    await retireRegistryStatusOnly(admin, pvk);
+    const snap = await svc.buildObservabilitySnapshot({ organizationId: t.organizationId });
+    expect(snap.operational.pipelineHealth.retiredExpiredLeasedT12EligibleCount).toBe(1);
+  });
+
+  it('F36 snapshot exposes truthful operational aggregate boundedness', async () => {
+    const t = await tenant();
+    const snap = await svc.buildObservabilitySnapshot({ organizationId: t.organizationId });
+    expect(snap.reconciliation.diagnosticReconciliation.bounded).toBe(true);
+    expect(snap.reconciliation.operationalAggregates.bounded).toBe(false);
+    expect(snap.reconciliation.operationalAggregates.scanKind).toBe('FULL_TABLE_AGGREGATE');
+  });
+
+  it('control plane missing is fail-closed in observability', async () => {
+    const t = await tenant();
+    await deleteKillRow(admin);
+    const snap = await svc.buildObservabilitySnapshot({ organizationId: t.organizationId });
+    expect(snap.operational.controlPlane.readability).toBe('MISSING');
+    expect(snap.operational.controlPlane.killState).toBe('KILLED');
+    expect(snap.anomalySamples.CONTROL_PLANE_MISSING).toContain('di_v0_s4_control');
+    await setKillState(admin, 'NOT_KILLED');
   });
 });

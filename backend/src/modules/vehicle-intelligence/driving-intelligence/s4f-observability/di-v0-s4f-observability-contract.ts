@@ -3,16 +3,20 @@ export const DI_V0_S4_OBSERVABILITY_SNAPSHOT_V1 = 'DI_V0_S4_OBSERVABILITY_SNAPSH
 
 export type DiV0S4fAnomalyKind =
   | 'RETIRED_PENDING_PRIMARY'
+  | 'RETIRED_PENDING_PRIMARY_CLASS_A_VIOLATION'
   | 'EXPIRED_LEASE'
   | 'RETRYABLE_DUE'
   | 'ATTEMPTS_EXHAUSTED'
   | 'BOUNDARY_MISMATCH_BEYOND_HORIZON'
+  | 'BEYOND_HORIZON_SCOPE_CORRUPTION'
   | 'ACTIVE_PIPELINE_EXECUTOR_UNAVAILABLE'
   | 'RETENTION_DUE'
   | 'PIN_STATE_INCONSISTENT'
   | 'CONTROL_PLANE_UNREADABLE'
+  | 'CONTROL_PLANE_MISSING'
+  | 'CONTROL_PLANE_MALFORMED'
   | 'ACTIVATION_GATE_UNSATISFIED'
-  | 'RETIRED_NONTERMINAL_LEGACY';
+  | 'RETIRED_NONTERMINAL_PROVENANCE_UNKNOWN';
 
 export interface DiV0S4fWorkLifecycleCounts {
   PENDING: number;
@@ -27,9 +31,9 @@ export interface DiV0S4fWorkLifecycleCounts {
 export interface DiV0S4fLeaseHealthMetrics {
   expiredLeasedCount: number;
   activeLeasedCount: number;
-  retryableDueCount: number;
+  retryableDueClaimableCount: number;
   retryableFutureCount: number;
-  attemptsExhaustedCount: number;
+  t10ExhaustedCandidateCount: number;
   oldestPendingAgeSeconds: number | null;
   oldestRetryableDueAgeSeconds: number | null;
 }
@@ -38,8 +42,10 @@ export interface DiV0S4fPipelineHealthMetrics {
   activeRegistryCount: number;
   retiredRegistryCount: number;
   retiredNonterminalWorkCount: number;
-  retiredPendingPrimaryCount: number;
-  retiredNonterminalLegacyCount: number;
+  retiredPendingPrimaryClassAViolationCount: number;
+  retiredValidUnexpiredLeasedCount: number;
+  retiredExpiredLeasedT12EligibleCount: number;
+  retiredNonterminalProvenanceUnknownCount: number;
 }
 
 export interface DiV0S4fEvidenceStorageMetrics {
@@ -54,6 +60,7 @@ export interface DiV0S4fEvidenceStorageMetrics {
 
 export interface DiV0S4fBeyondHorizonMetrics {
   beyondDriftHorizonBoundaryMismatchCount: number;
+  beyondDriftHorizonScopeCorruptionCount: number;
   beyondHorizonScannedCount: number;
   cursor: { settlementAnchorAt: string | null; workItemId: string | null };
 }
@@ -65,6 +72,14 @@ export interface DiV0S4fExecutorLivenessMetrics {
   globalExecutorLivenessAuthorityPresent: false;
 }
 
+export type DiV0S4fControlPlaneReadability = 'READABLE' | 'MISSING' | 'UNREADABLE' | 'MALFORMED';
+
+export interface DiV0S4fControlPlaneMetrics {
+  readability: DiV0S4fControlPlaneReadability;
+  killState: 'KILLED' | 'NOT_KILLED' | 'UNKNOWN';
+  killReason: string | null;
+}
+
 export interface DiV0S4fOperationalMetrics {
   workLifecycle: DiV0S4fWorkLifecycleCounts;
   leaseHealth: DiV0S4fLeaseHealthMetrics;
@@ -72,6 +87,7 @@ export interface DiV0S4fOperationalMetrics {
   evidenceStorage: DiV0S4fEvidenceStorageMetrics;
   beyondHorizon: DiV0S4fBeyondHorizonMetrics;
   executorLiveness: DiV0S4fExecutorLivenessMetrics;
+  controlPlane: DiV0S4fControlPlaneMetrics;
 }
 
 export interface DiV0S4fObservabilitySnapshotV1 {
@@ -83,9 +99,16 @@ export interface DiV0S4fObservabilitySnapshotV1 {
   organizationId?: string;
   reconciliation: {
     readOnly: true;
-    bounded: true;
-    cursorAuthority: 'SETTLEMENT_ANCHOR_AT_THEN_WORK_ITEM_ID';
-    partial: boolean;
+    diagnosticReconciliation: {
+      bounded: true;
+      cursorAuthority: 'SETTLEMENT_ANCHOR_AT_THEN_WORK_ITEM_ID';
+      partial: boolean;
+    };
+    operationalAggregates: {
+      bounded: false;
+      scanKind: 'FULL_TABLE_AGGREGATE';
+      indexNotes: readonly string[];
+    };
   };
   operational: DiV0S4fOperationalMetrics;
   anomalySamples: Partial<Record<DiV0S4fAnomalyKind, string[]>>;
