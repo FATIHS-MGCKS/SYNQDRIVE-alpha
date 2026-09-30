@@ -4,7 +4,9 @@ import {
   BatteryMeasurementQuality,
   PrismaClient,
 } from '@prisma/client';
+import { createGtOrgVehicle } from '../ground-truth/ground-truth-postgres.fixture';
 import { HV_M2_CAPACITY_METHOD } from '../hv-capacity-shadow/hv-capacity-m2.types';
+import { HV_CHARGE_SESSION_QUALITY_STATUS } from '../hv-charge-session/hv-charge-session-quality.status';
 import { probePostgresDatabase } from '../provider-observability-gap/provider-observability-gap-postgres.fixture';
 import {
   assertHvH1TransactionReadOnly,
@@ -12,39 +14,6 @@ import {
 } from './m3-3-hv-h1-evidence-readiness-report.service';
 
 const integrationEnabled = process.env.BATTERY_HV_H1_REPORT_INTEGRATION === '1';
-
-async function createOrgVehicle(prisma: PrismaClient) {
-  const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const org = await prisma.organization.create({
-    data: {
-      companyName: `HV H1 ${suffix}`,
-      businessType: 'FLEET',
-      status: 'ACTIVE',
-    },
-  });
-  const vehicleId = randomUUID();
-  const vin = `VIN${suffix}`.slice(0, 17).padEnd(17, '0');
-  await prisma.$executeRaw`
-    INSERT INTO vehicles (
-      id, organization_id, vin, make, model, year, fuel_type, hardware_type, status,
-      license_plate, created_at, updated_at
-    ) VALUES (
-      ${vehicleId}::uuid,
-      ${org.id}::uuid,
-      ${vin},
-      'Test',
-      'EV',
-      2024,
-      'ELECTRIC'::"FuelType",
-      'LTE_R1'::"HardwareType",
-      'AVAILABLE'::"VehicleStatus",
-      ${`H1-${suffix}`},
-      NOW(),
-      NOW()
-    )
-  `;
-  return { organizationId: org.id, vehicleId };
-}
 
 (integrationEnabled ? describe : describe.skip)(
   'M3.3-HV-H1 evidence readiness report postgres',
@@ -72,8 +41,8 @@ async function createOrgVehicle(prisma: PrismaClient) {
     });
 
     it('scopes capability and session reads to organizationId + vehicleId (tenant isolation)', async () => {
-      const orgA = await createOrgVehicle(prisma);
-      const orgB = await createOrgVehicle(prisma);
+      const orgA = await createGtOrgVehicle(prisma);
+      const orgB = await createGtOrgVehicle(prisma);
       const evaluationAt = new Date('2026-09-30T12:00:00.000Z');
 
       await prisma.vehicleBatteryCapability.create({
@@ -98,7 +67,10 @@ async function createOrgVehicle(prisma: PrismaClient) {
           source: 'DIMO_RECHARGE_SEGMENT',
           startAt: new Date('2026-09-29T10:00:00.000Z'),
           idempotencyKey: `idem-${randomUUID()}`,
-          metadata: { qualityStatus: 'QUALIFIED', capacityValidationEligible: true },
+          metadata: {
+            qualityStatus: HV_CHARGE_SESSION_QUALITY_STATUS.QUALIFIED,
+            capacityValidationEligible: true,
+          },
         },
       });
 
@@ -137,7 +109,7 @@ async function createOrgVehicle(prisma: PrismaClient) {
     });
 
     it('rejects writes inside read-only report transaction', async () => {
-      const { organizationId, vehicleId } = await createOrgVehicle(prisma);
+      const { organizationId } = await createGtOrgVehicle(prisma);
       await expect(
         prisma.$transaction(async (tx) => {
           await assertHvH1TransactionReadOnly(tx as never);
