@@ -53,3 +53,7 @@ When native segment ingested, overlapping fallback sessions are **superseded** (
 
 - Multi-replica concurrent reconcile races — mitigated by vehicle lock (`hv` scope) when Redis available
 - Historical fallback rows after supersession — retained; capacity shadow recompute behavior on supersede **partially traced**
+
+## M3.3-HV-H1 session↔evidence linkage (2026-09-30)
+
+Pure contract `M3_3_HV_H1_SESSION_EVIDENCE_LINKAGE_V1` maps session fields to linkage kinds (`DIRECT`, `PROVIDER_SEGMENT`, `FALLBACK`, …). ERD retains physical segment authority; BI owns interpretation. See H1 research doc §8–9.

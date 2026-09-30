@@ -124,4 +124,9 @@ if len(off) < 1:
 print("E3 runtime reachability guard: OK")
 PY
 
+D3_POSTGRES_CI="$ROOT/backend/scripts/test/battery-longitudinal-profile-materialization-postgres-ci.sh"
+if grep -qE 'hv-h1|test:battery:v2:hv-h1' "$D3_POSTGRES_CI" 2>/dev/null; then
+  fail "LV D3 longitudinal postgres CI must not invoke HV-H1 (M3.3-H0 domain separation)"
+fi
+
 echo "M3.3-H0 domain separation static contracts: OK"

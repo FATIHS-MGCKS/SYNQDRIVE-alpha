@@ -20,6 +20,71 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-30 — M3.3-HV-H1 CI decoupled from LV D3 (PR #1852 seal)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | HV-H1 postgres suite invoked from `battery-longitudinal-profile-materialization-postgres-ci.sh` |
+| **OBSERVATION** | Temporary H1 wiring in D3 CI violated M3.3-H0 LV/HV operational separation even though tests passed |
+| **HYPOTHESIS** | Dedicated path-filtered workflow + H0 script guard preserves domain separation without changing H1 semantics |
+| **CHANGE** | Dedicated `.github/workflows/battery-v2-hv-h1-ci.yml` job `HV-H1 read-only report PostgreSQL`; H0 validator forbids hv-h1 in D3 CI script |
+| **WHY** | M3.3-H0 LV/HV domain separation — LV D3 CI must not depend on HV-H1 validation |
+| **EXPECTED_EFFECT** | D3 longitudinal postgres CI runs LV materialization only; H1 postgres runs in isolated job on H1 path changes |
+| **VALIDATION** | `validate-h0-domain-separation-contracts.sh`; `npm run test:battery:v2:hv-h1:postgres:ci` |
+| **OBSERVED_EFFECT** | D3 script has no hv-h1 reference; dedicated workflow job SUCCESS on rebased head (pending full fleet CI) |
+| **NON_EFFECTS** | H1 scientific contracts unchanged |
+| **REGRESSIONS_OR_TRADEOFFS** | New workflow file requires `i18n-governance-authority-change` label until trusted actor approves |
+| **REMAINING_GAPS** | Full PR CI green blocked on governance label for workflow authority path |
+| **DECISION_STATUS** | VALIDATED |
+| **AFFECTED_GRAPH** | BAT-V2-AUTH-H0-001 (domain separation CI), BAT-V2-AUTH-H1-001 (postgres CI surface) |
+| **EVIDENCE** | `.github/workflows/battery-v2-hv-h1-ci.yml`; `architecture/battery-v2/scripts/validate-h0-domain-separation-contracts.sh` |
+
+---
+
+## CL-2026-09-30 — M3.3-HV-H1 scientific correctness + read-only hardening (PR #1852)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | H1 foundation with duplicated method requirements, matrix field loss, fake unit/range validation, arbitrary readiness counts, capability-only M2/M3 evidence flags |
+| **OBSERVATION** | Scientific eligibility and operator report authority were weaker than HvMethodProfile and F5 read-only patterns |
+| **HYPOTHESIS** | Single method-requirement authority + fail-closed quality/freshness + Prisma READ ONLY transaction restores H1 trust without schema/runtime |
+| **CHANGE** | `hv-capacity-method-signal-requirements.ts`; matrix listing/data status; evidence quality UNKNOWN fail-closed; per-method readiness; session quality/linkage; `runM3_3HvH1ReadOnlyTransaction`; expanded unit + postgres isolation tests |
+| **WHY** | PR #1852 hardening gate before HV-H2 |
+| **EXPECTED_EFFECT** | H1 report cannot claim scientific eligibility without validated unit/range; M2/M3 evidence requires observations; tenant-scoped read-only reads |
+| **VALIDATION** | `npm run test:battery:v2:hv-h1`; `validate-h1-provider-evidence-contracts.sh`; CI postgres harness when DATABASE_URL set |
+| **OBSERVED_EFFECT** | Unit 16 PASS; validators PASS; postgres harness authored (CI) |
+| **NON_EFFECTS** | SCHEMA_CHANGE=NO; PRODUCTION_ENV_CHANGE=NO; H1_AUTOMATIC_RUNTIME_REACHABLE=NO |
+| **REGRESSIONS_OR_TRADEOFFS** | `scientificEligible` remains false until mapper unit/range propagation (explicit UNKNOWN fail-closed) |
+| **REMAINING_GAPS** | Longitudinal input candidate construction not implemented in H1 report |
+| **DECISION_STATUS** | VALIDATED (engineering) |
+| **AFFECTED_GRAPH** | BAT-V2-AUTH-H1-001 (authority semantics) |
+| **EVIDENCE** | `research/M3_3_HV_H1_PROVIDER_CAPABILITY_EVIDENCE_FOUNDATION_2026-09-30.md` |
+
+---
+
+## CL-2026-09-30 — M3.3-HV-H1 provider capability + evidence foundation
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | H0 seal without structured H1 capability/freshness/quality matrix or session linkage contracts |
+| **OBSERVATION** | HV evidence scattered across capability rows, method profile, M2/M3 shadows, charge sessions — no single per-vehicle readiness view |
+| **HYPOTHESIS** | Pure contracts + read-only report suffice for H1 without schema or automatic runtime |
+| **CHANGE** | `hv-h1/*` contracts; CLI `battery:hv-h1:evidence-readiness-report`; `validate-h1-provider-evidence-contracts.sh`; research + graph BAT-V2-AUTH-H1-001 |
+| **WHY** | Primary post-H0 engineering focus; answers provider capability, freshness, quality, session linkage before HV longitudinal model |
+| **EXPECTED_EFFECT** | Deterministic H1 authority; fail-closed scientific eligibility; operator read-only readiness report |
+| **VALIDATION** | `npm run test:battery:v2:hv-h1`; architecture validators including H1 script |
+| **OBSERVED_EFFECT** | Unit tests PASS; validators PASS (pending CI) |
+| **NON_EFFECTS** | SCHEMA_CHANGE=NO; H1_RUNTIME_REACHABLE=NO; production @ `1dd422403` unchanged |
+| **REGRESSIONS_OR_TRADEOFFS** | Longitudinal input remains design-only types — no HV health score |
+| **REMAINING_GAPS** | Mapper-only voltage; per-VIN provider SOH gaps; HV-H2 longitudinal input engineering |
+| **DECISION_STATUS** | VALIDATED (engineering contracts) |
+| **AFFECTED_GRAPH** | +BAT-V2-AUTH-H1-001 |
+| **EVIDENCE** | `research/M3_3_HV_H1_PROVIDER_CAPABILITY_EVIDENCE_FOUNDATION_2026-09-30.md` |
+
+---
+
 ## CL-2026-09-30 — PR #1849 M3.3-H0 final seal hardening (rebase + validators)
 
 | Field | Value |

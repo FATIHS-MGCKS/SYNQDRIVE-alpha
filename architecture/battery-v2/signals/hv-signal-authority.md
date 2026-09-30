@@ -78,3 +78,7 @@ All other mapper HV fields correspond to registry keys above.
 | Provider SOH canonical | 45 days | `canonical-battery-health.service.ts` |
 | HV M2 timestamp skew | 60 s | `HV_M2_MAX_TIMESTAMP_DELTA_MS` |
 | Cross-session assessment | 31 days | `hv-capacity-cross-session.policy.ts` |
+
+## M3.3-HV-H1 foundation (2026-09-30)
+
+Code contracts under `backend/.../hv-h1/` define per-vehicle **capability matrix**, **freshness classes**, and **evidence quality** without new persistence. See `research/M3_3_HV_H1_PROVIDER_CAPABILITY_EVIDENCE_FOUNDATION_2026-09-30.md`.
