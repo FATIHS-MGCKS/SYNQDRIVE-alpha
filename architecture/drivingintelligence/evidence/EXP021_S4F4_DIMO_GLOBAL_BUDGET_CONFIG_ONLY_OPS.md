@@ -44,11 +44,13 @@ On failure after arm: restore backup → recovery rolling restart A→B → sche
 - Atomic write via CLI; `UNRELATED_ENV_DELTA_COUNT=0` required.
 - Post-mutation config audit must report `GLOBAL_BUDGET_CONFIG_FILE_STATE=EXPLICIT_ENABLED`.
 
-### Runtime proof semantics
+### Runtime proof semantics (hardened)
 
 - File state **cannot** confirm active runtime (`FILE_STATE_ALONE_CAN_CONFIRM_RUNTIME=NO`).
-- Per replica: PM2 log snippet must contain startup line from `DimoProviderBudgetService`: `DIMO global provider budget enabled`.
-- Both replicas must independently prove `ENABLED` before `GLOBAL_BUDGET_ACTIVE_RUNTIME_STATE=CONFIRMED_ENABLED`.
+- **Authority:** live Prometheus gauge `synqdrive_dimo_global_budget_enabled` scraped per replica from `http://127.0.0.1:<port>/api/v1/metrics` (Bearer `METRICS_BEARER_TOKEN` from env; never logged).
+- PM2 historical logs are **corroboration only** (`STARTUP_LOG_CORROBORATION_ONLY=YES`); stale log lines cannot satisfy the gate.
+- After restart paths: PM2 PID/uptime must change before metrics are accepted (`REPLICA_*_POST_RESTART_IDENTITY_PROVEN=YES`).
+- Both replicas must independently report gauge `1` before `GLOBAL_BUDGET_ACTIVE_RUNTIME_STATE=CONFIRMED_ENABLED`.
 
 ### S4 safety
 

@@ -1,7 +1,10 @@
 import type { Registry } from 'prom-client';
 import { Counter, Gauge, Histogram } from 'prom-client';
 
+export const DIMO_GLOBAL_BUDGET_ENABLED_METRIC = 'synqdrive_dimo_global_budget_enabled';
+
 export interface DimoProviderMetricsHandles {
+  globalBudgetEnabled: Gauge<string>;
   globalInFlight: Gauge<string>;
   globalLimit: Gauge<string>;
   acquireWaitSeconds: Histogram<string>;
@@ -15,6 +18,12 @@ export interface DimoProviderMetricsHandles {
 }
 
 export function registerDimoProviderMetrics(registry: Registry): DimoProviderMetricsHandles {
+  const globalBudgetEnabled = new Gauge({
+    name: DIMO_GLOBAL_BUDGET_ENABLED_METRIC,
+    help: '1 when effective global DIMO provider budget is enabled in this process, 0 when disabled',
+    registers: [registry],
+  });
+
   const globalInFlight = new Gauge({
     name: 'synqdrive_dimo_global_in_flight',
     help: 'Current globally leased DIMO provider in-flight requests',
@@ -83,6 +92,7 @@ export function registerDimoProviderMetrics(registry: Registry): DimoProviderMet
   });
 
   return {
+    globalBudgetEnabled,
     globalInFlight,
     globalLimit,
     acquireWaitSeconds,

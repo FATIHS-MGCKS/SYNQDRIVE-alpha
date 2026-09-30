@@ -1361,3 +1361,10 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | `di-v0-s4f-enable-global-budget-production.sh` + rollout lib/CLI/tests; evidence `EXP021_S4F4_DIMO_GLOBAL_BUDGET_CONFIG_ONLY_OPS.md`; S4F ops S4 control preflight helper |
 | NON_EFFECTS | **No Production execution** (no env mutation, restart, deploy, S4 activation, operator grant, DIMO provider calls) |
 | NEXT | Operator ACK + approved SHA + run wrapper on Production when authorized |
+
+### EXP-021 S4F-4 runtime proof hardening (2026-09-30, PR #1863)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Live per-replica Prometheus gauge `synqdrive_dimo_global_budget_enabled`; remove PM2 log as authority; canonical Redis PING; env UID/GID preservation; recovery + rollback post-verify; explicit PRODUCTION_ENV_MUTATED derivation |
+| NON_EFFECTS | No Production execution |

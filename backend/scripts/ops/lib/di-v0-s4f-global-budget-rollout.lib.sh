@@ -9,6 +9,7 @@ DI_S4_GLOBAL_BUDGET_ENV_KEY="DIMO_GLOBAL_BUDGET_ENABLED"
 DI_S4_GLOBAL_BUDGET_TARGET_VALUE="true"
 DI_S4_GLOBAL_BUDGET_RUNTIME_LOG_MARKER="DIMO global provider budget enabled"
 DI_S4_GLOBAL_BUDGET_RUNTIME_DISABLED_MARKER="DIMO_GLOBAL_BUDGET_ENABLED=false"
+DI_S4_GLOBAL_BUDGET_ENABLED_METRIC="synqdrive_dimo_global_budget_enabled"
 
 s4f4_rollout_log() {
   printf '[s4f4-global-budget] %s\n' "$*"
@@ -32,10 +33,14 @@ s4f4_env_file_metadata() {
   if [[ ! -f "$file" ]]; then
     S4F4_ENV_META_OWNER=""
     S4F4_ENV_META_MODE="644"
+    S4F4_ENV_META_UID=""
+    S4F4_ENV_META_GID=""
     return 0
   fi
   S4F4_ENV_META_OWNER="$(stat -c '%U:%G' "$file" 2>/dev/null || stat -f '%Su:%Sg' "$file" 2>/dev/null || echo "")"
   S4F4_ENV_META_MODE="$(stat -c '%a' "$file" 2>/dev/null || stat -f '%OLp' "$file" 2>/dev/null || echo "600")"
+  S4F4_ENV_META_UID="$(stat -c '%u' "$file" 2>/dev/null || echo "")"
+  S4F4_ENV_META_GID="$(stat -c '%g' "$file" 2>/dev/null || echo "")"
 }
 
 s4f4_same_dir_temp() {
@@ -84,8 +89,14 @@ s4f4_restore_backend_env_atomic() {
   s4f4_env_file_metadata "$target"
   tmp="$(s4f4_same_dir_temp "$target")"
   cp "$backup" "$tmp"
-  chmod 600 "$tmp"
-  if [[ -n "${S4F4_ENV_META_OWNER:-}" ]]; then
+  chmod "${S4F4_ENV_META_MODE:-600}" "$tmp" 2>/dev/null || chmod 600 "$tmp"
+  if [[ -n "${S4F4_ENV_META_UID:-}" && -n "${S4F4_ENV_META_GID:-}" ]]; then
+    if ! chown "${S4F4_ENV_META_UID}:${S4F4_ENV_META_GID}" "$tmp" 2>/dev/null; then
+      echo "BACKEND_ENV_RESTORED=NO"
+      rm -f "$tmp"
+      return 1
+    fi
+  elif [[ -n "${S4F4_ENV_META_OWNER:-}" ]]; then
     chown "${S4F4_ENV_META_OWNER}" "$tmp" 2>/dev/null || true
   fi
   s4f4_atomic_promote_env_file "$tmp" "$target" restore
@@ -94,10 +105,12 @@ s4f4_restore_backend_env_atomic() {
   if [[ "$after" != "$expected_sha256" ]]; then
     echo "RESTORE_CHECKSUM_MISMATCH=YES"
     echo "BACKEND_ENV_RESTORED=NO"
+    echo "ROLLBACK_ENV_EXACT_CONTENT_RESTORED=NO"
     return 1
   fi
   echo "BACKEND_ENV_RESTORED=YES"
   echo "ROLLBACK_RESTORES_ENV=YES"
+  echo "ROLLBACK_ENV_EXACT_CONTENT_RESTORED=YES"
   return 0
 }
 
@@ -144,84 +157,203 @@ s4f4_classify_runtime_from_log_snippet() {
   echo "UNKNOWN"
 }
 
-s4f4_fixture_runtime_proof() {
-  local replica="$1"
-  if [[ "${DI_S4F4_FIXTURE_RUNTIME_A:-}" == "ENABLED" && "$replica" == "A" ]]; then echo "ENABLED"; return 0; fi
-  if [[ "${DI_S4F4_FIXTURE_RUNTIME_B:-}" == "ENABLED" && "$replica" == "B" ]]; then echo "ENABLED"; return 0; fi
-  if [[ "${DI_S4F4_FIXTURE_RUNTIME_A:-}" == "UNKNOWN" && "$replica" == "A" ]]; then echo "UNKNOWN"; return 0; fi
-  if [[ "${DI_S4F4_FIXTURE_RUNTIME_B:-}" == "UNKNOWN" && "$replica" == "B" ]]; then echo "UNKNOWN"; return 0; fi
+s4f4_fetch_replica_startup_log_snippet() {
+  local pm2_name="$1" lines="${2:-200}"
   if s4f4_is_fixture_mode || [[ "${DI_S4F4_TEST_MODE:-0}" == "1" ]]; then
-    echo "${DI_S4F4_FIXTURE_RUNTIME_DEFAULT:-ENABLED}"
-    return 0
-  fi
-  echo "UNKNOWN"
-}
-
-s4f4_fetch_replica_runtime_log_snippet() {
-  local pm2_name="$1" lines="${2:-400}"
-  if s4f4_is_fixture_mode || [[ "${DI_S4F4_TEST_MODE:-0}" == "1" ]]; then
-    echo "${DI_S4F4_FIXTURE_PM2_LOG_SNIPPET:-${DI_S4_GLOBAL_BUDGET_RUNTIME_LOG_MARKER}}"
+    echo "${DI_S4F4_FIXTURE_PM2_LOG_SNIPPET:-}"
     return 0
   fi
   pm2 logs "$pm2_name" --nostream --lines "$lines" 2>/dev/null || true
 }
 
-s4f4_prove_replica_runtime_budget() {
+s4f4_report_startup_log_corroboration() {
   local label="$1" pm2_name="$2"
-  local snippet proof
-  if [[ "$label" == "A" ]]; then
-    proof="$(s4f4_fixture_runtime_proof A)"
-    if [[ "$proof" != "UNKNOWN" && ( s4f4_is_fixture_mode || "${DI_S4F4_TEST_MODE:-0}" == "1" ) ]]; then
-      echo "REPLICA_${label}_GLOBAL_BUDGET_RUNTIME=${proof}"
-      [[ "$proof" == "ENABLED" ]]
-      return
-    fi
-  elif [[ "$label" == "B" ]]; then
-    proof="$(s4f4_fixture_runtime_proof B)"
-    if [[ "$proof" != "UNKNOWN" && ( s4f4_is_fixture_mode || "${DI_S4F4_TEST_MODE:-0}" == "1" ) ]]; then
-      echo "REPLICA_${label}_GLOBAL_BUDGET_RUNTIME=${proof}"
-      [[ "$proof" == "ENABLED" ]]
-      return
-    fi
+  local snippet classification
+  snippet="$(s4f4_fetch_replica_startup_log_snippet "$pm2_name")"
+  classification="$(s4f4_classify_runtime_from_log_snippet "$snippet")"
+  if [[ "$classification" == "ENABLED" ]]; then
+    echo "REPLICA_${label}_STARTUP_LOG_CORROBORATION=YES"
+  else
+    echo "REPLICA_${label}_STARTUP_LOG_CORROBORATION=NO"
   fi
-  snippet="$(s4f4_fetch_replica_runtime_log_snippet "$pm2_name")"
-  proof="$(s4f4_classify_runtime_from_log_snippet "$snippet")"
+}
+
+s4f4_fixture_live_metric_value() {
+  local label="$1"
+  case "$label" in
+    A)
+      if [[ -n "${DI_S4F4_FIXTURE_METRIC_A:-}" ]]; then echo "${DI_S4F4_FIXTURE_METRIC_A}"; return 0; fi
+      ;;
+    B)
+      if [[ -n "${DI_S4F4_FIXTURE_METRIC_B:-}" ]]; then echo "${DI_S4F4_FIXTURE_METRIC_B}"; return 0; fi
+      ;;
+  esac
+  if s4f4_is_fixture_mode || [[ "${DI_S4F4_TEST_MODE:-0}" == "1" ]]; then
+    echo "${DI_S4F4_FIXTURE_METRIC_DEFAULT:-1}"
+    return 0
+  fi
+  echo ""
+}
+
+s4f4_classify_live_metric_value() {
+  local raw="$1"
+  if [[ "$raw" == "1" ]]; then echo "ENABLED"; return 0; fi
+  if [[ "$raw" == "0" ]]; then echo "DISABLED"; return 0; fi
+  echo "UNKNOWN"
+}
+
+s4f4_fetch_live_global_budget_metric_raw() {
+  local port="$1" env_file="$2" label="$3"
+  if [[ "${DI_S4F4_TEST_INJECT_METRICS_AUTH_FAIL:-0}" == "1" ]]; then
+    return 1
+  fi
+  local fixture
+  fixture="$(s4f4_fixture_live_metric_value "$label")"
+  if [[ -n "$fixture" ]]; then
+    echo "$fixture"
+    return 0
+  fi
+  s4f4_run_cli fetch-live-metric "$env_file" "$port"
+}
+
+s4f4_query_replica_live_global_budget_metric() {
+  local label="$1" port="$2" env_file="$3"
+  local raw proof
+  if [[ "${DI_S4F4_TEST_INJECT_RUNTIME_PROOF_FAIL:-0}" == "1" ]]; then
+    echo "REPLICA_${label}_GLOBAL_BUDGET_RUNTIME=UNKNOWN"
+    return 1
+  fi
+  raw="$(s4f4_fetch_live_global_budget_metric_raw "$port" "$env_file" "$label" 2>/dev/null || true)"
+  if [[ "$raw" == "x" || "$raw" == "missing" ]]; then
+    echo "REPLICA_${label}_GLOBAL_BUDGET_RUNTIME=UNKNOWN"
+    return 1
+  fi
+  if [[ -z "$raw" ]]; then
+    echo "REPLICA_${label}_GLOBAL_BUDGET_RUNTIME=UNKNOWN"
+    return 1
+  fi
+  proof="$(s4f4_classify_live_metric_value "$raw")"
   echo "REPLICA_${label}_GLOBAL_BUDGET_RUNTIME=${proof}"
+  echo "REPLICA_${label}_LIVE_METRIC_RAW=${raw}"
   [[ "$proof" == "ENABLED" ]]
+}
+
+s4f4_capture_pm2_identity() {
+  local name="$1" label="$2"
+  local pid uptime
+  if [[ "${DI_S4F4_TEST_MODE:-0}" == "1" || s4f4_is_fixture_mode ]]; then
+    case "$label" in
+      A)
+        pid="${DI_S4F4_TEST_PM2_PID_BEFORE_A:-1000}"
+        uptime="${DI_S4F4_TEST_PM2_UPTIME_BEFORE_A:-3600}"
+        ;;
+      B)
+        pid="${DI_S4F4_TEST_PM2_PID_BEFORE_B:-1000}"
+        uptime="${DI_S4F4_TEST_PM2_UPTIME_BEFORE_B:-3600}"
+        ;;
+      *)
+        pid="1000"
+        uptime="3600"
+        ;;
+    esac
+    echo "$pid"
+    echo "$uptime"
+    return 0
+  fi
+  pid="$(vps_replica_pm2_pid "$name")"
+  uptime="$(vps_replica_pm2_uptime_sec "$name")"
+  echo "$pid"
+  echo "$uptime"
+}
+
+s4f4_verify_post_restart_pm2_identity() {
+  local name="$1" label="$2" pid_before="$3" uptime_before="$4"
+  local pid_after uptime_after
+  if [[ "${DI_S4F4_TEST_MODE:-0}" == "1" || s4f4_is_fixture_mode ]]; then
+    case "$label" in
+      A)
+        pid_after="${DI_S4F4_TEST_PM2_PID_AFTER_A:-2000}"
+        uptime_after="${DI_S4F4_TEST_PM2_UPTIME_AFTER_A:-2}"
+        ;;
+      B)
+        pid_after="${DI_S4F4_TEST_PM2_PID_AFTER_B:-2000}"
+        uptime_after="${DI_S4F4_TEST_PM2_UPTIME_AFTER_B:-2}"
+        ;;
+      *)
+        pid_after="2000"
+        uptime_after="2"
+        ;;
+    esac
+    if [[ "$pid_after" != "$pid_before" || "$uptime_after" -lt "$uptime_before" ]]; then
+      echo "REPLICA_${label}_POST_RESTART_IDENTITY_PROVEN=YES"
+      echo "REPLICA_${label}_POST_RESTART_IDENTITY_PROVEN_BY=pid_or_uptime"
+      return 0
+    fi
+    echo "REPLICA_${label}_POST_RESTART_IDENTITY_PROVEN=NO"
+    return 1
+  fi
+  pid_after="$(vps_replica_pm2_pid "$name")"
+  uptime_after="$(vps_replica_pm2_uptime_sec "$name")"
+  if [[ "$pid_after" == "0" || "$uptime_after" -lt 0 ]]; then
+    echo "REPLICA_${label}_POST_RESTART_IDENTITY_PROVEN=NO"
+    return 1
+  fi
+  if [[ "$pid_after" != "$pid_before" ]] || [[ "$uptime_after" -lt "$uptime_before" ]]; then
+    echo "REPLICA_${label}_POST_RESTART_IDENTITY_PROVEN=YES"
+    echo "REPLICA_${label}_POST_RESTART_IDENTITY_PROVEN_BY=pid_or_uptime"
+    return 0
+  fi
+  echo "REPLICA_${label}_POST_RESTART_IDENTITY_PROVEN=NO"
+  return 1
+}
+
+s4f4_prove_replica_live_metric_only() {
+  local label="$1" port="$2" env_file="$3" pm2_name="$4"
+  s4f4_query_replica_live_global_budget_metric "$label" "$port" "$env_file"
+  local ok=$?
+  s4f4_report_startup_log_corroboration "$label" "$pm2_name" || true
+  return $ok
+}
+
+s4f4_prove_replica_after_restart() {
+  local label="$1" name="$2" port="$3" env_file="$4" pid_before="$5" uptime_before="$6"
+  if ! s4f4_verify_post_restart_pm2_identity "$name" "$label" "$pid_before" "$uptime_before"; then
+    echo "REPLICA_${label}_GLOBAL_BUDGET_RUNTIME=UNKNOWN"
+    return 1
+  fi
+  s4f4_prove_replica_live_metric_only "$label" "$port" "$env_file" "$name"
+}
+
+s4f4_live_runtime_for_idempotent_decision() {
+  local label="$1" port="$2" env_file="$3"
+  S4F4_METRIC_QUERY_LABEL="$label"
+  local raw
+  raw="$(s4f4_fetch_live_global_budget_metric_raw "$port" "$env_file" "$label" 2>/dev/null || true)"
+  s4f4_classify_live_metric_value "${raw:-unknown}"
 }
 
 s4f4_verify_redis_reachable() {
   local env_file="$1"
-  local url
-  url="$(node -e '
-    const fs=require("fs");const f=process.argv[1];let u="";
-    for(const line of fs.readFileSync(f,"utf8").split(/\n/)){
-      if(line.startsWith("REDIS_URL=")) u=line.slice(10).trim();
-    }
-    process.stdout.write(u);
-  ' "$env_file" 2>/dev/null || true)"
-  if [[ -z "$url" ]]; then
-    echo "REDIS_URL_CONFIGURED=NO"
-    echo "REDIS_REACHABLE=SKIPPED_NO_URL"
-    return 0
-  fi
-  echo "REDIS_URL_CONFIGURED=YES"
-  if s4f4_is_fixture_mode || [[ "${DI_S4F4_TEST_MODE:-0}" == "1" ]]; then
-    echo "REDIS_REACHABLE=FIXTURE_PASS"
-    return 0
-  fi
+  echo "REDIS_CONFIG_SOURCE=CANONICAL_HOST_PORT_PASSWORD_DB"
+  echo "REDIS_PING_REQUIRED=YES"
   if [[ "${DI_S4F4_TEST_INJECT_REDIS_FAIL:-0}" == "1" ]]; then
     echo "REDIS_REACHABLE=NO"
     return 1
   fi
-  if command -v redis-cli >/dev/null 2>&1; then
-    if redis-cli -u "$url" ping 2>/dev/null | grep -q PONG; then
-      echo "REDIS_REACHABLE=YES"
-      return 0
+  if s4f4_is_fixture_mode || [[ "${DI_S4F4_TEST_MODE:-0}" == "1" ]]; then
+    if ! s4f4_run_cli redis-ping "$env_file" --fixture-ok; then
+      echo "REDIS_REACHABLE=NO"
+      return 1
     fi
+    echo "REDIS_REACHABLE=YES"
+    return 0
   fi
-  echo "REDIS_REACHABLE=NO"
-  return 1
+  if ! s4f4_run_cli redis-ping "$env_file"; then
+    echo "REDIS_REACHABLE=NO"
+    return 1
+  fi
+  echo "REDIS_REACHABLE=YES"
+  return 0
 }
 
 s4f4_verify_app_module_s4_dormant() {
@@ -237,5 +369,46 @@ s4f4_verify_app_module_s4_dormant() {
     return 1
   fi
   echo "S4_APP_MODULE_REGISTERED=NO"
+  return 0
+}
+
+s4f4_recovery_post_verify() {
+  local target_sha="$1"
+  echo "ROLLBACK_FULL_POST_VERIFY_REQUIRED=YES"
+  if [[ "${DI_S4F4_TEST_MODE:-0}" == "1" ]]; then
+    echo "ROLLBACK_REPLICA_HEALTH=PASS"
+    echo "ROLLBACK_SCHEDULER_CONVERGENCE=PASS"
+    echo "ROLLBACK_POST_VERIFY=PASS"
+    return 0
+  fi
+  if ! vps_replica_wait_healthy "${SYNQDRIVE_REPLICA_A_PM2_NAME}" "${SYNQDRIVE_REPLICA_A_PORT}" "$target_sha"; then
+    echo "ROLLBACK_REPLICA_HEALTH=FAIL"
+    return 1
+  fi
+  if [[ "${SYNQDRIVE_PRODUCTION_REPLICA_COUNT}" -ge 2 ]]; then
+    if ! vps_replica_wait_healthy "${SYNQDRIVE_REPLICA_B_PM2_NAME}" "${SYNQDRIVE_REPLICA_B_PORT}" "$target_sha"; then
+      echo "ROLLBACK_REPLICA_HEALTH=FAIL"
+      return 1
+    fi
+  fi
+  if ! vps_replica_verify_no_mixed_sha "$target_sha"; then
+    echo "ROLLBACK_REPLICA_HEALTH=FAIL"
+    return 1
+  fi
+  if ! vps_replica_wait_scheduler_leader_convergence; then
+    echo "ROLLBACK_SCHEDULER_CONVERGENCE=FAIL"
+    return 1
+  fi
+  if ! vps_replica_verify_scheduler_leaders 1; then
+    echo "ROLLBACK_SCHEDULER_CONVERGENCE=FAIL"
+    return 1
+  fi
+  if ! vps_replica_nginx_dual_upstream_ok; then
+    echo "ROLLBACK_POST_VERIFY=FAIL"
+    return 1
+  fi
+  echo "ROLLBACK_REPLICA_HEALTH=PASS"
+  echo "ROLLBACK_SCHEDULER_CONVERGENCE=PASS"
+  echo "ROLLBACK_POST_VERIFY=PASS"
   return 0
 }

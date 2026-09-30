@@ -13,6 +13,51 @@ export const DI_S4_REQUIRED_GIT_SHA_ENV = 'DI_S4_REQUIRED_GIT_SHA';
 
 export const GLOBAL_BUDGET_RUNTIME_LOG_MARKER = 'DIMO global provider budget enabled';
 export const GLOBAL_BUDGET_RUNTIME_DISABLED_MARKER = 'DIMO_GLOBAL_BUDGET_ENABLED=false';
+export const GLOBAL_BUDGET_ENABLED_METRIC_NAME = 'synqdrive_dimo_global_budget_enabled';
+
+export type LiveGlobalBudgetMetricProof = 'ENABLED' | 'DISABLED' | 'UNKNOWN';
+
+/** Classify live Prometheus exposition for the unlabeled global-budget gauge (not historical logs). */
+export function classifyLiveGlobalBudgetMetricFromPrometheusBody(body: string): LiveGlobalBudgetMetricProof {
+  const samples: number[] = [];
+  for (const line of body.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const m = trimmed.match(/^synqdrive_dimo_global_budget_enabled\s+(-?\d+(?:\.\d+)?)(?:\s|$)/);
+    if (!m) continue;
+    if (trimmed.includes('{')) continue;
+    const value = Number(m[1]);
+    if (!Number.isFinite(value)) continue;
+    samples.push(value);
+  }
+  if (samples.length !== 1) return 'UNKNOWN';
+  if (samples[0] === 1) return 'ENABLED';
+  if (samples[0] === 0) return 'DISABLED';
+  return 'UNKNOWN';
+}
+
+export interface CanonicalRedisEnvConfig {
+  host: string;
+  port: number;
+  password?: string;
+  db: number;
+}
+
+export function parseCanonicalRedisEnvFromMap(
+  env: Readonly<Record<string, string | undefined>>,
+): CanonicalRedisEnvConfig {
+  const portRaw = env.REDIS_PORT?.trim() || '6379';
+  const dbRaw = env.REDIS_DB?.trim() || '0';
+  const port = parseInt(portRaw, 10);
+  const db = parseInt(dbRaw, 10);
+  const password = env.REDIS_PASSWORD?.trim() ? env.REDIS_PASSWORD.trim() : undefined;
+  return {
+    host: env.REDIS_HOST?.trim() || 'localhost',
+    port: Number.isFinite(port) ? port : 6379,
+    password,
+    db: Number.isFinite(db) ? db : 0,
+  };
+}
 
 export function sha256Hex(content: string): string {
   return createHash('sha256').update(content, 'utf8').digest('hex');

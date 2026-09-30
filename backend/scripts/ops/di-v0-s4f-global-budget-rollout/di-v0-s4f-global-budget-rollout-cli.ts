@@ -3,27 +3,71 @@
  * CLI for S4F-4 global-budget env mutation and pre/post validation (no arbitrary keys).
  */
 import * as fs from 'fs';
+import * as http from 'http';
 import * as path from 'path';
+import Redis from 'ioredis';
 import { validateDimoProviderBudgetConfig } from '../../../src/modules/dimo/provider-budget/dimo-provider-budget.config';
 import {
   applyGlobalBudgetEnabledMutation,
   assertPreflightConfigStateAllowed,
   assertS4ControlFlagsSafe,
   classifyConfigFileFromEnvContent,
+  classifyLiveGlobalBudgetMetricFromPrometheusBody,
   envMapFromFileContent,
-  sha256Hex,
   idempotentConvergenceDecision,
+  parseCanonicalRedisEnvFromMap,
+  sha256Hex,
 } from './di-v0-s4f-global-budget-rollout.lib';
 
 function readFile(pathname: string): string {
   return fs.readFileSync(pathname, 'utf8');
 }
 
-function atomicWriteFile(target: string, content: string, mode?: number): void {
+function readDotenvValue(file: string, key: string): string {
+  const content = readFile(file);
+  for (const line of content.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const idx = trimmed.indexOf('=');
+    if (idx <= 0) continue;
+    if (trimmed.slice(0, idx) !== key) continue;
+    let v = trimmed.slice(idx + 1);
+    if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+      v = v.slice(1, -1);
+    }
+    return v;
+  }
+  return '';
+}
+
+function atomicWriteFilePreserveOwnership(target: string, content: string): void {
+  const st = fs.statSync(target);
   const dir = path.dirname(target);
   const tmp = path.join(dir, `.${path.basename(target)}.s4f4.${Date.now()}.tmp`);
-  fs.writeFileSync(tmp, content, { encoding: 'utf8', mode: mode ?? 0o600 });
+  fs.writeFileSync(tmp, content, { encoding: 'utf8', mode: st.mode });
+  try {
+    if (typeof st.uid === 'number' && typeof st.gid === 'number') {
+      fs.chownSync(tmp, st.uid, st.gid);
+    }
+  } catch {
+    console.log('BACKEND_ENV_UID_PRESERVED=NO');
+    console.log('BACKEND_ENV_GID_PRESERVED=NO');
+    console.log('OWNERSHIP_PRESERVATION_FAILS_CLOSED=YES');
+    fs.unlinkSync(tmp);
+    process.exit(1);
+  }
   fs.renameSync(tmp, target);
+  const after = fs.statSync(target);
+  const uidOk = after.uid === st.uid;
+  const gidOk = after.gid === st.gid;
+  const modeOk = after.mode === st.mode;
+  console.log(`BACKEND_ENV_UID_PRESERVED=${uidOk ? 'YES' : 'NO'}`);
+  console.log(`BACKEND_ENV_GID_PRESERVED=${gidOk ? 'YES' : 'NO'}`);
+  console.log(`BACKEND_ENV_MODE_PRESERVED=${modeOk ? 'YES' : 'NO'}`);
+  if (!uidOk || !gidOk || !modeOk) {
+    console.log('OWNERSHIP_PRESERVATION_FAILS_CLOSED=YES');
+    process.exit(1);
+  }
 }
 
 function cmdPreflight(file: string): void {
@@ -99,8 +143,7 @@ function cmdMutate(file: string): void {
     console.log('MUTATION_VALIDATION=FAIL');
     process.exit(1);
   }
-  const st = fs.statSync(file);
-  atomicWriteFile(file, nextContent, st.mode & 0o777);
+  atomicWriteFilePreserveOwnership(file, nextContent);
   const afterSha = sha256Hex(readFile(file));
   console.log(`ENV_MUTATION_PERFORMED=${mutated ? 'YES' : 'NO'}`);
   console.log(`UNRELATED_ENV_DELTA_COUNT=${unrelatedDeltaCount}`);
@@ -127,29 +170,142 @@ function cmdIdempotentDecision(file: string, runtimeA: string, runtimeB: string)
   console.log(`IDEMPOTENT_DECISION=${decision}`);
 }
 
-const [cmd, file, arg1, arg2] = process.argv.slice(2);
-if (!cmd || !file) {
-  console.error('usage: cli.ts <preflight|s4-safe|validate-budget|mutate|idempotent-decision> <env-file> [runtimeA] [runtimeB]');
-  process.exit(2);
+async function cmdRedisPing(file: string, fixtureOk: boolean): Promise<void> {
+  const env = envMapFromFileContent(readFile(file));
+  const cfg = parseCanonicalRedisEnvFromMap(env);
+  console.log('REDIS_CONFIG_SOURCE=CANONICAL_HOST_PORT_PASSWORD_DB');
+  console.log('REDIS_PING_REQUIRED=YES');
+  if (fixtureOk) {
+    if (process.env.DI_S4F4_TEST_INJECT_REDIS_FAIL === '1') {
+      console.log('REDIS_REACHABLE=NO');
+      process.exit(1);
+    }
+    console.log(`REDIS_HOST_RESOLVED=${cfg.host}`);
+    console.log(`REDIS_PORT_RESOLVED=${cfg.port}`);
+    console.log(`REDIS_DB_RESOLVED=${cfg.db}`);
+    console.log('REDIS_SECRET_EXPOSED=NO');
+    console.log('REDIS_REACHABLE=YES');
+    return;
+  }
+  const client = new Redis({
+    host: cfg.host,
+    port: cfg.port,
+    password: cfg.password,
+    db: cfg.db,
+    connectTimeout: 3000,
+    maxRetriesPerRequest: 1,
+    lazyConnect: true,
+  });
+  try {
+    await client.connect();
+    const pong = await client.ping();
+    if (pong !== 'PONG') {
+      console.log('REDIS_REACHABLE=NO');
+      process.exit(1);
+    }
+    console.log('REDIS_SECRET_EXPOSED=NO');
+    console.log('REDIS_REACHABLE=YES');
+  } finally {
+    try {
+      await client.quit();
+    } catch {
+      client.disconnect();
+    }
+  }
 }
 
-switch (cmd) {
-  case 'preflight':
-    cmdPreflight(file);
-    break;
-  case 's4-safe':
-    cmdS4Safe(file);
-    break;
-  case 'validate-budget':
-    cmdValidateBudget(file);
-    break;
-  case 'mutate':
-    cmdMutate(file);
-    break;
-  case 'idempotent-decision':
-    cmdIdempotentDecision(file, arg1 ?? 'UNKNOWN', arg2 ?? 'UNKNOWN');
-    break;
-  default:
-    console.error(`unknown command ${cmd}`);
-    process.exit(2);
+function httpGetMetrics(port: string, token: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const req = http.request(
+      {
+        hostname: '127.0.0.1',
+        port: Number(port),
+        path: '/api/v1/metrics',
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 5000,
+      },
+      (res) => {
+        let body = '';
+        res.on('data', (chunk) => {
+          body += chunk;
+        });
+        res.on('end', () => {
+          if (res.statusCode !== 200) {
+            reject(new Error(`metrics_http_${res.statusCode}`));
+            return;
+          }
+          resolve(body);
+        });
+      },
+    );
+    req.on('error', reject);
+    req.on('timeout', () => {
+      req.destroy();
+      reject(new Error('metrics_timeout'));
+    });
+    req.end();
+  });
 }
+
+async function cmdFetchLiveMetric(envFile: string, port: string): Promise<void> {
+  const token = readDotenvValue(envFile, 'METRICS_BEARER_TOKEN');
+  if (!token) {
+    process.exit(1);
+  }
+  const body = await httpGetMetrics(port, token);
+  const proof = classifyLiveGlobalBudgetMetricFromPrometheusBody(body);
+  if (proof === 'ENABLED') {
+    process.stdout.write('1');
+    return;
+  }
+  if (proof === 'DISABLED') {
+    process.stdout.write('0');
+    return;
+  }
+  process.exit(1);
+}
+
+async function main(): Promise<void> {
+  const args = process.argv.slice(2);
+  const cmd = args[0];
+  const file = args[1];
+  if (!cmd || !file) {
+    console.error(
+      'usage: cli.ts <preflight|s4-safe|validate-budget|mutate|idempotent-decision|redis-ping|fetch-live-metric> <env-file> [port] [--fixture-ok]',
+    );
+    process.exit(2);
+  }
+  const fixtureOk = args.includes('--fixture-ok');
+  switch (cmd) {
+    case 'preflight':
+      cmdPreflight(file);
+      break;
+    case 's4-safe':
+      cmdS4Safe(file);
+      break;
+    case 'validate-budget':
+      cmdValidateBudget(file);
+      break;
+    case 'mutate':
+      cmdMutate(file);
+      break;
+    case 'idempotent-decision':
+      cmdIdempotentDecision(file, args[2] ?? 'UNKNOWN', args[3] ?? 'UNKNOWN');
+      break;
+    case 'redis-ping':
+      await cmdRedisPing(file, fixtureOk);
+      break;
+    case 'fetch-live-metric': {
+      const port = args[2];
+      if (!port) process.exit(2);
+      await cmdFetchLiveMetric(file, port);
+      break;
+    }
+    default:
+      console.error(`unknown command ${cmd}`);
+      process.exit(2);
+  }
+}
+
+main().catch(() => process.exit(1));

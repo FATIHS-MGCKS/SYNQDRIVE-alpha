@@ -1,4 +1,5 @@
 import { Registry } from 'prom-client';
+import { DIMO_GLOBAL_BUDGET_ENABLED_METRIC } from './dimo-provider-prometheus.metrics';
 import { DimoProviderBudgetService } from './dimo-provider-budget.service';
 import type { DimoProviderBudgetConfigShape } from './dimo-provider-budget.config';
 import {
@@ -35,6 +36,7 @@ describe('DimoProviderBudgetService', () => {
     expire: jest.Mock;
   };
   let service: DimoProviderBudgetService;
+  let metricsRegistry: Registry;
 
   beforeEach(() => {
     leases.clear();
@@ -71,8 +73,9 @@ describe('DimoProviderBudgetService', () => {
       expire: jest.fn(),
     };
 
+    metricsRegistry = new Registry();
     const tripMetrics = {
-      registry: new Registry(),
+      registry: metricsRegistry,
     };
 
     service = new DimoProviderBudgetService(
@@ -205,6 +208,30 @@ describe('DimoProviderBudgetService', () => {
     const promotedLow = service.resolvePriority('HEALTH', 'LOW', 60_000);
     expect(promotedLow).toBe('NORMAL');
     expect(service.resolvePriority('POST_TRIP_ENRICHMENT', 'BACKGROUND', 0)).toBe('BACKGROUND');
+  });
+
+  it('exposes synqdrive_dimo_global_budget_enabled gauge 1 when enabled', async () => {
+    const enabledRegistry = new Registry();
+    const enabledService = new DimoProviderBudgetService(
+      buildConfig({ globalBudgetEnabled: true }),
+      redis as any,
+      { registry: enabledRegistry } as any,
+    );
+    enabledService.onModuleInit();
+    const body = await enabledRegistry.metrics();
+    expect(body).toMatch(new RegExp(`${DIMO_GLOBAL_BUDGET_ENABLED_METRIC} 1`));
+  });
+
+  it('exposes synqdrive_dimo_global_budget_enabled gauge 0 when disabled', async () => {
+    const disabledRegistry = new Registry();
+    const disabled = new DimoProviderBudgetService(
+      buildConfig({ globalBudgetEnabled: false }),
+      redis as any,
+      { registry: disabledRegistry } as any,
+    );
+    disabled.onModuleInit();
+    const metricsBody = await disabledRegistry.metrics();
+    expect(metricsBody).toMatch(new RegExp(`${DIMO_GLOBAL_BUDGET_ENABLED_METRIC} 0`));
   });
 
   it('AK — disabled flag uses budget-disabled token', async () => {
