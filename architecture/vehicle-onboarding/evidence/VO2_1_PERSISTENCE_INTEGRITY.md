@@ -54,7 +54,7 @@ Scalar version fields (default `0`): `draft_identity_version`, `draft_admin_base
 | Integration | `vo2-persistence.postgres.integration.spec.ts` |
 | CI | `.github/workflows/vehicle-onboarding-vo2-postgres-ci.yml` |
 
-Legacy fixture is seeded **before** `20260930130000_vehicle_onboarding_vo2_persistence` via held-migration deploy + `vo2-pre-vo2-fixture.seed.ts`.
+Legacy fixture is seeded **before** `20260930130000_vehicle_onboarding_vo2_persistence` via held-migration deploy + `vo2-pre-vo2-fixture.sql` (raw SQL — no post-VO-2 Prisma columns).
 
 ## Nullable VIN compatibility
 
