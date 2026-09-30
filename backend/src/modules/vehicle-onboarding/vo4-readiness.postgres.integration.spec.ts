@@ -18,7 +18,14 @@ import {
   parseValidatedReadinessSnapshotV2,
   parseValidatedSourceSnapshot,
 } from './policy/persisted-contract.validation';
-import { ONBOARDING_SOURCE_SNAPSHOT_VERSION } from './contracts/vo-document-versions';
+import {
+  ONBOARDING_SOURCE_SNAPSHOT_VERSION,
+  VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION_V2,
+} from './contracts/vo-document-versions';
+import {
+  technicalBaselineV2Empty,
+  technicalBaselineV2HvBattery,
+} from './testing/technical-baseline-test.fixtures';
 
 const run = process.env.VO4_READINESS_PG === '1';
 
@@ -219,10 +226,8 @@ async function assertNoStaleReadySeal(
           fuelType: 'ELECTRIC',
           sourceEvidenceRefs: [],
         },
-        draftTechnicalBaselineJson: {
-          version: 1,
-          referenceInputs: { hvBatteryReferenceId: 'bat-ref-1' },
-        },
+        draftTechnicalBaselineJson: technicalBaselineV2HvBattery(),
+        draftTechnicalBaselineVersion: VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION_V2,
       },
     });
     const snap = await readinessService.evaluateAndSealReadiness(sealInput(orgId, caseRow.id));
@@ -290,7 +295,8 @@ async function assertNoStaleReadySeal(
           fuelType: 'ELECTRIC',
           sourceEvidenceRefs: [],
         },
-        draftTechnicalBaselineJson: { version: 1, referenceInputs: {} },
+        draftTechnicalBaselineJson: technicalBaselineV2Empty(),
+        draftTechnicalBaselineVersion: VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION_V2,
       },
     });
     const snap = await readinessService.evaluateAndSealReadiness(sealInput(orgId, caseRow.id));
@@ -350,7 +356,8 @@ async function assertNoStaleReadySeal(
           fuelType: 'ELECTRIC',
           sourceEvidenceRefs: [],
         },
-        draftTechnicalBaselineJson: { version: 1, referenceInputs: {} },
+        draftTechnicalBaselineJson: technicalBaselineV2Empty(),
+        draftTechnicalBaselineVersion: VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION_V2,
       },
     });
     await readinessService.evaluateAndSealReadiness(sealInput(orgId, caseRow.id));
@@ -666,10 +673,8 @@ async function assertNoStaleReadySeal(
           fuelType: 'ELECTRIC',
           sourceEvidenceRefs: [],
         },
-        draftTechnicalBaselineJson: {
-          version: 1,
-          referenceInputs: { hvBatteryReferenceId: 'bat-ref-1' },
-        },
+        draftTechnicalBaselineJson: technicalBaselineV2HvBattery(),
+        draftTechnicalBaselineVersion: VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION_V2,
       },
     });
     await readinessService.evaluateAndSealReadiness(sealInput(orgId, caseRow.id));
@@ -735,10 +740,8 @@ async function assertNoStaleReadySeal(
           fuelType: 'ELECTRIC',
           sourceEvidenceRefs: [],
         },
-        draftTechnicalBaselineJson: {
-          version: 1,
-          referenceInputs: { hvBatteryReferenceId: 'bat-ref-1' },
-        },
+        draftTechnicalBaselineJson: technicalBaselineV2HvBattery(),
+        draftTechnicalBaselineVersion: VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION_V2,
       },
     });
     const pending = await readinessService.evaluateReadiness({
@@ -815,10 +818,8 @@ async function assertNoStaleReadySeal(
           fuelType: 'ELECTRIC',
           sourceEvidenceRefs: [],
         },
-        draftTechnicalBaselineJson: {
-          version: 1,
-          referenceInputs: { hvBatteryReferenceId: 'bat-ref-1' },
-        },
+        draftTechnicalBaselineJson: technicalBaselineV2HvBattery(),
+        draftTechnicalBaselineVersion: VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION_V2,
       },
     });
     await prisma.highMobilityVehicle.update({

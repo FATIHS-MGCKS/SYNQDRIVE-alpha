@@ -33,10 +33,12 @@ import {
   logActivationRollback,
   logActivationSuccess,
 } from './vehicle-onboarding-observability';
+import { materializeTechnicalBaselineInActivationTx } from './technical-baseline-materialization';
 
 /** Integration-test fault injection only (not used in production HTTP). */
 export type Vo3ActivationFaultStage =
   | 'AFTER_VEHICLE_CREATE'
+  | 'AFTER_TECHNICAL_BASELINE'
   | 'AFTER_ORG_ASSIGNMENT'
   | 'AFTER_PROVIDER_LINK'
   | 'AFTER_MIRROR_UPDATE'
@@ -157,6 +159,22 @@ export class VehicleOnboardingActivationService {
         const vehicle = { id: vehicleId };
 
         if (input.faultAfterStage === 'AFTER_VEHICLE_CREATE') {
+          logActivationRollback(input.onboardingCaseId, input.faultAfterStage);
+          throw new Error('VO3_FAULT_INJECTION');
+        }
+
+        await materializeTechnicalBaselineInActivationTx(tx, {
+          organizationId: input.organizationId,
+          vehicleId: vehicle.id,
+          caseRow,
+          actorUserId: input.actorUserId,
+          testHooks: {
+            forceMaterializationFailure:
+              input.activationTestHooks?.forceTechnicalBaselineMaterializationFailure,
+          },
+        });
+
+        if (input.faultAfterStage === 'AFTER_TECHNICAL_BASELINE') {
           logActivationRollback(input.onboardingCaseId, input.faultAfterStage);
           throw new Error('VO3_FAULT_INJECTION');
         }

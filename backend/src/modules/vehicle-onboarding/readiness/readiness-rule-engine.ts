@@ -5,9 +5,15 @@ import {
   parseValidatedAdminDraft,
   parseValidatedIdentityDraft,
   parseValidatedSourceSnapshot,
-  parseValidatedTechnicalDraft,
   parseValidatedValidationFindings,
 } from '../policy/persisted-contract.validation';
+import {
+  assessBrakeBaselineState,
+  assessHvBatteryBaselineState,
+  assessTireBaselineState,
+  parseTechnicalBaselineDraft,
+  type BaselineSectionMaterializationState,
+} from '../policy/technical-baseline-draft.validation';
 import { assertSupportedActivationSourceSet } from '../policy/source-set-invariant';
 import { assertCompositeVinConsistencyForActivation } from '../policy/composite-vin-consistency';
 import { resolveActivationVehicleFields } from '../policy/activation-field-resolution';
@@ -41,16 +47,6 @@ function result(
     reasonCode,
     evidenceRefs,
   };
-}
-
-function technicalRefPresent(
-  technical: ReturnType<typeof parseValidatedTechnicalDraft>,
-  key: string,
-): boolean {
-  const val = technical.referenceInputs[key];
-  if (val == null) return false;
-  if (typeof val === 'string') return val.trim() !== '';
-  return true;
 }
 
 export function evaluateReadinessRules(ctx: ReadinessEvaluationContext): {
@@ -303,36 +299,33 @@ export function evaluateReadinessRules(ctx: ReadinessEvaluationContext): {
   }
 
   const powertrain = classifyPowertrainFromFuelType(identity.fuelType);
-  const technical = parseValidatedTechnicalDraft(ctx.caseRow);
+  const technicalParsed = parseTechnicalBaselineDraft(ctx.caseRow);
   const tirePolicy = ctx.profile.tireBaseline;
-  const hasTireRef = technicalRefPresent(technical, 'tireReferenceId');
   results.push(
-    evaluateBaselineRule(
+    evaluateBaselineMaterializationRule(
       'VO-RDY-TIRE-001',
       tirePolicy,
-      hasTireRef,
+      assessTireBaselineState(technicalParsed, ctx.caseRow),
       'TIRE_REFERENCE',
     ),
   );
 
   const brakePolicy = ctx.profile.brakeBaseline;
-  const hasBrakeRef = technicalRefPresent(technical, 'brakeReferenceSpecId');
   results.push(
-    evaluateBaselineRule(
+    evaluateBaselineMaterializationRule(
       'VO-RDY-BRAKE-001',
       brakePolicy,
-      hasBrakeRef,
+      assessBrakeBaselineState(technicalParsed, ctx.caseRow),
       'BRAKE_REFERENCE',
     ),
   );
 
   const hvPolicy = ctx.profile.hvBatteryByPowertrain[powertrain];
-  const hasBatteryRef = technicalRefPresent(technical, 'hvBatteryReferenceId');
   results.push(
-    evaluateBaselineRule(
+    evaluateBaselineMaterializationRule(
       'VO-RDY-HV-BATTERY-001',
       hvPolicy,
-      hasBatteryRef,
+      assessHvBatteryBaselineState(technicalParsed, ctx.caseRow),
       'HV_BATTERY_REFERENCE',
       'MANDATORY_FOR_SELECTED_PRODUCT',
     ),
@@ -423,39 +416,71 @@ export function evaluateReadinessRules(ctx: ReadinessEvaluationContext): {
   };
 }
 
-function evaluateBaselineRule(
+function evaluateBaselineMaterializationRule(
   ruleId: string,
   policy: VehicleOnboardingReadinessProfileV1['tireBaseline'],
-  present: boolean,
+  state: BaselineSectionMaterializationState,
   reasonPrefix: string,
   inputClass: ReadinessRuleResultV1['inputClass'] = 'MANDATORY_FOR_SELECTED_PRODUCT',
 ): ReadinessRuleResultV1 {
   if (policy === 'NOT_APPLICABLE') {
     return result(ruleId, inputClass, 'NOT_APPLICABLE', false, `${reasonPrefix}_N/A`);
   }
+
+  if (state === 'invalid') {
+    return result(
+      ruleId,
+      inputClass,
+      policy === 'DEFERRED_ALLOWED' ? 'FAIL' : 'FAIL',
+      true,
+      `${reasonPrefix}_INVALID`,
+    );
+  }
+
+  if (state === 'v1_opaque_only') {
+    if (policy === 'REQUIRED') {
+      return result(
+        ruleId,
+        inputClass,
+        'FAIL',
+        true,
+        `${reasonPrefix}_CONTRACT_UPGRADE_REQUIRED`,
+      );
+    }
+    return result(
+      ruleId,
+      inputClass,
+      policy === 'DEFERRED_ALLOWED' ? 'DEFERRED' : 'UNKNOWN_ALLOWED',
+      false,
+      `${reasonPrefix}_V1_OPAQUE_NOT_MATERIALIZABLE`,
+    );
+  }
+
+  const materializable = state === 'materializable';
+
   if (policy === 'REQUIRED') {
     return result(
       ruleId,
       inputClass,
-      present ? 'PASS' : 'FAIL',
+      materializable ? 'PASS' : 'FAIL',
       true,
-      present ? `${reasonPrefix}_PRESENT` : `${reasonPrefix}_MISSING`,
+      materializable ? `${reasonPrefix}_MATERIALIZABLE` : `${reasonPrefix}_MISSING`,
     );
   }
   if (policy === 'DEFERRED_ALLOWED') {
     return result(
       ruleId,
       inputClass,
-      present ? 'PASS' : 'DEFERRED',
+      materializable ? 'PASS' : 'DEFERRED',
       false,
-      present ? `${reasonPrefix}_PRESENT` : `${reasonPrefix}_DEFERRED`,
+      materializable ? `${reasonPrefix}_MATERIALIZABLE` : `${reasonPrefix}_DEFERRED`,
     );
   }
   return result(
     ruleId,
     inputClass,
-    present ? 'PASS' : 'UNKNOWN_ALLOWED',
+    materializable ? 'PASS' : 'UNKNOWN_ALLOWED',
     false,
-    present ? `${reasonPrefix}_PRESENT` : `${reasonPrefix}_OPTIONAL`,
+    materializable ? `${reasonPrefix}_MATERIALIZABLE` : `${reasonPrefix}_OPTIONAL`,
   );
 }

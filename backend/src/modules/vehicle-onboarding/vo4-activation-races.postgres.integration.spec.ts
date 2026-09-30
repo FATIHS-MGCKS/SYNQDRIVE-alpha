@@ -17,6 +17,8 @@ import { VehicleOnboardingError } from './errors/vehicle-onboarding.errors';
 import {
   parseValidatedReadinessSnapshotV2,
 } from './policy/persisted-contract.validation';
+import { VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION_V2 } from './contracts/vo-document-versions';
+import { technicalBaselineV2HvBattery } from './testing/technical-baseline-test.fixtures';
 
 const run = process.env.VO4_ACTIVATION_RACE_PG === '1' || process.env.VO4_READINESS_PG === '1';
 
@@ -181,10 +183,8 @@ async function assertActivationRaceOutcome(prisma: PrismaClient, orgId: string, 
           fuelType: 'ELECTRIC',
           sourceEvidenceRefs: [],
         },
-        draftTechnicalBaselineJson: {
-          version: 1,
-          referenceInputs: { hvBatteryReferenceId: 'bat-ref-1' },
-        },
+        draftTechnicalBaselineJson: technicalBaselineV2HvBattery(),
+        draftTechnicalBaselineVersion: VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION_V2,
       },
     });
     await harness.readinessService.evaluateAndSealReadiness({
