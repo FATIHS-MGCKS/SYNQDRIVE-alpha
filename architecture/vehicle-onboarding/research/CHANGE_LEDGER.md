@@ -14,6 +14,7 @@
 | 2026-09-30 | **VO-4.5** — Technical baseline draft V2, materializable readiness rules, activation TX materialization (brake + HV reference); tire reference blocked; no public cutover | Onboarding activation + readiness; tire reference gap documented |
 | 2026-09-30 | **VO-4.6** — Strict V2 runtime validation, brake readiness/activation parity, battery document scope, VO-3 PG isolation, concurrent baseline proof | Integrity/tests only; no public capture API |
 | 2026-09-30 | **VO-4.8** — Authenticated org-scoped capture API, concurrency token mutations, readiness evaluate/seal HTTP boundary; no activation/source-adoption HTTP | `VehicleOnboardingCaptureController`; module remains `AUDIT_IN_PROGRESS` |
+| 2026-09-30 | **VO-4.8.1** — Strict capture payload allowlists, explicit concurrency token contract, list-query runtime validation, audit-after-commit, PostgreSQL concurrent race proofs | Capture policy + service hardening only; no schema/migration; module remains `AUDIT_IN_PROGRESS` |
 
 ## VO-0B — REUSE-FIRST components (do not replace without VO-1+ proof)
 

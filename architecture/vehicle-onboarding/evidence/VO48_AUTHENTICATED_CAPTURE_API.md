@@ -31,15 +31,19 @@
 
 - Field: `VehicleOnboardingCase.concurrencyToken` (no schema change)
 - New cases: token initialized at `openOrResumeWithPrimarySnapshot` create
-- Legacy cases: `null` token; first mutation requires `expectedConcurrencyToken: null`
+- Legacy cases: `null` stored token; writes must send **`expectedConcurrencyToken: null` explicitly** (missing property → `INVALID_CAPTURE_PAYLOAD` / 422)
+- Invalid types (number, boolean, object, array) → `INVALID_CAPTURE_PAYLOAD` / 422
 - Semantic mutation: rotate token; semantic no-op: preserve token and READY seal
-- Seal success: rotates token in same transaction as readiness seal update
+- Seal success: rotates token in the same transaction as readiness seal update
 - Mismatch: `ONBOARDING_CONCURRENCY_CONFLICT` → HTTP 409
+- Concurrent writers with the same starting token: exactly one winner; loser gets `ONBOARDING_CONCURRENCY_CONFLICT` (PostgreSQL race proofs in VO-4.8.1)
 
 ## Capture validation
 
-- Admin: `VehicleAdministrativeBaselineDraftV1` only; station scoped to org
-- Technical: `VehicleTechnicalBaselineDraftV2` only via strict runtime validator (VO-4.6 parity)
+- Admin: exact allowlist keys (`version`, `vehicleName`, `licensePlate`, `stationId`, `notes`); unknown keys → `INVALID_CAPTURE_PAYLOAD`
+- Technical: `VehicleTechnicalBaselineDraftV2` strict top-level and nested allowlists (brake/tire/HV sections); no `{...raw}` spread persistence (VO-4.8.1)
+- List query: runtime validation for `status`, `sourceMode`, `limit` (1–100), `cursor` (UUID); invalid → 422 (no Prisma cast leaks)
+- `selectedProduct`: runtime `ProductSlug` validation at HTTP boundary; unknown slug vs unsupported profile remain distinct errors
 - Pre-activation battery `documentId`: `organizationId` match + `vehicleId == null`
 - `serviceEventId` rejected at capture
 - Tire data may be captured; no `VehicleTireSetup` materialization
@@ -52,10 +56,16 @@
 
 ## Audit
 
-- `AuditService.record` for semantic mutations (`ADMIN_BASELINE_UPDATED`, `TECHNICAL_BASELINE_UPDATED`, `READINESS_SEALED`)
+- `AuditService.record` for semantic mutations (`ADMIN_BASELINE_UPDATED`, `TECHNICAL_BASELINE_UPDATED`, `READINESS_SEALED`) **after** successful DB commit (VO-4.8.1)
+- Failed transactions and semantic no-ops do not emit capture mutation audits
 - No raw document or provider credential logging
+
+## Response projection
+
+- Raw `snapshotMetadataJson`, `sourceMirrorId`, tokens, and provider credentials are not exposed
+- `externalVehicleIdentity` in source-ref summary is the tenant-adopted operational provider key bound to the case (not a platform secret)
 
 ## Proof
 
 - Unit: `vehicle-onboarding-capture.api.unit.spec.ts`
-- PostgreSQL: `vo48-capture.postgres.integration.spec.ts` (`VO48_CAPTURE_PG=1`)
+- PostgreSQL: `vo48-capture.postgres.integration.spec.ts` (`VO48_CAPTURE_PG=1`) — includes VO-4.8.1 terminal matrix, cross-org station, seal persistence, downstream non-materialization, deterministic mutation/seal races, audit-after-commit
