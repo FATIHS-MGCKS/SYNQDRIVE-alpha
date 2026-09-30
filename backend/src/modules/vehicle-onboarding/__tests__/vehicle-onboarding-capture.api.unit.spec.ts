@@ -10,7 +10,11 @@ import {
 import { toVehicleOnboardingHttpException } from '../http/vehicle-onboarding-http.util';
 import { assertExpectedConcurrencyToken } from '../policy/onboarding-concurrency.util';
 import {
+  parseCaptureRequestBody,
   parseCaseListQuery,
+  parseListLimitQueryString,
+  parseReadinessEvaluateRequestBody,
+  parseReadinessSealRequestBody,
   parseRequiredConcurrencyToken,
   parseSelectedProductRuntime,
 } from '../policy/capture-request.validation';
@@ -116,6 +120,41 @@ describe('vehicle onboarding capture API (unit)', () => {
   it('validates list query params', () => {
     expect(() => parseCaseListQuery({ status: 'BROKEN' })).toThrow(VehicleOnboardingError);
     expect(() => parseCaseListQuery({ limit: 'abc' })).toThrow(VehicleOnboardingError);
+    expect(() => parseCaseListQuery({ limit: '10abc' })).toThrow(VehicleOnboardingError);
+    expect(() => parseCaseListQuery({ limit: '101' })).toThrow(VehicleOnboardingError);
+  });
+
+  it('validates limit as full-string integer only', () => {
+    expect(parseListLimitQueryString('10')).toBe(10);
+    expect(parseListLimitQueryString('100')).toBe(100);
+    for (const bad of ['0', '101', '-1', '1.5', '10abc', 'abc10', ' 10x', 'NaN', 'Infinity']) {
+      expect(() => parseListLimitQueryString(bad)).toThrow(VehicleOnboardingError);
+    }
+  });
+
+  it('rejects non-object request bodies', () => {
+    for (const bad of [null, [], 'foo', 123, true]) {
+      expect(() => parseCaptureRequestBody(bad)).toThrow(VehicleOnboardingError);
+    }
+  });
+
+  it('rejects readiness evaluate unknown fields', () => {
+    expect(() =>
+      parseReadinessEvaluateRequestBody({
+        selectedProduct: ProductSlug.RENTAL,
+        decision: 'READY',
+      }),
+    ).toThrow(VehicleOnboardingError);
+  });
+
+  it('rejects readiness seal unknown fields', () => {
+    expect(() =>
+      parseReadinessSealRequestBody({
+        selectedProduct: ProductSlug.RENTAL,
+        expectedConcurrencyToken: 't',
+        override: true,
+      }),
+    ).toThrow(VehicleOnboardingError);
   });
 
   it('projection omits raw provider snapshot payloads', () => {

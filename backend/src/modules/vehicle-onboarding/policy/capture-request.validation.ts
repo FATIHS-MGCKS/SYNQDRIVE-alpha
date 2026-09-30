@@ -4,6 +4,7 @@ import {
   ProductSlug,
 } from '@prisma/client';
 import { VehicleOnboardingError } from '../errors/vehicle-onboarding.errors';
+import { assertExactObjectKeys } from './capture-strict-keys.util';
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -11,6 +12,30 @@ const UUID_RE =
 const PRODUCT_SLUG_VALUES = new Set<string>(Object.values(ProductSlug));
 const CASE_STATUS_VALUES = new Set<string>(Object.values(OnboardingCaseStatus));
 const SOURCE_MODE_VALUES = new Set<string>(Object.values(OnboardingCaseSourceMode));
+
+const LIMIT_QUERY_RE = /^\d+$/;
+
+/** Reject null, arrays, primitives — HTTP bodies must be plain JSON objects. */
+export function parseCaptureRequestBody(body: unknown): Record<string, unknown> {
+  if (body === null || typeof body !== 'object' || Array.isArray(body)) {
+    throw new VehicleOnboardingError(
+      'INVALID_CAPTURE_PAYLOAD',
+      'Request body must be a JSON object',
+    );
+  }
+  return body as Record<string, unknown>;
+}
+
+export function parseListLimitQueryString(limit: string): number {
+  if (!LIMIT_QUERY_RE.test(limit)) {
+    throw new VehicleOnboardingError('INVALID_CAPTURE_PAYLOAD', 'Invalid limit');
+  }
+  const parsed = Number(limit);
+  if (!Number.isSafeInteger(parsed) || parsed < 1 || parsed > 100) {
+    throw new VehicleOnboardingError('INVALID_CAPTURE_PAYLOAD', 'Invalid limit');
+  }
+  return parsed;
+}
 
 export function parseRequiredConcurrencyToken(
   body: Record<string, unknown>,
@@ -37,6 +62,28 @@ export function parseSelectedProductRuntime(value: unknown): ProductSlug {
     throw new VehicleOnboardingError('INVALID_CAPTURE_PAYLOAD', 'Invalid selectedProduct');
   }
   return value as ProductSlug;
+}
+
+export function parseReadinessEvaluateRequestBody(body: unknown): ProductSlug {
+  const record = parseCaptureRequestBody(body);
+  assertExactObjectKeys(record, ['selectedProduct'], 'readiness evaluate body');
+  return parseSelectedProductRuntime(record.selectedProduct);
+}
+
+export function parseReadinessSealRequestBody(body: unknown): {
+  selectedProduct: ProductSlug;
+  expectedConcurrencyToken: string | null;
+} {
+  const record = parseCaptureRequestBody(body);
+  assertExactObjectKeys(
+    record,
+    ['selectedProduct', 'expectedConcurrencyToken'],
+    'readiness seal body',
+  );
+  return {
+    selectedProduct: parseSelectedProductRuntime(record.selectedProduct),
+    expectedConcurrencyToken: parseRequiredConcurrencyToken(record),
+  };
 }
 
 export interface ValidatedCaseListQuery {
@@ -66,11 +113,7 @@ export function parseCaseListQuery(input: {
     out.sourceMode = input.sourceMode as OnboardingCaseSourceMode;
   }
   if (input.limit !== undefined && input.limit !== '') {
-    const parsed = Number.parseInt(input.limit, 10);
-    if (!Number.isFinite(parsed) || parsed < 1 || parsed > 100) {
-      throw new VehicleOnboardingError('INVALID_CAPTURE_PAYLOAD', 'Invalid limit');
-    }
-    out.limit = parsed;
+    out.limit = parseListLimitQueryString(input.limit);
   }
   if (input.cursor !== undefined && input.cursor !== '') {
     if (!UUID_RE.test(input.cursor)) {

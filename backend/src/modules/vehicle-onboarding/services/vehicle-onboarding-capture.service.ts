@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+  ActivityEntity,
   OnboardingCaseStatus,
   Prisma,
   ProductSlug,
@@ -301,10 +302,15 @@ export class VehicleOnboardingCaptureService {
       actorUserId: pending.actorUserId ?? undefined,
       actorOrganizationId: pending.organizationId,
       action: 'UPDATE',
-      entity: 'VEHICLE',
+      entity: ActivityEntity.ADMIN_OPERATION,
       entityId: pending.caseId,
       description: descriptions[pending.mutationType],
-      metaJson: { mutationType: pending.mutationType, caseId: pending.caseId },
+      metaJson: {
+        domain: 'VEHICLE_ONBOARDING',
+        resourceType: 'VEHICLE_ONBOARDING_CASE',
+        caseId: pending.caseId,
+        mutationType: pending.mutationType,
+      },
     });
   }
 

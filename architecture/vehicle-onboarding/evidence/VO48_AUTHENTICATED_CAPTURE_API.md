@@ -54,9 +54,17 @@
 - Seal: existing `VehicleOnboardingReadinessService` authority + advisory lock
 - Capture vs seal races serialized via `readinessMutationLockKey(caseId)`
 
+## HTTP boundary (VO-4.8.2)
+
+- All `VehicleOnboardingError` from capture request parsing runs inside `runVehicleOnboardingHttp` (stable 422/409 mapping)
+- Non-object JSON bodies (`null`, array, primitive) → `INVALID_CAPTURE_PAYLOAD` / 422
+- Readiness evaluate/seal bodies: exact allowlisted keys only
+- List `limit`: full-string integer validation (`1`–`100`); rejects `10abc`, `1.5`, etc.
+
 ## Audit
 
 - `AuditService.record` for semantic mutations (`ADMIN_BASELINE_UPDATED`, `TECHNICAL_BASELINE_UPDATED`, `READINESS_SEALED`) **after** successful DB commit (VO-4.8.1)
+- Pre-activation capture audits use `ActivityEntity.ADMIN_OPERATION` with `entityId` = onboarding case id and `metaJson.domain` = `VEHICLE_ONBOARDING` (not `VEHICLE`, which implies activated `Vehicle.id`)
 - Failed transactions and semantic no-ops do not emit capture mutation audits
 - No raw document or provider credential logging
 

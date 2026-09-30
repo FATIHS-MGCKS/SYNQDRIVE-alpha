@@ -9,6 +9,7 @@ import {
 } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { createVo4ReadinessTestHarness } from './testing/vo4-readiness-test.harness';
+import type { AuditContext } from '@modules/activity-log/audit.service';
 import { VehicleOnboardingCaptureService } from './services/vehicle-onboarding-capture.service';
 import { VehicleOnboardingError } from './errors/vehicle-onboarding.errors';
 import { VEHICLE_ADMIN_BASELINE_DRAFT_VERSION } from './contracts/vo-document-versions';
@@ -930,9 +931,11 @@ function captureHarness(prisma: PrismaClient) {
   it('audit fires only after successful semantic mutation', async () => {
     const base = createVo4ReadinessTestHarness(prisma);
     let auditCount = 0;
+    let lastAudit: AuditContext | undefined;
     const capture = new VehicleOnboardingCaptureService(prisma as any, base.readinessService, {
-      record: async () => {
+      record: async (ctx: AuditContext) => {
         auditCount += 1;
+        lastAudit = ctx;
         return 'audit-id';
       },
     } as any);
@@ -967,6 +970,14 @@ function captureHarness(prisma: PrismaClient) {
       body: technicalBaselineV2BrakePadOnly(10),
     });
     expect(auditCount).toBe(1);
+    expect(lastAudit).toBeDefined();
+    expect(lastAudit!.entity).toBe('ADMIN_OPERATION');
+    expect(lastAudit!.entityId).toBe(caseRow.id);
+    expect(lastAudit!.metaJson).toMatchObject({
+      domain: 'VEHICLE_ONBOARDING',
+      resourceType: 'VEHICLE_ONBOARDING_CASE',
+      caseId: caseRow.id,
+    });
   });
 
   it('validates list query at boundary', () => {

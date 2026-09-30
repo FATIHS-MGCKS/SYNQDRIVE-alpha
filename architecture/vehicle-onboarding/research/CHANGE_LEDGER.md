@@ -15,6 +15,7 @@
 | 2026-09-30 | **VO-4.6** — Strict V2 runtime validation, brake readiness/activation parity, battery document scope, VO-3 PG isolation, concurrent baseline proof | Integrity/tests only; no public capture API |
 | 2026-09-30 | **VO-4.8** — Authenticated org-scoped capture API, concurrency token mutations, readiness evaluate/seal HTTP boundary; no activation/source-adoption HTTP | `VehicleOnboardingCaptureController`; module remains `AUDIT_IN_PROGRESS` |
 | 2026-09-30 | **VO-4.8.1** — Strict capture payload allowlists, explicit concurrency token contract, list-query runtime validation, audit-after-commit, PostgreSQL concurrent race proofs | Capture policy + service hardening only; no schema/migration; module remains `AUDIT_IN_PROGRESS` |
+| 2026-09-30 | **VO-4.8.2** — Capture HTTP mapper wraps all request parsing; non-object body guard; readiness body allowlists; strict limit query integers; controller HTTP boundary tests; pre-activation audit `ADMIN_OPERATION` | HTTP contract only; no runtime semantics change |
 
 ## VO-0B — REUSE-FIRST components (do not replace without VO-1+ proof)
 
