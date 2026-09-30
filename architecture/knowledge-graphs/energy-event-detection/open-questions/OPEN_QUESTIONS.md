@@ -31,7 +31,7 @@ All 12 discovery open questions classified. **Separate current-state facts from 
 | EED-OQ-015 | Stretched-end native↔fallback convergence identity? | **RESOLVED** (design+code) | EED-EV-0097; bounded fallback classifier; canonical matcher strict | NO | HIGH |
 | EED-OQ-017 | Stale pre-fill baseline authority for RFRF promotion? | **RESOLVED** (design+code) | EED-EV-0098; baseline recency guard; promotion BLOCKED_BASELINE_RECENCY | NO | HIGH |
 | EED-OQ-018 | READY candidate stale evidence/trust refresh gap? | **RESOLVED** (design+code) | EED-EV-0099; versioned READY refresh before promotion; trust still UNKNOWN | NO | HIGH |
-| EED-OQ-019 | RFRF scoped hybrid trust activation + durable vehicle calibration? | **PARTIALLY_RESOLVED** | EED-EV-0100–0102 Hybrid activation complete; **Alpha Option C** blocks ABSOLUTE_ONLY auto-promotion (capability ADR 2026-09-30); first natural refuel captured (KS MS 661 2026-09-30) — F3 maturity gap documented; future **rfrf-absolute-only-trust-v1** design only; durable calibration store open | NO | HIGH |
+| EED-OQ-019 | RFRF scoped hybrid trust activation + durable vehicle calibration? | **PARTIALLY_RESOLVED** | EED-EV-0100–0102 Hybrid activation complete; **Alpha Option C** blocks ABSOLUTE_ONLY auto-promotion (capability ADR 2026-09-30); first natural refuel captured (KS MS 661 2026-09-30) — F3 maturity gap documented in EED-EV-0103 replay (settled-post design); future **rfrf-absolute-only-trust-v1** design only; durable calibration store + Production numeric caps **open** | NO | HIGH |
 
 ## Deferred (reference only)
 

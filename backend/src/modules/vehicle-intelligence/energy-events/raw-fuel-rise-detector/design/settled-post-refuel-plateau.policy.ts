@@ -15,6 +15,15 @@ import { validatePlateauWindow } from '../raw-fuel-rise-state-machine';
 
 export const RFRF_SETTLED_POST_PLATEAU_POLICY_VERSION = 'rfrf-settled-post-design-v0';
 
+/**
+ * Offline replay sensitivity only — NOT approved Production thresholds.
+ * See EED-EV-0103 and RFRF-F3-SETTLED-POST-REFUEL-MATURITY ADR §6.
+ */
+export const REPLAY_HYPOTHESIS_MAX_PEAK_TO_SETTLED_DROP_LITERS = 3 as const;
+export const REPLAY_HYPOTHESIS_MAX_PEAK_TO_SETTLED_DROP_RATIO_OF_RISE = 0.35 as const;
+export const REPLAY_DROP_CAP_CLASSIFICATION = 'REPLAY_HYPOTHESIS_ONLY' as const;
+export const REPLAY_DROP_RATIO_CLASSIFICATION = 'REPLAY_HYPOTHESIS_ONLY' as const;
+
 export interface SettledPostPlateauConfigSymbols {
   /** Minimum stable samples in settled window (symbolic; replay may use config.absolute.postPlateauMinSamples). */
   postPlateauMinSamples: number;
@@ -65,6 +74,12 @@ export interface SettledPostPlateauResult {
 
 export function buildSettledPostSymbolsFromDetectorConfig(
   config: RawFuelRiseDetectorConfig,
+  replayHypothesisOverrides?: Partial<
+    Pick<
+      SettledPostPlateauConfigSymbols,
+      'maxPeakToSettledDropLiters' | 'maxPeakToSettledDropRatioOfRise'
+    >
+  >,
 ): SettledPostPlateauConfigSymbols {
   return {
     postPlateauMinSamples: config.absolute.postPlateauMinSamples,
@@ -74,8 +89,12 @@ export function buildSettledPostSymbolsFromDetectorConfig(
     materialRiseLiters: config.absolute.materialRiseLiters,
     negativeWobbleLiters: config.absolute.negativeWobbleLiters,
     maxPostSearchAfterRiseEndMs: config.riseMaxDurationMs,
-    maxPeakToSettledDropLiters: 3,
-    maxPeakToSettledDropRatioOfRise: 0.35,
+    maxPeakToSettledDropLiters:
+      replayHypothesisOverrides?.maxPeakToSettledDropLiters ??
+      REPLAY_HYPOTHESIS_MAX_PEAK_TO_SETTLED_DROP_LITERS,
+    maxPeakToSettledDropRatioOfRise:
+      replayHypothesisOverrides?.maxPeakToSettledDropRatioOfRise ??
+      REPLAY_HYPOTHESIS_MAX_PEAK_TO_SETTLED_DROP_RATIO_OF_RISE,
   };
 }
 

@@ -3,14 +3,29 @@
  */
 import type { RawFuelSignalSample } from '../raw-fuel-signal-sample.types';
 import { WOB_2026_09_19_OBSERVED_ABSOLUTE_FUEL_SAMPLES } from '../../raw-fuel-refuel-fallback/testing/wob-2026-09-19-observed-fuel.fixture';
+import { buildWob20260927EventBSamples } from '../../raw-fuel-refuel-fallback/testing/wob-2026-09-19-stretched-end.fixture';
+import { buildKsMx20260916FreshPre5Samples } from '../../raw-fuel-refuel-fallback/testing/ks-mx-2026-09-16-baseline-recency.fixture';
 import { KS_MS_661_OBSERVED_ABSOLUTE_FUEL_SAMPLES } from '@modules/dimo/fixtures/ks-ms-661-2026-09-06-refuel-observed.fixture';
+import { KS_MX_2024_SEPT04_EVENT_A } from '@modules/dimo/fixtures/ks-mx-2024-sept04-refuel.fixture';
 
-export type ReplayCaseKind = 'NATURAL' | 'PRODUCTION_LABELED' | 'ADVERSARIAL' | 'EXCLUDED_SUSPECT';
+export type ReplayCaseKind =
+  | 'NATURAL'
+  | 'PRODUCTION_LABELED'
+  | 'ADVERSARIAL'
+  | 'EXCLUDED_SUSPECT';
+
+export type ReplayEvidenceTier =
+  | 'FULL_REPLAY'
+  | 'PARTIAL_REPLAY'
+  | 'INSUFFICIENT_SOURCE_EVIDENCE';
 
 export interface ReplayCaseDefinition {
   id: string;
   kind: ReplayCaseKind;
   label: string;
+  vehicle: string;
+  eventTimestamp: string;
+  replayEvidenceTier: ReplayEvidenceTier;
   window: { from: string; to: string };
   samples: RawFuelSignalSample[];
   groundTruthLiters?: number | null;
@@ -55,11 +70,15 @@ function buildKsMs661_20260930Series(): RawFuelSignalSample[] {
 
 export const KS_MS_661_2026_09_30_NATURAL_SAMPLES = buildKsMs661_20260930Series();
 
-export const HISTORICAL_REPLAY_CASES: ReplayCaseDefinition[] = [
+/** Seven defensible natural-class calibration rows (calibration decision pack 2026-09-30). */
+export const DEFENSIBLE_NATURAL_CALIBRATION_ROWS: ReplayCaseDefinition[] = [
   {
     id: 'KS_MS_661_2026_09_30',
     kind: 'NATURAL',
     label: 'KS MS 661 first natural post-Alpha refuel',
+    vehicle: 'KS MS 661',
+    eventTimestamp: '2026-09-30T04:57:00.000Z',
+    replayEvidenceTier: 'FULL_REPLAY',
     window: { from: '2026-09-30T04:35:00.000Z', to: '2026-09-30T11:30:00.000Z' },
     samples: KS_MS_661_2026_09_30_NATURAL_SAMPLES,
     groundTruthLiters: 12,
@@ -69,6 +88,9 @@ export const HISTORICAL_REPLAY_CASES: ReplayCaseDefinition[] = [
     id: 'KS_MS_661_2026_09_06_OBSERVED',
     kind: 'NATURAL',
     label: 'KS MS 661 Esso 2026-09-06 audit anchors (sparse)',
+    vehicle: 'KS MS 661',
+    eventTimestamp: '2026-09-06T09:39:30.000Z',
+    replayEvidenceTier: 'PARTIAL_REPLAY',
     window: { from: '2026-09-06T08:30:00.000Z', to: '2026-09-06T12:00:00.000Z' },
     samples: KS_MS_661_OBSERVED_ABSOLUTE_FUEL_SAMPLES.map((x) => ({
       timestamp: new Date(x.timestamp),
@@ -77,24 +99,119 @@ export const HISTORICAL_REPLAY_CASES: ReplayCaseDefinition[] = [
     })),
     groundTruthLiters: 24,
     relativeCorroboration: 'NO',
-    notes: 'Sparse audit anchors; native DIMO refuel segments absent',
+    notes: 'Sparse audit anchors; gap before rise; no post-settle plateau series',
   },
   {
     id: 'WOB_7503_2026_09_19',
     kind: 'PRODUCTION_LABELED',
     label: 'WOB L 7503 production extract fixture',
+    vehicle: 'WOB L 7503',
+    eventTimestamp: '2026-09-19T16:11:28.937Z',
+    replayEvidenceTier: 'FULL_REPLAY',
     window: { from: '2026-09-19T15:30:00.000Z', to: '2026-09-19T17:10:00.000Z' },
     samples: WOB_2026_09_19_OBSERVED_ABSOLUTE_FUEL_SAMPLES,
     groundTruthLiters: null,
     relativeCorroboration: 'YES',
   },
+  {
+    id: 'WOB_7503_2026_09_27_EVENT_B',
+    kind: 'PRODUCTION_LABELED',
+    label: 'WOB L 7503 Event B 2026-09-27 (production-shaped fixture)',
+    vehicle: 'WOB L 7503',
+    eventTimestamp: '2026-09-27T21:34:16.923Z',
+    replayEvidenceTier: 'FULL_REPLAY',
+    window: { from: '2026-09-27T21:17:16.923Z', to: '2026-09-27T22:02:16.923Z' },
+    samples: buildWob20260927EventBSamples(),
+    groundTruthLiters: 9,
+    relativeCorroboration: 'PARTIAL',
+    notes: 'Absolute spine from fixture; hybrid trust UNKNOWN in Production (EED-EV-0102)',
+  },
+  {
+    id: 'WOB_7503_2026_09_24',
+    kind: 'PRODUCTION_LABELED',
+    label: 'WOB L 7503 2026-09-24 natural row (no DIMO absolute extract in repo)',
+    vehicle: 'WOB L 7503',
+    eventTimestamp: '2026-09-24T00:00:00.000Z',
+    replayEvidenceTier: 'INSUFFICIENT_SOURCE_EVIDENCE',
+    window: { from: '2026-09-24T00:00:00.000Z', to: '2026-09-24T23:59:59.000Z' },
+    samples: [],
+    groundTruthLiters: null,
+    relativeCorroboration: 'N/A',
+    notes: 'Listed in calibration pack; no reconstructable sample series committed — do not fabricate',
+  },
+  {
+    id: 'KS_MX_2024_2026_09_16',
+    kind: 'PRODUCTION_LABELED',
+    label: 'KS MX 2024 fresh-pre Esso fill 2026-09-16',
+    vehicle: 'KS MX 2024',
+    eventTimestamp: '2026-09-16T20:52:30.008Z',
+    replayEvidenceTier: 'FULL_REPLAY',
+    window: { from: '2026-09-16T20:46:00.008Z', to: '2026-09-16T21:00:00.008Z' },
+    samples: buildKsMx20260916FreshPre5Samples(),
+    groundTruthLiters: 22,
+    relativeCorroboration: 'YES',
+    notes: 'Fresh pre baseline fixture; native segment ground truth 5→27 L',
+  },
+  {
+    id: 'KS_MX_2024_2026_09_04',
+    kind: 'PRODUCTION_LABELED',
+    label: 'KS MX 2024 2026-09-04 duplicate REFUEL forensic (segment metadata only)',
+    vehicle: 'KS MX 2024',
+    eventTimestamp: KS_MX_2024_SEPT04_EVENT_A.fuelLevelRiseStart,
+    replayEvidenceTier: 'INSUFFICIENT_SOURCE_EVIDENCE',
+    window: { from: '2026-09-04T03:30:00.000Z', to: '2026-09-04T04:10:00.000Z' },
+    samples: [],
+    groundTruthLiters: KS_MX_2024_SEPT04_EVENT_A.fuelDeltaLiters,
+    relativeCorroboration: 'PARTIAL',
+    notes: 'Route/fuel JSON lacks committed absolute rise spine for offline F3 replay',
+  },
 ];
 
+/** Excluded suspect control — not positive calibration. */
+export const EXCLUDED_SUSPECT_CONTROLS: ReplayCaseDefinition[] = [
+  {
+    id: 'KS_MS_661_2026_09_14_SUSPECT_57L',
+    kind: 'EXCLUDED_SUSPECT',
+    label: 'KS MS 661 ~57 L telemetry suspect (calibration pack exclusion)',
+    vehicle: 'KS MS 661',
+    eventTimestamp: '2026-09-14T00:00:00.000Z',
+    replayEvidenceTier: 'INSUFFICIENT_SOURCE_EVIDENCE',
+    window: { from: '2026-09-14T00:00:00.000Z', to: '2026-09-14T23:59:59.000Z' },
+    samples: [],
+    groundTruthLiters: null,
+    relativeCorroboration: 'NO',
+    notes: 'Negative/suspect control only; no auditable absolute sample series in repo',
+  },
+];
+
+export const HISTORICAL_REPLAY_CASES: ReplayCaseDefinition[] = [
+  ...DEFENSIBLE_NATURAL_CALIBRATION_ROWS.filter((c) => c.samples.length > 0),
+];
+
+function buildA4GradualConsumptionSamples(): RawFuelSignalSample[] {
+  const out: RawFuelSignalSample[] = [];
+  for (let i = 0; i < 12; i += 1) {
+    const hour = 10 + Math.floor(i / 2);
+    const minute = (i % 2) * 30;
+    out.push(
+      s(
+        `2026-01-03T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00.000Z`,
+        40 - i * 0.5,
+      ),
+    );
+  }
+  return out;
+}
+
+/** Semantic adversarial matrix A1–A12 (approved design review). */
 export const ADVERSARIAL_REPLAY_CASES: ReplayCaseDefinition[] = [
   {
-    id: 'A1_spike_return_baseline',
+    id: 'A1',
     kind: 'ADVERSARIAL',
-    label: 'A1 single 6→20→6',
+    label: 'A1 single 6→20 spike→6',
+    vehicle: 'SYNTHETIC',
+    eventTimestamp: '2026-01-01T00:03:00.000Z',
+    replayEvidenceTier: 'FULL_REPLAY',
     window: { from: '2026-01-01T00:00:00.000Z', to: '2026-01-01T02:00:00.000Z' },
     samples: [
       s('2026-01-01T00:00:00.000Z', 6),
@@ -107,18 +224,30 @@ export const ADVERSARIAL_REPLAY_CASES: ReplayCaseDefinition[] = [
     relativeCorroboration: 'N/A',
   },
   {
-    id: 'A8_overshoot_valid_settle',
+    id: 'A2',
     kind: 'ADVERSARIAL',
-    label: 'A8 peak overshoot then 18–19 settled (KS MS 661 shaped)',
-    window: { from: '2026-09-30T04:35:00.000Z', to: '2026-09-30T11:30:00.000Z' },
-    samples: KS_MS_661_2026_09_30_NATURAL_SAMPLES,
-    groundTruthLiters: 12,
-    relativeCorroboration: 'NO',
+    label: 'A2 reset 6→0→20',
+    vehicle: 'SYNTHETIC',
+    eventTimestamp: '2026-01-05T00:03:00.000Z',
+    replayEvidenceTier: 'FULL_REPLAY',
+    window: { from: '2026-01-05T00:00:00.000Z', to: '2026-01-05T02:00:00.000Z' },
+    samples: [
+      s('2026-01-05T00:00:00.000Z', 6),
+      s('2026-01-05T00:01:00.000Z', 6),
+      s('2026-01-05T00:02:00.000Z', 0),
+      s('2026-01-05T00:03:00.000Z', 20),
+      s('2026-01-05T00:04:00.000Z', 20),
+      s('2026-01-05T00:05:00.000Z', 20),
+    ],
+    relativeCorroboration: 'N/A',
   },
   {
-    id: 'A3_unstable_collapse',
+    id: 'A3',
     kind: 'ADVERSARIAL',
-    label: 'A3 6→20→12 unstable',
+    label: 'A3 6→20→12 unstable collapse',
+    vehicle: 'SYNTHETIC',
+    eventTimestamp: '2026-01-02T00:04:00.000Z',
+    replayEvidenceTier: 'FULL_REPLAY',
     window: { from: '2026-01-02T00:00:00.000Z', to: '2026-01-02T02:00:00.000Z' },
     samples: [
       s('2026-01-02T00:00:00.000Z', 6),
@@ -134,49 +263,23 @@ export const ADVERSARIAL_REPLAY_CASES: ReplayCaseDefinition[] = [
     relativeCorroboration: 'N/A',
   },
   {
-    id: 'A4_gradual_consumption',
+    id: 'A4',
     kind: 'ADVERSARIAL',
-    label: 'A4 gradual consumption without step refuel',
-    window: { from: '2026-01-03T00:00:00.000Z', to: '2026-01-03T06:00:00.000Z' },
-    samples: Array.from({ length: 12 }, (_, i) =>
-      s(`2026-01-03T0${i}:00:00.000Z`, 40 - i * 0.5),
-    ),
+    label: 'A4 gradual normal consumption',
+    vehicle: 'SYNTHETIC',
+    eventTimestamp: '2026-01-03T10:00:00.000Z',
+    replayEvidenceTier: 'FULL_REPLAY',
+    window: { from: '2026-01-03T10:00:00.000Z', to: '2026-01-03T16:00:00.000Z' },
+    samples: buildA4GradualConsumptionSamples(),
     relativeCorroboration: 'N/A',
   },
   {
-    id: 'A6_oversized_gap',
-    kind: 'ADVERSARIAL',
-    label: 'A6 oversized sample gap after rise',
-    window: { from: '2026-01-04T00:00:00.000Z', to: '2026-01-04T06:00:00.000Z' },
-    samples: [
-      s('2026-01-04T00:00:00.000Z', 6),
-      s('2026-01-04T00:01:00.000Z', 6),
-      s('2026-01-04T00:02:00.000Z', 18),
-      s('2026-01-04T00:03:00.000Z', 19),
-      s('2026-01-04T02:00:00.000Z', 19),
-      s('2026-01-04T02:01:00.000Z', 19),
-    ],
-    relativeCorroboration: 'N/A',
-  },
-  {
-    id: 'A2_sensor_reset',
-    kind: 'ADVERSARIAL',
-    label: 'A2 reset 6→0→20',
-    window: { from: '2026-01-05T00:00:00.000Z', to: '2026-01-05T02:00:00.000Z' },
-    samples: [
-      s('2026-01-05T00:00:00.000Z', 6),
-      s('2026-01-05T00:01:00.000Z', 6),
-      s('2026-01-05T00:02:00.000Z', 0),
-      s('2026-01-05T00:03:00.000Z', 20),
-      s('2026-01-05T00:04:00.000Z', 20),
-      s('2026-01-05T00:05:00.000Z', 20),
-    ],
-    relativeCorroboration: 'N/A',
-  },
-  {
-    id: 'A5_stale_baseline',
+    id: 'A5',
     kind: 'ADVERSARIAL',
     label: 'A5 stale baseline + later rise',
+    vehicle: 'SYNTHETIC',
+    eventTimestamp: '2026-01-06T02:00:00.000Z',
+    replayEvidenceTier: 'FULL_REPLAY',
     window: { from: '2026-01-06T00:00:00.000Z', to: '2026-01-06T06:00:00.000Z' },
     samples: [
       s('2026-01-06T00:00:00.000Z', 6),
@@ -189,9 +292,30 @@ export const ADVERSARIAL_REPLAY_CASES: ReplayCaseDefinition[] = [
     relativeCorroboration: 'N/A',
   },
   {
-    id: 'A7_two_fills',
+    id: 'A6',
+    kind: 'ADVERSARIAL',
+    label: 'A6 oversized sample gap after rise',
+    vehicle: 'SYNTHETIC',
+    eventTimestamp: '2026-01-04T00:02:00.000Z',
+    replayEvidenceTier: 'FULL_REPLAY',
+    window: { from: '2026-01-04T00:00:00.000Z', to: '2026-01-04T06:00:00.000Z' },
+    samples: [
+      s('2026-01-04T00:00:00.000Z', 6),
+      s('2026-01-04T00:01:00.000Z', 6),
+      s('2026-01-04T00:02:00.000Z', 18),
+      s('2026-01-04T00:03:00.000Z', 19),
+      s('2026-01-04T02:00:00.000Z', 19),
+      s('2026-01-04T02:01:00.000Z', 19),
+    ],
+    relativeCorroboration: 'N/A',
+  },
+  {
+    id: 'A7',
     kind: 'ADVERSARIAL',
     label: 'A7 two separate refuels',
+    vehicle: 'SYNTHETIC',
+    eventTimestamp: '2026-01-07T00:02:00.000Z',
+    replayEvidenceTier: 'FULL_REPLAY',
     window: { from: '2026-01-07T00:00:00.000Z', to: '2026-01-07T12:00:00.000Z' },
     samples: [
       s('2026-01-07T00:00:00.000Z', 10),
@@ -208,9 +332,24 @@ export const ADVERSARIAL_REPLAY_CASES: ReplayCaseDefinition[] = [
     relativeCorroboration: 'N/A',
   },
   {
-    id: 'A9_quantized_plateau',
+    id: 'A8',
     kind: 'ADVERSARIAL',
-    label: 'A9 quantized 1 L steps stable',
+    label: 'A8 peak overshoot then 18–19 settled (KS MS 661 shaped)',
+    vehicle: 'KS MS 661 (shaped)',
+    eventTimestamp: '2026-09-30T04:57:00.000Z',
+    replayEvidenceTier: 'FULL_REPLAY',
+    window: { from: '2026-09-30T04:35:00.000Z', to: '2026-09-30T11:30:00.000Z' },
+    samples: KS_MS_661_2026_09_30_NATURAL_SAMPLES,
+    groundTruthLiters: 12,
+    relativeCorroboration: 'NO',
+  },
+  {
+    id: 'A9',
+    kind: 'ADVERSARIAL',
+    label: 'A9 quantized 1 L steps stable plateau',
+    vehicle: 'SYNTHETIC',
+    eventTimestamp: '2026-01-08T00:02:00.000Z',
+    replayEvidenceTier: 'FULL_REPLAY',
     window: { from: '2026-01-08T00:00:00.000Z', to: '2026-01-08T02:00:00.000Z' },
     samples: [
       s('2026-01-08T00:00:00.000Z', 8),
@@ -224,9 +363,35 @@ export const ADVERSARIAL_REPLAY_CASES: ReplayCaseDefinition[] = [
     relativeCorroboration: 'N/A',
   },
   {
-    id: 'A11_post_consumption',
+    id: 'A10',
+    kind: 'ADVERSARIAL',
+    label: 'A10 driving/slosh around stable post state',
+    vehicle: 'SYNTHETIC',
+    eventTimestamp: '2026-01-10T00:03:00.000Z',
+    replayEvidenceTier: 'FULL_REPLAY',
+    window: { from: '2026-01-10T00:00:00.000Z', to: '2026-01-10T02:00:00.000Z' },
+    samples: [
+      s('2026-01-10T00:00:00.000Z', 12),
+      s('2026-01-10T00:01:00.000Z', 12),
+      s('2026-01-10T00:02:00.000Z', 12),
+      s('2026-01-10T00:03:00.000Z', 24),
+      s('2026-01-10T00:04:00.000Z', 26),
+      s('2026-01-10T00:05:00.000Z', 25),
+      s('2026-01-10T00:06:00.000Z', 24),
+      s('2026-01-10T00:07:00.000Z', 26),
+      s('2026-01-10T00:08:00.000Z', 25),
+      s('2026-01-10T00:09:00.000Z', 25),
+      s('2026-01-10T00:10:00.000Z', 25),
+    ],
+    relativeCorroboration: 'N/A',
+  },
+  {
+    id: 'A11',
     kind: 'ADVERSARIAL',
     label: 'A11 post-refuel continued consumption',
+    vehicle: 'SYNTHETIC',
+    eventTimestamp: '2026-01-09T00:02:00.000Z',
+    replayEvidenceTier: 'FULL_REPLAY',
     window: { from: '2026-01-09T00:00:00.000Z', to: '2026-01-09T06:00:00.000Z' },
     samples: [
       s('2026-01-09T00:00:00.000Z', 6),
@@ -241,9 +406,40 @@ export const ADVERSARIAL_REPLAY_CASES: ReplayCaseDefinition[] = [
     ],
     relativeCorroboration: 'N/A',
   },
+  {
+    id: 'A12',
+    kind: 'ADVERSARIAL',
+    label: 'A12 second material rise within continuation boundary',
+    vehicle: 'SYNTHETIC',
+    eventTimestamp: '2026-01-11T00:02:00.000Z',
+    replayEvidenceTier: 'FULL_REPLAY',
+    window: { from: '2026-01-11T00:00:00.000Z', to: '2026-01-11T06:00:00.000Z' },
+    samples: [
+      s('2026-01-11T00:00:00.000Z', 8),
+      s('2026-01-11T00:01:00.000Z', 8),
+      s('2026-01-11T00:02:00.000Z', 20),
+      s('2026-01-11T00:03:00.000Z', 20),
+      s('2026-01-11T00:04:00.000Z', 20),
+      s('2026-01-11T00:05:00.000Z', 20),
+      s('2026-01-11T00:06:00.000Z', 19),
+      s('2026-01-11T00:07:00.000Z', 18),
+      s('2026-01-11T00:08:00.000Z', 17),
+      s('2026-01-11T00:09:00.000Z', 16),
+      s('2026-01-11T00:10:00.000Z', 28),
+      s('2026-01-11T00:11:00.000Z', 28),
+      s('2026-01-11T00:12:00.000Z', 28),
+    ],
+    relativeCorroboration: 'N/A',
+  },
 ];
 
 export const ALL_REPLAY_CASES: ReplayCaseDefinition[] = [
   ...HISTORICAL_REPLAY_CASES,
   ...ADVERSARIAL_REPLAY_CASES,
 ];
+
+export const CALIBRATION_PACK_MANIFEST = {
+  defensibleNaturalRows: DEFENSIBLE_NATURAL_CALIBRATION_ROWS.length,
+  excludedSuspectControls: EXCLUDED_SUSPECT_CONTROLS.length,
+  adversarialSemanticCases: ADVERSARIAL_REPLAY_CASES.length,
+} as const;
