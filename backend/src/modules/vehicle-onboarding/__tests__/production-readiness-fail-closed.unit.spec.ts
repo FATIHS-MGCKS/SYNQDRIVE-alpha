@@ -14,15 +14,23 @@ describe('Production readiness authority', () => {
     computeCurrentInputFingerprint: () => 'fp-match',
   } as unknown as VehicleOnboardingReadinessService;
 
-  const tx = {
-    $queryRaw: jest.fn().mockResolvedValue([
-      { id: 'op-1', status: 'ACTIVE', productId: 'prod-1' },
-    ]),
-  };
+  const entitlementCandidateId = 'op-1';
+
+  function createActivationTxMock() {
+    return {
+      organizationProduct: {
+        findFirst: jest.fn().mockResolvedValue({ id: entitlementCandidateId }),
+      },
+      $queryRaw: jest.fn().mockResolvedValue([
+        { id: entitlementCandidateId, status: 'ACTIVE', productId: 'prod-1' },
+      ]),
+    };
+  }
 
   const authority = new ProductionFailClosedReadinessAuthority(readinessService);
 
   it('rejects TEST_FIXTURE attestation (v1)', async () => {
+    const tx = createActivationTxMock();
     const snap = buildTestReadinessSnapshot(null);
     await expect(
       authority.assertReadyForActivation(
@@ -42,6 +50,7 @@ describe('Production readiness authority', () => {
   });
 
   it('accepts v2 snapshot when fingerprint and entitlement match', async () => {
+    const tx = createActivationTxMock();
     const snap = {
       version: READINESS_SNAPSHOT_VERSION_V2,
       profileId: RENTAL_ONBOARDING_PROFILE_V1.profileId,
@@ -83,6 +92,7 @@ describe('Production readiness authority', () => {
       },
     );
     expect(result.version).toBe(READINESS_SNAPSHOT_VERSION_V2);
+    expect(tx.organizationProduct.findFirst).toHaveBeenCalled();
     expect(tx.$queryRaw).toHaveBeenCalled();
   });
 });
