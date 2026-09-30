@@ -1322,5 +1322,5 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 |-------|--------|
 | Trigger | Independent review: invalid lease test config, PB01/PB11 saturation composition, cooldown vs reserved-slot authority |
 | CHANGE | `globalLeaseMs≥5000` + real wait; 3 BACKGROUND + 1 HIGH global cap tests; PB27–29 cooldown priority behavior; contract `globalCircuitBreaker.status=CLOSURE_CANDIDATE`; `globalProviderCooldown` block |
-| AUTHORITY | P1.3 acquire step 2 — global cooldown before priority; **no** new `DI-GAP-S4-PROVIDER-COOLDOWN-PRIORITY-001` |
+| AUTHORITY | P1.3 acquire step 2 — global cooldown before priority; no separate cooldown-priority activation gap opened |
 | Gap | `DI-GAP-S4-PROVIDER-BACKPRESSURE-001` → **CLOSURE_CANDIDATE** (Tiny Activation requires **CLOSED**) |
