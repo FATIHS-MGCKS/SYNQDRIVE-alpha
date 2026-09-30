@@ -27,11 +27,19 @@ Append-only scientific record. Newest entries first.
 | Field | Value |
 |-------|-------|
 | **BEFORE** | HV-H1 postgres suite invoked from `battery-longitudinal-profile-materialization-postgres-ci.sh` |
+| **OBSERVATION** | Temporary H1 wiring in D3 CI violated M3.3-H0 LV/HV operational separation even though tests passed |
+| **HYPOTHESIS** | Dedicated path-filtered workflow + H0 script guard preserves domain separation without changing H1 semantics |
 | **CHANGE** | Dedicated `.github/workflows/battery-v2-hv-h1-ci.yml` job `HV-H1 read-only report PostgreSQL`; H0 validator forbids hv-h1 in D3 CI script |
 | **WHY** | M3.3-H0 LV/HV domain separation — LV D3 CI must not depend on HV-H1 validation |
+| **EXPECTED_EFFECT** | D3 longitudinal postgres CI runs LV materialization only; H1 postgres runs in isolated job on H1 path changes |
 | **VALIDATION** | `validate-h0-domain-separation-contracts.sh`; `npm run test:battery:v2:hv-h1:postgres:ci` |
-| **DECISION_STATUS** | VALIDATED |
+| **OBSERVED_EFFECT** | D3 script has no hv-h1 reference; dedicated workflow job SUCCESS on rebased head (pending full fleet CI) |
 | **NON_EFFECTS** | H1 scientific contracts unchanged |
+| **REGRESSIONS_OR_TRADEOFFS** | New workflow file requires `i18n-governance-authority-change` label until trusted actor approves |
+| **REMAINING_GAPS** | Full PR CI green blocked on governance label for workflow authority path |
+| **DECISION_STATUS** | VALIDATED |
+| **AFFECTED_GRAPH** | BAT-V2-AUTH-H0-001 (domain separation CI), BAT-V2-AUTH-H1-001 (postgres CI surface) |
+| **EVIDENCE** | `.github/workflows/battery-v2-hv-h1-ci.yml`; `architecture/battery-v2/scripts/validate-h0-domain-separation-contracts.sh` |
 
 ---
 
