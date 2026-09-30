@@ -5,7 +5,7 @@
 | **Sealed from** | VO-0A discovery audit |
 | **Repository anchor SHA** | `312d9f54a2b4c0b0740061d3e2b74897e78eacb0` |
 | **Authority status** | `AUDIT_IN_PROGRESS` — **not** `AUTHORITY_ACTIVE` |
-| **Last updated** | 2026-09-30 (VO-3.2 secure source attach + Postgres seal on PR #1854; **no public cutover**) |
+| **Last updated** | 2026-09-30 (VO-4 readiness authority internal; **no public cutover**) |
 
 ## Executive summary
 

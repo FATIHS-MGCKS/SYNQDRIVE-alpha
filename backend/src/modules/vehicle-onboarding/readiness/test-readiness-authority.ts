@@ -5,7 +5,10 @@ import type { VehicleOnboardingReadinessAuthority } from './vehicle-onboarding-r
 import { VehicleOnboardingError } from '../errors/vehicle-onboarding.errors';
 
 export class TestVehicleOnboardingReadinessAuthority implements VehicleOnboardingReadinessAuthority {
-  assertReadyForActivation(caseRow: VehicleOnboardingCase): VehicleOnboardingReadinessSnapshotV1 {
+  assertReadyForActivation(
+    caseRow: VehicleOnboardingCase,
+    _ctx: import('./vehicle-onboarding-readiness-authority').ReadinessActivationContext,
+  ): VehicleOnboardingReadinessSnapshotV1 {
     if (caseRow.status !== 'READY_FOR_ACTIVATION') {
       throw new VehicleOnboardingError(
         'READINESS_NOT_SEALED',

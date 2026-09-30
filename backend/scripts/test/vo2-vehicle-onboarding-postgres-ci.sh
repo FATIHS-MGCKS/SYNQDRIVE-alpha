@@ -62,4 +62,7 @@ DATABASE_URL="${INT_DATABASE_URL}" npx jest vo2-persistence.postgres.integration
 export VO3_ORCHESTRATOR_PG=1
 DATABASE_URL="${INT_DATABASE_URL}" npx jest vo3-orchestrator.postgres.integration --runInBand --forceExit
 
+export VO4_READINESS_PG=1
+DATABASE_URL="${INT_DATABASE_URL}" npx jest vo4-readiness.postgres.integration --runInBand --forceExit
+
 log_ci "all gates passed"

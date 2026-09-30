@@ -4,9 +4,9 @@ import { VehicleOnboardingError } from '../errors/vehicle-onboarding.errors';
 const TERMINAL: OnboardingCaseStatus[] = ['COMPLETED', 'CANCELLED', 'EXPIRED'];
 
 const ALLOWED: Record<OnboardingCaseStatus, OnboardingCaseStatus[]> = {
-  OPEN: ['IN_PROGRESS', 'CANCELLED', 'EXPIRED'],
-  IN_PROGRESS: ['CANCELLED', 'EXPIRED'],
-  READY_FOR_ACTIVATION: [],
+  OPEN: ['IN_PROGRESS', 'READY_FOR_ACTIVATION', 'CANCELLED', 'EXPIRED'],
+  IN_PROGRESS: ['READY_FOR_ACTIVATION', 'CANCELLED', 'EXPIRED'],
+  READY_FOR_ACTIVATION: ['IN_PROGRESS', 'CANCELLED', 'EXPIRED'],
   COMPLETED: [],
   CANCELLED: [],
   EXPIRED: [],

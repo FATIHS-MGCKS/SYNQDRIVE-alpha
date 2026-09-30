@@ -101,7 +101,13 @@ export class VehicleOnboardingActivationService {
           return { case: caseRow, vehicleId: caseRow.vehicleId, created: false };
         }
 
-        this.readinessAuthority.assertReadyForActivation(caseRow);
+        const organization = await tx.organization.findUniqueOrThrow({
+          where: { id: input.organizationId },
+        });
+        this.readinessAuthority.assertReadyForActivation(caseRow, {
+          sourceRefs: caseRow.sourceRefs,
+          organization,
+        });
         if (caseRow.vehicleId) {
           throw new VehicleOnboardingError(
             'ACTIVATION_PRECONDITION_FAILED',
