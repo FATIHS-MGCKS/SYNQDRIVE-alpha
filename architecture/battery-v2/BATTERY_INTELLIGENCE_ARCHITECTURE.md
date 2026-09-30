@@ -1,7 +1,7 @@
 # Battery Intelligence — domain architecture (LV / HV / Shared Core)
 
-**Status:** **AUDIT / ROADMAP** (post-G4 authority hardening, 2026-09-29)  
-**Repository:** `origin/main` @ **`a99592a7d7462cc100d5311c35201951d8d35263`**  
+**Status:** **M3.3-H0 SEAL PASS** (2026-09-30 audit) · post-G4 roadmap  
+**Repository:** `origin/main` @ **`312d9f54a2b4c0b0740061d3e2b74897e78eacb0`** (H0 baseline; see audit for drift)  
 **Production:** release **`20260929224455_v4994`** @ **`1dd4224037a84417c5d605575bb6d288ac93184e`**
 
 This document is the **top-level navigation layer** for Battery Intelligence. Historical stage letters **M3.3A–G** remain unchanged. Forward domain work is sealed under **`M3.3-H0`**, then continues as **`M3.3-LV-*`** / **`M3.3-HV-*`**. Do **not** confuse **`M3.3-H0`** (domain separation) with historical/planned **M3.3H** (customer Battery Health UI).
@@ -259,4 +259,4 @@ PR1846_AUTHORITY_HARDENING=YES
 FORWARD_PHASE_NAMING=M3.3-H0 umbrella; then M3.3-LV-* / M3.3-HV-* (preserve M3.3A–G history)
 ```
 
-See also: `research/BATTERY_INTELLIGENCE_POST_G4_ROADMAP_AUDIT_2026-09-29.md` (full tables + historical reconstruction).
+See also: `research/BATTERY_INTELLIGENCE_POST_G4_ROADMAP_AUDIT_2026-09-29.md` · **`research/M3_3_H0_BATTERY_INTELLIGENCE_DOMAIN_SEPARATION_AUDIT_2026-09-30.md`** (H0 seal)
