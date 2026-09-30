@@ -199,6 +199,14 @@ describe('DimoProviderBudgetService', () => {
     }
   });
 
+  it('PB20 — starvation promotion BACKGROUND→LOW only (never HIGH/CRITICAL)', () => {
+    const promotedBackground = service.resolvePriority('POST_TRIP_ENRICHMENT', 'BACKGROUND', 60_000);
+    expect(promotedBackground).toBe('LOW');
+    const promotedLow = service.resolvePriority('HEALTH', 'LOW', 60_000);
+    expect(promotedLow).toBe('NORMAL');
+    expect(service.resolvePriority('POST_TRIP_ENRICHMENT', 'BACKGROUND', 0)).toBe('BACKGROUND');
+  });
+
   it('AK — disabled flag uses budget-disabled token', async () => {
     const disabled = new DimoProviderBudgetService(
       buildConfig({ globalBudgetEnabled: false }),

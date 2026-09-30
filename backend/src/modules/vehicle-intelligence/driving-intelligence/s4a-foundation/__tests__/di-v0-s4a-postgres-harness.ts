@@ -312,6 +312,49 @@ export async function waitForLockWaiters(observer: PrismaClient, count: number, 
   }
 }
 
+/** Waits until a competitor backend blocks on the global S4 control row (kill proof lock). */
+export async function waitForControlRowLockWaiter(observer: PrismaClient, timeoutMs = 20_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const rows = await observer.$queryRaw<Array<{ n: bigint }>>`
+      SELECT count(*)::bigint AS n FROM pg_stat_activity
+      WHERE datname = current_database()
+        AND wait_event_type = 'Lock'
+        AND pid <> pg_backend_pid()
+        AND query ILIKE ${'%di_v0_s4_control%'}`;
+    if (Number(rows[0]?.n ?? 0) >= 1) return;
+    if (Date.now() > deadline) {
+      throw new Error(`timed out waiting for di_v0_s4_control lock waiter (have ${rows[0]?.n ?? 0})`);
+    }
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+}
+
+/** Waits until a competitor backend blocks on the S4 pipeline registry row (authoritative retirement / T11). */
+export async function waitForPipelineRegistryLockWaiter(
+  observer: PrismaClient,
+  pipelineVersionKey: string,
+  timeoutMs = 20_000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const rows = await observer.$queryRaw<Array<{ n: bigint }>>`
+      SELECT count(*)::bigint AS n FROM pg_stat_activity
+      WHERE datname = current_database()
+        AND wait_event_type = 'Lock'
+        AND pid <> pg_backend_pid()
+        AND query ILIKE ${'%di_v0_s4_pipeline_versions%'}
+        AND query ILIKE ${`%${pipelineVersionKey}%`}`;
+    if (Number(rows[0]?.n ?? 0) >= 1) return;
+    if (Date.now() > deadline) {
+      throw new Error(
+        `timed out waiting for pipeline registry lock waiter on ${pipelineVersionKey} (have ${rows[0]?.n ?? 0})`,
+      );
+    }
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+}
+
 export interface Deferred {
   promise: Promise<void>;
   resolve: () => void;
