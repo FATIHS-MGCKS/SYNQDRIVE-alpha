@@ -229,6 +229,16 @@ No historical row, ledger row, misuse case, score or ClickHouse data is modified
 
 Post PR #1694 three-vehicle cohort activation, WOB L 7503 trip `c0889036-db0b-4e95-a1f0-11ecb722ce17` failed at `armOngoingTrip` with `enrollment_not_found` (only KS MX 2024 had `exp021_study_enrollments`). Live activation disabled pending idempotent cohort study-enrollment bootstrap (`EXP_021_COHORT_STUDY_ENROLLMENT_AUTHORITY_CLOSURE_2026-09-19.md`). Failed ledger immutable; no backfill.
 
+### DI V0 S4F observability (EXP-021 S4F-1 — 2026-09-30)
+
+| Item | State |
+|------|-------|
+| **Path** | `backend/src/modules/vehicle-intelligence/driving-intelligence/s4f-observability/` |
+| **Runtime** | **Dormant** — read-only reconciliation + `DI_V0_S4_OBSERVABILITY_SNAPSHOT_V1`; no AppModule, scheduler, or provider calls |
+| **Beyond 10d drift** | Report-only boundary mismatch count (no T11) |
+| **Tiny activation** | Evaluator fail-closed; **NOT_READY** until operator auth + backpressure gap closure |
+| **Evidence** | [EXP021_S4F1_OBSERVABILITY_RECONCILIATION.md](evidence/EXP021_S4F1_OBSERVABILITY_RECONCILIATION.md) |
+
 ## Coverage classification
 
 | Area | Status |

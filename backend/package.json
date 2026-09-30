@@ -35,6 +35,8 @@
     "test:di:s4d:postgres": "DI_V0_S4A_POSTGRES_INTEGRATION=1 jest --runInBand --forceExit src/modules/vehicle-intelligence/driving-intelligence/s4d-replay/__tests__/di-v0-s4d-postgres.matrix.integration.spec.ts",
     "test:di:s4e": "jest s4e-drift-watcher --testPathIgnorePatterns=postgres.integration",
     "test:di:s4e:postgres": "DI_V0_S4A_POSTGRES_INTEGRATION=1 jest --runInBand --forceExit src/modules/vehicle-intelligence/driving-intelligence/s4e-drift-watcher/__tests__/di-v0-s4e-*.postgres.integration.spec.ts",
+    "test:di:s4f": "jest s4f-observability --testPathIgnorePatterns=postgres.integration",
+    "test:di:s4f:postgres": "DI_V0_S4A_POSTGRES_INTEGRATION=1 jest --runInBand --forceExit src/modules/vehicle-intelligence/driving-intelligence/s4f-observability/__tests__/di-v0-s4f.postgres.integration.spec.ts",
     "test:battery:v2:charge-opportunity:postgres": "bash scripts/test/battery-charge-opportunity-postgres-ci.sh",
     "test:battery:v2:rest-session-feature:computation:postgres": "bash scripts/test/battery-rest-session-feature-computation-postgres-ci.sh",
     "test:battery:v2:rest-session-feature:shadow:postgres": "bash scripts/test/battery-rest-session-feature-shadow-postgres-ci.sh",

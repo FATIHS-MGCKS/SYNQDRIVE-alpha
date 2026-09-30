@@ -174,6 +174,23 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-29T03:00:00.000Z',
   },
   {
+    id: 'di-exp021-s4f1-observability-reconciliation-2026-09-30',
+    version: '4.9.2210',
+    title: 'Driving Intelligence — EXP-021 S4F-1 dormant observability & activation-readiness foundation',
+    summary: [
+      'Read-only bounded reconciliation + DI_V0_S4_OBSERVABILITY_SNAPSHOT_V1 (work/lease/pipeline/evidence metrics).',
+      'Beyond 10d drift horizon: boundary mismatch count/report only (no T11, no DB mutation).',
+      'Fail-closed tiny-activation readiness evaluator; provider backpressure audit OPEN; location retention governance note.',
+    ],
+    reason: 'Prepare operator observability and activation gates without enabling S4 runtime or provider calls.',
+    previousBehavior: 'No S4F reconciliation or machine-readable activation-readiness export.',
+    details:
+      'backend/.../s4f-observability/*; architecture/drivingintelligence/evidence/EXP021_S4F1_OBSERVABILITY_RECONCILIATION.md; design/s4f/S4F_LOCATION_RETENTION_GOVERNANCE_NOTE.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-30T02:30:00.000Z',
+  },
+  {
     id: 'di-exp021-s4e2-class-a-retirement-hardening-2026-09-29',
     version: '4.9.2209',
     title: 'Driving Intelligence — EXP-021 S4E-2 CLASS A pipeline retirement hardening (dormant)',

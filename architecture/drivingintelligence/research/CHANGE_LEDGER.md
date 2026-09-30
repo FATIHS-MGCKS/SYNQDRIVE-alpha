@@ -1278,3 +1278,13 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | WHY | Strong serialized invariant required before S4E complete; refinement within BR07 / pipeline retirement authority (no `s4a-contract.v2.json` amendment) |
 | NON_EFFECTS | S4 dormant; bounded T12 scheduler unchanged for RETIRED stragglers; no schema migration |
 | Evidence | `evidence/EXP021_S4E2_MAINTENANCE_REAPERS.md` (invariant class table) |
+
+### EXP-021 S4F-1 — Observability + reconciliation + activation-readiness foundation (2026-09-30)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | S4A–S4E engineering-complete; next dormant slice S4F-1 |
+| CHANGE | `s4f-observability/` read-only reconciliation, `DI_V0_S4_OBSERVABILITY_SNAPSHOT_V1`, beyond-horizon boundary report (no T11), activation-readiness evaluator, provider backpressure audit (OPEN), location retention governance note, executor liveness (local-only) |
+| NON_EFFECTS | No deploy, no AppModule, no purge scheduler, no provider calls, no tiny activation, no contract v2 amendment |
+| Evidence | `evidence/EXP021_S4F1_OBSERVABILITY_RECONCILIATION.md` |
+| Gap | `DI-GAP-S4F-GLOBAL-EXECUTOR-LIVENESS-001` documented (no global executor presence authority) |

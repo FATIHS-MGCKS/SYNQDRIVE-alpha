@@ -1701,6 +1701,30 @@ nodes:
       - architecture/drivingintelligence/design/s4a/S4A_CONTROL_PLANE.md
       - architecture/drivingintelligence/design/s4a/s4a-contract.v2.json
 
+  - id: DI-GAP-S4F-GLOBAL-EXECUTOR-LIVENESS-001
+    type: gap
+    title: No durable global S4 executor liveness authority across replicas
+    epistemic_status: CONFIRMED
+    summary: >
+      S4B executor registry is process-local. S4F reports LOCAL_REPLICA_REGISTRY_ONLY; an ACTIVE pipeline with
+      no ready executor on this replica is not retirement. Cross-replica executor presence requires a future
+      durable signal — not fabricated in S4F-1.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/s4f-observability/di-v0-s4f-executor-liveness.ts
+      - architecture/drivingintelligence/evidence/EXP021_S4F1_OBSERVABILITY_RECONCILIATION.md
+
+  - id: DI-SVC-V0-S4F-OBSERVABILITY-001
+    type: service
+    title: DI V0 S4F dormant observability and read-only reconciliation (S4F-1)
+    epistemic_status: CONFIRMED
+    summary: >
+      Bounded read-only reconciliation, DI_V0_S4_OBSERVABILITY_SNAPSHOT_V1, beyond-10d boundary mismatch reporting
+      (no T11), activation-readiness evaluator, provider backpressure audit, location retention governance note.
+      Not AppModule-registered; no scheduler or provider calls.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/driving-intelligence/s4f-observability/
+      - architecture/drivingintelligence/evidence/EXP021_S4F1_OBSERVABILITY_RECONCILIATION.md
+
   - id: DI-SVC-V0-S4A-FOUNDATION-001
     type: service
     title: DI V0 S4A dormant execution foundation (library + schema, 0 runtime call sites)
