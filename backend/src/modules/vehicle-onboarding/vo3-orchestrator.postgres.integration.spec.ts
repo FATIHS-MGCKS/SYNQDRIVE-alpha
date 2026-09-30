@@ -661,7 +661,7 @@ async function sealHmCaseReady(
     const prodActivation = new VehicleOnboardingActivationService(
       prisma as any,
       new DimoVehicleDataSourceLinkService(prisma as any),
-      new ProductionFailClosedReadinessAuthority(readinessService),
+      new ProductionFailClosedReadinessAuthority(prisma as any, readinessService),
     );
     await expect(
       prodActivation.activateVehicle({

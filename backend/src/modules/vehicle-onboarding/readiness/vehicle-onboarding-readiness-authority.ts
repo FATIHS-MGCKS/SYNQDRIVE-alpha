@@ -1,11 +1,13 @@
 import type { VehicleOnboardingCase, VehicleOnboardingCaseSourceRef, Organization } from '@prisma/client';
-import type { VehicleOnboardingReadinessSnapshotV1 } from '../contracts/readiness-snapshot.v1';
 import type { VehicleOnboardingReadinessSnapshotV2 } from '../contracts/readiness-snapshot.v2';
 import { VehicleOnboardingError } from '../errors/vehicle-onboarding.errors';
 import { parseValidatedReadinessSnapshotV2 } from '../policy/persisted-contract.validation';
 import { READINESS_SNAPSHOT_VERSION_V2 } from '../contracts/vo-document-versions';
 import { Injectable } from '@nestjs/common';
+import { PrismaService } from '@shared/database/prisma.service';
 import { VehicleOnboardingReadinessService } from '../services/vehicle-onboarding-readiness.service';
+import { resolveReadinessProfileForSelectedProduct } from './profiles/profile-registry';
+import { assertOrganizationProductEntitled } from './product-entitlement.authority';
 
 export interface ReadinessActivationContext {
   sourceRefs: VehicleOnboardingCaseSourceRef[];
@@ -16,17 +18,20 @@ export interface VehicleOnboardingReadinessAuthority {
   assertReadyForActivation(
     caseRow: VehicleOnboardingCase,
     ctx: ReadinessActivationContext,
-  ): VehicleOnboardingReadinessSnapshotV1;
+  ): Promise<VehicleOnboardingReadinessSnapshotV2>;
 }
 
 @Injectable()
 export class ProductionFailClosedReadinessAuthority implements VehicleOnboardingReadinessAuthority {
-  constructor(private readonly readinessService: VehicleOnboardingReadinessService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly readinessService: VehicleOnboardingReadinessService,
+  ) {}
 
-  assertReadyForActivation(
+  async assertReadyForActivation(
     caseRow: VehicleOnboardingCase,
     ctx: ReadinessActivationContext,
-  ): VehicleOnboardingReadinessSnapshotV1 {
+  ): Promise<VehicleOnboardingReadinessSnapshotV2> {
     if (caseRow.status !== 'READY_FOR_ACTIVATION') {
       throw new VehicleOnboardingError(
         'READINESS_NOT_SEALED',
@@ -52,10 +57,34 @@ export class ProductionFailClosedReadinessAuthority implements VehicleOnboarding
     if (!snap.schemaRequiredFieldsMet) {
       throw new VehicleOnboardingError('READINESS_NOT_SEALED', 'Schema-required fields not met');
     }
+
+    const selectedProduct = snap.productContext.selectedProductSlug;
+    const profile = resolveReadinessProfileForSelectedProduct(selectedProduct);
+    if (
+      profile.profileId !== snap.productContext.profileId ||
+      profile.profileVersion !== snap.productContext.profileVersion
+    ) {
+      throw new VehicleOnboardingError(
+        'READINESS_SEAL_STALE',
+        'Governed profile no longer matches sealed readiness snapshot',
+      );
+    }
+
+    const entitlement = await assertOrganizationProductEntitled(
+      this.prisma,
+      ctx.organization.id,
+      selectedProduct,
+    );
+
     const currentFingerprint = this.readinessService.computeCurrentInputFingerprint(
       caseRow,
       ctx.sourceRefs,
       ctx.organization,
+      {
+        selectedProduct,
+        sealedSnapshot: snap,
+        productEntitlementStatus: entitlement.status,
+      },
     );
     if (currentFingerprint !== snap.readinessInputFingerprint) {
       throw new VehicleOnboardingError(
@@ -63,6 +92,6 @@ export class ProductionFailClosedReadinessAuthority implements VehicleOnboarding
         'Readiness seal no longer matches case inputs',
       );
     }
-    return snap as unknown as VehicleOnboardingReadinessSnapshotV1;
+    return snap;
   }
 }

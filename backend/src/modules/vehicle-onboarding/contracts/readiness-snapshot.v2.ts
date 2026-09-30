@@ -1,3 +1,4 @@
+import type { OrgProductStatus, ProductSlug } from '@prisma/client';
 import { READINESS_SNAPSHOT_VERSION_V2 } from './vo-document-versions';
 import type { ReadinessRuleResultV1 } from './readiness-rule-result.v1';
 
@@ -16,8 +17,11 @@ export interface VehicleOnboardingReadinessSnapshotV2 {
   readinessInputFingerprint: string;
   sourceSetFingerprint: string;
   productContext: {
-    businessType: string;
-    profileProduct: string;
+    selectedProductSlug: ProductSlug;
+    productEntitlementStatus: OrgProductStatus;
+    organizationBusinessType: string;
+    profileId: string;
+    profileVersion: string;
   };
   jurisdictionContext: {
     code: string;

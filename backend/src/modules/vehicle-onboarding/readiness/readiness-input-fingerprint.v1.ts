@@ -1,11 +1,13 @@
 import { createHash } from 'node:crypto';
+import type { ProductSlug, OrgProductStatus } from '@prisma/client';
 import type {
   VehicleOnboardingCase,
   VehicleOnboardingCaseSourceRef,
 } from '@prisma/client';
 import type { VehicleOnboardingReadinessProfileV1 } from './profiles/vehicle-onboarding-readiness-profile.v1';
+import { normalizeSourceRefsForReadinessFingerprint } from './onboarding-source-snapshot.fingerprint';
 
-export const READINESS_INPUT_FINGERPRINT_ALGORITHM = 'SHA-256-canonical-json-v1';
+export const READINESS_INPUT_FINGERPRINT_ALGORITHM = 'SHA-256-canonical-json-v1.1';
 
 function stableJson(value: unknown): string {
   return JSON.stringify(value, (_key, v) => {
@@ -20,29 +22,14 @@ function stableJson(value: unknown): string {
   });
 }
 
-function normalizeSourceRefs(refs: VehicleOnboardingCaseSourceRef[]): unknown[] {
-  return refs
-    .map((r) => ({
-      provider: r.provider,
-      connectionScopeKey: r.connectionScopeKey,
-      externalVehicleIdentity: r.externalVehicleIdentity,
-      isPrimary: r.isPrimary,
-      snapshotMetadataVersion: r.snapshotMetadataVersion,
-      sourceMirrorId: r.sourceMirrorId,
-    }))
-    .sort((a, b) =>
-      `${a.provider}:${a.externalVehicleIdentity}`.localeCompare(
-        `${b.provider}:${b.externalVehicleIdentity}`,
-      ),
-    );
-}
-
 export interface ReadinessFingerprintInput {
   caseRow: VehicleOnboardingCase;
   sourceRefs: VehicleOnboardingCaseSourceRef[];
   profile: Pick<VehicleOnboardingReadinessProfileV1, 'profileId' | 'profileVersion'>;
   jurisdictionCode: string;
-  productLabel: string;
+  selectedProductSlug: ProductSlug;
+  productEntitlementStatus: OrgProductStatus;
+  organizationBusinessType: string;
 }
 
 export function computeReadinessInputFingerprint(input: ReadinessFingerprintInput): string {
@@ -57,16 +44,18 @@ export function computeReadinessInputFingerprint(input: ReadinessFingerprintInpu
     draftTechnicalBaselineJson: input.caseRow.draftTechnicalBaselineJson,
     validationFindingsVersion: input.caseRow.validationFindingsVersion,
     validationFindingsJson: input.caseRow.validationFindingsJson,
-    sourceRefs: normalizeSourceRefs(input.sourceRefs),
+    sourceRefs: normalizeSourceRefsForReadinessFingerprint(input.sourceRefs),
     profileId: input.profile.profileId,
     profileVersion: input.profile.profileVersion,
     jurisdictionCode: input.jurisdictionCode,
-    productLabel: input.productLabel,
+    selectedProductSlug: input.selectedProductSlug,
+    productEntitlementStatus: input.productEntitlementStatus,
+    organizationBusinessType: input.organizationBusinessType,
   };
   return createHash('sha256').update(stableJson(payload), 'utf8').digest('hex');
 }
 
 export function computeSourceSetFingerprint(refs: VehicleOnboardingCaseSourceRef[]): string {
-  const payload = normalizeSourceRefs(refs);
+  const payload = normalizeSourceRefsForReadinessFingerprint(refs);
   return createHash('sha256').update(stableJson(payload), 'utf8').digest('hex');
 }

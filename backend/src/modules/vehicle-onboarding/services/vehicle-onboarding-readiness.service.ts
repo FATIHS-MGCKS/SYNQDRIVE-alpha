@@ -1,14 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
-import { Prisma, type VehicleOnboardingCase } from '@prisma/client';
+import { Prisma, ProductSlug, type VehicleOnboardingCase } from '@prisma/client';
 import { acquirePgAdvisoryXactLock64 } from '@shared/database/pg-advisory-lock.util';
 import { VehicleOnboardingError } from '../errors/vehicle-onboarding.errors';
 import { assertCaseTransitionAllowed, isTerminalCaseStatus } from '../policy/onboarding-case-transition.policy';
 import { READINESS_SNAPSHOT_VERSION_V2 } from '../contracts/vo-document-versions';
 import type { VehicleOnboardingReadinessSnapshotV2 } from '../contracts/readiness-snapshot.v2';
-import { resolveReadinessProfileForBusinessType } from '../readiness/profiles/profile-registry';
+import { resolveReadinessProfileForSelectedProduct } from '../readiness/profiles/profile-registry';
 import { resolveJurisdictionContext } from '../readiness/jurisdiction-authority';
-import { mapBusinessTypeToProductLabel } from '../readiness/product-authority';
 import { evaluateReadinessRules } from '../readiness/readiness-rule-engine';
 import {
   computeReadinessInputFingerprint,
@@ -16,16 +15,21 @@ import {
 } from '../readiness/readiness-input-fingerprint.v1';
 import { classifyPowertrainFromFuelType } from '../readiness/powertrain-classification';
 import { parseValidatedIdentityDraft } from '../policy/persisted-contract.validation';
-
-function readinessLockKey(caseId: string): string {
-  return `vehicle-onboarding-readiness:${caseId}`;
-}
+import { readinessMutationLockKey } from '../readiness/readiness-mutation-lock';
+// readinessMutationLockKey aliases shared mutation lock with evaluation
+import { assertOrganizationProductEntitled } from '../readiness/product-entitlement.authority';
 
 export interface EvaluateReadinessInput {
   organizationId: string;
   onboardingCaseId: string;
+  selectedProduct: ProductSlug;
   actorUserId: string | null;
   seal?: boolean;
+}
+
+export interface ReadinessFingerprintContext {
+  selectedProduct: ProductSlug;
+  sealedSnapshot?: VehicleOnboardingReadinessSnapshotV2 | null;
 }
 
 @Injectable()
@@ -35,7 +39,7 @@ export class VehicleOnboardingReadinessService {
   async evaluateReadiness(input: EvaluateReadinessInput): Promise<VehicleOnboardingReadinessSnapshotV2> {
     const seal = input.seal ?? false;
     return this.prisma.$transaction(async (tx) => {
-      await acquirePgAdvisoryXactLock64(tx, readinessLockKey(input.onboardingCaseId));
+      await acquirePgAdvisoryXactLock64(tx, readinessMutationLockKey(input.onboardingCaseId));
       const loaded = await this.loadCase(tx, input.organizationId, input.onboardingCaseId);
       if (isTerminalCaseStatus(loaded.caseRow.status)) {
         throw new VehicleOnboardingError(
@@ -43,7 +47,17 @@ export class VehicleOnboardingReadinessService {
           'Cannot evaluate readiness for terminal case',
         );
       }
-      const snapshot = this.buildSnapshot(loaded, input.actorUserId);
+      const entitlement = await assertOrganizationProductEntitled(
+        tx,
+        input.organizationId,
+        input.selectedProduct,
+      );
+      const snapshot = this.buildSnapshot(
+        loaded,
+        input.actorUserId,
+        input.selectedProduct,
+        entitlement.status,
+      );
       if (seal) {
         const nextStatus =
           snapshot.decision === 'READY' ? 'READY_FOR_ACTIVATION' : 'IN_PROGRESS';
@@ -75,15 +89,20 @@ export class VehicleOnboardingReadinessService {
     caseRow: VehicleOnboardingCase,
     sourceRefs: Awaited<ReturnType<typeof this.loadCase>>['sourceRefs'],
     organization: Awaited<ReturnType<typeof this.loadCase>>['organization'],
+    ctx: ReadinessFingerprintContext & {
+      productEntitlementStatus: import('@prisma/client').OrgProductStatus;
+    },
   ): string {
-    const profile = resolveReadinessProfileForBusinessType(organization.businessType);
+    const profile = resolveReadinessProfileForSelectedProduct(ctx.selectedProduct);
     const jurisdiction = resolveJurisdictionContext(organization);
     return computeReadinessInputFingerprint({
       caseRow,
       sourceRefs,
       profile,
       jurisdictionCode: jurisdiction.code,
-      productLabel: mapBusinessTypeToProductLabel(organization.businessType),
+      selectedProductSlug: ctx.selectedProduct,
+      productEntitlementStatus: ctx.productEntitlementStatus,
+      organizationBusinessType: organization.businessType,
     });
   }
 
@@ -108,8 +127,10 @@ export class VehicleOnboardingReadinessService {
   private buildSnapshot(
     loaded: Awaited<ReturnType<typeof this.loadCase>>,
     actorUserId: string | null,
+    selectedProduct: ProductSlug,
+    productEntitlementStatus: import('@prisma/client').OrgProductStatus,
   ): VehicleOnboardingReadinessSnapshotV2 {
-    const profile = resolveReadinessProfileForBusinessType(loaded.organization.businessType);
+    const profile = resolveReadinessProfileForSelectedProduct(selectedProduct);
     const jurisdiction = resolveJurisdictionContext(loaded.organization);
     const evaluated = evaluateReadinessRules({
       caseRow: loaded.caseRow,
@@ -124,7 +145,9 @@ export class VehicleOnboardingReadinessService {
       sourceRefs: loaded.sourceRefs,
       profile,
       jurisdictionCode: jurisdiction.code,
-      productLabel: mapBusinessTypeToProductLabel(loaded.organization.businessType),
+      selectedProductSlug: selectedProduct,
+      productEntitlementStatus,
+      organizationBusinessType: loaded.organization.businessType,
     });
     const sourceSetFingerprint = computeSourceSetFingerprint(loaded.sourceRefs);
     const now = new Date().toISOString();
@@ -141,8 +164,11 @@ export class VehicleOnboardingReadinessService {
       readinessInputFingerprint: inputFingerprint,
       sourceSetFingerprint,
       productContext: {
-        businessType: loaded.organization.businessType,
-        profileProduct: profile.product,
+        selectedProductSlug: selectedProduct,
+        productEntitlementStatus,
+        organizationBusinessType: loaded.organization.businessType,
+        profileId: profile.profileId,
+        profileVersion: profile.profileVersion,
       },
       jurisdictionContext: jurisdiction,
       powertrainContext: { classification: powertrain },

@@ -1,15 +1,12 @@
-import type { Organization } from '@prisma/client';
-
 /**
- * READINESS_PRODUCT_AUTHORITY=Organization.businessType
+ * READINESS_SELECTED_PRODUCT_AUTHORITY=explicit ProductSlug on evaluate/seal + OrganizationProduct entitlement
  *
- * No stronger subscription/plan override exists in repository for onboarding readiness
- * as of VO-4 (billing product SKUs are not consulted here).
+ * Organization.businessType is classification context only — not product license.
  */
-export function readinessProductAuthorityLabel(): string {
-  return 'Organization.businessType';
+export function readinessSelectedProductAuthorityLabel(): string {
+  return 'Explicit ProductSlug + OrganizationProduct (ProductLicenseGuard-aligned ACTIVE status)';
 }
 
-export function mapBusinessTypeToProductLabel(businessType: Organization['businessType']): string {
-  return businessType;
+export function organizationBusinessTypeRoleLabel(): string {
+  return 'CLASSIFICATION_CONTEXT_ONLY';
 }

@@ -104,7 +104,7 @@ export class VehicleOnboardingActivationService {
         const organization = await tx.organization.findUniqueOrThrow({
           where: { id: input.organizationId },
         });
-        this.readinessAuthority.assertReadyForActivation(caseRow, {
+        await this.readinessAuthority.assertReadyForActivation(caseRow, {
           sourceRefs: caseRow.sourceRefs,
           organization,
         });

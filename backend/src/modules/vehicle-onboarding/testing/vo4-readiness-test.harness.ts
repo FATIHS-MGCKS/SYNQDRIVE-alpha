@@ -5,7 +5,10 @@ import { VehicleOnboardingReadinessService } from '../services/vehicle-onboardin
 
 export function createVo4ReadinessTestHarness(prisma: PrismaClient) {
   const readinessService = new VehicleOnboardingReadinessService(prisma as any);
-  const productionReadiness = new ProductionFailClosedReadinessAuthority(readinessService);
+  const productionReadiness = new ProductionFailClosedReadinessAuthority(
+    prisma as any,
+    readinessService,
+  );
   const harness = createVehicleOnboardingTestHarness(prisma, productionReadiness);
   return { ...harness, readinessService, productionReadiness };
 }
