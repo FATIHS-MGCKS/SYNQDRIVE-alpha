@@ -194,12 +194,12 @@ async function seedQualifiedSession(
       });
 
       const input = { organizationId, vehicleId, evaluationAt };
-      const h2 = await runM3_3HvH3LongitudinalTrendReport(prisma, input).then(() =>
-        import('../hv-h2/m3-3-hv-h2-longitudinal-input-report.service').then((m) =>
-          m.runM3_3HvH2LongitudinalInputReport(prisma, input),
-        ),
-      );
-      expect(h2.candidates.filter((c) => c.method === 'M3_ADDED_ENERGY_DELTA_SOC' && c.eligibility === 'eligible').length).toBeGreaterThanOrEqual(1);
+      const h2 = await runM3_3HvH2LongitudinalInputReport(prisma, input);
+      expect(
+        h2.candidates.filter(
+          (c) => c.method === 'M3_ADDED_ENERGY_DELTA_SOC' && c.eligibility === 'eligible',
+        ).length,
+      ).toBeGreaterThanOrEqual(1);
 
       const a = await runM3_3HvH3LongitudinalTrendReport(prisma, input);
       const b = await runM3_3HvH3LongitudinalTrendReport(prisma, input);
