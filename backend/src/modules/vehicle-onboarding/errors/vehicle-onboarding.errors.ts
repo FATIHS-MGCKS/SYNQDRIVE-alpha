@@ -1,0 +1,32 @@
+export type VehicleOnboardingErrorCode =
+  | 'CASE_NOT_FOUND'
+  | 'ORGANIZATION_MISMATCH'
+  | 'INVALID_CASE_TRANSITION'
+  | 'READINESS_NOT_SEALED'
+  | 'ACTIVATION_PRECONDITION_FAILED'
+  | 'SCHEMA_REQUIRED_FIELDS_MISSING'
+  | 'UNSUPPORTED_CONTRACT_VERSION'
+  | 'UNSUPPORTED_FUEL_TYPE'
+  | 'VIN_CONFLICT_REQUIRES_IDENTITY_REVIEW'
+  | 'IDENTITY_REVIEW_REQUIRED'
+  | 'SOURCE_REF_CONFLICT'
+  | 'SOURCE_NOT_AVAILABLE'
+  | 'TERMINAL_CASE_IDEMPOTENCY'
+  | 'COMPOSITE_IDENTITY_CONFLICT'
+  | 'PROVIDER_LINK_CONFLICT'
+  | 'HM_ALREADY_REGISTERED'
+  | 'SOURCE_SET_REQUIRES_REVIEW'
+  | 'PRIMARY_SOURCE_CONFLICT'
+  | 'IDEMPOTENCY_KEY_REUSED_FOR_DIFFERENT_REQUEST'
+  | 'OUTBOX_IDEMPOTENCY_CONFLICT';
+
+export class VehicleOnboardingError extends Error {
+  constructor(
+    readonly code: VehicleOnboardingErrorCode,
+    message: string,
+    readonly details?: Record<string, unknown>,
+  ) {
+    super(message);
+    this.name = 'VehicleOnboardingError';
+  }
+}

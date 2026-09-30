@@ -132,6 +132,14 @@ invariants:
     source_paths:
       - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
 
+  - id: VO-INV-DIMO-CUTOVER-AUTH-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: DIMO platform mirror tenant assignment requires IAM
+    statement: A DIMO platform developer-license mirror row does not prove tenant ownership; public cutover must authorize the actor before assigning that mirror to organizationId
+    source_paths:
+      - architecture/vehicle-onboarding/evidence/VO3_2_FINAL_RUNTIME_SEAL.md
+
   - id: VO-INV-ACTIVATION-EVENT-001
     kind: CANDIDATE_INVARIANT
     epistemic_status: INFERRED
