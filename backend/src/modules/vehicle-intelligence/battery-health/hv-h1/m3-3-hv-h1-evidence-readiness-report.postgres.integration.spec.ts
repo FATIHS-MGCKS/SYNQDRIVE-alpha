@@ -2,9 +2,9 @@ import { randomUUID } from 'crypto';
 import {
   BatteryCapabilityStatus,
   BatteryMeasurementQuality,
-  HvCapacityMethod,
   PrismaClient,
 } from '@prisma/client';
+import { HV_M2_CAPACITY_METHOD } from '../hv-capacity-shadow/hv-capacity-m2.types';
 import { probePostgresDatabase } from '../provider-observability-gap/provider-observability-gap-postgres.fixture';
 import {
   assertHvH1TransactionReadOnly,
@@ -106,7 +106,7 @@ async function createOrgVehicle(prisma: PrismaClient) {
         data: {
           organizationId: orgA.organizationId,
           vehicleId: orgA.vehicleId,
-          method: HvCapacityMethod.M2_CURRENT_ENERGY_SOC,
+          method: HV_M2_CAPACITY_METHOD,
           observedAt: new Date('2026-09-29T11:00:00.000Z'),
           idempotencyKey: `obs-${randomUUID()}`,
           quality: BatteryMeasurementQuality.SHADOW,

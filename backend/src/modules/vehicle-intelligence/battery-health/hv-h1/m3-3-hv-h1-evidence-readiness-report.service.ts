@@ -1,6 +1,8 @@
 import type { PrismaClient } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import { RECHARGE_SEGMENTS_SIGNAL_KEY } from '../capability-preflight/battery-capability-signals.registry';
+import { HV_M2_CAPACITY_METHOD } from '../hv-capacity-shadow/hv-capacity-m2.types';
+import { HV_M3_CAPACITY_METHOD } from '../hv-capacity-shadow/hv-capacity-m3.types';
 import { resolveHvMethodProfile } from '../hv-method-profile/hv-method-profile.resolver';
 import type { HvMethodProfileCapabilityInput } from '../hv-method-profile/hv-method-profile.types';
 import {
@@ -170,7 +172,7 @@ async function buildReportInTransaction(
     where: {
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
-      method: 'M2_CURRENT_ENERGY_SOC',
+      method: HV_M2_CAPACITY_METHOD,
       observedAt: { lte: evaluationAt },
     },
   });
@@ -179,7 +181,7 @@ async function buildReportInTransaction(
     where: {
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
-      method: 'M3_ADDED_ENERGY_DELTA_SOC',
+      method: HV_M3_CAPACITY_METHOD,
       observedAt: { lte: evaluationAt },
     },
   });
@@ -188,7 +190,7 @@ async function buildReportInTransaction(
     where: {
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
-      method: 'PROVIDER_HV_SOH',
+      estimatedSohPct: { not: null },
       observedAt: { lte: evaluationAt },
     },
   });
