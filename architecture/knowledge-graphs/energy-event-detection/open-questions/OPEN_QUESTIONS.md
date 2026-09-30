@@ -27,11 +27,11 @@ All 12 discovery open questions classified. **Separate current-state facts from 
 | EED-OQ-011 | RECHARGE UI for multi-hour coalesced sessions? | **OPEN** | Copy adequacy unproven at scale | NO | LOW |
 | EED-OQ-012 | Observability SLOs for rise null rate? | **OPEN** | Metrics exist; no SLO thresholds | NO | LOW |
 | EED-OQ-013 | Physical refuel identity vs dimoSegmentId? | **RESOLVED** (design) | F1.2: `RawRefuelCandidate.id` + semantic rediscovery + G2 matcher; `IMPLEMENTATION_PROOF_PENDING` F2/F5 | NO | HIGH |
-| EED-OQ-014 | RFRF threshold fleet calibration? | **OPEN** | PROVISIONAL detector thresholds; KS MS 661 positive only | NO | HIGH |
+| EED-OQ-014 | RFRF threshold fleet calibration? | **OPEN** | Peak-anchored post plateau insufficient for overshoot-then-settle (KS MS 661 2026-09-30); **ROBUST_SETTLED_POST_REFUEL_LEVEL** authorized as design direction (ADR 2026-09-30); offline replay EED-EV-0103; **numeric calibration still open** | NO | HIGH |
 | EED-OQ-015 | Stretched-end native↔fallback convergence identity? | **RESOLVED** (design+code) | EED-EV-0097; bounded fallback classifier; canonical matcher strict | NO | HIGH |
 | EED-OQ-017 | Stale pre-fill baseline authority for RFRF promotion? | **RESOLVED** (design+code) | EED-EV-0098; baseline recency guard; promotion BLOCKED_BASELINE_RECENCY | NO | HIGH |
 | EED-OQ-018 | READY candidate stale evidence/trust refresh gap? | **RESOLVED** (design+code) | EED-EV-0099; versioned READY refresh before promotion; trust still UNKNOWN | NO | HIGH |
-| EED-OQ-019 | RFRF scoped hybrid trust activation + durable vehicle calibration? | **PARTIALLY_RESOLVED** | EED-EV-0100 semantic authority + EED-EV-0101 `ALPHA_ALLOWLIST` (default OFF) + **EED-EV-0102** Production FMS scoped activation 2026-09-29; remaining: first natural Production refuel evidence + durable calibration store — activation infrastructure complete | NO | HIGH |
+| EED-OQ-019 | RFRF scoped hybrid trust activation + durable vehicle calibration? | **PARTIALLY_RESOLVED** | EED-EV-0100–0102 Hybrid activation complete; **Alpha Option C** blocks ABSOLUTE_ONLY auto-promotion (capability ADR 2026-09-30); first natural refuel captured (KS MS 661 2026-09-30) — F3 maturity gap documented in EED-EV-0103 replay (settled-post design); future **rfrf-absolute-only-trust-v1** design only; durable calibration store + Production numeric caps **open** | NO | HIGH |
 
 ## Deferred (reference only)
 
