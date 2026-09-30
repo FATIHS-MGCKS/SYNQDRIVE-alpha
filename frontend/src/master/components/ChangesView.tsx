@@ -174,6 +174,23 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-29T03:00:00.000Z',
   },
   {
+    id: 'di-exp021-s4e2-class-a-retirement-hardening-2026-09-29',
+    version: '4.9.2209',
+    title: 'Driving Intelligence — EXP-021 S4E-2 CLASS A pipeline retirement hardening (dormant)',
+    summary: [
+      'Authoritative `retirePipelineVersion`: registry ACTIVE→RETIRED and full retirable work-item supersession in one PostgreSQL transaction (closes DI-GAP-S4A-T11-RETIRED-SUCCESSOR-TOCTOU-001).',
+      'T11 `supersedeOnDrift` locks pipeline registry FOR UPDATE before work-item row (canonical order: registry → work items).',
+      'Postgres matrix S4E2-A01..A10 concurrent retirement vs T11/T10/T12; harness `retireRegistry` delegates to repository (no raw DML).',
+    ],
+    reason: 'Strong serialized durable invariant before S4E complete; refinement within existing pipeline retirement authority (no contract v2 amendment).',
+    previousBehavior: 'CLASS B: FOR SHARE registry read + operator DML could leave durable PENDING PRIMARY under RETIRED until a later T12 tick.',
+    details:
+      'backend/src/modules/vehicle-intelligence/driving-intelligence/s4a-foundation/di-v0-s4a-work-item.repository.ts; s4e-drift-watcher/__tests__/di-v0-s4e-class-a-retirement.postgres.integration.spec.ts; architecture/drivingintelligence/evidence/EXP021_S4E2_MAINTENANCE_REAPERS.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-29T22:50:00.000Z',
+  },
+  {
     id: 'battery-v2-m3-3g-g2-confirmed-gt-emission-2026-09-29',
     version: '4.9.2208',
     title: 'Battery V2 M3.3G G2 — confirmed capture + document GT emission',

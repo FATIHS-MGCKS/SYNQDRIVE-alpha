@@ -596,9 +596,16 @@ export class DiV0S4WorkItemRepository {
     const tid: DiV0S4TransitionId = 'T11_SUPERSEDE';
     if (!DRIFT_REASONS.includes(input.reason)) reject(tid, 'REASON_INVALID');
     return this.inTx(tx, async (db) => {
-      const row = await this.lockRow(db, tid, input.workItemId);
       const kill = await this.requireNotKilled(db, tid);
       this.requireEnabled(tid, evaluateDiV0S4MaintenanceEnablement(this.config, kill));
+      const peek = await db.$queryRaw<Array<{ pipeline_version_key: string }>>`
+        SELECT pipeline_version_key FROM di_v0_s4_work_items WHERE id = ${input.workItemId}`;
+      if (peek.length !== 1) return reject(tid, 'WORK_ITEM_NOT_FOUND');
+      const registry = await this.lockPipelineRegistryForUpdate(db, tid, peek[0].pipeline_version_key);
+      const row = await this.lockRow(db, tid, input.workItemId);
+      if (row.pipeline_version_key !== peek[0].pipeline_version_key) {
+        reject(tid, 'WORK_ITEM_NOT_FOUND', 'pipeline_version_key drift');
+      }
       assertDiV0S4TransitionFrom(tid, row.status);
       const scope = await this.readTripScope(db, row.trip_id);
       if (!scope) return reject(tid, 'TENANT_SCOPE_INVALID', 'trip not found');
@@ -606,7 +613,10 @@ export class DiV0S4WorkItemRepository {
       if (currentFingerprint === row.boundary_fingerprint) reject(tid, 'BOUNDARY_FINGERPRINT_UNCHANGED');
       this.requireReasonMatchesTrip(tid, input.reason, scope);
 
-      const successorId = await this.successorIdIfEligible(db, row, scope, currentFingerprint);
+      const successorId =
+        registry.status === 'ACTIVE'
+          ? await this.successorIdIfEligible(db, row, scope, currentFingerprint)
+          : null;
       const updated = await db.$executeRaw`
         UPDATE di_v0_s4_work_items
         SET status = 'SUPERSEDED', superseded_reason = ${input.reason}, superseded_at = clock_timestamp(),
@@ -638,31 +648,54 @@ export class DiV0S4WorkItemRepository {
 
   // ── T12 ──────────────────────────────────────────────────────────────────
 
+  /**
+   * Authoritative operator retirement: registry ACTIVE→RETIRED and every retirable work item
+   * superseded in one transaction (CLASS A / STRONG_SERIALIZED_INVARIANT). Bounded T12 scheduler
+   * passes remain for already-RETIRED pipelines with stragglers (e.g. valid LEASED until expiry).
+   */
+  async retirePipelineVersion(
+    input: { pipelineVersionKey: string; retiredBy?: string; retiredReason?: string },
+    tx?: Db,
+  ): Promise<{ supersededWorkItemIds: string[] }> {
+    const tid: DiV0S4TransitionId = 'T12_RETIRE';
+    return this.inTx(tx, async (db) => {
+      const kill = await this.requireNotKilled(db, tid);
+      this.requireEnabled(tid, evaluateDiV0S4MaintenanceEnablement(this.config, kill));
+      const registry = await this.lockPipelineRegistryForUpdate(db, tid, input.pipelineVersionKey);
+      if (registry.status !== 'ACTIVE') reject(tid, 'PIPELINE_VERSION_NOT_ACTIVE', registry.status);
+      const allIds: string[] = [];
+      const batchSize = 500;
+      for (;;) {
+        const batch = await this.selectRetirablePipelineWorkItemsForUpdate(db, input.pipelineVersionKey, batchSize);
+        if (batch.length === 0) break;
+        batch.forEach((r) => assertDiV0S4TransitionFrom(tid, r.status));
+        const ids = batch.map((r) => r.id);
+        const updated = await this.supersedePipelineRetirementWorkItems(db, input.pipelineVersionKey, ids);
+        if (updated.length !== ids.length) reject(tid, 'CONDITIONAL_UPDATE_LOST');
+        allIds.push(...updated.map((r) => r.id));
+      }
+      const retired = await db.$executeRaw`
+        UPDATE di_v0_s4_pipeline_versions
+        SET status = 'RETIRED', retired_at = clock_timestamp(),
+            retired_by = ${input.retiredBy ?? 'OPERATOR'}, retired_reason = ${input.retiredReason ?? 'PIPELINE_RETIRE'}
+        WHERE pipeline_version_key = ${input.pipelineVersionKey} AND status = 'ACTIVE'`;
+      if (retired !== 1) reject(tid, 'CONDITIONAL_UPDATE_LOST');
+      return { supersededWorkItemIds: allIds.sort() };
+    });
+  }
+
   async retirePipelineItems(input: { pipelineVersionKey: string; limit?: number }, tx?: Db): Promise<string[]> {
     const tid: DiV0S4TransitionId = 'T12_RETIRE';
     const limit = Math.max(1, Math.min(input.limit ?? 100, 1000));
     return this.inTx(tx, async (db) => {
-      const rows = await db.$queryRaw<Array<{ id: string; status: string }>>`
-        SELECT id, status FROM di_v0_s4_work_items
-        WHERE pipeline_version_key = ${input.pipelineVersionKey}
-          AND (status IN ('PENDING', 'FAILED_RETRYABLE') OR (status = 'LEASED' AND lease_expires_at < clock_timestamp()))
-        ORDER BY id
-        LIMIT ${limit}
-        FOR UPDATE SKIP LOCKED`;
       const kill = await this.requireNotKilled(db, tid);
       this.requireEnabled(tid, evaluateDiV0S4MaintenanceEnablement(this.config, kill));
       await this.requireRegistryStatus(db, tid, input.pipelineVersionKey, 'RETIRED');
+      const rows = await this.selectRetirablePipelineWorkItemsForUpdate(db, input.pipelineVersionKey, limit);
       if (rows.length === 0) return reject(tid, 'NO_RETIRABLE_WORK_ITEM');
       rows.forEach((r) => assertDiV0S4TransitionFrom(tid, r.status));
       const ids = rows.map((r) => r.id);
-      const updated = await db.$queryRaw<Array<{ id: string }>>`
-        UPDATE di_v0_s4_work_items
-        SET status = 'SUPERSEDED', superseded_reason = 'PIPELINE_RETIRED', superseded_at = clock_timestamp(),
-            superseded_by_work_item_id = NULL, lease_epoch = lease_epoch + 1,
-            lease_owner = NULL, lease_expires_at = NULL, lease_acquired_at = NULL, next_attempt_at = NULL
-        WHERE id = ANY(${ids}::text[]) AND pipeline_version_key = ${input.pipelineVersionKey}
-          AND (status IN ('PENDING', 'FAILED_RETRYABLE') OR (status = 'LEASED' AND lease_expires_at < clock_timestamp()))
-        RETURNING id`;
+      const updated = await this.supersedePipelineRetirementWorkItems(db, input.pipelineVersionKey, ids);
       if (updated.length !== ids.length) reject(tid, 'CONDITIONAL_UPDATE_LOST');
       return updated.map((r) => r.id).sort();
     });
@@ -930,6 +963,48 @@ export class DiV0S4WorkItemRepository {
     }
   }
 
+  /** Canonical lock order: pipeline registry row before work-item rows (T11, authoritative retirement). */
+  private async lockPipelineRegistryForUpdate(
+    db: Db,
+    tid: DiV0S4TransitionId,
+    pipelineVersionKey: string,
+  ): Promise<{ status: string }> {
+    const rows = await db.$queryRaw<Array<{ status: string }>>`
+      SELECT status FROM di_v0_s4_pipeline_versions WHERE pipeline_version_key = ${pipelineVersionKey} FOR UPDATE`;
+    if (rows.length !== 1) reject(tid, 'PIPELINE_VERSION_NOT_ACTIVE', 'MISSING');
+    return { status: rows[0]!.status };
+  }
+
+  private async selectRetirablePipelineWorkItemsForUpdate(
+    db: Db,
+    pipelineVersionKey: string,
+    limit: number,
+  ): Promise<Array<{ id: string; status: string }>> {
+    return db.$queryRaw<Array<{ id: string; status: string }>>`
+      SELECT id, status FROM di_v0_s4_work_items
+      WHERE pipeline_version_key = ${pipelineVersionKey}
+        AND (status IN ('PENDING', 'FAILED_RETRYABLE') OR (status = 'LEASED' AND lease_expires_at < clock_timestamp()))
+      ORDER BY id
+      LIMIT ${limit}
+      FOR UPDATE`;
+  }
+
+  private async supersedePipelineRetirementWorkItems(
+    db: Db,
+    pipelineVersionKey: string,
+    ids: string[],
+  ): Promise<Array<{ id: string }>> {
+    if (ids.length === 0) return [];
+    return db.$queryRaw<Array<{ id: string }>>`
+      UPDATE di_v0_s4_work_items
+      SET status = 'SUPERSEDED', superseded_reason = 'PIPELINE_RETIRED', superseded_at = clock_timestamp(),
+          superseded_by_work_item_id = NULL, lease_epoch = lease_epoch + 1,
+          lease_owner = NULL, lease_expires_at = NULL, lease_acquired_at = NULL, next_attempt_at = NULL
+      WHERE id = ANY(${ids}::text[]) AND pipeline_version_key = ${pipelineVersionKey}
+        AND (status IN ('PENDING', 'FAILED_RETRYABLE') OR (status = 'LEASED' AND lease_expires_at < clock_timestamp()))
+      RETURNING id`;
+  }
+
   private requireEnabled(tid: DiV0S4TransitionId, result: DiV0S4EnablementResult): void {
     if (!result.enabled) reject(tid, 'CONTROL_PLANE_DISABLED', result.failedTerms.join(','));
   }
@@ -1056,9 +1131,6 @@ export class DiV0S4WorkItemRepository {
     if (row.run_purpose !== 'PRIMARY') return null;
     if (scope.trip_status !== 'COMPLETED' || scope.end_time == null) return null;
     if (scope.organization_id !== row.organization_id || scope.vehicle_id !== row.vehicle_id) return null;
-    const registry = await db.$queryRaw<Array<{ status: string }>>`
-      SELECT status FROM di_v0_s4_pipeline_versions WHERE pipeline_version_key = ${row.pipeline_version_key} FOR SHARE`;
-    if (registry[0]?.status !== 'ACTIVE') return null;
     return randomUUID();
   }
 

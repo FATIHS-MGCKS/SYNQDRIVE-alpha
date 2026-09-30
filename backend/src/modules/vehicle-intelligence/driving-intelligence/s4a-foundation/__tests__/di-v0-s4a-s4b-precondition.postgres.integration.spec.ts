@@ -9,6 +9,7 @@ import {
   newS4aClient,
   raceThroughControlGate,
   retireRegistry,
+  retireRegistryStatusOnly,
   S4A_POSTGRES_LIVE,
   s4aChannels,
   s4aConfigFor,
@@ -194,7 +195,7 @@ assertS4aPostgresCiEnv();
   it('BR07 pipeline retired blocks illegal successor on drift', async () => {
     const { repo, manifest, created } = await createPrimary();
     const pvk = buildDiV0S4PipelineVersionKey(manifest);
-    await retireRegistry(admin, pvk);
+    await retireRegistryStatusOnly(admin, pvk);
     await changeTripBoundary(admin, tenant.tripId);
     const result = await repo.supersedeOnDrift({ workItemId: created.workItemId, reason: 'BOUNDARY_CHANGED' });
     expect(result.successorWorkItemId).toBeNull();
