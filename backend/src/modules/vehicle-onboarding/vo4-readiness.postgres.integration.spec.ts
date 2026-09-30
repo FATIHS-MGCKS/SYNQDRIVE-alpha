@@ -415,6 +415,77 @@ async function applyResolvableDimoIdentity(prisma: PrismaClient, caseId: string,
     expect(result.vehicleId).toBeTruthy();
   });
 
+  it('REVIEW_REQUIRED decision blocks activation', async () => {
+    const orgId = await createOrg(prisma);
+    const dimoId = randomUUID();
+    await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 6)}`);
+    const caseRow = await caseService.openOrResumeFromDimo(
+      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoId,
+    );
+    await prisma.vehicleOnboardingCase.update({
+      where: { id: caseRow.id },
+      data: {
+        draftIdentityJson: {
+          version: 1,
+          vin: 'VINX',
+          vinProvenance: 'PROVIDER',
+          vinVerificationState: 'CONFLICT',
+          make: 'Audi',
+          model: 'A3',
+          year: 2021,
+          fuelType: 'GASOLINE',
+          sourceEvidenceRefs: [],
+        },
+      },
+    });
+    await readinessService.evaluateAndSealReadiness({
+      organizationId: orgId,
+      onboardingCaseId: caseRow.id,
+      actorUserId: null,
+    });
+    await expect(
+      activateForTest(
+        { caseService, activationService },
+        { organizationId: orgId, onboardingCaseId: caseRow.id, actorUserId: null },
+      ),
+    ).rejects.toMatchObject({ code: 'READINESS_NOT_SEALED' });
+  });
+
+  it('stale admin draft fails activation with READINESS_SEAL_STALE', async () => {
+    const orgId = await createOrg(prisma);
+    const dimoId = randomUUID();
+    await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 6)}`);
+    const caseRow = await caseService.openOrResumeFromDimo(
+      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoId,
+    );
+    await applyResolvableDimoIdentity(prisma, caseRow.id);
+    await readinessService.evaluateAndSealReadiness({
+      organizationId: orgId,
+      onboardingCaseId: caseRow.id,
+      actorUserId: null,
+    });
+    await prisma.vehicleOnboardingCase.update({
+      where: { id: caseRow.id },
+      data: {
+        draftAdminBaselineJson: {
+          version: 1,
+          vehicleName: null,
+          licensePlate: 'NEW-PLATE',
+          stationId: null,
+          notes: null,
+        },
+      },
+    });
+    await expect(
+      activateForTest(
+        { caseService, activationService },
+        { organizationId: orgId, onboardingCaseId: caseRow.id, actorUserId: null },
+      ),
+    ).rejects.toMatchObject({ code: 'READINESS_SEAL_STALE' });
+  });
+
   it('concurrent readiness seal converges to one authoritative snapshot', async () => {
     const orgId = await createOrg(prisma);
     const dimoId = randomUUID();
