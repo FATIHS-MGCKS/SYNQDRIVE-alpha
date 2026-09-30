@@ -52,6 +52,8 @@ Same gate as S4E-1: `masterEnabled` for scheduling; repository enforces `evaluat
 
 **S4B C15 (2026-09-29):** Pre-fix C15 expected `CLAIM_REFUSED` / `PIPELINE_VERSION_NOT_ACTIVE` on a still-`PENDING` item after `retireRegistry` DML. Post-fix authoritative retirement supersedes eligible `PENDING` first → claim loop correctly returns `IDLE` (`NO_CLAIMABLE_WORK_ITEM`). Defensive T02 refusal on a status-only RETIRED straggler is covered by a separate postgres case (`retireRegistryStatusOnly`, test-only).
 
+**S4E2-M19 (2026-09-29):** Concurrent `Promise.all` treated a losing T11 `ILLEGAL_SOURCE_STATE` (predecessor already `SUPERSEDED` by retirement) as test failure. M19 now uses `Promise.allSettled` with an allowlisted race-loser rejection set and asserts final CLASS A durable state (same pattern as A3/A8).
+
 - `retirePipelineVersion`: `pipeline_versions` row `FOR UPDATE` → loop supersede all retirable work items (batch 500, same transaction) → `ACTIVE→RETIRED`.
 - `supersedeOnDrift` (T11): **registry `FOR UPDATE` before work-item `FOR UPDATE`**; successor insert only when registry status is `ACTIVE` under that lock; retirement blocks on registry until T11 completes, then supersedes any successor in the same retirement transaction.
 - Bounded T12 scheduler remains for stragglers on already-RETIRED pipelines (e.g. valid `LEASED` until lease expiry per R21).

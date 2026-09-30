@@ -1,6 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
 import { DI_V0_S4_LIMITS } from '../../s4a-foundation/di-v0-s4a-contract';
 import { parseDiV0S4ControlPlaneConfig } from '../../s4a-foundation/di-v0-s4a-control-plane';
+import { DiV0S4TransitionRejectedError } from '../../s4a-foundation/di-v0-s4a-errors';
 import { DiV0S4WorkItemRepository } from '../../s4a-foundation/di-v0-s4a-work-item.repository';
 import { buildDiV0S4PipelineVersionKey } from '../../s4a-foundation/di-v0-s4a-identity';
 import {
@@ -25,6 +26,27 @@ import { DiV0S4MaintenanceService } from '../di-v0-s4e-maintenance.service';
 import { listDiV0S4RetiredPipelineVersionKeys } from '../di-v0-s4e-retired-pipeline-keys';
 
 assertS4aPostgresCiEnv();
+
+/** Documented race-loser rejections when T11, retirement, T10/T12 maintenance, and drift watcher run concurrently. */
+const M19_ALLOWED_RACE_LOSER_CODES = new Set<string>([
+  'ILLEGAL_SOURCE_STATE',
+  'BOUNDARY_FINGERPRINT_UNCHANGED',
+  'PIPELINE_VERSION_NOT_ACTIVE',
+  'NO_RETIRABLE_WORK_ITEM',
+  'NO_EXHAUSTED_WORK_ITEM',
+  'CONDITIONAL_UPDATE_LOST',
+  'WORK_ITEM_NOT_FOUND',
+]);
+
+function assertM19ConcurrentOutcome(result: PromiseSettledResult<unknown>, label: string): void {
+  if (result.status === 'fulfilled') return;
+  const err = result.reason;
+  if (err instanceof DiV0S4TransitionRejectedError) {
+    expect(M19_ALLOWED_RACE_LOSER_CODES.has(err.code)).toBe(true);
+    return;
+  }
+  throw err instanceof Error ? err : new Error(`${label} unexpected rejection: ${String(err)}`);
+}
 
 type ItemRow = {
   id: string;
@@ -341,21 +363,62 @@ type ItemRow = {
   it('S4E2-M19 T11/T12 race — CLASS A: no PENDING PRIMARY under RETIRED pipeline', async () => {
     const t = await tenant();
     const config = s4aConfigFor(tenants);
-    const { repo, manifest, created, pvk } = await primary(t, config);
+    const { repo, created, pvk } = await primary(t, config);
+    const runsBefore = await admin.$queryRaw<Array<{ id: string }>>`
+      SELECT id FROM di_v0_shadow_runs WHERE trip_id = ${t.tripId}`;
+    const snapsBefore = await admin.$queryRaw<Array<{ snapshot_hash: string }>>`
+      SELECT snapshot_hash FROM di_v0_s4_evidence_snapshots WHERE trip_id = ${t.tripId}`;
     await changeTripBoundary(admin, t.tripId);
     const svc = maintenance(config);
     const drift = watcher(config);
-    await Promise.all([
+    const outcomes = await Promise.allSettled([
       repo.supersedeOnDrift({ workItemId: created.workItemId, reason: 'BOUNDARY_CHANGED' }),
       repo.retirePipelineVersion({ pipelineVersionKey: pvk, retiredBy: 'S4E2_M19', retiredReason: 'TEST' }),
       svc.runMaintenancePass(),
       drift.runDriftWatchPass(),
     ]);
+    assertM19ConcurrentOutcome(outcomes[0], 'T11_SUPERSEDE');
+    assertM19ConcurrentOutcome(outcomes[1], 'retirePipelineVersion');
+    assertM19ConcurrentOutcome(outcomes[2], 'maintenancePass');
+    assertM19ConcurrentOutcome(outcomes[3], 'driftWatchPass');
+
+    const reg = await admin.$queryRaw<Array<{ status: string }>>`
+      SELECT status::text AS status FROM di_v0_s4_pipeline_versions WHERE pipeline_version_key = ${pvk}`;
+    expect(reg[0]?.status).toBe('RETIRED');
+
     const pending = await admin.$queryRaw<Array<{ n: bigint }>>`
       SELECT count(*)::bigint AS n FROM di_v0_s4_work_items
-      WHERE trip_id = ${t.tripId} AND pipeline_version_key = ${pvk}
-        AND status = 'PENDING' AND run_purpose = 'PRIMARY'`;
+      WHERE pipeline_version_key = ${pvk} AND status = 'PENDING' AND run_purpose = 'PRIMARY'`;
     expect(Number(pending[0]?.n ?? 0)).toBe(0);
+
+    const claimable = await admin.$queryRaw<Array<{ n: bigint }>>`
+      SELECT count(*)::bigint AS n FROM di_v0_s4_work_items
+      WHERE pipeline_version_key = ${pvk}
+        AND (status IN ('PENDING', 'FAILED_RETRYABLE')
+          OR (status = 'LEASED' AND lease_expires_at < clock_timestamp()))`;
+    expect(Number(claimable[0]?.n ?? 0)).toBe(0);
+
+    const activePrimary = await admin.$queryRaw<Array<{ n: bigint }>>`
+      SELECT count(*)::bigint AS n FROM di_v0_s4_work_items
+      WHERE trip_id = ${t.tripId} AND run_purpose = 'PRIMARY'
+        AND status IN ('PENDING', 'LEASED')`;
+    expect(Number(activePrimary[0]?.n ?? 0)).toBe(0);
+
+    const predecessor = (await items(t.tripId)).find((r) => r.id === created.workItemId);
+    expect(predecessor?.status).toBe('SUPERSEDED');
+    expect(['PIPELINE_RETIRED', 'BOUNDARY_CHANGED', 'BOUNDARY_CANCELLED']).toContain(predecessor?.superseded_reason ?? '');
+
+    const runsAfter = await admin.$queryRaw<Array<{ id: string }>>`
+      SELECT id FROM di_v0_shadow_runs WHERE trip_id = ${t.tripId}`;
+    const snapsAfter = await admin.$queryRaw<Array<{ snapshot_hash: string }>>`
+      SELECT snapshot_hash FROM di_v0_s4_evidence_snapshots WHERE trip_id = ${t.tripId}`;
+    expect(runsAfter.map((r) => r.id).sort()).toEqual(runsBefore.map((r) => r.id).sort());
+    expect(snapsAfter.map((r) => r.snapshot_hash).sort()).toEqual(snapsBefore.map((r) => r.snapshot_hash).sort());
+
+    const foreign = await admin.$queryRaw<Array<{ n: bigint }>>`
+      SELECT count(*)::bigint AS n FROM di_v0_s4_work_items
+      WHERE pipeline_version_key = ${pvk} AND organization_id <> ${t.organizationId}`;
+    expect(Number(foreign[0]?.n ?? 0)).toBe(0);
   }, 60_000);
 
   it('S4E2-M20 T10/T11 race — single valid terminal/superseded outcome', async () => {
