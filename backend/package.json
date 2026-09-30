@@ -88,6 +88,8 @@
     "test:legal-documents:migration:legacy": "bash scripts/test/legal-documents-migration-test.sh legacy",
     "test:vehicle-onboarding:vo2:postgres": "VO2_PERSISTENCE_PG=1 jest vo2-persistence.postgres.integration --runInBand --forceExit",
     "test:vehicle-onboarding:vo2:postgres:ci": "bash scripts/test/vo2-vehicle-onboarding-postgres-ci.sh",
+    "test:vehicle-onboarding:vo3": "jest vehicle-onboarding --testPathIgnorePatterns=postgres.integration",
+    "test:vehicle-onboarding:vo3:postgres": "VO3_ORCHESTRATOR_PG=1 jest vo3-orchestrator.postgres.integration --runInBand --forceExit",
     "test:communication-center:migration": "bash scripts/test/communication-center-c1-migration-test.sh",
     "test:bookings": "jest --testPathPattern='modules/bookings|booking-pickup-gate|booking-document-|booking-payment-request|rental-contract-legal' --testPathIgnorePatterns='postgres\\.invariants'",
     "test:bookings:security": "jest bookings-security-negative booking-controller-permissions.characterization",

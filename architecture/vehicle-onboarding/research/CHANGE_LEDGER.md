@@ -7,6 +7,7 @@
 | 2026-09-30 | **VO-1.1** — Consistency seal VO-DEC-1-002; pre-activation Vehicle NO; candidate suppression; transfer fail-closed; activation outbox | Architecture only |
 | 2026-09-30 | **VO-2** — Persistence foundation migration; compile-only nullable VIN types | Schema + migration; registration paths unchanged |
 | 2026-09-30 | **VO-2.1** — Integrity constraints, link history fix, legacy-upgrade harness, VO-2 Postgres CI; nullable VIN display-only compat | Schema migration + tests; VO-3 not started |
+| 2026-09-30 | **VO-3** — Provider-neutral orchestrator, adapters, atomic activation TX, readiness authority placeholder, Postgres proofs; **no public cutover** | Runtime module added; legacy registration unchanged |
 
 ## VO-0B — REUSE-FIRST components (do not replace without VO-1+ proof)
 
