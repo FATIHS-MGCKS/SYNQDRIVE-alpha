@@ -1,0 +1,19 @@
+# Vehicle Onboarding — Graph Invariants (bootstrap)
+
+invariants:
+  - id: VO-INV-001
+    kind: CONFIRMED_INVARIANT
+    epistemic_status: CONFIRMED
+    title: Canonical vehicle PK is Vehicle.id
+    statement: Canonical tenant-operational vehicle identity is Vehicle.id not DimoVehicle.id
+    source_paths:
+      - backend/prisma/schema.prisma
+      - architecture/vehicle-onboarding/CURRENT_STATE.md
+
+  - id: VO-INV-002
+    kind: CONFIRMED_INVARIANT
+    epistemic_status: CONFIRMED
+    title: Global unique dimo_vehicle_id on Vehicle
+    statement: At most one Vehicle may reference a given non-null dimoVehicleId globally
+    source_paths:
+      - backend/prisma/migrations/20260726140000_vehicles_dimo_vehicle_id_partial_unique/migration.sql
