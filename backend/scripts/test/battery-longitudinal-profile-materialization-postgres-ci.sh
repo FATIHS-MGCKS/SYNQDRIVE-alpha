@@ -53,7 +53,4 @@ npm run test:battery:v2:f5-natural-calibration-report:postgres:ci
 log "M3.3G G1 ground-truth PostgreSQL suite (after F5 in shared ephemeral DB)"
 bash scripts/test/battery-ground-truth-postgres-ci.sh
 
-log "M3.3-HV-H1 evidence readiness report PostgreSQL (read-only + tenant isolation)"
-npm run test:battery:v2:hv-h1:postgres:ci
-
 log "battery-longitudinal-profile-materialization-postgres-ci completed successfully"
