@@ -11,6 +11,7 @@
 | VO-EVID-3-001C | VO-3.2 source-adoption security + Postgres final seal | REPO_CODE | [VO3_2_FINAL_RUNTIME_SEAL.md](./VO3_2_FINAL_RUNTIME_SEAL.md) |
 | VO-EVID-4-001 | VO-4 readiness authority + profile engine | REPO_CODE | [VO4_READINESS_AUTHORITY.md](./VO4_READINESS_AUTHORITY.md) |
 | VO-EVID-4-005 | VO-4.5 technical baseline V2 + activation materialization | REPO_CODE | [VO45_TECHNICAL_BASELINE_MATERIALIZATION.md](./VO45_TECHNICAL_BASELINE_MATERIALIZATION.md) |
+| VO-EVID-4-008 | VO-4.8 authenticated capture API + concurrency authority | REPO_CODE | [VO48_AUTHENTICATED_CAPTURE_API.md](./VO48_AUTHENTICATED_CAPTURE_API.md) |
 | VO-EVID-0A-001 | VO-0A repository discovery anchor | REPO_AUDIT | Anchor SHA `312d9f54a2b4c0b0740061d3e2b74897e78eacb0` cited in CURRENT_STATE |
 
 Supporting UI audit (not VO authority): `docs/ui/master-admin-connected-vehicles-dimo-deep-audit.md`
