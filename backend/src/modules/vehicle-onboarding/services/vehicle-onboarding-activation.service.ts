@@ -15,7 +15,11 @@ import {
   parseValidatedIdentityDraft,
 } from '../policy/persisted-contract.validation';
 import { assertSupportedActivationSourceSet } from '../policy/source-set-invariant';
-import type { VehicleOnboardingReadinessAuthority } from '../readiness/vehicle-onboarding-readiness-authority';
+import type {
+  ActivationTestHooks,
+  VehicleOnboardingReadinessAuthority,
+} from '../readiness/vehicle-onboarding-readiness-authority';
+import { readinessMutationLockKey } from '../readiness/readiness-mutation-lock';
 import { VEHICLE_ONBOARDING_READINESS_AUTHORITY } from '../readiness/vehicle-onboarding-readiness.tokens';
 import {
   materializeDimoConsentIdempotent,
@@ -43,6 +47,7 @@ export interface ActivateVehicleInput {
   onboardingCaseId: string;
   actorUserId: string | null;
   faultAfterStage?: Vo3ActivationFaultStage;
+  activationTestHooks?: ActivationTestHooks;
 }
 
 export interface ActivateVehicleResult {
@@ -89,6 +94,7 @@ export class VehicleOnboardingActivationService {
     try {
       return await this.prisma.$transaction(async (tx) => {
         await acquirePgAdvisoryXactLock64(tx, activationLockKey(input.onboardingCaseId));
+        await acquirePgAdvisoryXactLock64(tx, readinessMutationLockKey(input.onboardingCaseId));
 
         const caseRow = await tx.vehicleOnboardingCase.findFirst({
           where: { id: input.onboardingCaseId, organizationId: input.organizationId },
@@ -101,7 +107,15 @@ export class VehicleOnboardingActivationService {
           return { case: caseRow, vehicleId: caseRow.vehicleId, created: false };
         }
 
-        this.readinessAuthority.assertReadyForActivation(caseRow);
+        const organization = await tx.organization.findUniqueOrThrow({
+          where: { id: input.organizationId },
+        });
+        await this.readinessAuthority.assertReadyForActivation(caseRow, {
+          sourceRefs: caseRow.sourceRefs,
+          organization,
+          tx,
+          activationTestHooks: input.activationTestHooks,
+        });
         if (caseRow.vehicleId) {
           throw new VehicleOnboardingError(
             'ACTIVATION_PRECONDITION_FAILED',

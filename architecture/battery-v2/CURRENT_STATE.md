@@ -92,6 +92,7 @@
 | Provider-gap metrics follow-up | **`synqdrive_battery_provider_observability_gap_opened_total`** PM2 aggregation semantics — non-blocking observability debt |
 | **M3.3-H0 domain separation** | **SEAL PASS** @ audit `2026-09-30` — `research/M3_3_H0_BATTERY_INTELLIGENCE_DOMAIN_SEPARATION_AUDIT_2026-09-30.md`; static contract validator `scripts/validate-h0-domain-separation-contracts.sh` |
 | **M3.3-HV-H1 evidence foundation** | **CONTRACTS + READ_ONLY_REPORT** @ `2026-09-30` — `research/M3_3_HV_H1_PROVIDER_CAPABILITY_EVIDENCE_FOUNDATION_2026-09-30.md`; `backend/.../hv-h1/*`; CLI `battery:hv-h1:evidence-readiness-report`; validator `validate-h1-provider-evidence-contracts.sh`; **H1_RUNTIME_REACHABLE=NO** |
+| **M3.3-HV-H2 longitudinal input** | **READ_ONLY_BUILDER + REPORT** @ `2026-09-30` — `research/M3_3_HV_H2_LONGITUDINAL_INPUT_CONSTRUCTION_2026-09-30.md`; `backend/.../hv-h2/*`; CLI `battery:hv-h2:longitudinal-input-report`; CI `battery-v2-hv-h2-ci.yml`; **H2_AUTOMATIC_RUNTIME=NO**; no materialized table |
 | **Post-G4 roadmap (LV/HV)** | **`M3.3-H0`** sealed; **`G4_STATUS=WAITING_FOR_FIRST_NATURAL_GT`** (async); see [`BATTERY_INTELLIGENCE_ARCHITECTURE.md`](BATTERY_INTELLIGENCE_ARCHITECTURE.md) |
 | `NEXT_PHASE` | **`M3_3_HV_H2`** (longitudinal input engineering) **∥** **`M3_3G_G4_WAIT`** **∥** **`M3_3_LV_SIGNAL_OBS`** — H1 foundation complete; **no** F6 / **no** E3 runtime |
 | `PIPELINE_HEALTH` | **PASS** (control plane / lifecycle / scheduler — distinct from evidence observability) |

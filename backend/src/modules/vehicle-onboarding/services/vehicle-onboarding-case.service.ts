@@ -47,6 +47,11 @@ import {
   logCaseResumed,
   logSourceAttached,
 } from './vehicle-onboarding-observability';
+import { invalidateReadinessSealIfReady } from '../readiness/readiness-invalidation';
+import { readinessMutationLockKey } from '../readiness/readiness-mutation-lock';
+import { acquirePgAdvisoryXactLock64 } from '@shared/database/pg-advisory-lock.util';
+import { parseValidatedSourceSnapshot } from '../policy/persisted-contract.validation';
+import { hashReadinessRelevantSourceSnapshotProjection } from '../readiness/onboarding-source-snapshot.fingerprint';
 
 export interface OnboardingActorContext {
   organizationId: string;
@@ -224,6 +229,66 @@ export class VehicleOnboardingCaseService {
     await this.attachValidatedSourceRef(ctx.organizationId, caseId, snapshot, opts);
   }
 
+  async refreshHighMobilitySourceEvidence(
+    ctx: Pick<OnboardingActorContext, 'organizationId' | 'sourceAdoption'>,
+    caseId: string,
+    hmVehicleId: string,
+  ): Promise<void> {
+    const adoption = ctx.sourceAdoption ?? DEFAULT_TENANT_SOURCE_ADOPTION;
+    await this.prisma.$transaction(async (tx) => {
+      await acquirePgAdvisoryXactLock64(tx, readinessMutationLockKey(caseId));
+      const caseRow = await tx.vehicleOnboardingCase.findFirst({
+        where: { id: caseId, organizationId: ctx.organizationId },
+      });
+      if (!caseRow) {
+        throw new VehicleOnboardingError('CASE_NOT_FOUND', 'Onboarding case not found');
+      }
+      if (caseRow.status === 'COMPLETED' || caseRow.status === 'CANCELLED' || caseRow.status === 'EXPIRED') {
+        throw new VehicleOnboardingError('TERMINAL_CASE_IDEMPOTENCY', 'Cannot refresh terminal case');
+      }
+      const ref = await tx.vehicleOnboardingCaseSourceRef.findFirst({
+        where: {
+          onboardingCaseId: caseId,
+          provider: 'HIGH_MOBILITY',
+          sourceMirrorId: hmVehicleId,
+        },
+      });
+      if (!ref) {
+        throw new VehicleOnboardingError('SOURCE_NOT_AVAILABLE', 'High Mobility source ref not found on case');
+      }
+      const hm = await tx.highMobilityVehicle.findUnique({ where: { id: hmVehicleId } });
+      if (!hm) {
+        throw new VehicleOnboardingError('SOURCE_NOT_AVAILABLE', 'High Mobility source not available');
+      }
+      this.sourceAdoptionAuthority.assertHighMobilityMirrorAdoptable(hm, ctx.organizationId, adoption);
+      const oldSnap = parseValidatedSourceSnapshot(ref);
+      const newSnap = buildHmOnboardingSourceSnapshot(hm, ctx.organizationId);
+      const oldVin = oldSnap.vin?.trim() || null;
+      const newVin = newSnap.vin?.trim() || null;
+      if (oldVin && newVin && oldVin !== newVin) {
+        throw new VehicleOnboardingError(
+          'IDENTITY_REVIEW_REQUIRED',
+          'Provider VIN changed; identity review required before refresh',
+        );
+      }
+      const oldHash = hashReadinessRelevantSourceSnapshotProjection(oldSnap);
+      const newHash = hashReadinessRelevantSourceSnapshotProjection(newSnap);
+      if (oldHash === newHash) {
+        return;
+      }
+      await tx.vehicleOnboardingCaseSourceRef.update({
+        where: { id: ref.id },
+        data: {
+          snapshotMetadataJson: newSnap as unknown as Prisma.InputJsonValue,
+          snapshotMetadataVersion: ONBOARDING_SOURCE_SNAPSHOT_VERSION,
+          provenanceAt: new Date(newSnap.observedAt),
+        },
+      });
+      const freshCase = await tx.vehicleOnboardingCase.findUniqueOrThrow({ where: { id: caseId } });
+      await invalidateReadinessSealIfReady(tx, freshCase);
+    });
+  }
+
   /** Internal persistence only — snapshot must already pass adoption authority. */
   private async attachValidatedSourceRef(
     organizationId: string,
@@ -231,80 +296,97 @@ export class VehicleOnboardingCaseService {
     snapshot: OnboardingSourceSnapshotV1,
     opts: { isPrimary?: boolean } = {},
   ): Promise<void> {
-    const caseRow = await this.getCaseForOrganization(organizationId, caseId);
-    if (
-      caseRow.status === 'COMPLETED' ||
-      caseRow.status === 'CANCELLED' ||
-      caseRow.status === 'EXPIRED'
-    ) {
-      throw new VehicleOnboardingError('TERMINAL_CASE_IDEMPOTENCY', 'Cannot attach to terminal case');
-    }
-
     const scopeKey = scopeKeyFromConnectionScope(snapshot.connectionScope);
     const wantsPrimary = opts.isPrimary ?? false;
 
-    if (wantsPrimary) {
-      const existingPrimary = await this.prisma.vehicleOnboardingCaseSourceRef.findFirst({
-        where: { onboardingCaseId: caseId, isPrimary: true },
+    await this.prisma.$transaction(async (tx) => {
+      await acquirePgAdvisoryXactLock64(tx, readinessMutationLockKey(caseId));
+      const caseRow = await tx.vehicleOnboardingCase.findFirst({
+        where: { id: caseId, organizationId },
       });
-      if (existingPrimary && !this.isSemanticSourceRefMatch(existingPrimary, snapshot, scopeKey)) {
-        throw new VehicleOnboardingError(
-          'PRIMARY_SOURCE_CONFLICT',
-          'Case already has a different primary source',
-        );
+      if (!caseRow) {
+        throw new VehicleOnboardingError('CASE_NOT_FOUND', 'Onboarding case not found');
       }
-    }
+      if (
+        caseRow.status === 'COMPLETED' ||
+        caseRow.status === 'CANCELLED' ||
+        caseRow.status === 'EXPIRED'
+      ) {
+        throw new VehicleOnboardingError('TERMINAL_CASE_IDEMPOTENCY', 'Cannot attach to terminal case');
+      }
 
-    const existingSemantic = await this.prisma.vehicleOnboardingCaseSourceRef.findFirst({
-      where: {
-        onboardingCaseId: caseId,
-        provider: snapshot.providerType,
-        connectionScopeKey: scopeKey,
-        externalVehicleIdentity: snapshot.externalVehicleIdentity,
-      },
-    });
-    if (existingSemantic) {
-      logSourceAttached(caseId, snapshot.providerType);
-      return;
-    }
+      if (wantsPrimary) {
+        const existingPrimary = await tx.vehicleOnboardingCaseSourceRef.findFirst({
+          where: { onboardingCaseId: caseId, isPrimary: true },
+        });
+        if (existingPrimary && !this.isSemanticSourceRefMatch(existingPrimary, snapshot, scopeKey)) {
+          throw new VehicleOnboardingError(
+            'PRIMARY_SOURCE_CONFLICT',
+            'Case already has a different primary source',
+          );
+        }
+      }
 
-    try {
-      await this.prisma.vehicleOnboardingCaseSourceRef.create({
-        data: {
-          id: randomUUID(),
+      const existingSemantic = await tx.vehicleOnboardingCaseSourceRef.findFirst({
+        where: {
           onboardingCaseId: caseId,
           provider: snapshot.providerType,
-          connectionScope: snapshot.connectionScope,
           connectionScopeKey: scopeKey,
           externalVehicleIdentity: snapshot.externalVehicleIdentity,
-          sourceMirrorTable: snapshot.sourceMirrorTable,
-          sourceMirrorId: snapshot.sourceMirrorId,
-          provenanceAt: new Date(snapshot.observedAt),
-          isPrimary: wantsPrimary,
-          snapshotMetadataJson: snapshot as unknown as Prisma.InputJsonValue,
-          snapshotMetadataVersion: ONBOARDING_SOURCE_SNAPSHOT_VERSION,
         },
       });
-    } catch (error) {
-      if (isPrismaUniqueViolation(error, ['onboarding_case_id', 'is_primary'])) {
-        throw new VehicleOnboardingError(
-          'PRIMARY_SOURCE_CONFLICT',
-          'Case already has a primary source ref',
-        );
-      }
-      if (isPrismaUniqueViolation(error, ['onboarding_case_id', 'provider', 'connection_scope_key', 'external_vehicle_identity'])) {
+      if (existingSemantic) {
         logSourceAttached(caseId, snapshot.providerType);
         return;
       }
-      throw error;
-    }
 
-    const sourceMode: OnboardingCaseSourceMode =
-      caseRow.sourceMode === snapshot.providerType ? caseRow.sourceMode : 'COMPOSITE';
+      await invalidateReadinessSealIfReady(tx, caseRow);
+      const fresh = await tx.vehicleOnboardingCase.findUniqueOrThrow({ where: { id: caseId } });
+      try {
+        await tx.vehicleOnboardingCaseSourceRef.create({
+          data: {
+            id: randomUUID(),
+            onboardingCaseId: caseId,
+            provider: snapshot.providerType,
+            connectionScope: snapshot.connectionScope,
+            connectionScopeKey: scopeKey,
+            externalVehicleIdentity: snapshot.externalVehicleIdentity,
+            sourceMirrorTable: snapshot.sourceMirrorTable,
+            sourceMirrorId: snapshot.sourceMirrorId,
+            provenanceAt: new Date(snapshot.observedAt),
+            isPrimary: wantsPrimary,
+            snapshotMetadataJson: snapshot as unknown as Prisma.InputJsonValue,
+            snapshotMetadataVersion: ONBOARDING_SOURCE_SNAPSHOT_VERSION,
+          },
+        });
+      } catch (error) {
+        if (isPrismaUniqueViolation(error, ['onboarding_case_id', 'is_primary'])) {
+          throw new VehicleOnboardingError(
+            'PRIMARY_SOURCE_CONFLICT',
+            'Case already has a primary source ref',
+          );
+        }
+        if (
+          isPrismaUniqueViolation(error, [
+            'onboarding_case_id',
+            'provider',
+            'connection_scope_key',
+            'external_vehicle_identity',
+          ])
+        ) {
+          logSourceAttached(caseId, snapshot.providerType);
+          return;
+        }
+        throw error;
+      }
 
-    await this.prisma.vehicleOnboardingCase.update({
-      where: { id: caseId },
-      data: { sourceMode, lastActorUserId: caseRow.lastActorUserId },
+      const sourceMode: OnboardingCaseSourceMode =
+        fresh.sourceMode === snapshot.providerType ? fresh.sourceMode : 'COMPOSITE';
+
+      await tx.vehicleOnboardingCase.update({
+        where: { id: caseId },
+        data: { sourceMode, lastActorUserId: fresh.lastActorUserId },
+      });
     });
     logSourceAttached(caseId, snapshot.providerType);
   }

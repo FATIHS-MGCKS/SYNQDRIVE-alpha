@@ -9,6 +9,7 @@ import {
   activateForTest,
 } from './testing/vehicle-onboarding-test.harness';
 import { ProductionFailClosedReadinessAuthority } from './readiness/vehicle-onboarding-readiness-authority';
+import { VehicleOnboardingReadinessService } from './services/vehicle-onboarding-readiness.service';
 import { VehicleOnboardingActivationService } from './services/vehicle-onboarding-activation.service';
 import { DimoVehicleDataSourceLinkService } from '@modules/dimo/dimo-vehicle-data-source-link.service';
 import { activationOutboxIdempotencyKey } from './services/vehicle-onboarding-activation.service';
@@ -656,10 +657,11 @@ async function sealHmCaseReady(
       dimoId,
     );
     await sealCaseReadyForTest(prisma, orgId, caseRow.id);
+    const readinessService = new VehicleOnboardingReadinessService(prisma as any);
     const prodActivation = new VehicleOnboardingActivationService(
       prisma as any,
       new DimoVehicleDataSourceLinkService(prisma as any),
-      new ProductionFailClosedReadinessAuthority(),
+      new ProductionFailClosedReadinessAuthority(readinessService),
     );
     await expect(
       prodActivation.activateVehicle({

@@ -27,6 +27,7 @@ export interface EvaluateM3_3HvH1ReadinessInput {
   m2ShadowObservationCount: number;
   m3ShadowObservationCount: number;
   providerSohObservationCount: number;
+  providerSohQualifiedEvidenceCount: number;
   longitudinalCandidateCount: number;
 }
 
@@ -54,7 +55,7 @@ export function evaluateM3_3HvH1Readiness(
 
   const m2Evidence = input.m2ShadowObservationCount > 0;
   const m3Evidence = input.m3ShadowObservationCount > 0;
-  const sohEvidence = input.providerSohObservationCount > 0;
+  const sohEvidence = input.providerSohQualifiedEvidenceCount > 0;
 
   const m2Fresh = m2Cap
     ? matrixRowFreshForMethod(input.matrix, ['hv.soc', 'hv.current_energy'])
@@ -103,7 +104,11 @@ export function evaluateM3_3HvH1Readiness(
     ),
     providerSohEvidenceReady: dim(
       sohEvidence,
-      sohEvidence ? 'provider_soh_observation_present' : 'no_provider_soh_observation',
+      sohEvidence
+        ? 'qualified_provider_soh_battery_evidence_present'
+        : input.providerSohObservationCount > 0
+          ? 'provider_soh_rows_present_but_not_qualified'
+          : 'no_provider_soh_observation',
     ),
     sessionEvidenceReady: dim(
       sessionReady,

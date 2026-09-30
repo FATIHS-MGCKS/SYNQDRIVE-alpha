@@ -22,6 +22,69 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-30 — M3.3-HV-H2 final temporal/session authority + VO-4 rebase (PR #1857)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | GT bounded query before knowledge-time filter; M2 allowed null sessions; anchors exposed current verificationStatus; lexicographic segment sort; permissive report bounds |
+| **OBSERVATION** | Future-created GT could crowd historical bounds; session completion/qualification after evaluationAt could leak into historical candidates |
+| **HYPOTHESIS** | Fail-closed session/GT temporal rules + explicit anchor as-of status preserve historical report integrity without session version history |
+| **CHANGE** | GT `createdAt` pre-limit filter; M2 SESSION_MISSING for null chargeSessionId; anchor verificationStatusAtEvaluationAt; session as-of util; numeric segment ordering; bound rejection; removed CLI `--as-of`; rebased on VO-4 main |
+| **WHY** | Close remaining scientific leaks before human i18n governance reapproval |
+| **EXPECTED_EFFECT** | Historical evaluationAt reports do not inherit post-hoc session/GT knowledge |
+| **VALIDATION** | hv-h2 unit/service/as-of tests; hv-h2 postgres CI; validate-h2-longitudinal-input-contracts.sh |
+| **OBSERVED_EFFECT** | Pending exact-head CI |
+| **NON_EFFECTS** | No schema, customer publication, or automatic runtime |
+| **REGRESSIONS_OR_TRADEOFFS** | Historical reports may mark more session-linked candidates ineligible when session row updated after evaluationAt |
+| **REMAINING_GAPS** | Full session point-in-time reconstruction unsupported (explicit in temporal semantics) |
+| **DECISION_STATUS** | EXPERIMENTAL |
+| **AFFECTED_GRAPH** | Battery V2 HV H2 research authority |
+| **EVIDENCE** | PR #1857 final authority seal commit |
+
+---
+
+## CL-2026-09-30 — M3.3-HV-H2 scientific authority hardening (PR #1857)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | H2 V1 read-only builder with permissive eligibility and current-state GT filtering |
+| **OBSERVATION** | Postgres GT FK failure; future revocation/supersession could leak into historical reports |
+| **HYPOTHESIS** | As-of GT projector + strict M2/M3 gates preserve scientific traceability without schema changes |
+| **CHANGE** | GT as-of projector; model-version fail-closed; quality whitelists; provider SOH receivedAt/modelVersion semantics; canonical evidence tiers; Postgres GT FK fixture; H1 qualified provider SOH readiness |
+| **WHY** | Prevent future-knowledge leak and silent eligibility permissiveness before longitudinal model work |
+| **EXPECTED_EFFECT** | Repeated historical reports stable; ineligible evidence visible with explicit reason codes |
+| **VALIDATION** | hv-h2 + hv-h1 unit tests; hv-h2 postgres CI; validate-h2-longitudinal-input-contracts.sh |
+| **OBSERVED_EFFECT** | Unit/contract validators PASS locally; postgres CI expected green on FK fix |
+| **NON_EFFECTS** | No customer publication, schema, or automatic runtime |
+| **REGRESSIONS_OR_TRADEOFFS** | Stricter readiness may show provider SOH not ready until rows pass qualification |
+| **REMAINING_GAPS** | No materialized H2 store |
+| **DECISION_STATUS** | EXPERIMENTAL |
+| **AFFECTED_GRAPH** | Battery V2 HV H2 research authority |
+| **EVIDENCE** | PR #1857 commits on branch cursor/m3-3-hv-h2-longitudinal-input-90ec |
+
+---
+
+## CL-2026-09-30 — M3.3-HV-H2 longitudinal input candidate construction
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | H1 sealed capability/evidence foundation only; no HV longitudinal input dataset |
+| **OBSERVATION** | H1 longitudinal candidate type lacked typed value, lifecycle segment, and durable provider SOH source alignment |
+| **HYPOTHESIS** | Pure read-only composition from persisted M2/M3 observations + BatteryEvidence + HV GT boundaries yields auditable input without a degradation model |
+| **CHANGE** | `hv-h2/` pure builder + read-only report service/CLI; M2/M3/provider candidates; GT lifecycle segmentation; H1 provider SOH count → `BatteryEvidence` |
+| **WHY** | Scientific traceability before any HV degradation model |
+| **EXPECTED_EFFECT** | Operator can emit bounded `M3_3_HV_H2_LONGITUDINAL_INPUT_REPORT_V1` with method-separated candidates and lifecycle segments |
+| **VALIDATION** | `test:battery:v2:hv-h2`; `test:battery:v2:hv-h2:postgres:ci`; `validate-h2-longitudinal-input-contracts.sh` |
+| **OBSERVED_EFFECT** | Unit + contract validators PASS locally; Postgres job on dedicated HV-H2 workflow |
+| **NON_EFFECTS** | No customer SOH, canonical health, LV pipelines, schema, or automatic runtime |
+| **REGRESSIONS_OR_TRADEOFFS** | H1 provider SOH readiness may read false until BatteryEvidence rows exist (semantically correct) |
+| **REMAINING_GAPS** | No materialized H2 store; no customer HV health score |
+| **DECISION_STATUS** | EXPERIMENTAL (operator read path only) |
+| **AFFECTED_GRAPH** | Battery V2 HV longitudinal input (research authority) |
+| **EVIDENCE** | `research/M3_3_HV_H2_LONGITUDINAL_INPUT_CONSTRUCTION_2026-09-30.md`; `backend/.../hv-h2/*` |
+
+---
+
 ## CL-2026-09-30 — M3.3-HV-H1 CI decoupled from LV D3 (PR #1852 seal)
 
 | Field | Value |
