@@ -201,7 +201,7 @@ async function seedQualifiedSession(
       expect(JSON.stringify(a)).toBe(JSON.stringify(b));
 
       const m2Series = a.lifecycleSegments.flatMap((s) =>
-        s.methodSeries.filter((m) => m.method === HV_M2_CAPACITY_METHOD),
+        s.methodSeries.filter((m) => m.method === 'M2_CURRENT_ENERGY_SOC'),
       );
       expect(m2Series.length).toBeGreaterThanOrEqual(1);
       const sessionOnePoints = m2Series.flatMap((s) =>
@@ -212,7 +212,7 @@ async function seedQualifiedSession(
       expect(sessionOnePoints[0]?.numericValue).toBeCloseTo(60, 5);
 
       const m3Series = a.lifecycleSegments.flatMap((s) =>
-        s.methodSeries.filter((m) => m.method === HV_M3_CAPACITY_METHOD),
+        s.methodSeries.filter((m) => m.method === 'M3_ADDED_ENERGY_DELTA_SOC'),
       );
       expect(m3Series.length).toBeGreaterThanOrEqual(1);
       expect(m3Series.every((s) => s.primaryTrendEligible === false)).toBe(true);
