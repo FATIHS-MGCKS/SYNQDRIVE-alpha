@@ -5,6 +5,7 @@
 | VO-DEC-0B-001 | VO-0B governance bootstrap and current-state seal | PROPOSED | VO-EVID-0B-001 |
 | VO-DEC-1-001 | VO-1 canonical onboarding contract and minimum durable lifecycle | VALIDATED | VO-EVID-1-001 |
 | VO-DEC-1-002 | VO-1.1 architecture consistency seal | VALIDATED | VO-EVID-1-001 |
+| VO-DEC-2-001 | VO-2 persistence foundation schema | PROPOSED | VO-EVID-2-001 |
 
 ---
 
@@ -54,3 +55,18 @@
 | **EVIDENCE** | VO-EVID-1-001 |
 | **VALIDATION** | `bash architecture/vehicle-onboarding/scripts/validate-graph.sh` |
 | **OPEN GAPS** | Runtime implementation unchanged |
+
+---
+
+## VO-DEC-2-001
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PROPOSED |
+| **BEFORE** | VO-1 target contract without durable tables |
+| **WHY** | Enable VO-3 orchestration with migration-safe persistence |
+| **CHANGE** | Prisma: `VehicleRegistryLifecycle`, nullable VIN + provenance, `VehicleOnboardingCase`, source refs, org/plate history, lifecycle outbox; link metadata columns; migration backfills |
+| **NON-EFFECTS** | No registration path switch; no candidate UI; no transfer runtime; `uq_data_source_link_active` retained |
+| **EVIDENCE** | VO-EVID-2-001 |
+| **VALIDATION** | `prisma validate`; `vo2-vehicle-onboarding-migration-ephemeral.sh`; `vo2-persistence.postgres.integration` |
+| **OPEN GAPS** | VO-GAP-001/008/013 runtime; link history constraint VO-3 |

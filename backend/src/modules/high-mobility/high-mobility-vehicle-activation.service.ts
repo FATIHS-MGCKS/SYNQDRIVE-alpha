@@ -28,7 +28,7 @@ export type HmActivationState =
 export interface HmVehicleStatusDto {
   state: HmActivationState;
   hmVehicleId: string | null;
-  vin: string;
+  vin: string | null;
   brand: string | null;
   clearanceStatus: string | null;
   eligibilityStatus: string | null;
@@ -77,7 +77,7 @@ export class HmVehicleActivationService {
     });
     if (!vehicle) throw new NotFoundException(`Vehicle ${vehicleId} not found`);
 
-    const vin = vehicle.vin;
+    const vin = vehicle.vin ?? '';
     const brand = vehicle.make ?? '';
     const oemPath = getOemPath(brand);
 

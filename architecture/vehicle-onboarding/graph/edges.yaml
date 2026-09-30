@@ -16,3 +16,6 @@ edges:
   - from: VO-EVID-1-001
     relation: supports
     to: VO-DEC-1-002
+  - from: VO-EVID-2-001
+    relation: supports
+    to: VO-DEC-2-001

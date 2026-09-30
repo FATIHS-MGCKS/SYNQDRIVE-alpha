@@ -238,6 +238,27 @@ nodes:
     source_paths:
       - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
 
+  - id: VO-EVID-2-001
+    type: evidence
+    title: VO-2 persistence schema and migration
+    source_type: CURRENT_CODE
+    epistemic_status: CONFIRMED
+    summary: Prisma VO-2 migration 20260930130000; no orchestration switch.
+    source_paths:
+      - backend/prisma/migrations/20260930130000_vehicle_onboarding_vo2_persistence/migration.sql
+      - architecture/vehicle-onboarding/evidence/VO2_LINK_HISTORY_AUDIT.md
+
+  - id: VO-DEC-2-001
+    type: decision
+    title: VO-2 persistence foundation
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: OnboardingCase, registry lifecycle, VIN semantics, org/plate history, lifecycle outbox.
+    source_paths:
+      - architecture/vehicle-onboarding/decisions/DECISION_REGISTER.md
+    evidence:
+      - VO-EVID-2-001
+
   - id: VO-DEC-1-002
     type: decision
     title: VO-1.1 consistency seal

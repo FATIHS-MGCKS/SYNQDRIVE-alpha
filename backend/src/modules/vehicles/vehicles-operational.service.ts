@@ -421,7 +421,7 @@ export class VehiclesOperationalService {
   private composeRegisteredRow(
     vehicle: {
       id: string;
-      vin: string;
+      vin: string | null;
       make: string;
       model: string;
       year: number;

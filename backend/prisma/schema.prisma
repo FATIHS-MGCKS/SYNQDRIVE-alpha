@@ -324,6 +324,58 @@ enum VehicleStatus {
   RESERVED
 }
 
+/// Vehicle Registry lifecycle (VO-1) — separate from rental VehicleStatus.
+enum VehicleRegistryLifecycle {
+  ACTIVE
+  OFFBOARDED
+  ARCHIVED
+}
+
+enum VehicleVinVerificationState {
+  UNVERIFIED
+  VERIFIED
+  CONFLICT
+  LEGACY_UNKNOWN
+  LEGACY_SYNTHETIC
+}
+
+enum VehicleVinProvenance {
+  PROVIDER
+  MANUAL
+  DOCUMENT
+  LEGACY_UNKNOWN
+  LEGACY_SYNTHETIC
+}
+
+enum OnboardingCaseSourceMode {
+  DIMO
+  HIGH_MOBILITY
+  MANUAL
+  COMPOSITE
+}
+
+enum OnboardingCaseStatus {
+  OPEN
+  IN_PROGRESS
+  READY_FOR_ACTIVATION
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
+enum VehicleRegistryLifecycleOutboxEventType {
+  VEHICLE_ACTIVATED
+  VEHICLE_OFFBOARDED
+  VEHICLE_ARCHIVED
+  VEHICLE_ORGANIZATION_TRANSFERRED
+}
+
+enum VehicleRegistryLifecycleOutboxStatus {
+  PENDING
+  PUBLISHED
+  FAILED
+}
+
 enum FuelType {
   GASOLINE
   DIESEL
@@ -1603,6 +1655,7 @@ model Organization {
   stations                                                  Station[]
   vehicleStationTransfers                                   VehicleStationTransfer[]
   vehicles                                                  Vehicle[]
+  vehicleOnboardingCases                                    VehicleOnboardingCase[]
   rawRefuelCandidates                                       RawRefuelCandidate[]
   brakeComponentInstallations                               BrakeComponentInstallation[]
   brakeServiceApplications                                  BrakeServiceApplication[]
@@ -2887,7 +2940,11 @@ model Vehicle {
   currentStationConfirmedAt         DateTime?         @map("current_station_confirmed_at")
   expectedStationId                 String?           @map("expected_station_id")
   dimoVehicleId                     String?           @map("dimo_vehicle_id")
-  vin                               String
+  /// Nullable per VO-1; legacy rows retain values. New vehicles created only at activation (VO-3+).
+  vin                               String?
+  vinVerificationState              VehicleVinVerificationState @default(LEGACY_UNKNOWN) @map("vin_verification_state")
+  vinProvenance                     VehicleVinProvenance        @default(LEGACY_UNKNOWN) @map("vin_provenance")
+  registryLifecycle                 VehicleRegistryLifecycle    @default(ACTIVE) @map("registry_lifecycle")
   make                              String
   model                             String
   year                              Int
@@ -3073,6 +3130,10 @@ model Vehicle {
   diV0S4EvidenceSnapshots              DiV0S4EvidenceSnapshot[]
   driverAttributions                     DriverAttribution[]
   drivingIntelligenceJobs                DrivingIntelligenceJob[]
+  organizationAssignments                VehicleOrganizationAssignment[]
+  licensePlateAssignments                VehicleLicensePlateAssignment[]
+  completedOnboardingCases               VehicleOnboardingCase[]         @relation("OnboardingCaseCompletedVehicle")
+  registryLifecycleOutboxEvents          VehicleRegistryLifecycleOutbox[]
 
   @@unique([vin, organizationId])
   @@index([organizationId])
@@ -3081,6 +3142,7 @@ model Vehicle {
   @@index([currentStationId])
   @@index([expectedStationId])
   @@index([status])
+  @@index([registryLifecycle])
   @@map("vehicles")
 }
 
@@ -16171,6 +16233,8 @@ model VehicleDataSourceLink {
   isActive          Boolean   @default(true) @map("is_active")
   activatedAt       DateTime  @default(now()) @map("activated_at")
   deactivatedAt     DateTime? @map("deactivated_at")
+  supersededByLinkId String?  @map("superseded_by_link_id")
+  deactivationReason String?  @map("deactivation_reason")
   // Provenance: who set up this binding and when it was verified
   linkedByUserId    String?   @map("linked_by_user_id")
   lastVerifiedAt    DateTime? @map("last_verified_at")
@@ -16178,6 +16242,8 @@ model VehicleDataSourceLink {
 
   // Direct FK to Vehicle enables DB-level ownership enforcement
   vehicle     Vehicle              @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  supersededBy VehicleDataSourceLink?  @relation("DataSourceLinkSupersession", fields: [supersededByLinkId], references: [id], onDelete: SetNull)
+  supersedes   VehicleDataSourceLink[] @relation("DataSourceLinkSupersession")
   hmVehicle   HighMobilityVehicle? @relation(fields: [sourceReferenceId], references: [id])
   dimoVehicle DimoVehicle?         @relation(fields: [dimoVehicleId], references: [id], onDelete: Restrict)
 
@@ -16190,6 +16256,132 @@ model VehicleDataSourceLink {
   @@index([dimoVehicleId])
   @@index([consentId])
   @@map("vehicle_data_source_links")
+}
+
+// ------------------------------------------------
+// Vehicle Onboarding / Registry (VO-2 persistence foundation)
+// ------------------------------------------------
+
+/// Durable pre-activation onboarding session (VO-1). No Vehicle row until activation (VO-3+).
+model VehicleOnboardingCase {
+  id                       String                   @id @default(uuid())
+  organizationId           String                   @map("organization_id")
+  sourceMode               OnboardingCaseSourceMode @map("source_mode")
+  status                   OnboardingCaseStatus     @default(OPEN)
+  /// Denormalized primary source key for open-case uniqueness (provider-neutral).
+  primarySourceProvider    String?                  @map("primary_source_provider")
+  primarySourceExternalId  String?                  @map("primary_source_external_id")
+  draftIdentityJson        Json?                    @map("draft_identity_json")
+  draftAdminBaselineJson   Json?                    @map("draft_admin_baseline_json")
+  draftTechnicalBaselineJson Json?                  @map("draft_technical_baseline_json")
+  readinessSnapshotJson    Json?                    @map("readiness_snapshot_json")
+  readinessProfileVersion  String?                  @map("readiness_profile_version")
+  validationFindingsJson   Json?                    @map("validation_findings_json")
+  idempotencyKey           String?                  @map("idempotency_key")
+  concurrencyToken         String?                  @map("concurrency_token")
+  vehicleId                String?                  @map("vehicle_id")
+  initiatedByUserId        String?                  @map("initiated_by_user_id")
+  lastActorUserId          String?                  @map("last_actor_user_id")
+  completedAt              DateTime?                @map("completed_at")
+  cancelledAt              DateTime?                @map("cancelled_at")
+  expiredAt                DateTime?                @map("expired_at")
+  createdAt                DateTime                 @default(now()) @map("created_at")
+  updatedAt                DateTime                 @updatedAt @map("updated_at")
+
+  organization Organization                      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle?                          @relation("OnboardingCaseCompletedVehicle", fields: [vehicleId], references: [id], onDelete: Restrict)
+  sourceRefs   VehicleOnboardingCaseSourceRef[]
+
+  @@index([organizationId, status])
+  @@index([vehicleId])
+  @@index([idempotencyKey])
+  @@map("vehicle_onboarding_cases")
+}
+
+model VehicleOnboardingCaseSourceRef {
+  id                     String   @id @default(uuid())
+  onboardingCaseId       String   @map("onboarding_case_id")
+  provider               String
+  connectionScope        String?  @map("connection_scope")
+  externalVehicleIdentity String  @map("external_vehicle_identity")
+  sourceMirrorTable      String?  @map("source_mirror_table")
+  sourceMirrorId         String?  @map("source_mirror_id")
+  provenanceAt           DateTime? @map("provenance_at")
+  firstSeenAt            DateTime? @map("first_seen_at")
+  lastSeenAt             DateTime? @map("last_seen_at")
+  isPrimary              Boolean  @default(false) @map("is_primary")
+  snapshotMetadataJson   Json?    @map("snapshot_metadata_json")
+  createdAt              DateTime @default(now()) @map("created_at")
+
+  onboardingCase VehicleOnboardingCase @relation(fields: [onboardingCaseId], references: [id], onDelete: Cascade)
+
+  @@index([onboardingCaseId])
+  @@index([provider, externalVehicleIdentity])
+  @@map("vehicle_onboarding_case_source_refs")
+}
+
+model VehicleOrganizationAssignment {
+  id               String    @id @default(uuid())
+  vehicleId        String    @map("vehicle_id")
+  organizationId   String    @map("organization_id")
+  validFrom        DateTime  @map("valid_from")
+  validTo          DateTime? @map("valid_to")
+  assignmentReason String?   @map("assignment_reason")
+  assignmentSource String?   @map("assignment_source")
+  actorUserId      String?   @map("actor_user_id")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+
+  @@index([vehicleId])
+  @@index([organizationId])
+  @@index([vehicleId, validTo])
+  @@map("vehicle_organization_assignments")
+}
+
+model VehicleLicensePlateAssignment {
+  id          String    @id @default(uuid())
+  vehicleId   String    @map("vehicle_id")
+  plate       String
+  jurisdiction String?  @map("jurisdiction")
+  validFrom   DateTime  @map("valid_from")
+  validTo     DateTime? @map("valid_to")
+  source      String?
+  actorUserId String?   @map("actor_user_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+
+  @@index([vehicleId])
+  @@index([vehicleId, validTo])
+  @@map("vehicle_license_plate_assignments")
+}
+
+/// Vehicle Registry lifecycle facts — same transaction as state changes in VO-3+ (outbox only in VO-2).
+model VehicleRegistryLifecycleOutbox {
+  id             String                               @id @default(uuid())
+  eventId        String                               @unique @map("event_id")
+  eventType      VehicleRegistryLifecycleOutboxEventType @map("event_type")
+  vehicleId      String?                              @map("vehicle_id")
+  organizationId String?                              @map("organization_id")
+  payloadVersion Int                                  @default(1) @map("payload_version")
+  payload        Json
+  occurredAt     DateTime                             @map("occurred_at")
+  publishedAt    DateTime?                            @map("published_at")
+  status         VehicleRegistryLifecycleOutboxStatus @default(PENDING)
+  retryCount     Int                                  @default(0) @map("retry_count")
+  nextRetryAt    DateTime?                            @map("next_retry_at")
+  lastError      String?                              @map("last_error")
+  idempotencyKey String                               @unique @map("idempotency_key")
+  createdAt      DateTime                             @default(now()) @map("created_at")
+
+  vehicle Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+
+  @@index([status, occurredAt])
+  @@index([status, nextRetryAt])
+  @@index([vehicleId, occurredAt])
+  @@index([organizationId, occurredAt])
+  @@map("vehicle_registry_lifecycle_outbox")
 }
 
 // Phase 2 — raw MQTT stream message log
