@@ -3,16 +3,21 @@ import type { VehicleIdentityDraftV1 } from '../contracts/vehicle-identity-draft
 import type { VehicleAdministrativeBaselineDraftV1 } from '../contracts/vehicle-admin-baseline-draft.v1';
 import { VehicleOnboardingError } from '../errors/vehicle-onboarding.errors';
 
-const FUEL_MAP: Record<string, FuelType> = {
+const FUEL_ALIASES: Record<string, FuelType> = {
   GASOLINE: 'GASOLINE',
   PETROL: 'GASOLINE',
+  GAS: 'GASOLINE',
   DIESEL: 'DIESEL',
   ELECTRIC: 'ELECTRIC',
   EV: 'ELECTRIC',
   HYBRID: 'HYBRID',
   PLUGIN_HYBRID: 'PLUGIN_HYBRID',
+  PHEV: 'PLUGIN_HYBRID',
+  PLUGINHYBRID: 'PLUGIN_HYBRID',
   OTHER: 'OTHER',
 };
+
+const MIN_VEHICLE_YEAR = 1980;
 
 export interface ResolvedActivationVehicleFields {
   vin: string | null;
@@ -28,10 +33,37 @@ export interface ResolvedActivationVehicleFields {
   notes: string | null;
 }
 
-export function resolveFuelType(raw: string | null | undefined): FuelType {
-  if (!raw) return 'OTHER';
-  const key = raw.trim().toUpperCase().replace(/-/g, '_');
-  return FUEL_MAP[key] ?? 'OTHER';
+export function resolveFuelTypeStrict(raw: string | null | undefined): FuelType {
+  if (raw == null || String(raw).trim() === '') {
+    throw new VehicleOnboardingError(
+      'SCHEMA_REQUIRED_FIELDS_MISSING',
+      'Activation requires explicit fuel type',
+    );
+  }
+  const key = String(raw).trim().toUpperCase().replace(/-/g, '_').replace(/\s+/g, '');
+  const mapped = FUEL_ALIASES[key];
+  if (!mapped) {
+    throw new VehicleOnboardingError(
+      'UNSUPPORTED_FUEL_TYPE',
+      'Unrecognized fuel type for activation',
+      { raw },
+    );
+  }
+  return mapped;
+}
+
+export function validateActivationYear(year: number): number {
+  if (!Number.isInteger(year)) {
+    throw new VehicleOnboardingError('SCHEMA_REQUIRED_FIELDS_MISSING', 'Year must be an integer');
+  }
+  if (year < MIN_VEHICLE_YEAR) {
+    throw new VehicleOnboardingError('SCHEMA_REQUIRED_FIELDS_MISSING', 'Year is not plausible');
+  }
+  const maxYear = new Date().getFullYear() + 1;
+  if (year > maxYear) {
+    throw new VehicleOnboardingError('SCHEMA_REQUIRED_FIELDS_MISSING', 'Year is not plausible');
+  }
+  return year;
 }
 
 export function resolveActivationVehicleFields(
@@ -40,15 +72,17 @@ export function resolveActivationVehicleFields(
 ): ResolvedActivationVehicleFields {
   const make = identity.make?.trim();
   const model = identity.model?.trim();
-  const year = identity.year;
+  const yearRaw = identity.year;
 
-  if (!make || !model || year == null || Number.isNaN(year)) {
+  if (!make || !model || yearRaw == null || Number.isNaN(yearRaw)) {
     throw new VehicleOnboardingError(
       'SCHEMA_REQUIRED_FIELDS_MISSING',
       'Activation requires resolvable make, model, and year',
-      { make: !!make, model: !!model, year },
+      { make: !!make, model: !!model, year: yearRaw },
     );
   }
+
+  const year = validateActivationYear(yearRaw);
 
   const vin = identity.vin?.trim() || null;
   if (vin && (vin.startsWith('DIMO-') || vin.length === 0)) {
@@ -65,24 +99,10 @@ export function resolveActivationVehicleFields(
     make,
     model,
     year,
-    fuelType: resolveFuelType(identity.fuelType),
+    fuelType: resolveFuelTypeStrict(identity.fuelType),
     vehicleName: admin?.vehicleName?.trim() || null,
     licensePlate: admin?.licensePlate?.trim() || null,
     stationId: admin?.stationId?.trim() || null,
     notes: admin?.notes?.trim() || null,
   };
-}
-
-export function assertCompositeVinConsistency(
-  drafts: VehicleIdentityDraftV1[],
-): void {
-  const vins = drafts.map((d) => d.vin?.trim() || null).filter((v): v is string => !!v);
-  const unique = new Set(vins);
-  if (unique.size > 1) {
-    throw new VehicleOnboardingError(
-      'IDENTITY_REVIEW_REQUIRED',
-      'Source refs disagree on VIN evidence',
-      { vins: [...unique] },
-    );
-  }
 }

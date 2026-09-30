@@ -1,12 +1,9 @@
 import type { VehicleOnboardingCase } from '@prisma/client';
 import type { VehicleOnboardingReadinessSnapshotV1 } from '../contracts/readiness-snapshot.v1';
-import {
-  parseReadinessSnapshot,
-  type VehicleOnboardingReadinessAuthority,
-} from './vehicle-onboarding-readiness-authority';
+import { parseValidatedReadinessSnapshot } from '../policy/persisted-contract.validation';
+import type { VehicleOnboardingReadinessAuthority } from './vehicle-onboarding-readiness-authority';
 import { VehicleOnboardingError } from '../errors/vehicle-onboarding.errors';
 
-/** Deterministic test fixture — accepts TEST_FIXTURE attestation on READY cases. */
 export class TestVehicleOnboardingReadinessAuthority implements VehicleOnboardingReadinessAuthority {
   assertReadyForActivation(caseRow: VehicleOnboardingCase): VehicleOnboardingReadinessSnapshotV1 {
     if (caseRow.status !== 'READY_FOR_ACTIVATION') {
@@ -16,10 +13,7 @@ export class TestVehicleOnboardingReadinessAuthority implements VehicleOnboardin
         { status: caseRow.status },
       );
     }
-    const snap = parseReadinessSnapshot(caseRow);
-    if (!snap) {
-      throw new VehicleOnboardingError('READINESS_NOT_SEALED', 'Missing readiness snapshot');
-    }
+    const snap = parseValidatedReadinessSnapshot(caseRow);
     if (snap.attestationSource !== 'TEST_FIXTURE' && snap.attestationSource !== 'VO4_READINESS_ENGINE') {
       throw new VehicleOnboardingError('READINESS_NOT_SEALED', 'Invalid attestation source');
     }

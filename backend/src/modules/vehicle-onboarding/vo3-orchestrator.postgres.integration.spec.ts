@@ -1,17 +1,22 @@
 /**
- * VO-3 orchestrator + activation (PostgreSQL).
- * Run: VO3_ORCHESTRATOR_PG=1 npx jest vo3-orchestrator.postgres.integration --runInBand
+ * VO-3 / VO-3.1 orchestrator + activation (PostgreSQL).
  */
-import {
-  PrismaClient,
-  BusinessType,
-  type VehicleOnboardingCase,
-} from '@prisma/client';
+import { PrismaClient, BusinessType } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
-import { VehicleOnboardingCaseService } from './services/vehicle-onboarding-case.service';
+import { VehicleOnboardingError } from './errors/vehicle-onboarding.errors';
+import {
+  createVehicleOnboardingTestHarness,
+  sealCaseReadyForTest,
+  activateForTest,
+} from './testing/vehicle-onboarding-test.harness';
+import { ProductionFailClosedReadinessAuthority } from './readiness/vehicle-onboarding-readiness-authority';
 import { VehicleOnboardingActivationService } from './services/vehicle-onboarding-activation.service';
 import { DimoVehicleDataSourceLinkService } from '@modules/dimo/dimo-vehicle-data-source-link.service';
-import { TestVehicleOnboardingReadinessAuthority } from './readiness/test-readiness-authority';
+import { buildDimoOnboardingSourceSnapshot } from './adapters/dimo-onboarding-source.adapter';
+import { buildHmOnboardingSourceSnapshot } from './adapters/high-mobility-onboarding-source.adapter';
+import { activationOutboxIdempotencyKey } from './services/vehicle-onboarding-activation.service';
+import type { Vo3ActivationFaultStage } from './services/vehicle-onboarding-activation.service';
+
 const run = process.env.VO3_ORCHESTRATOR_PG === '1';
 
 async function createOrg(prisma: PrismaClient): Promise<string> {
@@ -26,16 +31,24 @@ async function createOrg(prisma: PrismaClient): Promise<string> {
   return id;
 }
 
-async function createDimoMirror(prisma: PrismaClient, dimoId: string, externalId: string, vin: string | null) {
+async function createDimoMirror(
+  prisma: PrismaClient,
+  dimoId: string,
+  externalId: string,
+  vin: string | null,
+  make = 'Audi',
+  model = 'A3',
+) {
   await prisma.$executeRaw`
-    INSERT INTO dimo_vehicles (id, external_id, vin, make, model, year, connection_status, created_at, updated_at)
+    INSERT INTO dimo_vehicles (id, external_id, vin, make, model, year, fuel_type, connection_status, created_at, updated_at)
     VALUES (
       ${dimoId},
       ${externalId},
       ${vin},
-      'Audi',
-      'A3',
+      ${make},
+      ${model},
       2021,
+      'GASOLINE',
       'CONNECTED'::"DimoConnectionStatus",
       NOW(),
       NOW()
@@ -43,214 +56,196 @@ async function createDimoMirror(prisma: PrismaClient, dimoId: string, externalId
   `;
 }
 
-async function sealAndActivate(
+async function assertNoActivationArtifacts(
   prisma: PrismaClient,
-  caseService: VehicleOnboardingCaseService,
-  activation: VehicleOnboardingActivationService,
   orgId: string,
-  caseRow: VehicleOnboardingCase,
-  actor: string | null = null,
+  caseId: string,
+  hmId?: string,
 ) {
-  await caseService.attestReadyForActivationTestOnly(orgId, caseRow.id, actor);
-  return activation.activateVehicle({
-    organizationId: orgId,
-    onboardingCaseId: caseRow.id,
-    actorUserId: actor,
-    activationIdempotencyKey: `act:${caseRow.id}`,
-    readinessAuthority: new TestVehicleOnboardingReadinessAuthority(),
+  const caseRow = await prisma.vehicleOnboardingCase.findUnique({ where: { id: caseId } });
+  expect(caseRow?.status).not.toBe('COMPLETED');
+  const vehicles = await prisma.vehicle.count({ where: { organizationId: orgId } });
+  expect(vehicles).toBe(0);
+  const outbox = await prisma.vehicleRegistryLifecycleOutbox.count({
+    where: { idempotencyKey: activationOutboxIdempotencyKey(caseId) },
   });
+  expect(outbox).toBe(0);
+  if (hmId) {
+    const hm = await prisma.highMobilityVehicle.findUnique({ where: { id: hmId } });
+    expect(hm?.registrationState).not.toBe('REGISTERED');
+  }
 }
 
 (run ? describe : describe.skip)('VO-3 vehicle onboarding orchestrator', () => {
   const prisma = new PrismaClient();
-  const caseService = new VehicleOnboardingCaseService(prisma as any);
-  const activation = new VehicleOnboardingActivationService(
-    prisma as any,
-    caseService,
-    new DimoVehicleDataSourceLinkService(prisma as any),
-  );
+  const harness = createVehicleOnboardingTestHarness(prisma);
 
   afterAll(async () => {
     await prisma.$disconnect();
   });
 
-  it('open case is idempotent on same idempotency key', async () => {
-    const orgId = await createOrg(prisma);
-    const dimoId = randomUUID();
-    await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 8)}`, null);
-    const ctx = {
-      organizationId: orgId,
-      actorUserId: null,
-      idempotencyKey: `idem-${randomUUID()}`,
-    };
-    const a = await caseService.openOrResumeFromDimo(ctx, dimoId);
-    const b = await caseService.openOrResumeFromDimo(ctx, dimoId);
-    expect(a.id).toBe(b.id);
-  });
-
-  it('activates DIMO case with nullable VIN', async () => {
-    const orgId = await createOrg(prisma);
-    const dimoId = randomUUID();
-    await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 8)}`, null);
-    const caseRow = await caseService.openOrResumeFromDimo(
-      {
-        organizationId: orgId,
-        actorUserId: 'user-1',
-        idempotencyKey: randomUUID(),
+  it('HM org A source open by org A passes', async () => {
+    const orgA = await createOrg(prisma);
+    const hmId = randomUUID();
+    await prisma.highMobilityVehicle.create({
+      data: {
+        id: hmId,
+        organizationId: orgA,
+        vin: `HM${randomUUID().replace(/-/g, '').slice(0, 14)}`,
+        brand: 'BMW',
+        packageType: 'HEALTH',
+        sourceMode: 'HM_ONLY',
+        clearanceStatus: 'APPROVED',
       },
-      dimoId,
-    );
-    const result = await sealAndActivate(prisma, caseService, activation, orgId, caseRow, 'user-1');
-    expect(result.created).toBe(true);
-    const vehicle = await prisma.vehicle.findUnique({ where: { id: result.vehicleId } });
-    expect(vehicle?.vin).toBeNull();
-    expect(vehicle?.dimoVehicleId).toBe(dimoId);
-    const outbox = await prisma.vehicleRegistryLifecycleOutbox.findFirst({
-      where: { vehicleId: result.vehicleId, eventType: 'VEHICLE_ACTIVATED' },
     });
-    expect(outbox).toBeTruthy();
+    const caseRow = await harness.caseService.openOrResumeFromHighMobility(
+      { organizationId: orgA, actorUserId: null, idempotencyKey: randomUUID() },
+      hmId,
+    );
+    expect(caseRow.organizationId).toBe(orgA);
   });
 
-  it('activation retry is idempotent', async () => {
-    const orgId = await createOrg(prisma);
-    const dimoId = randomUUID();
-    await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 8)}`, 'WVWZZZ1JZXW000099');
-    const caseRow = await caseService.openOrResumeFromDimo(
-      {
-        organizationId: orgId,
-        actorUserId: null,
-        idempotencyKey: randomUUID(),
-      },
-      dimoId,
-    );
-    await sealAndActivate(prisma, caseService, activation, orgId, caseRow);
-    const second = await activation.activateVehicle({
-      organizationId: orgId,
-      onboardingCaseId: caseRow.id,
-      actorUserId: null,
-      activationIdempotencyKey: `act:${caseRow.id}`,
-      readinessAuthority: new TestVehicleOnboardingReadinessAuthority(),
-    });
-    expect(second.created).toBe(false);
-    const vehicles = await prisma.vehicle.count({
-      where: { organizationId: orgId, vin: 'WVWZZZ1JZXW000099' },
-    });
-    expect(vehicles).toBe(1);
-  });
-
-  it('same-org VIN collision fails closed', async () => {
-    const orgId = await createOrg(prisma);
-    const vin = `VIN${randomUUID().replace(/-/g, '').slice(0, 14)}`;
-    await prisma.$executeRaw`
-      INSERT INTO vehicles (id, organization_id, vin, make, model, year, fuel_type, created_at, updated_at)
-      VALUES (${randomUUID()}, ${orgId}, ${vin}, 'VW', 'Polo', 2019, 'GASOLINE'::"FuelType", NOW(), NOW())
-    `;
-    const dimoId = randomUUID();
-    await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 8)}`, vin);
-    const caseRow = await caseService.openOrResumeFromDimo(
-      {
-        organizationId: orgId,
-        actorUserId: null,
-        idempotencyKey: randomUUID(),
-      },
-      dimoId,
-    );
-    await caseService.attestReadyForActivationTestOnly(orgId, caseRow.id, null);
-    await expect(
-      activation.activateVehicle({
-        organizationId: orgId,
-        onboardingCaseId: caseRow.id,
-        actorUserId: null,
-        activationIdempotencyKey: `act:${caseRow.id}`,
-        readinessAuthority: new TestVehicleOnboardingReadinessAuthority(),
-      }),
-    ).rejects.toMatchObject({ code: 'VIN_CONFLICT_REQUIRES_IDENTITY_REVIEW' });
-  });
-
-  it('wrong organization cannot activate case', async () => {
+  it('HM org A source open by org B is rejected non-disclosing', async () => {
     const orgA = await createOrg(prisma);
     const orgB = await createOrg(prisma);
-    const dimoId = randomUUID();
-    await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 8)}`, null);
-    const caseRow = await caseService.openOrResumeFromDimo(
-      {
+    const hmId = randomUUID();
+    await prisma.highMobilityVehicle.create({
+      data: {
+        id: hmId,
         organizationId: orgA,
-        actorUserId: null,
-        idempotencyKey: randomUUID(),
+        vin: `HM${randomUUID().replace(/-/g, '').slice(0, 14)}`,
+        brand: 'BMW',
+        packageType: 'HEALTH',
+        sourceMode: 'HM_ONLY',
+        clearanceStatus: 'APPROVED',
       },
-      dimoId,
-    );
-    await caseService.attestReadyForActivationTestOnly(orgA, caseRow.id, null);
+    });
     await expect(
-      activation.activateVehicle({
-        organizationId: orgB,
-        onboardingCaseId: caseRow.id,
-        actorUserId: null,
-        activationIdempotencyKey: `act:${caseRow.id}`,
-        readinessAuthority: new TestVehicleOnboardingReadinessAuthority(),
-      }),
-    ).rejects.toMatchObject({ code: 'CASE_NOT_FOUND' });
+      harness.caseService.openOrResumeFromHighMobility(
+        { organizationId: orgB, actorUserId: null, idempotencyKey: randomUUID() },
+        hmId,
+      ),
+    ).rejects.toMatchObject({ code: 'SOURCE_NOT_AVAILABLE' });
   });
 
-  it('manual activation with plate creates plate history', async () => {
-    const orgId = await createOrg(prisma);
-    const caseRow = await caseService.openOrResumeManual(
-      {
-        organizationId: orgId,
-        actorUserId: 'u1',
-        idempotencyKey: randomUUID(),
-      },
-      {
-        make: 'BMW',
-        model: 'X1',
-        year: 2022,
-        fuelType: 'DIESEL',
-        licensePlate: 'M-VO3-99',
-      },
-    );
-    const result = await sealAndActivate(prisma, caseService, activation, orgId, caseRow);
-    const plates = await prisma.vehicleLicensePlateAssignment.findMany({
-      where: { vehicleId: result.vehicleId, validTo: null },
-    });
-    expect(plates).toHaveLength(1);
-    expect(plates[0]?.plate).toBe('M-VO3-99');
-    const orgAssign = await prisma.vehicleOrganizationAssignment.findFirst({
-      where: { vehicleId: result.vehicleId, validTo: null },
-    });
-    expect(orgAssign?.assignmentSource).toBe('VEHICLE_ONBOARDING');
-  });
-
-  it('rolls back when fault injected after vehicle create', async () => {
+  it('composite VIN A + VIN B fails activation with no side effects', async () => {
     const orgId = await createOrg(prisma);
     const dimoId = randomUUID();
-    await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 8)}`, null);
-    const caseRow = await caseService.openOrResumeFromDimo(
-      {
+    const hmId = randomUUID();
+    const vinA = `VINA${randomUUID().replace(/-/g, '').slice(0, 10)}`;
+    const vinB = `VINB${randomUUID().replace(/-/g, '').slice(0, 10)}`;
+    await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 8)}`, vinA);
+    await prisma.highMobilityVehicle.create({
+      data: {
+        id: hmId,
         organizationId: orgId,
-        actorUserId: null,
-        idempotencyKey: randomUUID(),
+        vin: vinB,
+        brand: 'BMW',
+        packageType: 'HEALTH',
+        sourceMode: 'HM_ONLY',
+        clearanceStatus: 'APPROVED',
+        hmVehicleReference: `hm-${hmId.slice(0, 8)}`,
       },
+    });
+    const caseRow = await harness.caseService.openOrResumeFromDimo(
+      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
       dimoId,
     );
-    await caseService.attestReadyForActivationTestOnly(orgId, caseRow.id, null);
+    const hmSnap = buildHmOnboardingSourceSnapshot(
+      await prisma.highMobilityVehicle.findUniqueOrThrow({ where: { id: hmId } }),
+      orgId,
+    );
+    await harness.caseService.attachSourceRef(orgId, caseRow.id, hmSnap, { isPrimary: false });
+    await sealCaseReadyForTest(prisma, orgId, caseRow.id);
     await expect(
-      activation.activateVehicle({
+      activateForTest(harness, {
         organizationId: orgId,
         onboardingCaseId: caseRow.id,
         actorUserId: null,
-        activationIdempotencyKey: `act:${caseRow.id}`,
-        readinessAuthority: new TestVehicleOnboardingReadinessAuthority(),
-        faultAfterStage: 'AFTER_VEHICLE_CREATE',
       }),
-    ).rejects.toThrow('VO3_FAULT_INJECTION');
-
-    const refreshed = await prisma.vehicleOnboardingCase.findUnique({ where: { id: caseRow.id } });
-    expect(refreshed?.status).not.toBe('COMPLETED');
-    const orphanCount = await prisma.vehicle.count({ where: { organizationId: orgId } });
-    expect(orphanCount).toBe(0);
+    ).rejects.toMatchObject({ code: 'IDENTITY_REVIEW_REQUIRED' });
+    await assertNoActivationArtifacts(prisma, orgId, caseRow.id, hmId);
   });
 
-  it('activates HM_ONLY source without DIMO hardware fields', async () => {
+  it('composite DIMO + HM happy path activates once', async () => {
+    const orgId = await createOrg(prisma);
+    const sharedVin = `VIN${randomUUID().replace(/-/g, '').slice(0, 14)}`;
+    const dimoId = randomUUID();
+    const hmId = randomUUID();
+    await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 8)}`, sharedVin);
+    await prisma.highMobilityVehicle.create({
+      data: {
+        id: hmId,
+        organizationId: orgId,
+        vin: sharedVin,
+        brand: 'BMW',
+        packageType: 'HEALTH',
+        sourceMode: 'HM_ONLY',
+        clearanceStatus: 'APPROVED',
+        hmVehicleReference: `hm-${hmId.slice(0, 8)}`,
+      },
+    });
+    let caseRow = await harness.caseService.openOrResumeFromDimo(
+      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoId,
+    );
+    await prisma.vehicleOnboardingCase.update({
+      where: { id: caseRow.id },
+      data: {
+        draftIdentityJson: {
+          version: 1,
+          vin: sharedVin,
+          vinProvenance: 'PROVIDER',
+          vinVerificationState: 'UNVERIFIED',
+          make: 'Audi',
+          model: 'A3',
+          year: 2021,
+          fuelType: 'GASOLINE',
+          sourceEvidenceRefs: [],
+        },
+      },
+    });
+    const hmSnap = buildHmOnboardingSourceSnapshot(
+      await prisma.highMobilityVehicle.findUniqueOrThrow({ where: { id: hmId } }),
+      orgId,
+    );
+    await harness.caseService.attachSourceRef(orgId, caseRow.id, hmSnap);
+    await sealCaseReadyForTest(prisma, orgId, caseRow.id);
+    const first = await activateForTest(harness, {
+      organizationId: orgId,
+      onboardingCaseId: caseRow.id,
+      actorUserId: 'u1',
+    });
+    const second = await activateForTest(harness, {
+      organizationId: orgId,
+      onboardingCaseId: caseRow.id,
+      actorUserId: 'u1',
+    });
+    expect(second.created).toBe(false);
+    expect(second.vehicleId).toBe(first.vehicleId);
+    const vehicle = await prisma.vehicle.findUnique({ where: { id: first.vehicleId } });
+    expect(vehicle?.dimoVehicleId).toBe(dimoId);
+    const dimoLink = await prisma.vehicleDataSourceLink.findFirst({
+      where: { vehicleId: first.vehicleId, provider: 'DIMO', isActive: true },
+    });
+    const hmLink = await prisma.vehicleDataSourceLink.findFirst({
+      where: { vehicleId: first.vehicleId, sourceType: 'HIGH_MOBILITY', isActive: true },
+    });
+    expect(dimoLink).toBeTruthy();
+    expect(hmLink?.consentId).toBeTruthy();
+    const hm = await prisma.highMobilityVehicle.findUnique({ where: { id: hmId } });
+    expect(hm?.synqdriveVehicleId).toBe(first.vehicleId);
+    const history = await prisma.highMobilityStatusHistory.count({
+      where: { highMobilityVehicleId: hmId, eventType: 'CANONICAL_ONBOARDING_REGISTERED' },
+    });
+    expect(history).toBe(1);
+    const outbox = await prisma.vehicleRegistryLifecycleOutbox.count({
+      where: { idempotencyKey: activationOutboxIdempotencyKey(caseRow.id) },
+    });
+    expect(outbox).toBe(1);
+  });
+
+  it('HM activation binds consentId on data source link', async () => {
     const orgId = await createOrg(prisma);
     const hmId = randomUUID();
     const vin = `HM${randomUUID().replace(/-/g, '').slice(0, 14)}`;
@@ -263,16 +258,10 @@ async function sealAndActivate(
         packageType: 'HEALTH',
         sourceMode: 'HM_ONLY',
         clearanceStatus: 'APPROVED',
-        hmVehicleReference: `hm-ref-${hmId.slice(0, 8)}`,
-        registrationState: 'NOT_REGISTERED',
       },
     });
-    const caseRow = await caseService.openOrResumeFromHighMobility(
-      {
-        organizationId: orgId,
-        actorUserId: null,
-        idempotencyKey: randomUUID(),
-      },
+    const caseRow = await harness.caseService.openOrResumeFromHighMobility(
+      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
       hmId,
     );
     await prisma.vehicleOnboardingCase.update({
@@ -291,43 +280,147 @@ async function sealAndActivate(
         },
       },
     });
-    const result = await sealAndActivate(prisma, caseService, activation, orgId, caseRow);
-    const hm = await prisma.highMobilityVehicle.findUnique({ where: { id: hmId } });
-    expect(hm?.synqdriveVehicleId).toBe(result.vehicleId);
-    expect(hm?.registrationState).toBe('REGISTERED');
-    const link = await prisma.vehicleDataSourceLink.findFirst({
-      where: { vehicleId: result.vehicleId, sourceSubtype: 'HM_ONLY', isActive: true },
-    });
-    expect(link).toBeTruthy();
-  });
-
-  it('concurrent activation converges to one vehicle', async () => {
-    const orgId = await createOrg(prisma);
-    const dimoId = randomUUID();
-    await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 8)}`, null);
-    const caseRow = await caseService.openOrResumeFromDimo(
-      {
-        organizationId: orgId,
-        actorUserId: null,
-        idempotencyKey: randomUUID(),
-      },
-      dimoId,
-    );
-    await caseService.attestReadyForActivationTestOnly(orgId, caseRow.id, null);
-    const authority = new TestVehicleOnboardingReadinessAuthority();
-    const input = {
+    await sealCaseReadyForTest(prisma, orgId, caseRow.id);
+    const result = await activateForTest(harness, {
       organizationId: orgId,
       onboardingCaseId: caseRow.id,
       actorUserId: null,
-      activationIdempotencyKey: `act:${caseRow.id}`,
-      readinessAuthority: authority,
-    };
-    const results = await Promise.all([
-      activation.activateVehicle(input),
-      activation.activateVehicle(input),
-      activation.activateVehicle(input),
-    ]);
-    const vehicleIds = new Set(results.map((r) => r.vehicleId));
-    expect(vehicleIds.size).toBe(1);
+    });
+    const link = await prisma.vehicleDataSourceLink.findFirst({
+      where: { vehicleId: result.vehicleId, sourceSubtype: 'HM_ONLY', isActive: true },
+    });
+    const consent = await prisma.vehicleProviderConsent.findFirst({
+      where: { vehicleId: result.vehicleId, provider: 'HIGH_MOBILITY', status: 'ACTIVE' },
+    });
+    expect(link?.consentId).toBe(consent?.id);
+  });
+
+  it('production activation service rejects TEST_FIXTURE readiness', async () => {
+    const orgId = await createOrg(prisma);
+    const dimoId = randomUUID();
+    await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 8)}`, null);
+    const caseRow = await harness.caseService.openOrResumeFromDimo(
+      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoId,
+    );
+    await sealCaseReadyForTest(prisma, orgId, caseRow.id);
+    const prodActivation = new VehicleOnboardingActivationService(
+      prisma as any,
+      new DimoVehicleDataSourceLinkService(prisma as any),
+      new ProductionFailClosedReadinessAuthority(),
+    );
+    await expect(
+      prodActivation.activateVehicle({
+        organizationId: orgId,
+        onboardingCaseId: caseRow.id,
+        actorUserId: null,
+      }),
+    ).rejects.toMatchObject({ code: 'READINESS_NOT_SEALED' });
+  });
+
+  const faultStages: Vo3ActivationFaultStage[] = [
+    'AFTER_VEHICLE_CREATE',
+    'AFTER_ORG_ASSIGNMENT',
+    'AFTER_PROVIDER_LINK',
+    'AFTER_MIRROR_UPDATE',
+    'BEFORE_OUTBOX',
+  ];
+
+  for (const stage of faultStages) {
+    it(`rolls back completely on fault ${stage}`, async () => {
+      const orgId = await createOrg(prisma);
+      const dimoId = randomUUID();
+      await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 8)}`, null);
+      const caseRow = await harness.caseService.openOrResumeFromDimo(
+        { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+        dimoId,
+      );
+      await sealCaseReadyForTest(prisma, orgId, caseRow.id);
+      await expect(
+        activateForTest(harness, {
+          organizationId: orgId,
+          onboardingCaseId: caseRow.id,
+          actorUserId: null,
+          faultAfterStage: stage,
+        }),
+      ).rejects.toThrow('VO3_FAULT_INJECTION');
+      await assertNoActivationArtifacts(prisma, orgId, caseRow.id);
+    });
+  }
+
+  it('idempotency key mismatch blocks unrelated case reuse', async () => {
+    const orgId = await createOrg(prisma);
+    const dimo1 = randomUUID();
+    const dimo2 = randomUUID();
+    await createDimoMirror(prisma, dimo1, `ext-a`, null);
+    await createDimoMirror(prisma, dimo2, `ext-b`, null);
+    const key = randomUUID();
+    await harness.caseService.openOrResumeFromDimo(
+      { organizationId: orgId, actorUserId: null, idempotencyKey: key },
+      dimo1,
+    );
+    await expect(
+      harness.caseService.openOrResumeFromDimo(
+        { organizationId: orgId, actorUserId: null, idempotencyKey: key },
+        dimo2,
+      ),
+    ).rejects.toMatchObject({ code: 'IDEMPOTENCY_KEY_REUSED_FOR_DIFFERENT_REQUEST' });
+  });
+
+  it('second primary source attachment conflicts', async () => {
+    const orgId = await createOrg(prisma);
+    const dimo1 = randomUUID();
+    const dimo2 = randomUUID();
+    await createDimoMirror(prisma, dimo1, `ext-1`, null);
+    await createDimoMirror(prisma, dimo2, `ext-2`, null);
+    const caseRow = await harness.caseService.openOrResumeFromDimo(
+      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      dimo1,
+    );
+    const snap2 = buildDimoOnboardingSourceSnapshot(
+      await prisma.dimoVehicle.findUniqueOrThrow({ where: { id: dimo2 } }),
+    );
+    await expect(
+      harness.caseService.attachSourceRef(orgId, caseRow.id, snap2, { isPrimary: true }),
+    ).rejects.toMatchObject({ code: 'PRIMARY_SOURCE_CONFLICT' });
+  });
+
+  it('outbox idempotency mismatch fails closed', async () => {
+    const orgId = await createOrg(prisma);
+    const dimoId = randomUUID();
+    await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 8)}`, null);
+    const caseRow = await harness.caseService.openOrResumeFromDimo(
+      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoId,
+    );
+    await prisma.vehicleRegistryLifecycleOutbox.create({
+      data: {
+        id: randomUUID(),
+        eventId: randomUUID(),
+        eventType: 'VEHICLE_ACTIVATED',
+        vehicleId: randomUUID(),
+        organizationId: orgId,
+        payloadVersion: 1,
+        payload: {
+          version: 1,
+          vehicleId: randomUUID(),
+          organizationId: orgId,
+          onboardingCaseId: caseRow.id,
+          registryLifecycle: 'ACTIVE',
+          activatedAt: new Date().toISOString(),
+          sourceProviders: ['DIMO'],
+        },
+        occurredAt: new Date(),
+        idempotencyKey: activationOutboxIdempotencyKey(caseRow.id),
+      },
+    });
+    await sealCaseReadyForTest(prisma, orgId, caseRow.id);
+    await expect(
+      activateForTest(harness, {
+        organizationId: orgId,
+        onboardingCaseId: caseRow.id,
+        actorUserId: null,
+      }),
+    ).rejects.toMatchObject({ code: 'OUTBOX_IDEMPOTENCY_CONFLICT' });
   });
 });

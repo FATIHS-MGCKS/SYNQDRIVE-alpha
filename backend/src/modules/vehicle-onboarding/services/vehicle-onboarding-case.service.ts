@@ -4,10 +4,14 @@ import {
   OnboardingCaseSourceMode,
   Prisma,
   type VehicleOnboardingCase,
+  type VehicleOnboardingCaseSourceRef,
 } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { isPrismaUniqueViolation } from '@shared/database/prisma-error.util';
-import { buildDimoOnboardingSourceSnapshot, identityDraftFromDimoSnapshot } from '../adapters/dimo-onboarding-source.adapter';
+import {
+  buildDimoOnboardingSourceSnapshot,
+  identityDraftFromDimoSnapshot,
+} from '../adapters/dimo-onboarding-source.adapter';
 import {
   buildHmOnboardingSourceSnapshot,
   identityDraftFromHmSnapshot,
@@ -21,6 +25,7 @@ import {
 import { DIMO_PLATFORM_DEVELOPER_LICENSE_SCOPE } from '../adapters/connection-scope.constants';
 import type { OnboardingSourceSnapshotV1 } from '../contracts/onboarding-source-snapshot.v1';
 import {
+  ONBOARDING_SOURCE_SNAPSHOT_VERSION,
   VEHICLE_ADMIN_BASELINE_DRAFT_VERSION,
   VEHICLE_IDENTITY_DRAFT_VERSION,
   VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION,
@@ -28,12 +33,14 @@ import {
 } from '../contracts/vo-document-versions';
 import type { VehicleTechnicalBaselineDraftV1 } from '../contracts/vehicle-technical-baseline-draft.v1';
 import type { VehicleValidationFindingsV1 } from '../contracts/vehicle-validation-findings.v1';
+import type { VehicleIdentityDraftV1 } from '../contracts/vehicle-identity-draft.v1';
 import { VehicleOnboardingError } from '../errors/vehicle-onboarding.errors';
 import { assertCaseTransitionAllowed } from '../policy/onboarding-case-transition.policy';
 import {
-  buildTestReadinessSnapshot,
-} from '../readiness/test-readiness-authority';
-import { READINESS_SNAPSHOT_VERSION } from '../contracts/vo-document-versions';
+  DEFAULT_TENANT_SOURCE_ADOPTION,
+  type SourceAdoptionContext,
+} from '../source-adoption/source-adoption.context';
+import { VehicleOnboardingSourceAdoptionAuthority } from '../source-adoption/vehicle-onboarding-source-adoption.authority';
 import {
   logCaseOpened,
   logCaseResumed,
@@ -44,6 +51,7 @@ export interface OnboardingActorContext {
   organizationId: string;
   actorUserId: string | null;
   idempotencyKey: string;
+  sourceAdoption?: SourceAdoptionContext;
 }
 
 function emptyTechnicalDraft(): VehicleTechnicalBaselineDraftV1 {
@@ -58,9 +66,32 @@ function scopeKeyFromConnectionScope(scope: string | null): string {
   return scope ?? '';
 }
 
+function manualIdentityFingerprint(input: ManualOnboardingInput): string {
+  return [
+    input.vin ?? '',
+    input.make ?? '',
+    input.model ?? '',
+    input.year ?? '',
+    input.fuelType ?? '',
+  ].join('|');
+}
+
+function identityDraftFingerprint(draft: VehicleIdentityDraftV1): string {
+  return [
+    draft.vin ?? '',
+    draft.make ?? '',
+    draft.model ?? '',
+    draft.year ?? '',
+    draft.fuelType ?? '',
+  ].join('|');
+}
+
 @Injectable()
 export class VehicleOnboardingCaseService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly sourceAdoptionAuthority: VehicleOnboardingSourceAdoptionAuthority,
+  ) {}
 
   async getCaseForOrganization(
     organizationId: string,
@@ -81,10 +112,16 @@ export class VehicleOnboardingCaseService {
     ctx: OnboardingActorContext,
     dimoVehicleId: string,
   ): Promise<VehicleOnboardingCase> {
+    const adoption = ctx.sourceAdoption ?? DEFAULT_TENANT_SOURCE_ADOPTION;
     const dimo = await this.prisma.dimoVehicle.findUnique({ where: { id: dimoVehicleId } });
     if (!dimo) {
-      throw new VehicleOnboardingError('ACTIVATION_PRECONDITION_FAILED', 'DimoVehicle not found');
+      throw new VehicleOnboardingError('SOURCE_NOT_AVAILABLE', 'DIMO source not available');
     }
+    this.sourceAdoptionAuthority.assertDimoPlatformMirrorAdoptable(
+      dimo,
+      ctx.organizationId,
+      adoption,
+    );
     const snapshot = buildDimoOnboardingSourceSnapshot(dimo);
     const identity = identityDraftFromDimoSnapshot(snapshot);
     return this.openOrResumeWithPrimarySnapshot(ctx, {
@@ -103,10 +140,16 @@ export class VehicleOnboardingCaseService {
     ctx: OnboardingActorContext,
     hmVehicleId: string,
   ): Promise<VehicleOnboardingCase> {
+    const adoption = ctx.sourceAdoption ?? DEFAULT_TENANT_SOURCE_ADOPTION;
     const hm = await this.prisma.highMobilityVehicle.findUnique({ where: { id: hmVehicleId } });
     if (!hm) {
-      throw new VehicleOnboardingError('ACTIVATION_PRECONDITION_FAILED', 'HM vehicle not found');
+      throw new VehicleOnboardingError('SOURCE_NOT_AVAILABLE', 'High Mobility source not available');
     }
+    this.sourceAdoptionAuthority.assertHighMobilityMirrorAdoptable(
+      hm,
+      ctx.organizationId,
+      adoption,
+    );
     const snapshot = buildHmOnboardingSourceSnapshot(hm, ctx.organizationId);
     const identity = identityDraftFromHmSnapshot(snapshot);
     return this.openOrResumeWithPrimarySnapshot(ctx, {
@@ -143,35 +186,7 @@ export class VehicleOnboardingCaseService {
       snapshot,
       identity,
       admin,
-    });
-  }
-
-  /**
-   * Internal/test-only: seal readiness without VO-4 engine.
-   * Not exposed via public HTTP in VO-3.
-   */
-  async attestReadyForActivationTestOnly(
-    organizationId: string,
-    caseId: string,
-    actorUserId: string | null,
-  ): Promise<VehicleOnboardingCase> {
-    const caseRow = await this.getCaseForOrganization(organizationId, caseId);
-    if (caseRow.status === 'COMPLETED') {
-      return caseRow;
-    }
-    if (caseRow.status === 'CANCELLED' || caseRow.status === 'EXPIRED') {
-      throw new VehicleOnboardingError('TERMINAL_CASE_IDEMPOTENCY', 'Cannot seal terminal case');
-    }
-    const readiness = buildTestReadinessSnapshot(actorUserId);
-    return this.prisma.vehicleOnboardingCase.update({
-      where: { id: caseId },
-      data: {
-        status: 'READY_FOR_ACTIVATION',
-        readinessSnapshotJson: readiness as unknown as Prisma.InputJsonValue,
-        readinessSnapshotVersion: READINESS_SNAPSHOT_VERSION,
-        readinessProfileVersion: readiness.profileVersion,
-        lastActorUserId: actorUserId,
-      },
+      requestFingerprint: manualIdentityFingerprint(input),
     });
   }
 
@@ -182,11 +197,42 @@ export class VehicleOnboardingCaseService {
     opts: { isPrimary?: boolean } = {},
   ): Promise<void> {
     const caseRow = await this.getCaseForOrganization(organizationId, caseId);
-    if (caseRow.status === 'COMPLETED' || caseRow.status === 'CANCELLED' || caseRow.status === 'EXPIRED') {
+    if (
+      caseRow.status === 'COMPLETED' ||
+      caseRow.status === 'CANCELLED' ||
+      caseRow.status === 'EXPIRED'
+    ) {
       throw new VehicleOnboardingError('TERMINAL_CASE_IDEMPOTENCY', 'Cannot attach to terminal case');
     }
 
     const scopeKey = scopeKeyFromConnectionScope(snapshot.connectionScope);
+    const wantsPrimary = opts.isPrimary ?? false;
+
+    if (wantsPrimary) {
+      const existingPrimary = await this.prisma.vehicleOnboardingCaseSourceRef.findFirst({
+        where: { onboardingCaseId: caseId, isPrimary: true },
+      });
+      if (existingPrimary && !this.isSemanticSourceRefMatch(existingPrimary, snapshot, scopeKey)) {
+        throw new VehicleOnboardingError(
+          'PRIMARY_SOURCE_CONFLICT',
+          'Case already has a different primary source',
+        );
+      }
+    }
+
+    const existingSemantic = await this.prisma.vehicleOnboardingCaseSourceRef.findFirst({
+      where: {
+        onboardingCaseId: caseId,
+        provider: snapshot.providerType,
+        connectionScopeKey: scopeKey,
+        externalVehicleIdentity: snapshot.externalVehicleIdentity,
+      },
+    });
+    if (existingSemantic) {
+      logSourceAttached(caseId, snapshot.providerType);
+      return;
+    }
+
     try {
       await this.prisma.vehicleOnboardingCaseSourceRef.create({
         data: {
@@ -199,13 +245,19 @@ export class VehicleOnboardingCaseService {
           sourceMirrorTable: snapshot.sourceMirrorTable,
           sourceMirrorId: snapshot.sourceMirrorId,
           provenanceAt: new Date(snapshot.observedAt),
-          isPrimary: opts.isPrimary ?? false,
+          isPrimary: wantsPrimary,
           snapshotMetadataJson: snapshot as unknown as Prisma.InputJsonValue,
-          snapshotMetadataVersion: 1,
+          snapshotMetadataVersion: ONBOARDING_SOURCE_SNAPSHOT_VERSION,
         },
       });
     } catch (error) {
-      if (isPrismaUniqueViolation(error)) {
+      if (isPrismaUniqueViolation(error, ['onboarding_case_id', 'is_primary'])) {
+        throw new VehicleOnboardingError(
+          'PRIMARY_SOURCE_CONFLICT',
+          'Case already has a primary source ref',
+        );
+      }
+      if (isPrismaUniqueViolation(error, ['onboarding_case_id', 'provider', 'connection_scope_key', 'external_vehicle_identity'])) {
         logSourceAttached(caseId, snapshot.providerType);
         return;
       }
@@ -213,15 +265,55 @@ export class VehicleOnboardingCaseService {
     }
 
     const sourceMode: OnboardingCaseSourceMode =
-      caseRow.sourceMode === snapshot.providerType
-        ? caseRow.sourceMode
-        : 'COMPOSITE';
+      caseRow.sourceMode === snapshot.providerType ? caseRow.sourceMode : 'COMPOSITE';
 
     await this.prisma.vehicleOnboardingCase.update({
       where: { id: caseId },
       data: { sourceMode, lastActorUserId: caseRow.lastActorUserId },
     });
     logSourceAttached(caseId, snapshot.providerType);
+  }
+
+  private isSemanticSourceRefMatch(
+    ref: VehicleOnboardingCaseSourceRef,
+    snapshot: OnboardingSourceSnapshotV1,
+    scopeKey: string,
+  ): boolean {
+    return (
+      ref.provider === snapshot.providerType &&
+      ref.connectionScopeKey === scopeKey &&
+      ref.externalVehicleIdentity === snapshot.externalVehicleIdentity
+    );
+  }
+
+  private assertIdempotentCaseMatchesRequest(
+    existing: VehicleOnboardingCase,
+    primary: {
+      provider: string;
+      scopeKey: string;
+      externalVehicleIdentity: string;
+    },
+    requestFingerprint?: string,
+  ): void {
+    const matches =
+      existing.primarySourceProvider === primary.provider &&
+      existing.primarySourceScopeKey === primary.scopeKey &&
+      existing.primarySourceExternalId === primary.externalVehicleIdentity;
+    if (!matches) {
+      throw new VehicleOnboardingError(
+        'IDEMPOTENCY_KEY_REUSED_FOR_DIFFERENT_REQUEST',
+        'Idempotency key was already used for a different onboarding request',
+      );
+    }
+    if (requestFingerprint && existing.draftIdentityJson) {
+      const draft = existing.draftIdentityJson as unknown as VehicleIdentityDraftV1;
+      if (identityDraftFingerprint(draft) !== requestFingerprint) {
+        throw new VehicleOnboardingError(
+          'IDEMPOTENCY_KEY_REUSED_FOR_DIFFERENT_REQUEST',
+          'Idempotency key was already used for a different manual onboarding request',
+        );
+      }
+    }
   }
 
   private async openOrResumeWithPrimarySnapshot(
@@ -234,10 +326,18 @@ export class VehicleOnboardingCaseService {
       sourceMirrorTable: string | null;
       sourceMirrorId: string | null;
       snapshot: OnboardingSourceSnapshotV1;
-      identity: import('../contracts/vehicle-identity-draft.v1').VehicleIdentityDraftV1;
+      identity: VehicleIdentityDraftV1;
       admin?: import('../contracts/vehicle-admin-baseline-draft.v1').VehicleAdministrativeBaselineDraftV1;
+      requestFingerprint?: string;
     },
   ): Promise<VehicleOnboardingCase> {
+    const scopeKey = scopeKeyFromConnectionScope(primary.connectionScope);
+    const requestPrimary = {
+      provider: primary.provider,
+      scopeKey,
+      externalVehicleIdentity: primary.externalVehicleIdentity,
+    };
+
     const byKey = await this.prisma.vehicleOnboardingCase.findFirst({
       where: {
         organizationId: ctx.organizationId,
@@ -245,11 +345,11 @@ export class VehicleOnboardingCaseService {
       },
     });
     if (byKey) {
+      this.assertIdempotentCaseMatchesRequest(byKey, requestPrimary, primary.requestFingerprint);
       logCaseResumed(byKey.id, ctx.organizationId);
       return byKey;
     }
 
-    const scopeKey = scopeKeyFromConnectionScope(primary.connectionScope);
     const caseId = randomUUID();
 
     try {
@@ -291,7 +391,7 @@ export class VehicleOnboardingCaseService {
               provenanceAt: new Date(primary.snapshot.observedAt),
               isPrimary: true,
               snapshotMetadataJson: primary.snapshot as unknown as Prisma.InputJsonValue,
-              snapshotMetadataVersion: 1,
+              snapshotMetadataVersion: ONBOARDING_SOURCE_SNAPSHOT_VERSION,
             },
           },
         },
@@ -307,6 +407,11 @@ export class VehicleOnboardingCaseService {
           },
         });
         if (existing) {
+          this.assertIdempotentCaseMatchesRequest(
+            existing,
+            requestPrimary,
+            primary.requestFingerprint,
+          );
           logCaseResumed(existing.id, ctx.organizationId);
           return existing;
         }

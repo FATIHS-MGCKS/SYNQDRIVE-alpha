@@ -1,20 +1,10 @@
 import type { VehicleOnboardingCase } from '@prisma/client';
 import type { VehicleOnboardingReadinessSnapshotV1 } from '../contracts/readiness-snapshot.v1';
 import { VehicleOnboardingError } from '../errors/vehicle-onboarding.errors';
+import { parseValidatedReadinessSnapshot } from '../policy/persisted-contract.validation';
 
 export interface VehicleOnboardingReadinessAuthority {
-  /** Returns parsed readiness snapshot when case is sealed for activation. */
   assertReadyForActivation(caseRow: VehicleOnboardingCase): VehicleOnboardingReadinessSnapshotV1;
-}
-
-export function parseReadinessSnapshot(
-  caseRow: VehicleOnboardingCase,
-): VehicleOnboardingReadinessSnapshotV1 | null {
-  const raw = caseRow.readinessSnapshotJson;
-  if (!raw || typeof raw !== 'object') return null;
-  const snap = raw as unknown as VehicleOnboardingReadinessSnapshotV1;
-  if (snap.version !== 1) return null;
-  return snap;
 }
 
 export class ProductionFailClosedReadinessAuthority implements VehicleOnboardingReadinessAuthority {
@@ -26,8 +16,8 @@ export class ProductionFailClosedReadinessAuthority implements VehicleOnboarding
         { status: caseRow.status },
       );
     }
-    const snap = parseReadinessSnapshot(caseRow);
-    if (!snap || snap.attestationSource !== 'VO4_READINESS_ENGINE') {
+    const snap = parseValidatedReadinessSnapshot(caseRow);
+    if (snap.attestationSource !== 'VO4_READINESS_ENGINE') {
       throw new VehicleOnboardingError(
         'READINESS_NOT_SEALED',
         'Production activation requires VO-4 readiness attestation',

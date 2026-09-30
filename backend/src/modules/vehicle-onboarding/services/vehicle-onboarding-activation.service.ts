@@ -1,32 +1,27 @@
-import { Injectable, Optional } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
-import {
-  Prisma,
-  type VehicleOnboardingCase,
-} from '@prisma/client';
+import { Prisma, type VehicleOnboardingCase } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { acquirePgAdvisoryXactLock64 } from '@shared/database/pg-advisory-lock.util';
 import { isPrismaUniqueViolation } from '@shared/database/prisma-error.util';
 import { DimoVehicleDataSourceLinkService } from '@modules/dimo/dimo-vehicle-data-source-link.service';
-import type { VehicleIdentityDraftV1 } from '../contracts/vehicle-identity-draft.v1';
-import type { VehicleAdministrativeBaselineDraftV1 } from '../contracts/vehicle-admin-baseline-draft.v1';
 import type { VehicleActivatedOutboxPayloadV1 } from '../contracts/activation-outbox-payload.v1';
 import { ACTIVATION_OUTBOX_PAYLOAD_VERSION } from '../contracts/vo-document-versions';
 import { VehicleOnboardingError } from '../errors/vehicle-onboarding.errors';
+import { resolveActivationVehicleFields } from '../policy/activation-field-resolution';
+import { assertCompositeVinConsistencyForActivation } from '../policy/composite-vin-consistency';
 import {
-  assertCompositeVinConsistency,
-  resolveActivationVehicleFields,
-} from '../policy/activation-field-resolution';
-import {
-  ProductionFailClosedReadinessAuthority,
-  type VehicleOnboardingReadinessAuthority,
-} from '../readiness/vehicle-onboarding-readiness-authority';
-import { TestVehicleOnboardingReadinessAuthority } from '../readiness/test-readiness-authority';
+  parseValidatedAdminDraft,
+  parseValidatedIdentityDraft,
+} from '../policy/persisted-contract.validation';
+import { assertSupportedActivationSourceSet } from '../policy/source-set-invariant';
+import type { VehicleOnboardingReadinessAuthority } from '../readiness/vehicle-onboarding-readiness-authority';
+import { VEHICLE_ONBOARDING_READINESS_AUTHORITY } from '../readiness/vehicle-onboarding-readiness.tokens';
 import {
   materializeDimoConsentIdempotent,
   materializeHmConsentIdempotent,
 } from './vehicle-onboarding-consent.writer';
-import { VehicleOnboardingCaseService } from './vehicle-onboarding-case.service';
+import { appendHmCanonicalRegistrationHistoryIfNeeded } from './hm-canonical-activation.binding';
 import {
   logActivationAttempt,
   logActivationConflict,
@@ -34,6 +29,7 @@ import {
   logActivationSuccess,
 } from './vehicle-onboarding-observability';
 
+/** Integration-test fault injection only (not used in production HTTP). */
 export type Vo3ActivationFaultStage =
   | 'AFTER_VEHICLE_CREATE'
   | 'AFTER_ORG_ASSIGNMENT'
@@ -45,9 +41,6 @@ export interface ActivateVehicleInput {
   organizationId: string;
   onboardingCaseId: string;
   actorUserId: string | null;
-  activationIdempotencyKey: string;
-  /** Integration tests only */
-  readinessAuthority?: VehicleOnboardingReadinessAuthority;
   faultAfterStage?: Vo3ActivationFaultStage;
 }
 
@@ -61,29 +54,17 @@ function activationLockKey(caseId: string): string {
   return `vehicle-onboarding-activation:${caseId}`;
 }
 
-function outboxIdempotencyKey(caseId: string): string {
+export function activationOutboxIdempotencyKey(caseId: string): string {
   return `vehicle-onboarding:VEHICLE_ACTIVATED:v1:${caseId}`;
-}
-
-function parseIdentityDraft(caseRow: VehicleOnboardingCase): VehicleIdentityDraftV1 {
-  return caseRow.draftIdentityJson as unknown as VehicleIdentityDraftV1;
-}
-
-function parseAdminDraft(caseRow: VehicleOnboardingCase): VehicleAdministrativeBaselineDraftV1 | null {
-  if (!caseRow.draftAdminBaselineJson) return null;
-  return caseRow.draftAdminBaselineJson as unknown as VehicleAdministrativeBaselineDraftV1;
 }
 
 @Injectable()
 export class VehicleOnboardingActivationService {
-  private readonly defaultReadiness = new ProductionFailClosedReadinessAuthority();
-  private readonly testReadiness = new TestVehicleOnboardingReadinessAuthority();
-
   constructor(
     private readonly prisma: PrismaService,
-    private readonly caseService: VehicleOnboardingCaseService,
     private readonly dimoLinkService: DimoVehicleDataSourceLinkService,
-    @Optional() private readonly readinessAuthority?: VehicleOnboardingReadinessAuthority,
+    @Inject(VEHICLE_ONBOARDING_READINESS_AUTHORITY)
+    private readonly readinessAuthority: VehicleOnboardingReadinessAuthority,
   ) {}
 
   async activateVehicle(input: ActivateVehicleInput): Promise<ActivateVehicleResult> {
@@ -104,13 +85,6 @@ export class VehicleOnboardingActivationService {
       };
     }
 
-    const readiness =
-      input.readinessAuthority ??
-      this.readinessAuthority ??
-      (process.env.VO3_TEST_READINESS === '1'
-        ? this.testReadiness
-        : this.defaultReadiness);
-
     try {
       return await this.prisma.$transaction(async (tx) => {
         await acquirePgAdvisoryXactLock64(tx, activationLockKey(input.onboardingCaseId));
@@ -126,7 +100,7 @@ export class VehicleOnboardingActivationService {
           return { case: caseRow, vehicleId: caseRow.vehicleId, created: false };
         }
 
-        readiness.assertReadyForActivation(caseRow);
+        this.readinessAuthority.assertReadyForActivation(caseRow);
         if (caseRow.vehicleId) {
           throw new VehicleOnboardingError(
             'ACTIVATION_PRECONDITION_FAILED',
@@ -134,22 +108,14 @@ export class VehicleOnboardingActivationService {
           );
         }
 
-        const identityDrafts = caseRow.sourceRefs.length
-          ? caseRow.sourceRefs.map((ref) => {
-              const meta = ref.snapshotMetadataJson as { vin?: string | null } | null;
-              const base = parseIdentityDraft(caseRow);
-              if (meta?.vin && !base.vin) {
-                return { ...base, vin: meta.vin };
-              }
-              return base;
-            })
-          : [parseIdentityDraft(caseRow)];
-        assertCompositeVinConsistency(identityDrafts);
+        const canonicalIdentity = parseValidatedIdentityDraft(caseRow);
+        const adminDraft = parseValidatedAdminDraft(caseRow);
+        assertCompositeVinConsistencyForActivation(canonicalIdentity, caseRow.sourceRefs);
+        const { dimoRefs, hmRefs } = assertSupportedActivationSourceSet(caseRow.sourceRefs);
+        const dimoRef = dimoRefs[0] ?? null;
+        const hmRef = hmRefs[0] ?? null;
 
-        const fields = resolveActivationVehicleFields(
-          parseIdentityDraft(caseRow),
-          parseAdminDraft(caseRow),
-        );
+        const fields = resolveActivationVehicleFields(canonicalIdentity, adminDraft);
 
         if (fields.vin) {
           const vinConflict = await tx.vehicle.findFirst({
@@ -166,10 +132,7 @@ export class VehicleOnboardingActivationService {
         }
 
         const activatedAt = new Date();
-        const dimoRef = caseRow.sourceRefs.find((r) => r.provider === 'DIMO');
-        const hmRef = caseRow.sourceRefs.find((r) => r.provider === 'HIGH_MOBILITY');
-
-        let dimoVehicleId: string | null = dimoRef?.sourceMirrorId ?? null;
+        const dimoVehicleId: string | null = dimoRef?.sourceMirrorId ?? null;
 
         const vehicle = await tx.vehicle.create({
           data: {
@@ -228,13 +191,12 @@ export class VehicleOnboardingActivationService {
           });
         }
 
-        let dimoConsentId: string | null = null;
         if (dimoRef && dimoVehicleId) {
           const dimoVehicle = await tx.dimoVehicle.findUnique({
             where: { id: dimoVehicleId },
             select: { externalId: true },
           });
-          dimoConsentId = await materializeDimoConsentIdempotent(tx, {
+          const dimoConsentId = await materializeDimoConsentIdempotent(tx, {
             vehicleId: vehicle.id,
             organizationId: input.organizationId,
             dimoExternalId: dimoVehicle?.externalId ?? null,
@@ -253,7 +215,15 @@ export class VehicleOnboardingActivationService {
             tx,
           );
           if (linkResult.action === 'CONFLICT') {
-            throw new VehicleOnboardingError('PROVIDER_LINK_CONFLICT', linkResult.reason ?? 'DIMO link conflict');
+            throw new VehicleOnboardingError(
+              'PROVIDER_LINK_CONFLICT',
+              linkResult.reason ?? 'DIMO link conflict',
+            );
+          }
+
+          if (input.faultAfterStage === 'AFTER_PROVIDER_LINK') {
+            logActivationRollback(input.onboardingCaseId, input.faultAfterStage);
+            throw new Error('VO3_FAULT_INJECTION');
           }
         }
 
@@ -264,11 +234,15 @@ export class VehicleOnboardingActivationService {
           if (!hm) {
             throw new VehicleOnboardingError('ACTIVATION_PRECONDITION_FAILED', 'HM mirror missing');
           }
-          if (hm.registrationState === 'REGISTERED' && hm.synqdriveVehicleId && hm.synqdriveVehicleId !== vehicle.id) {
+          if (
+            hm.registrationState === 'REGISTERED' &&
+            hm.synqdriveVehicleId &&
+            hm.synqdriveVehicleId !== vehicle.id
+          ) {
             throw new VehicleOnboardingError('HM_ALREADY_REGISTERED', 'HM vehicle already registered');
           }
 
-          await materializeHmConsentIdempotent(tx, {
+          const hmConsentId = await materializeHmConsentIdempotent(tx, {
             vehicleId: vehicle.id,
             organizationId: input.organizationId,
             hmVehicleId: hm.id,
@@ -294,6 +268,7 @@ export class VehicleOnboardingActivationService {
                 sourceType: 'HIGH_MOBILITY',
                 sourceSubtype: subtype,
                 sourceReferenceId: hm.id,
+                consentId: hmConsentId,
                 isActive: true,
                 activatedAt: activatedAt,
                 metadata: {
@@ -303,6 +278,16 @@ export class VehicleOnboardingActivationService {
                 },
               },
             });
+          } else if (!existingHmLink.consentId) {
+            await tx.vehicleDataSourceLink.update({
+              where: { id: existingHmLink.id },
+              data: { consentId: hmConsentId },
+            });
+          } else if (existingHmLink.consentId !== hmConsentId) {
+            throw new VehicleOnboardingError(
+              'PROVIDER_LINK_CONFLICT',
+              'HM link consent association conflict',
+            );
           }
 
           if (input.faultAfterStage === 'AFTER_PROVIDER_LINK') {
@@ -310,6 +295,7 @@ export class VehicleOnboardingActivationService {
             throw new Error('VO3_FAULT_INJECTION');
           }
 
+          const priorRegistrationState = hm.registrationState;
           await tx.highMobilityVehicle.update({
             where: { id: hm.id },
             data: {
@@ -320,11 +306,19 @@ export class VehicleOnboardingActivationService {
               registeredAt: activatedAt,
             },
           });
-        }
 
-        if (input.faultAfterStage === 'AFTER_MIRROR_UPDATE') {
-          logActivationRollback(input.onboardingCaseId, input.faultAfterStage);
-          throw new Error('VO3_FAULT_INJECTION');
+          await appendHmCanonicalRegistrationHistoryIfNeeded(
+            tx,
+            { id: hm.id, registrationState: priorRegistrationState },
+            vehicle.id,
+            input.organizationId,
+            activatedAt,
+          );
+
+          if (input.faultAfterStage === 'AFTER_MIRROR_UPDATE') {
+            logActivationRollback(input.onboardingCaseId, input.faultAfterStage);
+            throw new Error('VO3_FAULT_INJECTION');
+          }
         }
 
         const providers = [...new Set(caseRow.sourceRefs.map((r) => r.provider))];
@@ -343,27 +337,14 @@ export class VehicleOnboardingActivationService {
           throw new Error('VO3_FAULT_INJECTION');
         }
 
-        const eventId = randomUUID();
-        const idemKey = outboxIdempotencyKey(caseRow.id);
-        try {
-          await tx.vehicleRegistryLifecycleOutbox.create({
-            data: {
-              id: randomUUID(),
-              eventId,
-              eventType: 'VEHICLE_ACTIVATED',
-              vehicleId: vehicle.id,
-              organizationId: input.organizationId,
-              payloadVersion: ACTIVATION_OUTBOX_PAYLOAD_VERSION,
-              payload: payload as unknown as Prisma.InputJsonValue,
-              occurredAt: activatedAt,
-              idempotencyKey: idemKey,
-            },
-          });
-        } catch (error) {
-          if (!isPrismaUniqueViolation(error, ['idempotency_key'])) {
-            throw error;
-          }
-        }
+        await this.ensureActivationOutboxEvent(tx, {
+          idempotencyKey: activationOutboxIdempotencyKey(caseRow.id),
+          payload,
+          vehicleId: vehicle.id,
+          organizationId: input.organizationId,
+          onboardingCaseId: caseRow.id,
+          activatedAt,
+        });
 
         const completed = await tx.vehicleOnboardingCase.update({
           where: { id: caseRow.id },
@@ -389,6 +370,59 @@ export class VehicleOnboardingActivationService {
         );
       }
       throw error;
+    }
+  }
+
+  private async ensureActivationOutboxEvent(
+    tx: Prisma.TransactionClient,
+    input: {
+      idempotencyKey: string;
+      payload: VehicleActivatedOutboxPayloadV1;
+      vehicleId: string;
+      organizationId: string;
+      onboardingCaseId: string;
+      activatedAt: Date;
+    },
+  ): Promise<void> {
+    const eventId = randomUUID();
+    try {
+      await tx.vehicleRegistryLifecycleOutbox.create({
+        data: {
+          id: randomUUID(),
+          eventId,
+          eventType: 'VEHICLE_ACTIVATED',
+          vehicleId: input.vehicleId,
+          organizationId: input.organizationId,
+          payloadVersion: ACTIVATION_OUTBOX_PAYLOAD_VERSION,
+          payload: input.payload as unknown as Prisma.InputJsonValue,
+          occurredAt: input.activatedAt,
+          idempotencyKey: input.idempotencyKey,
+        },
+      });
+    } catch (error) {
+      if (!isPrismaUniqueViolation(error, ['idempotency_key'])) {
+        throw error;
+      }
+      const existing = await tx.vehicleRegistryLifecycleOutbox.findUnique({
+        where: { idempotencyKey: input.idempotencyKey },
+      });
+      if (!existing) {
+        throw error;
+      }
+      const existingPayload = existing.payload as unknown as VehicleActivatedOutboxPayloadV1;
+      const semanticMatch =
+        existing.eventType === 'VEHICLE_ACTIVATED' &&
+        existing.vehicleId === input.vehicleId &&
+        existing.organizationId === input.organizationId &&
+        existing.payloadVersion === ACTIVATION_OUTBOX_PAYLOAD_VERSION &&
+        existingPayload?.onboardingCaseId === input.onboardingCaseId &&
+        existingPayload?.vehicleId === input.vehicleId;
+      if (!semanticMatch) {
+        throw new VehicleOnboardingError(
+          'OUTBOX_IDEMPOTENCY_CONFLICT',
+          'Lifecycle outbox idempotency key belongs to a different activation',
+        );
+      }
     }
   }
 }
