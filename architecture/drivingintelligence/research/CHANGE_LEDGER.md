@@ -1334,3 +1334,13 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | NON_EFFECTS | No S4 runtime activation; no deploy; `productionLoadCertification` remains NOT_CLAIMED; Tiny Activation NOT_READY without global budget + operator auth |
 | Main sync | Merge `7744e3983` into PR branch; `package.json` preserves main + provider-budget scripts |
 | Gap | **CLOSED** |
+
+### EXP-021 S4F-3 Tiny Activation evidence audit (2026-09-30)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | Post–S4F-2 merge; read-only Production env audit for explicit `DIMO_GLOBAL_BUDGET_ENABLED` |
+| CHANGE | Evidence `EXP021_S4F3_TINY_ACTIVATION_EVIDENCE_AUDIT.md`; strict Tiny budget env classifier + read-only ops audit script; graph/CURRENT_STATE metadata for governance note + replay CLOSED |
+| FINDING | Production `/opt/synqdrive/shared/backend.env` lacks explicit `DIMO_GLOBAL_BUDGET_ENABLED` → Tiny budget gate NOT_SATISFIED; operator auth remains UNKNOWN |
+| NON_EFFECTS | No deploy, no env mutation, no S4 activation, no operator grant |
+| Gap | Location retention: GOVERNANCE_NOTE for Tiny satisfied; purge/scale-up privacy still open |
