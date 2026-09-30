@@ -4,7 +4,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
-MIGRATION_NAME="20260930130000_vehicle_onboarding_vo2_persistence"
+MIGRATION_VO2="20260930130000_vehicle_onboarding_vo2_persistence"
+MIGRATION_VO21="20260930140000_vehicle_onboarding_vo2_1_integrity"
 TEMP_DB="vo2_mig_${RANDOM}_$(date +%s)"
 
 parse_database_url() {
@@ -46,9 +47,11 @@ psql "${ADMIN_URL}" -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"${TEMP_DB}\";"
 DATABASE_URL="${MIGRATION_DATABASE_URL}" PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 \
   bash scripts/test/prisma-migrate-deploy-resilient.sh
 
-applied="$(psql_atc "SELECT COUNT(*) FROM _prisma_migrations WHERE migration_name = '${MIGRATION_NAME}' AND finished_at IS NOT NULL;")"
-applied="$(echo "${applied}" | tr -d '[:space:]')"
-[[ "${applied}" == "1" ]] || { echo "Migration not applied: ${applied}" >&2; exit 1; }
+for name in "${MIGRATION_VO2}" "${MIGRATION_VO21}"; do
+  applied="$(psql_atc "SELECT COUNT(*) FROM _prisma_migrations WHERE migration_name = '${name}' AND finished_at IS NOT NULL;")"
+  applied="$(echo "${applied}" | tr -d '[:space:]')"
+  [[ "${applied}" == "1" ]] || { echo "Migration not applied: ${name} (${applied})" >&2; exit 1; }
+done
 
 psql_atc "SELECT COUNT(*) FROM vehicle_onboarding_cases" >/dev/null
 psql_atc "SELECT COUNT(*) FROM vehicle_registry_lifecycle_outbox" >/dev/null

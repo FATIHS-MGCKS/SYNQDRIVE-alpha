@@ -1,7 +1,7 @@
 # VO-2 — VehicleDataSourceLink history constraint audit
 
-**Date:** 2026-09-30  
-**Result:** `LINK_HISTORY_CONSTRAINT_COMPLETE=NO`
+**Date:** 2026-09-30 (updated VO-2.1)  
+**Result:** `LINK_HISTORY_CONSTRAINT_COMPLETE=YES` (VO-2.1 migration `20260930140000_vehicle_onboarding_vo2_1_integrity`)
 
 ## Current constraint
 
@@ -26,13 +26,14 @@ CREATE UNIQUE INDEX "uq_data_source_link_active" ON "vehicle_data_source_links"
 ## VO-2 actions taken
 
 - Added `superseded_by_link_id`, `deactivation_reason` columns (non-breaking).
-- **Did not** drop `uq_data_source_link_active` (would require VO-3 runtime + migration coordination).
+- Initially retained `uq_data_source_link_active` pending runtime audit.
 
-## Target (VO-3+)
+## VO-2.1 actions taken
 
-- Partial unique index on **active** rows only, NULL-safe subtype semantics.
-- Replace compound unique after call-site audit and reactivation flows validated.
+- Re-audit: **0** Prisma compound-selector call sites in `backend/src`.
+- Dropped `uq_data_source_link_active`; added DB-only partial unique `uq_vehicle_data_source_link_active_scope`.
+- Removed Prisma `@@unique` on `VehicleDataSourceLink.is_active` — documented in schema comment.
 
-## Blocker text
+## Blocker text (resolved)
 
-`LINK_HISTORY_BLOCKER=Prisma compound unique uq_data_source_link_active prevents multiple is_active=false episodes; nullable source_subtype weakens single-active guarantee; drop deferred to VO-3 with runtime refactor.`
+`LINK_HISTORY_BLOCKER=` (none — VO-2.1 completed correction in persistence layer; VO-3 may add runtime supersession flows without changing this index shape).

@@ -610,7 +610,7 @@ export function mapFleetConnectivityVehicle(
 
   return {
     vehicleId: v.id,
-    vin: v.vin ?? '',
+    vin: v.vin,
     licensePlate: v.licensePlate ?? null,
     make: v.make,
     model: v.model,

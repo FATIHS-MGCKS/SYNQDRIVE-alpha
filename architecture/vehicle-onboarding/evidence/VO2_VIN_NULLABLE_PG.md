@@ -18,3 +18,8 @@ Therefore:
 - `ALTER COLUMN vin DROP NOT NULL` — existing values preserved.
 - Synthetic `DIMO-*` rows classified `LEGACY_SYNTHETIC` (not `VERIFIED`).
 - All other existing non-null VINs classified `LEGACY_UNKNOWN` (not `VERIFIED`).
+
+## VO-2.1 runtime compatibility (display-only)
+
+- `HmVehicleStatusDto.vin` remains `string | null`; HM status skips provider lookup when VIN is unknown (no `?? ''` identity coercion).
+- Fleet connectivity list DTO `vin` is `string | null` — empty string is not used as a second synthetic VIN representation.

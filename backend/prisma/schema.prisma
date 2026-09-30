@@ -1656,6 +1656,7 @@ model Organization {
   vehicleStationTransfers                                   VehicleStationTransfer[]
   vehicles                                                  Vehicle[]
   vehicleOnboardingCases                                    VehicleOnboardingCase[]
+  vehicleOrganizationAssignments                          VehicleOrganizationAssignment[]
   rawRefuelCandidates                                       RawRefuelCandidate[]
   brakeComponentInstallations                               BrakeComponentInstallation[]
   brakeServiceApplications                                  BrakeServiceApplication[]
@@ -16247,8 +16248,8 @@ model VehicleDataSourceLink {
   hmVehicle   HighMobilityVehicle? @relation(fields: [sourceReferenceId], references: [id])
   dimoVehicle DimoVehicle?         @relation(fields: [dimoVehicleId], references: [id], onDelete: Restrict)
 
-  // Only one active link per vehicle + source type + subtype
-  @@unique([vehicleId, sourceType, sourceSubtype, isActive], name: "uq_data_source_link_active")
+  /// Active-link uniqueness: DB partial index `uq_vehicle_data_source_link_active_scope` (see migration VO-2.1).
+  /// Inactive episodes are unlimited; do not reintroduce Prisma @@unique on is_active.
   @@index([vehicleId])
   @@index([sourceType])
   @@index([provider])
@@ -16270,13 +16271,20 @@ model VehicleOnboardingCase {
   status                   OnboardingCaseStatus     @default(OPEN)
   /// Denormalized primary source key for open-case uniqueness (provider-neutral).
   primarySourceProvider    String?                  @map("primary_source_provider")
+  /// Normalized scope key: empty string = provider-global / NULL scope (VO-2.1).
+  primarySourceScopeKey    String                   @default("") @map("primary_source_scope_key")
   primarySourceExternalId  String?                  @map("primary_source_external_id")
   draftIdentityJson        Json?                    @map("draft_identity_json")
+  draftIdentityVersion     Int                      @default(0) @map("draft_identity_version")
   draftAdminBaselineJson   Json?                    @map("draft_admin_baseline_json")
+  draftAdminBaselineVersion Int                     @default(0) @map("draft_admin_baseline_version")
   draftTechnicalBaselineJson Json?                  @map("draft_technical_baseline_json")
+  draftTechnicalBaselineVersion Int                  @default(0) @map("draft_technical_baseline_version")
   readinessSnapshotJson    Json?                    @map("readiness_snapshot_json")
+  readinessSnapshotVersion Int                      @default(0) @map("readiness_snapshot_version")
   readinessProfileVersion  String?                  @map("readiness_profile_version")
   validationFindingsJson   Json?                    @map("validation_findings_json")
+  validationFindingsVersion Int                      @default(0) @map("validation_findings_version")
   idempotencyKey           String?                  @map("idempotency_key")
   concurrencyToken         String?                  @map("concurrency_token")
   vehicleId                String?                  @map("vehicle_id")
@@ -16303,6 +16311,8 @@ model VehicleOnboardingCaseSourceRef {
   onboardingCaseId       String   @map("onboarding_case_id")
   provider               String
   connectionScope        String?  @map("connection_scope")
+  /// COALESCE(connection_scope, '') for uniqueness (VO-2.1).
+  connectionScopeKey     String   @default("") @map("connection_scope_key")
   externalVehicleIdentity String  @map("external_vehicle_identity")
   sourceMirrorTable      String?  @map("source_mirror_table")
   sourceMirrorId         String?  @map("source_mirror_id")
@@ -16311,6 +16321,7 @@ model VehicleOnboardingCaseSourceRef {
   lastSeenAt             DateTime? @map("last_seen_at")
   isPrimary              Boolean  @default(false) @map("is_primary")
   snapshotMetadataJson   Json?    @map("snapshot_metadata_json")
+  snapshotMetadataVersion Int     @default(0) @map("snapshot_metadata_version")
   createdAt              DateTime @default(now()) @map("created_at")
 
   onboardingCase VehicleOnboardingCase @relation(fields: [onboardingCaseId], references: [id], onDelete: Cascade)
@@ -16331,7 +16342,8 @@ model VehicleOrganizationAssignment {
   actorUserId      String?   @map("actor_user_id")
   createdAt        DateTime  @default(now()) @map("created_at")
 
-  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
 
   @@index([vehicleId])
   @@index([organizationId])
