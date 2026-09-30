@@ -48,6 +48,16 @@ Closing this gap satisfies `providerBackpressureGap:CLOSED` in the readiness eva
 - explicit operator authorization
 - remaining gates (e.g. replay deserializer CLOSED)
 
+## Post-seal exact-head evidence (main sync + CLOSED promotion)
+
+| Field | Value |
+|-------|--------|
+| Final seal head | `e780a18cf26b53f296763b82fc4a1a3da08d9688` |
+| Main at sync | `7744e3983b796885b0e802bb30b95499663cd78c` |
+| S4A integration workflow | [36749500957](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/actions/runs/36749500957) — S4 unit + PostgreSQL jobs **PASS** (workflow summary job may queue behind org runners) |
+| Redis suite (in S4 unit job) | `test:dimo:provider-budget:redis` with `DIMO_PROVIDER_BUDGET_REDIS_INTEGRATION=1` |
+| Redis tests | **10 executed / 10 passed / 0 skipped** (job `S4 unit test suites (S4A–S4F)` success) |
+
 ## Not claimed
 
 `productionLoadCertification = NOT_CLAIMED` — no production N≈1000 load certification.
