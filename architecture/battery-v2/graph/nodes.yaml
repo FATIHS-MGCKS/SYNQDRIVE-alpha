@@ -1850,3 +1850,20 @@ nodes:
       active/prioritized; removes completed/failed job and may re-add same deterministic jobId.
     source_paths:
       - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-job-producer.service.ts
+
+  - id: BAT-V2-AUTH-H0-001
+    type: authority
+    title: M3.3-H0 Battery Intelligence domain separation seal
+    epistemic_status: CONFIRMED
+    summary: >
+      LV vs HV scientific domains are separated in code: D3/F5/E2/E3 are LV-only;
+      GT is shared store with explicit batteryScope on facts; G2.2 replacement identity
+      is orgId+sourceServiceEventId (scope is fact content). HV charge sessions consume
+      ERD/DIMO segment boundaries without duplicating physical-event authority.
+      Full inventory: research/M3_3_H0_BATTERY_INTELLIGENCE_DOMAIN_SEPARATION_AUDIT_2026-09-30.md
+    source_paths:
+      - architecture/battery-v2/BATTERY_INTELLIGENCE_ARCHITECTURE.md
+      - architecture/battery-v2/research/M3_3_H0_BATTERY_INTELLIGENCE_DOMAIN_SEPARATION_AUDIT_2026-09-30.md
+      - backend/src/modules/vehicle-intelligence/battery-health/generalized-evidence/rest-session-features/longitudinal/f5-natural-calibration-report/f5-ground-truth-correlation.constants.ts
+    evidence:
+      - BAT-V2-EVID-CODE-ANCHOR-001

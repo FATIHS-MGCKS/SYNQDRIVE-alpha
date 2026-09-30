@@ -20,6 +20,15 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-30 — M3.3-H0 Battery Intelligence domain separation audit + seal (PASS)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | `M3_3_H0_BATTERY_INTELLIGENCE_DOMAIN_SEPARATION_AUDIT_2026-09-30.md`; BAT-V2-AUTH-H0-001 graph node; `validate-h0-domain-separation-contracts.sh`; CURRENT_STATE/BATTERY_INTELLIGENCE updates; SynqDrive Code. |
+| **WHY** | Forward umbrella M3.3-H0 requires code-derived scope inventory and cross-scope seal before HV-H1. |
+| **NON_EFFECTS** | No runtime, schema, deploy, E3, F6, synthetic GT, customer publication. |
+| **EVIDENCE** | `research/M3_3_H0_BATTERY_INTELLIGENCE_DOMAIN_SEPARATION_AUDIT_2026-09-30.md` |
+
 ## CL-2026-09-29 — PR #1846 Battery Intelligence authority hardening
 
 | Field | Value |
