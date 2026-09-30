@@ -55,6 +55,20 @@ Multi-product orgs must pass an explicit `selectedProduct`; readiness does not i
 
 `READINESS_MUTATION_SURFACE` (production service APIs): `evaluateReadiness`, `attachDimoSource`, `attachHighMobilitySource`, `refreshHighMobilitySourceEvidence`, governed case open/resume paths that write drafts (orchestrator); direct Prisma writes in tests only for activation fingerprint defense proofs.
 
+## VO-4.2 activation serialization
+
+| Topic | Value |
+|-------|-------|
+| Activation lock order | `vehicle-onboarding-activation:{caseId}` → `vehicle-onboarding-readiness:{caseId}` |
+| Readiness lock held | Through entire activation transaction (until COMMIT) |
+| Authority DB scope | `ReadinessActivationContext.tx` — same transaction as activation |
+| Entitlement lock | `assertOrganizationProductEntitledForActivation` — `SELECT … FOR UPDATE` on ACTIVE `organization_products` row |
+| Ordinary entitlement reads | `assertOrganizationProductEntitled` — no row lock (readiness evaluate, guards) |
+
+`READINESS_PRODUCT_ENTITLEMENT_LOCK_SEMANTICS`: activation holds `FOR UPDATE` on the exact ACTIVE `OrganizationProduct` for `(organizationId, selectedProductSlug)` until activation commits; concurrent revocation/update blocks until activation finishes or fails closed with `PRODUCT_ENTITLEMENT_NOT_ACTIVE`.
+
+PostgreSQL proofs: `vo4-activation-races.postgres.integration.spec.ts` (attach, HM refresh, product revocation ordering, concurrent activation, lock-order stress).
+
 ## Activation recheck
 
 `ProductionFailClosedReadinessAuthority.assertReadyForActivation` (returns **V2**, async):

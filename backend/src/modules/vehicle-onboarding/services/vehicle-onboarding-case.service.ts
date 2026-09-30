@@ -51,8 +51,7 @@ import { invalidateReadinessSealIfReady } from '../readiness/readiness-invalidat
 import { readinessMutationLockKey } from '../readiness/readiness-mutation-lock';
 import { acquirePgAdvisoryXactLock64 } from '@shared/database/pg-advisory-lock.util';
 import { parseValidatedSourceSnapshot } from '../policy/persisted-contract.validation';
-import { readinessRelevantSourceSnapshotProjection } from '../readiness/onboarding-source-snapshot.fingerprint';
-import { createHash } from 'node:crypto';
+import { hashReadinessRelevantSourceSnapshotProjection } from '../readiness/onboarding-source-snapshot.fingerprint';
 
 export interface OnboardingActorContext {
   organizationId: string;
@@ -272,12 +271,8 @@ export class VehicleOnboardingCaseService {
           'Provider VIN changed; identity review required before refresh',
         );
       }
-      const oldHash = createHash('sha256')
-        .update(JSON.stringify(readinessRelevantSourceSnapshotProjection(oldSnap)), 'utf8')
-        .digest('hex');
-      const newHash = createHash('sha256')
-        .update(JSON.stringify(readinessRelevantSourceSnapshotProjection(newSnap)), 'utf8')
-        .digest('hex');
+      const oldHash = hashReadinessRelevantSourceSnapshotProjection(oldSnap);
+      const newHash = hashReadinessRelevantSourceSnapshotProjection(newSnap);
       if (oldHash === newHash) {
         return;
       }

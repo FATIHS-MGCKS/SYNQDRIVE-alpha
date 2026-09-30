@@ -14,18 +14,13 @@ describe('Production readiness authority', () => {
     computeCurrentInputFingerprint: () => 'fp-match',
   } as unknown as VehicleOnboardingReadinessService;
 
-  const entitledOrgProduct = {
-    findFirst: jest.fn().mockResolvedValue({
-      status: 'ACTIVE',
-      productId: 'prod-1',
-      product: { slug: ProductSlug.RENTAL },
-    }),
+  const tx = {
+    $queryRaw: jest.fn().mockResolvedValue([
+      { id: 'op-1', status: 'ACTIVE', productId: 'prod-1' },
+    ]),
   };
 
-  const authority = new ProductionFailClosedReadinessAuthority(
-    { organizationProduct: entitledOrgProduct } as any,
-    readinessService,
-  );
+  const authority = new ProductionFailClosedReadinessAuthority(readinessService);
 
   it('rejects TEST_FIXTURE attestation (v1)', async () => {
     const snap = buildTestReadinessSnapshot(null);
@@ -40,6 +35,7 @@ describe('Production readiness authority', () => {
         {
           sourceRefs: [],
           organization: { businessType: 'RENTAL', country: null, id: 'org', companyName: 'x' } as any,
+          tx: tx as any,
         },
       ),
     ).rejects.toThrow(VehicleOnboardingError);
@@ -83,8 +79,10 @@ describe('Production readiness authority', () => {
       {
         sourceRefs: [],
         organization: { businessType: 'RENTAL', country: null, id: 'org', companyName: 'x' } as any,
+        tx: tx as any,
       },
     );
     expect(result.version).toBe(READINESS_SNAPSHOT_VERSION_V2);
+    expect(tx.$queryRaw).toHaveBeenCalled();
   });
 });

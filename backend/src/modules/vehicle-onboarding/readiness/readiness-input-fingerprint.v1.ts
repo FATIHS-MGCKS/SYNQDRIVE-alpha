@@ -9,7 +9,8 @@ import { normalizeSourceRefsForReadinessFingerprint } from './onboarding-source-
 
 export const READINESS_INPUT_FINGERPRINT_ALGORITHM = 'SHA-256-canonical-json-v1.1';
 
-function stableJson(value: unknown): string {
+/** Deterministic JSON for hashing (sorted object keys at each object level). */
+export function stableCanonicalJson(value: unknown): string {
   return JSON.stringify(value, (_key, v) => {
     if (v && typeof v === 'object' && !Array.isArray(v)) {
       const sorted: Record<string, unknown> = {};
@@ -52,10 +53,10 @@ export function computeReadinessInputFingerprint(input: ReadinessFingerprintInpu
     productEntitlementStatus: input.productEntitlementStatus,
     organizationBusinessType: input.organizationBusinessType,
   };
-  return createHash('sha256').update(stableJson(payload), 'utf8').digest('hex');
+  return createHash('sha256').update(stableCanonicalJson(payload), 'utf8').digest('hex');
 }
 
 export function computeSourceSetFingerprint(refs: VehicleOnboardingCaseSourceRef[]): string {
   const payload = normalizeSourceRefsForReadinessFingerprint(refs);
-  return createHash('sha256').update(stableJson(payload), 'utf8').digest('hex');
+  return createHash('sha256').update(stableCanonicalJson(payload), 'utf8').digest('hex');
 }

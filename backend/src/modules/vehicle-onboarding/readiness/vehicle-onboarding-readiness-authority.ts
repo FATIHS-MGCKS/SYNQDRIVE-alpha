@@ -1,17 +1,28 @@
-import type { VehicleOnboardingCase, VehicleOnboardingCaseSourceRef, Organization } from '@prisma/client';
+import type {
+  VehicleOnboardingCase,
+  VehicleOnboardingCaseSourceRef,
+  Organization,
+  Prisma,
+} from '@prisma/client';
 import type { VehicleOnboardingReadinessSnapshotV2 } from '../contracts/readiness-snapshot.v2';
 import { VehicleOnboardingError } from '../errors/vehicle-onboarding.errors';
 import { parseValidatedReadinessSnapshotV2 } from '../policy/persisted-contract.validation';
 import { READINESS_SNAPSHOT_VERSION_V2 } from '../contracts/vo-document-versions';
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '@shared/database/prisma.service';
 import { VehicleOnboardingReadinessService } from '../services/vehicle-onboarding-readiness.service';
 import { resolveReadinessProfileForSelectedProduct } from './profiles/profile-registry';
-import { assertOrganizationProductEntitled } from './product-entitlement.authority';
+import { assertOrganizationProductEntitledForActivation } from './product-entitlement.authority';
+
+/** Integration-test hooks for activation serialization proofs (not used in production HTTP). */
+export interface ActivationTestHooks {
+  afterEntitlementRowLock?: () => void | Promise<void>;
+}
 
 export interface ReadinessActivationContext {
   sourceRefs: VehicleOnboardingCaseSourceRef[];
   organization: Organization;
+  tx: Prisma.TransactionClient;
+  activationTestHooks?: ActivationTestHooks;
 }
 
 export interface VehicleOnboardingReadinessAuthority {
@@ -23,10 +34,7 @@ export interface VehicleOnboardingReadinessAuthority {
 
 @Injectable()
 export class ProductionFailClosedReadinessAuthority implements VehicleOnboardingReadinessAuthority {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly readinessService: VehicleOnboardingReadinessService,
-  ) {}
+  constructor(private readonly readinessService: VehicleOnboardingReadinessService) {}
 
   async assertReadyForActivation(
     caseRow: VehicleOnboardingCase,
@@ -70,10 +78,11 @@ export class ProductionFailClosedReadinessAuthority implements VehicleOnboarding
       );
     }
 
-    const entitlement = await assertOrganizationProductEntitled(
-      this.prisma,
+    const entitlement = await assertOrganizationProductEntitledForActivation(
+      ctx.tx,
       ctx.organization.id,
       selectedProduct,
+      { afterRowLock: ctx.activationTestHooks?.afterEntitlementRowLock },
     );
 
     const currentFingerprint = this.readinessService.computeCurrentInputFingerprint(
@@ -82,7 +91,6 @@ export class ProductionFailClosedReadinessAuthority implements VehicleOnboarding
       ctx.organization,
       {
         selectedProduct,
-        sealedSnapshot: snap,
         productEntitlementStatus: entitlement.status,
       },
     );

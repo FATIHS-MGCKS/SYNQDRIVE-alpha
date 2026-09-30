@@ -1,6 +1,8 @@
+import { createHash } from 'node:crypto';
 import type { OnboardingSourceSnapshotV1 } from '../contracts/onboarding-source-snapshot.v1';
 import type { VehicleOnboardingCaseSourceRef } from '@prisma/client';
 import { parseValidatedSourceSnapshot } from '../policy/persisted-contract.validation';
+import { stableCanonicalJson } from './readiness-input-fingerprint.v1';
 
 /** Readiness-relevant projection of governed source snapshot (excludes volatile observedAt). */
 export function readinessRelevantSourceSnapshotProjection(
@@ -45,4 +47,9 @@ export function normalizeSourceRefsForReadinessFingerprint(
         `${b.provider}:${b.externalVehicleIdentity}`,
       ),
     );
+}
+
+export function hashReadinessRelevantSourceSnapshotProjection(snap: OnboardingSourceSnapshotV1): string {
+  const payload = readinessRelevantSourceSnapshotProjection(snap);
+  return createHash('sha256').update(stableCanonicalJson(payload), 'utf8').digest('hex');
 }
