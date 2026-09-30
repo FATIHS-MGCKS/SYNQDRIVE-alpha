@@ -2,7 +2,7 @@
  * VO-2 / VO-2.1 persistence invariants (PostgreSQL).
  * Run: VO2_PERSISTENCE_PG=1 npx jest vo2-persistence.postgres.integration --runInBand
  */
-import { PrismaClient, FuelType, BusinessType } from '@prisma/client';
+import { PrismaClient, BusinessType } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 
 const run = process.env.VO2_PERSISTENCE_PG === '1';
@@ -17,6 +17,30 @@ async function createFixtureOrg(prisma: PrismaClient): Promise<string> {
     },
   });
   return id;
+}
+
+/** Minimal vehicle row via SQL (avoids Prisma/schema columns not yet in migration history). */
+async function createFixtureVehicle(
+  prisma: PrismaClient,
+  organizationId: string,
+  vehicleId: string,
+  vin: string | null = `VIN${randomUUID().replace(/-/g, '').slice(0, 14)}`,
+): Promise<void> {
+  await prisma.$executeRaw`
+    INSERT INTO vehicles (
+      id, organization_id, vin, make, model, year, fuel_type, created_at, updated_at
+    ) VALUES (
+      ${vehicleId},
+      ${organizationId},
+      ${vin},
+      'Volkswagen',
+      'Golf',
+      2020,
+      'GASOLINE'::"FuelType",
+      NOW(),
+      NOW()
+    )
+  `;
 }
 
 (run ? describe : describe.skip)('VO-2 vehicle onboarding persistence', () => {
@@ -38,16 +62,7 @@ async function createFixtureOrg(prisma: PrismaClient): Promise<string> {
   it('enforces one open org assignment per vehicle', async () => {
     const orgId = await createFixtureOrg(prisma);
     const vehicleId = randomUUID();
-    await prisma.vehicle.create({
-      data: {
-        id: vehicleId,
-        organizationId: orgId,
-        make: 'VW',
-        model: 'Polo',
-        year: 2021,
-        fuelType: FuelType.GASOLINE,
-      },
-    });
+    await createFixtureVehicle(prisma, orgId, vehicleId);
     await prisma.vehicleOrganizationAssignment.create({
       data: {
         id: randomUUID(),
@@ -75,17 +90,7 @@ async function createFixtureOrg(prisma: PrismaClient): Promise<string> {
     const key = `idem-${randomUUID()}`;
     const caseId = randomUUID();
     const vehicleId = randomUUID();
-    await prisma.vehicle.create({
-      data: {
-        id: vehicleId,
-        organizationId: orgId,
-        vin: `VIN${randomUUID().replace(/-/g, '').slice(0, 14)}`,
-        make: 'VW',
-        model: 'Golf',
-        year: 2020,
-        fuelType: FuelType.GASOLINE,
-      },
-    });
+    await createFixtureVehicle(prisma, orgId, vehicleId);
 
     await prisma.vehicleOnboardingCase.create({
       data: {
@@ -217,17 +222,7 @@ async function createFixtureOrg(prisma: PrismaClient): Promise<string> {
   it('allows multiple inactive data source link episodes per scope', async () => {
     const orgId = await createFixtureOrg(prisma);
     const vehicleId = randomUUID();
-    await prisma.vehicle.create({
-      data: {
-        id: vehicleId,
-        organizationId: orgId,
-        vin: `VIN${randomUUID().replace(/-/g, '').slice(0, 14)}`,
-        make: 'VW',
-        model: 'Golf',
-        year: 2020,
-        fuelType: FuelType.GASOLINE,
-      },
-    });
+    await createFixtureVehicle(prisma, orgId, vehicleId);
 
     const link1 = randomUUID();
     const link2 = randomUUID();
@@ -290,7 +285,7 @@ async function createFixtureOrg(prisma: PrismaClient): Promise<string> {
     ).rejects.toMatchObject({ code: 'P2002' });
 
     await prisma.vehicleDataSourceLink.deleteMany({ where: { vehicleId } });
-    await prisma.vehicle.delete({ where: { id: vehicleId } });
+    await prisma.$executeRaw`DELETE FROM vehicles WHERE id = ${vehicleId}`;
   });
 
   it('supports onboarding case without vehicleId', async () => {
