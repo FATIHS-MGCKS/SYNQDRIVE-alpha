@@ -115,3 +115,27 @@ invariants:
     statement: Activation must be idempotent under retried commands with the same idempotency key
     source_paths:
       - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+
+  - id: VO-INV-CANDIDATE-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: Offboarded mirrors not passive candidates
+    statement: Historical offboarding must not cause a known physical vehicle to silently re-enter normal candidate discovery when provider link is inactive
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+
+  - id: VO-INV-TRANSFER-ISOLATION-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: Org transfer fail-closed
+    statement: Vehicle organization transfer is forbidden unless historical tenant-owned facts remain scoped to event-time organization
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+
+  - id: VO-INV-ACTIVATION-EVENT-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: Durable lifecycle facts with state change
+    statement: Committed registry activation or offboarding transition must include a durable idempotently consumable lifecycle fact in the same database transaction as the state change
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md

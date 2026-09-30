@@ -67,12 +67,12 @@
 | Field | Value |
 |-------|-------|
 | **QUESTION_ID** | VO-Q-005 |
-| **DECISION** | Separate **registry lifecycle** (ONBOARDING, ACTIVE, OFFBOARDED, ARCHIVED) distinct from `VehicleStatus`. |
-| **RATIONALE** | Task §8; rental states are not registry states |
+| **DECISION** | **Vehicle.registryLifecycle:** ACTIVE, OFFBOARDED, ARCHIVED only (post-activation). **Onboarding** lifecycle on **OnboardingCase** only. Separate from `VehicleStatus`. |
+| **RATIONALE** | VO-1.1: no canonical `Vehicle` before activation |
 | **CURRENT_EVIDENCE** | `VehicleStatus` enum only today |
-| **REJECTED_ALTERNATIVES** | Overload `VehicleStatus` |
-| **COMPATIBILITY_IMPACT** | New field VO-2 |
-| **IMPLEMENTATION_IMPLICATION** | Backfill ACTIVE |
+| **REJECTED_ALTERNATIVES** | ONBOARDING on Vehicle; overload `VehicleStatus` |
+| **COMPATIBILITY_IMPACT** | New fields VO-2 |
+| **IMPLEMENTATION_IMPLICATION** | Backfill ACTIVE for existing vehicles |
 | **GAPS_AFFECTED** | VO-GAP-007 |
 
 ## VO-Q-006
@@ -80,12 +80,12 @@
 | Field | Value |
 |-------|-------|
 | **QUESTION_ID** | VO-Q-006 |
-| **DECISION** | Persist: registry lifecycle, OnboardingCase, org/plate/link history. Derive: discovered, disconnected, inactive-ops. Events: transfer, hard-delete. |
-| **RATIONALE** | Minimum durable set in TARGET_ARCHITECTURE §4 |
+| **DECISION** | **Persist:** OnboardingCase (incl. onboarding phase), Vehicle.registryLifecycle (3 states), org/plate/link history. **Derive:** discovered, disconnected, inactive-ops. **Events:** transfer, hard-delete. |
+| **RATIONALE** | VO-1.1 minimal durable set §4 |
 | **CURRENT_EVIDENCE** | No case table; VO-GAP-007 |
-| **REJECTED_ALTERNATIVES** | Persist all eight conceptual nouns as enums |
+| **REJECTED_ALTERNATIVES** | Draft Vehicle row pre-activation; persist all nouns as Vehicle enums |
 | **COMPATIBILITY_IMPACT** | VO-2 tables |
-| **IMPLEMENTATION_IMPLICATION** | State machine doc in orchestrator |
+| **IMPLEMENTATION_IMPLICATION** | Case state machine + registry state machine |
 | **GAPS_AFFECTED** | VO-GAP-007, VO-GAP-013 |
 
 ## VO-Q-007
@@ -93,12 +93,12 @@
 | Field | Value |
 |-------|-------|
 | **QUESTION_ID** | VO-Q-007 |
-| **DECISION** | `VehicleOrganizationAssignment` history; vehicle may transfer with **event-time org attribution** for all historical facts; destination never inherits private prior-tenant operational history. |
-| **RATIONALE** | B2-06-026 external ref; tenant privacy |
-| **CURRENT_EVIDENCE** | `Vehicle.organizationId` only — VO-GAP-003 |
-| **REJECTED_ALTERNATIVES** | Move vehicle row only without history; new Vehicle.id per transfer only |
-| **COMPATIBILITY_IMPACT** | History table + query scoping |
-| **IMPLEMENTATION_IMPLICATION** | Transfer workflow VO-5 |
+| **DECISION** | `VehicleOrganizationAssignment` history; `Vehicle.id` may transfer **only** via **FAIL_CLOSED** workflow: every tenant-private domain must prove **event-time org ownership** before transfer is enabled; else block. Destination never inherits prior-tenant private history. `Vehicle.organizationId` = current projection only. |
+| **RATIONALE** | VO-1.1 VO-INV-TRANSFER-ISOLATION-001; B2-06-026 external ref |
+| **CURRENT_EVIDENCE** | Many domains key on `vehicleId` + current org — VO-GAP-003 |
+| **REJECTED_ALTERNATIVES** | Transfer by updating `organizationId` alone |
+| **COMPATIBILITY_IMPACT** | Per-domain audit + history table VO-5+ |
+| **IMPLEMENTATION_IMPLICATION** | Transfer gate checklist; optional OFFBOARD+RE_ONBOARD path |
 | **GAPS_AFFECTED** | VO-GAP-003 |
 
 ## VO-Q-008
@@ -171,11 +171,11 @@
 | Field | Value |
 |-------|-------|
 | **QUESTION_ID** | VO-Q-013 |
-| **DECISION** | Billable quantity changes on **`vehicle.activated`** (and decreases on offboard/deprovision); not on discovery or onboarding start. |
-| **RATIONALE** | Aligns with current `onVehicleProvisioned` at register completion; explicit activation boundary |
-| **CURRENT_EVIDENCE** | `vehicles.service.ts` `onVehicleProvisioned` |
-| **REJECTED_ALTERNATIVES** | Bill on DIMO mirror sync |
-| **COMPATIBILITY_IMPACT** | Event rename optional; Billing authority owns amounts |
+| **DECISION** | Billable quantity changes via **idempotent consumer** of durable **`vehicle.activated`** / **`vehicle.offboarded`** outbox facts (same DB tx as registry change; Billing **not** inside that tx). Not on discovery or case open. |
+| **RATIONALE** | VO-1.1 VO-INV-ACTIVATION-EVENT-001 |
+| **CURRENT_EVIDENCE** | `vehicles.service.ts` `onVehicleProvisioned` inline post-commit |
+| **REJECTED_ALTERNATIVES** | Bill on DIMO mirror sync; Billing in Vehicle DB transaction |
+| **COMPATIBILITY_IMPACT** | Outbox + consumer VO-4 |
 | **IMPLEMENTATION_IMPLICATION** | Document Billing fact contract |
 | **GAPS_AFFECTED** | none (boundary only) |
 
@@ -197,11 +197,11 @@
 | Field | Value |
 |-------|-------|
 | **QUESTION_ID** | VO-Q-015 |
-| **DECISION** | **DISCONNECT_PROVIDER** deactivates link only; **DEACTIVATE_VEHICLE** / OFFBOARDED registry state; never conflate with delete. |
-| **RATIONALE** | VO-INV-PROVIDER-001 |
+| **DECISION** | **DISCONNECT_PROVIDER** = link only. **DEACTIVATE_VEHICLE** = ops/`VehicleStatus` only; registry stays **ACTIVE**. **OFFBOARD_VEHICLE** = `registryLifecycle` OFFBOARDED + `vehicle.offboarded` fact. Never conflate with delete. |
+| **RATIONALE** | VO-1.1; VO-INV-PROVIDER-001 |
 | **CURRENT_EVIDENCE** | `deregister` deletes Vehicle — VO-GAP-006 |
-| **REJECTED_ALTERNATIVES** | Delete vehicle on DIMO disconnect |
-| **COMPATIBILITY_IMPACT** | New APIs VO-5 |
+| **REJECTED_ALTERNATIVES** | DEACTIVATE meaning OFFBOARDED |
+| **COMPATIBILITY_IMPACT** | Separate APIs VO-5 |
 | **IMPLEMENTATION_IMPLICATION** | Deprecate delete deregister |
 | **GAPS_AFFECTED** | VO-GAP-006, VO-GAP-012 (presentation) |
 
@@ -210,10 +210,10 @@
 | Field | Value |
 |-------|-------|
 | **QUESTION_ID** | VO-Q-016 |
-| **DECISION** | OFFBOARD/ARCHIVE retain `Vehicle.id` and all historical child facts; hard-delete compliance-only; provider mirror may show as non-registered candidate again. |
-| **RATIONALE** | VO-INV-OFFBOARD-001 |
-| **CURRENT_EVIDENCE** | Cascade delete on deregister |
-| **REJECTED_ALTERNATIVES** | Default hard delete |
-| **COMPATIBILITY_IMPACT** | Soft lifecycle VO-5 |
+| **DECISION** | OFFBOARD/ARCHIVE retain `Vehicle.id` and historical facts; hard-delete compliance-only. **Offboarded/archived mirrors do not auto-reappear as normal candidates** — **RE_ONBOARD** requires explicit authorized workflow (VO-INV-CANDIDATE-001). DISCONNECT may reconnect to same ACTIVE vehicle. |
+| **RATIONALE** | VO-1.1 sold/retired safety; VO-INV-OFFBOARD-001 |
+| **CURRENT_EVIDENCE** | `getNonRegisteredVehicles()` ignores offboard history |
+| **REJECTED_ALTERNATIVES** | Passive rediscovery after OFFBOARD_SOLD |
+| **COMPATIBILITY_IMPACT** | Suppression rules in candidate projection VO-3 |
 | **IMPLEMENTATION_IMPLICATION** | Stop `vehicle.delete` for normal offboard |
-| **GAPS_AFFECTED** | VO-GAP-006 |
+| **GAPS_AFFECTED** | VO-GAP-006, VO-GAP-014 |

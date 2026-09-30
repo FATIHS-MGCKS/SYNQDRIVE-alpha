@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **Status** | Architecture contract — **not implemented** |
-| **Decision slice** | VO-1 (2026-09-30) |
+| **Decision slice** | VO-1 + **VO-1.1 consistency seal** (2026-09-30) |
 | **Repository anchor** | `265168d3deec4175d5659ed849be5e4063f10291` (post VO-0B merge) |
 | **Authority** | `AUDIT_IN_PROGRESS` — VO-1 does not promote to `AUTHORITY_ACTIVE` |
 | **Current behavior** | [CURRENT_STATE.md](./CURRENT_STATE.md) (VO-0A/0B seal) |
@@ -47,6 +47,27 @@ VO-1 defines the **minimum semantic contract** and **durable lifecycle** require
 - Populated only when **verified VIN** or **admin-confirmed merge** with audit.
 - Used for **cross-provider** and **cross-tenant collision detection** without exposing Org B data to Org A (see §11).
 
+### Canonical `Vehicle` creation timing (VO-1.1)
+
+| Rule | Target |
+|------|--------|
+| **`DOES_CANONICAL_VEHICLE_EXIST_BEFORE_ACTIVATION`** | **NO** |
+| **Pre-activation authority** | **OnboardingCase** (+ provider mirrors for discovery) |
+| **At activation** | **Create** `Vehicle` row atomically with `registryLifecycle=ACTIVE` |
+| **After activation** | OnboardingCase `COMPLETED` → `vehicleId` |
+
+Pre-activation identity, draft admin/technical baselines, readiness, and validation live **only** on **OnboardingCase**. No canonical `Vehicle.id` exists for downstream modules until activation succeeds.
+
+| Pre-activation concern | Target |
+|------------------------|--------|
+| Downstream module visibility | **None** — trips, billing, telemetry attachment, health modules require `vehicleId` created at activation |
+| Billable | **NO** — no `Vehicle` → no billable provision |
+| Telemetry attach | **NO** to canonical vehicle — provider mirror sync may continue under provider/VDC rules |
+| Failed/cancelled case | Case `CANCELLED`/`EXPIRED` — **no** `Vehicle` row created |
+| Telemetry on cancel | N/A for canonical vehicle; mirror unchanged |
+
+**Onboarding** is a **case lifecycle** (`OnboardingCase.status`), not a persisted `Vehicle.registryLifecycle` value.
+
 ---
 
 ## 2. Candidate / source model (Decision A)
@@ -62,8 +83,29 @@ VO-1 defines the **minimum semantic contract** and **durable lifecycle** require
 
 ### Provider-neutral **candidate projection** (derived, not persisted as entity)
 
-- **DIMO:** `DimoVehicle` where no active `Vehicle`/`VehicleDataSourceLink` binds it (today: `getNonRegisteredVehicles()`).
-- **HM:** HM clearance rows without `synqdriveVehicleId` / eligible clearance APIs.
+Base rule (insufficient alone): mirror not bound by an **active** link to an **ACTIVE** canonical `Vehicle`.
+
+**Candidate eligibility (VO-1.1)** — a mirror is **not** a normal onboarding candidate when:
+
+| Condition | Effect |
+|-----------|--------|
+| Historical link to **OFFBOARDED** or **ARCHIVED** `Vehicle` for same org (or platform correlation) | **Suppress** from default candidate lists |
+| **OFFBOARD_SOLD** / **REMOVE_FROM_PRODUCT** completed for that physical identity in org | **Suppress** — requires **RE_ONBOARD** authorized action |
+| **ARCHIVED** terminal registry state on linked vehicle | **Suppress** — no automatic rediscovery |
+| **TRANSFER_ORGANIZATION** in progress or completed | Eligibility only via **explicit transfer/adoption** workflow + provider account scope |
+
+| Operation | Candidate re-appearance |
+|-----------|-------------------------|
+| **DISCONNECT_PROVIDER** | **Allowed** — may reconnect to **same ACTIVE** `Vehicle` (not a new onboarding candidate) |
+| **OFFBOARD_SOLD** | **Not allowed** as passive candidate for former org |
+| **ARCHIVED** | **Not allowed** as normal candidate |
+| **TRANSFER_ORGANIZATION** | **Governed** — destination org adoption workflow only |
+| **RE_ONBOARD** (explicit) | **Allowed** after identity/history review + authorization |
+
+**`OFFBOARDED_CANDIDATE_AUTO_REAPPEAR_ALLOWED=NO`** for ordinary discovery UX.
+
+- **DIMO:** eligible only if passes suppression rules above (today's `getNonRegisteredVehicles()` is **incomplete**).
+- **HM:** clearance rows without active vehicle binding + same suppression rules.
 - **Manual:** no mirror; case starts with `sourceType=MANUAL`.
 
 ### Durable **OnboardingCase** (target persisted semantic)
@@ -73,7 +115,7 @@ One case per attempted onboarding into an **organization** (tenant-scoped), refe
 - `organizationId` (target tenant)
 - `sourceType` ∈ `DIMO` \| `HIGH_MOBILITY` \| `MANUAL` \| `COMPOSITE`
 - `sourceRefs[]` — stable provider keys (`dimoVehicleId`, `hmVehicleReference`, etc.)
-- `registryLifecyclePhase` ∈ onboarding workflow (see §4)
+- `caseStatus` ∈ `OPEN` \| `IN_PROGRESS` \| `READY_FOR_ACTIVATION` \| `COMPLETED` \| `CANCELLED` \| `EXPIRED` (onboarding lifecycle on **case**, not on `Vehicle`)
 - Draft administrative + technical baseline payloads (validated DTOs, not health conclusions)
 - `readinessSnapshot` (versioned checklist result)
 - `validationFindings[]`, `actor`, timestamps
@@ -98,28 +140,28 @@ Without a case, abandoned multi-step enrichment, async capability discovery, and
 
 **Separate from** `VehicleStatus` (`AVAILABLE`, `RENTED`, `IN_SERVICE`, `OUT_OF_SERVICE`, `RESERVED`) — rental/ops only (**VO-INV-LIFECYCLE-001**).
 
-### Persisted registry lifecycle (`registryLifecycle` on `Vehicle` or 1:1 extension — TBD)
+### Persisted registry lifecycle (`registryLifecycle` on `Vehicle` — exists only **after** activation)
+
+| State | Meaning |
+|-------|---------|
+| **ACTIVE** | Canonical vehicle in tenant product operation |
+| **OFFBOARDED** | Left active product; history retained; candidate suppression applies |
+| **ARCHIVED** | Long-retention terminal; no active ops; suppressed from normal candidates |
+
+**Persisted count:** **3** (no `ONBOARDING` on `Vehicle` — see §1.1)
+
+### Onboarding lifecycle (on `OnboardingCase`, not `Vehicle`)
 
 | State | Classification |
 |-------|----------------|
-| **ONBOARDING** | **PERSISTED** — pre-activation or partial `Vehicle` draft (implementation choice) |
-| **ACTIVE** | **PERSISTED** — normal operational registry membership |
-| **OFFBOARDED** | **PERSISTED** — tenant removed vehicle from product; history retained |
-| **ARCHIVED** | **PERSISTED** — long-retention terminal; no active ops |
+| **onboarding** (case open → ready) | **PERSISTED on OnboardingCase** |
+| **discovered** | **DERIVED** — provider mirror, no case |
+| **inactive** (ops) | **OPERATIONAL STATE** — `VehicleStatus` on **ACTIVE** vehicles only |
+| **disconnected** | **PROVIDER/LINK STATE** |
+| **transferred/sold** | **EVENT/HISTORY** — may OFFBOARD + later RE_ONBOARD case |
+| **hard deleted** | **EVENT/HISTORY ONLY** — compliance |
 
-**Count persisted:** **4**
-
-### Derived / other classifications
-
-| Concept | Classification |
-|---------|----------------|
-| **discovered** | **DERIVED** — from provider mirror sync, no case |
-| **inactive** (ops) | **OPERATIONAL STATE** — `VehicleStatus` / fleet rules |
-| **disconnected** | **PROVIDER/LINK STATE** — `DimoConnectionStatus`, HM streaming, VDC |
-| **transferred/sold** | **EVENT/HISTORY** — closes assignment; may trigger OFFBOARDED + new case elsewhere |
-| **hard deleted** | **EVENT/HISTORY ONLY** — rare; not normal offboarding |
-
-**Derived registry-facing concepts:** **6** (discovered, inactive-ops, disconnected, telemetry-stale, transferred, pending-activation)
+**Derived registry-facing concepts:** **5** (discovered, inactive-ops, disconnected, telemetry-stale, transfer-pending)
 
 ---
 
@@ -157,6 +199,26 @@ Target **`VehicleOrganizationAssignment`** history (new persistence in VO-2+):
 - Platform may use `PhysicalVehicleCorrelation` internally for fraud/duplicate prevention **without** tenant disclosure (**VO-INV-TENANT-001**).
 
 **Compatibility:** `Vehicle.organizationId` remains **current assignment projection** for queries until migration completes.
+
+### Organization transfer — **FAIL_CLOSED** (VO-1.1)
+
+**`ORG_TRANSFER_FAIL_CLOSED=YES`** · **`EVENT_TIME_TENANT_OWNERSHIP_REQUIRED=YES`**
+
+Production **organization reassignment** on an existing `Vehicle.id` is **forbidden** until every tenant-private domain proves **immutable event-time organization attribution** (or equivalent assignment-safe access). `Vehicle.organizationId` **must not** be the sole authorization source for pre-transfer historical facts.
+
+Conceptual audit domains (must pass before transfer enablement):
+
+| Domain | Requirement |
+|--------|-------------|
+| Telemetry / snapshots | Facts scoped by org at ingest time |
+| Trips | Org at trip boundary |
+| Bookings / contracts | Org at booking/contract time |
+| Documents / damages / maintenance | Org at record creation |
+| Battery / driving / health evidence | Org at measurement/conclusion time |
+| Invoices/payments (if vehicle-linked) | Org at billing event time |
+| Tasks / audits | Org at creation |
+
+If **any** domain cannot prove isolation → transfer workflow **blocks** (no silent move). Alternative product path: **OFFBOARD** origin + **RE_ONBOARD** in destination with new case (may still share platform correlation internally).
 
 ---
 
@@ -245,26 +307,41 @@ Onboarding orchestrates **trigger** only; DI/Battery authorities own conclusions
 
 ## 12. Activation transaction (Decision M)
 
-### Transactional core (must succeed atomically)
+### Single DB transaction (registry mutation + durable facts)
 
-- Finalize `Vehicle` (or promote draft) with `registryLifecycle=ACTIVE`
-- Close `OnboardingCase` → `COMPLETED`
-- `VehicleOrganizationAssignment` open row
-- Active `VehicleDataSourceLink`(s) + consent linkage
-- Required admin baseline fields
-- Required **reference** technical baselines per readiness profile
-- `readinessSnapshot` version + audit event
-- Idempotency: same `idempotencyKey` → same `vehicleId` (**VO-INV-ACTIVATION-001**)
+All rows below commit or roll back **together**:
 
-### Post-commit idempotent (existing side effects — classify)
+| Step | Class |
+|------|-------|
+| **Create** `Vehicle` with `registryLifecycle=ACTIVE` | **TRANSACTIONAL** |
+| OnboardingCase → `COMPLETED` + `vehicleId` | **TRANSACTIONAL** |
+| `VehicleOrganizationAssignment` open row | **TRANSACTIONAL** |
+| Active `VehicleDataSourceLink`(s) + consent linkage | **TRANSACTIONAL** |
+| Required admin baseline on `Vehicle` | **TRANSACTIONAL** |
+| Required reference technical baselines | **TRANSACTIONAL** |
+| `readinessSnapshot` version persisted | **TRANSACTIONAL** |
+| Audit event record | **TRANSACTIONAL** |
+| **Lifecycle fact / outbox row** (`vehicle.activated` payload) | **TRANSACTIONAL** |
 
-| Side effect | Class |
-|-------------|-------|
-| `billingQuantity.onVehicleProvisioned` | **TRANSACTIONAL_REQUIRED** today — target: emit on **ACTIVATION** fact (align VO-Q-013) |
+**`ACTIVATION_FACT_DURABLE_WITH_STATE_CHANGE=YES`**
+
+**Mechanism:** transactional **outbox** (or repository-equivalent durable event table) written in the **same** DB transaction as `registryLifecycle` change. Consumers (Billing, analytics) read outbox with **idempotent** handlers (**VO-INV-ACTIVATION-EVENT-001**).
+
+**`BILLING_UPDATE_TRANSACTIONAL_WITH_VEHICLE_DB_TX=NO`** — Stripe/quantity side effects run **outside** the DB transaction as **POST_COMMIT_IDEMPOTENT_CONSUMER** of `vehicle.activated` / `vehicle.offboarded`.
+
+Offboarding: same pattern — `registryLifecycle` change + `vehicle.offboarded` outbox row atomically.
+
+Idempotency: same `idempotencyKey` → same `vehicleId` (**VO-INV-ACTIVATION-001**).
+
+### Post-commit idempotent consumers
+
+| Consumer / job | Class |
+|----------------|-------|
+| Billing quantity update (`onVehicleProvisioned` successor) | **POST_COMMIT_IDEMPOTENT_CONSUMER** |
 | Capability refresh | **POST_COMMIT_IDEMPOTENT** |
 | `VehicleEnrichmentJob` | **POST_COMMIT_IDEMPOTENT** |
 | Battery capability refresh | **POST_COMMIT_IDEMPOTENT** |
-| Snapshot / telemetry init | **OPTIONAL_ASYNC** — VDC owns ongoing freshness |
+| Snapshot / telemetry init | **OPTIONAL_ASYNC** |
 
 ---
 
@@ -287,15 +364,25 @@ Current: provision at register (`vehicles.service.ts` `onVehicleProvisioned`) �
 
 ## 14. Offboarding semantics (Decision O)
 
-| Operation | Retains Vehicle? | Provider links | History | Reversible |
-|-----------|------------------|----------------|---------|------------|
-| **DISCONNECT_PROVIDER** | YES | Deactivate link | YES | YES |
-| **DEACTIVATE_VEHICLE** | YES | Optional | YES | YES — ops `VehicleStatus` |
-| **REMOVE_FROM_PRODUCT** | YES → OFFBOARDED | May disconnect | YES | Limited |
-| **TRANSFER_ORGANIZATION** | YES | Re-evaluate | Isolated per org | Audit |
-| **OFFBOARD_SOLD** | YES OFFBOARDED | Disconnect typical | YES | NO |
-| **ARCHIVE** | YES ARCHIVED | Inactive | YES | NO |
-| **HARD_DELETE** | DELETE | Audit only | **Legal/compliance only** | NO |
+### `DEACTIVATE_VEHICLE` vs `OFFBOARD_VEHICLE` (VO-1.1)
+
+| Action | Registry | Ops | Billing |
+|--------|----------|-----|---------|
+| **DEACTIVATE_VEHICLE** | Stays **ACTIVE** | `VehicleStatus` / fleet availability only; reversible | **No** automatic deprovision unless Billing product policy says otherwise |
+| **OFFBOARD_VEHICLE** | → **OFFBOARDED** | Leaves active tenant product | **`vehicle.offboarded`** fact → Billing consumer |
+
+Do **not** use one action for both meanings.
+
+| Operation | Retains Vehicle? | Registry | Provider links | Candidate suppression | History |
+|-----------|------------------|----------|--------------|----------------------|---------|
+| **DISCONNECT_PROVIDER** | YES | ACTIVE | Deactivate link | N/A (reconnect same vehicle) | YES |
+| **DEACTIVATE_VEHICLE** | YES | ACTIVE | Optional | N/A | YES |
+| **REMOVE_FROM_PRODUCT** | YES | OFFBOARDED | May disconnect | **Suppress** passive rediscovery | YES |
+| **TRANSFER_ORGANIZATION** | YES | ACTIVE until OFFBOARD+adopt | Re-evaluate | **Workflow-only** | Event-time isolated |
+| **OFFBOARD_SOLD** | YES | OFFBOARDED | Disconnect typical | **Suppress** for org | YES |
+| **ARCHIVE** | YES | ARCHIVED | Inactive | **Suppress** | YES |
+| **RE_ONBOARD** | YES (same or new case) | → ACTIVE via new activation | New link episode | Explicit auth only | YES |
+| **HARD_DELETE** | DELETE | — | Audit | — | Compliance only |
 
 **`NORMAL_OFFBOARDING_DELETES_VEHICLE=NO`**
 

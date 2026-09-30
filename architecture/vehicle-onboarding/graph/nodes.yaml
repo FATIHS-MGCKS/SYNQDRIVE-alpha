@@ -234,9 +234,21 @@ nodes:
     type: state
     title: Registry lifecycle states
     epistemic_status: INFERRED
-    summary: Persisted ONBOARDING ACTIVE OFFBOARDED ARCHIVED separate from VehicleStatus.
+    summary: Vehicle ACTIVE OFFBOARDED ARCHIVED only; onboarding on OnboardingCase.
     source_paths:
       - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+
+  - id: VO-DEC-1-002
+    type: decision
+    title: VO-1.1 consistency seal
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: No pre-activation Vehicle; candidate suppression; transfer fail-closed; outbox facts.
+    source_paths:
+      - architecture/vehicle-onboarding/decisions/DECISION_REGISTER.md
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+    evidence:
+      - VO-EVID-1-001
 
   - id: VO-PERSIST-CASE-001
     type: persist

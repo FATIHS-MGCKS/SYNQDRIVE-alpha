@@ -87,7 +87,7 @@
 
 **Owns:** billable quantity policy, assignments, Stripe semantics.
 
-**Onboarding may:** emit **`vehicle.activated`** / **`vehicle.offboarded`** facts for Billing — must not define billable rules (VO-1: quantity change on activation, not discovery).
+**Onboarding may:** persist **`vehicle.activated`** / **`vehicle.offboarded`** in **transactional outbox** (same DB tx as registry change); Billing consumes **idempotently** post-commit — must not define billable rules.
 
 ---
 
@@ -95,7 +95,7 @@
 
 | Topic | Boundary |
 |-------|----------|
-| Registry lifecycle | VO owns `registryLifecycle` (ONBOARDING/ACTIVE/OFFBOARDED/ARCHIVED) — not `VehicleStatus` |
+| Registry lifecycle | VO owns `registryLifecycle` (ACTIVE/OFFBOARDED/ARCHIVED on Vehicle); onboarding phase on **OnboardingCase** — not `VehicleStatus` |
 | OnboardingCase | VO owns resumable case; providers own mirrors |
 | Connectivity | VDC owns freshness; VO owns registry vs link semantics only |
 | Offboarding | VO defines OFFBOARD/ARCHIVE; hard-delete exceptional |

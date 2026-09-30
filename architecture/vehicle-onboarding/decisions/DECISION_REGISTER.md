@@ -4,6 +4,7 @@
 |-------------|-------|--------|----------|
 | VO-DEC-0B-001 | VO-0B governance bootstrap and current-state seal | PROPOSED | VO-EVID-0B-001 |
 | VO-DEC-1-001 | VO-1 canonical onboarding contract and minimum durable lifecycle | VALIDATED | VO-EVID-1-001 |
+| VO-DEC-1-002 | VO-1.1 architecture consistency seal | VALIDATED | VO-EVID-1-001 |
 
 ---
 
@@ -38,3 +39,18 @@
 | **OPEN GAPS** | All VO-GAP-* runtime implementation open; 3 CROSS_MODULE (VDC) |
 | **TRADEOFFS** | OnboardingCase adds persistence complexity vs resumability; org transfer requires strict historical scoping in queries |
 | **REMAINING** | Production Phase 2 audit still required before `AUTHORITY_ACTIVE` promotion |
+
+---
+
+## VO-DEC-1-002
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | VALIDATED |
+| **BEFORE** | VO-1 ambiguities: draft Vehicle pre-activation, offboarded candidate rediscovery, transfer without fail-closed audit, activation/billing transaction conflation, DEACTIVATE vs OFFBOARD |
+| **WHY** | VO-2 schema must not encode unresolved semantics |
+| **CHANGE** | No Vehicle before activation; registryLifecycle 3 states; candidate suppression; transfer FAIL_CLOSED; transactional outbox for lifecycle facts; DEACTIVATE ≠ OFFBOARD |
+| **NON-EFFECTS** | No runtime/schema change in VO-1.1 |
+| **EVIDENCE** | VO-EVID-1-001 |
+| **VALIDATION** | `bash architecture/vehicle-onboarding/scripts/validate-graph.sh` |
+| **OPEN GAPS** | Runtime implementation unchanged |
