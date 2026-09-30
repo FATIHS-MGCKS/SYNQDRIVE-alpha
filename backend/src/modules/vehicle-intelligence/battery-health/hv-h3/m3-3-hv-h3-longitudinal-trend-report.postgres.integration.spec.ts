@@ -104,7 +104,7 @@ async function seedQualifiedSession(
           effectiveAt: new Date('2026-01-01T00:00:00.000Z'),
           sourceAuthority: BatteryGroundTruthSourceAuthority.MANUAL_CONFIRMED,
           verificationStatus: BatteryGroundTruthVerificationStatus.CONFIRMED,
-          sourceContentFingerprint: 'd'.repeat(64),
+          sourceContentFingerprint: randomUUID().replace(/-/g, '') + randomUUID().replace(/-/g, '').slice(0, 32),
           sourceServiceEventId: await insertGtBatteryReplacementServiceEvent(prisma, {
             organizationId,
             vehicleId,
@@ -211,24 +211,6 @@ async function seedQualifiedSession(
             provider: 'HIGH_MOBILITY',
           },
         ],
-      });
-
-      await prisma.batteryGroundTruthEvent.create({
-        data: {
-          organizationId,
-          vehicleId,
-          groundTruthType: BatteryGroundTruthType.BATTERY_REPLACEMENT,
-          batteryScope: BatteryEvidenceScope.HV,
-          effectiveAt: new Date('2026-01-01T00:00:00.000Z'),
-          sourceAuthority: BatteryGroundTruthSourceAuthority.MANUAL_CONFIRMED,
-          verificationStatus: BatteryGroundTruthVerificationStatus.CONFIRMED,
-          sourceContentFingerprint: 'd'.repeat(64),
-          sourceServiceEventId: await insertGtBatteryReplacementServiceEvent(prisma, {
-            organizationId,
-            vehicleId,
-            eventDate: new Date('2026-01-01T00:00:00.000Z'),
-          }),
-        },
       });
 
       const obsBefore = await prisma.hvCapacityObservation.count({
