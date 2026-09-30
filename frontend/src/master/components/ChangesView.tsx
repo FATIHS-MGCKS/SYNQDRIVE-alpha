@@ -913,6 +913,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-21T12:00:00.000Z',
   },
   {
+    id: 'eed-rfrf-settled-post-design-replay-2026-09-30',
+    version: '4.9.5000',
+    title: 'RFRF — settled post-refuel F3 design + offline replay (EED-OQ-014)',
+    summary: [
+      'Human-authorized ROBUST_SETTLED_POST_REFUEL_LEVEL architecture ADR; peak retained as diagnostic only.',
+      'Design-only resolveSettledPostRefuelPlateau policy + historical/adversarial replay harness (no Production wiring).',
+      'KS MS 661 2026-09-30 natural: current OBSERVED vs design READY (F3 maturity); Alpha ABSOLUTE_ONLY Option C still blocks auto-promotion.',
+      'Fuel capability policy ADR: DUAL_CHANNEL vs ABSOLUTE_ONLY; future rfrf-absolute-only-trust-v1 design separate from Hybrid v2.',
+    ],
+    reason:
+      'First natural post-Alpha refuel proved peak-anchored post-plateau mismatch; calibrate architecture before runtime thresholds.',
+    previousBehavior:
+      'Authoritative postFuelAbsoluteLiters implied instantaneous peak when post plateau anchored to peak ± tolerance.',
+    details:
+      'EED-EV-0103; decisions/RFRF-F3-SETTLED-POST-REFUEL-MATURITY-2026-09-30.md; scripts/ops/rfrf-settled-post-historical-replay.harness.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-30T15:30:00.000Z',
+  },
+  {
     id: 'eed-rfrf-hybrid-trust-alpha-activation-2026-09-28',
     version: '4.9.4999',
     title: 'RFRF — scoped hybrid trust Alpha fleet activation (EED-OQ-019)',
