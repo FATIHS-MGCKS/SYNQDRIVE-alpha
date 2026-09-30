@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { PrismaClient, ServiceEventOrigin } from '@prisma/client';
+import { PrismaClient, ServiceEventOrigin, ServiceEventType } from '@prisma/client';
 import { PIPELINE_PLAUSIBILITY_KEY } from '@modules/document-extraction/document-content-cache.util';
 import { PrismaService } from '@shared/database/prisma.service';
 import { probePostgresDatabase } from '../provider-observability-gap/provider-observability-gap-postgres.fixture';
@@ -42,6 +42,35 @@ export async function createGtOrgVehicle(prisma: PrismaClient) {
     )
   `;
   return { organizationId: org.id, vehicleId };
+}
+
+/** Inserts a real BATTERY_REPLACEMENT vehicle_service_events row for GT FK tests. */
+export async function insertGtBatteryReplacementServiceEvent(
+  prisma: PrismaClient,
+  data: {
+    organizationId: string;
+    vehicleId: string;
+    eventDate: Date;
+    origin?: ServiceEventOrigin;
+  },
+): Promise<string> {
+  const id = randomUUID();
+  await prisma.$executeRaw`
+    INSERT INTO vehicle_service_events (
+      id, vehicle_id, organization_id, event_type, event_date, origin,
+      created_at, updated_at
+    ) VALUES (
+      ${id},
+      ${data.vehicleId},
+      ${data.organizationId},
+      ${ServiceEventType.BATTERY_REPLACEMENT}::"ServiceEventType",
+      ${data.eventDate},
+      ${(data.origin ?? ServiceEventOrigin.MANUAL)}::"ServiceEventOrigin",
+      NOW(),
+      NOW()
+    )
+  `;
+  return id;
 }
 
 export async function createGtTestUser(prisma: PrismaClient, organizationId: string) {

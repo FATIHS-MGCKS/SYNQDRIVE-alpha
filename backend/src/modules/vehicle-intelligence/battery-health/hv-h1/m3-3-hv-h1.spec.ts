@@ -230,6 +230,7 @@ describe('M3.3-HV-H1 readiness dimensions', () => {
       m2ShadowObservationCount: 0,
       m3ShadowObservationCount: 0,
       providerSohObservationCount: 0,
+      providerSohQualifiedEvidenceCount: 0,
       longitudinalCandidateCount: 0,
     });
     expect(readiness).not.toHaveProperty('capabilityReady');
@@ -275,6 +276,7 @@ describe('M3.3-HV-H1 readiness dimensions', () => {
       m2ShadowObservationCount: 0,
       m3ShadowObservationCount: 0,
       providerSohObservationCount: 0,
+      providerSohQualifiedEvidenceCount: 0,
       longitudinalCandidateCount: 0,
     });
     expect(withCapOnly.m2CapabilityReady.ready).toBe(true);
@@ -287,12 +289,36 @@ describe('M3.3-HV-H1 readiness dimensions', () => {
       m2ShadowObservationCount: 1,
       m3ShadowObservationCount: 0,
       providerSohObservationCount: 0,
+      providerSohQualifiedEvidenceCount: 0,
       longitudinalCandidateCount: 0,
     });
     expect(withEvidence.m2EvidenceReady.ready).toBe(true);
   });
 });
 
+describe('M3.3-HV-H1 provider SOH qualified evidence', () => {
+  it('requires finite 0-100 provider-reported HV SOH for readiness', () => {
+    const evaluationAt = new Date('2026-09-30T12:00:00.000Z');
+    const readiness = evaluateM3_3HvH1Readiness({
+      methodProfile: resolveHvMethodProfile({ vehicleId: 'v', capabilities: [], now: evaluationAt }),
+      matrix: buildM3_3HvH1ProviderCapabilityMatrixV1({
+        organizationId: 'o',
+        vehicleId: 'v',
+        persistedRows: [],
+        methodProfile: resolveHvMethodProfile({ vehicleId: 'v', capabilities: [], now: evaluationAt }),
+        evaluationAt,
+      }),
+      sessionCounts: summarizeHvChargeSessionsForH1([]),
+      m2ShadowObservationCount: 0,
+      m3ShadowObservationCount: 0,
+      providerSohObservationCount: 1,
+      providerSohQualifiedEvidenceCount: 0,
+      longitudinalCandidateCount: 0,
+    });
+    expect(readiness.providerSohEvidenceReady.ready).toBe(false);
+    expect(readiness.providerSohEvidenceReady.reason).toContain('not_qualified');
+  });
+});
 describe('M3.3-HV-H1 session quality and linkage', () => {
   it('native DIMO source alone is not strong session', () => {
     const nativeWeak = {
