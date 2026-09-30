@@ -224,6 +224,15 @@ async function createFixtureVehicle(
     const vehicleId = randomUUID();
     await createFixtureVehicle(prisma, orgId, vehicleId);
 
+    const dimoId = randomUUID();
+    await prisma.dimoVehicle.create({
+      data: {
+        id: dimoId,
+        externalId: `vo2-test-${dimoId}`,
+        connectionStatus: 'CONNECTED',
+      },
+    });
+
     const link1 = randomUUID();
     const link2 = randomUUID();
     const link3 = randomUUID();
@@ -235,6 +244,7 @@ async function createFixtureVehicle(
         provider: 'DIMO',
         sourceType: 'DIMO',
         sourceSubtype: null,
+        dimoVehicleId: dimoId,
         isActive: true,
         activatedAt: new Date(),
       },
