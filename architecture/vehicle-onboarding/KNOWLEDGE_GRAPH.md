@@ -12,6 +12,8 @@ Bootstrap graph under `graph/`. Human overview; machine source: `graph/nodes.yam
 | VO-DATA-HM-MIRROR-001 | HighMobilityVehicle provider state |
 | VO-API-REGISTER-DIMO-001 | register-from-dimo API |
 | VO-GAP-001 … VO-GAP-015 | Knowledge gaps (see contradictions/KNOWLEDGE_GAPS.md) |
+| VO-DEC-1-001 | VO-1 target architecture decision (VALIDATED) |
+| VO-INV-IDENTITY-001 … VO-INV-ACTIVATION-001 | Target invariants (see graph/invariants.yaml) |
 
 ## Decisions
 

@@ -1,4 +1,4 @@
-# Vehicle Onboarding — Graph Invariants (bootstrap)
+# Vehicle Onboarding — Graph Invariants
 
 invariants:
   - id: VO-INV-001
@@ -17,3 +17,101 @@ invariants:
     statement: At most one Vehicle may reference a given non-null dimoVehicleId globally
     source_paths:
       - backend/prisma/migrations/20260726140000_vehicles_dimo_vehicle_id_partial_unique/migration.sql
+
+  - id: VO-INV-IDENTITY-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: One physical vehicle per org active canonical
+    statement: Multiple providers must not create multiple ACTIVE canonical Vehicles for the same verified physical vehicle in one organization without explicit merge
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+
+  - id: VO-INV-IDENTITY-002
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: Provider IDs are not canonical Vehicle identity
+    statement: DIMO externalId tokenId and HM references are mappings only; Vehicle.id remains canonical
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+
+  - id: VO-INV-VIN-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: No synthetic VIN in verified VIN field
+    statement: Synthetic internal identifiers such as DIMO-externalId must not be stored as verified real-world VIN
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+      - backend/src/modules/vehicles/vehicles.service.ts
+
+  - id: VO-INV-TENANT-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: Cross-tenant VIN match is non-disclosing
+    statement: Cross-tenant physical identity collision detection must not expose another tenant operational data
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+
+  - id: VO-INV-ASSIGN-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: Organization assignment history preserved
+    statement: Organization assignment changes must preserve temporal history and event-time attribution
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+
+  - id: VO-INV-PROVIDER-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: Provider disconnect not vehicle delete
+    statement: Provider disconnection or link deactivation must not imply canonical Vehicle deletion
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+
+  - id: VO-INV-LIFECYCLE-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: Registry lifecycle separate from rental status
+    statement: Vehicle Registry lifecycle states are separate from VehicleStatus rental operational states
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+      - backend/prisma/schema.prisma
+
+  - id: VO-INV-OFFBOARD-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: Normal offboard preserves history
+    statement: Normal vehicle offboarding must preserve historical operational evidence under correct org attribution
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+
+  - id: VO-INV-HEALTH-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: Onboarding does not write health conclusions
+    statement: Onboarding technical baseline must not duplicate Vehicle Health conclusions
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+
+  - id: VO-INV-BATTERY-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: Onboarding does not write battery health
+    statement: Onboarding battery specification must not duplicate Battery Intelligence health authority
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+
+  - id: VO-INV-READINESS-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: Unknown optional capability non-blocking
+    statement: Unknown optional capability must not block unrelated vehicle operations when readiness profile allows
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+
+  - id: VO-INV-ACTIVATION-001
+    kind: CANDIDATE_INVARIANT
+    epistemic_status: INFERRED
+    title: Activation idempotent
+    statement: Activation must be idempotent under retried commands with the same idempotency key
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md

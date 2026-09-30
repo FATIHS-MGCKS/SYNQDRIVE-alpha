@@ -5,7 +5,7 @@
 | **Sealed from** | VO-0A discovery audit |
 | **Repository anchor SHA** | `312d9f54a2b4c0b0740061d3e2b74897e78eacb0` |
 | **Authority status** | `AUDIT_IN_PROGRESS` — **not** `AUTHORITY_ACTIVE` |
-| **Last updated** | 2026-09-30 (VO-0B) |
+| **Last updated** | 2026-09-30 (VO-0B seal; VO-1 target in [TARGET_ARCHITECTURE.md](./TARGET_ARCHITECTURE.md)) |
 
 ## Executive summary
 

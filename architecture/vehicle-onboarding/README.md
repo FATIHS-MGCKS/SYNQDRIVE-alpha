@@ -70,6 +70,7 @@ Recorded as **external** requirement identifiers; exact normative text is **not*
 
 | Document | Role |
 |----------|------|
+| [TARGET_ARCHITECTURE.md](./TARGET_ARCHITECTURE.md) | VO-1 target contract (not implemented) |
 | [CURRENT_STATE.md](./CURRENT_STATE.md) | VO-0A sealed current state (evidence-backed) |
 | [AUDIT_MANIFEST.md](./AUDIT_MANIFEST.md) | Audit metadata |
 | [governance/AUTHORITY_BOUNDARIES.md](./governance/AUTHORITY_BOUNDARIES.md) | Provisional cross-module boundaries |
