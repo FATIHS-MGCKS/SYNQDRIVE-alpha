@@ -36,4 +36,33 @@
 | Provider backpressure | NOT_SATISFIED (gap OPEN) |
 | Location retention governance note | Artifact present; operator/privacy scale-up still required |
 | Explicit operator authorization | NOT_SATISFIED (human gate) |
-| **TINY_ACTIVATION_READY** | **NO** |
+| **TINY_ACTIVATION_READY** | **NO** (evaluator requires explicit per-gate evidence; empty input → all gates UNKNOWN/NOT_SATISFIED) |
+
+---
+
+## Independent pre-merge audit remediation (PR #1853)
+
+**Prior PR head:** `e4d8fe26f47d7860e79c1478c653c7dd9c524386`
+
+| ID | Fix |
+|----|-----|
+| P1-A | Activation readiness requires explicit `DiV0S4fTinyActivationGateEvidence`; no hardcoded SATISFIED |
+| P1-B | Contract splits `diagnosticReconciliation.bounded=true` vs `operationalAggregates.bounded=false` (FULL_TABLE_AGGREGATE) |
+| P1-C | `t10ExhaustedCandidateCount` matches T10 predicate (LEASED + expired lease + attempts ≥ max); retryable due excludes exhausted |
+| P1-D | Beyond-horizon uses S4E scope corruption + canonical `trip_vehicle_id` fingerprint |
+| P1-E | F32 uses interactive tx `SET TRANSACTION READ ONLY` + `buildObservabilitySnapshotOnDb(tx)` |
+| P1-F | Retired pipeline metrics: CLASS A violation, valid/expired lease, provenance-unknown (no fake legacy label) |
+| P1-G | Control plane via `evaluateDiV0S4KillRow` — MISSING/MALFORMED/UNREADABLE fail-closed |
+
+Tests extended: **F01–F36** (F25–F36 remediation matrix).
+
+---
+
+## Final evidence hardening (H1–H4)
+
+| ID | Proof |
+|----|--------|
+| H1 | Unit tests drive real `acquireDiV0HistoricalPositions` + `DiV0S4cExecutor` with transport-thrown `DimoProviderBudgetError` / `DimoRateLimitedError` (zero HTTP) → `mapDiV0S4cPositionFailure` → `RETRYABLE_RELEASE` → `repository.failRetryable` |
+| H2 | Keyset cursor freezes population via `scanWatermarkCreatedAt` (`clock_timestamp()` on first page); filter `wi.created_at <= watermark`; authority `SCAN_WATERMARK_CREATED_AT_THEN_SETTLEMENT_ANCHOR_AT_THEN_WORK_ITEM_ID`; Postgres H2-A/B/C |
+| H3 | `DiV0S4fReadDb = Pick<PrismaClient, '$queryRaw'>`; dormant audit covers all production `.ts` files; F32 sets `READ ONLY` on tx client before S4F |
+| H4 | Operational aggregate index audit from `20260927200000_di_v0_s4a_dormant_foundation/migration.sql` — `OPERATIONAL_AGGREGATE_INDEX_BLOCKER=NO` (no merge-critical defect; no new migration) |

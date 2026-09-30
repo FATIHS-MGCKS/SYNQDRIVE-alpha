@@ -236,6 +236,8 @@ Post PR #1694 three-vehicle cohort activation, WOB L 7503 trip `c0889036-db0b-4e
 | **Path** | `backend/src/modules/vehicle-intelligence/driving-intelligence/s4f-observability/` |
 | **Runtime** | **Dormant** — read-only reconciliation + `DI_V0_S4_OBSERVABILITY_SNAPSHOT_V1`; no AppModule, scheduler, or provider calls |
 | **Beyond 10d drift** | Report-only boundary mismatch count (no T11) |
+| **Diagnostic pagination** | Keyset authority `SCAN_WATERMARK_CREATED_AT_THEN_SETTLEMENT_ANCHOR_AT_THEN_WORK_ITEM_ID` (frozen scan population) |
+| **Read DB surface** | `DiV0S4fReadDb` = `$queryRaw` only; F32 READ ONLY on tx client |
 | **Tiny activation** | Evaluator fail-closed; **NOT_READY** until operator auth + backpressure gap closure |
 | **Evidence** | [EXP021_S4F1_OBSERVABILITY_RECONCILIATION.md](evidence/EXP021_S4F1_OBSERVABILITY_RECONCILIATION.md) |
 

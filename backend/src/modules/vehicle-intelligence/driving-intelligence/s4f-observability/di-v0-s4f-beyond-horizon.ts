@@ -6,11 +6,12 @@ import {
   type DiV0S4fCanonicalWorkTripRow,
   type DiV0S4fScopeCorruptionCode,
 } from './di-v0-s4f-canonical-scope';
+import {
+  type DiV0S4fKeysetScanCursor,
+  resolveDiV0S4fScanWatermark,
+} from './di-v0-s4f-keyset-cursor';
 
-export interface DiV0S4fBeyondHorizonCursor {
-  settlementAnchorAt: Date | null;
-  workItemId: string | null;
-}
+export type DiV0S4fBeyondHorizonCursor = DiV0S4fKeysetScanCursor;
 
 export interface DiV0S4fBeyondHorizonBatchResult {
   scannedCount: number;
@@ -33,8 +34,9 @@ export async function reconcileDiV0S4BeyondDriftHorizonBatch(
 ): Promise<DiV0S4fBeyondHorizonBatchResult> {
   const batch = Math.max(1, Math.min(limit, 500));
   const horizonSeconds = DI_V0_S4F_DRIFT_HORIZON_SECONDS;
-  const anchor = cursor.settlementAnchorAt;
-  const afterId = cursor.workItemId ?? '';
+  const { watermark, cursor: scanCursor } = await resolveDiV0S4fScanWatermark(db, cursor);
+  const anchor = scanCursor.settlementAnchorAt;
+  const afterId = scanCursor.workItemId ?? '';
 
   const resolvedRows: DiV0S4fCanonicalWorkTripRow[] = organizationId
     ? await db.$queryRaw<DiV0S4fCanonicalWorkTripRow[]>`
@@ -48,6 +50,7 @@ export async function reconcileDiV0S4BeyondDriftHorizonBatch(
         JOIN vehicle_trips t ON t.id = wi.trip_id
         JOIN vehicles v ON v.id = t.vehicle_id
         WHERE wi.organization_id = ${organizationId}
+          AND wi.created_at <= ${watermark}::timestamptz
           AND wi.settlement_anchor_at IS NOT NULL
           AND wi.settlement_anchor_at + make_interval(secs => ${horizonSeconds}::int) < clock_timestamp()
           AND (
@@ -67,7 +70,8 @@ export async function reconcileDiV0S4BeyondDriftHorizonBatch(
         FROM di_v0_s4_work_items wi
         JOIN vehicle_trips t ON t.id = wi.trip_id
         JOIN vehicles v ON v.id = t.vehicle_id
-        WHERE wi.settlement_anchor_at IS NOT NULL
+        WHERE wi.created_at <= ${watermark}::timestamptz
+          AND wi.settlement_anchor_at IS NOT NULL
           AND wi.settlement_anchor_at + make_interval(secs => ${horizonSeconds}::int) < clock_timestamp()
           AND (
             ${anchor}::timestamptz IS NULL
@@ -100,8 +104,12 @@ export async function reconcileDiV0S4BeyondDriftHorizonBatch(
 
   const last = resolvedRows[resolvedRows.length - 1];
   const nextCursor: DiV0S4fBeyondHorizonCursor = last
-    ? { settlementAnchorAt: last.settlement_anchor_at, workItemId: last.work_item_id }
-    : cursor;
+    ? {
+        scanWatermarkCreatedAt: scanCursor.scanWatermarkCreatedAt,
+        settlementAnchorAt: last.settlement_anchor_at,
+        workItemId: last.work_item_id,
+      }
+    : scanCursor;
 
   return {
     scannedCount: resolvedRows.length,

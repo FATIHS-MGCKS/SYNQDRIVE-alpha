@@ -62,7 +62,11 @@ export interface DiV0S4fBeyondHorizonMetrics {
   beyondDriftHorizonBoundaryMismatchCount: number;
   beyondDriftHorizonScopeCorruptionCount: number;
   beyondHorizonScannedCount: number;
-  cursor: { settlementAnchorAt: string | null; workItemId: string | null };
+  cursor: {
+    scanWatermarkCreatedAt: string | null;
+    settlementAnchorAt: string | null;
+    workItemId: string | null;
+  };
 }
 
 export interface DiV0S4fExecutorLivenessMetrics {
@@ -101,7 +105,8 @@ export interface DiV0S4fObservabilitySnapshotV1 {
     readOnly: true;
     diagnosticReconciliation: {
       bounded: true;
-      cursorAuthority: 'SETTLEMENT_ANCHOR_AT_THEN_WORK_ITEM_ID';
+      cursorAuthority: 'SCAN_WATERMARK_CREATED_AT_THEN_SETTLEMENT_ANCHOR_AT_THEN_WORK_ITEM_ID';
+      scanWatermarkCreatedAt: string | null;
       partial: boolean;
     };
     operationalAggregates: {

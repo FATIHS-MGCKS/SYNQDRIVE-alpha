@@ -16,7 +16,7 @@ describe('DI V0 S4F dormant-by-construction audit', () => {
   it('no Prisma INSERT/UPDATE/DELETE against S4/S2/canonical tables in production sources', () => {
     const files = fs
       .readdirSync(S4F_DIR)
-      .filter((f) => f.endsWith('.ts') && !f.includes('.spec.') && f !== 'di-v0-s4f-read-db.ts');
+      .filter((f) => f.endsWith('.ts') && !f.includes('.spec.'));
     const banned = [
       /\$executeRaw/,
       /\b(INSERT\s+INTO|UPDATE|DELETE\s+FROM|TRUNCATE)\s+(di_v0_s4_|di_v0_shadow_|vehicle_trips|vehicles|organizations)\b/i,

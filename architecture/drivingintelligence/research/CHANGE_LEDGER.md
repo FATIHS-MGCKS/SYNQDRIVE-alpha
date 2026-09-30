@@ -1288,3 +1288,21 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | NON_EFFECTS | No deploy, no AppModule, no purge scheduler, no provider calls, no tiny activation, no contract v2 amendment |
 | Evidence | `evidence/EXP021_S4F1_OBSERVABILITY_RECONCILIATION.md` |
 | Gap | `DI-GAP-S4F-GLOBAL-EXECUTOR-LIVENESS-001` documented (no global executor presence authority) |
+
+### EXP-021 S4F-1 — independent pre-merge audit remediation (2026-09-30)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | Pre-merge audit of PR #1853 @ `e4d8fe26f` |
+| CHANGE | Fail-closed activation evidence; truthful aggregate boundedness; T10 metric parity; S4E canonical scope on beyond-horizon; single-connection READ ONLY proof; retired-pipeline classification; control-plane kill evaluation |
+| NON_EFFECTS | No provider gap closure; no activation; no contract v2 amendment |
+| Evidence | `EXP021_S4F1_OBSERVABILITY_RECONCILIATION.md` remediation section |
+
+### EXP-021 S4F-1 — final evidence hardening H1–H4 (2026-09-30)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | Pre-merge proof gaps on PR #1853 @ `479035a45` |
+| CHANGE | H1 full S3A→S4C→T07 unit proofs; H2 scan watermark cursor; H3 query-only read DB + audit; H4 operational index audit (no migration) |
+| NON_EFFECTS | No activation, no provider gap closure, no retry semantic change |
+| Evidence | `EXP021_S4F1_OBSERVABILITY_RECONCILIATION.md` H1–H4 section |

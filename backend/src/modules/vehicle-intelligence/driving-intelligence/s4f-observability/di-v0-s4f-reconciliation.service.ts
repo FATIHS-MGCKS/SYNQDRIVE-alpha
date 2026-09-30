@@ -5,6 +5,12 @@ import {
   reconcileDiV0S4BeyondDriftHorizonBatch,
   type DiV0S4fBeyondHorizonCursor,
 } from './di-v0-s4f-beyond-horizon';
+import {
+  DI_V0_S4F_KEYSET_CURSOR_AUTHORITY,
+  emptyDiV0S4fKeysetScanCursor,
+  type DiV0S4fKeysetScanCursor,
+  resolveDiV0S4fScanWatermark,
+} from './di-v0-s4f-keyset-cursor';
 import { readDiV0S4fControlPlaneAuthority } from './di-v0-s4f-control-plane-read';
 import { DI_V0_S4F_TUNING } from './di-v0-s4f-config';
 import { evaluateDiV0S4fExecutorLiveness } from './di-v0-s4f-executor-liveness';
@@ -65,10 +71,7 @@ export class DiV0S4fReconciliationService {
       options.beyondHorizonBatchLimit ?? DI_V0_S4F_TUNING.defaultBeyondHorizonBatchLimit,
       DI_V0_S4F_TUNING.maxBeyondHorizonBatchLimit,
     );
-    const beyondCursor: DiV0S4fBeyondHorizonCursor = options.beyondHorizonCursor ?? {
-      settlementAnchorAt: null,
-      workItemId: null,
-    };
+    const beyondCursor: DiV0S4fBeyondHorizonCursor = options.beyondHorizonCursor ?? emptyDiV0S4fKeysetScanCursor();
 
     const [workLifecycle, leaseHealth, pipelineHealth, evidenceStorage, controlAuthority, beyondBatch, activePipelines] =
       await Promise.all([
@@ -139,7 +142,8 @@ export class DiV0S4fReconciliationService {
         readOnly: true,
         diagnosticReconciliation: {
           bounded: true,
-          cursorAuthority: 'SETTLEMENT_ANCHOR_AT_THEN_WORK_ITEM_ID',
+          cursorAuthority: DI_V0_S4F_KEYSET_CURSOR_AUTHORITY,
+          scanWatermarkCreatedAt: beyondBatch.nextCursor.scanWatermarkCreatedAt?.toISOString() ?? null,
           partial: beyondBatch.scannedCount >= beyondLimit,
         },
         operationalAggregates: {
@@ -158,6 +162,7 @@ export class DiV0S4fReconciliationService {
           beyondDriftHorizonScopeCorruptionCount: beyondBatch.scopeCorruptionCount,
           beyondHorizonScannedCount: beyondBatch.scannedCount,
           cursor: {
+            scanWatermarkCreatedAt: beyondBatch.nextCursor.scanWatermarkCreatedAt?.toISOString() ?? null,
             settlementAnchorAt: beyondBatch.nextCursor.settlementAnchorAt?.toISOString() ?? null,
             workItemId: beyondBatch.nextCursor.workItemId,
           },
@@ -489,16 +494,18 @@ export class DiV0S4fReconciliationService {
 
   async listWorkItemIdsPage(
     limit: number,
-    cursor: { settlementAnchorAt: Date | null; workItemId: string | null },
+    cursor: DiV0S4fKeysetScanCursor,
     organizationId?: string,
     db: DiV0S4fReadDb = this.prisma,
-  ): Promise<string[]> {
-    const anchor = cursor.settlementAnchorAt;
-    const afterId = cursor.workItemId ?? '';
+  ): Promise<{ ids: string[]; nextCursor: DiV0S4fKeysetScanCursor }> {
+    const { watermark, cursor: scanCursor } = await resolveDiV0S4fScanWatermark(db, cursor);
+    const anchor = scanCursor.settlementAnchorAt;
+    const afterId = scanCursor.workItemId ?? '';
     const rows = organizationId
-      ? await db.$queryRaw<Array<{ id: string }>>`
-          SELECT id FROM di_v0_s4_work_items
+      ? await db.$queryRaw<Array<{ id: string; settlement_anchor_at: Date }>>`
+          SELECT id, settlement_anchor_at FROM di_v0_s4_work_items
           WHERE organization_id = ${organizationId}
+            AND created_at <= ${watermark}::timestamptz
             AND (
               ${anchor}::timestamptz IS NULL
               OR settlement_anchor_at > ${anchor}::timestamptz
@@ -506,16 +513,25 @@ export class DiV0S4fReconciliationService {
             )
           ORDER BY settlement_anchor_at ASC, id ASC
           LIMIT ${limit}`
-      : await db.$queryRaw<Array<{ id: string }>>`
-          SELECT id FROM di_v0_s4_work_items
-          WHERE (
+      : await db.$queryRaw<Array<{ id: string; settlement_anchor_at: Date }>>`
+          SELECT id, settlement_anchor_at FROM di_v0_s4_work_items
+          WHERE created_at <= ${watermark}::timestamptz
+            AND (
               ${anchor}::timestamptz IS NULL
               OR settlement_anchor_at > ${anchor}::timestamptz
               OR (settlement_anchor_at = ${anchor}::timestamptz AND id > ${afterId})
             )
           ORDER BY settlement_anchor_at ASC, id ASC
           LIMIT ${limit}`;
-    return rows.map((r) => r.id);
+    const last = rows[rows.length - 1];
+    const nextCursor: DiV0S4fKeysetScanCursor = last
+      ? {
+          scanWatermarkCreatedAt: scanCursor.scanWatermarkCreatedAt,
+          settlementAnchorAt: last.settlement_anchor_at,
+          workItemId: last.id,
+        }
+      : scanCursor;
+    return { ids: rows.map((r) => r.id), nextCursor };
   }
 }
 

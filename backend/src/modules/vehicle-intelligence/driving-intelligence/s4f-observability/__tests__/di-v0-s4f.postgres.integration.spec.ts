@@ -29,6 +29,7 @@ import {
   deleteKillRow,
 } from '../../s4a-foundation/__tests__/di-v0-s4a-postgres-harness';
 import { reconcileDiV0S4BeyondDriftHorizonBatch } from '../di-v0-s4f-beyond-horizon';
+import { emptyDiV0S4fKeysetScanCursor } from '../di-v0-s4f-keyset-cursor';
 import { DiV0S4fReconciliationService } from '../di-v0-s4f-reconciliation.service';
 assertS4aPostgresCiEnv();
 
@@ -207,7 +208,7 @@ const BEYOND_HORIZON_AGE_SECONDS = 11 * 86_400;
     const r = repo(config);
     await r.createWorkItem({ tripId: t.tripId, sourceFamily: 'RUPTELA_R1', runPurpose: 'PRIMARY', pipelineManifest: manifest });
     await changeTripBoundary(admin, t.tripId);
-    const batch = await reconcileDiV0S4BeyondDriftHorizonBatch(admin, 50, { settlementAnchorAt: null, workItemId: null }, t.organizationId);
+    const batch = await reconcileDiV0S4BeyondDriftHorizonBatch(admin, 50, emptyDiV0S4fKeysetScanCursor(), t.organizationId);
     expect(batch.boundaryMismatchCount).toBe(1);
   });
 
@@ -226,7 +227,7 @@ const BEYOND_HORIZON_AGE_SECONDS = 11 * 86_400;
     const before = await admin.$queryRaw<Array<{ status: string; fp: string }>>`
       SELECT status::text AS status, boundary_fingerprint AS fp FROM di_v0_s4_work_items WHERE id = ${created.workItemId}`;
     await changeTripBoundary(admin, t.tripId);
-    await reconcileDiV0S4BeyondDriftHorizonBatch(admin, 50, { settlementAnchorAt: null, workItemId: null }, t.organizationId);
+    await reconcileDiV0S4BeyondDriftHorizonBatch(admin, 50, emptyDiV0S4fKeysetScanCursor(), t.organizationId);
     const after = await admin.$queryRaw<Array<{ status: string; fp: string }>>`
       SELECT status::text AS status, boundary_fingerprint AS fp FROM di_v0_s4_work_items WHERE id = ${created.workItemId}`;
     expect(after).toEqual(before);
@@ -242,7 +243,7 @@ const BEYOND_HORIZON_AGE_SECONDS = 11 * 86_400;
     const r = repo(config);
     await r.createWorkItem({ tripId: t.tripId, sourceFamily: 'RUPTELA_R1', runPurpose: 'PRIMARY', pipelineManifest: manifest });
     await changeTripBoundary(admin, t.tripId);
-    const batch = await reconcileDiV0S4BeyondDriftHorizonBatch(admin, 50, { settlementAnchorAt: null, workItemId: null }, t.organizationId);
+    const batch = await reconcileDiV0S4BeyondDriftHorizonBatch(admin, 50, emptyDiV0S4fKeysetScanCursor(), t.organizationId);
     expect(batch.scannedCount).toBe(0);
     expect(batch.boundaryMismatchCount).toBe(0);
   });
@@ -271,19 +272,132 @@ const BEYOND_HORIZON_AGE_SECONDS = 11 * 86_400;
       await r.createWorkItem({ tripId: trip.tripId, sourceFamily: 'RUPTELA_R1', runPurpose: 'PRIMARY', pipelineManifest: manifest });
     }
     const seen = new Set<string>();
-    let cursor = { settlementAnchorAt: null as Date | null, workItemId: null as string | null };
+    let cursor = emptyDiV0S4fKeysetScanCursor();
     for (let page = 0; page < 10; page++) {
-      const ids = await svc.listWorkItemIdsPage(2, cursor);
-      if (ids.length === 0) break;
-      for (const id of ids) {
+      const pageResult = await svc.listWorkItemIdsPage(2, cursor);
+      if (pageResult.ids.length === 0) break;
+      for (const id of pageResult.ids) {
         expect(seen.has(id)).toBe(false);
         seen.add(id);
       }
-      const lastRow = await admin.$queryRaw<Array<{ anchor: Date; id: string }>>`
-        SELECT settlement_anchor_at AS anchor, id FROM di_v0_s4_work_items WHERE id = ${ids[ids.length - 1]}`;
-      cursor = { settlementAnchorAt: lastRow[0].anchor, workItemId: lastRow[0].id };
+      cursor = pageResult.nextCursor;
     }
     expect(seen.size).toBe(5);
+  });
+
+  async function createWorkItemForTenant(t: S4aTenant): Promise<string> {
+    const config = s4aConfigFor(tenants);
+    const manifest = s4aManifestFor(config);
+    const created = await repo(config).createWorkItem({
+      tripId: t.tripId,
+      sourceFamily: 'RUPTELA_R1',
+      runPurpose: 'PRIMARY',
+      pipelineManifest: manifest,
+    });
+    return created.workItemId;
+  }
+
+  async function tenantWithSharedEnd(endIso: string): Promise<S4aTenant> {
+    const t = await seedS4aTenant(admin);
+    tenants.push(t);
+    await admin.$executeRaw`
+      UPDATE vehicle_trips
+      SET end_time = (${endIso}::timestamptz AT TIME ZONE 'UTC')
+      WHERE id = ${t.tripId}`;
+    return t;
+  }
+
+  it('H2-A late insert behind cursor but after scan watermark excluded until next traversal', async () => {
+    const t1 = await tenant();
+    const t2 = await tenant();
+    const config = s4aConfigFor(tenants);
+    const manifest = s4aManifestFor(config);
+    const r = repo(config);
+    const w1 = (await r.createWorkItem({ tripId: t1.tripId, sourceFamily: 'RUPTELA_R1', runPurpose: 'PRIMARY', pipelineManifest: manifest })).workItemId;
+    const w2 = (await r.createWorkItem({ tripId: t2.tripId, sourceFamily: 'RUPTELA_R1', runPurpose: 'PRIMARY', pipelineManifest: manifest })).workItemId;
+
+    let cursor = emptyDiV0S4fKeysetScanCursor();
+    const page1 = await svc.listWorkItemIdsPage(1, cursor);
+    expect(page1.ids.length).toBe(1);
+    cursor = page1.nextCursor;
+    expect(cursor.scanWatermarkCreatedAt).not.toBeNull();
+
+    const tLate = await seedS4aTenant(admin, BEYOND_HORIZON_AGE_SECONDS);
+    tenants.push(tLate);
+    const wLate = await createWorkItemForTenant(tLate);
+
+    const seen = new Set<string>(page1.ids);
+    cursor = page1.nextCursor;
+    for (let page = 0; page < 10; page++) {
+      const pageResult = await svc.listWorkItemIdsPage(5, cursor);
+      for (const id of pageResult.ids) {
+        expect(seen.has(id)).toBe(false);
+        seen.add(id);
+      }
+      if (pageResult.ids.length === 0) break;
+      cursor = pageResult.nextCursor;
+    }
+    expect(seen.has(wLate)).toBe(false);
+    expect(seen.has(w1)).toBe(true);
+    expect(seen.has(w2)).toBe(true);
+
+    const fresh = await svc.listWorkItemIdsPage(20, emptyDiV0S4fKeysetScanCursor());
+    expect(fresh.ids).toContain(wLate);
+  });
+
+  it('H2-B late insert after cursor anchor but after watermark excluded until next traversal', async () => {
+    const t1 = await tenant();
+    const w1 = await createWorkItemForTenant(t1);
+    let cursor = emptyDiV0S4fKeysetScanCursor();
+    const page1 = await svc.listWorkItemIdsPage(1, cursor);
+    cursor = page1.nextCursor;
+
+    const tLate = await tenant();
+    const wLate = await createWorkItemForTenant(tLate);
+
+    const page2 = await svc.listWorkItemIdsPage(10, cursor);
+    expect(page2.ids).not.toContain(wLate);
+    expect(page2.ids).not.toContain(w1);
+
+    const fresh = await svc.listWorkItemIdsPage(10, emptyDiV0S4fKeysetScanCursor());
+    expect(fresh.ids).toContain(wLate);
+    expect(fresh.ids).toContain(w1);
+  });
+
+  it('H2-C identical settlement anchors deterministic id tie-break under watermark', async () => {
+    const sharedEnd = '2019-06-01T12:00:00.000Z';
+    const tA = await tenantWithSharedEnd(sharedEnd);
+    const tB = await tenantWithSharedEnd(sharedEnd);
+    const tC = await tenantWithSharedEnd(sharedEnd);
+    const wA = await createWorkItemForTenant(tA);
+    const wB = await createWorkItemForTenant(tB);
+    const wC = await createWorkItemForTenant(tC);
+
+    const seen = new Set<string>();
+    let cursor = emptyDiV0S4fKeysetScanCursor();
+    const ordered: string[] = [];
+    for (let page = 0; page < 10; page++) {
+      const pageResult = await svc.listWorkItemIdsPage(1, cursor);
+      if (pageResult.ids.length === 0) break;
+      for (const id of pageResult.ids) {
+        expect(seen.has(id)).toBe(false);
+        seen.add(id);
+        ordered.push(id);
+      }
+      cursor = pageResult.nextCursor;
+    }
+    expect(seen.size).toBe(3);
+    expect(new Set([wA, wB, wC])).toEqual(seen);
+    const expectedOrder = [wA, wB, wC].sort();
+    expect(ordered).toEqual(expectedOrder);
+    const anchorA = await admin.$queryRaw<Array<{ anchor: Date }>>`
+      SELECT settlement_anchor_at AS anchor FROM di_v0_s4_work_items WHERE id = ${wA}`;
+    const anchorB = await admin.$queryRaw<Array<{ anchor: Date }>>`
+      SELECT settlement_anchor_at AS anchor FROM di_v0_s4_work_items WHERE id = ${wB}`;
+    const anchorC = await admin.$queryRaw<Array<{ anchor: Date }>>`
+      SELECT settlement_anchor_at AS anchor FROM di_v0_s4_work_items WHERE id = ${wC}`;
+    expect(anchorA[0]?.anchor.getTime()).toBe(anchorB[0]?.anchor.getTime());
+    expect(anchorB[0]?.anchor.getTime()).toBe(anchorC[0]?.anchor.getTime());
   });
 
   it('F32 real single-connection READ ONLY transaction proof', async () => {
@@ -351,7 +465,7 @@ const BEYOND_HORIZON_AGE_SECONDS = 11 * 86_400;
     const batch = await reconcileDiV0S4BeyondDriftHorizonBatch(
       admin,
       50,
-      { settlementAnchorAt: null, workItemId: null },
+      emptyDiV0S4fKeysetScanCursor(),
       t.organizationId,
     );
     expect(batch.scopeCorruptionCount).toBe(1);
@@ -382,7 +496,7 @@ const BEYOND_HORIZON_AGE_SECONDS = 11 * 86_400;
     const batch = await reconcileDiV0S4BeyondDriftHorizonBatch(
       admin,
       50,
-      { settlementAnchorAt: null, workItemId: null },
+      emptyDiV0S4fKeysetScanCursor(),
       t.organizationId,
     );
     expect(batch.scopeCorruptionCount).toBe(1);

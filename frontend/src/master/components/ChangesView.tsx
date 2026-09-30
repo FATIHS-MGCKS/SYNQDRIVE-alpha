@@ -174,6 +174,24 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-29T03:00:00.000Z',
   },
   {
+    id: 'di-exp021-s4f1-evidence-hardening-h1-h4-2026-09-30',
+    version: '4.9.2211',
+    title: 'Driving Intelligence — EXP-021 S4F-1 final evidence hardening (H1–H4)',
+    summary: [
+      'H1: transport-thrown budget/429 errors proven through S3A acquisition → S4C map → failRetryable (T07) with zero HTTP.',
+      'H2: scan watermark (`created_at <= clock_timestamp` at scan start) on beyond-horizon and work-item pagination.',
+      'H3: DiV0S4fReadDb query-only; dormant static audit covers all S4F production sources.',
+      'H4: operational aggregate index audit — no merge-critical blocker; no new migration.',
+    ],
+    reason: 'Close residual pre-merge proof gaps on draft PR #1853 without activating S4 runtime.',
+    previousBehavior: 'Classifier-only budget proofs; keyset without scan watermark; read DB type included $executeRaw exemption.',
+    details:
+      's4f-observability/di-v0-s4f-keyset-cursor.ts; EXP021_S4F1 evidence H1–H4; Postgres H2-A/B/C.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-30T03:45:00.000Z',
+  },
+  {
     id: 'di-exp021-s4f1-observability-reconciliation-2026-09-30',
     version: '4.9.2210',
     title: 'Driving Intelligence — EXP-021 S4F-1 dormant observability & activation-readiness foundation',
