@@ -1349,6 +1349,6 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 
 | Event | Detail |
 |-------|--------|
-| CHANGE | Split `GLOBAL_BUDGET_CONFIG_FILE_STATE` vs `GLOBAL_BUDGET_ACTIVE_RUNTIME_STATE`; audit script CONFIG_FILE_ONLY; resolver for evaluator ENABLED; future ops sequence documents rolling restart authority |
+| CHANGE | Split config-file vs runtime global-budget evidence; CONFIG_FILE_ONLY audit; resolver for ENABLED; ops authority = reusable `vps-production-replica.lib.sh` primitives (no dedicated DIMO config-only wrapper; RFRF stage script pattern-only, not executable authority for DIMO) |
 | FINDING | File audit alone cannot satisfy Tiny global-budget gate; Production config currently MISSING explicit var |
 | NON_EFFECTS | No Production mutation/restart/deploy |

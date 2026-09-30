@@ -98,25 +98,53 @@ evaluateDiV0S4fTinyActivationReadiness({
 
 **finalState = NOT_READY**
 
-## Authorized future ops sequence (not PR #1861 — separate human decision)
+## Production ops authority (readiness vs execution)
 
-Do **not** treat “edit env file + rerun file audit” as sufficient.
+SynqDrive has **canonical same-SHA rolling-restart primitives** and **proven transactional rollout patterns**, but **no dedicated DIMO global-budget config-only rollout wrapper** today. A **separate authorized Production-ops slice** is required before any `backend.env` mutation or restart for `DIMO_GLOBAL_BUDGET_ENABLED`.
 
-1. **Pre-change evidence:** deployed SHA; both PM2 replicas healthy (`synqdrive` :3001, `synqdrive-b` :3002); replica PIDs/uptime/restart counters; all S4 flags OFF; config-file audit baseline.
-2. **Backup** `/opt/synqdrive/shared/backend.env`.
-3. **Atomic add** `DIMO_GLOBAL_BUDGET_ENABLED=true` only if absent (no unrelated env mutations).
-4. **Config-file audit** → expect `GLOBAL_BUDGET_CONFIG_FILE_STATE=EXPLICIT_ENABLED`.
-5. **Controlled restart** so both replicas bootstrap after the mutation.
+This is an **operational execution prerequisite**, not a seventh frozen Tiny Activation gate.
 
-**Canonical multi-replica lifecycle (repository):**
+| Classification | Value |
+|----------------|--------|
+| `DEDICATED_DIMO_CONFIG_ONLY_ROLLOUT_PATH_FOUND` | **NO** |
+| `SAFE_REUSABLE_ROLLING_RESTART_PRIMITIVES_FOUND` | **YES** |
+| `RFRF_STAGE_SCRIPT_DIRECTLY_REUSABLE_FOR_DIMO` | **NO** |
+| `RFRF_STAGE_SCRIPT_PATTERN_REFERENCE_ONLY` | **YES** |
+| `NEW_DIMO_CONFIG_ONLY_OPS_WRAPPER_REQUIRED_BEFORE_PRODUCTION_MUTATION` | **YES** |
 
-- Full release: `backend/scripts/ops/vps-deploy-release.sh` → `vps_replica_rolling_deploy` / `vps_replica_verify_post_deploy` (`lib/vps-production-replica.lib.sh`, `vps-production-replica-topology.config.sh`).
-- **Config-only, same SHA:** `rfrf-production-enable-stage.sh` performs rolling restart of both replicas at the **same** runtime SHA after `backend.env` mutation (pattern used for production flag stage enablement). Requires explicit operator ACK / stage contract — **not** executed in S4F-3.
+**Reusable restart authority:** `backend/scripts/ops/lib/vps-production-replica.lib.sh` — e.g. `vps_replica_restart_one` (PM2 `--update-env`), `vps_replica_wait_healthy`, `vps_replica_verify_no_mixed_sha`, `vps_replica_wait_scheduler_leader_convergence`, `vps_replica_verify_scheduler_leaders`, `vps_replica_nginx_dual_upstream_ok`, `vps_replica_verify_post_deploy`.
 
-There is **no** dedicated one-liner “env-only DIMO global budget rolling restart” script; use the existing stage/deploy runbook authority above or a **separate** authorized deployment/restart decision. Do **not** ad-hoc `pm2 restart all`.
+**Reusable topology authority:** `backend/scripts/ops/vps-production-replica-topology.config.sh` (two-replica PM2 names/ports).
 
-6. **Post-restart runtime proof:** both replicas on expected SHA; boot times **after** env mutation; health/readiness OK; scheduler leader invariant; startup log line `DIMO global provider budget enabled` on both replicas; no `DIMO_GLOBAL_BUDGET_ENABLED=false` warning; S4 flags still OFF; zero S4 provider/shadow activation.
-7. Only then: `activeRuntimeState=CONFIRMED_ENABLED` + `resolveTinyActivationProviderGlobalBudgetEvidence` → supply `providerGlobalBudgetEnabled=ENABLED` to the evaluator.
+**Full-release lifecycle authority:** `backend/scripts/ops/vps-deploy-release.sh` (code deploy + rolling multi-replica restart — heavier than a config-only change).
+
+**`rfrf-production-enable-stage.sh`:** **not** the executable DIMO rollout authority. It implements the **RFRF staged rollout state machine** (stage transitions, cutover metadata, RFRF boolean authorities, pre/post validation, recovery). It must **not** be invoked merely to set `DIMO_GLOBAL_BUDGET_ENABLED=true`. It may be cited only as a **design/pattern reference** for: env backup before mutation; atomic env mutation; recovery restore; same-SHA rolling restart; post-restart verification.
+
+PR #1861 remains **evidence/readiness only** — do **not** add a production-mutating DIMO wrapper in this slice unless repository convention explicitly requires it (it does not).
+
+## Authorized future ops sequence (conceptual — separate Production-ops slice)
+
+Do **not** treat “edit env file + rerun file audit” as sufficient. Do **not** ad-hoc `pm2 restart all`.
+
+1. Exact running SHA + replica health preflight.
+2. Backup `/opt/synqdrive/shared/backend.env`.
+3. Prove `DIMO_GLOBAL_BUDGET_ENABLED` currently absent (config-file audit).
+4. Atomically add exactly `DIMO_GLOBAL_BUDGET_ENABLED=true` (no unrelated env mutations).
+5. Config-file audit → `GLOBAL_BUDGET_CONFIG_FILE_STATE=EXPLICIT_ENABLED`.
+6. Run a **dedicated DIMO config-only wrapper** (future slice) built from `vps-production-replica.lib.sh` + `vps-production-replica-topology.config.sh` — not `rfrf-production-enable-stage.sh`.
+7. Rolling restart replica A (`vps_replica_restart_one` + `--update-env`).
+8. Health + expected SHA proof.
+9. Rolling restart replica B.
+10. Health + expected SHA proof.
+11. Scheduler leader convergence → exactly one leader.
+12. No mixed SHA (`vps_replica_verify_no_mixed_sha`).
+13. Both process start/restart timestamps **after** env mutation.
+14. Runtime provider-budget evidence = enabled (startup log corroboration; not file audit alone).
+15. All S4 activation flags remain OFF.
+16. No S4 provider calls / writes / shadow activation.
+17. **Failure after mutation:** restore env backup; rolling restart both replicas; verify prior state restored; fail closed.
+
+Only then: `GLOBAL_BUDGET_ACTIVE_RUNTIME_STATE=CONFIRMED_ENABLED` and `resolveTinyActivationProviderGlobalBudgetEvidence` → `providerGlobalBudgetEnabled=ENABLED` for the frozen evaluator.
 
 ## Boundaries
 
