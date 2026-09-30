@@ -20,6 +20,27 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-30 — M3.3-HV-H1 provider capability + evidence foundation
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | H0 seal without structured H1 capability/freshness/quality matrix or session linkage contracts |
+| **OBSERVATION** | HV evidence scattered across capability rows, method profile, M2/M3 shadows, charge sessions — no single per-vehicle readiness view |
+| **HYPOTHESIS** | Pure contracts + read-only report suffice for H1 without schema or automatic runtime |
+| **CHANGE** | `hv-h1/*` contracts; CLI `battery:hv-h1:evidence-readiness-report`; `validate-h1-provider-evidence-contracts.sh`; research + graph BAT-V2-AUTH-H1-001 |
+| **WHY** | Primary post-H0 engineering focus; answers provider capability, freshness, quality, session linkage before HV longitudinal model |
+| **EXPECTED_EFFECT** | Deterministic H1 authority; fail-closed scientific eligibility; operator read-only readiness report |
+| **VALIDATION** | `npm run test:battery:v2:hv-h1`; architecture validators including H1 script |
+| **OBSERVED_EFFECT** | Unit tests PASS; validators PASS (pending CI) |
+| **NON_EFFECTS** | SCHEMA_CHANGE=NO; H1_RUNTIME_REACHABLE=NO; production @ `1dd422403` unchanged |
+| **REGRESSIONS_OR_TRADEOFFS** | Longitudinal input remains design-only types — no HV health score |
+| **REMAINING_GAPS** | Mapper-only voltage; per-VIN provider SOH gaps; HV-H2 longitudinal input engineering |
+| **DECISION_STATUS** | VALIDATED (engineering contracts) |
+| **AFFECTED_GRAPH** | +BAT-V2-AUTH-H1-001 |
+| **EVIDENCE** | `research/M3_3_HV_H1_PROVIDER_CAPABILITY_EVIDENCE_FOUNDATION_2026-09-30.md` |
+
+---
+
 ## CL-2026-09-30 — PR #1849 M3.3-H0 final seal hardening (rebase + validators)
 
 | Field | Value |
