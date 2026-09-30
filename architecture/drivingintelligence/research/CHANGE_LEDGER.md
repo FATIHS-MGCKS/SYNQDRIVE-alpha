@@ -1306,3 +1306,13 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | H1 full S3A→S4C→T07 unit proofs; H2 scan watermark cursor; H3 query-only read DB + audit; H4 operational index audit (no migration) |
 | NON_EFFECTS | No activation, no provider gap closure, no retry semantic change |
 | Evidence | `EXP021_S4F1_OBSERVABILITY_RECONCILIATION.md` H1–H4 section |
+
+### EXP-021 S4F-2 — provider backpressure certification (2026-09-30)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | Tiny activation gate `DI-GAP-S4-PROVIDER-BACKPRESSURE-001:CLOSED` on main @ `60f925b2c` |
+| CHANGE | Real Redis two-replica budget certification; S4C frozen DIMO context (no bypass inheritance); `providerGlobalBudgetEnabled` activation evidence; contract `globalCircuitBreaker.status=CLOSED` |
+| NON_EFFECTS | No S4 activation, no deploy, no production provider calls, no AppModule registration |
+| Evidence | `EXP021_S4F2_PROVIDER_BACKPRESSURE_CLOSURE.md` |
+| Gap | `DI-GAP-S4-PROVIDER-BACKPRESSURE-001` → **CLOSED** |

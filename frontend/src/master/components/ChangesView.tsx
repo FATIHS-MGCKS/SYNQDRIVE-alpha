@@ -174,6 +174,23 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-29T03:00:00.000Z',
   },
   {
+    id: 'di-exp021-s4f2-provider-backpressure-closure-2026-09-30',
+    version: '4.9.2212',
+    title: 'Driving Intelligence — EXP-021 S4F-2 provider backpressure certification',
+    summary: [
+      'Real Redis multi-replica DimoProviderBudgetService certification (global cap, reserved HIGH, lease recovery, shared 429 cooldown).',
+      'S4C frozen DI_V0_S4C_DIMO_REQUEST_CONTEXT — parent bypass cannot infect ALS context.',
+      'DI-GAP-S4-PROVIDER-BACKPRESSURE-001 CLOSED; Tiny activation also requires providerGlobalBudgetEnabled=ENABLED.',
+    ],
+    reason: 'Close frozen tiny-activation provider backpressure gap with executable evidence while keeping S4 dormant.',
+    previousBehavior: 'Gap OPEN_CONFIRMED; globalCircuitBreaker OPEN_ACCEPTED_FOR_S4C; no multi-replica Redis proof.',
+    details:
+      'provider-budget multi-replica redis integration; s4f-observability certification; s4a-contract.v2.json; EXP021_S4F2 evidence.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-30T06:00:00.000Z',
+  },
+  {
     id: 'di-exp021-s4f1-evidence-hardening-h1-h4-2026-09-30',
     version: '4.9.2211',
     title: 'Driving Intelligence — EXP-021 S4F-1 final evidence hardening (H1–H4)',

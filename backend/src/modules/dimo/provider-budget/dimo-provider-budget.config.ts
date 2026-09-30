@@ -99,5 +99,14 @@ export function validateDimoProviderBudgetConfig(
   if (config.globalAcquireTimeoutMs <= 0) {
     errors.push('DIMO_GLOBAL_ACQUIRE_TIMEOUT_MS must be > 0');
   }
+  if (config.providerCooldown429Threshold <= 0) {
+    errors.push('DIMO_PROVIDER_COOLDOWN_429_THRESHOLD must be > 0');
+  }
+  if (config.providerCooldownMs <= 0) {
+    errors.push('DIMO_PROVIDER_COOLDOWN_MS must be > 0');
+  }
+  if (config.acquirePollIntervalMs <= 0) {
+    errors.push('DIMO_GLOBAL_ACQUIRE_POLL_MS must be > 0');
+  }
   return errors;
 }

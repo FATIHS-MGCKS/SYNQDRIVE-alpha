@@ -238,7 +238,8 @@ Post PR #1694 three-vehicle cohort activation, WOB L 7503 trip `c0889036-db0b-4e
 | **Beyond 10d drift** | Report-only boundary mismatch count (no T11) |
 | **Diagnostic pagination** | Keyset authority `SCAN_WATERMARK_CREATED_AT_THEN_SETTLEMENT_ANCHOR_AT_THEN_WORK_ITEM_ID` (frozen scan population) |
 | **Read DB surface** | `DiV0S4fReadDb` = `$queryRaw` only; F32 READ ONLY on tx client |
-| **Tiny activation** | Evaluator fail-closed; **NOT_READY** until operator auth + backpressure gap closure |
+| **Provider backpressure** | **DI-GAP-S4-PROVIDER-BACKPRESSURE-001 CLOSED** (S4F-2 Redis multi-replica certification); contract `globalCircuitBreaker.status=CLOSED` |
+| **Tiny activation** | Evaluator fail-closed; requires gap CLOSED + `providerGlobalBudgetEnabled=ENABLED` + location governance + explicit operator auth |
 | **Evidence** | [EXP021_S4F1_OBSERVABILITY_RECONCILIATION.md](evidence/EXP021_S4F1_OBSERVABILITY_RECONCILIATION.md) |
 
 ## Coverage classification

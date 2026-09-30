@@ -6,6 +6,7 @@ export {
   type DiV0S4fReplayDeserializerEvidence,
   type DiV0S4fSnapshotRehashEvidence,
   type DiV0S4fProviderBackpressureEvidence,
+  type DiV0S4fProviderGlobalBudgetEnabledEvidence,
   type DiV0S4fLocationRetentionGovernanceEvidence,
   type DiV0S4fOperatorAuthorizationEvidence,
   frozenTinyActivationGateKeys,

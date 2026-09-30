@@ -1691,14 +1691,16 @@ nodes:
 
   - id: DI-GAP-S4-PROVIDER-BACKPRESSURE-001
     type: gap
-    title: S4 provider acquisition backpressure / circuit breaking not yet implemented
+    title: S4 provider acquisition backpressure certification
     epistemic_status: CONFIRMED
+    validation_status: CLOSED
     summary: >
-      S4C must acquire via the shared DimoRequestExecutor under DimoProviderBudgetService with category
-      POST_TRIP_ENRICHMENT / priority BACKGROUND and no S4 in-attempt retry; a provider circuit breaker is
-      OPEN_ACCEPTED_FOR_S4C. Blocks tiny activation (contract v2 activationGates.TINY_ACTIVATION), not S4A.
+      CLOSED 2026-09-30 (S4F-2): shared DimoProviderBudgetService + DimoRequestExecutor proven under real Redis
+      with two service replicas (global cap, reserved HIGH slots, lease recovery, shared 429 cooldown, Redis fail-closed).
+      S4C uses frozen DI_V0_S4C_DIMO_REQUEST_CONTEXT (POST_TRIP_ENRICHMENT/BACKGROUND, no bypass inheritance).
+      Tiny activation still requires providerGlobalBudgetEnabled=ENABLED and operator authorization.
     source_paths:
-      - architecture/drivingintelligence/design/s4a/S4A_CONTROL_PLANE.md
+      - architecture/drivingintelligence/evidence/EXP021_S4F2_PROVIDER_BACKPRESSURE_CLOSURE.md
       - architecture/drivingintelligence/design/s4a/s4a-contract.v2.json
 
   - id: DI-GAP-S4F-GLOBAL-EXECUTOR-LIVENESS-001
