@@ -1,12 +1,15 @@
 /**
  * Historical + adversarial replay fixtures for settled-post design (offline only).
  */
-import type { RawFuelSignalSample } from '../raw-fuel-signal-sample.types';
-import { WOB_2026_09_19_OBSERVED_ABSOLUTE_FUEL_SAMPLES } from '../../raw-fuel-refuel-fallback/testing/wob-2026-09-19-observed-fuel.fixture';
-import { buildWob20260927EventBSamples } from '../../raw-fuel-refuel-fallback/testing/wob-2026-09-19-stretched-end.fixture';
-import { buildKsMx20260916FreshPre5Samples } from '../../raw-fuel-refuel-fallback/testing/ks-mx-2026-09-16-baseline-recency.fixture';
-import { KS_MS_661_OBSERVED_ABSOLUTE_FUEL_SAMPLES } from '@modules/dimo/fixtures/ks-ms-661-2026-09-06-refuel-observed.fixture';
-import { KS_MX_2024_SEPT04_EVENT_A } from '@modules/dimo/fixtures/ks-mx-2024-sept04-refuel.fixture';
+import type { RawFuelSignalSample } from '../../../src/modules/vehicle-intelligence/energy-events/raw-fuel-rise-detector/raw-fuel-signal-sample.types';
+import { WOB_2026_09_19_OBSERVED_ABSOLUTE_FUEL_SAMPLES } from '../../../src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/testing/wob-2026-09-19-observed-fuel.fixture';
+import { buildWob20260927EventBSamples } from '../../../src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/testing/wob-2026-09-19-stretched-end.fixture';
+import { buildKsMx20260916FreshPre5Samples } from '../../../src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/testing/ks-mx-2026-09-16-baseline-recency.fixture';
+import { KS_MS_661_OBSERVED_ABSOLUTE_FUEL_SAMPLES } from '../../../src/modules/dimo/fixtures/ks-ms-661-2026-09-06-refuel-observed.fixture';
+import { KS_MX_2024_SEPT04_EVENT_A } from '../../../src/modules/dimo/fixtures/ks-mx-2024-sept04-refuel.fixture';
+
+export type ExpectedSemanticClass = 'POSITIVE_CONTROL' | 'SAFETY_NEGATIVE' | 'AMBIGUOUS';
+export type ExpectedSettledOutcome = 'READY_FOR_PERSIST' | 'NOT_READY' | 'REJECTED_PRESERVED';
 
 export type ReplayCaseKind =
   | 'NATURAL'
@@ -15,6 +18,7 @@ export type ReplayCaseKind =
   | 'EXCLUDED_SUSPECT';
 
 export type ReplayEvidenceTier =
+  | 'CRITICAL_PATH_FULL_REPLAY'
   | 'FULL_REPLAY'
   | 'PARTIAL_REPLAY'
   | 'INSUFFICIENT_SOURCE_EVIDENCE';
@@ -30,6 +34,8 @@ export interface ReplayCaseDefinition {
   samples: RawFuelSignalSample[];
   groundTruthLiters?: number | null;
   relativeCorroboration: 'YES' | 'NO' | 'PARTIAL' | 'N/A';
+  expectedSemanticClass?: ExpectedSemanticClass;
+  expectedSettledOutcome?: ExpectedSettledOutcome;
   notes?: string;
 }
 
@@ -37,7 +43,7 @@ function s(iso: string, abs: number, rel: number | null = null): RawFuelSignalSa
   return { timestamp: new Date(iso), absoluteLiters: abs, relativePercent: rel };
 }
 
-/** Production DIMO 30s extract — KS MS 661 natural refuel 2026-09-30 (read-only VPS 2026-09-30). */
+/** Curated event-critical Production extract — not the full 144-bucket provider series (read-only VPS 2026-09-30). */
 function buildKsMs661_20260930Series(): RawFuelSignalSample[] {
   const out: RawFuelSignalSample[] = [];
   for (let t = Date.parse('2026-09-30T04:35:00.000Z'); t <= Date.parse('2026-09-30T04:56:30.000Z'); t += 30_000) {
@@ -78,11 +84,13 @@ export const DEFENSIBLE_NATURAL_CALIBRATION_ROWS: ReplayCaseDefinition[] = [
     label: 'KS MS 661 first natural post-Alpha refuel',
     vehicle: 'KS MS 661',
     eventTimestamp: '2026-09-30T04:57:00.000Z',
-    replayEvidenceTier: 'FULL_REPLAY',
+    replayEvidenceTier: 'CRITICAL_PATH_FULL_REPLAY',
     window: { from: '2026-09-30T04:35:00.000Z', to: '2026-09-30T11:30:00.000Z' },
     samples: KS_MS_661_2026_09_30_NATURAL_SAMPLES,
     groundTruthLiters: 12,
     relativeCorroboration: 'NO',
+    notes:
+      'CRITICAL_PATH_FULL_REPLAY: curated rise/settle spine from Production extract; full provider bucket series not committed',
   },
   {
     id: 'KS_MS_661_2026_09_06_OBSERVED',
@@ -222,6 +230,8 @@ export const ADVERSARIAL_REPLAY_CASES: ReplayCaseDefinition[] = [
       s('2026-01-01T00:05:00.000Z', 6),
     ],
     relativeCorroboration: 'N/A',
+    expectedSemanticClass: 'SAFETY_NEGATIVE',
+    expectedSettledOutcome: 'REJECTED_PRESERVED',
   },
   {
     id: 'A2',
@@ -240,6 +250,8 @@ export const ADVERSARIAL_REPLAY_CASES: ReplayCaseDefinition[] = [
       s('2026-01-05T00:05:00.000Z', 20),
     ],
     relativeCorroboration: 'N/A',
+    expectedSemanticClass: 'SAFETY_NEGATIVE',
+    expectedSettledOutcome: 'NOT_READY',
   },
   {
     id: 'A3',
@@ -261,6 +273,8 @@ export const ADVERSARIAL_REPLAY_CASES: ReplayCaseDefinition[] = [
       s('2026-01-02T00:08:00.000Z', 12),
     ],
     relativeCorroboration: 'N/A',
+    expectedSemanticClass: 'SAFETY_NEGATIVE',
+    expectedSettledOutcome: 'REJECTED_PRESERVED',
   },
   {
     id: 'A4',
@@ -272,6 +286,8 @@ export const ADVERSARIAL_REPLAY_CASES: ReplayCaseDefinition[] = [
     window: { from: '2026-01-03T10:00:00.000Z', to: '2026-01-03T16:00:00.000Z' },
     samples: buildA4GradualConsumptionSamples(),
     relativeCorroboration: 'N/A',
+    expectedSemanticClass: 'SAFETY_NEGATIVE',
+    expectedSettledOutcome: 'NOT_READY',
   },
   {
     id: 'A5',
@@ -290,6 +306,8 @@ export const ADVERSARIAL_REPLAY_CASES: ReplayCaseDefinition[] = [
       s('2026-01-06T02:03:00.000Z', 19),
     ],
     relativeCorroboration: 'N/A',
+    expectedSemanticClass: 'SAFETY_NEGATIVE',
+    expectedSettledOutcome: 'NOT_READY',
   },
   {
     id: 'A6',
@@ -308,6 +326,8 @@ export const ADVERSARIAL_REPLAY_CASES: ReplayCaseDefinition[] = [
       s('2026-01-04T02:01:00.000Z', 19),
     ],
     relativeCorroboration: 'N/A',
+    expectedSemanticClass: 'SAFETY_NEGATIVE',
+    expectedSettledOutcome: 'NOT_READY',
   },
   {
     id: 'A7',
@@ -330,6 +350,8 @@ export const ADVERSARIAL_REPLAY_CASES: ReplayCaseDefinition[] = [
       s('2026-01-07T06:04:00.000Z', 28),
     ],
     relativeCorroboration: 'N/A',
+    expectedSemanticClass: 'SAFETY_NEGATIVE',
+    expectedSettledOutcome: 'NOT_READY',
   },
   {
     id: 'A8',
@@ -342,6 +364,9 @@ export const ADVERSARIAL_REPLAY_CASES: ReplayCaseDefinition[] = [
     samples: KS_MS_661_2026_09_30_NATURAL_SAMPLES,
     groundTruthLiters: 12,
     relativeCorroboration: 'NO',
+    expectedSemanticClass: 'POSITIVE_CONTROL',
+    expectedSettledOutcome: 'READY_FOR_PERSIST',
+    notes: 'Approved positive overshoot→settle control (661-shaped extract)',
   },
   {
     id: 'A9',
@@ -361,11 +386,41 @@ export const ADVERSARIAL_REPLAY_CASES: ReplayCaseDefinition[] = [
       s('2026-01-08T00:06:00.000Z', 16),
     ],
     relativeCorroboration: 'N/A',
+    expectedSemanticClass: 'AMBIGUOUS',
+    expectedSettledOutcome: 'NOT_READY',
+    notes: 'Small quantized step rise; detector may NO_RISE — must not READY',
   },
   {
-    id: 'A10',
+    id: 'A10_POS',
     kind: 'ADVERSARIAL',
-    label: 'A10 driving/slosh around stable post state',
+    label: 'A10_POS slosh within tolerance around legitimate settled post (positive robustness)',
+    vehicle: 'SYNTHETIC',
+    eventTimestamp: '2026-01-10T00:03:00.000Z',
+    replayEvidenceTier: 'FULL_REPLAY',
+    window: { from: '2026-01-10T00:00:00.000Z', to: '2026-01-10T02:00:00.000Z' },
+    samples: [
+      s('2026-01-10T00:00:00.000Z', 12),
+      s('2026-01-10T00:01:00.000Z', 12),
+      s('2026-01-10T00:02:00.000Z', 12),
+      s('2026-01-10T00:03:00.000Z', 24),
+      s('2026-01-10T00:04:00.000Z', 25),
+      s('2026-01-10T00:05:00.000Z', 25),
+      s('2026-01-10T00:06:00.000Z', 25),
+      s('2026-01-10T00:07:00.000Z', 25),
+      s('2026-01-10T00:08:00.000Z', 25),
+      s('2026-01-10T00:09:00.000Z', 25),
+      s('2026-01-10T00:10:00.000Z', 25),
+    ],
+    relativeCorroboration: 'N/A',
+    expectedSemanticClass: 'POSITIVE_CONTROL',
+    expectedSettledOutcome: 'READY_FOR_PERSIST',
+    notes:
+      'Human-approved positive slosh robustness: refuel-shaped oscillation within plateau tolerance; ground-truth assumes legitimate settled post ~25 L',
+  },
+  {
+    id: 'A10_NEG',
+    kind: 'ADVERSARIAL',
+    label: 'A10_NEG slosh without trustworthy settled episode (terminal unstable)',
     vehicle: 'SYNTHETIC',
     eventTimestamp: '2026-01-10T00:03:00.000Z',
     replayEvidenceTier: 'FULL_REPLAY',
@@ -384,6 +439,8 @@ export const ADVERSARIAL_REPLAY_CASES: ReplayCaseDefinition[] = [
       s('2026-01-10T00:10:00.000Z', 25),
     ],
     relativeCorroboration: 'N/A',
+    expectedSemanticClass: 'SAFETY_NEGATIVE',
+    expectedSettledOutcome: 'REJECTED_PRESERVED',
   },
   {
     id: 'A11',
@@ -405,6 +462,8 @@ export const ADVERSARIAL_REPLAY_CASES: ReplayCaseDefinition[] = [
       s('2026-01-09T04:00:00.000Z', 16),
     ],
     relativeCorroboration: 'N/A',
+    expectedSemanticClass: 'SAFETY_NEGATIVE',
+    expectedSettledOutcome: 'NOT_READY',
   },
   {
     id: 'A12',
@@ -430,6 +489,8 @@ export const ADVERSARIAL_REPLAY_CASES: ReplayCaseDefinition[] = [
       s('2026-01-11T00:12:00.000Z', 28),
     ],
     relativeCorroboration: 'N/A',
+    expectedSemanticClass: 'SAFETY_NEGATIVE',
+    expectedSettledOutcome: 'NOT_READY',
   },
 ];
 
@@ -441,5 +502,7 @@ export const ALL_REPLAY_CASES: ReplayCaseDefinition[] = [
 export const CALIBRATION_PACK_MANIFEST = {
   defensibleNaturalRows: DEFENSIBLE_NATURAL_CALIBRATION_ROWS.length,
   excludedSuspectControls: EXCLUDED_SUSPECT_CONTROLS.length,
-  adversarialSemanticCases: ADVERSARIAL_REPLAY_CASES.length,
+  /** Semantic matrix A1–A12 with A10 split into POS/NEG fixtures. */
+  adversarialSemanticCases: 12,
+  adversarialFixtureCount: ADVERSARIAL_REPLAY_CASES.length,
 } as const;

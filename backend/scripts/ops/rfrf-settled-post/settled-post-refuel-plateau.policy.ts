@@ -1,48 +1,49 @@
 /**
- * DESIGN-ONLY — RFRF F3 settled post-refuel maturity (not wired to Production runtime).
+ * DESIGN-ONLY — RFRF F3 settled post-refuel maturity (offline replay; not Production runtime).
  *
  * Authority: architecture/knowledge-graphs/energy-event-detection/decisions/
  *   RFRF-F3-SETTLED-POST-REFUEL-MATURITY-2026-09-30.md
- *
- * Implements ROBUST_SETTLED_POST_REFUEL_LEVEL for offline replay / ADR proof.
- * Numeric defaults mirror PROVISIONAL production config for comparison only;
- * final runtime constants require fleet calibration (EED-OQ-014).
  */
-import type { RawRefuelCandidateLifecycleState } from '@prisma/client';
-import type { RawFuelRiseDetectorConfig } from '../raw-fuel-rise-detector.config';
-import { median, withinTolerance } from '../raw-fuel-rise-normalizer';
-import { validatePlateauWindow } from '../raw-fuel-rise-state-machine';
+import type {
+  RawRefuelCandidateLifecycleState,
+  RawRefuelCandidateRejectionReason,
+} from '@prisma/client';
+import type { RawFuelRiseDetectorConfig } from '../../../src/modules/vehicle-intelligence/energy-events/raw-fuel-rise-detector/raw-fuel-rise-detector.config';
+import { validatePlateauWindow } from '../../../src/modules/vehicle-intelligence/energy-events/raw-fuel-rise-detector/raw-fuel-rise-state-machine';
 
-export const RFRF_SETTLED_POST_PLATEAU_POLICY_VERSION = 'rfrf-settled-post-design-v0';
+export const RFRF_SETTLED_POST_PLATEAU_POLICY_VERSION = 'rfrf-settled-post-design-v1';
 
-/**
- * Offline replay sensitivity only — NOT approved Production thresholds.
- * See EED-EV-0103 and RFRF-F3-SETTLED-POST-REFUEL-MATURITY ADR §6.
- */
 export const REPLAY_HYPOTHESIS_MAX_PEAK_TO_SETTLED_DROP_LITERS = 3 as const;
 export const REPLAY_HYPOTHESIS_MAX_PEAK_TO_SETTLED_DROP_RATIO_OF_RISE = 0.35 as const;
 export const REPLAY_DROP_CAP_CLASSIFICATION = 'REPLAY_HYPOTHESIS_ONLY' as const;
 export const REPLAY_DROP_RATIO_CLASSIFICATION = 'REPLAY_HYPOTHESIS_ONLY' as const;
 
+/** Terminal F3 safety reasons — settled-post must not resurrect these rises. */
+const TERMINAL_F3_REJECTION_REASONS: ReadonlySet<RawRefuelCandidateRejectionReason> = new Set([
+  'SENSOR_RESET_SUSPECTED',
+  'RISE_NOT_STABLE',
+  'SAMPLE_GAP_TOO_LARGE',
+  'RISE_TOO_SMALL',
+]);
+
+export function isCurrentF3TerminalSafetyRejection(input: {
+  lifecycleState: RawRefuelCandidateLifecycleState;
+  rejectionReason: RawRefuelCandidateRejectionReason | null;
+}): boolean {
+  if (input.lifecycleState !== 'REJECTED') return false;
+  if (input.rejectionReason == null) return true;
+  return TERMINAL_F3_REJECTION_REASONS.has(input.rejectionReason);
+}
+
 export interface SettledPostPlateauConfigSymbols {
-  /** Minimum stable samples in settled window (symbolic; replay may use config.absolute.postPlateauMinSamples). */
   postPlateauMinSamples: number;
   postPlateauToleranceLiters: number;
   postPlateauMinPersistenceMs: number;
   maxSampleGapMs: number;
   materialRiseLiters: number;
   negativeWobbleLiters: number;
-  /** Max rise episode search after last rise sample (symbolic; maps to riseMaxDurationMs). */
   maxPostSearchAfterRiseEndMs: number;
-  /**
-   * Max drop from instantaneous peak to settled median (symbolic — NOT calibrated for Production).
-   * Replay default allows 1–2 L quantization / slosh after overshoot.
-   */
   maxPeakToSettledDropLiters: number;
-  /**
-   * Max fraction of (peak - preMedian) that may be "lost" from peak to settled without collapse rejection.
-   * Symbolic fail-closed guard against untrustworthy collapse (e.g. 6→20→12).
-   */
   maxPeakToSettledDropRatioOfRise: number;
 }
 
@@ -98,10 +99,6 @@ export function buildSettledPostSymbolsFromDetectorConfig(
   };
 }
 
-/**
- * Pure design policy: find a locally stable post-refuel plateau materially above pre-baseline.
- * Instantaneous peak is diagnostic only — settled median becomes authoritative post level when ok.
- */
 export function resolveSettledPostRefuelPlateau(input: {
   series: ChannelPoint[];
   riseEndIdx: number;
@@ -168,12 +165,8 @@ export function resolveSettledPostRefuelPlateau(input: {
         if (persistenceMs < cfg.postPlateauMinPersistenceMs) continue;
 
         const dropFromPeak = peakValue - center;
-        if (dropFromPeak > cfg.maxPeakToSettledDropLiters) {
-          continue;
-        }
-        if (riseSpan > 0 && dropFromPeak / riseSpan > cfg.maxPeakToSettledDropRatioOfRise) {
-          continue;
-        }
+        if (dropFromPeak > cfg.maxPeakToSettledDropLiters) continue;
+        if (riseSpan > 0 && dropFromPeak / riseSpan > cfg.maxPeakToSettledDropRatioOfRise) continue;
 
         const minVal = Math.min(...window.map((p) => p.value));
         if (minVal < preMedian - cfg.negativeWobbleLiters) {

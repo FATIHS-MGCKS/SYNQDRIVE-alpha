@@ -3,7 +3,7 @@
 **Workstream:** Energy Event Detection (EED) → Raw Fuel Refuel Fallback (RFRF) → F3 rise detector  
 **Date:** 2026-09-30  
 **Status:** **PROPOSED** — human design authorization; **no runtime implementation**  
-**Baseline main:** `45f5369b6aeefa0c91e02148c5c25d069367c058`  
+**Baseline main:** `59103adad87bead79f701f565987354ab03631cf`  
 **Evidence:** EED-EV-0103 (offline replay); KS MS 661 natural refuel 2026-09-30 forensic audit  
 
 ---
@@ -84,6 +84,7 @@ classifySettledPostMaturity({ preMedian, settled })
 - **Peak collapse bounds (symbolic, not calibrated):**
   - `maxPeakToSettledDropLiters`
   - `maxPeakToSettledDropRatioOfRise`
+- Offline replay defaults for these two fields are **`REPLAY_HYPOTHESIS_ONLY`** (`REPLAY_HYPOTHESIS_MAX_PEAK_TO_SETTLED_DROP_*` in design policy) — **not** Production constants until EED-OQ-014 closes.
 - Reject if min window value returns toward pre (`negativeWobbleLiters` guard).
 
 ### 4.4 Sensor / provider behaviors
@@ -116,6 +117,17 @@ The shipped model **must not** promote:
 | Peak collapse without trustworthy settle | Collapse ratio / materiality |
 
 **Preserved authorities:** baseline recency, sample-gap, sensor-reset, episode separation, native/fallback convergence, promotion-time trust revalidation, tenant isolation, **Hybrid Trust v2 separation**.
+
+### 5.1 Terminal F3 rejection dominance (mandatory)
+
+Settled-post maturity is **subordinate** to existing F3 terminal safety classification. Offline replay (EED-EV-0103) enforces:
+
+1. Detect rise + classify lifecycle with **current** F3 state machine.
+2. If lifecycle is **REJECTED** for a preserved terminal reason (`SENSOR_RESET_SUSPECTED`, `RISE_NOT_STABLE`, `SAMPLE_GAP_TOO_LARGE`, `RISE_TOO_SMALL`), **do not** invoke settled-post maturity as a resurrection path.
+3. Settled replay result remains **REJECTED** with `SETTLED_EVALUATION_ALLOWED=NO`.
+4. Only **non-terminal** rises (e.g. **OBSERVED** with material rise, **READY** peak-anchored) may enter settled-post evaluation.
+
+This preserves KS MS 661 2026-09-30 (**OBSERVED** today) while blocking A1/A3/A10_NEG resurrection.
 
 ---
 

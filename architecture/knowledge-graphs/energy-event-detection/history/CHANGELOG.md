@@ -3,7 +3,7 @@
 ## 2026-09-30 — RFRF settled post-refuel F3 design + offline replay (EED-OQ-014 / OQ-019)
 
 - Human-authorized **ROBUST_SETTLED_POST_REFUEL_LEVEL** architecture (peak diagnostic; settled median authoritative)
-- Design-only policy + replay harness; EED-EV-0103 expanded (7 calibration rows, A1–A12, sensitivity grid); Alpha ABSOLUTE_ONLY Option C unchanged
+- Design-only policy + replay under `backend/scripts/ops/rfrf-settled-post/`; terminal F3 dominance; EED-EV-0103 expanded
 - OQ-014 remains OPEN (numeric calibration); OQ-019 remains PARTIALLY_RESOLVED
 
 ## 2026-09-28 — RFRF pre-fill baseline recency safety guard (EED-OQ-017)
