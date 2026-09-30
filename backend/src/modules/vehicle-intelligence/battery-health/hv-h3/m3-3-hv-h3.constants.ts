@@ -1,0 +1,33 @@
+export const M3_3_HV_H3_TREND_POINT_V1 = 'M3.3-HV-H3-TREND-POINT-V1' as const;
+export const M3_3_HV_H3_METHOD_TREND_V1 = 'M3.3-HV-H3-METHOD-TREND-V1' as const;
+export const M3_3_HV_H3_LONGITUDINAL_TREND_REPORT_V1 =
+  'M3.3-HV-H3-LONGITUDINAL-TREND-REPORT-V1' as const;
+
+export const M3_3_HV_H3_ESTIMATOR_VERSION = 'THEIL_SEN_MEDIAN_PAIRWISE_SLOPE_V1' as const;
+export const M3_3_HV_H3_EXPOSURE_AXIS = 'CALENDAR_TIME' as const;
+export const M3_3_HV_H3_TREND_SLOPE_UNIT = 'value_per_day' as const;
+
+export const M3_3_HV_H3_MAX_POINTS_PER_SERIES_DEFAULT = 200;
+export const M3_3_HV_H3_MAX_POINTS_PER_SERIES_HARD = 500;
+
+export const M3_3_HV_H3_M2_REPRESENTATIVE_TIMESTAMP = 'LATEST_ELIGIBLE_OBSERVED_AT_IN_SESSION' as const;
+export const M3_3_HV_H3_M2_SESSION_AGGREGATION = 'M2_SESSION_MEDIAN' as const;
+
+export const BATTERY_HV_H3_ALLOW_PRODUCTION_READONLY_ENV_KEY =
+  'BATTERY_HV_H3_ALLOW_PRODUCTION_READONLY';
+
+export const METHOD_IDENTITY_REQUIRED = true as const;
+export const CROSS_METHOD_POOLING_DEFAULT = false as const;
+export const CROSS_PROVIDER_POOLING_DEFAULT = false as const;
+
+export const H3_AUTOMATIC_RUNTIME_REACHABLE = false as const;
+export const H3_OPERATOR_CLI_REACHABLE = true as const;
+export const H3_CUSTOMER_RUNTIME_REACHABLE = false as const;
+
+export const HV_H3_BATTERY_SCOPE = 'HV' as const;
+
+export const M3_3_HV_H3_SUPPORTED_H2_METHODS = [
+  'M2_CURRENT_ENERGY_SOC',
+  'M3_ADDED_ENERGY_DELTA_SOC',
+  'PROVIDER_HV_SOH',
+] as const;

@@ -130,7 +130,7 @@ Authoritative detail: `CURRENT_STATE.md`, `research/M3_3G_*`, `research/M3_3F_*`
 | Gap | Priority |
 |-----|----------|
 | **M3.3-H0-HV** subtrack | **Coordinated under M3.3-H0** — signals, persistence, ERD vs BI ownership |
-| HV longitudinal / health model authority (do **not** clone LV E2 blindly) | **M3.3-HV-H1** foundation (capability + evidence quality) → **M3.3-HV-H2+** |
+| HV longitudinal / health model authority (do **not** clone LV E2 blindly) | **M3.3-HV-H1** → **M3.3-HV-H2** longitudinal input → **M3.3-HV-H3** descriptive trend (calendar-time only; not validated degradation) |
 | HV F5 or equivalent natural-evidence register | PLANNED after H0-HV |
 | HV customer-visible health fields | BLOCKED until maturity gates |
 
