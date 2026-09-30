@@ -239,8 +239,8 @@ Post PR #1694 three-vehicle cohort activation, WOB L 7503 trip `c0889036-db0b-4e
 | **Diagnostic pagination** | Keyset authority `SCAN_WATERMARK_CREATED_AT_THEN_SETTLEMENT_ANCHOR_AT_THEN_WORK_ITEM_ID` (frozen scan population) |
 | **Read DB surface** | `DiV0S4fReadDb` = `$queryRaw` only; F32 READ ONLY on tx client |
 | **Provider backpressure** | **DI-GAP-S4-PROVIDER-BACKPRESSURE-001 CLOSED** (S4F-2 remote Redis certification run 36735099353); global cooldown blocks all priorities per P1.3; **Tiny Activation NOT_READY** without global budget ENABLED + operator auth + remaining gates |
-| **Tiny activation** | Evaluator fail-closed; requires gap CLOSED + `providerGlobalBudgetEnabled=ENABLED` + location governance + explicit operator auth |
-| **Evidence** | [EXP021_S4F1_OBSERVABILITY_RECONCILIATION.md](evidence/EXP021_S4F1_OBSERVABILITY_RECONCILIATION.md) |
+| **Tiny activation** | Evaluator fail-closed; S4F-3 audit (2026-09-30): replay/backpressure/rehash + location **governance note** satisfied; **Production `DIMO_GLOBAL_BUDGET_ENABLED` not explicitly set** → budget gate NOT_SATISFIED; operator auth UNKNOWN → **NOT_READY** |
+| **Evidence** | [EXP021_S4F1_OBSERVABILITY_RECONCILIATION.md](evidence/EXP021_S4F1_OBSERVABILITY_RECONCILIATION.md); [EXP021_S4F3_TINY_ACTIVATION_EVIDENCE_AUDIT.md](evidence/EXP021_S4F3_TINY_ACTIVATION_EVIDENCE_AUDIT.md) |
 
 ## Coverage classification
 

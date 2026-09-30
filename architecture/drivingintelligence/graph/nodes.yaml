@@ -1612,9 +1612,14 @@ nodes:
     type: gap
     title: No deserializer for DI V0 channel evidence snapshots (replay / retry-after-pin impossible)
     epistemic_status: CONFIRMED
-    summary: Snapshot forms are hash-only canonical strings; S4D must add parse(serialize(x)) = x and S1 bit-equality before tiny activation.
+    validation_status: CLOSED
+    summary: >
+      CLOSED in machine contract v2 (S4D): parse(serialize(x))=x, rehash-on-load, pinned replay tests.
+      Stale OPEN prose in older design docs is historical only.
     source_paths:
       - architecture/drivingintelligence/design/s4a/S4A_REPLAY_AND_EVIDENCE_PINNING.md
+      - architecture/drivingintelligence/design/s4a/s4a-contract.v2.json
+      - architecture/drivingintelligence/evidence/EXP021_S4D_ENGINEERING_START.md
 
   - id: DI-GAP-S4-SHADOW-DELETION-AUDIT-001
     type: gap
@@ -1628,9 +1633,14 @@ nodes:
     type: gap
     title: Retention of pinned 1 Hz location evidence not governed
     epistemic_status: CONFIRMED
-    summary: Design default 90 days + purge; governance note before tiny activation; privacy review before scale-up; no legal conclusion.
+    summary: >
+      Tiny Activation requires GOVERNANCE_NOTE only (S4F_LOCATION_RETENTION_GOVERNANCE_NOTE.md; T05 retention_until).
+      GOVERNANCE_NOTE_PRESENT_FOR_TINY_ACTIVATION=SATISFIED (S4F-3 audit). Purge automation not implemented.
+      Scale-up privacy/DPO review still REQUIRED; not a legal conclusion and not full gap closure.
     source_paths:
       - architecture/drivingintelligence/design/s4a/S4A_REPLAY_AND_EVIDENCE_PINNING.md
+      - architecture/drivingintelligence/design/s4f/S4F_LOCATION_RETENTION_GOVERNANCE_NOTE.md
+      - architecture/drivingintelligence/evidence/EXP021_S4F3_TINY_ACTIVATION_EVIDENCE_AUDIT.md
 
   - id: DI-GAP-S2-IN-TX-CREATE-RACE-001
     type: gap
