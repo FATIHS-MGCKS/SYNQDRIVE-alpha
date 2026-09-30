@@ -17,7 +17,7 @@ import { HV_M2_CAPACITY_METHOD } from '../hv-capacity-shadow/hv-capacity-m2.type
 import { HV_M3_CAPACITY_METHOD } from '../hv-capacity-shadow/hv-capacity-m3.types';
 import { HV_CHARGE_SESSION_QUALITY_STATUS } from '../hv-charge-session/hv-charge-session-quality.status';
 import { probePostgresDatabase } from '../provider-observability-gap/provider-observability-gap-postgres.fixture';
-import { assertHvH2TransactionReadOnly } from '../hv-h2/m3-3-hv-h2-longitudinal-input-report.service';
+import { assertHvH2TransactionReadOnly, runM3_3HvH2LongitudinalInputReport } from '../hv-h2/m3-3-hv-h2-longitudinal-input-report.service';
 import { M3_3_HV_H3_LONGITUDINAL_TREND_REPORT_V1 } from './m3-3-hv-h3.constants';
 import { runM3_3HvH3LongitudinalTrendReport } from './m3-3-hv-h3-trend-report.service';
 
@@ -39,6 +39,12 @@ async function seedQualifiedSession(
       source: 'DIMO_RECHARGE_SEGMENT',
       startAt,
       endAt: new Date(startAt.getTime() + 4 * 3600 * 1000),
+      startSocPercent: 40,
+      endSocPercent: 90,
+      startEnergyKwh: 20,
+      endEnergyKwh: 48,
+      energyAddedKwh: 28,
+      deltaSocPercent: 50,
       idempotencyKey: `idem-${randomUUID()}`,
       metadata: {
         qualityStatus: HV_CHARGE_SESSION_QUALITY_STATUS.QUALIFIED,
@@ -188,6 +194,13 @@ async function seedQualifiedSession(
       });
 
       const input = { organizationId, vehicleId, evaluationAt };
+      const h2 = await runM3_3HvH3LongitudinalTrendReport(prisma, input).then(() =>
+        import('../hv-h2/m3-3-hv-h2-longitudinal-input-report.service').then((m) =>
+          m.runM3_3HvH2LongitudinalInputReport(prisma, input),
+        ),
+      );
+      expect(h2.candidates.filter((c) => c.method === 'M3_ADDED_ENERGY_DELTA_SOC' && c.eligibility === 'eligible').length).toBeGreaterThanOrEqual(1);
+
       const a = await runM3_3HvH3LongitudinalTrendReport(prisma, input);
       const b = await runM3_3HvH3LongitudinalTrendReport(prisma, input);
 
