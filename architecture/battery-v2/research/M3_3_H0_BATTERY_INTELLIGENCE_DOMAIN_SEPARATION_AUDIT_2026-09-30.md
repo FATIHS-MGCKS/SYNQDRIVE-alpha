@@ -59,25 +59,27 @@ H0_CROSS_SCOPE_SEAL=PASS
 
 ## 3. HV signal inventory (registry + mapper)
 
-Source: `battery-capability-signals.registry.ts`, `signals/hv-signal-authority.md`, `dimo-battery-signal.mapper.ts`.
+**Count model (dimensions are not a single mutually exclusive partition of surfaces).**
 
-| Signal key | Classification | Persisted | Provider | Notes |
-|------------|----------------|-----------|----------|-------|
-| `hv.soc` | AVAILABLE_NOW | YES (`LIVE_HV_SOC`) | DIMO | Per-VIN capability |
-| `hv.current_energy` | AVAILABLE_NOW | YES | DIMO | M2 numerator |
-| `hv.added_energy` | DERIVABLE / AVAILABLE_NOW | YES (session) | DIMO | M3 input |
-| `hv.is_charging`, `hv.cable_connected` | AVAILABLE_NOW | Context | DIMO | Not longitudinal evidence alone |
-| `hv.current_power`, `hv.charging_power` | AVAILABLE_NOW | YES | DIMO | W→kW in mapper |
-| `hv.provider_soh` | AVAILABLE_NOW | YES | DIMO | Often NOT_LISTED fleet-wide |
-| `hv.charge_limit` | PROVIDER_DEPENDENT | Context | DIMO | |
-| `hv.pack_temperature` | PROVIDER_DEPENDENT | Context only in mapper | DIMO | Registry `measurementType=null` |
-| `hv.gross_capacity` | PROVIDER_DEPENDENT | Context | DIMO | Not shadow-computed |
-| `dimo.segments.recharge` | AVAILABLE_NOW | Session boundary | DIMO | ERD-aligned segment probe |
-| `powertrainTractionBatteryCurrentVoltage` (mapper) | UNKNOWN_NEEDS_PROVIDER_AUDIT | Live context | DIMO | **Not** in capability registry |
-| Cell-level / usable-capacity trend | NOT_AVAILABLE | — | — | No authority |
+| Dimension | Count | Definition |
+|-----------|-------|------------|
+| **HV_REGISTRY_KEY_COUNT** | **12** | Capability registry: 11 `hv.*` + `dimo.segments.recharge` (excludes `lv.voltage`) |
+| **HV_MAPPER_FIELD_COUNT** | **12** | DIMO mapper HV `dimoSignalName` rows (excludes LV voltage) |
+| **HV_DISTINCT_CURRENT_SURFACE_COUNT** | **13** | Registry∪mapper union: 11 shared HV DIMO fields + recharge segment (registry-only) + `powertrainTractionBatteryCurrentVoltage` (mapper-only) |
 
-**Counts:** `HV_SIGNAL_COUNT=12` (registry HV + segment key; excluding mapper-only voltage)  
-`HV_AVAILABLE_NOW_COUNT=7` · `HV_PROVIDER_DEPENDENT_COUNT=4` · `HV_DERIVABLE_COUNT=1` · `HV_NOT_AVAILABLE_COUNT=1` · `HV_UNKNOWN_PROVIDER_COUNT=1`
+**Classification tags (may overlap; apply to surfaces or future capabilities — not a partition of 13):**
+
+| Tag | Count | Notes |
+|-----|-------|-------|
+| **HV_AVAILABLE_NOW_COUNT** | **8** | Surfaces with live/session evidence paths when provider lists capability (SOC, energy, power, charging context, provider SOH, added energy, recharge segment probe) |
+| **HV_PROVIDER_DEPENDENT_COUNT** | **4** | pack temperature, gross capacity, charge limit, provider SOH fleet gaps |
+| **HV_DERIVABLE_COUNT** | **2** | added-energy session semantics; SOC/energy deltas for M2/M3 (overlaps AVAILABLE_NOW when present) |
+| **HV_UNKNOWN_PROVIDER_COUNT** | **1** | mapper-only pack voltage — not capability-preflighted |
+| **HV_KNOWN_NOT_AVAILABLE_CAPABILITY_COUNT** | **2** | cell-level degradation authority; usable-capacity longitudinal trend (future — not counted in 13) |
+
+**HV_COUNT_MODEL_SELF_CONSISTENT=YES** — registry 12 + mapper-only + registry-only segment = 13 distinct current surfaces.
+
+Sources: `battery-capability-signals.registry.ts`, `dimo-battery-signal.mapper.ts`, `signals/hv-signal-authority.md`.
 
 ---
 
@@ -251,12 +253,29 @@ bash architecture/battery-v2/scripts/validate-graph.sh
 bash architecture/battery-v2/scripts/validate-h0-domain-separation-contracts.sh
 ```
 
+## 15. Change semantics (PR #1849)
+
+| Dimension | Value |
+|-----------|-------|
+| **BATTERY_RUNTIME_CHANGE** | NO |
+| **BACKEND_RUNTIME_CHANGE** | NO |
+| **MASTER_ADMIN_PRESENTATION_CHANGE** | YES (SynqDrive Code Changes/Architektur only) |
+| **SCHEMA_CHANGE** | NO |
+| **PRODUCTION_CHANGE** | NO |
+
+## 16. Main rebase (final seal)
+
+PR rebased onto current `origin/main` after VO-0B registry validator updates. H0 conclusions revalidated post-rebase; no Battery semantic overlap in drift.
+
 ---
 
-## 15. Machine-readable result anchor
+## 17. Machine-readable result anchor
 
 ```
 M3_3_H0_DOMAIN_SEPARATION_RESULT=PASS
+PR1849_H0_FINAL_SEAL=PASS
 H0_CROSS_SCOPE_SEAL=PASS
+HV_COUNT_MODEL_SELF_CONSISTENT=YES
+E3_RUNTIME_REACHABLE=NO
 RECOMMENDED_NEXT_ACTION=Execute M3.3-HV-H1 provider capability + evidence-quality authority (docs/engineering); keep G4 async; parallel M3.3-LV-SIGNAL-OBS
 ```

@@ -20,6 +20,15 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-09-30 — PR #1849 M3.3-H0 final seal hardening (rebase + validators)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Rebase onto current main (VO-0B registry validator); HV count model dimensions; G2.2 multiline index + E3 call-site guards in `validate-h0-domain-separation-contracts.sh`; CURRENT_STATE snapshot date 2026-09-30; presentation-change semantics. |
+| **WHY** | H0 seal must validate against current main; remove ambiguous HV arithmetic; harden regression guards. |
+| **NON_EFFECTS** | BATTERY_RUNTIME_CHANGE=NO; MASTER_ADMIN_PRESENTATION_CHANGE only for SynqDrive Code TSX. |
+| **EVIDENCE** | `research/M3_3_H0_BATTERY_INTELLIGENCE_DOMAIN_SEPARATION_AUDIT_2026-09-30.md` §15–17 |
+
 ## CL-2026-09-30 — M3.3-H0 Battery Intelligence domain separation audit + seal (PASS)
 
 | Field | Value |

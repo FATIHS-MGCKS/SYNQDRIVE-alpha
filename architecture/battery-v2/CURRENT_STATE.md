@@ -1,6 +1,6 @@
 # Battery V2 — Current State Snapshot
 
-**Snapshot date:** 2026-09-29 (post-G4 roadmap audit; M3.3G **G4 infra deployed** @ `1dd422403`; **G3/G3.1/G3.1.1** on main; **D3 sustained ON**; E3 **OFF**; **0 natural GT**)
+**Snapshot date:** 2026-09-30 (M3.3-H0 domain separation seal PASS; M3.3G G4 infra @ `1dd422403`; D3 sustained ON; E3 **OFF**; **0 natural GT**)
 **Graph:** 150 nodes / 148 edges / 11 invariants (validated 2026-09-30; +BAT-V2-AUTH-H0-001)
 **Knowledge maturity:** Phase 4 planning complete — 20 open gaps; 1 PROPOSED decision (`BAT-V2-DEC-PH4-LV-PUB-CHAIN-001`); 5 VALIDATED PKG spec decisions (D1, D2, D3, D4, D5)
 
