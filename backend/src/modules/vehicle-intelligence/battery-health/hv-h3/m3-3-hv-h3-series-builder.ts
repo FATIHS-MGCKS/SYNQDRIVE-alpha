@@ -9,9 +9,8 @@ import {
   CROSS_PROVIDER_POOLING_DEFAULT,
   M3_3_HV_H3_ESTIMATOR_VERSION,
   M3_3_HV_H3_EXPOSURE_AXIS,
+  M3_3_HV_H3_INPUT_ANOMALY_CODES,
   M3_3_HV_H3_LONGITUDINAL_TREND_REPORT_V1,
-  M3_3_HV_H3_MAX_POINTS_PER_SERIES_DEFAULT,
-  M3_3_HV_H3_MAX_POINTS_PER_SERIES_HARD,
   M3_3_HV_H3_METHOD_TREND_V1,
   M3_3_HV_H3_M2_SESSION_AGGREGATION,
   M3_3_HV_H3_TREND_POINT_V1,
@@ -26,6 +25,8 @@ import {
   type HvH3SeriesPartitionIdentity,
 } from './m3-3-hv-h3-fingerprint';
 import { buildM3_3HvH3MethodAgreementDiagnosticsV1 } from './m3-3-hv-h3-method-agreement';
+import { validateM3_3HvH3CandidateInputContract } from './m3-3-hv-h3-input-contract.util';
+import { resolveM3_3HvH3MaxPointsPerSeries } from './m3-3-hv-h3-report-bounds.util';
 import {
   computeTheilSenMedianPairwiseSlopeV1,
   toElapsedDaysFromAnchor,
@@ -33,6 +34,7 @@ import {
 } from './m3-3-hv-h3-theil-sen';
 import type {
   M3_3HvH3BuildInput,
+  M3_3HvH3InputAnomalyV1,
   M3_3HvH3LifecycleSegmentTrendsV1,
   M3_3HvH3LongitudinalTrendReportV1,
   M3_3HvH3MethodTrendSeriesV1,
@@ -133,6 +135,79 @@ function buildM2SessionPoints(group: RawGroup): M3_3HvH3TrendPointV1[] {
   return points;
 }
 
+function buildM3SessionPoints(
+  group: RawGroup,
+  reportAnomalies: M3_3HvH3InputAnomalyV1[],
+): { points: M3_3HvH3TrendPointV1[]; seriesAnomalies: M3_3HvH3InputAnomalyV1[] } {
+  const bySession = new Map<string, M3_3HvH2LongitudinalInputCandidateV1[]>();
+  for (const c of group.candidates) {
+    const sid = c.sessionId;
+    if (!sid) continue;
+    const list = bySession.get(sid) ?? [];
+    list.push(c);
+    bySession.set(sid, list);
+  }
+
+  const seriesAnomalies: M3_3HvH3InputAnomalyV1[] = [];
+  const points: M3_3HvH3TrendPointV1[] = [];
+
+  for (const [sessionId, rows] of bySession) {
+    if (rows.length > 1) {
+      const distinctFps = new Set(rows.map((r) => r.candidateFingerprint));
+      if (distinctFps.size > 1) {
+        const anomaly: M3_3HvH3InputAnomalyV1 = {
+          code: M3_3_HV_H3_INPUT_ANOMALY_CODES.DUPLICATE_M3_SESSION_EVIDENCE,
+          method: M3_METHOD,
+          lifecycleSegmentId: group.identity.lifecycleSegmentId,
+          sessionId,
+          detail: `${rows.length} distinct eligible M3 candidates for one session; excluded from H3 fit`,
+        };
+        seriesAnomalies.push(anomaly);
+        reportAnomalies.push(anomaly);
+        continue;
+      }
+    }
+
+    const row = rows[0]!;
+    const value = row.numericValue!;
+    const partitionKey = buildM3_3HvH3SeriesPartitionKey(group.identity);
+    const fps = [row.candidateFingerprint];
+    const pointFingerprint = computeM3_3HvH3TrendPointFingerprint({
+      seriesPartitionKey: partitionKey,
+      sessionId,
+      observedAt: row.observedAt,
+      numericValue: value,
+      sourceCandidateFingerprints: fps,
+    });
+    points.push({
+      contractVersion: M3_3_HV_H3_TREND_POINT_V1,
+      organizationId: group.identity.organizationId,
+      vehicleId: group.identity.vehicleId,
+      batteryScope: BatteryMeasurementScope.HV,
+      lifecycleSegmentId: group.identity.lifecycleSegmentId,
+      method: group.identity.method,
+      methodRole: group.identity.methodRole,
+      valueSemantic: group.identity.valueSemantic,
+      unit: group.identity.unit,
+      seriesPartitionKey: partitionKey,
+      pointId: buildM3_3HvH3TrendPointId(pointFingerprint),
+      pointFingerprint,
+      observedAt: row.observedAt,
+      numericValue: value,
+      aggregationKind: 'M3_SESSION_POINT',
+      sourceCandidateFingerprints: fps,
+      sourceCandidateCount: rows.length,
+      sessionId,
+      provider: null,
+      evidenceStrength: row.evidenceStrength,
+      scientificRole: 'VALIDATION_ONLY',
+      modelVersion: group.identity.modelVersion,
+    });
+  }
+
+  return { points, seriesAnomalies };
+}
+
 function buildDirectSessionPoints(group: RawGroup, method: string): M3_3HvH3TrendPointV1[] {
   const bySession = new Map<string, M3_3HvH2LongitudinalInputCandidateV1[]>();
   for (const c of group.candidates) {
@@ -144,6 +219,9 @@ function buildDirectSessionPoints(group: RawGroup, method: string): M3_3HvH3Tren
 
   const points: M3_3HvH3TrendPointV1[] = [];
   for (const [sessionId, rows] of bySession) {
+    if (method === M3_METHOD) {
+      throw new Error('M3 must use buildM3SessionPoints');
+    }
     const values = rows.map((r) => r.numericValue!);
     const value = rows.length === 1 ? values[0]! : median(values);
     const latest = rows.reduce((a, b) =>
@@ -199,6 +277,7 @@ function buildMethodSeries(
   trendPoints: M3_3HvH3TrendPointV1[],
   sourceCompleteness: M3_3HvH3SourceCompleteness,
   maxPoints: number,
+  seriesInputAnomalies: M3_3HvH3InputAnomalyV1[] = [],
 ): M3_3HvH3MethodTrendSeriesV1 {
   const sorted = sortTrendPoints(trendPoints);
   const sourceCandidateCount = sorted.reduce((n, p) => n + p.sourceCandidateCount, 0);
@@ -246,6 +325,10 @@ function buildMethodSeries(
   if (identity.method === PROVIDER_METHOD) {
     primaryTrendEligible = false;
   }
+  if (seriesInputAnomalies.length > 0 && identity.method === M3_METHOD) {
+    scientificTrendEligible = false;
+    primaryTrendEligible = false;
+  }
 
   return {
     contractVersion: M3_3_HV_H3_METHOD_TREND_V1,
@@ -283,6 +366,7 @@ function buildMethodSeries(
     primaryTrendEligible,
     trendDirectionConclusion: null,
     degradationConclusion: null,
+    ...(seriesInputAnomalies.length > 0 ? { seriesInputAnomalies } : {}),
   };
 }
 
@@ -302,16 +386,30 @@ export function buildM3_3HvH3LongitudinalTrendReportV1(
   input: M3_3HvH3BuildInput,
 ): M3_3HvH3LongitudinalTrendReportV1 {
   const h2 = input.h2Report;
-  const maxPoints = Math.min(
-    input.maxPointsPerSeries ?? M3_3_HV_H3_MAX_POINTS_PER_SERIES_DEFAULT,
-    M3_3_HV_H3_MAX_POINTS_PER_SERIES_HARD,
-  );
+  const maxPoints = resolveM3_3HvH3MaxPointsPerSeries(input.maxPointsPerSeries);
 
   const sourceCompleteness: M3_3HvH3SourceCompleteness = h2.truncated
     ? 'TRUNCATED'
     : 'COMPLETE_WITHIN_H2_CONTRACT';
 
-  const fitCandidates = h2.candidates.filter(isH3FitCandidate);
+  const inputAnomalies: M3_3HvH3InputAnomalyV1[] = [];
+
+  const fitCandidates: M3_3HvH2LongitudinalInputCandidateV1[] = [];
+  for (const c of h2.candidates) {
+    if (!isH3FitCandidate(c)) continue;
+    const contract = validateM3_3HvH3CandidateInputContract(c, h2);
+    if (!contract.ok) {
+      inputAnomalies.push({
+        code: contract.code,
+        method: c.method,
+        lifecycleSegmentId: c.lifecycleSegmentId,
+        sessionId: c.sessionId ?? undefined,
+        detail: contract.detail,
+      });
+      continue;
+    }
+    fitCandidates.push(c);
+  }
 
   const seriesGroups = new Map<string, RawGroup>();
   for (const c of fitCandidates) {
@@ -337,17 +435,26 @@ export function buildM3_3HvH3LongitudinalTrendReportV1(
 
   for (const group of seriesGroups.values()) {
     let points: M3_3HvH3TrendPointV1[] = [];
+    let seriesAnomalies: M3_3HvH3InputAnomalyV1[] = [];
     if (group.identity.method === M2_METHOD) {
       points = buildM2SessionPoints(group);
     } else if (group.identity.method === M3_METHOD) {
-      points = buildDirectSessionPoints(group, M3_METHOD);
+      const m3Built = buildM3SessionPoints(group, inputAnomalies);
+      points = m3Built.points;
+      seriesAnomalies = m3Built.seriesAnomalies;
     } else if (group.identity.method === PROVIDER_METHOD) {
       points = buildDirectSessionPoints(group, PROVIDER_METHOD);
     } else {
       continue;
     }
 
-    const series = buildMethodSeries(group.identity, points, sourceCompleteness, maxPoints);
+    const series = buildMethodSeries(
+      group.identity,
+      points,
+      sourceCompleteness,
+      maxPoints,
+      seriesAnomalies,
+    );
     const segList = seriesBySegment.get(group.identity.lifecycleSegmentId) ?? [];
     segList.push(series);
     seriesBySegment.set(group.identity.lifecycleSegmentId, segList);
@@ -384,10 +491,11 @@ export function buildM3_3HvH3LongitudinalTrendReportV1(
     sourceH2Truncated: h2.truncated,
     estimatorVersion: M3_3_HV_H3_ESTIMATOR_VERSION,
     exposureAxis: M3_3_HV_H3_EXPOSURE_AXIS,
-    exposureAxisAudit: buildM3_3HvH3ExposureAxisAuditV1(),
+    exposureAxisAudit: buildM3_3HvH3ExposureAxisAuditV1(h2.truncated),
     lifecycleSegments,
     validationContext: buildValidationContext(h2),
     methodAgreementDiagnostics,
+    inputAnomalies,
     legacyDerivedContext: [
       {
         kind: 'SHADOW_ROLLING_MEDIAN',

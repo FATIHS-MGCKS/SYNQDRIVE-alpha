@@ -113,6 +113,7 @@ export interface M3_3HvH3MethodTrendSeriesV1 {
   primaryTrendEligible: boolean;
   trendDirectionConclusion: null;
   degradationConclusion: null;
+  seriesInputAnomalies?: M3_3HvH3InputAnomalyV1[];
 }
 
 export interface M3_3HvH3LifecycleSegmentTrendsV1 {
@@ -138,10 +139,19 @@ export interface M3_3HvH3MethodAgreementSessionV1 {
 }
 
 export interface M3_3HvH3MethodAgreementDiagnosticsV1 {
+  relativeDifferenceReference: typeof import('./m3-3-hv-h3.constants').M3_3_HV_H3_RELATIVE_DIFFERENCE_REFERENCE;
   pairedSessionCount: number;
   sessions: M3_3HvH3MethodAgreementSessionV1[];
   medianAbsoluteDifferenceKwh: number | null;
   medianRelativeDifferenceRatio: number | null;
+}
+
+export interface M3_3HvH3InputAnomalyV1 {
+  code: string;
+  method?: string;
+  lifecycleSegmentId?: string;
+  sessionId?: string;
+  detail?: string;
 }
 
 export interface M3_3HvH3LongitudinalTrendReportV1 {
@@ -159,6 +169,7 @@ export interface M3_3HvH3LongitudinalTrendReportV1 {
   lifecycleSegments: M3_3HvH3LifecycleSegmentTrendsV1[];
   validationContext: M3_3HvH3ValidationContextV1[];
   methodAgreementDiagnostics: M3_3HvH3MethodAgreementDiagnosticsV1;
+  inputAnomalies: M3_3HvH3InputAnomalyV1[];
   legacyDerivedContext: { kind: string; note: string }[];
   sourceCompleteness: M3_3HvH3SourceCompleteness;
   methodIdentityRequired: true;

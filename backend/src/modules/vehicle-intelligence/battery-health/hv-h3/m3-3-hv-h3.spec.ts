@@ -7,12 +7,19 @@ import {
   CROSS_PROVIDER_POOLING_DEFAULT,
   M3_3_HV_H3_ESTIMATOR_VERSION,
   M3_3_HV_H3_EXPOSURE_AXIS,
+  M3_3_HV_H3_INPUT_ANOMALY_CODES,
   M3_3_HV_H3_LONGITUDINAL_TREND_REPORT_V1,
   M3_3_HV_H3_MAX_POINTS_PER_SERIES_HARD,
+  M3_3_HV_H3_RELATIVE_DIFFERENCE_REFERENCE,
   METHOD_IDENTITY_REQUIRED,
 } from './m3-3-hv-h3.constants';
 import { buildM3_3HvH3LongitudinalTrendReportV1 } from './m3-3-hv-h3-series-builder';
 import { computeTheilSenMedianPairwiseSlopeV1 } from './m3-3-hv-h3-theil-sen';
+import {
+  M3_3HvH3InvalidMaxPointsError,
+  resolveM3_3HvH3MaxPointsPerSeries,
+} from './m3-3-hv-h3-report-bounds.util';
+import { detectHvM3MethodConflict } from '../hv-capacity-shadow/hv-capacity-m3.policy';
 
 const orgId = '11111111-1111-4111-8111-111111111111';
 const vehId = '22222222-2222-4222-8222-222222222222';
@@ -231,6 +238,19 @@ describe('M3.3-HV-H3 truncation', () => {
     );
     expect(m2?.scientificTrendEligible).toBe(false);
   });
+
+  it('propagates H2 truncation to calendar exposure lifecycleComplete=false', () => {
+    const report = buildM3_3HvH3LongitudinalTrendReportV1({
+      h2Report: h2Report([], { truncated: true }),
+    });
+    expect(report.exposureAxisAudit.calendarTime.lifecycleComplete).toBe(false);
+    expect(report.exposureAxisAudit.calendarTime.h3V1Used).toBe(true);
+  });
+
+  it('allows calendar lifecycleComplete when H2 not truncated', () => {
+    const report = buildM3_3HvH3LongitudinalTrendReportV1({ h2Report: h2Report([]) });
+    expect(report.exposureAxisAudit.calendarTime.lifecycleComplete).toBe(true);
+  });
 });
 
 describe('M3.3-HV-H3 GT validation context', () => {
@@ -312,6 +332,328 @@ describe('M3.3-HV-H3 stale history', () => {
       (s) => s.method === 'M2_CURRENT_ENERGY_SOC',
     );
     expect(m2?.pointCount).toBe(2);
+  });
+});
+
+describe('M3.3-HV-H3 Theil-Sen edge cases', () => {
+  it('reports insufficient for one point', () => {
+    const r = computeTheilSenMedianPairwiseSlopeV1([
+      { xDays: 0, y: 10, observedAtIso: '2026-01-01T00:00:00.000Z' },
+    ]);
+    expect(r.trendAvailability).toBe('INSUFFICIENT_DISTINCT_TIMEPOINTS');
+  });
+
+  it('reports insufficient when all points share timestamp (zero-delta pairs excluded)', () => {
+    const r = computeTheilSenMedianPairwiseSlopeV1([
+      { xDays: 0, y: 10, observedAtIso: '2026-01-01T00:00:00.000Z' },
+      { xDays: 0, y: 11, observedAtIso: '2026-01-01T00:00:00.000Z' },
+    ]);
+    expect(r.pairwiseSlopeCount).toBe(0);
+    expect(r.trendAvailability).toBe('INSUFFICIENT_DISTINCT_TIMEPOINTS');
+  });
+
+  it('allows two-point slope', () => {
+    const r = computeTheilSenMedianPairwiseSlopeV1([
+      { xDays: 0, y: 10, observedAtIso: '2026-01-01T00:00:00.000Z' },
+      { xDays: 5, y: 9, observedAtIso: '2026-01-06T00:00:00.000Z' },
+    ]);
+    expect(r.trendAvailability).toBe('DESCRIPTIVE_SLOPE_AVAILABLE');
+    expect(r.pairwiseSlopeCount).toBe(1);
+  });
+});
+
+describe('M3.3-HV-H3 M2 slope isolation from M3', () => {
+  it('M3 series does not change M2 Theil-Sen slope', () => {
+    const s1 = randomUUID();
+    const s2 = randomUUID();
+    const m2Only = buildM3_3HvH3LongitudinalTrendReportV1({
+      h2Report: h2Report([
+        eligibleCandidate({
+          method: 'M2_CURRENT_ENERGY_SOC',
+          sessionId: s1,
+          numericValue: 60,
+          observedAt: '2026-01-01T00:00:00.000Z',
+        }),
+        eligibleCandidate({
+          method: 'M2_CURRENT_ENERGY_SOC',
+          sessionId: s2,
+          numericValue: 58,
+          observedAt: '2026-02-01T00:00:00.000Z',
+        }),
+      ]),
+    });
+    const withM3 = buildM3_3HvH3LongitudinalTrendReportV1({
+      h2Report: h2Report([
+        eligibleCandidate({
+          method: 'M2_CURRENT_ENERGY_SOC',
+          sessionId: s1,
+          numericValue: 60,
+          observedAt: '2026-01-01T00:00:00.000Z',
+        }),
+        eligibleCandidate({
+          method: 'M2_CURRENT_ENERGY_SOC',
+          sessionId: s2,
+          numericValue: 58,
+          observedAt: '2026-02-01T00:00:00.000Z',
+        }),
+        eligibleCandidate({
+          method: 'M3_ADDED_ENERGY_DELTA_SOC',
+          sessionId: s1,
+          numericValue: 59,
+          observedAt: '2026-01-01T12:00:00.000Z',
+          quality: BatteryMeasurementQuality.VALID_PROXY,
+        }),
+      ]),
+    });
+    const m2OnlySeries = m2Only.lifecycleSegments[0]!.methodSeries.find(
+      (s) => s.method === 'M2_CURRENT_ENERGY_SOC',
+    );
+    const m2WithM3Series = withM3.lifecycleSegments[0]!.methodSeries.find(
+      (s) => s.method === 'M2_CURRENT_ENERGY_SOC',
+    );
+    expect(m2WithM3Series?.trendSlopePerDay).toBe(m2OnlySeries?.trendSlopePerDay);
+  });
+});
+
+describe('M3.3-HV-H3 lifecycle pooling', () => {
+  it('never pools pre/post replacement M2 into one series partition', () => {
+    const sidPre = randomUUID();
+    const sidPost = randomUUID();
+    const report = buildM3_3HvH3LongitudinalTrendReportV1({
+      h2Report: h2Report([
+        eligibleCandidate({
+          method: 'M2_CURRENT_ENERGY_SOC',
+          lifecycleSegmentId: 'HV_SEGMENT_0',
+          sessionId: sidPre,
+          numericValue: 60,
+          observedAt: '2025-06-01T00:00:00.000Z',
+        }),
+        eligibleCandidate({
+          method: 'M2_CURRENT_ENERGY_SOC',
+          lifecycleSegmentId: 'HV_SEGMENT_1',
+          sessionId: sidPost,
+          numericValue: 75,
+          observedAt: '2026-06-01T00:00:00.000Z',
+        }),
+      ], {
+        lifecycleSegments: [
+          { lifecycleSegmentId: 'HV_SEGMENT_0', segmentIndex: 0, replacementBoundaryEffectiveAt: null },
+          { lifecycleSegmentId: 'HV_SEGMENT_1', segmentIndex: 1, replacementBoundaryEffectiveAt: '2026-01-01T00:00:00.000Z' },
+        ],
+      }),
+    });
+    const m2Series = report.lifecycleSegments.flatMap((s) =>
+      s.methodSeries.filter((m) => m.method === 'M2_CURRENT_ENERGY_SOC'),
+    );
+    expect(m2Series).toHaveLength(2);
+    expect(new Set(m2Series.map((s) => s.lifecycleSegmentId)).size).toBe(2);
+  });
+});
+
+describe('M3.3-HV-H3 H2 ineligible exclusion', () => {
+  it('excludes ineligible H2 candidates from fit', () => {
+    const report = buildM3_3HvH3LongitudinalTrendReportV1({
+      h2Report: h2Report([
+        eligibleCandidate({
+          method: 'M2_CURRENT_ENERGY_SOC',
+          sessionId: randomUUID(),
+          numericValue: 55,
+          observedAt: '2026-05-01T00:00:00.000Z',
+          eligibility: 'ineligible',
+        }),
+        eligibleCandidate({
+          method: 'M2_CURRENT_ENERGY_SOC',
+          sessionId: randomUUID(),
+          numericValue: 54,
+          observedAt: '2026-06-01T00:00:00.000Z',
+        }),
+        eligibleCandidate({
+          method: 'M2_CURRENT_ENERGY_SOC',
+          sessionId: randomUUID(),
+          numericValue: 53,
+          observedAt: '2026-07-01T00:00:00.000Z',
+        }),
+      ]),
+    });
+    const m2 = report.lifecycleSegments[0]!.methodSeries.find(
+      (s) => s.method === 'M2_CURRENT_ENERGY_SOC',
+    );
+    expect(m2?.pointCount).toBe(2);
+  });
+});
+
+describe('M3.3-HV-H3 malformed H2 contract', () => {
+  it('fail-closes malformed method role without trend point', () => {
+    const bad = eligibleCandidate({
+      method: 'M2_CURRENT_ENERGY_SOC',
+      sessionId: randomUUID(),
+      numericValue: 55,
+      observedAt: '2026-05-01T00:00:00.000Z',
+      methodRole: 'VALIDATION_ONLY' as never,
+    });
+    const report = buildM3_3HvH3LongitudinalTrendReportV1({ h2Report: h2Report([bad]) });
+    expect(report.inputAnomalies.some((a) => a.code === M3_3_HV_H3_INPUT_ANOMALY_CODES.MALFORMED_H2_METHOD_CONTRACT)).toBe(true);
+    expect(report.lifecycleSegments.flatMap((s) => s.methodSeries)).toHaveLength(0);
+  });
+
+  it('rejects tenant scope mismatch on candidate', () => {
+    const bad = eligibleCandidate({
+      method: 'M2_CURRENT_ENERGY_SOC',
+      organizationId: randomUUID(),
+      sessionId: randomUUID(),
+      numericValue: 55,
+      observedAt: '2026-05-01T00:00:00.000Z',
+    });
+    const report = buildM3_3HvH3LongitudinalTrendReportV1({ h2Report: h2Report([bad]) });
+    expect(report.inputAnomalies.some((a) => a.code === M3_3_HV_H3_INPUT_ANOMALY_CODES.H3_TENANT_SCOPE_MISMATCH)).toBe(true);
+  });
+});
+
+describe('M3.3-HV-H3 M3 duplicate session', () => {
+  it('fail-closes distinct M3 candidates per session (no silent median)', () => {
+    const sid = randomUUID();
+    const report = buildM3_3HvH3LongitudinalTrendReportV1({
+      h2Report: h2Report([
+        eligibleCandidate({
+          method: 'M3_ADDED_ENERGY_DELTA_SOC',
+          sessionId: sid,
+          numericValue: 55,
+          observedAt: '2026-05-01T00:00:00.000Z',
+          quality: BatteryMeasurementQuality.VALID_PROXY,
+        }),
+        eligibleCandidate({
+          method: 'M3_ADDED_ENERGY_DELTA_SOC',
+          sessionId: sid,
+          numericValue: 56,
+          observedAt: '2026-05-01T01:00:00.000Z',
+          quality: BatteryMeasurementQuality.VALID_PROXY,
+        }),
+      ]),
+    });
+    const m3 = report.lifecycleSegments[0]!.methodSeries.find(
+      (s) => s.method === 'M3_ADDED_ENERGY_DELTA_SOC',
+    );
+    expect(m3?.trendPoints.filter((p) => p.sessionId === sid)).toHaveLength(0);
+    expect(
+      report.inputAnomalies.some(
+        (a) => a.code === M3_3_HV_H3_INPUT_ANOMALY_CODES.DUPLICATE_M3_SESSION_EVIDENCE,
+      ),
+    ).toBe(true);
+    expect(m3?.seriesInputAnomalies?.[0]?.code).toBe(
+      M3_3_HV_H3_INPUT_ANOMALY_CODES.DUPLICATE_M3_SESSION_EVIDENCE,
+    );
+  });
+});
+
+describe('M3.3-HV-H3 fingerprint order', () => {
+  it('produces identical report regardless of candidate insertion order', () => {
+    const c1 = eligibleCandidate({
+      method: 'M2_CURRENT_ENERGY_SOC',
+      sessionId: randomUUID(),
+      numericValue: 55,
+      observedAt: '2026-05-01T00:00:00.000Z',
+    });
+    const c2 = eligibleCandidate({
+      method: 'M2_CURRENT_ENERGY_SOC',
+      sessionId: randomUUID(),
+      numericValue: 54,
+      observedAt: '2026-06-01T00:00:00.000Z',
+    });
+    const a = buildM3_3HvH3LongitudinalTrendReportV1({ h2Report: h2Report([c1, c2]) });
+    const b = buildM3_3HvH3LongitudinalTrendReportV1({ h2Report: h2Report([c2, c1]) });
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b));
+  });
+});
+
+describe('M3.3-HV-H3 method agreement ratio parity', () => {
+  it('matches detectHvM3MethodConflict deviationRatio denominator (M2 median)', () => {
+    const sid = randomUUID();
+    const m2Val = 55;
+    const m3Val = 50;
+    const report = buildM3_3HvH3LongitudinalTrendReportV1({
+      h2Report: h2Report([
+        eligibleCandidate({
+          method: 'M2_CURRENT_ENERGY_SOC',
+          sessionId: sid,
+          numericValue: m2Val,
+          observedAt: '2026-05-01T00:00:00.000Z',
+        }),
+        eligibleCandidate({
+          method: 'M2_CURRENT_ENERGY_SOC',
+          sessionId: randomUUID(),
+          numericValue: 54,
+          observedAt: '2026-06-01T00:00:00.000Z',
+        }),
+        eligibleCandidate({
+          method: 'M3_ADDED_ENERGY_DELTA_SOC',
+          sessionId: sid,
+          numericValue: m3Val,
+          observedAt: '2026-05-01T00:00:00.000Z',
+          quality: BatteryMeasurementQuality.VALID_PROXY,
+        }),
+      ]),
+    });
+    expect(report.methodAgreementDiagnostics.relativeDifferenceReference).toBe(
+      M3_3_HV_H3_RELATIVE_DIFFERENCE_REFERENCE,
+    );
+    const sessionDiag = report.methodAgreementDiagnostics.sessions.find(
+      (s) => s.sessionId === sid,
+    );
+    const conflict = detectHvM3MethodConflict({
+      m3CapacityKwh: m3Val,
+      m2MedianCapacityKwh: m2Val,
+    });
+    expect(sessionDiag?.relativeDifferenceRatio).toBeCloseTo(conflict.deviationRatio!, 10);
+  });
+});
+
+describe('M3.3-HV-H3 maxPointsPerSeries bounds', () => {
+  it('rejects zero and negative maxPointsPerSeries', () => {
+    expect(() => resolveM3_3HvH3MaxPointsPerSeries(0)).toThrow(M3_3HvH3InvalidMaxPointsError);
+    expect(() => resolveM3_3HvH3MaxPointsPerSeries(-1)).toThrow(M3_3HvH3InvalidMaxPointsError);
+  });
+
+  it('clamps HARD+1 to hard max', () => {
+    expect(resolveM3_3HvH3MaxPointsPerSeries(M3_3_HV_H3_MAX_POINTS_PER_SERIES_HARD + 1)).toBe(
+      M3_3_HV_H3_MAX_POINTS_PER_SERIES_HARD,
+    );
+  });
+});
+
+describe('M3.3-HV-H3 equal session weight', () => {
+  it('weights multiple M2 sessions equally (one median point each)', () => {
+    const heavySession = randomUUID();
+    const lightSession = randomUUID();
+    const report = buildM3_3HvH3LongitudinalTrendReportV1({
+      h2Report: h2Report([
+        ...Array.from({ length: 10 }, (_, i) =>
+          eligibleCandidate({
+            method: 'M2_CURRENT_ENERGY_SOC',
+            sessionId: heavySession,
+            numericValue: 50 + i * 0.01,
+            observedAt: `2026-01-${String(i + 1).padStart(2, '0')}T00:00:00.000Z`,
+          }),
+        ),
+        eligibleCandidate({
+          method: 'M2_CURRENT_ENERGY_SOC',
+          sessionId: lightSession,
+          numericValue: 40,
+          observedAt: '2026-06-01T00:00:00.000Z',
+        }),
+        eligibleCandidate({
+          method: 'M2_CURRENT_ENERGY_SOC',
+          sessionId: randomUUID(),
+          numericValue: 39,
+          observedAt: '2026-07-01T00:00:00.000Z',
+        }),
+      ]),
+    });
+    const m2 = report.lifecycleSegments[0]!.methodSeries.find(
+      (s) => s.method === 'M2_CURRENT_ENERGY_SOC',
+    );
+    expect(m2?.pointCount).toBe(3);
+    expect(m2?.trendPoints.find((p) => p.sessionId === heavySession)?.sourceCandidateCount).toBe(10);
+    expect(m2?.trendPoints.find((p) => p.sessionId === lightSession)?.sourceCandidateCount).toBe(1);
   });
 });
 

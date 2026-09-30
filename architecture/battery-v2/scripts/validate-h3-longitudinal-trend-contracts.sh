@@ -38,6 +38,18 @@ grep -q 'CALENDAR_TIME' "$HV_H3/m3-3-hv-h3.constants.ts" \
   || fail "H3 V1 exposure axis must be CALENDAR_TIME"
 grep -q 'validationContext' "$HV_H3/m3-3-hv-h3-series-builder.ts" \
   || fail "GT validation context must be preserved separately from fit points"
+grep -q 'validateM3_3HvH3CandidateInputContract' "$HV_H3/m3-3-hv-h3-input-contract.util.ts" \
+  || fail "H3 must validate H2 method contracts at boundary"
+grep -q 'DUPLICATE_M3_SESSION_EVIDENCE' "$HV_H3/m3-3-hv-h3.constants.ts" \
+  || fail "M3 duplicate session anomaly code required"
+grep -q 'M3_3_HV_H3_RELATIVE_DIFFERENCE_REFERENCE' "$HV_H3/m3-3-hv-h3.constants.ts" \
+  || fail "relative difference reference must be declared"
+grep -q 'resolveM3_3HvH3MaxPointsPerSeries' "$HV_H3/m3-3-hv-h3-report-bounds.util.ts" \
+  || fail "maxPointsPerSeries bounds validation required"
+grep -q 'buildM3_3HvH3ExposureAxisAuditV1(h2.truncated)' "$HV_H3/m3-3-hv-h3-series-builder.ts" \
+  || fail "exposure audit must propagate H2 truncation"
+grep -q 'inputAnomalies' "$HV_H3/m3-3-hv-h3-series-builder.ts" \
+  || fail "H3 report must surface input anomalies"
 
 if grep -rq 'hv-h3' "$APP_MODULE" 2>/dev/null; then
   fail "hv-h3 must not be registered in app.module.ts (H3_AUTOMATIC_RUNTIME_REACHABLE=NO)"

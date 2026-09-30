@@ -1,14 +1,20 @@
 import type { M3_3HvH3ExposureAxisAuditV1 } from './m3-3-hv-h3.types';
 
-/** Static audit — fields may exist in code/DB but are not durable H3 V1 longitudinal axes. */
-export function buildM3_3HvH3ExposureAxisAuditV1(): M3_3HvH3ExposureAxisAuditV1 {
+/** Static audit — calendar lifecycle completeness reflects H2 truncation. */
+export function buildM3_3HvH3ExposureAxisAuditV1(
+  h2Truncated: boolean,
+): M3_3HvH3ExposureAxisAuditV1 {
+  const calendarReason = h2Truncated
+    ? 'H2 source history is bounded/truncated; calendar-time ordering is available but lifecycle completeness is not asserted for H3 V1'
+    : 'H2 observation timestamps provide calendar-time ordering for descriptive Theil–Sen V1 within the H2 contract';
+
   return {
     calendarTime: {
       availability: 'AVAILABLE',
       durableAuthority: true,
-      lifecycleComplete: true,
+      lifecycleComplete: !h2Truncated,
       h3V1Used: true,
-      reason: 'H2 observation timestamps provide calendar-time ordering for descriptive Theil–Sen V1',
+      reason: calendarReason,
       source: 'M3_3HvH2LongitudinalInputCandidateV1.observedAt',
     },
     odometer: {

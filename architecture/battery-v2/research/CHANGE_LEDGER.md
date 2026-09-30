@@ -22,6 +22,29 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-30 — M3.3-HV-H3 final scientific hardening (PR #1860)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | H3 V1 with postgres CI path bug; thin postgres fixtures; silent M3 duplicate-session median; static calendar lifecycle completeness; M3-relative ratio denominator |
+| **OBSERVATION** | Authority claims require real DB fixtures, fail-closed malformed H2 input, and parity with existing M3 conflict ratio semantics |
+| **HYPOTHESIS** | Boundary validation + duplicate-session anomalies + truncated exposure audit preserve H3 scientific boundaries without schema/runtime changes |
+| **CHANGE** | Postgres CI aligned with H2; expanded postgres integration; input contract util; M3 duplicate fail-closed; maxPoints rejection; method agreement M2 denominator; exposure audit contextual |
+| **WHY** | Final hardening gate before downstream calibration work |
+| **EXPECTED_EFFECT** | Deterministic H3 reports with explicit input anomalies and CI-green postgres coverage |
+| **VALIDATION** | hv-h3 unit/postgres; hv-h1/hv-h2 regression; validate-h3 contracts |
+| **OBSERVED_EFFECT** | Pending exact-head CI |
+| **NON_EFFECTS** | No schema, migrations, automatic H3 runtime, customer publication, or LV evaluator reuse |
+| **REGRESSIONS_OR_TRADEOFFS** | Ambiguous duplicate-session M3 excluded from fit (intentional) |
+| **REMAINING_GAPS** | Non-calendar exposure axes unchanged |
+| **DECISION_STATUS** | EXPERIMENTAL |
+| **AFFECTED_GRAPH** | BAT-V2-AUTH-H3-001 |
+| **EVIDENCE** | PR #1860 hardening matrix |
+
+---
+
 ## CL-2026-09-30 — M3.3-HV-H3 descriptive longitudinal trend V1
 
 | Field | Value |

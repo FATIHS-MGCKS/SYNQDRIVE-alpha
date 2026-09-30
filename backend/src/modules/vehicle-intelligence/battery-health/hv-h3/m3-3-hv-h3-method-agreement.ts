@@ -1,3 +1,4 @@
+import { M3_3_HV_H3_RELATIVE_DIFFERENCE_REFERENCE } from './m3-3-hv-h3.constants';
 import type {
   M3_3HvH3LifecycleSegmentTrendsV1,
   M3_3HvH3MethodAgreementDiagnosticsV1,
@@ -33,8 +34,9 @@ export function buildM3_3HvH3MethodAgreementDiagnosticsV1(
       const m2Val = m2BySession.get(m3Point.sessionId);
       if (m2Val == null) continue;
       const m3Val = m3Point.numericValue;
-      const absDiff = Math.abs(m2Val - m3Val);
-      const rel = m3Val !== 0 ? absDiff / Math.abs(m3Val) : null;
+      const absDiff = Math.abs(m3Val - m2Val);
+      const rel =
+        m2Val > 0 ? absDiff / Math.abs(m2Val) : null;
       sessions.push({
         sessionId: m3Point.sessionId,
         lifecycleSegmentId: seg.lifecycleSegmentId,
@@ -54,6 +56,7 @@ export function buildM3_3HvH3MethodAgreementDiagnosticsV1(
     .filter((v): v is number => v != null && Number.isFinite(v));
 
   return {
+    relativeDifferenceReference: M3_3_HV_H3_RELATIVE_DIFFERENCE_REFERENCE,
     pairedSessionCount: sessions.length,
     sessions,
     medianAbsoluteDifferenceKwh: median(absDiffs),
