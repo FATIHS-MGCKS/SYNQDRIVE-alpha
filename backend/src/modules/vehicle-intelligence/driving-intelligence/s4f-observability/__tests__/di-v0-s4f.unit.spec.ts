@@ -54,13 +54,14 @@ describe('DI V0 S4F unit', () => {
     expect(r.replayDeserializerGate).toBe('UNKNOWN');
     expect(r.snapshotRehashGate).toBe('UNKNOWN');
     expect(r.providerBackpressureGate).toBe('UNKNOWN');
+    expect(r.providerGlobalBudgetEnabledGate).toBe('UNKNOWN');
     expect(r.locationRetentionGovernanceGate).toBe('UNKNOWN');
     expect(r.explicitOperatorAuthorizationGate).toBe('UNKNOWN');
   });
 
   it('F17 provider backpressure OPEN => NOT_READY', () => {
     const audit = auditDiV0S4ProviderBackpressure();
-    expect(audit.gapStatus).toBe('OPEN_CONFIRMED');
+    expect(audit.gapStatus).toBe('CLOSED');
     const r = evaluateDiV0S4fTinyActivationReadiness({
       replayDeserializerGap: 'CLOSED',
       snapshotRehashVerification: 'IMPLEMENTED',
@@ -100,6 +101,7 @@ describe('DI V0 S4F unit', () => {
       replayDeserializerGap: 'CLOSED',
       snapshotRehashVerification: 'IMPLEMENTED',
       providerBackpressureGap: 'CLOSED',
+      providerGlobalBudgetEnabled: 'ENABLED',
       locationRetentionGovernanceNote: 'PRESENT',
       explicitOperatorAuthorization: 'GRANTED',
     });

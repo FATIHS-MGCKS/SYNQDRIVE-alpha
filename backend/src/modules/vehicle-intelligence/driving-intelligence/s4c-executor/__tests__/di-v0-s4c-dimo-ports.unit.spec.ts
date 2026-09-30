@@ -1,4 +1,4 @@
-import { buildDiV0S4cDimoAcquisitionPorts } from '../di-v0-s4c-dimo-ports';
+import { buildDiV0S4cDimoAcquisitionPorts, DI_V0_S4C_DIMO_REQUEST_CONTEXT } from '../di-v0-s4c-dimo-ports';
 
 jest.mock('@modules/dimo/provider-budget/dimo-request-context', () => ({
   runWithDimoRequestContext: jest.fn(async (_meta: unknown, fn: () => Promise<unknown>) => fn()),
@@ -14,7 +14,7 @@ describe('buildDiV0S4cDimoAcquisitionPorts', () => {
     });
     await ports.runDimo({ category: 'POST_TRIP_ENRICHMENT', priority: 'BACKGROUND' }, async () => 'ok');
     expect(runWithDimoRequestContext).toHaveBeenCalledWith(
-      { category: 'POST_TRIP_ENRICHMENT', priority: 'BACKGROUND' },
+      DI_V0_S4C_DIMO_REQUEST_CONTEXT,
       expect.any(Function),
     );
   });

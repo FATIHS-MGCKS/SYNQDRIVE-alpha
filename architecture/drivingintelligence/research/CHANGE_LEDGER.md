@@ -1306,3 +1306,31 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | H1 full S3A→S4C→T07 unit proofs; H2 scan watermark cursor; H3 query-only read DB + audit; H4 operational index audit (no migration) |
 | NON_EFFECTS | No activation, no provider gap closure, no retry semantic change |
 | Evidence | `EXP021_S4F1_OBSERVABILITY_RECONCILIATION.md` H1–H4 section |
+
+### EXP-021 S4F-2 — provider backpressure certification (2026-09-30)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | Tiny activation gate `DI-GAP-S4-PROVIDER-BACKPRESSURE-001:CLOSED` on main @ `60f925b2c` |
+| CHANGE | Real Redis two-replica budget certification; S4C frozen DIMO context (no bypass inheritance); `providerGlobalBudgetEnabled` activation evidence |
+| NON_EFFECTS | No S4 activation, no deploy, no production provider calls, no AppModule registration |
+| Evidence | `EXP021_S4F2_PROVIDER_BACKPRESSURE_CLOSURE.md` |
+
+### EXP-021 S4F-2 remediation — certification defects (2026-09-30, PR #1855)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | Independent review: invalid lease test config, PB01/PB11 saturation composition, cooldown vs reserved-slot authority |
+| CHANGE | `globalLeaseMs≥5000` + real wait; 3 BACKGROUND + 1 HIGH global cap tests; PB27–29 cooldown priority behavior; contract `globalCircuitBreaker.status=CLOSURE_CANDIDATE`; `globalProviderCooldown` block |
+| AUTHORITY | P1.3 acquire step 2 — global cooldown before priority; no separate cooldown-priority activation gap opened |
+| Gap | `DI-GAP-S4-PROVIDER-BACKPRESSURE-001` → **CLOSURE_CANDIDATE** (Tiny Activation requires **CLOSED**) |
+
+### EXP-021 S4F-2 final closure seal (2026-09-30, PR #1855)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | Remote Redis certification PASS on pre-seal head `e5902f89a` (S4A run 36735099353; 10/10 Redis); deterministic S4E2-A1; i18n authority approval run 36740380917 |
+| CHANGE | Promote `DI-GAP-S4-PROVIDER-BACKPRESSURE-001` to **CLOSED** in certification marker, `s4a-contract.v2.json`, graph, `CURRENT_STATE.md`, evidence |
+| NON_EFFECTS | No S4 runtime activation; no deploy; `productionLoadCertification` remains NOT_CLAIMED; Tiny Activation NOT_READY without global budget + operator auth |
+| Main sync | Merge `7744e3983` into PR branch; `package.json` preserves main + provider-budget scripts |
+| Gap | **CLOSED** |

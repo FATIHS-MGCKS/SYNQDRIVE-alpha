@@ -5,6 +5,7 @@ export type DiV0S4fGateState = 'SATISFIED' | 'NOT_SATISFIED' | 'UNKNOWN';
 export type DiV0S4fReplayDeserializerEvidence = 'CLOSED' | 'OPEN' | 'UNKNOWN';
 export type DiV0S4fSnapshotRehashEvidence = 'IMPLEMENTED' | 'NOT_IMPLEMENTED' | 'UNKNOWN';
 export type DiV0S4fProviderBackpressureEvidence = 'CLOSED' | 'OPEN' | 'UNKNOWN';
+export type DiV0S4fProviderGlobalBudgetEnabledEvidence = 'ENABLED' | 'DISABLED' | 'UNKNOWN';
 export type DiV0S4fLocationRetentionGovernanceEvidence = 'PRESENT' | 'ABSENT' | 'UNKNOWN';
 export type DiV0S4fOperatorAuthorizationEvidence = 'GRANTED' | 'DENIED' | 'UNKNOWN';
 
@@ -13,6 +14,7 @@ export interface DiV0S4fTinyActivationGateEvidence {
   replayDeserializerGap?: DiV0S4fReplayDeserializerEvidence;
   snapshotRehashVerification?: DiV0S4fSnapshotRehashEvidence;
   providerBackpressureGap?: DiV0S4fProviderBackpressureEvidence;
+  providerGlobalBudgetEnabled?: DiV0S4fProviderGlobalBudgetEnabledEvidence;
   locationRetentionGovernanceNote?: DiV0S4fLocationRetentionGovernanceEvidence;
   explicitOperatorAuthorization?: DiV0S4fOperatorAuthorizationEvidence;
 }
@@ -30,6 +32,7 @@ export interface DiV0S4fActivationReadinessResult {
   replayDeserializerGate: DiV0S4fGateState;
   snapshotRehashGate: DiV0S4fGateState;
   providerBackpressureGate: DiV0S4fGateState;
+  providerGlobalBudgetEnabledGate: DiV0S4fGateState;
   locationRetentionGovernanceGate: DiV0S4fGateState;
   explicitOperatorAuthorizationGate: DiV0S4fGateState;
   finalState: 'READY' | 'NOT_READY';
@@ -42,6 +45,7 @@ export function evaluateDiV0S4fTinyActivationReadiness(
   const replayDeserializerGate = triStateToGate(evidence.replayDeserializerGap, 'CLOSED');
   const snapshotRehashGate = triStateToGate(evidence.snapshotRehashVerification, 'IMPLEMENTED');
   const providerBackpressureGate = triStateToGate(evidence.providerBackpressureGap, 'CLOSED');
+  const providerGlobalBudgetEnabledGate = triStateToGate(evidence.providerGlobalBudgetEnabled, 'ENABLED');
   const locationRetentionGovernanceGate = triStateToGate(evidence.locationRetentionGovernanceNote, 'PRESENT');
   const explicitOperatorAuthorizationGate = triStateToGate(evidence.explicitOperatorAuthorization, 'GRANTED');
 
@@ -49,6 +53,7 @@ export function evaluateDiV0S4fTinyActivationReadiness(
     replayDeserializerGate,
     snapshotRehashGate,
     providerBackpressureGate,
+    providerGlobalBudgetEnabledGate,
     locationRetentionGovernanceGate,
     explicitOperatorAuthorizationGate,
   ];
@@ -60,6 +65,7 @@ export function evaluateDiV0S4fTinyActivationReadiness(
     replayDeserializerGate,
     snapshotRehashGate,
     providerBackpressureGate,
+    providerGlobalBudgetEnabledGate,
     locationRetentionGovernanceGate,
     explicitOperatorAuthorizationGate,
     finalState,
@@ -72,6 +78,7 @@ export function frozenTinyActivationGateKeys(): readonly string[] {
     'replayDeserializerGate',
     'snapshotRehashGate',
     'providerBackpressureGate',
+    'providerGlobalBudgetEnabledGate',
     'locationRetentionGovernanceGate',
     'explicitOperatorAuthorizationGate',
   ];
