@@ -1,6 +1,6 @@
 # Vehicle Onboarding — Authority Boundaries (Provisional)
 
-**Status:** `PROPOSED` — VO-0B bootstrap. Becomes normative when promoted with `AUTHORITY_ACTIVE` and validated decisions.
+**Status:** `PROPOSED` — VO-0B bootstrap; **VO-1 target contract** in [TARGET_ARCHITECTURE.md](../TARGET_ARCHITECTURE.md) (`VO-DEC-1-001` VALIDATED at architecture layer). Becomes normative when promoted with `AUTHORITY_ACTIVE` and production validation.
 
 **Anchor SHA:** `312d9f54a2b4c0b0740061d3e2b74897e78eacb0`
 
@@ -87,7 +87,18 @@
 
 **Owns:** billable quantity policy, assignments, Stripe semantics.
 
-**Onboarding may:** call `BillingQuantityVehicleIntegration` on provision/remove — must not define billable rules.
+**Onboarding may:** persist **`vehicle.activated`** / **`vehicle.offboarded`** in **transactional outbox** (same DB tx as registry change); Billing consumes **idempotently** post-commit — must not define billable rules.
+
+---
+
+## VO-1 target clarifications (non-runtime)
+
+| Topic | Boundary |
+|-------|----------|
+| Registry lifecycle | VO owns `registryLifecycle` (ACTIVE/OFFBOARDED/ARCHIVED on Vehicle); onboarding phase on **OnboardingCase** — not `VehicleStatus` |
+| OnboardingCase | VO owns resumable case; providers own mirrors |
+| Connectivity | VDC owns freshness; VO owns registry vs link semantics only |
+| Offboarding | VO defines OFFBOARD/ARCHIVE; hard-delete exceptional |
 
 ---
 

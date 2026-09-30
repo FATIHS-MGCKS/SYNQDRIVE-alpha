@@ -207,3 +207,53 @@ nodes:
     summary: Hard delete Vehicle; DimoVehicle retained.
     source_paths:
       - architecture/vehicle-onboarding/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: VO-DEC-1-001
+    type: decision
+    title: VO-1 canonical onboarding contract
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: TARGET_ARCHITECTURE; OnboardingCase; registry lifecycle; provider-neutral snapshot.
+    source_paths:
+      - architecture/vehicle-onboarding/decisions/DECISION_REGISTER.md
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+    evidence:
+      - VO-EVID-1-001
+
+  - id: VO-EVID-1-001
+    type: evidence
+    title: VO-1 target architecture package
+    source_type: ARCHITECTURE_DOCUMENT
+    epistemic_status: CONFIRMED
+    summary: TARGET_ARCHITECTURE and VO1 question resolutions at main 265168d3.
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+      - architecture/vehicle-onboarding/research/VO1_QUESTION_RESOLUTIONS.md
+
+  - id: VO-STATE-REGISTRY-001
+    type: state
+    title: Registry lifecycle states
+    epistemic_status: INFERRED
+    summary: Vehicle ACTIVE OFFBOARDED ARCHIVED only; onboarding on OnboardingCase.
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+
+  - id: VO-DEC-1-002
+    type: decision
+    title: VO-1.1 consistency seal
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: No pre-activation Vehicle; candidate suppression; transfer fail-closed; outbox facts.
+    source_paths:
+      - architecture/vehicle-onboarding/decisions/DECISION_REGISTER.md
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
+    evidence:
+      - VO-EVID-1-001
+
+  - id: VO-PERSIST-CASE-001
+    type: persist
+    title: OnboardingCase (target)
+    epistemic_status: INFERRED
+    summary: Durable onboarding session; not implemented VO-1.
+    source_paths:
+      - architecture/vehicle-onboarding/TARGET_ARCHITECTURE.md
