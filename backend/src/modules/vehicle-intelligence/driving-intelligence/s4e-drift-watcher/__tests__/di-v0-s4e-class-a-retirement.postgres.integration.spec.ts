@@ -16,7 +16,9 @@ import {
   s4aIntervals,
   s4aManifestFor,
   seedS4aTenant,
+  settle,
   setKillState,
+  waitForControlRowLockWaiter,
   type S4aTenant,
 } from '../../s4a-foundation/__tests__/di-v0-s4a-postgres-harness';
 import { DiV0S4MaintenanceService } from '../di-v0-s4e-maintenance.service';
@@ -97,16 +99,67 @@ assertS4aPostgresCiEnv();
   it('S4E2-A1 T11 wins registry lock first — retirement waits, no durable PENDING successor', async () => {
     const t = await tenant();
     const config = s4aConfigFor(tenants);
-    const { r, created, pvk } = await primary(t, config);
+    const { created, pvk } = await primary(t, config);
     await changeTripBoundary(admin, t.tripId);
-    await Promise.all([
-      r.supersedeOnDrift({ workItemId: created.workItemId, reason: 'BOUNDARY_CHANGED' }),
-      r.retirePipelineVersion({ pipelineVersionKey: pvk, retiredBy: 'S4E2_A1', retiredReason: 'TEST' }),
-    ]);
-    await assertClassA(pvk);
-  }, 60_000);
 
-  it('S4E2-A2 retirement wins first — T11 creates no successor', async () => {
+    const connectionA = newS4aClient();
+    const connectionB = newS4aClient();
+    const observer = newS4aClient();
+    const repoA = new DiV0S4WorkItemRepository(connectionA, config);
+    const repoB = new DiV0S4WorkItemRepository(connectionB, config);
+
+    let retireOutcome!: ReturnType<typeof settle<{ supersededWorkItemIds: string[] }>>;
+    try {
+      await connectionA.$transaction(
+        async (txA) => {
+          // Match repository lock order: control row, then pipeline registry (T11/T12).
+          await txA.$queryRaw`SELECT kill_state FROM di_v0_s4_control WHERE id = 'GLOBAL' FOR UPDATE`;
+          await txA.$queryRaw`
+            SELECT status FROM di_v0_s4_pipeline_versions
+            WHERE pipeline_version_key = ${pvk} FOR UPDATE`;
+
+          retireOutcome = settle(
+            connectionB.$transaction((txB) =>
+              repoB.retirePipelineVersion(
+                { pipelineVersionKey: pvk, retiredBy: 'S4E2_A1', retiredReason: 'TEST' },
+                txB,
+              ),
+            ),
+          );
+
+          await waitForControlRowLockWaiter(observer);
+
+          const preT11 = await txA.$queryRaw<Array<{ status: string }>>`
+            SELECT status::text AS status FROM di_v0_s4_work_items WHERE id = ${created.workItemId}`;
+          expect(preT11[0]?.status).toBe('PENDING');
+
+          const t11 = await repoA.supersedeOnDrift(
+            { workItemId: created.workItemId, reason: 'BOUNDARY_CHANGED' },
+            txA,
+          );
+          expect(t11.successorWorkItemId).toBeTruthy();
+          expect(await registryStatus(pvk)).toBe('ACTIVE');
+        },
+        { timeout: 60_000, maxWait: 15_000 },
+      );
+
+      const retired = await retireOutcome;
+      if (!retired.ok) {
+        const detail = retired.error instanceof DiV0S4TransitionRejectedError
+          ? `${retired.error.code}:${retired.error.message}`
+          : String(retired.error);
+        throw new Error(`retirePipelineVersion failed after T11-first interleave: ${detail}`);
+      }
+
+      await assertClassA(pvk);
+    } finally {
+      await connectionA.$disconnect().catch(() => undefined);
+      await connectionB.$disconnect().catch(() => undefined);
+      await observer.$disconnect().catch(() => undefined);
+    }
+  }, 90_000);
+
+  it('S4E2-A2 retirement wins first — T11 rejected fail-closed', async () => {
     const t = await tenant();
     const config = s4aConfigFor(tenants);
     const { r, created, pvk } = await primary(t, config);
@@ -114,7 +167,10 @@ assertS4aPostgresCiEnv();
     await r.retirePipelineVersion({ pipelineVersionKey: pvk, retiredBy: 'S4E2_A2', retiredReason: 'TEST' });
     await expect(
       r.supersedeOnDrift({ workItemId: created.workItemId, reason: 'BOUNDARY_CHANGED' }),
-    ).rejects.toThrow(DiV0S4TransitionRejectedError);
+    ).rejects.toMatchObject({
+      name: 'DiV0S4TransitionRejectedError',
+      code: 'ILLEGAL_SOURCE_STATE',
+    } satisfies Partial<DiV0S4TransitionRejectedError>);
     await assertClassA(pvk);
   }, 60_000);
 
