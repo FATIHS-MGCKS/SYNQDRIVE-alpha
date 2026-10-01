@@ -625,6 +625,45 @@ async function activationCounts(prisma: PrismaClient, orgId: string, caseId: str
     expect(row.concurrencyToken).not.toBe(t0);
   });
 
+  it('SOURCE_ATTACH_SEAL_RACE_SAFE attach-first then seal stale token', async () => {
+    const { adoption, capture, caseService } = fullHarness(prisma);
+    const orgId = await createOrg(prisma);
+    const dimoId = randomUUID();
+    const hmId = randomUUID();
+    const vin = `VIN${randomUUID().replace(/-/g, '').slice(0, 14)}`;
+    await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 8)}`, vin);
+    await createHm(prisma, hmId, orgId, vin);
+    const caseRow = await caseService.openOrResumeFromDimo(dimoOnboardingActor(orgId), dimoId);
+    const t0 = caseRow.concurrencyToken!;
+    const attachStarted = deferred<void>();
+    const releaseAttach = deferred<void>();
+    setSourceAdoptionMutationTestCoordinator({
+      onAttachLocksAcquired: async () => attachStarted.resolve(),
+      beforeAttachCommit: async () => releaseAttach.promise,
+    });
+    const attachPromise = adoption.attachProviderSource({
+      organizationId: orgId,
+      caseId: caseRow.id,
+      actorUserId: null,
+      provider: 'HIGH_MOBILITY',
+      sourceMirrorId: hmId,
+      expectedConcurrencyToken: t0,
+    });
+    await attachStarted.promise;
+    const sealPromise = capture.sealReadiness({
+      organizationId: orgId,
+      caseId: caseRow.id,
+      selectedProduct: ProductSlug.RENTAL,
+      actorUserId: null,
+      expectedConcurrencyToken: t0,
+    });
+    releaseAttach.resolve();
+    const outcomes = await Promise.allSettled([attachPromise, sealPromise]);
+    setSourceAdoptionMutationTestCoordinator(null);
+    expect(outcomes[1]?.status).toBe('rejected');
+    expect((outcomes[1] as PromiseRejectedResult).reason.code).toBe('ONBOARDING_CONCURRENCY_CONFLICT');
+  });
+
   it('SOURCE_ATTACH_SEAL_RACE_SAFE seal-first then attach stale token', async () => {
     const { adoption, capture, caseService, readinessService } = fullHarness(prisma);
     const orgId = await createOrg(prisma);
