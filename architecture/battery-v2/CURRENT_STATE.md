@@ -1,7 +1,7 @@
 # Battery V2 — Current State Snapshot
 
 **Snapshot date:** 2026-09-30 (M3.3-H0 domain separation seal PASS; M3.3G G4 infra @ `1dd422403`; D3 sustained ON; E3 **OFF**; **0 natural GT**)
-**Graph:** 154 nodes / 151 edges / 11 invariants (validated 2026-10-01; +BAT-V2-AUTH-H0-001, +BAT-V2-AUTH-H1-001, +BAT-V2-AUTH-H2-001, +BAT-V2-AUTH-H3-001, +BAT-V2-AUTH-H4-001)
+**Graph:** 155 nodes / 152 edges / 11 invariants (validated 2026-10-01; +BAT-V2-AUTH-H4-A2-001)
 **Knowledge maturity:** Phase 4 planning complete — 20 open gaps; 1 PROPOSED decision (`BAT-V2-DEC-PH4-LV-PUB-CHAIN-001`); 5 VALIDATED PKG spec decisions (D1, D2, D3, D4, D5)
 
 ## M3.1 corrected Stage-2 activation (LIVE since `2026-09-05T23:36:12Z`)
@@ -94,7 +94,7 @@
 | **M3.3-HV-H1 evidence foundation** | **CONTRACTS + READ_ONLY_REPORT** @ `2026-09-30` — `research/M3_3_HV_H1_PROVIDER_CAPABILITY_EVIDENCE_FOUNDATION_2026-09-30.md`; `backend/.../hv-h1/*`; CLI `battery:hv-h1:evidence-readiness-report`; validator `validate-h1-provider-evidence-contracts.sh`; **H1_RUNTIME_REACHABLE=NO** |
 | **M3.3-HV-H2 longitudinal input** | **READ_ONLY_BUILDER + REPORT** @ `2026-09-30` — `research/M3_3_HV_H2_LONGITUDINAL_INPUT_CONSTRUCTION_2026-09-30.md`; `backend/.../hv-h2/*`; CLI `battery:hv-h2:longitudinal-input-report`; CI `battery-v2-hv-h2-ci.yml`; **H2_AUTOMATIC_RUNTIME=NO**; no materialized table |
 | **M3.3-HV-H3 descriptive trend** | **READ_ONLY_COMPOSITION** @ `2026-09-30` — `research/M3_3_HV_H3_LONGITUDINAL_TREND_CHARACTERIZATION_2026-09-30.md`; `backend/.../hv-h3/*`; CLI `battery:hv-h3:trend-report`; CI `battery-v2-hv-h3-ci.yml`; **H3_AUTOMATIC_RUNTIME=NO**; calendar-time Theil–Sen only; **PR #1860 hardening** (input contract, M3 duplicate fail-closed, postgres fixtures, exposure truncation); **not** validated degradation |
-| **M3.3-HV-H4 exposure coverage** | **READ_ONLY_AUTHORITY** @ `2026-10-01` — `backend/.../hv-h4/*`; CLI `battery:hv-h4:coverage-report`; **H4_AUTOMATIC_RUNTIME=NO**; source/coverage contracts only; **no cumulative exposure values**; A2 bounded throughput composition not started |
+| **M3.3-HV-H4 exposure coverage + A2 throughput** | **READ_ONLY_AUTHORITY** @ `2026-10-01` — `backend/.../hv-h4/*`; CLI `battery:hv-h4:coverage-report` + `battery:hv-h4:charge-throughput-report`; **H4_AUTOMATIC_RUNTIME=NO**; A1 source/coverage; **A2 bounded observed charge-only throughput composition V1** (no persistence/FEC/customer publication) |
 | **Post-G4 roadmap (LV/HV)** | **`M3.3-H0`** sealed; **`G4_STATUS=WAITING_FOR_FIRST_NATURAL_GT`** (async); see [`BATTERY_INTELLIGENCE_ARCHITECTURE.md`](BATTERY_INTELLIGENCE_ARCHITECTURE.md) |
 | `NEXT_PHASE` | **`M3_3_HV_H2`** (longitudinal input engineering) **∥** **`M3_3G_G4_WAIT`** **∥** **`M3_3_LV_SIGNAL_OBS`** — H1 foundation complete; **no** F6 / **no** E3 runtime |
 | `PIPELINE_HEALTH` | **PASS** (control plane / lifecycle / scheduler — distinct from evidence observability) |

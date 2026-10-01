@@ -1922,3 +1922,16 @@ nodes:
       - backend/src/modules/vehicle-intelligence/battery-health/hv-h4/
     evidence:
       - BAT-V2-EVID-CODE-ANCHOR-001
+
+  - id: BAT-V2-AUTH-H4-A2-001
+    type: authority
+    title: M3.3-HV-H4-A2 bounded observed charge-only throughput composition V1
+    epistemic_status: CONFIRMED
+    summary: >
+      Read-only per-lifecycle-segment sum of ELIGIBLE_NATIVE HvChargeSession.energyAddedKwh
+      (SEGMENT_EXTREMA provenance); gap-aware; fail-closed on truncation/overlap/conflicts;
+      not lifetime throughput, FEC, degradation, or customer publication.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-h4/m3-3-hv-h4-charge-throughput-report.builder.ts
+    evidence:
+      - BAT-V2-EVID-CODE-ANCHOR-001

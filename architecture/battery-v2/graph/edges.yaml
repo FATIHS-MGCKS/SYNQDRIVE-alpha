@@ -536,6 +536,10 @@ edges:
     relation: contributes_to
     to: BAT-V2-AUTH-H4-001
     notes: H4 exposure coverage authority follows H3 calendar descriptive layer; no H3 semantic retrofit
+  - from: BAT-V2-AUTH-H4-001
+    relation: contributes_to
+    to: BAT-V2-AUTH-H4-A2-001
+    notes: A2 bounded charge throughput composition consumes A1 coverage/source authority in one read-only transaction
   - from: BAT-V2-AUTH-H1-001
     relation: contributes_to
     to: BAT-V2-AUTH-H2-001
