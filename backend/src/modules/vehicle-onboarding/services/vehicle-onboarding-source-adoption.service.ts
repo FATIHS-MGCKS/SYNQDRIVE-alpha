@@ -31,10 +31,12 @@ import { invalidateReadinessSealIfReady } from '../readiness/readiness-invalidat
 import { readinessMutationLockKey } from '../readiness/readiness-mutation-lock';
 import { assertSourceNotCanonicallyRegistered } from '../source-adoption/canonical-source-suppression.authority';
 import {
-  assertAdoptCrossOrgClaimBlocked,
-  assertNoConflictingActiveSourceClaim,
-  findActiveOnboardingCaseHoldingMirror,
-} from '../source-adoption/global-source-claim.authority';
+  assertAttachClaimCompatible,
+  assertTargetOrganizationExistsInTransaction,
+  listActiveSourceClaimsForMirror,
+  resolveAdoptResumeCaseFromClaims,
+} from '../source-adoption/active-source-claim.authority';
+import { getSourceAdoptionMutationTestCoordinator } from '../testing/source-adoption-mutation-test-coordinator';
 import { PLATFORM_TRUSTED_SOURCE_ADOPTION } from '../source-adoption/platform-trusted-adoption.context';
 import { VehicleOnboardingSourceAdoptionAuthority } from '../source-adoption/vehicle-onboarding-source-adoption.authority';
 import type { SourceClaimProvider } from '../source-adoption/source-claim-lock';
@@ -73,8 +75,6 @@ export class VehicleOnboardingSourceAdoptionService {
     sourceMirrorId: string;
     idempotencyKey: string;
   }): Promise<VehicleOnboardingCaseProjectionDto> {
-    await this.assertTargetOrganizationExists(input.organizationId);
-
     const adoptionCtx: OnboardingActorContext = {
       organizationId: input.organizationId,
       actorUserId: input.actorUserId,
@@ -92,29 +92,29 @@ export class VehicleOnboardingSourceAdoptionService {
           sourceClaimLockKey(input.provider, input.sourceMirrorId),
         );
 
+        await assertTargetOrganizationExistsInTransaction(tx, input.organizationId);
         await assertSourceNotCanonicallyRegistered(tx, input.provider, input.sourceMirrorId);
 
-        const holder = await findActiveOnboardingCaseHoldingMirror(
+        const claims = await listActiveSourceClaimsForMirror(
           tx,
           input.provider,
           input.sourceMirrorId,
         );
-        assertAdoptCrossOrgClaimBlocked(holder, input.organizationId);
-
-        if (holder && holder.organizationId === input.organizationId) {
+        const resumeCase = resolveAdoptResumeCaseFromClaims(claims, input.organizationId);
+        if (resumeCase) {
           const byKey = await tx.vehicleOnboardingCase.findFirst({
             where: {
               organizationId: input.organizationId,
               idempotencyKey: input.idempotencyKey,
             },
           });
-          if (byKey && byKey.id !== holder.id) {
+          if (byKey && byKey.id !== resumeCase.id) {
             throw new VehicleOnboardingError(
               'IDEMPOTENCY_KEY_REUSED_FOR_DIFFERENT_REQUEST',
               'Idempotency key was already used for a different onboarding request',
             );
           }
-          caseId = holder.id;
+          caseId = resumeCase.id;
           return;
         }
 
@@ -157,10 +157,9 @@ export class VehicleOnboardingSourceAdoptionService {
     sourceMirrorId: string;
     expectedConcurrencyToken: string | null;
   }): Promise<VehicleOnboardingCaseProjectionDto> {
-    await this.assertTargetOrganizationExists(input.organizationId);
-
     let pendingAudit: PendingSourceAdoptionAudit | null = null;
     let semanticNoop = false;
+    const coordinator = getSourceAdoptionMutationTestCoordinator();
 
     await this.prisma.$transaction(
       async (tx) => {
@@ -169,15 +168,19 @@ export class VehicleOnboardingSourceAdoptionService {
           sourceClaimLockKey(input.provider, input.sourceMirrorId),
         );
         await acquirePgAdvisoryXactLock64(tx, readinessMutationLockKey(input.caseId));
+        if (coordinator?.onAttachLocksAcquired) {
+          await coordinator.onAttachLocksAcquired();
+        }
 
+        await assertTargetOrganizationExistsInTransaction(tx, input.organizationId);
         await assertSourceNotCanonicallyRegistered(tx, input.provider, input.sourceMirrorId);
 
-        const holder = await findActiveOnboardingCaseHoldingMirror(
+        const claims = await listActiveSourceClaimsForMirror(
           tx,
           input.provider,
           input.sourceMirrorId,
         );
-        assertNoConflictingActiveSourceClaim(holder, input.organizationId, input.caseId);
+        assertAttachClaimCompatible(claims, input.organizationId, input.caseId);
 
         const caseRow = await tx.vehicleOnboardingCase.findFirst({
           where: { id: input.caseId, organizationId: input.organizationId },
@@ -202,13 +205,10 @@ export class VehicleOnboardingSourceAdoptionService {
         );
         const scopeKey = scopeKeyFromConnectionScope(snapshot.connectionScope);
 
-        const existingSemantic = caseRow.sourceRefs.find(
-          (ref) =>
-            ref.provider === snapshot.providerType &&
-            ref.connectionScopeKey === scopeKey &&
-            ref.externalVehicleIdentity === snapshot.externalVehicleIdentity,
+        const existingSameMirror = caseRow.sourceRefs.find(
+          (ref) => ref.provider === input.provider && ref.sourceMirrorId === input.sourceMirrorId,
         );
-        if (existingSemantic) {
+        if (existingSameMirror) {
           semanticNoop = true;
           return;
         }
@@ -256,6 +256,10 @@ export class VehicleOnboardingSourceAdoptionService {
 
         const sourceMode: OnboardingCaseSourceMode =
           caseRow.sourceMode === snapshot.providerType ? caseRow.sourceMode : 'COMPOSITE';
+
+        if (coordinator?.beforeAttachCommit) {
+          await coordinator.beforeAttachCommit();
+        }
 
         await tx.vehicleOnboardingCase.update({
           where: { id: caseRow.id },
@@ -349,16 +353,6 @@ export class VehicleOnboardingSourceAdoptionService {
       adoption,
     );
     return buildHmOnboardingSourceSnapshot(hm, organizationId);
-  }
-
-  private async assertTargetOrganizationExists(organizationId: string): Promise<void> {
-    const org = await this.prisma.organization.findUnique({
-      where: { id: organizationId },
-      select: { id: true },
-    });
-    if (!org) {
-      throw new VehicleOnboardingError('CASE_NOT_FOUND', 'Onboarding target organization not found');
-    }
   }
 
   private async loadCaseProjection(

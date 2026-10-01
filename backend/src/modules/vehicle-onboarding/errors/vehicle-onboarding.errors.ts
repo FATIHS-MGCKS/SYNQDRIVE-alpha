@@ -28,7 +28,8 @@ export type VehicleOnboardingErrorCode =
   | 'INVALID_CAPTURE_PAYLOAD'
   | 'STATION_SCOPE_MISMATCH'
   | 'SOURCE_ALREADY_CLAIMED'
-  | 'SOURCE_ALREADY_REGISTERED';
+  | 'SOURCE_ALREADY_REGISTERED'
+  | 'SOURCE_CLAIM_INTEGRITY_CONFLICT';
 
 export class VehicleOnboardingError extends Error {
   constructor(

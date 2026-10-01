@@ -275,8 +275,10 @@ function adoptionHarness(prisma: PrismaClient) {
     const orgId = await createOrg(prisma);
     const dimoId = randomUUID();
     const hmId = randomUUID();
-    await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 8)}`, 'VINAAAAAAAAAAAAAA');
-    await createHm(prisma, hmId, orgId, 'VINBBBBBBBBBBBBBB');
+    const vinA = `VINA${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+    const vinB = `VINB${randomUUID().replace(/-/g, '').slice(0, 12)}`;
+    await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 8)}`, vinA);
+    await createHm(prisma, hmId, orgId, vinB);
     const caseRow = await caseService.openOrResumeFromDimo(dimoOnboardingActor(orgId), dimoId);
     await expect(
       adoption.attachProviderSource({

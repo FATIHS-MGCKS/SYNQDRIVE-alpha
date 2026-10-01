@@ -28,7 +28,16 @@ Guards: `RolesGuard`, `MasterAdminMfaGuard`, `@Roles('MASTER_ADMIN')`, `@Require
 - **No provider network calls** during adopt/attach (mirrors only).
 - **No Vehicle materialization** on adopt/attach.
 
+## VO-4.9.1 integrity closure
+
+- **Primary resume only:** adopt resumes an active case only when `provider` + `sourceMirrorId` is attached as **primary** with consistent case primary metadata; secondary-only claims → `SOURCE_ALREADY_CLAIMED`.
+- **Multi-holder fail-closed:** more than one active case holding the same mirror → `SOURCE_CLAIM_INTEGRITY_CONFLICT` (409).
+- **Same-mirror attach:** identity keyed by `provider` + `sourceMirrorId` (not external identity drift); semantic no-op preserves token/readiness.
+- **Org validation** inside source-claim transaction (TOCTOU-safe).
+- **Activation revalidation:** before any canonical `Vehicle` write, current DIMO/HM mirror state re-checked (DB only); HM secondary clearance revalidated at activation.
+- **Proof suites:** `vo49-source-adoption-integrity.postgres.integration.spec.ts`
+
 ## Tests
 
 - `npm run test:vehicle-onboarding:vo49:postgres`
-- Unit: `source-adoption-request.validation.unit.spec.ts`, `source-adoption.authority.unit.spec.ts`
+- Unit: `source-adoption-request.validation.unit.spec.ts`, `source-adoption.authority.unit.spec.ts`, `vehicle-onboarding-source-adoption.controller.http-boundary.spec.ts`

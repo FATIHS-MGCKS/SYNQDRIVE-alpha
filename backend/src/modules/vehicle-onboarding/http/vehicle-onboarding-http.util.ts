@@ -26,6 +26,7 @@ export function toVehicleOnboardingHttpException(error: unknown): HttpException 
     case 'TERMINAL_CASE_IDEMPOTENCY':
     case 'SOURCE_ALREADY_CLAIMED':
     case 'SOURCE_ALREADY_REGISTERED':
+    case 'SOURCE_CLAIM_INTEGRITY_CONFLICT':
     case 'IDENTITY_REVIEW_REQUIRED':
     case 'SOURCE_SET_REQUIRES_REVIEW':
     case 'PRIMARY_SOURCE_CONFLICT':

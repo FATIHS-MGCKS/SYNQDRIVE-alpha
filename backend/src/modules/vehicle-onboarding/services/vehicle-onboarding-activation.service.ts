@@ -34,6 +34,7 @@ import {
   logActivationSuccess,
 } from './vehicle-onboarding-observability';
 import { materializeTechnicalBaselineInActivationTx } from './technical-baseline-materialization';
+import { assertCurrentProviderSourcesValidForActivation } from '../source-adoption/activation-current-source-revalidation';
 
 /** Integration-test fault injection only (not used in production HTTP). */
 export type Vo3ActivationFaultStage =
@@ -131,6 +132,12 @@ export class VehicleOnboardingActivationService {
         const { dimoRefs, hmRefs } = assertSupportedActivationSourceSet(caseRow.sourceRefs);
         const dimoRef = dimoRefs[0] ?? null;
         const hmRef = hmRefs[0] ?? null;
+
+        await assertCurrentProviderSourcesValidForActivation(
+          tx,
+          input.organizationId,
+          caseRow.sourceRefs,
+        );
 
         const fields = resolveActivationVehicleFields(canonicalIdentity, adminDraft);
 
