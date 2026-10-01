@@ -1,5 +1,10 @@
 # KG-EED Changelog
 
+## 2026-10-01 — OQ-014 R1 identity + cross-version authority foundation (EED-EV-0105)
+
+- Unwired backend foundations: physical identity v1, cross-version compatibility registry, post-authority transition types, `VERSIONED_TERMINAL_CONFLICT` contract, settled F3 activation parser types
+- Legacy F2 identity/matcher/service/runtime **unchanged**; no numeric Production caps; no settled F3 activation
+
 ## 2026-10-01 — OQ-014 fleet calibration + settled locality evidence (EED-EV-0104)
 
 - Read-only Production forensics: **14** canonical physical events (**13** positive-labeled, **1** suspect)
