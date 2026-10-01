@@ -24,6 +24,28 @@ describe('VehicleOnboardingProviderCandidateController HTTP boundary', () => {
     );
   });
 
+  it('rejects legacy raw UUID cursor', async () => {
+    await expect(
+      controller.listCandidates(orgId, undefined, undefined, randomUUID()),
+    ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    expect(service.listProviderCandidates).not.toHaveBeenCalled();
+  });
+
+  it('rejects combined cursor when provider filter is DIMO', async () => {
+    const combined = Buffer.from(
+      JSON.stringify({
+        v: 1,
+        m: 'COMBINED',
+        p: 'DIMO',
+        i: randomUUID(),
+      }),
+      'utf8',
+    ).toString('base64url');
+    await expect(controller.listCandidates(orgId, 'DIMO', undefined, combined)).rejects.toBeInstanceOf(
+      UnprocessableEntityException,
+    );
+  });
+
   it('delegates valid query', async () => {
     service.listProviderCandidates.mockResolvedValue({ items: [], nextCursor: null });
     await controller.listCandidates(orgId, 'DIMO', '25');

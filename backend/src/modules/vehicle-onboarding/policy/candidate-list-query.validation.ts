@@ -2,14 +2,15 @@ import { VehicleOnboardingError } from '../errors/vehicle-onboarding.errors';
 import { parseSourceAdoptionProvider } from './source-adoption-request.validation';
 import type { SourceClaimProvider } from '../source-adoption/source-claim-lock';
 import { parseListLimitQueryString } from './capture-request.validation';
-
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+import {
+  decodeProviderCandidateListCursor,
+  type ProviderCandidateListCursor,
+} from './provider-candidate-list.cursor';
 
 export type ValidatedCandidateListQuery = {
   provider?: SourceClaimProvider;
   limit: number;
-  cursor?: string;
+  cursor?: ProviderCandidateListCursor;
 };
 
 export function parseCandidateListQuery(input: {
@@ -25,10 +26,7 @@ export function parseCandidateListQuery(input: {
     out.limit = parseListLimitQueryString(input.limit);
   }
   if (input.cursor !== undefined && input.cursor !== '') {
-    if (!UUID_RE.test(input.cursor)) {
-      throw new VehicleOnboardingError('INVALID_CAPTURE_PAYLOAD', 'Invalid cursor');
-    }
-    out.cursor = input.cursor;
+    out.cursor = decodeProviderCandidateListCursor(input.cursor, out.provider);
   }
   return out;
 }

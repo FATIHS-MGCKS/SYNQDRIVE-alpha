@@ -9,6 +9,10 @@ import { dimoOnboardingActor } from './testing/vehicle-onboarding-test.harness';
 import { ensureOrganizationProductEntitlement } from './testing/org-product-test.harness';
 import { createVo4ReadinessTestHarness } from './testing/vo4-readiness-test.harness';
 import { DEFAULT_TENANT_SOURCE_ADOPTION } from './source-adoption/source-adoption.context';
+import { parseCandidateListQuery } from './policy/candidate-list-query.validation';
+import { buildDimoOnboardingSourceSnapshot } from './adapters/dimo-onboarding-source.adapter';
+import { DIMO_PLATFORM_DEVELOPER_LICENSE_SCOPE } from './adapters/connection-scope.constants';
+import { ONBOARDING_SOURCE_SNAPSHOT_VERSION } from './contracts/vo-document-versions';
 
 const run = process.env.VO410_PROVIDER_CANDIDATE_PG === '1' || process.env.VO49_SOURCE_ADOPTION_PG === '1';
 
@@ -57,11 +61,8 @@ async function findDimoCandidate(
 ) {
   let cursor: string | undefined;
   for (let page = 0; page < 200; page++) {
-    const list = await candidateService(prisma).listProviderCandidates(orgId, {
-      provider: 'DIMO',
-      limit: 50,
-      cursor,
-    });
+    const query = parseCandidateListQuery({ provider: 'DIMO', limit: '50', cursor });
+    const list = await candidateService(prisma).listProviderCandidates(orgId, query);
     const hit = list.items.find((c) => c.sourceMirrorId === dimoId);
     if (hit) {
       return hit;
@@ -72,6 +73,34 @@ async function findDimoCandidate(
     cursor = list.nextCursor;
   }
   return undefined;
+}
+
+async function collectAllCandidates(
+  prisma: PrismaClient,
+  orgId: string,
+  opts: { provider?: 'DIMO' | 'HIGH_MOBILITY'; limit: number },
+) {
+  const order: string[] = [];
+  const counts = new Map<string, number>();
+  let cursor: string | undefined;
+  for (let page = 0; page < 500; page++) {
+    const query = parseCandidateListQuery({
+      provider: opts.provider,
+      limit: String(opts.limit),
+      cursor,
+    });
+    const list = await candidateService(prisma).listProviderCandidates(orgId, query);
+    for (const item of list.items) {
+      const key = `${item.provider}:${item.sourceMirrorId}`;
+      order.push(key);
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    if (!list.nextCursor) {
+      return { order, counts, pages: page + 1 };
+    }
+    cursor = list.nextCursor;
+  }
+  throw new Error('pagination did not terminate');
 }
 
 (run ? describe : describe.skip)('VO-4.10 provider candidates (PostgreSQL)', () => {
@@ -87,15 +116,10 @@ async function findDimoCandidate(
     const dimoId = randomUUID();
     await createDimo(prisma, dimoId, `ext-${dimoId.slice(0, 8)}`);
     const beforeCases = await prisma.vehicleOnboardingCase.count();
-    const list = await candidateService(prisma).listProviderCandidates(orgId, {
-      provider: 'DIMO',
-      limit: 50,
-    });
-    expect(list.items.some((c) => c.sourceMirrorId === dimoId && c.disposition === 'AVAILABLE')).toBe(
-      true,
-    );
+    const hit = await findDimoCandidate(prisma, orgId, dimoId);
+    expect(hit?.disposition).toBe('AVAILABLE');
     expect(await prisma.vehicleOnboardingCase.count()).toBe(beforeCases);
-    expect(JSON.stringify(list)).not.toMatch(/rawJson|snapshotMetadata/);
+    expect(JSON.stringify(hit)).not.toMatch(/rawJson|snapshotMetadata/);
   });
 
   it('DIMO same-target primary → RESUMABLE', async () => {
@@ -104,11 +128,7 @@ async function findDimoCandidate(
     const dimoId = randomUUID();
     await createDimo(prisma, dimoId, `ext-${dimoId.slice(0, 8)}`);
     const caseRow = await harness.caseService.openOrResumeFromDimo(dimoOnboardingActor(orgId), dimoId);
-    const list = await candidateService(prisma).listProviderCandidates(orgId, {
-      provider: 'DIMO',
-      limit: 50,
-    });
-    const hit = list.items.find((c) => c.sourceMirrorId === dimoId);
+    const hit = await findDimoCandidate(prisma, orgId, dimoId);
     expect(hit?.disposition).toBe('RESUMABLE');
     expect(hit?.resumableCaseId).toBe(caseRow.id);
   });
@@ -303,11 +323,136 @@ async function findDimoCandidate(
     const dimoB = randomUUID();
     await createDimo(prisma, dimoA, `ext-a-${dimoA.slice(0, 6)}`);
     await createDimo(prisma, dimoB, `ext-b-${dimoB.slice(0, 6)}`);
-    const list = await candidateService(prisma).listProviderCandidates(orgId, {
-      limit: 100,
-    });
+    const list = await candidateService(prisma).listProviderCandidates(
+      orgId,
+      parseCandidateListQuery({ limit: '100' }),
+    );
     const keys = list.items.map((c) => `${c.provider}:${c.sourceMirrorId}`);
     const sorted = [...keys].sort((a, b) => a.localeCompare(b));
     expect(keys).toEqual(sorted);
+  });
+
+  it('VO-4.10.1 combined pagination: DIMO→HM boundary (lexical UUID trap)', async () => {
+    const orgId = await createOrg(prisma);
+    const dimoHigh = `ffffffff-ffff-4fff-8fff-${randomUUID().slice(24)}`;
+    const hmLow = `00000000-0000-4000-8000-${randomUUID().slice(24)}`;
+    await createDimo(prisma, dimoHigh, `ext-high-${randomUUID().slice(0, 8)}`);
+    await createHm(prisma, hmLow, orgId, `HM${randomUUID().replace(/-/g, '').slice(0, 14)}`);
+    const { order, counts } = await collectAllCandidates(prisma, orgId, { limit: 1 });
+    const dimoKey = `DIMO:${dimoHigh}`;
+    const hmKey = `HIGH_MOBILITY:${hmLow}`;
+    expect(counts.get(dimoKey)).toBe(1);
+    expect(counts.get(hmKey)).toBe(1);
+    expect(order.indexOf(dimoKey)).toBeLessThan(order.indexOf(hmKey));
+  });
+
+  it('VO-4.10.1 suppression-heavy scan pagination (batch size 50)', async () => {
+    const orgId = await createOrg(prisma);
+    const visibleA = randomUUID();
+    const visibleB = randomUUID();
+    for (let i = 0; i < 50; i++) {
+      const id = randomUUID();
+      await createDimo(prisma, id, `ext-sup-${randomUUID().slice(0, 8)}`);
+      const vehicleId = randomUUID();
+      await prisma.$executeRaw`
+        INSERT INTO vehicles (id, organization_id, vin, make, model, year, fuel_type, dimo_vehicle_id, created_at, updated_at)
+        VALUES (${vehicleId}, ${orgId}, ${`VIN${randomUUID().replace(/-/g, '').slice(0, 14)}`}, 'Audi', 'A3', 2021, 'GASOLINE'::"FuelType", ${id}, NOW(), NOW())
+      `;
+    }
+    await createDimo(prisma, visibleA, `ext-visible-a-${visibleA.slice(0, 6)}`);
+    await createDimo(prisma, visibleB, `ext-visible-b-${visibleB.slice(0, 6)}`);
+    const { counts } = await collectAllCandidates(prisma, orgId, {
+      provider: 'DIMO',
+      limit: 1,
+    });
+    expect(counts.get(`DIMO:${visibleA}`)).toBe(1);
+    expect(counts.get(`DIMO:${visibleB}`)).toBe(1);
+    for (const [, n] of counts) {
+      expect(n).toBe(1);
+    }
+  });
+
+  it('VO-4.10.1 provider-filtered DIMO pagination', async () => {
+    const orgId = await createOrg(prisma);
+    const ids = [randomUUID(), randomUUID(), randomUUID()].sort();
+    for (const id of ids) {
+      await createDimo(prisma, id, `ext-${id.slice(0, 8)}`);
+    }
+    const { order, counts } = await collectAllCandidates(prisma, orgId, { provider: 'DIMO', limit: 1 });
+    for (const id of ids) {
+      expect(counts.get(`DIMO:${id}`)).toBe(1);
+    }
+    const ours = order.filter((k) => ids.some((id) => k === `DIMO:${id}`));
+    expect(ours).toEqual(ids.map((id) => `DIMO:${id}`));
+  });
+
+  it('VO-4.10.1 provider-filtered HM pagination', async () => {
+    const orgId = await createOrg(prisma);
+    const ids = [randomUUID(), randomUUID()].sort();
+    for (const id of ids) {
+      await createHm(prisma, id, orgId, `HM${id.slice(0, 8)}`);
+    }
+    const { order, counts } = await collectAllCandidates(prisma, orgId, {
+      provider: 'HIGH_MOBILITY',
+      limit: 1,
+    });
+    const ours = order.filter((k) => ids.some((id) => k === `HIGH_MOBILITY:${id}`));
+    expect(ours).toEqual(ids.map((id) => `HIGH_MOBILITY:${id}`));
+    for (const id of ids) {
+      expect(counts.get(`HIGH_MOBILITY:${id}`)).toBe(1);
+    }
+  });
+
+  it('VO-4.10.1 multi-holder corruption: mirror omitted for all orgs (postgres)', async () => {
+    const orgA = await createOrg(prisma);
+    const orgB = await createOrg(prisma);
+    const dimoId = randomUUID();
+    await createDimo(prisma, dimoId, `ext-${dimoId.slice(0, 8)}`);
+    const snap = buildDimoOnboardingSourceSnapshot({
+      id: dimoId,
+      externalId: `ext-${dimoId.slice(0, 8)}`,
+      vin: null,
+      make: 'Audi',
+      model: 'A3',
+      year: 2021,
+      fuelType: 'GASOLINE',
+      updatedAt: new Date(),
+    });
+    const scopeKey = DIMO_PLATFORM_DEVELOPER_LICENSE_SCOPE ?? '';
+    for (const [orgId, caseId] of [[orgA, randomUUID()], [orgB, randomUUID()]] as const) {
+      await prisma.vehicleOnboardingCase.create({
+        data: {
+          id: caseId,
+          organizationId: orgId,
+          sourceMode: 'DIMO',
+          status: 'OPEN',
+          primarySourceProvider: 'DIMO',
+          primarySourceScopeKey: scopeKey,
+          primarySourceExternalId: snap.externalVehicleIdentity,
+          idempotencyKey: randomUUID(),
+          concurrencyToken: randomUUID(),
+          sourceRefs: {
+            create: {
+              id: randomUUID(),
+              provider: 'DIMO',
+              connectionScope: DIMO_PLATFORM_DEVELOPER_LICENSE_SCOPE,
+              connectionScopeKey: scopeKey,
+              externalVehicleIdentity: snap.externalVehicleIdentity,
+              sourceMirrorId: dimoId,
+              isPrimary: true,
+              snapshotMetadataJson: snap as unknown as Prisma.InputJsonValue,
+              snapshotMetadataVersion: ONBOARDING_SOURCE_SNAPSHOT_VERSION,
+            },
+          },
+        },
+      });
+    }
+    const beforeCases = await prisma.vehicleOnboardingCase.count();
+    for (const [queryOrg, foreignOrg] of [[orgA, orgB], [orgB, orgA]] as const) {
+      const { order } = await collectAllCandidates(prisma, queryOrg, { limit: 50 });
+      expect(order.some((k) => k === `DIMO:${dimoId}`)).toBe(false);
+      expect(JSON.stringify(order)).not.toContain(foreignOrg);
+    }
+    expect(await prisma.vehicleOnboardingCase.count()).toBe(beforeCases);
   });
 });

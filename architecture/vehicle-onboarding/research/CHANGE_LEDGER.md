@@ -20,6 +20,7 @@
 | 2026-10-01 | **VO-4.9.1** — Primary-only adopt resume; multi-holder integrity conflict; same-mirror attach identity; org validation inside claim tx; activation-time provider revalidation; dedicated attach/capture/seal race proofs | Integrity closure only; no schema migration |
 | 2026-10-01 | **VO-4.9.2** — Activation-time DIMO/HM source snapshot identity continuity (VIN/external id/contract drift); no auto-refresh | DB mirror compare only; no schema migration |
 | 2026-10-01 | **VO-4.10** — Master Admin provider candidate discovery projection (DIMO + HM); read-only; no VehicleCandidate entity | Adoption HTTP unchanged; no legacy cutover |
+| 2026-10-01 | **VO-4.10.1** — provider-aware combined pagination cursor + postgres pagination/multi-holder integrity seal | Raw mirror UUID cursors removed; COMBINED `m/p/i` cursor; no adoption semantic change |
 
 ## VO-0B — REUSE-FIRST components (do not replace without VO-1+ proof)
 
