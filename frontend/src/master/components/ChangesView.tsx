@@ -212,6 +212,23 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-29T03:00:00.000Z',
   },
   {
+    id: 'di-exp021-s4f5-1-release-delta-preflight-2026-10-01',
+    version: '4.9.2213',
+    title: 'Driving Intelligence — EXP-021 S4F-5.1 Production release delta preflight (VO2)',
+    summary: [
+      'Read-only: 29 commits / 330 files / 2 VO2 migrations NOT_APPLIED on Production.',
+      'VO2 data preflight pass (9 vehicles, 0 orphan orgs, 0 active-link duplicate groups, 0 table collisions).',
+      'DEPLOY_READINESS=PASS for SHA 8fa531b27… via vps-deploy-release.sh (not executed).',
+    ],
+    reason: 'Seal schema/data safety before promoting main containing Vehicle Onboarding VO2 migrations.',
+    previousBehavior: 'No frozen VO2 deploy delta audit on Production.',
+    details:
+      'architecture/drivingintelligence/evidence/EXP021_S4F5_1_RELEASE_DELTA_PREFLIGHT.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-01T03:45:00.000Z',
+  },
+  {
     id: 'di-exp021-s4f5-production-preflight-2026-10-01',
     version: '4.9.2212',
     title: 'Driving Intelligence — EXP-021 S4F-5 Production preflight (DIMO global budget rollout)',
