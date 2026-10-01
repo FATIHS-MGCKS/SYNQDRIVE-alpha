@@ -58,7 +58,7 @@ postFuelAbsoluteLiters = instantaneousPeak   (deprecated as authority when settl
 
 Reference implementation (offline only):
 
-`backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-rise-detector/design/settled-post-refuel-plateau.policy.ts`
+`backend/scripts/ops/rfrf-settled-post/settled-post-refuel-plateau.policy.ts`
 
 ```
 resolveSettledPostRefuelPlateau({ series, riseEndIdx, peakIdx, preMedian, symbols })
@@ -76,9 +76,28 @@ classifySettledPostMaturity({ preMedian, settled })
 - **Stable window:** each sample within **tolerance of window median** (same robust median semantics as F3.1 `validatePlateauWindow`).
 - **Minimum samples:** `postPlateauMinSamples` (symbolic).
 - **Persistence:** `postPlateauMinPersistenceMs` (symbolic).
-- **Inter-sample gaps:** `maxSampleGapMs` (symbolic).
+- **Inter-sample gaps:** `maxSampleGapMs` (symbolic) — applies **within** an accepted settled plateau window only (existing F3 semantics).
 
-### 4.3 Relationship to pre-baseline & peak
+### 4.3 Peak→settled continuity authority (symbolic — EED-EV-0104)
+
+| Symbol | Classification | Production numeric |
+|--------|----------------|--------------------|
+| **`maxPeakToSettledContinuityGapMs`** | **SYMBOLIC_UNCALIBRATED** | **NO default; NO Production value in this ADR** |
+
+**Definition:** Maximum admissible **inter-observation discontinuity** on the evidence path from the **instantaneous rise peak** through the **start** of the authoritative settled window.
+
+**Not the same as physical settling duration.** Keep diagnostic fields distinct:
+
+| Field | Meaning |
+|-------|---------|
+| `peakToSettledStartElapsedMs` | Elapsed observation time from peak timestamp to settled-window start |
+| Observed max continuity gap (peak→settled start) | Largest inter-sample gap on that path — compared against `maxPeakToSettledContinuityGapMs` when calibrated |
+
+**Design decision (2026-10-01):** **`LOCALITY_AUTHORITY_DESIGN=SEPARATE_SYMBOLIC_AUTHORITY`**. Do **not** silently reuse `absolute.maxSampleGapMs` as the peak→settled locality authority — that symbol already expresses rise-path and within-window gap semantics; reuse would couple three calibration surfaces (rise-path gaps, settled-window internal gaps, peak→settled locality). Independent semantics, calibration, provenance, and versioning are required before runtime implementation.
+
+Offline sensitivity only (six eligible naturals): see EED-EV-0104 — all numeric locality caps labeled **OFFLINE_SENSITIVITY_ONLY**; no Production threshold selected.
+
+### 4.4 Relationship to pre-baseline & peak
 
 - **Materiality:** settled median ≥ `preMedian + materialRiseLiters`.
 - **Peak collapse bounds (symbolic, not calibrated):**
@@ -87,7 +106,7 @@ classifySettledPostMaturity({ preMedian, settled })
 - Offline replay defaults for these two fields are **`REPLAY_HYPOTHESIS_ONLY`** (`REPLAY_HYPOTHESIS_MAX_PEAK_TO_SETTLED_DROP_*` in design policy) — **not** Production constants until EED-OQ-014 closes.
 - Reject if min window value returns toward pre (`negativeWobbleLiters` guard).
 
-### 4.4 Sensor / provider behaviors
+### 4.5 Sensor / provider behaviors
 
 | Behavior | Treatment |
 |----------|-----------|
@@ -163,6 +182,37 @@ Proposed keys (evidenceMeta / qualityMeta — **no schema migration in this ADR*
 ## 8. EED-OQ-014 linkage
 
 Peak-anchored post plateau is **insufficient** for observed absolute-only overshoot-then-settle behavior. Settled-post architecture is **under design**; numeric fleet calibration **remains OPEN**. Do **not** mark OQ-014 RESOLVED.
+
+**EED-EV-0104 (2026-10-01):** Six calibration-eligible FMS naturals (3 vehicles; WOB concentration 4/6); observed drop sample bounds **not** Production caps; WOB 2026-09-19 **DELAYED_OBSERVATION** — refuel valid, settled timing **not** calibration-grade; separate symbolic `maxPeakToSettledContinuityGapMs` authority added (uncalibrated).
+
+---
+
+## 11. Phase-aware strong-regression addendum (design only — no runtime change)
+
+Future observation phases (normative design vocabulary):
+
+```
+RISING → PEAK_REACHED → SETTLING → SETTLED
+```
+
+Terminal evidence classes remain **separate** from settling phases:
+
+```
+SENSOR_RESET | TRUE_RETURN_TO_BASELINE | UNSTABLE_RISE (terminal)
+```
+
+**Mandatory invariants (future runtime must preserve):**
+
+1. Sensor-reset evidence remains **terminal**.
+2. True return toward the fresh pre-refuel baseline remains **terminal** (within existing negative-wobble semantics).
+3. A bounded post-peak decline that remains **materially above** the fresh pre-baseline **may** enter **SETTLING** in a future model; it must **not** automatically become `RISE_NOT_STABLE` solely because magnitude exceeds `negativeWobbleLiters` without phase context.
+4. **This ADR does not weaken current runtime.** Current F3 behavior stays authoritative until a separately authorized implementation PR.
+5. A terminal F3 classification may **never** be resurrected by settled-post logic (see §5.1).
+6. Peak→settled **evidence continuity** must be proven before a settled window becomes authoritative (§4.5).
+7. **Hybrid Trust v2** remains downstream and unchanged.
+8. **Alpha Option C** unchanged: absolute-only F3 READY may still carry Hybrid UNKNOWN → no automatic fallback promotion.
+
+**Structural finding (fleet sample N=6):** `EMPIRICALLY_OBSERVED_VALID_REFUEL_STRONG_REGRESSION_CONFLICT_COUNT=0`; `STRUCTURAL_CONFLICT_EXISTS_FOR_VALID_SETTLING_DROP_GT_1L=YES` — do **not** claim the fleet has proven a legitimate >1 L settling drop.
 
 ---
 

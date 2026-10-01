@@ -1,5 +1,16 @@
 # KG-EED Changelog
 
+## 2026-10-01 — OQ-014 fleet calibration + settled locality evidence (EED-EV-0104)
+
+- Read-only Production forensics: **14** canonical physical events (**13** positive-labeled, **1** suspect)
+- **6** calibration-eligible natural events across **3** vehicles (WOB L 7503 **4/6** — not independent fleet coverage)
+- Bounded DIMO recovery: **2** new FULL spines (KS MX 2024 2026-09-04, WOB L 7503 2026-09-15) in `evidence/data/`
+- WOB 2026-09-19: refuel label preserved; **DELAYED_OBSERVATION** — settled timing **not** calibration-grade (2325 s gap)
+- ADR: corrected settled-post policy path; symbolic **`maxPeakToSettledContinuityGapMs`** (uncalibrated); **SEPARATE_SYMBOLIC_AUTHORITY** for locality (do not reuse `maxSampleGapMs`)
+- Phase-aware strong-regression design addendum (no runtime change)
+- **No** Production numeric caps; **no** runtime F3 implementation
+- **OQ-014 OPEN**; **OQ-019 PARTIALLY_RESOLVED**
+
 ## 2026-09-30 — RFRF settled post-refuel F3 design + offline replay (EED-OQ-014 / OQ-019)
 
 - Human-authorized **ROBUST_SETTLED_POST_REFUEL_LEVEL** architecture (peak diagnostic; settled median authoritative)
