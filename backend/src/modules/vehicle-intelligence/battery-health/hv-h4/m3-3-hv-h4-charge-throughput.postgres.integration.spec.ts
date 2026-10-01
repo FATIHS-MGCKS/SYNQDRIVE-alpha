@@ -31,6 +31,17 @@ function nativeMeta() {
   };
 }
 
+/** Durable row timestamps knowable at historical evaluationAt (A2 knowledge-as-of). */
+function sessionRowKnowledgeAsOf(input: { startAt: Date; endAt: Date | null }) {
+  const anchor = input.endAt ?? input.startAt;
+  return {
+    createdAt: anchor,
+    receivedAt: anchor,
+    updatedAt: anchor,
+    providerObservedAt: input.endAt ?? input.startAt,
+  };
+}
+
 (integrationEnabled ? describe : describe.skip)(
   'M3.3-HV-H4-A2 charge throughput postgres',
   () => {
@@ -92,6 +103,10 @@ function nativeMeta() {
             endAt: new Date('2026-05-01T10:00:00.000Z'),
             energyAddedKwh: 12,
             idempotencyKey: `idem-pre-1-${randomUUID()}`,
+            ...sessionRowKnowledgeAsOf({
+              startAt: new Date('2026-05-01T08:00:00.000Z'),
+              endAt: new Date('2026-05-01T10:00:00.000Z'),
+            }),
           },
           {
             ...base,
@@ -103,6 +118,10 @@ function nativeMeta() {
             endAt: new Date('2026-05-20T10:00:00.000Z'),
             energyAddedKwh: 8,
             idempotencyKey: `idem-pre-2-${randomUUID()}`,
+            ...sessionRowKnowledgeAsOf({
+              startAt: new Date('2026-05-20T08:00:00.000Z'),
+              endAt: new Date('2026-05-20T10:00:00.000Z'),
+            }),
           },
           {
             ...base,
@@ -114,6 +133,10 @@ function nativeMeta() {
             endAt: new Date('2026-06-01T04:00:00.000Z'),
             energyAddedKwh: 15,
             idempotencyKey: `idem-cross-${randomUUID()}`,
+            ...sessionRowKnowledgeAsOf({
+              startAt: new Date('2026-05-31T22:00:00.000Z'),
+              endAt: new Date('2026-06-01T04:00:00.000Z'),
+            }),
           },
           {
             ...base,
@@ -125,6 +148,10 @@ function nativeMeta() {
             endAt: new Date('2026-07-05T10:00:00.000Z'),
             energyAddedKwh: 18,
             idempotencyKey: `idem-post-${randomUUID()}`,
+            ...sessionRowKnowledgeAsOf({
+              startAt: new Date('2026-07-05T08:00:00.000Z'),
+              endAt: new Date('2026-07-05T10:00:00.000Z'),
+            }),
           },
           {
             ...base,
@@ -136,6 +163,10 @@ function nativeMeta() {
             endAt: new Date('2026-07-20T10:00:00.000Z'),
             energyAddedKwh: 6,
             idempotencyKey: `idem-fb-${randomUUID()}`,
+            ...sessionRowKnowledgeAsOf({
+              startAt: new Date('2026-07-20T08:00:00.000Z'),
+              endAt: new Date('2026-07-20T10:00:00.000Z'),
+            }),
           },
           {
             ...base,
@@ -151,6 +182,10 @@ function nativeMeta() {
               ...nativeMeta(),
               supersededBySegmentFingerprint: 'native-fp',
             },
+            ...sessionRowKnowledgeAsOf({
+              startAt: new Date('2026-07-22T08:00:00.000Z'),
+              endAt: new Date('2026-07-22T10:00:00.000Z'),
+            }),
           },
           {
             ...base,
@@ -163,6 +198,10 @@ function nativeMeta() {
             energyAddedKwh: 4,
             isOngoing: true,
             idempotencyKey: `idem-ongoing-${randomUUID()}`,
+            ...sessionRowKnowledgeAsOf({
+              startAt: new Date('2026-08-28T08:00:00.000Z'),
+              endAt: null,
+            }),
           },
           {
             ...base,
@@ -174,6 +213,10 @@ function nativeMeta() {
             endAt: new Date('2026-08-01T10:00:00.000Z'),
             energyAddedKwh: null,
             idempotencyKey: `idem-missing-${randomUUID()}`,
+            ...sessionRowKnowledgeAsOf({
+              startAt: new Date('2026-08-01T08:00:00.000Z'),
+              endAt: new Date('2026-08-01T10:00:00.000Z'),
+            }),
           },
           {
             ...base,
@@ -185,6 +228,10 @@ function nativeMeta() {
             endAt: new Date('2026-08-02T10:00:00.000Z'),
             energyAddedKwh: 0,
             idempotencyKey: `idem-zero-${randomUUID()}`,
+            ...sessionRowKnowledgeAsOf({
+              startAt: new Date('2026-08-02T08:00:00.000Z'),
+              endAt: new Date('2026-08-02T10:00:00.000Z'),
+            }),
           },
         ],
       });
@@ -240,6 +287,10 @@ function nativeMeta() {
             endAt: new Date('2026-07-01T10:00:00.000Z'),
             energyAddedKwh: 5,
             idempotencyKey: `idem-a-${randomUUID()}`,
+            ...sessionRowKnowledgeAsOf({
+              startAt: new Date('2026-07-01T08:00:00.000Z'),
+              endAt: new Date('2026-07-01T10:00:00.000Z'),
+            }),
           },
           {
             ...base,
@@ -251,6 +302,10 @@ function nativeMeta() {
             endAt: new Date('2026-07-02T10:00:00.000Z'),
             energyAddedKwh: 7,
             idempotencyKey: `idem-b-${randomUUID()}`,
+            ...sessionRowKnowledgeAsOf({
+              startAt: new Date('2026-07-02T08:00:00.000Z'),
+              endAt: new Date('2026-07-02T10:00:00.000Z'),
+            }),
           },
         ],
       });
