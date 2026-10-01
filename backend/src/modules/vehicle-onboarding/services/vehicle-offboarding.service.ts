@@ -1,14 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma, VehicleRegistryLifecycle } from '@prisma/client';
+import { VehicleProviderConsentStatus } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '@shared/database/prisma.service';
 import { isPrismaUniqueViolation } from '@shared/database/prisma-error.util';
 import {
   OFFBOARD_OUTBOX_PAYLOAD_VERSION,
-  type VehicleOffboardedOutboxPayloadV1,
+  type VehicleOffboardedOutboxPayloadV2,
 } from '../contracts/offboard-outbox-payload.v1';
 import type { VehicleOffboardReasonCode } from '../contracts/vehicle-offboard-reason.v1';
 import { VehicleOnboardingError } from '../errors/vehicle-onboarding.errors';
+import {
+  assertOffboardOutboxSemanticMatch,
+  buildExpectedOffboardSemantics,
+} from '../offboarding/offboard-outbox-semantics';
+import { closeOpenOrganizationAssignmentForOffboard } from '../offboarding/offboard-organization-assignment';
 
 export type OffboardVehicleInput = {
   organizationId: string;
@@ -46,39 +52,55 @@ export class VehicleOffboardingService {
 
     const offboardedAt = new Date();
     const outboxKey = offboardOutboxIdempotencyKey(input.idempotencyKey);
+    const expectedSemantics = buildExpectedOffboardSemantics({
+      vehicleId: input.vehicleId,
+      organizationId: input.organizationId,
+      reason: input.reason,
+    });
 
     return this.prisma.$transaction(async (tx) => {
-      const vehicle = await tx.vehicle.findFirst({
-        where: { id: input.vehicleId, organizationId: input.organizationId },
-        select: { id: true, registryLifecycle: true },
-      });
-      if (!vehicle) {
+      const lockedRows = await tx.$queryRaw<
+        Array<{ registry_lifecycle: VehicleRegistryLifecycle }>
+      >`
+        SELECT registry_lifecycle
+        FROM vehicles
+        WHERE id = ${input.vehicleId}
+          AND organization_id = ${input.organizationId}
+        FOR UPDATE
+      `;
+      if (lockedRows.length === 0) {
         throw new VehicleOnboardingError('CASE_NOT_FOUND', 'Vehicle not found for organization');
       }
+      const registryLifecycle = lockedRows[0]!.registry_lifecycle;
 
-      if (vehicle.registryLifecycle === 'OFFBOARDED') {
+      const replayFromOutbox = async (): Promise<OffboardVehicleResult | null> => {
         const existingOutbox = await tx.vehicleRegistryLifecycleOutbox.findUnique({
           where: { idempotencyKey: outboxKey },
         });
-        if (existingOutbox?.vehicleId === input.vehicleId) {
-          return {
-            vehicleId: input.vehicleId,
-            organizationId: input.organizationId,
-            registryLifecycle: 'OFFBOARDED',
-            offboardedAt: existingOutbox.occurredAt,
-            idempotentReplay: true,
-          };
-        }
+        if (!existingOutbox) return null;
+        assertOffboardOutboxSemanticMatch(existingOutbox, expectedSemantics);
+        return {
+          vehicleId: input.vehicleId,
+          organizationId: input.organizationId,
+          registryLifecycle: 'OFFBOARDED',
+          offboardedAt: existingOutbox.occurredAt,
+          idempotentReplay: true,
+        };
+      };
+
+      if (registryLifecycle === 'OFFBOARDED') {
+        const replay = await replayFromOutbox();
+        if (replay) return replay;
         throw new VehicleOnboardingError(
           'VEHICLE_REGISTRY_INVALID_TRANSITION',
           'Vehicle is already offboarded',
         );
       }
 
-      if (vehicle.registryLifecycle !== 'ACTIVE') {
+      if (registryLifecycle !== 'ACTIVE') {
         throw new VehicleOnboardingError(
           'VEHICLE_REGISTRY_INVALID_TRANSITION',
-          `Cannot offboard vehicle in registry lifecycle ${vehicle.registryLifecycle}`,
+          `Cannot offboard vehicle in registry lifecycle ${registryLifecycle}`,
         );
       }
 
@@ -96,18 +118,8 @@ export class VehicleOffboardingService {
           select: { registryLifecycle: true },
         });
         if (afterRace?.registryLifecycle === 'OFFBOARDED') {
-          const existingOutbox = await tx.vehicleRegistryLifecycleOutbox.findUnique({
-            where: { idempotencyKey: outboxKey },
-          });
-          if (existingOutbox?.vehicleId === input.vehicleId) {
-            return {
-              vehicleId: input.vehicleId,
-              organizationId: input.organizationId,
-              registryLifecycle: 'OFFBOARDED',
-              offboardedAt: existingOutbox.occurredAt,
-              idempotentReplay: true,
-            };
-          }
+          const replay = await replayFromOutbox();
+          if (replay) return replay;
         }
         throw new VehicleOnboardingError(
           'ONBOARDING_CONCURRENCY_CONFLICT',
@@ -115,12 +127,11 @@ export class VehicleOffboardingService {
         );
       }
 
-      await tx.vehicleOrganizationAssignment.updateMany({
-        where: { vehicleId: input.vehicleId, validTo: null },
-        data: {
-          validTo: offboardedAt,
-          assignmentReason: input.reason,
-        },
+      await closeOpenOrganizationAssignmentForOffboard(tx, {
+        vehicleId: input.vehicleId,
+        organizationId: input.organizationId,
+        reason: input.reason,
+        offboardedAt,
       });
 
       await tx.vehicleDataSourceLink.updateMany({
@@ -132,13 +143,30 @@ export class VehicleOffboardingService {
         },
       });
 
-      const payload: VehicleOffboardedOutboxPayloadV1 = {
+      await tx.vehicleProviderConsent.updateMany({
+        where: {
+          vehicleId: input.vehicleId,
+          status: VehicleProviderConsentStatus.ACTIVE,
+        },
+        data: {
+          status: VehicleProviderConsentStatus.REVOKED,
+          revokedAt: offboardedAt,
+          revokedByUserId: input.actorUserId,
+          metadataJson: {
+            revokedReason: 'VEHICLE_OFFBOARDED',
+            offboardReason: input.reason,
+          },
+        },
+      });
+
+      const payload: VehicleOffboardedOutboxPayloadV2 = {
         version: OFFBOARD_OUTBOX_PAYLOAD_VERSION,
         vehicleId: input.vehicleId,
         organizationId: input.organizationId,
         registryLifecycle: 'OFFBOARDED',
         offboardedAt: offboardedAt.toISOString(),
         reason: input.reason,
+        actorUserId: input.actorUserId,
       };
 
       await this.ensureOffboardOutboxEvent(tx, {
@@ -147,6 +175,7 @@ export class VehicleOffboardingService {
         vehicleId: input.vehicleId,
         organizationId: input.organizationId,
         offboardedAt,
+        expectedSemantics,
       });
 
       return {
@@ -163,30 +192,18 @@ export class VehicleOffboardingService {
     tx: Prisma.TransactionClient,
     input: {
       idempotencyKey: string;
-      payload: VehicleOffboardedOutboxPayloadV1;
+      payload: VehicleOffboardedOutboxPayloadV2;
       vehicleId: string;
       organizationId: string;
       offboardedAt: Date;
+      expectedSemantics: ReturnType<typeof buildExpectedOffboardSemantics>;
     },
   ): Promise<void> {
     const existing = await tx.vehicleRegistryLifecycleOutbox.findUnique({
       where: { idempotencyKey: input.idempotencyKey },
     });
     if (existing) {
-      const existingPayload = existing.payload as unknown as VehicleOffboardedOutboxPayloadV1;
-      const semanticMatch =
-        existing.eventType === 'VEHICLE_OFFBOARDED' &&
-        existing.vehicleId === input.vehicleId &&
-        existing.organizationId === input.organizationId &&
-        existing.payloadVersion === OFFBOARD_OUTBOX_PAYLOAD_VERSION &&
-        existingPayload?.vehicleId === input.vehicleId &&
-        existingPayload?.reason === input.payload.reason;
-      if (!semanticMatch) {
-        throw new VehicleOnboardingError(
-          'OUTBOX_IDEMPOTENCY_CONFLICT',
-          'Lifecycle outbox idempotency key belongs to a different offboarding',
-        );
-      }
+      assertOffboardOutboxSemanticMatch(existing, input.expectedSemantics);
       return;
     }
 
@@ -208,6 +225,13 @@ export class VehicleOffboardingService {
     } catch (error) {
       if (!isPrismaUniqueViolation(error, ['idempotency_key'])) {
         throw error;
+      }
+      const raced = await tx.vehicleRegistryLifecycleOutbox.findUnique({
+        where: { idempotencyKey: input.idempotencyKey },
+      });
+      if (raced) {
+        assertOffboardOutboxSemanticMatch(raced, input.expectedSemantics);
+        return;
       }
       throw new VehicleOnboardingError(
         'ONBOARDING_CONCURRENCY_CONFLICT',

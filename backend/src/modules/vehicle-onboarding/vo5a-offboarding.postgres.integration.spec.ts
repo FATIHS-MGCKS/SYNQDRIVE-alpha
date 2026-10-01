@@ -1,7 +1,8 @@
 /**
  * VO-5A registry offboarding foundation (PostgreSQL).
  */
-import { BusinessType, PrismaClient, ProductSlug } from '@prisma/client';
+import { BusinessType, PrismaClient, ProductSlug, VehicleProviderConsentStatus } from '@prisma/client';
+import { DimoVehicleDataSourceLinkService } from '@modules/dimo/dimo-vehicle-data-source-link.service';
 import { randomUUID } from 'node:crypto';
 import { VehicleOffboardingService } from './services/vehicle-offboarding.service';
 import { VehicleOnboardingProviderCandidateService } from './services/vehicle-onboarding-provider-candidate.service';
@@ -216,6 +217,136 @@ async function createActiveVehicle(prisma: PrismaClient, orgId: string, dimoId?:
       parseCandidateListQuery({ provider: 'DIMO', limit: '100' }),
     );
     expect(list.items.some((c) => c.sourceMirrorId === dimoId)).toBe(false);
+  });
+
+  it('same idempotency key with different reason fails closed', async () => {
+    const orgId = await createOrg(prisma);
+    const { vehicleId } = await createActiveVehicle(prisma, orgId);
+    const idempotencyKey = randomUUID();
+    await offboarding.offboardVehicle({
+      organizationId: orgId,
+      vehicleId,
+      reason: 'OFFBOARD_SOLD',
+      actorUserId: 'actor-1',
+      idempotencyKey,
+    });
+    await expect(
+      offboarding.offboardVehicle({
+        organizationId: orgId,
+        vehicleId,
+        reason: 'REMOVE_FROM_PRODUCT',
+        actorUserId: 'actor-1',
+        idempotencyKey,
+      }),
+    ).rejects.toMatchObject({ code: 'OUTBOX_IDEMPOTENCY_CONFLICT' });
+  });
+
+  it('same idempotency key with different organization fails closed', async () => {
+    const orgA = await createOrg(prisma);
+    const orgB = await createOrg(prisma);
+    const { vehicleId } = await createActiveVehicle(prisma, orgA);
+    const idempotencyKey = randomUUID();
+    await offboarding.offboardVehicle({
+      organizationId: orgA,
+      vehicleId,
+      reason: 'OFFBOARD_SOLD',
+      actorUserId: null,
+      idempotencyKey,
+    });
+    await expect(
+      offboarding.offboardVehicle({
+        organizationId: orgB,
+        vehicleId,
+        reason: 'OFFBOARD_SOLD',
+        actorUserId: null,
+        idempotencyKey,
+      }),
+    ).rejects.toMatchObject({ code: 'CASE_NOT_FOUND' });
+  });
+
+  it('durably attributes actorUserId in outbox payload v2', async () => {
+    const orgId = await createOrg(prisma);
+    const { vehicleId } = await createActiveVehicle(prisma, orgId);
+    const actorUserId = randomUUID();
+    const idempotencyKey = randomUUID();
+    await offboarding.offboardVehicle({
+      organizationId: orgId,
+      vehicleId,
+      reason: 'ADMINISTRATIVE_OFFBOARD',
+      actorUserId,
+      idempotencyKey,
+    });
+    const row = await prisma.vehicleRegistryLifecycleOutbox.findFirst({
+      where: { vehicleId, eventType: 'VEHICLE_OFFBOARDED' },
+    });
+    expect(row?.payloadVersion).toBe(2);
+    const payload = row?.payload as { actorUserId?: string };
+    expect(payload.actorUserId).toBe(actorUserId);
+  });
+
+  it('revokes active provider consent episodes transactionally', async () => {
+    const orgId = await createOrg(prisma);
+    const { vehicleId } = await createActiveVehicle(prisma, orgId);
+    const consentId = randomUUID();
+    await prisma.vehicleProviderConsent.create({
+      data: {
+        id: consentId,
+        vehicleId,
+        organizationId: orgId,
+        provider: 'DIMO',
+        grantType: 'DIMO_DIRECT',
+        status: VehicleProviderConsentStatus.ACTIVE,
+        grantedAt: new Date(),
+      },
+    });
+    await offboarding.offboardVehicle({
+      organizationId: orgId,
+      vehicleId,
+      reason: 'REMOVE_FROM_PRODUCT',
+      actorUserId: null,
+      idempotencyKey: randomUUID(),
+    });
+    const consent = await prisma.vehicleProviderConsent.findUniqueOrThrow({
+      where: { id: consentId },
+    });
+    expect(consent.status).toBe(VehicleProviderConsentStatus.REVOKED);
+    expect(consent.revokedAt).not.toBeNull();
+  });
+
+  it('blocks DIMO link reactivation after offboard', async () => {
+    const orgId = await createOrg(prisma);
+    const dimoId = randomUUID();
+    await prisma.$executeRaw`
+      INSERT INTO dimo_vehicles (id, external_id, vin, make, model, year, fuel_type, connection_status, created_at, updated_at)
+      VALUES (${dimoId}, ${`ext-${dimoId.slice(0, 8)}`}, null, 'Audi', 'A3', 2021, 'GASOLINE', 'CONNECTED'::"DimoConnectionStatus", NOW(), NOW())
+    `;
+    const { vehicleId } = await createActiveVehicle(prisma, orgId, dimoId);
+    const linkId = randomUUID();
+    await prisma.vehicleDataSourceLink.create({
+      data: {
+        id: linkId,
+        vehicleId,
+        provider: 'DIMO',
+        sourceType: 'DIMO',
+        dimoVehicleId: dimoId,
+        isActive: true,
+      },
+    });
+    await offboarding.offboardVehicle({
+      organizationId: orgId,
+      vehicleId,
+      reason: 'ADMINISTRATIVE_OFFBOARD',
+      actorUserId: null,
+      idempotencyKey: randomUUID(),
+    });
+    const linkService = new DimoVehicleDataSourceLinkService(prisma as any);
+    const result = await linkService.ensureDimoVehicleDataSourceLink({
+      vehicleId,
+      organizationId: orgId,
+      dimoVehicleId: dimoId,
+    });
+    expect(result.action).toBe('CONFLICT');
+    expect(result.reason).toBe('vehicle_registry_not_operational');
   });
 
   it('concurrent offboard with same idempotency converges safely', async () => {

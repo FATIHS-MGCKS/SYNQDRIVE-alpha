@@ -65,11 +65,26 @@ VO-5A delivers the **audit**, **dependency map**, **transaction contract**, and 
 2. `SELECT … FOR UPDATE` vehicle scoped to `organizationId`
 3. Require `registryLifecycle=ACTIVE` (idempotent replay when already `OFFBOARDED` + matching outbox key)
 4. `registryLifecycle` → `OFFBOARDED` (**`organizationId` unchanged**)
-5. Close open `VehicleOrganizationAssignment` (`validTo`, reason = offboard reason)
+5. Close **exactly one** open `VehicleOrganizationAssignment` when present (`uq_vehicle_org_assignment_open`); fail-closed on foreign-org or >1 open rows; **zero open** allowed for legacy vehicles predating VO-2 assignment history
 6. Deactivate active `VehicleDataSourceLink` (`isActive=false`, `deactivationReason=VEHICLE_OFFBOARDED`)
-7. **Preserve** `dimoVehicleId` on Vehicle, **preserve** HM mirrors
-8. Insert `VehicleRegistryLifecycleOutbox` **`VEHICLE_OFFBOARDED`** (`vehicle.offboarded` payload v1) with idempotency key
-9. Commit — **no Stripe/billing inside transaction**
+7. Revoke active local `VehicleProviderConsent` rows in-transaction (`REVOKED`, reason metadata `VEHICLE_OFFBOARDED`) — **no provider network calls**
+8. **Preserve** `dimoVehicleId` on Vehicle, **preserve** HM/DIMO provider mirrors
+9. Insert `VehicleRegistryLifecycleOutbox` **`VEHICLE_OFFBOARDED`** (`vehicle.offboarded` payload **v2** incl. `actorUserId`) with governed semantic idempotency (shared helper across all replay paths)
+10. Commit — **no Stripe/billing inside transaction**
+
+### VO-5A.1 integrity seal (2026-10-01)
+
+| Proof / invariant | Status |
+|-------------------|--------|
+| `SEMANTIC_IDEMPOTENCY_REPLAY` | **PROVEN** — `offboard-outbox-semantics` shared across pre-OFFBOARDED, race, and outbox paths |
+| `MULTI_OPEN_ASSIGNMENT_FAIL_CLOSED` | **PROVEN** — explicit open-assignment inspection (DB partial unique `uq_vehicle_org_assignment_open`) |
+| `OFFBOARDED_DIMO_SCHEDULER_ELIGIBLE` | **NO** — `DimoSnapshotScheduler` requires `registryLifecycle=ACTIVE` (poll + resume backfill) |
+| `OFFBOARDED_DIMO_QUEUED_JOB_EXECUTES_PIPELINE` | **NO** — `DimoSnapshotProcessor` execution gate → `DimoPollStatus.SKIPPED`, no provider fetch |
+| `NORMAL_PROVIDER_LINK_REACTIVATION_WHILE_OFFBOARDED` | **NO** — `DimoVehicleDataSourceLinkService` + HM link activation fail-closed |
+| `OFFBOARD_PROVIDER_CONSENT_POLICY` | **REVOKE_LOCAL_ACTIVE_CONSENT_ON_OFFBOARD** — mirror/legal provider consent may exist externally; local ACTIVE episodes closed with link |
+| `OFFBOARD_ACTOR_DURABLY_ATTRIBUTED` | **YES** — payload v2 `actorUserId` in transactional outbox fact |
+| `PROVIDER_MIRROR_SYNC_PRESERVED` | **YES** — HM webhook mirror updates continue; canonical HM signal ingest gated on `registryLifecycle=ACTIVE` |
+| Documented locking | **`SELECT … FOR UPDATE`** on target vehicle row at transaction start (matches runtime) |
 
 ### Offboard reasons (governed)
 

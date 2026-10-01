@@ -36,6 +36,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-onboarding-vo5a1-integrity-seal-2026-10-01',
+    version: '4.9.2220',
+    title: 'Vehicle Onboarding VO-5A.1 — offboarding integrity seal',
+    summary: [
+      'Unified semantic idempotency replay for VEHICLE_OFFBOARDED (reason/org/vehicle/payload version) across all replay paths.',
+      'Fail-closed open org-assignment close; DIMO scheduler/processor registry ACTIVE gates; provider-link + HM canonical ingest gates; local consent revoke on offboard; outbox payload v2 actorUserId.',
+    ],
+    reason:
+      'VO-5A review found replay asymmetry, assignment updateMany risk, and OFFBOARDED vehicles still eligible for DIMO canonical telemetry.',
+    previousBehavior:
+      'Replay accepted mismatched reason; broad assignment updateMany; DIMO poll pipeline ignored registryLifecycle OFFBOARDED.',
+    details:
+      'vehicle-offboarding.service.ts; dimo-snapshot.scheduler.ts; dimo-snapshot.processor.ts; VO5A_OFFBOARDING_FOUNDATION.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Onboarding',
+    createdAt: '2026-10-01T22:45:00.000Z',
+  },
+  {
     id: 'vehicle-onboarding-vo5a-offboarding-foundation-2026-10-01',
     version: '4.9.2219',
     title: 'Vehicle Onboarding VO-5A — offboarding foundation audit (internal)',

@@ -5,7 +5,7 @@
 | **Sealed from** | VO-0A discovery audit |
 | **Repository anchor SHA** | `312d9f54a2b4c0b0740061d3e2b74897e78eacb0` |
 | **Authority status** | `AUDIT_IN_PROGRESS` — **not** `AUTHORITY_ACTIVE` |
-| **Last updated** | 2026-10-01 (VO-5A offboarding foundation audit + internal `VehicleOffboardingService`; legacy deregister **unchanged**) |
+| **Last updated** | 2026-10-01 (VO-5A.1 offboarding integrity seal: semantic idempotency, assignment integrity, DIMO/HM runtime gates, consent revoke; legacy deregister **unchanged**) |
 
 ## Executive summary
 
