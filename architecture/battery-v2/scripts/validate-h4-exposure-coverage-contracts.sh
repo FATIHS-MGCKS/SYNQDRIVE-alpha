@@ -27,6 +27,20 @@ grep -q 'resolveM3_3HvH4ReplacementBoundaries' "$HV_H4/m3-3-hv-h4-lifecycle.util
   || fail "H4 must reuse H2 replacement GT semantics"
 grep -q 'runM3_3HvH4ReadOnlyTransaction' "$HV_H4/m3-3-hv-h4-coverage-report.service.ts" \
   || fail "coverage report must use read-only transaction"
+grep -q 'M3_3_HV_H4_BOUNDED_CHARGE_THROUGHPUT_V1' "$HV_H4/m3-3-hv-h4.constants.ts" \
+  || fail "missing A2 bounded charge throughput contract version"
+grep -q 'boundedObservedChargeThroughputKwh' "$HV_H4/m3-3-hv-h4-charge-throughput.types.ts" \
+  || fail "missing boundedObservedChargeThroughputKwh field"
+grep -q 'buildM3_3HvH4ChargeThroughputReportV1' "$HV_H4/m3-3-hv-h4-charge-throughput-report.builder.ts" \
+  || fail "missing A2 charge throughput report builder"
+grep -q 'SOURCE_TRUNCATED' "$HV_H4/m3-3-hv-h4-charge-throughput-report.builder.ts" \
+  || fail "A2 must fail closed on source truncation"
+grep -q 'OVERLAPPING_ELIGIBLE_NATIVE_SESSIONS' "$HV_H4/m3-3-hv-h4-charge-throughput-report.builder.ts" \
+  || fail "A2 must fail closed on overlapping native sessions"
+grep -q 'loadM3_3HvH4DataV1' "$HV_H4/m3-3-hv-h4-data.loader.ts" \
+  || fail "shared H4 data loader required"
+grep -q 'runM3_3HvH4ReadOnlyTransaction' "$HV_H4/m3-3-hv-h4-charge-throughput-report.service.ts" \
+  || fail "A2 charge throughput report must use read-only transaction"
 
 if grep -rq 'hv-h4' "$APP_MODULE" 2>/dev/null; then
   fail "hv-h4 must not be registered in app.module.ts (H4_AUTOMATIC_RUNTIME_REACHABLE=NO)"

@@ -30,6 +30,29 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-10-01 — M3.3-HV-H4-A2 bounded observed charge throughput composition V1
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | A1 read-only coverage only; no numerical bounded charge throughput composition |
+| **OBSERVATION** | Eligible native session sums require A1 lifecycle + trust semantics with fail-closed overlap/truncation guards |
+| **HYPOTHESIS** | Per-segment `boundedObservedChargeThroughputKwh` from `HvChargeSession.energyAddedKwh` is scientifically bounded without implying lifetime completeness |
+| **CHANGE** | A2 report builder/service/CLI; shared `loadM3_3HvH4DataV1`; unit + postgres tests; graph BAT-V2-AUTH-H4-A2-001 |
+| **WHY** | First numerical H4 exposure composition after A1 authority foundation |
+| **EXPECTED_EFFECT** | Deterministic per-segment charge-only sums with explicit compositionStatus and SHA-256 fingerprint |
+| **VALIDATION** | test:battery:v2:hv-h4; test:battery:v2:hv-h4:postgres:ci; validate-h4-exposure-coverage-contracts.sh |
+| **OBSERVED_EFFECT** | Pending CI |
+| **NON_EFFECTS** | A1 cumulativeExposureValues=false unchanged; no schema/persistence/runtime/customer API |
+| **REGRESSIONS_OR_TRADEOFFS** | Additional read-only report surface; A2 adds provenance gate beyond A1 ELIGIBLE_NATIVE |
+| **REMAINING_GAPS** | Durable long-term exposure materialization not in A2; other axes not composed |
+| **DECISION_STATUS** | PROPOSED |
+| **AFFECTED_GRAPH** | BAT-V2-AUTH-H4-A2-001 |
+| **EVIDENCE** | Draft PR; hv-h4 charge-throughput module |
+
+---
+
 ## CL-2026-10-01 — M3.3-HV-H4-A1.2 dedicated HV-H4 CI workflow (postgres gate)
 
 | Field | Value |
