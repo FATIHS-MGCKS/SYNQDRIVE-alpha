@@ -43,14 +43,14 @@ Append-only scientific record. Newest entries first.
 | **BEFORE** | A2 on main; no persisted A3 architecture; retention prunes `HvChargeSession` without H4 durability ACK |
 | **OBSERVATION** | Default 1095d HV charge session retention; `BatteryRetentionAggregate` preserves measurements only — not H4 throughput source fields |
 | **HYPOTHESIS** | Revisioned charge-session **source evidence** ledger + rebuildable lifecycle cache preserves FULL_A2 report semantics after prune |
-| **CHANGE** | Research authority `M3_3_HV_H4_A3_DURABLE_EXPOSURE_MATERIALIZATION_ARCHITECTURE_2026-10-02.md` (R0/R0.1 seal); no code/schema |
-| **WHY** | Scientifically correct A3 design before persistence implementation |
-| **EXPECTED_EFFECT** | Clear source vs derived vs GT boundaries; revision-scoped prune ACK specified |
-| **VALIDATION** | Repository re-audit of retention, aggregates, A1/A2 classifiers, merge semantics, D3 patterns |
+| **CHANGE** | Research authority `M3_3_HV_H4_A3_DURABLE_EXPOSURE_MATERIALIZATION_ARCHITECTURE_2026-10-02.md` (R0→R0.2): canonical session identity without H4 contract version; prospective true-as-of; effective-revision collapse before A1 5000 limit; full A2 parity architecture target only |
+| **WHY** | Close identity/as-of loader authority gaps before A3.1 schema |
+| **EXPECTED_EFFECT** | Explicit loader pipeline, revision DB identity vs fingerprint, no fabricated pre-A3 revision history |
+| **VALIDATION** | Docs re-audit vs retention, `m3-3-hv-h4-data.loader.ts`, A2 classifiers; graph + registry + H4 contract validators |
 | **OBSERVED_EFFECT** | Pending merge |
 | **NON_EFFECTS** | Retention behavior, Prisma, runtime, flags unchanged |
 | **REGRESSIONS_OR_TRADEOFFS** | Future retention must fail-closed without matching source-revision ACK |
-| **REMAINING_GAPS** | A3.1+ not started; graph runtime node for A3 intentionally not promoted |
+| **REMAINING_GAPS** | A3.1+ not started; A3.3 equivalence proof required; graph runtime node for A3 not promoted |
 | **DECISION_STATUS** | PROPOSED (RESEARCH) |
 | **AFFECTED_GRAPH** | Planning only — BAT-V2-AUTH-H4-A2-001 successor research (no runtime node added) |
 | **EVIDENCE** | A3-R0 research doc; retention + hv-h4 code audit @ main `ffe5f4154` |
