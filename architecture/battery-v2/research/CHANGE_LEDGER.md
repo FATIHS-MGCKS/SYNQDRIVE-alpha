@@ -36,6 +36,29 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-10-02 — M3.3-HV-H4-A3.1 charge session evidence schema + pure contract
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | A3-R0.3 architecture on main; no durable H4 charge-session evidence persistence |
+| **OBSERVATION** | A2 full parity requires dimoSegmentId + knowledge timestamps + lossless non-finite energy in durable source evidence |
+| **HYPOTHESIS** | Append-only revision + ACK schema with pure SHA-256 tuple fingerprint enables A3.2 writer without changing A1/A2 |
+| **CHANGE** | Prisma `BatteryHvChargeSessionEvidenceRevision` + `BatteryHvChargeSessionEvidenceAck`; migration; pure projection/fingerprint/mirror modules; unit + postgres schema tests |
+| **WHY** | First persistence slice after R0 closure — contract before runtime writer |
+| **EXPECTED_EFFECT** | DB-enforced versioned scientific identity; no FK to prunable `HvChargeSession`; tenant cascade |
+| **VALIDATION** | test:battery:v2:hv-h4; test:battery:v2:hv-h4:postgres:ci; prisma validate; H4/graph/registry validators |
+| **OBSERVED_EFFECT** | Pending CI |
+| **NON_EFFECTS** | No runtime writer, retention gate, backfill, A1/A2 behavior |
+| **REGRESSIONS_OR_TRADEOFFS** | Future A3.2 must mirror-verify ACK identity columns |
+| **REMAINING_GAPS** | A3.2 writer; A3.3 MODE_A loader equivalence; retention ACK gate (A3.4) |
+| **DECISION_STATUS** | PROPOSED (ENGINEERING) |
+| **AFFECTED_GRAPH** | BAT-V2-AUTH-H4-A2-001 successor persistence (schema authority only) |
+| **EVIDENCE** | `m3-3-hv-h4-a3-*` modules; migration `20261002120000_battery_hv_h4_charge_session_evidence_revisions` |
+
+---
+
 ## CL-2026-10-02 — M3.3-HV-H4-A3-R0 durable exposure architecture authority
 
 | Field | Value |

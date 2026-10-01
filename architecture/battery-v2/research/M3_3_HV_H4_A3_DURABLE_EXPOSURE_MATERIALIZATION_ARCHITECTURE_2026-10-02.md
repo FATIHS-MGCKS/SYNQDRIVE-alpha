@@ -505,7 +505,7 @@ Rebuild from: durable source revisions + GT-as-of + H4 composition contract.
 
 | Slice | Scope |
 |-------|--------|
-| **A3.1** | Persistence **contract** + schema for evidence revision ledger + ACK contract (flags OFF) |
+| **A3.1** | **IMPLEMENTED (schema + pure contract)** — evidence revision + ACK tables, fingerprint/mirror helpers, postgres schema tests; **flags OFF, no writer** |
 | **A3.2** | Idempotent revision writer |
 | **A3.3** | Loader equivalence (**MODE_A / A2_V1_PARITY**): durable revisions → existing A2 builder; fixture corpus §12 |
 | **A3.4** | Revision-scoped prune ACK + retention gate |

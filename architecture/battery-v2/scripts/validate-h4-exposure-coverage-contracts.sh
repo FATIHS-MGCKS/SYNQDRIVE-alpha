@@ -50,8 +50,15 @@ grep -q 'buildM3_3HvH4SegmentSourceFingerprintV1' "$HV_H4/m3-3-hv-h4-charge-thro
 grep -q 'metadata.providerSegmentId' "$HV_H4/m3-3-hv-h4-charge-throughput-session.v1.ts" \
   || fail "provider identity must use metadata.providerSegmentId"
 
-if grep -rq 'hv-h4' "$APP_MODULE" 2>/dev/null; then
-  fail "hv-h4 must not be registered in app.module.ts (H4_AUTOMATIC_RUNTIME_REACHABLE=NO)"
+grep -q 'M3_3_HV_H4_CHARGE_SESSION_EVIDENCE_REVISION_V1' "$HV_H4/m3-3-hv-h4-a3.constants.ts" \
+  || fail "missing A3.1 evidence revision contract version"
+grep -q 'A3_REVISION_WRITER_RUNTIME_REACHABLE = false' "$HV_H4/m3-3-hv-h4-a3.constants.ts" \
+  || fail "A3 revision writer must not be runtime reachable"
+grep -q 'computeM3_3HvH4ChargeSessionSourceRevisionFingerprintV1' "$HV_H4/m3-3-hv-h4-a3-charge-session-evidence-fingerprint.v1.ts" \
+  || fail "missing A3 source revision fingerprint authority"
+
+if grep -rq 'm3-3-hv-h4-a3' "$APP_MODULE" 2>/dev/null; then
+  fail "A3 evidence modules must not be registered in app.module.ts"
 fi
 
 echo "M3.3-HV-H4 domain contracts: OK"
