@@ -187,7 +187,7 @@ Peak-anchored post plateau is **insufficient** for observed absolute-only oversh
 
 ---
 
-## 11. Phase-aware strong-regression addendum (design only — no runtime change)
+## 9. Phase-aware strong-regression addendum (design only — no runtime change)
 
 Future observation phases (normative design vocabulary):
 
@@ -208,7 +208,7 @@ SENSOR_RESET | TRUE_RETURN_TO_BASELINE | UNSTABLE_RISE (terminal)
 3. A bounded post-peak decline that remains **materially above** the fresh pre-baseline **may** enter **SETTLING** in a future model; it must **not** automatically become `RISE_NOT_STABLE` solely because magnitude exceeds `negativeWobbleLiters` without phase context.
 4. **This ADR does not weaken current runtime.** Current F3 behavior stays authoritative until a separately authorized implementation PR.
 5. A terminal F3 classification may **never** be resurrected by settled-post logic (see §5.1).
-6. Peak→settled **evidence continuity** must be proven before a settled window becomes authoritative (§4.5).
+6. Peak→settled **evidence continuity** must be proven before a settled window becomes authoritative (§4.3).
 7. **Hybrid Trust v2** remains downstream and unchanged.
 8. **Alpha Option C** unchanged: absolute-only F3 READY may still carry Hybrid UNKNOWN → no automatic fallback promotion.
 
@@ -216,7 +216,7 @@ SENSOR_RESET | TRUE_RETURN_TO_BASELINE | UNSTABLE_RISE (terminal)
 
 ---
 
-## 9. Replay evidence (offline)
+## 10. Replay evidence (offline)
 
 Harness: `backend/scripts/ops/rfrf-settled-post-historical-replay.harness.ts`  
 Summary artifact: EED-EV-0103

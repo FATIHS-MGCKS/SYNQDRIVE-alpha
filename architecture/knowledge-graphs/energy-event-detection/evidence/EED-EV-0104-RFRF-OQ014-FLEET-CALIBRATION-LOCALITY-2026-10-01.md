@@ -138,7 +138,7 @@ All numeric caps labeled **OFFLINE_SENSITIVITY_ONLY** — **no** Production auth
 
 **Do not** reuse `absolute.maxSampleGapMs` as the peak→settled locality authority. That symbol expresses existing F3 sample-region gap semantics (including within-settled-window gaps). Reusing it would couple rise-path gap calibration, settled-window internal gaps, and peak→settled locality — one tuning change could silently move another authority.
 
-See amended ADR §4.5 and §10 for normative wording.
+See amended ADR §4.3 and §9 for normative wording.
 
 ---
 
@@ -149,7 +149,7 @@ See amended ADR §4.5 and §10 for normative wording.
 | **EMPIRICALLY_OBSERVED_VALID_REFUEL_STRONG_REGRESSION_CONFLICT_COUNT** | **0** |
 | **STRUCTURAL_CONFLICT_EXISTS_FOR_VALID_SETTLING_DROP_GT_1L** | **YES** |
 
-Future phases (design): **RISING → PEAK_REACHED → SETTLING → SETTLED**, separate from terminal **SENSOR_RESET / TRUE_RETURN_TO_BASELINE / UNSTABLE_RISE**. Mandatory invariants documented in ADR §11. **Current runtime F3 remains authoritative** until a separately authorized implementation PR.
+Future phases (design): **RISING → PEAK_REACHED → SETTLING → SETTLED**, separate from terminal **SENSOR_RESET / TRUE_RETURN_TO_BASELINE / UNSTABLE_RISE**. Mandatory invariants documented in ADR §9. **Current runtime F3 remains authoritative** until a separately authorized implementation PR.
 
 ---
 
