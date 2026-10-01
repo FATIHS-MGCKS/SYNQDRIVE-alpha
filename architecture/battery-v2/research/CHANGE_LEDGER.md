@@ -36,6 +36,29 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-10-02 — M3.3-HV-H4-A3-R0 durable exposure materialization architecture audit
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | A2 read-only throughput on live `HvChargeSession`; retention can prune sessions without H4 durable ACK; aggregates preserve measurements only |
+| **OBSERVATION** | `BatteryRetentionAggregate` does not store charge throughput scientific fields; late replacement GT requires physical episode preservation |
+| **HYPOTHESIS** | Hybrid immutable per-session contribution ledger (+ revisions) with rebuildable lifecycle totals satisfies A2 semantics after prune |
+| **CHANGE** | Research doc `M3_3_HV_H4_A3_DURABLE_EXPOSURE_MATERIALIZATION_ARCHITECTURE_2026-10-02.md` — no runtime/schema |
+| **WHY** | Define scientifically correct A3 persistence before any implementation |
+| **EXPECTED_EFFECT** | Clear REJECT/ACCEPT for options A–E; A3.1 slice scoped to contract + schema only |
+| **VALIDATION** | Repository audit + battery-v2 graph validator |
+| **OBSERVED_EFFECT** | Pending merge |
+| **NON_EFFECTS** | Retention behavior, A2 code path, schema, production writes unchanged |
+| **REGRESSIONS_OR_TRADEOFFS** | Future retention must add prune ACK gate (not in R0) |
+| **REMAINING_GAPS** | A3.1+ engineering not started |
+| **DECISION_STATUS** | PROPOSED |
+| **AFFECTED_GRAPH** | BAT-V2-AUTH-H4-A2-001 (successor planning) |
+| **EVIDENCE** | R0 research doc; retention + hv-h4 code audit |
+
+---
+
 ## CL-2026-10-01 — M3.3-HV-H4-A2.2 Neumaier summation authority seal
 
 | Field | Value |
