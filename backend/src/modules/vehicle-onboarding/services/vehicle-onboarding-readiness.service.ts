@@ -25,6 +25,8 @@ export interface EvaluateReadinessInput {
   selectedProduct: ProductSlug;
   actorUserId: string | null;
   seal?: boolean;
+  /** When sealing from capture API, rotate optimistic concurrency token in the same update. */
+  newConcurrencyToken?: string | null;
 }
 
 export interface ReadinessFingerprintContext {
@@ -37,46 +39,53 @@ export class VehicleOnboardingReadinessService {
   constructor(private readonly prisma: PrismaService) {}
 
   async evaluateReadiness(input: EvaluateReadinessInput): Promise<VehicleOnboardingReadinessSnapshotV2> {
+    return this.prisma.$transaction(async (tx) => this.evaluateReadinessInTransaction(tx, input));
+  }
+
+  async evaluateReadinessInTransaction(
+    tx: Prisma.TransactionClient,
+    input: EvaluateReadinessInput,
+  ): Promise<VehicleOnboardingReadinessSnapshotV2> {
     const seal = input.seal ?? false;
-    return this.prisma.$transaction(async (tx) => {
-      await acquirePgAdvisoryXactLock64(tx, readinessMutationLockKey(input.onboardingCaseId));
-      const loaded = await this.loadCase(tx, input.organizationId, input.onboardingCaseId);
-      if (isTerminalCaseStatus(loaded.caseRow.status)) {
-        throw new VehicleOnboardingError(
-          'TERMINAL_CASE_IDEMPOTENCY',
-          'Cannot evaluate readiness for terminal case',
-        );
-      }
-      const entitlement = await assertOrganizationProductEntitled(
-        tx,
-        input.organizationId,
-        input.selectedProduct,
+    await acquirePgAdvisoryXactLock64(tx, readinessMutationLockKey(input.onboardingCaseId));
+    const loaded = await this.loadCase(tx, input.organizationId, input.onboardingCaseId);
+    if (isTerminalCaseStatus(loaded.caseRow.status)) {
+      throw new VehicleOnboardingError(
+        'TERMINAL_CASE_IDEMPOTENCY',
+        'Cannot evaluate readiness for terminal case',
       );
-      const snapshot = this.buildSnapshot(
-        loaded,
-        input.actorUserId,
-        input.selectedProduct,
-        entitlement.status,
-      );
-      if (seal) {
-        const nextStatus =
-          snapshot.decision === 'READY' ? 'READY_FOR_ACTIVATION' : 'IN_PROGRESS';
-        if (loaded.caseRow.status !== nextStatus) {
-          assertCaseTransitionAllowed(loaded.caseRow.status, nextStatus);
-        }
-        await tx.vehicleOnboardingCase.update({
-          where: { id: loaded.caseRow.id },
-          data: {
-            status: nextStatus,
-            readinessSnapshotJson: snapshot as unknown as Prisma.InputJsonValue,
-            readinessSnapshotVersion: READINESS_SNAPSHOT_VERSION_V2,
-            readinessProfileVersion: snapshot.profileVersion,
-            lastActorUserId: input.actorUserId,
-          },
-        });
+    }
+    const entitlement = await assertOrganizationProductEntitled(
+      tx,
+      input.organizationId,
+      input.selectedProduct,
+    );
+    const snapshot = this.buildSnapshot(
+      loaded,
+      input.actorUserId,
+      input.selectedProduct,
+      entitlement.status,
+    );
+    if (seal) {
+      const nextStatus = snapshot.decision === 'READY' ? 'READY_FOR_ACTIVATION' : 'IN_PROGRESS';
+      if (loaded.caseRow.status !== nextStatus) {
+        assertCaseTransitionAllowed(loaded.caseRow.status, nextStatus);
       }
-      return snapshot;
-    });
+      await tx.vehicleOnboardingCase.update({
+        where: { id: loaded.caseRow.id },
+        data: {
+          status: nextStatus,
+          readinessSnapshotJson: snapshot as unknown as Prisma.InputJsonValue,
+          readinessSnapshotVersion: READINESS_SNAPSHOT_VERSION_V2,
+          readinessProfileVersion: snapshot.profileVersion,
+          lastActorUserId: input.actorUserId,
+          ...(input.newConcurrencyToken !== undefined
+            ? { concurrencyToken: input.newConcurrencyToken }
+            : {}),
+        },
+      });
+    }
+    return snapshot;
   }
 
   async evaluateAndSealReadiness(

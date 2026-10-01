@@ -6,6 +6,7 @@ import {
   BatteryReferenceCapacityType,
 } from '@modules/vehicle-intelligence/battery-health/battery-v2-domain';
 import { VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION_V2 } from '../contracts/vo-document-versions';
+import { assertExactObjectKeys } from './capture-strict-keys.util';
 import type {
   VehicleOnboardingBrakeReferenceDraft,
   VehicleOnboardingHvBatteryReferenceDraft,
@@ -65,6 +66,21 @@ export function strictParseTireReferenceSpec(
 ): StrictSectionParse<VehicleOnboardingTireReferenceSpecDraft> {
   if (raw === undefined || raw === null) return { kind: 'absent' };
   if (!isPlainObject(raw)) return { kind: 'invalid' };
+  try {
+    assertExactObjectKeys(raw, [
+      'frontDimension',
+      'rearDimension',
+      'loadIndexFront',
+      'speedIndexFront',
+      'loadIndexRear',
+      'speedIndexRear',
+      'recommendedPressureFrontBar',
+      'recommendedPressureRearBar',
+      'referenceProvenance',
+    ], 'tireReferenceSpec');
+  } catch {
+    return { kind: 'invalid' };
+  }
 
   const frontDimension = optionalString(raw.frontDimension);
   const rearDimension = optionalString(raw.rearDimension);
@@ -111,6 +127,19 @@ export function strictParseTireInstalledConfig(
 ): StrictSectionParse<VehicleOnboardingTireInstalledConfigDraft> {
   if (raw === undefined || raw === null) return { kind: 'absent' };
   if (!isPlainObject(raw)) return { kind: 'invalid' };
+  try {
+    assertExactObjectKeys(raw, [
+      'evidenceInstalled',
+      'brandModelFront',
+      'brandModelRear',
+      'tireSeason',
+      'installedAt',
+      'frontDimension',
+      'rearDimension',
+    ], 'tireInstalledConfig');
+  } catch {
+    return { kind: 'invalid' };
+  }
   if (raw.evidenceInstalled !== true) return { kind: 'invalid' };
 
   const brandModelFront = optionalString(raw.brandModelFront);
@@ -145,11 +174,49 @@ export function strictParseTireInstalledConfig(
   };
 }
 
+const BRAKE_REFERENCE_ALLOWED_KEYS = [
+  'frontPadNominalThicknessMm',
+  'rearPadNominalThicknessMm',
+  'frontDiscNominalThicknessMm',
+  'rearDiscNominalThicknessMm',
+  'frontPadMinimumThicknessMm',
+  'rearPadMinimumThicknessMm',
+  'frontDiscMinimumThicknessMm',
+  'rearDiscMinimumThicknessMm',
+  'frontRotorDiameter',
+  'rearRotorDiameter',
+  'frontRotorWidth',
+  'rearRotorWidth',
+  'sourceConfidence',
+  'thresholdConfidence',
+  'frontPadThickness',
+  'rearPadThickness',
+  'sourceType',
+  'sourceUrl',
+  'sourcePartNumber',
+  'sourceProvider',
+  'userConfirmedBy',
+  'frontPadEvidenceCategory',
+  'rearPadEvidenceCategory',
+  'frontDiscEvidenceCategory',
+  'rearDiscEvidenceCategory',
+  'sourceRetrievedAt',
+  'userConfirmedAt',
+  'thresholdConfirmedAt',
+] as const;
+
 export function strictParseBrakeReference(
   raw: unknown,
 ): StrictSectionParse<VehicleOnboardingBrakeReferenceDraft> {
   if (raw === undefined || raw === null) return { kind: 'absent' };
   if (!isPlainObject(raw)) return { kind: 'invalid' };
+  try {
+    assertExactObjectKeys(raw, BRAKE_REFERENCE_ALLOWED_KEYS, 'brakeReference');
+  } catch {
+    return { kind: 'invalid' };
+  }
+
+  const value: Record<string, unknown> = {};
 
   const numericFields = [
     'frontPadNominalThicknessMm',
@@ -170,13 +237,11 @@ export function strictParseBrakeReference(
     'rearPadThickness',
   ] as const;
 
-  const parsed: Record<string, unknown> = { ...raw };
-
   for (const key of numericFields) {
     if (!(key in raw)) continue;
     const v = optionalFiniteNumber(raw[key]);
     if (v === undefined) return { kind: 'invalid' };
-    parsed[key] = v;
+    value[key] = v;
   }
 
   const provenanceStrings = [
@@ -190,7 +255,7 @@ export function strictParseBrakeReference(
     if (!(key in raw)) continue;
     const v = optionalString(raw[key]);
     if (v === undefined) return { kind: 'invalid' };
-    parsed[key] = v;
+    value[key] = v;
   }
 
   const evidenceFields = [
@@ -203,26 +268,26 @@ export function strictParseBrakeReference(
     if (!(key in raw)) continue;
     const v = parseEvidenceCategory(raw[key]);
     if (v === undefined) return { kind: 'invalid' };
-    parsed[key] = v;
+    value[key] = v;
   }
 
   if ('sourceRetrievedAt' in raw && raw.sourceRetrievedAt != null) {
     const v = parseIsoTimestamp(raw.sourceRetrievedAt);
     if (v === undefined) return { kind: 'invalid' };
-    parsed.sourceRetrievedAt = v;
+    value.sourceRetrievedAt = v;
   }
   if ('userConfirmedAt' in raw && raw.userConfirmedAt != null) {
     const v = parseIsoTimestamp(raw.userConfirmedAt);
     if (v === undefined) return { kind: 'invalid' };
-    parsed.userConfirmedAt = v;
+    value.userConfirmedAt = v;
   }
   if ('thresholdConfirmedAt' in raw && raw.thresholdConfirmedAt != null) {
     const v = parseIsoTimestamp(raw.thresholdConfirmedAt);
     if (v === undefined) return { kind: 'invalid' };
-    parsed.thresholdConfirmedAt = v;
+    value.thresholdConfirmedAt = v;
   }
 
-  return { kind: 'valid', value: parsed as VehicleOnboardingBrakeReferenceDraft };
+  return { kind: 'valid', value: value as VehicleOnboardingBrakeReferenceDraft };
 }
 
 export function strictParseHvBatteryReference(
@@ -230,6 +295,15 @@ export function strictParseHvBatteryReference(
 ): StrictSectionParse<VehicleOnboardingHvBatteryReferenceDraft> {
   if (raw === undefined || raw === null) return { kind: 'absent' };
   if (!isPlainObject(raw)) return { kind: 'invalid' };
+  try {
+    assertExactObjectKeys(
+      raw,
+      ['capacityKwh', 'capacityType', 'source', 'documentId', 'serviceEventId', 'notes'],
+      'hvBatteryReference',
+    );
+  } catch {
+    return { kind: 'invalid' };
+  }
 
   if (typeof raw.capacityKwh !== 'number' || !Number.isFinite(raw.capacityKwh) || raw.capacityKwh <= 0) {
     return { kind: 'invalid' };
