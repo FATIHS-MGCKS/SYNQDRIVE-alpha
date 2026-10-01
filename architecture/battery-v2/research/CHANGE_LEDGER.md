@@ -34,11 +34,18 @@ Append-only scientific record. Newest entries first.
 |-------|-------|
 | **BEFORE** | A1 coverage report used vehicle-wide snapshot/evidence aggregates per lifecycle segment; earliestTrustedAt mirrored earliestObservedAt; retention proximity inferred TRUNCATED_HISTORY; charge sessions silently capped at 5000 |
 | **OBSERVATION** | Pre/post replacement pooling risk; ineligible sessions could imply trusted throughput start; policy retention window ≠ confirmed pruning |
+| **HYPOTHESIS** | Segment-interval filtering and explicit trust/retention/load semantics keep H4-A1 read-only report scientifically fail-closed before A2 accumulation |
 | **CHANGE** | Segment interval filtering `[startInclusive,endExclusive)`; separate observed vs trusted starts (`FIRST_QUALIFIED_SESSION` for native throughput); `segmentEvidenceState`; retention inference enum; paginated session load with explicit truncation; postgres integration fixture |
 | **WHY** | A1 must not overstate segment evidence before H4-A2 cumulative composition |
+| **EXPECTED_EFFECT** | No cross-segment point leakage; throughput trusted start only from ELIGIBLE_NATIVE; no silent session history truncation |
 | **VALIDATION** | test:battery:v2:hv-h4; test:battery:v2:hv-h4:postgres; validate-h4-exposure-coverage-contracts.sh |
+| **OBSERVED_EFFECT** | Unit suite 21/21; backend build OK; postgres IT added (CI gate) |
+| **NON_EFFECTS** | No schema/migrations; no Nest runtime registration; no cumulative exposure values |
+| **REGRESSIONS_OR_TRADEOFFS** | Point-source loads fetch timestamp lists (read-only report cost vs aggregate-only A1) |
+| **REMAINING_GAPS** | ACTUAL_RETENTION_TRUNCATION_CONFIRMED requires future pruning-evidence loader; H4-A2 not started |
 | **DECISION_STATUS** | PROPOSED (draft PR #1866) |
 | **AFFECTED_GRAPH** | BAT-V2-AUTH-H4-001 |
+| **EVIDENCE** | PR #1866; `m3-3-hv-h4-coverage-report.postgres.integration.spec.ts` |
 
 ---
 
