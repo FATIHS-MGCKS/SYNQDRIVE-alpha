@@ -117,8 +117,18 @@ export class VehicleOnboardingCaseService {
     ctx: OnboardingActorContext,
     dimoVehicleId: string,
   ): Promise<VehicleOnboardingCase> {
+    return this.prisma.$transaction((tx) =>
+      this.openOrResumeFromDimoInTransaction(tx, ctx, dimoVehicleId),
+    );
+  }
+
+  async openOrResumeFromDimoInTransaction(
+    tx: Prisma.TransactionClient,
+    ctx: OnboardingActorContext,
+    dimoVehicleId: string,
+  ): Promise<VehicleOnboardingCase> {
     const adoption = ctx.sourceAdoption ?? DEFAULT_TENANT_SOURCE_ADOPTION;
-    const dimo = await this.loadDimoMirrorForOnboarding(dimoVehicleId);
+    const dimo = await this.loadDimoMirrorForOnboardingTx(tx, dimoVehicleId);
     this.sourceAdoptionAuthority.assertDimoPlatformMirrorAdoptable(
       dimo,
       ctx.organizationId,
@@ -126,7 +136,7 @@ export class VehicleOnboardingCaseService {
     );
     const snapshot = buildDimoOnboardingSourceSnapshot(dimo);
     const identity = identityDraftFromDimoSnapshot(snapshot);
-    return this.openOrResumeWithPrimarySnapshot(ctx, {
+    return this.openOrResumeWithPrimarySnapshotInTransaction(tx, ctx, {
       sourceMode: 'DIMO',
       provider: 'DIMO',
       connectionScope: DIMO_PLATFORM_DEVELOPER_LICENSE_SCOPE,
@@ -142,8 +152,18 @@ export class VehicleOnboardingCaseService {
     ctx: OnboardingActorContext,
     hmVehicleId: string,
   ): Promise<VehicleOnboardingCase> {
+    return this.prisma.$transaction((tx) =>
+      this.openOrResumeFromHighMobilityInTransaction(tx, ctx, hmVehicleId),
+    );
+  }
+
+  async openOrResumeFromHighMobilityInTransaction(
+    tx: Prisma.TransactionClient,
+    ctx: OnboardingActorContext,
+    hmVehicleId: string,
+  ): Promise<VehicleOnboardingCase> {
     const adoption = ctx.sourceAdoption ?? DEFAULT_TENANT_SOURCE_ADOPTION;
-    const hm = await this.prisma.highMobilityVehicle.findUnique({ where: { id: hmVehicleId } });
+    const hm = await tx.highMobilityVehicle.findUnique({ where: { id: hmVehicleId } });
     if (!hm) {
       throw new VehicleOnboardingError('SOURCE_NOT_AVAILABLE', 'High Mobility source not available');
     }
@@ -154,7 +174,7 @@ export class VehicleOnboardingCaseService {
     );
     const snapshot = buildHmOnboardingSourceSnapshot(hm, ctx.organizationId);
     const identity = identityDraftFromHmSnapshot(snapshot);
-    return this.openOrResumeWithPrimarySnapshot(ctx, {
+    return this.openOrResumeWithPrimarySnapshotInTransaction(tx, ctx, {
       sourceMode: 'HIGH_MOBILITY',
       provider: 'HIGH_MOBILITY',
       connectionScope: snapshot.connectionScope,
@@ -230,7 +250,7 @@ export class VehicleOnboardingCaseService {
   }
 
   async refreshHighMobilitySourceEvidence(
-    ctx: Pick<OnboardingActorContext, 'organizationId' | 'sourceAdoption'>,
+    ctx: Pick<OnboardingActorContext, 'organizationId' | 'sourceAdoption' | 'actorUserId'>,
     caseId: string,
     hmVehicleId: string,
   ): Promise<void> {
@@ -260,7 +280,11 @@ export class VehicleOnboardingCaseService {
       if (!hm) {
         throw new VehicleOnboardingError('SOURCE_NOT_AVAILABLE', 'High Mobility source not available');
       }
-      this.sourceAdoptionAuthority.assertHighMobilityMirrorAdoptable(hm, ctx.organizationId, adoption);
+      this.sourceAdoptionAuthority.assertHighMobilityMirrorEvidenceRefreshable(
+        hm,
+        ctx.organizationId,
+        adoption,
+      );
       const oldSnap = parseValidatedSourceSnapshot(ref);
       const newSnap = buildHmOnboardingSourceSnapshot(hm, ctx.organizationId);
       const oldVin = oldSnap.vin?.trim() || null;
@@ -286,6 +310,13 @@ export class VehicleOnboardingCaseService {
       });
       const freshCase = await tx.vehicleOnboardingCase.findUniqueOrThrow({ where: { id: caseId } });
       await invalidateReadinessSealIfReady(tx, freshCase);
+      await tx.vehicleOnboardingCase.update({
+        where: { id: caseId },
+        data: {
+          concurrencyToken: randomUUID(),
+          lastActorUserId: ctx.actorUserId ?? freshCase.lastActorUserId,
+        },
+      });
     });
   }
 
@@ -454,6 +485,27 @@ export class VehicleOnboardingCaseService {
       requestFingerprint?: string;
     },
   ): Promise<VehicleOnboardingCase> {
+    return this.prisma.$transaction((tx) =>
+      this.openOrResumeWithPrimarySnapshotInTransaction(tx, ctx, primary),
+    );
+  }
+
+  async openOrResumeWithPrimarySnapshotInTransaction(
+    tx: Prisma.TransactionClient,
+    ctx: OnboardingActorContext,
+    primary: {
+      sourceMode: OnboardingCaseSourceMode;
+      provider: string;
+      connectionScope: string | null;
+      externalVehicleIdentity: string;
+      sourceMirrorTable: string | null;
+      sourceMirrorId: string | null;
+      snapshot: OnboardingSourceSnapshotV1;
+      identity: VehicleIdentityDraftV1;
+      admin?: import('../contracts/vehicle-admin-baseline-draft.v1').VehicleAdministrativeBaselineDraftV1;
+      requestFingerprint?: string;
+    },
+  ): Promise<VehicleOnboardingCase> {
     const scopeKey = scopeKeyFromConnectionScope(primary.connectionScope);
     const requestPrimary = {
       provider: primary.provider,
@@ -461,7 +513,7 @@ export class VehicleOnboardingCaseService {
       externalVehicleIdentity: primary.externalVehicleIdentity,
     };
 
-    const byKey = await this.prisma.vehicleOnboardingCase.findFirst({
+    const byKey = await tx.vehicleOnboardingCase.findFirst({
       where: {
         organizationId: ctx.organizationId,
         idempotencyKey: ctx.idempotencyKey,
@@ -476,7 +528,7 @@ export class VehicleOnboardingCaseService {
     const caseId = randomUUID();
 
     try {
-      const created = await this.prisma.vehicleOnboardingCase.create({
+      const created = await tx.vehicleOnboardingCase.create({
         data: {
           id: caseId,
           organizationId: ctx.organizationId,
@@ -524,7 +576,7 @@ export class VehicleOnboardingCaseService {
       return created;
     } catch (error) {
       if (isPrismaUniqueViolation(error, ['organization_id', 'idempotency_key'])) {
-        const existing = await this.prisma.vehicleOnboardingCase.findFirst({
+        const existing = await tx.vehicleOnboardingCase.findFirst({
           where: {
             organizationId: ctx.organizationId,
             idempotencyKey: ctx.idempotencyKey,
@@ -541,7 +593,7 @@ export class VehicleOnboardingCaseService {
         }
       }
       if (isPrismaUniqueViolation(error)) {
-        const open = await this.prisma.vehicleOnboardingCase.findFirst({
+        const open = await tx.vehicleOnboardingCase.findFirst({
           where: {
             organizationId: ctx.organizationId,
             primarySourceProvider: primary.provider,
@@ -564,7 +616,14 @@ export class VehicleOnboardingCaseService {
 
   /** Prisma-safe mirror load (integration DBs may lag schema columns such as powertrain_type). */
   private async loadDimoMirrorForOnboarding(dimoVehicleId: string) {
-    const dimo = await this.prisma.dimoVehicle.findUnique({
+    return this.loadDimoMirrorForOnboardingTx(this.prisma, dimoVehicleId);
+  }
+
+  private async loadDimoMirrorForOnboardingTx(
+    tx: Prisma.TransactionClient,
+    dimoVehicleId: string,
+  ) {
+    const dimo = await tx.dimoVehicle.findUnique({
       where: { id: dimoVehicleId },
       select: {
         id: true,

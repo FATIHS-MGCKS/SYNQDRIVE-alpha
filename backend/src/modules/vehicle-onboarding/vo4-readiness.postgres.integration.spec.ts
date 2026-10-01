@@ -10,8 +10,9 @@ import {
 } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { createVo4ReadinessTestHarness } from './testing/vo4-readiness-test.harness';
-import { activateForTest } from './testing/vehicle-onboarding-test.harness';
+import { activateForTest, dimoOnboardingActor } from './testing/vehicle-onboarding-test.harness';
 import { DEFAULT_TENANT_SOURCE_ADOPTION } from './source-adoption/source-adoption.context';
+import { PLATFORM_TRUSTED_SOURCE_ADOPTION } from './source-adoption/platform-trusted-adoption.context';
 import { READINESS_SNAPSHOT_VERSION_V2 } from './contracts/vo-document-versions';
 import { ensureOrganizationProductEntitlement } from './testing/org-product-test.harness';
 import {
@@ -124,7 +125,7 @@ async function assertNoStaleReadySeal(
     const dimoId = randomUUID();
     await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 6)}`);
     const caseRow = await caseService.openOrResumeFromDimo(
-      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoOnboardingActor(orgId),
       dimoId,
     );
     await prisma.vehicleOnboardingCase.update({
@@ -156,7 +157,7 @@ async function assertNoStaleReadySeal(
     const dimoId = randomUUID();
     await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 6)}`);
     const caseRow = await caseService.openOrResumeFromDimo(
-      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoOnboardingActor(orgId),
       dimoId,
     );
     await applyResolvableDimoIdentity(prisma, caseRow.id);
@@ -176,7 +177,7 @@ async function assertNoStaleReadySeal(
     const orgId = await createOrgWithProducts(prisma, [ProductSlug.RENTAL]);
     const vin = `MAN${randomUUID().replace(/-/g, '').slice(0, 14)}`;
     const caseRow = await caseService.openOrResumeManual(
-      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoOnboardingActor(orgId),
       {
         vin,
         make: 'VW',
@@ -209,7 +210,7 @@ async function assertNoStaleReadySeal(
       },
     });
     const caseRow = await caseService.openOrResumeFromHighMobility(
-      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoOnboardingActor(orgId),
       hmId,
     );
     await prisma.vehicleOnboardingCase.update({
@@ -246,11 +247,20 @@ async function assertNoStaleReadySeal(
         brand: 'BMW',
         packageType: 'HEALTH',
         sourceMode: 'HM_ONLY',
-        clearanceStatus: 'CLEARANCE_PENDING',
+        clearanceStatus: 'APPROVED',
       },
     });
     const caseRow = await caseService.openOrResumeFromHighMobility(
       { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      hmId,
+    );
+    await prisma.highMobilityVehicle.update({
+      where: { id: hmId },
+      data: { clearanceStatus: 'CLEARANCE_PENDING' },
+    });
+    await caseService.refreshHighMobilitySourceEvidence(
+      { organizationId: orgId, actorUserId: null, sourceAdoption: DEFAULT_TENANT_SOURCE_ADOPTION },
+      caseRow.id,
       hmId,
     );
     await prisma.vehicleOnboardingCase.update({
@@ -278,7 +288,7 @@ async function assertNoStaleReadySeal(
     const dimoId = randomUUID();
     await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 6)}`);
     const caseRow = await caseService.openOrResumeFromDimo(
-      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoOnboardingActor(orgId),
       dimoId,
     );
     await prisma.vehicleOnboardingCase.update({
@@ -308,7 +318,7 @@ async function assertNoStaleReadySeal(
     const dimoId = randomUUID();
     await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 6)}`);
     const caseRow = await caseService.openOrResumeFromDimo(
-      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoOnboardingActor(orgId),
       dimoId,
     );
     await prisma.vehicleOnboardingCase.update({
@@ -339,7 +349,7 @@ async function assertNoStaleReadySeal(
     const dimoId = randomUUID();
     await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 6)}`);
     const caseRow = await caseService.openOrResumeFromDimo(
-      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoOnboardingActor(orgId),
       dimoId,
     );
     await prisma.vehicleOnboardingCase.update({
@@ -374,7 +384,7 @@ async function assertNoStaleReadySeal(
     const dimoId = randomUUID();
     await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 6)}`);
     const caseRow = await caseService.openOrResumeFromDimo(
-      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoOnboardingActor(orgId),
       dimoId,
     );
     await applyResolvableDimoIdentity(prisma, caseRow.id);
@@ -411,13 +421,13 @@ async function assertNoStaleReadySeal(
     await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 8)}`);
     await createDimoMirror(prisma, dimo2, `ext-${dimo2.slice(0, 8)}`);
     const caseRow = await caseService.openOrResumeFromDimo(
-      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoOnboardingActor(orgId),
       dimoId,
     );
     await applyResolvableDimoIdentity(prisma, caseRow.id);
     await readinessService.evaluateAndSealReadiness(sealInput(orgId, caseRow.id));
     await caseService.attachDimoSource(
-      { organizationId: orgId, sourceAdoption: DEFAULT_TENANT_SOURCE_ADOPTION },
+      { organizationId: orgId, sourceAdoption: PLATFORM_TRUSTED_SOURCE_ADOPTION },
       caseRow.id,
       dimo2,
       { isPrimary: false },
@@ -437,7 +447,7 @@ async function assertNoStaleReadySeal(
     const dimoId = randomUUID();
     await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 6)}`);
     const caseRow = await caseService.openOrResumeFromDimo(
-      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoOnboardingActor(orgId),
       dimoId,
     );
     await applyResolvableDimoIdentity(prisma, caseRow.id);
@@ -467,7 +477,7 @@ async function assertNoStaleReadySeal(
     const dimoId = randomUUID();
     await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 6)}`);
     const caseRow = await caseService.openOrResumeFromDimo(
-      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoOnboardingActor(orgId),
       dimoId,
     );
     await prisma.vehicleOnboardingCase.update({
@@ -500,7 +510,7 @@ async function assertNoStaleReadySeal(
     const dimoId = randomUUID();
     await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 6)}`);
     const caseRow = await caseService.openOrResumeFromDimo(
-      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoOnboardingActor(orgId),
       dimoId,
     );
     await applyResolvableDimoIdentity(prisma, caseRow.id);
@@ -530,7 +540,7 @@ async function assertNoStaleReadySeal(
     const dimoId = randomUUID();
     await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 6)}`);
     const caseRow = await caseService.openOrResumeFromDimo(
-      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoOnboardingActor(orgId),
       dimoId,
     );
     await applyResolvableDimoIdentity(prisma, caseRow.id);
@@ -552,7 +562,7 @@ async function assertNoStaleReadySeal(
     const dimoId = randomUUID();
     await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 6)}`);
     const caseRow = await caseService.openOrResumeFromDimo(
-      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoOnboardingActor(orgId),
       dimoId,
     );
     await applyResolvableDimoIdentity(prisma, caseRow.id);
@@ -566,7 +576,7 @@ async function assertNoStaleReadySeal(
     const dimoId = randomUUID();
     await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 6)}`);
     const caseRow = await caseService.openOrResumeFromDimo(
-      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoOnboardingActor(orgId),
       dimoId,
     );
     await applyResolvableDimoIdentity(prisma, caseRow.id);
@@ -586,7 +596,7 @@ async function assertNoStaleReadySeal(
     const dimoId = randomUUID();
     await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 6)}`);
     const caseRow = await caseService.openOrResumeFromDimo(
-      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoOnboardingActor(orgId),
       dimoId,
     );
     await applyResolvableDimoIdentity(prisma, caseRow.id);
@@ -606,7 +616,7 @@ async function assertNoStaleReadySeal(
     const dimoId = randomUUID();
     await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 6)}`);
     const caseRow = await caseService.openOrResumeFromDimo(
-      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoOnboardingActor(orgId),
       dimoId,
     );
     await applyResolvableDimoIdentity(prisma, caseRow.id);
@@ -620,7 +630,7 @@ async function assertNoStaleReadySeal(
     const dimoId = randomUUID();
     await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 6)}`);
     const caseRow = await caseService.openOrResumeFromDimo(
-      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoOnboardingActor(orgId),
       dimoId,
     );
     await applyResolvableDimoIdentity(prisma, caseRow.id);
@@ -656,7 +666,7 @@ async function assertNoStaleReadySeal(
       },
     });
     const caseRow = await caseService.openOrResumeFromHighMobility(
-      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoOnboardingActor(orgId),
       hmId,
     );
     await prisma.vehicleOnboardingCase.update({
@@ -719,11 +729,20 @@ async function assertNoStaleReadySeal(
         brand: 'BMW',
         packageType: 'HEALTH',
         sourceMode: 'HM_ONLY',
-        clearanceStatus: 'CLEARANCE_PENDING',
+        clearanceStatus: 'APPROVED',
       },
     });
     const caseRow = await caseService.openOrResumeFromHighMobility(
       { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      hmId,
+    );
+    await prisma.highMobilityVehicle.update({
+      where: { id: hmId },
+      data: { clearanceStatus: 'CLEARANCE_PENDING' },
+    });
+    await caseService.refreshHighMobilitySourceEvidence(
+      { organizationId: orgId, actorUserId: null, sourceAdoption: DEFAULT_TENANT_SOURCE_ADOPTION },
+      caseRow.id,
       hmId,
     );
     await prisma.vehicleOnboardingCase.update({
@@ -754,7 +773,7 @@ async function assertNoStaleReadySeal(
       data: { clearanceStatus: 'APPROVED' },
     });
     await caseService.refreshHighMobilitySourceEvidence(
-      { organizationId: orgId, sourceAdoption: DEFAULT_TENANT_SOURCE_ADOPTION },
+      { organizationId: orgId, actorUserId: null, sourceAdoption: DEFAULT_TENANT_SOURCE_ADOPTION },
       caseRow.id,
       hmId,
     );
@@ -769,14 +788,14 @@ async function assertNoStaleReadySeal(
     await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 8)}`);
     await createDimoMirror(prisma, dimo2, `ext-${dimo2.slice(0, 8)}`);
     const caseRow = await caseService.openOrResumeFromDimo(
-      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoOnboardingActor(orgId),
       dimoId,
     );
     await applyResolvableDimoIdentity(prisma, caseRow.id);
     await Promise.all([
       readinessService.evaluateAndSealReadiness(sealInput(orgId, caseRow.id)),
       caseService.attachDimoSource(
-        { organizationId: orgId, sourceAdoption: DEFAULT_TENANT_SOURCE_ADOPTION },
+        { organizationId: orgId, sourceAdoption: PLATFORM_TRUSTED_SOURCE_ADOPTION },
         caseRow.id,
         dimo2,
         { isPrimary: false },
@@ -824,12 +843,12 @@ async function assertNoStaleReadySeal(
     });
     await prisma.highMobilityVehicle.update({
       where: { id: hmId },
-      data: { clearanceStatus: 'CLEARANCE_PENDING' },
+      data: { clearanceStatus: 'CLEARANCE_PENDING', brand: 'BMW-RACE' },
     });
     await Promise.all([
       readinessService.evaluateAndSealReadiness(sealInput(orgId, caseRow.id)),
       caseService.refreshHighMobilitySourceEvidence(
-        { organizationId: orgId, sourceAdoption: DEFAULT_TENANT_SOURCE_ADOPTION },
+        { organizationId: orgId, actorUserId: null, sourceAdoption: DEFAULT_TENANT_SOURCE_ADOPTION },
         caseRow.id,
         hmId,
       ),

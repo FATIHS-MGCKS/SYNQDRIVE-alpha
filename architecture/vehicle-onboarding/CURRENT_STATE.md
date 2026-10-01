@@ -5,7 +5,7 @@
 | **Sealed from** | VO-0A discovery audit |
 | **Repository anchor SHA** | `312d9f54a2b4c0b0740061d3e2b74897e78eacb0` |
 | **Authority status** | `AUDIT_IN_PROGRESS` — **not** `AUTHORITY_ACTIVE` |
-| **Last updated** | 2026-09-30 (VO-4.8.1 capture API authority seal; **no public cutover**) |
+| **Last updated** | 2026-10-01 (VO-4.9 Master Admin source adoption HTTP; **no public cutover**) |
 
 ## Executive summary
 
@@ -22,6 +22,8 @@ SynqDrive today separates **provider mirrors** (`DimoVehicle`, `HighMobilityVehi
 - **VO-3 (2026-09-30):** `VehicleOnboardingModule` — internal case orchestration + atomic activation; legacy `registerFromDimo` / HM_ONLY / manual create **unchanged** (see [VO3_ORCHESTRATOR_ACTIVATION.md](./evidence/VO3_ORCHESTRATOR_ACTIVATION.md)).
 - **VO-3.2 (2026-09-30):** Governed `attachDimoSource` / `attachHighMobilitySource` only (no public arbitrary snapshot attach); DIMO cutover auth invariant `VO-INV-DIMO-CUTOVER-AUTH-001` (see [VO3_2_FINAL_RUNTIME_SEAL.md](./evidence/VO3_2_FINAL_RUNTIME_SEAL.md)).
 - **VO-4 / VO-4.1 (2026-09-30):** `VehicleOnboardingReadinessService` + snapshot V2 + explicit `ProductSlug` entitlement + fingerprint v1.1 (incl. source evidence); HM source refresh; shared readiness mutation lock (see [VO4_READINESS_AUTHORITY.md](./evidence/VO4_READINESS_AUTHORITY.md)).
+- **VO-4.8 (2026-09-30):** Tenant-scoped authenticated capture HTTP (`VehicleOnboardingCaptureController`) — see [VO48_AUTHENTICATED_CAPTURE_API.md](./evidence/VO48_AUTHENTICATED_CAPTURE_API.md).
+- **VO-4.9 (2026-10-01):** Master Admin trusted source adoption HTTP (`VehicleOnboardingSourceAdoptionController`) — global source claim lock, cross-org suppression, platform-trusted DIMO adoption; **no** tenant self-service adoption (see [VO49_MASTER_ADMIN_SOURCE_ADOPTION_API.md](./evidence/VO49_MASTER_ADMIN_SOURCE_ADOPTION_API.md)).
 
 ---
 
