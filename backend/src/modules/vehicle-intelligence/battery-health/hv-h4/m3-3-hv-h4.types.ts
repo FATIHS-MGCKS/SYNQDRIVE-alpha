@@ -54,6 +54,18 @@ export type M3_3HvH4EvidenceBoundaryKind =
 
 export type M3_3HvH4GapKind = 'KNOWN_GAP' | 'POSSIBLE_GAP' | 'TRUNCATED_HISTORY';
 
+/** Actual segment-level evidence presence (distinct from static axis coverage class). */
+export type M3_3HvH4SegmentEvidenceState =
+  | 'NO_OBSERVED_SOURCE'
+  | 'OBSERVED_CONTEXT_ONLY'
+  | 'TRUSTED_SOURCE_PRESENT';
+
+export type M3_3HvH4RetentionInferenceKind =
+  | 'RETENTION_POLICY_WINDOW_LIMITED'
+  | 'RETENTION_TRUNCATION_POSSIBLE'
+  | 'ACTUAL_RETENTION_TRUNCATION_CONFIRMED'
+  | 'NO_RETENTION_TRUNCATION_EVIDENCE';
+
 export type M3_3HvH4FutureThroughputEligibility =
   | 'ELIGIBLE_NATIVE'
   | 'ELIGIBLE_FALLBACK_WITH_MATCHING_SEMANTIC'
@@ -111,10 +123,12 @@ export interface M3_3HvH4AxisCoverageEntryV1 {
   lifecycleSegmentId: string;
   coverageClass: M3_3HvH4CoverageClass;
   semanticAuthority: M3_3HvH4SemanticAuthority;
+  segmentEvidenceState: M3_3HvH4SegmentEvidenceState;
   earliestObservedAt: string | null;
   earliestTrustedAt: string | null;
   latestObservedAt: string | null;
   retentionContinuity: M3_3HvH4RetentionContinuity;
+  retentionInference: M3_3HvH4RetentionInferenceKind;
   replacementSegmentable: boolean;
   sourceSummaries: M3_3HvH4SourceSummaryV1[];
   gapSummary: M3_3HvH4CoverageGapSummaryV1;
@@ -156,6 +170,12 @@ export interface M3_3HvH4CoverageReportV1 {
     hvChargeSessionRetentionDaysDefault: number;
     hvSnapshotRetentionDaysDefault: number;
     retentionBoundaryDistinctFromEvidenceStart: true;
+  };
+  chargeSessionSourceLoad: {
+    loadedCount: number;
+    hardLimit: number;
+    sourceTruncated: boolean;
+    hardLimitReached: boolean;
   };
   automaticRuntimeReachable: false;
   customerPublicationEligible: false;

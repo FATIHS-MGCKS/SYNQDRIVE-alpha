@@ -26,6 +26,22 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-10-01 — M3.3-HV-H4-A1.1 exposure coverage scientific hardening + postgres IT
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | A1 coverage report used vehicle-wide snapshot/evidence aggregates per lifecycle segment; earliestTrustedAt mirrored earliestObservedAt; retention proximity inferred TRUNCATED_HISTORY; charge sessions silently capped at 5000 |
+| **OBSERVATION** | Pre/post replacement pooling risk; ineligible sessions could imply trusted throughput start; policy retention window ≠ confirmed pruning |
+| **CHANGE** | Segment interval filtering `[startInclusive,endExclusive)`; separate observed vs trusted starts (`FIRST_QUALIFIED_SESSION` for native throughput); `segmentEvidenceState`; retention inference enum; paginated session load with explicit truncation; postgres integration fixture |
+| **WHY** | A1 must not overstate segment evidence before H4-A2 cumulative composition |
+| **VALIDATION** | test:battery:v2:hv-h4; test:battery:v2:hv-h4:postgres; validate-h4-exposure-coverage-contracts.sh |
+| **DECISION_STATUS** | PROPOSED (draft PR #1866) |
+| **AFFECTED_GRAPH** | BAT-V2-AUTH-H4-001 |
+
+---
+
 ## CL-2026-10-01 — M3.3-HV-H4-A1 exposure source + coverage authority foundation
 
 | Field | Value |

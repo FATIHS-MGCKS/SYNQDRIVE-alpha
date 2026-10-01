@@ -15,17 +15,16 @@ import {
   NATIVE_FALLBACK_CHARGING_ADDED_SEMANTIC_EQUIVALENCE_PROVEN,
 } from './m3-3-hv-h4.constants';
 import { buildM3_3HvH4ExposureSourceAuthorityContractV1 } from './m3-3-hv-h4-exposure-source-authority.v1';
-import { resolveM3_3HvH4ReplacementBoundaries } from './m3-3-hv-h4-lifecycle.util';
+import {
+  buildM3_3HvH4LifecycleSegmentIntervals,
+  resolveM3_3HvH4ReplacementBoundaries,
+} from './m3-3-hv-h4-lifecycle.util';
 import type { M3_3HvH4LoadedDataV1 } from './m3-3-hv-h4-loaded-data.types';
 import { HV_CHARGE_SESSION_QUALITY_STATUS } from '../hv-charge-session/hv-charge-session-quality.status';
 import {
   HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE,
   HV_CHARGE_SESSION_SOURCE_TELEMETRY_POLL_FALLBACK,
 } from '../hv-charge-session/hv-charge-session.types';
-
-function emptyRange() {
-  return { count: 0, earliest: null, latest: null };
-}
 
 function baseLoaded(overrides: Partial<M3_3HvH4LoadedDataV1>): M3_3HvH4LoadedDataV1 {
   const evaluationAt = overrides.evaluationAt ?? new Date('2026-08-01T12:00:00.000Z');
@@ -35,10 +34,16 @@ function baseLoaded(overrides: Partial<M3_3HvH4LoadedDataV1>): M3_3HvH4LoadedDat
     evaluationAt,
     groundTruthEvents: [],
     chargeSessions: [],
-    hvSnapshots: emptyRange(),
-    hvSocEvidence: emptyRange(),
-    hvTemperatureEvidence: emptyRange(),
-    hvChargingPowerEvidence: emptyRange(),
+    chargeSessionSourceLoad: {
+      loadedCount: 0,
+      hardLimit: 5000,
+      sourceTruncated: false,
+      hardLimitReached: false,
+    },
+    hvSnapshotRecordedAt: [],
+    hvSocEvidenceObservedAt: [],
+    hvTemperatureEvidenceObservedAt: [],
+    hvChargingPowerEvidenceObservedAt: [],
     retentionCutoffs: {
       hvChargeSessionEarliestRemaining: new Date(
         evaluationAt.getTime() - M3_3_HV_H4_DEFAULT_RETENTION_DAYS.hvChargeSessions * 86400000,
@@ -49,6 +54,12 @@ function baseLoaded(overrides: Partial<M3_3HvH4LoadedDataV1>): M3_3HvH4LoadedDat
     },
     ...overrides,
   };
+}
+
+function snapshotsFromRange(range: { count: number; earliest: Date | null; latest: Date | null }): Date[] {
+  if (range.count === 0 || !range.earliest) return [];
+  if (range.count === 1) return [range.earliest];
+  return [range.earliest, range.latest ?? range.earliest];
 }
 
 describe('M3.3-HV-H4 exposure source authority contract', () => {
@@ -273,11 +284,11 @@ describe('M3.3-HV-H4 coverage report builder', () => {
     const evaluationAt = new Date('2026-08-01T00:00:00.000Z');
     const loaded = baseLoaded({
       evaluationAt,
-      hvSnapshots: {
+      hvSnapshotRecordedAt: snapshotsFromRange({
         count: 2,
         earliest: new Date('2026-07-01T00:00:00.000Z'),
         latest: new Date('2026-07-02T00:00:00.000Z'),
-      },
+      }),
     });
     const report = buildM3_3HvH4CoverageReportV1(loaded);
     const temp = report.axes.find(
@@ -294,11 +305,7 @@ describe('M3.3-HV-H4 coverage report builder', () => {
   it('does not label first observation as physical battery age', () => {
     const report = buildM3_3HvH4CoverageReportV1(
       baseLoaded({
-        hvSnapshots: {
-          count: 1,
-          earliest: new Date('2026-07-01T00:00:00.000Z'),
-          latest: new Date('2026-07-01T00:00:00.000Z'),
-        },
+        hvSnapshotRecordedAt: [new Date('2026-07-01T00:00:00.000Z')],
       }),
     );
     const cal = report.axisAuthorities.find((a) => a.axis === 'CALENDAR_TIME');
@@ -344,5 +351,161 @@ describe('M3.3-HV-H4 tenant isolation', () => {
     );
     expect(report.organizationId).toBe('org-a');
     expect(report.vehicleId).toBe('veh-a');
+  });
+});
+
+describe('M3.3-HV-H4 A1.1 scientific hardening regressions', () => {
+  const replacementAt = new Date('2026-06-01T00:00:00.000Z');
+  const evaluationAt = new Date('2026-09-01T00:00:00.000Z');
+  const gtCreated = new Date('2026-01-01T00:00:00.000Z');
+
+  function replacementFixture() {
+    return baseLoaded({
+      evaluationAt,
+      groundTruthEvents: [
+        {
+          id: 'gt-hv',
+          batteryScope: BatteryEvidenceScope.HV,
+          groundTruthType: BatteryGroundTruthType.BATTERY_REPLACEMENT,
+          effectiveAt: replacementAt,
+          createdAt: gtCreated,
+          verificationStatus: 'CONFIRMED',
+          revocations: [],
+          supersededByGroundTruthEvents: [],
+        },
+      ],
+      hvSnapshotRecordedAt: [
+        new Date('2026-05-15T00:00:00.000Z'),
+        new Date('2026-07-15T00:00:00.000Z'),
+      ],
+      hvSocEvidenceObservedAt: [
+        new Date('2026-05-20T00:00:00.000Z'),
+        new Date('2026-08-01T00:00:00.000Z'),
+      ],
+    });
+  }
+
+  it('does not leak pre-replacement snapshots into post-replacement segment', () => {
+    const report = buildM3_3HvH4CoverageReportV1(replacementFixture());
+    const seg0 = report.axes.find(
+      (a) => a.axis === 'ODOMETER_KM' && a.lifecycleSegmentId === 'HV_SEGMENT_0',
+    );
+    const seg1 = report.axes.find(
+      (a) => a.axis === 'ODOMETER_KM' && a.lifecycleSegmentId === 'HV_SEGMENT_1',
+    );
+    expect(seg0?.latestObservedAt).toBe('2026-05-15T00:00:00.000Z');
+    expect(seg1?.earliestObservedAt).toBe('2026-07-15T00:00:00.000Z');
+    expect(seg1?.earliestObservedAt).not.toBe(seg0?.earliestObservedAt);
+  });
+
+  it('does not leak BatteryEvidence SOC across lifecycle segments', () => {
+    const report = buildM3_3HvH4CoverageReportV1(replacementFixture());
+    const seg0 = report.axes.find(
+      (a) => a.axis === 'SOC_WINDOW_EXPOSURE' && a.lifecycleSegmentId === 'HV_SEGMENT_0',
+    );
+    const seg1 = report.axes.find(
+      (a) => a.axis === 'SOC_WINDOW_EXPOSURE' && a.lifecycleSegmentId === 'HV_SEGMENT_1',
+    );
+    const seg0Evidence = seg0?.sourceSummaries.find((s) =>
+      s.source.includes('BatteryEvidence.SOC'),
+    );
+    const seg1Evidence = seg1?.sourceSummaries.find((s) =>
+      s.source.includes('BatteryEvidence.SOC'),
+    );
+    expect(seg0Evidence?.latestObservedAt).toBe('2026-05-20T00:00:00.000Z');
+    expect(seg1Evidence?.earliestObservedAt).toBe('2026-08-01T00:00:00.000Z');
+    expect(seg0Evidence?.earliestObservedAt).not.toBe(seg1Evidence?.earliestObservedAt);
+  });
+
+  it('assigns replacement-boundary instant to the new segment interval', () => {
+    const boundaries = resolveM3_3HvH4ReplacementBoundaries(
+      replacementFixture().groundTruthEvents,
+      evaluationAt,
+    );
+    const intervals = buildM3_3HvH4LifecycleSegmentIntervals({
+      replacementBoundaries: boundaries,
+      evaluationAt,
+    });
+    const seg1 = intervals.find((i) => i.lifecycleSegmentId === 'HV_SEGMENT_1')!;
+    expect(seg1.startInclusive?.toISOString()).toBe(replacementAt.toISOString());
+  });
+
+  it('separates earliestObservedAt from earliestTrustedAt when first sessions are ineligible', () => {
+    const report = buildM3_3HvH4CoverageReportV1(
+      baseLoaded({
+        evaluationAt,
+        chargeSessions: [
+          {
+            id: 'fallback-only',
+            organizationId: 'org-1',
+            vehicleId: 'veh-1',
+            measurementSessionId: null,
+            segmentFingerprint: 'fp-fb',
+            dimoSegmentId: null,
+            source: HV_CHARGE_SESSION_SOURCE_TELEMETRY_POLL_FALLBACK,
+            startAt: new Date('2026-07-01T00:00:00.000Z'),
+            endAt: new Date('2026-07-01T02:00:00.000Z'),
+            startSocPercent: 10,
+            endSocPercent: 50,
+            startEnergyKwh: null,
+            endEnergyKwh: null,
+            energyAddedKwh: 5,
+            deltaSocPercent: 40,
+            isOngoing: false,
+            quality: null,
+            idempotencyKey: 'k-fb',
+            providerObservedAt: new Date('2026-07-01T02:00:00.000Z'),
+            receivedAt: new Date('2026-07-01T02:00:00.000Z'),
+            metadata: { qualityStatus: HV_CHARGE_SESSION_QUALITY_STATUS.QUALIFIED },
+            createdAt: gtCreated,
+            updatedAt: gtCreated,
+          },
+        ],
+      }),
+    );
+    const throughput = report.axes.find(
+      (a) => a.axis === 'CHARGE_THROUGHPUT_KWH' && a.lifecycleSegmentId === 'HV_SEGMENT_0',
+    );
+    expect(throughput?.earliestObservedAt).not.toBeNull();
+    expect(throughput?.earliestTrustedAt).toBeNull();
+    expect(throughput?.segmentEvidenceState).toBe('OBSERVED_CONTEXT_ONLY');
+  });
+
+  it('does not treat retention policy window proximity as confirmed truncation', () => {
+    const evaluationAtNearCutoff = new Date('2026-08-01T00:00:00.000Z');
+    const earliestNearPolicy = new Date(
+      evaluationAtNearCutoff.getTime() -
+        M3_3_HV_H4_DEFAULT_RETENTION_DAYS.hvProviderSnapshots * 86400000,
+    );
+    const report = buildM3_3HvH4CoverageReportV1(
+      baseLoaded({
+        evaluationAt: evaluationAtNearCutoff,
+        hvSnapshotRecordedAt: [earliestNearPolicy],
+      }),
+    );
+    const cal = report.axes.find(
+      (a) => a.axis === 'CALENDAR_TIME' && a.lifecycleSegmentId === 'HV_SEGMENT_0',
+    );
+    expect(cal?.retentionInference).toBe('RETENTION_POLICY_WINDOW_LIMITED');
+    expect(cal?.gapSummary.gapKind).not.toBe('TRUNCATED_HISTORY');
+    expect(cal?.gapSummary.reasonCodes).not.toContain('RETENTION_TRUNCATED');
+  });
+
+  it('surfaces explicit charge-session source truncation at hard limit', () => {
+    const report = buildM3_3HvH4CoverageReportV1(
+      baseLoaded({
+        chargeSessionSourceLoad: {
+          loadedCount: 5000,
+          hardLimit: 5000,
+          sourceTruncated: true,
+          hardLimitReached: true,
+        },
+      }),
+    );
+    expect(report.chargeSessionSourceLoad.sourceTruncated).toBe(true);
+    const throughput = report.axes.find(
+      (a) => a.axis === 'CHARGE_THROUGHPUT_KWH' && a.lifecycleSegmentId === 'HV_SEGMENT_0',
+    );
+    expect(throughput?.gapSummary.reasonCodes).toContain('CHARGE_SESSION_SOURCE_TRUNCATED');
   });
 });

@@ -13,10 +13,16 @@ export interface M3_3HvH4LoadedDataV1 {
   evaluationAt: Date;
   groundTruthEvents: M3_3HvH4GroundTruthRow[];
   chargeSessions: HvChargeSession[];
-  hvSnapshots: M3_3HvH4ObservedRange;
-  hvSocEvidence: M3_3HvH4ObservedRange;
-  hvTemperatureEvidence: M3_3HvH4ObservedRange;
-  hvChargingPowerEvidence: M3_3HvH4ObservedRange;
+  chargeSessionSourceLoad: {
+    loadedCount: number;
+    hardLimit: number;
+    sourceTruncated: boolean;
+    hardLimitReached: boolean;
+  };
+  hvSnapshotRecordedAt: Date[];
+  hvSocEvidenceObservedAt: Date[];
+  hvTemperatureEvidenceObservedAt: Date[];
+  hvChargingPowerEvidenceObservedAt: Date[];
   retentionCutoffs: {
     hvChargeSessionEarliestRemaining: Date;
     hvSnapshotEarliestRemaining: Date;

@@ -30,3 +30,7 @@ export const FEC_READY_FOR_IMPLEMENTATION = false as const;
 export const ODOMETER_LIFECYCLE_BASELINE_KNOWN = false as const;
 
 export const NATIVE_FALLBACK_CHARGING_ADDED_SEMANTIC_EQUIVALENCE_PROVEN = false as const;
+
+/** Safety cap for charge-session reads — pagination continues until evaluationAt or this limit. */
+export const M3_3_HV_H4_CHARGE_SESSION_LOAD_HARD_LIMIT = 5_000;
+export const M3_3_HV_H4_CHARGE_SESSION_PAGE_SIZE = 500;

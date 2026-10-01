@@ -59,3 +59,53 @@ export function resolveM3_3HvH4LifecycleSegmentForInstant(input: {
     replacementBoundaries: input.replacementBoundaries,
   }).lifecycleSegmentId;
 }
+
+/** Per-segment temporal window for source coverage — [startInclusive, endExclusive) except final segment uses endInclusive = evaluationAt. */
+export interface M3_3HvH4LifecycleSegmentInterval {
+  lifecycleSegmentId: string;
+  startInclusive: Date | null;
+  endExclusive: Date | null;
+  endInclusiveAtEvaluation: Date;
+  isFinalSegment: boolean;
+}
+
+export function buildM3_3HvH4LifecycleSegmentIntervals(input: {
+  replacementBoundaries: HvH2ReplacementBoundary[];
+  evaluationAt: Date;
+}): M3_3HvH4LifecycleSegmentInterval[] {
+  const sorted = [...input.replacementBoundaries].sort(
+    (a, b) => a.effectiveAt.getTime() - b.effectiveAt.getTime(),
+  );
+  const segmentCount = sorted.length + 1;
+  const intervals: M3_3HvH4LifecycleSegmentInterval[] = [];
+  for (let i = 0; i < segmentCount; i += 1) {
+    const startInclusive = i === 0 ? null : sorted[i - 1]!.effectiveAt;
+    const isFinalSegment = i === segmentCount - 1;
+    const nextBoundary = i < sorted.length ? sorted[i]!.effectiveAt : null;
+    intervals.push({
+      lifecycleSegmentId: `HV_SEGMENT_${i}`,
+      startInclusive,
+      endExclusive: isFinalSegment ? null : nextBoundary,
+      endInclusiveAtEvaluation: input.evaluationAt,
+      isFinalSegment,
+    });
+  }
+  return intervals;
+}
+
+export function instantWithinM3_3HvH4SegmentInterval(
+  instant: Date,
+  interval: M3_3HvH4LifecycleSegmentInterval,
+): boolean {
+  const t = instant.getTime();
+  if (interval.startInclusive && t < interval.startInclusive.getTime()) {
+    return false;
+  }
+  if (interval.endExclusive && t >= interval.endExclusive.getTime()) {
+    return false;
+  }
+  if (interval.isFinalSegment) {
+    return t <= interval.endInclusiveAtEvaluation.getTime();
+  }
+  return true;
+}
