@@ -1,7 +1,7 @@
 # M3.3-HV-H4-A3-R0 — Durable bounded charge throughput materialization architecture
 
 **Date:** 2026-10-02  
-**Status:** **ARCHITECTURE AUTHORITY (RESEARCH)** — no schema, migrations, runtime, or retention behavior on main  
+**Status:** **ARCHITECTURE AUTHORITY (RESEARCH)** — R0.2 identity + as-of loader closure (docs only)  
 **Main anchor (A2 complete):** `9bd4a142b1d931cc135953f11b8a2ca6fff8effe` (PR #1869)  
 **Audit baseline main:** `ffe5f415447b23b6dbbed4ac05c14ae9de6d2f5a`  
 **Normative upstream:** `M3_3_HV_H4_BOUNDED_CHARGE_THROUGHPUT_V1` (A2 read-only composition)
@@ -55,20 +55,23 @@ Authority constant on main: `EXISTING_RETENTION_AGGREGATES_PRESERVE_CHARGE_THROU
 
 ---
 
-## 3. Identity and terminology (corrected)
+## 3. Identity and terminology (R0.1 + R0.2)
 
-| Concept | Authority field | Notes |
-|---------|-----------------|-------|
-| **CANONICAL_SOURCE_SESSION_IDENTITY** | `segmentFingerprint` | Unique per vehicle (`@@unique([vehicleId, segmentFingerprint])`) |
+| Concept | Authority | Notes |
+|---------|-----------|-------|
+| **CANONICAL_SOURCE_SESSION_IDENTITY** | `(organizationId, vehicleId, segmentFingerprint)` | DB core: `@@unique([vehicleId, segmentFingerprint])`; `organizationId` retained for tenant defense |
 | **PROVIDER_SESSION_IDENTITY** | `metadata.providerSegmentId` | Nullable; duplicate detection in A2 |
-| **DATABASE_ROW_ID** | `HvChargeSession.id` | Provenance pointer only |
-| **PHYSICAL_CHARGE_EPISODE_IDENTITY_PROVEN** | **NO** | A2 fail-closes on **overlapping** eligible native sessions → fingerprints are not proven mutually exclusive physical episodes |
+| **DATABASE_ROW_ID** | `HvChargeSession.id` | Stable tie-breaker for A1 `orderBy id ASC`; provenance pointer |
+| **PHYSICAL_CHARGE_EPISODE_IDENTITY_PROVEN** | **NO** | Overlapping eligible native sessions → fail-closed; fingerprint ≠ proven physical episode |
 
-**Do not use:** `ONE_PHYSICAL_CHARGE_EPISODE_PER_SEGMENT_FINGERPRINT`.
+**Invariant:** **`SAME_SOURCE_SESSION_ACROSS_H4_CONTRACT_VERSIONS = YES`** — the canonical source session exists **independently** of any H4 persistence contract version.
 
+**Do not use:** `ONE_PHYSICAL_CHARGE_EPISODE_PER_SEGMENT_FINGERPRINT`.  
 **Use:** **`ONE_CANONICAL_CHARGE_SESSION_SOURCE_IDENTITY_PER_SEGMENT_FINGERPRINT`**.
 
-**`lifecycleSegmentId` is derived** (H2 replacement GT + session `startAt`) — **never** immutable source identity.
+**`lifecycleSegmentId` is derived** — never immutable source identity.
+
+**`H4_CONTRACT_VERSION_PART_OF_CANONICAL_SOURCE_SESSION_IDENTITY = NO`**
 
 ---
 
@@ -143,24 +146,121 @@ Optional envelope (non-authoritative): capture worker id, materialization attemp
 
 | Question | Answer |
 |----------|--------|
-| `REVISION_HISTORY_REQUIRED_FOR_CURRENT_A2_FAIL_CLOSED_EQUIVALENCE` | **NO** — single final revision with envelope timestamps suffices |
-| `REVISION_HISTORY_REQUIRED_FOR_TRUE_HISTORICAL_KNOWLEDGE_ASOF` | **YES** |
-| `RECOMMENDED_A3_ARCHITECTURE_USES_REVISION_HISTORY` | **YES** — auditability, safe mutable capture, future true-as-of |
+| `REVISION_HISTORY_REQUIRED_FOR_CURRENT_A2_FAIL_CLOSED_EQUIVALENCE` | **NO** — one **effective** durable revision per canonical session (final envelope + payload) suffices for TARGET_1 |
+| `REVISION_HISTORY_REQUIRED_FOR_TRUE_HISTORICAL_KNOWLEDGE_ASOF` | **YES** — but **prospective only** (see §6.3) |
+| `RECOMMENDED_A3_ARCHITECTURE_USES_REVISION_HISTORY` | **YES** — auditability, mutable-source capture, future true-as-of from capture authority start |
 
 Live A2 **does not** reconstruct historical row versions — only current-row envelope vs `evaluationAt`.
+
+### 6.3 True historical knowledge-as-of is prospective
+
+**`TRUE_HISTORICAL_KNOWLEDGE_ASOF_SUPPORT = PROSPECTIVE_FROM_REVISION_CAPTURE_AUTHORITY_START`**
+
+Repository today stores **current** `HvChargeSession` row state only (`updatedAt` via Prisma `@updatedAt`, merge updates). No durable store of prior mutation history exists pre-A3.
+
+| Claim | Authority |
+|-------|-----------|
+| `PRE_A3_TRUE_HISTORICAL_SOURCE_RECONSTRUCTION` | **NO** unless separate durable evidence already exists |
+| `BACKFILL_CREATES_HISTORICAL_REVISIONS` | **NO** — must not fabricate prior mutation history |
+| `BACKFILL_CAN_CAPTURE_CURRENT_STATE` | **YES** — single current-state revision for surviving rows before cutoff |
 
 ---
 
 ## 7. Source revision model (conceptual, no schema)
 
-- **SOURCE_SESSION_IDENTITY:** `(organizationId, vehicleId, segmentFingerprint, h4SourceEvidenceContractVersion)`
-- **SOURCE_REVISION_IDENTITY:** `sourceRevisionFingerprint` = SHA-256 over canonical H4-relevant source-state projection
+### 7.1 Canonical session vs versioned revision identity
 
-Append a **new immutable revision** when any H4-relevant fact changes, including:
+| Identity | Definition |
+|----------|------------|
+| **CANONICAL_SOURCE_SESSION_IDENTITY** | `(organizationId, vehicleId, segmentFingerprint)` — **unchanged** across H4 contract versions |
+| **VERSIONED_SOURCE_REVISION_SCIENTIFIC_IDENTITY** | `organizationId` + `vehicleId` + `segmentFingerprint` + `h4SourceEvidenceContractVersion` + **`sourceRevisionFingerprint`** |
 
-`startAt`, `endAt`, `isOngoing`, `source`, `energyAddedKwh`, `providerObservedAt`, `providerSegmentId`, `addedEnergyProvenance`, `qualityStatus`, supersession fields, `startedBeforeRange`, and **knowledge envelope** `sourceCreatedAt` / `sourceReceivedAt` / `sourceUpdatedAt`.
+Exact future DB unique key shape is **A3.1** work. Invariant: many revisions may share one canonical session; contract version scopes revision semantics without redefining the session.
 
-**Knowledge timestamps and revision identity:** If a timestamp change alters A2 knowability at some `evaluationAt`, it **must** change `sourceRevisionFingerprint` (included in scientific projection — **not** worker metadata).
+### 7.2 Fingerprint vs database unique identity
+
+**Do not equate** revision identity with fingerprint alone.
+
+| Term | Meaning |
+|------|---------|
+| **`SOURCE_REVISION_FINGERPRINT`** | `SHA256_CANONICAL_ORDERED_JSON_V1` over H4-relevant source-state projection |
+| **`SOURCE_REVISION_DATABASE_IDENTITY`** | Tenant + canonical session scope + contract version + fingerprint (future unique constraint) |
+
+**`FINGERPRINT_ALONE_IS_DATABASE_UNIQUE_IDENTITY = NO`**
+
+Future persistence must fail closed on fingerprint/canonicalization drift (D3 precedent): same versioned scientific unique identity, different canonical payload ⇒ **conflict** (`ProfileFingerprintPayloadMismatchError`-class behavior — pattern only).
+
+### 7.3 When to append a revision
+
+Append when any **H4-relevant** fact changes, including:
+
+`startAt`, `endAt`, `isOngoing`, `source`, `energyAddedKwh`, `providerObservedAt`, `providerSegmentId`, `addedEnergyProvenance`, `qualityStatus`, supersession fields, `startedBeforeRange`, and knowledge envelope **`sourceCreatedAt` / `sourceReceivedAt` / `sourceUpdatedAt`**.
+
+**Knowledge timestamps:** if a change alters A2 knowability at any `evaluationAt`, it **must** change `sourceRevisionFingerprint`.
+
+**`H4_RELEVANT_REVISION_DETECTION_REQUIRED = YES`** — not energy-only deltas. Prisma `updatedAt` moves on merge even when classification-relevant fields change.
+
+**`RECONCILIATION_REQUIRED_AS_SAFETY_NET = YES`** (future scheduler; default OFF).
+
+---
+
+## 7A. Effective revision selection (future A3 loader)
+
+**`ONE_EFFECTIVE_SOURCE_STATE_PER_CANONICAL_SESSION_PER_EVALUATION = YES`**
+
+**`REVISION_ROWS_FED_DIRECTLY_TO_A2_AS_SEPARATE_SESSIONS = NO`**
+
+Pipeline:
+
+```
+revision ledger
+  → group by CANONICAL_SOURCE_SESSION_IDENTITY
+  → select exactly one effective revision for evaluationAt
+  → reconstruct HvChargeSession-equivalent scientific input (preserve sourceHvChargeSessionId)
+  → apply existing A1 load filter/order + A2 classification/composition
+```
+
+**TARGET_1 (current A2 policy equivalence):** use effective revision whose envelope satisfies `sourceCreatedAt`, `sourceReceivedAt`, `sourceUpdatedAt` all `<= evaluationAt`; otherwise session **not knowable** (same as live A2).
+
+**TARGET_2 (true historical mode, prospective):** select latest revision whose source knowledge state is valid/known at `evaluationAt` per future revision ordering contract (§7B).
+
+---
+
+## 7B. Revision ordering authority (A3.1 requirement)
+
+Deterministic revision selection **must not** rely on DB row return order.
+
+**`REVISION_SELECTION_TIE_MUST_FAIL_CLOSED_OR_HAVE_EXPLICIT_DETERMINISTIC_AUTHORITY = YES`**
+
+Candidate ordering inputs (conceptual — exact schema in A3.1):
+
+- `sourceUpdatedAt`, `sourceReceivedAt`, `sourceCreatedAt`
+- capture envelope (`capturedAt` / `materializedAt`)
+- `sourceRevisionFingerprint`
+- optional explicit **`revisionSequence`** (not invented in R0 — audit whether required)
+
+---
+
+## 7C. A1 load semantics after revision collapse
+
+Live loader (`m3-3-hv-h4-data.loader.ts`):
+
+- `where`: `organizationId`, `vehicleId`, `startAt <= evaluationAt`
+- `orderBy`: `startAt ASC`, `id ASC`
+- hard limit: **5000** canonical sessions (`M3_3_HV_H4_CHARGE_SESSION_LOAD_HARD_LIMIT`)
+
+After raw delete, durable path must:
+
+1. Collapse revisions → **one effective row per canonical session**  
+2. **Then** apply the same population filter, ordering, and hard-limit probe  
+
+**`APPLY_HARD_LIMIT_AFTER_EFFECTIVE_REVISION_COLLAPSE = YES`**  
+**`REVISION_ROW_COUNT_AFFECTS_A1_SOURCE_TRUNCATION = NO`**  
+**`CANONICAL_SOURCE_SESSION_COUNT_AFFECTS_SOURCE_TRUNCATION = YES`**
+
+**`SOURCE_HV_CHARGE_SESSION_ID_ORDERING_PRESERVED = YES`** — retain `sourceHvChargeSessionId` for `id ASC` tie-break unless A3.3 defines an equivalent deterministic ordering authority.
+
+**`A1_ORDER_AFTER_REVISION_COLLAPSE = startAt ASC, sourceHvChargeSessionId ASC`** (equivalent to live A1)
 
 ---
 
@@ -198,6 +298,10 @@ ACK binds:
 4. Only then allow delete  
 
 **`STALE_ACK_PERMITS_PRUNE = NO`** — if live fingerprint ≠ ACK fingerprint → **fail closed** (no delete).
+
+**Contract version mismatch:** **`CONTRACT_VERSION_MISMATCH_PERMITS_PRUNE = NO`** unless a future migration/compatibility authority explicitly proves equivalence between contract versions.
+
+**`RETENTION_ACK_SCOPE = REVISION_SCOPED`**
 
 ---
 
@@ -245,9 +349,23 @@ durable source revisions
 
 A2 segment fingerprint hashes **all segment session classifications** for fail-closed statuses (`m3-3-hv-h4-charge-throughput-fingerprint.v1.ts`).
 
-**Architecture target:** **`FULL_A2_REPORT_REPRODUCIBILITY = YES`**
+**Architecture target:** **`FULL_A2_REPORT_REPRODUCIBILITY_TARGET = YES`**
 
-**`ELIGIBLE_ONLY_LEDGER_SUFFICIENT = NO`** — must durable-capture observed sessions needed for NO_TRUSTED_SESSIONS, SOURCE_CONFLICT, overlap, duplicate provider ID, and exclusion diagnostics.
+**Classification:** **`ARCHITECTURE_TARGET_NOT_YET_IMPLEMENTATION_PROOF`** — R0/R0.2 do not prove parity.
+
+Full parity requires reconstructed effective source-session set preserving:
+
+- `loadedCount`, `hardLimit`, `hardLimitReached`, `sourceTruncated`
+- canonical `startAt` / `id` ordering after collapse
+- session classifications, excluded counts
+- overlap / duplicate provider / NO_TRUSTED_SESSIONS / SOURCE_CONFLICT
+- segment `sourceFingerprint`, lifecycle segmentation under GT-as-of
+
+**`A3_3_EQUIVALENCE_TEST_REQUIRED = YES`** — same fixture corpus as live A2 vs durable loader path.
+
+**`FULL_A2_PARITY_PROVEN_IN_R0 = NO`**
+
+**`ELIGIBLE_ONLY_LEDGER_SUFFICIENT = NO`**
 
 ---
 
@@ -310,14 +428,14 @@ No FEC, degradation model, customer publication, automatic runtime, provider cal
 
 ---
 
-## 18. Open questions
+## 18. Open questions (R0.2 refined)
 
 | ID | Topic |
 |----|--------|
-| OQ-A3-1 | Minimum observed-session set for FULL_A2 parity (all pruned candidates vs only sessions loaded under A1 pagination window) |
-| OQ-A3-2 | Revision trigger: mirror `mergeHvChargeSessionUpdate` changeKind vs field-level diff |
-| OQ-A3-3 | Backfill before first ACK when sessions already past retention cutoff |
-| OQ-A3-4 | Ordering vs `hvCapacityObservation` FK blocking prune |
+| **OQ-A3-1** | Effective source-session reconstruction + **full A2 5000-load / sourceTruncated parity** after revision collapse |
+| **OQ-A3-2** | Revision **ordering**, tie-break authority, and capture granularity vs `mergeHvChargeSessionUpdate` |
+| **OQ-A3-3** | **Prospective capture boundary** + **current-state-only backfill** before retention cutoff (no fabricated prior revisions) |
+| **OQ-A3-4** | `HvCapacityObservation` FK vs H4 revision-scoped ACK **prune ordering** |
 
 ---
 
