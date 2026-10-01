@@ -39,8 +39,16 @@ grep -q 'OVERLAPPING_ELIGIBLE_NATIVE_SESSIONS' "$HV_H4/m3-3-hv-h4-charge-through
   || fail "A2 must fail closed on overlapping native sessions"
 grep -q 'loadM3_3HvH4DataV1' "$HV_H4/m3-3-hv-h4-data.loader.ts" \
   || fail "shared H4 data loader required"
-grep -q 'runM3_3HvH4ReadOnlyTransaction' "$HV_H4/m3-3-hv-h4-charge-throughput-report.service.ts" \
-  || fail "A2 charge throughput report must use read-only transaction"
+grep -q 'DUPLICATE_NATIVE_PROVIDER_SEGMENT_ID' "$HV_H4/m3-3-hv-h4-charge-throughput-report.builder.ts" \
+  || fail "A2 must fail closed on duplicate native providerSegmentId"
+grep -q 'M3_3_HV_H4_SESSION_KNOWLEDGE_ASOF_POLICY' "$HV_H4/m3-3-hv-h4.constants.ts" \
+  || fail "missing A2.1 session knowledge as-of policy"
+grep -q 'NEUMAIER_COMPENSATED_SUM_V1' "$HV_H4/m3-3-hv-h4.constants.ts" \
+  || fail "missing A2.1 Neumaier summation"
+grep -q 'buildM3_3HvH4SegmentSourceFingerprintV1' "$HV_H4/m3-3-hv-h4-charge-throughput-fingerprint.v1.ts" \
+  || fail "missing A2.1 hardened segment fingerprint builder"
+grep -q 'metadata.providerSegmentId' "$HV_H4/m3-3-hv-h4-charge-throughput-session.v1.ts" \
+  || fail "provider identity must use metadata.providerSegmentId"
 
 if grep -rq 'hv-h4' "$APP_MODULE" 2>/dev/null; then
   fail "hv-h4 must not be registered in app.module.ts (H4_AUTOMATIC_RUNTIME_REACHABLE=NO)"

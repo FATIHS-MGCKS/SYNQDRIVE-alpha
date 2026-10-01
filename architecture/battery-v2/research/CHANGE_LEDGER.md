@@ -32,6 +32,29 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-10-01 — M3.3-HV-H4-A2.1 bounded charge throughput scientific hardening
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | A2 used `dimoSegmentId` for duplicate provider detection; naive float reduce; fingerprints collapsed on fail-closed statuses; no session knowledge-as-of gate |
+| **OBSERVATION** | Native DIMO persistence stores canonical fingerprint in `dimoSegmentId` and provider id in `metadata.providerSegmentId`; mutable session rows can postdate historical `evaluationAt` |
+| **HYPOTHESIS** | A2.1 fail-closed composition requires provider identity on metadata, knowledge-as-of on durable row timestamps, compensated summation, and status-aware fingerprints without changing A1 |
+| **CHANGE** | Provider duplicate on `metadata.providerSegmentId`; `INELIGIBLE_NOT_KNOWABLE_AT_EVALUATION`; report `sessionKnowledgeAsOfPolicy`; Neumaier sum; hardened fingerprint payload; removed unreachable `INVALID_SOURCE_EVIDENCE`; diagnostic withheld counts |
+| **WHY** | Close A2 scientific gaps before merge review (PR #1869) |
+| **EXPECTED_EFFECT** | Historical reports exclude postdated row state; conflict/truncation fingerprints reflect evidence; deterministic numeric sum |
+| **VALIDATION** | test:battery:v2:hv-h4; test:battery:v2:hv-h4:postgres:ci; validate-h4-exposure-coverage-contracts.sh |
+| **OBSERVED_EFFECT** | Pending CI |
+| **NON_EFFECTS** | A1 coverage semantics unchanged; no schema/migrations/runtime |
+| **REGRESSIONS_OR_TRADEOFFS** | Stricter A2 historical composition; segments with duplicate provider id now fail-closed correctly |
+| **REMAINING_GAPS** | No session row history reconstruction; H4-A3 not started |
+| **DECISION_STATUS** | PROPOSED |
+| **AFFECTED_GRAPH** | BAT-V2-AUTH-H4-A2-001 |
+| **EVIDENCE** | Draft PR #1869 A2.1 slice |
+
+---
+
 ## CL-2026-10-01 — M3.3-HV-H4-A2 bounded observed charge throughput composition V1
 
 | Field | Value |

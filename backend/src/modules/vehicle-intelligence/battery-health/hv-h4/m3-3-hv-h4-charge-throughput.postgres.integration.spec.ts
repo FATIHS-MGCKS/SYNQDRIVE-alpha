@@ -211,5 +211,119 @@ function nativeMeta() {
         }),
       ).rejects.toThrow(/not found for organization/);
     });
+
+    it('fail-closes duplicate metadata.providerSegmentId in postgres', async () => {
+      const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
+      const sharedProvider = `provider-dup-${randomUUID()}`;
+      const base = {
+        organizationId,
+        vehicleId,
+        startSocPercent: 20,
+        endSocPercent: 80,
+        startEnergyKwh: 10,
+        endEnergyKwh: 40,
+        deltaSocPercent: 60,
+        metadata: {
+          ...nativeMeta(),
+          providerSegmentId: sharedProvider,
+        },
+      };
+      await prisma.hvChargeSession.createMany({
+        data: [
+          {
+            ...base,
+            id: randomUUID(),
+            segmentFingerprint: `fp-a-${randomUUID()}`,
+            dimoSegmentId: `d-a-${randomUUID()}`,
+            source: HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE,
+            startAt: new Date('2026-07-01T08:00:00.000Z'),
+            endAt: new Date('2026-07-01T10:00:00.000Z'),
+            energyAddedKwh: 5,
+            idempotencyKey: `idem-a-${randomUUID()}`,
+          },
+          {
+            ...base,
+            id: randomUUID(),
+            segmentFingerprint: `fp-b-${randomUUID()}`,
+            dimoSegmentId: `d-b-${randomUUID()}`,
+            source: HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE,
+            startAt: new Date('2026-07-02T08:00:00.000Z'),
+            endAt: new Date('2026-07-02T10:00:00.000Z'),
+            energyAddedKwh: 7,
+            idempotencyKey: `idem-b-${randomUUID()}`,
+          },
+        ],
+      });
+      const report = await runM3_3HvH4ChargeThroughputReport(prisma, {
+        organizationId,
+        vehicleId,
+        evaluationAt: EVALUATION_AT,
+      });
+      const seg0 = report.segments.find((s) => s.lifecycleSegmentId === 'HV_SEGMENT_0');
+      expect(seg0?.compositionStatus).toBe('SOURCE_CONFLICT');
+      expect(seg0?.boundedObservedChargeThroughputKwh).toBeNull();
+      expect(seg0?.reasonCodes).toContain('DUPLICATE_NATIVE_PROVIDER_SEGMENT_ID');
+    });
+
+    it('excludes sessions created or updated after evaluationAt in postgres', async () => {
+      const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
+      const historicalEval = new Date('2026-08-01T00:00:00.000Z');
+      await prisma.hvChargeSession.createMany({
+        data: [
+          {
+            organizationId,
+            vehicleId,
+            id: randomUUID(),
+            segmentFingerprint: `fp-ok-${randomUUID()}`,
+            dimoSegmentId: `d-ok-${randomUUID()}`,
+            source: HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE,
+            startAt: new Date('2026-07-01T08:00:00.000Z'),
+            endAt: new Date('2026-07-01T10:00:00.000Z'),
+            energyAddedKwh: 9,
+            startSocPercent: 20,
+            endSocPercent: 80,
+            startEnergyKwh: 10,
+            endEnergyKwh: 40,
+            deltaSocPercent: 60,
+            metadata: nativeMeta(),
+            idempotencyKey: `idem-ok-${randomUUID()}`,
+            createdAt: new Date('2026-07-01T09:00:00.000Z'),
+            updatedAt: new Date('2026-07-01T09:00:00.000Z'),
+            receivedAt: new Date('2026-07-01T09:00:00.000Z'),
+          },
+          {
+            organizationId,
+            vehicleId,
+            id: randomUUID(),
+            segmentFingerprint: `fp-late-${randomUUID()}`,
+            dimoSegmentId: `d-late-${randomUUID()}`,
+            source: HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE,
+            startAt: new Date('2026-07-05T08:00:00.000Z'),
+            endAt: new Date('2026-07-05T10:00:00.000Z'),
+            energyAddedKwh: 11,
+            startSocPercent: 20,
+            endSocPercent: 80,
+            startEnergyKwh: 10,
+            endEnergyKwh: 40,
+            deltaSocPercent: 60,
+            metadata: nativeMeta(),
+            idempotencyKey: `idem-late-${randomUUID()}`,
+            createdAt: new Date('2026-08-02T00:00:00.000Z'),
+            updatedAt: new Date('2026-07-05T10:00:00.000Z'),
+            receivedAt: new Date('2026-07-05T10:00:00.000Z'),
+          },
+        ],
+      });
+      const report = await runM3_3HvH4ChargeThroughputReport(prisma, {
+        organizationId,
+        vehicleId,
+        evaluationAt: historicalEval,
+      });
+      const seg0 = report.segments.find((s) => s.lifecycleSegmentId === 'HV_SEGMENT_0');
+      expect(seg0?.boundedObservedChargeThroughputKwh).toBe(9);
+      expect(report.sessionKnowledgeAsOfPolicy).toBe(
+        'CURRENT_ROW_MUST_NOT_POSTDATE_EVALUATION_AT',
+      );
+    });
   },
 );

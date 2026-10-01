@@ -10,6 +10,16 @@ export const M3_3_HV_H4_BOUNDED_CHARGE_THROUGHPUT_V1 =
 export const M3_3_HV_H4_CHARGE_THROUGHPUT_REPORT_V1 =
   'M3_3_HV_H4_CHARGE_THROUGHPUT_REPORT_V1' as const;
 
+/** A2.1 — current durable row must not postdate evaluationAt for historical composition. */
+export const M3_3_HV_H4_SESSION_KNOWLEDGE_ASOF_POLICY =
+  'CURRENT_ROW_MUST_NOT_POSTDATE_EVALUATION_AT' as const;
+
+export const M3_3_HV_H4_CHARGE_THROUGHPUT_SUMMATION_METHOD =
+  'NEUMAIER_COMPENSATED_SUM_V1' as const;
+
+/** Non-positive native energyAddedKwh never contributes; session remains in diagnostics. */
+export const M3_3_HV_H4_NON_POSITIVE_ENERGY_POLICY = 'EXCLUDE_AND_REPORT' as const;
+
 /** Required native added-energy provenance for A2 composition V1. */
 export const M3_3_HV_H4_NATIVE_ADDED_ENERGY_PROVENANCE = 'SEGMENT_EXTREMA' as const;
 

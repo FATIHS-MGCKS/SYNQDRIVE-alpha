@@ -9,15 +9,51 @@ import { M3_3_HV_H4_NATIVE_ADDED_ENERGY_PROVENANCE } from './m3-3-hv-h4.constant
 import type { M3_3HvH4ChargeThroughputContributionEligibility } from './m3-3-hv-h4-charge-throughput.types';
 import type { HvH2ReplacementBoundary } from '../hv-h2/m3-3-hv-h2-lifecycle-segmentation';
 
-export function classifyM3_3HvH4ChargeSessionA2Contribution(input: {
-  session: M3_3HvH4ChargeSessionRowForClassification & {
+export type M3_3HvH4ChargeSessionRowForA2Classification =
+  M3_3HvH4ChargeSessionRowForClassification & {
     organizationId?: string;
     vehicleId?: string;
     dimoSegmentId?: string | null;
+    createdAt: Date;
+    receivedAt: Date;
+    updatedAt: Date;
   };
+
+export function extractNativeProviderSegmentId(
+  session: Pick<HvChargeSession, 'metadata'>,
+): string | null {
+  const meta = (session.metadata ?? {}) as unknown as HvChargeSessionMetadata;
+  const providerId = meta.providerSegmentId;
+  if (providerId == null || providerId === '') return null;
+  return providerId;
+}
+
+function classifySessionKnowledgeAsOfA2(input: {
+  session: Pick<HvChargeSession, 'createdAt' | 'receivedAt' | 'updatedAt'>;
+  evaluationAt: Date;
+}): { knowable: true } | { knowable: false; reasonCodes: string[] } {
+  const reasons: string[] = [];
+  if (input.session.createdAt.getTime() > input.evaluationAt.getTime()) {
+    reasons.push('CURRENT_ROW_CREATED_AFTER_EVALUATION_AT');
+  }
+  if (input.session.receivedAt.getTime() > input.evaluationAt.getTime()) {
+    reasons.push('CURRENT_ROW_RECEIVED_AFTER_EVALUATION_AT');
+  }
+  if (input.session.updatedAt.getTime() > input.evaluationAt.getTime()) {
+    reasons.push('CURRENT_ROW_UPDATED_AFTER_EVALUATION_AT');
+  }
+  if (reasons.length > 0) {
+    return { knowable: false, reasonCodes: reasons };
+  }
+  return { knowable: true };
+}
+
+export function classifyM3_3HvH4ChargeSessionA2Contribution(input: {
+  session: M3_3HvH4ChargeSessionRowForA2Classification;
   replacementBoundaries: HvH2ReplacementBoundary[];
   expectedOrganizationId: string;
   expectedVehicleId: string;
+  evaluationAt: Date;
 }): {
   eligibility: M3_3HvH4ChargeThroughputContributionEligibility;
   reasonCodes: string[];
@@ -33,6 +69,17 @@ export function classifyM3_3HvH4ChargeSessionA2Contribution(input: {
   if (input.session.vehicleId && input.session.vehicleId !== input.expectedVehicleId) {
     reasons.push('TENANT_VEHICLE_MISMATCH');
     return { eligibility: 'INELIGIBLE_QUALITY', reasonCodes: reasons };
+  }
+
+  const knowledge = classifySessionKnowledgeAsOfA2({
+    session: input.session,
+    evaluationAt: input.evaluationAt,
+  });
+  if (!knowledge.knowable) {
+    return {
+      eligibility: 'INELIGIBLE_NOT_KNOWABLE_AT_EVALUATION',
+      reasonCodes: [...knowledge.reasonCodes, ...reasons],
+    };
   }
 
   const a1 = classifyM3_3HvH4ChargeSessionFutureThroughput({
@@ -92,19 +139,20 @@ export function hvChargeSessionsStrictlyOverlap(
   );
 }
 
+/** Provider session identity = metadata.providerSegmentId (not dimoSegmentId fingerprint). */
 export function detectDuplicateProviderSegmentIdentity(
   sessions: HvChargeSession[],
 ): boolean {
   const byProviderId = new Map<string, string>();
   for (const session of sessions) {
-    const providerId = session.dimoSegmentId;
+    const providerId = extractNativeProviderSegmentId(session);
     if (!providerId) continue;
-    const prior = byProviderId.get(providerId);
-    if (prior && prior !== session.segmentFingerprint) {
+    const priorSessionId = byProviderId.get(providerId);
+    if (priorSessionId && priorSessionId !== session.id) {
       return true;
     }
-    if (!prior) {
-      byProviderId.set(providerId, session.segmentFingerprint);
+    if (!priorSessionId) {
+      byProviderId.set(providerId, session.id);
     }
   }
   return false;

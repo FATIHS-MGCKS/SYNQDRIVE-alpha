@@ -1,10 +1,11 @@
-import { createHash } from 'crypto';
 import type { HvChargeSession } from '@prisma/client';
 import {
   M3_3_HV_H4_BOUNDED_CHARGE_THROUGHPUT_V1,
   M3_3_HV_H4_CHARGE_THROUGHPUT_REPORT_V1,
   M3_3_HV_H4_COVERAGE_REPORT_V1,
   M3_3_HV_H4_EXPOSURE_SOURCE_AUTHORITY_V1,
+  M3_3_HV_H4_NON_POSITIVE_ENERGY_POLICY,
+  M3_3_HV_H4_SESSION_KNOWLEDGE_ASOF_POLICY,
   H4_AUTOMATIC_RUNTIME_REACHABLE,
 } from './m3-3-hv-h4.constants';
 import { assertM3_3HvH4EnergySemanticFirewall } from './m3-3-hv-h4-charge-session-source-authority';
@@ -16,6 +17,8 @@ import {
   resolveM3_3HvH4ReplacementBoundaries,
 } from './m3-3-hv-h4-lifecycle.util';
 import type { M3_3HvH4CoverageReportV1 } from './m3-3-hv-h4.types';
+import { buildM3_3HvH4SegmentSourceFingerprintV1 } from './m3-3-hv-h4-charge-throughput-fingerprint.v1';
+import { sumM3_3HvH4ChargeThroughputEnergiesV1 } from './m3-3-hv-h4-charge-throughput-numeric.v1';
 import {
   classifyM3_3HvH4ChargeSessionA2Contribution,
   detectDuplicateProviderSegmentIdentity,
@@ -35,47 +38,6 @@ function iso(d: Date | null | undefined): string | null {
 
 function incrementCount(map: Record<string, number>, key: string): void {
   map[key] = (map[key] ?? 0) + 1;
-}
-
-function buildSegmentSourceFingerprint(input: {
-  contractVersion: string;
-  coverageReportVersion: string;
-  exposureSourceAuthorityVersion: string;
-  organizationId: string;
-  vehicleId: string;
-  lifecycleSegmentId: string;
-  evaluationAt: string;
-  includedSessions: HvChargeSession[];
-}): string {
-  const sessionEntries = input.includedSessions.map((s) => {
-    const meta = (s.metadata ?? {}) as {
-      qualityStatus?: string;
-      addedEnergyProvenance?: string;
-    };
-    return {
-      sessionId: s.id,
-      segmentFingerprint: s.segmentFingerprint,
-      dimoSegmentId: s.dimoSegmentId,
-      source: s.source,
-      startAt: s.startAt.toISOString(),
-      endAt: s.endAt?.toISOString() ?? null,
-      energyAddedKwh: s.energyAddedKwh,
-      providerObservedAt: s.providerObservedAt?.toISOString() ?? null,
-      qualityStatus: meta.qualityStatus ?? null,
-      addedEnergyProvenance: meta.addedEnergyProvenance ?? null,
-    };
-  });
-  const payload = {
-    contractVersion: input.contractVersion,
-    coverageReportVersion: input.coverageReportVersion,
-    exposureSourceAuthorityVersion: input.exposureSourceAuthorityVersion,
-    organizationId: input.organizationId,
-    vehicleId: input.vehicleId,
-    lifecycleSegmentId: input.lifecycleSegmentId,
-    evaluationAt: input.evaluationAt,
-    sessions: sessionEntries,
-  };
-  return createHash('sha256').update(JSON.stringify(payload)).digest('hex');
 }
 
 function sessionsInSegment(
@@ -121,65 +83,89 @@ function composeSegment(input: {
     input.replacementBoundaries,
   );
 
+  const segmentClassifications: M3_3HvH4ChargeThroughputSessionClassificationV1[] = [];
+
   for (const session of segmentSessions) {
     const classification = classifyM3_3HvH4ChargeSessionA2Contribution({
       session,
       replacementBoundaries: input.replacementBoundaries,
       expectedOrganizationId: input.data.organizationId,
       expectedVehicleId: input.data.vehicleId,
+      evaluationAt: input.data.evaluationAt,
     });
-    input.sessionClassifications.push({
+    const row: M3_3HvH4ChargeThroughputSessionClassificationV1 = {
       sessionId: session.id,
       lifecycleSegmentId: input.lifecycleSegmentId,
       contributionEligibility: classification.eligibility,
       reasonCodes: classification.reasonCodes,
-    });
+    };
+    segmentClassifications.push(row);
+    input.sessionClassifications.push(row);
     if (classification.eligibility !== 'ELIGIBLE_CONTRIBUTOR') {
       incrementCount(excludedCounts, classification.eligibility);
     }
   }
 
-  const excludedSessionCount = segmentSessions.length;
+  const observedSegmentSessionCount = segmentSessions.length;
+  let eligibleContributors: HvChargeSession[] = [];
   let includedSessions: HvChargeSession[] = [];
   let compositionStatus: M3_3HvH4LifecycleChargeThroughputSegmentV1['compositionStatus'] =
     'NO_TRUSTED_SESSIONS';
   let boundedObservedChargeThroughputKwh: number | null = null;
+  let summationMethod: M3_3HvH4LifecycleChargeThroughputSegmentV1['summationMethod'] =
+    null;
+  let withheldContributorSessionCount = 0;
+  let conflictCandidateSessions: HvChargeSession[] = [];
 
   if (input.data.chargeSessionSourceLoad.sourceTruncated) {
     compositionStatus = 'SOURCE_TRUNCATED';
     reasonCodes.push('CHARGE_SESSION_SOURCE_TRUNCATED');
-  } else {
-    includedSessions = sortM3_3HvH4ChargeSessionsCanonical(
+    eligibleContributors = sortM3_3HvH4ChargeSessionsCanonical(
       segmentSessions.filter((session) => {
-        const hit = input.sessionClassifications.find(
-          (c) => c.sessionId === session.id && c.lifecycleSegmentId === input.lifecycleSegmentId,
-        );
+        const hit = segmentClassifications.find((c) => c.sessionId === session.id);
+        return hit?.contributionEligibility === 'ELIGIBLE_CONTRIBUTOR';
+      }),
+    );
+    withheldContributorSessionCount = eligibleContributors.length;
+    if (withheldContributorSessionCount > 0) {
+      incrementCount(excludedCounts, 'WITHHELD_SEGMENT_SOURCE_TRUNCATED');
+    }
+  } else {
+    eligibleContributors = sortM3_3HvH4ChargeSessionsCanonical(
+      segmentSessions.filter((session) => {
+        const hit = segmentClassifications.find((c) => c.sessionId === session.id);
         return hit?.contributionEligibility === 'ELIGIBLE_CONTRIBUTOR';
       }),
     );
 
-    if (includedSessions.length === 0) {
+    if (eligibleContributors.length === 0) {
       compositionStatus = 'NO_TRUSTED_SESSIONS';
       reasonCodes.push('NO_ELIGIBLE_NATIVE_CONTRIBUTOR');
-    } else if (detectOverlappingEligibleNativeSessions(includedSessions)) {
+    } else if (detectOverlappingEligibleNativeSessions(eligibleContributors)) {
       compositionStatus = 'SOURCE_CONFLICT';
       reasonCodes.push('OVERLAPPING_ELIGIBLE_NATIVE_SESSIONS');
-    } else if (detectDuplicateProviderSegmentIdentity(includedSessions)) {
+      conflictCandidateSessions = eligibleContributors;
+      withheldContributorSessionCount = eligibleContributors.length;
+      incrementCount(excludedCounts, 'WITHHELD_SEGMENT_SOURCE_CONFLICT');
+    } else if (detectDuplicateProviderSegmentIdentity(eligibleContributors)) {
       compositionStatus = 'SOURCE_CONFLICT';
-      reasonCodes.push('DUPLICATE_PROVIDER_SEGMENT_IDENTITY');
+      reasonCodes.push('DUPLICATE_NATIVE_PROVIDER_SEGMENT_ID');
+      conflictCandidateSessions = eligibleContributors;
+      withheldContributorSessionCount = eligibleContributors.length;
+      incrementCount(excludedCounts, 'WITHHELD_SEGMENT_SOURCE_CONFLICT');
     } else {
-      boundedObservedChargeThroughputKwh = includedSessions.reduce(
-        (sum, s) => sum + (s.energyAddedKwh ?? 0),
-        0,
-      );
+      includedSessions = eligibleContributors;
+      const sumResult = sumM3_3HvH4ChargeThroughputEnergiesV1(includedSessions);
+      boundedObservedChargeThroughputKwh = sumResult.totalKwh;
+      summationMethod = sumResult.summationMethod;
       compositionStatus = 'AVAILABLE_OBSERVED_GAP_AWARE';
     }
   }
 
   const includedSessionCount = includedSessions.length;
-  const excludedSessionCountFinal = excludedSessionCount - includedSessionCount;
+  const excludedSessionCount = observedSegmentSessionCount - includedSessionCount;
 
-  const sourceFingerprint = buildSegmentSourceFingerprint({
+  const sourceFingerprint = buildM3_3HvH4SegmentSourceFingerprintV1({
     contractVersion: M3_3_HV_H4_BOUNDED_CHARGE_THROUGHPUT_V1,
     coverageReportVersion: M3_3_HV_H4_COVERAGE_REPORT_V1,
     exposureSourceAuthorityVersion: M3_3_HV_H4_EXPOSURE_SOURCE_AUTHORITY_V1,
@@ -187,8 +173,13 @@ function composeSegment(input: {
     vehicleId: input.data.vehicleId,
     lifecycleSegmentId: input.lifecycleSegmentId,
     evaluationAt: input.data.evaluationAt.toISOString(),
+    compositionStatus,
+    segmentReasonCodes: reasonCodes,
+    chargeSessionSourceLoad: { ...input.data.chargeSessionSourceLoad },
     includedSessions:
       compositionStatus === 'AVAILABLE_OBSERVED_GAP_AWARE' ? includedSessions : [],
+    conflictCandidateSessions,
+    segmentSessionClassifications: segmentClassifications,
   });
 
   return {
@@ -213,8 +204,10 @@ function composeSegment(input: {
         ? iso(includedSessions[includedSessions.length - 1]?.endAt ?? null)
         : null,
     includedSessionCount,
-    excludedSessionCount: excludedSessionCountFinal,
+    excludedSessionCount,
     excludedCountsByEligibility: excludedCounts,
+    withheldContributorSessionCount,
+    summationMethod,
     earliestObservedAt: throughputAxis.earliestObservedAt,
     earliestTrustedAt: throughputAxis.earliestTrustedAt,
     retentionContinuity: throughputAxis.retentionContinuity,
@@ -261,6 +254,8 @@ export function buildM3_3HvH4ChargeThroughputReportV1(input: {
     organizationId: input.data.organizationId,
     vehicleId: input.data.vehicleId,
     evaluationAt: input.data.evaluationAt.toISOString(),
+    sessionKnowledgeAsOfPolicy: M3_3_HV_H4_SESSION_KNOWLEDGE_ASOF_POLICY,
+    nonPositiveEnergyPolicy: M3_3_HV_H4_NON_POSITIVE_ENERGY_POLICY,
     throughputDirection: 'CHARGE_ONLY',
     bidirectionalThroughput: false,
     lifetimeComplete: false,
@@ -279,6 +274,9 @@ export function validateM3_3HvH4ChargeThroughputReportContract(
   if (report.contractVersion !== M3_3_HV_H4_BOUNDED_CHARGE_THROUGHPUT_V1) {
     throw new Error('M3.3-HV-H4-A2: invalid contractVersion');
   }
+  if (report.sessionKnowledgeAsOfPolicy !== M3_3_HV_H4_SESSION_KNOWLEDGE_ASOF_POLICY) {
+    throw new Error('M3.3-HV-H4-A2: invalid sessionKnowledgeAsOfPolicy');
+  }
   if (report.lifetimeComplete !== false || report.bidirectionalThroughput !== false) {
     throw new Error('M3.3-HV-H4-A2: lifetime/bidirectional flags must be false');
   }
@@ -286,6 +284,11 @@ export function validateM3_3HvH4ChargeThroughputReportContract(
     throw new Error('M3.3-HV-H4-A2: customerPublicationEligible must be false');
   }
   for (const segment of report.segments) {
+    const observedInSegment =
+      segment.includedSessionCount + segment.excludedSessionCount;
+    if (observedInSegment < segment.includedSessionCount) {
+      throw new Error('M3.3-HV-H4-A2: diagnostic session count invariant violated');
+    }
     if (segment.compositionStatus === 'NO_TRUSTED_SESSIONS') {
       if (segment.boundedObservedChargeThroughputKwh !== null) {
         throw new Error('M3.3-HV-H4-A2: NO_TRUSTED_SESSIONS requires null throughput');
@@ -302,7 +305,8 @@ export function validateM3_3HvH4ChargeThroughputReportContract(
     if (segment.compositionStatus === 'AVAILABLE_OBSERVED_GAP_AWARE') {
       if (
         segment.boundedObservedChargeThroughputKwh == null ||
-        segment.includedSessionCount < 1
+        segment.includedSessionCount < 1 ||
+        segment.summationMethod == null
       ) {
         throw new Error('M3.3-HV-H4-A2: AVAILABLE requires numeric sum and sessions');
       }

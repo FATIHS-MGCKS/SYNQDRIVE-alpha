@@ -3,6 +3,9 @@ import type {
   M3_3_HV_H4_CHARGE_THROUGHPUT_REPORT_V1,
   M3_3_HV_H4_COVERAGE_REPORT_V1,
   M3_3_HV_H4_EXPOSURE_SOURCE_AUTHORITY_V1,
+  M3_3_HV_H4_CHARGE_THROUGHPUT_SUMMATION_METHOD,
+  M3_3_HV_H4_NON_POSITIVE_ENERGY_POLICY,
+  M3_3_HV_H4_SESSION_KNOWLEDGE_ASOF_POLICY,
 } from './m3-3-hv-h4.constants';
 import type {
   M3_3HvH4CoverageGapSummaryV1,
@@ -17,13 +20,13 @@ export type M3_3HvH4ChargeThroughputCompositionStatus =
   | 'AVAILABLE_OBSERVED_GAP_AWARE'
   | 'NO_TRUSTED_SESSIONS'
   | 'SOURCE_TRUNCATED'
-  | 'SOURCE_CONFLICT'
-  | 'INVALID_SOURCE_EVIDENCE';
+  | 'SOURCE_CONFLICT';
 
 export type M3_3HvH4ChargeThroughputContributionEligibility =
   | 'ELIGIBLE_CONTRIBUTOR'
   | 'INELIGIBLE_NON_POSITIVE_ENERGY'
   | 'INELIGIBLE_INVALID_ADDED_ENERGY_PROVENANCE'
+  | 'INELIGIBLE_NOT_KNOWABLE_AT_EVALUATION'
   | M3_3HvH4FutureThroughputEligibility
   | 'CONTEXT_ONLY';
 
@@ -49,6 +52,8 @@ export interface M3_3HvH4LifecycleChargeThroughputSegmentV1 {
   includedSessionCount: number;
   excludedSessionCount: number;
   excludedCountsByEligibility: Record<string, number>;
+  withheldContributorSessionCount: number;
+  summationMethod: typeof M3_3_HV_H4_CHARGE_THROUGHPUT_SUMMATION_METHOD | null;
   earliestObservedAt: string | null;
   earliestTrustedAt: string | null;
   retentionContinuity: M3_3HvH4RetentionContinuity;
@@ -71,6 +76,8 @@ export interface M3_3HvH4ChargeThroughputReportV1 {
   organizationId: string;
   vehicleId: string;
   evaluationAt: string;
+  sessionKnowledgeAsOfPolicy: typeof M3_3_HV_H4_SESSION_KNOWLEDGE_ASOF_POLICY;
+  nonPositiveEnergyPolicy: typeof M3_3_HV_H4_NON_POSITIVE_ENERGY_POLICY;
   throughputDirection: 'CHARGE_ONLY';
   bidirectionalThroughput: false;
   lifetimeComplete: false;
