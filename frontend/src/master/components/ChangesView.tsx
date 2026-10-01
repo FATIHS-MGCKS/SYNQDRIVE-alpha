@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-onboarding-vo410-candidate-discovery-2026-10-01',
+    version: '4.9.2218',
+    title: 'Vehicle Onboarding VO-4.10 — Master Admin provider candidate discovery (internal)',
+    summary: [
+      'GET /admin/vehicle-onboarding/organizations/:orgId/candidates — read-only DIMO + HIGH_MOBILITY projection from persisted mirrors (no provider network, no VehicleCandidate table).',
+      'Reuses VO-4.9 canonical suppression, source-claim disposition (AVAILABLE / RESUMABLE), and adoption authority mirror checks; cross-org holds omitted without tenant disclosure.',
+      'Legacy register-from-dimo / HM_ONLY / getNonRegisteredVehicles unchanged; adoptProviderSource remains transactional write authority.',
+    ],
+    reason:
+      'Master Admin onboarding UI needs a governed, tenant-safe candidate list without weakening VO-4.9 adoption or introducing activation cutover.',
+    previousBehavior:
+      'No unified VO candidate listing; discovery scattered across legacy DIMO/HM registration helpers.',
+    details:
+      'backend/src/modules/vehicle-onboarding/*; architecture/vehicle-onboarding/evidence/VO410_PROVIDER_CANDIDATE_DISCOVERY.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Onboarding',
+    createdAt: '2026-10-01T19:45:00.000Z',
+  },
+  {
     id: 'vehicle-onboarding-vo3-2-source-adoption-seal-2026-09-30',
     version: '4.9.2217',
     title: 'Vehicle Onboarding VO-3.2 — secure source attach + Postgres activation seal (internal)',

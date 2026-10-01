@@ -8,13 +8,19 @@ import { VehicleOnboardingCaptureService } from './services/vehicle-onboarding-c
 import { VehicleOnboardingSourceAdoptionService } from './services/vehicle-onboarding-source-adoption.service';
 import { VehicleOnboardingCaptureController } from './controllers/vehicle-onboarding-capture.controller';
 import { VehicleOnboardingSourceAdoptionController } from './controllers/vehicle-onboarding-source-adoption.controller';
+import { VehicleOnboardingProviderCandidateController } from './controllers/vehicle-onboarding-provider-candidate.controller';
+import { VehicleOnboardingProviderCandidateService } from './services/vehicle-onboarding-provider-candidate.service';
 import { ProductionFailClosedReadinessAuthority } from './readiness/vehicle-onboarding-readiness-authority';
 import { VEHICLE_ONBOARDING_READINESS_AUTHORITY } from './readiness/vehicle-onboarding-readiness.tokens';
 import { VehicleOnboardingSourceAdoptionAuthority } from './source-adoption/vehicle-onboarding-source-adoption.authority';
 
 @Module({
   imports: [DimoModule, ActivityLogModule],
-  controllers: [VehicleOnboardingCaptureController, VehicleOnboardingSourceAdoptionController],
+  controllers: [
+    VehicleOnboardingCaptureController,
+    VehicleOnboardingSourceAdoptionController,
+    VehicleOnboardingProviderCandidateController,
+  ],
   providers: [
     VehicleOnboardingSourceAdoptionAuthority,
     ProductionFailClosedReadinessAuthority,
@@ -27,6 +33,7 @@ import { VehicleOnboardingSourceAdoptionAuthority } from './source-adoption/vehi
     VehicleOnboardingActivationService,
     VehicleOnboardingCaptureService,
     VehicleOnboardingSourceAdoptionService,
+    VehicleOnboardingProviderCandidateService,
   ],
   exports: [
     VehicleOnboardingCaseService,

@@ -5,7 +5,7 @@
 | **Sealed from** | VO-0A discovery audit |
 | **Repository anchor SHA** | `312d9f54a2b4c0b0740061d3e2b74897e78eacb0` |
 | **Authority status** | `AUDIT_IN_PROGRESS` — **not** `AUTHORITY_ACTIVE` |
-| **Last updated** | 2026-10-01 (VO-4.9 Master Admin source adoption HTTP; **no public cutover**) |
+| **Last updated** | 2026-10-01 (VO-4.10 Master Admin provider candidate discovery; **no public cutover**) |
 
 ## Executive summary
 
@@ -24,6 +24,7 @@ SynqDrive today separates **provider mirrors** (`DimoVehicle`, `HighMobilityVehi
 - **VO-4 / VO-4.1 (2026-09-30):** `VehicleOnboardingReadinessService` + snapshot V2 + explicit `ProductSlug` entitlement + fingerprint v1.1 (incl. source evidence); HM source refresh; shared readiness mutation lock (see [VO4_READINESS_AUTHORITY.md](./evidence/VO4_READINESS_AUTHORITY.md)).
 - **VO-4.8 (2026-09-30):** Tenant-scoped authenticated capture HTTP (`VehicleOnboardingCaptureController`) — see [VO48_AUTHENTICATED_CAPTURE_API.md](./evidence/VO48_AUTHENTICATED_CAPTURE_API.md).
 - **VO-4.9 (2026-10-01):** Master Admin trusted source adoption HTTP (`VehicleOnboardingSourceAdoptionController`) — global source claim lock, cross-org suppression, platform-trusted DIMO adoption; **no** tenant self-service adoption (see [VO49_MASTER_ADMIN_SOURCE_ADOPTION_API.md](./evidence/VO49_MASTER_ADMIN_SOURCE_ADOPTION_API.md)).
+- **VO-4.10 (2026-10-01):** Master Admin read-only provider candidate discovery (`GET …/candidates`) — derived projection over DIMO/HM mirrors; adoption transaction remains write authority (see [VO410_PROVIDER_CANDIDATE_DISCOVERY.md](./evidence/VO410_PROVIDER_CANDIDATE_DISCOVERY.md)).
 
 ---
 
