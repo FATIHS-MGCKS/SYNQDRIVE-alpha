@@ -43,9 +43,9 @@ Append-only scientific record. Newest entries first.
 | **BEFORE** | A2 on main; no persisted A3 architecture; retention prunes `HvChargeSession` without H4 durability ACK |
 | **OBSERVATION** | Default 1095d HV charge session retention; `BatteryRetentionAggregate` preserves measurements only — not H4 throughput source fields |
 | **HYPOTHESIS** | Revisioned charge-session **source evidence** ledger + rebuildable lifecycle cache preserves FULL_A2 report semantics after prune |
-| **CHANGE** | Research authority `M3_3_HV_H4_A3_DURABLE_EXPOSURE_MATERIALIZATION_ARCHITECTURE_2026-10-02.md` (R0→R0.2): canonical session identity without H4 contract version; prospective true-as-of; effective-revision collapse before A1 5000 limit; full A2 parity architecture target only |
-| **WHY** | Close identity/as-of loader authority gaps before A3.1 schema |
-| **EXPECTED_EFFECT** | Explicit loader pipeline, revision DB identity vs fingerprint, no fabricated pre-A3 revision history |
+| **CHANGE** | Research authority `M3_3_HV_H4_A3_DURABLE_EXPOSURE_MATERIALIZATION_ARCHITECTURE_2026-10-02.md` (R0→R0.3): R0.2 identity/as-of sealed; R0.3 population-before-knowledge; TARGET_1 uses current/final durable state + post-load A2 gate; MODE_B historical separate; knowability-ineligible rows count toward 5000 load/truncation; A3.3 MODE_A fixture requirements |
+| **WHY** | Correct TARGET_1 parity vs live `loadM3_3HvH4DataV1` + A2 knowledge gate ordering before A3.1 schema |
+| **EXPECTED_EFFECT** | Durable loader cannot pre-filter knowability; late-created/updated sessions stay in population; A3.3 tests explicit |
 | **VALIDATION** | Docs re-audit vs retention, `m3-3-hv-h4-data.loader.ts`, A2 classifiers; graph + registry + H4 contract validators |
 | **OBSERVED_EFFECT** | Pending merge |
 | **NON_EFFECTS** | Retention behavior, Prisma, runtime, flags unchanged |

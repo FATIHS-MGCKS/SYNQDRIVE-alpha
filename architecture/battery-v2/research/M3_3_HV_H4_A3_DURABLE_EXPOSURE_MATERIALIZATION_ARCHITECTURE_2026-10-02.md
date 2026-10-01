@@ -1,7 +1,7 @@
 # M3.3-HV-H4-A3-R0 — Durable bounded charge throughput materialization architecture
 
 **Date:** 2026-10-02  
-**Status:** **ARCHITECTURE AUTHORITY (RESEARCH)** — R0.2 identity + as-of loader closure (docs only)  
+**Status:** **ARCHITECTURE AUTHORITY (RESEARCH)** — R0.3 population vs knowledge A2 parity closure (docs only)  
 **Main anchor (A2 complete):** `9bd4a142b1d931cc135953f11b8a2ca6fff8effe` (PR #1869)  
 **Audit baseline main:** `ffe5f415447b23b6dbbed4ac05c14ae9de6d2f5a`  
 **Normative upstream:** `M3_3_HV_H4_BOUNDED_CHARGE_THROUGHPUT_V1` (A2 read-only composition)
@@ -61,7 +61,7 @@ Authority constant on main: `EXISTING_RETENTION_AGGREGATES_PRESERVE_CHARGE_THROU
 |---------|-----------|-------|
 | **CANONICAL_SOURCE_SESSION_IDENTITY** | `(organizationId, vehicleId, segmentFingerprint)` | DB core: `@@unique([vehicleId, segmentFingerprint])`; `organizationId` retained for tenant defense |
 | **PROVIDER_SESSION_IDENTITY** | `metadata.providerSegmentId` | Nullable; duplicate detection in A2 |
-| **DATABASE_ROW_ID** | `HvChargeSession.id` | Stable tie-breaker for A1 `orderBy id ASC`; provenance pointer |
+| **DATABASE_ROW_ID / `sourceHvChargeSessionId`** | `HvChargeSession.id` | Raw-row provenance + current A1 `orderBy id ASC` tie-break — **not** canonical source-session identity |
 | **PHYSICAL_CHARGE_EPISODE_IDENTITY_PROVEN** | **NO** | Overlapping eligible native sessions → fail-closed; fingerprint ≠ proven physical episode |
 
 **Invariant:** **`SAME_SOURCE_SESSION_ACROSS_H4_CONTRACT_VERSIONS = YES`** — the canonical source session exists **independently** of any H4 persistence contract version.
@@ -72,6 +72,10 @@ Authority constant on main: `EXISTING_RETENTION_AGGREGATES_PRESERVE_CHARGE_THROU
 **`lifecycleSegmentId` is derived** — never immutable source identity.
 
 **`H4_CONTRACT_VERSION_PART_OF_CANONICAL_SOURCE_SESSION_IDENTITY = NO`**
+
+**`SOURCE_HV_CHARGE_SESSION_ID_IS_CANONICAL_IDENTITY = NO`** — do not treat raw DB UUID as physical/logical session identity.
+
+**`RAW_ROW_ID_STABILITY_ACROSS_PRUNE_REINGESTION_PROVEN = NO`** — A3.1/A3.3 must audit whether `sourceHvChargeSessionId` remains stable if sessions are re-ingested after prune before relying on it as permanent cross-retention ordering authority (see **OQ-A3-5**).
 
 ---
 
@@ -164,6 +168,69 @@ Repository today stores **current** `HvChargeSession` row state only (`updatedAt
 | `BACKFILL_CREATES_HISTORICAL_REVISIONS` | **NO** — must not fabricate prior mutation history |
 | `BACKFILL_CAN_CAPTURE_CURRENT_STATE` | **YES** — single current-state revision for surviving rows before cutoff |
 
+### 6.4 Live A2 pipeline — population selection vs knowledge classification (R0.3)
+
+Live path: `loadM3_3HvH4DataV1` → `HvChargeSession` rows → A2 composition.
+
+| Stage | Authority |
+|-------|-----------|
+| **SOURCE_POPULATION_SELECTION** | `organizationId`, `vehicleId`, **`startAt <= evaluationAt`** only |
+| **A1 ordering / hard limit** | `startAt ASC`, `id ASC`; **5000** canonical sessions |
+| **SESSION_KNOWLEDGE_CLASSIFICATION** | A2 checks **`createdAt` / `receivedAt` / `updatedAt`** vs `evaluationAt` **after** source load |
+
+**`POPULATION_SELECTION_PRECEDES_KNOWLEDGE_GATE = YES`**
+
+**`KNOWLEDGE_TIMESTAMP_FILTER_IS_A1_DB_LOAD_FILTER = NO`**
+
+**`KNOWLEDGE_GATE_OCCURS_AFTER_SOURCE_LOAD = YES`**
+
+**Hard-limit consequence (current A2 V1):**
+
+**`KNOWLEDGE_INELIGIBLE_SESSION_COUNTS_TOWARD_A1_SOURCE_LOAD = YES`**
+
+**`KNOWLEDGE_INELIGIBLE_SESSION_CAN_AFFECT_SOURCE_TRUNCATION = YES`**
+
+**`APPLY_5000_LIMIT_BEFORE_A2_KNOWLEDGE_CLASSIFICATION = YES`**
+
+Do **not** build the 5000-session population from knowable-only sessions.
+
+### 6.5 Parity example — late `createdAt` (TARGET_1 / MODE_A)
+
+| Field | Value |
+|-------|-------|
+| `evaluationAt` | 2026-08-01 |
+| Session `startAt` | 2026-07-05 (`startAt <= evaluationAt`) |
+| Session `createdAt` | 2026-08-02 (after `evaluationAt`) |
+
+**Live A2:**
+
+- A1 source population **includes** the session.
+- A2 classifies **`INELIGIBLE_NOT_KNOWABLE_AT_EVALUATION`** (not an eligible contributor).
+
+**Required durable TARGET_1 (MODE_A) parity:**
+
+| Check | Value |
+|-------|-------|
+| `SESSION_PRESENT_IN_SOURCE_POPULATION` | **YES** |
+| `SESSION_ELIGIBLE_CONTRIBUTOR` | **NO** |
+| `SESSION_CLASSIFICATION` | **`INELIGIBLE_NOT_KNOWABLE_AT_EVALUATION`** |
+
+Same pattern applies when **`updatedAt` / `receivedAt`** postdate `evaluationAt` while `startAt <= evaluationAt`.
+
+### 6.6 TARGET_1 vs TARGET_2 resolution modes
+
+| Constant | TARGET_1 (A2 V1 parity) | TARGET_2 (future historical) |
+|----------|-------------------------|------------------------------|
+| **`TARGET_2_HISTORICAL_REVISION_SELECTION`** | N/A | **YES** |
+| **`TARGET_2_IS_CURRENT_A2_V1_PARITY_MODE`** | N/A | **NO** |
+| **`TRUE_HISTORICAL_MODE_SEPARATE_FROM_A2_V1_PARITY`** | — | **YES** |
+
+**MODE_A — `A2_V1_PARITY`:** canonical sessions → **current/final** durable source state → A1 population / order / 5000 limit → A2 **current-row** knowledge gate → A2 composition.
+
+**MODE_B — `TRUE_HISTORICAL_ASOF`:** canonical sessions → **historical** revision at `evaluationAt` → future historical interpretation contract (separately versioned/authorized). **Do not** silently replace MODE_A.
+
+**`A3_3_TARGET_MODE = MODE_A (A2_V1_PARITY)`** — equivalence proof targets MODE_A first.
+
 ---
 
 ## 7. Source revision model (conceptual, no schema)
@@ -210,19 +277,27 @@ Append when any **H4-relevant** fact changes, including:
 
 **`REVISION_ROWS_FED_DIRECTLY_TO_A2_AS_SEPARATE_SESSIONS = NO`**
 
-Pipeline:
+Pipeline (MODE_A — must match live ordering):
 
 ```
 revision ledger
   → group by CANONICAL_SOURCE_SESSION_IDENTITY
-  → select exactly one effective revision for evaluationAt
+  → MODE_A: current/final durable source state per session (TARGET_1)
+  → MODE_B: historical revision at evaluationAt (TARGET_2 — not A2 V1 parity)
   → reconstruct HvChargeSession-equivalent scientific input (preserve sourceHvChargeSessionId)
-  → apply existing A1 load filter/order + A2 classification/composition
+  → A1 population: startAt <= evaluationAt; order; 5000 hard limit
+  → A2 knowledge gate + classification/composition
 ```
 
-**TARGET_1 (current A2 policy equivalence):** use effective revision whose envelope satisfies `sourceCreatedAt`, `sourceReceivedAt`, `sourceUpdatedAt` all `<= evaluationAt`; otherwise session **not knowable** (same as live A2).
+**TARGET_1 — `CURRENT_A2_FAIL_CLOSED_EQUIVALENCE` (MODE_A):**
 
-**TARGET_2 (true historical mode, prospective):** select latest revision whose source knowledge state is valid/known at `evaluationAt` per future revision ordering contract (§7B).
+| Constant | Value |
+|----------|-------|
+| **`TARGET_1_REVISION_RESOLUTION`** | **`CURRENT_DURABLE_SOURCE_STATE_PER_CANONICAL_SESSION`** |
+| **`TARGET_1_PRELOAD_KNOWLEDGE_FILTER`** | **NO** — do **not** drop sessions because durable `createdAt`/`receivedAt`/`updatedAt` postdate `evaluationAt` |
+| **`TARGET_1_A2_KNOWLEDGE_GATE_AFTER_LOAD`** | **YES** — A2 applies `INELIGIBLE_NOT_KNOWABLE_AT_EVALUATION` after load (§6.5) |
+
+**TARGET_2 (MODE_B — true historical, prospective):** select latest revision whose source knowledge state is valid/known at `evaluationAt` per future revision ordering contract (§7B). **Not** identical to current A2 V1 behavior.
 
 ---
 
@@ -251,10 +326,12 @@ Live loader (`m3-3-hv-h4-data.loader.ts`):
 
 After raw delete, durable path must:
 
-1. Collapse revisions → **one effective row per canonical session**  
-2. **Then** apply the same population filter, ordering, and hard-limit probe  
+1. Collapse revisions → **one effective row per canonical session** (MODE_A: current/final state)  
+2. **Then** apply the same population filter, ordering, and **5000 hard-limit probe** (includes knowledge-ineligible sessions)  
+3. **Then** A2 knowledge classification (same as live)
 
 **`APPLY_HARD_LIMIT_AFTER_EFFECTIVE_REVISION_COLLAPSE = YES`**  
+**`HARD_LIMIT_APPLIED_BEFORE_KNOWLEDGE_CLASSIFICATION = YES`**  
 **`REVISION_ROW_COUNT_AFFECTS_A1_SOURCE_TRUNCATION = NO`**  
 **`CANONICAL_SOURCE_SESSION_COUNT_AFFECTS_SOURCE_TRUNCATION = YES`**
 
@@ -351,7 +428,7 @@ A2 segment fingerprint hashes **all segment session classifications** for fail-c
 
 **Architecture target:** **`FULL_A2_REPORT_REPRODUCIBILITY_TARGET = YES`**
 
-**Classification:** **`ARCHITECTURE_TARGET_NOT_YET_IMPLEMENTATION_PROOF`** — R0/R0.2 do not prove parity.
+**Classification:** **`ARCHITECTURE_TARGET_NOT_YET_IMPLEMENTATION_PROOF`** — R0/R0.3 do not prove parity.
 
 Full parity requires reconstructed effective source-session set preserving:
 
@@ -361,7 +438,24 @@ Full parity requires reconstructed effective source-session set preserving:
 - overlap / duplicate provider / NO_TRUSTED_SESSIONS / SOURCE_CONFLICT
 - segment `sourceFingerprint`, lifecycle segmentation under GT-as-of
 
-**`A3_3_EQUIVALENCE_TEST_REQUIRED = YES`** — same fixture corpus as live A2 vs durable loader path.
+**`A3_3_EQUIVALENCE_TEST_REQUIRED = YES`** — live A2 vs durable loader on **MODE_A (`A2_V1_PARITY`)**.
+
+**Required fixture corpus (minimum):**
+
+| ID | Scenario |
+|----|----------|
+| **A** | `startAt <= evaluationAt`, **`createdAt > evaluationAt`** → in source population; **`INELIGIBLE_NOT_KNOWABLE_AT_EVALUATION`** |
+| **B** | `startAt <= evaluationAt`, **`updatedAt > evaluationAt`** → same |
+| **C** | Both A and B must preserve population presence + classification (not dropped at load) |
+| **D** | Near-hard-limit: knowability-ineligible sessions occupy slots in the **5000 canonical-session** source population and can affect `sourceTruncated` |
+
+Prove parity for: `loadedCount`, `hardLimitReached`, `sourceTruncated`, `sessionClassifications`, `excludedCounts`, `compositionStatus`, `sourceFingerprint`.
+
+**`A3_3_LATE_CREATED_PARITY_TEST_REQUIRED = YES`**
+
+**`A3_3_LATE_UPDATED_PARITY_TEST_REQUIRED = YES`**
+
+**`A3_3_HARD_LIMIT_PARITY_TEST_REQUIRED = YES`**
 
 **`FULL_A2_PARITY_PROVEN_IN_R0 = NO`**
 
@@ -413,7 +507,7 @@ Rebuild from: durable source revisions + GT-as-of + H4 composition contract.
 |-------|--------|
 | **A3.1** | Persistence **contract** + schema for evidence revision ledger + ACK contract (flags OFF) |
 | **A3.2** | Idempotent revision writer |
-| **A3.3** | Loader equivalence: durable revisions → existing A2 builder |
+| **A3.3** | Loader equivalence (**MODE_A / A2_V1_PARITY**): durable revisions → existing A2 builder; fixture corpus §12 |
 | **A3.4** | Revision-scoped prune ACK + retention gate |
 | **A3.5** | Reconciliation scheduler (leader-guarded, default OFF) |
 | **A3.6** | Optional derived lifecycle cache |
@@ -436,6 +530,7 @@ No FEC, degradation model, customer publication, automatic runtime, provider cal
 | **OQ-A3-2** | Revision **ordering**, tie-break authority, and capture granularity vs `mergeHvChargeSessionUpdate` |
 | **OQ-A3-3** | **Prospective capture boundary** + **current-state-only backfill** before retention cutoff (no fabricated prior revisions) |
 | **OQ-A3-4** | `HvCapacityObservation` FK vs H4 revision-scoped ACK **prune ordering** |
+| **OQ-A3-5** | **`sourceHvChargeSessionId` stability** across prune + re-ingestion vs durable A1 `id ASC` ordering authority |
 
 ---
 
