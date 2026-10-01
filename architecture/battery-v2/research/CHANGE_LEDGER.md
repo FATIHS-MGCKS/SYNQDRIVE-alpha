@@ -34,6 +34,29 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-10-01 — M3.3-HV-H4-A2.2 Neumaier summation authority seal
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | `neumaierCompensatedSumV1` used Kahan-style update without `return sum + compensation` |
+| **OBSERVATION** | Declared `NEUMAIER_COMPENSATED_SUM_V1` diverged from canonical Neumaier; ordering `[1, 1e16, 1]` separates Kahan-style from Neumaier |
+| **HYPOTHESIS** | True Neumaier preserves small positive kWh contributions under large-magnitude session ordering without changing A2.1 semantics |
+| **CHANGE** | Canonical Neumaier loop + compensation return; regression test discriminates Kahan-style vs Neumaier |
+| **WHY** | Scientific method label must match implementation (PR #1869 seal) |
+| **EXPECTED_EFFECT** | `summationMethod` and numeric result align with Neumaier reference for positive-only vectors |
+| **VALIDATION** | test:battery:v2:hv-h4; validate-h4-exposure-coverage-contracts.sh |
+| **OBSERVED_EFFECT** | Pending CI |
+| **NON_EFFECTS** | Provider identity, knowledge-as-of, fingerprints, lifecycle, energy firewall unchanged |
+| **REGRESSIONS_OR_TRADEOFFS** | Extreme-magnitude throughput sums may differ slightly from prior Kahan-style bug |
+| **REMAINING_GAPS** | H4-A3 not started |
+| **DECISION_STATUS** | PROPOSED |
+| **AFFECTED_GRAPH** | BAT-V2-AUTH-H4-A2-001 |
+| **EVIDENCE** | Draft PR #1869 A2.2 slice |
+
+---
+
 ## CL-2026-10-01 — M3.3-HV-H4-A2.1 bounded charge throughput scientific hardening
 
 | Field | Value |

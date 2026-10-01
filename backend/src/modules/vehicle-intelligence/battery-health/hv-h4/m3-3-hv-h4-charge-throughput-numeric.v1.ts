@@ -1,22 +1,25 @@
 import { M3_3_HV_H4_CHARGE_THROUGHPUT_SUMMATION_METHOD } from './m3-3-hv-h4.constants';
 
 /**
- * Deterministic compensated summation for finite positive kWh deltas (A2 V1).
- * No per-term rounding; result is raw IEEE-754 sum with Neumaier error compensation.
+ * Canonical Neumaier compensated summation for finite positive kWh deltas (A2 V1).
+ * No per-term rounding; returns sum + accumulated compensation in IEEE-754.
  */
 export function neumaierCompensatedSumV1(values: readonly number[]): number {
   let sum = 0;
   let compensation = 0;
-  for (const value of values) {
-    if (!Number.isFinite(value) || value <= 0) {
+  for (const x of values) {
+    if (!Number.isFinite(x) || x <= 0) {
       throw new Error('M3.3-HV-H4-A2: summation requires finite positive inputs');
     }
-    const corrected = value - compensation;
-    const next = sum + corrected;
-    compensation = next - sum - corrected;
-    sum = next;
+    const t = sum + x;
+    if (Math.abs(sum) >= Math.abs(x)) {
+      compensation += sum - t + x;
+    } else {
+      compensation += x - t + sum;
+    }
+    sum = t;
   }
-  return sum;
+  return sum + compensation;
 }
 
 export function sumM3_3HvH4ChargeThroughputEnergiesV1(

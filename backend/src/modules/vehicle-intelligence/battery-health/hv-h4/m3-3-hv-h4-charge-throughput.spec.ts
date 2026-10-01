@@ -422,7 +422,7 @@ describe('M3.3-HV-H4-A2 bounded charge throughput composition', () => {
     const naive = values.reduce((s, v) => s + v, 0);
     const compensated = neumaierCompensatedSumV1(values);
     expect(compensated).not.toBe(naive);
-    expect(compensated).toBe(1e16 + 3);
+    expect(compensated).toBe(1e16 + 4);
 
     const loaded = baseLoaded({
       chargeSessions: values.map((energyAddedKwh, i) =>
@@ -438,6 +438,32 @@ describe('M3.3-HV-H4-A2 bounded charge throughput composition', () => {
     const seg0 = report.segments.find((s) => s.lifecycleSegmentId === 'HV_SEGMENT_0');
     expect(seg0?.summationMethod).toBe(M3_3_HV_H4_CHARGE_THROUGHPUT_SUMMATION_METHOD);
     expect(seg0?.boundedObservedChargeThroughputKwh).toBe(compensated);
+  });
+
+  it('implements NEUMAIER_COMPENSATED_SUM_V1 with ordering distinct from Kahan-style sum', () => {
+    function kahanStyleCompensatedSumForRegression(values: readonly number[]): number {
+      let sum = 0;
+      let compensation = 0;
+      for (const value of values) {
+        const corrected = value - compensation;
+        const next = sum + corrected;
+        compensation = next - sum - corrected;
+        sum = next;
+      }
+      return sum;
+    }
+
+    const values = [1, 1e16, 1] as const;
+    const naive = values.reduce((s, v) => s + v, 0);
+    const kahanStyle = kahanStyleCompensatedSumForRegression(values);
+    const neumaier = neumaierCompensatedSumV1(values);
+    const expectedNeumaier = 1e16 + 2;
+
+    expect(naive).toBe(1e16);
+    expect(kahanStyle).toBe(1e16);
+    expect(neumaier).toBe(expectedNeumaier);
+    expect(kahanStyle).not.toBe(neumaier);
+    expect(neumaier).not.toBe(naive);
   });
 
   it('fingerprints diverge across composition status and conflict evidence', () => {
