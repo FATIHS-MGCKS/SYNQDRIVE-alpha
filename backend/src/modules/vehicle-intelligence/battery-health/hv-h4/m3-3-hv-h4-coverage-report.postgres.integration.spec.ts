@@ -20,6 +20,7 @@ import {
 import { probePostgresDatabase } from '../provider-observability-gap/provider-observability-gap-postgres.fixture';
 import { assertHvH4TransactionReadOnly } from './m3-3-hv-h4-readonly-transaction';
 import { runM3_3HvH4CoverageReport } from './m3-3-hv-h4-coverage-report.service';
+import { M3_3_HV_H4_DEFAULT_RETENTION_DAYS } from './m3-3-hv-h4.constants';
 
 const integrationEnabled = process.env.BATTERY_HV_H4_REPORT_INTEGRATION === '1';
 
@@ -50,6 +51,11 @@ const EVALUATION_AT = new Date('2026-09-01T00:00:00.000Z');
             vehicleId,
             recordedAt: new Date('2026-05-10T08:00:00.000Z'),
             socPercent: 55,
+          },
+          {
+            vehicleId,
+            recordedAt: REPLACEMENT_AT,
+            socPercent: 56,
           },
           {
             vehicleId,
@@ -176,60 +182,129 @@ const EVALUATION_AT = new Date('2026-09-01T00:00:00.000Z');
         await assertHvH4TransactionReadOnly(tx);
       });
 
+      const reportA = await runM3_3HvH4CoverageReport(prisma, {
+        organizationId,
+        vehicleId,
+        evaluationAt: EVALUATION_AT,
+      });
+      const reportB = await runM3_3HvH4CoverageReport(prisma, {
+        organizationId,
+        vehicleId,
+        evaluationAt: EVALUATION_AT,
+      });
+      expect(reportA).toEqual(reportB);
+
+      const seg0Odom = reportA.axes.find(
+        (a) => a.lifecycleSegmentId === 'HV_SEGMENT_0' && a.axis === 'ODOMETER_KM',
+      );
+      const seg1Odom = reportA.axes.find(
+        (a) => a.lifecycleSegmentId === 'HV_SEGMENT_1' && a.axis === 'ODOMETER_KM',
+      );
+      expect(seg0Odom?.latestObservedAt).toBe('2026-05-10T08:00:00.000Z');
+      expect(seg1Odom?.earliestObservedAt).toBe(REPLACEMENT_AT.toISOString());
+
+      const seg0SocEvidence = reportA.axes
+        .find((a) => a.lifecycleSegmentId === 'HV_SEGMENT_0' && a.axis === 'SOC_WINDOW_EXPOSURE')
+        ?.sourceSummaries.find((s) => s.source.includes('BatteryEvidence.SOC'));
+      const seg1SocEvidence = reportA.axes
+        .find((a) => a.lifecycleSegmentId === 'HV_SEGMENT_1' && a.axis === 'SOC_WINDOW_EXPOSURE')
+        ?.sourceSummaries.find((s) => s.source.includes('BatteryEvidence.SOC'));
+      expect(seg0SocEvidence?.latestObservedAt).toBe('2026-05-12T08:00:00.000Z');
+      expect(seg1SocEvidence?.earliestObservedAt).toBe('2026-07-12T08:00:00.000Z');
+
+      const cross = reportA.chargeSessionClassifications.find((c) =>
+        c.reasonCodes.includes('REPLACEMENT_BOUNDARY_INTERSECTION'),
+      );
+      expect(cross?.futureThroughputEligibility).toBe('INELIGIBLE_REPLACEMENT_INTERSECTION');
+
+      const fallback = reportA.chargeSessionClassifications.find(
+        (c) => c.futureThroughputEligibility === 'CONTEXT_ONLY',
+      );
+      expect(fallback).toBeDefined();
+
+      const ongoing = reportA.chargeSessionClassifications.find(
+        (c) => c.futureThroughputEligibility === 'INELIGIBLE_ONGOING',
+      );
+      expect(ongoing).toBeDefined();
+
+      const seg0Throughput = reportA.axes.find(
+        (a) => a.lifecycleSegmentId === 'HV_SEGMENT_0' && a.axis === 'CHARGE_THROUGHPUT_KWH',
+      );
+      const seg1Throughput = reportA.axes.find(
+        (a) => a.lifecycleSegmentId === 'HV_SEGMENT_1' && a.axis === 'CHARGE_THROUGHPUT_KWH',
+      );
+
+      expect(seg0Throughput?.earliestTrustedAt).toBe('2026-05-01T08:00:00.000Z');
+      expect(seg0Throughput?.evidenceStart.boundaryKind).toBe('FIRST_QUALIFIED_SESSION');
+      expect(seg1Throughput?.earliestTrustedAt).toBe('2026-07-05T08:00:00.000Z');
+      expect(seg1Throughput?.earliestObservedAt).not.toBe('2026-05-01T08:00:00.000Z');
+
+      expect(reportA.energySemanticFirewall.pass).toBe(true);
+      expect(reportA.energySemanticFirewall.chargeThroughputSource).toBe(
+        'HvChargeSession.energyAddedKwh',
+      );
+      expect(reportA.energySemanticFirewall.prohibitedChargeThroughputSources).toContain(
+        'VehicleEnergyEvent.energyDeltaKwh',
+      );
+      expect(reportA.cumulativeExposureValues).toBe(false);
+      expect(reportA.chargeSessionSourceLoad.sourceTruncated).toBe(false);
+
+      const policyCutoff = new Date(
+        EVALUATION_AT.getTime() -
+          M3_3_HV_H4_DEFAULT_RETENTION_DAYS.hvProviderSnapshots * 86_400_000,
+      );
+      const cal = reportA.axes.find(
+        (a) => a.lifecycleSegmentId === 'HV_SEGMENT_0' && a.axis === 'CALENDAR_TIME',
+      );
+      if (cal?.earliestObservedAt === policyCutoff.toISOString()) {
+        expect(cal.retentionInference).not.toBe('ACTUAL_RETENTION_TRUNCATION_CONFIRMED');
+        expect(cal.gapSummary.gapKind).not.toBe('TRUNCATED_HISTORY');
+      }
+
+      await expect(
+        runM3_3HvH4CoverageReport(prisma, {
+          organizationId: randomUUID(),
+          vehicleId,
+          evaluationAt: EVALUATION_AT,
+        }),
+      ).rejects.toThrow(/not found for organization/);
+    });
+
+    it('keeps earliestTrustedAt null when segment has observations but no ELIGIBLE_NATIVE session', async () => {
+      const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
+
+      await prisma.hvChargeSession.create({
+        data: {
+          id: randomUUID(),
+          organizationId,
+          vehicleId,
+          segmentFingerprint: `fp-fb-only-${randomUUID()}`,
+          source: HV_CHARGE_SESSION_SOURCE_TELEMETRY_POLL_FALLBACK,
+          startAt: new Date('2026-07-01T08:00:00.000Z'),
+          endAt: new Date('2026-07-01T10:00:00.000Z'),
+          startSocPercent: 20,
+          endSocPercent: 70,
+          startEnergyKwh: 10,
+          endEnergyKwh: 35,
+          energyAddedKwh: 8,
+          deltaSocPercent: 50,
+          idempotencyKey: `idem-fb-only-${randomUUID()}`,
+          metadata: { qualityStatus: HV_CHARGE_SESSION_QUALITY_STATUS.QUALIFIED },
+        },
+      });
+
       const report = await runM3_3HvH4CoverageReport(prisma, {
         organizationId,
         vehicleId,
         evaluationAt: EVALUATION_AT,
       });
 
-      const seg0Odom = report.axes.find(
-        (a) => a.lifecycleSegmentId === 'HV_SEGMENT_0' && a.axis === 'ODOMETER_KM',
-      );
-      const seg1Odom = report.axes.find(
-        (a) => a.lifecycleSegmentId === 'HV_SEGMENT_1' && a.axis === 'ODOMETER_KM',
-      );
-      expect(seg0Odom?.latestObservedAt).toBe('2026-05-10T08:00:00.000Z');
-      expect(seg1Odom?.earliestObservedAt).toBe('2026-07-10T08:00:00.000Z');
-
-      const seg0Soc = report.axes.find(
-        (a) => a.lifecycleSegmentId === 'HV_SEGMENT_0' && a.axis === 'SOC_WINDOW_EXPOSURE',
-      );
-      const seg1Soc = report.axes.find(
-        (a) => a.lifecycleSegmentId === 'HV_SEGMENT_1' && a.axis === 'SOC_WINDOW_EXPOSURE',
-      );
-      expect(seg0Soc?.latestObservedAt).toBe('2026-05-12T08:00:00.000Z');
-      expect(seg1Soc?.earliestObservedAt).toBe('2026-07-12T08:00:00.000Z');
-
-      const cross = report.chargeSessionClassifications.find((c) =>
-        c.reasonCodes.includes('REPLACEMENT_BOUNDARY_INTERSECTION'),
-      );
-      expect(cross?.futureThroughputEligibility).toBe('INELIGIBLE_REPLACEMENT_INTERSECTION');
-
-      const fallback = report.chargeSessionClassifications.find(
-        (c) => c.futureThroughputEligibility === 'CONTEXT_ONLY',
-      );
-      expect(fallback).toBeDefined();
-
-      const ongoing = report.chargeSessionClassifications.find(
-        (c) => c.futureThroughputEligibility === 'INELIGIBLE_ONGOING',
-      );
-      expect(ongoing).toBeDefined();
-
-      const seg0Throughput = report.axes.find(
+      const throughput = report.axes.find(
         (a) => a.lifecycleSegmentId === 'HV_SEGMENT_0' && a.axis === 'CHARGE_THROUGHPUT_KWH',
       );
-      const seg1Throughput = report.axes.find(
-        (a) => a.lifecycleSegmentId === 'HV_SEGMENT_1' && a.axis === 'CHARGE_THROUGHPUT_KWH',
-      );
-
-      expect(seg0Throughput?.earliestTrustedAt).toBe('2026-05-01T08:00:00.000Z');
-      expect(seg1Throughput?.earliestTrustedAt).toBe('2026-07-05T08:00:00.000Z');
-      expect(seg1Throughput?.earliestObservedAt).not.toBe('2026-05-01T08:00:00.000Z');
-
-      expect(report.energySemanticFirewall.prohibitedChargeThroughputSources).toContain(
-        'VehicleEnergyEvent.energyDeltaKwh',
-      );
-      expect(report.chargeSessionSourceLoad.sourceTruncated).toBe(false);
+      expect(throughput?.earliestObservedAt).not.toBeNull();
+      expect(throughput?.earliestTrustedAt).toBeNull();
+      expect(throughput?.segmentEvidenceState).toBe('OBSERVED_CONTEXT_ONLY');
     });
   },
 );

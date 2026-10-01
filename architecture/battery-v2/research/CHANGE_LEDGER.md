@@ -28,6 +28,29 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-10-01 — M3.3-HV-H4-A1.2 dedicated HV-H4 CI workflow (postgres gate)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | H4 postgres integration existed locally/CI script only; no path-filtered GitHub Actions workflow |
+| **OBSERVATION** | A1.1 hardening unproven in CI without ephemeral Postgres job on PR head |
+| **HYPOTHESIS** | Mirror HV-H1/H2/H3 workflow pattern with localhost fail-closed DATABASE_URL closes pre-merge gap |
+| **CHANGE** | `.github/workflows/battery-v2-hv-h4-ci.yml`; expanded postgres integration assertions |
+| **WHY** | Required semantic proof before merge review of PR #1866 |
+| **EXPECTED_EFFECT** | HV-H4 unit + authority + postgres jobs run on H4 path changes |
+| **VALIDATION** | workflow on PR #1866 exact head |
+| **OBSERVED_EFFECT** | Pending GitHub Actions |
+| **NON_EFFECTS** | No runtime/schema/production changes |
+| **REGRESSIONS_OR_TRADEOFFS** | Additional CI minutes on H4-touched PRs |
+| **REMAINING_GAPS** | Merge still human-gated; H4-A2 not started |
+| **DECISION_STATUS** | PROPOSED |
+| **AFFECTED_GRAPH** | BAT-V2-AUTH-H4-001 |
+| **EVIDENCE** | PR #1866 CI checks |
+
+---
+
 ## CL-2026-10-01 — M3.3-HV-H4-A1.1 exposure coverage scientific hardening + postgres IT
 
 | Field | Value |
