@@ -500,6 +500,7 @@ export class VehicleOnboardingCaseService {
           validationFindingsJson: emptyValidationFindings() as unknown as Prisma.InputJsonValue,
           validationFindingsVersion: VEHICLE_VALIDATION_FINDINGS_VERSION,
           idempotencyKey: ctx.idempotencyKey,
+          concurrencyToken: randomUUID(),
           initiatedByUserId: ctx.actorUserId,
           lastActorUserId: ctx.actorUserId,
           sourceRefs: {
