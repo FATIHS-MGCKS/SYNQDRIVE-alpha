@@ -37,6 +37,15 @@ Guards: `RolesGuard`, `MasterAdminMfaGuard`, `@Roles('MASTER_ADMIN')`, `@Require
 - **Activation revalidation:** before any canonical `Vehicle` write, current DIMO/HM mirror state re-checked (DB only); HM secondary clearance revalidated at activation.
 - **Proof suites:** `vo49-source-adoption-integrity.postgres.integration.spec.ts`
 
+## VO-4.9.2 activation identity continuity
+
+- Parses governed source snapshots via `parseValidatedSourceSnapshot()` during activation revalidation.
+- **DIMO:** external identity + non-contradictory VIN vs snapshot → `IDENTITY_REVIEW_REQUIRED`.
+- **HM:** VIN contradiction → `IDENTITY_REVIEW_REQUIRED`; `sourceMode` / `packageType` / `appContainerType` drift → `READINESS_SEAL_STALE`.
+- **HM `hmVehicleReference` change alone** does not block activation (mirror id is claim identity).
+- No snapshot refresh or provider network during activation.
+- **Proof suite:** `vo49-source-identity-continuity.postgres.integration.spec.ts`
+
 ## Tests
 
 - `npm run test:vehicle-onboarding:vo49:postgres`
