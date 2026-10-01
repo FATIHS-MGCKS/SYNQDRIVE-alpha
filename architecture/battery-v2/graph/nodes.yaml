@@ -1909,3 +1909,16 @@ nodes:
       - backend/src/modules/vehicle-intelligence/battery-health/hv-h3/
     evidence:
       - BAT-V2-EVID-CODE-ANCHOR-001
+
+  - id: BAT-V2-AUTH-H4-001
+    type: authority
+    title: M3.3-HV-H4 exposure source and observational coverage authority V1
+    epistemic_status: CONFIRMED
+    summary: >
+      H4 defines exposure axis source semantics, evidence-start boundaries, coverage classes,
+      retention continuity, and read-only coverage report only; no cumulative throughput, FEC,
+      thermal/SOC integrals, fast-charge classification, degradation, or customer publication.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-h4/
+    evidence:
+      - BAT-V2-EVID-CODE-ANCHOR-001
