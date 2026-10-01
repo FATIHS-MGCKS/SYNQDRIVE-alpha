@@ -95,6 +95,7 @@ const EVALUATION_AT = new Date('2026-09-01T00:00:00.000Z');
           groundTruthType: BatteryGroundTruthType.BATTERY_REPLACEMENT,
           batteryScope: BatteryEvidenceScope.HV,
           effectiveAt: REPLACEMENT_AT,
+          createdAt: REPLACEMENT_AT,
           sourceAuthority: BatteryGroundTruthSourceAuthority.MANUAL_CONFIRMED,
           verificationStatus: BatteryGroundTruthVerificationStatus.CONFIRMED,
           sourceContentFingerprint:
