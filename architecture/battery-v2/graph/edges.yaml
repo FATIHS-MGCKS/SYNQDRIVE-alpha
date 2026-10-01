@@ -532,6 +532,10 @@ edges:
     relation: contributes_to
     to: BAT-V2-AUTH-H3-001
     notes: H3 descriptive trend is composed from H2 longitudinal input report
+  - from: BAT-V2-AUTH-H3-001
+    relation: contributes_to
+    to: BAT-V2-AUTH-H4-001
+    notes: H4 exposure coverage authority follows H3 calendar descriptive layer; no H3 semantic retrofit
   - from: BAT-V2-AUTH-H1-001
     relation: contributes_to
     to: BAT-V2-AUTH-H2-001

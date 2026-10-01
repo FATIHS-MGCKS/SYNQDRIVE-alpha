@@ -24,6 +24,29 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-10-01 — M3.3-HV-H4-A1 exposure source + coverage authority foundation
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | A0 audit only; H3 exposure axis audit static strings; no H4 coverage contracts or read-only report |
+| **OBSERVATION** | Cumulative exposure requires explicit evidence-start, retention continuity, and energy semantics before H4-A2 throughput composition |
+| **HYPOTHESIS** | Pure contracts + read-only coverage report prevent false lifetime claims without schema/runtime changes |
+| **CHANGE** | `hv-h4/*` authority contracts; coverage report CLI; validate-h4 script; graph BAT-V2-AUTH-H4-001 |
+| **WHY** | Smallest foundational slice after A0 before bounded charge-throughput accumulator (A2) |
+| **EXPECTED_EFFECT** | Deterministic per-axis coverage metadata; session future-eligibility classification without sums |
+| **VALIDATION** | test:battery:v2:hv-h4; validate-h4-exposure-coverage-contracts.sh; validate-graph |
+| **OBSERVED_EFFECT** | Pending CI |
+| **NON_EFFECTS** | No cumulative kWh, FEC, integrals, fast-charge class, schema, migrations, Nest runtime, provider calls |
+| **REGRESSIONS_OR_TRADEOFFS** | Fallback sessions remain CONTEXT_ONLY for future throughput until semantic equivalence proven |
+| **REMAINING_GAPS** | H4-A2 bounded charge-throughput composition |
+| **DECISION_STATUS** | EXPERIMENTAL |
+| **AFFECTED_GRAPH** | BAT-V2-AUTH-H4-001 |
+| **EVIDENCE** | M3_3_HV_H4_A0 audit + A1 contract matrix |
+
+---
+
 ## CL-2026-09-30 — M3.3-HV-H3 final scientific hardening (PR #1860)
 
 | Field | Value |
