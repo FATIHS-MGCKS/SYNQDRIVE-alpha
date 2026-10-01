@@ -1368,3 +1368,11 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 |-------|--------|
 | CHANGE | Live per-replica Prometheus gauge `synqdrive_dimo_global_budget_enabled`; remove PM2 log as authority; canonical Redis PING; env UID/GID preservation; recovery + rollback post-verify; explicit PRODUCTION_ENV_MUTATED derivation |
 | NON_EFFECTS | No Production execution |
+
+### EXP-021 S4F-5 Production preflight — global budget rollout readiness (2026-10-01)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Read-only VPS audit; `di-v0-s4f5-production-preflight.sh`; evidence `EXP021_S4F5_PRODUCTION_PREFLIGHT.md` |
+| FINDING | Production `1dd42240…` healthy dual-replica; **behind** main `8fa531b27…`; S4F-4 assets absent; config `MISSING`; `PRODUCTION_ROLLOUT_PREREQUISITE=DEPLOY_REQUIRED` |
+| NON_EFFECTS | No deploy, env mutation, restart, S4 activation, DIMO provider calls, or S4F-4 mutation mode |
