@@ -22,6 +22,50 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-09-30 — M3.3-HV-H3 final scientific hardening (PR #1860)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | H3 V1 with postgres CI path bug; thin postgres fixtures; silent M3 duplicate-session median; static calendar lifecycle completeness; M3-relative ratio denominator |
+| **OBSERVATION** | Authority claims require real DB fixtures, fail-closed malformed H2 input, and parity with existing M3 conflict ratio semantics |
+| **HYPOTHESIS** | Boundary validation + duplicate-session anomalies + truncated exposure audit preserve H3 scientific boundaries without schema/runtime changes |
+| **CHANGE** | Postgres CI aligned with H2; expanded postgres integration; input contract util; M3 duplicate fail-closed; maxPoints rejection; method agreement M2 denominator; exposure audit contextual |
+| **WHY** | Final hardening gate before downstream calibration work |
+| **EXPECTED_EFFECT** | Deterministic H3 reports with explicit input anomalies and CI-green postgres coverage |
+| **VALIDATION** | hv-h3 unit/postgres; hv-h1/hv-h2 regression; validate-h3 contracts |
+| **OBSERVED_EFFECT** | Pending exact-head CI |
+| **NON_EFFECTS** | No schema, migrations, automatic H3 runtime, customer publication, or LV evaluator reuse |
+| **REGRESSIONS_OR_TRADEOFFS** | Ambiguous duplicate-session M3 excluded from fit (intentional) |
+| **REMAINING_GAPS** | Non-calendar exposure axes unchanged |
+| **DECISION_STATUS** | EXPERIMENTAL |
+| **AFFECTED_GRAPH** | BAT-V2-AUTH-H3-001 |
+| **EVIDENCE** | PR #1860 hardening matrix |
+
+---
+
+## CL-2026-09-30 — M3.3-HV-H3 descriptive longitudinal trend V1
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | H2 longitudinal input only; no method-specific descriptive trend authority |
+| **OBSERVATION** | Raw M2 multi-sample sessions and cross-method pooling would misstate longitudinal evidence |
+| **HYPOTHESIS** | H2-only input + session medians + Theil–Sen calendar slope preserves scientific boundaries |
+| **CHANGE** | `hv-h3/*` pure builder; H2-chained read-only service; CLI; CI; validate-h3 contracts; graph AUTH-H3 |
+| **WHY** | Descriptive trend diagnostics without degradation claims or customer publication |
+| **EXPECTED_EFFECT** | Deterministic method/segment/provider-partitioned series and slopes from eligible H2 evidence |
+| **VALIDATION** | hv-h3 unit tests; hv-h3 postgres CI; validate-h3-longitudinal-trend-contracts.sh |
+| **OBSERVED_EFFECT** | Pending exact-head CI |
+| **NON_EFFECTS** | No schema, persistence, automatic runtime, or customer health semantics |
+| **REGRESSIONS_OR_TRADEOFFS** | Calendar-time slope only; truncated H2 disables scientific trend eligibility |
+| **REMAINING_GAPS** | Exposure axes beyond calendar time; calibration stage separate |
+| **DECISION_STATUS** | EXPERIMENTAL |
+| **AFFECTED_GRAPH** | BAT-V2-AUTH-H3-001 |
+| **EVIDENCE** | `research/M3_3_HV_H3_LONGITUDINAL_TREND_CHARACTERIZATION_2026-09-30.md` |
+
+---
+
 ## CL-2026-09-30 — M3.3-HV-H2 final temporal/session authority + VO-4 rebase (PR #1857)
 
 | Field | Value |

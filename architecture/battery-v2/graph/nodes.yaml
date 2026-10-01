@@ -1882,3 +1882,30 @@ nodes:
       - backend/src/modules/vehicle-intelligence/battery-health/hv-h1/
     evidence:
       - BAT-V2-EVID-CODE-ANCHOR-001
+
+  - id: BAT-V2-AUTH-H2-001
+    type: authority
+    title: M3.3-HV-H2 longitudinal input candidate construction
+    epistemic_status: CONFIRMED
+    summary: >
+      Read-only H2 report from bounded DB reads; method-separated eligible candidates;
+      GT knowledge-as-of; session fail-closed; no customer publication; H2_AUTOMATIC_RUNTIME=NO.
+    source_paths:
+      - architecture/battery-v2/research/M3_3_HV_H2_LONGITUDINAL_INPUT_CONSTRUCTION_2026-09-30.md
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-h2/
+    evidence:
+      - BAT-V2-EVID-CODE-ANCHOR-001
+
+  - id: BAT-V2-AUTH-H3-001
+    type: authority
+    title: M3.3-HV-H3 method-specific descriptive longitudinal trend V1
+    epistemic_status: CONFIRMED
+    summary: >
+      Pure H3 trend report from H2 input only; M2 session medians; Theil-Sen calendar-time slope;
+      cross-method pooling NO; provider partition NO; degradationConclusion null;
+      H3_AUTOMATIC_RUNTIME=NO; no persistence table.
+    source_paths:
+      - architecture/battery-v2/research/M3_3_HV_H3_LONGITUDINAL_TREND_CHARACTERIZATION_2026-09-30.md
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-h3/
+    evidence:
+      - BAT-V2-EVID-CODE-ANCHOR-001
