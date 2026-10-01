@@ -9,8 +9,9 @@ import {
 } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { createVo4ReadinessTestHarness } from './testing/vo4-readiness-test.harness';
-import { activateForTest } from './testing/vehicle-onboarding-test.harness';
+import { activateForTest, dimoOnboardingActor } from './testing/vehicle-onboarding-test.harness';
 import { DEFAULT_TENANT_SOURCE_ADOPTION } from './source-adoption/source-adoption.context';
+import { PLATFORM_TRUSTED_SOURCE_ADOPTION } from './source-adoption/platform-trusted-adoption.context';
 import { ensureOrganizationProductEntitlement } from './testing/org-product-test.harness';
 import { lockActiveOrganizationProductEntitlementRow } from './readiness/product-entitlement.authority';
 import { VehicleOnboardingError } from './errors/vehicle-onboarding.errors';
@@ -54,7 +55,7 @@ async function sealReadyDimoCase(
   const dimoId = randomUUID();
   await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 8)}`);
   const caseRow = await harness.caseService.openOrResumeFromDimo(
-    { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+    dimoOnboardingActor(orgId),
     dimoId,
   );
   await prisma.vehicleOnboardingCase.update({
@@ -129,7 +130,7 @@ async function assertActivationRaceOutcome(prisma: PrismaClient, orgId: string, 
       attachStarted.resolve();
       await attachBarrier.promise;
       return harness.caseService.attachDimoSource(
-        { organizationId: orgId, sourceAdoption: DEFAULT_TENANT_SOURCE_ADOPTION },
+        { organizationId: orgId, sourceAdoption: PLATFORM_TRUSTED_SOURCE_ADOPTION },
         caseRow.id,
         dimo2,
         { isPrimary: false },
@@ -205,7 +206,7 @@ async function assertActivationRaceOutcome(prisma: PrismaClient, orgId: string, 
         actorUserId: null,
       }),
       harness.caseService.refreshHighMobilitySourceEvidence(
-        { organizationId: orgId, sourceAdoption: DEFAULT_TENANT_SOURCE_ADOPTION },
+        { organizationId: orgId, actorUserId: null, sourceAdoption: DEFAULT_TENANT_SOURCE_ADOPTION },
         caseRow.id,
         hmId,
       ),
@@ -315,7 +316,7 @@ async function assertActivationRaceOutcome(prisma: PrismaClient, orgId: string, 
             actorUserId: null,
           }),
           harness.caseService.attachDimoSource(
-            { organizationId: orgId, sourceAdoption: DEFAULT_TENANT_SOURCE_ADOPTION },
+            { organizationId: orgId, sourceAdoption: PLATFORM_TRUSTED_SOURCE_ADOPTION },
             caseRow.id,
             dimo2,
             { isPrimary: false },

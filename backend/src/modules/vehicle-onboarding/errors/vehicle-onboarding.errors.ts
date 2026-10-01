@@ -26,7 +26,9 @@ export type VehicleOnboardingErrorCode =
   | 'TECHNICAL_BASELINE_EVIDENCE_SCOPE_MISMATCH'
   | 'ONBOARDING_CONCURRENCY_CONFLICT'
   | 'INVALID_CAPTURE_PAYLOAD'
-  | 'STATION_SCOPE_MISMATCH';
+  | 'STATION_SCOPE_MISMATCH'
+  | 'SOURCE_ALREADY_CLAIMED'
+  | 'SOURCE_ALREADY_REGISTERED';
 
 export class VehicleOnboardingError extends Error {
   constructor(

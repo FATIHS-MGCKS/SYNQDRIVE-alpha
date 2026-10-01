@@ -5,6 +5,7 @@ import { PrismaClient, BusinessType } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import {
   createVehicleOnboardingTestHarness,
+  dimoOnboardingActor,
   sealCaseReadyForTest,
   activateForTest,
 } from './testing/vehicle-onboarding-test.harness';
@@ -15,6 +16,7 @@ import { DimoVehicleDataSourceLinkService } from '@modules/dimo/dimo-vehicle-dat
 import { activationOutboxIdempotencyKey } from './services/vehicle-onboarding-activation.service';
 import type { Vo3ActivationFaultStage } from './services/vehicle-onboarding-activation.service';
 import { DEFAULT_TENANT_SOURCE_ADOPTION } from './source-adoption/source-adoption.context';
+import { PLATFORM_TRUSTED_SOURCE_ADOPTION } from './source-adoption/platform-trusted-adoption.context';
 
 const run = process.env.VO3_ORCHESTRATOR_PG === '1';
 
@@ -235,7 +237,7 @@ async function sealHmCaseReady(
     const dimoId = randomUUID();
     await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 6)}`, null);
     const caseRow = await harness.caseService.openOrResumeFromDimo(
-      { organizationId: orgA, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoOnboardingActor(orgA),
       dimoId,
     );
     await harness.caseService.attachHighMobilitySource(
@@ -267,7 +269,7 @@ async function sealHmCaseReady(
     const dimoId = randomUUID();
     await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 8)}`, null);
     const caseB = await harness.caseService.openOrResumeFromDimo(
-      { organizationId: orgB, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoOnboardingActor(orgB),
       dimoId,
     );
     await expect(
@@ -296,7 +298,7 @@ async function sealHmCaseReady(
     const dimoId = randomUUID();
     await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 8)}`, null);
     const caseRow = await harness.caseService.openOrResumeFromDimo(
-      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoOnboardingActor(orgId),
       dimoId,
     );
     await expect(
@@ -325,7 +327,7 @@ async function sealHmCaseReady(
     const dimoId = randomUUID();
     await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 8)}`, null);
     const caseRow = await harness.caseService.openOrResumeFromDimo(
-      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoOnboardingActor(orgId),
       dimoId,
     );
     await harness.caseService.attachHighMobilitySource(
@@ -362,7 +364,7 @@ async function sealHmCaseReady(
       },
     });
     const caseRow = await harness.caseService.openOrResumeFromDimo(
-      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoOnboardingActor(orgId),
       dimoId,
     );
     await harness.caseService.attachHighMobilitySource(
@@ -403,7 +405,7 @@ async function sealHmCaseReady(
       },
     });
     const caseRow = await harness.caseService.openOrResumeFromDimo(
-      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoOnboardingActor(orgId),
       dimoId,
     );
     await prisma.vehicleOnboardingCase.update({
@@ -458,7 +460,7 @@ async function sealHmCaseReady(
     const dimoId = randomUUID();
     await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 8)}`, null);
     const caseRow = await harness.caseService.openOrResumeFromDimo(
-      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoOnboardingActor(orgId),
       dimoId,
     );
     await sealDimoCaseReady(prisma, orgId, caseRow.id, dimoId);
@@ -537,7 +539,7 @@ async function sealHmCaseReady(
     const dimoId = randomUUID();
     await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 8)}`, null);
     const caseRow = await harness.caseService.openOrResumeFromDimo(
-      { organizationId: orgA, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoOnboardingActor(orgA),
       dimoId,
     );
     await sealDimoCaseReady(prisma, orgA, caseRow.id, dimoId);
@@ -569,7 +571,7 @@ async function sealHmCaseReady(
       const dimoId = randomUUID();
       await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 8)}`, null);
       const caseRow = await harness.caseService.openOrResumeFromDimo(
-        { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+        dimoOnboardingActor(orgId),
         dimoId,
       );
       await sealDimoCaseReady(prisma, orgId, caseRow.id, dimoId);
@@ -611,7 +613,7 @@ async function sealHmCaseReady(
         },
       });
       const caseRow = await harness.caseService.openOrResumeFromHighMobility(
-        { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+        dimoOnboardingActor(orgId),
         hmId,
       );
       await sealHmCaseReady(prisma, orgId, caseRow.id, vin);
@@ -635,12 +637,12 @@ async function sealHmCaseReady(
     await createDimoMirror(prisma, dimo1, `ext-${dimo1.slice(0, 8)}`, null);
     await createDimoMirror(prisma, dimo2, `ext-${dimo2.slice(0, 8)}`, null);
     const caseRow = await harness.caseService.openOrResumeFromDimo(
-      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoOnboardingActor(orgId),
       dimo1,
     );
     await expect(
       harness.caseService.attachDimoSource(
-        { organizationId: orgId, sourceAdoption: DEFAULT_TENANT_SOURCE_ADOPTION },
+        { organizationId: orgId, sourceAdoption: PLATFORM_TRUSTED_SOURCE_ADOPTION },
         caseRow.id,
         dimo2,
         { isPrimary: true },
@@ -653,7 +655,7 @@ async function sealHmCaseReady(
     const dimoId = randomUUID();
     await createDimoMirror(prisma, dimoId, `ext-${dimoId.slice(0, 8)}`, null);
     const caseRow = await harness.caseService.openOrResumeFromDimo(
-      { organizationId: orgId, actorUserId: null, idempotencyKey: randomUUID() },
+      dimoOnboardingActor(orgId),
       dimoId,
     );
     await sealCaseReadyForTest(prisma, orgId, caseRow.id);

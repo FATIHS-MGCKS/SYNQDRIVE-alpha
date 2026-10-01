@@ -16,6 +16,7 @@
 | 2026-09-30 | **VO-4.8** — Authenticated org-scoped capture API, concurrency token mutations, readiness evaluate/seal HTTP boundary; no activation/source-adoption HTTP | `VehicleOnboardingCaptureController`; module remains `AUDIT_IN_PROGRESS` |
 | 2026-09-30 | **VO-4.8.1** — Strict capture payload allowlists, explicit concurrency token contract, list-query runtime validation, audit-after-commit, PostgreSQL concurrent race proofs | Capture policy + service hardening only; no schema/migration; module remains `AUDIT_IN_PROGRESS` |
 | 2026-09-30 | **VO-4.8.2** — Capture HTTP mapper wraps all request parsing; non-object body guard; readiness body allowlists; strict limit query integers; controller HTTP boundary tests; pre-activation audit `ADMIN_OPERATION` | HTTP contract only; no runtime semantics change |
+| 2026-10-01 | **VO-4.9** — Master Admin source adoption HTTP; global advisory source-claim lock; cross-org + canonical suppression; platform-trusted DIMO; attach concurrency/readiness; HM evidence refresh token rotation; no schema migration | `VehicleOnboardingSourceAdoptionController`; legacy registration unchanged |
 
 ## VO-0B — REUSE-FIRST components (do not replace without VO-1+ proof)
 

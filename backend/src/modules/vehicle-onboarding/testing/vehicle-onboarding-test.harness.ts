@@ -1,6 +1,9 @@
 import type { PrismaClient, VehicleOnboardingCase } from '@prisma/client';
 import { Prisma } from '@prisma/client';
+import { randomUUID } from 'node:crypto';
 import { VehicleOnboardingCaseService } from '../services/vehicle-onboarding-case.service';
+import type { OnboardingActorContext } from '../services/vehicle-onboarding-case.service';
+import { PLATFORM_TRUSTED_SOURCE_ADOPTION } from '../source-adoption/platform-trusted-adoption.context';
 import { VehicleOnboardingActivationService } from '../services/vehicle-onboarding-activation.service';
 import { DimoVehicleDataSourceLinkService } from '@modules/dimo/dimo-vehicle-data-source-link.service';
 import { VehicleOnboardingSourceAdoptionAuthority } from '../source-adoption/vehicle-onboarding-source-adoption.authority';
@@ -10,6 +13,19 @@ import { READINESS_SNAPSHOT_VERSION } from '../contracts/vo-document-versions';
 import type { VehicleOnboardingReadinessAuthority } from '../readiness/vehicle-onboarding-readiness-authority';
 import type { Vo3ActivationFaultStage } from '../services/vehicle-onboarding-activation.service';
 import type { ActivationTestHooks } from '../readiness/vehicle-onboarding-readiness-authority';
+
+export function dimoOnboardingActor(
+  organizationId: string,
+  idempotencyKey = randomUUID(),
+  actorUserId: string | null = null,
+): OnboardingActorContext {
+  return {
+    organizationId,
+    actorUserId,
+    idempotencyKey,
+    sourceAdoption: PLATFORM_TRUSTED_SOURCE_ADOPTION,
+  };
+}
 
 export function createVehicleOnboardingTestHarness(
   prisma: PrismaClient,

@@ -24,6 +24,13 @@ export function toVehicleOnboardingHttpException(error: unknown): HttpException 
       return new NotFoundException(body);
     case 'ONBOARDING_CONCURRENCY_CONFLICT':
     case 'TERMINAL_CASE_IDEMPOTENCY':
+    case 'SOURCE_ALREADY_CLAIMED':
+    case 'SOURCE_ALREADY_REGISTERED':
+    case 'IDENTITY_REVIEW_REQUIRED':
+    case 'SOURCE_SET_REQUIRES_REVIEW':
+    case 'PRIMARY_SOURCE_CONFLICT':
+    case 'IDEMPOTENCY_KEY_REUSED_FOR_DIFFERENT_REQUEST':
+    case 'SOURCE_REF_CONFLICT':
       return new ConflictException(body);
     case 'ORGANIZATION_MISMATCH':
       return new ForbiddenException(body);
