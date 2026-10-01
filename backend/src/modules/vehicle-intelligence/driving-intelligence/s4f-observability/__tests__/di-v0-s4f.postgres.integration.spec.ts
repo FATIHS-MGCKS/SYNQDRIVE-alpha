@@ -297,12 +297,14 @@ const BEYOND_HORIZON_AGE_SECONDS = 11 * 86_400;
     return created.workItemId;
   }
 
+  /** Aligns trip inputs so PostgreSQL settlement anchor GREATEST(end_time, created_at, repairs) is identical across tenants. */
   async function tenantWithSharedEnd(endIso: string): Promise<S4aTenant> {
-    const t = await seedS4aTenant(admin);
+    const t = await seedS4aTenant(admin, BEYOND_HORIZON_AGE_SECONDS);
     tenants.push(t);
     await admin.$executeRaw`
       UPDATE vehicle_trips
-      SET end_time = (${endIso}::timestamptz AT TIME ZONE 'UTC')
+      SET end_time = (${endIso}::timestamptz AT TIME ZONE 'UTC'),
+          created_at = (${endIso}::timestamptz AT TIME ZONE 'UTC')
       WHERE id = ${t.tripId}`;
     return t;
   }
@@ -373,6 +375,20 @@ const BEYOND_HORIZON_AGE_SECONDS = 11 * 86_400;
     const wB = await createWorkItemForTenant(tB);
     const wC = await createWorkItemForTenant(tC);
 
+    const [anchorDistinct, repairCount] = await Promise.all([
+      admin.$queryRaw<Array<{ distinct_anchors: bigint }>>`
+        SELECT COUNT(DISTINCT settlement_anchor_at) AS distinct_anchors
+        FROM di_v0_s4_work_items
+        WHERE id IN (${wA}, ${wB}, ${wC})`,
+      admin.$queryRaw<Array<{ n: bigint }>>`
+        SELECT COUNT(*)::bigint AS n
+        FROM trip_repairs r
+        WHERE r.trip_id IN (${tA.tripId}, ${tB.tripId}, ${tC.tripId})
+          AND r.status = 'APPLIED'`,
+    ]);
+    expect(anchorDistinct[0]?.distinct_anchors).toBe(BigInt(1));
+    expect(repairCount[0]?.n ?? BigInt(0)).toBe(BigInt(0));
+
     const seen = new Set<string>();
     let cursor = emptyDiV0S4fKeysetScanCursor();
     const ordered: string[] = [];
@@ -390,14 +406,6 @@ const BEYOND_HORIZON_AGE_SECONDS = 11 * 86_400;
     expect(new Set([wA, wB, wC])).toEqual(seen);
     const expectedOrder = [wA, wB, wC].sort();
     expect(ordered).toEqual(expectedOrder);
-    const anchorA = await admin.$queryRaw<Array<{ anchor: Date }>>`
-      SELECT settlement_anchor_at AS anchor FROM di_v0_s4_work_items WHERE id = ${wA}`;
-    const anchorB = await admin.$queryRaw<Array<{ anchor: Date }>>`
-      SELECT settlement_anchor_at AS anchor FROM di_v0_s4_work_items WHERE id = ${wB}`;
-    const anchorC = await admin.$queryRaw<Array<{ anchor: Date }>>`
-      SELECT settlement_anchor_at AS anchor FROM di_v0_s4_work_items WHERE id = ${wC}`;
-    expect(anchorA[0]?.anchor.getTime()).toBe(anchorB[0]?.anchor.getTime());
-    expect(anchorB[0]?.anchor.getTime()).toBe(anchorC[0]?.anchor.getTime());
   });
 
   it('F32 real single-connection READ ONLY transaction proof', async () => {
