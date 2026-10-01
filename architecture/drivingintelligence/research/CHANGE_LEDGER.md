@@ -1352,3 +1352,19 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | Split config-file vs runtime global-budget evidence; CONFIG_FILE_ONLY audit; resolver for ENABLED; ops authority = reusable `vps-production-replica.lib.sh` primitives (no dedicated DIMO config-only wrapper; RFRF stage script pattern-only, not executable authority for DIMO) |
 | FINDING | File audit alone cannot satisfy Tiny global-budget gate; Production config currently MISSING explicit var |
 | NON_EFFECTS | No Production mutation/restart/deploy |
+
+### EXP-021 S4F-4 DIMO global-budget config-only ops wrapper (2026-09-30)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | S4F-3 gap `NEW_DIMO_CONFIG_ONLY_OPS_WRAPPER_REQUIRED=YES` |
+| CHANGE | `di-v0-s4f-enable-global-budget-production.sh` + rollout lib/CLI/tests; evidence `EXP021_S4F4_DIMO_GLOBAL_BUDGET_CONFIG_ONLY_OPS.md`; S4F ops S4 control preflight helper |
+| NON_EFFECTS | **No Production execution** (no env mutation, restart, deploy, S4 activation, operator grant, DIMO provider calls) |
+| NEXT | Operator ACK + approved SHA + run wrapper on Production when authorized |
+
+### EXP-021 S4F-4 runtime proof hardening (2026-09-30, PR #1863)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Live per-replica Prometheus gauge `synqdrive_dimo_global_budget_enabled`; remove PM2 log as authority; canonical Redis PING; env UID/GID preservation; recovery + rollback post-verify; explicit PRODUCTION_ENV_MUTATED derivation |
+| NON_EFFECTS | No Production execution |
