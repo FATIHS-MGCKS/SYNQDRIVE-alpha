@@ -49,8 +49,28 @@ function parseAlphaScopeJson(raw: string | undefined): {
     if (!Array.isArray(orgRaw) || !Array.isArray(vehRaw)) {
       return { ok: false, reason: 'alpha_scope_shape_invalid' };
     }
-    const organizationIds = orgRaw.filter((v): v is string => typeof v === 'string' && v.length > 0);
-    const vehicleIds = vehRaw.filter((v): v is string => typeof v === 'string' && v.length > 0);
+    const organizationIds: string[] = [];
+    for (const entry of orgRaw) {
+      if (typeof entry !== 'string') {
+        return { ok: false, reason: 'alpha_scope_element_invalid' };
+      }
+      const trimmed = entry.trim();
+      if (trimmed.length === 0) {
+        return { ok: false, reason: 'alpha_scope_element_invalid' };
+      }
+      organizationIds.push(trimmed);
+    }
+    const vehicleIds: string[] = [];
+    for (const entry of vehRaw) {
+      if (typeof entry !== 'string') {
+        return { ok: false, reason: 'alpha_scope_element_invalid' };
+      }
+      const trimmed = entry.trim();
+      if (trimmed.length === 0) {
+        return { ok: false, reason: 'alpha_scope_element_invalid' };
+      }
+      vehicleIds.push(trimmed);
+    }
     if (organizationIds.length === 0 && vehicleIds.length === 0) {
       return { ok: false, reason: 'alpha_scope_empty' };
     }

@@ -19,12 +19,20 @@ export function assertCompleteProductionCalibrationBundle(
   if (input.authorityVersion !== RFRF_SETTLED_POST_PRODUCTION_CALIBRATION_AUTHORITY_V1) {
     return false;
   }
+  const liters = input.maxPeakToSettledDropLiters;
+  const ratio = input.maxPeakToSettledDropRatioOfRise;
+  const gapMs = input.maxPeakToSettledContinuityGapMs;
+
   return (
-    typeof input.maxPeakToSettledDropLiters === 'number' &&
-    Number.isFinite(input.maxPeakToSettledDropLiters) &&
-    typeof input.maxPeakToSettledDropRatioOfRise === 'number' &&
-    Number.isFinite(input.maxPeakToSettledDropRatioOfRise) &&
-    typeof input.maxPeakToSettledContinuityGapMs === 'number' &&
-    Number.isFinite(input.maxPeakToSettledContinuityGapMs)
+    typeof liters === 'number' &&
+    Number.isFinite(liters) &&
+    liters >= 0 &&
+    typeof ratio === 'number' &&
+    Number.isFinite(ratio) &&
+    ratio >= 0 &&
+    ratio <= 1 &&
+    typeof gapMs === 'number' &&
+    Number.isFinite(gapMs) &&
+    gapMs >= 0
   );
 }

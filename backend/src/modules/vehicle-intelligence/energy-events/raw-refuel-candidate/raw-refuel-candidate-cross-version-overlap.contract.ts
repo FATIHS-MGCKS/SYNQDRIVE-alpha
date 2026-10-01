@@ -47,7 +47,7 @@ export function classifyVersionedTerminalConflict(
   if (!isRawRefuelCandidateTerminal(input.existingLifecycleState)) {
     return null;
   }
-  if (input.versionCompatibility === 'UNAUTHORIZED_VERSION_PAIR') {
+  if (input.versionCompatibility !== 'AUTHORIZED_CROSS_VERSION') {
     return null;
   }
   if (!input.physicalNeighborhoodCorresponds) {

@@ -1,5 +1,3 @@
-import { RFRF_RISE_DETECTION_VERSION } from '../raw-fuel-rise-detector/raw-fuel-rise-detector.config';
-
 /** Static cross-version compatibility registry authority (R1 foundation only). */
 export const RFRF_CANDIDATE_CROSS_VERSION_COMPATIBILITY_V1 =
   'rfrf-candidate-cross-version-compatibility-v1' as const;
@@ -9,6 +7,12 @@ export const RFRF_CANDIDATE_CROSS_VERSION_COMPATIBILITY_V1 =
  * Explicit registry entry only; does not change RFRF_RISE_DETECTION_VERSION export.
  */
 export const RFRF_PLANNED_SETTLED_POST_DETECTION_VERSION = 'rfrf-rise-v2' as const;
+
+/**
+ * Immutable legacy stored-candidate detection version for cross-version bridges.
+ * Must not track the mutable/current runtime RFRF_RISE_DETECTION_VERSION export.
+ */
+export const RFRF_LEGACY_RISE_DETECTION_VERSION_V1 = 'rfrf-rise-v1' as const;
 
 export type CandidateDetectionVersionCompatibility =
   | 'SAME_VERSION'
@@ -23,7 +27,7 @@ function normalizeDetectionVersion(value: string | null | undefined): string | n
 
 /** Directed compatible pairs (observation → stored candidate). */
 const AUTHORIZED_CROSS_VERSION_PAIRS: ReadonlyArray<readonly [string, string]> = [
-  [RFRF_PLANNED_SETTLED_POST_DETECTION_VERSION, RFRF_RISE_DETECTION_VERSION],
+  [RFRF_PLANNED_SETTLED_POST_DETECTION_VERSION, RFRF_LEGACY_RISE_DETECTION_VERSION_V1],
 ] as const;
 
 export function classifyCandidateDetectionVersionCompatibility(input: {

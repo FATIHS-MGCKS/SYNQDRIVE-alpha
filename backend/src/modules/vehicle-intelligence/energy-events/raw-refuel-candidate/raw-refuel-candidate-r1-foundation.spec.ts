@@ -6,6 +6,7 @@ import {
   classifyCandidateDetectionVersionCompatibility,
   listAuthorizedCrossVersionPairsV1,
   RFRF_CANDIDATE_CROSS_VERSION_COMPATIBILITY_V1,
+  RFRF_LEGACY_RISE_DETECTION_VERSION_V1,
   RFRF_PLANNED_SETTLED_POST_DETECTION_VERSION,
 } from './raw-refuel-candidate-cross-version-compatibility.authority';
 import {
@@ -128,18 +129,34 @@ describe('EED OQ-014 R1 — cross-version compatibility authority', () => {
     expect(
       classifyCandidateDetectionVersionCompatibility({
         observationDetectionVersion: RFRF_PLANNED_SETTLED_POST_DETECTION_VERSION,
-        candidateDetectionVersion: RFRF_RISE_DETECTION_VERSION,
+        candidateDetectionVersion: RFRF_LEGACY_RISE_DETECTION_VERSION_V1,
       }),
     ).toBe('AUTHORIZED_CROSS_VERSION');
     expect(listAuthorizedCrossVersionPairsV1()).toEqual([
       {
-        observationDetectionVersion: RFRF_PLANNED_SETTLED_POST_DETECTION_VERSION,
-        candidateDetectionVersion: RFRF_RISE_DETECTION_VERSION,
+        observationDetectionVersion: 'rfrf-rise-v2',
+        candidateDetectionVersion: 'rfrf-rise-v1',
       },
     ]);
     expect(RFRF_CANDIDATE_CROSS_VERSION_COMPATIBILITY_V1).toBe(
       'rfrf-candidate-cross-version-compatibility-v1',
     );
+  });
+
+  it('V2b legacy stored version is frozen anchor not runtime export', () => {
+    expect(RFRF_LEGACY_RISE_DETECTION_VERSION_V1).toBe('rfrf-rise-v1');
+    expect(
+      classifyCandidateDetectionVersionCompatibility({
+        observationDetectionVersion: 'rfrf-rise-v2',
+        candidateDetectionVersion: 'rfrf-rise-v1',
+      }),
+    ).toBe('AUTHORIZED_CROSS_VERSION');
+    expect(
+      classifyCandidateDetectionVersionCompatibility({
+        observationDetectionVersion: 'rfrf-rise-v1',
+        candidateDetectionVersion: 'rfrf-rise-v2',
+      }),
+    ).toBe('UNAUTHORIZED_VERSION_PAIR');
   });
 
   it('V3 reverse direction not implicitly authorized', () => {
@@ -246,6 +263,16 @@ describe('EED OQ-014 R1 — terminal conflict contract', () => {
     ).toBeNull();
     expect(VERSIONED_TERMINAL_CONFLICT_FAIL_CLOSED.SECOND_CANDIDATE_INSERTED).toBe(false);
   });
+
+  it('T5 terminal + SAME_VERSION returns null (no versioned conflict)', () => {
+    expect(
+      classifyVersionedTerminalConflict({
+        existingLifecycleState: 'REJECTED',
+        versionCompatibility: 'SAME_VERSION',
+        physicalNeighborhoodCorresponds: true,
+      }),
+    ).toBeNull();
+  });
 });
 
 describe('EED OQ-014 R1 — cross-version pre plateau invariants', () => {
@@ -326,6 +353,45 @@ describe('EED OQ-014 R1 — settled F3 activation parser', () => {
     });
     expect(withHybrid.mode).toBe('SHADOW');
   });
+
+  it('M9 mixed valid + non-string entry fails whole config', () => {
+    const parsed = parseRfrfSettledPostF3Activation({
+      [RFRF_SETTLED_POST_F3_ACTIVATION_MODE_ENV]: 'ALPHA_ALLOWLIST',
+      [RFRF_SETTLED_POST_F3_ALPHA_SCOPE_JSON_ENV]: JSON.stringify({
+        organizationIds: ['org-valid', 123],
+        vehicleIds: ['veh-661'],
+      }),
+    });
+    expect(parsed.mode).toBe('OFF');
+    expect(parsed.valid).toBe(false);
+    expect(parsed.alphaScope).toBeNull();
+  });
+
+  it('M10 whitespace-only entry fails whole config', () => {
+    const parsed = parseRfrfSettledPostF3Activation({
+      [RFRF_SETTLED_POST_F3_ACTIVATION_MODE_ENV]: 'ALPHA_ALLOWLIST',
+      [RFRF_SETTLED_POST_F3_ALPHA_SCOPE_JSON_ENV]: JSON.stringify({
+        organizationIds: ['org-a'],
+        vehicleIds: ['   '],
+      }),
+    });
+    expect(parsed.mode).toBe('OFF');
+    expect(parsed.valid).toBe(false);
+  });
+
+  it('M11 fully valid trimmed values accepted', () => {
+    const parsed = parseRfrfSettledPostF3Activation({
+      [RFRF_SETTLED_POST_F3_ACTIVATION_MODE_ENV]: 'ALPHA_ALLOWLIST',
+      [RFRF_SETTLED_POST_F3_ALPHA_SCOPE_JSON_ENV]: JSON.stringify({
+        organizationIds: ['  org-a  '],
+        vehicleIds: [' veh-661 '],
+      }),
+    });
+    expect(parsed.mode).toBe('ALPHA_ALLOWLIST');
+    expect(parsed.valid).toBe(true);
+    expect(parsed.alphaScope?.organizationIds).toEqual(['org-a']);
+    expect(parsed.alphaScope?.vehicleIds).toEqual(['veh-661']);
+  });
 });
 
 describe('EED OQ-014 R1 — production calibration firewall', () => {
@@ -349,6 +415,52 @@ describe('EED OQ-014 R1 — production calibration firewall', () => {
         maxPeakToSettledContinuityGapMs: 60_000,
       }),
     ).toBe(true);
+  });
+
+  const completeBundle = {
+    authorityVersion: RFRF_SETTLED_POST_PRODUCTION_CALIBRATION_AUTHORITY_V1,
+    maxPeakToSettledDropLiters: 1,
+    maxPeakToSettledDropRatioOfRise: 0.1,
+    maxPeakToSettledContinuityGapMs: 60_000,
+  };
+
+  it('rejects negative numeric domains', () => {
+    expect(
+      assertCompleteProductionCalibrationBundle({
+        ...completeBundle,
+        maxPeakToSettledDropLiters: -0.01,
+      }),
+    ).toBe(false);
+    expect(
+      assertCompleteProductionCalibrationBundle({
+        ...completeBundle,
+        maxPeakToSettledContinuityGapMs: -1,
+      }),
+    ).toBe(false);
+  });
+
+  it('rejects NaN and Infinity', () => {
+    expect(
+      assertCompleteProductionCalibrationBundle({
+        ...completeBundle,
+        maxPeakToSettledDropLiters: Number.NaN,
+      }),
+    ).toBe(false);
+    expect(
+      assertCompleteProductionCalibrationBundle({
+        ...completeBundle,
+        maxPeakToSettledDropRatioOfRise: Number.POSITIVE_INFINITY,
+      }),
+    ).toBe(false);
+  });
+
+  it('rejects ratio greater than 1', () => {
+    expect(
+      assertCompleteProductionCalibrationBundle({
+        ...completeBundle,
+        maxPeakToSettledDropRatioOfRise: 1.01,
+      }),
+    ).toBe(false);
   });
 });
 
