@@ -10,6 +10,7 @@ import { VehicleOnboardingCaptureController } from './controllers/vehicle-onboar
 import { VehicleOnboardingSourceAdoptionController } from './controllers/vehicle-onboarding-source-adoption.controller';
 import { VehicleOnboardingProviderCandidateController } from './controllers/vehicle-onboarding-provider-candidate.controller';
 import { VehicleOnboardingProviderCandidateService } from './services/vehicle-onboarding-provider-candidate.service';
+import { VehicleOffboardingService } from './services/vehicle-offboarding.service';
 import { ProductionFailClosedReadinessAuthority } from './readiness/vehicle-onboarding-readiness-authority';
 import { VEHICLE_ONBOARDING_READINESS_AUTHORITY } from './readiness/vehicle-onboarding-readiness.tokens';
 import { VehicleOnboardingSourceAdoptionAuthority } from './source-adoption/vehicle-onboarding-source-adoption.authority';
@@ -34,12 +35,14 @@ import { VehicleOnboardingSourceAdoptionAuthority } from './source-adoption/vehi
     VehicleOnboardingCaptureService,
     VehicleOnboardingSourceAdoptionService,
     VehicleOnboardingProviderCandidateService,
+    VehicleOffboardingService,
   ],
   exports: [
     VehicleOnboardingCaseService,
     VehicleOnboardingActivationService,
     VehicleOnboardingReadinessService,
     VehicleOnboardingCaptureService,
+    VehicleOffboardingService,
   ],
 })
 export class VehicleOnboardingModule {}

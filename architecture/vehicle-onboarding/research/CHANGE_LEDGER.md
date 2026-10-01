@@ -21,6 +21,7 @@
 | 2026-10-01 | **VO-4.9.2** — Activation-time DIMO/HM source snapshot identity continuity (VIN/external id/contract drift); no auto-refresh | DB mirror compare only; no schema migration |
 | 2026-10-01 | **VO-4.10** — Master Admin provider candidate discovery projection (DIMO + HM); read-only; no VehicleCandidate entity | Adoption HTTP unchanged; no legacy cutover |
 | 2026-10-01 | **VO-4.10.1** — provider-aware combined pagination cursor + postgres pagination/multi-holder integrity seal | Raw mirror UUID cursors removed; COMBINED `m/p/i` cursor; no adoption semantic change |
+| 2026-10-01 | **VO-5A** — offboarding audit + internal `VehicleOffboardingService` (ACTIVE→OFFBOARDED + outbox); legacy deregister unchanged | Must deprecate hard-delete deregister before cutover |
 
 ## VO-0B — REUSE-FIRST components (do not replace without VO-1+ proof)
 
