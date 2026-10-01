@@ -913,7 +913,12 @@ type FakeExecute = (ctx: DiV0S4ExecutionContext) => Promise<DiV0S4ExecutionOutco
       const t = await tenant();
       const config = configFor([t]);
       const service = discoveryWithCutoff(config, '');
-      await expect(service.runDiscoveryPass()).resolves.toMatchObject({ status: 'CONTAINMENT_UNAVAILABLE', created: 0 });
+      await expect(service.runDiscoveryPass()).resolves.toMatchObject({
+        status: 'CONTAINMENT_UNAVAILABLE',
+        stopReason: 'CONTAINMENT_UNAVAILABLE',
+        created: 0,
+        candidates: 0,
+      });
     });
   });
 });

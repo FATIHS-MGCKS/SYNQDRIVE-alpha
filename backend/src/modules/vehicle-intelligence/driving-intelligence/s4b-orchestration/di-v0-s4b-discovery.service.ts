@@ -20,7 +20,7 @@ export interface DiV0S4DiscoveryPassResult {
   created: number;
   duplicates: number;
   skipped: number;
-  stopReason: DiV0S4RejectionCode | 'KILL_ROW' | 'UNEXPECTED_ERROR' | null;
+  stopReason: DiV0S4RejectionCode | 'KILL_ROW' | 'CONTAINMENT_UNAVAILABLE' | 'UNEXPECTED_ERROR' | null;
 }
 
 interface DiscoveryCandidateRow {
@@ -70,7 +70,7 @@ export class DiV0S4DiscoveryService {
       this.config.vehicleAllowlist.size > 0 &&
       !isDiV0S4DiscoveryContainmentAvailable(this.discoveryContainment)
     ) {
-      return { ...result, status: 'CONTAINMENT_UNAVAILABLE', stopReason: 'UNEXPECTED_ERROR' };
+      return { ...result, status: 'CONTAINMENT_UNAVAILABLE', stopReason: 'CONTAINMENT_UNAVAILABLE' };
     }
     if (!this.isConfigured()) return result;
 

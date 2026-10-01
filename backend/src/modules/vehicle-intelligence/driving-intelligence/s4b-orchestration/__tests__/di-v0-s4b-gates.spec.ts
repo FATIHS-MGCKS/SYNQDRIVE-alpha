@@ -107,7 +107,12 @@ describe('DI V0 S4B discovery gates', () => {
       loadDiV0S4bDiscoveryContainment({}),
     );
     expect(service.isConfigured()).toBe(false);
-    await expect(service.runDiscoveryPass()).resolves.toMatchObject({ status: 'CONTAINMENT_UNAVAILABLE', created: 0 });
+    await expect(service.runDiscoveryPass()).resolves.toMatchObject({
+      status: 'CONTAINMENT_UNAVAILABLE',
+      stopReason: 'CONTAINMENT_UNAVAILABLE',
+      created: 0,
+      candidates: 0,
+    });
     expect(calls).not.toHaveBeenCalled();
   });
 });

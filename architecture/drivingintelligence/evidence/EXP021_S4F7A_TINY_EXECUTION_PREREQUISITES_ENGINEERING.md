@@ -33,6 +33,15 @@ Historical Production facts in S4F-7 evidence are preserved; `CODE_DEPLOY_REQUIR
 
 Operator authorization **not** granted. Gates remain **5/6**, `TINY_ACTIVATION_READY=NO`.
 
+## Amendment S4F-7A.1 (2026-10-01) — PR #1873 safety micro-closure
+
+| Item | Detail |
+|------|--------|
+| Containment syntax | Canonical `YYYY-MM-DDTHH:mm:ss.SSSZ` only; offsets/date-only/local rejected; calendar + round-trip validation |
+| Discovery status | `stopReason=CONTAINMENT_UNAVAILABLE` (not `UNEXPECTED_ERROR`) |
+| Kill initializer | `INSERT … RETURNING` is sole authority for `INSERTED_KILLED`; concurrent loser → `ALREADY_KILLED` |
+| Production | **No** mutation; Tiny gates **5/6**, operator auth **NOT_SATISFIED** |
+
 ## Machine result block
 
 ```
