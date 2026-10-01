@@ -17,6 +17,7 @@ import { acquireDiV0HistoricalPositions } from '../../position-acquisition/di-v0
 import { buildDiV0CombinedInputIdentityV03, pinsFromDiV0S4ChannelManifest } from '../../s4a-foundation/di-v0-s4a-identity';
 import { buildDiV0S4cPositionPresentChannel } from '../di-v0-s4c-evidence-channels';
 import { DiV0S4ClaimLoop } from '../../s4b-orchestration/di-v0-s4b-claim-loop';
+import { DI_V0_S4_DISCOVERY_CONTAINMENT_PERMISSIVE_FOR_TESTS } from '../../s4b-orchestration/di-v0-s4b-discovery-containment';
 import { DiV0S4DiscoveryService } from '../../s4b-orchestration/di-v0-s4b-discovery.service';
 import { DiV0S4ExecutorRegistry, type DiV0S4ExecutionContext } from '../../s4b-orchestration/di-v0-s4b-executor.port';
 import { buildDiV0S4RuntimePipelineManifest } from '../../s4b-orchestration/di-v0-s4b-pipeline-manifest';
@@ -87,7 +88,7 @@ function failingR1Transport() {
     const db = newS4aClient();
     clients.push(db);
     const repo = new DiV0S4WorkItemRepository(db, config);
-    const discovery = new DiV0S4DiscoveryService(db, repo, config, pipeline);
+    const discovery = new DiV0S4DiscoveryService(db, repo, config, pipeline, DI_V0_S4_DISCOVERY_CONTAINMENT_PERMISSIVE_FOR_TESTS);
     await discovery.runDiscoveryPass();
     const registry = new DiV0S4ExecutorRegistry();
     const deps: DiV0S4cExecutorDeps = {
@@ -194,7 +195,7 @@ function failingR1Transport() {
     const db = newS4aClient();
     clients.push(db);
     const repo = new DiV0S4WorkItemRepository(db, config);
-    await new DiV0S4DiscoveryService(db, repo, config, pipeline).runDiscoveryPass();
+    await new DiV0S4DiscoveryService(db, repo, config, pipeline, DI_V0_S4_DISCOVERY_CONTAINMENT_PERMISSIVE_FOR_TESTS).runDiscoveryPass();
     const registry = new DiV0S4ExecutorRegistry();
     registerDiV0S4cExecutor(registry, {
       prisma: db,
@@ -265,7 +266,7 @@ function failingR1Transport() {
     const db = newS4aClient();
     clients.push(db);
     const repo = new DiV0S4WorkItemRepository(db, config);
-    await new DiV0S4DiscoveryService(db, repo, config, pipeline).runDiscoveryPass();
+    await new DiV0S4DiscoveryService(db, repo, config, pipeline, DI_V0_S4_DISCOVERY_CONTAINMENT_PERMISSIVE_FOR_TESTS).runDiscoveryPass();
     const registry = new DiV0S4ExecutorRegistry();
     registerDiV0S4cExecutor(registry, {
       prisma: db,
@@ -351,7 +352,7 @@ function failingR1Transport() {
     const db = newS4aClient();
     clients.push(db);
     const repo = new DiV0S4WorkItemRepository(db, config);
-    await new DiV0S4DiscoveryService(db, repo, config, pipeline).runDiscoveryPass();
+    await new DiV0S4DiscoveryService(db, repo, config, pipeline, DI_V0_S4_DISCOVERY_CONTAINMENT_PERMISSIVE_FOR_TESTS).runDiscoveryPass();
     const lease = await repo.claim({ leaseOwner: 'pg08', pipelineManifest: pipeline.manifest });
     const controller = new AbortController();
     controller.abort();
@@ -397,7 +398,7 @@ function failingR1Transport() {
     const db = newS4aClient();
     clients.push(db);
     const repo = new DiV0S4WorkItemRepository(db, config);
-    await new DiV0S4DiscoveryService(db, repo, config, pipeline).runDiscoveryPass();
+    await new DiV0S4DiscoveryService(db, repo, config, pipeline, DI_V0_S4_DISCOVERY_CONTAINMENT_PERMISSIVE_FOR_TESTS).runDiscoveryPass();
     const lease = await repo.claim({ leaseOwner: 'stale-a', pipelineManifest: pipeline.manifest });
     await advanceS4aClock(admin, tenant.tripId, 400);
     const ts = new Date(tenant.startTime.getTime() + 1000).toISOString().replace(/\.\d{3}Z$/, 'Z');

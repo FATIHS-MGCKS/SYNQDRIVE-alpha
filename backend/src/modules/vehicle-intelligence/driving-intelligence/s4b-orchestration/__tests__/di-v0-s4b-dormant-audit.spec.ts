@@ -12,6 +12,8 @@ const S4C_DIR = path.join(__dirname, '../../s4c-executor');
 const S4D_DIR = path.join(__dirname, '../../s4d-replay');
 const S4E_DIR = path.join(__dirname, '../../s4e-drift-watcher');
 const S4F_DIR = path.join(__dirname, '../../s4f-observability');
+const S4_RUNTIME_DIR = path.join(__dirname, '../../s4-runtime');
+const VI_MODULE = path.join(REPO_ROOT, 'backend/src/modules/vehicle-intelligence/vehicle-intelligence.module.ts');
 
 function walk(dir: string, pattern: RegExp, acc: string[] = []): string[] {
   if (!fs.existsSync(dir)) return acc;
@@ -67,6 +69,7 @@ describe('DI V0 S4B dormant-by-construction audit', () => {
       'di-v0-s4b-claim-loop.scheduler.ts',
       'di-v0-s4b-claim-loop.ts',
       'di-v0-s4b-config.ts',
+      'di-v0-s4b-discovery-containment.ts',
       'di-v0-s4b-discovery.scheduler.ts',
       'di-v0-s4b-discovery.service.ts',
       'di-v0-s4b-executor.port.ts',
@@ -76,7 +79,12 @@ describe('DI V0 S4B dormant-by-construction audit', () => {
     ]);
   });
 
-  it('DI_S4B_NEST_REGISTRATION=DEFINED_NOT_REGISTERED: nothing outside s4b-orchestration and unregistered S4C imports it', () => {
+  it('S4B imports only via s4-runtime composition + VehicleIntelligenceModule (not AppModule)', () => {
+    const app = fs.readFileSync(path.join(REPO_ROOT, 'backend/src/app.module.ts'), 'utf8');
+    expect(app.includes('DiV0S4bOrchestrationModule')).toBe(false);
+    expect(app.includes('s4b-orchestration')).toBe(false);
+    const vi = fs.readFileSync(VI_MODULE, 'utf8');
+    expect(vi.includes('DiV0S4RuntimeModule')).toBe(true);
     const roots = ['backend/src', 'backend/scripts', 'backend/prisma', 'backend/test'].map((r) => path.join(REPO_ROOT, r));
     const hits: string[] = [];
     for (const root of roots) {
@@ -86,7 +94,9 @@ describe('DI V0 S4B dormant-by-construction audit', () => {
           file.startsWith(S4C_DIR + path.sep) ||
           file.startsWith(S4D_DIR + path.sep) ||
           file.startsWith(S4E_DIR + path.sep) ||
-          file.startsWith(S4F_DIR + path.sep)
+          file.startsWith(S4F_DIR + path.sep) ||
+          file.startsWith(S4_RUNTIME_DIR + path.sep) ||
+          file === VI_MODULE
         ) {
           continue;
         }

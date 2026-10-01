@@ -12,6 +12,7 @@ import {
 import { DiV0S4WorkItemRepository } from '../../s4a-foundation/di-v0-s4a-work-item.repository';
 import { API_SYNTHETIC_IDENTITY, signalsBody, staticTransport } from '../../position-acquisition/__tests__/position-acquisition-test-helpers';
 import { DiV0S4ClaimLoop } from '../../s4b-orchestration/di-v0-s4b-claim-loop';
+import { DI_V0_S4_DISCOVERY_CONTAINMENT_PERMISSIVE_FOR_TESTS } from '../../s4b-orchestration/di-v0-s4b-discovery-containment';
 import { DiV0S4DiscoveryService } from '../../s4b-orchestration/di-v0-s4b-discovery.service';
 import { DiV0S4ExecutorRegistry } from '../../s4b-orchestration/di-v0-s4b-executor.port';
 import { buildDiV0S4RuntimePipelineManifest } from '../../s4b-orchestration/di-v0-s4b-pipeline-manifest';
@@ -55,7 +56,7 @@ async function linkDimo(admin: PrismaClient, tenant: S4aTenant, rawJson: unknown
     const db = newS4aClient();
     clients.push(db);
     const repo = new DiV0S4WorkItemRepository(db, config);
-    const discovery = new DiV0S4DiscoveryService(db, repo, config, pipeline);
+    const discovery = new DiV0S4DiscoveryService(db, repo, config, pipeline, DI_V0_S4_DISCOVERY_CONTAINMENT_PERMISSIVE_FOR_TESTS);
     await expect(discovery.runDiscoveryPass()).resolves.toMatchObject({ created: 1 });
     const registry = new DiV0S4ExecutorRegistry();
     const fromLabel = tenant.startTime.toISOString().replace(/\.\d{3}Z$/, 'Z');

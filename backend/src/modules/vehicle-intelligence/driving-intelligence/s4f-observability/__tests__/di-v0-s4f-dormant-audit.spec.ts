@@ -7,10 +7,12 @@ const S4F_DIR = path.join(__dirname, '..');
 const stripComments = (source: string): string => source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
 
 describe('DI V0 S4F dormant-by-construction audit', () => {
-  it('S4F_APP_RUNTIME_REGISTERED=NO', () => {
+  it('S4F composed via DiV0S4RuntimeModule (not direct AppModule import)', () => {
     const app = fs.readFileSync(path.join(REPO_ROOT, 'backend/src/app.module.ts'), 'utf8');
     expect(app.includes('s4f-observability')).toBe(false);
     expect(app.includes('DiV0S4f')).toBe(false);
+    const vi = fs.readFileSync(path.join(REPO_ROOT, 'backend/src/modules/vehicle-intelligence/vehicle-intelligence.module.ts'), 'utf8');
+    expect(vi.includes('DiV0S4RuntimeModule')).toBe(true);
   });
 
   it('no Prisma INSERT/UPDATE/DELETE against S4/S2/canonical tables in production sources', () => {
@@ -47,8 +49,13 @@ describe('DI V0 S4F dormant-by-construction audit', () => {
     expect(body.includes('bullmq')).toBe(false);
   });
 
-  it('di-v0-s4f.module.ts is test-only composition (Nest) and not imported by app.module', () => {
+  it('DiV0S4fObservabilityModule is wired through DiV0S4RuntimeModule only', () => {
     const app = fs.readFileSync(path.join(REPO_ROOT, 'backend/src/app.module.ts'), 'utf8');
     expect(app.includes('DiV0S4fObservabilityModule')).toBe(false);
+    const runtime = fs.readFileSync(
+      path.join(REPO_ROOT, 'backend/src/modules/vehicle-intelligence/driving-intelligence/s4-runtime/di-v0-s4-runtime.module.ts'),
+      'utf8',
+    );
+    expect(runtime.includes('DiV0S4fObservabilityModule')).toBe(true);
   });
 });

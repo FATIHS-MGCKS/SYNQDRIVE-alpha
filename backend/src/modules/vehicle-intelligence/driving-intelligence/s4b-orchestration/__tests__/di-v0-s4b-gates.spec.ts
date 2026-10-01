@@ -6,6 +6,10 @@ import { DI_V0_S4B_RELEASE_REASONS, DiV0S4ClaimLoop } from '../di-v0-s4b-claim-l
 import { buildDiV0S4LeaseOwner, loadDiV0S4bControlPlaneConfig } from '../di-v0-s4b-config';
 import { DiV0S4DiscoveryService } from '../di-v0-s4b-discovery.service';
 import { DiV0S4ExecutorRegistry, type DiV0S4WorkItemExecutor } from '../di-v0-s4b-executor.port';
+import {
+  DI_V0_S4_DISCOVERY_CONTAINMENT_PERMISSIVE_FOR_TESTS,
+  loadDiV0S4bDiscoveryContainment,
+} from '../di-v0-s4b-discovery-containment';
 import { buildDiV0S4RuntimePipelineManifest } from '../di-v0-s4b-pipeline-manifest';
 
 const ON = {
@@ -56,7 +60,13 @@ describe('DI V0 S4B discovery gates', () => {
     const repo = fakeRepository();
     const config = loadDiV0S4bControlPlaneConfig({});
     expect(config).toEqual(DI_V0_S4_CONTROL_PLANE_ALL_OFF);
-    const service = new DiV0S4DiscoveryService(prisma, repo, config, buildDiV0S4RuntimePipelineManifest(config));
+    const service = new DiV0S4DiscoveryService(
+      prisma,
+      repo,
+      config,
+      buildDiV0S4RuntimePipelineManifest(config),
+      loadDiV0S4bDiscoveryContainment({}),
+    );
     expect(service.isConfigured()).toBe(false);
     await expect(service.runDiscoveryPass()).resolves.toMatchObject({ status: 'DISABLED', candidates: 0, created: 0 });
     expect(calls).not.toHaveBeenCalled();
@@ -74,8 +84,30 @@ describe('DI V0 S4B discovery gates', () => {
     const { prisma, calls } = fakePrisma();
     const repo = fakeRepository();
     const config = parseDiV0S4ControlPlaneConfig({ ...ON, ...patch });
-    const service = new DiV0S4DiscoveryService(prisma, repo, config, buildDiV0S4RuntimePipelineManifest(config));
+    const service = new DiV0S4DiscoveryService(
+      prisma,
+      repo,
+      config,
+      buildDiV0S4RuntimePipelineManifest(config),
+      DI_V0_S4_DISCOVERY_CONTAINMENT_PERMISSIVE_FOR_TESTS,
+    );
     await expect(service.runDiscoveryPass()).resolves.toMatchObject({ status: 'DISABLED' });
+    expect(calls).not.toHaveBeenCalled();
+  });
+
+  it('D02b flags ON but discovery containment missing: CONTAINMENT_UNAVAILABLE, zero DB access', async () => {
+    const { prisma, calls } = fakePrisma();
+    const repo = fakeRepository();
+    const config = parseDiV0S4ControlPlaneConfig(ON);
+    const service = new DiV0S4DiscoveryService(
+      prisma,
+      repo,
+      config,
+      buildDiV0S4RuntimePipelineManifest(config),
+      loadDiV0S4bDiscoveryContainment({}),
+    );
+    expect(service.isConfigured()).toBe(false);
+    await expect(service.runDiscoveryPass()).resolves.toMatchObject({ status: 'CONTAINMENT_UNAVAILABLE', created: 0 });
     expect(calls).not.toHaveBeenCalled();
   });
 });

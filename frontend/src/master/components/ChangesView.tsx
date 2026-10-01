@@ -212,6 +212,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-29T03:00:00.000Z',
   },
   {
+    id: 'di-exp021-s4f7a-tiny-execution-prereqs-2026-10-01',
+    version: '4.9.2214',
+    title: 'Driving Intelligence — EXP-021 S4F-7A dormant S4 runtime wiring & no-backfill containment',
+    summary: [
+      'DiV0S4RuntimeModule composes S4B/S4E/S4F and registers one S4C executor; ALL_OFF remains dormant (no timers, no DIMO/DB writes).',
+      'PRIMARY discovery requires DI_V0_S4_DISCOVERY_TRIP_END_NOT_BEFORE on trip.end_time (fail-closed).',
+      'Operator-only GLOBAL kill-row initializer (KILLED default); not migration-seeded.',
+      'Frozen Tiny gates unchanged: 5/6, operator authorization NOT_SATISFIED.',
+    ],
+    reason:
+      'Engineering prerequisites after S4F-7 preflight: runtime registration + backlog containment before any dormant Production deploy or human authorization.',
+    previousBehavior:
+      'S4B–F defined but not Nest-registered; discovery could select historical backlog for KS MS 661 without a trip-end lower bound.',
+    details:
+      'architecture/drivingintelligence/evidence/EXP021_S4F7A_TINY_EXECUTION_PREREQUISITES_ENGINEERING.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-01T22:15:00.000Z',
+  },
+  {
     id: 'di-exp021-s4f5-1-release-delta-preflight-2026-10-01',
     version: '4.9.2213',
     title: 'Driving Intelligence — EXP-021 S4F-5.1 Production release delta preflight (VO2)',
