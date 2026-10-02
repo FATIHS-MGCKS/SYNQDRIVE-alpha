@@ -66,3 +66,32 @@ export class H4EvidenceAckIdempotencyConflictRowNotFoundError extends Error {
     this.name = 'H4EvidenceAckIdempotencyConflictRowNotFoundError';
   }
 }
+
+export class H4EvidenceRevisionMissingDurabilityAckError extends Error {
+  readonly code = 'H4_EVIDENCE_REVISION_MISSING_DURABILITY_ACK';
+
+  constructor(message = 'Durable revision has no matching durability ACK') {
+    super(message);
+    this.name = 'H4EvidenceRevisionMissingDurabilityAckError';
+  }
+}
+
+export class H4EvidenceEffectiveRevisionAmbiguityError extends Error {
+  readonly code = 'H4_EVIDENCE_EFFECTIVE_REVISION_AMBIGUITY';
+
+  constructor(
+    message = 'MODE_A effective revision cannot be determined for canonical session (tie without deterministic authority)',
+  ) {
+    super(message);
+    this.name = 'H4EvidenceEffectiveRevisionAmbiguityError';
+  }
+}
+
+export class H4EvidenceUnsupportedContractVersionError extends Error {
+  readonly code = 'H4_EVIDENCE_UNSUPPORTED_CONTRACT_VERSION';
+
+  constructor(message = 'Unsupported H4 charge-session evidence contract version') {
+    super(message);
+    this.name = 'H4EvidenceUnsupportedContractVersionError';
+  }
+}

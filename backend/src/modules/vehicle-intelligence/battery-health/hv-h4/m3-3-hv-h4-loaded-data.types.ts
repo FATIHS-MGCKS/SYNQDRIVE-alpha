@@ -1,5 +1,5 @@
-import type { HvChargeSession } from '@prisma/client';
 import type { M3_3HvH4GroundTruthRow } from './m3-3-hv-h4-lifecycle.util';
+import type { M3_3HvH4ChargeSessionScientificRowV1 } from './m3-3-hv-h4-charge-session-scientific-row.v1';
 
 export interface M3_3HvH4ObservedRange {
   earliest: Date | null;
@@ -12,7 +12,7 @@ export interface M3_3HvH4LoadedDataV1 {
   vehicleId: string;
   evaluationAt: Date;
   groundTruthEvents: M3_3HvH4GroundTruthRow[];
-  chargeSessions: HvChargeSession[];
+  chargeSessions: M3_3HvH4ChargeSessionScientificRowV1[];
   chargeSessionSourceLoad: {
     loadedCount: number;
     hardLimit: number;

@@ -6,6 +6,27 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-02 — M3.3-HV-H4-A3.3 MODE_A durable loader + A2 V1 parity harness
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | Live `loadM3_3HvH4DataV1` only; no durable revision collapse loader; H4 used full `HvChargeSession` in A2 builders |
+| **OBSERVATION** | A3.1 schema exposes `sourceUpdatedAt`, `capturedAt`, `createdAt` sufficient for MODE_A effective revision ordering without migration |
+| **HYPOTHESIS** | TARGET_1 equivalence provable by reconstructing `M3_3HvH4ChargeSessionScientificRowV1` from `scientificEvidenceJson` + shared A1 population + unchanged A2 builders |
+| **CHANGE** | MODE_A loader, effective revision collapse, JSON reconstruction, shared 5000 population helper, live/durable parity harness, unit + postgres tests |
+| **WHY** | Close A3.3: durable path must reproduce full A2/coverage after raw session delete |
+| **EXPECTED_EFFECT** | LIVE and DURABLE MODE_A paths produce identical coverage + throughput for same persisted evidence |
+| **VALIDATION** | `test:battery:v2:hv-h4`, `test:battery:v2:hv-h4:postgres`, H4 static validator |
+| **OBSERVED_EFFECT** | Local unit 82 tests pass; postgres parity on CI |
+| **NON_EFFECTS** | No AppModule, no default path change, no MODE_B/hybrid/retention/reconciliation/backfill |
+| **REGRESSIONS_OR_TRADEOFFS** | Charge sessions in loaded data are H4 scientific row contract |
+| **REMAINING_GAPS** | A3.4 retention gate; A3.5 reconciliation; optional postgres expansion for overlap/duplicate/GT fixtures |
+| **DECISION_STATUS** | PROPOSED |
+| **AFFECTED_GRAPH** | battery-v2 M3.3-HV-H4 A3 |
+| **EVIDENCE** | A3.3 PR |
+
+---
+
 ---
 
 ---
