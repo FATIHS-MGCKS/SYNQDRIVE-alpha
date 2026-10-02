@@ -25,13 +25,14 @@ This document is **architecture authority only** — not implementation.
 | Item | Evidence | Value |
 |------|----------|-------|
 | Default retention window | `backend/src/config/battery-v2-retention.config.ts` → `days.hvChargeSessions` | **1095 days** (`RETENTION_HV_CHARGE_SESSIONS_DAYS`) |
-| Prune phase | `battery-v2-retention.service.ts` → `phasePruneHvChargeSessions` | `startAt < cutoff` |
+| Prune phase | `battery-v2-retention.service.ts` → `phasePruneHvChargeSessions` | `startAt < cutoff`; keyset scan `(startAt ASC, id ASC)` — cursor advances on **last fetched** row per page |
+| Scan invariant | A3.4 closure | **`BLOCKED_RETENTION_ROWS_DO_NOT_STARVE_LATER_CANDIDATES = YES`** — fail-closed rows are not re-scanned in the same run |
+| H4 durable ACK | `m3-3-hv-h4-a3-retention-gate.v1.ts` | Exact V1 revision + revision-scoped ACK; incompatible contract versions resolve as **no authorized current revision** (`BLOCKED_CURRENT_REVISION_MISSING`), not a separate prune path |
 | Master switch | `BATTERY_V2_RETENTION_ENABLED` | default **false** |
 | Destructive delete | `BATTERY_V2_RETENTION_DRY_RUN` | default **true** |
 | Prune guard | Same phase | Skip if `hvCapacityObservation.chargeSessionId` references session |
-| H4 durable ACK | Code search | **None** |
 
-**Conclusion:** Sessions **are prunable** when retention is enabled, dry-run off, and capacity-observation guard passes. **No** `DURABLE_H4_*` acknowledgement exists today.
+**Conclusion:** Sessions are prunable only when retention is enabled, dry-run off, capacity guard passes, **and** the A3.4 gate authorizes delete for the locked current row.
 
 ### 2.2 `phasePrepareAggregates` vs H4
 

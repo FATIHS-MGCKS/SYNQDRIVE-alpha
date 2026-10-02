@@ -442,13 +442,24 @@ export class BatteryV2RetentionService implements OnModuleInit {
     let deleted = 0;
     let skipped = 0;
     let scanned = 0;
+    let scanCursor: { lastStartAt: Date; lastId: string } | undefined;
 
     for (let batch = 0; batch < ctx.maxBatches; batch++) {
       const rows = await this.prisma.hvChargeSession.findMany({
-        where: { startAt: { lt: cutoff } },
-        select: { id: true },
+        where: {
+          startAt: { lt: cutoff },
+          ...(scanCursor
+            ? {
+                OR: [
+                  { startAt: { gt: scanCursor.lastStartAt } },
+                  { startAt: scanCursor.lastStartAt, id: { gt: scanCursor.lastId } },
+                ],
+              }
+            : {}),
+        },
+        select: { id: true, startAt: true },
         take: ctx.batchSize,
-        orderBy: { startAt: 'asc' },
+        orderBy: [{ startAt: 'asc' }, { id: 'asc' }],
       });
       if (rows.length === 0) break;
       scanned += rows.length;
@@ -488,6 +499,9 @@ export class BatteryV2RetentionService implements OnModuleInit {
           skipped += 1;
         }
       }
+
+      const lastFetched = rows[rows.length - 1]!;
+      scanCursor = { lastStartAt: lastFetched.startAt, lastId: lastFetched.id };
 
       if (rows.length < ctx.batchSize) break;
     }

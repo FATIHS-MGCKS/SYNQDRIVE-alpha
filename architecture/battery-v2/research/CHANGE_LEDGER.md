@@ -6,6 +6,21 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-02 — M3.3-HV-H4-A3.4 retention service scan progress + service-level postgres
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | `phasePruneHvChargeSessions` re-fetched the earliest blocked page each batch (OFFSET-free but cursorless) |
+| **CHANGE** | Keyset scan `(startAt ASC, id ASC)` with per-run cursor on last fetched row; `battery-v2-retention-h4-a3-gate.postgres.integration.spec.ts` exercises `BatteryV2RetentionService.runOnce` (S1–S5 + batch-progress regression); HV-H4 postgres CI runs `test:battery:retention:integration` |
+| **WHY** | Fail-closed rows must remain without preventing later eligible deletes within `maxBatches`; prove wired runtime path not only direct gate repository calls |
+| **VALIDATION** | `npm run test:battery:retention:integration`, HV-H4 postgres CI, existing A3.4 gate postgres corpus |
+| **NON_EFFECTS** | Gate safety sequence unchanged; no A3.5; no env default changes |
+| **REMAINING_GAPS** | A3.5 reconciliation scheduler |
+| **DECISION_STATUS** | PROPOSED |
+| **EVIDENCE** | A3.4 PR #1889 closure |
+
+---
+
 ## 2026-10-02 — M3.3-HV-H4-A3.4 revision-scoped retention ACK gate
 
 | Field | Value |

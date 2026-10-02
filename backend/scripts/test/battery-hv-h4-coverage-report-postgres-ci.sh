@@ -11,4 +11,8 @@ log "postgres integration (hv-h4 coverage report)"
 PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 bash scripts/test/prisma-migrate-deploy-resilient.sh
 BATTERY_HV_H4_REPORT_INTEGRATION=1 npm run test:battery:v2:hv-h4:postgres -- --runInBand
 
+log "postgres integration (battery v2 retention — A3.4 service path)"
+PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 bash scripts/test/prisma-migrate-deploy-resilient.sh
+npm run test:battery:retention:integration -- --runInBand
+
 log "battery-hv-h4-coverage-report-postgres-ci completed successfully"

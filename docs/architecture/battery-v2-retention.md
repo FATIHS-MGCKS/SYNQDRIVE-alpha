@@ -29,7 +29,7 @@ Safe, domain-aware retention for Battery Health V2 data with aggregation-before-
 2. `prune_shadow_evidence` — shadow telemetry evidence only
 3. `prune_hv_capacity_observations` — unreferenced shadow observations
 4. `prune_measurements` — only when aggregate exists + no qualified evidence reference
-5. `prune_hv_charge_sessions` — **H4 revision-scoped durability ACK gate** (exact current fingerprint + ACK) **then** delete; still skips rows referenced by `HvCapacityObservation`
+5. `prune_hv_charge_sessions` — **H4 revision-scoped durability ACK gate** (exact current fingerprint + ACK) **then** delete; still skips rows referenced by `HvCapacityObservation`. Batch scan uses keyset pagination `(startAt ASC, id ASC)` so blocked rows do not starve later candidates in the same run (`BLOCKED_RETENTION_ROWS_DO_NOT_STARVE_LATER_CANDIDATES = YES`).
 6. `prune_measurement_sessions` — empty sessions with aggregate
 7. `prune_superseded_assessments` — not referenced by publications
 8. `prune_lv_provider_snapshots` / `prune_hv_provider_snapshots`
