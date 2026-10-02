@@ -20,6 +20,10 @@ import {
   type BatteryV2RetentionRunOptions,
 } from './battery-v2-retention.types';
 import { recordBatteryRetentionRun } from '../observability/battery-v2-prometheus.metrics';
+import {
+  deleteHvChargeSessionIfDurablyAcknowledgedV1,
+  evaluateCurrentHvChargeSessionPruneDurabilityV1,
+} from '../hv-h4/m3-3-hv-h4-a3-retention-gate.v1';
 
 interface BatchContext {
   dryRun: boolean;
@@ -449,26 +453,39 @@ export class BatteryV2RetentionService implements OnModuleInit {
       if (rows.length === 0) break;
       scanned += rows.length;
 
-      const deletableIds: string[] = [];
       for (const row of rows) {
-        const observationCount = await this.prisma.hvCapacityObservation.count({
-          where: { chargeSessionId: row.id },
-        });
-        if (observationCount > 0) {
-          skipped += 1;
+        if (ctx.dryRun) {
+          const session = await this.prisma.hvChargeSession.findUnique({
+            where: { id: row.id },
+          });
+          if (!session) {
+            skipped += 1;
+            continue;
+          }
+          const outcome = await evaluateCurrentHvChargeSessionPruneDurabilityV1({
+            db: this.prisma,
+            session,
+            retentionCutoff: cutoff,
+          });
+          if (outcome.kind === 'DRY_RUN_ELIGIBLE') {
+            deleted += 1;
+          } else {
+            skipped += 1;
+          }
           continue;
         }
-        deletableIds.push(row.id);
-      }
 
-      if (deletableIds.length > 0) {
-        if (!ctx.dryRun) {
-          const res = await this.prisma.hvChargeSession.deleteMany({
-            where: { id: { in: deletableIds } },
-          });
-          deleted += res.count;
+        const outcome = await this.prisma.$transaction((tx) =>
+          deleteHvChargeSessionIfDurablyAcknowledgedV1({
+            db: tx,
+            sessionId: row.id,
+            retentionCutoff: cutoff,
+          }),
+        );
+        if (outcome.kind === 'DELETED') {
+          deleted += 1;
         } else {
-          deleted += deletableIds.length;
+          skipped += 1;
         }
       }
 

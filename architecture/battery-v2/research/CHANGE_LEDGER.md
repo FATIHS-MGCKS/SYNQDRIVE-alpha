@@ -6,6 +6,21 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-02 — M3.3-HV-H4-A3.4 revision-scoped retention ACK gate
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | `phasePruneHvChargeSessions` deleted by age + capacity-observation skip only |
+| **CHANGE** | H4 gate: current live projection → exact revision fingerprint → ACK verify; per-row `$transaction` + `SELECT … FOR UPDATE`; wired into retention service; postgres corpus A–O |
+| **WHY** | Enforce `NO_HV_CHARGE_SESSION_DELETE_WITHOUT_MATCHING_CURRENT_SOURCE_REVISION_DURABILITY`; stale ACK must not authorize delete |
+| **VALIDATION** | `m3-3-hv-h4-a3-retention-gate*.spec.ts`, HV-H4 postgres CI, retention unit tests |
+| **NON_EFFECTS** | No env default changes; no writer/reconciliation/backfill; no migration |
+| **REMAINING_GAPS** | A3.5 reconciliation scheduler |
+| **DECISION_STATUS** | PROPOSED |
+| **EVIDENCE** | A3.4 draft PR |
+
+---
+
 ## 2026-10-02 — M3.3-HV-H4-A3.3 PR #1887 parity closure (mandatory postgres corpus)
 
 | Field | Value |

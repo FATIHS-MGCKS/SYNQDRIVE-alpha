@@ -519,8 +519,8 @@ Rebuild from: durable source revisions + GT-as-of + H4 composition contract.
 |-------|--------|
 | **A3.1** | **IMPLEMENTED (schema + pure contract + A3.1.2 mirror policy)** — evidence revision + ACK tables, fingerprint/mirror helpers, postgres schema tests |
 | **A3.2** | **IMPLEMENTED (writer, no automatic runtime)** — idempotent append-only revision + revision-scoped ACK writer; concurrency-safe verify; **flags OFF** |
-| **A3.3** | Loader equivalence (**MODE_A / A2_V1_PARITY**): durable revisions → existing A2 builder; fixture corpus §12 |
-| **A3.4** | Revision-scoped prune ACK + retention gate |
+| **A3.3** | **IMPLEMENTED** — MODE_A / A2_V1_PARITY durable loader; full postgres parity corpus (PR #1887) |
+| **A3.4** | **IMPLEMENTED** — revision-scoped retention ACK gate on `prune_hv_charge_sessions` (race-safe `FOR UPDATE` per row) |
 | **A3.5** | Reconciliation scheduler (leader-guarded, default OFF) |
 | **A3.6** | Optional derived lifecycle cache |
 
@@ -541,7 +541,7 @@ No FEC, degradation model, customer publication, automatic runtime, provider cal
 | **OQ-A3-1** | Effective source-session reconstruction + **full A2 5000-load / sourceTruncated parity** after revision collapse |
 | **OQ-A3-2** | Revision **ordering**, tie-break authority, and capture granularity vs `mergeHvChargeSessionUpdate` |
 | **OQ-A3-3** | **Prospective capture boundary** + **current-state-only backfill** before retention cutoff (no fabricated prior revisions) |
-| **OQ-A3-4** | `HvCapacityObservation` FK vs H4 revision-scoped ACK **prune ordering** |
+| **OQ-A3-4** | **RESOLVED (A3.4)** — `HvCapacityObservation` reference guard runs before destructive prune; exact current fingerprint revision + ACK is an additional mandatory gate (`evaluateCurrentHvChargeSessionPruneDurabilityV1` / `deleteHvChargeSessionIfDurablyAcknowledgedV1`) |
 | **OQ-A3-5** | **`sourceHvChargeSessionId` stability** across prune + re-ingestion vs durable A1 `id ASC` ordering authority |
 
 ---
