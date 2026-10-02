@@ -1401,6 +1401,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | Production now `ee958854…` release `20261002014651_v4994`; `DiV0S4RuntimeModule` boot-registered; S4 dormant/fail-closed preserved; **0** migration applied |
 | NON_EFFECTS | No kill initializer, no S4 env activation, no operator grant, no Tiny |
 
+### EXP-021 S4F-7F Production kill initializer wrapper engineering (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Guarded Production wrapper `di-v0-s4-initialize-global-kill-row-production.sh` + TS guard lib/CLI + tests (`test:di:s4f7f:kill-init-wrapper`); evidence `EXP021_S4F7F_PRODUCTION_KILL_INITIALIZER_WRAPPER_ENGINEERING.md` |
+| FINDING | Wrapper can run from newer `main` while invoking initializer under verified release `ee958854…` / `20261002014651_v4994`; **`WRAPPER_REQUIRES_NEW_CODE_DEPLOY_BEFORE_USE=NO`** |
+| NON_EFFECTS | No Production GLOBAL row write, no env/PM2/deploy, no Tiny/operator grant |
+
 ### EXP-021 S4F-7E DB GLOBAL kill initialization preflight (2026-10-02)
 
 | Event | Detail |

@@ -38,6 +38,7 @@
     "test:di:s4e:postgres": "DI_V0_S4A_POSTGRES_INTEGRATION=1 jest --runInBand --forceExit src/modules/vehicle-intelligence/driving-intelligence/s4e-drift-watcher/__tests__/di-v0-s4e-*.postgres.integration.spec.ts",
     "test:di:s4f": "jest s4f-observability --testPathIgnorePatterns=postgres.integration",
     "test:di:s4f4:global-budget-rollout": "jest --config scripts/ops/di-v0-s4f-global-budget-rollout/jest.config.js",
+    "test:di:s4f7f:kill-init-wrapper": "jest --config scripts/ops/di-v0-s4-global-kill-init-production/jest.config.js",
     "test:di:s4f:postgres": "DI_V0_S4A_POSTGRES_INTEGRATION=1 jest --runInBand --forceExit src/modules/vehicle-intelligence/driving-intelligence/s4f-observability/__tests__/di-v0-s4f.postgres.integration.spec.ts",
     "test:dimo:provider-budget": "jest provider-budget --testPathIgnorePatterns=redis.integration",
     "test:dimo:provider-budget:redis": "DIMO_PROVIDER_BUDGET_REDIS_INTEGRATION=1 jest --runInBand --forceExit src/modules/dimo/provider-budget/dimo-provider-budget.multi-replica.redis.integration.spec.ts",
