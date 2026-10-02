@@ -2,7 +2,7 @@
 
 **Execution date:** 2026-10-02 (UTC)  
 **Human authorization:** Dormant code deploy only to **`ee9588548845c8077aa0cba0684b06eac7c9d4d2`** (not `main` `b7d77643…`).  
-**Prior gates:** [S4F-7B](EXP021_S4F7B_DORMANT_PRODUCTION_DEPLOY_PREFLIGHT.md), [S4F-7C](EXP021_S4F7C_EXACT_SHA_DORMANT_DEPLOY_AUTHORIZATION_GATE.md) (branch; gate executed in agent run).
+**Prior gates:** [S4F-7B](EXP021_S4F7B_DORMANT_PRODUCTION_DEPLOY_PREFLIGHT.md), [S4F-7C](EXP021_S4F7C_EXACT_SHA_DORMANT_DEPLOY_AUTHORIZATION_GATE.md) (read-only authorization gate; human deploy authorized separately in this S4F-7D task).
 
 ## Deploy command (executed)
 

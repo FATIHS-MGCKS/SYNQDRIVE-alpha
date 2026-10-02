@@ -1385,6 +1385,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | 16 historical rolled-back `_prisma_migrations` tombstones; 0 active incomplete migrations; Production link index differs from Prisma name `uq_data_source_link_active` (VO2.1 uses DROP IF EXISTS) |
 | NON_EFFECTS | No deploy, migrate, env mutation, or restart |
 
+### EXP-021 S4F-7C exact-SHA dormant deploy authorization gate (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Read-only re-validation vs S4F-7B; evidence `EXP021_S4F7C_EXACT_SHA_DORMANT_DEPLOY_AUTHORIZATION_GATE.md`; frozen deploy command for SHA `ee958854…` only |
+| FINDING | Production `8fa531b27…` unchanged; **PASS**; `HUMAN_DORMANT_DEPLOY_AUTHORIZATION=NOT_GRANTED_IN_THIS_TASK` |
+| NON_EFFECTS | No deploy execution in S4F-7C; human deploy followed in S4F-7D |
+
 ### EXP-021 S4F-7D exact-SHA dormant Production deploy (2026-10-02)
 
 | Event | Detail |
