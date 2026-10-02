@@ -239,65 +239,19 @@ async function createNativeSession(
         vehicleId,
         segmentFingerprint: fp,
       });
-      const p1 = buildM3_3HvH4ChargeSessionEvidenceScientificProjectionV1(session);
-      p1.energyAddedKwh = { kind: 'FINITE', value: 11 };
-      const f1 = computeM3_3HvH4ChargeSessionSourceRevisionFingerprintV1(p1);
+      await writer.persistFromHvChargeSession(session);
+      const updated = await prisma.hvChargeSession.update({
+        where: { id: session.id },
+        data: {
+          energyAddedKwh: 20,
+          updatedAt: new Date('2026-08-01T00:00:00.000Z'),
+        },
+      });
+      await writer.persistFromHvChargeSession(updated);
       const tie = new Date('2026-07-01T00:00:00.000Z');
-      const rev1 = await prisma.batteryHvChargeSessionEvidenceRevision.create({
-        data: {
-          ...mirrorFromScientificProjectionV1(p1),
-          organizationId,
-          vehicleId,
-          segmentFingerprint: fp,
-          evidenceContractVersion: p1.evidenceContractVersion,
-          sourceRevisionFingerprint: f1,
-          scientificEvidenceJson: p1 as unknown as Prisma.InputJsonValue,
-          sourceCreatedAt: tie,
-          sourceReceivedAt: tie,
-          sourceUpdatedAt: tie,
-          capturedAt: tie,
-          createdAt: tie,
-        },
-      });
-      await prisma.batteryHvChargeSessionEvidenceAck.create({
-        data: {
-          organizationId,
-          vehicleId,
-          segmentFingerprint: fp,
-          evidenceContractVersion: p1.evidenceContractVersion,
-          sourceRevisionFingerprint: f1,
-          revisionId: rev1.id,
-          durabilityAckContractVersion: M3_3_HV_H4_DURABLE_SOURCE_REVISION_ACK_V1,
-        },
-      });
-      const p2 = { ...p1, energyAddedKwh: { kind: 'FINITE' as const, value: 12 } };
-      const f2 = computeM3_3HvH4ChargeSessionSourceRevisionFingerprintV1(p2);
-      const rev2 = await prisma.batteryHvChargeSessionEvidenceRevision.create({
-        data: {
-          ...mirrorFromScientificProjectionV1(p2),
-          organizationId,
-          vehicleId,
-          segmentFingerprint: fp,
-          evidenceContractVersion: p2.evidenceContractVersion,
-          sourceRevisionFingerprint: f2,
-          scientificEvidenceJson: p2 as unknown as Prisma.InputJsonValue,
-          sourceCreatedAt: tie,
-          sourceReceivedAt: tie,
-          sourceUpdatedAt: tie,
-          capturedAt: tie,
-          createdAt: tie,
-        },
-      });
-      await prisma.batteryHvChargeSessionEvidenceAck.create({
-        data: {
-          organizationId,
-          vehicleId,
-          segmentFingerprint: fp,
-          evidenceContractVersion: p2.evidenceContractVersion,
-          sourceRevisionFingerprint: f2,
-          revisionId: rev2.id,
-          durabilityAckContractVersion: M3_3_HV_H4_DURABLE_SOURCE_REVISION_ACK_V1,
-        },
+      await prisma.batteryHvChargeSessionEvidenceRevision.updateMany({
+        where: { organizationId, vehicleId, segmentFingerprint: fp },
+        data: { sourceUpdatedAt: tie, capturedAt: tie, createdAt: tie },
       });
       await expect(
         runM3_3HvH4DurableModeAA2ReportBundleV1(
