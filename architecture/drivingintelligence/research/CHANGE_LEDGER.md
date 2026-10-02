@@ -1409,6 +1409,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | Wrapper can run from newer `main` while invoking initializer under verified release `ee958854…` / `20261002014651_v4994`; **`WRAPPER_REQUIRES_NEW_CODE_DEPLOY_BEFORE_USE=NO`** |
 | NON_EFFECTS | No Production GLOBAL row write, no env/PM2/deploy, no Tiny/operator grant |
 
+### EXP-021 S4F-7I NO_BACKFILL Tiny staging preflight (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Read-only Production preflight for KS MS 661 Tiny; proposed NOT_BEFORE + allowlists; evidence `EXP021_S4F7I_NO_BACKFILL_TINY_STAGING_PREFLIGHT.md` |
+| FINDING | **`NO_BACKFILL_TINY_STAGING_READINESS=PASS`**; 510 historical trips; 499 hypothetical discovery-eligible without NOT_BEFORE; cutoff excludes all at capture |
+| NON_EFFECTS | No env/DB/deploy/restart; Tiny gate still **NOT_SATISFIED** |
+
 ### EXP-021 S4F-7H Production GLOBAL=KILLED initialization (2026-10-02)
 
 | Event | Detail |
