@@ -16,6 +16,7 @@ import {
 import { DiV0S4WorkItemRepository } from '../../s4a-foundation/di-v0-s4a-work-item.repository';
 import { API_SYNTHETIC_IDENTITY, signalsBody } from '../../position-acquisition/__tests__/position-acquisition-test-helpers';
 import { DiV0S4ExecutorRegistry } from '../../s4b-orchestration/di-v0-s4b-executor.port';
+import { DI_V0_S4_DISCOVERY_CONTAINMENT_PERMISSIVE_FOR_TESTS } from '../../s4b-orchestration/di-v0-s4b-discovery-containment';
 import { buildDiV0S4RuntimePipelineManifest } from '../../s4b-orchestration/di-v0-s4b-pipeline-manifest';
 import { registerDiV0S4cExecutor } from '../../s4c-executor/di-v0-s4c-register';
 import { DiV0S4cExecutor } from '../../s4c-executor/di-v0-s4c-executor';
@@ -194,7 +195,13 @@ function apiSyntheticDeps(db: PrismaClient, config: ReturnType<typeof s4aConfigF
     const positionCalls = { n: 0 };
     const deps = apiSyntheticDeps(db, config, tenant, positionCalls);
     const seedRepo = new DiV0S4WorkItemRepository(db, config);
-    await new (await import('../../s4b-orchestration/di-v0-s4b-discovery.service')).DiV0S4DiscoveryService(db, seedRepo, config, pipeline).runDiscoveryPass();
+    await new (await import('../../s4b-orchestration/di-v0-s4b-discovery.service')).DiV0S4DiscoveryService(
+      db,
+      seedRepo,
+      config,
+      pipeline,
+      DI_V0_S4_DISCOVERY_CONTAINMENT_PERMISSIVE_FOR_TESTS,
+    ).runDiscoveryPass();
     const seedRegistry = new DiV0S4ExecutorRegistry();
     registerDiV0S4cExecutor(seedRegistry, deps);
     await new (await import('../../s4b-orchestration/di-v0-s4b-claim-loop')).DiV0S4ClaimLoop(
@@ -502,7 +509,13 @@ function apiSyntheticDeps(db: PrismaClient, config: ReturnType<typeof s4aConfigF
     const pipeline = buildDiV0S4RuntimePipelineManifest(config);
     const db = await trackClient();
     const repo = new DiV0S4WorkItemRepository(db, config);
-    await new (await import('../../s4b-orchestration/di-v0-s4b-discovery.service')).DiV0S4DiscoveryService(db, repo, config, pipeline).runDiscoveryPass();
+    await new (await import('../../s4b-orchestration/di-v0-s4b-discovery.service')).DiV0S4DiscoveryService(
+      db,
+      repo,
+      config,
+      pipeline,
+      DI_V0_S4_DISCOVERY_CONTAINMENT_PERMISSIVE_FOR_TESTS,
+    ).runDiscoveryPass();
     const lease = await repo.claim({ leaseOwner: 'stale-s4d', pipelineManifest: pipeline.manifest });
     await advanceS4aClock(admin, tenant.tripId, 400);
     const executor = new DiV0S4cExecutor(apiSyntheticDeps(db, config, tenant, { n: 0 }));

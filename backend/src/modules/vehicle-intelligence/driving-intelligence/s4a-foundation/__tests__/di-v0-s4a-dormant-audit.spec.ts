@@ -9,6 +9,7 @@ const S4C_DIR = path.join(__dirname, '../../s4c-executor');
 const S4D_DIR = path.join(__dirname, '../../s4d-replay');
 const S4E_DIR = path.join(__dirname, '../../s4e-drift-watcher');
 const S4F_DIR = path.join(__dirname, '../../s4f-observability');
+const S4_RUNTIME_DIR = path.join(__dirname, '../../s4-runtime');
 
 function walk(dir: string, pattern: RegExp, acc: string[] = []): string[] {
   if (!fs.existsSync(dir)) return acc;
@@ -28,7 +29,11 @@ const stripComments = (source: string): string => source.replace(/\/\*[\s\S]*?\*
 
 const productionFiles = fs
   .readdirSync(FOUNDATION_DIR)
-  .filter((name) => name.endsWith('.ts'))
+  .filter(
+    (name) =>
+      name.endsWith('.ts') &&
+      name !== 'di-v0-s4-control-kill-initializer.ts', // operator-only SQL primitive (S4F-7A); not app bootstrap
+  )
   .map((name) => path.join(FOUNDATION_DIR, name));
 
 const importsOf = (source: string): string[] =>
@@ -87,7 +92,9 @@ describe('DI V0 S4A dormant-by-construction audit', () => {
           file.startsWith(S4C_DIR + path.sep) ||
           file.startsWith(S4D_DIR + path.sep) ||
           file.startsWith(S4E_DIR + path.sep) ||
-          file.startsWith(S4F_DIR + path.sep)
+          file.startsWith(S4F_DIR + path.sep) ||
+          file.startsWith(S4_RUNTIME_DIR + path.sep) ||
+          file.endsWith('backend/scripts/ops/di-v0-s4-initialize-global-kill-row.ts')
         ) {
           continue;
         }

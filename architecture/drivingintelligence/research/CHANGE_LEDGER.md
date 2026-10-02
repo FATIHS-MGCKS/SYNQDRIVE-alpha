@@ -1384,3 +1384,12 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | Evidence `EXP021_S4F5_1_RELEASE_DELTA_PREFLIGHT.md` — VO2 migrations NOT_APPLIED; data/FK/duplicate/collision checks pass; `DEPLOY_READINESS=PASS` for SHA `8fa531b27…` via `vps-deploy-release.sh` |
 | FINDING | 16 historical rolled-back `_prisma_migrations` tombstones; 0 active incomplete migrations; Production link index differs from Prisma name `uq_data_source_link_active` (VO2.1 uses DROP IF EXISTS) |
 | NON_EFFECTS | No deploy, migrate, env mutation, or restart |
+
+### EXP-021 S4F-7A Tiny execution prerequisites engineering (2026-10-01)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `DiV0S4RuntimeModule` + S4C bootstrap; `DI_V0_S4_DISCOVERY_TRIP_END_NOT_BEFORE` S4B containment; `initializeDiV0S4GlobalKillRow` + ops CLI; tests (dormant bootstrap, containment, kill init); S4F-7 deploy-prerequisite addendum |
+| AUTHORITY | NO_BACKFILL on S4B overlay; frozen S4A contract v2 **unchanged** |
+| NON_EFFECTS | No Production deploy/migrate/env/restart; no operator `GRANTED`; no Tiny activation; no GLOBAL `NOT_KILLED` seed |
+| NEXT | Review/merge S4F-7A → separate **dormant** Production deploy preflight |

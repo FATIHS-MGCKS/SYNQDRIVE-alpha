@@ -28,6 +28,10 @@ import {
   type DiV0S4ExecutionContext,
   type DiV0S4ExecutionOutcome,
 } from '../di-v0-s4b-executor.port';
+import {
+  DI_V0_S4_DISCOVERY_CONTAINMENT_PERMISSIVE_FOR_TESTS,
+  parseDiV0S4DiscoveryTripEndNotBefore,
+} from '../di-v0-s4b-discovery-containment';
 import { buildDiV0S4RuntimePipelineManifest } from '../di-v0-s4b-pipeline-manifest';
 
 assertS4aPostgresCiEnv();
@@ -116,7 +120,16 @@ type FakeExecute = (ctx: DiV0S4ExecutionContext) => Promise<DiV0S4ExecutionOutco
 
   function discovery(config: DiV0S4ControlPlaneConfig, db: PrismaClient = client()) {
     const pipeline = buildDiV0S4RuntimePipelineManifest(config);
-    return { service: new DiV0S4DiscoveryService(db, new DiV0S4WorkItemRepository(db, config), config, pipeline), pipeline };
+    return {
+      service: new DiV0S4DiscoveryService(
+        db,
+        new DiV0S4WorkItemRepository(db, config),
+        config,
+        pipeline,
+        DI_V0_S4_DISCOVERY_CONTAINMENT_PERMISSIVE_FOR_TESTS,
+      ),
+      pipeline,
+    };
   }
 
   function claimLoop(
@@ -867,6 +880,45 @@ type FakeExecute = (ctx: DiV0S4ExecutionContext) => Promise<DiV0S4ExecutionOutco
       await expect(claimLoop(config, async () => {
         throw new Error('p1b-08');
       }).runOnce()).resolves.toMatchObject({ status: 'RELEASED', releaseReason: 'EXECUTOR_ERROR' });
+    });
+  });
+
+  describe('S4F-7A trip-end NOT_BEFORE containment', () => {
+    function discoveryWithCutoff(config: DiV0S4ControlPlaneConfig, notBeforeIso: string, db: PrismaClient = client()) {
+      const pipeline = buildDiV0S4RuntimePipelineManifest(config);
+      const containment = parseDiV0S4DiscoveryTripEndNotBefore(notBeforeIso);
+      return new DiV0S4DiscoveryService(
+        db,
+        new DiV0S4WorkItemRepository(db, config),
+        config,
+        pipeline,
+        containment,
+      );
+    }
+
+    it('excludes trips ending before cutoff even after recent APPLIED repair', async () => {
+      const t = await tenant(86_500);
+      await admin.$executeRaw`
+        INSERT INTO trip_repairs (id, vehicle_id, trip_id, repair_type, status, reason, confidence, window_from, window_to, applied_at, created_at)
+        VALUES (${randomUUID()}, ${t.vehicleId}, ${t.tripId}, 'MISSING_END', 'APPLIED', 'S4F7A', 'HIGH',
+          (now() AT TIME ZONE 'UTC') - interval '4 days', (now() AT TIME ZONE 'UTC') - interval '3 days',
+          (now() AT TIME ZONE 'UTC') - interval '1 hour', (now() AT TIME ZONE 'UTC'))`;
+      const config = configFor([t]);
+      const cutoff = new Date().toISOString();
+      const service = discoveryWithCutoff(config, cutoff);
+      await expect(service.runDiscoveryPass()).resolves.toMatchObject({ candidates: 0, created: 0 });
+    });
+
+    it('missing containment with flags ON → CONTAINMENT_UNAVAILABLE', async () => {
+      const t = await tenant();
+      const config = configFor([t]);
+      const service = discoveryWithCutoff(config, '');
+      await expect(service.runDiscoveryPass()).resolves.toMatchObject({
+        status: 'CONTAINMENT_UNAVAILABLE',
+        stopReason: 'CONTAINMENT_UNAVAILABLE',
+        created: 0,
+        candidates: 0,
+      });
     });
   });
 });

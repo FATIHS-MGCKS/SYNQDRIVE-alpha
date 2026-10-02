@@ -6,9 +6,13 @@ import { evaluateDiV0S4KillRow, type DiV0S4ControlPlaneConfig } from '../s4a-fou
 import { isDiV0S4Rejection, type DiV0S4RejectionCode } from '../s4a-foundation/di-v0-s4a-errors';
 import type { DiV0S4WorkItemRepository } from '../s4a-foundation/di-v0-s4a-work-item.repository';
 import { DI_V0_S4B_TUNING, isDiV0S4DiscoveryConfigured } from './di-v0-s4b-config';
+import {
+  isDiV0S4DiscoveryContainmentAvailable,
+  type DiV0S4DiscoveryContainmentState,
+} from './di-v0-s4b-discovery-containment';
 import type { DiV0S4RuntimePipeline } from './di-v0-s4b-pipeline-manifest';
 
-export type DiV0S4DiscoveryPassStatus = 'DISABLED' | 'KILLED' | 'COMPLETED' | 'STOPPED';
+export type DiV0S4DiscoveryPassStatus = 'DISABLED' | 'CONTAINMENT_UNAVAILABLE' | 'KILLED' | 'COMPLETED' | 'STOPPED';
 
 export interface DiV0S4DiscoveryPassResult {
   status: DiV0S4DiscoveryPassStatus;
@@ -16,7 +20,7 @@ export interface DiV0S4DiscoveryPassResult {
   created: number;
   duplicates: number;
   skipped: number;
-  stopReason: DiV0S4RejectionCode | 'KILL_ROW' | 'UNEXPECTED_ERROR' | null;
+  stopReason: DiV0S4RejectionCode | 'KILL_ROW' | 'CONTAINMENT_UNAVAILABLE' | 'UNEXPECTED_ERROR' | null;
 }
 
 interface DiscoveryCandidateRow {
@@ -42,10 +46,11 @@ export class DiV0S4DiscoveryService {
     private readonly repository: DiV0S4WorkItemRepository,
     private readonly config: DiV0S4ControlPlaneConfig,
     private readonly pipeline: DiV0S4RuntimePipeline,
+    private readonly discoveryContainment: DiV0S4DiscoveryContainmentState,
   ) {}
 
   isConfigured(): boolean {
-    return isDiV0S4DiscoveryConfigured(this.config);
+    return isDiV0S4DiscoveryConfigured(this.config, this.discoveryContainment);
   }
 
   async runDiscoveryPass(options: { limit?: number } = {}): Promise<DiV0S4DiscoveryPassResult> {
@@ -57,6 +62,16 @@ export class DiV0S4DiscoveryService {
       skipped: 0,
       stopReason: null,
     };
+    if (
+      this.config.masterEnabled &&
+      this.config.discoveryEnabled &&
+      this.config.positionEnabled &&
+      this.config.organizationAllowlist.size > 0 &&
+      this.config.vehicleAllowlist.size > 0 &&
+      !isDiV0S4DiscoveryContainmentAvailable(this.discoveryContainment)
+    ) {
+      return { ...result, status: 'CONTAINMENT_UNAVAILABLE', stopReason: 'CONTAINMENT_UNAVAILABLE' };
+    }
     if (!this.isConfigured()) return result;
 
     if (await this.isKilled()) {
@@ -118,6 +133,10 @@ export class DiV0S4DiscoveryService {
    * `di_v0_s4_wi_active_primary_uq`). Oldest anchor first, then trip id.
    */
   private selectCandidates(limit: number): Promise<DiscoveryCandidateRow[]> {
+    if (!isDiV0S4DiscoveryContainmentAvailable(this.discoveryContainment)) {
+      return Promise.resolve([]);
+    }
+    const notBefore = this.discoveryContainment.notBeforeUtc;
     const orgs = [...this.config.organizationAllowlist];
     const vehicles = [...this.config.vehicleAllowlist];
     return this.prisma.$queryRaw<DiscoveryCandidateRow[]>`
@@ -134,6 +153,7 @@ export class DiV0S4DiscoveryService {
       ) a
       WHERE t.trip_status::text = 'COMPLETED'
         AND t.end_time IS NOT NULL
+        AND t.end_time >= ${notBefore}
         AND v.organization_id = ANY(${orgs}::text[])
         AND t.vehicle_id = ANY(${vehicles}::text[])
         AND a.anchor + make_interval(secs => ${DI_V0_S4_LIMITS.settlementQuietPeriodSeconds}::int) <= clock_timestamp()

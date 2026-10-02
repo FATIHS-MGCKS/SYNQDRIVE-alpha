@@ -3,6 +3,7 @@ import type { PrismaClient } from '@prisma/client';
 import type { DiV0S4ControlPlaneConfig } from '../../s4a-foundation/di-v0-s4a-control-plane';
 import { DiV0S4WorkItemRepository } from '../../s4a-foundation/di-v0-s4a-work-item.repository';
 import { DiV0S4ClaimLoop } from '../../s4b-orchestration/di-v0-s4b-claim-loop';
+import { DI_V0_S4_DISCOVERY_CONTAINMENT_PERMISSIVE_FOR_TESTS } from '../../s4b-orchestration/di-v0-s4b-discovery-containment';
 import { DiV0S4DiscoveryService } from '../../s4b-orchestration/di-v0-s4b-discovery.service';
 import { DiV0S4ExecutorRegistry, type DiV0S4ExecutionContext } from '../../s4b-orchestration/di-v0-s4b-executor.port';
 import type { buildDiV0S4RuntimePipelineManifest } from '../../s4b-orchestration/di-v0-s4b-pipeline-manifest';
@@ -55,7 +56,7 @@ export async function setupS4dTenantRun(
   const db = deps.prisma;
   const repo = new DiV0S4WorkItemRepository(db, config);
   if (runDiscovery) {
-    await new DiV0S4DiscoveryService(db, repo, config, pipeline).runDiscoveryPass();
+    await new DiV0S4DiscoveryService(db, repo, config, pipeline, DI_V0_S4_DISCOVERY_CONTAINMENT_PERMISSIVE_FOR_TESTS).runDiscoveryPass();
   }
   const registry = new DiV0S4ExecutorRegistry();
   registerS4dCrashOnceExecutor(registry, deps);

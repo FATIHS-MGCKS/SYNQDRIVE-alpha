@@ -296,3 +296,18 @@ FINAL_RESULT=PASS
 BLOCKERS=RUNTIME_NOT_REGISTERED;DB_KILL_ROW_MISSING;NO_BACKFILL_CONTAINMENT_ABSENT
 NEXT_ACTION=Implement S4 runtime registration + discovery trip-bound containment slice; then S4F-8 human authorization record; then controlled Tiny activation runbook (separate tasks)
 ```
+
+## Addendum (S4F-7A, 2026-10-01) — deploy prerequisite wording correction
+
+S4F-7 correctly recorded that S4B–F were **not** Nest-registered on Production at `8fa531b27…`. The field `CODE_DEPLOY_REQUIRED_BEFORE_TINY_EXECUTION=NO` referred to **absence of new S4 core algorithm/schema** on main, not absence of a **deploy** carrying runtime wiring.
+
+| Qualified field | Value |
+|-----------------|--------|
+| `NEW_S4_SCHEMA_REQUIRED_BEFORE_TINY_EXECUTION` | **NO** |
+| `EXISTING_S4_FEATURE_IMPLEMENTATION_PRESENT` | **YES** (main) |
+| `NEW_RUNTIME_WIRING_CODE_CHANGE_REQUIRED` | **YES** (S4F-7A) |
+| `NEW_PRODUCTION_DEPLOY_REQUIRED_BEFORE_TINY_EXECUTION` | **YES** |
+| `CURRENT_PRODUCTION_RUNTIME_WIRING_PRESENT` | **NO** (until dormant deploy preflight) |
+| `MIGRATION_REQUIRED_BEFORE_TINY_EXECUTION` | **NO** |
+
+Evidence: [EXP021_S4F7A_TINY_EXECUTION_PREREQUISITES_ENGINEERING.md](./EXP021_S4F7A_TINY_EXECUTION_PREREQUISITES_ENGINEERING.md).

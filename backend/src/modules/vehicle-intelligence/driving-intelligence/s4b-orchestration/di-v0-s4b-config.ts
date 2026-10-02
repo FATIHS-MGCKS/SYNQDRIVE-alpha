@@ -4,6 +4,11 @@ import {
   parseDiV0S4ControlPlaneConfig,
   type DiV0S4ControlPlaneConfig,
 } from '../s4a-foundation/di-v0-s4a-control-plane';
+import {
+  isDiV0S4DiscoveryContainmentAvailable,
+  loadDiV0S4bDiscoveryContainment,
+  type DiV0S4DiscoveryContainmentState,
+} from './di-v0-s4b-discovery-containment';
 
 /**
  * Composition boundary for S4B: the only S4B file that touches `process.env`. The control plane
@@ -16,6 +21,11 @@ export function loadDiV0S4bControlPlaneConfig(
   return parseDiV0S4ControlPlaneConfig(env);
 }
 
+/** Parsed once at Nest composition; not re-read until process restart. */
+export function loadDiV0S4bDiscoveryContainmentAtCompositionBoundary(): DiV0S4DiscoveryContainmentState {
+  return loadDiV0S4bDiscoveryContainment(process.env);
+}
+
 /** S4B scheduling constants. Not contract limits: lease/heartbeat/budget come from DI_V0_S4_LIMITS. */
 export const DI_V0_S4B_TUNING = {
   discoveryIntervalMs: 5 * 60_000,
@@ -25,13 +35,17 @@ export const DI_V0_S4B_TUNING = {
 } as const;
 
 /** True only when a discovery pass could create anything; otherwise no DB access is attempted. */
-export function isDiV0S4DiscoveryConfigured(config: DiV0S4ControlPlaneConfig): boolean {
+export function isDiV0S4DiscoveryConfigured(
+  config: DiV0S4ControlPlaneConfig,
+  containment: DiV0S4DiscoveryContainmentState = loadDiV0S4bDiscoveryContainmentAtCompositionBoundary(),
+): boolean {
   return (
     config.masterEnabled &&
     config.discoveryEnabled &&
     config.positionEnabled &&
     config.organizationAllowlist.size > 0 &&
-    config.vehicleAllowlist.size > 0
+    config.vehicleAllowlist.size > 0 &&
+    isDiV0S4DiscoveryContainmentAvailable(containment)
   );
 }
 
