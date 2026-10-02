@@ -121,8 +121,12 @@ export S4F7J_SCRIPT_DIR="$TOOL_BACKEND/scripts/ops"
 export S4F4_SCRIPT_DIR="$TOOL_BACKEND/scripts/ops"
 export S4F7F_SCRIPT_DIR="$TOOL_BACKEND/scripts/ops"
 export SYNQDRIVE_CURRENT_LINK="/opt/synqdrive/current"
+export SYNQDRIVE_BACKEND_ENV="${SYNQDRIVE_BACKEND_ENV:-/opt/synqdrive/shared/backend.env}"
 cd "$TOOL_BACKEND/scripts/ops"
-exec bash ./di-v0-s4-stage-tiny-production.sh
+if [[ -r "${SYNQDRIVE_BACKEND_ENV}" ]]; then
+  exec bash ./di-v0-s4-stage-tiny-production.sh
+fi
+exec sudo -n -E bash ./di-v0-s4-stage-tiny-production.sh
 EOS
 )
 

@@ -292,6 +292,26 @@ function cmdPrintFrozenValues(): void {
   }
 }
 
+function cmdDryRunIntent(file: string): void {
+  const before = readFile(file);
+  const { nextContent, targetKeyCountAfter } = applyTinyStagingMutation(before);
+  const diff = computeSemanticEnvDiff(before, nextContent);
+  console.log(`INTENDED_ENV_CHANGED_KEY_COUNT=${diff.envChangedKeyCount}`);
+  console.log(`INTENDED_ENV_CHANGED_KEYS=${diff.changedKeys.join(',')}`);
+  console.log(`INTENDED_UNEXPECTED_ENV_CHANGED_KEY_COUNT=${diff.unexpectedChangedKeyCount}`);
+  console.log(`INTENDED_TARGET_KEY_COUNT_AFTER=${targetKeyCountAfter}`);
+  console.log('PLANNED_ROLLING_RESTART_ORDER=A_THEN_B');
+  console.log('PLANNED_PM2_UPDATE_ENV=YES');
+  console.log('DISCOVERY_EFFECTIVE_ENABLED_AFTER_INTENDED_STAGING=NO');
+  console.log('WORKER_EFFECTIVE_ENABLED_AFTER_INTENDED_STAGING=NO');
+  console.log('MAINTENANCE_EFFECTIVE_ENABLED_AFTER_INTENDED_STAGING=NO');
+  console.log('FROZEN_TINY_GATE_SATISFIED_COUNT=5');
+  console.log('FROZEN_TINY_GATE_TOTAL=6');
+  if (!diff.ok || diff.envChangedKeyCount !== SUPPORTED_ENV_MUTATION_KEY_COUNT) {
+    process.exit(1);
+  }
+}
+
 function main(): void {
   const [cmd, ...args] = process.argv.slice(2);
   switch (cmd) {
@@ -330,6 +350,9 @@ function main(): void {
       break;
     case 'print-frozen':
       cmdPrintFrozenValues();
+      break;
+    case 'dry-run-intent':
+      cmdDryRunIntent(args[0]);
       break;
     default:
       console.error(`unknown command: ${cmd ?? ''}`);

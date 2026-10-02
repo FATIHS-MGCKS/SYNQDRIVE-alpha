@@ -150,13 +150,13 @@ s4f7j_query_vehicle_db() {
   sql=$(cat <<SQL
 SELECT CASE WHEN COUNT(*) = 1 THEN '1' ELSE '0' END
 FROM vehicles v
-WHERE v.id = '${vid}'::uuid;
-SELECT COALESCE((SELECT organization_id::text FROM vehicles WHERE id = '${vid}'::uuid), '');
-SELECT COALESCE((SELECT registry_lifecycle::text FROM vehicles WHERE id = '${vid}'::uuid), '');
-SELECT COALESCE((SELECT hardware_type::text FROM vehicles WHERE id = '${vid}'::uuid), '');
+WHERE v.id = '${vid}';
+SELECT COALESCE((SELECT organization_id::text FROM vehicles WHERE id = '${vid}'), '');
+SELECT COALESCE((SELECT registry_lifecycle::text FROM vehicles WHERE id = '${vid}'), '');
+SELECT COALESCE((SELECT hardware_type::text FROM vehicles WHERE id = '${vid}'), '');
 SELECT CASE WHEN EXISTS (
   SELECT 1 FROM vehicle_provider_consents vpc
-  WHERE vpc.vehicle_id = '${vid}'::uuid
+  WHERE vpc.vehicle_id = '${vid}'
     AND vpc.provider = 'DIMO'
     AND vpc.status = 'ACTIVE'
     AND vpc.revoked_at IS NULL
@@ -164,7 +164,7 @@ SELECT CASE WHEN EXISTS (
 ) THEN '1' ELSE '0' END;
 SELECT CASE WHEN EXISTS (
   SELECT 1 FROM vehicles v2
-  WHERE v2.id = '${vid}'::uuid AND v2.dimo_vehicle_id IS NOT NULL
+  WHERE v2.id = '${vid}' AND v2.dimo_vehicle_id IS NOT NULL
 ) THEN '1' ELSE '0' END;
 SQL
 )
