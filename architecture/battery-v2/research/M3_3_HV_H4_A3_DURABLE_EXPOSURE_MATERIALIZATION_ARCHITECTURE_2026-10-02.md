@@ -513,12 +513,12 @@ Rebuild from: durable source revisions + GT-as-of + H4 composition contract.
 
 ---
 
-## 16. Proposed slices (not started)
+## 16. Proposed slices
 
 | Slice | Scope |
 |-------|--------|
-| **A3.1** | **IMPLEMENTED (schema + pure contract)** — evidence revision + ACK tables, fingerprint/mirror helpers, postgres schema tests; **flags OFF, no writer** |
-| **A3.2** | Idempotent revision writer |
+| **A3.1** | **IMPLEMENTED (schema + pure contract + A3.1.2 mirror policy)** — evidence revision + ACK tables, fingerprint/mirror helpers, postgres schema tests |
+| **A3.2** | **IMPLEMENTED (writer, no automatic runtime)** — idempotent append-only revision + revision-scoped ACK writer; concurrency-safe verify; **flags OFF** |
 | **A3.3** | Loader equivalence (**MODE_A / A2_V1_PARITY**): durable revisions → existing A2 builder; fixture corpus §12 |
 | **A3.4** | Revision-scoped prune ACK + retention gate |
 | **A3.5** | Reconciliation scheduler (leader-guarded, default OFF) |

@@ -65,6 +65,16 @@ grep -q 'FINITE_ONLY_NON_FINITE_TO_NULL_V1' "$HV_H4/m3-3-hv-h4-a3.constants.ts" 
   || fail "A3 DB float mirror must use FINITE_ONLY_NON_FINITE_TO_NULL_V1"
 grep -q 'deriveEnergyAddedKwhDbMirrorFromTaggedV1' "$HV_H4/m3-3-hv-h4-a3-energy-encoding.v1.ts" \
   || fail "missing A3 deriveEnergyAddedKwhDbMirrorFromTaggedV1"
+grep -q 'M3_3HvH4ChargeSessionEvidenceMaterializationRepository' "$HV_H4/m3-3-hv-h4-a3-charge-session-evidence-materialization.repository.ts" \
+  || fail "missing A3.2 evidence materialization repository"
+grep -q 'M3_3HvH4ChargeSessionEvidenceWriterService' "$HV_H4/m3-3-hv-h4-a3-charge-session-evidence-writer.service.ts" \
+  || fail "missing A3.2 evidence writer service"
+grep -q 'REVISION_APPEND_ONLY_UPDATE_ALLOWED = false' "$HV_H4/m3-3-hv-h4-a3.constants.ts" \
+  || fail "A3 append-only update must remain forbidden"
+if grep -Fq '.upsert(' "$HV_H4/m3-3-hv-h4-a3-charge-session-evidence-materialization.repository.ts" \
+  || grep -Fq '.update(' "$HV_H4/m3-3-hv-h4-a3-charge-session-evidence-materialization.repository.ts"; then
+  fail "A3 evidence materialization repository must not use mutating upsert/update"
+fi
 
 if grep -rq 'm3-3-hv-h4-a3' "$APP_MODULE" 2>/dev/null; then
   fail "A3 evidence modules must not be registered in app.module.ts"
