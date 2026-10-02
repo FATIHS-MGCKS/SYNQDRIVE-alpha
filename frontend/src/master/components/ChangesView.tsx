@@ -286,6 +286,44 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-29T03:00:00.000Z',
   },
   {
+    id: 'di-exp021-s4f7l-tiny-config-staging-attempt-2026-10-02',
+    version: '4.9.2217',
+    title: 'Driving Intelligence — EXP-021 S4F-7L Production Tiny 3-key staging attempt (rollback)',
+    summary: [
+      'Human-authorized DRY_RUN=0 staging: exact 3-key backend.env write + backup succeeded; Replica A PRIMARY_STAGING runtime proof failed.',
+      'Wrapper recovery restored pre-pin backend.env bytes and restarted A→B; GLOBAL KILLED and S4 zero-state preserved.',
+      'Staging authorization consumed; new engineering + human grant required before retry.',
+    ],
+    reason:
+      'Execute bounded Production config staging for KS MS 661 NOT_BEFORE + allowlists without Tiny activation.',
+    previousBehavior:
+      'Three staging keys absent from Production backend.env; dry-run only evidence (S4F-7K).',
+    details:
+      'architecture/drivingintelligence/evidence/EXP021_S4F7L_PRODUCTION_TINY_CONFIG_STAGING.md',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-02T21:35:00.000Z',
+  },
+  {
+    id: 'di-exp021-s4f7k-tiny-staging-dry-run-2026-10-02',
+    version: '4.9.2216',
+    title: 'Driving Intelligence — EXP-021 S4F-7K Production Tiny config staging dry run',
+    summary: [
+      'Read-only Production DRY_RUN=1 via cloud-agent-s4-tiny-staging.sh: guards PASS, intended 3-key env delta only, zero mutation/restart.',
+      'Frozen merge tool SHA 04017010 blocked on text vehicle_id SQL; remediation on evidence branch before config-only staging execution.',
+      'GLOBAL KILLED; S4 zero-state; Tiny activation still 5/6 (NOT_READY).',
+    ],
+    reason:
+      'Prove S4F-7J/J.1 wrapper safety on live Production before separately authorized config-only staging.',
+    previousBehavior:
+      'No live Production dry-run evidence for Tiny three-key staging wrapper.',
+    details:
+      'architecture/drivingintelligence/evidence/EXP021_S4F7K_PRODUCTION_TINY_STAGING_DRY_RUN.md',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-02T20:55:00.000Z',
+  },
+  {
     id: 'di-exp021-s4f7f-kill-init-wrapper-2026-10-02',
     version: '4.9.2215',
     title: 'Driving Intelligence — EXP-021 S4F-7F guarded Production GLOBAL kill initializer wrapper',

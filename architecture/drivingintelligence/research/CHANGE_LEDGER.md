@@ -1409,6 +1409,38 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | Wrapper can run from newer `main` while invoking initializer under verified release `ee958854…` / `20261002014651_v4994`; **`WRAPPER_REQUIRES_NEW_CODE_DEPLOY_BEFORE_USE=NO`** |
 | NON_EFFECTS | No Production GLOBAL row write, no env/PM2/deploy, no Tiny/operator grant |
 
+### EXP-021 S4F-7J Tiny config staging wrapper engineering (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Dedicated Production wrapper `di-v0-s4-stage-tiny-production.sh` (exactly three frozen env keys), TS guard/mutation lib + CLI, bash helpers, cloud bootstrap `.cursor/scripts/cloud-agent-s4-tiny-staging.sh`, tests `test:di:s4f7j:tiny-staging-wrapper` (32 cases); evidence `EXP021_S4F7J_TINY_CONFIG_STAGING_WRAPPER_ENGINEERING.md` |
+| FINDING | **`SUPPORTED_ENV_MUTATION_KEY_COUNT=3`**; S4F-4 global-budget wrapper unchanged; recovery + rolling restart A→B + filtered `/proc` runtime proof |
+| NON_EFFECTS | No Production env/DB/restart/deploy; Tiny gate **NOT_SATISFIED**; GLOBAL remains **KILLED** |
+
+### EXP-021 S4F-7J.1 Tiny staging wrapper safety closure (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | PR #1888 closure: remove Ops→S4B import (`di-v0-s4-tiny-staging-frozen-not-before.ts`); live topology/budget/Redis pre-mutation gates; exact three-key diff + independent post-write verify; fatal config audit; `PRIMARY_STAGING` / `RECOVERY_PRESTATE` runtime proofs; full rollback verification; DIMO R1 vehicle SQL authority; safe `/proc` sudo read; durable backup dir |
+| FINDING | **`S4B_DORMANT_AUDIT=PASS`**; **`OPS_DIRECT_S4B_IMPORT_COUNT=0`**; wrapper tests **47** |
+| NON_EFFECTS | No Production mutation/deploy/restart/DB write |
+
+### EXP-021 S4F-7K Production Tiny staging dry run (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Read-only Production `DRY_RUN=1` via `cloud-agent-s4-tiny-staging.sh`; remediation commits on evidence branch (text `vehicle_id` SQL, sudo bootstrap env, `dry-run-intent`); evidence `EXP021_S4F7K_PRODUCTION_TINY_STAGING_DRY_RUN.md` |
+| FINDING | **`PRODUCTION_TINY_STAGING_DRY_RUN_READINESS=PASS`** on tool SHA `947a70540…`; frozen merge `040170104…` **`VEHICLE_DB_PROOF=FAIL`** (`::uuid` on text ids); **`GUARDS_OK=YES`**; intended **3** env keys; **`ENV_MUTATION_COUNT=0`**; post `backend.env` SHA256 unchanged; replica PIDs unchanged |
+| NON_EFFECTS | No Production env/DB/restart/deploy/migration/provider call; **`TINY_ACTIVATION_READY=NO`** |
+
+### EXP-021 S4F-7L Production Tiny 3-key config staging attempt (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Human-authorized `DRY_RUN=0` via `cloud-agent-s4-tiny-staging.sh` @ `947a70540…`; evidence `EXP021_S4F7L_PRODUCTION_TINY_CONFIG_STAGING.md` |
+| FINDING | Pre-guards **PASS**; exact **3-key** file write + backup **PASS**; Replica A **`PRIMARY_STAGING` runtime proof FAIL** (`REPLICA_A_RUNTIME_*_EXACT=NO`); **`ROLLBACK_RESULT=COMPLETE`**; final `backend.env` SHA256 restored to pre-pin; **staging keys MISSING**; GLOBAL **KILLED**; S4 counts **0** |
+| NON_EFFECTS | No Tiny activation; no GLOBAL DB write; no deploy/migration; no provider calls; **authorization consumed** — no in-task retry |
+
 ### EXP-021 S4F-7I NO_BACKFILL Tiny staging preflight (2026-10-02)
 
 | Event | Detail |
