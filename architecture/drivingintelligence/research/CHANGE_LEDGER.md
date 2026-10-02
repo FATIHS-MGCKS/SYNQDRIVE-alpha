@@ -1393,6 +1393,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | Production `8fa531b27…` healthy; S4 env dormant; GLOBAL kill row missing; **0** S4 rows; target `ee958854…` adds S4 runtime registration with **0** pending migrations → **DORMANT_DEPLOY_READINESS=PASS** |
 | NON_EFFECTS | No deploy, env/DB mutation, restart, operator grant, Tiny activation |
 
+### EXP-021 S4F-7C exact-SHA dormant deploy authorization gate (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Read-only re-validation vs S4F-7B; evidence `EXP021_S4F7C_EXACT_SHA_DORMANT_DEPLOY_AUTHORIZATION_GATE.md`; ops snapshot `di-v0-s4f7c-exact-sha-deploy-authorization-gate.sh`; frozen `AUTHORIZED_DEPLOY_COMMAND` for SHA `ee958854…` only |
+| FINDING | Production SHA/env hash/S4 zero-state unchanged; main `b7d77643…` is docs-only after target — **PASS**; `HUMAN_DORMANT_DEPLOY_AUTHORIZATION=NOT_GRANTED_IN_THIS_TASK` |
+| NON_EFFECTS | No deploy execution; no human deploy permit in this task |
+
 ### EXP-021 S4F-7A Tiny execution prerequisites engineering (2026-10-01)
 
 | Event | Detail |
