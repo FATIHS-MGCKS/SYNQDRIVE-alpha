@@ -36,6 +36,50 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+---
+
+## CL-2026-10-02 — M3.3-HV-H4-A3.1.2 finite-only DB float mirror closure
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | A3.1 assumed Prisma `Float` mirror could round-trip NaN/±Infinity; vehicle cascade postgres test used `::uuid` on TEXT `vehicles.id` |
+| **OBSERVATION** | CI postgres suite disproved special-float mirror round-trip; tagged JSON remains authoritative |
+| **HYPOTHESIS** | Finite-only mirror with tagged JSON authority preserves fingerprint + query ergonomics without schema change |
+| **CHANGE** | `FINITE_ONLY_NON_FINITE_TO_NULL_V1` mirror policy; derive mirror from tagged projection only; coherence validator + postgres ledger tests; vehicle DELETE `::text` |
+| **WHY** | Pre-merge A3.1 contract hardening without schema/migration change |
+| **EXPECTED_EFFECT** | Scientific fingerprint unchanged; finite mirror query column stays valid; non-finite tags durable in JSON with mirror null |
+| **VALIDATION** | test:battery:v2:hv-h4; hv-h4 postgres CI; H4 static contract validator |
+| **OBSERVED_EFFECT** | Pending CI |
+| **NON_EFFECTS** | No runtime writer, retention, backfill, schema/migration edits |
+| **REGRESSIONS_OR_TRADEOFFS** | Mirror null is ambiguous vs scientific null; consumers must read tagged JSON for special values |
+| **REMAINING_GAPS** | A3.2 writer still required |
+| **DECISION_STATUS** | PROPOSED (ENGINEERING) |
+| **AFFECTED_GRAPH** | A3.1 pure contract only |
+| **EVIDENCE** | `m3-3-hv-h4-a3-energy-encoding.v1.ts`, mirror/projection modules, postgres integration spec |
+
+---
+
+## CL-2026-10-02 — M3.3-HV-H4-A3.1 charge session evidence schema + pure contract
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | A3-R0.3 architecture on main; no durable H4 charge-session evidence persistence |
+| **OBSERVATION** | A2 full parity requires dimoSegmentId + knowledge timestamps + lossless non-finite energy in durable source evidence |
+| **HYPOTHESIS** | Append-only revision + ACK schema with pure SHA-256 tuple fingerprint enables A3.2 writer without changing A1/A2 |
+| **CHANGE** | Prisma `BatteryHvChargeSessionEvidenceRevision` + `BatteryHvChargeSessionEvidenceAck`; migration; pure projection/fingerprint/mirror modules; unit + postgres schema tests |
+| **WHY** | First persistence slice after R0 closure — contract before runtime writer |
+| **EXPECTED_EFFECT** | DB-enforced versioned scientific identity; no FK to prunable `HvChargeSession`; tenant cascade |
+| **VALIDATION** | test:battery:v2:hv-h4; test:battery:v2:hv-h4:postgres:ci; prisma validate; H4/graph/registry validators |
+| **OBSERVED_EFFECT** | Pending CI |
+| **NON_EFFECTS** | No runtime writer, retention gate, backfill, A1/A2 behavior |
+| **REGRESSIONS_OR_TRADEOFFS** | Future A3.2 must mirror-verify ACK identity columns |
+| **REMAINING_GAPS** | A3.2 writer; A3.3 MODE_A loader equivalence; retention ACK gate (A3.4) |
+| **DECISION_STATUS** | PROPOSED (ENGINEERING) |
+| **AFFECTED_GRAPH** | BAT-V2-AUTH-H4-A2-001 successor persistence (schema authority only) |
+| **EVIDENCE** | `m3-3-hv-h4-a3-*` modules; migration `20261002120000_battery_hv_h4_charge_session_evidence_revisions` |
+
+---
+
 ## CL-2026-10-02 — M3.3-HV-H4-A3-R0 durable exposure architecture authority
 
 | Field | Value |
