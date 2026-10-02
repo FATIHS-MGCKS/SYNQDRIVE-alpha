@@ -1401,6 +1401,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | Production now `ee958854…` release `20261002014651_v4994`; `DiV0S4RuntimeModule` boot-registered; S4 dormant/fail-closed preserved; **0** migration applied |
 | NON_EFFECTS | No kill initializer, no S4 env activation, no operator grant, no Tiny |
 
+### EXP-021 S4F-7E DB GLOBAL kill initialization preflight (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Read-only Production VPS/Postgres + initializer/schema audit; evidence `EXP021_S4F7E_DB_KILL_INITIALIZATION_PREFLIGHT.md` |
+| FINDING | Production `ee958854…` unchanged; GLOBAL row **missing**; S4 counts **0**; initializer @ deployed SHA **safe**; postgres concurrency tests **PASS**; **`DB_KILL_INITIALIZATION_READINESS=BLOCKED`** — `PRODUCTION_EXECUTION_WRAPPER_REQUIRED` |
+| NON_EFFECTS | No initializer execution, no Production DB/env/deploy/restart, no Tiny/operator grant |
+
 ### EXP-021 S4F-7B dormant Production deploy preflight (2026-10-02)
 
 | Event | Detail |
