@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-onboarding-vo5b3-base-plan-temporal-seal-2026-10-02',
+    version: '4.9.2224',
+    title: 'Vehicle Onboarding VO-5B.3 — base subscription temporal authority seal',
+    summary: [
+      'resolveBaseSubscriptionItemAsOf binds BillingSubscription and BillingSubscriptionItem createdAt <= occurredAt; post-event backdated base rows cannot rewrite historical registry offboard billing.',
+    ],
+    reason:
+      'Backdated base items/subscriptions created after occurredAt could falsify MULTIPLE_BASE_ITEMS or steal offboard authority.',
+    previousBehavior:
+      'Base resolver used validFrom/validTo and subscription startedAt/endedAt only.',
+    details:
+      'billing-base-subscription-item-as-of.ts; VO5B_REGISTRY_BILLING_BRIDGE.md table repair',
+    affectsArchitecture: true,
+    module: 'Vehicle Onboarding',
+    createdAt: '2026-10-02T04:45:00.000Z',
+  },
+  {
     id: 'vehicle-onboarding-vo5b2-temporal-seal-2026-10-02',
     version: '4.9.2223',
     title: 'Vehicle Onboarding VO-5B.2 — temporal billing authority seal',

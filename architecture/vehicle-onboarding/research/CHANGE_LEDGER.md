@@ -26,6 +26,7 @@
 | 2026-10-01 | **VO-5B** — Registry `VEHICLE_OFFBOARDED` outbox → Billing quantity bridge; billable policy registry lifecycle; scheduler worker; no public HTTP / no Stripe in consumer | Billing projection idempotent; `VEHICLE_ACTIVATED` bridge deferred |
 | 2026-10-02 | **VO-5B.1** — Integrity seal: event-time base item/assignment/ledger authority; outbox claim/CAS; preserve unhandled lifecycle events; VO-5B PostgreSQL CI | PR #1883 |
 | 2026-10-02 | **VO-5B.2** — Temporal seal: org status + post-event assignment/exclusion cannot rewrite T1 prestate; quantity ledger primary; `createdAt` boundary | PR #1883 |
+| 2026-10-02 | **VO-5B.3** — Base plan temporal seal: subscription/item `createdAt` bounds on `resolveBaseSubscriptionItemAsOf` | PR #1883 |
 
 ## VO-0B — REUSE-FIRST components (do not replace without VO-1+ proof)
 

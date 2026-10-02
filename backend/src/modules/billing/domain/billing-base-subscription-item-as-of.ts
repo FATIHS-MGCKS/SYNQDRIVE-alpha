@@ -10,23 +10,29 @@ export type BaseSubscriptionItemAt = {
   organizationId: string;
 };
 
+function isEntityOrdinaryAuthorityAt(entity: { createdAt: Date }, asOf: Date): boolean {
+  return entity.createdAt.getTime() <= asOf.getTime();
+}
+
 function isSubscriptionApplicableAt(
   subscription: {
+    createdAt: Date;
     startedAt: Date | null;
     endedAt: Date | null;
-    status: string;
   },
   asOf: Date,
 ): boolean {
+  if (!isEntityOrdinaryAuthorityAt(subscription, asOf)) return false;
   if (subscription.startedAt != null && subscription.startedAt > asOf) return false;
   if (subscription.endedAt != null && subscription.endedAt < asOf) return false;
   return true;
 }
 
 function isItemValidAt(
-  item: { validFrom: Date; validTo: Date | null },
+  item: { createdAt: Date; validFrom: Date; validTo: Date | null },
   asOf: Date,
 ): boolean {
+  if (!isEntityOrdinaryAuthorityAt(item, asOf)) return false;
   if (item.validFrom > asOf) return false;
   if (item.validTo != null && item.validTo < asOf) return false;
   return true;
@@ -46,13 +52,14 @@ export async function resolveBaseSubscriptionItemAsOf(
       id: true,
       subscriptionId: true,
       organizationId: true,
+      createdAt: true,
       validFrom: true,
       validTo: true,
       subscription: {
         select: {
+          createdAt: true,
           startedAt: true,
           endedAt: true,
-          status: true,
         },
       },
     },

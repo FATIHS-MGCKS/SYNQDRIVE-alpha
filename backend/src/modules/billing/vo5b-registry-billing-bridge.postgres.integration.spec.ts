@@ -64,6 +64,26 @@ async function createOrg(prisma: PrismaClient) {
   return id;
 }
 
+async function stampBillingSubscriptionCreatedAt(
+  prisma: PrismaClient,
+  subscriptionId: string,
+  createdAt: Date,
+) {
+  await prisma.$executeRaw`
+    UPDATE billing_subscriptions SET created_at = ${createdAt} WHERE id = ${subscriptionId}
+  `;
+}
+
+async function stampBillingSubscriptionItemCreatedAt(
+  prisma: PrismaClient,
+  itemId: string,
+  createdAt: Date,
+) {
+  await prisma.$executeRaw`
+    UPDATE billing_subscription_items SET created_at = ${createdAt} WHERE id = ${itemId}
+  `;
+}
+
 async function ensureBasePlan(prisma: PrismaClient, orgId: string, quantity = 1) {
   const fleet = await prisma.billingCatalogProduct.findUniqueOrThrow({
     where: { key: 'FLEET' },
@@ -88,6 +108,9 @@ async function ensureBasePlan(prisma: PrismaClient, orgId: string, quantity = 1)
       validFrom: new Date('2020-01-01'),
     },
   });
+  const fixtureCreatedAt = new Date('2020-01-01T00:00:00.000Z');
+  await stampBillingSubscriptionCreatedAt(prisma, subId, fixtureCreatedAt);
+  await stampBillingSubscriptionItemCreatedAt(prisma, item.id, fixtureCreatedAt);
   return { ...item, subscriptionId: subId };
 }
 
@@ -547,6 +570,9 @@ async function createActiveVehicle(prisma: PrismaClient, orgId: string) {
         validTo,
       },
     });
+    const fixtureCreatedAt = new Date('2020-01-01T00:00:00.000Z');
+    await stampBillingSubscriptionCreatedAt(prisma, subId, fixtureCreatedAt);
+    await stampBillingSubscriptionItemCreatedAt(prisma, baseItem.id, fixtureCreatedAt);
     const vehicleId = await createActiveVehicle(prisma, orgId);
     await seedVehicleLicenseConnected(prisma, orgId, { ...baseItem, subscriptionId: subId }, vehicleId);
     await offboarding.offboardVehicle({
@@ -908,5 +934,300 @@ async function createActiveVehicle(prisma: PrismaClient, orgId: string) {
     });
     expect(assignment.status).toBe(BillingBillableVehicleAssignmentStatus.ENDED);
     expect(assignment.billableUntil?.toISOString()).toBe(occurredAt.toISOString());
+  });
+
+  it('ignores post-event backdated base item for offboard deprovision (VO-5B.3)', async () => {
+    const orgId = await createOrg(prisma);
+    const occurredAt = new Date('2026-07-01T10:00:00.000Z');
+    const preCreatedAt = new Date('2026-06-01T00:00:00.000Z');
+    const fleet = await prisma.billingCatalogProduct.findUniqueOrThrow({ where: { key: 'FLEET' } });
+    const subId = randomUUID();
+    await prisma.billingSubscription.create({
+      data: {
+        id: subId,
+        organizationId: orgId,
+        status: 'ACTIVE',
+        currency: 'EUR',
+      },
+    });
+    await stampBillingSubscriptionCreatedAt(prisma, subId, preCreatedAt);
+    const baseItem = await prisma.billingSubscriptionItem.create({
+      data: {
+        subscriptionId: subId,
+        organizationId: orgId,
+        billingProductId: fleet.id,
+        itemRole: 'BASE_PLAN',
+        quantity: 1,
+        status: 'ACTIVE',
+        validFrom: new Date('2020-01-01'),
+      },
+    });
+    await stampBillingSubscriptionItemCreatedAt(prisma, baseItem.id, preCreatedAt);
+    const vehicleId = await createActiveVehicle(prisma, orgId);
+    await seedVehicleLicenseConnected(prisma, orgId, { ...baseItem, subscriptionId: subId }, vehicleId, occurredAt);
+    await offboarding.offboardVehicle({
+      organizationId: orgId,
+      vehicleId,
+      reason: 'REMOVE_FROM_PRODUCT',
+      actorUserId: null,
+      idempotencyKey: randomUUID(),
+    });
+    const outbox = await prisma.vehicleRegistryLifecycleOutbox.findFirstOrThrow({
+      where: { vehicleId },
+    });
+    const payload = outbox.payload as Record<string, unknown>;
+    await prisma.vehicleRegistryLifecycleOutbox.update({
+      where: { id: outbox.id },
+      data: {
+        occurredAt,
+        payload: { ...payload, offboardedAt: occurredAt.toISOString() },
+      },
+    });
+    const postItem = await prisma.billingSubscriptionItem.create({
+      data: {
+        subscriptionId: subId,
+        organizationId: orgId,
+        billingProductId: fleet.id,
+        itemRole: 'BASE_PLAN',
+        quantity: 1,
+        status: 'ENDED',
+        validFrom: new Date('2020-01-01'),
+      },
+    });
+    await stampBillingSubscriptionItemCreatedAt(
+      prisma,
+      postItem.id,
+      new Date('2026-07-02T00:00:00.000Z'),
+    );
+    expect(await processor.processRow(outbox.id)).toBe('published');
+    const disconnect = await prisma.billingQuantityEvent.findFirst({
+      where: {
+        idempotencyKey: buildRegistryOffboardBillingIdempotencyKey(outbox.eventId),
+      },
+    });
+    expect(disconnect?.subscriptionItemId).toBe(baseItem.id);
+  });
+
+  it('ignores post-event backdated subscription for offboard deprovision (VO-5B.3)', async () => {
+    const orgId = await createOrg(prisma);
+    const occurredAt = new Date('2026-07-01T10:00:00.000Z');
+    const preCreatedAt = new Date('2026-06-01T00:00:00.000Z');
+    const fleet = await prisma.billingCatalogProduct.findUniqueOrThrow({ where: { key: 'FLEET' } });
+    const subId = randomUUID();
+    await prisma.billingSubscription.create({
+      data: {
+        id: subId,
+        organizationId: orgId,
+        status: 'ACTIVE',
+        currency: 'EUR',
+      },
+    });
+    await stampBillingSubscriptionCreatedAt(prisma, subId, preCreatedAt);
+    const baseItem = await prisma.billingSubscriptionItem.create({
+      data: {
+        subscriptionId: subId,
+        organizationId: orgId,
+        billingProductId: fleet.id,
+        itemRole: 'BASE_PLAN',
+        quantity: 1,
+        status: 'ACTIVE',
+        validFrom: new Date('2020-01-01'),
+      },
+    });
+    await stampBillingSubscriptionItemCreatedAt(prisma, baseItem.id, preCreatedAt);
+    const vehicleId = await createActiveVehicle(prisma, orgId);
+    await seedVehicleLicenseConnected(prisma, orgId, { ...baseItem, subscriptionId: subId }, vehicleId, occurredAt);
+    await offboarding.offboardVehicle({
+      organizationId: orgId,
+      vehicleId,
+      reason: 'REMOVE_FROM_PRODUCT',
+      actorUserId: null,
+      idempotencyKey: randomUUID(),
+    });
+    const outbox = await prisma.vehicleRegistryLifecycleOutbox.findFirstOrThrow({
+      where: { vehicleId },
+    });
+    const payload = outbox.payload as Record<string, unknown>;
+    await prisma.vehicleRegistryLifecycleOutbox.update({
+      where: { id: outbox.id },
+      data: {
+        occurredAt,
+        payload: { ...payload, offboardedAt: occurredAt.toISOString() },
+      },
+    });
+    const postSubId = randomUUID();
+    await prisma.billingSubscription.create({
+      data: {
+        id: postSubId,
+        organizationId: orgId,
+        status: 'ACTIVE',
+        currency: 'EUR',
+        startedAt: new Date('2020-01-01'),
+      },
+    });
+    await stampBillingSubscriptionCreatedAt(
+      prisma,
+      postSubId,
+      new Date('2026-07-02T00:00:00.000Z'),
+    );
+    const postItem = await prisma.billingSubscriptionItem.create({
+      data: {
+        subscriptionId: postSubId,
+        organizationId: orgId,
+        billingProductId: fleet.id,
+        itemRole: 'BASE_PLAN',
+        quantity: 1,
+        status: 'ENDED',
+        validFrom: new Date('2020-01-01'),
+      },
+    });
+    await stampBillingSubscriptionItemCreatedAt(
+      prisma,
+      postItem.id,
+      new Date('2026-07-02T00:00:00.000Z'),
+    );
+    expect(await processor.processRow(outbox.id)).toBe('published');
+    expect(
+      await prisma.billingQuantityEvent.count({
+        where: { idempotencyKey: buildRegistryOffboardBillingIdempotencyKey(outbox.eventId) },
+      }),
+    ).toBe(1);
+  });
+
+  it('post-event overlapping base item does not cause false multi-base conflict (VO-5B.3)', async () => {
+    const orgId = await createOrg(prisma);
+    const occurredAt = new Date('2026-07-01T10:00:00.000Z');
+    const preCreatedAt = new Date('2026-06-01T00:00:00.000Z');
+    const fleet = await prisma.billingCatalogProduct.findUniqueOrThrow({ where: { key: 'FLEET' } });
+    const subId = randomUUID();
+    await prisma.billingSubscription.create({
+      data: {
+        id: subId,
+        organizationId: orgId,
+        status: 'ACTIVE',
+        currency: 'EUR',
+      },
+    });
+    await stampBillingSubscriptionCreatedAt(prisma, subId, preCreatedAt);
+    const baseItem = await prisma.billingSubscriptionItem.create({
+      data: {
+        subscriptionId: subId,
+        organizationId: orgId,
+        billingProductId: fleet.id,
+        itemRole: 'BASE_PLAN',
+        quantity: 1,
+        status: 'ACTIVE',
+        validFrom: new Date('2020-01-01'),
+      },
+    });
+    await stampBillingSubscriptionItemCreatedAt(prisma, baseItem.id, preCreatedAt);
+    const vehicleId = await createActiveVehicle(prisma, orgId);
+    await seedVehicleLicenseConnected(prisma, orgId, { ...baseItem, subscriptionId: subId }, vehicleId, occurredAt);
+    await offboarding.offboardVehicle({
+      organizationId: orgId,
+      vehicleId,
+      reason: 'REMOVE_FROM_PRODUCT',
+      actorUserId: null,
+      idempotencyKey: randomUUID(),
+    });
+    const outbox = await prisma.vehicleRegistryLifecycleOutbox.findFirstOrThrow({
+      where: { vehicleId },
+    });
+    const payload = outbox.payload as Record<string, unknown>;
+    await prisma.vehicleRegistryLifecycleOutbox.update({
+      where: { id: outbox.id },
+      data: {
+        occurredAt,
+        payload: { ...payload, offboardedAt: occurredAt.toISOString() },
+      },
+    });
+    const overlapPost = await prisma.billingSubscriptionItem.create({
+      data: {
+        subscriptionId: subId,
+        organizationId: orgId,
+        billingProductId: fleet.id,
+        itemRole: 'BASE_PLAN',
+        quantity: 1,
+        status: 'ENDED',
+        validFrom: new Date('2020-01-01'),
+      },
+    });
+    await stampBillingSubscriptionItemCreatedAt(
+      prisma,
+      overlapPost.id,
+      new Date('2026-07-02T00:00:00.000Z'),
+    );
+    expect(await processor.processRow(outbox.id)).toBe('published');
+  });
+
+  it('fails closed on two genuinely pre-event overlapping base items (VO-5B.3)', async () => {
+    const orgId = await createOrg(prisma);
+    const occurredAt = new Date('2026-07-01T10:00:00.000Z');
+    const preCreatedAt = new Date('2026-06-01T00:00:00.000Z');
+    const fleet = await prisma.billingCatalogProduct.findUniqueOrThrow({ where: { key: 'FLEET' } });
+    const subId = randomUUID();
+    await prisma.billingSubscription.create({
+      data: {
+        id: subId,
+        organizationId: orgId,
+        status: 'ACTIVE',
+        currency: 'EUR',
+      },
+    });
+    await stampBillingSubscriptionCreatedAt(prisma, subId, preCreatedAt);
+    const itemA = await prisma.billingSubscriptionItem.create({
+      data: {
+        subscriptionId: subId,
+        organizationId: orgId,
+        billingProductId: fleet.id,
+        itemRole: 'BASE_PLAN',
+        quantity: 1,
+        status: 'ACTIVE',
+        validFrom: new Date('2020-01-01'),
+      },
+    });
+    await stampBillingSubscriptionItemCreatedAt(prisma, itemA.id, preCreatedAt);
+    const itemB = await prisma.billingSubscriptionItem.create({
+      data: {
+        subscriptionId: subId,
+        organizationId: orgId,
+        billingProductId: fleet.id,
+        itemRole: 'BASE_PLAN',
+        quantity: 1,
+        status: 'ENDED',
+        validFrom: new Date('2020-01-01'),
+        validTo: new Date('2026-12-31T00:00:00.000Z'),
+      },
+    });
+    await stampBillingSubscriptionItemCreatedAt(
+      prisma,
+      itemB.id,
+      new Date('2026-06-15T00:00:00.000Z'),
+    );
+    const vehicleId = await createActiveVehicle(prisma, orgId);
+    await seedVehicleLicenseConnected(prisma, orgId, { ...itemA, subscriptionId: subId }, vehicleId, occurredAt);
+    await offboarding.offboardVehicle({
+      organizationId: orgId,
+      vehicleId,
+      reason: 'REMOVE_FROM_PRODUCT',
+      actorUserId: null,
+      idempotencyKey: randomUUID(),
+    });
+    const outbox = await prisma.vehicleRegistryLifecycleOutbox.findFirstOrThrow({
+      where: { vehicleId },
+    });
+    const payload = outbox.payload as Record<string, unknown>;
+    await prisma.vehicleRegistryLifecycleOutbox.update({
+      where: { id: outbox.id },
+      data: {
+        occurredAt,
+        payload: { ...payload, offboardedAt: occurredAt.toISOString() },
+      },
+    });
+    expect(await processor.processRow(outbox.id)).toBe('failed');
+    const row = await prisma.vehicleRegistryLifecycleOutbox.findUniqueOrThrow({
+      where: { id: outbox.id },
+    });
+    expect(row.lastError).toContain('Multiple base subscription items');
   });
 });

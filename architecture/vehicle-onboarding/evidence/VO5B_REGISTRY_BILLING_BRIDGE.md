@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **Slice** | VO-5B |
-| **Date** | 2026-10-01 (VO-5B.1: 2026-10-02; VO-5B.2 temporal seal: 2026-10-02) |
+| **Date** | 2026-10-01 (VO-5B.1–5B.3 seals: 2026-10-02) |
 | **Authority** | Vehicle Onboarding `AUDIT_IN_PROGRESS` (unchanged) |
 | **Starting main** | `d4a08b241ab5fec1e4979b52896a7fe90b6aa870` (post VO-5A merge) |
 
@@ -48,14 +48,13 @@ Post-commit idempotent bridge:
 | `VEHICLE_LICENSE_QUANTITY_LEDGER_PRIMARY_PRESTATE_AUTHORITY` | `YES` |
 | `POST_EVENT_ASSIGNMENT_MUTATED_BY_OFFBOARD_CONSUMER` | `NO` |
 | `ASSIGNMENT_HISTORY_LIMITATION_DOCUMENTED` | `YES` (no full bitemporal assignment model; `createdAt` boundary only) |
-
-### Assignment history limitation (VO-5B.2)
-
-`BillingBillableVehicleAssignment` exposes `billableFrom` / `billableUntil` and mutable `status`, but **not** a complete bitemporal history. For registry offboarding, prestate uses:
-
-- `createdAt <= occurredAt` for assignment rows considered as ordinary evidence
-- `BillingQuantityEvent.effectiveAt` as **primary** per-vehicle license provision/deprovision authority
-- Current `Organization.status` is **not** used to veto a proven historical license transition (no org status history table)
+| `BASE_ITEM_CREATED_AT_BOUND` | `YES` (`BillingSubscriptionItem.createdAt <= asOf`) |
+| `SUBSCRIPTION_CREATED_AT_BOUND` | `YES` (`BillingSubscription.createdAt <= asOf`) |
+| `POST_EVENT_BASE_ITEM_AFFECTS_PRESTATE` | `NO` |
+| `POST_EVENT_SUBSCRIPTION_AFFECTS_PRESTATE` | `NO` |
+| `POST_EVENT_BACKDATED_BASE_ITEM_CAUSES_FALSE_MULTI_BASE_CONFLICT` | `NO` |
+| `GENUINE_PRE_EVENT_MULTI_BASE_FAIL_CLOSED` | `YES` (`MULTIPLE_BASE_ITEMS_AT_EVENT_TIME`) |
+| `MULTIPLE_BASE_ITEMS_AT_EVENT_TIME_FAIL_CLOSED` | `YES` |
 | `MULTIPLE_EFFECTIVE_BILLING_ASSIGNMENTS_FAIL_CLOSED` | `YES` |
 | `REGISTRY_BILLING_CROSS_TENANT_FAIL_CLOSED` | `YES` |
 | `STRIPE_CALL_COUNT_FROM_REGISTRY_CONSUMER` | `0` |
@@ -65,6 +64,18 @@ Post-commit idempotent bridge:
 | `REGISTRY_OUTBOX_PUBLICATION_MODEL` | Registry outbox = publication authority; synchronous dispatcher invokes idempotent downstream handlers |
 | `REGISTRY_OUTBOX_PUBLISHED_AFTER_REQUIRED_HANDLERS` | `YES` (currently: billing offboard projection) |
 | `VEHICLE_ACTIVATED_BILLING_BRIDGE_GAP` | `YES` (follow-up; not in VO-5B scope) |
+
+### Assignment history limitation (VO-5B.2)
+
+`BillingBillableVehicleAssignment` exposes `billableFrom` / `billableUntil` and mutable `status`, but **not** a complete bitemporal history. For registry offboarding, prestate uses:
+
+- `createdAt <= occurredAt` for assignment rows considered as ordinary evidence
+- `BillingQuantityEvent.effectiveAt` as **primary** per-vehicle license provision/deprovision authority
+- Current `Organization.status` is **not** used to veto a proven historical license transition (no org status history table)
+
+### Base subscription event-time authority (VO-5B.3)
+
+`resolveBaseSubscriptionItemAsOf` requires `item.createdAt <= asOf` and `subscription.createdAt <= asOf` in addition to `validFrom`/`validTo` and subscription `startedAt`/`endedAt`. Current subscription/item **status** is not used as historical authority. Post-event backdated rows cannot rewrite lifecycle billing prestate or create false multi-base conflicts.
 
 ## Scope exclusions (unchanged)
 
@@ -78,6 +89,7 @@ Post-commit idempotent bridge:
 | Area | Path |
 |------|------|
 | Billable policy registry lifecycle | `backend/src/modules/billing/domain/billable-vehicle-policy.ts` |
+| Event-time base item | `backend/src/modules/billing/domain/billing-base-subscription-item-as-of.ts` |
 | Event-time boundary | `backend/src/modules/billing/domain/billing-vehicle-offboard-boundary.ts` |
 | Registry event validation | `backend/src/modules/billing/registry-lifecycle/validate-vehicle-offboarded-registry-event.ts` |
 | Billing projection | `backend/src/modules/billing/registry-lifecycle/billing-vehicle-registry-offboard.projection.ts` |

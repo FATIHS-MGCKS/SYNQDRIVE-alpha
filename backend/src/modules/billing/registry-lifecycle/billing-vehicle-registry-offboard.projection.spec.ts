@@ -28,7 +28,12 @@ describe('BillingVehicleRegistryOffboardProjection', () => {
             organizationId: 'org-1',
             validFrom: new Date('2020-01-01'),
             validTo: null,
-            subscription: { startedAt: null, endedAt: null, status: 'ACTIVE' },
+            createdAt: new Date('2020-01-01'),
+            subscription: {
+              createdAt: new Date('2020-01-01'),
+              startedAt: null,
+              endedAt: null,
+            },
           },
         ]),
       },
@@ -47,7 +52,12 @@ describe('BillingVehicleRegistryOffboardProjection', () => {
                 organizationId: 'org-1',
                 validFrom: new Date('2020-01-01'),
                 validTo: null,
-                subscription: { startedAt: null, endedAt: null, status: 'ACTIVE' },
+                createdAt: new Date('2020-01-01'),
+                subscription: {
+                  createdAt: new Date('2020-01-01'),
+                  startedAt: null,
+                  endedAt: null,
+                },
               },
             ]),
           },
@@ -55,8 +65,17 @@ describe('BillingVehicleRegistryOffboardProjection', () => {
           billingBillableVehicleAssignment: { findUnique: jest.fn(), update: jest.fn() },
           billingQuantityEvent: {
             findUnique: jest.fn().mockResolvedValue(null),
-            findMany: jest.fn().mockResolvedValue([]),
+            findMany: jest.fn().mockResolvedValue([
+              {
+                effectiveAt: new Date('2026-06-01'),
+                createdAt: new Date('2026-06-01'),
+                delta: 1,
+                vehicleId: 'veh-1',
+                eventType: 'VEHICLE_CONNECTED',
+              },
+            ]),
           },
+          vehicle: { findFirst: jest.fn().mockResolvedValue({ id: 'veh-1' }) },
         }),
       ),
     };
