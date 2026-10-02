@@ -7,7 +7,7 @@ Phase 3 adds **resolution status** per gap. Historical IDs preserved.
 | **VDC-GAP-001** | Unified connectivity authority | CONFIRMED | **PARTIALLY_RESOLVED** | Authority established; code still distributed (VDC-DEC-009) |
 | **VDC-GAP-002** | Production baseline | CONFIRMED | **RESOLVED** | Phase 2 verified read-only — [evidence/PRODUCTION_BASELINE.md](../evidence/PRODUCTION_BASELINE.md) |
 | **VDC-GAP-003** | Historical per-wake raw payload retention | CONFIRMED | **STILL_OPEN** | Design gap — VLS latest-only |
-| **VDC-GAP-004** | LTE_R1 standby interval ground truth | CONFIRMED (single vehicle) | **PARTIALLY_RESOLVED** | KS MX 2024 ~24h (n=3); fleet distribution open (VDC-Q-001) |
+| **VDC-GAP-004** | LTE_R1 standby interval ground truth | CONFIRMED (single vehicle) | **PARTIALLY_RESOLVED** | Top-level ~24h (KS MX); **LV device ~8h component** user-configured + Production R9 cohort audit 2026-10-02 (multimodal); per-signal CH audit open |
 | **VDC-GAP-005** | IO174 / Ruptela raw IO visibility | CONFIRMED (ingest path) | **PARTIALLY_RESOLVED** | IO174_NOT_EXPOSED_BY_CURRENT_INGEST; device timer not proven |
 | **VDC-GAP-006** | HM connectivity profile parity | PARTIAL | **STILL_OPEN** | Repo audit done; runtime integration missing (VDC-GAP-009) |
 | **VDC-GAP-007** | Connectivity vs trip-wake correlation | PARTIAL | **STILL_OPEN** | Wake documented; correlation rules undefined |

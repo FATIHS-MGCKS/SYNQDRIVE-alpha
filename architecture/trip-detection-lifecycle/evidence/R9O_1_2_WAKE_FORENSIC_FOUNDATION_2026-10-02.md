@@ -54,3 +54,7 @@ Distinct persisted columns (no silent derivation):
 ## Next slice
 
 **R9O-3** — wire intake/coordinator/snapshot processor to `recordIntake` / lineage patch methods without changing wake decisions.
+
+## Related (non-blocking) policy input
+
+P2.5 standby **device** LV cadence (~8 h configured) vs API poll cadence — mandatory for subsequent APD work, **not** a change to R9O-1/R9O-2: [VDC P25 standby battery-voltage cadence addendum](../../vehicle-device-connectivity/evidence/P25_STANDBY_BATTERY_VOLTAGE_CADENCE_ADDENDUM_2026-10-02.md).
