@@ -75,7 +75,7 @@ async function assertIsolatedMetadataRevisionAppend(input: {
     where: { id: first.revision.id },
   });
   expect(reloadedFirst.scientificEvidenceJson).toEqual(firstJson);
-  expect(reloadedFirst.sourceRevisionFingerprint).toBe(first.sourceRevisionFingerprint);
+  expect(reloadedFirst.sourceRevisionFingerprint).toBe(first.revision.sourceRevisionFingerprint);
 }
 
 async function createHvSession(
