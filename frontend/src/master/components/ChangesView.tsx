@@ -36,6 +36,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-onboarding-vo5b-registry-billing-bridge-2026-10-01',
+    version: '4.9.2221',
+    title: 'Vehicle Onboarding VO-5B — registry lifecycle → billing quantity bridge',
+    summary: [
+      'Post-commit consumer: VehicleRegistryLifecycleOutbox VEHICLE_OFFBOARDED → Billing VEHICLE_DISCONNECTED (-1) at occurredAt with registry-scoped idempotency.',
+      'Billable vehicle policy excludes OFFBOARDED/ARCHIVED registry lifecycle; event-time boundary avoids post-offboard onVehicleRemoved trap; outbox worker + retry; no Stripe in registry consumer.',
+    ],
+    reason:
+      'VO-5A writes durable offboard facts but Billing quantity had no proven registry lifecycle bridge before HTTP cutover.',
+    previousBehavior:
+      'OFFBOARDED vehicles could remain billable; no registry outbox billing consumer; onVehicleRemoved probed post-transition billable state.',
+    details:
+      'billing-vehicle-registry-offboard.projection.ts; vehicle-registry-lifecycle-outbox.processor.ts; VO5B_REGISTRY_BILLING_BRIDGE.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Onboarding',
+    createdAt: '2026-10-02T03:30:00.000Z',
+  },
+  {
     id: 'vehicle-onboarding-vo5a1-integrity-seal-2026-10-01',
     version: '4.9.2220',
     title: 'Vehicle Onboarding VO-5A.1 — offboarding integrity seal',

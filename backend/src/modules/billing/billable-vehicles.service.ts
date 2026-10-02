@@ -8,6 +8,7 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   BillableVehicleExclusionReason,
+  BillableVehiclePolicyContext,
   BillableVehiclePolicyResult,
   evaluateBillableVehiclePolicy,
   ExcludedBillableVehiclePolicyRow,
@@ -51,10 +52,10 @@ export interface BillableVehiclesResult {
 export class BillableVehiclesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getBillableConnectedVehiclesForOrganization(
+  async buildPolicyContext(
     organizationId: string,
     asOf: Date = new Date(),
-  ): Promise<BillableVehiclesResult> {
+  ): Promise<BillableVehiclePolicyContext & { connectivityByVehicleId: Record<string, boolean> }> {
     const [org, baseItem, assignmentCount, vehicles] = await Promise.all([
       this.prisma.organization.findUnique({
         where: { id: organizationId },
@@ -83,6 +84,7 @@ export class BillableVehiclesService {
           vin: true,
           make: true,
           model: true,
+          registryLifecycle: true,
           providerConsents: {
             where: { status: VehicleProviderConsentStatus.ACTIVE },
             select: { id: true },
@@ -127,7 +129,7 @@ export class BillableVehiclesService {
         vehicle.providerConsents.length > 0 || vehicle.dataSourceLinks.length > 0;
     }
 
-    const policyResult = evaluateBillableVehiclePolicy({
+    return {
       organizationId,
       organizationActive: org?.status === OrganizationStatus.ACTIVE,
       baseSubscriptionItemId: baseItem?.id ?? null,
@@ -143,11 +145,19 @@ export class BillableVehiclesService {
         vin: vehicle.vin,
         make: vehicle.make,
         model: vehicle.model,
+        registryLifecycle: vehicle.registryLifecycle,
       })),
       assignments,
       connectivityByVehicleId,
-    });
+    };
+  }
 
+  async getBillableConnectedVehiclesForOrganization(
+    organizationId: string,
+    asOf: Date = new Date(),
+  ): Promise<BillableVehiclesResult> {
+    const context = await this.buildPolicyContext(organizationId, asOf);
+    const policyResult = evaluateBillableVehiclePolicy(context);
     return this.mapPolicyResult(policyResult);
   }
 

@@ -23,6 +23,7 @@
 | 2026-10-01 | **VO-4.10.1** — provider-aware combined pagination cursor + postgres pagination/multi-holder integrity seal | Raw mirror UUID cursors removed; COMBINED `m/p/i` cursor; no adoption semantic change |
 | 2026-10-01 | **VO-5A.1** — integrity seal: semantic outbox replay, assignment close, DIMO scheduler/processor OFFBOARDED gate, provider-link + HM canonical gates, consent revoke, actor in outbox v2 | PR #1874 |
 | 2026-10-01 | **VO-5A** — offboarding audit + internal `VehicleOffboardingService` (ACTIVE→OFFBOARDED + outbox); legacy deregister unchanged | Must deprecate hard-delete deregister before cutover |
+| 2026-10-01 | **VO-5B** — Registry `VEHICLE_OFFBOARDED` outbox → Billing quantity bridge; billable policy registry lifecycle; scheduler worker; no public HTTP / no Stripe in consumer | Billing projection idempotent; `VEHICLE_ACTIVATED` bridge deferred |
 
 ## VO-0B — REUSE-FIRST components (do not replace without VO-1+ proof)
 

@@ -76,6 +76,8 @@ import { VoiceRetentionScheduler } from './schedulers/voice-retention.scheduler'
 import { IamDataRetentionScheduler } from './schedulers/iam-data-retention.scheduler';
 import { IamDataRetentionModule } from '@modules/iam-data-retention/iam-data-retention.module';
 import { VehicleWarningGdprModule } from '@modules/vehicle-warning-gdpr/vehicle-warning-gdpr.module';
+import { VehicleRegistryLifecycleOutboxProcessor } from '@modules/vehicle-onboarding/registry-lifecycle/vehicle-registry-lifecycle-outbox.processor';
+import { VehicleRegistryLifecycleOutboxWorker } from '@modules/vehicle-onboarding/registry-lifecycle/vehicle-registry-lifecycle-outbox.worker';
 
 @Module({
   imports: [
@@ -182,6 +184,8 @@ import { VehicleWarningGdprModule } from '@modules/vehicle-warning-gdpr/vehicle-
     ReferenceCaptureExp021MaturationShadowRecoveryScheduler,
     ReferenceCaptureExp021FleetCoordinatorScheduler,
     ReferenceCaptureExp021CanaryLiveWindowActivationScheduler,
+    VehicleRegistryLifecycleOutboxProcessor,
+    VehicleRegistryLifecycleOutboxWorker,
   ],
 })
 export class WorkersModule {}

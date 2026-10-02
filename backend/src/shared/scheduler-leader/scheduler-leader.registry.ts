@@ -51,6 +51,7 @@ export const SINGLETON_GLOBAL_SCHEDULER_NAMES = [
   'booking_eligibility_recheck',
   'billing_domain_event_outbox',
   'billing_domain_event_email',
+  'vehicle_registry_lifecycle_outbox',
   'reference_capture_retention',
   'reference_capture_settlement_shadow_recovery',
   'reference_capture_exp021_maturation_shadow_recovery',

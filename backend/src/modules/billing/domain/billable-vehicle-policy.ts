@@ -9,7 +9,10 @@ export const BillableVehicleExclusionReason = {
   DEMO_ASSIGNMENT: 'DEMO_ASSIGNMENT',
   BILLING_EXCLUSION: 'BILLING_EXCLUSION',
   CROSS_TENANT: 'CROSS_TENANT',
+  /** Legacy operational archive timestamp (not registry lifecycle). */
   ARCHIVED: 'ARCHIVED',
+  REGISTRY_OFFBOARDED: 'REGISTRY_OFFBOARDED',
+  REGISTRY_ARCHIVED: 'REGISTRY_ARCHIVED',
 } as const;
 
 export type BillableVehicleExclusionReason =
@@ -34,6 +37,8 @@ export const NON_BILLABLE_ASSIGNMENT_REASON_CODES: ReadonlySet<string> = new Set
 export type VehicleConnectivityStatus = 'CONNECTED' | 'NOT_CONNECTED';
 export type VehicleBillingStatus = 'BILLABLE' | 'EXCLUDED';
 
+export type BillableVehicleRegistryLifecycle = 'ACTIVE' | 'OFFBOARDED' | 'ARCHIVED';
+
 export interface BillableVehiclePolicyVehicle {
   id: string;
   organizationId: string;
@@ -42,6 +47,7 @@ export interface BillableVehiclePolicyVehicle {
   make: string;
   model: string;
   archivedAt?: Date | null;
+  registryLifecycle?: BillableVehicleRegistryLifecycle;
 }
 
 export interface BillableVehiclePolicyAssignment {
@@ -198,6 +204,14 @@ function resolveVehicleExclusion(
 } | null {
   if (vehicle.organizationId !== context.organizationId) {
     return { reason: BillableVehicleExclusionReason.CROSS_TENANT };
+  }
+
+  if (vehicle.registryLifecycle === 'OFFBOARDED') {
+    return { reason: BillableVehicleExclusionReason.REGISTRY_OFFBOARDED };
+  }
+
+  if (vehicle.registryLifecycle === 'ARCHIVED') {
+    return { reason: BillableVehicleExclusionReason.REGISTRY_ARCHIVED };
   }
 
   if (vehicle.archivedAt != null) {
