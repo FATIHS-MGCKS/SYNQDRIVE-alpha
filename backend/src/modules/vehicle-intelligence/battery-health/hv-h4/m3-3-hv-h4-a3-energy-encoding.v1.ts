@@ -44,13 +44,20 @@ export function decodeM3_3HvH4EnergyAddedKwhV1(
   }
 }
 
-/** Compare mirror Float? column semantics to tagged scientific energy. */
+/** V1 policy: only FINITE scientific tags may appear in the nullable Float mirror column. */
+export function deriveEnergyAddedKwhDbMirrorFromTaggedV1(
+  tagged: M3_3HvH4TaggedEnergyAddedKwhV1,
+): number | null {
+  if (tagged.kind === 'FINITE') return tagged.value;
+  return null;
+}
+
+/** Compare mirror Float? column to tagged scientific energy under FINITE_ONLY_NON_FINITE_TO_NULL_V1. */
 export function energyAddedKwhMirrorMatchesTaggedV1(
   mirror: number | null | undefined,
   tagged: M3_3HvH4TaggedEnergyAddedKwhV1,
 ): boolean {
-  const decoded = decodeM3_3HvH4EnergyAddedKwhV1(tagged);
-  if (decoded == null && mirror == null) return true;
-  if (decoded == null || mirror == null) return false;
-  return Object.is(decoded, mirror);
+  const expected = deriveEnergyAddedKwhDbMirrorFromTaggedV1(tagged);
+  if (expected == null) return mirror == null;
+  return mirror != null && Number.isFinite(mirror) && Object.is(mirror, expected);
 }

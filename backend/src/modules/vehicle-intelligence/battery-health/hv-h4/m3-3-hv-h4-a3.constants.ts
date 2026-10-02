@@ -28,6 +28,10 @@ export const RAW_ROW_ID_STABILITY_ACROSS_PRUNE_REINGESTION_PROVEN = false as con
 export const DB_FLOAT_MIRROR_IS_FINGERPRINT_AUTHORITY = false as const;
 export const SCIENTIFIC_ENERGY_IDENTITY_AUTHORITY = 'TAGGED_CANONICAL_EVIDENCE_JSON' as const;
 
+/** Convenience DB mirror: finite values only; non-finite scientific tags mirror to SQL NULL. */
+export const M3_3_HV_H4_A3_DB_FLOAT_MIRROR_POLICY =
+  'FINITE_ONLY_NON_FINITE_TO_NULL_V1' as const;
+
 export const ACK_IDENTITY_MIRROR_VERIFY_REQUIRED_IN_A3_2 = true as const;
 
 export const M3_3_HV_H4_A3_SOURCE_REVISION_FINGERPRINT_HEX_PATTERN = /^[0-9a-f]{64}$/;

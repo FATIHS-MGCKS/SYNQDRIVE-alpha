@@ -1,7 +1,10 @@
 import type { HvChargeSession } from '@prisma/client';
 import type { HvChargeSessionMetadata } from '../hv-charge-session/hv-charge-session.types';
 import { M3_3_HV_H4_CHARGE_SESSION_EVIDENCE_REVISION_V1 } from './m3-3-hv-h4-a3.constants';
-import { encodeM3_3HvH4EnergyAddedKwhV1 } from './m3-3-hv-h4-a3-energy-encoding.v1';
+import {
+  deriveEnergyAddedKwhDbMirrorFromTaggedV1,
+  encodeM3_3HvH4EnergyAddedKwhV1,
+} from './m3-3-hv-h4-a3-energy-encoding.v1';
 import type {
   M3_3HvH4ChargeSessionEvidenceMirrorV1,
   M3_3HvH4ChargeSessionEvidenceScientificProjectionV1,
@@ -50,13 +53,15 @@ export function buildM3_3HvH4ChargeSessionEvidenceMirrorFromSessionV1(
   session: HvChargeSession,
 ): M3_3HvH4ChargeSessionEvidenceMirrorV1 {
   const projection = buildM3_3HvH4ChargeSessionEvidenceScientificProjectionV1(session);
-  return mirrorFromScientificProjectionV1(projection, session.energyAddedKwh);
+  return mirrorFromScientificProjectionV1(projection);
 }
 
 export function mirrorFromScientificProjectionV1(
   projection: M3_3HvH4ChargeSessionEvidenceScientificProjectionV1,
-  energyMirror: number | null | undefined,
 ): M3_3HvH4ChargeSessionEvidenceMirrorV1 {
+  const energyAddedKwh = deriveEnergyAddedKwhDbMirrorFromTaggedV1(
+    projection.energyAddedKwh,
+  );
   return {
     organizationId: projection.organizationId,
     vehicleId: projection.vehicleId,
@@ -68,7 +73,7 @@ export function mirrorFromScientificProjectionV1(
     startAt: new Date(projection.startAt),
     endAt: projection.endAt ? new Date(projection.endAt) : null,
     isOngoing: projection.isOngoing,
-    energyAddedKwh: energyMirror ?? null,
+    energyAddedKwh,
     providerObservedAt: projection.providerObservedAt
       ? new Date(projection.providerObservedAt)
       : null,

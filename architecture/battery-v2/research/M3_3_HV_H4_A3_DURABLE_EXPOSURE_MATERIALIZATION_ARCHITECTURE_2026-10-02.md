@@ -257,6 +257,18 @@ Exact future DB unique key shape is **A3.1** work. Invariant: many revisions may
 
 Future persistence must fail closed on fingerprint/canonicalization drift (D3 precedent): same versioned scientific unique identity, different canonical payload ⇒ **conflict** (`ProfileFingerprintPayloadMismatchError`-class behavior — pattern only).
 
+### 7.2B. Scientific energy authority vs DB float mirror (A3.1.2)
+
+| Constant | Value |
+|----------|-------|
+| **`SCIENTIFIC_ENERGY_IDENTITY_AUTHORITY`** | `TAGGED_CANONICAL_EVIDENCE_JSON` (`NULL` / `FINITE` / `NAN` / `POSITIVE_INFINITY` / `NEGATIVE_INFINITY`) |
+| **`DB_FLOAT_MIRROR_POLICY`** | `FINITE_ONLY_NON_FINITE_TO_NULL_V1` |
+| **`DB_FLOAT_MIRROR_IS_FINGERPRINT_AUTHORITY`** | `false` |
+
+The nullable `energy_added_kwh DOUBLE PRECISION` column is a **convenience mirror** for finite throughput queries only. Non-finite scientific tags mirror to SQL `NULL`; mirror `NULL` does **not** imply scientific `NULL`. Lossless special-value identity and fingerprint authority remain on tagged `scientificEvidenceJson` only. Prisma/Postgres float columns must **not** be relied on for NaN/±Infinity round-trip.
+
+**A3 observability boundary:** A3 captures the HvChargeSession state presented to the H4 application contract. Tagged JSON can represent non-finite JS values when supplied at the projection boundary; A3 does not recover values normalized or lost before that boundary.
+
 ### 7.3 When to append a revision
 
 Append when any **H4-relevant** fact changes, including:

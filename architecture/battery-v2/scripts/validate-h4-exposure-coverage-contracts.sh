@@ -57,6 +57,15 @@ grep -q 'A3_REVISION_WRITER_RUNTIME_REACHABLE = false' "$HV_H4/m3-3-hv-h4-a3.con
 grep -q 'computeM3_3HvH4ChargeSessionSourceRevisionFingerprintV1' "$HV_H4/m3-3-hv-h4-a3-charge-session-evidence-fingerprint.v1.ts" \
   || fail "missing A3 source revision fingerprint authority"
 
+grep -q 'DB_FLOAT_MIRROR_IS_FINGERPRINT_AUTHORITY = false' "$HV_H4/m3-3-hv-h4-a3.constants.ts" \
+  || fail "A3 float mirror must not be fingerprint authority"
+grep -q "M3_3_HV_H4_A3_DB_FLOAT_MIRROR_POLICY" "$HV_H4/m3-3-hv-h4-a3.constants.ts" \
+  || fail "missing A3 DB float mirror policy constant"
+grep -q 'FINITE_ONLY_NON_FINITE_TO_NULL_V1' "$HV_H4/m3-3-hv-h4-a3.constants.ts" \
+  || fail "A3 DB float mirror must use FINITE_ONLY_NON_FINITE_TO_NULL_V1"
+grep -q 'deriveEnergyAddedKwhDbMirrorFromTaggedV1' "$HV_H4/m3-3-hv-h4-a3-energy-encoding.v1.ts" \
+  || fail "missing A3 deriveEnergyAddedKwhDbMirrorFromTaggedV1"
+
 if grep -rq 'm3-3-hv-h4-a3' "$APP_MODULE" 2>/dev/null; then
   fail "A3 evidence modules must not be registered in app.module.ts"
 fi

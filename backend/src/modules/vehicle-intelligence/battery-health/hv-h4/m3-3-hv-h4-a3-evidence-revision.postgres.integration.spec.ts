@@ -13,10 +13,15 @@ import {
 import {
   buildM3_3HvH4ChargeSessionEvidenceMirrorFromSessionV1,
   buildM3_3HvH4ChargeSessionEvidenceScientificProjectionV1,
+  mirrorFromScientificProjectionV1,
 } from './m3-3-hv-h4-a3-charge-session-evidence-projection.v1';
-import { computeM3_3HvH4ChargeSessionSourceRevisionFingerprintV1 } from './m3-3-hv-h4-a3-charge-session-evidence-fingerprint.v1';
+import {
+  computeM3_3HvH4ChargeSessionSourceRevisionFingerprintV1,
+  scientificEvidenceJsonMatchesCanonicalFingerprintV1,
+} from './m3-3-hv-h4-a3-charge-session-evidence-fingerprint.v1';
+import { assertM3_3HvH4ChargeSessionEvidenceMirrorCoherentV1 } from './m3-3-hv-h4-a3-charge-session-evidence-mirror.v1';
 import type { M3_3HvH4ChargeSessionEvidenceScientificProjectionV1 } from './m3-3-hv-h4-a3-charge-session-evidence.types.v1';
-import { encodeM3_3HvH4EnergyAddedKwhV1 } from './m3-3-hv-h4-a3-energy-encoding.v1';
+import type { M3_3HvH4TaggedEnergyAddedKwhV1 } from './m3-3-hv-h4-a3-energy-encoding.v1';
 
 const integrationEnabled = process.env.BATTERY_HV_H4_REPORT_INTEGRATION === '1';
 
@@ -34,6 +39,38 @@ function revisionRowFromSession(
     sourceHvChargeSessionId: session.id,
     segmentFingerprint: session.segmentFingerprint,
     evidenceContractVersion: M3_3_HV_H4_CHARGE_SESSION_EVIDENCE_REVISION_V1,
+    sourceRevisionFingerprint,
+    scientificEvidenceJson: projection as unknown as Prisma.InputJsonValue,
+    dimoSegmentId: mirror.dimoSegmentId,
+    providerSegmentId: mirror.providerSegmentId,
+    source: mirror.source,
+    startAt: mirror.startAt,
+    endAt: mirror.endAt,
+    isOngoing: mirror.isOngoing,
+    energyAddedKwh: mirror.energyAddedKwh,
+    providerObservedAt: mirror.providerObservedAt,
+    addedEnergyProvenance: mirror.addedEnergyProvenance,
+    qualityStatus: mirror.qualityStatus,
+    supersededBySegmentFingerprint: mirror.supersededBySegmentFingerprint,
+    startedBeforeRange: mirror.startedBeforeRange,
+    sourceCreatedAt: mirror.sourceCreatedAt,
+    sourceReceivedAt: mirror.sourceReceivedAt,
+    sourceUpdatedAt: mirror.sourceUpdatedAt,
+  };
+}
+
+function revisionRowFromProjection(
+  projection: M3_3HvH4ChargeSessionEvidenceScientificProjectionV1,
+) {
+  const sourceRevisionFingerprint =
+    computeM3_3HvH4ChargeSessionSourceRevisionFingerprintV1(projection);
+  const mirror = mirrorFromScientificProjectionV1(projection);
+  return {
+    organizationId: projection.organizationId,
+    vehicleId: projection.vehicleId,
+    sourceHvChargeSessionId: projection.sourceHvChargeSessionId,
+    segmentFingerprint: projection.segmentFingerprint,
+    evidenceContractVersion: projection.evidenceContractVersion,
     sourceRevisionFingerprint,
     scientificEvidenceJson: projection as unknown as Prisma.InputJsonValue,
     dimoSegmentId: mirror.dimoSegmentId,
@@ -211,7 +248,7 @@ async function createHvSession(
       expect(before).toBe(1);
       await prisma.$executeRaw`
         DELETE FROM vehicles
-        WHERE id = ${vehicleId}::uuid
+        WHERE id = ${vehicleId}::text
       `;
       const after = await prisma.batteryHvChargeSessionEvidenceRevision.count({
         where: { vehicleId },
@@ -314,44 +351,86 @@ async function createHvSession(
       expect(acks.length).toBe(2);
     });
 
-    it('M) DOUBLE PRECISION energy mirror round-trips special floats', async () => {
-      const cases: { label: string; value: number; assert: (v: number | null) => void }[] = [
-        {
-          label: 'NaN',
-          value: Number.NaN,
-          assert: (v) => expect(Number.isNaN(v)).toBe(true),
-        },
-        {
-          label: '+Infinity',
-          value: Number.POSITIVE_INFINITY,
-          assert: (v) => expect(v).toBe(Number.POSITIVE_INFINITY),
-        },
-        {
-          label: '-Infinity',
-          value: Number.NEGATIVE_INFINITY,
-          assert: (v) => expect(v).toBe(Number.NEGATIVE_INFINITY),
-        },
+    it('M) evidence ledger: tagged scientific JSON authority + finite-only float mirror', async () => {
+      const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
+      const session = await createHvSession(prisma, { organizationId, vehicleId });
+      const baseProjection =
+        buildM3_3HvH4ChargeSessionEvidenceScientificProjectionV1(session);
+
+      const finiteProjection: M3_3HvH4ChargeSessionEvidenceScientificProjectionV1 = {
+        ...baseProjection,
+        segmentFingerprint: `fp-finite-${randomUUID()}`,
+        energyAddedKwh: { kind: 'FINITE', value: 12.34 },
+      };
+      const finiteRev = await prisma.batteryHvChargeSessionEvidenceRevision.create({
+        data: revisionRowFromProjection(finiteProjection),
+      });
+      const finiteLoaded = await prisma.batteryHvChargeSessionEvidenceRevision.findUnique({
+        where: { id: finiteRev.id },
+      });
+      expect(finiteLoaded?.energyAddedKwh).toBe(12.34);
+      const finiteJson =
+        finiteLoaded!.scientificEvidenceJson as M3_3HvH4ChargeSessionEvidenceScientificProjectionV1;
+      expect(finiteJson.energyAddedKwh).toEqual({ kind: 'FINITE', value: 12.34 });
+
+      const nullProjection: M3_3HvH4ChargeSessionEvidenceScientificProjectionV1 = {
+        ...baseProjection,
+        segmentFingerprint: `fp-null-${randomUUID()}`,
+        energyAddedKwh: { kind: 'NULL' },
+      };
+      const nullRev = await prisma.batteryHvChargeSessionEvidenceRevision.create({
+        data: revisionRowFromProjection(nullProjection),
+      });
+      const nullLoaded = await prisma.batteryHvChargeSessionEvidenceRevision.findUnique({
+        where: { id: nullRev.id },
+      });
+      expect(nullLoaded?.energyAddedKwh).toBeNull();
+      expect(
+        (nullLoaded!.scientificEvidenceJson as M3_3HvH4ChargeSessionEvidenceScientificProjectionV1)
+          .energyAddedKwh,
+      ).toEqual({ kind: 'NULL' });
+
+      const nonFiniteCases: {
+        label: string;
+        tagged: M3_3HvH4TaggedEnergyAddedKwhV1;
+      }[] = [
+        { label: 'NaN', tagged: { kind: 'NAN' } },
+        { label: '+Infinity', tagged: { kind: 'POSITIVE_INFINITY' } },
+        { label: '-Infinity', tagged: { kind: 'NEGATIVE_INFINITY' } },
       ];
 
-      for (const { label, value, assert } of cases) {
-        const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
-        const session = await createHvSession(prisma, {
-          organizationId,
-          vehicleId,
-          segmentFingerprint: `fp-float-${label}-${randomUUID()}`,
-          energyAddedKwh: value,
-        });
+      for (const { label, tagged } of nonFiniteCases) {
+        const projection: M3_3HvH4ChargeSessionEvidenceScientificProjectionV1 = {
+          ...baseProjection,
+          segmentFingerprint: `fp-${label}-${randomUUID()}`,
+          energyAddedKwh: tagged,
+        };
         const rev = await prisma.batteryHvChargeSessionEvidenceRevision.create({
-          data: revisionRowFromSession(session),
+          data: revisionRowFromProjection(projection),
         });
         const loaded = await prisma.batteryHvChargeSessionEvidenceRevision.findUnique({
           where: { id: rev.id },
-          select: { energyAddedKwh: true, scientificEvidenceJson: true },
+          select: {
+            energyAddedKwh: true,
+            scientificEvidenceJson: true,
+            sourceRevisionFingerprint: true,
+          },
         });
         expect(loaded).not.toBeNull();
-        assert(loaded!.energyAddedKwh);
-        const json = loaded!.scientificEvidenceJson as M3_3HvH4ChargeSessionEvidenceScientificProjectionV1;
-        expect(json.energyAddedKwh).toEqual(encodeM3_3HvH4EnergyAddedKwhV1(value));
+        expect(loaded!.energyAddedKwh).toBeNull();
+        const json =
+          loaded!.scientificEvidenceJson as M3_3HvH4ChargeSessionEvidenceScientificProjectionV1;
+        expect(json.energyAddedKwh).toEqual(tagged);
+        expect(
+          scientificEvidenceJsonMatchesCanonicalFingerprintV1({
+            scientificEvidenceJson: json,
+            sourceRevisionFingerprint: loaded!.sourceRevisionFingerprint,
+          }),
+        ).toBe(true);
+        assertM3_3HvH4ChargeSessionEvidenceMirrorCoherentV1({
+          projection: json,
+          mirror: mirrorFromScientificProjectionV1(json),
+        });
       }
     });
   },

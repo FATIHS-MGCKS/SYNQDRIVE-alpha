@@ -38,6 +38,27 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-10-02 — M3.3-HV-H4-A3.1.2 finite-only DB float mirror closure
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | A3.1 assumed Prisma `Float` mirror could round-trip NaN/±Infinity; vehicle cascade postgres test used `::uuid` on TEXT `vehicles.id` |
+| **OBSERVATION** | CI postgres suite disproved special-float mirror round-trip; tagged JSON remains authoritative |
+| **HYPOTHESIS** | Finite-only mirror with tagged JSON authority preserves fingerprint + query ergonomics without schema change |
+| **CHANGE** | `FINITE_ONLY_NON_FINITE_TO_NULL_V1` mirror policy; derive mirror from tagged projection only; coherence validator + postgres ledger tests; vehicle DELETE `::text` |
+| **WHY** | Pre-merge A3.1 contract hardening without schema/migration change |
+| **EXPECTED_EFFECT** | Scientific fingerprint unchanged; finite mirror query column stays valid; non-finite tags durable in JSON with mirror null |
+| **VALIDATION** | test:battery:v2:hv-h4; hv-h4 postgres CI; H4 static contract validator |
+| **OBSERVED_EFFECT** | Pending CI |
+| **NON_EFFECTS** | No runtime writer, retention, backfill, schema/migration edits |
+| **REGRESSIONS_OR_TRADEOFFS** | Mirror null is ambiguous vs scientific null; consumers must read tagged JSON for special values |
+| **REMAINING_GAPS** | A3.2 writer still required |
+| **DECISION_STATUS** | PROPOSED (ENGINEERING) |
+| **AFFECTED_GRAPH** | A3.1 pure contract only |
+| **EVIDENCE** | `m3-3-hv-h4-a3-energy-encoding.v1.ts`, mirror/projection modules, postgres integration spec |
+
+---
+
 ## CL-2026-10-02 — M3.3-HV-H4-A3.1 charge session evidence schema + pure contract
 
 | Field | Value |
