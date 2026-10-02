@@ -1,4 +1,4 @@
-import type { HvChargeSession } from '@prisma/client';
+import type { M3_3HvH4ChargeSessionScientificRowV1 } from './m3-3-hv-h4-charge-session-scientific-row.v1';
 import type { HvChargeSessionMetadata } from '../hv-charge-session/hv-charge-session.types';
 import { HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE } from '../hv-charge-session/hv-charge-session.types';
 import {
@@ -20,7 +20,7 @@ export type M3_3HvH4ChargeSessionRowForA2Classification =
   };
 
 export function extractNativeProviderSegmentId(
-  session: Pick<HvChargeSession, 'metadata'>,
+  session: Pick<M3_3HvH4ChargeSessionScientificRowV1, 'metadata'>,
 ): string | null {
   const meta = (session.metadata ?? {}) as unknown as HvChargeSessionMetadata;
   const providerId = meta.providerSegmentId;
@@ -29,7 +29,7 @@ export function extractNativeProviderSegmentId(
 }
 
 function classifySessionKnowledgeAsOfA2(input: {
-  session: Pick<HvChargeSession, 'createdAt' | 'receivedAt' | 'updatedAt'>;
+  session: Pick<M3_3HvH4ChargeSessionScientificRowV1, 'createdAt' | 'receivedAt' | 'updatedAt'>;
   evaluationAt: Date;
 }): { knowable: true } | { knowable: false; reasonCodes: string[] } {
   const reasons: string[] = [];
@@ -116,8 +116,8 @@ export function classifyM3_3HvH4ChargeSessionA2Contribution(input: {
 }
 
 export function sortM3_3HvH4ChargeSessionsCanonical(
-  sessions: HvChargeSession[],
-): HvChargeSession[] {
+  sessions: M3_3HvH4ChargeSessionScientificRowV1[],
+): M3_3HvH4ChargeSessionScientificRowV1[] {
   return [...sessions].sort((a, b) => {
     const startDiff = a.startAt.getTime() - b.startAt.getTime();
     if (startDiff !== 0) return startDiff;
@@ -130,8 +130,8 @@ export function sortM3_3HvH4ChargeSessionsCanonical(
 }
 
 export function hvChargeSessionsStrictlyOverlap(
-  a: Pick<HvChargeSession, 'startAt' | 'endAt'>,
-  b: Pick<HvChargeSession, 'startAt' | 'endAt'>,
+  a: Pick<M3_3HvH4ChargeSessionScientificRowV1, 'startAt' | 'endAt'>,
+  b: Pick<M3_3HvH4ChargeSessionScientificRowV1, 'startAt' | 'endAt'>,
 ): boolean {
   if (!a.endAt || !b.endAt) return false;
   return (
@@ -141,7 +141,7 @@ export function hvChargeSessionsStrictlyOverlap(
 
 /** Provider session identity = metadata.providerSegmentId (not dimoSegmentId fingerprint). */
 export function detectDuplicateProviderSegmentIdentity(
-  sessions: HvChargeSession[],
+  sessions: M3_3HvH4ChargeSessionScientificRowV1[],
 ): boolean {
   const byProviderId = new Map<string, string>();
   for (const session of sessions) {
@@ -158,7 +158,9 @@ export function detectDuplicateProviderSegmentIdentity(
   return false;
 }
 
-export function detectOverlappingEligibleNativeSessions(sessions: HvChargeSession[]): boolean {
+export function detectOverlappingEligibleNativeSessions(
+  sessions: M3_3HvH4ChargeSessionScientificRowV1[],
+): boolean {
   for (let i = 0; i < sessions.length; i += 1) {
     for (let j = i + 1; j < sessions.length; j += 1) {
       if (hvChargeSessionsStrictlyOverlap(sessions[i]!, sessions[j]!)) {

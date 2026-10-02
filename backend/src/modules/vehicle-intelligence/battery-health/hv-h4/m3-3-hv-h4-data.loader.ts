@@ -11,6 +11,7 @@ import {
 import type { M3_3HvH4LoadedDataV1 } from './m3-3-hv-h4-loaded-data.types';
 import type { M3_3HvH4GroundTruthRow } from './m3-3-hv-h4-lifecycle.util';
 import type { HvH4ReadOnlyTx } from './m3-3-hv-h4-readonly-transaction';
+import { hvChargeSessionAsM3_3HvH4ScientificRowV1 } from './m3-3-hv-h4-charge-session-scientific-row.v1';
 
 const MS_PER_DAY = 86_400_000;
 
@@ -66,7 +67,7 @@ async function loadChargeSessionsPaginated(
     if (page.length === 0) {
       break;
     }
-    sessions.push(...page);
+    sessions.push(...page.map(hvChargeSessionAsM3_3HvH4ScientificRowV1));
     skip += page.length;
     if (page.length < take) {
       break;
@@ -161,19 +162,19 @@ async function loadObservedTimestamps(
   };
 }
 
-export async function loadM3_3HvH4DataV1(
+export async function loadM3_3HvH4NonChargeSessionDataV1(
   tx: HvH4ReadOnlyTx,
-  input: M3_3HvH4ReportInputV1,
+  organizationId: string,
+  vehicleId: string,
   evaluationAt: Date,
-): Promise<M3_3HvH4LoadedDataV1> {
-  await assertVehicleInOrganization(tx, input.organizationId, input.vehicleId);
-
+): Promise<
+  Omit<
+    M3_3HvH4LoadedDataV1,
+    'organizationId' | 'vehicleId' | 'evaluationAt' | 'chargeSessions' | 'chargeSessionSourceLoad'
+  >
+> {
   const groundTruthEvents = (await tx.batteryGroundTruthEvent.findMany({
-    where: m3_3HvH2GroundTruthEventsWhereClause(
-      input.organizationId,
-      input.vehicleId,
-      evaluationAt,
-    ),
+    where: m3_3HvH2GroundTruthEventsWhereClause(organizationId, vehicleId, evaluationAt),
     orderBy: [{ effectiveAt: 'asc' }, { createdAt: 'asc' }],
     include: {
       revocations: true,
@@ -181,20 +182,7 @@ export async function loadM3_3HvH4DataV1(
     },
   })) as M3_3HvH4GroundTruthRow[];
 
-  const { sessions: chargeSessions, sourceLoad: chargeSessionSourceLoad } =
-    await loadChargeSessionsPaginated(
-      tx,
-      input.organizationId,
-      input.vehicleId,
-      evaluationAt,
-    );
-
-  const timestamps = await loadObservedTimestamps(
-    tx,
-    input.organizationId,
-    input.vehicleId,
-    evaluationAt,
-  );
+  const timestamps = await loadObservedTimestamps(tx, organizationId, vehicleId, evaluationAt);
 
   const retentionCutoffs = {
     hvChargeSessionEarliestRemaining: new Date(
@@ -208,13 +196,40 @@ export async function loadM3_3HvH4DataV1(
   };
 
   return {
+    groundTruthEvents,
+    ...timestamps,
+    retentionCutoffs,
+  };
+}
+
+export async function loadM3_3HvH4DataV1(
+  tx: HvH4ReadOnlyTx,
+  input: M3_3HvH4ReportInputV1,
+  evaluationAt: Date,
+): Promise<M3_3HvH4LoadedDataV1> {
+  await assertVehicleInOrganization(tx, input.organizationId, input.vehicleId);
+
+  const { sessions: chargeSessions, sourceLoad: chargeSessionSourceLoad } =
+    await loadChargeSessionsPaginated(
+      tx,
+      input.organizationId,
+      input.vehicleId,
+      evaluationAt,
+    );
+
+  const rest = await loadM3_3HvH4NonChargeSessionDataV1(
+    tx,
+    input.organizationId,
+    input.vehicleId,
+    evaluationAt,
+  );
+
+  return {
     organizationId: input.organizationId,
     vehicleId: input.vehicleId,
     evaluationAt,
-    groundTruthEvents,
     chargeSessions,
     chargeSessionSourceLoad,
-    ...timestamps,
-    retentionCutoffs,
+    ...rest,
   };
 }

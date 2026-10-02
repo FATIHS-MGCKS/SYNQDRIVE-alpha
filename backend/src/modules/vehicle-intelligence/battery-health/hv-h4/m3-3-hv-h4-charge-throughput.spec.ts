@@ -67,18 +67,10 @@ function nativeSession(
   return {
     organizationId: 'org-1',
     vehicleId: 'veh-1',
-    measurementSessionId: null,
     segmentFingerprint: `fp-${partial.id}`,
     dimoSegmentId: `dimo-${partial.id}`,
     source: HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE,
-    startSocPercent: 20,
-    endSocPercent: 80,
-    startEnergyKwh: 10,
-    endEnergyKwh: 40,
-    deltaSocPercent: 60,
     isOngoing: false,
-    quality: null,
-    idempotencyKey: `k-${partial.id}`,
     providerObservedAt: partial.endAt,
     receivedAt: partial.endAt,
     metadata: {

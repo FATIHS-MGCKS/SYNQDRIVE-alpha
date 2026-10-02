@@ -1,12 +1,12 @@
 import { createHash } from 'crypto';
-import type { HvChargeSession } from '@prisma/client';
 import type { HvChargeSessionMetadata } from '../hv-charge-session/hv-charge-session.types';
+import type { M3_3HvH4ChargeSessionScientificRowV1 } from './m3-3-hv-h4-charge-session-scientific-row.v1';
 import type {
   M3_3HvH4ChargeThroughputCompositionStatus,
   M3_3HvH4ChargeThroughputSessionClassificationV1,
 } from './m3-3-hv-h4-charge-throughput.types';
 
-function canonicalSessionIdentity(session: HvChargeSession): {
+function canonicalSessionIdentity(session: M3_3HvH4ChargeSessionScientificRowV1): {
   sessionId: string;
   segmentFingerprint: string;
   canonicalDimoSegmentFingerprintId: string | null;
@@ -68,8 +68,8 @@ export function buildM3_3HvH4SegmentSourceFingerprintV1(input: {
     sourceTruncated: boolean;
     hardLimitReached: boolean;
   };
-  includedSessions: HvChargeSession[];
-  conflictCandidateSessions: HvChargeSession[];
+  includedSessions: M3_3HvH4ChargeSessionScientificRowV1[];
+  conflictCandidateSessions: M3_3HvH4ChargeSessionScientificRowV1[];
   segmentSessionClassifications: M3_3HvH4ChargeThroughputSessionClassificationV1[];
 }): string {
   const segmentReasonCodes = [...input.segmentReasonCodes].sort();

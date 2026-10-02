@@ -80,4 +80,25 @@ if grep -rq 'm3-3-hv-h4-a3' "$APP_MODULE" 2>/dev/null; then
   fail "A3 evidence modules must not be registered in app.module.ts"
 fi
 
+grep -q 'loadM3_3HvH4DurableModeAChargeSessionsV1' "$HV_H4/m3-3-hv-h4-a3-durable-charge-session-loader.v1.ts" \
+  || fail "missing A3.3 MODE_A durable charge-session loader"
+grep -q "A3_3_TARGET_MODE = 'A2_V1_PARITY'" "$HV_H4/m3-3-hv-h4-a3.constants.ts" \
+  || fail "missing A3.3 MODE_A target authority"
+grep -q 'TARGET_1_PRELOAD_KNOWLEDGE_FILTER = false' "$HV_H4/m3-3-hv-h4-a3.constants.ts" \
+  || fail "A3.3 must not preload-filter knowledge timestamps"
+grep -q 'A3_3_MODE_B_TRUE_HISTORICAL_ASOF_IMPLEMENTED = false' "$HV_H4/m3-3-hv-h4-a3.constants.ts" \
+  || fail "MODE_B must not be implemented in A3.3"
+grep -q 'A3_3_DURABLE_LOADER_RUNTIME_REACHABLE = false' "$HV_H4/m3-3-hv-h4-a3.constants.ts" \
+  || fail "A3.3 durable loader must not be automatic runtime"
+grep -q 'applyM3_3HvH4ChargeSessionSourcePopulationV1' "$HV_H4/m3-3-hv-h4-charge-session-source-population.v1.ts" \
+  || fail "missing shared A1 population helper (hard limit after collapse)"
+grep -q 'collapseModeAEffectiveRevisionsV1' "$HV_H4/m3-3-hv-h4-a3-mode-a-effective-revision.v1.ts" \
+  || fail "missing MODE_A revision collapse"
+grep -q 'reconstructM3_3HvH4ChargeSessionScientificRowFromRevisionV1' "$HV_H4/m3-3-hv-h4-a3-durable-revision-reconstruction.v1.ts" \
+  || fail "missing scientific JSON reconstruction"
+grep -q 'decodeM3_3HvH4EnergyAddedKwhV1' "$HV_H4/m3-3-hv-h4-a3-durable-revision-reconstruction.v1.ts" \
+  || fail "durable reconstruction must decode tagged energy from JSON"
+grep -q 'M3_3HvH4ChargeSessionScientificRowV1' "$HV_H4/m3-3-hv-h4-charge-session-scientific-row.v1.ts" \
+  || fail "missing H4 scientific row contract"
+
 echo "M3.3-HV-H4 domain contracts: OK"
