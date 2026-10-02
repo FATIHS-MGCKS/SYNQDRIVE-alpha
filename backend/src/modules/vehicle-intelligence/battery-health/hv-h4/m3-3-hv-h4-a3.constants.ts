@@ -1,4 +1,4 @@
-/** M3.3-HV-H4-A3 — durable charge-session source evidence (schema + pure contract; no runtime writer). */
+/** M3.3-HV-H4-A3 — durable charge-session source evidence (A3.1 schema + A3.2 writer; no automatic runtime). */
 export const M3_3_HV_H4_CHARGE_SESSION_EVIDENCE_REVISION_V1 =
   'M3_3_HV_H4_CHARGE_SESSION_EVIDENCE_REVISION_V1' as const;
 

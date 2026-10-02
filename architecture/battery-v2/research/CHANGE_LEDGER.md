@@ -38,6 +38,27 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## CL-2026-10-02 — M3.3-HV-H4-A3.2 idempotent evidence revision + ACK writer
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | A3.1 schema + pure projection/fingerprint/mirror contract only; no persistence writer |
+| **OBSERVATION** | Durable H4 source evidence requires append-only idempotent revision + revision-scoped ACK convergence under concurrency |
+| **HYPOTHESIS** | PostgreSQL `INSERT … ON CONFLICT DO NOTHING` + fail-closed verify matches D3 materialization pattern without mutating revisions |
+| **CHANGE** | `M3_3HvH4ChargeSessionEvidenceMaterializationRepository` + writer service; unit + postgres writer tests; static H4 validator guards |
+| **WHY** | Enable testable/internal persistence before any automatic runtime (A3.5) or retention gate (A3.4) |
+| **EXPECTED_EFFECT** | Idempotent CREATED/ALREADY_EXISTS outcomes; typed fail-closed conflicts; ACK identity mirror verify |
+| **VALIDATION** | test:battery:v2:hv-h4; hv-h4 postgres CI; prisma validate; H4/graph/registry validators |
+| **OBSERVED_EFFECT** | Pending CI |
+| **NON_EFFECTS** | No AppModule registration, scheduler, retention hook, backfill, A3.3 loader |
+| **REGRESSIONS_OR_TRADEOFFS** | Writer callable in tests/internal code only; runtime flags remain false |
+| **REMAINING_GAPS** | A3.3 MODE_A loader equivalence; A3.4 retention ACK gate enforcement; A3.5 reconciliation scheduler |
+| **DECISION_STATUS** | PROPOSED (ENGINEERING) |
+| **AFFECTED_GRAPH** | A3 persistence slice (writer authority) |
+| **EVIDENCE** | `m3-3-hv-h4-a3-charge-session-evidence-materialization.repository.ts`, writer postgres integration spec |
+
+---
+
 ## CL-2026-10-02 — M3.3-HV-H4-A3.1.2 finite-only DB float mirror closure
 
 | Field | Value |
