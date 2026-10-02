@@ -419,25 +419,40 @@ async function persistAllSessions(
         name: string;
         metadata: Record<string, unknown>;
         expectedEligibility: string;
-        expectedReason: string;
+        expectedThroughputReason?: string;
+        expectedCoverageGapReason?: string;
+        assertRevisionMirror?: (rev: {
+          qualityStatus: string | null;
+          supersededBySegmentFingerprint: string | null;
+          startedBeforeRange: boolean;
+        }) => void;
       }> = [
         {
           name: 'quality',
           metadata: { qualityStatus: HV_CHARGE_SESSION_QUALITY_STATUS.INVALID },
           expectedEligibility: 'INELIGIBLE_QUALITY',
-          expectedReason: 'SESSION_QUALITY_INELIGIBLE',
+          expectedThroughputReason: 'SESSION_QUALITY_INELIGIBLE',
+          assertRevisionMirror: (rev) => {
+            expect(rev.qualityStatus).toBe(HV_CHARGE_SESSION_QUALITY_STATUS.INVALID);
+          },
         },
         {
           name: 'superseded',
           metadata: { supersededBySegmentFingerprint: 'native-fp' },
           expectedEligibility: 'INELIGIBLE_SUPERSEDED',
-          expectedReason: 'SESSION_SUPERSEDED',
+          expectedThroughputReason: 'SESSION_SUPERSEDED',
+          assertRevisionMirror: (rev) => {
+            expect(rev.supersededBySegmentFingerprint).toBe('native-fp');
+          },
         },
         {
           name: 'startedBeforeRange',
           metadata: { startedBeforeRange: true },
           expectedEligibility: 'ELIGIBLE_CONTRIBUTOR',
-          expectedReason: 'SESSION_STARTED_BEFORE_QUERY_RANGE',
+          expectedCoverageGapReason: 'SESSION_STARTED_BEFORE_QUERY_RANGE',
+          assertRevisionMirror: (rev) => {
+            expect(rev.startedBeforeRange).toBe(true);
+          },
         },
       ];
       for (const testCase of cases) {
@@ -448,6 +463,10 @@ async function persistAllSessions(
           metadata: testCase.metadata,
         });
         await writer.persistFromHvChargeSession(session);
+        const rev = await prisma.batteryHvChargeSessionEvidenceRevision.findFirstOrThrow({
+          where: { sourceHvChargeSessionId: session.id },
+        });
+        testCase.assertRevisionMirror?.(rev);
         const bundle = await runM3_3HvH4LiveDurableModeAParityV1(
           prisma,
           { organizationId, vehicleId },
@@ -457,7 +476,23 @@ async function persistAllSessions(
           (c) => c.sessionId === session.id,
         );
         expect(cls?.contributionEligibility).toBe(testCase.expectedEligibility);
-        expect(cls?.reasonCodes).toContain(testCase.expectedReason);
+        if (testCase.expectedThroughputReason) {
+          expect(cls?.reasonCodes).toContain(testCase.expectedThroughputReason);
+        }
+        if (testCase.expectedCoverageGapReason) {
+          const liveChargeAxis = bundle.live.coverage.axes.find(
+            (a) => a.axis === 'CHARGE_THROUGHPUT_KWH',
+          );
+          const durableChargeAxis = bundle.durable.coverage.axes.find(
+            (a) => a.axis === 'CHARGE_THROUGHPUT_KWH',
+          );
+          expect(liveChargeAxis?.gapSummary.reasonCodes).toContain(
+            testCase.expectedCoverageGapReason,
+          );
+          expect(durableChargeAxis?.gapSummary.reasonCodes).toContain(
+            testCase.expectedCoverageGapReason,
+          );
+        }
       }
     });
 
