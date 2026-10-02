@@ -268,6 +268,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-29T03:00:00.000Z',
   },
   {
+    id: 'di-exp021-s4f7l-tiny-config-staging-attempt-2026-10-02',
+    version: '4.9.2217',
+    title: 'Driving Intelligence — EXP-021 S4F-7L Production Tiny 3-key staging attempt (rollback)',
+    summary: [
+      'Human-authorized DRY_RUN=0 staging: exact 3-key backend.env write + backup succeeded; Replica A PRIMARY_STAGING runtime proof failed.',
+      'Wrapper recovery restored pre-pin backend.env bytes and restarted A→B; GLOBAL KILLED and S4 zero-state preserved.',
+      'Staging authorization consumed; new engineering + human grant required before retry.',
+    ],
+    reason:
+      'Execute bounded Production config staging for KS MS 661 NOT_BEFORE + allowlists without Tiny activation.',
+    previousBehavior:
+      'Three staging keys absent from Production backend.env; dry-run only evidence (S4F-7K).',
+    details:
+      'architecture/drivingintelligence/evidence/EXP021_S4F7L_PRODUCTION_TINY_CONFIG_STAGING.md',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-02T21:35:00.000Z',
+  },
+  {
     id: 'di-exp021-s4f7k-tiny-staging-dry-run-2026-10-02',
     version: '4.9.2216',
     title: 'Driving Intelligence — EXP-021 S4F-7K Production Tiny config staging dry run',
