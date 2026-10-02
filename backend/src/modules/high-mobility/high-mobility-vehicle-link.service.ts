@@ -8,6 +8,7 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import type { HmAvailabilityDto } from './dto/high-mobility.dto';
 import { HmSignalUsageService } from './high-mobility-signal-usage.service';
+import { isVehicleRegistryOperationalActive } from '@modules/vehicle-onboarding/registry/vehicle-registry-operational.util';
 
 /**
  * Manages the link between a SynqDrive registered vehicle and an approved HM vehicle record.
@@ -75,6 +76,16 @@ export class HighMobilityVehicleLinkService {
     if (hmRecord.clearanceStatus !== 'APPROVED') {
       throw new BadRequestException(
         `HM vehicle is not approved (status: ${hmRecord.clearanceStatus})`,
+      );
+    }
+
+    const targetVehicle = await this.prisma.vehicle.findUnique({
+      where: { id: synqdriveVehicleId },
+      select: { registryLifecycle: true },
+    });
+    if (!isVehicleRegistryOperationalActive(targetVehicle?.registryLifecycle)) {
+      throw new ConflictException(
+        `Vehicle ${synqdriveVehicleId} registry lifecycle does not allow HM link activation`,
       );
     }
 
@@ -210,6 +221,16 @@ export class HighMobilityVehicleLinkService {
     if (hmRecord.clearanceStatus !== 'APPROVED') {
       throw new BadRequestException(
         `HM vehicle is not approved (status: ${hmRecord.clearanceStatus})`,
+      );
+    }
+
+    const targetVehicle = await this.prisma.vehicle.findUnique({
+      where: { id: synqdriveVehicleId },
+      select: { registryLifecycle: true },
+    });
+    if (!isVehicleRegistryOperationalActive(targetVehicle?.registryLifecycle)) {
+      throw new ConflictException(
+        `Vehicle ${synqdriveVehicleId} registry lifecycle does not allow HM link activation`,
       );
     }
 

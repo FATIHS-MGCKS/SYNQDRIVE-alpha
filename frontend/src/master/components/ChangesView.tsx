@@ -36,6 +36,43 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-onboarding-vo5a1-integrity-seal-2026-10-01',
+    version: '4.9.2220',
+    title: 'Vehicle Onboarding VO-5A.1 — offboarding integrity seal',
+    summary: [
+      'Unified semantic idempotency replay for VEHICLE_OFFBOARDED (reason/org/vehicle/payload version) across all replay paths.',
+      'Fail-closed open org-assignment close; DIMO scheduler/processor registry ACTIVE gates; provider-link + HM canonical ingest gates; local consent revoke on offboard; outbox payload v2 actorUserId.',
+    ],
+    reason:
+      'VO-5A review found replay asymmetry, assignment updateMany risk, and OFFBOARDED vehicles still eligible for DIMO canonical telemetry.',
+    previousBehavior:
+      'Replay accepted mismatched reason; broad assignment updateMany; DIMO poll pipeline ignored registryLifecycle OFFBOARDED.',
+    details:
+      'vehicle-offboarding.service.ts; dimo-snapshot.scheduler.ts; dimo-snapshot.processor.ts; VO5A_OFFBOARDING_FOUNDATION.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Onboarding',
+    createdAt: '2026-10-01T22:45:00.000Z',
+  },
+  {
+    id: 'vehicle-onboarding-vo5a-offboarding-foundation-2026-10-01',
+    version: '4.9.2219',
+    title: 'Vehicle Onboarding VO-5A — offboarding foundation audit (internal)',
+    summary: [
+      'Audited destructive VehiclesService.deregister (hard delete + billing pre-hook); classified must-deprecate-before-cutover.',
+      'Internal VehicleOffboardingService: ACTIVE→OFFBOARDED, org assignment close, provider link deactivation, VEHICLE_OFFBOARDED outbox — no HTTP, legacy deregister unchanged.',
+      'PostgreSQL proofs: history retention, idempotent/concurrent offboard, VO-4.10 candidate suppression for offboarded mirrors.',
+    ],
+    reason:
+      'Registry lifecycle requires non-destructive offboarding with transactional vehicle.offboarded facts before replacing Master Admin deregister.',
+    previousBehavior:
+      'Only legacy deregister deleted Vehicle rows and cascaded operational history; no governed OFFBOARDED registry path.',
+    details:
+      'backend/src/modules/vehicle-onboarding/services/vehicle-offboarding.service.ts; architecture/vehicle-onboarding/evidence/VO5A_OFFBOARDING_FOUNDATION.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Onboarding',
+    createdAt: '2026-10-01T22:15:00.000Z',
+  },
+  {
     id: 'vehicle-onboarding-vo410-candidate-discovery-2026-10-01',
     version: '4.9.2218',
     title: 'Vehicle Onboarding VO-4.10 — Master Admin provider candidate discovery (internal)',

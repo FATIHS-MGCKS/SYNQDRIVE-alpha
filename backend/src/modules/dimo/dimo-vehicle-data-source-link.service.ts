@@ -111,7 +111,12 @@ export class DimoVehicleDataSourceLinkService {
     const [vehicle, dimoVehicle] = await Promise.all([
       client.vehicle.findFirst({
         where: { id: input.vehicleId, organizationId: input.organizationId },
-        select: { id: true, organizationId: true, dimoVehicleId: true },
+        select: {
+          id: true,
+          organizationId: true,
+          dimoVehicleId: true,
+          registryLifecycle: true,
+        },
       }),
       client.dimoVehicle.findUnique({
         where: { id: input.dimoVehicleId },
@@ -123,6 +128,16 @@ export class DimoVehicleDataSourceLinkService {
       throw new NotFoundException(
         `Vehicle ${input.vehicleId} not found for organization ${input.organizationId}`,
       );
+    }
+    if (vehicle.registryLifecycle !== 'ACTIVE') {
+      this.observeBinding('conflict', input.provenance);
+      return {
+        action: 'CONFLICT',
+        linkId: null,
+        reason: 'vehicle_registry_not_operational',
+        dimoVehicleId,
+        consentId: input.consentId ?? null,
+      };
     }
     if (!dimoVehicle) {
       throw new NotFoundException(`DimoVehicle ${input.dimoVehicleId} not found`);

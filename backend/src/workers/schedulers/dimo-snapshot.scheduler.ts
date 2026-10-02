@@ -162,6 +162,7 @@ export class DimoSnapshotScheduler {
 
     const vehicles = await this.prisma.vehicle.findMany({
       where: {
+        registryLifecycle: 'ACTIVE',
         dimoVehicleId: { not: null },
         status: { in: [VehicleStatus.AVAILABLE, VehicleStatus.RENTED] },
         dimoVehicle: {
@@ -434,6 +435,7 @@ export class DimoSnapshotScheduler {
 
       const vehicles = await this.prisma.vehicle.findMany({
         where: {
+          registryLifecycle: 'ACTIVE',
           dimoVehicleId: { not: null },
           status: { in: [VehicleStatus.AVAILABLE, VehicleStatus.RENTED] },
           dimoVehicle: {

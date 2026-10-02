@@ -9,6 +9,7 @@ import { extractHmProviderVehicleReference } from './high-mobility-vehicle-refer
 import { VehicleProviderConsentService } from '@modules/vehicles/vehicle-provider-consent.service';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { ActivityAction, ActivityEntity } from '@prisma/client';
+import { isVehicleRegistryOperationalActive } from '@modules/vehicle-onboarding/registry/vehicle-registry-operational.util';
 
 export type HmAppContainerKey = 'healthApp' | 'telemetryApp';
 
@@ -140,22 +141,28 @@ export class HighMobilityWebhookService {
 
         // Record provider consent when clearance is approved and vehicle is linked
         if (hmRecord.synqdriveVehicleId && hmRecord.organizationId) {
-          void this.providerConsent.recordHmConsent({
-            vehicleId: hmRecord.synqdriveVehicleId,
-            organizationId: hmRecord.organizationId,
-            hmVehicleId: hmRecord.id,
-            hmVin: hmRecord.vin,
-            appContainerType: hmRecord.appContainerType ?? appContainer,
-            proofReference: vehicleId ?? null,
-            metadataJson: { event, webhookPayload: payload },
+          const linkedVehicle = await this.prisma.vehicle.findUnique({
+            where: { id: hmRecord.synqdriveVehicleId },
+            select: { registryLifecycle: true },
           });
-          void this.audit.record({
-            action: ActivityAction.APPROVE,
-            entity: ActivityEntity.PROVIDER_CONSENT,
-            entityId: hmRecord.synqdriveVehicleId,
-            description: `HM fleet clearance approved for vehicle ${hmRecord.vin} via ${appContainer}`,
-            level: 'INFO',
-          });
+          if (isVehicleRegistryOperationalActive(linkedVehicle?.registryLifecycle)) {
+            void this.providerConsent.recordHmConsent({
+              vehicleId: hmRecord.synqdriveVehicleId,
+              organizationId: hmRecord.organizationId,
+              hmVehicleId: hmRecord.id,
+              hmVin: hmRecord.vin,
+              appContainerType: hmRecord.appContainerType ?? appContainer,
+              proofReference: vehicleId ?? null,
+              metadataJson: { event, webhookPayload: payload },
+            });
+            void this.audit.record({
+              action: ActivityAction.APPROVE,
+              entity: ActivityEntity.PROVIDER_CONSENT,
+              entityId: hmRecord.synqdriveVehicleId,
+              description: `HM fleet clearance approved for vehicle ${hmRecord.vin} via ${appContainer}`,
+              level: 'INFO',
+            });
+          }
         }
 
         // Only trigger health signal poll for Health-APP approvals
