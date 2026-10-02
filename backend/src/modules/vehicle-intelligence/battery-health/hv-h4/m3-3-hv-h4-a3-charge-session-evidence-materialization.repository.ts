@@ -84,6 +84,14 @@ async function ensureDurabilityAckV1(
   >,
   revision: BatteryHvChargeSessionEvidenceRevision,
 ): Promise<BatteryHvChargeSessionEvidenceAck> {
+  const existingForRevision = await tx.batteryHvChargeSessionEvidenceAck.findFirst({
+    where: { revisionId: revision.id },
+  });
+  if (existingForRevision) {
+    assertAckMirrorsRevisionV1(existingForRevision, revision);
+    return existingForRevision;
+  }
+
   const ackId = randomUUID();
   const inserted = await tx.$queryRaw<Array<{ id: string }>>`
     INSERT INTO battery_hv_charge_session_evidence_acks (

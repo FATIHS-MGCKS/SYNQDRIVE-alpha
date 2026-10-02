@@ -53,7 +53,8 @@ async function createHvSession(
       source: HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE,
       startAt,
       endAt,
-      energyAddedKwh: input.energyAddedKwh ?? 12,
+      energyAddedKwh:
+        input.energyAddedKwh !== undefined ? input.energyAddedKwh : 12,
       isOngoing: false,
       idempotencyKey: `idem-${randomUUID()}`,
       createdAt: anchor,
@@ -305,7 +306,7 @@ async function createHvSession(
         },
       });
       await expect(repo.persistIdempotent(input)).rejects.toBeInstanceOf(
-        H4SourceRevisionFingerprintCollisionOrCanonicalizationDriftError,
+        H4EvidenceRevisionStoredFingerprintMismatchError,
       );
     });
 
@@ -315,7 +316,7 @@ async function createHvSession(
       const input = buildM3_3HvH4ChargeSessionEvidencePersistenceInputFromSessionV1(session);
       const tamperedProjection = {
         ...input.projection,
-        energyAddedKwh: { kind: 'FINITE' as const, value: 888 },
+        providerSegmentId: 'drifted-prov-id',
       };
       await prisma.batteryHvChargeSessionEvidenceRevision.create({
         data: {
