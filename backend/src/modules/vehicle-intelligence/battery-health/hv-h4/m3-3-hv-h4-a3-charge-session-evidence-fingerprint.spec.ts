@@ -1,6 +1,8 @@
 import { randomUUID } from 'crypto';
 import type { HvChargeSession } from '@prisma/client';
+import type { HvChargeSessionMetadata } from '../hv-charge-session/hv-charge-session.types';
 import { HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE } from '../hv-charge-session/hv-charge-session.types';
+import { HV_CHARGE_SESSION_QUALITY_STATUS } from '../hv-charge-session/hv-charge-session-quality.status';
 import { M3_3_HV_H4_NATIVE_ADDED_ENERGY_PROVENANCE } from './m3-3-hv-h4.constants';
 import {
   M3_3_HV_H4_CHARGE_SESSION_EVIDENCE_REVISION_V1,
@@ -22,7 +24,13 @@ import {
   decodeM3_3HvH4EnergyAddedKwhV1,
   encodeM3_3HvH4EnergyAddedKwhV1,
 } from './m3-3-hv-h4-a3-energy-encoding.v1';
-import type { M3_3HvH4ChargeSessionEvidenceScientificProjectionV1 } from './m3-3-hv-h4-a3-charge-session-evidence.types.v1';
+
+const BASE_META = {
+  providerSegmentId: 'prov-seg-1',
+  addedEnergyProvenance: M3_3_HV_H4_NATIVE_ADDED_ENERGY_PROVENANCE,
+  qualityStatus: HV_CHARGE_SESSION_QUALITY_STATUS.QUALIFIED,
+  startedBeforeRange: false,
+} as unknown as HvChargeSessionMetadata;
 
 function baseSession(overrides: Partial<HvChargeSession> = {}): HvChargeSession {
   const startAt = new Date('2026-05-01T08:00:00.000Z');
@@ -49,12 +57,7 @@ function baseSession(overrides: Partial<HvChargeSession> = {}): HvChargeSession 
     idempotencyKey: 'idem-1',
     providerObservedAt: endAt,
     receivedAt: anchor,
-    metadata: {
-      providerSegmentId: 'prov-seg-1',
-      addedEnergyProvenance: M3_3_HV_H4_NATIVE_ADDED_ENERGY_PROVENANCE,
-      qualityStatus: 'QUALIFIED',
-      startedBeforeRange: false,
-    },
+    metadata: { ...BASE_META } as unknown as HvChargeSession['metadata'],
     createdAt: anchor,
     updatedAt: anchor,
     ...overrides,
@@ -64,6 +67,10 @@ function baseSession(overrides: Partial<HvChargeSession> = {}): HvChargeSession 
 function fp(session: HvChargeSession): string {
   const projection = buildM3_3HvH4ChargeSessionEvidenceScientificProjectionV1(session);
   return computeM3_3HvH4ChargeSessionSourceRevisionFingerprintV1(projection);
+}
+
+function metaOnly(patch: Partial<HvChargeSessionMetadata>): Partial<HvChargeSession> {
+  return { metadata: { ...BASE_META, ...patch } as unknown as HvChargeSession['metadata'] };
 }
 
 describe('M3.3-HV-H4-A3 charge session evidence fingerprint V1', () => {
@@ -79,47 +86,38 @@ describe('M3.3-HV-H4-A3 charge session evidence fingerprint V1', () => {
   });
 
   const mutationCases: { name: string; patch: Partial<HvChargeSession> }[] = [
-    { name: 'dimoSegmentId', patch: { dimoSegmentId: 'other-dimo' } },
-    {
-      name: 'providerSegmentId',
-      patch: {
-        metadata: {
-          providerSegmentId: 'other-prov',
-          addedEnergyProvenance: M3_3_HV_H4_NATIVE_ADDED_ENERGY_PROVENANCE,
-          qualityStatus: 'QUALIFIED',
-        },
-      },
-    },
-    { name: 'sourceUpdatedAt', patch: { updatedAt: new Date('2026-06-01T00:00:00.000Z') } },
-    { name: 'isOngoing', patch: { isOngoing: true, endAt: null } },
-    {
-      name: 'supersession',
-      patch: {
-        metadata: {
-          providerSegmentId: 'prov-seg-1',
-          supersededBySegmentFingerprint: 'new-fp',
-          addedEnergyProvenance: M3_3_HV_H4_NATIVE_ADDED_ENERGY_PROVENANCE,
-          qualityStatus: 'QUALIFIED',
-        },
-      },
-    },
-    {
-      name: 'startedBeforeRange',
-      patch: {
-        metadata: {
-          providerSegmentId: 'prov-seg-1',
-          startedBeforeRange: true,
-          addedEnergyProvenance: M3_3_HV_H4_NATIVE_ADDED_ENERGY_PROVENANCE,
-          qualityStatus: 'QUALIFIED',
-        },
-      },
-    },
     { name: 'sourceHvChargeSessionId', patch: { id: randomUUID() } },
     { name: 'segmentFingerprint', patch: { segmentFingerprint: 'seg-fp-2' } },
-    { name: 'source', patch: { source: 'OTHER' } },
+    { name: 'dimoSegmentId', patch: { dimoSegmentId: 'other-dimo' } },
+    { name: 'providerSegmentId', patch: metaOnly({ providerSegmentId: 'other-prov' }) },
+    { name: 'source', patch: { source: 'OTHER_SOURCE' } },
+    { name: 'startAt', patch: { startAt: new Date('2026-05-01T07:00:00.000Z') } },
+    { name: 'endAt', patch: { endAt: new Date('2026-05-01T11:00:00.000Z') } },
+    { name: 'isOngoing', patch: { isOngoing: true } },
+    { name: 'energyAddedKwh', patch: { energyAddedKwh: 99.5 } },
+    {
+      name: 'providerObservedAt',
+      patch: { providerObservedAt: new Date('2026-05-01T09:30:00.000Z') },
+    },
+    {
+      name: 'addedEnergyProvenance',
+      patch: metaOnly({ addedEnergyProvenance: 'OTHER_PROVENANCE' }),
+    },
+    {
+      name: 'qualityStatus',
+      patch: metaOnly({ qualityStatus: HV_CHARGE_SESSION_QUALITY_STATUS.PARTIAL }),
+    },
+    {
+      name: 'supersededBySegmentFingerprint',
+      patch: metaOnly({ supersededBySegmentFingerprint: 'new-fp' }),
+    },
+    { name: 'startedBeforeRange', patch: metaOnly({ startedBeforeRange: true }) },
+    { name: 'sourceCreatedAt', patch: { createdAt: new Date('2026-05-01T09:00:00.000Z') } },
+    { name: 'sourceReceivedAt', patch: { receivedAt: new Date('2026-05-01T09:15:00.000Z') } },
+    { name: 'sourceUpdatedAt', patch: { updatedAt: new Date('2026-06-01T00:00:00.000Z') } },
   ];
 
-  it.each(mutationCases)('$name mutation changes fingerprint', ({ patch }) => {
+  it.each(mutationCases)('$name mutation changes fingerprint in isolation', ({ patch }) => {
     const base = baseSession();
     expect(fp(base)).not.toBe(fp(baseSession(patch)));
   });

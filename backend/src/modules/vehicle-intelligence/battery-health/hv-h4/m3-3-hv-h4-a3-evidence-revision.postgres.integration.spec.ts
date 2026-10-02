@@ -15,6 +15,8 @@ import {
   buildM3_3HvH4ChargeSessionEvidenceScientificProjectionV1,
 } from './m3-3-hv-h4-a3-charge-session-evidence-projection.v1';
 import { computeM3_3HvH4ChargeSessionSourceRevisionFingerprintV1 } from './m3-3-hv-h4-a3-charge-session-evidence-fingerprint.v1';
+import type { M3_3HvH4ChargeSessionEvidenceScientificProjectionV1 } from './m3-3-hv-h4-a3-charge-session-evidence.types.v1';
+import { encodeM3_3HvH4EnergyAddedKwhV1 } from './m3-3-hv-h4-a3-energy-encoding.v1';
 
 const integrationEnabled = process.env.BATTERY_HV_H4_REPORT_INTEGRATION === '1';
 
@@ -54,7 +56,12 @@ function revisionRowFromSession(
 
 async function createHvSession(
   prisma: PrismaClient,
-  input: { organizationId: string; vehicleId: string; segmentFingerprint?: string },
+  input: {
+    organizationId: string;
+    vehicleId: string;
+    segmentFingerprint?: string;
+    energyAddedKwh?: number | null;
+  },
 ) {
   const startAt = new Date('2026-05-01T08:00:00.000Z');
   const endAt = new Date('2026-05-01T10:00:00.000Z');
@@ -68,7 +75,7 @@ async function createHvSession(
       source: HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE,
       startAt,
       endAt,
-      energyAddedKwh: 12,
+      energyAddedKwh: input.energyAddedKwh ?? 12,
       isOngoing: false,
       idempotencyKey: `idem-${randomUUID()}`,
       createdAt: endAt,
@@ -198,11 +205,18 @@ async function createHvSession(
       await prisma.batteryHvChargeSessionEvidenceRevision.create({
         data: revisionRowFromSession(session),
       });
-      await prisma.vehicle.delete({ where: { id: vehicleId } });
-      const count = await prisma.batteryHvChargeSessionEvidenceRevision.count({
+      const before = await prisma.batteryHvChargeSessionEvidenceRevision.count({
         where: { vehicleId },
       });
-      expect(count).toBe(0);
+      expect(before).toBe(1);
+      await prisma.$executeRaw`
+        DELETE FROM vehicles
+        WHERE id = ${vehicleId}::uuid
+      `;
+      const after = await prisma.batteryHvChargeSessionEvidenceRevision.count({
+        where: { vehicleId },
+      });
+      expect(after).toBe(0);
     });
 
     it('H) deleting organization cascades revisions', async () => {
@@ -298,6 +312,47 @@ async function createHvSession(
         where: { organizationId, vehicleId, segmentFingerprint: session.segmentFingerprint },
       });
       expect(acks.length).toBe(2);
+    });
+
+    it('M) DOUBLE PRECISION energy mirror round-trips special floats', async () => {
+      const cases: { label: string; value: number; assert: (v: number | null) => void }[] = [
+        {
+          label: 'NaN',
+          value: Number.NaN,
+          assert: (v) => expect(Number.isNaN(v)).toBe(true),
+        },
+        {
+          label: '+Infinity',
+          value: Number.POSITIVE_INFINITY,
+          assert: (v) => expect(v).toBe(Number.POSITIVE_INFINITY),
+        },
+        {
+          label: '-Infinity',
+          value: Number.NEGATIVE_INFINITY,
+          assert: (v) => expect(v).toBe(Number.NEGATIVE_INFINITY),
+        },
+      ];
+
+      for (const { label, value, assert } of cases) {
+        const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
+        const session = await createHvSession(prisma, {
+          organizationId,
+          vehicleId,
+          segmentFingerprint: `fp-float-${label}-${randomUUID()}`,
+          energyAddedKwh: value,
+        });
+        const rev = await prisma.batteryHvChargeSessionEvidenceRevision.create({
+          data: revisionRowFromSession(session),
+        });
+        const loaded = await prisma.batteryHvChargeSessionEvidenceRevision.findUnique({
+          where: { id: rev.id },
+          select: { energyAddedKwh: true, scientificEvidenceJson: true },
+        });
+        expect(loaded).not.toBeNull();
+        assert(loaded!.energyAddedKwh);
+        const json = loaded!.scientificEvidenceJson as M3_3HvH4ChargeSessionEvidenceScientificProjectionV1;
+        expect(json.energyAddedKwh).toEqual(encodeM3_3HvH4EnergyAddedKwhV1(value));
+      }
     });
   },
 );
