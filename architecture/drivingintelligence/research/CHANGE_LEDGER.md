@@ -1433,6 +1433,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | **`PRODUCTION_TINY_STAGING_DRY_RUN_READINESS=PASS`** on tool SHA `947a70540…`; frozen merge `040170104…` **`VEHICLE_DB_PROOF=FAIL`** (`::uuid` on text ids); **`GUARDS_OK=YES`**; intended **3** env keys; **`ENV_MUTATION_COUNT=0`**; post `backend.env` SHA256 unchanged; replica PIDs unchanged |
 | NON_EFFECTS | No Production env/DB/restart/deploy/migration/provider call; **`TINY_ACTIVATION_READY=NO`** |
 
+### EXP-021 S4F-7L Production Tiny 3-key config staging attempt (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Human-authorized `DRY_RUN=0` via `cloud-agent-s4-tiny-staging.sh` @ `947a70540…`; evidence `EXP021_S4F7L_PRODUCTION_TINY_CONFIG_STAGING.md` |
+| FINDING | Pre-guards **PASS**; exact **3-key** file write + backup **PASS**; Replica A **`PRIMARY_STAGING` runtime proof FAIL** (`REPLICA_A_RUNTIME_*_EXACT=NO`); **`ROLLBACK_RESULT=COMPLETE`**; final `backend.env` SHA256 restored to pre-pin; **staging keys MISSING**; GLOBAL **KILLED**; S4 counts **0** |
+| NON_EFFECTS | No Tiny activation; no GLOBAL DB write; no deploy/migration; no provider calls; **authorization consumed** — no in-task retry |
+
 ### EXP-021 S4F-7I NO_BACKFILL Tiny staging preflight (2026-10-02)
 
 | Event | Detail |
