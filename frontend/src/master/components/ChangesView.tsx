@@ -268,6 +268,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-29T03:00:00.000Z',
   },
   {
+    id: 'di-exp021-s4f7k-tiny-staging-dry-run-2026-10-02',
+    version: '4.9.2216',
+    title: 'Driving Intelligence — EXP-021 S4F-7K Production Tiny config staging dry run',
+    summary: [
+      'Read-only Production DRY_RUN=1 via cloud-agent-s4-tiny-staging.sh: guards PASS, intended 3-key env delta only, zero mutation/restart.',
+      'Frozen merge tool SHA 04017010 blocked on text vehicle_id SQL; remediation on evidence branch before config-only staging execution.',
+      'GLOBAL KILLED; S4 zero-state; Tiny activation still 5/6 (NOT_READY).',
+    ],
+    reason:
+      'Prove S4F-7J/J.1 wrapper safety on live Production before separately authorized config-only staging.',
+    previousBehavior:
+      'No live Production dry-run evidence for Tiny three-key staging wrapper.',
+    details:
+      'architecture/drivingintelligence/evidence/EXP021_S4F7K_PRODUCTION_TINY_STAGING_DRY_RUN.md',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-02T20:55:00.000Z',
+  },
+  {
     id: 'di-exp021-s4f7f-kill-init-wrapper-2026-10-02',
     version: '4.9.2215',
     title: 'Driving Intelligence — EXP-021 S4F-7F guarded Production GLOBAL kill initializer wrapper',
