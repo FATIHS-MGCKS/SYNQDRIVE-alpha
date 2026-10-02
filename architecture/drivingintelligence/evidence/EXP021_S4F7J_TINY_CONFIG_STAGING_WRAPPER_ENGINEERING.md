@@ -28,7 +28,8 @@ DI_V0_S4_VEHICLE_ALLOWLIST=c10351f8-b6a2-4258-947f-631aeaa6d359
 | Bash helpers | `backend/scripts/ops/lib/di-v0-s4-tiny-staging-production.lib.sh` |
 | Guard / mutation lib | `backend/scripts/ops/di-v0-s4-tiny-staging-production/di-v0-s4-tiny-staging-production.lib.ts` |
 | CLI | `backend/scripts/ops/di-v0-s4-tiny-staging-production/di-v0-s4-tiny-staging-production-cli.ts` |
-| Tests | `npm run test:di:s4f7j:tiny-staging-wrapper` (32 cases) |
+| Tests | `npm run test:di:s4f7j:tiny-staging-wrapper` (47 cases after S4F-7J.1) |
+| S4F-7J.1 frozen NOT_BEFORE (no S4B import) | `di-v0-s4-tiny-staging-frozen-not-before.ts` |
 | Cloud bootstrap | `.cursor/scripts/cloud-agent-s4-tiny-staging.sh` |
 
 ## Boundary vs S4F-4

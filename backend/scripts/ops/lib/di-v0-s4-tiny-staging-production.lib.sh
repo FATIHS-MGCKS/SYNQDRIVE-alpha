@@ -142,6 +142,7 @@ s4f7j_query_vehicle_db() {
     echo "ACTIVE"
     echo "LTE_R1"
     echo "1"
+    echo "1"
     return 0
   fi
   local vid="c10351f8-b6a2-4258-947f-631aeaa6d359"
@@ -155,7 +156,15 @@ SELECT COALESCE((SELECT registry_lifecycle::text FROM vehicles WHERE id = '${vid
 SELECT COALESCE((SELECT hardware_type::text FROM vehicles WHERE id = '${vid}'::uuid), '');
 SELECT CASE WHEN EXISTS (
   SELECT 1 FROM vehicle_provider_consents vpc
-  WHERE vpc.vehicle_id = '${vid}'::uuid AND vpc.status = 'ACTIVE'
+  WHERE vpc.vehicle_id = '${vid}'::uuid
+    AND vpc.provider = 'DIMO'
+    AND vpc.status = 'ACTIVE'
+    AND vpc.revoked_at IS NULL
+    AND (vpc.expires_at IS NULL OR vpc.expires_at > NOW())
+) THEN '1' ELSE '0' END;
+SELECT CASE WHEN EXISTS (
+  SELECT 1 FROM vehicles v2
+  WHERE v2.id = '${vid}'::uuid AND v2.dimo_vehicle_id IS NOT NULL
 ) THEN '1' ELSE '0' END;
 SQL
 )
@@ -202,7 +211,7 @@ s4f7j_capture_filtered_proc_environ() {
     if ! sudo -n test -r "/proc/${pid}/environ" 2>/dev/null; then
       return 1
     fi
-    raw="$(sudo -n tr '\0' '\n' <"/proc/${pid}/environ" 2>/dev/null || true)"
+    raw="$(sudo -n sh -c "tr '\\0' '\\n' < /proc/${pid}/environ" 2>/dev/null || true)"
   else
     raw="$(tr '\0' '\n' <"/proc/${pid}/environ" 2>/dev/null || true)"
   fi
@@ -246,7 +255,8 @@ s4f7j_prove_replica_staging_runtime() {
     echo "REPLICA_${label}_RUNTIME_PROOF=FAIL"
     return 1
   fi
-  if ! s4f7j_run_cli proc-environ-proof "$label" "$environ_file"; then
+  local proof_mode="${S4F7J_RUNTIME_PROOF_MODE:-PRIMARY_STAGING}"
+  if ! s4f7j_run_cli proc-environ-proof "$label" "$environ_file" "$proof_mode"; then
     rm -f "$environ_file"
     return 1
   fi
@@ -280,4 +290,118 @@ s4f7j_verify_steady_state_replica() {
 s4f7j_run_config_file_audit() {
   local env_path="$1"
   SYNQDRIVE_BACKEND_ENV="$env_path" bash "${S4F7J_SCRIPT_DIR}/di-v0-s4f-tiny-activation-global-budget-env-readonly-audit.sh"
+}
+
+s4f7j_require_durable_backup_dir() {
+  if s4f7j_is_fixture_mode || s4f7j_is_test_mode; then
+    echo "PRODUCTION_BACKUP_DIR_CAN_FALLBACK_TO_TMP=NO"
+    return 0
+  fi
+  if [[ -z "${SYNQDRIVE_DEPLOY_STATE_DIR:-}" ]]; then
+    echo "PRODUCTION_BACKUP_DIR_CAN_FALLBACK_TO_TMP=NO"
+    echo "DURABLE_BACKUP_DIR_REQUIRED=YES"
+    return 1
+  fi
+  if [[ "${SYNQDRIVE_DEPLOY_STATE_DIR}" == /tmp* ]]; then
+    echo "PRODUCTION_BACKUP_DIR_CAN_FALLBACK_TO_TMP=NO"
+    echo "DURABLE_BACKUP_DIR_REQUIRED=YES"
+    return 1
+  fi
+  echo "PRODUCTION_BACKUP_DIR_CAN_FALLBACK_TO_TMP=NO"
+  return 0
+}
+
+s4f7j_live_topology_preflight() {
+  local target_sha="$1" release_dir="$2"
+  echo "TOPOLOGY_GUARD_SOURCE=LIVE_PRODUCTION_OBSERVATION"
+  echo "TOPOLOGY_GUARD_SYNTHETIC_YES_ALLOWED=NO"
+  echo "POST_DEPLOY_UPTIME_HELPER_USED_FOR_STEADY_STATE=NO"
+  if s4f7j_is_fixture_mode || s4f7j_is_test_mode; then
+    export DI_S4F7F_FIXTURE_MODE=1
+    [[ "${DI_S4F7J_TEST_MODE:-0}" == "1" ]] && export DI_S4F7F_TEST_MODE=1
+    export DI_S4F7F_FIXTURE_SCHEDULER_LEADERS="${DI_S4F7J_FIXTURE_SCHEDULER_LEADERS:-1}"
+    export DI_S4F7F_FIXTURE_NGINX_DUAL="${DI_S4F7J_FIXTURE_NGINX_DUAL:-YES}"
+    export DI_S4F7F_FIXTURE_REPLICA_A_PROCESS_RELEASE_IDENTITY="${DI_S4F7J_FIXTURE_REPLICA_A_PROCESS_RELEASE_IDENTITY:-YES}"
+    export DI_S4F7F_FIXTURE_REPLICA_B_PROCESS_RELEASE_IDENTITY="${DI_S4F7J_FIXTURE_REPLICA_B_PROCESS_RELEASE_IDENTITY:-YES}"
+  fi
+  s4f7f_topology_snapshot "$target_sha" "$release_dir" || return 1
+  if [[ "${DI_S4F7F_STEADY_STATE_NO_MIXED_RELEASE_IDENTITY:-NO}" != "YES" ]]; then
+    echo "DI_S4F7J_TOPOLOGY_OK=NO"
+    return 1
+  fi
+  if [[ "${DI_S4F7F_REPLICA_A_PROCESS_RELEASE_IDENTITY:-NO}" != "YES" ]]; then
+    echo "DI_S4F7J_TOPOLOGY_OK=NO"
+    return 1
+  fi
+  if [[ "${SYNQDRIVE_PRODUCTION_REPLICA_COUNT}" -ge 2 && "${DI_S4F7F_REPLICA_B_PROCESS_RELEASE_IDENTITY:-NO}" != "YES" ]]; then
+    echo "DI_S4F7J_TOPOLOGY_OK=NO"
+    return 1
+  fi
+  local leader_ok=NO nginx_ok=NO
+  if [[ "$(vps_replica_count_scheduler_leaders 2>/dev/null || echo 0)" == "1" ]] || s4f7j_is_fixture_mode || s4f7j_is_test_mode; then
+    leader_ok=YES
+  fi
+  if vps_replica_nginx_dual_upstream_ok 2>/dev/null || s4f7j_is_fixture_mode || s4f7j_is_test_mode; then
+    nginx_ok=YES
+  fi
+  if [[ "$leader_ok" != "YES" || "$nginx_ok" != "YES" ]]; then
+    echo "DI_S4F7J_TOPOLOGY_OK=NO"
+    return 1
+  fi
+  export DI_S4F7J_TOPOLOGY_OK=YES
+  echo "DI_S4F7J_TOPOLOGY_OK=YES"
+  echo "PRE_MUTATION_REPLICA_A_IDENTITY=${DI_S4F7F_REPLICA_A_PROCESS_RELEASE_IDENTITY}"
+  echo "PRE_MUTATION_REPLICA_B_IDENTITY=${DI_S4F7F_REPLICA_B_PROCESS_RELEASE_IDENTITY:-YES}"
+  echo "PRE_MUTATION_SCHEDULER_SINGLE_LEADER=YES"
+  echo "PRE_MUTATION_NGINX_DUAL_UPSTREAM=YES"
+  return 0
+}
+
+s4f7j_live_budget_redis_preflight() {
+  local release_dir="$1"
+  local release_backend="${release_dir}/backend"
+  echo "BUDGET_CONFIG_GUARD_SOURCE=ACTUAL_BACKEND_ENV"
+  echo "BUDGET_RUNTIME_GUARD_SOURCE=AUTHENTICATED_LIVE_METRICS"
+  echo "REDIS_GUARD_SOURCE=ACTUAL_REDIS_PING"
+  echo "SYNTHETIC_PRE_MUTATION_BUDGET_REDIS_PASS=NO"
+  if s4f7j_is_fixture_mode || s4f7j_is_test_mode; then
+    if [[ "${DI_S4F7J_FIXTURE_BUDGET_CONFIG_FAIL:-0}" == "1" ]]; then
+      return 1
+    fi
+    if [[ "${DI_S4F7J_FIXTURE_BUDGET_METRIC_A_FAIL:-0}" == "1" || "${DI_S4F7J_FIXTURE_BUDGET_METRIC_B_FAIL:-0}" == "1" ]]; then
+      return 1
+    fi
+    if [[ "${DI_S4F7J_FIXTURE_REDIS_FAIL:-0}" == "1" ]]; then
+      return 1
+    fi
+    export DI_S4F7J_BUDGET_CONFIG_EXPLICIT_ENABLED=YES
+    export DI_S4F7J_BUDGET_RUNTIME_BOTH_ENABLED=YES
+    export DI_S4F7J_REDIS_REACHABLE=YES
+    echo "METRICS_BEARER_AUTH_USED=FIXTURE"
+    echo "METRICS_SECRET_EXPOSED=NO"
+    return 0
+  fi
+  if ! s4f7j_run_cli budget-config-state "$BACKEND_ENV"; then
+    return 1
+  fi
+  if ! s4f4_verify_redis_reachable "$BACKEND_ENV"; then
+    export DI_S4F7J_REDIS_REACHABLE=NO
+    return 1
+  fi
+  export DI_S4F7J_REDIS_REACHABLE=YES
+  if ! s4f4_query_replica_live_global_budget_metric A "${SYNQDRIVE_REPLICA_A_PORT}" "$BACKEND_ENV"; then
+    export DI_S4F7J_BUDGET_RUNTIME_BOTH_ENABLED=NO
+    return 1
+  fi
+  if [[ "${SYNQDRIVE_PRODUCTION_REPLICA_COUNT}" -ge 2 ]]; then
+    if ! s4f4_query_replica_live_global_budget_metric B "${SYNQDRIVE_REPLICA_B_PORT}" "$BACKEND_ENV"; then
+      export DI_S4F7J_BUDGET_RUNTIME_BOTH_ENABLED=NO
+      return 1
+    fi
+  fi
+  export DI_S4F7J_BUDGET_CONFIG_EXPLICIT_ENABLED=YES
+  export DI_S4F7J_BUDGET_RUNTIME_BOTH_ENABLED=YES
+  echo "METRICS_BEARER_AUTH_USED=YES"
+  echo "METRICS_SECRET_EXPOSED=NO"
+  return 0
 }

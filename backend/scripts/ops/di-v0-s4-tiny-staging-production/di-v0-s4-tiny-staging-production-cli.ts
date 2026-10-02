@@ -15,17 +15,24 @@ import {
   FROZEN_VEHICLE_ALLOWLIST,
   parseProcEnvironForProof,
   parseVehicleDbProofLines,
-  proveReplicaStagingRuntime,
+  classifyPreMutationTargetKeyStates,
+  proveReplicaRuntime,
+  R1_PROVIDER_LINK_DB_AUTHORITY,
   RUNTIME_PROOF_KEYS,
   sha256FileContent,
   SUPPORTED_ENV_MUTATION_KEY_COUNT,
   TINY_STAGING_TARGET_KEYS,
   validateFrozenAllowlists,
   validateFrozenNotBefore,
+  assertPreMutationTargetKeysAllMissing,
   type TinyStagingGuardInput,
+  type TinyStagingRuntimeProofMode,
 } from './di-v0-s4-tiny-staging-production.lib';
 import { assertDiV0S4OpsControlFlagsSafe } from '../../../src/modules/vehicle-intelligence/driving-intelligence/s4f-observability/di-v0-s4f-ops-s4-control-preflight';
-import { envMapFromFileContent } from '../di-v0-s4f-global-budget-rollout/di-v0-s4f-global-budget-rollout.lib';
+import {
+  classifyConfigFileFromEnvContent,
+  envMapFromFileContent,
+} from '../di-v0-s4f-global-budget-rollout/di-v0-s4f-global-budget-rollout.lib';
 import { parseGlobalRowDbLines, parseS4PersistenceDbLines } from '../di-v0-s4-global-kill-init-production/di-v0-s4-global-kill-init-production.lib';
 
 function readFile(pathname: string): string {
@@ -123,7 +130,9 @@ function cmdValidateVehicleDb(lines: string[]): void {
   console.log(`TINY_VEHICLE_EXISTS=${proof.vehicleExists ? 'YES' : 'NO'}`);
   console.log(`TINY_REGISTRY_LIFECYCLE=${proof.registryLifecycle || 'UNKNOWN'}`);
   console.log(`TINY_HARDWARE_TYPE=${proof.hardwareType || 'UNKNOWN'}`);
-  console.log(`TINY_PROVIDER_LINK_ACTIVE=${proof.providerLinkActive ? 'YES' : 'NO'}`);
+  console.log(`TINY_DIMO_PROVIDER_CONSENT_ACTIVE=${proof.dimoProviderConsentActive ? 'YES' : 'NO'}`);
+  console.log(`TINY_DIMO_VEHICLE_LINKED=${proof.dimoVehicleLinked ? 'YES' : 'NO'}`);
+  console.log(`R1_PROVIDER_LINK_DB_AUTHORITY=${R1_PROVIDER_LINK_DB_AUTHORITY}`);
   console.log(`TINY_VEHICLE_BELONGS_TO_ORG=${proof.organizationId === FROZEN_ORGANIZATION_ALLOWLIST ? 'YES' : 'NO'}`);
   if (!proof.ok) {
     console.log('VEHICLE_DB_PROOF=FAIL');
@@ -147,6 +156,9 @@ function cmdGuards(): void {
     envContent: process.env.DI_S4F7J_ENV_CONTENT ?? '',
     envReadable: process.env.DI_S4F7J_ENV_READABLE === 'YES',
     vehicleDbLines: (process.env.DI_S4F7J_VEHICLE_DB_LINES ?? '').split('\n').filter((l) => l.length > 0),
+    preNotBeforeState: (process.env.PRE_NOT_BEFORE_STATE ?? 'MISSING') as TinyStagingGuardInput['preNotBeforeState'],
+    preOrgAllowlistState: (process.env.PRE_ORG_ALLOWLIST_STATE ?? 'MISSING') as TinyStagingGuardInput['preOrgAllowlistState'],
+    preVehicleAllowlistState: (process.env.PRE_VEHICLE_ALLOWLIST_STATE ?? 'MISSING') as TinyStagingGuardInput['preVehicleAllowlistState'],
     topologyOk: process.env.DI_S4F7J_TOPOLOGY_OK === 'YES',
     budgetConfigExplicitEnabled: process.env.DI_S4F7J_BUDGET_CONFIG_EXPLICIT_ENABLED === 'YES',
     budgetRuntimeBothEnabled: process.env.DI_S4F7J_BUDGET_RUNTIME_BOTH_ENABLED === 'YES',
@@ -161,11 +173,39 @@ function cmdGuards(): void {
   }
 }
 
+function cmdValidatePrestateKeys(file: string): void {
+  const content = readFile(file);
+  const states = classifyPreMutationTargetKeyStates(content);
+  console.log(`PRE_NOT_BEFORE_STATE=${states.notBefore}`);
+  console.log(`PRE_ORG_ALLOWLIST_STATE=${states.organization}`);
+  console.log(`PRE_VEHICLE_ALLOWLIST_STATE=${states.vehicle}`);
+  const pre = assertPreMutationTargetKeysAllMissing(content);
+  if (!pre.ok) {
+    console.log(`TARGET_KEY_PRESTATE_INVALID=YES key=${pre.key} state=${pre.state}`);
+    process.exit(1);
+  }
+  console.log('TARGET_KEY_PRESTATE_VALID=YES');
+}
+
+function cmdBudgetConfigState(file: string): void {
+  const content = readFile(file);
+  const state = classifyConfigFileFromEnvContent(content, true);
+  console.log(`DIMO_GLOBAL_BUDGET_CONFIG_STATE=${state}`);
+  if (state !== 'EXPLICIT_ENABLED') {
+    process.exit(1);
+  }
+}
+
 function cmdMutate(file: string): void {
   const before = readFile(file);
   const cardinality = assertTargetKeyCardinality(before);
   if (!cardinality.ok) {
     console.log(`TARGET_ENV_DUPLICATE_FAILS_CLOSED=YES key=${cardinality.duplicateKey}`);
+    process.exit(1);
+  }
+  const prestate = assertPreMutationTargetKeysAllMissing(before);
+  if (!prestate.ok) {
+    console.log(`TARGET_KEY_PRESTATE_INVALID=YES key=${prestate.key} state=${prestate.state}`);
     process.exit(1);
   }
   const beforeSha = sha256FileContent(before);
@@ -183,14 +223,23 @@ function cmdMutate(file: string): void {
   console.log(`ENV_CHANGED_KEY_COUNT=${diff.envChangedKeyCount}`);
   console.log(`ENV_CHANGED_KEYS=${diff.changedKeys.join(',')}`);
   console.log(`UNEXPECTED_ENV_CHANGED_KEY_COUNT=${diff.unexpectedChangedKeyCount}`);
-  if (!diff.ok) {
+  if (!diff.ok || diff.envChangedKeyCount !== SUPPORTED_ENV_MUTATION_KEY_COUNT) {
     console.log('SEMANTIC_DIFF_AUTHORITY=FAIL');
     process.exit(1);
   }
   console.log('SEMANTIC_DIFF_AUTHORITY=PASS');
+  console.log('EXACT_THREE_KEY_DIFF_REQUIRED=YES');
   console.log('UNRELATED_ENV_PRESERVED=YES');
   atomicWriteFilePreserveOwnership(file, nextContent);
-  const afterSha = sha256FileContent(readFile(file));
+  const afterOnDisk = readFile(file);
+  const postDiff = computeSemanticEnvDiff(before, afterOnDisk);
+  console.log(`POST_WRITE_ENV_CHANGED_KEY_COUNT=${postDiff.envChangedKeyCount}`);
+  if (!postDiff.ok || postDiff.envChangedKeyCount !== SUPPORTED_ENV_MUTATION_KEY_COUNT) {
+    console.log('POST_WRITE_SEMANTIC_DIFF_INDEPENDENTLY_VERIFIED=NO');
+    process.exit(1);
+  }
+  console.log('POST_WRITE_SEMANTIC_DIFF_INDEPENDENTLY_VERIFIED=YES');
+  const afterSha = sha256FileContent(afterOnDisk);
   console.log(`BACKEND_ENV_SHA256_AFTER=${afterSha}`);
   console.log('MUTATION_VALIDATION=PASS');
 }
@@ -205,7 +254,9 @@ function cmdSemanticDiff(beforePath: string, afterPath: string): void {
   if (!diff.ok) process.exit(1);
 }
 
-function cmdProcEnvironProof(label: string, environPath: string): void {
+function cmdProcEnvironProof(label: string, environPath: string, modeArg?: string): void {
+  const mode: TinyStagingRuntimeProofMode =
+    modeArg === 'RECOVERY_PRESTATE' ? 'RECOVERY_PRESTATE' : 'PRIMARY_STAGING';
   let raw: string;
   try {
     raw = readFile(environPath);
@@ -214,15 +265,23 @@ function cmdProcEnvironProof(label: string, environPath: string): void {
     process.exit(1);
   }
   const map = parseProcEnvironForProof(raw, RUNTIME_PROOF_KEYS);
-  const proof = proveReplicaStagingRuntime(map);
-  console.log(`REPLICA_${label}_RUNTIME_NOT_BEFORE_EXACT=${proof.notBeforeExact ? 'YES' : 'NO'}`);
-  console.log(`REPLICA_${label}_RUNTIME_ORG_ALLOWLIST_EXACT=${proof.orgAllowlistExact ? 'YES' : 'NO'}`);
-  console.log(`REPLICA_${label}_RUNTIME_VEHICLE_ALLOWLIST_EXACT=${proof.vehicleAllowlistExact ? 'YES' : 'NO'}`);
+  const proof = proveReplicaRuntime(map, mode);
+  console.log(`RUNTIME_PROOF_MODE=${mode}`);
+  console.log(`RECOVERY_EXPECTS_STAGED_VALUES=${mode === 'RECOVERY_PRESTATE' ? 'NO' : 'YES'}`);
+  console.log(`RECOVERY_EXPECTS_EXACT_PRESTATE=${mode === 'RECOVERY_PRESTATE' ? 'YES' : 'NO'}`);
+  if (mode === 'PRIMARY_STAGING') {
+    console.log(`REPLICA_${label}_RUNTIME_NOT_BEFORE_EXACT=${proof.notBeforeExact ? 'YES' : 'NO'}`);
+    console.log(`REPLICA_${label}_RUNTIME_ORG_ALLOWLIST_EXACT=${proof.orgAllowlistExact ? 'YES' : 'NO'}`);
+    console.log(`REPLICA_${label}_RUNTIME_VEHICLE_ALLOWLIST_EXACT=${proof.vehicleAllowlistExact ? 'YES' : 'NO'}`);
+  } else {
+    console.log(`REPLICA_${label}_RUNTIME_STAGING_KEYS_ABSENT=${proof.stagingKeysAbsent ? 'YES' : 'NO'}`);
+  }
   console.log(`REPLICA_${label}_ALL_S4_ENABLE_FLAGS_OFF=${proof.allS4EnableFlagsOff ? 'YES' : 'NO'}`);
   console.log('RUNTIME_PROOF_EXPOSES_FULL_ENV=NO');
+  console.log('FULL_PROCESS_ENV_LOGGED=NO');
   const keysListed = [...map.keys()].sort().join(',');
   console.log(`RUNTIME_PROOF_KEY_ALLOWLIST_ONLY=${keysListed}`);
-  if (!proof.notBeforeExact || !proof.orgAllowlistExact || !proof.vehicleAllowlistExact || !proof.allS4EnableFlagsOff) {
+  if (!proof.ok) {
     process.exit(1);
   }
 }
@@ -251,6 +310,12 @@ function main(): void {
     case 'validate-vehicle-db':
       cmdValidateVehicleDb(args);
       break;
+    case 'validate-prestate-keys':
+      cmdValidatePrestateKeys(args[0]);
+      break;
+    case 'budget-config-state':
+      cmdBudgetConfigState(args[0]);
+      break;
     case 'guards':
       cmdGuards();
       break;
@@ -261,7 +326,7 @@ function main(): void {
       cmdSemanticDiff(args[0], args[1]);
       break;
     case 'proc-environ-proof':
-      cmdProcEnvironProof(args[0], args[1]);
+      cmdProcEnvironProof(args[0], args[1], args[2]);
       break;
     case 'print-frozen':
       cmdPrintFrozenValues();

@@ -1,14 +1,16 @@
 import { createHash } from 'crypto';
 import {
-  DI_V0_S4_DISCOVERY_TRIP_END_NOT_BEFORE_ENV,
-  parseDiV0S4DiscoveryTripEndNotBefore,
-} from '../../../src/modules/vehicle-intelligence/driving-intelligence/s4b-orchestration/di-v0-s4b-discovery-containment';
-import {
   DI_V0_S4_ENV_ALLOWLISTS,
   DI_V0_S4_ENV_FLAGS,
   parseDiV0S4Allowlist,
   parseDiV0S4ControlPlaneConfig,
 } from '../../../src/modules/vehicle-intelligence/driving-intelligence/s4a-foundation/di-v0-s4a-control-plane';
+import {
+  OPS_DI_V0_S4_DISCOVERY_TRIP_END_NOT_BEFORE_ENV,
+  OPS_FROZEN_DISCOVERY_TRIP_END_NOT_BEFORE,
+  validateOpsFrozenNotBeforeAuthority,
+  validateOpsFrozenNotBeforeCandidate,
+} from './di-v0-s4-tiny-staging-frozen-not-before';
 import { assertDiV0S4OpsControlFlagsSafe } from '../../../src/modules/vehicle-intelligence/driving-intelligence/s4f-observability/di-v0-s4f-ops-s4-control-preflight';
 import {
   classifyGlobalControlPrestate,
@@ -31,7 +33,8 @@ export const DI_S4_TINY_STAGING_REQUIRED_PRE_ENV_SHA256_ENV = 'DI_S4_TINY_STAGIN
 export const DI_S4_TINY_STAGING_EXPECTED_GLOBAL_STATE_ENV = 'DI_S4_TINY_STAGING_EXPECTED_GLOBAL_STATE';
 
 /** Frozen S4F-7I authority — no operator override. */
-export const FROZEN_DISCOVERY_TRIP_END_NOT_BEFORE = '2026-10-02T05:55:28.839Z';
+export const FROZEN_DISCOVERY_TRIP_END_NOT_BEFORE = OPS_FROZEN_DISCOVERY_TRIP_END_NOT_BEFORE;
+export const DI_V0_S4_DISCOVERY_TRIP_END_NOT_BEFORE_ENV = OPS_DI_V0_S4_DISCOVERY_TRIP_END_NOT_BEFORE_ENV;
 export const FROZEN_ORGANIZATION_ALLOWLIST = 'faa710c9-6d91-4079-a7d5-91fdccdec14a';
 export const FROZEN_VEHICLE_ALLOWLIST = 'c10351f8-b6a2-4258-947f-631aeaa6d359';
 
@@ -67,6 +70,8 @@ export type TinyStagingGuardFailure =
   | 'NOT_BEFORE_INVALID'
   | 'ALLOWLIST_INVALID'
   | 'VEHICLE_DB_PROOF_FAILED'
+  | 'TARGET_KEY_PRESTATE_INVALID'
+  | 'SEMANTIC_DIFF_INVALID'
   | 'TOPOLOGY_UNSAFE'
   | 'BUDGET_CONFIG_UNSAFE'
   | 'BUDGET_RUNTIME_UNVERIFIED'
@@ -86,6 +91,9 @@ export interface TinyStagingGuardInput {
   envContent: string;
   envReadable: boolean;
   vehicleDbLines: readonly string[];
+  preNotBeforeState: StagingKeySemanticState;
+  preOrgAllowlistState: StagingKeySemanticState;
+  preVehicleAllowlistState: StagingKeySemanticState;
   topologyOk: boolean;
   budgetConfigExplicitEnabled: boolean;
   budgetRuntimeBothEnabled: boolean;
@@ -126,15 +134,43 @@ export function validateFrozenNotBefore(): {
   canonicalValid: boolean;
   timezone: 'UTC_Z' | 'INVALID';
 } {
-  const state = parseDiV0S4DiscoveryTripEndNotBefore(FROZEN_DISCOVERY_TRIP_END_NOT_BEFORE, new Date('2026-10-02T12:00:00.000Z'));
-  if (state.kind !== 'AVAILABLE') {
-    return { ok: false, canonicalValid: false, timezone: 'INVALID' };
+  return validateOpsFrozenNotBeforeAuthority();
+}
+
+export type StagingKeySemanticState = 'MISSING' | 'EMPTY' | 'PRESENT';
+
+export function classifyStagingKeySemanticState(content: string, key: string): StagingKeySemanticState {
+  const occurrences = countEnvKeyOccurrences(content, key);
+  if (occurrences === 0) return 'MISSING';
+  const map = envMapFromFileContent(content);
+  const value = map[key];
+  if (value === undefined || value === '') return 'EMPTY';
+  return 'PRESENT';
+}
+
+export function classifyPreMutationTargetKeyStates(content: string): {
+  notBefore: StagingKeySemanticState;
+  organization: StagingKeySemanticState;
+  vehicle: StagingKeySemanticState;
+} {
+  return {
+    notBefore: classifyStagingKeySemanticState(content, DI_V0_S4_DISCOVERY_TRIP_END_NOT_BEFORE_ENV),
+    organization: classifyStagingKeySemanticState(content, DI_V0_S4_ENV_ALLOWLISTS.organization),
+    vehicle: classifyStagingKeySemanticState(content, DI_V0_S4_ENV_ALLOWLISTS.vehicle),
+  };
+}
+
+export function assertPreMutationTargetKeysAllMissing(content: string): { ok: true } | { ok: false; key: string; state: StagingKeySemanticState } {
+  const states = classifyPreMutationTargetKeyStates(content);
+  const entries: Array<[string, StagingKeySemanticState]> = [
+    [DI_V0_S4_DISCOVERY_TRIP_END_NOT_BEFORE_ENV, states.notBefore],
+    [DI_V0_S4_ENV_ALLOWLISTS.organization, states.organization],
+    [DI_V0_S4_ENV_ALLOWLISTS.vehicle, states.vehicle],
+  ];
+  for (const [key, state] of entries) {
+    if (state !== 'MISSING') return { ok: false, key, state };
   }
-  const canonical = FROZEN_DISCOVERY_TRIP_END_NOT_BEFORE;
-  if (canonical !== FROZEN_DISCOVERY_TRIP_END_NOT_BEFORE) {
-    return { ok: false, canonicalValid: false, timezone: 'INVALID' };
-  }
-  return { ok: true, canonicalValid: true, timezone: 'UTC_Z' };
+  return { ok: true };
 }
 
 export function validateFrozenAllowlists(): {
@@ -162,7 +198,7 @@ export function validateFrozenAllowlists(): {
 }
 
 export function assertNotBeforeValueIsFrozenOnly(candidate: string): boolean {
-  return candidate === FROZEN_DISCOVERY_TRIP_END_NOT_BEFORE;
+  return validateOpsFrozenNotBeforeCandidate(candidate).ok;
 }
 
 export function serializeTinyStagingEnvFile(map: Map<string, string>, originalLines: string[]): string {
@@ -212,6 +248,10 @@ export function applyTinyStagingMutation(originalContent: string): {
   if (!cardinality.ok) {
     throw new Error(`duplicate_target_key:${cardinality.duplicateKey}`);
   }
+  const prestate = assertPreMutationTargetKeysAllMissing(originalContent);
+  if (!prestate.ok) {
+    throw new Error(`target_key_prestate:${prestate.key}:${prestate.state}`);
+  }
   const lines = originalContent.split('\n');
   const before = parseEnvFile(originalContent);
   const nextContent = serializeTinyStagingEnvFile(before, lines);
@@ -254,10 +294,12 @@ export function computeSemanticEnvDiff(
   const allowed = new Set(TINY_STAGING_TARGET_KEYS as readonly string[]);
   const unexpected = changedKeys.filter((k) => !allowed.has(k));
   const envChangedKeyCount = changedKeys.length;
+  const expectedKeySet = new Set(TINY_STAGING_TARGET_KEYS as readonly string[]);
   const ok =
-    envChangedKeyCount <= SUPPORTED_ENV_MUTATION_KEY_COUNT &&
+    envChangedKeyCount === SUPPORTED_ENV_MUTATION_KEY_COUNT &&
     unexpected.length === 0 &&
-    changedKeys.every((k) => allowed.has(k));
+    changedKeys.length === SUPPORTED_ENV_MUTATION_KEY_COUNT &&
+    changedKeys.every((k) => expectedKeySet.has(k));
   return {
     changedKeys,
     unexpectedChangedKeyCount: unexpected.length,
@@ -266,42 +308,52 @@ export function computeSemanticEnvDiff(
   };
 }
 
+
+/** DB authority columns: vehicles.id, organization_id, registry_lifecycle, hardware_type; vehicle_provider_consents (provider=DIMO, status=ACTIVE); vehicles.dimo_vehicle_id */
+export const R1_PROVIDER_LINK_DB_AUTHORITY =
+  'vehicles(id,organization_id,registry_lifecycle,hardware_type,dimo_vehicle_id);vehicle_provider_consents(vehicle_id,provider,status,expires_at,revoked_at)';
+
 export function parseVehicleDbProofLines(lines: readonly string[]): {
   ok: boolean;
   vehicleExists: boolean;
   organizationId: string;
   registryLifecycle: string;
   hardwareType: string;
-  providerLinkActive: boolean;
+  dimoProviderConsentActive: boolean;
+  dimoVehicleLinked: boolean;
 } {
-  if (lines.length < 5) {
+  if (lines.length < 6) {
     return {
       ok: false,
       vehicleExists: false,
       organizationId: '',
       registryLifecycle: '',
       hardwareType: '',
-      providerLinkActive: false,
+      dimoProviderConsentActive: false,
+      dimoVehicleLinked: false,
     };
   }
   const found = lines[0].trim() === '1';
   const organizationId = lines[1].trim();
   const registryLifecycle = lines[2].trim();
   const hardwareType = lines[3].trim();
-  const providerLinkActive = lines[4].trim() === '1' || lines[4].trim().toLowerCase() === 'true';
+  const dimoProviderConsentActive = lines[4].trim() === '1' || lines[4].trim().toLowerCase() === 'true';
+  const dimoVehicleLinked = lines[5].trim() === '1' || lines[5].trim().toLowerCase() === 'true';
   const ok =
     found &&
     organizationId === FROZEN_ORGANIZATION_ALLOWLIST &&
     registryLifecycle === 'ACTIVE' &&
     hardwareType === 'LTE_R1' &&
-    providerLinkActive;
+    dimoProviderConsentActive &&
+    dimoVehicleLinked;
   return {
     ok,
     vehicleExists: found,
     organizationId,
     registryLifecycle,
     hardwareType,
-    providerLinkActive,
+    dimoProviderConsentActive,
+    dimoVehicleLinked,
   };
 }
 
@@ -365,6 +417,14 @@ export function evaluateTinyStagingGuards(input: TinyStagingGuardInput): TinySta
     failures.push('VEHICLE_DB_PROOF_FAILED');
   }
 
+  if (
+    input.preNotBeforeState !== 'MISSING' ||
+    input.preOrgAllowlistState !== 'MISSING' ||
+    input.preVehicleAllowlistState !== 'MISSING'
+  ) {
+    failures.push('TARGET_KEY_PRESTATE_INVALID');
+  }
+
   if (!input.topologyOk) failures.push('TOPOLOGY_UNSAFE');
   if (!input.budgetConfigExplicitEnabled) failures.push('BUDGET_CONFIG_UNSAFE');
   if (!input.budgetRuntimeBothEnabled) failures.push('BUDGET_RUNTIME_UNVERIFIED');
@@ -391,16 +451,21 @@ export function parseProcEnvironForProof(
   return out;
 }
 
-export function proveReplicaStagingRuntime(envMap: Map<string, string>): {
+export type TinyStagingRuntimeProofMode = 'PRIMARY_STAGING' | 'RECOVERY_PRESTATE';
+
+export function proveReplicaRuntime(envMap: Map<string, string>, mode: TinyStagingRuntimeProofMode): {
   notBeforeExact: boolean;
   orgAllowlistExact: boolean;
   vehicleAllowlistExact: boolean;
+  stagingKeysAbsent: boolean;
   allS4EnableFlagsOff: boolean;
+  ok: boolean;
 } {
   const cfg = parseDiV0S4ControlPlaneConfig(Object.fromEntries(envMap));
-  const notBeforeExact = envMap.get(DI_V0_S4_DISCOVERY_TRIP_END_NOT_BEFORE_ENV) === FROZEN_DISCOVERY_TRIP_END_NOT_BEFORE;
-  const orgAllowlistExact = envMap.get(DI_V0_S4_ENV_ALLOWLISTS.organization) === FROZEN_ORGANIZATION_ALLOWLIST;
-  const vehicleAllowlistExact = envMap.get(DI_V0_S4_ENV_ALLOWLISTS.vehicle) === FROZEN_VEHICLE_ALLOWLIST;
+  const notBeforeRaw = envMap.get(DI_V0_S4_DISCOVERY_TRIP_END_NOT_BEFORE_ENV);
+  const orgRaw = envMap.get(DI_V0_S4_ENV_ALLOWLISTS.organization);
+  const vehicleRaw = envMap.get(DI_V0_S4_ENV_ALLOWLISTS.vehicle);
+  const stagingKeysAbsent = notBeforeRaw == null && orgRaw == null && vehicleRaw == null;
   const allS4EnableFlagsOff =
     !cfg.masterEnabled &&
     !cfg.discoveryEnabled &&
@@ -408,7 +473,51 @@ export function proveReplicaStagingRuntime(envMap: Map<string, string>): {
     !cfg.positionEnabled &&
     !cfg.r1Enabled &&
     !cfg.nativeEnabled;
-  return { notBeforeExact, orgAllowlistExact, vehicleAllowlistExact, allS4EnableFlagsOff };
+
+  if (mode === 'RECOVERY_PRESTATE') {
+    const ok = stagingKeysAbsent && allS4EnableFlagsOff;
+    return {
+      notBeforeExact: false,
+      orgAllowlistExact: false,
+      vehicleAllowlistExact: false,
+      stagingKeysAbsent,
+      allS4EnableFlagsOff,
+      ok,
+    };
+  }
+
+  const notBeforeExact = notBeforeRaw === FROZEN_DISCOVERY_TRIP_END_NOT_BEFORE;
+  const orgAllowlistExact = orgRaw === FROZEN_ORGANIZATION_ALLOWLIST;
+  const vehicleAllowlistExact = vehicleRaw === FROZEN_VEHICLE_ALLOWLIST;
+  const ok = notBeforeExact && orgAllowlistExact && vehicleAllowlistExact && allS4EnableFlagsOff;
+  return {
+    notBeforeExact,
+    orgAllowlistExact,
+    vehicleAllowlistExact,
+    stagingKeysAbsent,
+    allS4EnableFlagsOff,
+    ok,
+  };
+}
+
+export function proveReplicaStagingRuntime(envMap: Map<string, string>): ReturnType<typeof proveReplicaRuntime> {
+  return proveReplicaRuntime(envMap, 'PRIMARY_STAGING');
+}
+
+export function evaluateTopologyGuardInput(input: {
+  replicaAIdentity: boolean;
+  replicaBIdentity: boolean;
+  schedulerSingleLeader: boolean;
+  nginxDualUpstream: boolean;
+  steadyStateNoMixedRelease: boolean;
+}): boolean {
+  return (
+    input.replicaAIdentity &&
+    input.replicaBIdentity &&
+    input.schedulerSingleLeader &&
+    input.nginxDualUpstream &&
+    input.steadyStateNoMixedRelease
+  );
 }
 
 export function persistenceDeltaZero(before: S4PersistenceCounts, after: S4PersistenceCounts): boolean {

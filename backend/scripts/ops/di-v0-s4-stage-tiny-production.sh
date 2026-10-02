@@ -143,9 +143,9 @@ s4f7j_on_recovery() {
     echo "ROLLBACK_RESTORES_EXACT_ENV_BYTES=NO"
     return 1
   fi
-  echo "ROLLBACK_RESTORES_EXACT_ENV_BYTES=YES"
-
   S4F7J_RESTART_PHASE=recovery
+  S4F7J_RUNTIME_PROOF_MODE=RECOVERY_PRESTATE
+  export S4F7J_RUNTIME_PROOF_MODE
   S4F7J_REQUIRE_RESTART_IDENTITY=0
   if ! s4f7j_rolling_restart_same_sha "$TARGET_SHA"; then
     echo "ROLLBACK_RESULT=RESTART_FAILED"
@@ -156,7 +156,6 @@ s4f7j_on_recovery() {
     echo "ROLLBACK_RESULT=POST_VERIFY_FAILED"
     return 1
   fi
-  echo "ROLLBACK_PRESERVES_GLOBAL_KILLED=YES"
   echo "ROLLBACK_RESULT=COMPLETE"
   return 1
 }
@@ -295,9 +294,30 @@ s4f7j_preflight_readonly() {
     return 1
   fi
 
+  local prestate_out
+  if ! prestate_out="$(s4f7j_run_cli validate-prestate-keys "$BACKEND_ENV")"; then
+    echo "TARGET_KEY_PRESTATE_FAILS_CLOSED=YES"
+    return 1
+  fi
+  printf '%s\n' "$prestate_out"
+  export PRE_NOT_BEFORE_STATE="$(printf '%s\n' "$prestate_out" | awk -F= '/^PRE_NOT_BEFORE_STATE=/{print $2}')"
+  export PRE_ORG_ALLOWLIST_STATE="$(printf '%s\n' "$prestate_out" | awk -F= '/^PRE_ORG_ALLOWLIST_STATE=/{print $2}')"
+  export PRE_VEHICLE_ALLOWLIST_STATE="$(printf '%s\n' "$prestate_out" | awk -F= '/^PRE_VEHICLE_ALLOWLIST_STATE=/{print $2}')"
+
   local -a vehicle_lines=()
   mapfile -t vehicle_lines < <(s4f7j_query_vehicle_db) || return 1
   s4f7j_run_cli validate-vehicle-db "${vehicle_lines[@]}" || return 1
+
+  local release_dir
+  release_dir="$(s4f7j_resolve_release_dir)"
+  if ! s4f7j_live_topology_preflight "$TARGET_SHA" "$release_dir"; then
+    echo "TOPOLOGY_PREFLIGHT_FAILS_CLOSED=YES"
+    return 1
+  fi
+  if ! s4f7j_live_budget_redis_preflight "$release_dir"; then
+    echo "BUDGET_REDIS_PREFLIGHT_FAILS_CLOSED=YES"
+    return 1
+  fi
 
   export DI_S4F7J_GLOBAL_ROW_LINES="$(printf '%s\n' "${global_lines[@]}")"
   export DI_S4F7J_S4_PERSISTENCE_LINES="$(printf '%s\n' "${s4_lines[@]}")"
@@ -307,10 +327,6 @@ s4f7j_preflight_readonly() {
   export DI_S4_TINY_STAGING_ACTUAL_SHA="$TARGET_SHA"
   export DI_S4_TINY_STAGING_ACTUAL_RELEASE_ID="$REQUIRED_RELEASE_ID"
   export DI_S4_TINY_STAGING_ACTUAL_ENV_SHA256="$actual_env_sha"
-  export DI_S4F7J_TOPOLOGY_OK=YES
-  export DI_S4F7J_BUDGET_CONFIG_EXPLICIT_ENABLED=YES
-  export DI_S4F7J_BUDGET_RUNTIME_BOTH_ENABLED=YES
-  export DI_S4F7J_REDIS_REACHABLE=YES
   s4f7j_run_cli guards || return 1
 
   echo "PRE_POST_S4_ZERO_STATE_PROOF_IMPLEMENTED=YES"
@@ -365,35 +381,58 @@ s4f7j_post_restart_verify() {
 }
 
 s4f7j_recovery_post_verify() {
-  if [[ "${DI_S4F7J_TEST_MODE:-0}" == "1" ]]; then
-    echo "ROLLBACK_POST_VERIFY=PASS"
-    return 0
-  fi
-  vps_replica_wait_healthy "${SYNQDRIVE_REPLICA_A_PM2_NAME}" "${SYNQDRIVE_REPLICA_A_PORT}" "$1" || return 1
-  if [[ "${SYNQDRIVE_PRODUCTION_REPLICA_COUNT}" -ge 2 ]]; then
-    vps_replica_wait_healthy "${SYNQDRIVE_REPLICA_B_PM2_NAME}" "${SYNQDRIVE_REPLICA_B_PORT}" "$1" || return 1
-  fi
-  return 0
-}
-
-s4f7j_budget_redis_preflight() {
-  local release_dir release_backend
+  local target_sha="$1"
+  local release_dir
   release_dir="$(s4f7j_resolve_release_dir)"
-  release_backend="${release_dir}/backend"
-  echo "DIMO_GLOBAL_BUDGET_CONFIG_STATE=EXPLICIT_ENABLED"
-  echo "GLOBAL_BUDGET_RUNTIME_PROTECTION_IMPLEMENTED=YES"
-  echo "REDIS_PROTECTION_IMPLEMENTED=YES"
-  if s4f7j_is_fixture_mode || [[ "${DI_S4F7J_TEST_MODE:-0}" == "1" ]]; then
-    echo "REPLICA_A_GLOBAL_BUDGET_RUNTIME=ENABLED"
-    echo "REPLICA_B_GLOBAL_BUDGET_RUNTIME=ENABLED"
-    echo "REDIS_REACHABLE=YES"
-    return 0
+  local restored_sha
+  restored_sha="$(s4f4_file_sha256 "$BACKEND_ENV")"
+  if [[ "$restored_sha" != "$BACKEND_ENV_SHA256_BEFORE" ]]; then
+    echo "ROLLBACK_RESTORES_EXACT_ENV_BYTES=NO"
+    return 1
   fi
-  s4f4_verify_redis_reachable "$BACKEND_ENV" || return 1
-  s4f4_query_replica_live_global_budget_metric A "${SYNQDRIVE_REPLICA_A_PORT}" "$BACKEND_ENV" || return 1
+  echo "ROLLBACK_RESTORES_EXACT_ENV_BYTES=YES"
+  if ! s4f7j_run_cli validate-prestate-keys "$BACKEND_ENV"; then
+    echo "ROLLBACK_PRESTATE_TARGET_KEYS_VERIFIED=NO"
+    return 1
+  fi
+  echo "ROLLBACK_PRESTATE_TARGET_KEYS_VERIFIED=YES"
+  if ! s4f7j_run_cli s4-safe "$BACKEND_ENV"; then
+    echo "ROLLBACK_ALL_S4_FLAGS_OFF_VERIFIED=NO"
+    return 1
+  fi
+  echo "ROLLBACK_ALL_S4_FLAGS_OFF_VERIFIED=YES"
+  local -a global_lines=()
+  mapfile -t global_lines < <(s4f7j_query_global_row_db)
+  if ! s4f7j_run_cli validate-global-prestate "${global_lines[@]}"; then
+    echo "ROLLBACK_GLOBAL_KILLED_DB_VERIFIED=NO"
+    return 1
+  fi
+  echo "ROLLBACK_GLOBAL_KILLED_DB_VERIFIED=YES"
+  local -a s4_lines=()
+  mapfile -t s4_lines < <(s4f7j_query_s4_counts_db)
+  s4f7j_run_cli validate-s4-persistence "${s4_lines[@]}" || return 1
+  echo "ROLLBACK_S4_ZERO_STATE_VERIFIED=YES"
+  vps_replica_wait_healthy "${SYNQDRIVE_REPLICA_A_PM2_NAME}" "${SYNQDRIVE_REPLICA_A_PORT}" "$target_sha" || return 1
   if [[ "${SYNQDRIVE_PRODUCTION_REPLICA_COUNT}" -ge 2 ]]; then
-    s4f4_query_replica_live_global_budget_metric B "${SYNQDRIVE_REPLICA_B_PORT}" "$BACKEND_ENV" || return 1
+    vps_replica_wait_healthy "${SYNQDRIVE_REPLICA_B_PM2_NAME}" "${SYNQDRIVE_REPLICA_B_PORT}" "$target_sha" || return 1
   fi
+  s4f7j_verify_steady_state_replica A "${SYNQDRIVE_REPLICA_A_PM2_NAME}" "${SYNQDRIVE_REPLICA_A_PORT}" "$target_sha" "$release_dir" || return 1
+  if [[ "${SYNQDRIVE_PRODUCTION_REPLICA_COUNT}" -ge 2 ]]; then
+    s4f7j_verify_steady_state_replica B "${SYNQDRIVE_REPLICA_B_PM2_NAME}" "${SYNQDRIVE_REPLICA_B_PORT}" "$target_sha" "$release_dir" || return 1
+  fi
+  echo "ROLLBACK_REPLICA_IDENTITIES_VERIFIED=YES"
+  vps_replica_verify_scheduler_leaders 1 || return 1
+  vps_replica_nginx_dual_upstream_ok || return 1
+  echo "ROLLBACK_SCHEDULER_VERIFIED=YES"
+  echo "ROLLBACK_NGINX_VERIFIED=YES"
+  if ! s4f7j_live_budget_redis_preflight "$release_dir"; then
+    echo "ROLLBACK_GLOBAL_BUDGET_VERIFIED=NO"
+    return 1
+  fi
+  echo "ROLLBACK_GLOBAL_BUDGET_VERIFIED=YES"
+  echo "ROLLBACK_REDIS_VERIFIED=YES"
+  echo "ROLLBACK_PRESERVES_GLOBAL_KILLED=YES"
+  echo "ROLLBACK_POST_VERIFY=PASS"
   return 0
 }
 
@@ -419,7 +458,8 @@ s4f7j_main() {
     exit 0
   fi
 
-  local backup_dir="${SYNQDRIVE_DEPLOY_STATE_DIR:-/tmp}/s4f7j-tiny-staging"
+  s4f7j_require_durable_backup_dir || exit 1
+  local backup_dir="${SYNQDRIVE_DEPLOY_STATE_DIR}/s4f7j-tiny-staging"
   mkdir -p "$backup_dir"
   BACKUP_FILE="${backup_dir}/backend.env.$(date -u +%Y%m%dT%H%M%SZ).bak"
   if [[ "${DI_S4F7J_TEST_INJECT_BACKUP_FAIL:-0}" == "1" ]]; then
@@ -443,10 +483,15 @@ s4f7j_main() {
   echo "ATOMIC_ENV_PROMOTION_IMPLEMENTED=YES"
   echo "EXACT_THREE_KEY_DIFF_AUTHORITY_IMPLEMENTED=YES"
   echo "TARGET_ENV_DUPLICATE_FAILS_CLOSED=YES"
-  s4f7j_run_config_file_audit "$BACKEND_ENV" || true
-  s4f7j_budget_redis_preflight || s4f7j_fail_after_arm "budget_redis"
+  if ! s4f7j_run_config_file_audit "$BACKEND_ENV"; then
+    echo "POST_MUTATION_CONFIG_AUDIT_FAILURE_IS_FATAL=YES"
+    s4f7j_fail_after_arm "config_audit"
+  fi
+  echo "POST_MUTATION_CONFIG_AUDIT_FAILURE_IS_FATAL=YES"
 
   S4F7J_RESTART_PHASE=primary
+  S4F7J_RUNTIME_PROOF_MODE=PRIMARY_STAGING
+  export S4F7J_RUNTIME_PROOF_MODE
   if ! s4f7j_rolling_restart_same_sha "$TARGET_SHA"; then
     s4f7j_fail_after_arm "rolling_restart"
   fi

@@ -13,13 +13,21 @@ import {
   FROZEN_STAGING_VALUES,
   FROZEN_VEHICLE_ALLOWLIST,
   parseProcEnvironForProof,
+  classifyPreMutationTargetKeyStates,
+  classifyStagingKeySemanticState,
+  evaluateTopologyGuardInput,
   parseVehicleDbProofLines,
+  proveReplicaRuntime,
   proveReplicaStagingRuntime,
   TINY_STAGING_TARGET_KEYS,
   validateFrozenAllowlists,
   validateFrozenNotBefore,
   type TinyStagingGuardInput,
 } from './di-v0-s4-tiny-staging-production.lib';
+import {
+  validateOpsFrozenNotBeforeCandidate,
+  OPS_FROZEN_DISCOVERY_TRIP_END_NOT_BEFORE,
+} from './di-v0-s4-tiny-staging-frozen-not-before';
 
 const WRAPPER = path.join(__dirname, '../di-v0-s4-stage-tiny-production.sh');
 const BOOTSTRAP = path.resolve(__dirname, '../../../../.cursor/scripts/cloud-agent-s4-tiny-staging.sh');
@@ -28,6 +36,19 @@ const WORKSPACE_ROOT = path.resolve(BACKEND_ROOT, '..');
 const PRODUCTION_SHA = 'ee9588548845c8077aa0cba0684b06eac7c9d4d2';
 const PRODUCTION_RELEASE = '20261002014651_v4994';
 const PRODUCTION_ENV_SHA = '6ea36831d58d9182877936beaa183e5a0024b766a4c195df9d94d261c639a1d7';
+
+function writeRecoveryPrestateProcEnvFile(): string {
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 's4f7j-rec-')), 'environ');
+  const env =
+    `DI_V0_S4_MASTER_ENABLED=false\0` +
+    `DI_V0_S4_DISCOVERY_ENABLED=false\0` +
+    `DI_V0_S4_WORKER_ENABLED=false\0` +
+    `DI_V0_S4_POSITION_ENABLED=false\0` +
+    `DI_V0_S4_R1_ENABLED=false\0` +
+    `DI_V0_S4_NATIVE_ENABLED=false\0`;
+  fs.writeFileSync(file, env);
+  return file;
+}
 
 function writeFrozenProcEnvFile(): string {
   const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 's4f7j-proc-')), 'environ');
@@ -59,7 +80,10 @@ function baseGuardInput(overrides: Partial<TinyStagingGuardInput> = {}): TinySta
     s4PersistenceLines: ['0', '0', '0', '0', '0', '0'],
     envContent: 'DIMO_GLOBAL_BUDGET_ENABLED=true\n',
     envReadable: true,
-    vehicleDbLines: ['1', FROZEN_ORGANIZATION_ALLOWLIST, 'ACTIVE', 'LTE_R1', '1'],
+    vehicleDbLines: ['1', FROZEN_ORGANIZATION_ALLOWLIST, 'ACTIVE', 'LTE_R1', '1', '1'],
+    preNotBeforeState: 'MISSING',
+    preOrgAllowlistState: 'MISSING',
+    preVehicleAllowlistState: 'MISSING',
     topologyOk: true,
     budgetConfigExplicitEnabled: true,
     budgetRuntimeBothEnabled: true,
@@ -186,6 +210,19 @@ describe('frozen authority', () => {
     expect(validateFrozenAllowlists().orgParseCount).toBe(1);
     expect(validateFrozenAllowlists().vehicleParseCount).toBe(1);
   });
+  it('rejects malformed and offset NOT_BEFORE candidates', () => {
+    expect(validateOpsFrozenNotBeforeCandidate(OPS_FROZEN_DISCOVERY_TRIP_END_NOT_BEFORE).ok).toBe(true);
+    expect(validateOpsFrozenNotBeforeCandidate('2026-10-02T05:55:28.839+00:00').ok).toBe(false);
+    expect(validateOpsFrozenNotBeforeCandidate('2026-10-02').ok).toBe(false);
+    expect(validateOpsFrozenNotBeforeCandidate('2026-10-02T05:55:28.839').ok).toBe(false);
+  });
+});
+
+describe('S4B dormant boundary', () => {
+  it('ops lib has zero direct s4b-orchestration imports', () => {
+    const libSource = fs.readFileSync(path.join(__dirname, 'di-v0-s4-tiny-staging-production.lib.ts'), 'utf8');
+    expect(libSource.includes('s4b-orchestration')).toBe(false);
+  });
 });
 
 describe('evaluateTinyStagingGuards', () => {
@@ -228,13 +265,52 @@ describe('evaluateTinyStagingGuards', () => {
   });
   it('wrong vehicle org fails', () => {
     expect(
-      evaluateTinyStagingGuards(baseGuardInput({ vehicleDbLines: ['1', 'wrong-org', 'ACTIVE', 'LTE_R1', '1'] })).failures,
+      evaluateTinyStagingGuards(baseGuardInput({ vehicleDbLines: ['1', 'wrong-org', 'ACTIVE', 'LTE_R1', '1', '1'] })).failures,
     ).toContain('VEHICLE_DB_PROOF_FAILED');
   });
   it('S4 persistence nonzero fails', () => {
     expect(
       evaluateTinyStagingGuards(baseGuardInput({ s4PersistenceLines: ['0', '1', '0', '0', '0', '0'] })).failures,
     ).toContain('S4_PERSISTENCE_NONZERO');
+  });
+  it('topology false cannot pass guards', () => {
+    expect(evaluateTinyStagingGuards(baseGuardInput({ topologyOk: false })).failures).toContain('TOPOLOGY_UNSAFE');
+  });
+  it('prestate key present fails', () => {
+    expect(
+      evaluateTinyStagingGuards(baseGuardInput({ preOrgAllowlistState: 'PRESENT' })).failures,
+    ).toContain('TARGET_KEY_PRESTATE_INVALID');
+  });
+  it('budget config false fails', () => {
+    expect(
+      evaluateTinyStagingGuards(baseGuardInput({ budgetConfigExplicitEnabled: false })).failures,
+    ).toContain('BUDGET_CONFIG_UNSAFE');
+  });
+  it('redis false fails', () => {
+    expect(evaluateTinyStagingGuards(baseGuardInput({ redisReachable: false })).failures).toContain('REDIS_UNREACHABLE');
+  });
+});
+
+describe('topology guard evaluator', () => {
+  it('requires all live observations', () => {
+    expect(
+      evaluateTopologyGuardInput({
+        replicaAIdentity: true,
+        replicaBIdentity: true,
+        schedulerSingleLeader: true,
+        nginxDualUpstream: true,
+        steadyStateNoMixedRelease: true,
+      }),
+    ).toBe(true);
+    expect(
+      evaluateTopologyGuardInput({
+        replicaAIdentity: false,
+        replicaBIdentity: true,
+        schedulerSingleLeader: true,
+        nginxDualUpstream: true,
+        steadyStateNoMixedRelease: true,
+      }),
+    ).toBe(false);
   });
 });
 
@@ -263,6 +339,25 @@ describe('env mutation semantics', () => {
     expect(diff.ok).toBe(false);
     expect(diff.unexpectedChangedKeyCount).toBeGreaterThan(0);
   });
+  it('two-key staging diff rejected', () => {
+    const before = 'FOO=1\n';
+    const after = `FOO=1\n${TINY_STAGING_TARGET_KEYS[0]}=${FROZEN_STAGING_VALUES[TINY_STAGING_TARGET_KEYS[0]]}\n${TINY_STAGING_TARGET_KEYS[1]}=${FROZEN_STAGING_VALUES[TINY_STAGING_TARGET_KEYS[1]]}\n`;
+    const diff = computeSemanticEnvDiff(before, after);
+    expect(diff.envChangedKeyCount).toBe(2);
+    expect(diff.ok).toBe(false);
+  });
+  it('distinguishes missing vs empty target key', () => {
+    const key = TINY_STAGING_TARGET_KEYS[1];
+    expect(classifyStagingKeySemanticState('FOO=1\n', key)).toBe('MISSING');
+    expect(classifyStagingKeySemanticState(`FOO=1\n${key}=\n`, key)).toBe('EMPTY');
+    expect(classifyStagingKeySemanticState(`FOO=1\n${key}=x\n`, key)).toBe('PRESENT');
+    const states = classifyPreMutationTargetKeyStates(`FOO=1\n${key}=\n`);
+    expect(states.organization).toBe('EMPTY');
+  });
+  it('partial staging blocks mutation', () => {
+    const before = `DI_V0_S4_ORGANIZATION_ALLOWLIST=${FROZEN_ORGANIZATION_ALLOWLIST}\nFOO=1\n`;
+    expect(() => applyTinyStagingMutation(before)).toThrow(/target_key_prestate/);
+  });
 });
 
 describe('runtime proc environ proof', () => {
@@ -280,16 +375,32 @@ describe('runtime proc environ proof', () => {
     expect(proof.notBeforeExact).toBe(true);
     expect(proof.allS4EnableFlagsOff).toBe(true);
   });
+  it('recovery prestate requires absent staging keys', () => {
+    const map = parseProcEnvironForProof(fs.readFileSync(writeRecoveryPrestateProcEnvFile(), 'utf8'));
+    const proof = proveReplicaRuntime(map, 'RECOVERY_PRESTATE');
+    expect(proof.stagingKeysAbsent).toBe(true);
+    expect(proof.ok).toBe(true);
+  });
+  it('recovery fails when staged values still present', () => {
+    const map = parseProcEnvironForProof(fs.readFileSync(writeFrozenProcEnvFile(), 'utf8'));
+    const proof = proveReplicaRuntime(map, 'RECOVERY_PRESTATE');
+    expect(proof.ok).toBe(false);
+  });
 });
 
 describe('vehicle db proof parser', () => {
   it('accepts frozen tiny vehicle', () => {
     expect(
-      parseVehicleDbProofLines(['1', FROZEN_ORGANIZATION_ALLOWLIST, 'ACTIVE', 'LTE_R1', '1']).ok,
+      parseVehicleDbProofLines(['1', FROZEN_ORGANIZATION_ALLOWLIST, 'ACTIVE', 'LTE_R1', '1', '1']).ok,
     ).toBe(true);
   });
   it('rejects wildcard hardware', () => {
-    expect(parseVehicleDbProofLines(['1', FROZEN_ORGANIZATION_ALLOWLIST, 'ACTIVE', '*', '1']).ok).toBe(false);
+    expect(parseVehicleDbProofLines(['1', FROZEN_ORGANIZATION_ALLOWLIST, 'ACTIVE', '*', '1', '1']).ok).toBe(false);
+  });
+  it('rejects unrelated active provider without DIMO R1 link', () => {
+    expect(
+      parseVehicleDbProofLines(['1', FROZEN_ORGANIZATION_ALLOWLIST, 'ACTIVE', 'LTE_R1', '0', '0']).ok,
+    ).toBe(false);
   });
 });
 
@@ -359,6 +470,24 @@ describe('wrapper test mode mutation + recovery', () => {
   });
   it('S4 persistence read failure fails', () => {
     expect(() => runFixture({ DI_S4F7J_FIXTURE_S4_PERSISTENCE_READ_FAIL: '1' })).toThrow();
+  });
+  it('partial staging fails preflight', () => {
+    expect(() =>
+      runFixture({
+        S4F7J_FIXTURE_ENV_CONTENT: `DI_V0_S4_ORGANIZATION_ALLOWLIST=${FROZEN_ORGANIZATION_ALLOWLIST}\nDIMO_GLOBAL_BUDGET_ENABLED=true\n`,
+      }),
+    ).toThrow();
+  });
+  it('recovery restores prestate proc env', () => {
+    const recProc = writeRecoveryPrestateProcEnvFile();
+    const { envFile, beforeContent } = runTestModeExpectFail(
+      {
+        DI_S4F7J_FIXTURE_PROC_ENV_FILE_A: recProc,
+        DI_S4F7J_FIXTURE_PROC_ENV_FILE_B: recProc,
+      },
+      'FOO=1\nDIMO_GLOBAL_BUDGET_ENABLED=true\n',
+    );
+    expect(fs.readFileSync(envFile, 'utf8')).toBe(beforeContent);
   });
 });
 

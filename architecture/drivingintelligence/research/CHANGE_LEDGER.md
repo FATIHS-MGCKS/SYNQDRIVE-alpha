@@ -1417,6 +1417,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | **`SUPPORTED_ENV_MUTATION_KEY_COUNT=3`**; S4F-4 global-budget wrapper unchanged; recovery + rolling restart A→B + filtered `/proc` runtime proof |
 | NON_EFFECTS | No Production env/DB/restart/deploy; Tiny gate **NOT_SATISFIED**; GLOBAL remains **KILLED** |
 
+### EXP-021 S4F-7J.1 Tiny staging wrapper safety closure (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | PR #1888 closure: remove Ops→S4B import (`di-v0-s4-tiny-staging-frozen-not-before.ts`); live topology/budget/Redis pre-mutation gates; exact three-key diff + independent post-write verify; fatal config audit; `PRIMARY_STAGING` / `RECOVERY_PRESTATE` runtime proofs; full rollback verification; DIMO R1 vehicle SQL authority; safe `/proc` sudo read; durable backup dir |
+| FINDING | **`S4B_DORMANT_AUDIT=PASS`**; **`OPS_DIRECT_S4B_IMPORT_COUNT=0`**; wrapper tests **47** |
+| NON_EFFECTS | No Production mutation/deploy/restart/DB write |
+
 ### EXP-021 S4F-7I NO_BACKFILL Tiny staging preflight (2026-10-02)
 
 | Event | Detail |
