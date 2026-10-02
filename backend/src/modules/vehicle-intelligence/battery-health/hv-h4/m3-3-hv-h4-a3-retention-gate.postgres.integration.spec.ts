@@ -163,12 +163,14 @@ async function persistCurrentRevision(
       const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
       const session = await createEligibleSession(prisma, organizationId, vehicleId);
       const persisted = await persistCurrentRevision(writer, session);
+      const otherSession = await createEligibleSession(prisma, organizationId, vehicleId);
+      const otherPersisted = await persistCurrentRevision(writer, otherSession);
       const ack = await prisma.batteryHvChargeSessionEvidenceAck.findFirstOrThrow({
         where: { revisionId: persisted.revision.id },
       });
       await prisma.batteryHvChargeSessionEvidenceAck.update({
         where: { id: ack.id },
-        data: { revisionId: randomUUID() },
+        data: { revisionId: otherPersisted.revision.id },
       });
       const outcome = await txDelete(session.id);
       expect(outcome.kind).toBe('BLOCKED');
