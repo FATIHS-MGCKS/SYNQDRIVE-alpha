@@ -1385,6 +1385,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | 16 historical rolled-back `_prisma_migrations` tombstones; 0 active incomplete migrations; Production link index differs from Prisma name `uq_data_source_link_active` (VO2.1 uses DROP IF EXISTS) |
 | NON_EFFECTS | No deploy, migrate, env mutation, or restart |
 
+### EXP-021 S4F-7D exact-SHA dormant Production deploy (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Executed canonical `cloud-agent-deploy.sh` with `SYNQDRIVE_REQUESTED_DEPLOY_SHA=ee958854…`; evidence `EXP021_S4F7D_DORMANT_PRODUCTION_DEPLOY_RESULT.md` |
+| FINDING | Production now `ee958854…` release `20261002014651_v4994`; `DiV0S4RuntimeModule` boot-registered; S4 dormant/fail-closed preserved; **0** migration applied |
+| NON_EFFECTS | No kill initializer, no S4 env activation, no operator grant, no Tiny |
+
 ### EXP-021 S4F-7B dormant Production deploy preflight (2026-10-02)
 
 | Event | Detail |
