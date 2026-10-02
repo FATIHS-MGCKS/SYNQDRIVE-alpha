@@ -36,7 +36,13 @@
 | Env hash | `DI_S4_KILL_INIT_REQUIRED_ENV_SHA256` vs `sha256sum backend.env` |
 | GLOBAL pre-state | `DI_S4_KILL_INIT_EXPECTED_PRESTATE` ∈ `MISSING`, `KILLED` (strict match; `NOT_KILLED` always aborts) |
 | Actor / reason | `DI_S4_KILL_INIT_ACTOR`, `DI_S4_KILL_INIT_REASON` (required, non-empty, bounded, no control chars) |
-| Topology | Replica health, `NO_MIXED_SHA`, single scheduler leader, nginx dual upstream (canonical `vps-production-replica` helpers) |
+| Topology | Replica health, **steady-state** process release identity (`/proc/<pid>/cwd` vs verified release `backend`), single scheduler leader, nginx dual upstream — **not** post-deploy uptime helper |
+| Production DB reads | Fail-closed (`GLOBAL_PRESTATE_READ_FAILED`, `S4_PERSISTENCE_READ_FAILED`); no `\|\| echo 0` / default zeros |
+| Deployed release integrity | Git tracked + clean worktree for initializer + kill implementation paths |
+| Initializer path pin | `INITIALIZER_SUBSTITUTION_RISK` when resolved initializer escapes verified release `backend/` |
+| Metrics | Deployed-release **S4F-4** CLI `fetch-live-metric` + `redis-ping` (`METRICS_BEARER_TOKEN`; `METRICS_AUTH_USED=YES`) |
+| Post-write GLOBAL | DB-observed `reason` / `actor` (not request echo) for `INSERTED_KILLED` |
+| Remote bootstrap | `.cursor/scripts/cloud-agent-s4-global-kill-init.sh` — temp checkout at `CLOUD_AGENT_S4_KILL_WRAPPER_SHA`, Production runtime pinned separately |
 | S4 env | All S4 enable flags off; org/vehicle allowlists effectively **NONE**; `NOT_BEFORE` classified only |
 | Global budget | Config `EXPLICIT_ENABLED`; live Prometheus gauge **ENABLED** on A+B; Redis **PONG** (S4F-4 metric authority) |
 | S4 persistence | Pre-state counts (defaults 0 via optional `DI_S4_KILL_INIT_EXPECTED_S4_*` env pins) |
@@ -65,4 +71,8 @@ Read-back GLOBAL row; `POST_WRITE_VERIFY`; env SHA unchanged; S4 table deltas 0;
 
 **`PRODUCTION_KILL_INITIALIZER_WRAPPER_READINESS=PASS`** (engineering). Production GLOBAL row remains **MISSING** until a future authorized execution.
 
-**`NEXT_ACTION`:** `WAIT_EXACT_HEAD_CI_THEN_HUMAN_MERGE_WRAPPER_PR_AND_RUN_SEPARATE_PRODUCTION_EXECUTION_PREFLIGHT`
+## S4F-7F-1 safety closure (PR #1882)
+
+Engineering hardening only (2026-10-02): fail-closed Production DB reads, steady-state replica identity, S4F-4 authenticated metrics, DB-backed post-write metadata, initializer path pin + worktree clean guards, cloud-agent remote bootstrap without deploy. **No** Production dry-run in this closure.
+
+**`NEXT_ACTION`:** `WAIT_EXACT_HEAD_CI_THEN_HUMAN_MERGE_PR_1882_THEN_RUN_SEPARATE_PRODUCTION_DRY_RUN`

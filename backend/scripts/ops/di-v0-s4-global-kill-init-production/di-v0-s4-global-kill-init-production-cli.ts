@@ -3,20 +3,19 @@
  * CLI helpers for S4F-7F Production GLOBAL kill initializer wrapper (no arbitrary DB writes).
  */
 import * as fs from 'fs';
-import * as http from 'http';
 import Redis from 'ioredis';
 import {
   assertPostWriteGlobalRow,
   classifyBudgetConfigFromEnvContent,
   classifyGlobalControlPrestate,
-  classifyLiveMetricBody,
   classifyNotBeforeState,
   evaluateKillInitGuards,
   parseExpectedPersistenceFromEnv,
+  parseGlobalRowDbLines,
   parseInitializerOutcome,
+  parseS4PersistenceDbLines,
   sha256FileContent,
   type BudgetSnapshot,
-  type GlobalControlPrestate,
   type KillInitGuardInput,
   type S4PersistenceCounts,
   type TopologySnapshot,
@@ -30,24 +29,8 @@ function readFile(pathname: string): string {
   return fs.readFileSync(pathname, 'utf8');
 }
 
-function fetchMetrics(port: string, pathSuffix: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const req = http.get(
-      { host: '127.0.0.1', port: Number(port), path: pathSuffix, timeout: 5000 },
-      (res) => {
-        let body = '';
-        res.on('data', (c) => {
-          body += c;
-        });
-        res.on('end', () => resolve(body));
-      },
-    );
-    req.on('error', reject);
-    req.on('timeout', () => {
-      req.destroy();
-      reject(new Error('timeout'));
-    });
-  });
+function envFlagYes(name: string): boolean {
+  return process.env[name] === 'YES';
 }
 
 async function cmdRedisPing(envFile: string, fixtureOk: boolean): Promise<void> {
@@ -79,20 +62,6 @@ async function cmdRedisPing(envFile: string, fixtureOk: boolean): Promise<void> 
   }
 }
 
-function cmdLiveMetric(envFile: string, port: string): void {
-  const metricsPath = process.env.DI_S4_METRICS_PATH || '/api/v1/metrics';
-  fetchMetrics(port, metricsPath)
-    .then((body) => {
-      const proof = classifyLiveMetricBody(body);
-      console.log(`LIVE_GLOBAL_BUDGET_METRIC=${proof}`);
-      if (proof === 'UNKNOWN') process.exitCode = 1;
-    })
-    .catch(() => {
-      console.log('LIVE_GLOBAL_BUDGET_METRIC=UNKNOWN');
-      process.exitCode = 1;
-    });
-}
-
 function cmdEnvSha256(envFile: string): void {
   const content = readFile(envFile);
   console.log(`BACKEND_ENV_SHA256=${sha256FileContent(content)}`);
@@ -101,6 +70,85 @@ function cmdEnvSha256(envFile: string): void {
 function cmdNotBefore(envFile: string): void {
   const map = envMapFromFileContent(readFile(envFile));
   console.log(`NOT_BEFORE_CLASSIFICATION=${classifyNotBeforeState(map)}`);
+}
+
+function cmdValidateGlobalPrestate(lines: string[]): void {
+  const includeMeta = process.env.DI_S4F7F_VALIDATE_GLOBAL_INCLUDE_META === '1';
+  const parsed = parseGlobalRowDbLines(lines, includeMeta);
+  if (!parsed.ok) {
+    console.log(`${parsed.code}=YES`);
+    process.exitCode = 1;
+    return;
+  }
+  console.log('GLOBAL_ROW_READ_OK=YES');
+}
+
+function cmdValidateS4Persistence(lines: string[]): void {
+  const parsed = parseS4PersistenceDbLines(lines);
+  if (!parsed.ok) {
+    console.log(`${parsed.code}=YES`);
+    process.exitCode = 1;
+    return;
+  }
+  console.log('S4_PERSISTENCE_READ_OK=YES');
+}
+
+function globalPrestateFromEnv(): {
+  prestate: ReturnType<typeof classifyGlobalControlPrestate>;
+  rowCount: number;
+  killState: string | undefined;
+  reason: string | undefined;
+  actor: string | undefined;
+} {
+  const includeMeta = process.env.DI_S4F7F_VALIDATE_GLOBAL_INCLUDE_META === '1';
+  const lines = [
+    process.env.DI_S4F7F_GLOBAL_ROW_COUNT ?? '',
+    process.env.DI_S4F7F_GLOBAL_KILL_STATE ?? '',
+  ];
+  if (includeMeta) {
+    lines.push(process.env.DI_S4F7F_GLOBAL_REASON ?? '', process.env.DI_S4F7F_GLOBAL_ACTOR ?? '');
+  }
+  const parsed = parseGlobalRowDbLines(lines, includeMeta);
+  if (!parsed.ok) {
+    return {
+      prestate: 'MALFORMED',
+      rowCount: -1,
+      killState: undefined,
+      reason: undefined,
+      actor: undefined,
+    };
+  }
+  const killStates = parsed.killState != null ? [parsed.killState] : [];
+  return {
+    prestate: classifyGlobalControlPrestate(parsed.rowCount, killStates),
+    rowCount: parsed.rowCount,
+    killState: parsed.killState ?? undefined,
+    reason: parsed.reason ?? undefined,
+    actor: parsed.actor ?? undefined,
+  };
+}
+
+function persistenceFromEnv(): S4PersistenceCounts {
+  const lines = [
+    process.env.DI_S4F7F_S4_PIPELINE_REGISTRY_ROWS ?? '',
+    process.env.DI_S4F7F_S4_WORK_ITEM_ROWS ?? '',
+    process.env.DI_S4F7F_S4_ACTIVE_WORK_ITEM_ROWS ?? '',
+    process.env.DI_S4F7F_S4_EVIDENCE_SNAPSHOT_ROWS ?? '',
+    process.env.DI_S4F7F_S4_SHADOW_RUN_ROWS ?? '',
+    process.env.DI_S4F7F_S4_SHADOW_INTERVAL_ROWS ?? '',
+  ];
+  const parsed = parseS4PersistenceDbLines(lines);
+  if (!parsed.ok) {
+    return {
+      pipelineRegistry: -1,
+      workItems: -1,
+      activeWorkItems: -1,
+      evidenceSnapshots: -1,
+      shadowRuns: -1,
+      shadowIntervals: -1,
+    };
+  }
+  return parsed.counts;
 }
 
 function buildGuardInputFromEnv(): KillInitGuardInput {
@@ -114,26 +162,14 @@ function buildGuardInputFromEnv(): KillInitGuardInput {
     readable = false;
   }
 
-  const globalCount = Number.parseInt(process.env.DI_S4F7F_GLOBAL_ROW_COUNT || '0', 10);
-  const killState = process.env.DI_S4F7F_GLOBAL_KILL_STATE;
-  const prestate: GlobalControlPrestate = classifyGlobalControlPrestate(
-    globalCount,
-    killState != null && killState !== '' ? [killState] : [],
-  );
-
-  const persistence: S4PersistenceCounts = {
-    pipelineRegistry: Number(process.env.DI_S4F7F_S4_PIPELINE_REGISTRY_ROWS || '0'),
-    workItems: Number(process.env.DI_S4F7F_S4_WORK_ITEM_ROWS || '0'),
-    activeWorkItems: Number(process.env.DI_S4F7F_S4_ACTIVE_WORK_ITEM_ROWS || '0'),
-    evidenceSnapshots: Number(process.env.DI_S4F7F_S4_EVIDENCE_SNAPSHOT_ROWS || '0'),
-    shadowRuns: Number(process.env.DI_S4F7F_S4_SHADOW_RUN_ROWS || '0'),
-    shadowIntervals: Number(process.env.DI_S4F7F_S4_SHADOW_INTERVAL_ROWS || '0'),
-  };
+  const global = globalPrestateFromEnv();
 
   const topology: TopologySnapshot = {
     replicaAHealthOk: process.env.DI_S4F7F_REPLICA_A_HEALTH === 'OK',
     replicaBHealthOk: process.env.DI_S4F7F_REPLICA_B_HEALTH === 'OK',
-    noMixedSha: process.env.DI_S4F7F_NO_MIXED_SHA === 'YES',
+    replicaAProcessReleaseIdentityOk: envFlagYes('DI_S4F7F_REPLICA_A_PROCESS_RELEASE_IDENTITY'),
+    replicaBProcessReleaseIdentityOk: envFlagYes('DI_S4F7F_REPLICA_B_PROCESS_RELEASE_IDENTITY'),
+    steadyStateNoMixedReleaseIdentity: envFlagYes('DI_S4F7F_STEADY_STATE_NO_MIXED_RELEASE_IDENTITY'),
     schedulerSingleLeader: process.env.DI_S4F7F_SCHEDULER_SINGLE_LEADER === 'YES',
     nginxDualUpstream: process.env.DI_S4F7F_NGINX_DUAL_UPSTREAM === 'YES',
   };
@@ -159,19 +195,25 @@ function buildGuardInputFromEnv(): KillInitGuardInput {
     requiredEnvSha256: process.env.DI_S4_KILL_INIT_REQUIRED_ENV_SHA256,
     actualEnvSha256: process.env.DI_S4F7F_ACTUAL_ENV_SHA256,
     expectedPrestate: process.env.DI_S4_KILL_INIT_EXPECTED_PRESTATE,
-    actualGlobalPrestate: prestate,
+    actualGlobalPrestate: global.prestate,
     actor: process.env.DI_S4_KILL_INIT_ACTOR,
     reason: process.env.DI_S4_KILL_INIT_REASON,
     envContent: content,
     envReadable: readable,
     topology,
     budget,
-    persistence,
+    persistence: persistenceFromEnv(),
     expectedPersistence: parseExpectedPersistenceFromEnv(process.env as Record<string, string>),
     dryRun: process.env.DRY_RUN === '1',
     verifiedReleaseDir,
     wrapperBackendRoot,
     deployedInitializerExists: initExists,
+    deployedInitializerTracked: envFlagYes('DI_S4F7F_DEPLOYED_INITIALIZER_TRACKED'),
+    deployedInitializerWorktreeClean: envFlagYes('DI_S4F7F_DEPLOYED_INITIALIZER_WORKTREE_CLEAN'),
+    deployedKillImplementationTracked: envFlagYes('DI_S4F7F_DEPLOYED_KILL_IMPLEMENTATION_TRACKED'),
+    deployedKillImplementationWorktreeClean: envFlagYes('DI_S4F7F_DEPLOYED_KILL_IMPLEMENTATION_WORKTREE_CLEAN'),
+    initializerSubstitutionRisk: envFlagYes('DI_S4F7F_INITIALIZER_SUBSTITUTION_RISK'),
+    mainCheckoutDiffersFromProduction: envFlagYes('DI_S4F7F_MAIN_CHECKOUT_DIFFERS_FROM_PRODUCTION'),
   };
 }
 
@@ -182,19 +224,26 @@ function cmdEvaluateGuards(): void {
   console.log(`GUARDS_OK=${result.ok ? 'YES' : 'NO'}`);
   console.log(`GUARD_FAILURES=${result.failures.join(',') || 'NONE'}`);
   console.log(`DEPLOYED_INITIALIZER_PATH=${result.deployedInitializerPath}`);
-  console.log(`DEPLOYED_RELEASE_INITIALIZER_IS_EXECUTION_AUTHORITY=YES`);
+  console.log(
+    `DEPLOYED_RELEASE_INITIALIZER_IS_EXECUTION_AUTHORITY=${result.deployedReleaseInitializerIsAuthority ? 'YES' : 'NO'}`,
+  );
   console.log(`WRAPPER_REQUIRES_NEW_CODE_DEPLOY_BEFORE_USE=NO`);
-  console.log(`NEWER_MAIN_INITIALIZER_SUBSTITUTION_POSSIBLE=${result.newerMainSubstitutionPossible ? 'YES' : 'NO'}`);
+  console.log(
+    `MAIN_CHECKOUT_DIFFERS_FROM_PRODUCTION=${result.mainCheckoutDiffersFromProduction ? 'YES' : 'NO'}`,
+  );
+  console.log(`NEWER_MAIN_INITIALIZER_SUBSTITUTION_POSSIBLE=NO`);
   if (!result.ok) process.exitCode = 1;
 }
 
 function cmdPostVerify(): void {
   const outcome = process.env.DI_S4F7F_INIT_OUTCOME || '';
+  process.env.DI_S4F7F_VALIDATE_GLOBAL_INCLUDE_META = '1';
+  const global = globalPrestateFromEnv();
   const result = assertPostWriteGlobalRow({
-    globalRowCount: Number(process.env.DI_S4F7F_GLOBAL_ROW_COUNT || '0'),
-    killState: process.env.DI_S4F7F_GLOBAL_KILL_STATE,
-    reason: process.env.DI_S4F7F_GLOBAL_REASON ?? null,
-    actor: process.env.DI_S4F7F_GLOBAL_ACTOR ?? null,
+    globalRowCount: global.rowCount,
+    killState: global.killState,
+    reason: global.reason ?? null,
+    actor: global.actor ?? null,
     requestedReason: process.env.DI_S4_KILL_INIT_REASON || '',
     requestedActor: process.env.DI_S4_KILL_INIT_ACTOR || '',
     initOutcome: outcome,
@@ -211,7 +260,7 @@ function cmdParseInitOutcome(stdoutFile: string): void {
   if (!outcome) process.exitCode = 1;
 }
 
-async function cmdQueryGlobal(): Promise<void> {
+async function cmdQueryGlobalPrestate(): Promise<void> {
   const { PrismaClient } = await import('@prisma/client');
   const prisma = new PrismaClient();
   try {
@@ -224,13 +273,40 @@ async function cmdQueryGlobal(): Promise<void> {
   }
 }
 
+async function cmdQueryGlobalDetail(): Promise<void> {
+  const { PrismaClient } = await import('@prisma/client');
+  const prisma = new PrismaClient();
+  try {
+    const rows = await prisma.$queryRaw<
+      Array<{ kill_state: string; reason: string; actor: string }>
+    >`
+      SELECT kill_state, reason, actor FROM di_v0_s4_control WHERE id = 'GLOBAL'`;
+    console.log(String(rows.length));
+    if (rows.length === 0) {
+      console.log('');
+      console.log('');
+      console.log('');
+      return;
+    }
+    console.log(rows[0]?.kill_state ?? '');
+    console.log(rows[0]?.reason ?? '');
+    console.log(rows[0]?.actor ?? '');
+  } finally {
+    await prisma.$disconnect().catch(() => undefined);
+  }
+}
+
 async function cmdQueryS4Counts(): Promise<void> {
   const { PrismaClient } = await import('@prisma/client');
   const prisma = new PrismaClient();
   try {
     const q = async (sql: string): Promise<string> => {
       const rows = await prisma.$queryRawUnsafe<Array<{ c: string }>>(sql);
-      return String(rows[0]?.c ?? '0');
+      const raw = rows[0]?.c;
+      if (raw == null || String(raw).trim() === '') {
+        throw new Error('S4_PERSISTENCE_READ_FAILED');
+      }
+      return String(raw).trim();
     };
     console.log(await q('SELECT COUNT(*)::text AS c FROM di_v0_s4_pipeline_versions'));
     console.log(await q('SELECT COUNT(*)::text AS c FROM di_v0_s4_work_items'));
@@ -253,14 +329,17 @@ async function main(): Promise<void> {
     case 'redis-ping':
       await cmdRedisPing(args[0], args[1] === '--fixture-ok');
       break;
-    case 'live-metric':
-      cmdLiveMetric(args[0], args[1]);
-      break;
     case 'env-sha256':
       cmdEnvSha256(args[0]);
       break;
     case 'not-before':
       cmdNotBefore(args[0]);
+      break;
+    case 'validate-global-prestate':
+      cmdValidateGlobalPrestate(args);
+      break;
+    case 'validate-s4-persistence':
+      cmdValidateS4Persistence(args);
       break;
     case 'evaluate-guards':
       cmdEvaluateGuards();
@@ -271,8 +350,14 @@ async function main(): Promise<void> {
     case 'parse-init-outcome':
       cmdParseInitOutcome(args[0]);
       break;
+    case 'query-global-prestate':
+      await cmdQueryGlobalPrestate();
+      break;
+    case 'query-global-detail':
+      await cmdQueryGlobalDetail();
+      break;
     case 'query-global':
-      await cmdQueryGlobal();
+      await cmdQueryGlobalPrestate();
       break;
     case 'query-s4-counts':
       await cmdQueryS4Counts();

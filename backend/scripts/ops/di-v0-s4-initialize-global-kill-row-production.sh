@@ -50,7 +50,9 @@ fi
 ACTUAL_RELEASE_ID="$(basename "$RELEASE_DIR")"
 ACTUAL_SHA="$(s4f7f_release_sha "$RELEASE_DIR")"
 RELEASE_BACKEND="${RELEASE_DIR}/backend"
-DEPLOYED_INITIALIZER="${RELEASE_BACKEND}/scripts/ops/di-v0-s4-initialize-global-kill-row.ts"
+S4F7F_RELEASE_BACKEND="$RELEASE_BACKEND"
+export S4F7F_RELEASE_BACKEND
+DEPLOYED_INITIALIZER="$(readlink -f "${RELEASE_BACKEND}/scripts/ops/di-v0-s4-initialize-global-kill-row.ts" 2>/dev/null || echo "${RELEASE_BACKEND}/scripts/ops/di-v0-s4-initialize-global-kill-row.ts")"
 
 echo "VERIFIED_RELEASE_DIR=${RELEASE_DIR}"
 echo "ACTUAL_RELEASE_ID=${ACTUAL_RELEASE_ID}"
@@ -63,6 +65,14 @@ if [[ ! -f "$DEPLOYED_INITIALIZER" ]]; then
   s4f7f_fail "DEPLOYED_INITIALIZER_MISSING"
 fi
 
+if ! s4f7f_verify_initializer_path_pinned "$RELEASE_DIR" "$DEPLOYED_INITIALIZER"; then
+  s4f7f_fail "INITIALIZER_SUBSTITUTION_RISK"
+fi
+
+if ! s4f7f_verify_deployed_kill_files_clean "$RELEASE_DIR" "${DI_S4_KILL_INIT_REQUIRED_SHA:-$ACTUAL_SHA}"; then
+  s4f7f_fail "DEPLOYED_RELEASE_FILE_DIRTY"
+fi
+
 if [[ ! -r "$BACKEND_ENV" ]]; then
   s4f7f_fail "BACKEND_ENV_UNREADABLE"
 fi
@@ -70,30 +80,30 @@ fi
 ACTUAL_ENV_SHA256="$(s4f7f_file_sha256 "$BACKEND_ENV")"
 echo "BACKEND_ENV_SHA256=${ACTUAL_ENV_SHA256}"
 
-s4f7f_topology_snapshot "$ACTUAL_SHA"
+s4f7f_topology_snapshot "$ACTUAL_SHA" "$RELEASE_DIR"
 
-# Global row + S4 counts
-mapfile -t GLOBAL_Q < <(s4f7f_query_global_row_db)
-GLOBAL_ROW_COUNT="${GLOBAL_Q[0]:-0}"
-GLOBAL_KILL_STATE="${GLOBAL_Q[1]:-}"
-export DI_S4F7F_GLOBAL_ROW_COUNT="$GLOBAL_ROW_COUNT"
-export DI_S4F7F_GLOBAL_KILL_STATE="$GLOBAL_KILL_STATE"
+if ! s4f7f_apply_global_read_to_env 0; then
+  s4f7f_fail "GLOBAL_PRESTATE_READ_FAILED"
+fi
 
-mapfile -t S4_COUNTS < <(s4f7f_query_s4_counts_db)
-export DI_S4F7F_S4_PIPELINE_REGISTRY_ROWS="${S4_COUNTS[0]:-0}"
-export DI_S4F7F_S4_WORK_ITEM_ROWS="${S4_COUNTS[1]:-0}"
-export DI_S4F7F_S4_ACTIVE_WORK_ITEM_ROWS="${S4_COUNTS[2]:-0}"
-export DI_S4F7F_S4_EVIDENCE_SNAPSHOT_ROWS="${S4_COUNTS[3]:-0}"
-export DI_S4F7F_S4_SHADOW_RUN_ROWS="${S4_COUNTS[4]:-0}"
-export DI_S4F7F_S4_SHADOW_INTERVAL_ROWS="${S4_COUNTS[5]:-0}"
+if ! s4f7f_apply_s4_counts_to_env; then
+  s4f7f_fail "S4_PERSISTENCE_READ_FAILED"
+fi
 
-S4_COUNTS_BEFORE=("${S4_COUNTS[@]}")
+S4_COUNTS_BEFORE=(
+  "$DI_S4F7F_S4_PIPELINE_REGISTRY_ROWS"
+  "$DI_S4F7F_S4_WORK_ITEM_ROWS"
+  "$DI_S4F7F_S4_ACTIVE_WORK_ITEM_ROWS"
+  "$DI_S4F7F_S4_EVIDENCE_SNAPSHOT_ROWS"
+  "$DI_S4F7F_S4_SHADOW_RUN_ROWS"
+  "$DI_S4F7F_S4_SHADOW_INTERVAL_ROWS"
+)
 
-# Redis + budget runtime
 if s4f7f_is_fixture_mode || s4f7f_is_test_mode; then
   REDIS_REACHABLE="${DI_S4F7F_FIXTURE_REDIS_REACHABLE:-YES}"
+  echo "METRICS_AUTH_USED=FIXTURE"
 else
-  if s4f7f_run_cli redis-ping "$BACKEND_ENV" 2>/dev/null | grep -q 'REDIS_REACHABLE=YES'; then
+  if s4f7f_run_deployed_s4f4_cli "$RELEASE_BACKEND" redis-ping "$BACKEND_ENV"; then
     REDIS_REACHABLE=YES
   else
     REDIS_REACHABLE=NO
@@ -102,14 +112,32 @@ fi
 export DI_S4F7F_REDIS_REACHABLE="$REDIS_REACHABLE"
 echo "REDIS_REACHABLE=${REDIS_REACHABLE}"
 
-RAW_A="$(s4f7f_budget_runtime_for_label A "${SYNQDRIVE_REPLICA_A_PORT}" "$BACKEND_ENV")"
-RAW_B="$(s4f7f_budget_runtime_for_label B "${SYNQDRIVE_REPLICA_B_PORT}" "$BACKEND_ENV")"
+RAW_A=""
+RAW_B=""
+if ! RAW_A="$(s4f7f_budget_runtime_for_label A "${SYNQDRIVE_REPLICA_A_PORT}" "$BACKEND_ENV" "$RELEASE_BACKEND")"; then
+  echo "METRICS_AUTH_USED=NO"
+  s4f7f_fail "GLOBAL_BUDGET_METRIC_READ_FAILED"
+fi
+if ! RAW_B="$(s4f7f_budget_runtime_for_label B "${SYNQDRIVE_REPLICA_B_PORT}" "$BACKEND_ENV" "$RELEASE_BACKEND")"; then
+  echo "METRICS_AUTH_USED=NO"
+  s4f7f_fail "GLOBAL_BUDGET_METRIC_READ_FAILED"
+fi
+if ! s4f7f_is_fixture_mode && ! s4f7f_is_test_mode; then
+  echo "METRICS_AUTH_USED=YES"
+  echo "METRICS_SECRET_EXPOSED=NO"
+fi
 RUNTIME_A="$(s4f7f_map_metric_to_runtime "$RAW_A")"
 RUNTIME_B="$(s4f7f_map_metric_to_runtime "$RAW_B")"
 export DI_S4F7F_REPLICA_A_BUDGET_RUNTIME="$RUNTIME_A"
 export DI_S4F7F_REPLICA_B_BUDGET_RUNTIME="$RUNTIME_B"
 echo "REPLICA_A_GLOBAL_BUDGET_RUNTIME=${RUNTIME_A}"
 echo "REPLICA_B_GLOBAL_BUDGET_RUNTIME=${RUNTIME_B}"
+if [[ "$RUNTIME_A" == "ENABLED" && "$RUNTIME_B" == "ENABLED" ]]; then
+  echo "GLOBAL_BUDGET_ACTIVE_RUNTIME_STATE=CONFIRMED_ENABLED"
+else
+  echo "GLOBAL_BUDGET_ACTIVE_RUNTIME_STATE=UNVERIFIED"
+  s4f7f_fail "GLOBAL_BUDGET_RUNTIME_UNVERIFIED"
+fi
 
 s4f7f_run_cli not-before "$BACKEND_ENV" || true
 
@@ -119,6 +147,7 @@ export DI_S4F7F_ACTUAL_ENV_SHA256="$ACTUAL_ENV_SHA256"
 export DI_S4F7F_VERIFIED_RELEASE_DIR="$RELEASE_DIR"
 export DI_S4F7F_DEPLOYED_INITIALIZER_PATH="$DEPLOYED_INITIALIZER"
 export SYNQDRIVE_BACKEND_ENV="$BACKEND_ENV"
+export DI_S4F7F_MAIN_CHECKOUT_DIFFERS_FROM_PRODUCTION="$([[ "${DI_S4F7F_MAIN_CHECKOUT_SHA}" != "$ACTUAL_SHA" && -n "${DI_S4F7F_MAIN_CHECKOUT_SHA}" ]] && echo YES || echo NO)"
 
 if ! s4f7f_run_cli evaluate-guards; then
   s4f7f_fail "GUARDS_FAILED"
@@ -156,22 +185,32 @@ else
   s4f7f_fail "INITIALIZER_REFUSED_OR_FAILED"
 fi
 
-# Post-write read (fixture or db)
 if [[ -n "${DI_S4F7F_TEST_INJECT_INITIALIZER_OUTCOME:-}" ]] && { s4f7f_is_fixture_mode || s4f7f_is_test_mode; }; then
   if [[ "$OUTCOME" == "INSERTED_KILLED" || "$OUTCOME" == "ALREADY_KILLED" ]]; then
     export DI_S4F7F_FIXTURE_GLOBAL_ROW_COUNT=1
     export DI_S4F7F_FIXTURE_GLOBAL_KILL_STATE=KILLED
+    if [[ "$OUTCOME" == "INSERTED_KILLED" ]]; then
+      export DI_S4F7F_FIXTURE_GLOBAL_REASON="${DI_S4_KILL_INIT_REASON}"
+      export DI_S4F7F_FIXTURE_GLOBAL_ACTOR="${DI_S4_KILL_INIT_ACTOR}"
+    else
+      export DI_S4F7F_FIXTURE_GLOBAL_REASON="${DI_S4F7F_FIXTURE_EXISTING_GLOBAL_REASON:-existing-reason}"
+      export DI_S4F7F_FIXTURE_GLOBAL_ACTOR="${DI_S4F7F_FIXTURE_EXISTING_GLOBAL_ACTOR:-existing-actor}"
+    fi
   fi
 fi
-mapfile -t GLOBAL_POST < <(s4f7f_query_global_row_db)
-export DI_S4F7F_GLOBAL_ROW_COUNT="${GLOBAL_POST[0]:-0}"
-export DI_S4F7F_GLOBAL_KILL_STATE="${GLOBAL_POST[1]:-}"
-if [[ -n "${DI_S4F7F_TEST_POST_GLOBAL_KILL_STATE:-}" ]]; then
-  export DI_S4F7F_GLOBAL_KILL_STATE="${DI_S4F7F_TEST_POST_GLOBAL_KILL_STATE}"
-  export DI_S4F7F_GLOBAL_ROW_COUNT="${DI_S4F7F_TEST_POST_GLOBAL_ROW_COUNT:-1}"
+
+if [[ -n "${DI_S4F7F_TEST_POST_GLOBAL_REASON:-}" ]] && { s4f7f_is_fixture_mode || s4f7f_is_test_mode; }; then
+  export DI_S4F7F_FIXTURE_GLOBAL_REASON="${DI_S4F7F_TEST_POST_GLOBAL_REASON}"
 fi
-export DI_S4F7F_GLOBAL_REASON="${DI_S4_KILL_INIT_REASON}"
-export DI_S4F7F_GLOBAL_ACTOR="${DI_S4_KILL_INIT_ACTOR}"
+if [[ -n "${DI_S4F7F_TEST_POST_GLOBAL_ACTOR:-}" ]] && { s4f7f_is_fixture_mode || s4f7f_is_test_mode; }; then
+  export DI_S4F7F_FIXTURE_GLOBAL_ACTOR="${DI_S4F7F_TEST_POST_GLOBAL_ACTOR}"
+fi
+
+if ! s4f7f_apply_global_read_to_env 1; then
+  echo "POST_WRITE_VERIFY_MISMATCH=YES"
+  echo "PRESERVE_KILL_ROW=YES"
+  s4f7f_fail "POST_WRITE_VERIFY_FAILED"
+fi
 
 if ! s4f7f_run_cli post-verify; then
   echo "POST_WRITE_VERIFY_MISMATCH=YES"
@@ -185,7 +224,17 @@ if [[ "$ENV_SHA_AFTER" != "$ACTUAL_ENV_SHA256" ]]; then
   s4f7f_fail "ENV_CHANGED_AFTER_INIT"
 fi
 
-mapfile -t S4_COUNTS_AFTER < <(s4f7f_query_s4_counts_db)
+if ! s4f7f_apply_s4_counts_to_env; then
+  s4f7f_fail "S4_PERSISTENCE_READ_FAILED"
+fi
+S4_COUNTS_AFTER=(
+  "$DI_S4F7F_S4_PIPELINE_REGISTRY_ROWS"
+  "$DI_S4F7F_S4_WORK_ITEM_ROWS"
+  "$DI_S4F7F_S4_ACTIVE_WORK_ITEM_ROWS"
+  "$DI_S4F7F_S4_EVIDENCE_SNAPSHOT_ROWS"
+  "$DI_S4F7F_S4_SHADOW_RUN_ROWS"
+  "$DI_S4F7F_S4_SHADOW_INTERVAL_ROWS"
+)
 echo "S4_PIPELINE_REGISTRY_DELTA=$((S4_COUNTS_AFTER[0] - S4_COUNTS_BEFORE[0]))"
 echo "S4_WORK_ITEM_DELTA=$((S4_COUNTS_AFTER[1] - S4_COUNTS_BEFORE[1]))"
 echo "S4_ACTIVE_WORK_ITEM_DELTA=$((S4_COUNTS_AFTER[2] - S4_COUNTS_BEFORE[2]))"
@@ -194,7 +243,7 @@ echo "S4_SHADOW_RUN_DELTA=$((S4_COUNTS_AFTER[4] - S4_COUNTS_BEFORE[4]))"
 echo "S4_SHADOW_INTERVAL_DELTA=$((S4_COUNTS_AFTER[5] - S4_COUNTS_BEFORE[5]))"
 echo "S4_PROVIDER_CALL_DELTA=0"
 
-s4f7f_topology_snapshot "$ACTUAL_SHA"
+s4f7f_topology_snapshot "$ACTUAL_SHA" "$RELEASE_DIR"
 
 echo "PRODUCTION_DB_WRITE_OCCURRED=${PRODUCTION_DB_WRITE_OCCURRED}"
 echo "PRODUCTION_ENV_MUTATION_OCCURRED=NO"

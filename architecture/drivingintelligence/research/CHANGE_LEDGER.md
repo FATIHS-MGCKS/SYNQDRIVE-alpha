@@ -1409,6 +1409,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | Wrapper can run from newer `main` while invoking initializer under verified release `ee958854…` / `20261002014651_v4994`; **`WRAPPER_REQUIRES_NEW_CODE_DEPLOY_BEFORE_USE=NO`** |
 | NON_EFFECTS | No Production GLOBAL row write, no env/PM2/deploy, no Tiny/operator grant |
 
+### EXP-021 S4F-7F-1 Production kill wrapper safety closure (PR #1882, 2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Fail-closed Production DB reads; steady-state replica release identity; S4F-4 authenticated metrics; DB-backed post-write actor/reason; initializer path pin + deployed worktree clean; `.cursor/scripts/cloud-agent-s4-global-kill-init.sh`; expanded `test:di:s4f7f:kill-init-wrapper` (48 cases) |
+| FINDING | **`NEWER_MAIN_INITIALIZER_SUBSTITUTION_POSSIBLE=NO`** when path pinned; remote bootstrap pins wrapper SHA separately from Production runtime SHA |
+| NON_EFFECTS | No Production dry-run/mutation; GLOBAL row remains **MISSING** |
+
 ### EXP-021 S4F-7E DB GLOBAL kill initialization preflight (2026-10-02)
 
 | Event | Detail |

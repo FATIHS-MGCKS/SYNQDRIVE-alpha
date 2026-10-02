@@ -23,6 +23,10 @@ export const DI_S4_KILL_INIT_EXPECTED_PRESTATE_ENV = 'DI_S4_KILL_INIT_EXPECTED_P
 export const DI_S4_NOT_BEFORE_ENV = 'DI_V0_S4_DISCOVERY_TRIP_END_NOT_BEFORE';
 
 export const DEPLOYED_INITIALIZER_REL = 'backend/scripts/ops/di-v0-s4-initialize-global-kill-row.ts';
+export const DEPLOYED_KILL_IMPLEMENTATION_REL =
+  'backend/src/modules/vehicle-intelligence/driving-intelligence/s4a-foundation/di-v0-s4-control-kill-initializer.ts';
+
+export const DEPLOYED_KILL_FILE_RELS = [DEPLOYED_INITIALIZER_REL, DEPLOYED_KILL_IMPLEMENTATION_REL] as const;
 
 export type GlobalControlPrestate = 'MISSING' | 'KILLED' | 'NOT_KILLED' | 'MALFORMED';
 
@@ -40,7 +44,9 @@ export interface S4PersistenceCounts {
 export interface TopologySnapshot {
   replicaAHealthOk: boolean;
   replicaBHealthOk: boolean;
-  noMixedSha: boolean;
+  replicaAProcessReleaseIdentityOk: boolean;
+  replicaBProcessReleaseIdentityOk: boolean;
+  steadyStateNoMixedReleaseIdentity: boolean;
   schedulerSingleLeader: boolean;
   nginxDualUpstream: boolean;
 }
@@ -74,6 +80,12 @@ export interface KillInitGuardInput {
   verifiedReleaseDir: string;
   wrapperBackendRoot: string;
   deployedInitializerExists: boolean;
+  deployedInitializerTracked: boolean;
+  deployedInitializerWorktreeClean: boolean;
+  deployedKillImplementationTracked: boolean;
+  deployedKillImplementationWorktreeClean: boolean;
+  initializerSubstitutionRisk: boolean;
+  mainCheckoutDiffersFromProduction: boolean;
 }
 
 export type GuardFailureCode =
@@ -96,7 +108,10 @@ export type GuardFailureCode =
   | 'REDIS_UNREACHABLE'
   | 'PERSISTENCE_PRESTATE_MISMATCH'
   | 'INITIALIZER_SCRIPT_MISSING'
-  | 'INITIALIZER_SUBSTITUTION_RISK';
+  | 'INITIALIZER_SUBSTITUTION_RISK'
+  | 'DEPLOYED_RELEASE_FILE_DIRTY'
+  | 'GLOBAL_PRESTATE_READ_FAILED'
+  | 'S4_PERSISTENCE_READ_FAILED';
 
 export interface KillInitGuardResult {
   ok: boolean;
@@ -104,8 +119,73 @@ export interface KillInitGuardResult {
   operatorAckValidated: boolean;
   deployedInitializerPath: string;
   deployedReleaseInitializerIsAuthority: boolean;
+  mainCheckoutDiffersFromProduction: boolean;
   newerMainSubstitutionPossible: boolean;
   wrapperRequiresNewCodeDeployBeforeUse: boolean;
+}
+
+const NON_NEGATIVE_INT_RE = /^[0-9]+$/;
+
+export function parseStrictNonNegativeIntegerLine(line: string | undefined): number | null {
+  if (line == null) return null;
+  const trimmed = line.trim();
+  if (!NON_NEGATIVE_INT_RE.test(trimmed)) return null;
+  return Number.parseInt(trimmed, 10);
+}
+
+export type GlobalRowDbReadResult =
+  | {
+      ok: true;
+      rowCount: number;
+      killState: string | null;
+      reason: string | null;
+      actor: string | null;
+    }
+  | { ok: false; code: 'GLOBAL_PRESTATE_READ_FAILED' };
+
+export function parseGlobalRowDbLines(lines: readonly string[], includeMetadata: boolean): GlobalRowDbReadResult {
+  if (lines.length < 1) return { ok: false, code: 'GLOBAL_PRESTATE_READ_FAILED' };
+  const rowCount = parseStrictNonNegativeIntegerLine(lines[0]);
+  if (rowCount == null) return { ok: false, code: 'GLOBAL_PRESTATE_READ_FAILED' };
+  if (rowCount === 0) {
+    if (lines.length > 1 && lines[1].trim() !== '') return { ok: false, code: 'GLOBAL_PRESTATE_READ_FAILED' };
+    return { ok: true, rowCount: 0, killState: null, reason: null, actor: null };
+  }
+  if (rowCount !== 1) return { ok: false, code: 'GLOBAL_PRESTATE_READ_FAILED' };
+  const killState = lines[1]?.trim() ?? '';
+  if (killState !== 'KILLED' && killState !== 'NOT_KILLED') {
+    return { ok: false, code: 'GLOBAL_PRESTATE_READ_FAILED' };
+  }
+  if (!includeMetadata) {
+    return { ok: true, rowCount: 1, killState, reason: null, actor: null };
+  }
+  if (lines.length < 4) return { ok: false, code: 'GLOBAL_PRESTATE_READ_FAILED' };
+  const reason = lines[2]?.trim() ?? '';
+  const actor = lines[3]?.trim() ?? '';
+  if (!reason || !actor) return { ok: false, code: 'GLOBAL_PRESTATE_READ_FAILED' };
+  return { ok: true, rowCount: 1, killState, reason, actor };
+}
+
+export type S4PersistenceDbReadResult =
+  | { ok: true; counts: S4PersistenceCounts }
+  | { ok: false; code: 'S4_PERSISTENCE_READ_FAILED' };
+
+export function parseS4PersistenceDbLines(lines: readonly string[]): S4PersistenceDbReadResult {
+  if (lines.length !== 6) return { ok: false, code: 'S4_PERSISTENCE_READ_FAILED' };
+  const values = lines.map((line) => parseStrictNonNegativeIntegerLine(line));
+  if (values.some((v) => v == null)) return { ok: false, code: 'S4_PERSISTENCE_READ_FAILED' };
+  const [a, b, c, d, e, f] = values as number[];
+  return {
+    ok: true,
+    counts: {
+      pipelineRegistry: a,
+      workItems: b,
+      activeWorkItems: c,
+      evidenceSnapshots: d,
+      shadowRuns: e,
+      shadowIntervals: f,
+    },
+  };
 }
 
 export function sha256FileContent(content: string): string {
@@ -214,28 +294,49 @@ export function resolveDeployedInitializerScript(verifiedReleaseDir: string): st
   return path.join(verifiedReleaseDir, DEPLOYED_INITIALIZER_REL);
 }
 
+export function assertDeployedInitializerPathPinned(input: {
+  verifiedReleaseDir: string;
+  resolvedInitializerPath: string;
+}): { ok: boolean; substitutionRisk: boolean; deployedInitializerPath: string } {
+  const backendRoot = path.resolve(input.verifiedReleaseDir, 'backend');
+  const expected = path.resolve(backendRoot, 'scripts/ops/di-v0-s4-initialize-global-kill-row.ts');
+  const resolved = path.resolve(input.resolvedInitializerPath);
+  const withinBackend =
+    resolved === backendRoot || resolved.startsWith(`${backendRoot}${path.sep}`);
+  if (!withinBackend || resolved !== expected) {
+    return { ok: false, substitutionRisk: true, deployedInitializerPath: expected };
+  }
+  return { ok: true, substitutionRisk: false, deployedInitializerPath: expected };
+}
+
 export function evaluateInitializerExecutionAuthority(input: {
   verifiedReleaseDir: string;
   verifiedReleaseSha: string;
   wrapperBackendRoot: string;
   mainCheckoutSha?: string;
+  resolvedInitializerPath: string;
 }): {
   deployedInitializerPath: string;
   deployedReleaseInitializerIsAuthority: boolean;
+  mainCheckoutDiffersFromProduction: boolean;
   newerMainSubstitutionPossible: boolean;
+  substitutionRisk: boolean;
   wrapperRequiresNewCodeDeployBeforeUse: boolean;
 } {
-  const deployedInitializerPath = resolveDeployedInitializerScript(input.verifiedReleaseDir);
-  const wrapperCandidate = path.join(input.wrapperBackendRoot, 'scripts/ops/di-v0-s4-initialize-global-kill-row.ts');
-  const pathsDiffer = path.resolve(deployedInitializerPath) !== path.resolve(wrapperCandidate);
-  const shaDiffers =
+  const pin = assertDeployedInitializerPathPinned({
+    verifiedReleaseDir: input.verifiedReleaseDir,
+    resolvedInitializerPath: input.resolvedInitializerPath,
+  });
+  const mainCheckoutDiffersFromProduction =
     input.mainCheckoutSha != null &&
     input.mainCheckoutSha.trim() !== '' &&
     input.mainCheckoutSha !== input.verifiedReleaseSha;
   return {
-    deployedInitializerPath,
-    deployedReleaseInitializerIsAuthority: true,
-    newerMainSubstitutionPossible: pathsDiffer && shaDiffers,
+    deployedInitializerPath: pin.deployedInitializerPath,
+    deployedReleaseInitializerIsAuthority: pin.ok,
+    mainCheckoutDiffersFromProduction,
+    newerMainSubstitutionPossible: false,
+    substitutionRisk: pin.substitutionRisk,
     wrapperRequiresNewCodeDeployBeforeUse: false,
   };
 }
@@ -279,7 +380,9 @@ export function evaluateKillInitGuards(input: KillInitGuardInput): KillInitGuard
   if (
     !input.topology.replicaAHealthOk ||
     !input.topology.replicaBHealthOk ||
-    !input.topology.noMixedSha ||
+    !input.topology.replicaAProcessReleaseIdentityOk ||
+    !input.topology.replicaBProcessReleaseIdentityOk ||
+    !input.topology.steadyStateNoMixedReleaseIdentity ||
     !input.topology.schedulerSingleLeader ||
     !input.topology.nginxDualUpstream
   ) {
@@ -309,15 +412,30 @@ export function evaluateKillInitGuards(input: KillInitGuardInput): KillInitGuard
     failures.push('PERSISTENCE_PRESTATE_MISMATCH');
   }
 
+  if (
+    !input.deployedInitializerTracked ||
+    !input.deployedInitializerWorktreeClean ||
+    !input.deployedKillImplementationTracked ||
+    !input.deployedKillImplementationWorktreeClean
+  ) {
+    failures.push('DEPLOYED_RELEASE_FILE_DIRTY');
+  }
+
   const authority = evaluateInitializerExecutionAuthority({
     verifiedReleaseDir: input.verifiedReleaseDir,
     verifiedReleaseSha: input.actualSha ?? '',
     wrapperBackendRoot: input.wrapperBackendRoot,
     mainCheckoutSha: process.env.DI_S4F7F_MAIN_CHECKOUT_SHA,
+    resolvedInitializerPath: input.deployedInitializerExists
+      ? resolveDeployedInitializerScript(input.verifiedReleaseDir)
+      : path.join(input.verifiedReleaseDir, DEPLOYED_INITIALIZER_REL),
   });
 
   if (!input.deployedInitializerExists) {
     failures.push('INITIALIZER_SCRIPT_MISSING');
+  }
+  if (input.initializerSubstitutionRisk || authority.substitutionRisk) {
+    failures.push('INITIALIZER_SUBSTITUTION_RISK');
   }
 
   return {
@@ -325,8 +443,9 @@ export function evaluateKillInitGuards(input: KillInitGuardInput): KillInitGuard
     failures,
     operatorAckValidated: ackOk,
     deployedInitializerPath: authority.deployedInitializerPath,
-    deployedReleaseInitializerIsAuthority: true,
-    newerMainSubstitutionPossible: authority.newerMainSubstitutionPossible,
+    deployedReleaseInitializerIsAuthority: authority.deployedReleaseInitializerIsAuthority,
+    mainCheckoutDiffersFromProduction: input.mainCheckoutDiffersFromProduction,
+    newerMainSubstitutionPossible: false,
     wrapperRequiresNewCodeDeployBeforeUse: false,
   };
 }

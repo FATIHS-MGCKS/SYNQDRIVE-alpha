@@ -268,6 +268,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-29T03:00:00.000Z',
   },
   {
+    id: 'di-exp021-s4f7f-kill-init-wrapper-2026-10-02',
+    version: '4.9.2215',
+    title: 'Driving Intelligence — EXP-021 S4F-7F guarded Production GLOBAL kill initializer wrapper',
+    summary: [
+      'Production ops wrapper: ACK + exact SHA/release/env-hash + GLOBAL pre-state + topology + S4-off + budget/Redis + zero S4 persistence guards.',
+      'Invokes deployed-release di-v0-s4-initialize-global-kill-row.ts only (no main substitution); DRY_RUN=1 supported.',
+      'No Production DB/env/deploy in this slice; GLOBAL row remains MISSING until separate human execution.',
+    ],
+    reason:
+      'Close S4F-7E BLOCKER (PRODUCTION_EXECUTION_WRAPPER_REQUIRED) without deploying newer main to Production.',
+    previousBehavior:
+      'Raw ts-node kill initializer had no Production SHA/release/env/prestate/ACK guards.',
+    details:
+      'architecture/drivingintelligence/evidence/EXP021_S4F7F_PRODUCTION_KILL_INITIALIZER_WRAPPER_ENGINEERING.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-02T04:30:00.000Z',
+  },
+  {
     id: 'di-exp021-s4f7a-tiny-execution-prereqs-2026-10-01',
     version: '4.9.2214',
     title: 'Driving Intelligence — EXP-021 S4F-7A dormant S4 runtime wiring & no-backfill containment',
