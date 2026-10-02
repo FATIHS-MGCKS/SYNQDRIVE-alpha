@@ -168,7 +168,7 @@ async function persistCurrentRevision(
       });
       await prisma.batteryHvChargeSessionEvidenceAck.update({
         where: { id: ack.id },
-        data: { sourceRevisionFingerprint: '0'.repeat(64) },
+        data: { revisionId: randomUUID() },
       });
       const outcome = await txDelete(session.id);
       expect(outcome.kind).toBe('BLOCKED');
@@ -179,9 +179,12 @@ async function persistCurrentRevision(
       const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
       const session = await createEligibleSession(prisma, organizationId, vehicleId);
       const persisted = await persistCurrentRevision(writer, session);
+      const json = persisted.revision.scientificEvidenceJson as Record<string, unknown>;
       await prisma.batteryHvChargeSessionEvidenceRevision.update({
         where: { id: persisted.revision.id },
-        data: { sourceRevisionFingerprint: '0'.repeat(64) },
+        data: {
+          scientificEvidenceJson: { ...json, energyAddedKwh: { tag: 'NAN' } },
+        },
       });
       const outcome = await txDelete(session.id);
       expect(outcome.kind).toBe('BLOCKED');
