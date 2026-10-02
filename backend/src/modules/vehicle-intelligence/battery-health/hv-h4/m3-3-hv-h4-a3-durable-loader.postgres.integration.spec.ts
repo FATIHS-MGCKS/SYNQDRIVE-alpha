@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { Prisma, PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { createGtOrgVehicle } from '../ground-truth/ground-truth-postgres.fixture';
 import { HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE } from '../hv-charge-session/hv-charge-session.types';
 import { HV_CHARGE_SESSION_QUALITY_STATUS } from '../hv-charge-session/hv-charge-session-quality.status';
@@ -15,12 +15,6 @@ import {
   runM3_3HvH4DurableModeAA2ReportBundleV1,
   runM3_3HvH4LiveDurableModeAParityV1,
 } from './m3-3-hv-h4-a3-parity.harness.v1';
-import {
-  buildM3_3HvH4ChargeSessionEvidenceScientificProjectionV1,
-  mirrorFromScientificProjectionV1,
-} from './m3-3-hv-h4-a3-charge-session-evidence-projection.v1';
-import { computeM3_3HvH4ChargeSessionSourceRevisionFingerprintV1 } from './m3-3-hv-h4-a3-charge-session-evidence-fingerprint.v1';
-import { M3_3_HV_H4_DURABLE_SOURCE_REVISION_ACK_V1 } from './m3-3-hv-h4-a3.constants';
 import { classifyM3_3HvH4ChargeSessionA2Contribution } from './m3-3-hv-h4-charge-throughput-session.v1';
 import { resolveM3_3HvH4ReplacementBoundaries } from './m3-3-hv-h4-lifecycle.util';
 
