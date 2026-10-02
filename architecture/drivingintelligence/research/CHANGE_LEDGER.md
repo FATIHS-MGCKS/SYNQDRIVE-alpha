@@ -1425,6 +1425,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | **`S4B_DORMANT_AUDIT=PASS`**; **`OPS_DIRECT_S4B_IMPORT_COUNT=0`**; wrapper tests **47** |
 | NON_EFFECTS | No Production mutation/deploy/restart/DB write |
 
+### EXP-021 S4F-7K Production Tiny staging dry run (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Read-only Production `DRY_RUN=1` via `cloud-agent-s4-tiny-staging.sh`; remediation commits on evidence branch (text `vehicle_id` SQL, sudo bootstrap env, `dry-run-intent`); evidence `EXP021_S4F7K_PRODUCTION_TINY_STAGING_DRY_RUN.md` |
+| FINDING | **`PRODUCTION_TINY_STAGING_DRY_RUN_READINESS=PASS`** on tool SHA `947a70540…`; frozen merge `040170104…` **`VEHICLE_DB_PROOF=FAIL`** (`::uuid` on text ids); **`GUARDS_OK=YES`**; intended **3** env keys; **`ENV_MUTATION_COUNT=0`**; post `backend.env` SHA256 unchanged; replica PIDs unchanged |
+| NON_EFFECTS | No Production env/DB/restart/deploy/migration/provider call; **`TINY_ACTIVATION_READY=NO`** |
+
 ### EXP-021 S4F-7I NO_BACKFILL Tiny staging preflight (2026-10-02)
 
 | Event | Detail |
