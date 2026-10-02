@@ -1,4 +1,4 @@
-import type { HvChargeSession } from '@prisma/client';
+import type { M3_3HvH4ChargeSessionScientificRowV1 } from './m3-3-hv-h4-charge-session-scientific-row.v1';
 import {
   M3_3_HV_H4_BOUNDED_CHARGE_THROUGHPUT_V1,
   M3_3_HV_H4_CHARGE_THROUGHPUT_REPORT_V1,
@@ -44,7 +44,7 @@ function sessionsInSegment(
   data: M3_3HvH4LoadedDataV1,
   lifecycleSegmentId: string,
   replacementBoundaries: ReturnType<typeof resolveM3_3HvH4ReplacementBoundaries>,
-): HvChargeSession[] {
+): M3_3HvH4ChargeSessionScientificRowV1[] {
   const interval = buildM3_3HvH4LifecycleSegmentIntervals({
     replacementBoundaries,
     evaluationAt: data.evaluationAt,
@@ -107,15 +107,15 @@ function composeSegment(input: {
   }
 
   const observedSegmentSessionCount = segmentSessions.length;
-  let eligibleContributors: HvChargeSession[] = [];
-  let includedSessions: HvChargeSession[] = [];
+  let eligibleContributors: M3_3HvH4ChargeSessionScientificRowV1[] = [];
+  let includedSessions: M3_3HvH4ChargeSessionScientificRowV1[] = [];
   let compositionStatus: M3_3HvH4LifecycleChargeThroughputSegmentV1['compositionStatus'] =
     'NO_TRUSTED_SESSIONS';
   let boundedObservedChargeThroughputKwh: number | null = null;
   let summationMethod: M3_3HvH4LifecycleChargeThroughputSegmentV1['summationMethod'] =
     null;
   let withheldContributorSessionCount = 0;
-  let conflictCandidateSessions: HvChargeSession[] = [];
+  let conflictCandidateSessions: M3_3HvH4ChargeSessionScientificRowV1[] = [];
 
   if (input.data.chargeSessionSourceLoad.sourceTruncated) {
     compositionStatus = 'SOURCE_TRUNCATED';

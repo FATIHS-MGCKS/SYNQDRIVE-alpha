@@ -6,7 +6,39 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-02 — M3.3-HV-H4-A3.3 PR #1887 parity closure (mandatory postgres corpus)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | Postgres parity incomplete: test P used mirror-only `updateMany` tie (mirror incoherence, not ambiguity); B/C/D combined lateness; missing fixtures I/L/K; J unit-only non-finite |
+| **OBSERVATION** | CI `HV-H4 coverage PostgreSQL` failed P with `H4EvidenceRevisionMirrorIncoherenceError` instead of `H4EvidenceEffectiveRevisionAmbiguityError` |
+| **CHANGE** | Repair P with two coherent revisions + tied ordering; split late created/updated/received; add duplicate-provider, GT resegmentation, metadata harness, non-finite parity-level tests |
+| **WHY** | A3.3 closure requires mandatory fixture corpus green without weakening verify order or MODE_A semantics |
+| **VALIDATION** | Full A3.3 postgres suite, A3.1/A3.2 postgres regression, `test:battery:v2:hv-h4`, CI HV-H4 postgres |
+| **REMAINING_GAPS** | A3.4 retention gate; A3.5 reconciliation — duplicate-provider and late-GT parity are **mandatory** A3.3 evidence, not optional expansion |
+| **DECISION_STATUS** | PROPOSED |
+| **EVIDENCE** | PR #1887 |
+
 ---
+
+## 2026-10-02 — M3.3-HV-H4-A3.3 MODE_A durable loader + A2 V1 parity harness
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | Live `loadM3_3HvH4DataV1` only; no durable revision collapse loader; H4 used full `HvChargeSession` in A2 builders |
+| **OBSERVATION** | A3.1 schema exposes `sourceUpdatedAt`, `capturedAt`, `createdAt` sufficient for MODE_A effective revision ordering without migration |
+| **HYPOTHESIS** | TARGET_1 equivalence provable by reconstructing `M3_3HvH4ChargeSessionScientificRowV1` from `scientificEvidenceJson` + shared A1 population + unchanged A2 builders |
+| **CHANGE** | MODE_A loader, effective revision collapse, JSON reconstruction, shared 5000 population helper, live/durable parity harness, unit + postgres tests |
+| **WHY** | Close A3.3: durable path must reproduce full A2/coverage after raw session delete |
+| **EXPECTED_EFFECT** | LIVE and DURABLE MODE_A paths produce identical coverage + throughput for same persisted evidence |
+| **VALIDATION** | `test:battery:v2:hv-h4`, `test:battery:v2:hv-h4:postgres`, H4 static validator |
+| **OBSERVED_EFFECT** | Local unit 82 tests pass; postgres parity on CI |
+| **NON_EFFECTS** | No AppModule, no default path change, no MODE_B/hybrid/retention/reconciliation/backfill |
+| **REGRESSIONS_OR_TRADEOFFS** | Charge sessions in loaded data are H4 scientific row contract |
+| **REMAINING_GAPS** | A3.4 retention gate; A3.5 reconciliation; mandatory A3.3 postgres parity corpus (overlap, duplicate-provider, late-GT, metadata, non-finite) tracked in closure entry above |
+| **DECISION_STATUS** | PROPOSED |
+| **AFFECTED_GRAPH** | battery-v2 M3.3-HV-H4 A3 |
+| **EVIDENCE** | A3.3 PR #1887 |
 
 ---
 
@@ -35,6 +67,31 @@ Append-only scientific record. Newest entries first.
 ---
 
 ---
+
+---
+
+---
+
+---
+
+## CL-2026-10-02 — M3.3-HV-H4-A3.2 idempotent evidence revision + ACK writer
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | A3.1 schema + pure projection/fingerprint/mirror contract only; no persistence writer |
+| **OBSERVATION** | Durable H4 source evidence requires append-only idempotent revision + revision-scoped ACK convergence under concurrency |
+| **HYPOTHESIS** | PostgreSQL `INSERT … ON CONFLICT DO NOTHING` + fail-closed verify matches D3 materialization pattern without mutating revisions |
+| **CHANGE** | `M3_3HvH4ChargeSessionEvidenceMaterializationRepository` + writer service; unit + postgres writer tests; static H4 validator guards |
+| **WHY** | Enable testable/internal persistence before any automatic runtime (A3.5) or retention gate (A3.4) |
+| **EXPECTED_EFFECT** | Idempotent CREATED/ALREADY_EXISTS outcomes; typed fail-closed conflicts; ACK identity mirror verify |
+| **VALIDATION** | test:battery:v2:hv-h4; hv-h4 postgres CI; prisma validate; H4/graph/registry validators |
+| **OBSERVED_EFFECT** | Pending CI |
+| **NON_EFFECTS** | No AppModule registration, scheduler, retention hook, backfill, A3.3 loader |
+| **REGRESSIONS_OR_TRADEOFFS** | Writer callable in tests/internal code only; runtime flags remain false |
+| **REMAINING_GAPS** | A3.3 MODE_A loader equivalence; A3.4 retention ACK gate enforcement; A3.5 reconciliation scheduler |
+| **DECISION_STATUS** | PROPOSED (ENGINEERING) |
+| **AFFECTED_GRAPH** | A3 persistence slice (writer authority) |
+| **EVIDENCE** | `m3-3-hv-h4-a3-charge-session-evidence-materialization.repository.ts`, writer postgres integration spec |
 
 ---
 

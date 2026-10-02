@@ -1401,6 +1401,79 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | Production now `ee958854…` release `20261002014651_v4994`; `DiV0S4RuntimeModule` boot-registered; S4 dormant/fail-closed preserved; **0** migration applied |
 | NON_EFFECTS | No kill initializer, no S4 env activation, no operator grant, no Tiny |
 
+### EXP-021 S4F-7F Production kill initializer wrapper engineering (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Guarded Production wrapper `di-v0-s4-initialize-global-kill-row-production.sh` + TS guard lib/CLI + tests (`test:di:s4f7f:kill-init-wrapper`); evidence `EXP021_S4F7F_PRODUCTION_KILL_INITIALIZER_WRAPPER_ENGINEERING.md` |
+| FINDING | Wrapper can run from newer `main` while invoking initializer under verified release `ee958854…` / `20261002014651_v4994`; **`WRAPPER_REQUIRES_NEW_CODE_DEPLOY_BEFORE_USE=NO`** |
+| NON_EFFECTS | No Production GLOBAL row write, no env/PM2/deploy, no Tiny/operator grant |
+
+### EXP-021 S4F-7J Tiny config staging wrapper engineering (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Dedicated Production wrapper `di-v0-s4-stage-tiny-production.sh` (exactly three frozen env keys), TS guard/mutation lib + CLI, bash helpers, cloud bootstrap `.cursor/scripts/cloud-agent-s4-tiny-staging.sh`, tests `test:di:s4f7j:tiny-staging-wrapper` (32 cases); evidence `EXP021_S4F7J_TINY_CONFIG_STAGING_WRAPPER_ENGINEERING.md` |
+| FINDING | **`SUPPORTED_ENV_MUTATION_KEY_COUNT=3`**; S4F-4 global-budget wrapper unchanged; recovery + rolling restart A→B + filtered `/proc` runtime proof |
+| NON_EFFECTS | No Production env/DB/restart/deploy; Tiny gate **NOT_SATISFIED**; GLOBAL remains **KILLED** |
+
+### EXP-021 S4F-7J.1 Tiny staging wrapper safety closure (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | PR #1888 closure: remove Ops→S4B import (`di-v0-s4-tiny-staging-frozen-not-before.ts`); live topology/budget/Redis pre-mutation gates; exact three-key diff + independent post-write verify; fatal config audit; `PRIMARY_STAGING` / `RECOVERY_PRESTATE` runtime proofs; full rollback verification; DIMO R1 vehicle SQL authority; safe `/proc` sudo read; durable backup dir |
+| FINDING | **`S4B_DORMANT_AUDIT=PASS`**; **`OPS_DIRECT_S4B_IMPORT_COUNT=0`**; wrapper tests **47** |
+| NON_EFFECTS | No Production mutation/deploy/restart/DB write |
+
+### EXP-021 S4F-7K Production Tiny staging dry run (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Read-only Production `DRY_RUN=1` via `cloud-agent-s4-tiny-staging.sh`; remediation commits on evidence branch (text `vehicle_id` SQL, sudo bootstrap env, `dry-run-intent`); evidence `EXP021_S4F7K_PRODUCTION_TINY_STAGING_DRY_RUN.md` |
+| FINDING | **`PRODUCTION_TINY_STAGING_DRY_RUN_READINESS=PASS`** on tool SHA `947a70540…`; frozen merge `040170104…` **`VEHICLE_DB_PROOF=FAIL`** (`::uuid` on text ids); **`GUARDS_OK=YES`**; intended **3** env keys; **`ENV_MUTATION_COUNT=0`**; post `backend.env` SHA256 unchanged; replica PIDs unchanged |
+| NON_EFFECTS | No Production env/DB/restart/deploy/migration/provider call; **`TINY_ACTIVATION_READY=NO`** |
+
+### EXP-021 S4F-7L Production Tiny 3-key config staging attempt (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Human-authorized `DRY_RUN=0` via `cloud-agent-s4-tiny-staging.sh` @ `947a70540…`; evidence `EXP021_S4F7L_PRODUCTION_TINY_CONFIG_STAGING.md` |
+| FINDING | Pre-guards **PASS**; exact **3-key** file write + backup **PASS**; Replica A **`PRIMARY_STAGING` runtime proof FAIL** (`REPLICA_A_RUNTIME_*_EXACT=NO`); **`ROLLBACK_RESULT=COMPLETE`**; final `backend.env` SHA256 restored to pre-pin; **staging keys MISSING**; GLOBAL **KILLED**; S4 counts **0** |
+| NON_EFFECTS | No Tiny activation; no GLOBAL DB write; no deploy/migration; no provider calls; **authorization consumed** — no in-task retry |
+
+### EXP-021 S4F-7I NO_BACKFILL Tiny staging preflight (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Read-only Production preflight for KS MS 661 Tiny; proposed NOT_BEFORE + allowlists; evidence `EXP021_S4F7I_NO_BACKFILL_TINY_STAGING_PREFLIGHT.md` |
+| FINDING | **`NO_BACKFILL_TINY_STAGING_READINESS=PASS`**; 510 historical trips; 499 hypothetical discovery-eligible without NOT_BEFORE; cutoff excludes all at capture |
+| NON_EFFECTS | No env/DB/deploy/restart; Tiny gate still **NOT_SATISFIED** |
+
+### EXP-021 S4F-7H Production GLOBAL=KILLED initialization (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Human-authorized `DRY_RUN=0` wrapper execution; `DI_V0_S4_GLOBAL_KILL_INIT_RESULT=INSERTED_KILLED`; evidence `EXP021_S4F7H_PRODUCTION_GLOBAL_KILLED_INITIALIZATION.md` |
+| FINDING | **`PRODUCTION_GLOBAL_KILLED_INITIALIZATION_READINESS=PASS`**; post-read GLOBAL **KILLED** reason/actor match pins; S4 persistence unchanged; replica PIDs unchanged |
+| NON_EFFECTS | No Tiny grant, no S4 enablement, no env/deploy/restart/migration, no provider calls |
+
+### EXP-021 S4F-7G Production kill initializer dry-run (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Authorized Production `DRY_RUN=1` via tool SHA `0b0eac19…` temp checkout + wrapper guards; evidence `EXP021_S4F7G_PRODUCTION_KILL_INITIALIZER_DRY_RUN.md` |
+| FINDING | **`PRODUCTION_KILL_INITIALIZER_DRY_RUN_READINESS=PASS`**; independent post-read GLOBAL count **0**, S4 counts **0**, env SHA unchanged |
+| NON_EFFECTS | No initializer invoke, no GLOBAL row write, no deploy/restart/migration, Tiny gate still **NOT_SATISFIED** |
+| OPERATIONAL | Hostinger path A: `backend.env` root-only — dry-run required `sudo -n` wrapper exec; bootstrap follow-up to pass `SYNQDRIVE_BACKEND_ENV` + sudo |
+
+### EXP-021 S4F-7F-1 Production kill wrapper safety closure (PR #1882, 2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Fail-closed Production DB reads; steady-state replica release identity; S4F-4 authenticated metrics; DB-backed post-write actor/reason; initializer path pin + deployed worktree clean; `.cursor/scripts/cloud-agent-s4-global-kill-init.sh`; expanded `test:di:s4f7f:kill-init-wrapper` (48 cases) |
+| FINDING | **`NEWER_MAIN_INITIALIZER_SUBSTITUTION_POSSIBLE=NO`** when path pinned; remote bootstrap pins wrapper SHA separately from Production runtime SHA |
+| NON_EFFECTS | No Production dry-run/mutation; GLOBAL row remains **MISSING** |
+
 ### EXP-021 S4F-7E DB GLOBAL kill initialization preflight (2026-10-02)
 
 | Event | Detail |

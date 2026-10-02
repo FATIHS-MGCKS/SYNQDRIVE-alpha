@@ -17,3 +17,81 @@ export class H4SourceRevisionFingerprintCollisionOrCanonicalizationDriftError ex
     this.name = 'H4SourceRevisionFingerprintCollisionOrCanonicalizationDriftError';
   }
 }
+
+export class H4EvidenceRevisionStoredFingerprintMismatchError extends Error {
+  readonly code = 'H4_EVIDENCE_REVISION_STORED_FINGERPRINT_MISMATCH';
+
+  constructor(
+    message = 'Stored sourceRevisionFingerprint does not recompute from scientificEvidenceJson',
+  ) {
+    super(message);
+    this.name = 'H4EvidenceRevisionStoredFingerprintMismatchError';
+  }
+}
+
+export class H4EvidenceRevisionMirrorIncoherenceError extends Error {
+  readonly code = 'H4_EVIDENCE_REVISION_MIRROR_INCOHERENCE';
+
+  constructor(message = 'Persisted DB mirror columns incoherent with scientificEvidenceJson') {
+    super(message);
+    this.name = 'H4EvidenceRevisionMirrorIncoherenceError';
+  }
+}
+
+export class H4EvidenceAckIdentityMismatchError extends Error {
+  readonly code = 'H4_EVIDENCE_ACK_IDENTITY_MISMATCH';
+
+  constructor(message = 'Durability ACK identity mirrors disagree with referenced revision') {
+    super(message);
+    this.name = 'H4EvidenceAckIdentityMismatchError';
+  }
+}
+
+export class H4EvidenceRevisionIdempotencyConflictRowNotFoundError extends Error {
+  readonly code = 'H4_EVIDENCE_REVISION_IDEMPOTENCY_CONFLICT_ROW_NOT_FOUND';
+
+  constructor(
+    message = 'Unique collision on evidence revision insert but existing row not found',
+  ) {
+    super(message);
+    this.name = 'H4EvidenceRevisionIdempotencyConflictRowNotFoundError';
+  }
+}
+
+export class H4EvidenceAckIdempotencyConflictRowNotFoundError extends Error {
+  readonly code = 'H4_EVIDENCE_ACK_IDEMPOTENCY_CONFLICT_ROW_NOT_FOUND';
+
+  constructor(message = 'Unique collision on durability ACK insert but existing row not found') {
+    super(message);
+    this.name = 'H4EvidenceAckIdempotencyConflictRowNotFoundError';
+  }
+}
+
+export class H4EvidenceRevisionMissingDurabilityAckError extends Error {
+  readonly code = 'H4_EVIDENCE_REVISION_MISSING_DURABILITY_ACK';
+
+  constructor(message = 'Durable revision has no matching durability ACK') {
+    super(message);
+    this.name = 'H4EvidenceRevisionMissingDurabilityAckError';
+  }
+}
+
+export class H4EvidenceEffectiveRevisionAmbiguityError extends Error {
+  readonly code = 'H4_EVIDENCE_EFFECTIVE_REVISION_AMBIGUITY';
+
+  constructor(
+    message = 'MODE_A effective revision cannot be determined for canonical session (tie without deterministic authority)',
+  ) {
+    super(message);
+    this.name = 'H4EvidenceEffectiveRevisionAmbiguityError';
+  }
+}
+
+export class H4EvidenceUnsupportedContractVersionError extends Error {
+  readonly code = 'H4_EVIDENCE_UNSUPPORTED_CONTRACT_VERSION';
+
+  constructor(message = 'Unsupported H4 charge-session evidence contract version') {
+    super(message);
+    this.name = 'H4EvidenceUnsupportedContractVersionError';
+  }
+}
