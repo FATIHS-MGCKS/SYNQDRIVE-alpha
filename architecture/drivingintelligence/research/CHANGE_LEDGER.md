@@ -1385,6 +1385,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | 16 historical rolled-back `_prisma_migrations` tombstones; 0 active incomplete migrations; Production link index differs from Prisma name `uq_data_source_link_active` (VO2.1 uses DROP IF EXISTS) |
 | NON_EFFECTS | No deploy, migrate, env mutation, or restart |
 
+### EXP-021 S4F-7B dormant Production deploy preflight (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Read-only VPS + Postgres audit; evidence `EXP021_S4F7B_DORMANT_PRODUCTION_DEPLOY_PREFLIGHT.md`; ops helper `di-v0-s4f7b-dormant-production-deploy-preflight.sh` |
+| FINDING | Production `8fa531b27…` healthy; S4 env dormant; GLOBAL kill row missing; **0** S4 rows; target `ee958854…` adds S4 runtime registration with **0** pending migrations → **DORMANT_DEPLOY_READINESS=PASS** |
+| NON_EFFECTS | No deploy, env/DB mutation, restart, operator grant, Tiny activation |
+
 ### EXP-021 S4F-7A Tiny execution prerequisites engineering (2026-10-01)
 
 | Event | Detail |
