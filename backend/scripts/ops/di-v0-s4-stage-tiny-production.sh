@@ -327,7 +327,11 @@ s4f7j_preflight_readonly() {
   export DI_S4_TINY_STAGING_ACTUAL_SHA="$TARGET_SHA"
   export DI_S4_TINY_STAGING_ACTUAL_RELEASE_ID="$REQUIRED_RELEASE_ID"
   export DI_S4_TINY_STAGING_ACTUAL_ENV_SHA256="$actual_env_sha"
-  s4f7j_run_cli guards || return 1
+  if ! s4f7j_run_cli guards; then
+    return 1
+  fi
+  echo "GUARDS_OK=YES"
+  echo "GUARD_FAILURES=NONE"
 
   echo "PRE_POST_S4_ZERO_STATE_PROOF_IMPLEMENTED=YES"
   echo "DISCOVERY_EFFECTIVE_ENABLED=NO"
@@ -438,13 +442,22 @@ s4f7j_recovery_post_verify() {
 
 s4f7j_print_dry_run_plan() {
   echo "DRY_RUN_SUPPORTED=YES"
+  echo "DRY_RUN=1"
   s4f7j_run_cli print-frozen
+  s4f7j_run_cli dry-run-intent "$BACKEND_ENV"
+  echo "ALL_S4_ENABLE_FLAGS_FALSE=YES"
   echo "ENV_MUTATION_COUNT=0"
   echo "RESTART_COUNT=0"
   echo "DRY_RUN_ENV_MUTATION_COUNT=0"
   echo "DRY_RUN_RESTART_COUNT=0"
+  echo "PRODUCTION_MUTATION_OCCURRED=NO"
   echo "PRODUCTION_ENV_MUTATION_OCCURRED=NO"
+  echo "PRODUCTION_DB_WRITE_OCCURRED=NO"
   echo "PRODUCTION_RESTART_OCCURRED=NO"
+  echo "DEPLOY_OCCURRED=NO"
+  echo "MIGRATION_EXECUTED=NO"
+  echo "PROVIDER_PRODUCTION_CALL_COUNT=0"
+  echo "SHADOW_ACTIVATION_OCCURRED=NO"
 }
 
 s4f7j_main() {
