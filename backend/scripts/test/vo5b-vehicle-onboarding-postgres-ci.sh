@@ -43,5 +43,6 @@ trap cleanup_int_db EXIT
 psql "${ADMIN_URL}" -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"${INT_DB}\";"
 export DATABASE_URL="${INT_DATABASE_URL}"
 
-npx prisma migrate deploy
+DATABASE_URL="${INT_DATABASE_URL}" PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 \
+  bash scripts/test/prisma-migrate-deploy-resilient.sh
 npm run test:vehicle-onboarding:vo5b:postgres
