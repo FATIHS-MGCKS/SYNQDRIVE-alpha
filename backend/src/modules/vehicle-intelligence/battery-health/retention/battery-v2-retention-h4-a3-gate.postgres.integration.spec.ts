@@ -11,14 +11,12 @@ import { HV_CHARGE_SESSION_QUALITY_STATUS } from '../hv-charge-session/hv-charge
 import { probePostgresDatabase } from '../provider-observability-gap/provider-observability-gap-postgres.fixture';
 import { M3_3_HV_H4_NATIVE_ADDED_ENERGY_PROVENANCE } from '../hv-h4/m3-3-hv-h4.constants';
 import { createM3_3HvH4ChargeSessionEvidenceWriterService } from '../hv-h4/m3-3-hv-h4-a3-charge-session-evidence-writer.service';
-import { runM3_3HvH4DurableModeAA2ReportBundleV1 } from '../hv-h4/m3-3-hv-h4-a3-parity.harness.v1';
 import { BatteryV2RetentionAggregateService } from './battery-v2-retention-aggregate.service';
 import { BatteryV2RetentionService } from './battery-v2-retention.service';
 
 const LIVE = process.env.BATTERY_V2_RETENTION_INTEGRATION === '1';
 const OLD_START = new Date('2019-06-01T08:00:00.000Z');
 const OLD_END = new Date('2019-06-01T10:00:00.000Z');
-const EVAL = new Date('2026-09-01T00:00:00.000Z');
 
 function applyHvChargeSessionsOnlyRetentionEnv(overrides: {
   dryRun?: boolean;
@@ -171,12 +169,7 @@ async function createEligibleSession(
       expect(phase.skipped).toBe(1);
       expect(await prisma.hvChargeSession.count({ where: { id: session.id } })).toBe(1);
       expect(await prisma.batteryHvChargeSessionEvidenceRevision.count()).toBe(revisionsBefore);
-      const bundle = await runM3_3HvH4DurableModeAA2ReportBundleV1(
-        prisma,
-        { organizationId, vehicleId },
-        EVAL,
-      );
-      expect(bundle.loadedData.chargeSessionSourceLoad.loadedCount).toBe(1);
+      expect(await prisma.batteryHvChargeSessionEvidenceAck.count()).toBe(0);
     });
 
     it('S3) service stale ACK block after live mutation', async () => {
