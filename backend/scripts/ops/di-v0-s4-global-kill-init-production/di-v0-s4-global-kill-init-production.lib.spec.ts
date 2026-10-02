@@ -117,6 +117,11 @@ describe('di-v0-s4-global-kill-init-production.lib guards', () => {
     expect(r.failures).toContain('ACK_INVALID');
   });
 
+  it('wrong ACK -> refuse', () => {
+    const r = evaluateKillInitGuards(baseInput({ operatorAck: 'NO' }));
+    expect(r.failures).toContain('ACK_INVALID');
+  });
+
   it('SHA mismatch -> refuse', () => {
     const r = evaluateKillInitGuards(baseInput({ actualSha: 'deadbeef' }));
     expect(r.failures).toContain('SHA_MISMATCH');
