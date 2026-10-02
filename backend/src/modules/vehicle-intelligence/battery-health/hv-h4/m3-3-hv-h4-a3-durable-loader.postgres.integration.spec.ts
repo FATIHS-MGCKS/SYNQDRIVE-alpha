@@ -168,9 +168,7 @@ async function createNativeSession(
         { organizationId, vehicleId },
         EVAL,
       );
-      expect(bundle.live.throughput.lifecycleSegments[0]?.compositionStatus).toBe(
-        'SOURCE_CONFLICT',
-      );
+      expect(bundle.live.throughput.segments[0]?.compositionStatus).toBe('SOURCE_CONFLICT');
     });
 
     it('E) multiple revisions collapse to one canonical session in A2 population', async () => {
