@@ -1409,6 +1409,15 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | Wrapper can run from newer `main` while invoking initializer under verified release `ee958854…` / `20261002014651_v4994`; **`WRAPPER_REQUIRES_NEW_CODE_DEPLOY_BEFORE_USE=NO`** |
 | NON_EFFECTS | No Production GLOBAL row write, no env/PM2/deploy, no Tiny/operator grant |
 
+### EXP-021 S4F-7G Production kill initializer dry-run (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Authorized Production `DRY_RUN=1` via tool SHA `0b0eac19…` temp checkout + wrapper guards; evidence `EXP021_S4F7G_PRODUCTION_KILL_INITIALIZER_DRY_RUN.md` |
+| FINDING | **`PRODUCTION_KILL_INITIALIZER_DRY_RUN_READINESS=PASS`**; independent post-read GLOBAL count **0**, S4 counts **0**, env SHA unchanged |
+| NON_EFFECTS | No initializer invoke, no GLOBAL row write, no deploy/restart/migration, Tiny gate still **NOT_SATISFIED** |
+| OPERATIONAL | Hostinger path A: `backend.env` root-only — dry-run required `sudo -n` wrapper exec; bootstrap follow-up to pass `SYNQDRIVE_BACKEND_ENV` + sudo |
+
 ### EXP-021 S4F-7F-1 Production kill wrapper safety closure (PR #1882, 2026-10-02)
 
 | Event | Detail |
