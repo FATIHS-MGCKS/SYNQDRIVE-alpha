@@ -36,77 +36,6 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-    id: 'vehicle-onboarding-vo5b3-base-plan-temporal-seal-2026-10-02',
-    version: '4.9.2224',
-    title: 'Vehicle Onboarding VO-5B.3 — base subscription temporal authority seal',
-    summary: [
-      'resolveBaseSubscriptionItemAsOf binds BillingSubscription and BillingSubscriptionItem createdAt <= occurredAt; post-event backdated base rows cannot rewrite historical registry offboard billing.',
-    ],
-    reason:
-      'Backdated base items/subscriptions created after occurredAt could falsify MULTIPLE_BASE_ITEMS or steal offboard authority.',
-    previousBehavior:
-      'Base resolver used validFrom/validTo and subscription startedAt/endedAt only.',
-    details:
-      'billing-base-subscription-item-as-of.ts; VO5B_REGISTRY_BILLING_BRIDGE.md table repair',
-    affectsArchitecture: true,
-    module: 'Vehicle Onboarding',
-    createdAt: '2026-10-02T04:45:00.000Z',
-  },
-  {
-    id: 'vehicle-onboarding-vo5b2-temporal-seal-2026-10-02',
-    version: '4.9.2223',
-    title: 'Vehicle Onboarding VO-5B.2 — temporal billing authority seal',
-    summary: [
-      'Registry offboard projection: BillingQuantityEvent timeline is primary; Organization.status and post-event assignments/exclusions cannot rewrite occurredAt prestate.',
-      'legacyImplicitAssignmentsAt via createdAt <= occurredAt; post-event assignments not ended by consumer.',
-    ],
-    reason:
-      'VO-5B.1 still allowed present-day org/assignment state to veto historical registry offboard deprovision.',
-    previousBehavior:
-      'buildEventTimePolicyContext used current org status and assignment count; wasBillable could noop after org suspend or post-event DEMO rows.',
-    details:
-      'buildRegistryOffboardPolicyContext; billing-assignment-event-time createdAt boundary; VO5B_REGISTRY_BILLING_BRIDGE.md',
-    affectsArchitecture: true,
-    module: 'Vehicle Onboarding',
-    createdAt: '2026-10-02T04:30:00.000Z',
-  },
-  {
-    id: 'vehicle-onboarding-vo5b1-integrity-seal-2026-10-02',
-    version: '4.9.2222',
-    title: 'Vehicle Onboarding VO-5B.1 — registry→billing bridge integrity seal',
-    summary: [
-      'Event-time base subscription item + assignment + per-vehicle quantity ledger authority; atomic prestate decision inside one Billing transaction.',
-      'Registry outbox worker claims only VEHICLE_OFFBOARDED; ACTIVATED/ARCHIVED/TRANSFER remain PENDING; CAS publish + VO-5B PostgreSQL CI workflow.',
-    ],
-    reason:
-      'VO-5B review found unsupported lifecycle events marked FAILED, current-state billing reads, and missing outbox claim/CI coverage.',
-    previousBehavior:
-      'All PENDING outbox rows processed; unsupported types terminal FAILED; billing reads used current subscription/assignment status.',
-    details:
-      'billing-base-subscription-item-as-of.ts; vehicle-registry-lifecycle-outbox.repository.ts; VO5B_REGISTRY_BILLING_BRIDGE.md',
-    affectsArchitecture: true,
-    module: 'Vehicle Onboarding',
-    createdAt: '2026-10-02T04:00:00.000Z',
-  },
-  {
-    id: 'vehicle-onboarding-vo5b-registry-billing-bridge-2026-10-01',
-    version: '4.9.2221',
-    title: 'Vehicle Onboarding VO-5B — registry lifecycle → billing quantity bridge',
-    summary: [
-      'Post-commit consumer: VehicleRegistryLifecycleOutbox VEHICLE_OFFBOARDED → Billing VEHICLE_DISCONNECTED (-1) at occurredAt with registry-scoped idempotency.',
-      'Billable vehicle policy excludes OFFBOARDED/ARCHIVED registry lifecycle; event-time boundary avoids post-offboard onVehicleRemoved trap; outbox worker + retry; no Stripe in registry consumer.',
-    ],
-    reason:
-      'VO-5A writes durable offboard facts but Billing quantity had no proven registry lifecycle bridge before HTTP cutover.',
-    previousBehavior:
-      'OFFBOARDED vehicles could remain billable; no registry outbox billing consumer; onVehicleRemoved probed post-transition billable state.',
-    details:
-      'billing-vehicle-registry-offboard.projection.ts; vehicle-registry-lifecycle-outbox.processor.ts; VO5B_REGISTRY_BILLING_BRIDGE.md',
-    affectsArchitecture: true,
-    module: 'Vehicle Onboarding',
-    createdAt: '2026-10-02T03:30:00.000Z',
-  },
-  {
     id: 'vehicle-onboarding-vo5a1-integrity-seal-2026-10-01',
     version: '4.9.2220',
     title: 'Vehicle Onboarding VO-5A.1 — offboarding integrity seal',
@@ -337,6 +266,63 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
     createdAt: '2026-09-29T03:00:00.000Z',
+  },
+  {
+    id: 'di-exp021-s4f7l-tiny-config-staging-attempt-2026-10-02',
+    version: '4.9.2217',
+    title: 'Driving Intelligence — EXP-021 S4F-7L Production Tiny 3-key staging attempt (rollback)',
+    summary: [
+      'Human-authorized DRY_RUN=0 staging: exact 3-key backend.env write + backup succeeded; Replica A PRIMARY_STAGING runtime proof failed.',
+      'Wrapper recovery restored pre-pin backend.env bytes and restarted A→B; GLOBAL KILLED and S4 zero-state preserved.',
+      'Staging authorization consumed; new engineering + human grant required before retry.',
+    ],
+    reason:
+      'Execute bounded Production config staging for KS MS 661 NOT_BEFORE + allowlists without Tiny activation.',
+    previousBehavior:
+      'Three staging keys absent from Production backend.env; dry-run only evidence (S4F-7K).',
+    details:
+      'architecture/drivingintelligence/evidence/EXP021_S4F7L_PRODUCTION_TINY_CONFIG_STAGING.md',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-02T21:35:00.000Z',
+  },
+  {
+    id: 'di-exp021-s4f7k-tiny-staging-dry-run-2026-10-02',
+    version: '4.9.2216',
+    title: 'Driving Intelligence — EXP-021 S4F-7K Production Tiny config staging dry run',
+    summary: [
+      'Read-only Production DRY_RUN=1 via cloud-agent-s4-tiny-staging.sh: guards PASS, intended 3-key env delta only, zero mutation/restart.',
+      'Frozen merge tool SHA 04017010 blocked on text vehicle_id SQL; remediation on evidence branch before config-only staging execution.',
+      'GLOBAL KILLED; S4 zero-state; Tiny activation still 5/6 (NOT_READY).',
+    ],
+    reason:
+      'Prove S4F-7J/J.1 wrapper safety on live Production before separately authorized config-only staging.',
+    previousBehavior:
+      'No live Production dry-run evidence for Tiny three-key staging wrapper.',
+    details:
+      'architecture/drivingintelligence/evidence/EXP021_S4F7K_PRODUCTION_TINY_STAGING_DRY_RUN.md',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-02T20:55:00.000Z',
+  },
+  {
+    id: 'di-exp021-s4f7f-kill-init-wrapper-2026-10-02',
+    version: '4.9.2215',
+    title: 'Driving Intelligence — EXP-021 S4F-7F guarded Production GLOBAL kill initializer wrapper',
+    summary: [
+      'Production ops wrapper: ACK + exact SHA/release/env-hash + GLOBAL pre-state + topology + S4-off + budget/Redis + zero S4 persistence guards.',
+      'Invokes deployed-release di-v0-s4-initialize-global-kill-row.ts only (no main substitution); DRY_RUN=1 supported.',
+      'No Production DB/env/deploy in this slice; GLOBAL row remains MISSING until separate human execution.',
+    ],
+    reason:
+      'Close S4F-7E BLOCKER (PRODUCTION_EXECUTION_WRAPPER_REQUIRED) without deploying newer main to Production.',
+    previousBehavior:
+      'Raw ts-node kill initializer had no Production SHA/release/env/prestate/ACK guards.',
+    details:
+      'architecture/drivingintelligence/evidence/EXP021_S4F7F_PRODUCTION_KILL_INITIALIZER_WRAPPER_ENGINEERING.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-02T04:30:00.000Z',
   },
   {
     id: 'di-exp021-s4f7a-tiny-execution-prereqs-2026-10-01',
