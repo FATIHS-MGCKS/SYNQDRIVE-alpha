@@ -102,6 +102,13 @@ async function createEligibleSession(
       await prisma?.$disconnect();
     });
 
+    beforeEach(async () => {
+      await prisma.hvCapacityObservation.deleteMany();
+      await prisma.batteryHvChargeSessionEvidenceAck.deleteMany();
+      await prisma.batteryHvChargeSessionEvidenceRevision.deleteMany();
+      await prisma.hvChargeSession.deleteMany();
+    });
+
     async function buildService() {
       const moduleRef = await Test.createTestingModule({
         imports: [
