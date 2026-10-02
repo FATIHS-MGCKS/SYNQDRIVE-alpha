@@ -36,24 +36,6 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-    id: 'battery-v2-m3-3-hv-h4-a3-4-retention-scan-service-postgres-2026-10-02',
-    version: '4.9.2221',
-    title: 'Battery V2 M3.3-HV-H4-A3.4 — retention keyset scan + service postgres proofs',
-    summary: [
-      'phasePruneHvChargeSessions uses keyset pagination (startAt ASC, id ASC) so blocked rows do not starve later candidates in the same run.',
-      'BatteryV2RetentionService.runOnce postgres integration (S1–S5 + batch-progress regression); HV-H4 CI runs test:battery:retention:integration.',
-    ],
-    reason:
-      'Fail-closed retention rows must remain without preventing eligible deletes within maxBatches; gate-only postgres tests did not cover the wired service path.',
-    previousBehavior:
-      'Each batch re-fetched the earliest startAt page; blocked rows could be scanned repeatedly and hide later deletable sessions.',
-    details:
-      'battery-v2-retention.service.ts; battery-v2-retention-h4-a3-gate.postgres.integration.spec.ts; battery-hv-h4-coverage-report-postgres-ci.sh',
-    affectsArchitecture: true,
-    module: 'Vehicle Intelligence',
-    createdAt: '2026-10-02T21:50:00.000Z',
-  },
-  {
     id: 'vehicle-onboarding-vo5a1-integrity-seal-2026-10-01',
     version: '4.9.2220',
     title: 'Vehicle Onboarding VO-5A.1 — offboarding integrity seal',
