@@ -1,0 +1,38 @@
+{
+  "evidenceId": "EXP-021-TGR-MATURATION-FINDINGS",
+  "maturationVsMicroWindow": "INDEPENDENT — maturation (when to retry) must not be conflated with micro-window sizing (how large to query)",
+  "historicalReplayLimit": "Cannot determine optimal live maturation age from historical replay alone",
+  "SETTLEMENT_EARLY_AGE_MATURATION_OBSERVED": "YES",
+  "sourceAuthority": "exp021-run1-gap-replay-2026-09-16/settlement-maturation.json",
+  "probes": {
+    "SP-60-T0": {
+      "scheduledAgesMs": [
+        { "age": 30000, "status": "ZERO_RESULT", "rawRowCount": 0 },
+        { "age": 60000, "status": "SUCCESS", "rawRowCount": 60 },
+        { "age": 120000, "status": "SUCCESS", "rawRowCount": 60 },
+        { "age": 180000, "status": "SUCCESS", "rawRowCount": 60 },
+        { "age": 300000, "status": "SUCCESS", "rawRowCount": 60 },
+        { "age": 600000, "status": "SUCCESS", "rawRowCount": 60 }
+      ],
+      "firstNonZeroAgeMs": 60000
+    },
+    "SP-90-T16": {
+      "scheduledAgesMs": [
+        { "age": 30000, "status": "ZERO_RESULT", "rawRowCount": 0 },
+        { "age": 60000, "status": "SUCCESS", "rawRowCount": 60 },
+        { "age": 120000, "status": "SUCCESS", "rawRowCount": 60 },
+        { "age": 180000, "status": "SUCCESS", "rawRowCount": 60 },
+        { "age": 300000, "status": "SUCCESS", "rawRowCount": 60 },
+        { "age": 600000, "status": "SUCCESS", "rawRowCount": 60 }
+      ],
+      "firstNonZeroAgeMs": 60000
+    }
+  },
+  "CURRENT_EVIDENCE_ZERO_AT_MS": 30000,
+  "CURRENT_EVIDENCE_FIRST_OBSERVED_SUCCESS_MS": 60000,
+  "PRODUCTION_RETRY_AGE_ESTABLISHED": "NO",
+  "transitionThresholdNote": "Unknown transition threshold lies somewhere after observed 30s zero and at-or-before observed 60s success for these two windows only",
+  "candidateLiveShadowAgesMs": [30000, 45000, 60000, 90000, 120000],
+  "LIVE_MATURATION_SHADOW_REQUIRED": "YES",
+  "LIVE_MATURATION_SHADOW_ACTIVATED": "NO"
+}

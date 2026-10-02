@@ -20,6 +20,7 @@ export const SINGLETON_GLOBAL_SCHEDULER_NAMES = [
   'data_retention',
   'storage_orphan_sweep',
   'battery_v2_reconciliation',
+  'battery_v2_longitudinal_materialization_reconciliation',
   'battery_v2_retention',
   'voice_retention',
   'iam_data_retention',
@@ -27,8 +28,10 @@ export const SINGLETON_GLOBAL_SCHEDULER_NAMES = [
   'document_intake_action_recovery',
   'document_extraction_recovery',
   'fuel_station_enrichment_recovery',
+  'charging_station_enrichment_recovery',
   'physical_refuel_reconciliation_recovery',
   'device_connection_webhook_inbox',
+  'physical_state_shadow_observation_retention',
   'communication_retention',
   'legal_document_retention',
   'booking_document_generation_recovery_minute',
@@ -50,6 +53,12 @@ export const SINGLETON_GLOBAL_SCHEDULER_NAMES = [
   'billing_domain_event_email',
   'reference_capture_retention',
   'reference_capture_settlement_shadow_recovery',
+  'reference_capture_exp021_maturation_shadow_recovery',
+  'reference_capture_exp021_fleet_coordinator',
+  'reference_capture_exp021_canary_live_window_activation',
+  'di_v0_s4_discovery',
+  'di_v0_s4_drift_watcher',
+  'di_v0_s4_maintenance_reaper',
 ] as const;
 
 export type SingletonGlobalSchedulerName =
@@ -71,6 +80,7 @@ export const REPLICA_LOCAL_SCHEDULER_NAMES = [
   'communication_metrics_refresh',
   'notification_metrics_refresh',
   'iam_metrics_refresh',
+  'di_v0_s4_claim_loop',
 ] as const;
 
 export type SchedulerClassification =

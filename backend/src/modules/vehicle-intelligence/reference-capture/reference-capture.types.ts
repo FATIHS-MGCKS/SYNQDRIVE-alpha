@@ -88,6 +88,8 @@ export type ReferenceCaptureObservationEnvelope = {
 };
 
 export type CreateReferenceCaptureSessionInput = {
+  /** Optional preallocated session id (canary live-window activation idempotency). */
+  sessionId?: string;
   organizationId: string;
   vehicleId: string;
   connectionProfile?: string;

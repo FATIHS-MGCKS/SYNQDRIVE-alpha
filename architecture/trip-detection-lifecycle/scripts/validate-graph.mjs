@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Validate Tankstellenerkennung knowledge graph YAML — docs only.
+ * Validate Trip Detection & Lifecycle knowledge graph YAML — docs only.
  * Usage: node architecture/trip-detection-lifecycle/scripts/validate-graph.mjs
  */
 import fs from 'fs';
@@ -243,6 +243,11 @@ function validateSemanticEdge(e, nodeById) {
         fail(`Edge ${from} -superseded_by-> ${to}: to must be decision (got ${tt})`);
       }
       break;
+    case 'transitions_to':
+      if (!isType(nodeById, from, ['state']) || !isType(nodeById, to, ['state'])) {
+        fail(`Edge ${from} -transitions_to-> ${to}: from and to must be state (got ${ft} → ${tt})`);
+      }
+      break;
     default:
       break;
   }
@@ -317,6 +322,17 @@ for (const n of nodes) {
     }
   }
 
+  if (n.type === 'state') {
+    if (!schema.fsm_role_values?.includes(n.fsm_role)) {
+      fail(`State ${n.id} has invalid or missing fsm_role: ${n.fsm_role}`);
+    }
+    if (typeof n.runtime_reachable !== 'boolean') {
+      fail(`State ${n.id} missing boolean runtime_reachable`);
+    } else if ((n.fsm_role === 'LIVE_RUNTIME_STATE') !== n.runtime_reachable) {
+      fail(`State ${n.id}: runtime_reachable must be true iff fsm_role=LIVE_RUNTIME_STATE`);
+    }
+  }
+
   if (n.type === 'evidence' || n.type === 'test_evidence') {
     if (!n.source_type) {
       fail(`Evidence node ${n.id} missing required source_type`);
@@ -356,6 +372,136 @@ for (const e of edges) {
 }
 console.log('==> Edge references + semantic checks:', edges.length, 'OK');
 
+const transitionEdges = edges.filter((e) => e.relation === 'transitions_to');
+const transitionIds = new Set();
+for (const e of transitionEdges) {
+  const label = `Transition ${e.id ?? '?'} (${e.from} → ${e.to})`;
+  for (const field of schema.transition_required_fields ?? []) {
+    const v = e[field];
+    if (v === undefined || v === null || v === '' || (Array.isArray(v) && v.length === 0)) {
+      fail(`${label} missing required field: ${field}`);
+    }
+  }
+  if (e.id) {
+    if (!/^TDL-TR-\d{3}$/.test(e.id)) fail(`${label} id must match TDL-TR-###`);
+    if (transitionIds.has(e.id)) fail(`Duplicate transition id: ${e.id}`);
+    transitionIds.add(e.id);
+  }
+  for (const end of [e.from, e.to]) {
+    const s = nodeById.get(end);
+    if (s?.type === 'state' && s.runtime_reachable !== true) {
+      fail(`${label} touches non-runtime-reachable state ${end}`);
+    }
+  }
+  for (const ref of e.evidence ?? []) {
+    assertEvidenceReferenceAllowed(label, ref, nodeById, evidenceRefTypes);
+  }
+  for (const p of e.source_paths ?? []) {
+    if (!fs.existsSync(path.join(repo, p))) fail(`${label} MISSING source_path: ${p}`);
+  }
+}
+const edgeKeys = new Set();
+for (const e of transitionEdges) {
+  const key = `${e.from}->${e.to}`;
+  if (edgeKeys.has(key)) fail(`Duplicate transition state pair: ${key}`);
+  edgeKeys.add(key);
+}
+
+const stateNodes = nodes.filter((n) => n.type === 'state');
+const liveStates = stateNodes.filter((n) => n.fsm_role === 'LIVE_RUNTIME_STATE');
+for (const s of stateNodes) {
+  const inbound = transitionEdges.filter((e) => e.to === s.id && e.from !== s.id).length;
+  const outbound = transitionEdges.filter((e) => e.from === s.id && e.to !== s.id).length;
+  if (s.fsm_role === 'LIVE_RUNTIME_STATE' && (inbound === 0 || outbound === 0)) {
+    fail(`Live state ${s.id} must have ≥1 inbound and ≥1 outbound state-changing transition (in=${inbound}, out=${outbound})`);
+  }
+  if (s.fsm_role === 'SCHEMA_COMPAT_ONLY') {
+    const any = transitionEdges.filter((e) => e.from === s.id || e.to === s.id).length;
+    if (any > 0) fail(`Schema-compat state ${s.id} must have zero transitions (got ${any})`);
+  }
+}
+if (
+  schema.fsm_expected_live_state_count !== undefined &&
+  liveStates.length !== schema.fsm_expected_live_state_count
+) {
+  fail(`Live FSM state count ${liveStates.length} != schema fsm_expected_live_state_count ${schema.fsm_expected_live_state_count}`);
+}
+if (
+  schema.fsm_expected_transition_count !== undefined &&
+  transitionEdges.length !== schema.fsm_expected_transition_count
+) {
+  fail(`FSM transition count ${transitionEdges.length} != schema fsm_expected_transition_count ${schema.fsm_expected_transition_count}`);
+}
+const selfTransitions = transitionEdges.filter((e) => e.from === e.to).length;
+console.log(
+  '==> FSM transition matrix:',
+  `live_states=${liveStates.length}`,
+  `schema_compat_states=${stateNodes.length - liveStates.length}`,
+  `transitions=${transitionEdges.length}`,
+  `(state_changing=${transitionEdges.length - selfTransitions}, same_state=${selfTransitions})`,
+);
+
+const structuralTypes = [
+  'state',
+  'queue',
+  'worker',
+  'pipeline',
+  'orchestrator',
+  'resolver',
+  'recovery',
+  'authority',
+  'persist',
+  'policy',
+  'consumer',
+  'data',
+];
+const connected = new Set();
+for (const e of edges) {
+  connected.add(e.from);
+  connected.add(e.to);
+}
+const orphans = nodes.filter((n) => structuralTypes.includes(n.type) && !connected.has(n.id));
+for (const n of orphans) fail(`Orphan structural node (no edges): ${n.id}`);
+console.log('==> Structural orphan check:', orphans.length ? 'FAIL' : 'OK');
+
+const oq010Expected = schema.oq010_productive_path_count ?? 41;
+const oq010Owners = new Map();
+for (const n of nodes) {
+  for (const p of n.oq010_paths ?? []) {
+    if (!/^P\d{3}$/.test(p)) fail(`Node ${n.id} has malformed oq010_paths entry ${p}`);
+    if (!oq010Owners.has(p)) oq010Owners.set(p, []);
+    oq010Owners.get(p).push(n);
+  }
+}
+let graphMapped = 0;
+let boundaryMapped = 0;
+let unmapped = 0;
+for (let i = 1; i <= oq010Expected; i += 1) {
+  const p = `P${String(i).padStart(3, '0')}`;
+  const owners = oq010Owners.get(p) ?? [];
+  if (owners.length === 0) {
+    unmapped += 1;
+    fail(`OQ-010 productive path ${p} unmapped in graph`);
+  } else if (owners.length > 1) {
+    fail(`OQ-010 productive path ${p} mapped more than once: ${owners.map((n) => n.id).join(', ')}`);
+  } else if (owners[0].type === 'consumer') {
+    boundaryMapped += 1;
+  } else {
+    graphMapped += 1;
+  }
+}
+for (const p of oq010Owners.keys()) {
+  const num = Number(p.slice(1));
+  if (num < 1 || num > oq010Expected) fail(`OQ-010 path ${p} outside P001..P${oq010Expected}`);
+}
+console.log(
+  '==> OQ-010 productive path mapping:',
+  `total=${oq010Expected}`,
+  `graph_mapped=${graphMapped}`,
+  `boundary_mapped=${boundaryMapped}`,
+  `unmapped=${unmapped}`,
+);
+
 const invIds = new Set();
 for (const inv of invariants) {
   if (!inv.id) fail('Invariant missing id');
@@ -393,12 +539,17 @@ const hypPattern = /TDL-HYP-[A-Z0-9-]+/g;
 const contraPattern = /TDL-CX-[0-9]+/g;
 const supersededPattern = /TDL-SUPERSEDED-[A-Z0-9-]+/g;
 const rejectPattern = /TDL-REJECT-[A-Z0-9-]+/g;
+const failPattern = /TDL-FAIL-[A-Z0-9]+-\d{3}/g;
 
 const indexedGaps = collectStableIdsFromMarkdown(authorityDir, gapPattern);
 const indexedHyps = collectStableIdsFromMarkdown(authorityDir, hypPattern);
 const indexedContras = collectStableIdsFromMarkdown(authorityDir, contraPattern);
 const indexedSuperseded = collectStableIdsFromMarkdown(authorityDir, supersededPattern);
 const indexedRejects = collectStableIdsFromMarkdown(authorityDir, rejectPattern);
+const indexedFails = collectStableIdsFromMarkdown(authorityDir, failPattern);
+for (const id of indexedFails) {
+  if (!nodeIds.has(id)) fail(`Indexed FAIL ${id} missing from graph nodes`);
+}
 
 for (const id of indexedGaps) {
   if (!nodeIds.has(id)) fail(`Indexed GAP ${id} missing from graph nodes`);
@@ -422,6 +573,7 @@ console.log(
   `CONTRA=${indexedContras.size}`,
   `SUPERSEDED=${indexedSuperseded.size}`,
   `REJECT=${indexedRejects.size}`,
+  `FAIL=${indexedFails.size}`,
 );
 
 const registerStatuses = parseDecisionStatusesFromMarkdown(

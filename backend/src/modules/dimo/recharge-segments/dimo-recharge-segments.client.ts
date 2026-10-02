@@ -7,6 +7,7 @@ import {
   executeDimoRechargeSegmentsGraphQL,
 } from './dimo-recharge-segments.graphql';
 import { buildDimoRechargeSegmentsQuery } from './dimo-recharge-segments.query';
+import { dedupeNormalizedRechargeSegmentsByFingerprint } from './dimo-recharge-segments.dedupe';
 import { normalizeDimoRechargeSegments } from './dimo-recharge-segments.normalizer';
 import { splitDimoRechargeQueryWindows } from './dimo-recharge-segments.window';
 import { DIMO_PRODUCTION_RECHARGE_DETECTOR_CONFIG } from '../energy-events/dimo-energy-detector.config';
@@ -145,7 +146,7 @@ export class DimoRechargeSegmentsClient {
       }
     }
 
-    const deduped = dedupeRechargeSegments(collected);
+    const deduped = dedupeNormalizedRechargeSegmentsByFingerprint(collected);
 
     return {
       segments: deduped,
@@ -162,16 +163,4 @@ export class DimoRechargeSegmentsClient {
       },
     };
   }
-}
-
-function dedupeRechargeSegments(
-  segments: NormalizedDimoRechargeSegment[],
-): NormalizedDimoRechargeSegment[] {
-  const byId = new Map<string, NormalizedDimoRechargeSegment>();
-  for (const segment of segments) {
-    byId.set(segment.segmentId, segment);
-  }
-  return [...byId.values()].sort(
-    (a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime(),
-  );
 }

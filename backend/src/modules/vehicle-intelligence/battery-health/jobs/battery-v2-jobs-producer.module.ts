@@ -15,16 +15,19 @@ import { BatteryV2TripStartProducer } from './battery-v2-trip-start.producer';
 import { BatteryV2LvRestSessionProducer } from './battery-v2-lv-rest-session.producer';
 import { BatteryV2RestTargetProducer } from './battery-v2-rest-target.producer';
 import { BatteryShutdownEvidenceModule } from '../shutdown-evidence/shutdown-evidence.module';
+import { BatteryGeneralizedEvidenceModule } from '../generalized-evidence/generalized-evidence.module';
+import { ProviderObservabilityGapModule } from '../provider-observability-gap/provider-observability-gap.module';
 import { ShutdownEvidenceTripContextService } from '../shutdown-evidence/shutdown-evidence-trip-context.service';
 import { HvRechargeSessionReconcileProducerService } from '../hv-charge-session/hv-recharge-session-reconcile-producer.service';
 import { BatteryCapabilityRefreshService } from '../capability-preflight/battery-capability-refresh.service';
 import { BatteryV2JobObservabilityService } from './battery-v2-job-observability.service';
 import { LvRestAssessmentHandoffService } from '../lv-rest-window/lv-rest-assessment-handoff.service';
 import { LvPublicationHandoffService } from '../lv-assessment/lv-publication-handoff.service';
+import { BatteryProviderLastStoredLiveVoltageResolver } from '../battery-provider-last-stored-live-voltage.resolver';
 
 /** Producer-side queue registration — safe to import from VehicleIntelligence without worker handlers. */
 @Module({
-  imports: [BullModule.registerQueue({ name: QUEUE_NAMES.BATTERY_V2 }), RedisModule, BatteryShutdownEvidenceModule],
+  imports: [BullModule.registerQueue({ name: QUEUE_NAMES.BATTERY_V2 }), RedisModule, BatteryShutdownEvidenceModule, BatteryGeneralizedEvidenceModule, ProviderObservabilityGapModule],
   providers: [
     BatteryPolicyProfileService,
     BatteryMeasurementSessionRepository,
@@ -33,6 +36,7 @@ import { LvPublicationHandoffService } from '../lv-assessment/lv-publication-han
     BatteryV2JobDeadLetterService,
     BatteryV2AssessDispatchReservationService,
     BatteryV2JobProducerService,
+    BatteryProviderLastStoredLiveVoltageResolver,
     BatteryV2SnapshotObservationProducer,
     BatteryV2TripStartProducer,
     BatteryV2LvRestSessionProducer,
@@ -49,6 +53,7 @@ import { LvPublicationHandoffService } from '../lv-assessment/lv-publication-han
     BatteryV2JobDeadLetterService,
     BatteryV2AssessDispatchReservationService,
     BatteryV2JobProducerService,
+    BatteryProviderLastStoredLiveVoltageResolver,
     BatteryV2SnapshotObservationProducer,
     BatteryV2TripStartProducer,
     BatteryV2LvRestSessionProducer,

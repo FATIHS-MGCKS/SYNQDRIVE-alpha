@@ -176,9 +176,9 @@ Phase 3 decisions are **PROPOSED** or **VALIDATED** — not `PRODUCTION_VALIDATE
 | **DATE** | 2026-09-11 (Phase 3); hardened 2026-09-12 |
 | **BEFORE** | Colloquial PHYSICAL_REPLUG / FULL_CONNECTIVITY_RECOVERED without epistemic precision; implicit PLUG webhook dependency risk |
 | **WHY** | Phase 2 proved snapshot plug signal without human-observed replug; Aug 2026 had **no** canonical PLUG webhook |
-| **EVIDENCE** | VDC-EVID-PHASE2-001 |
-| **CHANGE** | Adopt vocabulary in TARGET_SEMANTIC_MODEL.md; `FULL_CONNECTIVITY_RECOVERED` requires strict source advance; **PLUG webhook = optional fast-path, not mandatory recovery dependency** |
-| **RECOVERY_FAST_PATH** | PLUG webhook may accelerate `PHYSICAL_DEVICE_PRESENT` / replug inference. **FULL_CONNECTIVITY_RECOVERED MUST NOT depend on PLUG webhook.** Provider-neutral: PLUG webhook **OR** fresh snapshot physical evidence **OR** other sufficiently strong provider/device evidence (per profile) may establish physical presence. **Never sufficient alone:** poll SUCCESS, `providerFetchedAt` advance, equal stale snapshot |
+| **EVIDENCE** | VDC-EVID-PHASE2-001; VDC-EVID-PLUG-WEBHOOK-KS-MX-PARKED-GT-001 (2026-09-22 — webhook physical fast-path while parked; snapshot confirmatory); VDC-EVID-PLUG-WEBHOOK-WOB-LONG-STAND-WAKE-GT-001 (2026-09-23 — parked provider silence ~6982 s despite poll SUCCESS; wake-associated fresh OBD; webhook fast-path after emission) |
+| **CHANGE** | Adopt vocabulary in TARGET_SEMANTIC_MODEL.md; `FULL_CONNECTIVITY_RECOVERED` requires strict source advance; **PLUG webhook = optional low-latency acquisition fast-path once fresh provider/device evidence exists — not a guarantee of fresh evidence generation** |
+| **RECOVERY_FAST_PATH** | PLUG webhook may accelerate `PHYSICAL_DEVICE_PRESENT` / replug inference **after** fresh provider/device OBD evidence exists. **FULL_CONNECTIVITY_RECOVERED MUST NOT depend on PLUG webhook.** Provider-neutral: PLUG webhook **OR** fresh snapshot physical evidence **OR** other sufficiently strong provider/device evidence (per profile) may establish physical presence. Fresh snapshot evidence remains an independent recovery/reconciliation path. **Never sufficient alone:** poll SUCCESS, `providerFetchedAt` advance, equal stale snapshot (polling itself is not OBD freshness) |
 | **GT-R1_LTE_R1** | Must determine: PLUG webhook emission; `obdIsPluggedIn=true` vs strict top-level source advance ordering; per-signal timestamp independence; recovery without PLUG webhook; exact recovery ordering |
 | **EXPECTED_EFFECT** | Recovery paths work when webhooks are absent; no false dependency on PLUG delivery |
 | **GROUND_TRUTH_REQUIRED** | GT-R1-UNPLUG-001 before claiming provider recovery SLA |
@@ -225,6 +225,23 @@ Phase 3 decisions are **PROPOSED** or **VALIDATED** — not `PRODUCTION_VALIDATE
 | **EXCLUDES** | VDC-RB-001, VDC-RB-018, Production enablement, AUTHORITY_ACTIVE promotion |
 | **VALIDATION** | Phase 2 test matrix in audit doc; GT-R1 under authority+side-effects |
 | **CLARIFICATION** | **2026-09-14 (audit #1650):** P2.5 gates split — **implementation entry** (`P2_5_IMPLEMENTATION_START_READY=YES`; blockers=NONE) vs **cutover activation** (`P2_5_CUTOVER_ACTIVATION_READY=NOT_PROVEN`; requires P2.5 code + P25-A..R + target dry-run + operational UNEXPLAINED=0 + mixed-replica interlock). Historical scope-doc P2.5 single “Entry” row = activation requirements; does not block P2.5 code start. |
+| **OWNING_MODULE** | VDC |
+
+---
+
+## VDC-DEC-014 — P2.5 shadow same-state provenance refresh (Option C)
+
+| Field | Value |
+|-------|-------|
+| **STATUS** | PROPOSED (implementation PR #1697; not Production-deployed) |
+| **DATE** | 2026-09-25 |
+| **BEFORE** | Narrow GT-R1 / EXPECTED_FIX proofs left **567** T7-pattern shadow rows blocking cutover; raw `UNEXPLAINED_OLD_REJECT_NEW_ACCEPT` counted as correctness-blocking |
+| **WHY** | T+7 semantic closure proved **1552/1552** unexplained rows are non-isomorphic same-state `PROVENANCE_REFRESH` with **zero** effective state change or true physical disagreement — not legacy-wrong corrections |
+| **EVIDENCE** | VDC-EVID-P25-T7-SEMANTIC-CLOSURE-001; prior #1697 replay: 970 direct pass, 15 retention-edge P1A, 567 outside narrow proof |
+| **CHANGE** | Adopt **Option C:** domain-aware shadow comparator + mandatory online `proveNonIsomorphicSameStateProvenanceRefresh` (P1A/P1B/P2/P3). New classification `NON_ISOMORPHIC_SAME_STATE_PROVENANCE_REFRESH` (`correctnessBlocking=false`). Keep `STATE_TRANSITION` strict for APPLIED/ESTABLISHED with real state change. Separate **online row admissibility** from **sequence/replay safety** (WOB 07:41:49 refresh must not suppress 07:41:53 UNPLUG). Cutover metrics: `CORRECTNESS_BLOCKING_UNEXPLAINED`, `UNPROVEN_SAME_STATE_REFRESH`, `TRUE_STATE_DISAGREEMENT`, etc. — future gate requires blocking metrics **=0**, not raw unexplained alone |
+| **EXCLUDES** | Production row rewrite; provider/canary mutation; authority cutover; T0 reset; weakening CONFLICT/binding/stale/opposing-state guards |
+| **VALIDATION** | Unit matrices P1A/P1B/P2/P3/WOB; T7 replay fixtures; shadow comparator precedence guards; p25 audit script metric emission |
+| **POST_DEPLOY** | New signed build attestation for deployed post-fix SHA; new full seven-day post-fix shadow epoch before cutover proof |
 | **OWNING_MODULE** | VDC |
 
 ---

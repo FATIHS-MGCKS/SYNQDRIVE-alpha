@@ -36,10 +36,20 @@ export interface HvChargeSessionQualityInput {
   deltaSocPercent: number | null;
   addedEnergyMinKwh?: number | null;
   addedEnergyMaxKwh?: number | null;
+  isChargingObservedAny?: boolean | null;
+  isChargingObservedAll?: boolean | null;
+  cableConnectedObservedAny?: boolean | null;
+  cableConnectedObservedAll?: boolean | null;
+  /** @deprecated Legacy MIN/MAX boolean extrema — not temporal boundaries */
   isChargingStart?: boolean | null;
+  /** @deprecated Legacy MIN/MAX boolean extrema — not temporal boundaries */
   isChargingEnd?: boolean | null;
+  /** @deprecated Legacy MIN/MAX boolean extrema — not temporal boundaries */
   cableConnectedStart?: boolean | null;
+  /** @deprecated Legacy MIN/MAX boolean extrema — not temporal boundaries */
   cableConnectedEnd?: boolean | null;
+  socExtremaProxy?: boolean;
+  energyExtremaProxy?: boolean;
   startedBeforeRange?: boolean;
   providerObservedAt?: Date | null;
   receivedAt?: Date | null;
@@ -81,9 +91,10 @@ function resolveBoundaryStrength(input: HvChargeSessionQualityInput): HvChargeSe
   }
 
   const chargingBoundary =
-    input.isChargingStart === true || input.isChargingEnd === true;
+    input.isChargingObservedAny === true || input.isChargingObservedAll === true;
   const cableBoundary =
-    input.cableConnectedStart === true || input.cableConnectedEnd === true;
+    input.cableConnectedObservedAny === true ||
+    input.cableConnectedObservedAll === true;
 
   if (chargingBoundary || cableBoundary) {
     return 'strong';
@@ -354,6 +365,13 @@ export function assessHvChargeSessionQualityFromInput(
     pushReason(reasonCodes, HV_CHARGE_SESSION_QUALITY_REASONS.strong_dimo_boundaries);
   }
 
+  if (input.socExtremaProxy) {
+    pushReason(reasonCodes, HV_CHARGE_SESSION_QUALITY_REASONS.soc_extrema_proxy);
+  }
+  if (input.energyExtremaProxy) {
+    pushReason(reasonCodes, HV_CHARGE_SESSION_QUALITY_REASONS.energy_extrema_proxy);
+  }
+
   if (deltaSoc < HV_SESSION_MIN_SOC_DELTA_M2) {
     pushReason(reasonCodes, HV_CHARGE_SESSION_QUALITY_REASONS.soc_delta_insufficient);
     return finalize(
@@ -368,7 +386,9 @@ export function assessHvChargeSessionQualityFromInput(
   if (
     input.source === HV_CHARGE_SESSION_SOURCE_TELEMETRY_POLL_FALLBACK ||
     boundaryStrength === 'weak' ||
-    deltaSoc < HV_SESSION_MIN_SOC_DELTA_M3
+    deltaSoc < HV_SESSION_MIN_SOC_DELTA_M3 ||
+    input.socExtremaProxy ||
+    input.energyExtremaProxy
   ) {
     if (deltaSoc >= HV_SESSION_MIN_SOC_DELTA_M2) {
       pushReason(reasonCodes, HV_CHARGE_SESSION_QUALITY_REASONS.soc_delta_partial_m2);
@@ -415,6 +435,9 @@ export function assessHvChargeSessionQualityFromDimoSegment(
   segment: NormalizedDimoRechargeSegment,
   assessedAt: Date = new Date(),
 ): HvChargeSessionQualityAssessment {
+  const socExtremaProxy = segment.soc.provenance === 'SEGMENT_EXTREMA';
+  const energyExtremaProxy = segment.currentEnergyKwh.provenance === 'SEGMENT_EXTREMA';
+
   return assessHvChargeSessionQualityFromInput({
     source: HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE,
     isOngoing: segment.ongoing,
@@ -429,10 +452,12 @@ export function assessHvChargeSessionQualityFromDimoSegment(
     deltaSocPercent: segment.soc.delta,
     addedEnergyMinKwh: segment.addedEnergyKwh.min,
     addedEnergyMaxKwh: segment.addedEnergyKwh.max,
-    isChargingStart: segment.isCharging.start,
-    isChargingEnd: segment.isCharging.end,
-    cableConnectedStart: segment.cableConnected.start,
-    cableConnectedEnd: segment.cableConnected.end,
+    isChargingObservedAny: segment.isCharging.anyTrue,
+    isChargingObservedAll: segment.isCharging.allTrue,
+    cableConnectedObservedAny: segment.cableConnected.anyTrue,
+    cableConnectedObservedAll: segment.cableConnected.allTrue,
+    socExtremaProxy,
+    energyExtremaProxy,
     startedBeforeRange: segment.startedBeforeRange,
     providerObservedAt: segment.endAt
       ? new Date(segment.endAt)

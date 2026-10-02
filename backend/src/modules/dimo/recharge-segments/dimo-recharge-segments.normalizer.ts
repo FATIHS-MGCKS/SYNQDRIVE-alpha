@@ -1,5 +1,7 @@
 import type {
+  DimoRechargeDurationProvenance,
   DimoRechargeSegmentBooleanAggregate,
+  DimoRechargeSegmentBooleanEvidence,
   DimoRechargeSegmentNumericAggregate,
   DimoRechargeSegmentSignalRow,
   NormalizedDimoRechargeSegment,
@@ -18,59 +20,99 @@ function readBoolean01(value: number | null): boolean | null {
   return value >= 0.5;
 }
 
-function positiveDelta(min: number | null, max: number | null): number | null {
-  if (min == null || max == null || max <= min) return null;
+/** Known zero vs unknown vs positive vs invalid (reset). */
+export function numericDeltaFromExtrema(
+  min: number | null,
+  max: number | null,
+): number | null {
+  if (min == null || max == null) return null;
+  if (max < min) return null;
+  if (max === min) return 0;
   return max - min;
 }
 
-function buildFingerprint(tokenId: number, startAt: string): string {
-  const startMs = new Date(startAt).getTime();
+export function parseCanonicalSegmentInstant(raw: unknown): string | null {
+  const text = readString(raw);
+  if (!text) return null;
+  const parsed = new Date(text);
+  if (!Number.isFinite(parsed.getTime())) return null;
+  return parsed.toISOString();
+}
+
+function buildFingerprint(tokenId: number, startAtIso: string): string {
+  const startMs = new Date(startAtIso).getTime();
+  if (!Number.isFinite(startMs)) {
+    throw new Error('buildFingerprint requires finite start instant');
+  }
   return `dimo-recharge-${tokenId}-${startMs}`;
 }
 
-function groupNumericSignals(
-  signals: unknown,
-): Map<string, Array<{ agg: string; value: number }>> {
-  const grouped = new Map<string, Array<{ agg: string; value: number }>>();
+function groupSignalValues(signals: unknown): Map<string, number[]> {
+  const grouped = new Map<string, number[]>();
   const rows = Array.isArray(signals) ? signals : [];
 
   for (const row of rows) {
     const name = readString((row as { name?: unknown })?.name);
     const value = readNumber((row as { value?: unknown })?.value);
-    const agg = readString((row as { agg?: unknown })?.agg) ?? 'UNKNOWN';
     if (!name || value == null) continue;
-
     const list = grouped.get(name) ?? [];
-    list.push({ agg, value });
+    list.push(value);
     grouped.set(name, list);
   }
 
   return grouped;
 }
 
-function pickMinMax(
-  grouped: Map<string, Array<{ agg: string; value: number }>>,
+function pickNumericExtrema(
+  grouped: Map<string, number[]>,
   signalName: string,
 ): DimoRechargeSegmentNumericAggregate {
-  const rows = grouped.get(signalName) ?? [];
-  const values = rows.map((row) => row.value);
+  const values = grouped.get(signalName) ?? [];
   if (values.length === 0) {
-    return { min: null, max: null, delta: null };
+    return { min: null, max: null, delta: null, provenance: 'UNKNOWN' };
   }
 
   const min = Math.min(...values);
   const max = Math.max(...values);
-  return { min, max, delta: positiveDelta(min, max) };
+  return {
+    min,
+    max,
+    delta: numericDeltaFromExtrema(min, max),
+    provenance: 'SEGMENT_EXTREMA',
+  };
 }
 
-function pickBooleanMinMax(
-  grouped: Map<string, Array<{ agg: string; value: number }>>,
+function pickBooleanEvidence(
+  grouped: Map<string, number[]>,
   signalName: string,
-): DimoRechargeSegmentBooleanAggregate {
-  const aggregate = pickMinMax(grouped, signalName);
+): DimoRechargeSegmentBooleanEvidence {
+  const values = grouped.get(signalName) ?? [];
+  if (values.length === 0) {
+    return {
+      anyTrue: null,
+      allTrue: null,
+      legacyMin01: null,
+      legacyMax01: null,
+    };
+  }
+
+  const legacyMin01 = Math.min(...values);
+  const legacyMax01 = Math.max(...values);
+  const boolValues = values.map((v) => v >= 0.5);
   return {
-    start: readBoolean01(aggregate.min),
-    end: readBoolean01(aggregate.max),
+    anyTrue: boolValues.some(Boolean),
+    allTrue: boolValues.every(Boolean),
+    legacyMin01,
+    legacyMax01,
+  };
+}
+
+function toLegacyBooleanAggregate(
+  evidence: DimoRechargeSegmentBooleanEvidence,
+): DimoRechargeSegmentBooleanAggregate {
+  return {
+    start: readBoolean01(evidence.legacyMin01),
+    end: readBoolean01(evidence.legacyMax01),
   };
 }
 
@@ -79,7 +121,7 @@ function toSignalRows(signals: unknown): DimoRechargeSegmentSignalRow[] {
   return rows
     .map((row) => {
       const signalName = readString((row as { name?: unknown })?.name);
-      const aggregation = readString((row as { agg?: unknown })?.agg) ?? 'UNKNOWN';
+      const aggregation = readString((row as { agg?: unknown })?.agg) ?? 'LIVE_VALUE';
       const value = readNumber((row as { value?: unknown })?.value);
       if (!signalName) return null;
       return { signalName, aggregation, value };
@@ -87,32 +129,109 @@ function toSignalRows(signals: unknown): DimoRechargeSegmentSignalRow[] {
     .filter((row): row is DimoRechargeSegmentSignalRow => row != null);
 }
 
+function resolveDuration(input: {
+  ongoing: boolean;
+  startAt: string;
+  endAt: string | null;
+  providerDuration: number | null;
+}): { durationSeconds: number | null; durationProvenance: DimoRechargeDurationProvenance } {
+  if (input.ongoing) {
+    if (input.providerDuration != null && input.providerDuration >= 0) {
+      return {
+        durationSeconds: input.providerDuration,
+        durationProvenance: 'PROVIDER_DURATION',
+      };
+    }
+    return { durationSeconds: null, durationProvenance: 'UNKNOWN_ONGOING' };
+  }
+
+  const startMs = new Date(input.startAt).getTime();
+  const endMs = input.endAt ? new Date(input.endAt).getTime() : NaN;
+  const derived =
+    Number.isFinite(startMs) && Number.isFinite(endMs)
+      ? Math.max(0, Math.round((endMs - startMs) / 1000))
+      : null;
+
+  if (input.providerDuration != null && input.providerDuration > 0) {
+    return {
+      durationSeconds: input.providerDuration,
+      durationProvenance: 'PROVIDER_DURATION',
+    };
+  }
+
+  if (derived != null) {
+    return {
+      durationSeconds: derived,
+      durationProvenance: 'DERIVED_BOUNDARY_DURATION',
+    };
+  }
+
+  return { durationSeconds: null, durationProvenance: 'UNKNOWN' };
+}
+
 export function normalizeDimoRechargeSegment(
   tokenId: number,
   raw: unknown,
 ): NormalizedDimoRechargeSegment | null {
   const segment = raw as Record<string, unknown> | null;
-  const startAt = readString(segment?.start && (segment.start as { timestamp?: unknown }).timestamp);
+  const startAt = parseCanonicalSegmentInstant(
+    segment?.start && (segment.start as { timestamp?: unknown }).timestamp,
+  );
   if (!startAt) return null;
 
-  const endAt = readString(segment?.end && (segment.end as { timestamp?: unknown }).timestamp);
-  const grouped = groupNumericSignals(segment?.signals);
+  const ongoing = segment?.isOngoing === true;
+  const endAtRaw = parseCanonicalSegmentInstant(
+    segment?.end && (segment.end as { timestamp?: unknown }).timestamp,
+  );
+
+  if (ongoing && endAtRaw) return null;
+  if (!ongoing && !endAtRaw) return null;
+
+  const endAt = ongoing ? null : endAtRaw;
+
+  if (endAt) {
+    const startMs = new Date(startAt).getTime();
+    const endMs = new Date(endAt).getTime();
+    if (!Number.isFinite(endMs)) return null;
+    if (endMs < startMs) return null;
+    if (endMs === startMs) return null;
+  }
+
   const fingerprint = buildFingerprint(tokenId, startAt);
   const providerSegmentId = readString(segment?.id);
+  const grouped = groupSignalValues(segment?.signals);
+
+  const isCharging = pickBooleanEvidence(
+    grouped,
+    'powertrainTractionBatteryChargingIsCharging',
+  );
+  const cableConnected = pickBooleanEvidence(
+    grouped,
+    'powertrainTractionBatteryChargingIsChargingCableConnected',
+  );
+
+  const providerDuration = readNumber(segment?.duration);
+  const { durationSeconds, durationProvenance } = resolveDuration({
+    ongoing,
+    startAt,
+    endAt,
+    providerDuration,
+  });
 
   const startValue = (segment?.start as { value?: Record<string, unknown> } | undefined)?.value;
   const endValue = (segment?.end as { value?: Record<string, unknown> } | undefined)?.value;
 
   return {
-    segmentId: providerSegmentId ?? fingerprint,
+    segmentId: fingerprint,
     providerSegmentId,
     fingerprint,
     tokenId,
     startAt,
     endAt,
-    ongoing: segment?.isOngoing === true,
+    ongoing,
     startedBeforeRange: segment?.startedBeforeRange === true,
-    durationSeconds: readNumber(segment?.duration) ?? 0,
+    durationSeconds,
+    durationProvenance,
     startLocation: {
       latitude: readNumber(startValue?.latitude),
       longitude: readNumber(startValue?.longitude),
@@ -121,24 +240,20 @@ export function normalizeDimoRechargeSegment(
       latitude: readNumber(endValue?.latitude),
       longitude: readNumber(endValue?.longitude),
     },
-    soc: pickMinMax(grouped, 'powertrainTractionBatteryStateOfChargeCurrent'),
-    currentEnergyKwh: pickMinMax(
+    soc: pickNumericExtrema(grouped, 'powertrainTractionBatteryStateOfChargeCurrent'),
+    currentEnergyKwh: pickNumericExtrema(
       grouped,
       'powertrainTractionBatteryStateOfChargeCurrentEnergy',
     ),
-    addedEnergyKwh: pickMinMax(
+    addedEnergyKwh: pickNumericExtrema(
       grouped,
       'powertrainTractionBatteryChargingAddedEnergy',
     ),
-    isCharging: pickBooleanMinMax(
-      grouped,
-      'powertrainTractionBatteryChargingIsCharging',
-    ),
-    cableConnected: pickBooleanMinMax(
-      grouped,
-      'powertrainTractionBatteryChargingIsChargingCableConnected',
-    ),
-    odometerKm: pickMinMax(grouped, 'powertrainTransmissionTravelledDistance'),
+    isCharging,
+    cableConnected,
+    isChargingLegacy: toLegacyBooleanAggregate(isCharging),
+    cableConnectedLegacy: toLegacyBooleanAggregate(cableConnected),
+    odometerKm: pickNumericExtrema(grouped, 'powertrainTransmissionTravelledDistance'),
     signalRows: toSignalRows(segment?.signals),
     sourceTimestamps: {
       segmentStartAt: startAt,

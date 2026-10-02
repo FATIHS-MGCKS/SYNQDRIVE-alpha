@@ -130,6 +130,40 @@ vps_replica_restart_one() {
   fi
 }
 
+# F10.4.0.3 — bounded verified stop (PM2 offline + port not listening).
+vps_replica_verify_stopped() {
+  local name=$1 port=$2
+  local attempt=0
+  local max_attempts="${SYNQDRIVE_REPLICA_STOP_VERIFY_RETRIES:-10}"
+  local delay="${SYNQDRIVE_REPLICA_STOP_VERIFY_DELAY_SEC:-0.3}"
+  local pid
+
+  while [[ "$attempt" -lt "$max_attempts" ]]; do
+    attempt=$((attempt + 1))
+    pid="$(vps_replica_pm2_pid "$name")"
+    if [[ -z "$pid" || "$pid" == "0" ]]; then
+      if ! vps_replica_port_listening "$port"; then
+        echo "REPLICA_STOP_VERIFIED=${name}"
+        return 0
+      fi
+    fi
+    sleep "$delay"
+  done
+  echo "REPLICA_STOP_VERIFY_FAILED=${name}"
+  return 1
+}
+
+vps_replica_stop_verified() {
+  local name=$1 port=$2
+  vps_replica_log "Verified stop ${name} (port ${port})"
+  if vps_replica_pm2_exists "$name"; then
+    if ! pm2 stop "$name" --update-env 2>/dev/null; then
+      pm2 stop "$name" || return 1
+    fi
+  fi
+  vps_replica_verify_stopped "$name" "$port"
+}
+
 vps_replica_wait_healthy() {
   local name=$1
   local port=$2

@@ -15,6 +15,8 @@
 
 Battery V2 REST measurement architecture assumes **passive in-window LIVE_VOLTAGE** during genuine rest. Deployed DIMO integration emits **new LV timestamps only during vehicle activity**; parked sleep produces **repeated stale `signalsLatest` payloads**. SynqDrive correctly suppresses duplicate observations and does not invent measurements. REST target evaluation then finds **zero eligible candidates** and, after retry grace, **persists historical alternator-era samples** labeled `CONTAMINATED_BY_WAKE` — even when the vehicle never woke.
 
+> **Normative closure (2026-09-21, B1.2W):** R1 ICE provider timestamp freeze and unreliable immediate post-off LV are documented with cohort forensics (B1.2T–B1.2U). **`PROVIDER_OBSERVABILITY_GAP`** state-machine semantics, revised B1 acceptance, and M3.3C gates: [`M3_3_B1_2W_PROVIDER_GAP_STATE_MACHINE_2026-09-21.md`](M3_3_B1_2W_PROVIDER_GAP_STATE_MACHINE_2026-09-21.md). **Implementation not started** — runtime unchanged.
+
 This creates an **evidence observability deadlock** with current policy (Step 7). Pipeline health remains **PASS**; the blocker is **signal + evidence-model mismatch**, not scheduler/target defects.
 
 **Recommended direction (Step 10):** Hybrid evidence model — retain REST_60M/REST_6H as **opportunistic** paths when in-window LV exists; add explicit **trip-end shutdown anchor** and **insufficient-evidence** tiers; **do not** treat post-grace contaminated historical fallback as health evidence.
@@ -314,6 +316,8 @@ When zero in-window VALID candidates and retry grace elapsed (`evaluateClassifie
 ---
 
 ## Step 10 — Recommended Battery V2 evidence model
+
+> **Historical M3.2 recommendation (2026-09-07 audit only).** Step 10 tier assignments below were **not implemented** as M3.3A generalized ENGINE_OFF/rest authority and are **superseded for M3.3 B1 acceptance** by B1.2W / B1.2X ([`M3_3_B1_2W_PROVIDER_GAP_STATE_MACHINE_2026-09-21.md`](M3_3_B1_2W_PROVIDER_GAP_STATE_MACHINE_2026-09-21.md)): **`TRIP_COMPLETED != ENGINE_OFF`**; trip-end shutdown anchor must **not** stand in for trustworthy engine-off; passive natural post-off LV is **not** a sufficient B1 closure strategy on R1 ICE. Retained here as audit history.
 
 ### Tier assignment
 

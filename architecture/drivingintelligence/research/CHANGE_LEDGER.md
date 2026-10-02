@@ -453,6 +453,17 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Evidence | `EXP_021_CANDIDATE_SHORT_AB_90_60_PROSPECTIVE_DESIGN_2026-09-12.md` |
 | Tests | `reference-capture-exp021-candidate-short-ab-90-60.spec.ts` — registry, geometry, durable arm, restart recovery, lifecycle |
 
+## EXP-021 — CANDIDATE_SHORT_AB_60_90 reversed-order plan (PR-A, 2026-09-15)
+
+| Event | Detail |
+|-------|--------|
+| Status | **PROSPECTIVE PLAN REGISTERED** — no physical run; no deploy; no fleet automation |
+| Plan | `EXP021_CANDIDATE_SHORT_AB_60_90` — `candidate_short_ab_60_90`; registry `CANDIDATE_SHORT_AB_60_90`; phases **60→90**; pure order reversal of `CANDIDATE_SHORT_AB_90_60` |
+| Geometry | Cadence-value slot geometry unchanged (90s→7, 60s→10); settlement budget order-invariant (38 windows × 6 ages = 228); short-A/B assertions plan-parametric |
+| Unchanged | Default plan `UPPER_BOUND_V2`; existing `CANDIDATE_SHORT_AB_90_60` semantics; Run 1 frozen evidence (#1659) |
+| Blockers | Legacy `physicalPhase60StartedAt` naming (PR-B); no manual 60→90 physical run until PR-B + explicit arm |
+| Tests | `reference-capture-exp021-candidate-short-ab-60-90.spec.ts`; lifecycle driver 60→90 case; autonomous CI gate extended |
+
 ## EXP-021 — PR #1621 micro-pass: post-transition late-movement + fail-closed authority (2026-09-12)
 
 | Event | Detail |
@@ -645,6 +656,282 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Recorder | `RECORDER_CODE_CHANGE_REQUIRED_FOR_CANONICAL_NEXT_RUN=NO`; `CODE_CHANGE_REQUIRED_TO_SUPPORT_MIXED_MANUAL_ATTACH_PATH=YES` |
 | Validation | Expanded validator: gap recompute, percentiles, movement, settlement, version refs |
 
+### EXP-021 — PR-C fleet study registry + dry-run coordinator (2026-09-15)
+
+| Event | Detail |
+|-------|--------|
+| Scope | Durable study/enrollment/run-ledger control plane; leader-gated DRY-RUN coordinator only — no physical execution |
+| Schema | `exp021_studies`, `exp021_study_enrollments`, `exp021_study_runs`, order-balance ledgers |
+| Enrollment | Explicit allowlist (`enabled=true`); `enrolledTokenId` audit snapshot; runtime identity = `organizationId` + `vehicleId` |
+| Coordinator | `EXP021_FLEET_COORDINATOR_ENABLED` default OFF; `EXP021_FLEET_DRY_RUN` default ON; leader-gated `@Interval` scheduler |
+| Allocator | `STRATIFIED_BLOCK_RANDOMIZATION_WITH_GLOBAL_BALANCE_LEDGER` (minimal); dry-run read-only |
+| Run 1 | `EXPLICIT_FUTURE_IMPORT` — no automatic backfill (`EXP021_FLEET_RUN1_REGISTRY_STRATEGY.md`) |
+| Safety | Dry-run never creates `ReferenceCaptureSession`, study runs, or acquires execution locks |
+| Next | PR-D required before execution capability; Stage-1 deploy gate separate |
+
+### EXP-021 — PR-C control-plane correctness hardening (2026-09-15)
+
+| Event | Detail |
+|-------|--------|
+| Minimum matrix | Only `COMPLETED` + `COMPLETE_VALID` + not `INELIGIBLE` counts toward primary gate; `PARTIAL_VALID` preserved but excluded |
+| Config | `validateMinimumMatrixConfig()` fail-closed on malformed thresholds; `matrixMet` never true when config invalid |
+| Leader guard | Mandatory `SchedulerLeaderGuardService`; no `@Optional` fail-open follower path |
+| Interval | `getFleetCoordinatorIntervalMs()` wired via dynamic `setInterval` (5s–300s bounds) |
+| Dry-run authority | Requires global `EXP021_FLEET_DRY_RUN=true` AND `study.dryRun=true` (`STUDY_DRY_RUN_REQUIRED`) |
+| HF policy | Extracted `reference-capture-exp021-hf-policy-gate.lib.ts`; runtime no longer imports `scripts/ops` |
+| Run identity | `reserveStudyRunAssignment()` derives study/org/vehicle/token from enrollment inside Serializable tx |
+| Atomic assignment | Advisory lock + balance increment + PLANNED run creation in one transaction (PR-C coordinator does not call) |
+| Dry-run preview | Ephemeral per-tick shadow balance; durable ledger unchanged |
+| Allocator naming | `DETERMINISTIC_STRATIFIED_GLOBAL_BALANCE` (truthful; not block randomization) |
+| Retention | `Exp021StudyRun` FKs `ON DELETE RESTRICT` for study/enrollment/org/vehicle; enum `Exp021StudyRunClassification` |
+| CI | Fleet postgres integration, migration deploy test, fleet unit gate, production build in EXP-021 workflow |
+
+### EXP-021 — PR-B forensic slot persistence + first-phase authority (2026-09-15)
+
+| Event | Detail |
+|-------|--------|
+| Scope | Per-slot forensic persistence; order-neutral first physical phase authority; summary/ledger parity — no fleet coordinator |
+| Slots | `Exp021RequestSlotRecord` extended: `requestCompletedAtMs`, `bucketCount` (RAW_PROVIDER_BUCKET_COUNT), `providerCallAttempted`, `providerCallSucceeded`, `outcomeReason`, `effectivePollIntervalMs` |
+| Summary | `finalizePhaseSummary` derives `slotSuccessCount` / `slotZeroResultCount` / `slotFailureCount` / `slotSkippedCount` / `slotAccountedCount` from ledger |
+| Authority | `physicalFirstPhaseStartedAt` canonical; `physicalPhase60StartedAt` legacy alias with fail-closed conflict detection |
+| Logging | `PHYSICAL_FIRST_PHASE_REANCHORED_AT_T0` replaces legacy `PHYSICAL_PHASE_60_REANCHORED_AT_T0` |
+| Forensics | `reference-capture-exp021-forensic-extraction.lib.ts`; deep audit exposes `exp021SlotForensics` |
+| Settlement linkage | `PHASE_LEVEL_LINK` — no causal 1:1 slot↔settlement window |
+| Run 1 | Frozen evidence unchanged; legacy slot shapes parseable via `parseLegacyForensicSlotRecord` |
+| Postgres | Terminal slot forensic fields + first-phase authority survive reload |
+
+### EXP-021 — Canary live window activation (PR-D canary slice) (2026-09-18)
+
+| Event | Detail |
+|-------|--------|
+| Scope | KS MX 2024 token `187336` only — closes missing upstream RC/settlement path without fleet-wide live execution |
+| Root cause | Fleet coordinator dry-run only; `EXP021_FLEET_DRY_RUN=false` refuses evaluation; no trip-bound session start |
+| Ledger | `exp021_canary_live_window_activation_ledgers` — unique `vehicle_trip_id`, optional `session_id` / `study_run_id` |
+| Trigger | Leader scheduler arms on ONGOING trip (post `NOT_BEFORE_ISO`); finalizes on COMPLETED trip (`stopRecording`) |
+| Env | `EXP021_CANARY_LIVE_WINDOW_ACTIVATION_ENABLED` default OFF; `EXP021_CANARY_LIVE_WINDOW_ACTIVATION_NOT_BEFORE_ISO` required when enabled |
+| Safety | No historical backfill; missed 2026-09-18 drive excluded when `NOT_BEFORE` set after that trip; PDI still from existing settlement/motion authority only |
+| Evidence | `architecture/drivingintelligence/evidence/reference-capture/EXP_021_CANARY_LIVE_WINDOW_AUTHORITY_CLOSURE_2026-09-18.md` |
+| Production | **NOT ACTIVATED** in this change — code + tests only |
+
+### EXP-021 — Live Maturation Shadow uniqueness closure (2026-09-16, PR #1670)
+
+| Event | Detail |
+|-------|--------|
+| Scope | Documentation-only micro closure: canonical scientific uniqueness for family, stratum, slot |
+| Family uniqueness | `UNIQUE(org, vehicle, token, canonicalWindowTo, shadowScheduleVersion)`; `enrollmentEventId` provenance only |
+| Stratum uniqueness | `UNIQUE(windowFamilyId, signalLane, queryGeometryMs)`; `signalSetHash` immutable attribute, not uniqueness component |
+| Slot uniqueness | `UNIQUE(windowStratumId, plannedAgeMs)`; transport retry → new attempt, not new slot |
+| Job IDs | Deterministic from family/stratum/plannedAge; `JOB_ID_DEPENDS_ON_ENROLLMENT_EVENT_ID=NO` |
+| Re-experiment | Intentional re-study via `shadowScheduleVersion` only — not new enrollment event ID |
+| Runtime / Prisma | **NO CHANGES** |
+
+### EXP-021 — Live Maturation Shadow design hardening (2026-09-16, PR #1670)
+
+| Event | Detail |
+|-------|--------|
+| Scope | Design-only hardening: scientific identity, attempt provenance, window-family sampling unit |
+| Document | `architecture/drivingintelligence/research/EXP_021_LIVE_MATURATION_SHADOW_DESIGN_2026-09-16.md` |
+| Estimands | Primary A: P(non-zero \| actualAgeMs); Primary B: bucket-locus coverage distribution; `P_SUFFICIENTLY_COMPLETE_ESTIMABLE_NOW=NO` |
+| Identity | Bucket-locus vs payload-revision separated; coverage uses `UNIQUE_BUCKET_LOCUS_UNION` |
+| Signal freeze | `signalSetHash` + query semantics frozen at window-family enrollment; fail closed on drift |
+| Sampling unit | `PRIMARY_SAMPLING_UNIT=WINDOW_FAMILY`; pilot 30/60, fleet 200 families; paired geometry analysis |
+| Attempt ledger | Four-level hierarchy; immutable `ObservationAttempt`; `FAILED_ATTEMPT_OVERWRITE_ALLOWED=NO` |
+| Provider errors | `PROVIDER_ERROR_COUNTS_AS_ZERO=NO`; errors excluded from interval-censored transitions |
+| Policy delay | `CODE_DEFAULT_HF_SETTLEMENT_DELAY_MS=8000`; effective delay resolved at activation |
+| Production | **NO** — `FUTURE_SHADOW_DEFAULT_ENABLED=NO`, `PRODUCTION_RETRY_AGE_SELECTED=NO` |
+| Runtime / Prisma | **NO CHANGES** |
+
+### EXP-021 — Live Maturation Shadow design (2026-09-16)
+
+| Event | Detail |
+|-------|--------|
+| Scope | Design-only specification for live maturation shadow experiment (pre-TGR retry-age authority) |
+| Document | `architecture/drivingintelligence/research/EXP_021_LIVE_MATURATION_SHADOW_DESIGN_2026-09-16.md` |
+| Inputs | Frozen gap-replay + TGR audit evidence packages |
+| Lanes | HF_FAST_LOOP (preflight-resolved) + SETTLEMENT_SHADOW (manifest 33 fields) — separate curves |
+| Ages | Dense pilot: 8s policy + 30/40/45/50/55/60/90/120s |
+| Geometry | 60s + 90s query ranges (not cadence authority) |
+| Production | **NO** — `FUTURE_SHADOW_DEFAULT_ENABLED=NO`, `PRODUCTION_RETRY_AGE_SELECTED=NO` |
+| Runtime / Prisma | **NO CHANGES** (superseded for schema only by PR-M1 below) |
+
+### EXP-021 — Live Maturation Shadow PR-M1 persistence foundation (2026-09-16)
+
+| Event | Detail |
+|-------|--------|
+| Scope | Schema, domain types, and persistence repository only — **no runtime provider query**, **no scheduler**, **no recovery**, **no production activation**, **no cadence authority** |
+| Design authority | Merged #1670 `EXP_021_LIVE_MATURATION_SHADOW_DESIGN_2026-09-16.md` |
+| Models | `Exp021MaturationShadowWindowFamily` → `Exp021MaturationShadowWindow` → `Exp021MaturationShadowObservationSlot` → `Exp021MaturationShadowObservationAttempt` |
+| Family uniqueness | `(organizationId, vehicleId, tokenId, canonicalWindowTo, shadowScheduleVersion)` — `enrollmentEventId` provenance-only |
+| Stratum uniqueness | `(windowFamilyId, signalLane, queryGeometryMs)` — `signalSetHash` immutable attribute, not uniqueness component |
+| Slot uniqueness | `(windowStratumId, plannedAgeMs)` |
+| Attempt ledger | Immutable create-only rows; `UNIQUE(observationSlotId, attemptOrdinal)`; transport retry → new attempt, same slot |
+| Provider semantics | `PROVIDER_ERROR` distinct from `PROVIDER_SUCCESS_ZERO`; `PROVIDER_ERROR_COUNTS_AS_ZERO=NO` |
+| Stage-1A | **NO INTERFERENCE** — fleet coordinator / StudyRun paths do not write shadow tables |
+| Default | `EXP021_MATURATION_SHADOW_ENABLED=false` (type/config only; no execution wiring) |
+| Run 1 / cadence | **UNCHANGED** — 90s 7/7, 60s 9/10; `SUFFICIENT_FOR_CADENCE_RECOMMENDATION=NO` |
+
+### EXP-021 — Live Maturation Shadow PR-M1 scientific integrity hardening (2026-09-16)
+
+| Event | Detail |
+|-------|--------|
+| Scope | Repository/persistence hardening only on draft PR #1672 — no runtime execution |
+| Family freeze | `plannedAgesMsExact` + `policyDelayProbeMs` fail closed on existing/raced family; `enrollmentEventId` remains provenance-only |
+| Stratum freeze | `activityClassificationJson` added to immutable semantic comparison (canonical JSON equality) |
+| Slot authority | `plannedAgeMs` must be in family `plannedAgesMsExact`; off-schedule slots rejected |
+| Attempt authority | Parent slot/stratum/family resolved; `actualAgeMs` + `schedulerDriftMs` derived from `requestStartedAt - windowTo`; hash fields must match stratum |
+| Provider outcomes | `PROVIDER_ERROR` / `PROVIDER_SUCCESS_ZERO` / `PROVIDER_SUCCESS_NONZERO` contradiction matrix enforced |
+| Post-hoc fields | Analytical derivatives removed from raw insert API; nullable columns remain null in PR-M1 |
+| Runtime / prod | **NO CHANGES** |
+
+### EXP-021 — Live Maturation Shadow PR-M2 scheduler and worker foundation (2026-09-17)
+
+| Event | Detail |
+|-------|--------|
+| Starting main SHA | `06bdba368057d8cfba6a6500768ffd36f783483c` (merged PR #1672) |
+| Scope | Dedicated BullMQ queue, deterministic enrollment/scheduling, bounded worker, read-only provider adapter, recovery — **default OFF**, no production activation |
+| Queue | `reference.capture.exp021-maturation-shadow` (`REFERENCE_CAPTURE_EXP021_MATURATION_SHADOW`) |
+| Job ID contract | `rc-exp021-ms-{familyId}-{stratumId}-{plannedAgeMs}` — **no** `enrollmentEventId` |
+| Schedule version | `MATURATION_SHADOW_SCHEDULE_v1` |
+| Worker concurrency | `1` |
+| Feature defaults | `EXP021_MATURATION_SHADOW_ENABLED=false`, HF lane `false`, settlement lane `false`, empty token allowlist |
+| Provider path | `ReferenceCaptureExp021MaturationShadowProviderQueryAdapter` — DIMO GraphQL read-only, no canonical writes |
+| Multi-replica proof | PostgreSQL + Redis integration tests (family/stratum/slot idempotency, deterministic enqueue, recovery, duplicate delivery) |
+| Automatic production enrollment | **NOT WIRED** — `ReferenceCaptureExp021MaturationShadowEnrollmentService` callable; hook deferred to canary PR |
+| M3 boundary | No maturation curves, Wilson CI, cadence recommendation, export/dashboard |
+| Runtime / prod | **NO CHANGES** — disabled by default |
+
+### EXP-021 — Live Maturation Shadow PR-M3 scientific micro-closure (2026-09-17)
+
+| Event | Detail |
+|-------|--------|
+| Previous head | `e6a7da259912ab4fcae2f165d92e8dd6c9800df4` |
+| Scope | Interval-censoring ordering fix; cross-family planned-age stratum summaries; eligibility-gated primary stats; content-based M1/M2 fingerprint; canonical bucket-locus round-trip validation |
+| Interval censoring | `firstPositiveAgeMs` = earliest success with loci>0; `lastNegativeAgeMs` = latest success zero strictly before first positive; post-positive zeros ignored for transition bounds |
+| Population summaries | `plannedAgeStratumSummaries` grouped by lane/geometry/activity/semantic cohort/plannedAgeMs with `nWindowFamilies` + `nLogicalSlots` (retries do not inflate family N) |
+| Eligibility | Primary stats exclude ineligible strata; transitions CSV includes `eligible` + `exclusionReasons`; separate exclusions CSV |
+| Fingerprint | Deterministic scientific content digest over family/stratum/slot/attempt fields detects in-place UPDATE |
+| Bucket locus | `validateCanonicalBucketLocusIdentity` round-trip via `buildExp021BucketIdentity` + canonical ISO ms |
+| Runtime / prod | **NO CHANGES** |
+
+### EXP-021 — KS MX 2024 canary single-family operator CLI (2026-09-17)
+
+| Event | Detail |
+|-------|--------|
+| Starting main SHA | `04bb817de85201a1017516e2e7bc5f5dd19c504d` |
+| Scope | Repository-native manual operator CLI for exactly one KS MX 2024 maturation shadow window family — **no automatic enrollment**, **no HTTP API**, **no production execution in PR** |
+| CLI | `npm run exp021:maturation-shadow:canary:enroll -- --token-id 187336 --canonical-window-to <ISO> [--execute]` or `--wait-next-window` |
+| Modes | Default DRY RUN (zero DB/BullMQ/provider writes); `--execute` required for enrollment |
+| Window authority | `REFERENCE_CAPTURE_PHYSICAL_DRIVE_INTERVAL.physicalEndAt` from settlement-shadow experiment metadata (`ORCHESTRATOR_CONFIRMED` / `PDI_CANDIDATE` only for `--wait-next-window`) |
+| Freshness guard | Fail closed when `windowAgeAtEnrollmentMs + 5000ms >= earliestPlannedAgeMs` (preserves 30s–60s dense ages) |
+| Hard guards | token `187336`, KS MX 2024 org/vehicle binding, both lanes enabled, allowlist exactly `[187336]`, `maxActiveFamilies=1`, zero unfinished families pre-enroll |
+| Activity | Independent telemetry via `parseSpeedSampleFromSignalsLatest`; defaults `UNKNOWN_ACTIVITY` when unresolved |
+| Provider calls | `PROVIDER_CALLS_DURING_ENROLLMENT=0` — enrollment creates family/strata/slots/delayed BullMQ jobs only |
+| Kill switch guidance | Printed: `EXP021_MATURATION_SHADOW_ENABLED=false` + rolling PM2 restart (not executed by CLI) |
+| Tests | 28-case canary suite (`canary-enroll.spec.ts` 23 + `canary-activity.lib.spec.ts` 5) |
+| Micro-closure (same PR) | Head `2d2a30107` — authoritative token equality enforced; activity resolved after `canonicalWindowTo`; geometry-specific RC observation windows; execute requires persisted physicalEndAt match; strict token parse; wait-mode skips stale windows; freshness lag diagnostics; `EXPECTED_PROVIDER_CALLS_DURING_ENROLLMENT=0` |
+| Runtime wiring closure (same PR) | Wait-mode DB refresh each poll (no frozen startup snapshot in poll callback); CLI wiring regression test; removed 90s prefix substitution; coherent geometry CASE 1–4 activity fixtures |
+| Runtime / prod | **NO CHANGES** — operator must invoke CLI manually after merge/deploy |
+
+### EXP-021 — Live Maturation Shadow PR-M3 observational analytics and export (2026-09-17)
+
+| Event | Detail |
+|-------|--------|
+| Starting main SHA | `4b8c555e49d86f33af3e23ca918a3fa1349f85eb` (merged PR #1675) |
+| Scope | Read-only observational analytics + deterministic JSON/CSV export over immutable M1/M2 scientific rows — **no provider calls**, **no M1/M2 mutation**, **no production activation** |
+| Data contract audit | `M3_DATA_CONTRACT_AUDIT=PASS`; `M3_SCHEMA_CHANGE_REQUIRED=NO`; `M3_ATTEMPT_ROWS_MUTATED=NO` |
+| Bucket locus | Reconstruct from `bucketLocusManifestJson` + `bucketLocusIdentityVersion=FIELD_PIPE_CANONICAL_ISO_MS`; dedupe; payload value excluded from coverage identity |
+| Maturation order | `actualAgeMs` authority; cumulative union never shrinks; `FINAL_SHADOW_OBSERVED_UNION` observational denominator only (not ground truth) |
+| Availability | Provider success + reconstructed locus count; provider errors UNKNOWN; interval censoring `(lastNegative, firstPositive]` with errors excluded from bounds |
+| Retry truth | Retry success attributed to real `actualAgeMs`; no backdating to planned age |
+| Sampling unit | `PRIMARY_SAMPLING_UNIT=WINDOW_FAMILY`; per-stratum N reported |
+| Stratification | Separate HF_FAST_LOOP / SETTLEMENT_SHADOW; separate 60s/90s; activity cohorts; semantic cohort blending blocked for primary combined analysis |
+| Paired geometry | Family-level 60s vs 90s paired export — not independent samples |
+| Export | `EXP021_MATURATION_SHADOW_M3_EXPORT_v1`; CLI `npm run exp021:maturation-shadow:m3:export` requires explicit `organizationId` + `vehicleId` |
+| Read-only proof | PostgreSQL before/after fingerprint — canonical RC state + M1/M2 row counts unchanged |
+| CI | `test:exp021:maturation-shadow:m3` + `m3:postgres:ci`; wired into EXP-021 autonomous orchestrator CI |
+| Boundaries preserved | M2 scheduler/worker unchanged; no cadence recommendation; no completeness threshold; KS MX 2024 not armed; Stage-1A/Trip FSM/GAP_DEBT/TGR policy unchanged |
+| Evidence | `architecture/drivingintelligence/evidence/reference-capture/exp021-maturation-shadow-m3-2026-09-17.md` |
+| Runtime / prod | **NO CHANGES** — disabled by default |
+
+### EXP-021 — Live Maturation Shadow PR-M2 scientific hardening + CI closure (2026-09-17)
+
+| Event | Detail |
+|-------|--------|
+| Starting M2 head | `91ac9662fb65a36ef4ed981c6291745886c06846` |
+| Scope | CI script fix, execution-time semantic drift revalidation, provider ingress timing authority, durable retry budget from attempt ledger, DB↔BullMQ reconciliation matrix, atomic active-family cap, geometry-specific activity authority, PostgreSQL canonical fingerprint non-interference, runtime SHA fail-closed when enabled |
+| CI | `test:exp021:maturation-shadow:m2` shell pipe fixed; `test:exp021:fleet:postgres:ci` chains `m2:postgres-redis:ci` with `EXP021_MATURATION_SHADOW_POSTGRES_REDIS_INTEGRATION=1` |
+| Execution semantics | `assertExecutionSemanticsMatchStratum` recomputes resolver authority before every provider request |
+| Timing | Successful GraphQL uses `queryGraphQLWithIngressTiming()` ingress timestamps; JWT preflight excluded from `requestStartedAt` |
+| Retry | `deriveTransportRetryOrdinalFromAttempts` — PostgreSQL attempt ledger is durable retry authority across restart/recovery |
+| Reconciliation | `reconcileExecutionState` handles missing `bullJobId`, missing Redis job, completed/failed jobs, retry job loss |
+| Active families | `countUnfinishedFamilies` + `pg_advisory_xact_lock(90210021)`; `maxActiveFamilies<=0` fails closed when enabled |
+| Activity | `activityAuthorityByGeometry` — independent 60s/90s classification shared across lanes per geometry |
+| Canonical proof | `captureCanonicalStateFingerprint` PostgreSQL integration — shadow writes do not mutate canonical RC/study/settlement state |
+| Runtime SHA | `resolveExp021MaturationShadowRuntimeBuildSha({ required: true })` when enabled — rejects `unknown-runtime-sha` |
+| Boundaries preserved | Queue unchanged, concurrency `1`, automatic production enrollment unwired, KS MX 2024 not armed, Stage-1A/Trip FSM unchanged |
+| Runtime / prod | **NO CHANGES** — disabled by default |
+
+### EXP-021 — Live Maturation Shadow PR-M1 final scientific geometry + provider input closure (2026-09-17)
+
+| Event | Detail |
+|-------|--------|
+| Scope | Repository validation hardening only on draft PR #1672 — no runtime execution |
+| Provider input | `PROVIDER_ERROR` validates raw `uniqueBucketLocusCount` (null/undefined only); no pre-validation normalization |
+| Query geometry | `queryGeometryMs` typed and runtime-validated to `{60000,90000}` only |
+| Stratum windows | `windowTo` must equal family `canonicalWindowTo`; `windowFrom = windowTo - queryGeometryMs` (exact) |
+| Attempt age | `actualAgeMs < 0` rejected (`requestStartedAt` must not precede `windowTo`) |
+| Family schedule | Non-empty, positive integer ages; no duplicates; positive integer `policyDelayProbeMs` |
+| Runtime / prod | **NO CHANGES** |
+
+### EXP-021 — TGR architecture audit evidence freeze (2026-09-16)
+
+| Event | Detail |
+|-------|--------|
+| Scope | Read-only TGR architecture audit + bounded DIMO historical micro-window experiments |
+| Evidence | `architecture/drivingintelligence/evidence/reference-capture/exp021-tgr-audit-2026-09-16/` |
+| Primary Run 1 | **UNCHANGED** |
+| Gap replay package | **UNCHANGED** (`exp021-run1-gap-replay-2026-09-16/`) |
+| Micro-window | `MICRO_WINDOW_RECOVERY_EFFECT_OBSERVED=NO` on tested HF60/HF90 controls |
+| Transition | `TRANSITION_GAP_MICRO_FRAGMENTATION_RECOVERY=NO`; recoverability not demonstrated for canonical window |
+| Maturation | `SETTLEMENT_EARLY_AGE_MATURATION_OBSERVED=YES`; `PRODUCTION_RETRY_AGE_ESTABLISHED=NO` |
+| Architecture | `PREFERRED_TGR_ARCHITECTURE=OPTION_C`; lever = maturation-aware targeted requery |
+| Gap debt | `SEPARATE_GAP_DEBT_AUTHORITY_REQUIRED=YES` (design only, no schema) |
+| Runtime / prod | **NO CHANGES** — `TGR_RUNTIME_IMPLEMENTATION=NO` |
+
+### EXP-021 — Run 1 targeted gap replay evidence freeze (2026-09-16)
+
+| Event | Detail |
+|-------|--------|
+| Scope | Post-hoc read-only DIMO historical gap replay + positive-control closure for KS MX 2024 Run 1 |
+| Evidence | `architecture/drivingintelligence/evidence/reference-capture/exp021-run1-gap-replay-2026-09-16/` |
+| Primary Run 1 | **UNCHANGED** — `EXP_021_KS_MX_2024_PHYSICAL_90_60_2026-09-15.json` SHA `99a1aa52…` |
+| Gaps replayed | 5 exact windows (1 HF transition + 4 settlement anomalies) |
+| Refined counts | `TOTAL_DIAGNOSTIC_ZERO_WINDOWS=5`; transition HF persistent empty=1; settlement early-age zero=2; structural terminal tail=2 |
+| Positive controls | HF60 (10/10 count-comparable), HF90 (6/6 count-comparable); settlement query-path non-zero (`SETTLEMENT_CONTROL_COUNT_COMPARABLE=NO`) |
+| Validity | `GAP_REPLAY_EXPERIMENT_VALID=YES`; `TRANSITION_HF_PERSISTENT_EMPTY_SUPPORTED=YES` |
+| Maturation | Split by class: `TRANSITION_HF_LATE_MATURATION_HYPOTHESIS=WEAKENED`; `SETTLEMENT_EARLY_AGE_MATURATION_OBSERVED=YES` (SP-60-T0, SP-90-T16 @ 60s+) |
+| Taxonomy | Distinct classes with recoverability: `TRANSITION_WINDOW_PERSISTENT_EMPTY`, `SETTLEMENT_EARLY_AGE_ZERO`, `STRUCTURAL_TERMINAL_TAIL` |
+| Run 1 metrics | **NOT REWRITTEN** — 90s 7/7, 60s 9/10 preserved |
+| Cadence authority | **NO** — `SUFFICIENT_FOR_CADENCE_RECOMMENDATION=NO` |
+| Runtime / prod | **NO CHANGES** |
+
+### EXP-021 — Stage-1A Path-B remediation: freshness authority + deploy capability guard (2026-09-16)
+
+| Event | Detail |
+|-------|--------|
+| Scope | Fix two independent Stage-1A blockers proven on KS MX 2024 first real drive (2026-09-16 11:42–12:05Z); **no production deploy**, **no auto-execution** |
+| Blocker A | Production redeployed `2c862b69` (PR-C coordinator) → `295635fc` (#1665) at ~07:56Z while `EXP021_FLEET_COORDINATOR_ENABLED=true` remained set — coordinator code absent from running artifact |
+| Blocker B | Fleet coordinator used `dimoVehicle.lastSignal ?? latestState.lastSeenAt`; stale non-null `lastSignal` masked fresher `vehicle_latest_states.last_seen_at` |
+| Freshness resolver | `resolveExp021FleetTelemetryFreshness()` — newest valid provider-backed timestamp among `LATEST_STATE_LAST_SEEN_AT`, `SIGNALS_LATEST_PROVIDER_TIMESTAMP`, `DIMO_LAST_SIGNAL`; fail-closed future skew via `DIAGNOSTIC_MAX_FUTURE_SKEW_MS` |
+| Provenance | Dry-run observations expose `freshnessTimestamp`, `freshnessAuthority`, `freshnessAgeMs` |
+| Deploy guard | `vps-exp021-fleet-deploy-guard.lib.sh` (**DEPLOY_EXECUTOR_GUARD_AUTHORITY**) sourced by executing `vps-deploy-release.sh`; validates **TARGET_RELEASE_CAPABILITY** post-build. Target `reference-capture-exp021-fleet-deploy-preflight.sh` is optional supplemental only. |
+| Bootstrap | Current production `295635fc` lacks guarded deploy script. **First remediation deploy** must invoke `vps-deploy-release.sh` from exact merged remediation SHA checkout (`BOOTSTRAP_DEPLOY_SOURCE_MUST_EQUAL_TARGET_SHA=YES`), not `/opt/synqdrive/current`. After success, normal deploys use guarded current script. |
+| Cross-version | Coordinator disabled → absence of target preflight helper must not block deploy. Coordinator enabled → fail closed if target lacks capability even when helper absent. |
+| Shell contract | `backend/scripts/test/exp021-fleet-deploy-guard-contract.sh` — A–F fixture coverage |
+| Real-drive fixture | `lastSignal=2026-09-15T20:56:14Z`, `lastSeenAt=2026-09-16T12:05:15Z` → `FRESH` / `eligible=true` in dry-run (non-mutating) |
+| Run 1 / cadence | **UNCHANGED** — 90s 7/7, 60s 9/10; `SUFFICIENT_FOR_CADENCE_RECOMMENDATION=NO` |
+| PR-D / auto-exec | **NOT IMPLEMENTED** |
+
 ### EXP-021 — canonical autonomous lifecycle driver + real-path regression (2026-09-14, PR #1649)
 
 | Event | Detail |
@@ -660,3 +947,554 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Postgres driver | `testing/reference-capture-exp021-postgres-driver.harness.ts` — repo atomic bridge (not lifecycle duplicate) |
 | Authority | `EXP_021_AUTONOMOUS_ORCHESTRATOR_SHORT_AB_REGRESSION_2026-09-14.md` — evidence levels separated |
 | PR #1645 | **MERGED** @ `20269b9e7` — KS MX 2024 forensic evidence frozen; no reinterpretation |
+
+### EXP-021 — cohort study enrollment bootstrap (2026-09-19)
+
+| Event | Detail |
+|-------|--------|
+| Incident | WOB L 7503 live drive `c0889036-…` — ledger `FAILED` `enrollment_not_found`; PR #1692 PDI not reached |
+| Root cause | PR #1694 cohort expansion without `exp021_study_enrollments` for KS MS 661 / WOB L 7503 (`OPS_BOOTSTRAP_OMISSION`) |
+| Fix (review) | `reference-capture-exp021-cohort-study-enrollment-bootstrap.lib.ts` + ops CLI `exp021:cohort:study-enrollment:bootstrap` |
+| Evidence | `evidence/reference-capture/EXP_021_COHORT_STUDY_ENROLLMENT_AUTHORITY_CLOSURE_2026-09-19.md` |
+| Production | Activation disabled; enrollments **not** mutated in closure workstream |
+
+### EXP-021 — PDI → M2 maturation integration repair (2026-09-19)
+
+| Event | Detail |
+|-------|--------|
+| Forensic | Seven post–NOT_BEFORE trips: RC + PDI, zero M2 families; `ZERO_FAMILY_CLASS=9` (not short-drive) |
+| Root cause | Operational `freshness.stale` on cohort wait; settlement-baseline cursor skipped unenrolled PDIs after restart |
+| Repair | `PROSPECTIVE_PDI_DISCOVERY` + enrolled-window cursor (`maxEnrolledCanonicalWindowToMsForVehicle`) |
+| Evidence | `evidence/reference-capture/EXP_021_PDI_TO_M2_INTEGRATION_REPAIR_2026-09-19.md` |
+| Production | **No deploy / no backfill** in repository repair workstream |
+
+### EXP-021 C0.3 — minimal R1 temporal-safety containment (2026-09-24)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | C0.2 `C02_GATE_A` (P1 scoped) — R1 point-in-time HF abuse / context / misuse claims unsupported |
+| BEFORE | R1 FULL_BRAKING / POSSIBLE_IMPACT / ENGINE_SHUTDOWN_WHILE_DRIVING derived from grid-labelled OBD records; fed counters, ledger, impact, brake wear, SEVERE misuse; exact anchor-relative context in API |
+| CHANGE | `telemetry-source-family.ts` (rawJson resolver); `r1-temporal-containment.ts`; enrichment gate + replace scope + summary marker; ledger read interpretation; impact / brake readers / brake wear / fingerprint; unified read model + DTO marker; trip counters/stats; misuse evidence tag + rating cap + proxy-only lifecycle |
+| NON_EFFECTS | Speeding, max speed, trip end/FSM, waypoints, grid anchoring, aggregation, hardwareType, routing, historical data |
+| Validation | Focused suites (DI-TEST-R1-CONTAINMENT-001); vehicle-intelligence tree failure set = base + 1 load-dependent pre-existing flake |
+| Status | `VALIDATED` (code/tests) — draft PR #1755; not merged, not deployed |
+| Evidence | `evidence/reference-capture/EXP_021_C03_R1_TEMPORAL_CONTAINMENT_2026-09-24.md` |
+
+### EXP-021 C0.3B — read-presentation closure (2026-09-24)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | C0.3A merge-gate — stale customer judgment + unqualified persisted SEVERE misuse presentation |
+| CHANGE | `shouldWithholdR1PersistedDrivingStressScore` on canonical trip/vehicle stats; `misuse-case-read-presentation.ts` on misuse list/detail API; provider-native braking documented INDEPENDENT; driving-impact fingerprint test fixture repair |
+| NON_EFFECTS | No persistence mutation; admin-only raw aggregates (`trips.service.getStats`, logbook) still deferred |
+| Status | `VALIDATED` (code/tests) — draft PR #1755 |
+| Evidence | `evidence/reference-capture/EXP_021_C03_R1_TEMPORAL_CONTAINMENT_2026-09-24.md` §5.1 |
+
+### EXP-021 C0.5 — CG-01 `COLD_ENGINE_FULL_THROTTLE` containment (2026-09-24)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | C0.4 `CG-01` — 326 R1 `HF_DERIVED` rows at full event-list strength |
+| CHANGE | Extend `R1_CONTAINED_HF_ABUSE_EVENT_TYPES`; `countContainedAbuseRowsForReadAdjustment` (v1 marker-aware); misuse `ruleColdEngineAbuse` R1 filter; containment marker v2 |
+| NON_EFFECTS | CG-02…CG-10, COLD_ENGINE_HIGH_RPM, Tesla/API_SYNTHETIC, no DB mutation |
+| Status | `VALIDATED` (code/tests) — draft PR, not deployed |
+| Evidence | `evidence/reference-capture/EXP_021_C05_CG01_COLD_ENGINE_FULL_THROTTLE_2026-09-24.md` |
+
+### EXP-021 C1D.6 — DI V0 shadow persistence S2 (2026-09-26)
+
+| Field | Value |
+|-------|--------|
+| Trigger | C1D.5 S0/S1 merged; C1D.4 storage design |
+| Change | `di_v0_shadow_runs` / `di_v0_shadow_intervals` + `shadow-persistence/` adapter (no runtime caller) |
+| Versions | Structural / estimator contracts unchanged; storage append-only |
+
+### EXP-021 C1D.6B — shadow persistence hardening closure (2026-09-26)
+
+| Field | Value |
+|-------|--------|
+| Trigger | C1D.6A pre-merge audit `BLOCKED` (cross-tenant association, tx client, summary authority, DB CHECK gaps) |
+| Change | Trip identity guard; tx-scoped repository; DB CHECK constraints; status machine; completion counts from DB; redundant index removed; integration harness bootstrap script |
+| NON_EFFECTS | No S3 worker, no canonical trip mutation, no production migration |
+| Evidence | `evidence/EXP_021_C1D6_S2_SHADOW_PERSISTENCE_2026-09-26.md` (updated) |
+
+### EXP-021 C1D.5B — pure core pre-merge fail-safe closure (2026-09-26)
+
+| Field | Value |
+|-------|--------|
+| Trigger | C1D.5A red-team `NEEDS_CLOSURE` (duplicate bucketLabel L3, malformed-input tests) |
+| Change | L3 temporal support validation + duplicate label grid flag + closure Jest matrix |
+| Versions | `DI_SOURCE_QUALITY_CONTRACT_V0_1` / `DI_KINEMATIC_ESTIMATE_V0_1` unchanged |
+
+### EXP-021 C1D.5 — DI V0 pure shadow core S0/S1 (2026-09-26)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | C1D.4 implementation readiness gate `C1D4_GATE_SHADOW_IMPLEMENTATION_READY` |
+| CHANGE | New `backend/src/modules/vehicle-intelligence/driving-intelligence/core/` pure library: types, hold/release, calendar-second L3 eligibility, motion/claim/confidence, R1 INTERVAL_ONLY relation rules, `computeDiV0TripIntervals`; Jest coverage + side-effect static audit |
+| NON_EFFECTS | No Prisma migration, BullMQ, DIMO fetch, feature flags, HTTP, customer DTOs, trip/scoring/event side effects |
+| Status | `PROPOSED` — merge review only; no deploy authorization |
+| Evidence | `evidence/EXP_021_C1D5_V0_PURE_CORE_2026-09-26.md` |
+| Decision | `DI-DEC-V0-SHADOW-PURE-CORE-001` |
+
+### EXP-021 C1D.7 — DI V0 S3A position acquisition + normalization (2026-09-26)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | C1D.6 S2 merged (`090c9383…`); S1 needs normalized position evidence + snapshot identity |
+| BEFORE | S1 core + S2 persistence had no input slice; `inputEvidenceVersion` had no producer |
+| CHANGE | New `driving-intelligence/position-acquisition/` dormant library: request/window validation, 1 s location query (`agg: AVG`), grid normalizer, coordinate validation, duplicate fail-safe, canonical source-family consumption, SHA-256 snapshot identity, typed redacted error model, DIMO transport adapter (type-only service imports, full request context) |
+| WHY | Keep acquisition semantics explicit (bucket label ≠ source timestamp; availability tri-state) before any worker exists |
+| NON_EFFECTS | No runtime caller, Nest registration, BullMQ, Redis, Prisma, migration, DB write, live provider call, customer/UI, trip/score/event/misuse effect; S1 contract unchanged; DIMO Integration code unchanged |
+| Validation | 110 new tests; 169-test S1/S2/call-site regression; `tsc`; `nest build` |
+| Gaps | DI-GAP-S3A-AGG-001, DI-GAP-S3A-REFTIME-001, DI-GAP-S3A-LIVE-001, DI-GAP-S3A-ARTIFACTS-001 |
+| Status | `PROPOSED` — draft PR, merge review only; no deploy authorization |
+| Evidence | `evidence/EXP021_C1D7_S3A_INPUT_NORMALIZATION_REPORT.md` (DI-EVID-EXP021-C1D7-001) |
+| Decision | `DI-DEC-V0-POSITION-ACQ-001` |
+
+### EXP-021 C1D.7B — PR #1800 S3A documentation closure + full-trip golden (2026-09-27)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | Pre-merge red-team P1: authority missing C1G aggregation + provider mutability + pinned replay semantics |
+| CHANGE | Docs/graph/CURRENT_STATE/DECISION_REGISTER; C1-MOBILE-FULL-R1-002 compact golden fixture + 11 new tests (S3A golden, mutability identity, S3A→S1 structural); SynqDrive Code views |
+| NON_EFFECTS | No S3A runtime/query/aggregator/normalization/snapshot algorithm change; no merge/deploy/S3B |
+| Validation | position-acquisition 121 tests; S1/S2 regression; graph + registry validators |
+| Gaps | DI-GAP-S3A-AGG-001 → **PARTIALLY_CLOSED** (documented); DI-GAP-S3A-ARTIFACTS-001 partially mitigated |
+| Status | `PROPOSED` — closes red-team P1 on draft PR #1800 |
+
+### EXP-021 C1D.8 — S3B R1 OBD + native event evidence adapters (2026-09-27)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | S3A merged; S1 already accepts `NormalizedR1ObdObservation` / `NativeEventObservation` but had no acquisition libraries |
+| CHANGE | `r1-obd-acquisition/` (Channel A) + `native-event-evidence/` (Channel B) + `evidence-input/di-v0-combined-input-identity.ts`; governance + SynqDrive Code views |
+| WHY | Separate normalized evidence channels with deterministic snapshot identities before S4 shadow orchestration |
+| NON_EFFECTS | No worker, queue, scheduler, Nest registration, DB write, fusion, product accel/brake/coasting logic, L3 override, deploy |
+| Validation | S3B + S1/S2/S3A regression; typecheck/build/lint; graph + registry validators |
+| Status | `PROPOSED` — draft PR, pre-merge review only |
+| Evidence | `evidence/EXP021_C1D8_S3B_R1_OBD_NATIVE_EVENT_ADAPTERS.md` (DI-EVID-EXP021-C1D8-001) |
+| Decision | `DI-DEC-V0-S3B-R1-NATIVE-EVIDENCE-001` |
+
+### EXP-021 C1D.8B — S3B contract hardening / red-team closure (2026-09-27)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | C1D.8A read-only red-team of PR #1805: NEEDS_CLOSURE (P1 ×4, P2 ×5) |
+| BEFORE | Caller-set native `VALIDATED` → L2; no native context binding; duplicate eventIds double-counted; `[]` ≡ NO_EVENT with no failure concept; combined identity `[channel, version]` with optional channels; R1 duplicate buckets first-row-wins; `isIgnitionOn(agg: AVG)` queried; WOB control synthetic; test R1 identity resolved to UNKNOWN |
+| CHANGE | Native: fixed UNCALIBRATED/L1, expected-context binding (`CONTEXT_MISMATCH`), eventId dedup (`CONFLICTING_DUPLICATE`), source envelope + `EVENT_SOURCE_FAILURE`, `readDiV0NativeEventSource`; combined identity V0_2 with explicit channel state; R1 per-signal duplicate merge; ignition removed from query (V0_2); field authority matrix; golden-bound WOB + HOLD/RELEASE/post-release tests |
+| WHY | Close P1/P2 fail-closed before any S4 caller |
+| ALTERNATIVES | Trusted-authority object (design B), drop-silently, first-row/average/majority, keep ignition labelled — all rejected (see decision) |
+| NON_EFFECTS | No S1 core change; no worker/scheduler/queue/DB/migration/API/UI/provider mutation/deploy/S4/fusion weights/accel-brake-coasting logic; legacy HF + trip-detection ignition queries unchanged |
+| Validation | S1/S2/S3A/S3B 254 passed (1 pre-existing integration suite skipped); tsc clean; ESLint clean on S3B; graph + registry validators |
+| Gaps | DI-GAP-S3B-R1-FIELD-AUTHORITY-001 (no field provider-schema verified; ignition excluded); no captured R1 OBD rows for FULL-R1-002 in repo (structural fixture) |
+| Status | `PROPOSED` — draft PR #1805, pre-merge |
+| Evidence | `evidence/EXP021_C1D8B_S3B_CONTRACT_HARDENING.md` (DI-EVID-EXP021-C1D8B-001) |
+| Decision | `DI-DEC-V0-S3B-CONTRACT-HARDENING-001` |
+
+### EXP-021 C1D.9 / C1D.9A — S3B R1 field authority + V0_3 correction (2026-09-27)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | C1D.9 read-only provider authority audit: PARTIAL (5/6 fields verified; gear AVG unsafe) |
+| BEFORE | Query `DI_V0_R1_OBD_QUERY_V0_2`: speed, rpm, throttle, load, ECT, `powertrainTransmissionCurrentGear`, all `agg: AVG`, all `REPO_CONTRACT_ONLY`; gear normalized to `NormalizedR1ObdObservation.gear` (fractional values passed through); adapter/snapshot V0_2 |
+| CHANGE | Query/adapter/R1 snapshot **V0_3**: gear removed from query, normalizer and S1 type; 5 fields `PROVIDER_SCHEMA_VERIFIED` with documented unit + value scale; snapshot serializes authority metadata; `DI_V0_R1_OBD_EXCLUDED_PROVIDER_FIELDS` (gear, isIgnitionOn); `DI_V0_R1_OBD_SUPERSEDED_VERSIONS`; combined input identity unchanged V0_2 |
+| WHY | Every queried field must be provider-verified and semantically valid under its aggregation before S4 R1 use |
+| ALTERNATIVES | Gear FIRST/LAST + integer guard; keep gear labelled; runtime allowlist over V0_2; combined identity bump — all rejected (see decision) |
+| NON_EFFECTS | No worker/scheduler/queue/DB/migration/API/UI/provider mutation/deploy/S4; no native-event change; no L3 tuning; no acceleration/braking/coasting/speeding logic; shared DIMO transport/auth and legacy HF/trip-detection queries unchanged |
+| Validation | DI suites green incl. new `di-v0-s3b-r1-v03-authority.spec.ts` (49 tests); tsc clean; ESLint clean; DI/DIMO graph + docs + registry validators |
+| Gaps | DI-GAP-S3B-R1-FIELD-AUTHORITY-001 **PARTIALLY_CLOSED** — residual gear (no categorical strategy, no R1 evidence); multi-sample 1 s AVG behaviour unobserved |
+| Status | `PROPOSED` — draft PR, pre-merge |
+| Evidence | `evidence/EXP021_C1D9_R1_FIELD_AUTHORITY_V03_CORRECTION.md` (DI-EVID-EXP021-C1D9-001) |
+| Decision | `DI-DEC-V0-S3B-R1-V03-FIELD-AUTHORITY-001` |
+
+### EXP-021 C1D.10A — Authority correction + S4A contract design review (2026-09-27)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | C1D.10 read-only S4 design: NEEDS_CLOSURE (P1 ×4, P2 ×11) |
+| BEFORE | C1D.6 / C1D.7 authority said the S2 migration was unapplied (it was applied 2026-09-26 23:46:11 UTC via #1801); `CURRENT_STATE` said V2 flag "default OFF" without noting Production ON; S4 design had no frozen identity/fencing/channel/pinning contract; settlement delay 16 h from a 5-row sample; native `NO_EVENT` assumed derivable from legacy markers |
+| CHANGE | Authority corrected with AMENDED BY notes (history preserved); DI-CONTRA-S2-PROD-MIGRATION-001 (RESOLVED); `design/s4a/` (contract design, state machine, identity + fencing, channel outcomes, replay + pinning, migration safety, threat model); machine contract `s4a-contract.v1.json` + `validate-s4a-contract.sh` (state machine, hashes, channel pins, tenant scope, race model R01–R14, invariants); P2 triage (P2-5 promoted to P1-5); 5 gaps; SynqDrive Code views |
+| WHY | Close P1 at contract level and freeze a machine-testable S4A contract before any S4 code; merge = Production migration, so dormant-deploy safety must be designed first |
+| ALTERNATIVES | See DI-DEC-V0-S4A-CONTRACT-001 (BullMQ idempotency, advisory locks, 16 h fixed delay, legacy readiness markers, live re-query replay, object-store pins, enums, RESTRICT FKs — all rejected) |
+| NON_EFFECTS | No S4 runtime, worker, sweeper, scheduler, queue, Nest registration, migration, Prisma schema change, provider call, Production write, deploy, flag change, customer path, trip mutation, calibration, threshold or detector change; S1/S2/S3A/S3B code unchanged |
+| Validation | `validate-s4a-contract.sh` (+ negative copies), DI graph + docs, DIMO graph, module registry validators; S1/S2/S3A/S3B Jest regression; frontend tsc; `i18n:check` |
+| Gaps | DI-GAP-S4-NATIVE-READINESS-001, DI-GAP-S4-REPLAY-DESERIALIZER-001, DI-GAP-S4-SHADOW-DELETION-AUDIT-001, DI-GAP-S4-LOCATION-RETENTION-001, DI-GAP-S2-IN-TX-CREATE-RACE-001 |
+| Status | `PROPOSED` — draft PR, design only |
+| Evidence | `evidence/EXP021_C1D10A_AUTHORITY_CORRECTION.md`, `evidence/EXP021_C1D10A_P2_TRIAGE.md` (DI-EVID-EXP021-C1D10A-001) |
+| Decision | `DI-DEC-V0-S4A-CONTRACT-001` |
+
+### EXP-021 C1D.10C — S4 authority / contract / validator closure (2026-09-27)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | C1D.10B read-only red-team of C1D.10A: 4 P1 (P1-A S2 execution identity under-bound; P1-B contract/validator non-enforcing, 8/13 false accepts; P1-C tenancy on nonexistent `vehicle_trips.organization_id`; P1-D control plane incomplete) |
+| BEFORE | Contract v1: S2 `inputEvidenceVersion` = combined input identity only; 7 states / 11 transitions without DB-clock expiry on T07–T09; replay could reach SKIPPED; no retirement path; tenancy guard on a nonexistent column; no flag/allowlist/kill-switch semantics; validator accepted invalid mutations |
+| CHANGE | Contract **v2** `s4a-contract.v2.json` (`DI_V0_S4A_CONTRACT_V2`; v1 kept): `DI_V0_S4_EXECUTION_IDENTITY_V1` as S2 `inputEvidenceVersion`; tenancy TRIP_VEHICLE_ORGANIZATION; `S4A_CONTROL_PLANE.md` (6 flags default OFF, EMPTY=NONE intersected allowlists, DB kill row missing=KILLED, pipeline registry + retirement); 13 transitions; lease 240/300/60/900 semantics; UTC time authority; recorded-only quiet re-arm + fingerprint for unrecorded mutations; enforcing validator + red-team suite (`validate-s4a-contract-negative.mjs`); design docs amended with AMENDED BY log; DI-CONTRA-S4A-TENANCY-SCHEMA-001 (RESOLVED); DI-GAP-S4-PROVIDER-BACKPRESSURE-001 (OPEN); P2 reconciliation; SynqDrive Code views |
+| WHY | Every C1D.10B P1 must be closed by construction and proven by a validator that rejects each invalid mutation before any S4A code exists |
+| ALTERNATIVES | See DI-DEC-V0-S4A-CONTRACT-V2-001 (change S2 key fn, denormalize org onto trips, env-only kill switch, EMPTY=ALL allowlist, ceiling-less lease — all rejected) |
+| NON_EFFECTS | No backend/prisma change, migration, table, flag, seed, worker, scheduler, BullMQ wiring, provider call, Production write, deploy or customer path; S1/S2/S3A/S3B unchanged; DIMO Integration + Trips consulted only |
+| Validation | `validate-s4a-contract.sh`: 47 negative (0 false accepts) / 21 positive (0 false rejects); DI graph + docs, DIMO graph, module registry validators; frontend tsc + `i18n:check`; backend typecheck |
+| Gaps | DI-GAP-S4-PROVIDER-BACKPRESSURE-001 (new, OPEN); DI-GAP-S4-REPLAY-DESERIALIZER-001, DI-GAP-S4-NATIVE-READINESS-001, DI-GAP-S4-LOCATION-RETENTION-001, DI-GAP-S4-SHADOW-DELETION-AUDIT-001 unchanged (OPEN) |
+| Status | `PROPOSED` — draft PR #1810, design only |
+| Evidence | `evidence/EXP021_C1D10C_AUTHORITY_CLOSURE.md` (DI-EVID-EXP021-C1D10C-001) |
+| Decision | `DI-DEC-V0-S4A-CONTRACT-V2-001` (amends `DI-DEC-V0-S4A-CONTRACT-001`) |
+
+### EXP-021 C1D.10E — DB kill write-set closure (2026-09-27)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | C1D.10D re-seal P1-E: T03/T08/T09 writable while DB killed despite writesAllowedWhileDisabled=[T07] |
+| CHANGE | Contract v2 amendment (no version bump): `CONTROL_PLANE_DB_NOT_KILLED` on T01–T06,T08–T13; `killPolicy` + `authoritativeWrites` (19); K01–K18 kill races; validator exhaustiveness; 18 new negative cases; CI workflow `s4a-authority-governance.yml` |
+| NON_EFFECTS | No runtime, migration, worker, provider, Production write |
+| Evidence | `evidence/EXP021_C1D10E_KILL_WRITESET_CLOSURE.md` (DI-EVID-EXP021-C1D10E-001) |
+
+### EXP-021 S4A — Dormant execution foundation implementation (2026-09-27)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | S4A CONTROLLED_IMPLEMENTATION from merged authority `DI_V0_S4A_CONTRACT_V2` (PR #1810) |
+| BEFORE | S4 existed as design + machine contract only; no schema, no repository, no S4 tables in repo or Production |
+| CHANGE | Migration `20260927200000_di_v0_s4a_dormant_foundation` (work items, evidence snapshots, pipeline-version registry, DB kill row, tenancy + immutability + S2 scope triggers); library `driving-intelligence/s4a-foundation/` (exact 13-transition fenced repository, no generic setStatus; identities incl. `DI_V0_S4_EXECUTION_IDENTITY_V1`; `clock_timestamp()` lease/fencing/takeover; fail-closed control plane; supersession; atomic fenced S2 persistence); channel-policy V1 family applicability; test-only Postgres bootstrap + npm scripts `test:di:s4a`, `test:di:s4a:postgres` |
+| WHY | Contract v2 requires a DB-enforced, provably race-safe foundation before any S4B/S4C runtime |
+| ALTERNATIVES | Application-only tenancy (rejected: contract requires DB enforcement); advisory-lock kill (rejected: control row `FOR UPDATE` makes kill serialization provable); generic status update (forbidden by contract) |
+| NON_EFFECTS | No discovery, scheduler, cron, BullMQ queue/producer/consumer, worker, Nest provider, endpoint, DIMO call, R1/native acquisition, S1/S2 runtime invocation, flag activation, allowlisting, threshold or calibration; no Production write, migration or deploy. `DI_S4A_RUNTIME_CALL_SITE_COUNT=0` |
+| Validation | 175/175 S4A tests (parity 9, fixtures 98, dormant audit 7, Postgres races R01–R25 + K01–K18 = 51, migration M01–M08 = 10); races stable over 3 reruns; backend tsc/build 0; all architecture validators pass |
+| Gaps | OPEN: DI-GAP-S4A-BOUNDARY-REVERT-SUCCESSOR-001, DI-GAP-S4A-POSTGRES-CI-WIRING-001, DI-GAP-S4A-CONTROL-ROW-SERIALIZATION-001 (P2); contradictions DI-CONTRA-S4A-T13-SUCCESSOR-WRITE-BINDING-001, DI-CONTRA-S4A-CONTAINER-VERSION-NAMING-001, DI-CONTRA-S4A-ON-UPDATE-CASCADE-IMMUTABILITY-001 (P2). All prior P2 gaps preserved |
+| Incident | Running `npm run i18n:check` regenerated the untracked-in-scope working-tree file `frontend/src/i18n/hardcoded-copy-inventory.json` (md5 e68ad5b6… → 4a8de450…); the prior local content was not recoverable. It was never staged or committed. Future runs use `node scripts/i18n-check.mjs --read-only` |
+| Status | MERGED — PR #1816 → `main` @ `2c321823a` (2026-09-28); Production migration apply gated — see post-merge deploy gate |
+| Evidence | `evidence/EXP021_S4A_DORMANT_FOUNDATION_IMPLEMENTATION.md` (DI-EVID-EXP021-S4A-IMPL-001) |
+| Decision | DI-DEC-V0-S4A-IMPL-001 |
+
+### EXP-021 S4A — Merge to main + post-merge deploy gate (2026-09-28)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | `EXP021_S4A_FINAL_PREMERGE_SEAL_RESULT=PASS`; authorized controlled merge of PR #1816 |
+| CHANGE | Merged PR #1816 (`77d112dba`) via merge commit `2c321823a`; activated operational gate `DO_NOT_DEPLOY_S4A_MIGRATION_TO_PRODUCTION` until Postgres CI wiring + deploy-readiness seal |
+| NON_EFFECTS | No deploy, no Production migration, no S4 runtime, no shadow activation, no flags, no allowlisting |
+| Evidence | `evidence/EXP021_S4A_POST_MERGE_DEPLOY_GATE.md` (DI-EVID-EXP021-S4A-POST-MERGE-GATE-001) |
+| Next slice | `S4A_POSTGRES_CI_WIRING_AND_DORMANT_DEPLOY_READINESS` |
+
+### EXP-021 S4A — PostgreSQL CI wiring + dormant deploy readiness (2026-09-28)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | Post-merge gate; `S4A_POSTGRES_CI_WIRING_AND_DORMANT_DEPLOY_READINESS` |
+| CHANGE | `.github/workflows/s4a-postgres-integration.yml`; `test:di:s4a:postgres:ci` with `DI_V0_S4A_POSTGRES_REQUIRED=1`; fail-closed harness; deploy gate → `READY_FOR_SEPARATE_OPERATOR_DEPLOY_DECISION` |
+| NON_EFFECTS | No deploy, no Production migration, no S4 runtime |
+| Gaps | DI-GAP-S4A-POSTGRES-CI-WIRING-001 **CLOSED**; all other P2 gaps preserved |
+| Evidence | `evidence/EXP021_S4A_POSTGRES_CI_WIRING.md` (DI-EVID-EXP021-S4A-POSTGRES-CI-001) |
+| Next slice | `S4A_DORMANT_DEPLOY_PRECHECK` (operator + branch protection required check) |
+
+### EXP-021 S4B — Boundary revert + T13 precondition closure (2026-09-28)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | `S4B_PRECONDITION_CLOSURE` (authority only; no S4 runtime) |
+| CHANGE | `S4A_BOUNDARY_REVERT_AUTHORITY.md`, `S4A_T13_HOLDER_SUPERSEDE_AUTHORITY.md`; contract v2 C1D.10F (`boundaryOccurrence`, `EXECUTION_IDENTITY_V2`, T13 guard + R24 fixture); validator + TS mirror |
+| Gaps | DI-GAP-S4A-BOUNDARY-REVERT-SUCCESSOR-001 **CLOSED** (authority); implementation follow-up |
+| Contradictions | DI-CONTRA-S4A-T13-SUCCESSOR-WRITE-BINDING-001 **RESOLVED** |
+| NON_EFFECTS | No Production write/migration/deploy; no S4B runtime |
+| Evidence | `evidence/EXP021_S4B_PRECONDITION_CLOSURE.md` (DI-EVID-EXP021-S4B-PRECOND-001) |
+| Next slice | `S4B_PRECONDITION_IMPLEMENTATION` (schema + repository + BR/T13 Postgres tests) |
+
+### EXP-021 S4B — Discovery + claim orchestration engineering start (2026-09-28)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | `EXP021_S4B_ENGINEERING_START` (implementation; dormant / default-OFF) |
+| CHANGE | `s4b-orchestration/` — discovery service (T01 only), leader-guarded `di_v0_s4_discovery`, replica-local claim loop, executor port, canonical pipeline manifest builder; scheduler registry entries; `npm run test:di:s4b*` |
+| NON_EFFECTS | No AppModule registration, no deploy, no Production env/control row, no provider acquisition (S4C), no BullMQ, no schema migration |
+| Evidence | `evidence/EXP021_S4B_ENGINEERING_START.md` |
+| Next slice | `S4B_IMPLEMENTATION_PREMERGE_AUDIT` (draft PR; no merge/deploy/activation) |
+
+### EXP-021 S4B — P1 pre-merge closure (2026-09-28)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | Independent pre-merge audit P1-A (attempt-start boundary recheck) + P1-B (SETTLED durable terminal postcondition) |
+| CHANGE | `evaluateAttemptStartBoundary` + `readExecutionPostcondition` (S4A repository read helpers); claim loop invokes T13 on mismatch; `EXECUTOR_POSTCONDITION_FAILED` T07 reason; tests `S4B-P1A-*` / `S4B-P1B-*` |
+| NON_EFFECTS | No new transitions/schema; no S4C; no deploy/Production write |
+| Evidence | `evidence/EXP021_S4B_ENGINEERING_START.md` §P1 pre-merge closure |
+| Next slice | `S4B_FINAL_RESEAL` (re-audit PR #1833; still draft, no merge) |
+
+### EXP-021 S4C — Live same-attempt shadow executor (2026-09-29)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | `EXP021_S4C_ENGINEERING_START` (dormant; no AppModule / no Production activation) |
+| CHANGE | `s4c-executor/` — DB read-only acquisition context, DIMO `POST_TRIP_ENRICHMENT`/`BACKGROUND` ports, S3A position + optional S3B R1, T05 pin + same-attempt S1 + T06; `npm run test:di:s4c*`; dormant audits updated for S4C consumer |
+| NON_EFFECTS | No deploy, no control row, no S4D replay, no schema migration, no customer paths |
+| Evidence | `evidence/EXP021_S4C_ENGINEERING_START.md` |
+| Next slice | `S4C_IMPLEMENTATION_PREMERGE_AUDIT` |
+
+### EXP-021 S4D — Verified pin replay (2026-09-29)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | `EXP021_S4D_ENGINEERING_START` after S4C merge @ `78ee9909` |
+| CHANGE | `s4d-replay/` verified gunzip+rehash+parse; position/R1/container strict parsers; `readVerifiedPinnedEvidence`; S4C executor routes pinned work to S4D (single registry executor); contract gap `DI-GAP-S4-REPLAY-DESERIALIZER-001` CLOSED |
+| NON_EFFECTS | No deploy, no AppModule, no S4E/S4F, no schema migration |
+| Evidence | `evidence/EXP021_S4D_ENGINEERING_START.md` |
+| Next slice | Complete S4D postgres matrix D-02–D-16 + R1/container equivalence tests; then `S4D_IMPLEMENTATION_PREMERGE_AUDIT` |
+
+### EXP-021 S4D — P1 independent-audit closure (2026-09-29)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | `EXP021_S4D_P1_CLOSURE` on PR #1841 @ `b9761a55` |
+| CHANGE | Provider-independent replay routing (`readReplayRoutingContext`); DB manifest exact parity; inner POSITION/R1 scope cross-bind; S4D abort guards; strict POSITION/R1 semantic parsers; postgres D-17–D-19 + adversarial unit matrix |
+| NON_EFFECTS | No deploy, no schema/migration, no AppModule, no S4E/S4F |
+| Evidence | `evidence/EXP021_S4D_P1_CLOSURE.md` |
+| Gap | `DI-GAP-S4-REPLAY-DESERIALIZER-001` CLOSED after P1-A..P1-E gates |
+
+### EXP-021 S4E-1 — Dormant boundary drift watcher (2026-09-29)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | `EXP021_S4E_ENGINEERING_START` after S4D merge @ `06955ea65` |
+| CHANGE | `s4e-drift-watcher/` bounded candidate scan, canonical boundary re-hash, `DiV0S4DriftWatcherService` → `supersedeOnDrift` (T11 only); leader scheduler `di_v0_s4_drift_watcher`; CI `test:di:s4e` + postgres matrix S4E-D01..D15 |
+| NON_EFFECTS | No deploy, no AppModule, no schema migration, no T10/T12 schedulers, no S4F |
+| Evidence | `evidence/EXP021_S4E_ENGINEERING_START.md` |
+| Inventory | T10 `reapExhausted` + T12 `retirePipelineItems` repository-ready; scheduling deferred |
+
+### EXP-021 S4E-2 — Dormant T10/T12 maintenance reapers (2026-09-29)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | `EXP021_S4E2_MAINTENANCE_REAPERS` after S4E-1 merge @ `11adaf76` |
+| CHANGE | `DiV0S4MaintenanceService` + `di_v0_s4_maintenance_reaper` scheduler; bounded RETIRED pipeline enumeration; T10/T12 delegate only to repository; postgres S4E2-M01..M21 |
+| NON_EFFECTS | No deploy, no AppModule, no schema migration, no S4F, no contract change to T11 successor rules |
+| Evidence | `evidence/EXP021_S4E2_MAINTENANCE_REAPERS.md` |
+| Race | T11↔T12 TOCTOU documented; claim blocked + T12 cleanup; S4E2-M19/M20 |
+
+### EXP-021 S4E-2 — CLASS A retirement hardening (2026-09-29)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | Adversarial audit PR #1845; gap `DI-GAP-S4A-T11-RETIRED-SUCCESSOR-TOCTOU-001` |
+| BEFORE | CLASS B: `retireRegistry` test DML + T11 `FOR SHARE`; durable PENDING successor under RETIRED possible |
+| CHANGE | `retirePipelineVersion` authoritative retirement; T11 registry `FOR UPDATE` before work item; harness `retireRegistry` → repository; tests S4E2-A01..A10 |
+| WHY | Strong serialized invariant required before S4E complete; refinement within BR07 / pipeline retirement authority (no `s4a-contract.v2.json` amendment) |
+| NON_EFFECTS | S4 dormant; bounded T12 scheduler unchanged for RETIRED stragglers; no schema migration |
+| Evidence | `evidence/EXP021_S4E2_MAINTENANCE_REAPERS.md` (invariant class table) |
+
+### EXP-021 S4F-1 — Observability + reconciliation + activation-readiness foundation (2026-09-30)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | S4A–S4E engineering-complete; next dormant slice S4F-1 |
+| CHANGE | `s4f-observability/` read-only reconciliation, `DI_V0_S4_OBSERVABILITY_SNAPSHOT_V1`, beyond-horizon boundary report (no T11), activation-readiness evaluator, provider backpressure audit (OPEN), location retention governance note, executor liveness (local-only) |
+| NON_EFFECTS | No deploy, no AppModule, no purge scheduler, no provider calls, no tiny activation, no contract v2 amendment |
+| Evidence | `evidence/EXP021_S4F1_OBSERVABILITY_RECONCILIATION.md` |
+| Gap | `DI-GAP-S4F-GLOBAL-EXECUTOR-LIVENESS-001` documented (no global executor presence authority) |
+
+### EXP-021 S4F-1 — independent pre-merge audit remediation (2026-09-30)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | Pre-merge audit of PR #1853 @ `e4d8fe26f` |
+| CHANGE | Fail-closed activation evidence; truthful aggregate boundedness; T10 metric parity; S4E canonical scope on beyond-horizon; single-connection READ ONLY proof; retired-pipeline classification; control-plane kill evaluation |
+| NON_EFFECTS | No provider gap closure; no activation; no contract v2 amendment |
+| Evidence | `EXP021_S4F1_OBSERVABILITY_RECONCILIATION.md` remediation section |
+
+### EXP-021 S4F-1 — final evidence hardening H1–H4 (2026-09-30)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | Pre-merge proof gaps on PR #1853 @ `479035a45` |
+| CHANGE | H1 full S3A→S4C→T07 unit proofs; H2 scan watermark cursor; H3 query-only read DB + audit; H4 operational index audit (no migration) |
+| NON_EFFECTS | No activation, no provider gap closure, no retry semantic change |
+| Evidence | `EXP021_S4F1_OBSERVABILITY_RECONCILIATION.md` H1–H4 section |
+
+### EXP-021 S4F-2 — provider backpressure certification (2026-09-30)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | Tiny activation gate `DI-GAP-S4-PROVIDER-BACKPRESSURE-001:CLOSED` on main @ `60f925b2c` |
+| CHANGE | Real Redis two-replica budget certification; S4C frozen DIMO context (no bypass inheritance); `providerGlobalBudgetEnabled` activation evidence |
+| NON_EFFECTS | No S4 activation, no deploy, no production provider calls, no AppModule registration |
+| Evidence | `EXP021_S4F2_PROVIDER_BACKPRESSURE_CLOSURE.md` |
+
+### EXP-021 S4F-2 remediation — certification defects (2026-09-30, PR #1855)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | Independent review: invalid lease test config, PB01/PB11 saturation composition, cooldown vs reserved-slot authority |
+| CHANGE | `globalLeaseMs≥5000` + real wait; 3 BACKGROUND + 1 HIGH global cap tests; PB27–29 cooldown priority behavior; contract `globalCircuitBreaker.status=CLOSURE_CANDIDATE`; `globalProviderCooldown` block |
+| AUTHORITY | P1.3 acquire step 2 — global cooldown before priority; no separate cooldown-priority activation gap opened |
+| Gap | `DI-GAP-S4-PROVIDER-BACKPRESSURE-001` → **CLOSURE_CANDIDATE** (Tiny Activation requires **CLOSED**) |
+
+### EXP-021 S4F-2 final closure seal (2026-09-30, PR #1855)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | Remote Redis certification PASS on pre-seal head `e5902f89a` (S4A run 36735099353; 10/10 Redis); deterministic S4E2-A1; i18n authority approval run 36740380917 |
+| CHANGE | Promote `DI-GAP-S4-PROVIDER-BACKPRESSURE-001` to **CLOSED** in certification marker, `s4a-contract.v2.json`, graph, `CURRENT_STATE.md`, evidence |
+| NON_EFFECTS | No S4 runtime activation; no deploy; `productionLoadCertification` remains NOT_CLAIMED; Tiny Activation NOT_READY without global budget + operator auth |
+| Main sync | Merge `7744e3983` into PR branch; `package.json` preserves main + provider-budget scripts |
+| Gap | **CLOSED** |
+
+### EXP-021 S4F-3 Tiny Activation evidence audit (2026-09-30)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | Post–S4F-2 merge; read-only Production env audit for explicit `DIMO_GLOBAL_BUDGET_ENABLED` |
+| CHANGE | Evidence `EXP021_S4F3_TINY_ACTIVATION_EVIDENCE_AUDIT.md`; strict Tiny budget env classifier + read-only ops audit script; graph/CURRENT_STATE metadata for governance note + replay CLOSED |
+| FINDING | Production `/opt/synqdrive/shared/backend.env` lacks explicit `DIMO_GLOBAL_BUDGET_ENABLED` → Tiny budget gate NOT_SATISFIED; operator auth remains UNKNOWN |
+| NON_EFFECTS | No deploy, no env mutation, no S4 activation, no operator grant |
+| Gap | Location retention: GOVERNANCE_NOTE for Tiny satisfied; purge/scale-up privacy still open |
+
+### EXP-021 S4F-3 runtime evidence hardening (2026-09-30, PR #1861)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Split config-file vs runtime global-budget evidence; CONFIG_FILE_ONLY audit; resolver for ENABLED; ops authority = reusable `vps-production-replica.lib.sh` primitives (no dedicated DIMO config-only wrapper; RFRF stage script pattern-only, not executable authority for DIMO) |
+| FINDING | File audit alone cannot satisfy Tiny global-budget gate; Production config currently MISSING explicit var |
+| NON_EFFECTS | No Production mutation/restart/deploy |
+
+### EXP-021 S4F-4 DIMO global-budget config-only ops wrapper (2026-09-30)
+
+| Event | Detail |
+|-------|--------|
+| Trigger | S4F-3 gap `NEW_DIMO_CONFIG_ONLY_OPS_WRAPPER_REQUIRED=YES` |
+| CHANGE | `di-v0-s4f-enable-global-budget-production.sh` + rollout lib/CLI/tests; evidence `EXP021_S4F4_DIMO_GLOBAL_BUDGET_CONFIG_ONLY_OPS.md`; S4F ops S4 control preflight helper |
+| NON_EFFECTS | **No Production execution** (no env mutation, restart, deploy, S4 activation, operator grant, DIMO provider calls) |
+| NEXT | Operator ACK + approved SHA + run wrapper on Production when authorized |
+
+### EXP-021 S4F-4 runtime proof hardening (2026-09-30, PR #1863)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Live per-replica Prometheus gauge `synqdrive_dimo_global_budget_enabled`; remove PM2 log as authority; canonical Redis PING; env UID/GID preservation; recovery + rollback post-verify; explicit PRODUCTION_ENV_MUTATED derivation |
+| NON_EFFECTS | No Production execution |
+
+### EXP-021 S4F-5 Production preflight — global budget rollout readiness (2026-10-01)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Read-only VPS audit; `di-v0-s4f5-production-preflight.sh`; evidence `EXP021_S4F5_PRODUCTION_PREFLIGHT.md` |
+| FINDING | Production `1dd42240…` healthy dual-replica; **behind** main `8fa531b27…`; S4F-4 assets absent; config `MISSING`; `PRODUCTION_ROLLOUT_PREREQUISITE=DEPLOY_REQUIRED` |
+| NON_EFFECTS | No deploy, env mutation, restart, S4 activation, DIMO provider calls, or S4F-4 mutation mode |
+
+### EXP-021 S4F-5.1 Production release delta preflight (2026-10-01)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Evidence `EXP021_S4F5_1_RELEASE_DELTA_PREFLIGHT.md` — VO2 migrations NOT_APPLIED; data/FK/duplicate/collision checks pass; `DEPLOY_READINESS=PASS` for SHA `8fa531b27…` via `vps-deploy-release.sh` |
+| FINDING | 16 historical rolled-back `_prisma_migrations` tombstones; 0 active incomplete migrations; Production link index differs from Prisma name `uq_data_source_link_active` (VO2.1 uses DROP IF EXISTS) |
+| NON_EFFECTS | No deploy, migrate, env mutation, or restart |
+
+### EXP-021 S4F-7C exact-SHA dormant deploy authorization gate (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Read-only re-validation vs S4F-7B; evidence `EXP021_S4F7C_EXACT_SHA_DORMANT_DEPLOY_AUTHORIZATION_GATE.md`; frozen deploy command for SHA `ee958854…` only |
+| FINDING | Production `8fa531b27…` unchanged; **PASS**; `HUMAN_DORMANT_DEPLOY_AUTHORIZATION=NOT_GRANTED_IN_THIS_TASK` |
+| NON_EFFECTS | No deploy execution in S4F-7C; human deploy followed in S4F-7D |
+
+### EXP-021 S4F-7D exact-SHA dormant Production deploy (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Executed canonical `cloud-agent-deploy.sh` with `SYNQDRIVE_REQUESTED_DEPLOY_SHA=ee958854…`; evidence `EXP021_S4F7D_DORMANT_PRODUCTION_DEPLOY_RESULT.md` |
+| FINDING | Production now `ee958854…` release `20261002014651_v4994`; `DiV0S4RuntimeModule` boot-registered; S4 dormant/fail-closed preserved; **0** migration applied |
+| NON_EFFECTS | No kill initializer, no S4 env activation, no operator grant, no Tiny |
+
+### EXP-021 S4F-7F Production kill initializer wrapper engineering (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Guarded Production wrapper `di-v0-s4-initialize-global-kill-row-production.sh` + TS guard lib/CLI + tests (`test:di:s4f7f:kill-init-wrapper`); evidence `EXP021_S4F7F_PRODUCTION_KILL_INITIALIZER_WRAPPER_ENGINEERING.md` |
+| FINDING | Wrapper can run from newer `main` while invoking initializer under verified release `ee958854…` / `20261002014651_v4994`; **`WRAPPER_REQUIRES_NEW_CODE_DEPLOY_BEFORE_USE=NO`** |
+| NON_EFFECTS | No Production GLOBAL row write, no env/PM2/deploy, no Tiny/operator grant |
+
+### EXP-021 S4F-7J Tiny config staging wrapper engineering (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Dedicated Production wrapper `di-v0-s4-stage-tiny-production.sh` (exactly three frozen env keys), TS guard/mutation lib + CLI, bash helpers, cloud bootstrap `.cursor/scripts/cloud-agent-s4-tiny-staging.sh`, tests `test:di:s4f7j:tiny-staging-wrapper` (32 cases); evidence `EXP021_S4F7J_TINY_CONFIG_STAGING_WRAPPER_ENGINEERING.md` |
+| FINDING | **`SUPPORTED_ENV_MUTATION_KEY_COUNT=3`**; S4F-4 global-budget wrapper unchanged; recovery + rolling restart A→B + filtered `/proc` runtime proof |
+| NON_EFFECTS | No Production env/DB/restart/deploy; Tiny gate **NOT_SATISFIED**; GLOBAL remains **KILLED** |
+
+### EXP-021 S4F-7J.1 Tiny staging wrapper safety closure (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | PR #1888 closure: remove Ops→S4B import (`di-v0-s4-tiny-staging-frozen-not-before.ts`); live topology/budget/Redis pre-mutation gates; exact three-key diff + independent post-write verify; fatal config audit; `PRIMARY_STAGING` / `RECOVERY_PRESTATE` runtime proofs; full rollback verification; DIMO R1 vehicle SQL authority; safe `/proc` sudo read; durable backup dir |
+| FINDING | **`S4B_DORMANT_AUDIT=PASS`**; **`OPS_DIRECT_S4B_IMPORT_COUNT=0`**; wrapper tests **47** |
+| NON_EFFECTS | No Production mutation/deploy/restart/DB write |
+
+### EXP-021 S4F-7K Production Tiny staging dry run (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Read-only Production `DRY_RUN=1` via `cloud-agent-s4-tiny-staging.sh`; remediation commits on evidence branch (text `vehicle_id` SQL, sudo bootstrap env, `dry-run-intent`); evidence `EXP021_S4F7K_PRODUCTION_TINY_STAGING_DRY_RUN.md` |
+| FINDING | **`PRODUCTION_TINY_STAGING_DRY_RUN_READINESS=PASS`** on tool SHA `947a70540…`; frozen merge `040170104…` **`VEHICLE_DB_PROOF=FAIL`** (`::uuid` on text ids); **`GUARDS_OK=YES`**; intended **3** env keys; **`ENV_MUTATION_COUNT=0`**; post `backend.env` SHA256 unchanged; replica PIDs unchanged |
+| NON_EFFECTS | No Production env/DB/restart/deploy/migration/provider call; **`TINY_ACTIVATION_READY=NO`** |
+
+### EXP-021 S4F-7L Production Tiny 3-key config staging attempt (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Human-authorized `DRY_RUN=0` via `cloud-agent-s4-tiny-staging.sh` @ `947a70540…`; evidence `EXP021_S4F7L_PRODUCTION_TINY_CONFIG_STAGING.md` |
+| FINDING | Pre-guards **PASS**; exact **3-key** file write + backup **PASS**; Replica A **`PRIMARY_STAGING` runtime proof FAIL** (`REPLICA_A_RUNTIME_*_EXACT=NO`); **`ROLLBACK_RESULT=COMPLETE`**; final `backend.env` SHA256 restored to pre-pin; **staging keys MISSING**; GLOBAL **KILLED**; S4 counts **0** |
+| NON_EFFECTS | No Tiny activation; no GLOBAL DB write; no deploy/migration; no provider calls; **authorization consumed** — no in-task retry |
+
+### EXP-021 S4F-7I NO_BACKFILL Tiny staging preflight (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Read-only Production preflight for KS MS 661 Tiny; proposed NOT_BEFORE + allowlists; evidence `EXP021_S4F7I_NO_BACKFILL_TINY_STAGING_PREFLIGHT.md` |
+| FINDING | **`NO_BACKFILL_TINY_STAGING_READINESS=PASS`**; 510 historical trips; 499 hypothetical discovery-eligible without NOT_BEFORE; cutoff excludes all at capture |
+| NON_EFFECTS | No env/DB/deploy/restart; Tiny gate still **NOT_SATISFIED** |
+
+### EXP-021 S4F-7H Production GLOBAL=KILLED initialization (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Human-authorized `DRY_RUN=0` wrapper execution; `DI_V0_S4_GLOBAL_KILL_INIT_RESULT=INSERTED_KILLED`; evidence `EXP021_S4F7H_PRODUCTION_GLOBAL_KILLED_INITIALIZATION.md` |
+| FINDING | **`PRODUCTION_GLOBAL_KILLED_INITIALIZATION_READINESS=PASS`**; post-read GLOBAL **KILLED** reason/actor match pins; S4 persistence unchanged; replica PIDs unchanged |
+| NON_EFFECTS | No Tiny grant, no S4 enablement, no env/deploy/restart/migration, no provider calls |
+
+### EXP-021 S4F-7G Production kill initializer dry-run (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Authorized Production `DRY_RUN=1` via tool SHA `0b0eac19…` temp checkout + wrapper guards; evidence `EXP021_S4F7G_PRODUCTION_KILL_INITIALIZER_DRY_RUN.md` |
+| FINDING | **`PRODUCTION_KILL_INITIALIZER_DRY_RUN_READINESS=PASS`**; independent post-read GLOBAL count **0**, S4 counts **0**, env SHA unchanged |
+| NON_EFFECTS | No initializer invoke, no GLOBAL row write, no deploy/restart/migration, Tiny gate still **NOT_SATISFIED** |
+| OPERATIONAL | Hostinger path A: `backend.env` root-only — dry-run required `sudo -n` wrapper exec; bootstrap follow-up to pass `SYNQDRIVE_BACKEND_ENV` + sudo |
+
+### EXP-021 S4F-7F-1 Production kill wrapper safety closure (PR #1882, 2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Fail-closed Production DB reads; steady-state replica release identity; S4F-4 authenticated metrics; DB-backed post-write actor/reason; initializer path pin + deployed worktree clean; `.cursor/scripts/cloud-agent-s4-global-kill-init.sh`; expanded `test:di:s4f7f:kill-init-wrapper` (48 cases) |
+| FINDING | **`NEWER_MAIN_INITIALIZER_SUBSTITUTION_POSSIBLE=NO`** when path pinned; remote bootstrap pins wrapper SHA separately from Production runtime SHA |
+| NON_EFFECTS | No Production dry-run/mutation; GLOBAL row remains **MISSING** |
+
+### EXP-021 S4F-7E DB GLOBAL kill initialization preflight (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Read-only Production VPS/Postgres + initializer/schema audit; evidence `EXP021_S4F7E_DB_KILL_INITIALIZATION_PREFLIGHT.md` |
+| FINDING | Production `ee958854…` unchanged; GLOBAL row **missing**; S4 counts **0**; initializer @ deployed SHA **safe**; postgres concurrency tests **PASS**; **`DB_KILL_INITIALIZATION_READINESS=BLOCKED`** — `PRODUCTION_EXECUTION_WRAPPER_REQUIRED` |
+| NON_EFFECTS | No initializer execution, no Production DB/env/deploy/restart, no Tiny/operator grant |
+
+### EXP-021 S4F-7B dormant Production deploy preflight (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Read-only VPS + Postgres audit; evidence `EXP021_S4F7B_DORMANT_PRODUCTION_DEPLOY_PREFLIGHT.md`; ops helper `di-v0-s4f7b-dormant-production-deploy-preflight.sh` |
+| FINDING | Production `8fa531b27…` healthy; S4 env dormant; GLOBAL kill row missing; **0** S4 rows; target `ee958854…` adds S4 runtime registration with **0** pending migrations → **DORMANT_DEPLOY_READINESS=PASS** |
+| NON_EFFECTS | No deploy, env/DB mutation, restart, operator grant, Tiny activation |
+
+### EXP-021 S4F-7A Tiny execution prerequisites engineering (2026-10-01)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `DiV0S4RuntimeModule` + S4C bootstrap; `DI_V0_S4_DISCOVERY_TRIP_END_NOT_BEFORE` S4B containment; `initializeDiV0S4GlobalKillRow` + ops CLI; tests (dormant bootstrap, containment, kill init); S4F-7 deploy-prerequisite addendum |
+| AUTHORITY | NO_BACKFILL on S4B overlay; frozen S4A contract v2 **unchanged** |
+| NON_EFFECTS | No Production deploy/migrate/env/restart; no operator `GRANTED`; no Tiny activation; no GLOBAL `NOT_KILLED` seed |
+| NEXT | Review/merge S4F-7A → separate **dormant** Production deploy preflight |

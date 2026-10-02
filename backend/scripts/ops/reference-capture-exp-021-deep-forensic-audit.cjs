@@ -38,6 +38,151 @@ function setDiff(a, b) {
   return a.filter((x) => !bs.has(x));
 }
 
+function countExp021SlotStatuses(slots) {
+  if (!slots?.length) {
+    return {
+      slotCount: 0,
+      slotSuccessCount: 0,
+      slotZeroResultCount: 0,
+      slotFailureCount: 0,
+      slotSkippedCount: 0,
+      slotAccountedCount: 0,
+    };
+  }
+  let slotSuccessCount = 0;
+  let slotZeroResultCount = 0;
+  let slotFailureCount = 0;
+  let slotSkippedCount = 0;
+  for (const slot of slots) {
+    if (slot.status === 'SUCCESS') slotSuccessCount += 1;
+    if (slot.status === 'ZERO_RESULT') slotZeroResultCount += 1;
+    if (slot.status === 'FAILURE') slotFailureCount += 1;
+    if (slot.status === 'SKIPPED_WITH_REASON') slotSkippedCount += 1;
+  }
+  return {
+    slotCount: slots.length,
+    slotSuccessCount,
+    slotZeroResultCount,
+    slotFailureCount,
+    slotSkippedCount,
+    slotAccountedCount:
+      slotSuccessCount + slotZeroResultCount + slotFailureCount + slotSkippedCount,
+  };
+}
+
+function buildForensicSlotView(slot, phase) {
+  return {
+    slotIndex: slot.slotIndex,
+    dueAtMs: slot.dueAtMs,
+    scheduledAt: new Date(slot.dueAtMs).toISOString(),
+    issuedAtMs: slot.issuedAtMs ?? null,
+    issuedAt: slot.issuedAtMs != null ? new Date(slot.issuedAtMs).toISOString() : null,
+    requestCompletedAtMs: slot.requestCompletedAtMs ?? null,
+    requestCompletedAt:
+      slot.requestCompletedAtMs != null
+        ? new Date(slot.requestCompletedAtMs).toISOString()
+        : null,
+    status: slot.status,
+    bucketCount: slot.bucketCount ?? null,
+    providerCallAttempted: slot.providerCallAttempted ?? null,
+    providerCallSucceeded: slot.providerCallSucceeded ?? null,
+    outcomeReason: slot.outcomeReason ?? null,
+    effectivePollIntervalMs: slot.effectivePollIntervalMs ?? phase.effectivePollIntervalMs ?? null,
+    skipReason: slot.skipReason ?? null,
+    calibrationPhaseId: phase.calibrationPhaseId,
+    phaseSequence: phase.phaseSequence,
+    settlementLinkageModel: 'PHASE_LEVEL_LINK',
+  };
+}
+
+function resolvePhysicalFirstPhaseStartedAt(authority) {
+  if (!authority) return null;
+  const canonical = authority.physicalFirstPhaseStartedAt;
+  const legacy = authority.physicalPhase60StartedAt;
+  if (canonical && legacy && Date.parse(canonical) !== Date.parse(legacy)) {
+    return { conflict: true, canonical, legacy };
+  }
+  return canonical ?? legacy ?? null;
+}
+
+function deriveForensicSlotCountsFromSummary(summary) {
+  const slots = summary.exp021RequestSlots ?? [];
+  if (slots.length > 0) {
+    const ledgerCounts = countExp021SlotStatuses(slots);
+    let slotLedgerParity = 'NOT_APPLICABLE';
+    if (summary.slotSuccessCount != null) {
+      const persisted = {
+        slotCount: summary.slotCount ?? slots.length,
+        slotSuccessCount: summary.slotSuccessCount,
+        slotZeroResultCount: summary.slotZeroResultCount ?? 0,
+        slotFailureCount: summary.slotFailureCount ?? 0,
+        slotSkippedCount: summary.slotSkippedCount ?? 0,
+        slotAccountedCount: summary.slotAccountedCount ?? 0,
+      };
+      slotLedgerParity =
+        persisted.slotSuccessCount === ledgerCounts.slotSuccessCount &&
+        persisted.slotZeroResultCount === ledgerCounts.slotZeroResultCount &&
+        persisted.slotFailureCount === ledgerCounts.slotFailureCount &&
+        persisted.slotSkippedCount === ledgerCounts.slotSkippedCount &&
+        persisted.slotAccountedCount === ledgerCounts.slotAccountedCount &&
+        persisted.slotCount === ledgerCounts.slotCount
+          ? 'YES'
+          : 'NO';
+    }
+    return { counts: ledgerCounts, slotLedgerParity };
+  }
+  if (summary.slotSuccessCount != null) {
+    return {
+      counts: {
+        slotCount: summary.slotCount ?? 0,
+        slotSuccessCount: summary.slotSuccessCount,
+        slotZeroResultCount: summary.slotZeroResultCount ?? 0,
+        slotFailureCount: summary.slotFailureCount ?? 0,
+        slotSkippedCount: summary.slotSkippedCount ?? 0,
+        slotAccountedCount: summary.slotAccountedCount ?? 0,
+      },
+      slotLedgerParity: 'NOT_APPLICABLE',
+    };
+  }
+  return { counts: countExp021SlotStatuses(slots), slotLedgerParity: 'NOT_APPLICABLE' };
+}
+
+function extractExp021SlotForensics(sessionRow, completedSummaries) {
+  const authority =
+    sessionRow?.preflightJson?.exp021PhysicalAuthority ??
+    sessionRow?.preflightJson?.['exp021PhysicalAuthority'] ??
+    null;
+  const physicalFirstPhase = resolvePhysicalFirstPhaseStartedAt(authority);
+  const phases = (completedSummaries ?? []).map((summary) => {
+    const slots = summary.exp021RequestSlots ?? [];
+    const { counts, slotLedgerParity } = deriveForensicSlotCountsFromSummary(summary);
+    return {
+      calibrationPhaseId: summary.calibrationPhaseId,
+      phaseSequence: summary.phaseSequence,
+      effectivePollIntervalMs: summary.effectivePollIntervalMs,
+      ...counts,
+      slotLedgerParity,
+      slots: slots.map((slot) => buildForensicSlotView(slot, summary)),
+    };
+  });
+  return {
+    physicalAuthority: authority
+      ? {
+          canonicalT0At: authority.canonicalT0At,
+          physicalFirstPhaseStartedAt:
+            physicalFirstPhase && physicalFirstPhase.conflict
+              ? null
+              : physicalFirstPhase,
+          physicalPhase60StartedAt: authority.physicalPhase60StartedAt ?? null,
+          firstPhaseAuthorityConflict:
+            physicalFirstPhase && physicalFirstPhase.conflict ? physicalFirstPhase : null,
+        }
+      : null,
+    phases,
+    settlementLinkageModel: 'PHASE_LEVEL_LINK',
+  };
+}
+
 function classifyProbe(maturation) {
   const ages = AGES_MS.map((ms) => maturation[ms]).filter(Boolean);
   if (ages.length === 0) return 'UNKNOWN_REFERENCE_UNIVERSE';
@@ -99,6 +244,7 @@ async function main() {
         vehicleId: true,
         startedAt: true,
         acquisitionStateJson: true,
+        preflightJson: true,
         updatedAt: true,
       },
     });
@@ -163,6 +309,7 @@ async function main() {
       activePhase: series.activePhase ?? null,
       canonicalT0: session?.acquisitionStateJson?.exp021CanonicalT0 ?? null,
     };
+    out.exp021SlotForensics = extractExp021SlotForensics(session, completed);
 
     const observations = exp
       ? await prisma.referenceCaptureSettlementShadowObservation.findMany({

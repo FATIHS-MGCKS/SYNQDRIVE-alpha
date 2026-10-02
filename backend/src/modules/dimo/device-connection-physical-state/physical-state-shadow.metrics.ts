@@ -31,3 +31,10 @@ export function recordPhysicalStateShadowCorrectnessBlocker(
 ): void {
   metrics.connectivityPhysicalStateShadowCorrectnessBlockerTotal.inc(input);
 }
+
+export function recordPhysicalStateShadowObservationPersistenceFailure(
+  metrics: TripMetricsService,
+  input: { provider: string },
+): void {
+  metrics.connectivityPhysicalStateShadowObservationPersistenceFailureTotal.inc(input);
+}

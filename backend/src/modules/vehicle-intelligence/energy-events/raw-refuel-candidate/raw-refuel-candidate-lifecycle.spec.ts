@@ -49,4 +49,17 @@ describe('raw-refuel-candidate-lifecycle', () => {
       RawRefuelCandidateLifecycleTransitionError,
     );
   });
+
+  it('allows INSUFFICIENT → SETTLING evidence refinement (F10.6.6-A)', () => {
+    expect(isValidRawRefuelCandidateLifecycleTransition('INSUFFICIENT', 'SETTLING')).toBe(
+      true,
+    );
+    expect(resolveNextLifecycleState('INSUFFICIENT', 'SETTLING')).toBe('SETTLING');
+  });
+
+  it('allows INSUFFICIENT → READY_FOR_PERSIST when evidence matures', () => {
+    expect(resolveNextLifecycleState('INSUFFICIENT', 'READY_FOR_PERSIST')).toBe(
+      'READY_FOR_PERSIST',
+    );
+  });
 });

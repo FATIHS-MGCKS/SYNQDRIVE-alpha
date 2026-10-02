@@ -2,6 +2,7 @@ import {
   isBatteryV2HvFallbackChargeSessionEnabled,
   isLegacyCrankAssessmentEnabled,
   isBatteryV2ReadinessEnabled,
+  isBatteryV2RestSessionFeaturesShadowEnabled,
 } from './battery-health-v2.config';
 
 describe('battery-health-v2.config defaults', () => {
@@ -24,5 +25,10 @@ describe('battery-health-v2.config defaults', () => {
   it('keeps readiness disabled by default', () => {
     delete process.env.BATTERY_V2_READINESS_ENABLED;
     expect(isBatteryV2ReadinessEnabled()).toBe(false);
+  });
+
+  it('keeps M3.3C rest-session feature shadow disabled by default', () => {
+    delete process.env.BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED;
+    expect(isBatteryV2RestSessionFeaturesShadowEnabled()).toBe(false);
   });
 });

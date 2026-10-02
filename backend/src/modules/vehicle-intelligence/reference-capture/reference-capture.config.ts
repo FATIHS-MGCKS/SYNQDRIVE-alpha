@@ -139,4 +139,50 @@ export class ReferenceCaptureConfig {
       this.configService.get<boolean>('referenceCapture.settlementShadowEnabled') === true
     );
   }
+
+  isExp021MaturationShadowEnabled(): boolean {
+    return this.configService.get<boolean>('referenceCapture.exp021MaturationShadowEnabled') === true;
+  }
+
+  isExp021MaturationShadowHfLaneEnabled(): boolean {
+    return (
+      this.isExp021MaturationShadowEnabled() &&
+      this.configService.get<boolean>('referenceCapture.exp021MaturationShadowHfLaneEnabled') === true
+    );
+  }
+
+  isExp021MaturationShadowSettlementLaneEnabled(): boolean {
+    return (
+      this.isExp021MaturationShadowEnabled() &&
+      this.configService.get<boolean>('referenceCapture.exp021MaturationShadowSettlementLaneEnabled') ===
+        true
+    );
+  }
+
+  getExp021MaturationShadowAllowlistTokenIds(): number[] {
+    return this.configService.get<number[]>('referenceCapture.exp021MaturationShadowAllowlistTokenIds') ?? [];
+  }
+
+  getExp021MaturationShadowMaxActiveFamilies(): number {
+    const raw = this.configService.get<number>('referenceCapture.exp021MaturationShadowMaxActiveFamilies');
+    if (raw == null || !Number.isFinite(raw) || raw < 0) return 0;
+    return Math.floor(raw);
+  }
+
+  isFleetCoordinatorEnabled(): boolean {
+    return this.configService.get<boolean>('referenceCapture.fleetCoordinatorEnabled') === true;
+  }
+
+  isFleetDryRun(): boolean {
+    return this.configService.get<boolean>('referenceCapture.fleetDryRun') !== false;
+  }
+
+  getFleetCoordinatorIntervalMs(): number {
+    const raw = this.configService.get<number>('referenceCapture.fleetCoordinatorIntervalMs');
+    if (raw == null || !Number.isFinite(raw)) return 45_000;
+    const floored = Math.floor(raw);
+    if (floored < 5_000) return 5_000;
+    if (floored > 300_000) return 300_000;
+    return floored;
+  }
 }

@@ -50,6 +50,10 @@ function baseDet(overrides: Record<string, unknown> = {}) {
 
 function buildOrchestrationHarness(detOverrides: Record<string, unknown> = {}) {
   const det = baseDet(detOverrides);
+  const proto = TripDetectionOrchestrationService.prototype as unknown as Record<
+    string,
+    (...args: never[]) => unknown
+  >;
   const transitionState = jest.fn().mockResolvedValue({});
   const scheduleActiveTick = jest.fn().mockResolvedValue(undefined);
   const schedulePossibleEndCheck = jest.fn().mockResolvedValue(undefined);
@@ -63,6 +67,7 @@ function buildOrchestrationHarness(detOverrides: Record<string, unknown> = {}) {
   ]);
   const runAll = jest.fn();
   const evaluateEndCandidate = jest.fn();
+  const checkDimoActivityResumed = jest.fn().mockResolvedValue(false);
 
   const svc = {
     logger: { log: jest.fn(), debug: jest.fn(), warn: jest.fn() },
@@ -94,7 +99,10 @@ function buildOrchestrationHarness(detOverrides: Record<string, unknown> = {}) {
     detectorRegistry: { runAll },
     decisionEngine: { evaluateEndCandidate },
     dimoProviderContext: jest.fn().mockReturnValue({}),
-    checkDimoActivityResumed: jest.fn().mockResolvedValue(false),
+    checkDimoActivityResumed,
+    cancelPossibleEndForResumedActivity: proto.cancelPossibleEndForResumedActivity,
+    evaluateClickHouseSkipResumeRevalidation:
+      proto.evaluateClickHouseSkipResumeRevalidation,
     parseEvidenceTimestamp: jest.fn().mockReturnValue(null),
     ensurePossibleEndClockDurability: jest
       .fn()
@@ -114,7 +122,7 @@ function buildOrchestrationHarness(detOverrides: Record<string, unknown> = {}) {
     fetchEndValidationWindow,
     runAll,
     evaluateEndCandidate,
-    checkDimoActivityResumed: svc.checkDimoActivityResumed as jest.Mock,
+    checkDimoActivityResumed,
   };
 }
 

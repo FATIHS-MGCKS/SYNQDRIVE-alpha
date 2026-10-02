@@ -1,3 +1,4 @@
+import { defaultRawFuelRefuelFallbackConfigForTests } from '@config/raw-fuel-refuel-fallback.config';
 import { FuelType } from '@prisma/client';
 import { DimoSegmentsService } from '@modules/dimo/dimo-segments.service';
 import { RawFuelRefuelFallbackRuntimeService } from './raw-fuel-refuel-fallback-runtime.service';
@@ -30,7 +31,12 @@ describe('RFRF F4-PR2.1 fetch outcome integration', () => {
       undefined,
       undefined,
       undefined,
-    ).withConfigLoader(() => ({ masterEnabled: true, persistEnabled: false, cutoverAt: null }));
+    ).withConfigLoader(() =>
+      defaultRawFuelRefuelFallbackConfigForTests({
+        masterEnabled: true,
+        persistEnabled: false,
+      }),
+    );
   }
 
   it('SUCCESS empty telemetry => no_samples (not sample_fetch_failed)', async () => {

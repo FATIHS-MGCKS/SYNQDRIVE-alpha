@@ -12,6 +12,7 @@
 This directory is the **repository-native knowledge authority** for Energy Event Detection (EED). It answers, for human and AI agents:
 
 - How REFUEL and RECHARGE events are detected, parsed, coalesced, and persisted
+- **ERD (EV Recharge Detection):** canonical physical charge session authority (Model A), native>fallback, projection to `VehicleEnergyEvent.RECHARGE`
 - What `durationSeconds` means vs `fuelLevelRiseDurationSeconds` (REFUEL only)
 - How sibling reconciliation and coalesce pruning work
 - Who invokes detection (ATE MAY_TRIGGER; EED owns semantics)
@@ -22,10 +23,10 @@ This directory is the **repository-native knowledge authority** for Energy Event
 
 ## Authority firewall (KG-ATE ↔ KG-EED)
 
-| KG-ATE | KG-EED |
+| KG-ATE | KG-EED / ERD |
 |--------|--------|
-| MAY_TRIGGER `detectEnergyEvents` (reconciliation step 5) | OWNS REFUEL/RECHARGE detection semantics |
-| Documents scheduler cadence indirectly | OWNS coalescing, persist gates, fuel-rise derivation |
+| MAY_TRIGGER `detectEnergyEvents` (reconciliation step 5) | OWNS REFUEL detection; **ERD** owns physical RECHARGE session + projection contract |
+| Documents scheduler cadence indirectly | OWNS coalescing, persist gates, fuel-rise derivation (REFUEL) |
 | Must NOT own `durationSeconds` energy meaning | OWNS sibling reconciliation rules |
 | References `ATE-EXT-006` only | OWNS API DTO and UI card semantics |
 
@@ -41,6 +42,7 @@ energy-event-detection/
     edges.yaml
     invariants.yaml
   decisions/DECISIONS.md
+  decisions/ERD-E1-CANONICAL-PHYSICAL-CHARGE-AUTHORITY-2026-09-24.md
   evidence/EVIDENCE_REGISTRY.md
   open-questions/OPEN_QUESTIONS.md
   history/CHANGELOG.md
@@ -79,4 +81,4 @@ See `history/CHANGELOG.md` and `architecture/KG_EED_FINAL_AUTHORITY_CLOSURE_2026
 
 - **KG-ATE:** `architecture/knowledge-graphs/automatic-trip-enrichment/`
 - **KG-Scaling-Process:** DIMO provider budget, scheduler leader
-- **Battery V2:** orthogonal HV charge sessions
+- **Battery V2:** consumes canonical HV charge session evidence — see ERD-E1 ADR

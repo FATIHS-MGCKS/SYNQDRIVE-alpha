@@ -7,12 +7,20 @@ import type { RawFuelRiseDetectionContext } from './raw-fuel-signal-sample.types
 import type { RawFuelRiseDetectorConfig } from './raw-fuel-rise-detector.config';
 import type { NormalizedRawFuelSample } from './raw-fuel-rise-normalizer';
 import {
+  evaluateRawFuelRiseSemanticGaps,
+  isStrictSampleGapWithinLimit,
+} from './raw-fuel-rise-gap-semantics';
+import {
   extractChannelSeries,
   maxGapSeconds,
   median,
   withinTolerance,
 } from './raw-fuel-rise-normalizer';
 import { readCorroborationAt } from './raw-fuel-rise-channel-authority';
+import {
+  buildBaselineRecencyEvidenceMeta,
+  evaluateRawFuelPrePlateauRecency,
+} from './raw-fuel-pre-plateau-baseline-recency.policy';
 
 interface ChannelPoint {
   timestamp: Date;
@@ -39,6 +47,8 @@ interface DetectedRiseDraft {
   maxSampleGapSeconds: number;
   sensorResetSuspected: boolean;
   returnedToBaselineBeforePost: boolean;
+  baselineRecencyReason: string | null;
+  baselineRecencyMeta: Record<string, unknown>;
 }
 
 /** F3.1 — every sample must lie within tolerance of the final robust median. */
@@ -151,11 +161,13 @@ function findLocalPostPlateauAfterRise(
   const minPersistenceMs = cfg.postPlateauMinPersistenceMs;
   const material = materialThreshold(channel, config);
   const peakTimeMs = series[peakIdx].timestamp.getTime();
-  const maxLocalSearchMs = cfg.maxSampleGapMs;
+  /** Search for post plateau within rise episode bounds — not the 6m inter-sample continuity limit. */
+  const maxPostSearchAfterPeakMs = config.riseMaxDurationMs;
+  const maxPostPlateauInterSampleMs = cfg.maxSampleGapMs;
 
   for (let i = Math.max(searchStartIdx, peakIdx); i < series.length; i++) {
     const gapFromPeakMs = series[i].timestamp.getTime() - peakTimeMs;
-    if (gapFromPeakMs > maxLocalSearchMs) break;
+    if (gapFromPeakMs > maxPostSearchAfterPeakMs) break;
 
     if (series[i].value < preMedian + material) continue;
     if (series[i].value < peakValue - tolerance) continue;
@@ -168,7 +180,7 @@ function findLocalPostPlateauAfterRise(
 
       const interSampleGapMs =
         series[j].timestamp.getTime() - series[j - 1].timestamp.getTime();
-      if (interSampleGapMs > maxLocalSearchMs) break;
+      if (interSampleGapMs > maxPostPlateauInterSampleMs) break;
 
       const candidateValues = [...window.map((p) => p.value), series[j].value];
       const { valid } = validatePlateauWindow(candidateValues, tolerance);
@@ -217,6 +229,13 @@ function findLocalPostPlateauAfterRise(
           samples: window,
         };
       }
+      /** Provisional post plateau — classifyLifecycle may hold SETTLING until persistence matures. */
+      return {
+        startIdx: i,
+        endIdx: i + window.length - 1,
+        median: center,
+        samples: window,
+      };
     }
   }
   return null;
@@ -355,16 +374,25 @@ function classifyLifecycle(
     return { lifecycleState: 'REJECTED', rejectionReason: 'RISE_NOT_STABLE' };
   }
 
-  const criticalPath = [
-    ...draft.prePlateau.samples,
-    ...draft.risePoints,
-    ...(draft.postPlateau?.samples ?? []),
-  ];
-  const gapSeconds = maxGapSeconds(criticalPath);
-  if (gapSeconds * 1000 > cfg.maxSampleGapMs) {
-    return draft.postPlateau
-      ? { lifecycleState: 'SETTLING', rejectionReason: 'SAMPLE_GAP_TOO_LARGE' }
-      : { lifecycleState: 'INSUFFICIENT', rejectionReason: 'SAMPLE_GAP_TOO_LARGE' };
+  const semanticGaps = evaluateRawFuelRiseSemanticGaps({
+    preSamples: draft.prePlateau.samples,
+    risePoints: draft.risePoints,
+    postSamples: draft.postPlateau?.samples ?? [],
+    maxSampleGapMs: cfg.maxSampleGapMs,
+  });
+
+  if (semanticGaps.failedStrictRegion != null) {
+    return {
+      lifecycleState: 'REJECTED',
+      rejectionReason: 'SAMPLE_GAP_TOO_LARGE',
+    };
+  }
+
+  if (!isStrictSampleGapWithinLimit(semanticGaps, cfg.maxSampleGapMs)) {
+    return {
+      lifecycleState: 'REJECTED',
+      rejectionReason: 'SAMPLE_GAP_TOO_LARGE',
+    };
   }
 
   if (!draft.postPlateau) {
@@ -414,6 +442,29 @@ export function detectChannelRises(
       continue;
     }
 
+    const riseOnsetAt = series[rise.riseStartIdx].timestamp;
+    const interveningPrimarySamples = series
+      .slice(pre.endIdx + 1, rise.riseStartIdx)
+      .map((p) => ({ timestamp: p.timestamp, value: p.value }));
+
+    const baselineRecency = evaluateRawFuelPrePlateauRecency({
+      prePlateauStartAt: pre.samples[0]?.timestamp,
+      prePlateauEndAt: pre.samples[pre.samples.length - 1]?.timestamp,
+      riseOnsetAt,
+      riseOnsetPrimaryValue: series[rise.riseStartIdx].value,
+      prePlateauMedian: pre.median,
+      interveningPrimarySamples,
+      signalChannel: channel,
+      config,
+    });
+
+    if (baselineRecency.classification !== 'FRESH') {
+      cursor = pre.startIdx + 1;
+      continue;
+    }
+
+    const baselineRecencyMeta = buildBaselineRecencyEvidenceMeta(baselineRecency);
+
     const peakValue = Math.max(...rise.risePoints.map((p) => p.value));
     const post = findLocalPostPlateauAfterRise(
       series,
@@ -436,6 +487,8 @@ export function detectChannelRises(
         : series[rise.peakIdx].timestamp,
       sensorResetSuspected: rise.sensorResetSuspected,
       returnedToBaselineBeforePost: rise.returnedToBaseline,
+      baselineRecencyReason: baselineRecency.reason,
+      baselineRecencyMeta,
     };
 
     const lifecycle = classifyLifecycle(baseDraft, channel, config);
@@ -449,6 +502,8 @@ export function detectChannelRises(
       ...baseDraft,
       ...lifecycle,
       maxSampleGapSeconds: maxGapSeconds(criticalPath),
+      baselineRecencyReason: baselineRecency.reason,
+      baselineRecencyMeta,
     });
 
     cursor = post ? post.endIdx + 1 : rise.peakIdx + 1;
@@ -488,6 +543,8 @@ export function draftToObservationFields(
   const risePeak = Math.max(...draft.risePoints.map((p) => p.value));
   const primaryPost = draft.postPlateau?.median ?? risePeak;
   const primaryDelta = primaryPost - primaryPre;
+
+  const baselineRecencyMeta = draft.baselineRecencyMeta;
 
   const absoluteFields =
     draft.channel === 'ABSOLUTE_LITERS'
@@ -532,6 +589,7 @@ export function draftToObservationFields(
       thresholdProvenance: config.thresholdProvenance,
       providerSampleSpacingNotPhysicalDuration: true,
       provisionalPostContinuationGraceMs: config.provisionalPostContinuationGraceMs,
+      baselineRecency: baselineRecencyMeta,
     },
     qualityMeta: {
       maxSampleGapSeconds: draft.maxSampleGapSeconds,

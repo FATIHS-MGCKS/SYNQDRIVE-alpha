@@ -33,6 +33,7 @@ describe('DimoSnapshotProcessor — trip start isolation', () => {
       vehicle: {
         findUnique: jest.fn().mockResolvedValue({
           organizationId: 'org-1',
+          registryLifecycle: 'ACTIVE',
           hardwareType: 'AUTOPI',
           dimoVehicle: { connectionStatus: 'CONNECTED' },
           dataSourceLinks: [{ id: 'link-1', sourceSubtype: null }],

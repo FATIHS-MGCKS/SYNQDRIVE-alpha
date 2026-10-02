@@ -89,6 +89,7 @@ export class RawRefuelPromotionPreparationService {
       absoluteDetectionAdmissibility: admissibility,
       absoluteSignalTrust: context.absoluteSignalTrust ?? candidate.absoluteSignalTrust,
       nativeOverlap,
+      candidateEvidenceMeta: candidate.evidenceMeta,
     });
     this.metrics?.recordPromotionBlocked(eligibility.status);
 

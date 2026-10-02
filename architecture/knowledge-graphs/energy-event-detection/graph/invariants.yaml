@@ -159,3 +159,123 @@ invariants:
     source_paths:
       - backend/src/modules/vehicle-intelligence/energy-events/energy-events.pipeline.ts
       - backend/src/modules/dimo/fixtures/ks-mx-2024-aug28-refuel.fixture.ts
+
+  - id: EED-INV-014
+    kind: CONFIRMED_INVARIANT
+    title: ERD one physical charge one canonical session
+    epistemic_status: CONFIRMED
+    statement: >
+      After ERD cutover, exactly one canonical HvChargeSession semantic row represents
+      each physical EV/PHEV charging episode. Superseded fallback rows remain as
+      evidence but must not be product-counted as separate recharge episodes.
+    evidence: [EED-EV-0076, EED-EV-0077]
+    source_paths:
+      - architecture/knowledge-graphs/energy-event-detection/decisions/ERD-E1-CANONICAL-PHYSICAL-CHARGE-AUTHORITY-2026-09-24.md
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-charge-session/hv-charge-session-persist.service.ts
+
+  - id: EED-INV-015
+    kind: CONFIRMED_INVARIANT
+    title: ERD native recharge authoritative over telemetry fallback
+    epistemic_status: CONFIRMED
+    statement: >
+      For the same physical episode, DIMO native recharge supersedes
+      TELEMETRY_POLL_FALLBACK sessions in metadata without deleting historical rows.
+    evidence: [EED-EV-0077]
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-charge-session/hv-fallback-charge-session.supersede.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-charge-session/hv-charge-session.merge.ts
+
+  - id: EED-INV-016
+    kind: CONFIRMED_INVARIANT
+    title: VehicleEnergyEvent RECHARGE is product projection after ERD cutover
+    epistemic_status: CONFIRMED
+    statement: >
+      VehicleEnergyEvent RECHARGE must not remain an independent physical authority
+      after ERD projection cutover (E5). Pre-cutover direct DIMO→VEE writes are
+      legacy product history only.
+    evidence: [EED-EV-0076, EED-EV-0077]
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/energy-events.service.ts
+      - architecture/knowledge-graphs/energy-event-detection/decisions/ERD-E1-CANONICAL-PHYSICAL-CHARGE-AUTHORITY-2026-09-24.md
+
+  - id: EED-INV-017
+    kind: CONFIRMED_INVARIANT
+    title: ERD authority is capability-driven not OEM-driven
+    epistemic_status: CONFIRMED
+    statement: >
+      EV recharge routing uses VehicleBatteryCapability and HvMethodProfile signal
+      availability, not Tesla or LTE R1 name as authority keys.
+    evidence: [EED-EV-0077]
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-method-profile/hv-method-profile.resolver.ts
+      - backend/src/modules/vehicle-intelligence/battery-health/capability-preflight/battery-capability-signals.registry.ts
+
+  - id: EED-INV-018
+    kind: CONFIRMED_INVARIANT
+    title: RFRF promotion trust never bypasses native convergence
+    epistemic_status: CONFIRMED
+    statement: >
+      Even when absoluteSignalTrust becomes TRUSTED in a future slice, SYNQDRIVE_RAW_FUEL_FALLBACK
+      promotion must not create a Product REFUEL when authoritative native convergence classifies
+      the same physical refuel (including bounded stretched-end SAME_NATIVE).
+    evidence: [EED-EV-0097]
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-refuel-promotion.service.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-refuel-native-fallback-stretched-end.policy.ts
+
+  - id: EED-INV-019
+    kind: CONFIRMED_INVARIANT
+    title: RFRF fallback promotion requires fresh pre-fill baseline authority
+    epistemic_status: CONFIRMED
+    statement: >
+      SYNQDRIVE_RAW_FUEL_FALLBACK promotion must not proceed unless persisted baseline recency
+      classification is explicitly FRESH; legacy READY rows without provenance remain held
+      (BLOCKED_BASELINE_RECENCY) even if trust becomes available later.
+    evidence: [EED-EV-0098]
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-refuel-promotion-eligibility.evaluator.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-rise-detector/raw-fuel-pre-plateau-baseline-recency.policy.ts
+
+  - id: EED-INV-020
+    kind: CONFIRMED_INVARIANT
+    title: RFRF READY promotion uses evidence refreshed under current authority versions
+    epistemic_status: CONFIRMED
+    statement: >
+      A READY_FOR_PERSIST fallback candidate may proceed toward promotion only when
+      evidenceMeta.readyEvidenceRefresh is current for the active refresh policy,
+      trust resolver, and detector/detection versions; stale refresh proofs require
+      bounded historical DIMO reload before convergence/promotion.
+    evidence: [EED-EV-0099]
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-refuel-ready-evidence-refresh.policy.ts
+
+  - id: EED-INV-021
+    kind: CONFIRMED_INVARIANT
+    title: RFRF promotion TRUSTED requires hybrid corroboration authority
+    epistemic_status: CONFIRMED
+    statement: >
+      A fallback candidate may receive absoluteSignalTrust=TRUSTED only from the versioned
+      hybrid trust authority using sufficient current evidence with locality-bounded relative
+      corroboration adjacent to the physical rise; fuel capability, absolute field presence,
+      detection admissibility, or candidate readiness alone can never establish promotion trust.
+    evidence: [EED-EV-0100]
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-fuel-hybrid-absolute-signal-trust.authority.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-fuel-signal-trust.resolver.ts
+
+  - id: EED-INV-022
+    kind: CONFIRMED_INVARIANT
+    title: RFRF hybrid trust production activation is scoped and fail-closed
+    epistemic_status: CONFIRMED
+    statement: >
+      Effective promotion trust from hybrid TRUSTED classification requires promotion-time
+      revalidation against the current versioned activation policy (ALPHA_ALLOWLIST organization
+      or vehicle UUID) using persisted hybrid provenance and DB-authoritative vehicle
+      organization ownership; candidate row absoluteSignalTrust and caller context must never
+      elevate trust; missing/malformed hybrid provenance yields UNKNOWN; malformed allowlist
+      tokens fail closed for the entire list; tenant mismatch between candidate.organizationId
+      and Vehicle.organizationId fails closed.
+    evidence: [EED-EV-0101]
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-fuel-hybrid-trust-activation.authority.ts
+      - backend/src/modules/vehicle-intelligence/energy-events/raw-fuel-refuel-fallback/raw-refuel-promotion.service.ts

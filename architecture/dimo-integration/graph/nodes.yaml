@@ -89,7 +89,7 @@ nodes:
     title: Five-vehicle R9 provider canary PASS
     source_type: PRODUCTION_OBSERVATION
     epistemic_status: CONFIRMED
-    summary: 5/5 speed+ignition subscriptions; stableIds 9eeb7158afee, 5d611d470eab; 190497 excluded; natural wake not observed.
+    summary: 5/5 speed+ignition subscriptions on authorized cohort; stableIds 9eeb7158afee, 5d611d470eab; historically excluded former-fleet asset not in cohort B.
     source_paths:
       - architecture/dimo-integration/evidence/R9_FIVE_VEHICLE_CANARY_2026-09-07.md
 
@@ -104,19 +104,40 @@ nodes:
     evidence:
       - DIM-EVID-R9-AUDIT-001
 
+  - id: DIM-EVID-OQ006-BOUNDARY-001
+    type: evidence
+    title: OQ-006 segment vs FSM boundary audit (cross-ref TDL)
+    source_type: PRODUCTION_OBSERVATION
+    epistemic_status: CONFIRMED
+    summary: DIMO fetch-only; Trip Detection owns mutations; RESOLVED_WITH_BOUNDED_GAPS.
+    source_paths:
+      - architecture/trip-detection-lifecycle/evidence/TDL_OQ_006_DIMO_SEGMENT_FSM_BOUNDARY_AUDIT_2026-09-25.md
+
+  - id: DIM-DEC-OQ006-001
+    type: decision
+    title: Segment provider transport vs trip boundary mutation ownership
+    decision_status: VALIDATED
+    epistemic_status: CONFIRMED
+    summary: DimoSegmentsService does not mutate VehicleTrip; reconciliation gates apply.
+    source_paths:
+      - backend/src/modules/dimo/dimo-segments.service.ts
+      - backend/src/modules/vehicle-intelligence/trips/reconciliation/trip-reconciliation.service.ts
+    evidence:
+      - DIM-EVID-OQ006-BOUNDARY-001
+
   - id: DIM-GAP-001
     type: gap
     title: Segment reconciliation ownership
-    epistemic_status: UNKNOWN
-    summary: Partial split with Trip Detection.
+    epistemic_status: CONFIRMED
+    summary: RESOLVED — DIM-DEC-OQ006-001; provider transport vs TripDecisionEngine mutations.
     source_paths:
-      - architecture/dimo-integration/contradictions/KNOWLEDGE_GAPS.md
+      - architecture/trip-detection-lifecycle/evidence/TDL_OQ_006_DIMO_SEGMENT_FSM_BOUNDARY_AUDIT_2026-09-25.md
 
   - id: DIM-GAP-002
     type: gap
     title: Provider trigger subscription inventory
     epistemic_status: UNKNOWN
-    summary: R9 active cohort 5/5 verified via GET audit; broader fleet inventory remains partial.
+    summary: R9 authorized cohort 5/5; scheduler DB 6 incl. stale mirror; re-read @ 8a1d9c658… via TDL-OQ-009.
     source_paths:
       - architecture/dimo-integration/contradictions/KNOWLEDGE_GAPS.md
 
@@ -138,9 +159,9 @@ nodes:
 
   - id: DIM-GAP-005
     type: gap
-    title: Stale SynqDrive mirror for former fleet tokenId 190497
+    title: Stale SynqDrive mirror for HISTORICALLY_EXCLUDED_FORMER_FLEET_ASSET
     epistemic_status: CONFIRMED
-    summary: DB shows AVAILABLE/CONNECTED with active consent/link; Identity privileged absent; excluded from R9 cohort; cleanup deferred.
+    summary: STALE_FORMER_FLEET_SCHEDULER_MIRROR_COUNT=1; DB AVAILABLE/CONNECTED drift; excluded from R9 authorized cohort; cleanup deferred.
     source_paths:
       - architecture/dimo-integration/contradictions/KNOWLEDGE_GAPS.md
 
@@ -148,9 +169,23 @@ nodes:
     type: gap
     title: Natural R9 webhook wake end-to-end delivery
     epistemic_status: INFERRED
-    summary: First natural start wake observed tokenId 187361 @ 684950419…; payload archive and efficiency gaps remain.
+    summary: Natural R9 start wake PRODUCTION_OBSERVED (KS MS 661); fleet-wide KPI unknown; payload archive gaps remain.
     source_paths:
       - architecture/dimo-integration/evidence/KS_MS_661_R9_WAKE_2026-09-08.md
+      - architecture/dimo-integration/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: DIM-GAP-007
+    type: gap
+    title: Driving-events / event-summary fetch failures swallowed to empty results (no ingest attestation)
+    epistemic_status: CONFIRMED
+    summary: >
+      DimoSegmentsService fetchDrivingEventsChunkWithRetry returns [] after 3 failed retries and
+      fetchEventDataSummary returns [] on error, so a provider failure is indistinguishable from zero
+      events. Recorded cross-module by DI (EXP-021 C1D.10A, DI-GAP-S4-NATIVE-READINESS-001); no DIMO code
+      change. Closure (strict failure propagation + per-trip attestation) belongs to a separately
+      authorized native-ingest slice.
+    source_paths:
+      - architecture/drivingintelligence/evidence/EXP021_C1D10A_AUTHORITY_CORRECTION.md
       - architecture/dimo-integration/contradictions/KNOWLEDGE_GAPS.md
 
   - id: DIM-CX-001
@@ -165,9 +200,31 @@ nodes:
     type: hypothesis
     title: Production receives speed/ignition webhooks for active R9 cohort
     epistemic_status: INFERRED
-    summary: Provider wiring 5/5 validated; natural delivery not yet observed.
+    summary: Provider wiring 5/5 validated; natural start wake observed historically; fleet-wide delivery KPI unknown.
     source_paths:
       - architecture/dimo-integration/research/OPEN_HYPOTHESES.md
+
+  - id: DIM-EVID-OQ009-CROSS-001
+    type: evidence
+    title: TDL-OQ-009 cross-ref subscription and cohort semantics
+    source_type: PRODUCTION_OBSERVATION
+    epistemic_status: CONFIRMED
+    summary: R9 authorized cohort 5/5 @ 8a1d9c658…; scheduler DB 6 with one stale former-fleet mirror; ingress contract aligned.
+    source_paths:
+      - architecture/trip-detection-lifecycle/evidence/TDL_OQ_009_TIERED_POLLING_R9_INGRESS_2026-09-26.md
+
+  - id: DIM-EVID-DI-S3B-R1-SCHEMA-001
+    type: evidence
+    title: DIMO telemetry schema facts for DI S3B R1 OBD fields (EXP-021 C1D.9)
+    source_type: AUDIT_DOCUMENT
+    epistemic_status: CONFIRMED
+    summary: >
+      Public telemetry GraphQL introspection + DIMO VSS 4.2 spec — speed/rpm/obdThrottlePosition/obdEngineLoad/
+      powertrainCombustionEngineECT/powertrainTransmissionCurrentGear/isIgnitionOn are nullable Float with
+      FloatAggregation (AVG, MED, MAX, MIN, RAND, FIRST, LAST); gear is a signed int8 index and ignition a
+      boolean, both unsafe under AVG. Consumed by the dormant DI S3B R1 adapter (query V0_3).
+    source_paths:
+      - architecture/drivingintelligence/evidence/EXP021_C1D9_R1_FIELD_AUTHORITY_V03_CORRECTION.md
 
   - id: DIM-FAIL-GOV-001
     type: failed_approach

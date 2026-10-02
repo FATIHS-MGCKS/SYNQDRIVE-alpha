@@ -20,6 +20,10 @@ import {
   type PhysicalRefuelSettlementConfig,
   DEFAULT_PHYSICAL_REFUEL_SETTLEMENT_CONFIG,
 } from './physical-refuel-settlement.design';
+import {
+  evaluateIrreversibleCanonicalPinning,
+  IRREVERSIBLE_CANONICAL_PINNED_REASON,
+} from './physical-refuel-late-sibling-authority.util';
 
 export interface PhysicalRefuelReconciliationDecision {
   reconciliationLockKey: string;
@@ -41,6 +45,11 @@ export interface PhysicalRefuelReconciliationContext {
   firstSeenAtById?: Record<string, number>;
   asOfMs?: number;
   settlementConfig?: PhysicalRefuelSettlementConfig;
+  /**
+   * Prior-final owners whose enrichment/enqueue state is irreversible — intra-component
+   * late-sibling checks remain fail-closed for these ids (F10.6.8-A).
+   */
+  irreversiblePriorFinalOwnerIds?: Set<string>;
   /** IDs that reached FINAL_DISTINCT enrichment before a late sibling arrived. */
   priorDistinctFinalizationIds?: Set<string>;
   /** IDs that were in a FINAL_CANONICAL group that was already enriched. */
@@ -52,6 +61,8 @@ export interface PhysicalRefuelReconciliationContext {
   priorFinalRowsById?: Record<string, RefuelRowForMatcher>;
   /** @deprecated use priorDistinctFinalizationIds */
   priorDistinctSettlementIds?: Set<string>;
+  /** Agreed canonicalEventId from persisted late-sibling INSUFFICIENT rows (F10.6.8-A.1). */
+  persistedLateSiblingCanonicalEventId?: string | null;
 }
 
 /**
@@ -118,6 +129,7 @@ function hasLateSiblingFinalizationConflict(
   priorDistinct: Set<string>,
   priorCanonical: Set<string>,
   priorFinalRowsById?: Record<string, RefuelRowForMatcher>,
+  irreversiblePriorFinalOwnerIds?: Set<string>,
 ): boolean {
   const finalizedIds = new Set([...priorDistinct, ...priorCanonical]);
   if (!finalizedIds.size) return false;
@@ -125,6 +137,12 @@ function hasLateSiblingFinalizationConflict(
   for (const member of component.members) {
     for (const finalizedId of finalizedIds) {
       if (member.id === finalizedId) continue;
+      if (component.memberIds.includes(finalizedId)) {
+        const irreversible = irreversiblePriorFinalOwnerIds?.has(finalizedId) ?? false;
+        if (priorCanonical.has(finalizedId) && !irreversible) {
+          continue;
+        }
+      }
       const cell = getPairCell(matrix, member.id, finalizedId);
       if (cell) {
         if (
@@ -199,13 +217,36 @@ function decisionFromComponent(
 
   const isSiblingGroup = component.members.length > 1;
   const canonical = isSiblingGroup ? chooseCanonicalFromGroup(component.members) : component.members[0];
-  const lateSiblingConflict = hasLateSiblingFinalizationConflict(
+  let lateSiblingConflict = hasLateSiblingFinalizationConflict(
     component,
     matrix,
     priorDistinct,
     priorCanonical,
     context?.priorFinalRowsById,
+    context?.irreversiblePriorFinalOwnerIds,
   );
+
+  const settlementHorizonMs =
+    context?.settlementConfig?.settlementHorizonMs ??
+    DEFAULT_PHYSICAL_REFUEL_SETTLEMENT_CONFIG.settlementHorizonMs;
+
+  let pinResult: { pin: true; ownerId: string } | { pin: false } = { pin: false };
+  if (lateSiblingConflict && isSiblingGroup) {
+    pinResult = evaluateIrreversibleCanonicalPinning({
+      component,
+      chosenCanonicalId: canonical.id,
+      asOfMs,
+      firstObservedAtById,
+      settlementHorizonMs,
+      irreversiblePriorFinalOwnerIds:
+        context?.irreversiblePriorFinalOwnerIds ?? new Set<string>(),
+      priorCanonicalFinalizationIds: priorCanonical,
+      persistedCanonicalEventId: context?.persistedLateSiblingCanonicalEventId,
+    });
+    if (pinResult.pin) {
+      lateSiblingConflict = false;
+    }
+  }
 
   const settlement = determinePhysicalRefuelSettlement({
     group: component.members,
@@ -221,6 +262,25 @@ function decisionFromComponent(
       ? [...component.reasonCodes, 'late_sibling_after_finalization']
       : component.reasonCodes,
   });
+
+  if (pinResult.pin) {
+    const auditReasonCodes = [
+      ...component.reasonCodes,
+      'late_sibling_after_finalization',
+    ] as IdentityAmbiguityReasonCode[];
+    return {
+      reconciliationLockKey: lockKey,
+      classification: 'SAME_PHYSICAL_REFUEL',
+      canonicalEventId: pinResult.ownerId,
+      provisionalCanonicalId: pinResult.ownerId,
+      siblingEventIds: component.memberIds,
+      enrichmentEligibleId: pinResult.ownerId,
+      finalityState: 'FINAL_CANONICAL',
+      reason: IRREVERSIBLE_CANONICAL_PINNED_REASON,
+      reasonCodes: auditReasonCodes,
+      settlementWindowOpen: false,
+    };
+  }
 
   return {
     reconciliationLockKey: lockKey,

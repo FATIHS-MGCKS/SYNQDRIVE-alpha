@@ -1,4 +1,5 @@
 import { Test } from '@nestjs/testing';
+import { defaultRawFuelRefuelFallbackConfigForTests } from '@config/raw-fuel-refuel-fallback.config';
 import { DimoSegmentsService } from '@modules/dimo/dimo-segments.service';
 import { RawRefuelCandidateService } from '../raw-refuel-candidate/raw-refuel-candidate.service';
 import { RawFuelRefuelFallbackRuntimeService } from './raw-fuel-refuel-fallback-runtime.service';
@@ -47,11 +48,12 @@ describe('RawFuelRefuelFallbackRuntimeService Nest DI bootstrap', () => {
 
     const service = moduleRef
       .get(RawFuelRefuelFallbackRuntimeService)
-      .withConfigLoader(() => ({
-        masterEnabled: true,
-        persistEnabled: false,
-        cutoverAt: null,
-      }));
+      .withConfigLoader(() =>
+        defaultRawFuelRefuelFallbackConfigForTests({
+          masterEnabled: true,
+          persistEnabled: false,
+        }),
+      );
 
     const result = await service.scanIfEnabled({
       organizationId: 'org',

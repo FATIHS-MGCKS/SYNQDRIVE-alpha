@@ -85,6 +85,12 @@ import { BatteryHealthService } from './battery-health/battery-health.service';
 import { HvBatteryHealthService } from './battery-health/hv-battery-health.service';
 import { BatteryV2Service } from './battery-health/battery-v2.service';
 import { BatteryEvidenceService } from './battery-health/battery-evidence.service';
+import { BatteryGroundTruthRepository } from './battery-health/ground-truth/ground-truth.repository';
+import { BatteryGroundTruthSourceResolver } from './battery-health/ground-truth/ground-truth-source.resolver';
+import { BatteryGroundTruthService } from './battery-health/ground-truth/ground-truth.service';
+import { BatteryGroundTruthInspectionService } from './battery-health/ground-truth/ground-truth-inspection.service';
+import { BatteryGroundTruthEmissionService } from './battery-health/ground-truth/ground-truth-emission.service';
+import { BatteryGroundTruthBackedSourceGuard } from './battery-health/ground-truth/ground-truth-backed-source.guard';
 import { CanonicalBatteryHealthService } from './battery-health/canonical-battery-health.service';
 import { BatteryMeasurementSessionRepository } from './battery-health/battery-measurement-session.repository';
 import { BatteryMeasurementSessionService } from './battery-health/battery-measurement-session.service';
@@ -100,6 +106,7 @@ import {
   HvChargeSessionIngestService,
   HvChargeSessionPersistService,
   HvChargeSessionRepository,
+  HvChargeSessionNativeFallbackConvergenceService,
   HvFallbackChargeSessionDetectorService,
   HvRechargeSessionReconcileProducerService,
   HvRechargeSessionReconcileService,
@@ -190,10 +197,27 @@ import { ReferenceCaptureFastGoService } from './reference-capture/reference-cap
 import { ReferenceCaptureSettlementShadowRepository } from './reference-capture/reference-capture-settlement-shadow.repository';
 import { ReferenceCaptureSettlementShadowRunnerService } from './reference-capture/reference-capture-settlement-shadow-runner.service';
 import { ReferenceCaptureSettlementShadowService } from './reference-capture/reference-capture-settlement-shadow.service';
+import { ReferenceCaptureExp021FleetRepository } from './reference-capture/exp021-fleet/reference-capture-exp021-fleet.repository';
+import { ReferenceCaptureExp021FleetCoordinatorService } from './reference-capture/exp021-fleet/reference-capture-exp021-fleet-coordinator.service';
+import { ReferenceCaptureExp021CanaryLiveWindowActivationService } from './reference-capture/exp021-canary-live-window/reference-capture-exp021-canary-live-window-activation.service';
+import { ReferenceCaptureExp021MaturationShadowRepository } from './reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow.repository';
+import { ReferenceCaptureExp021MaturationShadowRunnerService } from './reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-runner.service';
+import { ReferenceCaptureExp021MaturationShadowEnrollmentService } from './reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-enrollment.service';
+import { ReferenceCaptureExp021MaturationShadowWorkerService } from './reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-worker.service';
+import { ReferenceCaptureExp021MaturationShadowProviderQueryAdapter } from './reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-provider-query.adapter';
 import { TripDrivingImpactBackfillService } from './driving-impact/trip-driving-impact-backfill.service';
 import { BrakingEventLedgerService } from './brakes/braking-event-ledger.service';
 import { EnergyEventsService } from './energy-events/energy-events.service';
+import { ErdRechargeShadowParityMetricsService } from './energy-events/erd-recharge-shadow-parity/erd-recharge-shadow-parity.metrics';
+import { ErdRechargeProductReadDedupeMetricsService } from './energy-events/erd-recharge-product-read-dedupe/erd-recharge-product-read-dedupe.metrics';
+import { ErdRechargeWriteAuthorityMetricsService } from './energy-events/erd-recharge-write-authority/erd-recharge-write-authority.metrics';
+import { ErdRechargeWriteCutoverReadinessService } from './energy-events/erd-recharge-write-authority/erd-recharge-write-cutover-readiness.service';
+import { ErdRechargeCanonicalProjectionRuntimeService } from './energy-events/erd-recharge-write-authority/erd-recharge-canonical-projection-runtime.service';
+import { ErdRechargeShadowParityRepository } from './energy-events/erd-recharge-shadow-parity/erd-recharge-shadow-parity.repository';
+import { ErdRechargeShadowParityRuntimeService } from './energy-events/erd-recharge-shadow-parity/erd-recharge-shadow-parity.runtime';
+import { ErdRechargeShadowParityService } from './energy-events/erd-recharge-shadow-parity/erd-recharge-shadow-parity.service';
 import { RawRefuelCandidateService } from './energy-events/raw-refuel-candidate/raw-refuel-candidate.service';
+import { RawRefuelCandidateRecoveryService } from './energy-events/raw-refuel-candidate/raw-refuel-candidate-recovery.service';
 import { RawFuelRefuelFallbackRuntimeService } from './energy-events/raw-fuel-refuel-fallback/raw-fuel-refuel-fallback-runtime.service';
 import { RawRefuelPromotionPreparationService } from './energy-events/raw-fuel-refuel-fallback/raw-refuel-promotion-preparation.service';
 import { RawRefuelConvergenceService } from './energy-events/raw-fuel-refuel-fallback/raw-refuel-convergence.service';
@@ -231,8 +255,13 @@ import { BatteryV2JobsProducerModule } from './battery-health/jobs/battery-v2-jo
 import { DriveProfileResolverService } from './drive-profile/drive-profile-resolver.service';
 import { FuelStationCandidateRepository } from './fuel-stations/fuel-station-candidate.repository';
 import { FuelStationLocationResolverService } from './fuel-stations/fuel-station-location-resolver.service';
+import { ChargingStationCandidateRepository } from './charging-stations/charging-station-candidate.repository';
+import { ChargingStationLocationResolverService } from './charging-stations/charging-station-location-resolver.service';
 import { FuelStationEnrichmentProducerService } from './fuel-stations/enrichment/fuel-station-enrichment-producer.service';
 import { FuelStationEnrichmentOrchestratorService } from './fuel-stations/enrichment/fuel-station-enrichment-orchestrator.service';
+import { ChargingStationEnrichmentProducerService } from './charging-stations/enrichment/charging-station-enrichment-producer.service';
+import { ChargingStationEnrichmentOrchestratorService } from './charging-stations/enrichment/charging-station-enrichment-orchestrator.service';
+import { ChargingStationEnrichmentMetricsService } from './charging-stations/enrichment/charging-station-enrichment.metrics';
 import { LvBatteryChemistryResolverService } from './lv-battery-chemistry/lv-battery-chemistry-resolver.service';
 import { BatteryPolicyProfileService } from './battery-policy-profile/battery-policy-profile.service';
 import { BatteryCapabilityPreflightRepository } from './battery-health/capability-preflight/battery-capability-preflight.repository';
@@ -260,10 +289,12 @@ import { EventTripAssociationModule } from './trips/event-association/event-trip
 import { VehicleFindingsModule } from './findings/findings.module';
 import { FindingLifecycleService } from './findings/finding-lifecycle.service';
 import { FindingBridgeService } from './findings/finding-bridge.service';
+import { DiV0S4RuntimeModule } from './driving-intelligence/s4-runtime/di-v0-s4-runtime.module';
 
 @Module({
   imports: [
     forwardRef(() => DimoModule),
+    DiV0S4RuntimeModule,
     forwardRef(() => AiModule),
     forwardRef(() => MisuseCasesModule),
     forwardRef(() => InvoicesModule),
@@ -287,8 +318,10 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
       { name: QUEUE_NAMES.BATTERY_V2 },
       { name: QUEUE_NAMES.BRAKE_RECALCULATION },
       { name: QUEUE_NAMES.ENERGY_REFUEL_STATION_ENRICH },
+      { name: QUEUE_NAMES.ENERGY_RECHARGE_STATION_ENRICH },
       { name: QUEUE_NAMES.REFERENCE_CAPTURE },
       { name: QUEUE_NAMES.REFERENCE_CAPTURE_SETTLEMENT_SHADOW },
+      { name: QUEUE_NAMES.REFERENCE_CAPTURE_EXP021_MATURATION_SHADOW },
     ),
   ],
   controllers: [VehicleIntelligenceController, DamagesOrgController, DrivingDecisionsController, VehicleBatteryReferenceCapacityController, HvCapacityShadowEvaluationController, BatteryShadowValidationController, ReferenceCaptureController],
@@ -381,6 +414,12 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     HvBatteryHealthService,
     BatteryV2Service,
     BatteryEvidenceService,
+    BatteryGroundTruthRepository,
+    BatteryGroundTruthSourceResolver,
+    BatteryGroundTruthService,
+    BatteryGroundTruthInspectionService,
+    BatteryGroundTruthEmissionService,
+    BatteryGroundTruthBackedSourceGuard,
     CanonicalBatteryHealthService,
     BatteryMeasurementSessionRepository,
     BatteryMeasurementSessionService,
@@ -393,6 +432,7 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     LvCanonicalBatteryResolverService,
     HvMethodProfileService,
     HvChargeSessionRepository,
+    HvChargeSessionNativeFallbackConvergenceService,
     HvChargeSessionPersistService,
     HvChargeSessionIngestService,
     HvFallbackChargeSessionDetectorService,
@@ -412,8 +452,13 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     DriveProfileResolverService,
     FuelStationCandidateRepository,
     FuelStationLocationResolverService,
+    ChargingStationCandidateRepository,
+    ChargingStationLocationResolverService,
     FuelStationEnrichmentProducerService,
     FuelStationEnrichmentOrchestratorService,
+    ChargingStationEnrichmentProducerService,
+    ChargingStationEnrichmentOrchestratorService,
+    ChargingStationEnrichmentMetricsService,
     PhysicalRefuelCoordinateRuntimeService,
     PhysicalRefuelReconciliationRuntimeService,
     LvBatteryChemistryResolverService,
@@ -471,6 +516,14 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     ReferenceCaptureSettlementShadowRepository,
     ReferenceCaptureSettlementShadowRunnerService,
     ReferenceCaptureSettlementShadowService,
+    ReferenceCaptureExp021FleetRepository,
+    ReferenceCaptureExp021FleetCoordinatorService,
+    ReferenceCaptureExp021CanaryLiveWindowActivationService,
+    ReferenceCaptureExp021MaturationShadowRepository,
+    ReferenceCaptureExp021MaturationShadowProviderQueryAdapter,
+    ReferenceCaptureExp021MaturationShadowRunnerService,
+    ReferenceCaptureExp021MaturationShadowEnrollmentService,
+    ReferenceCaptureExp021MaturationShadowWorkerService,
     TripAssessabilityRepository,
     TripAssessabilityService,
     TripAssessabilityInputLoader,
@@ -502,7 +555,16 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     DrivingDecisionsService,
     TripDrivingImpactBackfillService,
     EnergyEventsService,
+    ErdRechargeShadowParityRepository,
+    ErdRechargeShadowParityMetricsService,
+    ErdRechargeProductReadDedupeMetricsService,
+    ErdRechargeWriteAuthorityMetricsService,
+    ErdRechargeWriteCutoverReadinessService,
+    ErdRechargeCanonicalProjectionRuntimeService,
+    ErdRechargeShadowParityService,
+    ErdRechargeShadowParityRuntimeService,
     RawRefuelCandidateService,
+    RawRefuelCandidateRecoveryService,
     RawFuelRefuelFallbackRuntimeService,
     RawRefuelPromotionPreparationService,
     RawRefuelConvergenceService,
@@ -601,6 +663,12 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     HvBatteryHealthService,
     BatteryV2Service,
     BatteryEvidenceService,
+    BatteryGroundTruthRepository,
+    BatteryGroundTruthSourceResolver,
+    BatteryGroundTruthService,
+    BatteryGroundTruthInspectionService,
+    BatteryGroundTruthEmissionService,
+    BatteryGroundTruthBackedSourceGuard,
     CanonicalBatteryHealthService,
     BatteryMeasurementSessionRepository,
     BatteryMeasurementSessionService,
@@ -613,6 +681,7 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     LvCanonicalBatteryResolverService,
     HvMethodProfileService,
     HvChargeSessionRepository,
+    HvChargeSessionNativeFallbackConvergenceService,
     HvChargeSessionPersistService,
     HvChargeSessionIngestService,
     HvFallbackChargeSessionDetectorService,
@@ -632,8 +701,13 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     DriveProfileResolverService,
     FuelStationCandidateRepository,
     FuelStationLocationResolverService,
+    ChargingStationCandidateRepository,
+    ChargingStationLocationResolverService,
     FuelStationEnrichmentProducerService,
     FuelStationEnrichmentOrchestratorService,
+    ChargingStationEnrichmentProducerService,
+    ChargingStationEnrichmentOrchestratorService,
+    ChargingStationEnrichmentMetricsService,
     PhysicalRefuelCoordinateRuntimeService,
     PhysicalRefuelReconciliationRuntimeService,
     LvBatteryChemistryResolverService,
@@ -677,6 +751,10 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     ReferenceCaptureRetentionService,
     ReferenceCaptureSettlementShadowService,
     ReferenceCaptureSettlementShadowRunnerService,
+    ReferenceCaptureExp021MaturationShadowWorkerService,
+    ReferenceCaptureExp021MaturationShadowRunnerService,
+    ReferenceCaptureExp021FleetCoordinatorService,
+    ReferenceCaptureExp021CanaryLiveWindowActivationService,
     TripAssessabilityRepository,
     TripAssessabilityService,
     DrivingEvidenceRepository,
@@ -695,6 +773,7 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
     DriverAttributionService,
     TripDrivingImpactBackfillService,
     EnergyEventsService,
+    RawRefuelCandidateRecoveryService,
     TripDecisionEngine,
     TripDetectionPolicyResolver,
     TripReconciliationService,

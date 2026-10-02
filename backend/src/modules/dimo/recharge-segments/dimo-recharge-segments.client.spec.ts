@@ -18,18 +18,20 @@ describe('dimo-recharge-segments normalizer', () => {
     const normalized = normalizeDimoRechargeSegment(TESLA_RECHARGE_AUDIT_TOKEN_ID, raw);
 
     expect(normalized).not.toBeNull();
-    expect(normalized!.providerSegmentId).toBe('seg-audit-ksfh-1');
-    expect(normalized!.segmentId).toBe('seg-audit-ksfh-1');
+    expect(normalized!.providerSegmentId).toBeNull();
+    expect(normalized!.segmentId).toBe(normalized!.fingerprint);
     expect(normalized!.startAt).toBe('2026-06-15T17:47:29.000Z');
     expect(normalized!.endAt).toBe('2026-06-16T10:39:23.000Z');
     expect(normalized!.ongoing).toBe(false);
     expect(normalized!.soc.min).toBe(41.2);
     expect(normalized!.soc.max).toBe(48.5);
     expect(normalized!.soc.delta).toBeCloseTo(7.3, 1);
+    expect(normalized!.soc.provenance).toBe('SEGMENT_EXTREMA');
     expect(normalized!.currentEnergyKwh.delta).toBeCloseTo(3.64, 2);
     expect(normalized!.addedEnergyKwh.delta).toBeCloseTo(13.92, 2);
-    expect(normalized!.isCharging.start).toBe(false);
-    expect(normalized!.isCharging.end).toBe(true);
+    expect(normalized!.isCharging.anyTrue).toBe(true);
+    expect(normalized!.isCharging.allTrue).toBe(false);
+    expect(normalized!.durationProvenance).toBe('PROVIDER_DURATION');
     expect(normalized!.sourceTimestamps.segmentStartAt).toBe(
       '2026-06-15T17:47:29.000Z',
     );
@@ -53,8 +55,9 @@ describe('dimo-recharge-segments normalizer', () => {
     expect(normalized!.ongoing).toBe(true);
     expect(normalized!.endAt).toBeNull();
     expect(normalized!.sourceTimestamps.segmentEndAt).toBeNull();
-    expect(normalized!.isCharging.start).toBe(true);
-    expect(normalized!.isCharging.end).toBe(true);
+    expect(normalized!.isCharging.anyTrue).toBe(true);
+    expect(normalized!.isCharging.allTrue).toBe(true);
+    expect(normalized!.durationProvenance).toBe('PROVIDER_DURATION');
   });
 });
 

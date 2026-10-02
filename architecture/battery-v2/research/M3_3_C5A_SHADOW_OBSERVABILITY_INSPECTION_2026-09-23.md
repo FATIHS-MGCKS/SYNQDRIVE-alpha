@@ -1,0 +1,132 @@
+# M3.3C C5A — Shadow observability + read-only inspection (2026-09-23)
+
+**Package:** C5A engineering only — **no production deploy**, **no migration**, **no shadow flag enable**.  
+**Starting main:** `8f7d95e44f7adca29f6934e8eaf54df97faa84d6` (C4 merged).  
+**Production baseline (unchanged):** `2b0ef15fc80069676cd44f1b852a362434f7ffb7`.
+
+## Purpose
+
+Answer operationally (without judging battery health):
+
+- Did a C4 trigger occur? Why? Outcome?
+- Did C3 create or dedupe a row? Fail-open?
+- How long did synchronous C4→C3 work take?
+- What feature revisions exist? Which row is canonical?
+- Does persisted `inputSummary` still hash to `inputDigest`?
+- Is `semanticRevision` lineage internally consistent?
+
+**C5B** (Master Admin inspection UI) — **COMPLETE ON MAIN** merged PR #1733 @ `969cc3f19`. Internal read-only engineering/ops surface over **`M3_3C_C5A_V1`** (not customer health). **M3.3H** remains the future customer-facing Vehicle Detail → Health UI.
+
+## Prometheus metrics (bounded labels)
+
+Recorded **only** in `RestSessionFeatureShadowTriggerService` (`finally` block — single accounting point).
+
+| Metric | Labels | Notes |
+|--------|--------|-------|
+| `synqdrive_battery_rest_session_feature_trigger_total` | `reason`, `outcome` | Once per C4 trigger call |
+| `synqdrive_battery_rest_session_feature_trigger_duration_seconds` | `reason`, `outcome` | Histogram; buckets 0.005–5s |
+| `synqdrive_battery_rest_session_feature_row_created_total` | `phase`, `trust` | **Only** on C3 `CREATED` |
+
+**Allowed `reason`:** `VALID_REST_OBSERVATION_LINKED`, `REST_SESSION_TERMINAL`, `LATE_TRIP_ASSOCIATION`.
+
+**Allowed `outcome`:** `SKIPPED_FLAG_OFF`, `CREATED`, `DUPLICATE_EXISTING`, `SESSION_NOT_FOUND`, `FAILED_ISOLATED`.
+
+**Allowed `phase`:** `INCREMENTAL`, `FINAL`. **Allowed `trust`:** `VALID`, `INVALIDATED`.
+
+**Forbidden metric labels:** org/vehicle/session/uuid/digest/error text (logs may retain detail).
+
+**Flag OFF:** `SKIPPED_FLAG_OFF` metric allowed; **C3 invocation count = 0**; **no DB query**.
+
+## Read-only inspection
+
+- **Service:** `RestSessionFeatureShadowInspectionService.inspectSession({ organizationId, vehicleId, restSessionId, includeRaw? })`
+- **Contract:** `REST_SESSION_FEATURE_SHADOW_INSPECTION_CONTRACT_VERSION = M3_3C_C5A_V1`
+- **Tenant scope:** all three IDs required; `SESSION_NOT_FOUND` on mismatch (no cross-tenant fallback)
+- **Digest verification:** reuses `computeFeatureInputDigestFromSnapshot` (C3 serializer) — no second serializer
+- **Canonical row:** reuses `selectCanonicalRestSessionFeatureShadowRow()` — no reimplementation
+- **Revision limit:** `REST_SESSION_FEATURE_SHADOW_INSPECTION_MAX_REVISIONS = 100` with `revisionsTruncated`
+- **`includeRaw` default:** `false`; `true` exposes `inputSummary`, `chargeOpportunityRaw`, `pairwiseRestDeltas`
+
+**Overall status (diagnostic only):** `OK` | `NO_FEATURE_ROWS` | `INTEGRITY_WARNING` | `INTEGRITY_PARTIAL` — not a health score.
+
+Use letter codes **C5B–C5H** aligned with package IDs **M3.3C C5B … M3.3H** (same milestones).
+
+## Roadmap (M3.3C shadow → customer Health UI)
+
+| Phase | Scope |
+|-------|--------|
+| **M3.3C C5A** | Observability + read-only inspection (metrics, ops CLI) — **COMPLETE** PR #1732 @ main `87599311c` |
+| **M3.3C C5B** | Master Admin shadow inspection UI — **COMPLETE ON MAIN** PR #1733 @ `969cc3f19` |
+| **M3.3D** | Longitudinal battery profile — **D0/D0.1 COMPLETE ON MAIN** PR #1735 @ `bc69e1d9c`; **D1 next** (`M3_3D_D0_LONGITUDINAL_PROFILE_ARCHITECTURE_2026-09-24.md`) |
+| **M3.3E** | Health / failure-risk / confidence model |
+| **M3.3F** | Production shadow validation |
+| **M3.3G** | Authoritative model cutover |
+| **M3.3H** | Vehicle Detail → Health **customer UI** cutover — consumes **customer-authorized authoritative outputs only after G**; must **not** expose raw `inputSummary`, `chargeOpportunityRaw`, pairwise deltas, per-revision C3 rows, or internal integrity diagnostics |
+
+Planning-only customer concepts for eventual M3.3H (labels/thresholds finalized after M3.3E/F): battery health state, confidence, charging-system health, retention stability, failure risk, last reliable assessment, evidence freshness.
+
+## Bounded inspection reads (C5A.1)
+
+- **Latest window:** `listLatestFeatureRowsForSession` — `ORDER BY semantic_revision DESC` **`take 100`**, reversed to ASC in response. Example: 125 rows → visible revisions **26..125** (not 1..100).
+- **Total rows:** separate **`count`** on version-scoped session filter.
+- **Revision lineage:** read-only **`SELECT` aggregate** (no full row load).
+- **Canonical row:** at most **four** highest-revision candidates (phase × trust) → existing `selectCanonicalRestSessionFeatureShadowRow()`. Canonical may appear in `canonicalFeature` even when outside the visible 100-revision window.
+- **Digest integrity:** only checked rows counted; `digestVerificationScope` **`FULL`** (≤100 rows) or **`BOUNDED_LATEST_WINDOW`**; **`INTEGRITY_PARTIAL`** when older rows unchecked; **`INTEGRITY_WARNING`** when checked mismatch/gap/duplicate/canonical failure.
+
+## Coherent read snapshot + canonical digest union (C5A.2)
+
+- **Transaction:** single Prisma interactive transaction, **`RepeatableRead`**, read-only behavior (SELECT/count/findMany/`$queryRaw` SELECT only).
+- **Inside snapshot (sequential):** tenant-scoped `BatteryRestSession` → feature **COUNT** → revision **aggregate** → latest-100 rows → ≤4 canonical candidates.
+- **Outside transaction:** canonical policy selection, deduped digest verification on **union(latest window, canonical row by id)**, status derivation.
+- **`digestRowsChecked`:** unique rows digest-verified; canonical outside latest window adds **+1** checked row when not already in window.
+- **`countAggregateConsistent`:** `countFeatureRowsForSession === aggregate.totalRows`; mismatch → **`INTEGRITY_WARNING`**.
+- **PG_J:** deterministic barrier after COUNT; concurrent feature append during open RR snapshot must not mix revision totals.
+
+## Ops CLI
+
+```bash
+cd backend
+npm run battery:rest-feature:inspect -- \
+  --organization-id=<uuid> --vehicle-id=<uuid> --rest-session-id=<uuid> [--include-raw]
+```
+
+**Exit codes:** `0` OK, `2` session not found, `3` integrity warning **or** integrity partial (bounded digest coverage), `1` config/execution error.
+
+**Production safety:** recognized production `DATABASE_URL` hosts **denied** unless  
+`BATTERY_REST_FEATURE_INSPECT_ALLOW_PRODUCTION_READONLY=true` (explicit read-only ack). C5A tests use ephemeral DB only.
+
+**No writes:** no compute, upsert, recompute, repair, or flag mutation.
+
+## Version tuple (unchanged)
+
+- `FEATURE_MODEL_VERSION=M3_3C_C3_V1`
+- `RETENTION_POLICY_VERSION=M3_3C_C1_V1`
+- `CHARGE_OPPORTUNITY_POLICY_VERSION=M3_3C_C2_V1`
+- `INPUT_CONTRACT_VERSION=M3_3C_FEATURE_INPUT_V1`
+
+## Tests
+
+- Unit: `rest-session-feature.metrics.spec.ts`, `rest-session-feature-shadow-inspection.*.spec.ts`
+- Postgres: `npm run test:battery:v2:rest-session-feature:inspection:postgres`
+
+## C5B Master Admin shadow UI (M3.3C)
+
+- **Status:** **COMPLETE ON MAIN** — PR #1733 merge commit `969cc3f19`.
+- **Surface:** Master Admin view `battery-v2-shadow-inspection` (engineering nav group); **internal only** — not customer Vehicle Health.
+- **API (MASTER_ADMIN only):**
+  - `GET /admin/battery-v2/rest-sessions?organizationId&vehicleId&limit`
+  - `GET /admin/battery-v2/rest-session-feature-inspection?organizationId&vehicleId&restSessionId` → single atomic **`M3_3C_C5A_V1`** payload (`includeRaw=true` for internal inspection only).
+- **Source of truth:** **`M3_3C_C5A_V1`** / `RestSessionFeatureShadowInspectionService` — frontend **does not** recompute canonical selection, retention curve, slopes, charge context, or integrity.
+- **Retention evidence:** UI renders persisted **`inputSummary.retentionPoints`** (C3 snapshot shape) in inspection table — not count-only stubs.
+- **Vehicle selection:** organization-scoped paginated **`GET /admin/vehicles/operational?organizationId=`** — not global first-N `listAll`.
+- **Integrity (display only):** `OK` | `NO_FEATURE_ROWS` | `INTEGRITY_PARTIAL` | `INTEGRITY_WARNING` — diagnostic enums from C5A; no health scoring.
+- **Not M3.3H:** future customer Vehicle Detail → Health UI remains separate (authoritative customer outputs post-G only).
+- **Read-only:** no recompute/repair/flag mutation controls in UI.
+- **Authorization:** `PlatformAdminController` `@Roles('MASTER_ADMIN')` + `RolesGuard`; `MasterAdminMfaGuard` registered; C5B GET routes **do not** require MFA step-up under current guard policy (non-mutating GET).
+- **Non-effects (C5B):** no schema/migration; no `BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED` activation; no production deploy requirement for documentation merge; no customer HTTP exposure.
+
+## Non-effects
+
+- No customer HTTP/GraphQL/UI
+- No assessment/publication/battery_features consumption or writes from C5A
+- C4 fail-open synchronous post-mutation model preserved

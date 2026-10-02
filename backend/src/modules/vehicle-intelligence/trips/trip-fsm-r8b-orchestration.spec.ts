@@ -14,12 +14,17 @@ import {
   mergeLifecycleRecoveryMeta,
 } from './trip-lifecycle-recovery-meta';
 import { runTripObservabilitySafely } from './trip-fsm-observability-safe.util';
+import { defaultFinalizeHarnessRouteWaypoints } from './trip-finalize-harness-waypoints.fixture';
 
 const VEHICLE = 'veh-r8b';
 const ORG = 'org-r8b';
 const TOKEN = 208;
 const TRIP1 = 'trip-r8b-1';
 const WORKER_NOW = new Date('2026-09-06T17:00:00.000Z');
+
+function defaultHarnessRouteWaypoints(anchor: Date) {
+  return defaultFinalizeHarnessRouteWaypoints(anchor);
+}
 
 function finalizeJob(): TripTrackingJobData {
   return {
@@ -104,6 +109,11 @@ function buildFinalizeHarness(options: {
       vehicleTrip: { findUnique: jest.fn().mockResolvedValue(options.trip) },
       vehicleTripWaypoint: {
         findFirst: jest.fn().mockResolvedValue(null),
+        findMany: jest.fn().mockResolvedValue(
+          defaultHarnessRouteWaypoints(
+            (options.trip.startTime as Date) ?? new Date('2026-09-06T16:09:55.000Z'),
+          ),
+        ),
         count: jest.fn().mockResolvedValue(5),
       },
       vehicleTripTrackingRun: { create: jest.fn().mockResolvedValue({}) },
@@ -445,6 +455,7 @@ describe('R8B.14 — CANCELLED terminal observability containment', () => {
         },
         vehicleTripWaypoint: {
           findFirst: jest.fn().mockResolvedValue(null),
+          findMany: jest.fn().mockResolvedValue([]),
           count: jest.fn().mockResolvedValue(0),
         },
         vehicleTripTrackingRun: { create: jest.fn().mockResolvedValue({}) },

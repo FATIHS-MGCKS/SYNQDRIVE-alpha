@@ -8,15 +8,73 @@ cd "$ROOT"
 
 log() { printf '[boundary-repair-postgres-ci] %s\n' "$*"; }
 
-log "Step 1/3: boundary repair PostgreSQL integration tests"
+log "Step 1/4: boundary repair PostgreSQL integration tests"
 BOUNDARY_REPAIR_POSTGRES_INTEGRATION=1 INTRA_TRIP_GAP_SPLIT_POSTGRES_INTEGRATION=1 \
   npx jest boundary-repair.postgres.integration intra-trip-gap-split-repair.postgres.integration --runInBand
 
-log "Step 2/3: VDC physical-state ephemeral migration validation (isolated database)"
+log "Step 2/4: VDC physical-state ephemeral migration validation (isolated database)"
 PHYSICAL_STATE_MIGRATION_EPHEMERAL=1 bash scripts/test/physical-state-migration-ephemeral.sh
 
-log "Step 3/3: VDC physical-state PostgreSQL integration tests (db-pushed CI database)"
+log "Step 3/4: VDC physical-state PostgreSQL integration tests (db-pushed CI database)"
 PHYSICAL_STATE_POSTGRES_INTEGRATION=1 PHYSICAL_STATE_POSTGRES_REQUIRED=1 \
-  npx jest --testPathPattern='(device-connection-physical|physical-state-reconcile).*postgres\.integration' --runInBand --verbose
+  npx jest --testPathPattern='(device-connection-physical|physical-state-reconcile|physical-state-coordinator-parent-adversarial).*postgres\.integration' --runInBand --verbose
+
+log "Step 4/4: ERD E2 native HvChargeSession PostgreSQL gate"
+ERD_E2_POSTGRES_INTEGRATION=1 ERD_E2_POSTGRES_REQUIRED=1 \
+  npx jest hv-charge-session-native.postgres.integration --runInBand --verbose
+
+log "Step 5/8: ERD E3 fallback + convergence PostgreSQL gate"
+ERD_E3_POSTGRES_INTEGRATION=1 ERD_E3_POSTGRES_REQUIRED=1 \
+  npx jest hv-fallback-native-convergence.postgres.integration --runInBand --verbose
+
+log "Step 6/8: ERD E4 Postgres liveness gate (PostgreSQL only — Redis/BullMQ gate is step 7/8)"
+ERD_E4_POSTGRES_REDIS_INTEGRATION=1 ERD_E4_POSTGRES_REDIS_REQUIRED=1 \
+  npx jest erd-e4-reconciliation-liveness.postgres.integration erd-e4-reconciliation-liveness.spec --runInBand --verbose
+
+log "Step 7/8: ERD E4 BullMQ + Redis liveness gate (real Queue/Worker on Redis)"
+ERD_E4_BULLMQ_REDIS_INTEGRATION=1 ERD_E4_BULLMQ_REDIS_REQUIRED=1 \
+  npx jest erd-e4-reconciliation-liveness.bullmq.redis.integration --runInBand --forceExit --verbose
+
+log "Step 8/8: ERD E5.1 recharge projection foundation PostgreSQL gate (ephemeral migrate deploy)"
+bash scripts/test/erd-e5-1-migration-ephemeral-gate.sh
+
+log "Step 9/10: ERD E5.2 canonical recharge projector PostgreSQL gate"
+ERD_E5_2_POSTGRES_INTEGRATION=1 ERD_E5_2_POSTGRES_REQUIRED=1 \
+  npx jest erd-e5-2-recharge-projector.postgres.integration --runInBand --verbose
+
+log "Step 10/11: ERD E5.3 late-native handoff PostgreSQL gate"
+ERD_E5_3_POSTGRES_INTEGRATION=1 ERD_E5_3_POSTGRES_REQUIRED=1 \
+  npx jest erd-e5-3-late-native-handoff.postgres.integration --runInBand --verbose
+
+log "Step 11/12: ERD E5.4 recharge shadow parity PostgreSQL gate"
+ERD_E5_4_POSTGRES_INTEGRATION=1 ERD_E5_4_POSTGRES_REQUIRED=1 \
+  npx jest erd-e5-4-recharge-shadow-parity.postgres.integration --runInBand --verbose
+
+log "Step 12/13: ERD E5.5 product read dedupe PostgreSQL gate"
+ERD_E5_5_POSTGRES_INTEGRATION=1 ERD_E5_5_POSTGRES_REQUIRED=1 \
+  npx jest erd-e5-5-product-read-dedupe.postgres.integration --runInBand --verbose
+
+log "Step 13/14: ERD E5.6 write authority cutover PostgreSQL gate"
+ERD_E5_6_POSTGRES_INTEGRATION=1 ERD_E5_6_POSTGRES_REQUIRED=1 \
+  npx jest erd-e5-6-write-authority-cutover.postgres.integration --runInBand --verbose
+
+log "Step 14/15: ERD E6.1 recharge location provenance PostgreSQL gate"
+ERD_E6_1_POSTGRES_INTEGRATION=1 ERD_E6_1_POSTGRES_REQUIRED=1 \
+  npx jest erd-e6-1-recharge-location-provenance.postgres.integration --runInBand --verbose
+
+log "Step 15/16: ERD E6.2 charging station reference resolver PostgreSQL gate"
+ERD_E6_2_POSTGRES_INTEGRATION=1 ERD_E6_2_POSTGRES_REQUIRED=1 \
+  npx jest charging-station-location-resolver.postgres.integration --runInBand --verbose
+
+log "Step 16/18: ERD E6.3 charging location enrichment runtime gate (migration + PostgreSQL P matrix)"
+bash scripts/test/erd-e6-3-migration-ephemeral-gate.sh
+ERD_E6_3_POSTGRES_INTEGRATION=1 ERD_E6_3_POSTGRES_REQUIRED=1 \
+  npx jest erd-e6-3-charging-station-enrichment.postgres.integration --runInBand --verbose
+
+log "Step 17/18: ERD E6.3 BullMQ + Redis Q1–Q10 gate"
+bash scripts/test/erd-e6-3-bullmq-redis-ci.sh
+
+log "Step 18/18: ERD E6.3 recovery R1–R12 gate"
+bash scripts/test/erd-e6-3-recovery-ci.sh
 
 log "boundary-repair-postgres-ci completed successfully"

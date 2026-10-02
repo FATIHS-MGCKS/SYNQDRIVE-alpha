@@ -1,0 +1,76 @@
+name: Battery V2 — HV-H3 CI
+
+on:
+  pull_request:
+    paths:
+      - 'backend/src/modules/vehicle-intelligence/battery-health/hv-h3/**'
+      - 'backend/src/modules/vehicle-intelligence/battery-health/hv-h2/**'
+      - 'architecture/battery-v2/scripts/validate-h3-longitudinal-trend-contracts.sh'
+      - 'backend/scripts/test/battery-hv-h3-longitudinal-trend-postgres-ci.sh'
+      - 'backend/scripts/ops/battery-hv-h3-trend-report.ts'
+      - 'backend/package.json'
+      - 'backend/package-lock.json'
+      - '.github/workflows/battery-v2-hv-h3-ci.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: battery-v2-hv-h3-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '20'
+  DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive?schema=public
+
+jobs:
+  hv-h3-unit-and-contracts:
+    name: HV-H3 unit + contract validators
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci && npx prisma generate
+        working-directory: backend
+      - run: npm run test:battery:v2:hv-h3
+        working-directory: backend
+      - run: bash architecture/battery-v2/scripts/validate-h3-longitudinal-trend-contracts.sh
+        working-directory: .
+
+  hv-h3-postgres:
+    name: HV-H3 longitudinal trend PostgreSQL
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: synqdrive
+          POSTGRES_PASSWORD: synqdrive
+          POSTGRES_DB: synqdrive
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U synqdrive"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci && npx prisma generate
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+      - run: npm run test:battery:v2:hv-h3:postgres:ci
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}

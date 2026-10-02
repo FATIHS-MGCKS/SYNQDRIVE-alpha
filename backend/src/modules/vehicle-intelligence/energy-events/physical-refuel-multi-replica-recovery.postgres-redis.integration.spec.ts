@@ -7,6 +7,8 @@ import {
   buildFuelStationEnrichmentJobIdempotencyKey,
 } from '../fuel-stations/enrichment/fuel-station-enrichment-fingerprint.util';
 import { sanitizeBullMqJobId } from '@shared/queue/bullmq-job-id.sanitizer';
+import { PhysicalRefuelReconciliationMetricsService } from './physical-refuel-reconciliation-metrics.service';
+import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import { PhysicalRefuelReconciliationRecoveryScheduler } from '@workers/schedulers/physical-refuel-reconciliation-recovery.scheduler';
 import {
   buildG21dFinalDatabaseUrl,
@@ -133,13 +135,18 @@ function deterministicJobId(energyEventId: string): string {
       const runtime = createRuntimeService(prisma, producer);
       const config = createPhysicalRefuelConfig();
 
+      const tripMetrics = new TripMetricsService();
+      const physicalRefuelMetrics = new PhysicalRefuelReconciliationMetricsService(tripMetrics);
+
       const schedulerA = new PhysicalRefuelReconciliationRecoveryScheduler(
         config as never,
         runtime,
+        physicalRefuelMetrics,
       );
       const schedulerB = new PhysicalRefuelReconciliationRecoveryScheduler(
         config as never,
         runtime,
+        physicalRefuelMetrics,
       );
 
       try {

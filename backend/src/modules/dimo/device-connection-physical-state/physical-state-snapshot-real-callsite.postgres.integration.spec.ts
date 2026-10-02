@@ -4,17 +4,12 @@ import {
   PrismaClient,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
-import {
-  CONNECTIVITY_PHYSICAL_STATE_PROJECTION_WRITE_ENABLED_ENV,
-  CONNECTIVITY_PHYSICAL_STATE_SHADOW_COMPARE_ENABLED_ENV,
-  CONNECTIVITY_PHYSICAL_STATE_SIDE_EFFECTS_ENABLED_ENV,
-} from '@config/connectivity-physical-state-runtime.config';
-import { CONNECTIVITY_PHYSICAL_STATE_RECONCILIATION_ENABLED_ENV } from '@config/connectivity-physical-state.config';
 import { evaluateOrphanReconciliationEligibility } from '../connectivity/connectivity-lifecycle-runtime.policy';
 import { hashProviderDeviceId } from '../device-connection-episode.service';
 import { DeviceConnectionWebhookService } from '../device-connection-webhook.service';
 import { buildBindingScopeFromToken } from './device-connection-physical-state.binding';
 import { getCoordinatorReconcile } from './device-connection-physical-state.types';
+import { buildSnapshotPlugInitialEstablishmentGtR1Proof } from './physical-state-gt-r1-proof';
 import { DeviceConnectionPhysicalAuthorityCutoverRepository } from './device-connection-physical-authority-cutover.repository';
 import { DeviceConnectionPhysicalStateActionOutboxRepository } from './device-connection-physical-state-action-outbox.repository';
 import { DeviceConnectionPhysicalStateRepository } from './device-connection-physical-state.repository';
@@ -25,6 +20,8 @@ import { PhysicalStateShadowClassification } from './physical-state-shadow.class
 import {
   cleanupPhysicalStatePostgresFixture,
   createPhysicalStatePostgresFixture,
+  disablePhysicalStateStatefulShadowEnv,
+  enablePhysicalStateStatefulShadowEnvForFixture,
   type PhysicalStatePostgresFixture,
 } from './testing/physical-state-postgres.integration.harness';
 
@@ -39,23 +36,10 @@ if (REQUIRED && !LIVE) {
   );
 }
 
-function enableStatefulShadowEnv(): void {
-  process.env[CONNECTIVITY_PHYSICAL_STATE_RECONCILIATION_ENABLED_ENV] = 'true';
-  process.env[CONNECTIVITY_PHYSICAL_STATE_PROJECTION_WRITE_ENABLED_ENV] = 'true';
-  process.env[CONNECTIVITY_PHYSICAL_STATE_SHADOW_COMPARE_ENABLED_ENV] = 'true';
-  process.env[CONNECTIVITY_PHYSICAL_STATE_SIDE_EFFECTS_ENABLED_ENV] = 'false';
-}
-
-function disableStatefulShadowEnv(): void {
-  delete process.env[CONNECTIVITY_PHYSICAL_STATE_RECONCILIATION_ENABLED_ENV];
-  delete process.env[CONNECTIVITY_PHYSICAL_STATE_PROJECTION_WRITE_ENABLED_ENV];
-  delete process.env[CONNECTIVITY_PHYSICAL_STATE_SHADOW_COMPARE_ENABLED_ENV];
-  delete process.env[CONNECTIVITY_PHYSICAL_STATE_SIDE_EFFECTS_ENABLED_ENV];
-}
-
 describePg('PhysicalStateSnapshotEvidenceOrchestrator real call-site (postgres)', () => {
   let prisma: PrismaClient;
   let orchestrator: PhysicalStateSnapshotEvidenceOrchestrator;
+  let writer: PhysicalStateEvidenceWriterService;
   let webhookService: DeviceConnectionWebhookService;
   let repository: DeviceConnectionPhysicalStateRepository;
   let fixture: PhysicalStatePostgresFixture;
@@ -78,7 +62,7 @@ describePg('PhysicalStateSnapshotEvidenceOrchestrator real call-site (postgres)'
       new DeviceConnectionPhysicalStateActionOutboxRepository(prismaService),
       authorityRepository,
     );
-    const writer = new PhysicalStateEvidenceWriterService(
+    writer = new PhysicalStateEvidenceWriterService(
       prismaService,
       coordinator,
       authorityRepository,
@@ -99,8 +83,8 @@ describePg('PhysicalStateSnapshotEvidenceOrchestrator real call-site (postgres)'
   });
 
   beforeEach(async () => {
-    enableStatefulShadowEnv();
     fixture = await createPhysicalStatePostgresFixture(prisma);
+    enablePhysicalStateStatefulShadowEnvForFixture(fixture);
     binding = buildBindingScopeFromToken({
       provider: 'DIMO',
       tokenId: fixture.tokenId,
@@ -108,7 +92,7 @@ describePg('PhysicalStateSnapshotEvidenceOrchestrator real call-site (postgres)'
   });
 
   afterEach(async () => {
-    disableStatefulShadowEnv();
+    disablePhysicalStateStatefulShadowEnv();
     await cleanupPhysicalStatePostgresFixture(prisma, fixture);
   });
 
@@ -133,7 +117,11 @@ describePg('PhysicalStateSnapshotEvidenceOrchestrator real call-site (postgres)'
     return { authority, projections, transitions, events, outbox };
   }
 
-  function snapshotInput(signals: Record<string, unknown>, fetchedAt: string) {
+  function snapshotInput(
+    signals: Record<string, unknown>,
+    fetchedAt: string,
+    existingVlsSourceTimestamp: Date | null = null,
+  ) {
     return {
       organizationId: fixture.org.id,
       vehicleId: fixture.vehicle.id,
@@ -144,6 +132,7 @@ describePg('PhysicalStateSnapshotEvidenceOrchestrator real call-site (postgres)'
       sourceSubtype: null,
       fetchedAt: new Date(fetchedAt),
       vehicleLatestStateId: VLS_ID,
+      existingVlsSourceTimestamp,
     };
   }
 
@@ -175,7 +164,7 @@ describePg('PhysicalStateSnapshotEvidenceOrchestrator real call-site (postgres)'
     });
 
     const snap = await orchestrator.applyPhysicalSnapshotEvidence(
-      snapshotInput({ obdIsPluggedIn: { value: true, timestamp: T2 } }, T2),
+      snapshotInput({ obdIsPluggedIn: { value: true, timestamp: T2 } }, T2, new Date(T1)),
     );
     expect(snap?.shadowComparison?.classification).toBe(
       PhysicalStateShadowClassification.EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT,
@@ -230,7 +219,11 @@ describePg('PhysicalStateSnapshotEvidenceOrchestrator real call-site (postgres)'
       },
     });
     const conflict = await orchestrator.applyPhysicalSnapshotEvidence(
-      snapshotInput({ obdIsPluggedIn: { value: false, timestamp: ts } }, ts),
+      snapshotInput(
+        { obdIsPluggedIn: { value: false, timestamp: ts } },
+        ts,
+        new Date('2026-09-12T14:00:00.000Z'),
+      ),
     );
     expect(getCoordinatorReconcile(conflict?.coordinatorResult)?.decision).toBe(
       DeviceConnectionPhysicalTransitionDecision.CONFLICT,
@@ -278,7 +271,7 @@ describePg('PhysicalStateSnapshotEvidenceOrchestrator real call-site (postgres)'
     });
 
     const result = await orchestrator.applyPhysicalSnapshotEvidence(
-      snapshotInput({ obdIsPluggedIn: { value: true, timestamp: T2 } }, T2),
+      snapshotInput({ obdIsPluggedIn: { value: true, timestamp: T2 } }, T2, new Date(T1)),
     );
     expect(result?.shadowComparison?.classification).toBe(
       PhysicalStateShadowClassification.BINDING_DIVERGENCE,
@@ -302,7 +295,7 @@ describePg('PhysicalStateSnapshotEvidenceOrchestrator real call-site (postgres)'
       },
     });
     const result = await orchestrator.applyPhysicalSnapshotEvidence({
-      ...snapshotInput({ obdIsPluggedIn: { value: true, timestamp: T2 } }, T2),
+      ...snapshotInput({ obdIsPluggedIn: { value: true, timestamp: T2 } }, T2, new Date(T1)),
       sourceSubtype: 'SYNTHETIC_TEST',
     });
     expect(result?.shadowComparison?.classification).not.toBe(
@@ -350,7 +343,7 @@ describePg('PhysicalStateSnapshotEvidenceOrchestrator real call-site (postgres)'
     });
 
     const result = await orchestrator.applyPhysicalSnapshotEvidence(
-      snapshotInput({ obdIsPluggedIn: { value: true, timestamp: T2 } }, T2),
+      snapshotInput({ obdIsPluggedIn: { value: true, timestamp: T2 } }, T2, new Date(T1)),
     );
 
     expect(result?.legacyShadow?.bindingKey).toBe(oldBinding.bindingKey);
@@ -392,7 +385,7 @@ describePg('PhysicalStateSnapshotEvidenceOrchestrator real call-site (postgres)'
     });
 
     const result = await orchestrator.applyPhysicalSnapshotEvidence(
-      snapshotInput({ obdIsPluggedIn: { value: true, timestamp: T2 } }, T2),
+      snapshotInput({ obdIsPluggedIn: { value: true, timestamp: T2 } }, T2, new Date(T1)),
     );
 
     expect(result?.legacyShadow?.bindingKey).toBe(binding.bindingKey);
@@ -416,7 +409,7 @@ describePg('PhysicalStateSnapshotEvidenceOrchestrator real call-site (postgres)'
     });
 
     const result = await orchestrator.applyPhysicalSnapshotEvidence(
-      snapshotInput({ obdIsPluggedIn: { value: true, timestamp: T2 } }, T2),
+      snapshotInput({ obdIsPluggedIn: { value: true, timestamp: T2 } }, T2, new Date(T1)),
     );
 
     expect(result?.legacyShadow?.bindingKey).toBeNull();
@@ -426,8 +419,117 @@ describePg('PhysicalStateSnapshotEvidenceOrchestrator real call-site (postgres)'
     expect(result?.shadowComparison?.classification).not.toBe(PhysicalStateShadowClassification.MATCH);
   });
 
+  it('BOOTSTRAP CASE A — absent projection + aligned PLUGGED SNAPSHOT_OBD => EXPECTED_FIX', async () => {
+    const result = await orchestrator.applyPhysicalSnapshotEvidence(
+      snapshotInput({ obdIsPluggedIn: { value: true, timestamp: T2 } }, T2),
+    );
+
+    expect(result?.legacyShadow?.accepted).toBe(false);
+    expect(result?.legacyShadow?.diagnosticReason).toBe('no_open_episode');
+    expect(getCoordinatorReconcile(result?.coordinatorResult)?.decision).toBe('ESTABLISHED');
+    expect(result?.shadowComparison?.classification).toBe(
+      PhysicalStateShadowClassification.EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT,
+    );
+    expect(result?.shadowComparison?.correctnessBlocking).toBe(false);
+  });
+
+  it('BOOTSTRAP CASE B — cached replay at VLS boundary => orchestrator skips (no mutation)', async () => {
+    await orchestrator.applyPhysicalSnapshotEvidence(
+      snapshotInput({ obdIsPluggedIn: { value: true, timestamp: T2 } }, T2, new Date(T1)),
+    );
+
+    const replay = await orchestrator.applyPhysicalSnapshotEvidence(
+      snapshotInput({ obdIsPluggedIn: { value: true, timestamp: T2 } }, T2, new Date(T2)),
+    );
+
+    expect(replay).toBeNull();
+    const row = await prisma.deviceConnectionPhysicalState.findFirst({
+      where: { vehicleId: fixture.vehicle.id },
+    });
+    expect(row?.effectiveState).toBe('PLUGGED');
+    expect(row?.evidenceObservedAt.toISOString()).toBe(new Date(T2).toISOString());
+  });
+
+  it('BOOTSTRAP CASE C — PLUGGED baseline then valid UNPLUG snapshot transition', async () => {
+    await orchestrator.applyPhysicalSnapshotEvidence(
+      snapshotInput({ obdIsPluggedIn: { value: true, timestamp: T2 } }, T2, new Date(T1)),
+    );
+
+    const transition = await orchestrator.applyPhysicalSnapshotEvidence(
+      snapshotInput({ obdIsPluggedIn: { value: false, timestamp: T3 } }, T3, new Date(T2)),
+    );
+
+    expect(transition?.legacyShadow?.diagnosticReason).toBe('obd_false');
+    expect(transition?.shadowComparison?.classification).toBe(
+      PhysicalStateShadowClassification.EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT,
+    );
+  });
+
+  it('BOOTSTRAP-ACTUAL regression — stale bootstrap proof + DUPLICATE transition => UNEXPLAINED', async () => {
+    await orchestrator.applyPhysicalSnapshotEvidence(
+      snapshotInput({ obdIsPluggedIn: { value: true, timestamp: T2 } }, T2, new Date(T1)),
+    );
+
+    const staleBootstrapProof = buildSnapshotPlugInitialEstablishmentGtR1Proof({
+      physicalProjectionState: null,
+      physicalProjectionEvidenceAt: null,
+      snapshotCandidatePlugged: true,
+      snapshotEvidenceObservedAt: new Date(T2),
+      legacyEvaluation: { action: 'reject', reason: 'no_open_episode' },
+      physicalBindingScope: binding,
+      legacyBindingKey: null,
+      episode: null,
+      hardwareType: 'LTE_R1',
+      snapshotSource: 'dimo',
+      sourceSubtype: null,
+      evidenceReferenceId: `snapshot-obd:${fixture.vehicle.id}:${T2}`,
+    });
+    expect(staleBootstrapProof?.scenario).toBe('SNAPSHOT_PLUG_INITIAL_ESTABLISHMENT');
+
+    const duplicate = await writer.writeSnapshotEvidence({
+      organizationId: fixture.org.id,
+      vehicleId: fixture.vehicle.id,
+      tokenId: fixture.tokenId,
+      signals: { obdIsPluggedIn: { value: true, timestamp: T2 } },
+      evidenceReferenceId: `snapshot-obd:${fixture.vehicle.id}:${T2}`,
+      legacyShadow: {
+        accepted: false,
+        diagnosticReason: 'no_open_episode',
+        effectivePlugState: null,
+        evidenceObservedAt: null,
+        bindingKey: null,
+      },
+      gtR1Proof: staleBootstrapProof,
+      projectionSelfHeal: true,
+    });
+
+    const actualDecision = getCoordinatorReconcile(duplicate?.coordinatorResult)?.decision;
+    expect(actualDecision).not.toBe(DeviceConnectionPhysicalTransitionDecision.ESTABLISHED);
+    expect([DeviceConnectionPhysicalTransitionDecision.DUPLICATE, DeviceConnectionPhysicalTransitionDecision.PROVENANCE_REFRESH]).toContain(
+      actualDecision,
+    );
+    expect(duplicate?.shadowComparison?.classification).toBe(
+      PhysicalStateShadowClassification.UNEXPLAINED_OLD_REJECT_NEW_ACCEPT,
+    );
+    expect(duplicate?.shadowComparison?.classification).not.toBe(
+      PhysicalStateShadowClassification.EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT,
+    );
+  });
+
+  it('BOOTSTRAP CASE D — synthetic snapshot source invalidates bootstrap proof => UNEXPLAINED', async () => {
+    const result = await orchestrator.applyPhysicalSnapshotEvidence({
+      ...snapshotInput({ obdIsPluggedIn: { value: true, timestamp: T2 } }, T2, new Date(T1)),
+      sourceSubtype: 'SYNTHETIC_TEST',
+    });
+
+    expect(result?.shadowComparison?.classification).toBe(
+      PhysicalStateShadowClassification.UNEXPLAINED_OLD_REJECT_NEW_ACCEPT,
+    );
+    expect(result?.shadowComparison?.correctnessBlocking).toBe(true);
+  });
+
   it('7. master=false => zero P2.3 DB mutations', async () => {
-    disableStatefulShadowEnv();
+    disablePhysicalStateStatefulShadowEnv();
     const before = await countArtifacts();
     const result = await orchestrator.applyPhysicalSnapshotEvidence(
       snapshotInput({ obdIsPluggedIn: { value: true, timestamp: T2 } }, T2),
@@ -435,6 +537,6 @@ describePg('PhysicalStateSnapshotEvidenceOrchestrator real call-site (postgres)'
     expect(result).toBeNull();
     const after = await countArtifacts();
     expect(after).toEqual(before);
-    enableStatefulShadowEnv();
+    enablePhysicalStateStatefulShadowEnvForFixture(fixture);
   });
 });

@@ -2,6 +2,7 @@ import type { RawRefuelCandidate } from '@prisma/client';
 import { isRawRefuelCandidateTerminal } from '../raw-refuel-candidate/raw-refuel-candidate-lifecycle';
 import type { RawFuelAbsoluteDetectionAdmissibility } from './raw-fuel-refuel-fallback.types';
 import type { RawFuelCapability } from './raw-fuel-refuel-fallback.types';
+import { readPersistedAbsoluteDetectionAdmissibility } from './raw-refuel-persisted-detection-admissibility';
 import type {
   RawRefuelCandidateReadinessReasonCode,
   RawRefuelCandidateReadinessResult,
@@ -14,15 +15,7 @@ function isFiniteNumber(value: unknown): value is number {
 function readDetectionAdmissibility(
   candidate: RawRefuelCandidate,
 ): RawFuelAbsoluteDetectionAdmissibility {
-  const qualityMeta = candidate.qualityMeta;
-  if (!qualityMeta || typeof qualityMeta !== 'object' || Array.isArray(qualityMeta)) {
-    return 'UNKNOWN';
-  }
-  const value = (qualityMeta as Record<string, unknown>).absoluteDetectionAdmissibility;
-  if (value === 'ADMISSIBLE' || value === 'INADMISSIBLE' || value === 'UNKNOWN') {
-    return value;
-  }
-  return 'UNKNOWN';
+  return readPersistedAbsoluteDetectionAdmissibility(candidate);
 }
 
 function hasRequiredPhysicalEvidence(candidate: RawRefuelCandidate): boolean {
@@ -96,6 +89,14 @@ export function evaluateRawRefuelCandidateReadiness(
     context.absoluteDetectionAdmissibility ?? readDetectionAdmissibility(candidate);
   if (admissibility === 'INADMISSIBLE') {
     return buildResult(candidate, false, 'DETECTION_NOT_ADMISSIBLE', 'detection_inadmissible');
+  }
+  if (admissibility === 'UNKNOWN') {
+    return buildResult(
+      candidate,
+      false,
+      'DETECTION_NOT_ADMISSIBLE',
+      'detection_admissibility_unknown',
+    );
   }
 
   if (!candidate.candidateIdentityKey) {

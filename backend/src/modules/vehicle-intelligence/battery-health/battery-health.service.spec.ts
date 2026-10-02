@@ -17,8 +17,9 @@ describe('BatteryHealthService', () => {
     } as any;
 
     const serviceEvents = {} as any;
+    const groundTruthEmission = { convergeDocumentApplyGroundTruth: jest.fn() } as any;
 
-    const svc = new BatteryHealthService(prisma, evidence, serviceEvents);
+    const svc = new BatteryHealthService(prisma, evidence, serviceEvents, groundTruthEmission);
     const observedAt = new Date('2026-04-01T08:30:00.000Z');
 
     await svc.recordSnapshot({

@@ -1,3 +1,4 @@
+import { defaultRawFuelRefuelFallbackConfigForTests } from '@config/raw-fuel-refuel-fallback.config';
 import { EnergyEventKind } from '@prisma/client';
 import { EnergyEventsService } from './energy-events.service';
 import { RawFuelRefuelFallbackRuntimeService } from './raw-fuel-refuel-fallback/raw-fuel-refuel-fallback-runtime.service';
@@ -111,7 +112,12 @@ describe('EnergyEventsService RFRF F4-PR2 dark branch', () => {
       undefined,
       undefined,
       undefined,
-    ).withConfigLoader(() => ({ masterEnabled: true, persistEnabled: true, cutoverAt: null }));
+    ).withConfigLoader(() =>
+      defaultRawFuelRefuelFallbackConfigForTests({
+        masterEnabled: true,
+        persistEnabled: true,
+      }),
+    );
 
     const service = new EnergyEventsService(
       prisma as never,

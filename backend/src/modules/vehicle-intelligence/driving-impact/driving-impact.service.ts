@@ -10,6 +10,12 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import { TripMetricsService } from '../../observability/trip-metrics.service';
 import { isNativeExtremeAcceleration } from '../dimo-native-driving-events';
+import {
+  hasUncertainHistoricalObdRecordTime,
+  resolveTelemetrySourceFamily,
+  type TelemetrySourceFamily,
+} from '../telemetry-source-family';
+import { containFullBrakingRate } from '../r1-temporal-containment';
 import { DRIVING_IMPACT_CONFIG as C } from './driving-impact.config';
 import type { DrivingImpactProvenanceMaturity } from './driving-impact-provenance';
 import {
@@ -180,7 +186,14 @@ export class DrivingImpactService {
         tripStatus: true,
         createdAt: true,
         behaviorEnrichmentStatus: true,
-        vehicle: { select: { organizationId: true, hardwareType: true, fuelType: true } },
+        vehicle: {
+          select: {
+            organizationId: true,
+            hardwareType: true,
+            fuelType: true,
+            dimoVehicle: { select: { rawJson: true } },
+          },
+        },
         startTime: true,
         endTime: true,
         distanceKm: true,
@@ -250,9 +263,14 @@ export class DrivingImpactService {
         expectedOrganizationId: organizationId,
       });
     }
+    // EXP-021 C0.3 — Ruptela R1 historical OBD record time is uncertain; HF-abuse
+    // FULL_BRAKING must not contribute to impact scoring (read-time containment).
+    const uncertainObdRecordTime = hasUncertainHistoricalObdRecordTime(
+      resolveTelemetrySourceFamily(trip.vehicle?.dimoVehicle?.rawJson),
+    );
     const ledgerSummary =
       this.brakingLedger && organizationId
-        ? await this.brakingLedger.getCanonicalSummaryForTrip(tripId)
+        ? await this.brakingLedger.getCanonicalSummaryForTrip(tripId, { uncertainObdRecordTime })
         : null;
 
     const [
@@ -380,7 +398,7 @@ export class DrivingImpactService {
 
     const hardAccelCount = trip.hardAccelerationCount ?? 0;
     let hardBrakeCount = trip.hardBrakingCount ?? 0;
-    let fullBrakingCount = trip.fullBrakingCount ?? 0;
+    let fullBrakingCount = uncertainObdRecordTime ? 0 : trip.fullBrakingCount ?? 0;
     const kickdownCount = trip.kickdownCount ?? 0;
     let brakesTotal = trip.totalBrakingEvents ?? trip.brakingEventCount ?? 0;
 
@@ -985,9 +1003,13 @@ export class DrivingImpactService {
 
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: vehicleId },
-      select: { fuelType: true },
+      select: { fuelType: true, dimoVehicle: { select: { rawJson: true } } },
     });
     const fuelType = vehicle?.fuelType ?? null;
+    const rollingFullBrakingPer100Km = containFullBrakingRate(
+      wavg('fullBrakingPer100Km'),
+      resolveTelemetrySourceFamily(vehicle?.dimoVehicle?.rawJson),
+    );
 
     const longitudinalStressScore = wavg('longitudinalStressScore');
     const brakingStressScore = wavg('brakingStressScore');
@@ -1080,7 +1102,7 @@ export class DrivingImpactService {
         extremeAccelPer100Km: wavg('extremeAccelPer100Km'),
         hardBrakePer100Km: wavg('hardBrakePer100Km'),
         extremeBrakePer100Km: wavg('extremeBrakePer100Km'),
-        fullBrakingPer100Km: wavg('fullBrakingPer100Km'),
+        fullBrakingPer100Km: rollingFullBrakingPer100Km,
         kickdownPer100Km: wavg('kickdownPer100Km'),
         launchLikePer100Km: wavg('launchLikePer100Km'),
         brakesPer100Km: wavg('brakesPer100Km'),
@@ -1115,7 +1137,7 @@ export class DrivingImpactService {
         extremeAccelPer100Km: wavg('extremeAccelPer100Km'),
         hardBrakePer100Km: wavg('hardBrakePer100Km'),
         extremeBrakePer100Km: wavg('extremeBrakePer100Km'),
-        fullBrakingPer100Km: wavg('fullBrakingPer100Km'),
+        fullBrakingPer100Km: rollingFullBrakingPer100Km,
         kickdownPer100Km: wavg('kickdownPer100Km'),
         launchLikePer100Km: wavg('launchLikePer100Km'),
         brakesPer100Km: wavg('brakesPer100Km'),
@@ -1209,6 +1231,7 @@ export class DrivingImpactService {
     const row = await this.prisma.tripDrivingImpact.findUnique({
       where: { tripId },
       select: {
+        vehicleId: true,
         tripId: true,
         distanceKm: true,
         brakingStressScore: true,
@@ -1224,7 +1247,13 @@ export class DrivingImpactService {
         p95NegativeDecel: true,
       },
     });
-    return row;
+    if (!row) return null;
+    const { vehicleId, ...impact } = row;
+    const family = await this.loadTelemetrySourceFamily(vehicleId);
+    return {
+      ...impact,
+      fullBrakingPer100Km: containFullBrakingRate(impact.fullBrakingPer100Km, family),
+    };
   }
 
   /** Typed rolling vehicle impact payload for Brake Health V2 consumption. */
@@ -1251,7 +1280,20 @@ export class DrivingImpactService {
         p95NegativeDecel: true,
       },
     });
-    return row;
+    if (!row) return null;
+    const family = await this.loadTelemetrySourceFamily(vehicleId);
+    return {
+      ...row,
+      fullBrakingPer100Km: containFullBrakingRate(row.fullBrakingPer100Km, family),
+    };
+  }
+
+  private async loadTelemetrySourceFamily(vehicleId: string): Promise<TelemetrySourceFamily> {
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { dimoVehicle: { select: { rawJson: true } } },
+    });
+    return resolveTelemetrySourceFamily(vehicle?.dimoVehicle?.rawJson);
   }
 
   /** Full source provenance for a trip impact row (legacy-safe reader). */

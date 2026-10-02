@@ -56,6 +56,8 @@ import {
   type BrakeRecalculationTrigger,
 } from './brake-recalculation-fingerprint';
 import { BrakeRecalculationInputLoader } from './brake-recalculation-input.loader';
+import { resolveTelemetrySourceFamily } from '../telemetry-source-family';
+import { containFullBrakingRate } from '../r1-temporal-containment';
 import { BrakeHealthObservabilityService } from './brake-health-observability.service';
 import { BrakeRecalculationOrchestratorService } from './brake-recalculation-orchestrator.service';
 import { isActiveBrakeDtcEvidenceRow } from './brake-dtc-classification';
@@ -1221,8 +1223,13 @@ export class BrakeHealthService {
 
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: vehicleId },
-      select: { fuelType: true, brakeForceFrontPercent: true },
+      select: {
+        fuelType: true,
+        brakeForceFrontPercent: true,
+        dimoVehicle: { select: { rawJson: true } },
+      },
     });
+    const sourceFamily = resolveTelemetrySourceFamily(vehicle?.dimoVehicle?.rawJson);
     const latestState = await this.prisma.vehicleLatestState.findUnique({
       where: { vehicleId },
       select: { odometerKm: true },
@@ -1294,7 +1301,7 @@ export class BrakeHealthService {
       );
       const padHardBrake = this.resolveHardBrakeWearFactor(trip.hardBrakePer100Km);
       const padFullBraking = lookupSteppedFactor(
-        trip.fullBrakingPer100Km ?? 0,
+        containFullBrakingRate(trip.fullBrakingPer100Km, sourceFamily) ?? 0,
         this.cfg.padFullBrakingAnchors,
       );
       const padReku = this.cfg.padRekuFactors[fuelType] ?? 1.0;
@@ -1335,7 +1342,7 @@ export class BrakeHealthService {
       );
       const discHardBrake = this.resolveHardBrakeWearFactor(trip.hardBrakePer100Km);
       const discFullBraking = lookupSteppedFactor(
-        trip.fullBrakingPer100Km ?? 0,
+        containFullBrakingRate(trip.fullBrakingPer100Km, sourceFamily) ?? 0,
         this.cfg.discFullBrakingAnchors,
       );
       const discThermal = interpolateThermalFactor(
@@ -1852,8 +1859,13 @@ export class BrakeHealthService {
 
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: vehicleId },
-      select: { fuelType: true, brakeForceFrontPercent: true },
+      select: {
+        fuelType: true,
+        brakeForceFrontPercent: true,
+        dimoVehicle: { select: { rawJson: true } },
+      },
     });
+    const sourceFamily = resolveTelemetrySourceFamily(vehicle?.dimoVehicle?.rawJson);
     const latestState = await this.prisma.vehicleLatestState.findUnique({
       where: { vehicleId },
       select: { odometerKm: true },
@@ -1923,7 +1935,7 @@ export class BrakeHealthService {
       );
       const padHardBrake = this.resolveHardBrakeWearFactor(trip.hardBrakePer100Km);
       const padFullBraking = lookupSteppedFactor(
-        trip.fullBrakingPer100Km ?? 0,
+        containFullBrakingRate(trip.fullBrakingPer100Km, sourceFamily) ?? 0,
         this.cfg.padFullBrakingAnchors,
       );
       const padReku = this.cfg.padRekuFactors[fuelType] ?? 1.0;
@@ -1964,7 +1976,7 @@ export class BrakeHealthService {
       );
       const discHardBrake = this.resolveHardBrakeWearFactor(trip.hardBrakePer100Km);
       const discFullBraking = lookupSteppedFactor(
-        trip.fullBrakingPer100Km ?? 0,
+        containFullBrakingRate(trip.fullBrakingPer100Km, sourceFamily) ?? 0,
         this.cfg.discFullBrakingAnchors,
       );
       const discThermal = interpolateThermalFactor(

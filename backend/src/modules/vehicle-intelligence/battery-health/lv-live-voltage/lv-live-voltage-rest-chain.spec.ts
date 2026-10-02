@@ -6,6 +6,7 @@ import {
 } from '@prisma/client';
 import { BatteryRestTargetEvaluationService } from '../lv-rest-window/battery-rest-target-evaluation.service';
 import { LvLiveVoltageIngestionService } from './lv-live-voltage-ingestion.service';
+import { BatteryProviderLastStoredLiveVoltageResolver } from '../battery-provider-last-stored-live-voltage.resolver';
 
 const ORG = 'clorg1234567890123456789012';
 const VEH = 'clveh1234567890123456789012';
@@ -64,6 +65,7 @@ describe('LIVE_VOLTAGE → REST target evaluation chain', () => {
     liveVoltage = new LvLiveVoltageIngestionService(
       prisma as never,
       measurements as never,
+      new BatteryProviderLastStoredLiveVoltageResolver(prisma as never),
     );
     restEval = new BatteryRestTargetEvaluationService(
       prisma as never,

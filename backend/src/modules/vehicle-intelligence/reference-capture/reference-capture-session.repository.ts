@@ -6,6 +6,7 @@ import type { ReferenceCaptureAcquisitionState } from './reference-capture.types
 import {
   assertCandidateMatchesPersistedT0,
   buildExp021PhysicalAuthority,
+  buildPhysicalFirstPhaseAuthorityPatch,
   Exp021T0ConsistencyError,
   mergeExp021PhysicalAuthority,
   parseExp021PhysicalAuthority,
@@ -98,6 +99,7 @@ export class ReferenceCaptureSessionRepository {
   }
 
   create(input: {
+    id?: string;
     organizationId: string;
     vehicleId: string;
     connectionProfile: string;
@@ -111,6 +113,7 @@ export class ReferenceCaptureSessionRepository {
   }): Promise<ReferenceCaptureSession> {
     return this.prisma.referenceCaptureSession.create({
       data: {
+        id: input.id,
         organizationId: input.organizationId,
         vehicleId: input.vehicleId,
         connectionProfile: input.connectionProfile,
@@ -501,7 +504,7 @@ export class ReferenceCaptureSessionRepository {
       const preflightJson = mergeExp021PhysicalAuthority(session.preflightJson, {
         ...authority,
         orchestrationState: 'DRIVING',
-        physicalPhase60StartedAt: reanchor.phaseStartedAt,
+        ...buildPhysicalFirstPhaseAuthorityPatch(reanchor.phaseStartedAt),
       });
 
       const updated = await tx.referenceCaptureSession.update({

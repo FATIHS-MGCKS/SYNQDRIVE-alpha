@@ -9,6 +9,7 @@ import { TRIP_TRACKING_TRIGGERS } from './trip-detection.types';
 import { END_DETECTION_MODES } from './trip-detection.types';
 import type { TripTrackingJobData } from './trip-detection.types';
 import { TripDetectionOrchestrationService } from './trip-detection-orchestration.service';
+import { defaultFinalizeHarnessRouteWaypoints } from './trip-finalize-harness-waypoints.fixture';
 
 const VEHICLE = 'veh-r7a';
 const ORG = 'org-r7a';
@@ -101,6 +102,11 @@ function buildFinalizeHarness(overrides: {
       vehicleTrip: { findUnique },
       vehicleTripWaypoint: {
         findFirst: jest.fn().mockResolvedValue(null),
+        findMany: jest.fn().mockResolvedValue(
+          defaultFinalizeHarnessRouteWaypoints(
+            initialTrip?.startTime ?? new Date(WORKER_NOW.getTime() - 600_000),
+          ),
+        ),
         count: jest.fn().mockResolvedValue(overrides.waypointCount ?? 5),
       },
     },
@@ -134,6 +140,7 @@ function buildFinalizeHarness(overrides: {
 
   if (overrides.qualityDiscard) {
     svc.prisma.vehicleTripWaypoint.count.mockResolvedValue(0);
+    svc.prisma.vehicleTripWaypoint.findMany.mockResolvedValue([]);
   }
 
   return {

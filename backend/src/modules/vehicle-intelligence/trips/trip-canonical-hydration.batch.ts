@@ -105,11 +105,22 @@ export class CanonicalTripHydrationBatchLoader {
     tripIds: string[],
     onQuery: () => void,
   ): Promise<
-    Map<string, { drivingStressScore: number | null; sourceSummaryJson: Prisma.JsonValue | null }>
+    Map<
+      string,
+      {
+        drivingStressScore: number | null;
+        fullBrakingPer100Km: number | null;
+        sourceSummaryJson: Prisma.JsonValue | null;
+      }
+    >
   > {
     const map = new Map<
       string,
-      { drivingStressScore: number | null; sourceSummaryJson: Prisma.JsonValue | null }
+      {
+        drivingStressScore: number | null;
+        fullBrakingPer100Km: number | null;
+        sourceSummaryJson: Prisma.JsonValue | null;
+      }
     >();
     if (tripIds.length === 0) return map;
 
@@ -120,12 +131,14 @@ export class CanonicalTripHydrationBatchLoader {
         select: {
           tripId: true,
           drivingStressScore: true,
+          fullBrakingPer100Km: true,
           sourceSummaryJson: true,
         },
       });
       for (const row of rows) {
         map.set(row.tripId, {
           drivingStressScore: row.drivingStressScore,
+          fullBrakingPer100Km: row.fullBrakingPer100Km,
           sourceSummaryJson: row.sourceSummaryJson,
         });
       }

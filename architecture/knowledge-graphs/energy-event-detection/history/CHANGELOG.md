@@ -1,5 +1,330 @@
 # KG-EED Changelog
 
+## 2026-10-01 — OQ-014 R1 identity + cross-version authority foundation (EED-EV-0105)
+
+- Unwired backend foundations: physical identity v1, cross-version compatibility registry, post-authority transition types, `VERSIONED_TERMINAL_CONFLICT` contract, settled F3 activation parser types
+- Legacy F2 identity/matcher/service/runtime **unchanged**; no numeric Production caps; no settled F3 activation
+
+## 2026-10-01 — OQ-014 fleet calibration + settled locality evidence (EED-EV-0104)
+
+- Read-only Production forensics: **14** canonical physical events (**13** positive-labeled, **1** suspect)
+- **6** calibration-eligible natural events across **3** vehicles (WOB L 7503 **4/6** — not independent fleet coverage)
+- Bounded DIMO recovery: **2** new FULL spines (KS MX 2024 2026-09-04, WOB L 7503 2026-09-15) in `evidence/data/`
+- WOB 2026-09-19: refuel label preserved; **DELAYED_OBSERVATION** — settled timing **not** calibration-grade (2325 s gap)
+- ADR: corrected settled-post policy path; symbolic **`maxPeakToSettledContinuityGapMs`** (uncalibrated); **SEPARATE_SYMBOLIC_AUTHORITY** for locality (do not reuse `maxSampleGapMs`)
+- Phase-aware strong-regression design addendum (no runtime change)
+- **No** Production numeric caps; **no** runtime F3 implementation
+- **OQ-014 OPEN**; **OQ-019 PARTIALLY_RESOLVED**
+
+## 2026-09-30 — RFRF settled post-refuel F3 design + offline replay (EED-OQ-014 / OQ-019)
+
+- Human-authorized **ROBUST_SETTLED_POST_REFUEL_LEVEL** architecture (peak diagnostic; settled median authoritative)
+- Design-only policy + replay under `backend/scripts/ops/rfrf-settled-post/`; terminal F3 dominance; EED-EV-0103 expanded
+- OQ-014 remains OPEN (numeric calibration); OQ-019 remains PARTIALLY_RESOLVED
+
+## 2026-09-28 — RFRF pre-fill baseline recency safety guard (EED-OQ-017)
+
+- `evaluateRawFuelPrePlateauRecency` + detector skip of stale pre↔rise pairings
+- Promotion `BLOCKED_BASELINE_RECENCY` unless explicit FRESH provenance (EED-INV-019)
+- Evidence: `EED-EV-0098-RFRF-BASELINE-RECENCY-GUARD-2026-09-28.md`; Stage-4 PG gate
+- Trust authority not implemented
+
+## 2026-09-28 — RFRF OQ-015 stretched-end fallback↔native convergence
+
+- Bounded `classifyFallbackAgainstAuthoritativeNativeRefuel` — canonical G2 `endTimeSec=60` unchanged
+- Closes WOB 09-19 duplicate Product REFUEL risk when trust is enabled later (EED-INV-018)
+- Evidence: `EED-EV-0097-RFRF-STRETCHED-END-CONVERGENCE-2026-09-28.md`; EED-OQ-015 resolved
+- Pre-merge safety (PR #1818): stretch authority = `maxSampleGapSeconds` > F3 `maxSampleGapMs` (360s) + native episode bracketed in candidate physical envelope; H1–H8 tests; Stage-4 `rfrf-oq015-stretched-end-postgres-gate.sh`
+- Trust authority not implemented (`ABSOLUTE_SIGNAL_TRUST_AUTHORITY_AVAILABLE` remains false)
+
+## 2026-09-27 — ERD E5.4D scoped runtime shadow persist canary gate
+
+- `ERD_RECHARGE_SHADOW_PARITY_CANARY_ALLOWLIST` env contract (`organizationId:vehicleId`, comma-separated; fail-closed parser)
+- Runtime hook authorization: `GLOBAL` | `SCOPED_CANARY` | `DISABLED` | `INVALID_SCOPED_CONFIG`; global flag semantics unchanged
+- Evidence: `ERD-E5-4D-SCOPED-RUNTIME-SHADOW-PERSIST-2026-09-27.md` (EED-EV-0096); policy + runtime unit tests; PG-SCOPE-1..4
+- No Production env activation; pre-write backup mandatory before future Production scoped activation (EED-EV-0095)
+
+## 2026-09-27 — ERD E5.4C controlled single-vehicle shadow persist canary (Production)
+
+- Authorized Production mutation: one org/vehicle/window; `ErdRechargeShadowParityService.evaluateVehicleWindow({ persist: true })` run twice (12 created, then 12 deduped)
+- Release `20260927132448_v4994` @ `9322a5d6b6d10240f9af8491cc0106ad8c7ea98d`; runtime hook **not** used; `ERD_RECHARGE_SHADOW_PARITY_ENABLED` remained false
+- Evidence: `ERD-E5-4C-CONTROLLED-SHADOW-PERSIST-CANARY-2026-09-27.md` (EED-EV-0095)
+- Functional canary PASS; **pre-write DB backup failed** (Prisma URI `schema` query param); post-canary retry backup documented as non-rollback for pre-canary state
+- No canonical VEE / legacy / HV / E6.3 product mutation; no env/deploy; **does not** authorize global automatic persistence
+
+## 2026-09-27 — ERD E5.4B canonical stored-energy alignment (Step 2)
+
+- Canonical `VehicleEnergyEvent.energyDeltaKwh` from `HvChargeSession` stored extrema (`deriveStoredTractionEnergyDeltaKwh`); no `energyAddedKwh` fallback
+- `ERD_RECHARGE_PROJECTION_META_VERSION` 1 → 2; identity `v1` unchanged; `rawDetectionMeta.energyDeltaSemantic=STORED_TRACTION_BATTERY_ENERGY_DELTA`
+- Evidence: `ERD-E5-4B-CANONICAL-STORED-ENERGY-ALIGNMENT-2026-09-27.md` (EED-EV-0094); EED-DEC-ERD-003 remains PROPOSED (partial Option C)
+- No Prisma/schema/API/`chargingEnergyAddedKwh`; no legacy mapper changes; no Production mutation
+
+## 2026-09-27 — ERD E5.4A shadow parity topology implementation (Step 1)
+
+- Comparator v2 + parity classification v2; pairing model v1 unchanged
+- Fragment sibling policy; physical settled denominator; raw vs physical report fields
+- Evidence: `ERD-E5-4A-SHADOW-PARITY-TOPOLOGY-IMPLEMENTATION-2026-09-27.md` (EED-EV-0093); EED-DEC-ERD-002 → VALIDATED
+- No energy mapper / schema / Production changes
+
+## 2026-09-27 — ERD E5.4 comparator topology + recharge energy semantics ADR
+
+- Dual ADR: `ERD-E5-4A-SHADOW-PARITY-PHYSICAL-EPISODE-TOPOLOGY-2026-09-27.md` (`EED-DEC-ERD-002`); `ERD-RECHARGE-ENERGY-PRODUCT-SEMANTICS-2026-09-27.md` (`EED-DEC-ERD-003`, Option C)
+- Production closure evidence: `evidence/ERD-E5-4-FRAGMENT-TOPOLOGY-PRODUCTION-CLOSURE-2026-09-27.md` (EED-EV-0091, EED-EV-0092)
+- Physical-episode parity authority; fragment siblings via `MULTIPLE_LEGACY_ONE_CANONICAL`; settled denominator excludes multiplicity diagnostics; raw vs physical count fields
+- No runtime code, schema, migration, or Production mutation
+
+## 2026-09-26 — ERD E5.4 legacy cohort NULL-safe Prisma query (defect fix)
+
+- `buildLegacyDirectDimoRechargeWhere`: remove redundant `NOT { detectionSource: SYNQDRIVE_ERD_RECHARGE_PROJECTION }` that excluded `detection_source IS NULL` rows under SQL three-valued logic
+- Positive whitelist unchanged (`NULL` | `DIMO_NATIVE` only); `isLegacyDirectDimoRechargeRow` unchanged
+- PostgreSQL regressions R1–R4 in `erd-e5-4-recharge-shadow-parity.postgres.integration.spec.ts`; full S1–S28 matrix green
+- Evidence note appended in `evidence/ERD-E5-4-SHADOW-PARITY-2026-09-25.md` (EED-EV-0090)
+
+## 2026-09-26 — ERD E6.3 charging location enrichment runtime (acceptance closure)
+
+- E6.3 P/Q/R required gates: PostgreSQL P matrix, real BullMQ Q1–Q10, recovery R1–R12 wired in boundary steps 16–18.
+- Evidence: `ERD-E6-3-CHARGING-LOCATION-ENRICHMENT-RUNTIME-2026-09-26.md` (EED-EV-0089) updated with full matrices and CI proof map.
+
+## 2026-09-26 — ERD E6.3 charging location enrichment runtime
+
+- Dedicated `VehicleEnergyEventChargingStationEnrichment` + BullMQ queue `energy.recharge.station.enrich`.
+- Post-projection enqueue hook; cutover on VEE `endTime`; flags default OFF; no backfill/UI.
+- Evidence: `ERD-E6-3-CHARGING-LOCATION-ENRICHMENT-RUNTIME-2026-09-26.md` (EED-EV-0089).
+
+## 2026-09-25 — ERD E6.2 charging station reference resolver
+
+- Independent OSM charging-station dataset (`osm.charging_stations`, separate metadata lifecycle from fuel).
+- Deterministic geometry-first resolver `charging-station-resolver-v1`; no VEE enrichment wiring.
+- Evidence: `ERD-E6-2-CHARGING-STATION-REFERENCE-RESOLVER-2026-09-25.md` (EED-EV-0088). No Production import.
+
+## 2026-09-25 — ERD E6.1 canonical recharge location provenance
+
+- Native DIMO coordinates preserved on `HvChargeSession.metadata` and projected to canonical VEE (mutable fields + handoff/reconcile).
+- Fallback sessions remain location-null; no fuel-station resolver reuse.
+- Evidence: `ERD-E6-1-CANONICAL-RECHARGE-LOCATION-PROVENANCE-2026-09-25.md` (EED-EV-0087). No backfill.
+
+## 2026-09-25 — ERD E5.6 write-authority cutover gate
+
+- Single `evaluateErdRechargeWriteAuthority` resolver (LEGACY | CANONICAL only).
+- Legacy RECHARGE upsert gate + canonical-row protection; canonical projection runtime wired post-HV reconcile.
+- Strict cutover authorization (`true` only); prerequisite conjunction includes E5.5 read dedupe.
+- Evidence: `ERD-E5-6-WRITE-AUTHORITY-CUTOVER-GATE-2026-09-25.md` (EED-EV-0086). No Production activation.
+
+## 2026-09-25 — ERD E5.5 product-read RECHARGE dedupe
+
+- Evidence: `evidence/ERD-E5-5-PRODUCT-READ-DEDUPE-2026-09-25.md`
+- Strict product-read identity v1 (exact DIMO + coalesced lineage only); fail-open; REFUEL unchanged
+- Flag `ERD_RECHARGE_PRODUCT_READ_DEDUPE_ENABLED` default OFF; independent of E5.4 shadow
+- PostgreSQL gate + boundary-repair step 12/12; no schema migration; not E5.6 cutover
+
+## 2026-09-25 — ERD E5.4 canonical vs legacy recharge shadow parity
+
+- Evidence: `evidence/ERD-E5-4-SHADOW-PARITY-2026-09-25.md`
+- Non-mutating bidirectional parity: legacy DIMO `VehicleEnergyEvent.RECHARGE` vs pure E5.1 projection drafts from eligible `HvChargeSession`
+- Diagnostic table `erd_recharge_projection_shadow_observations`; deterministic fingerprint idempotency; bounded metrics
+- Flag-gated fail-open hook after `detectEnergyEvents` (`ERD_RECHARGE_SHADOW_PARITY_ENABLED`, default OFF); never calls `projectCanonicalRecharge()`
+- PostgreSQL gate S1–S28 (boundary-repair step 11/11); no cutover, no product read change
+
+## 2026-09-25 — ERD E5.3 late-native canonical VEE handoff
+
+- Evidence: `evidence/ERD-E5-3-LATE-NATIVE-HANDOFF-2026-09-25.md`
+- Consumes persisted E3 supersession evidence; reassigns `canonicalChargeSessionId` on same VEE; preserves immutable F-anchored `sourceEventKey`
+- Post-handoff identity validation via anchor rebuild (not native mint key); real E3 convergence + projector PostgreSQL proof (boundary step 10/10)
+- No automatic runtime triggers; physical E3 authority independent of product handoff TX
+
+## 2026-09-25 — ERD E5.2 canonical VEE RECHARGE projector idempotency
+
+- Evidence: `evidence/ERD-E5-2-CANONICAL-VEE-RECHARGE-PROJECTOR-IDEMPOTENCY-2026-09-25.md`
+- `projectCanonicalRecharge()` under E3 vehicle advisory lock; CREATE/RECONCILE/NO_OP + bounded failures
+- HANDOFF_REQUIRED boundary (E5.3); LEGACY_DIMO_COLLISION fail-closed; T1–T20 + multi-client Postgres gate (boundary step 9/9)
+- No Nest wiring, no automatic triggers, no cutover
+
+## 2026-09-24 — ERD E5.1 canonical VEE RECHARGE projection foundation
+
+- Evidence: `evidence/ERD-E5-1-CANONICAL-VEE-RECHARGE-PROJECTION-FOUNDATION-2026-09-24.md`
+- Schema: `canonicalChargeSessionId` FK (SetNull), nullable `dimoSegmentId`, `SYNQDRIVE_ERD_RECHARGE_PROJECTION` + SQL CHECK extension
+- Pure eligibility + mapper policies; E3 shared-lock contract documented; PG-A…PG-K gate (boundary-repair step 8/8)
+- No runtime projector, no cutover, legacy DIMO→VEE writer unchanged
+
+## 2026-09-24 — ERD E4.2 real BullMQ + Redis liveness proof
+
+- `erd-e4-reconciliation-liveness.bullmq.redis.integration.spec.ts`; CI job ERD E4 postgres+redis liveness
+- Boundary-repair step 6 explicitly Postgres-only; Redis gate separate
+
+## 2026-09-24 — ERD E4.1 signal authority + bounded partition fairness
+
+- Evidence append: `evidence/ERD-E4-RECONCILIATION-LIVENESS-2026-09-24.md` (E4.1 section)
+- Canonical `hv-erd-capability-signal-keys.ts`; E4 mirrors E3 fallback corroboration (`hv.charging_power`, not `hv.current_power`)
+- SQL-bounded periodic selection; partition rotation; 109+ vehicle postgres fairness proof
+
+## 2026-09-24 — ERD E4 durable reconciliation / recovery liveness
+
+- Evidence: `evidence/ERD-E4-RECONCILIATION-LIVENESS-2026-09-24.md`
+- Canonical ERD reconcile eligibility shared with E3; expanded periodic fallback selector; explicit period buckets; rotating fair batch selection; E4 liveness metrics; CI gate step 6
+
+## 2026-09-24 — ERD E3.1 shared authority lock + fallback identity races
+
+- Single `pg_advisory_xact_lock(hashtext(vehicleId))` for all native + fallback physical writes
+- Fallback identity: persisted fingerprint/start anchor immutable; replay uses matcher-based reuse
+- Postgres race matrix with independent PrismaClient A/B
+
+## 2026-09-24 — ERD E3 telemetry fallback + native/fallback convergence
+
+- Evidence: `evidence/ERD-E3-FALLBACK-CONVERGENCE-2026-09-24.md`
+- Native-first fallback activation; physical matcher SAME/AMBIGUOUS/DIFFERENT; atomic late-native convergence TX
+- E3 postgres gate step 5 in boundary-repair CI; observability `synqdrive_erd_e3_convergence_total`
+
+## 2026-09-24 — ERD E2.1 deterministic native dedupe closure
+
+- Total-order dedupe in `dimo-recharge-segments.dedupe.ts` (no last-writer-wins)
+- Forward/reverse unit tests + postgres dedupe order proof
+
+## 2026-09-24 — ERD E2 native recharge normalization hardening
+
+- Evidence: `evidence/ERD-E2-NATIVE-NORMALIZATION-2026-09-24.md`
+- Hardened DIMO recharge normalizer (live contract, fingerprint dedupe, extrema/boolean semantics, duration provenance)
+- HV quality uses truthful extrema proxy (PARTIAL cap); legacy VEE mapper unchanged in role
+- Postgres gate A–F: CI step in `test:boundary-repair:postgres`; local opt-in `ERD_E2_POSTGRES_INTEGRATION=1`
+
+## 2026-09-24 — ERD E1 canonical physical charge authority (Model A)
+
+- ADR: `decisions/ERD-E1-CANONICAL-PHYSICAL-CHARGE-AUTHORITY-2026-09-24.md`
+- EED/ERD owns physical charge session semantics; Battery V2 role = CONSUMER; VEE RECHARGE = product projection post-cutover
+- Physical identity v1, native>fallback, lifecycle, legacy VEE policy, writer inventory (no runtime change)
+- Graph: `EED-DEC-ERD-001`, `EED-EV-0076`/`0077`, invariants `EED-INV-014`–`017`; `EED-OQ-004` superseded by ERD policy
+- Reconciles prior Battery V2 OUT_OF_SCOPE boundary for HV sessions
+
+## 2026-09-21 — RFRF F10.6.8-C recovered READY → promotion liveness (C1+C2)
+
+- Recovery-owned canonical promotion after convergence when no SAME native; advisory → fresh clock → row lock → promotion
+- C1: fallback VEE + `PROMOTED` + `recoveryLastOutcome=SUCCESS_PROMOTED` + lease clear in one transaction; no second `finishRecovery` after promote
+- C2: EXPIRED lease vs SUPERSEDED generation stale proofs; independent `PrismaClient` stacks; additive migration `SUCCESS_PROMOTED`
+- Stage 5 production posture unchanged; Stage 6 / recovery-direct G2 handoff not started
+
+## 2026-09-19 — RFRF F10.6.6-B.2 micro-closure (canonical query + pending INSUFFICIENT)
+
+- Canonical list query includes persisted `refuelReconciliation`; raw list remains lean
+- Pending Stage-4 authority: `INSUFFICIENT_EVIDENCE` and `SAME_PHYSICAL_REFUEL` → pending; `DISTINCT` does not
+- Product projection: hide conflicting dual-final / canonicalEventId mismatch groups
+- Tests: service-path WOB canonical read, loader pagination/raw cap, promotion/convergence fail-closed
+
+## 2026-09-19 — RFRF F10.6.6-B.1 micro-closure (race, bounded raw load, product reads)
+
+- Authoritative native loader: V2-owned `refuelReconciliation=null` → `PENDING_RECONCILIATION` via `isV2OwnedRefuelEvent` + effective cutover; legacy pre-V2 null-recon preserved
+- Raw native load pages with `MAX_RAW_NATIVE_REFUEL_ROWS_IN_OVERLAP_WINDOW=512`; `RAW_LOAD_INCOMPLETE` fail-closed (no silent take=33 truncation)
+- Product canonical projection: `listCanonicalEnergyEvents`, trips timeline + GET `energy-events`; forensic `listEnergyEventsRaw` unchanged row retention
+- Tests: authoritative resolver B.1, canonical projection WOB 3→1, detectEnergyEvents reconciliation-before-RFRF ordering
+
+## 2026-09-19 — RFRF F10.6.0.1 micro-closure (EED-EV-0071 correction)
+
+- Production rebaseline **accepted**: `0384adf…` → `16000fce6…` with **empty** RFRF business runtime and VDC runtime diffs; EXP-021 + RFRF tooling-only paths on `main`
+- `PRODUCTION_REBASELINE_REQUIRED=NO`; resolves prior contradiction with `READY_FOR_STAGE4_AUTHORIZATION_GATE=YES`
+- VDC metrics: `VDC_PILOT_SCOPE_COUNT=4` (configured JSON); `VDC_CANONICAL_ACTIVE_VEHICLE_COUNT=3`; `VDC_CONFIGURED_SCOPE_DRIFT=NO`
+- CI: `rfrf-stage4-convergence-readiness` PASS, `rfrf-stage3-persistence-readiness` PASS; `i18n-authority-protection` FAIL until trusted label
+- Read-only Production: 3 `raw_refuel_candidates` (SETTLING×2, INSUFFICIENT×1); blast radius **BOUNDED**; observational gates unchanged (NO)
+
+## 2026-09-19 — RFRF F10.6.0 Stage-4 convergence readiness (tooling; no Production Stage 4)
+
+- EED-EV-0071: Stage-4 enable/recovery/rollback fixture closure (recovery target Stage 3); Production read-only rebaseline on release `20260918232713_v4994` / SHA `16000fce6…` (drift vs EED-EV-0070); RFRF still Stage 3 with cutover unchanged; Stage-4 dry-run 3→4 zero mutation on VPS; wrong-source rollback from stage 4 blocked; EXP-021 nonterminal ledger 0; VDC canonical epoch 107/107; candidates 0; observational readiness NO (epistemic P2); CI workflow for F5-PR1 + F9 + P20 promotion boundary
+- `STAGE_4_EXECUTED=NO`; `STAGE_4_START_AUTHORIZED=NO`; `READY_FOR_STAGE4_AUTHORIZATION_GATE=YES` (structural)
+
+## 2026-09-19 — RFRF F10.5.2 Stage-3 Production execution (evidence landing)
+
+- EED-EV-0070: authorized Production Stage 2→3; `RAW_FUEL_REFUEL_FALLBACK_PERSIST_ENABLED=true`; convergence/promotion/G2 false; cutover `2026-09-18T10:25:41.000Z` unchanged; runtime SHA `0384adf12bbb1407eb8e291726d3dac60323b8b6` / release `20260918174845_v4994`; tooling `5860b125f7f6bf3cd0077cfa8a1253c13be341ba` from isolated `/tmp/rfrf-f1051-tooling` (no application deploy); rolling restart A then B; TX committed; recovery to Stage 2 armed but not invoked; EXP-021 canary terminal before execution + immediate survival PASS; fleet coordinator natural-tick log proof OBSERVABILITY_LIMITED at evidence landing; VDC LEGACY / 4 scopes / T0 unchanged; canonical epoch obs/blockers 107/107 (monotonic vs F10.5.1); candidates 0, fallback VEE 0
+- `STAGE_3_EXECUTION_ACCEPTED=YES`; `STAGE3_AUTHORITY_TRANSITION_PROVEN=YES`; `REAL_RAW_RISE_POSITIVE_PATH_PROVEN_UNDER_STAGE3=NO`; `STAGE_4_START_AUTHORIZED=NO`
+- F10.5.3 evidence PR: governance/docs only on `main` @ `16000fce6…` (#1692 EXP-021 code only; Production runtime unchanged)
+
+## 2026-09-18 — RFRF F10.5.0.1 Stage-3 readiness micro-closure
+
+- EED-EV-0069 extended: Production rebaseline **accepted** (post-#1689 deploy); exact canonical VDC **85/85** (4 pilot scopes, T0 unchanged); EXP-021 canary env armed; observational readiness NO retained as epistemic note only; CI workflow for isolated F3/F4/F9 PG+Redis gates; PR #1691 CI 28/28 green at F10.5.0 land
+
+## 2026-09-18 — RFRF F10.5.0 Stage-3 persistence readiness (tooling)
+
+- EED-EV-0069: Stage-3 enable/recovery/rollback fixture closure (failure recovery → Stage 2, not Stage 1); authority matrix proves persist without VEE/convergence/promotion/G2; Production read-only audit found deploy drift to release `20260918174845_v4994` / SHA `0384adf12bbb1407eb8e291726d3dac60323b8b6`; RFRF still Stage 2 with unchanged cutover; candidates 0; REAL_RAW_RISE under Stage 2 not proven; Stage 3 not executed; `PRODUCTION_REBASELINE_REQUIRED=YES`
+
+## 2026-09-18 — RFRF F10.4.2 Stage-2 Production execution (evidence landing)
+
+- EED-EV-0068: authorized Production Stage 1→2 completed; `RAW_FUEL_REFUEL_FALLBACK_ENABLED=true`; persist/convergence/promotion/G2 remained OFF; cutover `2026-09-18T10:25:41.000Z` unchanged; runtime SHA `ca7bad8826871376a58efaa874f12992b88c4a04` / release `20260918085306_v4994`; tooling `b73d5cb2a81c7920691b8ab544909ab3a3666d70` executed from isolated `/tmp/rfrf-f1042-tooling` ops bundle (no application deploy); rolling restart A then B; EXP-021 immediate + final natural-tick survival (initial orchestrator poll OBSERVE_INCOMPLETE, leader log ≥4 dry-run observations); VDC LEGACY / 4 scopes / pilot T0 unchanged; shadow obs 73; canonical epoch obs/blockers 67/67 pre-existing; candidates 0, fallback VEE 0
+- `STAGE_2_EXECUTION_ACCEPTED=YES`; `REAL_RAW_RISE_OBSERVED_UNDER_STAGE2=NOT_PROVEN`; `STAGE_3_START_AUTHORIZED=NO`
+- F10.4.3 documents Production release worktree untracked ops/upload paths (not cleaned); Stage 2 did not change release symlink
+- RUNTIME_SEMANTICS_CHANGED=NO in this evidence PR (governance/docs only)
+
+## 2026-09-18 — RFRF F10.4.0 Stage-2 transaction / recovery safety (tooling)
+
+- EED-EV-0067: generic `rfrf_stage_transaction_run` for stages 1–6; Stage-2 failure recovery restores Stage 1; cutover immutability on Stage-2 enable; production-grade `--from-stage 2` rollback; fixture tests + master-only runtime authority matrix; Stage 2 not executed; Production remains Stage 1 / `ca7bad…`
+- EED-EV-0067 (F10.4.0.1 micro-closure): dry-run byte-identical proof; rollback dry-run source-stage verify; rollback fail-closed convergence; exact PRE-stage gate before mutation
+- EED-EV-0067 (F10.4.0.2): rollback recovery-of-recovery fail-closed; rollback signal traps; stage-verify injection test; production dry-run exact SHA authority
+- EED-EV-0067 (F10.4.0.3): mutation may-have-started boundary; verified PM2/port stop; single authority evidence block; strict Linux CI signal tests
+
+## 2026-09-18 — RFRF F10.3.2 Stage-1 Production execution (evidence landing)
+
+- EED-EV-0066: authorized Production Stage 0→1 completed; `RAW_FUEL_REFUEL_FALLBACK_CUTOVER_AT=2026-09-18T10:25:41.000Z`; all RFRF boolean authorities remained OFF; runtime SHA `ca7bad8826871376a58efaa874f12992b88c4a04` / release `20260918085306_v4994` preserved; rolling restart A then B; EXP-021 immediate + post-restart 4-tick survival (7 natural ticks, follower 0); VDC LEGACY / 4 scopes / pilot T0 unchanged; shadow obs 6→6, new-epoch blockers 0; candidates 0, fallback VEE 0
+- `STAGE1_EXECUTION_ACCEPTED=YES`; `STAGE_2_START_AUTHORIZED=NO`; `STAGE2_BOUNDARY_AUDIT_REQUIRED=YES` (48s cutover-to-mutation interval — non-blocking Stage-2 prerequisite)
+- Does **not** prove VDC seven-day window completion or Stage 2 readiness
+- RUNTIME_SEMANTICS_CHANGED=NO in this evidence PR (governance/docs only)
+
+## 2026-09-18 — RFRF F10.3.0 Stage-1 restart safety micro-closure
+
+- EED-EV-0065: F10.2 complete → Stage 1 planning; failure window (env mutated before restart, no auto-recovery, partial replica env possible); automatic backup restore + dual-replica restart recovery; live-required preflight before enable; SHA256 backup integrity; failure-injection tests; EXP-021/VDC post-restart survival contracts documented
+- Stage 1 **not executed**; `STAGE_1_START_AUTHORIZED=NO`; production remains `3a2707b`
+- RUNTIME_SEMANTICS_CHANGED=NO
+
+## 2026-09-18 — RFRF F10.2 final closure (tooling-only live preflight)
+
+- EED-EV-0064 extended: #1680 merged @ ca0aa0f; isolated tooling checkout executed live preflight against unchanged production 3a2707b; `RFRF_PRODUCTION_PREFLIGHT=PASS` exit 0; METRICS_*_RFRF=YES both replicas; 10/10 real probe stability; cross-workstream preservation PASS; no deploy/mutation
+- `RFRF_F10_2_FINAL_CLOSURE=PASS`; `STAGE_1_START_AUTHORIZED=NO`
+- Operator note: use `sudo` with explicit env vars, not `sudo -E` (PM2_HOME false-negative)
+
+## 2026-09-17 — RFRF F10.2.2 metrics probe SIGPIPE/pipefail micro-closure
+
+- EED-EV-0064 extended: F10.2 cross-workstream preservation gate PASS on production `3a2707b`; F10.2 blocked only by `rfrf_metrics_probe()` false-negative (`echo|grep -q` + pipefail SIGPIPE 141 on large payloads)
+- Fix: `rfrf_metrics_body_has_metric()` — HELP/TYPE here-string grep + line-prefix series scan; large-payload regression + mocked probe fixture tests; F10 pipefail risk 2→0
+- Post-merge retry: run fixed tooling checkout against unchanged `/opt/synqdrive/current` with `RFRF_REQUIRED_GIT_SHA=3a2707b`; no application redeploy
+- RUNTIME_SEMANTICS_CHANGED=NO; production not mutated
+
+## 2026-09-16 — RFRF F10.2.1.1 worker readiness + deploy SHA micro-closure
+
+- EED-EV-0064 extended: fix worker readiness gate (Node argv + exit status, not pipeline PORT / stdout capture); deploy/preflight required SHA is `<FINAL_F10_2_1_HOTFIX_HEAD>` not hotfix base; worker readiness contract tests + deploy SHA contract tests
+- RUNTIME_SEMANTICS_CHANGED=NO; production not mutated
+
+## 2026-09-16 — RFRF F10.2.1 preflight dotenv safety micro-closure
+
+- EED-EV-0064: safe key-scoped dotenv reads for RFRF F10 ops scripts; remove `source backend.env`; preflight `--live-required`; readiness PORT diagnostic fix; fixture tests for literal `$share` / command substitution; hotfix base `295635fc`
+- RUNTIME_SEMANTICS_CHANGED=NO; production not mutated in F10.2.1
+
+## 2026-09-15 — RFRF F10.1.1 mergeability + operational safety micro-closure
+
+- EED-EV-0063 extended: PR ancestry reconciliation; Stage 1 proposed-cutover gate; explicit deploy SHA authority; monitoring apply fail-closed contract; live Prometheus gates; blast-radius fail-closed; expanded Stage 6 prerequisites; script-level fixture contract tests
+- RUNTIME_SEMANTICS_CHANGED=NO; production not mutated
+
+## 2026-09-15 — RFRF F10.1 operational production rollout closure
+
+- EED-EV-0063: operator runbook, read-only preflight, staged enablement + rollback tooling, blast-radius assessment, F8 alert verify/sync, dual-replica Prometheus scrape config
+- RUNTIME_SEMANTICS_CHANGED=NO; production not mutated; Stage 5/6 blocked until observability topology complete + alerts loaded
+
+## 2026-09-15 — RFRF F9 independent-replica integration closure
+
+- EED-EV-0062: independent PrismaClient A/B + promotion/G2 runtime stacks prove DB lock authority across process boundaries
+- Net-new F9-P1..P6 + P10 real PG (+ Redis for P6); F9 gate orchestrates F7 multi-replica 3/3, F5-PR2, F5-PR3.1, F6, F7, F8, G2 Jest, metrics — no runtime/schema change
+
+## 2026-09-15 — RFRF F8.2 bounded lost_enqueue metric query + final regression closure
+
+- EED-EV-0061 extended: lost_enqueue actionable count uses PostgreSQL COUNT with isfinite/source/enrichment/authority predicates (no unbounded findMany)
+- G2.1b/c/d Jest recovery semantic suite executed on final head; main synced with EXP-021 evidence-only delta (#1659)
+
+## 2026-09-15 — RFRF F8.1 scheduler zero-success + actionable backlog closure
+
+- EED-EV-0061 extended: F8.1 closes scheduler stale blind spot before first success and actionable backlog parity for all six exported reasons
+- `onModuleInit()` publishes `recovery_enabled` + initializes `last_success_unixtime=0`; stale alert accepts zero-success after `for: 5m`
+- `countActionablePhysicalRefuelRecoveryReasons()` shared with canonical recovery where builders; inventory counts preserved
+
+## 2026-09-15 — RFRF F8 operational telemetry + Prometheus alerting closure
+
+- EED-EV-0061: `PhysicalRefuelReconciliationMetricsService` on canonical TripMetricsService registry
+- Recovery backlog gauges from `countPhysicalRefuelRecoveryBacklog()` with explicit zero reset; scheduler-owned run metrics
+- Physical-refuel alert group in `backend/monitoring/prometheus/alerts.yml`; F8-P1..P10 real PG gate (16/16)
+- No second metrics stack; RFRF G2 handoff counters unchanged; no recovery science changes
+
 ## 2026-09-15 — RFRF F7.1 pre-merge micro-closure
 
 - EED-EV-0060 extended: F4-PR3/PR2 + F3→F2 regressions executed on final head; real multi-replica PG+Redis 3/3 (0 skips)

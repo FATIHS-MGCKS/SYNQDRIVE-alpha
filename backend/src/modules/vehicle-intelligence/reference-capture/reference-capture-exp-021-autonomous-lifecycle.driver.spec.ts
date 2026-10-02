@@ -24,6 +24,7 @@ import type { ReferenceCaptureSessionRepository } from './reference-capture-sess
 import type { ReferenceCaptureSettlementShadowService } from './reference-capture-settlement-shadow.service';
 import {
   cadenceSequenceFromPlan,
+  EXP021_CANDIDATE_SHORT_AB_60_90,
   EXP021_CANDIDATE_SHORT_AB_90_60,
 } from './reference-capture-exp021-calibration-plan.lib';
 import { countIntendedSlotsForCadence } from './reference-capture-exp021-request-slots.lib';
@@ -93,13 +94,13 @@ function canonicalT0FromPreflight(preflight: Record<string, unknown> | undefined
   return undefined;
 }
 
-function buildConfig() {
+function buildConfig(planKey: 'CANDIDATE_SHORT_AB_90_60' | 'CANDIDATE_SHORT_AB_60_90' = 'CANDIDATE_SHORT_AB_90_60') {
   return buildExp021RuntimeConfig({
     env: {
       ORGANIZATION_ID: randomUUID(),
       VEHICLE_ID: randomUUID(),
       TOKEN_ID: '192922',
-      EXP021_CALIBRATION_PLAN: 'CANDIDATE_SHORT_AB_90_60',
+      EXP021_CALIBRATION_PLAN: planKey,
       EXP021_TARGET_DEPLOY_SHA: 'driver-regression-test-sha',
       EXP021_MOVEMENT_SPEED_KMH: '8',
       EXP021_PARKED_SPEED_KMH: '3',
@@ -111,9 +112,10 @@ function buildLifecycleContext(options?: {
   sessionId?: string;
   orchestratorRunId?: string;
   startMs?: number;
+  planKey?: 'CANDIDATE_SHORT_AB_90_60' | 'CANDIDATE_SHORT_AB_60_90';
 }): LifecycleTestContext {
   let clock = options?.startMs ?? Date.parse(T0_ISO);
-  const config = buildConfig();
+  const config = buildConfig(options?.planKey);
   const sessionId = options?.sessionId ?? randomUUID();
   const orchestratorRunId = options?.orchestratorRunId ?? `exp021-driver-${randomUUID()}`;
   const acquisitionStates = new Map<string, unknown>();
@@ -134,13 +136,15 @@ function buildLifecycleContext(options?: {
     })),
   } as unknown as ReferenceCaptureSessionRepository;
 
+  const cadenceOrder = [...config.cadencePhaseOrderMs];
+
   const baseSeries = (sid: string, overrides: Record<string, unknown> = {}) => ({
     calibrationSeriesId: `series-${sid}`,
     vehicleId: config.vehicleId,
     tokenId: typeof config.tokenId === 'number' ? config.tokenId : Number.parseInt(String(config.tokenId), 10),
     seriesStartedAt: new Date(clock).toISOString(),
-    calibrationPlanId: 'candidate_short_ab_90_60',
-    calibrationPlanVersion: 'EXP021_CANDIDATE_SHORT_AB_90_60',
+    calibrationPlanId: config.calibrationPlan.planId,
+    calibrationPlanVersion: config.calibrationPlan.planVersion,
     completedPhases: [],
     completedPhaseSummaries: [],
     pendingPhaseRequest: null,
@@ -163,15 +167,16 @@ function buildLifecycleContext(options?: {
       return { created: persistT0CallCount === 1, authority };
     }),
     activatePhysicalPhaseAtT0: jest.fn(async (_org, sid, body) => {
+      const firstCadenceMs = cadenceOrder[0];
       const slots = body.effectivePollIntervalMs === 60_000 ? 10 : 7;
       acquisitionStates.set(sid, {
         hfCalibrationSeries: baseSeries(sid, {
-          phaseOrder: [90_000],
+          phaseOrder: [firstCadenceMs],
           activePhase: {
-            effectivePollIntervalMs: 90_000,
+            effectivePollIntervalMs: body.effectivePollIntervalMs,
             phaseStartedAt: new Date(clock).toISOString(),
             phaseProvenance: 'PHYSICAL_T0',
-            calibrationPhaseId: 'phase-90',
+            calibrationPhaseId: `phase-${body.effectivePollIntervalMs / 1000}`,
           },
         }),
         hfCalibrationActiveCounters: {
@@ -184,7 +189,7 @@ function buildLifecycleContext(options?: {
         phaseStartedAt: new Date(clock).toISOString(),
         canonicalT0At:
           canonicalT0FromPreflight(preflightBySession.get(sid)) ?? new Date(clock).toISOString(),
-        calibrationPhaseId: 'phase-90',
+        calibrationPhaseId: `phase-${body.effectivePollIntervalMs / 1000}`,
       };
     }),
     switchHfCalibrationPhase: jest.fn(async (_org, sid, body) => {
@@ -192,15 +197,18 @@ function buildLifecycleContext(options?: {
       const st = parseAcquisitionState(acquisitionStates.get(sid));
       const slots = body.effectivePollIntervalMs === 60_000 ? 10 : 7;
       const prev = st.hfCalibrationSeries?.activePhase;
+      const phaseOrderSoFar = prev
+        ? [...cadenceOrder.slice(0, cadenceOrder.indexOf(prev.effectivePollIntervalMs) + 1), body.effectivePollIntervalMs]
+        : [body.effectivePollIntervalMs];
       acquisitionStates.set(sid, {
         ...st,
         hfCalibrationSeries: baseSeries(sid, {
-          phaseOrder: body.effectivePollIntervalMs === 60_000 ? [90_000, 60_000] : [90_000],
+          phaseOrder: phaseOrderSoFar,
           activePhase: {
             effectivePollIntervalMs: body.effectivePollIntervalMs,
             phaseStartedAt: new Date(clock).toISOString(),
             phaseProvenance: body.phaseProvenance ?? 'PHYSICAL_TRANSITION',
-            calibrationPhaseId: body.effectivePollIntervalMs === 60_000 ? 'phase-60' : 'phase-90',
+            calibrationPhaseId: `phase-${body.effectivePollIntervalMs / 1000}`,
           },
           completedPhaseSummaries: prev
             ? [{ effectivePollIntervalMs: prev.effectivePollIntervalMs, calibrationPhaseId: prev.calibrationPhaseId }]
@@ -232,7 +240,10 @@ function buildLifecycleContext(options?: {
                       effectivePollIntervalMs: priorSeries.activePhase.effectivePollIntervalMs,
                       calibrationPhaseId: priorSeries.activePhase.calibrationPhaseId,
                     }
-                  : { effectivePollIntervalMs: 60_000, calibrationPhaseId: 'phase-60' },
+                  : {
+                      effectivePollIntervalMs: cadenceOrder[cadenceOrder.length - 1],
+                      calibrationPhaseId: `phase-${cadenceOrder[cadenceOrder.length - 1] / 1000}`,
+                    },
               ],
             }
           : null,
@@ -365,19 +376,19 @@ describe('EXP-021 canonical autonomous lifecycle driver', () => {
     expect(st.hfCalibrationSeries?.terminalFinalizationAt).toBeTruthy();
     expect(ctx.sessionStatus.get(ctx.sessionId)).toBe('COMPLETED');
     if (st.hfCalibrationSeries) {
-      expectPhaseOrder(st.hfCalibrationSeries);
+      expectPhaseOrder(st.hfCalibrationSeries, EXP021_CANDIDATE_SHORT_AB_90_60);
       expectNo120Phase(st.hfCalibrationSeries);
-      expectPlanAuthority(st.hfCalibrationSeries);
+      expectPlanAuthority(st.hfCalibrationSeries, EXP021_CANDIDATE_SHORT_AB_90_60);
     }
     expect(countIntendedSlotsForCadence(90_000, EXP021_CANDIDATE_SHORT_AB_90_60)).toBe(7);
     expect(countIntendedSlotsForCadence(60_000, EXP021_CANDIDATE_SHORT_AB_90_60)).toBe(10);
-    expectSettlementGeometry();
+    expectSettlementGeometry(EXP021_CANDIDATE_SHORT_AB_90_60);
   });
 
   it('scientific geometry: 7/10 slots, 19+19 settlement windows, plan authority', () => {
     expect(countIntendedSlotsForCadence(90_000, EXP021_CANDIDATE_SHORT_AB_90_60)).toBe(7);
     expect(countIntendedSlotsForCadence(60_000, EXP021_CANDIDATE_SHORT_AB_90_60)).toBe(10);
-    expectSettlementGeometry();
+    expectSettlementGeometry(EXP021_CANDIDATE_SHORT_AB_90_60);
     const config = buildConfig();
     expect(config.calibrationPlan.planId).toBe('candidate_short_ab_90_60');
     expect(config.cadencePhaseOrderMs).toEqual([90_000, 60_000]);
@@ -544,6 +555,31 @@ describe('EXP-021 canonical autonomous lifecycle driver', () => {
     expect(ctx.sessionService.persistExp021CanonicalT0).toHaveBeenCalledTimes(1);
     expect(ctx.sessionService.switchHfCalibrationPhase).toHaveBeenCalledTimes(1);
     expect(driver2.physicalDriveEnded).toBe(false);
+  });
+
+  it('I — full 60→90 short A/B lifecycle transitions by configured phase order', async () => {
+    const ctx = buildLifecycleContext({ planKey: 'CANDIDATE_SHORT_AB_60_90' });
+    const driver = ctx.createDriver();
+    await confirmT0ViaDriver(ctx, driver);
+
+    expect(ctx.config.calibrationPlan.planId).toBe('candidate_short_ab_60_90');
+    expect(ctx.config.cadencePhaseOrderMs).toEqual([60_000, 90_000]);
+
+    const stopReason = await runDrivingToCompletion(ctx, driver);
+    expect(stopReason).toBe('FINAL_PHASE_WALL_CLOCK');
+    expect(ctx.sessionService.switchHfCalibrationPhase).toHaveBeenCalledTimes(1);
+    expect(ctx.sessionService.stopRecording).toHaveBeenCalled();
+
+    const st = ctx.getState();
+    expect(st.hfCalibrationSeries?.phaseOrder).toEqual([60_000, 90_000]);
+    if (st.hfCalibrationSeries) {
+      expectPhaseOrder(st.hfCalibrationSeries, EXP021_CANDIDATE_SHORT_AB_60_90);
+      expectNo120Phase(st.hfCalibrationSeries);
+      expectPlanAuthority(st.hfCalibrationSeries, EXP021_CANDIDATE_SHORT_AB_60_90);
+    }
+    expect(countIntendedSlotsForCadence(60_000, EXP021_CANDIDATE_SHORT_AB_60_90)).toBe(10);
+    expect(countIntendedSlotsForCadence(90_000, EXP021_CANDIDATE_SHORT_AB_60_90)).toBe(7);
+    expectSettlementGeometry(EXP021_CANDIDATE_SHORT_AB_60_90);
   });
 
   it('syncExp021Settlement delegates to settlement shadow via repository read', async () => {

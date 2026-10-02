@@ -8,6 +8,7 @@ import { TRIP_TRACKING_TRIGGERS } from './trip-detection.types';
 import { END_DETECTION_MODES } from './trip-detection.types';
 import type { TripTrackingJobData } from './trip-detection.types';
 import { TripDetectionOrchestrationService } from './trip-detection-orchestration.service';
+import { defaultFinalizeHarnessRouteWaypoints } from './trip-finalize-harness-waypoints.fixture';
 import {
   buildEndValidationScheduledEvidence,
   clearEndValidationAttemptLocalEvidence,
@@ -344,6 +345,9 @@ describe('R5B — processFinalize after latest failed attempt', () => {
         vehicleTrip: { findUnique: jest.fn().mockResolvedValue(trip) },
         vehicleTripWaypoint: {
           findFirst: jest.fn().mockResolvedValue(null),
+          findMany: jest.fn().mockResolvedValue(
+            defaultFinalizeHarnessRouteWaypoints(trip.startTime),
+          ),
           count: jest.fn().mockResolvedValue(3),
         },
       },

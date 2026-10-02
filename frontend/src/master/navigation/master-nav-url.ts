@@ -5,7 +5,7 @@ const CANONICAL_VIEWS: MasterView[] = [
   'activity-log', 'platform-ops', 'platform-health', 'support', 'settings', 'platform-integrations',
   'fleet-connection',
   'parts-accessories', 'insurances', 'voice-assistant', 'high-mobility',
-  'architektur', 'changes', 'vehicle-logbook',
+  'architektur', 'changes', 'vehicle-logbook', 'battery-v2-shadow-inspection',
 ];
 
 const LEGACY_VIEWS: MasterView[] = [

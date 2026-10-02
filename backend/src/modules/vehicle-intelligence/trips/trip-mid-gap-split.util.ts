@@ -1,3 +1,8 @@
+import {
+  classifyQualifiedStopDurationPolicy,
+  shouldSplitQualifiedStop,
+} from './trip-qualified-stop-duration.policy';
+
 export type MidGapDriftState = 'WITHIN_THRESHOLD' | 'EXCEEDS_THRESHOLD' | 'UNKNOWN';
 
 export type MidGapSplitCommitPhase = 'PRE_COMMIT' | 'POST_COMMIT';
@@ -127,6 +132,8 @@ export function buildMidGapAppliedForensics(params: {
   driftM: number | null;
   firstTripId: string;
   secondTripId: string;
+  maxSameTripStopMs?: number;
+  qualificationReason?: string;
 }): Record<string, unknown> {
   return {
     decision: 'APPLIED',
@@ -137,6 +144,89 @@ export function buildMidGapAppliedForensics(params: {
     driftM: params.driftM,
     firstTripId: params.firstTripId,
     secondTripId: params.secondTripId,
+    ...(params.maxSameTripStopMs != null
+      ? {
+          maxSameTripStopMs: params.maxSameTripStopMs,
+          durationPolicyDecision: classifyQualifiedStopDurationPolicy(
+            params.gapMs,
+            params.maxSameTripStopMs,
+          ),
+          durationComparator: 'LTE_SAME_GT_SPLIT',
+        }
+      : {}),
+    ...(params.qualificationReason
+      ? { qualificationReason: params.qualificationReason }
+      : {}),
+  };
+}
+
+export type CoreTimelineGapPoint = {
+  ts: Date;
+  speed: number | null;
+};
+
+/**
+ * Live FSM mid-gap candidate selection (duration + stationary-before + resumed-motion).
+ * Physical drift / pre-duration gates are applied by the orchestrator after this.
+ */
+export function findLargestQualifyingMidGapFromCoreTimeline(params: {
+  timeline: CoreTimelineGapPoint[];
+  maxSameTripQualifiedStopMs: number;
+  speedStoppedKmh?: number;
+  speedMovingKmh?: number;
+}): {
+  gapMs: number;
+  firstEndAt: Date;
+  secondStartAt: Date;
+} | null {
+  const stoppedKmh = params.speedStoppedKmh ?? 5;
+  const movingKmh = params.speedMovingKmh ?? 5;
+  const timeline = params.timeline;
+  if (timeline.length < 2) return null;
+
+  let bestIdx = -1;
+  let bestGapMs = 0;
+  for (let i = 1; i < timeline.length; i++) {
+    const before = timeline[i - 1]!;
+    const after = timeline[i]!;
+    const gapMs = after.ts.getTime() - before.ts.getTime();
+    if (!shouldSplitQualifiedStop(gapMs, params.maxSameTripQualifiedStopMs)) {
+      continue;
+    }
+    const beforeStopped = before.speed == null || before.speed <= stoppedKmh;
+    if (!beforeStopped) continue;
+    if (gapMs > bestGapMs) {
+      bestIdx = i;
+      bestGapMs = gapMs;
+    }
+  }
+
+  if (bestIdx < 0) return null;
+
+  const after = timeline[bestIdx]!;
+  const afterMoving = after.speed != null && after.speed > movingKmh;
+  const anyLaterMoving = timeline
+    .slice(bestIdx)
+    .some((p) => p.speed != null && p.speed > movingKmh);
+  if (!afterMoving && !anyLaterMoving) return null;
+
+  let secondStartIdx = bestIdx;
+  if (!afterMoving) {
+    for (let i = bestIdx + 1; i < timeline.length; i++) {
+      const p = timeline[i]!;
+      if (p.speed != null && p.speed > movingKmh) {
+        secondStartIdx = i;
+        break;
+      }
+    }
+  }
+
+  const before = timeline[bestIdx - 1]!;
+  const second = timeline[secondStartIdx]!;
+  return {
+    gapMs: bestGapMs,
+    firstEndAt: before.ts,
+    secondStartAt: second.ts,
   };
 }
 

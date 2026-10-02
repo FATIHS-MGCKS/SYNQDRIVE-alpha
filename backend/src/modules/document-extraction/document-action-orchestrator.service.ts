@@ -845,6 +845,7 @@ export class DocumentActionOrchestratorService implements OnModuleInit {
         brakeEvidenceIds: brakeAction?.output?.brakeEvidenceIds ?? null,
         batteryEvidenceIds: batteryAction?.output?.batteryEvidenceIds ?? null,
         batterySnapshotId: batteryAction?.output?.snapshotId ?? null,
+        groundTruthEventIds: batteryAction?.output?.groundTruthEventIds ?? null,
         vehicleComplianceApplied:
           execution.actions.find(
             (row) =>

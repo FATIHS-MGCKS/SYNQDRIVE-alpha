@@ -9,6 +9,7 @@ import {
   getBatteryV2ReconciliationBatchSize,
   getBatteryV2StartProxyDelayMs,
   isBatteryV2RestShadowEnabled,
+  isBatteryV2GeneralizedEvidenceEnabled,
   isStartWindowCollectionEnabled,
 } from '@config/battery-health-v2.config';
 import {
@@ -77,6 +78,7 @@ import {
   type BatteryV2ReconciliationCategory,
 } from '../observability/battery-v2-prometheus.metrics';
 import { formatBatteryV2PipelineLog } from '../observability/battery-v2-pipeline-observability.util';
+import { LateTripAssociationService } from '../generalized-evidence/late-trip-association.service';
 
 const TRIP_LOOKBACK_MS = 7 * 24 * 3600_000;
 const ASSESSMENT_STALE_MS = 6 * 3600_000;
@@ -114,6 +116,7 @@ export class BatteryV2ReconciliationService {
     private readonly rechargeReconcileProducer: HvRechargeSessionReconcileProducerService,
     private readonly assessmentHandoff: LvRestAssessmentHandoffService,
     private readonly publicationHandoff: LvPublicationHandoffService,
+    @Optional() private readonly lateTripAssociation?: LateTripAssociationService,
     @Optional() private readonly metrics?: TripMetricsService,
   ) {}
 
@@ -144,6 +147,7 @@ export class BatteryV2ReconciliationService {
       await this.capabilityRefresh.reconcilePeriodicRefresh(batch);
     result.capabilitySignalLoss =
       await this.capabilityRefresh.reconcileSignalLossRefresh(batch);
+    await this.reconcileGeneralizedLateTripAssociations(batch);
 
     const total =
       result.observationClassify +
@@ -167,6 +171,30 @@ export class BatteryV2ReconciliationService {
     );
 
     return result;
+  }
+
+  /** Repair path when trip finalizes without a subsequent LV observation. */
+  private async reconcileGeneralizedLateTripAssociations(batch: number): Promise<number> {
+    if (!isBatteryV2GeneralizedEvidenceEnabled() || !this.lateTripAssociation) {
+      return 0;
+    }
+    const candidates = await this.prisma.batteryRestSession.findMany({
+      where: { confirmedTripId: null },
+      select: { vehicleId: true },
+      distinct: ['vehicleId'],
+      take: batch,
+      orderBy: { updatedAt: 'desc' },
+    });
+    let linked = 0;
+    for (const row of candidates) {
+      linked += await this.lateTripAssociation.associatePendingSessions(row.vehicleId);
+    }
+    if (linked > 0) {
+      this.logger.log(
+        `generalized late trip association reconciliation linked=${linked}`,
+      );
+    }
+    return linked;
   }
 
   private recordReconciliationMetrics(result: BatteryV2ReconciliationResult): void {

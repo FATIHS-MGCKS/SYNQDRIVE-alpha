@@ -5,7 +5,7 @@
 | **Registry coverage status** | `AUDIT_IN_PROGRESS` |
 | **Authority maturity** | `PARTIAL_RECONSTRUCTION` |
 | **Authority directory** | `architecture/dimo-integration/` |
-| **Last updated** | 2026-09-08 |
+| **Last updated** | 2026-09-26 |
 
 ## Status banner
 
@@ -17,7 +17,7 @@ Bootstrap triggered by **R9 pre-merge governance correction** — substantive we
 |-------|--------|
 | **0 — Entry and scope** | **Complete** |
 | **1 — Repository current-state audit** | **Initial consolidated baseline** — in progress |
-| **2 — Production read-only audit** | **Verified baseline established** — R9 runtime **deployed** @ `0ba96e03…`; five-vehicle provider canary **PASS** (5/5 speed+ignition); natural wake delivery **not yet validated** |
+| **2 — Production read-only audit** | **Verified baseline established** — R9 runtime on Production (ancestor of `8a1d9c658…` @ `20260925182907_v4994`); **R9 authorized provider cohort 5/5** speed+ignition (TDL-OQ-009 / DIM-EV-R9-CANARY-001 re-read); natural R9 **start** wake **PRODUCTION_OBSERVED / PARTIALLY_VALIDATED** (KS MS 661); fleet-wide wake-rate KPI **unknown** |
 | **3 — Reconciliation and classification** | **Pending / in progress** |
 | **4 — Authority construction** | **Partial** — bootstrap graph + R9 cross-module decision + canary evidence |
 | **5 — Validation and promotion gate** | **Pending** |

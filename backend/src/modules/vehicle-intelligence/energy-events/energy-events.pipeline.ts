@@ -344,7 +344,7 @@ export interface PruneStaleCoalescedSubSegmentsInput {
   ) => Promise<MaterializedEnergyEventRow | null>;
   findStaleCandidates: (
     staleSubsegmentIds: string[],
-  ) => Promise<Array<{ id: string; dimoSegmentId: string }>>;
+  ) => Promise<Array<{ id: string; dimoSegmentId: string | null }>>;
   deleteEnergyEventsByIds: (ids: string[]) => Promise<number>;
 }
 

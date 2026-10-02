@@ -58,11 +58,16 @@ nodes:
     type: service
     title: TripBehaviorEnrichmentService
     epistemic_status: CONFIRMED
-    summary: Hardware-routed behavior enrichment; SMART5 HF detectors vs LTE_R1 delegation.
+    summary: >
+      Hardware-routed behavior enrichment; SMART5 HF detectors vs LTE_R1 delegation. EXP-021 C0.3 (draft,
+      not deployed): R1 (DimoVehicle.rawJson serial "R1-") FULL_BRAKING / POSSIBLE_IMPACT /
+      ENGINE_SHUTDOWN_WHILE_DRIVING suppressed after detection on both paths; R1 replace scope never deletes
+      historical contained rows; behaviorSummaryJson.r1TemporalContainment marker. Semantics owned by DI
+      (DI-DEC-R1-TEMPORAL-CONTAINMENT-001); routing unchanged.
     authority_class: ATE_OWNS
     source_paths:
       - backend/src/modules/vehicle-intelligence/trips/trip-behavior-enrichment.service.ts
-    evidence: [ATE-EV-0006]
+    evidence: [ATE-EV-0006, ATE-EV-0039]
     discovery_ref: ATE-N07, ATE-N08a
 
   - id: ATE-SVC-005
@@ -1198,3 +1203,20 @@ nodes:
       - backend/src/shared/reconciliation-execution-mutex/reconciliation-execution-mutex.service.ts
     summary: Mutex disabled allows overlapping reconciliation across replicas.
     verified_at: "2026-09-01"
+
+  - id: ATE-EV-0039
+    type: evidence
+    title: EXP-021 C0.3 R1 temporal-safety containment on the enrichment write path
+    epistemic_status: CONFIRMED
+    source_type: CODE
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/trips/trip-behavior-enrichment.service.ts
+      - backend/src/modules/vehicle-intelligence/r1-temporal-containment.ts
+      - backend/src/modules/vehicle-intelligence/telemetry-source-family.ts
+      - backend/src/modules/vehicle-intelligence/trips/trip-behavior-enrichment.r1-containment.spec.ts
+      - architecture/drivingintelligence/evidence/reference-capture/EXP_021_C03_R1_TEMPORAL_CONTAINMENT_2026-09-24.md
+    summary: >
+      Post-detection gate (containR1HfAbuse, bounded R1_HF_ABUSE_CONTAINED log), R1 replace scope excluding
+      contained ABUSE rows, summary marker; Tesla/SMART5/UNKNOWN unchanged. Tests prove scope + suppression.
+      Not deployed.
+    verified_at: "2026-09-24"

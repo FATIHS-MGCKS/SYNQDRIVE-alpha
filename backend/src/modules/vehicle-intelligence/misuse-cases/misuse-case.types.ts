@@ -11,6 +11,7 @@ import {
 import type { DimoVehicleEventRecord } from '../../dimo/dimo-segments.service';
 import type { TripBehaviorEvent, DrivingEvent, VehicleTrip, VehicleDtcEvent } from '@prisma/client';
 import type { EventContextAssessment } from '../event-context/event-context-assessment.types';
+import type { TelemetrySourceFamily } from '../telemetry-source-family';
 import { resolveDrivingAttributionRoles } from '../trips/driving-attribution-roles/driving-attribution-roles';
 import type { DrivingAttributionType } from '../trips/driving-attribution-roles/driving-attribution-roles.types';
 import { DrivingAttributionType as DrivingAttributionTypeEnum } from '../trips/driving-attribution-roles/driving-attribution-roles.types';
@@ -90,6 +91,8 @@ export type TripEvaluationContext = {
    * behavior events only (`DrivingEvent.metadataJson.contextAssessment`).
    */
   contextAnchors?: ContextAnchor[];
+  /** Telemetry integration family from `DimoVehicle.rawJson` (EXP-021 C0.3). */
+  telemetrySourceFamily?: TelemetrySourceFamily;
 };
 
 export type AttributionFields = {

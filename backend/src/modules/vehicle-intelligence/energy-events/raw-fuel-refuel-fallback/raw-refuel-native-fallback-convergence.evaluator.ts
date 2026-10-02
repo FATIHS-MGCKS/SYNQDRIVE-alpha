@@ -1,10 +1,9 @@
 import type { RawRefuelCandidate } from '@prisma/client';
 import type { RefuelRowForMatcher } from '../physical-refuel-identity.matcher';
-import { classifyPhysicalRefuelSibling } from '../physical-refuel-identity.matcher';
 import {
-  rawRefuelCandidateToRefuelRowForMatcher,
   type ClassifyRawRefuelNativeOverlapInput,
 } from './raw-refuel-native-overlap.advisory';
+import { classifyFallbackAgainstAuthoritativeNativeRefuel } from './raw-refuel-native-fallback-stretched-end.policy';
 import type { RawRefuelNativeFallbackConvergenceEvaluation } from './raw-refuel-native-fallback-convergence.types';
 
 /** Bounded authoritative native sibling load — overflow MUST fail closed (F5-PR1.1). */
@@ -12,7 +11,25 @@ export const MAX_AUTHORITATIVE_NATIVE_SIBLINGS = 32;
 
 export const NATIVE_SIBLING_LIMIT_EXCEEDED_DETAIL = 'native_sibling_limit_exceeded';
 
-/** Sentinel query size: load MAX+1 to detect overflow without silent truncation. */
+export const NATIVE_PHYSICAL_RECONCILIATION_NOT_FINAL_DETAIL =
+  'native_physical_reconciliation_not_final';
+
+export const PHYSICAL_REFUEL_AUTHORITY_CONFLICT_DETAIL =
+  'physical_refuel_authority_conflict';
+
+export const NATIVE_SIBLING_RAW_LOAD_INCOMPLETE_DETAIL =
+  'native_sibling_raw_load_incomplete';
+
+/**
+ * Safety bound on raw native REFUEL rows loaded for authority resolution in one overlap
+ * window. Distinct from MAX_AUTHORITATIVE_NATIVE_SIBLINGS (physical authority count).
+ */
+export const MAX_RAW_NATIVE_REFUEL_ROWS_IN_OVERLAP_WINDOW = 512;
+
+/** Batch size when paging raw native rows (must not silently truncate at 33). */
+export const RAW_NATIVE_REFUEL_SIBLING_LOAD_BATCH = 64;
+
+/** @deprecated Raw load uses paging; kept for tests documenting pre-B.1 sentinel misuse on raw rows. */
 export const AUTHORITATIVE_NATIVE_SIBLING_SENTINEL_TAKE =
   MAX_AUTHORITATIVE_NATIVE_SIBLINGS + 1;
 
@@ -35,14 +52,52 @@ export function buildNativeSiblingLimitExceededEvaluation(): RawRefuelNativeFall
   });
 }
 
+export function buildPendingPhysicalReconciliationEvaluation(): RawRefuelNativeFallbackConvergenceEvaluation {
+  return buildEvaluation({
+    classification: 'INSUFFICIENT_EVIDENCE',
+    sameNativeEventIds: [],
+    distinctNativeEventIds: [],
+    insufficientNativeEventIds: [],
+    siblingAssessments: [],
+    detail: NATIVE_PHYSICAL_RECONCILIATION_NOT_FINAL_DETAIL,
+    shouldConvergeToNative: false,
+    failClosed: false,
+  });
+}
+
+export function buildPhysicalRefuelAuthorityConflictEvaluation(): RawRefuelNativeFallbackConvergenceEvaluation {
+  return buildEvaluation({
+    classification: 'AMBIGUOUS',
+    sameNativeEventIds: [],
+    distinctNativeEventIds: [],
+    insufficientNativeEventIds: [],
+    siblingAssessments: [],
+    detail: PHYSICAL_REFUEL_AUTHORITY_CONFLICT_DETAIL,
+    shouldConvergeToNative: false,
+    failClosed: true,
+  });
+}
+
+export function buildNativeSiblingRawLoadIncompleteEvaluation(): RawRefuelNativeFallbackConvergenceEvaluation {
+  return buildEvaluation({
+    classification: 'AMBIGUOUS',
+    sameNativeEventIds: [],
+    distinctNativeEventIds: [],
+    insufficientNativeEventIds: [],
+    siblingAssessments: [],
+    detail: NATIVE_SIBLING_RAW_LOAD_INCOMPLETE_DETAIL,
+    shouldConvergeToNative: false,
+    failClosed: true,
+  });
+}
+
 /**
- * F5 authoritative native↔fallback convergence — uses G2 classifyPhysicalRefuelSibling().
- * NOT the F4 advisory aggregate.
+ * F5 authoritative native↔fallback convergence — canonical G2 matcher plus bounded
+ * stretched-end fallback assessment (EED-OQ-015). NOT the F4 advisory aggregate.
  */
 export function evaluateRawRefuelNativeFallbackConvergence(
   input: ClassifyRawRefuelNativeOverlapInput,
 ): RawRefuelNativeFallbackConvergenceEvaluation {
-  const candidateRow = rawRefuelCandidateToRefuelRowForMatcher(input.candidate);
   const siblingAssessments: RawRefuelNativeFallbackConvergenceEvaluation['siblingAssessments'] =
     [];
   const sameNativeEventIds: string[] = [];
@@ -56,7 +111,7 @@ export function evaluateRawRefuelNativeFallbackConvergence(
     if (!isAuthoritativeNativeRefuelRow(nativeRow)) {
       continue;
     }
-    const result = classifyPhysicalRefuelSibling(candidateRow, nativeRow);
+    const result = classifyFallbackAgainstAuthoritativeNativeRefuel(input.candidate, nativeRow);
     siblingAssessments.push({
       nativeEventId: nativeRow.id,
       classification: result.classification,

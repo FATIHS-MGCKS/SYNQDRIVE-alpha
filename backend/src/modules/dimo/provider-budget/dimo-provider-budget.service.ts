@@ -58,6 +58,7 @@ export class DimoProviderBudgetService implements OnModuleInit {
 
     this.metrics = registerDimoProviderMetrics(this.tripMetrics.registry);
     this.metrics.globalLimit.set(this.config.globalMaxInFlight);
+    this.metrics.globalBudgetEnabled.set(this.config.globalBudgetEnabled ? 1 : 0);
 
     if (!this.config.globalBudgetEnabled) {
       this.logger.warn(

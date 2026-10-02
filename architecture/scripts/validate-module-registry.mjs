@@ -1617,6 +1617,7 @@ function runSelfTests() {
   cases.push({
     name: 'wrapper subprocess from external cwd',
     fn: () => {
+      const { moduleCount, authorityActiveCount } = getRegistryInventoryCounts(repoRoot);
       const scriptPath = path.join(repoRoot, 'architecture', 'scripts', 'validate-module-registry.sh');
       const result = spawnSync('bash', [scriptPath], {
         cwd: os.tmpdir(),
@@ -1631,11 +1632,13 @@ function runSelfTests() {
       if (!out.includes('Central module registry validation passed.')) {
         throw new Error(`missing success marker in wrapper output: ${out}`);
       }
-      if (!out.includes('AUTHORITY_ACTIVE: 7')) {
-        throw new Error(`missing expected module counts in wrapper output: ${out}`);
+      if (!out.includes(`AUTHORITY_ACTIVE: ${authorityActiveCount}`)) {
+        throw new Error(
+          `wrapper AUTHORITY_ACTIVE count mismatch (expected ${authorityActiveCount}): ${out}`,
+        );
       }
-      if (!out.includes('modules inventoried: 65')) {
-        throw new Error(`missing inventoried count in wrapper output: ${out}`);
+      if (!out.includes(`modules inventoried: ${moduleCount}`)) {
+        throw new Error(`wrapper module inventory count mismatch (expected ${moduleCount}): ${out}`);
       }
     },
   });
@@ -1657,6 +1660,20 @@ function runSelfTests() {
   if (failed > 0) process.exit(1);
 }
 
+/** Inventory counts printed by successful validation (overview table). */
+function getRegistryInventoryCounts(repoRoot) {
+  const registryPath = path.join(repoRoot, 'architecture', 'SYNQDRIVE_RENTAL_ARCHITECTURE.md');
+  const content = readUtf8(registryPath);
+  const table = parseMarkdownTableAfterHeading(content, OVERVIEW_HEADING, []);
+  if (!table) {
+    throw new Error('Could not parse module inventory overview table for inventory counts');
+  }
+  const authorityActiveCount = table.rows.filter(
+    (r) => extractBacktickStatus(r['Registry status'] ?? '') === 'AUTHORITY_ACTIVE',
+  ).length;
+  return { moduleCount: table.rows.length, authorityActiveCount };
+}
+
 function main() {
   if (process.argv.includes('--self-test')) {
     console.log('==> Central registry validator self-tests');
@@ -1672,16 +1689,11 @@ function main() {
     process.exit(1);
   }
 
-  const table = parseMarkdownTableAfterHeading(
-    readUtf8(path.join(repoRoot, 'architecture', 'SYNQDRIVE_RENTAL_ARCHITECTURE.md')),
-    OVERVIEW_HEADING,
-    [],
-  );
-  const active = (table?.rows ?? []).filter((r) => extractBacktickStatus(r['Registry status'] ?? '') === 'AUTHORITY_ACTIVE');
+  const { moduleCount, authorityActiveCount } = getRegistryInventoryCounts(repoRoot);
   console.log('Central module registry validation passed.');
   console.log(`  repo root: ${repoRoot}`);
-  console.log(`  modules inventoried: ${table?.rows.length ?? 0}`);
-  console.log(`  AUTHORITY_ACTIVE: ${active.length}`);
+  console.log(`  modules inventoried: ${moduleCount}`);
+  console.log(`  AUTHORITY_ACTIVE: ${authorityActiveCount}`);
   console.log(`  authority roots discovered: ${discoverAuthorityRoots(repoRoot).length}`);
 }
 

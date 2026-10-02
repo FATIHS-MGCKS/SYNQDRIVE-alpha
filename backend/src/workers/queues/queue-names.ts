@@ -34,8 +34,12 @@ export const QUEUE_NAMES = {
   CLICKHOUSE_MIRROR_RETRY: 'clickhouse.mirror.retry',
   /** REFUEL energy events — async OSM fuel-station location enrichment (Phase D). */
   ENERGY_REFUEL_STATION_ENRICH: 'energy.refuel.station.enrich',
+  /** Canonical ERD RECHARGE — async OSM charging-station enrichment (E6.3). */
+  ENERGY_RECHARGE_STATION_ENRICH: 'energy.recharge.station.enrich',
   /** DIMO LTE_R1 reference capture autonomous runner (Phase 3A.1). */
   REFERENCE_CAPTURE: 'reference.capture.recording',
   /** EXP-021 settlement shadow — forensic experiment-only delayed observations. */
   REFERENCE_CAPTURE_SETTLEMENT_SHADOW: 'reference.capture.settlement-shadow',
+  /** EXP-021 live maturation shadow — isolated delayed age observations (PR-M2). */
+  REFERENCE_CAPTURE_EXP021_MATURATION_SHADOW: 'reference.capture.exp021-maturation-shadow',
 } as const;

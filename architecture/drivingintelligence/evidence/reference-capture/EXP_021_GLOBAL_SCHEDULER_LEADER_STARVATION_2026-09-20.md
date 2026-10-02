@@ -1,0 +1,62 @@
+# EXP-021 global scheduler leader starvation (2026-09-20)
+
+## Production incident (read-only forensic)
+
+- **SHA:** `762e899da4124147f302b7ae8298798b6f7c81fa`
+- **Global Redis lease:** `synqdrive:scheduler:leader`
+- **Holder:** cohort operator `PID 4111560` (`reference-capture-exp021-maturation-shadow-canary-enroll.ts --watch-cohort --execute`)
+- **PM2 replicas:** `synqdrive` / `synqdrive-b` — both **FOLLOWER**, activation timer **installed**, ~1660 `skipped_not_leader` callbacks each
+- **Cohort leader:** **no** `EXP-021 canary live window activation scheduler active` log → timerless leader
+- **Post-cutover drives:** ledger/RC/settlement/PDI/M2 = 0 (today's completed trips remain **NO_LEDGER_MISS_NO_BACKFILL** forensic only)
+
+## Root cause
+
+1. Cohort operator bootstrapped **full `AppModule`** → participated in **global scheduler leader election** without hosting EXP-021 activation timer.
+2. Activation scheduler used **conditional `setInterval`** at `onModuleInit` → timerless process could become leader after env cutover.
+
+## Repair (code)
+
+1. **Option D:** `Exp021MaturationShadowCanaryOperatorModule` — slim CLI root (no `AppModule`, `WorkersModule`, `SchedulerLeaderElectionModule`, singleton schedulers).
+2. **Option A:** Always install activation scheduler interval; fail-closed inside `tick()` via dynamic `resolveConfigFromEnv()` + leader guard.
+
+## Readiness gate correction
+
+`GLOBAL_LEADER_COUNT=1` or `synqdrive_scheduler_leader_status=1` **alone** does **not** prove EXP-021 activation health. Require:
+
+- `EXP021_SCHEDULER_TIMER_INSTALLED`
+- `EXP021_SCHEDULER_LAST_SUCCESSFUL_TICK_AT` (or executed tick with valid config on leader)
+- Leader `ownerId` on a **backend replica**, not cohort CLI
+
+## Live validation after deploy
+
+1. Stop or redeploy cohort operator on slim module (no lease capture).
+2. Confirm one PM2 replica is leader with activation timer installed.
+3. Prove ledger on **ONGOING** prospective trip before completion (no backfill of 2026-09-20 forensic drives).
+
+## No-backfill invariant (wording)
+
+- `COMPLETED_NO_LEDGER_BACKFILLED=NO` means a completed trip **without** a ledger must **not** receive a retroactive ledger (`NO_LEDGER_MISS_NO_BACKFILL`).
+- Do not read `COMPLETED_NO_LEDGER_BACKFILLED=YES` as “backfill occurred”.
+
+## Post-#1703 cutover (mandatory before fresh live drive)
+
+1. Disable EXP-021 live activation.
+2. Gracefully stop legacy full-`AppModule` cohort CLI (production PID 4111560 class).
+3. Prove `synqdrive:scheduler:leader` released/expired.
+4. Deploy rebased main (includes RFRF F10.6.8-B + #1703) to both PM2 replicas.
+5. Verify SHA on replicas; one backend is global leader.
+6. Set **new** `EXP021_CANARY_LIVE_WINDOW_ACTIVATION_NOT_BEFORE_ISO` after deploy (later than all 2026-09-20 forensic trips, including `9037edf0-…`).
+7. Keep VDC T0 `2026-09-18T09:33:25.000Z` unchanged.
+8. Start one cohort CLI from new SHA (default slim bootstrap).
+9. Re-enable activation; prove timer + successful activation tick on PM2 leader before any test drive.
+
+## Activation scheduler config dynamics (repair)
+
+- `ACTIVATION_ENABLED_DYNAMIC=YES` — resolved in each `tick()` via `resolveConfigFromEnv()`.
+- `NOT_BEFORE_DYNAMIC=YES` — part of activation config resolution each tick.
+- `COHORT_DYNAMIC=YES` — cohort membership read each tick when config is active.
+- `INTERVAL_DYNAMIC_REQUIRED=NO` — `intervalMs` remains bootstrap-time (`onModuleInit`) per existing semantics.
+
+## KS MX overlap (out of scope)
+
+Trip pair `a127e2a0-a7db-4f96-bb0f-5cbe5f736724` / `9037edf0-68cc-4a18-a438-b81a49d9ca0a` ONGOING+`endTime` anomaly — separate follow-up; not causal for global zero-ledger starvation.

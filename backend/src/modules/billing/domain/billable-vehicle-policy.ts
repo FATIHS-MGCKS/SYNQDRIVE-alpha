@@ -38,7 +38,7 @@ export interface BillableVehiclePolicyVehicle {
   id: string;
   organizationId: string;
   licensePlate: string | null;
-  vin: string;
+  vin: string | null;
   make: string;
   model: string;
   archivedAt?: Date | null;
@@ -73,7 +73,7 @@ export interface BillableVehiclePolicyContext {
 export interface BillableVehiclePolicyRow {
   id: string;
   licensePlate: string | null;
-  vin: string;
+  vin: string | null;
   make: string;
   model: string;
   connectivityStatus: VehicleConnectivityStatus;

@@ -9,7 +9,7 @@ const T0 = Date.parse('2026-09-02T12:00:00.000Z');
 const at = (offsetMs: number) => new Date(T0 + offsetMs);
 
 const GAP = {
-  gapMs: 240_000,
+  gapMs: 310_000,
   driftM: 12,
   firstEndAt: at(30 * 60_000),
   firstEndLat: 51.1,

@@ -6,6 +6,9 @@ import { ClickHouseAnalyticsService } from '@modules/clickhouse/clickhouse-analy
 import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
 import { DocumentExtractionHealthService } from '@modules/document-extraction/document-extraction-health.service';
 import { SchedulerLeaderElectionService } from '@shared/scheduler-leader/scheduler-leader-election.service';
+import {
+  ReferenceCaptureExp021CanaryLiveWindowActivationSchedulerRuntimeState,
+} from '@modules/vehicle-intelligence/reference-capture/exp021-canary-live-window/reference-capture-exp021-canary-live-window-activation-scheduler.runtime-state';
 
 export interface DependencyStatus {
   status: 'ok' | 'error';
@@ -25,13 +28,15 @@ export class HealthService {
     private readonly clickHouseAnalytics: ClickHouseAnalyticsService,
     @Optional() private readonly documentExtractionHealth?: DocumentExtractionHealthService,
     @Optional() private readonly schedulerLeaderElection?: SchedulerLeaderElectionService,
+    @Optional()
+    private readonly exp021ActivationSchedulerRuntime?: ReferenceCaptureExp021CanaryLiveWindowActivationSchedulerRuntimeState,
   ) {}
 
   async checkReadiness(): Promise<{
     status: 'ok' | 'degraded';
     checks: Record<string, DependencyStatus>;
   }> {
-    const [postgres, redis, clickhouse, workers, documentExtraction, schedulerLeader] =
+    const [postgres, redis, clickhouse, workers, documentExtraction, schedulerLeader, exp021ActivationScheduler] =
       await Promise.all([
       this.checkPostgres(),
       this.checkRedis(),
@@ -39,6 +44,7 @@ export class HealthService {
       this.checkWorkerRuntime(),
       this.checkDocumentExtraction(),
       this.checkSchedulerLeader(),
+      this.checkExp021ActivationScheduler(),
     ]);
 
     const checks = {
@@ -48,6 +54,7 @@ export class HealthService {
       workers,
       documentExtraction,
       schedulerLeader,
+      exp021ActivationScheduler,
     };
 
     const hardChecks = [postgres, redis, workers, documentExtraction];
@@ -252,9 +259,36 @@ export class HealthService {
       details: {
         enabled: state.enabled,
         role: state.role,
+        ownerId: state.ownerId,
         leaseRemainingMs: state.leaseRemainingMs,
         lastAcquireAt: state.lastAcquireAt,
         lastRenewAt: state.lastRenewAt,
+      },
+    };
+  }
+
+  private async checkExp021ActivationScheduler(): Promise<DependencyStatus> {
+    const start = Date.now();
+    if (!this.exp021ActivationSchedulerRuntime) {
+      return {
+        status: 'ok',
+        responseMs: Date.now() - start,
+        details: { skipped: true },
+      };
+    }
+    const snapshot = this.exp021ActivationSchedulerRuntime.getSnapshot();
+    return {
+      status: 'ok',
+      responseMs: Date.now() - start,
+      details: {
+        EXP021_SCHEDULER_TIMER_INSTALLED: snapshot.timerInstalled,
+        EXP021_SCHEDULER_INTERVAL_MS: snapshot.intervalMs,
+        EXP021_SCHEDULER_LAST_CALLBACK_AT: snapshot.lastCallbackAt,
+        EXP021_SCHEDULER_LAST_CONFIG_VALID_AT: snapshot.lastConfigValidAt,
+        EXP021_SCHEDULER_LAST_SKIPPED_NOT_LEADER_AT: snapshot.lastSkippedNotLeaderAt,
+        EXP021_SCHEDULER_LAST_EXECUTED_TICK_AT: snapshot.lastExecutedTickAt,
+        EXP021_SCHEDULER_LAST_SUCCESSFUL_TICK_AT: snapshot.lastSuccessfulTickAt,
+        EXP021_SCHEDULER_LAST_ERROR_AT: snapshot.lastErrorAt,
       },
     };
   }

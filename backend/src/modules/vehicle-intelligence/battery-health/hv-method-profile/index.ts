@@ -13,3 +13,10 @@ export type {
 } from './hv-method-profile.types';
 
 export { HvMethodProfileService } from './hv-method-profile.service';
+
+export {
+  HV_CAPACITY_METHOD_REQUIRED_SIGNAL_KEYS,
+  assertHvCapacityMethodRequirementParity,
+  hvCapacityMethodsRequiringSignal,
+  methodRequiresSignal,
+} from './hv-capacity-method-signal-requirements';

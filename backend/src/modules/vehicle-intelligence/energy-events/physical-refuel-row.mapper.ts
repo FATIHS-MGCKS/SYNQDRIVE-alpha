@@ -16,6 +16,9 @@ function readMeta(row: VehicleEnergyEvent): RawDetectionMeta {
 
 /** Map persisted VehicleEnergyEvent → G1 matcher row contract. */
 export function vehicleEnergyEventToRefuelRow(row: VehicleEnergyEvent): RefuelRowForMatcher {
+  if (row.dimoSegmentId == null) {
+    throw new Error('refuel_row_missing_dimo_segment_id');
+  }
   const meta = readMeta(row);
   return {
     id: row.id,

@@ -4,7 +4,7 @@
  * Plans are versioned; historical LOWER_BOUND_V1 (60→30→20→10) remains parseable.
  * Default env resolution remains UPPER_BOUND_V2 (180→120→60→30 CONTROL).
  * Next prospective sweet-spot run: CANDIDATE_BRACKET_V3 (120→90→60) via explicit env.
- * Dedicated short A/B: CANDIDATE_SHORT_AB_90_60 (90→60 only) via explicit env.
+ * Dedicated short A/B: CANDIDATE_SHORT_AB_90_60 (90→60) and CANDIDATE_SHORT_AB_60_90 (60→90) via explicit env.
  */
 export const EXP021_CALIBRATION_PLAN_SCHEMA = 'EXP021_CALIBRATION_PLAN_v1';
 
@@ -157,6 +157,31 @@ export const EXP021_CANDIDATE_SHORT_AB_90_60: Exp021CalibrationPlan = Object.fre
   totalGraceBudgetMs: 2 * 60_000,
 });
 
+/** Pure order reversal of CANDIDATE_SHORT_AB_90_60 — 60→90, equal 10 min wall phases, ~20 min nominal. */
+const CANDIDATE_SHORT_AB_60_90_PHASES: readonly Exp021CalibrationPhaseSpec[] = [
+  ...CANDIDATE_SHORT_AB_90_60_PHASES,
+].reverse();
+
+/**
+ * Dedicated corrected short A/B crossover (60→90, equal 10 min wall phases, ~20 min nominal).
+ * Select explicitly via EXP021_CALIBRATION_PLAN=CANDIDATE_SHORT_AB_60_90 — not the default.
+ */
+export const EXP021_CANDIDATE_SHORT_AB_60_90: Exp021CalibrationPlan = Object.freeze({
+  schemaVersion: EXP021_CALIBRATION_PLAN_SCHEMA,
+  planVersion: 'EXP021_CANDIDATE_SHORT_AB_60_90',
+  planId: 'candidate_short_ab_60_90',
+  advancementMode: 'WALL_CLOCK',
+  phases: CANDIDATE_SHORT_AB_60_90_PHASES,
+  maxTotalDurationMs: 22 * 60_000,
+  totalGraceBudgetMs: 2 * 60_000,
+});
+
+/** Experimental short A/B family — explicit env selection only. */
+export const EXP021_CANDIDATE_SHORT_AB_PLANS: readonly Exp021CalibrationPlan[] = [
+  EXP021_CANDIDATE_SHORT_AB_90_60,
+  EXP021_CANDIDATE_SHORT_AB_60_90,
+];
+
 export const EXP021_DEFAULT_CALIBRATION_PLAN = EXP021_UPPER_BOUND_V2;
 
 /** @deprecated Historical alias — KS MS 661 physical run sequence. */
@@ -168,6 +193,7 @@ const PLAN_REGISTRY: Record<string, Exp021CalibrationPlan> = {
   UPPER_BOUND_V2: EXP021_UPPER_BOUND_V2,
   CANDIDATE_BRACKET_V3: EXP021_CANDIDATE_BRACKET_V3,
   CANDIDATE_SHORT_AB_90_60: EXP021_CANDIDATE_SHORT_AB_90_60,
+  CANDIDATE_SHORT_AB_60_90: EXP021_CANDIDATE_SHORT_AB_60_90,
   LOWER_BOUND_V1: EXP021_LOWER_BOUND_V1,
   '60_30_20_10': EXP021_LOWER_BOUND_V1,
 };
@@ -177,6 +203,7 @@ const ALL_KNOWN_CALIBRATION_PLANS: readonly Exp021CalibrationPlan[] = [
   EXP021_UPPER_BOUND_V2,
   EXP021_CANDIDATE_BRACKET_V3,
   EXP021_CANDIDATE_SHORT_AB_90_60,
+  EXP021_CANDIDATE_SHORT_AB_60_90,
 ];
 
 export function calibrationPlanAuthorityFromPlan(

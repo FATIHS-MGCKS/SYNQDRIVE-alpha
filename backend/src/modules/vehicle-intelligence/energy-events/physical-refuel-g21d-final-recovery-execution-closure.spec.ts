@@ -421,6 +421,13 @@ describe('G2.1d final recovery execution closure', () => {
           recoveredReasons: { settlement_due: 1 },
         }),
       };
+      const metrics = {
+        setRecoveryEnabled: jest.fn(),
+        setRecoveryBacklogFromRepository: jest.fn(),
+        setRecoveryBacklog: jest.fn(),
+        recordRecoveryRun: jest.fn(),
+        recordRecoveryRecovered: jest.fn(),
+      };
       const scheduler = new PhysicalRefuelReconciliationRecoveryScheduler(
         {
           enabled: true,
@@ -428,6 +435,7 @@ describe('G2.1d final recovery execution closure', () => {
           recoveryIntervalMs: 60_000,
         } as never,
         runtime as never,
+        metrics as never,
       );
 
       const processed = await scheduler.runRecoveryTick();

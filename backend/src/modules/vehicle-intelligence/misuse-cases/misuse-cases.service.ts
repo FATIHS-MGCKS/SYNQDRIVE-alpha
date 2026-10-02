@@ -11,6 +11,8 @@ import {
   PaginationParams,
 } from '@shared/utils/pagination';
 import { CATEGORY_LABELS, CASE_TYPE_LABELS } from './misuse-case.types';
+import { presentMisuseCaseForRead } from './misuse-case-read-presentation';
+import { resolveTelemetrySourceFamily } from '../telemetry-source-family';
 
 export interface ListMisuseCasesQuery extends PaginationParams {
   vehicleId?: string;
@@ -60,7 +62,13 @@ export class MisuseCasesService {
       this.prisma.misuseCase.count({ where }),
     ]);
 
-    const mapped = data.map((row) => this.toReadModel(row));
+    const familyByVehicle = await this.loadTelemetrySourceFamilies(
+      orgId,
+      data.map((row) => row.vehicleId),
+    );
+    const mapped = data.map((row) =>
+      this.toReadModel(row, familyByVehicle.get(row.vehicleId) ?? 'UNKNOWN'),
+    );
     return buildPaginatedResult(mapped, total, query);
   }
 
@@ -70,20 +78,42 @@ export class MisuseCasesService {
       include: { evidence: { orderBy: { occurredAt: 'desc' } } },
     });
     if (!row) throw new NotFoundException('Misuse case not found');
-    return this.toReadModel(row);
+    const familyByVehicle = await this.loadTelemetrySourceFamilies(orgId, [row.vehicleId]);
+    return this.toReadModel(row, familyByVehicle.get(row.vehicleId) ?? 'UNKNOWN');
+  }
+
+  private async loadTelemetrySourceFamilies(
+    organizationId: string,
+    vehicleIds: string[],
+  ): Promise<Map<string, ReturnType<typeof resolveTelemetrySourceFamily>>> {
+    const ids = [...new Set(vehicleIds.filter(Boolean))];
+    if (ids.length === 0) return new Map();
+    const vehicles = await this.prisma.vehicle.findMany({
+      where: { id: { in: ids }, organizationId },
+      select: { id: true, dimoVehicle: { select: { rawJson: true } } },
+    });
+    return new Map(
+      vehicles.map((v) => [v.id, resolveTelemetrySourceFamily(v.dimoVehicle?.rawJson)]),
+    );
   }
 
   private toReadModel(
     row: Prisma.MisuseCaseGetPayload<{ include: { evidence: true } }>,
+    telemetrySourceFamily: ReturnType<typeof resolveTelemetrySourceFamily>,
   ) {
     const evidenceSummary = row.evidenceSummary as Record<string, unknown> | null;
     const evidenceCase = evidenceSummary?.evidenceCase ?? null;
+    const presentation = presentMisuseCaseForRead({ row, telemetrySourceFamily });
     return {
       ...row,
+      severity: presentation.severity,
+      confidence: presentation.confidence,
+      status: presentation.status,
       categoryLabel: CATEGORY_LABELS[row.category],
       typeLabel: CASE_TYPE_LABELS[row.type],
       attributionLabel: this.attributionLabel(row.attributionScope, row.isPrivateTripSnapshot),
       evidenceCase,
+      temporalPresentationContainment: presentation.temporalPresentationContainment,
       lifecycle: {
         status: row.status,
         modelVersion: row.modelVersion,

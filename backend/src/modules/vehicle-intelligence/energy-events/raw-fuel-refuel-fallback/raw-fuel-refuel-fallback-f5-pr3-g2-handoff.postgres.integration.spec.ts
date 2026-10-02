@@ -44,6 +44,7 @@ import { findPhysicalRefuelRecoveryWork } from '../physical-refuel-recovery.repo
 import { reconcilePhysicalRefuelBatch } from '../physical-refuel-reconciliation.design';
 import { vehicleEnergyEventToRefuelRow } from '../physical-refuel-row.mapper';
 import { RawRefuelG2HandoffService } from './raw-refuel-g2-handoff.service';
+import { IRREVERSIBLE_CANONICAL_PINNED_REASON } from '../physical-refuel-late-sibling-authority.util';
 
 const LIVE = isF5Pr3LiveIntegration();
 const REDIS_REQUIRED = isF5Pr3RedisRequired();
@@ -671,8 +672,19 @@ describe('RFRF F5-PR3 post-commit G2 handoff (real PostgreSQL)', () => {
         tokenId,
       });
       await seedCompletedFallbackEnrichment(prisma, fallbackVeeId!, vehicle.id);
+      const pre = refreshed.preFuelAbsoluteLiters ?? 10;
+      const post = refreshed.postFuelAbsoluteLiters ?? 30;
       const native = await prisma.vehicleEnergyEvent.create({
-        data: nativeSameSiblingFromCandidate(refreshed, `${suffix}-late`),
+        data: {
+          ...nativeSameSiblingFromCandidate(refreshed, `${suffix}-late`),
+          fuelDeltaLiters: post - pre - 0.2,
+          rawDetectionMeta: {
+            fuelStartLiters: pre + 0.15,
+            fuelEndLiters: post,
+            fuelStartPercent: refreshed.preFuelRelativePercent,
+            fuelEndPercent: refreshed.postFuelRelativePercent,
+          },
+        },
       });
       await backdateEnergyEventObservation(
         prisma,
@@ -686,29 +698,139 @@ describe('RFRF F5-PR3 post-commit G2 handoff (real PostgreSQL)', () => {
         tokenId,
       });
       await assertBothForensicRowsRetained(prisma, vehicle.id, fallbackVeeId!, native.id);
+
+      const fallbackRecon = await prisma.vehicleEnergyEventRefuelReconciliation.findUniqueOrThrow({
+        where: { energyEventId: fallbackVeeId! },
+      });
       const nativeRecon = await prisma.vehicleEnergyEventRefuelReconciliation.findUniqueOrThrow({
         where: { energyEventId: native.id },
       });
-      expect(nativeRecon.lateSiblingConflict).toBe(true);
+
+      expect(fallbackRecon.finalityState).toBe('FINAL_CANONICAL');
+      expect(fallbackRecon.canonicalEventId).toBe(fallbackVeeId);
+      expect(fallbackRecon.enrichmentEligible).toBe(true);
+
+      expect(nativeRecon.finalityState).toBe('FINAL_CANONICAL');
+      expect(nativeRecon.canonicalEventId).toBe(fallbackVeeId);
       expect(nativeRecon.enrichmentEligible).toBe(false);
-      expect(nativeRecon.finalityState).toBe('INSUFFICIENT_EVIDENCE');
+      expect(nativeRecon.lateSiblingConflict).toBe(true);
+      expect(nativeRecon.reason).toBe(IRREVERSIBLE_CANONICAL_PINNED_REASON);
       expect(nativeRecon.reasonCodes).toContain('late_sibling_after_finalization');
+
       const fallbackEnrichment = await prisma.vehicleEnergyEventFuelStationEnrichment.findUnique({
         where: { energyEventId: fallbackVeeId! },
       });
       expect(fallbackEnrichment?.processingStatus).toBe('COMPLETED');
+      expect(
+        await prisma.vehicleEnergyEventFuelStationEnrichment.findUnique({
+          where: { energyEventId: native.id },
+        }),
+      ).toBeNull();
       expect(nativeResult.enqueuedEventIds).toEqual([]);
-      expect(await countOperationalEnrichmentOwners(prisma, vehicle.id)).toBeLessThanOrEqual(1);
+      expect(await countOperationalEnrichmentOwners(prisma, vehicle.id)).toBe(1);
       expect(
         await prisma.vehicleEnergyEventRefuelReconciliation.count({
-          where: { vehicleId: vehicle.id, enrichmentEligible: true, energyEventId: native.id },
+          where: { vehicleId: vehicle.id, enrichmentEligible: true },
         }),
-      ).toBe(0);
+      ).toBe(1);
     } finally {
       restore();
       await cleanupVehicle(prisma, vehicle.id, org.id, dimoVehicleId);
     }
   }, 15000);
+
+  (LIVE ? it : it.skip)(
+    'P21B irreversible consumed owner canonical change fails closed — real runtime persistence',
+    async () => {
+      if (!dbAvailable) return;
+      const restore = setFullAuthorizedFlags();
+      const suffix = `p21b-${Math.random().toString(36).slice(2, 8)}`;
+      const { org, vehicle, dimoVehicleId, tokenId } = await seedOrgVehicle(prisma, suffix);
+      const stack = buildF5Pr3Stack(prisma, jest.fn().mockResolvedValue(syntheticRiseSamples()));
+      try {
+        const candidate = await persistReadyCandidate(stack, vehicle.id);
+        const refreshed = await prisma.rawRefuelCandidate.findUniqueOrThrow({ where: { id: candidate.id } });
+        const { fallbackVeeId } = await promoteCandidateViaRuntime(stack, vehicle.id);
+        await stack.g2Runtime.reconcileAndEnqueueAfterPersist({
+          vehicleId: vehicle.id,
+          triggerEventId: fallbackVeeId!,
+          organizationId: org.id,
+          tokenId,
+        });
+        await seedCompletedFallbackEnrichment(prisma, fallbackVeeId!, vehicle.id);
+        const pre = refreshed.preFuelAbsoluteLiters ?? 10;
+        const post = refreshed.postFuelAbsoluteLiters ?? 30;
+        const sameBase = nativeSameSiblingFromCandidate(refreshed, `${suffix}-canonical-challenger`);
+        const native = await prisma.vehicleEnergyEvent.create({
+          data: {
+            ...sameBase,
+            fuelDeltaLiters: post - pre + 0.25,
+            rawDetectionMeta: {
+              fuelStartLiters: pre - 0.2,
+              fuelEndLiters: post,
+              fuelStartPercent: refreshed.preFuelRelativePercent,
+              fuelEndPercent: refreshed.postFuelRelativePercent,
+            },
+          },
+        });
+        await backdateEnergyEventObservation(prisma, native.id, new Date('2026-09-06T11:30:00.000Z'));
+        const nativeResult = await stack.g2Runtime.reconcileAndEnqueueAfterPersist({
+          vehicleId: vehicle.id,
+          triggerEventId: native.id,
+          organizationId: org.id,
+          tokenId,
+        });
+        const nativeRecon = await prisma.vehicleEnergyEventRefuelReconciliation.findUniqueOrThrow({
+          where: { energyEventId: native.id },
+        });
+        const fallbackRecon = await prisma.vehicleEnergyEventRefuelReconciliation.findUniqueOrThrow({
+          where: { energyEventId: fallbackVeeId! },
+        });
+        await assertBothForensicRowsRetained(prisma, vehicle.id, fallbackVeeId!, native.id);
+
+        expect(nativeRecon.finalityState).toBe('INSUFFICIENT_EVIDENCE');
+        expect(nativeRecon.enrichmentEligible).toBe(false);
+        expect(nativeRecon.lateSiblingConflict).toBe(true);
+        expect(nativeRecon.reasonCodes).toContain('late_sibling_after_finalization');
+        expect(nativeRecon.reason).not.toBe(IRREVERSIBLE_CANONICAL_PINNED_REASON);
+        expect(nativeRecon.finalityState).not.toBe('FINAL_CANONICAL');
+
+        expect(fallbackRecon.finalityState).toBe('INSUFFICIENT_EVIDENCE');
+        expect(fallbackRecon.enrichmentEligible).toBe(false);
+
+        const fallbackEnrichment = await prisma.vehicleEnergyEventFuelStationEnrichment.findUnique({
+          where: { energyEventId: fallbackVeeId! },
+        });
+        expect(fallbackEnrichment?.processingStatus).toBe('COMPLETED');
+        expect(
+          await prisma.vehicleEnergyEventFuelStationEnrichment.findUnique({
+            where: { energyEventId: native.id },
+          }),
+        ).toBeNull();
+
+        expect(nativeResult.enqueuedEventIds).toEqual([]);
+        expect(await countOperationalEnrichmentOwners(prisma, vehicle.id)).toBe(0);
+        expect(
+          await prisma.vehicleEnergyEventRefuelReconciliation.findFirst({
+            where: {
+              vehicleId: vehicle.id,
+              enrichmentEligible: true,
+              canonicalEventId: native.id,
+            },
+          }),
+        ).toBeNull();
+        expect(
+          await prisma.vehicleEnergyEventRefuelReconciliation.count({
+            where: { vehicleId: vehicle.id, enrichmentEligible: true },
+          }),
+        ).toBe(0);
+      } finally {
+        restore();
+        await cleanupVehicle(prisma, vehicle.id, org.id, dimoVehicleId);
+      }
+    },
+    15000,
+  );
 
   (LIVE ? it : it.skip)('P22 late native DISTINCT remains independent physical event', async () => {
     if (!dbAvailable) return;

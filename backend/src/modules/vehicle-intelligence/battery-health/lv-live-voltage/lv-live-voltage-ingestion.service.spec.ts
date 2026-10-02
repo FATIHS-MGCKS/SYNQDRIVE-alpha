@@ -1,4 +1,5 @@
 import { BatteryMeasurementQuality, BatteryMeasurementType } from '@prisma/client';
+import { BatteryProviderLastStoredLiveVoltageResolver } from '../battery-provider-last-stored-live-voltage.resolver';
 import { LvLiveVoltageIngestionService } from './lv-live-voltage-ingestion.service';
 
 const ORG = 'clorg1234567890123456789012';
@@ -39,6 +40,7 @@ describe('LvLiveVoltageIngestionService', () => {
     service = new LvLiveVoltageIngestionService(
       prisma as never,
       measurements as never,
+      new BatteryProviderLastStoredLiveVoltageResolver(prisma as never),
     );
     prisma.batteryMeasurement.findFirst.mockResolvedValue(null);
     prisma.batteryHealthSnapshot.findFirst.mockResolvedValue(null);

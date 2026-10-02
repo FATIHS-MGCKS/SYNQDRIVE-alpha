@@ -2,19 +2,14 @@ import { Injectable, Logger } from '@nestjs/common';
 import type { NormalizedDimoRechargeSegment } from '@modules/dimo/recharge-segments/dimo-recharge-segments.types';
 import { BatteryV2JobObservabilityService } from '../jobs/battery-v2-job-observability.service';
 import { HvCapacityShadowProducerService } from '../hv-capacity-shadow/hv-capacity-shadow-producer.service';
-import {
-  buildFallbackSupersessionUpdate,
-  findOverlappingFallbackSessions,
-} from './hv-fallback-charge-session.supersede';
-import { mapRechargeSegmentToHvChargeSessionDraft } from './hv-charge-session.mapper';
 import { mergeHvChargeSessionUpdate } from './hv-charge-session.merge';
+import { HvChargeSessionNativeFallbackConvergenceService } from './hv-charge-session-native-fallback-convergence.service';
 import { HvChargeSessionRepository } from './hv-charge-session.repository';
 import type {
   HvChargeSessionChangeKind,
   HvChargeSessionDraft,
   HvChargeSessionPersistResult,
 } from './hv-charge-session.types';
-import { HV_CHARGE_SESSION_SOURCE_TELEMETRY_POLL_FALLBACK } from './hv-charge-session.types';
 
 @Injectable()
 export class HvChargeSessionPersistService {
@@ -24,6 +19,7 @@ export class HvChargeSessionPersistService {
     private readonly repository: HvChargeSessionRepository,
     private readonly observability: BatteryV2JobObservabilityService,
     private readonly capacityShadowProducer: HvCapacityShadowProducerService,
+    private readonly nativeFallbackConvergence: HvChargeSessionNativeFallbackConvergenceService,
   ) {}
 
   async persistSessionDraft(input: {
@@ -118,69 +114,50 @@ export class HvChargeSessionPersistService {
     vehicleId: string;
     segment: NormalizedDimoRechargeSegment;
     correlationId?: string | null;
+    evaluatedAt?: Date;
   }): Promise<HvChargeSessionPersistResult> {
-    const reconciledAt = new Date();
-    const draft = mapRechargeSegmentToHvChargeSessionDraft({
-      organizationId: input.organizationId,
-      vehicleId: input.vehicleId,
-      segment: input.segment,
-      reconciledAt,
-    });
-
-    await this.supersedeOverlappingFallbackSessions({
-      organizationId: input.organizationId,
-      vehicleId: input.vehicleId,
-      segment: input.segment,
-      reconciledAt,
-      correlationId: input.correlationId,
-    });
-
-    return this.persistSessionDraft({
-      organizationId: input.organizationId,
-      vehicleId: input.vehicleId,
-      draft,
-      correlationId: input.correlationId,
-    });
-  }
-
-  private async supersedeOverlappingFallbackSessions(input: {
-    organizationId: string;
-    vehicleId: string;
-    segment: NormalizedDimoRechargeSegment;
-    reconciledAt: Date;
-    correlationId?: string | null;
-  }): Promise<void> {
-    const fallbackSessions = await this.repository.findBySource(
-      input.vehicleId,
-      HV_CHARGE_SESSION_SOURCE_TELEMETRY_POLL_FALLBACK,
-    );
-    const overlapping = findOverlappingFallbackSessions(
-      fallbackSessions,
-      new Date(input.segment.startAt),
-      input.segment.endAt ? new Date(input.segment.endAt) : null,
+    const result = await this.nativeFallbackConvergence.persistNativeWithFallbackConvergence(
+      {
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        segment: input.segment,
+        correlationId: input.correlationId,
+        evaluatedAt: input.evaluatedAt,
+      },
     );
 
-    for (const fallback of overlapping) {
-      if (fallback.metadata && typeof fallback.metadata === 'object') {
-        const meta = fallback.metadata as { supersededBySegmentFingerprint?: string };
-        if (meta.supersededBySegmentFingerprint) continue;
-      }
-
-      const update = buildFallbackSupersessionUpdate({
-        existing: fallback,
-        dimoSegment: input.segment,
-        reconciledAt: input.reconciledAt,
-      });
-      const session = await this.repository.update(fallback.id, update);
+    if (result.changed && result.changeKind !== 'no_op') {
       this.recordStateChange({
         organizationId: input.organizationId,
         vehicleId: input.vehicleId,
-        idempotencyKey: fallback.idempotencyKey,
+        idempotencyKey: result.session.idempotencyKey,
         correlationId:
-          input.correlationId ?? `hv-charge:superseded:${session.id}`,
+          input.correlationId ?? `hv-charge:${result.changeKind}:${result.session.id}`,
+        changeKind: result.changeKind,
+      });
+    }
+
+    if (result.convergence.supersededFallbackId) {
+      this.recordStateChange({
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        idempotencyKey: result.session.idempotencyKey,
+        correlationId:
+          input.correlationId ??
+          `hv-charge:superseded:${result.convergence.supersededFallbackId}`,
         changeKind: 'superseded',
       });
     }
+
+    await this.capacityShadowProducer.maybeEnqueueAfterSessionPersist({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      session: result.session,
+      changeKind: result.changeKind,
+      correlationId: input.correlationId,
+    });
+
+    return result;
   }
 
   private recordStateChange(input: {

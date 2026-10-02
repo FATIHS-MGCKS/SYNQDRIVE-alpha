@@ -21,7 +21,7 @@ export type { VehicleConnectivityStatus, VehicleBillingStatus };
 export interface BillableVehicleRow {
   id: string;
   licensePlate: string | null;
-  vin: string;
+  vin: string | null;
   make: string;
   model: string;
   connectivityStatus: VehicleConnectivityStatus;

@@ -109,6 +109,7 @@ describe('ApplyTechnicalDocumentActionExecutors', () => {
       serviceEventId: null,
       evidenceIds: ['ev-batt-1'],
       snapshotId: null,
+      groundTruthEventIds: ['gt-batt-1'],
     });
 
     const result = await batteryExecutor.execute(
@@ -121,6 +122,7 @@ describe('ApplyTechnicalDocumentActionExecutors', () => {
     expect(result.output).toMatchObject({
       scope: 'HV',
       measurementType: expect.any(String),
+      groundTruthEventIds: ['gt-batt-1'],
     });
   });
 });

@@ -2,11 +2,17 @@
 
 **origin/main (historical @ R9 rebase):** `a4725514866a03099e7a1e485ccf0b7ea37d6fec` — **does not contain R9**
 
-**origin/main (current @ R12 hardening #1594 merged):** `f4109e34c24f1eb497e2023f4b4bb997abfc159f` — includes R12 pre-drive hardening (AUD-002/003/004/007)
+**REPO_CURRENT (@ Phase 5 promotion audit):** `0b44b146fe82997a04940d7e03c4f8c198490501`
 
-**R9 audit branch (historical):** `1186e9d23a9b07e24da17b06a72f2614038db77a` on `trip-fsm/r9-adaptive-polling-wake`
+**PRODUCTION_CURRENT (verified read-only 2026-09-26, Phase 5):** `2b54a357854c9d44f638ee857f72936967c04992` @ `/opt/synqdrive/releases/20260926094359_v4994`
 
-**Production release (current known — PRE_HARDENING_R12):** `157b3c72226869e4e35d1a9398b78cab50d3fa54` @ `/opt/synqdrive/releases/20260909190912_v4994` — **does not include #1594 hardening**
+**REPO (historical @ rebaseline audit):** `d6ff7e198110ff7401d03389c232398af47766f0`
+
+**Production release (historical — last TDL anchor before Phase 5):** `8a1d9c6586cbddc41bb6c94870f9d51226d71aa2` @ `/opt/synqdrive/releases/20260925182907_v4994`
+
+**origin/main (historical @ R12 hardening #1594 merged):** `f4109e34c24f1eb497e2023f4b4bb997abfc159f` — includes R12 pre-drive hardening (AUD-002/003/004/007)
+
+**Production release (historical — PRE_HARDENING_R12):** `157b3c72226869e4e35d1a9398b78cab50d3fa54` @ `/opt/synqdrive/releases/20260909190912_v4994`
 
 **Production release (historical @ R11):** `f7eb94cb5228a341becd346f9d5f7448345d2ad0` @ `/opt/synqdrive/releases/20260909024150_v4994`
 
@@ -54,7 +60,8 @@ Historical FSM corpus: [`docs/audits/trip-fsm/`](../../../docs/audits/trip-fsm/)
 
 | Qualifier | Meaning |
 |-----------|---------|
-| **PRE_HARDENING_R12** | Production deploy or runtime claim refers to R12 base @ `157b3c722…` **before** PR #1594 hardening; distinct from hardened main @ `f4109e34…` |
+| **PRE_HARDENING_R12** | Production deploy or runtime claim refers to R12 base @ `157b3c722…` **before** later release chain; **HISTORICAL** — superseded by `99d722b4…` |
+| **PRODUCTION_CURRENT** | Verified Production @ `99d722b4…` — Qualified Stop V1 + #1750 lineage; acceptance **`PASS_WITH_EVIDENCE_GAPS`** |
 
 ---
 
@@ -103,7 +110,7 @@ Document commit SHAs recovered via `git log -1 --format=%H -- <path>`. Applicati
 
 ## Production observations (read-only) — historical session `2026-09-06T23:47:41Z` @ `01541c2ab…`
 
-**Note:** These observations remain valid for the **historical** release @ `01541c2ab…` @ `2026-09-06T23:47:41Z`. **Current known Production** is `157b3c722…` — see TDL-EV-R12-PROD-DEPLOY-001.
+**Note:** These observations remain valid for the **historical** release @ `01541c2ab…` @ `2026-09-06T23:47:41Z`. **PRODUCTION_CURRENT** is `99d722b4…` — see TDL-EVID-QS-V1-PROD-ACCEPT-001.
 
 | Evidence ID | Source type | Method | Timestamp (UTC) | Environment | Supported claim | Currentness | Limitations |
 |-------------|-------------|--------|-----------------|-------------|-----------------|-------------|-------------|
@@ -182,6 +189,23 @@ Detail: [PRODUCTION_BASELINE.md](PRODUCTION_BASELINE.md).
 | TDL-EVID-R12-SILENCE-DEAD-ZONE-FIX-001 | CODE + TEST | [R12_POST_MOVEMENT_TELEMETRY_SILENCE_DEAD_ZONE_FIX_2026-09-13.md](R12_POST_MOVEMENT_TELEMETRY_SILENCE_DEAD_ZONE_FIX_2026-09-13.md) | `2026-09-13T12:30:00Z` | BASE `df8d9d756…`; forensic source #1634 | Bounded provider-silence empty-core admission | **PROPOSED** | Awaiting CI + deploy acceptance |
 | TDL-TEST-R12-RETRY-BUDGET-001 | CURRENT_TEST | [trip-r12-cusum-retry-budget.postgres-redis.integration.spec.ts](../../../backend/src/modules/vehicle-intelligence/trips/trip-r12-cusum-retry-budget.postgres-redis.integration.spec.ts) | `2026-09-13` | CI run `34741464230` | Always-ongoing CUSUM lifecycle BASE RED / HEAD GREEN | **CONFIRMED_CI** | via `test:trip-r12:cusum-retry-budget:base-head-red-proof` |
 | TDL-TEST-R12-RETRY-BUDGET-002 | CURRENT_TEST | [trip-end-cycle-reset.spec.ts](../../../backend/src/modules/vehicle-intelligence/trips/trip-end-cycle-reset.spec.ts) | `2026-09-13` | CI run `34741464230` | Unit: CUSUM preserve vs ACTIVITY/movement reset + POSSIBLE_END re-entry | **CONFIRMED_CI** | via `test:trip-r12:hardening` |
+| TDL-EVID-R12-KSMX-CH-SKIP-RESUME-001 | PRODUCTION_OBSERVATION + CODE + TEST | [KS_MX_2024_CH_ASSIST_SKIP_RESUME_REVALIDATION_2026-09-17.md](KS_MX_2024_CH_ASSIST_SKIP_RESUME_REVALIDATION_2026-09-17.md) | `2026-09-17T06:00:00Z` | Forensic #1673; BASE `9580a3247…` | KS MX 2024 POST-#1648 false-terminal: CH skip finalize without post-boundary resume revalidation | **PROPOSED** (fix not deployed) | Forensic root cause in #1673; no Production mutation |
+| TDL-TEST-R12-CH-SKIP-RESUME-001 | CURRENT_TEST | [trip-r12-ch-assist-resume-invalidation.postgres-redis.integration.spec.ts](../../../backend/src/modules/vehicle-intelligence/trips/trip-r12-ch-assist-resume-invalidation.postgres-redis.integration.spec.ts) | `2026-09-17` | implementation branch | Production race RED/GREEN + visible-resume block + true-stop event-time preserve | **PENDING_CI** | via `test:trip-r12:postgres-redis:ci` |
+| TDL-EVID-QS-V1-PROD-ACCEPT-001 | PRODUCTION_OBSERVATION | [QUALIFIED_STOP_V1_PRODUCTION_ACCEPTANCE_2026-09-25.md](QUALIFIED_STOP_V1_PRODUCTION_ACCEPTANCE_2026-09-25.md) | `2026-09-25T00:00:00Z` | Production @ `99d722b4…`; REPO audit @ `d6ff7e19…` | Qualified Stop V1 Production acceptance — 3/3 natural SAME_TRIP; **`PASS_WITH_EVIDENCE_GAPS`**; regression scan NOT_OBSERVED_IN_AUDIT_WINDOW; shadow divergences not evaluated | **CONFIRMED_AT_PRODUCTION_RELEASE** | QS acceptance separate from OQ-007; see TDL-EVID-OQ007-R1R8-COV-001 |
+| TDL-EVID-OQ007-R1R8-COV-001 | PRODUCTION_OBSERVATION + CODE | [TDL_OQ_007_R1_R8_PRODUCTION_VALIDATION_COVERAGE_2026-09-25.md](TDL_OQ_007_R1_R8_PRODUCTION_VALIDATION_COVERAGE_2026-09-25.md) | `2026-09-25T12:41:04Z` | REPO @ `5e4ee4c35…`; Production @ `99d722b4…` | R1–R8 matrix; superseded/dead scope reduction; superseded by OQ-007.1 closure | **CONFIRMED** | See TDL-EVID-OQ007-1-PASSIVE-CLOSURE-001 |
+| TDL-EVID-OQ007-1-PASSIVE-CLOSURE-001 | PRODUCTION_OBSERVATION | [TDL_OQ_007_1_PASSIVE_PRODUCTION_EVIDENCE_CLOSURE_2026-09-25.md](TDL_OQ_007_1_PASSIVE_PRODUCTION_EVIDENCE_CLOSURE_2026-09-25.md) | `2026-09-25T13:25:07Z` | Production @ `99d722b4…` | Closes R1/R3/R4/R8 PP_NOT_VALIDATED gaps; metrics + forensics + PS chains | **CONFIRMED** | OQ-007 **RESOLVED** |
+| TDL-EVID-OQ003-CARDINALITY-001 | PRODUCTION_OBSERVATION + CODE | [TDL_OQ_003_DETECTION_STATE_CARDINALITY_LIFECYCLE_2026-09-25.md](TDL_OQ_003_DETECTION_STATE_CARDINALITY_LIFECYCLE_2026-09-25.md) | `2026-09-25T18:05:00Z` | REPO @ `567a5766f…`; Production @ `99d722b4…` | TDL-OQ-003 cardinality; **`RESOLVED_EXPECTED_CARDINALITY`** | **CONFIRMED** | 6 FSM rows = 6 scheduler-eligible |
+| TDL-EVID-OQ004-ROUTE-COV-001 | PRODUCTION_OBSERVATION + CODE | [TDL_OQ_004_ROUTE_ARTIFACT_COVERAGE_POLICY_2026-09-25.md](TDL_OQ_004_ROUTE_ARTIFACT_COVERAGE_POLICY_2026-09-25.md) | `2026-09-25T21:15:00Z` (+ epistemic passes) | REPO @ `55fcbe7a…`; Production @ `8a1d9c658…` | TDL-OQ-004 coverage taxonomy; **`RESOLVED_WITH_BOUNDED_GAPS`** | **CONFIRMED** | Materialization era **374/374**; Route-V2 policy 30d **NOT_EXACTLY_COMPUTABLE** |
+| TDL-EVID-OQ008-FLAG-MATRIX-001 | PRODUCTION_OBSERVATION + CODE | [TDL_OQ_008_FEATURE_FLAG_RUNTIME_MATRIX_2026-09-25.md](TDL_OQ_008_FEATURE_FLAG_RUNTIME_MATRIX_2026-09-25.md) | `2026-09-25T22:43:57Z` | REPO @ `6af181bf9…`; Production @ `8a1d9c658…` | TDL-OQ-008 trip runtime-control matrix; **`RESOLVED_COMPLETE_MATRIX`**; 10 mode + 1 scope + 28 knobs | **CONFIRMED** | Replica config source YES; effective state inferred not introspected |
+| TDL-EVID-OQ009-R9-INGRESS-001 | PRODUCTION_OBSERVATION + CODE | [TDL_OQ_009_TIERED_POLLING_R9_INGRESS_2026-09-26.md](TDL_OQ_009_TIERED_POLLING_R9_INGRESS_2026-09-26.md) | `2026-09-26T08:00:00Z` | REPO @ `47a3b42b8…`; Production @ `8a1d9c658…` | TDL-OQ-009 tiered polling vs R9 ingress; **`RESOLVED_INGRESS_CONTRACT_ALIGNED`**; R9 authorized cohort **5/5**; DB scheduler **6** incl. 1 stale mirror | **CONFIRMED** | Recent wake Prometheus/SQL KPIs insufficient |
+| TDL-EVID-OQ010-LEGACY-INV-001 | PRODUCTION_OBSERVATION + CODE | [TDL_OQ_010_LEGACY_DUPLICATE_PATH_INVENTORY_2026-09-26.md](TDL_OQ_010_LEGACY_DUPLICATE_PATH_INVENTORY_2026-09-26.md) | `2026-09-26T09:00:00Z` | REPO @ `79102e516…`; Production @ `8a1d9c658…` | TDL-OQ-010 legacy/duplicate trip runtime inventory; **`RESOLVED_WITH_BOUNDED_DEBT`** | **CONFIRMED** | Redis queue depth not sampled |
+| TDL-EVID-OQ005-ENDED-001 | PRODUCTION_OBSERVATION + CODE | [TDL_OQ_005_ENDED_STATE_LIFECYCLE_AUDIT_2026-09-26.md](TDL_OQ_005_ENDED_STATE_LIFECYCLE_AUDIT_2026-09-26.md) | `2026-09-26T11:00:00Z` | TASK repo `97cfde3d…`; AUDIT repo `f16ae03c0…`; live DB @ `2b54a357…` | TDL-OQ-005 **`ENDED_HISTORICAL_COMPAT_ONLY`**; RETAIN_HISTORICAL_COMPATIBILITY | **CONFIRMED** | Task prod anchor `8a1d9c658…` preserved in other OQs |
+| TDL-EVID-OQ001-HANDOFF-001 | CODE + PRODUCTION_OBSERVATION | [TDL_OQ_001_COMPLETED_TO_DI_HANDOFF_AUDIT_2026-09-25.md](TDL_OQ_001_COMPLETED_TO_DI_HANDOFF_AUDIT_2026-09-25.md) | `2026-09-25T12:00:00Z` | REPO @ `f87391f79…`; Production @ `99d722b4…` | TDL-OQ-001 COMPLETED→DI handoff contract; **`RESOLVED_WITH_BOUNDED_GAPS`**; 0/210 COMPLETED without TRIP_ENRICHMENT run (14d) | **CONFIRMED** | Non-atomic enqueue; 14d reconciliation bound; dual legacy+DI paths |
+| TDL-EVID-OQ001-1-ORG-001 | CODE + PRODUCTION_OBSERVATION | [TDL_OQ_001_1_ORG_INVARIANT_AUDIT_2026-09-25.md](TDL_OQ_001_1_ORG_INVARIANT_AUDIT_2026-09-25.md) | `2026-09-25T08:05:00Z` | Production @ `99d722b4…` | Org invariant **`STRUCTURALLY_IMPOSSIBLE`** for durable orphan; 0 vehicles null org; 0/14d COMPLETED without DI run | **CONFIRMED** | 30 historical no-DI trips Jun–Jul 2026 outside 14d window |
+| TDL-EVID-OQ006-BOUNDARY-001 | CODE + PRODUCTION_OBSERVATION | [TDL_OQ_006_DIMO_SEGMENT_FSM_BOUNDARY_AUDIT_2026-09-25.md](TDL_OQ_006_DIMO_SEGMENT_FSM_BOUNDARY_AUDIT_2026-09-25.md) | `2026-09-25T08:30:00Z` | REPO @ `51b4590e4…`; Production @ `99d722b4…` | TDL-OQ-006 DIMO segment vs FSM boundary authority; **`RESOLVED_WITH_BOUNDED_GAPS`** | **CONFIRMED** | JWT-empty vs fetch failure; overlap coverage shadow default |
+| TDL-EVID-OQ002-DRIVE-PROFILE-001 | CODE | [TDL_OQ_002_DRIVE_PROFILE_OWNERSHIP_AUDIT_2026-09-25.md](TDL_OQ_002_DRIVE_PROFILE_OWNERSHIP_AUDIT_2026-09-25.md) | `2026-09-25T08:45:00Z` | REPO @ `51b4590e4…` | TDL-OQ-002 **`BATTERY_V2_OWNER`**; TDL **NO_TDL_RUNTIME_DEPENDENCY**; naming = vehicle propulsion profile | **CONFIRMED** | Optional relocate/rename slice; `confirmedDriveProfile` not wired in input builder |
+| TDL-EVID-PHASE5-FSM-CODE-001 | CURRENT_CODE | [TDL_PHASE_5_AUTHORITY_PROMOTION_AUDIT_2026-09-26.md](TDL_PHASE_5_AUTHORITY_PROMOTION_AUDIT_2026-09-26.md) | `2026-09-26T12:30:00Z` | REPO @ `0b44b146…` | Phase 5 transition matrix (34 `transitionState` call sites → 14 transitions), execution / writer / recovery graph, OQ-010 path mapping | **CONFIRMED** | Graph: `TDL-STATE-*`, `TDL-TR-*` edges |
+| TDL-EVID-PHASE5-PROD-BASELINE-001 | PRODUCTION_OBSERVATION | [TDL_PHASE_5_AUTHORITY_PROMOTION_AUDIT_2026-09-26.md](TDL_PHASE_5_AUTHORITY_PROMOTION_AUDIT_2026-09-26.md) · [PRODUCTION_BASELINE.md](PRODUCTION_BASELINE.md) | `2026-09-26T12:22:00Z`–`12:27:00Z` | Production @ `2b54a357…` / `20260926094359_v4994` | Read-only re-observation: PM2, flags, FSM rows, trips, tracking runs, queues, TripRepair; supports Gate A | **CONFIRMED** (`VERIFIED_READ_ONLY`) | CURRENTLY_REOBSERVED vs CARRIED_FORWARD separated |
 
 ---
 

@@ -28,6 +28,7 @@ type MockStore = {
     id: string;
     organizationId: string;
     dimoVehicleId: string | null;
+    registryLifecycle?: 'ACTIVE' | 'OFFBOARDED' | 'ARCHIVED';
     licensePlate?: string | null;
     vehicleName?: string | null;
   }>;
@@ -193,6 +194,7 @@ function baseStore(): MockStore {
         id: 'veh-1',
         organizationId: 'org-1',
         dimoVehicleId: 'dimo-1',
+        registryLifecycle: 'ACTIVE',
         licensePlate: 'HMÜ C 215',
       },
     ],
@@ -248,6 +250,16 @@ describe('DimoVehicleDataSourceLinkService', () => {
     dimoVehicleId: 'dimo-1',
     provenance: 'registration' as const,
   };
+
+  it('rejects link ensure when vehicle registry is not ACTIVE', async () => {
+    const store = baseStore();
+    store.vehicles[0].registryLifecycle = 'OFFBOARDED';
+    const service = new DimoVehicleDataSourceLinkService(createMockPrisma(store) as any);
+    const result = await service.ensureDimoVehicleDataSourceLink(baseInput);
+    expect(result.action).toBe('CONFLICT');
+    expect(result.reason).toBe('vehicle_registry_not_operational');
+    expect(store.links).toHaveLength(0);
+  });
 
   it('L1 / D1 — missing DIMO link + valid relation → CREATE with dimoVehicleId', async () => {
     const store = baseStore();

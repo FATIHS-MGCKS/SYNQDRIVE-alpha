@@ -1390,6 +1390,17 @@ nodes:
       - backend/src/modules/vehicle-intelligence/battery-policy-profile/battery-policy-profile.catalog.ts
       - backend/src/modules/vehicle-intelligence/drive-profile/drive-profile-resolver.ts
 
+  - id: BAT-V2-EVID-OQ002-DRIVE-PROFILE-001
+    type: evidence
+    title: drive-profile module ownership (TDL-OQ-002)
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: Battery V2 owns drive-profile resolver; TDL non-owner; DERIVED_READ_MODEL at vehicle level.
+    source_paths:
+      - architecture/trip-detection-lifecycle/evidence/TDL_OQ_002_DRIVE_PROFILE_OWNERSHIP_AUDIT_2026-09-25.md
+      - backend/src/modules/vehicle-intelligence/drive-profile/drive-profile-resolver.ts
+      - backend/src/modules/vehicle-intelligence/battery-policy-profile/battery-policy-profile.service.ts
+
   - id: BAT-V2-EVID-CODE-HEV-IS-EV-001
     type: evidence
     title: Canonical isEv excludes FuelType.HYBRID
@@ -1839,3 +1850,88 @@ nodes:
       active/prioritized; removes completed/failed job and may re-add same deterministic jobId.
     source_paths:
       - backend/src/modules/vehicle-intelligence/battery-health/jobs/battery-v2-job-producer.service.ts
+
+  - id: BAT-V2-AUTH-H0-001
+    type: authority
+    title: M3.3-H0 Battery Intelligence domain separation seal
+    epistemic_status: CONFIRMED
+    summary: >
+      LV vs HV scientific domains are separated in code: D3/F5/E2/E3 are LV-only;
+      GT is shared store with explicit batteryScope on facts; G2.2 replacement identity
+      is orgId+sourceServiceEventId (scope is fact content). HV charge sessions consume
+      ERD/DIMO segment boundaries without duplicating physical-event authority.
+      Full inventory: research/M3_3_H0_BATTERY_INTELLIGENCE_DOMAIN_SEPARATION_AUDIT_2026-09-30.md
+    source_paths:
+      - architecture/battery-v2/BATTERY_INTELLIGENCE_ARCHITECTURE.md
+      - architecture/battery-v2/research/M3_3_H0_BATTERY_INTELLIGENCE_DOMAIN_SEPARATION_AUDIT_2026-09-30.md
+      - backend/src/modules/vehicle-intelligence/battery-health/generalized-evidence/rest-session-features/longitudinal/f5-natural-calibration-report/f5-ground-truth-correlation.constants.ts
+    evidence:
+      - BAT-V2-EVID-CODE-ANCHOR-001
+
+  - id: BAT-V2-AUTH-H1-001
+    type: authority
+    title: M3.3-HV-H1 provider capability and evidence foundation
+    epistemic_status: CONFIRMED
+    summary: >
+      Per-vehicle HV capability matrix from VehicleBatteryCapability + HvMethodProfile;
+      orthogonal freshness semantics; fail-closed evidence quality; session↔evidence linkage;
+      read-only evidence readiness report CLI; no customer HV health score; no schema change;
+      H1_RUNTIME_REACHABLE=NO.
+    source_paths:
+      - architecture/battery-v2/research/M3_3_HV_H1_PROVIDER_CAPABILITY_EVIDENCE_FOUNDATION_2026-09-30.md
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-h1/
+    evidence:
+      - BAT-V2-EVID-CODE-ANCHOR-001
+
+  - id: BAT-V2-AUTH-H2-001
+    type: authority
+    title: M3.3-HV-H2 longitudinal input candidate construction
+    epistemic_status: CONFIRMED
+    summary: >
+      Read-only H2 report from bounded DB reads; method-separated eligible candidates;
+      GT knowledge-as-of; session fail-closed; no customer publication; H2_AUTOMATIC_RUNTIME=NO.
+    source_paths:
+      - architecture/battery-v2/research/M3_3_HV_H2_LONGITUDINAL_INPUT_CONSTRUCTION_2026-09-30.md
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-h2/
+    evidence:
+      - BAT-V2-EVID-CODE-ANCHOR-001
+
+  - id: BAT-V2-AUTH-H3-001
+    type: authority
+    title: M3.3-HV-H3 method-specific descriptive longitudinal trend V1
+    epistemic_status: CONFIRMED
+    summary: >
+      Pure H3 trend report from H2 input only; M2 session medians; Theil-Sen calendar-time slope;
+      cross-method pooling NO; provider partition NO; degradationConclusion null;
+      H3_AUTOMATIC_RUNTIME=NO; no persistence table.
+    source_paths:
+      - architecture/battery-v2/research/M3_3_HV_H3_LONGITUDINAL_TREND_CHARACTERIZATION_2026-09-30.md
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-h3/
+    evidence:
+      - BAT-V2-EVID-CODE-ANCHOR-001
+
+  - id: BAT-V2-AUTH-H4-001
+    type: authority
+    title: M3.3-HV-H4 exposure source and observational coverage authority V1
+    epistemic_status: CONFIRMED
+    summary: >
+      H4 defines exposure axis source semantics, evidence-start boundaries, coverage classes,
+      retention continuity, and read-only coverage report only; no cumulative throughput, FEC,
+      thermal/SOC integrals, fast-charge classification, degradation, or customer publication.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-h4/
+    evidence:
+      - BAT-V2-EVID-CODE-ANCHOR-001
+
+  - id: BAT-V2-AUTH-H4-A2-001
+    type: authority
+    title: M3.3-HV-H4-A2 bounded observed charge-only throughput composition V1
+    epistemic_status: CONFIRMED
+    summary: >
+      Read-only per-lifecycle-segment sum of ELIGIBLE_NATIVE HvChargeSession.energyAddedKwh
+      (SEGMENT_EXTREMA provenance); gap-aware; fail-closed on truncation/overlap/conflicts;
+      not lifetime throughput, FEC, degradation, or customer publication.
+    source_paths:
+      - backend/src/modules/vehicle-intelligence/battery-health/hv-h4/m3-3-hv-h4-charge-throughput-report.builder.ts
+    evidence:
+      - BAT-V2-EVID-CODE-ANCHOR-001

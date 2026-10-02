@@ -359,3 +359,167 @@ edges:
     from: DI-DEC-PROD-DET-UNCHANGED-001
     relation: governs
     to: DI-ALGO-HF-ACCEL-001
+
+  - id: DI-EDGE-127
+    from: DI-DEC-R1-TEMPORAL-CONTAINMENT-001
+    relation: governs
+    to: DI-POL-R1-TEMPORAL-CONTAINMENT-001
+
+  - id: DI-EDGE-128
+    from: DI-POL-R1-TEMPORAL-CONTAINMENT-001
+    relation: gates
+    to: DI-ALGO-HF-ABUSE-001
+    notes: R1 FULL_BRAKING / POSSIBLE_IMPACT / ENGINE_SHUTDOWN_WHILE_DRIVING suppressed after detection
+
+  - id: DI-EDGE-129
+    from: DI-POL-R1-TEMPORAL-CONTAINMENT-001
+    relation: gates
+    to: DI-SVC-BEHAVIOR-ENRICH-001
+    notes: Replace scope never deletes historical contained rows; summary marker
+
+  - id: DI-EDGE-130
+    from: DI-POL-R1-TEMPORAL-CONTAINMENT-001
+    relation: gates
+    to: DI-SVC-IMPACT-001
+    notes: R1 full-braking rate 0 for trip / rolling impact and Brake Health readers
+
+  - id: DI-EDGE-131
+    from: DI-POL-R1-TEMPORAL-CONTAINMENT-001
+    relation: gates
+    to: DI-ADJ-BRAKE-HEALTH-001
+    notes: Brake wear model + fingerprint ignore R1 full-braking rate (read-time)
+
+  - id: DI-EDGE-132
+    from: DI-POL-R1-TEMPORAL-CONTAINMENT-001
+    relation: tested_by
+    to: DI-TEST-R1-CONTAINMENT-001
+
+  - id: DI-EDGE-133
+    from: DI-CONTRA-HARDWARE-TYPE-INTEGRATION-001
+    relation: contradicts
+    to: DI-POL-R1-TEMPORAL-CONTAINMENT-001
+    notes: Recorded so hardwareType is never used as the containment trigger
+
+  - id: DI-EDGE-134
+    from: DI-CONTRA-PROVIDER-TS-R1-OBD-001
+    relation: contradicts
+    to: DI-DEC-PROVIDER-TS-001
+    notes: Recorded, not resolved — R1 OBD family only
+
+  - id: DI-EDGE-135
+    from: DI-DEC-V0-SHADOW-PURE-CORE-001
+    relation: governs
+    to: DI-SVC-V0-SHADOW-CORE-001
+
+  - id: DI-EDGE-136
+    from: DI-DEC-V0-POSITION-ACQ-001
+    relation: governs
+    to: DI-SVC-V0-POSITION-ACQ-001
+
+  - id: DI-EDGE-137
+    from: DI-SVC-V0-POSITION-ACQ-001
+    relation: input_to
+    to: DI-SVC-V0-SHADOW-CORE-001
+    notes: Test-only integration in S3A; no runtime caller
+
+  - id: DI-EDGE-138
+    from: DI-DEC-V0-S4A-CONTRACT-001
+    relation: governs
+    to: DI-SVC-V0-SHADOW-CORE-001
+    notes: S4 orchestrates the unchanged S1 core on pinned inputs; reads vehicle_trips for the boundary fingerprint only, never writes
+
+  - id: DI-EDGE-139
+    from: DI-GAP-S4-NATIVE-READINESS-001
+    relation: gates
+    to: DI-SVC-V0-NATIVE-EVENT-EVIDENCE-001
+    notes: Native channel READY_* unreachable in channel policy V1 until an ingest attestation exists
+
+  - id: DI-EDGE-140
+    from: DI-CONTRA-S2-PROD-MIGRATION-001
+    relation: contradicts
+    to: DI-EVID-EXP021-C1D10A-001
+    notes: Resolved — historical C1D.6/C1D.7 claims amended, not rewritten
+
+  - id: DI-EDGE-141
+    from: DI-DEC-V0-S4A-CONTRACT-V2-001
+    relation: supersedes
+    to: DI-DEC-V0-S4A-CONTRACT-001
+    notes: Partial supersession (C1D.10C) — state machine, S2 guard, tenancy and machine contract v1; v1 decision history preserved with AMENDED BY
+
+  - id: DI-EDGE-142
+    from: DI-DEC-V0-S4A-CONTRACT-V2-001
+    relation: governs
+    to: DI-SVC-V0-SHADOW-CORE-001
+    notes: S4 writes S2 with inputEvidenceVersion = DI_V0_S4_EXECUTION_IDENTITY_V1; S2 key function unchanged
+
+  - id: DI-EDGE-143
+    from: DI-CONTRA-S4A-TENANCY-SCHEMA-001
+    relation: contradicts
+    to: DI-EVID-EXP021-C1D10A-001
+    notes: Resolved in contract v2 — tenancy TRIP_VEHICLE_ORGANIZATION; vehicle_trips.organization_id does not exist
+
+  - id: DI-EDGE-144
+    from: DI-GAP-S4-PROVIDER-BACKPRESSURE-001
+    relation: gates
+    to: DI-DEC-V0-S4A-CONTRACT-V2-001
+    notes: Blocks TINY_ACTIVATION only; not S4A dormant schema merge
+
+  - id: DI-EDGE-145
+    from: DI-DEC-V0-S4A-IMPL-001
+    relation: governs
+    to: DI-SVC-V0-S4A-FOUNDATION-001
+    notes: Dormant foundation implemented from contract v2; 0 runtime call sites
+
+  - id: DI-EDGE-146
+    from: DI-DEC-V0-S4A-CONTRACT-V2-001
+    relation: governs
+    to: DI-DEC-V0-S4A-IMPL-001
+    notes: Implementation follows DI_V0_S4A_CONTRACT_V2 without semantic change
+
+  - id: DI-EDGE-147
+    from: DI-SVC-V0-S4A-FOUNDATION-001
+    relation: tested_by
+    to: DI-EVID-EXP021-S4A-IMPL-001
+    notes: 175/175 incl. 51 real-Postgres race/kill tests and 10 migration cases
+
+  - id: DI-EDGE-148
+    from: DI-SVC-V0-S4A-FOUNDATION-001
+    relation: writes
+    to: DI-SVC-V0-SHADOW-CORE-001
+    notes: Fenced S2 persistence (INSERT ON CONFLICT DO NOTHING + execution-identity compare); library only, no caller
+
+  - id: DI-EDGE-149
+    from: DI-CONTRA-S4A-T13-SUCCESSOR-WRITE-BINDING-001
+    relation: contradicts
+    to: DI-EVID-EXP021-S4A-IMPL-001
+    notes: OPEN — stricter reading implemented
+
+  - id: DI-EDGE-150
+    from: DI-CONTRA-S4A-CONTAINER-VERSION-NAMING-001
+    relation: contradicts
+    to: DI-EVID-EXP021-S4A-IMPL-001
+    notes: OPEN — naming only
+
+  - id: DI-EDGE-151
+    from: DI-CONTRA-S4A-ON-UPDATE-CASCADE-IMMUTABILITY-001
+    relation: contradicts
+    to: DI-EVID-EXP021-S4A-IMPL-001
+    notes: OPEN P2 — canonical PK updates inferred absent
+
+  - id: DI-EDGE-152
+    from: DI-GAP-S4A-BOUNDARY-REVERT-SUCCESSOR-001
+    relation: gates
+    to: DI-DEC-V0-S4A-IMPL-001
+    notes: Blocks S4B discovery activation, not dormant merge
+
+  - id: DI-EDGE-153
+    from: DI-GAP-S4A-POSTGRES-CI-WIRING-001
+    relation: gates
+    to: DI-DEC-V0-S4A-IMPL-001
+    notes: Race suites run locally/ephemerally only
+
+  - id: DI-EDGE-154
+    from: DI-GAP-S4A-CONTROL-ROW-SERIALIZATION-001
+    relation: gates
+    to: DI-DEC-V0-S4A-IMPL-001
+    notes: P2 throughput ceiling before multi-worker scale

@@ -1,8 +1,17 @@
 /**
  * Canonical P2.2 shadow adjudication taxonomy — frozen by VDC-DEC-013 / Phase-2 audit §14.
+ *
+ * Bootstrap initial ESTABLISHMENT (absent projection → PLUGGED via SNAPSHOT_OBD) reuses
+ * EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT when independently proven via
+ * SNAPSHOT_PLUG_INITIAL_ESTABLISHMENT — no separate cosmetic category.
  */
 export enum PhysicalStateShadowClassification {
   MATCH = 'MATCH',
+  /**
+   * Legacy and physical both correct within different semantic domains — same effective
+   * state, physical PROVENANCE_REFRESH, independently proven admissibility (Option C).
+   */
+  NON_ISOMORPHIC_SAME_STATE_PROVENANCE_REFRESH = 'NON_ISOMORPHIC_SAME_STATE_PROVENANCE_REFRESH',
   EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT = 'EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT',
   UNEXPLAINED_OLD_REJECT_NEW_ACCEPT = 'UNEXPLAINED_OLD_REJECT_NEW_ACCEPT',
   OLD_ACCEPT_NEW_REJECT_EXPECTED = 'OLD_ACCEPT_NEW_REJECT_EXPECTED',
@@ -17,6 +26,7 @@ const CORRECTNESS_BLOCKING: ReadonlySet<PhysicalStateShadowClassification> = new
   PhysicalStateShadowClassification.UNEXPLAINED_OLD_REJECT_NEW_ACCEPT,
   PhysicalStateShadowClassification.UNEXPLAINED_OLD_ACCEPT_NEW_REJECT,
   PhysicalStateShadowClassification.STATE_DIVERGENCE_CORRECTNESS_UNKNOWN,
+  PhysicalStateShadowClassification.CONFLICT,
 ]);
 
 export function isShadowClassificationCorrectnessBlocking(
@@ -39,4 +49,29 @@ export function isExpectedFixClassification(
   classification: PhysicalStateShadowClassification,
 ): boolean {
   return classification === PhysicalStateShadowClassification.EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT;
+}
+
+export function isProvenNonIsomorphicSameStateClassification(
+  classification: PhysicalStateShadowClassification,
+): boolean {
+  return (
+    classification ===
+    PhysicalStateShadowClassification.NON_ISOMORPHIC_SAME_STATE_PROVENANCE_REFRESH
+  );
+}
+
+export function isUnprovenSameStateRefreshClassification(
+  classification: PhysicalStateShadowClassification,
+  input: {
+    legacyRejected: boolean;
+    physicalAccepted: boolean;
+    transitionDecision: string | null;
+  },
+): boolean {
+  return (
+    classification === PhysicalStateShadowClassification.UNEXPLAINED_OLD_REJECT_NEW_ACCEPT &&
+    input.legacyRejected &&
+    input.physicalAccepted &&
+    input.transitionDecision === 'PROVENANCE_REFRESH'
+  );
 }

@@ -1,0 +1,52 @@
+# VO-4.9 — Master Admin trusted provider source adoption HTTP
+
+| Field | Value |
+|-------|-------|
+| **Slice** | VO-4.9 |
+| **Repository anchor** | `c7fd1b532b7bfa2f966519629ddda3327424fbb7` (base) + VO-4.9 branch |
+| **API classification** | `MASTER_ADMIN_TRUSTED_SOURCE_ADOPTION_API` |
+| **Public cutover** | **NO** — legacy `register-from-dimo`, HM-only registration, manual create unchanged |
+| **Activation HTTP** | **NO** |
+
+## Endpoints
+
+| Method | Route | Purpose |
+|--------|-------|---------|
+| `POST` | `/admin/vehicle-onboarding/organizations/:orgId/sources/adopt` | Open/resume onboarding case from DIMO or HM mirror |
+| `POST` | `/admin/vehicle-onboarding/organizations/:orgId/cases/:caseId/sources/attach` | Attach secondary provider source to existing case |
+
+Guards: `RolesGuard`, `MasterAdminMfaGuard`, `@Roles('MASTER_ADMIN')`, `@RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_INTEGRATIONS)`.
+
+## Authority decisions
+
+- **DIMO** mirrors are global Developer License rows — adoption requires server-built `PLATFORM_TRUSTED_ADOPTION` context (never caller-supplied `sourceAdoptionMode`).
+- **HM** org-scoped mirrors adopt under tenant correlation; `organizationId == null` requires platform trusted adoption.
+- **Global source claim** uses PostgreSQL advisory lock `vehicle-onboarding-source-claim:<provider>:<sourceMirrorId>` in the same transaction as claim checks and mutations.
+- **Cross-org active case** holding the same mirror → `SOURCE_ALREADY_CLAIMED` (409, no tenant leakage).
+- **Canonical / completed-case suppression** → `SOURCE_ALREADY_REGISTERED` (409).
+- **Attach** participates in VO-4.8 concurrency (`expectedConcurrencyToken`), prospective source-set + VIN validation, readiness invalidation, token rotation on semantic change.
+- **No provider network calls** during adopt/attach (mirrors only).
+- **No Vehicle materialization** on adopt/attach.
+
+## VO-4.9.1 integrity closure
+
+- **Primary resume only:** adopt resumes an active case only when `provider` + `sourceMirrorId` is attached as **primary** with consistent case primary metadata; secondary-only claims → `SOURCE_ALREADY_CLAIMED`.
+- **Multi-holder fail-closed:** more than one active case holding the same mirror → `SOURCE_CLAIM_INTEGRITY_CONFLICT` (409).
+- **Same-mirror attach:** identity keyed by `provider` + `sourceMirrorId` (not external identity drift); semantic no-op preserves token/readiness.
+- **Org validation** inside source-claim transaction (TOCTOU-safe).
+- **Activation revalidation:** before any canonical `Vehicle` write, current DIMO/HM mirror state re-checked (DB only); HM secondary clearance revalidated at activation.
+- **Proof suites:** `vo49-source-adoption-integrity.postgres.integration.spec.ts`
+
+## VO-4.9.2 activation identity continuity
+
+- Parses governed source snapshots via `parseValidatedSourceSnapshot()` during activation revalidation.
+- **DIMO:** external identity + non-contradictory VIN vs snapshot → `IDENTITY_REVIEW_REQUIRED`.
+- **HM:** VIN contradiction → `IDENTITY_REVIEW_REQUIRED`; `sourceMode` / `packageType` / `appContainerType` drift → `READINESS_SEAL_STALE`.
+- **HM `hmVehicleReference` change alone** does not block activation (mirror id is claim identity).
+- No snapshot refresh or provider network during activation.
+- **Proof suite:** `vo49-source-identity-continuity.postgres.integration.spec.ts`
+
+## Tests
+
+- `npm run test:vehicle-onboarding:vo49:postgres`
+- Unit: `source-adoption-request.validation.unit.spec.ts`, `source-adoption.authority.unit.spec.ts`, `vehicle-onboarding-source-adoption.controller.http-boundary.spec.ts`

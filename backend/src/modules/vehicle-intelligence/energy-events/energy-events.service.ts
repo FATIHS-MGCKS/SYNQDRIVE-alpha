@@ -11,6 +11,8 @@ import {
   type VehicleEnergyEvent,
 } from '@prisma/client';
 import { toEnergyEventDto, type EnergyEventDto } from './energy-events.types';
+import { projectCanonicalProductEnergyEvents } from './canonical-energy-events.projection';
+import { resolveEffectiveV2OwnershipCutoverAt } from './v2-ownership-cutover.util';
 import {
   buildUpsertPayload,
   coalesceSegments,
@@ -28,6 +30,12 @@ import {
 import { PhysicalRefuelReconciliationRuntimeService } from './physical-refuel-reconciliation-runtime.service';
 import { RawFuelRefuelFallbackRuntimeService } from './raw-fuel-refuel-fallback/raw-fuel-refuel-fallback-runtime.service';
 import type { RawFuelRefuelFallbackScanResult } from './raw-fuel-refuel-fallback/raw-fuel-refuel-fallback-runtime.types';
+import { ErdRechargeShadowParityRuntimeService } from './erd-recharge-shadow-parity/erd-recharge-shadow-parity.runtime';
+import { isErdRechargeProductReadDedupeEnabled } from './erd-recharge-product-read-dedupe/erd-recharge-product-read-dedupe.config';
+import { ErdRechargeProductReadDedupeMetricsService } from './erd-recharge-product-read-dedupe/erd-recharge-product-read-dedupe.metrics';
+import { evaluateLegacyRechargeWriteGate } from './erd-recharge-write-authority/erd-recharge-write-gate.policy';
+import { ErdRechargeWriteAuthorityMetricsService } from './erd-recharge-write-authority/erd-recharge-write-authority.metrics';
+import type { ErdRechargeLegacyWriteGateOutcome } from './erd-recharge-write-authority/erd-recharge-write-authority.constants';
 
 export interface DetectEnergyEventsOptions {
   from: Date;
@@ -65,30 +73,105 @@ export class EnergyEventsService {
     private readonly physicalRefuelReconciliationRuntime?: PhysicalRefuelReconciliationRuntimeService,
     @Optional()
     private readonly rawFuelRefuelFallbackRuntime?: RawFuelRefuelFallbackRuntimeService,
+    @Optional()
+    private readonly erdRechargeShadowParityRuntime?: ErdRechargeShadowParityRuntimeService,
+    @Optional()
+    private readonly erdRechargeProductReadDedupeMetrics?: ErdRechargeProductReadDedupeMetricsService,
+    @Optional()
+    private readonly erdRechargeWriteAuthorityMetrics?: ErdRechargeWriteAuthorityMetricsService,
   ) {}
 
+  async listEnergyEventsRaw(
+    vehicleId: string,
+    options: { from?: Date; to?: Date } = {},
+  ): Promise<EnergyEventDto[]> {
+    const rows = await this.queryEnergyEventRowsForRaw(vehicleId, options);
+    return rows.map(toEnergyEventDto);
+  }
+
+  /** Product-facing refuel/recharge list — one REFUEL per physical episode when V2 reconciliation applies. */
+  async listCanonicalEnergyEvents(
+    vehicleId: string,
+    options: { from?: Date; to?: Date } = {},
+    env: NodeJS.ProcessEnv = process.env,
+  ): Promise<EnergyEventDto[]> {
+    const rows = await this.queryEnergyEventRowsForCanonical(vehicleId, options);
+    const cutover = resolveEffectiveV2OwnershipCutoverAt(env);
+    const rechargeReadDedupeEnabled = isErdRechargeProductReadDedupeEnabled(env);
+    const canonical = projectCanonicalProductEnergyEvents(
+      rows,
+      cutover,
+      rechargeReadDedupeEnabled,
+      (metricResults) => {
+        this.erdRechargeProductReadDedupeMetrics?.recordResults(metricResults);
+      },
+    );
+    return canonical.map(toEnergyEventDto);
+  }
+
+  /**
+   * Forensic/raw list — all persisted source revisions. Prefer {@link listCanonicalEnergyEvents}
+   * for product surfaces (trips timeline, trips-tab energy list).
+   */
   async listEnergyEvents(
     vehicleId: string,
     options: { from?: Date; to?: Date } = {},
   ): Promise<EnergyEventDto[]> {
-    const rows = await this.prisma.vehicleEnergyEvent.findMany({
-      where: {
-        vehicleId,
-        ...(options.from || options.to
-          ? {
-              startTime: {
-                ...(options.from ? { gte: options.from } : {}),
-                ...(options.to ? { lte: options.to } : {}),
-              },
-            }
-          : {}),
-      },
+    return this.listEnergyEventsRaw(vehicleId, options);
+  }
+
+  private async queryEnergyEventRowsForRaw(
+    vehicleId: string,
+    options: { from?: Date; to?: Date } = {},
+  ) {
+    return this.prisma.vehicleEnergyEvent.findMany({
+      where: this.buildEnergyEventListWhere(vehicleId, options),
       include: {
         fuelStationEnrichment: true,
+        chargingStationEnrichment: true,
       },
       orderBy: { startTime: 'asc' },
     });
-    return rows.map(toEnergyEventDto);
+  }
+
+  private async queryEnergyEventRowsForCanonical(
+    vehicleId: string,
+    options: { from?: Date; to?: Date } = {},
+  ) {
+    return this.prisma.vehicleEnergyEvent.findMany({
+      where: this.buildEnergyEventListWhere(vehicleId, options),
+      include: {
+        fuelStationEnrichment: true,
+        chargingStationEnrichment: true,
+        refuelReconciliation: true,
+      },
+      orderBy: { startTime: 'asc' },
+    });
+  }
+
+  private buildEnergyEventListWhere(
+    vehicleId: string,
+    options: { from?: Date; to?: Date },
+  ) {
+    return {
+      vehicleId,
+      ...(options.from || options.to
+        ? {
+            startTime: {
+              ...(options.from ? { gte: options.from } : {}),
+              ...(options.to ? { lte: options.to } : {}),
+            },
+          }
+        : {}),
+    };
+  }
+
+  /** @deprecated use queryEnergyEventRowsForRaw or queryEnergyEventRowsForCanonical */
+  private async queryEnergyEventRows(
+    vehicleId: string,
+    options: { from?: Date; to?: Date } = {},
+  ) {
+    return this.queryEnergyEventRowsForRaw(vehicleId, options);
   }
 
   async detectEnergyEvents(
@@ -161,12 +244,17 @@ export class EnergyEventsService {
     const persistedRows: VehicleEnergyEvent[] = [];
 
     for (const group of coalesced) {
-      const { row, wasCreated } = await this.upsertSegment(
+      const upsertResult = await this.upsertSegment(
         vehicleId,
         tokenId,
         group,
         requestContext,
+        process.env,
       );
+      if (upsertResult.kind === 'skipped') {
+        continue;
+      }
+      const { row, wasCreated } = upsertResult;
       persistedRows.push(row);
       if (wasCreated) created++;
       else updated++;
@@ -220,6 +308,13 @@ export class EnergyEventsService {
       dimoPowertrainType: vehicle.dimoVehicle?.powertrainType ?? null,
       dimoFuelType: vehicle.dimoVehicle?.fuelType ?? null,
       requestContext,
+    });
+
+    this.erdRechargeShadowParityRuntime?.runAfterEnergyDetectionSafe({
+      organizationId: vehicle.organizationId,
+      vehicleId,
+      windowFrom: options.from,
+      windowTo: options.to,
     });
 
     return {
@@ -295,13 +390,14 @@ export class EnergyEventsService {
     vehicleId: string,
     hydratedTrips: Array<Record<string, unknown> & { startTime: Date | string }>,
     options: { from?: Date; to?: Date } = {},
+    env: NodeJS.ProcessEnv = process.env,
   ): Promise<
     Array<
       | ({ itemType: 'trip'; startTime: string } & Record<string, unknown>)
       | ({ itemType: 'energy-event'; startTime: string } & EnergyEventDto)
     >
   > {
-    const events = await this.listEnergyEvents(vehicleId, options);
+    const events = await this.listCanonicalEnergyEvents(vehicleId, options, env);
 
     const tripItems = hydratedTrips.map((trip) => {
       const startTime =
@@ -332,7 +428,11 @@ export class EnergyEventsService {
       vehicleId: string;
       tokenId: number;
     },
-  ): Promise<{ row: VehicleEnergyEvent; wasCreated: boolean }> {
+    env: NodeJS.ProcessEnv,
+  ): Promise<
+    | { kind: 'persisted'; row: VehicleEnergyEvent; wasCreated: boolean }
+    | { kind: 'skipped'; outcome: ErdRechargeLegacyWriteGateOutcome; row?: VehicleEnergyEvent }
+  > {
     const refuelObservation =
       segment.mechanism === 'refuel'
         ? await this.deriveRefuelObservation(segment, tokenId, requestContext)
@@ -346,6 +446,17 @@ export class EnergyEventsService {
     const existing = await this.prisma.vehicleEnergyEvent.findUnique({
       where: { dimoSegmentId: payload.dimoSegmentId },
     });
+
+    if (segment.mechanism !== 'refuel') {
+      const gate = evaluateLegacyRechargeWriteGate({ segment, existing, env });
+      this.erdRechargeWriteAuthorityMetrics?.recordLegacyWriteGate(gate.outcome);
+      if (!gate.allowPersist) {
+        if (existing) {
+          return { kind: 'skipped', outcome: gate.outcome, row: existing };
+        }
+        return { kind: 'skipped', outcome: gate.outcome };
+      }
+    }
 
     const data = {
       vehicleId: payload.vehicleId,
@@ -428,7 +539,7 @@ export class EnergyEventsService {
       });
     }
 
-    return { row, wasCreated };
+    return { kind: 'persisted', row, wasCreated };
   }
 
   private async deriveRefuelObservation(
@@ -459,15 +570,20 @@ export class EnergyEventsService {
   ): Promise<number> {
     if (canonicalRows.length === 0) return 0;
 
-    const canonicalWindows: RefuelEventWindow[] = canonicalRows.map((row) => ({
-      id: row.id,
-      dimoSegmentId: row.dimoSegmentId,
-      startTime: row.startTime,
-      endTime: row.endTime,
-      durationSeconds: row.durationSeconds,
-      fuelDeltaPercent: row.fuelDeltaPercent,
-      fuelDeltaLiters: row.fuelDeltaLiters,
-    }));
+    const canonicalWindows: RefuelEventWindow[] = canonicalRows
+      .filter(
+        (row): row is typeof row & { dimoSegmentId: string } =>
+          row.dimoSegmentId != null,
+      )
+      .map((row) => ({
+        id: row.id,
+        dimoSegmentId: row.dimoSegmentId,
+        startTime: row.startTime,
+        endTime: row.endTime,
+        durationSeconds: row.durationSeconds,
+        fuelDeltaPercent: row.fuelDeltaPercent,
+        fuelDeltaLiters: row.fuelDeltaLiters,
+      }));
 
     const searchFrom = new Date(
       Math.min(...canonicalRows.map((r) => r.startTime.getTime())) - 2 * 60 * 60_000,
@@ -487,15 +603,20 @@ export class EnergyEventsService {
 
     const siblingIds = resolveSupersededRefuelSiblingIds(
       canonicalWindows,
-      candidates.map((row) => ({
-        id: row.id,
-        dimoSegmentId: row.dimoSegmentId,
-        startTime: row.startTime,
-        endTime: row.endTime,
-        durationSeconds: row.durationSeconds,
-        fuelDeltaPercent: row.fuelDeltaPercent,
-        fuelDeltaLiters: row.fuelDeltaLiters,
-      })),
+      candidates
+        .filter(
+          (row): row is typeof row & { dimoSegmentId: string } =>
+            row.dimoSegmentId != null,
+        )
+        .map((row) => ({
+          id: row.id,
+          dimoSegmentId: row.dimoSegmentId,
+          startTime: row.startTime,
+          endTime: row.endTime,
+          durationSeconds: row.durationSeconds,
+          fuelDeltaPercent: row.fuelDeltaPercent,
+          fuelDeltaLiters: row.fuelDeltaLiters,
+        })),
     );
 
     if (siblingIds.length === 0) return 0;

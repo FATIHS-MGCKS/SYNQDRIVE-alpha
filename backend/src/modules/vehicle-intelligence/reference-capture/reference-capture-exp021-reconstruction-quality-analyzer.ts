@@ -8,7 +8,10 @@ import {
   computeNativeTemporalCadenceStats,
   type HfCalibrationPhaseSummary,
 } from './reference-capture-hf-calibration-phase.policy';
-import { buildExp021IntendedSlotOffsets } from './reference-capture-exp021-request-slots.lib';
+import {
+  buildExp021IntendedSlotOffsets,
+  countExp021SlotStatuses,
+} from './reference-capture-exp021-request-slots.lib';
 import {
   findPhaseSpecByCadence,
   type Exp021CalibrationPlan,
@@ -70,25 +73,6 @@ function percentile(sorted: number[], p: number): number | null {
   return sorted[idx];
 }
 
-function countSlotStatuses(
-  slots: Array<{ status: string }> | null | undefined,
-): { issued: number; success: number; zero: number; failure: number } {
-  if (!slots?.length) return { issued: 0, success: 0, zero: 0, failure: 0 };
-  let issued = 0;
-  let success = 0;
-  let zero = 0;
-  let failure = 0;
-  for (const slot of slots) {
-    if (slot.status === 'ISSUED' || slot.status === 'SUCCESS' || slot.status === 'ZERO_RESULT' || slot.status === 'FAILURE') {
-      issued += 1;
-    }
-    if (slot.status === 'SUCCESS') success += 1;
-    if (slot.status === 'ZERO_RESULT') zero += 1;
-    if (slot.status === 'FAILURE') failure += 1;
-  }
-  return { issued, success, zero, failure };
-}
-
 function computeDeltaTPercentiles(
   orderedBucketStarts: string[],
 ): { p50: number | null; p90: number | null; p95: number | null; p99: number | null; max: number | null } {
@@ -145,7 +129,7 @@ export function buildPhaseReconstructionMetrics(args: {
     cadenceMs,
     phaseDurationMs,
   });
-  const slotCounts = countSlotStatuses(summary.exp021RequestSlots);
+  const slotCounts = countExp021SlotStatuses(summary.exp021RequestSlots);
   const evidence: Exp021NativeTemporalEvidenceV1 | null =
     summary.nativeTemporalEvidence ?? null;
   const ordered = evidence?.orderedNativeTemporalBucketStarts ?? [];
@@ -165,10 +149,14 @@ export function buildPhaseReconstructionMetrics(args: {
     cadenceMs,
     phaseLabel: `${cadenceMs / 1000}s`,
     intendedRequestSlots: intendedOffsets.length,
-    issuedSlots: slotCounts.issued,
-    successfulSlots: slotCounts.success,
-    zeroResultSlots: slotCounts.zero,
-    failureSlots: slotCounts.failure,
+    issuedSlots:
+      slotCounts.slotIssuedCount +
+      slotCounts.slotSuccessCount +
+      slotCounts.slotZeroResultCount +
+      slotCounts.slotFailureCount,
+    successfulSlots: slotCounts.slotSuccessCount,
+    zeroResultSlots: slotCounts.slotZeroResultCount,
+    failureSlots: slotCounts.slotFailureCount,
     nativeBucketCount: summary.nativeUniqueTemporalBucketStartCount,
     bucketsPerWallMinute:
       wallMinutes > 0 ? summary.nativeUniqueTemporalBucketStartCount / wallMinutes : null,

@@ -528,3 +528,19 @@ edges:
     relation: refines
     to: BAT-V2-AUTH-CANONICAL-READ-001
     notes: Enablement/readiness gaps refine what canonical read exposes; gap is not runtime authority
+  - from: BAT-V2-AUTH-H2-001
+    relation: contributes_to
+    to: BAT-V2-AUTH-H3-001
+    notes: H3 descriptive trend is composed from H2 longitudinal input report
+  - from: BAT-V2-AUTH-H3-001
+    relation: contributes_to
+    to: BAT-V2-AUTH-H4-001
+    notes: H4 exposure coverage authority follows H3 calendar descriptive layer; no H3 semantic retrofit
+  - from: BAT-V2-AUTH-H4-001
+    relation: contributes_to
+    to: BAT-V2-AUTH-H4-A2-001
+    notes: A2 bounded charge throughput composition consumes A1 coverage/source authority in one read-only transaction
+  - from: BAT-V2-AUTH-H1-001
+    relation: contributes_to
+    to: BAT-V2-AUTH-H2-001
+    notes: H2 eligibility inherits H1 evidence readiness foundations

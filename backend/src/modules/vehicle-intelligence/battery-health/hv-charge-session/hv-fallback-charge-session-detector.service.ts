@@ -5,17 +5,22 @@ import {
   BatteryEvidenceValueType,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import {
   isBatteryV2HvFallbackChargeSessionEnabled,
   isBatteryV2HvRechargeSessionEnabled,
 } from '@config/battery-health-v2.config';
 import { HvMethodProfileService } from '../hv-method-profile/hv-method-profile.service';
-import { mapFallbackCandidateToHvChargeSessionDraft } from './hv-fallback-charge-session.mapper';
 import { detectFallbackChargeSessions } from './hv-fallback-charge-session.policy';
 import type { HvFallbackChargeObservation } from './hv-fallback-charge-session.types';
-import { HvChargeSessionPersistService } from './hv-charge-session-persist.service';
+import {
+  HvChargeSessionNativeFallbackConvergenceService,
+  type HvFallbackAuthorityPersistResult,
+} from './hv-charge-session-native-fallback-convergence.service';
 import type { HvChargeSessionPersistResult } from './hv-charge-session.types';
 import { HV_RECHARGE_ROLLING_WINDOW_DAYS } from './hv-recharge-session-reconcile.policy';
+import { shouldAttemptFallbackDetection } from './hv-fallback-charge-session-activation.policy';
+import { recordErdE3ConvergenceMetric } from './hv-erd-convergence.metrics';
 
 export interface HvFallbackChargeSessionDetectResult {
   skipped: boolean;
@@ -23,11 +28,17 @@ export interface HvFallbackChargeSessionDetectResult {
     | 'disabled'
     | 'recharge_segments_available'
     | 'no_observations'
-    | 'no_sessions';
+    | 'no_sessions'
+    | 'ice_only'
+    | 'insufficient_telemetry_capability';
   detected: number;
   persisted: number;
   rejectedFalsePositives: number;
-  results: HvChargeSessionPersistResult[];
+  results: Array<
+    HvChargeSessionPersistResult & {
+      authority?: HvFallbackAuthorityPersistResult['authority'];
+    }
+  >;
 }
 
 @Injectable()
@@ -37,7 +48,8 @@ export class HvFallbackChargeSessionDetectorService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly hvMethodProfile: HvMethodProfileService,
-    private readonly persist: HvChargeSessionPersistService,
+    private readonly nativeFallbackConvergence: HvChargeSessionNativeFallbackConvergenceService,
+    private readonly metrics: TripMetricsService,
   ) {}
 
   async detectAndPersistForVehicle(input: {
@@ -46,6 +58,7 @@ export class HvFallbackChargeSessionDetectorService {
     from?: Date;
     to?: Date;
     correlationId?: string | null;
+    evaluatedAt?: Date;
   }): Promise<HvFallbackChargeSessionDetectResult> {
     if (
       !isBatteryV2HvRechargeSessionEnabled() ||
@@ -61,15 +74,32 @@ export class HvFallbackChargeSessionDetectorService {
       };
     }
 
+    const evaluatedAt = input.evaluatedAt ?? input.to ?? new Date();
+
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: input.vehicleId, organizationId: input.organizationId },
+      select: { fuelType: true },
+    });
+
     const profile = await this.hvMethodProfile.resolveForVehicle({
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
+      now: evaluatedAt,
     });
 
-    if (profile.rechargeSegmentsAvailable) {
+    const activation = shouldAttemptFallbackDetection({
+      profile,
+      fuelType: vehicle?.fuelType ?? null,
+    });
+    if (!activation.allowed) {
+      const skipReason =
+        activation.reason === 'ice_only' ||
+        activation.reason === 'insufficient_telemetry_capability'
+          ? activation.reason
+          : 'insufficient_telemetry_capability';
       return {
         skipped: true,
-        skipReason: 'recharge_segments_available',
+        skipReason,
         detected: 0,
         persisted: 0,
         rejectedFalsePositives: 0,
@@ -77,12 +107,18 @@ export class HvFallbackChargeSessionDetectorService {
       };
     }
 
-    const to = input.to ?? new Date();
+    const to = input.to ?? evaluatedAt;
     const from =
       input.from ??
       new Date(to.getTime() - HV_RECHARGE_ROLLING_WINDOW_DAYS * 24 * 60 * 60 * 1000);
 
-    const observations = await this.loadObservations(input.vehicleId, from, to);
+    const observations = await this.loadObservations(
+      input.vehicleId,
+      from,
+      to,
+      profile.isChargingAvailable,
+      profile.chargingCableConnectedAvailable,
+    );
     if (observations.length < 2) {
       return {
         skipped: true,
@@ -94,7 +130,18 @@ export class HvFallbackChargeSessionDetectorService {
       };
     }
 
-    const detection = detectFallbackChargeSessions(observations, to);
+    const detection = detectFallbackChargeSessions(observations, evaluatedAt);
+    recordErdE3ConvergenceMetric(
+      this.metrics,
+      'fallback_detected',
+      detection.sessions.length,
+    );
+    recordErdE3ConvergenceMetric(
+      this.metrics,
+      'fallback_rejected',
+      detection.rejectedFalsePositives,
+    );
+
     if (detection.sessions.length === 0) {
       return {
         skipped: true,
@@ -106,22 +153,32 @@ export class HvFallbackChargeSessionDetectorService {
       };
     }
 
-    const results: HvChargeSessionPersistResult[] = [];
+    const results: HvFallbackChargeSessionDetectResult['results'] = [];
     for (const candidate of detection.sessions) {
-      const draft = mapFallbackCandidateToHvChargeSessionDraft({
-        organizationId: input.organizationId,
-        vehicleId: input.vehicleId,
-        candidate,
+      const authorityResult =
+        await this.nativeFallbackConvergence.persistProvisionalFallbackUnderAuthorityLock(
+          {
+            organizationId: input.organizationId,
+            vehicleId: input.vehicleId,
+            candidate,
+            evaluatedAt,
+            correlationId:
+              input.correlationId ??
+              `hv-fallback:${input.vehicleId}:${candidate.startAt.getTime()}`,
+          },
+        );
+
+      if (authorityResult.authority.skipped || !authorityResult.session) {
+        continue;
+      }
+
+      results.push({
+        session: authorityResult.session,
+        created: authorityResult.created,
+        changed: authorityResult.changed,
+        changeKind: authorityResult.changeKind,
+        authority: authorityResult.authority,
       });
-      const result = await this.persist.persistSessionDraft({
-        organizationId: input.organizationId,
-        vehicleId: input.vehicleId,
-        draft,
-        correlationId:
-          input.correlationId ??
-          `hv-fallback:${input.vehicleId}:${draft.segmentFingerprint}`,
-      });
-      results.push(result);
     }
 
     this.logger.debug(
@@ -141,6 +198,8 @@ export class HvFallbackChargeSessionDetectorService {
     vehicleId: string,
     from: Date,
     to: Date,
+    isChargingCapabilityAvailable: boolean,
+    cableCapabilityAvailable: boolean,
   ): Promise<HvFallbackChargeObservation[]> {
     const snapshots = await this.prisma.hvBatteryHealthSnapshot.findMany({
       where: {
@@ -203,8 +262,10 @@ export class HvFallbackChargeSessionDetectorService {
       providerReceivedAt: snapshot.providerReceivedAt,
       socPercent: snapshot.socPercent,
       energyKwh: snapshot.energyUsedKwh,
-      isCharging: snapshot.isCharging,
-      cableConnected: snapshot.chargingCableConnected,
+      isCharging: isChargingCapabilityAvailable ? snapshot.isCharging : null,
+      cableConnected: cableCapabilityAvailable
+        ? snapshot.chargingCableConnected
+        : null,
       chargingPowerKw: snapshot.chargingPowerKw,
       addedEnergyKwh: resolveAddedEnergy(snapshot.recordedAt),
     }));

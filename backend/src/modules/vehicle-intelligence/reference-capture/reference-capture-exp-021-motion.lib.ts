@@ -769,7 +769,11 @@ export type PdiCandidateOverlayRecord = {
 export type Exp021PhysicalDriveIntervalAuthority = {
   physicalStartAt: string;
   physicalEndAt: string;
-  source: 'ORCHESTRATOR_CONFIRMED' | 'PDI_CANDIDATE' | 'SESSION_ENVELOPE_FALLBACK';
+  source:
+    | 'ORCHESTRATOR_CONFIRMED'
+    | 'PDI_CANDIDATE'
+    | 'SESSION_ENVELOPE_FALLBACK'
+    | 'CANARY_VEHICLE_TRIP_CONFIRMED';
   candidateId?: string;
 };
 

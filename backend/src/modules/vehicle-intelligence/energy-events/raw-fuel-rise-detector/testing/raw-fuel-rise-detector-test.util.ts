@@ -10,6 +10,7 @@ import type { RawFuelSignalTrustInput } from '../../raw-fuel-refuel-fallback/raw
 import {
   resolveRawFuelSignalTrust,
 } from '../../raw-fuel-refuel-fallback/raw-fuel-signal-trust.resolver';
+import { buildWob20260919ObservedRefuelEpisodeSamples } from '../../raw-fuel-refuel-fallback/testing/wob-2026-09-19-observed-fuel.fixture';
 
 /**
  * Runtime-faithful defaults (F4.1): promotion trust UNKNOWN, admissibility UNKNOWN.
@@ -100,4 +101,14 @@ export function linearRiseSamples(
     absoluteLiters,
     relativePercent: null,
   }));
+}
+
+/**
+ * Generalized sparse-bridge refuel episode (F10.6.6-A / A.1 regression shape).
+ * Stable PRE, long PRE→RISE silence, stepped rise, optional delayed POST plateau.
+ */
+export function buildSparseBridgeRefuelEpisodeSamples(
+  includeDelayedPost: boolean,
+): RawFuelSignalSample[] {
+  return buildWob20260919ObservedRefuelEpisodeSamples(includeDelayedPost);
 }

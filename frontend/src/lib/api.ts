@@ -3748,6 +3748,28 @@ export const api = {
         );
       },
     },
+    batteryV2: {
+      listRestSessions: (params: { organizationId: string; vehicleId: string; limit?: number }) => {
+        const q = new URLSearchParams({
+          organizationId: params.organizationId,
+          vehicleId: params.vehicleId,
+        });
+        if (params.limit != null) q.set('limit', String(params.limit));
+        return get<{ sessions: import('../master/battery-v2-shadow-inspection/types').BatteryV2RestSessionListItemV1[] }>(
+          `/admin/battery-v2/rest-sessions?${q.toString()}`,
+        );
+      },
+      inspectRestSessionFeature: (params: {
+        organizationId: string;
+        vehicleId: string;
+        restSessionId: string;
+      }) => {
+        const q = new URLSearchParams(params);
+        return get<import('../master/battery-v2-shadow-inspection/types').RestSessionFeatureShadowInspectionV1>(
+          `/admin/battery-v2/rest-session-feature-inspection?${q.toString()}`,
+        );
+      },
+    },
     vehicleLogbook: {
       list: () => get<any[]>('/admin/vehicle-logbook'),
       enable: (vehicleId: string, data: { durationHours?: number; enabledBy?: string; notes?: string }) =>

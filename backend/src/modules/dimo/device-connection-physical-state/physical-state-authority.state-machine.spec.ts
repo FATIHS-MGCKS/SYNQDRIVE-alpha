@@ -103,15 +103,28 @@ describe('physical-state authority state machine', () => {
     expect(result.allowed).toBe(true);
   });
 
-  it('statefulShadow requires LEGACY + projection + shadow + no side effects', () => {
+  it('statefulShadow requires LEGACY + pilot allowed + projection + shadow + no side effects', () => {
     const flags = loadConnectivityPhysicalStateRuntimeFlagConfig({
       [CONNECTIVITY_PHYSICAL_STATE_RECONCILIATION_ENABLED_ENV]: 'true',
       [CONNECTIVITY_PHYSICAL_STATE_PROJECTION_WRITE_ENABLED_ENV]: 'true',
       [CONNECTIVITY_PHYSICAL_STATE_SHADOW_COMPARE_ENABLED_ENV]: 'true',
       [CONNECTIVITY_PHYSICAL_STATE_SIDE_EFFECTS_ENABLED_ENV]: 'false',
     });
-    const policy = resolveEffectivePhysicalStateRuntimePolicy({ authorityMode: LEGACY, flags });
-    expect(policy.statefulShadow).toBe(true);
+    const allowed = resolveEffectivePhysicalStateRuntimePolicy({
+      authorityMode: LEGACY,
+      flags,
+      pilotScopeAllowed: true,
+      pilotGateReason: 'ALLOWED',
+    });
+    expect(allowed.statefulShadow).toBe(true);
+
+    const denied = resolveEffectivePhysicalStateRuntimePolicy({
+      authorityMode: LEGACY,
+      flags,
+      pilotScopeAllowed: false,
+      pilotGateReason: 'DENIED_NOT_CONFIGURED',
+    });
+    expect(denied.statefulShadow).toBe(false);
   });
 });
 

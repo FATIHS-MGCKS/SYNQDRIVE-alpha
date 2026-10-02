@@ -2,6 +2,10 @@
 # RFRF F7.1 — multi-replica physical-refuel recovery (isolated localhost PostgreSQL + Redis).
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/rfrf-isolated-postgres-admin.sh"
+
+
 BACKEND_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 GATE_ID="rfrf_f7_mr_$(date +%s)"
 PG_HOST="${TEST_POSTGRES_HOST:-127.0.0.1}"
@@ -34,8 +38,8 @@ cleanup() {
   if [[ "${REDIS_STARTED}" == "1" ]]; then
     redis-cli -p "${REDIS_PORT}" shutdown nosave 2>/dev/null || true
   fi
-  su - postgres -c "psql -v ON_ERROR_STOP=1 -c \"DROP DATABASE IF EXISTS ${PG_DB};\"" 2>/dev/null || true
-  su - postgres -c "psql -v ON_ERROR_STOP=1 -c \"DROP ROLE IF EXISTS ${PG_USER};\"" 2>/dev/null || true
+  rfrf_test_psql_superuser_quiet "DROP DATABASE IF EXISTS ${PG_DB};"
+  rfrf_test_psql_superuser_quiet "DROP ROLE IF EXISTS ${PG_USER};"
 }
 trap cleanup EXIT
 
@@ -59,8 +63,8 @@ echo "TEST_POSTGRES_IS_PRODUCTION=NO"
 echo "TEST_REDIS_IS_PRODUCTION=NO"
 
 echo "==> Creating isolated PostgreSQL database on localhost:${PG_PORT}"
-su - postgres -c "psql -v ON_ERROR_STOP=1 -c \"CREATE ROLE ${PG_USER} LOGIN PASSWORD '${PG_PASS}';\""
-su - postgres -c "psql -v ON_ERROR_STOP=1 -c \"CREATE DATABASE ${PG_DB} OWNER ${PG_USER};\""
+rfrf_test_psql_superuser "CREATE ROLE ${PG_USER} LOGIN PASSWORD '${PG_PASS}';"
+rfrf_test_psql_superuser "CREATE DATABASE ${PG_DB} OWNER ${PG_USER};"
 
 export DATABASE_URL="postgresql://${PG_USER}:${PG_PASS}@${PG_HOST}:${PG_PORT}/${PG_DB}?schema=public"
 assert_test_db_isolation

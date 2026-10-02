@@ -6,6 +6,7 @@ import {
   type HvChargeSessionDraft,
   type HvChargeSessionMetadata,
 } from './hv-charge-session.types';
+import { mapDimoSegmentToAuthoritativeSessionLocations } from '@modules/vehicle-intelligence/energy-events/erd-recharge-location-provenance/erd-recharge-session-location.policy';
 
 export function mapRechargeSegmentToHvChargeSessionDraft(input: {
   organizationId: string;
@@ -24,12 +25,16 @@ export function mapRechargeSegmentToHvChargeSessionDraft(input: {
   const metadata: HvChargeSessionMetadata = {
     providerSegmentFingerprint: segmentFingerprint,
     durationSeconds: segment.durationSeconds,
+    durationProvenance: segment.durationProvenance,
     lastReconciledAt: reconciledAt.toISOString(),
-    reconcileVersion: 1,
-    isChargingStart: segment.isCharging.start,
-    isChargingEnd: segment.isCharging.end,
-    cableConnectedStart: segment.cableConnected.start,
-    cableConnectedEnd: segment.cableConnected.end,
+    reconcileVersion: 2,
+    isChargingObservedAny: segment.isCharging.anyTrue,
+    isChargingObservedAll: segment.isCharging.allTrue,
+    cableConnectedObservedAny: segment.cableConnected.anyTrue,
+    cableConnectedObservedAll: segment.cableConnected.allTrue,
+    socProvenance: segment.soc.provenance,
+    currentEnergyProvenance: segment.currentEnergyKwh.provenance,
+    addedEnergyProvenance: segment.addedEnergyKwh.provenance,
     startedBeforeRange: segment.startedBeforeRange,
     odometerStartKm: segment.odometerKm.min,
     odometerEndKm: segment.odometerKm.max,
@@ -39,6 +44,7 @@ export function mapRechargeSegmentToHvChargeSessionDraft(input: {
     qualityReasonCodes: qualityAssessment.reasonCodes,
     capacityShadowEligible: qualityAssessment.capacityShadowEligible,
     capacityValidationEligible: qualityAssessment.capacityValidationEligible,
+    ...mapDimoSegmentToAuthoritativeSessionLocations(segment),
   };
 
   return {

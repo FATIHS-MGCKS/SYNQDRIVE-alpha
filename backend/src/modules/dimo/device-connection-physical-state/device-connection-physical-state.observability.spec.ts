@@ -22,6 +22,8 @@ function baseResult(
       candidateState: 'PLUGGED',
       resultingState: 'PLUGGED',
       previousEvidenceAt: new Date('2026-08-01T10:00:00.000Z'),
+      previousEvidenceReferenceId: null,
+      previousEvidenceSource: null,
       candidateEvidenceAt: new Date('2026-09-12T15:02:29.000Z'),
       incomingEvidenceSource: 'SNAPSHOT_OBD',
       stateVersionBefore: 1,

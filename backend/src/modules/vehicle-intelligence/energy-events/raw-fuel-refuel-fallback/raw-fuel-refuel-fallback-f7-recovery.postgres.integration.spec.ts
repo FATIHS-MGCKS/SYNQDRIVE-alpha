@@ -28,6 +28,7 @@ import {
   setRfrfFlags,
   syntheticRiseSamples,
 } from './testing/f7-recovery-completeness.harness';
+import { IRREVERSIBLE_CANONICAL_PINNED_REASON } from '../physical-refuel-late-sibling-authority.util';
 import {
   assertFallbackCanonicalMetaConsistency,
   readPersistedFallbackMeta,
@@ -324,8 +325,21 @@ describe('RFRF F7 recovery completeness + post-commit crash-window closure (real
     const stack = buildF5Pr3Stack(prisma, jest.fn().mockResolvedValue(syntheticRiseSamples()));
     try {
       const candidate = await persistReadyCandidate(stack, vehicle.id);
-      const refreshed = await prisma.rawRefuelCandidate.findUniqueOrThrow({ where: { id: candidate.id } });
-      const { fallbackVeeId } = await promoteCandidateViaRuntime(stack, vehicle.id);
+      const promotion = await stack.promotion.evaluateAndApplyPromotionById(candidate.id, {
+        capability: 'FUEL_CAPABLE',
+        absoluteDetectionAdmissibility: 'ADMISSIBLE',
+      });
+      if (promotion.status !== 'PROMOTED' && promotion.status !== 'ALREADY_PROMOTED') {
+        throw new Error(`expected promotion, got ${promotion.status}`);
+      }
+      const fallbackVeeId = promotion.fallbackVehicleEnergyEventId;
+      if (fallbackVeeId) {
+        await backdateEnergyEventObservation(
+          prisma,
+          fallbackVeeId,
+          F5_PR3_SETTLED_OBSERVATION_AT,
+        );
+      }
       expect(await countReconciliationRows(prisma, vehicle.id)).toBe(0);
 
       await stack.g2Runtime.runRecoveryBatch(F7_RECOVERY_AS_OF_MS);
@@ -340,8 +354,22 @@ describe('RFRF F7 recovery completeness + post-commit crash-window closure (real
       expect(fallbackReconAfterCompleted.enrichmentEligible).toBe(true);
       expect(await countOperationalEnrichmentOwners(prisma, vehicle.id)).toBe(1);
 
+      const refreshed = await prisma.rawRefuelCandidate.findUniqueOrThrow({
+        where: { id: candidate.id },
+      });
+      const pre = refreshed.preFuelAbsoluteLiters ?? 10;
+      const post = refreshed.postFuelAbsoluteLiters ?? 30;
       const native = await prisma.vehicleEnergyEvent.create({
-        data: nativeSameSiblingFromCandidate(refreshed, `${suffix}-late`),
+        data: {
+          ...nativeSameSiblingFromCandidate(refreshed, `${suffix}-late`),
+          fuelDeltaLiters: post - pre - 0.2,
+          rawDetectionMeta: {
+            fuelStartLiters: pre + 0.15,
+            fuelEndLiters: post,
+            fuelStartPercent: refreshed.preFuelRelativePercent,
+            fuelEndPercent: refreshed.postFuelRelativePercent,
+          },
+        },
       });
       await backdateEnergyEventObservation(
         prisma,
@@ -360,9 +388,20 @@ describe('RFRF F7 recovery completeness + post-commit crash-window closure (real
       const nativeRecon = await prisma.vehicleEnergyEventRefuelReconciliation.findUniqueOrThrow({
         where: { energyEventId: native.id },
       });
-      expect(nativeRecon.lateSiblingConflict).toBe(true);
+      const fallbackReconAfterNative =
+        await prisma.vehicleEnergyEventRefuelReconciliation.findUniqueOrThrow({
+          where: { energyEventId: fallbackVeeId! },
+        });
+
+      expect(fallbackReconAfterNative.finalityState).toBe('FINAL_CANONICAL');
+      expect(fallbackReconAfterNative.canonicalEventId).toBe(fallbackVeeId);
+      expect(fallbackReconAfterNative.enrichmentEligible).toBe(true);
+
+      expect(nativeRecon.finalityState).toBe('FINAL_CANONICAL');
+      expect(nativeRecon.canonicalEventId).toBe(fallbackVeeId);
       expect(nativeRecon.enrichmentEligible).toBe(false);
-      expect(nativeRecon.finalityState).toBe('INSUFFICIENT_EVIDENCE');
+      expect(nativeRecon.lateSiblingConflict).toBe(true);
+      expect(nativeRecon.reason).toBe(IRREVERSIBLE_CANONICAL_PINNED_REASON);
       expect(nativeRecon.reasonCodes).toContain('late_sibling_after_finalization');
 
       const fallbackEnrichment = await prisma.vehicleEnergyEventFuelStationEnrichment.findUnique({
@@ -380,17 +419,13 @@ describe('RFRF F7 recovery completeness + post-commit crash-window closure (real
 
       expect(nativeResult.enqueuedEventIds).toEqual([]);
 
-      const fallbackReconAfterNative =
-        await prisma.vehicleEnergyEventRefuelReconciliation.findUniqueOrThrow({
-          where: { energyEventId: fallbackVeeId! },
-        });
       expect(fallbackReconAfterNative.enrichmentEnqueuedAt).not.toBeNull();
       expect(
         await prisma.vehicleEnergyEventFuelStationEnrichment.count({
           where: { energyEventId: fallbackVeeId!, processingStatus: 'COMPLETED' },
         }),
       ).toBe(1);
-      expect(await countOperationalEnrichmentOwners(prisma, vehicle.id)).toBeLessThanOrEqual(1);
+      expect(await countOperationalEnrichmentOwners(prisma, vehicle.id)).toBe(1);
       expect(
         await prisma.vehicleEnergyEventRefuelReconciliation.count({
           where: { vehicleId: vehicle.id, enrichmentEligible: true, energyEventId: fallbackVeeId! },

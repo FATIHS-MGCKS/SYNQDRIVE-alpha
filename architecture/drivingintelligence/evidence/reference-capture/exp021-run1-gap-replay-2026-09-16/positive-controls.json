@@ -1,0 +1,95 @@
+{
+  "evidenceId": "EXP-021-RUN1-GAP-REPLAY-POSITIVE-CONTROL-CLOSURE",
+  "sessionId": "cd33ad31-c46d-4d9c-a9ee-676e7d2acdca",
+  "originalRuntimeSha": "bd3fd78060034f628892d1b9da9cf6991e65606b",
+  "primaryRun1FreezeSha256": "99a1aa5205406071e2b23a96ee731b15a18e13dc0784c00748f212cf353b6d5c",
+  "replayExecutedAt": "2026-09-16",
+  "sourceTempDirectory": "/tmp/exp021-gap-replay-20260916T0815Z",
+  "closureAuthority": {
+    "CONTROL_HF60_ID": "PC-HF60-NATIVE-SLOT2",
+    "CONTROL_HF60_ORIGINAL_BUCKET_COUNT": 10,
+    "CONTROL_HF60_REPLAY_BUCKET_COUNT": 10,
+    "HF60_POSITIVE_CONTROL_VALID": "YES",
+    "HF60_COUNT_COMPARABLE": "YES",
+    "CONTROL_HF90_ID": "PC-HF90-NATIVE-SLOT4",
+    "CONTROL_HF90_ORIGINAL_BUCKET_COUNT": 6,
+    "CONTROL_HF90_REPLAY_BUCKET_COUNT": 6,
+    "HF90_POSITIVE_CONTROL_VALID": "YES",
+    "HF90_COUNT_COMPARABLE": "YES",
+    "CONTROL_SETTLEMENT_IDS": [
+      "PC-SETTLE-90-T0-30S",
+      "PC-SETTLE-60-T1-30S"
+    ],
+    "CONTROL_SETTLEMENT_ORIGINAL_BUCKET_COUNTS": [60, 60],
+    "CONTROL_SETTLEMENT_REPLAY_BUCKET_COUNTS": [18, 6],
+    "SETTLEMENT_QUERY_PATH_POSITIVE_CONTROL_VALID": "YES",
+    "SETTLEMENT_CONTROL_COUNT_COMPARABLE": "NO",
+    "GAP_REPLAY_EXPERIMENT_VALID": "YES",
+    "TRANSITION_HF_PERSISTENT_EMPTY_SUPPORTED": "YES",
+    "TRANSITION_HF_LATE_MATURATION_HYPOTHESIS": "WEAKENED",
+    "SETTLEMENT_EARLY_AGE_MATURATION_OBSERVED": "YES",
+    "INTRINSIC_60S_FAILURE_HYPOTHESIS_RESULT": "WEAKENS_INTRINSIC_60S_FAILURE_HYPOTHESIS"
+  },
+  "metricSemantics": {
+    "hfControls": "originalBucketCount and replayBucketCount are both speed temporal bucket counts — directly count-comparable",
+    "settlementControls": "originalBucketCount is settlement rawRowCount; replayBucketCount is speed temporal bucket count — NOT the same metric; controls validate query-path availability only (non-zero replay), not quantitative reproduction"
+  },
+  "controls": [
+    {
+      "controlId": "PC-HF60-NATIVE-SLOT2",
+      "controlType": "HF_FAST_LOOP",
+      "provenanceRingIndex": 29,
+      "windowClassification": "PHASE_NATIVE",
+      "queryStart": "2026-09-15T11:50:02.945Z",
+      "queryEnd": "2026-09-15T11:51:08.366Z",
+      "originalBucketCount": 10,
+      "replayBucketCount": 10,
+      "countComparable": true,
+      "providerHttpStatus": 200,
+      "controlClassification": "POSITIVE_CONTROL_REPRODUCED"
+    },
+    {
+      "controlId": "PC-HF90-NATIVE-SLOT4",
+      "controlType": "HF_FAST_LOOP",
+      "provenanceRingIndex": 24,
+      "windowClassification": "PHASE_NATIVE",
+      "queryStart": "2026-09-15T11:43:22.504Z",
+      "queryEnd": "2026-09-15T11:44:55.707Z",
+      "originalBucketCount": 6,
+      "replayBucketCount": 6,
+      "countComparable": true,
+      "providerHttpStatus": 200,
+      "controlClassification": "POSITIVE_CONTROL_REPRODUCED"
+    },
+    {
+      "controlId": "PC-SETTLE-90-T0-30S",
+      "controlType": "SETTLEMENT_SHADOW",
+      "probeId": "SP-90-T0",
+      "phase": "90s",
+      "scheduledAgeMs": 30000,
+      "queryStart": "2026-09-15T11:39:01.000Z",
+      "queryEnd": "2026-09-15T11:40:01.000Z",
+      "originalBucketCount": 60,
+      "replayBucketCount": 18,
+      "countComparable": false,
+      "providerHttpStatus": 200,
+      "controlClassification": "POSITIVE_CONTROL_NONZERO_QUERY_PATH_VALIDATED",
+      "note": "originalBucketCount is settlement rawRowCount; replayBucketCount is speed-bucket count — not quantitative reproduction"
+    },
+    {
+      "controlId": "PC-SETTLE-60-T1-30S",
+      "controlType": "SETTLEMENT_SHADOW",
+      "probeId": "SP-60-T1",
+      "phase": "60s",
+      "scheduledAgeMs": 30000,
+      "queryStart": "2026-09-15T11:49:42.000Z",
+      "queryEnd": "2026-09-15T11:50:42.000Z",
+      "originalBucketCount": 60,
+      "replayBucketCount": 6,
+      "countComparable": false,
+      "providerHttpStatus": 200,
+      "controlClassification": "POSITIVE_CONTROL_NONZERO_QUERY_PATH_VALIDATED",
+      "note": "originalBucketCount is settlement rawRowCount; replayBucketCount is speed-bucket count — not quantitative reproduction"
+    }
+  ]
+}

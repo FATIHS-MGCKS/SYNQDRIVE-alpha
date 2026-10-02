@@ -49,6 +49,9 @@ import {
   UpdateDamageDto,
 } from './damages/dto';
 import { BatteryHealthService } from './battery-health/battery-health.service';
+import { BatteryGroundTruthEmissionService } from './battery-health/ground-truth/ground-truth-emission.service';
+import { ConfirmBatteryReplacementGroundTruthDto } from './battery-health/ground-truth/dto/confirm-battery-replacement-ground-truth.dto';
+import { ManualGroundTruthConfirmationConflictError } from './battery-health/ground-truth/ground-truth-emission.errors';
 import { HvBatteryHealthService } from './battery-health/hv-battery-health.service';
 import { BatteryV2Service } from './battery-health/battery-v2.service';
 import { presentLegacyCrankFeatures } from './battery-health/battery-crank-policy';
@@ -118,6 +121,7 @@ import {
   DRIVING_EVENT_CATEGORY_MAP,
 } from './trips/unified-behavior-read-model';
 import { serializeUnifiedBehaviorEvent } from './trips/unified-behavior-event.dto';
+import { resolveTelemetrySourceFamily } from './telemetry-source-family';
 import { resolveDriverFilterQuery } from './tenant/vehicle-intelligence-tenant.scope';
 
 @Controller('vehicles/:vehicleId')
@@ -150,6 +154,7 @@ export class VehicleIntelligenceController {
     private readonly tripReconciliation: TripReconciliationService,
     private readonly damagesService: DamagesService,
     private readonly batteryHealthService: BatteryHealthService,
+    private readonly batteryGroundTruthEmission: BatteryGroundTruthEmissionService,
     private readonly hvBatteryHealthService: HvBatteryHealthService,
     private readonly batteryV2Service: BatteryV2Service,
     private readonly canonicalBatteryHealthService: CanonicalBatteryHealthService,
@@ -933,6 +938,36 @@ export class VehicleIntelligenceController {
     return { ok: true };
   }
 
+  @Post('battery/ground-truth/confirm-replacement')
+  async confirmBatteryReplacementGroundTruth(
+    @Param('vehicleId') vehicleId: string,
+    @Body() body: ConfirmBatteryReplacementGroundTruthDto,
+    @Req() req: { user?: { id?: string; organizationId?: string; platformRole?: string } },
+  ) {
+    const organizationId = await this.resolveOrganizationId(req, vehicleId);
+    const actorUserId = req.user?.id;
+    if (!actorUserId) {
+      throw new BadRequestException('Authenticated user required for ground-truth confirmation');
+    }
+    try {
+      return await this.batteryGroundTruthEmission.confirmManualBatteryReplacement({
+        organizationId,
+        vehicleId,
+        serviceEventId: body.serviceEventId,
+        batteryScope: body.batteryScope,
+        actorUserId,
+      });
+    } catch (error) {
+      if (error instanceof ManualGroundTruthConfirmationConflictError) {
+        throw new BadRequestException({
+          message: error.message,
+          code: error.code,
+        });
+      }
+      throw error;
+    }
+  }
+
   // --- Enrichment Jobs ---
   @Get('enrichment-jobs')
   async getEnrichmentJobs(
@@ -1120,7 +1155,7 @@ export class VehicleIntelligenceController {
     @Query('from') from?: string,
     @Query('to') to?: string,
   ) {
-    return this.energyEventsService.listEnergyEvents(vehicleId, {
+    return this.energyEventsService.listCanonicalEnergyEvents(vehicleId, {
       from: from ? new Date(from) : undefined,
       to: to ? new Date(to) : undefined,
     });
@@ -1367,6 +1402,7 @@ export class VehicleIntelligenceController {
         behaviorEnrichmentStatus: true,
         tripAnalysisStatus: true,
         tripStatus: true,
+        vehicle: { select: { dimoVehicle: { select: { rawJson: true } } } },
       },
     });
     const behaviorReady = trip?.behaviorEnrichmentStatus === 'COMPLETED';
@@ -1423,6 +1459,7 @@ export class VehicleIntelligenceController {
       behaviorEvents,
       drivingEvents,
       tripId,
+      telemetrySourceFamily: resolveTelemetrySourceFamily(trip?.vehicle?.dimoVehicle?.rawJson),
     });
 
     return {

@@ -2,6 +2,10 @@
 # RFRF F3→F2 handoff — isolated localhost PostgreSQL gate (never production).
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/lib/rfrf-isolated-postgres-admin.sh"
+
+
 BACKEND_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 GATE_ID="rfrf-f3-f2-$(date +%s)"
 PG_PORT="${TEST_POSTGRES_PORT:-5432}"
@@ -10,13 +14,13 @@ PG_USER="rfrf_f3_handoff_test"
 PG_PASS="rfrf_f3_handoff_${GATE_ID}_local"
 
 cleanup() {
-  su - postgres -c "psql -v ON_ERROR_STOP=1 -c \"DROP DATABASE IF EXISTS ${PG_DB};\"" 2>/dev/null || true
-  su - postgres -c "psql -v ON_ERROR_STOP=1 -c \"DROP ROLE IF EXISTS ${PG_USER};\"" 2>/dev/null || true
+  rfrf_test_psql_superuser_quiet "DROP DATABASE IF EXISTS ${PG_DB};"
+  rfrf_test_psql_superuser_quiet "DROP ROLE IF EXISTS ${PG_USER};"
 }
 trap cleanup EXIT
 
-su - postgres -c "psql -v ON_ERROR_STOP=1 -c \"CREATE ROLE ${PG_USER} LOGIN PASSWORD '${PG_PASS}';\""
-su - postgres -c "psql -v ON_ERROR_STOP=1 -c \"CREATE DATABASE ${PG_DB} OWNER ${PG_USER};\""
+rfrf_test_psql_superuser "CREATE ROLE ${PG_USER} LOGIN PASSWORD '${PG_PASS}';"
+rfrf_test_psql_superuser "CREATE DATABASE ${PG_DB} OWNER ${PG_USER};"
 
 export DATABASE_URL="postgresql://${PG_USER}:${PG_PASS}@localhost:${PG_PORT}/${PG_DB}?schema=public"
 

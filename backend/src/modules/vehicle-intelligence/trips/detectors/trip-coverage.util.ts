@@ -81,11 +81,19 @@ export const SUBSTANTIAL_COVERAGE_RATIO = 0.9;
 
 /**
  * A single uncovered span at or above this length can never be dismissed as
- * coverage noise, whatever the ratio. Equal to TRIP_MID_GAP_SPLIT_MS: a silence
- * this long is precisely what the live path treats as a trip boundary, so
- * calling it "already covered" would contradict the detector. On the replay
- * dataset this guard rescues 6 candidates from DUPLICATE, 5 of which contain
- * real uncovered driving.
+ * coverage noise, whatever the ratio.
+ *
+ * **Independent repair-coverage authority (classification B):** this 180 s floor
+ * comes from the 90-day replay / hardening design
+ * (`architecture/TRIP_DETECTION_HARDENING_DESIGN_2026-08-28.md`) and the offline
+ * replay coalesce/split envelope rules — not from Qualified Stop Contract V1
+ * (`trip-qualified-stop-duration.policy.ts`, default 300_000 ms live split).
+ * It intentionally remains 180 s so repair DUPLICATE suppression semantics stay
+ * stable until a dedicated replay-backed migration replays coverage against the
+ * new live mid-gap contract.
+ *
+ * On the replay dataset this guard rescues 6 candidates from DUPLICATE, 5 of
+ * which contain real uncovered driving.
  */
 export const MAX_IGNORABLE_UNCOVERED_SPAN_SECONDS = 180;
 

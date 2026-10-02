@@ -1,0 +1,121 @@
+name: Battery V2 — Longitudinal Postgres CI
+
+on:
+  pull_request:
+    paths:
+      - 'backend/src/modules/vehicle-intelligence/battery-health/generalized-evidence/rest-session-features/longitudinal/**'
+      - 'backend/src/workers/schedulers/battery-v2-longitudinal-materialization-reconciliation.scheduler.ts'
+      - 'backend/prisma/schema.prisma'
+      - 'backend/prisma/migrations/**'
+      - 'backend/scripts/test/battery-longitudinal-*'
+      - 'backend/package.json'
+      - 'backend/package-lock.json'
+      - '.github/workflows/battery-v2-longitudinal-postgres-ci.yml'
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - 'cursor/battery-v2-*'
+
+concurrency:
+  group: battery-v2-longitudinal-postgres-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '20'
+  DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive?schema=public
+
+jobs:
+  install-lockfile:
+    name: Install (lockfile)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+        working-directory: backend
+
+  longitudinal-reconciliation-postgres:
+    name: F4.1 longitudinal reconciliation PostgreSQL
+    needs: install-lockfile
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: synqdrive
+          POSTGRES_PASSWORD: synqdrive
+          POSTGRES_DB: synqdrive
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U synqdrive"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Fail closed on non-ephemeral DATABASE_URL
+        run: |
+          set -euo pipefail
+          case "$DATABASE_URL" in
+            *127.0.0.1*|*localhost*) ;;
+            *)
+              echo "DATABASE_URL must target ephemeral CI-local PostgreSQL"
+              exit 1
+              ;;
+          esac
+      - run: npm ci && npx prisma generate
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+      - run: npm run test:battery:v2:longitudinal-reconciliation:postgres
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+
+  longitudinal-profile-materialization-postgres:
+    name: D3 longitudinal profile materialization PostgreSQL
+    needs: install-lockfile
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: synqdrive
+          POSTGRES_PASSWORD: synqdrive
+          POSTGRES_DB: synqdrive
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U synqdrive"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci && npx prisma generate
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+      - run: npm run test:battery:v2:longitudinal-profile-materialization:postgres
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}

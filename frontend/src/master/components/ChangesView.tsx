@@ -36,6 +36,1697 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-onboarding-vo5a1-integrity-seal-2026-10-01',
+    version: '4.9.2220',
+    title: 'Vehicle Onboarding VO-5A.1 — offboarding integrity seal',
+    summary: [
+      'Unified semantic idempotency replay for VEHICLE_OFFBOARDED (reason/org/vehicle/payload version) across all replay paths.',
+      'Fail-closed open org-assignment close; DIMO scheduler/processor registry ACTIVE gates; provider-link + HM canonical ingest gates; local consent revoke on offboard; outbox payload v2 actorUserId.',
+    ],
+    reason:
+      'VO-5A review found replay asymmetry, assignment updateMany risk, and OFFBOARDED vehicles still eligible for DIMO canonical telemetry.',
+    previousBehavior:
+      'Replay accepted mismatched reason; broad assignment updateMany; DIMO poll pipeline ignored registryLifecycle OFFBOARDED.',
+    details:
+      'vehicle-offboarding.service.ts; dimo-snapshot.scheduler.ts; dimo-snapshot.processor.ts; VO5A_OFFBOARDING_FOUNDATION.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Onboarding',
+    createdAt: '2026-10-01T22:45:00.000Z',
+  },
+  {
+    id: 'vehicle-onboarding-vo5a-offboarding-foundation-2026-10-01',
+    version: '4.9.2219',
+    title: 'Vehicle Onboarding VO-5A — offboarding foundation audit (internal)',
+    summary: [
+      'Audited destructive VehiclesService.deregister (hard delete + billing pre-hook); classified must-deprecate-before-cutover.',
+      'Internal VehicleOffboardingService: ACTIVE→OFFBOARDED, org assignment close, provider link deactivation, VEHICLE_OFFBOARDED outbox — no HTTP, legacy deregister unchanged.',
+      'PostgreSQL proofs: history retention, idempotent/concurrent offboard, VO-4.10 candidate suppression for offboarded mirrors.',
+    ],
+    reason:
+      'Registry lifecycle requires non-destructive offboarding with transactional vehicle.offboarded facts before replacing Master Admin deregister.',
+    previousBehavior:
+      'Only legacy deregister deleted Vehicle rows and cascaded operational history; no governed OFFBOARDED registry path.',
+    details:
+      'backend/src/modules/vehicle-onboarding/services/vehicle-offboarding.service.ts; architecture/vehicle-onboarding/evidence/VO5A_OFFBOARDING_FOUNDATION.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Onboarding',
+    createdAt: '2026-10-01T22:15:00.000Z',
+  },
+  {
+    id: 'vehicle-onboarding-vo410-candidate-discovery-2026-10-01',
+    version: '4.9.2218',
+    title: 'Vehicle Onboarding VO-4.10 — Master Admin provider candidate discovery (internal)',
+    summary: [
+      'GET /admin/vehicle-onboarding/organizations/:orgId/candidates — read-only DIMO + HIGH_MOBILITY projection from persisted mirrors (no provider network, no VehicleCandidate table).',
+      'Reuses VO-4.9 canonical suppression, source-claim disposition (AVAILABLE / RESUMABLE), and adoption authority mirror checks; cross-org holds omitted without tenant disclosure.',
+      'Legacy register-from-dimo / HM_ONLY / getNonRegisteredVehicles unchanged; adoptProviderSource remains transactional write authority.',
+    ],
+    reason:
+      'Master Admin onboarding UI needs a governed, tenant-safe candidate list without weakening VO-4.9 adoption or introducing activation cutover.',
+    previousBehavior:
+      'No unified VO candidate listing; discovery scattered across legacy DIMO/HM registration helpers.',
+    details:
+      'backend/src/modules/vehicle-onboarding/*; architecture/vehicle-onboarding/evidence/VO410_PROVIDER_CANDIDATE_DISCOVERY.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Onboarding',
+    createdAt: '2026-10-01T19:45:00.000Z',
+  },
+  {
+    id: 'vehicle-onboarding-vo3-2-source-adoption-seal-2026-09-30',
+    version: '4.9.2217',
+    title: 'Vehicle Onboarding VO-3.2 — secure source attach + Postgres activation seal (internal)',
+    summary: [
+      'Removed generic attachSourceRef(snapshot) bypass; attachDimoSource / attachHighMobilitySource enforce VehicleOnboardingSourceAdoptionAuthority before persistence.',
+      'PostgreSQL proofs: HM cross-org, global HM tenant vs platform, concurrent activation, wrong-org isolation, DIMO/HM rollback matrix, manual admin idempotency fingerprint.',
+      'DIMO platform mirror scope documented; tenant ownership not proven by dimo_vehicles row (cutover IAM prerequisite).',
+    ],
+    reason:
+      'VO-3.1 correctness left a structural adoption bypass and missing concurrency/isolation Postgres proofs before VO-4 readiness work.',
+    previousBehavior:
+      'Tests and callers could attach provider snapshots without mirror load + adoption checks; concurrent activation proof deferred.',
+    details:
+      'backend/src/modules/vehicle-onboarding/*; architecture/vehicle-onboarding/evidence/VO3_2_FINAL_RUNTIME_SEAL.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Onboarding',
+    createdAt: '2026-09-30T05:00:00.000Z',
+  },
+  {
+    id: 'vehicle-onboarding-vo3-orchestrator-2026-09-30',
+    version: '4.9.2216',
+    title: 'Vehicle Onboarding VO-3 — provider-neutral orchestrator + atomic activation (internal)',
+    summary: [
+      'VehicleOnboardingModule: DIMO/HM/MANUAL source adapters, case open/resume, transactional activation (vehicle, org assignment, plate, links, consent, VEHICLE_ACTIVATED outbox).',
+      'Canonical path never writes synthetic DIMO VIN; production readiness fail-closed until VO-4.',
+      'No public cutover: registerFromDimo, HM_ONLY, and manual create remain legacy.',
+    ],
+    reason:
+      'VO-2 persistence required a runtime orchestration core before readiness engine (VO-4) and public registration cutover.',
+    previousBehavior:
+      'Only VO-2 schema/onboarding tables; registration still via legacy VehiclesService / HM registration paths.',
+    details:
+      'backend/src/modules/vehicle-onboarding/*; architecture/vehicle-onboarding/evidence/VO3_ORCHESTRATOR_ACTIVATION.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Onboarding',
+    createdAt: '2026-09-30T00:00:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3-h0-domain-separation-audit-2026-09-30',
+    version: '4.9.2215',
+    title: 'Battery V2 M3.3-H0 — domain separation audit + seal (PASS)',
+    summary: [
+      'Code-derived inventory: SHARED/LV_ONLY/HV_ONLY/UNKNOWN_SCOPE components; GT G2.2 replacement identity org+sourceEvent (scope on fact).',
+      'Cross-scope seal A–J PASS: D3/F5/E2/E3 LV-only; no HV→longitudinal path; ERD vs HV BI boundary documented.',
+      'Static validator validate-h0-domain-separation-contracts.sh; graph node BAT-V2-AUTH-H0-001; NEXT_PHASE → M3_3_HV_H1 + async G4.',
+    ],
+    reason:
+      'M3.3-H0 forward umbrella requires audited domain ownership before HV foundation engineering (not historical M3.3H customer UI).',
+    previousBehavior:
+      'LV/HV separation documented at roadmap level without full code consumer/query inventory or H0 seal checklist.',
+    details:
+      'architecture/battery-v2/research/M3_3_H0_BATTERY_INTELLIGENCE_DOMAIN_SEPARATION_AUDIT_2026-09-30.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-30T00:45:00.000Z',
+  },
+  {
+    id: 'battery-intelligence-post-g4-roadmap-audit-2026-09-29',
+    version: '4.9.2214',
+    title: 'Battery Intelligence — post-G4 LV/HV roadmap audit',
+    summary: [
+      'Top-level BATTERY_INTELLIGENCE_ARCHITECTURE.md: Shared Core vs LV vs HV domains; G4 async wait does not block LV/HV engineering.',
+      'Historical M3.3A–G status matrix (engineering vs production vs scientific validation); signal inventory with BATTERY_SCOPE.',
+      'GT maturity: CONFIRMED_GROUND_TRUTH_FACT for confirmed GT rows; GROUND_TRUTH_VALIDATED reserved for derived BI after G4.',
+      'M3.3-H0 umbrella (SHARED/LV/HV/CROSS-SCOPE-SEAL); G4 async with no H0 prerequisite; G4→F6 scientific dependency only.',
+      'NEXT_PHASE: M3_3_H0 ∥ M3_3G_G4_WAIT ∥ M3_3_LV_SIGNAL_OBS; distinct from historical M3.3H customer UI label.',
+    ],
+    reason:
+      'After G4 production GT infra (0 rows), reconstruct authoritative forward roadmap with explicit LV/HV separation.',
+    previousBehavior:
+      'Roadmap implied single battery model; NEXT_PHASE=M3_3G_G4 only; no consolidated LV/HV product architecture doc.',
+    details:
+      'architecture/battery-v2/BATTERY_INTELLIGENCE_ARCHITECTURE.md; architecture/battery-v2/research/BATTERY_INTELLIGENCE_POST_G4_ROADMAP_AUDIT_2026-09-29.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-29T23:30:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3g-g4-first-natural-validation-evidence-audit-2026-09-29',
+    version: '4.9.2213',
+    title: 'Battery V2 M3.3G G4 — first natural GT validation preparation audit',
+    summary: [
+      'Read-only production audit (TRANSACTION READ ONLY): pre-registered Q1–Q10 before data review; conservative G4 data-availability maturity states only.',
+      'Production PostgreSQL has no battery_ground_truth_events table at deploy 20260928175908 — TOTAL_GT_ROWS=0; NATURAL_GT_PROVEN=NO; G4_DECISION=WAIT_FOR_NATURAL_GT.',
+      'Enablement preflight: main is 43 commits / 213 files ahead (Battery + DI S4D + RFRF); 2 additive GT migrations; DEPLOYMENT_READINESS=READY_WITH_EXPLICIT_GATES; G3 MERGED/CI_VALIDATED/NOT_YET_PRODUCTION_DEPLOYED.',
+      'No runtime, deploy, synthetic GT, E3 activation, or F6 calibration; re-run G4 after authorized deploy and first natural CONFIRMED GT.',
+    ],
+    reason:
+      'G4 observes the first naturally occurring admissible Ground Truth to validate or falsify longitudinal pipeline assumptions — zero GT is a valid pass outcome.',
+    previousBehavior:
+      'G3.1.1 merged on main but production naturality and F5↔GT correlation on live DB were unmeasured.',
+    details:
+      'architecture/battery-v2/research/M3_3G_G4_FIRST_NATURAL_VALIDATION_EVIDENCE_2026-09-29.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-29T22:00:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3g-g3-1-f5-correctness-seal-2026-09-29',
+    version: '4.9.2212',
+    title: 'Battery V2 M3.3G G3.1 — F5 GT correlation correctness seal',
+    summary: [
+      'Segment-aware F5 continuity: revisions assigned to deterministic replacement epochs; intervention-crossing revisions excluded from repeatability; proof counters on correlation block.',
+      'F5 asOf uses isGroundTruthActiveAtAsOf (revocation/supersession by timestamp); G1/G2 present-tense authority unchanged.',
+      'NAT-008/NAT-009 report NONE|PRESENT + NOT_EVALUATED validation maturity; GT query bounded to primary-cohort org+vehicle pairs.',
+    ],
+    reason:
+      'Close independent review gaps on PR #1842 before merge — true segmentation, historical asOf stability, NAT semantic separation.',
+    previousBehavior:
+      'G3 V2 blocked pooling via metadata only while maturity metrics pooled by vehicle; present-tense GT active checks could shift past asOf reports after later lifecycle changes.',
+    details:
+      'architecture/battery-v2/research/M3_3G_G3_F5_GROUND_TRUTH_CORRELATION_SEGMENTATION_2026-09-29.md §G3.1; f5-longitudinal-segmentation.policy.ts; ground-truth-historical-authority.util.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-29T20:00:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3g-g3-f5-ground-truth-correlation-segmentation-2026-09-29',
+    version: '4.9.2211',
+    title: 'Battery V2 M3.3G G3 — F5 ground-truth correlation + LV segmentation',
+    summary: [
+      'F5 natural calibration report contract bumped to M3_3F_F5_NATURAL_CALIBRATION_REPORT_V2 with read-only Ground Truth linkage block (counts, segmentation epochs, PRE/INTERVENTION/POST temporal regions).',
+      'Correlates active CONFIRMED LV Ground Truth to primary f46_sustained D3 revisions using effectiveAt + first/lastIncludedAnchorAt — no numeric intervention envelope.',
+      'Replacement GT defines longitudinal segment boundaries in report interpretation only; workshop measurement GT links without segment boundary; CAL-007 remains non-causal.',
+    ],
+    reason:
+      'M3.3G G3 connects merged G1/G2 Ground Truth authority to bounded F5 natural calibration without D3 mutation or production GT writes.',
+    previousBehavior:
+      'F5 V1 reported groundTruth.linkageAvailable=false and replacementLabelsAvailable=false as frozen stubs.',
+    details:
+      'architecture/battery-v2/research/M3_3G_G3_F5_GROUND_TRUTH_CORRELATION_SEGMENTATION_2026-09-29.md; f5-ground-truth-correlation.policy.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-29T18:00:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3g-g2-2-cross-scope-replacement-authority-2026-09-29',
+    version: '4.9.2210',
+    title: 'Battery V2 M3.3G G2.2 — one active replacement GT per source service event',
+    summary: [
+      'Active CONFIRMED BATTERY_REPLACEMENT identity is organization + source service event; battery scope is fact content, not a second concurrent truth key.',
+      'Partial unique index battery_ground_truth_one_active_replacement_per_source_event replaces scope-inclusive G2.1 index (same unmerged migration folder; GT_ROWS_CREATED_BY_MIGRATION=0).',
+      'findActiveReplacementBySourceEvent + evaluateAdmission/emission P2002 handling: same scope idempotent converge; cross scope typed REPLACEMENT_SCOPE_CONFLICT (no raw P2002).',
+      'Postgres G2H-K/L concurrent LV/HV and document↔manual cross-scope races; G2.1 same-scope convergence tests preserved.',
+    ],
+    reason:
+      'Concurrent LV + HV confirmation on the same BATTERY_REPLACEMENT service event could create two active GT rows under G2.1 scope unique key — violates G2 one-replacement-fact contract.',
+    previousBehavior:
+      'Unique on organization + source service event + battery scope allowed parallel LV and HV active replacements for one service event.',
+    details:
+      'PR #1840 G2.2; migration 20260929140000_battery_ground_truth_replacement_source_scope_unique amended; ground-truth-g2_2-cross-scope.postgres.integration.spec.ts; battery-ground-truth-postgres-ci.sh.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-29T16:00:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3g-g2-1-ordering-concurrency-hardening-2026-09-29',
+    version: '4.9.2209',
+    title: 'Battery V2 M3.3G G2.1 — document apply GT ordering + replacement concurrency',
+    summary: [
+      'Ground truth emits during CONFIRMED action-plan execution when authoritative confirmation context is passed from ApplyBatteryMeasurementDocumentActionExecutor (confirmedAt from plan, not measurement observedAt).',
+      'APPLIED/PARTIALLY_APPLIED remain eligible for GT retry convergence; READY_FOR_REVIEW and pre-confirm paths cannot emit GT.',
+      'Partial unique index enforces one active CONFIRMED BATTERY_REPLACEMENT per organization + source service event + battery scope; P2002 races converge to the same GT id.',
+      'Postgres G2H-A/B orchestration + G2H-F–I concurrency suites; manual confirm fixtures use real User FK rows.',
+    ],
+    reason:
+      'Close G2 defect where APPLIED-only gate skipped first-pass GT during real confirm→action ordering; harden concurrent manual/document replacement convergence before merge.',
+    previousBehavior:
+      'convergeDocumentApplyGroundTruth required APPLIED status while battery executor ran under CONFIRMED; concurrent confirms could insert duplicate active replacement GT rows.',
+    details:
+      'PR #1840; migration 20260929140000_battery_ground_truth_replacement_source_scope_unique (schema only, GT_ROWS_CREATED_BY_G2_1_MIGRATION=0); backend/scripts/test/battery-ground-truth-postgres-ci.sh (G2.1).',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-29T03:00:00.000Z',
+  },
+  {
+    id: 'di-exp021-s4f7l-tiny-config-staging-attempt-2026-10-02',
+    version: '4.9.2217',
+    title: 'Driving Intelligence — EXP-021 S4F-7L Production Tiny 3-key staging attempt (rollback)',
+    summary: [
+      'Human-authorized DRY_RUN=0 staging: exact 3-key backend.env write + backup succeeded; Replica A PRIMARY_STAGING runtime proof failed.',
+      'Wrapper recovery restored pre-pin backend.env bytes and restarted A→B; GLOBAL KILLED and S4 zero-state preserved.',
+      'Staging authorization consumed; new engineering + human grant required before retry.',
+    ],
+    reason:
+      'Execute bounded Production config staging for KS MS 661 NOT_BEFORE + allowlists without Tiny activation.',
+    previousBehavior:
+      'Three staging keys absent from Production backend.env; dry-run only evidence (S4F-7K).',
+    details:
+      'architecture/drivingintelligence/evidence/EXP021_S4F7L_PRODUCTION_TINY_CONFIG_STAGING.md',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-02T21:35:00.000Z',
+  },
+  {
+    id: 'di-exp021-s4f7k-tiny-staging-dry-run-2026-10-02',
+    version: '4.9.2216',
+    title: 'Driving Intelligence — EXP-021 S4F-7K Production Tiny config staging dry run',
+    summary: [
+      'Read-only Production DRY_RUN=1 via cloud-agent-s4-tiny-staging.sh: guards PASS, intended 3-key env delta only, zero mutation/restart.',
+      'Frozen merge tool SHA 04017010 blocked on text vehicle_id SQL; remediation on evidence branch before config-only staging execution.',
+      'GLOBAL KILLED; S4 zero-state; Tiny activation still 5/6 (NOT_READY).',
+    ],
+    reason:
+      'Prove S4F-7J/J.1 wrapper safety on live Production before separately authorized config-only staging.',
+    previousBehavior:
+      'No live Production dry-run evidence for Tiny three-key staging wrapper.',
+    details:
+      'architecture/drivingintelligence/evidence/EXP021_S4F7K_PRODUCTION_TINY_STAGING_DRY_RUN.md',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-02T20:55:00.000Z',
+  },
+  {
+    id: 'di-exp021-s4f7f-kill-init-wrapper-2026-10-02',
+    version: '4.9.2215',
+    title: 'Driving Intelligence — EXP-021 S4F-7F guarded Production GLOBAL kill initializer wrapper',
+    summary: [
+      'Production ops wrapper: ACK + exact SHA/release/env-hash + GLOBAL pre-state + topology + S4-off + budget/Redis + zero S4 persistence guards.',
+      'Invokes deployed-release di-v0-s4-initialize-global-kill-row.ts only (no main substitution); DRY_RUN=1 supported.',
+      'No Production DB/env/deploy in this slice; GLOBAL row remains MISSING until separate human execution.',
+    ],
+    reason:
+      'Close S4F-7E BLOCKER (PRODUCTION_EXECUTION_WRAPPER_REQUIRED) without deploying newer main to Production.',
+    previousBehavior:
+      'Raw ts-node kill initializer had no Production SHA/release/env/prestate/ACK guards.',
+    details:
+      'architecture/drivingintelligence/evidence/EXP021_S4F7F_PRODUCTION_KILL_INITIALIZER_WRAPPER_ENGINEERING.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-02T04:30:00.000Z',
+  },
+  {
+    id: 'di-exp021-s4f7a-tiny-execution-prereqs-2026-10-01',
+    version: '4.9.2214',
+    title: 'Driving Intelligence — EXP-021 S4F-7A dormant S4 runtime wiring & no-backfill containment',
+    summary: [
+      'DiV0S4RuntimeModule composes S4B/S4E/S4F and registers one S4C executor; ALL_OFF remains dormant (no timers, no DIMO/DB writes).',
+      'PRIMARY discovery requires DI_V0_S4_DISCOVERY_TRIP_END_NOT_BEFORE on trip.end_time (fail-closed).',
+      'Operator-only GLOBAL kill-row initializer (KILLED default); not migration-seeded.',
+      'Frozen Tiny gates unchanged: 5/6, operator authorization NOT_SATISFIED.',
+    ],
+    reason:
+      'Engineering prerequisites after S4F-7 preflight: runtime registration + backlog containment before any dormant Production deploy or human authorization.',
+    previousBehavior:
+      'S4B–F defined but not Nest-registered; discovery could select historical backlog for KS MS 661 without a trip-end lower bound.',
+    details:
+      'architecture/drivingintelligence/evidence/EXP021_S4F7A_TINY_EXECUTION_PREREQUISITES_ENGINEERING.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-01T22:15:00.000Z',
+  },
+  {
+    id: 'di-exp021-s4f5-1-release-delta-preflight-2026-10-01',
+    version: '4.9.2213',
+    title: 'Driving Intelligence — EXP-021 S4F-5.1 Production release delta preflight (VO2)',
+    summary: [
+      'Read-only: 29 commits / 330 files / 2 VO2 migrations NOT_APPLIED on Production.',
+      'VO2 data preflight pass (9 vehicles, 0 orphan orgs, 0 active-link duplicate groups, 0 table collisions).',
+      'DEPLOY_READINESS=PASS for SHA 8fa531b27… via vps-deploy-release.sh (not executed).',
+    ],
+    reason: 'Seal schema/data safety before promoting main containing Vehicle Onboarding VO2 migrations.',
+    previousBehavior: 'No frozen VO2 deploy delta audit on Production.',
+    details:
+      'architecture/drivingintelligence/evidence/EXP021_S4F5_1_RELEASE_DELTA_PREFLIGHT.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-01T03:45:00.000Z',
+  },
+  {
+    id: 'di-exp021-s4f5-production-preflight-2026-10-01',
+    version: '4.9.2212',
+    title: 'Driving Intelligence — EXP-021 S4F-5 Production preflight (DIMO global budget rollout)',
+    summary: [
+      'Read-only VPS preflight: dual-replica health OK; Redis PING OK; S4 flags safe; config key MISSING.',
+      'Production SHA 1dd42240… behind main 8fa531b27… — S4F-4 wrapper + live gauge not deployed.',
+      'PRODUCTION_ROLLOUT_PREREQUISITE=DEPLOY_REQUIRED before config-only S4F-4 wrapper.',
+    ],
+    reason: 'Seal Production readiness evidence for DIMO_GLOBAL_BUDGET_ENABLED=true without mutating Production.',
+    previousBehavior: 'No frozen S4F-5 preflight artifact or repeatable ops script.',
+    details:
+      'backend/scripts/ops/di-v0-s4f5-production-preflight.sh; architecture/drivingintelligence/evidence/EXP021_S4F5_PRODUCTION_PREFLIGHT.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-01T03:30:00.000Z',
+  },
+  {
+    id: 'di-exp021-s4f1-evidence-hardening-h1-h4-2026-09-30',
+    version: '4.9.2211',
+    title: 'Driving Intelligence — EXP-021 S4F-1 final evidence hardening (H1–H4)',
+    summary: [
+      'H1: transport-thrown budget/429 errors proven through S3A acquisition → S4C map → failRetryable (T07) with zero HTTP.',
+      'H2: scan watermark (`created_at <= clock_timestamp` at scan start) on beyond-horizon and work-item pagination.',
+      'H3: DiV0S4fReadDb query-only; dormant static audit covers all S4F production sources.',
+      'H4: operational aggregate index audit — no merge-critical blocker; no new migration.',
+    ],
+    reason: 'Close residual pre-merge proof gaps on draft PR #1853 without activating S4 runtime.',
+    previousBehavior: 'Classifier-only budget proofs; keyset without scan watermark; read DB type included $executeRaw exemption.',
+    details:
+      's4f-observability/di-v0-s4f-keyset-cursor.ts; EXP021_S4F1 evidence H1–H4; Postgres H2-A/B/C.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-30T03:45:00.000Z',
+  },
+  {
+    id: 'di-exp021-s4f1-observability-reconciliation-2026-09-30',
+    version: '4.9.2210',
+    title: 'Driving Intelligence — EXP-021 S4F-1 dormant observability & activation-readiness foundation',
+    summary: [
+      'Read-only bounded reconciliation + DI_V0_S4_OBSERVABILITY_SNAPSHOT_V1 (work/lease/pipeline/evidence metrics).',
+      'Beyond 10d drift horizon: boundary mismatch count/report only (no T11, no DB mutation).',
+      'Fail-closed tiny-activation readiness evaluator; provider backpressure audit OPEN; location retention governance note.',
+    ],
+    reason: 'Prepare operator observability and activation gates without enabling S4 runtime or provider calls.',
+    previousBehavior: 'No S4F reconciliation or machine-readable activation-readiness export.',
+    details:
+      'backend/.../s4f-observability/*; architecture/drivingintelligence/evidence/EXP021_S4F1_OBSERVABILITY_RECONCILIATION.md; design/s4f/S4F_LOCATION_RETENTION_GOVERNANCE_NOTE.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-30T02:30:00.000Z',
+  },
+  {
+    id: 'di-exp021-s4e2-class-a-retirement-hardening-2026-09-29',
+    version: '4.9.2209',
+    title: 'Driving Intelligence — EXP-021 S4E-2 CLASS A pipeline retirement hardening (dormant)',
+    summary: [
+      'Authoritative `retirePipelineVersion`: registry ACTIVE→RETIRED and full retirable work-item supersession in one PostgreSQL transaction (closes DI-GAP-S4A-T11-RETIRED-SUCCESSOR-TOCTOU-001).',
+      'T11 `supersedeOnDrift` locks pipeline registry FOR UPDATE before work-item row (canonical order: registry → work items).',
+      'Postgres matrix S4E2-A01..A10 concurrent retirement vs T11/T10/T12; harness `retireRegistry` delegates to repository (no raw DML).',
+    ],
+    reason: 'Strong serialized durable invariant before S4E complete; refinement within existing pipeline retirement authority (no contract v2 amendment).',
+    previousBehavior: 'CLASS B: FOR SHARE registry read + operator DML could leave durable PENDING PRIMARY under RETIRED until a later T12 tick.',
+    details:
+      'backend/src/modules/vehicle-intelligence/driving-intelligence/s4a-foundation/di-v0-s4a-work-item.repository.ts; s4e-drift-watcher/__tests__/di-v0-s4e-class-a-retirement.postgres.integration.spec.ts; architecture/drivingintelligence/evidence/EXP021_S4E2_MAINTENANCE_REAPERS.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-29T22:50:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3g-g2-confirmed-gt-emission-2026-09-29',
+    version: '4.9.2208',
+    title: 'Battery V2 M3.3G G2 — confirmed capture + document GT emission',
+    summary: [
+      'BatteryGroundTruthEmissionService converges ground truth after confirmed document battery apply (CONFIRMED action execution or APPLIED retry) and via POST battery/ground-truth/confirm-replacement (fleet.write).',
+      'BATTERY_REPLACEMENT admission no longer requires numeric BatteryEvidence when scope is explicit on confirmed document or manual confirmation path.',
+      'Document apply retry converges missing GT idempotently; GT emission failure surfaces typed BadRequestException for recoverable retry; executor exposes groundTruthEventIds.',
+      'GT-backed service event material update/delete blocked pending explicit supersede/revoke workflow.',
+    ],
+    reason:
+      'Wire G1 scientific authority to confirmed operational capture without AI-pre-confirm emission, production deploy, or F5 correlation changes.',
+    previousBehavior:
+      'G1 GT table and admission existed but document apply and manual service history did not emit ground truth.',
+    details:
+      'architecture/battery-v2/research/M3_3G_G2_CONFIRMED_CAPTURE_DOCUMENT_GT_EMISSION_2026-09-29.md; backend/scripts/test/battery-ground-truth-postgres-ci.sh.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-29T02:30:00.000Z',
+  },
+  {
+    id: 'di-exp021-s4b-discovery-claim-orchestration-2026-09-28',
+    version: '4.9.2207',
+    title: 'Driving Intelligence — EXP-021 S4B discovery + claim orchestration (dormant)',
+    summary: [
+      'S4B orchestration library: bounded PRIMARY discovery via T01 only, leader-guarded di_v0_s4_discovery, replica-local DB claim loop with T03 heartbeat and 240s work budget, executor registry (no S4C yet).',
+      'Canonical runtime pipeline manifest builder (calibrationBundleHash over numeric bundle content); env parsing isolated to di-v0-s4b-config.ts.',
+      'DiV0S4bOrchestrationModule defined but not registered in AppModule — Production remains KILLED with zero S4 rows.',
+    ],
+    reason: 'Start S4B engineering behind default-OFF control plane without provider acquisition or Production activation.',
+    previousBehavior: 'S4A repository only; no discovery scheduler or claim orchestration.',
+    details:
+      'backend/src/modules/vehicle-intelligence/driving-intelligence/s4b-orchestration/*; architecture/drivingintelligence/evidence/EXP021_S4B_ENGINEERING_START.md; npm run test:di:s4b.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-28T19:50:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3f-f4-1-race-safe-d3-reconciliation-2026-09-27',
+    version: '4.9.2206',
+    title: 'Battery V2 M3.3F F4.1 — race-safe bounded D3 reconciliation',
+    summary: [
+      'Version-scoped durable source-evidence acknowledgement (`battery_longitudinal_source_evidence_acks`) is the D3 freshness authority; `BatteryLongitudinalProfileRevision.sourceEvidenceFingerprint` is non-authoritative creation provenance only.',
+      'Bounded keyset fleet inspection with durable cursor closes fixed-prefix starvation while remaining bounded — fair across the fleet and eventually live through cursor wrap; not a global oldest-outstanding guarantee.',
+      'PostgreSQL integration evidence covers lost-update, same-science/new-evidence settlement, INVALIDATED C3 staleness, out-of-order completion, scheduler/ops idempotency, and leader-turnover overlap convergence.',
+      'D3 materialization flag `BATTERY_V2_LONGITUDINAL_PROFILE_MATERIALIZATION_ENABLED` remains default OFF; F4.1 does not production-activate D3 (no F_D3_T0, backfill, historical C3 replay, customer D3 endpoint, or E3 runtime).',
+    ],
+    reason:
+      'Establish safe, bounded, restart-/replica-safe D3 reconciliation before any explicit production activation gate.',
+    previousBehavior:
+      'D3 was internal/on-demand only and had no race-safe scheduled durable freshness reconciliation authority.',
+    details:
+      'Merged PR #1806; architecture/battery-v2/research/M3_3F_F4_1_RACE_SAFE_D3_RECONCILIATION_ENGINEERING_2026-09-27.md; npm run test:battery:v2:longitudinal-reconciliation:postgres.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-27T18:15:00.000Z',
+  },
+  {
+    id: 'di-exp021-c1d9a-s3b-r1-v03-field-authority-2026-09-27',
+    version: '4.9.2205',
+    title: 'Driving Intelligence — EXP-021 C1D.9A DI V0 S3B R1 query V0_3 (provider field authority, currentGear removed)',
+    summary: [
+      'R1 query/adapter/snapshot bumped to V0_3: exactly five fields (speed, rpm, throttle, engine load, ECT), all agg: AVG, all PROVIDER_SCHEMA_VERIFIED.',
+      'Authority from C1D.9 read-only audit: DIMO telemetry GraphQL introspection + DIMO VSS 4.2 spec + read-only responses from 4 Ruptela R1 vehicles; units km/h, rpm, percent 0..100, percent 0..100, °C — no rescaling, no range thresholds.',
+      'powertrainTransmissionCurrentGear removed from query, normalizer and S1 type: signed gear index where AVG synthesizes non-existent or false-Neutral gears; not exposed by any audited R1 device. isIgnitionOn stays excluded.',
+      'Temporal authority unchanged (INTERVAL_ONLY, never overrides L3); combined input identity stays V0_2; V0_2 R1 identifiers superseded and never aliased.',
+    ],
+    reason: 'Close DI-GAP-S3B-R1-FIELD-AUTHORITY-001 for the five safe fields (PARTIALLY_CLOSED; residual gear) before any S4 R1 shadow orchestration.',
+    previousBehavior:
+      'Query V0_2 carried six REPO_CONTRACT_ONLY fields including powertrainTransmissionCurrentGear(agg: AVG); fractional gear values could reach normalized evidence.',
+    details:
+      'backend/src/modules/vehicle-intelligence/driving-intelligence/r1-obd-acquisition/*; core/types.ts; architecture/drivingintelligence/evidence/EXP021_C1D9_R1_FIELD_AUTHORITY_V03_CORRECTION.md; DI-DEC-V0-S3B-R1-V03-FIELD-AUTHORITY-001.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-27T12:30:00.000Z',
+  },
+  {
+    id: 'di-exp021-c1d8b-s3b-contract-hardening-2026-09-27',
+    version: '4.9.2204',
+    title: 'Driving Intelligence — EXP-021 C1D.8B DI V0 S3B contract hardening (red-team closure)',
+    summary: [
+      'Native events: calibration fixed UNCALIBRATED / max L1 (no caller field); expected org/vehicle/trip/window/family/provider context enforced per record → CONTEXT_MISMATCH (audited).',
+      'Native eventId dedup: identical collapse, differing duplicates → CONFLICTING_DUPLICATE (L0, preserved); order-independent.',
+      'Source envelope: NO_EVENT only for a successful empty read; read failure → EVENT_SOURCE_FAILURE; readDiV0NativeEventSource defines the future S4 boundary.',
+      'Combined input identity V0_2 pins all three channels with explicit state (PRESENT / NO_EVENT / SOURCE_FAILURE / NOT_AVAILABLE).',
+      'R1 OBD: per-signal duplicate-bucket merge (CONFLICTING_DUPLICATE withheld, no first-row-wins/averaging); isIgnitionOn removed from query V0_2; field authority REPO_CONTRACT_ONLY; FULL-R1-002 golden-bound HOLD/RELEASE tests.',
+    ],
+    reason: 'Close C1D.8A red-team P1/P2 findings on PR #1805 fail-closed before any S4 caller.',
+    previousBehavior:
+      'Caller-set native VALIDATED escalated to L2; no native context binding; duplicate eventIds double-counted; empty ≡ NO_EVENT with no failure state; R1 duplicate buckets first-row-wins; isIgnitionOn(agg: AVG) queried.',
+    details:
+      'backend/src/modules/vehicle-intelligence/driving-intelligence/{native-event-evidence,r1-obd-acquisition,evidence-input}/*; architecture/drivingintelligence/evidence/EXP021_C1D8B_S3B_CONTRACT_HARDENING.md; DI-DEC-V0-S3B-CONTRACT-HARDENING-001.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-27T14:00:00.000Z',
+  },
+  {
+    id: 'di-exp021-c1d8-s3b-r1-obd-native-events-2026-09-27',
+    version: '4.9.2203',
+    title: 'Driving Intelligence — EXP-021 C1D.8 DI V0 S3B R1 OBD + native event evidence (dormant)',
+    summary: [
+      'Channel A: r1-obd-acquisition — DIMO HF OBD subset over strict 1 s grid; INTERVAL_ONLY; VALUE_PRESENT / SIGNAL_NULL / ROW_ABSENT per signal; no fixed time correction; RUPTELA_R1 only.',
+      'Channel B: native-event-evidence — normalizes ingested driving_events-shaped records; NATIVE_EVENT_OBSERVATION; UNCALIBRATED max claim L1; zero events = NO_EVENT.',
+      'Separate provenance channels; SHA-256 snapshot identities + combined input identity helper for future S2 worker pinning.',
+      'No runtime caller, worker, queue, DB write, fusion, or product accel/brake logic.',
+    ],
+    reason: 'Prepare normalized R1 historical OBD and native provider event evidence for future shadow orchestration without overriding S3A→S1 L3.',
+    previousBehavior: 'S1 accepted manual NormalizedR1ObdObservation / NativeEventObservation fixtures only; no acquisition libraries.',
+    details:
+      'backend/src/modules/vehicle-intelligence/driving-intelligence/r1-obd-acquisition/*; native-event-evidence/*; evidence-input/di-v0-combined-input-identity.ts; architecture/drivingintelligence/evidence/EXP021_C1D8_S3B_R1_OBD_NATIVE_EVENT_ADAPTERS.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-27T08:30:00.000Z',
+  },
+  {
+    id: 'di-exp021-c1d7-s3a-position-acquisition-2026-09-26',
+    version: '4.9.2201',
+    title: 'Driving Intelligence — EXP-021 C1D.7 DI V0 S3A position acquisition + normalization (dormant)',
+    summary: [
+      'New driving-intelligence/position-acquisition dormant library: DIMO signals(interval:"1s") currentLocationCoordinates(agg: AVG) over a strict [from, to) second grid.',
+      'PRESENT / SIGNAL_NULL / ROW_ABSENT kept distinct; row timestamp is a bucket label (BUCKET_BOUNDED, never EXACT_PROVEN); no interpolation, fill-forward or snapping.',
+      'Coordinate validation (0,0 valid), duplicate fail-safe, source family via canonical DIMO-identity resolver (never hardwareType), SHA-256 snapshot → S2 inputEvidenceVersion.',
+      'Typed redacted error model (403 explicit, empty = all ROW_ABSENT); no runtime caller, DB write, live provider call or customer effect.',
+    ],
+    reason: 'S1 core and S2 persistence need normalized position evidence with explicit availability and temporal semantics before any S3B worker.',
+    previousBehavior: 'No DI V0 input slice; inputEvidenceVersion had no producer.',
+    details:
+      'backend/src/modules/vehicle-intelligence/driving-intelligence/position-acquisition/*; architecture/drivingintelligence/evidence/EXP021_C1D7_S3A_INPUT_NORMALIZATION_REPORT.md; DI-DEC-V0-POSITION-ACQ-001.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-26T22:00:00.000Z',
+  },
+  {
+    id: 'di-exp021-c1d7b-s3a-doc-closure-golden-2026-09-27',
+    version: '4.9.2202',
+    title: 'Driving Intelligence — EXP-021 C1D.7B PR #1800 S3A doc closure + full-R1-002 golden',
+    summary: [
+      'Authority closure: C1G aggregation evidence (DI-GAP-S3A-AGG-001 PARTIALLY_CLOSED), provider historical mutability, pinned DI_NORMALIZED_INPUT_IDENTITY replay vs live re-query.',
+      'Committed C1-MOBILE-FULL-R1-002 compact provider-row golden + S3A/S1 structural regression tests; mutability identity contract tests.',
+      'No S3A runtime/query/aggregator/normalization change; draft PR #1800 remains dormant (no runtime caller).',
+    ],
+    reason: 'Close pre-merge red-team P1 documentation gap without changing S3A semantics.',
+    previousBehavior: 'AGG-001 documented as UNKNOWN; no full-trip S3A golden in repo; mutability/replay contract implicit only.',
+    details:
+      'architecture/drivingintelligence/*; position-acquisition/__tests__/fixtures/full-r1-002-golden.fixture.ts; new golden/mutability/S1 specs.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-27T07:45:00.000Z',
+  },
+  {
+    id: 'di-exp021-c1d5-v0-pure-shadow-core-2026-09-26',
+    version: '4.9.2200',
+    title: 'Driving Intelligence — EXP-021 C1D.5 DI V0 pure shadow core (S0/S1)',
+    summary: [
+      'New isolated driving-intelligence/core pure library: normalized evidence → DI V0 interval kinematic results.',
+      'Frozen L3 centred-path estimator (DI_KINEMATIC_ESTIMATE_V0_1) with calendar-second support t−1,t,t+1; hold/release/ROW_ABSENT abstention.',
+      'R1 OBD INTERVAL_ONLY corroboration only; uncalibrated native events typed, max claim L1; numeric L3 capped at L2.',
+      'No runtime caller, DB, queue, DIMO, flags, or customer API — merge review only.',
+    ],
+    reason:
+      'C1D.4 shadow implementation readiness requires a side-effect-free core before persistence and workers.',
+    previousBehavior: 'No DI V0 structural evaluator in repository; legacy HF detectors only.',
+    details:
+      'backend/src/modules/vehicle-intelligence/driving-intelligence/core/*; architecture/drivingintelligence/evidence/EXP_021_C1D5_V0_PURE_CORE_2026-09-26.md; DI-DEC-V0-SHADOW-PURE-CORE-001.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-26T18:30:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3f-f3-natural-c3-closure-2026-09-27',
+    version: '4.9.2102',
+    title: 'Battery V2 M3.3F F3 — natural C3 validation OBSERVED (~21h read-only follow-up)',
+    summary: [
+      'Read-only production audit since F_C3_T0=2026-09-26T11:09:12Z: 15 natural append-only C3 rows (0 D3); earliest sample C5A integrity OK.',
+      'F3_COMPLETE=YES; F3_NATURAL_C3_VALIDATION=OBSERVED; F4_ALLOWED=YES — D3 activation prep only (not executed).',
+      'Preserves original 360s post-T0 zero-row activation window in F3 evidence doc; ~21h follow-up appended.',
+    ],
+    reason:
+      'Close M3.3F F3 natural calibration gate before any authorized F4 D3 materialization activation work.',
+    previousBehavior:
+      'F3 runtime activation PASS with F3_NATURAL_C3_VALIDATION=PENDING and F4_ALLOWED=NO after empty 360s window.',
+    details:
+      'architecture/battery-v2/research/M3_3F_F3_C3_SHADOW_ACTIVATION_2026-09-26.md (follow-up section); CURRENT_STATE.md; CHANGE_LEDGER.md CL-2026-09-27',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-27T08:30:00.000Z',
+  },
+  {
+    id: 'di-exp021-c05-cg01-cold-engine-full-throttle-2026-09-24',
+    version: '4.9.2101',
+    title: 'Driving Intelligence — EXP-021 C0.5 CG-01 COLD_ENGINE_FULL_THROTTLE containment (draft)',
+    summary: [
+      'C0.4 CG-01: R1 historical OBD cannot support cold coolant + full throttle point-time conjunction.',
+      'COLD_ENGINE_FULL_THROTTLE added to R1 HF abuse containment set — future derivation suppressed; 326 persisted rows kept, omitted from customer event list.',
+      'Marker-aware read-time abuse counter adjustment for trips enriched under C0.3 v1 marker; misuse rules skip R1-only full-throttle evidence.',
+      'COLD_ENGINE_HIGH_RPM, Tesla/API_SYNTHETIC, and non-R1 families unchanged.',
+    ],
+    reason:
+      'Persisted R1 HF_DERIVED COLD_ENGINE_FULL_THROTTLE events exceeded KEC L1 ceiling at unified behaviour read strength while misuse was already capped.',
+    previousBehavior:
+      'R1 COLD_ENGINE_FULL_THROTTLE visible as SEVERE/WARNING abuse events; could open COLD_ENGINE_ABUSE misuse from full-throttle rows alone.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_C05_CG01_COLD_ENGINE_FULL_THROTTLE_2026-09-24.md; r1-temporal-containment.ts v2; no migration/backfill.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-24T21:45:00.000Z',
+  },
+  {
+    id: 'di-exp021-c03-r1-temporal-containment-2026-09-24',
+    version: '4.9.2100',
+    title: 'Driving Intelligence — EXP-021 C0.3 R1 temporal-safety containment (draft, not deployed)',
+    summary: [
+      'Telemetry source family from DimoVehicle.rawJson (R1 serial "R1-" / API synthetic / UNKNOWN fail-closed); hardwareType not consulted (Tesla is LTE_R1).',
+      'R1: FULL_BRAKING / POSSIBLE_IMPACT / ENGINE_SHUTDOWN_WHILE_DRIVING no longer derived; re-enrichment never deletes historical contained rows.',
+      'Existing rows contained at read time: braking ledger summary, trip/rolling impact, brake wear + fingerprint, event list, trip counters/stats; R1 native context withholds anchor-relative values.',
+      'Misuse: R1 OBD-derived evidence tagged temporally uncertain — cannot establish or upgrade SEVERE+; REVIEW_REQUIRED preserved; fingerprints unchanged.',
+      'C0.3B: read-time presentation caps existing persisted SEVERE misuse rows; withholds R1 stress scores when persisted full-braking indicators exist (no fabricated correction).',
+    ],
+    reason:
+      'EXP-021 C0–C0.2: R1 historical OBD rows are grid-labelled and misdated (|offset| P50 14 s / P90 45 s); FULL_BRAKING 0/5 supported, ENGINE_SHUTDOWN 0/6 sustained.',
+    previousBehavior:
+      'R1 point-in-time abuse claims fed KPIs, brake wear, impact and SEVERE misuse; context API exposed "nearest sample 0 ms" values.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_C03_R1_TEMPORAL_CONTAINMENT_2026-09-24.md; DI-DEC-R1-TEMPORAL-CONTAINMENT-001; telemetry-source-family.ts; r1-temporal-containment.ts; no migration/backfill/data mutation.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-24T18:00:00.000Z',
+  },
+  {
+    id: 'tdl-qualified-stop-contract-v1-2026-09-24',
+    version: '4.9.2100',
+    title: 'Trip FSM — Qualified Stop Contract V1 (5 min same-trip boundary)',
+    summary: [
+      'Product contract: physically qualified stop/pause duration ≤300_000 ms stays ONE trip; strictly greater duration SPLIT.',
+      'Single authority: trip-qualified-stop-duration.policy.ts + worker.tripSameTripMaxQualifiedStopMs (default 300_000; legacy TRIP_MID_GAP_SPLIT_MS alias).',
+      'Live mid-gap, small_gap_merge/reopen, and reconciliation intra-gap repair share LTE_SAME_GT_SPLIT comparator; qualification gates unchanged.',
+      'KS FH 660E controls: 217 s same trip; 349.586 s split. PR #1750 finalize quality unchanged.',
+    ],
+    reason:
+      'Production effective split threshold was 180_000 ms with >= admission while merge used <300_000 — inconsistent with five-minute qualified parking semantics.',
+    previousBehavior:
+      'Live path split when gapMs >= 180_000; merge when gapMs < 300_000 (300_000 ms not merged).',
+    details:
+      'architecture/trip-detection-lifecycle/evidence/QUALIFIED_STOP_CONTRACT_V1_2026-09-24.md; trip-qualified-stop-duration.*; trip-mid-gap-split.util.ts; worker.config.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-24T17:15:00.000Z',
+  },
+  {
+    id: 'tdl-post-split-finalize-quality-gate-2026-09-24',
+    version: '4.9.2099',
+    title: 'Trip FSM — post-split short-trip finalize quality gate',
+    summary: [
+      'Production KS FH 660E 2026-09-24 Trip 2: real ~2 min post MID_TRIP_GAP_SPLIT drive cancelled with too_short_no_distance despite 15 persisted waypoints and null distanceKm.',
+      'Fix: analyzePersistedRouteMovement (route speed/segment + cumulative path ≥ odometerMinDeltaKm); resolveFinalizeEndTime uses latest credible route movement (not latest waypoint); quality movement evidence independent of canonical duration.',
+      'FINALIZATION_CHECK logs QUALITY_* forensics (non-authoritative).',
+      'Portable BASE/HEAD repro + processFinalize integration tests; no threshold/policy/deploy changes.',
+    ],
+    reason:
+      'Stale LMM before route catch-up made canonical finalize duration <60s while independent waypoint evidence proved a real short drive.',
+    previousBehavior:
+      'Finalize end chain preferred LMM over later waypoints; quality discard ignored waypoint/route evidence for too_short_no_distance.',
+    details:
+      'architecture/trip-detection-lifecycle/evidence/KS_FH_660E_POST_SPLIT_QUALITY_2026-09-24.md; trip-finalize-quality.util.ts; trip-evidence.helpers.ts; trip-detection-orchestration.service.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-24T14:45:00.000Z',
+  },
+  {
+    id: 'vdc-wob-long-stand-wake-plug-gt-evidence-2026-09-23',
+    version: '4.9.1997',
+    title: 'VDC — WOB L 7503 long-stand wake-associated PLUG GT evidence closure',
+    summary: [
+      'Canonical evidence: UNPLUG→parked replug (6982 s silence, 21 polls, 0 fresh OBD) then trip-start-associated provider PLUG at +56 s.',
+      'Webhook APPLIED physical first (146 ms HTTP→apply); snapshot PROVENANCE_REFRESH 188563 ms later; no ignition causality claim.',
+      'Cross-vehicle parked behavior heterogeneous vs KS MX 191 s; global PLUG rollout DEFERRED_TO_T7_REVIEW; VDC-DEC-010 wording hardened.',
+    ],
+    reason:
+      'Persist Production read-only GT without claiming trip/ignition universally causes provider OBD refresh or bounded parked replug SLA.',
+    previousBehavior:
+      'WOB_LONG_STAND_GT listed as WOB_PARKED_GT=PENDING in CURRENT_STATE; forensics only in agent transcripts.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/PLUG_WEBHOOK_WOB_LONG_STAND_WAKE_GT_2026-09-23.md; CURRENT_STATE.md; EVIDENCE_INDEX.md; CHANGE_LEDGER.md; DECISION_REGISTER.md (VDC-DEC-010 evidence ref)',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-23T10:40:00.000Z',
+  },
+  {
+    id: 'vdc-ks-mx-parked-plug-gt-evidence-2026-09-22',
+    version: '4.9.1996',
+    title: 'VDC — KS MX 2024 parked PLUG GT scientific evidence closure',
+    summary: [
+      'Canonical evidence: parked UNPLUG→PLUG GT 2026-09-22 (token 187336); WEBHOOK physical APPLIED before SNAPSHOT_OBD PROVENANCE_REFRESH (1833 ms lead; 61 ms HTTP→apply).',
+      'Two-layer attribution: provider OBD visibility ~191 s after replug vs prior GT ~57148 s; CAUSAL_ATTRIBUTION_295X_TO_WEBHOOK_ALONE=NO.',
+      'Legacy episode resolvedAt = provider observation time; physical winner WEBHOOK; VDC-DEC-010 remains valid; global PLUG rollout deferred.',
+    ],
+    reason:
+      'Persist Production read-only GT forensics without over-crediting webhook for provider emission latency improvement.',
+    previousBehavior:
+      'KS MX canary activation documented as gated; parked replug GT results only in agent transcripts.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/PLUG_WEBHOOK_KS_MX_PARKED_GT_2026-09-22.md; CURRENT_STATE.md; EVIDENCE_INDEX.md; CHANGE_LEDGER.md',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-22T22:40:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3c2-charge-opportunity-raw-2026-09-23',
+    version: '4.9.1997',
+    title: 'Battery V2 M3.3C C2.1 — Charge opportunity raw context (read-only)',
+    summary: [
+      'RestSessionChargeContextReader: tenant-scoped org+vehicle+restSessionId; zero writes; trip window from confirmed/candidate links only.',
+      'Pure policy M3_3C_C2_V1: qualified LV/alternator counts, provider-snapshot engine-running counts, aligned/partial running+alternator; classifier DRIVING_CHARGING diagnostic only.',
+      'chargeOpportunityClass=UNKNOWN; no coverage/V·ms proxy (DEFERRED_NO_BRIDGE_POLICY); no inferred trip window for unlinked sessions.',
+      'C2 source-contract doc + C0 addendum; unit tests A–O; ephemeral Postgres PG_A–G integration script.',
+    ],
+    reason:
+      'C2.0 forensics proved DRIVING_CHARGING unreachable — raw field contract before C3 feature persistence.',
+    previousBehavior:
+      'No charge-context reader or raw-feature policy; C0 still proposed GE DRIVING_CHARGING count as primary source.',
+    details:
+      'architecture/battery-v2/research/M3_3_C2_CHARGE_OPPORTUNITY_SOURCE_CONTRACT_2026-09-23.md, rest-session-charge-context.reader.ts, rest-session-charge-opportunity.policy.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-23T06:30:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3c5b-master-admin-shadow-ui-2026-09-23',
+    version: '4.9.2001',
+    title: 'Battery V2 M3.3C C5B — Master Admin shadow inspection UI',
+    summary: [
+      'GET /admin/battery-v2/rest-sessions + rest-session-feature-inspection (MASTER_ADMIN, read-only).',
+      'Master Admin view battery-v2-shadow-inspection renders atomic M3_3C_C5A_V1 (no frontend domain recompute).',
+      'Integrity states OK / INTEGRITY_PARTIAL / INTEGRITY_WARNING displayed explicitly; M3.3H customer UI unchanged.',
+    ],
+    reason: 'Internal engineering inspection over C5A without ops CLI or manual SQL.',
+    previousBehavior: 'C5A via ts-node ops CLI only.',
+    details:
+      'platform-admin.controller.ts, battery-v2-rest-session-feature-inspection.admin.service.ts, frontend/src/master/battery-v2-shadow-inspection/*',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-23T19:30:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3c5a-shadow-observability-inspection-2026-09-23',
+    version: '4.9.2000',
+    title: 'Battery V2 M3.3C C5A — Shadow observability + read-only inspection',
+    summary: [
+      'Prometheus: synqdrive_battery_rest_session_feature_trigger_total/duration_seconds + row_created_total (bounded labels; single accounting in RestSessionFeatureShadowTriggerService).',
+      'RestSessionFeatureShadowInspectionService — tenant-scoped V1 contract; C5A.1 bounded latest-100 DB reads, digest coverage metadata (FULL/BOUNDED_LATEST_WINDOW), INTEGRITY_PARTIAL, canonical ≤4-row candidates; C5A.2 repeatable-read snapshot + canonical digest union + countAggregateConsistent.',
+      'Ops CLI battery:rest-feature:inspect — stdout JSON, production DATABASE_URL deny unless explicit readonly ack; zero writes.',
+      'Tests TEST_M1–M8, TEST_I1–I14, Postgres PG_A–I; C5B Master Admin UI delivered separately (M3.3C C5B).',
+    ],
+    reason:
+      'Operational answers for C4 triggers and C3 persistence without health scoring or customer surfaces.',
+    previousBehavior:
+      'C4/C3 shadow path lacked metrics and operator inspection; C5 pending in CURRENT_STATE.',
+    details:
+      'architecture/battery-v2/research/M3_3_C5A_SHADOW_OBSERVABILITY_INSPECTION_2026-09-23.md, rest-session-feature-shadow-inspection.service.ts, battery-rest-session-feature-shadow-inspect.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-23T11:45:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3c4-shadow-lifecycle-wiring-2026-09-23',
+    version: '4.9.1999',
+    title: 'Battery V2 M3.3C C4 — Shadow lifecycle wiring (fail-open triggers)',
+    summary: [
+      'RestSessionFeatureShadowTriggerService orchestrates C3 after authoritative mutations only (valid rest link, session terminal, late trip association).',
+      'Double flag gate: C4 + C3 both require BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED; flag OFF → zero computeAndPersist.',
+      'SYNCHRONOUS_POST_MUTATION_FAIL_OPEN — C3 errors isolated; no ENGINE_OFF open trigger; no GE capture hook; no queue/scheduler.',
+      'Unit A–O; Postgres PG_A–L via test:battery:v2:rest-session-feature:shadow:postgres.',
+    ],
+    reason:
+      'Authorized C4 wiring registers C3 in Nest and connects lifecycle boundaries without production deploy or flag enable.',
+    previousBehavior:
+      'C3 service test-only instantiation; no post-mutation feature triggers on rest-session or late-association paths.',
+    details:
+      'architecture/battery-v2/research/M3_3_C4_SHADOW_LIFECYCLE_WIRING_2026-09-23.md, rest-session-feature-shadow-trigger.service.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-23T10:30:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3c3-feature-computation-2026-09-23',
+    version: '4.9.1998',
+    title: 'Battery V2 M3.3C C3 — Deterministic feature computation (shadow append-only)',
+    summary: [
+      'RestSessionFeatureComputationService: shadow flag checked before any DB access; Serializable txn + battery_rest_sessions FOR UPDATE.',
+      'RestSessionFeatureInputSnapshotV1 + canonical JSON + SHA-256 inputDigest; semanticRevision monotonic per version tuple.',
+      'Combines C1 retention outputs + C2 chargeOpportunityRaw; chargeOpportunityClass=UNKNOWN; no live Nest registration or capture hooks.',
+      'Unit tests A–S; Postgres PG_A–M via test:battery:v2:rest-session-feature:computation:postgres.',
+    ],
+    reason:
+      'C3 authorized combined persisted feature model behind default-OFF flag before C4 lifecycle wiring.',
+    previousBehavior:
+      'C2 read-only charge raw only; no feature row writer or digest/idempotency path.',
+    details:
+      'architecture/battery-v2/research/M3_3_C3_FEATURE_COMPUTATION_PERSISTENCE_2026-09-23.md, rest-session-feature-computation.service.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-23T08:00:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3c1-rest-session-feature-foundation-2026-09-22',
+    version: '4.9.1995',
+    title: 'Battery V2 M3.3C C1 — Rest session feature schema + pure retention policy',
+    summary: [
+      'Additive Prisma table battery_rest_session_features with append-only lifecycle enums and digest/revision unique constraints.',
+      'BATTERY_V2_REST_SESSION_FEATURES_SHADOW_ENABLED default false — zero runtime writers in C1.',
+      'Pure rest-session retention policy: Theil-Sen slope, mV units, actualRestAgeMs authority, unit tests A–H.',
+      'Ephemeral PostgreSQL migration verification script; no assessment/publication/BatteryFeatures coupling.',
+    ],
+    reason:
+      'M3.3C C1 authorized foundation after preflight — schema and deterministic policy before C3 hooks.',
+    previousBehavior:
+      'No shadow rest-session feature persistence or retention curve computation module.',
+    details:
+      'architecture/battery-v2/research/M3_3_C1_REST_SESSION_FEATURE_FOUNDATION_2026-09-22.md, generalized-evidence/rest-session-features/*, migration 20260922203000_battery_rest_session_features',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-22T20:35:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3c0-retention-charge-preflight-2026-09-22',
+    version: '4.9.1995',
+    title: 'Battery V2 M3.3C.0 — Retention curve + charge opportunity preflight (authority sync)',
+    summary: [
+      'Y3D.1 transition doc: B1.2W §13 COMPLETE, M3_3C_REOPENING_GATE=YES (historical M3.3C=BLOCKED preserved in B1.2W evidence).',
+      'M3.3C preflight: versioned BatteryRestSessionFeature storage (recommended), Theil-Sen retention slope, canonical FEATURE_INPUT_DIGEST snapshot, charge opportunity raw features + UNKNOWN classification default.',
+      'Shadow-only isolation: no assessment/publication/BatteryFeatures authority; REST_60M/6H remain opportunistic legacy until M3.3G.',
+      'Production readiness snapshot: 7 rest sessions, 0 REST_WAKE_VOLTAGE, sparse ladder — Postgres-first validation matrix defined.',
+    ],
+    reason:
+      'M3.3C reopening after provider-gap §13 closure requires design authority before schema/runtime packages C1–C5.',
+    previousBehavior:
+      'CURRENT_STATE listed M3.3C BLOCKED; no session retention/charge feature entity or contracts.',
+    details:
+      'architecture/battery-v2/research/M3_3_C0_RETENTION_CHARGE_OPPORTUNITY_PREFLIGHT_2026-09-22.md, M3_3_B1_2Y3D_1_SECTION_13_CLOSURE_M3_3C_REOPENING_2026-09-22.md, CURRENT_STATE.md, CHANGE_LEDGER.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-22T20:00:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3-b1-2y3c1-stale-replay-reachability-2026-09-22',
+    version: '4.9.1995',
+    title: 'Battery V2 M3.3 B1.2Y3C.1 — Snapshot producer STALE_REPLAY reachability',
+    summary: [
+      'Shared BatteryProviderLastStoredLiveVoltageResolver: canonical battery_measurements LIVE_VOLTAGE (observedAt, receivedAt, value, idempotencyKey) tenant-scoped.',
+      'BatteryV2SnapshotObservationProducer no longer uses legacy battery_health_snapshots for LV provider dedup — restores STALE_REPLAY + provider-gap entry on frozen provider timestamps.',
+      'LvLiveVoltageIngestionService uses the same resolver (single semantic source of truth).',
+      'Tests: stale replay, duplicate-before-threshold, legacy snapshot bootstrap, advancing provider ts, Postgres producer→gap integration.',
+    ],
+    reason:
+      'Y3C shadow acceptance incomplete: production polls classified DUPLICATE_OBSERVATION because snapshot path lacked receivedAt on lastStored.',
+    previousBehavior:
+      'Producer lastStored from battery_health_snapshots.recordedAt/voltageV only; STALE_REPLAY policy branch unreachable on SNAPSHOT polls.',
+    details:
+      'battery-provider-last-stored-live-voltage.resolver.ts, battery-v2-snapshot-observation.producer.ts, architecture/battery-v2/research/CHANGE_LEDGER.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-22T16:05:00.000Z',
+  },
+  {
+    id: 'vdc-ks-mx-plug-isolated-canary-profile-2026-09-22',
+    version: '4.9.1995',
+    title: 'VDC — KS MX 2024 isolated OBD PLUG canary profile (topology A)',
+    summary: [
+      'Generalized gt-r1-plug-webhook-canary-isolated.mjs to allowlisted profiles WOB_L_7503 (192922) and KS_MX_2024 (187336).',
+      'Unique temp webhook display names; --canary=<PROFILE> + matching --confirm-canary; arbitrary token CLI rejected.',
+      'WOB and KS MX temp canaries may coexist; sibling verification on activate; profile-scoped teardown preserves other canaries.',
+    ],
+    reason:
+      'KS MX 2024 LTE_R1 long-stand parked replug GT needs independent isolated PLUG fast path without fleet-wide legacy PLUG enable.',
+    previousBehavior:
+      'Single WOB-only isolated canary; multiple temp PLUG defs treated as global conflict.',
+    details:
+      'backend/scripts/ops/gt-r1-plug-webhook-canary-isolated.{mjs,lib.mjs}; architecture/vehicle-device-connectivity/CURRENT_STATE.md',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-22T08:30:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3-b1-2y1-1-provider-gap-hardening-2026-09-22',
+    version: '4.9.1994',
+    title: 'Battery V2 M3.3 B1.2Y1.1 — Provider observability gap runtime hardening (PR #1721)',
+    summary: [
+      'Pre-gap ENGINE_OFF guard classifies last-fresh bundle without STALE_REPLAY short-circuit; STALE_REPLAY required for new gap open.',
+      'Gap lifecycle failures logged + metrics; ingestion fail-open; duplicate generalized evidence still completes gap resolution on retry.',
+      'No synthetic firstFreshProviderAt; gap runtime requires generalized evidence flag; removed parallel OFF resolve in snapshot ingestion.',
+      'PostgreSQL integration: concurrent open/resolve + partial unique OPEN; npm run test:battery:v2:provider-gap:postgres.',
+      'BATTERY_V2_PROVIDER_OBSERVABILITY_GAP_ENABLED default OFF; M3_3C_ALLOWED=NO.',
+    ],
+    reason:
+      'Close B1.2W correctness/retry/test gaps before merge of provider observability gap lifecycle.',
+    previousBehavior:
+      'B1.2Y1 foundation could mis-open gap on pre-gap OFF, open on duplicate-before-threshold, silently drop gap errors, and skip resolution on generalized duplicate retry.',
+    details:
+      'architecture/battery-v2/research/M3_3_B1_2W_PROVIDER_GAP_STATE_MACHINE_2026-09-21.md, provider-observability-gap/*, generalized-evidence-capture.service.ts, CHANGE_LEDGER.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-22T10:00:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3-b1-2-shutdown-rest-2026-09-21',
+    version: '4.9.1994',
+    title: 'Battery V2 M3.3 B1.2 — First natural shutdown + rest session acceptance (read-only)',
+    summary: [
+      'Read-only production forensics since M3_3_B1_T0=2026-09-21T18:08:19Z; no deploy or mutation.',
+      '0 ENGINE_OFF_TRANSITION and 0 rest sessions; POST_T0_TRIPS_WITH_SHUTDOWN_CONTEXT=2; 15 raw engineRunning=false LV not trustworthy shutdown.',
+      'Rows explicitly CHARGING/ACTIVE contaminated or DRIVING — NO_SILENT_ENGINE_OFF_DROP=YES.',
+      'ENGINE_OFF / REST_SESSION / PARKED / R1 gates PENDING; MULTI_REPLICA + PROVENANCE PASS.',
+      'NEXT_ACTION=CONTINUE_NATURAL_SHADOW_OBSERVATION; M3_3C_ALLOWED=NO.',
+    ],
+    reason:
+      'B1.2 acceptance for first natural shutdown anchor and rest session without requiring ~8h R1 ladder.',
+    previousBehavior:
+      'B1.1 generalized capture PASS; no trustworthy shutdown observed post-T0.',
+    details:
+      'architecture/battery-v2/research/M3_3_B1_2_FIRST_NATURAL_SHUTDOWN_REST_SESSION_2026-09-21.md, CURRENT_STATE.md, CHANGE_LEDGER.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-21T18:50:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3-b1-1-natural-shadow-validation-2026-09-21',
+    version: '4.9.1994',
+    title: 'Battery V2 M3.3 B1.1 — Natural shadow evidence validation (read-only)',
+    summary: [
+      'Read-only production forensics since M3_3_B1_T0=2026-09-21T18:08:19Z; no deploy or env mutation.',
+      '29 generalized evidence rows; 29/29 VALID LIVE_VOLTAGE measurements captured; 0 unexpected gaps or duplicate captures.',
+      'Classes: 1× DRIVING_NON_CHARGING; 14× ACTIVE_VEHICLE_CONTAMINATED; 14× CHARGING_CONTAMINATED; 0 rest-path classes.',
+      'Gates: GENERALIZED_CAPTURE / PROVENANCE / MULTI_REPLICA_SAFETY PASS; engine-off / session / parked / R1 LADDER PENDING natural events.',
+      'NEXT_ACTION=CONTINUE_NATURAL_SHADOW_OBSERVATION; M3_3C_ALLOWED=NO.',
+    ],
+    reason:
+      'Confirm B1 shadow chain health for generalized capture and safety invariants before any rest-ladder or M3.3C work.',
+    previousBehavior:
+      'B1 activation smoke only (1 driving row); rest-session validation explicitly pending.',
+    details:
+      'architecture/battery-v2/research/M3_3_B1_1_NATURAL_SHADOW_EVIDENCE_VALIDATION_2026-09-21.md, CURRENT_STATE.md, CHANGE_LEDGER.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-21T18:45:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3-b1-shadow-activation-2026-09-21',
+    version: '4.9.1994',
+    title: 'Battery V2 M3.3 B1 — Generalized evidence shadow activation (production)',
+    summary: [
+      'Runtime unchanged @ 105f2c5ff (B0 release); BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED=true via shared backend.env.',
+      'Canary: Replica A restart then Replica B; bounded mixed-flag interval; M3_3_B1_T0=2026-09-21T18:08:19Z.',
+      'Natural shadow write: 1× DRIVING_NON_CHARGING (DRIVING_TOTAL=1); 0 rest sessions; REST_WAKE auto-promotion remains off.',
+      'Validation split: B1_GENERALIZED_CAPTURE_VALIDATION=OBSERVED; B1_REST_EVIDENCE_VALIDATION=PENDING.',
+      'PR #1709 closed SUPERSEDED_BY_1710; B1 docs on main lineage — no deploy of docs-only main for activation.',
+    ],
+    reason:
+      'Shadow-only M3.3 capture on production without authoritative Battery or cadence-based REST_WAKE promotion.',
+    previousBehavior:
+      'B0: flag false; zero generalized evidence and rest-session rows.',
+    details:
+      'architecture/battery-v2/research/M3_3_B1_GENERALIZED_EVIDENCE_SHADOW_ACTIVATION_2026-09-21.md, CURRENT_STATE.md, CHANGE_LEDGER.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-21T18:15:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3-b0-flag-off-production-2026-09-21',
+    version: '4.9.1994',
+    title: 'Battery V2 M3.3 B0 — Production deploy (generalized evidence flag OFF)',
+    summary: [
+      'Deployed main @ 105f2c5ff release 20260921172342_v4994; both PM2 replicas on exact SHA.',
+      'M3.3A+M3.3B code live; additive schema present; BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED absent → effective FALSE.',
+      'Zero generalized-evidence and rest-session rows before and after 180s post-deploy smoke (flag OFF).',
+      'M3.3 Prometheus counters registered on /api/v1/metrics; REST_WAKE auto-promotion remains disabled in code.',
+      'B0_PASS — B1 requires explicit authorization; no backfill or flag enable.',
+      'Lineage: M3.3A schema applied at fe3dc6bf (descendant of #1710) before B0 target 105f2c5ff; MIGRATIONS_APPLIED=0_new expected.',
+    ],
+    reason:
+      'Controlled production cutover for M3.3 shadow infrastructure without enabling writes or REST_WAKE promotion.',
+    previousBehavior:
+      'Production @ fe3dc6bf without M3.3 application code; schema already migrated with zero shadow rows.',
+    details:
+      'architecture/battery-v2/research/M3_3_B0_FLAG_OFF_PRODUCTION_DEPLOY_2026-09-21.md, CURRENT_STATE.md, CHANGE_LEDGER.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-21T17:35:00.000Z',
+  },
+  {
+    id: 'vdc-plug-webhook-restoration-forensics-2026-09-21',
+    version: '4.9.1994',
+    title: 'VDC — OBD PLUG webhook restoration forensics + safe ops gate',
+    summary: [
+      'Production read-only DIMO registry: PLUG webhook disabled; UNPLUG enabled; WOB 192922 subscribed to UNPLUG only.',
+      'Global PLUG enable blast radius = all tokens already on PLUG subscription list (6), not WOB-only.',
+      'gt-r1-plug-webhook-restoration.mjs — READ_ONLY default; PUT enable requires --execute + exact PLUG UUID confirm.',
+    ],
+    reason:
+      'Parked LTE_R1 replug latency is unbounded on snapshot-only path; restore PLUG webhook as fast path during P2.5 shadow epoch.',
+    previousBehavior:
+      'PLUG provider definition disabled since 2026-07-08; KS MX replug observed only after morning SNAPSHOT_OBD.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/PLUG_WEBHOOK_RESTORATION_FORENSICS_2026-09-21.md; backend/scripts/ops/gt-r1-plug-webhook-restoration.mjs',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-21T12:00:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3b-r1-cadence-forensics-2026-09-21',
+    version: '4.9.1151',
+    title: 'Battery V2 M3.3B — R1 natural cadence forensics + REST ladder qualification (shadow)',
+    summary: [
+      'M3.3B.2 strict forensics aligned with runtime ladder mapping; reproducible SQL in repo.',
+      'Periodic ~8h-scale parked LV observed; ladder-candidate n=35; P95|residual| ~2.85h research tolerance candidate.',
+      'REST_CADENCE_AUTOMATIC_WAKE_PROMOTION_ENABLED=false; PARKED_REST_CANDIDATE retained.',
+      'Metric: synqdrive_battery_cadence_ladder_research_unqualified_total (replaces unreachable out-of-tolerance).',
+      'B0 deploy merged M3.3A+M3.3B with flag OFF; B1 shadow does not require REST_WAKE auto-promotion.',
+    ],
+    reason:
+      'Empirical R1 cadence grounding before shadow ladder promotion — no health scoring or authoritative REST_60M/6H changes.',
+    previousBehavior:
+      'M3.3A: PARKED_REST_CANDIDATE only; tolerance RESEARCH_PENDING; metrics stubs; no production interval statistics.',
+    details:
+      'architecture/battery-v2/research/M3_3B_R1_NATURAL_CADENCE_FORENSICS_2026-09-21.md, CURRENT_STATE.md, CHANGE_LEDGER.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-21T15:00:00.000Z',
+  },
+  {
+    id: 'battery-v2-m3-3a-generalized-evidence-2026-09-21',
+    version: '4.9.1150',
+    title: 'Battery V2 M3.3A — Generalized evidence + rest session foundation (shadow)',
+    summary: [
+      'Additive tables `battery_generalized_evidence_observations` + `battery_rest_sessions` — normalized LV evidence above immutable `battery_measurements`.',
+      'Flag `BATTERY_V2_GENERALIZED_EVIDENCE_ENABLED` defaults false — no production writes until explicitly enabled.',
+      'Evidence classes include REST_WAKE_VOLTAGE (R1 ~8h semantic); REST_STABLE promotion disabled; actualRestAgeMs authority; tolerance RESEARCH_PENDING.',
+      'Rest sessions: PHYSICAL_SHUTDOWN anchor, open-ended ladder (no REST_8H columns); late COMPLETED-trip association read-only.',
+      'M3.2B provenance bundle reused; REST_60M/REST_6H unchanged opportunistic legacy; no health/publication/assessment wiring.',
+    ],
+    reason:
+      'M3.3 audit: separate raw LV persistence from trip-finalize-gated REST/shadow paths for R1 periodic wake architecture.',
+    previousBehavior:
+      'Only raw LIVE_VOLTAGE + trip-gated REST window / M3.2B shadow; no generalized rest ladder session model.',
+    details:
+      'architecture/battery-v2/research/M3_3A_GENERALIZED_BATTERY_EVIDENCE_REST_SESSION_ARCHITECTURE.md, CURRENT_STATE.md, CHANGE_LEDGER.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-21T12:00:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-hybrid-trust-alpha-activation-2026-09-28',
+    version: '4.9.4999',
+    title: 'RFRF — scoped hybrid trust Alpha fleet activation (EED-OQ-019)',
+    summary: [
+      'Versioned activation authority RFRF_HYBRID_TRUST_ACTIVATION_MODE (OFF | ALPHA_ALLOWLIST) with explicit org/vehicle UUID allowlists.',
+      'Effective promotion trust = hybrid semantic classification gated by scoped activation; ABSOLUTE_SIGNAL_TRUST_AUTHORITY_AVAILABLE stays false.',
+      'Promotion-time revalidation: DB Vehicle org ownership, monotonic context trust combine, fail-closed allowlist parse, qualityMeta promotion audit (no raw allowlist secrets).',
+      'Isolated PG gate rfrf-hybrid-trust-activation-postgres-gate.sh (P1–P7); default OFF — production activation requires explicit env + allowlist.',
+    ],
+    reason:
+      'Enable real Production fallback promotion trust only for SynqDrive-owned Alpha fleet without global or org-specific hybrid algorithms.',
+    previousBehavior:
+      'Hybrid TRUSTED classification was computed but promotion effective trust remained UNKNOWN globally.',
+    details:
+      'raw-fuel-hybrid-trust-activation.authority.ts; EED-EV-0101; EED-INV-022; stage-4 activation gate',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-28T23:15:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-hybrid-absolute-signal-trust-2026-09-28',
+    version: '4.9.4998',
+    title: 'RFRF — hybrid absolute signal trust authority v2 (pre-merge hardening)',
+    summary: [
+      'Local relative pre/post plateau corroboration (v2); durable hybridAbsoluteSignalTrust provenance on READY refresh.',
+      'READY refresh policy requires current hybrid authority + provenance block; baseline provenance missing vs not-FRESH distinguished.',
+      'Isolated localhost PG gate + recovery/promotion pipeline proofs P1–P7; promotion gate still OFF.',
+      'WOB Event B fixture remains UNKNOWN (absolute-only samples).',
+    ],
+    reason:
+      'Promotion trust must be earned from corroborating evidence, not fuel type, admissibility, or READY alone.',
+    previousBehavior:
+      'resolveRawFuelSignalTrust always returned promotion UNKNOWN without structured corroboration assessment.',
+    details:
+      'raw-fuel-hybrid-absolute-signal-trust.authority.ts (v2); hybridAbsoluteSignalTrust evidence block; isolated rfrf-hybrid-trust-postgres-gate.sh; EED-EV-0100; EED-INV-021',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-28T19:30:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-ready-evidence-refresh-2026-09-28',
+    version: '4.9.4997',
+    title: 'RFRF — READY candidate evidence refresh before promotion',
+    summary: [
+      'Versioned READY refresh policy + evidenceMeta.readyEvidenceRefresh before convergence/promotion.',
+      'Bounded historical DIMO reload via existing recovery window; same-observation reconcile only.',
+      'Idempotent provider calls when refresh metadata current (UNKNOWN trust alone does not refetch forever).',
+      'Stage-4 PostgreSQL gate rfrf-ready-evidence-refresh-postgres-gate.sh; trust authority still OFF (EED-INV-020).',
+    ],
+    reason:
+      'Legacy READY_FOR_PERSIST rows could promote with stale detector/trust/baseline provenance without reloading DIMO evidence.',
+    previousBehavior:
+      'recoverReadyCandidate skipped historical sample fetch and reused first-maturity evidence/trust snapshots.',
+    details:
+      'raw-refuel-ready-evidence-refresh.policy.ts; EED-EV-0099; rfrf-ready-evidence-refresh-postgres-gate.sh',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-28T14:45:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-baseline-recency-guard-2026-09-28',
+    version: '4.9.4996',
+    title: 'RFRF — pre-fill baseline recency safety guard',
+    summary: [
+      'evaluateRawFuelPrePlateauRecency blocks stale pre plateaus (KS MX 2026-09-16 false deltas).',
+      'Long silent PRE→RISE bridges (>360s, zero intervening samples) fail closed as INSUFFICIENT_EVIDENCE — not FRESH via rise inference.',
+      'WOB 09-19 fixture aligned to read-only Production DIMO extract (fresh pre ~16:07:45Z, 210s before rise).',
+      'Promotion BLOCKED_BASELINE_RECENCY unless FRESH; trust remains OFF (EED-INV-019).',
+    ],
+    reason:
+      'READY fallback candidates could reuse hours-old pre-fill plateaus; trust enablement would promote false deltas without this firewall.',
+    previousBehavior:
+      'findPlateauFrom + scanPhysicalRiseNeighborhood allowed stale pre baselines when sparse PRE→RISE bridges tolerated long silence.',
+    details:
+      'raw-fuel-pre-plateau-baseline-recency.policy.ts; EED-EV-0098; rfrf-baseline-recency-postgres-gate.sh',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-28T02:00:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-oq015-stretched-end-convergence-2026-09-28',
+    version: '4.9.4995',
+    title: 'RFRF OQ-015 — stretched-end fallback↔native convergence',
+    summary: [
+      'classifyFallbackAgainstAuthoritativeNativeRefuel closes WOB 09-19 duplicate Product REFUEL risk without raising global G2 endTimeSec.',
+      'Pre-merge hardening: stretch requires maxSampleGapSeconds > F3 continuity (360s) + native physical envelope bracketing; post-plateau extension alone is not stretch proof.',
+      'OQ-015 PostgreSQL gate wired into Stage-4 CI (rfrf-oq015-stretched-end-postgres-gate.sh).',
+      'Trust authority unchanged (UNKNOWN); EED-INV-018 documents convergence firewall.',
+    ],
+    reason:
+      'Production forensic audit: READY fallback candidate DISTINCT_FROM_NATIVE solely on stretched end_time_mismatch vs authoritative native canonical row.',
+    previousBehavior:
+      'Strict classifyPhysicalRefuelSibling endTimeSec=60 blocked SAME_NATIVE for sparse-bridge refuels with delayed native segment end.',
+    details:
+      'raw-refuel-native-fallback-stretched-end.policy.ts; EED-EV-0097; architecture/knowledge-graphs/energy-event-detection/evidence/EED-EV-0097-RFRF-STRETCHED-END-CONVERGENCE-2026-09-28.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-28T00:15:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-6-8-c-recovery-promotion-liveness-2026-09-21',
+    version: '4.9.1157',
+    title: 'RFRF F10.6.8-C — recovered READY promotion liveness + atomic SUCCESS_PROMOTED',
+    summary: [
+      'Durable recovery scheduler invokes canonical RawRefuelPromotionService after convergence when no SAME native.',
+      'C1: fallback VEE + PROMOTED + recoveryLastOutcome=SUCCESS_PROMOTED finalized in the same promotion transaction (no post-commit finishRecovery).',
+      'C2: EXPIRED lease and SUPERSEDED generation stale proofs; independent PrismaClient replica idempotency (one canonical VEE).',
+      'Stage 5 posture unchanged; Stage 6 / recovery-direct G2 handoff not started.',
+    ],
+    reason:
+      'READY candidates reachable only via recovery lacked guaranteed promotion liveness; post-commit crash window left recovery unfinished after PROMOTED.',
+    previousBehavior:
+      'recoverReadyCandidate finished PENDING_NATIVE_RECONCILIATION without promotion; SUCCESS_PROMOTED required a second recovery completion after promotion commit.',
+    details:
+      'raw-refuel-promotion.service.ts; raw-refuel-candidate-recovery-f10-6-8-c.postgres.integration.spec.ts; migration 20260921140000_rfrf_f10_6_8_c_recovery_success_promoted; PR #1712',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-21T18:45:00.000Z',
+  },
+  {
+    id: 'exp021-pdi-m2-integration-repair-2026-09-19',
+    version: '4.9.1149',
+    title: 'EXP-021 — PDI → M2 maturation integration repair (prospective discovery)',
+    summary: [
+      'Cohort `--watch-cohort` uses `PROSPECTIVE_PDI_DISCOVERY`: late authoritative PDI (379–850s lag) no longer rejected as `freshness.stale`.',
+      'Enrollment cursor from max enrolled `canonicalWindowTo` per vehicle — unenrolled epoch PDIs survive operator restart.',
+      'Token-scoped CLI keeps `OPERATOR_IMMEDIATE` operational freshness guard.',
+      'Observability: `COHORT_PDI_DISCOVERY` structured diagnostics on prospective candidates.',
+      'No production deploy or backfill of the seven forensic drives in this change set.',
+    ],
+    reason:
+      'Production read-only audit: seven post–NOT_BEFORE trips with PDI and RC but zero M2 families (class 9 integration defect).',
+    previousBehavior:
+      'Wait/enroll path applied ~3–25s operational freshness to all discovery; settlement baseline max physical end poisoned restart cursor.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_PDI_TO_M2_INTEGRATION_REPAIR_2026-09-19.md; reference-capture-exp021-maturation-shadow-canary-prospective-discovery.lib.ts',
+    affectsArchitecture: true,
+    module: 'Driving Intelligence',
+    createdAt: '2026-09-19T19:30:00.000Z',
+  },
+  {
+    id: 'exp021-cohort-study-enrollment-bootstrap-2026-09-19',
+    version: '4.9.1148',
+    title: 'EXP-021 — cohort study enrollment bootstrap (WOB enrollment_not_found closure)',
+    summary: [
+      'Idempotent `exp021_study_enrollments` bootstrap from authoritative canary cohort JSON (vehicle/org/DIMO token validated).',
+      'Ops CLI `npm run exp021:cohort:study-enrollment:bootstrap` (dry-run default; `--execute` for writes).',
+      'PostgreSQL proof: 3-vehicle bootstrap idempotency + concurrent convergence + arm chain without `enrollment_not_found`.',
+      'Production safety: live activation disabled; cohort operator stopped; failed WOB ledger left immutable.',
+    ],
+    reason:
+      'Post-fix WOB drive proved PR #1694 cohort expansion without study enrollment rows for KS MS 661 / WOB L 7503 — live chain stopped before study run / RC / PDI.',
+    previousBehavior:
+      'Only KS MX 2024 had `exp021_study_enrollments` authority; multi-vehicle cohort JSON alone did not provision enrollments.',
+    details:
+      'architecture/drivingintelligence/evidence/reference-capture/EXP_021_COHORT_STUDY_ENROLLMENT_AUTHORITY_CLOSURE_2026-09-19.md; backend reference-capture-exp021-cohort-study-enrollment-bootstrap.lib.ts',
+    affectsArchitecture: true,
+    module: 'Driving Intelligence',
+    createdAt: '2026-09-19T12:30:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-6-8-b5-lock-fencing-closure-2026-09-21',
+    version: '4.9.1156',
+    title: 'RFRF F10.6.8-B5 — canonical lock order + fresh lease fencing',
+    summary: [
+      'Recovery reconcile reordered to advisory → row → write (matches convergence).',
+      'Claim identity separated from mutationClock() at each DB boundary.',
+      'Completion requires active lease + generation CAS; stale finishRecovery propagates stale_claim.',
+      'B5 PostgreSQL proofs: post-reconcile lease expiry, READY crossed-lease, expired completion.',
+    ],
+    reason:
+      'B4 read-only review found lock inversion deadlock risk and snapshotted lease time authorizing stale mutations.',
+    previousBehavior:
+      'Recovery reconcile locked candidate row before vehicle advisory lock; fence.now could validate expired leases after blocking waits.',
+    details:
+      'raw-refuel-candidate-recovery-fencing.ts; raw-refuel-candidate-recovery-f10-6-8-b5.postgres.integration.spec.ts; PR #1705',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-21T07:25:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-6-8-a2-p21-pinning-regression-2026-09-20',
+    version: '4.9.1155',
+    title: 'RFRF F10.6.8-A.2 — P21 irreversible canonical pinning regression alignment',
+    summary: [
+      'F5-PR3 P21 updated for A.1 same-owner pinning after COMPLETED fallback enrichment.',
+      'Asserts single enrichment-eligible owner, no duplicate native enrichment, late-sibling audit preserved.',
+      'P21B PostgreSQL negative — canonical challenger remains fail closed.',
+      'A.1 pin guard: >1 post-settlement late sibling blocks pin (P24 multi-late ambiguity).',
+    ],
+    reason:
+      'Stage-3 rfrf-stage3-persistence-readiness P21 expected pre-A.1 INSUFFICIENT forever.',
+    previousBehavior:
+      'P21 treated irreversible late SAME as permanent INSUFFICIENT_EVIDENCE.',
+    details:
+      'raw-fuel-refuel-fallback-f5-pr3-g2-handoff.postgres.integration.spec.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-20T15:15:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-6-8-a1-irreversible-canonical-pinning-2026-09-20',
+    version: '4.9.1154',
+    title: 'RFRF F10.6.8-A.1 — irreversible canonical pinning closure',
+    summary: [
+      'Irreversible consumed canonical restored when current evidence selects the same owner (pinning, not re-canonicalization).',
+      'authority_recheck evaluates irreversible late-sibling rows once; canonical change → authority_recheck_hold without infinite spin.',
+      'Pinned FINAL_CANONICAL retains late_sibling_after_finalization audit; existing enqueue/enrichment preserved (no new job).',
+    ],
+    reason:
+      'WOB L 7503 prior consumed canonical equals current chooser — authority preservation, not owner transfer.',
+    previousBehavior:
+      'Irreversible late-sibling INSUFFICIENT rows were excluded from authority_recheck and could not self-heal despite stable same-owner evidence.',
+    details:
+      'evaluateIrreversibleCanonicalPinning; physical-refuel-f10-6-8-a1.spec.ts; PR #1702',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-20T12:55:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-6-8-a-recoverable-late-sibling-2026-09-20',
+    version: '4.9.1153',
+    title: 'RFRF F10.6.8-A — recoverable native late-sibling authority',
+    summary: [
+      'Durable prior-finalization memory from late-sibling conflict rows (canonicalEventId, enrichment enqueue, fuel enrichment) — not only mutable enrichmentEligible FINAL bits.',
+      'Intra-component prior-canonical late sibling skipped when prior owner was not irreversibly consumed; irreversible enqueue/COMPLETED enrichment stays fail closed.',
+      'Recovery reason authority_recheck selects safe INSUFFICIENT late-sibling rows; authority_recheck_hold stops infinite recovery spin when reopen is unsafe.',
+    ],
+    reason:
+      'WOB L 7503 post-recovery regression: recovery reloads in-clique canonical finals as external late siblings; prior-final facts vanished when rows were overwritten to INSUFFICIENT.',
+    previousBehavior:
+      'loadPriorFinalizationBridgeContext and recovery selectors ignored stuck late-sibling INSUFFICIENT groups; in-component canonical priors false-triggered late_sibling_after_finalization on every recovery tick.',
+    details:
+      'physical-refuel-prior-ownership.util.ts; physical-refuel-late-sibling-authority.util.ts; physical-refuel-recovery.repository.ts; physical-refuel-reconciliation.design.ts; physical-refuel-f10-6-8-a.spec.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-20T09:10:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-6-6-b2-canonical-query-pending-closure-2026-09-19',
+    version: '4.9.1152',
+    title: 'RFRF F10.6.6-B.2 — canonical query reconciliation load + pending INSUFFICIENT',
+    summary: [
+      'Canonical product queries include refuelReconciliation from Prisma; WOB service path 3→1 verified via listCanonicalEnergyEvents and buildTripsTimeline.',
+      'Stage-4 pending authority treats INSUFFICIENT_EVIDENCE like SAME for V2 unreconciled/non-final (DISTINCT does not block).',
+      'Paged loadAuthoritativeNativeRefuelSiblings + RAW_LOAD_INCOMPLETE fail-closed tested on convergence/promotion paths.',
+      'Product projection hides dual-final and canonicalEventId mismatch conflicts (no arbitrary canonical row).',
+    ],
+    reason:
+      'B.1 canonical read omitted refuelReconciliation include; pending logic ignored INSUFFICIENT neighbors; loader/promotion tests were mostly fromLoaded-only.',
+    previousBehavior:
+      'queryEnergyEventRows only included fuelStationEnrichment; pending only on SAME_PHYSICAL_REFUEL; product conflict could pick one final arbitrarily.',
+    details:
+      'energy-events.service.ts; canonical-energy-events.projection.ts; authoritative-native-refuel-siblings.resolver.ts; v2-ownership-cutover.util.ts; B.2 specs',
+    affectsArchitecture: true,
+    module: 'Energy Event Detection',
+    createdAt: '2026-09-19T22:45:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-6-6-b1-race-bounded-load-product-read-2026-09-19',
+    version: '4.9.1151',
+    title: 'RFRF F10.6.6-B.1 — reconciliation race, bounded raw load, product-canonical reads',
+    summary: [
+      'V2-owned native REFUEL rows with null reconciliation are pending (isV2OwnedRefuelEvent + cutover), not legacy authority — closes post-persist reconciliation race vs RFRF scan.',
+      'Authoritative sibling loader pages raw native rows (MAX_RAW 512) instead of silent take=33; RAW_LOAD_INCOMPLETE fail-closed when raw bound exceeded.',
+      'Product reads: listCanonicalEnergyEvents + trips timeline / GET energy-events expose one physical refuel; listEnergyEventsRaw preserves forensic revisions.',
+      'Regression: V2 unreconciled race, raw overflow canonical, WOB 3→1 product projection, detectEnergyEvents ordering test.',
+    ],
+    reason:
+      'F10.6.6-B authoritative loader still treated null-recon as legacy, truncated raw rows at 33, and buildTripsTimeline listed every DIMO revision.',
+    previousBehavior:
+      'refuelReconciliation==null → legacyEvents; findMany take=33 on raw rows; listEnergyEvents fed trips timeline.',
+    details:
+      'authoritative-native-refuel-siblings.resolver.ts; canonical-energy-events.projection.ts; energy-events.service.ts; vehicle-intelligence.controller.ts; B.1 specs',
+    affectsArchitecture: true,
+    module: 'Energy Event Detection',
+    createdAt: '2026-09-19T21:45:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-6-6-b-native-canonical-authority-2026-09-19',
+    version: '4.9.1150',
+    title: 'RFRF F10.6.6-B — native physical-refuel canonical authority for Stage 4',
+    summary: [
+      'Stage-4 convergence loads authoritative native siblings via persisted Physical Refuel Reconciliation (enrichmentEligible + final), not every raw DIMO segment revision.',
+      'Three segment revisions of one physical refuel collapse to one authoritative native sibling for F5 evaluator input; raw rows retained.',
+      'Provisional reconciliation → native_physical_reconciliation_not_final (no convergence, no fallback selection).',
+      'Conflicting dual canonical authorities fail closed with physical_refuel_authority_conflict.',
+      'Legacy native rows without reconciliation remain matchable when not shadowed by finalized V2 canonical.',
+    ],
+    reason:
+      'F10.6.5 proved one physical refuel produced three native DIMO REFUEL VEEs; Stage-4 raw sibling load treated each revision as authoritative and fail-closed AMBIGUOUS.',
+    previousBehavior:
+      'buildAuthoritativeNativeRefuelSiblingWhere returned all native REFUEL rows in window; evaluateRawRefuelNativeFallbackConvergence saw multiple SAME siblings.',
+    details:
+      'authoritative-native-refuel-siblings.resolver.ts; raw-refuel-convergence.service.ts; authoritative-native-refuel-siblings.resolver.spec.ts',
+    affectsArchitecture: true,
+    module: 'Energy Event Detection',
+    createdAt: '2026-09-19T21:20:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-6-6-a1-candidate-liveness-persistence-2026-09-19',
+    version: '4.9.1149',
+    title: 'RFRF F10.6.6-A.1 — candidate liveness persistence micro-closure',
+    summary: [
+      'PostgreSQL regression: sparse-bridge episode → same-row maturation to READY_FOR_PERSIST + readiness READY (opt-in gate).',
+      'Runtime proof: strict-gap rejectedOrHeld does not invoke F2 persist; existing rows unchanged on detector-only rejection.',
+      'Documents observation-local vs persisted REJECTED policy for strict internal gaps.',
+      'F4-PR2 postgres gate includes raw-fuel-rise-liveness.postgres.integration.spec.ts.',
+    ],
+    reason:
+      'F10.6.6-A fixed F3/lifecycle semantics; A.1 closes the persist-path proof gap (same row rediscovery, rejectedOrHeld semantics, global max gap audit).',
+    previousBehavior:
+      'Liveness fix lacked end-to-end PostgreSQL same-row rescan test and explicit runtime rejectedOrHeld non-persist behavior.',
+    details:
+      'raw-fuel-rise-liveness.postgres.integration.spec.ts; raw-fuel-refuel-fallback-runtime.service.spec.ts; rfrf-f4-pr2-runtime-postgres-gate.sh',
+    affectsArchitecture: false,
+    module: 'Energy Event Detection',
+    createdAt: '2026-09-19T19:40:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-6-6-a-candidate-liveness-2026-09-19',
+    version: '4.9.1148',
+    title: 'RFRF F10.6.6-A — candidate liveness (semantic gaps + lifecycle refinement)',
+    summary: [
+      'F3 gap model: strict continuity only inside PRE/RISE/POST regions; PRE→RISE and RISE→POST provider bridges no longer fail lifecycle on global max gap.',
+      'Post-plateau search horizon uses riseMaxDurationMs (45m); inter-sample post gaps remain bounded by maxSampleGapMs.',
+      'Lifecycle: evidence-maturity refinement allows INSUFFICIENT→SETTLING/READY without reactivating terminal rows; rise-internal gap failures terminal REJECTED.',
+      'Regression fixture: sparse-bridge refuel episode (generalized WOB shape) + adversarial liveness suite.',
+      'No Production deploy, schema migration, Stage change, or native VEE idempotency changes in this PR.',
+    ],
+    reason:
+      'F10.6.5 proved production candidate liveness defect: bridge gaps poisoned global maxGap, delayed post search capped at 6m, and INSUFFICIENT→SETTLING persist threw.',
+    previousBehavior:
+      'Concatenated pre+rise+post max gap blocked READY; findLocalPostPlateauAfterRise stopped ~6m after peak; INSUFFICIENT could not refine to SETTLING on better evidence.',
+    details:
+      'raw-fuel-rise-gap-semantics.ts; raw-fuel-rise-state-machine.ts; raw-refuel-candidate-lifecycle.ts; raw-fuel-rise-liveness.spec.ts',
+    affectsArchitecture: true,
+    module: 'Energy Event Detection',
+    createdAt: '2026-09-19T18:15:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-6-0-stage4-convergence-readiness-2026-09-19',
+    version: '4.9.1147',
+    title: 'RFRF F10.6.0 — Stage-4 convergence readiness + transaction safety',
+    summary: [
+      'Stage 4: master+persist+convergence true; promotion/G2 false; cutover immutable; convergence links candidates to native VEE only.',
+      'Stage-4 ops fixtures + CI F5-PR1/F9/P20; Production read-only rebaseline 20260918232713_v4994 / 16000fce6… still Stage 3.',
+      'Live preflight PASS; Stage-4 dry-run zero mutation; wrong-source rollback from stage 4 blocked.',
+      'Observational readiness NO (0 candidates); PRODUCTION_REBASELINE_REQUIRED=YES vs EED-EV-0070.',
+      'Stage 4 not executed.',
+    ],
+    reason:
+      'Close Stage-4 transaction safety and non-vacuous convergence boundary before any Production convergence authority enablement.',
+    previousBehavior:
+      'Stage-3 Production proven (EED-EV-0070) without Stage-4 tooling closure on main.',
+    details:
+      'docs/audits/eed-rfrf-f10-6-0-stage4-convergence-readiness-2026-09-19.md; EED-EV-0071',
+    affectsArchitecture: true,
+    module: 'Energy Event Detection',
+    createdAt: '2026-09-19T00:00:00.000Z',
+  },
+  {
+    id: 'vdc-rb019-p25-t7-option-c-semantic-closure-2026-09-25',
+    version: '4.9.1148',
+    title: 'VDC RB-019 P2.5 — T+7 shadow Option C (domain-aware same-state admissibility)',
+    summary: [
+      'T7 closure: 1552/1552 raw unexplained = same-state PROVENANCE_REFRESH (P1A/P1B/P2/P3); zero true state disagreement.',
+      'NON_ISOMORPHIC_SAME_STATE_PROVENANCE_REFRESH + proveNonIsomorphicSameStateProvenanceRefresh; STATE_TRANSITION remains strict.',
+      'Cutover metrics use CORRECTNESS_BLOCKING_UNEXPLAINED / UNPROVEN_SAME_STATE_REFRESH — not raw UNEXPLAINED count alone.',
+      'WOB sequence guard: same-state refresh must not suppress later APPLIED transition; T7 epoch stays pre-fix until post-deploy epoch.',
+    ],
+    reason:
+      'Narrow GT-R1/EXPECTED_FIX left 567 T7-safe rows blocking; Option C closes semantic domain without four unrelated EXPECTED_FIX scenarios.',
+    previousBehavior:
+      'Steady-state PROVENANCE_REFRESH vs legacy no_open_episode/no_state_change classified UNEXPLAINED blocking when not GT-R1 expected-fix.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/P25_T7_SHADOW_COMPARATOR_SEMANTIC_CLOSURE_2026-09-25.md; VDC-DEC-014; PR #1697',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-25T11:00:00.000Z',
+  },
+  {
+    id: 'vdc-rb019-p25-post-bootstrap-provenance-gt-r1-2026-09-19',
+    version: '4.9.1147',
+    title: 'VDC RB-019 P2.5 — post-bootstrap PROVENANCE_REFRESH GT-R1 proof (branch candidate)',
+    summary: [
+      'GT-R1 scenario SNAPSHOT_PLUG_POST_BOOTSTRAP_PROVENANCE_REFRESH for established PLUGGED + newer same-state SNAPSHOT_OBD + legacy no_open_episode + coordinator PROVENANCE_REFRESH.',
+      'Proven cases classify as EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT (non-blocking); unproven remain UNEXPLAINED_OLD_REJECT_NEW_ACCEPT.',
+      'Shadow comparison domain helper distinguishes episode-resolution vs same-state provenance refresh; T+24h historical rows immutable.',
+      'Read-only audit script emits ACTUAL_STATE_REGRESSIONS and related metrics (deprecates misleading STATE_REGRESSION_COUNT label).',
+    ],
+    reason:
+      'T+24h shadow audit showed 107 legacy no_open_episode vs physical PROVENANCE_REFRESH rows with zero effective state change — GT-R1/bootstrap coverage gap, not a physical transition defect.',
+    previousBehavior:
+      'Only bootstrap/repair/unplug GT-R1 proofs; steady-state PROVENANCE_REFRESH vs no_open_episode stayed UNEXPLAINED blocking.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/P25_POST_BOOTSTRAP_PROVENANCE_REFRESH_GT_R1_2026-09-19.md; physical-state-gt-r1-proof.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-19T11:20:00.000Z',
+  },
+  {
+    id: 'vdc-rb019-p25-controlled-shadow-pilot-restart-2026-09-18',
+    version: '4.9.1146',
+    title: 'VDC RB-019 P2.5 — controlled STATEFUL_SHADOW pilot restart (Production)',
+    summary: [
+      'Production `backend.env`: RECONCILIATION + PROJECTION_WRITE + SHADOW_COMPARE ON for 4 authorized pilot scopes; AUTHORITY_CUTOVER and SIDE_EFFECTS remain OFF; authority LEGACY.',
+      'Canonical operational T0 `2026-09-18T09:33:25.000Z` → seven-day window end `2026-09-25T09:33:25.000Z`; invalid aborted T0 `2026-09-18T00:02:53.207Z` archived.',
+      'Rolling restart only (no application deploy); runtime SHA unchanged at `ca7bad8826871376a58efaa874f12992b88c4a04`.',
+      'Seven-day operational completion NOT_PROVEN; RFRF Stage 1 later survived restart with pilot T0 unchanged (EED-EV-0066).',
+    ],
+    reason:
+      'After freshness deploy, controlled pilot activation required a fresh epoch-bound shadow proof window without authority cutover or side effects.',
+    previousBehavior:
+      'P2.5 shadow compare OFF in Production after freshness deploy; failed T0 epoch invalid; no running seven-day clock.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/PHYSICAL_STATE_P25_CONNECTIVITY_FRESHNESS_FIX_2026-09-18.md (controlled restart section); architecture/vehicle-device-connectivity/CURRENT_STATE.md',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-18T09:33:25.000Z',
+  },
+  {
+    id: 'vdc-rb019-p25-connectivity-freshness-production-2026-09-18',
+    version: '4.9.1145',
+    title: 'VDC RB-019 P2.5 — snapshot connectivity freshness binding (Production deploy)',
+    summary: [
+      'DimoSnapshotProcessor applies physical snapshot evidence only after VW-F-008 VLS monotonic guard + upsert.',
+      'Snapshot OBD eligibility: evidenceObservedAt must strictly advance stored VLS sourceTimestamp — cached replay cannot mutate projection.',
+      'GT-R1 UNPLUG proof: SNAPSHOT_UNPLUG_TRANSITION + SNAPSHOT_UNPLUG_INITIAL_ESTABLISHMENT (legacy obd_false).',
+      'Production deploy `ca7bad8826871376a58efaa874f12992b88c4a04`; post-deploy Arteon stale cached OBD replay did not create false transitions.',
+      'Controlled STATEFUL_SHADOW pilot activated separately after deploy (see 4.9.1146 entry).',
+    ],
+    reason:
+      'Aborted P2.5 shadow restart applied stale cached obdIsPluggedIn before VLS stale guard, producing false PLUGGED→UNPLUGGED transition and UNEXPLAINED_OLD_REJECT_NEW_ACCEPT on Arteon.',
+    previousBehavior:
+      'applyPhysicalSnapshotEvidence ran before VLS monotonic guard; equal-timestamp cached OBD replay could establish current connectivity transitions.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/PHYSICAL_STATE_P25_CONNECTIVITY_FRESHNESS_FIX_2026-09-18.md; physical-state-snapshot-telemetry-eligibility.ts; dimo-snapshot.processor.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-18T09:03:22.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-4-0-stage2-transaction-safety-2026-09-18',
+    version: '4.9.1145',
+    title: 'RFRF F10.4.0 — Stage-2 transaction / recovery safety closure',
+    summary: [
+      'Generic rfrf_stage_transaction_run covers stages 1–6; recovery restores PRE_STAGE (Stage-2 failure → Stage 1, not Stage 0).',
+      'F10.4.0.3: mutation may-have-started boundary, verified replica stop, single authority evidence block, strict Linux signal tests.',
+      'F10.4.0.2: rollback fail-closed recovery-of-recovery, signal traps, production dry-run SHA gate, expanded rollback fixture injections.',
+      'Stage-2 enables master-only with cutover immutability; hardened --from-stage 2 rollback; 30+ fixture failure-injection tests.',
+      'Stage 2 not executed; Production remains Stage 1 at ca7bad…; F10.4.1 48s boundary audit required before authorization.',
+    ],
+    reason:
+      'Stages 2–6 previously used non-transactional enable path without recovery-to-previous-stage guarantees — unacceptable before master-detector activation.',
+    previousBehavior:
+      'Only Stage 1 used full transaction; Stages 2–6 were backup → mutate → restart without PRE/POST gates or PRE_STAGE recovery verification.',
+    details:
+      'docs/audits/eed-rfrf-f10-4-0-stage2-transaction-safety-2026-09-18.md; backend/scripts/test/rfrf-f10-stage2-transaction-safety-tests.sh; EED-EV-0067',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-18T12:30:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-3-0-2-evidence-completeness-2026-09-18',
+    version: '4.9.1144',
+    title: 'RFRF F10.3.0.2 — Cross-workstream evidence completeness fail-closed',
+    summary: [
+      'Immediate EXP-021/VDC survival gate now fails closed on incomplete, skipped, errored, or sentinel evidence — no missing==missing or ERROR==ERROR pass paths.',
+      'PRE snapshot + completeness validation is a hard pre-mutation gate; POST snapshot + validation blocks COMMIT and triggers recovery when armed.',
+      'Twelve deterministic failure-injection tests; production simulation never emits SKIPPED; Stage 1 not executed; production runtime unchanged at 3a2707b.',
+    ],
+    reason:
+      'F10.3.0.1 gate was directionally correct but could still pass when PRE/POST evidence was absent or carried ERROR/SKIPPED sentinels.',
+    previousBehavior:
+      'Cross-workstream state_get returned empty string for missing keys; equality checks could pass on ""=="" or ERROR==ERROR; DB snapshot could emit SKIPPED.',
+    details:
+      'docs/audits/eed-rfrf-f10-3-0-stage1-restart-safety-2026-09-18.md (F10.3.0.2 section); backend/scripts/test/rfrf-f10-stage1-restart-safety-tests.sh; EED-EV-0065 extended',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-18T09:00:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-3-0-1-transaction-closure-2026-09-18',
+    version: '4.9.1143',
+    title: 'RFRF F10.3.0.1 — Stage-1 transaction / recovery micro-closure',
+    summary: [
+      'Arms recovery before first backend.env mutation; ERR/TERM/INT/HUP fail-closed traps with idempotent single recovery handler.',
+      'Same-filesystem atomic rename for env upsert + restore; byte-identical backup checksum contract; PRE/POST EXP-021/VDC immediate survival gates.',
+      'Expanded failure-injection matrix (chmod/post-mutation/signal/cross-workstream drift); Stage 1 not executed; production runtime unchanged at 3a2707b.',
+    ],
+    reason:
+      'Independent review of F10.3.0 found recovery armed too late, non-atomic restore, and cross-workstream snapshots without enforcement gates.',
+    previousBehavior:
+      'Recovery keyed off STAGE_MUTATION_APPLIED after chmod; cp-based restore; PRE/POST snapshots printed but not compared before PASS.',
+    details:
+      'docs/audits/eed-rfrf-f10-3-0-stage1-restart-safety-2026-09-18.md (F10.3.0.1 section); backend/scripts/test/rfrf-f10-stage1-restart-safety-tests.sh; EED-EV-0065 extended',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-18T08:30:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-3-0-stage1-restart-safety-2026-09-18',
+    version: '4.9.1142',
+    title: 'RFRF F10.3.0 — Stage-1 restart safety micro-closure',
+    summary: [
+      'Hardens Stage-1 enable controller before first production execution: verified SHA256 backup, automatic env restore + dual-replica restart on failure, live-required preflight gate.',
+      'Documents EXP-021/VDC post-restart survival contracts and explicit operator-supplied cutover (no implicit now).',
+      'Failure-injection fixture tests; Stage 1 not executed; production runtime unchanged at 3a2707b.',
+    ],
+    reason:
+      'F10.2 PASS exposed that Stage-1 could leave shared env mutated with only one replica restarted — fail-closed automatic recovery required before authorization.',
+    previousBehavior:
+      'enable-stage mutated backend.env then rolling-restarted; no automatic restore/restart on failure; preflight used --check only.',
+    details:
+      'docs/audits/eed-rfrf-f10-3-0-stage1-restart-safety-2026-09-18.md; backend/scripts/test/rfrf-f10-stage1-restart-safety-tests.sh; EED-EV-0065',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-18T07:30:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-2-2-metrics-probe-micro-closure-2026-09-17',
+    version: '4.9.1141',
+    title: 'RFRF F10.2.2 — Metrics probe SIGPIPE/pipefail micro-closure',
+    summary: [
+      'Fixes rfrf_metrics_probe() false-negative under set -euo pipefail when Prometheus bodies are large: echo|grep -q SIGPIPE (141) despite metric present.',
+      'Adds rfrf_metrics_body_has_metric() — HELP/TYPE grep -Fq here-string plus line-prefix series scan; no producer|grep -q pipeline.',
+      'Large-payload regression + real probe fixture tests; F10.2 still blocked until post-merge tooling retry against unchanged production runtime 3a2707b.',
+    ],
+    reason:
+      'F10.2 cross-workstream preservation gate PASS on production 3a2707b but live preflight reported METRICS_*_RFRF=NO due to operational tooling bug, not missing runtime metrics.',
+    previousBehavior:
+      'rfrf_metrics_probe used echo "$body" | grep -q on multi-MB exposition payloads; grep -q early exit SIGPIPE upstream under pipefail.',
+    details:
+      'docs/audits/eed-rfrf-f10-2-1-preflight-dotenv-closure-2026-09-16.md (F10.2.2 section); backend/scripts/test/rfrf-f10-metrics-probe-regression.sh; EED-EV-0064 extended',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-17T23:30:00.000Z',
+  },
+  {
+    id: 'exp021-ks-mx-2024-canary-operator-cli-2026-09-17',
+    version: '4.9.1140',
+    title: 'EXP-021 — KS MX 2024 canary single-family operator CLI',
+    summary: [
+      'Repository-native manual operator CLI to enroll exactly one KS MX 2024 maturation shadow window family — no HTTP API, no cron, no automatic fleet hook.',
+      'Default DRY RUN; `--execute` required for DB/BullMQ writes. `--wait-next-window` polls authoritative physical drive interval close from settlement-shadow experiment metadata.',
+      'Hard guards: token 187336, KS MX 2024 org/vehicle binding, both lanes enabled, allowlist exactly [187336], maxActiveFamilies=1, zero unfinished families.',
+      'Safety micro-closure: authoritative token equality enforced; activity resolved only after canonicalWindowTo from full geometry RC observation windows; execute requires exact persisted physicalEndAt; strict token parse; wait-mode refreshes DB each poll (startup snapshot only for baseline); stale windows skipped with lag diagnostics.',
+      'Freshness guard preserves dense 30s–60s ages; `EXPECTED_PROVIDER_CALLS_DURING_ENROLLMENT=0` (M2 worker executes observations later).',
+    ],
+    reason:
+      'Production canary activation gate passed but automatic enrollment remains unwired — operator needs a bounded, fail-closed manual start path.',
+    previousBehavior:
+      'ReferenceCaptureExp021MaturationShadowEnrollmentService callable only from tests/integration — no operator-facing CLI.',
+    details:
+      'npm run exp021:maturation-shadow:canary:enroll; architecture/drivingintelligence/evidence/reference-capture/exp021-maturation-shadow-canary-operator-cli-2026-09-17.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-17T14:00:00.000Z',
+  },
+  {
+    id: 'exp021-live-maturation-shadow-pr-m3-analytics-export-2026-09-17',
+    version: '4.9.1139',
+    title: 'EXP-021 — Live Maturation Shadow PR-M3 observational analytics and export',
+    summary: [
+      'Read-only M3 analysis layer over immutable M1/M2 scientific rows — no schema changes, no provider calls, no M1/M2 mutation.',
+      'Bucket-locus reconstruction, availability interval censoring (actualAgeMs authority), cumulative maturation vs final shadow-observed union (observational denominator only).',
+      'Per-field maturation, payload revision separate from locus coverage, scheduler drift + provider error diagnostics, paired 60s/90s family export.',
+      'Deterministic JSON/CSV export CLI (`npm run exp021:maturation-shadow:m3:export`) with explicit org+vehicle scope.',
+      'PostgreSQL read-only fingerprint proof; 29 unit tests + CI jobs `exp021-maturation-shadow-m3` + postgres integration.',
+    ],
+    reason:
+      'Scientific maturation evidence requires observational analytics over shadow pilot data without converting evidence into production retry policy.',
+    previousBehavior:
+      'M1 persistence + M2 scheduler/worker only — no deterministic maturation analysis or export layer.',
+    details:
+      'PR #1676; architecture/drivingintelligence/evidence/reference-capture/exp021-maturation-shadow-m3-2026-09-17.md; backend/src/modules/vehicle-intelligence/reference-capture/exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-m3-*.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-17T10:50:00.000Z',
+  },
+  {
+    id: 'tdl-r12-ch-assist-skip-resume-revalidation-2026-09-17',
+    version: '4.9.1138',
+    title: 'R12 — CH assist skip resume revalidation (KS MX 2024 false-terminal safety)',
+    summary: [
+      'Production KS MX 2024 POST-#1648: EV2 clickhouse_end_assist_skip_cusum finalized stale CH end while physical resume existed but was not yet visible in first fetch.',
+      'Fix: authoritative post-boundary resume/movement revalidation immediately before CH skip terminal consumption; visible resume invalidates candidate; immature window defers END_VALIDATION without consuming #1627 attempt budget; persistent fetch uncertainty after immaturity bound hands off to existing CUSUM validation (bounded — no infinite KEEP_OPEN).',
+      'Immaturity bound reuses TRIP_END_VALIDATION_RETRY_MS + TRIP_END_CH_ASSIST_STABILITY_MS (90s); original provider event-time end preserved on true final stop.',
+      'Postgres+BullMQ integration reproduces Production causal sequence RED on BASE / GREEN on HEAD (5 scenarios).',
+      'Forensic authority preserved in PR #1673 — this workstream is runtime implementation only; no Production mutation or historical repair.',
+    ],
+    reason:
+      'clickhouse_end_assist_skip_cusum terminal path lacked post-boundary resume revalidation, allowing false terminalization during ingestion/event-time race after CUSUM reopen + empty-core CH re-latch.',
+    previousBehavior:
+      'CH skip path finalized immediately when endDetectionMode=CLICKHOUSE_END_ASSIST and cusumSegmentEnd present — no distinction between immature absence of movement evidence and proven absence.',
+    details:
+      'architecture/trip-detection-lifecycle/evidence/KS_MX_2024_CH_ASSIST_SKIP_RESUME_REVALIDATION_2026-09-17.md; forensic PR #1673; trip-detection-orchestration.service.ts + trip-end-cycle-reset.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-17T06:30:00.000Z',
+  },
+  {
+    id: 'vdc-rb019-p25-bootstrap-gt-r1-proof-2026-09-17',
+    version: '4.9.1138',
+    title: 'VDC RB-019 P2.5 — bootstrap GT-R1 expected-fix proof closure',
+    summary: [
+      'SNAPSHOT_PLUG_INITIAL_ESTABLISHMENT proof for absent projection → PLUGGED SNAPSHOT_OBD bootstrap.',
+      'buildSnapshotGtR1Proof() resolver: repair (UNPLUGGED baseline) precedence, then bootstrap.',
+      'Wired from PhysicalStateSnapshotEvidenceOrchestrator real call-site; comparator receives proof object.',
+      'Reuses EXPECTED_FIX_OLD_REJECT_NEW_ACCEPT (non-blocking); negative proof matrix + BOOTSTRAP CASE A–D PG proofs.',
+      'Bootstrap expected-fix bound to actual ESTABLISHED transition (isProvenExpectedFixForPhysicalDecision); fail-closed vs stale pre-read.',
+      'Epoch-aware getOperationalCoverage({ windowStart }) + summarizeScopeWindow exclude pre-restart rows (PSG-TIME-0A/0B/0C); old prefix cannot fake 7-day window.',
+    ],
+    reason:
+      'Failed Production shadow pilot produced UNEXPLAINED_OLD_REJECT_NEW_ACCEPT on first bootstrap because GT-R1 only covered UNPLUGGED-baseline repair, not absent projection establishment.',
+    previousBehavior:
+      'no_open_episode legacy reject + physical ESTABLISHED accept on empty projection classified UNEXPLAINED (correctness-blocking).',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/PHYSICAL_STATE_P25_BOOTSTRAP_GT_R1_PROOF_2026-09-17.md; STATEFUL_SHADOW still OFF; five historical Production observations preserved.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-17T19:00:00.000Z',
+  },
+  {
+    id: 'vdc-rb019-p25-shadow-pilot-scope-gate-2026-09-16',
+    version: '4.9.1137',
+    title: 'VDC RB-019 P2.5 — STATEFUL_SHADOW pilot scope gate + scope-bound observability',
+    summary: [
+      'Fail-closed CONNECTIVITY_PHYSICAL_STATE_SHADOW_PILOT_SCOPES_JSON allowlist (org + vehicle + normalized provider).',
+      'Pilot gate before ensureAuthorityRow and all physical durable writes on webhook + snapshot paths.',
+      'PHYSICAL authority bypasses pilot gate; non-pilot LEGACY scopes perform zero physical mutations when master ON.',
+      'Scope-bound shadow structured logs; low-cardinality pilot gate Prometheus counter (no org/vehicle labels).',
+      'Durable PostgreSQL shadow observations with dual clocks (comparison observedAt vs evidenceObservedAt); operational ≥7-day proof uses runtime comparison span only (PSG-TIME-1/2).',
+      'Leader-owned retention scheduler; persistence-failure metric/log without breaking legacy writer path; PSG-A..W unit + PG proof matrix.',
+    ],
+    reason:
+      'Global STATEFUL_SHADOW flags at deployed SHA would blast-radius all DIMO scopes; operational pilot proof requires scope-bound durable evidence.',
+    previousBehavior:
+      'Master + projection-write + shadow-compare applied to all eligible scopes; shadow logs/metrics lacked org/vehicle scope dimensions.',
+    details:
+      'docs/audits/vdc-rb019-p25-shadow-pilot-scope-gate-2026-09-16.md; STATEFUL_SHADOW_PILOT_ENABLEMENT_READY=NO; P2_5_CUTOVER_ACTIVATION_READY=NOT_PROVEN.',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-09-16T00:15:00.000Z',
+  },
+  {
     id: 'vdc-rb019-p24-preseed-tooling-2026-09-14',
     version: '4.9.1130',
     title: 'VDC RB-019 Phase 2 P2.4 — physical-state pre-seed tooling (dark)',
@@ -223,6 +1914,84 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     affectsArchitecture: true,
     module: 'Vehicle & Device Connectivity',
     createdAt: '2026-09-13T06:30:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-1-1-micro-closure-2026-09-15',
+    version: '4.9.1139',
+    title: 'RFRF F10.1.1 — Mergeability + operational safety micro-closure',
+    summary: [
+      'Reconciles PR #1665 onto current main without duplicate F9 commits; preserves net F10 operational delta only.',
+      'Fixes fail-closed rollout gaps: Stage 1 proposed cutover, explicit deploy SHA, monitoring apply contract, live Prometheus gates, blast-radius enforcement, Stage 6 prerequisites.',
+      'Adds script-level fixture contract tests; no runtime/schema change; production not mutated.',
+    ],
+    reason:
+      'Independent review found PR #1665 merge-dirty and operational tooling gaps that could block safe staged production rollout.',
+    previousBehavior:
+      'F10.1 tooling existed but Stage 1 was unreachable, deploy SHA defaulted to stale F9 merge, monitoring apply could silently dry-run, and Prometheus verification was file-only.',
+    details:
+      'docs/audits/eed-rfrf-f10-1-operational-rollout-closure-2026-09-15.md (F10.1.1 section); backend/scripts/test/rfrf-f10-operational-script-contracts.sh; EED-EV-0063 extended',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-15T22:30:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f10-1-operational-rollout-closure-2026-09-15',
+    version: '4.9.1138',
+    title: 'RFRF F10.1 — Operational production rollout closure',
+    summary: [
+      'Operator runbook + read-only preflight + staged enablement/rollback tooling for RFRF production rollout.',
+      'Blast-radius assessment gate before Stage 5; F8 alert verify/sync tooling; dual-replica Prometheus scrape config.',
+      'No runtime/schema change; production not mutated; Stage 5/6 blocked until observability topology complete.',
+    ],
+    reason:
+      'F10.0 audit BLOCKED production execution for missing runbook, enablement scripts, and loaded F8 alerts — F10.1 closes operational prerequisites only.',
+    previousBehavior:
+      'RFRF F1–F9 runtime proven in tests but no production-grade staged rollout control plane or operator runbook.',
+    details:
+      'docs/operations/rfrf-production-rollout-runbook-2026-09-15.md; docs/audits/eed-rfrf-f10-1-operational-rollout-closure-2026-09-15.md; EED-EV-0063',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-15T20:56:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f9-multi-replica-integration-closure-2026-09-15',
+    version: '4.9.1137',
+    title: 'RFRF F9 — Independent-replica integration closure',
+    summary: [
+      'Closes remaining multi-replica gap at RFRF promotion/convergence boundary with independent PrismaClient A/B and service stacks.',
+      'F9-P1..P6 + P10 real PG (+ Redis P6); explicit replica identity assertions; consolidated rfrf-f9-multi-replica-integration-gate.sh.',
+      'Reuses F7 multi-replica recovery 3/3, F5-PR2, F5-PR3.1, F6, F7, F8, G2 Jest, metrics — no runtime or schema change.',
+    ],
+    reason:
+      'F5-PR2 P3 proved concurrent promotion on one stack; production replicas use independent clients/pools — F9 proves DB advisory lock survives that boundary.',
+    previousBehavior:
+      'Multi-replica integration evidence existed for recovery/schedulers and single-stack promotion/handoff concurrency, not independent promotion/G2 client boundaries.',
+    details:
+      'docs/audits/eed-rfrf-f9-multi-replica-integration-closure-2026-09-15.md; EED-EV-0062; BASE_MAIN bcd64c0a2',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-15T17:15:00.000Z',
+  },
+  {
+    id: 'eed-rfrf-f8-operational-telemetry-alerting-2026-09-15',
+    version: '4.9.1136',
+    title: 'RFRF F8/F8.1/F8.2 — Operational telemetry + semantic closure',
+    summary: [
+      'PhysicalRefuelReconciliationMetricsService exports recovery backlog gauges on TripMetricsService.registry.',
+      'F8.1: scheduler publishes recovery_enabled at lifecycle + zero-success stale alert; actionable backlog parity for all six reasons.',
+      'F8.2: lost_enqueue actionable count uses PostgreSQL COUNT (isfinite/source/enrichment/authority) — no unbounded findMany.',
+      'Scheduler-owned run/last-success metrics; physical-refuel alert group in alerts.yml; F8/F8.1/F8.2 real PG gate.',
+      'No second metrics stack; RFRF G2 handoff counters preserved; no recovery science or schema changes.',
+    ],
+    reason:
+      'F7 closed durable recovery correctness; F8 closes the remaining operational visibility gap (backlog was log-only).',
+    previousBehavior:
+      'Recovery backlog and scheduler health were structured logs only — not exported to canonical Prometheus or alert rules.',
+    details:
+      'docs/audits/eed-rfrf-f8-operational-telemetry-alerting-2026-09-15.md; EED-EV-0061; BASE_MAIN ad8392d8c',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-15T13:45:00.000Z',
   },
   {
     id: 'eed-rfrf-f7-recovery-completeness-2026-09-15',
@@ -12094,6 +13863,317 @@ id: 'document-intake-v2-p2-fixes-2026-07-18',
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
     createdAt: '2026-07-17T11:00:00.000Z',
+  },
+  {
+    id: 'erd-e3-fallback-convergence-2026-09-24',
+    version: '4.9.900',
+    title: 'ERD E3 — telemetry fallback hardening + native/fallback convergence',
+    summary: [
+      'Native-first fallback activation: capability ≠ episode; provisional TELEMETRY_POLL_FALLBACK when telemetry qualifies and no SAME native row.',
+      'Physical matcher SAME/AMBIGUOUS/DIFFERENT with deterministic evaluatedAt overlap; fail-closed supersession (no mass temporal supersede).',
+      'Atomic late-native convergence: advisory lock + single TX supersede fallback + upsert native HvChargeSession.',
+      'E3 observability: synqdrive_erd_e3_convergence_total{reason}; postgres gate ERD_E3_POSTGRES_INTEGRATION=1.',
+    ],
+    reason: 'ERD E3 workstream — provider-delay + LTE telemetry fallback without E5 VEE cutover or production flags.',
+    previousBehavior:
+      'Fallback skipped when rechargeSegmentsAvailable; temporal overlap superseded all overlapping fallback rows outside one transaction.',
+    details:
+      'erd-physical-episode-matcher.ts, hv-charge-session-native-fallback-convergence.service.ts, architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E3-FALLBACK-CONVERGENCE-2026-09-24.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-24T12:00:00.000Z',
+  },
+  {
+    id: 'erd-e3-1-authority-lock-2026-09-24',
+    version: '4.9.901',
+    title: 'ERD E3.1 — shared ERD vehicle authority lock + fallback identity races',
+    summary: [
+      'Single pg_advisory_xact_lock per vehicle for native convergence and fallback provisional writes; lock → re-read → decide → write.',
+      'Persisted fallback fingerprint/start anchor immutable; matcher-based replay reuse (fail-closed on ambiguous anchors).',
+      'Postgres gate: independent PrismaClient A/B races, replay, rollback proofs (ERD_E3_POSTGRES_INTEGRATION=1).',
+    ],
+    reason: 'E3.1 closes split-brain between unlocked native no-supersede path and unlocked fallback writes.',
+    previousBehavior:
+      'Native without supersede used persistDraftOutsideTx; fallback used unlocked persistSessionDraft — concurrent native+fallback could leave active native + active fallback for one episode.',
+    details:
+      'erd-hv-charge-session-authority.lock.ts, hv-charge-session-native-fallback-convergence.service.ts, hv-fallback-charge-session-anchor.policy.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-24T13:00:00.000Z',
+  },
+  {
+    id: 'erd-e4-reconciliation-liveness-2026-09-24',
+    version: '4.9.902',
+    title: 'ERD E4 — durable reconciliation / recovery liveness',
+    summary: [
+      'Canonical ERD reconcile eligibility shared with E3 fallback activation (SOC + corroborating signals, not is_charging-only periodic selector).',
+      'Explicit periodic idempotency buckets; rotating fair batch selection without new recovery table.',
+      'Master HV flag off skips periodic enqueue; synqdrive_erd_e4_liveness_total observability; CI gate step 6.',
+    ],
+    reason: 'Close liveness gaps for telemetry-only fallback profiles and deterministic periodic recovery after DLQ/restart.',
+    previousBehavior:
+      'Periodic fallback targets used hv.is_charging capability only; PERIODIC idempotency could derive bucket from implicit Date.now().',
+    details:
+      'hv-erd-reconcile-eligibility.policy.ts, hv-recharge-reconcile-target.query.ts, architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E4-RECONCILIATION-LIVENESS-2026-09-24.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-24T14:30:00.000Z',
+  },
+  {
+    id: 'erd-e4-1-signal-fairness-closure-2026-09-24',
+    version: '4.9.903',
+    title: 'ERD E4.1 — eligibility signal authority + true bounded no-starvation',
+    summary: [
+      'Canonical HV signal keys shared across registry, HvMethodProfile, E3 fallback, and E4 eligibility (charging_power corroborates; current_power does not).',
+      'Partition rotation fairness via periodIndex mod 12 with PostgreSQL-bounded selection — removes hash(periodBucket) slice and pre-fairness maxScan truncation.',
+      'Postgres gate proves 109+ vehicle fleet coverage, charging_power vs current_power, and restart-stable deterministic selection.',
+    ],
+    reason: 'Close E4 signal drift vs E3 and false periodic fairness that could permanently starve eligible vehicles.',
+    previousBehavior:
+      'E4 listed hv.current_power as fallback corroboration; fairness used hash(periodBucket)%12 on a truncated candidate prefix (batch×12).',
+    details:
+      'hv-erd-capability-signal-keys.ts, hv-recharge-reconcile-target.query.ts, hv-recharge-periodic-target.policy.ts, evidence/ERD-E4-RECONCILIATION-LIVENESS-2026-09-24.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-24T16:00:00.000Z',
+  },
+  {
+    id: 'erd-e4-2-bullmq-redis-liveness-2026-09-24',
+    version: '4.9.904',
+    title: 'ERD E4.2 — real BullMQ + Redis liveness proof',
+    summary: [
+      'Real BullMQ Queue/Worker/QueueEvents on Redis for HV_RECHARGE_SESSION_RECONCILE periodic idempotency, next-bucket recovery, lost-job rediscovery, and retry transitions.',
+      'Boundary-repair CI step 7/7 runs bullmq redis integration (redis-memory-server); step 6 remains PostgreSQL-only.',
+    ],
+    reason: 'Close evidence gap: ERD_E4_POSTGRES_REDIS_INTEGRATION did not exercise Redis.',
+    previousBehavior:
+      'No Redis in boundary-repair CI; duplicate/recovery semantics documented but not proven against real BullMQ state.',
+    details:
+      'erd-e4-reconciliation-liveness.bullmq.redis.integration.spec.ts, scripts/test/erd-e4-bullmq-redis-ci.sh, .github/workflows/vehicle-detail-production-readiness.yml',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-24T17:05:00.000Z',
+  },
+  {
+    id: 'erd-e5-1-canonical-vee-recharge-foundation-2026-09-24',
+    version: '4.9.905',
+    title: 'ERD E5.1 — canonical VEE RECHARGE projection foundation',
+    summary: [
+      'Schema: nullable canonicalChargeSessionId → HvChargeSession (unique, onDelete SetNull); dimoSegmentId nullable for telemetry-only ERD projections.',
+      'Provenance: VehicleEnergyEventDetectionSource.SYNQDRIVE_ERD_RECHARGE_PROJECTION + extended vehicle_energy_events_source_identity_check (RFRF pairings preserved).',
+      'E5.1a: split enum ADD VALUE migration from CHECK/FK migration (PostgreSQL commit boundary); fresh migrate deploy + PG-A…PG-K reproven.',
+      'Pure policies: projection eligibility (fail-closed), identity v1 sourceEventKey, non-persisting field mapper; documented E3 shared advisory-lock contract for E5.2+.',
+      'PostgreSQL gate PG-A…PG-K (boundary-repair step 8/8). No runtime projector, no cutover, legacy DIMO→VEE writer unchanged.',
+    ],
+    reason:
+      'E5.0 preflight PASS — establish DB + policy substrate before E5.2 idempotent projector wiring.',
+    previousBehavior:
+      'VehicleEnergyEvent RECHARGE required dimoSegmentId; no FK to HvChargeSession; no ERD-specific detectionSource.',
+    details:
+      'backend/prisma/migrations/20260924180000_erd_e5_1_recharge_projection_enum_value + 20260924181000_erd_e5_1_recharge_projection_foundation; erd-recharge-projection/*; architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E5-1-CANONICAL-VEE-RECHARGE-PROJECTION-FOUNDATION-2026-09-24.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-24T20:15:00.000Z',
+  },
+  {
+    id: 'erd-e5-2-canonical-vee-recharge-projector-idempotency-2026-09-25',
+    version: '4.9.907',
+    title: 'ERD E5.2 — canonical VEE RECHARGE projector idempotency',
+    summary: [
+      'Persisting projector `projectCanonicalRecharge()` under shared E3 vehicle advisory lock with locked session re-read.',
+      'Bounded outcomes: CREATED, RECONCILED, NO_OP, NOT_PROJECTABLE, HANDOFF_REQUIRED, LEGACY_DIMO_COLLISION, IDENTITY_CONFLICT.',
+      'Same-authority reconciliation allowlist; immutable sourceEventKey + VEE row id; HANDOFF_REQUIRED defers to E5.3.',
+      'PostgreSQL T1–T20 + independent PrismaClient race + rollback proofs (boundary-repair step 9/9). Not Nest-wired; no automatic runtime triggers.',
+    ],
+    reason:
+      'E5.1 foundation merged — prove one HvChargeSession maps to at most one canonical VEE RECHARGE before cutover wiring.',
+    previousBehavior:
+      'E5.1 mapper/eligibility only; no persisting canonical ERD recharge projector.',
+    details:
+      'erd-recharge-projection/erd-canonical-recharge-projector.ts; erd-e5-2-recharge-projector.postgres.integration.spec.ts; architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E5-2-CANONICAL-VEE-RECHARGE-PROJECTOR-IDEMPOTENCY-2026-09-25.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-25T00:00:00.000Z',
+  },
+  {
+    id: 'erd-e6-3-charging-location-enrichment-runtime-2026-09-26',
+    version: '4.9.915',
+    title: 'ERD E6.3 — charging location enrichment runtime',
+    summary: [
+      'Canonical ERD RECHARGE `VehicleEnergyEvent` rows can hold a separate durable `VehicleEnergyEventChargingStationEnrichment` row (independent from REFUEL fuel-station enrichment).',
+      'Uses E6.1 canonical coordinates + E6.2 charging-station resolver; async BullMQ queue `energy.recharge.station.enrich` with recovery for missed/stale work; fingerprint/idempotency prevents duplicate logical enrichment.',
+      'Read API exposes nested `chargingStationEnrichment` on energy events; post-projection enqueue is fail-open relative to canonical RECHARGE projection.',
+      'Acceptance: PostgreSQL P matrix + P-ERROR/cutover/fingerprint cases; real Redis/BullMQ Q1–Q10; recovery R1–R12; E6.1 P1–P15 + E6.2 PG1–PG15 regression (boundary steps 14–18/18); 42/42 required checks green before merge PR #1791.',
+      'Feature flags remain OFF — no Production dataset import, no Production flag activation, no historical backfill; not live in Production.',
+    ],
+    reason:
+      'E6.2 merged — reference resolver exists; E6.3 durably attaches resolver outcomes to canonical RECHARGE product rows without changing E5.6 write authority or REFUEL semantics.',
+    previousBehavior:
+      'No charging-station enrichment persistence, queue worker, recovery, or API projection on canonical RECHARGE events (E6.2 resolver only).',
+    details:
+      'backend/src/modules/vehicle-intelligence/charging-stations/enrichment/*; migration `20260926120000_vehicle_energy_event_charging_station_enrichment`; architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E6-3-CHARGING-LOCATION-ENRICHMENT-RUNTIME-2026-09-26.md; EED-EV-0089; merged PR #1791 (merge SHA b73aca3d9)',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-26T13:30:00.000Z',
+  },
+  {
+    id: 'erd-e6-2-charging-station-reference-resolver-2026-09-25',
+    version: '4.9.914',
+    title: 'ERD E6.2 — charging station reference dataset and resolver',
+    summary: [
+      'Independent OSM charging-station domain: Geofabrik import (node/way/relation), `amenity=charging_station` only; fuel/device_charging_station/motorcar=no excluded.',
+      '`charging-station-resolver-v1`: geometry-first PostGIS match, station-level authority, fail-open ambiguity; metadata cannot override distance; no external runtime lookup.',
+      'Importer/validation I1–I14 + refresh safety (invalid geometry + failed validation preserves last-good); Required CI PostGIS; boundary-repair step 15/18 PG1–PG15 PASS (merged PR #1781).',
+      'No Production charging dataset import; no Recharge event enrichment or customer-facing charging resolution runtime (E6.3 next stage).',
+    ],
+    reason:
+      'E6.1 merged — native recharge coordinates exist on canonical VEE; E6.2 adds reference OSM station dataset + resolver without wiring enrichment.',
+    previousBehavior:
+      'No independent charging-station OSM tables or resolver; fuel-station OSM pipeline remained the only station reference domain.',
+    details:
+      'backend/scripts/ops/osm-charging-stations/*; backend/src/modules/vehicle-intelligence/charging-stations/*; architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E6-2-CHARGING-STATION-REFERENCE-RESOLVER-2026-09-25.md; EED-EV-0088',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-26T07:00:00.000Z',
+  },
+  {
+    id: 'erd-e6-1-recharge-location-provenance-2026-09-25',
+    version: '4.9.913',
+    title: 'ERD E6.1 — canonical recharge location provenance',
+    summary: [
+      'Preserves native DIMO recharge segment start/end coordinates on HvChargeSession.metadata with strict pair validation.',
+      'Projects trusted native locations into canonical ERD VehicleEnergyEvent.RECHARGE (mutable coordinate fields + rawDetectionMeta provenance).',
+      'Fallback telemetry sessions remain location-null; no fuel-station OSM resolver or charger matching.',
+      'PostgreSQL + unit gates (boundary-repair step 14/18); no schema migration; no backfill.',
+    ],
+    reason:
+      'E5.6 merged — canonical product recharge rows must carry authoritative native location evidence before E6.2 charging-station resolution.',
+    previousBehavior:
+      'DIMO segment coordinates were dropped at HvChargeSession ingest; ERD projection hard-coded null latitude/longitude on VEE.',
+    details:
+      'erd-recharge-location-provenance/*; hv-charge-session.mapper.ts; hv-charge-session.merge.ts; erd-recharge-projection-mapper.ts; architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E6-1-CANONICAL-RECHARGE-LOCATION-PROVENANCE-2026-09-25.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-25T12:00:00.000Z',
+  },
+  {
+    id: 'erd-e5-6-write-authority-cutover-2026-09-25',
+    version: '4.9.912',
+    title: 'ERD E5.6 — recharge write-authority cutover gate',
+    summary: [
+      'Single write-authority resolver (`ERD_RECHARGE_WRITE_CUTOVER_AUTHORIZED` + `ERD_RECHARGE_WRITE_CUTOVER_AT`) with physical evidence end boundary.',
+      'Legacy DIMO RECHARGE upsert gate + canonical-row protection; canonical projection runtime after HV session reconcile (isolated from E3 transaction).',
+      'CANONICAL authority requires Battery HV session + fallback + reconciliation + E5.5 read dedupe; default OFF — no Production activation.',
+      'PostgreSQL + unit gates (boundary-repair step 13/13); no schema migration; no historical backfill.',
+    ],
+    reason:
+      'E5.5 merged — code must enforce exactly one product writer per post-cutover recharge episode without weakening E5.2 collision protection or mutating historical rows.',
+    previousBehavior:
+      'Legacy DIMO writer always persisted RECHARGE VEE; projectCanonicalRecharge was test-only with no automatic runtime cutover.',
+    details:
+      'erd-recharge-write-authority/*; energy-events.service.ts; hv-recharge-session-reconcile.service.ts; architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E5-6-WRITE-AUTHORITY-CUTOVER-GATE-2026-09-25.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-25T11:00:00.000Z',
+  },
+  {
+    id: 'erd-e5-5-product-read-dedupe-2026-09-25',
+    version: '4.9.911',
+    title: 'ERD E5.5 — canonical recharge product-read dedupe',
+    summary: [
+      'Product-facing read dedupe for coexisting legacy DIMO RECHARGE VEE and canonical ERD projection rows (strict identity v1: exact DIMO + coalesced lineage only).',
+      'Fail-open on ambiguity, partial coalesced coverage, fallback-null-DIMO, and malformed projection rows; REFUEL canonicalization unchanged.',
+      'Flag `ERD_RECHARGE_PRODUCT_READ_DEDUPE_ENABLED` default OFF; independent of E5.4 shadow parity; raw/forensic reads unchanged.',
+      'PostgreSQL + unit gate (boundary-repair step 12/12); no schema migration; not write cutover (E5.6).',
+    ],
+    reason:
+      'E5.4 merged — one physical recharge should appear once in product reads when duplicate identity is strongly proven, without mutating DB rows or activating canonical writer.',
+    previousBehavior:
+      'listCanonicalEnergyEvents passed all RECHARGE rows through; legacy and canonical ERD duplicates could both appear in Trips timeline.',
+    details:
+      'erd-recharge-product-read-dedupe/*; canonical-energy-events.projection.ts; architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E5-5-PRODUCT-READ-DEDUPE-2026-09-25.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-25T09:35:00.000Z',
+  },
+  {
+    id: 'erd-e5-4-topology-energy-adr-2026-09-27',
+    version: '4.9.996',
+    title: 'ERD E5.4 — shadow parity topology + recharge energy semantics ADR',
+    summary: [
+      'Architecture-only dual ADR: physical-episode shadow parity (EED-DEC-ERD-002) and Option C recharge energy contract (EED-DEC-ERD-003).',
+      'Production closure: 6/6 exact pairs; 70 legacy rows = 6 physical clusters + 64 contained fragments; pre-fix comparator LEGACY_ONLY inflation (denominator 70, rate 0 not authoritative).',
+      'Reuse MULTIPLE_LEGACY_ONE_CANONICAL for fragment siblings; settled denominator excludes multiplicity diagnostics; lock energyDeltaKwh stored delta + additive chargingEnergyAddedKwh (future schema).',
+      'No runtime code, Prisma migration, Production mutation, or shadow enablement in this change.',
+    ],
+    reason:
+      'Close E5.4 measurement semantics before comparator topology + canonical stored-energy mapper implementation and cutover gating.',
+    previousBehavior:
+      'Shadow aggregator treated each legacy row as independent settled opportunity; energy mismatch interpreted as mapping defect rather than dual DIMO signal semantics.',
+    details:
+      'decisions/ERD-E5-4A-SHADOW-PARITY-PHYSICAL-EPISODE-TOPOLOGY-2026-09-27.md; decisions/ERD-RECHARGE-ENERGY-PRODUCT-SEMANTICS-2026-09-27.md; evidence/ERD-E5-4-FRAGMENT-TOPOLOGY-PRODUCTION-CLOSURE-2026-09-27.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-27T07:30:00.000Z',
+  },
+  {
+    id: 'erd-e5-4-null-safe-legacy-cohort-2026-09-26',
+    version: '4.9.995',
+    title: 'ERD E5.4 — NULL-safe legacy recharge cohort Prisma query',
+    summary: [
+      'Remove redundant NOT detectionSource filter from buildLegacyDirectDimoRechargeWhere that dropped detection_source IS NULL legacy rows under SQL three-valued logic.',
+      'Positive whitelist unchanged (NULL | DIMO_NATIVE); isLegacyDirectDimoRechargeRow unchanged; no tolerance or pairing semantic changes.',
+      'PostgreSQL regressions R1–R4 plus full E5.4 S1–S28 matrix.',
+    ],
+    reason:
+      'Production shadow dry-run could not load legacy DIMO RECHARGE rows (LEGACY_EPISODE_COUNT=0) despite valid NULL detection_source episodes.',
+    previousBehavior:
+      'Prisma legacy cohort query returned zero rows for common Production legacy RECHARGE rows with detection_source NULL.',
+    details:
+      'legacy-recharge-cohort.policy.ts; erd-e5-4-recharge-shadow-parity.postgres.integration.spec.ts; architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E5-4-SHADOW-PARITY-2026-09-25.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-26T22:15:00.000Z',
+  },
+  {
+    id: 'erd-e5-4-recharge-shadow-parity-2026-09-25',
+    version: '4.9.910',
+    title: 'ERD E5.4 — canonical vs legacy recharge shadow parity',
+    summary: [
+      'Bidirectional parity evaluator: legacy `LEGACY_DIRECT_DIMO_RECHARGE` cohort vs eligible `HvChargeSession` → pure E5.1 projection drafts (no `projectCanonicalRecharge()`).',
+      'Pairing hierarchy P1 exact DIMO, P2 coalesced lineage, P3 unique window; explicit cardinality classes for legacy coalescing vs multiple canonical sessions.',
+      'Diagnostic persistence `ErdRechargeProjectionShadowObservation` with deterministic comparison fingerprint idempotency; PENDING_SETTLEMENT finality for fallback-only lateness.',
+      'Flag `ERD_RECHARGE_SHADOW_PARITY_ENABLED` default OFF; fail-open post-`detectEnergyEvents` hook; bounded Prometheus metrics; PostgreSQL S1–S28 (boundary step 11/11).',
+    ],
+    reason:
+      'E5.3 merged — measure legacy DIMO recharge vs canonical ERD drafts before E5.5 product read dedupe or cutover; observation-only, no product mutation.',
+    previousBehavior:
+      'No structured shadow parity between direct DIMO recharge VEE rows and canonical HvChargeSession projection drafts.',
+    details:
+      'erd-recharge-shadow-parity/*; erd-e5-4-recharge-shadow-parity.postgres.integration.spec.ts; architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E5-4-SHADOW-PARITY-2026-09-25.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-25T08:30:00.000Z',
+  },
+  {
+    id: 'erd-e5-3-late-native-handoff-2026-09-25',
+    version: '4.9.908',
+    title: 'ERD E5.3 — late-native canonical VEE handoff',
+    summary: [
+      'E3 persisted supersession evidence → authoritative fallback predecessor resolver (no independent physical matcher).',
+      'Same VEE row: `canonicalChargeSessionId` F→N; immutable F-anchored sourceEventKey; native evidence reconciled with original anchor.',
+      'Post-handoff idempotency via anchor-rebuilt identity (not native mint key); HANDOFF_COMPLETED + bounded fail-closed outcomes.',
+      'Real E3 `persistRechargeSegment` + explicit projector PostgreSQL proof; multi-client race + handoff rollback/retry (boundary step 10/10). Not runtime-wired.',
+    ],
+    reason:
+      'E5.2 proved idempotent projection; E5.3 closes late-native SAME episode without duplicating product rows or rewriting projection identity.',
+    previousBehavior:
+      'Native projection after fallback VEE returned HANDOFF_REQUIRED; no atomic reassignment of canonicalChargeSessionId on same VEE.',
+    details:
+      'erd-late-native-predecessor.resolver.ts; erd-late-native-handoff.policy.ts; erd-e5-3-late-native-handoff.postgres.integration.spec.ts; architecture/knowledge-graphs/energy-event-detection/evidence/ERD-E5-3-LATE-NATIVE-HANDOFF-2026-09-25.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-09-25T06:00:00.000Z',
   },
   {
     id: 'hv-charge-session-persist-v49548-2026-07-17',

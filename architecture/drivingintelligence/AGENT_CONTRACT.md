@@ -96,6 +96,7 @@ Never conflate:
 | DI-INV-ORG-SCOPE-001 | All DI reads/writes must respect organization tenancy |
 | DI-INV-SOURCE-TS-001 | Preserve provider source timestamps through enrichment |
 | DI-INV-MULTI-REPLICA-001 | Schedulers must use leader guard when election enabled |
+| DI-INV-R1-OBD-NO-POINT-CLAIM-001 | Ruptela R1 historical OBD records (identified from `DimoVehicle.rawJson`, never `hardwareType`) must not produce or support point-in-time claims — **active containment** (EXP-021 C0.3) |
 
 ## Graph maintenance
 

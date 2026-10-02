@@ -15,7 +15,8 @@ const TOKEN = 66;
 const TRIP1 = 'trip-1';
 const TRIP2 = 'trip-2';
 const T0 = new Date('2026-09-06T12:00:00.000Z');
-const GAP_END = new Date(T0.getTime() + 190_000);
+const QUALIFIED_SPLIT_GAP_MS = 349_586;
+const GAP_END = new Date(T0.getTime() + QUALIFIED_SPLIT_GAP_MS);
 const GAP_START = new Date(T0.getTime() - 10_000);
 
 function jobData(): TripTrackingJobData {
@@ -36,7 +37,7 @@ function midGapCorePoints() {
 
 function midGapCandidate() {
   return {
-    gapMs: 190_000,
+    gapMs: QUALIFIED_SPLIT_GAP_MS,
     firstEndAt: GAP_START,
     firstEndLatitude: null,
     firstEndLongitude: null,
@@ -132,7 +133,7 @@ function buildActiveTickHarness(overrides: Record<string, unknown> = {}) {
     OVERLAP_ROUTE_MS: 30_000,
     OVERLAP_PERF_MS: 30_000,
     TRACKING_INTERVAL_MS: 30_000,
-    TRIP_MID_GAP_SPLIT_MS: 180_000,
+    maxSameTripQualifiedStopMs: 300_000,
     TRIP_MID_GAP_MAX_STATIONARY_DRIFT_M: 200,
     TRIP_MID_GAP_MIN_PRE_DURATION_MS: 60_000,
     TRIP_CONTINUITY_WINDOW_MS: 900_000,

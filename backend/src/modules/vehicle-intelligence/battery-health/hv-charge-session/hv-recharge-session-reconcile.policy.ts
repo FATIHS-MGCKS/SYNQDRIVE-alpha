@@ -2,6 +2,7 @@ import { getBatteryV2ReconciliationIntervalMs } from '@config/battery-health-v2.
 import { buildCapabilityRefreshPeriodBucket } from '../jobs/battery-v2-job-idempotency.policy';
 import { BATTERY_V2_JOB_IDENTITY_PREFIX } from '../jobs/battery-v2-job-idempotency.policy';
 import type { HvRechargeSessionReconcileTrigger } from './hv-recharge-session-reconcile.trigger';
+import { HvRechargeSessionReconcileTrigger as HvRechargeSessionReconcileTriggerEnum } from './hv-recharge-session-reconcile.trigger';
 
 export const HV_RECHARGE_ROLLING_WINDOW_DAYS = 31;
 
@@ -15,19 +16,31 @@ export function buildHvRechargeRollingWindow(to: Date = new Date()): {
   };
 }
 
+export function buildHvRechargePeriodicPeriodBucket(evaluatedAt: Date): string {
+  return buildCapabilityRefreshPeriodBucket(
+    evaluatedAt,
+    getBatteryV2ReconciliationIntervalMs(),
+  );
+}
+
 export function buildHvRechargeVehicleReconcileIdempotencyKey(input: {
   vehicleId: string;
   trigger: HvRechargeSessionReconcileTrigger;
   periodBucket?: string;
   nonce?: string;
+  /** Required for PERIODIC when periodBucket omitted (deterministic scheduling). */
+  evaluatedAt?: Date;
 }): string {
-  const bucket =
-    input.periodBucket ??
-    input.nonce ??
-    buildCapabilityRefreshPeriodBucket(
-      new Date(),
-      getBatteryV2ReconciliationIntervalMs(),
-    );
+  let bucket: string;
+  if (input.trigger === HvRechargeSessionReconcileTriggerEnum.PERIODIC) {
+    bucket =
+      input.periodBucket ??
+      (input.evaluatedAt
+        ? buildHvRechargePeriodicPeriodBucket(input.evaluatedAt)
+        : '0');
+  } else {
+    bucket = input.nonce ?? input.periodBucket ?? '0';
+  }
 
   return [
     BATTERY_V2_JOB_IDENTITY_PREFIX.hvSession,

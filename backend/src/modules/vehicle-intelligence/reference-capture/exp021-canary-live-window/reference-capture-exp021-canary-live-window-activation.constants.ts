@@ -1,0 +1,20 @@
+import { EXP021_KS_MX_2024_CANARY } from '../exp021-maturation-shadow/reference-capture-exp021-maturation-shadow-canary-enroll.constants';
+
+/** Legacy KS MX 2024 reference token (tests / single-vehicle seeds). Live authority uses cohort JSON. */
+export const EXP021_CANARY_LIVE_WINDOW_TOKEN_ID = EXP021_KS_MX_2024_CANARY.tokenId;
+
+export const EXP021_CANARY_LIVE_WINDOW_ACTIVATION_ENABLED_ENV =
+  'EXP021_CANARY_LIVE_WINDOW_ACTIVATION_ENABLED';
+
+/** ISO-8601 — trips starting before this instant are never armed (no historical backfill). */
+export const EXP021_CANARY_LIVE_WINDOW_ACTIVATION_NOT_BEFORE_ISO_ENV =
+  'EXP021_CANARY_LIVE_WINDOW_ACTIVATION_NOT_BEFORE_ISO';
+
+export const EXP021_CANARY_LIVE_WINDOW_ACTIVATION_INTERVAL_MS_ENV =
+  'EXP021_CANARY_LIVE_WINDOW_ACTIVATION_INTERVAL_MS';
+
+export const EXP021_CANARY_LIVE_WINDOW_ACTIVATION_INTERVAL_MS_DEFAULT = 30_000;
+export const EXP021_CANARY_LIVE_WINDOW_ACTIVATION_INTERVAL_MS_MIN = 10_000;
+export const EXP021_CANARY_LIVE_WINDOW_ACTIVATION_INTERVAL_MS_MAX = 120_000;
+
+export const EXP021_CANARY_LIVE_WINDOW_CANARY = EXP021_KS_MX_2024_CANARY;

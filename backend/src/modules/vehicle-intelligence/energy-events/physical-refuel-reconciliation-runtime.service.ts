@@ -26,6 +26,11 @@ import {
 import { mapDecisionToPersistPayload, isV2OwnedRefuelEvent } from './physical-refuel-reconciliation.repository';
 import { loadPriorFinalizationBridgeContext } from './physical-refuel-prior-ownership.util';
 import {
+  AUTHORITY_RECHECK_HOLD_REASON,
+  resolvePersistedLateSiblingCanonicalEventId,
+  shouldPersistAuthorityRecheckHold,
+} from './physical-refuel-late-sibling-authority.util';
+import {
   describeCoordinateHoldReason,
   isV2CoordinateEligibleForEnrichment,
 } from './physical-refuel-coordinate.policy';
@@ -58,6 +63,7 @@ import {
   canFallbackEventParticipateInG2Reconciliation,
   filterAuthorizedRefuelCandidates,
 } from './raw-fuel-refuel-fallback/raw-refuel-g2-participation.policy';
+import { PhysicalRefuelReconciliationMetricsService } from './physical-refuel-reconciliation-metrics.service';
 
 export interface ReconcileAfterPersistParams {
   vehicleId: string;
@@ -93,6 +99,8 @@ export class PhysicalRefuelReconciliationRuntimeService {
     private readonly fuelStationEnrichmentProducer?: FuelStationEnrichmentProducerService,
     @Optional()
     private readonly coordinateRuntime?: PhysicalRefuelCoordinateRuntimeService,
+    @Optional()
+    private readonly metrics?: PhysicalRefuelReconciliationMetricsService,
   ) {}
 
   isEnabled(): boolean {
@@ -217,6 +225,9 @@ export class PhysicalRefuelReconciliationRuntimeService {
           enqueuedCount: enqueuedEventIds.length,
         }),
       );
+      for (const [reason, count] of Object.entries(recoveredReasons)) {
+        this.metrics?.recordRecoveryRecovered(reason, count);
+      }
     }
 
     return {
@@ -227,6 +238,12 @@ export class PhysicalRefuelReconciliationRuntimeService {
   }
 
   async emitRecoveryBacklogMetrics(asOfMs: number = Date.now()): Promise<void> {
+    const recoveryEnabled =
+      this.isEnabled() &&
+      this.config.recoveryEnabled &&
+      this.resolveV2OwnershipCutoverAt() != null;
+    this.metrics?.setRecoveryEnabled(recoveryEnabled);
+
     if (!this.isEnabled()) return;
     const cutover = this.resolveV2OwnershipCutoverAt();
     if (!cutover) return;
@@ -236,6 +253,8 @@ export class PhysicalRefuelReconciliationRuntimeService {
       new Date(asOfMs),
       cutover,
       new Date(asOfMs - this.config.recoveryOrphanLookbackMs),
+      FUEL_STATION_ENRICHMENT_STALE_PROCESSING_MS,
+      process.env,
     );
 
     this.logger.log(
@@ -244,6 +263,8 @@ export class PhysicalRefuelReconciliationRuntimeService {
         ...counts,
       }),
     );
+
+    this.metrics?.setRecoveryBacklogFromRepository(counts);
   }
 
   private async resolveOrganizationId(vehicleId: string): Promise<string | null> {
@@ -356,6 +377,13 @@ export class PhysicalRefuelReconciliationRuntimeService {
           currentCandidateIds,
         });
 
+        const existingReconciliations = await tx.vehicleEnergyEventRefuelReconciliation.findMany({
+          where: { vehicleId: params.vehicleId, energyEventId: { in: v2Candidates.map((c) => c.id) } },
+        });
+        const persistedLateSiblingCanonicalEventId = resolvePersistedLateSiblingCanonicalEventId(
+          existingReconciliations,
+        );
+
         const firstObservedAtById = buildFirstObservedAtById(v2Candidates);
         const decisions = reconcilePhysicalRefuelBatch(
           v2Candidates.map(vehicleEnergyEventToRefuelRow),
@@ -365,6 +393,8 @@ export class PhysicalRefuelReconciliationRuntimeService {
             priorDistinctFinalizationIds: priorContext.priorDistinctFinalizationIds,
             priorCanonicalFinalizationIds: priorContext.priorCanonicalFinalizationIds,
             priorFinalRowsById: priorContext.priorFinalRowsById,
+            irreversiblePriorFinalOwnerIds: priorContext.irreversiblePriorFinalOwnerIds,
+            persistedLateSiblingCanonicalEventId,
             settlementConfig: { settlementHorizonMs: this.config.settlementHorizonMs },
           },
         );
@@ -402,11 +432,21 @@ export class PhysicalRefuelReconciliationRuntimeService {
             coordinateSelectionStatus: existing?.coordinateSelectionStatus,
           });
 
+          const persistPayload =
+            params.recoveryReason === 'authority_recheck' &&
+            shouldPersistAuthorityRecheckHold(decision)
+              ? {
+                  ...payload,
+                  reason: AUTHORITY_RECHECK_HOLD_REASON,
+                  nextReconciliationAt: null,
+                }
+              : payload;
+
           if (existing) {
             await tx.vehicleEnergyEventRefuelReconciliation.update({
               where: { energyEventId: event.id },
               data: {
-                ...payload,
+                ...persistPayload,
                 enrichmentEnqueuedAt: existing.enrichmentEnqueuedAt,
                 coordinateLatitude: existing.coordinateLatitude,
                 coordinateLongitude: existing.coordinateLongitude,
@@ -416,7 +456,7 @@ export class PhysicalRefuelReconciliationRuntimeService {
               },
             });
           } else {
-            await tx.vehicleEnergyEventRefuelReconciliation.create({ data: payload });
+            await tx.vehicleEnergyEventRefuelReconciliation.create({ data: persistPayload });
           }
 
           this.logDecision(event.id, decision, v2Candidates.length, Date.now() - started);

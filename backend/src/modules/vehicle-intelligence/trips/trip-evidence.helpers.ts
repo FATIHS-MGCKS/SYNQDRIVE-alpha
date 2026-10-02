@@ -20,6 +20,10 @@ import {
   type StartConfirmationPolicy,
 } from './trip-start-detection-policy';
 import { isValidProviderEventTimestamp } from './trip-fsm-clock-contract';
+import {
+  CANONICAL_MAX_SAME_TRIP_QUALIFIED_STOP_MS,
+  shouldMergePreviousTripQualifiedGap,
+} from './trip-qualified-stop-duration.policy';
 
 type ProfileThresholds = ReturnType<typeof getLegacyProfileThresholds>;
 
@@ -100,6 +104,33 @@ export interface TripQualityCheck {
   shouldDiscard: boolean;
   shouldMergeWithPrevious: boolean;
   reason?: string;
+}
+
+export interface TripQualityPersistedRouteEvidence {
+  routeDisplacementM?: number | null;
+  /** Credible persisted route movement (independent of canonical end selection). */
+  hasMeaningfulPersistedRouteMovement?: boolean;
+  movementAuthority?: string | null;
+  cumulativeRouteMovementM?: number | null;
+}
+
+export interface TripQualityEvaluationObservability {
+  qualityDurationMs: number;
+  qualityDistanceKm: number | null;
+  qualityWaypointCount: number;
+  qualityMeaningfulMovement: boolean;
+  qualityDecision: 'keep' | 'discard' | 'merge';
+  qualityReason?: string;
+}
+
+/**
+ * Quality-only predicate — delegates to persisted route movement analysis
+ * (`analyzePersistedRouteMovement`); waypoint count alone is never sufficient.
+ */
+export function hasPersistedMeaningfulMovementForQuality(input: {
+  hasMeaningfulPersistedRouteMovement?: boolean;
+}): boolean {
+  return input.hasMeaningfulPersistedRouteMovement === true;
 }
 
 export interface SnapshotStartEvidence {
@@ -1401,8 +1432,19 @@ export function checkTripQuality(
   maxConsecutiveActive: number,
   previousTripEndTime: Date | null,
   currentTripStartTime: Date,
+  persistedRoute?: TripQualityPersistedRouteEvidence,
+  maxSameTripQualifiedStopMs: number = CANONICAL_MAX_SAME_TRIP_QUALIFIED_STOP_MS,
 ): TripQualityCheck {
-  if (durationMs < 60_000 && (distanceKm == null || distanceKm < 0.1)) {
+  const meaningfulMovement = hasPersistedMeaningfulMovementForQuality({
+    hasMeaningfulPersistedRouteMovement:
+      persistedRoute?.hasMeaningfulPersistedRouteMovement,
+  });
+
+  if (
+    durationMs < 60_000 &&
+    (distanceKm == null || distanceKm < 0.1) &&
+    !meaningfulMovement
+  ) {
     return {
       shouldDiscard: true,
       shouldMergeWithPrevious: false,
@@ -1425,7 +1467,7 @@ export function checkTripQuality(
   if (previousTripEndTime) {
     const gapMs =
       currentTripStartTime.getTime() - previousTripEndTime.getTime();
-    if (gapMs >= 0 && gapMs < 5 * 60_000) {
+    if (shouldMergePreviousTripQualifiedGap(gapMs, maxSameTripQualifiedStopMs)) {
       return {
         shouldDiscard: false,
         shouldMergeWithPrevious: true,
@@ -1485,11 +1527,14 @@ function findEarliestCoreActivityAt(
   return null;
 }
 
+/** Same threshold as route start activity (`findEarliestRouteActivityAt`). */
+export const TRIP_ROUTE_MOVEMENT_MIN_METERS = 25;
+
 function findEarliestRouteActivityAt(
   points: RoutePoint[],
   speedMotionKmh: number,
 ): Date | null {
-  const ROUTE_MOVEMENT_MIN_METERS = 25;
+  const ROUTE_MOVEMENT_MIN_METERS = TRIP_ROUTE_MOVEMENT_MIN_METERS;
 
   for (let index = 0; index < points.length; index++) {
     const point = points[index];

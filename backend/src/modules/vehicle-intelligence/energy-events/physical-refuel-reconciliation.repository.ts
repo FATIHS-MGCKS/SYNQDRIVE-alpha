@@ -8,6 +8,7 @@ import {
 import type { PhysicalRefuelReconciliationDecision } from './physical-refuel-reconciliation.design';
 import { buildReconciliationGroupId } from './physical-refuel-row.mapper';
 import { computeNextReconciliationAt } from './physical-refuel-settlement-due.design';
+import { reconciliationImpliesLateSiblingAfterFinalization } from './physical-refuel-late-sibling-authority.util';
 
 export interface PersistRefuelReconciliationInput {
   vehicleId: string;
@@ -60,12 +61,20 @@ export function extractPriorFinalizationIds(
   const priorCanonicalFinalizationIds = new Set<string>();
 
   for (const row of rows) {
-    if (!row.enrichmentEligible) continue;
-    if (row.finalityState === PhysicalRefuelFinalityState.FINAL_DISTINCT) {
-      priorDistinctFinalizationIds.add(row.energyEventId);
+    if (row.enrichmentEligible) {
+      if (row.finalityState === PhysicalRefuelFinalityState.FINAL_DISTINCT) {
+        priorDistinctFinalizationIds.add(row.energyEventId);
+      }
+      if (row.finalityState === PhysicalRefuelFinalityState.FINAL_CANONICAL) {
+        priorCanonicalFinalizationIds.add(row.energyEventId);
+      }
+      continue;
     }
-    if (row.finalityState === PhysicalRefuelFinalityState.FINAL_CANONICAL) {
-      priorCanonicalFinalizationIds.add(row.energyEventId);
+    if (
+      reconciliationImpliesLateSiblingAfterFinalization(row) &&
+      row.canonicalEventId
+    ) {
+      priorCanonicalFinalizationIds.add(row.canonicalEventId);
     }
   }
 

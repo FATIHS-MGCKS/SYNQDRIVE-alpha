@@ -1,8 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { isBatteryV2RestShadowEnabled } from '@config/battery-health-v2.config';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { isBatteryV2RestShadowEnabled, isBatteryV2GeneralizedEvidenceEnabled } from '@config/battery-health-v2.config';
 import type { BatteryV2JobHandler } from '../battery-v2-job.handler';
 import type { BatteryLvRestSessionOpenPayload } from '../battery-v2-job.types';
 import { LvRestWindowSessionArmingService } from '../../lv-rest-window/lv-rest-window-session-arming.service';
+import { LateTripAssociationService } from '../../generalized-evidence/late-trip-association.service';
 
 /**
  * Consumes BATTERY_LV_REST_SESSION_OPEN — the observation-independent
@@ -21,6 +22,7 @@ export class BatteryLvRestSessionOpenHandler
 
   constructor(
     private readonly sessionArming: LvRestWindowSessionArmingService,
+    @Optional() private readonly lateTripAssociation?: LateTripAssociationService,
   ) {}
 
   async handle(payload: BatteryLvRestSessionOpenPayload): Promise<void> {
@@ -47,5 +49,25 @@ export class BatteryLvRestSessionOpenHandler
         `outcome=${result.outcome} reason=${result.reason}` +
         (result.sessionId ? ` session=${result.sessionId}` : ''),
     );
+
+    if (isBatteryV2GeneralizedEvidenceEnabled() && payload.tripEndedAt) {
+      const linked = await this.lateTripAssociation
+        ?.associateAfterTripFinalization({
+          vehicleId: payload.vehicleId,
+          tripId: payload.tripId,
+          tripEndedAt: new Date(payload.tripEndedAt),
+        })
+        .catch((err: unknown) => {
+          this.logger.warn(
+            `Generalized late trip association failed (non-fatal): vehicle=${payload.vehicleId} error=${(err as Error).message}`,
+          );
+          return 0;
+        });
+      if (linked && linked > 0) {
+        this.logger.debug(
+          `Generalized late trip association linked=${linked} vehicle=${payload.vehicleId} trip=${payload.tripId}`,
+        );
+      }
+    }
   }
 }

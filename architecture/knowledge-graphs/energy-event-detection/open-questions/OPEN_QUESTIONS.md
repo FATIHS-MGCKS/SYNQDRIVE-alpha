@@ -17,7 +17,7 @@ All 12 discovery open questions classified. **Separate current-state facts from 
 | EED-OQ-001 | Should EED get dedicated BullMQ scheduler? | **OPEN** | Future architecture only; current state in EED-ST-001 | NO | LOW |
 | EED-OQ-002 | Safe automated backfill for NULL fuelLevelRise rows? | **RESOLVED** (policy) | EED-DEC-009: no fleet backfill | NO | NO |
 | EED-OQ-003 | Persist recharge charging flags on VehicleEnergyEvent? | **OPEN** | Fetched in normalizer; not persisted | NO | LOW |
-| EED-OQ-004 | Link RECHARGE to HvChargeSession? | **OUT_OF_SCOPE** | Battery V2 owns HV sessions; INFERRED orthogonality | NO | NO |
+| EED-OQ-004 | Link RECHARGE to HvChargeSession? | **RESOLVED** (design) | EED-DEC-ERD-001 Model A: HvChargeSession = physical authority; VEE RECHARGE = product projection (E5); no runtime link in E1 | NO | NO |
 | EED-OQ-005 | detectorVersion DB column? | **OPEN** | Version in logs/meta only | NO | LOW |
 | EED-OQ-006 | Plausibility flags on production rows? | **PARTIALLY_RESOLVED** | Recovery tooling only today | NO | LOW |
 | EED-OQ-007 | Fleet overlapping sibling remediation policy? | **OPEN** | Sept04 incident proves gap; design in forensics audit | NO | HIGH |
@@ -27,7 +27,11 @@ All 12 discovery open questions classified. **Separate current-state facts from 
 | EED-OQ-011 | RECHARGE UI for multi-hour coalesced sessions? | **OPEN** | Copy adequacy unproven at scale | NO | LOW |
 | EED-OQ-012 | Observability SLOs for rise null rate? | **OPEN** | Metrics exist; no SLO thresholds | NO | LOW |
 | EED-OQ-013 | Physical refuel identity vs dimoSegmentId? | **RESOLVED** (design) | F1.2: `RawRefuelCandidate.id` + semantic rediscovery + G2 matcher; `IMPLEMENTATION_PROOF_PENDING` F2/F5 | NO | HIGH |
-| EED-OQ-014 | RFRF threshold fleet calibration? | **OPEN** | PROVISIONAL detector thresholds; KS MS 661 positive only | NO | HIGH |
+| EED-OQ-014 | RFRF threshold fleet calibration? | **OPEN** | Peak-anchored post plateau insufficient (KS MS 661 2026-09-30); **ROBUST_SETTLED_POST_REFUEL_LEVEL** design (ADR 2026-09-30); offline replay **EED-EV-0103**; **EED-EV-0104** six-event read-only fleet/locality evidence (N=6, 3 vehicles, WOB 4/6); separate symbolic **`maxPeakToSettledContinuityGapMs`** (uncalibrated); WOB 2026-09-19 delayed-observation split; **numeric Production caps still open**; fleet concentration insufficient for upper bound | NO | HIGH |
+| EED-OQ-015 | Stretched-end native↔fallback convergence identity? | **RESOLVED** (design+code) | EED-EV-0097; bounded fallback classifier; canonical matcher strict | NO | HIGH |
+| EED-OQ-017 | Stale pre-fill baseline authority for RFRF promotion? | **RESOLVED** (design+code) | EED-EV-0098; baseline recency guard; promotion BLOCKED_BASELINE_RECENCY | NO | HIGH |
+| EED-OQ-018 | READY candidate stale evidence/trust refresh gap? | **RESOLVED** (design+code) | EED-EV-0099; versioned READY refresh before promotion; trust still UNKNOWN | NO | HIGH |
+| EED-OQ-019 | RFRF scoped hybrid trust activation + durable vehicle calibration? | **PARTIALLY_RESOLVED** | EED-EV-0100–0102 Hybrid activation complete; **Alpha Option C** blocks ABSOLUTE_ONLY auto-promotion (capability ADR 2026-09-30); first natural refuel captured (KS MS 661 2026-09-30); F3 maturity gap in EED-EV-0103/0104 settled-post design; **durable calibration store + Production numeric caps open** (not solved by EED-EV-0104 evidence) | NO | HIGH |
 
 ## Deferred (reference only)
 

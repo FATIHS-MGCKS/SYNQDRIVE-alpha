@@ -302,3 +302,156 @@ Validate graph consistency: `bash architecture/drivingintelligence/scripts/valid
 | **GRAPH NODES** | DI-CONTRA-HF-1HZ-001 |
 | **EPISTEMIC** | CONFIRMED |
 | **EVIDENCE** | DI-EVID-RD004-A-001 |
+
+## DI-DEC-R1-TEMPORAL-CONTAINMENT-001
+
+| Field | Value |
+|-------|-------|
+| **TITLE** | Minimal reversible R1 temporal-safety containment (EXP-021 C0.3) |
+| **ERA** | EXP-021 C0 → C0.2 audits; C0.3 implementation (2026-09-24, draft PR #1755) |
+| **STATUS** | VALIDATED |
+| **PROBLEM** | R1 historical OBD records (grid-labelled, misdated, absolute offset P50 14 s / P90 45 s) produced unsupported point-in-time claims (FULL_BRAKING 0/5 supported; ENGINE_SHUTDOWN 0/6 sustained) feeding counters, brake wear, impact and SEVERE misuse |
+| **DECISION** | Identify R1 from `DimoVehicle.rawJson` (serial `R1-`), never `hardwareType`; suppress future R1 FULL_BRAKING / POSSIBLE_IMPACT / ENGINE_SHUTDOWN_WHILE_DRIVING; contain existing rows at read/consumer boundaries; tag R1 OBD-derived misuse evidence and cap it (cannot establish or upgrade SEVERE+; REVIEW_REQUIRED preserved); withhold anchor-relative context values in presentation |
+| **RATIONALE** | Smallest reversible change; no data rewrite; fingerprints/category gates untouched; fail closed (UNKNOWN not contained; no 2-record ≥3 s shutdown proof) |
+| **CONSEQUENCES** | ACTIVE CONTAINMENT, not final source-quality architecture; residual consumers DI-GAP-R1-CONTAINMENT-RESIDUAL-001; wording debt DI-GAP-R1-OVERCLAIM-WORDING-001; OBSERVED_EFFECT UNKNOWN until authorized deploy |
+| **GRAPH NODES** | DI-POL-R1-TEMPORAL-CONTAINMENT-001, DI-INV-R1-OBD-NO-POINT-CLAIM-001 |
+| **EPISTEMIC** | CONFIRMED |
+| **EVIDENCE** | DI-EVID-EXP021-C03-001 |
+
+## DI-DEC-V0-SHADOW-PURE-CORE-001
+
+| Field | Value |
+|-------|-------|
+| **TITLE** | DI V0 shadow pure core (EXP-021 C1D.5 S0/S1) |
+| **ERA** | EXP-021 C1D architecture freeze → implementation |
+| **STATUS** | PROPOSED |
+| **PROBLEM** | Need deterministic, side-effect-free kinematic evaluation aligned to C1D.3 before shadow worker/persistence |
+| **DECISION** | Add isolated `driving-intelligence/core` pure library: normalized evidence in, DI V0 interval results out; no DB/queue/DIMO/runtime flags; L3 centred-path estimator frozen at `DI_KINEMATIC_ESTIMATE_V0_1`; calibration `CALIBRATION_UNSET_V0` injected only |
+| **RATIONALE** | Preserves legacy zero-impact until shadow slice; enables replay/golden tests; separates structural contract from calibration |
+| **CONSEQUENCES** | No production behavior change; no runtime caller in S1; S2+ may persist/enqueue behind flags |
+| **GRAPH NODES** | DI-DEC-V0-SHADOW-PURE-CORE-001, DI-SVC-V0-SHADOW-CORE-001 |
+| **EPISTEMIC** | INFERRED → CONFIRMED after unit tests |
+| **EVIDENCE** | `evidence/EXP_021_C1D5_V0_PURE_CORE_2026-09-26.md` |
+| **BOUNDARY** | Consulted: DIMO (no provider category yet), ATE/TDL/VDC (read-only semantics only) — no cross-module code change |
+
+## DI-DEC-V0-POSITION-ACQ-001
+
+| Field | Value |
+|-------|-------|
+| **TITLE** | DI V0 S3A primary position acquisition + normalization (EXP-021 C1D.7) |
+| **ERA** | EXP-021 C1D implementation (S3A after S1/S2) |
+| **STATUS** | PROPOSED |
+| **PROBLEM** | S1 consumes normalized position evidence and S2 keys runs by `inputEvidenceVersion`, but no slice acquired or normalized provider positions with explicit availability and temporal semantics |
+| **DECISION** | Dormant library over the shared DIMO transport: one `signals(interval:"1s")` location query per `[from, to)` window; row `timestamp` treated as query-bucket label only (BUCKET_BOUNDED, never EXACT_PROVEN); PRESENT / SIGNAL_NULL / ROW_ABSENT distinct with no fill/interpolation/snapping; malformed coordinates stay PRESENT with coordinates withheld; conflicting duplicates withheld; source family from canonical DIMO-identity resolver; deterministic SHA-256 snapshot identity excluding wall-clock/tenant/secrets |
+| **ALTERNATIVES** | `agg: RAND` (production route-enrichment precedent) rejected — non-deterministic snapshot identity; `FIRST`/`LAST` deferred to S3B calibration; reusing `DimoSegmentsService.fetchHighFrequency` rejected — no location field, implicit window semantics |
+| **RATIONALE** | Makes acquisition semantics testable and replayable before any worker; preserves DIMO Integration ownership of transport/auth/budget |
+| **CONSEQUENCES** | No production behavior change; S3B must wire caller + persistence behind flags with validated org/vehicle/token context; `agg: AVG` unchanged (C1G: 26,629/26,629 coordinate identity, 0 m); DI-GAP-S3A-AGG-001 **PARTIALLY_CLOSED**; provider historical mutability documented — live re-query is new acquisition; replay requires pinned `DI_NORMALIZED_INPUT_IDENTITY` |
+| **GRAPH NODES** | DI-DEC-V0-POSITION-ACQ-001, DI-SVC-V0-POSITION-ACQ-001 |
+| **EPISTEMIC** | CONFIRMED (code/tests/C1G coordinate audit); residual AVG midpoint theory if differing multi-sample coordinates appear |
+| **EVIDENCE** | DI-EVID-EXP021-C1D7-001, DI-TEST-V0-POSITION-ACQ-001 |
+| **BOUNDARY** | Consulted: DIMO Integration (transport reused, call-site audit), R1 temporal containment resolver (consumed, unchanged) — no cross-module code change |
+
+## DI-DEC-V0-S3B-R1-NATIVE-EVIDENCE-001
+
+| Field | Value |
+|-------|-------|
+| **TITLE** | DI V0 S3B R1 historical OBD + native event evidence adapters (EXP-021 C1D.8) |
+| **ERA** | EXP-021 C1D implementation (S3B after S3A) |
+| **STATUS** | PROPOSED |
+| **PROBLEM** | S1 can relate R1 OBD and native events but no library acquires/normalizes those channels with explicit temporal semantics, availability, calibration ceilings, and snapshot identity |
+| **DECISION** | Two dormant adapters: (A) R1 HF OBD subset on 1 s grid, `INTERVAL_ONLY`, per-signal VALUE_PRESENT/SIGNAL_NULL/ROW_ABSENT, `RUPTELA_R1` only, no fixed timing offsets; (B) native events from ingested `driving_events`-shaped records, `NATIVE_EVENT_OBSERVATION`, default `UNCALIBRATED` max claim `L1`, `NO_EVENT` when empty. Separate provenance types (`R1ObdEvidence` vs `NativeEventEvidence`). Combined input identity helper for future S2 pinning. |
+| **ALTERNATIVES** | Merging OBD + native into one normalized union rejected — erases provenance; using R1 OBD as continuous speed authority rejected — contradicts C0.3/C1F findings |
+| **RATIONALE** | Evidence-only slice; preserves S3A→S1 L3 authority; enables deterministic replay before any worker |
+| **CONSEQUENCES** | No production behavior change; S4 must wire caller + pin snapshots; native fusion remains NEEDS_VALIDATION; accel/braking production detectors remain NOT_SAFE |
+| **GRAPH NODES** | DI-DEC-V0-S3B-R1-NATIVE-EVIDENCE-001, DI-SVC-V0-R1-OBD-ACQ-001, DI-SVC-V0-NATIVE-EVENT-EVIDENCE-001 |
+| **EPISTEMIC** | CONFIRMED (unit tests); native accuracy on WOB not validated (0 events) |
+| **EVIDENCE** | DI-EVID-EXP021-C1D8-001 |
+| **BOUNDARY** | Consulted: DIMO Integration (transport), dimo-native-driving-events mapper (event type keys), R1 temporal containment — no production read-path change |
+| **AMENDED BY** | DI-DEC-V0-S3B-CONTRACT-HARDENING-001 (C1D.8B, 2026-09-27) — caller-supplied native `calibrationState` default and optional-channel combined identity above are the historical C1D.8 contract, now superseded in part |
+
+## DI-DEC-V0-S3B-CONTRACT-HARDENING-001
+
+| Field | Value |
+|-------|-------|
+| **TITLE** | DI V0 S3B contract hardening — red-team closure (EXP-021 C1D.8B) |
+| **ERA** | EXP-021 C1D implementation (S3B closure, pre-merge) |
+| **STATUS** | PROPOSED |
+| **PROBLEM** | C1D.8A red-team: caller could set native `VALIDATED` → L2; native records not bound to org/vehicle/trip/window; duplicate eventIds double-counted; `[]` indistinguishable from read failure; combined identity could not distinguish omitted/empty/failed channels; R1 duplicate buckets first-row-wins; `isIgnitionOn` AVG semantics unverified |
+| **DECISION** | (1) Native calibration design A: no calibration field on input; adapter constant `UNCALIBRATED`/L1; future trusted authority = separate reviewed contract. (2) Expected context passed separately; per-record org/vehicle/trip/provider/family/window check; mismatches `CONTEXT_MISMATCH` L0 audited in snapshot; nullable relations unprovable → mismatch. (3) eventId dedup: identical collapse, any field difference → `CONFLICTING_DUPLICATE` L0 excluded + preserved; order-independent. (4) Source envelope; `EVENT_SOURCE_FAILURE` ≠ `NO_EVENT`; `readDiV0NativeEventSource` S4 boundary. (5) Combined identity V0_2 with explicit per-channel state, all channels required. (6) R1 per-signal duplicate merge, `CONFLICTING_DUPLICATE` withheld, no averaging/majority. (7) `isIgnitionOn` removed from S3B query (V0_2); field authority matrix all `REPO_CONTRACT_ONLY` |
+| **ALTERNATIVES** | Design B (typed trusted-authority object) rejected for now — no runtime authority exists; silently dropping foreign records rejected — loses audit; first-row-wins / averaging / majority for duplicates rejected — invents values; keeping ignition with repo-contract label rejected — S3B would carry an unsupported semantic |
+| **RATIONALE** | Fail-closed evidence contracts before any S4 caller; smallest safe design |
+| **CONSEQUENCES** | Snapshot versions bumped (native V0_2, R1 V0_2, combined V0_2); S4 must supply expected context + source envelope and pin all three channels with state; native fusion remains NEEDS_VALIDATION; ignition absent from S3B until provider-schema verified |
+| **GRAPH NODES** | DI-DEC-V0-S3B-CONTRACT-HARDENING-001, DI-SVC-V0-R1-OBD-ACQ-001, DI-SVC-V0-NATIVE-EVENT-EVIDENCE-001, DI-GAP-S3B-R1-FIELD-AUTHORITY-001 |
+| **EPISTEMIC** | CONFIRMED (unit + golden-bound tests); field semantics INFERRED (repo contract only) |
+| **EVIDENCE** | DI-EVID-EXP021-C1D8B-001 |
+| **BOUNDARY** | Consulted: DIMO Integration (query ownership; legacy HF/trip-detection ignition queries unchanged), `DrivingEvent` persistence schema (read-only inspection) — no cross-module code change |
+| **AMENDED BY** | DI-DEC-V0-S3B-R1-V03-FIELD-AUTHORITY-001 (C1D.9A, 2026-09-27) — item (7) R1 query V0_2 / all `REPO_CONTRACT_ONLY` is the historical C1D.8B contract; superseded by query V0_3 (gear removed, five fields provider-verified) |
+
+## DI-DEC-V0-S3B-R1-V03-FIELD-AUTHORITY-001
+
+| Field | Value |
+|-------|-------|
+| **TITLE** | DI V0 S3B R1 query V0_3 — provider field authority + currentGear removal (EXP-021 C1D.9 / C1D.9A) |
+| **ERA** | EXP-021 C1D implementation (post-S3B merge, pre-S4) |
+| **STATUS** | PROPOSED |
+| **PROBLEM** | V0_2 queried six fields, all `REPO_CONTRACT_ONLY` (DI-GAP-S3B-R1-FIELD-AUTHORITY-001), blocking provider-backed S4 R1 activation. C1D.9 read-only audit found `powertrainTransmissionCurrentGear` is a signed int8 gear index exposed as `Float`; `agg: AVG` can synthesize non-existent (3.5) or false-Neutral (0 from −1/1) gears; the normalizer passed fractional values through; 0/4 R1 devices expose the field |
+| **DECISION** | (1) Remove `powertrainTransmissionCurrentGear` from the query and normalizer; drop the unused `gear` field from S1 `NormalizedR1ObdObservation`. (2) Keep `agg: AVG` for speed, rpm, throttle, load, ECT (interval mean of continuous quantities). (3) Mark those five `PROVIDER_SCHEMA_VERIFIED` with documented unit + value scale (km/h, rpm, percent 0..100, percent 0..100, °C); no rescaling; no range thresholds. (4) Bump query/adapter/R1 snapshot to V0_3; list V0_2 as superseded; combined input identity stays V0_2. (5) Five-field allowlist is architectural authority for future S4; gear + isIgnitionOn blocked. (6) Temporal authority unchanged: INTERVAL_ONLY, never overrides L3 |
+| **ALTERNATIVES** | Gear with FIRST/LAST + integer guard — rejected now (no R1 device exposes gear; no evidence to validate); keep gear as `REPO_CONTRACT_ONLY` — rejected (unsafe aggregation would enter evidence identity); runtime allowlist over V0_2 query — rejected (query would still request unsafe AVG gear); bump combined identity — rejected (it already hashes each pinned channel version) |
+| **RATIONALE** | Smallest correction that makes every queried field provider-verified and semantically valid under its aggregation |
+| **CONSEQUENCES** | R1 evidence identities change (V0_3); gear absent from S3B until a categorical acquisition strategy + real R1 evidence exist; S4 R1 five-field gate READY_FOR_SHADOW_ORCHESTRATION_DESIGN (no activation) |
+| **GRAPH NODES** | DI-DEC-V0-S3B-R1-V03-FIELD-AUTHORITY-001, DI-SVC-V0-R1-OBD-ACQ-001, DI-GAP-S3B-R1-FIELD-AUTHORITY-001, DI-EVID-EXP021-C1D9-001 |
+| **EPISTEMIC** | CONFIRMED (provider schema, official spec, read-only R1 responses, unit tests); multi-sample 1 s AVG behaviour UNKNOWN (not observed) |
+| **EVIDENCE** | DI-EVID-EXP021-C1D9-001 |
+| **BOUNDARY** | Consulted: DIMO Integration (provider telemetry schema facts recorded cross-module; shared transport/auth untouched; legacy HF/trip-detection queries unchanged) — no DIMO Integration code change |
+
+## DI-DEC-V0-S4A-CONTRACT-001
+
+| Field | Value |
+|-------|-------|
+| **TITLE** | DI V0 S4A orchestration contract — work items, identity, fencing, channel outcomes, evidence pinning (EXP-021 C1D.10A) |
+| **ERA** | EXP-021 C1D design (post-S3B V0_3 merge, pre-S4 implementation) |
+| **STATUS** | PROPOSED |
+| **PROBLEM** | C1D.10 S4 design review: NEEDS_CLOSURE with 4 P1 (stale S2 migration authority; logical identity/idempotency/fencing under two replicas; native NO_EVENT unprovable; settlement delay based on a 5-row sample) and 11 P2 |
+| **DECISION** | (1) DB work-item row with `lease_epoch` fencing is the execution authority; BullMQ only a wake-up hint; S2 idempotency the final guard. (2) Logical key (org, trip, boundary fingerprint, pipeline version key, run purpose, discriminator) + active-PRIMARY partial unique; purposes PRIMARY / RECALIBRATION_REPLAY / REACQUISITION. (3) 7 states / 11 transitions; completion in one fenced transaction (row lock, epoch, DB-clock expiry, fingerprint re-check, S2 `ON CONFLICT DO NOTHING`, rowcount 1). (4) Pipeline version key over 20 keys incl. `calibrationBundleHash` + `channelEnablement`; `PIPELINE_VERSION_MATCH` on claim/takeover/complete. (5) Boundary fingerprint V1 over 9 boundary fields. (6) 24 h settlement quiet anchor `max(endTime, createdAt, latest applied repair)` + 10 d drift horizon with supersession. (7) Per-channel outcomes; POSITION required; R1/NATIVE optional; native fails closed (READY_* requires an ingest attestation; unreachable in channel policy V1); combined input identity V0_3. (8) Content-addressed Postgres evidence pinning; replay only from pins. (9) Dormant-safe migration rules; tenant scope-guard triggers + composite FKs; S2 guards |
+| **ALTERNATIVES** | BullMQ jobId as idempotency (rejected: Redis is not durable authority, jobs duplicate); advisory locks (rejected: session-bound, invisible after crash); 16 h fixed delay after endTime (rejected: 1.7 % trips still mutate); legacy `behaviorEnrichedAt` as native readiness (rejected: set after swallowed failures); live DIMO re-query as replay (rejected: non-reproducible); object-store pins (rejected now: `STORAGE_DRIVER=local`, node-local); Postgres enums (rejected: ALTER TYPE); RESTRICT FKs (rejected: would fail canonical deletes) |
+| **RATIONALE** | Smallest contract that makes stale writes and double PRIMARY completion impossible by DB construction, fails closed where evidence is unprovable, and can be deployed dormant because merge = Production migration |
+| **CONSEQUENCES** | S4A may implement schema + repository + builders + race tests only; tiny activation additionally needs the S4C DIMO priority wrapper, S4D deserializer and a retention governance note; native stays NOT_READY until DI-GAP-S4-NATIVE-READINESS-001 closes |
+| **GRAPH NODES** | DI-DEC-V0-S4A-CONTRACT-001, DI-SVC-V0-SHADOW-CORE-001, DI-SVC-V0-NATIVE-EVENT-EVIDENCE-001, DI-CONTRA-S2-PROD-MIGRATION-001, DI-GAP-S4-NATIVE-READINESS-001, DI-GAP-S4-REPLAY-DESERIALIZER-001, DI-GAP-S4-SHADOW-DELETION-AUDIT-001, DI-GAP-S4-LOCATION-RETENTION-001, DI-GAP-S2-IN-TX-CREATE-RACE-001 |
+| **EPISTEMIC** | CONFIRMED for Production facts and code paths (read-only); contract properties validated by the machine model (`validate-s4a-contract.sh`), not yet by Postgres; snapshot size INFERRED |
+| **EVIDENCE** | DI-EVID-EXP021-C1D10A-001 |
+| **BOUNDARY** | Consulted: DIMO Integration (request category/priority ALS context; native ingest failure swallowing recorded, not changed), Trips (mutation paths, `trip_repairs`; read-only) — no code change in either module |
+| **AMENDED BY** | DI-DEC-V0-S4A-CONTRACT-V2-001 (C1D.10C, 2026-09-27) — item (3) "7 states / 11 transitions", the S2 guard via `inputEvidenceVersion` = combined identity only, the tenant scope via `vehicle_trips.organization_id` (NONEXISTENT column) and the machine contract `s4a-contract.v1.json` are the historical C1D.10A contract; superseded by contract v2 (13 transitions, S2 execution identity, TRIP_VEHICLE_ORGANIZATION tenancy, control plane) |
+
+## DI-DEC-V0-S4A-CONTRACT-V2-001
+
+| Field | Value |
+|-------|-------|
+| **TITLE** | DI V0 S4A contract v2 — S2 execution identity, trip→vehicle tenancy, control plane, enforcing validator (EXP-021 C1D.10C) |
+| **ERA** | EXP-021 C1D design (post-C1D.10B red-team, pre-S4A implementation) |
+| **STATUS** | PROPOSED |
+| **PROBLEM** | C1D.10B read-only red-team of C1D.10A: P1-A S2 execution identity under-bound (two different executions could alias one S2 idempotency key); P1-B machine contract + validator did not enforce (8/13 invalid mutations accepted); P1-C tenancy guard referenced nonexistent `vehicle_trips.organization_id`; P1-D control plane (flags, allowlists, kill switch, retirement) incomplete |
+| **DECISION** | (1) `DI_V0_S4_EXECUTION_IDENTITY_V1` = sha256 over org, vehicle, trip, boundary fingerprint, pipeline version key, calibration bundle hash, orchestration contract version, run purpose, discriminator, pinned snapshot hash, combined input identity → written as S2 `inputEvidenceVersion`; S2 key function unchanged; collision with different identity → FAIL_CLOSED `S2_EXECUTION_IDENTITY_MISMATCH`, same identity → reuse only. (2) Tenancy TRIP_VEHICLE_ORGANIZATION: scope guard `vehicle_trips JOIN vehicles` on work items, evidence snapshots and shadow runs. (3) Control plane: flags MASTER/DISCOVERY/WORKER/POSITION/R1/NATIVE default OFF, position mandatory; org + vehicle allowlists EMPTY=NONE, malformed=NONE, intersection; DB kill row `di_v0_s4_control` (missing/read error = KILLED, disable-only); pipeline registry `di_v0_s4_pipeline_versions` ACTIVE/RETIRED with retirement reaper. (4) 13 transitions (T12 retire, T13 holder supersede); every holder write requires epoch match + DB-clock lease not expired; lease 300 s, heartbeat 60 s, work budget 240 s, absolute ceiling 900 s from `lease_acquired_at`. (5) Replay never SKIPPED — ineligible replay fails `REPLAY_INELIGIBLE`. (6) Settlement time authority UTC (`AT TIME ZONE 'UTC'`), unrecorded boundary mutations detected via fingerprint difference. (7) Validator enforces every rule; red-team suite 47 negative / 21 positive cases |
+| **ALTERNATIVES** | Change S2 key function (rejected: S2 runtime change, merged schema); denormalize `organization_id` onto `vehicle_trips` (rejected: Trips-owned schema change); env-only kill switch (rejected: needs redeploy, not disable-only); allowlist EMPTY=ALL (rejected: fail-open); lease renewal without ceiling (rejected: unbounded holder) |
+| **RATIONALE** | Close every C1D.10B P1 by construction in the contract and prove it with an enforcing validator before any S4A code exists |
+| **CONSEQUENCES** | Contract version `DI_V0_S4A_CONTRACT_V2`, orchestration `DI_V0_S4_ORCHESTRATION_CONTRACT_V2`, identity field `channelEvidenceHash`; S4A adds 4 dormant tables (work items, evidence snapshots, control, pipeline versions); tiny activation still blocked by DI-GAP-S4-REPLAY-DESERIALIZER-001 and DI-GAP-S4-PROVIDER-BACKPRESSURE-001; native NOT_READY |
+| **GRAPH NODES** | DI-DEC-V0-S4A-CONTRACT-V2-001, DI-DEC-V0-S4A-CONTRACT-001, DI-GAP-S4-PROVIDER-BACKPRESSURE-001, DI-GAP-S4-REPLAY-DESERIALIZER-001, DI-GAP-S4-NATIVE-READINESS-001, DI-CONTRA-S4A-TENANCY-SCHEMA-001 |
+| **EPISTEMIC** | CONFIRMED for Production facts (read-only: S2 empty, DB TimeZone Etc/UTC, ID formats, `vehicle_trips` columns); contract properties validated by machine model + red-team suite, not yet by Postgres |
+| **EVIDENCE** | DI-EVID-EXP021-C1D10C-001 |
+| **BOUNDARY** | Consulted: DIMO Integration (provider budget authority `DimoProviderBudgetService` / `DimoRequestExecutor` named for S4C; no change), Trips (`vehicle_trips` / `trip_repairs` schema read-only) — no code change in either module |
+
+## DI-DEC-V0-S4A-IMPL-001
+
+| Field | Value |
+|-------|-------|
+| **TITLE** | DI V0 S4A dormant execution foundation — implementation of contract v2 (EXP-021 S4A) |
+| **ERA** | EXP-021 S4A (CONTROLLED_IMPLEMENTATION, post-C1D.10I merge of PR #1810) |
+| **STATUS** | PROPOSED |
+| **PROBLEM** | Contract `DI_V0_S4A_CONTRACT_V2` was frozen and machine-validated but had no schema, repository, or Postgres-level proof of fencing, kill serialization, tenancy and migration safety |
+| **DECISION** | (1) One migration `20260927200000_di_v0_s4a_dormant_foundation`: explicit `BEGIN/COMMIT`, `lock_timeout 5s` / `statement_timeout 60s`, `SHARE ROW EXCLUSIVE` on S2 tables, then a `DO` block refusing non-empty S2; 4 TEXT+CHECK tables; scope-guard triggers on S4 and S2 tables; composite `(id, organization_id, trip_id)` FKs; immutability triggers; no seed row (missing kill row = KILLED). (2) `DiV0S4WorkItemRepository` — one method per transition T01–T13, raw SQL only, no Prisma delegates, no generic status setter, READ COMMITTED, lock order work item → control row `FOR UPDATE` → registry `FOR SHARE`, all lease arithmetic on `clock_timestamp()`. (3) T06 fenced S2: `INSERT … ON CONFLICT DO NOTHING` then full execution-identity compare (fail closed), S2 key function unchanged. (4) Pure control plane (env snapshot injected, never read). (5) Fail-closed choices stricter than the contract (T01 COMPLETED+end_time, replay fingerprint match, T05 RUNNABLE, T06 re-hash/re-verify, runtime manifest binding, reason/trip consistency). (6) Channel policy V1 source-family rule enforced. (7) Real multi-connection Postgres tests with lock-queue barriers (no sleeps) |
+| **ALTERNATIVES** | Prisma model delegates (rejected: cannot express fenced predicates + lock order atomically, invites generic status writes); advisory locks for kill serialization (rejected: contract binds the kill proof to the DB control row); per-transaction `SERIALIZABLE` (rejected: retry storms, contract specifies row locks); seeding a `NOT_KILLED` control row in the migration (rejected: dormant by construction, missing = KILLED); `ON DELETE RESTRICT` to canonical (rejected by `migrationRules`); sleep-based race tests (rejected: nondeterministic) |
+| **RATIONALE** | Prove every contract guarantee (no stale write, ≤1 active PRIMARY, kill-before-fence, tenant isolation, empty-S2 precondition, no canonical rewrite) in real PostgreSQL while keeping zero runtime reachability |
+| **CONSEQUENCES** | Merge + ordinary deploy applies the migration to Production (S2 empty at 2026-09-27T21:52Z). Tables stay empty and unreachable; S4B/S4C (discovery, acquisition, workers) remain unauthorized. New contradictions DI-CONTRA-S4A-T13-SUCCESSOR-WRITE-BINDING-001, DI-CONTRA-S4A-CONTAINER-VERSION-NAMING-001, DI-CONTRA-S4A-ON-UPDATE-CASCADE-IMMUTABILITY-001; new gaps DI-GAP-S4A-BOUNDARY-REVERT-SUCCESSOR-001, DI-GAP-S4A-POSTGRES-CI-WIRING-001, DI-GAP-S4A-CONTROL-ROW-SERIALIZATION-001 |
+| **GRAPH NODES** | DI-DEC-V0-S4A-IMPL-001, DI-DEC-V0-S4A-CONTRACT-V2-001, DI-SVC-V0-S4A-FOUNDATION-001, DI-EVID-EXP021-S4A-IMPL-001 |
+| **EPISTEMIC** | CONFIRMED for code/test behavior on local PostgreSQL 16 and the read-only Production baseline; Production migration effect not yet observed |
+| **EVIDENCE** | DI-EVID-EXP021-S4A-IMPL-001 |
+| **BOUNDARY** | Consulted: Trips (`vehicle_trips` read-only; FKs `ON DELETE CASCADE` only; no trigger/index/constraint on canonical tables), DIMO Integration (no call, no change), S2 shadow persistence (guards added to S2 tables; S2 library unchanged) |

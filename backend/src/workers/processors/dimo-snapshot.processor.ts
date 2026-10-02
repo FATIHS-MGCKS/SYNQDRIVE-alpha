@@ -2,6 +2,7 @@ import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger, Optional } from '@nestjs/common';
 import { Job, UnrecoverableError } from 'bullmq';
 import { DimoPollJobType, DimoPollStatus } from '@prisma/client';
+import { isVehicleRegistryOperationalActive } from '@modules/vehicle-onboarding/registry/vehicle-registry-operational.util';
 
 import { QUEUE_NAMES } from '../queues/queue-names';
 import { DimoAuthService } from '@modules/dimo/dimo-auth.service';
@@ -122,6 +123,7 @@ export class DimoSnapshotProcessor extends WorkerHost {
       where: { id: vehicleId },
       select: {
         organizationId: true,
+        registryLifecycle: true,
         hardwareType: true,
         dimoVehicle: { select: { connectionStatus: true } },
         dataSourceLinks: {
@@ -134,6 +136,26 @@ export class DimoSnapshotProcessor extends WorkerHost {
     });
     if (!vehicle?.organizationId) {
       throw new Error(`Vehicle ${vehicleId} missing organizationId — cannot process snapshot`);
+    }
+
+    if (!isVehicleRegistryOperationalActive(vehicle.registryLifecycle)) {
+      const finishedAt = new Date();
+      await this.prisma.dimoPollLog.create({
+        data: {
+          vehicleId,
+          jobType: DimoPollJobType.SNAPSHOT,
+          status: DimoPollStatus.SKIPPED,
+          startedAt,
+          finishedAt,
+          durationMs: finishedAt.getTime() - startedAt.getTime(),
+          errorMessage: `registry_lifecycle=${vehicle.registryLifecycle}`,
+        },
+      });
+      this.logger.debug(
+        `Skipping DIMO snapshot for vehicle ${vehicleId}: registry lifecycle ${vehicle.registryLifecycle}`,
+      );
+      this.tripMetrics?.dimoSnapshotPollTotal.inc({ result: 'skipped' });
+      return;
     }
 
     try {
@@ -244,18 +266,6 @@ export class DimoSnapshotProcessor extends WorkerHost {
         fetchedAt,
       );
 
-      await this.applyPhysicalSnapshotEvidence({
-        organizationId: vehicle.organizationId,
-        vehicleId,
-        tokenId: dimoTokenId,
-        signals,
-        providerBindingId: vehicle.dataSourceLinks[0]?.id ?? null,
-        hardwareType: vehicle.hardwareType,
-        sourceSubtype: vehicle.dataSourceLinks[0]?.sourceSubtype ?? null,
-        fetchedAt,
-        vehicleLatestStateId: previousState?.id ?? `pending:${vehicleId}`,
-      });
-
       // VW-F-008: skip stale provider snapshots (monotonic sourceTimestamp guard)
       if (
         previousState &&
@@ -312,6 +322,19 @@ export class DimoSnapshotProcessor extends WorkerHost {
           providerBindingId: vehicle.dataSourceLinks[0]?.id ?? null,
           ...normalized,
         },
+      });
+
+      await this.applyPhysicalSnapshotEvidence({
+        organizationId: vehicle.organizationId,
+        vehicleId,
+        tokenId: dimoTokenId,
+        signals,
+        providerBindingId: vehicle.dataSourceLinks[0]?.id ?? null,
+        hardwareType: vehicle.hardwareType,
+        sourceSubtype: vehicle.dataSourceLinks[0]?.sourceSubtype ?? null,
+        fetchedAt,
+        vehicleLatestStateId: latestState.id,
+        existingVlsSourceTimestamp: previousState?.sourceTimestamp ?? null,
       });
 
       if (this.episodeService) {
@@ -538,6 +561,7 @@ export class DimoSnapshotProcessor extends WorkerHost {
     sourceSubtype: string | null;
     fetchedAt: Date;
     vehicleLatestStateId: string;
+    existingVlsSourceTimestamp: Date | null;
   }): Promise<void> {
     await this.snapshotPhysicalEvidenceOrchestrator?.applyPhysicalSnapshotEvidence(input);
   }

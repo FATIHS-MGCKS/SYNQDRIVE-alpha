@@ -35,6 +35,10 @@ import {
   buildFuelStationEnrichmentJobIdempotencyKey,
 } from '../../../fuel-stations/enrichment/fuel-station-enrichment-fingerprint.util';
 import { sanitizeBullMqJobId } from '@shared/queue/bullmq-job-id.sanitizer';
+import {
+  ensurePersistedCandidateLabHybridTrustEvidence,
+  registerLabHybridTrustOrganization,
+} from './rfrf-lab-hybrid-trust-promotion.harness';
 
 export const RAW_FUEL_REFUEL_F5_PR3_INTEGRATION_ENV = 'RAW_FUEL_REFUEL_F5_PR3_INTEGRATION';
 export const RAW_FUEL_REFUEL_F5_PR3_REDIS_REQUIRED_ENV = 'RAW_FUEL_REFUEL_F5_PR3_REDIS_REQUIRED';
@@ -211,6 +215,7 @@ export async function seedOrgVehicle(
       status: 'AVAILABLE',
     },
   });
+  registerLabHybridTrustOrganization(org.id);
   return { org, vehicle, tokenId, dimoVehicleId: dimoVehicle.id };
 }
 
@@ -337,7 +342,7 @@ export async function persistReadyCandidate(
   });
   const persisted = await stack.prisma.rawRefuelCandidate.findFirst({ where: { vehicleId } });
   if (!persisted) throw new Error('expected candidate');
-  return persisted;
+  return ensurePersistedCandidateLabHybridTrustEvidence(stack.prisma, persisted);
 }
 
 export async function promoteCandidateViaRuntime(
@@ -348,7 +353,6 @@ export async function promoteCandidateViaRuntime(
   const result = await stack.promotion.evaluateAndApplyPromotionById(candidate.id, {
     capability: 'FUEL_CAPABLE',
     absoluteDetectionAdmissibility: 'ADMISSIBLE',
-    absoluteSignalTrust: 'TRUSTED',
   });
   if (result.status !== 'PROMOTED' && result.status !== 'ALREADY_PROMOTED') {
     throw new Error(`expected promotion, got ${result.status}`);

@@ -9,6 +9,7 @@ import { TRIP_TRACKING_TRIGGERS } from './trip-detection.types';
 import { END_DETECTION_MODES } from './trip-detection.types';
 import type { TripTrackingJobData } from './trip-detection.types';
 import { TripDetectionOrchestrationService } from './trip-detection-orchestration.service';
+import { defaultFinalizeHarnessRouteWaypoints } from './trip-finalize-harness-waypoints.fixture';
 
 const VEHICLE = 'veh-r8';
 const ORG = 'org-r8';
@@ -33,6 +34,8 @@ function finalizeJob(): TripTrackingJobData {
 function buildFinalizeHarness() {
   const tripMetrics = {
     tripFinalized: { inc: jest.fn() },
+    tripDiscarded: { inc: jest.fn() },
+    tripQualityAnomalies: { inc: jest.fn() },
     tripFinalizeLatency: { observe: jest.fn() },
     tripEndLatencyFromMovement: { observe: jest.fn() },
     tripDuration: { observe: jest.fn() },
@@ -97,6 +100,15 @@ function buildFinalizeHarness() {
       findUnique: jest.fn().mockResolvedValue(trip),
     },
     vehicleTripWaypoint: {
+      findMany: jest.fn().mockResolvedValue([
+        ...defaultFinalizeHarnessRouteWaypoints(START_TIME),
+        {
+          latitude: boundaryWaypoint.latitude,
+          longitude: boundaryWaypoint.longitude,
+          speedKmh: 0,
+          recordedAt: boundaryWaypoint.recordedAt,
+        },
+      ]),
       findFirst: jest
         .fn()
         .mockResolvedValueOnce(latestWaypoint)
@@ -159,14 +171,16 @@ describe('trip-fsm R8 orchestration finalize', () => {
 
   it('clears stale provisional coords when no boundary waypoint exists', async () => {
     const h = buildFinalizeHarness();
-    h.prisma.vehicleTripWaypoint.findFirst = jest
-      .fn()
-      .mockResolvedValueOnce({
+    h.prisma.vehicleTripWaypoint.findMany = jest.fn().mockResolvedValue([
+      ...defaultFinalizeHarnessRouteWaypoints(START_TIME),
+      {
         latitude: 52.99,
         longitude: 13.99,
+        speedKmh: 0,
         recordedAt: new Date('2026-09-06T14:35:00.000Z'),
-      })
-      .mockResolvedValueOnce(null);
+      },
+    ]);
+    h.prisma.vehicleTripWaypoint.findFirst = jest.fn().mockResolvedValue(null);
 
     await TripDetectionOrchestrationService.prototype.processFinalize.call(
       h.svc as TripDetectionOrchestrationService,

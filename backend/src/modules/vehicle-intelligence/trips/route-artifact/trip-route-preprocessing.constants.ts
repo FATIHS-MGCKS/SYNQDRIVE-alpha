@@ -3,7 +3,7 @@
  *
  * Evidence basis (read-only audit / repo conventions):
  * - DIMO route enrichment buckets are ~7s (`RoutePoint` from 7-second buckets).
- * - Trip mid-gap split uses TRIP_MID_GAP_SPLIT_MS default 180_000 (3 min).
+ * - Qualified stop max same-trip duration default 300_000 (5 min); split when gap > max.
  * - GPS consumer-grade accuracy is typically 5–15 m; we use conservative margins.
  * - German autobahn legal max ~250 km/h; fleet plausibility cap includes safety margin.
  *

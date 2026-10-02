@@ -10,6 +10,7 @@ import { PaymentsModule } from '@modules/payments/payments.module';
 import { BillingModule } from '@modules/billing/billing.module';
 import { TaskAutomationOutboxModule } from '@modules/tasks/outbox/task-automation-outbox.module';
 import { BatteryV2JobsModule } from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-jobs.module';
+import { BatteryGeneralizedEvidenceModule } from '@modules/vehicle-intelligence/battery-health/generalized-evidence/generalized-evidence.module';
 import { BatteryV2JobsProducerModule } from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-jobs-producer.module';
 import { VoiceWebhookIngestionModule } from '@modules/voice-webhook-ingestion/voice-webhook-ingestion.module';
 import { VoiceAssistantModule } from '@modules/voice-assistant/voice-assistant.module';
@@ -38,12 +39,20 @@ import { DeviceConnectionWebhookProcessor } from './processors/device-connection
 import { BookingDocumentGenerationProcessor } from './processors/booking-document-generation.processor';
 import { ClickHouseMirrorRetryProcessor } from './processors/clickhouse-mirror-retry.processor';
 import { RefuelStationEnrichmentProcessor } from './processors/refuel-station-enrichment.processor';
+import { RechargeStationEnrichmentProcessor } from './processors/recharge-station-enrichment.processor';
 import { FuelStationEnrichmentRecoveryScheduler } from './schedulers/fuel-station-enrichment-recovery.scheduler';
+import { ChargingStationEnrichmentRecoveryScheduler } from './schedulers/charging-station-enrichment-recovery.scheduler';
 import { PhysicalRefuelReconciliationRecoveryScheduler } from './schedulers/physical-refuel-reconciliation-recovery.scheduler';
+import { RawRefuelCandidateRecoveryScheduler } from './schedulers/raw-refuel-candidate-recovery.scheduler';
 import { ReferenceCaptureProcessor } from './processors/reference-capture.processor';
 import { ReferenceCaptureSettlementShadowProcessor } from './processors/reference-capture-settlement-shadow.processor';
+import { ReferenceCaptureExp021MaturationShadowProcessor } from './processors/reference-capture-exp021-maturation-shadow.processor';
 import { ReferenceCaptureRetentionScheduler } from './schedulers/reference-capture-retention.scheduler';
 import { ReferenceCaptureSettlementShadowRecoveryScheduler } from './schedulers/reference-capture-settlement-shadow-recovery.scheduler';
+import { ReferenceCaptureExp021MaturationShadowRecoveryScheduler } from './schedulers/reference-capture-exp021-maturation-shadow-recovery.scheduler';
+import { ReferenceCaptureExp021FleetCoordinatorScheduler } from './schedulers/reference-capture-exp021-fleet-coordinator.scheduler';
+import { ReferenceCaptureExp021CanaryLiveWindowActivationScheduler } from './schedulers/reference-capture-exp021-canary-live-window-activation.scheduler';
+import { ReferenceCaptureExp021CanaryLiveWindowActivationSchedulerRuntimeModule } from '@modules/vehicle-intelligence/reference-capture/exp021-canary-live-window/reference-capture-exp021-canary-live-window-activation-scheduler-runtime.module';
 
 import { DimoSnapshotScheduler } from './schedulers/dimo-snapshot.scheduler';
 import { SnapshotWakeHandoffRecoveryScheduler } from './schedulers/snapshot-wake-handoff-recovery.scheduler';
@@ -62,6 +71,7 @@ import { DataRetentionScheduler } from './schedulers/data-retention.scheduler';
 import { StorageOrphanSweepScheduler } from './schedulers/storage-orphan-sweep.scheduler';
 import { BatteryV2RetentionScheduler } from './schedulers/battery-v2-retention.scheduler';
 import { BatteryV2ReconciliationScheduler } from './schedulers/battery-v2-reconciliation.scheduler';
+import { BatteryV2LongitudinalMaterializationReconciliationScheduler } from './schedulers/battery-v2-longitudinal-materialization-reconciliation.scheduler';
 import { VoiceRetentionScheduler } from './schedulers/voice-retention.scheduler';
 import { IamDataRetentionScheduler } from './schedulers/iam-data-retention.scheduler';
 import { IamDataRetentionModule } from '@modules/iam-data-retention/iam-data-retention.module';
@@ -91,8 +101,10 @@ import { VehicleWarningGdprModule } from '@modules/vehicle-warning-gdpr/vehicle-
       { name: QUEUE_NAMES.BOOKING_DOCUMENT_GENERATION },
       { name: QUEUE_NAMES.CLICKHOUSE_MIRROR_RETRY },
       { name: QUEUE_NAMES.ENERGY_REFUEL_STATION_ENRICH },
+      { name: QUEUE_NAMES.ENERGY_RECHARGE_STATION_ENRICH },
       { name: QUEUE_NAMES.REFERENCE_CAPTURE },
       { name: QUEUE_NAMES.REFERENCE_CAPTURE_SETTLEMENT_SHADOW },
+      { name: QUEUE_NAMES.REFERENCE_CAPTURE_EXP021_MATURATION_SHADOW },
     ),
     DimoModule,
     SnapshotWakeModule,
@@ -104,11 +116,13 @@ import { VehicleWarningGdprModule } from '@modules/vehicle-warning-gdpr/vehicle-
     TaskAutomationOutboxModule,
     BatteryV2JobsProducerModule,
     BatteryV2JobsModule,
+    BatteryGeneralizedEvidenceModule,
     VoiceWebhookIngestionModule,
     VoiceAssistantModule,
     IamDataRetentionModule,
     VehicleWarningGdprModule,
     BookingDocumentGenerationModule,
+    ReferenceCaptureExp021CanaryLiveWindowActivationSchedulerRuntimeModule,
   ],
   providers: [
     // Processors
@@ -133,8 +147,10 @@ import { VehicleWarningGdprModule } from '@modules/vehicle-warning-gdpr/vehicle-
     BookingDocumentGenerationProcessor,
     ClickHouseMirrorRetryProcessor,
     RefuelStationEnrichmentProcessor,
+    RechargeStationEnrichmentProcessor,
     ReferenceCaptureProcessor,
     ReferenceCaptureSettlementShadowProcessor,
+    ReferenceCaptureExp021MaturationShadowProcessor,
 
     // Schedulers
     DimoSnapshotScheduler,
@@ -153,13 +169,19 @@ import { VehicleWarningGdprModule } from '@modules/vehicle-warning-gdpr/vehicle-
     DataRetentionScheduler,
     StorageOrphanSweepScheduler,
     BatteryV2ReconciliationScheduler,
+    BatteryV2LongitudinalMaterializationReconciliationScheduler,
     BatteryV2RetentionScheduler,
     VoiceRetentionScheduler,
     IamDataRetentionScheduler,
     FuelStationEnrichmentRecoveryScheduler,
+    ChargingStationEnrichmentRecoveryScheduler,
     PhysicalRefuelReconciliationRecoveryScheduler,
+    RawRefuelCandidateRecoveryScheduler,
     ReferenceCaptureRetentionScheduler,
     ReferenceCaptureSettlementShadowRecoveryScheduler,
+    ReferenceCaptureExp021MaturationShadowRecoveryScheduler,
+    ReferenceCaptureExp021FleetCoordinatorScheduler,
+    ReferenceCaptureExp021CanaryLiveWindowActivationScheduler,
   ],
 })
 export class WorkersModule {}

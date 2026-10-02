@@ -8,8 +8,8 @@ import { BatteryMeasurementService } from '../battery-measurement.service';
 import {
   evaluateBatteryProviderObservation,
   type BatteryProviderObservationDecision,
-  type BatteryProviderStoredObservationContext,
 } from '../battery-provider-observation.policy';
+import { BatteryProviderLastStoredLiveVoltageResolver } from '../battery-provider-last-stored-live-voltage.resolver';
 import type { BatteryObservationClassifyPayload } from '../jobs/battery-v2-job.types';
 import type { BatteryObservationSnapshotContext } from '../jobs/battery-v2-snapshot-context.types';
 import {
@@ -46,6 +46,7 @@ export class LvLiveVoltageIngestionService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly measurements: BatteryMeasurementService,
+    private readonly lastStoredLiveVoltage: BatteryProviderLastStoredLiveVoltageResolver,
   ) {}
 
   /**
@@ -68,10 +69,11 @@ export class LvLiveVoltageIngestionService {
     const receivedAt = parseIso(ctx.providerFetchedAt) ?? new Date();
     const observedAt = parseIso(ctx.lvBatteryObservedAt) ?? receivedAt;
 
-    const lastStored = await this.resolveLastStoredObservation(
-      payload.organizationId,
-      payload.vehicleId,
-    );
+    const lastStored =
+      await this.lastStoredLiveVoltage.resolveLastStoredLiveVoltageObservation(
+        payload.organizationId,
+        payload.vehicleId,
+      );
 
     const decision = evaluateBatteryProviderObservation({
       organizationId: payload.organizationId,
@@ -151,41 +153,6 @@ export class LvLiveVoltageIngestionService {
       tripId: signal.tripId,
       providerObservationOutcome: outcome,
       providerError: false,
-    };
-  }
-
-  /**
-   * Canonical LIVE_VOLTAGE policy comparison only — legacy battery_health_snapshots
-   * must not suppress the first canonical BatteryMeasurement bootstrap.
-   */
-  private async resolveLastStoredObservation(
-    organizationId: string,
-    vehicleId: string,
-  ): Promise<BatteryProviderStoredObservationContext | null> {
-    const lastMeasurement = await this.prisma.batteryMeasurement.findFirst({
-      where: {
-        organizationId,
-        vehicleId,
-        type: BatteryMeasurementType.LIVE_VOLTAGE,
-      },
-      orderBy: { observedAt: 'desc' },
-      select: {
-        observedAt: true,
-        numericValue: true,
-        receivedAt: true,
-        idempotencyKey: true,
-      },
-    });
-
-    if (lastMeasurement?.numericValue == null) {
-      return null;
-    }
-
-    return {
-      observedAt: lastMeasurement.observedAt,
-      normalizedValue: lastMeasurement.numericValue,
-      receivedAt: lastMeasurement.receivedAt,
-      idempotencyKey: lastMeasurement.idempotencyKey,
     };
   }
 

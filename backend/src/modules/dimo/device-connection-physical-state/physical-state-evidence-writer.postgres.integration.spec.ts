@@ -5,12 +5,6 @@ import {
   PrismaClient,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
-import {
-  CONNECTIVITY_PHYSICAL_STATE_PROJECTION_WRITE_ENABLED_ENV,
-  CONNECTIVITY_PHYSICAL_STATE_SHADOW_COMPARE_ENABLED_ENV,
-  CONNECTIVITY_PHYSICAL_STATE_SIDE_EFFECTS_ENABLED_ENV,
-} from '@config/connectivity-physical-state-runtime.config';
-import { CONNECTIVITY_PHYSICAL_STATE_RECONCILIATION_ENABLED_ENV } from '@config/connectivity-physical-state.config';
 import { buildBindingScopeFromToken } from './device-connection-physical-state.binding';
 import { getCoordinatorReconcile, isPhysicalStateCoordinatorReconciled } from './device-connection-physical-state.types';
 import { DeviceConnectionPhysicalAuthorityCutoverRepository } from './device-connection-physical-authority-cutover.repository';
@@ -26,6 +20,8 @@ import { PhysicalStateShadowClassification } from './physical-state-shadow.class
 import {
   cleanupPhysicalStatePostgresFixture,
   createPhysicalStatePostgresFixture,
+  disablePhysicalStateStatefulShadowEnv,
+  enablePhysicalStateStatefulShadowEnvForFixture,
   type PhysicalStatePostgresFixture,
 } from './testing/physical-state-postgres.integration.harness';
 
@@ -38,20 +34,6 @@ if (REQUIRED && !LIVE) {
   throw new Error(
     'PHYSICAL_STATE_POSTGRES_REQUIRED=1 but DATABASE_URL / PHYSICAL_STATE_POSTGRES_INTEGRATION not configured',
   );
-}
-
-function enableStatefulShadowEnv(): void {
-  process.env[CONNECTIVITY_PHYSICAL_STATE_RECONCILIATION_ENABLED_ENV] = 'true';
-  process.env[CONNECTIVITY_PHYSICAL_STATE_PROJECTION_WRITE_ENABLED_ENV] = 'true';
-  process.env[CONNECTIVITY_PHYSICAL_STATE_SHADOW_COMPARE_ENABLED_ENV] = 'true';
-  process.env[CONNECTIVITY_PHYSICAL_STATE_SIDE_EFFECTS_ENABLED_ENV] = 'false';
-}
-
-function disableStatefulShadowEnv(): void {
-  delete process.env[CONNECTIVITY_PHYSICAL_STATE_RECONCILIATION_ENABLED_ENV];
-  delete process.env[CONNECTIVITY_PHYSICAL_STATE_PROJECTION_WRITE_ENABLED_ENV];
-  delete process.env[CONNECTIVITY_PHYSICAL_STATE_SHADOW_COMPARE_ENABLED_ENV];
-  delete process.env[CONNECTIVITY_PHYSICAL_STATE_SIDE_EFFECTS_ENABLED_ENV];
 }
 
 describePg('PhysicalStateEvidenceWriterService (postgres)', () => {
@@ -85,8 +67,8 @@ describePg('PhysicalStateEvidenceWriterService (postgres)', () => {
   });
 
   beforeEach(async () => {
-    enableStatefulShadowEnv();
     fixture = await createPhysicalStatePostgresFixture(prisma);
+    enablePhysicalStateStatefulShadowEnvForFixture(fixture);
     binding = buildBindingScopeFromToken({
       provider: 'DIMO',
       tokenId: fixture.tokenId,
@@ -94,7 +76,7 @@ describePg('PhysicalStateEvidenceWriterService (postgres)', () => {
   });
 
   afterEach(async () => {
-    disableStatefulShadowEnv();
+    disablePhysicalStateStatefulShadowEnv();
     await cleanupPhysicalStatePostgresFixture(prisma, fixture);
   });
 
@@ -279,7 +261,7 @@ describePg('PhysicalStateEvidenceWriterService (postgres)', () => {
   });
 
   it('master=false => zero authority/projection/transition/event/outbox writes', async () => {
-    disableStatefulShadowEnv();
+    disablePhysicalStateStatefulShadowEnv();
     const before = await countAllPhysicalStateArtifacts();
 
     const result = await writer.writeWebhookEvidence({
@@ -303,7 +285,7 @@ describePg('PhysicalStateEvidenceWriterService (postgres)', () => {
     expect(result.enabled).toBe(false);
     const after = await countAllPhysicalStateArtifacts();
     expect(after).toEqual(before);
-    enableStatefulShadowEnv();
+    enablePhysicalStateStatefulShadowEnvForFixture(fixture);
   });
 
   it('concurrent webhook + snapshot — newer timestamp wins', async () => {

@@ -1,4 +1,6 @@
 import { PhysicalRefuelReconciliationRecoveryScheduler } from './physical-refuel-reconciliation-recovery.scheduler';
+import { TripMetricsService } from '@modules/observability/trip-metrics.service';
+import { PhysicalRefuelReconciliationMetricsService } from '@modules/vehicle-intelligence/energy-events/physical-refuel-reconciliation-metrics.service';
 
 describe('PhysicalRefuelReconciliationRecoveryScheduler (F7-P10 lifecycle)', () => {
   afterEach(() => {
@@ -17,6 +19,14 @@ describe('PhysicalRefuelReconciliationRecoveryScheduler (F7-P10 lifecycle)', () 
       runRecoveryBatch?: jest.Mock;
     },
   ): PhysicalRefuelReconciliationRecoveryScheduler {
+    const metrics = {
+      setRecoveryEnabled: jest.fn(),
+      initializeRecoverySchedulerObservability: jest.fn(),
+      setRecoveryBacklogFromRepository: jest.fn(),
+      setRecoveryBacklog: jest.fn(),
+      recordRecoveryRun: jest.fn(),
+      recordRecoveryRecovered: jest.fn(),
+    };
     return new PhysicalRefuelReconciliationRecoveryScheduler(
       {
         enabled: config.enabled,
@@ -34,6 +44,7 @@ describe('PhysicalRefuelReconciliationRecoveryScheduler (F7-P10 lifecycle)', () 
             recoveredReasons: { orphan_refuel: 1 },
           }),
       } as never,
+      metrics as never,
     );
   }
 
@@ -126,5 +137,72 @@ describe('PhysicalRefuelReconciliationRecoveryScheduler (F7-P10 lifecycle)', () 
 
     jest.advanceTimersByTime(120_000);
     expect(tickSpy).not.toHaveBeenCalled();
+  });
+
+  it('F8.1-P1 enabled at lifecycle startup publishes recovery_enabled=1 without executing batch', async () => {
+    jest.useFakeTimers();
+    const tripMetrics = new TripMetricsService();
+    const physicalRefuelMetrics = new PhysicalRefuelReconciliationMetricsService(tripMetrics);
+    const runRecoveryBatch = jest.fn();
+    const scheduler = new PhysicalRefuelReconciliationRecoveryScheduler(
+      {
+        enabled: true,
+        recoveryEnabled: true,
+        recoveryIntervalMs: 60_000,
+      } as never,
+      {
+        emitRecoveryBacklogMetrics: jest.fn().mockResolvedValue(undefined),
+        runRecoveryBatch,
+      } as never,
+      physicalRefuelMetrics,
+    );
+
+    scheduler.onModuleInit();
+
+    const metricsJson = await tripMetrics.registry.getMetricsAsJSON();
+    const enabled = metricsJson
+      .find((m) => m.name === 'synqdrive_physical_refuel_recovery_enabled')
+      ?.values[0]?.value;
+    const lastSuccess = metricsJson
+      .find((m) => m.name === 'synqdrive_physical_refuel_recovery_last_success_unixtime')
+      ?.values[0]?.value;
+
+    expect(enabled).toBe(1);
+    expect(lastSuccess).toBe(0);
+    expect(runRecoveryBatch).not.toHaveBeenCalled();
+
+    scheduler.onModuleDestroy();
+  });
+
+  it('F8.1-P2 deliberately disabled startup publishes recovery_enabled=0 and does not start timer', async () => {
+    jest.useFakeTimers();
+    const tripMetrics = new TripMetricsService();
+    const physicalRefuelMetrics = new PhysicalRefuelReconciliationMetricsService(tripMetrics);
+    const runRecoveryBatch = jest.fn();
+    const scheduler = new PhysicalRefuelReconciliationRecoveryScheduler(
+      {
+        enabled: false,
+        recoveryEnabled: true,
+        recoveryIntervalMs: 60_000,
+      } as never,
+      {
+        emitRecoveryBacklogMetrics: jest.fn().mockResolvedValue(undefined),
+        runRecoveryBatch,
+      } as never,
+      physicalRefuelMetrics,
+    );
+
+    scheduler.onModuleInit();
+
+    const metricsJson = await tripMetrics.registry.getMetricsAsJSON();
+    const enabled = metricsJson
+      .find((m) => m.name === 'synqdrive_physical_refuel_recovery_enabled')
+      ?.values[0]?.value;
+
+    expect(enabled).toBe(0);
+    expect(scheduler.shouldStartRecoveryTimer()).toBe(false);
+
+    jest.advanceTimersByTime(120_000);
+    expect(runRecoveryBatch).not.toHaveBeenCalled();
   });
 });
