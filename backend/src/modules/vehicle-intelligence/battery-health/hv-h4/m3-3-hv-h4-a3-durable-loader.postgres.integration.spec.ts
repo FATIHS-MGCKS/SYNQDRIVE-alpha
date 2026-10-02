@@ -144,6 +144,35 @@ async function createNativeSession(
       expect(cls.eligibility).toBe('INELIGIBLE_NOT_KNOWABLE_AT_EVALUATION');
     });
 
+    it('H) overlapping eligible native sessions parity', async () => {
+      const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
+      const start = new Date('2026-05-01T08:00:00.000Z');
+      const end1 = new Date('2026-05-01T12:00:00.000Z');
+      const end2 = new Date('2026-05-01T14:00:00.000Z');
+      const s1 = await createNativeSession(prisma, {
+        organizationId,
+        vehicleId,
+        startAt: start,
+        endAt: end1,
+      });
+      const s2 = await createNativeSession(prisma, {
+        organizationId,
+        vehicleId,
+        startAt: new Date('2026-05-01T10:00:00.000Z'),
+        endAt: end2,
+      });
+      await writer.persistFromHvChargeSession(s1);
+      await writer.persistFromHvChargeSession(s2);
+      const bundle = await runM3_3HvH4LiveDurableModeAParityV1(
+        prisma,
+        { organizationId, vehicleId },
+        EVAL,
+      );
+      expect(bundle.live.throughput.lifecycleSegments[0]?.compositionStatus).toBe(
+        'SOURCE_CONFLICT',
+      );
+    });
+
     it('E) multiple revisions collapse to one canonical session in A2 population', async () => {
       const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
       const fp = `fp-multi-${randomUUID()}`;
