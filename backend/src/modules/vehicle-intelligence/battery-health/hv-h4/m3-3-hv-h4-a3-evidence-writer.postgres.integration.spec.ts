@@ -26,8 +26,55 @@ import {
 } from './m3-3-hv-h4-a3-charge-session-evidence.errors.v1';
 import { createM3_3HvH4ChargeSessionEvidenceWriterService } from './m3-3-hv-h4-a3-charge-session-evidence-writer.service';
 import type { M3_3HvH4ChargeSessionEvidenceScientificProjectionV1 } from './m3-3-hv-h4-a3-charge-session-evidence.types.v1';
+import type { M3_3HvH4ChargeSessionEvidencePersistenceInputV1 } from './m3-3-hv-h4-a3-charge-session-evidence.persistence.types.v1';
 
 const integrationEnabled = process.env.BATTERY_HV_H4_REPORT_INTEGRATION === '1';
+
+function persistenceInputWithProjectionPatch(
+  base: M3_3HvH4ChargeSessionEvidencePersistenceInputV1,
+  patch: Partial<M3_3HvH4ChargeSessionEvidenceScientificProjectionV1>,
+): M3_3HvH4ChargeSessionEvidencePersistenceInputV1 {
+  const projection: M3_3HvH4ChargeSessionEvidenceScientificProjectionV1 = {
+    ...base.projection,
+    ...patch,
+  };
+  const sourceRevisionFingerprint =
+    computeM3_3HvH4ChargeSessionSourceRevisionFingerprintV1(projection);
+  return {
+    projection,
+    sourceRevisionFingerprint,
+    mirror: mirrorFromScientificProjectionV1(projection),
+  };
+}
+
+async function assertIsolatedMetadataRevisionAppend(input: {
+  repo: M3_3HvH4ChargeSessionEvidenceMaterializationRepository;
+  prisma: PrismaClient;
+  baseline: M3_3HvH4ChargeSessionEvidencePersistenceInputV1;
+  patched: M3_3HvH4ChargeSessionEvidencePersistenceInputV1;
+}) {
+  const { repo, prisma, baseline, patched } = input;
+  const first = await repo.persistIdempotent(baseline);
+  expect(first.persistenceOutcome).toBe('CREATED');
+  const firstJson = first.revision.scientificEvidenceJson;
+  const second = await repo.persistIdempotent(patched);
+  expect(second.persistenceOutcome).toBe('CREATED');
+  expect(second.revision.sourceRevisionFingerprint).not.toBe(first.sourceRevisionFingerprint);
+  expect(second.revision.id).not.toBe(first.revision.id);
+  const scope = {
+    organizationId: baseline.projection.organizationId,
+    vehicleId: baseline.projection.vehicleId,
+    segmentFingerprint: baseline.projection.segmentFingerprint,
+    evidenceContractVersion: baseline.projection.evidenceContractVersion,
+  };
+  expect(await prisma.batteryHvChargeSessionEvidenceRevision.count({ where: scope })).toBe(2);
+  expect(await prisma.batteryHvChargeSessionEvidenceAck.count({ where: scope })).toBe(2);
+  const reloadedFirst = await prisma.batteryHvChargeSessionEvidenceRevision.findUniqueOrThrow({
+    where: { id: first.revision.id },
+  });
+  expect(reloadedFirst.scientificEvidenceJson).toEqual(firstJson);
+  expect(reloadedFirst.sourceRevisionFingerprint).toBe(first.sourceRevisionFingerprint);
+}
 
 async function createHvSession(
   prisma: PrismaClient,
@@ -178,23 +225,76 @@ async function createHvSession(
       expect(r.persistenceOutcome).toBe('CREATED');
     });
 
-    it('F) qualityStatus change creates new revision', async () => {
+    it('F1) QUALITY_STATUS_ONLY_CHANGE appends isolated revision', async () => {
       const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
-      const session = await createHvSession(prisma, { organizationId, vehicleId });
-      await writer.persistFromHvChargeSession(session);
-      const updated = await prisma.hvChargeSession.update({
-        where: { id: session.id },
-        data: {
-          metadata: {
-            providerSegmentId: `prov-${randomUUID()}`,
-            addedEnergyProvenance: M3_3_HV_H4_NATIVE_ADDED_ENERGY_PROVENANCE,
-            qualityStatus: HV_CHARGE_SESSION_QUALITY_STATUS.PARTIAL,
-          },
+      const fixedProv = `prov-fixed-${randomUUID()}`;
+      const session = await createHvSession(prisma, {
+        organizationId,
+        vehicleId,
+        segmentFingerprint: `fp-f1-${randomUUID()}`,
+        metadata: {
+          providerSegmentId: fixedProv,
+          addedEnergyProvenance: M3_3_HV_H4_NATIVE_ADDED_ENERGY_PROVENANCE,
+          qualityStatus: HV_CHARGE_SESSION_QUALITY_STATUS.QUALIFIED,
+          startedBeforeRange: false,
+          supersededBySegmentFingerprint: null,
         },
       });
-      expect((await writer.persistFromHvChargeSession(updated)).persistenceOutcome).toBe(
-        'CREATED',
-      );
+      const baseline = buildM3_3HvH4ChargeSessionEvidencePersistenceInputFromSessionV1(session);
+      const patched = persistenceInputWithProjectionPatch(baseline, {
+        qualityStatus: HV_CHARGE_SESSION_QUALITY_STATUS.PARTIAL,
+      });
+      expect(patched.projection.providerSegmentId).toBe(baseline.projection.providerSegmentId);
+      await assertIsolatedMetadataRevisionAppend({ repo, prisma, baseline, patched });
+    });
+
+    it('F2) SUPERSEDED_BY_SEGMENT_FINGERPRINT_ONLY_CHANGE appends isolated revision', async () => {
+      const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
+      const fixedProv = `prov-fixed-${randomUUID()}`;
+      const session = await createHvSession(prisma, {
+        organizationId,
+        vehicleId,
+        segmentFingerprint: `fp-f2-${randomUUID()}`,
+        metadata: {
+          providerSegmentId: fixedProv,
+          addedEnergyProvenance: M3_3_HV_H4_NATIVE_ADDED_ENERGY_PROVENANCE,
+          qualityStatus: HV_CHARGE_SESSION_QUALITY_STATUS.QUALIFIED,
+          startedBeforeRange: false,
+          supersededBySegmentFingerprint: null,
+        },
+      });
+      const baseline = buildM3_3HvH4ChargeSessionEvidencePersistenceInputFromSessionV1(session);
+      const patched = persistenceInputWithProjectionPatch(baseline, {
+        supersededBySegmentFingerprint: `superseding-fp-${randomUUID()}`,
+      });
+      expect(patched.projection.qualityStatus).toBe(baseline.projection.qualityStatus);
+      expect(patched.projection.providerSegmentId).toBe(baseline.projection.providerSegmentId);
+      await assertIsolatedMetadataRevisionAppend({ repo, prisma, baseline, patched });
+    });
+
+    it('F3) STARTED_BEFORE_RANGE_ONLY_CHANGE appends isolated revision', async () => {
+      const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
+      const fixedProv = `prov-fixed-${randomUUID()}`;
+      const session = await createHvSession(prisma, {
+        organizationId,
+        vehicleId,
+        segmentFingerprint: `fp-f3-${randomUUID()}`,
+        metadata: {
+          providerSegmentId: fixedProv,
+          addedEnergyProvenance: M3_3_HV_H4_NATIVE_ADDED_ENERGY_PROVENANCE,
+          qualityStatus: HV_CHARGE_SESSION_QUALITY_STATUS.QUALIFIED,
+          startedBeforeRange: false,
+          supersededBySegmentFingerprint: null,
+        },
+      });
+      const baseline = buildM3_3HvH4ChargeSessionEvidencePersistenceInputFromSessionV1(session);
+      expect(baseline.projection.startedBeforeRange).toBe(false);
+      const patched = persistenceInputWithProjectionPatch(baseline, {
+        startedBeforeRange: true,
+      });
+      expect(patched.projection.qualityStatus).toBe(baseline.projection.qualityStatus);
+      expect(patched.projection.providerSegmentId).toBe(baseline.projection.providerSegmentId);
+      await assertIsolatedMetadataRevisionAppend({ repo, prisma, baseline, patched });
     });
 
     it('G/H/I) finite, NULL, and non-finite energy ledger semantics', async () => {
@@ -439,6 +539,65 @@ async function createHvSession(
         where: { id: persisted.revision.id },
       });
       expect(still.sourceHvChargeSessionId).toBe(session.id);
+    });
+
+    it('R) ACK_STAGE_FAILURE_ROLLS_BACK_NEW_REVISION', async () => {
+      const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
+      const seedSession = await createHvSession(prisma, {
+        organizationId,
+        vehicleId,
+        segmentFingerprint: `fp-seed-${randomUUID()}`,
+      });
+      const seedPersisted = await writer.persistFromHvChargeSession(seedSession);
+
+      const targetSession = await createHvSession(prisma, {
+        organizationId,
+        vehicleId,
+        segmentFingerprint: `fp-target-rollback-${randomUUID()}`,
+      });
+      const targetInput =
+        buildM3_3HvH4ChargeSessionEvidencePersistenceInputFromSessionV1(targetSession);
+
+      await prisma.batteryHvChargeSessionEvidenceAck.create({
+        data: {
+          organizationId: targetInput.projection.organizationId,
+          vehicleId: targetInput.projection.vehicleId,
+          segmentFingerprint: targetInput.projection.segmentFingerprint,
+          evidenceContractVersion: targetInput.projection.evidenceContractVersion,
+          sourceRevisionFingerprint: targetInput.sourceRevisionFingerprint,
+          revisionId: seedPersisted.revision.id,
+          durabilityAckContractVersion: M3_3_HV_H4_DURABLE_SOURCE_REVISION_ACK_V1,
+        },
+      });
+
+      const targetScope = {
+        organizationId: targetInput.projection.organizationId,
+        vehicleId: targetInput.projection.vehicleId,
+        segmentFingerprint: targetInput.projection.segmentFingerprint,
+        evidenceContractVersion: targetInput.projection.evidenceContractVersion,
+        sourceRevisionFingerprint: targetInput.sourceRevisionFingerprint,
+      };
+
+      expect(await prisma.batteryHvChargeSessionEvidenceRevision.count({ where: targetScope })).toBe(
+        0,
+      );
+
+      await expect(repo.persistIdempotent(targetInput)).rejects.toBeInstanceOf(
+        H4EvidenceAckIdentityMismatchError,
+      );
+
+      expect(await prisma.batteryHvChargeSessionEvidenceRevision.count({ where: targetScope })).toBe(
+        0,
+      );
+      expect(
+        await prisma.batteryHvChargeSessionEvidenceAck.count({
+          where: {
+            ...targetScope,
+            durabilityAckContractVersion: M3_3_HV_H4_DURABLE_SOURCE_REVISION_ACK_V1,
+            revisionId: seedPersisted.revision.id,
+          },
+        }),
+      ).toBe(1);
     });
   },
 );
