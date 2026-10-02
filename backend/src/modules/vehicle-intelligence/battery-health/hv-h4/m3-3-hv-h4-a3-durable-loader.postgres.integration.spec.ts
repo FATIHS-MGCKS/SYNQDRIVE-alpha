@@ -436,7 +436,7 @@ async function persistAllSessions(
         {
           name: 'startedBeforeRange',
           metadata: { startedBeforeRange: true },
-          expectedEligibility: 'ELIGIBLE_NATIVE',
+          expectedEligibility: 'ELIGIBLE_CONTRIBUTOR',
           expectedReason: 'SESSION_STARTED_BEFORE_QUERY_RANGE',
         },
       ];
