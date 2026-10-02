@@ -77,6 +77,7 @@ import { IamDataRetentionScheduler } from './schedulers/iam-data-retention.sched
 import { IamDataRetentionModule } from '@modules/iam-data-retention/iam-data-retention.module';
 import { VehicleWarningGdprModule } from '@modules/vehicle-warning-gdpr/vehicle-warning-gdpr.module';
 import { VehicleRegistryLifecycleOutboxProcessor } from '@modules/vehicle-onboarding/registry-lifecycle/vehicle-registry-lifecycle-outbox.processor';
+import { VehicleRegistryLifecycleOutboxRepository } from '@modules/vehicle-onboarding/registry-lifecycle/vehicle-registry-lifecycle-outbox.repository';
 import { VehicleRegistryLifecycleOutboxWorker } from '@modules/vehicle-onboarding/registry-lifecycle/vehicle-registry-lifecycle-outbox.worker';
 
 @Module({
@@ -184,6 +185,7 @@ import { VehicleRegistryLifecycleOutboxWorker } from '@modules/vehicle-onboardin
     ReferenceCaptureExp021MaturationShadowRecoveryScheduler,
     ReferenceCaptureExp021FleetCoordinatorScheduler,
     ReferenceCaptureExp021CanaryLiveWindowActivationScheduler,
+    VehicleRegistryLifecycleOutboxRepository,
     VehicleRegistryLifecycleOutboxProcessor,
     VehicleRegistryLifecycleOutboxWorker,
   ],

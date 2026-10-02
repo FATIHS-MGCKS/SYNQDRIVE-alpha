@@ -12,6 +12,7 @@ import {
 import { randomUUID } from 'node:crypto';
 import { VehicleOffboardingService } from '@modules/vehicle-onboarding/services/vehicle-offboarding.service';
 import { VehicleRegistryLifecycleOutboxProcessor } from '@modules/vehicle-onboarding/registry-lifecycle/vehicle-registry-lifecycle-outbox.processor';
+import { VehicleRegistryLifecycleOutboxRepository } from '@modules/vehicle-onboarding/registry-lifecycle/vehicle-registry-lifecycle-outbox.repository';
 import { BillingVehicleRegistryOffboardProjection } from './registry-lifecycle/billing-vehicle-registry-offboard.projection';
 import { BillingQuantityService } from './billing-quantity.service';
 import { BillableVehiclesService } from './billable-vehicles.service';
@@ -145,8 +146,10 @@ async function createActiveVehicle(prisma: PrismaClient, orgId: string) {
     new BillableVehiclesService(prisma as any),
     new BillingQuantityService(prisma as any),
   );
+  const outboxRepository = new VehicleRegistryLifecycleOutboxRepository(prisma as any);
   const processor = new VehicleRegistryLifecycleOutboxProcessor(
     prisma as any,
+    outboxRepository,
     projection,
   );
 
@@ -383,11 +386,11 @@ async function createActiveVehicle(prisma: PrismaClient, orgId: string) {
     const outbox = await prisma.vehicleRegistryLifecycleOutbox.findFirstOrThrow({
       where: { vehicleId },
     });
-    expect(await processor.processRow(outbox.id)).toBe('retry');
+    expect(await processor.processRow(outbox.id)).toBe('failed');
     const pending = await prisma.vehicleRegistryLifecycleOutbox.findUniqueOrThrow({
       where: { id: outbox.id },
     });
-    expect(pending.status).toBe(VehicleRegistryLifecycleOutboxStatus.PENDING);
+    expect(pending.status).toBe(VehicleRegistryLifecycleOutboxStatus.FAILED);
     expect(pending.lastError).toContain('multiple_effective_billing_assignments');
     expect(
       await prisma.billingQuantityEvent.count({
@@ -477,5 +480,179 @@ async function createActiveVehicle(prisma: PrismaClient, orgId: string) {
     });
     expect(published.status).toBe(VehicleRegistryLifecycleOutboxStatus.PUBLISHED);
     expect(published.publishedAt).not.toBeNull();
+  });
+
+  it('leaves pending VEHICLE_ACTIVATED untouched by VO-5B worker', async () => {
+    const orgId = await createOrg(prisma);
+    const vehicleId = await createActiveVehicle(prisma, orgId);
+    const activatedId = randomUUID();
+    const occurredAt = new Date('2026-06-15T10:00:00.000Z');
+    await prisma.vehicleRegistryLifecycleOutbox.create({
+      data: {
+        id: activatedId,
+        eventId: randomUUID(),
+        eventType: 'VEHICLE_ACTIVATED',
+        vehicleId,
+        organizationId: orgId,
+        payloadVersion: 1,
+        payload: {
+          version: 1,
+          vehicleId,
+          organizationId: orgId,
+          registryLifecycle: 'ACTIVE',
+        },
+        occurredAt,
+        idempotencyKey: randomUUID(),
+        status: VehicleRegistryLifecycleOutboxStatus.PENDING,
+        retryCount: 0,
+      },
+    });
+    const before = await prisma.vehicleRegistryLifecycleOutbox.findUniqueOrThrow({
+      where: { id: activatedId },
+    });
+    await processor.processPendingBatch(10);
+    const after = await prisma.vehicleRegistryLifecycleOutbox.findUniqueOrThrow({
+      where: { id: activatedId },
+    });
+    expect(after.status).toBe(VehicleRegistryLifecycleOutboxStatus.PENDING);
+    expect(after.retryCount).toBe(before.retryCount);
+    expect(after.lastError).toBe(before.lastError);
+    expect(after.publishedAt).toBe(before.publishedAt);
+  });
+
+  it('resolves base item valid at occurredAt even when ended before processing', async () => {
+    const orgId = await createOrg(prisma);
+    const occurredAt = new Date('2026-07-01T10:00:00.000Z');
+    const validTo = new Date('2026-07-01T10:30:00.000Z');
+    const fleet = await prisma.billingCatalogProduct.findUniqueOrThrow({ where: { key: 'FLEET' } });
+    const subId = randomUUID();
+    await prisma.billingSubscription.create({
+      data: {
+        id: subId,
+        organizationId: orgId,
+        status: 'ACTIVE',
+        currency: 'EUR',
+        endedAt: validTo,
+      },
+    });
+    const baseItem = await prisma.billingSubscriptionItem.create({
+      data: {
+        subscriptionId: subId,
+        organizationId: orgId,
+        billingProductId: fleet.id,
+        itemRole: 'BASE_PLAN',
+        quantity: 1,
+        status: 'ENDED',
+        validFrom: new Date('2020-01-01'),
+        validTo,
+      },
+    });
+    const vehicleId = await createActiveVehicle(prisma, orgId);
+    await seedVehicleLicenseConnected(prisma, orgId, { ...baseItem, subscriptionId: subId }, vehicleId);
+    await offboarding.offboardVehicle({
+      organizationId: orgId,
+      vehicleId,
+      reason: 'REMOVE_FROM_PRODUCT',
+      actorUserId: null,
+      idempotencyKey: randomUUID(),
+    });
+    const outbox = await prisma.vehicleRegistryLifecycleOutbox.findFirstOrThrow({
+      where: { vehicleId },
+    });
+    const payload = outbox.payload as Record<string, unknown>;
+    await prisma.vehicleRegistryLifecycleOutbox.update({
+      where: { id: outbox.id },
+      data: {
+        occurredAt,
+        payload: { ...payload, offboardedAt: occurredAt.toISOString() },
+      },
+    });
+    expect(await processor.processRow(outbox.id)).toBe('published');
+    expect(
+      await prisma.billingQuantityEvent.count({
+        where: {
+          vehicleId,
+          eventType: BillingQuantityEventType.VEHICLE_DISCONNECTED,
+        },
+      }),
+    ).toBe(1);
+  });
+
+  it('prior vehicle disconnect before offboard yields zero additional delta', async () => {
+    const orgId = await createOrg(prisma);
+    const baseItem = await ensureBasePlan(prisma, orgId, 1);
+    const vehicleId = await createActiveVehicle(prisma, orgId);
+    const connectedAt = new Date('2026-06-01T00:00:00.000Z');
+    const disconnectedAt = new Date('2026-06-15T00:00:00.000Z');
+    const quantity = new BillingQuantityService(prisma as any);
+    await quantity.recordVehicleLicenseAdded({
+      organizationId: orgId,
+      subscriptionId: baseItem.subscriptionId,
+      subscriptionItemId: baseItem.id,
+      vehicleId,
+      effectiveAt: connectedAt,
+      idempotencyKey: `vo5b-prior-connect:${vehicleId}`,
+      retroactiveAuthorized: true,
+    });
+    await quantity.recordVehicleLicenseRemoved({
+      organizationId: orgId,
+      subscriptionId: baseItem.subscriptionId,
+      subscriptionItemId: baseItem.id,
+      vehicleId,
+      effectiveAt: disconnectedAt,
+      idempotencyKey: `vo5b-prior-disconnect:${vehicleId}`,
+      retroactiveAuthorized: true,
+    });
+    await offboarding.offboardVehicle({
+      organizationId: orgId,
+      vehicleId,
+      reason: 'REMOVE_FROM_PRODUCT',
+      actorUserId: null,
+      idempotencyKey: randomUUID(),
+    });
+    const outbox = await prisma.vehicleRegistryLifecycleOutbox.findFirstOrThrow({
+      where: { vehicleId },
+    });
+    expect(await processor.processRow(outbox.id)).toBe('published');
+    expect(
+      await prisma.billingQuantityEvent.count({
+        where: {
+          vehicleId,
+          eventType: BillingQuantityEventType.VEHICLE_DISCONNECTED,
+          idempotencyKey: buildRegistryOffboardBillingIdempotencyKey(outbox.eventId),
+        },
+      }),
+    ).toBe(0);
+  });
+
+  it('concurrent processRow does not double decrement or regress PUBLISHED', async () => {
+    const orgId = await createOrg(prisma);
+    const baseItem = await ensureBasePlan(prisma, orgId, 1);
+    const vehicleId = await createActiveVehicle(prisma, orgId);
+    await seedVehicleLicenseConnected(prisma, orgId, baseItem, vehicleId);
+    await offboarding.offboardVehicle({
+      organizationId: orgId,
+      vehicleId,
+      reason: 'REMOVE_FROM_PRODUCT',
+      actorUserId: null,
+      idempotencyKey: randomUUID(),
+    });
+    const outbox = await prisma.vehicleRegistryLifecycleOutbox.findFirstOrThrow({
+      where: { vehicleId },
+    });
+    const outcomes = await Promise.all([
+      processor.processRow(outbox.id),
+      processor.processRow(outbox.id),
+    ]);
+    expect(outcomes.filter((o) => o === 'published').length).toBe(1);
+    const row = await prisma.vehicleRegistryLifecycleOutbox.findUniqueOrThrow({
+      where: { id: outbox.id },
+    });
+    expect(row.status).toBe(VehicleRegistryLifecycleOutboxStatus.PUBLISHED);
+    expect(
+      await prisma.billingQuantityEvent.count({
+        where: { idempotencyKey: buildRegistryOffboardBillingIdempotencyKey(outbox.eventId) },
+      }),
+    ).toBe(1);
   });
 });

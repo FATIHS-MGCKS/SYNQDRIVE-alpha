@@ -1,4 +1,4 @@
-import { ConflictException } from '@nestjs/common';
+import { RegistryBillingPermanentIntegrityError } from './registry-billing-permanent-integrity.error';
 import { BillingBillableVehicleAssignmentStatus } from '@prisma/client';
 import { BillingVehicleRegistryOffboardProjection } from './billing-vehicle-registry-offboard.projection';
 import type { ValidatedVehicleOffboardedRegistryEvent } from './validate-vehicle-offboarded-registry-event';
@@ -20,10 +20,48 @@ describe('BillingVehicleRegistryOffboardProjection', () => {
       billingQuantityEvent: {
         findUnique: jest.fn().mockResolvedValue(null),
       },
-      $transaction: jest.fn(),
+      billingSubscriptionItem: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'item-base',
+            subscriptionId: 'sub-1',
+            organizationId: 'org-1',
+            validFrom: new Date('2020-01-01'),
+            validTo: null,
+            subscription: { startedAt: null, endedAt: null, status: 'ACTIVE' },
+          },
+        ]),
+      },
+      $executeRaw: jest.fn(),
+      billingBillableVehicleAssignment: {
+        findUnique: jest.fn(),
+        update: jest.fn(),
+      },
+      $transaction: jest.fn(async (fn: (tx: unknown) => Promise<unknown>) =>
+        fn({
+          billingSubscriptionItem: {
+            findMany: jest.fn().mockResolvedValue([
+              {
+                id: 'item-base',
+                subscriptionId: 'sub-1',
+                organizationId: 'org-1',
+                validFrom: new Date('2020-01-01'),
+                validTo: null,
+                subscription: { startedAt: null, endedAt: null, status: 'ACTIVE' },
+              },
+            ]),
+          },
+          $executeRaw: jest.fn(),
+          billingBillableVehicleAssignment: { findUnique: jest.fn(), update: jest.fn() },
+          billingQuantityEvent: {
+            findUnique: jest.fn().mockResolvedValue(null),
+            findMany: jest.fn().mockResolvedValue([]),
+          },
+        }),
+      ),
     };
     const billableVehicles = {
-      buildPolicyContext: jest.fn().mockResolvedValue({
+      buildEventTimePolicyContext: jest.fn().mockResolvedValue({
         organizationId: 'org-1',
         organizationActive: true,
         baseSubscriptionItemId: 'item-base',
@@ -70,10 +108,6 @@ describe('BillingVehicleRegistryOffboardProjection', () => {
       }),
     };
     const quantity = {
-      resolveBaseSubscriptionItem: jest.fn().mockResolvedValue({
-        id: 'item-base',
-        subscriptionId: 'sub-1',
-      }),
       recordEventInTransaction: jest.fn(),
     };
 
@@ -84,7 +118,7 @@ describe('BillingVehicleRegistryOffboardProjection', () => {
     );
 
     await expect(projection.onVehicleOffboardedLifecycleEvent(event)).rejects.toBeInstanceOf(
-      ConflictException,
+      RegistryBillingPermanentIntegrityError,
     );
     expect(quantity.recordEventInTransaction).not.toHaveBeenCalled();
   });

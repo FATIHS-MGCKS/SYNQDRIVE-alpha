@@ -1,0 +1,71 @@
+name: Vehicle Onboarding VO-5B PostgreSQL
+
+on:
+  pull_request:
+    paths:
+      - 'backend/prisma/schema.prisma'
+      - 'backend/prisma/migrations/**'
+      - 'backend/src/modules/vehicle-onboarding/**'
+      - 'backend/src/modules/billing/**'
+      - 'backend/scripts/test/vo5b-*'
+      - 'backend/package.json'
+      - 'backend/package-lock.json'
+      - '.github/workflows/vehicle-onboarding-vo5b-postgres-ci.yml'
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - 'cursor/vehicle-onboarding-*'
+
+concurrency:
+  group: vehicle-onboarding-vo5b-postgres-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '20'
+  DATABASE_URL: postgresql://synqdrive:synqdrive@127.0.0.1:5432/synqdrive?schema=public
+
+jobs:
+  vo5b-postgres:
+    name: VO-5B registry billing PostgreSQL
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: synqdrive
+          POSTGRES_PASSWORD: synqdrive
+          POSTGRES_DB: synqdrive
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U synqdrive"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Fail closed on non-ephemeral DATABASE_URL
+        run: |
+          set -euo pipefail
+          case "$DATABASE_URL" in
+            *127.0.0.1*|*localhost*) ;;
+            *)
+              echo "DATABASE_URL must target ephemeral CI-local PostgreSQL"
+              exit 1
+              ;;
+          esac
+      - name: VO-5B PostgreSQL gates
+        working-directory: backend
+        run: |
+          npm ci
+          npx prisma generate
+          bash scripts/test/vo5b-vehicle-onboarding-postgres-ci.sh

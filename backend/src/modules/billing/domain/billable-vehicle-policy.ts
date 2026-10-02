@@ -1,4 +1,8 @@
 import { BillingBillableVehicleAssignmentStatus } from '@prisma/client';
+import {
+  isEffectivelyBillableAssignmentAt,
+  isWithinBillablePeriod,
+} from './billing-assignment-event-time';
 
 export const BillableVehicleExclusionReason = {
   ORG_INACTIVE: 'ORG_INACTIVE',
@@ -119,10 +123,14 @@ function isApprovedExclusion(assignment: BillableVehiclePolicyAssignment): boole
 }
 
 function isApprovedBillableAssignment(assignment: BillableVehiclePolicyAssignment): boolean {
-  return (
-    assignment.status === BillingBillableVehicleAssignmentStatus.ACTIVE &&
-    assignment.approvedByUserId != null
-  );
+  return isEffectivelyBillableAssignmentAt(assignment, new Date());
+}
+
+function isApprovedBillableAssignmentAt(
+  assignment: BillableVehiclePolicyAssignment,
+  asOf: Date,
+): boolean {
+  return isEffectivelyBillableAssignmentAt(assignment, asOf);
 }
 
 function isNonBillableTypeAssignment(assignment: BillableVehiclePolicyAssignment): boolean {
@@ -257,10 +265,8 @@ function resolveVehicleExclusion(
     };
   }
 
-  const activeBillableAssignment = scoped.find(
-    (assignment) =>
-      isApprovedBillableAssignment(assignment) &&
-      isWithinPeriod(assignment.billableFrom, assignment.billableUntil, context.asOf),
+  const activeBillableAssignment = scoped.find((assignment) =>
+    isApprovedBillableAssignmentAt(assignment, context.asOf),
   );
   if (activeBillableAssignment) {
     return null;

@@ -19,6 +19,7 @@ function baseRow(overrides: Record<string, unknown> = {}) {
       organizationId: 'org-1',
       vehicleId: 'veh-1',
       registryLifecycle: 'OFFBOARDED',
+      offboardedAt: '2026-07-01T12:00:00.000Z',
       reason: 'REMOVE_FROM_PRODUCT',
       actorUserId: 'user-actor',
     },

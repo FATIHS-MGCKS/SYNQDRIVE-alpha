@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **Slice** | VO-5B |
-| **Date** | 2026-10-01 |
+| **Date** | 2026-10-01 (VO-5B.1 integrity seal: 2026-10-02) |
 | **Authority** | Vehicle Onboarding `AUDIT_IN_PROGRESS` (unchanged) |
 | **Starting main** | `d4a08b241ab5fec1e4979b52896a7fe90b6aa870` (post VO-5A merge) |
 
@@ -24,9 +24,22 @@ Post-commit idempotent bridge:
 | `ARCHIVED_VEHICLE_BILLABLE` | `NO` |
 | `DISCONNECTED_ACTIVE_VEHICLE_MAY_REMAIN_BILLABLE` | `YES` |
 | `POST_OFFBOARD_CURRENT_STATE_USED_AS_PRESTATE_AUTHORITY` | `NO` (registry path uses `wasVehicleBillableAtOffboardBoundary`) |
-| `EVENT_TIME_BILLING_PRESTATE_AUTHORITY` | `YES` (`occurredAt` + ACTIVE registry override at boundary) |
+| `EVENT_TIME_BILLING_PRESTATE_AUTHORITY` | `YES` (`resolveBaseSubscriptionItemAsOf`, `buildEventTimePolicyContext`, quantity-ledger vehicle license state at `occurredAt`) |
+| `EVENT_TIME_BASE_ITEM_RESOLUTION` | `PROVEN` |
+| `EVENT_TIME_ASSIGNMENT_RESOLUTION` | `PROVEN` (`billing-assignment-event-time`) |
+| `VEHICLE_LICENSE_EVENT_TIME_STATE_AUTHORITY` | `BillingQuantityEvent` per-vehicle timeline at `occurredAt` |
 | `REGISTRY_LIFECYCLE_EVENT_RETROACTIVE_AUTHORIZED` | `YES` (trusted lifecycle projection only) |
-| `BILLING_ASSIGNMENT_AND_QUANTITY_TRANSITION_ATOMIC` | `YES` (single Prisma transaction) |
+| `BILLING_PRESTATE_DECISION_AND_MUTATION_ATOMIC` | `YES` (single Prisma transaction; FOR UPDATE on base item) |
+| `BILLING_ASSIGNMENT_AND_QUANTITY_TRANSITION_ATOMIC` | `YES` (same transaction) |
+| `BILLING_IDEMPOTENCY_SEMANTIC_COLLISION_FAIL_CLOSED` | `YES` |
+| `UNSUPPORTED_VALID_LIFECYCLE_EVENT_MARKED_FAILED` | `NO` |
+| `VEHICLE_ACTIVATED_EVENT_PRESERVED_FOR_FUTURE_HANDLER` | `YES` |
+| `REGISTRY_OUTBOX_CLAIM_AUTHORITY` | `updateMany` lease on `nextRetryAt` + CAS publish from `PENDING` only |
+| `REGISTRY_OUTBOX_PUBLISHED_STATE_MONOTONIC` | `YES` |
+| `CONCURRENT_FAILURE_CANNOT_REGRESS_PUBLISHED` | `YES` |
+| `LEGACY_IMPLICIT_OFFBOARD_CANNOT_CREATE_NEGATIVE_QUANTITY` | `YES` (noop without vehicle license provision evidence; aggregate quantity guard) |
+| `ALREADY_DEPROVISIONED_BEFORE_OFFBOARD_DELTA` | `0` |
+| `VO5B_POSTGRES_REMOTE_CI_PRESENT` | `YES` (`.github/workflows/vehicle-onboarding-vo5b-postgres-ci.yml`) |
 | `MULTIPLE_EFFECTIVE_BILLING_ASSIGNMENTS_FAIL_CLOSED` | `YES` |
 | `REGISTRY_BILLING_CROSS_TENANT_FAIL_CLOSED` | `YES` |
 | `STRIPE_CALL_COUNT_FROM_REGISTRY_CONSUMER` | `0` |

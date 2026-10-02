@@ -36,6 +36,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-onboarding-vo5b1-integrity-seal-2026-10-02',
+    version: '4.9.2222',
+    title: 'Vehicle Onboarding VO-5B.1 — registry→billing bridge integrity seal',
+    summary: [
+      'Event-time base subscription item + assignment + per-vehicle quantity ledger authority; atomic prestate decision inside one Billing transaction.',
+      'Registry outbox worker claims only VEHICLE_OFFBOARDED; ACTIVATED/ARCHIVED/TRANSFER remain PENDING; CAS publish + VO-5B PostgreSQL CI workflow.',
+    ],
+    reason:
+      'VO-5B review found unsupported lifecycle events marked FAILED, current-state billing reads, and missing outbox claim/CI coverage.',
+    previousBehavior:
+      'All PENDING outbox rows processed; unsupported types terminal FAILED; billing reads used current subscription/assignment status.',
+    details:
+      'billing-base-subscription-item-as-of.ts; vehicle-registry-lifecycle-outbox.repository.ts; VO5B_REGISTRY_BILLING_BRIDGE.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Onboarding',
+    createdAt: '2026-10-02T04:00:00.000Z',
+  },
+  {
     id: 'vehicle-onboarding-vo5b-registry-billing-bridge-2026-10-01',
     version: '4.9.2221',
     title: 'Vehicle Onboarding VO-5B — registry lifecycle → billing quantity bridge',

@@ -1,14 +1,20 @@
-import { ConflictException, Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import {
   BillingBillableVehicleAssignmentStatus,
   BillingQuantityEventSource,
   BillingQuantityEventType,
+  type Prisma,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { BillableVehiclesService } from '../billable-vehicles.service';
 import { BillingQuantityService } from '../billing-quantity.service';
+import { resolveBaseSubscriptionItemAsOf } from '../domain/billing-base-subscription-item-as-of';
+import { listEffectivelyBillableAssignmentsAt } from '../domain/billing-assignment-event-time';
 import { wasVehicleBillableAtOffboardBoundary } from '../domain/billing-vehicle-offboard-boundary';
-import type { BillableVehiclePolicyAssignment } from '../domain/billable-vehicle-policy';
+import { resolveVehicleLicenseQuantityStateAt } from '../domain/billing-vehicle-license-quantity-state';
+import { computeQuantityTransition } from '../domain/billing-quantity-ledger';
+import { assertRegistryOffboardQuantityEventSemantics } from './assert-registry-offboard-idempotency';
+import { RegistryBillingPermanentIntegrityError } from './registry-billing-permanent-integrity.error';
 import {
   buildRegistryOffboardBillingIdempotencyKey,
   type ValidatedVehicleOffboardedRegistryEvent,
@@ -19,23 +25,6 @@ export type RegistryOffboardBillingProjectionResult = {
   quantityEventId?: string;
   quantityCreated: boolean;
 };
-
-function isWithinPeriod(
-  from: Date,
-  until: Date | null | undefined,
-  asOf: Date,
-): boolean {
-  if (from > asOf) return false;
-  if (until != null && until < asOf) return false;
-  return true;
-}
-
-function isApprovedBillableAssignment(assignment: BillableVehiclePolicyAssignment): boolean {
-  return (
-    assignment.status === BillingBillableVehicleAssignmentStatus.ACTIVE &&
-    assignment.approvedByUserId != null
-  );
-}
 
 @Injectable()
 export class BillingVehicleRegistryOffboardProjection {
@@ -52,87 +41,105 @@ export class BillingVehicleRegistryOffboardProjection {
   ): Promise<RegistryOffboardBillingProjectionResult> {
     const idempotencyKey = buildRegistryOffboardBillingIdempotencyKey(event.eventId);
 
-    const existingQuantity = await this.prisma.billingQuantityEvent.findUnique({
-      where: { idempotencyKey },
-      select: { id: true },
-    });
-    if (existingQuantity) {
-      return {
-        outcome: 'quantity_decrement',
-        quantityEventId: existingQuantity.id,
-        quantityCreated: false,
-      };
-    }
+    return this.prisma.$transaction(async (tx) => {
+      const baseItem = await resolveBaseSubscriptionItemAsOf(tx, event.organizationId, event.occurredAt);
+      if (!baseItem) {
+        this.logger.debug({
+          msg: 'billing.registry_offboard.noop_no_base_plan',
+          organizationId: event.organizationId,
+          vehicleId: event.vehicleId,
+          eventId: event.eventId,
+        });
+        return { outcome: 'noop', quantityCreated: false };
+      }
 
-    const baseItem = await this.quantity.resolveBaseSubscriptionItem(event.organizationId);
-    if (!baseItem) {
-      this.logger.debug({
-        msg: 'billing.registry_offboard.noop_no_base_plan',
+      const existingQuantity = await tx.billingQuantityEvent.findUnique({
+        where: { idempotencyKey },
+      });
+      if (existingQuantity) {
+        assertRegistryOffboardQuantityEventSemantics(event, existingQuantity, baseItem.id);
+        return {
+          outcome: 'quantity_decrement',
+          quantityEventId: existingQuantity.id,
+          quantityCreated: false,
+        };
+      }
+
+      await tx.$executeRaw`SELECT id FROM billing_subscription_items WHERE id = ${baseItem.id} FOR UPDATE`;
+
+      const policyContext = await this.billableVehicles.buildEventTimePolicyContext(
+        event.organizationId,
+        event.occurredAt,
+        tx,
+      );
+
+      if (policyContext.organizationId !== event.organizationId) {
+        throw new RegistryBillingPermanentIntegrityError(
+          'REGISTRY_BILLING_CROSS_TENANT',
+          'registry_billing_cross_tenant_organization',
+        );
+      }
+
+      const vehicleRow = policyContext.vehicles.find((v) => v.id === event.vehicleId);
+      if (!vehicleRow || vehicleRow.organizationId !== event.organizationId) {
+        throw new RegistryBillingPermanentIntegrityError(
+          'REGISTRY_BILLING_CROSS_TENANT',
+          'registry_billing_cross_tenant_vehicle',
+        );
+      }
+
+      const scopedAssignments = policyContext.assignments.filter(
+        (assignment) =>
+          assignment.vehicleId === event.vehicleId &&
+          assignment.subscriptionItemId === baseItem.id &&
+          assignment.organizationId === event.organizationId,
+      );
+
+      const effectiveBillable = listEffectivelyBillableAssignmentsAt(
+        scopedAssignments,
+        event.occurredAt,
+      );
+
+      if (effectiveBillable.length > 1) {
+        throw new RegistryBillingPermanentIntegrityError(
+          'MULTIPLE_EFFECTIVE_BILLING_ASSIGNMENTS',
+          'multiple_effective_billing_assignments',
+        );
+      }
+
+      const licenseState = await resolveVehicleLicenseQuantityStateAt(tx, {
         organizationId: event.organizationId,
         vehicleId: event.vehicleId,
-        eventId: event.eventId,
+        subscriptionItemId: baseItem.id,
+        asOf: event.occurredAt,
       });
-      return { outcome: 'noop', quantityCreated: false };
-    }
 
-    const policyContext = await this.billableVehicles.buildPolicyContext(
-      event.organizationId,
-      event.occurredAt,
-    );
+      if (licenseState.alreadyDeprovisionedBeforeBoundary) {
+        return { outcome: 'noop', quantityCreated: false };
+      }
 
-    if (policyContext.organizationId !== event.organizationId) {
-      throw new ConflictException('registry_billing_cross_tenant_organization');
-    }
+      const wasBillable = wasVehicleBillableAtOffboardBoundary(policyContext, event.vehicleId);
 
-    const vehicleRow = policyContext.vehicles.find((v) => v.id === event.vehicleId);
-    if (!vehicleRow || vehicleRow.organizationId !== event.organizationId) {
-      throw new ConflictException('registry_billing_cross_tenant_vehicle');
-    }
-
-    const scopedAssignments = policyContext.assignments.filter(
-      (assignment) =>
-        assignment.vehicleId === event.vehicleId &&
-        assignment.subscriptionItemId === baseItem.id &&
-        assignment.organizationId === event.organizationId,
-    );
-
-    const effectiveActiveBillable = scopedAssignments.filter(
-      (assignment) =>
-        isApprovedBillableAssignment(assignment) &&
-        isWithinPeriod(assignment.billableFrom, assignment.billableUntil, event.occurredAt),
-    );
-
-    if (effectiveActiveBillable.length > 1) {
-      throw new ConflictException('multiple_effective_billing_assignments');
-    }
-
-    const wasBillable = wasVehicleBillableAtOffboardBoundary(policyContext, event.vehicleId);
-
-    return this.prisma.$transaction(async (tx) => {
-      if (effectiveActiveBillable.length === 1) {
-        const assignment = effectiveActiveBillable[0]!;
-        const current = await tx.billingBillableVehicleAssignment.findUnique({
-          where: { id: assignment.id },
-        });
-        if (
-          current &&
-          current.organizationId === event.organizationId &&
-          current.vehicleId === event.vehicleId &&
-          current.status === BillingBillableVehicleAssignmentStatus.ACTIVE
-        ) {
-          await tx.billingBillableVehicleAssignment.update({
-            where: { id: assignment.id },
-            data: {
-              status: BillingBillableVehicleAssignmentStatus.ENDED,
-              billableUntil: event.occurredAt,
-              reasonCode: 'REGISTRY_OFFBOARDED',
-              reasonNote: `Registry offboard (${event.reason})`,
-            },
-          });
-        }
+      if (effectiveBillable.length === 1) {
+        await this.endExplicitAssignmentAtOffboard(tx, event, effectiveBillable[0]!.id);
       }
 
       if (!wasBillable) {
+        return { outcome: 'noop', quantityCreated: false };
+      }
+
+      if (!licenseState.provisionedAtBoundary) {
+        return { outcome: 'noop', quantityCreated: false };
+      }
+
+      const timeline = await this.loadTimeline(tx, baseItem.id);
+      const recordedAt = new Date();
+      const { quantityAfter } = computeQuantityTransition(timeline, {
+        effectiveAt: event.occurredAt,
+        recordedAt,
+        delta: -1,
+      });
+      if (quantityAfter < 0) {
         return { outcome: 'noop', quantityCreated: false };
       }
 
@@ -144,7 +151,7 @@ export class BillingVehicleRegistryOffboardProjection {
         eventType: BillingQuantityEventType.VEHICLE_DISCONNECTED,
         delta: -1,
         effectiveAt: event.occurredAt,
-        recordedAt: new Date(),
+        recordedAt,
         source: BillingQuantityEventSource.SYSTEM,
         actorUserId: event.actorUserId,
         reason: `Registry VEHICLE_OFFBOARDED (${event.reason})`,
@@ -158,5 +165,55 @@ export class BillingVehicleRegistryOffboardProjection {
         quantityCreated: quantityResult.created,
       };
     });
+  }
+
+  private async endExplicitAssignmentAtOffboard(
+    tx: Prisma.TransactionClient,
+    event: ValidatedVehicleOffboardedRegistryEvent,
+    assignmentId: string,
+  ): Promise<void> {
+    const current = await tx.billingBillableVehicleAssignment.findUnique({
+      where: { id: assignmentId },
+    });
+    if (
+      !current ||
+      current.organizationId !== event.organizationId ||
+      current.vehicleId !== event.vehicleId
+    ) {
+      return;
+    }
+    if (current.status === BillingBillableVehicleAssignmentStatus.ENDED) {
+      return;
+    }
+    await tx.billingBillableVehicleAssignment.update({
+      where: { id: assignmentId },
+      data: {
+        status: BillingBillableVehicleAssignmentStatus.ENDED,
+        billableUntil: event.occurredAt,
+        reasonCode: 'REGISTRY_OFFBOARDED',
+        reasonNote: `Registry offboard (${event.reason})`,
+      },
+    });
+  }
+
+  private async loadTimeline(
+    tx: Prisma.TransactionClient,
+    subscriptionItemId: string,
+  ) {
+    const rows = await tx.billingQuantityEvent.findMany({
+      where: { subscriptionItemId },
+      orderBy: [{ effectiveAt: 'asc' }, { createdAt: 'asc' }],
+      select: {
+        effectiveAt: true,
+        createdAt: true,
+        delta: true,
+      },
+    });
+    return rows.map((row, index) => ({
+      effectiveAt: row.effectiveAt,
+      recordedAt: row.createdAt,
+      delta: row.delta,
+      tieBreaker: index,
+    }));
   }
 }

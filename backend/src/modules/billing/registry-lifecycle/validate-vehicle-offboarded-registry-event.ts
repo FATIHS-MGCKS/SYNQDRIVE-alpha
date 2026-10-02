@@ -89,10 +89,37 @@ export function validateVehicleOffboardedRegistryEvent(
     throw new VehicleRegistryLifecycleBillingValidationError('INVALID_REASON', 'Invalid offboard reason');
   }
 
-  const actorUserId =
-    payload.actorUserId === null || payload.actorUserId === undefined
-      ? null
-      : String(payload.actorUserId);
+  if (typeof payload.offboardedAt !== 'string' || payload.offboardedAt.trim().length === 0) {
+    throw new VehicleRegistryLifecycleBillingValidationError(
+      'INVALID_OFFBOARDED_AT',
+      'Invalid offboardedAt',
+    );
+  }
+  const payloadOffboardedAt = new Date(payload.offboardedAt);
+  if (Number.isNaN(payloadOffboardedAt.getTime())) {
+    throw new VehicleRegistryLifecycleBillingValidationError(
+      'INVALID_OFFBOARDED_AT',
+      'Invalid offboardedAt timestamp',
+    );
+  }
+  if (payloadOffboardedAt.getTime() !== row.occurredAt.getTime()) {
+    throw new VehicleRegistryLifecycleBillingValidationError(
+      'OFFBOARDED_AT_ROW_MISMATCH',
+      'Payload offboardedAt must match row occurredAt',
+    );
+  }
+
+  let actorUserId: string | null = null;
+  if (payload.actorUserId === null || payload.actorUserId === undefined) {
+    actorUserId = null;
+  } else if (typeof payload.actorUserId === 'string' && payload.actorUserId.trim().length > 0) {
+    actorUserId = payload.actorUserId;
+  } else {
+    throw new VehicleRegistryLifecycleBillingValidationError(
+      'INVALID_ACTOR_USER_ID',
+      'actorUserId must be null or a non-empty string',
+    );
+  }
 
   return {
     outboxId: row.id,
