@@ -59,7 +59,9 @@ async function assertIsolatedMetadataRevisionAppend(input: {
   const firstJson = first.revision.scientificEvidenceJson;
   const second = await repo.persistIdempotent(patched);
   expect(second.persistenceOutcome).toBe('CREATED');
-  expect(second.revision.sourceRevisionFingerprint).not.toBe(first.sourceRevisionFingerprint);
+  expect(second.revision.sourceRevisionFingerprint).not.toBe(
+    first.revision.sourceRevisionFingerprint,
+  );
   expect(second.revision.id).not.toBe(first.revision.id);
   const scope = {
     organizationId: baseline.projection.organizationId,
