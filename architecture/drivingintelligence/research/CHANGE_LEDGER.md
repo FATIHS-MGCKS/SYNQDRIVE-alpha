@@ -1409,6 +1409,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | Wrapper can run from newer `main` while invoking initializer under verified release `ee958854…` / `20261002014651_v4994`; **`WRAPPER_REQUIRES_NEW_CODE_DEPLOY_BEFORE_USE=NO`** |
 | NON_EFFECTS | No Production GLOBAL row write, no env/PM2/deploy, no Tiny/operator grant |
 
+### EXP-021 S4F-7J Tiny config staging wrapper engineering (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Dedicated Production wrapper `di-v0-s4-stage-tiny-production.sh` (exactly three frozen env keys), TS guard/mutation lib + CLI, bash helpers, cloud bootstrap `.cursor/scripts/cloud-agent-s4-tiny-staging.sh`, tests `test:di:s4f7j:tiny-staging-wrapper` (32 cases); evidence `EXP021_S4F7J_TINY_CONFIG_STAGING_WRAPPER_ENGINEERING.md` |
+| FINDING | **`SUPPORTED_ENV_MUTATION_KEY_COUNT=3`**; S4F-4 global-budget wrapper unchanged; recovery + rolling restart A→B + filtered `/proc` runtime proof |
+| NON_EFFECTS | No Production env/DB/restart/deploy; Tiny gate **NOT_SATISFIED**; GLOBAL remains **KILLED** |
+
 ### EXP-021 S4F-7I NO_BACKFILL Tiny staging preflight (2026-10-02)
 
 | Event | Detail |
