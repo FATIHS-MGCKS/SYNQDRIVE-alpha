@@ -655,4 +655,258 @@ async function createActiveVehicle(prisma: PrismaClient, orgId: string) {
       }),
     ).toBe(1);
   });
+
+  it('applies -1 when org becomes INACTIVE before delayed processing (VO-5B.2)', async () => {
+    const orgId = await createOrg(prisma);
+    const baseItem = await ensureBasePlan(prisma, orgId, 1);
+    const vehicleId = await createActiveVehicle(prisma, orgId);
+    await seedVehicleLicenseConnected(prisma, orgId, baseItem, vehicleId);
+    await offboarding.offboardVehicle({
+      organizationId: orgId,
+      vehicleId,
+      reason: 'REMOVE_FROM_PRODUCT',
+      actorUserId: null,
+      idempotencyKey: randomUUID(),
+    });
+    const outbox = await prisma.vehicleRegistryLifecycleOutbox.findFirstOrThrow({
+      where: { vehicleId },
+    });
+    await prisma.organization.update({
+      where: { id: orgId },
+      data: { status: 'SUSPENDED' },
+    });
+    expect(await processor.processRow(outbox.id)).toBe('published');
+    expect(
+      await prisma.billingQuantityEvent.count({
+        where: {
+          vehicleId,
+          eventType: BillingQuantityEventType.VEHICLE_DISCONNECTED,
+          idempotencyKey: buildRegistryOffboardBillingIdempotencyKey(outbox.eventId),
+        },
+      }),
+    ).toBe(1);
+  });
+
+  it('post-event backdated assignment does not suppress historical deprovision', async () => {
+    const orgId = await createOrg(prisma);
+    const baseItem = await ensureBasePlan(prisma, orgId, 1);
+    const vehicleId = await createActiveVehicle(prisma, orgId);
+    const occurredAt = new Date('2026-07-01T10:00:00.000Z');
+    await seedVehicleLicenseConnected(prisma, orgId, baseItem, vehicleId, occurredAt);
+    await offboarding.offboardVehicle({
+      organizationId: orgId,
+      vehicleId,
+      reason: 'REMOVE_FROM_PRODUCT',
+      actorUserId: null,
+      idempotencyKey: randomUUID(),
+    });
+    const outbox = await prisma.vehicleRegistryLifecycleOutbox.findFirstOrThrow({
+      where: { vehicleId },
+    });
+    const payload = outbox.payload as Record<string, unknown>;
+    await prisma.vehicleRegistryLifecycleOutbox.update({
+      where: { id: outbox.id },
+      data: {
+        occurredAt,
+        payload: { ...payload, offboardedAt: occurredAt.toISOString() },
+      },
+    });
+    const approverId = await createApproverUser(prisma, orgId);
+    await prisma.billingBillableVehicleAssignment.create({
+      data: {
+        id: randomUUID(),
+        organizationId: orgId,
+        vehicleId,
+        subscriptionItemId: baseItem.id,
+        billableFrom: new Date('2020-01-01'),
+        status: BillingBillableVehicleAssignmentStatus.ACTIVE,
+        approvedByUserId: approverId,
+      },
+    });
+    expect(await processor.processRow(outbox.id)).toBe('published');
+    expect(
+      await prisma.billingQuantityEvent.count({
+        where: { idempotencyKey: buildRegistryOffboardBillingIdempotencyKey(outbox.eventId) },
+      }),
+    ).toBe(1);
+  });
+
+  it('post-event DEMO exclusion does not cancel historical offboard delta', async () => {
+    const orgId = await createOrg(prisma);
+    const baseItem = await ensureBasePlan(prisma, orgId, 1);
+    const vehicleId = await createActiveVehicle(prisma, orgId);
+    const occurredAt = new Date('2026-07-01T10:00:00.000Z');
+    await seedVehicleLicenseConnected(prisma, orgId, baseItem, vehicleId, occurredAt);
+    await offboarding.offboardVehicle({
+      organizationId: orgId,
+      vehicleId,
+      reason: 'REMOVE_FROM_PRODUCT',
+      actorUserId: null,
+      idempotencyKey: randomUUID(),
+    });
+    const outbox = await prisma.vehicleRegistryLifecycleOutbox.findFirstOrThrow({
+      where: { vehicleId },
+    });
+    const payload = outbox.payload as Record<string, unknown>;
+    await prisma.vehicleRegistryLifecycleOutbox.update({
+      where: { id: outbox.id },
+      data: {
+        occurredAt,
+        payload: { ...payload, offboardedAt: occurredAt.toISOString() },
+      },
+    });
+    await prisma.billingBillableVehicleAssignment.create({
+      data: {
+        id: randomUUID(),
+        organizationId: orgId,
+        vehicleId,
+        subscriptionItemId: baseItem.id,
+        billableFrom: new Date('2020-01-01'),
+        status: BillingBillableVehicleAssignmentStatus.EXCLUDED,
+        reasonCode: 'DEMO',
+        approvedByUserId: null,
+      },
+    });
+    expect(await processor.processRow(outbox.id)).toBe('published');
+    expect(
+      await prisma.billingQuantityEvent.count({
+        where: { idempotencyKey: buildRegistryOffboardBillingIdempotencyKey(outbox.eventId) },
+      }),
+    ).toBe(1);
+  });
+
+  it('post-event assignment is not ended by offboard consumer', async () => {
+    const orgId = await createOrg(prisma);
+    const baseItem = await ensureBasePlan(prisma, orgId, 1);
+    const vehicleId = await createActiveVehicle(prisma, orgId);
+    const occurredAt = new Date('2026-07-01T10:00:00.000Z');
+    await seedVehicleLicenseConnected(prisma, orgId, baseItem, vehicleId, occurredAt);
+    await offboarding.offboardVehicle({
+      organizationId: orgId,
+      vehicleId,
+      reason: 'REMOVE_FROM_PRODUCT',
+      actorUserId: null,
+      idempotencyKey: randomUUID(),
+    });
+    const outbox = await prisma.vehicleRegistryLifecycleOutbox.findFirstOrThrow({
+      where: { vehicleId },
+    });
+    const payload = outbox.payload as Record<string, unknown>;
+    await prisma.vehicleRegistryLifecycleOutbox.update({
+      where: { id: outbox.id },
+      data: {
+        occurredAt,
+        payload: { ...payload, offboardedAt: occurredAt.toISOString() },
+      },
+    });
+    const approverId = await createApproverUser(prisma, orgId);
+    const postAssignmentId = randomUUID();
+    await prisma.billingBillableVehicleAssignment.create({
+      data: {
+        id: postAssignmentId,
+        organizationId: orgId,
+        vehicleId,
+        subscriptionItemId: baseItem.id,
+        billableFrom: new Date('2020-01-01'),
+        status: BillingBillableVehicleAssignmentStatus.ACTIVE,
+        approvedByUserId: approverId,
+      },
+    });
+    await processor.processRow(outbox.id);
+    const postAssignment = await prisma.billingBillableVehicleAssignment.findUniqueOrThrow({
+      where: { id: postAssignmentId },
+    });
+    expect(postAssignment.status).toBe(BillingBillableVehicleAssignmentStatus.ACTIVE);
+    expect(postAssignment.billableUntil).toBeNull();
+  });
+
+  it('post-event assignment does not flip historical legacy implicit mode', async () => {
+    const orgId = await createOrg(prisma);
+    const baseItem = await ensureBasePlan(prisma, orgId, 1);
+    const vehicleId = await createActiveVehicle(prisma, orgId);
+    const occurredAt = new Date('2026-07-01T10:00:00.000Z');
+    await seedVehicleLicenseConnected(prisma, orgId, baseItem, vehicleId, occurredAt);
+    await offboarding.offboardVehicle({
+      organizationId: orgId,
+      vehicleId,
+      reason: 'REMOVE_FROM_PRODUCT',
+      actorUserId: null,
+      idempotencyKey: randomUUID(),
+    });
+    const outbox = await prisma.vehicleRegistryLifecycleOutbox.findFirstOrThrow({
+      where: { vehicleId },
+    });
+    const payload = outbox.payload as Record<string, unknown>;
+    await prisma.vehicleRegistryLifecycleOutbox.update({
+      where: { id: outbox.id },
+      data: {
+        occurredAt,
+        payload: { ...payload, offboardedAt: occurredAt.toISOString() },
+      },
+    });
+    const approverId = await createApproverUser(prisma, orgId);
+    await prisma.billingBillableVehicleAssignment.create({
+      data: {
+        id: randomUUID(),
+        organizationId: orgId,
+        vehicleId,
+        subscriptionItemId: baseItem.id,
+        billableFrom: new Date('2020-01-01'),
+        status: BillingBillableVehicleAssignmentStatus.ACTIVE,
+        approvedByUserId: approverId,
+      },
+    });
+    expect(await processor.processRow(outbox.id)).toBe('published');
+    expect(
+      await prisma.billingQuantityEvent.count({
+        where: { idempotencyKey: buildRegistryOffboardBillingIdempotencyKey(outbox.eventId) },
+      }),
+    ).toBe(1);
+  });
+
+  it('pre-event explicit assignment is ended at occurredAt', async () => {
+    const orgId = await createOrg(prisma);
+    const baseItem = await ensureBasePlan(prisma, orgId, 1);
+    const vehicleId = await createActiveVehicle(prisma, orgId);
+    const occurredAt = new Date('2026-07-01T10:00:00.000Z');
+    const approverId = await createApproverUser(prisma, orgId);
+    const assignmentId = randomUUID();
+    await prisma.billingBillableVehicleAssignment.create({
+      data: {
+        id: assignmentId,
+        organizationId: orgId,
+        vehicleId,
+        subscriptionItemId: baseItem.id,
+        billableFrom: new Date('2020-01-01'),
+        status: BillingBillableVehicleAssignmentStatus.ACTIVE,
+        approvedByUserId: approverId,
+        createdAt: new Date('2026-06-01T00:00:00.000Z'),
+      },
+    });
+    await seedVehicleLicenseConnected(prisma, orgId, baseItem, vehicleId, occurredAt);
+    await offboarding.offboardVehicle({
+      organizationId: orgId,
+      vehicleId,
+      reason: 'REMOVE_FROM_PRODUCT',
+      actorUserId: null,
+      idempotencyKey: randomUUID(),
+    });
+    const outbox = await prisma.vehicleRegistryLifecycleOutbox.findFirstOrThrow({
+      where: { vehicleId },
+    });
+    const payload = outbox.payload as Record<string, unknown>;
+    await prisma.vehicleRegistryLifecycleOutbox.update({
+      where: { id: outbox.id },
+      data: {
+        occurredAt,
+        payload: { ...payload, offboardedAt: occurredAt.toISOString() },
+      },
+    });
+    await processor.processRow(outbox.id);
+    const assignment = await prisma.billingBillableVehicleAssignment.findUniqueOrThrow({
+      where: { id: assignmentId },
+    });
+    expect(assignment.status).toBe(BillingBillableVehicleAssignmentStatus.ENDED);
+    expect(assignment.billableUntil?.toISOString()).toBe(occurredAt.toISOString());
+  });
 });

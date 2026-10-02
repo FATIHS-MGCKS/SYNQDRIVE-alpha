@@ -36,6 +36,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-onboarding-vo5b2-temporal-seal-2026-10-02',
+    version: '4.9.2223',
+    title: 'Vehicle Onboarding VO-5B.2 — temporal billing authority seal',
+    summary: [
+      'Registry offboard projection: BillingQuantityEvent timeline is primary; Organization.status and post-event assignments/exclusions cannot rewrite occurredAt prestate.',
+      'legacyImplicitAssignmentsAt via createdAt <= occurredAt; post-event assignments not ended by consumer.',
+    ],
+    reason:
+      'VO-5B.1 still allowed present-day org/assignment state to veto historical registry offboard deprovision.',
+    previousBehavior:
+      'buildEventTimePolicyContext used current org status and assignment count; wasBillable could noop after org suspend or post-event DEMO rows.',
+    details:
+      'buildRegistryOffboardPolicyContext; billing-assignment-event-time createdAt boundary; VO5B_REGISTRY_BILLING_BRIDGE.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Onboarding',
+    createdAt: '2026-10-02T04:30:00.000Z',
+  },
+  {
     id: 'vehicle-onboarding-vo5b1-integrity-seal-2026-10-02',
     version: '4.9.2222',
     title: 'Vehicle Onboarding VO-5B.1 — registry→billing bridge integrity seal',

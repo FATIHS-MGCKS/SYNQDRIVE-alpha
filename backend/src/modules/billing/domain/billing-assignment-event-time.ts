@@ -5,6 +5,28 @@ import {
   type BillableVehiclePolicyAssignment,
 } from './billable-vehicle-policy';
 
+/**
+ * Assignment rows created after a registry lifecycle boundary are not ordinary prestate evidence.
+ * (Schema has no full bitemporal assignment history — see VO5B evidence.)
+ */
+export function isAssignmentOrdinaryPrestateEvidenceAt(
+  assignment: Pick<BillableVehiclePolicyAssignment, 'createdAt'>,
+  boundaryAt: Date,
+): boolean {
+  if (assignment.createdAt == null) {
+    return true;
+  }
+  return assignment.createdAt.getTime() <= boundaryAt.getTime();
+}
+
+export function filterAssignmentsForRegistryOffboardPrestate<
+  T extends BillableVehiclePolicyAssignment,
+>(assignments: T[], boundaryAt: Date): T[] {
+  return assignments.filter((assignment) =>
+    isAssignmentOrdinaryPrestateEvidenceAt(assignment, boundaryAt),
+  );
+}
+
 export function isWithinBillablePeriod(
   assignment: Pick<BillableVehiclePolicyAssignment, 'billableFrom' | 'billableUntil'>,
   asOf: Date,
@@ -71,6 +93,10 @@ export function isEffectivelyBillableAssignmentAt(
 export function listEffectivelyBillableAssignmentsAt(
   assignments: BillableVehiclePolicyAssignment[],
   asOf: Date,
+  options?: { registryOffboardPrestate?: boolean },
 ): BillableVehiclePolicyAssignment[] {
-  return assignments.filter((assignment) => isEffectivelyBillableAssignmentAt(assignment, asOf));
+  const scoped = options?.registryOffboardPrestate
+    ? filterAssignmentsForRegistryOffboardPrestate(assignments, asOf)
+    : assignments;
+  return scoped.filter((assignment) => isEffectivelyBillableAssignmentAt(assignment, asOf));
 }

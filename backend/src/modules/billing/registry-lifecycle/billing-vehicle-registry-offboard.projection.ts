@@ -9,8 +9,10 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { BillableVehiclesService } from '../billable-vehicles.service';
 import { BillingQuantityService } from '../billing-quantity.service';
 import { resolveBaseSubscriptionItemAsOf } from '../domain/billing-base-subscription-item-as-of';
-import { listEffectivelyBillableAssignmentsAt } from '../domain/billing-assignment-event-time';
-import { wasVehicleBillableAtOffboardBoundary } from '../domain/billing-vehicle-offboard-boundary';
+import {
+  isAssignmentOrdinaryPrestateEvidenceAt,
+  listEffectivelyBillableAssignmentsAt,
+} from '../domain/billing-assignment-event-time';
 import { resolveVehicleLicenseQuantityStateAt } from '../domain/billing-vehicle-license-quantity-state';
 import { computeQuantityTransition } from '../domain/billing-quantity-ledger';
 import { assertRegistryOffboardQuantityEventSemantics } from './assert-registry-offboard-idempotency';
@@ -67,7 +69,7 @@ export class BillingVehicleRegistryOffboardProjection {
 
       await tx.$executeRaw`SELECT id FROM billing_subscription_items WHERE id = ${baseItem.id} FOR UPDATE`;
 
-      const policyContext = await this.billableVehicles.buildEventTimePolicyContext(
+      const policyContext = await this.billableVehicles.buildRegistryOffboardPolicyContext(
         event.organizationId,
         event.occurredAt,
         tx,
@@ -98,6 +100,7 @@ export class BillingVehicleRegistryOffboardProjection {
       const effectiveBillable = listEffectivelyBillableAssignmentsAt(
         scopedAssignments,
         event.occurredAt,
+        { registryOffboardPrestate: true },
       );
 
       if (effectiveBillable.length > 1) {
@@ -118,18 +121,12 @@ export class BillingVehicleRegistryOffboardProjection {
         return { outcome: 'noop', quantityCreated: false };
       }
 
-      const wasBillable = wasVehicleBillableAtOffboardBoundary(policyContext, event.vehicleId);
+      if (!licenseState.provisionedAtBoundary) {
+        return { outcome: 'noop', quantityCreated: false };
+      }
 
       if (effectiveBillable.length === 1) {
         await this.endExplicitAssignmentAtOffboard(tx, event, effectiveBillable[0]!.id);
-      }
-
-      if (!wasBillable) {
-        return { outcome: 'noop', quantityCreated: false };
-      }
-
-      if (!licenseState.provisionedAtBoundary) {
-        return { outcome: 'noop', quantityCreated: false };
       }
 
       const timeline = await this.loadTimeline(tx, baseItem.id);
@@ -180,6 +177,9 @@ export class BillingVehicleRegistryOffboardProjection {
       current.organizationId !== event.organizationId ||
       current.vehicleId !== event.vehicleId
     ) {
+      return;
+    }
+    if (!isAssignmentOrdinaryPrestateEvidenceAt(current, event.occurredAt)) {
       return;
     }
     if (current.status === BillingBillableVehicleAssignmentStatus.ENDED) {

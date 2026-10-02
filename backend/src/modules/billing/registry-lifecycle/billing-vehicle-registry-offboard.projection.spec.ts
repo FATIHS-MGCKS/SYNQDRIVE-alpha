@@ -61,7 +61,7 @@ describe('BillingVehicleRegistryOffboardProjection', () => {
       ),
     };
     const billableVehicles = {
-      buildEventTimePolicyContext: jest.fn().mockResolvedValue({
+      buildRegistryOffboardPolicyContext: jest.fn().mockResolvedValue({
         organizationId: 'org-1',
         organizationActive: true,
         baseSubscriptionItemId: 'item-base',

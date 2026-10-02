@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **Slice** | VO-5B |
-| **Date** | 2026-10-01 (VO-5B.1 integrity seal: 2026-10-02) |
+| **Date** | 2026-10-01 (VO-5B.1: 2026-10-02; VO-5B.2 temporal seal: 2026-10-02) |
 | **Authority** | Vehicle Onboarding `AUDIT_IN_PROGRESS` (unchanged) |
 | **Starting main** | `d4a08b241ab5fec1e4979b52896a7fe90b6aa870` (post VO-5A merge) |
 
@@ -40,6 +40,22 @@ Post-commit idempotent bridge:
 | `LEGACY_IMPLICIT_OFFBOARD_CANNOT_CREATE_NEGATIVE_QUANTITY` | `YES` (noop without vehicle license provision evidence; aggregate quantity guard) |
 | `ALREADY_DEPROVISIONED_BEFORE_OFFBOARD_DELTA` | `0` |
 | `VO5B_POSTGRES_REMOTE_CI_PRESENT` | `YES` (`.github/workflows/vehicle-onboarding-vo5b-postgres-ci.yml`) |
+| `CURRENT_ORGANIZATION_STATUS_CAN_REWRITE_OFFBOARD_PRESTATE` | `NO` |
+| `CURRENT_ORG_STATUS_USED_AS_EVENT_TIME_BILLABILITY_AUTHORITY` | `NO` |
+| `ASSIGNMENT_CREATED_AFTER_EVENT_AFFECTS_PRESTATE` | `NO` (`createdAt > occurredAt` excluded) |
+| `POST_EVENT_EXCLUSION_CAN_CANCEL_HISTORICAL_OFFBOARD_DELTA` | `NO` |
+| `LEGACY_IMPLICIT_MODE_EVENT_TIME_AUTHORITY` | `YES` (assignment count where `createdAt <= occurredAt`) |
+| `VEHICLE_LICENSE_QUANTITY_LEDGER_PRIMARY_PRESTATE_AUTHORITY` | `YES` |
+| `POST_EVENT_ASSIGNMENT_MUTATED_BY_OFFBOARD_CONSUMER` | `NO` |
+| `ASSIGNMENT_HISTORY_LIMITATION_DOCUMENTED` | `YES` (no full bitemporal assignment model; `createdAt` boundary only) |
+
+### Assignment history limitation (VO-5B.2)
+
+`BillingBillableVehicleAssignment` exposes `billableFrom` / `billableUntil` and mutable `status`, but **not** a complete bitemporal history. For registry offboarding, prestate uses:
+
+- `createdAt <= occurredAt` for assignment rows considered as ordinary evidence
+- `BillingQuantityEvent.effectiveAt` as **primary** per-vehicle license provision/deprovision authority
+- Current `Organization.status` is **not** used to veto a proven historical license transition (no org status history table)
 | `MULTIPLE_EFFECTIVE_BILLING_ASSIGNMENTS_FAIL_CLOSED` | `YES` |
 | `REGISTRY_BILLING_CROSS_TENANT_FAIL_CLOSED` | `YES` |
 | `STRIPE_CALL_COUNT_FROM_REGISTRY_CONSUMER` | `0` |

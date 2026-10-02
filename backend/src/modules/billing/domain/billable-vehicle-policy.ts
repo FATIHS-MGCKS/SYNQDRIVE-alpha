@@ -65,6 +65,8 @@ export interface BillableVehiclePolicyAssignment {
   reasonCode: string | null;
   reasonNote: string | null;
   approvedByUserId: string | null;
+  /** Required for registry lifecycle billing event-time authority. */
+  createdAt?: Date;
 }
 
 export interface BillableVehiclePolicyContext {
