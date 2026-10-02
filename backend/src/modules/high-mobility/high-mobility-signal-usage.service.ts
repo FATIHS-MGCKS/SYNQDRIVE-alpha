@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
+import { isVehicleRegistryOperationalActive } from '@modules/vehicle-onboarding/registry/vehicle-registry-operational.util';
 import { HighMobilityHealthFetchService } from './high-mobility-health-fetch.service';
 import type { HmHealthDataDto } from './dto/high-mobility.dto';
 import {
@@ -431,6 +432,17 @@ export class HmSignalUsageService {
    * has data immediately instead of waiting for the 5-minute polling scheduler.
    */
   async refreshAllSignalGroupsInitial(vehicleId: string): Promise<void> {
+    const registry = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { registryLifecycle: true },
+    });
+    if (!isVehicleRegistryOperationalActive(registry?.registryLifecycle)) {
+      this.logger.debug(
+        `Skipping HM canonical signal refresh for vehicle ${vehicleId}: registry lifecycle ${registry?.registryLifecycle ?? 'unknown'}`,
+      );
+      return;
+    }
+
     const hmVehicleId = await this.getLinkedHmVehicleId(vehicleId);
     if (!hmVehicleId) {
       this.logger.debug(`No HM link for vehicle ${vehicleId} — skipping initial HM refresh`);
@@ -530,6 +542,17 @@ export class HmSignalUsageService {
   }): Promise<void> {
     const { vehicleId, hmVehicleId, payload, receivedAt } = params;
     const now = receivedAt ?? new Date();
+
+    const registry = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { registryLifecycle: true },
+    });
+    if (!isVehicleRegistryOperationalActive(registry?.registryLifecycle)) {
+      this.logger.debug(
+        `Skipping HM MQTT canonical ingest for vehicle ${vehicleId}: registry lifecycle ${registry?.registryLifecycle ?? 'unknown'}`,
+      );
+      return;
+    }
 
     const getSignal = (key: string, aliases: string[] = []): unknown =>
       resolveHmSignalEntry(payload, key, aliases);

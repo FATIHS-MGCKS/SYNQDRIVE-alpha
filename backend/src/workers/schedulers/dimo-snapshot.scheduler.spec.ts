@@ -103,6 +103,7 @@ describe('DimoSnapshotScheduler (activity-tier)', () => {
     expect(findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
+          registryLifecycle: 'ACTIVE',
           dimoVehicle: expect.objectContaining({
             connectionStatus: 'CONNECTED',
             tokenId: { not: null },

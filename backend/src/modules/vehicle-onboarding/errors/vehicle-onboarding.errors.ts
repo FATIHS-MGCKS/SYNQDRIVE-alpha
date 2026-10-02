@@ -29,7 +29,9 @@ export type VehicleOnboardingErrorCode =
   | 'STATION_SCOPE_MISMATCH'
   | 'SOURCE_ALREADY_CLAIMED'
   | 'SOURCE_ALREADY_REGISTERED'
-  | 'SOURCE_CLAIM_INTEGRITY_CONFLICT';
+  | 'SOURCE_CLAIM_INTEGRITY_CONFLICT'
+  | 'VEHICLE_REGISTRY_INVALID_TRANSITION'
+  | 'ORG_TRANSFER_NOT_SUPPORTED';
 
 export class VehicleOnboardingError extends Error {
   constructor(
