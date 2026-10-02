@@ -4,6 +4,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { QUEUE_NAMES } from '../queues/queue-names';
 import { SnapshotWakeCoordinatorService } from './snapshot-wake-coordinator.service';
 import { SnapshotWakeIntakeService } from './snapshot-wake-intake.service';
+import { R9ProviderWakeForensicRepository } from './r9-provider-wake-forensic.repository';
 
 @Module({
   imports: [
@@ -12,7 +13,15 @@ import { SnapshotWakeIntakeService } from './snapshot-wake-intake.service';
       { name: QUEUE_NAMES.SNAPSHOT_WAKE_HANDOFF },
     ),
   ],
-  providers: [SnapshotWakeCoordinatorService, SnapshotWakeIntakeService],
-  exports: [SnapshotWakeCoordinatorService, SnapshotWakeIntakeService],
+  providers: [
+    SnapshotWakeCoordinatorService,
+    SnapshotWakeIntakeService,
+    R9ProviderWakeForensicRepository,
+  ],
+  exports: [
+    SnapshotWakeCoordinatorService,
+    SnapshotWakeIntakeService,
+    R9ProviderWakeForensicRepository,
+  ],
 })
 export class SnapshotWakeModule {}

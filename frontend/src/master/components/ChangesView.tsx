@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'p25-r9o-1-2-wake-forensic-foundation-2026-10-02',
+    version: '4.9.2221',
+    title: 'P2.5 R9O-1/R9O-2 — wake correlation + durable forensic foundation',
+    summary: [
+      'Canonical R9_WAKE_CORRELATION_V1 contract and deterministic wakeCorrelationId (forensic lineage only; snapshot job id unchanged).',
+      'Additive PostgreSQL r9_provider_wake_forensics + repository with tenant-safe upsert and fail-open runR9WakeForensicSafely.',
+      'Distinct providerObservedAt / receivedAt / providerFetchedAt / snapshotSourceTimestamp columns — no polling, tier, or Trip FSM behavior change.',
+    ],
+    reason:
+      'APD-1R-B design: close durable wake-context loss (Redis/BullMQ/Prometheus) without altering R9 wake semantics; R9O-3+ will attach instrumentation.',
+    previousBehavior:
+      'R9 wake outcomes ephemeral in Redis mailboxes and metrics; no cross-replica durable wake lineage.',
+    details:
+      'backend/src/workers/snapshot-wake/r9-*.ts; prisma migration 20261002183000_r9_provider_wake_forensic_foundation; architecture/trip-detection-lifecycle/evidence/R9O_1_2_WAKE_FORENSIC_FOUNDATION_2026-10-02.md',
+    affectsArchitecture: true,
+    module: 'Trip Detection & Lifecycle',
+    createdAt: '2026-10-02T23:45:00.000Z',
+  },
+  {
     id: 'vehicle-onboarding-vo5a1-integrity-seal-2026-10-01',
     version: '4.9.2220',
     title: 'Vehicle Onboarding VO-5A.1 — offboarding integrity seal',

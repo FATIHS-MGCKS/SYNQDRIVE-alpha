@@ -1201,6 +1201,33 @@ enum TripTrackingRunType {
   FINALIZATION_CHECK
 }
 
+enum R9ProviderWakeForensicClassification {
+  ADMITTED
+  IGNORED_SIGNAL
+  IGNORED_FSM_ACTIVE
+  IGNORED_BINDING
+  IGNORED_STALE
+  ALREADY_COVERED
+  COALESCED
+  QUEUE_FAILED
+  PERSIST_FAILED
+  INVALID_SIGNAL
+  OTHER
+}
+
+enum R9ProviderWakeForensicLineageRole {
+  WAKE_CREATED_NEW_SNAPSHOT
+  WAKE_COALESCED_INTO_QUEUED_SNAPSHOT
+  WAKE_COALESCED_INTO_ACTIVE_SNAPSHOT
+  WAKE_SCHEDULED_SUCCESSOR
+}
+
+enum R9ProviderWakeForensicSnapshotStatus {
+  SUCCESS
+  FAILURE
+  SKIPPED
+}
+
 enum DimoPollStatus {
   SUCCESS
   FAILURE
@@ -1656,7 +1683,7 @@ model Organization {
   vehicleStationTransfers                                   VehicleStationTransfer[]
   vehicles                                                  Vehicle[]
   vehicleOnboardingCases                                    VehicleOnboardingCase[]
-  vehicleOrganizationAssignments                          VehicleOrganizationAssignment[]
+  vehicleOrganizationAssignments                            VehicleOrganizationAssignment[]
   rawRefuelCandidates                                       RawRefuelCandidate[]
   brakeComponentInstallations                               BrakeComponentInstallation[]
   brakeServiceApplications                                  BrakeServiceApplication[]
@@ -1823,11 +1850,11 @@ model Organization {
   batteryPublications                                       BatteryPublication[]
   batteryShutdownEvidenceObservations                       BatteryShutdownEvidenceObservation[]
   batteryTripShutdownContexts                               BatteryTripShutdownContext[]
-  batteryGeneralizedEvidenceObservations                  BatteryGeneralizedEvidenceObservation[]
+  batteryGeneralizedEvidenceObservations                    BatteryGeneralizedEvidenceObservation[]
   batteryRestSessions                                       BatteryRestSession[]
   batteryRestSessionFeatures                                BatteryRestSessionFeature[]
-  batteryLongitudinalProfileRevisions                     BatteryLongitudinalProfileRevision[]
-  batteryHvChargeSessionEvidenceRevisions                 BatteryHvChargeSessionEvidenceRevision[]
+  batteryLongitudinalProfileRevisions                       BatteryLongitudinalProfileRevision[]
+  batteryHvChargeSessionEvidenceRevisions                   BatteryHvChargeSessionEvidenceRevision[]
   batteryGroundTruthEvents                                  BatteryGroundTruthEvent[]
   batteryGroundTruthRevocations                             BatteryGroundTruthRevocation[]
   batteryProviderObservabilityGaps                          BatteryProviderObservabilityGap[]
@@ -1938,63 +1965,63 @@ model User {
   createdAt                  DateTime         @default(now()) @map("created_at")
   updatedAt                  DateTime         @updatedAt @map("updated_at")
 
-  refreshTokens                        RefreshToken[]
-  memberships                          OrganizationMembership[]
-  activityLogs                         ActivityLog[]
-  mfaFactors                           UserMfaFactor[]
-  mfaRecoveryCodes                     UserMfaRecoveryCode[]
-  mfaStepUpGrants                      UserMfaStepUpGrant[]
-  accessReviewCampaignsCreated         AccessReviewCampaign[]                  @relation("AccessReviewCampaignsCreated")
-  accessReviewCampaignsAsReviewer      AccessReviewCampaign[]                  @relation("AccessReviewReviewer")
-  accessReviewDecisions                AccessReviewDecision[]                  @relation("AccessReviewDecisions")
-  accessReviewItems                    AccessReviewItem[]
-  dsarExportsAsSubject                 IamDsarExportLog[]                      @relation("DsarSubject")
-  dsarExportsRequested                 IamDsarExportLog[]                      @relation("DsarRequestedBy")
-  iamLegalHoldsPlaced                  IamLegalHold[]                          @relation("IamLegalHoldPlacedBy")
-  iamRetentionPolicyApprovals          IamRetentionPolicyOverride[]            @relation("IamRetentionPolicyApprovedBy")
-  iamSessionRevocationIntents          IamSessionRevocationIntent[]
-  passwordResetTokens                  PasswordResetToken[]
-  accountPreferences                   UserAccountPreference[]
-  notificationPreferences              UserNotificationPreference[]
-  invitesSent                          OrganizationUserInvite[]                @relation("InvitesSent")
-  invitesAccepted                      OrganizationUserInvite[]                @relation("InvitesAccepted")
-  inviteEmailOutboxSent                InviteEmailOutbox[]                     @relation("InviteEmailOutboxSentBy")
-  organizationRolesCreated             OrganizationRole[]                      @relation("RolesCreated")
-  organizationRoleVersionsCreated      OrganizationRoleVersion[]               @relation("RoleVersionsCreated")
-  organizationRoleAssignmentsCreated   OrganizationRoleAssignment[]            @relation("RoleAssignmentsCreated")
-  membershipPermissionOverridesCreated MembershipPermissionOverride[]          @relation("PermissionOverridesCreated")
-  organizationRoleChangeApplications   OrganizationRoleChangeApplication[]     @relation("RoleChangeApplications")
-  billingPriceVersionsCreated          BillingPriceVersion[]                   @relation("BillingPriceVersionsCreated")
-  billingPriceVersionsPublished        BillingPriceVersion[]                   @relation("BillingPriceVersionsPublished")
-  billingSubscriptionsCreated          BillingSubscription[]                   @relation("BillingSubscriptionsCreated")
-  billingSubscriptionsUpdated          BillingSubscription[]                   @relation("BillingSubscriptionsUpdated")
-  billingDiscountsCreated              BillingDiscount[]                       @relation("BillingDiscountsCreated")
-  billingQuantityEventsActed           BillingQuantityEvent[]                  @relation("BillingQuantityEventsActed")
-  billingPaymentsRecorded              BillingPayment[]                        @relation("BillingPaymentsRecorded")
-  billingReconciliationDriftsResolved  BillingReconciliationDrift[]            @relation("BillingReconciliationDriftsResolved")
-  billingUsageSnapshotsCreated         BillingUsageSnapshot[]                  @relation("BillingUsageSnapshotsCreated")
-  billingVehicleAssignmentsApproved    BillingBillableVehicleAssignment[]      @relation("BillingVehicleAssignmentsApproved")
-  outboundEmailsSent                   OutboundEmail[]                         @relation("OutboundEmailSentBy")
-  pricingQuotesCreated                 PricingQuote[]                          @relation("PricingQuotesCreated")
-  notificationReceipts                 NotificationReceipt[]
-  taskAutomationRuleOverridesCreated   OrgTaskAutomationRuleOverride[]         @relation("TaskAutomationRuleOverrideCreated")
-  taskAutomationRuleOverridesUpdated   OrgTaskAutomationRuleOverride[]         @relation("TaskAutomationRuleOverrideUpdated")
-  taskAutomationRuleOverrideRevisions  OrgTaskAutomationRuleOverrideRevision[] @relation("TaskAutomationRuleOverrideRevisionChanged")
-  driverAttributionsResolved           DriverAttribution[]                     @relation("DriverAttributionResolvedBy")
-  drivingDecisionsMade                 DrivingDecisionAudit[]                  @relation("DrivingDecisionDecidedBy")
-  drivingDecisionsRevoked              DrivingDecisionAudit[]                  @relation("DrivingDecisionRevokedBy")
-  bookingAllowedDriversAdded           BookingAllowedDriver[]                  @relation("BookingAllowedDriverAddedBy")
-  bookingEligibilityApprovalsRequested BookingEligibilityApproval[]            @relation("BookingEligibilityApprovalRequestedBy")
-  bookingEligibilityApprovalsDecided   BookingEligibilityApproval[]            @relation("BookingEligibilityApprovalDecidedBy")
-  rentalRuleRevisionsCreated           RentalRuleRevision[]                    @relation("RentalRuleRevisionCreatedBy")
-  rentalRuleRevisionsPublished         RentalRuleRevision[]                    @relation("RentalRuleRevisionPublishedBy")
-  tireRentalHealthReviewGrants         TireRentalHealthReviewOverride[]        @relation("TireRentalHealthReviewGrants")
-  verifiedBatteryReferenceCapacities   VehicleBatteryReferenceCapacity[]
-  batteryReferenceCapacityChanges      VehicleBatteryReferenceCapacityChange[]
-  batteryGroundTruthEventsConfirmed    BatteryGroundTruthEvent[]             @relation("BatteryGroundTruthConfirmedBy")
-  batteryGroundTruthRevocationsPerformed BatteryGroundTruthRevocation[]      @relation("BatteryGroundTruthRevokedBy")
-  brakeRentalHealthReviewGrants        BrakeRentalHealthReviewOverride[]       @relation("BrakeRentalHealthReviewGrants")
-  assignedCommunicationConversations   CommunicationConversation[]             @relation("CommunicationConversationAssignee")
+  refreshTokens                          RefreshToken[]
+  memberships                            OrganizationMembership[]
+  activityLogs                           ActivityLog[]
+  mfaFactors                             UserMfaFactor[]
+  mfaRecoveryCodes                       UserMfaRecoveryCode[]
+  mfaStepUpGrants                        UserMfaStepUpGrant[]
+  accessReviewCampaignsCreated           AccessReviewCampaign[]                  @relation("AccessReviewCampaignsCreated")
+  accessReviewCampaignsAsReviewer        AccessReviewCampaign[]                  @relation("AccessReviewReviewer")
+  accessReviewDecisions                  AccessReviewDecision[]                  @relation("AccessReviewDecisions")
+  accessReviewItems                      AccessReviewItem[]
+  dsarExportsAsSubject                   IamDsarExportLog[]                      @relation("DsarSubject")
+  dsarExportsRequested                   IamDsarExportLog[]                      @relation("DsarRequestedBy")
+  iamLegalHoldsPlaced                    IamLegalHold[]                          @relation("IamLegalHoldPlacedBy")
+  iamRetentionPolicyApprovals            IamRetentionPolicyOverride[]            @relation("IamRetentionPolicyApprovedBy")
+  iamSessionRevocationIntents            IamSessionRevocationIntent[]
+  passwordResetTokens                    PasswordResetToken[]
+  accountPreferences                     UserAccountPreference[]
+  notificationPreferences                UserNotificationPreference[]
+  invitesSent                            OrganizationUserInvite[]                @relation("InvitesSent")
+  invitesAccepted                        OrganizationUserInvite[]                @relation("InvitesAccepted")
+  inviteEmailOutboxSent                  InviteEmailOutbox[]                     @relation("InviteEmailOutboxSentBy")
+  organizationRolesCreated               OrganizationRole[]                      @relation("RolesCreated")
+  organizationRoleVersionsCreated        OrganizationRoleVersion[]               @relation("RoleVersionsCreated")
+  organizationRoleAssignmentsCreated     OrganizationRoleAssignment[]            @relation("RoleAssignmentsCreated")
+  membershipPermissionOverridesCreated   MembershipPermissionOverride[]          @relation("PermissionOverridesCreated")
+  organizationRoleChangeApplications     OrganizationRoleChangeApplication[]     @relation("RoleChangeApplications")
+  billingPriceVersionsCreated            BillingPriceVersion[]                   @relation("BillingPriceVersionsCreated")
+  billingPriceVersionsPublished          BillingPriceVersion[]                   @relation("BillingPriceVersionsPublished")
+  billingSubscriptionsCreated            BillingSubscription[]                   @relation("BillingSubscriptionsCreated")
+  billingSubscriptionsUpdated            BillingSubscription[]                   @relation("BillingSubscriptionsUpdated")
+  billingDiscountsCreated                BillingDiscount[]                       @relation("BillingDiscountsCreated")
+  billingQuantityEventsActed             BillingQuantityEvent[]                  @relation("BillingQuantityEventsActed")
+  billingPaymentsRecorded                BillingPayment[]                        @relation("BillingPaymentsRecorded")
+  billingReconciliationDriftsResolved    BillingReconciliationDrift[]            @relation("BillingReconciliationDriftsResolved")
+  billingUsageSnapshotsCreated           BillingUsageSnapshot[]                  @relation("BillingUsageSnapshotsCreated")
+  billingVehicleAssignmentsApproved      BillingBillableVehicleAssignment[]      @relation("BillingVehicleAssignmentsApproved")
+  outboundEmailsSent                     OutboundEmail[]                         @relation("OutboundEmailSentBy")
+  pricingQuotesCreated                   PricingQuote[]                          @relation("PricingQuotesCreated")
+  notificationReceipts                   NotificationReceipt[]
+  taskAutomationRuleOverridesCreated     OrgTaskAutomationRuleOverride[]         @relation("TaskAutomationRuleOverrideCreated")
+  taskAutomationRuleOverridesUpdated     OrgTaskAutomationRuleOverride[]         @relation("TaskAutomationRuleOverrideUpdated")
+  taskAutomationRuleOverrideRevisions    OrgTaskAutomationRuleOverrideRevision[] @relation("TaskAutomationRuleOverrideRevisionChanged")
+  driverAttributionsResolved             DriverAttribution[]                     @relation("DriverAttributionResolvedBy")
+  drivingDecisionsMade                   DrivingDecisionAudit[]                  @relation("DrivingDecisionDecidedBy")
+  drivingDecisionsRevoked                DrivingDecisionAudit[]                  @relation("DrivingDecisionRevokedBy")
+  bookingAllowedDriversAdded             BookingAllowedDriver[]                  @relation("BookingAllowedDriverAddedBy")
+  bookingEligibilityApprovalsRequested   BookingEligibilityApproval[]            @relation("BookingEligibilityApprovalRequestedBy")
+  bookingEligibilityApprovalsDecided     BookingEligibilityApproval[]            @relation("BookingEligibilityApprovalDecidedBy")
+  rentalRuleRevisionsCreated             RentalRuleRevision[]                    @relation("RentalRuleRevisionCreatedBy")
+  rentalRuleRevisionsPublished           RentalRuleRevision[]                    @relation("RentalRuleRevisionPublishedBy")
+  tireRentalHealthReviewGrants           TireRentalHealthReviewOverride[]        @relation("TireRentalHealthReviewGrants")
+  verifiedBatteryReferenceCapacities     VehicleBatteryReferenceCapacity[]
+  batteryReferenceCapacityChanges        VehicleBatteryReferenceCapacityChange[]
+  batteryGroundTruthEventsConfirmed      BatteryGroundTruthEvent[]               @relation("BatteryGroundTruthConfirmedBy")
+  batteryGroundTruthRevocationsPerformed BatteryGroundTruthRevocation[]          @relation("BatteryGroundTruthRevokedBy")
+  brakeRentalHealthReviewGrants          BrakeRentalHealthReviewOverride[]       @relation("BrakeRentalHealthReviewGrants")
+  assignedCommunicationConversations     CommunicationConversation[]             @relation("CommunicationConversationAssignee")
 
   @@map("users")
 }
@@ -2934,14 +2961,14 @@ model OrganizationProduct {
 // ------------------------------------------------
 
 model Vehicle {
-  id                                String            @id @default(uuid())
-  organizationId                    String            @map("organization_id")
-  homeStationId                     String?           @map("station_id")
-  currentStationId                  String?           @map("current_station_id")
-  currentStationSource              String?           @map("current_station_source")
-  currentStationConfirmedAt         DateTime?         @map("current_station_confirmed_at")
-  expectedStationId                 String?           @map("expected_station_id")
-  dimoVehicleId                     String?           @map("dimo_vehicle_id")
+  id                                String                      @id @default(uuid())
+  organizationId                    String                      @map("organization_id")
+  homeStationId                     String?                     @map("station_id")
+  currentStationId                  String?                     @map("current_station_id")
+  currentStationSource              String?                     @map("current_station_source")
+  currentStationConfirmedAt         DateTime?                   @map("current_station_confirmed_at")
+  expectedStationId                 String?                     @map("expected_station_id")
+  dimoVehicleId                     String?                     @map("dimo_vehicle_id")
   /// Nullable per VO-1; legacy rows retain values. New vehicles created only at activation (VO-3+).
   vin                               String?
   vinVerificationState              VehicleVinVerificationState @default(LEGACY_UNKNOWN) @map("vin_verification_state")
@@ -2950,47 +2977,47 @@ model Vehicle {
   make                              String
   model                             String
   year                              Int
-  vehicleName                       String?           @map("vehicle_name")
-  fuelType                          FuelType          @map("fuel_type")
+  vehicleName                       String?                     @map("vehicle_name")
+  fuelType                          FuelType                    @map("fuel_type")
   transmission                      TransmissionType?
-  driveType                         DriveType?        @map("drive_type")
-  vehicleType                       VehicleType?      @map("vehicle_type")
+  driveType                         DriveType?                  @map("drive_type")
+  vehicleType                       VehicleType?                @map("vehicle_type")
   color                             String?
-  licensePlate                      String?           @map("license_plate")
-  mileageKm                         Int?              @map("mileage_km")
-  dailyRateEur                      Float?            @map("daily_rate_eur")
-  weeklyRateEur                     Float?            @map("weekly_rate_eur")
-  monthlyRateEur                    Float?            @map("monthly_rate_eur")
-  extraKmPrice                      Float?            @map("extra_km_price")
-  imageUrl                          String?           @map("image_url")
-  status                            VehicleStatus     @default(AVAILABLE)
-  cleaningStatus                    CleaningStatus    @default(CLEAN) @map("cleaning_status")
+  licensePlate                      String?                     @map("license_plate")
+  mileageKm                         Int?                        @map("mileage_km")
+  dailyRateEur                      Float?                      @map("daily_rate_eur")
+  weeklyRateEur                     Float?                      @map("weekly_rate_eur")
+  monthlyRateEur                    Float?                      @map("monthly_rate_eur")
+  extraKmPrice                      Float?                      @map("extra_km_price")
+  imageUrl                          String?                     @map("image_url")
+  status                            VehicleStatus               @default(AVAILABLE)
+  cleaningStatus                    CleaningStatus              @default(CLEAN) @map("cleaning_status")
   /// @deprecated Legacy admin-set column. Canonical health is RentalHealthService / VehicleHealthStatus — do not read for UI or booking gates.
-  healthStatus                      HealthStatus      @default(GOOD) @map("health_status")
+  healthStatus                      HealthStatus                @default(GOOD) @map("health_status")
   notes                             String?
   /// When true, vehicle is excluded from per-vehicle billing (manual override).
-  billingExcluded                   Boolean           @default(false) @map("billing_excluded")
-  leasingRateCents                  Int?              @map("leasing_rate_cents")
-  insuranceCostCents                Int?              @map("insurance_cost_cents")
-  taxCostCents                      Int?              @map("tax_cost_cents")
-  curbWeightKg                      Float?            @map("curb_weight_kg")
-  frontWeightDistributionPct        Float?            @map("front_weight_distribution_pct")
-  idleRpm                           Int?              @map("idle_rpm")
-  maxRpm                            Int?              @map("max_rpm")
-  serviceIntervalKm                 Int?              @map("service_interval_km")
-  serviceIntervalMonths             Int?              @map("service_interval_months")
-  brakeForceFrontPercent            Float?            @map("brake_force_front_percent")
-  lastServiceDate                   DateTime?         @map("last_service_date")
-  lastServiceOdometerKm             Int?              @map("last_service_odometer_km")
-  nextServiceDueDate                DateTime?         @map("next_service_due_date")
-  serviceIntervalManufacturerKm     Int?              @map("service_interval_manufacturer_km")
-  serviceIntervalManufacturerMonths Int?              @map("service_interval_manufacturer_months")
-  lastOilChangeDate                 DateTime?         @map("last_oil_change_date")
-  lastOilChangeOdometerKm           Int?              @map("last_oil_change_odometer_km")
-  oilChangeIntervalKm               Int?              @map("oil_change_interval_km")
-  oilChangeIntervalMonths           Int?              @map("oil_change_interval_months")
-  hvBatteryCapacityKwh              Float?            @map("hv_battery_capacity_kwh")
-  tankCapacityLiters                Float?            @map("tank_capacity_liters")
+  billingExcluded                   Boolean                     @default(false) @map("billing_excluded")
+  leasingRateCents                  Int?                        @map("leasing_rate_cents")
+  insuranceCostCents                Int?                        @map("insurance_cost_cents")
+  taxCostCents                      Int?                        @map("tax_cost_cents")
+  curbWeightKg                      Float?                      @map("curb_weight_kg")
+  frontWeightDistributionPct        Float?                      @map("front_weight_distribution_pct")
+  idleRpm                           Int?                        @map("idle_rpm")
+  maxRpm                            Int?                        @map("max_rpm")
+  serviceIntervalKm                 Int?                        @map("service_interval_km")
+  serviceIntervalMonths             Int?                        @map("service_interval_months")
+  brakeForceFrontPercent            Float?                      @map("brake_force_front_percent")
+  lastServiceDate                   DateTime?                   @map("last_service_date")
+  lastServiceOdometerKm             Int?                        @map("last_service_odometer_km")
+  nextServiceDueDate                DateTime?                   @map("next_service_due_date")
+  serviceIntervalManufacturerKm     Int?                        @map("service_interval_manufacturer_km")
+  serviceIntervalManufacturerMonths Int?                        @map("service_interval_manufacturer_months")
+  lastOilChangeDate                 DateTime?                   @map("last_oil_change_date")
+  lastOilChangeOdometerKm           Int?                        @map("last_oil_change_odometer_km")
+  oilChangeIntervalKm               Int?                        @map("oil_change_interval_km")
+  oilChangeIntervalMonths           Int?                        @map("oil_change_interval_months")
+  hvBatteryCapacityKwh              Float?                      @map("hv_battery_capacity_kwh")
+  tankCapacityLiters                Float?                      @map("tank_capacity_liters")
 
   // ── V3 Hardware type ───────────────────────────────────────────────────────
   // Drives the source split for Driving Events (LTE_R1 → Telemetry API Events,
@@ -3008,135 +3035,136 @@ model Vehicle {
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  organization                           Organization                            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  homeStation                            Station?                                @relation("VehicleHomeStation", fields: [homeStationId], references: [id], onDelete: SetNull)
-  currentStation                         Station?                                @relation("VehicleCurrentStation", fields: [currentStationId], references: [id], onDelete: SetNull)
-  expectedStation                        Station?                                @relation("VehicleExpectedStation", fields: [expectedStationId], references: [id], onDelete: SetNull)
-  stationTransfers                       VehicleStationTransfer[]
-  dimoVehicle                            DimoVehicle?                            @relation(fields: [dimoVehicleId], references: [id], onDelete: SetNull)
-  batterySpecs                           VehicleBatterySpec[]
-  tireSetups                             VehicleTireSetup[]
-  tires                                  Tire[]
-  tirePositionHistory                    TirePositionHistory[]
-  tireEvents                             TireEvent[]
-  tireHealthSnapshots                    TireHealthSnapshot[]
-  tireWearDataPoints                     TireWearDataPoint[]
-  tireTripUsageLedgers                   TireTripUsageLedger[]
-  brakeSpecs                             VehicleBrakeReferenceSpec[]
-  brakeComponentInstallations            BrakeComponentInstallation[]
-  brakeServiceApplications               BrakeServiceApplication[]
-  brakeServiceOutbox                     BrakeServiceOutbox[]
-  serviceEvents                          VehicleServiceEvent[]
-  enrichmentJobs                         VehicleEnrichmentJob[]
-  latestState                            VehicleLatestState?
-  positionUpdates                        VehiclePositionUpdate[]
-  analyticsCacheEntries                  AnalyticsCache[]
-  pollLogs                               DimoPollLog[]
-  bookings                               Booking[]
-  handoverProtocols                      BookingHandoverProtocol[]
-  drivingEvents                          DrivingEvent[]
-  batterySnapshots                       BatteryHealthSnapshot[]
-  hvBatterySnapshots                     HvBatteryHealthSnapshot[]
-  hvBatteryHealthCurrent                 HvBatteryHealthCurrent?
-  batteryFeatures                        BatteryFeatures?
-  batteryEvidence                        BatteryEvidence[]
-  batteryMeasurementSessions             BatteryMeasurementSession[]
-  batteryMeasurements                    BatteryMeasurement[]
-  batteryAssessments                     BatteryAssessment[]
-  batteryPublications                    BatteryPublication[]
-  batteryShutdownEvidenceObservations    BatteryShutdownEvidenceObservation[]
-  batteryTripShutdownContexts            BatteryTripShutdownContext[]
-  batteryGeneralizedEvidenceObservations BatteryGeneralizedEvidenceObservation[]
-  batteryRestSessions                    BatteryRestSession[]
-  batteryRestSessionFeatures             BatteryRestSessionFeature[]
-  batteryLongitudinalProfileRevisions    BatteryLongitudinalProfileRevision[]
-  batteryHvChargeSessionEvidenceRevisions BatteryHvChargeSessionEvidenceRevision[]
-  batteryGroundTruthEvents               BatteryGroundTruthEvent[]
-  batteryProviderObservabilityGaps       BatteryProviderObservabilityGap[]
-  vehicleBatteryCapabilities             VehicleBatteryCapability[]
-  vehicleBatteryCapabilityChanges        VehicleBatteryCapabilityChange[]
-  vehicleBatteryReferenceCapacities      VehicleBatteryReferenceCapacity[]
-  vehicleBatteryReferenceCapacityChanges VehicleBatteryReferenceCapacityChange[]
-  hvChargeSessions                       HvChargeSession[]
-  hvCapacityObservations                 HvCapacityObservation[]
-  batteryV2JobDeadLetters                BatteryV2JobDeadLetter[]
-  batteryRetentionAggregates             BatteryRetentionAggregate[]
-  brakeEvidence                          BrakeEvidence[]
-  brakeTripMetrics                       BrakeTripMetric[]
-  brakeHealthCurrent                     BrakeHealthCurrent?
-  brakeHealthSnapshots                   BrakeHealthSnapshot[]
-  brakeHealthAlerts                      BrakeHealthAlert[]
-  brakeRecalculationAudits               BrakeRecalculationAudit[]
-  dtcEvents                              VehicleDtcEvent[]
-  tripDrivingImpacts                     TripDrivingImpact[]
-  drivingImpactCurrent                   VehicleDrivingImpactCurrent?
-  damages                                VehicleDamage[]
-  exteriorImages                         VehicleExteriorImage[]
-  rentalDrivingAnalyses                  RentalDrivingAnalysis[]
-  trips                                  VehicleTrip[]
-  tripRouteArtifacts                     VehicleTripRouteArtifact[]
-  rpmWebhookCandidates                   RpmWebhookCandidate[]
-  dimoBrakingEventIntakes                DimoBrakingEventIntake[]
-  brakingEventLedgerEntries              BrakingEventLedger[]
-  dimoDeviceConnectionEvents             DimoDeviceConnectionEvent[]
-  deviceConnectionEpisodes               DeviceConnectionEpisode[]
-  deviceConnectionPhysicalStates         DeviceConnectionPhysicalState[]
-  deviceConnectionPhysicalStateTransitions DeviceConnectionPhysicalStateTransition[]
-  deviceConnectionPhysicalAuthorityCutovers DeviceConnectionPhysicalAuthorityCutover[]
-  deviceConnectionPhysicalStateActionOutbox DeviceConnectionPhysicalStateActionOutbox[]
+  organization                                    Organization                                     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  homeStation                                     Station?                                         @relation("VehicleHomeStation", fields: [homeStationId], references: [id], onDelete: SetNull)
+  currentStation                                  Station?                                         @relation("VehicleCurrentStation", fields: [currentStationId], references: [id], onDelete: SetNull)
+  expectedStation                                 Station?                                         @relation("VehicleExpectedStation", fields: [expectedStationId], references: [id], onDelete: SetNull)
+  stationTransfers                                VehicleStationTransfer[]
+  dimoVehicle                                     DimoVehicle?                                     @relation(fields: [dimoVehicleId], references: [id], onDelete: SetNull)
+  batterySpecs                                    VehicleBatterySpec[]
+  tireSetups                                      VehicleTireSetup[]
+  tires                                           Tire[]
+  tirePositionHistory                             TirePositionHistory[]
+  tireEvents                                      TireEvent[]
+  tireHealthSnapshots                             TireHealthSnapshot[]
+  tireWearDataPoints                              TireWearDataPoint[]
+  tireTripUsageLedgers                            TireTripUsageLedger[]
+  brakeSpecs                                      VehicleBrakeReferenceSpec[]
+  brakeComponentInstallations                     BrakeComponentInstallation[]
+  brakeServiceApplications                        BrakeServiceApplication[]
+  brakeServiceOutbox                              BrakeServiceOutbox[]
+  serviceEvents                                   VehicleServiceEvent[]
+  enrichmentJobs                                  VehicleEnrichmentJob[]
+  latestState                                     VehicleLatestState?
+  positionUpdates                                 VehiclePositionUpdate[]
+  analyticsCacheEntries                           AnalyticsCache[]
+  pollLogs                                        DimoPollLog[]
+  bookings                                        Booking[]
+  handoverProtocols                               BookingHandoverProtocol[]
+  drivingEvents                                   DrivingEvent[]
+  batterySnapshots                                BatteryHealthSnapshot[]
+  hvBatterySnapshots                              HvBatteryHealthSnapshot[]
+  hvBatteryHealthCurrent                          HvBatteryHealthCurrent?
+  batteryFeatures                                 BatteryFeatures?
+  batteryEvidence                                 BatteryEvidence[]
+  batteryMeasurementSessions                      BatteryMeasurementSession[]
+  batteryMeasurements                             BatteryMeasurement[]
+  batteryAssessments                              BatteryAssessment[]
+  batteryPublications                             BatteryPublication[]
+  batteryShutdownEvidenceObservations             BatteryShutdownEvidenceObservation[]
+  batteryTripShutdownContexts                     BatteryTripShutdownContext[]
+  batteryGeneralizedEvidenceObservations          BatteryGeneralizedEvidenceObservation[]
+  batteryRestSessions                             BatteryRestSession[]
+  batteryRestSessionFeatures                      BatteryRestSessionFeature[]
+  batteryLongitudinalProfileRevisions             BatteryLongitudinalProfileRevision[]
+  batteryHvChargeSessionEvidenceRevisions         BatteryHvChargeSessionEvidenceRevision[]
+  batteryGroundTruthEvents                        BatteryGroundTruthEvent[]
+  batteryProviderObservabilityGaps                BatteryProviderObservabilityGap[]
+  vehicleBatteryCapabilities                      VehicleBatteryCapability[]
+  vehicleBatteryCapabilityChanges                 VehicleBatteryCapabilityChange[]
+  vehicleBatteryReferenceCapacities               VehicleBatteryReferenceCapacity[]
+  vehicleBatteryReferenceCapacityChanges          VehicleBatteryReferenceCapacityChange[]
+  hvChargeSessions                                HvChargeSession[]
+  hvCapacityObservations                          HvCapacityObservation[]
+  batteryV2JobDeadLetters                         BatteryV2JobDeadLetter[]
+  batteryRetentionAggregates                      BatteryRetentionAggregate[]
+  brakeEvidence                                   BrakeEvidence[]
+  brakeTripMetrics                                BrakeTripMetric[]
+  brakeHealthCurrent                              BrakeHealthCurrent?
+  brakeHealthSnapshots                            BrakeHealthSnapshot[]
+  brakeHealthAlerts                               BrakeHealthAlert[]
+  brakeRecalculationAudits                        BrakeRecalculationAudit[]
+  dtcEvents                                       VehicleDtcEvent[]
+  tripDrivingImpacts                              TripDrivingImpact[]
+  drivingImpactCurrent                            VehicleDrivingImpactCurrent?
+  damages                                         VehicleDamage[]
+  exteriorImages                                  VehicleExteriorImage[]
+  rentalDrivingAnalyses                           RentalDrivingAnalysis[]
+  trips                                           VehicleTrip[]
+  tripRouteArtifacts                              VehicleTripRouteArtifact[]
+  rpmWebhookCandidates                            RpmWebhookCandidate[]
+  r9ProviderWakeForensics                         R9ProviderWakeForensic[]
+  dimoBrakingEventIntakes                         DimoBrakingEventIntake[]
+  brakingEventLedgerEntries                       BrakingEventLedger[]
+  dimoDeviceConnectionEvents                      DimoDeviceConnectionEvent[]
+  deviceConnectionEpisodes                        DeviceConnectionEpisode[]
+  deviceConnectionPhysicalStates                  DeviceConnectionPhysicalState[]
+  deviceConnectionPhysicalStateTransitions        DeviceConnectionPhysicalStateTransition[]
+  deviceConnectionPhysicalAuthorityCutovers       DeviceConnectionPhysicalAuthorityCutover[]
+  deviceConnectionPhysicalStateActionOutbox       DeviceConnectionPhysicalStateActionOutbox[]
   deviceConnectionPhysicalStateShadowObservations DeviceConnectionPhysicalStateShadowObservation[]
   erdRechargeProjectionShadowObservations         ErdRechargeProjectionShadowObservation[]
-  tripDetectionState                     VehicleTripDetectionState?
-  tripTrackingRuns                       VehicleTripTrackingRun[]
-  tripBehaviorEvents                     TripBehaviorEvent[]
-  misuseCases                            MisuseCase[]
-  tripRepairs                            TripRepair[]
-  energyEvents                           VehicleEnergyEvent[]
-  rawRefuelCandidates                    RawRefuelCandidate[]
-  logbookConfig                          VehicleLogbookConfig?
-  documentExtractions                    VehicleDocumentExtraction[]
-  vendorVehicles                         VendorVehicle[]
-  complaints                             VehicleComplaint[]
-  findings                               VehicleFinding[]
-  drivingAssessmentQuality               VehicleDrivingAssessmentQuality?
-  dataSourceLinks                        VehicleDataSourceLink[]
-  hmSignalGroupStates                    HmSignalGroupState[]
-  providerConsents                       VehicleProviderConsent[]
-  tariffAssignments                      VehicleTariffAssignment[]
-  pricingQuotes                          PricingQuote[]
-  rentalCategoryId                       String?                                 @map("rental_category_id")
-  rentalCategory                         RentalVehicleCategory?                  @relation(fields: [rentalCategoryId], references: [id], onDelete: SetNull)
-  rentalRequirementOverride              VehicleRentalRequirementOverride?
-  tireRentalHealthReviewOverrides        TireRentalHealthReviewOverride[]
-  brakeRentalHealthReviewOverrides       BrakeRentalHealthReviewOverride[]
-  tireHealthAlerts                       TireHealthAlert[]
-  whatsappConversations                  WhatsAppConversation[]
-  smsConversations                       SmsConversation[]
-  communicationConversations             CommunicationConversation[]
-  communicationEvents                    CommunicationEvent[]
-  billingBillableVehicleAssignments      BillingBillableVehicleAssignment[]
-  billingQuantityEvents                  BillingQuantityEvent[]
-  vehicleDrivingCapabilities             VehicleDrivingCapability[]
-  referenceCaptureSessions               ReferenceCaptureSession[]
-  referenceCaptureObservations           ReferenceCaptureObservation[]
-  exp021StudyEnrollments                 Exp021StudyEnrollment[]
-  exp021StudyRuns                        Exp021StudyRun[]
-  exp021StudyVehicleOrderBalances        Exp021StudyVehicleOrderBalance[]
-  exp021MaturationShadowWindowFamilies   Exp021MaturationShadowWindowFamily[]
-  exp021CanaryLiveWindowActivationLedgers Exp021CanaryLiveWindowActivationLedger[]
-  tripAssessabilities                    TripAssessability[]
-  drivingEvidence                        DrivingEvidence[]
-  drivingAnalysisRuns                    DrivingAnalysisRun[]
-  diV0ShadowRuns                         DiV0ShadowRun[]
-  diV0ShadowIntervals                  DiV0ShadowInterval[]
-  diV0S4WorkItems                      DiV0S4WorkItem[]
-  diV0S4EvidenceSnapshots              DiV0S4EvidenceSnapshot[]
-  driverAttributions                     DriverAttribution[]
-  drivingIntelligenceJobs                DrivingIntelligenceJob[]
-  organizationAssignments                VehicleOrganizationAssignment[]
-  licensePlateAssignments                VehicleLicensePlateAssignment[]
-  completedOnboardingCases               VehicleOnboardingCase[]         @relation("OnboardingCaseCompletedVehicle")
-  registryLifecycleOutboxEvents          VehicleRegistryLifecycleOutbox[]
+  tripDetectionState                              VehicleTripDetectionState?
+  tripTrackingRuns                                VehicleTripTrackingRun[]
+  tripBehaviorEvents                              TripBehaviorEvent[]
+  misuseCases                                     MisuseCase[]
+  tripRepairs                                     TripRepair[]
+  energyEvents                                    VehicleEnergyEvent[]
+  rawRefuelCandidates                             RawRefuelCandidate[]
+  logbookConfig                                   VehicleLogbookConfig?
+  documentExtractions                             VehicleDocumentExtraction[]
+  vendorVehicles                                  VendorVehicle[]
+  complaints                                      VehicleComplaint[]
+  findings                                        VehicleFinding[]
+  drivingAssessmentQuality                        VehicleDrivingAssessmentQuality?
+  dataSourceLinks                                 VehicleDataSourceLink[]
+  hmSignalGroupStates                             HmSignalGroupState[]
+  providerConsents                                VehicleProviderConsent[]
+  tariffAssignments                               VehicleTariffAssignment[]
+  pricingQuotes                                   PricingQuote[]
+  rentalCategoryId                                String?                                          @map("rental_category_id")
+  rentalCategory                                  RentalVehicleCategory?                           @relation(fields: [rentalCategoryId], references: [id], onDelete: SetNull)
+  rentalRequirementOverride                       VehicleRentalRequirementOverride?
+  tireRentalHealthReviewOverrides                 TireRentalHealthReviewOverride[]
+  brakeRentalHealthReviewOverrides                BrakeRentalHealthReviewOverride[]
+  tireHealthAlerts                                TireHealthAlert[]
+  whatsappConversations                           WhatsAppConversation[]
+  smsConversations                                SmsConversation[]
+  communicationConversations                      CommunicationConversation[]
+  communicationEvents                             CommunicationEvent[]
+  billingBillableVehicleAssignments               BillingBillableVehicleAssignment[]
+  billingQuantityEvents                           BillingQuantityEvent[]
+  vehicleDrivingCapabilities                      VehicleDrivingCapability[]
+  referenceCaptureSessions                        ReferenceCaptureSession[]
+  referenceCaptureObservations                    ReferenceCaptureObservation[]
+  exp021StudyEnrollments                          Exp021StudyEnrollment[]
+  exp021StudyRuns                                 Exp021StudyRun[]
+  exp021StudyVehicleOrderBalances                 Exp021StudyVehicleOrderBalance[]
+  exp021MaturationShadowWindowFamilies            Exp021MaturationShadowWindowFamily[]
+  exp021CanaryLiveWindowActivationLedgers         Exp021CanaryLiveWindowActivationLedger[]
+  tripAssessabilities                             TripAssessability[]
+  drivingEvidence                                 DrivingEvidence[]
+  drivingAnalysisRuns                             DrivingAnalysisRun[]
+  diV0ShadowRuns                                  DiV0ShadowRun[]
+  diV0ShadowIntervals                             DiV0ShadowInterval[]
+  diV0S4WorkItems                                 DiV0S4WorkItem[]
+  diV0S4EvidenceSnapshots                         DiV0S4EvidenceSnapshot[]
+  driverAttributions                              DriverAttribution[]
+  drivingIntelligenceJobs                         DrivingIntelligenceJob[]
+  organizationAssignments                         VehicleOrganizationAssignment[]
+  licensePlateAssignments                         VehicleLicensePlateAssignment[]
+  completedOnboardingCases                        VehicleOnboardingCase[]                          @relation("OnboardingCaseCompletedVehicle")
+  registryLifecycleOutboxEvents                   VehicleRegistryLifecycleOutbox[]
 
   @@unique([vin, organizationId])
   @@index([organizationId])
@@ -8049,6 +8077,56 @@ model RpmWebhookCandidate {
 }
 
 // ------------------------------------------------
+// R9 PROVIDER WAKE FORENSIC (observability-only; not trip authority)
+// ------------------------------------------------
+model R9ProviderWakeForensic {
+  id                String @id @default(uuid())
+  wakeCorrelationId String @unique @map("wake_correlation_id")
+  organizationId    String @map("organization_id")
+  vehicleId         String @map("vehicle_id")
+  provider          String @default("DIMO")
+  dimoTokenId       Int?   @map("dimo_token_id")
+
+  signalName         String              @map("signal_name")
+  wakeReason         String              @map("wake_reason")
+  providerObservedAt DateTime?           @map("provider_observed_at")
+  receivedAt         DateTime            @map("received_at")
+  fsmStateAtIntake   TripDetectionState? @map("fsm_state_at_intake")
+
+  classification R9ProviderWakeForensicClassification
+  lineageRole    R9ProviderWakeForensicLineageRole?   @map("lineage_role")
+  coalesceCount  Int                                  @default(0) @map("coalesce_count")
+
+  snapshotJobId           String?                               @map("snapshot_job_id")
+  snapshotRequestedAt     DateTime?                             @map("snapshot_requested_at")
+  snapshotStartedAt       DateTime?                             @map("snapshot_started_at")
+  snapshotFinishedAt      DateTime?                             @map("snapshot_finished_at")
+  providerFetchedAt       DateTime?                             @map("provider_fetched_at")
+  snapshotSourceTimestamp DateTime?                             @map("snapshot_source_timestamp")
+  snapshotStatus          R9ProviderWakeForensicSnapshotStatus? @map("snapshot_status")
+
+  fsmStateAfterEvaluation TripDetectionState? @map("fsm_state_after_evaluation")
+  tripEvaluationResult    String?             @map("trip_evaluation_result")
+  possibleStartAt         DateTime?           @map("possible_start_at")
+  activeTripAt            DateTime?           @map("active_trip_at")
+  vehicleTripId           String?             @map("vehicle_trip_id")
+
+  providerDeliveryId     String? @map("provider_delivery_id")
+  payloadFingerprint     String? @map("payload_fingerprint")
+  wakeCorrelationVersion String  @default("R9_WAKE_CORRELATION_V1") @map("wake_correlation_version")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, vehicleId, receivedAt])
+  @@index([receivedAt])
+  @@index([vehicleTripId])
+  @@map("r9_provider_wake_forensics")
+}
+
+// ------------------------------------------------
 // DIMO DEVICE CONNECTION EVENT (OBD plug / unplug webhook)
 // ------------------------------------------------
 model DimoDeviceConnectionEvent {
@@ -8201,23 +8279,23 @@ model DeviceConnectionPhysicalState {
 }
 
 model DeviceConnectionPhysicalStateTransition {
-  id                   String                                    @id @default(uuid())
-  organizationId       String                                    @map("organization_id")
-  vehicleId            String                                    @map("vehicle_id")
-  provider             String                                    @default("DIMO")
-  bindingKey           String                                    @map("binding_key")
-  previousState          DeviceConnectionPhysicalEffectiveState?   @map("previous_state")
-  candidateState         DeviceConnectionPhysicalEffectiveState    @map("candidate_state")
-  effectiveState       DeviceConnectionPhysicalEffectiveState?   @map("effective_state")
-  evidenceObservedAt     DateTime                                  @map("evidence_observed_at")
-  evidenceSource       DeviceConnectionPhysicalEvidenceSource      @map("evidence_source")
-  evidenceReferenceId    String                                    @map("evidence_reference_id")
-  parentStateVersion     Int?                                      @map("parent_state_version")
-  appliedStateVersion    Int?                                      @map("applied_state_version")
-  decision               DeviceConnectionPhysicalTransitionDecision
-  idempotencyKey         String                                    @unique @map("idempotency_key")
-  metadataJson           Json?                                     @map("metadata_json")
-  createdAt              DateTime                                  @default(now()) @map("created_at")
+  id                  String                                     @id @default(uuid())
+  organizationId      String                                     @map("organization_id")
+  vehicleId           String                                     @map("vehicle_id")
+  provider            String                                     @default("DIMO")
+  bindingKey          String                                     @map("binding_key")
+  previousState       DeviceConnectionPhysicalEffectiveState?    @map("previous_state")
+  candidateState      DeviceConnectionPhysicalEffectiveState     @map("candidate_state")
+  effectiveState      DeviceConnectionPhysicalEffectiveState?    @map("effective_state")
+  evidenceObservedAt  DateTime                                   @map("evidence_observed_at")
+  evidenceSource      DeviceConnectionPhysicalEvidenceSource     @map("evidence_source")
+  evidenceReferenceId String                                     @map("evidence_reference_id")
+  parentStateVersion  Int?                                       @map("parent_state_version")
+  appliedStateVersion Int?                                       @map("applied_state_version")
+  decision            DeviceConnectionPhysicalTransitionDecision
+  idempotencyKey      String                                     @unique @map("idempotency_key")
+  metadataJson        Json?                                      @map("metadata_json")
+  createdAt           DateTime                                   @default(now()) @map("created_at")
 
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
@@ -8261,20 +8339,20 @@ enum DeviceConnectionPhysicalStateActionOutboxStatus {
 }
 
 model DeviceConnectionPhysicalStateShadowObservation {
-  id                  String   @id @default(uuid())
-  organizationId      String   @map("organization_id")
-  vehicleId           String   @map("vehicle_id")
-  provider            String   @default("DIMO")
+  id                  String    @id @default(uuid())
+  organizationId      String    @map("organization_id")
+  vehicleId           String    @map("vehicle_id")
+  provider            String    @default("DIMO")
   classification      String
-  correctnessBlocking Boolean  @map("correctness_blocking")
-  authorityMode       String   @map("authority_mode")
-  legacyDecision      String   @map("legacy_decision")
-  physicalDecision    String   @map("physical_decision")
-  evidenceReferenceId String?  @map("evidence_reference_id")
-  bindingKey          String?  @map("binding_key")
-  observedAt          DateTime @map("observed_at")
+  correctnessBlocking Boolean   @map("correctness_blocking")
+  authorityMode       String    @map("authority_mode")
+  legacyDecision      String    @map("legacy_decision")
+  physicalDecision    String    @map("physical_decision")
+  evidenceReferenceId String?   @map("evidence_reference_id")
+  bindingKey          String?   @map("binding_key")
+  observedAt          DateTime  @map("observed_at")
   evidenceObservedAt  DateTime? @map("evidence_observed_at")
-  createdAt           DateTime @default(now()) @map("created_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
 
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
@@ -8284,29 +8362,29 @@ model DeviceConnectionPhysicalStateShadowObservation {
 }
 
 model DeviceConnectionPhysicalStateActionOutbox {
-  id                         String                                          @id @default(uuid())
-  organizationId             String                                          @map("organization_id")
-  vehicleId                  String                                          @map("vehicle_id")
-  provider                   String                                          @default("DIMO")
-  bindingKey                 String                                          @map("binding_key")
-  transitionId               String                                          @map("transition_id")
-  stateVersion               Int                                             @map("state_version")
-  evidenceReferenceId        String                                          @map("evidence_reference_id")
-  canonicalEventId           String?                                         @map("canonical_event_id")
-  episodeAction              String                                          @map("episode_action")
-  alertAction                String                                          @map("alert_action")
-  idempotencyKey             String                                          @unique @map("idempotency_key")
-  status                     DeviceConnectionPhysicalStateActionOutboxStatus @default(PENDING)
-  processingAttempts         Int                                             @default(0) @map("processing_attempts")
-  processingClaimToken       String?                                         @map("processing_claim_token")
-  processingLeaseExpiresAt   DateTime?                                       @map("processing_lease_expires_at")
-  nextRetryAt                DateTime?                                       @map("next_retry_at")
-  lastErrorCode              String?                                         @map("last_error_code")
-  lastErrorMessage           String?                                         @map("last_error_message")
-  deadLetteredAt             DateTime?                                       @map("dead_lettered_at")
-  completedAt                DateTime?                                       @map("completed_at")
-  createdAt                  DateTime                                        @default(now()) @map("created_at")
-  updatedAt                  DateTime                                        @updatedAt @map("updated_at")
+  id                       String                                          @id @default(uuid())
+  organizationId           String                                          @map("organization_id")
+  vehicleId                String                                          @map("vehicle_id")
+  provider                 String                                          @default("DIMO")
+  bindingKey               String                                          @map("binding_key")
+  transitionId             String                                          @map("transition_id")
+  stateVersion             Int                                             @map("state_version")
+  evidenceReferenceId      String                                          @map("evidence_reference_id")
+  canonicalEventId         String?                                         @map("canonical_event_id")
+  episodeAction            String                                          @map("episode_action")
+  alertAction              String                                          @map("alert_action")
+  idempotencyKey           String                                          @unique @map("idempotency_key")
+  status                   DeviceConnectionPhysicalStateActionOutboxStatus @default(PENDING)
+  processingAttempts       Int                                             @default(0) @map("processing_attempts")
+  processingClaimToken     String?                                         @map("processing_claim_token")
+  processingLeaseExpiresAt DateTime?                                       @map("processing_lease_expires_at")
+  nextRetryAt              DateTime?                                       @map("next_retry_at")
+  lastErrorCode            String?                                         @map("last_error_code")
+  lastErrorMessage         String?                                         @map("last_error_message")
+  deadLetteredAt           DateTime?                                       @map("dead_lettered_at")
+  completedAt              DateTime?                                       @map("completed_at")
+  createdAt                DateTime                                        @default(now()) @map("created_at")
+  updatedAt                DateTime                                        @updatedAt @map("updated_at")
 
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
@@ -8701,16 +8779,16 @@ model BatteryMeasurement {
   supersededById    String?                   @map("superseded_by_id")
   createdAt         DateTime                  @default(now()) @map("created_at")
 
-  organization Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  vehicle      Vehicle                    @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  session      BatteryMeasurementSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
-  supersededBy BatteryMeasurement?        @relation("BatteryMeasurementSupersede", fields: [supersededById], references: [id], onDelete: SetNull)
-  supersedes   BatteryMeasurement[]       @relation("BatteryMeasurementSupersede")
-  evidenceRows BatteryEvidence[]
-  batteryGroundTruthEvents BatteryGroundTruthEvent[]
+  organization                    Organization                            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle                         Vehicle                                 @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  session                         BatteryMeasurementSession?              @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  supersededBy                    BatteryMeasurement?                     @relation("BatteryMeasurementSupersede", fields: [supersededById], references: [id], onDelete: SetNull)
+  supersedes                      BatteryMeasurement[]                    @relation("BatteryMeasurementSupersede")
+  evidenceRows                    BatteryEvidence[]
+  batteryGroundTruthEvents        BatteryGroundTruthEvent[]
   generalizedEvidenceObservations BatteryGeneralizedEvidenceObservation[]
-  providerGapLastFreshLinks         BatteryProviderObservabilityGap[] @relation("GapLastFreshObservation")
-  providerGapFirstFreshAfterLinks   BatteryProviderObservabilityGap[] @relation("GapFirstFreshAfterGap")
+  providerGapLastFreshLinks       BatteryProviderObservabilityGap[]       @relation("GapLastFreshObservation")
+  providerGapFirstFreshAfterLinks BatteryProviderObservabilityGap[]       @relation("GapFirstFreshAfterGap")
 
   @@unique([organizationId, vehicleId, idempotencyKey], map: "battery_measurements_tenant_idempotency_key")
   @@unique([vehicleId, type, observedAt], map: "battery_measurements_dedup_key")
@@ -8965,42 +9043,42 @@ enum BatteryRestSessionEndReason {
 /// Normalized LV evidence interpretation layered above battery_measurements (M3.3A).
 /// Does not feed authoritative assessment/publication while flag is shadow-only.
 model BatteryGeneralizedEvidenceObservation {
-  id                           String                             @id @default(uuid())
-  organizationId               String                             @map("organization_id")
-  vehicleId                    String                             @map("vehicle_id")
-  sourceMeasurementId          String                             @map("source_measurement_id")
-  sourceKind                   String                             @default("LIVE_VOLTAGE_CLASSIFY") @map("source_kind")
-  voltage                      Float?                             @map("voltage")
-  voltageObservedAt            DateTime?                          @map("voltage_observed_at")
-  providerObservationAt        DateTime?                          @map("provider_observation_at")
-  providerTimestampSource      String?                            @map("provider_timestamp_source")
-  ingestedAt                   DateTime                           @map("ingested_at")
-  evidenceClass                BatteryGeneralizedEvidenceClass      @map("evidence_class")
-  evidenceConfidence           BatteryGeneralizedEvidenceConfidence @map("evidence_confidence")
-  classificationVersion        String                             @map("classification_version")
-  tripId                       String?                            @map("trip_id")
-  restSessionId                String?                            @map("rest_session_id")
-  actualRestAgeMs              Int?                               @map("actual_rest_age_ms")
-  nominalRestIntervalIndex     Int?                               @map("nominal_rest_interval_index")
-  tolerancePolicyVersion       String?                            @map("tolerance_policy_version")
-  speedKmh                     Float?                             @map("speed_kmh")
-  ignitionOn                   Boolean?                           @map("ignition_on")
-  engineRunning                Boolean?                           @map("engine_running")
-  isLvCharging                 Boolean?                           @map("is_lv_charging")
-  isHvCharging                 Boolean?                           @map("is_hv_charging")
-  vehicleOnline                Boolean?                           @map("vehicle_online")
-  temperatureC                 Float?                             @map("temperature_c")
-  temperatureObservedAt        DateTime?                          @map("temperature_observed_at")
-  stateObservedAt              DateTime?                          @map("state_observed_at")
-  stateTimestampSource         String?                            @map("state_timestamp_source")
-  stateTimestampSkewMs         Int?                               @map("state_timestamp_skew_ms")
-  maxFieldTimestampSkewMs      Int?                               @map("max_field_timestamp_skew_ms")
-  stateCompleteness            BatteryShutdownStateCompleteness   @map("state_completeness")
-  stateAlignmentClass          BatteryShutdownStateAlignmentClass @map("state_alignment_class")
-  atomicClaim                  Boolean                            @default(false) @map("atomic_claim")
-  fieldProvenance              Json?                              @map("field_provenance")
-  idempotencyKey               String                             @map("idempotency_key")
-  createdAt                    DateTime                           @default(now()) @map("created_at")
+  id                       String                               @id @default(uuid())
+  organizationId           String                               @map("organization_id")
+  vehicleId                String                               @map("vehicle_id")
+  sourceMeasurementId      String                               @map("source_measurement_id")
+  sourceKind               String                               @default("LIVE_VOLTAGE_CLASSIFY") @map("source_kind")
+  voltage                  Float?                               @map("voltage")
+  voltageObservedAt        DateTime?                            @map("voltage_observed_at")
+  providerObservationAt    DateTime?                            @map("provider_observation_at")
+  providerTimestampSource  String?                              @map("provider_timestamp_source")
+  ingestedAt               DateTime                             @map("ingested_at")
+  evidenceClass            BatteryGeneralizedEvidenceClass      @map("evidence_class")
+  evidenceConfidence       BatteryGeneralizedEvidenceConfidence @map("evidence_confidence")
+  classificationVersion    String                               @map("classification_version")
+  tripId                   String?                              @map("trip_id")
+  restSessionId            String?                              @map("rest_session_id")
+  actualRestAgeMs          Int?                                 @map("actual_rest_age_ms")
+  nominalRestIntervalIndex Int?                                 @map("nominal_rest_interval_index")
+  tolerancePolicyVersion   String?                              @map("tolerance_policy_version")
+  speedKmh                 Float?                               @map("speed_kmh")
+  ignitionOn               Boolean?                             @map("ignition_on")
+  engineRunning            Boolean?                             @map("engine_running")
+  isLvCharging             Boolean?                             @map("is_lv_charging")
+  isHvCharging             Boolean?                             @map("is_hv_charging")
+  vehicleOnline            Boolean?                             @map("vehicle_online")
+  temperatureC             Float?                               @map("temperature_c")
+  temperatureObservedAt    DateTime?                            @map("temperature_observed_at")
+  stateObservedAt          DateTime?                            @map("state_observed_at")
+  stateTimestampSource     String?                              @map("state_timestamp_source")
+  stateTimestampSkewMs     Int?                                 @map("state_timestamp_skew_ms")
+  maxFieldTimestampSkewMs  Int?                                 @map("max_field_timestamp_skew_ms")
+  stateCompleteness        BatteryShutdownStateCompleteness     @map("state_completeness")
+  stateAlignmentClass      BatteryShutdownStateAlignmentClass   @map("state_alignment_class")
+  atomicClaim              Boolean                              @default(false) @map("atomic_claim")
+  fieldProvenance          Json?                                @map("field_provenance")
+  idempotencyKey           String                               @map("idempotency_key")
+  createdAt                DateTime                             @default(now()) @map("created_at")
 
   organization      Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   vehicle           Vehicle             @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
@@ -9036,10 +9114,10 @@ model BatteryProviderObservabilityGap {
   createdAt                       DateTime                              @default(now()) @map("created_at")
   updatedAt                       DateTime                              @updatedAt @map("updated_at")
 
-  organization             Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  vehicle                  Vehicle             @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  lastFreshObservation     BatteryMeasurement? @relation("GapLastFreshObservation", fields: [lastFreshObservationId], references: [id], onDelete: SetNull)
-  firstFreshAfterGap       BatteryMeasurement? @relation("GapFirstFreshAfterGap", fields: [firstFreshObservationAfterGapId], references: [id], onDelete: SetNull)
+  organization         Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle              Vehicle             @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  lastFreshObservation BatteryMeasurement? @relation("GapLastFreshObservation", fields: [lastFreshObservationId], references: [id], onDelete: SetNull)
+  firstFreshAfterGap   BatteryMeasurement? @relation("GapFirstFreshAfterGap", fields: [firstFreshObservationAfterGapId], references: [id], onDelete: SetNull)
 
   @@unique([organizationId, vehicleId, idempotencyKey], map: "battery_provider_gap_open_idempotency")
   @@unique([resolutionIdempotencyKey], map: "battery_provider_gap_resolution_idempotency")
@@ -9050,32 +9128,32 @@ model BatteryProviderObservabilityGap {
 
 /// Open-ended rest session for R1 ladder (M3.3A). actualRestAgeMs on observations is authority.
 model BatteryRestSession {
-  id                      String                      @id @default(uuid())
-  organizationId          String                      @map("organization_id")
-  vehicleId               String                      @map("vehicle_id")
-  anchorType              BatteryRestSessionAnchorType @map("anchor_type")
-  anchorAt                DateTime                    @map("anchor_at")
-  candidateTripId         String?                     @map("candidate_trip_id")
-  confirmedTripId         String?                     @map("confirmed_trip_id")
-  sessionStatus           BatteryRestSessionStatus    @map("session_status")
-  openedAt                DateTime                    @map("opened_at")
-  confirmedAt             DateTime?                   @map("confirmed_at")
-  endedAt                 DateTime?                   @map("ended_at")
-  endReason               BatteryRestSessionEndReason? @map("end_reason")
-  firstRestObservationAt  DateTime?                   @map("first_rest_observation_at")
-  lastRestObservationAt   DateTime?                   @map("last_rest_observation_at")
-  restObservationCount    Int                         @default(0) @map("rest_observation_count")
-  validRestObservationCount Int                       @default(0) @map("valid_rest_observation_count")
-  idempotencyKey          String                      @map("idempotency_key")
-  createdAt               DateTime                    @default(now()) @map("created_at")
-  updatedAt               DateTime                    @updatedAt @map("updated_at")
+  id                        String                       @id @default(uuid())
+  organizationId            String                       @map("organization_id")
+  vehicleId                 String                       @map("vehicle_id")
+  anchorType                BatteryRestSessionAnchorType @map("anchor_type")
+  anchorAt                  DateTime                     @map("anchor_at")
+  candidateTripId           String?                      @map("candidate_trip_id")
+  confirmedTripId           String?                      @map("confirmed_trip_id")
+  sessionStatus             BatteryRestSessionStatus     @map("session_status")
+  openedAt                  DateTime                     @map("opened_at")
+  confirmedAt               DateTime?                    @map("confirmed_at")
+  endedAt                   DateTime?                    @map("ended_at")
+  endReason                 BatteryRestSessionEndReason? @map("end_reason")
+  firstRestObservationAt    DateTime?                    @map("first_rest_observation_at")
+  lastRestObservationAt     DateTime?                    @map("last_rest_observation_at")
+  restObservationCount      Int                          @default(0) @map("rest_observation_count")
+  validRestObservationCount Int                          @default(0) @map("valid_rest_observation_count")
+  idempotencyKey            String                       @map("idempotency_key")
+  createdAt                 DateTime                     @default(now()) @map("created_at")
+  updatedAt                 DateTime                     @updatedAt @map("updated_at")
 
-  organization   Organization                          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  vehicle        Vehicle                               @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  candidateTrip  VehicleTrip?                          @relation("RestSessionCandidateTrip", fields: [candidateTripId], references: [id], onDelete: SetNull)
-  confirmedTrip  VehicleTrip?                          @relation("RestSessionConfirmedTrip", fields: [confirmedTripId], references: [id], onDelete: SetNull)
-  observations   BatteryGeneralizedEvidenceObservation[]
-  featureRows    BatteryRestSessionFeature[]
+  organization  Organization                            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle       Vehicle                                 @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  candidateTrip VehicleTrip?                            @relation("RestSessionCandidateTrip", fields: [candidateTripId], references: [id], onDelete: SetNull)
+  confirmedTrip VehicleTrip?                            @relation("RestSessionConfirmedTrip", fields: [confirmedTripId], references: [id], onDelete: SetNull)
+  observations  BatteryGeneralizedEvidenceObservation[]
+  featureRows   BatteryRestSessionFeature[]
 
   @@unique([organizationId, vehicleId, idempotencyKey], map: "battery_rest_session_idempotency")
   @@index([vehicleId, sessionStatus])
@@ -9102,38 +9180,38 @@ enum BatteryRestSessionChargeOpportunityClass {
 
 /// M3.3C — append-only shadow rest-session retention/charge feature rows (default OFF at runtime).
 model BatteryRestSessionFeature {
-  id                           String                                   @id @default(uuid())
-  organizationId               String                                   @map("organization_id")
-  vehicleId                    String                                   @map("vehicle_id")
-  restSessionId                String                                   @map("rest_session_id")
-  featureModelVersion          String                                   @map("feature_model_version")
-  retentionPolicyVersion       String                                   @map("retention_policy_version")
-  chargeOpportunityPolicyVersion String                                 @map("charge_opportunity_policy_version")
-  semanticRevision             Int                                      @map("semantic_revision")
-  inputDigest                  String                                   @map("input_digest")
-  inputSummary                 Json                                     @map("input_summary")
-  computationPhase             BatteryRestSessionFeatureComputationPhase @map("computation_phase")
-  sessionTrust                 BatteryRestSessionFeatureSessionTrust    @map("session_trust")
-  chargeOpportunityClass       BatteryRestSessionChargeOpportunityClass @default(UNKNOWN) @map("charge_opportunity_class")
-  chargeOpportunityRaw         Json?                                    @map("charge_opportunity_raw")
-  shutdownToFirstRestDeltaMv   Int?                                     @map("shutdown_to_first_rest_delta_mv")
-  robustRestSlopeMvPerHour     Float?                                   @map("robust_rest_slope_mv_per_hour")
-  minimumRestVoltageMv         Int?                                     @map("minimum_rest_voltage_mv")
-  maximumRestVoltageMv         Int?                                     @map("maximum_rest_voltage_mv")
-  medianRestVoltageMv          Int?                                     @map("median_rest_voltage_mv")
-  restVoltageVarianceMv2       Float?                                   @map("rest_voltage_variance_mv2")
-  numberOfValidRestPoints      Int                                      @default(0) @map("number_of_valid_rest_points")
-  maxActualRestAgeMs           Int?                                     @map("max_actual_rest_age_ms")
-  maxInterObservationGapMs     Int?                                     @map("max_inter_observation_gap_ms")
-  observationSpanMs            Int?                                     @map("observation_span_ms")
-  missingRungCount             Int?                                     @map("missing_rung_count")
-  pairwiseRestDeltas           Json?                                    @map("pairwise_rest_deltas")
-  computedAt                   DateTime                                 @map("computed_at")
-  createdAt                    DateTime                                 @default(now()) @map("created_at")
+  id                             String                                    @id @default(uuid())
+  organizationId                 String                                    @map("organization_id")
+  vehicleId                      String                                    @map("vehicle_id")
+  restSessionId                  String                                    @map("rest_session_id")
+  featureModelVersion            String                                    @map("feature_model_version")
+  retentionPolicyVersion         String                                    @map("retention_policy_version")
+  chargeOpportunityPolicyVersion String                                    @map("charge_opportunity_policy_version")
+  semanticRevision               Int                                       @map("semantic_revision")
+  inputDigest                    String                                    @map("input_digest")
+  inputSummary                   Json                                      @map("input_summary")
+  computationPhase               BatteryRestSessionFeatureComputationPhase @map("computation_phase")
+  sessionTrust                   BatteryRestSessionFeatureSessionTrust     @map("session_trust")
+  chargeOpportunityClass         BatteryRestSessionChargeOpportunityClass  @default(UNKNOWN) @map("charge_opportunity_class")
+  chargeOpportunityRaw           Json?                                     @map("charge_opportunity_raw")
+  shutdownToFirstRestDeltaMv     Int?                                      @map("shutdown_to_first_rest_delta_mv")
+  robustRestSlopeMvPerHour       Float?                                    @map("robust_rest_slope_mv_per_hour")
+  minimumRestVoltageMv           Int?                                      @map("minimum_rest_voltage_mv")
+  maximumRestVoltageMv           Int?                                      @map("maximum_rest_voltage_mv")
+  medianRestVoltageMv            Int?                                      @map("median_rest_voltage_mv")
+  restVoltageVarianceMv2         Float?                                    @map("rest_voltage_variance_mv2")
+  numberOfValidRestPoints        Int                                       @default(0) @map("number_of_valid_rest_points")
+  maxActualRestAgeMs             Int?                                      @map("max_actual_rest_age_ms")
+  maxInterObservationGapMs       Int?                                      @map("max_inter_observation_gap_ms")
+  observationSpanMs              Int?                                      @map("observation_span_ms")
+  missingRungCount               Int?                                      @map("missing_rung_count")
+  pairwiseRestDeltas             Json?                                     @map("pairwise_rest_deltas")
+  computedAt                     DateTime                                  @map("computed_at")
+  createdAt                      DateTime                                  @default(now()) @map("created_at")
 
-  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  vehicle      Vehicle             @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  restSession  BatteryRestSession  @relation(fields: [restSessionId], references: [id], onDelete: Cascade)
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle            @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  restSession  BatteryRestSession @relation(fields: [restSessionId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, restSessionId, featureModelVersion, inputDigest], map: "battery_rest_session_feature_input_digest")
   @@unique([organizationId, restSessionId, featureModelVersion, retentionPolicyVersion, chargeOpportunityPolicyVersion, semanticRevision], map: "battery_rest_session_feature_semantic_revision")
@@ -9145,29 +9223,29 @@ model BatteryRestSessionFeature {
 
 /// M3.3D D3 — append-only longitudinal profile revision materialization (foundation; no production trigger).
 model BatteryLongitudinalProfileRevision {
-  id                                 String   @id @default(uuid())
-  organizationId                     String   @map("organization_id")
-  vehicleId                          String   @map("vehicle_id")
-  longitudinalProfileContractVersion String   @map("longitudinal_profile_contract_version")
-  profilePolicyVersion               String   @map("profile_policy_version")
-  canonicalProfileFingerprint        String   @db.Char(64) @map("canonical_profile_fingerprint")
-  scientificProfileJson              Json     @map("scientific_profile_json")
-  requestedSessionLimit              Int      @map("requested_session_limit")
-  appliedSessionLimit                Int      @map("applied_session_limit")
-  candidateRestSessionCount          Int      @map("candidate_rest_session_count")
-  includedSessionCount               Int      @map("included_session_count")
-  provisionalSessionCount            Int      @map("provisional_session_count")
-  excludedSessionCount               Int      @map("excluded_session_count")
+  id                                 String    @id @default(uuid())
+  organizationId                     String    @map("organization_id")
+  vehicleId                          String    @map("vehicle_id")
+  longitudinalProfileContractVersion String    @map("longitudinal_profile_contract_version")
+  profilePolicyVersion               String    @map("profile_policy_version")
+  canonicalProfileFingerprint        String    @map("canonical_profile_fingerprint") @db.Char(64)
+  scientificProfileJson              Json      @map("scientific_profile_json")
+  requestedSessionLimit              Int       @map("requested_session_limit")
+  appliedSessionLimit                Int       @map("applied_session_limit")
+  candidateRestSessionCount          Int       @map("candidate_rest_session_count")
+  includedSessionCount               Int       @map("included_session_count")
+  provisionalSessionCount            Int       @map("provisional_session_count")
+  excludedSessionCount               Int       @map("excluded_session_count")
   firstIncludedAnchorAt              DateTime? @map("first_included_anchor_at")
   lastIncludedAnchorAt               DateTime? @map("last_included_anchor_at")
-  profileStatus                      String   @map("profile_status")
+  profileStatus                      String    @map("profile_status")
   /// Immutable D1 source-evidence fingerprint at revision creation (audit only — not F4.1 freshness authority).
-  sourceEvidenceFingerprint          String?  @db.Char(64) @map("source_evidence_fingerprint")
-  materializedAt                     DateTime @default(now()) @map("materialized_at")
-  createdAt                          DateTime @default(now()) @map("created_at")
+  sourceEvidenceFingerprint          String?   @map("source_evidence_fingerprint") @db.Char(64)
+  materializedAt                     DateTime  @default(now()) @map("materialized_at")
+  createdAt                          DateTime  @default(now()) @map("created_at")
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  organization       Organization                           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle            Vehicle                                @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   sourceEvidenceAcks BatteryLongitudinalSourceEvidenceAck[]
 
   @@unique([organizationId, vehicleId, longitudinalProfileContractVersion, profilePolicyVersion, canonicalProfileFingerprint], map: "battery_longitudinal_profile_revision_scientific_identity")
@@ -9181,10 +9259,10 @@ model BatteryLongitudinalSourceEvidenceAck {
   id                                 String   @id @default(uuid())
   organizationId                     String   @map("organization_id")
   vehicleId                          String   @map("vehicle_id")
-  sourceEvidenceFingerprint          String   @db.Char(64) @map("source_evidence_fingerprint")
+  sourceEvidenceFingerprint          String   @map("source_evidence_fingerprint") @db.Char(64)
   longitudinalProfileContractVersion String   @map("longitudinal_profile_contract_version")
   profilePolicyVersion               String   @map("profile_policy_version")
-  canonicalProfileFingerprint        String   @db.Char(64) @map("canonical_profile_fingerprint")
+  canonicalProfileFingerprint        String   @map("canonical_profile_fingerprint") @db.Char(64)
   revisionId                         String   @map("revision_id")
   materializationOutcome             String   @map("materialization_outcome")
   acknowledgedAt                     DateTime @default(now()) @map("acknowledged_at")
@@ -9199,10 +9277,10 @@ model BatteryLongitudinalSourceEvidenceAck {
 
 /// M3.3F F4.1 — global keyset cursor for fleet-wide bounded inspection liveness.
 model BatteryLongitudinalReconciliationFleetCursor {
-  id                 Int       @id @default(1)
-  lastOrganizationId String?   @map("last_organization_id")
-  lastVehicleId      String?   @map("last_vehicle_id")
-  updatedAt          DateTime  @updatedAt @map("updated_at")
+  id                 Int      @id @default(1)
+  lastOrganizationId String?  @map("last_organization_id")
+  lastVehicleId      String?  @map("last_vehicle_id")
+  updatedAt          DateTime @updatedAt @map("updated_at")
 
   @@map("battery_longitudinal_reconciliation_fleet_cursor")
 }
@@ -9352,10 +9430,10 @@ model HvChargeSession {
   createdAt            DateTime                   @default(now()) @map("created_at")
   updatedAt            DateTime                   @updatedAt @map("updated_at")
 
-  organization         Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  vehicle              Vehicle                    @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  measurementSession   BatteryMeasurementSession? @relation(fields: [measurementSessionId], references: [id], onDelete: SetNull)
-  capacityObservations HvCapacityObservation[]
+  organization                 Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle                      Vehicle                    @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  measurementSession           BatteryMeasurementSession? @relation(fields: [measurementSessionId], references: [id], onDelete: SetNull)
+  capacityObservations         HvCapacityObservation[]
   erdRechargeProductProjection VehicleEnergyEvent?
 
   @@unique([vehicleId, idempotencyKey], map: "hv_charge_sessions_idempotency_key")
@@ -9370,37 +9448,37 @@ model HvChargeSession {
 
 /// M3.3-HV-H4-A3.1 — append-only H4 charge session source evidence revision (no runtime writer).
 model BatteryHvChargeSessionEvidenceRevision {
-  id                        String   @id @default(uuid())
-  organizationId            String   @map("organization_id")
-  vehicleId                 String   @map("vehicle_id")
-  sourceHvChargeSessionId   String   @map("source_hv_charge_session_id")
-  segmentFingerprint        String   @map("segment_fingerprint")
-  evidenceContractVersion   String   @map("evidence_contract_version")
-  sourceRevisionFingerprint String   @db.Char(64) @map("source_revision_fingerprint")
-  scientificEvidenceJson    Json     @map("scientific_evidence_json")
+  id                        String @id @default(uuid())
+  organizationId            String @map("organization_id")
+  vehicleId                 String @map("vehicle_id")
+  sourceHvChargeSessionId   String @map("source_hv_charge_session_id")
+  segmentFingerprint        String @map("segment_fingerprint")
+  evidenceContractVersion   String @map("evidence_contract_version")
+  sourceRevisionFingerprint String @map("source_revision_fingerprint") @db.Char(64)
+  scientificEvidenceJson    Json   @map("scientific_evidence_json")
 
-  dimoSegmentId                 String?  @map("dimo_segment_id")
-  providerSegmentId             String?  @map("provider_segment_id")
-  source                        String
-  startAt                       DateTime @map("start_at")
-  endAt                         DateTime? @map("end_at")
-  isOngoing                     Boolean  @map("is_ongoing")
-  energyAddedKwh                Float?   @map("energy_added_kwh")
-  providerObservedAt            DateTime? @map("provider_observed_at")
-  addedEnergyProvenance         String?  @map("added_energy_provenance")
-  qualityStatus                 String?  @map("quality_status")
-  supersededBySegmentFingerprint String? @map("superseded_by_segment_fingerprint")
-  startedBeforeRange            Boolean  @default(false) @map("started_before_range")
+  dimoSegmentId                  String?   @map("dimo_segment_id")
+  providerSegmentId              String?   @map("provider_segment_id")
+  source                         String
+  startAt                        DateTime  @map("start_at")
+  endAt                          DateTime? @map("end_at")
+  isOngoing                      Boolean   @map("is_ongoing")
+  energyAddedKwh                 Float?    @map("energy_added_kwh")
+  providerObservedAt             DateTime? @map("provider_observed_at")
+  addedEnergyProvenance          String?   @map("added_energy_provenance")
+  qualityStatus                  String?   @map("quality_status")
+  supersededBySegmentFingerprint String?   @map("superseded_by_segment_fingerprint")
+  startedBeforeRange             Boolean   @default(false) @map("started_before_range")
 
-  sourceCreatedAt DateTime @map("source_created_at")
+  sourceCreatedAt  DateTime @map("source_created_at")
   sourceReceivedAt DateTime @map("source_received_at")
-  sourceUpdatedAt DateTime @map("source_updated_at")
+  sourceUpdatedAt  DateTime @map("source_updated_at")
 
   capturedAt DateTime @default(now()) @map("captured_at")
   createdAt  DateTime @default(now()) @map("created_at")
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  organization   Organization                        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle        Vehicle                             @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   durabilityAcks BatteryHvChargeSessionEvidenceAck[]
 
   @@unique([organizationId, vehicleId, segmentFingerprint, evidenceContractVersion, sourceRevisionFingerprint], map: "battery_hv_charge_session_evidence_revision_scientific_identity")
@@ -9413,15 +9491,15 @@ model BatteryHvChargeSessionEvidenceRevision {
 
 /// M3.3-HV-H4-A3.1 — revision-scoped durability ACK contract (no retention gate in A3.1).
 model BatteryHvChargeSessionEvidenceAck {
-  id                        String   @id @default(uuid())
-  organizationId            String   @map("organization_id")
-  vehicleId                 String   @map("vehicle_id")
-  segmentFingerprint        String   @map("segment_fingerprint")
-  evidenceContractVersion   String   @map("evidence_contract_version")
-  sourceRevisionFingerprint String   @db.Char(64) @map("source_revision_fingerprint")
-  revisionId                String   @map("revision_id")
-  durabilityAckContractVersion String @map("durability_ack_contract_version")
-  acknowledgedAt            DateTime @default(now()) @map("acknowledged_at")
+  id                           String   @id @default(uuid())
+  organizationId               String   @map("organization_id")
+  vehicleId                    String   @map("vehicle_id")
+  segmentFingerprint           String   @map("segment_fingerprint")
+  evidenceContractVersion      String   @map("evidence_contract_version")
+  sourceRevisionFingerprint    String   @map("source_revision_fingerprint") @db.Char(64)
+  revisionId                   String   @map("revision_id")
+  durabilityAckContractVersion String   @map("durability_ack_contract_version")
+  acknowledgedAt               DateTime @default(now()) @map("acknowledged_at")
 
   revision BatteryHvChargeSessionEvidenceRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
 
@@ -9676,10 +9754,10 @@ model BatteryEvidence {
   metadataJson         Json?                     @map("metadata_json")
   createdAt            DateTime                  @default(now()) @map("created_at")
 
-  vehicle            Vehicle?                   @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
-  measurement        BatteryMeasurement?        @relation(fields: [measurementId], references: [id], onDelete: SetNull)
-  documentExtraction VehicleDocumentExtraction? @relation(fields: [documentExtractionId], references: [id], onDelete: SetNull)
-  serviceEvent       VehicleServiceEvent?       @relation(fields: [serviceEventId], references: [id], onDelete: SetNull)
+  vehicle                  Vehicle?                   @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  measurement              BatteryMeasurement?        @relation(fields: [measurementId], references: [id], onDelete: SetNull)
+  documentExtraction       VehicleDocumentExtraction? @relation(fields: [documentExtractionId], references: [id], onDelete: SetNull)
+  serviceEvent             VehicleServiceEvent?       @relation(fields: [serviceEventId], references: [id], onDelete: SetNull)
   batteryGroundTruthEvents BatteryGroundTruthEvent[]
 
   @@unique([vehicleId, scope, valueType, sourceType, observedAt], name: "battery_evidence_dedup_key", map: "battery_evidence_dedup_key")
@@ -9721,34 +9799,34 @@ enum BatteryGroundTruthRevocationReasonCode {
 }
 
 model BatteryGroundTruthEvent {
-  id                         String                               @id @default(uuid())
-  organizationId             String                               @map("organization_id")
-  vehicleId                  String                               @map("vehicle_id")
-  groundTruthType            BatteryGroundTruthType               @map("ground_truth_type")
-  batteryScope               BatteryEvidenceScope                 @map("battery_scope")
-  effectiveAt                DateTime                             @map("effective_at")
-  sourceAuthority            BatteryGroundTruthSourceAuthority    @map("source_authority")
-  verificationStatus         BatteryGroundTruthVerificationStatus @default(CONFIRMED) @map("verification_status")
-  sourceServiceEventId       String?                              @map("source_service_event_id")
-  sourceDocumentExtractionId String?                            @map("source_document_extraction_id")
-  sourceBatteryEvidenceId    String?                              @map("source_battery_evidence_id")
-  sourceMeasurementId        String?                              @map("source_measurement_id")
-  sourceContentFingerprint   String                               @map("source_content_fingerprint") @db.Char(64)
-  confirmedByUserId          String?                              @map("confirmed_by_user_id")
-  confirmedAt                DateTime?                            @map("confirmed_at")
-  supersedesGroundTruthEventId String?                            @map("supersedes_ground_truth_event_id")
-  createdAt                  DateTime                             @default(now()) @map("created_at")
+  id                           String                               @id @default(uuid())
+  organizationId               String                               @map("organization_id")
+  vehicleId                    String                               @map("vehicle_id")
+  groundTruthType              BatteryGroundTruthType               @map("ground_truth_type")
+  batteryScope                 BatteryEvidenceScope                 @map("battery_scope")
+  effectiveAt                  DateTime                             @map("effective_at")
+  sourceAuthority              BatteryGroundTruthSourceAuthority    @map("source_authority")
+  verificationStatus           BatteryGroundTruthVerificationStatus @default(CONFIRMED) @map("verification_status")
+  sourceServiceEventId         String?                              @map("source_service_event_id")
+  sourceDocumentExtractionId   String?                              @map("source_document_extraction_id")
+  sourceBatteryEvidenceId      String?                              @map("source_battery_evidence_id")
+  sourceMeasurementId          String?                              @map("source_measurement_id")
+  sourceContentFingerprint     String                               @map("source_content_fingerprint") @db.Char(64)
+  confirmedByUserId            String?                              @map("confirmed_by_user_id")
+  confirmedAt                  DateTime?                            @map("confirmed_at")
+  supersedesGroundTruthEventId String?                              @map("supersedes_ground_truth_event_id")
+  createdAt                    DateTime                             @default(now()) @map("created_at")
 
-  organization         Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  vehicle              Vehicle                   @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
-  confirmedByUser      User?                     @relation("BatteryGroundTruthConfirmedBy", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
-  sourceServiceEvent   VehicleServiceEvent?      @relation(fields: [sourceServiceEventId], references: [id], onDelete: SetNull)
-  sourceDocumentExtraction VehicleDocumentExtraction? @relation(fields: [sourceDocumentExtractionId], references: [id], onDelete: SetNull)
-  sourceBatteryEvidence BatteryEvidence?         @relation(fields: [sourceBatteryEvidenceId], references: [id], onDelete: SetNull)
-  sourceMeasurement    BatteryMeasurement?       @relation(fields: [sourceMeasurementId], references: [id], onDelete: SetNull)
-  supersedesGroundTruthEvent BatteryGroundTruthEvent? @relation("BatteryGroundTruthSupersede", fields: [supersedesGroundTruthEventId], references: [id], onDelete: SetNull)
-  supersededByGroundTruthEvents BatteryGroundTruthEvent[] @relation("BatteryGroundTruthSupersede")
-  revocations          BatteryGroundTruthRevocation[]
+  organization                  Organization                   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  vehicle                       Vehicle                        @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  confirmedByUser               User?                          @relation("BatteryGroundTruthConfirmedBy", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
+  sourceServiceEvent            VehicleServiceEvent?           @relation(fields: [sourceServiceEventId], references: [id], onDelete: SetNull)
+  sourceDocumentExtraction      VehicleDocumentExtraction?     @relation(fields: [sourceDocumentExtractionId], references: [id], onDelete: SetNull)
+  sourceBatteryEvidence         BatteryEvidence?               @relation(fields: [sourceBatteryEvidenceId], references: [id], onDelete: SetNull)
+  sourceMeasurement             BatteryMeasurement?            @relation(fields: [sourceMeasurementId], references: [id], onDelete: SetNull)
+  supersedesGroundTruthEvent    BatteryGroundTruthEvent?       @relation("BatteryGroundTruthSupersede", fields: [supersedesGroundTruthEventId], references: [id], onDelete: SetNull)
+  supersededByGroundTruthEvents BatteryGroundTruthEvent[]      @relation("BatteryGroundTruthSupersede")
+  revocations                   BatteryGroundTruthRevocation[]
 
   @@index([organizationId])
   @@index([vehicleId, effectiveAt(sort: Desc)])
@@ -9761,13 +9839,13 @@ model BatteryGroundTruthEvent {
 }
 
 model BatteryGroundTruthRevocation {
-  id                  String                             @id @default(uuid())
-  organizationId      String                             @map("organization_id")
-  groundTruthEventId  String                             @map("ground_truth_event_id")
-  reasonCode          BatteryGroundTruthRevocationReasonCode @map("reason_code")
-  revokedByUserId     String?                            @map("revoked_by_user_id")
-  revokedAt           DateTime                           @map("revoked_at")
-  createdAt           DateTime                           @default(now()) @map("created_at")
+  id                 String                                 @id @default(uuid())
+  organizationId     String                                 @map("organization_id")
+  groundTruthEventId String                                 @map("ground_truth_event_id")
+  reasonCode         BatteryGroundTruthRevocationReasonCode @map("reason_code")
+  revokedByUserId    String?                                @map("revoked_by_user_id")
+  revokedAt          DateTime                               @map("revoked_at")
+  createdAt          DateTime                               @default(now()) @map("created_at")
 
   organization     Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   groundTruthEvent BatteryGroundTruthEvent @relation(fields: [groundTruthEventId], references: [id], onDelete: Restrict)
@@ -10573,32 +10651,32 @@ model VehicleTrip {
 
   createdAt DateTime @default(now()) @map("created_at")
 
-  vehicle                             Vehicle                              @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  waypoints                           VehicleTripWaypoint[]
-  tireTripUsageLedgers                TireTripUsageLedger[]
-  events                              DrivingEvent[]
-  behaviorEvents                      TripBehaviorEvent[]
-  misuseCases                         MisuseCase[]
-  tripAssessabilities                 TripAssessability[]
-  drivingEvidence                     DrivingEvidence[]
-  drivingAnalysisRuns                 DrivingAnalysisRun[]
-  diV0ShadowRuns                      DiV0ShadowRun[]
-  diV0ShadowIntervals                 DiV0ShadowInterval[]
-  diV0S4WorkItems                     DiV0S4WorkItem[]
-  diV0S4EvidenceSnapshots             DiV0S4EvidenceSnapshot[]
-  drivingIntelligenceJobs             DrivingIntelligenceJob[]
-  driverAttributions                  DriverAttribution[]
-  repairs                             TripRepair[]
-  rpmWebhookCandidates                RpmWebhookCandidate[]
-  batteryMeasurementSessions          BatteryMeasurementSession[]
-  batteryShutdownEvidenceObservations BatteryShutdownEvidenceObservation[]
-  batteryTripShutdownContext          BatteryTripShutdownContext?
+  vehicle                                Vehicle                                 @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  waypoints                              VehicleTripWaypoint[]
+  tireTripUsageLedgers                   TireTripUsageLedger[]
+  events                                 DrivingEvent[]
+  behaviorEvents                         TripBehaviorEvent[]
+  misuseCases                            MisuseCase[]
+  tripAssessabilities                    TripAssessability[]
+  drivingEvidence                        DrivingEvidence[]
+  drivingAnalysisRuns                    DrivingAnalysisRun[]
+  diV0ShadowRuns                         DiV0ShadowRun[]
+  diV0ShadowIntervals                    DiV0ShadowInterval[]
+  diV0S4WorkItems                        DiV0S4WorkItem[]
+  diV0S4EvidenceSnapshots                DiV0S4EvidenceSnapshot[]
+  drivingIntelligenceJobs                DrivingIntelligenceJob[]
+  driverAttributions                     DriverAttribution[]
+  repairs                                TripRepair[]
+  rpmWebhookCandidates                   RpmWebhookCandidate[]
+  batteryMeasurementSessions             BatteryMeasurementSession[]
+  batteryShutdownEvidenceObservations    BatteryShutdownEvidenceObservation[]
+  batteryTripShutdownContext             BatteryTripShutdownContext?
   batteryGeneralizedEvidenceObservations BatteryGeneralizedEvidenceObservation[]
-  batteryRestSessionsAsCandidate      BatteryRestSession[] @relation("RestSessionCandidateTrip")
-  batteryRestSessionsAsConfirmed      BatteryRestSession[] @relation("RestSessionConfirmedTrip")
-  dimoBrakingEventIntakes             DimoBrakingEventIntake[]
-  brakingEventLedgerEntries           BrakingEventLedger[]
-  routeArtifact                       VehicleTripRouteArtifact?
+  batteryRestSessionsAsCandidate         BatteryRestSession[]                    @relation("RestSessionCandidateTrip")
+  batteryRestSessionsAsConfirmed         BatteryRestSession[]                    @relation("RestSessionConfirmedTrip")
+  dimoBrakingEventIntakes                DimoBrakingEventIntake[]
+  brakingEventLedgerEntries              BrakingEventLedger[]
+  routeArtifact                          VehicleTripRouteArtifact?
 
   @@index([vehicleId])
   @@index([startTime])
@@ -10717,33 +10795,33 @@ model VehicleEnergyEvent {
   canonicalChargeSessionId     String?                            @unique @map("canonical_charge_session_id")
   kind                         EnergyEventKind
   detectionMechanism           String                             @map("detection_mechanism")
-  startTime                    DateTime              @map("start_time")
-  endTime                      DateTime              @map("end_time")
-  durationSeconds              Int                   @map("duration_seconds")
-  startLatitude                Float?                @map("start_latitude")
-  startLongitude               Float?                @map("start_longitude")
-  endLatitude                  Float?                @map("end_latitude")
-  endLongitude                 Float?                @map("end_longitude")
-  fuelDeltaLiters              Float?                @map("fuel_delta_liters")
-  fuelDeltaPercent             Float?                @map("fuel_delta_percent")
-  socDeltaPercent              Float?                @map("soc_delta_percent")
-  energyDeltaKwh               Float?                @map("energy_delta_kwh")
-  odometerStartKm              Float?                @map("odometer_start_km")
-  odometerEndKm                Float?                @map("odometer_end_km")
-  confidence                   EnergyEventConfidence @default(MEDIUM)
-  rawDetectionMeta             Json?                 @map("raw_detection_meta")
+  startTime                    DateTime                           @map("start_time")
+  endTime                      DateTime                           @map("end_time")
+  durationSeconds              Int                                @map("duration_seconds")
+  startLatitude                Float?                             @map("start_latitude")
+  startLongitude               Float?                             @map("start_longitude")
+  endLatitude                  Float?                             @map("end_latitude")
+  endLongitude                 Float?                             @map("end_longitude")
+  fuelDeltaLiters              Float?                             @map("fuel_delta_liters")
+  fuelDeltaPercent             Float?                             @map("fuel_delta_percent")
+  socDeltaPercent              Float?                             @map("soc_delta_percent")
+  energyDeltaKwh               Float?                             @map("energy_delta_kwh")
+  odometerStartKm              Float?                             @map("odometer_start_km")
+  odometerEndKm                Float?                             @map("odometer_end_km")
+  confidence                   EnergyEventConfidence              @default(MEDIUM)
+  rawDetectionMeta             Json?                              @map("raw_detection_meta")
   /// REFUEL only: observed material fuel-level transition window (not pump/nozzle duration).
-  fuelLevelRiseStart           DateTime?             @map("fuel_level_rise_start")
-  fuelLevelRiseEnd             DateTime?             @map("fuel_level_rise_end")
-  fuelLevelRiseDurationSeconds Int?                  @map("fuel_level_rise_duration_seconds")
-  createdAt                    DateTime              @default(now()) @map("created_at")
-  updatedAt                    DateTime              @updatedAt @map("updated_at")
+  fuelLevelRiseStart           DateTime?                          @map("fuel_level_rise_start")
+  fuelLevelRiseEnd             DateTime?                          @map("fuel_level_rise_end")
+  fuelLevelRiseDurationSeconds Int?                               @map("fuel_level_rise_duration_seconds")
+  createdAt                    DateTime                           @default(now()) @map("created_at")
+  updatedAt                    DateTime                           @updatedAt @map("updated_at")
 
-  vehicle               Vehicle                                  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  canonicalChargeSession HvChargeSession?                        @relation(fields: [canonicalChargeSessionId], references: [id], onDelete: SetNull)
+  vehicle                   Vehicle                                      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  canonicalChargeSession    HvChargeSession?                             @relation(fields: [canonicalChargeSessionId], references: [id], onDelete: SetNull)
   fuelStationEnrichment     VehicleEnergyEventFuelStationEnrichment?
   chargingStationEnrichment VehicleEnergyEventChargingStationEnrichment?
-  refuelReconciliation  VehicleEnergyEventRefuelReconciliation?
+  refuelReconciliation      VehicleEnergyEventRefuelReconciliation?
 
   @@unique([vehicleId, sourceEventKey])
   @@index([vehicleId])
@@ -10859,49 +10937,49 @@ enum RawRefuelCandidateRejectionReason {
 }
 
 model RawRefuelCandidate {
-  id                          String                             @id @default(uuid())
-  organizationId              String                             @map("organization_id")
-  vehicleId                   String                             @map("vehicle_id")
+  id                          String                                 @id @default(uuid())
+  organizationId              String                                 @map("organization_id")
+  vehicleId                   String                                 @map("vehicle_id")
   /// Assigned once when identity evidence is sufficient; nullable while INSUFFICIENT.
-  candidateIdentityKey        String?                            @map("candidate_identity_key")
-  detectionVersion            String                             @map("detection_version")
-  detectorVersion             String                             @map("detector_version")
-  signalChannel               RawRefuelCandidateSignalChannel    @map("signal_channel")
-  lifecycleState              RawRefuelCandidateLifecycleState   @map("lifecycle_state")
-  rejectionReason             RawRefuelCandidateRejectionReason? @map("rejection_reason")
-  evidenceRevisionFingerprint String                             @map("evidence_revision_fingerprint")
-  physicalEvidenceStart       DateTime?                          @map("physical_evidence_start")
-  physicalEvidenceEnd         DateTime?                          @map("physical_evidence_end")
-  riseOnsetAt                 DateTime?                          @map("rise_onset_at")
-  riseEndAt                   DateTime?                          @map("rise_end_at")
-  preFuelAbsoluteLiters       Float?                             @map("pre_fuel_absolute_liters")
-  postFuelAbsoluteLiters      Float?                             @map("post_fuel_absolute_liters")
-  deltaAbsoluteLiters         Float?                             @map("delta_absolute_liters")
-  preFuelRelativePercent      Float?                             @map("pre_fuel_relative_percent")
-  postFuelRelativePercent     Float?                             @map("post_fuel_relative_percent")
-  deltaRelativePercent        Float?                             @map("delta_relative_percent")
-  prePlateauSampleCount       Int?                               @map("pre_plateau_sample_count")
-  postPlateauSampleCount      Int?                               @map("post_plateau_sample_count")
-  totalSampleCount            Int?                               @map("total_sample_count")
-  maxSampleGapSeconds         Int?                               @map("max_sample_gap_seconds")
-  absoluteSignalTrust         RawRefuelAbsoluteSignalTrust?      @map("absolute_signal_trust")
-  relativeSignalAvailable     Boolean?                           @map("relative_signal_available")
-  routeEvidenceAvailable      Boolean?                           @map("route_evidence_available")
-  stationaryEvidenceAvailable Boolean?                           @map("stationary_evidence_available")
-  scanWindowStart             DateTime?                          @map("scan_window_start")
-  scanWindowEnd               DateTime?                          @map("scan_window_end")
-  signalProvider              String?                            @map("signal_provider")
-  evidenceMeta                Json?                              @map("evidence_meta")
-  qualityMeta                 Json?                              @map("quality_meta")
-  firstObservedAt             DateTime                           @map("first_observed_at")
-  lastObservedAt              DateTime                           @map("last_observed_at")
-  recoveryNextAttemptAt       DateTime?                          @map("recovery_next_attempt_at")
-  recoveryLastAttemptAt       DateTime?                          @map("recovery_last_attempt_at")
-  recoveryAttemptCount        Int                                @default(0) @map("recovery_attempt_count")
+  candidateIdentityKey        String?                                @map("candidate_identity_key")
+  detectionVersion            String                                 @map("detection_version")
+  detectorVersion             String                                 @map("detector_version")
+  signalChannel               RawRefuelCandidateSignalChannel        @map("signal_channel")
+  lifecycleState              RawRefuelCandidateLifecycleState       @map("lifecycle_state")
+  rejectionReason             RawRefuelCandidateRejectionReason?     @map("rejection_reason")
+  evidenceRevisionFingerprint String                                 @map("evidence_revision_fingerprint")
+  physicalEvidenceStart       DateTime?                              @map("physical_evidence_start")
+  physicalEvidenceEnd         DateTime?                              @map("physical_evidence_end")
+  riseOnsetAt                 DateTime?                              @map("rise_onset_at")
+  riseEndAt                   DateTime?                              @map("rise_end_at")
+  preFuelAbsoluteLiters       Float?                                 @map("pre_fuel_absolute_liters")
+  postFuelAbsoluteLiters      Float?                                 @map("post_fuel_absolute_liters")
+  deltaAbsoluteLiters         Float?                                 @map("delta_absolute_liters")
+  preFuelRelativePercent      Float?                                 @map("pre_fuel_relative_percent")
+  postFuelRelativePercent     Float?                                 @map("post_fuel_relative_percent")
+  deltaRelativePercent        Float?                                 @map("delta_relative_percent")
+  prePlateauSampleCount       Int?                                   @map("pre_plateau_sample_count")
+  postPlateauSampleCount      Int?                                   @map("post_plateau_sample_count")
+  totalSampleCount            Int?                                   @map("total_sample_count")
+  maxSampleGapSeconds         Int?                                   @map("max_sample_gap_seconds")
+  absoluteSignalTrust         RawRefuelAbsoluteSignalTrust?          @map("absolute_signal_trust")
+  relativeSignalAvailable     Boolean?                               @map("relative_signal_available")
+  routeEvidenceAvailable      Boolean?                               @map("route_evidence_available")
+  stationaryEvidenceAvailable Boolean?                               @map("stationary_evidence_available")
+  scanWindowStart             DateTime?                              @map("scan_window_start")
+  scanWindowEnd               DateTime?                              @map("scan_window_end")
+  signalProvider              String?                                @map("signal_provider")
+  evidenceMeta                Json?                                  @map("evidence_meta")
+  qualityMeta                 Json?                                  @map("quality_meta")
+  firstObservedAt             DateTime                               @map("first_observed_at")
+  lastObservedAt              DateTime                               @map("last_observed_at")
+  recoveryNextAttemptAt       DateTime?                              @map("recovery_next_attempt_at")
+  recoveryLastAttemptAt       DateTime?                              @map("recovery_last_attempt_at")
+  recoveryAttemptCount        Int                                    @default(0) @map("recovery_attempt_count")
   recoveryLastOutcome         RawRefuelCandidateRecoveryLastOutcome? @map("recovery_last_outcome")
-  recoveryLeaseExpiresAt      DateTime?                          @map("recovery_lease_expires_at")
-  createdAt                   DateTime                           @default(now()) @map("created_at")
-  updatedAt                   DateTime                           @updatedAt @map("updated_at")
+  recoveryLeaseExpiresAt      DateTime?                              @map("recovery_lease_expires_at")
+  createdAt                   DateTime                               @default(now()) @map("created_at")
+  updatedAt                   DateTime                               @updatedAt @map("updated_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
@@ -11003,44 +11081,44 @@ enum ChargingStationMatchConfidence {
 }
 
 model VehicleEnergyEventChargingStationEnrichment {
-  id                              String                                    @id @default(uuid())
-  energyEventId                   String                                    @unique @map("energy_event_id")
-  processingStatus                ChargingStationEnrichmentProcessingStatus @default(PENDING) @map("processing_status")
-  resolutionStatus                ChargingStationEnrichmentResolutionStatus? @map("resolution_status")
-  matchConfidence                 ChargingStationMatchConfidence?           @map("match_confidence")
-  matchScore                      Float?                                    @map("match_score")
-  osmType                         String?                                   @map("osm_type")
-  osmId                           String?                                   @map("osm_id")
-  stationName                     String?                                   @map("station_name")
-  brand                           String?                                   @map("brand")
-  operator                        String?                                   @map("operator")
-  network                         String?                                   @map("network")
-  address                         String?                                   @map("address")
-  stationLatitude                 Float?                                    @map("station_latitude")
-  stationLongitude                Float?                                    @map("station_longitude")
-  geometryDistanceMeters          Float?                                    @map("geometry_distance_meters")
-  pointDistanceMeters             Float?                                    @map("point_distance_meters")
-  access                          String?                                   @map("access")
-  fee                             String?                                   @map("fee")
-  capacity                        String?                                   @map("capacity")
-  connectors                      Json?                                     @map("connectors")
-  stationMaxOutputKw              Float?                                    @map("station_max_output_kw")
-  inputLatitude                   Float?                                    @map("input_latitude")
-  inputLongitude                  Float?                                    @map("input_longitude")
-  inputCoordinateSource           String?                                   @map("input_coordinate_source")
-  inputCoordinateSelectorVersion  String?                                   @map("input_coordinate_selector_version")
-  inputFingerprint                String?                                   @map("input_fingerprint")
-  resolverVersion                 String?                                   @map("resolver_version")
-  osmDatasetVersion               String?                                   @map("osm_dataset_version")
-  resolverDiagnostics             Json?                                     @map("resolver_diagnostics")
-  attemptCount                    Int                                       @default(0) @map("attempt_count")
-  lastAttemptAt                   DateTime?                                 @map("last_attempt_at")
-  resolvedAt                      DateTime?                                 @map("resolved_at")
-  failedAt                        DateTime?                                 @map("failed_at")
-  errorCode                       String?                                   @map("error_code")
-  errorMessage                    String?                                   @map("error_message")
-  createdAt                       DateTime                                  @default(now()) @map("created_at")
-  updatedAt                       DateTime                                  @updatedAt @map("updated_at")
+  id                             String                                     @id @default(uuid())
+  energyEventId                  String                                     @unique @map("energy_event_id")
+  processingStatus               ChargingStationEnrichmentProcessingStatus  @default(PENDING) @map("processing_status")
+  resolutionStatus               ChargingStationEnrichmentResolutionStatus? @map("resolution_status")
+  matchConfidence                ChargingStationMatchConfidence?            @map("match_confidence")
+  matchScore                     Float?                                     @map("match_score")
+  osmType                        String?                                    @map("osm_type")
+  osmId                          String?                                    @map("osm_id")
+  stationName                    String?                                    @map("station_name")
+  brand                          String?                                    @map("brand")
+  operator                       String?                                    @map("operator")
+  network                        String?                                    @map("network")
+  address                        String?                                    @map("address")
+  stationLatitude                Float?                                     @map("station_latitude")
+  stationLongitude               Float?                                     @map("station_longitude")
+  geometryDistanceMeters         Float?                                     @map("geometry_distance_meters")
+  pointDistanceMeters            Float?                                     @map("point_distance_meters")
+  access                         String?                                    @map("access")
+  fee                            String?                                    @map("fee")
+  capacity                       String?                                    @map("capacity")
+  connectors                     Json?                                      @map("connectors")
+  stationMaxOutputKw             Float?                                     @map("station_max_output_kw")
+  inputLatitude                  Float?                                     @map("input_latitude")
+  inputLongitude                 Float?                                     @map("input_longitude")
+  inputCoordinateSource          String?                                    @map("input_coordinate_source")
+  inputCoordinateSelectorVersion String?                                    @map("input_coordinate_selector_version")
+  inputFingerprint               String?                                    @map("input_fingerprint")
+  resolverVersion                String?                                    @map("resolver_version")
+  osmDatasetVersion              String?                                    @map("osm_dataset_version")
+  resolverDiagnostics            Json?                                      @map("resolver_diagnostics")
+  attemptCount                   Int                                        @default(0) @map("attempt_count")
+  lastAttemptAt                  DateTime?                                  @map("last_attempt_at")
+  resolvedAt                     DateTime?                                  @map("resolved_at")
+  failedAt                       DateTime?                                  @map("failed_at")
+  errorCode                      String?                                    @map("error_code")
+  errorMessage                   String?                                    @map("error_message")
+  createdAt                      DateTime                                   @default(now()) @map("created_at")
+  updatedAt                      DateTime                                   @updatedAt @map("updated_at")
 
   energyEvent VehicleEnergyEvent @relation(fields: [energyEventId], references: [id], onDelete: Cascade)
 
@@ -11638,9 +11716,9 @@ model Exp021StudyEnrollment {
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  study        Exp021Study  @relation(fields: [studyId], references: [id], onDelete: Cascade)
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  study        Exp021Study      @relation(fields: [studyId], references: [id], onDelete: Cascade)
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle          @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   runs         Exp021StudyRun[]
 
   @@unique([studyId, organizationId, vehicleId])
@@ -11650,31 +11728,31 @@ model Exp021StudyEnrollment {
 }
 
 model Exp021StudyRun {
-  id                    String              @id @default(uuid())
-  runId                 String              @unique @default(uuid()) @map("run_id")
-  studyId               String              @map("study_id")
-  enrollmentId          String              @map("enrollment_id")
-  organizationId        String              @map("organization_id")
-  vehicleId             String              @map("vehicle_id")
-  tokenId               Int                 @map("token_id")
-  sessionId             String?             @map("session_id")
-  productionSha         String?             @map("production_sha")
-  assignedPhaseOrderMs  Json                @map("assigned_phase_order_ms")
-  planId                String              @map("plan_id")
-  planVersion           String              @map("plan_version")
-  state                 Exp021StudyRunState @default(PLANNED)
-  runClassification     Exp021StudyRunClassification? @map("run_classification")
-  canonicalT0At         DateTime?           @map("canonical_t0_at")
-  startedAt             DateTime?           @map("started_at")
-  completedAt           DateTime?           @map("completed_at")
-  terminalReason        String?             @map("terminal_reason")
-  rawEvidenceHash       String?             @map("raw_evidence_hash")
-  evidenceLocation      String?             @map("evidence_location")
-  scientificEligibility String?             @map("scientific_eligibility")
+  id                            String                        @id @default(uuid())
+  runId                         String                        @unique @default(uuid()) @map("run_id")
+  studyId                       String                        @map("study_id")
+  enrollmentId                  String                        @map("enrollment_id")
+  organizationId                String                        @map("organization_id")
+  vehicleId                     String                        @map("vehicle_id")
+  tokenId                       Int                           @map("token_id")
+  sessionId                     String?                       @map("session_id")
+  productionSha                 String?                       @map("production_sha")
+  assignedPhaseOrderMs          Json                          @map("assigned_phase_order_ms")
+  planId                        String                        @map("plan_id")
+  planVersion                   String                        @map("plan_version")
+  state                         Exp021StudyRunState           @default(PLANNED)
+  runClassification             Exp021StudyRunClassification? @map("run_classification")
+  canonicalT0At                 DateTime?                     @map("canonical_t0_at")
+  startedAt                     DateTime?                     @map("started_at")
+  completedAt                   DateTime?                     @map("completed_at")
+  terminalReason                String?                       @map("terminal_reason")
+  rawEvidenceHash               String?                       @map("raw_evidence_hash")
+  evidenceLocation              String?                       @map("evidence_location")
+  scientificEligibility         String?                       @map("scientific_eligibility")
   /// Durable idempotency anchor for KS MX 2024 canary live-window activation (one run per vehicle trip).
-  canaryActivationVehicleTripId String?     @unique @map("canary_activation_vehicle_trip_id")
-  createdAt             DateTime            @default(now()) @map("created_at")
-  updatedAt             DateTime            @updatedAt @map("updated_at")
+  canaryActivationVehicleTripId String?                       @unique @map("canary_activation_vehicle_trip_id")
+  createdAt                     DateTime                      @default(now()) @map("created_at")
+  updatedAt                     DateTime                      @updatedAt @map("updated_at")
 
   study        Exp021Study           @relation(fields: [studyId], references: [id], onDelete: Restrict)
   enrollment   Exp021StudyEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Restrict)
@@ -11760,24 +11838,24 @@ enum Exp021MaturationShadowProviderOutcomeClass {
 
 /// EXP-021 Live Maturation Shadow — canonical window family (PR-M1).
 model Exp021MaturationShadowWindowFamily {
-  id                    String                              @id @default(uuid())
-  organizationId        String                              @map("organization_id")
-  vehicleId             String                              @map("vehicle_id")
-  tokenId               Int                                 @map("token_id")
-  canonicalWindowTo     DateTime                            @map("canonical_window_to")
-  shadowScheduleVersion String                              @map("shadow_schedule_version")
-  enrollmentEventId     String                              @map("enrollment_event_id")
-  plannedAgesMsExact    Int[]                               @map("planned_ages_ms_exact")
-  policyDelayProbeMs    Int                                 @map("policy_delay_probe_ms")
-  createdUnderRuntimeSha String                             @map("created_under_runtime_sha")
-  lifecycleState        Exp021MaturationShadowWindowLifecycle @default(ENROLLED) @map("lifecycle_state")
-  terminalState         Exp021MaturationShadowWindowTerminalState? @map("terminal_state")
+  id                       String                                          @id @default(uuid())
+  organizationId           String                                          @map("organization_id")
+  vehicleId                String                                          @map("vehicle_id")
+  tokenId                  Int                                             @map("token_id")
+  canonicalWindowTo        DateTime                                        @map("canonical_window_to")
+  shadowScheduleVersion    String                                          @map("shadow_schedule_version")
+  enrollmentEventId        String                                          @map("enrollment_event_id")
+  plannedAgesMsExact       Int[]                                           @map("planned_ages_ms_exact")
+  policyDelayProbeMs       Int                                             @map("policy_delay_probe_ms")
+  createdUnderRuntimeSha   String                                          @map("created_under_runtime_sha")
+  lifecycleState           Exp021MaturationShadowWindowLifecycle           @default(ENROLLED) @map("lifecycle_state")
+  terminalState            Exp021MaturationShadowWindowTerminalState?      @map("terminal_state")
   scientificClassification Exp021MaturationShadowScientificClassification? @map("scientific_classification")
-  createdAt             DateTime                            @default(now()) @map("created_at")
-  updatedAt             DateTime                            @updatedAt @map("updated_at")
+  createdAt                DateTime                                        @default(now()) @map("created_at")
+  updatedAt                DateTime                                        @updatedAt @map("updated_at")
 
-  organization Organization                         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  vehicle      Vehicle                              @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  organization Organization                   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  vehicle      Vehicle                        @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
   strata       Exp021MaturationShadowWindow[]
 
   @@unique([organizationId, vehicleId, tokenId, canonicalWindowTo, shadowScheduleVersion])
@@ -11787,29 +11865,29 @@ model Exp021MaturationShadowWindowFamily {
 
 /// EXP-021 Live Maturation Shadow — window stratum (lane × geometry) (PR-M1).
 model Exp021MaturationShadowWindow {
-  id                               String                           @id @default(uuid())
-  windowFamilyId                   String                           @map("window_family_id")
-  signalLane                       Exp021MaturationShadowSignalLane   @map("signal_lane")
-  queryGeometryMs                  Int                              @map("query_geometry_ms")
-  windowFrom                       DateTime                         @map("window_from")
-  windowTo                         DateTime                         @map("window_to")
-  resolvedProviderFields           String[]                         @map("resolved_provider_fields")
-  resolvedProviderFieldsCanonicalSorted String[]                    @map("resolved_provider_fields_canonical_sorted")
-  signalSetHash                    String                           @map("signal_set_hash")
-  signalSetVersion                 String                           @map("signal_set_version")
-  querySemanticsHash               String                           @map("query_semantics_hash")
-  queryBuilderSemanticVersionOrHash String                          @map("query_builder_semantic_version_or_hash")
-  queryBoundarySemanticVersion     String                           @map("query_boundary_semantic_version")
-  interval                         String
-  aggregation                      String
-  manifestIdentifier               String?                          @map("manifest_identifier")
-  manifestHash                     String?                          @map("manifest_hash")
-  runtimeBuildShaAtEnrollment      String                           @map("runtime_build_sha_at_enrollment")
-  activityClassificationJson       Json?                            @map("activity_classification_json")
-  createdAt                        DateTime                         @default(now()) @map("created_at")
-  updatedAt                        DateTime                         @updatedAt @map("updated_at")
+  id                                    String                           @id @default(uuid())
+  windowFamilyId                        String                           @map("window_family_id")
+  signalLane                            Exp021MaturationShadowSignalLane @map("signal_lane")
+  queryGeometryMs                       Int                              @map("query_geometry_ms")
+  windowFrom                            DateTime                         @map("window_from")
+  windowTo                              DateTime                         @map("window_to")
+  resolvedProviderFields                String[]                         @map("resolved_provider_fields")
+  resolvedProviderFieldsCanonicalSorted String[]                         @map("resolved_provider_fields_canonical_sorted")
+  signalSetHash                         String                           @map("signal_set_hash")
+  signalSetVersion                      String                           @map("signal_set_version")
+  querySemanticsHash                    String                           @map("query_semantics_hash")
+  queryBuilderSemanticVersionOrHash     String                           @map("query_builder_semantic_version_or_hash")
+  queryBoundarySemanticVersion          String                           @map("query_boundary_semantic_version")
+  interval                              String
+  aggregation                           String
+  manifestIdentifier                    String?                          @map("manifest_identifier")
+  manifestHash                          String?                          @map("manifest_hash")
+  runtimeBuildShaAtEnrollment           String                           @map("runtime_build_sha_at_enrollment")
+  activityClassificationJson            Json?                            @map("activity_classification_json")
+  createdAt                             DateTime                         @default(now()) @map("created_at")
+  updatedAt                             DateTime                         @updatedAt @map("updated_at")
 
-  family Exp021MaturationShadowWindowFamily            @relation(fields: [windowFamilyId], references: [id], onDelete: Restrict)
+  family Exp021MaturationShadowWindowFamily      @relation(fields: [windowFamilyId], references: [id], onDelete: Restrict)
   slots  Exp021MaturationShadowObservationSlot[]
 
   @@unique([windowFamilyId, signalLane, queryGeometryMs])
@@ -11825,7 +11903,7 @@ model Exp021MaturationShadowObservationSlot {
   bullJobId       String?  @map("bull_job_id")
   createdAt       DateTime @default(now()) @map("created_at")
 
-  stratum  Exp021MaturationShadowWindow                    @relation(fields: [windowStratumId], references: [id], onDelete: Restrict)
+  stratum  Exp021MaturationShadowWindow               @relation(fields: [windowStratumId], references: [id], onDelete: Restrict)
   attempts Exp021MaturationShadowObservationAttempt[]
 
   @@unique([windowStratumId, plannedAgeMs])
@@ -11836,39 +11914,39 @@ model Exp021MaturationShadowObservationSlot {
 
 /// EXP-021 Live Maturation Shadow — immutable provider-call attempt ledger (PR-M1).
 model Exp021MaturationShadowObservationAttempt {
-  id                                      String                                    @id @default(uuid())
-  observationSlotId                       String                                    @map("observation_slot_id")
-  attemptOrdinal                          Int                                       @map("attempt_ordinal")
-  plannedAgeMs                            Int                                       @map("planned_age_ms")
-  actualAgeMs                             Int                                       @map("actual_age_ms")
-  schedulerDriftMs                        Int                                       @map("scheduler_drift_ms")
-  requestStartedAt                        DateTime                                  @map("request_started_at")
-  requestCompletedAt                      DateTime?                                 @map("request_completed_at")
-  runtimeBuildSha                         String                                    @map("runtime_build_sha")
-  querySemanticsHash                      String                                    @map("query_semantics_hash")
-  signalSetHash                           String                                    @map("signal_set_hash")
-  providerRequestSucceeded                Boolean                                   @map("provider_request_succeeded")
-  providerOutcomeClass                    Exp021MaturationShadowProviderOutcomeClass @map("provider_outcome_class")
-  providerStatus                          String?                                   @map("provider_status")
-  providerErrorClass                      String?                                   @map("provider_error_class")
-  uniqueBucketLocusCount                  Int?                                      @map("unique_bucket_locus_count")
-  uniqueTemporalBucketStartCount          Int?                                      @map("unique_temporal_bucket_start_count")
-  perFieldRowCountJson                    Json?                                     @map("per_field_row_count_json")
-  perFieldBucketLocusCountJson            Json?                                     @map("per_field_bucket_locus_count_json")
-  firstProviderTimestamp                  DateTime?                                 @map("first_provider_timestamp")
-  lastProviderTimestamp                   DateTime?                                 @map("last_provider_timestamp")
-  bucketLocusManifestJson                 Json?                                     @map("bucket_locus_manifest_json")
-  bucketLocusIdentityVersion              String?                                   @map("bucket_locus_identity_version")
-  duplicateCount                          Int?                                      @map("duplicate_count")
-  payloadRevisionCount                    Int?                                      @map("payload_revision_count")
-  changedPayloadLocusCount                Int?                                      @map("changed_payload_locus_count")
-  nearestPriorAgeBucketDeltaMs            Int?                                      @map("nearest_prior_age_bucket_delta_ms")
-  newBucketLociVsPriorAge                 Int?                                      @map("new_bucket_loci_vs_prior_age")
-  missingPriorBucketLociAtThisAge         Int?                                      @map("missing_prior_bucket_loci_at_this_age")
-  cumulativeBucketLocusUnionCount         Int?                                      @map("cumulative_bucket_locus_union_count")
-  bucketLocusCoverageRatioVsFinalObservedUnion Float?                                @map("bucket_locus_coverage_ratio_vs_final_observed_union")
-  queryProvenanceJson                     Json?                                     @map("query_provenance_json")
-  createdAt                               DateTime                                  @default(now()) @map("created_at")
+  id                                           String                                     @id @default(uuid())
+  observationSlotId                            String                                     @map("observation_slot_id")
+  attemptOrdinal                               Int                                        @map("attempt_ordinal")
+  plannedAgeMs                                 Int                                        @map("planned_age_ms")
+  actualAgeMs                                  Int                                        @map("actual_age_ms")
+  schedulerDriftMs                             Int                                        @map("scheduler_drift_ms")
+  requestStartedAt                             DateTime                                   @map("request_started_at")
+  requestCompletedAt                           DateTime?                                  @map("request_completed_at")
+  runtimeBuildSha                              String                                     @map("runtime_build_sha")
+  querySemanticsHash                           String                                     @map("query_semantics_hash")
+  signalSetHash                                String                                     @map("signal_set_hash")
+  providerRequestSucceeded                     Boolean                                    @map("provider_request_succeeded")
+  providerOutcomeClass                         Exp021MaturationShadowProviderOutcomeClass @map("provider_outcome_class")
+  providerStatus                               String?                                    @map("provider_status")
+  providerErrorClass                           String?                                    @map("provider_error_class")
+  uniqueBucketLocusCount                       Int?                                       @map("unique_bucket_locus_count")
+  uniqueTemporalBucketStartCount               Int?                                       @map("unique_temporal_bucket_start_count")
+  perFieldRowCountJson                         Json?                                      @map("per_field_row_count_json")
+  perFieldBucketLocusCountJson                 Json?                                      @map("per_field_bucket_locus_count_json")
+  firstProviderTimestamp                       DateTime?                                  @map("first_provider_timestamp")
+  lastProviderTimestamp                        DateTime?                                  @map("last_provider_timestamp")
+  bucketLocusManifestJson                      Json?                                      @map("bucket_locus_manifest_json")
+  bucketLocusIdentityVersion                   String?                                    @map("bucket_locus_identity_version")
+  duplicateCount                               Int?                                       @map("duplicate_count")
+  payloadRevisionCount                         Int?                                       @map("payload_revision_count")
+  changedPayloadLocusCount                     Int?                                       @map("changed_payload_locus_count")
+  nearestPriorAgeBucketDeltaMs                 Int?                                       @map("nearest_prior_age_bucket_delta_ms")
+  newBucketLociVsPriorAge                      Int?                                       @map("new_bucket_loci_vs_prior_age")
+  missingPriorBucketLociAtThisAge              Int?                                       @map("missing_prior_bucket_loci_at_this_age")
+  cumulativeBucketLocusUnionCount              Int?                                       @map("cumulative_bucket_locus_union_count")
+  bucketLocusCoverageRatioVsFinalObservedUnion Float?                                     @map("bucket_locus_coverage_ratio_vs_final_observed_union")
+  queryProvenanceJson                          Json?                                      @map("query_provenance_json")
+  createdAt                                    DateTime                                   @default(now()) @map("created_at")
 
   slot Exp021MaturationShadowObservationSlot @relation(fields: [observationSlotId], references: [id], onDelete: Restrict)
 
@@ -11889,20 +11967,20 @@ enum Exp021CanaryLiveWindowActivationState {
 }
 
 model Exp021CanaryLiveWindowActivationLedger {
-  id                    String                               @id @default(uuid())
-  organizationId        String                               @map("organization_id")
-  vehicleId             String                               @map("vehicle_id")
-  tokenId               Int                                  @map("token_id")
-  vehicleTripId         String                               @unique @map("vehicle_trip_id")
-  studyRunId            String?                              @map("study_run_id")
-  sessionId             String?                              @unique @map("session_id")
-  state                 Exp021CanaryLiveWindowActivationState  @default(CLAIMED)
-  failureReason         String?                              @map("failure_reason")
-  activationNotBeforeAt DateTime                             @map("activation_not_before_at")
-  tripStartTime         DateTime                             @map("trip_start_time")
-  tripEndTime           DateTime?                            @map("trip_end_time")
-  createdAt             DateTime                             @default(now()) @map("created_at")
-  updatedAt             DateTime                             @updatedAt @map("updated_at")
+  id                    String                                @id @default(uuid())
+  organizationId        String                                @map("organization_id")
+  vehicleId             String                                @map("vehicle_id")
+  tokenId               Int                                   @map("token_id")
+  vehicleTripId         String                                @unique @map("vehicle_trip_id")
+  studyRunId            String?                               @map("study_run_id")
+  sessionId             String?                               @unique @map("session_id")
+  state                 Exp021CanaryLiveWindowActivationState @default(CLAIMED)
+  failureReason         String?                               @map("failure_reason")
+  activationNotBeforeAt DateTime                              @map("activation_not_before_at")
+  tripStartTime         DateTime                              @map("trip_start_time")
+  tripEndTime           DateTime?                             @map("trip_end_time")
+  createdAt             DateTime                              @default(now()) @map("created_at")
+  updatedAt             DateTime                              @updatedAt @map("updated_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
@@ -12074,39 +12152,39 @@ model DiV0ShadowRun {
 
 /// EXP-021 DI V0 shadow interval rows (append-only per run; not customer-facing truth).
 model DiV0ShadowInterval {
-  id                        String   @id @default(uuid())
-  shadowRunId               String   @map("shadow_run_id")
-  organizationId            String   @map("organization_id")
-  vehicleId                 String   @map("vehicle_id")
-  tripId                    String   @map("trip_id")
-  intervalStart             DateTime @map("interval_start")
-  intervalEnd               DateTime @map("interval_end")
-  referenceTime             DateTime @map("reference_time")
-  motionState               String   @map("motion_state")
-  positionState             String   @map("position_state")
-  causalPositionState       String   @map("causal_position_state")
-  estimatedSpeedKmh         Float?   @map("estimated_speed_kmh")
-  speedRangeMinKmh          Float?   @map("speed_range_min_kmh")
-  speedRangeMaxKmh          Float?   @map("speed_range_max_kmh")
-  speedEvidenceState        String?  @map("speed_evidence_state")
-  temporalConfidence        String   @map("temporal_confidence")
-  valueConfidence           String   @map("value_confidence")
-  sourceRelation            String   @map("source_relation")
-  claimLevel                String   @map("claim_level")
-  abstentionReason          String?  @map("abstention_reason")
-  evidenceSources           Json     @default("[]") @map("evidence_sources")
-  sourceQualityFlags        Json     @default("[]") @map("source_quality_flags")
+  id                        String    @id @default(uuid())
+  shadowRunId               String    @map("shadow_run_id")
+  organizationId            String    @map("organization_id")
+  vehicleId                 String    @map("vehicle_id")
+  tripId                    String    @map("trip_id")
+  intervalStart             DateTime  @map("interval_start")
+  intervalEnd               DateTime  @map("interval_end")
+  referenceTime             DateTime  @map("reference_time")
+  motionState               String    @map("motion_state")
+  positionState             String    @map("position_state")
+  causalPositionState       String    @map("causal_position_state")
+  estimatedSpeedKmh         Float?    @map("estimated_speed_kmh")
+  speedRangeMinKmh          Float?    @map("speed_range_min_kmh")
+  speedRangeMaxKmh          Float?    @map("speed_range_max_kmh")
+  speedEvidenceState        String?   @map("speed_evidence_state")
+  temporalConfidence        String    @map("temporal_confidence")
+  valueConfidence           String    @map("value_confidence")
+  sourceRelation            String    @map("source_relation")
+  claimLevel                String    @map("claim_level")
+  abstentionReason          String?   @map("abstention_reason")
+  evidenceSources           Json      @default("[]") @map("evidence_sources")
+  sourceQualityFlags        Json      @default("[]") @map("source_quality_flags")
   supportIntervalStart      DateTime? @map("support_interval_start")
   supportIntervalEnd        DateTime? @map("support_interval_end")
-  derivationMethod          String   @map("derivation_method")
-  derivationVersion         String   @map("derivation_version")
-  structuralVersion         String   @map("structural_version")
-  estimatorVersion          String   @map("estimator_version")
-  calibrationVersion        String   @map("calibration_version")
-  sourceFamilyPolicyVersion String   @map("source_family_policy_version")
-  provenance                Json     @map("provenance")
-  legacyComparison          Json?    @map("legacy_comparison")
-  createdAt                 DateTime @default(now()) @map("created_at")
+  derivationMethod          String    @map("derivation_method")
+  derivationVersion         String    @map("derivation_version")
+  structuralVersion         String    @map("structural_version")
+  estimatorVersion          String    @map("estimator_version")
+  calibrationVersion        String    @map("calibration_version")
+  sourceFamilyPolicyVersion String    @map("source_family_policy_version")
+  provenance                Json      @map("provenance")
+  legacyComparison          Json?     @map("legacy_comparison")
+  createdAt                 DateTime  @default(now()) @map("created_at")
 
   shadowRun    DiV0ShadowRun @relation(fields: [shadowRunId], references: [id], onDelete: Cascade)
   organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -16283,34 +16361,34 @@ enum HmMqttConnectionState {
 // Canonical provider binding structure for all external data sources.
 // Covers both DIMO and High Mobility. Extended per provider in sourceSubtype.
 model VehicleDataSourceLink {
-  id                String    @id @default(uuid())
-  vehicleId         String    @map("vehicle_id")
+  id                 String    @id @default(uuid())
+  vehicleId          String    @map("vehicle_id")
   // Provider canonical name: DIMO | HIGH_MOBILITY | MANUAL | ...
-  provider          String    @default("UNKNOWN") @map("provider")
-  sourceType        String    @map("source_type") // e.g. HIGH_MOBILITY, DIMO
-  sourceSubtype     String?   @map("source_subtype") // e.g. HM_HEALTH_APP, HM_TELEMETRY_APP
+  provider           String    @default("UNKNOWN") @map("provider")
+  sourceType         String    @map("source_type") // e.g. HIGH_MOBILITY, DIMO
+  sourceSubtype      String?   @map("source_subtype") // e.g. HM_HEALTH_APP, HM_TELEMETRY_APP
   // HM provider identity — null for DIMO rows (see dimoVehicleId)
-  sourceReferenceId String?   @map("source_reference_id")
+  sourceReferenceId  String?   @map("source_reference_id")
   // DIMO provider identity — internal DimoVehicle.id; null for HM rows
-  dimoVehicleId     String?   @map("dimo_vehicle_id")
+  dimoVehicleId      String?   @map("dimo_vehicle_id")
   // FK to the consent record that authorized this binding
-  consentId         String?   @map("consent_id")
-  isActive          Boolean   @default(true) @map("is_active")
-  activatedAt       DateTime  @default(now()) @map("activated_at")
-  deactivatedAt     DateTime? @map("deactivated_at")
-  supersededByLinkId String?  @map("superseded_by_link_id")
-  deactivationReason String?  @map("deactivation_reason")
+  consentId          String?   @map("consent_id")
+  isActive           Boolean   @default(true) @map("is_active")
+  activatedAt        DateTime  @default(now()) @map("activated_at")
+  deactivatedAt      DateTime? @map("deactivated_at")
+  supersededByLinkId String?   @map("superseded_by_link_id")
+  deactivationReason String?   @map("deactivation_reason")
   // Provenance: who set up this binding and when it was verified
-  linkedByUserId    String?   @map("linked_by_user_id")
-  lastVerifiedAt    DateTime? @map("last_verified_at")
-  metadata          Json?     @map("metadata")
+  linkedByUserId     String?   @map("linked_by_user_id")
+  lastVerifiedAt     DateTime? @map("last_verified_at")
+  metadata           Json?     @map("metadata")
 
   // Direct FK to Vehicle enables DB-level ownership enforcement
-  vehicle     Vehicle              @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle                 @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   supersededBy VehicleDataSourceLink?  @relation("DataSourceLinkSupersession", fields: [supersededByLinkId], references: [id], onDelete: SetNull)
   supersedes   VehicleDataSourceLink[] @relation("DataSourceLinkSupersession")
-  hmVehicle   HighMobilityVehicle? @relation(fields: [sourceReferenceId], references: [id])
-  dimoVehicle DimoVehicle?         @relation(fields: [dimoVehicleId], references: [id], onDelete: Restrict)
+  hmVehicle    HighMobilityVehicle?    @relation(fields: [sourceReferenceId], references: [id])
+  dimoVehicle  DimoVehicle?            @relation(fields: [dimoVehicleId], references: [id], onDelete: Restrict)
 
   /// Active-link uniqueness: DB partial index `uq_vehicle_data_source_link_active_scope` (see migration VO-2.1).
   /// Inactive episodes are unlimited; do not reintroduce Prisma @@unique on is_active.
@@ -16329,39 +16407,39 @@ model VehicleDataSourceLink {
 
 /// Durable pre-activation onboarding session (VO-1). No Vehicle row until activation (VO-3+).
 model VehicleOnboardingCase {
-  id                       String                   @id @default(uuid())
-  organizationId           String                   @map("organization_id")
-  sourceMode               OnboardingCaseSourceMode @map("source_mode")
-  status                   OnboardingCaseStatus     @default(OPEN)
+  id                            String                   @id @default(uuid())
+  organizationId                String                   @map("organization_id")
+  sourceMode                    OnboardingCaseSourceMode @map("source_mode")
+  status                        OnboardingCaseStatus     @default(OPEN)
   /// Denormalized primary source key for open-case uniqueness (provider-neutral).
-  primarySourceProvider    String?                  @map("primary_source_provider")
+  primarySourceProvider         String?                  @map("primary_source_provider")
   /// Normalized scope key: empty string = provider-global / NULL scope (VO-2.1).
-  primarySourceScopeKey    String                   @default("") @map("primary_source_scope_key")
-  primarySourceExternalId  String?                  @map("primary_source_external_id")
-  draftIdentityJson        Json?                    @map("draft_identity_json")
-  draftIdentityVersion     Int                      @default(0) @map("draft_identity_version")
-  draftAdminBaselineJson   Json?                    @map("draft_admin_baseline_json")
-  draftAdminBaselineVersion Int                     @default(0) @map("draft_admin_baseline_version")
-  draftTechnicalBaselineJson Json?                  @map("draft_technical_baseline_json")
-  draftTechnicalBaselineVersion Int                  @default(0) @map("draft_technical_baseline_version")
-  readinessSnapshotJson    Json?                    @map("readiness_snapshot_json")
-  readinessSnapshotVersion Int                      @default(0) @map("readiness_snapshot_version")
-  readinessProfileVersion  String?                  @map("readiness_profile_version")
-  validationFindingsJson   Json?                    @map("validation_findings_json")
-  validationFindingsVersion Int                      @default(0) @map("validation_findings_version")
-  idempotencyKey           String?                  @map("idempotency_key")
-  concurrencyToken         String?                  @map("concurrency_token")
-  vehicleId                String?                  @map("vehicle_id")
-  initiatedByUserId        String?                  @map("initiated_by_user_id")
-  lastActorUserId          String?                  @map("last_actor_user_id")
-  completedAt              DateTime?                @map("completed_at")
-  cancelledAt              DateTime?                @map("cancelled_at")
-  expiredAt                DateTime?                @map("expired_at")
-  createdAt                DateTime                 @default(now()) @map("created_at")
-  updatedAt                DateTime                 @updatedAt @map("updated_at")
+  primarySourceScopeKey         String                   @default("") @map("primary_source_scope_key")
+  primarySourceExternalId       String?                  @map("primary_source_external_id")
+  draftIdentityJson             Json?                    @map("draft_identity_json")
+  draftIdentityVersion          Int                      @default(0) @map("draft_identity_version")
+  draftAdminBaselineJson        Json?                    @map("draft_admin_baseline_json")
+  draftAdminBaselineVersion     Int                      @default(0) @map("draft_admin_baseline_version")
+  draftTechnicalBaselineJson    Json?                    @map("draft_technical_baseline_json")
+  draftTechnicalBaselineVersion Int                      @default(0) @map("draft_technical_baseline_version")
+  readinessSnapshotJson         Json?                    @map("readiness_snapshot_json")
+  readinessSnapshotVersion      Int                      @default(0) @map("readiness_snapshot_version")
+  readinessProfileVersion       String?                  @map("readiness_profile_version")
+  validationFindingsJson        Json?                    @map("validation_findings_json")
+  validationFindingsVersion     Int                      @default(0) @map("validation_findings_version")
+  idempotencyKey                String?                  @map("idempotency_key")
+  concurrencyToken              String?                  @map("concurrency_token")
+  vehicleId                     String?                  @map("vehicle_id")
+  initiatedByUserId             String?                  @map("initiated_by_user_id")
+  lastActorUserId               String?                  @map("last_actor_user_id")
+  completedAt                   DateTime?                @map("completed_at")
+  cancelledAt                   DateTime?                @map("cancelled_at")
+  expiredAt                     DateTime?                @map("expired_at")
+  createdAt                     DateTime                 @default(now()) @map("created_at")
+  updatedAt                     DateTime                 @updatedAt @map("updated_at")
 
-  organization Organization                      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  vehicle      Vehicle?                          @relation("OnboardingCaseCompletedVehicle", fields: [vehicleId], references: [id], onDelete: Restrict)
+  organization Organization                     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle?                         @relation("OnboardingCaseCompletedVehicle", fields: [vehicleId], references: [id], onDelete: Restrict)
   sourceRefs   VehicleOnboardingCaseSourceRef[]
 
   @@index([organizationId, status])
@@ -16371,22 +16449,22 @@ model VehicleOnboardingCase {
 }
 
 model VehicleOnboardingCaseSourceRef {
-  id                     String   @id @default(uuid())
-  onboardingCaseId       String   @map("onboarding_case_id")
-  provider               String
-  connectionScope        String?  @map("connection_scope")
+  id                      String    @id @default(uuid())
+  onboardingCaseId        String    @map("onboarding_case_id")
+  provider                String
+  connectionScope         String?   @map("connection_scope")
   /// COALESCE(connection_scope, '') for uniqueness (VO-2.1).
-  connectionScopeKey     String   @default("") @map("connection_scope_key")
-  externalVehicleIdentity String  @map("external_vehicle_identity")
-  sourceMirrorTable      String?  @map("source_mirror_table")
-  sourceMirrorId         String?  @map("source_mirror_id")
-  provenanceAt           DateTime? @map("provenance_at")
-  firstSeenAt            DateTime? @map("first_seen_at")
-  lastSeenAt             DateTime? @map("last_seen_at")
-  isPrimary              Boolean  @default(false) @map("is_primary")
-  snapshotMetadataJson   Json?    @map("snapshot_metadata_json")
-  snapshotMetadataVersion Int     @default(0) @map("snapshot_metadata_version")
-  createdAt              DateTime @default(now()) @map("created_at")
+  connectionScopeKey      String    @default("") @map("connection_scope_key")
+  externalVehicleIdentity String    @map("external_vehicle_identity")
+  sourceMirrorTable       String?   @map("source_mirror_table")
+  sourceMirrorId          String?   @map("source_mirror_id")
+  provenanceAt            DateTime? @map("provenance_at")
+  firstSeenAt             DateTime? @map("first_seen_at")
+  lastSeenAt              DateTime? @map("last_seen_at")
+  isPrimary               Boolean   @default(false) @map("is_primary")
+  snapshotMetadataJson    Json?     @map("snapshot_metadata_json")
+  snapshotMetadataVersion Int       @default(0) @map("snapshot_metadata_version")
+  createdAt               DateTime  @default(now()) @map("created_at")
 
   onboardingCase VehicleOnboardingCase @relation(fields: [onboardingCaseId], references: [id], onDelete: Cascade)
 
@@ -16416,15 +16494,15 @@ model VehicleOrganizationAssignment {
 }
 
 model VehicleLicensePlateAssignment {
-  id          String    @id @default(uuid())
-  vehicleId   String    @map("vehicle_id")
-  plate       String
-  jurisdiction String?  @map("jurisdiction")
-  validFrom   DateTime  @map("valid_from")
-  validTo     DateTime? @map("valid_to")
-  source      String?
-  actorUserId String?   @map("actor_user_id")
-  createdAt   DateTime  @default(now()) @map("created_at")
+  id           String    @id @default(uuid())
+  vehicleId    String    @map("vehicle_id")
+  plate        String
+  jurisdiction String?   @map("jurisdiction")
+  validFrom    DateTime  @map("valid_from")
+  validTo      DateTime? @map("valid_to")
+  source       String?
+  actorUserId  String?   @map("actor_user_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
 
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
 
@@ -16435,21 +16513,21 @@ model VehicleLicensePlateAssignment {
 
 /// Vehicle Registry lifecycle facts — same transaction as state changes in VO-3+ (outbox only in VO-2).
 model VehicleRegistryLifecycleOutbox {
-  id             String                               @id @default(uuid())
-  eventId        String                               @unique @map("event_id")
+  id             String                                  @id @default(uuid())
+  eventId        String                                  @unique @map("event_id")
   eventType      VehicleRegistryLifecycleOutboxEventType @map("event_type")
-  vehicleId      String?                              @map("vehicle_id")
-  organizationId String?                              @map("organization_id")
-  payloadVersion Int                                  @default(1) @map("payload_version")
+  vehicleId      String?                                 @map("vehicle_id")
+  organizationId String?                                 @map("organization_id")
+  payloadVersion Int                                     @default(1) @map("payload_version")
   payload        Json
-  occurredAt     DateTime                             @map("occurred_at")
-  publishedAt    DateTime?                            @map("published_at")
-  status         VehicleRegistryLifecycleOutboxStatus @default(PENDING)
-  retryCount     Int                                  @default(0) @map("retry_count")
-  nextRetryAt    DateTime?                            @map("next_retry_at")
-  lastError      String?                              @map("last_error")
-  idempotencyKey String                               @unique @map("idempotency_key")
-  createdAt      DateTime                             @default(now()) @map("created_at")
+  occurredAt     DateTime                                @map("occurred_at")
+  publishedAt    DateTime?                               @map("published_at")
+  status         VehicleRegistryLifecycleOutboxStatus    @default(PENDING)
+  retryCount     Int                                     @default(0) @map("retry_count")
+  nextRetryAt    DateTime?                               @map("next_retry_at")
+  lastError      String?                                 @map("last_error")
+  idempotencyKey String                                  @unique @map("idempotency_key")
+  createdAt      DateTime                                @default(now()) @map("created_at")
 
   vehicle Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
 
