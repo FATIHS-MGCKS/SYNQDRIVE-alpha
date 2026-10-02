@@ -1409,6 +1409,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | Wrapper can run from newer `main` while invoking initializer under verified release `ee958854…` / `20261002014651_v4994`; **`WRAPPER_REQUIRES_NEW_CODE_DEPLOY_BEFORE_USE=NO`** |
 | NON_EFFECTS | No Production GLOBAL row write, no env/PM2/deploy, no Tiny/operator grant |
 
+### EXP-021 S4F-7H Production GLOBAL=KILLED initialization (2026-10-02)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Human-authorized `DRY_RUN=0` wrapper execution; `DI_V0_S4_GLOBAL_KILL_INIT_RESULT=INSERTED_KILLED`; evidence `EXP021_S4F7H_PRODUCTION_GLOBAL_KILLED_INITIALIZATION.md` |
+| FINDING | **`PRODUCTION_GLOBAL_KILLED_INITIALIZATION_READINESS=PASS`**; post-read GLOBAL **KILLED** reason/actor match pins; S4 persistence unchanged; replica PIDs unchanged |
+| NON_EFFECTS | No Tiny grant, no S4 enablement, no env/deploy/restart/migration, no provider calls |
+
 ### EXP-021 S4F-7G Production kill initializer dry-run (2026-10-02)
 
 | Event | Detail |
