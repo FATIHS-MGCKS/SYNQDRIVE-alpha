@@ -101,4 +101,16 @@ grep -q 'decodeM3_3HvH4EnergyAddedKwhV1' "$HV_H4/m3-3-hv-h4-a3-durable-revision-
 grep -q 'M3_3HvH4ChargeSessionScientificRowV1' "$HV_H4/m3-3-hv-h4-charge-session-scientific-row.v1.ts" \
   || fail "missing H4 scientific row contract"
 
+grep -q 'RETENTION_H4_ACK_GATE_REACHABLE = true' "$HV_H4/m3-3-hv-h4-a3.constants.ts" \
+  || fail "A3.4 retention gate must be reachable in retention code path"
+grep -q 'evaluateCurrentHvChargeSessionPruneDurabilityV1' "$HV_H4/m3-3-hv-h4-a3-retention-gate.v1.ts" \
+  || fail "missing A3.4 retention durability evaluator"
+grep -q 'deleteHvChargeSessionIfDurablyAcknowledgedV1' "$HV_H4/m3-3-hv-h4-a3-retention-gate.v1.ts" \
+  || fail "missing A3.4 race-safe retention delete gate"
+grep -q 'FOR UPDATE' "$HV_H4/m3-3-hv-h4-a3-retention-gate.v1.ts" \
+  || fail "A3.4 destructive prune must lock candidate HvChargeSession row"
+RETENTION_SVC="$ROOT/backend/src/modules/vehicle-intelligence/battery-health/retention/battery-v2-retention.service.ts"
+grep -q 'deleteHvChargeSessionIfDurablyAcknowledgedV1' "$RETENTION_SVC" \
+  || fail "retention service must invoke A3.4 delete gate"
+
 echo "M3.3-HV-H4 domain contracts: OK"

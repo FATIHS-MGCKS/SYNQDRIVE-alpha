@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - 'backend/src/modules/vehicle-intelligence/battery-health/hv-h4/**'
+      - 'backend/src/modules/vehicle-intelligence/battery-health/retention/**'
+      - 'backend/src/config/battery-v2-retention.config.ts'
       - 'backend/scripts/ops/battery-hv-h4-coverage-report.ts'
       - 'backend/scripts/ops/battery-hv-h4-charge-throughput-report.ts'
       - 'backend/scripts/test/battery-hv-h4-coverage-report-postgres-ci.sh'

@@ -16,7 +16,7 @@ export const M3_3_HV_H4_A3_SOURCE_ENERGY_SEMANTIC =
 
 export const A3_REVISION_WRITER_RUNTIME_REACHABLE = false as const;
 export const A3_ACK_WRITER_RUNTIME_REACHABLE = false as const;
-export const RETENTION_H4_ACK_GATE_REACHABLE = false as const;
+export const RETENTION_H4_ACK_GATE_REACHABLE = true as const;
 export const A3_RECONCILIATION_SCHEDULER_REACHABLE = false as const;
 
 export const REVISION_APPEND_ONLY_UPDATE_ALLOWED = false as const;
