@@ -4,10 +4,13 @@ import {
   BillingSubscriptionItemStatus,
   OrganizationStatus,
   VehicleProviderConsentStatus,
+  type Prisma,
 } from '@prisma/client';
+import { resolveBaseSubscriptionItemAsOf } from './domain/billing-base-subscription-item-as-of';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   BillableVehicleExclusionReason,
+  BillableVehiclePolicyContext,
   BillableVehiclePolicyResult,
   evaluateBillableVehiclePolicy,
   ExcludedBillableVehiclePolicyRow,
@@ -51,10 +54,10 @@ export interface BillableVehiclesResult {
 export class BillableVehiclesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getBillableConnectedVehiclesForOrganization(
+  async buildPolicyContext(
     organizationId: string,
     asOf: Date = new Date(),
-  ): Promise<BillableVehiclesResult> {
+  ): Promise<BillableVehiclePolicyContext & { connectivityByVehicleId: Record<string, boolean> }> {
     const [org, baseItem, assignmentCount, vehicles] = await Promise.all([
       this.prisma.organization.findUnique({
         where: { id: organizationId },
@@ -83,6 +86,7 @@ export class BillableVehiclesService {
           vin: true,
           make: true,
           model: true,
+          registryLifecycle: true,
           providerConsents: {
             where: { status: VehicleProviderConsentStatus.ACTIVE },
             select: { id: true },
@@ -118,6 +122,7 @@ export class BillableVehiclesService {
               reasonCode: true,
               reasonNote: true,
               approvedByUserId: true,
+              createdAt: true,
             },
           });
 
@@ -127,7 +132,7 @@ export class BillableVehiclesService {
         vehicle.providerConsents.length > 0 || vehicle.dataSourceLinks.length > 0;
     }
 
-    const policyResult = evaluateBillableVehiclePolicy({
+    return {
       organizationId,
       organizationActive: org?.status === OrganizationStatus.ACTIVE,
       baseSubscriptionItemId: baseItem?.id ?? null,
@@ -143,11 +148,204 @@ export class BillableVehiclesService {
         vin: vehicle.vin,
         make: vehicle.make,
         model: vehicle.model,
+        registryLifecycle: vehicle.registryLifecycle,
       })),
       assignments,
       connectivityByVehicleId,
-    });
+    };
+  }
 
+  async buildEventTimePolicyContext(
+    organizationId: string,
+    asOf: Date,
+    tx?: Prisma.TransactionClient,
+  ): Promise<BillableVehiclePolicyContext & { connectivityByVehicleId: Record<string, boolean> }> {
+    const db = tx ?? this.prisma;
+    const [org, baseItemAt, assignmentCount, vehicles] = await Promise.all([
+      db.organization.findUnique({
+        where: { id: organizationId },
+        select: { status: true },
+      }),
+      resolveBaseSubscriptionItemAsOf(db, organizationId, asOf),
+      db.billingBillableVehicleAssignment.count({
+        where: { organizationId },
+      }),
+      db.vehicle.findMany({
+        where: { organizationId },
+        select: {
+          id: true,
+          organizationId: true,
+          licensePlate: true,
+          vin: true,
+          make: true,
+          model: true,
+          registryLifecycle: true,
+          providerConsents: {
+            where: { status: VehicleProviderConsentStatus.ACTIVE },
+            select: { id: true },
+            take: 1,
+          },
+          dataSourceLinks: {
+            where: { isActive: true },
+            select: { id: true },
+            take: 1,
+          },
+        },
+        orderBy: { licensePlate: 'asc' },
+      }),
+    ]);
+
+    const vehicleIds = vehicles.map((vehicle) => vehicle.id);
+    const assignments =
+      vehicleIds.length === 0
+        ? []
+        : await db.billingBillableVehicleAssignment.findMany({
+            where: {
+              organizationId,
+              vehicleId: { in: vehicleIds },
+            },
+            select: {
+              id: true,
+              organizationId: true,
+              vehicleId: true,
+              subscriptionItemId: true,
+              billableFrom: true,
+              billableUntil: true,
+              status: true,
+              reasonCode: true,
+              reasonNote: true,
+              approvedByUserId: true,
+              createdAt: true,
+            },
+          });
+
+    const connectivityByVehicleId: Record<string, boolean> = {};
+    for (const vehicle of vehicles) {
+      connectivityByVehicleId[vehicle.id] =
+        vehicle.providerConsents.length > 0 || vehicle.dataSourceLinks.length > 0;
+    }
+
+    return {
+      organizationId,
+      organizationActive: org?.status === OrganizationStatus.ACTIVE,
+      baseSubscriptionItemId: baseItemAt?.id ?? null,
+      baseSubscriptionItemActive: baseItemAt != null,
+      asOf,
+      legacyImplicitAssignments: assignmentCount === 0,
+      vehicles: vehicles.map((vehicle) => ({
+        id: vehicle.id,
+        organizationId: vehicle.organizationId,
+        licensePlate: vehicle.licensePlate,
+        vin: vehicle.vin,
+        make: vehicle.make,
+        model: vehicle.model,
+        registryLifecycle: vehicle.registryLifecycle,
+      })),
+      assignments,
+      connectivityByVehicleId,
+    };
+  }
+
+  /**
+   * Registry VEHICLE_OFFBOARDED billing projection: event-time authority at `occurredAt` only.
+   * Current Organization.status is not used for billability (no org status history model).
+   */
+  async buildRegistryOffboardPolicyContext(
+    organizationId: string,
+    occurredAt: Date,
+    tx: Prisma.TransactionClient,
+  ): Promise<BillableVehiclePolicyContext & { connectivityByVehicleId: Record<string, boolean> }> {
+    const [baseItemAt, assignmentCountAtBoundary, vehicles] = await Promise.all([
+      resolveBaseSubscriptionItemAsOf(tx, organizationId, occurredAt),
+      tx.billingBillableVehicleAssignment.count({
+        where: {
+          organizationId,
+          createdAt: { lte: occurredAt },
+        },
+      }),
+      tx.vehicle.findMany({
+        where: { organizationId },
+        select: {
+          id: true,
+          organizationId: true,
+          licensePlate: true,
+          vin: true,
+          make: true,
+          model: true,
+          registryLifecycle: true,
+          providerConsents: {
+            where: { status: VehicleProviderConsentStatus.ACTIVE },
+            select: { id: true },
+            take: 1,
+          },
+          dataSourceLinks: {
+            where: { isActive: true },
+            select: { id: true },
+            take: 1,
+          },
+        },
+        orderBy: { licensePlate: 'asc' },
+      }),
+    ]);
+
+    const vehicleIds = vehicles.map((vehicle) => vehicle.id);
+    const assignments =
+      vehicleIds.length === 0
+        ? []
+        : await tx.billingBillableVehicleAssignment.findMany({
+            where: {
+              organizationId,
+              vehicleId: { in: vehicleIds },
+              createdAt: { lte: occurredAt },
+            },
+            select: {
+              id: true,
+              organizationId: true,
+              vehicleId: true,
+              subscriptionItemId: true,
+              billableFrom: true,
+              billableUntil: true,
+              status: true,
+              reasonCode: true,
+              reasonNote: true,
+              approvedByUserId: true,
+              createdAt: true,
+            },
+          });
+
+    const connectivityByVehicleId: Record<string, boolean> = {};
+    for (const vehicle of vehicles) {
+      connectivityByVehicleId[vehicle.id] =
+        vehicle.providerConsents.length > 0 || vehicle.dataSourceLinks.length > 0;
+    }
+
+    return {
+      organizationId,
+      organizationActive: true,
+      baseSubscriptionItemId: baseItemAt?.id ?? null,
+      baseSubscriptionItemActive: baseItemAt != null,
+      asOf: occurredAt,
+      legacyImplicitAssignments: assignmentCountAtBoundary === 0,
+      vehicles: vehicles.map((vehicle) => ({
+        id: vehicle.id,
+        organizationId: vehicle.organizationId,
+        licensePlate: vehicle.licensePlate,
+        vin: vehicle.vin,
+        make: vehicle.make,
+        model: vehicle.model,
+        registryLifecycle: vehicle.registryLifecycle,
+      })),
+      assignments,
+      connectivityByVehicleId,
+    };
+  }
+
+  async getBillableConnectedVehiclesForOrganization(
+    organizationId: string,
+    asOf: Date = new Date(),
+  ): Promise<BillableVehiclesResult> {
+    const context = await this.buildPolicyContext(organizationId, asOf);
+    const policyResult = evaluateBillableVehiclePolicy(context);
     return this.mapPolicyResult(policyResult);
   }
 

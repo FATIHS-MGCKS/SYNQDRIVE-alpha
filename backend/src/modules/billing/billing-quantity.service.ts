@@ -94,83 +94,109 @@ export class BillingQuantityService {
       return { created: false, event: this.mapEvent(existing) };
     }
 
-    return this.prisma.$transaction(async (tx) => {
-      const duplicate = await tx.billingQuantityEvent.findUnique({
-        where: { idempotencyKey: input.idempotencyKey },
+    return this.prisma.$transaction(async (tx) =>
+      this.recordEventInTransaction(tx, { ...input, recordedAt }),
+    );
+  }
+
+  async recordEventInTransaction(
+    tx: Prisma.TransactionClient,
+    input: RecordQuantityEventInput,
+  ): Promise<RecordQuantityEventResult> {
+    const recordedAt = input.recordedAt ?? new Date();
+
+    if (input.delta === 0 && input.eventType !== BillingQuantityEventType.SNAPSHOT_LOCK) {
+      throw new BadRequestException({
+        code: BillingQuantityErrorCode.INVALID_DELTA,
+        message: BillingQuantityErrorCode.INVALID_DELTA,
       });
-      if (duplicate) {
-        return { created: false, event: this.mapEvent(duplicate) };
-      }
+    }
 
-      await tx.$executeRaw`SELECT id FROM billing_subscription_items WHERE id = ${input.subscriptionItemId} FOR UPDATE`;
-
-      const context = await this.loadScopedContext(tx, input);
-      const timeline = await this.loadTimeline(tx, input.subscriptionItemId);
-      const { quantityBefore, quantityAfter } = computeQuantityTransition(timeline, {
-        effectiveAt: input.effectiveAt,
-        recordedAt,
-        delta: input.delta,
+    if (
+      isRetroactiveEvent(input.effectiveAt, recordedAt) &&
+      !input.retroactiveAuthorized
+    ) {
+      throw new BadRequestException({
+        code: BillingQuantityErrorCode.RETROACTIVE_NOT_AUTHORIZED,
+        message: BillingQuantityErrorCode.RETROACTIVE_NOT_AUTHORIZED,
       });
+    }
 
-      if (quantityAfter < 0) {
-        throw new ConflictException({
-          code: BillingQuantityErrorCode.QUANTITY_NEGATIVE,
-          message: BillingQuantityErrorCode.QUANTITY_NEGATIVE,
-          quantityBefore,
-          quantityAfter,
-        });
-      }
+    const duplicate = await tx.billingQuantityEvent.findUnique({
+      where: { idempotencyKey: input.idempotencyKey },
+    });
+    if (duplicate) {
+      return { created: false, event: this.mapEvent(duplicate) };
+    }
 
-      const created = await tx.billingQuantityEvent.create({
-        data: {
-          organizationId: input.organizationId,
-          subscriptionId: context.subscriptionId,
-          subscriptionItemId: input.subscriptionItemId,
-          vehicleId: input.vehicleId ?? null,
-          eventType: input.eventType,
-          delta: input.delta,
-          quantityBefore,
-          quantityAfter,
-          effectiveAt: input.effectiveAt,
-          source: input.source,
-          actorUserId: input.actorUserId ?? null,
-          reason: input.reason ?? null,
-          idempotencyKey: input.idempotencyKey,
-          createdAt: recordedAt,
-        },
-      });
+    await tx.$executeRaw`SELECT id FROM billing_subscription_items WHERE id = ${input.subscriptionItemId} FOR UPDATE`;
 
-      const currentQuantity = replayQuantityAt(
-        [
-          ...timeline,
-          {
-            effectiveAt: created.effectiveAt,
-            recordedAt: created.createdAt,
-            delta: created.delta,
-            tieBreaker: timeline.length,
-          },
-        ],
-        new Date(),
-      ).quantity;
+    const context = await this.loadScopedContext(tx, input);
+    const timeline = await this.loadTimeline(tx, input.subscriptionItemId);
+    const { quantityBefore, quantityAfter } = computeQuantityTransition(timeline, {
+      effectiveAt: input.effectiveAt,
+      recordedAt,
+      delta: input.delta,
+    });
 
-      await tx.billingSubscriptionItem.update({
-        where: { id: input.subscriptionItemId },
-        data: { quantity: currentQuantity },
-      });
-
-      this.logger.log({
-        msg: 'billing.quantity.event_recorded',
-        eventType: input.eventType,
-        organizationId: input.organizationId,
-        subscriptionItemId: input.subscriptionItemId,
-        vehicleId: input.vehicleId ?? null,
+    if (quantityAfter < 0) {
+      throw new ConflictException({
+        code: BillingQuantityErrorCode.QUANTITY_NEGATIVE,
+        message: BillingQuantityErrorCode.QUANTITY_NEGATIVE,
         quantityBefore,
         quantityAfter,
-        idempotencyKey: input.idempotencyKey,
       });
+    }
 
-      return { created: true, event: this.mapEvent(created) };
+    const created = await tx.billingQuantityEvent.create({
+      data: {
+        organizationId: input.organizationId,
+        subscriptionId: context.subscriptionId,
+        subscriptionItemId: input.subscriptionItemId,
+        vehicleId: input.vehicleId ?? null,
+        eventType: input.eventType,
+        delta: input.delta,
+        quantityBefore,
+        quantityAfter,
+        effectiveAt: input.effectiveAt,
+        source: input.source,
+        actorUserId: input.actorUserId ?? null,
+        reason: input.reason ?? null,
+        idempotencyKey: input.idempotencyKey,
+        createdAt: recordedAt,
+      },
     });
+
+    const currentQuantity = replayQuantityAt(
+      [
+        ...timeline,
+        {
+          effectiveAt: created.effectiveAt,
+          recordedAt: created.createdAt,
+          delta: created.delta,
+          tieBreaker: timeline.length,
+        },
+      ],
+      new Date(),
+    ).quantity;
+
+    await tx.billingSubscriptionItem.update({
+      where: { id: input.subscriptionItemId },
+      data: { quantity: currentQuantity },
+    });
+
+    this.logger.log({
+      msg: 'billing.quantity.event_recorded',
+      eventType: input.eventType,
+      organizationId: input.organizationId,
+      subscriptionItemId: input.subscriptionItemId,
+      vehicleId: input.vehicleId ?? null,
+      quantityBefore,
+      quantityAfter,
+      idempotencyKey: input.idempotencyKey,
+    });
+
+    return { created: true, event: this.mapEvent(created) };
   }
 
   async reconstructQuantity(
