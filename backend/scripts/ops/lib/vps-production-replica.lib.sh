@@ -374,6 +374,14 @@ vps_replica_rolling_deploy() {
 
   vps_replica_ensure_registered || return 1
 
+  if [[ "${SYNQDRIVE_DI_S4F7Q_EXACT_RC_ATTESTATION_GATE:-0}" == "1" ]]; then
+    # shellcheck source=lib/di-v0-s4f7q-exact-rc-attestation-deploy.lib.sh
+    source "${SYNQDRIVE_CURRENT_LINK}/backend/scripts/ops/lib/di-v0-s4f7q-exact-rc-attestation-deploy.lib.sh"
+    vps_replica_rolling_deploy_s4f7q_gated "$release_dir" "$target_sha" || return 1
+    pm2 save
+    return 0
+  fi
+
   vps_replica_restart_one "${SYNQDRIVE_REPLICA_A_PM2_NAME}" || return 1
   vps_replica_wait_healthy "${SYNQDRIVE_REPLICA_A_PM2_NAME}" "${SYNQDRIVE_REPLICA_A_PORT}" "$target_sha" || return 1
 
