@@ -1,0 +1,69 @@
+{
+  "auditId": "vehicle-warnings-production-readiness-2026-07",
+  "prompt": "16/26",
+  "generatedAt": "2026-07-25T17:35:00.000Z",
+  "evidenceType": "fixture_and_code_analysis",
+  "liveApiAttempted": false,
+  "liveApiReason": "No backend/.env or reachable dev database in Cloud Agent environment",
+  "anonymization": "All IDs are synthetic test fixtures; no production PII",
+  "vehicles": {
+    "WOB L 7503": {
+      "source": "frontend/src/rental/components/dashboard/notificationEngine.fixtures.ts",
+      "syntheticVehicleId": "veh-wob-l-7503",
+      "syntheticOrgId": "org-test-wob",
+      "fixtureFields": {
+        "commercialStatus": "AVAILABLE",
+        "legacyHealthStatus": "Warning",
+        "cleaningStatus": "Clean",
+        "telemetryOnline": true,
+        "lastSignal": "2026-07-10T12:00:00.000Z"
+      },
+      "knownInsight": {
+        "type": "DRIVING_ASSESSMENT_DEVICE_QUALITY",
+        "severityVariants": ["WARNING", "INFO"],
+        "titlePattern": "Fahrbewertung {status} — WOB L 7503"
+      },
+      "apiFieldAvailability": {
+        "fleet-map": ["operationalState", "healthStatus", "telemetryFreshness", "bookingContext"],
+        "rental-health": ["overall_state", "rental_blocked", "blocking_reasons", "modules"],
+        "dashboard-insights": ["severity", "title", "message", "entityIds"],
+        "notifications": ["severity", "occurrenceCount", "entity.displayLabel"],
+        "dashboard-runtime": ["isReadyToRent", "telemetryState", "warningReasons", "blockReasons"],
+        "rentalReadiness": "client_only"
+      },
+      "documentedDuplicateRisk": "Same DRIVING_ASSESSMENT_DEVICE_QUALITY may appear as insight, notification, and operational issue (see docs/notification-engine-current-state.md Anhang A)"
+    },
+    "KS FH 660E": {
+      "source": "docs/audits/dimo-tesla-hv-signal-capability.md, vehicle-operational-state-v2 tests",
+      "notes": "BEV Tesla Model 3; UNSUPPORTED_PROFILE battery; telemetry reliability may force UNKNOWN operational status",
+      "exampleVehicleId": "68868291-5478-42cd-b0c4-cc77b2a78e21",
+      "exampleVehicleIdDisclaimer": "Verify ID in target environment before use"
+    },
+    "KS MX 2024": {
+      "source": "frontend/src/rental/components/dashboard/dashboardDrawerNormalize.test.ts",
+      "notes": "Service overdue produces critical runtime reason; service category blocking:false per V4.9.x policy"
+    },
+    "KS MS 661": {
+      "source": "frontend/src/rental/lib/notifications/enrich-notification-grouping.test.ts",
+      "notes": "Notification entity label grouping reference vehicle"
+    },
+    "HMÜ C 215": {
+      "source": "frontend/src/rental/components/dashboard/deriveOperationalInsights.test.ts",
+      "notes": "LOW_UTILIZATION insight; severity OPPORTUNITY/INFO; does not block rental"
+    },
+    "WOB L 9755": {
+      "source": "none_in_repository",
+      "notes": "No fixture or audit reference found; requires staging script audit-vehicle-booking-handover-data.ts"
+    }
+  },
+  "fieldMatrixSummary": {
+    "commercialStatus": { "primaryApi": "GET /organizations/:orgId/fleet-map", "field": "operationalState.status" },
+    "rentalReadiness": { "primaryApi": "client_only", "secondaryApi": "GET /organizations/:orgId/bookings/:id/detail eligibility" },
+    "technicalState": { "primaryApi": "GET /organizations/:orgId/rental-health/fleet", "field": "overall_state" },
+    "telemetryState": { "primaryApis": ["fleet-map.telemetryFreshness", "fleet-connectivity.telemetryState", "client deriveTelemetryState"] },
+    "highestSeverity": { "note": "No unified field; computed per surface" },
+    "findingCount": { "note": "Per-finding vs per-vehicle semantics differ by endpoint" },
+    "blockerCount": { "primaryApi": "rental-health", "field": "blocking_reasons.length" },
+    "projectionVersion": { "presentOn": ["fleet-connectivity CONNECTIVITY_RUNTIME_STATE_VERSION", "booking detail engineVersion 1.0.0", "rental-health cache key v1"] }
+  }
+}
