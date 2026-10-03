@@ -51,8 +51,8 @@ resolve_audit_baseline_sha() {
     return 0
   fi
 
-  # Backward-compatible direct env override (local/CI harness) when event name is unset.
-  if ! is_zero_or_empty_sha "$pr_base" && is_valid_commit_sha "$pr_base"; then
+  # Backward-compatible direct env override (local/CI harness) only when event name is unset.
+  if [[ -z "$event_name" ]] && ! is_zero_or_empty_sha "$pr_base" && is_valid_commit_sha "$pr_base"; then
     printf '%s\n' "$pr_base"
     return 0
   fi
