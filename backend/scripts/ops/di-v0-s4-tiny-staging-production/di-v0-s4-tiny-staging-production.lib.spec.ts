@@ -28,6 +28,31 @@ import {
   validateOpsFrozenNotBeforeCandidate,
   OPS_FROZEN_DISCOVERY_TRIP_END_NOT_BEFORE,
 } from './di-v0-s4-tiny-staging-frozen-not-before';
+import {
+  DI_V0_S4_ENV_ALLOWLISTS,
+  evaluateDiV0S4RuntimeConfigAttestation,
+} from '../../../src/modules/vehicle-intelligence/driving-intelligence/s4-runtime/di-v0-s4-runtime-config-attestation';
+import { formatDiV0S4RuntimeConfigAttestationMetricLine } from '../../../src/modules/vehicle-intelligence/driving-intelligence/s4-runtime/di-v0-s4-runtime-config-attestation.metrics';
+
+function writeMetricsBodyFile(attestation: ReturnType<typeof evaluateDiV0S4RuntimeConfigAttestation>): string {
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 's4f7m-metric-')), 'metrics.txt');
+  fs.writeFileSync(file, formatDiV0S4RuntimeConfigAttestationMetricLine(attestation));
+  return file;
+}
+
+function writePrestateMetricsBodyFile(): string {
+  return writeMetricsBodyFile(evaluateDiV0S4RuntimeConfigAttestation({}));
+}
+
+function writeStagedMetricsBodyFile(): string {
+  return writeMetricsBodyFile(
+    evaluateDiV0S4RuntimeConfigAttestation({
+      DI_V0_S4_DISCOVERY_TRIP_END_NOT_BEFORE: FROZEN_DISCOVERY_TRIP_END_NOT_BEFORE,
+      [DI_V0_S4_ENV_ALLOWLISTS.organization]: FROZEN_ORGANIZATION_ALLOWLIST,
+      [DI_V0_S4_ENV_ALLOWLISTS.vehicle]: FROZEN_VEHICLE_ALLOWLIST,
+    }),
+  );
+}
 
 const WRAPPER = path.join(__dirname, '../di-v0-s4-stage-tiny-production.sh');
 const BOOTSTRAP = path.resolve(__dirname, '../../../../.cursor/scripts/cloud-agent-s4-tiny-staging.sh');
@@ -108,7 +133,8 @@ function runFixture(extraEnv: Record<string, string> = {}, dryRun = '1'): string
     (releaseDir === WORKSPACE_ROOT
       ? execFileSync('git', ['-C', WORKSPACE_ROOT, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
       : PRODUCTION_SHA);
-  const procFile = writeFrozenProcEnvFile();
+  const metricsA = writePrestateMetricsBodyFile();
+  const metricsB = writePrestateMetricsBodyFile();
   return execFileSync('bash', [WRAPPER], {
     encoding: 'utf8',
     env: {
@@ -123,8 +149,8 @@ function runFixture(extraEnv: Record<string, string> = {}, dryRun = '1'): string
       SYNQDRIVE_BACKEND_ENV: envFile,
       DI_S4F7J_FIXTURE_RELEASE_DIR: releaseDir,
       DI_S4F7J_FIXTURE_DEPLOYED_SHA: requiredSha,
-      DI_S4F7J_FIXTURE_PROC_ENV_FILE_A: procFile,
-      DI_S4F7J_FIXTURE_PROC_ENV_FILE_B: procFile,
+      DI_S4F7J_FIXTURE_METRICS_BODY_A: metricsA,
+      DI_S4F7J_FIXTURE_METRICS_BODY_B: metricsB,
       ...extraEnv,
     },
   });
@@ -141,7 +167,8 @@ function runTestMode(extraEnv: Record<string, string> = {}, envContent = 'FOO=1\
   const beforeContent = fs.readFileSync(envFile, 'utf8');
   const repoRoot = path.resolve(__dirname, '../../../..');
   const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), 's4f7j-st-'));
-  const procFile = writeFrozenProcEnvFile();
+  const stagedMetrics = writeStagedMetricsBodyFile();
+  const prestateMetrics = writePrestateMetricsBodyFile();
   const out = execFileSync('bash', [WRAPPER], {
     encoding: 'utf8',
     env: {
@@ -158,8 +185,10 @@ function runTestMode(extraEnv: Record<string, string> = {}, envContent = 'FOO=1\
       SYNQDRIVE_DEPLOY_STATE_DIR: stateDir,
       DI_S4F7J_FIXTURE_DEPLOYED_SHA: 'abc123',
       DI_S4F7J_FIXTURE_RELEASE_DIR: repoRoot,
-      DI_S4F7J_FIXTURE_PROC_ENV_FILE_A: procFile,
-      DI_S4F7J_FIXTURE_PROC_ENV_FILE_B: procFile,
+      DI_S4F7J_FIXTURE_METRICS_BODY_A: stagedMetrics,
+      DI_S4F7J_FIXTURE_METRICS_BODY_B: stagedMetrics,
+      DI_S4F7J_FIXTURE_METRICS_BODY_RECOVERY_A: prestateMetrics,
+      DI_S4F7J_FIXTURE_METRICS_BODY_RECOVERY_B: prestateMetrics,
       ...extraEnv,
     },
   });
@@ -176,7 +205,8 @@ function runTestModeExpectFail(
   const beforeContent = envContent;
   const repoRoot = path.resolve(__dirname, '../../../..');
   const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), 's4f7j-st-fail-'));
-  const procFile = writeFrozenProcEnvFile();
+  const stagedMetrics = writeStagedMetricsBodyFile();
+  const prestateMetrics = writePrestateMetricsBodyFile();
   expect(() =>
     execFileSync('bash', [WRAPPER], {
       encoding: 'utf8',
@@ -194,8 +224,10 @@ function runTestModeExpectFail(
         SYNQDRIVE_DEPLOY_STATE_DIR: stateDir,
         DI_S4F7J_FIXTURE_DEPLOYED_SHA: 'abc123',
         DI_S4F7J_FIXTURE_RELEASE_DIR: repoRoot,
-        DI_S4F7J_FIXTURE_PROC_ENV_FILE_A: procFile,
-        DI_S4F7J_FIXTURE_PROC_ENV_FILE_B: procFile,
+        DI_S4F7J_FIXTURE_METRICS_BODY_A: stagedMetrics,
+        DI_S4F7J_FIXTURE_METRICS_BODY_B: stagedMetrics,
+        DI_S4F7J_FIXTURE_METRICS_BODY_RECOVERY_A: prestateMetrics,
+        DI_S4F7J_FIXTURE_METRICS_BODY_RECOVERY_B: prestateMetrics,
         ...extraEnv,
       },
     }),
@@ -447,9 +479,8 @@ describe('wrapper test mode mutation + recovery', () => {
     expect(fs.readFileSync(envFile, 'utf8')).toBe(beforeContent);
   });
   it('runtime A mismatch restores bytes', () => {
-    const badProc = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 's4f7j-bad-')), 'environ');
-    fs.writeFileSync(badProc, 'DI_V0_S4_DISCOVERY_TRIP_END_NOT_BEFORE=wrong\0');
-    const { envFile, beforeContent } = runTestModeExpectFail({ DI_S4F7J_FIXTURE_PROC_ENV_FILE_A: badProc });
+    const badMetrics = writePrestateMetricsBodyFile();
+    const { envFile, beforeContent } = runTestModeExpectFail({ DI_S4F7J_FIXTURE_METRICS_BODY_A: badMetrics });
     expect(fs.readFileSync(envFile, 'utf8')).toBe(beforeContent);
   });
   it('restart B failure restores bytes', () => {
@@ -478,15 +509,8 @@ describe('wrapper test mode mutation + recovery', () => {
       }),
     ).toThrow();
   });
-  it('recovery restores prestate proc env', () => {
-    const recProc = writeRecoveryPrestateProcEnvFile();
-    const { envFile, beforeContent } = runTestModeExpectFail(
-      {
-        DI_S4F7J_FIXTURE_PROC_ENV_FILE_A: recProc,
-        DI_S4F7J_FIXTURE_PROC_ENV_FILE_B: recProc,
-      },
-      'FOO=1\nDIMO_GLOBAL_BUDGET_ENABLED=true\n',
-    );
+  it('recovery restores prestate runtime attestation authority', () => {
+    const { envFile, beforeContent } = runTestModeExpectFail({ DI_S4F7J_TEST_INJECT_RESTART_A_FAIL: '1' });
     expect(fs.readFileSync(envFile, 'utf8')).toBe(beforeContent);
   });
 });

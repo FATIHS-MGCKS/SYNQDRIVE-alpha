@@ -268,6 +268,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-29T03:00:00.000Z',
   },
   {
+    id: 'di-exp021-s4f7m-runtime-config-attestation-2026-10-02',
+    version: '4.9.2218',
+    title: 'Driving Intelligence — EXP-021 S4F-7M in-process S4 runtime config attestation',
+    summary: [
+      'Nine-key SHA-256 fingerprint + PRESTATE/STAGED/OTHER exposed on authenticated GET /api/v1/metrics.',
+      'DiV0S4RuntimeModule registers read-only attestation at bootstrap (no timers/DB/Redis/provider).',
+      'S4F-7J Tiny staging wrapper uses per-replica metrics proof instead of /proc environ.',
+    ],
+    reason:
+      'Close S4F-7L false-negative runtime proof gap: dotenv-loaded S4 config is not visible in /proc environ.',
+    previousBehavior:
+      'Production Tiny staging wrapper proved runtime via filtered /proc/<pid>/environ.',
+    details:
+      'architecture/drivingintelligence/evidence/EXP021_S4F7M_IN_PROCESS_RUNTIME_CONFIG_ATTESTATION_ENGINEERING.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-02T22:45:00.000Z',
+  },
+  {
     id: 'di-exp021-s4f7l-tiny-config-staging-attempt-2026-10-02',
     version: '4.9.2217',
     title: 'Driving Intelligence — EXP-021 S4F-7L Production Tiny 3-key staging attempt (rollback)',

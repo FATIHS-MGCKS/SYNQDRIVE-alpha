@@ -266,6 +266,15 @@ async function cmdFetchLiveMetric(envFile: string, port: string): Promise<void> 
   process.exit(1);
 }
 
+async function cmdFetchMetricsBody(envFile: string, port: string): Promise<void> {
+  const token = readDotenvValue(envFile, 'METRICS_BEARER_TOKEN');
+  if (!token) {
+    process.exit(1);
+  }
+  const body = await httpGetMetrics(port, token);
+  process.stdout.write(body);
+}
+
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const cmd = args[0];
@@ -300,6 +309,12 @@ async function main(): Promise<void> {
       const port = args[2];
       if (!port) process.exit(2);
       await cmdFetchLiveMetric(file, port);
+      break;
+    }
+    case 'fetch-metrics-body': {
+      const port = args[2];
+      if (!port) process.exit(2);
+      await cmdFetchMetricsBody(file, port);
       break;
     }
     default:
