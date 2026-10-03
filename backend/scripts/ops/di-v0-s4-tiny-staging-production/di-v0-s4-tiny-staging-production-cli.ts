@@ -17,6 +17,7 @@ import {
   parseVehicleDbProofLines,
   classifyPreMutationTargetKeyStates,
   proveReplicaRuntime,
+  proveReplicaRuntimeAttestation,
   R1_PROVIDER_LINK_DB_AUTHORITY,
   RUNTIME_PROOF_KEYS,
   sha256FileContent,
@@ -254,6 +255,45 @@ function cmdSemanticDiff(beforePath: string, afterPath: string): void {
   if (!diff.ok) process.exit(1);
 }
 
+function cmdRuntimeAttestationProof(label: string, metricsPath: string, modeArg?: string): void {
+  const mode: TinyStagingRuntimeProofMode =
+    modeArg === 'RECOVERY_PRESTATE' ? 'RECOVERY_PRESTATE' : 'PRIMARY_STAGING';
+  let body: string;
+  try {
+    body = readFile(metricsPath);
+  } catch {
+    console.log(`REPLICA_${label}_RUNTIME_PROOF=FAIL`);
+    process.exit(1);
+  }
+  let proof;
+  try {
+    proof = proveReplicaRuntimeAttestation(body, mode);
+  } catch {
+    console.log(`REPLICA_${label}_RUNTIME_PROOF=FAIL`);
+    process.exit(1);
+  }
+  console.log(`RUNTIME_PROOF_MODE=${mode}`);
+  console.log(`RUNTIME_ATTESTATION_STATE=${proof.state}`);
+  console.log(`RUNTIME_ATTESTATION_FINGERPRINT=${proof.fingerprint}`);
+  console.log(`RECOVERY_EXPECTS_STAGED_VALUES=${mode === 'RECOVERY_PRESTATE' ? 'NO' : 'YES'}`);
+  console.log(`RECOVERY_EXPECTS_EXACT_PRESTATE=${mode === 'RECOVERY_PRESTATE' ? 'YES' : 'NO'}`);
+  if (mode === 'PRIMARY_STAGING') {
+    console.log(`REPLICA_${label}_RUNTIME_NOT_BEFORE_EXACT=${proof.notBeforeExact ? 'YES' : 'NO'}`);
+    console.log(`REPLICA_${label}_RUNTIME_ORG_ALLOWLIST_EXACT=${proof.orgAllowlistExact ? 'YES' : 'NO'}`);
+    console.log(`REPLICA_${label}_RUNTIME_VEHICLE_ALLOWLIST_EXACT=${proof.vehicleAllowlistExact ? 'YES' : 'NO'}`);
+  } else {
+    console.log(`REPLICA_${label}_RUNTIME_STAGING_KEYS_ABSENT=${proof.stagingKeysAbsent ? 'YES' : 'NO'}`);
+  }
+  console.log(`REPLICA_${label}_ALL_S4_ENABLE_FLAGS_OFF=${proof.allS4EnableFlagsOff ? 'YES' : 'NO'}`);
+  console.log('RUNTIME_PROOF_EXPOSES_FULL_ENV=NO');
+  console.log('FULL_PROCESS_ENV_LOGGED=NO');
+  console.log('RUNTIME_PROOF_KEY_ALLOWLIST_ONLY=');
+  console.log('ATTESTATION_RUNTIME_SOURCE=IN_PROCESS_PROCESS_ENV');
+  if (!proof.ok) {
+    process.exit(1);
+  }
+}
+
 function cmdProcEnvironProof(label: string, environPath: string, modeArg?: string): void {
   const mode: TinyStagingRuntimeProofMode =
     modeArg === 'RECOVERY_PRESTATE' ? 'RECOVERY_PRESTATE' : 'PRIMARY_STAGING';
@@ -347,6 +387,9 @@ function main(): void {
       break;
     case 'proc-environ-proof':
       cmdProcEnvironProof(args[0], args[1], args[2]);
+      break;
+    case 'runtime-attestation-proof':
+      cmdRuntimeAttestationProof(args[0], args[1], args[2]);
       break;
     case 'print-frozen':
       cmdPrintFrozenValues();

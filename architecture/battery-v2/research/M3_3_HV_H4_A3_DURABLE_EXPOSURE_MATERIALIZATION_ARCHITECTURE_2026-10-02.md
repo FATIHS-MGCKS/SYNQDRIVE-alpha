@@ -25,13 +25,14 @@ This document is **architecture authority only** — not implementation.
 | Item | Evidence | Value |
 |------|----------|-------|
 | Default retention window | `backend/src/config/battery-v2-retention.config.ts` → `days.hvChargeSessions` | **1095 days** (`RETENTION_HV_CHARGE_SESSIONS_DAYS`) |
-| Prune phase | `battery-v2-retention.service.ts` → `phasePruneHvChargeSessions` | `startAt < cutoff` |
+| Prune phase | `battery-v2-retention.service.ts` → `phasePruneHvChargeSessions` | `startAt < cutoff`; keyset scan `(startAt ASC, id ASC)` — cursor advances on **last fetched** row per page |
+| Scan invariant | A3.4 closure | **`BLOCKED_RETENTION_ROWS_DO_NOT_STARVE_LATER_CANDIDATES = YES`** — fail-closed rows are not re-scanned in the same run |
+| H4 durable ACK | `m3-3-hv-h4-a3-retention-gate.v1.ts` | Exact V1 revision + revision-scoped ACK; incompatible contract versions resolve as **no authorized current revision** (`BLOCKED_CURRENT_REVISION_MISSING`), not a separate prune path |
 | Master switch | `BATTERY_V2_RETENTION_ENABLED` | default **false** |
 | Destructive delete | `BATTERY_V2_RETENTION_DRY_RUN` | default **true** |
 | Prune guard | Same phase | Skip if `hvCapacityObservation.chargeSessionId` references session |
-| H4 durable ACK | Code search | **None** |
 
-**Conclusion:** Sessions **are prunable** when retention is enabled, dry-run off, and capacity-observation guard passes. **No** `DURABLE_H4_*` acknowledgement exists today.
+**Conclusion:** Sessions are prunable only when retention is enabled, dry-run off, capacity guard passes, **and** the A3.4 gate authorizes delete for the locked current row.
 
 ### 2.2 `phasePrepareAggregates` vs H4
 
@@ -519,8 +520,8 @@ Rebuild from: durable source revisions + GT-as-of + H4 composition contract.
 |-------|--------|
 | **A3.1** | **IMPLEMENTED (schema + pure contract + A3.1.2 mirror policy)** — evidence revision + ACK tables, fingerprint/mirror helpers, postgres schema tests |
 | **A3.2** | **IMPLEMENTED (writer, no automatic runtime)** — idempotent append-only revision + revision-scoped ACK writer; concurrency-safe verify; **flags OFF** |
-| **A3.3** | Loader equivalence (**MODE_A / A2_V1_PARITY**): durable revisions → existing A2 builder; fixture corpus §12 |
-| **A3.4** | Revision-scoped prune ACK + retention gate |
+| **A3.3** | **IMPLEMENTED** — MODE_A / A2_V1_PARITY durable loader; full postgres parity corpus (PR #1887) |
+| **A3.4** | **IMPLEMENTED** — revision-scoped retention ACK gate on `prune_hv_charge_sessions` (race-safe `FOR UPDATE` per row) |
 | **A3.5** | Reconciliation scheduler (leader-guarded, default OFF) |
 | **A3.6** | Optional derived lifecycle cache |
 
@@ -541,7 +542,7 @@ No FEC, degradation model, customer publication, automatic runtime, provider cal
 | **OQ-A3-1** | Effective source-session reconstruction + **full A2 5000-load / sourceTruncated parity** after revision collapse |
 | **OQ-A3-2** | Revision **ordering**, tie-break authority, and capture granularity vs `mergeHvChargeSessionUpdate` |
 | **OQ-A3-3** | **Prospective capture boundary** + **current-state-only backfill** before retention cutoff (no fabricated prior revisions) |
-| **OQ-A3-4** | `HvCapacityObservation` FK vs H4 revision-scoped ACK **prune ordering** |
+| **OQ-A3-4** | **RESOLVED (A3.4)** — `HvCapacityObservation` reference guard runs before destructive prune; exact current fingerprint revision + ACK is an additional mandatory gate (`evaluateCurrentHvChargeSessionPruneDurabilityV1` / `deleteHvChargeSessionIfDurablyAcknowledgedV1`) |
 | **OQ-A3-5** | **`sourceHvChargeSessionId` stability** across prune + re-ingestion vs durable A1 `id ASC` ordering authority |
 
 ---

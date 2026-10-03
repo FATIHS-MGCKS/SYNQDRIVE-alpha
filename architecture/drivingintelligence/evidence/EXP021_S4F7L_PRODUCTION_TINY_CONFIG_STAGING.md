@@ -63,7 +63,15 @@ After rolling restart **Replica A** (`synqdrive`), filtered `/proc` environ proo
 
 Wrapper entered `TX_STATE=RECOVERY_IN_PROGRESS`, restored exact pre-mutation `backend.env` bytes, and restarted **A → B** into prestate. **Replica B staging restart was not attempted** for the forward path.
 
-**Hypothesis (engineering, not re-validated in this task):** PM2/Nest process environ may not surface the three new `DI_V0_S4_*` keys via `/proc/<pid>/environ` immediately after `pm2 restart --update-env`, while file-level config audit passed. Requires separate engineering slice — **not** authorized to hotfix and re-run Production in S4F-7L.
+**Root-cause classification (repository-verified in S4F-7M):** Production uses `backend/.env` → shared `backend.env`, Nest `ConfigModule.forRoot` dotenv load, and PM2 supplies only `PORT`/`INSTANCE_ID`. `/proc/<pid>/environ` is therefore **not** authoritative for dotenv-loaded staging keys. S4F-7M adds in-process metrics attestation; **do not** infer whether Nest actually loaded staged values during S4F-7L.
+
+| Field | Value |
+|-------|--------|
+| `S4F7L_FILE_STAGING_SUCCEEDED_TRANSIENTLY` | YES |
+| `S4F7L_REPLICA_A_HEALTHY_AFTER_RESTART` | YES |
+| `S4F7L_PROC_ENV_ATTESTATION_FAILED` | YES |
+| `S4F7L_ACTUAL_NEST_RUNTIME_CONFIG_CONFIRMED` | UNKNOWN |
+| `S4F7L_ROLLBACK_COMPLETE` | YES |
 
 ## Recovery verification (PASS)
 

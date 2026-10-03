@@ -355,7 +355,7 @@ s4f7j_restart_replica_with_staging_proof() {
   if [[ "${DI_S4F7J_TEST_INJECT_RUNTIME_PROOF_B_FAIL:-0}" == "1" && "$label" == "B" && "${S4F7J_RESTART_PHASE:-primary}" == "primary" ]]; then
     return 1
   fi
-  s4f7j_prove_replica_staging_runtime "$label" "$name" || return 1
+  s4f7j_prove_replica_staging_runtime "$label" "$port" "$BACKEND_ENV" || return 1
   s4f7j_run_cli s4-safe "$BACKEND_ENV" || return 1
   return 0
 }
