@@ -246,13 +246,15 @@ async function createSession(
     it('O) concurrent reconcileLiveSessionRow converges', async () => {
       const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
       const session = await createSession(prisma, organizationId, vehicleId);
-      const results = await Promise.all([
+      const settled = await Promise.allSettled([
         service.reconcileLiveSessionRow(session.id),
         service.reconcileLiveSessionRow(session.id),
         service.reconcileLiveSessionRow(session.id),
       ]);
-      for (const r of results) {
-        expect(['CREATED', 'ALREADY_DURABLE']).toContain(r.classification);
+      for (const entry of settled) {
+        expect(entry.status).toBe('fulfilled');
+        const r = (entry as PromiseFulfilledResult<Awaited<ReturnType<typeof service.reconcileLiveSessionRow>>>).value;
+        expect(['CREATED', 'ALREADY_DURABLE', 'ACK_REPAIRED']).toContain(r.classification);
       }
       expect(
         await prisma.batteryHvChargeSessionEvidenceRevision.count({

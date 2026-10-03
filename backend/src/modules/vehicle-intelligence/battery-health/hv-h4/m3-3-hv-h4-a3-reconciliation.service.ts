@@ -1,5 +1,9 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
-import type { BatteryHvChargeSessionEvidenceAck, HvChargeSession, Prisma } from '@prisma/client';
+import {
+  Prisma,
+  type BatteryHvChargeSessionEvidenceAck,
+  type HvChargeSession,
+} from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import { buildM3_3HvH4ChargeSessionEvidenceScientificProjectionV1 } from './m3-3-hv-h4-a3-charge-session-evidence-projection.v1';
@@ -241,15 +245,10 @@ export class M3_3HvH4A3ReconciliationService {
     return outcome;
   }
 
-  async reconcileLiveSessionRow(sessionId: string): Promise<M3_3HvH4A3ReconciliationRowResultV1> {
+  private async reconcileLoadedSessionRowV1(
+    session: HvChargeSession,
+  ): Promise<M3_3HvH4A3ReconciliationRowResultV1> {
     const none: M3_3HvH4A3ReconciliationPersistenceEffectV1 = 'NONE';
-
-    const session = await this.prisma.hvChargeSession.findUnique({
-      where: { id: sessionId },
-    });
-    if (!session) {
-      return { classification: 'SOURCE_ALREADY_GONE', persistenceEffect: none };
-    }
 
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: session.vehicleId },
@@ -272,38 +271,73 @@ export class M3_3HvH4A3ReconciliationService {
         },
       });
 
+    const persistOutcome = await this.writer.persistFromHvChargeSession(session);
+    const persistenceEffect = derivePersistenceEffectFromWriterOutcomeV1(
+      persistOutcome,
+      exactCurrentAckBefore,
+    );
+
+    const after = await this.prisma.hvChargeSession.findUnique({
+      where: { id: session.id },
+    });
+    if (!after) {
+      return { classification: 'SOURCE_ALREADY_GONE', persistenceEffect };
+    }
+
+    const afterFp = currentSourceRevisionFingerprint(after);
+    if (afterFp !== persistOutcome.revision.sourceRevisionFingerprint) {
+      return {
+        classification: 'SOURCE_CHANGED_DURING_RECONCILIATION',
+        persistenceEffect,
+      };
+    }
+
+    if (persistOutcome.persistenceOutcome === 'CREATED') {
+      return { classification: 'CREATED', persistenceEffect };
+    }
+
+    if (persistenceEffect === 'ACK_REPAIRED') {
+      return { classification: 'ACK_REPAIRED', persistenceEffect };
+    }
+
+    return { classification: 'ALREADY_DURABLE', persistenceEffect: none };
+  }
+
+  async reconcileLiveSessionRow(sessionId: string): Promise<M3_3HvH4A3ReconciliationRowResultV1> {
+    const none: M3_3HvH4A3ReconciliationPersistenceEffectV1 = 'NONE';
+
+    const session = await this.prisma.hvChargeSession.findUnique({
+      where: { id: sessionId },
+    });
+    if (!session) {
+      return { classification: 'SOURCE_ALREADY_GONE', persistenceEffect: none };
+    }
+
     try {
-      const persistOutcome = await this.writer.persistFromHvChargeSession(session);
-      const persistenceEffect = derivePersistenceEffectFromWriterOutcomeV1(
-        persistOutcome,
-        exactCurrentAckBefore,
-      );
-
-      const after = await this.prisma.hvChargeSession.findUnique({
-        where: { id: sessionId },
-      });
-      if (!after) {
-        return { classification: 'SOURCE_ALREADY_GONE', persistenceEffect };
-      }
-
-      const afterFp = currentSourceRevisionFingerprint(after);
-      if (afterFp !== persistOutcome.revision.sourceRevisionFingerprint) {
-        return {
-          classification: 'SOURCE_CHANGED_DURING_RECONCILIATION',
-          persistenceEffect,
-        };
-      }
-
-      if (persistOutcome.persistenceOutcome === 'CREATED') {
-        return { classification: 'CREATED', persistenceEffect };
-      }
-
-      if (persistenceEffect === 'ACK_REPAIRED') {
-        return { classification: 'ACK_REPAIRED', persistenceEffect };
-      }
-
-      return { classification: 'ALREADY_DURABLE', persistenceEffect: none };
+      return await this.reconcileLoadedSessionRowV1(session);
     } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        const retrySession = await this.prisma.hvChargeSession.findUnique({
+          where: { id: sessionId },
+        });
+        if (!retrySession) {
+          return { classification: 'SOURCE_ALREADY_GONE', persistenceEffect: none };
+        }
+        try {
+          return await this.reconcileLoadedSessionRowV1(retrySession);
+        } catch (retryErr) {
+          if (isH4EvidenceIntegrityFailureV1(retryErr)) {
+            return { classification: 'BLOCKED_INTEGRITY', persistenceEffect: none };
+          }
+          this.logger.warn(
+            `hv_h4_a3_reconciliation_row_error sessionId=${sessionId} class=${retryErr instanceof Error ? retryErr.constructor.name : 'Unknown'}`,
+          );
+          return { classification: 'ERROR', persistenceEffect: none };
+        }
+      }
       if (isH4EvidenceIntegrityFailureV1(err)) {
         return { classification: 'BLOCKED_INTEGRITY', persistenceEffect: none };
       }

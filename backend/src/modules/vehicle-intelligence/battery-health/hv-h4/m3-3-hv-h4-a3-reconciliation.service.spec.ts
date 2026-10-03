@@ -85,20 +85,14 @@ describe('M3_3HvH4A3ReconciliationService', () => {
   });
 
   it('CURSOR_SAVE_FAILED when save returns false after work', async () => {
-    let calls = 0;
-    (prisma.hvChargeSession.findMany as jest.Mock).mockImplementation(async () => {
-      calls += 1;
-      if (calls === 1) {
-        return [
-          {
-            id: '30000000-0000-4000-8000-000000000003',
-            organizationId: '10000000-0000-4000-8000-000000000001',
-            vehicleId: '20000000-0000-4000-8000-000000000002',
-          },
-        ];
-      }
-      return [];
-    });
+    (getBatteryHvH4A3ReconciliationInspectionLimit as jest.Mock).mockReturnValue(1);
+    (prisma.hvChargeSession.findMany as jest.Mock).mockResolvedValue([
+      {
+        id: '30000000-0000-4000-8000-000000000003',
+        organizationId: '10000000-0000-4000-8000-000000000001',
+        vehicleId: '20000000-0000-4000-8000-000000000002',
+      },
+    ]);
     jest.spyOn(service, 'reconcileLiveSessionRow').mockResolvedValue(row('ALREADY_DURABLE'));
     (cursorStore.save as jest.Mock).mockResolvedValue(false);
     const outcome = await service.runBoundedReconciliationTick();
