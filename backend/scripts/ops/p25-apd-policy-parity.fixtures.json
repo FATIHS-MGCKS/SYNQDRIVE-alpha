@@ -1,0 +1,115 @@
+{
+  "version": "P25_APD_POLICY_PARITY_V1",
+  "cases": [
+    {
+      "id": "stable_inside_b2_1m",
+      "profile": "STABLE_PERIODIC",
+      "medianIntervalMs": 28800000,
+      "reconciliation": true,
+      "lastAllowedMs": 0,
+      "lastLvSourceMs": 1000000,
+      "nowMs": 29800000,
+      "b2": true,
+      "b4": true
+    },
+    {
+      "id": "stable_inside_b2_skip_30s",
+      "profile": "STABLE_PERIODIC",
+      "medianIntervalMs": 28800000,
+      "reconciliation": true,
+      "lastAllowedMs": 29770000,
+      "lastLvSourceMs": 1000000,
+      "nowMs": 29800000,
+      "b2": false,
+      "b4": true
+    },
+    {
+      "id": "stable_outside_b2_10m",
+      "profile": "STABLE_PERIODIC",
+      "medianIntervalMs": 28800000,
+      "reconciliation": true,
+      "lastAllowedMs": 0,
+      "lastLvSourceMs": 1000000,
+      "nowMs": 32000000,
+      "b2": true,
+      "b4": true
+    },
+    {
+      "id": "stable_outside_b2_skip_5m",
+      "profile": "STABLE_PERIODIC",
+      "medianIntervalMs": 28800000,
+      "reconciliation": true,
+      "lastAllowedMs": 31500000,
+      "lastLvSourceMs": 1000000,
+      "nowMs": 32000000,
+      "b2": false,
+      "b4": true
+    },
+    {
+      "id": "multimodal_b4_5m",
+      "profile": "MULTIMODAL",
+      "medianIntervalMs": 7200000,
+      "reconciliation": true,
+      "lastAllowedMs": 0,
+      "lastLvSourceMs": 5000000,
+      "nowMs": 5300000,
+      "b2": true,
+      "b4": true
+    },
+    {
+      "id": "insufficient_profile",
+      "profile": "INSUFFICIENT_EVIDENCE",
+      "medianIntervalMs": 0,
+      "reconciliation": true,
+      "lastAllowedMs": 0,
+      "lastLvSourceMs": 1000,
+      "nowMs": 2000000,
+      "b2": true,
+      "b4": true
+    },
+    {
+      "id": "provider_gap",
+      "profile": "PROVIDER_OBSERVABILITY_GAP",
+      "medianIntervalMs": 0,
+      "reconciliation": true,
+      "lastAllowedMs": 0,
+      "lastLvSourceMs": 1000,
+      "nowMs": 2000000,
+      "b2": true,
+      "b4": true
+    },
+    {
+      "id": "missing_lv_source",
+      "profile": "STABLE_PERIODIC",
+      "medianIntervalMs": 28800000,
+      "reconciliation": true,
+      "lastAllowedMs": 0,
+      "lastLvSourceMs": null,
+      "nowMs": 1000,
+      "b2": false,
+      "b4": false
+    },
+    {
+      "id": "active_trip_bypass",
+      "profile": "STABLE_PERIODIC",
+      "medianIntervalMs": 28800000,
+      "reconciliation": false,
+      "lastAllowedMs": 0,
+      "lastLvSourceMs": null,
+      "nowMs": 1000,
+      "b2": true,
+      "b4": true
+    },
+    {
+      "id": "b4_stable_outside_5m_allow",
+      "profile": "STABLE_PERIODIC",
+      "medianIntervalMs": 28800000,
+      "reconciliation": true,
+      "lastAllowedMs": 31000000,
+      "lastLvSourceMs": 1000000,
+      "nowMs": 32000000,
+      "b2": true,
+      "b4": true
+    }
+  ]
+}

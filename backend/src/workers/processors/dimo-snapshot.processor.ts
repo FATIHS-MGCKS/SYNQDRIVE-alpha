@@ -38,6 +38,7 @@ import {
 } from '../../modules/dimo/device-connection-episode.service';
 import { DeviceConnectionEpisodeResolutionOutboxProcessorService } from '../../modules/dimo/device-connection-episode-resolution/device-connection-episode-resolution-outbox-processor.service';
 import { SnapshotWakeCoordinatorService } from '../snapshot-wake/snapshot-wake-coordinator.service';
+import { AdaptivePollingShadowService } from '../schedulers/snapshot-polling/adaptive-polling-shadow/adaptive-polling-shadow.service';
 import type { DimoSnapshotJobData } from '../snapshot-wake/snapshot-wake.types';
 import { TripDetectionState } from '@prisma/client';
 
@@ -83,6 +84,8 @@ export class DimoSnapshotProcessor extends WorkerHost {
     private readonly snapshotPhysicalEvidenceOrchestrator?: PhysicalStateSnapshotEvidenceOrchestrator,
     @Optional()
     private readonly physicalAuthorityCutover?: PhysicalStateAuthorityCutoverService,
+    @Optional()
+    private readonly apdShadow?: AdaptivePollingShadowService,
   ) {
     super();
   }
@@ -158,6 +161,17 @@ export class DimoSnapshotProcessor extends WorkerHost {
       return;
     }
 
+    const previousLv = await this.prisma.batteryMeasurement.findFirst({
+      where: {
+        vehicleId,
+        type: 'LIVE_VOLTAGE',
+        quality: 'VALID',
+        providerTimestamp: { not: null },
+      },
+      orderBy: { providerTimestamp: 'desc' },
+      select: { providerTimestamp: true },
+    });
+
     try {
       await this.runSnapshotPipeline(
         job,
@@ -166,6 +180,30 @@ export class DimoSnapshotProcessor extends WorkerHost {
         startedAt,
         afterCtx,
       );
+
+      if (this.apdShadow && jobDataWithWake.apdShadowOpportunityId) {
+        const latestLv = await this.prisma.batteryMeasurement.findFirst({
+          where: {
+            vehicleId,
+            type: 'LIVE_VOLTAGE',
+            quality: 'VALID',
+            providerTimestamp: { not: null },
+          },
+          orderBy: { providerTimestamp: 'desc' },
+          select: { providerTimestamp: true },
+        });
+        await this.apdShadow.observePostPoll({
+          organizationId: vehicle.organizationId,
+          vehicleId,
+          opportunityId: jobDataWithWake.apdShadowOpportunityId,
+          pollCompletedAtMs: Date.now(),
+          previousLvSourceMs: previousLv?.providerTimestamp?.getTime() ?? null,
+          newLvSourceMs: latestLv?.providerTimestamp?.getTime() ?? null,
+          previousTopLevelSourceMs: null,
+          newTopLevelSourceMs: afterCtx.snapshotSourceTimestamp?.getTime() ?? null,
+          providerFetchedAtMs: null,
+        });
+      }
     } catch (err) {
       afterCtx.providerFetchFailed = true;
       if (afterCtx.fsmState == null) {
