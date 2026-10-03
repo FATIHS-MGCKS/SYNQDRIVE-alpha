@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'p25-standby-lv-cadence-addendum-2026-10-02',
+    version: '4.9.2222',
+    title: 'P2.5 addendum — LTE_R1 standby battery-voltage device cadence (APD input)',
+    summary: [
+      'User-confirmed ~8 h standby LV upload cadence recorded as first-class adaptive-polling design input.',
+      'Production read-only audit: lowVoltageBatteryCurrentVoltage provider_timestamp gaps on R9 ICE cohort (multimodal; KS MX/KS MS medians ~8 h).',
+      'API poll cadence ≠ device source cadence; R9 trip wake path remains independent of battery reconciliation.',
+    ],
+    reason:
+      'T7 ANY_SOURCE P95 ~8.43 h is plausible but not proven as LV-specific; separate TRIP_START_WATCHDOG from BATTERY_DATA_RECONCILIATION.',
+    previousBehavior:
+      'Adaptive polling design risked conflating providerFetchedAt with device/source battery cadence.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/P25_STANDBY_BATTERY_VOLTAGE_CADENCE_ADDENDUM_2026-10-02.md; backend/scripts/ops/p25-standby-lv-cadence-audit-readonly.*',
+    affectsArchitecture: true,
+    module: 'Vehicle Device Connectivity',
+    createdAt: '2026-10-02T23:58:00.000Z',
+  },
+  {
     id: 'p25-r9o-1-2-wake-forensic-foundation-2026-10-02',
     version: '4.9.2221',
     title: 'P2.5 R9O-1/R9O-2 — wake correlation + durable forensic foundation',
