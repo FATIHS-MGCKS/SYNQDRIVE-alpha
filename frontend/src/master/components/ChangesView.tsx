@@ -36,6 +36,150 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'p25-apd-ps3-shadow-gate-2026-10-03',
+    version: '4.9.2228',
+    title: 'P2.5 APD-PS3 — Production shadow policy gate (design)',
+    summary: [
+      'Frozen P25_APD_B2_V1 / P25_APD_B4_V1 contracts mirrored from PS1/PS2 replay core.',
+      'Dual shadow design: observe-only WOULD_POLL/SKIP; no enqueue/suppress/reschedule.',
+      'APDS-1 additive policy module + tests; runtime hook APDS-3..9 flag-OFF pending.',
+    ],
+    reason: 'Gate adaptive polling activation behind production shadow validation (T+24/72/7).',
+    previousBehavior: 'No online shadow evaluator; offline replay only.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/P25_APD_PS3_SHADOW_GATE_2026-10-03.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Device Connectivity',
+    createdAt: '2026-10-03T02:20:00.000Z',
+  },
+  {
+    id: 'p25-apd-ps2b-split-certification-2026-10-03',
+    version: '4.9.2227',
+    title: 'P2.5 APD-PS2B — M3.3 vs legacy REST split certification',
+    summary: [
+      'Read-only T7 replay: B2/B4 M3.3 primary certified (0 semantic Δ, 0 LV miss, source-time ladder intact).',
+      'Legacy REST_60M target flips on WOB remain opportunistic — changed non-customer only.',
+      'Split gates decouple adaptive polling safety from REST_60M compatibility artifacts.',
+    ],
+    reason: 'Formalize PS2A authority split into independent certification surfaces before APD activation.',
+    previousBehavior: 'Single PS2 gate mixed legacy REST_60M target misses with M3.3 primary semantics.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/P25_APD_PS2B_SPLIT_CERTIFICATION_2026-10-03.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Device Connectivity',
+    createdAt: '2026-10-03T02:05:00.000Z',
+  },
+  {
+    id: 'p25-apd-ps2a-rest-authority-2026-10-03',
+    version: '4.9.2226',
+    title: 'P2.5 APD-PS2A — Battery REST authority reconciliation',
+    summary: [
+      'Production: M3.3 generalized + C3/D3 active; M3.1 REST onSnapshot capture off (shadow+publication).',
+      'REST_60M/6H remain opportunistic canonical target jobs — not C3/D3 inputs.',
+      'PS2 B2/B4 flips = WOB legacy REST_60M target picker only; M3.3 primary impact count = 0.',
+    ],
+    reason: 'Re-scope PS2 certification blockers before adaptive polling policy selection.',
+    previousBehavior: 'PS2 treated REST_60M target drift as primary Battery V2 semantic failure.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/P25_APD_PS2A_REST_AUTHORITY_RECONCILIATION_2026-10-03.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Device Connectivity',
+    createdAt: '2026-10-03T02:35:00.000Z',
+  },
+  {
+    id: 'p25-apd-ps2-certification-2026-10-03',
+    version: '4.9.2225',
+    title: 'P2.5 APD-PS2 — per-poll trace + Battery V2 certification (read-only)',
+    summary: [
+      'T7 causal PG+CH per-poll trace (WINDOWS A/B/C) — PER_POLL_TRACE_COMPLETE=YES with 7d CH lookback.',
+      'B0/B2/B4 replay: zero LV misses; B2/B4 **not certified** — REST_60M window membership + boundary changes under poll-discovery model.',
+      'SOURCE_TIME_FABRICATION=0; trip/R9 invariants preserved; no polling activation.',
+    ],
+    reason: 'APD certification gate requires full trace + consumer semantic replay before policy selection.',
+    previousBehavior: 'APD-PS1 used 15m proxy only; per-poll WINDOW certification incomplete.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/P25_APD_PS2_CERTIFICATION_2026-10-03.md; backend/scripts/ops/p25-apd-ps2-offline-certification.mjs',
+    affectsArchitecture: true,
+    module: 'Vehicle Device Connectivity',
+    createdAt: '2026-10-03T02:05:00.000Z',
+  },
+  {
+    id: 'p25-apd-ps1-offline-replay-2026-10-03',
+    version: '4.9.2224',
+    title: 'P2.5 APD-PS1 — offline battery reconciliation replay (read-only)',
+    summary: [
+      'T7 Production replay of reconciliation SNAPSHOT polls vs strict-rest LV advances; policies B0–B7 simulated with per-vehicle profiles.',
+      'Zero LV misses fleet-wide; best eligible ~63% recon call reduction (B2) at ~9.45m additional discovery P95 vs control; early event-driven LV (32) never missed.',
+      'Battery V2 safety via 15m additional-delay semantic proxy; trip/R9 paths unchanged in simulation; no polling activation.',
+    ],
+    reason:
+      'APD parameter selection gate (LTE_R1) requires certified offline replay before any production reconciliation policy.',
+    previousBehavior:
+      'DSC-2 cadence closure without per-poll policy counterfactual or Pareto eligibility bounds.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/P25_APD_PS1_OFFLINE_REPLAY_2026-10-03.md; backend/scripts/ops/p25-apd-ps1-offline-replay.mjs',
+    affectsArchitecture: true,
+    module: 'Vehicle Device Connectivity',
+    createdAt: '2026-10-03T01:10:00.000Z',
+  },
+  {
+    id: 'p25-dsc2-device-source-cadence-closure-2026-10-03',
+    version: '4.9.2223',
+    title: 'P2.5 DSC-2 — device source cadence closure (read-only)',
+    summary: [
+      'Production T7 7d per-source standby cadence: LV (PG), TOP_LEVEL/IGNITION (CH), OBD proxy (PG physical-state).',
+      'T7 ~8.43h P95 ANY_SOURCE reconstructs to TOP_LEVEL_SOURCE P95 ≈ 28.9ks (~8.03h), not LV fleet P95 (~15h).',
+      'Battery V2 dependency matrix + phase-aware battery reconciliation fail-safes; no polling/Battery V2 runtime change.',
+    ],
+    reason:
+      'Close DSC-2 evidence gaps before APD parameter selection; preserve R9 trip wake independence.',
+    previousBehavior:
+      'CH per-source standby cadence and T7 P95 attribution incomplete; Battery V2 decoupling risk unbounded.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/P25_DSC2_DEVICE_SOURCE_CADENCE_CLOSURE_2026-10-03.md; backend/scripts/ops/p25-dsc2-source-cadence-closure-readonly.sh',
+    affectsArchitecture: true,
+    module: 'Vehicle Device Connectivity',
+    createdAt: '2026-10-03T00:15:00.000Z',
+  },
+  {
+    id: 'p25-standby-lv-cadence-addendum-2026-10-02',
+    version: '4.9.2222',
+    title: 'P2.5 addendum — LTE_R1 standby battery-voltage device cadence (APD input)',
+    summary: [
+      'User-confirmed ~8 h standby LV upload cadence recorded as first-class adaptive-polling design input.',
+      'Production read-only audit: lowVoltageBatteryCurrentVoltage provider_timestamp gaps on R9 ICE cohort (multimodal; KS MX/KS MS medians ~8 h).',
+      'API poll cadence ≠ device source cadence; R9 trip wake path remains independent of battery reconciliation.',
+    ],
+    reason:
+      'T7 ANY_SOURCE P95 ~8.43 h is plausible but not proven as LV-specific; separate TRIP_START_WATCHDOG from BATTERY_DATA_RECONCILIATION.',
+    previousBehavior:
+      'Adaptive polling design risked conflating providerFetchedAt with device/source battery cadence.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/P25_STANDBY_BATTERY_VOLTAGE_CADENCE_ADDENDUM_2026-10-02.md; backend/scripts/ops/p25-standby-lv-cadence-audit-readonly.*',
+    affectsArchitecture: true,
+    module: 'Vehicle Device Connectivity',
+    createdAt: '2026-10-02T23:58:00.000Z',
+  },
+  {
+    id: 'p25-r9o-1-2-wake-forensic-foundation-2026-10-02',
+    version: '4.9.2221',
+    title: 'P2.5 R9O-1/R9O-2 — wake correlation + durable forensic foundation',
+    summary: [
+      'Canonical R9_WAKE_CORRELATION_V1 contract and deterministic wakeCorrelationId (forensic lineage only; snapshot job id unchanged).',
+      'Additive PostgreSQL r9_provider_wake_forensics + repository with tenant-safe upsert and fail-open runR9WakeForensicSafely.',
+      'Distinct providerObservedAt / receivedAt / providerFetchedAt / snapshotSourceTimestamp columns — no polling, tier, or Trip FSM behavior change.',
+    ],
+    reason:
+      'APD-1R-B design: close durable wake-context loss (Redis/BullMQ/Prometheus) without altering R9 wake semantics; R9O-3+ will attach instrumentation.',
+    previousBehavior:
+      'R9 wake outcomes ephemeral in Redis mailboxes and metrics; no cross-replica durable wake lineage.',
+    details:
+      'backend/src/workers/snapshot-wake/r9-*.ts; prisma migration 20261002183000_r9_provider_wake_forensic_foundation; architecture/trip-detection-lifecycle/evidence/R9O_1_2_WAKE_FORENSIC_FOUNDATION_2026-10-02.md',
+    affectsArchitecture: true,
+    module: 'Trip Detection & Lifecycle',
+    createdAt: '2026-10-02T23:45:00.000Z',
+  },
+  {
     id: 'vehicle-onboarding-vo5a1-integrity-seal-2026-10-01',
     version: '4.9.2220',
     title: 'Vehicle Onboarding VO-5A.1 — offboarding integrity seal',

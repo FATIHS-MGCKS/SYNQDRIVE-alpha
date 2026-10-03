@@ -150,6 +150,8 @@ R1–R8 merged through #1549 on `origin/main`. R9 merged via #1553 @ `4bef60463�
 | Nest wiring | `backend/src/workers/snapshot-wake/snapshot-wake.module.ts` |
 | Handoff processor | `backend/src/workers/processors/snapshot-wake-handoff.processor.ts` |
 | Redis scripts | `backend/src/workers/snapshot-wake/snapshot-wake-redis.scripts.ts` |
+| R9 forensic contract (R9O-1) | `backend/src/workers/snapshot-wake/r9-wake-correlation.util.ts`, `r9-provider-wake-correlation.types.ts` — `wakeCorrelationId` lineage only; **not** `snapshot-{vehicleId}` |
+| R9 forensic persistence (R9O-2) | `R9ProviderWakeForensicRepository`, table `r9_provider_wake_forensics` — fail-open via `runR9WakeForensicSafely`; **not** required for wake path (instrumentation R9O-3+) |
 | DIMO webhook wiring | `backend/src/modules/dimo/dimo-webhook.controller.ts` (delegates eligible wakes to intake; provider gateway owned by [DIMO Integration](../dimo-integration/)) |
 
 **R9 architecture (confirmed on main @ `4bef60463…`; historical Production deploy @ `0ba96e03…` — superseded):**
