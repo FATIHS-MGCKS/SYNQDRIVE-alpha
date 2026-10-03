@@ -3148,6 +3148,7 @@ model Vehicle {
   @@index([expectedStationId])
   @@index([status])
   @@index([registryLifecycle])
+  @@unique([organizationId, id])
   @@map("vehicles")
 }
 
@@ -4452,7 +4453,7 @@ model ApdShadowReconciliationDecision {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [organizationId, vehicleId], references: [organizationId, id], onDelete: Cascade)
 
   @@unique([organizationId, vehicleId, opportunityId, policyVersion])
   @@index([vehicleId, decisionAt])

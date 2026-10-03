@@ -5,7 +5,7 @@
 | **Evidence ID** | VDC-EVID-P25-APDS-2-7-001 |
 | **Branch** | `cursor/apds-shadow-observability-dafe` (from `origin/main`) |
 | **Flag** | `WORKER_APD_SHADOW_ENABLED=false` (default) |
-| **Production deploy** | **NO** |
+| **Production deploy** | APDS-8 flag-OFF only after gate pass |
 
 ## PR #1893 scope hygiene (read-only inventory)
 
@@ -46,6 +46,14 @@
 
 `opportunityId = sha256(org|vehicle|decisionAtMs|origin)`
 
+## APDS-7.1 Postgres closure
+
+- Integration: `adaptive-polling-shadow.postgres.integration.spec.ts` (12 scenarios)
+- CI gate: `backend/scripts/test/p25-apd-shadow-postgres-ci.sh`
+- Migration gate: `backend/scripts/test/p25-apd-shadow-migration-ephemeral.sh`
+- Unique index: `apd_shadow_reconciliation_decisions_org_vehicle_opportunity_policy_key` on `(organization_id, vehicle_id, opportunity_id, policy_version)`
+- Tenant safety: composite FK `(organization_id, vehicle_id) → vehicles(organization_id, id)` via `vehicles_organization_id_id_key`
+
 ## Engineering result block
 
-See `P25_APDS_2_7_ENGINEERING_RESULT` in agent completion output.
+See `P25_APDS_2_7_ENGINEERING_RESULT` and `P25_APDS_8_FLAG_OFF_DEPLOY_RESULT` in agent completion output.

@@ -45,4 +45,6 @@ CREATE INDEX "apd_shadow_reconciliation_decisions_organization_id_decision_at_id
 
 ALTER TABLE "apd_shadow_reconciliation_decisions" ADD CONSTRAINT "apd_shadow_reconciliation_decisions_organization_id_fkey" FOREIGN KEY ("organization_id") REFERENCES "organizations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
-ALTER TABLE "apd_shadow_reconciliation_decisions" ADD CONSTRAINT "apd_shadow_reconciliation_decisions_vehicle_id_fkey" FOREIGN KEY ("vehicle_id") REFERENCES "vehicles"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+CREATE UNIQUE INDEX "vehicles_organization_id_id_key" ON "vehicles"("organization_id", "id");
+
+ALTER TABLE "apd_shadow_reconciliation_decisions" ADD CONSTRAINT "apd_shadow_reconciliation_decisions_organization_id_vehicle_id_fkey" FOREIGN KEY ("organization_id", "vehicle_id") REFERENCES "vehicles"("organization_id", "id") ON DELETE CASCADE ON UPDATE CASCADE;
