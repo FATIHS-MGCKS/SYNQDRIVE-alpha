@@ -57,6 +57,22 @@ Before any future Production mutation activating scoped runtime persistence:
 
 `FUTURE_PRODUCTION_MUTATION_WITHOUT_VERIFIED_PREWRITE_BACKUP_ALLOWED=NO` — verified **pre-write** pg_dump with Prisma-stripped URI (see EED-EV-0095 operational deviation).
 
+## Production exact-SHA deploy (empty scope)
+
+| Field | Value |
+|-------|--------|
+| Deploy time (UTC) | 2026-09-27 ~19:21–19:32 |
+| Release ID | `20260927192148_v4994` |
+| Source SHA | `7d3b7ed9de3f8025a9332caf3448dc8dd3ae74b9` (not `main` tip) |
+| Prior live SHA | `9322a5d6b6d10240f9af8491cc0106ad8c7ea98d` |
+| DB backup (pre) | `/opt/synqdrive/shared/backups/db-pre-erd-e5-4d-exact-20260927192108.sql.gz` (+ deploy script backup) |
+| Env backup (pre) | `/opt/synqdrive/shared/backups/backend-env-pre-erd-e5-4d-20260927192104.env` |
+| `prisma migrate deploy` | **No pending migrations** |
+| Env mutation | **None** (`ENV_CONTENT_CHANGED=NO`) |
+| Shadow rows pre/post | 12 / 12 |
+| Scoped allowlist | unset; resolver `DISABLED` for known canary pair |
+| Rollback | **Not executed** |
+
 ## Next stage
 
-Merge → deploy → preflight → optional Production scoped allowlist activation (separate authorized ops).
+Production activation preflight → optional scoped allowlist (separate authorization; not performed in deploy).
