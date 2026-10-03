@@ -54,8 +54,9 @@ if [[ "$compare_drift_exit" -ne 1 ]]; then
   exit 1
 fi
 
-BASE_SHA="${GRAPH_IDENTITY_BASE_SHA:-813f4b91ae37695f93b431805bc9537a7d88f43f}"
-HEAD_SHA="${GRAPH_IDENTITY_HEAD_SHA:-4ec99f2253082488b74cae939c61783c4c372303}"
+# Default: lockfile-identical pair (APDS PR #1899 replay); override via env in CI if needed.
+BASE_SHA="${GRAPH_IDENTITY_BASE_SHA:-1e540183072b98c4f0e6249ed864b0054fe209ef}"
+HEAD_SHA="${GRAPH_IDENTITY_HEAD_SHA:-74eaa46342d4bf691cf5bc1fd7f2aaf6f64345ea}"
 
 git -C "$ROOT" cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null || BASE_SHA=""
 git -C "$ROOT" cat-file -e "${HEAD_SHA}^{commit}" 2>/dev/null || HEAD_SHA=""
