@@ -1433,6 +1433,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | **`PRODUCTION_TINY_STAGING_DRY_RUN_READINESS=PASS`** on tool SHA `947a70540…`; frozen merge `040170104…` **`VEHICLE_DB_PROOF=FAIL`** (`::uuid` on text ids); **`GUARDS_OK=YES`**; intended **3** env keys; **`ENV_MUTATION_COUNT=0`**; post `backend.env` SHA256 unchanged; replica PIDs unchanged |
 | NON_EFFECTS | No Production env/DB/restart/deploy/migration/provider call; **`TINY_ACTIVATION_READY=NO`** |
 
+### EXP-021 S4F-7O Minimal attestation release candidate seal (2026-10-03)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Branch `release/exp021-s4f7o-minimal-attestation-rc1` @ **`9d286e58ac7a4b5b6900b48c64b92fdb21afa6f4`** (parent `ee958854…` + 4 S4F-7M runtime files from `c29179366…`); evidence `EXP021_S4F7O_MINIMAL_ATTESTATION_RELEASE_CANDIDATE_SEAL.md` |
+| FINDING | **4-file seal**; build + attestation integration + S4A/S4F PASS on candidate; **no Production action** |
+| NON_EFFECTS | RC not merged to main; deploy requires **new human authorization** |
+
 ### EXP-021 S4F-7N Production attestation deploy isolation audit (2026-10-03)
 
 | Event | Detail |
