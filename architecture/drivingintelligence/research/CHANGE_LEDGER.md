@@ -1449,6 +1449,22 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | **4-file seal**; build + attestation integration + S4A/S4F PASS on candidate; **no Production action** |
 | NON_EFFECTS | RC not merged to main; deploy requires **new human authorization** |
 
+### EXP-021 S4F-7P exact-RC deploy preflight + S4F-7Q readiness correction (2026-10-03)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Evidence PR **#1898** `EXP021_S4F7P_EXACT_RC_PRODUCTION_DEPLOY_PREFLIGHT.md`; S4F-7Q corrects §9 readiness (no technical A→PRESTATE gate in `vps_replica_rolling_deploy`) |
+| FINDING | **`REPLICA_A_ATTESTATION_GATE_BEFORE_B=NO`**; **`DEPLOY_WRAPPER_REMEDIATION_REQUIRED=YES`**; **`EXACT_RC_PRODUCTION_DEPLOY_PREFLIGHT_READY=NO`** |
+| NON_EFFECTS | No Production deploy |
+
+### EXP-021 S4F-7Q exact-RC deploy guard + migration rehearsal (2026-10-03)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Opt-in `SYNQDRIVE_DI_S4F7Q_EXACT_RC_ATTESTATION_GATE`; `di-v0-s4f7q-*` lib/CLI/bash; disposable VPS migration rehearsal; evidence `EXP021_S4F7Q_EXACT_RC_DEPLOY_GUARD_ENGINEERING.md` |
+| FINDING | **`DISPOSABLE_MIGRATE_DEPLOY=PASS`** (0 applied); **`EXACT_RC_MIGRATION_DEPLOY_COMPATIBLE_WITH_CURRENT_DB_AHEAD_BASELINE=YES`**; **26** guard tests |
+| NON_EFFECTS | RC commit unchanged; no Production mutation |
+
 ### EXP-021 S4F-7N Production attestation deploy isolation audit (2026-10-03)
 
 | Event | Detail |
