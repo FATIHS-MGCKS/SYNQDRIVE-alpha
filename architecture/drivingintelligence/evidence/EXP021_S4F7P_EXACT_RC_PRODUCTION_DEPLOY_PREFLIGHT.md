@@ -112,9 +112,16 @@ Expected before RC deploy (runtime still `ee958854…` without S4F-7M).
 
 Rolling restart: `vps_replica_rolling_deploy` — **A** restart → A health/readiness/SHA → **B** restart → B health/readiness/SHA → post-deploy convergence.
 
-**Future attestation:** PRESTATE proof on A before B is an **operator read-only metrics step** (not yet embedded in `vps-deploy-release.sh`). Rolling deploy already **gates B on A health/SHA** (`REPLICA_A_ATTESTATION_GATE_BEFORE_B=YES` as policy; attestation scrape is additive verification).
+**S4F-7Q correction (readiness only):** Inspecting `vps_replica_rolling_deploy()` shows **no** authenticated DI-S4 PRESTATE metrics gate between A and B — only health/readiness/SHA. Policy intent ≠ technical enforcement.
 
-`DEPLOY_WRAPPER_REMEDIATION_REQUIRED=NO` for SHA-pinned deploy path.
+| Field | Value |
+|-------|--------|
+| `REPLICA_A_ATTESTATION_GATE_BEFORE_B` | **NO** (technical) |
+| `DEPLOY_WRAPPER_REMEDIATION_REQUIRED` | **YES** |
+| `EXACT_RC_PRODUCTION_DEPLOY_PREFLIGHT_READY` | **NO** |
+| `FINAL_RESULT` | **BLOCKED_PENDING_DEPLOY_GUARD_AND_MIGRATION_COMPATIBILITY_PROOF** |
+
+PRESTATE attestation on A before B remains a **future executable gate** (S4F-7Q engineering on `main`, not this RC).
 
 ## 10 — Future deploy target
 
