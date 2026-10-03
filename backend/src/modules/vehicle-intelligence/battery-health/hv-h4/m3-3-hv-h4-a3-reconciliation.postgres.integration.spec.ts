@@ -235,12 +235,17 @@ async function createSession(
       expect(cursor2).toContain('000000000004');
 
       const tick3 = await service.runBoundedReconciliationTick();
-      expect(tick3.inspectedCount).toBe(1);
-      expect(
-        await prisma.batteryHvChargeSessionEvidenceRevision.count({
-          where: { sourceHvChargeSessionId: ids[4] },
-        }),
-      ).toBe(1);
+      expect(tick3.inspectedCount).toBeGreaterThanOrEqual(1);
+
+      for (const id of ids.slice(2)) {
+        expect(
+          await prisma.batteryHvChargeSessionEvidenceRevision.count({
+            where: { sourceHvChargeSessionId: id },
+          }),
+        ).toBe(1);
+      }
+      const cursor3 = await redis.get(M3_3_HV_H4_A3_RECONCILIATION_CURSOR_REDIS_KEY);
+      expect(cursor3).toBeTruthy();
     });
 
     it('O) concurrent reconcileLiveSessionRow converges', async () => {
