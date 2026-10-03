@@ -1433,6 +1433,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | **`PRODUCTION_TINY_STAGING_DRY_RUN_READINESS=PASS`** on tool SHA `947a70540…`; frozen merge `040170104…` **`VEHICLE_DB_PROOF=FAIL`** (`::uuid` on text ids); **`GUARDS_OK=YES`**; intended **3** env keys; **`ENV_MUTATION_COUNT=0`**; post `backend.env` SHA256 unchanged; replica PIDs unchanged |
 | NON_EFFECTS | No Production env/DB/restart/deploy/migration/provider call; **`TINY_ACTIVATION_READY=NO`** |
 
+### EXP-021 S4F-7N Production attestation deploy isolation audit (2026-10-03)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Read-only Production prestate reverify @ `ee958854…` / `20261002014651_v4994`; 16-commit / 114-file delta to main `c29179366…`; migration + unrelated runtime inventory; minimal 4-file S4F-7M worktree build proof; evidence `EXP021_S4F7N_PRODUCTION_ATTESTATION_DEPLOY_ISOLATION_AUDIT.md` |
+| FINDING | **`CURRENT_MAIN_STRATEGY_ATTESTATION_ONLY=NO`**; **`RECOMMENDED_DEPLOY_STRATEGY=MINIMAL_ATTESTATION_RELEASE`**; canonical deploy runs **`prisma migrate deploy`** |
+| NON_EFFECTS | No Production mutation/deploy; no new staging authorization |
+
 ### EXP-021 S4F-7M in-process S4 runtime config attestation (2026-10-02)
 
 | Event | Detail |
