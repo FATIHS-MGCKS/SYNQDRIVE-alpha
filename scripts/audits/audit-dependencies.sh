@@ -3,6 +3,9 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 COMPARE_SCRIPT="$ROOT/scripts/audits/compare-dependency-audit-baseline.js"
+GRAPH_IDENTITY_SCRIPT="$ROOT/scripts/audits/dependency-lock-graph-identity.sh"
+# shellcheck source=dependency-lock-graph-identity.sh
+source "$GRAPH_IDENTITY_SCRIPT"
 
 is_zero_or_empty_sha() {
   local sha="${1:-}"
@@ -112,6 +115,32 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   trap 'rm -rf "$TMP"' EXIT
 
   git -C "$ROOT" archive "${AUDIT_BASE_SHA}" backend frontend | tar -x -C "$TMP"
+  mkdir -p "$TMP/head-archive"
+  git -C "$ROOT" archive "${PR_HEAD_SHA}" backend frontend | tar -x -C "$TMP/head-archive"
+
+  emit_dependency_graph_identity \
+    "$TMP/backend/package-lock.json" \
+    "$TMP/head-archive/backend/package-lock.json" \
+    "$TMP/frontend/package-lock.json" \
+    "$TMP/head-archive/frontend/package-lock.json" || exit 2
+
+  if [[ "${DEPENDENCY_GRAPH_CHANGED:-}" == NO ]]; then
+    echo "Dependency graph unchanged (lockfile identity); skipping baseline regression comparator."
+    if [[ "${AUDIT_DEPENDENCIES_TEST_HARNESS:-}" != "1" ]]; then
+      echo "Installing HEAD dependency trees..."
+      run_surface_npm_ci "$ROOT/backend"
+      run_surface_npm_ci "$ROOT/frontend"
+      run_surface_audit_json "$ROOT/backend" "$TMP/head-backend-audit.json"
+      run_surface_audit_json "$ROOT/frontend" "$TMP/head-frontend-audit.json"
+      run_surface_audit_human "HEAD backend" "$ROOT/backend"
+      run_surface_audit_human "HEAD frontend" "$ROOT/frontend"
+    else
+      echo "AUDIT_DEPENDENCIES_TEST_HARNESS=1: HEAD npm audit skipped (graph identity short-circuit test only)."
+    fi
+    echo "SECURITY_REGRESSION=false"
+    echo "Dependency baseline regression gate passed (unchanged dependency graph)."
+    exit 0
+  fi
 
   echo "Installing immutable baseline dependency trees..."
   run_surface_npm_ci "$TMP/backend"
