@@ -1465,6 +1465,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | **`DISPOSABLE_MIGRATE_DEPLOY=PASS`** (0 applied); **`EXACT_RC_MIGRATION_DEPLOY_COMPATIBLE_WITH_CURRENT_DB_AHEAD_BASELINE=YES`**; **26** guard tests |
 | NON_EFFECTS | RC commit unchanged; no Production mutation |
 
+### EXP-021 S4F-7R immutable deploy controller authority bridge (2026-10-03)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `SYNQDRIVE_DEPLOY_CONTROLLER_ROOT` + `EXPECTED_DEPLOY_CONTROLLER_SHA`; guarded deploy sources replica/S4F-7Q from controller checkout; rollback disables forward gate; branch `release/exp021-s4f7r-deploy-controller-rc1`; evidence `EXP021_S4F7R_IMMUTABLE_DEPLOY_CONTROLLER_AUTHORITY_BRIDGE.md` |
+| FINDING | Post-merge integration defect confirmed: RC deploy could not reach S4F-7Q tooling; **13** controller tests + S4F-7Q regression |
+| NON_EFFECTS | Runtime RC `9d286e58…` unchanged; Production still blocked pending controller seal |
+
 ### EXP-021 S4F-7N Production attestation deploy isolation audit (2026-10-03)
 
 | Event | Detail |
