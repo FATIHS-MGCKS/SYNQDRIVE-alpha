@@ -27,7 +27,7 @@ S4F-7Q merged to main @ `7895bdf0f7f828e4e829103a5ada2c000817aa62` with CI green
 | Authority | SHA / artifact |
 |-----------|----------------|
 | **Runtime RC** | `9d286e58ac7a4b5b6900b48c64b92fdb21afa6f4` (4 files) |
-| **Deploy controller** | `release/exp021-s4f7r-deploy-controller-rc1` @ **`DEPLOY_CONTROLLER_CANDIDATE_SHA`** (separate immutable checkout) |
+| **Deploy controller** | `release/exp021-s4f7r-deploy-controller-rc1` @ **`8a18bb6e13a04490ed3e49e393817bee77722902`** (separate immutable checkout) |
 
 | Field | Value |
 |-------|--------|
