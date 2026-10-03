@@ -30,6 +30,7 @@
 | VDC-EVID-P25-STANDBY-LV-CADENCE-001 | P2.5 addendum — user-configured ~8 h standby LV device cadence vs API poll; R9 cohort Production read-only gap audit | PRODUCTION_OBSERVATION + CURRENT_CODE | CONFIRMED (LV path); CH per-signal OPEN | [P25_STANDBY_BATTERY_VOLTAGE_CADENCE_ADDENDUM_2026-10-02.md](./P25_STANDBY_BATTERY_VOLTAGE_CADENCE_ADDENDUM_2026-10-02.md) |
 | VDC-EVID-P25-DSC2-CADENCE-CLOSURE-001 | DSC-2 per-source standby cadence + T7 8.43h P95 reconstruction + Battery V2 safety matrix | PRODUCTION_OBSERVATION | CONFIRMED | [P25_DSC2_DEVICE_SOURCE_CADENCE_CLOSURE_2026-10-03.md](./P25_DSC2_DEVICE_SOURCE_CADENCE_CLOSURE_2026-10-03.md) |
 | VDC-EVID-P25-APD-PS1-001 | APD-PS1 offline battery reconciliation policy replay + safe-bound certification (T7) | PRODUCTION_OBSERVATION + SIMULATION | CONFIRMED (replay); PARTIAL (trace) | [P25_APD_PS1_OFFLINE_REPLAY_2026-10-03.md](./P25_APD_PS1_OFFLINE_REPLAY_2026-10-03.md) |
+| VDC-EVID-P25-APD-PS2-001 | APD-PS2 full per-poll trace + Battery V2 semantic certification (B0/B2/B4) | PRODUCTION_OBSERVATION + SIMULATION | TRACE_COMPLETE; B2/B4_NOT_CERTIFIED | [P25_APD_PS2_CERTIFICATION_2026-10-03.md](./P25_APD_PS2_CERTIFICATION_2026-10-03.md) |
 
 ## Code evidence (repository — bootstrap index)
 

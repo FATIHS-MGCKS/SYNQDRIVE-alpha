@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'p25-apd-ps2-certification-2026-10-03',
+    version: '4.9.2225',
+    title: 'P2.5 APD-PS2 — per-poll trace + Battery V2 certification (read-only)',
+    summary: [
+      'T7 causal PG+CH per-poll trace (WINDOWS A/B/C) — PER_POLL_TRACE_COMPLETE=YES with 7d CH lookback.',
+      'B0/B2/B4 replay: zero LV misses; B2/B4 **not certified** — REST_60M window membership + boundary changes under poll-discovery model.',
+      'SOURCE_TIME_FABRICATION=0; trip/R9 invariants preserved; no polling activation.',
+    ],
+    reason: 'APD certification gate requires full trace + consumer semantic replay before policy selection.',
+    previousBehavior: 'APD-PS1 used 15m proxy only; per-poll WINDOW certification incomplete.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/P25_APD_PS2_CERTIFICATION_2026-10-03.md; backend/scripts/ops/p25-apd-ps2-offline-certification.mjs',
+    affectsArchitecture: true,
+    module: 'Vehicle Device Connectivity',
+    createdAt: '2026-10-03T02:05:00.000Z',
+  },
+  {
     id: 'p25-apd-ps1-offline-replay-2026-10-03',
     version: '4.9.2224',
     title: 'P2.5 APD-PS1 — offline battery reconciliation replay (read-only)',
