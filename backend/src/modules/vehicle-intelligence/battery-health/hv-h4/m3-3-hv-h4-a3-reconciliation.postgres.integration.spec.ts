@@ -13,7 +13,10 @@ import { createM3_3HvH4ChargeSessionEvidenceWriterService } from './m3-3-hv-h4-a
 import {
   deleteHvChargeSessionIfDurablyAcknowledgedV1,
 } from './m3-3-hv-h4-a3-retention-gate.v1';
-import { M3_3HvH4A3ReconciliationCursorStore } from './m3-3-hv-h4-a3-reconciliation-cursor.store';
+import {
+  M3_3_HV_H4_A3_RECONCILIATION_CURSOR_REDIS_KEY,
+  M3_3HvH4A3ReconciliationCursorStore,
+} from './m3-3-hv-h4-a3-reconciliation-cursor.store';
 import { M3_3HvH4A3ReconciliationService } from './m3-3-hv-h4-a3-reconciliation.service';
 
 const integrationEnabled = process.env.BATTERY_HV_H4_REPORT_INTEGRATION === '1';
@@ -108,13 +111,16 @@ async function createSession(
       await prisma.batteryHvChargeSessionEvidenceAck.deleteMany();
       await prisma.batteryHvChargeSessionEvidenceRevision.deleteMany();
       await prisma.hvChargeSession.deleteMany();
+      process.env.BATTERY_HV_H4_A3_RECONCILIATION_BATCH_SIZE = '25';
+      process.env.BATTERY_HV_H4_A3_RECONCILIATION_INSPECTION_LIMIT = '50';
     });
 
     it('C) missing revision → exact revision + ACK', async () => {
       const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
       const session = await createSession(prisma, organizationId, vehicleId);
       const outcome = await service.reconcileLiveSessionRow(session.id);
-      expect(outcome).toBe('CREATED');
+      expect(outcome.classification).toBe('CREATED');
+      expect(outcome.persistenceEffect).toBe('REVISION_CREATED');
       expect(
         await prisma.batteryHvChargeSessionEvidenceRevision.count({
           where: { sourceHvChargeSessionId: session.id },
@@ -126,10 +132,12 @@ async function createSession(
     it('D) idempotent second pass', async () => {
       const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
       const session = await createSession(prisma, organizationId, vehicleId);
-      expect(await service.reconcileLiveSessionRow(session.id)).toBe('CREATED');
+      expect((await service.reconcileLiveSessionRow(session.id)).classification).toBe('CREATED');
       const revCount = await prisma.batteryHvChargeSessionEvidenceRevision.count();
       const ackCount = await prisma.batteryHvChargeSessionEvidenceAck.count();
-      expect(await service.reconcileLiveSessionRow(session.id)).toBe('ALREADY_DURABLE');
+      const second = await service.reconcileLiveSessionRow(session.id);
+      expect(second.classification).toBe('ALREADY_DURABLE');
+      expect(second.persistenceEffect).toBe('NONE');
       expect(await prisma.batteryHvChargeSessionEvidenceRevision.count()).toBe(revCount);
       expect(await prisma.batteryHvChargeSessionEvidenceAck.count()).toBe(ackCount);
     });
@@ -144,7 +152,7 @@ async function createSession(
         where: { id: session.id },
         data: { energyAddedKwh: 18, updatedAt: new Date('2020-01-01T00:00:00.000Z') },
       });
-      expect(await service.reconcileLiveSessionRow(session.id)).toBe('CREATED');
+      expect((await service.reconcileLiveSessionRow(session.id)).classification).toBe('CREATED');
       expect(
         await prisma.batteryHvChargeSessionEvidenceRevision.count({
           where: { segmentFingerprint: session.segmentFingerprint },
@@ -152,19 +160,30 @@ async function createSession(
       ).toBeGreaterThan(r1);
     });
 
-    it('F) missing ACK repair without duplicate revision', async () => {
+    it('F) exact current ACK repair — historical ACK does not mask', async () => {
       const writer = createM3_3HvH4ChargeSessionEvidenceWriterService(prisma);
       const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
-      const session = await createSession(prisma, organizationId, vehicleId);
-      const persisted = await writer.persistFromHvChargeSession(session);
-      await prisma.batteryHvChargeSessionEvidenceAck.deleteMany({
-        where: { revisionId: persisted.revision.id },
+      const session = await createSession(prisma, organizationId, vehicleId, {
+        energyAddedKwh: 10,
       });
+      await writer.persistFromHvChargeSession(session);
+      await prisma.hvChargeSession.update({
+        where: { id: session.id },
+        data: { energyAddedKwh: 18, updatedAt: new Date('2020-01-01T00:00:00.000Z') },
+      });
+      const updated = await prisma.hvChargeSession.findUniqueOrThrow({
+        where: { id: session.id },
+      });
+      const r2 = await writer.persistFromHvChargeSession(updated);
+      await prisma.batteryHvChargeSessionEvidenceAck.deleteMany({
+        where: { revisionId: r2.revision.id },
+      });
+      expect(await prisma.batteryHvChargeSessionEvidenceAck.count()).toBeGreaterThan(0);
       const revBefore = await prisma.batteryHvChargeSessionEvidenceRevision.count();
       const outcome = await service.reconcileLiveSessionRow(session.id);
-      expect(['ACK_REPAIRED', 'ALREADY_DURABLE']).toContain(outcome);
+      expect(outcome.classification).toBe('ACK_REPAIRED');
+      expect(outcome.persistenceEffect).toBe('ACK_REPAIRED');
       expect(await prisma.batteryHvChargeSessionEvidenceRevision.count()).toBe(revBefore);
-      expect(await prisma.batteryHvChargeSessionEvidenceAck.count()).toBe(1);
     });
 
     it('M) re-ingested raw id B independent of A', async () => {
@@ -181,7 +200,66 @@ async function createSession(
       const sessionB = await createSession(prisma, organizationId, vehicleId, {
         segmentFingerprint: fp,
       });
-      expect(await service.reconcileLiveSessionRow(sessionB.id)).toBe('CREATED');
+      expect((await service.reconcileLiveSessionRow(sessionB.id)).classification).toBe('CREATED');
+    });
+
+    it('I) multi-tick cursor progress — no front-page starvation', async () => {
+      process.env.BATTERY_HV_H4_A3_RECONCILIATION_INSPECTION_LIMIT = '2';
+      process.env.BATTERY_HV_H4_A3_RECONCILIATION_BATCH_SIZE = '25';
+      const writer = createM3_3HvH4ChargeSessionEvidenceWriterService(prisma);
+      const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
+      const ids = [
+        'aaaaaaaa-aaaa-4aaa-8aaa-000000000001',
+        'aaaaaaaa-aaaa-4aaa-8aaa-000000000002',
+        'aaaaaaaa-aaaa-4aaa-8aaa-000000000003',
+        'aaaaaaaa-aaaa-4aaa-8aaa-000000000004',
+        'aaaaaaaa-aaaa-4aaa-8aaa-000000000005',
+      ];
+      for (const id of ids.slice(0, 2)) {
+        const s = await createSession(prisma, organizationId, vehicleId, { id });
+        await writer.persistFromHvChargeSession(s);
+      }
+      for (const id of ids.slice(2)) {
+        await createSession(prisma, organizationId, vehicleId, { id });
+      }
+
+      const tick1 = await service.runBoundedReconciliationTick();
+      expect(tick1.result).toBe('COMPLETED');
+      expect(tick1.inspectedCount).toBe(2);
+      const cursor1 = await redis.get(M3_3_HV_H4_A3_RECONCILIATION_CURSOR_REDIS_KEY);
+      expect(cursor1).toContain('000000000002');
+
+      const tick2 = await service.runBoundedReconciliationTick();
+      expect(tick2.inspectedCount).toBe(2);
+      const cursor2 = await redis.get(M3_3_HV_H4_A3_RECONCILIATION_CURSOR_REDIS_KEY);
+      expect(cursor2).toContain('000000000004');
+
+      const tick3 = await service.runBoundedReconciliationTick();
+      expect(tick3.inspectedCount).toBe(1);
+      expect(
+        await prisma.batteryHvChargeSessionEvidenceRevision.count({
+          where: { sourceHvChargeSessionId: ids[4] },
+        }),
+      ).toBe(1);
+    });
+
+    it('O) concurrent reconcileLiveSessionRow converges', async () => {
+      const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
+      const session = await createSession(prisma, organizationId, vehicleId);
+      const results = await Promise.all([
+        service.reconcileLiveSessionRow(session.id),
+        service.reconcileLiveSessionRow(session.id),
+        service.reconcileLiveSessionRow(session.id),
+      ]);
+      for (const r of results) {
+        expect(['CREATED', 'ALREADY_DURABLE']).toContain(r.classification);
+      }
+      expect(
+        await prisma.batteryHvChargeSessionEvidenceRevision.count({
+          where: { sourceHvChargeSessionId: session.id },
+        }),
+      ).toBe(1);
+      expect(await prisma.batteryHvChargeSessionEvidenceAck.count()).toBe(1);
     });
 
     it('Q) retention handoff — reconciliation establishes durability, gate deletes', async () => {
@@ -195,7 +273,7 @@ async function createSession(
         }),
       );
       expect(blocked.kind).toBe('BLOCKED');
-      expect(await service.reconcileLiveSessionRow(session.id)).toBe('CREATED');
+      expect((await service.reconcileLiveSessionRow(session.id)).classification).toBe('CREATED');
       const allowed = await prisma.$transaction((tx) =>
         deleteHvChargeSessionIfDurablyAcknowledgedV1({
           db: tx,

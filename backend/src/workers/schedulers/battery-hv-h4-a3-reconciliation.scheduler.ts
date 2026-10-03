@@ -54,6 +54,14 @@ export class BatteryHvH4A3ReconciliationScheduler {
         );
         return;
       }
+      if (outcome.result === 'CURSOR_SAVE_FAILED') {
+        recordM3_3HvH4A3ReconciliationSchedulerTick(
+          this.metrics,
+          'CURSOR_SAVE_FAILED',
+          durationSeconds,
+        );
+        return;
+      }
       recordM3_3HvH4A3ReconciliationSchedulerTick(
         this.metrics,
         'COMPLETED',

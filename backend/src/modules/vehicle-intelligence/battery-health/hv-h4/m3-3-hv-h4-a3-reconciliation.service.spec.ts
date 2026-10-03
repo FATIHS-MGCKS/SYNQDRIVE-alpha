@@ -2,8 +2,17 @@ import { Test } from '@nestjs/testing';
 import { PrismaService } from '@shared/database/prisma.service';
 import { M3_3HvH4ChargeSessionEvidenceWriterService } from './m3-3-hv-h4-a3-charge-session-evidence-writer.service';
 import { M3_3HvH4A3ReconciliationCursorStore } from './m3-3-hv-h4-a3-reconciliation-cursor.store';
-import { H4EvidenceRevisionStoredFingerprintMismatchError } from './m3-3-hv-h4-a3-charge-session-evidence.errors.v1';
+import {
+  H4EvidenceAckIdentityMismatchError,
+  H4EvidenceRevisionMirrorIncoherenceError,
+  H4EvidenceRevisionStoredFingerprintMismatchError,
+} from './m3-3-hv-h4-a3-charge-session-evidence.errors.v1';
 import { M3_3HvH4A3ReconciliationService } from './m3-3-hv-h4-a3-reconciliation.service';
+import type {
+  M3_3HvH4A3ReconciliationPersistenceEffectV1,
+  M3_3HvH4A3ReconciliationRowClassificationV1,
+  M3_3HvH4A3ReconciliationRowResultV1,
+} from './m3-3-hv-h4-a3-reconciliation.types.v1';
 
 jest.mock('./m3-3-hv-h4-a3-reconciliation.config', () => ({
   isBatteryHvH4A3ReconciliationEnabled: jest.fn(),
@@ -17,13 +26,21 @@ import {
   isBatteryHvH4A3ReconciliationEnabled,
 } from './m3-3-hv-h4-a3-reconciliation.config';
 
+const row = (
+  classification: M3_3HvH4A3ReconciliationRowClassificationV1,
+  persistenceEffect: M3_3HvH4A3ReconciliationPersistenceEffectV1 = 'NONE',
+): M3_3HvH4A3ReconciliationRowResultV1 => ({
+  classification,
+  persistenceEffect,
+});
+
 describe('M3_3HvH4A3ReconciliationService', () => {
   const enabledMock = isBatteryHvH4A3ReconciliationEnabled as jest.Mock;
 
   const prisma = {
     hvChargeSession: { findMany: jest.fn(), findUnique: jest.fn() },
     vehicle: { findUnique: jest.fn() },
-    batteryHvChargeSessionEvidenceAck: { count: jest.fn() },
+    batteryHvChargeSessionEvidenceAck: { findFirst: jest.fn() },
   } as unknown as PrismaService;
 
   const writer = { persistFromHvChargeSession: jest.fn() } as unknown as M3_3HvH4ChargeSessionEvidenceWriterService;
@@ -67,7 +84,29 @@ describe('M3_3HvH4A3ReconciliationService', () => {
     expect(prisma.hvChargeSession.findMany).not.toHaveBeenCalled();
   });
 
-  it('P) boundedness — repairs stop at batchSize', async () => {
+  it('CURSOR_SAVE_FAILED when save returns false after work', async () => {
+    let calls = 0;
+    (prisma.hvChargeSession.findMany as jest.Mock).mockImplementation(async () => {
+      calls += 1;
+      if (calls === 1) {
+        return [
+          {
+            id: '30000000-0000-4000-8000-000000000003',
+            organizationId: '10000000-0000-4000-8000-000000000001',
+            vehicleId: '20000000-0000-4000-8000-000000000002',
+          },
+        ];
+      }
+      return [];
+    });
+    jest.spyOn(service, 'reconcileLiveSessionRow').mockResolvedValue(row('ALREADY_DURABLE'));
+    (cursorStore.save as jest.Mock).mockResolvedValue(false);
+    const outcome = await service.runBoundedReconciliationTick();
+    expect(outcome.result).toBe('CURSOR_SAVE_FAILED');
+    expect(outcome.inspectedCount).toBe(1);
+  });
+
+  it('P) boundedness — mutation budget from persistenceEffect', async () => {
     (getBatteryHvH4A3ReconciliationBatchSize as jest.Mock).mockReturnValue(1);
     (getBatteryHvH4A3ReconciliationInspectionLimit as jest.Mock).mockReturnValue(5);
     const rows = [
@@ -85,12 +124,14 @@ describe('M3_3HvH4A3ReconciliationService', () => {
     (prisma.hvChargeSession.findMany as jest.Mock).mockResolvedValue(rows);
     jest
       .spyOn(service, 'reconcileLiveSessionRow')
-      .mockResolvedValueOnce('CREATED')
-      .mockResolvedValue('ALREADY_DURABLE');
+      .mockResolvedValueOnce(
+        row('SOURCE_CHANGED_DURING_RECONCILIATION', 'REVISION_CREATED'),
+      )
+      .mockResolvedValue(row('ALREADY_DURABLE'));
 
     const outcome = await service.runBoundedReconciliationTick();
     expect(outcome.inspectedCount).toBe(1);
-    expect(outcome.createdCount).toBe(1);
+    expect(outcome.materializedOrRepairedCount).toBe(1);
     expect(service.reconcileLiveSessionRow).toHaveBeenCalledTimes(1);
   });
 
@@ -132,7 +173,9 @@ describe('M3_3HvH4A3ReconciliationService', () => {
       }
       return [];
     });
-    jest.spyOn(service, 'reconcileLiveSessionRow').mockResolvedValue('ALREADY_DURABLE');
+    jest
+      .spyOn(service, 'reconcileLiveSessionRow')
+      .mockResolvedValue(row('ALREADY_DURABLE'));
     await service.runBoundedReconciliationTick();
     expect(findManyCalls).toBeGreaterThanOrEqual(2);
     const secondCall = (prisma.hvChargeSession.findMany as jest.Mock).mock.calls[1][0];
@@ -169,7 +212,7 @@ describe('M3_3HvH4A3ReconciliationService.reconcileLiveSessionRow', () => {
   const prisma = {
     hvChargeSession: { findUnique: jest.fn() },
     vehicle: { findUnique: jest.fn() },
-    batteryHvChargeSessionEvidenceAck: { count: jest.fn() },
+    batteryHvChargeSessionEvidenceAck: { findFirst: jest.fn() },
   } as unknown as PrismaService;
 
   const writer = { persistFromHvChargeSession: jest.fn() } as unknown as M3_3HvH4ChargeSessionEvidenceWriterService;
@@ -193,7 +236,7 @@ describe('M3_3HvH4A3ReconciliationService.reconcileLiveSessionRow', () => {
     (prisma.vehicle.findUnique as jest.Mock).mockResolvedValue({
       organizationId: session.organizationId,
     });
-    (prisma.batteryHvChargeSessionEvidenceAck.count as jest.Mock).mockResolvedValue(1);
+    (prisma.batteryHvChargeSessionEvidenceAck.findFirst as jest.Mock).mockResolvedValue(null);
   });
 
   it('G) corruption — fail closed BLOCKED_INTEGRITY', async () => {
@@ -201,21 +244,46 @@ describe('M3_3HvH4A3ReconciliationService.reconcileLiveSessionRow', () => {
     (writer.persistFromHvChargeSession as jest.Mock).mockRejectedValue(
       new H4EvidenceRevisionStoredFingerprintMismatchError('bad'),
     );
-    expect(await service.reconcileLiveSessionRow(session.id)).toBe('BLOCKED_INTEGRITY');
+    const result = await service.reconcileLiveSessionRow(session.id);
+    expect(result.classification).toBe('BLOCKED_INTEGRITY');
+    expect(result.persistenceEffect).toBe('NONE');
   });
 
-  it('H) source mutation race — SOURCE_CHANGED_DURING_RECONCILIATION', async () => {
+  it('ACK identity corruption → BLOCKED_INTEGRITY', async () => {
+    (prisma.hvChargeSession.findUnique as jest.Mock).mockResolvedValue(session);
+    (writer.persistFromHvChargeSession as jest.Mock).mockRejectedValue(
+      new H4EvidenceAckIdentityMismatchError('bad ack'),
+    );
+    expect((await service.reconcileLiveSessionRow(session.id)).classification).toBe(
+      'BLOCKED_INTEGRITY',
+    );
+  });
+
+  it('mirror corruption → BLOCKED_INTEGRITY', async () => {
+    (prisma.hvChargeSession.findUnique as jest.Mock).mockResolvedValue(session);
+    (writer.persistFromHvChargeSession as jest.Mock).mockRejectedValue(
+      new H4EvidenceRevisionMirrorIncoherenceError('bad mirror'),
+    );
+    expect((await service.reconcileLiveSessionRow(session.id)).classification).toBe(
+      'BLOCKED_INTEGRITY',
+    );
+  });
+
+  it('H) source mutation race — SOURCE_CHANGED with REVISION_CREATED effect', async () => {
     (prisma.hvChargeSession.findUnique as jest.Mock)
       .mockResolvedValueOnce(session)
       .mockResolvedValueOnce({ ...session, energyAddedKwh: 99 });
     (writer.persistFromHvChargeSession as jest.Mock).mockResolvedValue({
       persistenceOutcome: 'CREATED',
-      revision: { sourceRevisionFingerprint: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' },
+      revision: {
+        sourceRevisionFingerprint:
+          'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      },
       ack: {},
     });
-    expect(await service.reconcileLiveSessionRow(session.id)).toBe(
-      'SOURCE_CHANGED_DURING_RECONCILIATION',
-    );
+    const result = await service.reconcileLiveSessionRow(session.id);
+    expect(result.classification).toBe('SOURCE_CHANGED_DURING_RECONCILIATION');
+    expect(result.persistenceEffect).toBe('REVISION_CREATED');
   });
 
   it('N) tenant mismatch — BLOCKED_TENANT_INVARIANT', async () => {
@@ -223,7 +291,8 @@ describe('M3_3HvH4A3ReconciliationService.reconcileLiveSessionRow', () => {
     (prisma.vehicle.findUnique as jest.Mock).mockResolvedValue({
       organizationId: '99999999-9999-4999-8999-999999999999',
     });
-    expect(await service.reconcileLiveSessionRow(session.id)).toBe('BLOCKED_TENANT_INVARIANT');
+    const result = await service.reconcileLiveSessionRow(session.id);
+    expect(result.classification).toBe('BLOCKED_TENANT_INVARIANT');
     expect(writer.persistFromHvChargeSession).not.toHaveBeenCalled();
   });
 });

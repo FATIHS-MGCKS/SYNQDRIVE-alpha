@@ -7,7 +7,7 @@ export type M3_3HvH4A3FleetCursorV1 = {
   id: string;
 };
 
-export type M3_3HvH4A3ReconciliationRowOutcomeV1 =
+export type M3_3HvH4A3ReconciliationRowClassificationV1 =
   | 'CREATED'
   | 'ALREADY_DURABLE'
   | 'ACK_REPAIRED'
@@ -17,9 +17,23 @@ export type M3_3HvH4A3ReconciliationRowOutcomeV1 =
   | 'BLOCKED_TENANT_INVARIANT'
   | 'ERROR';
 
+export type M3_3HvH4A3ReconciliationPersistenceEffectV1 =
+  | 'NONE'
+  | 'REVISION_CREATED'
+  | 'ACK_REPAIRED';
+
+export type M3_3HvH4A3ReconciliationRowResultV1 = {
+  classification: M3_3HvH4A3ReconciliationRowClassificationV1;
+  persistenceEffect: M3_3HvH4A3ReconciliationPersistenceEffectV1;
+};
+
+/** @deprecated Use M3_3HvH4A3ReconciliationRowClassificationV1 */
+export type M3_3HvH4A3ReconciliationRowOutcomeV1 = M3_3HvH4A3ReconciliationRowClassificationV1;
+
 export type M3_3HvH4A3ReconciliationTickResultV1 =
   | 'SKIPPED_FLAG_OFF'
   | 'CURSOR_UNAVAILABLE'
+  | 'CURSOR_SAVE_FAILED'
   | 'COMPLETED';
 
 export type M3_3HvH4A3ReconciliationTickOutcomeV1 = {
@@ -42,4 +56,5 @@ export type M3_3HvH4A3ReconciliationSchedulerTickResultV1 =
   | 'OVERLAP'
   | 'COMPLETED'
   | 'FAILED'
-  | 'CURSOR_UNAVAILABLE';
+  | 'CURSOR_UNAVAILABLE'
+  | 'CURSOR_SAVE_FAILED';

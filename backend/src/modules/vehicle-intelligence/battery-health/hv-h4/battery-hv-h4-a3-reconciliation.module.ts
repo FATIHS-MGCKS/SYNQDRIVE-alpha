@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '@shared/database/prisma.module';
+import { RedisModule } from '@shared/redis/redis.module';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   createM3_3HvH4ChargeSessionEvidenceWriterService,
@@ -9,7 +10,7 @@ import { M3_3HvH4A3ReconciliationCursorStore } from './m3-3-hv-h4-a3-reconciliat
 import { M3_3HvH4A3ReconciliationService } from './m3-3-hv-h4-a3-reconciliation.service';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, RedisModule],
   providers: [
     {
       provide: M3_3HvH4ChargeSessionEvidenceWriterService,
