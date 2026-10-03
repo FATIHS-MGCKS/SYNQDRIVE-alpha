@@ -36,6 +36,44 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'p25-apd-ps1-offline-replay-2026-10-03',
+    version: '4.9.2224',
+    title: 'P2.5 APD-PS1 — offline battery reconciliation replay (read-only)',
+    summary: [
+      'T7 Production replay of reconciliation SNAPSHOT polls vs strict-rest LV advances; policies B0–B7 simulated with per-vehicle profiles.',
+      'Zero LV misses fleet-wide; best eligible ~63% recon call reduction (B2) at ~9.45m additional discovery P95 vs control; early event-driven LV (32) never missed.',
+      'Battery V2 safety via 15m additional-delay semantic proxy; trip/R9 paths unchanged in simulation; no polling activation.',
+    ],
+    reason:
+      'APD parameter selection gate (LTE_R1) requires certified offline replay before any production reconciliation policy.',
+    previousBehavior:
+      'DSC-2 cadence closure without per-poll policy counterfactual or Pareto eligibility bounds.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/P25_APD_PS1_OFFLINE_REPLAY_2026-10-03.md; backend/scripts/ops/p25-apd-ps1-offline-replay.mjs',
+    affectsArchitecture: true,
+    module: 'Vehicle Device Connectivity',
+    createdAt: '2026-10-03T01:10:00.000Z',
+  },
+  {
+    id: 'p25-dsc2-device-source-cadence-closure-2026-10-03',
+    version: '4.9.2223',
+    title: 'P2.5 DSC-2 — device source cadence closure (read-only)',
+    summary: [
+      'Production T7 7d per-source standby cadence: LV (PG), TOP_LEVEL/IGNITION (CH), OBD proxy (PG physical-state).',
+      'T7 ~8.43h P95 ANY_SOURCE reconstructs to TOP_LEVEL_SOURCE P95 ≈ 28.9ks (~8.03h), not LV fleet P95 (~15h).',
+      'Battery V2 dependency matrix + phase-aware battery reconciliation fail-safes; no polling/Battery V2 runtime change.',
+    ],
+    reason:
+      'Close DSC-2 evidence gaps before APD parameter selection; preserve R9 trip wake independence.',
+    previousBehavior:
+      'CH per-source standby cadence and T7 P95 attribution incomplete; Battery V2 decoupling risk unbounded.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/P25_DSC2_DEVICE_SOURCE_CADENCE_CLOSURE_2026-10-03.md; backend/scripts/ops/p25-dsc2-source-cadence-closure-readonly.sh',
+    affectsArchitecture: true,
+    module: 'Vehicle Device Connectivity',
+    createdAt: '2026-10-03T00:15:00.000Z',
+  },
+  {
     id: 'p25-standby-lv-cadence-addendum-2026-10-02',
     version: '4.9.2222',
     title: 'P2.5 addendum — LTE_R1 standby battery-voltage device cadence (APD input)',
