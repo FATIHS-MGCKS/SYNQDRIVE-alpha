@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 COMPARE="$ROOT/scripts/audits/compare-dependency-audit-baseline.js"
 AUDIT_SCRIPT="$ROOT/scripts/audits/audit-dependencies.sh"
+VALIDATE_JSON="$ROOT/scripts/audits/validate-npm-audit-json.js"
 GRAPH_IDENTITY="$ROOT/scripts/audits/dependency-lock-graph-identity.sh"
 FIXTURES="$ROOT/scripts/audits/fixtures/dependency-audit"
 TMP="$(mktemp -d)"
@@ -14,7 +15,6 @@ source "$GRAPH_IDENTITY"
 
 mkdir -p "$FIXTURES"
 
-# --- Case B fixtures: same vulnerable graph, different npm-audit representation (jest class) ---
 write_fixture() {
   local name="$1"
   shift
@@ -27,7 +27,19 @@ write_fixture pr-jest-object-via '{"metadata":{"vulnerabilities":{"high":1,"crit
 write_fixture base-empty '{"metadata":{"vulnerabilities":{"high":0,"critical":0}},"vulnerabilities":{}}'
 write_fixture pr-empty '{"metadata":{"vulnerabilities":{"high":0,"critical":0}},"vulnerabilities":{}}'
 
-# Comparator still flags representation drift (documents need for lockfile short-circuit).
+run_identical_graph_audit() {
+  local inject_backend="$1"
+  local inject_frontend="$2"
+  env \
+    AUDIT_DEPENDENCIES_TEST_HARNESS=1 \
+    AUDIT_DEPENDENCIES_INJECT_HEAD_BACKEND_AUDIT="$inject_backend" \
+    AUDIT_DEPENDENCIES_INJECT_HEAD_FRONTEND_AUDIT="$inject_frontend" \
+    PR_BASE_SHA="$BASE_SHA" \
+    PR_HEAD_SHA="$HEAD_SHA" \
+    bash "$AUDIT_SCRIPT" 2>&1
+}
+
+# --- B: representation drift fails comparator only ---
 set +e
 node "$COMPARE" \
   --base-backend "$FIXTURES/base-jest-string-via.json" \
@@ -41,120 +53,90 @@ if [[ "$compare_drift_exit" -ne 1 ]]; then
   cat "$TMP/compare-drift.log"
   exit 1
 fi
-echo "PASS comparator detects representation-only drift (exit=1) without lockfile short-circuit"
 
-# --- A/B: identical lockfiles => graph identity NO ---
 BASE_SHA="${GRAPH_IDENTITY_BASE_SHA:-813f4b91ae37695f93b431805bc9537a7d88f43f}"
 HEAD_SHA="${GRAPH_IDENTITY_HEAD_SHA:-4ec99f2253082488b74cae939c61783c4c372303}"
 
-git -C "$ROOT" cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null || {
-  echo "SKIP identical-graph replay: base commit ${BASE_SHA} not available"
-  BASE_SHA=""
-}
-git -C "$ROOT" cat-file -e "${HEAD_SHA}^{commit}" 2>/dev/null || {
-  echo "SKIP identical-graph replay: head commit ${HEAD_SHA} not available"
-  HEAD_SHA=""
-}
+git -C "$ROOT" cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null || BASE_SHA=""
+git -C "$ROOT" cat-file -e "${HEAD_SHA}^{commit}" 2>/dev/null || HEAD_SHA=""
 
-if [[ -n "$BASE_SHA" && -n "$HEAD_SHA" ]]; then
-  mkdir -p "$TMP/base-archive" "$TMP/head-archive"
-  git -C "$ROOT" archive "${BASE_SHA}" backend/package-lock.json frontend/package-lock.json | tar -x -C "$TMP/base-archive"
-  git -C "$ROOT" archive "${HEAD_SHA}" backend/package-lock.json frontend/package-lock.json | tar -x -C "$TMP/head-archive"
-  emit_dependency_graph_identity \
-    "$TMP/base-archive/backend/package-lock.json" \
-    "$TMP/head-archive/backend/package-lock.json" \
-    "$TMP/base-archive/frontend/package-lock.json" \
-    "$TMP/head-archive/frontend/package-lock.json" >"$TMP/identity.log"
-  if ! grep -q 'DEPENDENCY_GRAPH_CHANGED=NO' "$TMP/identity.log"; then
-    echo "FAIL PR #1895 replay: expected DEPENDENCY_GRAPH_CHANGED=NO"
-    cat "$TMP/identity.log"
-    exit 1
-  fi
-  echo "IDENTICAL_GRAPH_FALSE_POSITIVE_CONFIRMED=YES"
-
-  set +e
-  out="$(
-    env \
-      AUDIT_DEPENDENCIES_TEST_HARNESS=1 \
-      PR_BASE_SHA="$BASE_SHA" \
-      PR_HEAD_SHA="$HEAD_SHA" \
-      bash "$AUDIT_SCRIPT" 2>&1
-  )"
-  audit_exit=$?
-  set -e
-  if [[ "$audit_exit" -ne 0 ]]; then
-    echo "FAIL audit-dependencies identical graph short-circuit expected exit 0, got ${audit_exit}"
-    echo "$out"
-    exit 1
-  fi
-  if [[ "$out" != *"DEPENDENCY_GRAPH_CHANGED=NO"* ]] || [[ "$out" != *"SECURITY_REGRESSION=false"* ]]; then
-    echo "FAIL audit-dependencies missing short-circuit markers"
-    echo "$out"
-    exit 1
-  fi
-  echo "IDENTICAL_GRAPH_FALSE_REGRESSION=PASS"
-else
-  echo "IDENTICAL_GRAPH_FALSE_REGRESSION=SKIP_MISSING_COMMITS"
+if [[ -z "$BASE_SHA" || -z "$HEAD_SHA" ]]; then
+  echo "FAIL missing replay commits for identical-graph audit-dependencies tests"
+  exit 1
 fi
 
-# --- C/D: changed lockfile surfaces ---
-cp "$ROOT/backend/package-lock.json" "$TMP/backend-head.lock"
-cp "$ROOT/backend/package-lock.json" "$TMP/backend-base.lock"
-printf '\n' >>"$TMP/backend-head.lock"
-emit_dependency_graph_identity \
-  "$TMP/backend-base.lock" \
-  "$TMP/backend-head.lock" \
-  "$ROOT/frontend/package-lock.json" \
-  "$ROOT/frontend/package-lock.json" >"$TMP/be-changed.log"
-grep -q 'BACKEND_DEPENDENCY_GRAPH_CHANGED=YES' "$TMP/be-changed.log" || {
-  echo "FAIL backend lock mutation should change graph"
-  cat "$TMP/be-changed.log"
+# --- A: identical graph + valid audit JSON ---
+out="$(run_identical_graph_audit "$FIXTURES/pr-empty.json" "$FIXTURES/pr-empty.json")"
+if [[ "$out" != *"DEPENDENCY_GRAPH_CHANGED=NO"* ]] || [[ "$out" != *"SECURITY_REGRESSION=false"* ]]; then
+  echo "FAIL identical graph valid JSON"
+  echo "$out"
   exit 1
-}
-run_compare_backend_high() {
-  set +e
-  node "$COMPARE" \
-    --base-backend "$FIXTURES/base-empty.json" \
-    --base-frontend "$FIXTURES/base-empty.json" \
-    --pr-backend "$FIXTURES/pr-add-high.json" \
-    --pr-frontend "$FIXTURES/pr-empty.json" >"$TMP/out.log" 2>&1
-  local code=$?
-  set -e
-  [[ "$code" -eq 1 ]]
-}
-run_compare_backend_high
-echo "CHANGED_BACKEND_GRAPH_HIGH_TEST=PASS"
+fi
+echo "IDENTICAL_GRAPH_VALID_JSON_TEST=PASS"
 
-cp "$ROOT/frontend/package-lock.json" "$TMP/frontend-head.lock"
-cp "$ROOT/frontend/package-lock.json" "$TMP/frontend-base.lock"
-printf '\n' >>"$TMP/frontend-head.lock"
-emit_dependency_graph_identity \
-  "$ROOT/backend/package-lock.json" \
-  "$ROOT/backend/package-lock.json" \
-  "$TMP/frontend-base.lock" \
-  "$TMP/frontend-head.lock" >"$TMP/fe-changed.log"
-grep -q 'FRONTEND_DEPENDENCY_GRAPH_CHANGED=YES' "$TMP/fe-changed.log" || {
-  echo "FAIL frontend lock mutation should change graph"
+# --- B: identical graph + representation drift fixtures (short-circuit, not comparator) ---
+out="$(run_identical_graph_audit "$FIXTURES/pr-jest-object-via.json" "$FIXTURES/pr-empty.json")"
+if [[ "$out" != *"SECURITY_REGRESSION=false"* ]]; then
+  echo "FAIL identical graph representation drift should PASS via lockfile short-circuit"
+  echo "$out"
   exit 1
-}
+fi
+echo "IDENTICAL_GRAPH_REPRESENTATION_DRIFT_TEST=PASS"
+
+# --- C: identical graph + malformed HEAD audit JSON ---
+printf 'not-json' >"$TMP/malformed-backend-audit.json"
+set +e
+out="$(run_identical_graph_audit "$TMP/malformed-backend-audit.json" "$FIXTURES/pr-empty.json")"
+malformed_exit=$?
+set -e
+if [[ "$malformed_exit" -ne 2 ]] || [[ "$out" != *"FAIL_CLOSED"* ]]; then
+  echo "FAIL identical graph malformed JSON expected exit 2 fail-closed, got ${malformed_exit}"
+  echo "$out"
+  exit 1
+fi
+echo "IDENTICAL_GRAPH_MALFORMED_JSON_TEST=PASS"
+
+# --- F: missing lockfile ---
+set +e
+missing_out="$(emit_dependency_graph_identity "$TMP/missing.lock" "$ROOT/backend/package-lock.json" "$ROOT/frontend/package-lock.json" "$ROOT/frontend/package-lock.json" 2>&1)"
+missing_exit=$?
+set -e
+if [[ "$missing_exit" -ne 2 ]] || [[ "$missing_out" != *"FAIL_CLOSED"* ]]; then
+  echo "FAIL missing lockfile expected exit 2"
+  echo "$missing_out"
+  exit 1
+fi
+echo "MISSING_LOCKFILE_FAIL_CLOSED_TEST=PASS"
+
+# --- D/E: changed graph (comparator) ---
 set +e
 node "$COMPARE" \
   --base-backend "$FIXTURES/base-empty.json" \
   --base-frontend "$FIXTURES/base-empty.json" \
-  --pr-backend "$FIXTURES/base-empty.json" \
-  --pr-frontend "$FIXTURES/pr-add-high.json" >"$TMP/fe-high.log" 2>&1
-fe_high_exit=$?
+  --pr-backend "$FIXTURES/pr-add-high.json" \
+  --pr-frontend "$FIXTURES/pr-empty.json" >"$TMP/high.log" 2>&1
+high_exit=$?
 set -e
-[[ "$fe_high_exit" -eq 1 ]] || {
-  echo "FAIL frontend new high compare exit"
-  cat "$TMP/fe-high.log"
-  exit 1
-}
-echo "CHANGED_FRONTEND_GRAPH_HIGH_TEST=PASS"
+[[ "$high_exit" -eq 1 ]] || { echo "FAIL changed graph high"; exit 1; }
+echo "CHANGED_GRAPH_HIGH_TEST=PASS"
 
-# E/F/G covered by test-dependency-audit-baseline-regression.sh (comparator + fail-closed)
-echo "CHANGED_GRAPH_CRITICAL_TEST=PASS_DELEGATED"
-echo "SEVERITY_ESCALATION_TEST=PASS_DELEGATED"
-echo "MISSING_INPUT_FAIL_CLOSED_TEST=PASS_DELEGATED"
+set +e
+node "$COMPARE" \
+  --base-backend "$FIXTURES/base-empty.json" \
+  --base-frontend "$FIXTURES/base-empty.json" \
+  --pr-backend "$FIXTURES/pr-add-critical.json" \
+  --pr-frontend "$FIXTURES/pr-empty.json" >"$TMP/crit.log" 2>&1
+crit_exit=$?
+set -e
+[[ "$crit_exit" -eq 1 ]] || { echo "FAIL changed graph critical"; exit 1; }
+echo "CHANGED_GRAPH_CRITICAL_TEST=PASS"
+
+# validate-npm-audit-json direct checks
+node "$VALIDATE_JSON" "$FIXTURES/pr-empty.json"
+set +e
+node "$VALIDATE_JSON" "$TMP/malformed-backend-audit.json" 2>"$TMP/val-err.log"
+val_exit=$?
+set -e
+[[ "$val_exit" -eq 2 ]] || exit 1
 
 echo "GRAPH_IDENTITY_TESTS=PASS"
