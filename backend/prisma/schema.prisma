@@ -1655,6 +1655,7 @@ model Organization {
   stations                                                  Station[]
   vehicleStationTransfers                                   VehicleStationTransfer[]
   vehicles                                                  Vehicle[]
+  apdShadowReconciliationDecisions                          ApdShadowReconciliationDecision[]
   vehicleOnboardingCases                                    VehicleOnboardingCase[]
   vehicleOrganizationAssignments                          VehicleOrganizationAssignment[]
   rawRefuelCandidates                                       RawRefuelCandidate[]
@@ -3032,6 +3033,7 @@ model Vehicle {
   positionUpdates                        VehiclePositionUpdate[]
   analyticsCacheEntries                  AnalyticsCache[]
   pollLogs                               DimoPollLog[]
+  apdShadowReconciliationDecisions       ApdShadowReconciliationDecision[]
   bookings                               Booking[]
   handoverProtocols                      BookingHandoverProtocol[]
   drivingEvents                          DrivingEvent[]
@@ -3146,6 +3148,7 @@ model Vehicle {
   @@index([expectedStationId])
   @@index([status])
   @@index([registryLifecycle])
+  @@unique([organizationId, id])
   @@map("vehicles")
 }
 
@@ -4407,6 +4410,55 @@ model DimoPollLog {
   // Admin dashboard paginates polls per vehicle by createdAt desc.
   @@index([vehicleId, createdAt])
   @@map("dimo_poll_logs")
+}
+
+/// P2.5 APD shadow observe-only reconciliation decisions (flag OFF by default).
+model ApdShadowReconciliationDecision {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  vehicleId      String   @map("vehicle_id")
+  opportunityId  String   @map("opportunity_id")
+  decisionAt     DateTime @map("decision_at")
+  realPollId     String?  @map("real_poll_id")
+
+  policyVersion  String @map("policy_version")
+  profileVersion String @map("profile_version")
+  profileClass   String @map("profile_class")
+  decision       String
+  reason         String
+
+  lastLvSourceAt        DateTime? @map("last_lv_source_at")
+  lastProviderFetchedAt DateTime? @map("last_provider_fetched_at")
+  expectedWindowStart   DateTime? @map("expected_window_start")
+  expectedWindowEnd     DateTime? @map("expected_window_end")
+  providerGapState      String?   @map("provider_gap_state")
+  connectivityState     String?   @map("connectivity_state")
+  wakeCorrelationId       String?   @map("wake_correlation_id")
+
+  realPollCompletedAt       DateTime? @map("real_poll_completed_at")
+  newLvSourceObserved       Boolean   @default(false) @map("new_lv_source_observed")
+  newLvSourceAt             DateTime? @map("new_lv_source_at")
+  newTopLevelSourceObserved Boolean   @default(false) @map("new_top_level_source_observed")
+  newObdSourceObserved      Boolean   @default(false) @map("new_obd_source_observed")
+  newIgnitionSourceObserved Boolean   @default(false) @map("new_ignition_source_observed")
+  simulatedNextPollAt       DateTime? @map("simulated_next_poll_at")
+  simulatedDiscoveryAt      DateTime? @map("simulated_discovery_at")
+  additionalDiscoveryDelayMs  Int?    @map("additional_discovery_delay_ms")
+
+  legacyAssessmentImpact  String @default("NONE") @map("legacy_assessment_impact")
+  legacyPublicationImpact String @default("NONE") @map("legacy_publication_impact")
+  legacyCustomerImpact    String @default("NONE") @map("legacy_customer_impact")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [organizationId, vehicleId], references: [organizationId, id], onDelete: Cascade)
+
+  @@unique([organizationId, vehicleId, opportunityId, policyVersion])
+  @@index([vehicleId, decisionAt])
+  @@index([organizationId, decisionAt])
+  @@map("apd_shadow_reconciliation_decisions")
 }
 
 // ------------------------------------------------

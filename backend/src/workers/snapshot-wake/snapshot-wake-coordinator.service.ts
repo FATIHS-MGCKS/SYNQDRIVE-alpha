@@ -136,6 +136,7 @@ export class SnapshotWakeCoordinatorService {
       dimoTokenId: input.dimoTokenId,
       origin: input.origin,
       wakeContext: input.wakeContext,
+      apdShadowOpportunityId: input.apdShadowOpportunityId,
     };
 
     try {
