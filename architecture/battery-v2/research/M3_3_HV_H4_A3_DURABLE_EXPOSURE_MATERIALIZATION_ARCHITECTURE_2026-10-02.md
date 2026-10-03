@@ -522,7 +522,7 @@ Rebuild from: durable source revisions + GT-as-of + H4 composition contract.
 | **A3.2** | **IMPLEMENTED (writer, no automatic runtime)** — idempotent append-only revision + revision-scoped ACK writer; concurrency-safe verify; **flags OFF** |
 | **A3.3** | **IMPLEMENTED** — MODE_A / A2_V1_PARITY durable loader; full postgres parity corpus (PR #1887) |
 | **A3.4** | **IMPLEMENTED** — revision-scoped retention ACK gate on `prune_hv_charge_sessions` (race-safe `FOR UPDATE` per row) |
-| **A3.5** | Reconciliation scheduler (leader-guarded, default OFF) |
+| **A3.5** | **IMPLEMENTED** — leader-guarded bounded current-state reconciliation (`BATTERY_HV_H4_A3_RECONCILIATION_ENABLED` default **false**); Redis fleet cursor; reuses A3.2 writer only |
 | **A3.6** | Optional derived lifecycle cache |
 
 **`RECOMMENDED_A3_1_SLICE = A3.1 H4 charge session evidence revision persistence contract + schema (no runtime, no prune hook)`**
@@ -541,7 +541,7 @@ No FEC, degradation model, customer publication, automatic runtime, provider cal
 |----|--------|
 | **OQ-A3-1** | Effective source-session reconstruction + **full A2 5000-load / sourceTruncated parity** after revision collapse |
 | **OQ-A3-2** | Revision **ordering**, tie-break authority, and capture granularity vs `mergeHvChargeSessionUpdate` |
-| **OQ-A3-3** | **Prospective capture boundary** + **current-state-only backfill** before retention cutoff (no fabricated prior revisions) |
+| **OQ-A3-3** | **PARTIALLY RESOLVED (A3.5)** — prospective current-state reconciliation when explicitly enabled; no fabricated historical revisions; no production sweep by default |
 | **OQ-A3-4** | **RESOLVED (A3.4)** — `HvCapacityObservation` reference guard runs before destructive prune; exact current fingerprint revision + ACK is an additional mandatory gate (`evaluateCurrentHvChargeSessionPruneDurabilityV1` / `deleteHvChargeSessionIfDurablyAcknowledgedV1`) |
 | **OQ-A3-5** | **`sourceHvChargeSessionId` stability** across prune + re-ingestion vs durable A1 `id ASC` ordering authority |
 

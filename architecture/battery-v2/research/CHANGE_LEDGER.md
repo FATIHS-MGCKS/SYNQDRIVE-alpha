@@ -6,6 +6,20 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-03 — M3.3-HV-H4-A3.5 bounded evidence reconciliation scheduler
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | `M3_3HvH4A3ReconciliationService` + Redis fleet cursor + `BatteryHvH4A3ReconciliationScheduler` (`battery_hv_h4_a3_reconciliation` leader guard); default OFF env `BATTERY_HV_H4_A3_RECONCILIATION_ENABLED` |
+| **WHY** | When enabled, eventually materialize current live `HvChargeSession` scientific state via existing A3.2 idempotent writer — separate from A3.4 retention delete |
+| **VALIDATION** | Unit + postgres integration corpus; HV-H4 validators; scheduler leader inventory |
+| **NON_EFFECTS** | No production enable; no retention coupling; no MODE_B; no migration |
+| **REMAINING_GAPS** | A3.6 derived lifecycle cache; OQ-A3-5 re-ingestion ID stability |
+| **DECISION_STATUS** | PROPOSED |
+| **EVIDENCE** | A3.5 draft PR |
+
+---
+
 ## 2026-10-02 — M3.3-HV-H4-A3.4 retention service scan progress + service-level postgres
 
 | Field | Value |

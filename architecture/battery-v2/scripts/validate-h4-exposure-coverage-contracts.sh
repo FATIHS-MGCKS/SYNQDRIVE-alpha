@@ -52,8 +52,18 @@ grep -q 'metadata.providerSegmentId' "$HV_H4/m3-3-hv-h4-charge-throughput-sessio
 
 grep -q 'M3_3_HV_H4_CHARGE_SESSION_EVIDENCE_REVISION_V1' "$HV_H4/m3-3-hv-h4-a3.constants.ts" \
   || fail "missing A3.1 evidence revision contract version"
-grep -q 'A3_REVISION_WRITER_RUNTIME_REACHABLE = false' "$HV_H4/m3-3-hv-h4-a3.constants.ts" \
-  || fail "A3 revision writer must not be runtime reachable"
+grep -q 'A3_REVISION_WRITER_RUNTIME_REACHABLE = true' "$HV_H4/m3-3-hv-h4-a3.constants.ts" \
+  || fail "A3 revision writer must be reachable via A3.5 reconciliation when enabled"
+grep -q 'A3_ACK_WRITER_RUNTIME_REACHABLE = true' "$HV_H4/m3-3-hv-h4-a3.constants.ts" \
+  || fail "A3 ACK writer must be reachable via A3.5 reconciliation when enabled"
+grep -q 'A3_RECONCILIATION_SCHEDULER_REACHABLE = true' "$HV_H4/m3-3-hv-h4-a3.constants.ts" \
+  || fail "A3.5 reconciliation scheduler must be wired in WorkersModule"
+grep -q 'M3_3HvH4A3ReconciliationService' "$HV_H4/m3-3-hv-h4-a3-reconciliation.service.ts" \
+  || fail "missing A3.5 reconciliation service"
+grep -q 'battery_hv_h4_a3_reconciliation' "$ROOT/backend/src/workers/schedulers/battery-hv-h4-a3-reconciliation.scheduler.ts" \
+  || fail "A3.5 scheduler must use leader guard battery_hv_h4_a3_reconciliation"
+grep -q 'BATTERY_HV_H4_A3_RECONCILIATION_ENABLED' "$HV_H4/m3-3-hv-h4-a3-reconciliation.config.ts" \
+  || fail "missing A3.5 reconciliation enable flag"
 grep -q 'computeM3_3HvH4ChargeSessionSourceRevisionFingerprintV1' "$HV_H4/m3-3-hv-h4-a3-charge-session-evidence-fingerprint.v1.ts" \
   || fail "missing A3 source revision fingerprint authority"
 
