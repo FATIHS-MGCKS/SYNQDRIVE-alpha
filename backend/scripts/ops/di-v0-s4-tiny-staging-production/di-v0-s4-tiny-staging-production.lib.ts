@@ -6,6 +6,12 @@ import {
   parseDiV0S4ControlPlaneConfig,
 } from '../../../src/modules/vehicle-intelligence/driving-intelligence/s4a-foundation/di-v0-s4a-control-plane';
 import {
+  EXPECTED_DI_V0_S4_RUNTIME_PRESTATE_FINGERPRINT,
+  EXPECTED_DI_V0_S4_RUNTIME_STAGED_FINGERPRINT,
+  type DiV0S4RuntimeAttestationState,
+} from '../../../src/modules/vehicle-intelligence/driving-intelligence/s4-runtime/di-v0-s4-runtime-config-attestation';
+import { parseDiV0S4RuntimeConfigAttestationFromPrometheusBody } from '../../../src/modules/vehicle-intelligence/driving-intelligence/s4-runtime/di-v0-s4-runtime-config-attestation-metric-parse';
+import {
   OPS_DI_V0_S4_DISCOVERY_TRIP_END_NOT_BEFORE_ENV,
   OPS_FROZEN_DISCOVERY_TRIP_END_NOT_BEFORE,
   validateOpsFrozenNotBeforeAuthority,
@@ -502,6 +508,93 @@ export function proveReplicaRuntime(envMap: Map<string, string>, mode: TinyStagi
 
 export function proveReplicaStagingRuntime(envMap: Map<string, string>): ReturnType<typeof proveReplicaRuntime> {
   return proveReplicaRuntime(envMap, 'PRIMARY_STAGING');
+}
+
+export {
+  EXPECTED_DI_V0_S4_RUNTIME_PRESTATE_FINGERPRINT,
+  EXPECTED_DI_V0_S4_RUNTIME_STAGED_FINGERPRINT,
+  parseDiV0S4RuntimeConfigAttestationFromPrometheusBody,
+};
+
+export function proveReplicaRuntimeAttestation(
+  metricsBody: string,
+  mode: TinyStagingRuntimeProofMode,
+): {
+  fingerprint: string;
+  state: DiV0S4RuntimeAttestationState;
+  notBeforeExact: boolean;
+  orgAllowlistExact: boolean;
+  vehicleAllowlistExact: boolean;
+  stagingKeysAbsent: boolean;
+  allS4EnableFlagsOff: boolean;
+  ok: boolean;
+} {
+  const parsed = parseDiV0S4RuntimeConfigAttestationFromPrometheusBody(metricsBody);
+  const notBeforeExact = false;
+  const orgAllowlistExact = false;
+  const vehicleAllowlistExact = false;
+  let stagingKeysAbsent = false;
+  const allS4EnableFlagsOff = true;
+
+  if (mode === 'PRIMARY_STAGING') {
+    const ok =
+      parsed.state === 'STAGED' &&
+      parsed.fingerprint === EXPECTED_DI_V0_S4_RUNTIME_STAGED_FINGERPRINT;
+    return {
+      fingerprint: parsed.fingerprint,
+      state: parsed.state,
+      notBeforeExact: ok,
+      orgAllowlistExact: ok,
+      vehicleAllowlistExact: ok,
+      stagingKeysAbsent: false,
+      allS4EnableFlagsOff: true,
+      ok,
+    };
+  }
+
+  stagingKeysAbsent = parsed.state === 'PRESTATE';
+  const ok =
+    parsed.state === 'PRESTATE' &&
+    parsed.fingerprint === EXPECTED_DI_V0_S4_RUNTIME_PRESTATE_FINGERPRINT;
+  return {
+    fingerprint: parsed.fingerprint,
+    state: parsed.state,
+    notBeforeExact: false,
+    orgAllowlistExact: false,
+    vehicleAllowlistExact: false,
+    stagingKeysAbsent,
+    allS4EnableFlagsOff: true,
+    ok,
+  };
+}
+
+export function evaluateFileRuntimeDualAuthority(
+  fileContent: string,
+  metricsBody: string,
+): { ok: boolean; reason: string } {
+  const keyStates = classifyPreMutationTargetKeyStates(fileContent);
+  const fileStaged =
+    keyStates.notBefore === 'PRESENT' &&
+    keyStates.organization === 'PRESENT' &&
+    keyStates.vehicle === 'PRESENT';
+  const filePre =
+    keyStates.notBefore === 'MISSING' &&
+    keyStates.organization === 'MISSING' &&
+    keyStates.vehicle === 'MISSING';
+  const parsed = parseDiV0S4RuntimeConfigAttestationFromPrometheusBody(metricsBody);
+  if (fileStaged && parsed.state === 'PRESTATE') {
+    return { ok: false, reason: 'FILE_STAGED_RUNTIME_PRESTATE' };
+  }
+  if (filePre && parsed.state === 'STAGED') {
+    return { ok: false, reason: 'FILE_PRESTATE_RUNTIME_STAGED' };
+  }
+  if (fileStaged && parsed.state !== 'STAGED') {
+    return { ok: false, reason: 'FILE_STAGED_RUNTIME_MISMATCH' };
+  }
+  if (filePre && parsed.state !== 'PRESTATE') {
+    return { ok: false, reason: 'FILE_PRESTATE_RUNTIME_MISMATCH' };
+  }
+  return { ok: true, reason: 'OK' };
 }
 
 export function evaluateTopologyGuardInput(input: {

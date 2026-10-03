@@ -241,26 +241,53 @@ s4f7j_capture_filtered_proc_environ() {
   return 0
 }
 
-s4f7j_prove_replica_staging_runtime() {
-  local label="$1" pm2_name="$2"
-  local pid environ_file
-  if s4f7j_is_fixture_mode || s4f7j_is_test_mode; then
-    pid="fixture-${label,,}"
-  else
-    pid="$(vps_replica_pm2_pid "$pm2_name")"
+s4f7j_fetch_replica_metrics_body() {
+  local port="$1" env_file="$2" label="$3"
+  if [[ "${DI_S4F7J_TEST_INJECT_METRICS_AUTH_FAIL:-0}" == "1" ]]; then
+    return 1
   fi
-  environ_file="$(mktemp)"
-  if ! s4f7j_capture_filtered_proc_environ "$pid" "$environ_file"; then
-    rm -f "$environ_file"
+  local fixture=""
+  if [[ "${S4F7J_RUNTIME_PROOF_MODE:-PRIMARY_STAGING}" == "RECOVERY_PRESTATE" ]]; then
+    case "$label" in
+      A) fixture="${DI_S4F7J_FIXTURE_METRICS_BODY_RECOVERY_A:-${DI_S4F7J_FIXTURE_METRICS_BODY_A:-}}" ;;
+      B) fixture="${DI_S4F7J_FIXTURE_METRICS_BODY_RECOVERY_B:-${DI_S4F7J_FIXTURE_METRICS_BODY_B:-}}" ;;
+    esac
+  else
+    case "$label" in
+      A) fixture="${DI_S4F7J_FIXTURE_METRICS_BODY_A:-}" ;;
+      B) fixture="${DI_S4F7J_FIXTURE_METRICS_BODY_B:-}" ;;
+    esac
+  fi
+  if [[ -n "$fixture" && -f "$fixture" ]]; then
+    cat "$fixture"
+    return 0
+  fi
+  if [[ -n "${DI_S4F7J_FIXTURE_METRICS_BODY:-}" && -f "${DI_S4F7J_FIXTURE_METRICS_BODY}" ]]; then
+    cat "${DI_S4F7J_FIXTURE_METRICS_BODY}"
+    return 0
+  fi
+  s4f4_run_cli fetch-metrics-body "$env_file" "$port"
+}
+
+s4f7j_prove_replica_staging_runtime() {
+  local label="$1" port="$2" env_file="$3"
+  local metrics_body metrics_file
+  metrics_file="$(mktemp)"
+  if ! s4f7j_fetch_replica_metrics_body "$port" "$env_file" "$label" >"$metrics_file"; then
+    rm -f "$metrics_file"
     echo "REPLICA_${label}_RUNTIME_PROOF=FAIL"
+    echo "PRIMARY_RUNTIME_PROOF_AUTHORITY=AUTHENTICATED_IN_PROCESS_METRIC"
     return 1
   fi
   local proof_mode="${S4F7J_RUNTIME_PROOF_MODE:-PRIMARY_STAGING}"
-  if ! s4f7j_run_cli proc-environ-proof "$label" "$environ_file" "$proof_mode"; then
-    rm -f "$environ_file"
+  echo "PRIMARY_RUNTIME_PROOF_AUTHORITY=AUTHENTICATED_IN_PROCESS_METRIC"
+  echo "RECOVERY_RUNTIME_PROOF_AUTHORITY=AUTHENTICATED_IN_PROCESS_METRIC"
+  echo "PROC_ENV_AUTHORITATIVE_PROOF_REMOVED=YES"
+  if ! s4f7j_run_cli runtime-attestation-proof "$label" "$metrics_file" "$proof_mode"; then
+    rm -f "$metrics_file"
     return 1
   fi
-  rm -f "$environ_file"
+  rm -f "$metrics_file"
   return 0
 }
 
