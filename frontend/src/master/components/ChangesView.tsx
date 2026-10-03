@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'p25-apd-ps3-shadow-gate-2026-10-03',
+    version: '4.9.2228',
+    title: 'P2.5 APD-PS3 — Production shadow policy gate (design)',
+    summary: [
+      'Frozen P25_APD_B2_V1 / P25_APD_B4_V1 contracts mirrored from PS1/PS2 replay core.',
+      'Dual shadow design: observe-only WOULD_POLL/SKIP; no enqueue/suppress/reschedule.',
+      'APDS-1 additive policy module + tests; runtime hook APDS-3..9 flag-OFF pending.',
+    ],
+    reason: 'Gate adaptive polling activation behind production shadow validation (T+24/72/7).',
+    previousBehavior: 'No online shadow evaluator; offline replay only.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/P25_APD_PS3_SHADOW_GATE_2026-10-03.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Device Connectivity',
+    createdAt: '2026-10-03T02:20:00.000Z',
+  },
+  {
     id: 'p25-apd-ps2b-split-certification-2026-10-03',
     version: '4.9.2227',
     title: 'P2.5 APD-PS2B — M3.3 vs legacy REST split certification',
