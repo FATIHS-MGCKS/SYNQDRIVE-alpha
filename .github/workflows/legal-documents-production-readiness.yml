@@ -8,6 +8,13 @@ on:
       - 'docs/testing/legal-documents-**'
       - 'docs/audits/legal-documents-**'
       - '.github/workflows/legal-documents-production-readiness.yml'
+      - 'scripts/audits/audit-dependencies.sh'
+      - 'scripts/audits/compare-dependency-audit-baseline.js'
+      - 'scripts/audits/dependency-lock-graph-identity.sh'
+      - 'scripts/audits/validate-npm-audit-json.js'
+      - 'scripts/audits/test-dependency-audit-baseline-regression.sh'
+      - 'scripts/audits/test-dependency-audit-graph-identity.sh'
+      - 'scripts/audits/fixtures/dependency-audit/**'
   workflow_dispatch:
   push:
     branches:
