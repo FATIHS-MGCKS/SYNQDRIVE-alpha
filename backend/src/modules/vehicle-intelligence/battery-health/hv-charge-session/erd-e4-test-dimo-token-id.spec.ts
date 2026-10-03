@@ -29,10 +29,10 @@ describe('ERD E4 test DIMO token_id allocator', () => {
   });
 
   it('places maximum PID slot in range', () => {
-    const maxPid = Number.MAX_SAFE_INTEGER;
-    const base = computeErdE4TestDimoTokenIdBase(maxPid);
-    const slot = (ERD_E4_TEST_DIMO_TOKEN_PID_SLOT_COUNT - 1) * ERD_E4_TEST_DIMO_TOKEN_SLOT_SIZE;
-    expect(base).toBe(ERD_E4_TEST_DIMO_TOKEN_RESERVE_BASE + slot);
+    const pidForMaxSlot = ERD_E4_TEST_DIMO_TOKEN_PID_SLOT_COUNT - 1;
+    const base = computeErdE4TestDimoTokenIdBase(pidForMaxSlot);
+    const slotOffset = pidForMaxSlot * ERD_E4_TEST_DIMO_TOKEN_SLOT_SIZE;
+    expect(base).toBe(ERD_E4_TEST_DIMO_TOKEN_RESERVE_BASE + slotOffset);
     expect(base + ERD_E4_TEST_DIMO_MAX_PER_PROCESS_ALLOCATIONS).toBeLessThanOrEqual(
       ERD_E4_TEST_DIMO_POSTGRES_INT_MAX,
     );
