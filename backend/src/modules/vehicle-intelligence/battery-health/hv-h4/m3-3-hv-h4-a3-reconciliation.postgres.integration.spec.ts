@@ -248,6 +248,85 @@ async function createSession(
       expect(cursor3).toBeTruthy();
     });
 
+    it('J-wrap) cursor wrap revisits mutated early row — new current revision + ACK', async () => {
+      process.env.BATTERY_HV_H4_A3_RECONCILIATION_INSPECTION_LIMIT = '2';
+      process.env.BATTERY_HV_H4_A3_RECONCILIATION_BATCH_SIZE = '25';
+      const writer = createM3_3HvH4ChargeSessionEvidenceWriterService(prisma);
+      const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
+      const idA = 'aaaaaaaa-aaaa-4aaa-8aaa-000000000001';
+      const idB = 'aaaaaaaa-aaaa-4aaa-8aaa-000000000002';
+      const idC = 'aaaaaaaa-aaaa-4aaa-8aaa-000000000003';
+
+      const sessionA = await createSession(prisma, organizationId, vehicleId, {
+        id: idA,
+        energyAddedKwh: 10,
+      });
+      await writer.persistFromHvChargeSession(sessionA);
+      await createSession(prisma, organizationId, vehicleId, { id: idB });
+      await createSession(prisma, organizationId, vehicleId, { id: idC });
+
+      const tick1 = await service.runBoundedReconciliationTick();
+      expect(tick1.inspectedCount).toBe(2);
+      const cursorAfterPassA = await redis.get(M3_3_HV_H4_A3_RECONCILIATION_CURSOR_REDIS_KEY);
+      expect(cursorAfterPassA).toContain('000000000002');
+
+      const oldRevision = await prisma.batteryHvChargeSessionEvidenceRevision.findFirst({
+        where: { sourceHvChargeSessionId: idA },
+      });
+      expect(oldRevision).not.toBeNull();
+      const oldFingerprint = oldRevision!.sourceRevisionFingerprint;
+
+      await prisma.hvChargeSession.update({
+        where: { id: idA },
+        data: { energyAddedKwh: 22, updatedAt: new Date('2021-01-01T00:00:00.000Z') },
+      });
+
+      let revisionCountForA = await prisma.batteryHvChargeSessionEvidenceRevision.count({
+        where: { sourceHvChargeSessionId: idA },
+      });
+      expect(revisionCountForA).toBe(1);
+
+      let wrappedRevisit = false;
+      for (let i = 0; i < 8 && revisionCountForA < 2; i += 1) {
+        await service.runBoundedReconciliationTick();
+        revisionCountForA = await prisma.batteryHvChargeSessionEvidenceRevision.count({
+          where: { sourceHvChargeSessionId: idA },
+        });
+        const cursor = await redis.get(M3_3_HV_H4_A3_RECONCILIATION_CURSOR_REDIS_KEY);
+        if (cursor?.includes('000000000001') && revisionCountForA >= 2) {
+          wrappedRevisit = true;
+        }
+      }
+
+      expect(revisionCountForA).toBeGreaterThanOrEqual(2);
+      expect(wrappedRevisit).toBe(true);
+
+      const preservedOld = await prisma.batteryHvChargeSessionEvidenceRevision.findUnique({
+        where: { id: oldRevision!.id },
+      });
+      expect(preservedOld?.sourceRevisionFingerprint).toBe(oldFingerprint);
+
+      const currentSession = await prisma.hvChargeSession.findUniqueOrThrow({
+        where: { id: idA },
+      });
+      const revisions = await prisma.batteryHvChargeSessionEvidenceRevision.findMany({
+        where: { sourceHvChargeSessionId: idA },
+      });
+      expect(revisions.length).toBeGreaterThanOrEqual(2);
+      const fingerprints = new Set(revisions.map((r) => r.sourceRevisionFingerprint));
+      expect(fingerprints.size).toBeGreaterThanOrEqual(2);
+
+      const newest = revisions.find((r) => r.sourceRevisionFingerprint !== oldFingerprint);
+      expect(newest).toBeDefined();
+      const matchingAck = await prisma.batteryHvChargeSessionEvidenceAck.findFirst({
+        where: {
+          revisionId: newest!.id,
+          sourceRevisionFingerprint: newest!.sourceRevisionFingerprint,
+        },
+      });
+      expect(matchingAck).not.toBeNull();
+    });
+
     it('O) concurrent reconcileLiveSessionRow converges', async () => {
       const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
       const session = await createSession(prisma, organizationId, vehicleId);
