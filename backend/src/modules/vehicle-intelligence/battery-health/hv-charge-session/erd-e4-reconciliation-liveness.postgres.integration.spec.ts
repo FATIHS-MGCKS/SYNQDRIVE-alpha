@@ -13,6 +13,7 @@ import {
   HV_ERD_SOC_SIGNAL_KEY,
 } from './hv-erd-reconcile-eligibility.policy';
 import { HV_ERD_SIGNAL_KEYS } from '../hv-erd-capability-signal-keys';
+import { allocateErdE4TestDimoTokenId } from './erd-e4-test-dimo-token-id';
 
 jest.mock('@config/battery-health-v2.config', () => {
   const actual = jest.requireActual('@config/battery-health-v2.config');
@@ -24,20 +25,6 @@ jest.mock('@config/battery-health-v2.config', () => {
 });
 
 const LIVE = process.env.ERD_E4_POSTGRES_REDIS_INTEGRATION === '1';
-
-/** ERD-E4 reconcile SQL joins require dimo_vehicles.token_id IS NOT NULL; use sequential CI-only ids. */
-const ERD_E4_TEST_DIMO_TOKEN_ID_BASE =
-  2_100_000_000 + (process.pid % 32_768) * 4_096;
-let erdE4TestDimoTokenIdCursor = 0;
-
-function allocateErdE4TestDimoTokenId(): number {
-  erdE4TestDimoTokenIdCursor += 1;
-  const tokenId = ERD_E4_TEST_DIMO_TOKEN_ID_BASE + erdE4TestDimoTokenIdCursor;
-  if (tokenId > 2_147_483_000) {
-    throw new Error('ERD E4 test DIMO token_id allocator exhausted');
-  }
-  return tokenId;
-}
 
 async function probeDatabase(): Promise<boolean> {
   if (!process.env.DATABASE_URL) return false;
