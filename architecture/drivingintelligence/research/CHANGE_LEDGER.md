@@ -1433,6 +1433,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | **`PRODUCTION_TINY_STAGING_DRY_RUN_READINESS=PASS`** on tool SHA `947a70540…`; frozen merge `040170104…` **`VEHICLE_DB_PROOF=FAIL`** (`::uuid` on text ids); **`GUARDS_OK=YES`**; intended **3** env keys; **`ENV_MUTATION_COUNT=0`**; post `backend.env` SHA256 unchanged; replica PIDs unchanged |
 | NON_EFFECTS | No Production env/DB/restart/deploy/migration/provider call; **`TINY_ACTIVATION_READY=NO`** |
 
+### EXP-021 S4F-7P Exact-RC Production deploy preflight (2026-10-03)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Read-only Production reverify + RC `9d286e58a…` seal recheck; deploy mechanism audit; migration preflight `RC_PENDING_MIGRATION_COUNT=0`; evidence `EXP021_S4F7P_EXACT_RC_PRODUCTION_DEPLOY_PREFLIGHT.md` |
+| FINDING | Production matches `ee958854…`; attestation metric **absent** (expected); future deploy SHA **`9d286e58ac7a4b5b6900b48c64b92fdb21afa6f4`** only |
+| NON_EFFECTS | No Production mutation; `PRODUCTION_DEPLOY_AUTHORIZATION_PRESENT=NO` |
+
 ### EXP-021 S4F-7O Minimal attestation release candidate seal (2026-10-03)
 
 | Event | Detail |
