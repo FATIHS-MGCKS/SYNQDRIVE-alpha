@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'p25-apd-ps2a-rest-authority-2026-10-03',
+    version: '4.9.2226',
+    title: 'P2.5 APD-PS2A — Battery REST authority reconciliation',
+    summary: [
+      'Production: M3.3 generalized + C3/D3 active; M3.1 REST onSnapshot capture off (shadow+publication).',
+      'REST_60M/6H remain opportunistic canonical target jobs — not C3/D3 inputs.',
+      'PS2 B2/B4 flips = WOB legacy REST_60M target picker only; M3.3 primary impact count = 0.',
+    ],
+    reason: 'Re-scope PS2 certification blockers before adaptive polling policy selection.',
+    previousBehavior: 'PS2 treated REST_60M target drift as primary Battery V2 semantic failure.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/P25_APD_PS2A_REST_AUTHORITY_RECONCILIATION_2026-10-03.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Device Connectivity',
+    createdAt: '2026-10-03T02:35:00.000Z',
+  },
+  {
     id: 'p25-apd-ps2-certification-2026-10-03',
     version: '4.9.2225',
     title: 'P2.5 APD-PS2 — per-poll trace + Battery V2 certification (read-only)',
