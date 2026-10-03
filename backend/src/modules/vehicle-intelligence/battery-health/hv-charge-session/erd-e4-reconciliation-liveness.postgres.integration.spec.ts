@@ -13,6 +13,7 @@ import {
   HV_ERD_SOC_SIGNAL_KEY,
 } from './hv-erd-reconcile-eligibility.policy';
 import { HV_ERD_SIGNAL_KEYS } from '../hv-erd-capability-signal-keys';
+import { allocateErdE4TestDimoTokenId } from './erd-e4-test-dimo-token-id';
 
 jest.mock('@config/battery-health-v2.config', () => {
   const actual = jest.requireActual('@config/battery-health-v2.config');
@@ -47,7 +48,7 @@ async function seedVehicle(prisma: PrismaClient, suffix: string, fuelType: FuelT
   const dimo = await prisma.dimoVehicle.create({
     data: {
       externalId: `erd-e4-${suffix}-${randomUUID()}`,
-      tokenId: Math.floor(Math.random() * 900_000) + 100_000,
+      tokenId: allocateErdE4TestDimoTokenId(),
     },
   });
   const vehicle = await prisma.vehicle.create({
