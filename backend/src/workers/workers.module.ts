@@ -72,6 +72,8 @@ import { StorageOrphanSweepScheduler } from './schedulers/storage-orphan-sweep.s
 import { BatteryV2RetentionScheduler } from './schedulers/battery-v2-retention.scheduler';
 import { BatteryV2ReconciliationScheduler } from './schedulers/battery-v2-reconciliation.scheduler';
 import { BatteryV2LongitudinalMaterializationReconciliationScheduler } from './schedulers/battery-v2-longitudinal-materialization-reconciliation.scheduler';
+import { BatteryHvH4A3ReconciliationScheduler } from './schedulers/battery-hv-h4-a3-reconciliation.scheduler';
+import { BatteryHvH4A3ReconciliationModule } from '@modules/vehicle-intelligence/battery-health/hv-h4/battery-hv-h4-a3-reconciliation.module';
 import { VoiceRetentionScheduler } from './schedulers/voice-retention.scheduler';
 import { IamDataRetentionScheduler } from './schedulers/iam-data-retention.scheduler';
 import { IamDataRetentionModule } from '@modules/iam-data-retention/iam-data-retention.module';
@@ -117,6 +119,7 @@ import { VehicleWarningGdprModule } from '@modules/vehicle-warning-gdpr/vehicle-
     BatteryV2JobsProducerModule,
     BatteryV2JobsModule,
     BatteryGeneralizedEvidenceModule,
+    BatteryHvH4A3ReconciliationModule,
     VoiceWebhookIngestionModule,
     VoiceAssistantModule,
     IamDataRetentionModule,
@@ -170,6 +173,7 @@ import { VehicleWarningGdprModule } from '@modules/vehicle-warning-gdpr/vehicle-
     StorageOrphanSweepScheduler,
     BatteryV2ReconciliationScheduler,
     BatteryV2LongitudinalMaterializationReconciliationScheduler,
+    BatteryHvH4A3ReconciliationScheduler,
     BatteryV2RetentionScheduler,
     VoiceRetentionScheduler,
     IamDataRetentionScheduler,

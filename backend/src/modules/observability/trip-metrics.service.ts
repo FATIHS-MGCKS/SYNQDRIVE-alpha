@@ -214,6 +214,12 @@ export class TripMetricsService implements OnModuleInit {
   readonly batteryLongitudinalReconciliationLastSuccessTimestamp: Gauge<string>;
   readonly batteryLongitudinalMaterializationFlagEnabled: Gauge<string>;
   readonly batteryLongitudinalReconciliationInvariantFailuresTotal: Counter<'type'>;
+  readonly batteryHvH4A3ReconciliationFlagEnabled: Gauge<string>;
+  readonly batteryHvH4A3ReconciliationSchedulerTicksTotal: Counter<'result'>;
+  readonly batteryHvH4A3ReconciliationSchedulerDurationSeconds: Histogram<'result'>;
+  readonly batteryHvH4A3ReconciliationInspectedTotal: Counter<string>;
+  readonly batteryHvH4A3ReconciliationCreatedTotal: Counter<string>;
+  readonly batteryHvH4A3ReconciliationExistingTotal: Counter<string>;
   readonly batteryLongitudinalProfileIntegrityInspectionTotal: Counter<'disposition'>;
   readonly batteryLongitudinalProfileSelfIntegrityFailureTotal: Counter<string>;
   readonly batteryProviderObservabilityGapOpenedTotal: Counter<string>;
@@ -1821,6 +1827,45 @@ export class TripMetricsService implements OnModuleInit {
       name: 'synqdrive_battery_longitudinal_reconciliation_invariant_failures_total',
       help: 'M3.3F F4.3 typed reconciliation safety invariant violations (fail-closed)',
       labelNames: ['type'],
+      registers: [this.registry],
+    });
+
+    this.batteryHvH4A3ReconciliationFlagEnabled = new Gauge({
+      name: 'synqdrive_battery_hv_h4_a3_reconciliation_flag_enabled',
+      help: 'M3.3-HV-H4-A3.5 reconciliation flag on this process (0=OFF, 1=ON)',
+      registers: [this.registry],
+    });
+
+    this.batteryHvH4A3ReconciliationSchedulerTicksTotal = new Counter({
+      name: 'synqdrive_battery_hv_h4_a3_reconciliation_scheduler_ticks_total',
+      help: 'M3.3-HV-H4-A3.5 bounded reconciliation scheduler tick decisions',
+      labelNames: ['result'],
+      registers: [this.registry],
+    });
+
+    this.batteryHvH4A3ReconciliationSchedulerDurationSeconds = new Histogram({
+      name: 'synqdrive_battery_hv_h4_a3_reconciliation_scheduler_duration_seconds',
+      help: 'M3.3-HV-H4-A3.5 reconciliation scheduler tick duration by result',
+      labelNames: ['result'],
+      buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 30, 60],
+      registers: [this.registry],
+    });
+
+    this.batteryHvH4A3ReconciliationInspectedTotal = new Counter({
+      name: 'synqdrive_battery_hv_h4_a3_reconciliation_inspected_total',
+      help: 'M3.3-HV-H4-A3.5 live HvChargeSession rows inspected per tick',
+      registers: [this.registry],
+    });
+
+    this.batteryHvH4A3ReconciliationCreatedTotal = new Counter({
+      name: 'synqdrive_battery_hv_h4_a3_reconciliation_created_total',
+      help: 'M3.3-HV-H4-A3.5 new durable revisions created by reconciliation',
+      registers: [this.registry],
+    });
+
+    this.batteryHvH4A3ReconciliationExistingTotal = new Counter({
+      name: 'synqdrive_battery_hv_h4_a3_reconciliation_existing_total',
+      help: 'M3.3-HV-H4-A3.5 rows already durable at current fingerprint',
       registers: [this.registry],
     });
 
