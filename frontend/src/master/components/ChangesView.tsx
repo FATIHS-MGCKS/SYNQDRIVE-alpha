@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'p25-apd-ps2b-split-certification-2026-10-03',
+    version: '4.9.2227',
+    title: 'P2.5 APD-PS2B — M3.3 vs legacy REST split certification',
+    summary: [
+      'Read-only T7 replay: B2/B4 M3.3 primary certified (0 semantic Δ, 0 LV miss, source-time ladder intact).',
+      'Legacy REST_60M target flips on WOB remain opportunistic — changed non-customer only.',
+      'Split gates decouple adaptive polling safety from REST_60M compatibility artifacts.',
+    ],
+    reason: 'Formalize PS2A authority split into independent certification surfaces before APD activation.',
+    previousBehavior: 'Single PS2 gate mixed legacy REST_60M target misses with M3.3 primary semantics.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/P25_APD_PS2B_SPLIT_CERTIFICATION_2026-10-03.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Device Connectivity',
+    createdAt: '2026-10-03T02:05:00.000Z',
+  },
+  {
     id: 'p25-apd-ps2a-rest-authority-2026-10-03',
     version: '4.9.2226',
     title: 'P2.5 APD-PS2A — Battery REST authority reconciliation',
