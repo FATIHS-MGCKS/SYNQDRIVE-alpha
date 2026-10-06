@@ -51,6 +51,9 @@ describe('DimoSnapshotProcessor — trip start isolation', () => {
       vehicleTripDetectionState: {
         findUnique: jest.fn().mockResolvedValue({ state: 'RESTING' }),
       },
+      batteryMeasurement: {
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
     };
 
     const dimoAuth = { getVehicleJwt: jest.fn().mockResolvedValue('jwt') };
@@ -86,6 +89,7 @@ describe('DimoSnapshotProcessor — trip start isolation', () => {
       undefined, // snapshotWakeCoordinator
       undefined, // snapshotPhysicalEvidenceOrchestrator
       undefined, // physicalAuthorityCutover
+      undefined, // apdShadow
     );
 
     const job = {

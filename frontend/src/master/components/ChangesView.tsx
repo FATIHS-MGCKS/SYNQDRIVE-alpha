@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'p25-apds-2-7-shadow-observability-2026-10-03',
+    version: '4.9.2229',
+    title: 'P2.5 APDS-2…7 — dual shadow observability (flag OFF)',
+    summary: [
+      'WORKER_APD_SHADOW_ENABLED=false: observe-only B2/B4 pre/post poll forensics.',
+      'No enqueue/suppress/reschedule; fail-open wrapper preserves real polls.',
+      'Prisma apd_shadow_reconciliation_decisions + metrics + JS↔TS policy parity tests.',
+    ],
+    reason: 'Production-safe shadow validation before LTE_R1 activation (APDS-9).',
+    previousBehavior: 'No runtime shadow hook or durable forensic rows.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/P25_APDS_2_7_SHADOW_OBSERVABILITY_2026-10-03.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Device Connectivity',
+    createdAt: '2026-10-03T02:50:00.000Z',
+  },
+  {
     id: 'vehicle-onboarding-vo5a1-integrity-seal-2026-10-01',
     version: '4.9.2220',
     title: 'Vehicle Onboarding VO-5A.1 — offboarding integrity seal',
