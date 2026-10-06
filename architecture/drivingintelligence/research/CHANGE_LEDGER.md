@@ -1433,6 +1433,46 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | **`PRODUCTION_TINY_STAGING_DRY_RUN_READINESS=PASS`** on tool SHA `947a70540…`; frozen merge `040170104…` **`VEHICLE_DB_PROOF=FAIL`** (`::uuid` on text ids); **`GUARDS_OK=YES`**; intended **3** env keys; **`ENV_MUTATION_COUNT=0`**; post `backend.env` SHA256 unchanged; replica PIDs unchanged |
 | NON_EFFECTS | No Production env/DB/restart/deploy/migration/provider call; **`TINY_ACTIVATION_READY=NO`** |
 
+### EXP-021 S4F-7P Exact-RC Production deploy preflight (2026-10-03)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Read-only Production reverify + RC `9d286e58a…` seal recheck; deploy mechanism audit; migration preflight `RC_PENDING_MIGRATION_COUNT=0`; evidence `EXP021_S4F7P_EXACT_RC_PRODUCTION_DEPLOY_PREFLIGHT.md` |
+| FINDING | Production matches `ee958854…`; attestation metric **absent** (expected); future deploy SHA **`9d286e58ac7a4b5b6900b48c64b92fdb21afa6f4`** only |
+| NON_EFFECTS | No Production mutation; `PRODUCTION_DEPLOY_AUTHORIZATION_PRESENT=NO` |
+
+### EXP-021 S4F-7O Minimal attestation release candidate seal (2026-10-03)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Branch `release/exp021-s4f7o-minimal-attestation-rc1` @ **`9d286e58ac7a4b5b6900b48c64b92fdb21afa6f4`** (parent `ee958854…` + 4 S4F-7M runtime files from `c29179366…`); evidence `EXP021_S4F7O_MINIMAL_ATTESTATION_RELEASE_CANDIDATE_SEAL.md` |
+| FINDING | **4-file seal**; build + attestation integration + S4A/S4F PASS on candidate; **no Production action** |
+| NON_EFFECTS | RC not merged to main; deploy requires **new human authorization** |
+
+### EXP-021 S4F-7P exact-RC deploy preflight + S4F-7Q readiness correction (2026-10-03)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Evidence PR **#1898** `EXP021_S4F7P_EXACT_RC_PRODUCTION_DEPLOY_PREFLIGHT.md`; S4F-7Q corrects §9 readiness (no technical A→PRESTATE gate in `vps_replica_rolling_deploy`) |
+| FINDING | **`REPLICA_A_ATTESTATION_GATE_BEFORE_B=NO`**; **`DEPLOY_WRAPPER_REMEDIATION_REQUIRED=YES`**; **`EXACT_RC_PRODUCTION_DEPLOY_PREFLIGHT_READY=NO`** |
+| NON_EFFECTS | No Production deploy |
+
+### EXP-021 S4F-7Q exact-RC deploy guard + migration rehearsal (2026-10-03)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Opt-in `SYNQDRIVE_DI_S4F7Q_EXACT_RC_ATTESTATION_GATE`; `di-v0-s4f7q-*` lib/CLI/bash; disposable VPS migration rehearsal; evidence `EXP021_S4F7Q_EXACT_RC_DEPLOY_GUARD_ENGINEERING.md` |
+| FINDING | **`DISPOSABLE_MIGRATE_DEPLOY=PASS`** (0 applied); **`EXACT_RC_MIGRATION_DEPLOY_COMPATIBLE_WITH_CURRENT_DB_AHEAD_BASELINE=YES`**; **26** guard tests |
+| NON_EFFECTS | RC commit unchanged; no Production mutation |
+
+### EXP-021 S4F-7R immutable deploy controller authority bridge (2026-10-03)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `SYNQDRIVE_DEPLOY_CONTROLLER_ROOT` + `EXPECTED_DEPLOY_CONTROLLER_SHA`; guarded deploy sources replica/S4F-7Q from controller checkout; rollback disables forward gate; branch `release/exp021-s4f7r-deploy-controller-rc1`; evidence `EXP021_S4F7R_IMMUTABLE_DEPLOY_CONTROLLER_AUTHORITY_BRIDGE.md` |
+| FINDING | Post-merge integration defect confirmed: RC deploy could not reach S4F-7Q tooling; **13** controller tests + S4F-7Q regression |
+| NON_EFFECTS | Runtime RC `9d286e58…` unchanged; Production still blocked pending controller seal |
+
 ### EXP-021 S4F-7N Production attestation deploy isolation audit (2026-10-03)
 
 | Event | Detail |

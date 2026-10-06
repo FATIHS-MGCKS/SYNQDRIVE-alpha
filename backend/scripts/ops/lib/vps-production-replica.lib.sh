@@ -374,6 +374,19 @@ vps_replica_rolling_deploy() {
 
   vps_replica_ensure_registered || return 1
 
+  if [[ "${SYNQDRIVE_DI_S4F7Q_EXACT_RC_ATTESTATION_GATE:-0}" == "1" ]]; then
+    if [[ -z "${SYNQDRIVE_DEPLOY_CONTROLLER_ROOT:-}" ]]; then
+      vps_replica_log "ABORT: guarded deploy requires SYNQDRIVE_DEPLOY_CONTROLLER_ROOT (S4F-7R)"
+      return 1
+    fi
+    # shellcheck source=lib/di-v0-s4f7q-exact-rc-attestation-deploy.lib.sh
+    source "${SYNQDRIVE_DEPLOY_CONTROLLER_ROOT}/backend/scripts/ops/lib/di-v0-s4f7q-exact-rc-attestation-deploy.lib.sh"
+    export SYNQDRIVE_DI_S4F7Q_FORWARD_EXACT_RC_GATE="${SYNQDRIVE_DI_S4F7Q_FORWARD_EXACT_RC_GATE:-1}"
+    vps_replica_rolling_deploy_s4f7q_gated "$release_dir" "$target_sha" || return 1
+    pm2 save
+    return 0
+  fi
+
   vps_replica_restart_one "${SYNQDRIVE_REPLICA_A_PM2_NAME}" || return 1
   vps_replica_wait_healthy "${SYNQDRIVE_REPLICA_A_PM2_NAME}" "${SYNQDRIVE_REPLICA_A_PORT}" "$target_sha" || return 1
 
@@ -428,6 +441,11 @@ vps_replica_rollback() {
 
   local previous_sha
   previous_sha="$(vps_replica_release_sha "${PREVIOUS_CURRENT_RELEASE}")"
+
+  # S4F-7R: rollback must not re-apply forward exact-RC attestation / SHA pins.
+  export SYNQDRIVE_DI_S4F7Q_EXACT_RC_ATTESTATION_GATE=0
+  export SYNQDRIVE_DI_S4F7Q_FORWARD_EXACT_RC_GATE=0
+  vps_replica_log "ROLLBACK_FORWARD_GATE_DISABLED=YES"
 
   vps_replica_rolling_deploy "${PREVIOUS_CURRENT_RELEASE}" "$previous_sha" || {
     vps_replica_log "ROLLBACK WARN: rolling restart failed — attempting PM2 dump restore"
