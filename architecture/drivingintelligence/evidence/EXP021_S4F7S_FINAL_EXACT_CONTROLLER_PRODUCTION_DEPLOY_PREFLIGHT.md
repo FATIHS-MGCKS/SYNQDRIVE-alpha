@@ -11,7 +11,7 @@
 | Workspace main @ evidence | `377e5fa20f6e685ba1deeeb9c5fedf4b10baf228` |
 | Runtime RC | `9d286e58ac7a4b5b6900b48c64b92fdb21afa6f4` (parent `ee9588548845c8077aa0cba0684b06eac7c9d4d2`, **4 files**) |
 | Deploy controller | `8a18bb6e13a04490ed3e49e393817bee77722902` (`release/exp021-s4f7r-deploy-controller-rc1`) |
-| Historical rollback target (task freeze) | `ee9588548845c8077aa0cba0684b06eac7c9d2` / `20261002014651_v4994` |
+| Historical rollback target (task freeze) | `ee9588548845c8077aa0cba0684b06eac7c9d4d2` / `20261002014651_v4994` |
 
 ## 1 — Immutable authority re-anchor
 
@@ -182,3 +182,19 @@ All mutation gates **NO** (read-only observation + disposable DB only).
 | `FINAL_EXACT_CONTROLLER_DEPLOY_PREFLIGHT_READY` | **NO** |
 | `FINAL_RESULT` | **`BLOCKED_PRODUCTION_RUNTIME_DRIFT`** |
 | Primary blockers | Live Production SHA/release drift; frozen old-SHA contract vs `0c19eb62…`; attestation already present on current runtime |
+
+---
+
+## S4F-7T supersession addendum (2026-10-06)
+
+This section **does not** change the S4F-7S historical verdict (`FINAL_RESULT=BLOCKED_PRODUCTION_RUNTIME_DRIFT`, `FINAL_EXACT_CONTROLLER_DEPLOY_PREFLIGHT_READY=NO`). That run was evaluated against a **frozen** old Production SHA (`ee958854…`) and exact-controller forward contract.
+
+Follow-up read-only closure **EXP-021 S4F-7T** ([EXP021_S4F7T_CURRENT_PRODUCTION_ATTESTATION_SUPERSESSION_CLOSURE.md](EXP021_S4F7T_CURRENT_PRODUCTION_ATTESTATION_SUPERSESSION_CLOSURE.md)) establishes:
+
+| Field | Value |
+|-------|--------|
+| `S4F7S_BLOCKER_RESOLUTION` | **`DEPLOY_NO_LONGER_REQUIRED`** (attestation objective met on live `0c19eb62…`) |
+| Live attestation | Both replicas: **1** sample, **PRESTATE**, fingerprint `b648908a5f74798f765b0631cd16d5c50a390222d36b63fb03f787367176750d` |
+| Runtime RC `9d286e58…` | **`SUPERSEDED_DO_NOT_DEPLOY`** for attestation — Production already contains byte-identical S4F-7M four-file surface |
+| Deploy controller `8a18bb6e…` | **Not authorized** for current execution; historical artifact preserved |
+| S4F-7T closure | `FINAL_RESULT=PASS_SUPERSEDED_NO_DEPLOY_REQUIRED` |
