@@ -96,6 +96,7 @@ Append-only record for this authority directory.
 | 2026-09-26 | **Phase 5** decision register completion — added TDL-DEC-P1-001, TDL-DEC-R1R8-001, TDL-DEC-ROUTE-V2-001, TDL-DEC-PHASE5-001; TDL-DEC-R10-001/002, R11-001, R12-001 **PROPOSED → VALIDATED** (present in live `2b54a357…`; not `PRODUCTION_VALIDATED`); prior status preserved in **STATUS HISTORY**; TDL-GAP-010/011 **RESOLVED**; failed approaches R9A-002/R9C-001/R9F-001 indexed in graph | Docs-only | [DECISION_REGISTER.md](../decisions/DECISION_REGISTER.md) |
 | 2026-09-26 | **Phase 5** Production baseline refresh @ `2b54a357…` / `20260926094359_v4994` (read-only); CX-004 `HISTORICAL_NON_BLOCKING`; CX-005/006 + GAP-005/008/013/014/015 `EXPLICIT_NON_BLOCKING_LIMITATION`; HYP-001 CONFIRMED, HYP-002 superseded | Docs-only audit | TDL-EVID-PHASE5-PROD-BASELINE-001 |
 | 2026-09-26 | **Phase 5** Gate A 17/17 PASS — registry coverage **`AUDIT_IN_PROGRESS` → `AUTHORITY_ACTIVE`** | Docs-only governance | [TDL_PHASE_5_AUTHORITY_PROMOTION_AUDIT_2026-09-26.md](../evidence/TDL_PHASE_5_AUTHORITY_PROMOTION_AUDIT_2026-09-26.md) |
+| 2026-10-02 | **R9O-1/R9O-2** — canonical `wakeCorrelationId` contract (`R9_WAKE_CORRELATION_V1`) + additive `r9_provider_wake_forensics` schema/repository; fail-open forensic wrapper; **no** wake/polling/tier/FSM behavior change; runtime instrumentation deferred R9O-3 | P2.5 R9 observability foundation | [R9O_1_2_WAKE_FORENSIC_FOUNDATION_2026-10-02.md](../evidence/R9O_1_2_WAKE_FORENSIC_FOUNDATION_2026-10-02.md) |
 
 ## Standard 1.0 phases
 
