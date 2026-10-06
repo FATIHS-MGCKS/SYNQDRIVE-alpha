@@ -3,6 +3,10 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 COMPARE_SCRIPT="$ROOT/scripts/audits/compare-dependency-audit-baseline.js"
+VALIDATE_AUDIT_JSON_SCRIPT="$ROOT/scripts/audits/validate-npm-audit-json.js"
+GRAPH_IDENTITY_SCRIPT="$ROOT/scripts/audits/dependency-lock-graph-identity.sh"
+# shellcheck source=dependency-lock-graph-identity.sh
+source "$GRAPH_IDENTITY_SCRIPT"
 
 is_zero_or_empty_sha() {
   local sha="${1:-}"
@@ -47,14 +51,19 @@ resolve_audit_baseline_sha() {
     return 0
   fi
 
-  # Backward-compatible direct env override (local/CI harness) when event name is unset.
-  if ! is_zero_or_empty_sha "$pr_base" && is_valid_commit_sha "$pr_base"; then
+  # Backward-compatible direct env override (local/CI harness) only when event name is unset.
+  if [[ -z "$event_name" ]] && ! is_zero_or_empty_sha "$pr_base" && is_valid_commit_sha "$pr_base"; then
     printf '%s\n' "$pr_base"
     return 0
   fi
 
   echo "FAIL_CLOSED: unsupported or incomplete audit baseline context (event=${event_name:-unknown})" >&2
   return 2
+}
+
+validate_audit_json_file() {
+  local path="$1"
+  node "$VALIDATE_AUDIT_JSON_SCRIPT" "$path"
 }
 
 run_surface_audit_json() {
@@ -64,10 +73,22 @@ run_surface_audit_json() {
     cd "$dir"
     npm audit --json >"$out" 2>/dev/null || true
   )
-  if [[ ! -s "$out" ]]; then
-    echo "FAIL_CLOSED: empty audit JSON for ${dir}" >&2
+  validate_audit_json_file "$out"
+}
+
+materialize_head_audit_json_for_harness() {
+  local out_backend="$1"
+  local out_frontend="$2"
+  local inject_backend="${AUDIT_DEPENDENCIES_INJECT_HEAD_BACKEND_AUDIT:-}"
+  local inject_frontend="${AUDIT_DEPENDENCIES_INJECT_HEAD_FRONTEND_AUDIT:-}"
+  if [[ -z "$inject_backend" || -z "$inject_frontend" ]]; then
+    echo "FAIL_CLOSED: harness requires AUDIT_DEPENDENCIES_INJECT_HEAD_BACKEND_AUDIT and AUDIT_DEPENDENCIES_INJECT_HEAD_FRONTEND_AUDIT" >&2
     exit 2
   fi
+  cp "$inject_backend" "$out_backend"
+  cp "$inject_frontend" "$out_frontend"
+  validate_audit_json_file "$out_backend"
+  validate_audit_json_file "$out_frontend"
 }
 
 run_surface_audit_human() {
@@ -112,6 +133,33 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   trap 'rm -rf "$TMP"' EXIT
 
   git -C "$ROOT" archive "${AUDIT_BASE_SHA}" backend frontend | tar -x -C "$TMP"
+  mkdir -p "$TMP/head-archive"
+  git -C "$ROOT" archive "${PR_HEAD_SHA}" backend frontend | tar -x -C "$TMP/head-archive"
+
+  emit_dependency_graph_identity \
+    "$TMP/backend/package-lock.json" \
+    "$TMP/head-archive/backend/package-lock.json" \
+    "$TMP/frontend/package-lock.json" \
+    "$TMP/head-archive/frontend/package-lock.json" || exit 2
+
+  if [[ "${DEPENDENCY_GRAPH_CHANGED:-}" == NO ]]; then
+    echo "Dependency graph unchanged (lockfile identity); skipping baseline regression comparator."
+    if [[ "${AUDIT_DEPENDENCIES_TEST_HARNESS:-}" == "1" ]]; then
+      echo "AUDIT_DEPENDENCIES_TEST_HARNESS=1: using injected HEAD audit JSON fixtures."
+      materialize_head_audit_json_for_harness "$TMP/head-backend-audit.json" "$TMP/head-frontend-audit.json"
+    else
+      echo "Installing HEAD dependency trees..."
+      run_surface_npm_ci "$ROOT/backend"
+      run_surface_npm_ci "$ROOT/frontend"
+      run_surface_audit_json "$ROOT/backend" "$TMP/head-backend-audit.json"
+      run_surface_audit_json "$ROOT/frontend" "$TMP/head-frontend-audit.json"
+      run_surface_audit_human "HEAD backend" "$ROOT/backend"
+      run_surface_audit_human "HEAD frontend" "$ROOT/frontend"
+    fi
+    echo "SECURITY_REGRESSION=false"
+    echo "Dependency baseline regression gate passed (unchanged dependency graph)."
+    exit 0
+  fi
 
   echo "Installing immutable baseline dependency trees..."
   run_surface_npm_ci "$TMP/backend"
