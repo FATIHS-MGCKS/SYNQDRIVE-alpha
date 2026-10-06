@@ -135,8 +135,28 @@ echo "==> Switch current + rolling multi-replica restart"
 RELEASE_OPS_DIR="${RELEASE_DIR}/backend/scripts/ops"
 # shellcheck source=vps-production-replica-topology.config.sh
 source "${RELEASE_OPS_DIR}/vps-production-replica-topology.config.sh"
-# shellcheck source=lib/vps-production-replica.lib.sh
-source "${RELEASE_OPS_DIR}/lib/vps-production-replica.lib.sh"
+if [[ "${SYNQDRIVE_DI_S4F7Q_EXACT_RC_ATTESTATION_GATE:-0}" == "1" ]]; then
+  if [[ -z "${SYNQDRIVE_DEPLOY_CONTROLLER_ROOT:-}" ]] || [[ -z "${EXPECTED_DEPLOY_CONTROLLER_SHA:-}" ]]; then
+    echo "!! ABORT: guarded exact-RC deploy requires SYNQDRIVE_DEPLOY_CONTROLLER_ROOT and EXPECTED_DEPLOY_CONTROLLER_SHA" >&2
+    exit 1
+  fi
+  # shellcheck source=lib/vps-deploy-controller.lib.sh
+  source "${SYNQDRIVE_DEPLOY_CONTROLLER_ROOT}/backend/scripts/ops/lib/vps-deploy-controller.lib.sh"
+  vps_deploy_controller_verify_exact_sha || exit 1
+  CONTROLLER_OPS_DIR="$(vps_deploy_controller_ops_dir)"
+  echo "==> S4F-7R guarded deploy: orchestration from controller ${EXPECTED_DEPLOY_CONTROLLER_SHA:0:12}"
+  # shellcheck source=lib/vps-production-replica.lib.sh
+  source "${CONTROLLER_OPS_DIR}/lib/vps-production-replica.lib.sh"
+  export SYNQDRIVE_DI_S4F7Q_FORWARD_EXACT_RC_GATE=1
+else
+  # shellcheck source=lib/vps-deploy-controller.lib.sh
+  if [[ -f "${DEPLOY_EXECUTOR_OPS_DIR}/lib/vps-deploy-controller.lib.sh" ]]; then
+    # shellcheck source=lib/vps-deploy-controller.lib.sh
+    source "${DEPLOY_EXECUTOR_OPS_DIR}/lib/vps-deploy-controller.lib.sh"
+  fi
+  # shellcheck source=lib/vps-production-replica.lib.sh
+  source "${RELEASE_OPS_DIR}/lib/vps-production-replica.lib.sh"
+fi
 
 TARGET_SHA="$(vps_replica_release_sha "$RELEASE_DIR")"
 if [[ "$TARGET_SHA" != "$REQUESTED_SHA" ]]; then

@@ -189,6 +189,12 @@ describe('di-v0-s4f7q-exact-rc-attestation-deploy.lib', () => {
     expect(genericDeployGateEnabledFromEnv('0')).toBe(false);
     const lib = fs.readFileSync(REPLICA_LIB, 'utf8');
     expect(lib).toContain('SYNQDRIVE_DI_S4F7Q_EXACT_RC_ATTESTATION_GATE:-0');
+    const s4f7q = fs.readFileSync(
+      path.join(BACKEND_ROOT, 'scripts/ops/lib/di-v0-s4f7q-exact-rc-attestation-deploy.lib.sh'),
+      'utf8',
+    );
+    expect(s4f7q).toContain('SYNQDRIVE_DEPLOY_CONTROLLER_ROOT');
+    expect(s4f7q).not.toMatch(/s4f7q_cli_path\(\)[\s\S]*SYNQDRIVE_CURRENT_LINK/);
   });
 
   it('22 token never logged', () => {

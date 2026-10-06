@@ -13,12 +13,21 @@ s4f7q_log() {
   printf '[s4f7q-exact-rc-attestation] %s\n' "$*"
 }
 
+s4f7q_controller_backend_root() {
+  if [[ -n "${SYNQDRIVE_DEPLOY_CONTROLLER_ROOT:-}" ]]; then
+    echo "${SYNQDRIVE_DEPLOY_CONTROLLER_ROOT}/backend"
+    return 0
+  fi
+  echo "${SYNQDRIVE_CURRENT_LINK}/backend"
+}
+
 s4f7q_cli_path() {
-  echo "${SYNQDRIVE_CURRENT_LINK}/backend/scripts/ops/di-v0-s4f7q-exact-rc-attestation-deploy/di-v0-s4f7q-exact-rc-attestation-deploy-cli.ts"
+  echo "$(s4f7q_controller_backend_root)/scripts/ops/di-v0-s4f7q-exact-rc-attestation-deploy/di-v0-s4f7q-exact-rc-attestation-deploy-cli.ts"
 }
 
 s4f7q_run_cli() {
-  local backend_root="${SYNQDRIVE_CURRENT_LINK}/backend"
+  local backend_root
+  backend_root="$(s4f7q_controller_backend_root)"
   (
     cd "$backend_root"
     npx --yes ts-node --transpile-only "$(s4f7q_cli_path)" "$@"
@@ -43,16 +52,18 @@ vps_replica_rolling_deploy_s4f7q_gated() {
   local release_dir=$1
   local target_sha=$2
 
-  if [[ "$target_sha" != "$S4F7Q_FROZEN_TARGET_RC_SHA" ]]; then
-    vps_replica_log "ABORT: S4F-7Q gate requires TARGET_SHA=${S4F7Q_FROZEN_TARGET_RC_SHA:0:12}"
-    return 1
-  fi
+  if [[ "${SYNQDRIVE_DI_S4F7Q_FORWARD_EXACT_RC_GATE:-0}" == "1" ]]; then
+    if [[ "$target_sha" != "$S4F7Q_FROZEN_TARGET_RC_SHA" ]]; then
+      vps_replica_log "ABORT: S4F-7Q forward gate requires TARGET_SHA=${S4F7Q_FROZEN_TARGET_RC_SHA:0:12}"
+      return 1
+    fi
 
-  local observed_old
-  observed_old="$(vps_replica_release_sha "$(vps_replica_current_release_dir)")"
-  if [[ "$observed_old" != "$S4F7Q_FROZEN_OLD_PRODUCTION_SHA" ]]; then
-    vps_replica_log "ABORT: S4F-7Q gate requires OLD_PRODUCTION_SHA=${S4F7Q_FROZEN_OLD_PRODUCTION_SHA:0:12} (observed ${observed_old:0:12})"
-    return 1
+    local observed_old
+    observed_old="$(vps_replica_release_sha "$(vps_replica_current_release_dir)")"
+    if [[ "$observed_old" != "$S4F7Q_FROZEN_OLD_PRODUCTION_SHA" ]]; then
+      vps_replica_log "ABORT: S4F-7Q forward gate requires OLD_PRODUCTION_SHA=${S4F7Q_FROZEN_OLD_PRODUCTION_SHA:0:12} (observed ${observed_old:0:12})"
+      return 1
+    fi
   fi
 
   vps_replica_restart_one "${SYNQDRIVE_REPLICA_A_PM2_NAME}" || return 1
