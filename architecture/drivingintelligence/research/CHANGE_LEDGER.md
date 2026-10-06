@@ -1473,6 +1473,22 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | Post-merge integration defect confirmed: RC deploy could not reach S4F-7Q tooling; **13** controller tests + S4F-7Q regression |
 | NON_EFFECTS | Runtime RC `9d286e58…` unchanged; Production still blocked pending controller seal |
 
+### EXP-021 S4F-7S final exact-controller Production deploy preflight (2026-10-06)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Read-only Production + controller checkout preflight; fresh disposable migration rehearsal @ RC `9d286e58…`; evidence `EXP021_S4F7S_FINAL_EXACT_CONTROLLER_PRODUCTION_DEPLOY_PREFLIGHT.md` |
+| FINDING | **`FINAL_RESULT=BLOCKED_PRODUCTION_RUNTIME_DRIFT`** — live `0c19eb62…` / `20261006064327_v4994` vs frozen `ee958854…`; attestation metric present on current runtime; disposable `prisma migrate deploy` **PASS** (0 applied) on 404-row clone |
+| NON_EFFECTS | No Production mutation; no deploy authorization |
+
+### EXP-021 S4F-7T current Production attestation supersession closure (2026-10-06)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Read-only Production attestation + file-equivalence proof; S4F-7S supersession addendum on PR **#1904**; evidence `EXP021_S4F7T_CURRENT_PRODUCTION_ATTESTATION_SUPERSESSION_CLOSURE.md` |
+| FINDING | **`FINAL_RESULT=PASS_SUPERSEDED_NO_DEPLOY_REQUIRED`** — live PRESTATE on A/B; attestation arrived via release `20261006064327_v4994`; historical RC `9d286e58…` **superseded**; `S4F7S_BLOCKER_RESOLUTION=DEPLOY_NO_LONGER_REQUIRED` (S4F-7S drift block **unchanged** historically) |
+| NON_EFFECTS | No Production mutation; no runtime RC deploy; deploy controller not executed |
+
 ### EXP-021 S4F-7N Production attestation deploy isolation audit (2026-10-03)
 
 | Event | Detail |
