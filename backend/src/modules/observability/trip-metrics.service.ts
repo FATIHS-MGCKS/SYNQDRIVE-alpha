@@ -64,6 +64,16 @@ export class TripMetricsService implements OnModuleInit {
   readonly tripCounterAnomalies: Counter<string>;
   readonly clickHouseMigrationFailures: Counter<string>;
   readonly dimoSnapshotPollTotal: Counter<string>;
+  readonly apdShadowEnabled: Gauge<string>;
+  readonly apdShadowDecisionsTotal: Counter<string>;
+  readonly apdShadowWouldPollTotal: Counter<string>;
+  readonly apdShadowWouldSkipTotal: Counter<string>;
+  readonly apdShadowForcedFallbackTotal: Counter<string>;
+  readonly apdShadowInformativeRealPollTotal: Counter<string>;
+  readonly apdShadowSkippedInformativePollTotal: Counter<string>;
+  readonly apdShadowProfileInvalidatedTotal: Counter<string>;
+  readonly apdShadowProfileRecoveredTotal: Counter<string>;
+  readonly apdShadowFailureTotal: Counter<string>;
   readonly snapshotWakeTotal: Counter<string>;
   readonly snapshotWakeProbeTotal: Counter<string>;
   readonly snapshotPollingTierVehicles: Gauge<string>;
@@ -557,6 +567,74 @@ export class TripMetricsService implements OnModuleInit {
       name: 'synqdrive_dimo_snapshot_poll_total',
       help: 'Total DIMO snapshot poll worker outcomes',
       labelNames: ['result'],
+      registers: [this.registry],
+    });
+
+    this.apdShadowEnabled = new Gauge({
+      name: 'synqdrive_apd_shadow_enabled',
+      help: '1 when WORKER_APD_SHADOW_ENABLED observes reconciliation polls',
+      registers: [this.registry],
+    });
+
+    this.apdShadowDecisionsTotal = new Counter({
+      name: 'synqdrive_apd_shadow_decisions_total',
+      help: 'APD shadow pre-poll decisions',
+      labelNames: ['policy', 'decision', 'reason'],
+      registers: [this.registry],
+    });
+
+    this.apdShadowWouldPollTotal = new Counter({
+      name: 'synqdrive_apd_shadow_would_poll_total',
+      help: 'APD shadow WOULD_POLL decisions',
+      labelNames: ['policy'],
+      registers: [this.registry],
+    });
+
+    this.apdShadowWouldSkipTotal = new Counter({
+      name: 'synqdrive_apd_shadow_would_skip_total',
+      help: 'APD shadow WOULD_SKIP decisions',
+      labelNames: ['policy'],
+      registers: [this.registry],
+    });
+
+    this.apdShadowForcedFallbackTotal = new Counter({
+      name: 'synqdrive_apd_shadow_forced_fallback_total',
+      help: 'APD shadow forced/conservative decisions',
+      labelNames: ['policy', 'reason'],
+      registers: [this.registry],
+    });
+
+    this.apdShadowInformativeRealPollTotal = new Counter({
+      name: 'synqdrive_apd_shadow_informative_real_poll_total',
+      help: 'Real polls that advanced at least one source signal',
+      labelNames: ['source'],
+      registers: [this.registry],
+    });
+
+    this.apdShadowSkippedInformativePollTotal = new Counter({
+      name: 'synqdrive_apd_shadow_skipped_informative_poll_total',
+      help: 'Shadow WOULD_SKIP but real poll was informative',
+      labelNames: ['policy', 'source'],
+      registers: [this.registry],
+    });
+
+    this.apdShadowProfileInvalidatedTotal = new Counter({
+      name: 'synqdrive_apd_shadow_profile_invalidated_total',
+      help: 'APD profile invalidations',
+      labelNames: ['reason'],
+      registers: [this.registry],
+    });
+
+    this.apdShadowProfileRecoveredTotal = new Counter({
+      name: 'synqdrive_apd_shadow_profile_recovered_total',
+      help: 'APD profile recoveries after invalidation',
+      registers: [this.registry],
+    });
+
+    this.apdShadowFailureTotal = new Counter({
+      name: 'synqdrive_apd_shadow_failure_total',
+      help: 'APD shadow pipeline failures (non-blocking)',
+      labelNames: ['stage'],
       registers: [this.registry],
     });
 

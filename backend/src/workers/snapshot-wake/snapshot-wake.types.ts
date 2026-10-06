@@ -25,6 +25,8 @@ export interface DimoSnapshotJobData {
   dimoTokenId: number;
   origin?: SnapshotJobOrigin;
   wakeContext?: SnapshotWakeContext;
+  /** Observe-only APD shadow correlation id (no poll authority). */
+  apdShadowOpportunityId?: string;
 }
 
 export type SnapshotWakeOutcome =
@@ -49,6 +51,7 @@ export interface RequestSnapshotInput {
   origin: SnapshotJobOrigin;
   wakeContext?: SnapshotWakeContext;
   delayMs?: number;
+  apdShadowOpportunityId?: string;
 }
 
 export interface PendingSnapshotWakeRecord {

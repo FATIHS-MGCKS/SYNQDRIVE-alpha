@@ -17,6 +17,7 @@ import { VoiceAssistantModule } from '@modules/voice-assistant/voice-assistant.m
 import { BookingDocumentGenerationModule } from '@modules/documents/booking-document-generation/booking-document-generation.module';
 
 import { SnapshotWakeModule } from './snapshot-wake/snapshot-wake.module';
+import { AdaptivePollingShadowModule } from './schedulers/snapshot-polling/adaptive-polling-shadow/adaptive-polling-shadow.module';
 
 import { DimoSnapshotProcessor } from './processors/dimo-snapshot.processor';
 import { SnapshotWakeHandoffProcessor } from './processors/snapshot-wake-handoff.processor';
@@ -110,6 +111,7 @@ import { VehicleWarningGdprModule } from '@modules/vehicle-warning-gdpr/vehicle-
     ),
     DimoModule,
     SnapshotWakeModule,
+    AdaptivePollingShadowModule,
     VehicleIntelligenceModule,
     HighMobilityModule,
     NotificationsModule,
