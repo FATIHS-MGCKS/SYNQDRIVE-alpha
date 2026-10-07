@@ -6,6 +6,18 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-07 — M3.3-HV-H4-A3.6-R0 final closure (PR #1905)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Main integration; SOURCE_LEVEL_PRISMA_OPERATION_COUNT terminology; throughput-only fingerprint scope correction; postgres multi-lifecycle live/durable parity test |
+| **VALIDATION** | `m3-3-hv-h4-a3-6-r0-multi-lifecycle.postgres.integration.spec.ts`; HV-H4 CI postgres corpus |
+| **OBSERVED_EFFECT** | `A3_6_DECISION=OPTIMIZE_DURABLE_LOADER_FIRST`; `A3.6_DEFERRED`; `POSTGRES_PERFORMANCE_TIMINGS_EXECUTED=NO` |
+| **DECISION_STATUS** | PROPOSED |
+| **EVIDENCE** | `M3_3_HV_H4_A3_6_DERIVED_LIFECYCLE_CACHE_NEED_AUDIT_2026-10-06.md` §14 |
+
+---
+
 ## 2026-10-06 — M3.3-HV-H4-A3.6-R0 derived lifecycle cache need audit
 
 | Field | Value |
