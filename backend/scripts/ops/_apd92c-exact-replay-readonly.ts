@@ -7,13 +7,13 @@ import { createHash } from 'node:crypto';
 import {
   evaluateP25ApdB2V1Core,
   evaluateP25ApdB4V1Core,
-} from '/workspace/backend/src/workers/schedulers/snapshot-polling/adaptive-polling-policy/p25-apd-policy-engine';
-import { evaluateP25ApdProfile } from '/workspace/backend/src/workers/schedulers/snapshot-polling/adaptive-polling-policy/p25-apd-profile-evaluator';
-import { applyP25ApdShadowSafetyOverlay } from '/workspace/backend/src/workers/schedulers/snapshot-polling/adaptive-polling-policy/p25-apd-shadow-overlay';
-import { classifyP25ApdCadenceProfile } from '/workspace/backend/src/workers/schedulers/snapshot-polling/adaptive-polling-policy/p25-apd-profile-classifier';
-import { P25_APD_SHADOW_ADVANCING_DECISIONS } from '/workspace/backend/src/workers/schedulers/snapshot-polling/adaptive-polling-shadow/p25-apd-shadow-execution-versions';
-import { P25_APD_RC_LV_FALLBACK_QUERY_BOUNDED_BY_POLL_COMPLETION } from '/workspace/backend/src/workers/schedulers/snapshot-polling/adaptive-polling-policy/p25-apd-historical-lv-visibility';
-import { P25_APD_PS1_PROFILE_MEDIAN_INTERVAL_FALLBACK_MS } from '/workspace/backend/src/workers/schedulers/snapshot-polling/adaptive-polling-policy/p25-apd-profile-semantics';
+} from '../../src/workers/schedulers/snapshot-polling/adaptive-polling-policy/p25-apd-policy-engine';
+import { evaluateP25ApdProfile } from '../../src/workers/schedulers/snapshot-polling/adaptive-polling-policy/p25-apd-profile-evaluator';
+import { applyP25ApdShadowSafetyOverlay } from '../../src/workers/schedulers/snapshot-polling/adaptive-polling-policy/p25-apd-shadow-overlay';
+import { classifyP25ApdCadenceProfile } from '../../src/workers/schedulers/snapshot-polling/adaptive-polling-policy/p25-apd-profile-classifier';
+import { P25_APD_SHADOW_ADVANCING_DECISIONS } from '../../src/workers/schedulers/snapshot-polling/adaptive-polling-shadow/p25-apd-shadow-execution-versions';
+import { P25_APD_RC_LV_FALLBACK_QUERY_BOUNDED_BY_POLL_COMPLETION } from '../../src/workers/schedulers/snapshot-polling/adaptive-polling-policy/p25-apd-historical-lv-visibility';
+import { P25_APD_PS1_PROFILE_MEDIAN_INTERVAL_FALLBACK_MS } from '../../src/workers/schedulers/snapshot-polling/adaptive-polling-policy/p25-apd-profile-semantics';
 
 const FROM_MS = Date.parse('2026-10-07T13:41:51.992Z');
 const TO_MS = Date.parse('2026-10-07T14:30:37.000Z');
