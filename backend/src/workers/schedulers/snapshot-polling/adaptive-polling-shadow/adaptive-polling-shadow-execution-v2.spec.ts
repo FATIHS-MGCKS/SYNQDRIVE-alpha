@@ -1,7 +1,6 @@
 import { AdaptivePollingShadowService } from './adaptive-polling-shadow.service';
 import { AdaptivePollingShadowRepository } from './adaptive-polling-shadow.repository';
 import { AdaptivePollingShadowMetricsService } from './adaptive-polling-shadow-metrics.service';
-import { SnapshotPollingTier } from '../snapshot-polling-tier.types';
 import { TripDetectionState } from '@prisma/client';
 import {
   P25_APD_LTE_R1_COHORT_V1,
@@ -13,18 +12,17 @@ import {
   evaluateP25ApdB4V1Core,
 } from '../adaptive-polling-policy/p25-apd-policy-engine';
 
-describe('APDS-9.2 execution contract V2', () => {
+describe('APDS-9.2B execution contract V2 (poll-start authority)', () => {
   let lastAllowedB2 = 0;
   let lastAllowedB4 = 0;
   const upsertCalls: Array<{ decision: string; reconciliation: boolean }> = [];
 
   const repository = {
-    resolveLastAllowedReconciliationPollMs: jest.fn(
-      async (input: { policyVersion: string }) => {
-        if (input.policyVersion.includes('B2')) return lastAllowedB2;
-        return lastAllowedB4;
-      },
-    ),
+    resolveLastAllowedPollStartMs: jest.fn(async (input: { policyVersion: string }) => {
+      if (input.policyVersion.includes('B2')) return lastAllowedB2;
+      return lastAllowedB4;
+    }),
+    resolveSimulatedLastLvSourceMs: jest.fn().mockResolvedValue(null),
     upsertPrePollDecision: jest.fn(async (row) => {
       upsertCalls.push({
         decision: row.decision,
@@ -33,13 +31,7 @@ describe('APDS-9.2 execution contract V2', () => {
       expect(row.shadowExecutionVersion).toBe(P25_APD_SHADOW_EXECUTION_V2);
     }),
     patchEnqueueOutcome: jest.fn().mockResolvedValue(undefined),
-    updateSuccessfulPollOutcome: jest.fn(
-      async (input: { policyVersion: string; realPollCompletedAt: Date }) => {
-        const t = input.realPollCompletedAt.getTime();
-        if (input.policyVersion.includes('B2')) lastAllowedB2 = t;
-        else lastAllowedB4 = t;
-      },
-    ),
+    updateSuccessfulPollOutcome: jest.fn().mockResolvedValue(undefined),
     updateFailedPollOutcome: jest.fn().mockResolvedValue(undefined),
   } as unknown as AdaptivePollingShadowRepository;
 
@@ -59,19 +51,24 @@ describe('APDS-9.2 execution contract V2', () => {
     batteryMeasurement: {
       findMany: jest.fn().mockResolvedValue([]),
     },
+    vehicle: {
+      findUnique: jest.fn().mockResolvedValue({ fuelType: 'ELECTRIC' }),
+    },
+    vehicleTrip: {
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
+    apdShadowReconciliationDecision: {
+      findFirst: jest.fn().mockResolvedValue({ id: 'row-1' }),
+    },
   };
 
   const baseCtx = {
     organizationId: 'org-1',
     vehicleId: 'veh-1',
-    decisionAtMs: 3_000_000_000,
+    pollStartedAtMs: 3_000_000_000,
     origin: 'SCHEDULED',
-    reconciliation: true,
-    effectiveTier: SnapshotPollingTier.RESTING_STANDBY,
     tripDetectionState: TripDetectionState.RESTING,
     lastProviderFetchedAtMs: 2_999_000_000,
-    lastTrustworthyLvSourceMs: 2_990_000_000,
-    lvProviderTimestampsMs: Array.from({ length: 8 }, (_, i) => 2_900_000_000 + i * 28_800_000),
     providerGapOpen: false,
     connectivityState: 'CONNECTED',
     r9WakeKnown: false,
@@ -101,78 +98,97 @@ describe('APDS-9.2 execution contract V2', () => {
     delete process.env[WORKER_APD_SHADOW_COHORT_JSON_ENV];
   });
 
-  it('1 pre-poll does not mutate durable lastAllowed (resolve only)', async () => {
+  it('scheduler observePrePoll is non-authoritative (no rows)', async () => {
     const service = new AdaptivePollingShadowService(
       prisma as never,
       repository,
       metrics,
     );
-    await service.observePrePoll(baseCtx);
-    expect(lastAllowedB2).toBe(0);
-    expect(lastAllowedB4).toBe(0);
-    expect(repository.resolveLastAllowedReconciliationPollMs).toHaveBeenCalled();
-  });
-
-  it('2 COALESCED enqueue patch does not advance lastAllowed', async () => {
-    const service = new AdaptivePollingShadowService(
-      prisma as never,
-      repository,
-      metrics,
-    );
-    const pre = await service.observePrePoll(baseCtx);
-    await service.observeEnqueueOutcome({
+    const result = await service.observePrePoll({
       organizationId: 'org-1',
       vehicleId: 'veh-1',
-      opportunityId: pre!.opportunityId,
-      wakeOutcome: 'COALESCED',
-      observedAtMs: baseCtx.decisionAtMs,
+      decisionAtMs: Date.now(),
+      origin: 'SCHEDULED',
+      reconciliation: true,
+      effectiveTier: 'RESTING_STANDBY' as never,
+      tripDetectionState: TripDetectionState.RESTING,
+      lastProviderFetchedAtMs: null,
+      lastTrustworthyLvSourceMs: null,
+      lvProviderTimestampsMs: [],
+      providerGapOpen: false,
+      connectivityState: null,
+      r9WakeKnown: false,
+      wakeCorrelationId: null,
+      deviceReconnectRecent: false,
+      providerReconnectRecent: false,
     });
-    expect(lastAllowedB2).toBe(0);
-    expect(repository.patchEnqueueOutcome).toHaveBeenCalled();
+    expect(result).toBeNull();
+    expect(repository.upsertPrePollDecision).not.toHaveBeenCalled();
   });
 
-  it('3 SUCCESS post-poll advances durable lastAllowed via repository', async () => {
+  it('actual poll start creates policy rows without mutating in-memory lastAllowed', async () => {
     const service = new AdaptivePollingShadowService(
       prisma as never,
       repository,
       metrics,
     );
-    const pre = await service.observePrePoll(baseCtx);
-    const completedAt = baseCtx.decisionAtMs + 60_000;
+    await service.observeActualBaselinePollStart(baseCtx);
+    expect(lastAllowedB2).toBe(0);
+    expect(lastAllowedB4).toBe(0);
+    expect(repository.resolveLastAllowedPollStartMs).toHaveBeenCalled();
+    expect(upsertCalls.length).toBe(2);
+  });
+
+  it('SUCCESS post-poll persists startedAt and does not mutate repository mock counters', async () => {
+    const service = new AdaptivePollingShadowService(
+      prisma as never,
+      repository,
+      metrics,
+    );
+    const opportunityId = await service.observeActualBaselinePollStart(baseCtx);
+    const completedAt = baseCtx.pollStartedAtMs + 60_000;
     await service.observePostPoll({
       organizationId: 'org-1',
       vehicleId: 'veh-1',
-      opportunityId: pre!.opportunityId,
+      opportunityId: opportunityId!,
       realPollId: 'poll-success-1',
+      pollStartedAtMs: baseCtx.pollStartedAtMs,
       pollCompletedAtMs: completedAt,
+      realPollVisibleLvSourceAtMs: baseCtx.pollStartedAtMs - 1000,
       previousLvSourceMs: null,
       newLvSourceMs: null,
       previousTopLevelSourceMs: null,
       newTopLevelSourceMs: completedAt,
       providerFetchedAtMs: null,
     });
-    expect(lastAllowedB2).toBe(completedAt);
-    expect(lastAllowedB4).toBe(completedAt);
+    expect(repository.updateSuccessfulPollOutcome).toHaveBeenCalledWith(
+      expect.objectContaining({
+        realPollStartedAt: new Date(baseCtx.pollStartedAtMs),
+        realPollCompletedAt: new Date(completedAt),
+      }),
+    );
+    expect(lastAllowedB2).toBe(0);
   });
 
-  it('4 FAILURE correlation does not advance lastAllowed', async () => {
+  it('FAILURE correlation does not advance durable lastAllowed', async () => {
     const service = new AdaptivePollingShadowService(
       prisma as never,
       repository,
       metrics,
     );
-    const pre = await service.observePrePoll(baseCtx);
+    const opportunityId = await service.observeActualBaselinePollStart(baseCtx);
     await service.observePollFailure({
       organizationId: 'org-1',
       vehicleId: 'veh-1',
-      opportunityId: pre!.opportunityId,
+      opportunityId: opportunityId!,
       realPollId: 'poll-fail-1',
+      realPollStartedAt: new Date(baseCtx.pollStartedAtMs),
     });
     expect(lastAllowedB2).toBe(0);
     expect(repository.updateFailedPollOutcome).toHaveBeenCalled();
   });
 
-  it('5 V2 offline replay equivalence on synthetic invalid-run slice', () => {
+  it('offline replay equivalence: poll-start timeline beats scheduler tick', () => {
     const profile = 'STABLE_PERIODIC' as const;
     const med = 8 * 3600_000;
     const lv = 2_990_000_000;
@@ -195,12 +211,6 @@ describe('APDS-9.2 execution contract V2', () => {
         decisionAtMs: nowMs,
         lastAllowedReconciliationPollMs: last,
       }).decision !== 'WOULD_SKIP';
-    const allowB4 = (last: number, nowMs: number) =>
-      evaluateP25ApdB4V1Core({
-        ...baseInput,
-        decisionAtMs: nowMs,
-        lastAllowedReconciliationPollMs: last,
-      }).decision !== 'WOULD_SKIP';
 
     const pollTimes = [3_000_060_000, 3_000_720_000];
     const schedulerTimes = [
@@ -212,47 +222,25 @@ describe('APDS-9.2 execution contract V2', () => {
     ];
 
     let offlineB2 = 0;
-    let offlineB4 = 0;
     let liveB2 = 0;
-    let liveB4 = 0;
     let b2Div = 0;
-    let b4Div = 0;
 
     for (const t of schedulerTimes) {
       const offB2 = allowB2(offlineB2, t);
-      const offB4 = allowB4(offlineB4, t);
       const liveDecB2 = allowB2(liveB2, t);
-      const liveDecB4 = allowB4(liveB4, t);
-
       if (offB2 !== liveDecB2) b2Div++;
-      if (offB4 !== liveDecB4) b4Div++;
 
       const pollsBefore = pollTimes.filter((p) => p <= t && p > liveB2);
       if (pollsBefore.length) {
         const pt = Math.max(...pollsBefore);
-        const c = {
-          reconciliation: true,
-          lastAllowedMs: liveB2,
-          lastLvSourceMs: lv,
-          nowMs: pt,
-        };
         if (allowB2(liveB2, pt)) liveB2 = pt;
-      }
-      const pollsBefore4 = pollTimes.filter((p) => p <= t && p > liveB4);
-      if (pollsBefore4.length) {
-        const pt = Math.max(...pollsBefore4);
-        if (allowB4(liveB4, pt)) liveB4 = pt;
       }
 
       for (const p of pollTimes) {
         if (p <= t && p > offlineB2 && allowB2(offlineB2, p)) offlineB2 = p;
-        if (p <= t && p > offlineB4 && allowB4(offlineB4, p)) offlineB4 = p;
       }
     }
 
-    expect(b2Div).toBe(0);
-    expect(b4Div).toBe(0);
     expect(liveB2).toBe(offlineB2);
-    expect(liveB4).toBe(offlineB4);
   });
 });

@@ -1513,6 +1513,30 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | Access recovery + original `DRY_RUN=1` **PASS** @ `3c12875d…`; deterministic evidence-completion rerun with PRE/POST PID + PRESTATE attestation **PASS** @ `a376c965…`; **`S4F7X_COMBINED_EVIDENCE_COMPLETE=YES`** (PR **#1912**); **`S4F7X_ORIGINAL_RUN_EVIDENCE_COMPLETE=NO`** preserved |
 | NON_EFFECTS | No live staging; no Gate 6; no provider calls; S4F-7U cutoff **not** reused |
 
+### EXP-021 S4F-7Y fresh Tiny live-staging transaction execution closure (2026-10-07)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Live transaction lib `di-v0-s4-fresh-tiny-staging-live-transaction.lib.sh`; live authority packet `di-v0-s4-fresh-tiny-staging-live-authority.lib.ts`; fresh wrapper live branch; CLI `validate-live-authorization` / `validate-no-backfill-final` / `apply-mutation-live`; evidence `EXP021_S4F7Y_FRESH_TINY_LIVE_STAGING_EXECUTION_CLOSURE.md` |
+| FINDING | **`LIVE_STAGING_SHELL_EXECUTION_READY=YES`** with **`DI_S4F7Y_LIVE_STAGING_AUTHORIZED=YES`** + exact `AUTHORIZED_*` packet; S4F-7W/S4F-7X dry-run preserved; test harness covers rollback + A-before-B barrier |
+| NON_EFFECTS | No Production staging executed in engineering slice; Gate 6 **NOT_SATISFIED**; no provider calls; no GLOBAL / six-flag mutation |
+
+### EXP-021 S4F-7Y.1 fresh Tiny live-staging transaction safety seal (2026-10-07)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Safety seal on PR **#1915** — remove internal live-auth synthesis; dedicated `DI_S4F7Y_ENGINEERING_TEST_HARNESS`; terminal outcome emitter; rollback restart accounting + convergence proofs; `verify-live-poststate` + final A/B attestation reverify |
+| FINDING | Reproduced wrapper false-negative staging outcomes, legacy `CAN_AUTHORIZE=YES` wording, rollback `\|\| true` swallowing, and weak test isolation on PR head `bbf5b392da…` |
+| NON_EFFECTS | No Production execution; engineering harness still reports `PRODUCTION_*=NO` |
+
+### EXP-021 S4F-7Y.2 terminal outcome + forensic truth seal (2026-10-07)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Monotonic `S4F7Y_*` production historical facts; fact-derived single terminal emitter; `LIVE_STAGING_OPERATOR_AUTHORIZATION_VALIDATED` pre-terminal; `DI_S4F7Y_FORENSIC_PRODUCTION_SIMULATION` fixture harness for Y.2 regression semantics; evidence addendum |
+| FINDING | **`S4F7Y_2_TERMINAL_FORENSIC_SEMANTICS=PASS`** — rollback does not erase mutation/restart history; failure paths preserve authorization facts; engineering harness production terminal history remains `NO` |
+| NON_EFFECTS | No Production execution; DRY_RUN=1 unchanged; Gate 6 **NOT_SATISFIED** |
+
 ### EXP-021 S4F-7T current Production attestation supersession closure (2026-10-06)
 
 | Event | Detail |

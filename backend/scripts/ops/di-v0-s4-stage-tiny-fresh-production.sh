@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# EXP-021 S4F-7V / S4F-7W — fresh-authority Production Tiny config staging (exactly three env keys).
+# EXP-021 S4F-7V / S4F-7W / S4F-7Y — fresh-authority Production Tiny config staging (exactly three env keys).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -16,6 +16,8 @@ export S4F7F_SCRIPT_DIR
 source "${SCRIPT_DIR}/vps-production-replica-topology.config.sh"
 # shellcheck source=lib/di-v0-s4-fresh-tiny-staging-production.lib.sh
 source "${SCRIPT_DIR}/lib/di-v0-s4-fresh-tiny-staging-production.lib.sh"
+# shellcheck source=lib/di-v0-s4-fresh-tiny-staging-live-transaction.lib.sh
+source "${SCRIPT_DIR}/lib/di-v0-s4-fresh-tiny-staging-live-transaction.lib.sh"
 # shellcheck source=lib/di-v0-s4-tiny-staging-production.lib.sh
 source "${SCRIPT_DIR}/lib/di-v0-s4-tiny-staging-production.lib.sh"
 # shellcheck source=lib/vps-production-replica.lib.sh
@@ -32,6 +34,9 @@ ACK="${DI_S4_TINY_STAGING_ACK:-}"
 
 echo "EXP021_S4F7V_FRESH_TINY_CONFIG_STAGING_WRAPPER=1"
 echo "EXP021_S4F7W_DRY_RUN_WIRING=1"
+echo "EXP021_S4F7Y_LIVE_TRANSACTION_CLOSURE=1"
+echo "EXP021_S4F7Y_1_LIVE_TRANSACTION_SAFETY_SEAL=1"
+echo "EXP021_S4F7Y_2_TERMINAL_OUTCOME_FORENSICS_SEAL=1"
 echo "FRESH_STAGING_USES_SEPARATE_EXPLICIT_PATH=YES"
 echo "HISTORICAL_S4F7J_BEHAVIOR_PRESERVED=YES"
 echo "SUPPORTED_ENV_MUTATION_KEY_COUNT=3"
@@ -44,12 +49,14 @@ echo "PROVIDER_CALL_PATH_PRESENT=NO"
 echo "EXPECTED_PROVIDER_CALL_DELTA=0"
 echo "EXPLICIT_OPERATOR_AUTHORIZATION_GATE=NOT_SATISFIED"
 echo "TINY_ACTIVATION_READY=NO"
-echo "PRODUCTION_MUTATION_OCCURRED=NO"
+echo "INITIAL_PRODUCTION_MUTATION_STATE=NONE"
+echo "INITIAL_PRODUCTION_STAGING_AUTHORIZED_STATE=NONE"
+echo "INITIAL_PRODUCTION_STAGING_EXECUTED_STATE=NONE"
 echo "DEPLOY_OCCURRED=NO"
 echo "MIGRATION_EXECUTED=NO"
 echo "SHADOW_ACTIVATION_OCCURRED=NO"
-echo "LIVE_STAGING_SHELL_EXECUTION_READY=NO"
-echo "LIVE_STAGING_REMAINS_FAIL_CLOSED=YES"
+echo "LIVE_STAGING_SHELL_EXECUTION_READY=YES"
+echo "LIVE_STAGING_REMAINS_FAIL_CLOSED_WITHOUT_EXACT_OPERATOR_AUTHORIZATION=YES"
 
 if [[ "$ACK" != "YES" ]]; then
   echo "OPERATOR_ACK=MISSING"
@@ -102,13 +109,27 @@ if [[ "$DRY_RUN" == "1" ]]; then
   exit 0
 fi
 
-# Future live transaction — not authorized in engineering slices.
+if [[ "${DI_S4F7Y_LIVE_STAGING_AUTHORIZED:-}" == "YES" ]]; then
+  if ! s4f7y_execute_live_transaction; then
+    echo "FAIL_CLOSED=YES"
+    exit 1
+  fi
+  exit 0
+fi
+
 if [[ "${DI_S4F7V_LIVE_STAGING_AUTHORIZED:-}" == "YES" ]]; then
-  echo "LIVE_TRANSACTION_IMPLEMENTATION_PENDING_OPERATOR_RUNBOOK=YES"
+  s4f7y_init_forensic_facts
+  echo "OLD_S4F7V_AUTHORIZATION_ALONE_CAN_AUTHORIZE_LIVE_MUTATION=NO"
+  echo "DEDICATED_LIVE_STAGING_AUTHORIZATION_REQUIRED=YES"
+  echo "LIVE_STAGING_AUTHORIZATION_VALID=NO"
   echo "FAIL_CLOSED=YES"
+  s4f7y_emit_terminal_outcomes || true
   exit 1
 fi
 
-echo "LIVE_MUTATION_NOT_AUTHORIZED_IN_ENGINEERING_SLICE=YES"
+s4f7y_init_forensic_facts
+echo "LIVE_STAGING_AUTHORIZATION_VALID=NO"
+echo "LIVE_MUTATION_NOT_AUTHORIZED=YES"
 echo "FAIL_CLOSED=YES"
+s4f7y_emit_terminal_outcomes || true
 exit 1

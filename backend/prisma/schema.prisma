@@ -4441,6 +4441,8 @@ model ApdShadowReconciliationDecision {
   connectivityState     String?   @map("connectivity_state")
   wakeCorrelationId       String?   @map("wake_correlation_id")
 
+  realPollStartedAt           DateTime? @map("real_poll_started_at")
+  realPollVisibleLvSourceAt   DateTime? @map("real_poll_visible_lv_source_at")
   realPollCompletedAt       DateTime? @map("real_poll_completed_at")
   newLvSourceObserved       Boolean   @default(false) @map("new_lv_source_observed")
   newLvSourceAt             DateTime? @map("new_lv_source_at")
