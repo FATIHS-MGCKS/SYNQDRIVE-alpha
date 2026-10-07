@@ -1509,9 +1509,9 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 
 | Event | Detail |
 |-------|--------|
-| CHANGE | Evidence `EXP021_S4F7X_EXACT_TOOL_JIT_PRODUCTION_DRY_RUN.md`; sealed tool authority `11b4a80ccb88d1d6f747399f84667b06c9a71050` documented |
-| FINDING | **`FINAL_RESULT=BLOCKED_PRODUCTION_ACCESS_UNAVAILABLE`** — Cloud Agent SSH to `srv1374778.hstgr.cloud` **Permission denied (publickey)**; no `DATABASE_URL`; local detached tool checkout **PASS** only |
-| NON_EFFECTS | No Production observation beyond failed SSH; no JIT cutoff/fingerprint; no wrapper `DRY_RUN=1`; Gate 6 **NOT_SATISFIED** |
+| CHANGE | Evidence `EXP021_S4F7X_EXACT_TOOL_JIT_PRODUCTION_DRY_RUN.md` (**PASS**); bootstrap `.cursor/scripts/cloud-agent-s4f7x-fresh-tiny-dry-run.sh`; JIT authority `2026-10-07T14:54:57.152Z` + `fc8df190…`; tool SHA `11b4a80ccb88d1d6f747399f84667b06c9a71050` |
+| FINDING | Access recovery: **`synqdrive-admin@srv1374778.hstgr.cloud`** (not root/Tailscale/`DATABASE_URL`); Production `DRY_RUN=1` **`GUARDS_OK=YES`**, **`DRY_RUN_FULL_GUARD_PATH_EXECUTED=YES`**, zero env/DB/restart mutation @ `3c12875d…` / `20261007115738_v4994` |
+| NON_EFFECTS | No live staging; no Gate 6; no provider calls; S4F-7U cutoff **not** reused |
 
 ### EXP-021 S4F-7T current Production attestation supersession closure (2026-10-06)
 

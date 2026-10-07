@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'di-exp021-s4f7x-jit-production-dry-run-2026-10-07',
+    version: '4.9.2231',
+    title: 'Driving Intelligence — EXP-021 S4F-7X JIT fresh authority Production dry-run',
+    summary: [
+      'Recovered Production SSH path synqdrive-admin@srv1374778.hstgr.cloud (sudo -n for backend.env/postgres; no Tailscale/DATABASE_URL).',
+      'Sealed tool SHA 11b4a80cc… (#1911); JIT NOT_BEFORE 2026-10-07T14:54:57.152Z + fingerprint fc8df190… from live DB clock.',
+      'DRY_RUN=1 on di-v0-s4-stage-tiny-fresh-production.sh: GUARDS_OK=YES, zero env/DB/restart mutation; Gate 6 still NOT_SATISFIED.',
+    ],
+    reason:
+      'Complete authorized Production dry-run for S4F-7W fresh Tiny wrapper after prior agent blocked on wrong SSH assumptions.',
+    previousBehavior:
+      'S4F-7X evidence BLOCKED_PRODUCTION_ACCESS_UNAVAILABLE; no JIT authority or wrapper execution.',
+    details:
+      'architecture/drivingintelligence/evidence/EXP021_S4F7X_EXACT_TOOL_JIT_PRODUCTION_DRY_RUN.md; .cursor/scripts/cloud-agent-s4f7x-fresh-tiny-dry-run.sh',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-07T15:00:00.000Z',
+  },
+  {
     id: 'p25-apds-9-0-cohort-selector-2026-10-07',
     version: '4.9.2230',
     title: 'P2.5 APDS-9.0 — fail-closed APD shadow cohort selector (engineering only)',
