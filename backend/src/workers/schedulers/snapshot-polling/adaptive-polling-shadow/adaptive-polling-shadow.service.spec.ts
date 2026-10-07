@@ -43,6 +43,9 @@ describe('AdaptivePollingShadowService', () => {
       findMany: jest.fn().mockResolvedValue([]),
       findFirst: jest.fn(),
     },
+    vehicle: {
+      findUnique: jest.fn().mockResolvedValue({ fuelType: 'ELECTRIC' }),
+    },
     vehicleTrip: {
       findFirst: jest.fn().mockResolvedValue(null),
     },
