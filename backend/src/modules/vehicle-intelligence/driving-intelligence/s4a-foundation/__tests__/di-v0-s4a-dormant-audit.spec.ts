@@ -96,7 +96,8 @@ describe('DI V0 S4A dormant-by-construction audit', () => {
           file.startsWith(S4_RUNTIME_DIR + path.sep) ||
           file.endsWith('backend/scripts/ops/di-v0-s4-initialize-global-kill-row.ts') ||
           file.includes(`${path.sep}di-v0-s4-global-kill-init-production${path.sep}`) ||
-          file.includes(`${path.sep}di-v0-s4-tiny-staging-production${path.sep}`)
+          file.includes(`${path.sep}di-v0-s4-tiny-staging-production${path.sep}`) ||
+          file.includes(`${path.sep}di-v0-s4-fresh-tiny-staging-production${path.sep}`)
         ) {
           continue;
         }

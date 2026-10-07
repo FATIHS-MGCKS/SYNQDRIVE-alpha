@@ -1489,6 +1489,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | **`FINAL_RESULT=PASS`** — `FRESH_TINY_NOT_BEFORE=2026-10-06T18:33:26.610Z`, fingerprint `9abb1a57…`, v1 state **OTHER**; old `2026-10-02` cutoff would expose **14** trips; S4F-7J tooling incompatible → **`S4F7V_REQUIRED=YES`** |
 | NON_EFFECTS | No Production mutation; Gate 6 **NOT_SATISFIED**; Tiny activation **NO** |
 
+### EXP-021 S4F-7V fresh fingerprint Tiny staging tooling (2026-10-07)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Fresh-operator path `di-v0-s4-stage-tiny-fresh-production.sh` + TS lib/CLI/tests; `test:di:s4f7v:fresh-tiny-staging-wrapper`; S4A dormant-audit allowlist for ops import; evidence `EXP021_S4F7V_FRESH_FINGERPRINT_TINY_STAGING_TOOLING_ENGINEERING.md` |
+| FINDING | **`FINAL_RESULT=PASS`** (engineering) — separate path from S4F-7J; fresh authority ≤900 s (PostgreSQL clock); primary attestation **v1 OTHER** + exact fingerprint; S4F-7U sample authority **non-executable** |
+| NON_EFFECTS | No Production mutation/deploy/restart/DB write; no runtime attestation classification change; Gate 6 **NOT_SATISFIED** |
+
 ### EXP-021 S4F-7T current Production attestation supersession closure (2026-10-06)
 
 | Event | Detail |
