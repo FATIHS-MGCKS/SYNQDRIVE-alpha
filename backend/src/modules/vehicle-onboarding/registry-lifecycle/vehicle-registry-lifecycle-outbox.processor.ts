@@ -1,8 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { VehicleRegistryLifecycleOutboxStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { BillingQuantityVehicleIntegration } from '@modules/billing/billing-quantity-vehicle.integration';
 import { BillingVehicleRegistryOffboardProjection } from '@modules/billing/registry-lifecycle/billing-vehicle-registry-offboard.projection';
 import { isRegistryBillingPermanentIntegrityError } from '@modules/billing/registry-lifecycle/registry-billing-permanent-integrity.error';
+import {
+  buildRegistryActivateBillingIdempotencyKey,
+  validateVehicleActivatedRegistryEvent,
+  type ValidatedVehicleActivatedRegistryEvent,
+} from '@modules/billing/registry-lifecycle/validate-vehicle-activated-registry-event';
 import {
   validateVehicleOffboardedRegistryEvent,
   VehicleRegistryLifecycleBillingValidationError,
@@ -42,6 +48,7 @@ export class VehicleRegistryLifecycleOutboxProcessor {
     private readonly prisma: PrismaService,
     private readonly repository: VehicleRegistryLifecycleOutboxRepository,
     private readonly billingOffboardProjection: BillingVehicleRegistryOffboardProjection,
+    private readonly billingQuantityVehicle: BillingQuantityVehicleIntegration,
   ) {}
 
   async processPendingBatch(limit: number): Promise<
@@ -89,9 +96,38 @@ export class VehicleRegistryLifecycleOutboxProcessor {
     }
 
     try {
-      if (row.eventType === 'VEHICLE_OFFBOARDED') {
+      if (row.eventType === 'VEHICLE_ACTIVATED') {
+        const validated = validateVehicleActivatedRegistryEvent(row);
+        await this.assertVehicleTenantForActivation(validated);
+        const quantityResult = await this.billingQuantityVehicle.onVehicleProvisioned({
+          organizationId: validated.organizationId,
+          vehicleId: validated.vehicleId,
+          effectiveAt: validated.occurredAt,
+          idempotencyKey: buildRegistryActivateBillingIdempotencyKey(validated.eventId),
+          retroactiveAuthorized: true,
+        });
+        this.logger.log({
+          msg: 'registry_lifecycle.billing_activate_processed',
+          outboxId: row.id,
+          eventId: validated.eventId,
+          eventType: row.eventType,
+          organizationId: validated.organizationId,
+          vehicleId: validated.vehicleId,
+          billingAction: 'VEHICLE_CONNECTED',
+          quantityEventCreated: quantityResult?.created ?? false,
+        });
+      } else if (row.eventType === 'VEHICLE_OFFBOARDED') {
         const validated = validateVehicleOffboardedRegistryEvent(row);
         await this.billingOffboardProjection.onVehicleOffboardedLifecycleEvent(validated);
+        this.logger.log({
+          msg: 'registry_lifecycle.billing_offboard_processed',
+          outboxId: row.id,
+          eventId: validated.eventId,
+          eventType: row.eventType,
+          organizationId: validated.organizationId,
+          vehicleId: validated.vehicleId,
+          billingAction: 'VEHICLE_DISCONNECTED',
+        });
       } else {
         return 'deferred';
       }
@@ -150,6 +186,30 @@ export class VehicleRegistryLifecycleOutboxProcessor {
         `Registry lifecycle outbox ${row.id} handler failed (retry=${retryCount}): ${message}`,
       );
       return 'retry';
+    }
+  }
+
+  private async assertVehicleTenantForActivation(
+    event: ValidatedVehicleActivatedRegistryEvent,
+  ): Promise<void> {
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: {
+        id: event.vehicleId,
+        organizationId: event.organizationId,
+      },
+      select: { id: true, registryLifecycle: true },
+    });
+    if (!vehicle) {
+      throw new VehicleRegistryLifecycleBillingValidationError(
+        'VEHICLE_ORG_MISMATCH',
+        'Vehicle not found for organization',
+      );
+    }
+    if (vehicle.registryLifecycle !== 'ACTIVE') {
+      throw new VehicleRegistryLifecycleBillingValidationError(
+        'INVALID_REGISTRY_LIFECYCLE',
+        'Vehicle registry lifecycle must be ACTIVE for activation billing',
+      );
     }
   }
 }

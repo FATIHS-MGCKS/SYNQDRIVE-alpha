@@ -16,6 +16,9 @@ import { VehicleRegistryLifecycleOutboxRepository } from '@modules/vehicle-onboa
 import { BillingVehicleRegistryOffboardProjection } from './registry-lifecycle/billing-vehicle-registry-offboard.projection';
 import { BillingQuantityService } from './billing-quantity.service';
 import { BillableVehiclesService } from './billable-vehicles.service';
+import { BillingQuantityVehicleIntegration } from './billing-quantity-vehicle.integration';
+import { ACTIVATION_OUTBOX_PAYLOAD_VERSION } from '@modules/vehicle-onboarding/contracts/vo-document-versions';
+import { buildRegistryActivateBillingIdempotencyKey } from './registry-lifecycle/validate-vehicle-activated-registry-event';
 import {
   buildRegistryOffboardBillingIdempotencyKey,
   validateVehicleOffboardedRegistryEvent,
@@ -170,10 +173,16 @@ async function createActiveVehicle(prisma: PrismaClient, orgId: string) {
     new BillingQuantityService(prisma as any),
   );
   const outboxRepository = new VehicleRegistryLifecycleOutboxRepository(prisma as any);
+  const billingQuantity = new BillingQuantityVehicleIntegration(
+    new BillingQuantityService(prisma as any),
+    new BillableVehiclesService(prisma as any),
+    projection,
+  );
   const processor = new VehicleRegistryLifecycleOutboxProcessor(
     prisma as any,
     outboxRepository,
     projection,
+    billingQuantity,
   );
 
   afterAll(async () => {
@@ -505,42 +514,51 @@ async function createActiveVehicle(prisma: PrismaClient, orgId: string) {
     expect(published.publishedAt).not.toBeNull();
   });
 
-  it('leaves pending VEHICLE_ACTIVATED untouched by VO-5B worker', async () => {
+  it('processes VEHICLE_ACTIVATED via activation billing bridge (VO-5B-AB1)', async () => {
     const orgId = await createOrg(prisma);
+    await ensureBasePlan(prisma, orgId, 0);
     const vehicleId = await createActiveVehicle(prisma, orgId);
     const activatedId = randomUUID();
+    const eventId = randomUUID();
     const occurredAt = new Date('2026-06-15T10:00:00.000Z');
+    const onboardingCaseId = randomUUID();
     await prisma.vehicleRegistryLifecycleOutbox.create({
       data: {
         id: activatedId,
-        eventId: randomUUID(),
+        eventId,
         eventType: 'VEHICLE_ACTIVATED',
         vehicleId,
         organizationId: orgId,
-        payloadVersion: 1,
+        payloadVersion: ACTIVATION_OUTBOX_PAYLOAD_VERSION,
         payload: {
-          version: 1,
+          version: ACTIVATION_OUTBOX_PAYLOAD_VERSION,
           vehicleId,
           organizationId: orgId,
+          onboardingCaseId,
           registryLifecycle: 'ACTIVE',
+          activatedAt: occurredAt.toISOString(),
+          sourceProviders: ['DIMO'],
         },
         occurredAt,
-        idempotencyKey: randomUUID(),
+        idempotencyKey: `vehicle-onboarding:VEHICLE_ACTIVATED:v1:${onboardingCaseId}`,
         status: VehicleRegistryLifecycleOutboxStatus.PENDING,
         retryCount: 0,
       },
     });
-    const before = await prisma.vehicleRegistryLifecycleOutbox.findUniqueOrThrow({
-      where: { id: activatedId },
-    });
-    await processor.processPendingBatch(10);
+    await processor.processRow(activatedId);
     const after = await prisma.vehicleRegistryLifecycleOutbox.findUniqueOrThrow({
       where: { id: activatedId },
     });
-    expect(after.status).toBe(VehicleRegistryLifecycleOutboxStatus.PENDING);
-    expect(after.retryCount).toBe(before.retryCount);
-    expect(after.lastError).toBe(before.lastError);
-    expect(after.publishedAt).toBe(before.publishedAt);
+    expect(after.status).toBe(VehicleRegistryLifecycleOutboxStatus.PUBLISHED);
+    const qty = await prisma.billingQuantityEvent.findMany({
+      where: {
+        vehicleId,
+        eventType: BillingQuantityEventType.VEHICLE_CONNECTED,
+      },
+    });
+    expect(qty).toHaveLength(1);
+    expect(qty[0]?.idempotencyKey).toBe(buildRegistryActivateBillingIdempotencyKey(eventId));
+    expect(qty[0]?.effectiveAt.toISOString()).toBe(occurredAt.toISOString());
   });
 
   it('resolves base item valid at occurredAt even when ended before processing', async () => {

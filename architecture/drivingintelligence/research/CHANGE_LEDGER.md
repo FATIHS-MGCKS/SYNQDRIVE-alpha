@@ -1505,6 +1505,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | S4F-7V pure guards were correct; wrapper dry-run was incomplete (no full live evidence, swallowed CLI failures); **`DRY_RUN_FULL_GUARD_PATH_EXECUTED=YES`** after fix; live shell staging **still fail-closed** |
 | NON_EFFECTS | No Production mutation; no tool SHA seal; Gate 6 **NOT_SATISFIED** |
 
+### EXP-021 S4F-7X exact tool JIT Production dry-run (2026-10-07)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Evidence `EXP021_S4F7X_EXACT_TOOL_JIT_PRODUCTION_DRY_RUN.md` (**PASS**); bootstrap `.cursor/scripts/cloud-agent-s4f7x-fresh-tiny-dry-run.sh`; JIT authority `2026-10-07T14:54:57.152Z` + `fc8df190…`; tool SHA `11b4a80ccb88d1d6f747399f84667b06c9a71050` |
+| FINDING | Access recovery + original `DRY_RUN=1` **PASS** @ `3c12875d…`; deterministic evidence-completion rerun with PRE/POST PID + PRESTATE attestation **PASS** @ `a376c965…`; **`S4F7X_COMBINED_EVIDENCE_COMPLETE=YES`** (PR **#1912**); **`S4F7X_ORIGINAL_RUN_EVIDENCE_COMPLETE=NO`** preserved |
+| NON_EFFECTS | No live staging; no Gate 6; no provider calls; S4F-7U cutoff **not** reused |
+
 ### EXP-021 S4F-7T current Production attestation supersession closure (2026-10-06)
 
 | Event | Detail |

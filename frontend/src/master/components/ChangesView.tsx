@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'p25-apds-9-2-execution-baseline-v2-2026-10-07',
+    version: '4.9.2231',
+    title: 'P2.5 APDS-9.2 — APD shadow execution baseline V2 (engineering only)',
+    summary: [
+      'P25_APD_SHADOW_EXECUTION_V2: durable lastAllowed from successful real poll rows only; no pre-queue advance.',
+      'Enqueue outcome + DimoPollLog real_poll_id/status correlation; coalesced rows forensic-only.',
+      'Invalid Run 1 contained (shadow OFF); no Production deploy in this change.',
+    ],
+    reason:
+      'APDS-9.1 proved V1 shadow advanced lastAllowed before queue/coalesce and broke offline replay equivalence.',
+    previousBehavior:
+      'In-memory shadowLastAllowedMs advanced on WOULD_POLL at pre-poll; coalesced opportunities often lacked real_poll_completed_at.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/P25_APDS_9_2_EXECUTION_BASELINE_V2_2026-10-07.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Device Connectivity',
+    createdAt: '2026-10-07T14:50:00.000Z',
+  },
+  {
     id: 'p25-apds-9-0-cohort-selector-2026-10-07',
     version: '4.9.2230',
     title: 'P2.5 APDS-9.0 — fail-closed APD shadow cohort selector (engineering only)',
