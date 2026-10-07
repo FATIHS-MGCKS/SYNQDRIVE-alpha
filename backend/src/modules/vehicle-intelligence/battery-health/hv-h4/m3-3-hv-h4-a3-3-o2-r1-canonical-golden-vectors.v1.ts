@@ -116,6 +116,10 @@ export const M3_3_HV_H4_A3_O2_R1_NUMERIC_EXPONENT_GOLDEN_VECTORS_V1: ReadonlyArr
   { id: 'N_exp_1e22', projection: withEnergy({ kind: 'FINITE', value: 1e22 }) },
   { id: 'N_exp_neg_1e-7', projection: withEnergy({ kind: 'FINITE', value: -1e-7 }) },
   { id: 'N_exp_neg_1e21', projection: withEnergy({ kind: 'FINITE', value: -1e21 }) },
+  {
+    id: 'N_exp_max_safe_int',
+    projection: withEnergy({ kind: 'FINITE', value: Number.MAX_SAFE_INTEGER }),
+  },
   { id: 'N_exp_min_value', projection: withEnergy({ kind: 'FINITE', value: Number.MIN_VALUE }) },
   { id: 'N_exp_max_value', projection: withEnergy({ kind: 'FINITE', value: Number.MAX_VALUE }) },
 ];
