@@ -215,11 +215,18 @@ export class AdaptivePollingShadowService {
       ctx.tripDetectionState === TripDetectionState.ACTIVE_TRIP ||
       ctx.tripDetectionState === TripDetectionState.POSSIBLE_START;
 
-    const lvTimestamps = await this.loadRecentLvProviderTimestampsMs(ctx.vehicleId);
+    const [lvTimestamps, vehicleFuel] = await Promise.all([
+      this.loadRecentLvProviderTimestampsMs(ctx.vehicleId),
+      this.prisma.vehicle.findUnique({
+        where: { id: ctx.vehicleId },
+        select: { fuelType: true },
+      }),
+    ]);
 
     const profile = evaluateP25ApdProfile({
       nowMs: decisionAtMs,
       lvProviderTimestampsMs: lvTimestamps,
+      vehicleFuelType: vehicleFuel?.fuelType ?? null,
       providerGapOpen: ctx.providerGapOpen,
       tripActive,
       r9WakeRecent: ctx.r9WakeKnown,

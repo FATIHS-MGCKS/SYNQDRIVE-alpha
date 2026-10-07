@@ -261,6 +261,7 @@ async function main() {
     const rcEval = evaluateP25ApdProfile({
       nowMs: TO_MS,
       lvProviderTimestampsMs: lvTsForRc,
+      vehicleFuelType: v.fuel_type,
       providerGapOpen: false,
       tripActive: false,
       r9WakeRecent: false,

@@ -50,6 +50,15 @@ describe('evaluateP25ApdProfile median PS1 parity', () => {
     expect(evalResult.medianCadenceMs).toBe(step);
   });
 
+  it('applies PS1 electric zero strict-rest row observability gap class', () => {
+    const evalResult = evaluateP25ApdProfile({
+      ...baseInput,
+      lvProviderTimestampsMs: [],
+      vehicleFuelType: 'ELECTRIC',
+    });
+    expect(evalResult.profileClass).toBe('PROVIDER_OBSERVABILITY_GAP');
+  });
+
   it('resolveP25ApdProfileMedianCadenceMs matches PS1 authority constant', () => {
     expect(resolveP25ApdProfileMedianCadenceMs(0)).toBe(28_800_000);
     expect(P25_APD_PS1_PROFILE_MEDIAN_INTERVAL_FALLBACK_MS).toBe(8 * 3600 * 1000);

@@ -13,3 +13,19 @@ export function resolveP25ApdProfileMedianCadenceMs(medianSec: number): number {
     ? empiricalMs
     : P25_APD_PS1_PROFILE_MEDIAN_INTERVAL_FALLBACK_MS;
 }
+
+/** PS1 offline profile build: electric + zero strict-rest LV rows + <5 gaps → observability gap class. */
+export function resolveP25ApdPs1ProfileClassOverride(input: {
+  eligibleGapCount: number;
+  strictRestLvRowCount: number;
+  vehicleFuelType: string | null | undefined;
+}): 'PROVIDER_OBSERVABILITY_GAP' | null {
+  if (
+    input.eligibleGapCount < 5 &&
+    input.vehicleFuelType === 'ELECTRIC' &&
+    input.strictRestLvRowCount === 0
+  ) {
+    return 'PROVIDER_OBSERVABILITY_GAP';
+  }
+  return null;
+}

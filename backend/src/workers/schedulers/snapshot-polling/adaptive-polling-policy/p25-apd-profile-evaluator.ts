@@ -7,6 +7,7 @@ import type { P25ApdProfileInvalidationReason } from './p25-apd-profile-invalida
 import {
   P25_APD_PROFILE_ELIGIBLE_GAP_MIN_SECONDS,
   resolveP25ApdProfileMedianCadenceMs,
+  resolveP25ApdPs1ProfileClassOverride,
 } from './p25-apd-profile-semantics';
 
 export type P25ApdProfileConfidence = 'HIGH' | 'MEDIUM' | 'LOW' | 'INSUFFICIENT';
@@ -46,6 +47,8 @@ export interface EvaluateP25ApdProfileInput {
   lateAdvanceDetected: boolean;
   phaseDriftDetected: boolean;
   capabilityChanged: boolean;
+  /** PS1 strict-rest corpus fuel type (e.g. ELECTRIC) for zero-row observability gap class. */
+  vehicleFuelType?: string | null;
 }
 
 export function evaluateP25ApdProfile(
@@ -64,7 +67,14 @@ export function evaluateP25ApdProfile(
   const cadenceP90Ms = quantile(sortedGaps, 0.9) != null ? quantile(sortedGaps, 0.9)! * 1000 : null;
 
   let profileClass: P25ApdCadenceProfileClass;
-  if (input.providerGapOpen && sampleCount < 5) {
+  const ps1ClassOverride = resolveP25ApdPs1ProfileClassOverride({
+    eligibleGapCount: sampleCount,
+    strictRestLvRowCount: input.lvProviderTimestampsMs.length,
+    vehicleFuelType: input.vehicleFuelType,
+  });
+  if (ps1ClassOverride) {
+    profileClass = ps1ClassOverride;
+  } else if (input.providerGapOpen && sampleCount < 5) {
     profileClass = 'PROVIDER_OBSERVABILITY_GAP';
   } else {
     profileClass = classifyP25ApdCadenceProfile(gapsSec, medianSec);
