@@ -25,6 +25,30 @@ import { buildRegistryOffboardBillingIdempotencyKey } from '@modules/billing/reg
 
 const run = process.env.VO5C_P1_OFFBOARD_PG === '1';
 
+async function createActorUser(prisma: PrismaClient, orgId: string) {
+  const userId = randomUUID();
+  const email = `vo5c-p1-${randomUUID()}@example.test`;
+  await prisma.$executeRaw`
+    INSERT INTO users (id, email, name, status, created_at, updated_at)
+    VALUES (${userId}, ${email}, 'VO5C Actor', 'ACTIVE'::"UserStatus", NOW(), NOW())
+  `;
+  await prisma.$executeRaw`
+    INSERT INTO organization_memberships (
+      id, user_id, organization_id, role, status, permissions, created_at, updated_at
+    ) VALUES (
+      ${randomUUID()},
+      ${userId},
+      ${orgId},
+      'ORG_ADMIN'::"MembershipRole",
+      'ACTIVE'::"MembershipStatus",
+      '{}'::jsonb,
+      NOW(),
+      NOW()
+    )
+  `;
+  return userId;
+}
+
 async function createOrg(prisma: PrismaClient) {
   const id = randomUUID();
   await prisma.organization.create({
@@ -331,13 +355,14 @@ async function countBillingDisconnectForOutboxEvent(prisma: PrismaClient, outbox
 
   it('billing deprovision once via outbox processor after HTTP offboard', async () => {
     const orgId = await createOrg(prisma);
+    const actorUserId = await createActorUser(prisma, orgId);
     const { vehicleId } = await createBillableActiveVehicle(prisma, orgId);
     const { httpOffboard } = buildOffboardStack(prisma);
     await httpOffboard.offboardVehicle({
       organizationId: orgId,
       vehicleId,
       reason: 'REMOVE_FROM_PRODUCT',
-      actorUserId: null,
+      actorUserId,
       idempotencyKey: randomUUID(),
     });
     const outbox = await prisma.vehicleRegistryLifecycleOutbox.findFirstOrThrow({
@@ -520,6 +545,7 @@ async function countBillingDisconnectForOutboxEvent(prisma: PrismaClient, outbox
 
   it('concurrent same-key offboard yields one billing deprovision after processor', async () => {
     const orgId = await createOrg(prisma);
+    const actorUserId = await createActorUser(prisma, orgId);
     const { vehicleId } = await createBillableActiveVehicle(prisma, orgId);
     const { httpOffboard } = buildOffboardStack(prisma);
     const idempotencyKey = randomUUID();
@@ -527,7 +553,7 @@ async function countBillingDisconnectForOutboxEvent(prisma: PrismaClient, outbox
       organizationId: orgId,
       vehicleId,
       reason: 'REMOVE_FROM_PRODUCT' as const,
-      actorUserId: null,
+      actorUserId,
       idempotencyKey,
     };
     await Promise.all(Array.from({ length: 6 }, () => httpOffboard.offboardVehicle(input)));
@@ -545,6 +571,7 @@ async function countBillingDisconnectForOutboxEvent(prisma: PrismaClient, outbox
 
   it('concurrent different keys on ACTIVE vehicle: one offboard wins, other fails closed', async () => {
     const orgId = await createOrg(prisma);
+    const actorUserId = await createActorUser(prisma, orgId);
     const { vehicleId } = await createBillableActiveVehicle(prisma, orgId);
     const { httpOffboard } = buildOffboardStack(prisma);
     const outcomes = await Promise.allSettled([
@@ -552,14 +579,14 @@ async function countBillingDisconnectForOutboxEvent(prisma: PrismaClient, outbox
         organizationId: orgId,
         vehicleId,
         reason: 'OFFBOARD_SOLD',
-        actorUserId: null,
+        actorUserId,
         idempotencyKey: randomUUID(),
       }),
       httpOffboard.offboardVehicle({
         organizationId: orgId,
         vehicleId,
         reason: 'OFFBOARD_SOLD',
-        actorUserId: null,
+        actorUserId,
         idempotencyKey: randomUUID(),
       }),
     ]);
