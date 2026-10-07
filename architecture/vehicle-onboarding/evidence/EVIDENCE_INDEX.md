@@ -16,6 +16,7 @@
 | VO-EVID-4-010 | VO-4.10 Master Admin provider candidate discovery | REPO_CODE | [VO410_PROVIDER_CANDIDATE_DISCOVERY.md](./VO410_PROVIDER_CANDIDATE_DISCOVERY.md) |
 | VO-EVID-5-001 | VO-5A offboarding foundation + deregister audit | REPO_CODE | [VO5A_OFFBOARDING_FOUNDATION.md](./VO5A_OFFBOARDING_FOUNDATION.md) |
 | VO-EVID-5-002 | VO-5B registry lifecycle → billing quantity bridge | REPO_CODE | [VO5B_REGISTRY_BILLING_BRIDGE.md](./VO5B_REGISTRY_BILLING_BRIDGE.md) |
+| VO-EVID-5-002B | VO5B-AB1 activation lifecycle → billing quantity bridge | REPO_CODE | [VO5B_AB1_ACTIVATION_BILLING_BRIDGE.md](./VO5B_AB1_ACTIVATION_BILLING_BRIDGE.md) |
 | VO-EVID-0A-001 | VO-0A repository discovery anchor | REPO_AUDIT | Anchor SHA `312d9f54a2b4c0b0740061d3e2b74897e78eacb0` cited in CURRENT_STATE |
 
 Supporting UI audit (not VO authority): `docs/ui/master-admin-connected-vehicles-dimo-deep-audit.md`
