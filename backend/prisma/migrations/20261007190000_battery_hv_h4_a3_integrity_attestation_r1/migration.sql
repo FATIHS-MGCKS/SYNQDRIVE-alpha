@@ -1,5 +1,7 @@
 -- M3.3-HV-H4-A3.3-O2-R1 — integrity attestation foundation (Strategy C invalidation; issuance gated on TS/SQL parity in CI)
 
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 CREATE TABLE "battery_hv_charge_session_evidence_integrity_attestations" (
   "id" TEXT NOT NULL,
   "revision_id" TEXT NOT NULL,
@@ -57,7 +59,8 @@ BEGIN
   ELSIF k = 'NEGATIVE_INFINITY' THEN
     RETURN '{"kind":"NEGATIVE_INFINITY"}';
   ELSIF k = 'FINITE' THEN
-    v := e->'value'::text;
+    v := lower(e->'value'::text);
+    v := regexp_replace(v, 'e([+-])0+([0-9])', 'e\1\2', 'g');
     RETURN '{"kind":"FINITE","value":' || v || '}';
   END IF;
   RAISE EXCEPTION 'unsupported energy tag %', k;

@@ -23,18 +23,40 @@ async function insertCoherentRevisionWithAck(
   projection: M3_3HvH4ChargeSessionEvidenceScientificProjectionV1,
   withAck = true,
 ) {
+  const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
+  const session = await prisma.hvChargeSession.create({
+    data: {
+      organizationId,
+      vehicleId,
+      segmentFingerprint: projection.segmentFingerprint,
+      dimoSegmentId: projection.dimoSegmentId ?? `dimo-${randomUUID()}`,
+      source: HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE,
+      startAt: new Date(projection.startAt),
+      endAt: projection.endAt ? new Date(projection.endAt) : null,
+      energyAddedKwh:
+        projection.energyAddedKwh.kind === 'FINITE' ? projection.energyAddedKwh.value : null,
+      isOngoing: projection.isOngoing,
+      idempotencyKey: `idem-${randomUUID()}`,
+    },
+  });
+  const scopedProjection: M3_3HvH4ChargeSessionEvidenceScientificProjectionV1 = {
+    ...projection,
+    organizationId,
+    vehicleId,
+    sourceHvChargeSessionId: session.id,
+  };
   const sourceRevisionFingerprint =
-    computeM3_3HvH4ChargeSessionSourceRevisionFingerprintV1(projection);
-  const mirror = mirrorFromScientificProjectionV1(projection);
+    computeM3_3HvH4ChargeSessionSourceRevisionFingerprintV1(scopedProjection);
+  const mirror = mirrorFromScientificProjectionV1(scopedProjection);
   const revision = await prisma.batteryHvChargeSessionEvidenceRevision.create({
     data: {
       organizationId: mirror.organizationId,
       vehicleId: mirror.vehicleId,
       sourceHvChargeSessionId: mirror.sourceHvChargeSessionId,
       segmentFingerprint: mirror.segmentFingerprint,
-      evidenceContractVersion: projection.evidenceContractVersion,
+      evidenceContractVersion: scopedProjection.evidenceContractVersion,
       sourceRevisionFingerprint,
-      scientificEvidenceJson: projection as unknown as Prisma.InputJsonValue,
+      scientificEvidenceJson: scopedProjection as unknown as Prisma.InputJsonValue,
       dimoSegmentId: mirror.dimoSegmentId,
       providerSegmentId: mirror.providerSegmentId,
       source: mirror.source,
