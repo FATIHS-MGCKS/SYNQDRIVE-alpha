@@ -39,6 +39,7 @@ import {
 import { DeviceConnectionEpisodeResolutionOutboxProcessorService } from '../../modules/dimo/device-connection-episode-resolution/device-connection-episode-resolution-outbox-processor.service';
 import { SnapshotWakeCoordinatorService } from '../snapshot-wake/snapshot-wake-coordinator.service';
 import { AdaptivePollingShadowService } from '../schedulers/snapshot-polling/adaptive-polling-shadow/adaptive-polling-shadow.service';
+import { findLatestHistoricallyVisibleLiveVoltageProviderTimestampMs } from '../schedulers/snapshot-polling/adaptive-polling-policy/p25-apd-historical-lv-visibility';
 import type { DimoSnapshotJobData } from '../snapshot-wake/snapshot-wake.types';
 import { TripDetectionState } from '@prisma/client';
 
@@ -172,6 +173,35 @@ export class DimoSnapshotProcessor extends WorkerHost {
       select: { providerTimestamp: true },
     });
 
+    let apdShadowOpportunityId: string | null = null;
+    if (this.apdShadow?.isEnabledForVehicle(vehicle.organizationId, vehicleId)) {
+      const [tripDetection, latestState] = await Promise.all([
+        this.prisma.vehicleTripDetectionState.findUnique({
+          where: { vehicleId },
+          select: { state: true },
+        }),
+        this.prisma.vehicleLatestState.findUnique({
+          where: { vehicleId },
+          select: { providerFetchedAt: true },
+        }),
+      ]);
+      apdShadowOpportunityId = await this.apdShadow.observeActualBaselinePollStart({
+        organizationId: vehicle.organizationId,
+        vehicleId,
+        pollStartedAtMs: startedAt.getTime(),
+        origin: jobDataWithWake.origin ?? 'SNAPSHOT',
+        tripDetectionState: tripDetection?.state ?? null,
+        lastProviderFetchedAtMs: latestState?.providerFetchedAt?.getTime() ?? null,
+        providerGapOpen: false,
+        connectivityState: vehicle.dimoVehicle?.connectionStatus ?? null,
+        r9WakeKnown: jobDataWithWake.wakeContext != null,
+        // SnapshotWakeContext has no separate correlation id; shadow uses r9WakeKnown + opportunity id.
+        wakeCorrelationId: null,
+        deviceReconnectRecent: false,
+        providerReconnectRecent: false,
+      });
+    }
+
     try {
       const pipelineResult = await this.runSnapshotPipeline(
         job,
@@ -181,29 +211,25 @@ export class DimoSnapshotProcessor extends WorkerHost {
         afterCtx,
       );
 
-      if (
-        this.apdShadow &&
-        jobDataWithWake.apdShadowOpportunityId &&
-        pipelineResult
-      ) {
-        const latestLv = await this.prisma.batteryMeasurement.findFirst({
-          where: {
+      if (this.apdShadow && apdShadowOpportunityId && pipelineResult) {
+        const pollCompletedAtMs = pipelineResult.finishedAt.getTime();
+        const latestVisibleLvProviderMs =
+          await findLatestHistoricallyVisibleLiveVoltageProviderTimestampMs(
+            this.prisma,
             vehicleId,
-            type: 'LIVE_VOLTAGE',
-            quality: 'VALID',
-            providerTimestamp: { not: null },
-          },
-          orderBy: { providerTimestamp: 'desc' },
-          select: { providerTimestamp: true },
-        });
+            pollCompletedAtMs,
+          );
         await this.apdShadow.observePostPoll({
           organizationId: vehicle.organizationId,
           vehicleId,
-          opportunityId: jobDataWithWake.apdShadowOpportunityId,
+          opportunityId: apdShadowOpportunityId,
           realPollId: pipelineResult.pollLogId,
-          pollCompletedAtMs: pipelineResult.finishedAt.getTime(),
+          pollStartedAtMs: startedAt.getTime(),
+          pollCompletedAtMs,
+          realPollVisibleLvSourceAtMs:
+            pipelineResult.lvProviderTimestampMs ?? latestVisibleLvProviderMs,
           previousLvSourceMs: previousLv?.providerTimestamp?.getTime() ?? null,
-          newLvSourceMs: latestLv?.providerTimestamp?.getTime() ?? null,
+          newLvSourceMs: latestVisibleLvProviderMs,
           previousTopLevelSourceMs: null,
           newTopLevelSourceMs: afterCtx.snapshotSourceTimestamp?.getTime() ?? null,
           providerFetchedAtMs: null,
@@ -238,12 +264,13 @@ export class DimoSnapshotProcessor extends WorkerHost {
         },
       });
 
-      if (this.apdShadow && jobDataWithWake.apdShadowOpportunityId) {
+      if (this.apdShadow && apdShadowOpportunityId) {
         await this.apdShadow.observePollFailure({
           organizationId: vehicle.organizationId,
           vehicleId,
-          opportunityId: jobDataWithWake.apdShadowOpportunityId,
+          opportunityId: apdShadowOpportunityId,
           realPollId: failurePollLog.id,
+          realPollStartedAt: startedAt,
         });
       }
 
@@ -284,7 +311,11 @@ export class DimoSnapshotProcessor extends WorkerHost {
       providerFetchFailed: boolean;
       fsmState: TripDetectionState | null;
     },
-  ): Promise<{ pollLogId: string; finishedAt: Date } | null> {
+  ): Promise<{
+    pollLogId: string;
+    finishedAt: Date;
+    lvProviderTimestampMs: number | null;
+  } | null> {
     const { vehicleId, dimoTokenId } = jobDataWithWake;
 
     const previousState =
@@ -587,7 +618,9 @@ export class DimoSnapshotProcessor extends WorkerHost {
         `Snapshot completed for vehicle ${vehicleId} in ${durationMs}ms`,
       );
       this.tripMetrics?.dimoSnapshotPollTotal.inc({ result: 'success' });
-      return { pollLogId: pollLog.id, finishedAt };
+      const lvProviderTimestampMs = lvBatteryObservedAt?.getTime() ?? null;
+
+      return { pollLogId: pollLog.id, finishedAt, lvProviderTimestampMs };
   }
 
   private async isLegacySnapshotEpisodeResolutionExcluded(

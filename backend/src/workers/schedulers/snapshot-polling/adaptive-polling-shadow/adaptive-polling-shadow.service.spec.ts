@@ -11,7 +11,8 @@ import {
 describe('AdaptivePollingShadowService', () => {
   const repository = {
     upsertPrePollDecision: jest.fn().mockResolvedValue(undefined),
-    resolveLastAllowedReconciliationPollMs: jest.fn().mockResolvedValue(0),
+    resolveLastAllowedPollStartMs: jest.fn().mockResolvedValue(0),
+    resolveSimulatedLastLvSourceMs: jest.fn().mockResolvedValue(null),
     patchEnqueueOutcome: jest.fn().mockResolvedValue(undefined),
     updateSuccessfulPollOutcome: jest.fn().mockResolvedValue(undefined),
     updateFailedPollOutcome: jest.fn().mockResolvedValue(undefined),
@@ -41,6 +42,15 @@ describe('AdaptivePollingShadowService', () => {
     batteryMeasurement: {
       findMany: jest.fn().mockResolvedValue([]),
       findFirst: jest.fn(),
+    },
+    vehicle: {
+      findUnique: jest.fn().mockResolvedValue({ fuelType: 'ELECTRIC' }),
+    },
+    vehicleTrip: {
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
+    apdShadowReconciliationDecision: {
+      findFirst: jest.fn().mockResolvedValue({ id: 'row' }),
     },
   };
 
@@ -82,15 +92,28 @@ describe('AdaptivePollingShadowService', () => {
     expect(repository.upsertPrePollDecision).not.toHaveBeenCalled();
   });
 
-  it('flag ON → persists B2 and B4 rows', async () => {
+  it('flag ON → actual poll start persists B2 and B4 rows', async () => {
     enableShadowWithCohort();
     const service = new AdaptivePollingShadowService(
       prisma as never,
       repository,
       metrics,
     );
-    const result = await service.observePrePoll(baseCtx);
-    expect(result?.opportunityId).toBeTruthy();
+    const opportunityId = await service.observeActualBaselinePollStart({
+      organizationId: 'org-1',
+      vehicleId: 'veh-1',
+      pollStartedAtMs: baseCtx.decisionAtMs,
+      origin: baseCtx.origin,
+      tripDetectionState: baseCtx.tripDetectionState,
+      lastProviderFetchedAtMs: baseCtx.lastProviderFetchedAtMs,
+      providerGapOpen: baseCtx.providerGapOpen,
+      connectivityState: baseCtx.connectivityState,
+      r9WakeKnown: baseCtx.r9WakeKnown,
+      wakeCorrelationId: baseCtx.wakeCorrelationId,
+      deviceReconnectRecent: baseCtx.deviceReconnectRecent,
+      providerReconnectRecent: baseCtx.providerReconnectRecent,
+    });
+    expect(opportunityId).toBeTruthy();
     expect(repository.upsertPrePollDecision).toHaveBeenCalledTimes(2);
   });
 
@@ -104,22 +127,49 @@ describe('AdaptivePollingShadowService', () => {
       repository,
       metrics,
     );
-    await expect(service.observePrePoll(baseCtx)).resolves.toBeNull();
+    await expect(
+      service.observeActualBaselinePollStart({
+        organizationId: 'org-1',
+        vehicleId: 'veh-1',
+        pollStartedAtMs: baseCtx.decisionAtMs,
+        origin: baseCtx.origin,
+        tripDetectionState: baseCtx.tripDetectionState,
+        lastProviderFetchedAtMs: null,
+        providerGapOpen: false,
+        connectivityState: null,
+        r9WakeKnown: false,
+        wakeCorrelationId: null,
+        deviceReconnectRecent: false,
+        providerReconnectRecent: false,
+      }),
+    ).resolves.toBeNull();
     expect(metrics.recordFailure).toHaveBeenCalledWith('pre_poll');
   });
 
-  it('active trip reconciliation uses forced trip safety in metrics', async () => {
+  it('active trip uses vehicle_trips reconciliation classification', async () => {
     enableShadowWithCohort();
+    (prisma.vehicleTrip.findFirst as jest.Mock).mockResolvedValueOnce({ id: 'trip' });
     const service = new AdaptivePollingShadowService(
       prisma as never,
       repository,
       metrics,
     );
-    await service.observePrePoll({
-      ...baseCtx,
-      reconciliation: false,
+    await service.observeActualBaselinePollStart({
+      organizationId: 'org-1',
+      vehicleId: 'veh-1',
+      pollStartedAtMs: baseCtx.decisionAtMs,
+      origin: baseCtx.origin,
       tripDetectionState: TripDetectionState.ACTIVE_TRIP,
+      lastProviderFetchedAtMs: null,
+      providerGapOpen: false,
+      connectivityState: null,
+      r9WakeKnown: false,
+      wakeCorrelationId: null,
+      deviceReconnectRecent: false,
+      providerReconnectRecent: false,
     });
     expect(repository.upsertPrePollDecision).toHaveBeenCalled();
+    const row = (repository.upsertPrePollDecision as jest.Mock).mock.calls[0][0];
+    expect(row.reconciliation).toBe(false);
   });
 });

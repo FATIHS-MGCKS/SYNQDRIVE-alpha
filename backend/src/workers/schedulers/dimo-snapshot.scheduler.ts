@@ -30,9 +30,6 @@ import { DimoQueueBackpressureService } from '@modules/dimo/provider-budget/dimo
 import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
 import { SnapshotWakeCoordinatorService } from '../snapshot-wake/snapshot-wake-coordinator.service';
 import { TripMetricsService } from '@modules/observability/trip-metrics.service';
-import { TripDetectionState } from '@prisma/client';
-import { AdaptivePollingShadowService } from './snapshot-polling/adaptive-polling-shadow/adaptive-polling-shadow.service';
-
 /**
  * Enqueues DIMO snapshot poll jobs on a fixed 30 s cadence.
  *
@@ -129,7 +126,6 @@ export class DimoSnapshotScheduler {
     @Optional() private readonly tripMetrics?: TripMetricsService,
     @Optional() private readonly configService?: ConfigService,
     @Optional() private readonly queueBackpressure?: DimoQueueBackpressureService,
-    @Optional() private readonly apdShadow?: AdaptivePollingShadowService,
   ) {}
 
   @Interval(30000)
@@ -329,49 +325,11 @@ export class DimoSnapshotScheduler {
 
     for (const { vehicle: v, tokenId, effectiveTier } of enqueueBatch) {
       try {
-        let apdShadowOpportunityId: string | undefined;
-        if (this.apdShadow?.isEnabledForVehicle(v.organizationId, v.id)) {
-          const tripState = v.tripDetectionState?.state ?? null;
-          const reconciliation =
-            effectiveTier !== SnapshotPollingTier.ACTIVE_DRIVING &&
-            tripState !== TripDetectionState.ACTIVE_TRIP &&
-            tripState !== TripDetectionState.POSSIBLE_START;
-          const shadowResult = await this.apdShadow.observePrePoll({
-            organizationId: v.organizationId,
-            vehicleId: v.id,
-            decisionAtMs: nowMs,
-            origin: 'SCHEDULED',
-            reconciliation,
-            effectiveTier,
-            tripDetectionState: tripState,
-            lastProviderFetchedAtMs: v.latestState?.providerFetchedAt?.getTime() ?? null,
-            lastTrustworthyLvSourceMs: v.latestState?.sourceTimestamp?.getTime() ?? null,
-            lvProviderTimestampsMs: [],
-            providerGapOpen: false,
-            connectivityState: v.dimoVehicle?.connectionStatus ?? null,
-            r9WakeKnown: false,
-            wakeCorrelationId: null,
-            deviceReconnectRecent: false,
-            providerReconnectRecent: false,
-          });
-          apdShadowOpportunityId = shadowResult?.opportunityId;
-        }
-
         const outcome = await this.snapshotCoordinator.requestSnapshot({
           vehicleId: v.id,
           dimoTokenId: tokenId,
           origin: 'SCHEDULED',
-          apdShadowOpportunityId,
         });
-        if (apdShadowOpportunityId && this.apdShadow) {
-          await this.apdShadow.observeEnqueueOutcome({
-            organizationId: v.organizationId,
-            vehicleId: v.id,
-            opportunityId: apdShadowOpportunityId,
-            wakeOutcome: outcome,
-            observedAtMs: nowMs,
-          });
-        }
         if (outcome === 'ENQUEUED') {
           enqueued += 1;
           enqueuedByTier.set(
