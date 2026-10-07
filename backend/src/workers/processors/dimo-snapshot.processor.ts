@@ -173,7 +173,7 @@ export class DimoSnapshotProcessor extends WorkerHost {
     });
 
     try {
-      await this.runSnapshotPipeline(
+      const pipelineResult = await this.runSnapshotPipeline(
         job,
         jobDataWithWake,
         vehicle,
@@ -181,7 +181,11 @@ export class DimoSnapshotProcessor extends WorkerHost {
         afterCtx,
       );
 
-      if (this.apdShadow && jobDataWithWake.apdShadowOpportunityId) {
+      if (
+        this.apdShadow &&
+        jobDataWithWake.apdShadowOpportunityId &&
+        pipelineResult
+      ) {
         const latestLv = await this.prisma.batteryMeasurement.findFirst({
           where: {
             vehicleId,
@@ -196,7 +200,8 @@ export class DimoSnapshotProcessor extends WorkerHost {
           organizationId: vehicle.organizationId,
           vehicleId,
           opportunityId: jobDataWithWake.apdShadowOpportunityId,
-          pollCompletedAtMs: Date.now(),
+          realPollId: pipelineResult.pollLogId,
+          pollCompletedAtMs: pipelineResult.finishedAt.getTime(),
           previousLvSourceMs: previousLv?.providerTimestamp?.getTime() ?? null,
           newLvSourceMs: latestLv?.providerTimestamp?.getTime() ?? null,
           previousTopLevelSourceMs: null,
@@ -221,7 +226,7 @@ export class DimoSnapshotProcessor extends WorkerHost {
       const durationMs = finishedAt.getTime() - startedAt.getTime();
       const errorMessage = err instanceof Error ? err.message : String(err);
 
-      await this.prisma.dimoPollLog.create({
+      const failurePollLog = await this.prisma.dimoPollLog.create({
         data: {
           vehicleId,
           jobType: DimoPollJobType.SNAPSHOT,
@@ -232,6 +237,15 @@ export class DimoSnapshotProcessor extends WorkerHost {
           errorMessage,
         },
       });
+
+      if (this.apdShadow && jobDataWithWake.apdShadowOpportunityId) {
+        await this.apdShadow.observePollFailure({
+          organizationId: vehicle.organizationId,
+          vehicleId,
+          opportunityId: jobDataWithWake.apdShadowOpportunityId,
+          realPollId: failurePollLog.id,
+        });
+      }
 
       this.logger.warn(
         `Snapshot failed for vehicle ${vehicleId}: ${errorMessage}`,
@@ -270,7 +284,7 @@ export class DimoSnapshotProcessor extends WorkerHost {
       providerFetchFailed: boolean;
       fsmState: TripDetectionState | null;
     },
-  ): Promise<void> {
+  ): Promise<{ pollLogId: string; finishedAt: Date } | null> {
     const { vehicleId, dimoTokenId } = jobDataWithWake;
 
     const previousState =
@@ -328,7 +342,7 @@ export class DimoSnapshotProcessor extends WorkerHost {
           `VLS monotonic guard: skipped stale snapshot for ${vehicleId} ` +
             `(incoming=${normalized.lastSeenAt?.toISOString()} existing=${previousState.sourceTimestamp?.toISOString()})`,
         );
-        return;
+        return null;
       }
 
       afterCtx.snapshotSourceTimestamp = normalized.lastSeenAt ?? null;
@@ -573,6 +587,7 @@ export class DimoSnapshotProcessor extends WorkerHost {
         `Snapshot completed for vehicle ${vehicleId} in ${durationMs}ms`,
       );
       this.tripMetrics?.dimoSnapshotPollTotal.inc({ result: 'success' });
+      return { pollLogId: pollLog.id, finishedAt };
   }
 
   private async isLegacySnapshotEpisodeResolutionExcluded(
