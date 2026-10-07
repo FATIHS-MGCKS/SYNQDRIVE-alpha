@@ -118,8 +118,9 @@ async function createActiveVehicle(prisma: PrismaClient, orgId: string) {
         idempotencyKey: randomUUID(),
       }),
     ).rejects.toBeInstanceOf(VehicleOnboardingError);
-    expect(
-      await prisma.vehicle.findUniqueOrThrow({ where: { id: vehicleId } }),
-    ).toMatchObject({ registryLifecycle: 'ACTIVE' });
+    const rows = await prisma.$queryRaw<Array<{ registry_lifecycle: string }>>`
+      SELECT registry_lifecycle::text AS registry_lifecycle FROM vehicles WHERE id = ${vehicleId}
+    `;
+    expect(rows[0]?.registry_lifecycle).toBe('ACTIVE');
   });
 });

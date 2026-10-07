@@ -21,6 +21,7 @@ import { BillableVehiclesService } from '@modules/billing/billable-vehicles.serv
 import { BillingQuantityVehicleIntegration } from '@modules/billing/billing-quantity-vehicle.integration';
 import { ensureOrganizationProductEntitlement } from './testing/org-product-test.harness';
 import { VehicleOnboardingError } from './errors/vehicle-onboarding.errors';
+import { buildRegistryOffboardBillingIdempotencyKey } from '@modules/billing/registry-lifecycle/validate-vehicle-offboarded-registry-event';
 
 const run = process.env.VO5C_P1_OFFBOARD_PG === '1';
 
@@ -48,6 +49,78 @@ async function createActiveVehicle(prisma: PrismaClient, orgId: string) {
     )
   `;
   return { vehicleId, vin };
+}
+
+async function ensureBasePlan(prisma: PrismaClient, orgId: string, quantity = 1) {
+  const fleet = await prisma.billingCatalogProduct.findUniqueOrThrow({
+    where: { key: 'FLEET' },
+  });
+  const subId = randomUUID();
+  await prisma.billingSubscription.create({
+    data: {
+      id: subId,
+      organizationId: orgId,
+      status: 'ACTIVE',
+      currency: 'EUR',
+    },
+  });
+  const item = await prisma.billingSubscriptionItem.create({
+    data: {
+      subscriptionId: subId,
+      organizationId: orgId,
+      billingProductId: fleet.id,
+      itemRole: 'BASE_PLAN',
+      quantity,
+      status: 'ACTIVE',
+      validFrom: new Date('2020-01-01'),
+    },
+  });
+  return { ...item, subscriptionId: subId };
+}
+
+async function seedVehicleLicenseConnected(
+  prisma: PrismaClient,
+  orgId: string,
+  baseItem: { id: string; subscriptionId: string },
+  vehicleId: string,
+) {
+  const quantity = new BillingQuantityService(prisma as any);
+  await quantity.recordVehicleLicenseAdded({
+    organizationId: orgId,
+    subscriptionId: baseItem.subscriptionId,
+    subscriptionItemId: baseItem.id,
+    vehicleId,
+    effectiveAt: new Date('2025-06-01T00:00:00.000Z'),
+    idempotencyKey: `vo5c-p1-test:vehicle-connected:${vehicleId}`,
+    retroactiveAuthorized: true,
+  });
+  await prisma.vehicleOrganizationAssignment.create({
+    data: {
+      id: randomUUID(),
+      vehicleId,
+      organizationId: orgId,
+      validFrom: new Date('2020-01-01'),
+      assignmentReason: 'TEST_FIXTURE',
+      assignmentSource: 'VO5C_P1_TEST',
+    },
+  });
+}
+
+async function createBillableActiveVehicle(prisma: PrismaClient, orgId: string) {
+  const baseItem = await ensureBasePlan(prisma, orgId, 1);
+  const { vehicleId, vin } = await createActiveVehicle(prisma, orgId);
+  await seedVehicleLicenseConnected(prisma, orgId, baseItem, vehicleId);
+  return { vehicleId, vin, baseItem };
+}
+
+async function readVehicleRegistryLifecycle(prisma: PrismaClient, vehicleId: string) {
+  const rows = await prisma.$queryRaw<Array<{ registry_lifecycle: string }>>`
+    SELECT registry_lifecycle::text AS registry_lifecycle FROM vehicles WHERE id = ${vehicleId}
+  `;
+  if (rows.length !== 1) {
+    throw new Error(`vehicle not found: ${vehicleId}`);
+  }
+  return rows[0].registry_lifecycle;
 }
 
 async function createCustomer(prisma: PrismaClient, orgId: string) {
@@ -96,6 +169,12 @@ async function countBillingDisconnects(prisma: PrismaClient, vehicleId: string) 
   });
 }
 
+async function countBillingDisconnectForOutboxEvent(prisma: PrismaClient, outboxEventId: string) {
+  return prisma.billingQuantityEvent.count({
+    where: { idempotencyKey: buildRegistryOffboardBillingIdempotencyKey(outboxEventId) },
+  });
+}
+
 (run ? describe : describe.skip)('VO-5C-P1 offboard HTTP authority (PostgreSQL)', () => {
   jest.setTimeout(120_000);
   const prisma = new PrismaClient();
@@ -118,8 +197,7 @@ async function countBillingDisconnects(prisma: PrismaClient, vehicleId: string) 
     });
     expect(result.registryLifecycle).toBe('OFFBOARDED');
     expect(result.idempotentReplay).toBe(false);
-    const row = await prisma.vehicle.findUniqueOrThrow({ where: { id: vehicleId } });
-    expect(row.registryLifecycle).toBe('OFFBOARDED');
+    expect(await readVehicleRegistryLifecycle(prisma, vehicleId)).toBe('OFFBOARDED');
     expect(
       await prisma.vehicleRegistryLifecycleOutbox.count({
         where: { vehicleId, eventType: 'VEHICLE_OFFBOARDED' },
@@ -166,10 +244,9 @@ async function countBillingDisconnects(prisma: PrismaClient, vehicleId: string) 
   it('ACTIVE rental blocks without lifecycle mutation', async () => {
     const orgId = await createOrg(prisma);
     const { vehicleId } = await createActiveVehicle(prisma, orgId);
-    await prisma.vehicle.update({
-      where: { id: vehicleId },
-      data: { status: 'RENTED' },
-    });
+    await prisma.$executeRaw`
+      UPDATE vehicles SET status = 'RENTED'::"VehicleStatus", updated_at = NOW() WHERE id = ${vehicleId}
+    `;
     const { httpOffboard } = buildOffboardStack(prisma);
     const before = await prisma.vehicleRegistryLifecycleOutbox.count({ where: { vehicleId } });
     await expect(
@@ -181,8 +258,7 @@ async function countBillingDisconnects(prisma: PrismaClient, vehicleId: string) 
         idempotencyKey: randomUUID(),
       }),
     ).rejects.toBeInstanceOf(VehicleOnboardingError);
-    const vehicle = await prisma.vehicle.findUniqueOrThrow({ where: { id: vehicleId } });
-    expect(vehicle.registryLifecycle).toBe('ACTIVE');
+    expect(await readVehicleRegistryLifecycle(prisma, vehicleId)).toBe('ACTIVE');
     expect(await prisma.vehicleRegistryLifecycleOutbox.count({ where: { vehicleId } })).toBe(
       before,
     );
@@ -255,7 +331,7 @@ async function countBillingDisconnects(prisma: PrismaClient, vehicleId: string) 
 
   it('billing deprovision once via outbox processor after HTTP offboard', async () => {
     const orgId = await createOrg(prisma);
-    const { vehicleId } = await createActiveVehicle(prisma, orgId);
+    const { vehicleId } = await createBillableActiveVehicle(prisma, orgId);
     const { httpOffboard } = buildOffboardStack(prisma);
     await httpOffboard.offboardVehicle({
       organizationId: orgId,
@@ -270,6 +346,7 @@ async function countBillingDisconnects(prisma: PrismaClient, vehicleId: string) 
     const processor = buildLifecycleOutboxProcessor(prisma);
     expect(await processor.processRow(outbox.id)).toBe('published');
     expect(await countBillingDisconnects(prisma, vehicleId)).toBe(1);
+    expect(await countBillingDisconnectForOutboxEvent(prisma, outbox.eventId)).toBe(1);
     const processed = await prisma.vehicleRegistryLifecycleOutbox.findUniqueOrThrow({
       where: { id: outbox.id },
     });
@@ -363,9 +440,7 @@ async function countBillingDisconnects(prisma: PrismaClient, vehicleId: string) 
         idempotencyKey: randomUUID(),
       }),
     ).rejects.toMatchObject({ code: 'OFFBOARD_OPERATIONALLY_BLOCKED' });
-    expect(
-      await prisma.vehicle.findUniqueOrThrow({ where: { id: vehicleId } }),
-    ).toMatchObject({ registryLifecycle: 'ACTIVE' });
+    expect(await readVehicleRegistryLifecycle(prisma, vehicleId)).toBe('ACTIVE');
     expect(
       await prisma.vehicleRegistryLifecycleOutbox.count({ where: { vehicleId } }),
     ).toBe(0);
@@ -414,9 +489,7 @@ async function countBillingDisconnects(prisma: PrismaClient, vehicleId: string) 
         idempotencyKey: randomUUID(),
       }),
     ).rejects.toMatchObject({ code: 'OFFBOARD_OPERATIONALLY_BLOCKED' });
-    expect(
-      await prisma.vehicle.findUniqueOrThrow({ where: { id: vehicleId } }),
-    ).toMatchObject({ registryLifecycle: 'ACTIVE' });
+    expect(await readVehicleRegistryLifecycle(prisma, vehicleId)).toBe('ACTIVE');
   });
 
   it('concurrent same-key offboard converges to one lifecycle fact', async () => {
@@ -447,7 +520,7 @@ async function countBillingDisconnects(prisma: PrismaClient, vehicleId: string) 
 
   it('concurrent same-key offboard yields one billing deprovision after processor', async () => {
     const orgId = await createOrg(prisma);
-    const { vehicleId } = await createActiveVehicle(prisma, orgId);
+    const { vehicleId } = await createBillableActiveVehicle(prisma, orgId);
     const { httpOffboard } = buildOffboardStack(prisma);
     const idempotencyKey = randomUUID();
     const input = {
@@ -464,13 +537,15 @@ async function countBillingDisconnects(prisma: PrismaClient, vehicleId: string) 
     const processor = buildLifecycleOutboxProcessor(prisma);
     expect(await processor.processRow(outbox.id)).toBe('published');
     expect(await countBillingDisconnects(prisma, vehicleId)).toBe(1);
+    expect(await countBillingDisconnectForOutboxEvent(prisma, outbox.eventId)).toBe(1);
     expect(await processor.processRow(outbox.id)).toBe('skipped');
     expect(await countBillingDisconnects(prisma, vehicleId)).toBe(1);
+    expect(await countBillingDisconnectForOutboxEvent(prisma, outbox.eventId)).toBe(1);
   });
 
   it('concurrent different keys on ACTIVE vehicle: one offboard wins, other fails closed', async () => {
     const orgId = await createOrg(prisma);
-    const { vehicleId } = await createActiveVehicle(prisma, orgId);
+    const { vehicleId } = await createBillableActiveVehicle(prisma, orgId);
     const { httpOffboard } = buildOffboardStack(prisma);
     const actorUserId = randomUUID();
     const outcomes = await Promise.allSettled([
@@ -504,7 +579,9 @@ async function countBillingDisconnects(prisma: PrismaClient, vehicleId: string) 
     const processor = buildLifecycleOutboxProcessor(prisma);
     expect(await processor.processRow(outbox.id)).toBe('published');
     expect(await countBillingDisconnects(prisma, vehicleId)).toBe(1);
+    expect(await countBillingDisconnectForOutboxEvent(prisma, outbox.eventId)).toBe(1);
     expect(await processor.processRow(outbox.id)).toBe('skipped');
     expect(await countBillingDisconnects(prisma, vehicleId)).toBe(1);
+    expect(await countBillingDisconnectForOutboxEvent(prisma, outbox.eventId)).toBe(1);
   });
 });
