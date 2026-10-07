@@ -1,5 +1,6 @@
 /**
  * M3.3-HV-H4-A3.3-O2 — TEST-ONLY / DESIGN-ONLY integrity attestation validity model.
+ * Phase-1 target: Strategy C (invalidation trigger) — attestation row presence is the mutation witness.
  * Not wired to production loader or persistence.
  */
 
@@ -17,9 +18,6 @@ export type M3_3HvH4A3HistoryIntegrityAttestationV1 = {
   durabilityAckContractVersion: string;
   integrityAttestationContractVersion: string;
   attestedAt: Date;
-  /** Witness for Strategy B/C — must match live revision row generation when present. */
-  revisionMutationGeneration: number;
-  ackMutationGeneration: number;
 };
 
 export type M3_3HvH4A3HistoryIntegrityAttestationRevisionWitnessV1 = {
@@ -29,7 +27,6 @@ export type M3_3HvH4A3HistoryIntegrityAttestationRevisionWitnessV1 = {
   segmentFingerprint: string;
   evidenceContractVersion: string;
   sourceRevisionFingerprint: string;
-  mutationGeneration: number;
 };
 
 export type M3_3HvH4A3HistoryIntegrityAttestationAckWitnessV1 = {
@@ -41,7 +38,6 @@ export type M3_3HvH4A3HistoryIntegrityAttestationAckWitnessV1 = {
   evidenceContractVersion: string;
   sourceRevisionFingerprint: string;
   durabilityAckContractVersion: string;
-  mutationGeneration: number;
 };
 
 export type M3_3HvH4A3HistoryIntegrityAttestationValidityV1 =
@@ -67,7 +63,9 @@ function fieldMismatch(field: string): M3_3HvH4A3HistoryIntegrityAttestationVali
 }
 
 /**
- * Pure binding check — does NOT prove scientificEvidenceJson integrity (that requires full verifier).
+ * Pure binding check for Phase-1 Strategy C.
+ * Does NOT prove scientificEvidenceJson integrity (full verifier required at issuance and on fallback).
+ * After integrity-relevant revision/ACK UPDATE, DB invalidation deletes attestation → MISSING → FULL_VERIFY.
  */
 export function evaluateM3_3HvH4A3HistoryIntegrityAttestationBindingV1(input: {
   attestation: M3_3HvH4A3HistoryIntegrityAttestationV1 | null | undefined;
@@ -89,9 +87,6 @@ export function evaluateM3_3HvH4A3HistoryIntegrityAttestationBindingV1(input: {
   if (a.sourceRevisionFingerprint !== rev.sourceRevisionFingerprint) {
     return fieldMismatch('sourceRevisionFingerprint');
   }
-  if (a.revisionMutationGeneration !== rev.mutationGeneration) {
-    return { kind: 'INVALID', reason: 'REVISION_MUTATION_WITNESS_STALE' };
-  }
 
   if (!input.ack) {
     return { kind: 'INVALID', reason: 'ACK_MISSING' };
@@ -110,9 +105,6 @@ export function evaluateM3_3HvH4A3HistoryIntegrityAttestationBindingV1(input: {
   }
   if (a.durabilityAckContractVersion !== ack.durabilityAckContractVersion) {
     return fieldMismatch('durabilityAckContractVersion');
-  }
-  if (a.ackMutationGeneration !== ack.mutationGeneration) {
-    return { kind: 'INVALID', reason: 'ACK_MUTATION_WITNESS_STALE' };
   }
 
   if (a.integrityAttestationContractVersion !== M3_3_HV_H4_A3_HISTORY_INTEGRITY_ATTESTATION_CONTRACT_V1) {

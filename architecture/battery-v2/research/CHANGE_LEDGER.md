@@ -6,6 +6,20 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-07 — M3.3-HV-H4-A3.3-O2 final architecture closure (PR #1914)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Issuance authority vs mutation protection; storage-corruption parity boundary; Phase-1 **C_ONLY** strategy; pure model aligned; main sync (APDS/EXP021/VO5B zero H4/A3 overlap) |
+| **WHY** | Prevent overstated security claims before O2-R1; explicit A2 fraudulent-issuance and physical-corruption trade-offs |
+| **VALIDATION** | O2 unit tests; HV-H4 CI on PR head |
+| **OBSERVED_EFFECT** | `ISSUANCE_MUST_BE_RESOLVED_BEFORE_HYBRID_LOADER=YES`; `NEXT_RECOMMENDED_SLICE=O2-R1_SCHEMA_TRIGGER_ISSUANCE_FOUNDATION` |
+| **NON_EFFECTS** | No O2-R1 migration; loader unchanged |
+| **DECISION_STATUS** | PROPOSED |
+| **EVIDENCE** | `M3_3_HV_H4_A3_3_O2_HISTORY_INTEGRITY_ATTESTATION_ARCHITECTURE_2026-10-07.md` §1, §3.1, §9.1 |
+
+---
+
 ## 2026-10-07 — M3.3-HV-H4-A3.3-O2 historical integrity attestation architecture
 
 | Field | Value |

@@ -15,7 +15,6 @@ function baseRevision(): M3_3HvH4A3HistoryIntegrityAttestationRevisionWitnessV1 
     segmentFingerprint: 'seg-fp',
     evidenceContractVersion: 'M3_3_HV_H4_CHARGE_SESSION_EVIDENCE_REVISION_V1',
     sourceRevisionFingerprint: 'a'.repeat(64),
-    mutationGeneration: 1,
   };
 }
 
@@ -29,7 +28,6 @@ function baseAck(rev: M3_3HvH4A3HistoryIntegrityAttestationRevisionWitnessV1): M
     evidenceContractVersion: rev.evidenceContractVersion,
     sourceRevisionFingerprint: rev.sourceRevisionFingerprint,
     durabilityAckContractVersion: 'M3_3_HV_H4_DURABLE_SOURCE_REVISION_ACK_V1',
-    mutationGeneration: 1,
   };
 }
 
@@ -48,12 +46,10 @@ function baseAttestation(
     durabilityAckContractVersion: ack.durabilityAckContractVersion,
     integrityAttestationContractVersion: M3_3_HV_H4_A3_HISTORY_INTEGRITY_ATTESTATION_CONTRACT_V1,
     attestedAt: new Date('2026-10-07T00:00:00.000Z'),
-    revisionMutationGeneration: rev.mutationGeneration,
-    ackMutationGeneration: ack.mutationGeneration,
   };
 }
 
-describe('M3.3-HV-H4-A3.3-O2 integrity attestation validity (pure)', () => {
+describe('M3.3-HV-H4-A3.3-O2 integrity attestation validity (pure, Phase-1 Strategy C)', () => {
   it('accepts exact attestation binding', () => {
     const rev = baseRevision();
     const ack = baseAck(rev);
@@ -64,31 +60,27 @@ describe('M3.3-HV-H4-A3.3-O2 integrity attestation validity (pure)', () => {
     expect(historicalIntegrityPathForAttestationV1({ kind: 'VALID' })).toBe('NARROW_ATTESTED');
   });
 
-  it('revision mutation witness stale => invalid => full verify', () => {
+  it('Strategy C: attestation deleted after source mutation => missing => full verify', () => {
     const rev = baseRevision();
     const ack = baseAck(rev);
-    const attestation = baseAttestation(rev, ack);
-    const mutatedRev = { ...rev, mutationGeneration: 2 };
     const validity = evaluateM3_3HvH4A3HistoryIntegrityAttestationBindingV1({
-      attestation,
-      revision: mutatedRev,
+      attestation: null,
+      revision: rev,
       ack,
     });
-    expect(validity.kind).toBe('INVALID');
+    expect(validity).toEqual({ kind: 'MISSING' });
     expect(historicalIntegrityPathForAttestationV1(validity)).toBe('FULL_VERIFY');
   });
 
-  it('ACK mutation witness stale => invalid => full verify', () => {
+  it('Strategy C: attestation deleted after ACK mutation => missing => full verify', () => {
     const rev = baseRevision();
     const ack = baseAck(rev);
-    const attestation = baseAttestation(rev, ack);
-    const mutatedAck = { ...ack, mutationGeneration: 2 };
     const validity = evaluateM3_3HvH4A3HistoryIntegrityAttestationBindingV1({
-      attestation,
+      attestation: null,
       revision: rev,
-      ack: mutatedAck,
+      ack,
     });
-    expect(validity.kind).toBe('INVALID');
+    expect(validity.kind).toBe('MISSING');
     expect(historicalIntegrityPathForAttestationV1(validity)).toBe('FULL_VERIFY');
   });
 

@@ -1,8 +1,8 @@
 # M3.3-HV-H4-A3.3-O2 — Historical durable revision integrity attestation architecture
 
-**Date:** 2026-10-07  
-**Status:** **ARCHITECTURE AUDIT (O2)** — threat model, mutability audit, candidate schema, rollout; **no migration, no production loader change**  
-**Main anchor:** `5a9570158e9b35c65aa6590e58f48f72d8e494b1` (A3.3-O1 #1910 merged)  
+**Date:** 2026-10-07 (final closure)  
+**Status:** **ARCHITECTURE AUDIT (O2) — CLOSED** — threat model, issuance authority, mutability audit, Phase-1 strategy; **no migration, no production loader change**  
+**Main anchor (integration):** `4c4b6102e6ebb79844604204c812e89c60a8cd5b` (APDS #1913, EXP021 #1912, VO5B #1908; zero H4/A3 overlap vs O2 PR)  
 **Upstream:** O1 `NEEDS_INTEGRITY_ATTESTATION_BEFORE_MEANINGFUL_OPTIMIZATION`; frozen loader semantics O1-C1–C10
 
 ---
@@ -16,25 +16,27 @@ O2 evaluates whether a **derived integrity attestation** can preserve O1 fail-cl
 | **O2_DECISION** | **ATTESTATION_ARCHITECTURE_FEASIBLE** |
 | **PREFERRED_ARCHITECTURE** | **DERIVED_ATTESTATION** + **DB-enforced mutation invalidation (Strategy C)** + **FULL_VERIFY fallback** + **hybrid loader (future)** + **separate bounded historical bootstrap** |
 | **SCHEMA_IMPLEMENTATION_READY** | **NO** (design + pure model only; migration deferred) |
-| **NEXT_RECOMMENDED_SLICE** | **O2-R1** — Prisma schema + invalidation triggers + writer same-tx attestation (Phase 1), still loader OFF |
+| **NEXT_RECOMMENDED_SLICE** | **O2-R1_SCHEMA_TRIGGER_ISSUANCE_FOUNDATION** — schema + Strategy C triggers + **issuance authority**; loader unchanged |
 
 ---
 
-## 1. Threat model
+## 1. Threat model (final)
 
-| Class | Description | In O2 scope? |
-|-------|-------------|--------------|
-| **A** | Normal application writes / bugs | **YES** — attestation created only after full verifier; hybrid path falls back to full verify |
-| **B** | Accidental SQL UPDATE/DELETE under normal DB privileges (triggers active) | **YES** — **Strategy C** invalidates or generation mismatch |
-| **C** | Malicious DB superuser rewriting revision + ACK + attestation coherently | **NO** — same limitation as today |
-| **D** | Physical storage corruption outside PostgreSQL semantics | **NO** — not solved by in-DB attestation |
+| Class | Description | Mitigation in design | Proven today? |
+|-------|-------------|----------------------|---------------|
+| **A1** | Legitimate application revision/ACK mutation bug | **Strategy C** invalidation deletes attestation → **FULL_VERIFY** | **NO** (triggers not deployed) |
+| **A2** | Bug or misuse that **mints attestation without full verify** | **Issuance authority** (DB role separation + `SECURITY DEFINER` issuance function embedding full verify) | **NO** |
+| **B** | Accidental SQL UPDATE/DELETE with triggers active | **Strategy C** invalidation | **NO** (triggers not deployed) |
+| **C** | Malicious DB actor rewriting source + ACK + attestation / disabling triggers | Out of scope | N/A |
+| **D** | Physical / TOAST / page corruption after attestation (unread JSON) | Out of scope; hybrid path **does not** re-read JSON every time | N/A |
 
 | Field | Value |
 |-------|--------|
-| **ATTESTATION_THREAT_MODEL** | **A/B mitigated with invalidation + fallback; C/D out of scope** |
+| **ATTESTATION_THREAT_MODEL_FINAL** | **A1/B design-mitigated post-O2-R1; A2 requires issuance authority before hybrid loader; C/D explicit non-goals** |
 | **MALICIOUS_DBA_IN_SCOPE** | **NO** |
-| **PHYSICAL_STORAGE_CORRUPTION_IN_SCOPE** | **NO** |
-| **SECURITY_CLAIM_NOT_STRONGER_THAN_CURRENT** | **YES** — current loader cannot detect coherent superuser rewrite of JSON + fingerprint + mirror + ACK either |
+| **PHYSICAL_STORAGE_CORRUPTION_IN_SCOPE** | **NO** (accepted trade-off for hybrid IO reduction) |
+| **SECURITY_CLAIM_NOT_STRONGER_THAN_PROVEN** | **YES** — only claims aligned with deployed enforcement; issuance and triggers are **design targets**, not production facts |
+| **NORMAL_APPLICATION_BUGS_FULLY_MITIGATED** | **NO** until issuance authority + invalidation triggers are implemented and privileged |
 
 ---
 
@@ -107,6 +109,41 @@ Created **only after** existing `verifyDurableEvidenceRevisionForModeALoaderV1` 
 
 Attestation is **DERIVED_VERIFICATION_ARTIFACT** — not source evidence, scientific authority, retention authority, ground truth, or ACK replacement.
 
+**Necessary but not sufficient:** “created only after full verification” is an **application contract** until issuance is DB-enforced.
+
+### 3.1 Issuance authority (distinct from source mutation protection)
+
+| Concern | Field |
+|---------|--------|
+| **SOURCE_MUTATION_PROTECTION** | Strategy C invalidation (post-issuance stale attestation) |
+| **ATTESTATION_ISSUANCE_AUTHORITY** | Who may insert attestation rows at all |
+
+**Fraudulent issuance threat:** unverified revision + syntactically valid attestation row + hybrid loader trusts binding → **skips JSON** → **FALSE PASS**. Invalidation triggers do **not** prevent erroneous initial INSERT.
+
+| Insert path (future) | Risk if unconstrained |
+|----------------------|------------------------|
+| Prisma `create` / generic ORM | Any bug can mint attestation |
+| Raw SQL with app `DATABASE_URL` | Same |
+| A3.2 writer repository only | Engineering boundary; **not** DB authority |
+| Reconciliation / bootstrap jobs | Must use same issuance gate as writer |
+| Ops tooling / migrations | Must not bypass verify |
+
+| Option | Assessment |
+|--------|------------|
+| **A — Application convention only** | **Insufficient** for strong A2 claim |
+| **B — Dedicated repository/service only** | **Useful** boundary; **not** sufficient alone |
+| **C — DB privilege separation** | App/read roles **denied** `INSERT`/`UPDATE` on attestation; only attestation-writer role or function |
+| **D — `SECURITY DEFINER` function** | **Required to embed full verify** inside issuance; hiding INSERT without verify is insufficient |
+| **E — Cryptographic seal / WORM** | Stronger future option; not required for O2 feasibility |
+
+| Field | Value |
+|-------|--------|
+| **ATTESTATION_ISSUANCE_AUTHORITY_REQUIRED** | **YES** |
+| **ATTESTATION_ISSUANCE_CURRENTLY_DB_ENFORCED** | **NO** |
+| **DIRECT_ARBITRARY_ATTESTATION_INSERT_WOULD_BE_UNSAFE** | **YES** |
+| **RECOMMENDED_ATTESTATION_ISSUANCE_MODEL** | **DB_PRIVILEGE_SEPARATION_PLUS_SECURITY_DEFINER_ISSUANCE_WITH_EMBEDDED_FULL_VERIFY** (dedicated service calls function only) |
+| **ISSUANCE_MUST_BE_RESOLVED_BEFORE_HYBRID_LOADER** | **YES** |
+
 ---
 
 ## 4. Critical mutation problem
@@ -132,13 +169,18 @@ Without invalidation or immutability:
 | **D — Application convention** | No DB witness | **UNSAFE** for skipping JSON |
 | **E — External WORM / signature** | Out-of-band | Stronger **future** option for **C** threat; not implemented |
 
-**Recommendation:** **Strategy C** primary (invalidate on integrity-relevant UPDATE; cascade on DELETE), optionally **combine with B** (generation column) for clearer diagnostics — invalidation can be implemented as `DELETE FROM attestation WHERE revision_id = …` on revision UPDATE.
+**Phase-1 authoritative target:** **Strategy C only** — attestation **row existence** is the mutation witness; `BEFORE/AFTER UPDATE` on revision/ACK **DELETE** matching attestation; `ON DELETE CASCADE` removes attestation with revision/ACK. **No generation columns required for correctness** in Phase 1.
+
+Strategy B (generation counters) remains a **future optional** diagnostic layer — not part of Phase-1 proof or pure model.
 
 | Field | Value |
 |-------|--------|
-| **RECOMMENDED_MUTATION_PROTECTION_STRATEGY** | **INVALIDATION_TRIGGER** (with optional generation witness) |
+| **RECOMMENDED_MUTATION_PROTECTION_STRATEGY** | **INVALIDATION_TRIGGER** |
+| **PHASE1_MUTATION_STRATEGY** | **C_ONLY** |
+| **GENERATION_FIELDS_REQUIRED_IN_PHASE1** | **NO** |
+| **PURE_MODEL_MATCHES_PHASE1_STRATEGY** | **YES** (`m3-3-hv-h4-a3-3-o2-integrity-attestation.v1.ts` — binding + MISSING after invalidation) |
 | **STRICT_IMMUTABILITY_RECOMMENDED** | **NO** (as sole strategy) |
-| **MUTATION_GENERATION_RECOMMENDED** | **OPTIONAL** (defense-in-depth alongside C) |
+| **MUTATION_GENERATION_RECOMMENDED** | **NO** for Phase 1 (optional later) |
 | **INVALIDATION_TRIGGER_RECOMMENDED** | **YES** |
 
 ---
@@ -157,7 +199,6 @@ Without invalidation or immutability:
 | `durabilityAckContractVersion` | exact ACK contract |
 | `integrityAttestationContractVersion` | attestation contract evolution |
 | `attestedAt` | audit timestamp |
-| `revisionMutationGeneration`, `ackMutationGeneration` | optional witness (Strategy B) |
 
 **Unique identity (recommended):**
 
@@ -177,7 +218,7 @@ Rationale: one attestation row per revision per attestation contract generation;
 
 Storing duplicate SHA-256 over narrow relational identity does **not** prove `scientificEvidenceJson` if mutation can occur without invalidation.
 
-With **Strategy C + full-verify fallback**, explicit columns + mutation witness are sufficient.
+With **Strategy C + full-verify fallback**, explicit relational binding columns are sufficient (invalidation removes row).
 
 | Field | Value |
 |-------|--------|
@@ -189,7 +230,7 @@ With **Strategy C + full-verify fallback**, explicit columns + mutation witness 
 ## 8. Read-path target architecture (future hybrid loader)
 
 1. **Narrow scan** — all revision identities (org, vehicle, contract, segmentFingerprint, ordering columns, fingerprints) **without** `scientificEvidenceJson` where possible.
-2. Per revision: exact ACK present? attestation valid? mutation witness match?
+2. Per revision: exact ACK present? attestation row present and binding valid? (invalidation ⇒ missing row)
 3. **Valid attestation** → skip historical JSON read for that revision.
 4. **Missing/invalid attestation** → **FULL_VERIFY** (current `verifyDurableEvidenceRevisionForModeALoaderV1` including JSON).
 5. MODE_A collapse unchanged (`sourceUpdatedAt` → `capturedAt` → `createdAt`; ambiguity fail closed).
@@ -208,18 +249,32 @@ Pure model: `m3-3-hv-h4-a3-3-o2-integrity-attestation.v1.ts` + unit tests.
 
 ## 9. O1 C1–C10 preservation matrix
 
-| Case | With attestation + invalidation + fallback |
-|------|---------------------------------------------|
-| C1 corrupt after attestation | Invalidated or generation mismatch → full verify → **FAIL CLOSED** |
-| C2 ACK deleted | Attestation cascaded or ACK missing → full verify → **FAIL CLOSED** |
+O1 tests model **logical** PostgreSQL-visible mutation/corruption (UPDATE semantics), not silent physical page corruption.
+
+| Case | With attestation + Strategy C invalidation + fallback |
+|------|--------------------------------------------------------|
+| C1 corrupt after attestation | Attestation invalidated → full verify → **FAIL CLOSED** |
+| C2 ACK deleted | Attestation cascaded / ACK missing → full verify → **FAIL CLOSED** |
 | C3 ACK mutated | Invalidation → full verify → **FAIL CLOSED** |
-| C4 mirror mutated | Full verify detects → **FAIL CLOSED** (attestation does not skip mirror/json checks on fallback) |
+| C4 mirror mutated | Fallback full verify → **FAIL CLOSED** |
 | C5 top ambiguity | Unchanged — **FAIL CLOSED** |
 | C6–C10 | Unchanged |
 
+### 9.1 Storage corruption parity (explicit non-equivalence)
+
 | Field | Value |
 |-------|--------|
-| **O1_C1_TO_C10_PRESERVABLE_WITH_ATTESTATION** | **YES** (requires invalidation + never trusting stale attestation) |
+| **CURRENT_LOADER_REDETECTS_HISTORICAL_JSON_CORRUPTION_ON_READ** | **YES** — every read loads and fingerprint-checks all historical JSON |
+| **HYBRID_ATTESTED_LOADER_REDETECTS_UNREAD_HISTORICAL_JSON_PHYSICAL_CORRUPTION_ON_EVERY_READ** | **NO** |
+| **PHYSICAL_STORAGE_CORRUPTION_PARITY_WITH_CURRENT_LOADER** | **NO** |
+
+| Field | Value |
+|-------|--------|
+| **O1_LOGICAL_DB_MUTATION_SEMANTICS_PRESERVABLE_WITH_ATTESTATION** | **YES** (invalidation active + issuance authority + fallback) |
+| **O1_STORAGE_CORRUPTION_REDETECTION_PARITY** | **NO** |
+| **SEMANTIC_EQUIVALENCE_BOUNDARY** | **LOGICAL_POSTGRES_MUTATIONS_WITH_INVALIDATION_ACTIVE** |
+
+**Future mitigations (not implemented):** bounded periodic full-integrity scrub / re-attestation; PostgreSQL/storage checksum observability; external/WORM integrity.
 
 ---
 
@@ -323,7 +378,7 @@ No byte/latency % claims without payload measurement.
 
 | Artifact | Role |
 |----------|------|
-| `m3-3-hv-h4-a3-3-o2-integrity-attestation.v1.ts` | Binding + mutation witness validity |
+| `m3-3-hv-h4-a3-3-o2-integrity-attestation.v1.ts` | Phase-1 Strategy C binding; MISSING simulates post-UPDATE invalidation |
 | `m3-3-hv-h4-a3-3-o2-integrity-attestation.spec.ts` | Unit coverage |
 
 ---
