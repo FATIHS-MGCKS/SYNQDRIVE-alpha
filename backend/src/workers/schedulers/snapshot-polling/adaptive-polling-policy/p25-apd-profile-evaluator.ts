@@ -4,6 +4,10 @@ import {
   type P25ApdCadenceProfileClass,
 } from './p25-apd-profile-classifier';
 import type { P25ApdProfileInvalidationReason } from './p25-apd-profile-invalidation.types';
+import {
+  P25_APD_PROFILE_ELIGIBLE_GAP_MIN_SECONDS,
+  resolveP25ApdProfileMedianCadenceMs,
+} from './p25-apd-profile-semantics';
 
 export type P25ApdProfileConfidence = 'HIGH' | 'MEDIUM' | 'LOW' | 'INSUFFICIENT';
 
@@ -50,13 +54,13 @@ export function evaluateP25ApdProfile(
   const gapsSec: number[] = [];
   for (let i = 1; i < input.lvProviderTimestampsMs.length; i++) {
     const g = (input.lvProviderTimestampsMs[i]! - input.lvProviderTimestampsMs[i - 1]!) / 1000;
-    if (g > 60) gapsSec.push(g);
+    if (g > P25_APD_PROFILE_ELIGIBLE_GAP_MIN_SECONDS) gapsSec.push(g);
   }
 
   const sampleCount = gapsSec.length;
   const sortedGaps = [...gapsSec].sort((a, b) => a - b);
   const medianSec = quantile(sortedGaps, 0.5) ?? 0;
-  const medianCadenceMs = medianSec * 1000;
+  const medianCadenceMs = resolveP25ApdProfileMedianCadenceMs(medianSec);
   const cadenceP90Ms = quantile(sortedGaps, 0.9) != null ? quantile(sortedGaps, 0.9)! * 1000 : null;
 
   let profileClass: P25ApdCadenceProfileClass;

@@ -235,8 +235,7 @@ export class AdaptivePollingShadowService {
       this.metrics?.recordProfileInvalidated(profile.invalidationReason);
     }
 
-    const medianIntervalMs =
-      profile.medianCadenceMs > 0 ? profile.medianCadenceMs : 8 * 3600 * 1000;
+    const medianIntervalMs = profile.medianCadenceMs;
 
     const overlayBase = {
       r9WakeKnown: ctx.r9WakeKnown,

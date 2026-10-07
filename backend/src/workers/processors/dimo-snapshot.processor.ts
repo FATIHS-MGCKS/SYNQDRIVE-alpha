@@ -39,6 +39,7 @@ import {
 import { DeviceConnectionEpisodeResolutionOutboxProcessorService } from '../../modules/dimo/device-connection-episode-resolution/device-connection-episode-resolution-outbox-processor.service';
 import { SnapshotWakeCoordinatorService } from '../snapshot-wake/snapshot-wake-coordinator.service';
 import { AdaptivePollingShadowService } from '../schedulers/snapshot-polling/adaptive-polling-shadow/adaptive-polling-shadow.service';
+import { findLatestHistoricallyVisibleLiveVoltageProviderTimestampMs } from '../schedulers/snapshot-polling/adaptive-polling-policy/p25-apd-historical-lv-visibility';
 import type { DimoSnapshotJobData } from '../snapshot-wake/snapshot-wake.types';
 import { TripDetectionState } from '@prisma/client';
 
@@ -210,29 +211,24 @@ export class DimoSnapshotProcessor extends WorkerHost {
       );
 
       if (this.apdShadow && apdShadowOpportunityId && pipelineResult) {
-        const latestLv = await this.prisma.batteryMeasurement.findFirst({
-          where: {
+        const pollCompletedAtMs = pipelineResult.finishedAt.getTime();
+        const latestVisibleLvProviderMs =
+          await findLatestHistoricallyVisibleLiveVoltageProviderTimestampMs(
+            this.prisma,
             vehicleId,
-            type: 'LIVE_VOLTAGE',
-            quality: 'VALID',
-            providerTimestamp: { not: null },
-          },
-          orderBy: { providerTimestamp: 'desc' },
-          select: { providerTimestamp: true },
-        });
+            pollCompletedAtMs,
+          );
         await this.apdShadow.observePostPoll({
           organizationId: vehicle.organizationId,
           vehicleId,
           opportunityId: apdShadowOpportunityId,
           realPollId: pipelineResult.pollLogId,
           pollStartedAtMs: startedAt.getTime(),
-          pollCompletedAtMs: pipelineResult.finishedAt.getTime(),
+          pollCompletedAtMs,
           realPollVisibleLvSourceAtMs:
-            pipelineResult.lvProviderTimestampMs ??
-            latestLv?.providerTimestamp?.getTime() ??
-            null,
+            pipelineResult.lvProviderTimestampMs ?? latestVisibleLvProviderMs,
           previousLvSourceMs: previousLv?.providerTimestamp?.getTime() ?? null,
-          newLvSourceMs: latestLv?.providerTimestamp?.getTime() ?? null,
+          newLvSourceMs: latestVisibleLvProviderMs,
           previousTopLevelSourceMs: null,
           newTopLevelSourceMs: afterCtx.snapshotSourceTimestamp?.getTime() ?? null,
           providerFetchedAtMs: null,
