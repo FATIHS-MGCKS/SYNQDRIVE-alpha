@@ -6,6 +6,13 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-07 — M3.3-HV-H4-A3.3-O2-R1 fix TEXT FK + postgres probe + tests
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Attestation migration FK columns `TEXT`; issuance function `(text,text)`; fix `probePostgresDatabase` guard; R1-C13/C15 tests |
+| **WHY** | CI migration apply failed UUID vs TEXT; R1 tests were no-op due to `probe.ok` bug |
+
 ## 2026-10-07 — M3.3-HV-H4-A3.3-O2-R1 schema + invalidation + issuance foundation
 
 | Field | Value |

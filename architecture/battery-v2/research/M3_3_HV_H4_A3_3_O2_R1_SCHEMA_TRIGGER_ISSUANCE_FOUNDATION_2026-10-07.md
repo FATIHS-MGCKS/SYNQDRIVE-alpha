@@ -34,6 +34,10 @@ PostgreSQL builds canonical UTF-8 via `json_build_array` + comma compaction, the
 
 **O2-R2** — production role topology + writer path behind issuance function only (still no hybrid loader until certified).
 
+## Migration note (TEXT FK parity)
+
+Parent evidence tables use `TEXT` primary keys (`battery_hv_charge_session_evidence_revisions.id`, `battery_hv_charge_session_evidence_acks.id`). Attestation FK columns match **TEXT**, not UUID.
+
 ## Safety
 
 No production migration execution, no bootstrap, no loader change.
