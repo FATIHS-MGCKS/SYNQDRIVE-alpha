@@ -40,6 +40,7 @@
     "test:di:s4f4:global-budget-rollout": "jest --config scripts/ops/di-v0-s4f-global-budget-rollout/jest.config.js",
     "test:di:s4f7f:kill-init-wrapper": "jest --config scripts/ops/di-v0-s4-global-kill-init-production/jest.config.js",
     "test:di:s4f7j:tiny-staging-wrapper": "jest --config scripts/ops/di-v0-s4-tiny-staging-production/jest.config.js",
+    "test:di:s4f7v:fresh-tiny-staging-wrapper": "jest --config scripts/ops/di-v0-s4-fresh-tiny-staging-production/jest.config.js",
     "test:di:s4f7m:runtime-attestation": "jest di-v0-s4-runtime-config-attestation --runInBand",
     "test:di:s4f7q:exact-rc-deploy-guard": "jest --config scripts/ops/di-v0-s4f7q-exact-rc-attestation-deploy/jest.config.js",
     "test:di:s4f7q:exact-rc-attestation-deploy": "jest --config scripts/ops/di-v0-s4f7q-exact-rc-attestation-deploy/jest.config.js",
