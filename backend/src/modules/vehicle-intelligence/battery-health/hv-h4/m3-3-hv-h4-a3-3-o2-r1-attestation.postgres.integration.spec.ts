@@ -22,28 +22,43 @@ async function insertCoherentRevisionWithAck(
   prisma: PrismaClient,
   projection: M3_3HvH4ChargeSessionEvidenceScientificProjectionV1,
   withAck = true,
+  tenant?: {
+    organizationId: string;
+    vehicleId: string;
+    sourceHvChargeSessionId: string;
+  },
 ) {
-  const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
-  const session = await prisma.hvChargeSession.create({
-    data: {
-      organizationId,
-      vehicleId,
-      segmentFingerprint: projection.segmentFingerprint,
-      dimoSegmentId: projection.dimoSegmentId ?? `dimo-${randomUUID()}`,
-      source: HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE,
-      startAt: new Date(projection.startAt),
-      endAt: projection.endAt ? new Date(projection.endAt) : null,
-      energyAddedKwh:
-        projection.energyAddedKwh.kind === 'FINITE' ? projection.energyAddedKwh.value : null,
-      isOngoing: projection.isOngoing,
-      idempotencyKey: `idem-${randomUUID()}`,
-    },
-  });
+  let organizationId: string;
+  let vehicleId: string;
+  let sourceHvChargeSessionId: string;
+  if (tenant) {
+    ({ organizationId, vehicleId, sourceHvChargeSessionId } = tenant);
+  } else {
+    const created = await createGtOrgVehicle(prisma);
+    organizationId = created.organizationId;
+    vehicleId = created.vehicleId;
+    const session = await prisma.hvChargeSession.create({
+      data: {
+        organizationId,
+        vehicleId,
+        segmentFingerprint: projection.segmentFingerprint,
+        dimoSegmentId: projection.dimoSegmentId ?? `dimo-${randomUUID()}`,
+        source: HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE,
+        startAt: new Date(projection.startAt),
+        endAt: projection.endAt ? new Date(projection.endAt) : null,
+        energyAddedKwh:
+          projection.energyAddedKwh.kind === 'FINITE' ? projection.energyAddedKwh.value : null,
+        isOngoing: projection.isOngoing,
+        idempotencyKey: `idem-${randomUUID()}`,
+      },
+    });
+    sourceHvChargeSessionId = session.id;
+  }
   const scopedProjection: M3_3HvH4ChargeSessionEvidenceScientificProjectionV1 = {
     ...projection,
     organizationId,
     vehicleId,
-    sourceHvChargeSessionId: session.id,
+    sourceHvChargeSessionId,
   };
   const sourceRevisionFingerprint =
     computeM3_3HvH4ChargeSessionSourceRevisionFingerprintV1(scopedProjection);
@@ -249,7 +264,11 @@ describe('M3.3-HV-H4-A3.3-O2-R1 integrity attestation foundation', () => {
       },
     });
     const sci = buildM3_3HvH4ChargeSessionEvidenceScientificProjectionV1(session);
-    const { revision } = await insertCoherentRevisionWithAck(prisma, sci);
+    const { revision } = await insertCoherentRevisionWithAck(prisma, sci, true, {
+      organizationId,
+      vehicleId,
+      sourceHvChargeSessionId: session.id,
+    });
     await issueAttestationSql(prisma, revision.id);
     await prisma.$executeRaw`
       DELETE FROM vehicles
