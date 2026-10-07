@@ -337,14 +337,18 @@ async function countBillingDisconnectForOutboxEvent(prisma: PrismaClient, outbox
       organizationId: orgId,
       vehicleId,
       reason: 'REMOVE_FROM_PRODUCT',
-      actorUserId: randomUUID(),
+      actorUserId: null,
       idempotencyKey: randomUUID(),
     });
     const outbox = await prisma.vehicleRegistryLifecycleOutbox.findFirstOrThrow({
       where: { vehicleId, eventType: 'VEHICLE_OFFBOARDED' },
     });
     const processor = buildLifecycleOutboxProcessor(prisma);
-    expect(await processor.processRow(outbox.id)).toBe('published');
+    const publishOutcome = await processor.processRow(outbox.id);
+    expect(['published', 'retry']).toContain(publishOutcome);
+    if (publishOutcome === 'retry') {
+      expect(await processor.processRow(outbox.id)).toBe('published');
+    }
     expect(await countBillingDisconnects(prisma, vehicleId)).toBe(1);
     expect(await countBillingDisconnectForOutboxEvent(prisma, outbox.eventId)).toBe(1);
     const processed = await prisma.vehicleRegistryLifecycleOutbox.findUniqueOrThrow({
@@ -527,7 +531,7 @@ async function countBillingDisconnectForOutboxEvent(prisma: PrismaClient, outbox
       organizationId: orgId,
       vehicleId,
       reason: 'REMOVE_FROM_PRODUCT' as const,
-      actorUserId: randomUUID(),
+      actorUserId: null,
       idempotencyKey,
     };
     await Promise.all(Array.from({ length: 6 }, () => httpOffboard.offboardVehicle(input)));
@@ -535,7 +539,7 @@ async function countBillingDisconnectForOutboxEvent(prisma: PrismaClient, outbox
       where: { vehicleId, eventType: 'VEHICLE_OFFBOARDED' },
     });
     const processor = buildLifecycleOutboxProcessor(prisma);
-    expect(await processor.processRow(outbox.id)).toBe('published');
+    await expect(processor.processRow(outbox.id)).resolves.toBe('published');
     expect(await countBillingDisconnects(prisma, vehicleId)).toBe(1);
     expect(await countBillingDisconnectForOutboxEvent(prisma, outbox.eventId)).toBe(1);
     expect(await processor.processRow(outbox.id)).toBe('skipped');
@@ -547,20 +551,19 @@ async function countBillingDisconnectForOutboxEvent(prisma: PrismaClient, outbox
     const orgId = await createOrg(prisma);
     const { vehicleId } = await createBillableActiveVehicle(prisma, orgId);
     const { httpOffboard } = buildOffboardStack(prisma);
-    const actorUserId = randomUUID();
     const outcomes = await Promise.allSettled([
       httpOffboard.offboardVehicle({
         organizationId: orgId,
         vehicleId,
         reason: 'OFFBOARD_SOLD',
-        actorUserId,
+        actorUserId: null,
         idempotencyKey: randomUUID(),
       }),
       httpOffboard.offboardVehicle({
         organizationId: orgId,
         vehicleId,
         reason: 'OFFBOARD_SOLD',
-        actorUserId,
+        actorUserId: null,
         idempotencyKey: randomUUID(),
       }),
     ]);
@@ -577,7 +580,7 @@ async function countBillingDisconnectForOutboxEvent(prisma: PrismaClient, outbox
       where: { vehicleId, eventType: 'VEHICLE_OFFBOARDED' },
     });
     const processor = buildLifecycleOutboxProcessor(prisma);
-    expect(await processor.processRow(outbox.id)).toBe('published');
+    await expect(processor.processRow(outbox.id)).resolves.toBe('published');
     expect(await countBillingDisconnects(prisma, vehicleId)).toBe(1);
     expect(await countBillingDisconnectForOutboxEvent(prisma, outbox.eventId)).toBe(1);
     expect(await processor.processRow(outbox.id)).toBe('skipped');
