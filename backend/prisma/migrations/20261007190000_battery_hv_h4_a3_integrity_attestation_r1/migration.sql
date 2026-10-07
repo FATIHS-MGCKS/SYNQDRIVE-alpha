@@ -59,7 +59,7 @@ BEGIN
   ELSIF k = 'NEGATIVE_INFINITY' THEN
     RETURN '{"kind":"NEGATIVE_INFINITY"}';
   ELSIF k = 'FINITE' THEN
-    v := lower(e->'value'::text);
+    v := lower((e->'value')::text);
     v := regexp_replace(v, 'e([+-])0+([0-9])', 'e\1\2', 'g');
     RETURN '{"kind":"FINITE","value":' || v || '}';
   END IF;
