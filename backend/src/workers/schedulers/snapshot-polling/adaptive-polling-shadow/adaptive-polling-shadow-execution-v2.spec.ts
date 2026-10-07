@@ -51,6 +51,9 @@ describe('APDS-9.2B execution contract V2 (poll-start authority)', () => {
     batteryMeasurement: {
       findMany: jest.fn().mockResolvedValue([]),
     },
+    vehicle: {
+      findUnique: jest.fn().mockResolvedValue({ fuelType: 'ELECTRIC' }),
+    },
     vehicleTrip: {
       findFirst: jest.fn().mockResolvedValue(null),
     },

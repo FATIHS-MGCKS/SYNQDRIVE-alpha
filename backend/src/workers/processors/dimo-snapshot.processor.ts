@@ -195,7 +195,8 @@ export class DimoSnapshotProcessor extends WorkerHost {
         providerGapOpen: false,
         connectivityState: vehicle.dimoVehicle?.connectionStatus ?? null,
         r9WakeKnown: jobDataWithWake.wakeContext != null,
-        wakeCorrelationId: jobDataWithWake.wakeContext?.correlationId ?? null,
+        // SnapshotWakeContext has no separate correlation id; shadow uses r9WakeKnown + opportunity id.
+        wakeCorrelationId: null,
         deviceReconnectRecent: false,
         providerReconnectRecent: false,
       });

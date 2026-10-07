@@ -46,6 +46,9 @@ describe('AdaptivePollingShadowService cohort gating', () => {
     batteryMeasurement: {
       findMany: jest.fn().mockResolvedValue([]),
     },
+    vehicle: {
+      findUnique: jest.fn().mockResolvedValue({ fuelType: 'ELECTRIC' }),
+    },
     vehicleTrip: {
       findFirst: jest.fn().mockResolvedValue(null),
     },
