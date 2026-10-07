@@ -4420,6 +4420,12 @@ model ApdShadowReconciliationDecision {
   opportunityId  String   @map("opportunity_id")
   decisionAt     DateTime @map("decision_at")
   realPollId     String?  @map("real_poll_id")
+  realPollStatus String?  @map("real_poll_status")
+
+  shadowExecutionVersion String?  @map("shadow_execution_version")
+  reconciliation         Boolean?
+  enqueueOutcome         String?  @map("enqueue_outcome")
+  enqueueOutcomeAt       DateTime? @map("enqueue_outcome_at")
 
   policyVersion  String @map("policy_version")
   profileVersion String @map("profile_version")

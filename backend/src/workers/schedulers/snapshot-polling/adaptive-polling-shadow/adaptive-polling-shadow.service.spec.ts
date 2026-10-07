@@ -11,7 +11,10 @@ import {
 describe('AdaptivePollingShadowService', () => {
   const repository = {
     upsertPrePollDecision: jest.fn().mockResolvedValue(undefined),
-    updateOutcome: jest.fn().mockResolvedValue(undefined),
+    resolveLastAllowedReconciliationPollMs: jest.fn().mockResolvedValue(0),
+    patchEnqueueOutcome: jest.fn().mockResolvedValue(undefined),
+    updateSuccessfulPollOutcome: jest.fn().mockResolvedValue(undefined),
+    updateFailedPollOutcome: jest.fn().mockResolvedValue(undefined),
   } as unknown as AdaptivePollingShadowRepository;
 
   const metrics = {
