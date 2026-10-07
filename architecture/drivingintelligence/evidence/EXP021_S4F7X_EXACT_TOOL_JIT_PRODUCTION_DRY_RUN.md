@@ -76,70 +76,72 @@ DI_V0_S4_ORGANIZATION_ALLOWLIST=faa710c9-6d91-4079-a7d5-91fdccdec14a
 DI_V0_S4_VEHICLE_ALLOWLIST=c10351f8-b6a2-4258-947f-631aeaa6d359
 ```
 
-## 5 — Historical forensic fields (original run transcript)
-
-Recovered from **`s4f7x-production-dry-run.log` only** (no substitution from later observations).
-
-| Field | Value |
-|-------|--------|
-| `PRE_REPLICA_A_PID` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
-| `PRE_REPLICA_B_PID` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
-| `POST_REPLICA_A_PID` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
-| `POST_REPLICA_B_PID` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
-| `REPLICA_A_PID_UNCHANGED_DURING_DRY_RUN` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
-| `REPLICA_B_PID_UNCHANGED_DURING_DRY_RUN` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
-| `PRE_REPLICA_A_ATTESTATION_STATE` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
-| `PRE_REPLICA_A_ATTESTATION_FINGERPRINT` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
-| `PRE_REPLICA_A_ATTESTATION_CONTRACT_VERSION` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
-| `PRE_REPLICA_B_ATTESTATION_STATE` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
-| `PRE_REPLICA_B_ATTESTATION_FINGERPRINT` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
-| `PRE_REPLICA_B_ATTESTATION_CONTRACT_VERSION` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
-| `PRE_REPLICA_ATTESTATION_PARITY` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
-| `POST_REPLICA_A_ATTESTATION_STATE` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
-| `POST_REPLICA_A_ATTESTATION_FINGERPRINT` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
-| `POST_REPLICA_A_ATTESTATION_CONTRACT_VERSION` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
-| `POST_REPLICA_B_ATTESTATION_STATE` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
-| `POST_REPLICA_B_ATTESTATION_FINGERPRINT` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
-| `POST_REPLICA_B_ATTESTATION_CONTRACT_VERSION` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
-| `POST_REPLICA_ATTESTATION_PARITY` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
-
-**Why not captured:** S4F-7W fresh wrapper `DRY_RUN=1` path runs live topology/budget/Redis guards (including authenticated metrics for **budget** only). It does **not** invoke `prove-recovery-prestate` or emit `synqdrive_di_v0_s4_runtime_config_attestation_info` parse lines, and `s4f7f_topology_snapshot` logs uptime/CWD but not PM2 PID in stdout.
-
-**Post-dry-run SHA/env hash (independent read same day):** unchanged vs pins (see §4 safety).
-
-## 6 — CURRENT_READONLY_REVERIFY (not historical post-dry-run)
-
-Read-only SSH `synqdrive-admin@srv1374778.hstgr.cloud` at **`2026-10-07T15:19:05Z`**. Proves Production **still** PRESTATE; **not** a substitute for missing historical POST lines.
-
-| Field | Value |
-|-------|--------|
-| `CURRENT_REPLICA_A_PID` | `1725593` |
-| `CURRENT_REPLICA_B_PID` | `1725602` |
-| `CURRENT_REPLICA_A_ATTESTATION_STATE` | **PRESTATE** |
-| `CURRENT_REPLICA_A_ATTESTATION_FINGERPRINT` | `b648908a5f74798f765b0631cd16d5c50a390222d36b63fb03f787367176750d` |
-| `CURRENT_REPLICA_A_ATTESTATION_CONTRACT_VERSION` | **v1** |
-| `CURRENT_REPLICA_B_ATTESTATION_STATE` | **PRESTATE** |
-| `CURRENT_REPLICA_B_ATTESTATION_FINGERPRINT` | `b648908a5f74798f765b0631cd16d5c50a390222d36b63fb03f787367176750d` |
-| `CURRENT_REPLICA_B_ATTESTATION_CONTRACT_VERSION` | **v1** |
-| `CURRENT_REPLICA_ATTESTATION_PARITY` | **YES** |
-
-## 7 — Final evidence completeness closure
+## 5 — Original run forensic gap (preserved truth)
 
 ```
-EXP021_S4F7X_FINAL_EVIDENCE_CLOSURE_RESULT=PASS
-PR_NUMBER=1912
-ORIGINAL_DRY_RUN_FINAL_RESULT=PASS
-S4F7X_ORIGINAL_RUN_EVIDENCE_COMPLETE=YES
-S4F7X_REPEAT_DRY_RUN_REQUIRED=NO
+ORIGINAL_RUN_PRE_POST_FORENSICS_CAPTURED=NO
+S4F7X_ORIGINAL_RUN_EVIDENCE_COMPLETE=NO
 ```
 
-**Closure rationale:** The authorized S4F-7X acceptance contract (tool SHA pin, JIT seal, full `DRY_RUN=1` guard path, zero mutation) is fully recorded in `s4f7x-production-dry-run.log`. Bounded forensic fields (historical PID + explicit attestation parse lines) were never emitted by the wrapper and cannot be reconstructed without inventing values. A repeat `DRY_RUN=1` would **not** add those fields unless the wrapper is extended (out of scope for this evidence-only closure). `CURRENT_READONLY_REVERIFY` confirms expected PRESTATE attestation remains on both replicas.
+All `PRE_*` / `POST_*` replica PID and attestation fields from §5 of the prior closure draft remain **`NOT_CAPTURED_IN_ORIGINAL_RUN`** in `s4f7x-production-dry-run.log` (wrapper stdout does not emit them). **Do not rewrite** the original run.
+
+## 6 — Deterministic evidence completion rerun (~`2026-10-07T15:29:28Z` UTC)
+
+Orchestration: `.cursor/scripts/cloud-agent-s4f7x-deterministic-evidence-rerun.sh`  
+Transcript: `s4f7x-deterministic-evidence-rerun.log`
 
 | Field | Value |
 |-------|--------|
-| `FINAL_RESULT` | **PASS** |
-| `BLOCKERS` | **NONE** |
-| `NEXT_ACTION` | **WAIT_FOR_EXACT_HEAD_CI_THEN_MERGE_PR1912** |
+| `EVIDENCE_COMPLETION_RERUN_EXECUTED` | **YES** |
+| `TOOL_CHECKOUT_SHA` | `11b4a80ccb88d1d6f747399f84667b06c9a71050` |
+| `TOOL_CHECKOUT_CLEAN` | **YES** |
+| `CURRENT_PRODUCTION_SHA` | `a376c965ecedf855eb0fbcda42542ff15b74422c` |
+| `CURRENT_PRODUCTION_RELEASE_ID` | `20261007151232_v4994` |
+| `BACKEND_ENV_SHA256` | `9aae449e809ff7f1ac6cb3411e09d52b2e1f28923c453589218ebe26bab97e05` |
+| `PRE_REPLICA_A_PID` | `1744975` |
+| `PRE_REPLICA_B_PID` | `1745234` |
+| `PRE_REPLICA_A_ATTESTATION_STATE` | **PRESTATE** |
+| `PRE_REPLICA_A_ATTESTATION_FINGERPRINT` | `b648908a5f74798f765b0631cd16d5c50a390222d36b63fb03f787367176750d` |
+| `PRE_REPLICA_A_ATTESTATION_CONTRACT_VERSION` | **v1** |
+| `PRE_REPLICA_A_ATTESTATION_SAMPLE_COUNT` | **1** |
+| `PRE_REPLICA_B_ATTESTATION_STATE` | **PRESTATE** |
+| `PRE_REPLICA_B_ATTESTATION_FINGERPRINT` | `b648908a5f74798f765b0631cd16d5c50a390222d36b63fb03f787367176750d` |
+| `PRE_REPLICA_B_ATTESTATION_CONTRACT_VERSION` | **v1** |
+| `PRE_REPLICA_B_ATTESTATION_SAMPLE_COUNT` | **1** |
+| `PRE_REPLICA_ATTESTATION_PARITY` | **YES** |
+| `JIT_FRESH_NOT_BEFORE` | **`2026-10-07T15:29:28.839Z`** |
+| `LATEST_COMPLETED_TRIP_END_TIME` | `2026-10-07T11:59:21.764Z` |
+| `JIT_EXPECTED_RUNTIME_ATTESTATION_FINGERPRINT` | `71e4fce892513e46d38261fd4366c626e30118be959b581249ed46ad6481a42a` |
+| `JIT_EXPECTED_RUNTIME_ATTESTATION_STATE_UNDER_V1` | **OTHER** |
+| `JIT_AUTHORITY_AGE_SECONDS` | **3.265** (immediately pre-wrapper) |
+| `JIT_AUTHORITY_WITHIN_900_SECONDS` | **YES** |
+| `GUARDS_OK` | **YES** |
+| `DRY_RUN_ENV_MUTATION_COUNT` | **0** |
+| `DRY_RUN_RESTART_COUNT` | **0** |
+| `POST_REPLICA_A_PID` | `1744975` |
+| `POST_REPLICA_B_PID` | `1745234` |
+| `REPLICA_A_PID_UNCHANGED_DURING_DRY_RUN` | **YES** |
+| `REPLICA_B_PID_UNCHANGED_DURING_DRY_RUN` | **YES** |
+| `POST_REPLICA_ATTESTATION_PARITY` | **YES** (both **PRESTATE** / `b648908a…` / **v1**, sample count **1**) |
+| `FRESH_OTHER_FINGERPRINT_NOT_AT_RUNTIME` | **YES** |
+| `POST_PRODUCTION_SHA` | `a376c965ecedf855eb0fbcda42542ff15b74422c` (equals PRE) |
+| `POST_BACKEND_ENV_SHA256` | unchanged vs PRE |
+| `POST_GLOBAL_KILL_STATE` | **KILLED** |
+| `POST_S4_ZERO_STATE` | **YES** |
+
+**Note:** Production release advanced between the original run (`3c12875d…`) and this rerun (`a376c965…`) via normal deploy activity; this rerun pins **live** SHA/release/env hash observed at execution time. Original-run JIT (`14:54Z` / `fc8df190…`) remains historical-only.
+
+## 7 — Combined evidence closure
+
+```
+EXP021_S4F7X_DETERMINISTIC_EVIDENCE_COMPLETION_RERUN_RESULT=PASS
+S4F7X_ORIGINAL_RUN_EVIDENCE_COMPLETE=NO
+EVIDENCE_COMPLETION_RERUN_EXECUTED=YES
+S4F7X_COMBINED_EVIDENCE_COMPLETE=YES
+FINAL_RESULT=PASS
+BLOCKERS=NONE
+NEXT_ACTION=WAIT_FOR_EXACT_HEAD_CI_THEN_MERGE_PR1912
+```
 
 ## 8 — Gate authority (unchanged)
 
