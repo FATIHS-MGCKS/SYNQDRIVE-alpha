@@ -9,7 +9,15 @@ import {
 
 const integrationEnabled = process.env.BATTERY_HV_H4_REPORT_INTEGRATION === '1';
 
-const HOLD_MS = 250;
+const HOLD_MS = 400;
+
+function rowLockGate(): { waitUntilLocked: Promise<void>; notifyLocked: () => void } {
+  let notifyLocked!: () => void;
+  const waitUntilLocked = new Promise<void>((resolve) => {
+    notifyLocked = resolve;
+  });
+  return { waitUntilLocked, notifyLocked };
+}
 
 describe('M3.3-HV-H4-A3.3-O2-R1 attestation invalidation races (issuance deferred)', () => {
   let prisma: PrismaClient;
@@ -40,6 +48,7 @@ describe('M3.3-HV-H4-A3.3-O2-R1 attestation invalidation races (issuance deferre
 
     const clientA = new PrismaClient();
     const clientB = new PrismaClient();
+    const { waitUntilLocked, notifyLocked } = rowLockGate();
     try {
       const insertHeld = clientA.$transaction(async (tx) => {
         await tx.$queryRaw`
@@ -48,6 +57,7 @@ describe('M3.3-HV-H4-A3.3-O2-R1 attestation invalidation races (issuance deferre
           WHERE id = ${revision.id}::text
           FOR UPDATE
         `;
+        notifyLocked();
         const now = new Date();
         await tx.batteryHvChargeSessionEvidenceIntegrityAttestation.create({
           data: {
@@ -67,7 +77,7 @@ describe('M3.3-HV-H4-A3.3-O2-R1 attestation invalidation races (issuance deferre
       });
 
       const updateRace = (async () => {
-        await new Promise((r) => setTimeout(r, 50));
+        await waitUntilLocked;
         await clientB.batteryHvChargeSessionEvidenceRevision.update({
           where: { id: revision.id },
           data: { qualityStatus: 'RACE_TOUCH' },
@@ -90,6 +100,7 @@ describe('M3.3-HV-H4-A3.3-O2-R1 attestation invalidation races (issuance deferre
 
     const clientA = new PrismaClient();
     const clientB = new PrismaClient();
+    const { waitUntilLocked, notifyLocked } = rowLockGate();
     try {
       const insertHeld = clientA.$transaction(async (tx) => {
         await tx.$queryRaw`
@@ -98,6 +109,7 @@ describe('M3.3-HV-H4-A3.3-O2-R1 attestation invalidation races (issuance deferre
           WHERE id = ${ackId}::text
           FOR UPDATE
         `;
+        notifyLocked();
         const now = new Date();
         await tx.batteryHvChargeSessionEvidenceIntegrityAttestation.create({
           data: {
@@ -117,7 +129,7 @@ describe('M3.3-HV-H4-A3.3-O2-R1 attestation invalidation races (issuance deferre
       });
 
       const ackUpdate = (async () => {
-        await new Promise((r) => setTimeout(r, 50));
+        await waitUntilLocked;
         await clientB.batteryHvChargeSessionEvidenceAck.update({
           where: { id: ackId },
           data: { acknowledgedAt: new Date() },
