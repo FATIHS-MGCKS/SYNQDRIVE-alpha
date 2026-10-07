@@ -344,11 +344,7 @@ async function countBillingDisconnectForOutboxEvent(prisma: PrismaClient, outbox
       where: { vehicleId, eventType: 'VEHICLE_OFFBOARDED' },
     });
     const processor = buildLifecycleOutboxProcessor(prisma);
-    const publishOutcome = await processor.processRow(outbox.id);
-    expect(['published', 'retry']).toContain(publishOutcome);
-    if (publishOutcome === 'retry') {
-      expect(await processor.processRow(outbox.id)).toBe('published');
-    }
+    expect(await processor.processRow(outbox.id)).toBe('published');
     expect(await countBillingDisconnects(prisma, vehicleId)).toBe(1);
     expect(await countBillingDisconnectForOutboxEvent(prisma, outbox.eventId)).toBe(1);
     const processed = await prisma.vehicleRegistryLifecycleOutbox.findUniqueOrThrow({
