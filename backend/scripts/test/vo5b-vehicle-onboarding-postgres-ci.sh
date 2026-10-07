@@ -6,6 +6,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
 export VO5B_REGISTRY_BILLING_PG=1
+export VO5B_AB1_REGISTRY_BILLING_PG=1
 
 parse_database_url() {
   if [[ -z "${DATABASE_URL:-}" ]]; then
@@ -46,3 +47,4 @@ export DATABASE_URL="${INT_DATABASE_URL}"
 DATABASE_URL="${INT_DATABASE_URL}" PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 \
   bash scripts/test/prisma-migrate-deploy-resilient.sh
 npm run test:vehicle-onboarding:vo5b:postgres
+npm run test:vehicle-onboarding:vo5b-ab1:postgres

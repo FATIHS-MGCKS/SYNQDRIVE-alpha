@@ -33,7 +33,6 @@ Post-commit idempotent bridge:
 | `BILLING_ASSIGNMENT_AND_QUANTITY_TRANSITION_ATOMIC` | `YES` (same transaction) |
 | `BILLING_IDEMPOTENCY_SEMANTIC_COLLISION_FAIL_CLOSED` | `YES` |
 | `UNSUPPORTED_VALID_LIFECYCLE_EVENT_MARKED_FAILED` | `NO` |
-| `VEHICLE_ACTIVATED_EVENT_PRESERVED_FOR_FUTURE_HANDLER` | `YES` |
 | `REGISTRY_OUTBOX_CLAIM_AUTHORITY` | `updateMany` lease on `nextRetryAt` + CAS publish from `PENDING` only |
 | `REGISTRY_OUTBOX_PUBLISHED_STATE_MONOTONIC` | `YES` |
 | `CONCURRENT_FAILURE_CANNOT_REGRESS_PUBLISHED` | `YES` |
@@ -62,8 +61,9 @@ Post-commit idempotent bridge:
 | `LEGACY_IMPLICIT_OFFBOARD_BILLING_POLICY` | Decrement when org has zero explicit assignments and vehicle was billable at boundary (no fabricated assignment rows) |
 | `BILLING_IDEMPOTENCY_KEY_SOURCE` | `vehicle-registry:<eventId>:billing-offboard:v1` |
 | `REGISTRY_OUTBOX_PUBLICATION_MODEL` | Registry outbox = publication authority; synchronous dispatcher invokes idempotent downstream handlers |
-| `REGISTRY_OUTBOX_PUBLISHED_AFTER_REQUIRED_HANDLERS` | `YES` (currently: billing offboard projection) |
-| `VEHICLE_ACTIVATED_BILLING_BRIDGE_GAP` | `YES` (follow-up; not in VO-5B scope) |
+| `REGISTRY_OUTBOX_PUBLISHED_AFTER_REQUIRED_HANDLERS` | `YES` (offboard projection; activation billing via VO5B-AB1) |
+| `VEHICLE_ACTIVATED_BILLING_BRIDGE_GAP` | `NO` (closed by [VO5B_AB1_ACTIVATION_BILLING_BRIDGE.md](./VO5B_AB1_ACTIVATION_BILLING_BRIDGE.md)) |
+| `VEHICLE_ACTIVATED_EVENT_PRESERVED_FOR_FUTURE_HANDLER` | `NO` (superseded by VO5B-AB1 handler registration) |
 
 ### Assignment history limitation (VO-5B.2)
 

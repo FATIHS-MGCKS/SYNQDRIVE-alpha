@@ -38,8 +38,9 @@ export const POST_ACTIVATION_INITIALIZATION_PLAN: PostActivationInitializationPl
   },
   {
     effect: 'billingQuantity.onVehicleProvisioned',
-    classification: 'FUTURE_OUTBOX_CONSUMER',
-    notes: 'Consume VEHICLE_ACTIVATED; no direct Stripe/billing from activation.',
+    classification: 'POST_COMMIT_IDEMPOTENT',
+    notes:
+      'VO5B-AB1: VehicleRegistryLifecycleOutboxProcessor consumes VEHICLE_ACTIVATED; event-time effectiveAt; idempotency vehicle-registry:<eventId>:billing-activate:v1. Legacy registerFromDimo/create fire-and-forget hooks remain disjoint (later cutover).',
   },
   {
     effect: 'tire/brake/battery baseline materialization',

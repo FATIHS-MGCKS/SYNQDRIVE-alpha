@@ -5,7 +5,7 @@
 | **Sealed from** | VO-0A discovery audit |
 | **Repository anchor SHA** | `312d9f54a2b4c0b0740061d3e2b74897e78eacb0` |
 | **Authority status** | `AUDIT_IN_PROGRESS` — **not** `AUTHORITY_ACTIVE` |
-| **Last updated** | 2026-10-01 (VO-5B registry lifecycle → billing quantity bridge; VO-5A.1 integrity seal; legacy deregister **unchanged**) |
+| **Last updated** | 2026-10-07 (VO5B-AB1 activation billing bridge; VO-5B offboard bridge; legacy deregister **unchanged**) |
 
 ## Executive summary
 
@@ -27,6 +27,7 @@ SynqDrive today separates **provider mirrors** (`DimoVehicle`, `HighMobilityVehi
 - **VO-4.10 (2026-10-01):** Master Admin read-only provider candidate discovery (`GET …/candidates`) — derived projection over DIMO/HM mirrors; adoption transaction remains write authority (see [VO410_PROVIDER_CANDIDATE_DISCOVERY.md](./evidence/VO410_PROVIDER_CANDIDATE_DISCOVERY.md)).
 - **VO-5A (2026-10-01):** Offboarding foundation — destructive `VehiclesService.deregister` audited; internal registry offboard (`ACTIVE`→`OFFBOARDED` + `VEHICLE_OFFBOARDED` outbox); **no** public HTTP; **no** legacy endpoint change (see [VO5A_OFFBOARDING_FOUNDATION.md](./evidence/VO5A_OFFBOARDING_FOUNDATION.md)).
 - **VO-5B (2026-10-01):** Post-commit registry outbox consumer → Billing quantity deprovision (`VEHICLE_DISCONNECTED` at `occurredAt`); billable policy requires registry `ACTIVE`; **no** Stripe in registry consumer; **no** public offboard HTTP (see [VO5B_REGISTRY_BILLING_BRIDGE.md](./evidence/VO5B_REGISTRY_BILLING_BRIDGE.md)).
+- **VO5B-AB1 (2026-10-07):** Same outbox worker handles `VEHICLE_ACTIVATED` → `VEHICLE_CONNECTED` at `occurredAt` / `activatedAt`; event idempotency `vehicle-registry:<eventId>:billing-activate:v1`; legacy `registerFromDimo`/`create` billing hooks **unchanged** (see [VO5B_AB1_ACTIVATION_BILLING_BRIDGE.md](./evidence/VO5B_AB1_ACTIVATION_BILLING_BRIDGE.md)).
 
 ---
 
@@ -96,9 +97,10 @@ SynqDrive today separates **provider mirrors** (`DimoVehicle`, `HighMobilityVehi
 
 ## G. Billing coupling
 
-- `billingQuantity.onVehicleProvisioned` after `registerFromDimo` (`vehicles.service.ts`).
+- **Canonical activation:** `VEHICLE_ACTIVATED` outbox → `VehicleRegistryLifecycleOutboxProcessor` → `onVehicleProvisioned` (VO5B-AB1).
+- **Legacy:** `billingQuantity.onVehicleProvisioned` after `registerFromDimo` / `create` (`vehicles.service.ts`) — disjoint from canonical onboarding; cutover deferred.
 - `onVehicleRemoved` on deregister.
-- Policy: `BillableVehiclesService` / `evaluateBillableVehiclePolicy` (`backend/src/modules/billing/billable-vehicles.service.ts`) — onboarding triggers hooks; billing owns semantics.
+- Policy: `BillableVehiclesService` / `evaluateBillableVehiclePolicy` (`backend/src/modules/billing/billable-vehicles.service.ts`) — billing owns billable semantics.
 
 ---
 
