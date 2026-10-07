@@ -57,3 +57,19 @@
 ## Engineering result block
 
 See `P25_APDS_2_7_ENGINEERING_RESULT` and `P25_APDS_8_FLAG_OFF_DEPLOY_RESULT` in agent completion output.
+
+## APDS-8 — Production flag-OFF deploy (2026-10-06)
+
+| Field | Value |
+|-------|-------|
+| `AUTHORIZED_DEPLOY_SHA` | `0c19eb62cef292e4e26ebeb2cf3b8f8afcbca2a2` (PR #1899 merge) |
+| `PRE_PRODUCTION_SHA` | `ee9588548845c8077aa0cba0684b06eac7c9d4d2` (`20261002014651_v4994`) |
+| `DEPLOY_RELEASE_ID` | `20261006064327_v4994` |
+| `BACKUP` | `/opt/synqdrive/shared/backups/db-pre-deploy-20261006064327.sql.gz` |
+| `MIGRATIONS_APPLIED` | `20261002120000_battery_hv_h4_charge_session_evidence_revisions`, `20261003024000_apd_shadow_reconciliation_decisions` |
+| `PRODUCTION_APD_ROW_COUNT` | `0` (post-migrate + 15m observation) |
+| `REPLICA_A/B_SHA` | `0c19eb62cef292e4e26ebeb2cf3b8f8afcbca2a2` |
+| `WORKER_APD_SHADOW_ENABLED` | **ABSENT** in `shared/backend.env` → runtime default **OFF**; metrics `synqdrive_apd_shadow_enabled=0` on 3001/3002 |
+| `OBSERVATION` | 15m window; poll counters increased; APD decisions/forensics **0** |
+| `SHADOW_ACTIVATED` | **NO** |
+| `APDS_9_TECHNICALLY_READY` | **YES** (schema + runtime on prod; flag OFF proven; empty forensics table) |
