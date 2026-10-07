@@ -13,6 +13,7 @@ import {
   proveReplicaRecoveryPrestateRuntime,
   readFreshAuthorityFromProcessEnv,
   validateFreshAuthority,
+  SUPPORTED_ENV_MUTATION_KEY_COUNT,
   type FreshTinyStagingGuardInput,
 } from './di-v0-s4-fresh-tiny-staging-production.lib';
 import {
@@ -23,14 +24,17 @@ import {
 import * as fs from 'fs';
 import * as path from 'path';
 import {
+  accidentalLiveTestControlsPresent,
   DI_S4F7V_LEGACY_LIVE_STAGING_AUTHORIZED_ENV,
   DI_S4F7Y_LIVE_STAGING_AUTHORIZED_ENV,
+  evaluateEngineeringTestHarnessContract,
   evaluateLiveStagingAuthorizationGate,
   evaluateNoBackfillFinalTripGate,
+  isExternalLiveStagingAuthorized,
   readLiveStagingAuthorizationPacketFromEnv,
   type LiveStagingObservedExecutionPacket,
 } from './di-v0-s4-fresh-tiny-staging-live-authority.lib';
-import { SUPPORTED_ENV_MUTATION_KEY_COUNT } from './di-v0-s4-fresh-tiny-staging-production.lib';
+import { verifyLiveStagingPostState } from './di-v0-s4-fresh-tiny-staging-live-poststate.lib';
 
 function sha256FileContent(content: string): string {
   const { createHash } = require('crypto') as typeof import('crypto');
@@ -191,19 +195,15 @@ function cmdValidateLiveAuthorization(): void {
     actualOrganizationAllowlist: (process.env.DI_S4_TINY_FRESH_ORGANIZATION_ALLOWLIST ?? '').trim(),
     actualVehicleAllowlist: (process.env.DI_S4_TINY_FRESH_VEHICLE_ALLOWLIST ?? '').trim(),
   };
+  const testHarness = process.env.DI_S4F7Y_ENGINEERING_TEST_HARNESS === 'YES';
   const accidentalFixture =
-    process.env.DI_S4F7V_FIXTURE_MODE === '1' ||
-    process.env.DI_S4F7Y_FIXTURE_MODE === '1' ||
-    process.env.DI_S4F7V_TEST_MODE === '1' ||
-    process.env.DI_S4F7Y_TEST_MODE === '1';
-  const testHarness =
-    process.env.DI_S4F7Y_TEST_MODE === '1' || process.env.DI_S4F7V_TEST_MODE === '1';
+    accidentalLiveTestControlsPresent(process.env) && !testHarness && process.env.DRY_RUN !== '1';
   const gate = evaluateLiveStagingAuthorizationGate({
     operatorAck: process.env.DI_S4_TINY_STAGING_ACK,
     liveStagingAuthorized: process.env[DI_S4F7Y_LIVE_STAGING_AUTHORIZED_ENV],
     legacyS4f7vLiveAuthorized: process.env[DI_S4F7V_LEGACY_LIVE_STAGING_AUTHORIZED_ENV],
     testHarnessActive: testHarness,
-    accidentalFixtureControlsPresent: accidentalFixture && process.env.DRY_RUN !== '1',
+    accidentalFixtureControlsPresent: accidentalFixture,
     packet,
     observed,
   });
@@ -276,6 +276,59 @@ function cmdApplyMutationLive(envFile: string): void {
   console.log(`BACKEND_ENV_SHA256_AFTER=${sha256FileContent(afterOnDisk)}`);
 }
 
+function cmdRevalidateExternalLiveAuthorization(): void {
+  if (!isExternalLiveStagingAuthorized()) {
+    console.log('LIVE_AUTHORIZATION_REVALIDATED_IMMEDIATELY_PRE_MUTATION=NO');
+    console.log('LIVE_TRANSACTION_SYNTHESIZES_AUTHORIZATION=NO');
+    process.exit(1);
+  }
+  console.log('LIVE_AUTHORIZATION_SOURCE=EXTERNAL_OPERATOR_EXECUTION_ENV');
+  console.log('LIVE_TRANSACTION_SYNTHESIZES_AUTHORIZATION=NO');
+  console.log('LIVE_AUTHORIZATION_REVALIDATED_IMMEDIATELY_PRE_MUTATION=YES');
+}
+
+function cmdValidateEngineeringHarness(): void {
+  const r = evaluateEngineeringTestHarnessContract();
+  console.log(`ENGINEERING_TEST_HARNESS_CONTRACT_OK=${r.ok ? 'YES' : 'NO'}`);
+  if (!r.ok) {
+    console.log(`ENGINEERING_TEST_HARNESS_FAILURES=${r.failures.join(',')}`);
+    process.exit(1);
+  }
+  console.log('PRODUCTION_BACKEND_ENV_ALLOWED_IN_TEST_HARNESS=NO');
+}
+
+function cmdVerifyLivePoststate(backupPath: string, currentPath: string): void {
+  if (process.env.DI_S4F7Y_TEST_INJECT_FINAL_POSTSTATE_FAIL === '1') {
+    console.log('FINAL_ENV_POSTSTATE_REVERIFY=FAIL');
+    process.exit(1);
+  }
+  const backupContent = fs.readFileSync(backupPath, 'utf8');
+  const currentContent = fs.readFileSync(currentPath, 'utf8');
+  const input = readFreshAuthorityFromProcessEnv();
+  const v = validateFreshAuthority(input);
+  if (!v.ok || !v.canonicalNotBefore) process.exit(1);
+  const map = buildFreshStagingValuesMap(
+    v.canonicalNotBefore,
+    CANONICAL_TINY_ORGANIZATION_ID,
+    CANONICAL_TINY_VEHICLE_ID,
+  );
+  const authorizedPre =
+    (process.env.AUTHORIZED_PRE_ENV_SHA256 ?? process.env.DI_S4_TINY_STAGING_REQUIRED_PRE_ENV_SHA256 ?? '').trim();
+  const result = verifyLiveStagingPostState({
+    backupContent,
+    currentContent,
+    authorizedPreEnvSha256: authorizedPre,
+    authorizedStagingValues: map,
+  });
+  console.log(`FINAL_ENV_BACKUP_AUTHORITY_MATCH=${result.backupShaMatches ? 'YES' : 'NO'}`);
+  console.log(`FINAL_ENV_AUTHORIZED_VALUES_EXACT=${result.authorizedValuesExact ? 'YES' : 'NO'}`);
+  console.log(`FINAL_ENV_CHANGED_KEY_COUNT=${result.envChangedKeyCount}`);
+  console.log(`FINAL_ENV_UNEXPECTED_CHANGED_KEY_COUNT=${result.unexpectedChangedKeyCount}`);
+  console.log(`FINAL_ENV_TARGET_CARDINALITY=${result.targetCardinalityOk ? 'PASS' : 'FAIL'}`);
+  console.log(`FINAL_ENV_POSTSTATE_REVERIFY=${result.ok ? 'PASS' : 'FAIL'}`);
+  if (!result.ok) process.exit(1);
+}
+
 function cmdIntendedDeltaWithCounts(): void {
   if (process.env.DI_S4F7V_TEST_INJECT_INTENDED_DELTA_FAIL === '1') {
     process.exit(1);
@@ -328,9 +381,18 @@ async function main(): Promise<void> {
     case 'apply-mutation-live':
       cmdApplyMutationLive(process.argv[3] ?? '');
       break;
+    case 'revalidate-external-live-authorization':
+      cmdRevalidateExternalLiveAuthorization();
+      break;
+    case 'validate-engineering-harness':
+      cmdValidateEngineeringHarness();
+      break;
+    case 'verify-live-poststate':
+      cmdVerifyLivePoststate(process.argv[3] ?? '', process.argv[4] ?? '');
+      break;
     default:
       console.error(
-        'usage: cli.ts <validate-fresh-authority|derive-fingerprint|prove-fresh-runtime|prove-recovery-prestate|intended-delta|apply-mutation-dry|apply-mutation-live|guards|validate-live-authorization|validate-no-backfill-final>',
+        'usage: cli.ts <validate-fresh-authority|derive-fingerprint|prove-fresh-runtime|prove-recovery-prestate|intended-delta|apply-mutation-dry|apply-mutation-live|guards|validate-live-authorization|validate-no-backfill-final|revalidate-external-live-authorization|validate-engineering-harness|verify-live-poststate>',
       );
       process.exit(2);
   }

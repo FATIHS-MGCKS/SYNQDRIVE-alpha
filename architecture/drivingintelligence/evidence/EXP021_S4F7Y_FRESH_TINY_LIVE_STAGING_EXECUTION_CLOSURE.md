@@ -55,6 +55,33 @@ Test harness exercises live transaction, rollback, A-failure blocks B, authoriza
 - `EXPLICIT_OPERATOR_AUTHORIZATION_GATE=NOT_SATISFIED`
 - `TINY_ACTIVATION_READY=NO`
 
+## S4F-7Y.1 safety seal (2026-10-07)
+
+Corrective closure on PR **#1915** before merge. **Git authority:** starting PR head `bbf5b392da19cd96ed67fa756ad7899033a7c603` (the previously reported truncated/fabricated `bbf5b392d6c8f8e8…` SHA was **not** valid Git authority).
+
+### Defects reproduced on starting PR head
+
+| Defect | Evidence on starting head |
+|--------|---------------------------|
+| Successful live wrapper reported `PRODUCTION_STAGING_*=NO` | Wrapper forced NO after successful transaction |
+| Legacy-only path emitted `OLD_S4F7V…=YES` | Misleading “can authorize” wording on rejection branch |
+| Internal auth synthesis | `export DI_S4F7Y_LIVE_STAGING_AUTHORIZED=YES` inside final pre-mutation revalidation |
+| Rollback restart swallowing | `vps_replica_restart_one … \|\| true` without FAILED surfacing |
+| Incomplete rollback runtime proof | Missing explicit health/readiness/SHA/budget/redis rollback markers |
+| No final env poststate reverify | Missing independent backup vs disk compare before commit |
+| Weak test isolation | `DI_S4F7V_TEST_MODE` / `DI_S4F7V_FIXTURE_MODE` alone could enable live stubs |
+
+### S4F-7Y.1 fixes
+
+- External-only `DI_S4F7Y_LIVE_STAGING_AUTHORIZED` (revalidated, never synthesized)
+- Dedicated `DI_S4F7Y_ENGINEERING_TEST_HARNESS=YES` contract (non-Production `backend.env`, fixture topology)
+- Centralized terminal outcome emitter (no contradictory duplicate terminal keys)
+- Full rollback restart accounting + expanded rollback convergence proofs
+- `verify-live-poststate` CLI + final A/B fresh attestation reverify before disarm
+- Correct production-success vs engineering-harness outcome semantics
+
+Merge gate: **S4F-7Y.1 required** before treating S4F-7Y as merge-ready.
+
 ## Next operator action
 
-After merge + CI: seal exact S4F-7Y tool SHA and generate a **new** JIT staging authorization packet for human review before any real `DRY_RUN=0` Production run.
+After merge + CI: seal exact S4F-7Y.1 tool SHA and generate a **new** JIT staging authorization packet for human review before any real `DRY_RUN=0` Production run.

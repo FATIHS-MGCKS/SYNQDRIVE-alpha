@@ -779,7 +779,7 @@ describe('S4F-7Y live transaction orchestration (test harness)', () => {
     const freshB = metricsFileForEnv(stagedEnv);
     return {
       DRY_RUN: '0',
-      DI_S4F7Y_TEST_MODE: '1',
+      DI_S4F7Y_ENGINEERING_TEST_HARNESS: 'YES',
       DI_S4F7V_TEST_MODE: '1',
       DI_S4F7V_FIXTURE_MODE: '1',
       SYNQDRIVE_DEPLOY_STATE_DIR: path.join(dir, 'deploy-state'),
@@ -860,7 +860,7 @@ describe('S4F-7Y live transaction orchestration (test harness)', () => {
     } catch (e) {
       out = String((e as { stdout?: string }).stdout ?? '');
     }
-    expect(out).toContain('OLD_S4F7V_AUTHORIZATION_ALONE_CAN_AUTHORIZE_LIVE_MUTATION=YES');
+    expect(out).toContain('OLD_S4F7V_AUTHORIZATION_ALONE_CAN_AUTHORIZE_LIVE_MUTATION=NO');
   });
 
   it('successful harness live transaction', () => {

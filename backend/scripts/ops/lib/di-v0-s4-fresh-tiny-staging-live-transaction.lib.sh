@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# EXP-021 S4F-7Y — fresh Tiny live staging transaction (fail-closed; test harness isolation).
+# EXP-021 S4F-7Y / S4F-7Y.1 — fresh Tiny live staging transaction (fail-closed; dedicated engineering harness).
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   echo "This file must be sourced, not executed." >&2
   exit 1
@@ -17,13 +17,13 @@ S4F7Y_REPLICA_A_ATTESTATION_OK=0
 S4F7Y_FORWARD_B_RESTART_COUNT=0
 S4F7Y_PRODUCTION_RESTART_OCCURRED=0
 S4F7Y_PROOF_KIND=PRESTATE
+S4F7Y_ROLLBACK_RESTART_FAILURE=0
+S4F7Y_TERMINAL_OUTCOME_EMITTED=0
 
-s4f7y_is_test_mode() {
-  [[ "${DI_S4F7Y_TEST_MODE:-0}" == "1" || "${DI_S4F7V_TEST_MODE:-0}" == "1" ]]
-}
+S4F7Y_PRODUCTION_SHARED_BACKEND_ENV="/opt/synqdrive/shared/backend.env"
 
-s4f7y_is_fixture_mode() {
-  [[ "${DI_S4F7Y_FIXTURE_MODE:-0}" == "1" || "${DI_S4F7V_FIXTURE_MODE:-0}" == "1" ]]
+s4f7y_is_engineering_test_harness() {
+  [[ "${DI_S4F7Y_ENGINEERING_TEST_HARNESS:-}" == "YES" ]]
 }
 
 s4f7y_tx_set() {
@@ -35,13 +35,111 @@ s4f7y_log() {
   printf '[s4f7y-live-staging] %s\n' "$*"
 }
 
+s4f7y_emit_terminal_outcomes() {
+  local outcome="$1"
+  if [[ "$S4F7Y_TERMINAL_OUTCOME_EMITTED" == "1" ]]; then
+    echo "TERMINAL_OUTCOME_KEYS_CONTRADICTORY=YES"
+    return 1
+  fi
+  S4F7Y_TERMINAL_OUTCOME_EMITTED=1
+  echo "TERMINAL_OUTCOME_KEYS_CONTRADICTORY=NO"
+  case "$outcome" in
+    ENGINEERING_SUCCESS)
+      echo "PRODUCTION_STAGING_AUTHORIZED=NO"
+      echo "PRODUCTION_STAGING_EXECUTED=NO"
+      echo "PRODUCTION_ENV_MUTATION_OCCURRED=NO"
+      echo "PRODUCTION_RESTART_OCCURRED=NO"
+      echo "PRODUCTION_MUTATION_OCCURRED=NO"
+      echo "ENGINEERING_TEST_HARNESS_LIVE_TRANSACTION=SIMULATED"
+      ;;
+    PRODUCTION_SUCCESS)
+      echo "PRODUCTION_STAGING_AUTHORIZED=YES"
+      echo "PRODUCTION_STAGING_EXECUTED=YES"
+      echo "PRODUCTION_ENV_MUTATION_OCCURRED=YES"
+      echo "PRODUCTION_RESTART_OCCURRED=YES"
+      echo "PRODUCTION_MUTATION_OCCURRED=YES"
+      ;;
+    FAILURE)
+      echo "PRODUCTION_STAGING_AUTHORIZED=NO"
+      echo "PRODUCTION_STAGING_EXECUTED=NO"
+      echo "PRODUCTION_ENV_MUTATION_OCCURRED=NO"
+      echo "PRODUCTION_RESTART_OCCURRED=NO"
+      echo "PRODUCTION_MUTATION_OCCURRED=NO"
+      ;;
+    *)
+      echo "TERMINAL_OUTCOME_UNKNOWN=${outcome}"
+      return 1
+      ;;
+  esac
+  echo "EXPLICIT_OPERATOR_AUTHORIZATION_GATE=NOT_SATISFIED"
+  echo "TINY_ACTIVATION_READY=NO"
+  echo "S4_ACTIVATION_OCCURRED=NO"
+  return 0
+}
+
+s4f7y_assert_real_live_path_no_accidental_test_controls() {
+  if s4f7y_is_engineering_test_harness; then
+    return 0
+  fi
+  if [[ "${DI_S4F7V_TEST_MODE:-0}" == "1" || "${DI_S4F7Y_TEST_MODE:-0}" == "1" ]]; then
+    echo "LEGACY_TEST_MODE_ALONE_CAN_ENABLE_LIVE_STUBS=YES"
+    echo "ACCIDENTAL_TEST_CONTROL_IN_REAL_LIVE_PATH=YES"
+    return 1
+  fi
+  if [[ "${DI_S4F7V_FIXTURE_MODE:-0}" == "1" || "${DI_S4F7Y_FIXTURE_MODE:-0}" == "1" ]]; then
+    echo "LEGACY_FIXTURE_MODE_ALONE_CAN_ENABLE_LIVE_STUBS=YES"
+    echo "ACCIDENTAL_TEST_CONTROL_IN_REAL_LIVE_PATH=YES"
+    return 1
+  fi
+  echo "LEGACY_TEST_MODE_ALONE_CAN_ENABLE_LIVE_STUBS=NO"
+  echo "LEGACY_FIXTURE_MODE_ALONE_CAN_ENABLE_LIVE_STUBS=NO"
+  echo "ACCIDENTAL_TEST_CONTROL_IN_REAL_LIVE_PATH_FAILS_CLOSED=YES"
+  return 0
+}
+
+s4f7y_validate_engineering_test_harness() {
+  if ! s4f7y_is_engineering_test_harness; then
+    return 0
+  fi
+  if [[ "${SYNQDRIVE_BACKEND_ENV:-}" == "$S4F7Y_PRODUCTION_SHARED_BACKEND_ENV" ]]; then
+    echo "PRODUCTION_BACKEND_ENV_ALLOWED_IN_TEST_HARNESS=YES"
+    return 1
+  fi
+  s4f7v_run_cli validate-engineering-harness || return 1
+  echo "PRODUCTION_BACKEND_ENV_ALLOWED_IN_TEST_HARNESS=NO"
+  return 0
+}
+
+s4f7y_revalidate_external_live_authorization() {
+  if ! s4f7v_run_cli revalidate-external-live-authorization; then
+    echo "FAIL_CLOSED=YES"
+    echo "PRODUCTION_MUTATION_OCCURRED=NO"
+    return 1
+  fi
+  return 0
+}
+
+s4f7y_emit_staging_authorized_pre_mutation() {
+  if s4f7y_is_engineering_test_harness; then
+    return 0
+  fi
+  echo "PRODUCTION_STAGING_AUTHORIZED=YES"
+  return 0
+}
+
 s4f7y_install_test_stubs() {
-  if ! s4f7y_is_test_mode; then
+  if ! s4f7y_is_engineering_test_harness; then
     return 0
   fi
   vps_replica_ensure_registered() { return 0; }
   vps_replica_restart_one() {
     local name=$1
+    if [[ "${DI_S4F7Y_TEST_INJECT_ROLLBACK_RESTART_A_FAIL:-0}" == "1" && "$name" == "${SYNQDRIVE_REPLICA_A_PM2_NAME}" && "${S4F7Y_RESTART_PHASE:-forward}" == "recovery" ]]; then
+      return 1
+    fi
+    if [[ "${DI_S4F7Y_TEST_INJECT_ROLLBACK_RESTART_B_FAIL:-0}" == "1" && "$name" == "${SYNQDRIVE_REPLICA_B_PM2_NAME}" && "${S4F7Y_RESTART_PHASE:-forward}" == "recovery" ]]; then
+      return 1
+    fi
     if [[ "${DI_S4F7Y_TEST_INJECT_RESTART_A_FAIL:-0}" == "1" && "$name" == "${SYNQDRIVE_REPLICA_A_PM2_NAME}" && "${S4F7Y_RESTART_PHASE:-forward}" == "forward" ]]; then
       return 1
     fi
@@ -57,13 +155,23 @@ s4f7y_install_test_stubs() {
     if [[ "${DI_S4F7Y_TEST_INJECT_HEALTH_B_FAIL:-0}" == "1" && "$1" == "${SYNQDRIVE_REPLICA_B_PM2_NAME}" ]]; then
       return 1
     fi
+    if [[ "${DI_S4F7Y_TEST_INJECT_ROLLBACK_HEALTH_A_FAIL:-0}" == "1" && "$1" == "${SYNQDRIVE_REPLICA_A_PM2_NAME}" && "${S4F7Y_RESTART_PHASE:-forward}" == "recovery" ]]; then
+      return 1
+    fi
+    if [[ "${DI_S4F7Y_TEST_INJECT_ROLLBACK_HEALTH_B_FAIL:-0}" == "1" && "$1" == "${SYNQDRIVE_REPLICA_B_PM2_NAME}" && "${S4F7Y_RESTART_PHASE:-forward}" == "recovery" ]]; then
+      return 1
+    fi
     return 0
   }
   vps_replica_verify_post_deploy() {
     if [[ "${DI_S4F7Y_TEST_INJECT_SCHEDULER_FAIL:-0}" == "1" ]]; then return 1; fi
+    if [[ "${DI_S4F7Y_TEST_INJECT_ROLLBACK_RELEASE_FAIL:-0}" == "1" && "${S4F7Y_RESTART_PHASE:-forward}" == "recovery" ]]; then return 1; fi
     return 0
   }
-  vps_replica_verify_no_mixed_sha() { return 0; }
+  vps_replica_verify_no_mixed_sha() {
+    if [[ "${DI_S4F7Y_TEST_INJECT_ROLLBACK_RELEASE_FAIL:-0}" == "1" && "${S4F7Y_RESTART_PHASE:-forward}" == "recovery" ]]; then return 1; fi
+    return 0
+  }
   vps_replica_wait_scheduler_leader_convergence() {
     if [[ "${DI_S4F7Y_TEST_INJECT_SCHEDULER_FAIL:-0}" == "1" ]]; then return 1; fi
     return 0
@@ -71,6 +179,7 @@ s4f7y_install_test_stubs() {
   vps_replica_verify_scheduler_leaders() { return 0; }
   vps_replica_nginx_dual_upstream_ok() {
     if [[ "${DI_S4F7Y_TEST_INJECT_NGINX_FAIL:-0}" == "1" ]]; then return 1; fi
+    if [[ "${DI_S4F7Y_TEST_INJECT_ROLLBACK_NGINX_FAIL:-0}" == "1" && "${S4F7Y_RESTART_PHASE:-forward}" == "recovery" ]]; then return 1; fi
     return 0
   }
   vps_replica_pm2_pid() {
@@ -83,7 +192,7 @@ s4f7y_install_test_stubs() {
 }
 
 s4f7y_query_no_backfill_trip_proof() {
-  if s4f7y_is_fixture_mode || s4f7y_is_test_mode; then
+  if s4f7y_is_engineering_test_harness; then
     echo "FINAL_LATEST_COMPLETED_TRIP_END_TIME=${DI_S4F7Y_FIXTURE_LATEST_COMPLETED_TRIP_END_TIME:-NULL}"
     echo "FINAL_COMPLETED_TRIP_END_TIME_IN_FUTURE_COUNT=${DI_S4F7Y_FIXTURE_FUTURE_TRIP_COUNT:-0}"
     echo "FINAL_EXISTING_ELIGIBLE_COMPLETED_TRIP_COUNT=${DI_S4F7Y_FIXTURE_ELIGIBLE_TRIP_COUNT:-0}"
@@ -105,8 +214,8 @@ s4f7y_fetch_metrics_body_for_proof() {
   local fixture=""
   if [[ "${S4F7Y_PROOF_KIND}" == "FRESH" ]]; then
     case "$label" in
-      A) fixture="${DI_S4F7Y_FIXTURE_METRICS_BODY_FRESH_A:-${DI_S4F7V_FIXTURE_METRICS_BODY_FRESH_A:-}}" ;;
-      B) fixture="${DI_S4F7Y_FIXTURE_METRICS_BODY_FRESH_B:-${DI_S4F7V_FIXTURE_METRICS_BODY_FRESH_B:-}}" ;;
+      A) fixture="${DI_S4F7Y_FIXTURE_METRICS_BODY_FRESH_A:-}" ;;
+      B) fixture="${DI_S4F7Y_FIXTURE_METRICS_BODY_FRESH_B:-}" ;;
     esac
   else
     case "$label" in
@@ -127,7 +236,7 @@ s4f7y_fetch_metrics_body_for_proof() {
   s4f4_run_cli fetch-metrics-body "$env_file" "$port"
 }
 
-s4f7y_prove_replica_prestate() {
+s4f7y_prove_replica_runtime() {
   local label="$1" port="$2" env_file="$3"
   local metrics_file expected_fp
   metrics_file="$(mktemp)"
@@ -163,8 +272,8 @@ s4f7y_prove_pre_mutation_prestate_both() {
   if [[ "${DI_S4F7Y_TEST_INJECT_PRESTATE_ATTESTATION_FAIL:-0}" == "1" ]]; then
     return 1
   fi
-  s4f7y_prove_replica_prestate A "${SYNQDRIVE_REPLICA_A_PORT}" "$BACKEND_ENV" || return 1
-  s4f7y_prove_replica_prestate B "${SYNQDRIVE_REPLICA_B_PORT}" "$BACKEND_ENV" || return 1
+  s4f7y_prove_replica_runtime A "${SYNQDRIVE_REPLICA_A_PORT}" "$BACKEND_ENV" || return 1
+  s4f7y_prove_replica_runtime B "${SYNQDRIVE_REPLICA_B_PORT}" "$BACKEND_ENV" || return 1
   return 0
 }
 
@@ -188,6 +297,18 @@ s4f7y_disarm_recovery() {
   echo "SIGNAL_TERM_RECOVERY=YES"
   echo "SIGNAL_INT_RECOVERY=YES"
   echo "SIGNAL_HUP_RECOVERY=YES"
+}
+
+s4f7y_rollback_restart_replica() {
+  local label="$1" name="$2"
+  echo "ROLLBACK_REPLICA_${label}_RESTART_ATTEMPTED=YES"
+  if vps_replica_restart_one "$name"; then
+    echo "ROLLBACK_REPLICA_${label}_RESTART_RESULT=SUCCESS"
+    return 0
+  fi
+  echo "ROLLBACK_REPLICA_${label}_RESTART_RESULT=FAILED"
+  S4F7Y_ROLLBACK_RESTART_FAILURE=1
+  return 1
 }
 
 s4f7y_recovery_post_verify() {
@@ -220,24 +341,65 @@ s4f7y_recovery_post_verify() {
   mapfile -t s4_lines < <(s4f7j_query_s4_counts_db)
   s4f7j_run_cli validate-s4-persistence "${s4_lines[@]}" || return 1
   echo "ROLLBACK_S4_ZERO_STATE_VERIFIED=YES"
+
+  if ! vps_replica_wait_healthy "${SYNQDRIVE_REPLICA_A_PM2_NAME}" "${SYNQDRIVE_REPLICA_A_PORT}" "$target_sha"; then
+    echo "ROLLBACK_REPLICA_A_HEALTH_READY_VERIFIED=NO"
+    return 1
+  fi
+  echo "ROLLBACK_REPLICA_A_HEALTH_READY_VERIFIED=YES"
+  if [[ "${SYNQDRIVE_PRODUCTION_REPLICA_COUNT}" -ge 2 ]]; then
+    if ! vps_replica_wait_healthy "${SYNQDRIVE_REPLICA_B_PM2_NAME}" "${SYNQDRIVE_REPLICA_B_PORT}" "$target_sha"; then
+      echo "ROLLBACK_REPLICA_B_HEALTH_READY_VERIFIED=NO"
+      return 1
+    fi
+    echo "ROLLBACK_REPLICA_B_HEALTH_READY_VERIFIED=YES"
+  fi
+
+  if s4f7y_is_engineering_test_harness; then
+    echo "REPLICA_A_PROCESS_RELEASE_IDENTITY=YES"
+    echo "REPLICA_B_PROCESS_RELEASE_IDENTITY=YES"
+  else
+    s4f7j_verify_steady_state_replica A "${SYNQDRIVE_REPLICA_A_PM2_NAME}" "${SYNQDRIVE_REPLICA_A_PORT}" "$target_sha" "$release_dir" || return 1
+    if [[ "${SYNQDRIVE_PRODUCTION_REPLICA_COUNT}" -ge 2 ]]; then
+      s4f7j_verify_steady_state_replica B "${SYNQDRIVE_REPLICA_B_PM2_NAME}" "${SYNQDRIVE_REPLICA_B_PORT}" "$target_sha" "$release_dir" || return 1
+    fi
+  fi
+  echo "ROLLBACK_RELEASE_IDENTITY_VERIFIED=YES"
+
+  vps_replica_verify_post_deploy "${SYNQDRIVE_CURRENT_LINK}" "$target_sha" || return 1
+  vps_replica_verify_no_mixed_sha "$target_sha" || return 1
+  echo "ROLLBACK_NO_MIXED_SHA_VERIFIED=YES"
+
   S4F7Y_PROOF_KIND=PRESTATE
   S4F7Y_RESTART_PHASE=recovery
   export S4F7Y_RESTART_PHASE
-  if ! s4f7y_prove_replica_prestate A "${SYNQDRIVE_REPLICA_A_PORT}" "$BACKEND_ENV"; then
+  if ! s4f7y_prove_replica_runtime A "${SYNQDRIVE_REPLICA_A_PORT}" "$BACKEND_ENV"; then
     echo "ROLLBACK_REPLICA_A_PRESTATE_ATTESTATION=FAIL"
     return 1
   fi
   echo "ROLLBACK_REPLICA_A_PRESTATE_ATTESTATION=PASS"
   if [[ "${SYNQDRIVE_PRODUCTION_REPLICA_COUNT}" -ge 2 ]]; then
-    if ! s4f7y_prove_replica_prestate B "${SYNQDRIVE_REPLICA_B_PORT}" "$BACKEND_ENV"; then
+    if ! s4f7y_prove_replica_runtime B "${SYNQDRIVE_REPLICA_B_PORT}" "$BACKEND_ENV"; then
       echo "ROLLBACK_REPLICA_B_PRESTATE_ATTESTATION=FAIL"
       return 1
     fi
     echo "ROLLBACK_REPLICA_B_PRESTATE_ATTESTATION=PASS"
   fi
+
+  vps_replica_wait_scheduler_leader_convergence || return 1
+  echo "ROLLBACK_SCHEDULER_CONVERGENCE_VERIFIED=YES"
   vps_replica_verify_scheduler_leaders 1 || return 1
+  echo "ROLLBACK_SCHEDULER_SINGLE_LEADER_VERIFIED=YES"
   vps_replica_nginx_dual_upstream_ok || return 1
-  echo "ROLLBACK_TOPOLOGY_VERIFIED=YES"
+  echo "ROLLBACK_NGINX_VERIFIED=YES"
+
+  if ! s4f7j_live_budget_redis_preflight "$release_dir"; then
+    echo "ROLLBACK_GLOBAL_BUDGET_VERIFIED=NO"
+    echo "ROLLBACK_REDIS_VERIFIED=NO"
+    return 1
+  fi
+  echo "ROLLBACK_GLOBAL_BUDGET_VERIFIED=YES"
+  echo "ROLLBACK_REDIS_VERIFIED=YES"
   echo "ROLLBACK_POST_VERIFY=PASS"
   return 0
 }
@@ -255,28 +417,39 @@ s4f7y_on_recovery() {
   s4f7y_tx_set RECOVERY_IN_PROGRESS
   echo "ROLLBACK_TRIGGER=${reason}"
   echo "ROLLBACK_REQUIRED=YES"
+  S4F7Y_ROLLBACK_RESTART_FAILURE=0
   if ! s4f4_restore_backend_env_atomic "$BACKEND_ENV" "$S4F7Y_BACKUP_FILE" "$S4F7Y_BACKEND_ENV_SHA256_BEFORE"; then
     echo "ROLLBACK_RESULT=FAILED"
+    echo "ROLLBACK_RESTART_FAILURE_SILENTLY_IGNORED=NO"
     echo "OPERATOR_INTERVENTION_REQUIRED=YES"
+    s4f7y_emit_terminal_outcomes FAILURE || true
     return 1
   fi
   S4F7Y_RESTART_PHASE=recovery
   export S4F7Y_RESTART_PHASE
   cd "${SYNQDRIVE_CURRENT_LINK}/backend"
   vps_replica_ensure_registered || true
-  vps_replica_restart_one "${SYNQDRIVE_REPLICA_A_PM2_NAME}" || true
-  S4F7Y_RESTART_COUNT=$((S4F7Y_RESTART_COUNT + 1))
+  s4f7y_rollback_restart_replica A "${SYNQDRIVE_REPLICA_A_PM2_NAME}" || true
   if [[ "${SYNQDRIVE_PRODUCTION_REPLICA_COUNT}" -ge 2 ]]; then
-    vps_replica_restart_one "${SYNQDRIVE_REPLICA_B_PM2_NAME}" || true
-    S4F7Y_RESTART_COUNT=$((S4F7Y_RESTART_COUNT + 1))
+    s4f7y_rollback_restart_replica B "${SYNQDRIVE_REPLICA_B_PM2_NAME}" || true
   fi
   echo "ROLLBACK_RESTART_PATH_TESTED=YES"
+  if [[ "$S4F7Y_ROLLBACK_RESTART_FAILURE" == "1" ]]; then
+    echo "ROLLBACK_RESTART_FAILURE_SILENTLY_IGNORED=NO"
+    echo "ROLLBACK_RESULT=FAILED"
+    echo "OPERATOR_INTERVENTION_REQUIRED=YES"
+    s4f7y_emit_terminal_outcomes FAILURE || true
+    return 1
+  fi
+  echo "ROLLBACK_RESTART_FAILURE_SILENTLY_IGNORED=NO"
   if ! s4f7y_recovery_post_verify "$S4F7Y_TARGET_SHA"; then
     echo "ROLLBACK_RESULT=FAILED"
     echo "OPERATOR_INTERVENTION_REQUIRED=YES"
+    s4f7y_emit_terminal_outcomes FAILURE || true
     return 1
   fi
   echo "ROLLBACK_RESULT=COMPLETE"
+  s4f7y_emit_terminal_outcomes FAILURE || true
   return 1
 }
 
@@ -297,6 +470,8 @@ s4f7y_fail_after_arm() {
   local reason="$1"
   if [[ "$S4F7Y_RECOVERY_ARMED" == "1" ]]; then
     s4f7y_on_recovery "$reason" || true
+  else
+    s4f7y_emit_terminal_outcomes FAILURE || true
   fi
   exit 1
 }
@@ -309,13 +484,13 @@ s4f7y_final_pre_mutation_revalidation() {
   if ! s4f7v_run_cli guards; then
     return 1
   fi
-  export DI_S4F7Y_LIVE_STAGING_AUTHORIZED=YES
-  export DRY_RUN=0
+  s4f7y_revalidate_external_live_authorization || return 1
   if ! s4f7v_run_cli validate-live-authorization; then
     echo "LIVE_STAGING_AUTHORIZATION_VALID=NO"
     return 1
   fi
   echo "LIVE_STAGING_AUTHORIZATION_VALID=YES"
+  s4f7y_emit_staging_authorized_pre_mutation
   local trip_out
   trip_out="$(s4f7y_query_no_backfill_trip_proof)"
   printf '%s\n' "$trip_out"
@@ -340,7 +515,7 @@ s4f7y_restart_replica_a_forward() {
   if [[ "${DI_S4F7Y_TEST_INJECT_ATTESTATION_A_FAIL:-0}" == "1" ]]; then
     return 1
   fi
-  if ! s4f7y_prove_replica_prestate A "${SYNQDRIVE_REPLICA_A_PORT}" "$BACKEND_ENV"; then
+  if ! s4f7y_prove_replica_runtime A "${SYNQDRIVE_REPLICA_A_PORT}" "$BACKEND_ENV"; then
     echo "REPLICA_A_FRESH_RUNTIME_ATTESTATION=FAIL"
     return 1
   fi
@@ -366,7 +541,27 @@ s4f7y_restart_replica_b_forward() {
   if [[ "${DI_S4F7Y_TEST_INJECT_ATTESTATION_B_FAIL:-0}" == "1" ]]; then
     return 1
   fi
-  s4f7y_prove_replica_prestate B "${SYNQDRIVE_REPLICA_B_PORT}" "$BACKEND_ENV" || return 1
+  s4f7y_prove_replica_runtime B "${SYNQDRIVE_REPLICA_B_PORT}" "$BACKEND_ENV" || return 1
+  return 0
+}
+
+s4f7y_final_pre_commit_verify() {
+  if ! s4f7v_run_cli verify-live-poststate "$S4F7Y_BACKUP_FILE" "$BACKEND_ENV"; then
+    return 1
+  fi
+  S4F7Y_PROOF_KIND=FRESH
+  if ! s4f7y_prove_replica_runtime A "${SYNQDRIVE_REPLICA_A_PORT}" "$BACKEND_ENV"; then
+    echo "FINAL_REPLICA_A_FRESH_ATTESTATION=FAIL"
+    return 1
+  fi
+  echo "FINAL_REPLICA_A_FRESH_ATTESTATION=PASS"
+  if ! s4f7y_prove_replica_runtime B "${SYNQDRIVE_REPLICA_B_PORT}" "$BACKEND_ENV"; then
+    echo "FINAL_REPLICA_B_FRESH_ATTESTATION=FAIL"
+    return 1
+  fi
+  echo "FINAL_REPLICA_B_FRESH_ATTESTATION=PASS"
+  echo "FINAL_REPLICA_FRESH_ATTESTATION_PARITY=YES"
+  s4f7j_run_cli s4-safe "$BACKEND_ENV" || return 1
   return 0
 }
 
@@ -416,35 +611,28 @@ s4f7y_require_operator_authorization_packet() {
 
 s4f7y_execute_live_transaction() {
   echo "EXP021_S4F7Y_LIVE_STAGING_TRANSACTION=1"
+  echo "EXP021_S4F7Y_1_LIVE_TRANSACTION_SAFETY_SEAL=1"
   echo "ROLLING_RESTART_ORDER=A_THEN_B"
   echo "SAME_PRODUCTION_SHA_REQUIRED=YES"
   echo "CODE_DEPLOY_OCCURRED=NO"
   echo "FRESH_RUNTIME_EXPECTED_STATE=OTHER"
-  echo "S4_ACTIVATION_OCCURRED=NO"
   echo "PRODUCTION_DB_WRITE_OCCURRED=NO"
 
-  if s4f7y_is_fixture_mode && ! s4f7y_is_test_mode; then
-    echo "TEST_FIXTURE_ISOLATION=FAIL"
-    echo "FAIL_CLOSED=YES"
-    return 1
-  fi
-  echo "TEST_FIXTURE_ISOLATION=PASS"
-
-  s4f7y_install_test_stubs
+  s4f7y_assert_real_live_path_no_accidental_test_controls || return 1
+  s4f7y_validate_engineering_test_harness || return 1
 
   if [[ "${DI_S4F7Y_LIVE_STAGING_AUTHORIZED:-}" != "YES" ]]; then
     echo "DEDICATED_LIVE_STAGING_AUTHORIZATION_REQUIRED=YES"
     echo "LIVE_STAGING_AUTHORIZATION_VALID=NO"
     echo "FAIL_CLOSED=YES"
-    return 1
-  fi
-  if [[ "${DI_S4F7V_LIVE_STAGING_AUTHORIZED:-}" == "YES" && "${DI_S4F7Y_LIVE_STAGING_AUTHORIZED:-}" != "YES" ]]; then
-    echo "OLD_S4F7V_AUTHORIZATION_ALONE_CAN_AUTHORIZE_LIVE_MUTATION=YES"
+    s4f7y_emit_terminal_outcomes FAILURE || true
     return 1
   fi
   echo "OLD_S4F7V_AUTHORIZATION_ALONE_CAN_AUTHORIZE_LIVE_MUTATION=NO"
   echo "GENERIC_ACK_ALONE_CAN_AUTHORIZE_LIVE_MUTATION=NO"
   echo "DEDICATED_LIVE_STAGING_AUTHORIZATION_REQUIRED=YES"
+
+  s4f7y_install_test_stubs
 
   s4f7y_require_operator_authorization_packet || return 1
   s4f7w_live_preflight_readonly || return 1
@@ -493,7 +681,7 @@ s4f7y_execute_live_transaction() {
   echo "LIVE_MUTATION_EXACT_CHANGED_KEY_COUNT=3"
   echo "LIVE_MUTATION_UNEXPECTED_CHANGED_KEY_COUNT=0"
 
-  if s4f7y_is_test_mode; then
+  if s4f7y_is_engineering_test_harness; then
     echo "POST_MUTATION_CONFIG_AUDIT=SKIPPED_TEST_HARNESS"
   else
     if ! s4f7j_run_config_file_audit "$BACKEND_ENV"; then
@@ -516,24 +704,20 @@ s4f7y_execute_live_transaction() {
     s4f7y_fail_after_arm "post_staging"
   fi
 
+  if ! s4f7y_final_pre_commit_verify; then
+    s4f7y_fail_after_arm "final_pre_commit"
+  fi
+
   s4f7y_disarm_recovery
   echo "LIVE_STAGING_TRANSACTION_COMMITTED=YES"
   echo "SUCCESS_FORWARD_RESTART_ORDER=A_THEN_B"
   echo "A_FAILURE_FORWARD_B_RESTART_COUNT=${S4F7Y_FORWARD_B_RESTART_COUNT}"
   echo "REPLICA_B_RESTART_BLOCKED_ON_A_FAILURE=YES"
-  if s4f7y_is_test_mode; then
-    echo "PRODUCTION_ENV_MUTATION_OCCURRED=NO"
-    echo "PRODUCTION_RESTART_OCCURRED=NO"
-    echo "PRODUCTION_MUTATION_OCCURRED=NO"
-    echo "ENGINEERING_TEST_HARNESS_LIVE_TRANSACTION=SIMULATED"
+
+  if s4f7y_is_engineering_test_harness; then
+    s4f7y_emit_terminal_outcomes ENGINEERING_SUCCESS || return 1
   else
-    echo "PRODUCTION_ENV_MUTATION_OCCURRED=YES"
-    if [[ "$S4F7Y_PRODUCTION_RESTART_OCCURRED" == "1" ]]; then
-      echo "PRODUCTION_RESTART_OCCURRED=YES"
-      echo "PRODUCTION_MUTATION_OCCURRED=YES"
-    fi
+    s4f7y_emit_terminal_outcomes PRODUCTION_SUCCESS || return 1
   fi
-  echo "EXPLICIT_OPERATOR_AUTHORIZATION_GATE=NOT_SATISFIED"
-  echo "TINY_ACTIVATION_READY=NO"
   return 0
 }

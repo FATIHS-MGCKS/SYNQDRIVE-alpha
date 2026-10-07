@@ -34,6 +34,44 @@ export const AUTHORIZED_FRESH_EXPECTED_FINGERPRINT_ENV = 'AUTHORIZED_FRESH_EXPEC
 export const AUTHORIZED_ORGANIZATION_ALLOWLIST_ENV = 'AUTHORIZED_ORGANIZATION_ALLOWLIST';
 export const AUTHORIZED_VEHICLE_ALLOWLIST_ENV = 'AUTHORIZED_VEHICLE_ALLOWLIST';
 
+export const DI_S4F7Y_ENGINEERING_TEST_HARNESS_ENV = 'DI_S4F7Y_ENGINEERING_TEST_HARNESS';
+export const PRODUCTION_SHARED_BACKEND_ENV_PATH = '/opt/synqdrive/shared/backend.env';
+
+export function isExternalLiveStagingAuthorized(env: NodeJS.ProcessEnv = process.env): boolean {
+  return (env[DI_S4F7Y_LIVE_STAGING_AUTHORIZED_ENV] ?? '').trim() === 'YES';
+}
+
+export function evaluateEngineeringTestHarnessContract(
+  env: NodeJS.ProcessEnv = process.env,
+): { ok: boolean; failures: string[] } {
+  const failures: string[] = [];
+  if ((env[DI_S4F7Y_ENGINEERING_TEST_HARNESS_ENV] ?? '').trim() !== 'YES') {
+    failures.push('ENGINEERING_TEST_HARNESS_NOT_ENABLED');
+  }
+  const backendEnv = (env.SYNQDRIVE_BACKEND_ENV ?? '').trim();
+  if (!backendEnv) failures.push('BACKEND_ENV_MISSING');
+  else if (backendEnv === PRODUCTION_SHARED_BACKEND_ENV_PATH) {
+    failures.push('PRODUCTION_BACKEND_ENV_IN_HARNESS');
+  }
+  if (!(env.DI_S4F7V_FIXTURE_DEPLOYED_SHA ?? '').trim() && !(env.DI_S4F7Y_FIXTURE_DEPLOYED_SHA ?? '').trim()) {
+    failures.push('FIXTURE_DEPLOYED_SHA_MISSING');
+  }
+  if (!(env.DI_S4F7V_FIXTURE_RELEASE_DIR ?? '').trim() && !(env.DI_S4F7Y_FIXTURE_RELEASE_DIR ?? '').trim()) {
+    failures.push('FIXTURE_RELEASE_DIR_MISSING');
+  }
+  return { ok: failures.length === 0, failures };
+}
+
+export function accidentalLiveTestControlsPresent(env: NodeJS.ProcessEnv = process.env): boolean {
+  return (
+    env.DI_S4F7V_TEST_MODE === '1' ||
+    env.DI_S4F7Y_TEST_MODE === '1' ||
+    env.DI_S4F7V_FIXTURE_MODE === '1' ||
+    env.DI_S4F7Y_FIXTURE_MODE === '1' ||
+    env.DI_S4F7Y_ENGINEERING_TEST_HARNESS === 'YES'
+  );
+}
+
 export type LiveStagingAuthorizationFailure =
   | 'LIVE_STAGING_NOT_AUTHORIZED'
   | 'GENERIC_ACK_MISSING'
