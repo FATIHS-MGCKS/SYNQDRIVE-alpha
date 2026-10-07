@@ -8,12 +8,36 @@ describe('VehicleOnboardingOffboardService', () => {
     assertBlockingAbsentInTransaction: jest.fn(),
   };
   const offboarding = {
+    tryResolveIdempotentOffboardReplay: jest.fn(),
     offboardVehicle: jest.fn(),
   };
   const svc = new VehicleOnboardingOffboardService(preflight as any, offboarding as any);
 
   beforeEach(() => {
     jest.clearAllMocks();
+    offboarding.tryResolveIdempotentOffboardReplay.mockResolvedValue(null);
+  });
+
+  it('completed replay bypasses operational preflight', async () => {
+    const offboardedAt = new Date('2026-01-01T12:00:00.000Z');
+    offboarding.tryResolveIdempotentOffboardReplay.mockResolvedValue({
+      vehicleId: 'v1',
+      organizationId: 'o1',
+      registryLifecycle: 'OFFBOARDED',
+      offboardedAt,
+      idempotentReplay: true,
+    });
+    const result = await svc.offboardVehicle({
+      organizationId: 'o1',
+      vehicleId: 'v1',
+      reason: 'OFFBOARD_SOLD',
+      actorUserId: 'actor',
+      idempotencyKey: 'same-key',
+    });
+    expect(preflight.assess).not.toHaveBeenCalled();
+    expect(offboarding.offboardVehicle).not.toHaveBeenCalled();
+    expect(result.idempotentReplay).toBe(true);
+    expect(result.offboardedAt).toEqual(offboardedAt);
   });
 
   it('rejects when preflight blocks', async () => {

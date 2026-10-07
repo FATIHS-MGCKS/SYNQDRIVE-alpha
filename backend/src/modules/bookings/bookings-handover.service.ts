@@ -43,6 +43,7 @@ import type { HandoverActorContext } from './booking-pickup-gate/booking-pickup-
 import type { PickupGateEvaluation } from './booking-pickup-gate/booking-pickup-gate.types';
 import { StationAccessService } from '@shared/stations/station-access.service';
 import { BookingHandoverDraftService } from './booking-handover-draft.service';
+import { assertVehicleRegistryActiveForOperationalAdmission } from '@modules/vehicles/registry/vehicle-registry-admission';
 
 // V4.6.75 — Booking handover (pickup + return) lifecycle + protocol persistence.
 // V4.8.47 — Vehicle.status is updated explicitly on handover (Option A):
@@ -169,6 +170,11 @@ export class BookingsHandoverService {
 
     let gateEvaluation: PickupGateEvaluation | null = null;
     if (kind === 'PICKUP') {
+      await assertVehicleRegistryActiveForOperationalAdmission(
+        this.prisma,
+        orgId,
+        booking.vehicleId,
+      );
       await this.bookingEligibilityRecheck.processPickupPrecheck(orgId, bookingId, actor.userId);
 
       await this.bookingEligibilityEnforcement.assertAllowedForPickup(orgId, bookingId, {

@@ -37,6 +37,24 @@ export class VehicleOnboardingOffboardService {
       throw new VehicleOnboardingError('INVALID_CAPTURE_PAYLOAD', 'Authenticated actor is required');
     }
 
+    const replay = await this.offboarding.tryResolveIdempotentOffboardReplay({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      reason: input.reason,
+      idempotencyKey: input.idempotencyKey,
+    });
+    if (replay) {
+      return {
+        vehicleId: replay.vehicleId,
+        organizationId: replay.organizationId,
+        registryLifecycle: 'OFFBOARDED',
+        offboardedAt: replay.offboardedAt,
+        reason: input.reason,
+        idempotentReplay: true,
+        warnings: [],
+      };
+    }
+
     const assessment = await this.preflight.assess({
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,

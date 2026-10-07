@@ -40,9 +40,17 @@
 | Exclusive fleet operational lock | **No single authoritative predicate** — not modeled in P1 |
 | Open damage / service case / unpaid invoice / open org task | **ALLOW** with warnings |
 
-Preflight runs before mutation; **recheck** of blocking conditions runs inside the offboard transaction after `FOR UPDATE` row lock.
+Preflight runs before mutation for **new** ACTIVE→OFFBOARDED transitions only. Completed idempotent replays (`tryResolveIdempotentOffboardReplay`) are resolved **before** preflight so lost-response retries are not blocked by post-success operational state.
 
-**Race note:** Booking/trip admission does not yet universally gate on `registryLifecycle=OFFBOARDED`; post-offboard admission closure is documented as residual risk for P2 hardening.
+Inside `VehicleOffboardingService`, operational gate runs only after confirming the vehicle is `ACTIVE` and before the lifecycle transition (never before OFFBOARDED replay).
+
+**Registry ACTIVE admission (VO5C-P1.1):** New operational admission paths reject vehicles whose `registryLifecycle !== ACTIVE`:
+
+- Committed booking create/update (`BookingsService`, wizard drafts exempt)
+- Pickup handover (`BookingsHandoverService` PICKUP only)
+- Canonical trip start (`TripDecisionEngine.createTrip`)
+
+Historical trip finalization and return handover are unchanged.
 
 ## Billing / provider boundaries
 

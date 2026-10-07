@@ -1,6 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TripStatus, TripSource, Prisma } from '@prisma/client';
+import {
+  isVehicleRegistryOperationalActive,
+  VEHICLE_REGISTRY_NOT_OPERATIONAL_CODE,
+} from '@modules/vehicles/registry/vehicle-registry-admission';
 import type { VehicleTrip } from '@prisma/client';
 import type { DetectorFinding } from '../detectors/detector.interfaces';
 import { TRIP_OWNERSHIP } from '../TRIP_OWNERSHIP';
@@ -267,6 +271,19 @@ export class TripDecisionEngine {
    * for lifecycle purposes.
    */
   async createTrip(params: CreateTripParams): Promise<VehicleTrip> {
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: params.vehicleId },
+      select: { registryLifecycle: true },
+    });
+    if (!vehicle || !isVehicleRegistryOperationalActive(vehicle.registryLifecycle)) {
+      throw new BadRequestException({
+        code: VEHICLE_REGISTRY_NOT_OPERATIONAL_CODE,
+        message: 'Cannot start a new trip for a vehicle that is not registry ACTIVE',
+        vehicleId: params.vehicleId,
+        registryLifecycle: vehicle?.registryLifecycle ?? null,
+      });
+    }
+
     const lifecycleRecoveryMeta = params.lifecycleRecovery
       ? {
           startEpisode: buildStartEpisodeRecoveryMeta({
