@@ -737,3 +737,180 @@ describe('S4F-7W fresh wrapper dry-run orchestration', () => {
     expect(fs.readFileSync(envFile, 'utf8')).toBe(before);
   });
 });
+
+describe('S4F-7Y live transaction orchestration (test harness)', () => {
+  const WRAPPER = path.join(__dirname, '../di-v0-s4-stage-tiny-fresh-production.sh');
+  const WORKSPACE_ROOT = path.resolve(__dirname, '../../../..');
+  const TOOL_SHA = 'cccccccccccccccccccccccccccccccccccccccc';
+
+  function metricsFileForEnv(env: Record<string, string | undefined>): string {
+    const att = evaluateDiV0S4RuntimeConfigAttestation(env);
+    const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 's4f7y-m-')), 'metrics.txt');
+    fs.writeFileSync(file, formatDiV0S4RuntimeConfigAttestationMetricLine(att));
+    return file;
+  }
+
+  function baseLiveEnv(extra: Record<string, string> = {}): Record<string, string> {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 's4f7y-'));
+    const envFile = path.join(dir, 'backend.env');
+    const envContent = extra.S4F7Y_FIXTURE_ENV_CONTENT ?? 'DIMO_GLOBAL_BUDGET_ENABLED=true\n';
+    fs.writeFileSync(envFile, envContent, 'utf8');
+    const envSha =
+      extra.DI_S4_TINY_STAGING_REQUIRED_PRE_ENV_SHA256 ??
+      createHash('sha256').update(envContent).digest('hex');
+    const releaseDir = extra.DI_S4F7V_FIXTURE_RELEASE_DIR ?? WORKSPACE_ROOT;
+    const releaseId = extra.DI_S4_TINY_STAGING_REQUIRED_RELEASE_ID ?? path.basename(releaseDir);
+    const requiredSha =
+      extra.DI_S4_TINY_STAGING_REQUIRED_SHA ??
+      (releaseDir === WORKSPACE_ROOT
+        ? execFileSync('git', ['-C', WORKSPACE_ROOT, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
+        : 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
+    const nb = extra.DI_S4_TINY_FRESH_NOT_BEFORE ?? '2026-10-07T16:00:00.000Z';
+    const fp =
+      extra.DI_S4_TINY_FRESH_EXPECTED_FINGERPRINT ??
+      deriveInternallyComputedFreshFingerprint(nb, CANONICAL_ORG, CANONICAL_VEH);
+    const prestate = metricsFileForEnv({});
+    const stagedEnv: Record<string, string | undefined> = {
+      DI_V0_S4_DISCOVERY_TRIP_END_NOT_BEFORE: nb,
+      DI_V0_S4_ORGANIZATION_ALLOWLIST: CANONICAL_ORG,
+      DI_V0_S4_VEHICLE_ALLOWLIST: CANONICAL_VEH,
+    };
+    const freshA = metricsFileForEnv(stagedEnv);
+    const freshB = metricsFileForEnv(stagedEnv);
+    return {
+      DRY_RUN: '0',
+      DI_S4F7Y_TEST_MODE: '1',
+      DI_S4F7V_TEST_MODE: '1',
+      DI_S4F7V_FIXTURE_MODE: '1',
+      SYNQDRIVE_DEPLOY_STATE_DIR: path.join(dir, 'deploy-state'),
+      SYNQDRIVE_BACKEND_ENV: envFile,
+      SYNQDRIVE_CURRENT_LINK: WORKSPACE_ROOT,
+      DI_S4_TINY_STAGING_ACK: 'YES',
+      DI_S4F7Y_LIVE_STAGING_AUTHORIZED: 'YES',
+      DI_S4_TINY_STAGING_REQUIRED_SHA: requiredSha,
+      DI_S4_TINY_STAGING_REQUIRED_RELEASE_ID: releaseId,
+      DI_S4_TINY_STAGING_REQUIRED_PRE_ENV_SHA256: envSha,
+      DI_S4_TINY_STAGING_EXPECTED_GLOBAL_STATE: 'KILLED',
+      DI_S4_TINY_FRESH_NOT_BEFORE: nb,
+      DI_S4_TINY_FRESH_EXPECTED_FINGERPRINT: fp,
+      DI_S4_TINY_FRESH_ORGANIZATION_ALLOWLIST: CANONICAL_ORG,
+      DI_S4_TINY_FRESH_VEHICLE_ALLOWLIST: CANONICAL_VEH,
+      DI_S4F7V_DB_CLOCK_CANONICAL_UTC: extra.DI_S4F7V_DB_CLOCK_CANONICAL_UTC ?? '2026-10-07T16:01:00.000Z',
+      EXPECTED_FRESH_TINY_STAGING_TOOL_SHA: TOOL_SHA,
+      DI_S4F7V_TOOL_CHECKOUT_SHA: TOOL_SHA,
+      AUTHORIZED_TOOL_SHA: TOOL_SHA,
+      AUTHORIZED_PRODUCTION_SHA: requiredSha,
+      AUTHORIZED_PRODUCTION_RELEASE_ID: releaseId,
+      AUTHORIZED_PRE_ENV_SHA256: envSha,
+      AUTHORIZED_FRESH_NOT_BEFORE: nb,
+      AUTHORIZED_FRESH_EXPECTED_FINGERPRINT: fp,
+      AUTHORIZED_ORGANIZATION_ALLOWLIST: CANONICAL_ORG,
+      AUTHORIZED_VEHICLE_ALLOWLIST: CANONICAL_VEH,
+      DI_S4F7V_FIXTURE_DEPLOYED_SHA: requiredSha,
+      DI_S4F7V_FIXTURE_RELEASE_DIR: releaseDir,
+      DI_S4F7V_FIXTURE_METRICS_BODY_A: prestate,
+      DI_S4F7V_FIXTURE_METRICS_BODY_B: prestate,
+      DI_S4F7Y_FIXTURE_METRICS_BODY_FRESH_A: freshA,
+      DI_S4F7Y_FIXTURE_METRICS_BODY_FRESH_B: freshB,
+      ...extra,
+    };
+  }
+
+  function runFreshLive(extra: Record<string, string> = {}): string {
+    return execFileSync('bash', [WRAPPER], {
+      encoding: 'utf8',
+      env: { ...process.env, ...baseLiveEnv(extra) },
+    });
+  }
+
+  function expectFreshLiveFail(extra: Record<string, string> = {}): void {
+    expect(() => runFreshLive(extra)).toThrow();
+  }
+
+  it('reproduces pending runbook when live auth missing', () => {
+    expect(() =>
+      execFileSync('bash', [WRAPPER], {
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          DRY_RUN: '0',
+          DI_S4_TINY_STAGING_ACK: 'YES',
+          DI_S4_TINY_FRESH_NOT_BEFORE: '2026-10-07T16:00:00.000Z',
+          DI_S4_TINY_FRESH_EXPECTED_FINGERPRINT: 'a'.repeat(64),
+          DI_S4_TINY_FRESH_ORGANIZATION_ALLOWLIST: CANONICAL_ORG,
+          DI_S4_TINY_FRESH_VEHICLE_ALLOWLIST: CANONICAL_VEH,
+          EXPECTED_FRESH_TINY_STAGING_TOOL_SHA: TOOL_SHA,
+        },
+      }),
+    ).toThrow();
+  });
+
+  it('S4F7V alone cannot authorize live path', () => {
+    let out = '';
+    try {
+      execFileSync('bash', [WRAPPER], {
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          ...baseLiveEnv(),
+          DI_S4F7Y_LIVE_STAGING_AUTHORIZED: '',
+          DI_S4F7V_LIVE_STAGING_AUTHORIZED: 'YES',
+        },
+      });
+    } catch (e) {
+      out = String((e as { stdout?: string }).stdout ?? '');
+    }
+    expect(out).toContain('OLD_S4F7V_AUTHORIZATION_ALONE_CAN_AUTHORIZE_LIVE_MUTATION=YES');
+  });
+
+  it('successful harness live transaction', () => {
+    const out = runFreshLive();
+    expect(out).toContain('LIVE_STAGING_TRANSACTION_COMMITTED=YES');
+    expect(out).toContain('ROLLING_RESTART_ORDER=A_THEN_B');
+    expect(out).toContain('REPLICA_A_ATTESTATION_BEFORE_B_RESTART=YES');
+    expect(out).toContain('POST_STAGING_GLOBAL_KILLED_VERIFIED=YES');
+    expect(out).toContain('EXPLICIT_OPERATOR_AUTHORIZATION_GATE=NOT_SATISFIED');
+  });
+
+  it('wrong authorized tool SHA fails before mutation', () => {
+    expectFreshLiveFail({ AUTHORIZED_TOOL_SHA: 'd'.repeat(40) });
+  });
+
+  it('stale JIT fails at final gate', () => {
+    expectFreshLiveFail({
+      DI_S4F7V_DB_CLOCK_CANONICAL_UTC: '2026-10-07T18:00:00.000Z',
+      DI_S4_TINY_FRESH_NOT_BEFORE: '2026-10-07T16:00:00.000Z',
+      AUTHORIZED_FRESH_NOT_BEFORE: '2026-10-07T16:00:00.000Z',
+    });
+  });
+
+  it('new completed trip after cutoff fails', () => {
+    expectFreshLiveFail({ DI_S4F7Y_FIXTURE_ELIGIBLE_TRIP_COUNT: '1' });
+  });
+
+  it('Replica A restart failure blocks B forward restart', () => {
+    const thrown = expect(() => runFreshLive({ DI_S4F7Y_TEST_INJECT_RESTART_A_FAIL: '1' })).toThrow();
+    void thrown;
+    try {
+      runFreshLive({ DI_S4F7Y_TEST_INJECT_RESTART_A_FAIL: '1' });
+    } catch (e) {
+      const err = e as { stdout?: string };
+      const out = String(err.stdout ?? '');
+      expect(out).toContain('A_FAILURE_FORWARD_B_RESTART_COUNT=0');
+      expect(out).toContain('ROLLBACK_RESULT=COMPLETE');
+    }
+  });
+
+  it('mutation failure triggers rollback path', () => {
+    try {
+      runFreshLive({ DI_S4F7Y_TEST_INJECT_MUTATION_FAIL: '1' });
+    } catch (e) {
+      const err = e as { stdout?: string };
+      expect(String(err.stdout ?? '')).toContain('ROLLBACK_RESULT=COMPLETE');
+    }
+  });
+
+  it('backup failure aborts before mutation', () => {
+    expectFreshLiveFail({ DI_S4F7Y_TEST_INJECT_BACKUP_FAIL: '1' });
+  });
+});

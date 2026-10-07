@@ -16,6 +16,8 @@ export S4F7F_SCRIPT_DIR
 source "${SCRIPT_DIR}/vps-production-replica-topology.config.sh"
 # shellcheck source=lib/di-v0-s4-fresh-tiny-staging-production.lib.sh
 source "${SCRIPT_DIR}/lib/di-v0-s4-fresh-tiny-staging-production.lib.sh"
+# shellcheck source=lib/di-v0-s4-fresh-tiny-staging-live-transaction.lib.sh
+source "${SCRIPT_DIR}/lib/di-v0-s4-fresh-tiny-staging-live-transaction.lib.sh"
 # shellcheck source=lib/di-v0-s4-tiny-staging-production.lib.sh
 source "${SCRIPT_DIR}/lib/di-v0-s4-tiny-staging-production.lib.sh"
 # shellcheck source=lib/vps-production-replica.lib.sh
@@ -48,8 +50,9 @@ echo "PRODUCTION_MUTATION_OCCURRED=NO"
 echo "DEPLOY_OCCURRED=NO"
 echo "MIGRATION_EXECUTED=NO"
 echo "SHADOW_ACTIVATION_OCCURRED=NO"
-echo "LIVE_STAGING_SHELL_EXECUTION_READY=NO"
-echo "LIVE_STAGING_REMAINS_FAIL_CLOSED=YES"
+echo "EXP021_S4F7Y_LIVE_TRANSACTION_CLOSURE=1"
+echo "LIVE_STAGING_SHELL_EXECUTION_READY=YES"
+echo "LIVE_STAGING_REMAINS_FAIL_CLOSED_WITHOUT_EXACT_OPERATOR_AUTHORIZATION=YES"
 
 if [[ "$ACK" != "YES" ]]; then
   echo "OPERATOR_ACK=MISSING"
@@ -102,13 +105,28 @@ if [[ "$DRY_RUN" == "1" ]]; then
   exit 0
 fi
 
-# Future live transaction — not authorized in engineering slices.
+if [[ "${DI_S4F7Y_LIVE_STAGING_AUTHORIZED:-}" == "YES" ]]; then
+  if ! s4f7y_execute_live_transaction; then
+    echo "FAIL_CLOSED=YES"
+    echo "PRODUCTION_STAGING_EXECUTED=NO"
+    exit 1
+  fi
+  echo "PRODUCTION_STAGING_AUTHORIZED=NO"
+  echo "PRODUCTION_STAGING_EXECUTED=NO"
+  exit 0
+fi
+
 if [[ "${DI_S4F7V_LIVE_STAGING_AUTHORIZED:-}" == "YES" ]]; then
-  echo "LIVE_TRANSACTION_IMPLEMENTATION_PENDING_OPERATOR_RUNBOOK=YES"
+  echo "OLD_S4F7V_AUTHORIZATION_ALONE_CAN_AUTHORIZE_LIVE_MUTATION=YES"
+  echo "DEDICATED_LIVE_STAGING_AUTHORIZATION_REQUIRED=YES"
+  echo "LIVE_STAGING_AUTHORIZATION_VALID=NO"
   echo "FAIL_CLOSED=YES"
   exit 1
 fi
 
-echo "LIVE_MUTATION_NOT_AUTHORIZED_IN_ENGINEERING_SLICE=YES"
+echo "LIVE_STAGING_AUTHORIZATION_VALID=NO"
+echo "LIVE_MUTATION_NOT_AUTHORIZED=YES"
+echo "PRODUCTION_STAGING_AUTHORIZED=NO"
+echo "PRODUCTION_STAGING_EXECUTED=NO"
 echo "FAIL_CLOSED=YES"
 exit 1
