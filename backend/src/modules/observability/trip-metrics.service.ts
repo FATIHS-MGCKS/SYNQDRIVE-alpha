@@ -74,6 +74,8 @@ export class TripMetricsService implements OnModuleInit {
   readonly apdShadowProfileInvalidatedTotal: Counter<string>;
   readonly apdShadowProfileRecoveredTotal: Counter<string>;
   readonly apdShadowFailureTotal: Counter<string>;
+  readonly apdShadowCohortExcludedTotal: Counter<string>;
+  readonly apdShadowCohortMemberCount: Gauge<string>;
   readonly snapshotWakeTotal: Counter<string>;
   readonly snapshotWakeProbeTotal: Counter<string>;
   readonly snapshotPollingTierVehicles: Gauge<string>;
@@ -635,6 +637,19 @@ export class TripMetricsService implements OnModuleInit {
       name: 'synqdrive_apd_shadow_failure_total',
       help: 'APD shadow pipeline failures (non-blocking)',
       labelNames: ['stage'],
+      registers: [this.registry],
+    });
+
+    this.apdShadowCohortExcludedTotal = new Counter({
+      name: 'synqdrive_apd_shadow_cohort_excluded_total',
+      help: 'APD shadow opportunities excluded by cohort gate (bounded reasons only)',
+      labelNames: ['reason'],
+      registers: [this.registry],
+    });
+
+    this.apdShadowCohortMemberCount = new Gauge({
+      name: 'synqdrive_apd_shadow_cohort_member_count',
+      help: 'Configured APD shadow cohort member count when cohort config is READY',
       registers: [this.registry],
     });
 

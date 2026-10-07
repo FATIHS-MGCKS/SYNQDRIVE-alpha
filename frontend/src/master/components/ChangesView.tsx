@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'p25-apds-9-0-cohort-selector-2026-10-07',
+    version: '4.9.2230',
+    title: 'P2.5 APDS-9.0 — fail-closed APD shadow cohort selector (engineering only)',
+    summary: [
+      'WORKER_APD_SHADOW_COHORT_JSON (P25_APD_LTE_R1_COHORT_V1): exact organizationId+vehicleId allowlist; fail-closed when flag ON without valid cohort.',
+      'Scheduler + observePrePoll/observePostPoll defense-in-depth; tenant-safe shadow memory key org\\u0000vehicle.',
+      'Cohort excluded metrics + SHA-256 config fingerprint for replica parity; read-only Production preflight script.',
+    ],
+    reason:
+      'APDS-9 blocked: global WORKER_APD_SHADOW_ENABLED would shadow-evaluate full reconciliation fleet without LTE_R1 cohort gate.',
+    previousBehavior:
+      'isApdShadowEnabled() global boolean only; scheduler used isEnabled() for all due reconciliation candidates.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/P25_APDS_9_0_COHORT_SELECTOR_2026-10-07.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Device Connectivity',
+    createdAt: '2026-10-07T10:59:00.000Z',
+  },
+  {
     id: 'p25-apds-2-7-shadow-observability-2026-10-03',
     version: '4.9.2229',
     title: 'P2.5 APDS-2…7 — dual shadow observability (flag OFF)',

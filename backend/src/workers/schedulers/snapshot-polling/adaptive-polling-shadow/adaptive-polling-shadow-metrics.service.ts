@@ -9,6 +9,19 @@ export class AdaptivePollingShadowMetricsService {
     this.tripMetrics?.apdShadowEnabled?.set(enabled ? 1 : 0);
   }
 
+  setCohortMemberCount(count: number): void {
+    this.tripMetrics?.apdShadowCohortMemberCount?.set(count);
+  }
+
+  setCohortConfigFingerprint(_sha256: string): void {
+    // Fingerprint is exposed via AdaptivePollingShadowService.getCohortVerificationSummary()
+    // for replica parity checks — not emitted as a Prometheus label.
+  }
+
+  recordCohortExcluded(reason: string): void {
+    this.tripMetrics?.apdShadowCohortExcludedTotal?.inc({ reason });
+  }
+
   recordDecision(policy: string, decision: string, reason: string): void {
     this.tripMetrics?.apdShadowDecisionsTotal?.inc({ policy, decision, reason });
     if (decision === 'WOULD_POLL') {

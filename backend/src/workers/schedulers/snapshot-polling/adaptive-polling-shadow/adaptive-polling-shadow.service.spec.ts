@@ -3,6 +3,10 @@ import { AdaptivePollingShadowRepository } from './adaptive-polling-shadow.repos
 import { AdaptivePollingShadowMetricsService } from './adaptive-polling-shadow-metrics.service';
 import { SnapshotPollingTier } from '../snapshot-polling-tier.types';
 import { TripDetectionState } from '@prisma/client';
+import {
+  P25_APD_LTE_R1_COHORT_V1,
+  WORKER_APD_SHADOW_COHORT_JSON_ENV,
+} from './adaptive-polling-shadow-cohort.config';
 
 describe('AdaptivePollingShadowService', () => {
   const repository = {
@@ -12,12 +16,23 @@ describe('AdaptivePollingShadowService', () => {
 
   const metrics = {
     setEnabled: jest.fn(),
+    setCohortMemberCount: jest.fn(),
+    setCohortConfigFingerprint: jest.fn(),
     recordDecision: jest.fn(),
     recordFailure: jest.fn(),
+    recordCohortExcluded: jest.fn(),
     recordInformativeRealPoll: jest.fn(),
     recordProfileInvalidated: jest.fn(),
     recordProfileRecovered: jest.fn(),
   } as unknown as AdaptivePollingShadowMetricsService;
+
+  function enableShadowWithCohort() {
+    process.env.WORKER_APD_SHADOW_ENABLED = 'true';
+    process.env[WORKER_APD_SHADOW_COHORT_JSON_ENV] = JSON.stringify({
+      version: P25_APD_LTE_R1_COHORT_V1,
+      members: [{ organizationId: 'org-1', vehicleId: 'veh-1' }],
+    });
+  }
 
   const prisma = {
     batteryMeasurement: {
@@ -48,6 +63,7 @@ describe('AdaptivePollingShadowService', () => {
   afterEach(() => {
     jest.resetModules();
     delete process.env.WORKER_APD_SHADOW_ENABLED;
+    delete process.env[WORKER_APD_SHADOW_COHORT_JSON_ENV];
     jest.clearAllMocks();
   });
 
@@ -64,7 +80,7 @@ describe('AdaptivePollingShadowService', () => {
   });
 
   it('flag ON → persists B2 and B4 rows', async () => {
-    process.env.WORKER_APD_SHADOW_ENABLED = 'true';
+    enableShadowWithCohort();
     const service = new AdaptivePollingShadowService(
       prisma as never,
       repository,
@@ -76,7 +92,7 @@ describe('AdaptivePollingShadowService', () => {
   });
 
   it('evaluator exception path does not throw (fail-open)', async () => {
-    process.env.WORKER_APD_SHADOW_ENABLED = 'true';
+    enableShadowWithCohort();
     (repository.upsertPrePollDecision as jest.Mock).mockRejectedValueOnce(
       new Error('db down'),
     );
@@ -90,7 +106,7 @@ describe('AdaptivePollingShadowService', () => {
   });
 
   it('active trip reconciliation uses forced trip safety in metrics', async () => {
-    process.env.WORKER_APD_SHADOW_ENABLED = 'true';
+    enableShadowWithCohort();
     const service = new AdaptivePollingShadowService(
       prisma as never,
       repository,
