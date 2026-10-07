@@ -1481,6 +1481,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | **`FINAL_RESULT=BLOCKED_PRODUCTION_RUNTIME_DRIFT`** — live `0c19eb62…` / `20261006064327_v4994` vs frozen `ee958854…`; attestation metric present on current runtime; disposable `prisma migrate deploy` **PASS** (0 applied) on 404-row clone |
 | NON_EFFECTS | No Production mutation; no deploy authorization |
 
+### EXP-021 S4F-7U fresh Tiny staging authority / NO_BACKFILL preflight (2026-10-06)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Read-only Production + DB seal for fresh `NOT_BEFORE` / nine-key fingerprint; evidence `EXP021_S4F7U_FRESH_TINY_STAGING_AUTHORITY_PREFLIGHT.md` |
+| FINDING | **`FINAL_RESULT=PASS`** — `FRESH_TINY_NOT_BEFORE=2026-10-06T18:33:26.610Z`, fingerprint `9abb1a57…`, v1 state **OTHER**; old `2026-10-02` cutoff would expose **14** trips; S4F-7J tooling incompatible → **`S4F7V_REQUIRED=YES`** |
+| NON_EFFECTS | No Production mutation; Gate 6 **NOT_SATISFIED**; Tiny activation **NO** |
+
 ### EXP-021 S4F-7T current Production attestation supersession closure (2026-10-06)
 
 | Event | Detail |

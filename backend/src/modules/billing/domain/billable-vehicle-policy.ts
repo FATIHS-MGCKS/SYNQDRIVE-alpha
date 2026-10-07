@@ -1,4 +1,8 @@
 import { BillingBillableVehicleAssignmentStatus } from '@prisma/client';
+import {
+  isEffectivelyBillableAssignmentAt,
+  isWithinBillablePeriod,
+} from './billing-assignment-event-time';
 
 export const BillableVehicleExclusionReason = {
   ORG_INACTIVE: 'ORG_INACTIVE',
@@ -9,7 +13,10 @@ export const BillableVehicleExclusionReason = {
   DEMO_ASSIGNMENT: 'DEMO_ASSIGNMENT',
   BILLING_EXCLUSION: 'BILLING_EXCLUSION',
   CROSS_TENANT: 'CROSS_TENANT',
+  /** Legacy operational archive timestamp (not registry lifecycle). */
   ARCHIVED: 'ARCHIVED',
+  REGISTRY_OFFBOARDED: 'REGISTRY_OFFBOARDED',
+  REGISTRY_ARCHIVED: 'REGISTRY_ARCHIVED',
 } as const;
 
 export type BillableVehicleExclusionReason =
@@ -34,6 +41,8 @@ export const NON_BILLABLE_ASSIGNMENT_REASON_CODES: ReadonlySet<string> = new Set
 export type VehicleConnectivityStatus = 'CONNECTED' | 'NOT_CONNECTED';
 export type VehicleBillingStatus = 'BILLABLE' | 'EXCLUDED';
 
+export type BillableVehicleRegistryLifecycle = 'ACTIVE' | 'OFFBOARDED' | 'ARCHIVED';
+
 export interface BillableVehiclePolicyVehicle {
   id: string;
   organizationId: string;
@@ -42,6 +51,7 @@ export interface BillableVehiclePolicyVehicle {
   make: string;
   model: string;
   archivedAt?: Date | null;
+  registryLifecycle?: BillableVehicleRegistryLifecycle;
 }
 
 export interface BillableVehiclePolicyAssignment {
@@ -55,6 +65,8 @@ export interface BillableVehiclePolicyAssignment {
   reasonCode: string | null;
   reasonNote: string | null;
   approvedByUserId: string | null;
+  /** Required for registry lifecycle billing event-time authority. */
+  createdAt?: Date;
 }
 
 export interface BillableVehiclePolicyContext {
@@ -113,10 +125,14 @@ function isApprovedExclusion(assignment: BillableVehiclePolicyAssignment): boole
 }
 
 function isApprovedBillableAssignment(assignment: BillableVehiclePolicyAssignment): boolean {
-  return (
-    assignment.status === BillingBillableVehicleAssignmentStatus.ACTIVE &&
-    assignment.approvedByUserId != null
-  );
+  return isEffectivelyBillableAssignmentAt(assignment, new Date());
+}
+
+function isApprovedBillableAssignmentAt(
+  assignment: BillableVehiclePolicyAssignment,
+  asOf: Date,
+): boolean {
+  return isEffectivelyBillableAssignmentAt(assignment, asOf);
 }
 
 function isNonBillableTypeAssignment(assignment: BillableVehiclePolicyAssignment): boolean {
@@ -200,6 +216,14 @@ function resolveVehicleExclusion(
     return { reason: BillableVehicleExclusionReason.CROSS_TENANT };
   }
 
+  if (vehicle.registryLifecycle === 'OFFBOARDED') {
+    return { reason: BillableVehicleExclusionReason.REGISTRY_OFFBOARDED };
+  }
+
+  if (vehicle.registryLifecycle === 'ARCHIVED') {
+    return { reason: BillableVehicleExclusionReason.REGISTRY_ARCHIVED };
+  }
+
   if (vehicle.archivedAt != null) {
     return { reason: BillableVehicleExclusionReason.ARCHIVED };
   }
@@ -243,10 +267,8 @@ function resolveVehicleExclusion(
     };
   }
 
-  const activeBillableAssignment = scoped.find(
-    (assignment) =>
-      isApprovedBillableAssignment(assignment) &&
-      isWithinPeriod(assignment.billableFrom, assignment.billableUntil, context.asOf),
+  const activeBillableAssignment = scoped.find((assignment) =>
+    isApprovedBillableAssignmentAt(assignment, context.asOf),
   );
   if (activeBillableAssignment) {
     return null;

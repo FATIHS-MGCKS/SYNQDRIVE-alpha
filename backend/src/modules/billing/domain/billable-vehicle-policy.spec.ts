@@ -65,6 +65,43 @@ describe('billable-vehicle-policy', () => {
     expect(result.billableVehicleCount).toBe(1);
   });
 
+  it('excludes OFFBOARDED registry lifecycle vehicles', () => {
+    const result = evaluateBillableVehiclePolicy(
+      context({
+        vehicles: [vehicle({ id: 'v1', registryLifecycle: 'OFFBOARDED' })],
+        assignments: [assignment({ id: 'a1', vehicleId: 'v1' })],
+      }),
+    );
+    expect(result.billableVehicleCount).toBe(0);
+    expect(result.excludedVehicles[0].reason).toBe(
+      BillableVehicleExclusionReason.REGISTRY_OFFBOARDED,
+    );
+  });
+
+  it('excludes ARCHIVED registry lifecycle vehicles', () => {
+    const result = evaluateBillableVehiclePolicy(
+      context({
+        vehicles: [vehicle({ id: 'v1', registryLifecycle: 'ARCHIVED' })],
+        assignments: [assignment({ id: 'a1', vehicleId: 'v1' })],
+      }),
+    );
+    expect(result.billableVehicleCount).toBe(0);
+    expect(result.excludedVehicles[0].reason).toBe(
+      BillableVehicleExclusionReason.REGISTRY_ARCHIVED,
+    );
+  });
+
+  it('keeps ACTIVE disconnected vehicles billable with explicit assignment', () => {
+    const result = evaluateBillableVehiclePolicy(
+      context({
+        vehicles: [vehicle({ id: 'v1', registryLifecycle: 'ACTIVE' })],
+        assignments: [assignment({ id: 'a1', vehicleId: 'v1' })],
+        connectivityByVehicleId: { 'v1': false },
+      }),
+    );
+    expect(result.billableVehicleCount).toBe(1);
+  });
+
   it('keeps vehicles billable when telemetry/provider connectivity is offline', () => {
     const result = evaluateBillableVehiclePolicy(
       context({
