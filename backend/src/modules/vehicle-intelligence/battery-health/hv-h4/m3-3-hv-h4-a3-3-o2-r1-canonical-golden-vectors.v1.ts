@@ -65,6 +65,15 @@ export const M3_3_HV_H4_A3_O2_R1_CANONICAL_GOLDEN_VECTORS_V1: ReadonlyArray<{
   { id: 'C_energy_FINITE_small', projection: withEnergy({ kind: 'FINITE', value: 0.0001 }) },
   { id: 'C_energy_FINITE_large', projection: withEnergy({ kind: 'FINITE', value: 1e6 }) },
   { id: 'C_energy_FINITE_tiny', projection: withEnergy({ kind: 'FINITE', value: 0.001 }) },
+  { id: 'C_energy_FINITE_float_awkward', projection: withEnergy({ kind: 'FINITE', value: 0.1 + 0.2 }) },
+  {
+    id: 'C_energy_FINITE_high_precision',
+    projection: withEnergy({ kind: 'FINITE', value: 1.2345678901234567 }),
+  },
+  {
+    id: 'C_energy_FINITE_max_safe_int',
+    projection: withEnergy({ kind: 'FINITE', value: Number.MAX_SAFE_INTEGER }),
+  },
   { id: 'C_energy_NAN', projection: withEnergy({ kind: 'NAN' }) },
   { id: 'C_energy_POS_INF', projection: withEnergy({ kind: 'POSITIVE_INFINITY' }) },
   { id: 'C_energy_NEG_INF', projection: withEnergy({ kind: 'NEGATIVE_INFINITY' }) },
@@ -96,4 +105,21 @@ export const M3_3_HV_H4_A3_O2_R1_CANONICAL_GOLDEN_VECTORS_V1: ReadonlyArray<{
       providerObservedAt: '2026-03-01T12:35:00.001Z',
     }),
   },
+];
+
+/** ECMAScript exponent / boundary numeric formatting — SQL parity expected to diverge until proven. */
+export const M3_3_HV_H4_A3_O2_R1_NUMERIC_EXPONENT_GOLDEN_VECTORS_V1: ReadonlyArray<{
+  id: string;
+  projection: M3_3HvH4ChargeSessionEvidenceScientificProjectionV1;
+}> = [
+  { id: 'N_exp_1e-7', projection: withEnergy({ kind: 'FINITE', value: 1e-7 }) },
+  { id: 'N_exp_1e-6', projection: withEnergy({ kind: 'FINITE', value: 1e-6 }) },
+  { id: 'N_exp_1e-5', projection: withEnergy({ kind: 'FINITE', value: 1e-5 }) },
+  { id: 'N_exp_1e20', projection: withEnergy({ kind: 'FINITE', value: 1e20 }) },
+  { id: 'N_exp_1e21', projection: withEnergy({ kind: 'FINITE', value: 1e21 }) },
+  { id: 'N_exp_1e22', projection: withEnergy({ kind: 'FINITE', value: 1e22 }) },
+  { id: 'N_exp_neg_1e-7', projection: withEnergy({ kind: 'FINITE', value: -1e-7 }) },
+  { id: 'N_exp_neg_1e21', projection: withEnergy({ kind: 'FINITE', value: -1e21 }) },
+  { id: 'N_exp_min_value', projection: withEnergy({ kind: 'FINITE', value: Number.MIN_VALUE }) },
+  { id: 'N_exp_max_value', projection: withEnergy({ kind: 'FINITE', value: Number.MAX_VALUE }) },
 ];
