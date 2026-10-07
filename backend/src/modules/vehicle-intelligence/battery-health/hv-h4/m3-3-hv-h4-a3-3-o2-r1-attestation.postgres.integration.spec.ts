@@ -271,6 +271,7 @@ describe('M3.3-HV-H4-A3.3-O2-R1 integrity attestation foundation', () => {
     const v1 = M3_3_HV_H4_A3_O2_R1_CANONICAL_GOLDEN_VECTORS_V1[1];
     const { revision: revA } = await insertCoherentRevisionWithAck(prisma, v0.projection);
     const { revision: revB, ackId: ackB } = await insertCoherentRevisionWithAck(prisma, v1.projection);
+    await prisma.batteryHvChargeSessionEvidenceAck.deleteMany({ where: { revisionId: revA.id } });
     await prisma.batteryHvChargeSessionEvidenceAck.update({
       where: { id: ackB! },
       data: { revisionId: revA.id },

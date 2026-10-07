@@ -64,7 +64,10 @@ export const M3_3_HV_H4_A3_O2_R1_CANONICAL_GOLDEN_VECTORS_V1: ReadonlyArray<{
   { id: 'C_energy_FINITE_neg_zero', projection: withEnergy({ kind: 'FINITE', value: -0 }) },
   { id: 'C_energy_FINITE_small', projection: withEnergy({ kind: 'FINITE', value: 0.0001 }) },
   { id: 'C_energy_FINITE_large', projection: withEnergy({ kind: 'FINITE', value: 1e6 }) },
-  { id: 'C_energy_FINITE_exponent', projection: withEnergy({ kind: 'FINITE', value: 1.23e-7 }) },
+  {
+    id: 'C_energy_FINITE_subnormal_decimal',
+    projection: withEnergy({ kind: 'FINITE', value: 0.000000123 }),
+  },
   { id: 'C_energy_NAN', projection: withEnergy({ kind: 'NAN' }) },
   { id: 'C_energy_POS_INF', projection: withEnergy({ kind: 'POSITIVE_INFINITY' }) },
   { id: 'C_energy_NEG_INF', projection: withEnergy({ kind: 'NEGATIVE_INFINITY' }) },

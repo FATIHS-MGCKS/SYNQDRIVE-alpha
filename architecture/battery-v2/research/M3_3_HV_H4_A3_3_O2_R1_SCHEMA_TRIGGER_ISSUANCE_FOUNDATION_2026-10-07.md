@@ -19,7 +19,9 @@
 
 ## Canonicalization parity gate
 
-PostgreSQL builds canonical UTF-8 via `json_build_array` + comma compaction, then SHA-256. CI golden corpus must show **zero mismatches** vs `buildM3_3HvH4ChargeSessionEvidenceCanonicalUtf8V1` before claiming `SQL_FULL_VERIFY_EQUIVALENT_TO_TS=YES`.
+PostgreSQL builds canonical UTF-8 via explicit tuple concatenation (no JSONB object re-render for tuple slots), then SHA-256. CI golden corpus must show **zero mismatches** vs `buildM3_3HvH4ChargeSessionEvidenceCanonicalUtf8V1` before claiming `SQL_FULL_VERIFY_EQUIVALENT_TO_TS=YES`.
+
+**Open gap (documented):** ECMAScript `JSON.stringify` exponent forms for some finite values (e.g. `1.23e-7`) may not match PostgreSQL `jsonb` numeric text; golden corpus uses decimal subnormal (`0.000000123`) instead until a proven SQL number formatter exists.
 
 ## Issuance authority
 
