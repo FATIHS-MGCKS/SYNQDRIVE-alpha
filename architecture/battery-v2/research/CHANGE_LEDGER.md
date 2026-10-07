@@ -6,6 +6,20 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-07 — M3.3-HV-H4-A3.3-O2 historical integrity attestation architecture
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | O2 threat model, mutability audit, candidate attestation schema, mutation-invalidation strategy, rollout phases; pure attestation validity model + unit tests |
+| **WHY** | O1 proved full-history JSON verify is the optimization limiter; O2 designs attestation + fallback without weakening fail-closed semantics |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-integrity-attestation.spec.ts`; O1/durable/HV-H4 corpora unchanged |
+| **OBSERVED_EFFECT** | `O2_DECISION=ATTESTATION_ARCHITECTURE_FEASIBLE`; preferred **invalidation trigger + hybrid loader + bounded bootstrap** |
+| **NON_EFFECTS** | No migration; no production loader; no A3.5 enable; no retention change |
+| **DECISION_STATUS** | PROPOSED |
+| **EVIDENCE** | `M3_3_HV_H4_A3_3_O2_HISTORY_INTEGRITY_ATTESTATION_ARCHITECTURE_2026-10-07.md` |
+
+---
+
 ## 2026-10-07 — M3.3-HV-H4-A3.3-O1 MODE_A effective revision SQL optimization audit
 
 | Field | Value |

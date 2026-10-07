@@ -525,6 +525,7 @@ Rebuild from: durable source revisions + GT-as-of + H4 composition contract.
 | **A3.5** | **IMPLEMENTED** — leader-guarded bounded current-state reconciliation (`BATTERY_HV_H4_A3_RECONCILIATION_ENABLED` default **false**); Redis fleet cursor; reuses A3.2 writer only |
 | **A3.6** | **DEFERRED (R0 2026-10-06/07)** — optional derived lifecycle cache **not justified now**; see `M3_3_HV_H4_A3_6_DERIVED_LIFECYCLE_CACHE_NEED_AUDIT_2026-10-06.md` — **next: `A3.3-O1_MODE_A_EFFECTIVE_REVISION_QUERY_OPTIMIZATION`** |
 | **A3.3-O1** | **ARCHITECTURE COMPLETE (2026-10-07)** — MODE_A SQL optimization audit + semantics freeze tests + test-only SQL prototype; see `M3_3_HV_H4_A3_3_O1_MODE_A_EFFECTIVE_REVISION_QUERY_OPTIMIZATION_2026-10-07.md` — **decision: NEEDS_INTEGRITY_ATTESTATION_BEFORE_MEANINGFUL_OPTIMIZATION**; production loader unchanged |
+| **A3.3-O2** | **ARCHITECTURE COMPLETE (2026-10-07)** — historical integrity attestation design + mutability audit + pure validity model; see `M3_3_HV_H4_A3_3_O2_HISTORY_INTEGRITY_ATTESTATION_ARCHITECTURE_2026-10-07.md` — **decision: ATTESTATION_ARCHITECTURE_FEASIBLE** (invalidation trigger + full-verify fallback); **no migration / no loader change** |
 
 **`RECOMMENDED_A3_1_SLICE = A3.1 H4 charge session evidence revision persistence contract + schema (no runtime, no prune hook)`**
 
