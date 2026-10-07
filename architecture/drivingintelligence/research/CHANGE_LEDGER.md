@@ -1497,6 +1497,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | **`FINAL_RESULT=PASS`** (engineering) — separate path from S4F-7J; fresh authority ≤900 s (PostgreSQL clock); primary attestation **v1 OTHER** + exact fingerprint; S4F-7U sample authority **non-executable** |
 | NON_EFFECTS | No Production mutation/deploy/restart/DB write; no runtime attestation classification change; Gate 6 **NOT_SATISFIED** |
 
+### EXP-021 S4F-7W fresh Tiny dry-run execution wiring closure (2026-10-07)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `s4f7w_live_preflight_readonly` + full dry-run orchestration in fresh wrapper; fatal apply-mutation-dry/intended-delta; **80** wrapper tests; evidence `EXP021_S4F7W_FRESH_TINY_DRY_RUN_EXECUTION_WIRING_CLOSURE.md` |
+| FINDING | S4F-7V pure guards were correct; wrapper dry-run was incomplete (no full live evidence, swallowed CLI failures); **`DRY_RUN_FULL_GUARD_PATH_EXECUTED=YES`** after fix; live shell staging **still fail-closed** |
+| NON_EFFECTS | No Production mutation; no tool SHA seal; Gate 6 **NOT_SATISFIED** |
+
 ### EXP-021 S4F-7T current Production attestation supersession closure (2026-10-06)
 
 | Event | Detail |
