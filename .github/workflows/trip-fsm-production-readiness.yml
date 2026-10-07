@@ -55,7 +55,7 @@ jobs:
         working-directory: backend
       - run: >-
           npm test --
-          --testPathPattern="trip-fsm-motor-off-pause-r10|trip-end-cycle-reset|trip-end-validation-r5|trip-terminal-resting-recovery-r7"
+          --testPathPattern="trip-fsm-motor-off-pause-r10|trip-end-cycle-reset|trip-end-validation-r5|trip-terminal-resting-recovery-r7|trip-decision.engine.registry-admission"
           --no-coverage
         working-directory: backend
 

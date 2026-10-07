@@ -70,6 +70,32 @@ function buildOffboardStack(prisma: PrismaClient) {
   return { offboarding, preflight, httpOffboard };
 }
 
+function buildLifecycleOutboxProcessor(prisma: PrismaClient) {
+  const projection = new BillingVehicleRegistryOffboardProjection(
+    prisma as any,
+    new BillableVehiclesService(prisma as any),
+    new BillingQuantityService(prisma as any),
+  );
+  const outboxRepository = new VehicleRegistryLifecycleOutboxRepository(prisma as any);
+  const billingQuantity = new BillingQuantityVehicleIntegration(
+    new BillingQuantityService(prisma as any),
+    new BillableVehiclesService(prisma as any),
+    projection,
+  );
+  return new VehicleRegistryLifecycleOutboxProcessor(
+    prisma as any,
+    outboxRepository,
+    projection,
+    billingQuantity,
+  );
+}
+
+async function countBillingDisconnects(prisma: PrismaClient, vehicleId: string) {
+  return prisma.billingQuantityEvent.count({
+    where: { vehicleId, eventType: BillingQuantityEventType.VEHICLE_DISCONNECTED },
+  });
+}
+
 (run ? describe : describe.skip)('VO-5C-P1 offboard HTTP authority (PostgreSQL)', () => {
   jest.setTimeout(120_000);
   const prisma = new PrismaClient();
@@ -241,28 +267,9 @@ function buildOffboardStack(prisma: PrismaClient) {
     const outbox = await prisma.vehicleRegistryLifecycleOutbox.findFirstOrThrow({
       where: { vehicleId, eventType: 'VEHICLE_OFFBOARDED' },
     });
-    const projection = new BillingVehicleRegistryOffboardProjection(
-      prisma as any,
-      new BillableVehiclesService(prisma as any),
-      new BillingQuantityService(prisma as any),
-    );
-    const outboxRepository = new VehicleRegistryLifecycleOutboxRepository(prisma as any);
-    const billingQuantity = new BillingQuantityVehicleIntegration(
-      new BillingQuantityService(prisma as any),
-      new BillableVehiclesService(prisma as any),
-      projection,
-    );
-    const processor = new VehicleRegistryLifecycleOutboxProcessor(
-      prisma as any,
-      outboxRepository,
-      projection,
-      billingQuantity,
-    );
+    const processor = buildLifecycleOutboxProcessor(prisma);
     expect(await processor.processRow(outbox.id)).toBe('published');
-    const events = await prisma.billingQuantityEvent.findMany({
-      where: { vehicleId, eventType: BillingQuantityEventType.VEHICLE_DISCONNECTED },
-    });
-    expect(events).toHaveLength(1);
+    expect(await countBillingDisconnects(prisma, vehicleId)).toBe(1);
     const processed = await prisma.vehicleRegistryLifecycleOutbox.findUniqueOrThrow({
       where: { id: outbox.id },
     });
@@ -438,6 +445,29 @@ function buildOffboardStack(prisma: PrismaClient) {
     expect(new Set(results.map((r) => r.offboardedAt.toISOString())).size).toBe(1);
   });
 
+  it('concurrent same-key offboard yields one billing deprovision after processor', async () => {
+    const orgId = await createOrg(prisma);
+    const { vehicleId } = await createActiveVehicle(prisma, orgId);
+    const { httpOffboard } = buildOffboardStack(prisma);
+    const idempotencyKey = randomUUID();
+    const input = {
+      organizationId: orgId,
+      vehicleId,
+      reason: 'REMOVE_FROM_PRODUCT' as const,
+      actorUserId: randomUUID(),
+      idempotencyKey,
+    };
+    await Promise.all(Array.from({ length: 6 }, () => httpOffboard.offboardVehicle(input)));
+    const outbox = await prisma.vehicleRegistryLifecycleOutbox.findFirstOrThrow({
+      where: { vehicleId, eventType: 'VEHICLE_OFFBOARDED' },
+    });
+    const processor = buildLifecycleOutboxProcessor(prisma);
+    expect(await processor.processRow(outbox.id)).toBe('published');
+    expect(await countBillingDisconnects(prisma, vehicleId)).toBe(1);
+    expect(await processor.processRow(outbox.id)).toBe('skipped');
+    expect(await countBillingDisconnects(prisma, vehicleId)).toBe(1);
+  });
+
   it('concurrent different keys on ACTIVE vehicle: one offboard wins, other fails closed', async () => {
     const orgId = await createOrg(prisma);
     const { vehicleId } = await createActiveVehicle(prisma, orgId);
@@ -468,5 +498,13 @@ function buildOffboardStack(prisma: PrismaClient) {
         where: { vehicleId, eventType: 'VEHICLE_OFFBOARDED' },
       }),
     ).toBe(1);
+    const outbox = await prisma.vehicleRegistryLifecycleOutbox.findFirstOrThrow({
+      where: { vehicleId, eventType: 'VEHICLE_OFFBOARDED' },
+    });
+    const processor = buildLifecycleOutboxProcessor(prisma);
+    expect(await processor.processRow(outbox.id)).toBe('published');
+    expect(await countBillingDisconnects(prisma, vehicleId)).toBe(1);
+    expect(await processor.processRow(outbox.id)).toBe('skipped');
+    expect(await countBillingDisconnects(prisma, vehicleId)).toBe(1);
   });
 });
