@@ -1505,6 +1505,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | S4F-7V pure guards were correct; wrapper dry-run was incomplete (no full live evidence, swallowed CLI failures); **`DRY_RUN_FULL_GUARD_PATH_EXECUTED=YES`** after fix; live shell staging **still fail-closed** |
 | NON_EFFECTS | No Production mutation; no tool SHA seal; Gate 6 **NOT_SATISFIED** |
 
+### EXP-021 S4F-7X exact tool JIT Production dry-run (2026-10-07)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Evidence `EXP021_S4F7X_EXACT_TOOL_JIT_PRODUCTION_DRY_RUN.md`; sealed tool authority `11b4a80ccb88d1d6f747399f84667b06c9a71050` documented |
+| FINDING | **`FINAL_RESULT=BLOCKED_PRODUCTION_ACCESS_UNAVAILABLE`** — Cloud Agent SSH to `srv1374778.hstgr.cloud` **Permission denied (publickey)**; no `DATABASE_URL`; local detached tool checkout **PASS** only |
+| NON_EFFECTS | No Production observation beyond failed SSH; no JIT cutoff/fingerprint; no wrapper `DRY_RUN=1`; Gate 6 **NOT_SATISFIED** |
+
 ### EXP-021 S4F-7T current Production attestation supersession closure (2026-10-06)
 
 | Event | Detail |
