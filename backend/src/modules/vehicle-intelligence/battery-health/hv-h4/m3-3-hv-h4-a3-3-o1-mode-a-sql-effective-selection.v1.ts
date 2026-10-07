@@ -40,8 +40,8 @@ export async function selectModeAEffectiveRevisionIdsSqlPrototypeV1(
         captured_at,
         created_at
       FROM battery_hv_charge_session_evidence_revisions
-      WHERE organization_id = ${input.organizationId}::uuid
-        AND vehicle_id = ${input.vehicleId}::uuid
+      WHERE organization_id = ${input.organizationId}
+        AND vehicle_id = ${input.vehicleId}
         AND evidence_contract_version = ${evidenceContractVersion}
     ),
     ranked AS (
@@ -86,8 +86,8 @@ export async function selectModeAEffectiveRevisionIdsSqlPrototypeV1(
         captured_at,
         created_at
       FROM battery_hv_charge_session_evidence_revisions
-      WHERE organization_id = ${input.organizationId}::uuid
-        AND vehicle_id = ${input.vehicleId}::uuid
+      WHERE organization_id = ${input.organizationId}
+        AND vehicle_id = ${input.vehicleId}
         AND evidence_contract_version = ${evidenceContractVersion}
     ),
     ranked AS (

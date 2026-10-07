@@ -391,6 +391,7 @@ function projectionFromSession(
       const newerAt = new Date('2026-08-01T00:00:00.000Z');
       const pEffective = projectionFromSession(sOld, {
         sourceHvChargeSessionId: idEffective,
+        energyAddedKwh: encodeM3_3HvH4EnergyAddedKwhV1(14),
         sourceUpdatedAt: newerAt.toISOString(),
       });
       await insertCoherentDurableRevisionV1(prisma, {
