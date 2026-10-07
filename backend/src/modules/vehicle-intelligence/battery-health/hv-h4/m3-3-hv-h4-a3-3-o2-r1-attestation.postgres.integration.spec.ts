@@ -211,11 +211,11 @@ describe('M3.3-HV-H4-A3.3-O2-R1 integrity attestation foundation', () => {
 
   it('R1-C10 org/vehicle cascade', async () => {
     if (!prisma) return;
-    const { organization, vehicle } = await createGtOrgVehicle(prisma);
+    const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
     const session = await prisma.hvChargeSession.create({
       data: {
-        organizationId: organization.id,
-        vehicleId: vehicle.id,
+        organizationId,
+        vehicleId,
         segmentFingerprint: `fp-${randomUUID()}`,
         dimoSegmentId: `dimo-${randomUUID()}`,
         source: HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE,
@@ -229,7 +229,7 @@ describe('M3.3-HV-H4-A3.3-O2-R1 integrity attestation foundation', () => {
     const sci = buildM3_3HvH4ChargeSessionEvidenceScientificProjectionV1(session);
     const { revision } = await insertCoherentRevisionWithAck(prisma, sci);
     await issueAttestationSql(prisma, revision.id);
-    await prisma.vehicle.delete({ where: { id: vehicle.id } });
+    await prisma.vehicle.delete({ where: { id: vehicleId } });
     expect(await prisma.batteryHvChargeSessionEvidenceIntegrityAttestation.count()).toBe(0);
   });
 

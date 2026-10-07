@@ -37,6 +37,48 @@ ALTER TABLE "battery_hv_charge_session_evidence_integrity_attestations"
 
 REVOKE ALL ON TABLE "battery_hv_charge_session_evidence_integrity_attestations" FROM PUBLIC;
 
+-- Tagged energy JSON text (fixed key order, no JSONB whitespace) for tuple element 12.
+CREATE OR REPLACE FUNCTION m3_3_hv_h4_a3_energy_tag_canonical_json_v1(e jsonb)
+RETURNS text
+LANGUAGE plpgsql
+IMMUTABLE
+STRICT
+AS $$
+DECLARE
+  k text := e->>'kind';
+  v text;
+BEGIN
+  IF k = 'NULL' THEN
+    RETURN '{"kind":"NULL"}';
+  ELSIF k = 'NAN' THEN
+    RETURN '{"kind":"NAN"}';
+  ELSIF k = 'POSITIVE_INFINITY' THEN
+    RETURN '{"kind":"POSITIVE_INFINITY"}';
+  ELSIF k = 'NEGATIVE_INFINITY' THEN
+    RETURN '{"kind":"NEGATIVE_INFINITY"}';
+  ELSIF k = 'FINITE' THEN
+    v := e->'value'::text;
+    RETURN '{"kind":"FINITE","value":' || v || '}';
+  END IF;
+  RAISE EXCEPTION 'unsupported energy tag %', k;
+END;
+$$;
+
+-- JSON array element: null | boolean | string (TS JSON.stringify tuple semantics).
+CREATE OR REPLACE FUNCTION m3_3_hv_h4_a3_json_array_elem_from_jsonb_v1(v jsonb)
+RETURNS text
+LANGUAGE sql
+IMMUTABLE
+STRICT
+AS $$
+  SELECT CASE jsonb_typeof(v)
+    WHEN 'null' THEN 'null'
+    WHEN 'boolean' THEN v::text
+    WHEN 'string' THEN to_json(v #>> '{}')::text
+    ELSE to_json(v #>> '{}')::text
+  END;
+$$;
+
 -- Canonical UTF-8 (compact JSON array) aligned to TS JSON.stringify(tuple) for normative field order.
 CREATE OR REPLACE FUNCTION m3_3_hv_h4_a3_canonical_utf8_from_projection_jsonb_v1(p jsonb)
 RETURNS text
@@ -44,33 +86,29 @@ LANGUAGE sql
 IMMUTABLE
 STRICT
 AS $$
-  SELECT replace(
-    json_build_array(
-      'SHA256_CANONICAL_ORDERED_JSON_V1',
-      p->'evidenceContractVersion',
-      p->'organizationId',
-      p->'vehicleId',
-      p->'sourceHvChargeSessionId',
-      p->'segmentFingerprint',
-      p->'dimoSegmentId',
-      p->'providerSegmentId',
-      p->'source',
-      p->'startAt',
-      p->'endAt',
-      p->'isOngoing',
-      p->'energyAddedKwh',
-      p->'providerObservedAt',
-      p->'addedEnergyProvenance',
-      p->'qualityStatus',
-      p->'supersededBySegmentFingerprint',
-      p->'startedBeforeRange',
-      p->'sourceCreatedAt',
-      p->'sourceReceivedAt',
-      p->'sourceUpdatedAt'
-    )::text,
-    ', ',
-    ','
-  );
+  SELECT '[' ||
+    to_json('SHA256_CANONICAL_ORDERED_JSON_V1'::text)::text || ',' ||
+    m3_3_hv_h4_a3_json_array_elem_from_jsonb_v1(p->'evidenceContractVersion') || ',' ||
+    m3_3_hv_h4_a3_json_array_elem_from_jsonb_v1(p->'organizationId') || ',' ||
+    m3_3_hv_h4_a3_json_array_elem_from_jsonb_v1(p->'vehicleId') || ',' ||
+    m3_3_hv_h4_a3_json_array_elem_from_jsonb_v1(p->'sourceHvChargeSessionId') || ',' ||
+    m3_3_hv_h4_a3_json_array_elem_from_jsonb_v1(p->'segmentFingerprint') || ',' ||
+    m3_3_hv_h4_a3_json_array_elem_from_jsonb_v1(p->'dimoSegmentId') || ',' ||
+    m3_3_hv_h4_a3_json_array_elem_from_jsonb_v1(p->'providerSegmentId') || ',' ||
+    m3_3_hv_h4_a3_json_array_elem_from_jsonb_v1(p->'source') || ',' ||
+    m3_3_hv_h4_a3_json_array_elem_from_jsonb_v1(p->'startAt') || ',' ||
+    m3_3_hv_h4_a3_json_array_elem_from_jsonb_v1(p->'endAt') || ',' ||
+    m3_3_hv_h4_a3_json_array_elem_from_jsonb_v1(p->'isOngoing') || ',' ||
+    m3_3_hv_h4_a3_energy_tag_canonical_json_v1(p->'energyAddedKwh') || ',' ||
+    m3_3_hv_h4_a3_json_array_elem_from_jsonb_v1(p->'providerObservedAt') || ',' ||
+    m3_3_hv_h4_a3_json_array_elem_from_jsonb_v1(p->'addedEnergyProvenance') || ',' ||
+    m3_3_hv_h4_a3_json_array_elem_from_jsonb_v1(p->'qualityStatus') || ',' ||
+    m3_3_hv_h4_a3_json_array_elem_from_jsonb_v1(p->'supersededBySegmentFingerprint') || ',' ||
+    m3_3_hv_h4_a3_json_array_elem_from_jsonb_v1(p->'startedBeforeRange') || ',' ||
+    m3_3_hv_h4_a3_json_array_elem_from_jsonb_v1(p->'sourceCreatedAt') || ',' ||
+    m3_3_hv_h4_a3_json_array_elem_from_jsonb_v1(p->'sourceReceivedAt') || ',' ||
+    m3_3_hv_h4_a3_json_array_elem_from_jsonb_v1(p->'sourceUpdatedAt') ||
+  ']';
 $$;
 
 CREATE OR REPLACE FUNCTION m3_3_hv_h4_a3_source_revision_fingerprint_from_projection_jsonb_v1(p jsonb)
