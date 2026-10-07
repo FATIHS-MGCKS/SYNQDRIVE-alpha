@@ -316,8 +316,6 @@ async function seedActivatedOutbox(
     });
     await processor.processRow(activateOutboxId);
 
-    const t2 = new Date('2026-09-15T18:00:00.000Z');
-    jest.useFakeTimers({ now: t2 });
     await offboarding.offboardVehicle({
       organizationId: orgId,
       vehicleId,
@@ -325,7 +323,6 @@ async function seedActivatedOutbox(
       actorUserId: null,
       idempotencyKey: randomUUID(),
     });
-    jest.useRealTimers();
 
     const offboardOutbox = await prisma.vehicleRegistryLifecycleOutbox.findFirstOrThrow({
       where: { vehicleId, eventType: 'VEHICLE_OFFBOARDED' },
