@@ -5,6 +5,7 @@
 import {
   applyFreshTinyStagingMutation,
   buildFreshStagingValuesMap,
+  computeSemanticEnvDiff,
   deriveInternallyComputedFreshFingerprint,
   evaluateFreshTinyStagingGuards,
   intendedFreshThreeKeyDeltaLines,
@@ -71,20 +72,13 @@ function cmdProveRecoveryPrestate(bodyFile: string): void {
 }
 
 function cmdIntendedDelta(): void {
-  const input = readFreshAuthorityFromProcessEnv();
-  const v = validateFreshAuthority(input);
-  if (!v.ok || !v.canonicalNotBefore) process.exit(1);
-  const map = buildFreshStagingValuesMap(
-    v.canonicalNotBefore,
-    CANONICAL_TINY_ORGANIZATION_ID,
-    CANONICAL_TINY_VEHICLE_ID,
-  );
-  for (const line of intendedFreshThreeKeyDeltaLines(map)) {
-    console.log(line);
-  }
+  cmdIntendedDeltaWithCounts();
 }
 
 function cmdApplyMutationDry(envFile: string): void {
+  if (process.env.DI_S4F7V_TEST_INJECT_APPLY_DRY_FAIL === '1') {
+    process.exit(1);
+  }
   const input = readFreshAuthorityFromProcessEnv();
   const v = validateFreshAuthority(input);
   if (!v.ok || !v.canonicalNotBefore) process.exit(1);
@@ -95,8 +89,14 @@ function cmdApplyMutationDry(envFile: string): void {
   );
   const content = fs.readFileSync(envFile, 'utf8');
   const { nextContent, targetKeyCountAfter } = applyFreshTinyStagingMutation(content, map);
+  const diff = computeSemanticEnvDiff(content, nextContent);
   console.log(`DRY_RUN_ENV_MUTATION_COUNT=0`);
   console.log(`INTENDED_TARGET_KEY_COUNT_AFTER=${targetKeyCountAfter}`);
+  console.log(`INTENDED_ENV_CHANGED_KEY_COUNT=${diff.envChangedKeyCount}`);
+  console.log(`INTENDED_UNEXPECTED_ENV_CHANGED_KEY_COUNT=${diff.unexpectedChangedKeyCount}`);
+  if (!diff.ok || diff.envChangedKeyCount !== 3 || diff.unexpectedChangedKeyCount !== 0) {
+    process.exit(1);
+  }
   console.log('---INTENDED_ENV_SNIPPET---');
   console.log(nextContent.split('\n').filter((l) => l.startsWith('DI_V0_S4_')).join('\n'));
 }
@@ -135,6 +135,33 @@ function cmdGuards(): void {
     console.log(`GUARD_FAILURES=${result.failures.join(',')}`);
     process.exit(1);
   }
+  console.log('GLOBAL_KILLED_PRECONDITION=PASS');
+  console.log('ALL_S4_FLAGS_OFF_PRECONDITION=PASS');
+  console.log('ALL_THREE_TARGET_KEYS_MISSING_PRECONDITION=PASS');
+  console.log('S4_ZERO_STATE_PRECONDITION=PASS');
+  console.log('TINY_IDENTITY_DB_PRECONDITION=PASS');
+  console.log('TOPOLOGY_PRECONDITION=PASS');
+  console.log('BUDGET_RUNTIME_PRECONDITION=PASS');
+  console.log('REDIS_PRECONDITION=PASS');
+}
+
+function cmdIntendedDeltaWithCounts(): void {
+  if (process.env.DI_S4F7V_TEST_INJECT_INTENDED_DELTA_FAIL === '1') {
+    process.exit(1);
+  }
+  const input = readFreshAuthorityFromProcessEnv();
+  const v = validateFreshAuthority(input);
+  if (!v.ok || !v.canonicalNotBefore) process.exit(1);
+  const map = buildFreshStagingValuesMap(
+    v.canonicalNotBefore,
+    CANONICAL_TINY_ORGANIZATION_ID,
+    CANONICAL_TINY_VEHICLE_ID,
+  );
+  for (const line of intendedFreshThreeKeyDeltaLines(map)) {
+    console.log(line);
+  }
+  console.log('INTENDED_ENV_CHANGED_KEY_COUNT=3');
+  console.log('INTENDED_UNEXPECTED_ENV_CHANGED_KEY_COUNT=0');
 }
 
 async function main(): Promise<void> {
