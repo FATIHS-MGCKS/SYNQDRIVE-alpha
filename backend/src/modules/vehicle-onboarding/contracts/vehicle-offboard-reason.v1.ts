@@ -4,11 +4,13 @@ export type VehicleOffboardReasonCode =
   | 'REMOVE_FROM_PRODUCT'
   | 'ADMINISTRATIVE_OFFBOARD';
 
-const ALLOWED: ReadonlySet<VehicleOffboardReasonCode> = new Set([
+export const VEHICLE_OFFBOARD_REASON_CODES: readonly VehicleOffboardReasonCode[] = [
   'OFFBOARD_SOLD',
   'REMOVE_FROM_PRODUCT',
   'ADMINISTRATIVE_OFFBOARD',
-]);
+];
+
+const ALLOWED: ReadonlySet<VehicleOffboardReasonCode> = new Set(VEHICLE_OFFBOARD_REASON_CODES);
 
 export function assertVehicleOffboardReason(
   reason: string,
