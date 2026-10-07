@@ -28,6 +28,8 @@ import {
   DI_S4F7V_LEGACY_LIVE_STAGING_AUTHORIZED_ENV,
   DI_S4F7Y_LIVE_STAGING_AUTHORIZED_ENV,
   evaluateEngineeringTestHarnessContract,
+  evaluateForensicProductionSimulationContract,
+  isApprovedLiveFixtureHarness,
   evaluateLiveStagingAuthorizationGate,
   evaluateNoBackfillFinalTripGate,
   isExternalLiveStagingAuthorized,
@@ -195,7 +197,7 @@ function cmdValidateLiveAuthorization(): void {
     actualOrganizationAllowlist: (process.env.DI_S4_TINY_FRESH_ORGANIZATION_ALLOWLIST ?? '').trim(),
     actualVehicleAllowlist: (process.env.DI_S4_TINY_FRESH_VEHICLE_ALLOWLIST ?? '').trim(),
   };
-  const testHarness = process.env.DI_S4F7Y_ENGINEERING_TEST_HARNESS === 'YES';
+  const testHarness = isApprovedLiveFixtureHarness(process.env);
   const accidentalFixture =
     accidentalLiveTestControlsPresent(process.env) && !testHarness && process.env.DRY_RUN !== '1';
   const gate = evaluateLiveStagingAuthorizationGate({
@@ -297,6 +299,16 @@ function cmdValidateEngineeringHarness(): void {
   console.log('PRODUCTION_BACKEND_ENV_ALLOWED_IN_TEST_HARNESS=NO');
 }
 
+function cmdValidateForensicHarness(): void {
+  const r = evaluateForensicProductionSimulationContract();
+  console.log(`FORENSIC_PRODUCTION_SIMULATION_CONTRACT_OK=${r.ok ? 'YES' : 'NO'}`);
+  if (!r.ok) {
+    console.log(`FORENSIC_PRODUCTION_SIMULATION_FAILURES=${r.failures.join(',')}`);
+    process.exit(1);
+  }
+  console.log('PRODUCTION_BACKEND_ENV_ALLOWED_IN_TEST_HARNESS=NO');
+}
+
 function cmdVerifyLivePoststate(backupPath: string, currentPath: string): void {
   if (process.env.DI_S4F7Y_TEST_INJECT_FINAL_POSTSTATE_FAIL === '1') {
     console.log('FINAL_ENV_POSTSTATE_REVERIFY=FAIL');
@@ -387,12 +399,15 @@ async function main(): Promise<void> {
     case 'validate-engineering-harness':
       cmdValidateEngineeringHarness();
       break;
+    case 'validate-forensic-harness':
+      cmdValidateForensicHarness();
+      break;
     case 'verify-live-poststate':
       cmdVerifyLivePoststate(process.argv[3] ?? '', process.argv[4] ?? '');
       break;
     default:
       console.error(
-        'usage: cli.ts <validate-fresh-authority|derive-fingerprint|prove-fresh-runtime|prove-recovery-prestate|intended-delta|apply-mutation-dry|apply-mutation-live|guards|validate-live-authorization|validate-no-backfill-final|revalidate-external-live-authorization|validate-engineering-harness|verify-live-poststate>',
+        'usage: cli.ts <validate-fresh-authority|derive-fingerprint|prove-fresh-runtime|prove-recovery-prestate|intended-delta|apply-mutation-dry|apply-mutation-live|guards|validate-live-authorization|validate-no-backfill-final|revalidate-external-live-authorization|validate-engineering-harness|validate-forensic-harness|verify-live-poststate>',
       );
       process.exit(2);
   }

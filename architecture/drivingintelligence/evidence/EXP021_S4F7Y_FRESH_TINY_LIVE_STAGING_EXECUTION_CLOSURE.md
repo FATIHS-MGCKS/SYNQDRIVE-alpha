@@ -82,6 +82,13 @@ Corrective closure on PR **#1915** before merge. **Git authority:** starting PR 
 
 Merge gate: **S4F-7Y.1 required** before treating S4F-7Y as merge-ready.
 
+## S4F-7Y.2 terminal outcome forensics seal (2026-10-07)
+
+- `S4F7Y_1_TECHNICAL_TRANSACTION_SAFETY=PASS` (preserved)
+- `S4F7Y_2_TERMINAL_FORENSIC_SEMANTICS=PASS`
+
+Monotonic internal production historical facts (`S4F7Y_OPERATOR_AUTH_VALIDATED`, staging attempt, env mutation, restart attempt/success counts, rollback attempt/completion, final state restored, transaction committed) drive a **single** terminal outcome authority (`TERMINAL_OUTCOME_AUTHORITY_COUNT=1`). Rollback restores runtime state but does not erase mutation/restart history. Pre-mutation emits `LIVE_STAGING_OPERATOR_AUTHORIZATION_VALIDATED=YES` only — not terminal `PRODUCTION_STAGING_AUTHORIZED`. Engineering harness and `DI_S4F7Y_FORENSIC_PRODUCTION_SIMULATION=YES` (fixture-backed) remain isolated from Production historical facts.
+
 ## Next operator action
 
-After merge + CI: seal exact S4F-7Y.1 tool SHA and generate a **new** JIT staging authorization packet for human review before any real `DRY_RUN=0` Production run.
+After merge + CI: seal exact S4F-7Y.2 tool SHA and generate a **new** JIT staging authorization packet for human review before any real `DRY_RUN=0` Production run.

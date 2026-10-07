@@ -104,11 +104,13 @@ function runHarness(extra: Record<string, string> = {}): string {
 describe('S4F-7Y.1 safety seal', () => {
   const LIVE_LIB = path.join(__dirname, '../lib/di-v0-s4-fresh-tiny-staging-live-transaction.lib.sh');
 
-  it('implements production-success terminal semantics in shell authority', () => {
+  it('implements Y.2 monotonic facts and fact-derived terminal emitter', () => {
     const sh = fs.readFileSync(LIVE_LIB, 'utf8');
-    expect(sh).toContain('PRODUCTION_SUCCESS');
-    expect(sh).toContain('PRODUCTION_STAGING_EXECUTED=YES');
+    expect(sh).toContain('S4F7Y_OPERATOR_AUTH_VALIDATED=0');
+    expect(sh).toContain('s4f7y_emit_terminal_outcomes()');
+    expect(sh).toContain('LIVE_STAGING_OPERATOR_AUTHORIZATION_VALIDATED=YES');
     expect(sh).not.toMatch(/export DI_S4F7Y_LIVE_STAGING_AUTHORIZED=YES/);
+    expect(sh).not.toContain('PRODUCTION_SUCCESS');
   });
 
   it('engineering harness rejects production backend.env path', () => {

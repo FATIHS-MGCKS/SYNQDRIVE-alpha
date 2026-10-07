@@ -35,19 +35,13 @@ export const AUTHORIZED_ORGANIZATION_ALLOWLIST_ENV = 'AUTHORIZED_ORGANIZATION_AL
 export const AUTHORIZED_VEHICLE_ALLOWLIST_ENV = 'AUTHORIZED_VEHICLE_ALLOWLIST';
 
 export const DI_S4F7Y_ENGINEERING_TEST_HARNESS_ENV = 'DI_S4F7Y_ENGINEERING_TEST_HARNESS';
+export const DI_S4F7Y_FORENSIC_PRODUCTION_SIMULATION_ENV = 'DI_S4F7Y_FORENSIC_PRODUCTION_SIMULATION';
 export const PRODUCTION_SHARED_BACKEND_ENV_PATH = '/opt/synqdrive/shared/backend.env';
 
-export function isExternalLiveStagingAuthorized(env: NodeJS.ProcessEnv = process.env): boolean {
-  return (env[DI_S4F7Y_LIVE_STAGING_AUTHORIZED_ENV] ?? '').trim() === 'YES';
-}
-
-export function evaluateEngineeringTestHarnessContract(
-  env: NodeJS.ProcessEnv = process.env,
-): { ok: boolean; failures: string[] } {
-  const failures: string[] = [];
-  if ((env[DI_S4F7Y_ENGINEERING_TEST_HARNESS_ENV] ?? '').trim() !== 'YES') {
-    failures.push('ENGINEERING_TEST_HARNESS_NOT_ENABLED');
-  }
+function evaluateFixtureTopologyContract(
+  env: NodeJS.ProcessEnv,
+  failures: string[],
+): void {
   const backendEnv = (env.SYNQDRIVE_BACKEND_ENV ?? '').trim();
   if (!backendEnv) failures.push('BACKEND_ENV_MISSING');
   else if (backendEnv === PRODUCTION_SHARED_BACKEND_ENV_PATH) {
@@ -59,6 +53,45 @@ export function evaluateEngineeringTestHarnessContract(
   if (!(env.DI_S4F7V_FIXTURE_RELEASE_DIR ?? '').trim() && !(env.DI_S4F7Y_FIXTURE_RELEASE_DIR ?? '').trim()) {
     failures.push('FIXTURE_RELEASE_DIR_MISSING');
   }
+}
+
+export function isExternalLiveStagingAuthorized(env: NodeJS.ProcessEnv = process.env): boolean {
+  return (env[DI_S4F7Y_LIVE_STAGING_AUTHORIZED_ENV] ?? '').trim() === 'YES';
+}
+
+/** Engineering harness or Y.2 forensic production simulation (fixture-backed). */
+export function isApprovedLiveFixtureHarness(env: NodeJS.ProcessEnv = process.env): boolean {
+  if ((env[DI_S4F7Y_ENGINEERING_TEST_HARNESS_ENV] ?? '').trim() === 'YES') {
+    return true;
+  }
+  return (
+    (env[DI_S4F7Y_FORENSIC_PRODUCTION_SIMULATION_ENV] ?? '').trim() === 'YES' &&
+    ((env.DI_S4F7V_FIXTURE_MODE ?? '').trim() === '1' || (env.DI_S4F7Y_FIXTURE_MODE ?? '').trim() === '1')
+  );
+}
+
+export function evaluateEngineeringTestHarnessContract(
+  env: NodeJS.ProcessEnv = process.env,
+): { ok: boolean; failures: string[] } {
+  const failures: string[] = [];
+  if ((env[DI_S4F7Y_ENGINEERING_TEST_HARNESS_ENV] ?? '').trim() !== 'YES') {
+    failures.push('ENGINEERING_TEST_HARNESS_NOT_ENABLED');
+  }
+  evaluateFixtureTopologyContract(env, failures);
+  return { ok: failures.length === 0, failures };
+}
+
+export function evaluateForensicProductionSimulationContract(
+  env: NodeJS.ProcessEnv = process.env,
+): { ok: boolean; failures: string[] } {
+  const failures: string[] = [];
+  if ((env[DI_S4F7Y_FORENSIC_PRODUCTION_SIMULATION_ENV] ?? '').trim() !== 'YES') {
+    failures.push('FORENSIC_PRODUCTION_SIMULATION_NOT_ENABLED');
+  }
+  if ((env.DI_S4F7V_FIXTURE_MODE ?? '').trim() !== '1' && (env.DI_S4F7Y_FIXTURE_MODE ?? '').trim() !== '1') {
+    failures.push('FORENSIC_REQUIRES_FIXTURE_MODE');
+  }
+  evaluateFixtureTopologyContract(env, failures);
   return { ok: failures.length === 0, failures };
 }
 

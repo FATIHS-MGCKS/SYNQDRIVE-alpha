@@ -1529,6 +1529,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | Reproduced wrapper false-negative staging outcomes, legacy `CAN_AUTHORIZE=YES` wording, rollback `\|\| true` swallowing, and weak test isolation on PR head `bbf5b392da…` |
 | NON_EFFECTS | No Production execution; engineering harness still reports `PRODUCTION_*=NO` |
 
+### EXP-021 S4F-7Y.2 terminal outcome + forensic truth seal (2026-10-07)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Monotonic `S4F7Y_*` production historical facts; fact-derived single terminal emitter; `LIVE_STAGING_OPERATOR_AUTHORIZATION_VALIDATED` pre-terminal; `DI_S4F7Y_FORENSIC_PRODUCTION_SIMULATION` fixture harness for Y.2 regression semantics; evidence addendum |
+| FINDING | **`S4F7Y_2_TERMINAL_FORENSIC_SEMANTICS=PASS`** — rollback does not erase mutation/restart history; failure paths preserve authorization facts; engineering harness production terminal history remains `NO` |
+| NON_EFFECTS | No Production execution; DRY_RUN=1 unchanged; Gate 6 **NOT_SATISFIED** |
+
 ### EXP-021 S4F-7T current Production attestation supersession closure (2026-10-06)
 
 | Event | Detail |

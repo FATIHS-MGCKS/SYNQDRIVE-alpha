@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# EXP-021 S4F-7Y / S4F-7Y.1 — fresh Tiny live staging transaction (fail-closed; dedicated engineering harness).
+# EXP-021 S4F-7Y / S4F-7Y.1 / S4F-7Y.2 — fresh Tiny live staging transaction (fail-closed; forensic terminal outcomes).
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   echo "This file must be sourced, not executed." >&2
   exit 1
@@ -15,15 +15,127 @@ S4F7Y_ENV_MUTATION_COUNT=0
 S4F7Y_RESTART_COUNT=0
 S4F7Y_REPLICA_A_ATTESTATION_OK=0
 S4F7Y_FORWARD_B_RESTART_COUNT=0
-S4F7Y_PRODUCTION_RESTART_OCCURRED=0
 S4F7Y_PROOF_KIND=PRESTATE
 S4F7Y_ROLLBACK_RESTART_FAILURE=0
 S4F7Y_TERMINAL_OUTCOME_EMITTED=0
+# S4F-7Y.2 monotonic production historical facts (0 -> 1 only; never erased by rollback)
+S4F7Y_OPERATOR_AUTH_VALIDATED=0
+S4F7Y_STAGING_ATTEMPTED=0
+S4F7Y_ENV_MUTATION_OCCURRED=0
+S4F7Y_RESTART_ATTEMPTED=0
+S4F7Y_PRODUCTION_RESTART_OCCURRED=0
+S4F7Y_FORWARD_RESTART_SUCCESS_COUNT=0
+S4F7Y_ROLLBACK_RESTART_SUCCESS_COUNT=0
+S4F7Y_ROLLBACK_ATTEMPTED=0
+S4F7Y_ROLLBACK_COMPLETED=0
+S4F7Y_FINAL_STATE_RESTORED=0
+S4F7Y_TRANSACTION_COMMITTED=0
 
 S4F7Y_PRODUCTION_SHARED_BACKEND_ENV="/opt/synqdrive/shared/backend.env"
 
 s4f7y_is_engineering_test_harness() {
   [[ "${DI_S4F7Y_ENGINEERING_TEST_HARNESS:-}" == "YES" ]]
+}
+
+s4f7y_is_forensic_production_simulation() {
+  [[ "${DI_S4F7Y_FORENSIC_PRODUCTION_SIMULATION:-}" == "YES" && "${DI_S4F7V_FIXTURE_MODE:-0}" == "1" ]]
+}
+
+s4f7y_uses_fixture_stubs() {
+  s4f7y_is_engineering_test_harness || s4f7y_is_forensic_production_simulation
+}
+
+s4f7y_records_production_history() {
+  ! s4f7y_is_engineering_test_harness
+}
+
+s4f7y_init_forensic_facts() {
+  S4F7Y_OPERATOR_AUTH_VALIDATED=0
+  S4F7Y_STAGING_ATTEMPTED=0
+  S4F7Y_ENV_MUTATION_OCCURRED=0
+  S4F7Y_RESTART_ATTEMPTED=0
+  S4F7Y_PRODUCTION_RESTART_OCCURRED=0
+  S4F7Y_FORWARD_RESTART_SUCCESS_COUNT=0
+  S4F7Y_ROLLBACK_RESTART_SUCCESS_COUNT=0
+  S4F7Y_ROLLBACK_ATTEMPTED=0
+  S4F7Y_ROLLBACK_COMPLETED=0
+  S4F7Y_FINAL_STATE_RESTORED=0
+  S4F7Y_TRANSACTION_COMMITTED=0
+  S4F7Y_TERMINAL_OUTCOME_EMITTED=0
+}
+
+s4f7y_yes_no() {
+  if [[ "${1:-0}" == "1" ]]; then
+    echo "YES"
+  else
+    echo "NO"
+  fi
+}
+
+s4f7y_fact_mark_once() {
+  local var="$1"
+  if ! s4f7y_records_production_history; then
+    return 0
+  fi
+  if [[ "${!var:-0}" == "0" ]]; then
+    printf -v "$var" '%s' 1
+    echo "${var}=1"
+  fi
+}
+
+s4f7y_fact_operator_auth_validated() {
+  s4f7y_fact_mark_once S4F7Y_OPERATOR_AUTH_VALIDATED
+}
+
+s4f7y_fact_staging_attempted() {
+  s4f7y_fact_mark_once S4F7Y_STAGING_ATTEMPTED
+}
+
+s4f7y_fact_env_mutation_occurred() {
+  s4f7y_fact_mark_once S4F7Y_ENV_MUTATION_OCCURRED
+}
+
+s4f7y_fact_restart_attempted() {
+  s4f7y_fact_mark_once S4F7Y_RESTART_ATTEMPTED
+}
+
+s4f7y_fact_production_restart_success() {
+  local phase="${1:-forward}"
+  if ! s4f7y_records_production_history; then
+    return 0
+  fi
+  s4f7y_fact_mark_once S4F7Y_PRODUCTION_RESTART_OCCURRED
+  if [[ "$phase" == "forward" ]]; then
+    S4F7Y_FORWARD_RESTART_SUCCESS_COUNT=$((S4F7Y_FORWARD_RESTART_SUCCESS_COUNT + 1))
+  elif [[ "$phase" == "recovery" ]]; then
+    S4F7Y_ROLLBACK_RESTART_SUCCESS_COUNT=$((S4F7Y_ROLLBACK_RESTART_SUCCESS_COUNT + 1))
+  fi
+}
+
+s4f7y_fact_rollback_attempted() {
+  s4f7y_fact_mark_once S4F7Y_ROLLBACK_ATTEMPTED
+}
+
+s4f7y_fact_rollback_completed() {
+  if ! s4f7y_records_production_history; then
+    return 0
+  fi
+  S4F7Y_ROLLBACK_COMPLETED=1
+  S4F7Y_FINAL_STATE_RESTORED=1
+  echo "S4F7Y_ROLLBACK_COMPLETED=1"
+  echo "S4F7Y_FINAL_STATE_RESTORED=1"
+}
+
+s4f7y_fact_transaction_committed() {
+  s4f7y_fact_mark_once S4F7Y_TRANSACTION_COMMITTED
+}
+
+s4f7y_production_mutation_occurred_fact() {
+  if [[ "$S4F7Y_ENV_MUTATION_OCCURRED" == "1" || "$S4F7Y_PRODUCTION_RESTART_OCCURRED" == "1" ]]; then
+    echo "1"
+  else
+    echo "0"
+  fi
 }
 
 s4f7y_tx_set() {
@@ -36,49 +148,73 @@ s4f7y_log() {
 }
 
 s4f7y_emit_terminal_outcomes() {
-  local outcome="$1"
   if [[ "$S4F7Y_TERMINAL_OUTCOME_EMITTED" == "1" ]]; then
+    echo "TERMINAL_OUTCOME_KEYS_DUPLICATED=YES"
     echo "TERMINAL_OUTCOME_KEYS_CONTRADICTORY=YES"
     return 1
   fi
   S4F7Y_TERMINAL_OUTCOME_EMITTED=1
+  echo "TERMINAL_OUTCOME_AUTHORITY_COUNT=1"
+  echo "TERMINAL_OUTCOME_KEYS_DUPLICATED=NO"
   echo "TERMINAL_OUTCOME_KEYS_CONTRADICTORY=NO"
-  case "$outcome" in
-    ENGINEERING_SUCCESS)
-      echo "PRODUCTION_STAGING_AUTHORIZED=NO"
-      echo "PRODUCTION_STAGING_EXECUTED=NO"
-      echo "PRODUCTION_ENV_MUTATION_OCCURRED=NO"
-      echo "PRODUCTION_RESTART_OCCURRED=NO"
-      echo "PRODUCTION_MUTATION_OCCURRED=NO"
+
+  local total_restart_success=0
+  if s4f7y_records_production_history; then
+    total_restart_success=$((S4F7Y_FORWARD_RESTART_SUCCESS_COUNT + S4F7Y_ROLLBACK_RESTART_SUCCESS_COUNT))
+    echo "PRODUCTION_STAGING_AUTHORIZED=$(s4f7y_yes_no "$S4F7Y_OPERATOR_AUTH_VALIDATED")"
+    echo "PRODUCTION_STAGING_ATTEMPTED=$(s4f7y_yes_no "$S4F7Y_STAGING_ATTEMPTED")"
+    echo "PRODUCTION_STAGING_EXECUTED=$(s4f7y_yes_no "$S4F7Y_TRANSACTION_COMMITTED")"
+    echo "PRODUCTION_STAGING_TRANSACTION_COMMITTED=$(s4f7y_yes_no "$S4F7Y_TRANSACTION_COMMITTED")"
+    echo "PRODUCTION_ENV_MUTATION_OCCURRED=$(s4f7y_yes_no "$S4F7Y_ENV_MUTATION_OCCURRED")"
+    echo "PRODUCTION_RESTART_ATTEMPTED=$(s4f7y_yes_no "$S4F7Y_RESTART_ATTEMPTED")"
+    echo "PRODUCTION_RESTART_OCCURRED=$(s4f7y_yes_no "$S4F7Y_PRODUCTION_RESTART_OCCURRED")"
+    echo "PRODUCTION_MUTATION_OCCURRED=$(s4f7y_yes_no "$(s4f7y_production_mutation_occurred_fact)")"
+    echo "PRODUCTION_ROLLBACK_ATTEMPTED=$(s4f7y_yes_no "$S4F7Y_ROLLBACK_ATTEMPTED")"
+    echo "PRODUCTION_ROLLBACK_COMPLETED=$(s4f7y_yes_no "$S4F7Y_ROLLBACK_COMPLETED")"
+    echo "PRODUCTION_FINAL_STATE_RESTORED=$(s4f7y_yes_no "$S4F7Y_FINAL_STATE_RESTORED")"
+    echo "FORWARD_RESTART_SUCCESS_COUNT=${S4F7Y_FORWARD_RESTART_SUCCESS_COUNT}"
+    echo "ROLLBACK_RESTART_SUCCESS_COUNT=${S4F7Y_ROLLBACK_RESTART_SUCCESS_COUNT}"
+    echo "TOTAL_PRODUCTION_RESTART_SUCCESS_COUNT=${total_restart_success}"
+  else
+    echo "PRODUCTION_STAGING_AUTHORIZED=NO"
+    echo "PRODUCTION_STAGING_ATTEMPTED=NO"
+    echo "PRODUCTION_STAGING_EXECUTED=NO"
+    echo "PRODUCTION_STAGING_TRANSACTION_COMMITTED=NO"
+    echo "PRODUCTION_ENV_MUTATION_OCCURRED=NO"
+    echo "PRODUCTION_RESTART_ATTEMPTED=NO"
+    echo "PRODUCTION_RESTART_OCCURRED=NO"
+    echo "PRODUCTION_MUTATION_OCCURRED=NO"
+    echo "PRODUCTION_ROLLBACK_ATTEMPTED=NO"
+    echo "PRODUCTION_ROLLBACK_COMPLETED=NO"
+    echo "PRODUCTION_FINAL_STATE_RESTORED=NO"
+    echo "FORWARD_RESTART_SUCCESS_COUNT=0"
+    echo "ROLLBACK_RESTART_SUCCESS_COUNT=0"
+    echo "TOTAL_PRODUCTION_RESTART_SUCCESS_COUNT=0"
+    if [[ "$S4F7Y_TRANSACTION_COMMITTED" == "1" ]]; then
       echo "ENGINEERING_TEST_HARNESS_LIVE_TRANSACTION=SIMULATED"
-      ;;
-    PRODUCTION_SUCCESS)
-      echo "PRODUCTION_STAGING_AUTHORIZED=YES"
-      echo "PRODUCTION_STAGING_EXECUTED=YES"
-      echo "PRODUCTION_ENV_MUTATION_OCCURRED=YES"
-      echo "PRODUCTION_RESTART_OCCURRED=YES"
-      echo "PRODUCTION_MUTATION_OCCURRED=YES"
-      ;;
-    FAILURE)
-      echo "PRODUCTION_STAGING_AUTHORIZED=NO"
-      echo "PRODUCTION_STAGING_EXECUTED=NO"
-      echo "PRODUCTION_ENV_MUTATION_OCCURRED=NO"
-      echo "PRODUCTION_RESTART_OCCURRED=NO"
-      echo "PRODUCTION_MUTATION_OCCURRED=NO"
-      ;;
-    *)
-      echo "TERMINAL_OUTCOME_UNKNOWN=${outcome}"
-      return 1
-      ;;
-  esac
+    fi
+  fi
   echo "EXPLICIT_OPERATOR_AUTHORIZATION_GATE=NOT_SATISFIED"
   echo "TINY_ACTIVATION_READY=NO"
   echo "S4_ACTIVATION_OCCURRED=NO"
   return 0
 }
 
+s4f7y_emit_terminal_and_fail() {
+  s4f7y_emit_terminal_outcomes || true
+  return 1
+}
+
+s4f7y_guard_or_terminal_fail() {
+  if ! "$@"; then
+    s4f7y_emit_terminal_outcomes || true
+    return 1
+  fi
+  return 0
+}
+
 s4f7y_assert_real_live_path_no_accidental_test_controls() {
-  if s4f7y_is_engineering_test_harness; then
+  if s4f7y_uses_fixture_stubs; then
     return 0
   fi
   if [[ "${DI_S4F7V_TEST_MODE:-0}" == "1" || "${DI_S4F7Y_TEST_MODE:-0}" == "1" ]]; then
@@ -98,14 +234,20 @@ s4f7y_assert_real_live_path_no_accidental_test_controls() {
 }
 
 s4f7y_validate_engineering_test_harness() {
-  if ! s4f7y_is_engineering_test_harness; then
+  if ! s4f7y_uses_fixture_stubs; then
     return 0
   fi
   if [[ "${SYNQDRIVE_BACKEND_ENV:-}" == "$S4F7Y_PRODUCTION_SHARED_BACKEND_ENV" ]]; then
     echo "PRODUCTION_BACKEND_ENV_ALLOWED_IN_TEST_HARNESS=YES"
     return 1
   fi
-  s4f7v_run_cli validate-engineering-harness || return 1
+  if s4f7y_is_engineering_test_harness; then
+    s4f7v_run_cli validate-engineering-harness || return 1
+  elif s4f7y_is_forensic_production_simulation; then
+    s4f7v_run_cli validate-forensic-harness || return 1
+  else
+    return 1
+  fi
   echo "PRODUCTION_BACKEND_ENV_ALLOWED_IN_TEST_HARNESS=NO"
   return 0
 }
@@ -113,22 +255,19 @@ s4f7y_validate_engineering_test_harness() {
 s4f7y_revalidate_external_live_authorization() {
   if ! s4f7v_run_cli revalidate-external-live-authorization; then
     echo "FAIL_CLOSED=YES"
-    echo "PRODUCTION_MUTATION_OCCURRED=NO"
     return 1
   fi
   return 0
 }
 
-s4f7y_emit_staging_authorized_pre_mutation() {
-  if s4f7y_is_engineering_test_harness; then
-    return 0
-  fi
-  echo "PRODUCTION_STAGING_AUTHORIZED=YES"
+s4f7y_emit_operator_authorization_validated_pre_mutation() {
+  echo "LIVE_STAGING_OPERATOR_AUTHORIZATION_VALIDATED=YES"
+  s4f7y_fact_operator_auth_validated
   return 0
 }
 
 s4f7y_install_test_stubs() {
-  if ! s4f7y_is_engineering_test_harness; then
+  if ! s4f7y_uses_fixture_stubs; then
     return 0
   fi
   vps_replica_ensure_registered() { return 0; }
@@ -302,8 +441,10 @@ s4f7y_disarm_recovery() {
 s4f7y_rollback_restart_replica() {
   local label="$1" name="$2"
   echo "ROLLBACK_REPLICA_${label}_RESTART_ATTEMPTED=YES"
+  s4f7y_fact_restart_attempted
   if vps_replica_restart_one "$name"; then
     echo "ROLLBACK_REPLICA_${label}_RESTART_RESULT=SUCCESS"
+    s4f7y_fact_production_restart_success recovery
     return 0
   fi
   echo "ROLLBACK_REPLICA_${label}_RESTART_RESULT=FAILED"
@@ -355,7 +496,7 @@ s4f7y_recovery_post_verify() {
     echo "ROLLBACK_REPLICA_B_HEALTH_READY_VERIFIED=YES"
   fi
 
-  if s4f7y_is_engineering_test_harness; then
+  if s4f7y_uses_fixture_stubs; then
     echo "REPLICA_A_PROCESS_RELEASE_IDENTITY=YES"
     echo "REPLICA_B_PROCESS_RELEASE_IDENTITY=YES"
   else
@@ -417,12 +558,13 @@ s4f7y_on_recovery() {
   s4f7y_tx_set RECOVERY_IN_PROGRESS
   echo "ROLLBACK_TRIGGER=${reason}"
   echo "ROLLBACK_REQUIRED=YES"
+  s4f7y_fact_rollback_attempted
   S4F7Y_ROLLBACK_RESTART_FAILURE=0
   if ! s4f4_restore_backend_env_atomic "$BACKEND_ENV" "$S4F7Y_BACKUP_FILE" "$S4F7Y_BACKEND_ENV_SHA256_BEFORE"; then
     echo "ROLLBACK_RESULT=FAILED"
     echo "ROLLBACK_RESTART_FAILURE_SILENTLY_IGNORED=NO"
     echo "OPERATOR_INTERVENTION_REQUIRED=YES"
-    s4f7y_emit_terminal_outcomes FAILURE || true
+    s4f7y_emit_terminal_outcomes || true
     return 1
   fi
   S4F7Y_RESTART_PHASE=recovery
@@ -438,18 +580,19 @@ s4f7y_on_recovery() {
     echo "ROLLBACK_RESTART_FAILURE_SILENTLY_IGNORED=NO"
     echo "ROLLBACK_RESULT=FAILED"
     echo "OPERATOR_INTERVENTION_REQUIRED=YES"
-    s4f7y_emit_terminal_outcomes FAILURE || true
+    s4f7y_emit_terminal_outcomes || true
     return 1
   fi
   echo "ROLLBACK_RESTART_FAILURE_SILENTLY_IGNORED=NO"
   if ! s4f7y_recovery_post_verify "$S4F7Y_TARGET_SHA"; then
     echo "ROLLBACK_RESULT=FAILED"
     echo "OPERATOR_INTERVENTION_REQUIRED=YES"
-    s4f7y_emit_terminal_outcomes FAILURE || true
+    s4f7y_emit_terminal_outcomes || true
     return 1
   fi
   echo "ROLLBACK_RESULT=COMPLETE"
-  s4f7y_emit_terminal_outcomes FAILURE || true
+  s4f7y_fact_rollback_completed
+  s4f7y_emit_terminal_outcomes || true
   return 1
 }
 
@@ -471,7 +614,7 @@ s4f7y_fail_after_arm() {
   if [[ "$S4F7Y_RECOVERY_ARMED" == "1" ]]; then
     s4f7y_on_recovery "$reason" || true
   else
-    s4f7y_emit_terminal_outcomes FAILURE || true
+    s4f7y_emit_terminal_outcomes || true
   fi
   exit 1
 }
@@ -490,7 +633,7 @@ s4f7y_final_pre_mutation_revalidation() {
     return 1
   fi
   echo "LIVE_STAGING_AUTHORIZATION_VALID=YES"
-  s4f7y_emit_staging_authorized_pre_mutation
+  s4f7y_emit_operator_authorization_validated_pre_mutation
   local trip_out
   trip_out="$(s4f7y_query_no_backfill_trip_proof)"
   printf '%s\n' "$trip_out"
@@ -508,10 +651,11 @@ s4f7y_restart_replica_a_forward() {
   S4F7Y_RESTART_PHASE=forward
   export S4F7Y_RESTART_PHASE
   S4F7Y_PROOF_KIND=FRESH
+  s4f7y_fact_restart_attempted
   vps_replica_restart_one "${SYNQDRIVE_REPLICA_A_PM2_NAME}" || return 1
   S4F7Y_RESTART_COUNT=$((S4F7Y_RESTART_COUNT + 1))
-  S4F7Y_PRODUCTION_RESTART_OCCURRED=1
   vps_replica_wait_healthy "${SYNQDRIVE_REPLICA_A_PM2_NAME}" "${SYNQDRIVE_REPLICA_A_PORT}" "$target_sha" || return 1
+  s4f7y_fact_production_restart_success forward
   if [[ "${DI_S4F7Y_TEST_INJECT_ATTESTATION_A_FAIL:-0}" == "1" ]]; then
     return 1
   fi
@@ -535,9 +679,11 @@ s4f7y_restart_replica_b_forward() {
   fi
   echo "REPLICA_B_RESTART_BEFORE_A_ATTESTATION_PASS=NO"
   S4F7Y_FORWARD_B_RESTART_COUNT=$((S4F7Y_FORWARD_B_RESTART_COUNT + 1))
+  s4f7y_fact_restart_attempted
   vps_replica_restart_one "${SYNQDRIVE_REPLICA_B_PM2_NAME}" || return 1
   S4F7Y_RESTART_COUNT=$((S4F7Y_RESTART_COUNT + 1))
   vps_replica_wait_healthy "${SYNQDRIVE_REPLICA_B_PM2_NAME}" "${SYNQDRIVE_REPLICA_B_PORT}" "$target_sha" || return 1
+  s4f7y_fact_production_restart_success forward
   if [[ "${DI_S4F7Y_TEST_INJECT_ATTESTATION_B_FAIL:-0}" == "1" ]]; then
     return 1
   fi
@@ -610,22 +756,24 @@ s4f7y_require_operator_authorization_packet() {
 }
 
 s4f7y_execute_live_transaction() {
+  s4f7y_init_forensic_facts
   echo "EXP021_S4F7Y_LIVE_STAGING_TRANSACTION=1"
   echo "EXP021_S4F7Y_1_LIVE_TRANSACTION_SAFETY_SEAL=1"
+  echo "EXP021_S4F7Y_2_TERMINAL_OUTCOME_FORENSICS_SEAL=1"
   echo "ROLLING_RESTART_ORDER=A_THEN_B"
   echo "SAME_PRODUCTION_SHA_REQUIRED=YES"
   echo "CODE_DEPLOY_OCCURRED=NO"
   echo "FRESH_RUNTIME_EXPECTED_STATE=OTHER"
   echo "PRODUCTION_DB_WRITE_OCCURRED=NO"
 
-  s4f7y_assert_real_live_path_no_accidental_test_controls || return 1
-  s4f7y_validate_engineering_test_harness || return 1
+  s4f7y_guard_or_terminal_fail s4f7y_assert_real_live_path_no_accidental_test_controls || return 1
+  s4f7y_guard_or_terminal_fail s4f7y_validate_engineering_test_harness || return 1
 
   if [[ "${DI_S4F7Y_LIVE_STAGING_AUTHORIZED:-}" != "YES" ]]; then
     echo "DEDICATED_LIVE_STAGING_AUTHORIZATION_REQUIRED=YES"
     echo "LIVE_STAGING_AUTHORIZATION_VALID=NO"
     echo "FAIL_CLOSED=YES"
-    s4f7y_emit_terminal_outcomes FAILURE || true
+    s4f7y_emit_terminal_outcomes || true
     return 1
   fi
   echo "OLD_S4F7V_AUTHORIZATION_ALONE_CAN_AUTHORIZE_LIVE_MUTATION=NO"
@@ -634,9 +782,9 @@ s4f7y_execute_live_transaction() {
 
   s4f7y_install_test_stubs
 
-  s4f7y_require_operator_authorization_packet || return 1
-  s4f7w_live_preflight_readonly || return 1
-  s4f7v_run_cli validate-fresh-authority || return 1
+  s4f7y_guard_or_terminal_fail s4f7y_require_operator_authorization_packet || return 1
+  s4f7y_guard_or_terminal_fail s4f7w_live_preflight_readonly || return 1
+  s4f7y_guard_or_terminal_fail s4f7v_run_cli validate-fresh-authority || return 1
 
   S4F7Y_TARGET_SHA="$(s4f7v_resolve_deployed_sha)"
   export DI_S4_TINY_STAGING_ACTUAL_SHA="$S4F7Y_TARGET_SHA"
@@ -645,21 +793,24 @@ s4f7y_execute_live_transaction() {
   actual_release="$(basename "$release_dir")"
   export DI_S4_TINY_STAGING_ACTUAL_RELEASE_ID="$actual_release"
 
-  s4f7y_final_pre_mutation_revalidation || return 1
+  s4f7y_guard_or_terminal_fail s4f7y_final_pre_mutation_revalidation || return 1
+  s4f7y_fact_staging_attempted
   echo "FINAL_JIT_AGE_RECHECK_IMPLEMENTED=YES"
 
   s4f7y_capture_pre_replica_pids
-  s4f7y_prove_pre_mutation_prestate_both || return 1
+  s4f7y_guard_or_terminal_fail s4f7y_prove_pre_mutation_prestate_both || return 1
 
-  s4f7j_require_durable_backup_dir || return 1
+  s4f7y_guard_or_terminal_fail s4f7j_require_durable_backup_dir || return 1
   local backup_dir="${SYNQDRIVE_DEPLOY_STATE_DIR}/s4f7y-fresh-tiny-staging"
   mkdir -p "$backup_dir"
   S4F7Y_BACKUP_FILE="${backup_dir}/backend.env.$(date -u +%Y%m%dT%H%M%SZ).bak"
   if [[ "${DI_S4F7Y_TEST_INJECT_BACKUP_FAIL:-0}" == "1" ]]; then
     echo "BACKUP_CREATED_BEFORE_MUTATION=NO"
+    s4f7y_emit_terminal_outcomes || true
     return 1
   fi
   if ! s4f4_create_verified_backend_env_backup "$BACKEND_ENV" "$S4F7Y_BACKUP_FILE"; then
+    s4f7y_emit_terminal_outcomes || true
     return 1
   fi
   echo "DURABLE_BACKUP_BEFORE_MUTATION=YES"
@@ -677,11 +828,12 @@ s4f7y_execute_live_transaction() {
     s4f7y_fail_after_arm "env_mutation"
   fi
   S4F7Y_ENV_MUTATION_COUNT=1
+  s4f7y_fact_env_mutation_occurred
   echo "FRESH_LIVE_MUTATION_IMPLEMENTED=YES"
   echo "LIVE_MUTATION_EXACT_CHANGED_KEY_COUNT=3"
   echo "LIVE_MUTATION_UNEXPECTED_CHANGED_KEY_COUNT=0"
 
-  if s4f7y_is_engineering_test_harness; then
+  if s4f7y_uses_fixture_stubs; then
     echo "POST_MUTATION_CONFIG_AUDIT=SKIPPED_TEST_HARNESS"
   else
     if ! s4f7j_run_config_file_audit "$BACKEND_ENV"; then
@@ -715,9 +867,10 @@ s4f7y_execute_live_transaction() {
   echo "REPLICA_B_RESTART_BLOCKED_ON_A_FAILURE=YES"
 
   if s4f7y_is_engineering_test_harness; then
-    s4f7y_emit_terminal_outcomes ENGINEERING_SUCCESS || return 1
+    S4F7Y_TRANSACTION_COMMITTED=1
   else
-    s4f7y_emit_terminal_outcomes PRODUCTION_SUCCESS || return 1
+    s4f7y_fact_transaction_committed
   fi
+  s4f7y_emit_terminal_outcomes || return 1
   return 0
 }
