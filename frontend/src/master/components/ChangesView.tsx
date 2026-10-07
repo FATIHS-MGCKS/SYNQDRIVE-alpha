@@ -36,23 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-    id: 'di-exp021-s4f7x-jit-production-dry-run-2026-10-07',
+    id: 'p25-apds-9-2-execution-baseline-v2-2026-10-07',
     version: '4.9.2231',
-    title: 'Driving Intelligence — EXP-021 S4F-7X JIT fresh authority Production dry-run',
+    title: 'P2.5 APDS-9.2 — APD shadow execution baseline V2 (engineering only)',
     summary: [
-      'Recovered Production SSH path synqdrive-admin@srv1374778.hstgr.cloud (sudo -n for backend.env/postgres; no Tailscale/DATABASE_URL).',
-      'Sealed tool SHA 11b4a80cc… (#1911); JIT NOT_BEFORE 2026-10-07T14:54:57.152Z + fingerprint fc8df190… from live DB clock.',
-      'DRY_RUN=1 on di-v0-s4-stage-tiny-fresh-production.sh: GUARDS_OK=YES, zero env/DB/restart mutation; Gate 6 still NOT_SATISFIED.',
+      'P25_APD_SHADOW_EXECUTION_V2: durable lastAllowed from successful real poll rows only; no pre-queue advance.',
+      'Enqueue outcome + DimoPollLog real_poll_id/status correlation; coalesced rows forensic-only.',
+      'Invalid Run 1 contained (shadow OFF); no Production deploy in this change.',
     ],
     reason:
-      'Complete authorized Production dry-run for S4F-7W fresh Tiny wrapper after prior agent blocked on wrong SSH assumptions.',
+      'APDS-9.1 proved V1 shadow advanced lastAllowed before queue/coalesce and broke offline replay equivalence.',
     previousBehavior:
-      'S4F-7X evidence BLOCKED_PRODUCTION_ACCESS_UNAVAILABLE; no JIT authority or wrapper execution.',
+      'In-memory shadowLastAllowedMs advanced on WOULD_POLL at pre-poll; coalesced opportunities often lacked real_poll_completed_at.',
     details:
-      'architecture/drivingintelligence/evidence/EXP021_S4F7X_EXACT_TOOL_JIT_PRODUCTION_DRY_RUN.md; .cursor/scripts/cloud-agent-s4f7x-fresh-tiny-dry-run.sh',
+      'architecture/vehicle-device-connectivity/evidence/P25_APDS_9_2_EXECUTION_BASELINE_V2_2026-10-07.md',
     affectsArchitecture: true,
-    module: 'Vehicle Intelligence',
-    createdAt: '2026-10-07T15:00:00.000Z',
+    module: 'Vehicle Device Connectivity',
+    createdAt: '2026-10-07T14:50:00.000Z',
   },
   {
     id: 'p25-apds-9-0-cohort-selector-2026-10-07',
