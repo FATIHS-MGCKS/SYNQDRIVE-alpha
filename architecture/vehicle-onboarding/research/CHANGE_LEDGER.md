@@ -28,6 +28,7 @@
 | 2026-10-02 | **VO-5B.2** — Temporal seal: org status + post-event assignment/exclusion cannot rewrite T1 prestate; quantity ledger primary; `createdAt` boundary | PR #1883 |
 | 2026-10-02 | **VO-5B.3** — Base plan temporal seal: subscription/item `createdAt` bounds on `resolveBaseSubscriptionItemAsOf` | PR #1883 |
 | 2026-10-07 | **VO5B-AB1** — `VEHICLE_ACTIVATED` registry outbox → `VEHICLE_CONNECTED` billing quantity; event-time `occurredAt`; deterministic idempotency; PostgreSQL proofs; no schema/migration | Activation billing bridge; legacy provision hooks unchanged |
+| 2026-10-07 | **VO5C-P1** — Master Admin `POST …/offboard` HTTP; MFA + org scope; operational preflight; idempotent `VehicleOffboardingService`; legacy deregister/DELETE unchanged; no frontend | `AUDIT_IN_PROGRESS`; P2 cutover + `LEGACY_DEREGISTER_SECURITY_GAP` remains open |
 
 ## VO-0B — REUSE-FIRST components (do not replace without VO-1+ proof)
 

@@ -24,6 +24,8 @@ export type OffboardVehicleInput = {
   idempotencyKey: string;
   /** Fail-closed: organization transfer is not supported in VO-5A. */
   destinationOrganizationId?: string | null;
+  /** Optional in-transaction gate (e.g. operational preflight recheck after row lock). */
+  operationalGate?: (tx: Prisma.TransactionClient) => Promise<void>;
 };
 
 export type OffboardVehicleResult = {
@@ -72,6 +74,10 @@ export class VehicleOffboardingService {
         throw new VehicleOnboardingError('CASE_NOT_FOUND', 'Vehicle not found for organization');
       }
       const registryLifecycle = lockedRows[0]!.registry_lifecycle;
+
+      if (input.operationalGate) {
+        await input.operationalGate(tx);
+      }
 
       const replayFromOutbox = async (): Promise<OffboardVehicleResult | null> => {
         const existingOutbox = await tx.vehicleRegistryLifecycleOutbox.findUnique({

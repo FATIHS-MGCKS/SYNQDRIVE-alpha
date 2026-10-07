@@ -10,12 +10,17 @@ export async function assertSourceNotCanonicallyRegistered(
   if (provider === 'DIMO') {
     const onVehicle = await tx.vehicle.findFirst({
       where: { dimoVehicleId: sourceMirrorId },
-      select: { id: true },
+      select: { id: true, registryLifecycle: true },
     });
     if (onVehicle) {
       throw new VehicleOnboardingError(
         'SOURCE_ALREADY_REGISTERED',
-        'Provider source is already associated with a canonical vehicle',
+        onVehicle.registryLifecycle === 'OFFBOARDED'
+          ? 'Provider source belongs to an offboarded vehicle; explicit re-onboarding is required'
+          : 'Provider source is already associated with a canonical vehicle',
+        onVehicle.registryLifecycle === 'OFFBOARDED'
+          ? { registryLifecycle: 'OFFBOARDED', requiresReOnboard: true }
+          : undefined,
       );
     }
     const link = await tx.vehicleDataSourceLink.findFirst({
