@@ -251,7 +251,10 @@ describe('M3.3-HV-H4-A3.3-O2-R1 integrity attestation foundation', () => {
     const sci = buildM3_3HvH4ChargeSessionEvidenceScientificProjectionV1(session);
     const { revision } = await insertCoherentRevisionWithAck(prisma, sci);
     await issueAttestationSql(prisma, revision.id);
-    await prisma.vehicle.delete({ where: { id: vehicleId } });
+    await prisma.$executeRaw`
+      DELETE FROM vehicles
+      WHERE id = ${vehicleId}::text
+    `;
     expect(await prisma.batteryHvChargeSessionEvidenceIntegrityAttestation.count()).toBe(0);
   });
 
