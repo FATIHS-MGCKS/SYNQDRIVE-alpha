@@ -135,6 +135,21 @@ describe('S4F-7Y.1 safety seal', () => {
     ).toThrow();
   });
 
+  it('legacy fixture mode alone cannot run live transaction', () => {
+    expect(() =>
+      execFileSync('bash', [WRAPPER], {
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          ...baseHarnessEnv(),
+          DI_S4F7Y_ENGINEERING_TEST_HARNESS: '',
+          DI_S4F7V_TEST_MODE: '',
+          DI_S4F7V_FIXTURE_MODE: '1',
+        },
+      }),
+    ).toThrow();
+  });
+
   it('legacy S4F7V alone reports CAN_AUTHORIZE=NO', () => {
     const base = baseHarnessEnv();
     let out = '';
