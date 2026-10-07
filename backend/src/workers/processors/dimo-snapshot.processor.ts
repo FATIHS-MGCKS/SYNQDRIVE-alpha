@@ -172,6 +172,34 @@ export class DimoSnapshotProcessor extends WorkerHost {
       select: { providerTimestamp: true },
     });
 
+    let apdShadowOpportunityId: string | null = null;
+    if (this.apdShadow?.isEnabledForVehicle(vehicle.organizationId, vehicleId)) {
+      const [tripDetection, latestState] = await Promise.all([
+        this.prisma.vehicleTripDetectionState.findUnique({
+          where: { vehicleId },
+          select: { state: true },
+        }),
+        this.prisma.vehicleLatestState.findUnique({
+          where: { vehicleId },
+          select: { providerFetchedAt: true },
+        }),
+      ]);
+      apdShadowOpportunityId = await this.apdShadow.observeActualBaselinePollStart({
+        organizationId: vehicle.organizationId,
+        vehicleId,
+        pollStartedAtMs: startedAt.getTime(),
+        origin: jobDataWithWake.origin ?? 'SNAPSHOT',
+        tripDetectionState: tripDetection?.state ?? null,
+        lastProviderFetchedAtMs: latestState?.providerFetchedAt?.getTime() ?? null,
+        providerGapOpen: false,
+        connectivityState: vehicle.dimoVehicle?.connectionStatus ?? null,
+        r9WakeKnown: jobDataWithWake.wakeContext != null,
+        wakeCorrelationId: jobDataWithWake.wakeContext?.correlationId ?? null,
+        deviceReconnectRecent: false,
+        providerReconnectRecent: false,
+      });
+    }
+
     try {
       const pipelineResult = await this.runSnapshotPipeline(
         job,
@@ -181,11 +209,7 @@ export class DimoSnapshotProcessor extends WorkerHost {
         afterCtx,
       );
 
-      if (
-        this.apdShadow &&
-        jobDataWithWake.apdShadowOpportunityId &&
-        pipelineResult
-      ) {
+      if (this.apdShadow && apdShadowOpportunityId && pipelineResult) {
         const latestLv = await this.prisma.batteryMeasurement.findFirst({
           where: {
             vehicleId,
@@ -199,9 +223,14 @@ export class DimoSnapshotProcessor extends WorkerHost {
         await this.apdShadow.observePostPoll({
           organizationId: vehicle.organizationId,
           vehicleId,
-          opportunityId: jobDataWithWake.apdShadowOpportunityId,
+          opportunityId: apdShadowOpportunityId,
           realPollId: pipelineResult.pollLogId,
+          pollStartedAtMs: startedAt.getTime(),
           pollCompletedAtMs: pipelineResult.finishedAt.getTime(),
+          realPollVisibleLvSourceAtMs:
+            pipelineResult.lvProviderTimestampMs ??
+            latestLv?.providerTimestamp?.getTime() ??
+            null,
           previousLvSourceMs: previousLv?.providerTimestamp?.getTime() ?? null,
           newLvSourceMs: latestLv?.providerTimestamp?.getTime() ?? null,
           previousTopLevelSourceMs: null,
@@ -238,12 +267,13 @@ export class DimoSnapshotProcessor extends WorkerHost {
         },
       });
 
-      if (this.apdShadow && jobDataWithWake.apdShadowOpportunityId) {
+      if (this.apdShadow && apdShadowOpportunityId) {
         await this.apdShadow.observePollFailure({
           organizationId: vehicle.organizationId,
           vehicleId,
-          opportunityId: jobDataWithWake.apdShadowOpportunityId,
+          opportunityId: apdShadowOpportunityId,
           realPollId: failurePollLog.id,
+          realPollStartedAt: startedAt,
         });
       }
 
@@ -284,7 +314,11 @@ export class DimoSnapshotProcessor extends WorkerHost {
       providerFetchFailed: boolean;
       fsmState: TripDetectionState | null;
     },
-  ): Promise<{ pollLogId: string; finishedAt: Date } | null> {
+  ): Promise<{
+    pollLogId: string;
+    finishedAt: Date;
+    lvProviderTimestampMs: number | null;
+  } | null> {
     const { vehicleId, dimoTokenId } = jobDataWithWake;
 
     const previousState =
@@ -587,7 +621,9 @@ export class DimoSnapshotProcessor extends WorkerHost {
         `Snapshot completed for vehicle ${vehicleId} in ${durationMs}ms`,
       );
       this.tripMetrics?.dimoSnapshotPollTotal.inc({ result: 'success' });
-      return { pollLogId: pollLog.id, finishedAt };
+      const lvProviderTimestampMs = lvBatteryObservedAt?.getTime() ?? null;
+
+      return { pollLogId: pollLog.id, finishedAt, lvProviderTimestampMs };
   }
 
   private async isLegacySnapshotEpisodeResolutionExcluded(

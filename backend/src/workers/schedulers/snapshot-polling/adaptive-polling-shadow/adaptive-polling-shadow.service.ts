@@ -22,8 +22,13 @@ import {
 import { AdaptivePollingShadowMetricsService } from './adaptive-polling-shadow-metrics.service';
 import { AdaptivePollingShadowRepository } from './adaptive-polling-shadow.repository';
 import { buildApdShadowOpportunityId } from './apd-shadow-opportunity.util';
-import { P25_APD_SHADOW_EXECUTION_V2 } from './p25-apd-shadow-execution-versions';
+import {
+  P25_APD_SHADOW_ADVANCING_DECISIONS,
+  P25_APD_SHADOW_EXECUTION_V2,
+} from './p25-apd-shadow-execution-versions';
+import { isVehicleInActiveTripAtMs } from './apd-shadow-trip-reconciliation.util';
 import type {
+  AdaptivePollingShadowActualPollStartContext,
   AdaptivePollingShadowPostPollContext,
   AdaptivePollingShadowPrePollContext,
   AdaptivePollingShadowPrePollResult,
@@ -102,18 +107,28 @@ export class AdaptivePollingShadowService {
     return true;
   }
 
+  /**
+   * Scheduler-side hook — intentionally non-authoritative (APDS-9.2B).
+   * Scientific policy rows are created only on actual baseline poll start in the processor.
+   */
   async observePrePoll(
-    ctx: AdaptivePollingShadowPrePollContext,
+    _ctx: AdaptivePollingShadowPrePollContext,
   ): Promise<AdaptivePollingShadowPrePollResult | null> {
+    return null;
+  }
+
+  async observeActualBaselinePollStart(
+    ctx: AdaptivePollingShadowActualPollStartContext,
+  ): Promise<string | null> {
     if (!this.assertCohortVehicleAllowed(ctx.organizationId, ctx.vehicleId)) {
       return null;
     }
     try {
-      return await this.observePrePollInner(ctx);
+      return await this.observeActualBaselinePollStartInner(ctx);
     } catch (err) {
       this.metrics?.recordFailure('pre_poll');
       this.logger.warn(
-        `APD shadow pre-poll failed (non-blocking): ${err instanceof Error ? err.message : err}`,
+        `APD shadow actual poll-start failed (non-blocking): ${err instanceof Error ? err.message : err}`,
       );
       return null;
     }
@@ -164,6 +179,7 @@ export class AdaptivePollingShadowService {
     vehicleId: string;
     opportunityId: string;
     realPollId: string;
+    realPollStartedAt: Date;
   }): Promise<void> {
     if (!this.assertCohortVehicleAllowed(input.organizationId, input.vehicleId)) {
       return;
@@ -178,13 +194,20 @@ export class AdaptivePollingShadowService {
     }
   }
 
-  private async observePrePollInner(
-    ctx: AdaptivePollingShadowPrePollContext,
-  ): Promise<AdaptivePollingShadowPrePollResult> {
+  private async observeActualBaselinePollStartInner(
+    ctx: AdaptivePollingShadowActualPollStartContext,
+  ): Promise<string> {
+    const decisionAtMs = ctx.pollStartedAtMs;
+    const reconciliation = !(await isVehicleInActiveTripAtMs(
+      this.prisma,
+      ctx.vehicleId,
+      decisionAtMs,
+    ));
+
     const opportunityId = buildApdShadowOpportunityId({
       organizationId: ctx.organizationId,
       vehicleId: ctx.vehicleId,
-      decisionAtMs: ctx.decisionAtMs,
+      decisionAtMs,
       origin: ctx.origin,
     });
 
@@ -192,13 +215,10 @@ export class AdaptivePollingShadowService {
       ctx.tripDetectionState === TripDetectionState.ACTIVE_TRIP ||
       ctx.tripDetectionState === TripDetectionState.POSSIBLE_START;
 
-    const lvTimestamps =
-      ctx.lvProviderTimestampsMs.length > 0
-        ? ctx.lvProviderTimestampsMs
-        : await this.loadRecentLvProviderTimestampsMs(ctx.vehicleId);
+    const lvTimestamps = await this.loadRecentLvProviderTimestampsMs(ctx.vehicleId);
 
     const profile = evaluateP25ApdProfile({
-      nowMs: ctx.decisionAtMs,
+      nowMs: decisionAtMs,
       lvProviderTimestampsMs: lvTimestamps,
       providerGapOpen: ctx.providerGapOpen,
       tripActive,
@@ -218,26 +238,11 @@ export class AdaptivePollingShadowService {
     const medianIntervalMs =
       profile.medianCadenceMs > 0 ? profile.medianCadenceMs : 8 * 3600 * 1000;
 
-    const baseInput: Omit<P25ApdShadowPrePollInput, 'profileClass' | 'lastAllowedReconciliationPollMs'> = {
-      organizationId: ctx.organizationId,
-      vehicleId: ctx.vehicleId,
-      decisionAtMs: ctx.decisionAtMs,
-      reconciliation: ctx.reconciliation,
-      lastTrustworthyLvSourceMs: ctx.lastTrustworthyLvSourceMs,
-      lastProviderFetchedAtMs: ctx.lastProviderFetchedAtMs,
-      profileVersion: profile.profileVersion,
-      medianIntervalMs,
-      tripFsmActive: tripActive,
-      providerGapOpen: ctx.providerGapOpen,
-      r9WakePending: ctx.r9WakeKnown,
-    };
-
-    const overlay = {
+    const overlayBase = {
       r9WakeKnown: ctx.r9WakeKnown,
       profileInvalidated: profile.invalidated,
       invalidationReason: profile.invalidationReason,
       providerGapOpen: ctx.providerGapOpen,
-      sourceTimestampMissing: ctx.lastTrustworthyLvSourceMs == null,
       reconnectPending: ctx.deviceReconnectRecent || ctx.providerReconnectRecent,
     };
 
@@ -247,19 +252,39 @@ export class AdaptivePollingShadowService {
     ] as const;
 
     for (const p of policies) {
-      const lastAllowed = await this.repository.resolveLastAllowedReconciliationPollMs({
+      const lastAllowed = await this.repository.resolveLastAllowedPollStartMs({
         organizationId: ctx.organizationId,
         vehicleId: ctx.vehicleId,
         policyVersion: p.version,
-        reconciliation: ctx.reconciliation,
+      });
+      const simulatedLastLv = await this.repository.resolveSimulatedLastLvSourceMs({
+        organizationId: ctx.organizationId,
+        vehicleId: ctx.vehicleId,
+        policyVersion: p.version,
       });
 
-      const input: P25ApdShadowPrePollInput = {
-        ...baseInput,
+      const baseInput: P25ApdShadowPrePollInput = {
+        organizationId: ctx.organizationId,
+        vehicleId: ctx.vehicleId,
+        decisionAtMs,
+        reconciliation,
+        lastTrustworthyLvSourceMs: simulatedLastLv,
+        lastProviderFetchedAtMs: ctx.lastProviderFetchedAtMs,
+        profileVersion: profile.profileVersion,
+        medianIntervalMs,
+        tripFsmActive: tripActive,
+        providerGapOpen: ctx.providerGapOpen,
+        r9WakePending: ctx.r9WakeKnown,
         profileClass: profile.profileClass,
         lastAllowedReconciliationPollMs: lastAllowed,
       };
-      const core = p.evaluate(input);
+
+      const overlay = {
+        ...overlayBase,
+        sourceTimestampMissing: simulatedLastLv == null,
+      };
+
+      const core = p.evaluate(baseInput);
       const decision = applyP25ApdShadowSafetyOverlay(core, overlay);
       this.metrics?.recordDecision(p.version, decision.decision, decision.reason);
 
@@ -267,17 +292,15 @@ export class AdaptivePollingShadowService {
         organizationId: ctx.organizationId,
         vehicleId: ctx.vehicleId,
         opportunityId,
-        decisionAt: new Date(ctx.decisionAtMs),
+        decisionAt: new Date(decisionAtMs),
         policyVersion: p.version,
         profileVersion: profile.profileVersion,
         profileClass: profile.profileClass,
         decision: decision.decision,
         reason: decision.reason,
         shadowExecutionVersion: P25_APD_SHADOW_EXECUTION_V2,
-        reconciliation: ctx.reconciliation,
-        lastLvSourceAt: ctx.lastTrustworthyLvSourceMs
-          ? new Date(ctx.lastTrustworthyLvSourceMs)
-          : null,
+        reconciliation,
+        lastLvSourceAt: simulatedLastLv != null ? new Date(simulatedLastLv) : null,
         lastProviderFetchedAt: ctx.lastProviderFetchedAtMs
           ? new Date(ctx.lastProviderFetchedAtMs)
           : null,
@@ -293,7 +316,7 @@ export class AdaptivePollingShadowService {
       });
     }
 
-    return { opportunityId };
+    return opportunityId;
   }
 
   private async loadRecentLvProviderTimestampsMs(
@@ -343,6 +366,11 @@ export class AdaptivePollingShadowService {
       legacyCustomerImpact: 'NONE',
     };
 
+    const visibleLvAt =
+      ctx.realPollVisibleLvSourceAtMs != null
+        ? new Date(ctx.realPollVisibleLvSourceAtMs)
+        : null;
+
     for (const policyVersion of [P25_APD_B2_V1, P25_APD_B4_V1]) {
       await this.repository.updateSuccessfulPollOutcome({
         organizationId: ctx.organizationId,
@@ -350,9 +378,41 @@ export class AdaptivePollingShadowService {
         opportunityId: ctx.opportunityId,
         policyVersion,
         realPollId: ctx.realPollId,
+        realPollStartedAt: new Date(ctx.pollStartedAtMs),
         realPollCompletedAt: new Date(ctx.pollCompletedAtMs),
+        realPollVisibleLvSourceAt:
+          visibleLvAt &&
+          (await this.shouldPersistVisibleLvForPolicy({
+            organizationId: ctx.organizationId,
+            vehicleId: ctx.vehicleId,
+            opportunityId: ctx.opportunityId,
+            policyVersion,
+          }))
+            ? visibleLvAt
+            : null,
         patch,
       });
     }
+  }
+
+  private async shouldPersistVisibleLvForPolicy(input: {
+    organizationId: string;
+    vehicleId: string;
+    opportunityId: string;
+    policyVersion: string;
+  }): Promise<boolean> {
+    const row = await this.prisma.apdShadowReconciliationDecision.findFirst({
+      where: {
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        opportunityId: input.opportunityId,
+        policyVersion: input.policyVersion,
+        shadowExecutionVersion: P25_APD_SHADOW_EXECUTION_V2,
+        reconciliation: true,
+        decision: { in: [...P25_APD_SHADOW_ADVANCING_DECISIONS] },
+      },
+      select: { id: true },
+    });
+    return row != null;
   }
 }

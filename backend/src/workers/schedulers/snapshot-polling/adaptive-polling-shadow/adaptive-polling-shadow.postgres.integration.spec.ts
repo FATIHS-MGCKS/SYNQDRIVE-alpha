@@ -245,6 +245,7 @@ describePg('ApdShadowReconciliationDecision Postgres integration (APDS-7.1)', ()
         opportunityId,
         policyVersion: P25_APD_B2_V1,
         realPollId: pollId,
+        realPollStartedAt: new Date('2026-10-03T12:00:00.000Z'),
         realPollCompletedAt: completedAt,
         patch: {
           newLvSourceObserved: true,
@@ -256,6 +257,7 @@ describePg('ApdShadowReconciliationDecision Postgres integration (APDS-7.1)', ()
         opportunityId,
         policyVersion: P25_APD_B2_V1,
         realPollId: pollId,
+        realPollStartedAt: new Date('2026-10-03T12:00:00.000Z'),
         realPollCompletedAt: completedAt,
         patch: {
           newObdSourceObserved: true,
@@ -410,6 +412,7 @@ describePg('ApdShadowReconciliationDecision Postgres integration (APDS-7.1)', ()
       opportunityId,
       policyVersion: P25_APD_B2_V1,
       realPollId: pollId,
+      realPollStartedAt: new Date('2026-10-03T12:04:00.000Z'),
       realPollCompletedAt: completedAt,
       patch: {
         newLvSourceObserved: false,
@@ -421,6 +424,7 @@ describePg('ApdShadowReconciliationDecision Postgres integration (APDS-7.1)', ()
       opportunityId,
       policyVersion: P25_APD_B2_V1,
       realPollId: pollId,
+      realPollStartedAt: new Date('2026-10-03T12:04:00.000Z'),
       realPollCompletedAt: completedAt,
       patch: {
         newLvSourceObserved: true,
@@ -456,6 +460,7 @@ describePg('ApdShadowReconciliationDecision Postgres integration (APDS-7.1)', ()
       opportunityId,
       policyVersion: P25_APD_B4_V1,
       realPollId: '00000000-0000-4000-8000-0000000000d4',
+      realPollStartedAt: new Date('2026-10-03T12:05:30.000Z'),
       realPollCompletedAt: new Date('2026-10-03T12:06:00.000Z'),
       patch: {
         newLvSourceObserved: true,
@@ -485,18 +490,41 @@ describePg('ApdShadowReconciliationDecision Postgres integration (APDS-7.1)', ()
   });
 
   it('13 durable lastAllowed ignores V1 rows without execution version', async () => {
+    const isolatedVehicleId = await (async () => {
+      const existing = await prisma.vehicle.findFirst({
+        where: { organizationId, vehicleName: 'apd-veh-lastallowed-v2' },
+        select: { id: true },
+      });
+      if (existing) return existing.id;
+      return (
+        await prisma.vehicle.create({
+          data: {
+            organizationId,
+            make: 'Test',
+            model: 'APD',
+            year: 2026,
+            fuelType: FuelType.ELECTRIC,
+            vehicleName: 'apd-veh-lastallowed-v2',
+          },
+          select: { id: true },
+        })
+      ).id;
+    })();
+    await prisma.apdShadowReconciliationDecision.deleteMany({
+      where: { organizationId, vehicleId: isolatedVehicleId },
+    });
     const opportunityId = buildApdShadowOpportunityId({
       organizationId,
-      vehicleId,
-      decisionAtMs: Date.now() + 20,
+      vehicleId: isolatedVehicleId,
+      decisionAtMs: Date.parse('2026-10-07T13:45:00.000Z'),
       origin: 'INTEGRATION_V2_LAST_ALLOWED',
     });
-    trackCleanup(organizationId, vehicleId, opportunityId);
+    trackCleanup(organizationId, isolatedVehicleId, opportunityId);
     const completedAt = new Date('2026-10-07T13:50:00.000Z');
     await repository.upsertPrePollDecision({
       ...baseRow({
         organizationId,
-        vehicleId,
+        vehicleId: isolatedVehicleId,
         opportunityId,
         policyVersion: P25_APD_B2_V1,
       }),
@@ -512,37 +540,39 @@ describePg('ApdShadowReconciliationDecision Postgres integration (APDS-7.1)', ()
         reconciliation: true,
       },
     });
+    const startedAtV2 = new Date('2026-10-07T13:59:30.000Z');
+    const opportunityIdV2 = buildApdShadowOpportunityId({
+      organizationId,
+      vehicleId: isolatedVehicleId,
+      decisionAtMs: Date.parse('2026-10-07T13:59:30.000Z'),
+      origin: 'INTEGRATION_V2_LAST_ALLOWED_V2',
+    });
+    await repository.upsertPrePollDecision({
+      ...baseRow({
+        organizationId,
+        vehicleId: isolatedVehicleId,
+        opportunityId: opportunityIdV2,
+        policyVersion: P25_APD_B2_V1,
+      }),
+      decisionAt: startedAtV2,
+    });
     await repository.updateSuccessfulPollOutcome({
       organizationId,
-      vehicleId,
-      opportunityId: buildApdShadowOpportunityId({
-        organizationId,
-        vehicleId,
-        decisionAtMs: Date.now() + 21,
-        origin: 'INTEGRATION_V2_LAST_ALLOWED_V2',
-      }),
+      vehicleId: isolatedVehicleId,
+      opportunityId: opportunityIdV2,
       policyVersion: P25_APD_B2_V1,
       realPollId: '00000000-0000-4000-8000-00000000v2',
+      realPollStartedAt: startedAtV2,
       realPollCompletedAt: new Date('2026-10-07T14:00:00.000Z'),
       patch: {},
     });
-    trackCleanup(
+    trackCleanup(organizationId, isolatedVehicleId, opportunityIdV2);
+    const last = await repository.resolveLastAllowedPollStartMs({
       organizationId,
-      vehicleId,
-      buildApdShadowOpportunityId({
-        organizationId,
-        vehicleId,
-        decisionAtMs: Date.now() + 21,
-        origin: 'INTEGRATION_V2_LAST_ALLOWED_V2',
-      }),
-    );
-    const last = await repository.resolveLastAllowedReconciliationPollMs({
-      organizationId,
-      vehicleId,
+      vehicleId: isolatedVehicleId,
       policyVersion: P25_APD_B2_V1,
-      reconciliation: true,
     });
-    expect(last).toBe(new Date('2026-10-07T14:00:00.000Z').getTime());
+    expect(last).toBe(startedAtV2.getTime());
   });
 
   it('14 enqueue outcome patch is durable', async () => {
@@ -609,6 +639,7 @@ describePg('ApdShadowReconciliationDecision Postgres integration (APDS-7.1)', ()
         opportunityId,
         policyVersion: P25_APD_B2_V1,
         realPollId: pollId,
+        realPollStartedAt: new Date('2026-10-07T14:01:00.000Z'),
         realPollCompletedAt: completedAt,
         patch: { newTopLevelSourceObserved: true },
       }),

@@ -23,7 +23,8 @@ function setValidCohort(members: { organizationId: string; vehicleId: string }[]
 describe('AdaptivePollingShadowService cohort gating', () => {
   const repository = {
     upsertPrePollDecision: jest.fn().mockResolvedValue(undefined),
-    resolveLastAllowedReconciliationPollMs: jest.fn().mockResolvedValue(0),
+    resolveLastAllowedPollStartMs: jest.fn().mockResolvedValue(0),
+    resolveSimulatedLastLvSourceMs: jest.fn().mockResolvedValue(null),
     patchEnqueueOutcome: jest.fn().mockResolvedValue(undefined),
     updateSuccessfulPollOutcome: jest.fn().mockResolvedValue(undefined),
     updateFailedPollOutcome: jest.fn().mockResolvedValue(undefined),
@@ -44,6 +45,12 @@ describe('AdaptivePollingShadowService cohort gating', () => {
   const prisma = {
     batteryMeasurement: {
       findMany: jest.fn().mockResolvedValue([]),
+    },
+    vehicleTrip: {
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
+    apdShadowReconciliationDecision: {
+      findFirst: jest.fn().mockResolvedValue({ id: 'row' }),
     },
   };
 
@@ -80,7 +87,20 @@ describe('AdaptivePollingShadowService cohort gating', () => {
       repository,
       metrics,
     );
-    await service.observePrePoll(baseCtx);
+    await service.observeActualBaselinePollStart({
+      organizationId: baseCtx.organizationId,
+      vehicleId: baseCtx.vehicleId,
+      pollStartedAtMs: baseCtx.decisionAtMs,
+      origin: baseCtx.origin,
+      tripDetectionState: baseCtx.tripDetectionState,
+      lastProviderFetchedAtMs: baseCtx.lastProviderFetchedAtMs,
+      providerGapOpen: baseCtx.providerGapOpen,
+      connectivityState: baseCtx.connectivityState,
+      r9WakeKnown: baseCtx.r9WakeKnown,
+      wakeCorrelationId: baseCtx.wakeCorrelationId,
+      deviceReconnectRecent: baseCtx.deviceReconnectRecent,
+      providerReconnectRecent: baseCtx.providerReconnectRecent,
+    });
     expect(repository.upsertPrePollDecision).toHaveBeenCalledTimes(2);
   });
 
@@ -92,7 +112,20 @@ describe('AdaptivePollingShadowService cohort gating', () => {
       repository,
       metrics,
     );
-    await service.observePrePoll({ ...baseCtx, vehicleId: OTHER });
+    await service.observeActualBaselinePollStart({
+      organizationId: baseCtx.organizationId,
+      vehicleId: OTHER,
+      pollStartedAtMs: baseCtx.decisionAtMs,
+      origin: baseCtx.origin,
+      tripDetectionState: baseCtx.tripDetectionState,
+      lastProviderFetchedAtMs: baseCtx.lastProviderFetchedAtMs,
+      providerGapOpen: baseCtx.providerGapOpen,
+      connectivityState: baseCtx.connectivityState,
+      r9WakeKnown: baseCtx.r9WakeKnown,
+      wakeCorrelationId: baseCtx.wakeCorrelationId,
+      deviceReconnectRecent: baseCtx.deviceReconnectRecent,
+      providerReconnectRecent: baseCtx.providerReconnectRecent,
+    });
     expect(repository.upsertPrePollDecision).not.toHaveBeenCalled();
     expect(metrics.recordCohortExcluded).toHaveBeenCalledWith('NOT_ALLOWLISTED');
   });
@@ -122,7 +155,9 @@ describe('AdaptivePollingShadowService cohort gating', () => {
       vehicleId: STALE,
       opportunityId: 'opp-1',
       realPollId: 'poll-1',
+      pollStartedAtMs: 3_000_000_000,
       pollCompletedAtMs: 3_000_001_000,
+      realPollVisibleLvSourceAtMs: null,
       previousLvSourceMs: null,
       newLvSourceMs: null,
       previousTopLevelSourceMs: null,
@@ -139,7 +174,20 @@ describe('AdaptivePollingShadowService cohort gating', () => {
       repository,
       metrics,
     );
-    await service.observePrePoll(baseCtx);
+    await service.observeActualBaselinePollStart({
+      organizationId: baseCtx.organizationId,
+      vehicleId: baseCtx.vehicleId,
+      pollStartedAtMs: baseCtx.decisionAtMs,
+      origin: baseCtx.origin,
+      tripDetectionState: baseCtx.tripDetectionState,
+      lastProviderFetchedAtMs: baseCtx.lastProviderFetchedAtMs,
+      providerGapOpen: baseCtx.providerGapOpen,
+      connectivityState: baseCtx.connectivityState,
+      r9WakeKnown: baseCtx.r9WakeKnown,
+      wakeCorrelationId: baseCtx.wakeCorrelationId,
+      deviceReconnectRecent: baseCtx.deviceReconnectRecent,
+      providerReconnectRecent: baseCtx.providerReconnectRecent,
+    });
     expect(repository.upsertPrePollDecision).not.toHaveBeenCalled();
     expect(metrics.recordCohortExcluded).toHaveBeenCalledWith('CONFIG_MISSING');
   });
@@ -156,7 +204,9 @@ describe('AdaptivePollingShadowService cohort gating', () => {
       vehicleId: VEH,
       opportunityId: 'opp-1',
       realPollId: 'poll-1',
+      pollStartedAtMs: 3_000_000_000,
       pollCompletedAtMs: 3_000_001_000,
+      realPollVisibleLvSourceAtMs: null,
       previousLvSourceMs: null,
       newLvSourceMs: 1,
       previousTopLevelSourceMs: null,
@@ -179,8 +229,34 @@ describe('AdaptivePollingShadowService cohort gating', () => {
     );
     const ctxA = { ...baseCtx, organizationId: 'org-a', vehicleId: 'shared-veh' };
     const ctxB = { ...baseCtx, organizationId: 'org-b', vehicleId: 'shared-veh' };
-    await service.observePrePoll(ctxA);
-    await service.observePrePoll(ctxB);
+    await service.observeActualBaselinePollStart({
+      organizationId: ctxA.organizationId,
+      vehicleId: ctxA.vehicleId,
+      pollStartedAtMs: ctxA.decisionAtMs,
+      origin: ctxA.origin,
+      tripDetectionState: ctxA.tripDetectionState,
+      lastProviderFetchedAtMs: ctxA.lastProviderFetchedAtMs,
+      providerGapOpen: ctxA.providerGapOpen,
+      connectivityState: ctxA.connectivityState,
+      r9WakeKnown: ctxA.r9WakeKnown,
+      wakeCorrelationId: ctxA.wakeCorrelationId,
+      deviceReconnectRecent: ctxA.deviceReconnectRecent,
+      providerReconnectRecent: ctxA.providerReconnectRecent,
+    });
+    await service.observeActualBaselinePollStart({
+      organizationId: ctxB.organizationId,
+      vehicleId: ctxB.vehicleId,
+      pollStartedAtMs: ctxB.decisionAtMs + 1,
+      origin: ctxB.origin,
+      tripDetectionState: ctxB.tripDetectionState,
+      lastProviderFetchedAtMs: ctxB.lastProviderFetchedAtMs,
+      providerGapOpen: ctxB.providerGapOpen,
+      connectivityState: ctxB.connectivityState,
+      r9WakeKnown: ctxB.r9WakeKnown,
+      wakeCorrelationId: ctxB.wakeCorrelationId,
+      deviceReconnectRecent: ctxB.deviceReconnectRecent,
+      providerReconnectRecent: ctxB.providerReconnectRecent,
+    });
     expect(repository.upsertPrePollDecision).toHaveBeenCalledTimes(4);
   });
 

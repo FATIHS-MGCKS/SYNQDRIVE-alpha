@@ -32,11 +32,11 @@ export interface UpsertApdShadowDecisionRow {
 export class AdaptivePollingShadowRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async resolveLastAllowedReconciliationPollMs(input: {
+  /** Durable lastAllowed: latest SUCCESS advancing poll start (shared across reconciliation flag). */
+  async resolveLastAllowedPollStartMs(input: {
     organizationId: string;
     vehicleId: string;
     policyVersion: string;
-    reconciliation: boolean;
   }): Promise<number> {
     const row = await this.prisma.apdShadowReconciliationDecision.findFirst({
       where: {
@@ -44,16 +44,53 @@ export class AdaptivePollingShadowRepository {
         vehicleId: input.vehicleId,
         policyVersion: input.policyVersion,
         shadowExecutionVersion: P25_APD_SHADOW_EXECUTION_V2,
-        reconciliation: input.reconciliation,
         realPollStatus: 'SUCCESS',
-        realPollCompletedAt: { not: null },
+        realPollStartedAt: { not: null },
         realPollId: { not: null },
         decision: { in: [...P25_APD_SHADOW_ADVANCING_DECISIONS] },
       },
-      orderBy: { realPollCompletedAt: 'desc' },
-      select: { realPollCompletedAt: true },
+      orderBy: { realPollStartedAt: 'desc' },
+      select: { realPollStartedAt: true },
     });
-    return row?.realPollCompletedAt?.getTime() ?? 0;
+    return row?.realPollStartedAt?.getTime() ?? 0;
+  }
+
+  /** @deprecated Use resolveLastAllowedPollStartMs — reconciliation is not partitioned for lastAllowed. */
+  async resolveLastAllowedReconciliationPollMs(input: {
+    organizationId: string;
+    vehicleId: string;
+    policyVersion: string;
+    reconciliation: boolean;
+  }): Promise<number> {
+    return this.resolveLastAllowedPollStartMs({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      policyVersion: input.policyVersion,
+    });
+  }
+
+  /** Simulated policy LV state: monotonic max visible LV from kept reconciliation polls only. */
+  async resolveSimulatedLastLvSourceMs(input: {
+    organizationId: string;
+    vehicleId: string;
+    policyVersion: string;
+  }): Promise<number | null> {
+    const row = await this.prisma.apdShadowReconciliationDecision.findFirst({
+      where: {
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        policyVersion: input.policyVersion,
+        shadowExecutionVersion: P25_APD_SHADOW_EXECUTION_V2,
+        reconciliation: true,
+        realPollStatus: 'SUCCESS',
+        realPollVisibleLvSourceAt: { not: null },
+        realPollId: { not: null },
+        decision: { in: [...P25_APD_SHADOW_ADVANCING_DECISIONS] },
+      },
+      orderBy: { realPollVisibleLvSourceAt: 'desc' },
+      select: { realPollVisibleLvSourceAt: true },
+    });
+    return row?.realPollVisibleLvSourceAt?.getTime() ?? null;
   }
 
   async upsertPrePollDecision(row: UpsertApdShadowDecisionRow): Promise<void> {
@@ -132,7 +169,9 @@ export class AdaptivePollingShadowRepository {
     opportunityId: string;
     policyVersion: string;
     realPollId: string;
+    realPollStartedAt: Date;
     realPollCompletedAt: Date;
+    realPollVisibleLvSourceAt?: Date | null;
     patch: {
       newLvSourceObserved?: boolean;
       newLvSourceAt?: Date | null;
@@ -155,7 +194,9 @@ export class AdaptivePollingShadowRepository {
       data: {
         realPollId: input.realPollId,
         realPollStatus: 'SUCCESS',
+        realPollStartedAt: input.realPollStartedAt,
         realPollCompletedAt: input.realPollCompletedAt,
+        realPollVisibleLvSourceAt: input.realPollVisibleLvSourceAt ?? null,
         ...input.patch,
       },
     });
@@ -166,6 +207,7 @@ export class AdaptivePollingShadowRepository {
     vehicleId: string;
     opportunityId: string;
     realPollId: string;
+    realPollStartedAt: Date;
   }): Promise<void> {
     await this.prisma.apdShadowReconciliationDecision.updateMany({
       where: {
@@ -177,7 +219,9 @@ export class AdaptivePollingShadowRepository {
       data: {
         realPollId: input.realPollId,
         realPollStatus: 'FAILURE',
+        realPollStartedAt: input.realPollStartedAt,
         realPollCompletedAt: null,
+        realPollVisibleLvSourceAt: null,
         newLvSourceObserved: false,
         newTopLevelSourceObserved: false,
         newObdSourceObserved: false,
