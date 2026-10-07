@@ -6,6 +6,20 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-07 — M3.3-HV-H4-A3.3-O1 MODE_A effective revision SQL optimization audit
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | O1 semantics freeze postgres tests (O1-C1–C10); test-only SQL effective-selection prototype; architecture audit |
+| **WHY** | Prove whether MODE_A SQL selection can preserve fail-closed all-history integrity before production loader optimization |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o1-semantics.postgres.integration.spec.ts`; HV-H4 postgres CI |
+| **OBSERVED_EFFECT** | `O1_DECISION=NEEDS_INTEGRITY_ATTESTATION_BEFORE_MEANINGFUL_OPTIMIZATION`; effective-only SQL **not** semantically equivalent |
+| **NON_EFFECTS** | No production loader; no migration; no runtime reachability change |
+| **DECISION_STATUS** | PROPOSED |
+| **EVIDENCE** | `M3_3_HV_H4_A3_3_O1_MODE_A_EFFECTIVE_REVISION_QUERY_OPTIMIZATION_2026-10-07.md` |
+
+---
+
 ## 2026-10-07 — M3.3-HV-H4-A3.6-R0 final closure (PR #1905)
 
 | Field | Value |
