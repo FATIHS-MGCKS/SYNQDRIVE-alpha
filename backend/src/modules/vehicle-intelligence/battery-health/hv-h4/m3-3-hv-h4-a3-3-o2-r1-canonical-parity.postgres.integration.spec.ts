@@ -15,7 +15,7 @@ describe('M3.3-HV-H4-A3.3-O2-R1 SQL ↔ TS canonical parity', () => {
   beforeAll(async () => {
     if (!integrationEnabled) return;
     const probe = await probePostgresDatabase();
-    if (!probe.ok) return;
+    if (!probe) return;
     prisma = new PrismaClient();
   });
 

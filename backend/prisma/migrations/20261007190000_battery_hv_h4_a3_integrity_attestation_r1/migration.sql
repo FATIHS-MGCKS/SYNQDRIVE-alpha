@@ -1,9 +1,9 @@
 -- M3.3-HV-H4-A3.3-O2-R1 — integrity attestation foundation (Strategy C invalidation; issuance gated on TS/SQL parity in CI)
 
 CREATE TABLE "battery_hv_charge_session_evidence_integrity_attestations" (
-  "id" UUID NOT NULL,
-  "revision_id" UUID NOT NULL,
-  "durability_ack_id" UUID NOT NULL,
+  "id" TEXT NOT NULL,
+  "revision_id" TEXT NOT NULL,
+  "durability_ack_id" TEXT NOT NULL,
   "organization_id" TEXT NOT NULL,
   "vehicle_id" TEXT NOT NULL,
   "segment_fingerprint" TEXT NOT NULL,
@@ -119,10 +119,10 @@ CREATE TRIGGER battery_hv_cs_evidence_ack_invalidate_attestation_trg
 
 -- Issuance (SECURITY DEFINER) — full verify embedded; certified only when TS/SQL golden parity passes in CI.
 CREATE OR REPLACE FUNCTION m3_3_hv_h4_a3_issue_integrity_attestation_v1(
-  p_revision_id uuid,
+  p_revision_id text,
   p_integrity_attestation_contract_version text
 )
-RETURNS uuid
+RETURNS text
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = pg_catalog, public
@@ -132,7 +132,7 @@ DECLARE
   v_ack battery_hv_charge_session_evidence_acks%ROWTYPE;
   v_proj jsonb;
   v_fp text;
-  v_attestation_id uuid;
+  v_attestation_id text;
   v_now timestamp(3);
 BEGIN
   IF p_integrity_attestation_contract_version IS DISTINCT FROM 'M3_3_HV_H4_A3_HISTORY_INTEGRITY_ATTESTATION_V1' THEN
@@ -236,7 +236,7 @@ BEGIN
   END IF;
 
   v_now := CURRENT_TIMESTAMP;
-  v_attestation_id := gen_random_uuid();
+  v_attestation_id := gen_random_uuid()::text;
 
   INSERT INTO battery_hv_charge_session_evidence_integrity_attestations (
     id,
@@ -279,4 +279,4 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION m3_3_hv_h4_a3_issue_integrity_attestation_v1(uuid, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION m3_3_hv_h4_a3_issue_integrity_attestation_v1(text, text) FROM PUBLIC;

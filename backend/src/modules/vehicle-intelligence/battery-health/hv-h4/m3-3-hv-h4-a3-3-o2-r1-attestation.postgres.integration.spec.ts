@@ -73,7 +73,7 @@ async function insertCoherentRevisionWithAck(
 async function issueAttestationSql(prisma: PrismaClient, revisionId: string): Promise<string> {
   const rows = await prisma.$queryRaw<Array<{ id: string }>>`
     SELECT m3_3_hv_h4_a3_issue_integrity_attestation_v1(
-      ${revisionId}::uuid,
+      ${revisionId}::text,
       ${M3_3_HV_H4_A3_HISTORY_INTEGRITY_ATTESTATION_CONTRACT_V1}
     ) AS id`;
   return rows[0].id;
@@ -85,7 +85,7 @@ describe('M3.3-HV-H4-A3.3-O2-R1 integrity attestation foundation', () => {
   beforeAll(async () => {
     if (!integrationEnabled) return;
     const probe = await probePostgresDatabase();
-    if (!probe.ok) return;
+    if (!probe) return;
     prisma = new PrismaClient();
     await prisma.$executeRawUnsafe(`
       DO $$ BEGIN
@@ -101,7 +101,7 @@ describe('M3.3-HV-H4-A3.3-O2-R1 integrity attestation foundation', () => {
       `REVOKE INSERT, UPDATE, DELETE ON battery_hv_charge_session_evidence_integrity_attestations FROM m3_3_hv_h4_a3_r1_app`,
     );
     await prisma.$executeRawUnsafe(
-      `GRANT EXECUTE ON FUNCTION m3_3_hv_h4_a3_issue_integrity_attestation_v1(uuid, text) TO m3_3_hv_h4_a3_r1_app`,
+      `GRANT EXECUTE ON FUNCTION m3_3_hv_h4_a3_issue_integrity_attestation_v1(text, text) TO m3_3_hv_h4_a3_r1_app`,
     );
   });
 
@@ -241,6 +241,35 @@ describe('M3.3-HV-H4-A3.3-O2-R1 integrity attestation foundation', () => {
     const a2 = await issueAttestationSql(prisma, revision.id);
     expect(a1).toBe(a2);
     expect(await prisma.batteryHvChargeSessionEvidenceIntegrityAttestation.count()).toBe(1);
+  });
+
+  it('R1-C13 cross-revision ACK binding rejected at issuance', async () => {
+    if (!prisma) return;
+    const v0 = M3_3_HV_H4_A3_O2_R1_CANONICAL_GOLDEN_VECTORS_V1[0];
+    const v1 = M3_3_HV_H4_A3_O2_R1_CANONICAL_GOLDEN_VECTORS_V1[1];
+    const { revision: revA } = await insertCoherentRevisionWithAck(prisma, v0.projection);
+    const { revision: revB, ackId: ackB } = await insertCoherentRevisionWithAck(prisma, v1.projection);
+    await prisma.batteryHvChargeSessionEvidenceAck.update({
+      where: { id: ackB! },
+      data: { revisionId: revA.id },
+    });
+    await expect(issueAttestationSql(prisma, revB.id)).rejects.toThrow();
+    await expect(issueAttestationSql(prisma, revA.id)).rejects.toThrow();
+    expect(await prisma.batteryHvChargeSessionEvidenceIntegrityAttestation.count()).toBe(0);
+  });
+
+  it('R1-C15 wrong attestation contract rejected', async () => {
+    if (!prisma) return;
+    const vector = M3_3_HV_H4_A3_O2_R1_CANONICAL_GOLDEN_VECTORS_V1[0];
+    const { revision } = await insertCoherentRevisionWithAck(prisma, vector.projection);
+    await expect(
+      prisma.$queryRaw<Array<{ id: string }>>`
+        SELECT m3_3_hv_h4_a3_issue_integrity_attestation_v1(
+          ${revision.id}::text,
+          ${'WRONG_CONTRACT'}::text
+        ) AS id`,
+    ).rejects.toThrow();
+    expect(await prisma.batteryHvChargeSessionEvidenceIntegrityAttestation.count()).toBe(0);
   });
 
   it('R1-C16 direct unauthorized insert rejected', async () => {
