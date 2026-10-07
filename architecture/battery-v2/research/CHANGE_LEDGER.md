@@ -6,6 +6,19 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-07 — M3.3-HV-H4-A3.3-O2-R1 schema + invalidation + issuance foundation
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Attestation table + Strategy C triggers + SQL canonical/issuance functions; golden corpus + R1 postgres tests |
+| **WHY** | O2-R1 foundation per closed O2 architecture; loader unchanged |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r1-*.postgres.integration.spec.ts`; HV-H4 postgres CI |
+| **NON_EFFECTS** | No writer attestation; no hybrid loader; no bootstrap |
+| **DECISION_STATUS** | PROPOSED |
+| **EVIDENCE** | `M3_3_HV_H4_A3_3_O2_R1_SCHEMA_TRIGGER_ISSUANCE_FOUNDATION_2026-10-07.md` |
+
+---
+
 ## 2026-10-07 — M3.3-HV-H4-A3.3-O2 final architecture closure (PR #1914)
 
 | Field | Value |

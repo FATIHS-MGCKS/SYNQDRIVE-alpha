@@ -9460,6 +9460,7 @@ model BatteryHvChargeSessionEvidenceRevision {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   durabilityAcks BatteryHvChargeSessionEvidenceAck[]
+  integrityAttestations BatteryHvChargeSessionEvidenceIntegrityAttestation[]
 
   @@unique([organizationId, vehicleId, segmentFingerprint, evidenceContractVersion, sourceRevisionFingerprint], map: "battery_hv_charge_session_evidence_revision_scientific_identity")
   @@index([organizationId, vehicleId, segmentFingerprint, evidenceContractVersion], map: "battery_hv_cs_evidence_rev_canonical_session_idx")
@@ -9482,10 +9483,35 @@ model BatteryHvChargeSessionEvidenceAck {
   acknowledgedAt            DateTime @default(now()) @map("acknowledged_at")
 
   revision BatteryHvChargeSessionEvidenceRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+  integrityAttestations BatteryHvChargeSessionEvidenceIntegrityAttestation[]
 
   @@unique([organizationId, vehicleId, segmentFingerprint, evidenceContractVersion, sourceRevisionFingerprint, durabilityAckContractVersion], map: "battery_hv_charge_session_evidence_ack_fence")
   @@index([revisionId], map: "battery_hv_charge_session_evidence_acks_revision_idx")
   @@map("battery_hv_charge_session_evidence_acks")
+}
+
+/// M3.3-HV-H4-A3.3-O2-R1 — derived integrity attestation (Phase-1 Strategy C invalidation; hybrid loader OFF).
+model BatteryHvChargeSessionEvidenceIntegrityAttestation {
+  id                              String   @id @default(uuid())
+  revisionId                      String   @map("revision_id")
+  durabilityAckId                 String   @map("durability_ack_id")
+  organizationId                  String   @map("organization_id")
+  vehicleId                       String   @map("vehicle_id")
+  segmentFingerprint              String   @map("segment_fingerprint")
+  evidenceContractVersion         String   @map("evidence_contract_version")
+  sourceRevisionFingerprint       String   @db.Char(64) @map("source_revision_fingerprint")
+  durabilityAckContractVersion    String   @map("durability_ack_contract_version")
+  integrityAttestationContractVersion String @map("integrity_attestation_contract_version")
+  attestedAt                      DateTime @map("attested_at")
+  createdAt                       DateTime @default(now()) @map("created_at")
+
+  revision BatteryHvChargeSessionEvidenceRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade, map: "battery_hv_cs_evidence_attestation_revision_fkey")
+  durabilityAck BatteryHvChargeSessionEvidenceAck @relation(fields: [durabilityAckId], references: [id], onDelete: Cascade, map: "battery_hv_cs_evidence_attestation_ack_fkey")
+
+  @@unique([revisionId, integrityAttestationContractVersion], map: "battery_hv_cs_evidence_attestation_revision_contract")
+  @@unique([durabilityAckId], map: "battery_hv_cs_evidence_attestation_ack_unique")
+  @@index([revisionId], map: "battery_hv_cs_evidence_attestation_revision_idx")
+  @@map("battery_hv_charge_session_evidence_integrity_attestations")
 }
 
 /// ERD E5.4 — observational canonical vs legacy recharge shadow parity (non-authoritative).
