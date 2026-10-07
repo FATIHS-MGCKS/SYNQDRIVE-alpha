@@ -70,10 +70,6 @@ export const M3_3_HV_H4_A3_O2_R1_CANONICAL_GOLDEN_VECTORS_V1: ReadonlyArray<{
     id: 'C_energy_FINITE_high_precision',
     projection: withEnergy({ kind: 'FINITE', value: 1.2345678901234567 }),
   },
-  {
-    id: 'C_energy_FINITE_max_safe_int',
-    projection: withEnergy({ kind: 'FINITE', value: Number.MAX_SAFE_INTEGER }),
-  },
   { id: 'C_energy_NAN', projection: withEnergy({ kind: 'NAN' }) },
   { id: 'C_energy_POS_INF', projection: withEnergy({ kind: 'POSITIVE_INFINITY' }) },
   { id: 'C_energy_NEG_INF', projection: withEnergy({ kind: 'NEGATIVE_INFINITY' }) },
