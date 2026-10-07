@@ -523,7 +523,7 @@ Rebuild from: durable source revisions + GT-as-of + H4 composition contract.
 | **A3.3** | **IMPLEMENTED** — MODE_A / A2_V1_PARITY durable loader; full postgres parity corpus (PR #1887) |
 | **A3.4** | **IMPLEMENTED** — revision-scoped retention ACK gate on `prune_hv_charge_sessions` (race-safe `FOR UPDATE` per row) |
 | **A3.5** | **IMPLEMENTED** — leader-guarded bounded current-state reconciliation (`BATTERY_HV_H4_A3_RECONCILIATION_ENABLED` default **false**); Redis fleet cursor; reuses A3.2 writer only |
-| **A3.6** | Optional derived lifecycle cache |
+| **A3.6** | **DEFERRED (R0 2026-10-06/07)** — optional derived lifecycle cache **not justified now**; see `M3_3_HV_H4_A3_6_DERIVED_LIFECYCLE_CACHE_NEED_AUDIT_2026-10-06.md` — **next: `A3.3-O1_MODE_A_EFFECTIVE_REVISION_QUERY_OPTIMIZATION`** |
 
 **`RECOMMENDED_A3_1_SLICE = A3.1 H4 charge session evidence revision persistence contract + schema (no runtime, no prune hook)`**
 

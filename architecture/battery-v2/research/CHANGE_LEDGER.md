@@ -6,6 +6,33 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-07 — M3.3-HV-H4-A3.6-R0 final closure (PR #1905)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Main integration; SOURCE_LEVEL_PRISMA_OPERATION_COUNT terminology; throughput-only fingerprint scope correction; postgres multi-lifecycle live/durable parity test |
+| **VALIDATION** | `m3-3-hv-h4-a3-6-r0-multi-lifecycle.postgres.integration.spec.ts`; HV-H4 CI postgres corpus |
+| **OBSERVED_EFFECT** | `A3_6_DECISION=OPTIMIZE_DURABLE_LOADER_FIRST`; `A3.6_DEFERRED`; `POSTGRES_PERFORMANCE_TIMINGS_EXECUTED=NO` |
+| **DECISION_STATUS** | PROPOSED |
+| **EVIDENCE** | `M3_3_HV_H4_A3_6_DERIVED_LIFECYCLE_CACHE_NEED_AUDIT_2026-10-06.md` §14 |
+
+---
+
+## 2026-10-06 — M3.3-HV-H4-A3.6-R0 derived lifecycle cache need audit
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | R0 architecture audit + repository-local benchmark harness (opt-in postgres; in-memory collapse scale test) |
+| **WHY** | Decide whether optional A3.6 derived lifecycle cache is justified vs durable loader optimization |
+| **VALIDATION** | Code-path inventory; `m3-3-hv-h4-a3-6-r0-collapse-scale.spec.ts`; manual postgres benchmark gate |
+| **OBSERVED_EFFECT** | **A3_6_DECISION=OPTIMIZE_DURABLE_LOADER_FIRST**; **A3.6 cache DEFERRED** — no automatic H4 consumer; revision-row amplification before 5000 collapse |
+| **NON_EFFECTS** | No cache table; no migration; no runtime writer; no production activation |
+| **REMAINING_GAPS** | Postgres S1–S6 timing capture on developer/CI postgres; future loader SQL optimization slice |
+| **DECISION_STATUS** | PROPOSED |
+| **EVIDENCE** | `M3_3_HV_H4_A3_6_DERIVED_LIFECYCLE_CACHE_NEED_AUDIT_2026-10-06.md` |
+
+---
+
 ## 2026-10-03 — M3.3-HV-H4-A3.5 bounded evidence reconciliation scheduler
 
 | Field | Value |
