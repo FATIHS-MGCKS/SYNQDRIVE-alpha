@@ -3,6 +3,8 @@
 **Date (UTC):** 2026-10-07  
 **Scope:** Authorized **read-only** Production observation + `DRY_RUN=1` on fresh S4F-7W wrapper only. **No** env mutation, restart, DB write, deploy, migration, provider calls, live staging, or S4 activation.
 
+**Authoritative execution transcript:** `s4f7x-production-dry-run.log` (agent artifact; original run ~`2026-10-07T14:54:57Z`–`14:55:16Z` UTC).
+
 ## 0 — Access path recovery (prior attempt correction)
 
 The first S4F-7X agent run incorrectly assumed Tailscale (`mein-vps.internal`), `root@srv1374778.hstgr.cloud`, and explicit `~/.ssh/id_ed25519` as root. Historical Production audits (S4F-7S / S4F-7T / S4F-7U) use **`synqdrive-admin@srv1374778.hstgr.cloud`** with passwordless `sudo -n` for root-only `backend.env` and `postgres` reads.
@@ -10,96 +12,63 @@ The first S4F-7X agent run incorrectly assumed Tailscale (`mein-vps.internal`), 
 ```
 EXP021_S4F7X_PRODUCTION_ACCESS_PATH_RECOVERY_RESULT=PASS
 HISTORICAL_PRODUCTION_ACCESS_PATH=synqdrive-admin@srv1374778.hstgr.cloud
-PREVIOUS_FAILED_TAILSCALE_PATH_USED=YES
-PREVIOUS_FAILED_ROOT_USER_USED=YES
-PREVIOUS_FAILED_EXPLICIT_IDENTITY_ASSUMPTION_USED=YES
-NEW_CREDENTIAL_CONFIGURATION_REQUIRED=NO
-TAILSCALE_REQUIRED=NO
-CLOUD_AGENT_DATABASE_URL_REQUIRED=NO
-SSH_CONNECTION=PASS
-REMOTE_USER=synqdrive-admin
-CURRENT_LINK_READABLE=YES
-BACKEND_ENV_READABLE=YES
-LOCAL_PRODUCTION_POSTGRES_READONLY_ACCESS=PASS
-PRODUCTION_DB_CLOCK_READABLE=YES
-LOCALHOST_HEALTH_ACCESS=PASS
-LOCALHOST_READINESS_ACCESS=PASS
-LOCALHOST_AUTHENTICATED_METRICS_ACCESS=PASS
-REDIS_READONLY_PROBE=PASS
-PRODUCTION_ACCESS_RECOVERED=YES
-PRODUCTION_MUTATION_OCCURRED=NO
-PRODUCTION_ENV_MUTATION_OCCURRED=NO
-PRODUCTION_DB_WRITE_OCCURRED=NO
-PRODUCTION_RESTART_OCCURRED=NO
-DEPLOY_OCCURRED=NO
-MIGRATION_EXECUTED=NO
-PROVIDER_PRODUCTION_CALL_COUNT=0
 ```
 
-Operational note: wrapper `DRY_RUN=1` executed under **`sudo -n -E`** (effective `REMOTE_USER=root` for the wrapper process only) so `/opt/synqdrive/shared/backend.env` remains readable for hash/guards without copying secrets. SSH entry path remains `synqdrive-admin`.
+Operational note: wrapper `DRY_RUN=1` executed under **`sudo -n -E`** (effective `REMOTE_USER=root` for the wrapper process only) so `/opt/synqdrive/shared/backend.env` remains readable for hash/guards. SSH entry path remains `synqdrive-admin`.
 
 Bootstrap: `.cursor/scripts/cloud-agent-s4f7x-fresh-tiny-dry-run.sh` (temp tool checkout @ sealed SHA + release `node_modules` symlink).
 
-## 1 — Tool authority (local + remote verification)
+## 1 — Tool authority
 
 | Field | Value |
 |-------|--------|
 | `TOOL_AUTHORITY_SHA` | `11b4a80ccb88d1d6f747399f84667b06c9a71050` |
 | `TOOL_AUTHORITY_SOURCE` | Merged **#1911** (S4F-7W) |
-| `TOOL_CHECKOUT_SHA` (detached worktree `/tmp/s4f7x-tool-11b4a80`) | `11b4a80ccb88d1d6f747399f84667b06c9a71050` |
-| `EXPECTED_FRESH_TINY_STAGING_TOOL_SHA` | `11b4a80ccb88d1d6f747399f84667b06c9a71050` |
 | `REMOTE_TOOL_SHA_VERIFIED` | **YES** |
 | `TOOL_SHA_PIN` | **PASS** |
 
-## 2 — Production baseline (live)
+## 2 — Production baseline (original dry-run observation)
 
 | Field | Value |
 |-------|--------|
 | `CURRENT_PRODUCTION_SHA` | `3c12875dc464ac9a0693957c794c935d101dd43f` |
 | `CURRENT_PRODUCTION_RELEASE_ID` | `20261007115738_v4994` |
 | `BACKEND_ENV_SHA256` | `9aae449e809ff7f1ac6cb3411e09d52b2e1f28923c453589218ebe26bab97e05` |
-| `REPLICA_A_PM2_UPTIME_SEC` / `REPLICA_B_PM2_UPTIME_SEC` | `926` / `926` (at dry-run) |
-| Health / readiness A & B | **PASS** |
+| `REPLICA_A_PM2_UPTIME_SEC` / `REPLICA_B_PM2_UPTIME_SEC` | `926` / `926` (during preflight; log) |
+| Health / readiness A & B | **OK** |
 | `NGINX_DUAL_UPSTREAM` | **YES** |
 | `SCHEDULER_SINGLE_LEADER` | **YES** |
-| `NO_MIXED_SHA` | **YES** |
 | `GLOBAL_KILL_STATE` | **KILLED** |
-| S4 persistence tables | **0** rows (zero-state) |
+| S4 persistence | **0** rows |
 | Six S4 enable flags | **OFF** |
-| Three Tiny staging keys | **MISSING** (prestate) |
+| Three Tiny staging keys | **MISSING** |
 
-## 3 — JIT fresh authority (sealed this run)
+## 3 — JIT fresh authority (original run seal)
 
 | Field | Value |
 |-------|--------|
 | `FRESH_TINY_NOT_BEFORE` | **`2026-10-07T14:54:57.152Z`** |
-| `FRESH_CUTOFF_SOURCE` | **PRODUCTION_DATABASE_CLOCK** (`clock_timestamp()` UTC, ms via `to_char`) |
 | `FRESH_TINY_EXPECTED_FINGERPRINT` | **`fc8df1903abf5ddefaf04d4f9bac63bd14dbe1335b155cdd853cfbcedad36b61`** |
-| `FRESH_FINGERPRINT_DERIVE_STABLE` | **YES** (two CLI derives matched) |
-| `TINY_COMPLETED_TRIP_END_TIME_IN_FUTURE_COUNT` | **0** |
-| `FRESH_CUTOFF_EXISTING_ELIGIBLE_COMPLETED_TRIP_COUNT` | **0** |
 | `DB_CLOCK_CANONICAL_UTC` (at `validate-fresh-authority`) | `2026-10-07T14:55:16.178Z` |
-| `FRESH_AUTHORITY_AGE_SECONDS` | **19.026** (≤ **900**) |
+| `FRESH_AUTHORITY_AGE_SECONDS` | **19.026** |
 | `FRESH_FINGERPRINT_OPERATOR_INTERNAL_MATCH` | **YES** |
+| Trip JIT preconditions | future **0**, eligible **0** |
 
-**Do not reuse** S4F-7U evidence authority (`9abb1a57…` / `2026-10-06T18:33:26.610Z`) — expired and superseded by this JIT seal.
+**Do not reuse** for mutation after expiry (900 s window) or for live staging without fresh authority.
 
-## 4 — Production `DRY_RUN=1` wrapper result
+## 4 — Production `DRY_RUN=1` wrapper result (original run)
 
 | Field | Value |
 |-------|--------|
-| `DRY_RUN` | **1** |
-| `LIVE_PREFLIGHT_READONLY` | **PASS** |
+| `ORIGINAL_DRY_RUN_FINAL_RESULT` | **PASS** |
 | `GUARDS_OK` | **YES** |
 | `DRY_RUN_FULL_GUARD_PATH_EXECUTED` | **YES** |
 | `DRY_RUN_ENV_MUTATION_COUNT` | **0** |
 | `INTENDED_ENV_CHANGED_KEY_COUNT` | **3** |
 | `INTENDED_UNEXPECTED_ENV_CHANGED_KEY_COUNT` | **0** |
-| `PRODUCTION_ENV_MUTATION_OCCURRED` | **NO** |
-| `PRODUCTION_DB_WRITE_OCCURRED` | **NO** |
-| `PRODUCTION_RESTART_OCCURRED` | **NO** |
+| `PRODUCTION_RESTART_OCCURRED` | **NO** (log; `DRY_RUN_RESTART_COUNT=0`) |
 
-Intended three-key delta (not written):
+Intended three-key delta (simulation only; not written):
 
 ```
 DI_V0_S4_DISCOVERY_TRIP_END_NOT_BEFORE=2026-10-07T14:54:57.152Z
@@ -107,34 +76,79 @@ DI_V0_S4_ORGANIZATION_ALLOWLIST=faa710c9-6d91-4079-a7d5-91fdccdec14a
 DI_V0_S4_VEHICLE_ALLOWLIST=c10351f8-b6a2-4258-947f-631aeaa6d359
 ```
 
-Full sanitized log: agent artifact `s4f7x-production-dry-run.log`.
+## 5 — Historical forensic fields (original run transcript)
 
-## 5 — Post-dry-run independent read
+Recovered from **`s4f7x-production-dry-run.log` only** (no substitution from later observations).
 
 | Field | Value |
 |-------|--------|
-| `POST_DRY_RUN_PRODUCTION_SHA` | `3c12875dc464ac9a0693957c794c935d101dd43f` (unchanged) |
-| `POST_DRY_RUN_BACKEND_ENV_SHA256` | `9aae449e809ff7f1ac6cb3411e09d52b2e1f28923c453589218ebe26bab97e05` (unchanged) |
+| `PRE_REPLICA_A_PID` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
+| `PRE_REPLICA_B_PID` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
+| `POST_REPLICA_A_PID` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
+| `POST_REPLICA_B_PID` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
+| `REPLICA_A_PID_UNCHANGED_DURING_DRY_RUN` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
+| `REPLICA_B_PID_UNCHANGED_DURING_DRY_RUN` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
+| `PRE_REPLICA_A_ATTESTATION_STATE` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
+| `PRE_REPLICA_A_ATTESTATION_FINGERPRINT` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
+| `PRE_REPLICA_A_ATTESTATION_CONTRACT_VERSION` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
+| `PRE_REPLICA_B_ATTESTATION_STATE` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
+| `PRE_REPLICA_B_ATTESTATION_FINGERPRINT` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
+| `PRE_REPLICA_B_ATTESTATION_CONTRACT_VERSION` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
+| `PRE_REPLICA_ATTESTATION_PARITY` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
+| `POST_REPLICA_A_ATTESTATION_STATE` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
+| `POST_REPLICA_A_ATTESTATION_FINGERPRINT` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
+| `POST_REPLICA_A_ATTESTATION_CONTRACT_VERSION` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
+| `POST_REPLICA_B_ATTESTATION_STATE` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
+| `POST_REPLICA_B_ATTESTATION_FINGERPRINT` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
+| `POST_REPLICA_B_ATTESTATION_CONTRACT_VERSION` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
+| `POST_REPLICA_ATTESTATION_PARITY` | **NOT_CAPTURED_IN_ORIGINAL_RUN** |
 
-## 6 — Gate authority (unchanged)
+**Why not captured:** S4F-7W fresh wrapper `DRY_RUN=1` path runs live topology/budget/Redis guards (including authenticated metrics for **budget** only). It does **not** invoke `prove-recovery-prestate` or emit `synqdrive_di_v0_s4_runtime_config_attestation_info` parse lines, and `s4f7f_topology_snapshot` logs uptime/CWD but not PM2 PID in stdout.
+
+**Post-dry-run SHA/env hash (independent read same day):** unchanged vs pins (see §4 safety).
+
+## 6 — CURRENT_READONLY_REVERIFY (not historical post-dry-run)
+
+Read-only SSH `synqdrive-admin@srv1374778.hstgr.cloud` at **`2026-10-07T15:19:05Z`**. Proves Production **still** PRESTATE; **not** a substitute for missing historical POST lines.
+
+| Field | Value |
+|-------|--------|
+| `CURRENT_REPLICA_A_PID` | `1725593` |
+| `CURRENT_REPLICA_B_PID` | `1725602` |
+| `CURRENT_REPLICA_A_ATTESTATION_STATE` | **PRESTATE** |
+| `CURRENT_REPLICA_A_ATTESTATION_FINGERPRINT` | `b648908a5f74798f765b0631cd16d5c50a390222d36b63fb03f787367176750d` |
+| `CURRENT_REPLICA_A_ATTESTATION_CONTRACT_VERSION` | **v1** |
+| `CURRENT_REPLICA_B_ATTESTATION_STATE` | **PRESTATE** |
+| `CURRENT_REPLICA_B_ATTESTATION_FINGERPRINT` | `b648908a5f74798f765b0631cd16d5c50a390222d36b63fb03f787367176750d` |
+| `CURRENT_REPLICA_B_ATTESTATION_CONTRACT_VERSION` | **v1** |
+| `CURRENT_REPLICA_ATTESTATION_PARITY` | **YES** |
+
+## 7 — Final evidence completeness closure
+
+```
+EXP021_S4F7X_FINAL_EVIDENCE_CLOSURE_RESULT=PASS
+PR_NUMBER=1912
+ORIGINAL_DRY_RUN_FINAL_RESULT=PASS
+S4F7X_ORIGINAL_RUN_EVIDENCE_COMPLETE=YES
+S4F7X_REPEAT_DRY_RUN_REQUIRED=NO
+```
+
+**Closure rationale:** The authorized S4F-7X acceptance contract (tool SHA pin, JIT seal, full `DRY_RUN=1` guard path, zero mutation) is fully recorded in `s4f7x-production-dry-run.log`. Bounded forensic fields (historical PID + explicit attestation parse lines) were never emitted by the wrapper and cannot be reconstructed without inventing values. A repeat `DRY_RUN=1` would **not** add those fields unless the wrapper is extended (out of scope for this evidence-only closure). `CURRENT_READONLY_REVERIFY` confirms expected PRESTATE attestation remains on both replicas.
+
+| Field | Value |
+|-------|--------|
+| `FINAL_RESULT` | **PASS** |
+| `BLOCKERS` | **NONE** |
+| `NEXT_ACTION` | **WAIT_FOR_EXACT_HEAD_CI_THEN_MERGE_PR1912** |
+
+## 8 — Gate authority (unchanged)
 
 | Field | Value |
 |-------|--------|
 | `EXPLICIT_OPERATOR_AUTHORIZATION_GATE` | **NOT_SATISFIED** |
-| `TINY_ACTIVATION_READY` | **NO** |
 | Gate 6 | **NOT_SATISFIED** |
 | `LIVE_STAGING_SHELL_EXECUTION_READY` | **NO** |
-| `LIVE_STAGING_REMAINS_FAIL_CLOSED` | **YES** |
 | `DRY_RUN=0` | **NOT EXECUTED** |
-| `DI_S4F7V_LIVE_STAGING_AUTHORIZED` | **NOT SET** |
-
-## Outcome
-
-| Field | Value |
-|-------|--------|
-| `FINAL_RESULT` | **`PASS`** |
-| `BLOCKERS` | **NONE** |
-| `NEXT_ACTION` | **Human Gate 6 / live staging remains unauthorized** — any future env mutation must refresh JIT authority (≤900 s) and re-run preflight; do not reuse this cutoff after expiry |
 
 ## Safety attestations
 
@@ -147,4 +161,3 @@ Full sanitized log: agent artifact `s4f7x-production-dry-run.log`.
 | `DEPLOY_OCCURRED` | **NO** |
 | `MIGRATION_EXECUTED` | **NO** |
 | `PROVIDER_PRODUCTION_CALL_COUNT` | **0** |
-| `SHADOW_ACTIVATION_OCCURRED` | **NO** |
