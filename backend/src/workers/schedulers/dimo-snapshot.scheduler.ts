@@ -330,7 +330,7 @@ export class DimoSnapshotScheduler {
     for (const { vehicle: v, tokenId, effectiveTier } of enqueueBatch) {
       try {
         let apdShadowOpportunityId: string | undefined;
-        if (this.apdShadow?.isEnabled()) {
+        if (this.apdShadow?.isEnabledForVehicle(v.organizationId, v.id)) {
           const tripState = v.tripDetectionState?.state ?? null;
           const reconciliation =
             effectiveTier !== SnapshotPollingTier.ACTIVE_DRIVING &&

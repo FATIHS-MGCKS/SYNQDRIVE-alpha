@@ -10,6 +10,14 @@ import { evaluateP25ApdProfile } from '../adaptive-polling-policy/p25-apd-profil
 import { applyP25ApdShadowSafetyOverlay } from '../adaptive-polling-policy/p25-apd-shadow-overlay';
 import type { P25ApdShadowPrePollInput } from '../adaptive-polling-policy/p25-apd-shadow-decision.types';
 import { isApdShadowEnabled } from './adaptive-polling-shadow.config';
+import {
+  buildApdShadowTenantMemoryKey,
+  cohortExcludedReasonForRuntime,
+  isApdShadowCohortMember,
+  parseApdShadowCohortRuntime,
+  type ApdShadowCohortExcludedReason,
+  type ApdShadowCohortRuntime,
+} from './adaptive-polling-shadow-cohort.config';
 import { AdaptivePollingShadowMetricsService } from './adaptive-polling-shadow-metrics.service';
 import { AdaptivePollingShadowRepository } from './adaptive-polling-shadow.repository';
 import { buildApdShadowOpportunityId } from './apd-shadow-opportunity.util';
@@ -32,11 +40,69 @@ export class AdaptivePollingShadowService {
     private readonly repository: AdaptivePollingShadowRepository,
     @Optional() private readonly metrics?: AdaptivePollingShadowMetricsService,
   ) {
-    this.metrics?.setEnabled(isApdShadowEnabled());
+    this.refreshRuntimeMetrics();
   }
 
+  /** Global flag only — prefer {@link isEnabledForVehicle} at call sites. */
   isEnabled(): boolean {
     return isApdShadowEnabled();
+  }
+
+  getCohortRuntime(): ApdShadowCohortRuntime {
+    return parseApdShadowCohortRuntime();
+  }
+
+  isEnabledForVehicle(organizationId: string, vehicleId: string): boolean {
+    if (!isApdShadowEnabled()) return false;
+    const runtime = this.getCohortRuntime();
+    if (runtime.state !== 'READY' || !runtime.config) return false;
+    return isApdShadowCohortMember(runtime.config, organizationId, vehicleId);
+  }
+
+  getCohortVerificationSummary(): {
+    cohortState: string;
+    cohortMemberCount: number;
+    cohortConfigFingerprintSha256: string | null;
+  } {
+    const runtime = this.getCohortRuntime();
+    return {
+      cohortState: runtime.state,
+      cohortMemberCount: runtime.config?.members.length ?? 0,
+      cohortConfigFingerprintSha256: runtime.configFingerprintSha256,
+    };
+  }
+
+  private refreshRuntimeMetrics(): void {
+    const runtime = this.getCohortRuntime();
+    this.metrics?.setEnabled(isApdShadowEnabled() && runtime.state === 'READY');
+    if (runtime.configFingerprintSha256) {
+      this.metrics?.setCohortConfigFingerprint(runtime.configFingerprintSha256);
+    }
+    if (runtime.config) {
+      this.metrics?.setCohortMemberCount(runtime.config.members.length);
+    }
+  }
+
+  private recordCohortGateBlocked(reason: ApdShadowCohortExcludedReason): void {
+    this.metrics?.recordCohortExcluded(reason);
+  }
+
+  private assertCohortVehicleAllowed(
+    organizationId: string,
+    vehicleId: string,
+  ): boolean {
+    if (!isApdShadowEnabled()) return false;
+    const runtime = this.getCohortRuntime();
+    if (runtime.state !== 'READY' || !runtime.config) {
+      const reason = cohortExcludedReasonForRuntime(runtime);
+      if (reason) this.recordCohortGateBlocked(reason);
+      return false;
+    }
+    if (!isApdShadowCohortMember(runtime.config, organizationId, vehicleId)) {
+      this.recordCohortGateBlocked('NOT_ALLOWLISTED');
+      return false;
+    }
+    return true;
   }
 
   /**
@@ -45,7 +111,9 @@ export class AdaptivePollingShadowService {
   async observePrePoll(
     ctx: AdaptivePollingShadowPrePollContext,
   ): Promise<AdaptivePollingShadowPrePollResult | null> {
-    if (!this.isEnabled()) return null;
+    if (!this.assertCohortVehicleAllowed(ctx.organizationId, ctx.vehicleId)) {
+      return null;
+    }
     try {
       return await this.observePrePollInner(ctx);
     } catch (err) {
@@ -58,7 +126,9 @@ export class AdaptivePollingShadowService {
   }
 
   async observePostPoll(ctx: AdaptivePollingShadowPostPollContext): Promise<void> {
-    if (!this.isEnabled()) return;
+    if (!this.assertCohortVehicleAllowed(ctx.organizationId, ctx.vehicleId)) {
+      return;
+    }
     try {
       await this.observePostPollInner(ctx);
     } catch (err) {
@@ -106,7 +176,11 @@ export class AdaptivePollingShadowService {
       this.metrics?.recordProfileInvalidated(profile.invalidationReason);
     }
 
-    const last = this.shadowLastAllowedMs.get(ctx.vehicleId) ?? { b2: 0, b4: 0 };
+    const memoryKey = buildApdShadowTenantMemoryKey(
+      ctx.organizationId,
+      ctx.vehicleId,
+    );
+    const last = this.shadowLastAllowedMs.get(memoryKey) ?? { b2: 0, b4: 0 };
     const medianIntervalMs =
       profile.medianCadenceMs > 0 ? profile.medianCadenceMs : 8 * 3600 * 1000;
 
@@ -185,7 +259,7 @@ export class AdaptivePollingShadowService {
         wakeCorrelationId: ctx.wakeCorrelationId,
       });
     }
-    this.shadowLastAllowedMs.set(ctx.vehicleId, nextLast);
+    this.shadowLastAllowedMs.set(memoryKey, nextLast);
 
     return { opportunityId };
   }
