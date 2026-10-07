@@ -28,6 +28,7 @@ export interface AdaptivePollingShadowPostPollContext {
   organizationId: string;
   vehicleId: string;
   opportunityId: string;
+  realPollId: string;
   pollCompletedAtMs: number;
   previousLvSourceMs: number | null;
   newLvSourceMs: number | null;

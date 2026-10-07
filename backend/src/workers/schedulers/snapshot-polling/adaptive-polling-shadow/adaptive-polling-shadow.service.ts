@@ -1,6 +1,7 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { TripDetectionState } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import type { SnapshotWakeOutcome } from '../../../snapshot-wake/snapshot-wake.types';
 import { P25_APD_B2_V1, P25_APD_B4_V1 } from '../adaptive-polling-policy/p25-apd-policy-versions';
 import {
   evaluateP25ApdB4V1Core,
@@ -9,9 +10,9 @@ import {
 import { evaluateP25ApdProfile } from '../adaptive-polling-policy/p25-apd-profile-evaluator';
 import { applyP25ApdShadowSafetyOverlay } from '../adaptive-polling-policy/p25-apd-shadow-overlay';
 import type { P25ApdShadowPrePollInput } from '../adaptive-polling-policy/p25-apd-shadow-decision.types';
+import { toApdShadowCanonicalEnqueueOutcome } from './apd-shadow-enqueue-outcome.util';
 import { isApdShadowEnabled } from './adaptive-polling-shadow.config';
 import {
-  buildApdShadowTenantMemoryKey,
   cohortExcludedReasonForRuntime,
   isApdShadowCohortMember,
   parseApdShadowCohortRuntime,
@@ -21,6 +22,7 @@ import {
 import { AdaptivePollingShadowMetricsService } from './adaptive-polling-shadow-metrics.service';
 import { AdaptivePollingShadowRepository } from './adaptive-polling-shadow.repository';
 import { buildApdShadowOpportunityId } from './apd-shadow-opportunity.util';
+import { P25_APD_SHADOW_EXECUTION_V2 } from './p25-apd-shadow-execution-versions';
 import type {
   AdaptivePollingShadowPostPollContext,
   AdaptivePollingShadowPrePollContext,
@@ -30,10 +32,6 @@ import type {
 @Injectable()
 export class AdaptivePollingShadowService {
   private readonly logger = new Logger(AdaptivePollingShadowService.name);
-  private readonly shadowLastAllowedMs = new Map<
-    string,
-    { b2: number; b4: number }
-  >();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -43,7 +41,6 @@ export class AdaptivePollingShadowService {
     this.refreshRuntimeMetrics();
   }
 
-  /** Global flag only — prefer {@link isEnabledForVehicle} at call sites. */
   isEnabled(): boolean {
     return isApdShadowEnabled();
   }
@@ -105,9 +102,6 @@ export class AdaptivePollingShadowService {
     return true;
   }
 
-  /**
-   * Observe-only pre-poll evaluation. Fail-open: never throws to caller.
-   */
   async observePrePoll(
     ctx: AdaptivePollingShadowPrePollContext,
   ): Promise<AdaptivePollingShadowPrePollResult | null> {
@@ -125,6 +119,32 @@ export class AdaptivePollingShadowService {
     }
   }
 
+  async observeEnqueueOutcome(input: {
+    organizationId: string;
+    vehicleId: string;
+    opportunityId: string;
+    wakeOutcome: SnapshotWakeOutcome;
+    observedAtMs: number;
+  }): Promise<void> {
+    if (!this.assertCohortVehicleAllowed(input.organizationId, input.vehicleId)) {
+      return;
+    }
+    try {
+      await this.repository.patchEnqueueOutcome({
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        opportunityId: input.opportunityId,
+        enqueueOutcome: toApdShadowCanonicalEnqueueOutcome(input.wakeOutcome),
+        enqueueOutcomeAt: new Date(input.observedAtMs),
+      });
+    } catch (err) {
+      this.metrics?.recordFailure('enqueue_outcome');
+      this.logger.warn(
+        `APD shadow enqueue-outcome patch failed (non-blocking): ${err instanceof Error ? err.message : err}`,
+      );
+    }
+  }
+
   async observePostPoll(ctx: AdaptivePollingShadowPostPollContext): Promise<void> {
     if (!this.assertCohortVehicleAllowed(ctx.organizationId, ctx.vehicleId)) {
       return;
@@ -135,6 +155,25 @@ export class AdaptivePollingShadowService {
       this.metrics?.recordFailure('post_poll');
       this.logger.warn(
         `APD shadow post-poll failed (non-blocking): ${err instanceof Error ? err.message : err}`,
+      );
+    }
+  }
+
+  async observePollFailure(input: {
+    organizationId: string;
+    vehicleId: string;
+    opportunityId: string;
+    realPollId: string;
+  }): Promise<void> {
+    if (!this.assertCohortVehicleAllowed(input.organizationId, input.vehicleId)) {
+      return;
+    }
+    try {
+      await this.repository.updateFailedPollOutcome(input);
+    } catch (err) {
+      this.metrics?.recordFailure('post_poll');
+      this.logger.warn(
+        `APD shadow failure correlation failed (non-blocking): ${err instanceof Error ? err.message : err}`,
       );
     }
   }
@@ -176,11 +215,6 @@ export class AdaptivePollingShadowService {
       this.metrics?.recordProfileInvalidated(profile.invalidationReason);
     }
 
-    const memoryKey = buildApdShadowTenantMemoryKey(
-      ctx.organizationId,
-      ctx.vehicleId,
-    );
-    const last = this.shadowLastAllowedMs.get(memoryKey) ?? { b2: 0, b4: 0 };
     const medianIntervalMs =
       profile.medianCadenceMs > 0 ? profile.medianCadenceMs : 8 * 3600 * 1000;
 
@@ -208,29 +242,26 @@ export class AdaptivePollingShadowService {
     };
 
     const policies = [
-      { version: P25_APD_B2_V1, lastAllowed: last.b2, evaluate: evaluateP25ApdB2V1Core },
-      { version: P25_APD_B4_V1, lastAllowed: last.b4, evaluate: evaluateP25ApdB4V1Core },
+      { version: P25_APD_B2_V1, evaluate: evaluateP25ApdB2V1Core },
+      { version: P25_APD_B4_V1, evaluate: evaluateP25ApdB4V1Core },
     ] as const;
 
-    const nextLast = { ...last };
     for (const p of policies) {
+      const lastAllowed = await this.repository.resolveLastAllowedReconciliationPollMs({
+        organizationId: ctx.organizationId,
+        vehicleId: ctx.vehicleId,
+        policyVersion: p.version,
+        reconciliation: ctx.reconciliation,
+      });
+
       const input: P25ApdShadowPrePollInput = {
         ...baseInput,
         profileClass: profile.profileClass,
-        lastAllowedReconciliationPollMs: p.lastAllowed,
+        lastAllowedReconciliationPollMs: lastAllowed,
       };
       const core = p.evaluate(input);
       const decision = applyP25ApdShadowSafetyOverlay(core, overlay);
       this.metrics?.recordDecision(p.version, decision.decision, decision.reason);
-
-      if (
-        decision.decision === 'WOULD_POLL' ||
-        decision.decision === 'FORCED_TRIP_SAFETY' ||
-        decision.decision === 'IMMEDIATE_SNAPSHOT_REQUIRED'
-      ) {
-        if (p.version === P25_APD_B2_V1) nextLast.b2 = ctx.decisionAtMs;
-        if (p.version === P25_APD_B4_V1) nextLast.b4 = ctx.decisionAtMs;
-      }
 
       await this.repository.upsertPrePollDecision({
         organizationId: ctx.organizationId,
@@ -242,6 +273,8 @@ export class AdaptivePollingShadowService {
         profileClass: profile.profileClass,
         decision: decision.decision,
         reason: decision.reason,
+        shadowExecutionVersion: P25_APD_SHADOW_EXECUTION_V2,
+        reconciliation: ctx.reconciliation,
         lastLvSourceAt: ctx.lastTrustworthyLvSourceMs
           ? new Date(ctx.lastTrustworthyLvSourceMs)
           : null,
@@ -259,7 +292,6 @@ export class AdaptivePollingShadowService {
         wakeCorrelationId: ctx.wakeCorrelationId,
       });
     }
-    this.shadowLastAllowedMs.set(memoryKey, nextLast);
 
     return { opportunityId };
   }
@@ -287,6 +319,10 @@ export class AdaptivePollingShadowService {
   private async observePostPollInner(
     ctx: AdaptivePollingShadowPostPollContext,
   ): Promise<void> {
+    if (!ctx.realPollId) {
+      throw new Error('realPollId required for successful APD post-poll correlation');
+    }
+
     const newLv =
       ctx.newLvSourceMs != null &&
       (ctx.previousLvSourceMs == null || ctx.newLvSourceMs > ctx.previousLvSourceMs);
@@ -299,7 +335,6 @@ export class AdaptivePollingShadowService {
     if (newTop) this.metrics?.recordInformativeRealPoll('top_level');
 
     const patch = {
-      realPollCompletedAt: new Date(ctx.pollCompletedAtMs),
       newLvSourceObserved: newLv,
       newLvSourceAt: newLv && ctx.newLvSourceMs ? new Date(ctx.newLvSourceMs) : null,
       newTopLevelSourceObserved: newTop,
@@ -309,11 +344,13 @@ export class AdaptivePollingShadowService {
     };
 
     for (const policyVersion of [P25_APD_B2_V1, P25_APD_B4_V1]) {
-      await this.repository.updateOutcome({
+      await this.repository.updateSuccessfulPollOutcome({
         organizationId: ctx.organizationId,
         vehicleId: ctx.vehicleId,
         opportunityId: ctx.opportunityId,
         policyVersion,
+        realPollId: ctx.realPollId,
+        realPollCompletedAt: new Date(ctx.pollCompletedAtMs),
         patch,
       });
     }

@@ -5,6 +5,7 @@ import {
   P25_APD_B2_V1,
   P25_APD_B4_V1,
 } from '../adaptive-polling-policy/p25-apd-policy-versions';
+import { P25_APD_SHADOW_EXECUTION_V2 } from './p25-apd-shadow-execution-versions';
 
 const databaseUrl = process.env.DATABASE_URL;
 const describePg = databaseUrl ? describe : describe.skip;
@@ -25,6 +26,8 @@ function baseRow(input: {
     profileClass: 'STABLE_PERIODIC',
     decision: 'WOULD_POLL',
     reason: 'PHASE_WINDOW_INSIDE_MIN_INTERVAL',
+    shadowExecutionVersion: P25_APD_SHADOW_EXECUTION_V2,
+    reconciliation: true,
   };
 }
 
@@ -234,22 +237,26 @@ describePg('ApdShadowReconciliationDecision Postgres integration (APDS-7.1)', ()
       }),
     );
     const completedAt = new Date('2026-10-03T12:00:00.000Z');
+    const pollId = '00000000-0000-4000-8000-0000000000b2';
     await Promise.all([
-      repository.updateOutcome({
+      repository.updateSuccessfulPollOutcome({
         organizationId,
         vehicleId,
         opportunityId,
         policyVersion: P25_APD_B2_V1,
+        realPollId: pollId,
+        realPollCompletedAt: completedAt,
         patch: {
-          realPollCompletedAt: completedAt,
           newLvSourceObserved: true,
         },
       }),
-      repository.updateOutcome({
+      repository.updateSuccessfulPollOutcome({
         organizationId,
         vehicleId,
         opportunityId,
         policyVersion: P25_APD_B2_V1,
+        realPollId: pollId,
+        realPollCompletedAt: completedAt,
         patch: {
           newObdSourceObserved: true,
           legacyAssessmentImpact: 'NONE',
@@ -395,21 +402,26 @@ describePg('ApdShadowReconciliationDecision Postgres integration (APDS-7.1)', ()
         policyVersion: P25_APD_B2_V1,
       }),
     );
-    await repository.updateOutcome({
+    const pollId = '00000000-0000-4000-8000-0000000000c3';
+    const completedAt = new Date('2026-10-03T12:04:00.000Z');
+    await repository.updateSuccessfulPollOutcome({
       organizationId,
       vehicleId,
       opportunityId,
       policyVersion: P25_APD_B2_V1,
+      realPollId: pollId,
+      realPollCompletedAt: completedAt,
       patch: {
-        realPollCompletedAt: new Date(),
         newLvSourceObserved: false,
       },
     });
-    await repository.updateOutcome({
+    await repository.updateSuccessfulPollOutcome({
       organizationId,
       vehicleId,
       opportunityId,
       policyVersion: P25_APD_B2_V1,
+      realPollId: pollId,
+      realPollCompletedAt: completedAt,
       patch: {
         newLvSourceObserved: true,
         newLvSourceAt: new Date('2026-10-03T12:05:00.000Z'),
@@ -438,11 +450,13 @@ describePg('ApdShadowReconciliationDecision Postgres integration (APDS-7.1)', ()
       }),
     );
     const lvAt = new Date('2026-10-03T11:00:00.000Z');
-    await repository.updateOutcome({
+    await repository.updateSuccessfulPollOutcome({
       organizationId,
       vehicleId,
       opportunityId,
       policyVersion: P25_APD_B4_V1,
+      realPollId: '00000000-0000-4000-8000-0000000000d4',
+      realPollCompletedAt: new Date('2026-10-03T12:06:00.000Z'),
       patch: {
         newLvSourceObserved: true,
         newLvSourceAt: lvAt,
@@ -468,5 +482,143 @@ describePg('ApdShadowReconciliationDecision Postgres integration (APDS-7.1)', ()
     ) dup`;
     const duplicateSemanticRows = Number(groups[0]?.cnt ?? 0);
     expect(duplicateSemanticRows).toBe(0);
+  });
+
+  it('13 durable lastAllowed ignores V1 rows without execution version', async () => {
+    const opportunityId = buildApdShadowOpportunityId({
+      organizationId,
+      vehicleId,
+      decisionAtMs: Date.now() + 20,
+      origin: 'INTEGRATION_V2_LAST_ALLOWED',
+    });
+    trackCleanup(organizationId, vehicleId, opportunityId);
+    const completedAt = new Date('2026-10-07T13:50:00.000Z');
+    await repository.upsertPrePollDecision({
+      ...baseRow({
+        organizationId,
+        vehicleId,
+        opportunityId,
+        policyVersion: P25_APD_B2_V1,
+      }),
+      decisionAt: new Date('2026-10-07T13:45:00.000Z'),
+    });
+    await prisma.apdShadowReconciliationDecision.updateMany({
+      where: { opportunityId, policyVersion: P25_APD_B2_V1 },
+      data: {
+        shadowExecutionVersion: null,
+        realPollStatus: 'SUCCESS',
+        realPollId: '00000000-0000-4000-8000-00000000v1',
+        realPollCompletedAt: completedAt,
+        reconciliation: true,
+      },
+    });
+    await repository.updateSuccessfulPollOutcome({
+      organizationId,
+      vehicleId,
+      opportunityId: buildApdShadowOpportunityId({
+        organizationId,
+        vehicleId,
+        decisionAtMs: Date.now() + 21,
+        origin: 'INTEGRATION_V2_LAST_ALLOWED_V2',
+      }),
+      policyVersion: P25_APD_B2_V1,
+      realPollId: '00000000-0000-4000-8000-00000000v2',
+      realPollCompletedAt: new Date('2026-10-07T14:00:00.000Z'),
+      patch: {},
+    });
+    trackCleanup(
+      organizationId,
+      vehicleId,
+      buildApdShadowOpportunityId({
+        organizationId,
+        vehicleId,
+        decisionAtMs: Date.now() + 21,
+        origin: 'INTEGRATION_V2_LAST_ALLOWED_V2',
+      }),
+    );
+    const last = await repository.resolveLastAllowedReconciliationPollMs({
+      organizationId,
+      vehicleId,
+      policyVersion: P25_APD_B2_V1,
+      reconciliation: true,
+    });
+    expect(last).toBe(new Date('2026-10-07T14:00:00.000Z').getTime());
+  });
+
+  it('14 enqueue outcome patch is durable', async () => {
+    const opportunityId = buildApdShadowOpportunityId({
+      organizationId,
+      vehicleId,
+      decisionAtMs: Date.now() + 22,
+      origin: 'INTEGRATION_V2_ENQUEUE',
+    });
+    trackCleanup(organizationId, vehicleId, opportunityId);
+    await repository.upsertPrePollDecision(
+      baseRow({
+        organizationId,
+        vehicleId,
+        opportunityId,
+        policyVersion: P25_APD_B2_V1,
+      }),
+    );
+    const at = new Date('2026-10-07T14:01:00.000Z');
+    await repository.patchEnqueueOutcome({
+      organizationId,
+      vehicleId,
+      opportunityId,
+      enqueueOutcome: 'COALESCED',
+      enqueueOutcomeAt: at,
+    });
+    const row = await prisma.apdShadowReconciliationDecision.findFirst({
+      where: { opportunityId, policyVersion: P25_APD_B2_V1 },
+    });
+    expect(row?.enqueueOutcome).toBe('COALESCED');
+    expect(row?.enqueueOutcomeAt?.toISOString()).toBe(at.toISOString());
+    expect(row?.realPollId).toBeNull();
+  });
+
+  it('15 concurrent enqueue-outcome and post-poll patches converge on one row', async () => {
+    const opportunityId = buildApdShadowOpportunityId({
+      organizationId,
+      vehicleId,
+      decisionAtMs: Date.now() + 23,
+      origin: 'INTEGRATION_V2_RACE_ENQUEUE_POST',
+    });
+    trackCleanup(organizationId, vehicleId, opportunityId);
+    await repository.upsertPrePollDecision(
+      baseRow({
+        organizationId,
+        vehicleId,
+        opportunityId,
+        policyVersion: P25_APD_B2_V1,
+      }),
+    );
+    const pollId = '00000000-0000-4000-8000-00000000e5';
+    const completedAt = new Date('2026-10-07T14:02:00.000Z');
+    await Promise.all([
+      repository.patchEnqueueOutcome({
+        organizationId,
+        vehicleId,
+        opportunityId,
+        enqueueOutcome: 'ENQUEUED',
+        enqueueOutcomeAt: new Date('2026-10-07T14:01:30.000Z'),
+      }),
+      repository.updateSuccessfulPollOutcome({
+        organizationId,
+        vehicleId,
+        opportunityId,
+        policyVersion: P25_APD_B2_V1,
+        realPollId: pollId,
+        realPollCompletedAt: completedAt,
+        patch: { newTopLevelSourceObserved: true },
+      }),
+    ]);
+    const row = await prisma.apdShadowReconciliationDecision.findFirst({
+      where: { opportunityId, policyVersion: P25_APD_B2_V1 },
+    });
+    expect(row?.enqueueOutcome).toBe('ENQUEUED');
+    expect(row?.realPollId).toBe(pollId);
+    expect(row?.realPollStatus).toBe('SUCCESS');
+    expect(row?.newTopLevelSourceObserved).toBe(true);
   });
 });

@@ -23,7 +23,10 @@ function setValidCohort(members: { organizationId: string; vehicleId: string }[]
 describe('AdaptivePollingShadowService cohort gating', () => {
   const repository = {
     upsertPrePollDecision: jest.fn().mockResolvedValue(undefined),
-    updateOutcome: jest.fn().mockResolvedValue(undefined),
+    resolveLastAllowedReconciliationPollMs: jest.fn().mockResolvedValue(0),
+    patchEnqueueOutcome: jest.fn().mockResolvedValue(undefined),
+    updateSuccessfulPollOutcome: jest.fn().mockResolvedValue(undefined),
+    updateFailedPollOutcome: jest.fn().mockResolvedValue(undefined),
   } as unknown as AdaptivePollingShadowRepository;
 
   const metrics = {
@@ -118,6 +121,7 @@ describe('AdaptivePollingShadowService cohort gating', () => {
       organizationId: ORG,
       vehicleId: STALE,
       opportunityId: 'opp-1',
+      realPollId: 'poll-1',
       pollCompletedAtMs: 3_000_001_000,
       previousLvSourceMs: null,
       newLvSourceMs: null,
@@ -125,7 +129,7 @@ describe('AdaptivePollingShadowService cohort gating', () => {
       newTopLevelSourceMs: null,
       providerFetchedAtMs: null,
     });
-    expect(repository.updateOutcome).not.toHaveBeenCalled();
+    expect(repository.updateSuccessfulPollOutcome).not.toHaveBeenCalled();
   });
 
   it('18 pre-poll direct call cannot bypass selector (missing cohort)', async () => {
@@ -151,6 +155,7 @@ describe('AdaptivePollingShadowService cohort gating', () => {
       organizationId: ORG,
       vehicleId: VEH,
       opportunityId: 'opp-1',
+      realPollId: 'poll-1',
       pollCompletedAtMs: 3_000_001_000,
       previousLvSourceMs: null,
       newLvSourceMs: 1,
@@ -158,7 +163,7 @@ describe('AdaptivePollingShadowService cohort gating', () => {
       newTopLevelSourceMs: null,
       providerFetchedAtMs: null,
     });
-    expect(repository.updateOutcome).not.toHaveBeenCalled();
+    expect(repository.updateSuccessfulPollOutcome).not.toHaveBeenCalled();
   });
 
   it('20 two tenants with same vehicle id do not share lastAllowed state', async () => {

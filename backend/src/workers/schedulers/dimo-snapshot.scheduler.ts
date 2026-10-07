@@ -363,6 +363,15 @@ export class DimoSnapshotScheduler {
           origin: 'SCHEDULED',
           apdShadowOpportunityId,
         });
+        if (apdShadowOpportunityId && this.apdShadow) {
+          await this.apdShadow.observeEnqueueOutcome({
+            organizationId: v.organizationId,
+            vehicleId: v.id,
+            opportunityId: apdShadowOpportunityId,
+            wakeOutcome: outcome,
+            observedAtMs: nowMs,
+          });
+        }
         if (outcome === 'ENQUEUED') {
           enqueued += 1;
           enqueuedByTier.set(
