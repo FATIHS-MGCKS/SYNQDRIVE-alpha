@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -524,16 +525,41 @@ describe('S4F-7J regression untouched', () => {
   });
 });
 
-describe('S4F-7V wrapper dry-run fixture', () => {
+describe('S4F-7W fresh wrapper dry-run orchestration', () => {
   const WRAPPER = path.join(__dirname, '../di-v0-s4-stage-tiny-fresh-production.sh');
+  const WORKSPACE_ROOT = path.resolve(__dirname, '../../../..');
+  const TOOL_SHA = 'cccccccccccccccccccccccccccccccccccccccc';
 
-  it('dry-run emits zero mutation', () => {
-    if (!fs.existsSync(WRAPPER)) return;
-    const envFile = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 's4f7v-')), 'backend.env');
-    fs.writeFileSync(envFile, 'FOO=1\n');
-    const nb = '2026-10-07T16:00:00.000Z';
-    const fp = deriveInternallyComputedFreshFingerprint(nb, CANONICAL_ORG, CANONICAL_VEH);
-    const out = execFileSync('bash', [WRAPPER], {
+  function writePrestateMetricsBodyFile(): string {
+    const att = evaluateDiV0S4RuntimeConfigAttestation({});
+    const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 's4f7w-m-')), 'metrics.txt');
+    fs.writeFileSync(file, formatDiV0S4RuntimeConfigAttestationMetricLine(att));
+    return file;
+  }
+
+  function runFreshDryRun(extraEnv: Record<string, string> = {}): string {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 's4f7w-'));
+    const envFile = path.join(dir, 'backend.env');
+    const envContent = extraEnv.S4F7W_FIXTURE_ENV_CONTENT ?? 'DIMO_GLOBAL_BUDGET_ENABLED=true\n';
+    fs.writeFileSync(envFile, envContent, 'utf8');
+    const envSha =
+      extraEnv.DI_S4_TINY_STAGING_REQUIRED_PRE_ENV_SHA256 ??
+      createHash('sha256').update(envContent).digest('hex');
+    const releaseDir = extraEnv.DI_S4F7V_FIXTURE_RELEASE_DIR ?? WORKSPACE_ROOT;
+    const releaseId = extraEnv.DI_S4_TINY_STAGING_REQUIRED_RELEASE_ID ?? path.basename(releaseDir);
+    const requiredSha =
+      extraEnv.DI_S4_TINY_STAGING_REQUIRED_SHA ??
+      (releaseDir === WORKSPACE_ROOT
+        ? execFileSync('git', ['-C', WORKSPACE_ROOT, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
+        : 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
+    const nb = extraEnv.DI_S4_TINY_FRESH_NOT_BEFORE ?? '2026-10-07T16:00:00.000Z';
+    const fp =
+      extraEnv.DI_S4_TINY_FRESH_EXPECTED_FINGERPRINT ??
+      deriveInternallyComputedFreshFingerprint(nb, CANONICAL_ORG, CANONICAL_VEH);
+    const metricsA = writePrestateMetricsBodyFile();
+    const metricsB = writePrestateMetricsBodyFile();
+    return execFileSync('bash', [WRAPPER], {
+      encoding: 'utf8',
       env: {
         ...process.env,
         DRY_RUN: '1',
@@ -541,23 +567,173 @@ describe('S4F-7V wrapper dry-run fixture', () => {
         DI_S4F7V_FIXTURE_MODE: '1',
         SYNQDRIVE_BACKEND_ENV: envFile,
         DI_S4_TINY_STAGING_ACK: 'YES',
-        DI_S4_TINY_STAGING_REQUIRED_SHA: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-        DI_S4_TINY_STAGING_REQUIRED_RELEASE_ID: 'release_a',
-        DI_S4_TINY_STAGING_REQUIRED_PRE_ENV_SHA256: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        DI_S4_TINY_STAGING_REQUIRED_SHA: requiredSha,
+        DI_S4_TINY_STAGING_REQUIRED_RELEASE_ID: releaseId,
+        DI_S4_TINY_STAGING_REQUIRED_PRE_ENV_SHA256: envSha,
         DI_S4_TINY_STAGING_EXPECTED_GLOBAL_STATE: 'KILLED',
         DI_S4_TINY_FRESH_NOT_BEFORE: nb,
         DI_S4_TINY_FRESH_EXPECTED_FINGERPRINT: fp,
         DI_S4_TINY_FRESH_ORGANIZATION_ALLOWLIST: CANONICAL_ORG,
         DI_S4_TINY_FRESH_VEHICLE_ALLOWLIST: CANONICAL_VEH,
-        DI_S4F7V_DB_CLOCK_CANONICAL_UTC: '2026-10-07T16:01:00.000Z',
-        EXPECTED_FRESH_TINY_STAGING_TOOL_SHA: 'cccccccccccccccccccccccccccccccccccccccc',
-        DI_S4F7V_TOOL_CHECKOUT_SHA: 'cccccccccccccccccccccccccccccccccccccccc',
-        DI_S4F7V_FIXTURE_DEPLOYED_SHA: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-        DI_S4F7V_FIXTURE_RELEASE_DIR: '/tmp/release',
+        DI_S4F7V_DB_CLOCK_CANONICAL_UTC: extraEnv.DI_S4F7V_DB_CLOCK_CANONICAL_UTC ?? '2026-10-07T16:01:00.000Z',
+        EXPECTED_FRESH_TINY_STAGING_TOOL_SHA: TOOL_SHA,
+        DI_S4F7V_TOOL_CHECKOUT_SHA: TOOL_SHA,
+        DI_S4F7V_FIXTURE_DEPLOYED_SHA: requiredSha,
+        DI_S4F7V_FIXTURE_RELEASE_DIR: releaseDir,
+        DI_S4F7V_FIXTURE_METRICS_BODY_A: metricsA,
+        DI_S4F7V_FIXTURE_METRICS_BODY_B: metricsB,
+        ...extraEnv,
       },
-      encoding: 'utf8',
     });
+  }
+
+  function expectFreshDryRunFail(extraEnv: Record<string, string> = {}): void {
+    expect(() => runFreshDryRun(extraEnv)).toThrow();
+  }
+
+  it('all live guards valid + DRY_RUN=1 => PASS', () => {
+    const out = runFreshDryRun();
+    expect(out).toContain('GUARDS_OK=YES');
+    expect(out).toContain('DRY_RUN_FULL_GUARD_PATH_EXECUTED=YES');
+    expect(out).toContain('INTENDED_ENV_CHANGED_KEY_COUNT=3');
     expect(out).toContain('DRY_RUN_ENV_MUTATION_COUNT=0');
-    expect(out).toContain('PRODUCTION_MUTATION_OCCURRED=NO');
+    expect(out).toContain('PRODUCTION_SHA_PIN=PASS');
+    expect(out).toContain('FRESH_AUTHORITY_OK=YES');
+  });
+
+  it('required SHA mismatch => wrapper FAIL', () => {
+    expectFreshDryRunFail({
+      DI_S4_TINY_STAGING_REQUIRED_SHA: 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef',
+      DI_S4F7V_FIXTURE_DEPLOYED_SHA: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    });
+  });
+
+  it('release mismatch => wrapper FAIL', () => {
+    expectFreshDryRunFail({ DI_S4_TINY_STAGING_REQUIRED_RELEASE_ID: 'wrong_release_id' });
+  });
+
+  it('env hash mismatch => wrapper FAIL', () => {
+    expectFreshDryRunFail({ DI_S4_TINY_STAGING_REQUIRED_PRE_ENV_SHA256: 'c'.repeat(64) });
+  });
+
+  it('GLOBAL NOT_KILLED => FAIL', () => {
+    expectFreshDryRunFail({ DI_S4F7V_FIXTURE_GLOBAL_KILL_STATE: 'NOT_KILLED' });
+  });
+
+  it('GLOBAL duplicate => FAIL', () => {
+    expectFreshDryRunFail({ DI_S4F7V_FIXTURE_GLOBAL_ROW_COUNT: '2' });
+  });
+
+  it('S4 persistence nonzero => FAIL', () => {
+    expectFreshDryRunFail({ DI_S4F7V_FIXTURE_S4_PIPELINE: '1' });
+  });
+
+  it('S4 flag ON => FAIL', () => {
+    expectFreshDryRunFail({
+      S4F7W_FIXTURE_ENV_CONTENT: 'DI_V0_S4_MASTER_ENABLED=ON\nDIMO_GLOBAL_BUDGET_ENABLED=true\n',
+    });
+  });
+
+  it('staging target PRESENT => FAIL', () => {
+    expectFreshDryRunFail({
+      S4F7W_FIXTURE_ENV_CONTENT: 'DI_V0_S4_ORGANIZATION_ALLOWLIST=x\nDIMO_GLOBAL_BUDGET_ENABLED=true\n',
+    });
+  });
+
+  it('staging target EMPTY => FAIL', () => {
+    expectFreshDryRunFail({
+      S4F7W_FIXTURE_ENV_CONTENT: 'DI_V0_S4_ORGANIZATION_ALLOWLIST=\nDIMO_GLOBAL_BUDGET_ENABLED=true\n',
+    });
+  });
+
+  it('vehicle wrong tenant => FAIL', () => {
+    expectFreshDryRunFail({
+      DI_S4F7V_FIXTURE_VEHICLE_DB_LINES: '1\n00000000-0000-0000-0000-000000000099\nACTIVE\nLTE_R1\n1\n1',
+    });
+  });
+
+  it('vehicle inactive => FAIL', () => {
+    expectFreshDryRunFail({
+      DI_S4F7V_FIXTURE_VEHICLE_DB_LINES: `1\n${CANONICAL_ORG}\nINACTIVE\nLTE_R1\n1\n1`,
+    });
+  });
+
+  it('hardware not LTE_R1 => FAIL', () => {
+    expectFreshDryRunFail({
+      DI_S4F7V_FIXTURE_VEHICLE_DB_LINES: `1\n${CANONICAL_ORG}\nACTIVE\nOTHER\n1\n1`,
+    });
+  });
+
+  it('provider link inactive => FAIL', () => {
+    expectFreshDryRunFail({
+      DI_S4F7V_FIXTURE_VEHICLE_DB_LINES: `1\n${CANONICAL_ORG}\nACTIVE\nLTE_R1\n0\n1`,
+    });
+  });
+
+  it('scheduler !=1 => FAIL', () => {
+    expectFreshDryRunFail({ DI_S4F7V_FIXTURE_SCHEDULER_LEADERS: '2' });
+  });
+
+  it('nginx fail => FAIL', () => {
+    expectFreshDryRunFail({ DI_S4F7V_FIXTURE_NGINX_DUAL: 'NO' });
+  });
+
+  it('budget config disabled => FAIL', () => {
+    expectFreshDryRunFail({ DI_S4F7V_FIXTURE_BUDGET_CONFIG_FAIL: '1' });
+  });
+
+  it('budget runtime replica A fail => FAIL', () => {
+    expectFreshDryRunFail({ DI_S4F7V_FIXTURE_BUDGET_METRIC_A_FAIL: '1' });
+  });
+
+  it('budget runtime replica B fail => FAIL', () => {
+    expectFreshDryRunFail({ DI_S4F7V_FIXTURE_BUDGET_METRIC_B_FAIL: '1' });
+  });
+
+  it('Redis fail => FAIL', () => {
+    expectFreshDryRunFail({ DI_S4F7V_FIXTURE_REDIS_FAIL: '1' });
+  });
+
+  it('fresh authority stale => FAIL', () => {
+    expectFreshDryRunFail({
+      DI_S4_TINY_FRESH_NOT_BEFORE: '2026-10-07T10:00:00.000Z',
+      DI_S4F7V_DB_CLOCK_CANONICAL_UTC: '2026-10-07T10:20:00.000Z',
+    });
+  });
+
+  it('fresh authority future => FAIL', () => {
+    expectFreshDryRunFail({
+      DI_S4_TINY_FRESH_NOT_BEFORE: '2026-10-07T18:00:00.000Z',
+      DI_S4F7V_DB_CLOCK_CANONICAL_UTC: '2026-10-07T16:00:00.000Z',
+    });
+  });
+
+  it('fingerprint mismatch => FAIL', () => {
+    expectFreshDryRunFail({ DI_S4_TINY_FRESH_EXPECTED_FINGERPRINT: 'a'.repeat(64) });
+  });
+
+  it('tool SHA mismatch => FAIL', () => {
+    expectFreshDryRunFail({ EXPECTED_FRESH_TINY_STAGING_TOOL_SHA: 'd'.repeat(40) });
+  });
+
+  it('apply-mutation-dry failure => wrapper FAIL', () => {
+    expectFreshDryRunFail({ DI_S4F7V_TEST_INJECT_APPLY_DRY_FAIL: '1' });
+  });
+
+  it('intended-delta failure => wrapper FAIL', () => {
+    expectFreshDryRunFail({ DI_S4F7V_TEST_INJECT_INTENDED_DELTA_FAIL: '1' });
+  });
+
+  it('PASS causes zero env mutation on production env file', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 's4f7w-mut-'));
+    const envFile = path.join(dir, 'backend.env');
+    const content = 'DIMO_GLOBAL_BUDGET_ENABLED=true\n';
+    fs.writeFileSync(envFile, content, 'utf8');
+    const before = fs.readFileSync(envFile, 'utf8');
+    runFreshDryRun({
+      SYNQDRIVE_BACKEND_ENV: envFile,
+      DI_S4_TINY_STAGING_REQUIRED_PRE_ENV_SHA256: createHash('sha256').update(content).digest('hex'),
+    });
+    expect(fs.readFileSync(envFile, 'utf8')).toBe(before);
   });
 });
