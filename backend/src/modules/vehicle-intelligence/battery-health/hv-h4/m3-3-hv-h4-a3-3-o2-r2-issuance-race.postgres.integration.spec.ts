@@ -3,6 +3,7 @@ import { probePostgresDatabase } from '../provider-observability-gap/provider-ob
 import { M3_3_HV_H4_A3_O2_R1_CANONICAL_GOLDEN_VECTORS_V1 } from './m3-3-hv-h4-a3-3-o2-r1-canonical-golden-vectors.v1';
 import { insertCoherentRevisionWithAckO2R1 } from './m3-3-hv-h4-a3-3-o2-r1-test.fixture';
 import { computeM3_3HvH4ChargeSessionSourceRevisionFingerprintV1 } from './m3-3-hv-h4-a3-charge-session-evidence-fingerprint.v1';
+import { mirrorFromScientificProjectionV1 } from './m3-3-hv-h4-a3-charge-session-evidence-projection.v1';
 import type { M3_3HvH4ChargeSessionEvidenceScientificProjectionV1 } from './m3-3-hv-h4-a3-charge-session-evidence.types.v1';
 import {
   issueM3_3HvH4A3IntegrityAttestationIsolatedV1,
@@ -64,10 +65,11 @@ describe('M3.3-HV-H4-A3.3-O2-R2 isolated TS issuer concurrency', () => {
       qualityStatus: 'PRE_ISSUE',
     };
     const fingerprint = computeM3_3HvH4ChargeSessionSourceRevisionFingerprintV1(scientific);
+    const mirror = mirrorFromScientificProjectionV1(scientific);
     await prisma.batteryHvChargeSessionEvidenceRevision.update({
       where: { id: revision.id },
       data: {
-        qualityStatus: 'PRE_ISSUE',
+        ...mirror,
         scientificEvidenceJson: scientific,
         sourceRevisionFingerprint: fingerprint,
       },
