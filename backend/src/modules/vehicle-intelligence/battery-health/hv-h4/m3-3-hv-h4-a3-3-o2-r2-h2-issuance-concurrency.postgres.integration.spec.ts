@@ -16,6 +16,7 @@ import {
   createRestrictedAppLoginPostgresClientV1,
   ensureM3_3HvH4A3O2R2PostgresRolesV1,
   M3_3_HV_H4_A3_O2_R2_ISSUER_LOGIN_ROLE,
+  M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE,
   waitUntilBackendBlockedByV1,
 } from './m3-3-hv-h4-a3-3-o2-r2-postgres-roles.fixture';
 
