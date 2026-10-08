@@ -22,6 +22,8 @@ export interface VehiclesOperationalQueryDto {
 }
 
 export interface VehicleOperationalRowDto {
+  /** Registry lifecycle for Master Admin cutover (VO-5C); ACTIVE vs OFFBOARDED visibility. */
+  registryLifecycle?: 'ACTIVE' | 'OFFBOARDED' | 'ARCHIVED' | null;
   vehicleId: string | null;
   dimoVehicleId: string | null;
   displayTitle: string;

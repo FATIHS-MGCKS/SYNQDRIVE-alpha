@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
-# VO-5B registry lifecycle → billing PostgreSQL CI gate.
+# Vehicle onboarding registry lifecycle PostgreSQL CI gate (VO5A, VO5B, VO5B-AB1, VO5C-P1, VO4.9).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
+export VO5A_OFFBOARDING_PG=1
 export VO5B_REGISTRY_BILLING_PG=1
 export VO5B_AB1_REGISTRY_BILLING_PG=1
+export VO5C_P1_OFFBOARD_PG=1
+export VO49_SOURCE_ADOPTION_PG=1
 
 parse_database_url() {
   if [[ -z "${DATABASE_URL:-}" ]]; then
@@ -46,5 +49,8 @@ export DATABASE_URL="${INT_DATABASE_URL}"
 
 DATABASE_URL="${INT_DATABASE_URL}" PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 \
   bash scripts/test/prisma-migrate-deploy-resilient.sh
+npm run test:vehicle-onboarding:vo5a:postgres
 npm run test:vehicle-onboarding:vo5b:postgres
 npm run test:vehicle-onboarding:vo5b-ab1:postgres
+npm run test:vehicle-onboarding:vo5c-p1:postgres
+npm run test:vehicle-onboarding:vo49:postgres

@@ -7,6 +7,9 @@ on:
       - 'backend/prisma/migrations/**'
       - 'backend/src/modules/vehicle-onboarding/**'
       - 'backend/src/modules/billing/**'
+      - 'backend/src/modules/bookings/**'
+      - 'backend/src/modules/vehicles/registry/**'
+      - 'backend/src/modules/vehicle-intelligence/trips/decision/**'
       - 'backend/scripts/test/vo5b-*'
       - 'backend/package.json'
       - 'backend/package-lock.json'
@@ -63,9 +66,22 @@ jobs:
               exit 1
               ;;
           esac
-      - name: VO-5B PostgreSQL gates
+      - name: Vehicle onboarding PostgreSQL gates (VO5A–VO5C-P1, VO4.9)
         working-directory: backend
         run: |
           npm ci
           npx prisma generate
           bash scripts/test/vo5b-vehicle-onboarding-postgres-ci.sh
+      - name: Booking and handover regression (VO5C-P1 registry admission)
+        working-directory: backend
+        run: |
+          npm run test:bookings
+          npm test -- bookings-handover.service.spec --no-coverage
+      - name: Trip registry admission unit (VO5C-P1)
+        working-directory: backend
+        run: npm test -- trip-decision.engine.registry-admission.spec --no-coverage
+      - name: Targeted offboard security and IAM endpoint enforcement
+        working-directory: backend
+        run: |
+          npm test -- vehicle-onboarding-offboard.controller.security --no-coverage
+          npm test -- iam-endpoint-enforcement-triage.security --no-coverage

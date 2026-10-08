@@ -421,6 +421,7 @@ export class VehiclesOperationalService {
   private composeRegisteredRow(
     vehicle: {
       id: string;
+      registryLifecycle?: 'ACTIVE' | 'OFFBOARDED' | 'ARCHIVED';
       vin: string | null;
       make: string;
       model: string;
@@ -475,6 +476,7 @@ export class VehiclesOperationalService {
     );
 
     return {
+      registryLifecycle: vehicle.registryLifecycle ?? 'ACTIVE',
       vehicleId: vehicle.id,
       dimoVehicleId: vehicle.dimoVehicleId,
       displayTitle,

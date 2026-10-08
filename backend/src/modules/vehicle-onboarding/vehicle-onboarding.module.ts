@@ -11,6 +11,9 @@ import { VehicleOnboardingSourceAdoptionController } from './controllers/vehicle
 import { VehicleOnboardingProviderCandidateController } from './controllers/vehicle-onboarding-provider-candidate.controller';
 import { VehicleOnboardingProviderCandidateService } from './services/vehicle-onboarding-provider-candidate.service';
 import { VehicleOffboardingService } from './services/vehicle-offboarding.service';
+import { VehicleOnboardingOffboardService } from './services/vehicle-onboarding-offboard.service';
+import { VehicleOnboardingOffboardController } from './controllers/vehicle-onboarding-offboard.controller';
+import { VehicleOffboardPreflightService } from './offboarding/vehicle-offboard-preflight.service';
 import { ProductionFailClosedReadinessAuthority } from './readiness/vehicle-onboarding-readiness-authority';
 import { VEHICLE_ONBOARDING_READINESS_AUTHORITY } from './readiness/vehicle-onboarding-readiness.tokens';
 import { VehicleOnboardingSourceAdoptionAuthority } from './source-adoption/vehicle-onboarding-source-adoption.authority';
@@ -21,6 +24,7 @@ import { VehicleOnboardingSourceAdoptionAuthority } from './source-adoption/vehi
     VehicleOnboardingCaptureController,
     VehicleOnboardingSourceAdoptionController,
     VehicleOnboardingProviderCandidateController,
+    VehicleOnboardingOffboardController,
   ],
   providers: [
     VehicleOnboardingSourceAdoptionAuthority,
@@ -36,6 +40,8 @@ import { VehicleOnboardingSourceAdoptionAuthority } from './source-adoption/vehi
     VehicleOnboardingSourceAdoptionService,
     VehicleOnboardingProviderCandidateService,
     VehicleOffboardingService,
+    VehicleOffboardPreflightService,
+    VehicleOnboardingOffboardService,
   ],
   exports: [
     VehicleOnboardingCaseService,
@@ -43,6 +49,7 @@ import { VehicleOnboardingSourceAdoptionAuthority } from './source-adoption/vehi
     VehicleOnboardingReadinessService,
     VehicleOnboardingCaptureService,
     VehicleOffboardingService,
+    VehicleOnboardingOffboardService,
   ],
 })
 export class VehicleOnboardingModule {}
