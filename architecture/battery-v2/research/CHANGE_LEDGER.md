@@ -13,7 +13,7 @@ Append-only scientific record. Newest entries first.
 | **CHANGE** | Runner/CLI shared admission (app + issuer URL isolation); remove remote allowlist; strict read-only SQLSTATE 25006; migration SELECT denial integration fixture; integration harness env |
 | **WHY** | Direct runner invocation bypassed credential isolation; loopback allowlists weakened isolated-test policy |
 | **VALIDATION** | admission/runner/isolated-target unit specs; HV-H4 postgres integration job |
-| **OBSERVED_EFFECT** | `PHASE_A_CANNOT_REUSE_DATABASE_URL` at runner boundary; harness bypass test-only |
+| **OBSERVED_EFFECT** | `PHASE_A_CANNOT_REUSE_DATABASE_URL` at runner boundary; harness bypass test-only; migration-denial fixture teardown revokes role grants before `DROP ROLE` (HV-H4 postgres integration green on `eebd50cbf`) |
 | **NON_EFFECTS** | No R4.2 production authorization |
 | **REMAINING_GAPS** | O2-R4.2 production read-only gate |
 | **DECISION_STATUS** | VALIDATED (repository / isolated fixture) |
