@@ -1537,6 +1537,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | **`S4F7Y_2_TERMINAL_FORENSIC_SEMANTICS=PASS`** — rollback does not erase mutation/restart history; failure paths preserve authorization facts; engineering harness production terminal history remains `NO` |
 | NON_EFFECTS | No Production execution; DRY_RUN=1 unchanged; Gate 6 **NOT_SATISFIED** |
 
+### EXP-021 S4F-7Z.2 exact-head CI certification + tool authority seal (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Evidence `EXP021_S4F7Z2_EXACT_HEAD_CI_TOOL_AUTHORITY_SEAL.md`; `CURRENT_STATE` S4F-7Z.2 row — documentation only (draft PR) |
+| FINDING | **`EXACT_HEAD_CI_CERTIFIED=YES`** @ `715dea5648ebb862eeedfc30e7dc3d3cd57bb02c` — Vehicle/Legal CI reruns **success** (attempt 2); **`TOOL_BLOB_PARITY=PASS`** vs squash `123ec54e7…` + `main`; **`EXPECTED_FRESH_TINY_STAGING_TOOL_SHA` sealed** @ `715dea564…`; superseded S4F-7W checkout pin `11b4a80cc…` for post–S4F-7Y tooling |
+| NON_EFFECTS | No Production access/mutation; no new JIT authority; S4F-7X dry-run evidence unchanged; Gate 6 **NOT_SATISFIED** |
+
 ### EXP-021 S4F-7T current Production attestation supersession closure (2026-10-06)
 
 | Event | Detail |
