@@ -1706,6 +1706,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | `READINESS=TECHNICALLY_READY_PENDING_HUMAN_AUTHORIZATION`; S4 prestate **PASS**; `PRODUCTION_DRIFT_FROM_AJ=YES` (env SHA + PIDs); partial release-tree operator blob drift — S4F-7AI bootstrap **mandatory** |
 | NON_EFFECTS | No JIT/live auth; no `DRY_RUN=0`; no env/restart/deploy; `HUMAN_FREEZE_CONFIRMATION=PENDING`; Gate 6 unchanged |
 
+### EXP-021 S4F-7AK.1 authority boundary & drift closure (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | PR #1939 scope trim (remove non-required `ChangesView.tsx`); evidence `EXP021_S4F7AK1_FINAL_AUTHORITY_BOUNDARY.md` |
+| FINDING | `PRODUCTION_DRIFT_CAUSE=APDS_P25_SHADOW_ENABLE_20261008T201328Z` — pre-backup SHA matches S4F-7AJ POST; `WORKER_APD_SHADOW_ENABLED` value change; PM2 recreate @ 20:13:28Z |
+| NON_EFFECTS | No live dispatch execution; S4F-7AI bootstrap remains DRY_RUN=1-only |
+
 ### EXP-021 S4F-7AI.1 bootstrap safety closure (2026-10-08)
 
 | Event | Detail |
