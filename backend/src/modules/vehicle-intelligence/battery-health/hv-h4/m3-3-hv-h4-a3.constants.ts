@@ -66,6 +66,13 @@ export const A3_ATTESTATION_ISSUANCE_FOUNDATION_PRESENT = true as const;
 export const A3_ATTESTATION_SQL_ISSUANCE_DEPLOYED = false as const;
 export const A3_ATTESTATION_ISOLATED_TS_ISSUER_PROTOTYPE_PRESENT = true as const;
 export const A3_ATTESTATION_ISOLATED_TS_ISSUER_RUNTIME_REACHABLE = false as const;
+/** O2-R3: separate trusted process + dedicated credentials — not Nest/API reachable. */
+export const A3_ATTESTATION_RECOMMENDED_ISSUER_PROCESS_MODEL =
+  'SEPARATE_TRUSTED_ISSUER_PROCESS' as const;
+export const A3_ATTESTATION_ISSUER_PROCESS_ISOLATION_ARCHITECTURE_PRESENT = true as const;
+export const A3_ATTESTATION_ISSUER_INERT_FACTORY_PROTOTYPE_PRESENT = true as const;
+export const A3_ATTESTATION_ISSUER_ADMISSION_AUTHORITY_PRESENT = true as const;
+export const A3_ATTESTATION_PRODUCTION_ROLE_PREFLIGHT_SPEC_PRESENT = true as const;
 /** O2-R2-H1: SELECT-only issuer uses SECURITY DEFINER row-lock function (repository prototype). */
 export const A3_ATTESTATION_ISSUER_LOCK_AUTHORITY_SECURITY_DEFINER_V1 = true as const;
 /** Set false until production DB role topology + SQL/TS parity are production-certified. */
