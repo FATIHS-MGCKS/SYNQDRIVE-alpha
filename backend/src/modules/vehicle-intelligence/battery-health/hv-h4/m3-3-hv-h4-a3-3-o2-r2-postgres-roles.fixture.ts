@@ -187,9 +187,5 @@ export async function withPostgresRoleV1<T>(
   fn: () => Promise<T>,
 ): Promise<T> {
   await prisma.$executeRawUnsafe(`SET LOCAL ROLE ${role}`);
-  try {
-    return await fn();
-  } finally {
-    await prisma.$executeRawUnsafe(`RESET ROLE`);
-  }
+  return fn();
 }
