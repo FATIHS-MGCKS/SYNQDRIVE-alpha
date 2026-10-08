@@ -5,7 +5,7 @@
 | **Sealed from** | VO-0A discovery audit |
 | **Repository anchor SHA** | `312d9f54a2b4c0b0740061d3e2b74897e78eacb0` |
 | **Authority status** | `AUDIT_IN_PROGRESS` — **not** `AUTHORITY_ACTIVE` |
-| **Last updated** | 2026-10-08 (VO5C-P2A Connected Vehicles offboard UI; VO5C-P1 complete on main; legacy deregister **unchanged**) |
+| **Last updated** | 2026-10-08 (VO5C-P2B1 legacy deregister fail-closed; VO5C-P2A/P1 on main; tenant DELETE + prune **unchanged**) |
 
 ## Executive summary
 
@@ -30,6 +30,7 @@ SynqDrive today separates **provider mirrors** (`DimoVehicle`, `HighMobilityVehi
 - **VO5B-AB1 (2026-10-07):** Same outbox worker handles `VEHICLE_ACTIVATED` → `VEHICLE_CONNECTED` at `occurredAt` / `activatedAt`; event idempotency `vehicle-registry:<eventId>:billing-activate:v1`; legacy `registerFromDimo`/`create` billing hooks **unchanged** (see [VO5B_AB1_ACTIVATION_BILLING_BRIDGE.md](./evidence/VO5B_AB1_ACTIVATION_BILLING_BRIDGE.md)).
 - **VO5C-P1 (2026-10-07):** Master Admin safe offboard HTTP (`POST …/offboard`) with MFA, operational preflight, idempotency; calls `VehicleOffboardingService` only; **no** legacy deregister/tenant DELETE changes (see [VO5C_P1_MASTER_ADMIN_OFFBOARD_HTTP.md](./evidence/VO5C_P1_MASTER_ADMIN_OFFBOARD_HTTP.md)).
 - **VO5C-P2A (2026-10-08):** Connected Vehicles UI cutover to P1 offboard HTTP; lifecycle visibility + server `registryLifecycle` filter; **no** legacy backend route removal (see [VO5C_P2A_FRONTEND_CUTOVER.md](./evidence/VO5C_P2A_FRONTEND_CUTOVER.md)).
+- **VO5C-P2B1 (2026-10-08):** `POST admin/vehicles/:vehicleId/deregister` retired with **409** `LEGACY_VEHICLE_DESTRUCTION_DISABLED` + `MASTER_ADMIN` + `MASTER_INTEGRATIONS` MFA; `VehiclesService.deregister` fail-closed; tenant DELETE + prune **unchanged** (see [VO5C_P2B1_LEGACY_DEREGISTER_LOCKDOWN.md](./evidence/VO5C_P2B1_LEGACY_DEREGISTER_LOCKDOWN.md)).
 
 ---
 
@@ -70,7 +71,8 @@ SynqDrive today separates **provider mirrors** (`DimoVehicle`, `HighMobilityVehi
 | Manual create | Org fleet APIs | `POST organizations/:orgId/vehicles` → `VehiclesService.create` |
 | HM_ONLY | HM register API | `POST vehicles/register/hm-only` → `HighMobilityRegistrationService.registerHmOnlyVehicle` |
 | HM health add-on | Post-register | `activate-high-mobility-health`, `link-high-mobility-full-telemetry` (`high-mobility-vehicle-register.controller.ts`) |
-| Deregister | Master Connected Vehicles | `POST admin/vehicles/:vehicleId/deregister` → `VehiclesService.deregister` (deletes `Vehicle`, retains `DimoVehicle`) |
+| Deregister (retired) | Legacy Master Admin HTTP | `POST admin/vehicles/:vehicleId/deregister` → **409** `LEGACY_VEHICLE_DESTRUCTION_DISABLED` (use canonical offboard HTTP) |
+| Offboard (canonical) | Master Connected Vehicles | `POST admin/vehicle-onboarding/organizations/:organizationId/vehicles/:vehicleId/offboard` → `VehicleOffboardingService` (`OFFBOARDED` + outbox) |
 
 **Concurrency:** advisory lock `vehicleDimoBindingLockKey` in `registerFromDimo` (`pg-advisory-lock.util.ts`, `register-from-dimo-concurrency.smoke.spec.ts`).
 

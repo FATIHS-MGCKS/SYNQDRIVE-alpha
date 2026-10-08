@@ -31,6 +31,7 @@ import { DimoAuthService } from '@modules/dimo/dimo-auth.service';
 import { DimoTelemetryService } from '@modules/dimo/dimo-telemetry.service';
 import { buildDimoProviderRequestContext } from '@modules/dimo/provider/dimo-provider-request-context.util';
 import { VehicleProviderConsentService } from './vehicle-provider-consent.service';
+import { legacyVehicleDestructionDisabledException } from './legacy-vehicle-destruction.errors';
 import { BatteryCapabilityRefreshService } from '@modules/vehicle-intelligence/battery-health/capability-preflight/battery-capability-refresh.service';
 import { BatteryCapabilityRefreshTrigger } from '@modules/vehicle-intelligence/battery-health/capability-preflight/battery-capability-lifecycle.policy';
 import dimoConfig from '@config/dimo.config';
@@ -2143,59 +2144,15 @@ export class VehiclesService {
   }
 
   /**
-   * Deregister reverses a SynqDrive registration.
-   * The Vehicle row (+ cascaded SynqDrive operational data) is removed.
-   * The underlying DimoVehicle identity is preserved (FK onDelete: SetNull)
-   * and reappears in "Non Registered Vehicles" for future re-registration.
+   * VO5C-P2B1: legacy Master Admin deregister retired — fail-closed.
+   * Use canonical vehicle onboarding offboard HTTP instead.
    */
-  async deregister(vehicleId: string) {
-    const vehicle = await this.prisma.vehicle.findUniqueOrThrow({
-      where: { id: vehicleId },
-      select: {
-        id: true,
-        vin: true,
-        make: true,
-        model: true,
-        year: true,
-        licensePlate: true,
-        organizationId: true,
-        dimoVehicleId: true,
-        status: true,
-      },
+  async deregister(_vehicleId: string): Promise<never> {
+    this.logger.warn({
+      msg: 'legacy_vehicle_deregistration_blocked',
+      code: 'LEGACY_VEHICLE_DESTRUCTION_DISABLED',
     });
-
-    await this.billingQuantity
-      ?.onVehicleRemoved({
-        organizationId: vehicle.organizationId,
-        vehicleId: vehicle.id,
-      })
-      .catch((error) => {
-        this.logger.warn({
-          msg: 'billing.quantity.vehicle_remove_hook_failed',
-          organizationId: vehicle.organizationId,
-          vehicleId: vehicle.id,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      });
-
-    await this.prisma.vehicle.delete({ where: { id: vehicleId } });
-
-    this.logger.log(
-      `Vehicle deregistered: ${vehicle.make} ${vehicle.model} (${vehicle.vin}) — org=${vehicle.organizationId}, dimoVehicleId=${vehicle.dimoVehicleId ?? 'none'}`,
-    );
-
-    return {
-      success: true,
-      deregisteredVehicle: {
-        id: vehicle.id,
-        vin: vehicle.vin,
-        make: vehicle.make,
-        model: vehicle.model,
-        year: vehicle.year,
-        licensePlate: vehicle.licensePlate,
-        dimoVehicleId: vehicle.dimoVehicleId,
-      },
-    };
+    throw legacyVehicleDestructionDisabledException();
   }
 
   private parseFuelType(input: unknown, fallback: FuelType): FuelType {

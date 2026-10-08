@@ -31,6 +31,7 @@
 | 2026-10-07 | **VO5C-P1** — Master Admin `POST …/offboard` HTTP; MFA + org scope; operational preflight; idempotent `VehicleOffboardingService`; legacy deregister/DELETE unchanged; no frontend | `AUDIT_IN_PROGRESS`; P2 cutover + `LEGACY_DEREGISTER_SECURITY_GAP` remains open |
 | 2026-10-07 | **VO5C-P1.1** — Replay-before-preflight ordering; registry ACTIVE admission gates (booking/handover/trip start); concurrency/replay PostgreSQL proofs | Admission invariant for new operational state; historical finalization unchanged |
 | 2026-10-08 | **VO5C-P2A** — Connected Vehicles UI offboard cutover; `api.vehicleOnboarding.offboardVehicle`; MFA + stable idempotency; lifecycle badges; server `registryLifecycle` filter; legacy backend routes unchanged | `AUDIT_IN_PROGRESS`; P2B lockdown + production route verification still required |
+| 2026-10-08 | **VO5C-P2B1** — Legacy `POST admin/vehicles/:vehicleId/deregister` fail-closed **409** `LEGACY_VEHICLE_DESTRUCTION_DISABLED`; `MASTER_ADMIN` + `MASTER_INTEGRATIONS` MFA; `VehiclesService.deregister` retired; zero mutation; tenant DELETE + prune unchanged | `AUDIT_IN_PROGRESS`; P2B2–P2B4 + production route verification remain |
 
 ## VO-0B — REUSE-FIRST components (do not replace without VO-1+ proof)
 
