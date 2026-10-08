@@ -15,6 +15,7 @@ import {
   createIssuerLoginPostgresClientV1,
   createRestrictedAppRoleScopedPostgresClientV1,
   ensureM3_3HvH4A3O2R2PostgresRolesV1,
+  M3_3_HV_H4_A3_O2_R2_ISSUER_LOGIN_ROLE,
   M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE,
 } from './m3-3-hv-h4-a3-3-o2-r2-postgres-roles.fixture';
 
@@ -210,7 +211,7 @@ describe('M3.3-HV-H4-A3.3-O2-R2-H1 true issuer concurrency (PostgreSQL)', () => 
     if (!admin || !issuerDb) return;
     const { revision } = await seedRevision();
     await admin.$executeRawUnsafe(
-      `REVOKE INSERT ON public.battery_hv_charge_session_evidence_integrity_attestations FROM ${M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE}`,
+      `REVOKE INSERT ON public.battery_hv_charge_session_evidence_integrity_attestations FROM ${M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE}, ${M3_3_HV_H4_A3_O2_R2_ISSUER_LOGIN_ROLE}`,
     );
     try {
       await expect(
@@ -219,7 +220,7 @@ describe('M3.3-HV-H4-A3.3-O2-R2-H1 true issuer concurrency (PostgreSQL)', () => 
       expect(await admin.batteryHvChargeSessionEvidenceIntegrityAttestation.count()).toBe(0);
     } finally {
       await admin.$executeRawUnsafe(
-        `GRANT INSERT ON public.battery_hv_charge_session_evidence_integrity_attestations TO ${M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE}`,
+        `GRANT INSERT ON public.battery_hv_charge_session_evidence_integrity_attestations TO ${M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE}, ${M3_3_HV_H4_A3_O2_R2_ISSUER_LOGIN_ROLE}`,
       );
     }
   });
