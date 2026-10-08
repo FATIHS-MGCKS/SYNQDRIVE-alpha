@@ -1577,6 +1577,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | **`MERGE_READINESS=READY_FOR_HUMAN_MERGE`** @ head `b506f3904…` **at review time**; run `37760943334` **success**; `PR_MERGED=NO` **at review time** |
 | NON_EFFECTS | No auto-merge; Gate 6 **NOT_SATISFIED** |
 
+### EXP-021 S4F-7AE post-merge authority live-staging gate (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Evidence `EXP021_S4F7AE_POST_MERGE_AUTHORITY_LIVE_STAGING_GATE.md` |
+| FINDING | Post–#1926 `main` reconciled vs Production; APDS **no** direct S4 operator overlap; `READY_FOR_EXPLICIT_HUMAN_AUTHORIZATION_DECISION=YES`; Production pins unchanged vs S4F-7AD |
+| NON_EFFECTS | No live authorization; no JIT; Gate 6 **NOT_SATISFIED** |
+
 ### EXP-021 S4F-7AD final Production live-staging readiness (2026-10-08)
 
 | Event | Detail |
