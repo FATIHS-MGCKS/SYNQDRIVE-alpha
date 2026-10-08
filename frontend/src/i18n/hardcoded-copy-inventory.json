@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "generatedAt": "2026-09-07",
+  "generatedAt": "2026-10-08",
   "phases": {
     "P21": {
       "enforceCleanExact": [
@@ -110,22 +110,21 @@
     }
   },
   "summary": {
-    "total": 3091,
+    "total": 3085,
     "bySurface": {
       "SHELL": 41,
       "SHARED": 36,
-      "MASTER": 1071,
+      "MASTER": 1068,
       "OPERATOR": 179,
-      "LOGIN": 2,
-      "RENTAL": 1762
+      "RENTAL": 1761
     },
     "byCategory": {
       "PLACEHOLDER": 196,
-      "TEXT": 2140,
-      "LABEL": 186,
-      "ARIA": 135,
+      "TEXT": 2137,
+      "LABEL": 185,
+      "ARIA": 134,
       "FORMAT_LOCALE": 9,
-      "TITLE": 425
+      "TITLE": 424
     },
     "byRentalModule": {
       "App / routing shell": 1,
@@ -143,7 +142,7 @@
       "Sidebar / navigation": 1,
       "Stations": 7,
       "Support": 19,
-      "TopBar": 3,
+      "TopBar": 2,
       "Vehicle Trips": 22,
       "Vehicle Detail": 21,
       "Vehicle Overview": 14,
@@ -151,7 +150,7 @@
       "WhatsApp": 31,
       "Workflow Automation": 106
     },
-    "enforceCleanRemaining": 1661
+    "enforceCleanRemaining": 1658
   },
   "findings": [
     {
@@ -1664,7 +1663,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 961,
+      "line": 1050,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1679,7 +1678,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 978,
+      "line": 1067,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1694,7 +1693,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1010,
+      "line": 1099,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1709,7 +1708,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1541,
+      "line": 1673,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1724,7 +1723,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1688,
+      "line": 1820,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1739,7 +1738,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1712,
+      "line": 1844,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1754,7 +1753,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1741,
+      "line": 1873,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1769,7 +1768,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1745,
+      "line": 1877,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1784,7 +1783,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1745,
+      "line": 1877,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1799,7 +1798,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1746,
+      "line": 1878,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1814,7 +1813,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1767,
+      "line": 1899,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1829,7 +1828,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1782,
+      "line": 1914,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1844,7 +1843,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1787,
+      "line": 1919,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1859,7 +1858,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1789,
+      "line": 1921,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1874,7 +1873,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1811,
+      "line": 1943,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1889,7 +1888,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1823,
+      "line": 1955,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1904,7 +1903,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1830,
+      "line": 1962,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1920,7 +1919,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1836,
+      "line": 1968,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1935,7 +1934,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1844,
+      "line": 1976,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1950,7 +1949,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1846,
+      "line": 1978,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1965,7 +1964,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1871,
+      "line": 2003,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1980,7 +1979,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1872,
+      "line": 2004,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -1995,7 +1994,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1874,
+      "line": 2006,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -2010,7 +2009,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1883,
+      "line": 2015,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -2025,7 +2024,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1884,
+      "line": 2016,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -2040,7 +2039,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1911,
+      "line": 2043,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -2055,7 +2054,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1940,
+      "line": 2072,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -2071,7 +2070,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1941,
+      "line": 2073,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -2086,7 +2085,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1943,
+      "line": 2075,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -2102,7 +2101,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1944,
+      "line": 2076,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -2117,7 +2116,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1947,
+      "line": 2079,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -2132,7 +2131,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1991,
+      "line": 2123,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -2147,7 +2146,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1993,
+      "line": 2125,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -2162,7 +2161,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1994,
+      "line": 2126,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -2177,7 +2176,7 @@
     },
     {
       "file": "master/components/ArchitekturView.tsx",
-      "line": 1994,
+      "line": 2126,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3697,7 +3696,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 26264,
+      "line": 29760,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3712,7 +3711,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27565,
+      "line": 31061,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3727,7 +3726,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27631,
+      "line": 31127,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3742,7 +3741,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27651,
+      "line": 31147,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3757,7 +3756,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27651,
+      "line": 31147,
       "surface": "MASTER",
       "module": null,
       "category": "TITLE",
@@ -3772,7 +3771,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27691,
+      "line": 31187,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3787,7 +3786,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 27955,
+      "line": 31451,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3802,7 +3801,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 28923,
+      "line": 32419,
       "surface": "MASTER",
       "module": null,
       "category": "FORMAT_LOCALE",
@@ -3818,7 +3817,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 28925,
+      "line": 32421,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3833,7 +3832,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 31187,
+      "line": 34683,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3848,7 +3847,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 31460,
+      "line": 34956,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3863,7 +3862,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 31471,
+      "line": 34967,
       "surface": "MASTER",
       "module": null,
       "category": "ARIA",
@@ -3878,7 +3877,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 31481,
+      "line": 34977,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3893,7 +3892,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 31493,
+      "line": 34989,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3908,7 +3907,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 31506,
+      "line": 35002,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3923,7 +3922,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 31510,
+      "line": 35006,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -3938,7 +3937,7 @@
     },
     {
       "file": "master/components/ChangesView.tsx",
-      "line": 31536,
+      "line": 35032,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -8550,10 +8549,9 @@
       "severity": "debt",
       "migrationPhase": "P2.3",
       "structuralContext": "close",
-      "occurrences": 2,
+      "occurrences": 1,
       "files": [
-        "master/components/OrganizationCreateWizard.tsx",
-        "master/connected-vehicles/ConnectedVehicleDetailDrawer.tsx"
+        "master/components/OrganizationCreateWizard.tsx"
       ]
     },
     {
@@ -14906,7 +14904,7 @@
     },
     {
       "file": "master/connected-vehicles/ConnectedVehicleDetailDrawer.tsx",
-      "line": 81,
+      "line": 111,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14921,7 +14919,7 @@
     },
     {
       "file": "master/connected-vehicles/ConnectedVehicleDetailDrawer.tsx",
-      "line": 87,
+      "line": 117,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14936,7 +14934,7 @@
     },
     {
       "file": "master/connected-vehicles/ConnectedVehicleDetailDrawer.tsx",
-      "line": 91,
+      "line": 121,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14952,7 +14950,7 @@
     },
     {
       "file": "master/connected-vehicles/ConnectedVehicleDetailDrawer.tsx",
-      "line": 112,
+      "line": 142,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14968,7 +14966,7 @@
     },
     {
       "file": "master/connected-vehicles/ConnectedVehicleDetailDrawer.tsx",
-      "line": 116,
+      "line": 146,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14983,7 +14981,7 @@
     },
     {
       "file": "master/connected-vehicles/ConnectedVehicleDetailDrawer.tsx",
-      "line": 138,
+      "line": 169,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -14998,7 +14996,7 @@
     },
     {
       "file": "master/connected-vehicles/ConnectedVehicleDetailDrawer.tsx",
-      "line": 156,
+      "line": 187,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -15013,7 +15011,7 @@
     },
     {
       "file": "master/connected-vehicles/ConnectedVehicleDetailDrawer.tsx",
-      "line": 161,
+      "line": 192,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -15028,7 +15026,7 @@
     },
     {
       "file": "master/connected-vehicles/ConnectedVehicleDetailDrawer.tsx",
-      "line": 165,
+      "line": 196,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -15043,7 +15041,7 @@
     },
     {
       "file": "master/connected-vehicles/ConnectedVehicleDetailDrawer.tsx",
-      "line": 193,
+      "line": 224,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -15058,7 +15056,7 @@
     },
     {
       "file": "master/connected-vehicles/ConnectedVehicleDetailDrawer.tsx",
-      "line": 225,
+      "line": 256,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -15073,7 +15071,7 @@
     },
     {
       "file": "master/connected-vehicles/ConnectedVehicleDetailDrawer.tsx",
-      "line": 245,
+      "line": 276,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -15088,7 +15086,7 @@
     },
     {
       "file": "master/connected-vehicles/ConnectedVehicleDetailDrawer.tsx",
-      "line": 260,
+      "line": 291,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -15103,7 +15101,7 @@
     },
     {
       "file": "master/connected-vehicles/ConnectedVehicleDetailDrawer.tsx",
-      "line": 269,
+      "line": 300,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -15118,71 +15116,11 @@
     },
     {
       "file": "master/connected-vehicles/ConnectedVehicleDetailDrawer.tsx",
-      "line": 272,
+      "line": 303,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
       "sample": "Technische Rohdaten werden nur auf Anfrage geladen.",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "structuralContext": "ConnectedVehicleDetailDrawer",
-      "occurrences": 1,
-      "files": [
-        "master/connected-vehicles/ConnectedVehicleDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "master/connected-vehicles/ConnectedVehicleDetailDrawer.tsx",
-      "line": 286,
-      "surface": "MASTER",
-      "module": null,
-      "category": "TEXT",
-      "sample": "Registrierung aufheben",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "structuralContext": "ConnectedVehicleDetailDrawer",
-      "occurrences": 1,
-      "files": [
-        "master/connected-vehicles/ConnectedVehicleDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "master/connected-vehicles/ConnectedVehicleDetailDrawer.tsx",
-      "line": 298,
-      "surface": "MASTER",
-      "module": null,
-      "category": "TITLE",
-      "sample": "Registrierung aufheben",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "structuralContext": "ConnectedVehicleDetailDrawer",
-      "occurrences": 1,
-      "files": [
-        "master/connected-vehicles/ConnectedVehicleDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "master/connected-vehicles/ConnectedVehicleDetailDrawer.tsx",
-      "line": 311,
-      "surface": "MASTER",
-      "module": null,
-      "category": "LABEL",
-      "sample": "Begründung (min. 5 Zeichen)",
-      "severity": "debt",
-      "migrationPhase": "P2.3",
-      "structuralContext": "ConnectedVehicleDetailDrawer",
-      "occurrences": 1,
-      "files": [
-        "master/connected-vehicles/ConnectedVehicleDetailDrawer.tsx"
-      ]
-    },
-    {
-      "file": "master/connected-vehicles/ConnectedVehicleDetailDrawer.tsx",
-      "line": 311,
-      "surface": "MASTER",
-      "module": null,
-      "category": "TEXT",
-      "sample": "Begründung (min. 5 Zeichen)",
       "severity": "debt",
       "migrationPhase": "P2.3",
       "structuralContext": "ConnectedVehicleDetailDrawer",
@@ -15313,7 +15251,7 @@
     },
     {
       "file": "master/connected-vehicles/ConnectedVehiclesHub.tsx",
-      "line": 98,
+      "line": 197,
       "surface": "MASTER",
       "module": null,
       "category": "TITLE",
@@ -15328,7 +15266,7 @@
     },
     {
       "file": "master/connected-vehicles/ConnectedVehiclesListView.tsx",
-      "line": 147,
+      "line": 159,
       "surface": "MASTER",
       "module": null,
       "category": "PLACEHOLDER",
@@ -15343,7 +15281,7 @@
     },
     {
       "file": "master/connected-vehicles/ConnectedVehiclesListView.tsx",
-      "line": 151,
+      "line": 163,
       "surface": "MASTER",
       "module": null,
       "category": "ARIA",
@@ -15358,7 +15296,7 @@
     },
     {
       "file": "master/connected-vehicles/ConnectedVehiclesListView.tsx",
-      "line": 159,
+      "line": 171,
       "surface": "MASTER",
       "module": null,
       "category": "ARIA",
@@ -15373,7 +15311,7 @@
     },
     {
       "file": "master/connected-vehicles/ConnectedVehiclesListView.tsx",
-      "line": 162,
+      "line": 174,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -15388,7 +15326,22 @@
     },
     {
       "file": "master/connected-vehicles/ConnectedVehiclesListView.tsx",
-      "line": 168,
+      "line": 183,
+      "surface": "MASTER",
+      "module": null,
+      "category": "ARIA",
+      "sample": "Registry-Lebenszyklus filtern",
+      "severity": "debt",
+      "migrationPhase": "P2.3",
+      "structuralContext": "toolbar",
+      "occurrences": 1,
+      "files": [
+        "master/connected-vehicles/ConnectedVehiclesListView.tsx"
+      ]
+    },
+    {
+      "file": "master/connected-vehicles/ConnectedVehiclesListView.tsx",
+      "line": 195,
       "surface": "MASTER",
       "module": null,
       "category": "ARIA",
@@ -15403,7 +15356,7 @@
     },
     {
       "file": "master/connected-vehicles/ConnectedVehiclesListView.tsx",
-      "line": 170,
+      "line": 197,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -15418,7 +15371,7 @@
     },
     {
       "file": "master/connected-vehicles/ConnectedVehiclesListView.tsx",
-      "line": 174,
+      "line": 201,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -15433,7 +15386,7 @@
     },
     {
       "file": "master/connected-vehicles/ConnectedVehiclesListView.tsx",
-      "line": 180,
+      "line": 207,
       "surface": "MASTER",
       "module": null,
       "category": "ARIA",
@@ -15448,7 +15401,7 @@
     },
     {
       "file": "master/connected-vehicles/ConnectedVehiclesListView.tsx",
-      "line": 182,
+      "line": 209,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -15463,7 +15416,7 @@
     },
     {
       "file": "master/connected-vehicles/ConnectedVehiclesListView.tsx",
-      "line": 185,
+      "line": 212,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -15478,7 +15431,7 @@
     },
     {
       "file": "master/connected-vehicles/ConnectedVehiclesListView.tsx",
-      "line": 187,
+      "line": 214,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -15493,7 +15446,7 @@
     },
     {
       "file": "master/connected-vehicles/ConnectedVehiclesListView.tsx",
-      "line": 193,
+      "line": 220,
       "surface": "MASTER",
       "module": null,
       "category": "ARIA",
@@ -15508,7 +15461,7 @@
     },
     {
       "file": "master/connected-vehicles/ConnectedVehiclesListView.tsx",
-      "line": 197,
+      "line": 224,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -15523,7 +15476,7 @@
     },
     {
       "file": "master/connected-vehicles/ConnectedVehiclesListView.tsx",
-      "line": 199,
+      "line": 226,
       "surface": "MASTER",
       "module": null,
       "category": "ARIA",
@@ -15538,7 +15491,7 @@
     },
     {
       "file": "master/connected-vehicles/ConnectedVehiclesListView.tsx",
-      "line": 218,
+      "line": 245,
       "surface": "MASTER",
       "module": null,
       "category": "ARIA",
@@ -15553,7 +15506,7 @@
     },
     {
       "file": "master/connected-vehicles/ConnectedVehiclesListView.tsx",
-      "line": 228,
+      "line": 255,
       "surface": "MASTER",
       "module": null,
       "category": "ARIA",
@@ -15568,7 +15521,7 @@
     },
     {
       "file": "master/connected-vehicles/ConnectedVehiclesListView.tsx",
-      "line": 240,
+      "line": 267,
       "surface": "MASTER",
       "module": null,
       "category": "TITLE",
@@ -15583,7 +15536,7 @@
     },
     {
       "file": "master/connected-vehicles/ConnectedVehiclesListView.tsx",
-      "line": 261,
+      "line": 288,
       "surface": "MASTER",
       "module": null,
       "category": "TEXT",
@@ -20118,36 +20071,6 @@
       ]
     },
     {
-      "file": "pages/LoginPage.tsx",
-      "line": 287,
-      "surface": "LOGIN",
-      "module": null,
-      "category": "ARIA",
-      "sample": "showPassword ?",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.1",
-      "structuralContext": "completeLogin",
-      "occurrences": 1,
-      "files": [
-        "pages/LoginPage.tsx"
-      ]
-    },
-    {
-      "file": "pages/LoginPage.tsx",
-      "line": 301,
-      "surface": "LOGIN",
-      "module": null,
-      "category": "TEXT",
-      "sample": "Geben Sie den Code aus Ihrer Authenticator-App ein.",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.1",
-      "structuralContext": "completeLogin",
-      "occurrences": 1,
-      "files": [
-        "pages/LoginPage.tsx"
-      ]
-    },
-    {
       "file": "pages/VerificationDonePage.tsx",
       "line": 15,
       "surface": "SHELL",
@@ -20194,7 +20117,7 @@
     },
     {
       "file": "rental/App.tsx",
-      "line": 1430,
+      "line": 1428,
       "surface": "RENTAL",
       "module": "App / routing shell",
       "category": "TITLE",
@@ -39988,7 +39911,7 @@
     },
     {
       "file": "rental/components/TopBar.tsx",
-      "line": 376,
+      "line": 363,
       "surface": "RENTAL",
       "module": "TopBar",
       "category": "TEXT",
@@ -40003,22 +39926,7 @@
     },
     {
       "file": "rental/components/TopBar.tsx",
-      "line": 458,
-      "surface": "RENTAL",
-      "module": "TopBar",
-      "category": "ARIA",
-      "sample": "`Language: $",
-      "severity": "enforce-clean",
-      "migrationPhase": "P2.2.1",
-      "structuralContext": "getTypeColor",
-      "occurrences": 1,
-      "files": [
-        "rental/components/TopBar.tsx"
-      ]
-    },
-    {
-      "file": "rental/components/TopBar.tsx",
-      "line": 499,
+      "line": 450,
       "surface": "RENTAL",
       "module": "TopBar",
       "category": "ARIA",

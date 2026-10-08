@@ -9,6 +9,12 @@ import type {
 } from './types';
 import { readCvListStateFromUrl, urlToCvQuery, writeCvListStateToUrl, queryToCvUrlState } from './cv.utils';
 
+export const CONNECTED_VEHICLES_REFRESH_EVENT = 'synqdrive:connected-vehicles-refresh';
+
+export function emitConnectedVehiclesRefresh(): void {
+  window.dispatchEvent(new CustomEvent(CONNECTED_VEHICLES_REFRESH_EVENT));
+}
+
 export function useConnectedVehiclesOverview() {
   const [overview, setOverview] = useState<VehiclesOperationalOverviewDto | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,6 +77,12 @@ export function useConnectedVehiclesList() {
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
+
+  useEffect(() => {
+    const onRefresh = () => void load();
+    window.addEventListener(CONNECTED_VEHICLES_REFRESH_EVENT, onRefresh);
+    return () => window.removeEventListener(CONNECTED_VEHICLES_REFRESH_EVENT, onRefresh);
+  }, [load]);
 
   return { data, loading, error, query, setQuery, refresh: load };
 }

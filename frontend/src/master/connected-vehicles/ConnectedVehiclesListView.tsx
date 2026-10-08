@@ -11,6 +11,8 @@ import {
   CvIntegrationChip,
   CvTelemetryChip,
 } from './ConnectedVehicleStatusChips';
+import { RegistryLifecycleChip } from './RegistryLifecycleChip';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 interface ConnectedVehiclesListViewProps {
   onOpenVehicle: (row: VehicleOperationalRowDto) => void;
@@ -50,6 +52,7 @@ function VehicleMobileCard({
         <CvAttentionChip attention={row.attention} compact />
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
+        <RegistryLifecycleChip lifecycle={row.registryLifecycle} compact />
         <CvIntegrationChip label={row.integrationConnectivityLabel} state={row.integrationConnectivity} />
         <CvTelemetryChip label={row.telemetryLabel} freshness={row.telemetryFreshness} />
         <span className="text-xs text-muted-foreground">{row.lastSignalRelative ?? '—'}</span>
@@ -62,6 +65,7 @@ export function ConnectedVehiclesListView({
   onOpenVehicle,
   initialFilters,
 }: ConnectedVehiclesListViewProps) {
+  const { t } = useLanguage();
   const { data, loading, error, query, setQuery, refresh } = useConnectedVehiclesList();
   const rows = data?.data ?? [];
   const meta = data?.meta;
@@ -89,6 +93,9 @@ export function ConnectedVehiclesListView({
       mapped.attention = initialFilters.cvAttention as typeof query.attention;
     }
     if (initialFilters.organizationId) mapped.organizationId = initialFilters.organizationId;
+    if (initialFilters.cvRegistryLifecycle) {
+      mapped.registryLifecycle = initialFilters.cvRegistryLifecycle as typeof query.registryLifecycle;
+    }
     setQuery({ ...query, ...mapped, page: 1 }, true);
   }, [initialFilters]);
 
@@ -102,6 +109,11 @@ export function ConnectedVehiclesListView({
           <p className="text-xs text-muted-foreground truncate">{row.displaySubtitle}</p>
         </div>
       ),
+    },
+    {
+      key: 'registryLifecycle',
+      header: 'Registry',
+      cell: (row) => <RegistryLifecycleChip lifecycle={row.registryLifecycle} compact />,
     },
     {
       key: 'organization',
@@ -161,6 +173,21 @@ export function ConnectedVehiclesListView({
           <option value="registered">Registriert</option>
           <option value="unregistered">Nicht zugeordnet (DIMO)</option>
         </select>
+        {query.registrationState !== 'unregistered' ? (
+          <select
+            className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+            value={query.registryLifecycle ?? 'ACTIVE'}
+            onChange={(e) =>
+              updateFilter({ registryLifecycle: e.target.value as typeof query.registryLifecycle })
+            }
+            aria-label="Registry-Lebenszyklus filtern"
+          >
+            <option value="ACTIVE">{t('master.cv.registryLifecycle.filter.active')}</option>
+            <option value="OFFBOARDED">{t('master.cv.registryLifecycle.filter.offboarded')}</option>
+            <option value="ARCHIVED">{t('master.cv.registryLifecycle.filter.archived')}</option>
+            <option value="all">{t('master.cv.registryLifecycle.filter.all')}</option>
+          </select>
+        ) : null}
         <select
           className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
           value={query.integrationConnectivity ?? 'all'}

@@ -1,8 +1,13 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle, Building2, Loader2, RefreshCw, Unlink } from 'lucide-react';
-import { DetailDrawer, ConfirmDialog, StatusChip } from '../../components/patterns';
+import { AlertTriangle, Building2, Loader2, RefreshCw, ShieldOff } from 'lucide-react';
+import { DetailDrawer, StatusChip } from '../../components/patterns';
 import { Button } from '../../components/ui/button';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { useConnectedVehicleDetail } from './useConnectedVehiclesOperational';
+import { RegistryLifecycleChip } from './RegistryLifecycleChip';
+import { VehicleOffboardDialog } from './VehicleOffboardDialog';
+import { canOffboardRegisteredVehicle } from './registry-lifecycle.utils';
+import type { VehicleOffboardReasonCode } from './vehicle-offboard.types';
 import {
   CvAttentionChip,
   CvIntegrationChip,
@@ -17,7 +22,15 @@ interface ConnectedVehicleDetailDrawerProps {
   vehicleId: string | null;
   dimoVehicleId: string | null;
   onClose: () => void;
-  onDeregister?: (vehicleId: string, reason: string) => Promise<void>;
+  offboardUiEnabled?: boolean;
+  onOffboard?: (input: {
+    organizationId: string;
+    vehicleId: string;
+    reason: VehicleOffboardReasonCode;
+    note?: string;
+  }) => Promise<void>;
+  offboardSubmitting?: boolean;
+  onRegisterDetailRefresh?: (refresh: () => void) => void;
   onOpenOrganization?: (organizationId: string) => void;
 }
 
@@ -26,9 +39,13 @@ export function ConnectedVehicleDetailDrawer({
   vehicleId,
   dimoVehicleId,
   onClose,
-  onDeregister,
+  offboardUiEnabled = true,
+  onOffboard,
+  offboardSubmitting = false,
+  onRegisterDetailRefresh,
   onOpenOrganization,
 }: ConnectedVehicleDetailDrawerProps) {
+  const { t } = useLanguage();
   const {
     detail,
     diagnostics,
@@ -41,27 +58,40 @@ export function ConnectedVehicleDetailDrawer({
   } = useConnectedVehicleDetail(open ? vehicleId : null, open ? dimoVehicleId : null);
 
   const [showDiagnostics, setShowDiagnostics] = useState(false);
-  const [showDeregister, setShowDeregister] = useState(false);
-  const [deregisterReason, setDeregisterReason] = useState('');
-  const [deregistering, setDeregistering] = useState(false);
+  const [showOffboard, setShowOffboard] = useState(false);
 
   useEffect(() => {
     if (!open) {
       setShowDiagnostics(false);
-      setShowDeregister(false);
-      setDeregisterReason('');
+      setShowOffboard(false);
     }
   }, [open]);
 
-  const handleDeregister = async () => {
-    if (!vehicleId || !onDeregister || deregisterReason.trim().length < 5 || deregistering) return;
-    setDeregistering(true);
+  useEffect(() => {
+    onRegisterDetailRefresh?.(refresh);
+  }, [onRegisterDetailRefresh, refresh]);
+
+  const offboardAllowed =
+    offboardUiEnabled &&
+    Boolean(onOffboard) &&
+    detail &&
+    canOffboardRegisteredVehicle(detail);
+
+  const handleOffboardConfirm = async (input: {
+    reason: VehicleOffboardReasonCode;
+    note?: string;
+  }) => {
+    if (!vehicleId || !detail?.organizationId || !onOffboard || offboardSubmitting) return;
     try {
-      await onDeregister(vehicleId, deregisterReason.trim());
-      setShowDeregister(false);
-      onClose();
-    } finally {
-      setDeregistering(false);
+      await onOffboard({
+        organizationId: detail.organizationId,
+        vehicleId,
+        reason: input.reason,
+        note: input.note,
+      });
+      setShowOffboard(false);
+    } catch {
+      /* hub surfaces toast; keep dialog open for retry */
     }
   };
 
@@ -120,6 +150,7 @@ export function ConnectedVehicleDetailDrawer({
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
+                <RegistryLifecycleChip lifecycle={detail.registryLifecycle} />
                 <CvIntegrationChip label={detail.integrationConnectivityLabel} state={detail.integrationConnectivity} />
                 <CvTelemetryChip label={detail.telemetryLabel} freshness={detail.telemetryFreshness} />
                 <CvAttentionChip attention={detail.attention} />
@@ -275,50 +306,39 @@ export function ConnectedVehicleDetailDrawer({
               )}
             </section>
 
-            {vehicleId && onDeregister ? (
+            {vehicleId && offboardAllowed ? (
               <div className="border-t border-border pt-4">
                 <Button
                   type="button"
                   variant="destructive"
-                  onClick={() => setShowDeregister(true)}
+                  onClick={() => setShowOffboard(true)}
                   className="w-full sm:w-auto"
+                  disabled={offboardSubmitting}
                 >
-                  <Unlink className="h-4 w-4 mr-2" aria-hidden />
-                  Registrierung aufheben
+                  <ShieldOff className="h-4 w-4 mr-2" aria-hidden />
+                  {t('master.cv.offboard.action')}
                 </Button>
               </div>
+            ) : null}
+            {vehicleId && detail && !offboardAllowed && detail.registrationState === 'registered' ? (
+              <p className="text-xs text-muted-foreground border-t border-border pt-4">
+                {detail.registryLifecycle == null
+                  ? t('master.cv.offboard.lifecycleUnknown')
+                  : null}
+              </p>
             ) : null}
           </div>
         ) : null}
       </DetailDrawer>
 
-      <ConfirmDialog
-        open={showDeregister}
-        onOpenChange={setShowDeregister}
-        title="Registrierung aufheben"
-        description="Das SynqDrive-Fahrzeug wird aus der Organisation entfernt. Die DIMO-Spiegel-Identität bleibt erhalten. Telemetrie-Historie wird nicht gelöscht."
-        confirmLabel={deregistering ? 'Wird aufgehoben…' : 'Aufheben bestätigen'}
-        tone="critical"
-        loading={deregistering}
-        onConfirm={handleDeregister}
-      >
-        <div className="space-y-2 mt-3">
-          {detail?.organizationName ? (
-            <p className="text-sm">
-              Organisation: <strong>{detail.organizationName}</strong>
-            </p>
-          ) : null}
-          <label className="block text-sm font-medium" htmlFor="deregister-reason">
-            Begründung (min. 5 Zeichen)
-          </label>
-          <textarea
-            id="deregister-reason"
-            className="w-full rounded-xl border border-border bg-background p-3 text-sm min-h-[80px]"
-            value={deregisterReason}
-            onChange={(e) => setDeregisterReason(e.target.value)}
-          />
-        </div>
-      </ConfirmDialog>
+      <VehicleOffboardDialog
+        open={showOffboard}
+        onOpenChange={setShowOffboard}
+        loading={offboardSubmitting}
+        displayTitle={detail?.displayTitle ?? ''}
+        organizationName={detail?.organizationName ?? null}
+        onConfirm={(input) => void handleOffboardConfirm(input)}
+      />
     </>
   );
 }

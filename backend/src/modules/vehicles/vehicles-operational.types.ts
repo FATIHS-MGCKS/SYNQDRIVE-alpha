@@ -9,12 +9,16 @@ import type { TelemetryFreshness } from './vehicle-state-interpreter';
 
 export type RegistrationState = 'registered' | 'unregistered';
 
+export type VehicleRegistryLifecycleFilter = 'ACTIVE' | 'OFFBOARDED' | 'ARCHIVED' | 'all';
+
 export interface VehiclesOperationalQueryDto {
   page?: number;
   limit?: number;
   q?: string;
   organizationId?: string;
   registrationState?: RegistrationState | 'all';
+  /** Registered rows only; default ACTIVE when omitted (VO-5C P2A). */
+  registryLifecycle?: VehicleRegistryLifecycleFilter;
   integrationConnectivity?: IntegrationConnectivity | 'all';
   telemetryFreshness?: TelemetryFreshness | 'all';
   attention?: 'true' | 'false' | 'all';

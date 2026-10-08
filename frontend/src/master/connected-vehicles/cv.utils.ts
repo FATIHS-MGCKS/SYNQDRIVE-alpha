@@ -91,6 +91,7 @@ export function readCvListStateFromUrl(): Record<string, string> {
     'cvTelemetry',
     'cvAttention',
     'cvSort',
+    'cvRegistryLifecycle',
     'organizationId',
   ];
   const state: Record<string, string> = {};
@@ -108,6 +109,8 @@ export function urlToCvQuery(state: Record<string, string>): VehiclesOperational
     q: state.cvSearch,
     organizationId: state.organizationId,
     registrationState: (state.cvRegistrationState as VehiclesOperationalQuery['registrationState']) ?? 'registered',
+    registryLifecycle:
+      (state.cvRegistryLifecycle as VehiclesOperationalQuery['registryLifecycle']) ?? 'ACTIVE',
     integrationConnectivity: state.cvIntegration as VehiclesOperationalQuery['integrationConnectivity'],
     telemetryFreshness: state.cvTelemetry as VehiclesOperationalQuery['telemetryFreshness'],
     attention: state.cvAttention as VehiclesOperationalQuery['attention'],
@@ -121,6 +124,7 @@ export function queryToCvUrlState(query: VehiclesOperationalQuery): Record<strin
     cvSearch: query.q,
     organizationId: query.organizationId,
     cvRegistrationState: query.registrationState,
+    cvRegistryLifecycle: query.registryLifecycle,
     cvIntegration: query.integrationConnectivity,
     cvTelemetry: query.telemetryFreshness,
     cvAttention: query.attention,
@@ -139,6 +143,7 @@ export function writeCvListStateToUrl(state: Record<string, string | undefined>,
     'cvTelemetry',
     'cvAttention',
     'cvSort',
+    'cvRegistryLifecycle',
     'organizationId',
   ];
   for (const k of keys) p.delete(k);

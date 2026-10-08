@@ -1,6 +1,8 @@
 export type CvSection = 'overview' | 'vehicles' | 'import';
 
 export type RegistrationState = 'registered' | 'unregistered';
+export type RegistryLifecycleFilter = 'ACTIVE' | 'OFFBOARDED' | 'ARCHIVED' | 'all';
+export type VehicleRegistryLifecycle = 'ACTIVE' | 'OFFBOARDED' | 'ARCHIVED';
 export type IntegrationConnectivity = 'connected' | 'disconnected' | 'error' | 'none';
 export type TelemetryFreshness = 'live' | 'standby' | 'signal_delayed' | 'offline' | 'no_signal';
 export type IntegrityState = 'healthy' | 'attention' | 'conflict';
@@ -25,6 +27,7 @@ export interface VehicleOperationalRowDto {
   organizationId: string | null;
   organizationName: string | null;
   registrationState: RegistrationState;
+  registryLifecycle?: VehicleRegistryLifecycle | null;
   ownership: 'assigned' | 'unassigned' | 'conflict';
   dimoLinkStatus: 'linked' | 'unlinked' | 'conflict';
   integrationConnectivity: IntegrationConnectivity;
@@ -115,6 +118,7 @@ export interface VehiclesOperationalQuery {
   q?: string;
   organizationId?: string;
   registrationState?: RegistrationState | 'all';
+  registryLifecycle?: RegistryLifecycleFilter;
   integrationConnectivity?: IntegrationConnectivity | 'all';
   telemetryFreshness?: TelemetryFreshness | 'all';
   attention?: 'true' | 'false' | 'all';

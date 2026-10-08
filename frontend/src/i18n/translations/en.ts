@@ -3280,6 +3280,60 @@ export const en = {
   'settings.connectedVehicles': 'Connected Vehicles',
   'settings.dataSync': 'Data Sync',
 
+  // ─── Master — Connected Vehicles offboard (VO5C-P2A) ───
+  'master.cv.registryLifecycle.active': 'Active',
+  'master.cv.registryLifecycle.offboarded': 'Offboarded',
+  'master.cv.registryLifecycle.archived': 'Archived',
+  'master.cv.registryLifecycle.unknown': 'Lifecycle unknown',
+  'master.cv.registryLifecycle.filter.active': 'Active fleet',
+  'master.cv.registryLifecycle.filter.offboarded': 'Offboarded history',
+  'master.cv.registryLifecycle.filter.archived': 'Archived',
+  'master.cv.registryLifecycle.filter.all': 'All lifecycles',
+  'master.cv.offboard.action': 'Remove from active fleet',
+  'master.cv.offboard.dialog.title': 'Remove vehicle from active fleet',
+  'master.cv.offboard.dialog.description':
+    'This offboards the vehicle from SynqDrive active operations. The canonical vehicle record and history are retained.',
+  'master.cv.offboard.dialog.confirm': 'Confirm offboard',
+  'master.cv.offboard.dialog.cancel': 'Cancel',
+  'master.cv.offboard.dialog.submitting': 'Offboarding…',
+  'master.cv.offboard.organizationLabel': 'Organization',
+  'master.cv.offboard.reason.label': 'Offboard reason',
+  'master.cv.offboard.reason.OFFBOARD_SOLD': 'Vehicle sold',
+  'master.cv.offboard.reason.REMOVE_FROM_PRODUCT': 'Remove from SynqDrive active product fleet',
+  'master.cv.offboard.reason.ADMINISTRATIVE_OFFBOARD': 'Administrative offboard',
+  'master.cv.offboard.note.label': 'Audit note (optional)',
+  'master.cv.offboard.note.hint': 'Internal note for audit trail',
+  'master.cv.offboard.explainer.title': 'What happens',
+  'master.cv.offboard.explainer.canonicalRetained': 'The canonical vehicle record remains stored.',
+  'master.cv.offboard.explainer.historyRetained':
+    'Trips, bookings, damages, service, and other history are retained.',
+  'master.cv.offboard.explainer.leavesActiveFleet': 'The vehicle leaves the active product fleet.',
+  'master.cv.offboard.explainer.billingAsync':
+    'Billing quantity updates asynchronously via the lifecycle outbox.',
+  'master.cv.offboard.explainer.localLinksDeactivated':
+    'Local provider links and consent are deactivated per platform policy.',
+  'master.cv.offboard.explainer.noProviderDisconnect':
+    'Provider-side account or device disconnection is a separate action.',
+  'master.cv.offboard.explainer.noReOnboard': 'Ordinary automatic re-onboarding is not available.',
+  'master.cv.offboard.success.title': 'Vehicle offboarded',
+  'master.cv.offboard.success.replay': 'Offboard already completed (idempotent replay).',
+  'master.cv.offboard.error.generic': 'Offboard could not be completed.',
+  'master.cv.offboard.error.enrollment': 'MFA enrollment is required before this action.',
+  'master.cv.offboard.error.operationalBlocked': 'Operational preconditions block offboarding.',
+  'master.cv.offboard.block.ACTIVE_RENTAL': 'Active rental in progress',
+  'master.cv.offboard.block.ACTIVE_BOOKING': 'Committed future booking exists',
+  'master.cv.offboard.block.ONGOING_TRIP': 'Trip is ongoing',
+  'master.cv.offboard.block.OPEN_HANDOVER': 'Pickup handover is open',
+  'master.cv.offboard.warning.OPEN_DAMAGE_WARNING': 'Open damage records remain on file.',
+  'master.cv.offboard.warning.OPEN_MAINTENANCE_WARNING': 'Open maintenance work remains on file.',
+  'master.cv.offboard.warning.UNPAID_BILLING_WARNING': 'Unpaid billing items may remain.',
+  'master.cv.offboard.warning.FLEET_TASK_WARNING': 'Open fleet tasks remain on file.',
+  'master.cv.offboard.lifecycleUnknown': 'Registry lifecycle is unknown; offboard is not available.',
+  'master.cv.offboard.uncertainRetry':
+    'Result uncertain — retry with the same operation or refresh status.',
+  'master.cv.release.blockedBackend':
+    'Offboard is disabled until production backend capability is verified.',
+
   // ─── Fleet Condition ───
   'fleetCondition.title': 'Fleet Condition',
   'fleetCondition.healthScore': 'Health Score',

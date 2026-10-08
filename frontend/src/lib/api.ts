@@ -786,6 +786,7 @@ export interface RequestResult<T> {
   readonly status: number;
   readonly data?: T;
   readonly errorMessage?: string;
+  readonly errorBody?: { code?: string; message?: string; details?: unknown };
 }
 
 export async function requestResult<T>(
@@ -817,10 +818,27 @@ export async function requestResult<T>(
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
+    const normalized =
+      body && typeof body === 'object'
+        ? (body as { code?: string; message?: string; details?: unknown })
+        : {};
+    if (
+      res.status === 403 &&
+      normalized &&
+      typeof normalized === 'object' &&
+      (normalized as { code?: string }).code === 'STEP_UP_REQUIRED'
+    ) {
+      window.dispatchEvent(
+        new CustomEvent('synqdrive:step-up-required', {
+          detail: normalized as { code?: string; action?: string },
+        }),
+      );
+    }
     return {
       ok: false,
       status: res.status,
       errorMessage: formatHttpErrorMessage(body, res.status, path),
+      errorBody: normalized,
     };
   }
 
@@ -4176,6 +4194,40 @@ export const api = {
         del<{ success: boolean }>(
           `/admin/vehicles/${vehicleId}/exterior-images/${view}`,
         ),
+    },
+  },
+  vehicleOnboarding: {
+    offboardVehicle: async (
+      organizationId: string,
+      vehicleId: string,
+      body: {
+        reason: 'OFFBOARD_SOLD' | 'REMOVE_FROM_PRODUCT' | 'ADMINISTRATIVE_OFFBOARD';
+        idempotencyKey: string;
+        note?: string;
+      },
+    ) => {
+      const path = `/admin/vehicle-onboarding/organizations/${organizationId}/vehicles/${vehicleId}/offboard`;
+      const result = await requestResult<{
+        vehicleId: string;
+        organizationId: string;
+        registryLifecycle: 'OFFBOARDED';
+        offboardedAt: string;
+        reason: 'OFFBOARD_SOLD' | 'REMOVE_FROM_PRODUCT' | 'ADMINISTRATIVE_OFFBOARD';
+        idempotentReplay: boolean;
+        warnings: string[];
+      }>(path, { method: 'POST', body: JSON.stringify(body) });
+      if (!result.ok) {
+        const code = result.errorBody?.code;
+        const msg = result.errorMessage ?? 'Offboard request failed';
+        const err = new Error(code ? `[${code}] ${msg}` : msg) as Error & {
+          status?: number;
+          details?: unknown;
+        };
+        err.status = result.status;
+        err.details = result.errorBody?.details;
+        throw err;
+      }
+      return result.data!;
     },
   },
   dimo: {
