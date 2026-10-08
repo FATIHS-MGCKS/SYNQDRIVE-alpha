@@ -1682,6 +1682,15 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | Production `ee958854…` unchanged; GLOBAL row **missing**; S4 counts **0**; initializer @ deployed SHA **safe**; postgres concurrency tests **PASS**; **`DB_KILL_INITIALIZATION_READINESS=BLOCKED`** — `PRODUCTION_EXECUTION_WRAPPER_REQUIRED` |
 | NON_EFFECTS | No initializer execution, no Production DB/env/deploy/restart, no Tiny/operator grant |
 
+### EXP-021 S4F-7AF.1A deploy freeze coordination (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Read-only deploy entrypoint map + VPS/GitHub concurrency probe; evidence `EXP021_S4F7AF1A_DEPLOY_FREEZE_COORDINATION.md` |
+| FINDING | **`DEPLOY_FREEZE_CONFIRMED=NO`** — no operational freeze marker on VPS; no deployment-authority freeze attestation; Production SHA **unchanged** @ `54fc704f…`; no active deploy/migrate/restart |
+| NON_EFFECTS | No freeze file created; no CI disable; no deploy/restart/migration/live staging/JIT/`DRY_RUN=0` |
+| NEXT | Production deploy operator explicit scoped freeze → re-authorize single S4F-7AF.1 attempt with fresh preflight |
+
 ### EXP-021 S4F-7B dormant Production deploy preflight (2026-10-02)
 
 | Event | Detail |
