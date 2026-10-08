@@ -462,6 +462,8 @@ export const fr = {
   'master.cv.offboard.success.title': 'Vehicule retire',
   'master.cv.offboard.success.replay': 'Retrait deja termine (rejeu idempotent).',
   'master.cv.offboard.error.generic': 'Le retrait na pas pu etre termine.',
+  'master.cv.offboard.error.pendingIntentConflict':
+    'Une autre tentative de retrait est en attente. Reessayez, abandonnez ou attendez la MFA.',
   'master.cv.offboard.error.enrollment': 'Enregistrement MFA requis.',
   'master.cv.offboard.error.operationalBlocked': 'Les preconditions operationnelles bloquent le retrait.',
   'master.cv.offboard.block.ACTIVE_RENTAL': 'Location active en cours',

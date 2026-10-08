@@ -81,6 +81,8 @@ export const pl = {
   'master.cv.offboard.success.title': 'Pojazd wycofany',
   'master.cv.offboard.success.replay': 'Wycofanie juz zakonczone (odtworzenie idempotentne).',
   'master.cv.offboard.error.generic': 'Nie mozna zakonczyc wycofania.',
+  'master.cv.offboard.error.pendingIntentConflict':
+    'Inna proba wycofania jest nadal oczekujaca. Ponow, porzuc lub poczekaj na MFA.',
   'master.cv.offboard.error.enrollment': 'Wymagana rejestracja MFA.',
   'master.cv.offboard.error.operationalBlocked': 'Warunki operacyjne blokują wycofanie.',
   'master.cv.offboard.block.ACTIVE_RENTAL': 'Aktywna najem w toku',

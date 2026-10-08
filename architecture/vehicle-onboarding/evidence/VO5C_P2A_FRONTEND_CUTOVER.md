@@ -23,6 +23,12 @@ PRODUCTION_BACKEND_OFFBOARD_ROUTE_VERIFIED=NO (as of P2A implementation)
 
 Do **not** deploy P2A to production before P1 offboard route is verified live. **Fail-closed:** `VITE_MASTER_VEHICLE_OFFBOARD_UI` must be explicitly `on`/`true`/`1` to show the action; absent/invalid → hidden.
 
+### P2A.2 reliability seal (2026-10-08)
+
+- `requestResult` status `0` classified as `TRANSPORT_UNCERTAIN` (pending intent + idempotency key retained).
+- Pending-intent conflict guards for MFA/uncertain phases; stale HTTP responses ignored after abandon.
+- Fetch-boundary client tests + hub refresh/MFA integration tests; backend operational list integration proofs.
+
 ### P2A.1 hardening (2026-10-08)
 
 - MFA HTTP in-flight lock released on `STEP_UP_REQUIRED`; Hub `onClose` does not abandon intent after successful MFA (`skipMfaCancelCleanupRef`).

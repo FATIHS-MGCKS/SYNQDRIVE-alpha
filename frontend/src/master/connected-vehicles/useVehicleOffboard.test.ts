@@ -95,7 +95,13 @@ describe('useVehicleOffboard (VO5C-P2A.1)', () => {
 
   it('I/J — transport failure → uncertain then retry with same key', async () => {
     vi.mocked(api.vehicleOnboarding.offboardVehicle)
-      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockRejectedValueOnce(
+        new VehicleOffboardRequestError('Network error', {
+          kind: 'TRANSPORT_UNCERTAIN',
+          code: 'TRANSPORT_UNCERTAIN',
+          status: 0,
+        }),
+      )
       .mockResolvedValueOnce({
         vehicleId: 'veh-1',
         organizationId: 'org-1',

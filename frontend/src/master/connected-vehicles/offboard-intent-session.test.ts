@@ -41,7 +41,7 @@ describe('offboard intent session', () => {
     expect(session.peekIdempotencyKey()).toBeNull();
   });
 
-  it('changed note produces new key', () => {
+  it('changed note while pending throws until abandoned', () => {
     const session = createOffboardIntentSession();
     const key1 = session.resolveIdempotencyKey({
       organizationId: 'o1',
@@ -49,6 +49,15 @@ describe('offboard intent session', () => {
       reason: 'REMOVE_FROM_PRODUCT',
       note: 'a',
     });
+    expect(() =>
+      session.resolveIdempotencyKey({
+        organizationId: 'o1',
+        vehicleId: 'v1',
+        reason: 'REMOVE_FROM_PRODUCT',
+        note: 'b',
+      }),
+    ).toThrow();
+    session.abandon();
     const key2 = session.resolveIdempotencyKey({
       organizationId: 'o1',
       vehicleId: 'v1',

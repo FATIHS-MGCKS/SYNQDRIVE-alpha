@@ -82,6 +82,8 @@ export const nl = {
   'master.cv.offboard.success.title': 'Voertuig offboard',
   'master.cv.offboard.success.replay': 'Offboard al voltooid (idempotente replay).',
   'master.cv.offboard.error.generic': 'Offboard kon niet worden voltooid.',
+  'master.cv.offboard.error.pendingIntentConflict':
+    'Een andere offboard-poging is nog in behandeling. Probeer opnieuw, annuleer of wacht op MFA.',
   'master.cv.offboard.error.enrollment': 'MFA-registratie is vereist.',
   'master.cv.offboard.error.operationalBlocked': 'Operationele voorwaarden blokkeren offboard.',
   'master.cv.offboard.block.ACTIVE_RENTAL': 'Actieve verhuur loopt',

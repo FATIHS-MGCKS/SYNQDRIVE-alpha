@@ -1,4 +1,5 @@
 import { newIdempotencyKey } from '../../lib/mfa';
+import { OffboardPendingIntentConflictError } from './offboard-pending-intent';
 import type { VehicleOffboardReasonCode } from './vehicle-offboard.types';
 
 export type OffboardSemanticIntent = {
@@ -27,6 +28,9 @@ export function createOffboardIntentSession(): OffboardIntentSession {
   return {
     resolveIdempotencyKey(intent: OffboardSemanticIntent): string {
       const nextFingerprint = offboardIntentFingerprint(intent);
+      if (fingerprint && fingerprint !== nextFingerprint && idempotencyKey) {
+        throw new OffboardPendingIntentConflictError();
+      }
       if (!idempotencyKey || fingerprint !== nextFingerprint) {
         idempotencyKey = newIdempotencyKey('vehicle-offboard');
         fingerprint = nextFingerprint;

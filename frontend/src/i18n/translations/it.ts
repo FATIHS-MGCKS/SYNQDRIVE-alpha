@@ -81,6 +81,8 @@ export const it = {
   'master.cv.offboard.success.title': 'Veicolo dismesso',
   'master.cv.offboard.success.replay': 'Dismissione già completata (replay idempotente).',
   'master.cv.offboard.error.generic': 'Impossibile completare la dismissione.',
+  'master.cv.offboard.error.pendingIntentConflict':
+    'Un altro tentativo di dismissione e ancora in sospeso. Riprova, abbandona o attendi MFA.',
   'master.cv.offboard.error.enrollment': 'Registrazione MFA richiesta.',
   'master.cv.offboard.error.operationalBlocked': 'Precondizioni operative bloccano la dismissione.',
   'master.cv.offboard.block.ACTIVE_RENTAL': 'Noleggio attivo in corso',

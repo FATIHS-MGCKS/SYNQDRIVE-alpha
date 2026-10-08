@@ -81,6 +81,8 @@ export const es = {
   'master.cv.offboard.success.title': 'Vehiculo retirado',
   'master.cv.offboard.success.replay': 'Retirada ya completada (reintento idempotente).',
   'master.cv.offboard.error.generic': 'No se pudo completar la retirada.',
+  'master.cv.offboard.error.pendingIntentConflict':
+    'Otro intento de retirada sigue pendiente. Reintente, abandone o espere MFA.',
   'master.cv.offboard.error.enrollment': 'Se requiere registro MFA.',
   'master.cv.offboard.error.operationalBlocked': 'Las precondiciones operativas bloquean la retirada.',
   'master.cv.offboard.block.ACTIVE_RENTAL': 'Alquiler activo en curso',

@@ -38,6 +38,14 @@ export function classifyOffboardHttpFailure(
   message: string,
   details?: unknown,
 ): VehicleOffboardRequestError {
+  if (status === 0) {
+    return new VehicleOffboardRequestError(message, {
+      kind: 'TRANSPORT_UNCERTAIN',
+      code: code ?? 'TRANSPORT_UNCERTAIN',
+      status: 0,
+      details,
+    });
+  }
   if (code === 'STEP_UP_REQUIRED') {
     return new VehicleOffboardRequestError(message, {
       kind: 'STEP_UP_REQUIRED',
@@ -83,11 +91,7 @@ export function classifyOffboardHttpFailure(
 }
 
 export function isTransportUncertainError(err: unknown): boolean {
-  if (err instanceof VehicleOffboardRequestError && err.kind === 'TRANSPORT_UNCERTAIN') return true;
-  return (
-    err instanceof TypeError ||
-    (err instanceof Error && /network|fetch|failed|timeout/i.test(err.message))
-  );
+  return err instanceof VehicleOffboardRequestError && err.kind === 'TRANSPORT_UNCERTAIN';
 }
 
 export function isStepUpRequiredOffboardError(err: unknown): boolean {

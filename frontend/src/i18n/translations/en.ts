@@ -3319,6 +3319,8 @@ export const en = {
   'master.cv.offboard.success.title': 'Vehicle offboarded',
   'master.cv.offboard.success.replay': 'Offboard already completed (idempotent replay).',
   'master.cv.offboard.error.generic': 'Offboard could not be completed.',
+  'master.cv.offboard.error.pendingIntentConflict':
+    'Another offboard attempt is still pending. Retry, abandon it, or wait for MFA.',
   'master.cv.offboard.error.enrollment': 'MFA enrollment is required before this action.',
   'master.cv.offboard.error.operationalBlocked': 'Operational preconditions block offboarding.',
   'master.cv.offboard.block.ACTIVE_RENTAL': 'Active rental in progress',

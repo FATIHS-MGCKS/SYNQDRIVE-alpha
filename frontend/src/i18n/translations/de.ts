@@ -3428,6 +3428,8 @@ export const de: Record<TranslationKey, string> = {
   'master.cv.offboard.success.title': 'Fahrzeug ausgebucht',
   'master.cv.offboard.success.replay': 'Ausbuchung bereits abgeschlossen (idempotenter Replay).',
   'master.cv.offboard.error.generic': 'Ausbuchung konnte nicht abgeschlossen werden.',
+  'master.cv.offboard.error.pendingIntentConflict':
+    'Eine andere Ausbuchung ist noch ausstehend. Erneut versuchen, verwerfen oder MFA abwarten.',
   'master.cv.offboard.error.enrollment': 'MFA-Registrierung ist für diese Aktion erforderlich.',
   'master.cv.offboard.error.operationalBlocked': 'Operative Voraussetzungen verhindern die Ausbuchung.',
   'master.cv.offboard.block.ACTIVE_RENTAL': 'Aktive Miete läuft',

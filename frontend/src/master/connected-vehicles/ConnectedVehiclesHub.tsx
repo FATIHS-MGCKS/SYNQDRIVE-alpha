@@ -22,6 +22,7 @@ import { readCvLocation, syncCvSectionUrl } from './cv.utils';
 import { blockingReasonsFromError } from './vehicle-offboard.api-error';
 import type { VehicleOffboardPreflightWarningCode, VehicleOffboardReasonCode } from './vehicle-offboard.types';
 import { createOffboardIntentSession } from './offboard-intent-session';
+import { OffboardPendingIntentConflictError } from './offboard-pending-intent';
 import { useVehicleOffboard } from './useVehicleOffboard';
 import { isMasterOffboardUiEnabled } from './vo5c-release-gates';
 import { VehicleOffboardRequestError } from './vehicle-offboard.api-error';
@@ -147,7 +148,16 @@ export function ConnectedVehiclesHub({
         toast.error(t('master.cv.release.blockedBackend'));
         throw new Error('OFFBOARD_UI_DISABLED');
       }
-      const idempotencyKey = intentSession.resolveIdempotencyKey(input);
+      let idempotencyKey: string;
+      try {
+        idempotencyKey = intentSession.resolveIdempotencyKey(input);
+      } catch (e) {
+        if (e instanceof OffboardPendingIntentConflictError) {
+          toast.error(t('master.cv.offboard.error.pendingIntentConflict'));
+          throw e;
+        }
+        throw e;
+      }
       try {
         const result = await offboard.execute({
           ...input,
@@ -181,6 +191,13 @@ export function ConnectedVehiclesHub({
         }
         if (err instanceof VehicleOffboardRequestError && err.kind === 'SEMANTIC_CONFLICT') {
           intentSession.abandon();
+        }
+        if (
+          err instanceof OffboardPendingIntentConflictError ||
+          (err instanceof VehicleOffboardRequestError && err.code === 'OFFBOARD_PENDING_INTENT_CONFLICT')
+        ) {
+          toast.error(t('master.cv.offboard.error.pendingIntentConflict'));
+          throw err;
         }
         toast.error(err instanceof Error ? err.message : t('master.cv.offboard.error.generic'));
         throw err;

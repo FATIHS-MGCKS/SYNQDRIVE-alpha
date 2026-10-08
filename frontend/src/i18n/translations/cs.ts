@@ -81,6 +81,8 @@ export const cs = {
   'master.cv.offboard.success.title': 'Vozidlo vyrazeno',
   'master.cv.offboard.success.replay': 'Vyrazeni jiz dokonceno (idempotentni replay).',
   'master.cv.offboard.error.generic': 'Vyrazeni se nepodarilo dokoncit.',
+  'master.cv.offboard.error.pendingIntentConflict':
+    'Jina pokus o vyrazeni stale ceka. Zkuste znovu, zruste ho nebo pockejte na MFA.',
   'master.cv.offboard.error.enrollment': 'Je vyzadovana registrace MFA.',
   'master.cv.offboard.error.operationalBlocked': 'Operacni podminky blokuji vyrazeni.',
   'master.cv.offboard.block.ACTIVE_RENTAL': 'Aktivni najem probiha',
