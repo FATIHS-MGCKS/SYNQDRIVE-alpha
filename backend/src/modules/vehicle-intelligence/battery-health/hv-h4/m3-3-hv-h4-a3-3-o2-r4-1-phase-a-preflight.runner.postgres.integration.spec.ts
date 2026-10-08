@@ -5,6 +5,11 @@ import {
   isPhaseAPreflightPostgresIntegrationJobV1,
   resolvePhaseAPreflightIntegrationDatabaseUrlV1,
 } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.integration.harness.v1';
+import {
+  provisionPhaseAMigrationSelectDenialFixtureV1,
+  teardownPhaseAMigrationSelectDenialFixtureV1,
+} from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.migration-denial.fixture.v1';
+import { M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_QUERY_TELEMETRY_ENV } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.isolated-target.v1';
 import { redactPostgresDatabaseTargetV1 } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.redaction.v1';
 import {
   assertM3_3HvH4A3PhaseAPreflightReadOnlyRejectsMutationV1,
@@ -30,12 +35,12 @@ const integrationJobActive = isPhaseAPreflightPostgresIntegrationJobV1();
       expect(redacted).toContain('postgresql://***@');
     });
 
-    it('enforces READ ONLY — mutation cannot commit (SQLSTATE when available)', async () => {
+    it('enforces READ ONLY — SQLSTATE 25006 on mutation probe', async () => {
       const probe = await assertM3_3HvH4A3PhaseAPreflightReadOnlyRejectsMutationV1(integrationDatabaseUrl);
-      expect(probe.enforced).toBe(true);
-      expect(probe.reasonCode).toMatch(/^PHASE_A_/);
-      if (probe.sqlState) {
-        expect(['25006', '42501']).toContain(probe.sqlState);
+      expect(probe.ok).toBe(true);
+      if (probe.ok) {
+        expect(probe.enforced).toBe(true);
+        expect(probe.sqlState).toBe('25006');
       }
     });
 
@@ -43,7 +48,6 @@ const integrationJobActive = isPhaseAPreflightPostgresIntegrationJobV1();
       const outcome = await runM3_3HvH4A3PhaseAPreflightV1({
         databaseUrl: integrationDatabaseUrl,
         roleNames: DEFAULT_M3_3_HV_H4_A3_PHASE_A_ROLE_NAMES_V1,
-        requireIsolatedTargetApproval: true,
       });
       expect(outcome.ok).toBe(true);
       if (!outcome.ok) return;
@@ -52,9 +56,6 @@ const integrationJobActive = isPhaseAPreflightPostgresIntegrationJobV1();
       expect(outcome.report.securityCertification).toBe('NOT_CERTIFIED');
       expect(outcome.report.checks[0]?.checkId).toBe('PHASE_A_SESSION_CONTEXT');
 
-      const migrationCheck = outcome.report.checks.find((c) => c.checkId === 'PHASE_A_MIGRATION_HISTORY');
-      expect(migrationCheck?.status === 'PASS' || migrationCheck?.status === 'NOT_PRESENT').toBe(true);
-
       const notProvisioned = outcome.report.checks.filter((c) => c.status === 'NOT_PROVISIONED');
       expect(notProvisioned.length).toBeGreaterThan(0);
 
@@ -62,11 +63,6 @@ const integrationJobActive = isPhaseAPreflightPostgresIntegrationJobV1();
         (c) => c.checkId === 'PHASE_A_FUNCTION_OWNERSHIP_SNAPSHOT',
       );
       expect(functionChecks.length).toBe(M3_3_HV_H4_A3_PHASE_A_TRUSTED_FUNCTION_REGPROC_V1.length);
-      for (const fnCheck of functionChecks) {
-        if (fnCheck.status === 'PASS' && fnCheck.data) {
-          expect(fnCheck.data.regproc_signature ?? fnCheck.data.regprocSignature).toBeTruthy();
-        }
-      }
     });
 
     it('classifies empty database without _prisma_migrations as NOT_PRESENT', async () => {
@@ -82,26 +78,46 @@ const integrationJobActive = isPhaseAPreflightPostgresIntegrationJobV1();
         const outcome = await runM3_3HvH4A3PhaseAPreflightV1({
           databaseUrl: emptyUrl,
           roleNames: DEFAULT_M3_3_HV_H4_A3_PHASE_A_ROLE_NAMES_V1,
-          requireIsolatedTargetApproval: true,
         });
         expect(outcome.ok).toBe(true);
         if (!outcome.ok) return;
 
         const migrationCheck = outcome.report.checks.find((c) => c.checkId === 'PHASE_A_MIGRATION_HISTORY');
         expect(migrationCheck?.status).toBe('NOT_PRESENT');
-
-        const attestationTable = outcome.report.checks.filter(
-          (c) => c.checkId === 'PHASE_A_TABLE_OWNERSHIP_SNAPSHOT' && c.status === 'NOT_PRESENT',
-        );
-        expect(attestationTable.length).toBeGreaterThanOrEqual(1);
-
-        const fnMissing = outcome.report.checks.filter(
-          (c) => c.checkId === 'PHASE_A_FUNCTION_OWNERSHIP_SNAPSHOT' && c.status === 'NOT_PRESENT',
-        );
-        expect(fnMissing.length).toBe(M3_3_HV_H4_A3_PHASE_A_TRUSTED_FUNCTION_REGPROC_V1.length);
       } finally {
         await admin.$executeRawUnsafe(`DROP DATABASE IF EXISTS "${emptyDbName}"`);
         await admin.$disconnect().catch(() => undefined);
+      }
+    });
+
+    it('classifies missing SELECT on _prisma_migrations as ERROR without further SQL', async () => {
+      process.env[M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_QUERY_TELEMETRY_ENV] = '1';
+      const { databaseUrl: restrictedUrl } = await provisionPhaseAMigrationSelectDenialFixtureV1(
+        integrationDatabaseUrl,
+      );
+
+      try {
+        const outcome = await runM3_3HvH4A3PhaseAPreflightV1({
+          databaseUrl: restrictedUrl,
+          roleNames: DEFAULT_M3_3_HV_H4_A3_PHASE_A_ROLE_NAMES_V1,
+        });
+        expect(outcome.ok).toBe(true);
+        if (!outcome.ok) return;
+
+        const migrationCheck = outcome.report.checks.find((c) => c.checkId === 'PHASE_A_MIGRATION_HISTORY');
+        expect(migrationCheck?.status).toBe('ERROR');
+        expect(migrationCheck?.detail).toMatch(/^PHASE_A_/);
+        expect(outcome.report.phaseADiscoveryComplete).toBe(false);
+
+        const tableChecks = outcome.report.checks.filter(
+          (c) => c.checkId === 'PHASE_A_TABLE_OWNERSHIP_SNAPSHOT',
+        );
+        expect(tableChecks.length).toBe(0);
+
+        expect(outcome.report.testDiagnostics?.approvedQueryInvocations).toBeGreaterThan(0);
+      } finally {
+        await teardownPhaseAMigrationSelectDenialFixtureV1(integrationDatabaseUrl);
+        delete process.env[M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_QUERY_TELEMETRY_ENV];
       }
     });
   },

@@ -25,8 +25,6 @@ export type M3_3HvH4A3PhaseAPreflightRoleNamesV1 = {
 export type M3_3HvH4A3PhaseAPreflightRunnerInputV1 = {
   databaseUrl: string;
   roleNames: M3_3HvH4A3PhaseAPreflightRoleNamesV1;
-  /** When true (default), require M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_ISOLATED_TARGET_APPROVED. */
-  requireIsolatedTargetApproval?: boolean;
 };
 
 export type M3_3HvH4A3PhaseAPreflightReportV1 = {
@@ -46,6 +44,8 @@ export type M3_3HvH4A3PhaseAPreflightReportV1 = {
   productionCertification: 'NOT_CERTIFIED';
   securityCertification: 'NOT_CERTIFIED';
   summary: string[];
+  /** Present only when M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_QUERY_TELEMETRY=1 (integration tests). */
+  testDiagnostics?: { approvedQueryInvocations: number };
 };
 
 export type M3_3HvH4A3PhaseAPreflightRunnerOutcomeV1 =

@@ -6,21 +6,14 @@ export const M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_ISOLATED_TARGET_APPROVED_ENV =
 export const M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_DATABASE_URL_ENV =
   'M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_DATABASE_URL' as const;
 
-const FORBIDDEN_HOST_SUBSTRINGS = [
-  'synqdrive',
-  'hstgr',
-  'hostinger',
-  'tailscale',
-  'ts.net',
-  'amazonaws',
-  'azure',
-  'googleapis',
-  'cloud',
-  'prod.',
-  'production',
-] as const;
+/** Test-only — never set in deployable runtime. Allows integration URL to match app URL in CI fixtures only. */
+export const M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_HARNESS_ACTIVE_ENV =
+  'M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_HARNESS_ACTIVE' as const;
 
-const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1']);
+export const M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_QUERY_TELEMETRY_ENV =
+  'M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_QUERY_TELEMETRY' as const;
+
+const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
 
 export type M3_3HvH4A3PhaseAIsolatedTargetValidationResultV1 =
   | { ok: true; canonicalTargetKey: string }
@@ -37,34 +30,10 @@ function parseDatabaseUrlV1(databaseUrl: string): URL | null {
 function isLoopbackHost(hostname: string): boolean {
   const lower = hostname.toLowerCase();
   if (LOOPBACK_HOSTS.has(lower)) return true;
-  if (lower === '[::1]') return true;
-  return false;
-}
-
-function readOptionalHostAllowlist(env: NodeJS.ProcessEnv): Set<string> {
-  const raw = env.M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_ISOLATED_HOST_ALLOWLIST?.trim();
-  if (!raw) return new Set();
-  return new Set(
-    raw
-      .split(',')
-      .map((h) => h.trim().toLowerCase())
-      .filter(Boolean),
-  );
-}
-
-function isForbiddenRemoteHost(hostname: string): boolean {
-  const lower = hostname.toLowerCase();
-  if (FORBIDDEN_HOST_SUBSTRINGS.some((token) => lower.includes(token))) {
-    return true;
-  }
-  if (lower.includes('.')) {
+  if (lower.startsWith('127.')) {
     const parts = lower.split('.');
     if (parts.length === 4 && parts.every((p) => /^\d+$/.test(p))) {
-      const octets = parts.map((p) => Number(p));
-      if (octets[0] === 10) return true;
-      if (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) return true;
-      if (octets[0] === 192 && octets[1] === 168) return true;
-      if (octets[0] !== 127) return true;
+      return parts.every((p) => Number(p) >= 0 && Number(p) <= 255);
     }
   }
   return false;
@@ -75,7 +44,7 @@ export function validateIsolatedPhaseADatabaseTargetV1(
   env: NodeJS.ProcessEnv = process.env,
   options: { requireExplicitApproval?: boolean } = {},
 ): M3_3HvH4A3PhaseAIsolatedTargetValidationResultV1 {
-  if (options.requireExplicitApproval) {
+  if (options.requireExplicitApproval !== false) {
     const approved = env[M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_ISOLATED_TARGET_APPROVED_ENV]?.trim();
     const truthy = approved === '1' || approved?.toLowerCase() === 'true' || approved?.toLowerCase() === 'yes';
     if (!truthy) {
@@ -89,15 +58,8 @@ export function validateIsolatedPhaseADatabaseTargetV1(
   }
 
   const hostname = parsed.hostname.toLowerCase();
-  const allowlist = readOptionalHostAllowlist(env);
-  const allowedByList = allowlist.has(hostname);
-
-  if (!isLoopbackHost(hostname) && !allowedByList) {
-    return { ok: false, reasonCode: 'PHASE_A_ISOLATED_TARGET_HOST_NOT_ALLOWED' };
-  }
-
-  if (!allowedByList && isForbiddenRemoteHost(hostname)) {
-    return { ok: false, reasonCode: 'PHASE_A_ISOLATED_TARGET_HOST_FORBIDDEN' };
+  if (!isLoopbackHost(hostname)) {
+    return { ok: false, reasonCode: 'PHASE_A_ISOLATED_TARGET_LOOPBACK_REQUIRED' };
   }
 
   const canonicalTargetKey = canonicalPostgresTargetKeyV1(databaseUrl);

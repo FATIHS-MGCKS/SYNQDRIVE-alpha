@@ -9,7 +9,8 @@ import {
   formatPhaseAPreflightPublicErrorV1,
   sanitizePhaseAPreflightErrorV1,
 } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.errors.v1';
-import { validateIsolatedPhaseADatabaseTargetV1 } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.isolated-target.v1';
+import { evaluatePhaseAPreflightDatabaseAdmissionV1 } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.admission.v1';
+import { M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_QUERY_TELEMETRY_ENV } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.isolated-target.v1';
 import {
   M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_CONTRACT_V1,
   type M3_3HvH4A3PhaseAPreflightCheckResultV1,
@@ -97,12 +98,14 @@ class PhaseATransactionGuardV1 {
 export async function runM3_3HvH4A3PhaseAPreflightV1(
   input: M3_3HvH4A3PhaseAPreflightRunnerInputV1,
 ): Promise<M3_3HvH4A3PhaseAPreflightRunnerOutcomeV1> {
-  const targetValidation = validateIsolatedPhaseADatabaseTargetV1(input.databaseUrl, process.env, {
-    requireExplicitApproval: input.requireIsolatedTargetApproval ?? true,
-  });
-  if (!targetValidation.ok) {
-    return { ok: false, reasonCode: targetValidation.reasonCode, status: 'BLOCKED' };
+  const admission = evaluatePhaseAPreflightDatabaseAdmissionV1(input.databaseUrl, process.env);
+  if (!admission.ok) {
+    return { ok: false, reasonCode: admission.reasonCode, status: 'BLOCKED' };
   }
+
+  const queryTelemetryEnabled =
+    process.env[M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_QUERY_TELEMETRY_ENV] === '1';
+  let approvedQueryInvocations = 0;
 
   const client = new PrismaClient({
     datasources: { db: { url: input.databaseUrl } },
@@ -125,8 +128,11 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
         ): Promise<T[]> => {
           txGuard.assertActive();
           try {
-            return await runApprovedQueryV1<T>(tx, manifestId, params);
+            const rows = await runApprovedQueryV1<T>(tx, manifestId, params);
+            if (queryTelemetryEnabled) approvedQueryInvocations += 1;
+            return rows;
           } catch (error) {
+            if (queryTelemetryEnabled) approvedQueryInvocations += 1;
             txGuard.markAborted();
             throw error;
           }
@@ -369,6 +375,9 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
     productionCertification: 'NOT_CERTIFIED',
     securityCertification: 'NOT_CERTIFIED',
     summary,
+    ...(queryTelemetryEnabled
+      ? { testDiagnostics: { approvedQueryInvocations } }
+      : {}),
   };
 
   assertNoSecretsInReportPayloadV1(report);
@@ -376,35 +385,40 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
   return { ok: true, report };
 }
 
-export type M3_3HvH4A3PhaseAPreflightReadOnlyProbeResultV1 = {
-  enforced: true;
-  sqlState?: string;
-  reasonCode: string;
-};
+export const M3_3_HV_H4_A3_PHASE_A_READ_ONLY_MUTATION_SQLSTATE_V1 = '25006' as const;
 
-/** Proves READ ONLY transaction rejects mutations (SQLSTATE when available). */
+export type M3_3HvH4A3PhaseAPreflightReadOnlyProbeResultV1 =
+  | { ok: true; enforced: true; sqlState: typeof M3_3_HV_H4_A3_PHASE_A_READ_ONLY_MUTATION_SQLSTATE_V1 }
+  | { ok: false; enforced: false; reasonCode: string; sqlState?: string };
+
+/** Proves READ ONLY transaction rejects mutations with SQLSTATE 25006. */
 export async function assertM3_3HvH4A3PhaseAPreflightReadOnlyRejectsMutationV1(
   databaseUrl: string,
 ): Promise<M3_3HvH4A3PhaseAPreflightReadOnlyProbeResultV1> {
   const client = new PrismaClient({ datasources: { db: { url: databaseUrl } } });
-  await client.$connect();
   try {
+    await client.$connect();
     await client.$transaction(async (tx) => {
       await tx.$executeRawUnsafe('SET TRANSACTION READ ONLY');
       await tx.$executeRawUnsafe('CREATE TEMP TABLE phase_a_readonly_probe(id int)');
     });
-    throw new Error('PHASE_A_READ_ONLY_NOT_ENFORCED');
+    return { ok: false, enforced: false, reasonCode: 'PHASE_A_READ_ONLY_NOT_ENFORCED' };
   } catch (error) {
-    if (error instanceof Error && error.message === 'PHASE_A_READ_ONLY_NOT_ENFORCED') {
-      throw error;
-    }
     const sanitized = sanitizePhaseAPreflightErrorV1(error);
+    if (sanitized.sqlState === M3_3_HV_H4_A3_PHASE_A_READ_ONLY_MUTATION_SQLSTATE_V1) {
+      return {
+        ok: true,
+        enforced: true,
+        sqlState: M3_3_HV_H4_A3_PHASE_A_READ_ONLY_MUTATION_SQLSTATE_V1,
+      };
+    }
     return {
-      enforced: true,
-      sqlState: sanitized.sqlState,
+      ok: false,
+      enforced: false,
       reasonCode: sanitized.reasonCode,
+      sqlState: sanitized.sqlState,
     };
   } finally {
-    await client.$disconnect();
+    await client.$disconnect().catch(() => undefined);
   }
 }

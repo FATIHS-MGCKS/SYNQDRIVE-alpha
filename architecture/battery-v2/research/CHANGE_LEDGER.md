@@ -6,6 +6,19 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R4.1-H2 admission boundary + merge gate
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Runner/CLI shared admission (app + issuer URL isolation); remove remote allowlist; strict read-only SQLSTATE 25006; migration SELECT denial integration fixture; integration harness env |
+| **WHY** | Direct runner invocation bypassed credential isolation; loopback allowlists weakened isolated-test policy |
+| **VALIDATION** | admission/runner/isolated-target unit specs; HV-H4 postgres integration job |
+| **OBSERVED_EFFECT** | `PHASE_A_CANNOT_REUSE_DATABASE_URL` at runner boundary; harness bypass test-only |
+| **NON_EFFECTS** | No R4.2 production authorization |
+| **REMAINING_GAPS** | O2-R4.2 production read-only gate |
+| **DECISION_STATUS** | VALIDATED (repository / isolated fixture) |
+| **EVIDENCE** | `M3_3_HV_H4_A3_3_O2_R4_1_PHASE_A_EXECUTABLE_PREFLIGHT_2026-10-08.md` §4.2 |
+
 ## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R4.1-H1 security + integration test hardening
 
 | Field | Value |

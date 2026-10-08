@@ -1,13 +1,7 @@
-import {
-  canonicalPostgresTargetKeyV1,
-  parsePostgresUrlLoginV1,
-} from './m3-3-hv-h4-a3-3-o2-r3-h1-postgres-url-identity.v1';
+import { parsePostgresUrlLoginV1 } from './m3-3-hv-h4-a3-3-o2-r3-h1-postgres-url-identity.v1';
 import type { M3_3HvH4A3PhaseAPreflightRoleNamesV1 } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.types.v1';
-import { M3_3_HV_H4_A3_ATTESTATION_ISSUER_DATABASE_URL_ENV } from './m3-3-hv-h4-a3-3-o2-r3-issuer-runtime-factory.inert.v1';
-import {
-  M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_ISOLATED_TARGET_APPROVED_ENV,
-  validateIsolatedPhaseADatabaseTargetV1,
-} from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.isolated-target.v1';
+import { evaluatePhaseAPreflightDatabaseAdmissionV1 } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.admission.v1';
+import { M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_ISOLATED_TARGET_APPROVED_ENV } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.isolated-target.v1';
 
 export const M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_ENABLED_ENV = 'M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_ENABLED' as const;
 export const M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_DATABASE_URL_ENV =
@@ -48,29 +42,9 @@ export function parseM3_3HvH4A3PhaseAPreflightConfigFromEnvV1(
     return { ok: false, reasonCode: 'PHASE_A_DATABASE_URL_REQUIRED' };
   }
 
-  const genericUrl = env.DATABASE_URL?.trim();
-  if (genericUrl) {
-    const sameTarget =
-      canonicalPostgresTargetKeyV1(databaseUrl) === canonicalPostgresTargetKeyV1(genericUrl);
-    if (sameTarget || databaseUrl === genericUrl) {
-      return { ok: false, reasonCode: 'PHASE_A_CANNOT_REUSE_DATABASE_URL' };
-    }
-  }
-
-  const issuerUrl = env[M3_3_HV_H4_A3_ATTESTATION_ISSUER_DATABASE_URL_ENV]?.trim();
-  if (issuerUrl) {
-    const sameIssuer =
-      canonicalPostgresTargetKeyV1(databaseUrl) === canonicalPostgresTargetKeyV1(issuerUrl);
-    if (sameIssuer || databaseUrl === issuerUrl) {
-      return { ok: false, reasonCode: 'PHASE_A_CANNOT_REUSE_ISSUER_DATABASE_URL' };
-    }
-  }
-
-  const isolated = validateIsolatedPhaseADatabaseTargetV1(databaseUrl, env, {
-    requireExplicitApproval: true,
-  });
-  if (!isolated.ok) {
-    return { ok: false, reasonCode: isolated.reasonCode };
+  const admission = evaluatePhaseAPreflightDatabaseAdmissionV1(databaseUrl, env);
+  if (!admission.ok) {
+    return { ok: false, reasonCode: admission.reasonCode };
   }
 
   if (!parsePostgresUrlLoginV1(databaseUrl)) {

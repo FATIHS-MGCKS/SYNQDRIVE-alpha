@@ -45,10 +45,19 @@ Spec alignment: `architecture/battery-v2/scripts/m3-3-hv-h4-a3-o2-r3-production-
 **Rejected:**
 
 - Same target as `DATABASE_URL` or `M3_3_HV_H4_A3_ATTESTATION_ISSUER_DATABASE_URL` (canonical host/db/login key)
-- Any non-loopback host unless listed in `M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_ISOLATED_HOST_ALLOWLIST` (comma-separated, test-only)
+- Any non-loopback host (loopback-only policy; no remote allowlist in R4.1)
 - Execution without `M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_ISOLATED_TARGET_APPROVED=1`
+- Reuse of `DATABASE_URL` or issuer URL at **runner** and **CLI** admission boundaries (canonical target keys)
 
-There is **no** fallback to `DATABASE_URL` for execution. The reusable runner re-validates isolated targets at entry (defense in depth).
+There is **no** fallback to `DATABASE_URL` for execution. The reusable runner re-validates isolated targets and credential isolation at entry.
+
+### Loopback tunnel risk (operator)
+
+Loopback (`127.0.0.1` / `localhost`) does **not** prove database identity: SSH port-forwarding or local proxies can expose a remote PostgreSQL socket on loopback. R4.1 mitigations:
+
+- CI fails closed unless `DATABASE_URL` host is localhost (see HV-H4 workflow guard).
+- Operators must not forward production ports to loopback when running Phase A.
+- **O2-R4.2** will introduce separate authorized production read-only targets — not loopback substitution.
 
 ### Integration tests (mandatory evidence)
 
@@ -58,6 +67,15 @@ When `BATTERY_HV_H4_REPORT_INTEGRATION=1`:
 - `M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_ISOLATED_TARGET_APPROVED=1` — required
 
 Missing configuration or unreachable DB **fails** the postgres integration job (no silent skips).
+
+## 4.2 O2-R4.1-H2 admission + merge gate (2026-10-08)
+
+| ID | Control |
+|----|---------|
+| **H2-A** | Shared `evaluatePhaseAPreflightDatabaseAdmissionV1` at CLI + runner; integration harness bypass only with `M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_HARNESS_ACTIVE=1` + matching integration URL env |
+| **H2-B** | Remote host allowlist removed; loopback-only |
+| **H2-C** | Read-only probe requires SQLSTATE `25006` |
+| **H2-D** | Restricted-role integration test for `_prisma_migrations` SELECT denial + query telemetry |
 
 ## 4.1 O2-R4.1-H1 hardening (2026-10-08)
 
