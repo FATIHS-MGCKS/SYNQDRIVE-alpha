@@ -14,6 +14,7 @@ import {
   createRestrictedAppRoleScopedPostgresClientV1,
   ensureM3_3HvH4A3O2R2PostgresRolesV1,
   issueM3_3HvH4A3IntegrityAttestationOnIssuerHarnessDbV1,
+  M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE,
 } from './m3-3-hv-h4-a3-3-o2-r2-postgres-roles.fixture';
 
 const integrationEnabled = process.env.BATTERY_HV_H4_REPORT_INTEGRATION === '1';
