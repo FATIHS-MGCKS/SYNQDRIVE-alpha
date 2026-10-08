@@ -159,7 +159,11 @@ Machine-readable spec:
 
 ## 11. Next slice
 
-**O2-R4 (recommended):** Authorized read-only production preflight execution + role provisioning runbook (still no issuance activation).
+**O2-R4.1 (2026-10-08):** Executable Phase-A read-only preflight runner + CLI — repository/isolated DB only; see `M3_3_HV_H4_A3_3_O2_R4_1_PHASE_A_EXECUTABLE_PREFLIGHT_2026-10-08.md`.
+
+**O2-R4.2 (recommended):** Human approval gate + authorized read-only **production** Phase-A execution (still no role provisioning / no issuance activation).
+
+**O2-R4.3+ (recommended):** Role provisioning runbook + Phase-B post-provision certification (separate slices).
 
 ## Safety
 

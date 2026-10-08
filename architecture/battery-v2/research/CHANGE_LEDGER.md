@@ -6,6 +6,19 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R4.1 executable Phase-A read-only preflight
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Standalone Phase-A runner + ops CLI; approved SELECT manifest; dedicated env URL (`M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_*`); READ ONLY transaction; classified statuses; JSON report + redaction; unit + isolated postgres tests |
+| **WHY** | O2-R3 spec defined phases but had no fail-closed executable discovery path; implicit `DATABASE_URL` reuse would break separate-process credential isolation |
+| **VALIDATION** | `test:battery:v2:hv-h4` + `test:battery:v2:hv-h4:postgres`; manifest/read-only/config specs |
+| **OBSERVED_EFFECT** | `A3_ATTESTATION_PHASE_A_EXECUTABLE_PREFLIGHT_RUNNER_PRESENT=true`; default execution OFF; `phaseBCertified` always false |
+| **NON_EFFECTS** | No production DB/SSH/deploy; no role DDL; no Nest issuer registration; no Phase B certification |
+| **REMAINING_GAPS** | O2-R4.2 human approval + authorized production read-only run; provisioning + Phase B certification separate |
+| **DECISION_STATUS** | VALIDATED (repository / isolated fixture) |
+| **EVIDENCE** | `M3_3_HV_H4_A3_3_O2_R4_1_PHASE_A_EXECUTABLE_PREFLIGHT_2026-10-08.md` |
+
 ## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R3-H1 admission boundary + preflight phase closure
 
 | Field | Value |

@@ -1,0 +1,48 @@
+export const M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_CONTRACT_V1 = 'M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_V1' as const;
+
+/** Classified check outcome — not a certification of production safety. */
+export type M3_3HvH4A3PhaseAPreflightCheckStatusV1 =
+  | 'PASS'
+  | 'NOT_PROVISIONED'
+  | 'NOT_PRESENT'
+  | 'SKIPPED'
+  | 'BLOCKED'
+  | 'ERROR';
+
+export type M3_3HvH4A3PhaseAPreflightCheckResultV1 = {
+  checkId: string;
+  status: M3_3HvH4A3PhaseAPreflightCheckStatusV1;
+  detail?: string;
+  data?: Record<string, unknown>;
+};
+
+export type M3_3HvH4A3PhaseAPreflightRoleNamesV1 = {
+  migrationOwner: string;
+  generalAppRuntime: string;
+  trustedAttestationIssuer: string;
+};
+
+export type M3_3HvH4A3PhaseAPreflightRunnerInputV1 = {
+  databaseUrl: string;
+  roleNames: M3_3HvH4A3PhaseAPreflightRoleNamesV1;
+};
+
+export type M3_3HvH4A3PhaseAPreflightReportV1 = {
+  contractVersion: typeof M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_CONTRACT_V1;
+  phase: 'PRE_PROVISION_READ_ONLY';
+  executedAt: string;
+  databaseTargetRedacted: string;
+  sessionIdentity?: { sessionUser: string; currentUser: string };
+  checks: M3_3HvH4A3PhaseAPreflightCheckResultV1[];
+  /** Phase A discovery complete without runner ERROR — missing objects may be NOT_PRESENT/NOT_PROVISIONED. */
+  phaseAExecutionComplete: boolean;
+  /** Always false in O2-R4.1 — Phase B is not certified by this runner. */
+  phaseBCertified: false;
+  phaseBCertificationStatus: 'NOT_CERTIFIED';
+  productionCertification: 'NOT_CERTIFIED';
+  summary: string[];
+};
+
+export type M3_3HvH4A3PhaseAPreflightRunnerOutcomeV1 =
+  | { ok: true; report: M3_3HvH4A3PhaseAPreflightReportV1 }
+  | { ok: false; reasonCode: string; status: 'BLOCKED' | 'ERROR' };

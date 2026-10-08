@@ -529,6 +529,7 @@ Rebuild from: durable source revisions + GT-as-of + H4 composition contract.
 | **A3.3-O2-R1** | **FOUNDATION (2026-10-07 closure)** — attestation schema + Strategy C DB invalidation + parity measurement corpus/tests; **SQL issuance removed**; see `M3_3_HV_H4_A3_3_O2_R1_SCHEMA_TRIGGER_ISSUANCE_FOUNDATION_2026-10-07.md` — **hybrid loader OFF** |
 | **A3.3-O2-R2** | **PROTOTYPE (2026-10-08)** — SECURITY DEFINER invalidation + CI role isolation + **isolated TS issuer** (issuer-bound DB session, no dynamic `SET ROLE`); R2-H1 lock function; SQL issuance deferred; see `M3_3_HV_H4_A3_3_O2_R2_ISSUANCE_AUTHORITY_2026-10-08.md` |
 | **A3.3-O2-R3** | **ARCHITECTURE (2026-10-08)** — `SEPARATE_TRUSTED_ISSUER_PROCESS`; admission authority; inert issuer factory (no Nest registration); read-only production role preflight spec; see `M3_3_HV_H4_A3_3_O2_R3_ISSUER_RUNTIME_TOPOLOGY_PREFLIGHT_2026-10-08.md` |
+| **A3.3-O2-R4.1** | **IMPLEMENTED (repository, 2026-10-08)** — executable Phase-A read-only preflight runner + ops CLI; dedicated env URL only; isolated postgres tests; **no production execution**; see `M3_3_HV_H4_A3_3_O2_R4_1_PHASE_A_EXECUTABLE_PREFLIGHT_2026-10-08.md` — **next: O2-R4.2** human approval gate for authorized production read-only run |
 
 **`RECOMMENDED_A3_1_SLICE = A3.1 H4 charge session evidence revision persistence contract + schema (no runtime, no prune hook)`**
 
