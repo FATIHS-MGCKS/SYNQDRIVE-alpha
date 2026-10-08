@@ -82,7 +82,7 @@ describe('M3.3-HV-H4-A3.3-O2-R2-H1 true issuer concurrency (PostgreSQL)', () => 
   async function issueOnTrustedIssuerHarnessV1(
     db: PrismaClient,
     input: { revisionId: string },
-    hooks?: { afterRowLocksAcquired?: () => Promise<void> },
+    hooks?: { afterRowLocksAcquired?: (readBackendPid: () => Promise<number>) => Promise<void> },
   ) {
     return db.$transaction(async (tx) =>
       withPostgresRoleV1(tx as PrismaClient, M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE, async () =>
