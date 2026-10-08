@@ -2,7 +2,7 @@ import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { Reflector } from '@nestjs/core';
 import { UserPlatformRole } from '@prisma/client';
-import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
+import { MFA_ERROR, STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { buildMfaClaims, buildPasswordOnlyClaims } from '@shared/auth/auth-session-claims.types';
@@ -188,6 +188,34 @@ describe('VO5C-P2B1 legacy Master Admin deregister lockdown', () => {
       );
       await expect(controller.deregisterVehicle(vehicleId)).rejects.toBeInstanceOf(ConflictException);
       expect(vehiclesService.deregister).not.toHaveBeenCalled();
+    });
+
+    it('G — MFA enrollment policy respected (unenrolled master admin denied)', async () => {
+      process.env.IAM_MFA_PRIVILEGED_ENROLLMENT_REQUIRED = 'true';
+      const prisma = {
+        userMfaFactor: {
+          findFirst: jest.fn().mockResolvedValue(null),
+        },
+      };
+      const mfaGuard = new MasterAdminMfaGuard(
+        reflector,
+        prisma as never,
+        { validateGrant: jest.fn() } as never,
+      );
+      await expect(
+        mfaGuard.canActivate(
+          httpContext(
+            {
+              id: 'ma-1',
+              platformRole: UserPlatformRole.MASTER_ADMIN,
+              sessionClaims: buildMfaClaims(),
+            },
+            { vehicleId },
+          ),
+        ),
+      ).rejects.toMatchObject({
+        response: { code: MFA_ERROR.ENROLLMENT_REQUIRED },
+      });
     });
 
     it('F — invalid step-up token denied', async () => {
