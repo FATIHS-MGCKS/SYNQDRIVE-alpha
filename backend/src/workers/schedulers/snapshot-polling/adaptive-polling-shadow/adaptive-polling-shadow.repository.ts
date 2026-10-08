@@ -13,7 +13,6 @@ import {
   P25_APD_SHADOW_SIMULATED_LV_SOURCE_DECISIONS,
   type ApdShadowCanonicalEnqueueOutcome,
   type ApdShadowRealPollStatus,
-  type P25ApdShadowExecutionVersion,
 } from './p25-apd-shadow-execution-versions';
 import { acquireApdShadowEpochLifecycleXactLock } from './apd-shadow-epoch-lifecycle.lock';
 
@@ -43,18 +42,31 @@ export interface UpsertApdShadowDecisionRow {
 export class AdaptivePollingShadowRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Durable lastAllowed: latest SUCCESS advancing poll start (shared across reconciliation flag). */
+  private simulatedStateScopeWhere(input: {
+    organizationId: string;
+    vehicleId: string;
+    policyVersion: string;
+    activationEpochId: string;
+  }) {
+    return {
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      policyVersion: input.policyVersion,
+      activationEpochId: input.activationEpochId,
+      shadowExecutionVersion: { in: [...P25_APD_SHADOW_EXECUTION_VERSIONS] },
+    };
+  }
+
+  /** Durable lastAllowed: latest SUCCESS advancing poll start within the active activation epoch. */
   async resolveLastAllowedPollStartMs(input: {
     organizationId: string;
     vehicleId: string;
     policyVersion: string;
+    activationEpochId: string;
   }): Promise<number> {
     const row = await this.prisma.apdShadowReconciliationDecision.findFirst({
       where: {
-        organizationId: input.organizationId,
-        vehicleId: input.vehicleId,
-        policyVersion: input.policyVersion,
-        shadowExecutionVersion: { in: [...P25_APD_SHADOW_EXECUTION_VERSIONS] },
+        ...this.simulatedStateScopeWhere(input),
         realPollStatus: 'SUCCESS',
         realPollStartedAt: { not: null },
         realPollId: { not: null },
@@ -72,26 +84,29 @@ export class AdaptivePollingShadowRepository {
     vehicleId: string;
     policyVersion: string;
     reconciliation: boolean;
+    activationEpochId: string;
   }): Promise<number> {
     return this.resolveLastAllowedPollStartMs({
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
       policyVersion: input.policyVersion,
+      activationEpochId: input.activationEpochId,
     });
   }
 
-  /** Simulated policy LV state: monotonic max visible LV from kept reconciliation polls only. */
+  /**
+   * Simulated policy LV state within the active epoch only (excludes legacy NULL-epoch rows
+   * and other epochs for the same vehicle/policy).
+   */
   async resolveSimulatedLastLvSourceMs(input: {
     organizationId: string;
     vehicleId: string;
     policyVersion: string;
+    activationEpochId: string;
   }): Promise<number | null> {
     const row = await this.prisma.apdShadowReconciliationDecision.findFirst({
       where: {
-        organizationId: input.organizationId,
-        vehicleId: input.vehicleId,
-        policyVersion: input.policyVersion,
-        shadowExecutionVersion: { in: [...P25_APD_SHADOW_EXECUTION_VERSIONS] },
+        ...this.simulatedStateScopeWhere(input),
         reconciliation: true,
         realPollStatus: 'SUCCESS',
         realPollVisibleLvSourceAt: { not: null },
@@ -334,7 +349,6 @@ export class AdaptivePollingShadowRepository {
     realPollStartedAt: Date;
     realPollCompletedAt: Date;
     realPollVisibleLvSourceAt?: Date | null;
-    shadowExecutionVersionAfterSuccess?: P25ApdShadowExecutionVersion;
     patch: {
       newLvSourceObserved?: boolean;
       newLvSourceAt?: Date | null;
@@ -363,9 +377,6 @@ export class AdaptivePollingShadowRepository {
         realPollStartedAt: input.realPollStartedAt,
         realPollCompletedAt: input.realPollCompletedAt,
         realPollVisibleLvSourceAt: input.realPollVisibleLvSourceAt ?? null,
-        ...(input.shadowExecutionVersionAfterSuccess
-          ? { shadowExecutionVersion: input.shadowExecutionVersionAfterSuccess }
-          : {}),
         ...input.patch,
       },
     });

@@ -23,10 +23,7 @@ import { AdaptivePollingShadowMetricsService } from './adaptive-polling-shadow-m
 import { AdaptivePollingShadowRepository } from './adaptive-polling-shadow.repository';
 import { buildApdShadowOpportunityId } from './apd-shadow-opportunity.util';
 import { evaluateLvProviderTimestampAdmission } from './p25-apd-shadow-lv-bootstrap.contract';
-import {
-  P25_APD_SHADOW_EXECUTION_V2,
-  P25_APD_SHADOW_EXECUTION_V2_1,
-} from './p25-apd-shadow-execution-versions';
+import { P25_APD_SHADOW_EXECUTION_VERSION_CURRENT } from './p25-apd-shadow-execution-versions';
 import { isVehicleInActiveTripAtMs } from './apd-shadow-trip-reconciliation.util';
 import type {
   AdaptivePollingShadowActualPollStartContext,
@@ -342,11 +339,13 @@ export class AdaptivePollingShadowService {
         organizationId: ctx.organizationId,
         vehicleId: ctx.vehicleId,
         policyVersion: p.version,
+        activationEpochId: activeEpoch.id,
       });
       const simulatedLastLv = await this.repository.resolveSimulatedLastLvSourceMs({
         organizationId: ctx.organizationId,
         vehicleId: ctx.vehicleId,
         policyVersion: p.version,
+        activationEpochId: activeEpoch.id,
       });
 
       const baseInput: P25ApdShadowPrePollInput = {
@@ -385,7 +384,7 @@ export class AdaptivePollingShadowService {
         profileClass: profile.profileClass,
         decision: decision.decision,
         reason: decision.reason,
-        shadowExecutionVersion: P25_APD_SHADOW_EXECUTION_V2,
+        shadowExecutionVersion: P25_APD_SHADOW_EXECUTION_VERSION_CURRENT,
         reconciliation,
         lastLvSourceAt: simulatedLastLv != null ? new Date(simulatedLastLv) : null,
         lastProviderFetchedAt: ctx.lastProviderFetchedAtMs
@@ -489,10 +488,6 @@ export class AdaptivePollingShadowService {
         realPollStartedAt: new Date(ctx.pollStartedAtMs),
         realPollCompletedAt: new Date(ctx.pollCompletedAtMs),
         realPollVisibleLvSourceAt: persistVisibleLv,
-        shadowExecutionVersionAfterSuccess:
-          admission.admit && admission.usedBootstrapPath
-            ? P25_APD_SHADOW_EXECUTION_V2_1
-            : undefined,
         patch,
       });
     }

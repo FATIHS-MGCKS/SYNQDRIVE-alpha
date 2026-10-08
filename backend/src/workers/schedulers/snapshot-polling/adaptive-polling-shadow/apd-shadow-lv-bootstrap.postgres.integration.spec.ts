@@ -21,6 +21,7 @@ import { buildApdShadowActivationScopeKey } from './apd-shadow-activation-epoch.
 import {
   P25_APD_SHADOW_EXECUTION_V2,
   P25_APD_SHADOW_EXECUTION_V2_1,
+  P25_APD_SHADOW_EXECUTION_VERSION_CURRENT,
 } from './p25-apd-shadow-execution-versions';
 import { mockActivationEpochServiceForCohort } from './apd-shadow-test-epoch.helper';
 
@@ -151,7 +152,7 @@ describePg('APDS-9.5B LV bootstrap (Postgres integration)', () => {
       profileClass: 'SPARSE_IRREGULAR',
       decision: 'FORCED_SOURCE_TIMESTAMP_MISSING',
       reason: 'MISSING_LV_SOURCE_TIMESTAMP',
-      shadowExecutionVersion: P25_APD_SHADOW_EXECUTION_V2,
+      shadowExecutionVersion: P25_APD_SHADOW_EXECUTION_VERSION_CURRENT,
       reconciliation: true,
     });
     await repository.upsertPrePollDecision({
@@ -165,7 +166,7 @@ describePg('APDS-9.5B LV bootstrap (Postgres integration)', () => {
       profileClass: 'SPARSE_IRREGULAR',
       decision: 'FORCED_SOURCE_TIMESTAMP_MISSING',
       reason: 'MISSING_LV_SOURCE_TIMESTAMP',
-      shadowExecutionVersion: P25_APD_SHADOW_EXECUTION_V2,
+      shadowExecutionVersion: P25_APD_SHADOW_EXECUTION_VERSION_CURRENT,
       reconciliation: true,
     });
 
@@ -196,6 +197,7 @@ describePg('APDS-9.5B LV bootstrap (Postgres integration)', () => {
       organizationId,
       vehicleId,
       policyVersion: P25_APD_B2_V1,
+      activationEpochId: epochId,
     });
     expect(seeded).toBe(visibleLvMs);
 
@@ -203,6 +205,7 @@ describePg('APDS-9.5B LV bootstrap (Postgres integration)', () => {
       organizationId,
       vehicleId,
       policyVersion: P25_APD_B2_V1,
+      activationEpochId: epochId,
     });
     expect(lastAllowed).toBe(0);
   });
@@ -220,6 +223,7 @@ describePg('APDS-9.5B LV bootstrap (Postgres integration)', () => {
       organizationId,
       vehicleId,
       policyVersion: P25_APD_B2_V1,
+      activationEpochId: epochId,
     });
     expect(lv).toBe(decisionAtMs - 5_000);
   });

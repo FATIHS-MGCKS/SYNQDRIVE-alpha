@@ -9,8 +9,7 @@ import {
 import { mockActivationEpochServiceForCohort } from './apd-shadow-test-epoch.helper';
 import type { ApdShadowCohortConfig } from './adaptive-polling-shadow-cohort.config';
 import {
-  P25_APD_SHADOW_EXECUTION_V2,
-  P25_APD_SHADOW_EXECUTION_V2_1,
+  P25_APD_SHADOW_EXECUTION_VERSION_CURRENT,
 } from './p25-apd-shadow-execution-versions';
 import {
   evaluateP25ApdB2V1Core,
@@ -37,7 +36,7 @@ describe('APDS-9.2B execution contract V2 (poll-start authority)', () => {
         decision: row.decision,
         reconciliation: row.reconciliation,
       });
-      expect(row.shadowExecutionVersion).toBe(P25_APD_SHADOW_EXECUTION_V2);
+      expect(row.shadowExecutionVersion).toBe(P25_APD_SHADOW_EXECUTION_VERSION_CURRENT);
     }),
     patchEnqueueOutcome: jest.fn().mockResolvedValue(undefined),
     updateSuccessfulPollOutcome: jest.fn().mockResolvedValue(undefined),
@@ -208,7 +207,6 @@ describe('APDS-9.2B execution contract V2 (poll-start authority)', () => {
     expect(repository.updateSuccessfulPollOutcome).toHaveBeenCalledWith(
       expect.objectContaining({
         realPollVisibleLvSourceAt: new Date(visibleLv),
-        shadowExecutionVersionAfterSuccess: P25_APD_SHADOW_EXECUTION_V2_1,
       }),
     );
     expect(lastAllowedB2).toBe(0);

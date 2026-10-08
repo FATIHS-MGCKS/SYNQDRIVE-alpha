@@ -19,6 +19,10 @@ export type LvProviderTimestampAdmissionResult =
 /**
  * Scientific guards for adopting a trustworthy LV provider source timestamp into
  * simulated policy LV state. Does not use fetchedAt or top-level snapshot times.
+ *
+ * Visibility authority: `realPollVisibleLvSourceAtMs` must originate from
+ * `findLatestHistoricallyVisibleLiveVoltageProviderTimestampMs` (observedAt <= poll completion)
+ * before post-poll admission; this contract enforces providerTimestamp <= pollCompletedAt.
  */
 export function evaluateLvProviderTimestampAdmission(
   input: LvProviderTimestampAdmissionInput,

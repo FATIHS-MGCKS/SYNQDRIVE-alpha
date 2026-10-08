@@ -15,6 +15,10 @@ export const P25_APD_SHADOW_EXECUTION_VERSIONS = [
 export type P25ApdShadowExecutionVersion =
   (typeof P25_APD_SHADOW_EXECUTION_VERSIONS)[number];
 
+/** Pre-poll / post-poll contract for new observations after APDS-9.5B (deploy gate). */
+export const P25_APD_SHADOW_EXECUTION_VERSION_CURRENT: P25ApdShadowExecutionVersion =
+  P25_APD_SHADOW_EXECUTION_V2_1;
+
 /** Decisions that may advance durable lastAllowed after a successful real baseline poll. */
 export const P25_APD_SHADOW_ADVANCING_DECISIONS = [
   'WOULD_POLL',
