@@ -22,6 +22,7 @@
 | VO-EVID-5-005 | VO5C-P2B1 legacy Master Admin deregister lockdown | REPO_CODE | [VO5C_P2B1_LEGACY_DEREGISTER_LOCKDOWN.md](./VO5C_P2B1_LEGACY_DEREGISTER_LOCKDOWN.md) |
 | VO-EVID-5-006 | VO5C-P2B2 legacy deregister frontend client retirement | REPO_CODE | [VO5C_P2B2_LEGACY_FRONTEND_CLIENT_RETIREMENT.md](./VO5C_P2B2_LEGACY_FRONTEND_CLIENT_RETIREMENT.md) |
 | VO-EVID-5-007 | VO5C-P2B3 tenant/direct vehicle DELETE lockdown | REPO_CODE | [VO5C_P2B3_VEHICLE_DELETE_LOCKDOWN.md](./VO5C_P2B3_VEHICLE_DELETE_LOCKDOWN.md) |
+| VO-EVID-5-008 | VO5C-P2B4-0 platform prune emergency containment | REPO_CODE | [VO5C_P2B4_0_PRUNE_EMERGENCY_CONTAINMENT.md](./VO5C_P2B4_0_PRUNE_EMERGENCY_CONTAINMENT.md) |
 | VO-EVID-0A-001 | VO-0A repository discovery anchor | REPO_AUDIT | Anchor SHA `312d9f54a2b4c0b0740061d3e2b74897e78eacb0` cited in CURRENT_STATE |
 
 Supporting UI audit (not VO authority): `docs/ui/master-admin-connected-vehicles-dimo-deep-audit.md`
