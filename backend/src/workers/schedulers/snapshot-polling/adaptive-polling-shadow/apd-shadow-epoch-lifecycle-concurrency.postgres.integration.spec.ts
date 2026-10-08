@@ -134,9 +134,20 @@ describePg('APD shadow epoch lifecycle true concurrency (APDS-9.3C)', () => {
   });
 
   it('interleaving B (CLOSE): lifecycle lock held; writer rejected after close commits', async () => {
+    const closeVehicle = await prismaA.vehicle.create({
+      data: {
+        organizationId,
+        make: 'Test',
+        model: 'Close',
+        year: 2026,
+        fuelType: FuelType.ELECTRIC,
+        vehicleName: `close-b-${Date.now()}`,
+      },
+      select: { id: true },
+    });
     const fingerprint = computeApdShadowCohortFingerprintSha256({
       version: P25_APD_LTE_R1_COHORT_V1,
-      members: [{ organizationId, vehicleId }],
+      members: [{ organizationId, vehicleId: closeVehicle.id }],
     });
     const serviceA = new ApdShadowActivationEpochService(prismaA as never);
     const prepared = await serviceA.prepareEpoch({
