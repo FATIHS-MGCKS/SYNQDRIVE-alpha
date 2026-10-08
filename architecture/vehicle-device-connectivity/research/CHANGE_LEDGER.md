@@ -2,6 +2,7 @@
 
 | Date | Change | Author/workstream |
 |------|--------|-------------------|
+| 2026-10-08 | APDS-9.5B shadow execution V2.1 — LV bootstrap eligibility for `FORCED_SOURCE_TIMESTAMP_MISSING` without expanding advancing decisions; read/write path + Postgres tests; no Production deploy (VDC-EVID-P25-APDS-9-5B-001) | Vehicle & Device Connectivity / P2.5 APDS |
 | 2026-10-08 | APDS-9.3A epoch authority hardening — authoritative write-path revalidation, decision epoch immutability, RESTRICT FK + T0 trigger, internal ops gate, multi-replica cache race tests (PR #1920 draft) | Vehicle & Device Connectivity / P2.5 APDS |
 | 2026-10-08 | APDS-9.3 durable shadow activation epoch foundation — `apd_shadow_activation_epochs` + nullable `activation_epoch_id` on decisions; ACTIVE epoch + T0 gate for shadow writes; flag alone does not activate; vehicle 187336 NOT_READY audit; no Production deploy/Shadow activation (VDC-EVID-P25-APDS-9-3-001) | Vehicle & Device Connectivity / P2.5 APDS |
 | 2026-09-25 | P2.5 Option C adversarial hardening — coordinator-locked same-state parent; non-null binding proof; P1B WEBHOOK→SNAPSHOT cross-channel guard; `CORRECTNESS_BLOCKING_TOTAL`; production T7 export replay fixture; OBD evidence time contract (VDC-EVID-P25-OBD-EVIDENCE-TIME-001); Postgres adversarial tests (PR #1697) | Vehicle & Device Connectivity remediation |

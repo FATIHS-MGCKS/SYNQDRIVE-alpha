@@ -9,8 +9,11 @@ import {
 import {
   P25_APD_SHADOW_ADVANCING_DECISIONS,
   P25_APD_SHADOW_EXECUTION_V2,
+  P25_APD_SHADOW_EXECUTION_VERSIONS,
+  P25_APD_SHADOW_SIMULATED_LV_SOURCE_DECISIONS,
   type ApdShadowCanonicalEnqueueOutcome,
   type ApdShadowRealPollStatus,
+  type P25ApdShadowExecutionVersion,
 } from './p25-apd-shadow-execution-versions';
 import { acquireApdShadowEpochLifecycleXactLock } from './apd-shadow-epoch-lifecycle.lock';
 
@@ -51,7 +54,7 @@ export class AdaptivePollingShadowRepository {
         organizationId: input.organizationId,
         vehicleId: input.vehicleId,
         policyVersion: input.policyVersion,
-        shadowExecutionVersion: P25_APD_SHADOW_EXECUTION_V2,
+        shadowExecutionVersion: { in: [...P25_APD_SHADOW_EXECUTION_VERSIONS] },
         realPollStatus: 'SUCCESS',
         realPollStartedAt: { not: null },
         realPollId: { not: null },
@@ -88,12 +91,12 @@ export class AdaptivePollingShadowRepository {
         organizationId: input.organizationId,
         vehicleId: input.vehicleId,
         policyVersion: input.policyVersion,
-        shadowExecutionVersion: P25_APD_SHADOW_EXECUTION_V2,
+        shadowExecutionVersion: { in: [...P25_APD_SHADOW_EXECUTION_VERSIONS] },
         reconciliation: true,
         realPollStatus: 'SUCCESS',
         realPollVisibleLvSourceAt: { not: null },
         realPollId: { not: null },
-        decision: { in: [...P25_APD_SHADOW_ADVANCING_DECISIONS] },
+        decision: { in: [...P25_APD_SHADOW_SIMULATED_LV_SOURCE_DECISIONS] },
       },
       orderBy: { realPollVisibleLvSourceAt: 'desc' },
       select: { realPollVisibleLvSourceAt: true },
@@ -291,13 +294,34 @@ export class AdaptivePollingShadowRepository {
         organizationId: input.organizationId,
         vehicleId: input.vehicleId,
         opportunityId: input.opportunityId,
-        shadowExecutionVersion: P25_APD_SHADOW_EXECUTION_V2,
+        shadowExecutionVersion: { in: [...P25_APD_SHADOW_EXECUTION_VERSIONS] },
       },
       data: {
         enqueueOutcome: input.enqueueOutcome,
         enqueueOutcomeAt: input.enqueueOutcomeAt,
       },
     });
+  }
+
+  async findPrePollDecisionForOpportunity(input: {
+    organizationId: string;
+    vehicleId: string;
+    opportunityId: string;
+    policyVersion: string;
+  }): Promise<{ decision: string; reconciliation: boolean } | null> {
+    const row = await this.prisma.apdShadowReconciliationDecision.findUnique({
+      where: {
+        organizationId_vehicleId_opportunityId_policyVersion: {
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+          opportunityId: input.opportunityId,
+          policyVersion: input.policyVersion,
+        },
+      },
+      select: { decision: true, reconciliation: true },
+    });
+    if (!row || row.reconciliation == null) return null;
+    return { decision: row.decision, reconciliation: row.reconciliation };
   }
 
   async updateSuccessfulPollOutcome(input: {
@@ -310,6 +334,7 @@ export class AdaptivePollingShadowRepository {
     realPollStartedAt: Date;
     realPollCompletedAt: Date;
     realPollVisibleLvSourceAt?: Date | null;
+    shadowExecutionVersionAfterSuccess?: P25ApdShadowExecutionVersion;
     patch: {
       newLvSourceObserved?: boolean;
       newLvSourceAt?: Date | null;
@@ -327,7 +352,7 @@ export class AdaptivePollingShadowRepository {
         vehicleId: input.vehicleId,
         opportunityId: input.opportunityId,
         policyVersion: input.policyVersion,
-        shadowExecutionVersion: P25_APD_SHADOW_EXECUTION_V2,
+        shadowExecutionVersion: { in: [...P25_APD_SHADOW_EXECUTION_VERSIONS] },
         ...(input.activationEpochId
           ? { activationEpochId: input.activationEpochId }
           : {}),
@@ -338,6 +363,9 @@ export class AdaptivePollingShadowRepository {
         realPollStartedAt: input.realPollStartedAt,
         realPollCompletedAt: input.realPollCompletedAt,
         realPollVisibleLvSourceAt: input.realPollVisibleLvSourceAt ?? null,
+        ...(input.shadowExecutionVersionAfterSuccess
+          ? { shadowExecutionVersion: input.shadowExecutionVersionAfterSuccess }
+          : {}),
         ...input.patch,
       },
     });
@@ -369,7 +397,7 @@ export class AdaptivePollingShadowRepository {
         organizationId: input.organizationId,
         vehicleId: input.vehicleId,
         opportunityId: input.opportunityId,
-        shadowExecutionVersion: P25_APD_SHADOW_EXECUTION_V2,
+        shadowExecutionVersion: { in: [...P25_APD_SHADOW_EXECUTION_VERSIONS] },
         ...(input.activationEpochId
           ? { activationEpochId: input.activationEpochId }
           : {}),

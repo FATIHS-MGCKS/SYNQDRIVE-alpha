@@ -22,9 +22,10 @@ import {
 import { AdaptivePollingShadowMetricsService } from './adaptive-polling-shadow-metrics.service';
 import { AdaptivePollingShadowRepository } from './adaptive-polling-shadow.repository';
 import { buildApdShadowOpportunityId } from './apd-shadow-opportunity.util';
+import { evaluateLvProviderTimestampAdmission } from './p25-apd-shadow-lv-bootstrap.contract';
 import {
-  P25_APD_SHADOW_ADVANCING_DECISIONS,
   P25_APD_SHADOW_EXECUTION_V2,
+  P25_APD_SHADOW_EXECUTION_V2_1,
 } from './p25-apd-shadow-execution-versions';
 import { isVehicleInActiveTripAtMs } from './apd-shadow-trip-reconciliation.util';
 import type {
@@ -459,6 +460,25 @@ export class AdaptivePollingShadowService {
         : null;
 
     for (const policyVersion of [P25_APD_B2_V1, P25_APD_B4_V1]) {
+      const prePoll = await this.repository.findPrePollDecisionForOpportunity({
+        organizationId: ctx.organizationId,
+        vehicleId: ctx.vehicleId,
+        opportunityId: ctx.opportunityId,
+        policyVersion,
+      });
+      const admission = prePoll
+        ? evaluateLvProviderTimestampAdmission({
+            visibleLvProviderTimestampMs: ctx.realPollVisibleLvSourceAtMs,
+            pollStartedAtMs: ctx.pollStartedAtMs,
+            pollCompletedAtMs: ctx.pollCompletedAtMs,
+            reconciliation: prePoll.reconciliation,
+            prePollDecision: prePoll.decision,
+          })
+        : { admit: false as const, reason: 'MISSING_PRE_POLL_ROW' };
+
+      const persistVisibleLv =
+        admission.admit && visibleLvAt != null ? visibleLvAt : null;
+
       await this.repository.updateSuccessfulPollOutcome({
         organizationId: ctx.organizationId,
         vehicleId: ctx.vehicleId,
@@ -468,39 +488,13 @@ export class AdaptivePollingShadowService {
         realPollId: ctx.realPollId,
         realPollStartedAt: new Date(ctx.pollStartedAtMs),
         realPollCompletedAt: new Date(ctx.pollCompletedAtMs),
-        realPollVisibleLvSourceAt:
-          visibleLvAt &&
-          (await this.shouldPersistVisibleLvForPolicy({
-            organizationId: ctx.organizationId,
-            vehicleId: ctx.vehicleId,
-            opportunityId: ctx.opportunityId,
-            policyVersion,
-          }))
-            ? visibleLvAt
-            : null,
+        realPollVisibleLvSourceAt: persistVisibleLv,
+        shadowExecutionVersionAfterSuccess:
+          admission.admit && admission.usedBootstrapPath
+            ? P25_APD_SHADOW_EXECUTION_V2_1
+            : undefined,
         patch,
       });
     }
-  }
-
-  private async shouldPersistVisibleLvForPolicy(input: {
-    organizationId: string;
-    vehicleId: string;
-    opportunityId: string;
-    policyVersion: string;
-  }): Promise<boolean> {
-    const row = await this.prisma.apdShadowReconciliationDecision.findFirst({
-      where: {
-        organizationId: input.organizationId,
-        vehicleId: input.vehicleId,
-        opportunityId: input.opportunityId,
-        policyVersion: input.policyVersion,
-        shadowExecutionVersion: P25_APD_SHADOW_EXECUTION_V2,
-        reconciliation: true,
-        decision: { in: [...P25_APD_SHADOW_ADVANCING_DECISIONS] },
-      },
-      select: { id: true },
-    });
-    return row != null;
   }
 }
