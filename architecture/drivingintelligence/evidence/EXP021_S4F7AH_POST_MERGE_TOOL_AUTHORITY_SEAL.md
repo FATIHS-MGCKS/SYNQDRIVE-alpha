@@ -15,8 +15,14 @@
 | `PR1930_MERGE_SHA` | `f1e6b9221d3e5a57d3bbe8d3ad79702eef20ffa7` |
 | `CURRENT_MAIN_SHA` | `f1e6b9221d3e5a57d3bbe8d3ad79702eef20ffa7` |
 | Squash merge message | `fix(ops): EXP-021 S4F-7AG live fresh-authority DB clock export (#1930)` |
-| `ed78748…` git-ancestor of merge SHA | **YES** |
+| `EXACT_HEAD_IS_GIT_ANCESTOR_OF_MERGE` | **NO** — GitHub squash merge (`f1e6b9221…` parent `2e4c46e40…`) does **not** retain PR branch commits as ancestors |
+| `git merge-base` (`ed78748…`, `f1e6b9221…`) | `bca309f617cc1f41beb3665143ff8a711b0b4951` |
+| `git rev-list --left-right --count ed78748……f1e6b9221…` | `2` / `2` (**diverged** — not a linear fast-forward lineage) |
+| `git merge-base --is-ancestor ed78748… f1e6b9221…` | **exit 1** (**not** an ancestor) |
+| Tool authority proof (when ancestor = NO) | **Six-file git blob parity** across `ed78748…`, `f1e6b9221…`, and `main` + **exact-head CI** on immutable `ed78748…` (§2) — **not** git commit ancestry |
 | Intermediate PR head `f7560f4be…` | Operator **six-file blobs identical** to `ed78748…` (ledger-only delta on second commit) — **not** used as seal without full exact-head CI on `ed78748…` |
+
+**S4F-7AH.1 correction (2026-10-08):** An earlier draft of this evidence incorrectly claimed `ed78748…` was a git ancestor of the squash merge SHA. That claim is **retracted**; squash lineage and blob parity are **orthogonal** — seal validity rests on blob parity + CI, not on commit graph reachability.
 
 ### Exact-head CI (immutable certification commit)
 
@@ -163,6 +169,8 @@ PR1930_MERGED=YES
 PR1930_EXACT_HEAD=ed78748bc9493cdc8da56000e333e4940114f9f1
 PR1930_MERGE_SHA=f1e6b9221d3e5a57d3bbe8d3ad79702eef20ffa7
 CURRENT_MAIN_SHA=f1e6b9221d3e5a57d3bbe8d3ad79702eef20ffa7
+EXACT_HEAD_IS_GIT_ANCESTOR_OF_MERGE=NO
+LINEAGE_EVIDENCE_CORRECTED=YES_S4F7AH1
 
 EXACT_HEAD_CI_CERTIFIED=YES
 TOOL_COMMIT_FETCHABLE=YES
