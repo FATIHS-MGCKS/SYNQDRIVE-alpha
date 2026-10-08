@@ -96,6 +96,12 @@ export async function issueM3_3HvH4A3IntegrityAttestationIsolatedV1(
         throw new M3_3HvH4A3IntegrityAttestationIssuePermissionError(error.message);
       }
     }
+    if (
+      error instanceof Prisma.PrismaClientUnknownRequestError &&
+      error.message.toLowerCase().includes('permission denied')
+    ) {
+      throw new M3_3HvH4A3IntegrityAttestationIssuePermissionError(error.message);
+    }
     throw error;
   }
 }

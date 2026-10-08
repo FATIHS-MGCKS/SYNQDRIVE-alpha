@@ -12,9 +12,9 @@ import {
   M3_3HvH4A3IntegrityAttestationIssueVerificationError,
 } from './m3-3-hv-h4-a3-3-o2-isolated-attestation-issuer.v1';
 import {
-  createDedicatedPostgresSessionClientV1,
+  createIssuerLoginPostgresClientV1,
+  createRestrictedAppLoginPostgresClientV1,
   ensureM3_3HvH4A3O2R2PostgresRolesV1,
-  M3_3_HV_H4_A3_O2_R2_RESTRICTED_APP_ROLE,
   M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE,
 } from './m3-3-hv-h4-a3-3-o2-r2-postgres-roles.fixture';
 
@@ -53,8 +53,8 @@ describe('M3.3-HV-H4-A3.3-O2-R2-H1 true issuer concurrency (PostgreSQL)', () => 
     if (!probe) return;
     admin = new PrismaClient();
     await ensureM3_3HvH4A3O2R2PostgresRolesV1(admin);
-    issuerDb = await createDedicatedPostgresSessionClientV1(M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE);
-    appDb = await createDedicatedPostgresSessionClientV1(M3_3_HV_H4_A3_O2_R2_RESTRICTED_APP_ROLE);
+    issuerDb = (await createIssuerLoginPostgresClientV1()) ?? undefined;
+    appDb = (await createRestrictedAppLoginPostgresClientV1()) ?? undefined;
   });
 
   afterAll(async () => {
@@ -175,7 +175,8 @@ describe('M3.3-HV-H4-A3.3-O2-R2-H1 true issuer concurrency (PostgreSQL)', () => 
   it('R2_H1_C5: concurrent duplicate issuance → exactly one attestation', async () => {
     if (!admin || !issuerDb) return;
     const { revision } = await seedRevision();
-    const issuerB = await createDedicatedPostgresSessionClientV1(M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE);
+    const issuerB = await createIssuerLoginPostgresClientV1();
+    if (!issuerB) return;
     try {
       const results = await Promise.allSettled([
         issueM3_3HvH4A3IntegrityAttestationIsolatedV1(issuerDb, { revisionId: revision.id }),

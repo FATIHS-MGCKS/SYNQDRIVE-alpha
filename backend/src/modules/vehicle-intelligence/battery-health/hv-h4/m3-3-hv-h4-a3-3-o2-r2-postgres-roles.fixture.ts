@@ -6,6 +6,8 @@ export const M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE = 'm3_3_hv_h4_a3_r2_attesta
 /** Non-superuser CI login inheriting restricted app role only (not issuer). */
 export const M3_3_HV_H4_A3_O2_R2_APP_LOGIN_ROLE = 'm3_3_hv_h4_a3_r2_app_login';
 const APP_LOGIN_PASSWORD = 'r2_ci_app_login_pw';
+export const M3_3_HV_H4_A3_O2_R2_ISSUER_LOGIN_ROLE = 'm3_3_hv_h4_a3_r2_issuer_login';
+const ISSUER_LOGIN_PASSWORD = 'r2_ci_issuer_login_pw';
 
 const ATTESTATION_TABLE = 'public.battery_hv_charge_session_evidence_integrity_attestations';
 const REVISION_TABLE = 'public.battery_hv_charge_session_evidence_revisions';
@@ -35,6 +37,21 @@ export async function ensureM3_3HvH4A3O2R2PostgresRolesV1(prisma: PrismaClient):
   );
   await prisma.$executeRawUnsafe(
     `GRANT ${M3_3_HV_H4_A3_O2_R2_RESTRICTED_APP_ROLE} TO ${M3_3_HV_H4_A3_O2_R2_APP_LOGIN_ROLE}`,
+  );
+  await prisma.$executeRawUnsafe(`
+    DO $$ BEGIN
+      CREATE ROLE ${M3_3_HV_H4_A3_O2_R2_ISSUER_LOGIN_ROLE} LOGIN PASSWORD '${ISSUER_LOGIN_PASSWORD}' NOSUPERUSER NOCREATEDB NOCREATEROLE;
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END $$;
+  `);
+  await prisma.$executeRawUnsafe(
+    `ALTER ROLE ${M3_3_HV_H4_A3_O2_R2_ISSUER_LOGIN_ROLE} PASSWORD '${ISSUER_LOGIN_PASSWORD}'`,
+  );
+  await prisma.$executeRawUnsafe(
+    `GRANT ${M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE} TO ${M3_3_HV_H4_A3_O2_R2_ISSUER_LOGIN_ROLE}`,
+  );
+  await prisma.$executeRawUnsafe(
+    `GRANT USAGE ON SCHEMA public TO ${M3_3_HV_H4_A3_O2_R2_APP_LOGIN_ROLE}, ${M3_3_HV_H4_A3_O2_R2_ISSUER_LOGIN_ROLE}`,
   );
 
   await prisma.$executeRawUnsafe(`GRANT USAGE ON SCHEMA public TO ${M3_3_HV_H4_A3_O2_R2_RESTRICTED_APP_ROLE}`);
@@ -83,13 +100,26 @@ export async function createDedicatedPostgresSessionClientV1(role: string): Prom
 }
 
 /** Dedicated non-superuser login (restricted app privileges only). */
-export async function createRestrictedAppLoginPostgresClientV1(): Promise<PrismaClient | null> {
+function buildLoginDatabaseUrlV1(loginRole: string, password: string): string | null {
   const base = process.env.DATABASE_URL;
   if (!base) return null;
   const match = base.match(/^postgresql:\/\/([^:]+):([^@]+)@([^/]+)\/([^?]+)/);
   if (!match) return null;
   const [, , , host, database] = match;
-  const url = `postgresql://${M3_3_HV_H4_A3_O2_R2_APP_LOGIN_ROLE}:${APP_LOGIN_PASSWORD}@${host}/${database}`;
+  return `postgresql://${loginRole}:${password}@${host}/${database}`;
+}
+
+export async function createRestrictedAppLoginPostgresClientV1(): Promise<PrismaClient | null> {
+  const url = buildLoginDatabaseUrlV1(M3_3_HV_H4_A3_O2_R2_APP_LOGIN_ROLE, APP_LOGIN_PASSWORD);
+  if (!url) return null;
+  const client = new PrismaClient({ datasources: { db: { url } } });
+  await client.$connect();
+  return client;
+}
+
+export async function createIssuerLoginPostgresClientV1(): Promise<PrismaClient | null> {
+  const url = buildLoginDatabaseUrlV1(M3_3_HV_H4_A3_O2_R2_ISSUER_LOGIN_ROLE, ISSUER_LOGIN_PASSWORD);
+  if (!url) return null;
   const client = new PrismaClient({ datasources: { db: { url } } });
   await client.$connect();
   return client;
