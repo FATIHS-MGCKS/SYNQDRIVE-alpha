@@ -12,6 +12,7 @@ import {
   Req,
   UseGuards,
   Optional,
+  Logger,
 } from '@nestjs/common';
 import { VehiclesService } from './vehicles.service';
 import type { RegistrationBrakeManualSpec } from '@modules/vehicle-intelligence/brakes/register-brake-baseline';
@@ -22,6 +23,13 @@ import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { RequirePermission } from '@shared/decorators/require-permission.decorator';
 import { VehicleOwnershipGuard } from '@shared/auth/vehicle-ownership.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
+import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-mfa.decorator';
+import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
+import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
+import {
+  LEGACY_VEHICLE_DESTRUCTION_DISABLED_CODE,
+  legacyVehicleDestructionDisabledException,
+} from './legacy-vehicle-destruction.errors';
 import { PaginationParams } from '@shared/utils/pagination';
 import {
   Prisma,
@@ -65,6 +73,8 @@ function parseExteriorView(value: string): VehicleExteriorView {
 @Controller()
 @UseGuards(RolesGuard)
 export class VehiclesController {
+  private readonly logger = new Logger(VehiclesController.name);
+
   constructor(
     private readonly vehiclesService: VehiclesService,
     private readonly exteriorImagesService: VehicleExteriorImagesService,
@@ -473,8 +483,16 @@ export class VehiclesController {
   }
 
   @Post('admin/vehicles/:vehicleId/deregister')
+  @Roles('MASTER_ADMIN')
+  @UseGuards(MasterAdminMfaGuard)
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_INTEGRATIONS)
   async deregisterVehicle(@Param('vehicleId') vehicleId: string) {
-    return this.vehiclesService.deregister(vehicleId);
+    this.logger.warn({
+      msg: 'legacy_vehicle_deregistration_blocked',
+      code: LEGACY_VEHICLE_DESTRUCTION_DISABLED_CODE,
+      vehicleId,
+    });
+    throw legacyVehicleDestructionDisabledException();
   }
 
   // ── vehicles/:vehicleId (direct access) ───────────────────────────
