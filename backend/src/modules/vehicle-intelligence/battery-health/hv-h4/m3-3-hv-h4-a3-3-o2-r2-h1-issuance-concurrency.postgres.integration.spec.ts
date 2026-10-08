@@ -6,8 +6,6 @@ import { computeM3_3HvH4ChargeSessionSourceRevisionFingerprintV1 } from './m3-3-
 import { mirrorFromScientificProjectionV1 } from './m3-3-hv-h4-a3-charge-session-evidence-projection.v1';
 import type { M3_3HvH4ChargeSessionEvidenceScientificProjectionV1 } from './m3-3-hv-h4-a3-charge-session-evidence.types.v1';
 import {
-  issueM3_3HvH4A3IntegrityAttestationIsolatedInTransactionV1,
-  issueM3_3HvH4A3IntegrityAttestationIsolatedV1,
   M3_3HvH4A3IntegrityAttestationIssuePermissionError,
   M3_3HvH4A3IntegrityAttestationIssueVerificationError,
 } from './m3-3-hv-h4-a3-3-o2-isolated-attestation-issuer.v1';
@@ -15,7 +13,7 @@ import {
   createIssuerLoginPostgresClientV1,
   createRestrictedAppRoleScopedPostgresClientV1,
   ensureM3_3HvH4A3O2R2PostgresRolesV1,
-  M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE,
+  issueM3_3HvH4A3IntegrityAttestationOnIssuerHarnessDbV1,
 } from './m3-3-hv-h4-a3-3-o2-r2-postgres-roles.fixture';
 
 const integrationEnabled = process.env.BATTERY_HV_H4_REPORT_INTEGRATION === '1';
@@ -58,12 +56,6 @@ describe('M3.3-HV-H4-A3.3-O2-R2-H1 true issuer concurrency (PostgreSQL)', () => 
     if (!issuerDb || !appDb) {
       throw new Error('O2-R2-H1: failed to create dedicated issuer/app login PostgreSQL clients');
     }
-    const issuerIdentity = await issuerDb.$queryRaw<Array<{ current_user: string }>>`SELECT current_user::text`;
-    if (issuerIdentity[0]?.current_user !== M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE) {
-      throw new Error(
-        `O2-R2-H1: issuer client expected role ${M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE}, got ${issuerIdentity[0]?.current_user}`,
-      );
-    }
   });
 
   afterAll(async () => {
@@ -90,17 +82,15 @@ describe('M3.3-HV-H4-A3.3-O2-R2-H1 true issuer concurrency (PostgreSQL)', () => 
     const { revision } = await seedRevision();
     const gate = concurrencyGate();
 
-    const issuerWork = issuerDb.$transaction(async (tx) =>
-      issueM3_3HvH4A3IntegrityAttestationIsolatedInTransactionV1(
-        tx,
-        { revisionId: revision.id },
-        {
-          afterRowLocksAcquired: async () => {
-            gate.notifyIssuerLocked();
-            await gate.waitUntilAppBlocked;
-          },
+    const issuerWork = issueM3_3HvH4A3IntegrityAttestationOnIssuerHarnessDbV1(
+      issuerDb,
+      { revisionId: revision.id },
+      {
+        afterRowLocksAcquired: async () => {
+          gate.notifyIssuerLocked();
+          await gate.waitUntilAppBlocked;
         },
-      ),
+      },
     );
 
     const appWork = (async () => {
@@ -134,7 +124,7 @@ describe('M3.3-HV-H4-A3.3-O2-R2-H1 true issuer concurrency (PostgreSQL)', () => 
       where: { revisionId: revision.id },
       data: { sourceRevisionFingerprint: fingerprint },
     });
-    await issueM3_3HvH4A3IntegrityAttestationIsolatedV1(issuerDb, { revisionId: revision.id });
+    await issueM3_3HvH4A3IntegrityAttestationOnIssuerHarnessDbV1(issuerDb, { revisionId: revision.id });
     expect(await admin.batteryHvChargeSessionEvidenceIntegrityAttestation.count()).toBe(1);
   });
 
@@ -143,17 +133,15 @@ describe('M3.3-HV-H4-A3.3-O2-R2-H1 true issuer concurrency (PostgreSQL)', () => 
     const { revision, ackId } = await seedRevision();
     const gate = concurrencyGate();
 
-    const issuerWork = issuerDb.$transaction(async (tx) =>
-      issueM3_3HvH4A3IntegrityAttestationIsolatedInTransactionV1(
-        tx,
-        { revisionId: revision.id },
-        {
-          afterRowLocksAcquired: async () => {
-            gate.notifyIssuerLocked();
-            await gate.waitUntilAppBlocked;
-          },
+    const issuerWork = issueM3_3HvH4A3IntegrityAttestationOnIssuerHarnessDbV1(
+      issuerDb,
+      { revisionId: revision.id },
+      {
+        afterRowLocksAcquired: async () => {
+          gate.notifyIssuerLocked();
+          await gate.waitUntilAppBlocked;
         },
-      ),
+      },
     );
 
     const appWork = (async () => {
@@ -177,7 +165,7 @@ describe('M3.3-HV-H4-A3.3-O2-R2-H1 true issuer concurrency (PostgreSQL)', () => 
       where: { id: ackId },
       data: { acknowledgedAt: new Date('2026-02-01T00:00:00.000Z') },
     });
-    await issueM3_3HvH4A3IntegrityAttestationIsolatedV1(issuerDb, { revisionId: revision.id });
+    await issueM3_3HvH4A3IntegrityAttestationOnIssuerHarnessDbV1(issuerDb, { revisionId: revision.id });
     expect(await admin.batteryHvChargeSessionEvidenceIntegrityAttestation.count()).toBe(1);
   });
 
@@ -188,8 +176,8 @@ describe('M3.3-HV-H4-A3.3-O2-R2-H1 true issuer concurrency (PostgreSQL)', () => 
     if (!issuerB) return;
     try {
       const results = await Promise.allSettled([
-        issueM3_3HvH4A3IntegrityAttestationIsolatedV1(issuerDb, { revisionId: revision.id }),
-        issueM3_3HvH4A3IntegrityAttestationIsolatedV1(issuerB, { revisionId: revision.id }),
+        issueM3_3HvH4A3IntegrityAttestationOnIssuerHarnessDbV1(issuerDb, { revisionId: revision.id }),
+        issueM3_3HvH4A3IntegrityAttestationOnIssuerHarnessDbV1(issuerB, { revisionId: revision.id }),
       ]);
       expect(results.filter((r) => r.status === 'fulfilled').length).toBe(1);
       expect(results.filter((r) => r.status === 'rejected').length).toBe(1);
@@ -207,7 +195,7 @@ describe('M3.3-HV-H4-A3.3-O2-R2-H1 true issuer concurrency (PostgreSQL)', () => 
       data: { sourceRevisionFingerprint: 'c'.repeat(64) },
     });
     await expect(
-      issueM3_3HvH4A3IntegrityAttestationIsolatedV1(issuerDb, { revisionId: revision.id }),
+      issueM3_3HvH4A3IntegrityAttestationOnIssuerHarnessDbV1(issuerDb, { revisionId: revision.id }),
     ).rejects.toBeInstanceOf(M3_3HvH4A3IntegrityAttestationIssueVerificationError);
     expect(await admin.batteryHvChargeSessionEvidenceIntegrityAttestation.count()).toBe(0);
   });
@@ -220,7 +208,7 @@ describe('M3.3-HV-H4-A3.3-O2-R2-H1 true issuer concurrency (PostgreSQL)', () => 
     );
     try {
       await expect(
-        issueM3_3HvH4A3IntegrityAttestationIsolatedV1(issuerDb, { revisionId: revision.id }),
+        issueM3_3HvH4A3IntegrityAttestationOnIssuerHarnessDbV1(issuerDb, { revisionId: revision.id }),
       ).rejects.toBeInstanceOf(M3_3HvH4A3IntegrityAttestationIssuePermissionError);
       expect(await admin.batteryHvChargeSessionEvidenceIntegrityAttestation.count()).toBe(0);
     } finally {

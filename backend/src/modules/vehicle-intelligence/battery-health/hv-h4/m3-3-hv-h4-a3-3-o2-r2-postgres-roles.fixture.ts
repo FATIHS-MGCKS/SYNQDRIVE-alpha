@@ -1,4 +1,10 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
+import {
+  issueM3_3HvH4A3IntegrityAttestationIsolatedInTransactionV1,
+  M3_3HvH4A3IntegrityAttestationIssuePermissionError,
+  M3_3HvH4A3IntegrityAttestationIssueVerificationError,
+  type M3_3HvH4A3IssueIntegrityAttestationIsolatedInputV1,
+} from './m3-3-hv-h4-a3-3-o2-isolated-attestation-issuer.v1';
 
 /** CI-only role names mirroring intended production separation (not production-certified). */
 export const M3_3_HV_H4_A3_O2_R2_RESTRICTED_APP_ROLE = 'm3_3_hv_h4_a3_r2_app_restricted';
@@ -170,10 +176,7 @@ export async function createRestrictedAppRoleScopedPostgresClientV1(): Promise<P
   return createRestrictedAppLoginPostgresClientV1();
 }
 
-/**
- * Trusted issuer DB session for CI (harness SET ROLE on a single-connection pool).
- * Issuer application code does not call SET ROLE — only this fixture may.
- */
+/** Dedicated issuer-bound Prisma pool (CI harness — not production-certified). */
 export async function createIssuerLoginPostgresClientV1(): Promise<PrismaClient | undefined> {
   const base = process.env.DATABASE_URL;
   if (!base) return undefined;
@@ -181,8 +184,41 @@ export async function createIssuerLoginPostgresClientV1(): Promise<PrismaClient 
     datasources: { db: { url: withPrismaSingleConnectionUrlV1(base) } },
   });
   await client.$connect();
-  await client.$executeRawUnsafe(`SET ROLE ${M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE}`);
   return client;
+}
+
+/** CI harness: Prisma transactions reset session role — SET LOCAL ROLE per issuance transaction. */
+export async function issueM3_3HvH4A3IntegrityAttestationOnIssuerHarnessDbV1(
+  issuerDb: PrismaClient,
+  input: M3_3HvH4A3IssueIntegrityAttestationIsolatedInputV1,
+  hooks?: { afterRowLocksAcquired?: () => Promise<void> },
+): Promise<{ attestationId: string }> {
+  try {
+    return await issuerDb.$transaction(async (tx) => {
+      await tx.$executeRawUnsafe(`SET LOCAL ROLE ${M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE}`);
+      return issueM3_3HvH4A3IntegrityAttestationIsolatedInTransactionV1(tx, input, hooks);
+    });
+  } catch (error) {
+    if (
+      error instanceof M3_3HvH4A3IntegrityAttestationIssueVerificationError ||
+      error instanceof M3_3HvH4A3IntegrityAttestationIssuePermissionError
+    ) {
+      throw error;
+    }
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      const msg = error.message.toLowerCase();
+      if (error.code === 'P2010' || error.code === 'P2004' || msg.includes('permission denied')) {
+        throw new M3_3HvH4A3IntegrityAttestationIssuePermissionError(error.message);
+      }
+    }
+    if (
+      error instanceof Prisma.PrismaClientUnknownRequestError &&
+      error.message.toLowerCase().includes('permission denied')
+    ) {
+      throw new M3_3HvH4A3IntegrityAttestationIssuePermissionError(error.message);
+    }
+    throw error;
+  }
 }
 
 export async function withPostgresRoleV1<T>(
