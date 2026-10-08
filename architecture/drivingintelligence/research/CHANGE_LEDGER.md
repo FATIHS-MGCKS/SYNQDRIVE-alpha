@@ -1698,6 +1698,29 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | `DRY_RUN_CERTIFIED=YES`; `GUARDS_OK=YES`; initial/final DB clock + fresh authority **PASS**; `DRY_RUN_ENV_MUTATION_COUNT=0`; POSTSTATE parity **YES** |
 | NON_EFFECTS | No `DRY_RUN=0`; no live auth reuse; no S4 activation; Gate 6 unchanged |
 
+### EXP-021 S4F-7AK final live staging readiness (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Read-only Production observation + authority reconciliation after #1937; evidence `EXP021_S4F7AK_FINAL_LIVE_STAGING_READINESS.md` |
+| FINDING | `READINESS=TECHNICALLY_READY_PENDING_HUMAN_AUTHORIZATION`; S4 prestate **PASS**; `PRODUCTION_DRIFT_FROM_AJ=YES` (env SHA + PIDs); partial release-tree operator blob drift — **S4F-7AI bootstrap mandatory for Production `DRY_RUN=1` only** (not live); live path = detached `ed78748bc…` S4F-7Y operator |
+| NON_EFFECTS | No JIT/live auth; no `DRY_RUN=0`; no env/restart/deploy; `HUMAN_FREEZE_CONFIRMATION=PENDING`; Gate 6 unchanged |
+
+### EXP-021 S4F-7AK.1 authority boundary & drift closure (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | PR #1939 scope trim (remove non-required `ChangesView.tsx`); evidence `EXP021_S4F7AK1_FINAL_AUTHORITY_BOUNDARY.md` |
+| FINDING | `PRODUCTION_DRIFT_CAUSE=APDS_P25_SHADOW_ENABLE_20261008T201328Z` — pre-backup SHA matches S4F-7AJ POST; `WORKER_APD_SHADOW_ENABLED` value change; PM2 recreate @ 20:13:28Z |
+| NON_EFFECTS | No live dispatch execution; S4F-7AI bootstrap remains DRY_RUN=1-only |
+
+### EXP-021 S4F-7AK.2 dispatch documentation consistency (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | PR #1939 — align S4F-7AK / CURRENT_STATE / CHANGE_LEDGER: S4F-7AI = Production **`DRY_RUN=1` only**; live = detached `ed78748bc…` S4F-7Y operator (not S4F-7AI) |
+| NON_EFFECTS | No operator code change; no Production execution |
+
 ### EXP-021 S4F-7AI.1 bootstrap safety closure (2026-10-08)
 
 | Event | Detail |
