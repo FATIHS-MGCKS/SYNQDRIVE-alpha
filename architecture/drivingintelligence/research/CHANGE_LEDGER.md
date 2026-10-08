@@ -1553,6 +1553,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | **`FINAL_RESULT=PASS`** — tool `715dea564…`; Production `DRY_RUN=1` full guard path; JIT `2026-10-08T09:00:32.909Z` age **20.296s**; PRE/POST SHA/env/PID/attestation parity; **`NO_BACKFILL_GATE=PASS`** |
 | NON_EFFECTS | No `DI_S4F7Y_LIVE_STAGING_AUTHORIZED`; no env write/restart/DB write/provider calls; Gate 6 **NOT_SATISFIED** |
 
+### EXP-021 S4F-7AA.1 operator & evidence hardening (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `lib/cloud-agent-s4f7aa-tool-pin.lib.sh`; bootstrap hardening; `cloud-agent-s4f7aa-tool-pin.test.sh`; evidence `EXP021_S4F7AA1_OPERATOR_EVIDENCE_HARDENING.md` |
+| FINDING | Reproduced dead stale-pin guard (D1), runtime `chmod` (D2), declared-only side-effect lines (D3–D4); historical S4F-7AA PASS preserved; AA.1 bootstrap **not** Production re-validated |
+| NON_EFFECTS | No Production rerun; no sealed operator file edits; Gate 6 **NOT_SATISFIED** |
+
 ### EXP-021 S4F-7T current Production attestation supersession closure (2026-10-06)
 
 | Event | Detail |

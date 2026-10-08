@@ -5,6 +5,8 @@
 
 **Execution transcript (sanitized):** agent artifact `s4f7aa-production-dry-run.log` (not committed; no secrets).
 
+**Bootstrap provenance:** executed with bootstrap @ git `99fa1ee34ed60e1d6791bcd42530e2c4ca3edef2` (pre–S4F-7AA.1). Hardening audit: [EXP021_S4F7AA1_OPERATOR_EVIDENCE_HARDENING.md](EXP021_S4F7AA1_OPERATOR_EVIDENCE_HARDENING.md). The PASS result is **historical** and does not validate post–AA.1 bootstrap revisions.
+
 ## Git / tool authority
 
 | Field | Value |
@@ -84,8 +86,8 @@ DI_V0_S4_VEHICLE_ALLOWLIST=c10351f8-b6a2-4258-947f-631aeaa6d359
 | `ATTESTATION_PARITY` | **YES** (PRESTATE fingerprints unchanged) |
 | `PRODUCTION_ENV_MUTATION_OCCURRED` | **NO** |
 | `PRODUCTION_RESTART_OCCURRED` | **NO** |
-| `PRODUCTION_DB_WRITE_OCCURRED` | **NO** |
-| `PROVIDER_CALL_COUNT` | **0** |
+| `PRODUCTION_DB_WRITE_OCCURRED` | **NO** (bootstrap **declared** at `99fa1ee34`; POST SQL re-count added in AA.1 only) |
+| `PROVIDER_CALL_COUNT` | **0** (bootstrap **declared** at `99fa1ee34`; wrapper delta grep added in AA.1 only) |
 | `S4_ACTIVATION_OCCURRED` | **NO** |
 
 ## Gate 6

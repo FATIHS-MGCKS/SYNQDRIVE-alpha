@@ -6,6 +6,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 # shellcheck source=cloud-agent-ssh-common.sh
 source "${SCRIPT_DIR}/cloud-agent-ssh-common.sh"
+# shellcheck source=lib/cloud-agent-s4f7aa-tool-pin.lib.sh
+source "${SCRIPT_DIR}/lib/cloud-agent-s4f7aa-tool-pin.lib.sh"
 
 VPS_HOST="${CLOUD_AGENT_VPS_HOST:-srv1374778.hstgr.cloud}"
 SSH_USER="$(cloud_agent_ssh_user)"
@@ -16,22 +18,18 @@ SSH_PORT="${CLOUD_AGENT_VPS_SSH_PORT:-22}"
 SSH_KEY="${HOME}/.ssh/id_ed25519"
 GIT_REMOTE_URL="${CLOUD_AGENT_S4_TINY_STAGING_GIT_REMOTE_URL:-https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git}"
 
-# Cloud Agent may inject legacy S4F-7W pins — ignore for S4F-7AA dispatch.
-unset TOOL_AUTHORITY_SHA EXPECTED_FRESH_TINY_STAGING_TOOL_SHA CLOUD_AGENT_S4F7X_TOOL_SHA || true
-
 Z2_EVIDENCE="${REPO_ROOT}/architecture/drivingintelligence/evidence/EXP021_S4F7Z2_EXACT_HEAD_CI_TOOL_AUTHORITY_SEAL.md"
-SEALED_FROM_AUTHORITY="$(grep -E '^\| \*\*`EXPECTED_FRESH_TINY_STAGING_TOOL_SHA`\*\*' "$Z2_EVIDENCE" | sed -n 's/.*`\([0-9a-f]\{40\}\)`.*/\1/p' || true)"
-if [[ -z "$SEALED_FROM_AUTHORITY" ]] || ! [[ "$SEALED_FROM_AUTHORITY" =~ ^[0-9a-f]{40}$ ]]; then
-  echo "S4F7AA_FAIL_CLOSED=Z2_EVIDENCE_SEAL_UNREADABLE" >&2
-  exit 1
-fi
-if [[ -n "${TOOL_AUTHORITY_SHA:-}" && "${TOOL_AUTHORITY_SHA}" != "$SEALED_FROM_AUTHORITY" ]]; then
-  echo "S4F7AA_FAIL_CLOSED=STALE_TOOL_AUTHORITY_SHA_ENV" >&2
+s4f7aa_assert_local_dispatch_guards || exit 1
+SEALED_FROM_AUTHORITY="$(s4f7aa_read_sealed_tool_sha_from_evidence "$Z2_EVIDENCE")"
+if ! s4f7aa_collect_stale_tool_pin_violations "$SEALED_FROM_AUTHORITY" >/dev/null; then
+  echo "S4F7AA_FAIL_CLOSED=STALE_TOOL_PIN_ENV" >&2
+  s4f7aa_collect_stale_tool_pin_violations "$SEALED_FROM_AUTHORITY" >&2 || true
   echo "SEALED_FROM_AUTHORITY=${SEALED_FROM_AUTHORITY}" >&2
-  echo "STALE_TOOL_AUTHORITY_SHA_ENV=${TOOL_AUTHORITY_SHA}" >&2
   exit 1
 fi
+s4f7aa_clear_tool_pin_env
 TOOL_SHA="$SEALED_FROM_AUTHORITY"
+BOOTSTRAP_SELF="${SCRIPT_DIR}/cloud-agent-s4f7aa-fresh-jit-production-dry-run.sh"
 
 ensure_ssh_key() {
   if [[ -f "$SSH_KEY" ]]; then return 0; fi
@@ -43,10 +41,12 @@ ensure_ssh_key || { echo "SSH_KEY_MISSING=YES"; exit 1; }
 SSH_BASE=(ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -i "$SSH_KEY" -p "$SSH_PORT" "${SSH_USER}@${VPS_HOST}")
 
 echo "EXP021_S4F7AA_LOCAL_DISPATCH=1"
+echo "EXP021_S4F7AA1_BOOTSTRAP_REVISION=YES"
 echo "CURRENT_MAIN_SHA=$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || echo UNKNOWN)"
 echo "SEALED_TOOL_SHA=${SEALED_FROM_AUTHORITY}"
 echo "TOOL_SHA_VERIFIED=${TOOL_SHA}"
 echo "DI_S4F7Y_LIVE_STAGING_AUTHORIZED=${DI_S4F7Y_LIVE_STAGING_AUTHORIZED:-}"
+s4f7aa_bootstrap_script_identity "$BOOTSTRAP_SELF"
 
 REMOTE_SCRIPT=$(cat <<'EOS'
 set -euo pipefail
@@ -57,13 +57,29 @@ export SYNQDRIVE_CURRENT_LINK="/opt/synqdrive/current"
 TINY_ORG="faa710c9-6d91-4079-a7d5-91fdccdec14a"
 TINY_VID="c10351f8-b6a2-4258-947f-631aeaa6d359"
 EXPECTED_PRESTATE_FP="b648908a5f74798f765b0631cd16d5c50a390222d36b63fb03f787367176750d"
+TEMP=""
+WRAPPER_LOG=""
+TMP_ARTIFACTS=()
+
+cleanup_remote() {
+  rm -rf "${TEMP:-}"
+  rm -f "${WRAPPER_LOG:-}"
+  local f
+  for f in "${TMP_ARTIFACTS[@]}"; do rm -f "$f"; done
+}
+trap cleanup_remote EXIT
+
+unset DRY_RUN DI_S4F7Y_LIVE_STAGING_AUTHORIZED EXPECTED_FRESH_TINY_STAGING_TOOL_SHA || true
+export DRY_RUN=1
 
 echo "EXP021_S4F7AA_FRESH_JIT_PRODUCTION_DRY_RUN=1"
 echo "TOOL_AUTHORITY_SHA=${TOOL_AUTHORITY_SHA}"
 echo "TOOL_CHECKOUT_SHA=${TOOL_AUTHORITY_SHA}"
 echo "EXPECTED_FRESH_TINY_STAGING_TOOL_SHA=${TOOL_AUTHORITY_SHA}"
+echo "DRY_RUN=${DRY_RUN}"
 echo "DI_S4F7Y_LIVE_STAGING_AUTHORIZED=${DI_S4F7Y_LIVE_STAGING_AUTHORIZED:-}"
 [[ "${DI_S4F7Y_LIVE_STAGING_AUTHORIZED:-}" == "YES" ]] && { echo "FAIL_CLOSED=LIVE_STAGING_AUTH_FORBIDDEN"; exit 1; }
+[[ "${DRY_RUN}" == "1" ]] || { echo "FAIL_CLOSED=DRY_RUN_NOT_ONE"; exit 1; }
 
 fail_stop() { echo "S4F7AA_FAIL_CLOSED=$1"; exit 1; }
 
@@ -114,6 +130,10 @@ echo "GLOBAL_KILL_STATE=${GLOBAL_KILL_STATE}"
 
 S4_PIPE=$(sudo -n -u postgres psql -d synqdrive -Atqc "SELECT count(*)::text FROM di_v0_s4_pipeline_versions;")
 S4_WI=$(sudo -n -u postgres psql -d synqdrive -Atqc "SELECT count(*)::text FROM di_v0_s4_work_items;")
+PRE_S4_PIPELINE_ROWS="${S4_PIPE}"
+PRE_S4_WORK_ITEM_ROWS="${S4_WI}"
+echo "PRE_S4_PIPELINE_ROWS=${PRE_S4_PIPELINE_ROWS}"
+echo "PRE_S4_WORK_ITEM_ROWS=${PRE_S4_WORK_ITEM_ROWS}"
 [[ "$S4_PIPE" == "0" && "$S4_WI" == "0" ]] && echo "S4_ZERO_STATE=YES" || fail_stop "S4_ZERO_STATE"
 
 for flag in DI_V0_S4_MASTER_ENABLED DI_V0_S4_DISCOVERY_ENABLED DI_V0_S4_WORKER_ENABLED DI_V0_S4_POSITION_ENABLED DI_V0_S4_R1_ENABLED DI_V0_S4_NATIVE_ENABLED; do
@@ -138,17 +158,19 @@ echo "PRE_REPLICA_A_PID=${PRE_REPLICA_A_PID}"
 echo "PRE_REPLICA_B_PID=${PRE_REPLICA_B_PID}"
 [[ -n "$PRE_REPLICA_A_PID" && -n "$PRE_REPLICA_B_PID" ]] || fail_stop "PRE_PID_MISSING"
 
-parse_attestation 3001 A PRE | tee /tmp/s4f7aa-pre-a.$$
-parse_attestation 3002 B PRE | tee /tmp/s4f7aa-pre-b.$$
-PRE_REPLICA_A_ATTESTATION_STATE=$(grep PRE_REPLICA_A_ATTESTATION_STATE= /tmp/s4f7aa-pre-a.$$ | cut -d= -f2)
-PRE_REPLICA_A_ATTESTATION_FINGERPRINT=$(grep PRE_REPLICA_A_ATTESTATION_FINGERPRINT= /tmp/s4f7aa-pre-a.$$ | cut -d= -f2)
-PRE_REPLICA_A_ATTESTATION_CONTRACT_VERSION=$(grep PRE_REPLICA_A_ATTESTATION_CONTRACT_VERSION= /tmp/s4f7aa-pre-a.$$ | cut -d= -f2)
-PRE_REPLICA_A_ATTESTATION_SAMPLE_COUNT=$(grep PRE_REPLICA_A_ATTESTATION_SAMPLE_COUNT= /tmp/s4f7aa-pre-a.$$ | cut -d= -f2)
-PRE_REPLICA_B_ATTESTATION_STATE=$(grep PRE_REPLICA_B_ATTESTATION_STATE= /tmp/s4f7aa-pre-b.$$ | cut -d= -f2)
-PRE_REPLICA_B_ATTESTATION_FINGERPRINT=$(grep PRE_REPLICA_B_ATTESTATION_FINGERPRINT= /tmp/s4f7aa-pre-b.$$ | cut -d= -f2)
-PRE_REPLICA_B_ATTESTATION_CONTRACT_VERSION=$(grep PRE_REPLICA_B_ATTESTATION_CONTRACT_VERSION= /tmp/s4f7aa-pre-b.$$ | cut -d= -f2)
-PRE_REPLICA_B_ATTESTATION_SAMPLE_COUNT=$(grep PRE_REPLICA_B_ATTESTATION_SAMPLE_COUNT= /tmp/s4f7aa-pre-b.$$ | cut -d= -f2)
-rm -f /tmp/s4f7aa-pre-a.$$ /tmp/s4f7aa-pre-b.$$
+TMP_PRE_A="/tmp/s4f7aa-pre-a.$$"
+TMP_PRE_B="/tmp/s4f7aa-pre-b.$$"
+TMP_ARTIFACTS+=("$TMP_PRE_A" "$TMP_PRE_B")
+parse_attestation 3001 A PRE | tee "$TMP_PRE_A"
+parse_attestation 3002 B PRE | tee "$TMP_PRE_B"
+PRE_REPLICA_A_ATTESTATION_STATE=$(grep PRE_REPLICA_A_ATTESTATION_STATE= "$TMP_PRE_A" | cut -d= -f2)
+PRE_REPLICA_A_ATTESTATION_FINGERPRINT=$(grep PRE_REPLICA_A_ATTESTATION_FINGERPRINT= "$TMP_PRE_A" | cut -d= -f2)
+PRE_REPLICA_A_ATTESTATION_CONTRACT_VERSION=$(grep PRE_REPLICA_A_ATTESTATION_CONTRACT_VERSION= "$TMP_PRE_A" | cut -d= -f2)
+PRE_REPLICA_A_ATTESTATION_SAMPLE_COUNT=$(grep PRE_REPLICA_A_ATTESTATION_SAMPLE_COUNT= "$TMP_PRE_A" | cut -d= -f2)
+PRE_REPLICA_B_ATTESTATION_STATE=$(grep PRE_REPLICA_B_ATTESTATION_STATE= "$TMP_PRE_B" | cut -d= -f2)
+PRE_REPLICA_B_ATTESTATION_FINGERPRINT=$(grep PRE_REPLICA_B_ATTESTATION_FINGERPRINT= "$TMP_PRE_B" | cut -d= -f2)
+PRE_REPLICA_B_ATTESTATION_CONTRACT_VERSION=$(grep PRE_REPLICA_B_ATTESTATION_CONTRACT_VERSION= "$TMP_PRE_B" | cut -d= -f2)
+PRE_REPLICA_B_ATTESTATION_SAMPLE_COUNT=$(grep PRE_REPLICA_B_ATTESTATION_SAMPLE_COUNT= "$TMP_PRE_B" | cut -d= -f2)
 verify_pre_attestation A "$PRE_REPLICA_A_ATTESTATION_STATE" "$PRE_REPLICA_A_ATTESTATION_FINGERPRINT" "$PRE_REPLICA_A_ATTESTATION_CONTRACT_VERSION" "$PRE_REPLICA_A_ATTESTATION_SAMPLE_COUNT"
 verify_pre_attestation B "$PRE_REPLICA_B_ATTESTATION_STATE" "$PRE_REPLICA_B_ATTESTATION_FINGERPRINT" "$PRE_REPLICA_B_ATTESTATION_CONTRACT_VERSION" "$PRE_REPLICA_B_ATTESTATION_SAMPLE_COUNT"
 echo "ATTESTATION_PRESTATE_PARITY=YES"
@@ -169,8 +191,6 @@ echo "SCHEDULER_LEADER_COUNT=${SCHEDULER_LEADER_COUNT}"
 [[ "$SCHEDULER_LEADER_COUNT" == "1" ]] || fail_stop "SCHEDULER"
 
 TEMP="$(mktemp -d /tmp/s4f7aa-fresh-wrapper.XXXXXX)"
-cleanup() { rm -rf "$TEMP"; }
-trap cleanup EXIT
 git init "$TEMP/repo" >/dev/null 2>&1
 git -C "$TEMP/repo" remote add origin "$GIT_REMOTE_URL"
 git -C "$TEMP/repo" fetch --depth 1 origin "$TOOL_AUTHORITY_SHA"
@@ -242,7 +262,9 @@ grep '^INTENDED_ENV_CHANGED_KEY_COUNT=' "$WRAPPER_LOG" | tail -1
 grep '^INTENDED_UNEXPECTED_ENV_CHANGED_KEY_COUNT=' "$WRAPPER_LOG" | tail -1
 grep '^DRY_RUN_ENV_MUTATION_COUNT=' "$WRAPPER_LOG" | tail -1
 grep '^DRY_RUN_RESTART_COUNT=' "$WRAPPER_LOG" | tail -1
-rm -f "$WRAPPER_LOG"
+grep -q '^DRY_RUN_ENV_MUTATION_COUNT=0$' "$WRAPPER_LOG" && echo "PRODUCTION_ENV_MUTATION_MEASURED=NO" || fail_stop "ENV_MUTATION_NONZERO"
+grep -q '^DRY_RUN_RESTART_COUNT=0$' "$WRAPPER_LOG" && echo "PRODUCTION_RESTART_MEASURED=NO" || fail_stop "RESTART_NONZERO"
+grep -q '^EXPECTED_PROVIDER_CALL_DELTA=0$' "$WRAPPER_LOG" && echo "PROVIDER_CALL_DELTA_MEASURED=0" || fail_stop "PROVIDER_DELTA"
 echo "DRY_RUN_EXECUTED=YES"
 echo "DRY_RUN_FINAL_RESULT=PASS"
 
@@ -253,11 +275,13 @@ echo "POST_REPLICA_B_PID=${POST_REPLICA_B_PID}"
 [[ "$POST_REPLICA_A_PID" == "$PRE_REPLICA_A_PID" ]] && echo "REPLICA_A_PRE_POST_PARITY=YES" || fail_stop "PID_A_CHANGED"
 [[ "$POST_REPLICA_B_PID" == "$PRE_REPLICA_B_PID" ]] && echo "REPLICA_B_PRE_POST_PARITY=YES" || fail_stop "PID_B_CHANGED"
 
-parse_attestation 3001 A POST | tee /tmp/s4f7aa-post-a.$$
-parse_attestation 3002 B POST | tee /tmp/s4f7aa-post-b.$$
-POST_REPLICA_A_ATTESTATION_FINGERPRINT=$(grep POST_REPLICA_A_ATTESTATION_FINGERPRINT= /tmp/s4f7aa-post-a.$$ | cut -d= -f2)
-POST_REPLICA_B_ATTESTATION_FINGERPRINT=$(grep POST_REPLICA_B_ATTESTATION_FINGERPRINT= /tmp/s4f7aa-post-b.$$ | cut -d= -f2)
-rm -f /tmp/s4f7aa-post-a.$$ /tmp/s4f7aa-post-b.$$
+TMP_POST_A="/tmp/s4f7aa-post-a.$$"
+TMP_POST_B="/tmp/s4f7aa-post-b.$$"
+TMP_ARTIFACTS+=("$TMP_POST_A" "$TMP_POST_B")
+parse_attestation 3001 A POST | tee "$TMP_POST_A"
+parse_attestation 3002 B POST | tee "$TMP_POST_B"
+POST_REPLICA_A_ATTESTATION_FINGERPRINT=$(grep POST_REPLICA_A_ATTESTATION_FINGERPRINT= "$TMP_POST_A" | cut -d= -f2)
+POST_REPLICA_B_ATTESTATION_FINGERPRINT=$(grep POST_REPLICA_B_ATTESTATION_FINGERPRINT= "$TMP_POST_B" | cut -d= -f2)
 [[ "$POST_REPLICA_A_ATTESTATION_FINGERPRINT" == "$PRE_REPLICA_A_ATTESTATION_FINGERPRINT" && "$POST_REPLICA_B_ATTESTATION_FINGERPRINT" == "$PRE_REPLICA_B_ATTESTATION_FINGERPRINT" ]] && echo "ATTESTATION_PARITY=YES" || fail_stop "ATTESTATION_DRIFT"
 
 POST_PRODUCTION_SHA=$(git -C /opt/synqdrive/current rev-parse HEAD)
@@ -271,7 +295,18 @@ echo "PRODUCTION_ENV_UNCHANGED=YES"
 
 POST_GKS=$(sudo -n -u postgres psql -d synqdrive -Atqc "SELECT kill_state::text FROM di_v0_s4_control WHERE id='GLOBAL' LIMIT 1;")
 echo "POST_GLOBAL_KILL_STATE=${POST_GKS}"
-[[ "$POST_GKS" == "KILLED" ]] && echo "GLOBAL_KILL_STILL_KILLED=YES" || fail_stop "POST_GLOBAL"
+[[ "$POST_GKS" == "KILLED" && "$POST_GKS" == "$GLOBAL_KILL_STATE" ]] && echo "GLOBAL_KILL_STILL_KILLED=YES" || fail_stop "POST_GLOBAL"
+
+POST_S4_PIPELINE_ROWS=$(sudo -n -u postgres psql -d synqdrive -Atqc "SELECT count(*)::text FROM di_v0_s4_pipeline_versions;")
+POST_S4_WORK_ITEM_ROWS=$(sudo -n -u postgres psql -d synqdrive -Atqc "SELECT count(*)::text FROM di_v0_s4_work_items;")
+echo "POST_S4_PIPELINE_ROWS=${POST_S4_PIPELINE_ROWS}"
+echo "POST_S4_WORK_ITEM_ROWS=${POST_S4_WORK_ITEM_ROWS}"
+[[ "$POST_S4_PIPELINE_ROWS" == "$PRE_S4_PIPELINE_ROWS" && "$POST_S4_WORK_ITEM_ROWS" == "$PRE_S4_WORK_ITEM_ROWS" ]] || fail_stop "S4_PERSISTENCE_DRIFT"
+
+for flag in DI_V0_S4_MASTER_ENABLED DI_V0_S4_DISCOVERY_ENABLED DI_V0_S4_WORKER_ENABLED DI_V0_S4_POSITION_ENABLED DI_V0_S4_R1_ENABLED DI_V0_S4_NATIVE_ENABLED; do
+  if sudo -n grep -qE "^${flag}=(true|TRUE|1|ON)" /opt/synqdrive/shared/backend.env 2>/dev/null; then fail_stop "POST_S4_FLAG_ON"; fi
+done
+echo "POST_ALL_S4_FLAGS_OFF=YES"
 
 echo "PRODUCTION_ENV_MUTATION_OCCURRED=NO"
 echo "PRODUCTION_RESTART_OCCURRED=NO"
@@ -284,9 +319,12 @@ echo "EXP021_S4F7AA_FRESH_JIT_PRODUCTION_DRY_RUN_RESULT=PASS"
 EOS
 )
 
-chmod +x "${SCRIPT_DIR}/cloud-agent-s4f7aa-fresh-jit-production-dry-run.sh"
-
+set +e
 "${SSH_BASE[@]}" \
   "TOOL_AUTHORITY_SHA=${TOOL_SHA}" \
   "GIT_REMOTE_URL=${GIT_REMOTE_URL}" \
   sudo -n -E bash -s <<<"$REMOTE_SCRIPT"
+REMOTE_SSH_EXIT=$?
+set -e
+echo "REMOTE_SSH_EXIT_CODE=${REMOTE_SSH_EXIT}"
+[[ "$REMOTE_SSH_EXIT" == "0" ]] || exit "$REMOTE_SSH_EXIT"
