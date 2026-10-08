@@ -39,7 +39,7 @@ Simulated `lastAllowed` / `simulatedLastLv` resolve **only** within `activationE
 |--------|--------|
 | Frozen 5-vehicle / 57-success historical replay (9.2C) | **Preserved** — B2/B4 core parity tests unchanged |
 | Corrected execution (V2.1 bootstrap simulation) | **Repository unit + Postgres integration + synthetic timeline** in `p25-apd-shadow-execution-v2_1-bootstrap.spec.ts` |
-| Full empirical re-run against production DB from Cloud Agent | **Blocked without authorized read-only DB** in this workstream — do not fabricate counters |
+| Full empirical re-run against production DB (9.5C) | **PASS** — `synqdrive_apds_replay_ro` via peer `postgres` + `options=-c role=synqdrive_apds_replay_ro`; 9.2C exact replay `EXACT_REPLAY_CERTIFICATION=PASS`; V2.1 execution replay `PASS` (`_apd95c-v2_1-empirical-execution-replay-readonly.ts`) |
 
 ## Validation commands (engineering)
 
