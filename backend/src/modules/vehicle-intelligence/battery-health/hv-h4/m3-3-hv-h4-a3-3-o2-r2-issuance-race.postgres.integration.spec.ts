@@ -57,9 +57,13 @@ describe('M3.3-HV-H4-A3.3-O2-R2 isolated TS issuer concurrency', () => {
   it('B) revision UPDATE before issuance still allows valid issue', async () => {
     if (!prisma) return;
     const { revision } = await seedRevision();
+    const scientific = revision.scientificEvidenceJson as Record<string, unknown>;
     await prisma.batteryHvChargeSessionEvidenceRevision.update({
       where: { id: revision.id },
-      data: { qualityStatus: 'PRE_ISSUE' },
+      data: {
+        qualityStatus: 'PRE_ISSUE',
+        scientificEvidenceJson: { ...scientific, qualityStatus: 'PRE_ISSUE' },
+      },
     });
     await issueM3_3HvH4A3IntegrityAttestationIsolatedV1(prisma, {
       revisionId: revision.id,
