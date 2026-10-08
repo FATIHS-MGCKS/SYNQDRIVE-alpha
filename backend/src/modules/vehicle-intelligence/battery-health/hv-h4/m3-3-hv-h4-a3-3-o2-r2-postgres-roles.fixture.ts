@@ -82,7 +82,7 @@ export async function ensureM3_3HvH4A3O2R2PostgresRolesV1(prisma: PrismaClient):
   await prisma.$executeRawUnsafe(`GRANT UPDATE ON ${ACK_TABLE} TO ${M3_3_HV_H4_A3_O2_R2_RESTRICTED_APP_ROLE}`);
 
   await prisma.$executeRawUnsafe(
-    `GRANT SELECT ON ${REVISION_TABLE}, ${ACK_TABLE} TO ${M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE}`,
+    `GRANT SELECT ON ${REVISION_TABLE}, ${ACK_TABLE}, ${ATTESTATION_TABLE} TO ${M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE}`,
   );
   await prisma.$executeRawUnsafe(`GRANT INSERT ON ${ATTESTATION_TABLE} TO ${M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE}`);
   await prisma.$executeRawUnsafe(
