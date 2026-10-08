@@ -29,7 +29,7 @@ function isIntegrationHarnessCredentialBypassAllowedV1(
   const integrationUrl = env[M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_DATABASE_URL_ENV]?.trim();
   if (!integrationUrl) return false;
 
-  return phaseDatabaseUrl === integrationUrl || urlsRepresentSameTargetV1(phaseDatabaseUrl, integrationUrl);
+  return phaseDatabaseUrl === integrationUrl;
 }
 
 /**

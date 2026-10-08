@@ -9,6 +9,11 @@ import {
 describe('m3-3-hv-h4-a3-o2-r4-1 phase-a admission boundary', () => {
   const envBackup = { ...process.env };
 
+  beforeEach(() => {
+    delete process.env[M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_HARNESS_ACTIVE_ENV];
+    delete process.env[M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_DATABASE_URL_ENV];
+  });
+
   afterEach(() => {
     process.env = { ...envBackup };
   });
