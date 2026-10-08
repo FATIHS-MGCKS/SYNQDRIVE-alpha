@@ -5,7 +5,7 @@
 | **Sealed from** | VO-0A discovery audit |
 | **Repository anchor SHA** | `312d9f54a2b4c0b0740061d3e2b74897e78eacb0` |
 | **Authority status** | `AUDIT_IN_PROGRESS` — **not** `AUTHORITY_ACTIVE` |
-| **Last updated** | 2026-10-08 (VO5C-P2B2 legacy deregister client removed; P2B1 merged; tenant DELETE + prune **unchanged**) |
+| **Last updated** | 2026-10-08 (VO5C-P2B3 tenant/direct DELETE fail-closed; P2B1/P2B2 merged; prune **unchanged**) |
 
 ## Executive summary
 
@@ -32,6 +32,7 @@ SynqDrive today separates **provider mirrors** (`DimoVehicle`, `HighMobilityVehi
 - **VO5C-P2A (2026-10-08):** Connected Vehicles UI cutover to P1 offboard HTTP; lifecycle visibility + server `registryLifecycle` filter; **no** legacy backend route removal (see [VO5C_P2A_FRONTEND_CUTOVER.md](./evidence/VO5C_P2A_FRONTEND_CUTOVER.md)).
 - **VO5C-P2B1 (2026-10-08):** `POST admin/vehicles/:vehicleId/deregister` retired with **409** `LEGACY_VEHICLE_DESTRUCTION_DISABLED` + `MASTER_ADMIN` + `MASTER_INTEGRATIONS` MFA; `VehiclesService.deregister` fail-closed; tenant DELETE + prune **unchanged** (see [VO5C_P2B1_LEGACY_DEREGISTER_LOCKDOWN.md](./evidence/VO5C_P2B1_LEGACY_DEREGISTER_LOCKDOWN.md)).
 - **VO5C-P2B2 (2026-10-08):** Removed `api.vehicles.deregister` frontend client; repo scan proves no active runtime caller; canonical `api.vehicleOnboarding.offboardVehicle` unchanged; org-scoped `api.vehicles.delete` wrapper retained for P2B3 (see [VO5C_P2B2_LEGACY_FRONTEND_CLIENT_RETIREMENT.md](./evidence/VO5C_P2B2_LEGACY_FRONTEND_CLIENT_RETIREMENT.md)).
+- **VO5C-P2B3 (2026-10-08):** `DELETE organizations/.../vehicles/...` and `DELETE vehicles/:vehicleId` fail-closed **409**; `VehiclesService.delete` retired; guards unchanged; platform prune **unchanged** (see [VO5C_P2B3_VEHICLE_DELETE_LOCKDOWN.md](./evidence/VO5C_P2B3_VEHICLE_DELETE_LOCKDOWN.md)).
 
 ---
 

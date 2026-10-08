@@ -28,6 +28,7 @@ import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
 import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 import {
   LEGACY_VEHICLE_DESTRUCTION_DISABLED_CODE,
+  legacyVehicleDeleteDisabledException,
   legacyVehicleDestructionDisabledException,
 } from './legacy-vehicle-destruction.errors';
 import { PaginationParams } from '@shared/utils/pagination';
@@ -476,10 +477,16 @@ export class VehiclesController {
   @UseGuards(OrgScopingGuard, PermissionsGuard)
   @RequirePermission('fleet', 'manage')
   async deleteByOrg(
-    @Param('orgId') orgId: string,
+    @Param('orgId') _orgId: string,
     @Param('vehicleId') vehicleId: string,
   ) {
-    return this.vehiclesService.delete(vehicleId, orgId);
+    this.logger.warn({
+      msg: 'legacy_vehicle_delete_blocked',
+      code: LEGACY_VEHICLE_DESTRUCTION_DISABLED_CODE,
+      route: 'organizations/:orgId/vehicles/:vehicleId',
+      vehicleId,
+    });
+    throw legacyVehicleDeleteDisabledException();
   }
 
   @Post('admin/vehicles/:vehicleId/deregister')
@@ -527,12 +534,14 @@ export class VehiclesController {
 
   @Delete('vehicles/:vehicleId')
   @UseGuards(VehicleOwnershipGuard)
-  async delete(@Param('vehicleId') vehicleId: string, @Req() req: any) {
-    const orgId: string | undefined =
-      req?.user?.platformRole === 'MASTER_ADMIN'
-        ? undefined
-        : req?.user?.organizationId;
-    return this.vehiclesService.delete(vehicleId, orgId);
+  async delete(@Param('vehicleId') vehicleId: string, @Req() _req: any) {
+    this.logger.warn({
+      msg: 'legacy_vehicle_delete_blocked',
+      code: LEGACY_VEHICLE_DESTRUCTION_DISABLED_CODE,
+      route: 'vehicles/:vehicleId',
+      vehicleId,
+    });
+    throw legacyVehicleDeleteDisabledException();
   }
 
   // ── Exterior Images (Damage Map) ─────────────────────────────────
