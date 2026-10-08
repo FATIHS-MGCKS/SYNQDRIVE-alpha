@@ -4116,7 +4116,6 @@ export const api = {
         ),
     },
     registerFromDimo: (orgId: string, data: any) => post<any>(`/organizations/${orgId}/vehicles/register-from-dimo`, data),
-    deregister: (vehicleId: string) => post<{ success: boolean; deregisteredVehicle: any }>(`/admin/vehicles/${vehicleId}/deregister`, {}),
     updateOperationalStatus: (
       orgId: string,
       vehicleId: string,
