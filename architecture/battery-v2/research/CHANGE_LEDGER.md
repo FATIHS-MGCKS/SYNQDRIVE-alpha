@@ -6,6 +6,45 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R4.1-H2 admission boundary + merge gate
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Runner/CLI shared admission (app + issuer URL isolation); remove remote allowlist; strict read-only SQLSTATE 25006; migration SELECT denial integration fixture; integration harness env |
+| **WHY** | Direct runner invocation bypassed credential isolation; loopback allowlists weakened isolated-test policy |
+| **VALIDATION** | admission/runner/isolated-target unit specs; HV-H4 postgres integration job |
+| **OBSERVED_EFFECT** | `PHASE_A_CANNOT_REUSE_DATABASE_URL` at runner boundary; harness bypass test-only; migration-denial fixture teardown revokes role grants before `DROP ROLE` (HV-H4 postgres integration green on `eebd50cbf`) |
+| **NON_EFFECTS** | No R4.2 production authorization |
+| **REMAINING_GAPS** | O2-R4.2 production read-only gate |
+| **DECISION_STATUS** | VALIDATED (repository / isolated fixture) |
+| **EVIDENCE** | `M3_3_HV_H4_A3_3_O2_R4_1_PHASE_A_EXECUTABLE_PREFLIGHT_2026-10-08.md` §4.2 |
+
+## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R4.1-H1 security + integration test hardening
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Sanitized stable error codes; isolated-target approval policy (loopback-only fail-closed); runner entry guard; mandatory integration DB env (no silent skips); transaction abort guard; regproc function identity checks; securityCertification=NOT_CERTIFIED |
+| **WHY** | Raw Prisma/URL leakage and hostname blocklists are insufficient; aborted transactions must not continue; integration evidence must fail closed |
+| **VALIDATION** | R4.1 unit + postgres integration specs; HV-H4 CI postgres job |
+| **OBSERVED_EFFECT** | `PHASE_A_INTEGRATION_DATABASE_URL_REQUIRED` when misconfigured; read-only probe records SQLSTATE when present |
+| **NON_EFFECTS** | No production authorization (R4.2); no role provisioning |
+| **REMAINING_GAPS** | O2-R4.2 authorized production read-only execution gate |
+| **DECISION_STATUS** | VALIDATED (repository / isolated fixture) |
+| **EVIDENCE** | `M3_3_HV_H4_A3_3_O2_R4_1_PHASE_A_EXECUTABLE_PREFLIGHT_2026-10-08.md` § H1 |
+
+## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R4.1 executable Phase-A read-only preflight
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Standalone Phase-A runner + ops CLI; approved SELECT manifest; dedicated env URL (`M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_*`); READ ONLY transaction; classified statuses; JSON report + redaction; unit + isolated postgres tests |
+| **WHY** | O2-R3 spec defined phases but had no fail-closed executable discovery path; implicit `DATABASE_URL` reuse would break separate-process credential isolation |
+| **VALIDATION** | `test:battery:v2:hv-h4` + `test:battery:v2:hv-h4:postgres`; manifest/read-only/config specs |
+| **OBSERVED_EFFECT** | `A3_ATTESTATION_PHASE_A_EXECUTABLE_PREFLIGHT_RUNNER_PRESENT=true`; default execution OFF; `phaseBCertified` always false |
+| **NON_EFFECTS** | No production DB/SSH/deploy; no role DDL; no Nest issuer registration; no Phase B certification |
+| **REMAINING_GAPS** | O2-R4.2 human approval + authorized production read-only run; provisioning + Phase B certification separate |
+| **DECISION_STATUS** | VALIDATED (repository / isolated fixture) |
+| **EVIDENCE** | `M3_3_HV_H4_A3_3_O2_R4_1_PHASE_A_EXECUTABLE_PREFLIGHT_2026-10-08.md` |
+
 ## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R3-H1 admission boundary + preflight phase closure
 
 | Field | Value |

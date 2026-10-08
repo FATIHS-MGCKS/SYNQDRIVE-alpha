@@ -73,7 +73,7 @@ Full TS verifier equivalence in SQL would require ECMAScript-identical finite-nu
 
 ## Next slice
 
-**O2-R3** — **COMPLETE (architecture, 2026-10-08)** — separate trusted issuer process model, admission authority, inert factory, read-only preflight spec; see `M3_3_HV_H4_A3_3_O2_R3_ISSUER_RUNTIME_TOPOLOGY_PREFLIGHT_2026-10-08.md`. **Next: O2-R4** — authorized production preflight execution + role provisioning runbook (no issuance activation).
+**O2-R3** — **COMPLETE (architecture, 2026-10-08)** — separate trusted issuer process model, admission authority, inert factory, read-only preflight spec; see `M3_3_HV_H4_A3_3_O2_R3_ISSUER_RUNTIME_TOPOLOGY_PREFLIGHT_2026-10-08.md`. **O2-R4.1** — **COMPLETE (repository runner, 2026-10-08)** — executable Phase-A read-only preflight (isolated tests only); see `M3_3_HV_H4_A3_3_O2_R4_1_PHASE_A_EXECUTABLE_PREFLIGHT_2026-10-08.md`. **Next: O2-R4.2** — human approval gate + authorized production read-only Phase A (no provisioning / no issuance activation).
 
 ## Safety
 

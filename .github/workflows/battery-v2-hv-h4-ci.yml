@@ -8,6 +8,7 @@ on:
       - 'backend/src/config/battery-v2-retention.config.ts'
       - 'backend/scripts/ops/battery-hv-h4-coverage-report.ts'
       - 'backend/scripts/ops/battery-hv-h4-charge-throughput-report.ts'
+      - 'backend/scripts/ops/m3-3-hv-h4-a3-o2-r4-1-phase-a-preflight.ts'
       - 'backend/scripts/test/battery-hv-h4-coverage-report-postgres-ci.sh'
       - 'architecture/battery-v2/scripts/validate-h4-exposure-coverage-contracts.sh'
       - 'architecture/battery-v2/CURRENT_STATE.md'
@@ -94,3 +95,6 @@ jobs:
         working-directory: backend
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
+          M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_DATABASE_URL: ${{ env.DATABASE_URL }}
+          M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_ISOLATED_TARGET_APPROVED: '1'
+          M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_HARNESS_ACTIVE: '1'

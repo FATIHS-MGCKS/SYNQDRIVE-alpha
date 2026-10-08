@@ -82,6 +82,9 @@ export const A3_ATTESTATION_FUTURE_ADMISSION_AUTHORITY_CONTRACT_DEFINED = true a
 export const A3_ATTESTATION_ISSUER_FACTORY_EXPECTED_DB_LOGIN_REQUIRED = true as const;
 export const A3_ATTESTATION_PRE_PROVISION_PREFLIGHT_PHASE_DEFINED = true as const;
 export const A3_ATTESTATION_POST_PROVISION_CERTIFICATION_PHASE_DEFINED = true as const;
+/** O2-R4.1: executable Phase-A read-only preflight runner + CLI (isolated DB tests only; default OFF). */
+export const A3_ATTESTATION_PHASE_A_EXECUTABLE_PREFLIGHT_RUNNER_PRESENT = true as const;
+export const A3_ATTESTATION_PHASE_A_EXECUTABLE_PREFLIGHT_PRODUCTION_CERTIFIED = false as const;
 /** O2-R2-H1: SELECT-only issuer uses SECURITY DEFINER row-lock function (repository prototype). */
 export const A3_ATTESTATION_ISSUER_LOCK_AUTHORITY_SECURITY_DEFINER_V1 = true as const;
 /** Set false until production DB role topology + SQL/TS parity are production-certified. */
