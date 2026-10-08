@@ -1545,6 +1545,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | **`EXACT_HEAD_CI_CERTIFIED=YES`** @ `715dea5648ebb862eeedfc30e7dc3d3cd57bb02c` — Vehicle/Legal CI reruns **success** (attempt 2); **`TOOL_BLOB_PARITY=PASS`** vs squash `123ec54e7…` + `main`; **`EXPECTED_FRESH_TINY_STAGING_TOOL_SHA` sealed** @ `715dea564…`; superseded S4F-7W checkout pin `11b4a80cc…` for post–S4F-7Y tooling |
 | NON_EFFECTS | No Production access/mutation; no new JIT authority; S4F-7X dry-run evidence unchanged; Gate 6 **NOT_SATISFIED** |
 
+### EXP-021 S4F-7AA fresh JIT Production dry-run (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Bootstrap `.cursor/scripts/cloud-agent-s4f7aa-fresh-jit-production-dry-run.sh`; evidence `EXP021_S4F7AA_FRESH_JIT_PRODUCTION_DRY_RUN.md` |
+| FINDING | **`FINAL_RESULT=PASS`** — tool `715dea564…`; Production `DRY_RUN=1` full guard path; JIT `2026-10-08T09:00:32.909Z` age **20.296s**; PRE/POST SHA/env/PID/attestation parity; **`NO_BACKFILL_GATE=PASS`** |
+| NON_EFFECTS | No `DI_S4F7Y_LIVE_STAGING_AUTHORIZED`; no env write/restart/DB write/provider calls; Gate 6 **NOT_SATISFIED** |
+
 ### EXP-021 S4F-7T current Production attestation supersession closure (2026-10-06)
 
 | Event | Detail |
