@@ -170,14 +170,18 @@ export async function createRestrictedAppRoleScopedPostgresClientV1(): Promise<P
   return createRestrictedAppLoginPostgresClientV1();
 }
 
-/** Trusted issuer DB identity via dedicated CI login (no dynamic SET ROLE in issuer code). */
+/**
+ * Trusted issuer DB session for CI (harness SET ROLE on a single-connection pool).
+ * Issuer application code does not call SET ROLE — only this fixture may.
+ */
 export async function createIssuerLoginPostgresClientV1(): Promise<PrismaClient | undefined> {
-  const loginUrl = buildLoginDatabaseUrlV1(M3_3_HV_H4_A3_O2_R2_ISSUER_LOGIN_ROLE, ISSUER_LOGIN_PASSWORD);
-  if (!loginUrl) return undefined;
+  const base = process.env.DATABASE_URL;
+  if (!base) return undefined;
   const client = new PrismaClient({
-    datasources: { db: { url: withPrismaSingleConnectionUrlV1(loginUrl) } },
+    datasources: { db: { url: withPrismaSingleConnectionUrlV1(base) } },
   });
   await client.$connect();
+  await client.$executeRawUnsafe(`SET ROLE ${M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE}`);
   return client;
 }
 
