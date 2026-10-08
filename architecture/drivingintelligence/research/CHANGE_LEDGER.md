@@ -1714,6 +1714,13 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | `PRODUCTION_DRIFT_CAUSE=APDS_P25_SHADOW_ENABLE_20261008T201328Z` — pre-backup SHA matches S4F-7AJ POST; `WORKER_APD_SHADOW_ENABLED` value change; PM2 recreate @ 20:13:28Z |
 | NON_EFFECTS | No live dispatch execution; S4F-7AI bootstrap remains DRY_RUN=1-only |
 
+### EXP-021 S4F-7AK.2 dispatch documentation consistency (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | PR #1939 — align S4F-7AK / CURRENT_STATE / CHANGE_LEDGER: S4F-7AI = Production **`DRY_RUN=1` only**; live = detached `ed78748bc…` S4F-7Y operator (not S4F-7AI) |
+| NON_EFFECTS | No operator code change; no Production execution |
+
 ### EXP-021 S4F-7AI.1 bootstrap safety closure (2026-10-08)
 
 | Event | Detail |
