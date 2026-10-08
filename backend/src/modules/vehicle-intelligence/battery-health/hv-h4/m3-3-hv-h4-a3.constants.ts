@@ -73,6 +73,15 @@ export const A3_ATTESTATION_ISSUER_PROCESS_ISOLATION_ARCHITECTURE_PRESENT = true
 export const A3_ATTESTATION_ISSUER_INERT_FACTORY_PROTOTYPE_PRESENT = true as const;
 export const A3_ATTESTATION_ISSUER_ADMISSION_AUTHORITY_PRESENT = true as const;
 export const A3_ATTESTATION_PRODUCTION_ROLE_PREFLIGHT_SPEC_PRESENT = true as const;
+/** O2-R3-H1: tenant scope gate only — not authenticated workflow admission. */
+export const A3_ATTESTATION_REVISION_TENANT_SCOPE_MATCH_VERIFIED_BY_ISSUER = true as const;
+export const A3_ATTESTATION_REQUESTED_BY_AUTHENTICATED = false as const;
+export const A3_ATTESTATION_INTERNAL_WORKFLOW_ORIGIN_AUTHORIZED = false as const;
+export const A3_ATTESTATION_PRODUCTION_ADMISSION_AUTHORITY_COMPLETE = false as const;
+export const A3_ATTESTATION_FUTURE_ADMISSION_AUTHORITY_CONTRACT_DEFINED = true as const;
+export const A3_ATTESTATION_ISSUER_FACTORY_EXPECTED_DB_LOGIN_REQUIRED = true as const;
+export const A3_ATTESTATION_PRE_PROVISION_PREFLIGHT_PHASE_DEFINED = true as const;
+export const A3_ATTESTATION_POST_PROVISION_CERTIFICATION_PHASE_DEFINED = true as const;
 /** O2-R2-H1: SELECT-only issuer uses SECURITY DEFINER row-lock function (repository prototype). */
 export const A3_ATTESTATION_ISSUER_LOCK_AUTHORITY_SECURITY_DEFINER_V1 = true as const;
 /** Set false until production DB role topology + SQL/TS parity are production-certified. */

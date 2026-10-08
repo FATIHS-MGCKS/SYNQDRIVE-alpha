@@ -57,10 +57,11 @@ export function assertM3_3HvH4A3IssuerAdmissionRequestWellFormedV1(
 }
 
 /**
- * Admitted issuance entry — resolves revision, verifies tenant/vehicle scope, then runs isolated issuer steps.
- * Intended for a separate trusted worker process only (not Nest API handlers).
+ * Tenant/revision scope gate only — NOT authenticated internal admission.
+ * Resolves revision, verifies org/vehicle/revision alignment, then runs isolated issuer steps.
+ * Future workload authorization is defined separately (O2-R3-H1 contract).
  */
-export async function issueM3_3HvH4A3IntegrityAttestationWithAdmissionV1(
+export async function issueM3_3HvH4A3IntegrityAttestationWithTenantScopeGateV1(
   issuerDb: M3_3HvH4A3IntegrityAttestationIssuerDbV1,
   request: M3_3HvH4A3IssuerAdmissionRequestV1,
   issueInput?: Pick<M3_3HvH4A3IssueIntegrityAttestationIsolatedInputV1, 'attestedAt'>,
@@ -83,3 +84,7 @@ export async function issueM3_3HvH4A3IntegrityAttestationWithAdmissionV1(
     });
   });
 }
+
+/** @deprecated Use `issueM3_3HvH4A3IntegrityAttestationWithTenantScopeGateV1` — name retained for R3 slice only. */
+export const issueM3_3HvH4A3IntegrityAttestationWithAdmissionV1 =
+  issueM3_3HvH4A3IntegrityAttestationWithTenantScopeGateV1;

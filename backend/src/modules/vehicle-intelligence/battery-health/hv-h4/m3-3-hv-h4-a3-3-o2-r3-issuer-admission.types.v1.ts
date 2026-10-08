@@ -1,13 +1,17 @@
 /**
- * Internal admission contract for trusted attestation issuance (no public HTTP surface).
+ * Tenant/revision scope gate request (not authenticated admission).
  * Callers must not be trusted for tenant identity — the issuer resolves the revision and verifies scope.
  */
 export type M3_3HvH4A3IssuerAdmissionRequestV1 = {
   organizationId: string;
   vehicleId: string;
   revisionId: string;
-  /** Trusted workflow identity (e.g. reconciliation job name + deployment id), not an end-user id alone. */
+  /**
+   * Audit metadata only (e.g. workflow name). NOT authenticated workflow identity.
+   * See `M3_3HvH4A3FutureInternalAdmissionAuthorityRequestV1` for future authorization contract.
+   */
   requestedBy: string;
+  /** Audit-only correlation id — not authorization proof. */
   correlationId: string;
 };
 

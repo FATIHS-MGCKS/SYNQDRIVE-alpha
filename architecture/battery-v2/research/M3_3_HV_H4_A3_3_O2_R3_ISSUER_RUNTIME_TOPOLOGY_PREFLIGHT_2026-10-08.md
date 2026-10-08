@@ -11,9 +11,9 @@
 |-------|--------|
 | `RECOMMENDED_ISSUER_PROCESS_MODEL` | **SEPARATE_TRUSTED_ISSUER_PROCESS** |
 | `SAME_PROCESS_TWO_POOLS_ACCEPTABLE` | **NO** (credential isolation; not a trust boundary) |
-| `INTERNAL_ADMISSION_AUTHORITY_DESIGNED` | **YES** |
+| `INTERNAL_ADMISSION_AUTHORITY_DESIGNED` | **PARTIAL (R3-H1)** — future contract only; not active |
 | `TENANT_SCOPE_VERIFIED_BY_ISSUER` | **YES** (revision row authoritative) |
-| `PRODUCTION_ROLE_PREFLIGHT_DEFINED` | **YES** (`architecture/battery-v2/scripts/m3-3-hv-h4-a3-o2-r3-production-role-preflight.spec.json`) |
+| `PRODUCTION_ROLE_PREFLIGHT_DEFINED` | **YES** — Phase A/B V2 (`m3-3-hv-h4-a3-o2-r3-production-role-preflight.spec.json`) |
 | `PRODUCTION_ROLE_PREFLIGHT_EXECUTED` | **NO** |
 | `PRODUCTION_ROLE_TOPOLOGY_PROVEN` | **NO** |
 | `ISOLATED_ISSUER_FACTORY_IMPLEMENTED` | **YES (inert prototype)** |
@@ -140,9 +140,26 @@ Machine-readable spec:
 | `A3_HYBRID_DURABLE_LOADER_RUNTIME_REACHABLE` | **false** |
 | `A3_ATTESTATION_BOOTSTRAP_RUNTIME_REACHABLE` | **false** |
 
-## 10. Next slice
+## 10. O2-R3-H1 — admission boundary + preflight phase closure (2026-10-08)
 
-**O2-R4 (recommended):** Authorized read-only production preflight execution + role provisioning runbook (still no issuance activation) **or** writer integration design gated on `PRODUCTION_ROLE_TOPOLOGY_PROVEN=YES`.
+| Field | Value |
+|-------|--------|
+| `REVISION_TENANT_SCOPE_MATCH_VERIFIED` | **YES** (`issueM3_3HvH4A3IntegrityAttestationWithTenantScopeGateV1`) |
+| `REQUESTED_BY_AUTHENTICATED` | **NO** (`requestedBy` is audit metadata only) |
+| `INTERNAL_WORKFLOW_ORIGIN_AUTHORIZED` | **NO** (no allowlisted workload gate active) |
+| `PRODUCTION_ADMISSION_AUTHORITY_COMPLETE` | **NO** |
+| `FUTURE_ADMISSION_AUTHORITY_CONTRACT_DEFINED` | **YES** (`m3-3-hv-h4-a3-3-o2-r3-h1-future-admission-authority.contract.v1.ts`) |
+| `FACTORY_EXPECTED_DB_LOGIN_REQUIRED` | **YES** |
+| `PRE_PROVISION_PREFLIGHT_DEFINED` | **YES** (Phase A) |
+| `POST_PROVISION_CERTIFICATION_DEFINED` | **YES** (Phase B) |
+| `EFFECTIVE_PRIVILEGES_CHECKED` | **YES** (spec uses `has_table_privilege` / `has_function_privilege` / `pg_has_role`) |
+| `MIGRATION_OWNER_LOGIN_REQUIRED` | **NO** |
+
+**pgcrypto + migration order:** documented in preflight spec `migrationOrder` — R1 `CREATE EXTENSION IF NOT EXISTS pgcrypto` remains a deployment prerequisite; extension owner and migration-owner capability are **production-unverified** until Phase A/B execution.
+
+## 11. Next slice
+
+**O2-R4 (recommended):** Authorized read-only production preflight execution + role provisioning runbook (still no issuance activation).
 
 ## Safety
 

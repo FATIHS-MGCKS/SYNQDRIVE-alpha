@@ -1,108 +1,178 @@
 {
-  "specVersion": "M3_3_HV_H4_A3_3_O2_R3_PRODUCTION_ROLE_PREFLIGHT_V1",
+  "specVersion": "M3_3_HV_H4_A3_3_O2_R3_H1_PRODUCTION_ROLE_PREFLIGHT_V2",
   "executionPolicy": {
     "readOnly": true,
     "mutationsForbidden": true,
     "credentialOutputForbidden": true,
-    "productionExecutionInR3": false
+    "productionExecutionAllowed": false,
+    "productionExecutionInR3H1": false
+  },
+  "parameterBinding": {
+    "style": "NAMED_PLACEHOLDER",
+    "placeholderPrefix": ":",
+    "placeholders": [
+      "migration_owner",
+      "general_app_runtime",
+      "trusted_attestation_issuer",
+      "attestation_table",
+      "revision_table",
+      "ack_table",
+      "lock_function"
+    ],
+    "prohibitUnsafeStringInterpolation": true,
+    "bindingRule": "Bind placeholders only via prepared parameters or driver-native named binding — never concatenate untrusted strings into SQL."
   },
   "productionRoleNames": {
     "migrationOwner": "MIGRATION_OWNER",
     "generalAppRuntime": "GENERAL_APP_RUNTIME",
     "trustedAttestationIssuer": "TRUSTED_ATTESTATION_ISSUER"
   },
-  "ciFixtureRoleMapping": {
-    "generalAppRuntime": "m3_3_hv_h4_a3_r2_app_restricted",
-    "trustedAttestationIssuer": "m3_3_hv_h4_a3_r2_attestation_issuer",
-    "note": "CI login roles prove separation in PostgreSQL integration tests only — not production names."
+  "objectNames": {
+    "attestationTable": "public.battery_hv_charge_session_evidence_integrity_attestations",
+    "revisionTable": "public.battery_hv_charge_session_evidence_revisions",
+    "ackTable": "public.battery_hv_charge_session_evidence_acks",
+    "lockFunction": "public.m3_3_hv_h4_a3_lock_revision_and_ack_for_issuance_v1(text)"
   },
-  "checks": [
-    {
-      "id": "PREFLIGHT_SESSION_IDENTITY",
-      "description": "Record session_user and current_user (no passwords).",
-      "sql": "SELECT session_user::text AS session_user, current_user::text AS current_user;",
-      "expect": { "sessionUserNonEmpty": true, "currentUserNonEmpty": true }
-    },
-    {
-      "id": "PREFLIGHT_RUNTIME_ROLES_EXIST",
-      "description": "Verify intended production runtime roles exist.",
-      "sql": "SELECT rolname, rolcanlogin, rolsuper, rolcreaterole, rolcreatedb FROM pg_roles WHERE rolname IN (:migration_owner, :general_app_runtime, :trusted_attestation_issuer) ORDER BY rolname;",
-      "expect": { "rowCount": 3, "allLoginCapable": true, "noneSuperuser": true }
-    },
-    {
-      "id": "PREFLIGHT_ROLE_MEMBERSHIP_BOUNDARY",
-      "description": "App runtime must not inherit issuer role; issuer must not inherit app runtime.",
-      "sql": "SELECT r.rolname AS member, m.rolname AS granted_role FROM pg_auth_members am JOIN pg_roles r ON r.oid = am.member JOIN pg_roles m ON m.oid = am.roleid WHERE r.rolname IN (:general_app_runtime, :trusted_attestation_issuer) ORDER BY 1, 2;",
-      "expect": {
-        "forbiddenPairs": [
-          { "member": "GENERAL_APP_RUNTIME", "grantedRole": "TRUSTED_ATTESTATION_ISSUER" }
-        ]
+  "migrationOrder": {
+    "prerequisiteExtensions": ["pgcrypto"],
+    "requiredMigrations": [
+      "battery_hv_h4_a3_integrity_attestation_r1",
+      "battery_hv_h4_a3_integrity_attestation_r2",
+      "battery_hv_h4_a3_integrity_attestation_r2_h1_lock_authority"
+    ],
+    "recommendedSequence": [
+      "1. Record Phase A baseline (identities, ownership, pgcrypto, migration state).",
+      "2. Provision MIGRATION_OWNER (may be NOLOGIN) and run Prisma migrations as that owner.",
+      "3. CREATE EXTENSION pgcrypto if absent (requires migration-owner privilege).",
+      "4. Create GENERAL_APP_RUNTIME and TRUSTED_ATTESTATION_ISSUER roles + grants (no PUBLIC bypass).",
+      "5. Execute Phase B certification against effective privileges (has_* / pg_has_role).",
+      "6. Only then consider issuer process credential injection (separate env)."
+    ],
+    "notes": [
+      "R1 migration issues CREATE EXTENSION IF NOT EXISTS pgcrypto — extension owner and migration-owner capability remain production-unverified until Phase A/B executed.",
+      "Do not treat missing future issuer roles as success in Phase A — record NOT_PROVISIONED."
+    ]
+  },
+  "phaseA": {
+    "id": "PRE_PROVISION_READ_ONLY",
+    "description": "Discover existing production facts before role provisioning. Missing future roles are NOT_PROVISIONED, not failures.",
+    "checks": [
+      {
+        "id": "PHASE_A_SESSION_CONTEXT",
+        "sql": "SELECT session_user::text AS session_user, current_user::text AS current_user;",
+        "expect": { "recordSessionIdentity": true, "credentialOutputForbidden": true }
+      },
+      {
+        "id": "PHASE_A_PGCRYPTO_STATUS",
+        "sql": "SELECT extname::text AS extname, extversion::text AS extversion, pg_get_userbyid(e.extowner)::text AS extension_owner FROM pg_extension e WHERE extname = 'pgcrypto';",
+        "expect": {
+          "allowedStates": ["INSTALLED", "NOT_INSTALLED"],
+          "ifNotInstalled": { "record": "PGCRYPTO_NOT_INSTALLED", "blockPhaseB": true }
+        }
+      },
+      {
+        "id": "PHASE_A_ROLE_DISCOVERY",
+        "sql": "SELECT expected.rolname, r.rolcanlogin, r.rolsuper, r.rolcreaterole, (r.oid IS NOT NULL) AS role_exists FROM (VALUES (:migration_owner::text), (:general_app_runtime::text), (:trusted_attestation_issuer::text)) AS expected(rolname) LEFT JOIN pg_roles r ON r.rolname = expected.rolname ORDER BY expected.rolname;",
+        "expect": {
+          "missingRoleState": "NOT_PROVISIONED",
+          "doNotTreatMissingAsSuccess": true,
+          "migrationOwnerLoginRequired": false
+        }
+      },
+      {
+        "id": "PHASE_A_MIGRATION_HISTORY",
+        "sql": "SELECT migration_name, finished_at IS NOT NULL AS applied FROM _prisma_migrations WHERE migration_name LIKE '%battery_hv_h4_a3_integrity_attestation%' ORDER BY migration_name;",
+        "expect": { "recordAppliedAndPending": true }
+      },
+      {
+        "id": "PHASE_A_TABLE_OWNERSHIP_SNAPSHOT",
+        "sql": "SELECT c.relname::text AS table_name, pg_get_userbyid(c.relowner)::text AS owner FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname IN ('battery_hv_charge_session_evidence_integrity_attestations', 'battery_hv_charge_session_evidence_revisions', 'battery_hv_charge_session_evidence_acks') AND c.relkind = 'r' ORDER BY 1;",
+        "expect": { "recordOwners": true }
+      },
+      {
+        "id": "PHASE_A_FUNCTION_OWNERSHIP_SNAPSHOT",
+        "sql": "SELECT p.proname::text AS function_name, pg_get_userbyid(p.proowner)::text AS owner FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'public' AND p.proname IN ('m3_3_hv_h4_a3_lock_revision_and_ack_for_issuance_v1', 'm3_3_hv_h4_a3_invalidate_attestations_for_revision_v1', 'm3_3_hv_h4_a3_invalidate_attestations_for_ack_v1') ORDER BY 1;",
+        "expect": { "recordOwners": true }
+      },
+      {
+        "id": "PHASE_A_EFFECTIVE_PRIVILEGES_IF_ROLES_EXIST",
+        "sql": "SELECT :general_app_runtime::text AS role_name, has_table_privilege(:general_app_runtime, :attestation_table, 'INSERT') AS app_insert_attestation, has_table_privilege(:general_app_runtime, :attestation_table, 'UPDATE') AS app_update_attestation, has_table_privilege(:general_app_runtime, :attestation_table, 'DELETE') AS app_delete_attestation, has_function_privilege(:general_app_runtime, :lock_function, 'EXECUTE') AS app_execute_lock WHERE EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :general_app_runtime);",
+        "expect": { "skipWhenRoleMissing": true, "recordEffectivePrivileges": true }
       }
-    },
-    {
-      "id": "PREFLIGHT_ATTESTATION_TABLE_PRIVILEGES",
-      "description": "Issuer INSERT+SELECT; app denied INSERT/UPDATE/DELETE on attestations.",
-      "sql": "SELECT grantee::text, privilege_type FROM information_schema.role_table_grants WHERE table_schema = 'public' AND table_name = 'battery_hv_charge_session_evidence_integrity_attestations' AND grantee IN (:general_app_runtime, :trusted_attestation_issuer) ORDER BY grantee, privilege_type;",
-      "expect": {
-        "issuerPrivilegesInclude": ["INSERT", "SELECT"],
-        "issuerPrivilegesExclude": ["UPDATE", "DELETE"],
-        "appPrivilegesExclude": ["INSERT", "UPDATE", "DELETE"]
+    ]
+  },
+  "phaseB": {
+    "id": "POST_PROVISION_CERTIFICATION",
+    "description": "Certify provisioned roles, effective privileges, ownership, and migration state. Fails when required roles missing.",
+    "prerequisites": ["phaseAComplete", "rolesProvisioned", "attestationMigrationsApplied"],
+    "checks": [
+      {
+        "id": "PHASE_B_RUNTIME_ROLES_EXIST",
+        "sql": "SELECT expected.rolname, r.rolcanlogin, r.rolsuper, (r.oid IS NOT NULL) AS role_exists FROM (VALUES (:general_app_runtime::text), (:trusted_attestation_issuer::text)) AS expected(rolname) LEFT JOIN pg_roles r ON r.rolname = expected.rolname ORDER BY expected.rolname;",
+        "expect": { "allRolesMustExist": true, "noneSuperuser": true }
+      },
+      {
+        "id": "PHASE_B_MIGRATION_OWNER_EXISTS",
+        "sql": "SELECT rolname, rolcanlogin, rolsuper FROM pg_roles WHERE rolname = :migration_owner;",
+        "expect": { "roleMustExist": true, "loginRequired": false }
+      },
+      {
+        "id": "PHASE_B_EFFECTIVE_APP_ATTESTATION_DENY",
+        "sql": "SELECT has_table_privilege(:general_app_runtime, :attestation_table, 'INSERT') AS app_insert, has_table_privilege(:general_app_runtime, :attestation_table, 'UPDATE') AS app_update, has_table_privilege(:general_app_runtime, :attestation_table, 'DELETE') AS app_delete;",
+        "expect": { "app_insert": false, "app_update": false, "app_delete": false }
+      },
+      {
+        "id": "PHASE_B_EFFECTIVE_ISSUER_ATTESTATION_INSERT",
+        "sql": "SELECT has_table_privilege(:trusted_attestation_issuer, :attestation_table, 'INSERT') AS issuer_insert, has_table_privilege(:trusted_attestation_issuer, :attestation_table, 'SELECT') AS issuer_select;",
+        "expect": { "issuer_insert": true, "issuer_select": true }
+      },
+      {
+        "id": "PHASE_B_EFFECTIVE_REVISION_ACK_BOUNDARY",
+        "sql": "SELECT has_table_privilege(:general_app_runtime, :revision_table, 'UPDATE') AS app_update_revision, has_table_privilege(:trusted_attestation_issuer, :revision_table, 'UPDATE') AS issuer_update_revision, has_table_privilege(:trusted_attestation_issuer, :revision_table, 'SELECT') AS issuer_select_revision, has_table_privilege(:general_app_runtime, :ack_table, 'UPDATE') AS app_update_ack, has_table_privilege(:trusted_attestation_issuer, :ack_table, 'UPDATE') AS issuer_update_ack;",
+        "expect": {
+          "app_update_revision": true,
+          "issuer_update_revision": false,
+          "issuer_select_revision": true,
+          "app_update_ack": true,
+          "issuer_update_ack": false
+        }
+      },
+      {
+        "id": "PHASE_B_LOCK_FUNCTION_EXECUTE_BOUNDARY",
+        "sql": "SELECT has_function_privilege(:trusted_attestation_issuer, :lock_function, 'EXECUTE') AS issuer_execute_lock, has_function_privilege(:general_app_runtime, :lock_function, 'EXECUTE') AS app_execute_lock;",
+        "expect": { "issuer_execute_lock": true, "app_execute_lock": false }
+      },
+      {
+        "id": "PHASE_B_ROLE_INHERITANCE_BOUNDARY",
+        "sql": "SELECT pg_has_role(:general_app_runtime, :trusted_attestation_issuer, 'member') AS app_member_of_issuer, pg_has_role(:trusted_attestation_issuer, :general_app_runtime, 'member') AS issuer_member_of_app;",
+        "expect": { "app_member_of_issuer": false, "issuer_member_of_app": false }
+      },
+      {
+        "id": "PHASE_B_SCHEMA_CREATE_DENIED",
+        "sql": "SELECT has_schema_privilege(:general_app_runtime, 'public', 'CREATE') AS app_create, has_schema_privilege(:trusted_attestation_issuer, 'public', 'CREATE') AS issuer_create;",
+        "expect": { "app_create": false, "issuer_create": false }
+      },
+      {
+        "id": "PHASE_B_TRUSTED_OBJECT_OWNERSHIP",
+        "sql": "SELECT 'table' AS kind, c.relname::text AS name, pg_get_userbyid(c.relowner)::text AS owner FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname IN ('battery_hv_charge_session_evidence_integrity_attestations', 'battery_hv_charge_session_evidence_revisions', 'battery_hv_charge_session_evidence_acks') UNION ALL SELECT 'function', p.proname::text, pg_get_userbyid(p.proowner)::text FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'public' AND p.proname IN ('m3_3_hv_h4_a3_lock_revision_and_ack_for_issuance_v1', 'm3_3_hv_h4_a3_invalidate_attestations_for_revision_v1', 'm3_3_hv_h4_a3_invalidate_attestations_for_ack_v1') ORDER BY kind, name;",
+        "expect": { "allOwnersEqual": ":migration_owner", "runtimeRolesMustNotOwnTrustedObjects": true }
+      },
+      {
+        "id": "PHASE_B_MIGRATIONS_APPLIED",
+        "sql": "SELECT migration_name FROM _prisma_migrations WHERE finished_at IS NOT NULL AND migration_name LIKE '%battery_hv_h4_a3_integrity_attestation%' ORDER BY migration_name;",
+        "expect": {
+          "requiredSubstrings": [
+            "battery_hv_h4_a3_integrity_attestation_r1",
+            "battery_hv_h4_a3_integrity_attestation_r2",
+            "battery_hv_h4_a3_integrity_attestation_r2_h1_lock_authority"
+          ]
+        }
+      },
+      {
+        "id": "PHASE_B_PGCRYPTO_INSTALLED",
+        "sql": "SELECT extname::text FROM pg_extension WHERE extname = 'pgcrypto';",
+        "expect": { "rowCount": 1 }
       }
-    },
-    {
-      "id": "PREFLIGHT_REVISION_ACK_PRIVILEGES",
-      "description": "App may UPDATE revision/ACK; issuer SELECT-only on revision/ACK (no direct UPDATE).",
-      "sql": "SELECT table_name, grantee::text, privilege_type FROM information_schema.role_table_grants WHERE table_schema = 'public' AND table_name IN ('battery_hv_charge_session_evidence_revisions', 'battery_hv_charge_session_evidence_acks') AND grantee IN (:general_app_runtime, :trusted_attestation_issuer) ORDER BY table_name, grantee, privilege_type;",
-      "expect": {
-        "appRevisionAckIncludes": ["UPDATE"],
-        "issuerRevisionAckIncludes": ["SELECT"],
-        "issuerRevisionAckExcludes": ["UPDATE", "DELETE", "INSERT"]
-      }
-    },
-    {
-      "id": "PREFLIGHT_LOCK_FUNCTION_EXECUTE",
-      "description": "Issuer may EXECUTE narrow lock function; app denied.",
-      "sql": "SELECT grantee::text, privilege_type FROM information_schema.role_routine_grants WHERE routine_schema = 'public' AND routine_name = 'm3_3_hv_h4_a3_lock_revision_and_ack_for_issuance_v1' AND grantee IN (:general_app_runtime, :trusted_attestation_issuer);",
-      "expect": {
-        "issuerExecute": true,
-        "appExecute": false
-      }
-    },
-    {
-      "id": "PREFLIGHT_TRUSTED_FUNCTION_OWNERS",
-      "description": "Trusted functions owned by migration owner (not runtime roles).",
-      "sql": "SELECT p.proname::text AS function_name, pg_get_userbyid(p.proowner)::text AS owner FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'public' AND p.proname IN ('m3_3_hv_h4_a3_lock_revision_and_ack_for_issuance_v1', 'm3_3_hv_h4_a3_invalidate_attestations_for_revision_v1', 'm3_3_hv_h4_a3_invalidate_attestations_for_ack_v1') ORDER BY 1;",
-      "expect": { "allOwnersEqual": "MIGRATION_OWNER" }
-    },
-    {
-      "id": "PREFLIGHT_TABLE_OWNERS",
-      "description": "A3 attestation tables owned by migration owner.",
-      "sql": "SELECT c.relname::text AS table_name, pg_get_userbyid(c.relowner)::text AS owner FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname IN ('battery_hv_charge_session_evidence_integrity_attestations', 'battery_hv_charge_session_evidence_revisions', 'battery_hv_charge_session_evidence_acks') AND c.relkind = 'r' ORDER BY 1;",
-      "expect": { "allOwnersEqual": "MIGRATION_OWNER" }
-    },
-    {
-      "id": "PREFLIGHT_PGCRYPTO",
-      "description": "pgcrypto extension available for fingerprint helpers (R1 migration prerequisite).",
-      "sql": "SELECT extname::text, extversion::text FROM pg_extension WHERE extname = 'pgcrypto';",
-      "expect": { "rowCount": 1 }
-    },
-    {
-      "id": "PREFLIGHT_MIGRATION_STATE",
-      "description": "Prisma migration history includes A3 attestation migrations.",
-      "sql": "SELECT migration_name FROM _prisma_migrations WHERE migration_name LIKE '%battery_hv_h4_a3_integrity_attestation%' ORDER BY finished_at DESC NULLS LAST LIMIT 20;",
-      "expect": {
-        "requiredSubstrings": [
-          "battery_hv_h4_a3_integrity_attestation_r1",
-          "battery_hv_h4_a3_integrity_attestation_r2",
-          "battery_hv_h4_a3_integrity_attestation_r2_h1_lock_authority"
-        ]
-      }
-    },
-    {
-      "id": "PREFLIGHT_SCHEMA_CREATE_PRIVILEGE",
-      "description": "Runtime roles must not CREATE in public schema.",
-      "sql": "SELECT nspname::text, pg_get_userbyid(nspowner)::text AS owner, has_schema_privilege(:general_app_runtime, nspname, 'CREATE') AS app_can_create, has_schema_privilege(:trusted_attestation_issuer, nspname, 'CREATE') AS issuer_can_create FROM pg_namespace n WHERE nspname = 'public';",
-      "expect": { "appCanCreate": false, "issuerCanCreate": false }
-    }
-  ]
+    ]
+  }
 }

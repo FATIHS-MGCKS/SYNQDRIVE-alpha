@@ -9,6 +9,7 @@ import {
   createInertM3_3HvH4A3AttestationIssuerDbV1,
   disconnectInertM3_3HvH4A3AttestationIssuerDbV1,
 } from './m3-3-hv-h4-a3-3-o2-r3-issuer-runtime-factory.inert.v1';
+import { parsePostgresUrlLoginV1 } from './m3-3-hv-h4-a3-3-o2-r3-h1-postgres-url-identity.v1';
 
 const integrationEnabled = process.env.BATTERY_HV_H4_REPORT_INTEGRATION === '1';
 
@@ -28,7 +29,10 @@ describe('M3.3-HV-H4-A3.3-O2-R3 inert issuer factory (PostgreSQL)', () => {
 
     const issuerDb = await createInertM3_3HvH4A3AttestationIssuerDbV1({
       issuerDatabaseUrl,
-      forbidSameUrlAs: process.env.DATABASE_URL,
+      forbidSameTargetAs: process.env.DATABASE_URL,
+      forbiddenGenericAppDbLogin: process.env.DATABASE_URL
+        ? parsePostgresUrlLoginV1(process.env.DATABASE_URL)
+        : null,
       expectedDbLogin: M3_3_HV_H4_A3_O2_R2_ISSUER_LOGIN_ROLE,
     });
 
