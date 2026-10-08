@@ -106,4 +106,25 @@ describe('VehiclesOperationalService registryLifecycle (integration query path)'
     const sampleCall = findMany.mock.calls.find((c) => c[0].take === 500);
     expect(sampleCall?.[0].where?.registryLifecycle).toBeUndefined();
   });
+
+  it('getAttentionQueue samples registered rows with attention filter and 500 cap', async () => {
+    await svc.getAttentionQueue(8);
+    const attentionCall = findMany.mock.calls.find(
+      (c) => c[0].take === 500 && c[0].skip === 0,
+    );
+    expect(attentionCall).toBeDefined();
+    expect(attentionCall?.[0].where?.registryLifecycle).toBeUndefined();
+  });
+
+  it('enriched attention filter uses DB take 500 then in-memory slice (legacy pagination)', async () => {
+    await svc.findAllOperational({
+      page: 2,
+      limit: 10,
+      registrationState: 'registered',
+      attention: 'true',
+    });
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ skip: 10, take: 500 }),
+    );
+  });
 });

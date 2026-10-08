@@ -174,6 +174,13 @@ export function ConnectedVehiclesHub({
           toast.error(t('master.cv.offboard.error.enrollment'));
           throw err;
         }
+        if (err instanceof VehicleOffboardRequestError && err.code === 'OFFBOARD_STALE_RESPONSE') {
+          throw err;
+        }
+        if (err instanceof VehicleOffboardRequestError && err.kind === 'TRANSPORT_UNCERTAIN') {
+          toast.warning(t('master.cv.offboard.uncertainRetry'));
+          throw err;
+        }
         if (err instanceof VehicleOffboardRequestError && err.kind === 'OPERATIONALLY_BLOCKED') {
           intentSession.abandon();
           const blockers = blockingReasonsFromError(err);
@@ -185,12 +192,10 @@ export function ConnectedVehiclesHub({
           });
           throw err;
         }
-        if (offboard.state.phase === 'uncertain') {
-          toast.warning(t('master.cv.offboard.uncertainRetry'));
-          throw err;
-        }
         if (err instanceof VehicleOffboardRequestError && err.kind === 'SEMANTIC_CONFLICT') {
           intentSession.abandon();
+          toast.error(t('master.cv.offboard.error.generic'));
+          throw err;
         }
         if (
           err instanceof OffboardPendingIntentConflictError ||
@@ -215,7 +220,10 @@ export function ConnectedVehiclesHub({
         setMfaOpen(true);
         return;
       }
-      if (offboard.state.phase === 'uncertain') {
+      if (err instanceof VehicleOffboardRequestError && err.code === 'OFFBOARD_STALE_RESPONSE') {
+        return;
+      }
+      if (err instanceof VehicleOffboardRequestError && err.kind === 'TRANSPORT_UNCERTAIN') {
         toast.warning(t('master.cv.offboard.uncertainRetry'));
         return;
       }

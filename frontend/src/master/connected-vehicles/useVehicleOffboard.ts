@@ -18,13 +18,24 @@ function isUnresolvedPendingPhase(phase: OffboardExecutionState['phase']): boole
   return phase === 'mfa_required' || phase === 'uncertain' || phase === 'submitting';
 }
 
+function staleResponseError(): VehicleOffboardRequestError {
+  return new VehicleOffboardRequestError('Offboard response ignored (stale)', {
+    kind: 'HTTP_REJECTION',
+    code: 'OFFBOARD_STALE_RESPONSE',
+    status: 0,
+  });
+}
+
 export function useVehicleOffboard() {
   const [state, setState] = useState<OffboardExecutionState>({ phase: 'idle' });
   const httpInFlightRef = useRef(false);
   const pendingIntentRef = useRef<VehicleOffboardIntent | null>(null);
   const requestGenerationRef = useRef(0);
 
+  const ownsGeneration = (generation: number) => generation === requestGenerationRef.current;
+
   const clear = useCallback(() => {
+    requestGenerationRef.current += 1;
     httpInFlightRef.current = false;
     pendingIntentRef.current = null;
     setState({ phase: 'idle' });
@@ -70,12 +81,8 @@ export function useVehicleOffboard() {
             note: intent.note,
           },
         );
-        if (generation !== requestGenerationRef.current) {
-          throw new VehicleOffboardRequestError('Offboard response ignored (stale)', {
-            kind: 'HTTP_REJECTION',
-            code: 'OFFBOARD_STALE_RESPONSE',
-            status: 0,
-          });
+        if (!ownsGeneration(generation)) {
+          throw staleResponseError();
         }
         const result: VehicleOffboardHttpResponse = {
           ...raw,
@@ -85,15 +92,14 @@ export function useVehicleOffboard() {
         setState({ phase: 'success', result });
         return result;
       } catch (err) {
-        httpInFlightRef.current = false;
-        if (generation !== requestGenerationRef.current) {
-          throw new VehicleOffboardRequestError('Offboard response ignored (stale)', {
-            kind: 'HTTP_REJECTION',
-            code: 'OFFBOARD_STALE_RESPONSE',
-            status: 0,
-          });
+        if (!ownsGeneration(generation)) {
+          throw staleResponseError();
         }
+        httpInFlightRef.current = false;
         if (err instanceof VehicleOffboardRequestError) {
+          if (err.code === 'OFFBOARD_STALE_RESPONSE') {
+            throw err;
+          }
           if (err.kind === 'STEP_UP_REQUIRED') {
             setState({ phase: 'mfa_required', intent });
             throw err;

@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **Slice** | VO5C-P2A (Connected Vehicles UI only) |
-| **Status** | P2A.1 HARDENED (draft PR #1921) |
+| **Status** | P2A.3 CONCURRENCY CLOSURE (draft PR #1921) |
 | **Depends on** | VO5C-P1 merge `340b4c86ab30e9c06c0b74d39ae394dc0af170bb` |
 | **Last updated** | 2026-10-08 |
 
@@ -22,6 +22,14 @@ PRODUCTION_BACKEND_OFFBOARD_ROUTE_VERIFIED=NO (as of P2A implementation)
 ```
 
 Do **not** deploy P2A to production before P1 offboard route is verified live. **Fail-closed:** `VITE_MASTER_VEHICLE_OFFBOARD_UI` must be explicitly `on`/`true`/`1` to show the action; absent/invalid → hidden.
+
+### P2A.3 final concurrency closure (2026-10-08)
+
+- Request-generation ownership: stale HTTP completions cannot release `httpInFlight` or mutate B’s pending intent/phase.
+- Hub uncertain UX keyed off `VehicleOffboardRequestError.kind === TRANSPORT_UNCERTAIN` (not stale React phase).
+- Failed offboard: no success toast/refresh; OFFBOARDED list/detail/history mounted tests.
+- **Overview counts policy (open):** `getOverview().counts.registered` uses full `vehicle.count()` (all lifecycles); attention sample uses 500 registered rows **without** lifecycle predicate — OFFBOARDED vehicles may appear in attention sample if flagged; not changed in P2A.
+- **Enriched filter pagination (legacy):** `attention` / connectivity / freshness filters fetch `take: 500` then filter/slice — pre-existing; not introduced by P2A; tracked separately if product needs deep pages.
 
 ### P2A.2 reliability seal (2026-10-08)
 
