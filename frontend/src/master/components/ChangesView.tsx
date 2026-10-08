@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'p25-apds-9-3-durable-t0-foundation-2026-10-08',
+    version: '4.9.2232',
+    title: 'P2.5 APDS-9.3 — durable shadow activation epoch + T0 gate (engineering only)',
+    summary: [
+      'PostgreSQL apd_shadow_activation_epochs (PREPARED/ACTIVE/PAUSED/CLOSED); immutable DB-time T0 on authorized activation only.',
+      'Shadow writes require ACTIVE epoch + decisionAt >= T0; WORKER_APD_SHADOW_ENABLED alone does not create epochs.',
+      'Nullable activation_epoch_id on decisions preserves 366 legacy rows; cohort vehicle 187336 NOT_READY audit documented.',
+      'No Shadow activation, no deploy, no B2/B4 enforcement in this change.',
+    ],
+    reason: 'INITIAL_SHADOW_PREFLIGHT blocker NO_DURABLE_T0_AUTHORITY — production-safe epoch foundation before pilot T0.',
+    previousBehavior:
+      'Shadow flag + cohort allowed observe-only decisions without durable activation epoch or immutable T0 authority.',
+    details:
+      'architecture/vehicle-device-connectivity/evidence/P25_APDS_9_3_DURABLE_T0_FOUNDATION_2026-10-08.md',
+    affectsArchitecture: true,
+    module: 'Vehicle & Device Connectivity',
+    createdAt: '2026-10-08T01:30:00.000Z',
+  },
+  {
     id: 'p25-apds-9-2-execution-baseline-v2-2026-10-07',
     version: '4.9.2231',
     title: 'P2.5 APDS-9.2 — APD shadow execution baseline V2 (engineering only)',
