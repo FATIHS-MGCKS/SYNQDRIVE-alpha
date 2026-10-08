@@ -1690,6 +1690,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | AUTHORITY | Reads `NEW_EXPECTED_FRESH_TINY_STAGING_TOOL_SHA` from S4F-7AH evidence only @ `ed78748bc…`; six-file blob + stale-pin fail-closed; AA.1 Z2 bootstrap **unchanged** |
 | NON_EFFECTS | No Production SSH/env/deploy/restart; no `DRY_RUN=0`; no live auth reuse; Production dry-run **not** executed in slice |
 
+### EXP-021 S4F-7AJ corrected-tool Production dry-run (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | One Production `DRY_RUN=1` via S4F-7AI bootstrap @ tool `ed78748bc…`; fresh JIT `2026-10-08T20:11:22.464Z`; evidence `EXP021_S4F7AJ_CORRECTED_TOOL_PRODUCTION_DRY_RUN.md` |
+| FINDING | `DRY_RUN_CERTIFIED=YES`; `GUARDS_OK=YES`; initial/final DB clock + fresh authority **PASS**; `DRY_RUN_ENV_MUTATION_COUNT=0`; POSTSTATE parity **YES** |
+| NON_EFFECTS | No `DRY_RUN=0`; no live auth reuse; no S4 activation; Gate 6 unchanged |
+
 ### EXP-021 S4F-7AI.1 bootstrap safety closure (2026-10-08)
 
 | Event | Detail |
