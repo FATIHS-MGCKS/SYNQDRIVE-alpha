@@ -622,8 +622,8 @@ s4f7y_fail_after_arm() {
 s4f7y_final_pre_mutation_revalidation() {
   echo "FULL_LIVE_GUARDS_REVALIDATED_IMMEDIATELY_PRE_MUTATION=YES"
   s4f7w_live_preflight_readonly || return 1
-  export DI_S4F7V_FINAL_DB_CLOCK_CANONICAL_UTC="$(s4f7v_query_db_clock_canonical)"
-  echo "FINAL_JIT_AUTHORITY_AGE_SECONDS=$(s4f7v_run_cli validate-fresh-authority | awk -F= '/^FRESH_AUTHORITY_AGE_SECONDS=/{print $2}')"
+  s4f7v_export_db_clock_canonical_utc_fail_closed FINAL || return 1
+  s4f7v_run_validate_fresh_authority_fail_closed FINAL || return 1
   if ! s4f7v_run_cli guards; then
     return 1
   fi
@@ -784,7 +784,9 @@ s4f7y_execute_live_transaction() {
 
   s4f7y_guard_or_terminal_fail s4f7y_require_operator_authorization_packet || return 1
   s4f7y_guard_or_terminal_fail s4f7w_live_preflight_readonly || return 1
-  s4f7y_guard_or_terminal_fail s4f7v_run_cli validate-fresh-authority || return 1
+  echo "EXP021_S4F7AG_LIVE_INITIAL_DB_CLOCK_EXPORT=YES"
+  s4f7y_guard_or_terminal_fail s4f7v_export_db_clock_canonical_utc_fail_closed INITIAL || return 1
+  s4f7y_guard_or_terminal_fail s4f7v_run_validate_fresh_authority_fail_closed INITIAL || return 1
 
   S4F7Y_TARGET_SHA="$(s4f7v_resolve_deployed_sha)"
   export DI_S4_TINY_STAGING_ACTUAL_SHA="$S4F7Y_TARGET_SHA"

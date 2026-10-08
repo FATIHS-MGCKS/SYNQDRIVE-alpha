@@ -77,13 +77,11 @@ done
 if [[ "$DRY_RUN" == "1" ]]; then
   s4f7w_live_preflight_readonly || exit 1
 
-  DB_CLOCK="$(s4f7v_query_db_clock_canonical)"
-  export DI_S4F7V_DB_CLOCK_CANONICAL_UTC="$DB_CLOCK"
-  echo "DB_CLOCK_CANONICAL_UTC=${DB_CLOCK}"
+  s4f7v_export_db_clock_canonical_utc_fail_closed INITIAL || exit 1
 
-  s4f7v_run_cli validate-fresh-authority || exit 1
+  s4f7v_run_validate_fresh_authority_fail_closed INITIAL || exit 1
 
-  export DI_S4F7V_FINAL_DB_CLOCK_CANONICAL_UTC="$(s4f7v_query_db_clock_canonical)"
+  s4f7v_export_db_clock_canonical_utc_fail_closed FINAL || exit 1
 
   if ! s4f7v_run_cli guards; then
     echo "DRY_RUN_REQUIRES_GUARDS_OK=YES"

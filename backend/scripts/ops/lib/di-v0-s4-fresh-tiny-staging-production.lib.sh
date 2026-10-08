@@ -86,6 +86,68 @@ s4f7v_query_db_clock_canonical() {
   sudo -n -u postgres psql -d synqdrive -Atqc "SELECT to_char((clock_timestamp() AT TIME ZONE 'UTC'), 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"');"
 }
 
+s4f7v_validate_canonical_db_clock_format() {
+  local clock="${1:-}"
+  [[ -n "$clock" ]] || return 1
+  [[ "$clock" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$ ]] || return 1
+  return 0
+}
+
+# EXP-021 S4F-7AG — fail-closed canonical DB clock for fresh-authority validation (no local-time fallback).
+s4f7v_export_db_clock_canonical_utc_fail_closed() {
+  local label="${1:-INITIAL}"
+  local clock
+  clock="$(s4f7v_query_db_clock_canonical)" || {
+    echo "DB_CLOCK_QUERY_FAILED=${label}"
+    return 1
+  }
+  if [[ -z "$clock" ]]; then
+    echo "DB_CLOCK_EMPTY=${label}"
+    return 1
+  fi
+  if ! s4f7v_validate_canonical_db_clock_format "$clock"; then
+    echo "DB_CLOCK_INVALID_FORMAT=${label}"
+    return 1
+  fi
+  export DI_S4F7V_DB_CLOCK_CANONICAL_UTC="$clock"
+  if [[ "$label" == "FINAL" ]]; then
+    export DI_S4F7V_FINAL_DB_CLOCK_CANONICAL_UTC="$clock"
+    echo "FINAL_DB_CLOCK_CANONICAL_UTC=${clock}"
+  else
+    echo "DB_CLOCK_CANONICAL_UTC=${clock}"
+    echo "INITIAL_DB_CLOCK_EXPORTED=YES"
+  fi
+  return 0
+}
+
+s4f7v_run_validate_fresh_authority_fail_closed() {
+  local label="${1:-}"
+  local out rc
+  set +e
+  out="$(s4f7v_run_cli validate-fresh-authority 2>&1)"
+  rc=$?
+  set -e
+  printf '%s\n' "$out"
+  if [[ "$rc" != "0" ]]; then
+    echo "VALIDATE_FRESH_AUTHORITY_CLI_EXIT_NONZERO=${label}"
+    return 1
+  fi
+  if ! printf '%s\n' "$out" | grep -q '^FRESH_AUTHORITY_OK=YES$'; then
+    echo "VALIDATE_FRESH_AUTHORITY_FAILED=${label}"
+    return 1
+  fi
+  if [[ "$label" == "FINAL" ]]; then
+    local age
+    age="$(printf '%s\n' "$out" | awk -F= '/^FRESH_AUTHORITY_AGE_SECONDS=/{print $2; exit}')"
+    echo "FINAL_JIT_AUTHORITY_AGE_SECONDS=${age}"
+    if [[ -z "$age" ]]; then
+      echo "FINAL_JIT_AUTHORITY_AGE_MISSING=YES"
+      return 1
+    fi
+  fi
+  return 0
+}
+
 # Reuse S4F-7J read-only DB helpers when available.
 if [[ -f "${S4F7V_SCRIPT_DIR:-}/lib/di-v0-s4-tiny-staging-production.lib.sh" ]]; then
   # shellcheck source=lib/di-v0-s4-tiny-staging-production.lib.sh
