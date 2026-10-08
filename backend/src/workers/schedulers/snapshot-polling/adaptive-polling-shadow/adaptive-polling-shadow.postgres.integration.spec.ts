@@ -1,4 +1,9 @@
-import { BusinessType, FuelType, PrismaClient } from '@prisma/client';
+import {
+  ApdShadowActivationEpochLifecycle,
+  BusinessType,
+  FuelType,
+  PrismaClient,
+} from '@prisma/client';
 import { AdaptivePollingShadowRepository } from './adaptive-polling-shadow.repository';
 import { buildApdShadowOpportunityId } from './apd-shadow-opportunity.util';
 import {
@@ -10,17 +15,21 @@ import { P25_APD_SHADOW_EXECUTION_V2 } from './p25-apd-shadow-execution-versions
 const databaseUrl = process.env.DATABASE_URL;
 const describePg = databaseUrl ? describe : describe.skip;
 
+let integrationActivationEpochId = '';
+
 function baseRow(input: {
   organizationId: string;
   vehicleId: string;
   opportunityId: string;
   policyVersion: string;
+  decisionAt?: Date;
 }) {
   return {
     organizationId: input.organizationId,
     vehicleId: input.vehicleId,
     opportunityId: input.opportunityId,
-    decisionAt: new Date(),
+    decisionAt: input.decisionAt ?? new Date('2026-10-08T12:00:00.000Z'),
+    activationEpochId: integrationActivationEpochId,
     policyVersion: input.policyVersion,
     profileVersion: 'P25_APD_PROFILE_CLASSIFIER_V1',
     profileClass: 'STABLE_PERIODIC',
@@ -87,12 +96,32 @@ describePg('ApdShadowReconciliationDecision Postgres integration (APDS-7.1)', ()
     organizationIdOther = await ensureOrg('APD_PG_INTEGRATION_ORG_B');
     vehicleId = await ensureVehicle(organizationId, 'apd-veh-a');
     vehicleIdSameOrg = await ensureVehicle(organizationId, 'apd-veh-b');
+
+    const epoch = await prisma.apdShadowActivationEpoch.create({
+      data: {
+        activationScopeKey: 'P25_APD_SHADOW_COHORT:APD_PG_INTEGRATION_EPOCH',
+        organizationId,
+        cohortConfigFingerprintSha256: 'apd-pg-integration-epoch-fingerprint',
+        cohortConfigVersion: 'P25_APD_LTE_R1_COHORT_V1',
+        b2PolicyVersion: P25_APD_B2_V1,
+        b4PolicyVersion: P25_APD_B4_V1,
+        lifecycleState: ApdShadowActivationEpochLifecycle.ACTIVE,
+        activatedAt: new Date('1970-01-01T00:00:00.000Z'),
+      },
+      select: { id: true },
+    });
+    integrationActivationEpochId = epoch.id;
   });
 
   afterAll(async () => {
     for (const key of cleanupKeys) {
       await prisma.apdShadowReconciliationDecision.deleteMany({
         where: key,
+      });
+    }
+    if (integrationActivationEpochId) {
+      await prisma.apdShadowActivationEpoch.deleteMany({
+        where: { id: integrationActivationEpochId },
       });
     }
     await prisma.$disconnect();

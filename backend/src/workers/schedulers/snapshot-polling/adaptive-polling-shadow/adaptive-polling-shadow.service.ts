@@ -126,7 +126,11 @@ export class AdaptivePollingShadowService {
 
   private async assertActiveEpochAllowsDecision(
     decisionAtMs: number,
+    vehicleOrganizationId: string,
   ): Promise<ApdShadowActiveEpochView | null> {
+    if (!isApdShadowEnabled()) {
+      return null;
+    }
     const runtime = this.getCohortRuntime();
     const fingerprint = runtime.configFingerprintSha256;
     if (!fingerprint) {
@@ -135,23 +139,23 @@ export class AdaptivePollingShadowService {
     }
     try {
       const activeEpoch =
-        (await this.activationEpochService.loadActiveEpochForScope(fingerprint)) ??
-        this.activationEpochService.getCachedActiveEpochSnapshot(fingerprint);
+        await this.activationEpochService.loadActiveEpochForScopeAuthoritative(
+          fingerprint,
+          { updatePositiveCache: true },
+        );
       const gate = this.activationEpochService.evaluateShadowEpochGate({
         cohortConfigFingerprintSha256: fingerprint,
         decisionAtMs,
         activeEpoch,
+        vehicleOrganizationId,
       });
       if (!gate.allowed) {
         this.recordEpochGateBlocked(gate.reason);
         return null;
       }
       return gate.epoch;
-    } catch (err) {
+    } catch {
       this.recordEpochGateBlocked('EPOCH_LOOKUP_FAILED');
-      this.logger.warn(
-        `APD shadow epoch gate failed (non-blocking): ${err instanceof Error ? err.message : err}`,
-      );
       return null;
     }
   }
@@ -172,7 +176,10 @@ export class AdaptivePollingShadowService {
     if (!this.assertCohortVehicleAllowed(ctx.organizationId, ctx.vehicleId)) {
       return null;
     }
-    const epoch = await this.assertActiveEpochAllowsDecision(ctx.pollStartedAtMs);
+    const epoch = await this.assertActiveEpochAllowsDecision(
+      ctx.pollStartedAtMs,
+      ctx.organizationId,
+    );
     if (!epoch) return null;
     try {
       return await this.observeActualBaselinePollStartInner(ctx, epoch);
@@ -195,7 +202,10 @@ export class AdaptivePollingShadowService {
     if (!this.assertCohortVehicleAllowed(input.organizationId, input.vehicleId)) {
       return;
     }
-    const epoch = await this.assertActiveEpochAllowsDecision(input.observedAtMs);
+    const epoch = await this.assertActiveEpochAllowsDecision(
+      input.observedAtMs,
+      input.organizationId,
+    );
     if (!epoch) return;
     try {
       await this.repository.patchEnqueueOutcome({
@@ -218,10 +228,13 @@ export class AdaptivePollingShadowService {
       return;
     }
     const decisionAtMs = ctx.pollCompletedAtMs ?? ctx.pollStartedAtMs;
-    const epoch = await this.assertActiveEpochAllowsDecision(decisionAtMs);
+    const epoch = await this.assertActiveEpochAllowsDecision(
+      decisionAtMs,
+      ctx.organizationId,
+    );
     if (!epoch) return;
     try {
-      await this.observePostPollInner(ctx);
+      await this.observePostPollInner(ctx, epoch);
     } catch (err) {
       this.metrics?.recordFailure('post_poll');
       this.logger.warn(
@@ -242,10 +255,14 @@ export class AdaptivePollingShadowService {
     }
     const epoch = await this.assertActiveEpochAllowsDecision(
       input.realPollStartedAt.getTime(),
+      input.organizationId,
     );
     if (!epoch) return;
     try {
-      await this.repository.updateFailedPollOutcome(input);
+      await this.repository.updateFailedPollOutcome({
+        ...input,
+        activationEpochId: epoch.id,
+      });
     } catch (err) {
       this.metrics?.recordFailure('post_poll');
       this.logger.warn(
@@ -409,6 +426,7 @@ export class AdaptivePollingShadowService {
 
   private async observePostPollInner(
     ctx: AdaptivePollingShadowPostPollContext,
+    activeEpoch: ApdShadowActiveEpochView,
   ): Promise<void> {
     if (!ctx.realPollId) {
       throw new Error('realPollId required for successful APD post-poll correlation');
@@ -445,6 +463,7 @@ export class AdaptivePollingShadowService {
         vehicleId: ctx.vehicleId,
         opportunityId: ctx.opportunityId,
         policyVersion,
+        activationEpochId: activeEpoch.id,
         realPollId: ctx.realPollId,
         realPollStartedAt: new Date(ctx.pollStartedAtMs),
         realPollCompletedAt: new Date(ctx.pollCompletedAtMs),

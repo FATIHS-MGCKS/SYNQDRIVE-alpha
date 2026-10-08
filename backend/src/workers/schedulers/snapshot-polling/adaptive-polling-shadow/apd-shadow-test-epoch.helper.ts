@@ -57,6 +57,9 @@ export function mockActivationEpochServiceForCohort(
   jest.spyOn(service, 'loadActiveEpochForScope').mockImplementation(async (fp) => {
     return fp === fingerprint ? epoch : null;
   });
+  jest.spyOn(service, 'loadActiveEpochForScopeAuthoritative').mockImplementation(async (fp) => {
+    return fp === fingerprint ? epoch : null;
+  });
   jest.spyOn(service, 'prepareEpoch').mockResolvedValue({ id: 'prepared' });
   jest.spyOn(service, 'activateEpoch').mockResolvedValue(epoch);
   jest.spyOn(service, 'pauseEpoch').mockResolvedValue();
@@ -69,6 +72,7 @@ export function mockActivationEpochServiceForCohort(
 export function mockActivationEpochServiceMissing(): ApdShadowActivationEpochService {
   const service = new ApdShadowActivationEpochService({} as never);
   jest.spyOn(service, 'loadActiveEpochForScope').mockResolvedValue(null);
+  jest.spyOn(service, 'loadActiveEpochForScopeAuthoritative').mockResolvedValue(null);
   jest.spyOn(service, 'getCachedActiveEpochSnapshot').mockReturnValue(null);
   return service;
 }

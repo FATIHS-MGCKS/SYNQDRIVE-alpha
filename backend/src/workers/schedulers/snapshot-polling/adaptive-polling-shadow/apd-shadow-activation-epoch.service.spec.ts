@@ -1,6 +1,12 @@
 import { ApdShadowActivationEpochLifecycle } from '@prisma/client';
+import { P25_APD_B2_V1, P25_APD_B4_V1 } from '../adaptive-polling-policy/p25-apd-policy-versions';
+import { P25_APD_LTE_R1_COHORT_V1 } from './adaptive-polling-shadow-cohort.config';
 import { ApdShadowActivationEpochService } from './apd-shadow-activation-epoch.service';
 import { buildApdShadowActivationScopeKey } from './apd-shadow-activation-epoch.types';
+import {
+  disableApdShadowEpochOpsAuthorityForTests,
+  enableApdShadowEpochOpsAuthorityForTests,
+} from './apd-shadow-activation-operator.authority';
 
 describe('ApdShadowActivationEpochService (unit)', () => {
   const fingerprint = 'abc123fingerprint';
@@ -34,8 +40,8 @@ describe('ApdShadowActivationEpochService (unit)', () => {
         cohortConfigFingerprintSha256: fingerprint,
         lifecycleState: ApdShadowActivationEpochLifecycle.ACTIVE,
         activatedAt: t0,
-        b2PolicyVersion: 'B2',
-        b4PolicyVersion: 'B4',
+        b2PolicyVersion: P25_APD_B2_V1,
+        b4PolicyVersion: P25_APD_B4_V1,
         productionReleaseIdentity: null,
       },
     });
@@ -55,13 +61,31 @@ describe('ApdShadowActivationEpochService (unit)', () => {
         cohortConfigFingerprintSha256: fingerprint,
         lifecycleState: ApdShadowActivationEpochLifecycle.ACTIVE,
         activatedAt: t0,
-        b2PolicyVersion: 'B2',
-        b4PolicyVersion: 'B4',
+        b2PolicyVersion: P25_APD_B2_V1,
+        b4PolicyVersion: P25_APD_B4_V1,
         productionReleaseIdentity: null,
       },
     });
     expect(gate.allowed).toBe(false);
     if (!gate.allowed) expect(gate.reason).toBe('DECISION_BEFORE_T0');
+  });
+
+  it('prepareEpoch requires internal ops authority', async () => {
+    disableApdShadowEpochOpsAuthorityForTests();
+    const service = buildService({
+      apdShadowActivationEpoch: { create: jest.fn() },
+    });
+    await expect(
+      service.prepareEpoch({
+        organizationId: 'org-1',
+        cohortOrganizationIds: ['org-1'],
+        cohortConfigFingerprintSha256: fingerprint,
+        cohortConfigVersion: P25_APD_LTE_R1_COHORT_V1,
+        b2PolicyVersion: P25_APD_B2_V1,
+        b4PolicyVersion: P25_APD_B4_V1,
+      }),
+    ).rejects.toThrow(/internal ops authority/);
+    enableApdShadowEpochOpsAuthorityForTests();
   });
 
   it('fingerprint mismatch fails closed', () => {
@@ -77,8 +101,8 @@ describe('ApdShadowActivationEpochService (unit)', () => {
         cohortConfigFingerprintSha256: fingerprint,
         lifecycleState: ApdShadowActivationEpochLifecycle.ACTIVE,
         activatedAt: t0,
-        b2PolicyVersion: 'B2',
-        b4PolicyVersion: 'B4',
+        b2PolicyVersion: P25_APD_B2_V1,
+        b4PolicyVersion: P25_APD_B4_V1,
         productionReleaseIdentity: null,
       },
     });

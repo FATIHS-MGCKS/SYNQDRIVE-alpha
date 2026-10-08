@@ -12,9 +12,14 @@ export type ApdShadowActivationEpochGateReason =
   | 'EPOCH_MISSING'
   | 'EPOCH_NOT_ACTIVE'
   | 'EPOCH_FINGERPRINT_MISMATCH'
+  | 'EPOCH_ORG_MISMATCH'
+  | 'EPOCH_POLICY_VERSION_MISMATCH'
   | 'DECISION_BEFORE_T0'
   | 'EPOCH_LOOKUP_FAILED'
   | 'EPOCH_CLOSED';
+
+/** Max interval a replica may admit shadow writes after PAUSE/CLOSE on another replica (write path bypasses positive cache). */
+export const APD_SHADOW_EPOCH_WRITE_PATH_MAX_STALE_MS = 0;
 
 export interface ApdShadowActiveEpochView {
   id: string;
@@ -30,6 +35,8 @@ export interface ApdShadowActiveEpochView {
 
 export interface PrepareApdShadowActivationEpochInput {
   organizationId: string;
+  /** All organization IDs present in the cohort configuration (tenant validation). */
+  cohortOrganizationIds: string[];
   cohortConfigFingerprintSha256: string;
   cohortConfigVersion: string;
   b2PolicyVersion: string;
@@ -43,6 +50,7 @@ export interface PrepareApdShadowActivationEpochInput {
 export interface ActivateApdShadowActivationEpochInput {
   epochId: string;
   activationRequestKey: string;
+  cohortOrganizationIds: string[];
   cohortConfigFingerprintSha256: string;
   b2PolicyVersion: string;
   b4PolicyVersion: string;

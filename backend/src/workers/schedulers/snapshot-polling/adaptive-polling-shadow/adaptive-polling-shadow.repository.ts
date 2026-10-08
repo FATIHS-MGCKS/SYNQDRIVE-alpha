@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import {
+  ApdShadowDecisionEpochConflictError,
+  ApdShadowDecisionProvenanceImmutableError,
+} from './apd-shadow-decision-epoch.errors';
 import {
   P25_APD_SHADOW_ADVANCING_DECISIONS,
   P25_APD_SHADOW_EXECUTION_V2,
@@ -95,39 +100,87 @@ export class AdaptivePollingShadowRepository {
   }
 
   async upsertPrePollDecision(row: UpsertApdShadowDecisionRow): Promise<void> {
-    await this.prisma.apdShadowReconciliationDecision.upsert({
-      where: {
-        organizationId_vehicleId_opportunityId_policyVersion: {
+    try {
+      await this.upsertPrePollDecisionInner(row);
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        await this.upsertPrePollDecisionInner(row);
+        return;
+      }
+      throw err;
+    }
+  }
+
+  private async upsertPrePollDecisionInner(row: UpsertApdShadowDecisionRow): Promise<void> {
+    const compositeKey = {
+      organizationId: row.organizationId,
+      vehicleId: row.vehicleId,
+      opportunityId: row.opportunityId,
+      policyVersion: row.policyVersion,
+    };
+
+    const existing = await this.prisma.apdShadowReconciliationDecision.findUnique({
+      where: { organizationId_vehicleId_opportunityId_policyVersion: compositeKey },
+      select: {
+        id: true,
+        decisionAt: true,
+        activationEpochId: true,
+      },
+    });
+
+    const attemptedEpochId = row.activationEpochId ?? null;
+
+    if (!existing) {
+      if (!attemptedEpochId) {
+        throw new ApdShadowDecisionEpochConflictError(
+          'post-T0 shadow decisions require activationEpochId on create',
+          {
+            ...compositeKey,
+            existingEpochId: null,
+            attemptedEpochId,
+          },
+        );
+      }
+      await this.prisma.apdShadowReconciliationDecision.create({
+        data: {
           organizationId: row.organizationId,
           vehicleId: row.vehicleId,
           opportunityId: row.opportunityId,
+          decisionAt: row.decisionAt,
+          activationEpochId: attemptedEpochId,
           policyVersion: row.policyVersion,
+          profileVersion: row.profileVersion,
+          profileClass: row.profileClass,
+          decision: row.decision,
+          reason: row.reason,
+          shadowExecutionVersion: row.shadowExecutionVersion,
+          reconciliation: row.reconciliation,
+          lastLvSourceAt: row.lastLvSourceAt ?? null,
+          lastProviderFetchedAt: row.lastProviderFetchedAt ?? null,
+          expectedWindowStart: row.expectedWindowStart ?? null,
+          expectedWindowEnd: row.expectedWindowEnd ?? null,
+          providerGapState: row.providerGapState ?? null,
+          connectivityState: row.connectivityState ?? null,
+          wakeCorrelationId: row.wakeCorrelationId ?? null,
         },
-      },
-      create: {
-        organizationId: row.organizationId,
-        vehicleId: row.vehicleId,
-        opportunityId: row.opportunityId,
-        decisionAt: row.decisionAt,
-        activationEpochId: row.activationEpochId ?? null,
-        policyVersion: row.policyVersion,
-        profileVersion: row.profileVersion,
-        profileClass: row.profileClass,
-        decision: row.decision,
-        reason: row.reason,
-        shadowExecutionVersion: row.shadowExecutionVersion,
-        reconciliation: row.reconciliation,
-        lastLvSourceAt: row.lastLvSourceAt ?? null,
-        lastProviderFetchedAt: row.lastProviderFetchedAt ?? null,
-        expectedWindowStart: row.expectedWindowStart ?? null,
-        expectedWindowEnd: row.expectedWindowEnd ?? null,
-        providerGapState: row.providerGapState ?? null,
-        connectivityState: row.connectivityState ?? null,
-        wakeCorrelationId: row.wakeCorrelationId ?? null,
-      },
-      update: {
-        decisionAt: row.decisionAt,
-        activationEpochId: row.activationEpochId ?? null,
+      });
+      return;
+    }
+
+    this.assertEpochBindingImmutable({
+      compositeKey,
+      existingEpochId: existing.activationEpochId,
+      attemptedEpochId,
+      existingDecisionAt: existing.decisionAt,
+      attemptedDecisionAt: row.decisionAt,
+    });
+
+    await this.prisma.apdShadowReconciliationDecision.update({
+      where: { id: existing.id },
+      data: {
         profileVersion: row.profileVersion,
         profileClass: row.profileClass,
         decision: row.decision,
@@ -143,6 +196,61 @@ export class AdaptivePollingShadowRepository {
         wakeCorrelationId: row.wakeCorrelationId ?? null,
       },
     });
+  }
+
+  private assertEpochBindingImmutable(input: {
+    compositeKey: {
+      organizationId: string;
+      vehicleId: string;
+      opportunityId: string;
+      policyVersion: string;
+    };
+    existingEpochId: string | null;
+    attemptedEpochId: string | null;
+    existingDecisionAt: Date;
+    attemptedDecisionAt: Date;
+  }): void {
+    if (input.existingDecisionAt.getTime() !== input.attemptedDecisionAt.getTime()) {
+      throw new ApdShadowDecisionProvenanceImmutableError(
+        'decisionAt is immutable for existing APD shadow decision rows',
+      );
+    }
+
+    if (input.existingEpochId == null) {
+      if (input.attemptedEpochId != null) {
+        throw new ApdShadowDecisionEpochConflictError(
+          'legacy pre-epoch decision cannot adopt activationEpochId',
+          {
+            ...input.compositeKey,
+            existingEpochId: null,
+            attemptedEpochId: input.attemptedEpochId,
+          },
+        );
+      }
+      return;
+    }
+
+    if (input.attemptedEpochId == null) {
+      throw new ApdShadowDecisionEpochConflictError(
+        'epoch-bound decision requires activationEpochId on replay',
+        {
+          ...input.compositeKey,
+          existingEpochId: input.existingEpochId,
+          attemptedEpochId: null,
+        },
+      );
+    }
+
+    if (input.existingEpochId !== input.attemptedEpochId) {
+      throw new ApdShadowDecisionEpochConflictError(
+        'cross-epoch replay conflict for opportunity',
+        {
+          ...input.compositeKey,
+          existingEpochId: input.existingEpochId,
+          attemptedEpochId: input.attemptedEpochId,
+        },
+      );
+    }
   }
 
   async patchEnqueueOutcome(input: {
@@ -171,6 +279,7 @@ export class AdaptivePollingShadowRepository {
     vehicleId: string;
     opportunityId: string;
     policyVersion: string;
+    activationEpochId?: string | null;
     realPollId: string;
     realPollStartedAt: Date;
     realPollCompletedAt: Date;
@@ -186,13 +295,16 @@ export class AdaptivePollingShadowRepository {
       legacyCustomerImpact?: string;
     };
   }): Promise<void> {
-    await this.prisma.apdShadowReconciliationDecision.updateMany({
+    const updated = await this.prisma.apdShadowReconciliationDecision.updateMany({
       where: {
         organizationId: input.organizationId,
         vehicleId: input.vehicleId,
         opportunityId: input.opportunityId,
         policyVersion: input.policyVersion,
         shadowExecutionVersion: P25_APD_SHADOW_EXECUTION_V2,
+        ...(input.activationEpochId
+          ? { activationEpochId: input.activationEpochId }
+          : {}),
       },
       data: {
         realPollId: input.realPollId,
@@ -203,21 +315,38 @@ export class AdaptivePollingShadowRepository {
         ...input.patch,
       },
     });
+    if (input.activationEpochId && updated.count === 0) {
+      throw new ApdShadowDecisionEpochConflictError(
+        'post-poll update found no epoch-bound decision row',
+        {
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+          opportunityId: input.opportunityId,
+          policyVersion: input.policyVersion,
+          existingEpochId: input.activationEpochId,
+          attemptedEpochId: input.activationEpochId,
+        },
+      );
+    }
   }
 
   async updateFailedPollOutcome(input: {
     organizationId: string;
     vehicleId: string;
     opportunityId: string;
+    activationEpochId?: string | null;
     realPollId: string;
     realPollStartedAt: Date;
   }): Promise<void> {
-    await this.prisma.apdShadowReconciliationDecision.updateMany({
+    const updated = await this.prisma.apdShadowReconciliationDecision.updateMany({
       where: {
         organizationId: input.organizationId,
         vehicleId: input.vehicleId,
         opportunityId: input.opportunityId,
         shadowExecutionVersion: P25_APD_SHADOW_EXECUTION_V2,
+        ...(input.activationEpochId
+          ? { activationEpochId: input.activationEpochId }
+          : {}),
       },
       data: {
         realPollId: input.realPollId,
@@ -231,5 +360,18 @@ export class AdaptivePollingShadowRepository {
         newIgnitionSourceObserved: false,
       },
     });
+    if (input.activationEpochId && updated.count === 0) {
+      throw new ApdShadowDecisionEpochConflictError(
+        'failure correlation found no epoch-bound decision row',
+        {
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+          opportunityId: input.opportunityId,
+          policyVersion: 'ANY',
+          existingEpochId: input.activationEpochId,
+          attemptedEpochId: input.activationEpochId,
+        },
+      );
+    }
   }
 }

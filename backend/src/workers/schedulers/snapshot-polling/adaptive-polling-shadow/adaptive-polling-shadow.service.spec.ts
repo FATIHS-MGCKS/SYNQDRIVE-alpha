@@ -105,6 +105,33 @@ describe('AdaptivePollingShadowService', () => {
     expect(repository.upsertPrePollDecision).not.toHaveBeenCalled();
   });
 
+  it('cold cache first poll uses authoritative epoch load (no stale-positive-only admission)', async () => {
+    enableShadowWithCohort();
+    const epochSvc = activationEpochAllowing();
+    const service = new AdaptivePollingShadowService(
+      prisma as never,
+      repository,
+      epochSvc,
+      metrics,
+    );
+    const authoritativeSpy = jest.spyOn(epochSvc, 'loadActiveEpochForScopeAuthoritative');
+    await service.observeActualBaselinePollStart({
+      organizationId: 'org-1',
+      vehicleId: 'veh-1',
+      pollStartedAtMs: baseCtx.decisionAtMs,
+      origin: baseCtx.origin,
+      tripDetectionState: baseCtx.tripDetectionState,
+      lastProviderFetchedAtMs: baseCtx.lastProviderFetchedAtMs,
+      providerGapOpen: baseCtx.providerGapOpen,
+      connectivityState: baseCtx.connectivityState,
+      r9WakeKnown: baseCtx.r9WakeKnown,
+      wakeCorrelationId: baseCtx.wakeCorrelationId,
+      deviceReconnectRecent: baseCtx.deviceReconnectRecent,
+      providerReconnectRecent: baseCtx.providerReconnectRecent,
+    });
+    expect(authoritativeSpy).toHaveBeenCalled();
+  });
+
   it('missing ACTIVE epoch → no shadow rows (fail-closed)', async () => {
     enableShadowWithCohort();
     const service = new AdaptivePollingShadowService(

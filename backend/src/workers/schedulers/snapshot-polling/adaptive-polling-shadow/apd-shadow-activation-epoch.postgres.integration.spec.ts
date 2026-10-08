@@ -6,6 +6,7 @@ import {
   type ApdShadowCohortConfig,
 } from './adaptive-polling-shadow-cohort.config';
 import { ApdShadowActivationEpochService } from './apd-shadow-activation-epoch.service';
+import { enableApdShadowEpochOpsAuthorityForTests } from './apd-shadow-activation-operator.authority';
 
 const databaseUrl = process.env.DATABASE_URL;
 const describePg = databaseUrl ? describe : describe.skip;
@@ -16,6 +17,7 @@ describePg('ApdShadowActivationEpoch Postgres integration (APDS-9.3)', () => {
   const epochIds: string[] = [];
 
   beforeAll(async () => {
+    enableApdShadowEpochOpsAuthorityForTests();
     const org =
       (await prisma.organization.findFirst({
         where: { companyName: 'APD_EPOCH_PG_ORG' },
@@ -68,6 +70,7 @@ describePg('ApdShadowActivationEpoch Postgres integration (APDS-9.3)', () => {
     const service = new ApdShadowActivationEpochService(prisma as never);
     const prepared = await service.prepareEpoch({
       organizationId,
+      cohortOrganizationIds: [organizationId],
       cohortConfigFingerprintSha256: fingerprint,
       cohortConfigVersion: P25_APD_LTE_R1_COHORT_V1,
       b2PolicyVersion: P25_APD_B2_V1,
@@ -81,6 +84,7 @@ describePg('ApdShadowActivationEpoch Postgres integration (APDS-9.3)', () => {
     const first = await service.activateEpoch({
       epochId: prepared.id,
       activationRequestKey: requestKey,
+      cohortOrganizationIds: [organizationId],
       cohortConfigFingerprintSha256: fingerprint,
       b2PolicyVersion: P25_APD_B2_V1,
       b4PolicyVersion: P25_APD_B4_V1,
@@ -90,6 +94,7 @@ describePg('ApdShadowActivationEpoch Postgres integration (APDS-9.3)', () => {
     const second = await service.activateEpoch({
       epochId: prepared.id,
       activationRequestKey: requestKey,
+      cohortOrganizationIds: [organizationId],
       cohortConfigFingerprintSha256: fingerprint,
       b2PolicyVersion: P25_APD_B2_V1,
       b4PolicyVersion: P25_APD_B4_V1,
@@ -105,6 +110,7 @@ describePg('ApdShadowActivationEpoch Postgres integration (APDS-9.3)', () => {
     const service = new ApdShadowActivationEpochService(prisma as never);
     const preparedA = await service.prepareEpoch({
       organizationId,
+      cohortOrganizationIds: [organizationId],
       cohortConfigFingerprintSha256: fingerprint,
       cohortConfigVersion: P25_APD_LTE_R1_COHORT_V1,
       b2PolicyVersion: P25_APD_B2_V1,
@@ -112,6 +118,7 @@ describePg('ApdShadowActivationEpoch Postgres integration (APDS-9.3)', () => {
     });
     const preparedB = await service.prepareEpoch({
       organizationId,
+      cohortOrganizationIds: [organizationId],
       cohortConfigFingerprintSha256: fingerprint,
       cohortConfigVersion: P25_APD_LTE_R1_COHORT_V1,
       b2PolicyVersion: P25_APD_B2_V1,
@@ -123,6 +130,7 @@ describePg('ApdShadowActivationEpoch Postgres integration (APDS-9.3)', () => {
       service.activateEpoch({
         epochId: preparedA.id,
         activationRequestKey: `req-${Date.now()}-c1`,
+        cohortOrganizationIds: [organizationId],
         cohortConfigFingerprintSha256: fingerprint,
         b2PolicyVersion: P25_APD_B2_V1,
         b4PolicyVersion: P25_APD_B4_V1,
@@ -132,6 +140,7 @@ describePg('ApdShadowActivationEpoch Postgres integration (APDS-9.3)', () => {
       service.activateEpoch({
         epochId: preparedB.id,
         activationRequestKey: `req-${Date.now()}-c2`,
+        cohortOrganizationIds: [organizationId],
         cohortConfigFingerprintSha256: fingerprint,
         b2PolicyVersion: P25_APD_B2_V1,
         b4PolicyVersion: P25_APD_B4_V1,

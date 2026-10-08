@@ -16,8 +16,7 @@ async function main() {
       organizationId: true,
       vehicleName: true,
       fuelType: true,
-      dimoTokenId: true,
-      registryStatus: true,
+      dimoVehicleId: true,
     },
   });
 

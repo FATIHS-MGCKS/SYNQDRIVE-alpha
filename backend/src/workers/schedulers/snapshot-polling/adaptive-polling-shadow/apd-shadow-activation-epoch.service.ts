@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ApdShadowActivationEpochLifecycle } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { P25_APD_B2_V1, P25_APD_B4_V1 } from '../adaptive-polling-policy/p25-apd-policy-versions';
+import { assertApdShadowEpochInternalOpsAuthorized } from './apd-shadow-activation-operator.authority';
 import {
   ActivateApdShadowActivationEpochInput,
   ApdShadowActiveEpochView,
@@ -14,23 +16,25 @@ import {
 export class ApdShadowActivationEpochService {
   private readonly logger = new Logger(ApdShadowActivationEpochService.name);
 
-  private cacheByScope = new Map<
+  /** Positive ACTIVE snapshots — read hints only (isEnabledForVehicle prefetch). */
+  private positiveCacheByScope = new Map<
     string,
-    { epoch: ApdShadowActiveEpochView | null; loadedAtMs: number }
+    { epoch: ApdShadowActiveEpochView; loadedAtMs: number }
   >();
 
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Bounded-staleness cache read (no database I/O). */
+  /** Bounded-staleness positive cache (read hints only — never used at decision-write boundary). */
   getCachedActiveEpochSnapshot(
     cohortConfigFingerprintSha256: string,
   ): ApdShadowActiveEpochView | null {
     const activationScopeKey = buildApdShadowActivationScopeKey(
       cohortConfigFingerprintSha256,
     );
-    const cached = this.cacheByScope.get(activationScopeKey);
+    const cached = this.positiveCacheByScope.get(activationScopeKey);
     if (!cached) return null;
     if (Date.now() - cached.loadedAtMs > APD_SHADOW_EPOCH_CACHE_TTL_MS) {
+      this.positiveCacheByScope.delete(activationScopeKey);
       return null;
     }
     return cached.epoch;
@@ -38,13 +42,35 @@ export class ApdShadowActivationEpochService {
 
   invalidateCache(scopeKey?: string): void {
     if (scopeKey) {
-      this.cacheByScope.delete(scopeKey);
+      this.positiveCacheByScope.delete(scopeKey);
       return;
     }
-    this.cacheByScope.clear();
+    this.positiveCacheByScope.clear();
+  }
+
+  private assertCohortOrganizations(input: {
+    organizationId: string;
+    cohortOrganizationIds: string[];
+  }): void {
+    const unique = [...new Set(input.cohortOrganizationIds.map((id) => id.trim()))];
+    if (!unique.includes(input.organizationId)) {
+      throw new Error('activation epoch organizationId not in cohortOrganizationIds');
+    }
+    if (unique.length === 0) {
+      throw new Error('cohortOrganizationIds must not be empty');
+    }
+  }
+
+  private assertFrozenPolicyVersions(b2: string, b4: string): void {
+    if (b2 !== P25_APD_B2_V1 || b4 !== P25_APD_B4_V1) {
+      throw new Error('activation epoch policy version must match frozen P25 APDS policy');
+    }
   }
 
   async prepareEpoch(input: PrepareApdShadowActivationEpochInput): Promise<{ id: string }> {
+    assertApdShadowEpochInternalOpsAuthorized('prepareEpoch');
+    this.assertCohortOrganizations(input);
+    this.assertFrozenPolicyVersions(input.b2PolicyVersion, input.b4PolicyVersion);
     const activationScopeKey = buildApdShadowActivationScopeKey(
       input.cohortConfigFingerprintSha256,
     );
@@ -69,11 +95,17 @@ export class ApdShadowActivationEpochService {
 
   /**
    * Authorized activation: establishes immutable DB-time T0 and ACTIVE lifecycle atomically.
-   * Idempotent when the same activationRequestKey is replayed.
+   * Idempotent when the same activationRequestKey is replayed for the same scope.
    */
   async activateEpoch(
     input: ActivateApdShadowActivationEpochInput,
   ): Promise<ApdShadowActiveEpochView> {
+    assertApdShadowEpochInternalOpsAuthorized('activateEpoch');
+    if (input.cohortOrganizationIds.length === 0) {
+      throw new Error('cohortOrganizationIds must not be empty');
+    }
+    this.assertFrozenPolicyVersions(input.b2PolicyVersion, input.b4PolicyVersion);
+
     const activationScopeKey = buildApdShadowActivationScopeKey(
       input.cohortConfigFingerprintSha256,
     );
@@ -85,6 +117,7 @@ export class ApdShadowActivationEpochService {
         where: { activationRequestKey: input.activationRequestKey },
       });
       if (existingByRequest) {
+        this.assertActivationRequestScopeMatch(existingByRequest, input, activationScopeKey);
         if (
           existingByRequest.lifecycleState === ApdShadowActivationEpochLifecycle.ACTIVE &&
           existingByRequest.activatedAt
@@ -114,6 +147,9 @@ export class ApdShadowActivationEpochService {
       ) {
         throw new Error('activation epoch policy version mismatch');
       }
+      if (!input.cohortOrganizationIds.includes(epoch.organizationId)) {
+        throw new Error('activation epoch organizationId not in cohort');
+      }
 
       if (epoch.lifecycleState === ApdShadowActivationEpochLifecycle.ACTIVE && epoch.activatedAt) {
         return epoch;
@@ -138,7 +174,7 @@ export class ApdShadowActivationEpochService {
 
       const [{ activated_at }] = await tx.$queryRaw<
         Array<{ activated_at: Date }>
-      >`SELECT NOW() AS activated_at`;
+      >`SELECT (NOW() AT TIME ZONE 'UTC')::timestamptz AS activated_at`;
 
       const updated = await tx.apdShadowActivationEpoch.update({
         where: { id: epoch.id },
@@ -157,14 +193,43 @@ export class ApdShadowActivationEpochService {
     });
 
     const view = this.toActiveView(activated);
-    this.cacheByScope.set(activationScopeKey, {
+    this.positiveCacheByScope.set(activationScopeKey, {
       epoch: view,
       loadedAtMs: Date.now(),
     });
     return view;
   }
 
+  private assertActivationRequestScopeMatch(
+    existing: {
+      id: string;
+      activationScopeKey: string;
+      cohortConfigFingerprintSha256: string;
+      b2PolicyVersion: string;
+      b4PolicyVersion: string;
+    },
+    input: ActivateApdShadowActivationEpochInput,
+    activationScopeKey: string,
+  ): void {
+    if (existing.id !== input.epochId) {
+      throw new Error('activation request key bound to a different epoch id');
+    }
+    if (existing.activationScopeKey !== activationScopeKey) {
+      throw new Error('activation request key scope mismatch');
+    }
+    if (existing.cohortConfigFingerprintSha256 !== input.cohortConfigFingerprintSha256) {
+      throw new Error('activation request key cohort fingerprint mismatch');
+    }
+    if (
+      existing.b2PolicyVersion !== input.b2PolicyVersion ||
+      existing.b4PolicyVersion !== input.b4PolicyVersion
+    ) {
+      throw new Error('activation request key policy version mismatch');
+    }
+  }
+
   async pauseEpoch(epochId: string): Promise<void> {
+    assertApdShadowEpochInternalOpsAuthorized('pauseEpoch');
     await this.prisma.apdShadowActivationEpoch.updateMany({
       where: {
         id: epochId,
@@ -179,6 +244,7 @@ export class ApdShadowActivationEpochService {
   }
 
   async closeEpoch(epochId: string): Promise<void> {
+    assertApdShadowEpochInternalOpsAuthorized('closeEpoch');
     await this.prisma.apdShadowActivationEpoch.updateMany({
       where: {
         id: epochId,
@@ -198,17 +264,30 @@ export class ApdShadowActivationEpochService {
     this.invalidateCache();
   }
 
+  /**
+   * Read-path loader (may use positive cache). Not authoritative for scientific writes.
+   */
   async loadActiveEpochForScope(
     cohortConfigFingerprintSha256: string,
+  ): Promise<ApdShadowActiveEpochView | null> {
+    const cached = this.getCachedActiveEpochSnapshot(cohortConfigFingerprintSha256);
+    if (cached) return cached;
+    return this.loadActiveEpochForScopeAuthoritative(cohortConfigFingerprintSha256, {
+      updatePositiveCache: true,
+    });
+  }
+
+  /**
+   * Authoritative loader for decision-write boundary — always queries database.
+   */
+  async loadActiveEpochForScopeAuthoritative(
+    cohortConfigFingerprintSha256: string,
+    options?: { updatePositiveCache?: boolean },
   ): Promise<ApdShadowActiveEpochView | null> {
     const activationScopeKey = buildApdShadowActivationScopeKey(
       cohortConfigFingerprintSha256,
     );
-    const cached = this.cacheByScope.get(activationScopeKey);
     const now = Date.now();
-    if (cached && now - cached.loadedAtMs < APD_SHADOW_EPOCH_CACHE_TTL_MS) {
-      return cached.epoch;
-    }
 
     try {
       const row = await this.prisma.apdShadowActivationEpoch.findFirst({
@@ -220,14 +299,19 @@ export class ApdShadowActivationEpochService {
         orderBy: { activatedAt: 'desc' },
       });
       const view = row?.activatedAt ? this.toActiveView(row) : null;
-      this.cacheByScope.set(activationScopeKey, { epoch: view, loadedAtMs: now });
+      if (view && options?.updatePositiveCache) {
+        this.positiveCacheByScope.set(activationScopeKey, { epoch: view, loadedAtMs: now });
+      }
+      if (!view) {
+        this.positiveCacheByScope.delete(activationScopeKey);
+      }
       return view;
     } catch (err) {
       this.logger.warn(
-        `APD shadow activation epoch lookup failed (fail-closed): ${err instanceof Error ? err.message : err}`,
+        `APD shadow activation epoch authoritative lookup failed (fail-closed): ${err instanceof Error ? err.message : err}`,
       );
-      this.cacheByScope.set(activationScopeKey, { epoch: null, loadedAtMs: now });
-      return null;
+      this.positiveCacheByScope.delete(activationScopeKey);
+      throw err;
     }
   }
 
@@ -235,6 +319,7 @@ export class ApdShadowActivationEpochService {
     cohortConfigFingerprintSha256: string | null;
     decisionAtMs: number;
     activeEpoch: ApdShadowActiveEpochView | null;
+    vehicleOrganizationId?: string | null;
   }): { allowed: true; epoch: ApdShadowActiveEpochView } | { allowed: false; reason: ApdShadowActivationEpochGateReason } {
     if (!input.cohortConfigFingerprintSha256) {
       return { allowed: false, reason: 'EPOCH_MISSING' };
@@ -248,6 +333,15 @@ export class ApdShadowActivationEpochService {
     }
     if (epoch.cohortConfigFingerprintSha256 !== input.cohortConfigFingerprintSha256) {
       return { allowed: false, reason: 'EPOCH_FINGERPRINT_MISMATCH' };
+    }
+    if (
+      input.vehicleOrganizationId &&
+      epoch.organizationId !== input.vehicleOrganizationId
+    ) {
+      return { allowed: false, reason: 'EPOCH_ORG_MISMATCH' };
+    }
+    if (epoch.b2PolicyVersion !== P25_APD_B2_V1 || epoch.b4PolicyVersion !== P25_APD_B4_V1) {
+      return { allowed: false, reason: 'EPOCH_POLICY_VERSION_MISMATCH' };
     }
     const t0Ms = epoch.activatedAt.getTime();
     if (input.decisionAtMs < t0Ms) {

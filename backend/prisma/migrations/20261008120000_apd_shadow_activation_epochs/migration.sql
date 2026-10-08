@@ -40,4 +40,4 @@ ALTER TABLE "apd_shadow_reconciliation_decisions" ADD COLUMN "activation_epoch_i
 
 CREATE INDEX "apd_shadow_reconciliation_decisions_activation_epoch_id_de_idx" ON "apd_shadow_reconciliation_decisions"("activation_epoch_id", "decision_at");
 
-ALTER TABLE "apd_shadow_reconciliation_decisions" ADD CONSTRAINT "apd_shadow_reconciliation_decisions_activation_epoch_id_fkey" FOREIGN KEY ("activation_epoch_id") REFERENCES "apd_shadow_activation_epochs"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "apd_shadow_reconciliation_decisions" ADD CONSTRAINT "apd_shadow_reconciliation_decisions_activation_epoch_id_fkey" FOREIGN KEY ("activation_epoch_id") REFERENCES "apd_shadow_activation_epochs"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

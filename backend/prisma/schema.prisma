@@ -4503,7 +4503,7 @@ model ApdShadowReconciliationDecision {
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   vehicle      Vehicle      @relation(fields: [organizationId, vehicleId], references: [organizationId, id], onDelete: Cascade)
-  activationEpoch ApdShadowActivationEpoch? @relation(fields: [activationEpochId], references: [id], onDelete: SetNull)
+  activationEpoch ApdShadowActivationEpoch? @relation(fields: [activationEpochId], references: [id], onDelete: Restrict)
 
   @@unique([organizationId, vehicleId, opportunityId, policyVersion])
   @@index([vehicleId, decisionAt])

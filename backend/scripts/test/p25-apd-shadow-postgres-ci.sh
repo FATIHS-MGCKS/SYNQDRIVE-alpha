@@ -21,7 +21,9 @@ log "APD shadow postgres integration"
 DATABASE_URL="${DATABASE_URL}" npx jest \
   --runInBand --forceExit \
   adaptive-polling-shadow.postgres.integration.spec.ts \
-  apd-shadow-activation-epoch.postgres.integration.spec.ts
+  apd-shadow-activation-epoch.postgres.integration.spec.ts \
+  apd-shadow-decision-epoch.immutability.postgres.integration.spec.ts \
+  apd-shadow-activation-epoch.lifecycle.postgres.integration.spec.ts
 
 log "migration ephemeral gate"
 bash scripts/test/p25-apd-shadow-migration-ephemeral.sh

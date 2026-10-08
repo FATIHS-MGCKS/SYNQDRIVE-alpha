@@ -36,8 +36,18 @@ Migration: `20261008120000_apd_shadow_activation_epochs`
 ## Kill switch / fail-closed
 
 - Missing/invalid epoch → no shadow DB writes; **normal DIMO polling unchanged**
-- Epoch cache TTL: 5s (`APD_SHADOW_EPOCH_CACHE_TTL_MS`)
-- Shadow DB errors in epoch lookup → fail-closed for shadow only
+- Epoch positive cache TTL: 5s (`APD_SHADOW_EPOCH_CACHE_TTL_MS`) — **read hints only** (`isEnabledForVehicle` prefetch)
+- **Decision-write boundary** uses `loadActiveEpochForScopeAuthoritative()` (no positive-cache admission; `MAX_STALE_ADMISSION_MS=0`)
+- Shadow DB errors in epoch lookup → fail-closed (no stale-positive fallback)
+- `WORKER_APD_SHADOW_ENABLED=false` checked on every decision gate (immediate per-process kill switch)
+
+## APDS-9.3A hardening (same PR #1920)
+
+- Decision row immutability: legacy `activation_epoch_id=NULL` cannot adopt epoch; cross-epoch replay → `ApdShadowDecisionEpochConflictError`; `decisionAt` immutable
+- FK `ON DELETE RESTRICT` on `activation_epoch_id` (epochs with evidence cannot be deleted silently)
+- PostgreSQL trigger `apd_shadow_activation_epochs_immutable_t0` prevents `activated_at` mutation
+- Internal ops authority env `APD_SHADOW_EPOCH_INTERNAL_OPS_AUTHORIZED` required for prepare/activate/pause/close (no HTTP operator path yet)
+- Activation request key bound to scope + policy versions + epoch id
 
 ## Operator runbook (draft)
 
