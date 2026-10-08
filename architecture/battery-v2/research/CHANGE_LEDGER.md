@@ -6,6 +6,40 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-07 — M3.3-HV-H4-A3.3-O2-R1 closure: withdraw SQL issuance + parity/race tests
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | R1 migration included `SECURITY DEFINER` SQL issuance; `SQL_FULL_VERIFY_EQUIVALENT_TO_TS` overstated |
+| **CHANGE** | Remove SQL issuance function; keep schema + Strategy C triggers + non-authoritative parity helpers; exponent golden corpus; JSON adversarial + timestamp/TZ + C11/C12 race postgres tests; constants `A3_ATTESTATION_SQL_ISSUANCE_DEPLOYED=false` |
+| **WHY** | ECMAScript exponent formatting, JSON type semantics, and full verifier parity not proven in PostgreSQL |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r1-*` postgres specs; HV-H4 CI on PR #1918 |
+| **OBSERVED_EFFECT** | `SQL_FULL_VERIFY_EQUIVALENT_TO_TS=NO_NOT_YET_PROVEN`; `R1_DECISION=FOUNDATION_IMPLEMENTED_ISSUANCE_NOT_CERTIFIED` |
+| **NON_EFFECTS** | Production loader unchanged; no writer attestation; no hybrid bootstrap |
+| **REMAINING_GAPS** | Proven SQL number formatter + hardened JSON-type verifier; production pgcrypto CREATE EXTENSION authority |
+| **DECISION_STATUS** | VALIDATED (foundation only) |
+| **EVIDENCE** | `M3_3_HV_H4_A3_3_O2_R1_SCHEMA_TRIGGER_ISSUANCE_FOUNDATION_2026-10-07.md` |
+
+## 2026-10-07 — M3.3-HV-H4-A3.3-O2-R1 fix TEXT FK + postgres probe + tests
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Attestation migration FK columns `TEXT`; issuance function `(text,text)`; fix `probePostgresDatabase` guard; R1-C13/C15 tests |
+| **WHY** | CI migration apply failed UUID vs TEXT; R1 tests were no-op due to `probe.ok` bug |
+
+## 2026-10-07 — M3.3-HV-H4-A3.3-O2-R1 schema + invalidation + issuance foundation
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Attestation table + Strategy C triggers + SQL canonical/issuance functions; golden corpus + R1 postgres tests |
+| **WHY** | O2-R1 foundation per closed O2 architecture; loader unchanged |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r1-*.postgres.integration.spec.ts`; HV-H4 postgres CI |
+| **NON_EFFECTS** | No writer attestation; no hybrid loader; no bootstrap |
+| **DECISION_STATUS** | PROPOSED |
+| **EVIDENCE** | `M3_3_HV_H4_A3_3_O2_R1_SCHEMA_TRIGGER_ISSUANCE_FOUNDATION_2026-10-07.md` |
+
+---
+
 ## 2026-10-07 — M3.3-HV-H4-A3.3-O2 final architecture closure (PR #1914)
 
 | Field | Value |

@@ -54,3 +54,17 @@ export const A3_3_MODE_A_EFFECTIVE_REVISION_ORDERING =
 export const A3_3_DURABLE_LOADER_RUNTIME_REACHABLE = false as const;
 export const A3_3_MODE_B_TRUE_HISTORICAL_ASOF_IMPLEMENTED = false as const;
 export const A3_3_HYBRID_LIVE_DURABLE_SOURCE_MODE = false as const;
+
+/** M3.3-HV-H4-A3.3-O2-R1 — integrity attestation foundation (hybrid loader remains OFF). */
+export const M3_3_HV_H4_A3_HISTORY_INTEGRITY_ATTESTATION_CONTRACT_V1 =
+  'M3_3_HV_H4_A3_HISTORY_INTEGRITY_ATTESTATION_V1' as const;
+
+export const A3_ATTESTATION_SCHEMA_PRESENT = true as const;
+export const A3_ATTESTATION_INVALIDATION_DB_ENFORCED = true as const;
+/** Schema + Strategy C invalidation only; SQL issuance prototype removed (TS/SQL parity not proven). */
+export const A3_ATTESTATION_ISSUANCE_FOUNDATION_PRESENT = false as const;
+export const A3_ATTESTATION_SQL_ISSUANCE_DEPLOYED = false as const;
+/** Set false until production DB role topology + SQL/TS parity are production-certified. */
+export const A3_ATTESTATION_ISSUANCE_AUTHORITY_CERTIFIED = false as const;
+export const A3_HYBRID_DURABLE_LOADER_RUNTIME_REACHABLE = false as const;
+export const A3_ATTESTATION_BOOTSTRAP_RUNTIME_REACHABLE = false as const;
