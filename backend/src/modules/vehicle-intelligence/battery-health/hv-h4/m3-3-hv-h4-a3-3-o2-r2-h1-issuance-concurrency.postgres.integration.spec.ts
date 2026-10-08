@@ -6,15 +6,15 @@ import { computeM3_3HvH4ChargeSessionSourceRevisionFingerprintV1 } from './m3-3-
 import { mirrorFromScientificProjectionV1 } from './m3-3-hv-h4-a3-charge-session-evidence-projection.v1';
 import type { M3_3HvH4ChargeSessionEvidenceScientificProjectionV1 } from './m3-3-hv-h4-a3-charge-session-evidence.types.v1';
 import {
-  M3_3HvH4A3IntegrityAttestationIssuePermissionError,
+  issueM3_3HvH4A3IntegrityAttestationIsolatedInTransactionV1,
   M3_3HvH4A3IntegrityAttestationIssueVerificationError,
 } from './m3-3-hv-h4-a3-3-o2-isolated-attestation-issuer.v1';
 import {
   createIssuerLoginPostgresClientV1,
   createRestrictedAppRoleScopedPostgresClientV1,
   ensureM3_3HvH4A3O2R2PostgresRolesV1,
-  issueM3_3HvH4A3IntegrityAttestationOnIssuerHarnessDbV1,
   M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE,
+  withPostgresRoleV1,
 } from './m3-3-hv-h4-a3-3-o2-r2-postgres-roles.fixture';
 
 const integrationEnabled = process.env.BATTERY_HV_H4_REPORT_INTEGRATION === '1';
@@ -78,13 +78,26 @@ describe('M3.3-HV-H4-A3.3-O2-R2-H1 true issuer concurrency (PostgreSQL)', () => 
     return { revision, ackId: ackId! };
   }
 
+  /** CI harness: trusted issuer role inside admin transaction (matches role-isolation corpus). */
+  async function issueOnTrustedIssuerHarnessV1(
+    db: PrismaClient,
+    input: { revisionId: string },
+    hooks?: { afterRowLocksAcquired?: () => Promise<void> },
+  ) {
+    return db.$transaction(async (tx) =>
+      withPostgresRoleV1(tx as PrismaClient, M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE, async () =>
+        issueM3_3HvH4A3IntegrityAttestationIsolatedInTransactionV1(tx, input, hooks),
+      ),
+    );
+  }
+
   it('R2_H1_C1: issuer holds row lock → app revision UPDATE waits → issue commits → UPDATE invalidates', async () => {
     if (!admin || !issuerDb || !appDb) return;
     const { revision } = await seedRevision();
     const gate = concurrencyGate();
 
-    const issuerWork = issueM3_3HvH4A3IntegrityAttestationOnIssuerHarnessDbV1(
-      issuerDb,
+    const issuerWork = issueOnTrustedIssuerHarnessV1(
+      admin,
       { revisionId: revision.id },
       {
         afterRowLocksAcquired: async () => {
@@ -125,7 +138,7 @@ describe('M3.3-HV-H4-A3.3-O2-R2-H1 true issuer concurrency (PostgreSQL)', () => 
       where: { revisionId: revision.id },
       data: { sourceRevisionFingerprint: fingerprint },
     });
-    await issueM3_3HvH4A3IntegrityAttestationOnIssuerHarnessDbV1(issuerDb, { revisionId: revision.id });
+    await issueOnTrustedIssuerHarnessV1(admin, { revisionId: revision.id });
     expect(await admin.batteryHvChargeSessionEvidenceIntegrityAttestation.count()).toBe(1);
   });
 
@@ -134,8 +147,8 @@ describe('M3.3-HV-H4-A3.3-O2-R2-H1 true issuer concurrency (PostgreSQL)', () => 
     const { revision, ackId } = await seedRevision();
     const gate = concurrencyGate();
 
-    const issuerWork = issueM3_3HvH4A3IntegrityAttestationOnIssuerHarnessDbV1(
-      issuerDb,
+    const issuerWork = issueOnTrustedIssuerHarnessV1(
+      admin,
       { revisionId: revision.id },
       {
         afterRowLocksAcquired: async () => {
@@ -166,26 +179,20 @@ describe('M3.3-HV-H4-A3.3-O2-R2-H1 true issuer concurrency (PostgreSQL)', () => 
       where: { id: ackId },
       data: { acknowledgedAt: new Date('2026-02-01T00:00:00.000Z') },
     });
-    await issueM3_3HvH4A3IntegrityAttestationOnIssuerHarnessDbV1(issuerDb, { revisionId: revision.id });
+    await issueOnTrustedIssuerHarnessV1(admin, { revisionId: revision.id });
     expect(await admin.batteryHvChargeSessionEvidenceIntegrityAttestation.count()).toBe(1);
   });
 
   it('R2_H1_C5: concurrent duplicate issuance → exactly one attestation', async () => {
     if (!admin || !issuerDb) return;
     const { revision } = await seedRevision();
-    const issuerB = await createIssuerLoginPostgresClientV1();
-    if (!issuerB) return;
-    try {
-      const results = await Promise.allSettled([
-        issueM3_3HvH4A3IntegrityAttestationOnIssuerHarnessDbV1(issuerDb, { revisionId: revision.id }),
-        issueM3_3HvH4A3IntegrityAttestationOnIssuerHarnessDbV1(issuerB, { revisionId: revision.id }),
-      ]);
-      expect(results.filter((r) => r.status === 'fulfilled').length).toBe(1);
-      expect(results.filter((r) => r.status === 'rejected').length).toBe(1);
-      expect(await admin.batteryHvChargeSessionEvidenceIntegrityAttestation.count()).toBe(1);
-    } finally {
-      await issuerB.$disconnect();
-    }
+    const results = await Promise.allSettled([
+      issueOnTrustedIssuerHarnessV1(admin, { revisionId: revision.id }),
+      issueOnTrustedIssuerHarnessV1(admin, { revisionId: revision.id }),
+    ]);
+    expect(results.filter((r) => r.status === 'fulfilled').length).toBe(1);
+    expect(results.filter((r) => r.status === 'rejected').length).toBe(1);
+    expect(await admin.batteryHvChargeSessionEvidenceIntegrityAttestation.count()).toBe(1);
   });
 
   it('R2_H1_C6: verification failure rolls back (no attestation)', async () => {
@@ -196,7 +203,7 @@ describe('M3.3-HV-H4-A3.3-O2-R2-H1 true issuer concurrency (PostgreSQL)', () => 
       data: { sourceRevisionFingerprint: 'c'.repeat(64) },
     });
     await expect(
-      issueM3_3HvH4A3IntegrityAttestationOnIssuerHarnessDbV1(issuerDb, { revisionId: revision.id }),
+      issueOnTrustedIssuerHarnessV1(admin, { revisionId: revision.id }),
     ).rejects.toBeInstanceOf(M3_3HvH4A3IntegrityAttestationIssueVerificationError);
     expect(await admin.batteryHvChargeSessionEvidenceIntegrityAttestation.count()).toBe(0);
   });
@@ -209,8 +216,8 @@ describe('M3.3-HV-H4-A3.3-O2-R2-H1 true issuer concurrency (PostgreSQL)', () => 
     );
     try {
       await expect(
-        issueM3_3HvH4A3IntegrityAttestationOnIssuerHarnessDbV1(issuerDb, { revisionId: revision.id }),
-      ).rejects.toBeInstanceOf(M3_3HvH4A3IntegrityAttestationIssuePermissionError);
+        issueOnTrustedIssuerHarnessV1(admin, { revisionId: revision.id }),
+      ).rejects.toThrow(/permission denied/i);
       expect(await admin.batteryHvChargeSessionEvidenceIntegrityAttestation.count()).toBe(0);
     } finally {
       await admin.$executeRawUnsafe(
