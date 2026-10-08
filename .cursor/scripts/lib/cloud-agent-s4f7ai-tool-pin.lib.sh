@@ -208,6 +208,12 @@ s4f7ai_resolve_tool_sha_for_dispatch() {
 s4f7ai_assert_local_dispatch_guards() {
   if [[ "${DI_S4F7Y_LIVE_STAGING_AUTHORIZED:-}" == "YES" ]]; then
     echo "S4F7AI_FAIL_CLOSED=LIVE_STAGING_AUTH_FORBIDDEN_LOCAL" >&2
+    echo "LIVE_AUTH_FLAG=DI_S4F7Y_LIVE_STAGING_AUTHORIZED" >&2
+    return 1
+  fi
+  if [[ "${DI_S4F7V_LIVE_STAGING_AUTHORIZED:-}" == "YES" ]]; then
+    echo "S4F7AI_FAIL_CLOSED=LIVE_STAGING_AUTH_FORBIDDEN_LOCAL" >&2
+    echo "LIVE_AUTH_FLAG=DI_S4F7V_LIVE_STAGING_AUTHORIZED" >&2
     return 1
   fi
   if [[ "${DRY_RUN:-}" == "0" ]]; then
@@ -215,6 +221,19 @@ s4f7ai_assert_local_dispatch_guards() {
     return 1
   fi
   return 0
+}
+
+# Detached checkout skip is allowed only in local engineering tests (no Production dispatch).
+s4f7ai_assert_detached_fetch_policy() {
+  if [[ "${S4F7AI_SKIP_DETACHED_FETCH:-}" == "1" && "${S4F7AI_SKIP_PRODUCTION_DISPATCH:-}" != "1" ]]; then
+    echo "S4F7AI_FAIL_CLOSED=DETACHED_FETCH_SKIP_FORBIDDEN_WITHOUT_ENGINEERING_MODE" >&2
+    return 1
+  fi
+  return 0
+}
+
+s4f7ai_is_engineering_local_test_mode() {
+  [[ "${S4F7AI_SKIP_PRODUCTION_DISPATCH:-}" == "1" ]]
 }
 
 s4f7ai_bootstrap_script_identity() {

@@ -54,6 +54,8 @@ Z2 evidence may be present on disk but is **not** used as authority (`S4F7AI_Z2_
 | Local `DRY_RUN=0` | **Forbidden** (`S4F7AI_FAIL_CLOSED=DRY_RUN_ZERO_FORBIDDEN_LOCAL`) |
 | Remote `DRY_RUN=0` | **Forbidden** (`FAIL_CLOSED=DRY_RUN_ZERO_FORBIDDEN_REMOTE`) |
 | `DI_S4F7Y_LIVE_STAGING_AUTHORIZED=YES` | **Forbidden** local + remote |
+| `DI_S4F7V_LIVE_STAGING_AUTHORIZED=YES` (legacy) | **Forbidden** local + remote |
+| `S4F7AI_SKIP_DETACHED_FETCH=1` without `S4F7AI_SKIP_PRODUCTION_DISPATCH=1` | **Forbidden** (engineering-only bypass) |
 | Production SSH in this slice | **Skipped** when `S4F7AI_SKIP_PRODUCTION_DISPATCH=1` |
 
 Remote Production dry-run path (post-merge, separate human slice) reuses the AA.1 safety checklist with S4F-7AI tool checkout and `/tmp/s4f7ai-fresh-wrapper.*` temp dirs.
@@ -64,7 +66,7 @@ Remote Production dry-run path (post-merge, separate human slice) reuses the AA.
 
 | Suite | Result |
 |-------|--------|
-| `.cursor/scripts/cloud-agent-s4f7ai-tool-pin.test.sh` | **15** cases A–O — **PASS** |
+| `.cursor/scripts/cloud-agent-s4f7ai-tool-pin.test.sh` | A–O + **S4F-7AI.1** safety cases — **PASS** |
 | `.cursor/scripts/cloud-agent-s4f7aa-tool-pin.test.sh` (O) | **PASS** |
 | `npm run test:di:s4f7v:fresh-tiny-staging-wrapper` | **131/131 PASS** (includes S4F-7AG **13/13**) |
 | `bash -n` S4F-7AI bootstrap + lib | **PASS** |

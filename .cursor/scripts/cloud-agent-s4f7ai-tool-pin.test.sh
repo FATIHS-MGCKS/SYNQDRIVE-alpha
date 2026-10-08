@@ -83,14 +83,47 @@ fi
 grep -q 'GIT_BLOB_MISMATCH' "${TMPDIR}/i.err" || fail "I marker"
 pass "H/I blob parity"
 
-echo "==> J/K local guards"
+echo "==> J DRY_RUN=0 local guard"
 export DRY_RUN=0
 if s4f7ai_assert_local_dispatch_guards 2>/dev/null; then fail "J local"; fi
 unset DRY_RUN
+pass "J"
+
+echo "==> K new live auth local guard"
 export DI_S4F7Y_LIVE_STAGING_AUTHORIZED=YES
-if s4f7ai_assert_local_dispatch_guards 2>/dev/null; then fail "K local"; fi
+if s4f7ai_assert_local_dispatch_guards 2>"${TMPDIR}/k.err"; then fail "K local"; fi
+grep -q 'DI_S4F7Y_LIVE_STAGING_AUTHORIZED' "${TMPDIR}/k.err" || fail "K flag marker"
 unset DI_S4F7Y_LIVE_STAGING_AUTHORIZED
-pass "J/K"
+pass "K"
+
+echo "==> K2 legacy live auth local guard"
+export DI_S4F7V_LIVE_STAGING_AUTHORIZED=YES
+if s4f7ai_assert_local_dispatch_guards 2>"${TMPDIR}/k2.err"; then fail "K2 local"; fi
+grep -q 'DI_S4F7V_LIVE_STAGING_AUTHORIZED' "${TMPDIR}/k2.err" || fail "K2 flag marker"
+unset DI_S4F7V_LIVE_STAGING_AUTHORIZED
+pass "K2"
+
+echo "==> K3 both live auth flags local guard"
+export DI_S4F7Y_LIVE_STAGING_AUTHORIZED=YES
+export DI_S4F7V_LIVE_STAGING_AUTHORIZED=YES
+if s4f7ai_assert_local_dispatch_guards 2>/dev/null; then fail "K3 local"; fi
+unset DI_S4F7Y_LIVE_STAGING_AUTHORIZED DI_S4F7V_LIVE_STAGING_AUTHORIZED
+pass "K3"
+
+echo "==> P detached fetch skip without engineering mode"
+export S4F7AI_SKIP_DETACHED_FETCH=1
+unset S4F7AI_SKIP_PRODUCTION_DISPATCH
+if s4f7ai_assert_detached_fetch_policy 2>"${TMPDIR}/p.err"; then fail "P"; fi
+grep -q 'DETACHED_FETCH_SKIP_FORBIDDEN_WITHOUT_ENGINEERING_MODE' "${TMPDIR}/p.err" || fail "P marker"
+unset S4F7AI_SKIP_DETACHED_FETCH
+pass "P"
+
+echo "==> P2 detached fetch skip forbidden on bootstrap without engineering mode"
+if S4F7AI_SKIP_DETACHED_FETCH=1 bash "$AI_BOOTSTRAP" 2>"${TMPDIR}/p2.err"; then
+  fail "P2 bootstrap should abort"
+fi
+grep -q 'DETACHED_FETCH_SKIP_FORBIDDEN_WITHOUT_ENGINEERING_MODE' "${TMPDIR}/p2.err" || fail "P2 marker"
+pass "P2"
 
 echo "==> L/M/N operator path strings at certified commit"
 s4f7ai_verify_db_clock_operator_paths "$REPO_ROOT" "$CERTIFIED" || fail "L/M/N paths"
