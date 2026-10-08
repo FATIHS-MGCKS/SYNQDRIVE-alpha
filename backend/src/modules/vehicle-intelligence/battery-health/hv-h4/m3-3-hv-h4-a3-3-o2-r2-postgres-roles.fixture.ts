@@ -1,4 +1,8 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
+import {
+  brandM3_3HvH4A3IntegrityAttestationIssuerDbV1,
+  type M3_3HvH4A3IntegrityAttestationIssuerDbV1,
+} from './m3-3-hv-h4-a3-3-o2-isolated-attestation-issuer.types.v1';
 
 /** CI-only role names mirroring intended production separation (not production-certified). */
 export const M3_3_HV_H4_A3_O2_R2_RESTRICTED_APP_ROLE = 'm3_3_hv_h4_a3_r2_app_restricted';
@@ -65,6 +69,9 @@ export async function ensureM3_3HvH4A3O2R2PostgresRolesV1(prisma: PrismaClient):
   );
   await prisma.$executeRawUnsafe(
     `REVOKE INSERT, UPDATE, DELETE ON ${ATTESTATION_TABLE} FROM ${M3_3_HV_H4_A3_O2_R2_APP_LOGIN_ROLE}`,
+  );
+  await prisma.$executeRawUnsafe(
+    `REVOKE ALL ON FUNCTION public.m3_3_hv_h4_a3_lock_revision_and_ack_for_issuance_v1(text) FROM ${M3_3_HV_H4_A3_O2_R2_APP_LOGIN_ROLE}`,
   );
 
   await prisma.$executeRawUnsafe(`GRANT USAGE ON SCHEMA public TO ${M3_3_HV_H4_A3_O2_R2_RESTRICTED_APP_ROLE}`);
@@ -170,15 +177,74 @@ export async function createRestrictedAppRoleScopedPostgresClientV1(): Promise<P
   return createRestrictedAppLoginPostgresClientV1();
 }
 
-/** Dedicated issuer-bound Prisma pool (CI harness — not production-certified). */
-export async function createIssuerLoginPostgresClientV1(): Promise<PrismaClient | undefined> {
-  const base = process.env.DATABASE_URL;
-  if (!base) return undefined;
+/** Dedicated issuer-login Prisma pool (CI fixture credentials only). */
+export async function createIssuerLoginPostgresClientV1(): Promise<
+  M3_3HvH4A3IntegrityAttestationIssuerDbV1 | undefined
+> {
+  const loginUrl = buildLoginDatabaseUrlV1(M3_3_HV_H4_A3_O2_R2_ISSUER_LOGIN_ROLE, ISSUER_LOGIN_PASSWORD);
+  if (!loginUrl) return undefined;
   const client = new PrismaClient({
-    datasources: { db: { url: withPrismaSingleConnectionUrlV1(base) } },
+    datasources: { db: { url: withPrismaSingleConnectionUrlV1(loginUrl) } },
   });
   await client.$connect();
-  return client;
+  return brandM3_3HvH4A3IntegrityAttestationIssuerDbV1(client);
+}
+
+export type M3_3HvH4A3O2R2PostgresSessionIdentityV1 = {
+  sessionUser: string;
+  currentUser: string;
+  rolsuper: boolean;
+  rolcreaterole: boolean;
+};
+
+export async function readPostgresSessionIdentityV1(
+  db: PrismaClient | Prisma.TransactionClient,
+): Promise<M3_3HvH4A3O2R2PostgresSessionIdentityV1> {
+  const rows = await db.$queryRaw<
+    Array<{ session_user: string; current_user: string; rolsuper: boolean; rolcreaterole: boolean }>
+  >`
+    SELECT
+      session_user::text,
+      current_user::text,
+      r.rolsuper,
+      r.rolcreaterole
+    FROM pg_roles r
+    WHERE r.rolname = current_user
+  `;
+  const row = rows[0];
+  return {
+    sessionUser: row?.session_user ?? '',
+    currentUser: row?.current_user ?? '',
+    rolsuper: row?.rolsuper ?? true,
+    rolcreaterole: row?.rolcreaterole ?? true,
+  };
+}
+
+export async function readPostgresBackendPidV1(db: PrismaClient | Prisma.TransactionClient): Promise<number> {
+  const rows = await db.$queryRaw<Array<{ pid: number }>>`SELECT pg_backend_pid()::int AS pid`;
+  return rows[0]?.pid ?? -1;
+}
+
+export async function waitUntilBackendBlockedByV1(
+  observer: PrismaClient,
+  blockedPid: number,
+  expectedBlockerPid: number,
+  timeoutMs = 10_000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const rows = await observer.$queryRaw<Array<{ blockers: number[] }>>`
+      SELECT COALESCE(pg_blocking_pids(${blockedPid}::integer), ARRAY[]::integer[]) AS blockers
+    `;
+    const blockers = rows[0]?.blockers ?? [];
+    if (blockers.includes(expectedBlockerPid)) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error(
+    `O2-R2-H2: backend pid ${blockedPid} was not blocked by ${expectedBlockerPid} within ${timeoutMs}ms`,
+  );
 }
 
 export async function withPostgresRoleV1<T>(

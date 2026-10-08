@@ -34,6 +34,22 @@
 
 **Concurrency:** R2_H1_C1–C7 use two-connection overlap (issuer session vs restricted app session), not sequential mislabeling.
 
+## O2-R2-H2 — true issuer-login isolation + lock-observed concurrency (2026-10-08)
+
+| Field | Value |
+|-------|--------|
+| `ISSUER_FACTORY_USES_REAL_ISSUER_LOGIN` | **YES** — `createIssuerLoginPostgresClientV1` authenticates as `m3_3_hv_h4_a3_r2_issuer_login` (CI fixture only) |
+| `ADMIN_ROLE_SWITCH_USED_FOR_H2_ISSUANCE` | **NO** — H2 corpus uses issuer-login + app-login clients; admin seeds/cleans only |
+| `REAL_ISSUER_LOGIN_ISSUANCE` | **PASS_POSTGRES** (isolated CI) |
+| `REVISION_UPDATE_ACTUALLY_BLOCKED` | **YES** — `pg_blocking_pids` observer (H2-C1) |
+| `ACK_UPDATE_ACTUALLY_BLOCKED` | **YES** — `pg_blocking_pids` observer (H2-C3) |
+| `ISSUER_TYPE_BOUNDARY_HARDENED` | **PARTIAL** — branded `M3_3HvH4A3IntegrityAttestationIssuerDbV1` + `brandM3_3HvH4A3IntegrityAttestationIssuerDbV1`; no Nest runtime factory yet |
+| `ISSUANCE_AUTHORITY_CERTIFIED` | **NO** — production credentials/topology not independently certified |
+
+**H2 corpus:** H2-C1–C7 on issuer-login issuance; H2-C8 on app-login denial (identity spec). H1 admin `SET LOCAL ROLE` harness retained as regression only.
+
+**SECURITY DEFINER lock review (`m3_3_hv_h4_a3_lock_revision_and_ack_for_issuance_v1`):** fixed `search_path = pg_catalog, public`; schema-qualified revision/ACK `FOR UPDATE`; no dynamic SQL; `REVOKE ALL FROM PUBLIC`; app login `EXECUTE` denied; issuer login `EXECUTE` granted in CI fixture; locks held until issuer transaction ends; rollback releases locks. Issuer roles do not receive broad `UPDATE` on revision/ACK — locks remain via definer function only.
+
 ## Delivered
 
 1. **Migration R2** — `SECURITY DEFINER` invalidation trigger functions (fixed `search_path`, schema-qualified deletes). Restricted app role may `UPDATE` revision/ACK without `DELETE` on attestation table.
@@ -41,7 +57,7 @@
 3. **Isolated TS issuer** — `issueM3_3HvH4A3IntegrityAttestationIsolatedV1(issuerDb, …)` requires infrastructure-bound `issuerDb` (not wired to Nest; `A3_ATTESTATION_ISOLATED_TS_ISSUER_RUNTIME_REACHABLE=false`).
 4. **R2-H1 migration** — `m3_3_hv_h4_a3_lock_revision_and_ack_for_issuance_v1` for SELECT-only issuer row locks.
 5. **Numeric parity** — decimal-safe FINITE vectors pass SQL↔TS; explicit exponent/boundary + 256 deterministic randomized binary64 cases fail (documented mismatch count > 0).
-6. **Concurrency** — R2_H1_C1–C7 true overlap harness on issuer + restricted app sessions.
+6. **Concurrency** — R2_H1_C1–C7 (admin role-switch regression); O2-R2-H2 H2-C1–C8 on true issuer-login + app-login with `pg_blocking_pids` evidence.
 
 ## SQL issuance (model A)
 

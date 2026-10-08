@@ -28,7 +28,7 @@ export type M3_3HvH4A3IssueIntegrityAttestationIsolatedInputV1 = {
 export async function issueM3_3HvH4A3IntegrityAttestationIsolatedInTransactionV1(
   tx: Prisma.TransactionClient,
   input: M3_3HvH4A3IssueIntegrityAttestationIsolatedInputV1,
-  hooks?: { afterRowLocksAcquired?: () => Promise<void> },
+  hooks?: { afterRowLocksAcquired?: (readBackendPid: () => Promise<number>) => Promise<void> },
 ): Promise<{ attestationId: string }> {
   const attestedAt = input.attestedAt ?? new Date();
 
@@ -37,7 +37,10 @@ export async function issueM3_3HvH4A3IntegrityAttestationIsolatedInTransactionV1
   `;
 
   if (hooks?.afterRowLocksAcquired) {
-    await hooks.afterRowLocksAcquired();
+    await hooks.afterRowLocksAcquired(async () => {
+      const rows = await tx.$queryRaw<Array<{ pid: number }>>`SELECT pg_backend_pid()::int AS pid`;
+      return rows[0]?.pid ?? -1;
+    });
   }
 
   const revision = await tx.batteryHvChargeSessionEvidenceRevision.findUniqueOrThrow({

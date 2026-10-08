@@ -103,7 +103,7 @@ describe('M3.3-HV-H4-A3.3-O2-R2-H1 true issuer concurrency (PostgreSQL)', () => 
         afterRowLocksAcquired: async () => {
           gate.notifyIssuerLocked();
           await gate.waitUntilAppBlocked;
-        },
+        }, // H1 harness: admin SET LOCAL ROLE (regression only)
       },
     );
 
@@ -154,7 +154,7 @@ describe('M3.3-HV-H4-A3.3-O2-R2-H1 true issuer concurrency (PostgreSQL)', () => 
         afterRowLocksAcquired: async () => {
           gate.notifyIssuerLocked();
           await gate.waitUntilAppBlocked;
-        },
+        }, // H1 harness: admin SET LOCAL ROLE (regression only)
       },
     );
 

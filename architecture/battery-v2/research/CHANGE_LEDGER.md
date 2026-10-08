@@ -6,6 +6,19 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R2-H2 true issuer-login isolation + lock-observed concurrency
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Fix issuer-login factory credentials; branded issuer DB type; H2 identity/issuance/concurrency postgres specs with `pg_blocking_pids`; remove admin SET ROLE from H2 issuance path |
+| **WHY** | H1 proved permissions via admin role switch — not distinct login identity; PrismaPromise alone does not prove row-lock blocking |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r2-h2-*` postgres specs; HV-H4 CI |
+| **OBSERVED_EFFECT** | `ISSUER_FACTORY_USES_REAL_ISSUER_LOGIN=YES`; `REAL_ISSUER_LOGIN_ISSUANCE=PASS_POSTGRES`; H2-C1/C3 lock blocking observed |
+| **NON_EFFECTS** | No Nest issuer runtime; no production credentials; SQL issuance still deferred |
+| **REMAINING_GAPS** | Production issuer pool construction gate; DB cannot prove TS verifier invocation |
+| **DECISION_STATUS** | VALIDATED (repository prototype) |
+| **EVIDENCE** | `M3_3_HV_H4_A3_3_O2_R2_ISSUANCE_AUTHORITY_2026-10-08.md` § O2-R2-H2 |
+
 ## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R2-H1 isolated issuer role + lock authority hardening
 
 | Field | Value |
