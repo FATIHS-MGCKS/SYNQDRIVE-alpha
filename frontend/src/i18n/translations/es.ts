@@ -92,6 +92,8 @@ export const es = {
   'master.cv.offboard.warning.FLEET_TASK_WARNING': 'Las tareas de flota abiertas permanecen.',
   'master.cv.offboard.lifecycleUnknown': 'Ciclo de registro desconocido; retirada no disponible.',
   'master.cv.offboard.uncertainRetry': 'Resultado incierto — reintente la misma operacion o actualice.',
+  'master.cv.offboard.uncertainRetryAction': 'Reintentar / verificar resultado',
+  'master.cv.offboard.uncertainAbandon': 'Abandonar este intento',
   'master.cv.release.blockedBackend': 'Retirada deshabilitada hasta verificar backend en produccion.',
 
   'fleetCondition.title': 'Estado de la flota', 'fleetCondition.healthScore': 'Puntuacion de salud', 'fleetCondition.goodCondition': 'Bueno', 'fleetCondition.warnings': 'Advertencias', 'fleetCondition.critical': 'Critico',

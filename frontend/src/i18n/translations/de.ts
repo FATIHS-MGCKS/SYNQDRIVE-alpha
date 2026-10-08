@@ -3440,6 +3440,8 @@ export const de: Record<TranslationKey, string> = {
   'master.cv.offboard.lifecycleUnknown': 'Registry-Lebenszyklus unbekannt; Ausbuchung nicht verfügbar.',
   'master.cv.offboard.uncertainRetry':
     'Ergebnis unklar — mit derselben Operation erneut versuchen oder Status aktualisieren.',
+  'master.cv.offboard.uncertainRetryAction': 'Erneut versuchen / Ergebnis prüfen',
+  'master.cv.offboard.uncertainAbandon': 'Diesen Versuch verwerfen',
   'master.cv.release.blockedBackend':
     'Ausbuchung ist deaktiviert, bis die Backend-Fähigkeit in Produktion verifiziert ist.',
 

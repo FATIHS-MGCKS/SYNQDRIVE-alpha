@@ -30,6 +30,9 @@ interface ConnectedVehicleDetailDrawerProps {
     note?: string;
   }) => Promise<void>;
   offboardSubmitting?: boolean;
+  offboardPhase?: 'idle' | 'submitting' | 'mfa_required' | 'uncertain' | 'success';
+  onRetryUncertainOffboard?: () => void;
+  onAbandonOffboardIntent?: () => void;
   onRegisterDetailRefresh?: (refresh: () => void) => void;
   onOpenOrganization?: (organizationId: string) => void;
 }
@@ -42,6 +45,9 @@ export function ConnectedVehicleDetailDrawer({
   offboardUiEnabled = true,
   onOffboard,
   offboardSubmitting = false,
+  offboardPhase = 'idle',
+  onRetryUncertainOffboard,
+  onAbandonOffboardIntent,
   onRegisterDetailRefresh,
   onOpenOrganization,
 }: ConnectedVehicleDetailDrawerProps) {
@@ -305,6 +311,36 @@ export function ConnectedVehicleDetailDrawer({
                 </p>
               )}
             </section>
+
+            {vehicleId && offboardPhase === 'uncertain' ? (
+              <div
+                className="border-t border-border pt-4 space-y-2"
+                role="status"
+                data-testid="offboard-uncertain-panel"
+              >
+                <p className="text-sm text-foreground">{t('master.cv.offboard.uncertainRetry')}</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="default"
+                    size="sm"
+                    disabled={offboardSubmitting}
+                    onClick={() => onRetryUncertainOffboard?.()}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" aria-hidden />
+                    {t('master.cv.offboard.uncertainRetryAction')}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onAbandonOffboardIntent?.()}
+                  >
+                    {t('master.cv.offboard.uncertainAbandon')}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
 
             {vehicleId && offboardAllowed ? (
               <div className="border-t border-border pt-4">

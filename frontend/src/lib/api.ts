@@ -1,5 +1,7 @@
 import { getToken, clearAuth } from './auth';
 import { getStepUpToken } from './mfa';
+import { buildVehiclesOperationalListQuery } from './vehicles-operational-list-query';
+import { classifyOffboardHttpFailure } from './vehicle-offboard-api-error';
 import { buildFinanceInsightsPath } from '../rental/lib/finance-insights.types';
 import {
   buildFleetRentalHealthQueryString,
@@ -789,9 +791,15 @@ export interface RequestResult<T> {
   readonly errorBody?: { code?: string; message?: string; details?: unknown };
 }
 
+export type RequestResultMeta = {
+  /** Hub-owned MFA dialogs must not also trigger the global step-up listener. */
+  suppressStepUpDispatch?: boolean;
+};
+
 export async function requestResult<T>(
   path: string,
   options?: RequestInit,
+  meta?: RequestResultMeta,
 ): Promise<RequestResult<T>> {
   const token = getToken();
   const headers: Record<string, string> = {
@@ -823,6 +831,7 @@ export async function requestResult<T>(
         ? (body as { code?: string; message?: string; details?: unknown })
         : {};
     if (
+      !meta?.suppressStepUpDispatch &&
       res.status === 403 &&
       normalized &&
       typeof normalized === 'object' &&
@@ -3951,13 +3960,9 @@ export const api = {
     operationalAttentionQueue: (limit = 8) =>
       get<any[]>(`/admin/vehicles/operational/attention-queue?limit=${limit}`),
     operationalList: (params?: Record<string, string | number | undefined>) => {
-      const search = new URLSearchParams();
-      for (const [key, val] of Object.entries(params ?? {})) {
-        if (val !== undefined && val !== '' && val !== 'all') search.set(key, String(val));
-      }
-      const qs = search.toString();
+      const qs = buildVehiclesOperationalListQuery(params);
       return get<{ data: any[]; meta: { total: number; page: number; limit: number; totalPages: number } }>(
-        `/admin/vehicles/operational${qs ? `?${qs}` : ''}`,
+        `/admin/vehicles/operational${qs}`,
       );
     },
     operationalDetail: (vehicleId: string) => get<any>(`/admin/vehicles/${vehicleId}/operational`),
@@ -4215,17 +4220,14 @@ export const api = {
         reason: 'OFFBOARD_SOLD' | 'REMOVE_FROM_PRODUCT' | 'ADMINISTRATIVE_OFFBOARD';
         idempotentReplay: boolean;
         warnings: string[];
-      }>(path, { method: 'POST', body: JSON.stringify(body) });
+      }>(path, { method: 'POST', body: JSON.stringify(body) }, { suppressStepUpDispatch: true });
       if (!result.ok) {
-        const code = result.errorBody?.code;
-        const msg = result.errorMessage ?? 'Offboard request failed';
-        const err = new Error(code ? `[${code}] ${msg}` : msg) as Error & {
-          status?: number;
-          details?: unknown;
-        };
-        err.status = result.status;
-        err.details = result.errorBody?.details;
-        throw err;
+        throw classifyOffboardHttpFailure(
+          result.status,
+          result.errorBody?.code,
+          result.errorMessage ?? 'Offboard request failed',
+          result.errorBody?.details,
+        );
       }
       return result.data!;
     },

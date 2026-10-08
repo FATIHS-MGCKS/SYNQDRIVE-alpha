@@ -93,6 +93,8 @@ export const nl = {
   'master.cv.offboard.warning.FLEET_TASK_WARNING': 'Open vloot taken blijven.',
   'master.cv.offboard.lifecycleUnknown': 'Registry-levenscyclus onbekend; offboard niet beschikbaar.',
   'master.cv.offboard.uncertainRetry': 'Onzeker resultaat — probeer dezelfde operatie opnieuw of ververs.',
+  'master.cv.offboard.uncertainRetryAction': 'Opnieuw / resultaat controleren',
+  'master.cv.offboard.uncertainAbandon': 'Deze poging annuleren',
   'master.cv.release.blockedBackend': 'Offboard uitgeschakeld tot productie-backend is geverifieerd.',
 
   'fleetCondition.title': 'Vlootstatus', 'fleetCondition.healthScore': 'Gezondheidsscore', 'fleetCondition.goodCondition': 'Goed', 'fleetCondition.warnings': 'Waarschuwingen', 'fleetCondition.critical': 'Kritiek',

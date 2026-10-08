@@ -1,6 +1,10 @@
 import { useCallback, useRef, useState } from 'react';
 import { api } from '../../lib/api';
-import { isEnrollmentRequiredError, isStepUpRequiredError } from '../../lib/mfa';
+import {
+  classifyOffboardHttpFailure,
+  isTransportUncertainError,
+  VehicleOffboardRequestError,
+} from './vehicle-offboard.api-error';
 import type {
   VehicleOffboardHttpResponse,
   VehicleOffboardIntent,
@@ -15,18 +19,25 @@ export type OffboardExecutionState =
 
 export function useVehicleOffboard() {
   const [state, setState] = useState<OffboardExecutionState>({ phase: 'idle' });
-  const inFlightRef = useRef(false);
+  const httpInFlightRef = useRef(false);
+  const pendingIntentRef = useRef<VehicleOffboardIntent | null>(null);
 
   const clear = useCallback(() => {
-    inFlightRef.current = false;
+    httpInFlightRef.current = false;
+    pendingIntentRef.current = null;
     setState({ phase: 'idle' });
   }, []);
 
-  const execute = useCallback(async (intent: VehicleOffboardIntent): Promise<VehicleOffboardHttpResponse> => {
-    if (inFlightRef.current) {
-      throw new Error('OFFBOARD_IN_FLIGHT');
+  const runHttp = useCallback(async (intent: VehicleOffboardIntent): Promise<VehicleOffboardHttpResponse> => {
+    if (httpInFlightRef.current) {
+      throw new VehicleOffboardRequestError('Offboard HTTP request already in flight', {
+        kind: 'HTTP_REJECTION',
+        code: 'OFFBOARD_HTTP_IN_FLIGHT',
+        status: 0,
+      });
     }
-    inFlightRef.current = true;
+    httpInFlightRef.current = true;
+    pendingIntentRef.current = intent;
     setState({ phase: 'submitting', intent });
     try {
       const raw = await api.vehicleOnboarding.offboardVehicle(
@@ -42,50 +53,74 @@ export function useVehicleOffboard() {
         ...raw,
         warnings: raw.warnings as VehicleOffboardHttpResponse['warnings'],
       };
-      inFlightRef.current = false;
+      httpInFlightRef.current = false;
       setState({ phase: 'success', result });
       return result;
     } catch (err) {
-      if (isStepUpRequiredError(err)) {
-        setState({ phase: 'mfa_required', intent });
-        throw err;
-      }
-      if (isEnrollmentRequiredError(err)) {
-        inFlightRef.current = false;
+      httpInFlightRef.current = false;
+      if (err instanceof VehicleOffboardRequestError) {
+        if (err.kind === 'STEP_UP_REQUIRED') {
+          setState({ phase: 'mfa_required', intent });
+          throw err;
+        }
+        if (err.kind === 'MFA_ENROLLMENT_REQUIRED') {
+          pendingIntentRef.current = null;
+          setState({ phase: 'idle' });
+          throw err;
+        }
+        if (err.kind === 'OPERATIONALLY_BLOCKED' || err.kind === 'SEMANTIC_CONFLICT') {
+          pendingIntentRef.current = null;
+          setState({ phase: 'idle' });
+          throw err;
+        }
+        pendingIntentRef.current = null;
         setState({ phase: 'idle' });
         throw err;
       }
-      const isNetwork =
-        err instanceof TypeError ||
-        (err instanceof Error && /network|fetch|failed/i.test(err.message));
-      if (isNetwork) {
+      if (isTransportUncertainError(err)) {
         setState({
           phase: 'uncertain',
           intent,
           message: err instanceof Error ? err.message : 'Network error',
         });
-        inFlightRef.current = false;
-        throw err;
+        throw new VehicleOffboardRequestError(
+          err instanceof Error ? err.message : 'Network error',
+          { kind: 'TRANSPORT_UNCERTAIN', code: 'TRANSPORT_UNCERTAIN', status: 0 },
+        );
       }
-      inFlightRef.current = false;
+      pendingIntentRef.current = null;
       setState({ phase: 'idle' });
       throw err;
     }
   }, []);
 
+  const execute = useCallback(
+    async (intent: VehicleOffboardIntent): Promise<VehicleOffboardHttpResponse> => runHttp(intent),
+    [runHttp],
+  );
+
   const retryAfterMfa = useCallback(async (): Promise<VehicleOffboardHttpResponse | null> => {
-    if (state.phase !== 'mfa_required') return null;
-    return execute(state.intent);
-  }, [execute, state]);
+    const intent =
+      state.phase === 'mfa_required'
+        ? state.intent
+        : pendingIntentRef.current;
+    if (!intent) return null;
+    return runHttp(intent);
+  }, [runHttp, state]);
 
   const retryUncertain = useCallback(async (): Promise<VehicleOffboardHttpResponse | null> => {
-    if (state.phase !== 'uncertain') return null;
-    return execute(state.intent);
-  }, [execute, state]);
+    const intent =
+      state.phase === 'uncertain'
+        ? state.intent
+        : pendingIntentRef.current;
+    if (!intent) return null;
+    return runHttp(intent);
+  }, [runHttp, state]);
 
-  const cancelMfa = useCallback(() => {
-    if (state.phase === 'mfa_required' || state.phase === 'uncertain') {
-      inFlightRef.current = false;
+  const abandonPending = useCallback(() => {
+    httpInFlightRef.current = false;
+    pendingIntentRef.current = null;
+    if (state.phase === 'mfa_required' || state.phase === 'uncertain' || state.phase === 'submitting') {
       setState({ phase: 'idle' });
     }
   }, [state.phase]);
@@ -95,8 +130,9 @@ export function useVehicleOffboard() {
     execute,
     retryAfterMfa,
     retryUncertain,
-    cancelMfa,
+    abandonPending,
     clear,
     isSubmitting: state.phase === 'submitting',
+    pendingIntent: pendingIntentRef.current,
   };
 }

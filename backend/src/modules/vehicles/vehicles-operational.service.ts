@@ -606,8 +606,8 @@ export class VehiclesOperationalService {
 
   private buildRegisteredWhere(query: VehiclesOperationalQueryDto) {
     const where: Record<string, unknown> = {};
-    const lifecycle = query.registryLifecycle ?? 'ACTIVE';
-    if (lifecycle !== 'all') {
+    const lifecycle = query.registryLifecycle;
+    if (lifecycle && lifecycle !== 'all') {
       where.registryLifecycle = lifecycle;
     }
     if (query.organizationId) {

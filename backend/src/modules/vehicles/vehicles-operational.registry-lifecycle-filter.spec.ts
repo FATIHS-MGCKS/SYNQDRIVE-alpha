@@ -7,13 +7,15 @@ describe('VehiclesOperationalService registryLifecycle filter (VO5C-P2A)', () =>
       query,
     );
 
-  it('defaults registered list to ACTIVE lifecycle', () => {
-    expect(buildWhere({ registrationState: 'registered' })).toMatchObject({
-      registryLifecycle: 'ACTIVE',
-    });
+  it('omits lifecycle predicate when parameter is omitted (legacy clients)', () => {
+    const where = buildWhere({ registrationState: 'registered' });
+    expect(where.registryLifecycle).toBeUndefined();
   });
 
-  it('filters OFFBOARDED and ARCHIVED explicitly', () => {
+  it('filters ACTIVE, OFFBOARDED and ARCHIVED explicitly', () => {
+    expect(buildWhere({ registryLifecycle: 'ACTIVE' })).toMatchObject({
+      registryLifecycle: 'ACTIVE',
+    });
     expect(buildWhere({ registryLifecycle: 'OFFBOARDED' })).toMatchObject({
       registryLifecycle: 'OFFBOARDED',
     });

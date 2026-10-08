@@ -92,6 +92,8 @@ export const cs = {
   'master.cv.offboard.warning.FLEET_TASK_WARNING': 'Otevrene ukoly flotily zustavaji.',
   'master.cv.offboard.lifecycleUnknown': 'Neznamy registry cyklus; vyrazeni neni dostupne.',
   'master.cv.offboard.uncertainRetry': 'Nejisty vysledek — zkuste znovu nebo obnovte stav.',
+  'master.cv.offboard.uncertainRetryAction': 'Zkusit znovu / overit vysledek',
+  'master.cv.offboard.uncertainAbandon': 'Zrusit tento pokus',
   'master.cv.release.blockedBackend': 'Vyrazeni je vypnuto do overeni backendu v produkci.',
 
   'fleetCondition.title': 'Stav flotily', 'fleetCondition.healthScore': 'Skore zdravi', 'fleetCondition.goodCondition': 'Dobry', 'fleetCondition.warnings': 'Varovani', 'fleetCondition.critical': 'Kriticky',

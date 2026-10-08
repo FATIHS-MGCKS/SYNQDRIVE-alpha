@@ -3,7 +3,10 @@ import { toast } from 'sonner';
 import { MfaStepUpDialog } from '../../components/mfa/MfaStepUpDialog';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { TranslationKey } from '../../i18n/translations/en';
-import { newIdempotencyKey, isEnrollmentRequiredError, isStepUpRequiredError } from '../../lib/mfa';
+import {
+  isEnrollmentRequiredOffboardError,
+  isStepUpRequiredOffboardError,
+} from '../../lib/vehicle-offboard-api-error';
 import type { Organization } from '../data/platform-data';
 import { MasterPageHeader } from '../shell';
 import { ConnectedVehiclesOverviewView } from './ConnectedVehiclesOverviewView';
@@ -16,10 +19,12 @@ import {
 } from './useConnectedVehiclesOperational';
 import type { CvSection, VehicleOperationalRowDto } from './types';
 import { readCvLocation, syncCvSectionUrl } from './cv.utils';
-import { parseApiErrorCode, parseBlockingReasons } from './vehicle-offboard.errors';
+import { blockingReasonsFromError } from './vehicle-offboard.api-error';
 import type { VehicleOffboardPreflightWarningCode, VehicleOffboardReasonCode } from './vehicle-offboard.types';
+import { createOffboardIntentSession } from './offboard-intent-session';
 import { useVehicleOffboard } from './useVehicleOffboard';
 import { isMasterOffboardUiEnabled } from './vo5c-release-gates';
+import { VehicleOffboardRequestError } from './vehicle-offboard.api-error';
 
 interface ConnectedVehiclesHubProps {
   organizations: Organization[];
@@ -47,8 +52,9 @@ export function ConnectedVehiclesHub({
   const [listFilters, setListFilters] = useState<Record<string, string>>({});
   const overviewState = useConnectedVehiclesOverview();
   const offboard = useVehicleOffboard();
+  const intentSession = useRef(createOffboardIntentSession()).current;
   const [mfaOpen, setMfaOpen] = useState(false);
-  const idempotencyKeyRef = useRef<string | null>(null);
+  const skipMfaCancelCleanupRef = useRef(false);
   const detailRefreshRef = useRef<(() => void) | null>(null);
 
   const navigateSection = useCallback((next: CvSection, replace = false) => {
@@ -102,6 +108,16 @@ export function ConnectedVehiclesHub({
     }
   }, [initial.vehicleId, initial.dimoVehicleId]);
 
+  useEffect(() => {
+    const fp = intentSession.peekFingerprint();
+    if (!fp || !vehicleId) return;
+    const [orgId, vid] = fp.split('|');
+    if (vid !== vehicleId) {
+      offboard.abandonPending();
+      intentSession.abandon();
+    }
+  }, [vehicleId, offboard, intentSession]);
+
   const finishOffboardSuccess = useCallback(
     (result: { idempotentReplay: boolean; warnings: VehicleOffboardPreflightWarningCode[] }) => {
       toast.success(
@@ -111,13 +127,13 @@ export function ConnectedVehiclesHub({
         const lines = result.warnings.map((w) => t(WARNING_KEYS[w]));
         toast.message(t('master.cv.offboard.explainer.title'), { description: lines.join(' · ') });
       }
-      idempotencyKeyRef.current = null;
+      intentSession.settle();
       offboard.clear();
       overviewState.refresh();
       emitConnectedVehiclesRefresh();
       detailRefreshRef.current?.();
     },
-    [offboard, overviewState, t],
+    [intentSession, offboard, overviewState, t],
   );
 
   const handleOffboard = useCallback(
@@ -129,29 +145,28 @@ export function ConnectedVehiclesHub({
     }) => {
       if (!isMasterOffboardUiEnabled()) {
         toast.error(t('master.cv.release.blockedBackend'));
-        return;
+        throw new Error('OFFBOARD_UI_DISABLED');
       }
-      if (!idempotencyKeyRef.current) {
-        idempotencyKeyRef.current = newIdempotencyKey('vehicle-offboard');
-      }
+      const idempotencyKey = intentSession.resolveIdempotencyKey(input);
       try {
         const result = await offboard.execute({
           ...input,
-          idempotencyKey: idempotencyKeyRef.current,
+          idempotencyKey,
         });
         finishOffboardSuccess(result);
       } catch (err) {
-        if (isStepUpRequiredError(err)) {
+        if (isStepUpRequiredOffboardError(err)) {
           setMfaOpen(true);
-          return;
+          throw err;
         }
-        if (isEnrollmentRequiredError(err)) {
+        if (isEnrollmentRequiredOffboardError(err)) {
+          intentSession.abandon();
           toast.error(t('master.cv.offboard.error.enrollment'));
-          return;
+          throw err;
         }
-        const code = err instanceof Error ? parseApiErrorCode(err.message) : null;
-        if (code === 'OFFBOARD_OPERATIONALLY_BLOCKED') {
-          const blockers = parseBlockingReasons(err);
+        if (err instanceof VehicleOffboardRequestError && err.kind === 'OPERATIONALLY_BLOCKED') {
+          intentSession.abandon();
+          const blockers = blockingReasonsFromError(err);
           const labels = blockers.map((b) =>
             t(`master.cv.offboard.block.${b}` as TranslationKey),
           );
@@ -164,20 +179,39 @@ export function ConnectedVehiclesHub({
           toast.warning(t('master.cv.offboard.uncertainRetry'));
           throw err;
         }
+        if (err instanceof VehicleOffboardRequestError && err.kind === 'SEMANTIC_CONFLICT') {
+          intentSession.abandon();
+        }
         toast.error(err instanceof Error ? err.message : t('master.cv.offboard.error.generic'));
         throw err;
       }
     },
-    [finishOffboardSuccess, offboard, t],
+    [finishOffboardSuccess, intentSession, offboard, t],
   );
 
+  const handleRetryUncertain = useCallback(async () => {
+    try {
+      const result = await offboard.retryUncertain();
+      if (result) finishOffboardSuccess(result);
+    } catch (err) {
+      if (isStepUpRequiredOffboardError(err)) {
+        setMfaOpen(true);
+        return;
+      }
+      if (offboard.state.phase === 'uncertain') {
+        toast.warning(t('master.cv.offboard.uncertainRetry'));
+        return;
+      }
+      toast.error(err instanceof Error ? err.message : t('master.cv.offboard.error.generic'));
+    }
+  }, [finishOffboardSuccess, offboard, t]);
+
   const handleMfaSuccess = useCallback(async () => {
-    setMfaOpen(false);
     try {
       const result = await offboard.retryAfterMfa();
       if (result) finishOffboardSuccess(result);
     } catch (err) {
-      if (isStepUpRequiredError(err)) {
+      if (isStepUpRequiredOffboardError(err)) {
         setMfaOpen(true);
         return;
       }
@@ -245,6 +279,12 @@ export function ConnectedVehiclesHub({
         offboardUiEnabled={isMasterOffboardUiEnabled()}
         onOffboard={handleOffboard}
         offboardSubmitting={offboard.isSubmitting}
+        offboardPhase={offboard.state.phase}
+        onRetryUncertainOffboard={() => void handleRetryUncertain()}
+        onAbandonOffboardIntent={() => {
+          offboard.abandonPending();
+          intentSession.abandon();
+        }}
         onRegisterDetailRefresh={(fn) => {
           detailRefreshRef.current = fn;
         }}
@@ -256,9 +296,17 @@ export function ConnectedVehiclesHub({
         action="MASTER_INTEGRATIONS"
         onClose={() => {
           setMfaOpen(false);
-          offboard.cancelMfa();
+          if (skipMfaCancelCleanupRef.current) {
+            skipMfaCancelCleanupRef.current = false;
+            return;
+          }
+          offboard.abandonPending();
+          intentSession.abandon();
         }}
-        onSuccess={() => void handleMfaSuccess()}
+        onSuccess={() => {
+          skipMfaCancelCleanupRef.current = true;
+          void handleMfaSuccess();
+        }}
       />
     </div>
   );

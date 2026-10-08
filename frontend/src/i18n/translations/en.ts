@@ -3331,6 +3331,8 @@ export const en = {
   'master.cv.offboard.lifecycleUnknown': 'Registry lifecycle is unknown; offboard is not available.',
   'master.cv.offboard.uncertainRetry':
     'Result uncertain — retry with the same operation or refresh status.',
+  'master.cv.offboard.uncertainRetryAction': 'Retry / verify result',
+  'master.cv.offboard.uncertainAbandon': 'Abandon this attempt',
   'master.cv.release.blockedBackend':
     'Offboard is disabled until production backend capability is verified.',
 

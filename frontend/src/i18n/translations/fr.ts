@@ -473,6 +473,8 @@ export const fr = {
   'master.cv.offboard.warning.FLEET_TASK_WARNING': 'Les taches flotte ouvertes restent.',
   'master.cv.offboard.lifecycleUnknown': 'Cycle de vie inconnu; retrait indisponible.',
   'master.cv.offboard.uncertainRetry': 'Resultat incertain — reessayer la meme operation ou actualiser.',
+  'master.cv.offboard.uncertainRetryAction': 'Réessayer / vérifier le résultat',
+  'master.cv.offboard.uncertainAbandon': 'Abandonner cette tentative',
   'master.cv.release.blockedBackend': 'Retrait desactive jusqu a verification backend en production.',
 
   'fleetCondition.title': 'Etat de la flotte',

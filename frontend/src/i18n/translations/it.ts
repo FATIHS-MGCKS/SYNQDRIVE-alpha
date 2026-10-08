@@ -92,6 +92,8 @@ export const it = {
   'master.cv.offboard.warning.FLEET_TASK_WARNING': 'Attivita flotta aperte restano.',
   'master.cv.offboard.lifecycleUnknown': 'Ciclo registro sconosciuto; dismissione non disponibile.',
   'master.cv.offboard.uncertainRetry': 'Risultato incerto — riprova la stessa operazione o aggiorna.',
+  'master.cv.offboard.uncertainRetryAction': 'Riprova / verifica risultato',
+  'master.cv.offboard.uncertainAbandon': 'Abbandona questo tentativo',
   'master.cv.release.blockedBackend': 'Dismissione disabilitata fino a verifica backend in produzione.',
 
   'fleetCondition.title': 'Stato della flotta', 'fleetCondition.healthScore': 'Punteggio salute', 'fleetCondition.goodCondition': 'Buono', 'fleetCondition.warnings': 'Avvisi', 'fleetCondition.critical': 'Critico',

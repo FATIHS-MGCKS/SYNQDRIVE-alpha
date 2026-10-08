@@ -92,6 +92,8 @@ export const pl = {
   'master.cv.offboard.warning.FLEET_TASK_WARNING': 'Otwarte zadania floty pozostaja.',
   'master.cv.offboard.lifecycleUnknown': 'Nieznany cykl zycia rejestru; wycofanie niedostepne.',
   'master.cv.offboard.uncertainRetry': 'Wynik niepewny — ponow te sama operacje lub odswiez status.',
+  'master.cv.offboard.uncertainRetryAction': 'Ponów / sprawdź wynik',
+  'master.cv.offboard.uncertainAbandon': 'Porzuć tę próbę',
   'master.cv.release.blockedBackend': 'Wycofanie wylaczone do czasu weryfikacji backendu w produkcji.',
 
   'fleetCondition.title': 'Stan floty', 'fleetCondition.healthScore': 'Wynik zdrowia', 'fleetCondition.goodCondition': 'Dobry', 'fleetCondition.warnings': 'Ostrzezenia', 'fleetCondition.critical': 'Krytyczny',
