@@ -342,6 +342,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-09-29T03:00:00.000Z',
   },
   {
+    id: 'di-exp021-s4f7ak-final-live-staging-readiness-2026-10-08',
+    version: '4.9.2219',
+    title: 'Driving Intelligence — EXP-021 S4F-7AK final live Tiny staging readiness (read-only)',
+    summary: [
+      'Read-only Production observation after #1937: S4 prestate PASS; TECHNICALLY_READY_PENDING_HUMAN_AUTHORIZATION.',
+      'Env SHA + replica PIDs drifted since S4F-7AJ; release-tree bash operator blobs partial vs certified ed78748 — S4F-7AI bootstrap mandatory.',
+      'No JIT, no live auth, no DRY_RUN=0; HUMAN_FREEZE_CONFIRMATION=PENDING; Gate 6 NOT_SATISFIED.',
+    ],
+    reason:
+      'Prepare human authorization decision for corrected S4F-7Y operator without executing live staging.',
+    previousBehavior:
+      'S4F-7AJ certified Production DRY_RUN=1 only; AF.1C one-shot authorization consumed.',
+    details:
+      'architecture/drivingintelligence/evidence/EXP021_S4F7AK_FINAL_LIVE_STAGING_READINESS.md',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-08T21:20:00.000Z',
+  },
+  {
     id: 'di-exp021-s4f7m-runtime-config-attestation-2026-10-02',
     version: '4.9.2218',
     title: 'Driving Intelligence — EXP-021 S4F-7M in-process S4 runtime config attestation',
