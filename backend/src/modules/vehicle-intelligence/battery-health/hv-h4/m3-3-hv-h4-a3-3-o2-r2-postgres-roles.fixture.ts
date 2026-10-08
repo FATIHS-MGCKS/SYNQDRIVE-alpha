@@ -126,17 +126,17 @@ function buildLoginDatabaseUrlV1(loginRole: string, password: string): string | 
   }
 }
 
-export async function createRestrictedAppLoginPostgresClientV1(): Promise<PrismaClient | null> {
+export async function createRestrictedAppLoginPostgresClientV1(): Promise<PrismaClient | undefined> {
   const url = buildLoginDatabaseUrlV1(M3_3_HV_H4_A3_O2_R2_APP_LOGIN_ROLE, APP_LOGIN_PASSWORD);
-  if (!url) return null;
+  if (!url) return undefined;
   const client = new PrismaClient({ datasources: { db: { url } } });
   await client.$connect();
   return client;
 }
 
-export async function createIssuerLoginPostgresClientV1(): Promise<PrismaClient | null> {
+export async function createIssuerLoginPostgresClientV1(): Promise<PrismaClient | undefined> {
   const url = buildLoginDatabaseUrlV1(M3_3_HV_H4_A3_O2_R2_ISSUER_LOGIN_ROLE, ISSUER_LOGIN_PASSWORD);
-  if (!url) return null;
+  if (!url) return undefined;
   const client = new PrismaClient({ datasources: { db: { url } } });
   await client.$connect();
   return client;
