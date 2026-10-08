@@ -1561,17 +1561,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | Reproduced dead stale-pin guard (D1), runtime `chmod` (D2), declared-only side-effect lines (D3–D4); historical S4F-7AA PASS preserved; AA.1 bootstrap **not** Production re-validated |
 | NON_EFFECTS | No Production rerun; no sealed operator file edits; Gate 6 **NOT_SATISFIED** |
 
-<<<<<<< HEAD
-=======
 ### EXP-021 S4F-7AC live-staging readiness review (2026-10-08)
 
 | Event | Detail |
 |-------|--------|
 | CHANGE | Evidence `EXP021_S4F7AC_LIVE_STAGING_READINESS_REVIEW.md` (read-only) |
-| FINDING | **No-Go** for live `DRY_RUN=0` — `PR1924_MERGED=NO`; `EXPLICIT_HUMAN_AUTHORIZATION_PRESENT=NO`; S4F-7L proc-env class addressed in S4F-7Y metrics path (engineering); no Production S4F-7Y live run yet |
+| FINDING | **No-Go** for live `DRY_RUN=0` — `PR1924_MERGED=NO` **at audit time**; `EXPLICIT_HUMAN_AUTHORIZATION_PRESENT=NO`; S4F-7L proc-env class addressed in S4F-7Y metrics path (engineering); no Production S4F-7Y live run yet |
 | NON_EFFECTS | No JIT packet; no live authorization; Gate 6 **NOT_SATISFIED** |
 
->>>>>>> cdfba3837 (docs(di): EXP-021 S4F-7AC live-staging readiness review (read-only))
 ### EXP-021 S4F-7AB hardened bootstrap Production dry-run certification (2026-10-08)
 
 | Event | Detail |
