@@ -6,6 +6,32 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R3-H1 admission boundary + preflight phase closure
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Split tenant scope gate vs future authenticated admission contract; factory requires expected DB login + canonical target rejection + sanitized errors; preflight spec Phase A/B V2 with effective privilege checks |
+| **WHY** | `requestedBy` string is not authentication; single-phase preflight conflated pre-provision discovery with post-provision certification |
+| **VALIDATION** | R3-H1 unit/postgres specs; preflight validator; HV-H4 CI |
+| **OBSERVED_EFFECT** | `REQUESTED_BY_AUTHENTICATED=NO`; `PRE_PROVISION` + `POST_PROVISION` phases defined; factory fail-closed without expected login |
+| **NON_EFFECTS** | No production execution; no Nest registration; no writer/loader/bootstrap |
+| **REMAINING_GAPS** | Execute Phase A/B on Production (authorized); implement future admission evaluator at integration slice |
+| **DECISION_STATUS** | PROPOSED (architecture) |
+| **EVIDENCE** | `M3_3_HV_H4_A3_3_O2_R3_ISSUER_RUNTIME_TOPOLOGY_PREFLIGHT_2026-10-08.md` §10 |
+
+## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R3 issuer process isolation + production role preflight architecture
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Runtime topology audit; `SEPARATE_TRUSTED_ISSUER_PROCESS` decision; admission contract + `issueM3_3HvH4A3IntegrityAttestationWithAdmissionV1`; inert issuer DB factory (dedicated env, no `DATABASE_URL` fallback); machine-readable production role preflight JSON spec |
+| **WHY** | Second in-process Prisma pool does not isolate credentials from API compromise; production roles not yet proven; revisionId-only calls are unsafe across tenants |
+| **VALIDATION** | Unit + postgres admission/factory specs; preflight spec structure test; HV-H4 CI; `validate-module-registry.sh` |
+| **OBSERVED_EFFECT** | `RECOMMENDED_ISSUER_PROCESS_MODEL=SEPARATE_TRUSTED_ISSUER_PROCESS`; `PRODUCTION_ROLE_PREFLIGHT_DEFINED=YES`; factory not Nest-registered |
+| **NON_EFFECTS** | No production DB/SSH; no deploy; no writer/hybrid loader/bootstrap/retention changes |
+| **REMAINING_GAPS** | Execute preflight on Production (authorized); provision MIGRATION_OWNER / GENERAL_APP_RUNTIME / TRUSTED_ATTESTATION_ISSUER |
+| **DECISION_STATUS** | PROPOSED (architecture) |
+| **EVIDENCE** | `M3_3_HV_H4_A3_3_O2_R3_ISSUER_RUNTIME_TOPOLOGY_PREFLIGHT_2026-10-08.md` |
+
 ## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R2-H2 true issuer-login isolation + lock-observed concurrency
 
 | Field | Value |
