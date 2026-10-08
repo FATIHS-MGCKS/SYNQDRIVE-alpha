@@ -62,21 +62,26 @@ export async function issueM3_3HvH4A3IntegrityAttestationIsolatedV1(
 
     await tx.$executeRawUnsafe(`SET LOCAL ROLE ${issuerRole}`);
     try {
-      await tx.batteryHvChargeSessionEvidenceIntegrityAttestation.create({
-        data: {
-          id: attestationId,
-          revisionId: revision.id,
-          durabilityAckId: ack!.id,
-          organizationId: revision.organizationId,
-          vehicleId: revision.vehicleId,
-          segmentFingerprint: revision.segmentFingerprint,
-          evidenceContractVersion: revision.evidenceContractVersion,
-          sourceRevisionFingerprint: revision.sourceRevisionFingerprint,
-          durabilityAckContractVersion: M3_3_HV_H4_DURABLE_SOURCE_REVISION_ACK_V1,
-          integrityAttestationContractVersion: M3_3_HV_H4_A3_HISTORY_INTEGRITY_ATTESTATION_CONTRACT_V1,
-          attestedAt,
-        },
-      });
+      await tx.$executeRaw`
+        INSERT INTO public.battery_hv_charge_session_evidence_integrity_attestations (
+          id, revision_id, durability_ack_id, organization_id, vehicle_id, segment_fingerprint,
+          evidence_contract_version, source_revision_fingerprint, durability_ack_contract_version,
+          integrity_attestation_contract_version, attested_at, created_at
+        ) VALUES (
+          ${attestationId}::text,
+          ${revision.id}::text,
+          ${ack!.id}::text,
+          ${revision.organizationId}::text,
+          ${revision.vehicleId}::text,
+          ${revision.segmentFingerprint}::text,
+          ${revision.evidenceContractVersion}::text,
+          ${revision.sourceRevisionFingerprint}::text,
+          ${M3_3_HV_H4_DURABLE_SOURCE_REVISION_ACK_V1}::text,
+          ${M3_3_HV_H4_A3_HISTORY_INTEGRITY_ATTESTATION_CONTRACT_V1}::text,
+          ${attestedAt}::timestamptz,
+          ${attestedAt}::timestamptz
+        )
+      `;
     } finally {
       await tx.$executeRawUnsafe(`RESET ROLE`);
     }
