@@ -8,6 +8,24 @@ function databaseNameFromUrl(databaseUrl: string): string {
   return parsed.pathname.replace(/^\//, '').split('/')[0] || 'synqdrive';
 }
 
+async function dropPhaseAMigrationDenialRoleIfExistsV1(
+  admin: PrismaClient,
+  role: string,
+  databaseName: string,
+): Promise<void> {
+  await admin.$executeRawUnsafe(
+    `REVOKE ALL PRIVILEGES ON DATABASE "${databaseName}" FROM ${role}`,
+  ).catch(() => undefined);
+  await admin.$executeRawUnsafe(`REVOKE ALL PRIVILEGES ON SCHEMA public FROM ${role}`).catch(
+    () => undefined,
+  );
+  await admin.$executeRawUnsafe(
+    `REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM ${role}`,
+  ).catch(() => undefined);
+  await admin.$executeRawUnsafe(`DROP OWNED BY ${role}`).catch(() => undefined);
+  await admin.$executeRawUnsafe(`DROP ROLE IF EXISTS ${role}`);
+}
+
 export async function provisionPhaseAMigrationSelectDenialFixtureV1(
   adminDatabaseUrl: string,
 ): Promise<{ databaseUrl: string }> {
@@ -16,7 +34,7 @@ export async function provisionPhaseAMigrationSelectDenialFixtureV1(
   const databaseName = databaseNameFromUrl(adminDatabaseUrl);
 
   try {
-    await admin.$executeRawUnsafe(`DROP ROLE IF EXISTS ${role}`);
+    await dropPhaseAMigrationDenialRoleIfExistsV1(admin, role, databaseName);
     await admin.$executeRawUnsafe(
       `CREATE ROLE ${role} LOGIN PASSWORD '${MIGRATION_DENIAL_PASSWORD}' NOSUPERUSER NOCREATEDB NOCREATEROLE`,
     );
@@ -38,9 +56,11 @@ export async function provisionPhaseAMigrationSelectDenialFixtureV1(
 
 export async function teardownPhaseAMigrationSelectDenialFixtureV1(adminDatabaseUrl: string): Promise<void> {
   const admin = new PrismaClient({ datasources: { db: { url: adminDatabaseUrl } } });
+  const role = M3_3_HV_H4_A3_PHASE_A_MIGRATION_DENIAL_ROLE;
+  const databaseName = databaseNameFromUrl(adminDatabaseUrl);
   try {
     await admin.$executeRawUnsafe(`GRANT SELECT ON TABLE public._prisma_migrations TO PUBLIC`);
-    await admin.$executeRawUnsafe(`DROP ROLE IF EXISTS ${M3_3_HV_H4_A3_PHASE_A_MIGRATION_DENIAL_ROLE}`);
+    await dropPhaseAMigrationDenialRoleIfExistsV1(admin, role, databaseName);
   } finally {
     await admin.$disconnect().catch(() => undefined);
   }
