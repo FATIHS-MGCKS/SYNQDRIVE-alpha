@@ -1682,6 +1682,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | Production `ee958854…` unchanged; GLOBAL row **missing**; S4 counts **0**; initializer @ deployed SHA **safe**; postgres concurrency tests **PASS**; **`DB_KILL_INITIALIZATION_READINESS=BLOCKED`** — `PRODUCTION_EXECUTION_WRAPPER_REQUIRED` |
 | NON_EFFECTS | No initializer execution, no Production DB/env/deploy/restart, no Tiny/operator grant |
 
+### EXP-021 S4F-7AG live DB clock authority fix (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Fail-closed `DI_S4F7V_DB_CLOCK_CANONICAL_UTC` export before live `validate-fresh-authority`; final re-query + CLI exit propagation; `di-v0-s4-fresh-tiny-staging-live-db-clock-7ag.spec.ts`; evidence `EXP021_S4F7AG_LIVE_AUTHORITY_DB_CLOCK_ROOT_CAUSE.md` |
+| ROOT_CAUSE | AF1C live path validated fresh authority without DB clock (`FRESH_NOT_BEFORE_INVALID`); final JIT age pipeline could mask CLI failure |
+| NON_EFFECTS | No Production mutation/deploy/restart; prior human live authorization not reused; sealed `715dea5648…` valid only for pre-fix blobs until new head certified |
+
 ### EXP-021 S4F-7B dormant Production deploy preflight (2026-10-02)
 
 | Event | Detail |
