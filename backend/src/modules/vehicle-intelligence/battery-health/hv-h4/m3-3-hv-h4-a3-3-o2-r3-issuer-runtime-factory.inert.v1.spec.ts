@@ -57,10 +57,12 @@ describe('m3-3-hv-h4-a3-3-o2-r3-h1 inert issuer factory', () => {
     const withLimit = databaseUrl.includes('?')
       ? `${databaseUrl}&connection_limit=1`
       : `${databaseUrl}?connection_limit=1`;
+    const appLogin = new URL(databaseUrl.replace(/^postgresql:/, 'postgres:')).username;
+    const expectedDbLogin = decodeURIComponent(appLogin || 'synqdrive');
     await expect(
       createInertM3_3HvH4A3AttestationIssuerDbV1({
         issuerDatabaseUrl: withLimit,
-        expectedDbLogin: 'dedicated_issuer_login',
+        expectedDbLogin,
         forbidSameTargetAs: databaseUrl,
       }),
     ).rejects.toMatchObject({ message: 'GENERIC_APP_TARGET_REJECTED' });
