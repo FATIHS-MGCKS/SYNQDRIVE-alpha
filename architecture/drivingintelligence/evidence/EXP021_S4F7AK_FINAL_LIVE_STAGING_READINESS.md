@@ -52,7 +52,9 @@
 | `di-v0-s4-fresh-tiny-staging-live-transaction.lib.sh` | **MISMATCH** |
 | `di-v0-s4-fresh-tiny-staging-production.lib.sh` | **MISMATCH** |
 
-S4F-7AJ **Production `DRY_RUN=1`** used **detached checkout** of `ed78748bc…` via S4F-7AI bootstrap — **not** the release-tree bash paths alone. **Do not** invoke live staging from `/opt/synqdrive/current` wrapper without bootstrap pin.
+S4F-7AJ **Production `DRY_RUN=1`** used **detached checkout** of `ed78748bc…` via **S4F-7AI bootstrap** (`DRY_RUN=1`-only) — **not** the release-tree bash paths alone.
+
+For a **future live** transaction (`DRY_RUN=0`): **not** S4F-7AI bootstrap — only the certified **S4F-7Y** operator (`di-v0-s4-stage-tiny-fresh-production.sh` + libs) from **detached checkout** `ed78748bc9493cdc8da56000e333e4940114f9f1`, after separate live-dispatch-path review and **new** human authorization. **Do not** invoke staging from `/opt/synqdrive/current` release-tree bash paths alone.
 
 ---
 
@@ -80,7 +82,9 @@ S4F-7AJ **Production `DRY_RUN=1`** used **detached checkout** of `ed78748bc…` 
 | `FRESH_LIVE_JIT_PRESENT` | **NO** |
 | `DI_S4F7Y_LIVE_STAGING_AUTHORIZED=YES` | **NOT SET** (this slice) |
 
-Future live attempt still requires: new human one-shot authorization, fresh DB clock, fresh JIT ≤900s, eight `AUTHORIZED_*` pins bound to **current** Production SHA/env/PIDs, NO_BACKFILL re-proof, and S4F-7AI bootstrap dispatch only.
+Future **Production `DRY_RUN=1`** (if repeated): S4F-7AI bootstrap only (`cloud-agent-s4f7ai-fresh-jit-production-dry-run.sh`).
+
+Future **live** attempt still requires: new human one-shot authorization, fresh DB clock, fresh JIT ≤900s, eight `AUTHORIZED_*` pins bound to **current** Production SHA/env/PIDs, NO_BACKFILL re-proof, and execution from **detached certified tool checkout** `ed78748bc…` via the S4F-7Y live path — **not** S4F-7AI bootstrap.
 
 ---
 
@@ -141,7 +145,7 @@ Technical readiness **does not** imply permission to run `DRY_RUN=0`.
 ## 8. Remaining risks
 
 1. **First successful A→B live forward transition never proven** on Production (S4F-7AJ dry-run only).
-2. **Release-tree bash operator blobs** on deployed SHA **≠** certified `ed78748bc…` — mandatory S4F-7AI detached tool checkout.
+2. **Release-tree bash operator blobs** on deployed SHA **≠** certified `ed78748bc…` — use **detached checkout** of certified operator (S4F-7AI bootstrap for **`DRY_RUN=1` only**; live requires separate certified S4F-7Y dispatch, not S4F-7AI).
 3. **`backend.env` SHA256 and replica PIDs drifted** since S4F-7AJ POST — all `AUTHORIZED_*` pins must be re-minted at execution.
 4. **No technical deploy-freeze lock** — concurrent deploy risk remains without human coordination.
 5. **S4F-7AF.1C authorization consumed** — new explicit human grant required.
@@ -187,7 +191,8 @@ ROLLBACK_READINESS=ENGINEERING_ONLY
 A_TO_B_RESTART_BARRIER=ENGINEERING_ONLY
 LIVE_RUNTIME_OTHER_ATTESTATION_PRODUCTION_PROVEN=NO
 
-DEPLOYED_RELEASE_SIX_FILE_PARITY=PARTIAL_THREE_BASH_MISMATCH_USE_S4F7AI_BOOTSTRAP_ONLY
+DEPLOYED_RELEASE_SIX_FILE_PARITY=PARTIAL_THREE_BASH_MISMATCH_DETACHED_ed78748_CHECKOUT_REQUIRED
+S4F7AI_BOOTSTRAP_SCOPE=PRODUCTION_DRY_RUN1_ONLY_NOT_LIVE
 
 DEPLOYMENT_FREEZE_TECHNICALLY_ENFORCED=NO
 CONCURRENT_DEPLOYMENTS_ABSENT=YES_OBSERVATION_ONLY
@@ -212,6 +217,6 @@ READINESS=TECHNICALLY_READY_PENDING_HUMAN_AUTHORIZATION
 REMAINING_RISKS=FIRST_LIVE_A_TO_B_UNPROVEN;RELEASE_TREE_BASH_BLOB_DRIFT;STALE_AUTHORIZED_PINS;NO_TECH_FREEZE;AF1C_CONSUMED;TRIP_CHURN
 EVIDENCE_PATH=architecture/drivingintelligence/evidence/EXP021_S4F7AK_FINAL_LIVE_STAGING_READINESS.md
 PR_NUMBER=PENDING
-NEXT_SAFE_ACTION=HUMAN_ISSUES_NEW_ONE_SHOT_LIVE_AUTHORIZATION;CONFIRM_DEPLOY_FREEZE_WINDOW;MINT_FRESH_JIT_AND_AUTHORIZED_PINS_AT_EXECUTION_ONLY;USE_S4F7AI_BOOTSTRAP_ONLY;OPTIONAL_FRESH_DRY_RUN1_BEFORE_LIVE
+NEXT_SAFE_ACTION=HUMAN_ISSUES_NEW_ONE_SHOT_LIVE_AUTHORIZATION;CONFIRM_DEPLOY_FREEZE_WINDOW;MINT_FRESH_JIT_AND_AUTHORIZED_PINS_AT_EXECUTION_ONLY;LIVE_VIA_DETACHED_ed78748_S4F7Y_OPERATOR_ONLY;OPTIONAL_FRESH_DRY_RUN1_VIA_S4F7AI_BOOTSTRAP_ONLY
 FINAL_RESULT=PASS
 ```

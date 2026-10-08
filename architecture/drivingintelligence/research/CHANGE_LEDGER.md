@@ -1703,7 +1703,7 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Event | Detail |
 |-------|--------|
 | CHANGE | Read-only Production observation + authority reconciliation after #1937; evidence `EXP021_S4F7AK_FINAL_LIVE_STAGING_READINESS.md` |
-| FINDING | `READINESS=TECHNICALLY_READY_PENDING_HUMAN_AUTHORIZATION`; S4 prestate **PASS**; `PRODUCTION_DRIFT_FROM_AJ=YES` (env SHA + PIDs); partial release-tree operator blob drift — S4F-7AI bootstrap **mandatory** |
+| FINDING | `READINESS=TECHNICALLY_READY_PENDING_HUMAN_AUTHORIZATION`; S4 prestate **PASS**; `PRODUCTION_DRIFT_FROM_AJ=YES` (env SHA + PIDs); partial release-tree operator blob drift — **S4F-7AI bootstrap mandatory for Production `DRY_RUN=1` only** (not live); live path = detached `ed78748bc…` S4F-7Y operator |
 | NON_EFFECTS | No JIT/live auth; no `DRY_RUN=0`; no env/restart/deploy; `HUMAN_FREEZE_CONFIRMATION=PENDING`; Gate 6 unchanged |
 
 ### EXP-021 S4F-7AK.1 authority boundary & drift closure (2026-10-08)
