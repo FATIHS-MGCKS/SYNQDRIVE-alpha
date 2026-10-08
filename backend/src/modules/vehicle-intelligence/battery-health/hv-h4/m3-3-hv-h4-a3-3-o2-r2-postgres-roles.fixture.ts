@@ -103,10 +103,14 @@ export async function createDedicatedPostgresSessionClientV1(role: string): Prom
 function buildLoginDatabaseUrlV1(loginRole: string, password: string): string | null {
   const base = process.env.DATABASE_URL;
   if (!base) return null;
-  const match = base.match(/^postgresql:\/\/([^:]+):([^@]+)@([^/]+)\/([^?]+)/);
-  if (!match) return null;
-  const [, , , host, database] = match;
-  return `postgresql://${loginRole}:${password}@${host}/${database}`;
+  try {
+    const parsed = new URL(base.replace(/^postgresql:/, 'postgres:'));
+    parsed.username = loginRole;
+    parsed.password = password;
+    return parsed.toString().replace(/^postgres:/, 'postgresql:');
+  } catch {
+    return null;
+  }
 }
 
 export async function createRestrictedAppLoginPostgresClientV1(): Promise<PrismaClient | null> {
