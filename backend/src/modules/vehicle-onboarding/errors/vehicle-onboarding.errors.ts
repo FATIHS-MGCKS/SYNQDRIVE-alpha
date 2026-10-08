@@ -31,7 +31,8 @@ export type VehicleOnboardingErrorCode =
   | 'SOURCE_ALREADY_REGISTERED'
   | 'SOURCE_CLAIM_INTEGRITY_CONFLICT'
   | 'VEHICLE_REGISTRY_INVALID_TRANSITION'
-  | 'ORG_TRANSFER_NOT_SUPPORTED';
+  | 'ORG_TRANSFER_NOT_SUPPORTED'
+  | 'OFFBOARD_OPERATIONALLY_BLOCKED';
 
 export class VehicleOnboardingError extends Error {
   constructor(

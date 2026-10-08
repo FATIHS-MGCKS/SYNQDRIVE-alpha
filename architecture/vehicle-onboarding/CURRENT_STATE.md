@@ -5,7 +5,7 @@
 | **Sealed from** | VO-0A discovery audit |
 | **Repository anchor SHA** | `312d9f54a2b4c0b0740061d3e2b74897e78eacb0` |
 | **Authority status** | `AUDIT_IN_PROGRESS` — **not** `AUTHORITY_ACTIVE` |
-| **Last updated** | 2026-10-07 (VO5B-AB1 activation billing bridge; VO-5B offboard bridge; legacy deregister **unchanged**) |
+| **Last updated** | 2026-10-07 (VO5C-P1 Master Admin offboard HTTP; VO5B-AB1; legacy deregister **unchanged**) |
 
 ## Executive summary
 
@@ -28,6 +28,7 @@ SynqDrive today separates **provider mirrors** (`DimoVehicle`, `HighMobilityVehi
 - **VO-5A (2026-10-01):** Offboarding foundation — destructive `VehiclesService.deregister` audited; internal registry offboard (`ACTIVE`→`OFFBOARDED` + `VEHICLE_OFFBOARDED` outbox); **no** public HTTP; **no** legacy endpoint change (see [VO5A_OFFBOARDING_FOUNDATION.md](./evidence/VO5A_OFFBOARDING_FOUNDATION.md)).
 - **VO-5B (2026-10-01):** Post-commit registry outbox consumer → Billing quantity deprovision (`VEHICLE_DISCONNECTED` at `occurredAt`); billable policy requires registry `ACTIVE`; **no** Stripe in registry consumer; **no** public offboard HTTP (see [VO5B_REGISTRY_BILLING_BRIDGE.md](./evidence/VO5B_REGISTRY_BILLING_BRIDGE.md)).
 - **VO5B-AB1 (2026-10-07):** Same outbox worker handles `VEHICLE_ACTIVATED` → `VEHICLE_CONNECTED` at `occurredAt` / `activatedAt`; event idempotency `vehicle-registry:<eventId>:billing-activate:v1`; legacy `registerFromDimo`/`create` billing hooks **unchanged** (see [VO5B_AB1_ACTIVATION_BILLING_BRIDGE.md](./evidence/VO5B_AB1_ACTIVATION_BILLING_BRIDGE.md)).
+- **VO5C-P1 (2026-10-07):** Master Admin safe offboard HTTP (`POST …/offboard`) with MFA, operational preflight, idempotency; calls `VehicleOffboardingService` only; **no** frontend cutover; **no** legacy deregister/tenant DELETE changes (see [VO5C_P1_MASTER_ADMIN_OFFBOARD_HTTP.md](./evidence/VO5C_P1_MASTER_ADMIN_OFFBOARD_HTTP.md)).
 
 ---
 

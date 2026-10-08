@@ -24,6 +24,8 @@ export type OffboardVehicleInput = {
   idempotencyKey: string;
   /** Fail-closed: organization transfer is not supported in VO-5A. */
   destinationOrganizationId?: string | null;
+  /** Optional in-transaction gate (e.g. operational preflight recheck after row lock). */
+  operationalGate?: (tx: Prisma.TransactionClient) => Promise<void>;
 };
 
 export type OffboardVehicleResult = {
@@ -41,6 +43,49 @@ function offboardOutboxIdempotencyKey(idempotencyKey: string): string {
 @Injectable()
 export class VehicleOffboardingService {
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Read-only idempotent replay resolution for completed offboards.
+   * Used before operational preflight so lost-response retries are not blocked
+   * by post-success operational state.
+   */
+  async tryResolveIdempotentOffboardReplay(
+    input: Pick<
+      OffboardVehicleInput,
+      'organizationId' | 'vehicleId' | 'reason' | 'idempotencyKey'
+    >,
+  ): Promise<OffboardVehicleResult | null> {
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: input.vehicleId, organizationId: input.organizationId },
+      select: { registryLifecycle: true },
+    });
+    if (!vehicle || vehicle.registryLifecycle !== 'OFFBOARDED') {
+      return null;
+    }
+
+    const outboxKey = offboardOutboxIdempotencyKey(input.idempotencyKey);
+    const existingOutbox = await this.prisma.vehicleRegistryLifecycleOutbox.findUnique({
+      where: { idempotencyKey: outboxKey },
+    });
+    if (!existingOutbox) {
+      return null;
+    }
+
+    const expectedSemantics = buildExpectedOffboardSemantics({
+      vehicleId: input.vehicleId,
+      organizationId: input.organizationId,
+      reason: input.reason,
+    });
+    assertOffboardOutboxSemanticMatch(existingOutbox, expectedSemantics);
+
+    return {
+      vehicleId: input.vehicleId,
+      organizationId: input.organizationId,
+      registryLifecycle: 'OFFBOARDED',
+      offboardedAt: existingOutbox.occurredAt,
+      idempotentReplay: true,
+    };
+  }
 
   async offboardVehicle(input: OffboardVehicleInput): Promise<OffboardVehicleResult> {
     if (input.destinationOrganizationId) {
@@ -102,6 +147,10 @@ export class VehicleOffboardingService {
           'VEHICLE_REGISTRY_INVALID_TRANSITION',
           `Cannot offboard vehicle in registry lifecycle ${registryLifecycle}`,
         );
+      }
+
+      if (input.operationalGate) {
+        await input.operationalGate(tx);
       }
 
       const transitioned = await tx.vehicle.updateMany({
