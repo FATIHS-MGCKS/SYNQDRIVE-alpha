@@ -23,7 +23,9 @@ Production V2 execution admitted `FORCED_SOURCE_TIMESTAMP_MISSING` reconciliatio
 | `lastAllowedPollStart` | Still **advancing decisions only** |
 | `simulatedLastLvSource` | **Advancing + bootstrap-eligible** SUCCESS rows with visible LV |
 
-Rows that take the bootstrap path are tagged `shadowExecutionVersion=P25_APD_SHADOW_EXECUTION_V2_1` on successful post-poll correlation.
+New observations after deploy use `shadowExecutionVersion=P25_APD_SHADOW_EXECUTION_V2_1` at **pre-poll** (`P25_APD_SHADOW_EXECUTION_VERSION_CURRENT`). Post-poll does **not** relabel rows; historical production V2 rows stay V2.
+
+Simulated `lastAllowed` / `simulatedLastLv` resolve **only** within `activationEpochId` (legacy NULL-epoch rows excluded from epoch-bound shadow).
 
 ## Epoch compatibility (recommendation)
 
