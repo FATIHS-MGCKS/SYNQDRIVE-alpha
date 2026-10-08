@@ -8,11 +8,17 @@ import {
 import { ApdShadowActivationEpochService } from './apd-shadow-activation-epoch.service';
 import {
   assertApdShadowEpochOpsAuthorized,
-  assertDeployedReleaseIdentity,
+  assertMutationReleaseIdentity,
   emitApdShadowEpochOpsAudit,
+  resolveApprovedReleaseSha,
   resolveObservedDeployedGitSha,
   type ApdShadowEpochOpsContext,
 } from './apd-shadow-activation-operator.authority';
+import {
+  buildSanitizedActivateDryRun,
+  buildSanitizedPrepareDryRun,
+  redactOperatorSecrets,
+} from './apd-shadow-operator-output.sanitize';
 import type {
   ActivateApdShadowActivationEpochInput,
   PrepareApdShadowActivationEpochInput,
@@ -57,12 +63,13 @@ export class ApdShadowActivationEpochOperatorFacade {
         ? [...new Set(runtime.config.members.map((m) => m.organizationId))]
         : []);
 
+    const approvedSha = resolveApprovedReleaseSha();
     const auditBase = {
       operation: command,
       operatorActor: ops.operatorActor,
       operationRequestId: ops.operationRequestId,
       operationReason: ops.operationReason,
-      expectedDeployedSha: ops.expectedDeployedSha ?? null,
+      expectedDeployedSha: approvedSha,
       observedDeployedSha: resolveObservedDeployedGitSha(),
       timestampUtc: new Date().toISOString(),
       dryRun: dryRun === true,
@@ -92,7 +99,9 @@ export class ApdShadowActivationEpochOperatorFacade {
       emitApdShadowEpochOpsAudit({
         ...auditBase,
         success: false,
-        error: err instanceof Error ? err.message : String(err),
+        error: redactOperatorSecrets({
+          message: err instanceof Error ? err.message : String(err),
+        }).message as string,
       });
       throw err;
     }
@@ -131,7 +140,7 @@ export class ApdShadowActivationEpochOperatorFacade {
     cohortOrgIds: string[],
     dryRun?: boolean,
   ): Promise<Record<string, unknown>> {
-    const release = assertDeployedReleaseIdentity(ops.expectedDeployedSha);
+    const release = assertMutationReleaseIdentity('preflight');
     if (!fingerprint) {
       throw new Error('preflight: cohort fingerprint missing (cohort not READY)');
     }
@@ -143,7 +152,7 @@ export class ApdShadowActivationEpochOperatorFacade {
       operatorActor: ops.operatorActor,
       operationRequestId: ops.operationRequestId,
       operationReason: ops.operationReason,
-      expectedDeployedSha: release.expected,
+      expectedDeployedSha: release.approved,
       observedDeployedSha: release.observed,
       success: true,
       error: null,
@@ -156,7 +165,7 @@ export class ApdShadowActivationEpochOperatorFacade {
       fingerprint,
       b2: P25_APD_B2_V1,
       b4: P25_APD_B4_V1,
-      release,
+      release: { approved: release.approved, observed: release.observed },
       dryRun: dryRun === true,
     };
   }
@@ -172,20 +181,21 @@ export class ApdShadowActivationEpochOperatorFacade {
     if (!fingerprint || !request.organizationId) {
       throw new Error('prepare requires READY cohort and organizationId');
     }
+    const cohortConfigVersion =
+      parseApdShadowCohortRuntime(process.env).config?.version ?? P25_APD_LTE_R1_COHORT_V1;
+    const release = assertMutationReleaseIdentity('prepare');
     const input: PrepareApdShadowActivationEpochInput = {
       organizationId: request.organizationId,
       cohortOrganizationIds: cohortOrgIds,
       cohortConfigFingerprintSha256: fingerprint,
-      cohortConfigVersion:
-        parseApdShadowCohortRuntime(process.env).config?.version ?? P25_APD_LTE_R1_COHORT_V1,
+      cohortConfigVersion,
       b2PolicyVersion: P25_APD_B2_V1,
       b4PolicyVersion: P25_APD_B4_V1,
-      productionReleaseIdentity: ops.expectedDeployedSha ?? null,
+      productionReleaseIdentity: release.approved,
       operatorActor: ops.operatorActor,
       operatorReason: ops.operationReason,
       operatorRequestId: ops.operationRequestId,
       opsToken: ops.opsToken,
-      expectedDeployedSha: ops.expectedDeployedSha,
     };
     if (dryRun) {
       emitApdShadowEpochOpsAudit({
@@ -193,7 +203,21 @@ export class ApdShadowActivationEpochOperatorFacade {
         success: true,
         error: null,
       } as never);
-      return { dryRun: true, wouldPrepare: input };
+      return {
+        dryRun: true,
+        wouldPrepare: buildSanitizedPrepareDryRun({
+          organizationId: request.organizationId,
+          cohortOrganizationIds: cohortOrgIds,
+          cohortConfigFingerprintSha256: fingerprint,
+          cohortConfigVersion,
+          b2PolicyVersion: P25_APD_B2_V1,
+          b4PolicyVersion: P25_APD_B4_V1,
+          operatorActor: ops.operatorActor,
+          operatorReason: ops.operationReason,
+          operationRequestId: ops.operationRequestId,
+          approvedReleaseSha: release.approved,
+        }),
+      };
     }
     const row = await this.epochService.prepareEpoch(input);
     emitApdShadowEpochOpsAudit({
@@ -216,6 +240,7 @@ export class ApdShadowActivationEpochOperatorFacade {
     if (!fingerprint || !request.epochId || !request.activationRequestKey) {
       throw new Error('activate requires epochId, activationRequestKey, and READY cohort');
     }
+    const release = assertMutationReleaseIdentity('activate');
     const input: ActivateApdShadowActivationEpochInput = {
       epochId: request.epochId,
       activationRequestKey: request.activationRequestKey,
@@ -226,18 +251,30 @@ export class ApdShadowActivationEpochOperatorFacade {
       operatorActor: ops.operatorActor,
       operatorReason: ops.operationReason,
       operatorRequestId: ops.operationRequestId,
-      productionReleaseIdentity: ops.expectedDeployedSha ?? null,
+      productionReleaseIdentity: release.approved,
       opsToken: ops.opsToken,
-      expectedDeployedSha: ops.expectedDeployedSha,
     };
     if (dryRun) {
-      assertDeployedReleaseIdentity(ops.expectedDeployedSha);
       emitApdShadowEpochOpsAudit({
         ...(auditBase as object),
         success: true,
         error: null,
       } as never);
-      return { dryRun: true, wouldActivate: input };
+      return {
+        dryRun: true,
+        wouldActivate: buildSanitizedActivateDryRun({
+          epochId: request.epochId,
+          activationRequestKey: request.activationRequestKey,
+          cohortOrganizationIds: cohortOrgIds,
+          cohortConfigFingerprintSha256: fingerprint,
+          b2PolicyVersion: P25_APD_B2_V1,
+          b4PolicyVersion: P25_APD_B4_V1,
+          operatorActor: ops.operatorActor,
+          operatorReason: ops.operationReason,
+          operationRequestId: ops.operationRequestId,
+          approvedReleaseSha: release.approved,
+        }),
+      };
     }
     const active = await this.epochService.activateEpoch(input);
     emitApdShadowEpochOpsAudit({

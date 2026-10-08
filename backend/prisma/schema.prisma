@@ -4432,7 +4432,7 @@ model ApdShadowActivationEpoch {
   productionReleaseIdentity     String?                           @map("production_release_identity")
   lifecycleState                ApdShadowActivationEpochLifecycle @map("lifecycle_state")
   /// Immutable authoritative T0 (PostgreSQL clock); set only on authorized ACTIVE transition.
-  activatedAt                   DateTime?                         @map("activated_at")
+  activatedAt                   DateTime?                         @map("activated_at") @db.Timestamptz(3)
   preparedAt                    DateTime                          @default(now()) @map("prepared_at")
   pausedAt                      DateTime?                         @map("paused_at")
   closedAt                      DateTime?                         @map("closed_at")

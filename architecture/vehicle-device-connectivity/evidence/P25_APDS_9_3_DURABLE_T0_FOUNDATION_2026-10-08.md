@@ -56,6 +56,15 @@ Migration: `20261008120000_apd_shadow_activation_epochs`
 - **Operator path:** `APD_SHADOW_EPOCH_OPS_TOKEN` + actor/request-id/reason + optional `SYNQDRIVE_DEPLOYED_GIT_SHA` verification; CLI `backend/scripts/ops/apd-shadow-activation-epoch-cli.ts`; facade `ApdShadowActivationEpochOperatorFacade` (status/preflight/prepare/activate/pause/close, `--dry-run`).
 - **Tests:** T0 timezone parity (UTC/LA/Berlin), pause/close write-race (dual Prisma clients), operator authority unit tests, cold-cache spec.
 
+## APDS-9.3C transaction & operator security closure
+
+- **Shared lifecycle lock:** `apd_shadow_epoch_lifecycle:{epochId}` (`apd-shadow-epoch-lifecycle.lock.ts`) — used by decision **create**, `pauseEpoch`, and `closeEpoch` (pg_advisory_xact_lock). Post-poll updates to existing rows remain allowed after PAUSE/CLOSE.
+- **True concurrency tests:** `apd-shadow-epoch-lifecycle-concurrency.postgres.integration.spec.ts` (barriered interleavings A/B).
+- **Operator credentials:** dry-run returns sanitized payloads only (`apd-shadow-operator-output.sanitize.ts`); secrets never in CLI JSON.
+- **Release authority:** mutations require `APD_SHADOW_EPOCH_APPROVED_RELEASE_SHA` === `SYNQDRIVE_DEPLOYED_GIT_SHA` (CLI `--expected-sha` not trusted). PAUSE/CLOSE do not require release match.
+- **Operator identity:** `APD_SHADOW_EPOCH_OPERATOR_ALLOWLIST` (deploy-time) required outside test bypass.
+- **Prisma:** `activatedAt` annotated `@db.Timestamptz(3)`.
+
 ## Operator runbook (draft)
 
 1. Verify cohort JSON fingerprint matches intended pilot scope.

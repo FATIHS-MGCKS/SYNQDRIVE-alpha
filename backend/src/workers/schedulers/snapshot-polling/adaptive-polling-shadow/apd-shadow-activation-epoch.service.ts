@@ -4,10 +4,11 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { P25_APD_B2_V1, P25_APD_B4_V1 } from '../adaptive-polling-policy/p25-apd-policy-versions';
 import {
   assertApdShadowEpochInternalOpsAuthorized,
-  assertDeployedReleaseIdentity,
+  assertMutationReleaseIdentity,
   type ApdShadowEpochOpsContext,
 } from './apd-shadow-activation-operator.authority';
 import { APD_SHADOW_EPOCH_T0_SQL } from './apd-shadow-epoch-t0.authority';
+import { acquireApdShadowEpochLifecycleXactLock } from './apd-shadow-epoch-lifecycle.lock';
 import {
   ActivateApdShadowActivationEpochInput,
   ApdShadowActiveEpochView,
@@ -80,6 +81,7 @@ export class ApdShadowActivationEpochService {
       opsToken: input.opsToken,
       expectedDeployedSha: input.expectedDeployedSha,
     });
+    const release = assertMutationReleaseIdentity('prepareEpoch');
     this.assertCohortOrganizations(input);
     this.assertFrozenPolicyVersions(input.b2PolicyVersion, input.b4PolicyVersion);
     const activationScopeKey = buildApdShadowActivationScopeKey(
@@ -93,7 +95,7 @@ export class ApdShadowActivationEpochService {
         cohortConfigVersion: input.cohortConfigVersion,
         b2PolicyVersion: input.b2PolicyVersion,
         b4PolicyVersion: input.b4PolicyVersion,
-        productionReleaseIdentity: input.productionReleaseIdentity ?? null,
+        productionReleaseIdentity: release.approved,
         lifecycleState: ApdShadowActivationEpochLifecycle.PREPARED,
         operatorActor: input.operatorActor ?? null,
         operatorReason: input.operatorReason ?? null,
@@ -118,9 +120,7 @@ export class ApdShadowActivationEpochService {
       opsToken: input.opsToken,
       expectedDeployedSha: input.expectedDeployedSha ?? input.productionReleaseIdentity ?? undefined,
     });
-    assertDeployedReleaseIdentity(
-      input.expectedDeployedSha ?? input.productionReleaseIdentity ?? undefined,
-    );
+    const release = assertMutationReleaseIdentity('activateEpoch');
     if (input.cohortOrganizationIds.length === 0) {
       throw new Error('cohortOrganizationIds must not be empty');
     }
@@ -205,8 +205,7 @@ export class ApdShadowActivationEpochService {
           operatorActor: input.operatorActor,
           operatorReason: input.operatorReason,
           operatorRequestId: input.operatorRequestId ?? null,
-          productionReleaseIdentity:
-            input.productionReleaseIdentity ?? epoch.productionReleaseIdentity,
+          productionReleaseIdentity: release.approved,
         },
       });
       return updated;
@@ -250,36 +249,42 @@ export class ApdShadowActivationEpochService {
 
   async pauseEpoch(epochId: string, ops: Partial<ApdShadowEpochOpsContext> = {}): Promise<void> {
     assertApdShadowEpochInternalOpsAuthorized('pauseEpoch', ops);
-    await this.prisma.apdShadowActivationEpoch.updateMany({
-      where: {
-        id: epochId,
-        lifecycleState: ApdShadowActivationEpochLifecycle.ACTIVE,
-      },
-      data: {
-        lifecycleState: ApdShadowActivationEpochLifecycle.PAUSED,
-        pausedAt: new Date(),
-      },
+    await this.prisma.$transaction(async (tx) => {
+      await acquireApdShadowEpochLifecycleXactLock(tx, epochId);
+      await tx.apdShadowActivationEpoch.updateMany({
+        where: {
+          id: epochId,
+          lifecycleState: ApdShadowActivationEpochLifecycle.ACTIVE,
+        },
+        data: {
+          lifecycleState: ApdShadowActivationEpochLifecycle.PAUSED,
+          pausedAt: new Date(),
+        },
+      });
     });
     this.invalidateCache();
   }
 
   async closeEpoch(epochId: string, ops: Partial<ApdShadowEpochOpsContext> = {}): Promise<void> {
     assertApdShadowEpochInternalOpsAuthorized('closeEpoch', ops);
-    await this.prisma.apdShadowActivationEpoch.updateMany({
-      where: {
-        id: epochId,
-        lifecycleState: {
-          in: [
-            ApdShadowActivationEpochLifecycle.ACTIVE,
-            ApdShadowActivationEpochLifecycle.PAUSED,
-            ApdShadowActivationEpochLifecycle.PREPARED,
-          ],
+    await this.prisma.$transaction(async (tx) => {
+      await acquireApdShadowEpochLifecycleXactLock(tx, epochId);
+      await tx.apdShadowActivationEpoch.updateMany({
+        where: {
+          id: epochId,
+          lifecycleState: {
+            in: [
+              ApdShadowActivationEpochLifecycle.ACTIVE,
+              ApdShadowActivationEpochLifecycle.PAUSED,
+              ApdShadowActivationEpochLifecycle.PREPARED,
+            ],
+          },
         },
-      },
-      data: {
-        lifecycleState: ApdShadowActivationEpochLifecycle.CLOSED,
-        closedAt: new Date(),
-      },
+        data: {
+          lifecycleState: ApdShadowActivationEpochLifecycle.CLOSED,
+          closedAt: new Date(),
+        },
+      });
     });
     this.invalidateCache();
   }

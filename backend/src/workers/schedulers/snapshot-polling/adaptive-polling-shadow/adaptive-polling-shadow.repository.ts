@@ -12,6 +12,7 @@ import {
   type ApdShadowCanonicalEnqueueOutcome,
   type ApdShadowRealPollStatus,
 } from './p25-apd-shadow-execution-versions';
+import { acquireApdShadowEpochLifecycleXactLock } from './apd-shadow-epoch-lifecycle.lock';
 
 export interface UpsertApdShadowDecisionRow {
   organizationId: string;
@@ -209,7 +210,7 @@ export class AdaptivePollingShadowRepository {
     activationEpochId: string,
     tx: Prisma.TransactionClient,
   ): Promise<void> {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`apd_shadow_epoch_commit:${activationEpochId}`}))`;
+    await acquireApdShadowEpochLifecycleXactLock(tx, activationEpochId);
     const epoch = await tx.apdShadowActivationEpoch.findUnique({
       where: { id: activationEpochId },
       select: { lifecycleState: true, activatedAt: true },

@@ -2,6 +2,8 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 
 const OPS_TOKEN_ENV = 'APD_SHADOW_EPOCH_OPS_TOKEN';
 const DEPLOYED_SHA_ENV = 'SYNQDRIVE_DEPLOYED_GIT_SHA';
+const APPROVED_RELEASE_SHA_ENV = 'APD_SHADOW_EPOCH_APPROVED_RELEASE_SHA';
+const OPERATOR_ALLOWLIST_ENV = 'APD_SHADOW_EPOCH_OPERATOR_ALLOWLIST';
 
 export interface ApdShadowEpochOpsContext {
   operatorActor: string;
@@ -103,6 +105,8 @@ export function assertApdShadowEpochOpsAuthorized(
     throw new Error(`${operation}: opsToken is required (must match ${OPS_TOKEN_ENV})`);
   }
 
+  assertOperatorActorAllowlisted(operation, actor);
+
   const configured = process.env[OPS_TOKEN_ENV]?.trim();
   if (!configured) {
     throw new Error(`${operation}: ${OPS_TOKEN_ENV} is not configured on this runtime`);
@@ -121,26 +125,67 @@ export function assertApdShadowEpochOpsAuthorized(
   }
 }
 
-export function assertDeployedReleaseIdentity(expectedDeployedSha: string | undefined): {
+export function resolveApprovedReleaseSha(): string | null {
+  const raw = process.env[APPROVED_RELEASE_SHA_ENV];
+  if (!raw?.trim()) return null;
+  return raw.trim();
+}
+
+/**
+ * Mutation authority: approved release pin (deploy-time env) must match observed runtime SHA.
+ * Untrusted CLI `--expected-sha` is never used here.
+ */
+export function assertMutationReleaseIdentity(operation: string): {
+  approved: string;
+  observed: string;
+} {
+  if (testBypassEnabled) {
+    const observed = resolveObservedDeployedGitSha() ?? 'test-bypass-release';
+    return { approved: observed, observed };
+  }
+  const approved = resolveApprovedReleaseSha();
+  const observed = resolveObservedDeployedGitSha();
+  if (!approved) {
+    throw new Error(`${operation}: ${APPROVED_RELEASE_SHA_ENV} not configured`);
+  }
+  if (!observed) {
+    throw new Error(`${operation}: ${DEPLOYED_SHA_ENV} not set on runtime`);
+  }
+  if (approved !== observed) {
+    throw new Error(`${operation}: release identity mismatch (approved vs observed)`);
+  }
+  return { approved, observed };
+}
+
+/** @deprecated Preflight display only — mutations use assertMutationReleaseIdentity. */
+export function assertDeployedReleaseIdentity(_expectedDeployedSha: string | undefined): {
   observed: string | null;
   expected: string | null;
 } {
-  const observed = resolveObservedDeployedGitSha();
-  if (!expectedDeployedSha?.trim()) {
-    return { observed, expected: null };
+  try {
+    const { approved, observed } = assertMutationReleaseIdentity('preflight');
+    return { observed, expected: approved };
+  } catch {
+    return { observed: resolveObservedDeployedGitSha(), expected: resolveApprovedReleaseSha() };
   }
-  const expected = expectedDeployedSha.trim();
-  if (!observed) {
+}
+
+export function assertOperatorActorAllowlisted(operation: string, operatorActor: string): void {
+  if (testBypassEnabled) return;
+  const raw = process.env[OPERATOR_ALLOWLIST_ENV]?.trim();
+  if (!raw) {
     throw new Error(
-      `release identity verification failed: ${DEPLOYED_SHA_ENV} not set on runtime`,
+      `${operation}: ${OPERATOR_ALLOWLIST_ENV} not configured (operator identity not verifiable)`,
     );
   }
-  if (observed !== expected) {
-    throw new Error(
-      `release identity mismatch: expected ${expected} observed ${observed}`,
-    );
+  const allowed = raw.split(',').map((s) => s.trim()).filter(Boolean);
+  if (!allowed.includes(operatorActor)) {
+    throw new Error(`${operation}: operatorActor not in approved allowlist`);
   }
-  return { observed, expected };
+}
+
+export function isOperatorIdentityInfrastructureConfigured(): boolean {
+  return Boolean(process.env[OPERATOR_ALLOWLIST_ENV]?.trim());
 }
 
 export function buildOperatorExecutionProof(
