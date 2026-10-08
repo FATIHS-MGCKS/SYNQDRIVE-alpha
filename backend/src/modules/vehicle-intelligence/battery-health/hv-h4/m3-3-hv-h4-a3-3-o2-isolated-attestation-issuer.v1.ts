@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import type { Prisma, PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
 import {
   M3_3_HV_H4_A3_HISTORY_INTEGRITY_ATTESTATION_CONTRACT_V1,
   M3_3_HV_H4_DURABLE_SOURCE_REVISION_ACK_V1,
@@ -59,23 +59,24 @@ export async function issueM3_3HvH4A3IntegrityAttestationIsolatedV1(
     }
 
     const attestationId = randomUUID();
-    const row = {
-      id: attestationId,
-      revisionId: revision.id,
-      durabilityAckId: ack!.id,
-      organizationId: revision.organizationId,
-      vehicleId: revision.vehicleId,
-      segmentFingerprint: revision.segmentFingerprint,
-      evidenceContractVersion: revision.evidenceContractVersion,
-      sourceRevisionFingerprint: revision.sourceRevisionFingerprint,
-      durabilityAckContractVersion: M3_3_HV_H4_DURABLE_SOURCE_REVISION_ACK_V1,
-      integrityAttestationContractVersion: M3_3_HV_H4_A3_HISTORY_INTEGRITY_ATTESTATION_CONTRACT_V1,
-      attestedAt,
-    } satisfies Prisma.BatteryHvChargeSessionEvidenceIntegrityAttestationCreateInput;
 
     await tx.$executeRawUnsafe(`SET LOCAL ROLE ${issuerRole}`);
     try {
-      await tx.batteryHvChargeSessionEvidenceIntegrityAttestation.create({ data: row });
+      await tx.batteryHvChargeSessionEvidenceIntegrityAttestation.create({
+        data: {
+          id: attestationId,
+          revisionId: revision.id,
+          durabilityAckId: ack!.id,
+          organizationId: revision.organizationId,
+          vehicleId: revision.vehicleId,
+          segmentFingerprint: revision.segmentFingerprint,
+          evidenceContractVersion: revision.evidenceContractVersion,
+          sourceRevisionFingerprint: revision.sourceRevisionFingerprint,
+          durabilityAckContractVersion: M3_3_HV_H4_DURABLE_SOURCE_REVISION_ACK_V1,
+          integrityAttestationContractVersion: M3_3_HV_H4_A3_HISTORY_INTEGRITY_ATTESTATION_CONTRACT_V1,
+          attestedAt,
+        },
+      });
     } finally {
       await tx.$executeRawUnsafe(`RESET ROLE`);
     }
