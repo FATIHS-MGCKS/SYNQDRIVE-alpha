@@ -11,9 +11,15 @@ export function redactPostgresDatabaseTargetV1(databaseUrl: string): string {
   }
 }
 
+const POSTGRES_URL_WITH_USER_PATTERN = /postgres(?:ql)?:\/\/([^@]+)@/gi;
+
+/** Reject raw credentials in reports; allow redacted placeholder user (`***`). */
 export function assertNoSecretsInReportPayloadV1(payload: unknown): void {
   const serialized = JSON.stringify(payload);
-  if (/postgres(ql)?:\/\/[^@]+@/i.test(serialized)) {
-    throw new Error('PHASE_A_REPORT_CREDENTIAL_LEAK');
+  for (const match of serialized.matchAll(POSTGRES_URL_WITH_USER_PATTERN)) {
+    const user = (match[1] ?? '').trim();
+    if (user && user !== '***' && user !== 'redacted') {
+      throw new Error('PHASE_A_REPORT_CREDENTIAL_LEAK');
+    }
   }
 }

@@ -24,6 +24,14 @@ describe('m3-3-hv-h4-a3-o2-r4-1 phase-a runner (unit)', () => {
     ).toThrow('PHASE_A_REPORT_CREDENTIAL_LEAK');
   });
 
+  it('report redaction guard allows redacted database target placeholder', () => {
+    expect(() =>
+      assertNoSecretsInReportPayloadV1({
+        databaseTargetRedacted: 'postgresql://***@127.0.0.1:5432/test',
+      }),
+    ).not.toThrow();
+  });
+
   it('contract version is stable for deterministic JSON consumers', () => {
     expect(M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_CONTRACT_V1).toBe('M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_V1');
   });
