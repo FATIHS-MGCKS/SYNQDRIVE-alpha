@@ -57,6 +57,7 @@ export const nl = {
   'master.cv.registryLifecycle.filter.offboarded': 'Uitgefaseerde historie',
   'master.cv.registryLifecycle.filter.archived': 'Gearchiveerd',
   'master.cv.registryLifecycle.filter.all': 'Alle levenscycli',
+  'master.cv.registryLifecycle.filter.ariaLabel': 'Filteren op registerlevenscyclus',
   'master.cv.offboard.action': 'Uit actief bestand verwijderen',
   'master.cv.offboard.dialog.title': 'Voertuig uit actief bestand verwijderen',
   'master.cv.offboard.dialog.description': 'Het voertuig wordt uit actieve SynqDrive-operaties gehaald. Het canonieke record en de historie blijven behouden.',

@@ -56,6 +56,7 @@ export const pl = {
   'master.cv.registryLifecycle.filter.offboarded': 'Historia wycofan',
   'master.cv.registryLifecycle.filter.archived': 'Zarchiwizowane',
   'master.cv.registryLifecycle.filter.all': 'Wszystkie cykle',
+  'master.cv.registryLifecycle.filter.ariaLabel': 'Filtruj wedlug cyklu zycia rejestru',
   'master.cv.offboard.action': 'Usun z aktywnej floty',
   'master.cv.offboard.dialog.title': 'Usun pojazd z aktywnej floty',
   'master.cv.offboard.dialog.description': 'Pojazd zostanie wycofany z aktywnej obslugi SynqDrive. Kanoniczny rekord i historia pozostaja.',

@@ -3398,6 +3398,7 @@ export const de: Record<TranslationKey, string> = {
   'master.cv.registryLifecycle.filter.offboarded': 'Ausgebuchte Historie',
   'master.cv.registryLifecycle.filter.archived': 'Archiviert',
   'master.cv.registryLifecycle.filter.all': 'Alle Lebenszyklen',
+  'master.cv.registryLifecycle.filter.ariaLabel': 'Registry-Lebenszyklus filtern',
   'master.cv.offboard.action': 'Aus aktivem Bestand entfernen',
   'master.cv.offboard.dialog.title': 'Fahrzeug aus dem aktiven Bestand entfernen',
   'master.cv.offboard.dialog.description':

@@ -437,6 +437,7 @@ export const fr = {
   'master.cv.registryLifecycle.filter.offboarded': 'Historique retire',
   'master.cv.registryLifecycle.filter.archived': 'Archives',
   'master.cv.registryLifecycle.filter.all': 'Tous les cycles',
+  'master.cv.registryLifecycle.filter.ariaLabel': 'Filtrer par cycle de vie du registre',
   'master.cv.offboard.action': 'Retirer du parc actif',
   'master.cv.offboard.dialog.title': 'Retirer le vehicule du parc actif',
   'master.cv.offboard.dialog.description': 'Le vehicule est retire des operations actives SynqDrive. Le dossier canonique et l historique sont conserves.',

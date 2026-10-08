@@ -3289,6 +3289,7 @@ export const en = {
   'master.cv.registryLifecycle.filter.offboarded': 'Offboarded history',
   'master.cv.registryLifecycle.filter.archived': 'Archived',
   'master.cv.registryLifecycle.filter.all': 'All lifecycles',
+  'master.cv.registryLifecycle.filter.ariaLabel': 'Filter by registry lifecycle',
   'master.cv.offboard.action': 'Remove from active fleet',
   'master.cv.offboard.dialog.title': 'Remove vehicle from active fleet',
   'master.cv.offboard.dialog.description':

@@ -180,7 +180,7 @@ export function ConnectedVehiclesListView({
             onChange={(e) =>
               updateFilter({ registryLifecycle: e.target.value as typeof query.registryLifecycle })
             }
-            aria-label="Registry-Lebenszyklus filtern"
+            aria-label={t('master.cv.registryLifecycle.filter.ariaLabel')}
           >
             <option value="ACTIVE">{t('master.cv.registryLifecycle.filter.active')}</option>
             <option value="OFFBOARDED">{t('master.cv.registryLifecycle.filter.offboarded')}</option>

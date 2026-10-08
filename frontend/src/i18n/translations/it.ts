@@ -56,6 +56,7 @@ export const it = {
   'master.cv.registryLifecycle.filter.offboarded': 'Storico fuori parco',
   'master.cv.registryLifecycle.filter.archived': 'Archiviati',
   'master.cv.registryLifecycle.filter.all': 'Tutti i cicli',
+  'master.cv.registryLifecycle.filter.ariaLabel': 'Filtra per ciclo di vita del registro',
   'master.cv.offboard.action': 'Rimuovi dal parco attivo',
   'master.cv.offboard.dialog.title': 'Rimuovi veicolo dal parco attivo',
   'master.cv.offboard.dialog.description': 'Il veicolo viene dismesso dalle operazioni attive SynqDrive. Record canonico e storico restano.',
