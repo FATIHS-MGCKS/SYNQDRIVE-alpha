@@ -239,17 +239,28 @@ describe('M3.3-HV-H4-A3.3-O2-R2-H2 issuer-login concurrency (PostgreSQL)', () =>
     if (!admin || !issuerDb) return;
     const { revision } = await seedRevision();
     await admin.$executeRawUnsafe(
-      `REVOKE INSERT ON public.battery_hv_charge_session_evidence_integrity_attestations FROM ${M3_3_HV_H4_A3_O2_R2_ISSUER_LOGIN_ROLE}`,
+      `REVOKE INSERT ON public.battery_hv_charge_session_evidence_integrity_attestations FROM ${M3_3_HV_H4_A3_O2_R2_ISSUER_LOGIN_ROLE}, ${M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE}`,
     );
+    await issuerDb.$disconnect();
+    const issuerDenied = await createIssuerLoginPostgresClientV1();
+    if (!issuerDenied) {
+      throw new Error('O2-R2-H2: issuer login client required after REVOKE');
+    }
     try {
+      const insertAllowed = await issuerDenied.$queryRaw<Array<{ ok: boolean }>>`
+        SELECT has_table_privilege(current_user, 'public.battery_hv_charge_session_evidence_integrity_attestations', 'INSERT') AS ok
+      `;
+      expect(insertAllowed[0]?.ok).toBe(false);
       await expect(
-        issueM3_3HvH4A3IntegrityAttestationIsolatedV1(issuerDb, { revisionId: revision.id }),
+        issueM3_3HvH4A3IntegrityAttestationIsolatedV1(issuerDenied, { revisionId: revision.id }),
       ).rejects.toBeInstanceOf(M3_3HvH4A3IntegrityAttestationIssuePermissionError);
       expect(await admin.batteryHvChargeSessionEvidenceIntegrityAttestation.count()).toBe(0);
     } finally {
+      await issuerDenied.$disconnect();
       await admin.$executeRawUnsafe(
-        `GRANT INSERT ON public.battery_hv_charge_session_evidence_integrity_attestations TO ${M3_3_HV_H4_A3_O2_R2_ISSUER_LOGIN_ROLE}`,
+        `GRANT INSERT ON public.battery_hv_charge_session_evidence_integrity_attestations TO ${M3_3_HV_H4_A3_O2_R2_ISSUER_LOGIN_ROLE}, ${M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE}`,
       );
+      issuerDb = await createIssuerLoginPostgresClientV1();
     }
   });
 });
