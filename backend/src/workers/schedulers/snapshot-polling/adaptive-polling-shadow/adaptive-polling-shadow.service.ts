@@ -33,6 +33,8 @@ import type {
   AdaptivePollingShadowPrePollContext,
   AdaptivePollingShadowPrePollResult,
 } from './adaptive-polling-shadow.types';
+import { ApdShadowActivationEpochService } from './apd-shadow-activation-epoch.service';
+import type { ApdShadowActiveEpochView } from './apd-shadow-activation-epoch.types';
 
 @Injectable()
 export class AdaptivePollingShadowService {
@@ -41,6 +43,7 @@ export class AdaptivePollingShadowService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly repository: AdaptivePollingShadowRepository,
+    private readonly activationEpochService: ApdShadowActivationEpochService,
     @Optional() private readonly metrics?: AdaptivePollingShadowMetricsService,
   ) {
     this.refreshRuntimeMetrics();
@@ -58,7 +61,17 @@ export class AdaptivePollingShadowService {
     if (!isApdShadowEnabled()) return false;
     const runtime = this.getCohortRuntime();
     if (runtime.state !== 'READY' || !runtime.config) return false;
-    return isApdShadowCohortMember(runtime.config, organizationId, vehicleId);
+    if (!isApdShadowCohortMember(runtime.config, organizationId, vehicleId)) {
+      return false;
+    }
+    if (!runtime.configFingerprintSha256) return false;
+    void this.activationEpochService
+      .loadActiveEpochForScope(runtime.configFingerprintSha256)
+      .catch(() => null);
+    const cached = this.activationEpochService.getCachedActiveEpochSnapshot(
+      runtime.configFingerprintSha256,
+    );
+    return cached != null;
   }
 
   getCohortVerificationSummary(): {
@@ -107,6 +120,42 @@ export class AdaptivePollingShadowService {
     return true;
   }
 
+  private recordEpochGateBlocked(reason: string): void {
+    this.metrics?.recordEpochExcluded(reason);
+  }
+
+  private async assertActiveEpochAllowsDecision(
+    decisionAtMs: number,
+  ): Promise<ApdShadowActiveEpochView | null> {
+    const runtime = this.getCohortRuntime();
+    const fingerprint = runtime.configFingerprintSha256;
+    if (!fingerprint) {
+      this.recordEpochGateBlocked('EPOCH_MISSING');
+      return null;
+    }
+    try {
+      const activeEpoch =
+        (await this.activationEpochService.loadActiveEpochForScope(fingerprint)) ??
+        this.activationEpochService.getCachedActiveEpochSnapshot(fingerprint);
+      const gate = this.activationEpochService.evaluateShadowEpochGate({
+        cohortConfigFingerprintSha256: fingerprint,
+        decisionAtMs,
+        activeEpoch,
+      });
+      if (!gate.allowed) {
+        this.recordEpochGateBlocked(gate.reason);
+        return null;
+      }
+      return gate.epoch;
+    } catch (err) {
+      this.recordEpochGateBlocked('EPOCH_LOOKUP_FAILED');
+      this.logger.warn(
+        `APD shadow epoch gate failed (non-blocking): ${err instanceof Error ? err.message : err}`,
+      );
+      return null;
+    }
+  }
+
   /**
    * Scheduler-side hook — intentionally non-authoritative (APDS-9.2B).
    * Scientific policy rows are created only on actual baseline poll start in the processor.
@@ -123,8 +172,10 @@ export class AdaptivePollingShadowService {
     if (!this.assertCohortVehicleAllowed(ctx.organizationId, ctx.vehicleId)) {
       return null;
     }
+    const epoch = await this.assertActiveEpochAllowsDecision(ctx.pollStartedAtMs);
+    if (!epoch) return null;
     try {
-      return await this.observeActualBaselinePollStartInner(ctx);
+      return await this.observeActualBaselinePollStartInner(ctx, epoch);
     } catch (err) {
       this.metrics?.recordFailure('pre_poll');
       this.logger.warn(
@@ -144,6 +195,8 @@ export class AdaptivePollingShadowService {
     if (!this.assertCohortVehicleAllowed(input.organizationId, input.vehicleId)) {
       return;
     }
+    const epoch = await this.assertActiveEpochAllowsDecision(input.observedAtMs);
+    if (!epoch) return;
     try {
       await this.repository.patchEnqueueOutcome({
         organizationId: input.organizationId,
@@ -164,6 +217,9 @@ export class AdaptivePollingShadowService {
     if (!this.assertCohortVehicleAllowed(ctx.organizationId, ctx.vehicleId)) {
       return;
     }
+    const decisionAtMs = ctx.pollCompletedAtMs ?? ctx.pollStartedAtMs;
+    const epoch = await this.assertActiveEpochAllowsDecision(decisionAtMs);
+    if (!epoch) return;
     try {
       await this.observePostPollInner(ctx);
     } catch (err) {
@@ -184,6 +240,10 @@ export class AdaptivePollingShadowService {
     if (!this.assertCohortVehicleAllowed(input.organizationId, input.vehicleId)) {
       return;
     }
+    const epoch = await this.assertActiveEpochAllowsDecision(
+      input.realPollStartedAt.getTime(),
+    );
+    if (!epoch) return;
     try {
       await this.repository.updateFailedPollOutcome(input);
     } catch (err) {
@@ -196,6 +256,7 @@ export class AdaptivePollingShadowService {
 
   private async observeActualBaselinePollStartInner(
     ctx: AdaptivePollingShadowActualPollStartContext,
+    activeEpoch: ApdShadowActiveEpochView,
   ): Promise<string> {
     const decisionAtMs = ctx.pollStartedAtMs;
     const reconciliation = !(await isVehicleInActiveTripAtMs(
@@ -299,6 +360,7 @@ export class AdaptivePollingShadowService {
         vehicleId: ctx.vehicleId,
         opportunityId,
         decisionAt: new Date(decisionAtMs),
+        activationEpochId: activeEpoch.id,
         policyVersion: p.version,
         profileVersion: profile.profileVersion,
         profileClass: profile.profileClass,

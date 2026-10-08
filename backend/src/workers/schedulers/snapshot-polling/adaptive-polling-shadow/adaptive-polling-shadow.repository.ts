@@ -12,6 +12,7 @@ export interface UpsertApdShadowDecisionRow {
   vehicleId: string;
   opportunityId: string;
   decisionAt: Date;
+  activationEpochId?: string | null;
   policyVersion: string;
   profileVersion: string;
   profileClass: string;
@@ -108,6 +109,7 @@ export class AdaptivePollingShadowRepository {
         vehicleId: row.vehicleId,
         opportunityId: row.opportunityId,
         decisionAt: row.decisionAt,
+        activationEpochId: row.activationEpochId ?? null,
         policyVersion: row.policyVersion,
         profileVersion: row.profileVersion,
         profileClass: row.profileClass,
@@ -125,6 +127,7 @@ export class AdaptivePollingShadowRepository {
       },
       update: {
         decisionAt: row.decisionAt,
+        activationEpochId: row.activationEpochId ?? null,
         profileVersion: row.profileVersion,
         profileClass: row.profileClass,
         decision: row.decision,

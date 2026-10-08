@@ -22,6 +22,10 @@ export class AdaptivePollingShadowMetricsService {
     this.tripMetrics?.apdShadowCohortExcludedTotal?.inc({ reason });
   }
 
+  recordEpochExcluded(reason: string): void {
+    this.tripMetrics?.apdShadowEpochExcludedTotal?.inc({ reason });
+  }
+
   recordDecision(policy: string, decision: string, reason: string): void {
     this.tripMetrics?.apdShadowDecisionsTotal?.inc({ policy, decision, reason });
     if (decision === 'WOULD_POLL') {
