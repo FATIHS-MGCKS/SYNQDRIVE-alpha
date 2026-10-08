@@ -3389,6 +3389,65 @@ export const de: Record<TranslationKey, string> = {
   'settings.connectedVehicles': 'Verbundene Fahrzeuge',
   'settings.dataSync': 'Datensynchronisation',
 
+  // ─── Master — Connected Vehicles offboard (VO5C-P2A) ───
+  'master.cv.registryLifecycle.active': 'Aktiv',
+  'master.cv.registryLifecycle.offboarded': 'Aus dem Bestand',
+  'master.cv.registryLifecycle.archived': 'Archiviert',
+  'master.cv.registryLifecycle.unknown': 'Lebenszyklus unbekannt',
+  'master.cv.registryLifecycle.filter.active': 'Aktiver Bestand',
+  'master.cv.registryLifecycle.filter.offboarded': 'Ausgebuchte Historie',
+  'master.cv.registryLifecycle.filter.archived': 'Archiviert',
+  'master.cv.registryLifecycle.filter.all': 'Alle Lebenszyklen',
+  'master.cv.registryLifecycle.filter.ariaLabel': 'Registry-Lebenszyklus filtern',
+  'master.cv.offboard.action': 'Aus aktivem Bestand entfernen',
+  'master.cv.offboard.dialog.title': 'Fahrzeug aus dem aktiven Bestand entfernen',
+  'master.cv.offboard.dialog.description':
+    'Das Fahrzeug wird aus dem aktiven SynqDrive-Betrieb ausgebucht. Der kanonische Datensatz und die Historie bleiben erhalten.',
+  'master.cv.offboard.dialog.confirm': 'Ausbuchung bestätigen',
+  'master.cv.offboard.dialog.cancel': 'Abbrechen',
+  'master.cv.offboard.dialog.submitting': 'Wird ausgebucht…',
+  'master.cv.offboard.organizationLabel': 'Organisation',
+  'master.cv.offboard.reason.label': 'Ausbuchungsgrund',
+  'master.cv.offboard.reason.OFFBOARD_SOLD': 'Fahrzeug verkauft',
+  'master.cv.offboard.reason.REMOVE_FROM_PRODUCT': 'Aus dem aktiven SynqDrive-Produktbestand entfernen',
+  'master.cv.offboard.reason.ADMINISTRATIVE_OFFBOARD': 'Administrative Ausbuchung',
+  'master.cv.offboard.note.label': 'Audit-Notiz (optional)',
+  'master.cv.offboard.note.hint': 'Interne Notiz für den Audit-Trail',
+  'master.cv.offboard.explainer.title': 'Was passiert',
+  'master.cv.offboard.explainer.canonicalRetained': 'Der kanonische Fahrzeugdatensatz bleibt gespeichert.',
+  'master.cv.offboard.explainer.historyRetained':
+    'Fahrten, Buchungen, Schäden, Service und andere Historie bleiben erhalten.',
+  'master.cv.offboard.explainer.leavesActiveFleet': 'Das Fahrzeug verlässt den aktiven Produktbestand.',
+  'master.cv.offboard.explainer.billingAsync':
+    'Die Abrechnungsmenge wird asynchron über die Lifecycle-Outbox aktualisiert.',
+  'master.cv.offboard.explainer.localLinksDeactivated':
+    'Lokale Provider-Links und Einwilligungen werden gemäß Plattformrichtlinie deaktiviert.',
+  'master.cv.offboard.explainer.noProviderDisconnect':
+    'Die Provider-seitige Konto- oder Gerätetrennung ist eine separate Aktion.',
+  'master.cv.offboard.explainer.noReOnboard': 'Eine automatische Wiederaufnahme ist nicht verfügbar.',
+  'master.cv.offboard.success.title': 'Fahrzeug ausgebucht',
+  'master.cv.offboard.success.replay': 'Ausbuchung bereits abgeschlossen (idempotenter Replay).',
+  'master.cv.offboard.error.generic': 'Ausbuchung konnte nicht abgeschlossen werden.',
+  'master.cv.offboard.error.pendingIntentConflict':
+    'Eine andere Ausbuchung ist noch ausstehend. Erneut versuchen, verwerfen oder MFA abwarten.',
+  'master.cv.offboard.error.enrollment': 'MFA-Registrierung ist für diese Aktion erforderlich.',
+  'master.cv.offboard.error.operationalBlocked': 'Operative Voraussetzungen verhindern die Ausbuchung.',
+  'master.cv.offboard.block.ACTIVE_RENTAL': 'Aktive Miete läuft',
+  'master.cv.offboard.block.ACTIVE_BOOKING': 'Verbindliche zukünftige Buchung vorhanden',
+  'master.cv.offboard.block.ONGOING_TRIP': 'Fahrt läuft',
+  'master.cv.offboard.block.OPEN_HANDOVER': 'Abhol-Übergabe ist offen',
+  'master.cv.offboard.warning.OPEN_DAMAGE_WARNING': 'Offene Schadensfälle bleiben gespeichert.',
+  'master.cv.offboard.warning.OPEN_MAINTENANCE_WARNING': 'Offene Wartungsarbeiten bleiben gespeichert.',
+  'master.cv.offboard.warning.UNPAID_BILLING_WARNING': 'Unbezahlte Abrechnungspositionen können verbleiben.',
+  'master.cv.offboard.warning.FLEET_TASK_WARNING': 'Offene Flottenaufgaben bleiben gespeichert.',
+  'master.cv.offboard.lifecycleUnknown': 'Registry-Lebenszyklus unbekannt; Ausbuchung nicht verfügbar.',
+  'master.cv.offboard.uncertainRetry':
+    'Ergebnis unklar — mit derselben Operation erneut versuchen oder Status aktualisieren.',
+  'master.cv.offboard.uncertainRetryAction': 'Erneut versuchen / Ergebnis prüfen',
+  'master.cv.offboard.uncertainAbandon': 'Diesen Versuch verwerfen',
+  'master.cv.release.blockedBackend':
+    'Ausbuchung ist deaktiviert, bis die Backend-Fähigkeit in Produktion verifiziert ist.',
+
   // ─── Fleet Condition ───
   'fleetCondition.title': 'Flottenzustand',
   'fleetCondition.healthScore': 'Gesundheitswert',

@@ -18,6 +18,7 @@
 | VO-EVID-5-002 | VO-5B registry lifecycle → billing quantity bridge | REPO_CODE | [VO5B_REGISTRY_BILLING_BRIDGE.md](./VO5B_REGISTRY_BILLING_BRIDGE.md) |
 | VO-EVID-5-002B | VO5B-AB1 activation lifecycle → billing quantity bridge | REPO_CODE | [VO5B_AB1_ACTIVATION_BILLING_BRIDGE.md](./VO5B_AB1_ACTIVATION_BILLING_BRIDGE.md) |
 | VO-EVID-5-003 | VO5C-P1 Master Admin safe offboard HTTP + preflight | REPO_CODE | [VO5C_P1_MASTER_ADMIN_OFFBOARD_HTTP.md](./VO5C_P1_MASTER_ADMIN_OFFBOARD_HTTP.md) |
+| VO-EVID-5-004 | VO5C-P2A Connected Vehicles offboard UI cutover | REPO_CODE | [VO5C_P2A_FRONTEND_CUTOVER.md](./VO5C_P2A_FRONTEND_CUTOVER.md) |
 | VO-EVID-0A-001 | VO-0A repository discovery anchor | REPO_AUDIT | Anchor SHA `312d9f54a2b4c0b0740061d3e2b74897e78eacb0` cited in CURRENT_STATE |
 
 Supporting UI audit (not VO authority): `docs/ui/master-admin-connected-vehicles-dimo-deep-audit.md`

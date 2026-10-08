@@ -1,5 +1,7 @@
 import { getToken, clearAuth } from './auth';
 import { getStepUpToken } from './mfa';
+import { buildVehiclesOperationalListQuery } from './vehicles-operational-list-query';
+import { classifyOffboardHttpFailure } from './vehicle-offboard-api-error';
 import { buildFinanceInsightsPath } from '../rental/lib/finance-insights.types';
 import {
   buildFleetRentalHealthQueryString,
@@ -786,11 +788,18 @@ export interface RequestResult<T> {
   readonly status: number;
   readonly data?: T;
   readonly errorMessage?: string;
+  readonly errorBody?: { code?: string; message?: string; details?: unknown };
 }
+
+export type RequestResultMeta = {
+  /** Hub-owned MFA dialogs must not also trigger the global step-up listener. */
+  suppressStepUpDispatch?: boolean;
+};
 
 export async function requestResult<T>(
   path: string,
   options?: RequestInit,
+  meta?: RequestResultMeta,
 ): Promise<RequestResult<T>> {
   const token = getToken();
   const headers: Record<string, string> = {
@@ -817,10 +826,28 @@ export async function requestResult<T>(
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
+    const normalized =
+      body && typeof body === 'object'
+        ? (body as { code?: string; message?: string; details?: unknown })
+        : {};
+    if (
+      !meta?.suppressStepUpDispatch &&
+      res.status === 403 &&
+      normalized &&
+      typeof normalized === 'object' &&
+      (normalized as { code?: string }).code === 'STEP_UP_REQUIRED'
+    ) {
+      window.dispatchEvent(
+        new CustomEvent('synqdrive:step-up-required', {
+          detail: normalized as { code?: string; action?: string },
+        }),
+      );
+    }
     return {
       ok: false,
       status: res.status,
       errorMessage: formatHttpErrorMessage(body, res.status, path),
+      errorBody: normalized,
     };
   }
 
@@ -3933,13 +3960,9 @@ export const api = {
     operationalAttentionQueue: (limit = 8) =>
       get<any[]>(`/admin/vehicles/operational/attention-queue?limit=${limit}`),
     operationalList: (params?: Record<string, string | number | undefined>) => {
-      const search = new URLSearchParams();
-      for (const [key, val] of Object.entries(params ?? {})) {
-        if (val !== undefined && val !== '' && val !== 'all') search.set(key, String(val));
-      }
-      const qs = search.toString();
+      const qs = buildVehiclesOperationalListQuery(params);
       return get<{ data: any[]; meta: { total: number; page: number; limit: number; totalPages: number } }>(
-        `/admin/vehicles/operational${qs ? `?${qs}` : ''}`,
+        `/admin/vehicles/operational${qs}`,
       );
     },
     operationalDetail: (vehicleId: string) => get<any>(`/admin/vehicles/${vehicleId}/operational`),
@@ -4176,6 +4199,37 @@ export const api = {
         del<{ success: boolean }>(
           `/admin/vehicles/${vehicleId}/exterior-images/${view}`,
         ),
+    },
+  },
+  vehicleOnboarding: {
+    offboardVehicle: async (
+      organizationId: string,
+      vehicleId: string,
+      body: {
+        reason: 'OFFBOARD_SOLD' | 'REMOVE_FROM_PRODUCT' | 'ADMINISTRATIVE_OFFBOARD';
+        idempotencyKey: string;
+        note?: string;
+      },
+    ) => {
+      const path = `/admin/vehicle-onboarding/organizations/${organizationId}/vehicles/${vehicleId}/offboard`;
+      const result = await requestResult<{
+        vehicleId: string;
+        organizationId: string;
+        registryLifecycle: 'OFFBOARDED';
+        offboardedAt: string;
+        reason: 'OFFBOARD_SOLD' | 'REMOVE_FROM_PRODUCT' | 'ADMINISTRATIVE_OFFBOARD';
+        idempotentReplay: boolean;
+        warnings: string[];
+      }>(path, { method: 'POST', body: JSON.stringify(body) }, { suppressStepUpDispatch: true });
+      if (!result.ok) {
+        throw classifyOffboardHttpFailure(
+          result.status,
+          result.errorBody?.code,
+          result.errorMessage ?? 'Offboard request failed',
+          result.errorBody?.details,
+        );
+      }
+      return result.data!;
     },
   },
   dimo: {
