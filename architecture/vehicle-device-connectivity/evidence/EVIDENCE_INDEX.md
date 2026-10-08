@@ -29,6 +29,7 @@
 | VDC-EVID-P25-OBD-EVIDENCE-TIME-001 | P2.5 OBD webhook/snapshot evidenceObservedAt contract + provenance clock adversarial policy | CURRENT_CODE + TEST | CONFIRMED | [P25_OBD_EVIDENCE_TIME_CONTRACT_2026-09-25.md](./P25_OBD_EVIDENCE_TIME_CONTRACT_2026-09-25.md) |
 | VDC-EVID-P25-APDS-2-7-001 | APDS-2…7 dual shadow observability (B2/B4, flag OFF, durable forensics) | CURRENT_CODE + TEST | IMPLEMENTATION_PRESENT | [P25_APDS_2_7_SHADOW_OBSERVABILITY_2026-10-03.md](./P25_APDS_2_7_SHADOW_OBSERVABILITY_2026-10-03.md) |
 | VDC-EVID-P25-APDS-9-0-001 | APDS-9.0 fail-closed LTE_R1 cohort selector (`WORKER_APD_SHADOW_COHORT_JSON`); engineering only — no Production activation | CURRENT_CODE + TEST | IMPLEMENTATION_PRESENT | [P25_APDS_9_0_COHORT_SELECTOR_2026-10-07.md](./P25_APDS_9_0_COHORT_SELECTOR_2026-10-07.md) |
+| VDC-EVID-P25-APDS-9-3-001 | APDS-9.3 durable shadow activation epoch + T0 gate; nullable epoch FK for legacy 366 rows; cohort vehicle 187336 NOT_READY audit | CURRENT_CODE + TEST | IMPLEMENTATION_PRESENT | [P25_APDS_9_3_DURABLE_T0_FOUNDATION_2026-10-08.md](./P25_APDS_9_3_DURABLE_T0_FOUNDATION_2026-10-08.md) |
 
 ## Code evidence (repository — bootstrap index)
 

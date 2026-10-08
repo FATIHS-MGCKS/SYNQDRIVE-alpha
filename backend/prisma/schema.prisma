@@ -1656,6 +1656,7 @@ model Organization {
   vehicleStationTransfers                                   VehicleStationTransfer[]
   vehicles                                                  Vehicle[]
   apdShadowReconciliationDecisions                          ApdShadowReconciliationDecision[]
+  apdShadowActivationEpochs                                 ApdShadowActivationEpoch[]
   vehicleOnboardingCases                                    VehicleOnboardingCase[]
   vehicleOrganizationAssignments                          VehicleOrganizationAssignment[]
   rawRefuelCandidates                                       RawRefuelCandidate[]
@@ -4412,6 +4413,45 @@ model DimoPollLog {
   @@map("dimo_poll_logs")
 }
 
+enum ApdShadowActivationEpochLifecycle {
+  PREPARED
+  ACTIVE
+  PAUSED
+  CLOSED
+}
+
+/// P2.5 APDS durable shadow activation epoch (explicit operator activation; flag alone does not create T0).
+model ApdShadowActivationEpoch {
+  id                            String                            @id @default(uuid())
+  activationScopeKey            String                            @map("activation_scope_key")
+  organizationId                String                            @map("organization_id")
+  cohortConfigFingerprintSha256 String                            @map("cohort_config_fingerprint_sha256")
+  cohortConfigVersion           String                            @map("cohort_config_version")
+  b2PolicyVersion               String                            @map("b2_policy_version")
+  b4PolicyVersion               String                            @map("b4_policy_version")
+  productionReleaseIdentity     String?                           @map("production_release_identity")
+  lifecycleState                ApdShadowActivationEpochLifecycle @map("lifecycle_state")
+  /// Immutable authoritative T0 (PostgreSQL clock); set only on authorized ACTIVE transition.
+  activatedAt                   DateTime?                         @map("activated_at") @db.Timestamptz(3)
+  preparedAt                    DateTime                          @default(now()) @map("prepared_at")
+  pausedAt                      DateTime?                         @map("paused_at")
+  closedAt                      DateTime?                         @map("closed_at")
+  operatorActor                 String?                           @map("operator_actor")
+  operatorReason                String?                           @map("operator_reason")
+  operatorRequestId             String?                           @map("operator_request_id")
+  /// Idempotency key for authorized activation requests (unique when present).
+  activationRequestKey          String?                           @unique @map("activation_request_key")
+  createdAt                     DateTime                          @default(now()) @map("created_at")
+  updatedAt                     DateTime                          @updatedAt @map("updated_at")
+
+  organization Organization                        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  decisions    ApdShadowReconciliationDecision[]
+
+  @@index([activationScopeKey, lifecycleState])
+  @@index([organizationId, lifecycleState])
+  @@map("apd_shadow_activation_epochs")
+}
+
 /// P2.5 APD shadow observe-only reconciliation decisions (flag OFF by default).
 model ApdShadowReconciliationDecision {
   id             String   @id @default(uuid())
@@ -4419,6 +4459,7 @@ model ApdShadowReconciliationDecision {
   vehicleId      String   @map("vehicle_id")
   opportunityId  String   @map("opportunity_id")
   decisionAt     DateTime @map("decision_at")
+  activationEpochId String? @map("activation_epoch_id")
   realPollId     String?  @map("real_poll_id")
   realPollStatus String?  @map("real_poll_status")
 
@@ -4462,10 +4503,12 @@ model ApdShadowReconciliationDecision {
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   vehicle      Vehicle      @relation(fields: [organizationId, vehicleId], references: [organizationId, id], onDelete: Cascade)
+  activationEpoch ApdShadowActivationEpoch? @relation(fields: [activationEpochId], references: [id], onDelete: Restrict)
 
   @@unique([organizationId, vehicleId, opportunityId, policyVersion])
   @@index([vehicleId, decisionAt])
   @@index([organizationId, decisionAt])
+  @@index([activationEpochId, decisionAt])
   @@map("apd_shadow_reconciliation_decisions")
 }
 

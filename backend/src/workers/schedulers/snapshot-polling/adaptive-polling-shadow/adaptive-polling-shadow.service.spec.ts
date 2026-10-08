@@ -6,7 +6,12 @@ import { TripDetectionState } from '@prisma/client';
 import {
   P25_APD_LTE_R1_COHORT_V1,
   WORKER_APD_SHADOW_COHORT_JSON_ENV,
+  type ApdShadowCohortConfig,
 } from './adaptive-polling-shadow-cohort.config';
+import {
+  mockActivationEpochServiceForCohort,
+  mockActivationEpochServiceMissing,
+} from './apd-shadow-test-epoch.helper';
 
 describe('AdaptivePollingShadowService', () => {
   const repository = {
@@ -25,17 +30,24 @@ describe('AdaptivePollingShadowService', () => {
     recordDecision: jest.fn(),
     recordFailure: jest.fn(),
     recordCohortExcluded: jest.fn(),
+    recordEpochExcluded: jest.fn(),
     recordInformativeRealPoll: jest.fn(),
     recordProfileInvalidated: jest.fn(),
     recordProfileRecovered: jest.fn(),
   } as unknown as AdaptivePollingShadowMetricsService;
 
+  const cohortConfig: ApdShadowCohortConfig = {
+    version: P25_APD_LTE_R1_COHORT_V1,
+    members: [{ organizationId: 'org-1', vehicleId: 'veh-1' }],
+  };
+
   function enableShadowWithCohort() {
     process.env.WORKER_APD_SHADOW_ENABLED = 'true';
-    process.env[WORKER_APD_SHADOW_COHORT_JSON_ENV] = JSON.stringify({
-      version: P25_APD_LTE_R1_COHORT_V1,
-      members: [{ organizationId: 'org-1', vehicleId: 'veh-1' }],
-    });
+    process.env[WORKER_APD_SHADOW_COHORT_JSON_ENV] = JSON.stringify(cohortConfig);
+  }
+
+  function activationEpochAllowing() {
+    return mockActivationEpochServiceForCohort(cohortConfig, 'org-1');
   }
 
   const prisma = {
@@ -85,10 +97,64 @@ describe('AdaptivePollingShadowService', () => {
     const service = new AdaptivePollingShadowService(
       prisma as never,
       repository,
+      mockActivationEpochServiceMissing(),
       metrics,
     );
     const result = await service.observePrePoll(baseCtx);
     expect(result).toBeNull();
+    expect(repository.upsertPrePollDecision).not.toHaveBeenCalled();
+  });
+
+  it('cold cache first poll uses authoritative epoch load (no stale-positive-only admission)', async () => {
+    enableShadowWithCohort();
+    const epochSvc = activationEpochAllowing();
+    const service = new AdaptivePollingShadowService(
+      prisma as never,
+      repository,
+      epochSvc,
+      metrics,
+    );
+    const authoritativeSpy = jest.spyOn(epochSvc, 'loadActiveEpochForScopeAuthoritative');
+    await service.observeActualBaselinePollStart({
+      organizationId: 'org-1',
+      vehicleId: 'veh-1',
+      pollStartedAtMs: baseCtx.decisionAtMs,
+      origin: baseCtx.origin,
+      tripDetectionState: baseCtx.tripDetectionState,
+      lastProviderFetchedAtMs: baseCtx.lastProviderFetchedAtMs,
+      providerGapOpen: baseCtx.providerGapOpen,
+      connectivityState: baseCtx.connectivityState,
+      r9WakeKnown: baseCtx.r9WakeKnown,
+      wakeCorrelationId: baseCtx.wakeCorrelationId,
+      deviceReconnectRecent: baseCtx.deviceReconnectRecent,
+      providerReconnectRecent: baseCtx.providerReconnectRecent,
+    });
+    expect(authoritativeSpy).toHaveBeenCalled();
+  });
+
+  it('missing ACTIVE epoch → no shadow rows (fail-closed)', async () => {
+    enableShadowWithCohort();
+    const service = new AdaptivePollingShadowService(
+      prisma as never,
+      repository,
+      mockActivationEpochServiceMissing(),
+      metrics,
+    );
+    const opportunityId = await service.observeActualBaselinePollStart({
+      organizationId: 'org-1',
+      vehicleId: 'veh-1',
+      pollStartedAtMs: baseCtx.decisionAtMs,
+      origin: baseCtx.origin,
+      tripDetectionState: baseCtx.tripDetectionState,
+      lastProviderFetchedAtMs: baseCtx.lastProviderFetchedAtMs,
+      providerGapOpen: baseCtx.providerGapOpen,
+      connectivityState: baseCtx.connectivityState,
+      r9WakeKnown: baseCtx.r9WakeKnown,
+      wakeCorrelationId: baseCtx.wakeCorrelationId,
+      deviceReconnectRecent: baseCtx.deviceReconnectRecent,
+      providerReconnectRecent: baseCtx.providerReconnectRecent,
+    });
+    expect(opportunityId).toBeNull();
     expect(repository.upsertPrePollDecision).not.toHaveBeenCalled();
   });
 
@@ -97,6 +163,7 @@ describe('AdaptivePollingShadowService', () => {
     const service = new AdaptivePollingShadowService(
       prisma as never,
       repository,
+      activationEpochAllowing(),
       metrics,
     );
     const opportunityId = await service.observeActualBaselinePollStart({
@@ -125,6 +192,7 @@ describe('AdaptivePollingShadowService', () => {
     const service = new AdaptivePollingShadowService(
       prisma as never,
       repository,
+      activationEpochAllowing(),
       metrics,
     );
     await expect(
@@ -152,6 +220,7 @@ describe('AdaptivePollingShadowService', () => {
     const service = new AdaptivePollingShadowService(
       prisma as never,
       repository,
+      activationEpochAllowing(),
       metrics,
     );
     await service.observeActualBaselinePollStart({

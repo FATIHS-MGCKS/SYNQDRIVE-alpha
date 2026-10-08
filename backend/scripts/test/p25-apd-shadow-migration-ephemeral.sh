@@ -105,6 +105,32 @@ if [[ -z "${unique_index}" ]]; then
   exit 1
 fi
 
+epoch_table_exists="$(psql_atc "
+  SELECT COUNT(*)::text
+  FROM information_schema.tables
+  WHERE table_schema = 'public'
+    AND table_name = 'apd_shadow_activation_epochs';
+")"
+epoch_table_exists="$(echo "${epoch_table_exists}" | tr -d '[:space:]')"
+if [[ "${epoch_table_exists}" != "1" ]]; then
+  echo "apd_shadow_activation_epochs table missing" >&2
+  exit 1
+fi
+
+nullable_epoch_col="$(psql_atc "
+  SELECT is_nullable
+  FROM information_schema.columns
+  WHERE table_schema = 'public'
+    AND table_name = 'apd_shadow_reconciliation_decisions'
+    AND column_name = 'activation_epoch_id'
+  LIMIT 1;
+")"
+nullable_epoch_col="$(echo "${nullable_epoch_col}" | tr -d '[:space:]')"
+if [[ "${nullable_epoch_col}" != "YES" ]]; then
+  echo "activation_epoch_id must be nullable for legacy rows" >&2
+  exit 1
+fi
+
 log "MIGRATION_APPLY_CLEAN_DB=PASS"
 log "MIGRATION_IDEMPOTENCY=PASS"
 log "UNIQUE_INDEX_NAME=${unique_index}"

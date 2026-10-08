@@ -75,6 +75,7 @@ export class TripMetricsService implements OnModuleInit {
   readonly apdShadowProfileRecoveredTotal: Counter<string>;
   readonly apdShadowFailureTotal: Counter<string>;
   readonly apdShadowCohortExcludedTotal: Counter<string>;
+  readonly apdShadowEpochExcludedTotal: Counter<string>;
   readonly apdShadowCohortMemberCount: Gauge<string>;
   readonly snapshotWakeTotal: Counter<string>;
   readonly snapshotWakeProbeTotal: Counter<string>;
@@ -643,6 +644,13 @@ export class TripMetricsService implements OnModuleInit {
     this.apdShadowCohortExcludedTotal = new Counter({
       name: 'synqdrive_apd_shadow_cohort_excluded_total',
       help: 'APD shadow opportunities excluded by cohort gate (bounded reasons only)',
+      labelNames: ['reason'],
+      registers: [this.registry],
+    });
+
+    this.apdShadowEpochExcludedTotal = new Counter({
+      name: 'synqdrive_apd_shadow_epoch_excluded_total',
+      help: 'APD shadow opportunities excluded by durable activation epoch gate',
       labelNames: ['reason'],
       registers: [this.registry],
     });

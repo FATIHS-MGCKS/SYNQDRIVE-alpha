@@ -7,11 +7,36 @@ import {
   P25_APD_LTE_R1_COHORT_V1,
   WORKER_APD_SHADOW_COHORT_JSON_ENV,
 } from './adaptive-polling-shadow-cohort.config';
+import {
+  mockActivationEpochServiceForCohort,
+  mockActivationEpochServiceMissing,
+} from './apd-shadow-test-epoch.helper';
+import type { ApdShadowCohortConfig } from './adaptive-polling-shadow-cohort.config';
 
 const ORG = 'org-1';
 const VEH = 'veh-1';
 const OTHER = 'veh-other';
 const STALE = 'veh-stale';
+
+const defaultCohortMembers = [{ organizationId: ORG, vehicleId: VEH }];
+
+function epochForMembers(members: { organizationId: string; vehicleId: string }[]) {
+  const config: ApdShadowCohortConfig = {
+    version: P25_APD_LTE_R1_COHORT_V1,
+    members,
+  };
+  return mockActivationEpochServiceForCohort(config, members[0]?.organizationId ?? ORG);
+}
+
+function epochFromEnv() {
+  const raw = process.env[WORKER_APD_SHADOW_COHORT_JSON_ENV];
+  if (!raw) return mockActivationEpochServiceMissing();
+  const config = JSON.parse(raw) as ApdShadowCohortConfig;
+  return mockActivationEpochServiceForCohort(
+    config,
+    config.members[0]?.organizationId ?? ORG,
+  );
+}
 
 function setValidCohort(members: { organizationId: string; vehicleId: string }[]) {
   process.env[WORKER_APD_SHADOW_COHORT_JSON_ENV] = JSON.stringify({
@@ -37,6 +62,7 @@ describe('AdaptivePollingShadowService cohort gating', () => {
     recordDecision: jest.fn(),
     recordFailure: jest.fn(),
     recordCohortExcluded: jest.fn(),
+    recordEpochExcluded: jest.fn(),
     recordInformativeRealPoll: jest.fn(),
     recordProfileInvalidated: jest.fn(),
     recordProfileRecovered: jest.fn(),
@@ -85,11 +111,7 @@ describe('AdaptivePollingShadowService cohort gating', () => {
   it('14 allowed member → B2+B4 decision rows', async () => {
     process.env.WORKER_APD_SHADOW_ENABLED = 'true';
     setValidCohort([{ organizationId: ORG, vehicleId: VEH }]);
-    const service = new AdaptivePollingShadowService(
-      prisma as never,
-      repository,
-      metrics,
-    );
+    const service = new AdaptivePollingShadowService(prisma as never, repository, epochFromEnv(), metrics);
     await service.observeActualBaselinePollStart({
       organizationId: baseCtx.organizationId,
       vehicleId: baseCtx.vehicleId,
@@ -110,11 +132,7 @@ describe('AdaptivePollingShadowService cohort gating', () => {
   it('15 excluded member → zero policy evaluation', async () => {
     process.env.WORKER_APD_SHADOW_ENABLED = 'true';
     setValidCohort([{ organizationId: ORG, vehicleId: VEH }]);
-    const service = new AdaptivePollingShadowService(
-      prisma as never,
-      repository,
-      metrics,
-    );
+    const service = new AdaptivePollingShadowService(prisma as never, repository, epochFromEnv(), metrics);
     await service.observeActualBaselinePollStart({
       organizationId: baseCtx.organizationId,
       vehicleId: OTHER,
@@ -136,11 +154,7 @@ describe('AdaptivePollingShadowService cohort gating', () => {
   it('16 excluded → zero forensic writes (pre-poll)', async () => {
     process.env.WORKER_APD_SHADOW_ENABLED = 'true';
     setValidCohort([{ organizationId: ORG, vehicleId: VEH }]);
-    const service = new AdaptivePollingShadowService(
-      prisma as never,
-      repository,
-      metrics,
-    );
+    const service = new AdaptivePollingShadowService(prisma as never, repository, epochFromEnv(), metrics);
     await service.observePrePoll({ ...baseCtx, vehicleId: STALE });
     expect(repository.upsertPrePollDecision).not.toHaveBeenCalled();
   });
@@ -148,11 +162,7 @@ describe('AdaptivePollingShadowService cohort gating', () => {
   it('17 excluded → zero outcome patch (post-poll)', async () => {
     process.env.WORKER_APD_SHADOW_ENABLED = 'true';
     setValidCohort([{ organizationId: ORG, vehicleId: VEH }]);
-    const service = new AdaptivePollingShadowService(
-      prisma as never,
-      repository,
-      metrics,
-    );
+    const service = new AdaptivePollingShadowService(prisma as never, repository, epochFromEnv(), metrics);
     await service.observePostPoll({
       organizationId: ORG,
       vehicleId: STALE,
@@ -172,11 +182,7 @@ describe('AdaptivePollingShadowService cohort gating', () => {
 
   it('18 pre-poll direct call cannot bypass selector (missing cohort)', async () => {
     process.env.WORKER_APD_SHADOW_ENABLED = 'true';
-    const service = new AdaptivePollingShadowService(
-      prisma as never,
-      repository,
-      metrics,
-    );
+    const service = new AdaptivePollingShadowService(prisma as never, repository, epochFromEnv(), metrics);
     await service.observeActualBaselinePollStart({
       organizationId: baseCtx.organizationId,
       vehicleId: baseCtx.vehicleId,
@@ -200,6 +206,7 @@ describe('AdaptivePollingShadowService cohort gating', () => {
     const service = new AdaptivePollingShadowService(
       prisma as never,
       repository,
+      mockActivationEpochServiceMissing(),
       metrics,
     );
     await service.observePostPoll({
@@ -228,6 +235,10 @@ describe('AdaptivePollingShadowService cohort gating', () => {
     const service = new AdaptivePollingShadowService(
       prisma as never,
       repository,
+      epochForMembers([
+        { organizationId: 'org-a', vehicleId: 'shared-veh' },
+        { organizationId: 'org-b', vehicleId: 'shared-veh' },
+      ]),
       metrics,
     );
     const ctxA = { ...baseCtx, organizationId: 'org-a', vehicleId: 'shared-veh' };
@@ -265,11 +276,7 @@ describe('AdaptivePollingShadowService cohort gating', () => {
 
   it('isEnabledForVehicle false when cohort missing while flag ON', () => {
     process.env.WORKER_APD_SHADOW_ENABLED = 'true';
-    const service = new AdaptivePollingShadowService(
-      prisma as never,
-      repository,
-      metrics,
-    );
+    const service = new AdaptivePollingShadowService(prisma as never, repository, epochFromEnv(), metrics);
     expect(service.isEnabledForVehicle(ORG, VEH)).toBe(false);
   });
 });

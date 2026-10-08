@@ -6,6 +6,8 @@ import {
   P25_APD_LTE_R1_COHORT_V1,
   WORKER_APD_SHADOW_COHORT_JSON_ENV,
 } from './adaptive-polling-shadow-cohort.config';
+import { mockActivationEpochServiceForCohort } from './apd-shadow-test-epoch.helper';
+import type { ApdShadowCohortConfig } from './adaptive-polling-shadow-cohort.config';
 import { P25_APD_SHADOW_EXECUTION_V2 } from './p25-apd-shadow-execution-versions';
 import {
   evaluateP25ApdB2V1Core,
@@ -42,6 +44,7 @@ describe('APDS-9.2B execution contract V2 (poll-start authority)', () => {
     recordDecision: jest.fn(),
     recordFailure: jest.fn(),
     recordCohortExcluded: jest.fn(),
+    recordEpochExcluded: jest.fn(),
     recordInformativeRealPoll: jest.fn(),
     recordProfileInvalidated: jest.fn(),
     recordProfileRecovered: jest.fn(),
@@ -77,12 +80,18 @@ describe('APDS-9.2B execution contract V2 (poll-start authority)', () => {
     providerReconnectRecent: false,
   };
 
+  const cohortConfig: ApdShadowCohortConfig = {
+    version: P25_APD_LTE_R1_COHORT_V1,
+    members: [{ organizationId: 'org-1', vehicleId: 'veh-1' }],
+  };
+
+  function activationEpoch() {
+    return mockActivationEpochServiceForCohort(cohortConfig, 'org-1');
+  }
+
   function enableCohort() {
     process.env.WORKER_APD_SHADOW_ENABLED = 'true';
-    process.env[WORKER_APD_SHADOW_COHORT_JSON_ENV] = JSON.stringify({
-      version: P25_APD_LTE_R1_COHORT_V1,
-      members: [{ organizationId: 'org-1', vehicleId: 'veh-1' }],
-    });
+    process.env[WORKER_APD_SHADOW_COHORT_JSON_ENV] = JSON.stringify(cohortConfig);
   }
 
   beforeEach(() => {
@@ -99,11 +108,7 @@ describe('APDS-9.2B execution contract V2 (poll-start authority)', () => {
   });
 
   it('scheduler observePrePoll is non-authoritative (no rows)', async () => {
-    const service = new AdaptivePollingShadowService(
-      prisma as never,
-      repository,
-      metrics,
-    );
+    const service = new AdaptivePollingShadowService(prisma as never, repository, activationEpoch(), metrics);
     const result = await service.observePrePoll({
       organizationId: 'org-1',
       vehicleId: 'veh-1',
@@ -127,11 +132,7 @@ describe('APDS-9.2B execution contract V2 (poll-start authority)', () => {
   });
 
   it('actual poll start creates policy rows without mutating in-memory lastAllowed', async () => {
-    const service = new AdaptivePollingShadowService(
-      prisma as never,
-      repository,
-      metrics,
-    );
+    const service = new AdaptivePollingShadowService(prisma as never, repository, activationEpoch(), metrics);
     await service.observeActualBaselinePollStart(baseCtx);
     expect(lastAllowedB2).toBe(0);
     expect(lastAllowedB4).toBe(0);
@@ -140,11 +141,7 @@ describe('APDS-9.2B execution contract V2 (poll-start authority)', () => {
   });
 
   it('SUCCESS post-poll persists startedAt and does not mutate repository mock counters', async () => {
-    const service = new AdaptivePollingShadowService(
-      prisma as never,
-      repository,
-      metrics,
-    );
+    const service = new AdaptivePollingShadowService(prisma as never, repository, activationEpoch(), metrics);
     const opportunityId = await service.observeActualBaselinePollStart(baseCtx);
     const completedAt = baseCtx.pollStartedAtMs + 60_000;
     await service.observePostPoll({
@@ -171,11 +168,7 @@ describe('APDS-9.2B execution contract V2 (poll-start authority)', () => {
   });
 
   it('FAILURE correlation does not advance durable lastAllowed', async () => {
-    const service = new AdaptivePollingShadowService(
-      prisma as never,
-      repository,
-      metrics,
-    );
+    const service = new AdaptivePollingShadowService(prisma as never, repository, activationEpoch(), metrics);
     const opportunityId = await service.observeActualBaselinePollStart(baseCtx);
     await service.observePollFailure({
       organizationId: 'org-1',
