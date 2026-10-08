@@ -1,87 +1,23 @@
 /**
- * Prune script: Removes all organizations, users (except MASTER_ADMIN),
- * vehicles, prospects.
+ * VO5C-P2B4-0 — Legacy platform-wide prune CLI is permanently disabled.
  *
- * Run: npx ts-node prisma/prune-master-data.ts  (also: `npm run prisma:prune`)
+ * Historical twin of `PlatformAdminService.pruneMasterData()` (removed).
+ * Recovery-grade replacement is not implemented. No environment override.
  *
- * ⚠️  DRIFT WARNING — this script is the CLI twin of
- *     `platform-admin.service.ts#pruneMasterData`. Both delete the exact same
- *     set of tables in the exact same order. If you add a new entity that
- *     needs to be pruned, UPDATE BOTH IMPLEMENTATIONS. A shared list is the
- *     next sensible refactor once the destructive paths are covered by tests.
- *
- * Kept as a raw `PrismaClient` script (not bootstrapping NestJS) so it can
- * run during local dev / CI without spinning up the whole app module graph.
+ * npm run prisma:prune exits before any database access.
  */
-import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
+const PLATFORM_PRUNE_DISABLED_CODE = 'PLATFORM_PRUNE_DISABLED';
 
-async function main() {
-  console.log('Pruning master admin data...\n');
-
-  // Order matters: respect foreign keys
-  await prisma.booking.deleteMany({});
-  console.log('  Bookings deleted');
-
-  await prisma.customer.deleteMany({});
-  console.log('  Customers deleted');
-
-  await prisma.prospect.updateMany({ data: { convertedOrgId: null } });
-  await prisma.prospect.deleteMany({});
-  console.log('  Prospects deleted');
-
-  await prisma.vehicleLatestState.deleteMany({});
-  await prisma.vehiclePositionUpdate.deleteMany({});
-  await prisma.analyticsCache.deleteMany({});
-  await prisma.dimoPollLog.deleteMany({});
-  await prisma.vehicleEnrichmentJob.deleteMany({});
-  await prisma.vehicleServiceEvent.deleteMany({});
-  await prisma.vehicleTireTreadMeasurement.deleteMany({});
-  await prisma.vehicleTireSetup.deleteMany({});
-  await prisma.vehicleBrakeReferenceSpec.deleteMany({});
-  await prisma.vehicleBatterySpec.deleteMany({});
-  await prisma.vehicle.deleteMany({});
-  console.log('  Vehicles + related data deleted');
-
-  await prisma.station.deleteMany({});
-  console.log('  Stations deleted');
-
-  await prisma.organizationIntegration.deleteMany({});
-  await prisma.organizationProduct.deleteMany({});
-  await prisma.billingInvoiceLine.deleteMany({});
-  await prisma.billingUsageSnapshot.deleteMany({});
-  await prisma.billingOrganizationPriceOverride.deleteMany({});
-  await prisma.billingPaymentMethod.deleteMany({});
-  // Audit logs are append-only (Phase 2A.7) — retained for full history.
-  await prisma.billingInvoice.deleteMany({});
-  await prisma.billingSubscription.deleteMany({});
-  await prisma.organizationMembership.deleteMany({});
-  console.log('  Organization integrations/products/memberships deleted');
-
-  // activity_logs are append-only — prune does not delete audit history.
-  await prisma.supportTicket.deleteMany({});
-  console.log('  Support tickets deleted (audit logs retained)');
-
-  await prisma.organization.deleteMany({});
-  console.log('  Organizations deleted');
-
-  await prisma.user.deleteMany({
-    where: { platformRole: { not: 'MASTER_ADMIN' } },
-  });
-  console.log('  Non-admin users deleted');
-
-  await prisma.dimoVehicle.deleteMany({});
-  console.log('  DIMO vehicles deleted');
-
-  console.log('\n  Prune complete. Master admin is empty.');
+function failClosed(): void {
+  const payload = {
+    code: PLATFORM_PRUNE_DISABLED_CODE,
+    message:
+      'Legacy platform-wide prune is disabled pending independent execution authority and recovery controls.',
+    action: 'CONTACT_PLATFORM_SECURITY_OPERATOR',
+  };
+  console.error(JSON.stringify(payload));
+  process.exit(1);
 }
 
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+failClosed();
