@@ -53,8 +53,11 @@ describe('M3.3-HV-H4-A3.3-O2-R2-H1 true issuer concurrency (PostgreSQL)', () => 
     if (!probe) return;
     admin = new PrismaClient();
     await ensureM3_3HvH4A3O2R2PostgresRolesV1(admin);
-    issuerDb = (await createIssuerLoginPostgresClientV1()) ?? undefined;
-    appDb = (await createRestrictedAppLoginPostgresClientV1()) ?? undefined;
+    issuerDb = await createIssuerLoginPostgresClientV1();
+    appDb = await createRestrictedAppLoginPostgresClientV1();
+    if (!issuerDb || !appDb) {
+      throw new Error('O2-R2-H1: failed to create dedicated issuer/app login PostgreSQL clients');
+    }
   });
 
   afterAll(async () => {
