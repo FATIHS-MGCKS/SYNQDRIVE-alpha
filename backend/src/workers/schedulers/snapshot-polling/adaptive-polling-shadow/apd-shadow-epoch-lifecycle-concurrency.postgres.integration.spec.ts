@@ -186,7 +186,8 @@ describePg('APD shadow epoch lifecycle true concurrency (APDS-9.3C)', () => {
     await sleep(30);
     const writeAttempt = repoA.upsertPrePollDecision(row(opp, active.id)).catch((e) => e);
     await closeHeld;
-    expect(writeAttempt).toBeInstanceOf(ApdShadowDecisionEpochInactiveError);
+    const writeResult = await writeAttempt;
+    expect(writeResult).toBeInstanceOf(ApdShadowDecisionEpochInactiveError);
     expect(
       await prismaA.apdShadowReconciliationDecision.count({ where: { opportunityId: opp } }),
     ).toBe(0);
