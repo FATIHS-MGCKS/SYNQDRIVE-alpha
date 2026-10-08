@@ -22,6 +22,10 @@ import {
   M3_3_HV_H4_A3_PHASE_A_PRODUCTION_TARGET_SPEC_JSON_ENV,
 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-approval.v1';
 import { M3_3_HV_H4_A3_PHASE_A_PRODUCTION_TARGET_SPEC_CONTRACT_V1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-approval.types.v1';
+import {
+  provisionPhaseAProductionAuditFixtureUrlV1,
+  teardownPhaseAProductionAuditFixtureV1,
+} from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-audit.fixture.v1';
 
 const integrationJobActive = isPhaseAPreflightPostgresIntegrationJobV1();
 
@@ -108,7 +112,10 @@ function buildProductionFixtureEnv(integrationDatabaseUrl: string): NodeJS.Proce
     });
 
     it('runs Phase-A discovery with production admission on fixture URL', async () => {
-      const fixture = buildProductionFixtureEnv(integrationDatabaseUrl);
+      const { databaseUrl: auditDatabaseUrl } = await provisionPhaseAProductionAuditFixtureUrlV1(
+        integrationDatabaseUrl,
+      );
+      const fixture = buildProductionFixtureEnv(auditDatabaseUrl);
       const keys = Object.keys(fixture);
       const prev: Record<string, string | undefined> = {};
       for (const k of keys) prev[k] = process.env[k];
@@ -118,16 +125,19 @@ function buildProductionFixtureEnv(integrationDatabaseUrl: string): NodeJS.Proce
 
       try {
         const outcome = await runM3_3HvH4A3PhaseAPreflightV1({
-          databaseUrl: integrationDatabaseUrl,
+          databaseUrl: auditDatabaseUrl,
           roleNames: DEFAULT_M3_3_HV_H4_A3_PHASE_A_ROLE_NAMES_V1,
           admissionPolicy: 'PRODUCTION_AUTHORIZED_R4_2A',
         });
         expect(outcome.ok).toBe(true);
-        if (!outcome.ok) return;
+        if (!outcome.ok) {
+          throw new Error(`expected ok, got ${outcome.reasonCode}`);
+        }
         expect(outcome.report.productionCertification).toBe('NOT_CERTIFIED');
         expect(outcome.report.productionAdmissionEvidence?.cryptographicAuthentication).toBe(false);
         expect(outcome.report.productionAdmissionEvidence?.approvalId).toBeDefined();
       } finally {
+        await teardownPhaseAProductionAuditFixtureV1(integrationDatabaseUrl);
         for (const k of keys) {
           if (prev[k] === undefined) delete process.env[k];
           else process.env[k] = prev[k];
