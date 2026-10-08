@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { ApdShadowActivationEpochLifecycle, Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   ApdShadowDecisionEpochConflictError,
+  ApdShadowDecisionEpochInactiveError,
   ApdShadowDecisionProvenanceImmutableError,
 } from './apd-shadow-decision-epoch.errors';
 import {
@@ -144,28 +145,31 @@ export class AdaptivePollingShadowRepository {
           },
         );
       }
-      await this.prisma.apdShadowReconciliationDecision.create({
-        data: {
-          organizationId: row.organizationId,
-          vehicleId: row.vehicleId,
-          opportunityId: row.opportunityId,
-          decisionAt: row.decisionAt,
-          activationEpochId: attemptedEpochId,
-          policyVersion: row.policyVersion,
-          profileVersion: row.profileVersion,
-          profileClass: row.profileClass,
-          decision: row.decision,
-          reason: row.reason,
-          shadowExecutionVersion: row.shadowExecutionVersion,
-          reconciliation: row.reconciliation,
-          lastLvSourceAt: row.lastLvSourceAt ?? null,
-          lastProviderFetchedAt: row.lastProviderFetchedAt ?? null,
-          expectedWindowStart: row.expectedWindowStart ?? null,
-          expectedWindowEnd: row.expectedWindowEnd ?? null,
-          providerGapState: row.providerGapState ?? null,
-          connectivityState: row.connectivityState ?? null,
-          wakeCorrelationId: row.wakeCorrelationId ?? null,
-        },
+      await this.prisma.$transaction(async (tx) => {
+        await this.assertActivationEpochActiveAtCommit(attemptedEpochId, tx);
+        await tx.apdShadowReconciliationDecision.create({
+          data: {
+            organizationId: row.organizationId,
+            vehicleId: row.vehicleId,
+            opportunityId: row.opportunityId,
+            decisionAt: row.decisionAt,
+            activationEpochId: attemptedEpochId,
+            policyVersion: row.policyVersion,
+            profileVersion: row.profileVersion,
+            profileClass: row.profileClass,
+            decision: row.decision,
+            reason: row.reason,
+            shadowExecutionVersion: row.shadowExecutionVersion,
+            reconciliation: row.reconciliation,
+            lastLvSourceAt: row.lastLvSourceAt ?? null,
+            lastProviderFetchedAt: row.lastProviderFetchedAt ?? null,
+            expectedWindowStart: row.expectedWindowStart ?? null,
+            expectedWindowEnd: row.expectedWindowEnd ?? null,
+            providerGapState: row.providerGapState ?? null,
+            connectivityState: row.connectivityState ?? null,
+            wakeCorrelationId: row.wakeCorrelationId ?? null,
+          },
+        });
       });
       return;
     }
@@ -196,6 +200,27 @@ export class AdaptivePollingShadowRepository {
         wakeCorrelationId: row.wakeCorrelationId ?? null,
       },
     });
+  }
+
+  /**
+   * Linearization point for new shadow decision creates: epoch must still be ACTIVE in DB.
+   */
+  private async assertActivationEpochActiveAtCommit(
+    activationEpochId: string,
+    tx: Prisma.TransactionClient,
+  ): Promise<void> {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`apd_shadow_epoch_commit:${activationEpochId}`}))`;
+    const epoch = await tx.apdShadowActivationEpoch.findUnique({
+      where: { id: activationEpochId },
+      select: { lifecycleState: true, activatedAt: true },
+    });
+    if (
+      !epoch ||
+      epoch.lifecycleState !== ApdShadowActivationEpochLifecycle.ACTIVE ||
+      !epoch.activatedAt
+    ) {
+      throw new ApdShadowDecisionEpochInactiveError();
+    }
   }
 
   private assertEpochBindingImmutable(input: {

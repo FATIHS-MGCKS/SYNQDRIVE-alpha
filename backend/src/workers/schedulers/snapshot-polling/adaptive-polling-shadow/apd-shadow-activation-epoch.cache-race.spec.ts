@@ -18,7 +18,8 @@ describe('ApdShadowActivationEpochService multi-replica cache race', () => {
   };
 
   it('replica A stale positive cache cannot authorize writes after replica B pause (authoritative path)', async () => {
-    let dbLifecycle = ApdShadowActivationEpochLifecycle.ACTIVE;
+    let dbLifecycle: ApdShadowActivationEpochLifecycle =
+      ApdShadowActivationEpochLifecycle.ACTIVE;
     const prisma = {
       apdShadowActivationEpoch: {
         findFirst: jest.fn(async () =>

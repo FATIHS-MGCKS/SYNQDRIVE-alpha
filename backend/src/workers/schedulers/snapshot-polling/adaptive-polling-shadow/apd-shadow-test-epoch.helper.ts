@@ -38,9 +38,9 @@ function seedActiveEpochCache(
   const scopeKey = buildApdShadowActivationScopeKey(fingerprint);
   (
     service as unknown as {
-      cacheByScope: Map<string, { epoch: ApdShadowActiveEpochView | null; loadedAtMs: number }>;
+      positiveCacheByScope: Map<string, { epoch: ApdShadowActiveEpochView; loadedAtMs: number }>;
     }
-  ).cacheByScope.set(scopeKey, { epoch, loadedAtMs: Date.now() });
+  ).positiveCacheByScope.set(scopeKey, { epoch, loadedAtMs: Date.now() });
   return epoch;
 }
 

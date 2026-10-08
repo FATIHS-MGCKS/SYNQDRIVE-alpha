@@ -187,7 +187,22 @@ describePg('APD shadow decision epoch immutability (APDS-9.3A)', () => {
       origin: 'CROSS_EPOCH',
     });
     const decisionAt = new Date(1_700_000_200_000);
-    await repository.upsertPrePollDecision(baseRow(opportunityId, epochAId, decisionAt));
+    await prisma.apdShadowReconciliationDecision.create({
+      data: {
+        organizationId,
+        vehicleId,
+        opportunityId,
+        decisionAt,
+        activationEpochId: epochAId,
+        policyVersion: P25_APD_B2_V1,
+        profileVersion: 'P25_APD_PROFILE_CLASSIFIER_V1',
+        profileClass: 'STABLE_PERIODIC',
+        decision: 'WOULD_POLL',
+        reason: 'EPOCH_A_HISTORICAL',
+        shadowExecutionVersion: P25_APD_SHADOW_EXECUTION_V2,
+        reconciliation: true,
+      },
+    });
     await expect(
       repository.upsertPrePollDecision(baseRow(opportunityId, epochBId, decisionAt)),
     ).rejects.toBeInstanceOf(ApdShadowDecisionEpochConflictError);

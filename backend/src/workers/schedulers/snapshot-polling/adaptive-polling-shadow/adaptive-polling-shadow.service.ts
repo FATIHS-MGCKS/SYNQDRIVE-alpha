@@ -68,10 +68,7 @@ export class AdaptivePollingShadowService {
     void this.activationEpochService
       .loadActiveEpochForScope(runtime.configFingerprintSha256)
       .catch(() => null);
-    const cached = this.activationEpochService.getCachedActiveEpochSnapshot(
-      runtime.configFingerprintSha256,
-    );
-    return cached != null;
+    return true;
   }
 
   getCohortVerificationSummary(): {
@@ -143,11 +140,15 @@ export class AdaptivePollingShadowService {
           fingerprint,
           { updatePositiveCache: true },
         );
+      const cohortOrgIds = runtime.config
+        ? [...new Set(runtime.config.members.map((m) => m.organizationId))]
+        : undefined;
       const gate = this.activationEpochService.evaluateShadowEpochGate({
         cohortConfigFingerprintSha256: fingerprint,
         decisionAtMs,
         activeEpoch,
         vehicleOrganizationId,
+        cohortOrganizationIds: cohortOrgIds,
       });
       if (!gate.allowed) {
         this.recordEpochGateBlocked(gate.reason);

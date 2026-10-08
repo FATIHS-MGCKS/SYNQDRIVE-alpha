@@ -25,3 +25,12 @@ export class ApdShadowDecisionProvenanceImmutableError extends Error {
     this.name = 'ApdShadowDecisionProvenanceImmutableError';
   }
 }
+
+export class ApdShadowDecisionEpochInactiveError extends Error {
+  readonly code = 'APD_SHADOW_DECISION_EPOCH_INACTIVE' as const;
+
+  constructor(message = 'activation epoch not ACTIVE at decision commit boundary') {
+    super(message);
+    this.name = 'ApdShadowDecisionEpochInactiveError';
+  }
+}

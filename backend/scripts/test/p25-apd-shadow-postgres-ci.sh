@@ -23,7 +23,9 @@ DATABASE_URL="${DATABASE_URL}" npx jest \
   adaptive-polling-shadow.postgres.integration.spec.ts \
   apd-shadow-activation-epoch.postgres.integration.spec.ts \
   apd-shadow-decision-epoch.immutability.postgres.integration.spec.ts \
-  apd-shadow-activation-epoch.lifecycle.postgres.integration.spec.ts
+  apd-shadow-activation-epoch.lifecycle.postgres.integration.spec.ts \
+  apd-shadow-activation-epoch.t0-timezone.postgres.integration.spec.ts \
+  apd-shadow-activation-epoch.write-race.postgres.integration.spec.ts
 
 log "migration ephemeral gate"
 bash scripts/test/p25-apd-shadow-migration-ephemeral.sh

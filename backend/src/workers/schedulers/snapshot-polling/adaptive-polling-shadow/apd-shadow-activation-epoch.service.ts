@@ -2,7 +2,12 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ApdShadowActivationEpochLifecycle } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { P25_APD_B2_V1, P25_APD_B4_V1 } from '../adaptive-polling-policy/p25-apd-policy-versions';
-import { assertApdShadowEpochInternalOpsAuthorized } from './apd-shadow-activation-operator.authority';
+import {
+  assertApdShadowEpochInternalOpsAuthorized,
+  assertDeployedReleaseIdentity,
+  type ApdShadowEpochOpsContext,
+} from './apd-shadow-activation-operator.authority';
+import { APD_SHADOW_EPOCH_T0_SQL } from './apd-shadow-epoch-t0.authority';
 import {
   ActivateApdShadowActivationEpochInput,
   ApdShadowActiveEpochView,
@@ -68,7 +73,13 @@ export class ApdShadowActivationEpochService {
   }
 
   async prepareEpoch(input: PrepareApdShadowActivationEpochInput): Promise<{ id: string }> {
-    assertApdShadowEpochInternalOpsAuthorized('prepareEpoch');
+    assertApdShadowEpochInternalOpsAuthorized('prepareEpoch', {
+      operatorActor: input.operatorActor ?? undefined,
+      operationRequestId: input.operatorRequestId ?? undefined,
+      operationReason: input.operatorReason ?? undefined,
+      opsToken: input.opsToken,
+      expectedDeployedSha: input.expectedDeployedSha,
+    });
     this.assertCohortOrganizations(input);
     this.assertFrozenPolicyVersions(input.b2PolicyVersion, input.b4PolicyVersion);
     const activationScopeKey = buildApdShadowActivationScopeKey(
@@ -100,7 +111,16 @@ export class ApdShadowActivationEpochService {
   async activateEpoch(
     input: ActivateApdShadowActivationEpochInput,
   ): Promise<ApdShadowActiveEpochView> {
-    assertApdShadowEpochInternalOpsAuthorized('activateEpoch');
+    assertApdShadowEpochInternalOpsAuthorized('activateEpoch', {
+      operatorActor: input.operatorActor,
+      operationRequestId: input.operatorRequestId ?? input.activationRequestKey,
+      operationReason: input.operatorReason,
+      opsToken: input.opsToken,
+      expectedDeployedSha: input.expectedDeployedSha ?? input.productionReleaseIdentity ?? undefined,
+    });
+    assertDeployedReleaseIdentity(
+      input.expectedDeployedSha ?? input.productionReleaseIdentity ?? undefined,
+    );
     if (input.cohortOrganizationIds.length === 0) {
       throw new Error('cohortOrganizationIds must not be empty');
     }
@@ -172,9 +192,9 @@ export class ApdShadowActivationEpochService {
         );
       }
 
-      const [{ activated_at }] = await tx.$queryRaw<
-        Array<{ activated_at: Date }>
-      >`SELECT (NOW() AT TIME ZONE 'UTC')::timestamptz AS activated_at`;
+      const [{ activated_at }] = await tx.$queryRaw<Array<{ activated_at: Date }>>(
+        APD_SHADOW_EPOCH_T0_SQL,
+      );
 
       const updated = await tx.apdShadowActivationEpoch.update({
         where: { id: epoch.id },
@@ -228,8 +248,8 @@ export class ApdShadowActivationEpochService {
     }
   }
 
-  async pauseEpoch(epochId: string): Promise<void> {
-    assertApdShadowEpochInternalOpsAuthorized('pauseEpoch');
+  async pauseEpoch(epochId: string, ops: Partial<ApdShadowEpochOpsContext> = {}): Promise<void> {
+    assertApdShadowEpochInternalOpsAuthorized('pauseEpoch', ops);
     await this.prisma.apdShadowActivationEpoch.updateMany({
       where: {
         id: epochId,
@@ -243,8 +263,8 @@ export class ApdShadowActivationEpochService {
     this.invalidateCache();
   }
 
-  async closeEpoch(epochId: string): Promise<void> {
-    assertApdShadowEpochInternalOpsAuthorized('closeEpoch');
+  async closeEpoch(epochId: string, ops: Partial<ApdShadowEpochOpsContext> = {}): Promise<void> {
+    assertApdShadowEpochInternalOpsAuthorized('closeEpoch', ops);
     await this.prisma.apdShadowActivationEpoch.updateMany({
       where: {
         id: epochId,
@@ -320,6 +340,8 @@ export class ApdShadowActivationEpochService {
     decisionAtMs: number;
     activeEpoch: ApdShadowActiveEpochView | null;
     vehicleOrganizationId?: string | null;
+    /** When set, vehicle org must be in this allowlist (multi-tenant cohort). */
+    cohortOrganizationIds?: string[];
   }): { allowed: true; epoch: ApdShadowActiveEpochView } | { allowed: false; reason: ApdShadowActivationEpochGateReason } {
     if (!input.cohortConfigFingerprintSha256) {
       return { allowed: false, reason: 'EPOCH_MISSING' };
@@ -334,11 +356,15 @@ export class ApdShadowActivationEpochService {
     if (epoch.cohortConfigFingerprintSha256 !== input.cohortConfigFingerprintSha256) {
       return { allowed: false, reason: 'EPOCH_FINGERPRINT_MISMATCH' };
     }
-    if (
-      input.vehicleOrganizationId &&
-      epoch.organizationId !== input.vehicleOrganizationId
-    ) {
-      return { allowed: false, reason: 'EPOCH_ORG_MISMATCH' };
+    if (input.vehicleOrganizationId) {
+      const cohortOrgs = input.cohortOrganizationIds?.filter(Boolean) ?? [];
+      if (cohortOrgs.length > 0) {
+        if (!cohortOrgs.includes(input.vehicleOrganizationId)) {
+          return { allowed: false, reason: 'EPOCH_ORG_MISMATCH' };
+        }
+      } else if (epoch.organizationId !== input.vehicleOrganizationId) {
+        return { allowed: false, reason: 'EPOCH_ORG_MISMATCH' };
+      }
     }
     if (epoch.b2PolicyVersion !== P25_APD_B2_V1 || epoch.b4PolicyVersion !== P25_APD_B4_V1) {
       return { allowed: false, reason: 'EPOCH_POLICY_VERSION_MISMATCH' };

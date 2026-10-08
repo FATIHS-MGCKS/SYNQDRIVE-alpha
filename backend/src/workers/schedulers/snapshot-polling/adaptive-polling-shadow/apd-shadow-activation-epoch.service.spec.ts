@@ -84,7 +84,7 @@ describe('ApdShadowActivationEpochService (unit)', () => {
         b2PolicyVersion: P25_APD_B2_V1,
         b4PolicyVersion: P25_APD_B4_V1,
       }),
-    ).rejects.toThrow(/internal ops authority/);
+    ).rejects.toThrow(/opsToken|operatorActor/);
     enableApdShadowEpochOpsAuthorityForTests();
   });
 

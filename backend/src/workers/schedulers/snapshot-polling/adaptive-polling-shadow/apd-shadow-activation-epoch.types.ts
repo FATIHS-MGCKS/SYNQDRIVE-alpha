@@ -45,6 +45,9 @@ export interface PrepareApdShadowActivationEpochInput {
   operatorActor?: string | null;
   operatorReason?: string | null;
   operatorRequestId?: string | null;
+  /** HMAC-bound ops token (must match APD_SHADOW_EPOCH_OPS_TOKEN). */
+  opsToken?: string;
+  expectedDeployedSha?: string;
 }
 
 export interface ActivateApdShadowActivationEpochInput {
@@ -58,6 +61,9 @@ export interface ActivateApdShadowActivationEpochInput {
   operatorReason: string;
   operatorRequestId?: string | null;
   productionReleaseIdentity?: string | null;
+  opsToken?: string;
+  expectedDeployedSha?: string;
+  dryRun?: boolean;
 }
 
 export const APD_SHADOW_EPOCH_CACHE_TTL_MS = 5_000;

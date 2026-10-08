@@ -46,8 +46,15 @@ Migration: `20261008120000_apd_shadow_activation_epochs`
 - Decision row immutability: legacy `activation_epoch_id=NULL` cannot adopt epoch; cross-epoch replay → `ApdShadowDecisionEpochConflictError`; `decisionAt` immutable
 - FK `ON DELETE RESTRICT` on `activation_epoch_id` (epochs with evidence cannot be deleted silently)
 - PostgreSQL trigger `apd_shadow_activation_epochs_immutable_t0` prevents `activated_at` mutation
-- Internal ops authority env `APD_SHADOW_EPOCH_INTERNAL_OPS_AUTHORIZED` required for prepare/activate/pause/close (no HTTP operator path yet)
 - Activation request key bound to scope + policy versions + epoch id
+
+## APDS-9.3B final authority (PR #1920)
+
+- **T0 SQL:** `NOW()` via `APD_SHADOW_EPOCH_T0_SQL` (timestamptz absolute instant; session-TZ independent). Corrective migration `20261008150000_apd_shadow_epoch_activated_at_timestamptz` (`TIMESTAMPTZ(3)`).
+- **Write linearization:** `AdaptivePollingShadowRepository.assertActivationEpochActiveAtCommit` — advisory xact lock + ACTIVE lifecycle verify on **new decision create** only.
+- **Cold cache:** `isEnabledForVehicle` = flag + cohort only; epoch gate remains authoritative in `observe*` + commit boundary.
+- **Operator path:** `APD_SHADOW_EPOCH_OPS_TOKEN` + actor/request-id/reason + optional `SYNQDRIVE_DEPLOYED_GIT_SHA` verification; CLI `backend/scripts/ops/apd-shadow-activation-epoch-cli.ts`; facade `ApdShadowActivationEpochOperatorFacade` (status/preflight/prepare/activate/pause/close, `--dry-run`).
+- **Tests:** T0 timezone parity (UTC/LA/Berlin), pause/close write-race (dual Prisma clients), operator authority unit tests, cold-cache spec.
 
 ## Operator runbook (draft)
 
