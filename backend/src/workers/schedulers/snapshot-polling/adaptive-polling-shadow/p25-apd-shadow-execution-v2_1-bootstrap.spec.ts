@@ -157,6 +157,43 @@ describe('APDS-9.5B execution V2.1 LV bootstrap simulation', () => {
     expect(broken.lastAllowed).toBe(0);
   });
 
+  it('repeated forced-missing sequence exits overlay loop after genuine LV bootstrap', () => {
+    const t0 = 25_000_000;
+    const polls: PollEvent[] = [
+      {
+        tMs: t0,
+        tEndMs: t0 + 2_000,
+        visibleLvMs: t0 - 5_000,
+        reconciliation: true,
+      },
+      {
+        tMs: t0 + MS_10M,
+        tEndMs: t0 + MS_10M + 2_000,
+        visibleLvMs: t0 + MS_10M - 5_000,
+        reconciliation: true,
+      },
+    ];
+    const fixed = simulateV2Execution(polls);
+    expect(fixed.simulatedLv).toBe(t0 + MS_10M - 5_000);
+    const coreSecond = evaluateP25ApdB2V1Core({
+      organizationId: 'o',
+      vehicleId: 'v',
+      decisionAtMs: t0 + MS_10M,
+      reconciliation: true,
+      lastTrustworthyLvSourceMs: t0 - 5_000,
+      lastProviderFetchedAtMs: null,
+      profileVersion: 'P25_APD_PROFILE_CLASSIFIER_V1',
+      medianIntervalMs: 8 * 3600_000,
+      tripFsmActive: false,
+      providerGapOpen: false,
+      r9WakePending: false,
+      profileClass: 'SPARSE_IRREGULAR',
+      lastAllowedReconciliationPollMs: 0,
+    });
+    const overlaySecond = overlayDecision(coreSecond.decision, t0 - 5_000);
+    expect(overlaySecond).not.toBe('FORCED_SOURCE_TIMESTAMP_MISSING');
+  });
+
   it('V2.1 bootstrap seeds LV without advancing lastAllowed on forced-missing', () => {
     const t0 = 20_000_000;
     const polls: PollEvent[] = [
