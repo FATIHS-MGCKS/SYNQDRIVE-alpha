@@ -6,6 +6,19 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R2-H1 isolated issuer role + lock authority hardening
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Remove caller-controlled `SET ROLE`; issuer-bound `issuerDb` session; R2-H1 `SECURITY DEFINER` lock function; true two-connection concurrency R2_H1_C1–C7 |
+| **WHY** | Dynamic role interpolation is not production-safe; SELECT-only issuer cannot `FOR UPDATE` without narrow lock authority |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r2-h1-*` postgres specs; HV-H4 CI |
+| **OBSERVED_EFFECT** | `RECOMMENDED_LOCK_AUTHORITY_MODEL=SECURITY_DEFINER_NARROW_ROW_LOCK_V1`; issuer/app session separation in CI |
+| **NON_EFFECTS** | No Nest wiring; no production credentials; SQL issuance still deferred |
+| **REMAINING_GAPS** | Production issuer login topology; DB cannot prove TS verifier invocation |
+| **DECISION_STATUS** | VALIDATED (repository prototype) |
+| **EVIDENCE** | `M3_3_HV_H4_A3_3_O2_R2_ISSUANCE_AUTHORITY_2026-10-08.md` § O2-R2-H1 |
+
 ## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R2 issuance authority prototype + role isolation
 
 | Field | Value |

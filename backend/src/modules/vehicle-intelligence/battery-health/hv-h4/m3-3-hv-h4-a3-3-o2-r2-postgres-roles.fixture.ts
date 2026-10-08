@@ -1,4 +1,4 @@
-import type { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 
 /** CI-only role names mirroring intended production separation (not production-certified). */
 export const M3_3_HV_H4_A3_O2_R2_RESTRICTED_APP_ROLE = 'm3_3_hv_h4_a3_r2_app_restricted';
@@ -50,6 +50,21 @@ export async function ensureM3_3HvH4A3O2R2PostgresRolesV1(prisma: PrismaClient):
   await prisma.$executeRawUnsafe(
     `GRANT ${M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE} TO CURRENT_USER`,
   );
+
+  await prisma.$executeRawUnsafe(
+    `REVOKE ALL ON FUNCTION public.m3_3_hv_h4_a3_lock_revision_and_ack_for_issuance_v1(text) FROM ${M3_3_HV_H4_A3_O2_R2_RESTRICTED_APP_ROLE}`,
+  );
+  await prisma.$executeRawUnsafe(
+    `GRANT EXECUTE ON FUNCTION public.m3_3_hv_h4_a3_lock_revision_and_ack_for_issuance_v1(text) TO ${M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE}`,
+  );
+}
+
+/** CI/admin session may SET ROLE; production topology not certified. */
+export async function createDedicatedPostgresSessionClientV1(role: string): Promise<PrismaClient> {
+  const client = new PrismaClient();
+  await client.$connect();
+  await client.$executeRawUnsafe(`SET ROLE ${role}`);
+  return client;
 }
 
 export async function withPostgresRoleV1<T>(
