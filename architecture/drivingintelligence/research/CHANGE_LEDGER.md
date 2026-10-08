@@ -1561,6 +1561,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | Reproduced dead stale-pin guard (D1), runtime `chmod` (D2), declared-only side-effect lines (D3–D4); historical S4F-7AA PASS preserved; AA.1 bootstrap **not** Production re-validated |
 | NON_EFFECTS | No Production rerun; no sealed operator file edits; Gate 6 **NOT_SATISFIED** |
 
+### EXP-021 S4F-7AB hardened bootstrap Production dry-run certification (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Evidence `EXP021_S4F7AB_HARDENED_PRODUCTION_DRY_RUN_CERTIFICATION.md`; AA.1 canonical `BOOTSTRAP_SCRIPT_SHA256` row |
+| FINDING | **`FINAL_RESULT=PASS`** — first Production run of AA.1 bootstrap @ merge `9e40c969d` / SHA `007eb885…`; JIT `2026-10-08T10:01:53.161Z`; POST S4 SQL parity + wrapper-measured mutation/restart/delta |
+| NON_EFFECTS | No live authorization; no env write/restart/S4 activation; Gate 6 **NOT_SATISFIED** |
+
 ### EXP-021 S4F-7T current Production attestation supersession closure (2026-10-06)
 
 | Event | Detail |

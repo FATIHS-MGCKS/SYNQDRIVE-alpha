@@ -59,6 +59,13 @@ The successful Production dry-run remains a **historical finding**. AA.1 fixes r
 
 Post–AA.1 bootstrap adds **VERIFIED_BY_EXECUTION_PATH** for DB persistence parity and wrapper-measured mutation/restart/provider-delta when a future run is authorized.
 
+## Canonical bootstrap identity (AA.1 @ merge `9e40c969d`)
+
+| Field | Value |
+|-------|--------|
+| `BOOTSTRAP_SCRIPT_SHA256` | `007eb88581d26cc52447ea96635a1f707931f0f102a21cd395fd843f743b8351` |
+| Production certification | [EXP021_S4F7AB_HARDENED_PRODUCTION_DRY_RUN_CERTIFICATION.md](EXP021_S4F7AB_HARDENED_PRODUCTION_DRY_RUN_CERTIFICATION.md) |
+
 ## Validation (AA.1, no Production)
 
 ```bash
