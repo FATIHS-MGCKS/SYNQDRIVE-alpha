@@ -3,6 +3,9 @@ import { PrismaClient } from '@prisma/client';
 /** CI-only role names mirroring intended production separation (not production-certified). */
 export const M3_3_HV_H4_A3_O2_R2_RESTRICTED_APP_ROLE = 'm3_3_hv_h4_a3_r2_app_restricted';
 export const M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE = 'm3_3_hv_h4_a3_r2_attestation_issuer';
+/** Non-superuser CI login inheriting restricted app role only (not issuer). */
+export const M3_3_HV_H4_A3_O2_R2_APP_LOGIN_ROLE = 'm3_3_hv_h4_a3_r2_app_login';
+const APP_LOGIN_PASSWORD = 'r2_ci_app_login_pw';
 
 const ATTESTATION_TABLE = 'public.battery_hv_charge_session_evidence_integrity_attestations';
 const REVISION_TABLE = 'public.battery_hv_charge_session_evidence_revisions';
@@ -21,6 +24,18 @@ export async function ensureM3_3HvH4A3O2R2PostgresRolesV1(prisma: PrismaClient):
     EXCEPTION WHEN duplicate_object THEN NULL;
     END $$;
   `);
+  await prisma.$executeRawUnsafe(`
+    DO $$ BEGIN
+      CREATE ROLE ${M3_3_HV_H4_A3_O2_R2_APP_LOGIN_ROLE} LOGIN PASSWORD '${APP_LOGIN_PASSWORD}' NOSUPERUSER NOCREATEDB NOCREATEROLE;
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END $$;
+  `);
+  await prisma.$executeRawUnsafe(
+    `ALTER ROLE ${M3_3_HV_H4_A3_O2_R2_APP_LOGIN_ROLE} PASSWORD '${APP_LOGIN_PASSWORD}'`,
+  );
+  await prisma.$executeRawUnsafe(
+    `GRANT ${M3_3_HV_H4_A3_O2_R2_RESTRICTED_APP_ROLE} TO ${M3_3_HV_H4_A3_O2_R2_APP_LOGIN_ROLE}`,
+  );
 
   await prisma.$executeRawUnsafe(`GRANT USAGE ON SCHEMA public TO ${M3_3_HV_H4_A3_O2_R2_RESTRICTED_APP_ROLE}`);
   await prisma.$executeRawUnsafe(`GRANT USAGE ON SCHEMA public TO ${M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE}`);
@@ -64,6 +79,19 @@ export async function createDedicatedPostgresSessionClientV1(role: string): Prom
   const client = new PrismaClient();
   await client.$connect();
   await client.$executeRawUnsafe(`SET ROLE ${role}`);
+  return client;
+}
+
+/** Dedicated non-superuser login (restricted app privileges only). */
+export async function createRestrictedAppLoginPostgresClientV1(): Promise<PrismaClient | null> {
+  const base = process.env.DATABASE_URL;
+  if (!base) return null;
+  const match = base.match(/^postgresql:\/\/([^:]+):([^@]+)@([^/]+)\/([^?]+)/);
+  if (!match) return null;
+  const [, , , host, database] = match;
+  const url = `postgresql://${M3_3_HV_H4_A3_O2_R2_APP_LOGIN_ROLE}:${APP_LOGIN_PASSWORD}@${host}/${database}`;
+  const client = new PrismaClient({ datasources: { db: { url } } });
+  await client.$connect();
   return client;
 }
 

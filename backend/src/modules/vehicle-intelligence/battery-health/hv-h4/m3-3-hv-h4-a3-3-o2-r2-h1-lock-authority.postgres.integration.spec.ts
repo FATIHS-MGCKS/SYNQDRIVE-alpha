@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { probePostgresDatabase } from '../provider-observability-gap/provider-observability-gap-postgres.fixture';
 import {
   createDedicatedPostgresSessionClientV1,
+  createRestrictedAppLoginPostgresClientV1,
   ensureM3_3HvH4A3O2R2PostgresRolesV1,
   M3_3_HV_H4_A3_O2_R2_RESTRICTED_APP_ROLE,
   M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE,
@@ -53,7 +54,7 @@ describe('M3.3-HV-H4-A3.3-O2-R2-H1 issuer lock authority (PostgreSQL)', () => {
     try {
       await issuer.$transaction(async (tx) => {
         await tx.$queryRaw`
-          SELECT public.m3_3_hv_h4_a3_lock_revision_and_ack_for_issuance_v1(${revision.id}::text)
+          SELECT public.m3_3_hv_h4_a3_lock_revision_and_ack_for_issuance_v1(${revision.id}::text) AS ok
         `;
       });
     } finally {
@@ -67,14 +68,28 @@ describe('M3.3-HV-H4-A3.3-O2-R2-H1 issuer lock authority (PostgreSQL)', () => {
     await admin.$executeRawUnsafe('RESET ROLE');
   });
 
-  it('restricted app cannot SET ROLE to issuer', async () => {
+  it('restricted app login cannot SET ROLE to issuer (non-superuser session)', async () => {
     if (!admin) return;
-    const app = await createDedicatedPostgresSessionClientV1(M3_3_HV_H4_A3_O2_R2_RESTRICTED_APP_ROLE);
+    const app = await createRestrictedAppLoginPostgresClientV1();
+    if (!app) return;
     try {
       await expect(app.$executeRawUnsafe(`SET ROLE ${M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE}`)).rejects.toThrow();
     } finally {
       await app.$disconnect();
     }
+  });
+
+  it('issuer role is not granted to restricted app role (membership)', async () => {
+    if (!admin) return;
+    const rows = await admin.$queryRaw<Array<{ count: bigint }>>`
+      SELECT COUNT(*)::bigint AS count
+      FROM pg_auth_members m
+      JOIN pg_roles issuer ON issuer.oid = m.roleid
+      JOIN pg_roles member ON member.oid = m.member
+      WHERE issuer.rolname = ${M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE}
+        AND member.rolname = ${M3_3_HV_H4_A3_O2_R2_RESTRICTED_APP_ROLE}
+    `;
+    expect(Number(rows[0]?.count ?? 0)).toBe(0);
   });
 
   it('restricted app cannot EXECUTE issuance lock function', async () => {

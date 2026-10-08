@@ -32,8 +32,8 @@ export async function issueM3_3HvH4A3IntegrityAttestationIsolatedInTransactionV1
 ): Promise<{ attestationId: string }> {
   const attestedAt = input.attestedAt ?? new Date();
 
-  await tx.$queryRaw`
-    SELECT public.m3_3_hv_h4_a3_lock_revision_and_ack_for_issuance_v1(${input.revisionId}::text)
+  await tx.$queryRaw<Array<{ ok: boolean }>>`
+    SELECT public.m3_3_hv_h4_a3_lock_revision_and_ack_for_issuance_v1(${input.revisionId}::text) AS ok
   `;
 
   if (hooks?.afterRowLocksAcquired) {
@@ -84,10 +84,10 @@ export async function issueM3_3HvH4A3IntegrityAttestationIsolatedV1(
       issueM3_3HvH4A3IntegrityAttestationIsolatedInTransactionV1(tx, input),
     );
   } catch (error) {
-    if (
-      error instanceof M3_3HvH4A3IntegrityAttestationIssueVerificationError ||
-      error instanceof M3_3HvH4A3IntegrityAttestationIssuePermissionError
-    ) {
+    if (error instanceof M3_3HvH4A3IntegrityAttestationIssueVerificationError) {
+      throw error;
+    }
+    if (error instanceof M3_3HvH4A3IntegrityAttestationIssuePermissionError) {
       throw error;
     }
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
