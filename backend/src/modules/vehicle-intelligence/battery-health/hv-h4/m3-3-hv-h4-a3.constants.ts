@@ -61,9 +61,11 @@ export const M3_3_HV_H4_A3_HISTORY_INTEGRITY_ATTESTATION_CONTRACT_V1 =
 
 export const A3_ATTESTATION_SCHEMA_PRESENT = true as const;
 export const A3_ATTESTATION_INVALIDATION_DB_ENFORCED = true as const;
-/** Schema + Strategy C invalidation only; SQL issuance prototype removed (TS/SQL parity not proven). */
-export const A3_ATTESTATION_ISSUANCE_FOUNDATION_PRESENT = false as const;
+/** O2-R2: isolated TS issuer prototype in repo; not Nest/runtime reachable. */
+export const A3_ATTESTATION_ISSUANCE_FOUNDATION_PRESENT = true as const;
 export const A3_ATTESTATION_SQL_ISSUANCE_DEPLOYED = false as const;
+export const A3_ATTESTATION_ISOLATED_TS_ISSUER_PROTOTYPE_PRESENT = true as const;
+export const A3_ATTESTATION_ISOLATED_TS_ISSUER_RUNTIME_REACHABLE = false as const;
 /** Set false until production DB role topology + SQL/TS parity are production-certified. */
 export const A3_ATTESTATION_ISSUANCE_AUTHORITY_CERTIFIED = false as const;
 export const A3_HYBRID_DURABLE_LOADER_RUNTIME_REACHABLE = false as const;

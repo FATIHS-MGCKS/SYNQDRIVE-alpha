@@ -6,6 +6,19 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R2 issuance authority prototype + role isolation
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | R2 migration SECURITY DEFINER invalidation; CI restricted/issuer roles; isolated TS issuer prototype; numeric + issuance postgres proofs |
+| **WHY** | R1 blocked on SQL parity; app role must invalidate without attestation DELETE; compare issuance models |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r2-*` specs; HV-H4 CI |
+| **OBSERVED_EFFECT** | `PREFERRED_ISSUANCE_MODEL=B`; `SQL_ISSUANCE_SAFE=NO`; prototype issuer not runtime reachable |
+| **NON_EFFECTS** | No writer/hybrid loader; no SQL issuance function |
+| **REMAINING_GAPS** | Production role topology; ECMAScript SQL numeric formatter |
+| **DECISION_STATUS** | VALIDATED (prototype) |
+| **EVIDENCE** | `M3_3_HV_H4_A3_3_O2_R2_ISSUANCE_AUTHORITY_2026-10-08.md` |
+
 ## 2026-10-07 — M3.3-HV-H4-A3.3-O2-R1 closure: withdraw SQL issuance + parity/race tests
 
 | Field | Value |
