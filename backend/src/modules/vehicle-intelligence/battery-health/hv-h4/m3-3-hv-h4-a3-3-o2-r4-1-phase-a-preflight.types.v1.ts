@@ -22,9 +22,15 @@ export type M3_3HvH4A3PhaseAPreflightRoleNamesV1 = {
   trustedAttestationIssuer: string;
 };
 
+export type M3_3HvH4A3PhaseAPreflightAdmissionPolicyV1 =
+  | 'ISOLATED_R4_1_DEFAULT'
+  | 'PRODUCTION_AUTHORIZED_R4_2A';
+
 export type M3_3HvH4A3PhaseAPreflightRunnerInputV1 = {
   databaseUrl: string;
   roleNames: M3_3HvH4A3PhaseAPreflightRoleNamesV1;
+  /** Default: isolated loopback R4.1 policy. Production requires explicit R4.2A admission. */
+  admissionPolicy?: M3_3HvH4A3PhaseAPreflightAdmissionPolicyV1;
 };
 
 export type M3_3HvH4A3PhaseAPreflightReportV1 = {
@@ -46,6 +52,14 @@ export type M3_3HvH4A3PhaseAPreflightReportV1 = {
   summary: string[];
   /** Present only when M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_QUERY_TELEMETRY=1 (integration tests). */
   testDiagnostics?: { approvedQueryInvocations: number };
+  productionAdmissionEvidence?: {
+    admissionChannel: 'PRODUCTION_AUTHORIZED_R4_2A';
+    approvalId: string;
+    changeTicket: string;
+    approvingAuthority: string;
+    authenticationKind: string;
+    cryptographicAuthentication: false;
+  };
 };
 
 export type M3_3HvH4A3PhaseAPreflightRunnerOutcomeV1 =

@@ -10,6 +10,12 @@ import {
   sanitizePhaseAPreflightErrorV1,
 } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.errors.v1';
 import { evaluatePhaseAPreflightDatabaseAdmissionV1 } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.admission.v1';
+import { evaluatePhaseAPreflightProductionAdmissionV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-admission.v1';
+import { parsePhaseAProductionTargetSpecFromEnvV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-target.v1';
+import {
+  capturePhaseAProductionSessionIdentityV1,
+  validatePhaseAProductionSessionIdentityAgainstSpecV1,
+} from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-session-identity.v1';
 import { M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_QUERY_TELEMETRY_ENV } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.isolated-target.v1';
 import {
   M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_CONTRACT_V1,
@@ -98,9 +104,33 @@ class PhaseATransactionGuardV1 {
 export async function runM3_3HvH4A3PhaseAPreflightV1(
   input: M3_3HvH4A3PhaseAPreflightRunnerInputV1,
 ): Promise<M3_3HvH4A3PhaseAPreflightRunnerOutcomeV1> {
-  const admission = evaluatePhaseAPreflightDatabaseAdmissionV1(input.databaseUrl, process.env);
-  if (!admission.ok) {
-    return { ok: false, reasonCode: admission.reasonCode, status: 'BLOCKED' };
+  const admissionPolicy = input.admissionPolicy ?? 'ISOLATED_R4_1_DEFAULT';
+  let productionAdmissionEvidence:
+    | M3_3HvH4A3PhaseAPreflightReportV1['productionAdmissionEvidence']
+    | undefined;
+
+  if (admissionPolicy === 'PRODUCTION_AUTHORIZED_R4_2A') {
+    const productionAdmission = evaluatePhaseAPreflightProductionAdmissionV1(
+      input.databaseUrl,
+      process.env,
+      { consumeApproval: true },
+    );
+    if (!productionAdmission.ok) {
+      return { ok: false, reasonCode: productionAdmission.reasonCode, status: 'BLOCKED' };
+    }
+    productionAdmissionEvidence = {
+      admissionChannel: productionAdmission.evidence.admissionChannel,
+      approvalId: productionAdmission.evidence.approvalId,
+      changeTicket: productionAdmission.evidence.changeTicket,
+      approvingAuthority: productionAdmission.evidence.approvingAuthority,
+      authenticationKind: productionAdmission.evidence.authenticationKind,
+      cryptographicAuthentication: false,
+    };
+  } else {
+    const admission = evaluatePhaseAPreflightDatabaseAdmissionV1(input.databaseUrl, process.env);
+    if (!admission.ok) {
+      return { ok: false, reasonCode: admission.reasonCode, status: 'BLOCKED' };
+    }
   }
 
   const queryTelemetryEnabled =
@@ -118,6 +148,23 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
 
   try {
     await client.$connect();
+
+    if (admissionPolicy === 'PRODUCTION_AUTHORIZED_R4_2A') {
+      const specParsed = parsePhaseAProductionTargetSpecFromEnvV1(process.env);
+      if (!specParsed.ok) {
+        return { ok: false, reasonCode: specParsed.reasonCode, status: 'BLOCKED' };
+      }
+      const identity = await capturePhaseAProductionSessionIdentityV1(client);
+      const identityOk = validatePhaseAProductionSessionIdentityAgainstSpecV1(
+        identity,
+        specParsed.spec,
+      );
+      if (!identityOk.ok) {
+        return { ok: false, reasonCode: identityOk.reasonCode, status: 'BLOCKED' };
+      }
+      sessionIdentity = { sessionUser: identity.sessionUser, currentUser: identity.currentUser };
+    }
+
     await client.$transaction(
       async (tx) => {
         await tx.$executeRawUnsafe('SET TRANSACTION READ ONLY');
@@ -378,6 +425,7 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
     ...(queryTelemetryEnabled
       ? { testDiagnostics: { approvedQueryInvocations } }
       : {}),
+    ...(productionAdmissionEvidence ? { productionAdmissionEvidence } : {}),
   };
 
   assertNoSecretsInReportPayloadV1(report);

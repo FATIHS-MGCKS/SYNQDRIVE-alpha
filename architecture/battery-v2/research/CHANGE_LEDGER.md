@@ -6,6 +6,19 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R4.2A production Phase-A admission preparation
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Production admission contract (documented human approval + execute ack + one-time consumption); target identity + TLS policy; session identity gate; production ops CLI; operator runbook; reuses R4.1 runner |
+| **WHY** | R4.1 isolated loopback path cannot authorize production; need separate fail-closed gate before any future authorized production read-only run |
+| **VALIDATION** | production admission/target unit specs; postgres integration fixture; HV-H4 CI |
+| **OBSERVED_EFFECT** | `PHASE_A_PRODUCTION_EXECUTE_ACK_REQUIRED` without execute binding; harness forbidden on production path |
+| **NON_EFFECTS** | No production execution in repo slice; no role provisioning; `productionCertification` remains NOT_CERTIFIED |
+| **REMAINING_GAPS** | R4.2B operational production execution gate; cryptographic approval optional future |
+| **DECISION_STATUS** | VALIDATED (repository / isolated fixture) |
+| **EVIDENCE** | `M3_3_HV_H4_A3_3_O2_R4_2A_PRODUCTION_PHASE_A_ADMISSION_2026-10-08.md`; runbook under `architecture/battery-v2/operations/` |
+
 ## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R4.1-H2 admission boundary + merge gate
 
 | Field | Value |
