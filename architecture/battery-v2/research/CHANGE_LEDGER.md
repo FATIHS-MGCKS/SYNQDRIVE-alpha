@@ -6,6 +6,19 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R4.1-H1 security + integration test hardening
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Sanitized stable error codes; isolated-target approval policy (loopback-only fail-closed); runner entry guard; mandatory integration DB env (no silent skips); transaction abort guard; regproc function identity checks; securityCertification=NOT_CERTIFIED |
+| **WHY** | Raw Prisma/URL leakage and hostname blocklists are insufficient; aborted transactions must not continue; integration evidence must fail closed |
+| **VALIDATION** | R4.1 unit + postgres integration specs; HV-H4 CI postgres job |
+| **OBSERVED_EFFECT** | `PHASE_A_INTEGRATION_DATABASE_URL_REQUIRED` when misconfigured; read-only probe records SQLSTATE when present |
+| **NON_EFFECTS** | No production authorization (R4.2); no role provisioning |
+| **REMAINING_GAPS** | O2-R4.2 authorized production read-only execution gate |
+| **DECISION_STATUS** | VALIDATED (repository / isolated fixture) |
+| **EVIDENCE** | `M3_3_HV_H4_A3_3_O2_R4_1_PHASE_A_EXECUTABLE_PREFLIGHT_2026-10-08.md` § H1 |
+
 ## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R4.1 executable Phase-A read-only preflight
 
 | Field | Value |

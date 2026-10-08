@@ -23,8 +23,8 @@ export const M3_3_HV_H4_A3_PHASE_A_QUERY_MANIFEST_V1 = {
     "SELECT migration_name::text, (finished_at IS NOT NULL) AS applied FROM public._prisma_migrations WHERE migration_name LIKE '%battery_hv_h4_a3_integrity_attestation%' ORDER BY migration_name",
   TABLE_OWNER:
     "SELECT c.relname::text AS table_name, pg_get_userbyid(c.relowner)::text AS owner FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = $1 AND c.relname = $2 AND c.relkind = 'r'",
-  FUNCTION_OWNER:
-    'SELECT p.proname::text AS function_name, pg_get_userbyid(p.proowner)::text AS owner FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = $1 AND p.proname = $2',
+  FUNCTION_OWNER_BY_REGPROC:
+    'SELECT $1::text AS regproc_signature, pg_get_userbyid(p.proowner)::text AS owner FROM pg_proc p WHERE p.oid = to_regprocedure($1::text)',
   FUNCTION_EXISTS:
     'SELECT to_regprocedure($1::text) IS NOT NULL AS function_exists',
   HAS_TABLE_PRIVILEGE:

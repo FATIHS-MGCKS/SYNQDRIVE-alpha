@@ -4,19 +4,16 @@ import {
 } from './m3-3-hv-h4-a3-3-o2-r3-h1-postgres-url-identity.v1';
 import type { M3_3HvH4A3PhaseAPreflightRoleNamesV1 } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.types.v1';
 import { M3_3_HV_H4_A3_ATTESTATION_ISSUER_DATABASE_URL_ENV } from './m3-3-hv-h4-a3-3-o2-r3-issuer-runtime-factory.inert.v1';
+import {
+  M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_ISOLATED_TARGET_APPROVED_ENV,
+  validateIsolatedPhaseADatabaseTargetV1,
+} from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.isolated-target.v1';
 
 export const M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_ENABLED_ENV = 'M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_ENABLED' as const;
 export const M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_DATABASE_URL_ENV =
   'M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_DATABASE_URL' as const;
 
-const PRODUCTION_HOST_BLOCKLIST = [
-  'app.synqdrive.eu',
-  'synqdrive.eu',
-  'hstgr.cloud',
-  'hostinger',
-  'production',
-  'prod.',
-] as const;
+export { M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_ISOLATED_TARGET_APPROVED_ENV };
 
 export const DEFAULT_M3_3_HV_H4_A3_PHASE_A_ROLE_NAMES_V1: M3_3HvH4A3PhaseAPreflightRoleNamesV1 = {
   migrationOwner: 'MIGRATION_OWNER',
@@ -37,11 +34,6 @@ function isTruthyEnabled(raw: string | undefined): boolean {
   if (!raw?.trim()) return false;
   const v = raw.trim().toLowerCase();
   return v === '1' || v === 'true' || v === 'yes';
-}
-
-function isBlockedHostname(hostname: string): boolean {
-  const lower = hostname.toLowerCase();
-  return PRODUCTION_HOST_BLOCKLIST.some((token) => lower.includes(token));
 }
 
 export function parseM3_3HvH4A3PhaseAPreflightConfigFromEnvV1(
@@ -74,13 +66,11 @@ export function parseM3_3HvH4A3PhaseAPreflightConfigFromEnvV1(
     }
   }
 
-  try {
-    const parsed = new URL(databaseUrl.replace(/^postgresql:/, 'postgres:'));
-    if (isBlockedHostname(parsed.hostname)) {
-      return { ok: false, reasonCode: 'PHASE_A_PRODUCTION_HOST_BLOCKED' };
-    }
-  } catch {
-    return { ok: false, reasonCode: 'PHASE_A_DATABASE_URL_INVALID' };
+  const isolated = validateIsolatedPhaseADatabaseTargetV1(databaseUrl, env, {
+    requireExplicitApproval: true,
+  });
+  if (!isolated.ok) {
+    return { ok: false, reasonCode: isolated.reasonCode };
   }
 
   if (!parsePostgresUrlLoginV1(databaseUrl)) {

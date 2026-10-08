@@ -39,7 +39,7 @@ async function main(): Promise<void> {
   process.exit(report.phaseAExecutionComplete ? 0 : 3);
 }
 
-main().catch((error) => {
-  console.error('PHASE_A_PREFLIGHT_FATAL', error instanceof Error ? error.message : 'UNKNOWN');
+main().catch(() => {
+  console.error('PHASE_A_PREFLIGHT_FATAL', 'PHASE_A_RUNNER_FAILED');
   process.exit(2);
 });

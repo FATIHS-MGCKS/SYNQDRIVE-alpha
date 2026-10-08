@@ -45,9 +45,29 @@ Spec alignment: `architecture/battery-v2/scripts/m3-3-hv-h4-a3-o2-r3-production-
 **Rejected:**
 
 - Same target as `DATABASE_URL` or `M3_3_HV_H4_A3_ATTESTATION_ISSUER_DATABASE_URL` (canonical host/db/login key)
-- Hostnames matching production blocklist (`app.synqdrive.eu`, `hstgr.cloud`, etc.)
+- Any non-loopback host unless listed in `M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_ISOLATED_HOST_ALLOWLIST` (comma-separated, test-only)
+- Execution without `M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_ISOLATED_TARGET_APPROVED=1`
 
-There is **no** fallback to `DATABASE_URL` for execution.
+There is **no** fallback to `DATABASE_URL` for execution. The reusable runner re-validates isolated targets at entry (defense in depth).
+
+### Integration tests (mandatory evidence)
+
+When `BATTERY_HV_H4_REPORT_INTEGRATION=1`:
+
+- `M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_DATABASE_URL` — required explicit isolated DB URL
+- `M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_ISOLATED_TARGET_APPROVED=1` — required
+
+Missing configuration or unreachable DB **fails** the postgres integration job (no silent skips).
+
+## 4.1 O2-R4.1-H1 hardening (2026-10-08)
+
+| ID | Control |
+|----|---------|
+| **H1-A** | Stable `PHASE_A_*` error codes only in CLI/reports; raw Prisma/PostgreSQL messages never emitted |
+| **H1-B** | Loopback-only isolated target policy + explicit approval flag (config + runner) |
+| **H1-C** | Dedicated integration URL; fail-closed harness |
+| **H1-D** | Aborted transactions stop further SQL; `phaseADiscoveryComplete=false` on ERROR checks |
+| **H1-E** | Function checks use `to_regprocedure` signatures; `securityCertification=NOT_CERTIFIED` always |
 
 ### Operator command (isolated database)
 

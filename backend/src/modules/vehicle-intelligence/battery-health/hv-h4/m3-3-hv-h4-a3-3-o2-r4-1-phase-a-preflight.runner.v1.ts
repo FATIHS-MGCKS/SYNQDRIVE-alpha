@@ -6,6 +6,11 @@ import {
 } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.query-manifest.v1';
 import { redactPostgresDatabaseTargetV1, assertNoSecretsInReportPayloadV1 } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.redaction.v1';
 import {
+  formatPhaseAPreflightPublicErrorV1,
+  sanitizePhaseAPreflightErrorV1,
+} from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.errors.v1';
+import { validateIsolatedPhaseADatabaseTargetV1 } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.isolated-target.v1';
+import {
   M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_CONTRACT_V1,
   type M3_3HvH4A3PhaseAPreflightCheckResultV1,
   type M3_3HvH4A3PhaseAPreflightReportV1,
@@ -16,11 +21,23 @@ import {
 const ATTESTATION_TABLE = 'battery_hv_charge_session_evidence_integrity_attestations';
 const REVISION_TABLE = 'battery_hv_charge_session_evidence_revisions';
 const ACK_TABLE = 'battery_hv_charge_session_evidence_acks';
-const LOCK_FUNCTION_REGPROC = 'public.m3_3_hv_h4_a3_lock_revision_and_ack_for_issuance_v1(text)';
-const TRUSTED_FUNCTION_NAMES = [
-  'm3_3_hv_h4_a3_lock_revision_and_ack_for_issuance_v1',
-  'm3_3_hv_h4_a3_invalidate_attestations_for_revision_v1',
-  'm3_3_hv_h4_a3_invalidate_attestations_for_ack_v1',
+
+export const M3_3_HV_H4_A3_PHASE_A_TRUSTED_FUNCTION_REGPROC_V1 = [
+  'public.m3_3_hv_h4_a3_lock_revision_and_ack_for_issuance_v1(text)',
+  'public.m3_3_hv_h4_a3_invalidate_attestations_for_revision_v1()',
+  'public.m3_3_hv_h4_a3_invalidate_attestations_for_ack_v1()',
+] as const;
+
+const LOCK_FUNCTION_REGPROC = M3_3_HV_H4_A3_PHASE_A_TRUSTED_FUNCTION_REGPROC_V1[0];
+
+const PHASE_A_CHECK_ORDER_V1 = [
+  'PHASE_A_SESSION_CONTEXT',
+  'PHASE_A_PGCRYPTO_STATUS',
+  'PHASE_A_ROLE_DISCOVERY',
+  'PHASE_A_MIGRATION_HISTORY',
+  'PHASE_A_TABLE_OWNERSHIP_SNAPSHOT',
+  'PHASE_A_FUNCTION_OWNERSHIP_SNAPSHOT',
+  'PHASE_A_EFFECTIVE_PRIVILEGES_IF_ROLES_EXIST',
 ] as const;
 
 function assertSafeRoleNameV1(roleName: string): void {
@@ -46,9 +63,47 @@ function pushCheck(
   checks.push(check);
 }
 
+function orderChecksV1(
+  checks: M3_3HvH4A3PhaseAPreflightCheckResultV1[],
+): M3_3HvH4A3PhaseAPreflightCheckResultV1[] {
+  const rank = new Map<string, number>();
+  PHASE_A_CHECK_ORDER_V1.forEach((id, index) => rank.set(id, index));
+  return [...checks].sort((a, b) => {
+    const ar = rank.get(a.checkId) ?? 999;
+    const br = rank.get(b.checkId) ?? 999;
+    if (ar !== br) return ar - br;
+    return a.detail?.localeCompare(b.detail ?? '') ?? 0;
+  });
+}
+
+class PhaseATransactionGuardV1 {
+  private aborted = false;
+
+  assertActive(): void {
+    if (this.aborted) {
+      throw new Error('PHASE_A_TRANSACTION_ABORTED');
+    }
+  }
+
+  markAborted(): void {
+    this.aborted = true;
+  }
+
+  isAborted(): boolean {
+    return this.aborted;
+  }
+}
+
 export async function runM3_3HvH4A3PhaseAPreflightV1(
   input: M3_3HvH4A3PhaseAPreflightRunnerInputV1,
 ): Promise<M3_3HvH4A3PhaseAPreflightRunnerOutcomeV1> {
+  const targetValidation = validateIsolatedPhaseADatabaseTargetV1(input.databaseUrl, process.env, {
+    requireExplicitApproval: input.requireIsolatedTargetApproval ?? true,
+  });
+  if (!targetValidation.ok) {
+    return { ok: false, reasonCode: targetValidation.reasonCode, status: 'BLOCKED' };
+  }
+
   const client = new PrismaClient({
     datasources: { db: { url: input.databaseUrl } },
   });
@@ -56,6 +111,7 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
   const checks: M3_3HvH4A3PhaseAPreflightCheckResultV1[] = [];
   let sessionIdentity: { sessionUser: string; currentUser: string } | undefined;
   let hadError = false;
+  const txGuard = new PhaseATransactionGuardV1();
 
   try {
     await client.$connect();
@@ -63,10 +119,23 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
       async (tx) => {
         await tx.$executeRawUnsafe('SET TRANSACTION READ ONLY');
 
-        const sessionRows = await runApprovedQueryV1<{
+        const runQuery = async <T>(
+          manifestId: M3_3HvH4A3PhaseAQueryManifestIdV1,
+          params: unknown[] = [],
+        ): Promise<T[]> => {
+          txGuard.assertActive();
+          try {
+            return await runApprovedQueryV1<T>(tx, manifestId, params);
+          } catch (error) {
+            txGuard.markAborted();
+            throw error;
+          }
+        };
+
+        const sessionRows = await runQuery<{
           session_user: string;
           current_user: string;
-        }>(tx, 'SESSION_CONTEXT');
+        }>('SESSION_CONTEXT');
         const sessionRow = sessionRows[0];
         if (!sessionRow?.session_user || !sessionRow.current_user) {
           hadError = true;
@@ -87,11 +156,13 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
           });
         }
 
-        const pgcryptoRows = await runApprovedQueryV1<{
+        if (txGuard.isAborted()) return;
+
+        const pgcryptoRows = await runQuery<{
           extname: string;
           extversion: string;
           extension_owner: string;
-        }>(tx, 'PGCRYPTO_STATUS');
+        }>('PGCRYPTO_STATUS');
         if (pgcryptoRows.length === 0) {
           pushCheck(checks, {
             checkId: 'PHASE_A_PGCRYPTO_STATUS',
@@ -107,13 +178,14 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
         }
 
         for (const [roleKey, roleName] of Object.entries(input.roleNames)) {
+          if (txGuard.isAborted()) return;
           assertSafeRoleNameV1(roleName);
-          const roleRows = await runApprovedQueryV1<{
+          const roleRows = await runQuery<{
             rolname: string;
             rolcanlogin: boolean;
             rolsuper: boolean;
             rolcreaterole: boolean;
-          }>(tx, 'ROLE_BY_NAME', [roleName]);
+          }>('ROLE_BY_NAME', [roleName]);
           if (roleRows.length === 0) {
             pushCheck(checks, {
               checkId: 'PHASE_A_ROLE_DISCOVERY',
@@ -131,8 +203,9 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
           }
         }
 
-        const prismaMigrationsReg = await runApprovedQueryV1<{ regclass_name: string | null }>(
-          tx,
+        if (txGuard.isAborted()) return;
+
+        const prismaMigrationsReg = await runQuery<{ regclass_name: string | null }>(
           'REGCLASS_PRISMA_MIGRATIONS',
         );
         const migrationsPresent = Boolean(prismaMigrationsReg[0]?.regclass_name);
@@ -144,8 +217,7 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
           });
         } else {
           try {
-            const migrations = await runApprovedQueryV1<{ migration_name: string; applied: boolean }>(
-              tx,
+            const migrations = await runQuery<{ migration_name: string; applied: boolean }>(
               'MIGRATION_HISTORY_ATTESTATION',
             );
             pushCheck(checks, {
@@ -155,22 +227,28 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
             });
           } catch (error) {
             hadError = true;
+            const sanitized = sanitizePhaseAPreflightErrorV1(error);
             pushCheck(checks, {
               checkId: 'PHASE_A_MIGRATION_HISTORY',
               status: 'ERROR',
-              detail: error instanceof Error ? error.message : 'MIGRATION_QUERY_FAILED',
+              detail: sanitized.reasonCode,
+              data: sanitized.sqlState ? { sqlState: sanitized.sqlState } : undefined,
             });
+            return;
           }
         }
 
+        if (txGuard.isAborted()) return;
+
         for (const tableName of [ATTESTATION_TABLE, REVISION_TABLE, ACK_TABLE]) {
+          if (txGuard.isAborted()) return;
           const manifestId =
             tableName === ATTESTATION_TABLE
               ? 'REGCLASS_ATTESTATION_TABLE'
               : tableName === REVISION_TABLE
                 ? 'REGCLASS_REVISION_TABLE'
                 : 'REGCLASS_ACK_TABLE';
-          const reg = await runApprovedQueryV1<{ regclass_name: string | null }>(tx, manifestId);
+          const reg = await runQuery<{ regclass_name: string | null }>(manifestId);
           if (!reg[0]?.regclass_name) {
             pushCheck(checks, {
               checkId: 'PHASE_A_TABLE_OWNERSHIP_SNAPSHOT',
@@ -179,11 +257,10 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
             });
             continue;
           }
-          const owners = await runApprovedQueryV1<{ table_name: string; owner: string }>(
-            tx,
-            'TABLE_OWNER',
-            ['public', tableName],
-          );
+          const owners = await runQuery<{ table_name: string; owner: string }>('TABLE_OWNER', [
+            'public',
+            tableName,
+          ]);
           pushCheck(checks, {
             checkId: 'PHASE_A_TABLE_OWNERSHIP_SNAPSHOT',
             status: 'PASS',
@@ -191,24 +268,27 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
           });
         }
 
-        for (const functionName of TRUSTED_FUNCTION_NAMES) {
-          const ownerRows = await runApprovedQueryV1<{ function_name: string; owner: string }>(
-            tx,
-            'FUNCTION_OWNER',
-            ['public', functionName],
+        if (txGuard.isAborted()) return;
+
+        for (const regprocSignature of M3_3_HV_H4_A3_PHASE_A_TRUSTED_FUNCTION_REGPROC_V1) {
+          if (txGuard.isAborted()) return;
+          const ownerRows = await runQuery<{ regproc_signature: string; owner: string }>(
+            'FUNCTION_OWNER_BY_REGPROC',
+            [regprocSignature],
           );
           pushCheck(checks, {
             checkId: 'PHASE_A_FUNCTION_OWNERSHIP_SNAPSHOT',
             status: ownerRows.length ? 'PASS' : 'NOT_PRESENT',
-            data: ownerRows[0] ?? { functionName },
+            data: ownerRows[0] ?? { regprocSignature },
           });
         }
 
+        if (txGuard.isAborted()) return;
+
         const appRole = input.roleNames.generalAppRuntime;
         assertSafeRoleNameV1(appRole);
-        const appRoleRows = await runApprovedQueryV1(tx, 'ROLE_BY_NAME', [appRole]);
-        const attestationReg = await runApprovedQueryV1<{ regclass_name: string | null }>(
-          tx,
+        const appRoleRows = await runQuery('ROLE_BY_NAME', [appRole]);
+        const attestationReg = await runQuery<{ regclass_name: string | null }>(
           'REGCLASS_ATTESTATION_TABLE',
         );
         if (appRoleRows.length === 0 || !attestationReg[0]?.regclass_name) {
@@ -221,24 +301,22 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
           const regclass = attestationReg[0].regclass_name!;
           const privileges: Record<string, boolean> = {};
           for (const priv of ['INSERT', 'UPDATE', 'DELETE'] as const) {
-            const rows = await runApprovedQueryV1<{ allowed: boolean }>(tx, 'HAS_TABLE_PRIVILEGE', [
+            const rows = await runQuery<{ allowed: boolean }>('HAS_TABLE_PRIVILEGE', [
               appRole,
               regclass,
               priv,
             ]);
             privileges[`app_${priv.toLowerCase()}_attestation`] = rows[0]?.allowed === true;
           }
-          const lockExists = await runApprovedQueryV1<{ function_exists: boolean }>(
-            tx,
-            'FUNCTION_EXISTS',
-            [LOCK_FUNCTION_REGPROC],
-          );
+          const lockExists = await runQuery<{ function_exists: boolean }>('FUNCTION_EXISTS', [
+            LOCK_FUNCTION_REGPROC,
+          ]);
           if (lockExists[0]?.function_exists) {
-            const execRows = await runApprovedQueryV1<{ allowed: boolean }>(
-              tx,
-              'HAS_FUNCTION_PRIVILEGE',
-              [appRole, LOCK_FUNCTION_REGPROC, 'EXECUTE'],
-            );
+            const execRows = await runQuery<{ allowed: boolean }>('HAS_FUNCTION_PRIVILEGE', [
+              appRole,
+              LOCK_FUNCTION_REGPROC,
+              'EXECUTE',
+            ]);
             privileges.app_execute_lock = execRows[0]?.allowed === true;
           }
           pushCheck(checks, {
@@ -252,22 +330,28 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
     );
   } catch (error) {
     await client.$disconnect().catch(() => undefined);
+    const sanitized = sanitizePhaseAPreflightErrorV1(error);
     return {
       ok: false,
-      reasonCode: error instanceof Error ? error.message : 'PHASE_A_RUNNER_FAILED',
+      reasonCode: formatPhaseAPreflightPublicErrorV1(sanitized),
       status: 'ERROR',
     };
   }
 
   await client.$disconnect();
 
+  const orderedChecks = orderChecksV1(checks);
+  const discoveryComplete = !hadError && !checks.some((c) => c.status === 'ERROR');
+
   const summary: string[] = [];
-  summary.push(`phase=PRE_PROVISION_READ_ONLY checks=${checks.length}`);
-  summary.push(`phase_b_certified=NOT_CERTIFIED`);
-  if (checks.some((c) => c.status === 'NOT_PROVISIONED')) {
+  summary.push(`phase=PRE_PROVISION_READ_ONLY checks=${orderedChecks.length}`);
+  summary.push('discovery_complete=' + (discoveryComplete ? 'YES' : 'NO'));
+  summary.push('phase_b_certified=NOT_CERTIFIED');
+  summary.push('security_certified=NOT_CERTIFIED');
+  if (orderedChecks.some((c) => c.status === 'NOT_PROVISIONED')) {
     summary.push('roles=NOT_PROVISIONED_PRESENT');
   }
-  if (checks.some((c) => c.status === 'NOT_PRESENT')) {
+  if (orderedChecks.some((c) => c.status === 'NOT_PRESENT')) {
     summary.push('objects=NOT_PRESENT');
   }
 
@@ -277,11 +361,13 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
     executedAt: new Date().toISOString(),
     databaseTargetRedacted: redactPostgresDatabaseTargetV1(input.databaseUrl),
     sessionIdentity,
-    checks,
-    phaseAExecutionComplete: !hadError,
+    checks: orderedChecks,
+    phaseADiscoveryComplete: discoveryComplete,
+    phaseAExecutionComplete: discoveryComplete,
     phaseBCertified: false,
     phaseBCertificationStatus: 'NOT_CERTIFIED',
     productionCertification: 'NOT_CERTIFIED',
+    securityCertification: 'NOT_CERTIFIED',
     summary,
   };
 
@@ -290,10 +376,16 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
   return { ok: true, report };
 }
 
-/** Test helper — proves READ ONLY transaction rejects mutations. */
+export type M3_3HvH4A3PhaseAPreflightReadOnlyProbeResultV1 = {
+  enforced: true;
+  sqlState?: string;
+  reasonCode: string;
+};
+
+/** Proves READ ONLY transaction rejects mutations (SQLSTATE when available). */
 export async function assertM3_3HvH4A3PhaseAPreflightReadOnlyRejectsMutationV1(
   databaseUrl: string,
-): Promise<void> {
+): Promise<M3_3HvH4A3PhaseAPreflightReadOnlyProbeResultV1> {
   const client = new PrismaClient({ datasources: { db: { url: databaseUrl } } });
   await client.$connect();
   try {
@@ -303,11 +395,15 @@ export async function assertM3_3HvH4A3PhaseAPreflightReadOnlyRejectsMutationV1(
     });
     throw new Error('PHASE_A_READ_ONLY_NOT_ENFORCED');
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (message.includes('PHASE_A_READ_ONLY_NOT_ENFORCED')) {
+    if (error instanceof Error && error.message === 'PHASE_A_READ_ONLY_NOT_ENFORCED') {
       throw error;
     }
-    // expected: cannot execute CREATE in read-only transaction
+    const sanitized = sanitizePhaseAPreflightErrorV1(error);
+    return {
+      enforced: true,
+      sqlState: sanitized.sqlState,
+      reasonCode: sanitized.reasonCode,
+    };
   } finally {
     await client.$disconnect();
   }

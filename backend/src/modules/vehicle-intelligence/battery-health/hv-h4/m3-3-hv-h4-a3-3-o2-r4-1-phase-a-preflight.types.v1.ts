@@ -25,6 +25,8 @@ export type M3_3HvH4A3PhaseAPreflightRoleNamesV1 = {
 export type M3_3HvH4A3PhaseAPreflightRunnerInputV1 = {
   databaseUrl: string;
   roleNames: M3_3HvH4A3PhaseAPreflightRoleNamesV1;
+  /** When true (default), require M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_ISOLATED_TARGET_APPROVED. */
+  requireIsolatedTargetApproval?: boolean;
 };
 
 export type M3_3HvH4A3PhaseAPreflightReportV1 = {
@@ -34,12 +36,15 @@ export type M3_3HvH4A3PhaseAPreflightReportV1 = {
   databaseTargetRedacted: string;
   sessionIdentity?: { sessionUser: string; currentUser: string };
   checks: M3_3HvH4A3PhaseAPreflightCheckResultV1[];
-  /** Phase A discovery complete without runner ERROR — missing objects may be NOT_PRESENT/NOT_PROVISIONED. */
+  /** Discovery checks finished without ERROR — does not certify production security. */
+  phaseADiscoveryComplete: boolean;
+  /** Legacy alias — same semantics as phaseADiscoveryComplete. */
   phaseAExecutionComplete: boolean;
   /** Always false in O2-R4.1 — Phase B is not certified by this runner. */
   phaseBCertified: false;
   phaseBCertificationStatus: 'NOT_CERTIFIED';
   productionCertification: 'NOT_CERTIFIED';
+  securityCertification: 'NOT_CERTIFIED';
   summary: string[];
 };
 
