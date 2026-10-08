@@ -3,7 +3,9 @@
 **Date (UTC):** 2026-10-08  
 **Scope:** Operator-readable **Go/No-Go assessment** only. **Does not** grant live authorization, JIT, or `DRY_RUN=0`.
 
-## Executive summary (operator)
+**Historische Feststellung:** Abschnitte 1–7 und der Maschinenblock unten sind der **Prüfzeitpunkt vor Merge von PR #1924** (unverändert).
+
+## Executive summary (operator) — historisch @ Prüfzeitpunkt
 
 | Question | Answer |
 |----------|--------|
@@ -125,7 +127,28 @@ No contradictions found between AA, AA.1, and AB **content**; **main** lacks AB 
 
 ---
 
-## Machine block (operator)
+## AKTUELL — Post-merge authority addendum (S4F-7AC.2, 2026-10-08)
+
+| Field | Value (unabhängig verifiziert) |
+|-------|--------------------------------|
+| `PR1924_MERGED` | **YES** @ merge `17c49854df4aa1a337561cfc9fc7a6b3c6723941` |
+| `CURRENT_MAIN_SHA` | `17c49854df4aa1a337561cfc9fc7a6b3c6723941` |
+| `S4F7AB_EVIDENCE_ON_MAIN` | **YES** — `EXP021_S4F7AB_HARDENED_PRODUCTION_DRY_RUN_CERTIFICATION.md` |
+| `SEALED_S4F7Y_TOOL_SHA` | **unchanged** `715dea5648ebb862eeedfc30e7dc3d3cd57bb02c` |
+| `AA1_BOOTSTRAP_SCRIPT_SHA256` | **unchanged** `007eb88581d26cc52447ea96635a1f707931f0f102a21cd395fd843f743b8351` |
+| `S4F7AB_HARDENED_DRY_RUN` | **PASS** (historical; JIT **not reusable**) |
+| `TEMP_ARTIFACT_CLEANUP` | **NOT_VERIFIED** |
+| `NEW_JIT_AUTHORITY` | **none** |
+| `EXPLICIT_HUMAN_LIVE_AUTHORIZATION` | **NO** |
+| `PRODUCTION_DRY_RUN_0` | **NO** |
+| `LIVE_STAGING_READINESS` | **NOT_READY** |
+| `GATE_6` | **NOT_SATISFIED** |
+
+S4F-7AB certifies **DRY_RUN=1** hardened bootstrap only — **not** live-staging authorization or Production live validation of S4F-7Y.
+
+---
+
+## Machine block (operator) — historisch @ Prüfzeitpunkt
 
 ```
 EXP021_S4F7AC_LIVE_STAGING_READINESS_REVIEW_RESULT=COMPLETE

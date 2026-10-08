@@ -1569,6 +1569,22 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | **No-Go** for live `DRY_RUN=0` — `PR1924_MERGED=NO` **at audit time**; `EXPLICIT_HUMAN_AUTHORIZATION_PRESENT=NO`; S4F-7L proc-env class addressed in S4F-7Y metrics path (engineering); no Production S4F-7Y live run yet |
 | NON_EFFECTS | No JIT packet; no live authorization; Gate 6 **NOT_SATISFIED** |
 
+### EXP-021 S4F-7AC.1 PR #1924 CI closure (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Evidence `EXP021_S4F7AC1_PR1924_CI_CLOSURE.md` (read-only) |
+| FINDING | **`MERGE_READINESS=READY_FOR_HUMAN_MERGE`** @ head `b506f3904…` **at review time**; run `37760943334` **success**; `PR_MERGED=NO` **at review time** |
+| NON_EFFECTS | No auto-merge; Gate 6 **NOT_SATISFIED** |
+
+### EXP-021 S4F-7AC.2 PR #1925 rebase & post-merge authority (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Rebase PR **#1925** onto `main` @ `17c49854d`; AKTUELL addenda in S4F-7AC / S4F-7AC.1 evidence (historical blocks preserved) |
+| FINDING | PR **#1924** merged; S4F-7AB evidence on `main`; live staging **still NOT_READY**; no new JIT; temp cleanup **NOT_VERIFIED** |
+| NON_EFFECTS | No Production access; no live authorization; Gate 6 **NOT_SATISFIED** |
+
 ### EXP-021 S4F-7AB hardened bootstrap Production dry-run certification (2026-10-08)
 
 | Event | Detail |
