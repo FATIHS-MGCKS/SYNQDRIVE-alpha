@@ -54,13 +54,6 @@ export async function ensureM3_3HvH4A3O2R2PostgresRolesV1(prisma: PrismaClient):
     `GRANT USAGE ON SCHEMA public TO ${M3_3_HV_H4_A3_O2_R2_APP_LOGIN_ROLE}, ${M3_3_HV_H4_A3_O2_R2_ISSUER_LOGIN_ROLE}`,
   );
   await prisma.$executeRawUnsafe(
-    `GRANT SELECT ON ${REVISION_TABLE}, ${ACK_TABLE} TO ${M3_3_HV_H4_A3_O2_R2_ISSUER_LOGIN_ROLE}`,
-  );
-  await prisma.$executeRawUnsafe(`GRANT INSERT ON ${ATTESTATION_TABLE} TO ${M3_3_HV_H4_A3_O2_R2_ISSUER_LOGIN_ROLE}`);
-  await prisma.$executeRawUnsafe(
-    `GRANT EXECUTE ON FUNCTION public.m3_3_hv_h4_a3_lock_revision_and_ack_for_issuance_v1(text) TO ${M3_3_HV_H4_A3_O2_R2_ISSUER_LOGIN_ROLE}`,
-  );
-  await prisma.$executeRawUnsafe(
     `GRANT UPDATE ON ${REVISION_TABLE}, ${ACK_TABLE} TO ${M3_3_HV_H4_A3_O2_R2_APP_LOGIN_ROLE}`,
   );
   await prisma.$executeRawUnsafe(
@@ -104,28 +97,49 @@ export async function ensureM3_3HvH4A3O2R2PostgresRolesV1(prisma: PrismaClient):
   );
 }
 
-/** CI/admin session may SET ROLE; production topology not certified. */
-export async function createDedicatedPostgresSessionClientV1(role: string): Promise<PrismaClient> {
-  const client = new PrismaClient();
-  await client.$connect();
-  await client.$executeRawUnsafe(`SET ROLE ${role}`);
-  return client;
-}
-
-/** Dedicated non-superuser login (restricted app privileges only). */
-function buildLoginDatabaseUrlV1(loginRole: string, password: string): string | null {
+function buildLoginDatabaseUrlV1(loginRole: string, password: string): string | undefined {
   const base = process.env.DATABASE_URL;
-  if (!base) return null;
+  if (!base) return undefined;
   try {
     const parsed = new URL(base.replace(/^postgresql:/, 'postgres:'));
     parsed.username = loginRole;
     parsed.password = password;
     return parsed.toString().replace(/^postgres:/, 'postgresql:');
   } catch {
-    return null;
+    return undefined;
   }
 }
 
+/**
+ * CI-only: connection scoped to a PostgreSQL role via startup options (not issuer application code).
+ * Production must use separate credentials/pools — not certified here.
+ */
+export function buildRoleScopedDatabaseUrlV1(pgRole: string): string | undefined {
+  const base = process.env.DATABASE_URL;
+  if (!base) return undefined;
+  try {
+    const parsed = new URL(base.replace(/^postgresql:/, 'postgres:'));
+    const roleFlag = `-c role=${pgRole}`;
+    const existing = parsed.searchParams.get('options');
+    parsed.searchParams.set('options', existing ? `${existing} ${roleFlag}` : roleFlag);
+    return parsed.toString().replace(/^postgres:/, 'postgresql:');
+  } catch {
+    return undefined;
+  }
+}
+
+/** CI/admin may SET ROLE on pooled connections; production topology not certified. */
+export async function createDedicatedPostgresSessionClientV1(role: string): Promise<PrismaClient> {
+  const url = buildRoleScopedDatabaseUrlV1(role);
+  if (!url) {
+    throw new Error(`O2-R2: cannot build role-scoped DATABASE_URL for ${role}`);
+  }
+  const client = new PrismaClient({ datasources: { db: { url } } });
+  await client.$connect();
+  return client;
+}
+
+/** Non-superuser CI login inheriting restricted app role only (SET ROLE isolation proof). */
 export async function createRestrictedAppLoginPostgresClientV1(): Promise<PrismaClient | undefined> {
   const url = buildLoginDatabaseUrlV1(M3_3_HV_H4_A3_O2_R2_APP_LOGIN_ROLE, APP_LOGIN_PASSWORD);
   if (!url) return undefined;
@@ -134,8 +148,18 @@ export async function createRestrictedAppLoginPostgresClientV1(): Promise<Prisma
   return client;
 }
 
+/** Restricted app privileges on a dedicated connection (concurrency / mutation tests). */
+export async function createRestrictedAppRoleScopedPostgresClientV1(): Promise<PrismaClient | undefined> {
+  const url = buildRoleScopedDatabaseUrlV1(M3_3_HV_H4_A3_O2_R2_RESTRICTED_APP_ROLE);
+  if (!url) return undefined;
+  const client = new PrismaClient({ datasources: { db: { url } } });
+  await client.$connect();
+  return client;
+}
+
+/** Trusted issuer DB identity (role-scoped connection — no dynamic SET ROLE in issuer code). */
 export async function createIssuerLoginPostgresClientV1(): Promise<PrismaClient | undefined> {
-  const url = buildLoginDatabaseUrlV1(M3_3_HV_H4_A3_O2_R2_ISSUER_LOGIN_ROLE, ISSUER_LOGIN_PASSWORD);
+  const url = buildRoleScopedDatabaseUrlV1(M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE);
   if (!url) return undefined;
   const client = new PrismaClient({ datasources: { db: { url } } });
   await client.$connect();

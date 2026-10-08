@@ -13,7 +13,7 @@ import {
 } from './m3-3-hv-h4-a3-3-o2-isolated-attestation-issuer.v1';
 import {
   createIssuerLoginPostgresClientV1,
-  createRestrictedAppLoginPostgresClientV1,
+  createRestrictedAppRoleScopedPostgresClientV1,
   ensureM3_3HvH4A3O2R2PostgresRolesV1,
   M3_3_HV_H4_A3_O2_R2_TRUSTED_ISSUER_ROLE,
 } from './m3-3-hv-h4-a3-3-o2-r2-postgres-roles.fixture';
@@ -54,7 +54,7 @@ describe('M3.3-HV-H4-A3.3-O2-R2-H1 true issuer concurrency (PostgreSQL)', () => 
     admin = new PrismaClient();
     await ensureM3_3HvH4A3O2R2PostgresRolesV1(admin);
     issuerDb = await createIssuerLoginPostgresClientV1();
-    appDb = await createRestrictedAppLoginPostgresClientV1();
+    appDb = await createRestrictedAppRoleScopedPostgresClientV1();
     if (!issuerDb || !appDb) {
       throw new Error('O2-R2-H1: failed to create dedicated issuer/app login PostgreSQL clients');
     }
