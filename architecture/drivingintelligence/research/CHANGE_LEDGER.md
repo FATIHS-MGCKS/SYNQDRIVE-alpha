@@ -1545,6 +1545,54 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | **`EXACT_HEAD_CI_CERTIFIED=YES`** @ `715dea5648ebb862eeedfc30e7dc3d3cd57bb02c` — Vehicle/Legal CI reruns **success** (attempt 2); **`TOOL_BLOB_PARITY=PASS`** vs squash `123ec54e7…` + `main`; **`EXPECTED_FRESH_TINY_STAGING_TOOL_SHA` sealed** @ `715dea564…`; superseded S4F-7W checkout pin `11b4a80cc…` for post–S4F-7Y tooling |
 | NON_EFFECTS | No Production access/mutation; no new JIT authority; S4F-7X dry-run evidence unchanged; Gate 6 **NOT_SATISFIED** |
 
+### EXP-021 S4F-7AA fresh JIT Production dry-run (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Bootstrap `.cursor/scripts/cloud-agent-s4f7aa-fresh-jit-production-dry-run.sh`; evidence `EXP021_S4F7AA_FRESH_JIT_PRODUCTION_DRY_RUN.md` |
+| FINDING | **`FINAL_RESULT=PASS`** — tool `715dea564…`; Production `DRY_RUN=1` full guard path; JIT `2026-10-08T09:00:32.909Z` age **20.296s**; PRE/POST SHA/env/PID/attestation parity; **`NO_BACKFILL_GATE=PASS`** |
+| NON_EFFECTS | No `DI_S4F7Y_LIVE_STAGING_AUTHORIZED`; no env write/restart/DB write/provider calls; Gate 6 **NOT_SATISFIED** |
+
+### EXP-021 S4F-7AA.1 operator & evidence hardening (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `lib/cloud-agent-s4f7aa-tool-pin.lib.sh`; bootstrap hardening; `cloud-agent-s4f7aa-tool-pin.test.sh`; evidence `EXP021_S4F7AA1_OPERATOR_EVIDENCE_HARDENING.md` |
+| FINDING | Reproduced dead stale-pin guard (D1), runtime `chmod` (D2), declared-only side-effect lines (D3–D4); historical S4F-7AA PASS preserved; AA.1 bootstrap **not** Production re-validated |
+| NON_EFFECTS | No Production rerun; no sealed operator file edits; Gate 6 **NOT_SATISFIED** |
+
+### EXP-021 S4F-7AC live-staging readiness review (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Evidence `EXP021_S4F7AC_LIVE_STAGING_READINESS_REVIEW.md` (read-only) |
+| FINDING | **No-Go** for live `DRY_RUN=0` — `PR1924_MERGED=NO` **at audit time**; `EXPLICIT_HUMAN_AUTHORIZATION_PRESENT=NO`; S4F-7L proc-env class addressed in S4F-7Y metrics path (engineering); no Production S4F-7Y live run yet |
+| NON_EFFECTS | No JIT packet; no live authorization; Gate 6 **NOT_SATISFIED** |
+
+### EXP-021 S4F-7AC.1 PR #1924 CI closure (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Evidence `EXP021_S4F7AC1_PR1924_CI_CLOSURE.md` (read-only) |
+| FINDING | **`MERGE_READINESS=READY_FOR_HUMAN_MERGE`** @ head `b506f3904…` **at review time**; run `37760943334` **success**; `PR_MERGED=NO` **at review time** |
+| NON_EFFECTS | No auto-merge; Gate 6 **NOT_SATISFIED** |
+
+### EXP-021 S4F-7AC.2 PR #1925 rebase & post-merge authority (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Rebase PR **#1925** onto `main` @ `17c49854d`; AKTUELL addenda in S4F-7AC / S4F-7AC.1 evidence (historical blocks preserved) |
+| FINDING | PR **#1924** merged; S4F-7AB evidence on `main`; live staging **still NOT_READY**; no new JIT; temp cleanup **NOT_VERIFIED** |
+| NON_EFFECTS | No Production access; no live authorization; Gate 6 **NOT_SATISFIED** |
+
+### EXP-021 S4F-7AB hardened bootstrap Production dry-run certification (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Evidence `EXP021_S4F7AB_HARDENED_PRODUCTION_DRY_RUN_CERTIFICATION.md`; AA.1 canonical `BOOTSTRAP_SCRIPT_SHA256` row |
+| FINDING | **`FINAL_RESULT=PASS`** — first Production run of AA.1 bootstrap @ merge `9e40c969d` / SHA `007eb885…`; JIT `2026-10-08T10:01:53.161Z`; POST S4 SQL parity + wrapper-measured mutation/restart/delta |
+| NON_EFFECTS | No live authorization; no env write/restart/S4 activation; Gate 6 **NOT_SATISFIED** |
+
 ### EXP-021 S4F-7T current Production attestation supersession closure (2026-10-06)
 
 | Event | Detail |
