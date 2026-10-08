@@ -1682,6 +1682,21 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | Production `ee958854…` unchanged; GLOBAL row **missing**; S4 counts **0**; initializer @ deployed SHA **safe**; postgres concurrency tests **PASS**; **`DB_KILL_INITIALIZATION_READINESS=BLOCKED`** — `PRODUCTION_EXECUTION_WRAPPER_REQUIRED` |
 | NON_EFFECTS | No initializer execution, no Production DB/env/deploy/restart, no Tiny/operator grant |
 
+### EXP-021 S4F-7AI S4F-7AH bootstrap authority migration (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `cloud-agent-s4f7ai-fresh-jit-production-dry-run.sh` + `lib/cloud-agent-s4f7ai-tool-pin.lib.sh` + `cloud-agent-s4f7ai-tool-pin.test.sh`; evidence `EXP021_S4F7AI_NEW_TOOL_BOOTSTRAP_AUTHORITY.md` |
+| AUTHORITY | Reads `NEW_EXPECTED_FRESH_TINY_STAGING_TOOL_SHA` from S4F-7AH evidence only @ `ed78748bc…`; six-file blob + stale-pin fail-closed; AA.1 Z2 bootstrap **unchanged** |
+| NON_EFFECTS | No Production SSH/env/deploy/restart; no `DRY_RUN=0`; no live auth reuse; Production dry-run **not** executed in slice |
+
+### EXP-021 S4F-7AI.1 bootstrap safety closure (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Reject legacy `DI_S4F7V_LIVE_STAGING_AUTHORIZED=YES`; remote unset both live flags; `S4F7AI_SKIP_DETACHED_FETCH` only with `S4F7AI_SKIP_PRODUCTION_DISPATCH=1` |
+| NON_EFFECTS | Certified tool SHA unchanged; AA.1 bootstrap unchanged; no Production dispatch |
+
 ### EXP-021 S4F-7AH post-merge tool authority seal (2026-10-08)
 
 | Event | Detail |
