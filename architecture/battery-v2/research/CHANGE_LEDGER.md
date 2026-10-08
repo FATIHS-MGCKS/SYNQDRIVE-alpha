@@ -13,7 +13,7 @@ Append-only scientific record. Newest entries first.
 | **CHANGE** | Remove caller-controlled `SET ROLE`; issuer-bound `issuerDb` session; R2-H1 `SECURITY DEFINER` lock function; true two-connection concurrency R2_H1_C1–C7 |
 | **WHY** | Dynamic role interpolation is not production-safe; SELECT-only issuer cannot `FOR UPDATE` without narrow lock authority |
 | **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r2-h1-*` postgres specs; HV-H4 CI |
-| **OBSERVED_EFFECT** | `RECOMMENDED_LOCK_AUTHORITY_MODEL=SECURITY_DEFINER_NARROW_ROW_LOCK_V1`; issuer/app session separation in CI |
+| **OBSERVED_EFFECT** | `RECOMMENDED_LOCK_AUTHORITY_MODEL=SECURITY_DEFINER_NARROW_ROW_LOCK_V1`; issuer/app session separation in CI; issuer `SELECT` on attestation for Prisma `RETURNING`; `withPostgresRoleV1` no `RESET ROLE` after `SET LOCAL` |
 | **NON_EFFECTS** | No Nest wiring; no production credentials; SQL issuance still deferred |
 | **REMAINING_GAPS** | Production issuer login topology; DB cannot prove TS verifier invocation |
 | **DECISION_STATUS** | VALIDATED (repository prototype) |
