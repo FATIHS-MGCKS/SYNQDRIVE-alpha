@@ -135,13 +135,20 @@ docker run -d --name "$CONTAINER_NAME" \
   -v "$FIXTURE_DIR:/tls-mount:ro" \
   postgres:16-alpine
 
-for _ in $(seq 1 30); do
-  if docker exec "$CONTAINER_NAME" pg_isready -U "$PG_USER" >/dev/null 2>&1; then
-    break
-  fi
-  sleep 1
-done
-docker exec "$CONTAINER_NAME" pg_isready -U "$PG_USER" >/dev/null
+wait_for_pg_ready() {
+  local attempts="${1:-60}"
+  for _ in $(seq 1 "$attempts"); do
+    if docker exec "$CONTAINER_NAME" pg_isready -U "$PG_USER" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+  done
+  docker logs "$CONTAINER_NAME" 2>&1 | tail -40 >&2 || true
+  log "ERROR: TLS postgres not ready after ${attempts}s" >&2
+  return 1
+}
+
+wait_for_pg_ready 60
 
 install_tls_material() {
   local cert_subdir="$1"
@@ -159,13 +166,7 @@ docker exec -u root "$CONTAINER_NAME" sh -c "grep -q '^ssl = on' /var/lib/postgr
 docker exec -u root "$CONTAINER_NAME" sh -c "printf '%s\n' 'hostnossl all all all reject' 'hostssl all all all scram-sha-256' >> /var/lib/postgresql/data/pg_hba.conf"
 docker restart "$CONTAINER_NAME" >/dev/null
 
-for _ in $(seq 1 30); do
-  if docker exec "$CONTAINER_NAME" pg_isready -U "$PG_USER" >/dev/null 2>&1; then
-    break
-  fi
-  sleep 1
-done
-docker exec "$CONTAINER_NAME" pg_isready -U "$PG_USER" >/dev/null
+wait_for_pg_ready 60
 
 TRUSTED_CA="$FIXTURE_DIR/trusted-ca/ca.crt"
 TLS_DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@127.0.0.1:${PG_PORT}/${PG_DB}?sslmode=verify-full&sslrootcert=${TRUSTED_CA}"
