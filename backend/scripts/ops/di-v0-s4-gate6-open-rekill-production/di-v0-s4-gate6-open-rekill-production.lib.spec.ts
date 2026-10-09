@@ -222,6 +222,63 @@ describe('S4F-7AS CLI authority', () => {
     ).toThrow();
   });
 
+  it('issue-dispatch-token consumes approvalId once (Ed25519 v2 + register)', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gate6-issue-dispatch-'));
+    const registerDir = path.join(dir, 'register');
+    const tokenDir = path.join(dir, 'tokens');
+    fs.mkdirSync(registerDir);
+    fs.mkdirSync(tokenDir);
+    const { generateGate6Ed25519FixtureKeyPair, signGate6HumanApprovalRecordV2 } = require('./di-v0-s4-gate6-human-approval-ed25519.lib');
+    const { publicKeyPem, privateKeyPem } = generateGate6Ed25519FixtureKeyPair();
+    const publicPath = path.join(dir, 'public.pem');
+    const approvalPath = path.join(dir, 'approval.json');
+    const approvalCopyPath = path.join(dir, 'approval-copy.json');
+    fs.writeFileSync(publicPath, publicKeyPem, 'utf8');
+    const now = Date.now();
+    const record = signGate6HumanApprovalRecordV2(privateKeyPem, {
+      approvalId: 'cli-dispatch-apr-01',
+      actor: 'actor-a',
+      reason: 'reason-r',
+      requiredSha: 'a'.repeat(40),
+      requiredReleaseId: 'rel',
+      requiredEnvSha256: 'b'.repeat(64),
+      validFromMs: now - 60_000,
+      validUntilMs: now + 3600_000,
+    });
+    fs.writeFileSync(approvalPath, JSON.stringify(record), 'utf8');
+    fs.writeFileSync(approvalCopyPath, JSON.stringify(record), 'utf8');
+    const baseEnv = {
+      ...process.env,
+      DI_S4_GATE6_DISPATCH_TOKEN_DIR: tokenDir,
+      DI_S4_GATE6_APPROVAL_CONSUMPTION_REGISTER_DIR: registerDir,
+      DI_S4_GATE6_HUMAN_APPROVAL_PUBLIC_KEY_FILE: publicPath,
+      DI_S4_GATE6_OPERATOR_REASON: 'reason-r',
+      DI_S4_GATE6_OPERATOR_ACTOR: 'actor-a',
+      DI_S4_TINY_STAGING_REQUIRED_SHA: 'a'.repeat(40),
+      DI_S4_TINY_STAGING_REQUIRED_RELEASE_ID: 'rel',
+      DI_S4_TINY_STAGING_REQUIRED_PRE_ENV_SHA256: 'b'.repeat(64),
+    };
+    const first = execFileSync('npx', ['--yes', 'ts-node', '--transpile-only', CLI, 'issue-dispatch-token'], {
+      encoding: 'utf8',
+      cwd: BACKEND_ROOT,
+      env: { ...baseEnv, DI_S4_GATE6_LIVE_OPEN_HUMAN_APPROVAL_FILE: approvalPath },
+    });
+    expect(first).toContain('APPROVAL_ID_CONSUMPTION_RESERVED=YES');
+    expect(first).toContain('DISPATCH_TOKEN_ISSUED=YES');
+    try {
+      execFileSync('npx', ['--yes', 'ts-node', '--transpile-only', CLI, 'issue-dispatch-token'], {
+        encoding: 'utf8',
+        cwd: BACKEND_ROOT,
+        env: { ...baseEnv, DI_S4_GATE6_LIVE_OPEN_HUMAN_APPROVAL_FILE: approvalCopyPath },
+      });
+    } catch (error: unknown) {
+      const e = error as { stdout?: string; stderr?: string };
+      const combined = `${e.stdout ?? ''}${e.stderr ?? ''}`;
+      expect(combined).toContain('APPROVAL_CONSUMPTION_FAILURE=APPROVAL_ID_ALREADY_CONSUMED');
+    }
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
   it('issue-dispatch-token is blocked without independent human approval file', () => {
     try {
       execFileSync('npx', ['--yes', 'ts-node', '--transpile-only', CLI, 'issue-dispatch-token'], {

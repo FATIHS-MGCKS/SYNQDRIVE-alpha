@@ -1,0 +1,110 @@
+import * as fs from 'fs';
+import * as path from 'path';
+
+export const DI_S4_GATE6_APPROVAL_CONSUMPTION_REGISTER_DIR_ENV = 'DI_S4_GATE6_APPROVAL_CONSUMPTION_REGISTER_DIR';
+export const GATE6_PRODUCTION_APPROVAL_CONSUMPTION_REGISTER_DIR =
+  '/opt/synqdrive/shared/gate6-live-open-approval-consumption';
+
+export function resolveApprovalConsumptionRegisterDir(
+  env: NodeJS.ProcessEnv = process.env,
+): { ok: true; dir: string } | { ok: false; failure: ApprovalConsumptionFailure } {
+  const explicit = (env[DI_S4_GATE6_APPROVAL_CONSUMPTION_REGISTER_DIR_ENV] ?? '').trim();
+  if (explicit) {
+    if (!fs.existsSync(explicit)) {
+      return { ok: false, failure: 'APPROVAL_CONSUMPTION_REGISTER_MISSING' };
+    }
+    return { ok: true, dir: explicit };
+  }
+  if (fs.existsSync(GATE6_PRODUCTION_APPROVAL_CONSUMPTION_REGISTER_DIR)) {
+    return { ok: true, dir: GATE6_PRODUCTION_APPROVAL_CONSUMPTION_REGISTER_DIR };
+  }
+  return { ok: false, failure: 'APPROVAL_CONSUMPTION_REGISTER_MISSING' };
+}
+
+export type ApprovalConsumptionFailure =
+  | 'APPROVAL_CONSUMPTION_REGISTER_MISSING'
+  | 'APPROVAL_CONSUMPTION_REGISTER_UNREADABLE'
+  | 'APPROVAL_ID_ALREADY_CONSUMED'
+  | 'APPROVAL_CONSUMPTION_STATE_UNKNOWN'
+  | 'APPROVAL_ID_INVALID';
+
+function consumedMarkerPath(registerDir: string, approvalId: string): string {
+  return path.join(registerDir, `gate6-approval-id.${approvalId}.consumed`);
+}
+
+function claimingGlobPrefix(registerDir: string, approvalId: string): string {
+  return path.join(registerDir, `gate6-approval-id.${approvalId}.claiming.`);
+}
+
+function isSafeApprovalId(approvalId: string): boolean {
+  return /^[A-Za-z0-9._-]{8,128}$/.test(approvalId);
+}
+
+function hasStaleClaimingState(registerDir: string, approvalId: string): boolean {
+  const prefix = claimingGlobPrefix(registerDir, approvalId);
+  try {
+    const entries = fs.readdirSync(registerDir);
+    return entries.some((name) => name.startsWith(path.basename(prefix)));
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Atomically reserves an approvalId for a single live OPEN dispatch issuance.
+ * Fail-closed when a prior claiming marker exists (unknown in-flight consumption).
+ */
+export function reserveApprovalIdForDispatch(
+  registerDir: string,
+  approvalId: string,
+): { ok: true } | { ok: false; failure: ApprovalConsumptionFailure } {
+  if (!registerDir.trim()) {
+    return { ok: false, failure: 'APPROVAL_CONSUMPTION_REGISTER_MISSING' };
+  }
+  if (!isSafeApprovalId(approvalId)) {
+    return { ok: false, failure: 'APPROVAL_ID_INVALID' };
+  }
+  if (!fs.existsSync(registerDir)) {
+    return { ok: false, failure: 'APPROVAL_CONSUMPTION_REGISTER_MISSING' };
+  }
+  const consumed = consumedMarkerPath(registerDir, approvalId);
+  if (fs.existsSync(consumed)) {
+    return { ok: false, failure: 'APPROVAL_ID_ALREADY_CONSUMED' };
+  }
+  if (hasStaleClaimingState(registerDir, approvalId)) {
+    return { ok: false, failure: 'APPROVAL_CONSUMPTION_STATE_UNKNOWN' };
+  }
+
+  const claimingPath = `${claimingGlobPrefix(registerDir, approvalId)}${process.pid}.${Date.now()}`;
+  try {
+    const fd = fs.openSync(claimingPath, fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_WRONLY, 0o600);
+    fs.writeSync(fd, `${Date.now()}\n`, undefined, 'utf8');
+    fs.closeSync(fd);
+  } catch (error: unknown) {
+    if (fs.existsSync(consumed)) {
+      return { ok: false, failure: 'APPROVAL_ID_ALREADY_CONSUMED' };
+    }
+    return { ok: false, failure: 'APPROVAL_CONSUMPTION_STATE_UNKNOWN' };
+  }
+
+  try {
+    fs.renameSync(claimingPath, consumed);
+    return { ok: true };
+  } catch {
+    try {
+      fs.unlinkSync(claimingPath);
+    } catch {
+      /* */
+    }
+    if (fs.existsSync(consumed)) {
+      return { ok: false, failure: 'APPROVAL_ID_ALREADY_CONSUMED' };
+    }
+    return { ok: false, failure: 'APPROVAL_CONSUMPTION_STATE_UNKNOWN' };
+  }
+}
+
+/** Engineering helper: detect replay without mutating register (read-only). */
+export function isApprovalIdConsumed(registerDir: string, approvalId: string): boolean {
+  if (!registerDir.trim() || !isSafeApprovalId(approvalId)) return false;
+  return fs.existsSync(consumedMarkerPath(registerDir, approvalId));
+}

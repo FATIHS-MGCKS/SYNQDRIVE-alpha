@@ -17,7 +17,8 @@ import {
   DI_S4_GATE6_DISPATCH_TOKEN_DIR_ENV,
   issueLiveOpenDispatchToken,
 } from './di-v0-s4-gate6-dispatch-token.lib';
-import { loadAndVerifyHumanApprovalFile } from './di-v0-s4-gate6-human-approval.lib';
+import { resolveApprovalConsumptionRegisterDir, reserveApprovalIdForDispatch } from './di-v0-s4-gate6-approval-consumption.lib';
+import { approvalIdFromVerified, loadAndVerifyHumanApprovalFile } from './di-v0-s4-gate6-human-approval.lib';
 import {
   consumeGate6LiveOpenDispatchFromEnv,
   evaluateGate6ProductionPathIsolation,
@@ -119,8 +120,20 @@ async function main(): Promise<void> {
         process.exit(1);
       }
       console.log('INDEPENDENT_APPROVAL_AUTHORITY=VERIFIED');
+      const approvalId = approvalIdFromVerified(approval.verified);
+      const registerResolved = resolveApprovalConsumptionRegisterDir(process.env);
+      if (!registerResolved.ok) {
+        console.log(`APPROVAL_CONSUMPTION_FAILURE=${registerResolved.failure}`);
+        process.exit(1);
+      }
+      const reserved = reserveApprovalIdForDispatch(registerResolved.dir, approvalId);
+      if (!reserved.ok) {
+        console.log(`APPROVAL_CONSUMPTION_FAILURE=${reserved.failure}`);
+        process.exit(1);
+      }
+      console.log('APPROVAL_ID_CONSUMPTION_RESERVED=YES');
       const { filePath, signingKeyFilePath } = issueLiveOpenDispatchToken(tokenDir, {
-        approvalId: approval.record.approvalId,
+        approvalId,
         requiredSha: pins.requiredSha,
         requiredReleaseId: pins.requiredReleaseId,
         requiredEnvSha256: pins.requiredEnvSha256,
@@ -129,7 +142,7 @@ async function main(): Promise<void> {
       });
       console.log(`DISPATCH_TOKEN_FILE=${filePath}`);
       console.log(`DISPATCH_SIGNING_KEY_FILE=${signingKeyFilePath}`);
-      console.log(`LIVE_OPEN_APPROVAL_ID=${approval.record.approvalId}`);
+      console.log(`LIVE_OPEN_APPROVAL_ID=${approvalId}`);
       console.log('DISPATCH_TOKEN_ISSUED=YES');
       console.log('HMAC_KEY_SEPARATION=YES');
       break;
