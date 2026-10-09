@@ -58,10 +58,10 @@ fi
 pass "FIRST_DEPLOY_REQUIRES_PINNED_R2_EXECUTOR"
 
 export SYNQDRIVE_CURRENT_DEPLOY_EXECUTOR_SCRIPT="$OLD_DEPLOY"
-if bash "${SCRIPT_DIR}/vps-vo5c-first-security-deploy-preflight.sh" >/dev/null 2>&1; then
-  fail "unprotected /current executor must block first security preflight"
+if ! bash "${SCRIPT_DIR}/vps-vo5c-first-security-deploy-preflight.sh" >/dev/null 2>&1; then
+  fail "preflight must pass with legacy unprotected current when pinned R2 is verified"
 fi
-pass "CURRENT_UNPROTECTED_EXECUTOR_BLOCKED"
+pass "LEGACY_CURRENT_WARN_PREFLIGHT_PASS"
 
 export SYNQDRIVE_PINNED_EXECUTOR_ROOT="$WT_OLD"
 export SYNQDRIVE_PINNED_EXECUTOR_SHA="$OLD_PROD_SHA"

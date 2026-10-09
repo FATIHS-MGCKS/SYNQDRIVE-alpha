@@ -95,12 +95,11 @@ fi
 
 if [[ -f "$CURRENT_EXECUTOR_SCRIPT" ]]; then
   if ! vps_vo5c_deploy_script_has_r2_bootstrap_markers "$CURRENT_EXECUTOR_SCRIPT"; then
-    vps_vo5c_log "INFO legacy_current_executor_present path=${CURRENT_EXECUTOR_SCRIPT} (not used for execution)"
-    abort "first_security_deploy_requires_pinned_executor_not_current"
+    vps_vo5c_log "WARN legacy_current_executor_unprotected path=${CURRENT_EXECUTOR_SCRIPT} execution=pinned_r2_only"
   fi
   current_source="$(vps_vo5c_simulate_replica_lib_source_from_deploy_script "$CURRENT_EXECUTOR_SCRIPT" "$S4F7Q_GATE")"
   if [[ "$current_source" == "controller" ]]; then
-    vps_vo5c_log "WARN current_executor_s4f7q_controller_replica_source"
+    vps_vo5c_log "WARN current_executor_s4f7q_controller_replica_source execution=pinned_r2_only"
   fi
 fi
 

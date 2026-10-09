@@ -26,6 +26,7 @@
 | 2026-10-09 | **VO5C-R2-H1** — Immutable floor pin; fail-closed guard load; S4F7Q uses candidate replica lib; PM2 resurrect disabled; production-faithful migration fixture | Ops/test scripts only; no production deploy |
 | 2026-10-09 | **VO5C-R2-H2** — Pinned R2 executor preflight/runner; executor selection simulation; shallow-only ancestry reconstruction; bootstrap + shallow selftests | First VO5C promotion must not use unprotected `/current` executor; no production deploy |
 | 2026-10-09 | **VO5C-R2-H3** — Mandatory deploy target admission; executor tree integrity; genuine depth-1 shallow tests; S4F7Q positive preflight | Direct `vps-deploy-release.sh` cannot bypass VO5C target floor before migrations |
+| 2026-10-09 | **VO5C-R2-H4** — Legacy `/current` executor warns only; pinned R2 preflight pass | First-deploy production has old current present; execution remains pinned-only |
 | 2026-10-01 | **VO-5A** — offboarding audit + internal `VehicleOffboardingService` (ACTIVE→OFFBOARDED + outbox); legacy deregister unchanged | Must deprecate hard-delete deregister before cutover |
 | 2026-10-01 | **VO-5B** — Registry `VEHICLE_OFFBOARDED` outbox → Billing quantity bridge; billable policy registry lifecycle; scheduler worker; no public HTTP / no Stripe in consumer | Billing projection idempotent; `VEHICLE_ACTIVATED` bridge deferred |
 | 2026-10-02 | **VO-5B.1** — Integrity seal: event-time base item/assignment/ledger authority; outbox claim/CAS; preserve unhandled lifecycle events; VO-5B PostgreSQL CI | PR #1883 |
