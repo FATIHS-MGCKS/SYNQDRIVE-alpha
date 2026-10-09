@@ -128,6 +128,7 @@
     "test:vehicle-onboarding:vo5b:postgres": "VO5B_REGISTRY_BILLING_PG=1 jest vo5b-registry-billing-bridge.postgres.integration --runInBand --forceExit",
     "test:vehicle-onboarding:vo5b-ab1:postgres": "VO5B_AB1_REGISTRY_BILLING_PG=1 jest vo5b-ab1-registry-billing-activate.postgres.integration --runInBand --forceExit",
     "test:vehicle-onboarding:vo5c-p1:postgres": "VO5C_P1_OFFBOARD_PG=1 jest 'vo5c-p1-(offboard|registry-admission)\\.postgres\\.integration' --runInBand --forceExit",
+    "test:vehicle-onboarding:vo5c-p4a:offboard-http:postgres": "VO5C_P4A_OFFBOARD_HTTP_PG=1 jest vo5c-p4a-offboard.http-security.postgres.integration --runInBand --forceExit",
     "test:communication-center:migration": "bash scripts/test/communication-center-c1-migration-test.sh",
     "test:bookings": "jest --testPathPattern='modules/bookings|booking-pickup-gate|booking-document-|booking-payment-request|rental-contract-legal' --testPathIgnorePatterns='postgres\\.invariants'",
     "test:bookings:security": "jest bookings-security-negative booking-controller-permissions.characterization",

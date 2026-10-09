@@ -14,6 +14,10 @@ interface ImportMetaEnv {
    */
   readonly VITE_NOTIFICATIONS_V2?: string;
   readonly VITE_NOTIFICATIONS_V2_ORG_ALLOWLIST?: string;
+  readonly VITE_MASTER_VEHICLE_OFFBOARD_UI?: string;
+  readonly VITE_MASTER_VEHICLE_OFFBOARD_BACKEND_ROUTE_VERIFIED?: string;
+  readonly VITE_MASTER_VEHICLE_OFFBOARD_BACKEND_ATTESTED_SHA?: string;
+  readonly VITE_SYNQDRIVE_DEPLOYED_GIT_SHA?: string;
 }
 
 interface ImportMeta {

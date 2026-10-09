@@ -13,6 +13,7 @@ import { VehicleOnboardingProviderCandidateService } from './services/vehicle-on
 import { VehicleOffboardingService } from './services/vehicle-offboarding.service';
 import { VehicleOnboardingOffboardService } from './services/vehicle-onboarding-offboard.service';
 import { VehicleOnboardingOffboardController } from './controllers/vehicle-onboarding-offboard.controller';
+import { MasterVehicleOffboardAdmissionGuard } from './guards/master-vehicle-offboard-admission.guard';
 import { VehicleOffboardPreflightService } from './offboarding/vehicle-offboard-preflight.service';
 import { ProductionFailClosedReadinessAuthority } from './readiness/vehicle-onboarding-readiness-authority';
 import { VEHICLE_ONBOARDING_READINESS_AUTHORITY } from './readiness/vehicle-onboarding-readiness.tokens';
@@ -42,6 +43,7 @@ import { VehicleOnboardingSourceAdoptionAuthority } from './source-adoption/vehi
     VehicleOffboardingService,
     VehicleOffboardPreflightService,
     VehicleOnboardingOffboardService,
+    MasterVehicleOffboardAdmissionGuard,
   ],
   exports: [
     VehicleOnboardingCaseService,
