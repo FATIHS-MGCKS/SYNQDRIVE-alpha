@@ -8,6 +8,13 @@
 
 Same physical rise under `rfrf-rise-v2` may revise `SETTLED_MEDIAN` after delayed telemetry. Legacy same-version matcher treated incompatible post plateaus (both above pre) as `DISTINCT_PHYSICAL_RISE`, risking duplicate v2 candidates.
 
+## Final safety closure (PR #1952)
+
+- `resolveOrCreateCandidate` — v2→v2 `INSUFFICIENT_EVIDENCE` neighbors route to `RAW_REFUEL_CANDIDATE_V2_REDISCOVERY_INSUFFICIENT_EVIDENCE` (no silent insufficient reconcile)
+- Identity-key fallback requires semantic `SAME_PHYSICAL_RISE` for v2→v2 (no key-only bypass)
+- Settled path requires **explicit** `SETTLED_MEDIAN` on both sides; non-settled v2 pairs delegate to legacy F2 same-version matcher
+- Rise episode anchors required (onset + end); removed ad-hoc post-delta contradiction threshold
+
 ## Change
 
 - `raw-refuel-candidate-v2-same-version-rediscovery.authority.ts` — fail-closed v2→v2 reconciliation when:

@@ -1,19 +1,14 @@
 import { RFRF_PLANNED_SETTLED_POST_DETECTION_VERSION } from './raw-refuel-candidate-cross-version-compatibility.authority';
+import { tryBuildCandidateIdentityKeyFromEvidence } from './raw-refuel-candidate-identity-key';
 import {
-  derivePrePlateauBucketFromObservation,
-  tryBuildCandidateIdentityKeyFromEvidence,
-} from './raw-refuel-candidate-identity-key';
-import {
-  RAW_REFUEL_CANDIDATE_POST_PLATEAU_TOLERANCE_LITERS,
   RAW_REFUEL_CANDIDATE_PRE_PLATEAU_TOLERANCE_LITERS,
   RAW_REFUEL_CANDIDATE_PRE_PLATEAU_TOLERANCE_PERCENT,
   RAW_REFUEL_CANDIDATE_RISE_NEIGHBORHOOD_MS,
 } from './raw-refuel-candidate.constants';
 import {
-  resolveObservationPostFuelAuthorityForCrossVersion,
+  parsePostFuelAuthorityFromEvidenceMeta,
   resolveStoredEffectivePostFuelAuthority,
 } from './raw-refuel-candidate-post-fuel-authority.resolver';
-import { classifyPostFuelAuthorityTransition } from './raw-refuel-post-fuel-authority.types';
 import type { RawRefuelCandidateOverlapClassification } from './raw-refuel-candidate.types';
 import type { RawRefuelCandidateEvidenceSlice } from './raw-refuel-candidate.types';
 import { readBaselineRecencyFromEvidenceMeta } from '../raw-fuel-rise-detector/raw-fuel-pre-plateau-baseline-recency.policy';
@@ -82,11 +77,16 @@ function hasCompatiblePrePlateau(
 function hasCompatibleRiseEpisodeAnchors(
   observation: RawRefuelCandidateEvidenceSlice,
   candidate: RawRefuelCandidateEvidenceSlice,
-): boolean {
+): boolean | null {
+  const obsRise = observation.riseOnsetAt;
+  const candRise = candidate.riseOnsetAt;
   const obsEnd = observation.riseEndAt;
   const candEnd = candidate.riseEndAt;
-  if (obsEnd == null || candEnd == null) {
-    return true;
+  if (obsRise == null || candRise == null || obsEnd == null || candEnd == null) {
+    return null;
+  }
+  if (msBetween(obsRise, candRise) > RAW_REFUEL_CANDIDATE_RISE_NEIGHBORHOOD_MS) {
+    return false;
   }
   return msBetween(obsEnd, candEnd) <= RAW_REFUEL_CANDIDATE_RISE_NEIGHBORHOOD_MS;
 }
@@ -135,35 +135,16 @@ function physicalIdentityKeysMatch(
   return obsKey === candKey;
 }
 
-function hasContradictorySettledPostTerminalEvidence(
+export function bothExplicitSettledMedianPostFuelAuthority(
   observation: RawRefuelCandidateEvidenceSlice,
   candidate: RawRefuelCandidateEvidenceSlice,
 ): boolean {
-  const obsPre = observation.preFuelAbsoluteLiters ?? observation.preFuelRelativePercent;
-  const candPre = candidate.preFuelAbsoluteLiters ?? candidate.preFuelRelativePercent;
-  const obsPost = observation.postFuelAbsoluteLiters ?? observation.postFuelRelativePercent;
-  const candPost = candidate.postFuelAbsoluteLiters ?? candidate.postFuelRelativePercent;
-  if (obsPre == null || candPre == null || obsPost == null || candPost == null) {
-    return false;
-  }
-  const obsDelta = obsPost - obsPre;
-  const candDelta = candPost - candPre;
-  const material =
-    observation.signalChannel === 'ABSOLUTE_LITERS'
-      ? RAW_REFUEL_CANDIDATE_POST_PLATEAU_TOLERANCE_LITERS * 2
-      : RAW_REFUEL_CANDIDATE_PRE_PLATEAU_TOLERANCE_PERCENT * 2;
-  if (obsDelta <= 0 || candDelta <= 0) {
-    return true;
-  }
-  if (Math.abs(obsDelta - candDelta) > material * 4) {
-    return true;
-  }
-  const preBucketObs = derivePrePlateauBucketFromObservation(observation);
-  const preBucketCand = derivePrePlateauBucketFromObservation(candidate);
-  if (preBucketObs != null && preBucketCand != null && preBucketObs !== preBucketCand) {
-    return true;
-  }
-  return false;
+  const observationAuthority = parsePostFuelAuthorityFromEvidenceMeta(observation.evidenceMeta);
+  const storedAuthority = resolveStoredEffectivePostFuelAuthority({
+    storedDetectionVersion: candidate.detectionVersion,
+    evidenceMeta: candidate.evidenceMeta,
+  });
+  return observationAuthority === 'SETTLED_MEDIAN' && storedAuthority === 'SETTLED_MEDIAN';
 }
 
 export function isV2SameVersionPair(
@@ -177,13 +158,16 @@ export function isV2SameVersionPair(
 }
 
 /**
- * Version-aware v2→v2 reconciliation: revised SETTLED_MEDIAN alone must not fork
- * a second candidate when physical identity is proven. Fail-closed on ambiguity.
+ * R3B settled-median v2→v2 reconciliation only — both sides must explicitly declare
+ * SETTLED_MEDIAN before this path is invoked. Fail-closed on ambiguity.
  */
-export function classifyV2SameVersionRawRefuelCandidateOverlap(
+export function classifyV2SettledMedianPhysicalRediscoveryOverlap(
   observation: RawRefuelCandidateEvidenceSlice,
   candidate: RawRefuelCandidateEvidenceSlice,
 ): RawRefuelCandidateOverlapClassification {
+  if (!bothExplicitSettledMedianPostFuelAuthority(observation, candidate)) {
+    return 'INSUFFICIENT_EVIDENCE';
+  }
   const preCompatible = hasCompatiblePrePlateau(observation, candidate);
   if (preCompatible === false) {
     return 'DISTINCT_PHYSICAL_RISE';
@@ -196,27 +180,11 @@ export function classifyV2SameVersionRawRefuelCandidateOverlap(
     return 'DISTINCT_PHYSICAL_RISE';
   }
 
-  if (!hasCompatibleRiseEpisodeAnchors(observation, candidate)) {
+  const riseEpisode = hasCompatibleRiseEpisodeAnchors(observation, candidate);
+  if (riseEpisode === false) {
     return 'DISTINCT_PHYSICAL_RISE';
   }
-
-  const observationAuthority = resolveObservationPostFuelAuthorityForCrossVersion(
-    observation.evidenceMeta,
-  );
-  const storedAuthority = resolveStoredEffectivePostFuelAuthority({
-    storedDetectionVersion: candidate.detectionVersion,
-    evidenceMeta: candidate.evidenceMeta,
-  });
-  if (observationAuthority == null || storedAuthority == null) {
-    return 'INSUFFICIENT_EVIDENCE';
-  }
-
-  const authorityTransition = classifyPostFuelAuthorityTransition({
-    observationAuthority,
-    candidateAuthority: storedAuthority,
-    versionCompatibility: 'SAME_VERSION',
-  });
-  if (authorityTransition !== 'SAME_AUTHORITY') {
+  if (riseEpisode !== true) {
     return 'INSUFFICIENT_EVIDENCE';
   }
 
@@ -234,10 +202,6 @@ export function classifyV2SameVersionRawRefuelCandidateOverlap(
   }
   if (identityMatch !== true) {
     return 'INSUFFICIENT_EVIDENCE';
-  }
-
-  if (hasContradictorySettledPostTerminalEvidence(observation, candidate)) {
-    return 'DISTINCT_PHYSICAL_RISE';
   }
 
   return 'SAME_PHYSICAL_RISE';

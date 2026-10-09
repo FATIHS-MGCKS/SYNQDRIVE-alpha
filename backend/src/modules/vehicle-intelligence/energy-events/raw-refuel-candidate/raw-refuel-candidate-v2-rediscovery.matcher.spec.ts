@@ -129,7 +129,7 @@ describe('R3B v2→v2 settled-post rediscovery matcher', () => {
       postFuelAbsoluteLiters: 17,
       evidenceMeta: { baselineRecencyClassification: 'FRESH' },
     });
-    expect(classifyRawRefuelCandidateOverlap(incoming, stored)).toBe('INSUFFICIENT_EVIDENCE');
+    expect(classifyRawRefuelCandidateOverlap(incoming, stored)).toBe('DISTINCT_PHYSICAL_RISE');
   });
 
   it('M5 fails closed on STALE baseline on stored row', () => {
@@ -152,6 +152,70 @@ describe('R3B v2→v2 settled-post rediscovery matcher', () => {
       evidenceMeta: freshV2Meta(),
     });
     expect(classifyRawRefuelCandidateOverlap(incoming, stored)).toBe('DISTINCT_PHYSICAL_RISE');
+  });
+
+  it('M7 PEAK_INSTANTANEOUS v2 pair delegates to legacy same-version semantics', () => {
+    const base = buildTestObservation({
+      organizationId: 'org-r3b',
+      vehicleId: 'veh-r3b',
+      detectionVersion: RFRF_PLANNED_SETTLED_POST_DETECTION_VERSION,
+      detectorVersion: V2_DETECTOR,
+      preFuelAbsoluteLiters: 6,
+      postFuelAbsoluteLiters: 20,
+      riseOnsetAt: riseOnset,
+      riseEndAt: riseEnd,
+      evidenceMeta: { postFuelAuthority: 'PEAK_INSTANTANEOUS' },
+    });
+    const stored = storedV2Row(base, {
+      evidenceMeta: { postFuelAuthority: 'PEAK_INSTANTANEOUS' } as Prisma.JsonValue,
+    });
+    const incoming = buildTestObservation({
+      ...base,
+      postFuelAbsoluteLiters: 17,
+      evidenceMeta: { postFuelAuthority: 'PEAK_INSTANTANEOUS' },
+    });
+    expect(classifyRawRefuelCandidateOverlap(incoming, stored)).toBe('DISTINCT_PHYSICAL_RISE');
+  });
+
+  it('M8 missing rise episode anchors fails closed for settled v2', () => {
+    const base = buildTestObservation({
+      organizationId: 'org-r3b',
+      vehicleId: 'veh-r3b',
+      detectionVersion: RFRF_PLANNED_SETTLED_POST_DETECTION_VERSION,
+      detectorVersion: V2_DETECTOR,
+      preFuelAbsoluteLiters: 6,
+      postFuelAbsoluteLiters: 20,
+      riseOnsetAt: riseOnset,
+      riseEndAt: null,
+      evidenceMeta: freshV2Meta(),
+    });
+    const stored = storedV2Row(base, { riseEndAt: riseEnd });
+    const incoming = buildTestObservation({ ...base, evidenceMeta: freshV2Meta() });
+    expect(classifyRawRefuelCandidateOverlap(incoming, stored)).toBe('INSUFFICIENT_EVIDENCE');
+  });
+
+  it('M9 two refuels inside neighborhood stay distinct', () => {
+    const first = buildTestObservation({
+      organizationId: 'org-r3b',
+      vehicleId: 'veh-r3b',
+      detectionVersion: RFRF_PLANNED_SETTLED_POST_DETECTION_VERSION,
+      detectorVersion: V2_DETECTOR,
+      preFuelAbsoluteLiters: 6,
+      postFuelAbsoluteLiters: 19,
+      riseOnsetAt: riseOnset,
+      riseEndAt: riseEnd,
+      evidenceMeta: freshV2Meta(),
+    });
+    const stored = storedV2Row(first);
+    const second = buildTestObservation({
+      ...first,
+      riseOnsetAt: new Date('2026-09-30T05:30:00.000Z'),
+      riseEndAt: new Date('2026-09-30T05:35:00.000Z'),
+      preFuelAbsoluteLiters: 10,
+      postFuelAbsoluteLiters: 25,
+      evidenceMeta: freshV2Meta(),
+    });
+    expect(classifyRawRefuelCandidateOverlap(second, stored)).toBe('DISTINCT_PHYSICAL_RISE');
   });
 
   it('M6 tenant isolation — different organization', () => {

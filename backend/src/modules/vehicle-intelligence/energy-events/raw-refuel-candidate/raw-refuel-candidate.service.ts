@@ -12,13 +12,18 @@ import { mergeCandidateEvidence } from './raw-refuel-candidate-evidence-merge';
 import {
   RawRefuelCandidateAmbiguityError,
   RawRefuelCandidateCrossVersionInsufficientEvidenceError,
+  RawRefuelCandidateV2RediscoveryInsufficientEvidenceError,
   RawRefuelCandidateLifecycleValidationError,
   RawRefuelCandidateOrgVehicleIntegrityError,
   RawRefuelCandidateVehicleNotFoundError,
   RawRefuelCandidateUnsupportedDetectionVersionError,
   RawRefuelCandidateVersionedTerminalConflictError,
 } from './raw-refuel-candidate.errors';
-import { classifyCandidateDetectionVersionCompatibility } from './raw-refuel-candidate-cross-version-compatibility.authority';
+import {
+  classifyCandidateDetectionVersionCompatibility,
+  RFRF_PLANNED_SETTLED_POST_DETECTION_VERSION,
+} from './raw-refuel-candidate-cross-version-compatibility.authority';
+import { isV2SameVersionPair } from './raw-refuel-candidate-v2-same-version-rediscovery.authority';
 import {
   isSupportedCandidateDetectionVersionForIdentity,
   tryBuildCandidateIdentityKeyFromEvidence,
@@ -119,6 +124,13 @@ export class RawRefuelCandidateService {
         );
       }
 
+      if (classified.v2RediscoveryInsufficient.length > 0) {
+        throw new RawRefuelCandidateV2RediscoveryInsufficientEvidenceError(
+          observation.vehicleId,
+          classified.v2RediscoveryInsufficient.map((row) => row.id),
+        );
+      }
+
       if (classified.same.length > 1) {
         throw new RawRefuelCandidateAmbiguityError(
           'MULTIPLE_SAME_PHYSICAL_RISE',
@@ -172,6 +184,10 @@ export class RawRefuelCandidateService {
           lookupIdentityKey,
         );
         if (byKey) {
+          assertV2IdentityKeyFallbackReconcileAllowed(
+            { ...observation, organizationId },
+            byKey,
+          );
           return this.reconcileExistingCandidate(
             tx,
             byKey,
@@ -375,6 +391,7 @@ interface RediscoveryClassification {
   distinct: RawRefuelCandidate[];
   versionedTerminalConflict: RawRefuelCandidate[];
   crossVersionInsufficient: RawRefuelCandidate[];
+  v2RediscoveryInsufficient: RawRefuelCandidate[];
 }
 
 function classifyRediscoveryCandidates(
@@ -389,6 +406,7 @@ function classifyRediscoveryCandidates(
     distinct: [],
     versionedTerminalConflict: [],
     crossVersionInsufficient: [],
+    v2RediscoveryInsufficient: [],
   };
 
   for (const row of candidates) {
@@ -432,10 +450,33 @@ function bucketClassification(
       classified.crossVersionInsufficient.push(row);
       return;
     }
+    if (
+      observationDetectionVersion === RFRF_PLANNED_SETTLED_POST_DETECTION_VERSION &&
+      row.detectionVersion === RFRF_PLANNED_SETTLED_POST_DETECTION_VERSION
+    ) {
+      classified.v2RediscoveryInsufficient.push(row);
+      return;
+    }
     classified.insufficient.push(row);
     return;
   }
   classified.distinct.push(row);
+}
+
+function assertV2IdentityKeyFallbackReconcileAllowed(
+  observation: RawRefuelCandidateObservation & { organizationId: string },
+  existing: RawRefuelCandidate,
+): void {
+  if (!isV2SameVersionPair(observation, existing)) {
+    return;
+  }
+  const overlap = classifyRawRefuelCandidateOverlap(observation, existing);
+  if (overlap !== 'SAME_PHYSICAL_RISE') {
+    throw new RawRefuelCandidateV2RediscoveryInsufficientEvidenceError(
+      observation.vehicleId,
+      [existing.id],
+    );
+  }
 }
 
 function resolveAssignedIdentityKey(
