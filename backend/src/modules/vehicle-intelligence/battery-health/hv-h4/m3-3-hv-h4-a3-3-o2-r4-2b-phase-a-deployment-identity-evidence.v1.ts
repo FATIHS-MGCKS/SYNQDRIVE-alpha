@@ -43,11 +43,17 @@ export function verifyDeploymentIdentityEvidenceOfflineV1(
       deploymentHost: string;
       deploymentLabel: string;
     };
+    /** Independently generated challenge for this verification context — must match probe nonce. */
+    verificationChallengeNonce: string;
     now: Date;
     seenProbeNonces?: Set<string>;
   },
 ): M3_3HvH4A3DeploymentIdentityEvidenceVerifyResultV1 {
   const { evidence, now } = input;
+  const challenge = input.verificationChallengeNonce.trim();
+  if (!challenge || challenge !== evidence.probeNonce.trim()) {
+    return { ok: false, reasonCode: 'PHASE_A_DEPLOYMENT_PROBE_CHALLENGE_MISMATCH' };
+  }
   const probedAt = parseUtcInstantStrictV1(evidence.probedAtUtc);
   const freshUntil = parseUtcInstantStrictV1(evidence.freshnessValidUntilUtc);
   if (!probedAt || !freshUntil || freshUntil <= probedAt) {
@@ -57,7 +63,7 @@ export function verifyDeploymentIdentityEvidenceOfflineV1(
     return { ok: false, reasonCode: 'PHASE_A_DEPLOYMENT_IDENTITY_STALE' };
   }
   if (input.seenProbeNonces?.has(evidence.probeNonce)) {
-    return { ok: false, reasonCode: 'PHASE_A_DEPLOYMENT_PROBE_NONCE_REPLAY' };
+    return { ok: false, reasonCode: 'PHASE_A_DEPLOYMENT_PROBE_NONCE_REPLAY_WITHIN_EPHEMERAL_SCOPE' };
   }
 
   const digest = hashDeploymentIdentityEvidenceSigningPayloadV1(evidence);

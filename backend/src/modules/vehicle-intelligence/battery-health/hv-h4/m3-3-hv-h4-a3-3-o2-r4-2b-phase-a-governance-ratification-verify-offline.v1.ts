@@ -10,11 +10,45 @@ import {
   type M3_3HvH4A3GovernanceTrustStoreV1,
   type M3_3HvH4A3RepositoryMergeEvidenceV1,
 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-governance-evidence.types.v1';
+import {
+  REPOSITORY_MERGE_PROVENANCE_UNVERIFIED_REASON_CODE,
+  type M3_3HvH4A3GovernanceCryptographicVerificationStatusV1,
+} from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-governance-evidence.crypto-verification.types.v1';
+import { describeGovernanceEphemeralNonceDedupScopeV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-governance-replay-boundary.v1';
+import {
+  canonicalBase64FromBytesV1,
+  exportCanonicalEd25519SpkiDerV1,
+  materializeEd25519TrustSpkiV1,
+  sha256HexFingerprintV1,
+} from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1-trusted-authorization.crypto-trust.v1';
 import { parseUtcInstantStrictV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1-trusted-authorization.utc-instant.v1';
 
+const TRUST_STORE_CONTRACT = 'M3_3_HV_H4_A3_GOVERNANCE_TRUST_STORE_V1' as const;
+const ISSUER_PURPOSES = new Set([
+  'GOVERNANCE_RATIFICATION',
+  'OPERATOR_RISK_ACCEPTANCE',
+  'DEPLOYMENT_PROBE',
+  'POSTGRES_TARGET',
+]);
+
 export type M3_3HvH4A3GovernanceRatificationOfflineVerifyResultV1 =
-  | { ok: true; authorityVerified: true }
-  | { ok: false; reasonCode: string };
+  | {
+      ok: true;
+      cryptographicVerificationStatus: 'SIGNATURE_VALID_WITH_SUPPLIED_KEY';
+      independentAuthorityVerified: false;
+      reasonCode: typeof REPOSITORY_MERGE_PROVENANCE_UNVERIFIED_REASON_CODE;
+      ephemeralNonceDedupScope: ReturnType<typeof describeGovernanceEphemeralNonceDedupScopeV1>;
+    }
+  | { ok: false; reasonCode: string; cryptographicVerificationStatus?: M3_3HvH4A3GovernanceCryptographicVerificationStatusV1 };
+
+export function isRepositoryMergeEvidenceProductionAuthoritativeV1(
+  evidence: M3_3HvH4A3RepositoryMergeEvidenceV1,
+): boolean {
+  if (evidence.evidenceSource === 'GITHUB_REST_API_READONLY_FIXTURE') {
+    return false;
+  }
+  return false;
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -23,10 +57,57 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export function parseGovernanceTrustStoreV1(
   parsed: unknown,
 ): { ok: true; store: M3_3HvH4A3GovernanceTrustStoreV1 } | { ok: false; reasonCode: string } {
-  if (!isRecord(parsed) || parsed.contractVersion !== 'M3_3_HV_H4_A3_GOVERNANCE_TRUST_STORE_V1') {
+  try {
+    if (!isRecord(parsed) || parsed.contractVersion !== TRUST_STORE_CONTRACT) {
+      return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_TRUST_STORE_INVALID' };
+    }
+    const keysRaw = parsed.keys;
+    if (!Array.isArray(keysRaw) || keysRaw.length === 0) {
+      return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_TRUST_STORE_INVALID' };
+    }
+    const revokedRaw = parsed.revokedKeyIds;
+    if (!Array.isArray(revokedRaw) || revokedRaw.some((id) => typeof id !== 'string' || !id.trim())) {
+      return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_TRUST_STORE_INVALID' };
+    }
+    const seenKeyIds = new Set<string>();
+    const seenMaterial = new Set<string>();
+    for (const entry of keysRaw) {
+      if (!isRecord(entry)) {
+        return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_TRUST_STORE_INVALID' };
+      }
+      const keyId = typeof entry.keyId === 'string' ? entry.keyId.trim() : '';
+      const spkiB64 = typeof entry.publicKeySpkiBase64 === 'string' ? entry.publicKeySpkiBase64.trim() : '';
+      const purpose = entry.issuerPurpose;
+      if (!keyId || !spkiB64 || typeof purpose !== 'string' || !(ISSUER_PURPOSES as Set<string>).has(purpose)) {
+        return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_TRUST_STORE_INVALID' };
+      }
+      if (seenKeyIds.has(keyId)) {
+        return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_TRUST_STORE_DUPLICATE_KEY_ID' };
+      }
+      seenKeyIds.add(keyId);
+      const materialized = materializeEd25519TrustSpkiV1(spkiB64);
+      if (!materialized.ok) {
+        return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_TRUST_STORE_KEY_MALFORMED' };
+      }
+      const canonicalB64 = canonicalBase64FromBytesV1(
+        exportCanonicalEd25519SpkiDerV1(materialized.value.publicKey),
+      );
+      const fp = sha256HexFingerprintV1(Buffer.from(canonicalB64, 'utf8'));
+      if (seenMaterial.has(fp)) {
+        return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_TRUST_STORE_DUPLICATE_KEY_MATERIAL' };
+      }
+      seenMaterial.add(fp);
+      if (entry.notBeforeUtc !== undefined && typeof entry.notBeforeUtc !== 'string') {
+        return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_TRUST_STORE_INVALID' };
+      }
+      if (entry.notAfterUtc !== undefined && typeof entry.notAfterUtc !== 'string') {
+        return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_TRUST_STORE_INVALID' };
+      }
+    }
+    return { ok: true, store: parsed as M3_3HvH4A3GovernanceTrustStoreV1 };
+  } catch {
     return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_TRUST_STORE_INVALID' };
   }
-  return { ok: true, store: parsed as M3_3HvH4A3GovernanceTrustStoreV1 };
 }
 
 export function parseGovernanceOwnerPolicyV1(
@@ -109,7 +190,11 @@ export function verifyGovernanceRatificationOfflineV1(
     return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_RATIFICATION_ATTESTATION_EXPIRED' };
   }
   if (input.seenEvidenceNonces?.has(attestation.evidenceNonce)) {
-    return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_EVIDENCE_NONCE_REPLAY' };
+    return {
+      ok: false,
+      reasonCode: 'PHASE_A_GOVERNANCE_EVIDENCE_NONCE_REPLAY_WITHIN_EPHEMERAL_SCOPE',
+      cryptographicVerificationStatus: 'SIGNATURE_NOT_EVALUATED',
+    };
   }
 
   const digest = hashGovernanceRatificationAttestationSigningPayloadV1(attestation);
@@ -120,7 +205,9 @@ export function verifyGovernanceRatificationOfflineV1(
     digest,
     now,
   );
-  if (!sig.ok) return sig;
+  if (!sig.ok) {
+    return { ok: false, reasonCode: sig.reasonCode, cryptographicVerificationStatus: 'SIGNATURE_INVALID' };
+  }
 
   const repoFingerprint = hashRepositoryMergeEvidenceFingerprintV1(repositoryEvidence);
   if (attestation.repositoryEvidenceFingerprintSha256 !== repoFingerprint) {
@@ -158,5 +245,18 @@ export function verifyGovernanceRatificationOfflineV1(
   }
 
   input.seenEvidenceNonces?.add(attestation.evidenceNonce);
-  return { ok: true, authorityVerified: true };
+  if (isRepositoryMergeEvidenceProductionAuthoritativeV1(repositoryEvidence)) {
+    return {
+      ok: false,
+      reasonCode: REPOSITORY_MERGE_PROVENANCE_UNVERIFIED_REASON_CODE,
+      cryptographicVerificationStatus: 'SIGNATURE_VALID_WITH_SUPPLIED_KEY',
+    };
+  }
+  return {
+    ok: true,
+    cryptographicVerificationStatus: 'SIGNATURE_VALID_WITH_SUPPLIED_KEY',
+    independentAuthorityVerified: false,
+    reasonCode: REPOSITORY_MERGE_PROVENANCE_UNVERIFIED_REASON_CODE,
+    ephemeralNonceDedupScope: describeGovernanceEphemeralNonceDedupScopeV1(),
+  };
 }

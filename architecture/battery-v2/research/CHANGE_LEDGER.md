@@ -6,6 +6,15 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B1-A1-H1 trust anchor & replay boundary closure
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Production authority resolver always disabled; separate crypto vs independent authority; fixture GitHub evidence non-authoritative; operator-risk claims binding; ephemeral replay scope documented; trust-store canonicalization |
+| **WHY** | Security review — env cannot self-promote trust; signed synthetic evidence must not yield governance READY |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1b1-a1-h1-governance-trust-anchor.spec.ts` + HV-H4 unit suite |
+| **NON_EFFECTS** | P1 `NO_GO`, no production access, no durable replay store activation |
+
 ## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B1-A1 governance evidence foundation (offline verification)
 
 | Field | Value |

@@ -250,6 +250,10 @@ function buildProvenanceClaimsJson(mergeSha: string): string {
   });
 }
 
+function buildRiskClaimsObject() {
+  return JSON.parse(buildRiskClaimsJson()) as import('./m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-governance-mode.types.v1').M3_3HvH4A3OperatorRiskAcceptanceV2;
+}
+
 function buildRiskClaimsJson(): string {
   return JSON.stringify({
     contractVersion: M3_3_HV_H4_A3_OPERATOR_RISK_ACCEPTANCE_CONTRACT_V2,
@@ -350,7 +354,7 @@ describe('P1B1-A1 governance evidence foundation (offline, fail-closed execution
       adoptionRecord: JSON.parse(buildAdoptionJson()),
     });
     expect(result.authorityStatus).toBe('AUTHORITY_NOT_VERIFIED');
-    expect(result.reasonCode).toBe('PHASE_A_GOVERNANCE_EXTERNAL_AUTHORITY_VERIFIER_NOT_CONFIGURED');
+    expect(result.reasonCode).toBe('PHASE_A_GOVERNANCE_INDEPENDENT_TRUST_ANCHOR_NOT_PROVISIONED');
   });
 
   it('rejects forged operator risk attestation and replayed acceptance id', () => {
@@ -358,10 +362,13 @@ describe('P1B1-A1 governance evidence foundation (offline, fail-closed execution
     const ownerPolicy = buildOwnerPolicy();
     const attestation = buildSignedRiskAttestation(riskKey);
     const seen = new Set<string>();
+    const riskClaims = buildRiskClaimsObject();
     const ok = verifyGovernanceOperatorRiskAttestationOfflineV1({
       trustStore,
       ownerPolicy,
       attestation,
+      riskAcceptanceClaims: riskClaims,
+      authorizedHumanApprover: OWNER_LOGIN,
       changeTicket: CHANGE_TICKET,
       approvalBinding: BINDING,
       maintenanceWindow: MAINTENANCE,
@@ -371,11 +378,16 @@ describe('P1B1-A1 governance evidence foundation (offline, fail-closed execution
       seenAcceptanceIds: seen,
     });
     expect(ok.ok).toBe(true);
+    if (ok.ok) {
+      expect(ok.independentAuthorityVerified).toBe(false);
+    }
 
     const replay = verifyGovernanceOperatorRiskAttestationOfflineV1({
       trustStore,
       ownerPolicy,
       attestation,
+      riskAcceptanceClaims: riskClaims,
+      authorizedHumanApprover: OWNER_LOGIN,
       changeTicket: CHANGE_TICKET,
       approvalBinding: BINDING,
       maintenanceWindow: MAINTENANCE,
@@ -386,7 +398,7 @@ describe('P1B1-A1 governance evidence foundation (offline, fail-closed execution
     });
     expect(replay.ok).toBe(false);
     if (!replay.ok) {
-      expect(replay.reasonCode).toBe('PHASE_A_GOVERNANCE_OPERATOR_RISK_ACCEPTANCE_REPLAY');
+      expect(replay.reasonCode).toBe('PHASE_A_GOVERNANCE_OPERATOR_RISK_ACCEPTANCE_REPLAY_WITHIN_EPHEMERAL_SCOPE');
     }
 
     const forged = buildSignedRiskAttestation(riskKey);
@@ -395,6 +407,8 @@ describe('P1B1-A1 governance evidence foundation (offline, fail-closed execution
       trustStore,
       ownerPolicy,
       attestation: forged,
+      riskAcceptanceClaims: riskClaims,
+      authorizedHumanApprover: OWNER_LOGIN,
       changeTicket: CHANGE_TICKET,
       approvalBinding: BINDING,
       maintenanceWindow: MAINTENANCE,
@@ -436,6 +450,7 @@ describe('P1B1-A1 governance evidence foundation (offline, fail-closed execution
         deploymentHost: 'app.synqdrive.eu',
         deploymentLabel: 'synqdrive-production',
       },
+      verificationChallengeNonce: 'probe-nonce-1',
       now: NOW,
       seenProbeNonces: seen,
     });
@@ -450,6 +465,7 @@ describe('P1B1-A1 governance evidence foundation (offline, fail-closed execution
         deploymentHost: 'app.synqdrive.eu',
         deploymentLabel: 'synqdrive-production',
       },
+      verificationChallengeNonce: 'probe-nonce-1',
       now: NOW,
       seenProbeNonces: seen,
     });
@@ -464,6 +480,7 @@ describe('P1B1-A1 governance evidence foundation (offline, fail-closed execution
         deploymentHost: 'evil.example.com',
         deploymentLabel: 'synqdrive-production',
       },
+      verificationChallengeNonce: 'probe-nonce-1',
       now: NOW,
     });
     expect(hostMismatch.ok).toBe(false);
@@ -567,12 +584,12 @@ describe('P1B1-A1 governance evidence foundation (offline, fail-closed execution
     expect(wrongPurpose.ok).toBe(false);
   });
 
-  it('verifies governance readiness with synthetic signed evidence but keeps P1 execution NO_GO', () => {
+  it('does not grant governance readiness from caller-supplied signed evidence; P1 remains NO_GO', () => {
     const env = buildSignedGovernanceEnv({ ratification: ratKey, risk: riskKey });
     const readiness = evaluatePhaseAHumanVerificationReadinessV1(env, readinessOptions());
-    expect(readiness.ok).toBe(true);
-    if (readiness.ok) {
-      expect(readiness.path).toBe('SINGLE_OPERATOR_PATH_B');
+    expect(readiness.ok).toBe(false);
+    if (!readiness.ok) {
+      expect(readiness.reasonCode).toBe('PHASE_A_GOVERNANCE_INDEPENDENT_TRUST_ANCHOR_NOT_PROVISIONED');
     }
 
     expect(resolvePhaseAProductionP1AuthorizationV1()).toBe('NO_GO');

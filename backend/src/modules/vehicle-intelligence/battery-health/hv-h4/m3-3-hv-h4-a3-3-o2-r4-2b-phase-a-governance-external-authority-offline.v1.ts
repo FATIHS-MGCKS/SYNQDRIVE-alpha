@@ -1,20 +1,14 @@
 import { loadGovernanceJsonFromEnvV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-governance-evidence.env.v1';
 import type { PhaseAGovernanceExternalAuthorityVerifierV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-governance-external-authority.v1';
-import {
-  M3_3_HV_H4_A3_GOVERNANCE_VERIFIED_EVIDENCE_RESULT_CONTRACT_V1,
-  type M3_3HvH4A3GovernanceRatificationVerifiedEvidenceV1,
-  type M3_3HvH4A3OperatorRiskAcceptanceVerifiedEvidenceV1,
-} from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-governance-external-authority.types.v1';
+import { createPhaseAGovernanceExternalAuthorityVerifierDisabledV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-governance-external-authority.v1';
 import {
   parseGovernanceOwnerPolicyV1,
   parseGovernanceRatificationAttestationV1,
   parseGovernanceTrustStoreV1,
   parseRepositoryMergeEvidenceV1,
-  verifyGovernanceRatificationOfflineV1,
 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-governance-ratification-verify-offline.v1';
 import {
   parseGovernanceOperatorRiskAttestationV1,
-  verifyGovernanceOperatorRiskAttestationOfflineV1,
 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-operator-risk-attestation-verify-offline.v1';
 import type {
   M3_3HvH4A3GovernanceOperatorRiskAttestationV1,
@@ -49,7 +43,7 @@ export const M3_3_HV_H4_A3_GOVERNANCE_OPERATOR_RISK_ATTESTATION_JSON_ENV =
 export const M3_3_HV_H4_A3_GOVERNANCE_OPERATOR_RISK_ATTESTATION_PATH_ENV =
   'M3_3_HV_H4_A3_GOVERNANCE_OPERATOR_RISK_ATTESTATION_PATH' as const;
 
-type OfflineGovernanceAuthorityBundleV1 = {
+export type OfflineGovernanceEvidenceBundleV1 = {
   ownerPolicy: M3_3HvH4A3GovernanceOwnerPolicyV1;
   ratification?: {
     trustStore: M3_3HvH4A3GovernanceTrustStoreV1;
@@ -76,9 +70,10 @@ function parseJsonEnv(
   }
 }
 
-export function loadPhaseAGovernanceOfflineAuthorityBundleV1(
+/** Loads caller-supplied evidence for cryptographic diagnostics/tests only — not production authority. */
+export function loadPhaseAGovernanceOfflineEvidenceBundleV1(
   env: NodeJS.ProcessEnv,
-): { ok: true; bundle: OfflineGovernanceAuthorityBundleV1 } | { ok: false; reasonCode: string } {
+): { ok: true; bundle: OfflineGovernanceEvidenceBundleV1 } | { ok: false; reasonCode: string } {
   const policyLoaded = parseJsonEnv(
     env,
     M3_3_HV_H4_A3_GOVERNANCE_OWNER_POLICY_JSON_ENV,
@@ -88,7 +83,7 @@ export function loadPhaseAGovernanceOfflineAuthorityBundleV1(
   const ownerPolicy = parseGovernanceOwnerPolicyV1(policyLoaded.parsed);
   if (!ownerPolicy.ok) return ownerPolicy;
 
-  const bundle: OfflineGovernanceAuthorityBundleV1 = { ownerPolicy: ownerPolicy.policy };
+  const bundle: OfflineGovernanceEvidenceBundleV1 = { ownerPolicy: ownerPolicy.policy };
 
   const ratTrust = parseJsonEnv(env, M3_3_HV_H4_A3_GOVERNANCE_TRUST_STORE_JSON_ENV, M3_3_HV_H4_A3_GOVERNANCE_TRUST_STORE_PATH_ENV);
   const ratRepo = parseJsonEnv(
@@ -131,111 +126,22 @@ export function loadPhaseAGovernanceOfflineAuthorityBundleV1(
   return { ok: true, bundle };
 }
 
-function verifiedRatification(): M3_3HvH4A3GovernanceRatificationVerifiedEvidenceV1 {
-  return {
-    contractVersion: M3_3_HV_H4_A3_GOVERNANCE_VERIFIED_EVIDENCE_RESULT_CONTRACT_V1,
-    evidenceKind: 'GOVERNANCE_RATIFICATION_PROVENANCE',
-    authorityStatus: 'AUTHORITY_VERIFIED',
-    reasonCode: 'PHASE_A_GOVERNANCE_RATIFICATION_AUTHORITY_VERIFIED_OFFLINE',
-  };
-}
+/** @deprecated Use loadPhaseAGovernanceOfflineEvidenceBundleV1 */
+export const loadPhaseAGovernanceOfflineAuthorityBundleV1 = loadPhaseAGovernanceOfflineEvidenceBundleV1;
 
-function verifiedRisk(): M3_3HvH4A3OperatorRiskAcceptanceVerifiedEvidenceV1 {
-  return {
-    contractVersion: M3_3_HV_H4_A3_GOVERNANCE_VERIFIED_EVIDENCE_RESULT_CONTRACT_V1,
-    evidenceKind: 'OPERATOR_RISK_ACCEPTANCE',
-    authorityStatus: 'AUTHORITY_VERIFIED',
-    reasonCode: 'PHASE_A_GOVERNANCE_OPERATOR_RISK_AUTHORITY_VERIFIED_OFFLINE',
-  };
-}
-
-function notVerifiedRatification(reasonCode: string): M3_3HvH4A3GovernanceRatificationVerifiedEvidenceV1 {
-  return {
-    contractVersion: M3_3_HV_H4_A3_GOVERNANCE_VERIFIED_EVIDENCE_RESULT_CONTRACT_V1,
-    evidenceKind: 'GOVERNANCE_RATIFICATION_PROVENANCE',
-    authorityStatus: 'AUTHORITY_NOT_VERIFIED',
-    reasonCode,
-  };
-}
-
-function notVerifiedRisk(reasonCode: string): M3_3HvH4A3OperatorRiskAcceptanceVerifiedEvidenceV1 {
-  return {
-    contractVersion: M3_3_HV_H4_A3_GOVERNANCE_VERIFIED_EVIDENCE_RESULT_CONTRACT_V1,
-    evidenceKind: 'OPERATOR_RISK_ACCEPTANCE',
-    authorityStatus: 'AUTHORITY_NOT_VERIFIED',
-    reasonCode,
-  };
-}
-
-export function createPhaseAGovernanceExternalAuthorityVerifierOfflineV1(
-  bundle: OfflineGovernanceAuthorityBundleV1,
-): PhaseAGovernanceExternalAuthorityVerifierV1 {
-  const seenEvidenceNonces = new Set<string>();
-  const seenAcceptanceIds = new Set<string>();
-
-  return {
-    verifyRatificationProvenanceV1: (input) => {
-      if (!bundle.ratification) {
-        return notVerifiedRatification('PHASE_A_GOVERNANCE_EXTERNAL_AUTHORITY_VERIFIER_NOT_CONFIGURED');
-      }
-      const { provenanceClaims, adoptionRecord } = input;
-      if (
-        provenanceClaims.governancePolicyId.trim() !== adoptionRecord.governanceContractId.trim() ||
-        provenanceClaims.governanceAdoptionProposalRef.trim() !== adoptionRecord.governanceProposalRef.trim()
-      ) {
-        return notVerifiedRatification('PHASE_A_GOVERNANCE_RATIFICATION_PROVENANCE_POLICY_MISMATCH');
-      }
-      if (provenanceClaims.pullRequestNumber !== bundle.ownerPolicy.expectedPullRequestNumber) {
-        return notVerifiedRatification('PHASE_A_GOVERNANCE_PULL_REQUEST_MISMATCH');
-      }
-      const mergeSha = provenanceClaims.ratifiedMergeCommitSha.trim();
-      if (mergeSha !== bundle.ratification.attestation.mergeCommitSha) {
-        return notVerifiedRatification('PHASE_A_GOVERNANCE_MERGE_SHA_MISMATCH');
-      }
-
-      const result = verifyGovernanceRatificationOfflineV1({
-        trustStore: bundle.ratification.trustStore,
-        ownerPolicy: bundle.ownerPolicy,
-        repositoryEvidence: bundle.ratification.repositoryEvidence,
-        attestation: bundle.ratification.attestation,
-        now: input.now ?? new Date(),
-        seenEvidenceNonces,
-      });
-      if (!result.ok) return notVerifiedRatification(result.reasonCode);
-      return verifiedRatification();
-    },
-    verifyOperatorRiskAcceptanceV1: (input) => {
-      if (!bundle.risk) {
-        return notVerifiedRisk('PHASE_A_GOVERNANCE_EXTERNAL_AUTHORITY_VERIFIER_NOT_CONFIGURED');
-      }
-      if (!input.authorizedReleaseSha || !input.postgresTargetFingerprint) {
-        return notVerifiedRisk('PHASE_A_GOVERNANCE_OPERATOR_RISK_EVIDENCE_CONTEXT_INCOMPLETE');
-      }
-      const result = verifyGovernanceOperatorRiskAttestationOfflineV1({
-        trustStore: bundle.risk.trustStore,
-        ownerPolicy: bundle.ownerPolicy,
-        attestation: bundle.risk.attestation,
-        changeTicket: input.changeTicket,
-        approvalBinding: input.approvalBinding,
-        maintenanceWindow: input.maintenanceWindow,
-        authorizedReleaseSha: input.authorizedReleaseSha,
-        postgresTargetFingerprint: input.postgresTargetFingerprint,
-        now: input.now,
-        seenAcceptanceIds,
-      });
-      if (!result.ok) return notVerifiedRisk(result.reasonCode);
-      return verifiedRisk();
-    },
-  };
-}
-
+/**
+ * Production authority must not be instantiated from env-supplied trust material (P1B1-A1-H1).
+ * Returns the same fail-closed verifier as resolvePhaseAGovernanceExternalAuthorityVerifierV1.
+ */
 export function tryCreatePhaseAGovernanceExternalAuthorityVerifierFromEnvV1(
-  env: NodeJS.ProcessEnv,
+  _env: NodeJS.ProcessEnv,
 ): PhaseAGovernanceExternalAuthorityVerifierV1 | null {
-  const loaded = loadPhaseAGovernanceOfflineAuthorityBundleV1(env);
-  if (!loaded.ok) return null;
-  if (!loaded.bundle.ratification && !loaded.bundle.risk) {
-    return null;
-  }
-  return createPhaseAGovernanceExternalAuthorityVerifierOfflineV1(loaded.bundle);
+  return null;
+}
+
+/** Each call returns a fresh disabled verifier (fresh ephemeral state is not replay protection). */
+export function createPhaseAGovernanceExternalAuthorityVerifierOfflineV1(
+  _bundle: OfflineGovernanceEvidenceBundleV1,
+): PhaseAGovernanceExternalAuthorityVerifierV1 {
+  return createPhaseAGovernanceExternalAuthorityVerifierDisabledV1();
 }

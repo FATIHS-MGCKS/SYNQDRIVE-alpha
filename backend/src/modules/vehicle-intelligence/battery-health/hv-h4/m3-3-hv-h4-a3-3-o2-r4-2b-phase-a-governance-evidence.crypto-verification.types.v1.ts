@@ -1,0 +1,22 @@
+/** Cryptographic check using caller-supplied trust material — not independent authority. */
+export type M3_3HvH4A3GovernanceCryptographicVerificationStatusV1 =
+  | 'SIGNATURE_VALID_WITH_SUPPLIED_KEY'
+  | 'SIGNATURE_INVALID'
+  | 'SIGNATURE_NOT_EVALUATED';
+
+export type M3_3HvH4A3GovernanceIndependentAuthorityStatusV1 =
+  | 'INDEPENDENT_AUTHORITY_VERIFIED'
+  | 'INDEPENDENT_AUTHORITY_NOT_VERIFIED';
+
+/** Known reference only — not independently authenticated runtime proof in A1/H1. */
+export const M3_3_HV_H4_A3_GOVERNANCE_REFERENCE_PR1954_MERGE_SHA_V1 =
+  '68d3f913294f678d742e3215ffb7fcff90f0bfa6' as const;
+
+export const REPOSITORY_MERGE_PROVENANCE_UNVERIFIED_REASON_CODE =
+  'REPOSITORY_MERGE_PROVENANCE_UNVERIFIED' as const;
+
+export const PHASE_A_GOVERNANCE_INDEPENDENT_TRUST_ANCHOR_NOT_PROVISIONED =
+  'PHASE_A_GOVERNANCE_INDEPENDENT_TRUST_ANCHOR_NOT_PROVISIONED' as const;
+
+export const PHASE_A_GOVERNANCE_CALLER_SUPPLIED_TRUST_CANNOT_ESTABLISH_AUTHORITY =
+  'PHASE_A_GOVERNANCE_CALLER_SUPPLIED_TRUST_CANNOT_ESTABLISH_AUTHORITY' as const;

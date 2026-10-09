@@ -19,9 +19,11 @@
 - Governance signatures are **not** execution authorization.
 - `LIVE_DATABASE_ROLE_VERIFIED` claims are rejected in A1 parsers.
 
-## Runtime integration
+## Runtime integration (P1B1-A1-H1)
 
-`resolvePhaseAGovernanceExternalAuthorityVerifierV1(env)` loads an offline verifier when trust store, owner policy, and signed attestations are present; otherwise remains disabled (fail-closed). Human verification readiness may pass when evidence verifies; P1 execution gate unchanged.
+`resolvePhaseAGovernanceExternalAuthorityVerifierV1(env)` is **always fail-closed** — caller-supplied trust-store / owner-policy JSON from the same channel as claims cannot establish production authority (`PHASE_A_GOVERNANCE_INDEPENDENT_TRUST_ANCHOR_NOT_PROVISIONED`).
+
+Offline cryptographic verifiers may return `SIGNATURE_VALID_WITH_SUPPLIED_KEY` for diagnostics/tests; that is **separate** from `INDEPENDENT_AUTHORITY_VERIFIED`. Fixture GitHub merge evidence never promotes to production ratification (`REPOSITORY_MERGE_PROVENANCE_UNVERIFIED`). Human verification readiness does not pass from synthetic env bundles; P1 execution gate unchanged.
 
 ## Env material (optional, offline)
 
