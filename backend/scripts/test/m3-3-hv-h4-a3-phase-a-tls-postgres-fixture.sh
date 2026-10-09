@@ -22,6 +22,15 @@ require_cmd() {
 
 require_cmd openssl
 require_cmd docker
+if ! command -v faketime >/dev/null 2>&1; then
+  if command -v apt-get >/dev/null 2>&1; then
+    log "installing faketime for expired-cert fixture generation"
+    apt-get update -qq && apt-get install -y -qq faketime
+  else
+    log "faketime is required for expired server cert fixture" >&2
+    exit 1
+  fi
+fi
 if ! docker info >/dev/null 2>&1; then
   log "docker daemon is not available" >&2
   exit 1
