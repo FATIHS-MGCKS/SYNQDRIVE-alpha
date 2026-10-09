@@ -318,6 +318,19 @@ describe('S4F-7AO live transaction harness (engineering)', () => {
     };
     const metricsA = metricsFileForEnv(postMutationEnvMap(applyFiveFlagMutation(envContent).nextContent));
     const metricsB = metricsFileForEnv(postMutationEnvMap(applyFiveFlagMutation(envContent).nextContent));
+    const prestateEnv: Record<string, string | undefined> = {
+      DI_V0_S4_DISCOVERY_TRIP_END_NOT_BEFORE: STAGED_NOT_BEFORE,
+      [DI_V0_S4_ENV_ALLOWLISTS.organization]: CANONICAL_ORG,
+      [DI_V0_S4_ENV_ALLOWLISTS.vehicle]: CANONICAL_VEH,
+      [DI_V0_S4_ENV_FLAGS.master]: 'false',
+      [DI_V0_S4_ENV_FLAGS.discovery]: 'false',
+      [DI_V0_S4_ENV_FLAGS.worker]: 'false',
+      [DI_V0_S4_ENV_FLAGS.position]: 'false',
+      [DI_V0_S4_ENV_FLAGS.r1]: 'false',
+      [DI_V0_S4_ENV_FLAGS.native]: 'false',
+    };
+    const recoveryMetricsA = metricsFileForEnv(prestateEnv);
+    const recoveryMetricsB = metricsFileForEnv(prestateEnv);
     return {
       DRY_RUN: '0',
       DI_S4F7AO_ENGINEERING_TEST_HARNESS: 'YES',
@@ -337,6 +350,8 @@ describe('S4F-7AO live transaction harness (engineering)', () => {
       DI_S4F7J_FIXTURE_RELEASE_DIR: releaseDir,
       DI_S4F7AO_FIXTURE_METRICS_BODY_A: metricsA,
       DI_S4F7AO_FIXTURE_METRICS_BODY_B: metricsB,
+      DI_S4F7J_FIXTURE_METRICS_BODY_RECOVERY_A: recoveryMetricsA,
+      DI_S4F7J_FIXTURE_METRICS_BODY_RECOVERY_B: recoveryMetricsB,
       ...extra,
     };
   }
@@ -374,12 +389,22 @@ describe('S4F-7AO live transaction harness (engineering)', () => {
     expect(fs.readFileSync(envFile, 'utf8')).toBe(before);
   });
 
-  it('replica A failure => rollback restores exact env bytes', () => {
-    const { envFile, before } = expectLiveFail({ DI_S4F7AO_TEST_INJECT_RESTART_A_FAIL: '1' });
+  it('replica A failure => full rollback restores env and reports COMPLETE without replica recovery', () => {
+    const env = baseLiveEnv({ DI_S4F7AO_TEST_INJECT_RESTART_A_FAIL: '1' });
+    const envFile = env.SYNQDRIVE_BACKEND_ENV!;
+    const before = fs.readFileSync(envFile, 'utf8');
+    let out = '';
+    try {
+      out = execFileSync('bash', [WRAPPER], { encoding: 'utf8', env: { ...process.env, ...env } });
+    } catch (e: unknown) {
+      out = `${(e as { stdout?: string }).stdout ?? ''}${(e as { stderr?: string }).stderr ?? ''}`;
+    }
     expect(fs.readFileSync(envFile, 'utf8')).toBe(before);
+    expect(out).toContain('ROLLBACK_RESULT=COMPLETE');
+    expect(out).toContain('ROLLBACK_REPLICA_RECOVERY=NOT_REQUIRED');
   });
 
-  it('replica B failure => rollback restores exact env bytes', () => {
+  it('replica B failure => full rollback restores env bytes', () => {
     const { envFile, before } = expectLiveFail({ DI_S4F7AO_TEST_INJECT_RESTART_B_FAIL: '1' });
     expect(fs.readFileSync(envFile, 'utf8')).toBe(before);
   });
@@ -393,16 +418,24 @@ describe('S4F-7AO live transaction harness (engineering)', () => {
     expect(fs.readFileSync(envFile, 'utf8')).toBe(before);
   });
 
-  it('incomplete rollback => env may diverge from prestate when restore inject fails', () => {
+  it('incomplete rollback => CRITICAL_RECOVERY_STATE and never ROLLBACK_RESULT=COMPLETE', () => {
     const env = baseLiveEnv({
       DI_S4F7AO_TEST_INJECT_RESTART_A_FAIL: '1',
       DI_S4F7AO_TEST_INJECT_BACKUP_RESTORE_FAIL: '1',
     });
     const envFile = env.SYNQDRIVE_BACKEND_ENV!;
     const before = fs.readFileSync(envFile, 'utf8');
-    expect(() => execFileSync('bash', [WRAPPER], { encoding: 'utf8', env: { ...process.env, ...env } })).toThrow();
+    let out = '';
+    try {
+      out = execFileSync('bash', [WRAPPER], { encoding: 'utf8', env: { ...process.env, ...env } });
+    } catch (e: unknown) {
+      out = (e as { stdout?: string }).stdout ?? '';
+    }
     const after = fs.readFileSync(envFile, 'utf8');
     expect(after).not.toBe(before);
+    expect(out).toContain('CRITICAL_RECOVERY_STATE=YES');
+    expect(out).not.toContain('ROLLBACK_RESULT=COMPLETE');
+    expect(out).toContain('ROLLBACK_RESULT=FAILED');
   });
 
   it('live path without five-flag authorization => FAIL', () => {
@@ -416,5 +449,63 @@ describe('S4F-7AO live transaction harness (engineering)', () => {
         },
       }),
     ).toThrow();
+  });
+
+  it('missing DRY_RUN => fail-closed before preflight', () => {
+    const env = baseLiveEnv();
+    delete (env as Record<string, string | undefined>).DRY_RUN;
+    const { DRY_RUN: _ignored, ...procSansDry } = process.env;
+    expect(() =>
+      execFileSync('bash', [WRAPPER], { encoding: 'utf8', env: { ...procSansDry, ...env } }),
+    ).toThrow();
+  });
+
+  it('durable backup dir rejects /tmp outside test harness', () => {
+    const lib = path.join(__dirname, '../lib/di-v0-s4-tiny-staging-production.lib.sh');
+    const script = `set -euo pipefail; source "${lib}"; SYNQDRIVE_DEPLOY_STATE_DIR=/tmp/s4f7ao-nondurable s4f7j_require_durable_backup_dir`;
+    expect(() =>
+      execFileSync('bash', ['-c', script], {
+        encoding: 'utf8',
+        env: { ...process.env, DI_S4F7J_TEST_MODE: '0', DI_S4F7J_FIXTURE_MODE: '0' },
+      }),
+    ).toThrow();
+  });
+});
+
+describe('S4F-7AO.1 production test-mode isolation', () => {
+  function expectProductionPathFail(extra: Record<string, string>): void {
+    expect(() =>
+      execFileSync('bash', [WRAPPER], {
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          DRY_RUN: '1',
+          SYNQDRIVE_BACKEND_ENV: '/opt/synqdrive/shared/backend.env',
+          DI_S4_FIVE_FLAG_TINY_ACTIVATION_ACK: 'YES',
+          DI_S4F7AO_FIVE_FLAG_AUTHORIZED: 'YES',
+          ...extra,
+        },
+      }),
+    ).toThrow();
+  }
+
+  it('DI_S4F7AO_TEST_MODE on production env path => FAIL closed', () => {
+    expectProductionPathFail({ DI_S4F7AO_TEST_MODE: '1' });
+  });
+
+  it('DI_S4F7J_TEST_MODE on production env path => FAIL closed', () => {
+    expectProductionPathFail({ DI_S4F7J_TEST_MODE: '1' });
+  });
+
+  it('fixture mode on production env path => FAIL closed', () => {
+    expectProductionPathFail({ DI_S4F7J_FIXTURE_MODE: '1' });
+  });
+
+  it('engineering harness on production env path => FAIL closed', () => {
+    expectProductionPathFail({ DI_S4F7AO_ENGINEERING_TEST_HARNESS: 'YES' });
+  });
+
+  it('fixture env var on production path => FAIL closed', () => {
+    expectProductionPathFail({ DI_S4F7J_FIXTURE_DEPLOYED_SHA: 'abc' });
   });
 });

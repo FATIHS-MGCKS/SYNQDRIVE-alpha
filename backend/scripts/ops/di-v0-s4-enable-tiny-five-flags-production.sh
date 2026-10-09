@@ -29,7 +29,6 @@ source "${SCRIPT_DIR}/lib/di-v0-s4-five-flag-tiny-activation-transaction.lib.sh"
 
 BACKEND_ENV="${SYNQDRIVE_BACKEND_ENV:-/opt/synqdrive/shared/backend.env}"
 export SYNQDRIVE_BACKEND_ENV="$BACKEND_ENV"
-DRY_RUN="${DRY_RUN:-0}"
 
 echo "EXP021_S4F7AO_FIVE_FLAG_TINY_ACTIVATION_WRAPPER=1"
 echo "SUPPORTED_ENV_MUTATION_KEY_COUNT=5"
@@ -41,6 +40,13 @@ echo "GLOBAL_KILL_ENFORCED=YES"
 echo "S4_ACTIVATION_OCCURRED=NO"
 echo "PROVIDER_CALL_PATH_PRESENT=NO"
 echo "EXPECTED_PROVIDER_CALL_DELTA=0"
+
+if ! s4f7ao_assert_production_test_isolation; then
+  exit 1
+fi
+if ! s4f7ao_assert_explicit_dry_run_mode; then
+  exit 1
+fi
 
 if [[ "$DRY_RUN" == "1" ]]; then
   TARGET_SHA="$(s4f7j_resolve_deployed_sha)"
