@@ -30,7 +30,10 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { VehicleOnboardingOffboardController } from './controllers/vehicle-onboarding-offboard.controller';
 import { MasterVehicleOffboardAdmissionGuard } from './guards/master-vehicle-offboard-admission.guard';
 import { VehicleOffboardPreflightService } from './offboarding/vehicle-offboard-preflight.service';
-import { MASTER_VEHICLE_OFFBOARD_ADMISSION_DISABLED_CODE } from './policy/master-vehicle-offboard-admission.errors';
+import {
+  MASTER_VEHICLE_OFFBOARD_ADMISSION_DISABLED_CODE,
+  MASTER_VEHICLE_OFFBOARD_PLATFORM_MASTER_ADMIN_REQUIRED_CODE,
+} from './policy/master-vehicle-offboard-admission.errors';
 import { VehicleOffboardingService } from './services/vehicle-offboarding.service';
 import { VehicleOnboardingOffboardService } from './services/vehicle-onboarding-offboard.service';
 import { ensureOrganizationProductEntitlement } from './testing/org-product-test.harness';
@@ -229,6 +232,43 @@ function clearAdmissionEnv() {
       { id: 'u1', platformRole: 'USER', membershipRole: 'WORKER', organizationId: orgId },
       { reason: 'REMOVE_FROM_PRODUCT', idempotencyKey: randomUUID() },
     ).expect(403);
+  });
+
+  async function expectNoOffboardMutation(vehicleId: string) {
+    const rows = await prisma.$queryRaw<Array<{ registry_lifecycle: string }>>`
+      SELECT registry_lifecycle::text AS registry_lifecycle FROM vehicles WHERE id = ${vehicleId}
+    `;
+    expect(rows[0]?.registry_lifecycle).toBe('ACTIVE');
+    const outboxCount = await prisma.vehicleRegistryLifecycleOutbox.count({
+      where: { vehicleId, eventType: 'VEHICLE_OFFBOARDED' },
+    });
+    expect(outboxCount).toBe(0);
+  }
+
+  it('cross-claim USER platform + MASTER_ADMIN membership denied without mutation (admission OFF and ON)', async () => {
+    const orgId = await createOrg(prisma);
+    const { vehicleId } = await createActiveVehicle(prisma, orgId);
+    const crossClaimPrincipal = {
+      id: 'cross-claim-membership-ma',
+      platformRole: UserPlatformRole.USER,
+      membershipRole: 'MASTER_ADMIN',
+      organizationId: orgId,
+      sessionClaims: buildMfaClaims(),
+    };
+    const body = { reason: 'REMOVE_FROM_PRODUCT', idempotencyKey: randomUUID() };
+
+    const offRes = await postOffboard(orgId, vehicleId, crossClaimPrincipal, body).expect(403);
+    expect(offRes.body.code).toBe(MASTER_VEHICLE_OFFBOARD_PLATFORM_MASTER_ADMIN_REQUIRED_CODE);
+    await expectNoOffboardMutation(vehicleId);
+
+    applyAdmittedOffboardEnv();
+    stepUpValidate.mockResolvedValue(true);
+    const onRes = await postOffboard(orgId, vehicleId, crossClaimPrincipal, {
+      ...body,
+      idempotencyKey: randomUUID(),
+    }).expect(403);
+    expect(onRes.body.code).toBe(MASTER_VEHICLE_OFFBOARD_PLATFORM_MASTER_ADMIN_REQUIRED_CODE);
+    await expectNoOffboardMutation(vehicleId);
   });
 
   it('backend admission gate OFF rejects MASTER_ADMIN (409)', async () => {

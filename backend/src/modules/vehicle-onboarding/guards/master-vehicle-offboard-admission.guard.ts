@@ -5,7 +5,10 @@ import {
   evaluateMasterVehicleOffboardHttpAdmission,
   MasterVehicleOffboardAdmissionBlockReason,
 } from '../policy/master-vehicle-offboard-admission.config';
-import { masterVehicleOffboardAdmissionDisabledException } from '../policy/master-vehicle-offboard-admission.errors';
+import {
+  masterVehicleOffboardAdmissionDisabledException,
+  masterVehicleOffboardPlatformMasterAdminRequiredException,
+} from '../policy/master-vehicle-offboard-admission.errors';
 
 @Injectable()
 export class MasterVehicleOffboardAdmissionGuard implements CanActivate {
@@ -14,7 +17,7 @@ export class MasterVehicleOffboardAdmissionGuard implements CanActivate {
     const user = request.user as { platformRole?: string } | undefined;
 
     if (user?.platformRole !== UserPlatformRole.MASTER_ADMIN) {
-      return true;
+      throw masterVehicleOffboardPlatformMasterAdminRequiredException();
     }
 
     const evaluation = evaluateMasterVehicleOffboardHttpAdmission({

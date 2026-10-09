@@ -38,12 +38,9 @@
 | 2026-10-08 | **VO5C-P2A** — Connected Vehicles UI offboard cutover; `api.vehicleOnboarding.offboardVehicle`; MFA + stable idempotency; lifecycle badges; server `registryLifecycle` filter; legacy backend routes unchanged | `AUDIT_IN_PROGRESS`; P2B lockdown + production route verification still required |
 | 2026-10-08 | **VO5C-P2B1** — Legacy `POST admin/vehicles/:vehicleId/deregister` fail-closed **409** `LEGACY_VEHICLE_DESTRUCTION_DISABLED`; `MASTER_ADMIN` + `MASTER_INTEGRATIONS` MFA; `VehiclesService.deregister` retired; zero mutation; tenant DELETE + prune unchanged | `AUDIT_IN_PROGRESS`; P2B2–P2B4 + production route verification remain |
 | 2026-10-08 | **VO5C-P2B2** — Removed `api.vehicles.deregister` frontend client; repo-wide negative tests; canonical offboard client unchanged; org-scoped delete wrapper retained (P2B3) | `AUDIT_IN_PROGRESS`; P2B3 DELETE lockdown + P2B4 prune review remain |
-<<<<<<< HEAD
-| 2026-10-09 | **VO5C-P4A** — Default-OFF server admission guard for canonical offboard HTTP; release SHA + route-verified attestation; requires `IAM_MFA_MASTER_ADMIN_ENABLED`; dual frontend UI gate; HTTP+Postgres security matrix; operator runbook | No production activation; `AUDIT_IN_PROGRESS` |
-=======
 | 2026-10-08 | **VO5C-P2B3** — Tenant org-scoped and direct `DELETE` vehicle routes fail-closed **409**; `VehiclesService.delete` retired; guards preserved | `AUDIT_IN_PROGRESS`; P2B4 remediation continues |
 | 2026-10-08 | **VO5C-P2B4-0** — Emergency containment: HTTP/CLI/service platform prune fail-closed `PLATFORM_PRUNE_DISABLED`; no env override; replacement prune not implemented | `AUDIT_IN_PROGRESS`; `SECURITY_REMEDIATION_IN_PROGRESS` |
->>>>>>> github/main
+| 2026-10-09 | **VO5C-P4A** — Default-OFF server admission guard for canonical offboard HTTP; release SHA + route-verified attestation; requires `IAM_MFA_MASTER_ADMIN_ENABLED`; dual frontend UI gate; HTTP+Postgres security matrix; operator runbook | No production activation; `AUDIT_IN_PROGRESS` |
 
 ## VO-0B — REUSE-FIRST components (do not replace without VO-1+ proof)
 
