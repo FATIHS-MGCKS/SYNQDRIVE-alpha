@@ -1721,6 +1721,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | PR #1939 — align S4F-7AK / CURRENT_STATE / CHANGE_LEDGER: S4F-7AI = Production **`DRY_RUN=1` only**; live = detached `ed78748bc…` S4F-7Y operator (not S4F-7AI) |
 | NON_EFFECTS | No operator code change; no Production execution |
 
+### EXP-021 S4F-7AS.3 Gate-6 authority seal (2026-10-09)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | PR #1949 — HMAC v2 dispatch (key sidecar); human approval file + root key issuance gate; atomic one-shot + replay marker; exact Production backend.env enforcement; evidence `EXP021_S4F7AS3_GATE6_AUTHORITY_SEAL.md` |
+| TESTS | `test:di:s4f7as:gate6-open-rekill-operator` 44 PASS |
+| NON_EFFECTS | Unknown-commit recovery unchanged; no Production execution; Gate 6 **NOT_GRANTED** |
+
 ### EXP-021 S4F-7AS.2 Final OPEN authority + unknown-commit closure (2026-10-09)
 
 | Event | Detail |
