@@ -35,9 +35,7 @@ export function buildPhaseAProductionP1IntegrationEnvV1(
 ): NodeJS.ProcessEnv {
   const consumptionDir =
     options.consumptionDir ?? join(process.cwd(), `.phase-a-p1-int-${Date.now()}`);
-  if (!options.consumptionDir) {
-    provisionPhaseAProductionConsumptionStoreFixtureV1(consumptionDir);
-  }
+  provisionPhaseAProductionConsumptionStoreFixtureV1(consumptionDir);
 
   const parsed = new URL(options.productionDatabaseUrl.replace(/^postgresql:/, 'postgres:'));
   const login = parsePostgresUrlLoginV1(options.productionDatabaseUrl) ?? 'synqdrive';

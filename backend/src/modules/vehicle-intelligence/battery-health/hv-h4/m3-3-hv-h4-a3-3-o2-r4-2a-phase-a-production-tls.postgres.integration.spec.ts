@@ -137,6 +137,7 @@ function reloadTlsServerCert(certSubdir: string): void {
         sslrootcertPath: trustedCa,
       });
       const consumptionDir = join(process.cwd(), `.phase-a-tls-prod-run-${Date.now()}`);
+      provisionPhaseAProductionConsumptionStoreFixtureV1(consumptionDir);
       const env = buildPhaseAProductionP1IntegrationEnvV1({
         productionDatabaseUrl: verifyFullAuditUrl,
         migrationOwnerDatabaseUrl: tlsAdminUrl,
@@ -149,7 +150,8 @@ function reloadTlsServerCert(certSubdir: string): void {
       delete process.env[M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_HARNESS_ACTIVE_ENV];
 
       try {
-        expect(evaluatePhaseAPreflightProductionAdmissionV1(verifyFullAuditUrl, env).ok).toBe(true);
+        const gate = evaluatePhaseAProductionP1ExecutionGateV1(verifyFullAuditUrl, env);
+        expect(gate.ok ? 'ok' : gate.reasonCode).toBe('ok');
         const outcome = await runM3_3HvH4A3PhaseAPreflightV1({
           databaseUrl: verifyFullAuditUrl,
           roleNames: DEFAULT_M3_3_HV_H4_A3_PHASE_A_ROLE_NAMES_V1,
