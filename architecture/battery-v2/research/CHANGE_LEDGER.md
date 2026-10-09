@@ -6,6 +6,16 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B0-H3 Ed25519 DER canonicalization & revocation alias closure
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | `materializeEd25519TrustSpkiV1` requires input SPKI DER === `createPublicKey` re-export; fingerprint SHA-256(canonical export DER); `PHASE_A_P1_TRUST_KEY_SPKI_DER_NONCANONICAL` for trailing bytes / alternate ASN.1 |
+| **WHY** | Independent repro: Node accepts SPKI+trailing byte and long-form SEQUENCE length; raw-DER SHA-256 alias bypass |
+| **VALIDATION** | Extended `crypto-trust` + full offline verifier Jest family; HV-H4 unit suite |
+| **NON_EFFECTS** | P1 `NO_GO`; H1/H2 calendar, signing header, governance unchanged |
+| **DECISION_STATUS** | PROPOSED |
+
 ## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B0-H2 trust key canonicalization, calendar validation, governance closure
 
 | Field | Value |

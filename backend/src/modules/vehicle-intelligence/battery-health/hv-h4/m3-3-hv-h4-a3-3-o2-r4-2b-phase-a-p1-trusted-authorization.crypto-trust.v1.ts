@@ -32,6 +32,15 @@ export function canonicalBase64FromBytesV1(bytes: Buffer): string {
   return bytes.toString('base64');
 }
 
+export function exportCanonicalEd25519SpkiDerV1(publicKey: KeyObject): Buffer {
+  const exported = publicKey.export({ type: 'spki', format: 'der' });
+  return Buffer.from(exported);
+}
+
+function buffersEqualV1(a: Buffer, b: Buffer): boolean {
+  return a.length === b.length && a.equals(b);
+}
+
 export type ParsedEd25519TrustSpkiV1 = {
   der: Buffer;
   spkiSha256Hex: string;
@@ -39,25 +48,36 @@ export type ParsedEd25519TrustSpkiV1 = {
   publicKey: KeyObject;
 };
 
-/** Decode and validate Ed25519 SPKI material (any valid Base64 encoding of the DER bytes). */
+/**
+ * Decode and validate Ed25519 SPKI trust material.
+ * Input DER must exactly match Node's canonical SPKI export (no trailing bytes / alternate ASN.1).
+ */
 export function materializeEd25519TrustSpkiV1(
   publicKeySpkiBase64: string,
 ): { ok: true; value: ParsedEd25519TrustSpkiV1 } | { ok: false; reasonCode: string } {
   const decoded = decodeBase64ToBytesV1(publicKeySpkiBase64);
   if (!decoded.ok) return decoded;
 
-  const canonicalSpkiBase64 = canonicalBase64FromBytesV1(decoded.bytes);
+  const inputDer = decoded.bytes;
 
   try {
-    const publicKey = createPublicKey({ key: decoded.bytes, format: 'der', type: 'spki' });
+    const publicKey = createPublicKey({ key: inputDer, format: 'der', type: 'spki' });
     if (publicKey.asymmetricKeyType !== 'ed25519') {
       return { ok: false, reasonCode: 'PHASE_A_P1_TRUST_KEY_TYPE_UNSUPPORTED' };
     }
-    const spkiSha256Hex = sha256HexFingerprintV1(decoded.bytes);
+
+    const canonicalDer = exportCanonicalEd25519SpkiDerV1(publicKey);
+    if (!buffersEqualV1(inputDer, canonicalDer)) {
+      return { ok: false, reasonCode: 'PHASE_A_P1_TRUST_KEY_SPKI_DER_NONCANONICAL' };
+    }
+
+    const canonicalSpkiBase64 = canonicalBase64FromBytesV1(canonicalDer);
+    const spkiSha256Hex = sha256HexFingerprintV1(canonicalDer);
+
     return {
       ok: true,
       value: {
-        der: decoded.bytes,
+        der: canonicalDer,
         spkiSha256Hex,
         canonicalSpkiBase64,
         publicKey,

@@ -51,6 +51,11 @@ Unit tests use `crypto.generateKeyPairSync('ed25519')` — **never** commit priv
 | H2-T28 | Artifact `2026-02-30` issuedAt | `TEMPORAL_INSTANT_INVALID` |
 | H2-T29 | Verification `now: NaN` | `VERIFICATION_CLOCK_INVALID` |
 
+| H3-T30 | Canonical Ed25519 SPKI export | accept |
+| H3-T31 | SPKI + trailing zero byte (canonical Base64) | `TRUST_KEY_SPKI_DER_NONCANONICAL` |
+| H3-T32 | Long-form outer SEQUENCE ASN.1 encoding | `TRUST_KEY_SPKI_DER_NONCANONICAL` |
+| H3-T33 | Revoked keyId + trailing-DER alias keyId | fail-closed (DER or duplicate alias) |
+
 ## Security checks (static)
 
 - Grep: verifier module must not import `runM3_3HvH4A3PhaseAPreflightV1`, `createPhaseAProductionPrismaClientV1`, or mutate `process.env` production URLs.
