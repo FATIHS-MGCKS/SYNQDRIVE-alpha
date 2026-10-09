@@ -6,6 +6,17 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B0 single-operator trusted authorization architecture
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | ADR + governance contract + JSON evidence schema + offline verification test plan; isolated Ed25519 offline verifier (`verifyPhaseAProductionP1TrustedAuthorizationEvidenceOfflineV1`) and manifest fingerprint helper |
+| **WHY** | Sole owner/operator cannot satisfy two-human verifier policy without fabricating identities; need honest AI-advisory vs human-risk vs machine-crypto separation |
+| **VALIDATION** | `npx jest m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1-trusted-authorization*`; `npm run test:battery:v2:hv-h4`; runtime `resolvePhaseAProductionP1AuthorizationV1` unchanged `NO_GO` |
+| **NON_EFFECTS** | No production connect, no signing keys in repo/CI, no execution gate integration |
+| **REMAINING_GAPS** | Human policy approval to enable SINGLE_OPERATOR governance mode; P1B1 integration + deployment SHA probe + operator signing CLI |
+| **DECISION_STATUS** | PROPOSED |
+
 ## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1A-H2 P1 authorization enforcement + audit credential isolation
 
 | Field | Value |
