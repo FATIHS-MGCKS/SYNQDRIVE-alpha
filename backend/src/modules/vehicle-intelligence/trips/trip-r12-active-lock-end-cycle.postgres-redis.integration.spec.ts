@@ -172,6 +172,11 @@ if (REQUIRED) {
           expect(familyAfterCompete.primaryState).toBe('active');
           expect(await stableSlotFamilyHasFutureAuthority(familyAfterCompete)).toBe(true);
 
+          await waitForHarnessCondition(
+            async () => (await trackingQueue.getJob(evSuccId)) != null,
+            15_000,
+            'successor job after competing scheduleEndValidation',
+          );
           const successor = await trackingQueue.getJob(evSuccId);
           expect(successor).not.toBeNull();
           expect(await successor!.getState()).not.toBe('failed');
