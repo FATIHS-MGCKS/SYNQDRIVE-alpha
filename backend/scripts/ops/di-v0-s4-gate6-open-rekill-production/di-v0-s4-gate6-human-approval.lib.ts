@@ -5,14 +5,21 @@ import {
   type Gate6HumanApprovalRecordV2,
   verifyGate6HumanApprovalRecordV2,
 } from './di-v0-s4-gate6-human-approval-ed25519.lib';
+import {
+  evaluateProductionGate6IssuanceTrustAnchors,
+  isProductionGate6IssuanceContext,
+  type ProductionTrustAnchorFailure,
+} from './di-v0-s4-gate6-production-trust-anchor.lib';
+import {
+  GATE6_PRODUCTION_HUMAN_APPROVAL_PUBLIC_KEY_PATH,
+  GATE6_PRODUCTION_HUMAN_APPROVAL_ROOT_KEY_PATH,
+} from './di-v0-s4-gate6-production-paths.lib';
 
 export const DI_S4_GATE6_LIVE_OPEN_HUMAN_APPROVAL_FILE_ENV = 'DI_S4_GATE6_LIVE_OPEN_HUMAN_APPROVAL_FILE';
 export const DI_S4_GATE6_LIVE_OPEN_APPROVAL_ID_ENV = 'DI_S4_GATE6_LIVE_OPEN_APPROVAL_ID';
 export const DI_S4_GATE6_HUMAN_APPROVAL_ROOT_KEY_FILE_ENV = 'DI_S4_GATE6_HUMAN_APPROVAL_ROOT_KEY_FILE';
 export const DI_S4_GATE6_HUMAN_APPROVAL_PUBLIC_KEY_FILE_ENV = 'DI_S4_GATE6_HUMAN_APPROVAL_PUBLIC_KEY_FILE';
-export const GATE6_PRODUCTION_HUMAN_APPROVAL_ROOT_KEY_PATH = '/opt/synqdrive/shared/gate6-live-open-approval-root.key';
-export const GATE6_PRODUCTION_HUMAN_APPROVAL_PUBLIC_KEY_PATH =
-  '/opt/synqdrive/shared/gate6-live-open-approval-public.pem';
+export { GATE6_PRODUCTION_HUMAN_APPROVAL_PUBLIC_KEY_PATH, GATE6_PRODUCTION_HUMAN_APPROVAL_ROOT_KEY_PATH };
 
 export interface Gate6HumanApprovalRecord {
   v: 1;
@@ -47,7 +54,8 @@ export type HumanApprovalFailure =
   | 'HUMAN_APPROVAL_VALIDITY_WINDOW_INVALID'
   | 'HUMAN_APPROVAL_VALIDITY_WINDOW_EXPIRED'
   | 'HUMAN_APPROVAL_VALIDITY_WINDOW_NOT_YET_VALID'
-  | 'INDEPENDENT_APPROVAL_AUTHORITY_BLOCKED';
+  | 'INDEPENDENT_APPROVAL_AUTHORITY_BLOCKED'
+  | ProductionTrustAnchorFailure;
 
 function approvalPayloadString(
   input: Omit<Gate6HumanApprovalRecord, 'mac'>,
@@ -89,6 +97,21 @@ export function resolveHumanApprovalRootKeyPath(env: NodeJS.ProcessEnv = process
 }
 
 export function resolveHumanApprovalPublicKeyPath(env: NodeJS.ProcessEnv = process.env): { ok: true; path: string } | { ok: false; reason: HumanApprovalFailure } {
+  if (isProductionGate6IssuanceContext(env)) {
+    if ((env[DI_S4_GATE6_HUMAN_APPROVAL_PUBLIC_KEY_FILE_ENV] ?? '').trim()) {
+      return { ok: false, reason: 'HUMAN_APPROVAL_PUBLIC_KEY_ENV_OVERRIDE_FORBIDDEN' };
+    }
+    const anchors = evaluateProductionGate6IssuanceTrustAnchors(env);
+    if (!anchors.ok) {
+      const reason =
+        anchors.failures.find((f) => f.startsWith('HUMAN_APPROVAL_PUBLIC_KEY')) ??
+        anchors.failures[0] ??
+        'HUMAN_APPROVAL_PUBLIC_KEY_TRUST_ANCHOR_INVALID';
+      return { ok: false, reason };
+    }
+    return { ok: true, path: GATE6_PRODUCTION_HUMAN_APPROVAL_PUBLIC_KEY_PATH };
+  }
+
   const explicit = (env[DI_S4_GATE6_HUMAN_APPROVAL_PUBLIC_KEY_FILE_ENV] ?? '').trim();
   if (explicit) {
     if (!fs.existsSync(explicit)) return { ok: false, reason: 'HUMAN_APPROVAL_ED25519_PUBLIC_KEY_MISSING' };
@@ -180,6 +203,13 @@ export function loadAndVerifyHumanApprovalFile(
   pins: { requiredSha: string; requiredReleaseId: string; requiredEnvSha256: string; reason: string; actor: string },
   options?: { nowMs?: number },
 ): { ok: true; verified: VerifiedHumanApprovalRecord } | { ok: false; failures: HumanApprovalFailure[] } {
+  if (isProductionGate6IssuanceContext(env)) {
+    const anchors = evaluateProductionGate6IssuanceTrustAnchors(env);
+    if (!anchors.ok) {
+      return { ok: false, failures: anchors.failures };
+    }
+  }
+
   const approvalFile = (env[DI_S4_GATE6_LIVE_OPEN_HUMAN_APPROVAL_FILE_ENV] ?? '').trim();
   if (!approvalFile) return { ok: false, failures: ['HUMAN_APPROVAL_FILE_MISSING'] };
 
@@ -215,6 +245,13 @@ export function loadAndVerifyHumanApprovalFile(
       return { ok: false, failures: ['HUMAN_APPROVAL_HMAC_FORBIDDEN_ON_CANONICAL_PRODUCTION', 'HUMAN_APPROVAL_ED25519_REQUIRED'] };
     }
     return { ok: false, failures: ['HUMAN_APPROVAL_ED25519_REQUIRED'] };
+  }
+
+  if (isProductionGate6IssuanceContext(env)) {
+    return {
+      ok: false,
+      failures: ['HUMAN_APPROVAL_HMAC_FORBIDDEN_ON_CANONICAL_PRODUCTION', 'HUMAN_APPROVAL_ED25519_REQUIRED'],
+    };
   }
 
   const record = parsed as Gate6HumanApprovalRecord;

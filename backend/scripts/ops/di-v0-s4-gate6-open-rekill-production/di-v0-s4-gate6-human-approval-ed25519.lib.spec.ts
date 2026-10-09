@@ -84,11 +84,9 @@ describe('Gate-6 Ed25519 human approval (v2)', () => {
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
-  it('forbids HMAC v1 on canonical production backend env even when root key path would exist', () => {
+  it('fail-closed on production issuance before HMAC v1 can be verified (trust anchors + no override)', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gate6-ed25519-prod-'));
-    const rootPath = path.join(dir, 'root.key');
     const approvalPath = path.join(dir, 'approval-v1.json');
-    fs.writeFileSync(rootPath, 'fixture-root-key', 'utf8');
     fs.writeFileSync(
       approvalPath,
       JSON.stringify({
@@ -107,15 +105,14 @@ describe('Gate-6 Ed25519 human approval (v2)', () => {
     const loaded = loadAndVerifyHumanApprovalFile(
       {
         DI_S4_GATE6_LIVE_OPEN_HUMAN_APPROVAL_FILE: approvalPath,
-        DI_S4_GATE6_HUMAN_APPROVAL_ROOT_KEY_FILE: rootPath,
         SYNQDRIVE_BACKEND_ENV_CANONICAL: '/opt/synqdrive/shared/backend.env',
       },
       pins,
     );
     expect(loaded.ok).toBe(false);
     if (!loaded.ok) {
-      expect(loaded.failures).toContain('HUMAN_APPROVAL_HMAC_FORBIDDEN_ON_CANONICAL_PRODUCTION');
-      expect(loaded.failures).toContain('HUMAN_APPROVAL_ED25519_REQUIRED');
+      expect(loaded.failures).toContain('HUMAN_APPROVAL_PUBLIC_KEY_TRUST_ANCHOR_MISSING');
+      expect(loaded.failures).not.toContain('HUMAN_APPROVAL_MAC_INVALID');
     }
     fs.rmSync(dir, { recursive: true, force: true });
   });

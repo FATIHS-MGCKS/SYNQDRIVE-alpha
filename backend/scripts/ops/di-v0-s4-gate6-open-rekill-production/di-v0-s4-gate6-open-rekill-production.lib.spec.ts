@@ -9,6 +9,7 @@ import {
   CANONICAL_TINY_ORGANIZATION_ID,
   CANONICAL_TINY_VEHICLE_ID,
 } from '../di-v0-s4-fresh-tiny-staging-production/di-v0-s4-fresh-tiny-staging-authority';
+import { PRODUCTION_SHARED_BACKEND_ENV_PATH } from '../di-v0-s4-fresh-tiny-staging-production/di-v0-s4-fresh-tiny-staging-live-authority.lib';
 import {
   applyFiveFlagMutation,
   deriveFiveFlagAttestationFingerprint,
@@ -25,6 +26,7 @@ import {
   evaluateGate6ProductionPathIsolation,
   GATE6_PRODUCTION_FORBIDDEN_FIXTURE_ENV_KEYS,
 } from './di-v0-s4-gate6-live-authority.lib';
+import { isApprovalIdConsumed } from './di-v0-s4-gate6-approval-consumption.lib';
 import {
   issueLiveOpenDispatchToken,
   DI_S4_GATE6_DISPATCH_SIGNING_KEY_FILE_ENV,
@@ -276,6 +278,59 @@ describe('S4F-7AS CLI authority', () => {
       const combined = `${e.stdout ?? ''}${e.stderr ?? ''}`;
       expect(combined).toContain('APPROVAL_CONSUMPTION_FAILURE=APPROVAL_ID_ALREADY_CONSUMED');
     }
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('issue-dispatch-token rejects self-signed approval with manipulated public key on production context', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gate6-prod-bypass-'));
+    const registerDir = path.join(dir, 'register');
+    const tokenDir = path.join(dir, 'tokens');
+    fs.mkdirSync(registerDir);
+    fs.mkdirSync(tokenDir);
+    const { generateGate6Ed25519FixtureKeyPair, signGate6HumanApprovalRecordV2 } = require('./di-v0-s4-gate6-human-approval-ed25519.lib');
+    const { publicKeyPem, privateKeyPem } = generateGate6Ed25519FixtureKeyPair();
+    const attackerPublic = path.join(dir, 'attacker-public.pem');
+    const approvalPath = path.join(dir, 'approval.json');
+    fs.writeFileSync(attackerPublic, publicKeyPem, 'utf8');
+    const now = Date.now();
+    const record = signGate6HumanApprovalRecordV2(privateKeyPem, {
+      approvalId: 'prod-bypass-apr-01',
+      actor: 'actor-a',
+      reason: 'reason-r',
+      requiredSha: 'a'.repeat(40),
+      requiredReleaseId: 'rel',
+      requiredEnvSha256: 'b'.repeat(64),
+      validFromMs: now - 60_000,
+      validUntilMs: now + 3600_000,
+    });
+    fs.writeFileSync(approvalPath, JSON.stringify(record), 'utf8');
+    try {
+      execFileSync('npx', ['--yes', 'ts-node', '--transpile-only', CLI, 'issue-dispatch-token'], {
+        encoding: 'utf8',
+        cwd: BACKEND_ROOT,
+        env: {
+          ...process.env,
+          SYNQDRIVE_BACKEND_ENV_CANONICAL: PRODUCTION_SHARED_BACKEND_ENV_PATH,
+          DI_S4_GATE6_DISPATCH_TOKEN_DIR: tokenDir,
+          DI_S4_GATE6_APPROVAL_CONSUMPTION_REGISTER_DIR: registerDir,
+          DI_S4_GATE6_HUMAN_APPROVAL_PUBLIC_KEY_FILE: attackerPublic,
+          DI_S4_GATE6_LIVE_OPEN_HUMAN_APPROVAL_FILE: approvalPath,
+          DI_S4_GATE6_OPERATOR_REASON: 'reason-r',
+          DI_S4_GATE6_OPERATOR_ACTOR: 'actor-a',
+          DI_S4_TINY_STAGING_REQUIRED_SHA: 'a'.repeat(40),
+          DI_S4_TINY_STAGING_REQUIRED_RELEASE_ID: 'rel',
+          DI_S4_TINY_STAGING_REQUIRED_PRE_ENV_SHA256: 'b'.repeat(64),
+        },
+      });
+      throw new Error('expected exit');
+    } catch (error: unknown) {
+      const e = error as { stdout?: string; stderr?: string };
+      const combined = `${e.stdout ?? ''}${e.stderr ?? ''}`;
+      expect(combined).toMatch(/HUMAN_APPROVAL_PUBLIC_KEY_ENV_OVERRIDE_FORBIDDEN|PRODUCTION_TRUST_ANCHOR_FAILURES/);
+      expect(combined).not.toContain('APPROVAL_ID_CONSUMPTION_RESERVED=YES');
+      expect(combined).not.toContain('DISPATCH_TOKEN_ISSUED=YES');
+    }
+    expect(isApprovalIdConsumed(registerDir, 'prod-bypass-apr-01')).toBe(false);
     fs.rmSync(dir, { recursive: true, force: true });
   });
 

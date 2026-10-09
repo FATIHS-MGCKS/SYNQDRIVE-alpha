@@ -1721,6 +1721,22 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | PR #1939 — align S4F-7AK / CURRENT_STATE / CHANGE_LEDGER: S4F-7AI = Production **`DRY_RUN=1` only**; live = detached `ed78748bc…` S4F-7Y operator (not S4F-7AI) |
 | NON_EFFECTS | No operator code change; no Production execution |
 
+### EXP-021 S4F-7AX.1 Approval trust anchor & atomic consumption (2026-10-09)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | PR #1955 — pinned Production Ed25519 trust anchor (no env/symlink override); `issue-dispatch-token` trust gate; O_EXCL-only consumption marker; 20-process concurrency proof |
+| TESTS | `test:di:s4f7as:gate6-open-rekill-operator` **57** PASS |
+| NON_EFFECTS | No Production mutation; Gate 6 **NOT_GRANTED** |
+
+### EXP-021 S4F-7AX Gate-6 independent approval boundary (2026-10-09)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Ed25519 v2 human approval verify-only on Production canonical path; HMAC v1 approval forbidden when `SYNQDRIVE_BACKEND_ENV_CANONICAL` is Production shared env; approvalId single-use consumption register before dispatch token issuance; evidence `EXP021_S4F7AX_INDEPENDENT_APPROVAL_BOUNDARY.md` |
+| TESTS | `test:di:s4f7as:gate6-open-rekill-operator` **52** PASS (Ed25519 + consumption + CLI replay) |
+| NON_EFFECTS | EMERGENCY_REKILL unchanged; no Production mutation; HMAC root key from S4F-7AW not deleted; Gate 6 **NOT_GRANTED** |
+
 ### EXP-021 S4F-7AS.3 Gate-6 authority seal (2026-10-09)
 
 | Event | Detail |
