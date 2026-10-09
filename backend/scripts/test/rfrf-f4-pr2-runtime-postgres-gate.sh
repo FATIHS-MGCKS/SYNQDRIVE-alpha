@@ -117,4 +117,5 @@ npm test -- \
   raw-fuel-rise-detector-f2-handoff.postgres.integration.spec.ts \
   raw-fuel-rise-liveness.postgres.integration.spec.ts \
   raw-refuel-candidate.postgres.integration.spec.ts \
+  raw-refuel-candidate-r2-cross-version.postgres.integration.spec.ts \
   --runInBand --verbose --forceExit

@@ -32,7 +32,7 @@ External or legacy clients expecting `200`/deleted vehicle body on DELETE now re
 
 ## Remaining risks
 
-- `POST /admin/prune` — **unchanged** (P2B4 review)
+- `POST /admin/prune` — superseded by **VO5C-P2B4-0** emergency containment (`PLATFORM_PRUNE_DISABLED`)
 - P2B1 legacy deregister 409 contract — **unchanged**
 
 ## Rollback risk
