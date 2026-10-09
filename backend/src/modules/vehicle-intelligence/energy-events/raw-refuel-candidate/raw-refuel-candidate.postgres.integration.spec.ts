@@ -2,6 +2,10 @@ import { randomUUID } from 'crypto';
 import { PrismaClient } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
+  RFRF_RISE_DETECTION_VERSION,
+  RFRF_RISE_DETECTOR_VERSION,
+} from '../raw-fuel-rise-detector/raw-fuel-rise-detector.config';
+import {
   RawRefuelCandidateAmbiguityError,
   RawRefuelCandidateLifecycleTransitionError,
   RawRefuelCandidateLifecycleValidationError,
@@ -537,8 +541,8 @@ async function cleanup(prisma: PrismaClient, vehicleId: string, organizationId: 
         const shared = {
           organizationId: org.id,
           vehicleId: vehicle.id,
-          detectionVersion: 'rfrf-v1',
-          detectorVersion: 'rfrf-detector-v0-stub',
+          detectionVersion: RFRF_RISE_DETECTION_VERSION,
+          detectorVersion: RFRF_RISE_DETECTOR_VERSION,
           signalChannel: 'ABSOLUTE_LITERS' as const,
           lifecycleState: 'OBSERVED' as const,
           evidenceRevisionFingerprint: 'seed-a',
@@ -595,8 +599,8 @@ async function cleanup(prisma: PrismaClient, vehicleId: string, organizationId: 
             organizationId: org.id,
             vehicleId: vehicle.id,
             candidateIdentityKey: null,
-            detectionVersion: 'rfrf-v1',
-            detectorVersion: 'rfrf-detector-v0-stub',
+            detectionVersion: RFRF_RISE_DETECTION_VERSION,
+            detectorVersion: RFRF_RISE_DETECTOR_VERSION,
             signalChannel: 'ABSOLUTE_LITERS',
             lifecycleState: 'INSUFFICIENT',
             rejectionReason: 'INSUFFICIENT_PRE_PLATEAU',
@@ -643,8 +647,8 @@ async function cleanup(prisma: PrismaClient, vehicleId: string, organizationId: 
             organizationId: org.id,
             vehicleId: vehicle.id,
             candidateIdentityKey: 'distant-terminal-key',
-            detectionVersion: 'rfrf-v1',
-            detectorVersion: 'rfrf-detector-v0-stub',
+            detectionVersion: RFRF_RISE_DETECTION_VERSION,
+            detectorVersion: RFRF_RISE_DETECTOR_VERSION,
             signalChannel: 'ABSOLUTE_LITERS',
             lifecycleState: 'PROMOTED',
             evidenceRevisionFingerprint: 'distant-terminal',
