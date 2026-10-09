@@ -432,3 +432,19 @@ s4f7j_live_budget_redis_preflight() {
   echo "METRICS_SECRET_EXPOSED=NO"
   return 0
 }
+
+s4f7j_resolve_deployed_sha() {
+  if [[ -n "${DI_S4F7J_FIXTURE_DEPLOYED_SHA:-}" ]] && { s4f7j_is_fixture_mode || s4f7j_is_test_mode; }; then
+    echo "${DI_S4F7J_FIXTURE_DEPLOYED_SHA}"
+    return 0
+  fi
+  vps_replica_current_sha
+}
+
+s4f7j_resolve_release_dir() {
+  if [[ -n "${DI_S4F7J_FIXTURE_RELEASE_DIR:-}" ]] && { s4f7j_is_fixture_mode || s4f7j_is_test_mode; }; then
+    echo "${DI_S4F7J_FIXTURE_RELEASE_DIR}"
+    return 0
+  fi
+  readlink -f "${SYNQDRIVE_CURRENT_LINK:-/opt/synqdrive/current}" 2>/dev/null || echo ""
+}

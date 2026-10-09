@@ -1721,6 +1721,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | PR #1939 — align S4F-7AK / CURRENT_STATE / CHANGE_LEDGER: S4F-7AI = Production **`DRY_RUN=1` only**; live = detached `ed78748bc…` S4F-7Y operator (not S4F-7AI) |
 | NON_EFFECTS | No operator code change; no Production execution |
 
+### EXP-021 S4F-7AO minimal five-flag activation operator (2026-10-09)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Engineering operator `di-v0-s4-enable-tiny-five-flags-production.sh` + TS libs — exactly five S4 enable flags ON, `NATIVE` OFF, staged Tiny keys preserved, GLOBAL **KILLED** only (no DB kill mutation); evidence `EXP021_S4F7AO_MINIMAL_FLAG_OPERATOR.md` |
+| TESTS | `npm run test:di:s4f7ao:five-flag-operator` (24); S4F-7J regression 47 PASS; shared `s4f7j_resolve_deployed_sha` / `s4f7j_resolve_release_dir` in `di-v0-s4-tiny-staging-production.lib.sh` for sourced wrappers |
+| NON_EFFECTS | No Production env write/restart/deploy; Gate 6 **NOT_GRANTED**; S4 not activated; certified S4F-7Y operator unchanged |
+
 ### EXP-021 S4F-7AI.1 bootstrap safety closure (2026-10-08)
 
 | Event | Detail |
