@@ -32,7 +32,17 @@ export type MasterOffboardUiGateEvaluation = {
   releaseAttestationMatch: boolean;
 };
 
-export function evaluateMasterOffboardUiGate(env: ImportMetaEnv = import.meta.env): MasterOffboardUiGateEvaluation {
+/** Vite env keys for VO5C-P4A (declared here to avoid vite-env.d.ts i18n governance coupling). */
+export type MasterOffboardUiGateEnv = {
+  VITE_MASTER_VEHICLE_OFFBOARD_UI?: string;
+  VITE_MASTER_VEHICLE_OFFBOARD_BACKEND_ROUTE_VERIFIED?: string;
+  VITE_MASTER_VEHICLE_OFFBOARD_BACKEND_ATTESTED_SHA?: string;
+  VITE_SYNQDRIVE_DEPLOYED_GIT_SHA?: string;
+};
+
+export function evaluateMasterOffboardUiGate(
+  env: MasterOffboardUiGateEnv = import.meta.env as MasterOffboardUiGateEnv,
+): MasterOffboardUiGateEvaluation {
   const uiFlagOn = parseStrictOnFlag(env.VITE_MASTER_VEHICLE_OFFBOARD_UI);
   const backendRouteVerified = parseRouteVerified(env.VITE_MASTER_VEHICLE_OFFBOARD_BACKEND_ROUTE_VERIFIED);
   const deployedSha = normalizeGitSha(env.VITE_SYNQDRIVE_DEPLOYED_GIT_SHA);

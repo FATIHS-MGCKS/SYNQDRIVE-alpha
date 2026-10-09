@@ -38,7 +38,7 @@ export const EXIT_CODES = Object.freeze({
 const SUPPORTED_PRODUCTION_EXTENSIONS = new Set(['.ts', '.tsx']);
 const UNSUPPORTED_PRODUCTION_EXTENSIONS = new Set(['.js', '.jsx']);
 const INTENTIONALLY_EXCLUDED_REL_RE =
-  /\.(test|spec)\.(ts|tsx)$|translations\/|legal-documents\.|hardcoded-copy-inventory|login-copy\.ts$|test-utils\.ts$|^vite-env\.d\.ts$/;
+  /\.(test|spec)\.(ts|tsx)$|translations\/|legal-documents\.|hardcoded-copy-inventory|login-copy\.ts$|test-utils\.ts$/;
 const INTENTIONALLY_EXCLUDED_DIR_RE = /\/(__tests__|node_modules)\//;
 
 export function isIntentionallyExcludedFromGovernance(repoPath) {
