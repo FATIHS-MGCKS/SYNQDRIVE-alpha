@@ -109,6 +109,69 @@ vps_vo5c_ensure_git_object() {
   git -C "$release_dir" cat-file -e "${object}^{commit}" 2>/dev/null
 }
 
+vps_vo5c_try_merge_base_ancestor() {
+  local release_dir=$1
+  local floor_sha=$2
+  local candidate_sha=$3
+  git -C "$release_dir" merge-base --is-ancestor "$floor_sha" "$candidate_sha" 2>/dev/null
+}
+
+vps_vo5c_deepen_shallow_history() {
+  local release_dir=$1
+  local step=${2:-32}
+  local remote_url
+  remote_url="$(git -C "$release_dir" config --get remote.origin.url 2>/dev/null || true)"
+  if [[ -z "$remote_url" ]]; then
+    remote_url="${SYNQDRIVE_GIT_REPO:-https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git}"
+    git -C "$release_dir" remote add origin "$remote_url" 2>/dev/null \
+      || git -C "$release_dir" remote set-url origin "$remote_url" 2>/dev/null \
+      || true
+  fi
+  git -C "$release_dir" fetch --deepen="$step" origin 2>/dev/null || true
+}
+
+vps_vo5c_reconstruct_shallow_ancestry() {
+  local release_dir=$1
+  local candidate_sha=$2
+  local floor_sha=$3
+  local deepen_steps=(32 64 128 256)
+  local step
+  local is_shallow="false"
+
+  is_shallow="$(git -C "$release_dir" rev-parse --is-shallow-repository 2>/dev/null || echo false)"
+  if [[ "$is_shallow" != "true" ]]; then
+    return 1
+  fi
+
+  if vps_vo5c_try_merge_base_ancestor "$release_dir" "$floor_sha" "$candidate_sha"; then
+    return 0
+  fi
+
+  for step in "${deepen_steps[@]}"; do
+    vps_vo5c_deepen_shallow_history "$release_dir" "$step"
+    if vps_vo5c_try_merge_base_ancestor "$release_dir" "$floor_sha" "$candidate_sha"; then
+      return 0
+    fi
+  done
+
+  # Bounded tip fetch: floor alone is insufficient for descendant ancestry on --depth=1 clones.
+  if ! git -C "$release_dir" fetch --depth=128 origin "${candidate_sha}" 2>/dev/null; then
+    git -C "$release_dir" fetch --depth=128 origin "${candidate_sha}:${candidate_sha}" 2>/dev/null || true
+  fi
+  if ! git -C "$release_dir" fetch --depth=64 origin "${floor_sha}" 2>/dev/null; then
+    git -C "$release_dir" fetch --depth=64 origin "${floor_sha}:${floor_sha}" 2>/dev/null || true
+  fi
+
+  for step in "${deepen_steps[@]}"; do
+    vps_vo5c_deepen_shallow_history "$release_dir" "$step"
+    if vps_vo5c_try_merge_base_ancestor "$release_dir" "$floor_sha" "$candidate_sha"; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
 vps_vo5c_verify_ancestry_includes_floor() {
   local release_dir=$1
   local candidate_sha=$2
@@ -126,9 +189,14 @@ vps_vo5c_verify_ancestry_includes_floor() {
     return 1
   fi
 
-  if git -C "$release_dir" merge-base --is-ancestor "$floor_sha" "$candidate_sha" 2>/dev/null; then
+  if vps_vo5c_try_merge_base_ancestor "$release_dir" "$floor_sha" "$candidate_sha"; then
     return 0
   fi
+
+  if vps_vo5c_reconstruct_shallow_ancestry "$release_dir" "$candidate_sha" "$floor_sha"; then
+    return 0
+  fi
+
   return 1
 }
 

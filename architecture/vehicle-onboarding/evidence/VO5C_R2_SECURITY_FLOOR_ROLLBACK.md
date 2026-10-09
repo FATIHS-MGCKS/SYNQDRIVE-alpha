@@ -86,8 +86,33 @@ Harness: `backend/scripts/test/vo5c-r2-battery-migration-order-ephemeral.sh`
 
 Fixture: full `migrate deploy`, delete Battery R2 `_prisma_migrations` rows, keep `20261008150000_apd_shadow_epoch_activated_at_timestamptz`, re-run `prisma migrate deploy`. Records exact Prisma error code (no assumed P3016).
 
+## R2-H2 — first security deploy bootstrap seal
+
+**Problem:** Pre-promotion production invokes `/opt/synqdrive/current/.../vps-deploy-release.sh` (old executor at `3b557e…`). With `SYNQDRIVE_DI_S4F7Q_EXACT_RC_ATTESTATION_GATE=1`, that executor sources `CONTROLLER_OPS_DIR/lib/vps-production-replica.lib.sh` (unguarded). Patching only the **candidate** release tree does not repair the **executing** script.
+
+**Bootstrap authority (repo):**
+
+| Script | Role |
+|--------|------|
+| `vps-vo5c-first-security-deploy-preflight.sh` | Fail-closed: pinned executor root+SHA, R2 markers, staged release eligibility, release-sourced replica lib, blocks unprotected `/current` executor |
+| `vps-vo5c-run-pinned-security-deploy.sh` | Requires `SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1`; runs preflight then `exec` pinned `vps-deploy-release.sh` (no auto-authorize) |
+| `lib/vps-vo5c-deploy-executor-selection.lib.sh` | Read-only simulation of release vs controller replica-lib sourcing |
+
+**Shallow clone ancestry:** `vps_vo5c_reconstruct_shallow_ancestry` runs only when `git rev-parse --is-shallow-repository` is `true`; full checkouts fail closed without unbounded network on non-shallow trees.
+
+**Isolated tests:** `vps-vo5c-r2-h2-bootstrap.selftest.sh`, `vps-vo5c-shallow-ancestry.selftest.sh`.
+
+## Partial replica failure — operator procedure (design only)
+
+1. **Identify:** `SYNQDRIVE_DEPLOY_CORRELATION_ID`, replica name (A/B), `pm2 jlist` SHA vs `readlink -f /opt/synqdrive/current`, nginx upstream member state (read-only).
+2. **Contain:** Drain unhealthy upstream member; stop only the failing replica PM2 process — do **not** `ln -sfn` to pre-`39775cbb` SHA.
+3. **Block unsafe rollback:** `vps_replica_rollback` / `ROLLBACK_ON_FAIL` deny `3b557e` / `54fc704` before symlink; PM2 dump resurrect disabled.
+4. **Forward recover:** Stage certified SHA ≥ floor; run `vps-vo5c-first-security-deploy-preflight.sh` with pinned R2 executor; human sets `SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1`; `vps-vo5c-run-pinned-security-deploy.sh`.
+5. **Approval:** No production symlink/PM2/nginx mutation without explicit operator authorization.
+
 ## Residual risks / authorization
 
 - R2 adds a **new commit**; deploy candidate must be an explicit full SHA containing VO5C slices **and** R2 guard.
+- First VO5C promotion must use **pinned R2 executor** bootstrap; `/current` old executor remains unsafe until replaced.
 - Production migration history / `migrate resolve` / renames — **out of scope** (separate R2-M if reproduction proves blocker).
 - `VITE_MASTER_VEHICLE_OFFBOARD_UI` unchanged; no product activation.
