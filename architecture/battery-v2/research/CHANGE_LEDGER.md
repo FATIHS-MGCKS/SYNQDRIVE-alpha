@@ -6,6 +6,17 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B0-H1 offline trusted authorization security closure
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Domain-separated signing header (algorithm, keyId, contract version, purpose, scope); strict `unknown` parsers for artifact/trust store/context; full temporal policy; independent runtime binding context; trust-store duplicate keyId/SPKI alias rejection; governance §3 supersession wording; test plan H1-T21–T25; 28 offline verifier Jest cases |
+| **WHY** | Security review DO NOT MERGE: unsigned keyId/algorithm enabled substitution; partial temporal/context validation; malformed JSON not fail-closed |
+| **VALIDATION** | `npx jest m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1-trusted-authorization*` (28); `npm run test:battery:v2:hv-h4` (237); `resolvePhaseAProductionP1AuthorizationV1` still `NO_GO`; verifier static boundary (no Prisma/preflight/consumeApproval) |
+| **NON_EFFECTS** | No execution gate wiring; no production keys/signatures; live deployment identity UNVERIFIED in P1B0 fixtures |
+| **REMAINING_GAPS** | P1B1 integration; human policy approval (`REQUIRES_HUMAN_POLICY_APPROVAL=YES`) |
+| **DECISION_STATUS** | PROPOSED |
+
 ## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B0 single-operator trusted authorization architecture
 
 | Field | Value |
