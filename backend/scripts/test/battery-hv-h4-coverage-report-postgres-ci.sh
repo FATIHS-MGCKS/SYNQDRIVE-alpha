@@ -11,7 +11,7 @@ log "postgres integration (battery v2 retention — A3.4 service path)"
 PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 bash scripts/test/prisma-migrate-deploy-resilient.sh
 npm run test:battery:retention:integration -- --runInBand
 
-log "phase-a TLS postgres fixture (O2-R4.2A-H2)"
+log "phase-a TLS postgres fixture (O2-R4.2A-H2; faketime install uses sudo on GHA when needed)"
 bash scripts/test/m3-3-hv-h4-a3-phase-a-tls-postgres-fixture.sh
 # shellcheck source=/dev/null
 source "$ROOT/.phase-a-tls-fixture/fixture.env"
