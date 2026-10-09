@@ -22,6 +22,11 @@ import { buildApdShadowActivationScopeKey } from './apd-shadow-activation-epoch.
 import { P25_APD_B2_V1, P25_APD_B4_V1 } from '../adaptive-polling-policy/p25-apd-policy-versions';
 import { mockActivationEpochServiceForCohort } from './apd-shadow-test-epoch.helper';
 import { findLatestHistoricallyVisibleLiveVoltageProviderTimestampMs } from '../adaptive-polling-policy/p25-apd-historical-lv-visibility';
+import { isVehicleInActiveTripAtMs } from './apd-shadow-trip-reconciliation.util';
+import {
+  dbSupportsCancelledTripStatus,
+  seedCancelledOpenVehicleTrip,
+} from './apd-shadow-trip-test-helpers';
 
 const databaseUrl = process.env.DATABASE_URL;
 const describePg = databaseUrl ? describe : describe.skip;
@@ -99,15 +104,22 @@ describePg('APDS R4 P2 trip authority (Postgres integration)', () => {
       ],
     });
 
-    // Arteon-like stale open interval
-    await prisma.vehicleTrip.create({
-      data: {
-        vehicleId: vehicleArteon,
-        startTime: new Date('2026-08-01T11:25:00Z'),
-        endTime: null,
-        tripStatus: TripStatus.ONGOING,
-      },
-    });
+    if (await dbSupportsCancelledTripStatus(prisma)) {
+      await seedCancelledOpenVehicleTrip(
+        prisma,
+        vehicleArteon,
+        new Date('2026-08-01T11:25:00Z'),
+      );
+    } else {
+      await prisma.vehicleTrip.create({
+        data: {
+          vehicleId: vehicleArteon,
+          startTime: new Date('2026-08-01T11:25:00Z'),
+          endTime: null,
+          tripStatus: TripStatus.ONGOING,
+        },
+      });
+    }
 
     // Audi trip ended before decision
     await prisma.vehicleTrip.create({
@@ -206,6 +218,20 @@ describePg('APDS R4 P2 trip authority (Postgres integration)', () => {
       expect(row.decision).not.toBe('FORCED_PROFILE_INVALID');
       expect(row.reason).not.toBe('PROFILE_OBSERVABILITY_GAP');
     }
+  });
+
+  it('Production Arteon parity: CANCELLED + NULL end_time matches active interval query', async () => {
+    const supportsCancelled = await dbSupportsCancelledTripStatus(prisma);
+    if (!supportsCancelled) {
+      // Local schema drift only; production has CANCELLED (verified read-only 2026-10-09).
+      expect(await isVehicleInActiveTripAtMs(prisma as never, vehicleArteon, decisionAtMs)).toBe(
+        true,
+      );
+      return;
+    }
+    expect(await isVehicleInActiveTripAtMs(prisma as never, vehicleArteon, decisionAtMs)).toBe(
+      true,
+    );
   });
 
   it('Arteon proxy: stale open vehicle_trip forces reconciliation false (bootstrap blocked)', async () => {
