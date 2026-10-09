@@ -318,19 +318,8 @@ describe('S4F-7AO live transaction harness (engineering)', () => {
     };
     const metricsA = metricsFileForEnv(postMutationEnvMap(applyFiveFlagMutation(envContent).nextContent));
     const metricsB = metricsFileForEnv(postMutationEnvMap(applyFiveFlagMutation(envContent).nextContent));
-    const prestateEnv: Record<string, string | undefined> = {
-      DI_V0_S4_DISCOVERY_TRIP_END_NOT_BEFORE: STAGED_NOT_BEFORE,
-      [DI_V0_S4_ENV_ALLOWLISTS.organization]: CANONICAL_ORG,
-      [DI_V0_S4_ENV_ALLOWLISTS.vehicle]: CANONICAL_VEH,
-      [DI_V0_S4_ENV_FLAGS.master]: 'false',
-      [DI_V0_S4_ENV_FLAGS.discovery]: 'false',
-      [DI_V0_S4_ENV_FLAGS.worker]: 'false',
-      [DI_V0_S4_ENV_FLAGS.position]: 'false',
-      [DI_V0_S4_ENV_FLAGS.r1]: 'false',
-      [DI_V0_S4_ENV_FLAGS.native]: 'false',
-    };
-    const recoveryMetricsA = metricsFileForEnv(prestateEnv);
-    const recoveryMetricsB = metricsFileForEnv(prestateEnv);
+    const recoveryMetricsA = metricsFileForEnv({});
+    const recoveryMetricsB = metricsFileForEnv({});
     return {
       DRY_RUN: '0',
       DI_S4F7AO_ENGINEERING_TEST_HARNESS: 'YES',
@@ -372,6 +361,27 @@ describe('S4F-7AO live transaction harness (engineering)', () => {
     return { envFile, before };
   }
 
+  function runLiveExpectFail(extra: Record<string, string> = {}): { out: string; envFile: string; before: string } {
+    const env = baseLiveEnv(extra);
+    const envFile = env.SYNQDRIVE_BACKEND_ENV!;
+    const before = fs.readFileSync(envFile, 'utf8');
+    let out = '';
+    try {
+      out = execFileSync('bash', [WRAPPER], { encoding: 'utf8', env: { ...process.env, ...env } });
+    } catch (e: unknown) {
+      out = `${(e as { stdout?: string }).stdout ?? ''}${(e as { stderr?: string }).stderr ?? ''}`;
+    }
+    return { out, envFile, before };
+  }
+
+  function expectFullAbPrestateRollbackProof(out: string): void {
+    expect(out).toContain('ROLLBACK_RESULT=COMPLETE');
+    expect(out).toContain('ROLLBACK_COMPLETED=YES');
+    expect(out).toContain('FULL_A_B_PRESTATE_PROOF=YES');
+    expect(out).toContain('REPLICA_A_RECOVERY_PRESTATE_ATTESTATION=PASS');
+    expect(out).toContain('REPLICA_B_RECOVERY_PRESTATE_ATTESTATION=PASS');
+  }
+
   it('normal A→B success commits five-flag phase-1 env only', () => {
     const { out, envFile, before } = runLive();
     expect(out).toContain('FIVE_FLAG_PHASE1_COMMITTED=YES');
@@ -389,33 +399,34 @@ describe('S4F-7AO live transaction harness (engineering)', () => {
     expect(fs.readFileSync(envFile, 'utf8')).toBe(before);
   });
 
-  it('replica A failure => full rollback restores env and reports COMPLETE without replica recovery', () => {
-    const env = baseLiveEnv({ DI_S4F7AO_TEST_INJECT_RESTART_A_FAIL: '1' });
-    const envFile = env.SYNQDRIVE_BACKEND_ENV!;
-    const before = fs.readFileSync(envFile, 'utf8');
-    let out = '';
-    try {
-      out = execFileSync('bash', [WRAPPER], { encoding: 'utf8', env: { ...process.env, ...env } });
-    } catch (e: unknown) {
-      out = `${(e as { stdout?: string }).stdout ?? ''}${(e as { stderr?: string }).stderr ?? ''}`;
-    }
+  it('replica A restart failure after dirty mark => recovers A and proves A/B PRESTATE', () => {
+    const { out, envFile, before } = runLiveExpectFail({ DI_S4F7AO_TEST_INJECT_RESTART_A_FAIL: '1' });
     expect(fs.readFileSync(envFile, 'utf8')).toBe(before);
-    expect(out).toContain('ROLLBACK_RESULT=COMPLETE');
-    expect(out).toContain('ROLLBACK_REPLICA_RECOVERY=NOT_REQUIRED');
+    expect(out).toContain('REPLICA_A_RUNTIME_DIRTY=YES');
+    expect(out).toContain('ROLLBACK_RECOVER_A=YES');
+    expect(out).toContain('ROLLBACK_REPLICA_A_RECOVERY=ATTEMPTED');
+    expectFullAbPrestateRollbackProof(out);
   });
 
-  it('replica B failure => full rollback restores env bytes', () => {
-    const { envFile, before } = expectLiveFail({ DI_S4F7AO_TEST_INJECT_RESTART_B_FAIL: '1' });
+  it('replica B restart failure after A proven => recovers A+B and proves PRESTATE on both', () => {
+    const { out, envFile, before } = runLiveExpectFail({ DI_S4F7AO_TEST_INJECT_RESTART_B_FAIL: '1' });
     expect(fs.readFileSync(envFile, 'utf8')).toBe(before);
+    expect(out).toContain('ROLLBACK_RECOVER_A=YES');
+    expect(out).toContain('ROLLBACK_RECOVER_B=YES');
+    expectFullAbPrestateRollbackProof(out);
   });
 
-  it('runtime attestation failure => FAIL closed with rollback', () => {
+  it('runtime attestation failure on A after restart => recovers A and proves A/B PRESTATE', () => {
     const prestateMetrics = metricsFileForEnv({});
-    const { envFile, before } = expectLiveFail({
+    const fiveFlagContent = applyFiveFlagMutation(buildStagedPrestateEnv()).nextContent;
+    const fiveFlagMetrics = metricsFileForEnv(postMutationEnvMap(fiveFlagContent));
+    const { out, envFile, before } = runLiveExpectFail({
       DI_S4F7AO_FIXTURE_METRICS_BODY_A: prestateMetrics,
-      DI_S4F7AO_FIXTURE_METRICS_BODY_B: prestateMetrics,
+      DI_S4F7AO_FIXTURE_METRICS_BODY_B: fiveFlagMetrics,
     });
     expect(fs.readFileSync(envFile, 'utf8')).toBe(before);
+    expect(out).toContain('REPLICA_A_RUNTIME_DIRTY=YES');
+    expectFullAbPrestateRollbackProof(out);
   });
 
   it('incomplete rollback => CRITICAL_RECOVERY_STATE and never ROLLBACK_RESULT=COMPLETE', () => {
@@ -458,6 +469,61 @@ describe('S4F-7AO live transaction harness (engineering)', () => {
     expect(() =>
       execFileSync('bash', [WRAPPER], { encoding: 'utf8', env: { ...procSansDry, ...env } }),
     ).toThrow();
+  });
+
+  it('replica B attestation failure after restart => recovers A+B with full PRESTATE proof', () => {
+    const prestateMetrics = metricsFileForEnv({});
+    const fiveFlagContent = applyFiveFlagMutation(buildStagedPrestateEnv()).nextContent;
+    const fiveFlagMetrics = metricsFileForEnv(postMutationEnvMap(fiveFlagContent));
+    const { out, envFile, before } = runLiveExpectFail({
+      DI_S4F7AO_FIXTURE_METRICS_BODY_A: fiveFlagMetrics,
+      DI_S4F7AO_FIXTURE_METRICS_BODY_B: prestateMetrics,
+    });
+    expect(fs.readFileSync(envFile, 'utf8')).toBe(before);
+    expect(out).toContain('ROLLBACK_RECOVER_B=YES');
+    expectFullAbPrestateRollbackProof(out);
+  });
+
+  it('replica A health failure after restart => recovers A and proves A/B PRESTATE', () => {
+    const { out, envFile, before } = runLiveExpectFail({ DI_S4F7AO_TEST_INJECT_HEALTH_A_FAIL: '1' });
+    expect(fs.readFileSync(envFile, 'utf8')).toBe(before);
+    expectFullAbPrestateRollbackProof(out);
+  });
+
+  it('replica B health failure after A proven => recovers A+B with full PRESTATE proof', () => {
+    const { out, envFile, before } = runLiveExpectFail({ DI_S4F7AO_TEST_INJECT_HEALTH_B_FAIL: '1' });
+    expect(fs.readFileSync(envFile, 'utf8')).toBe(before);
+    expectFullAbPrestateRollbackProof(out);
+  });
+
+  it('recovery restart failure => incomplete rollback fail-closed', () => {
+    const prestateMetrics = metricsFileForEnv({});
+    const fiveFlagContent = applyFiveFlagMutation(buildStagedPrestateEnv()).nextContent;
+    const fiveFlagMetrics = metricsFileForEnv(postMutationEnvMap(fiveFlagContent));
+    const { out, envFile, before } = runLiveExpectFail({
+      DI_S4F7AO_FIXTURE_METRICS_BODY_A: prestateMetrics,
+      DI_S4F7AO_FIXTURE_METRICS_BODY_B: fiveFlagMetrics,
+      DI_S4F7AO_TEST_INJECT_RECOVERY_RESTART_A_FAIL: '1',
+    });
+    expect(fs.readFileSync(envFile, 'utf8')).toBe(before);
+    expect(out).toContain('CRITICAL_RECOVERY_STATE=YES');
+    expect(out).not.toContain('ROLLBACK_RESULT=COMPLETE');
+    expect(out).toContain('ROLLBACK_RESULT=FAILED');
+  });
+
+  it('recovery attestation failure => incomplete rollback fail-closed', () => {
+    const prestateMetrics = metricsFileForEnv({});
+    const fiveFlagContent = applyFiveFlagMutation(buildStagedPrestateEnv()).nextContent;
+    const fiveFlagMetrics = metricsFileForEnv(postMutationEnvMap(fiveFlagContent));
+    const { out, envFile, before } = runLiveExpectFail({
+      DI_S4F7AO_FIXTURE_METRICS_BODY_A: prestateMetrics,
+      DI_S4F7AO_FIXTURE_METRICS_BODY_B: fiveFlagMetrics,
+      DI_S4F7AO_TEST_INJECT_RECOVERY_ATTESTATION_FAIL: '1',
+    });
+    expect(fs.readFileSync(envFile, 'utf8')).toBe(before);
+    expect(out).toContain('CRITICAL_RECOVERY_STATE=YES');
+    expect(out).not.toContain('FULL_A_B_PRESTATE_PROOF=YES');
+    expect(out).toContain('ROLLBACK_RESULT=FAILED');
   });
 
   it('durable backup dir rejects /tmp outside test harness', () => {

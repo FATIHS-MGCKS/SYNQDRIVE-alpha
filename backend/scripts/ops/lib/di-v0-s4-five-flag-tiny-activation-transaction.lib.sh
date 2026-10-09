@@ -10,8 +10,38 @@ S4F7AO_ROLLBACK_ATTEMPTED=0
 S4F7AO_ROLLBACK_COMPLETED=0
 S4F7AO_BACKUP_FILE=""
 S4F7AO_ENV_MUTATED=0
-S4F7AO_REPLICA_A_RESTARTED=0
-S4F7AO_REPLICA_B_RESTARTED=0
+S4F7AO_REPLICA_A_RUNTIME_DIRTY=0
+S4F7AO_REPLICA_B_RUNTIME_DIRTY=0
+S4F7AO_REPLICA_A_FIVE_FLAG_PROVEN=0
+S4F7AO_RECOVER_A=0
+S4F7AO_RECOVER_B=0
+
+s4f7ao_mark_replica_a_runtime_dirty() {
+  S4F7AO_REPLICA_A_RUNTIME_DIRTY=1
+  echo "REPLICA_A_RUNTIME_DIRTY=YES"
+}
+
+s4f7ao_mark_replica_b_runtime_dirty() {
+  S4F7AO_REPLICA_B_RUNTIME_DIRTY=1
+  echo "REPLICA_B_RUNTIME_DIRTY=YES"
+}
+
+s4f7ao_compute_rollback_replica_scope() {
+  S4F7AO_RECOVER_A=0
+  S4F7AO_RECOVER_B=0
+  if [[ "$S4F7AO_REPLICA_A_FIVE_FLAG_PROVEN" == "1" ]]; then
+    S4F7AO_RECOVER_A=1
+    S4F7AO_RECOVER_B=1
+  elif [[ "$S4F7AO_REPLICA_A_RUNTIME_DIRTY" == "1" ]]; then
+    S4F7AO_RECOVER_A=1
+  fi
+  if [[ "$S4F7AO_REPLICA_B_RUNTIME_DIRTY" == "1" ]]; then
+    S4F7AO_RECOVER_B=1
+    S4F7AO_RECOVER_A=1
+  fi
+  echo "ROLLBACK_RECOVER_A=$( [[ "$S4F7AO_RECOVER_A" == "1" ]] && echo YES || echo NO )"
+  echo "ROLLBACK_RECOVER_B=$( [[ "$S4F7AO_RECOVER_B" == "1" ]] && echo YES || echo NO )"
+}
 
 s4f7ao_uses_test_stubs() {
   [[ "${DI_S4F7AO_TEST_MODE:-0}" == "1" || "${DI_S4F7J_TEST_MODE:-0}" == "1" || "${DI_S4F7AO_ENGINEERING_TEST_HARNESS:-}" == "YES" ]]
@@ -24,15 +54,32 @@ s4f7ao_install_test_stubs() {
   vps_replica_ensure_registered() { return 0; }
   vps_replica_restart_one() {
     local name=$1
-    if [[ "${DI_S4F7AO_TEST_INJECT_RESTART_A_FAIL:-0}" == "1" && "$name" == "${SYNQDRIVE_REPLICA_A_PM2_NAME}" ]]; then
+    if [[ "${S4F7J_RESTART_PHASE:-primary}" == "primary" && "${DI_S4F7AO_TEST_INJECT_RESTART_A_FAIL:-0}" == "1" && "$name" == "${SYNQDRIVE_REPLICA_A_PM2_NAME}" ]]; then
       return 1
     fi
-    if [[ "${DI_S4F7AO_TEST_INJECT_RESTART_B_FAIL:-0}" == "1" && "$name" == "${SYNQDRIVE_REPLICA_B_PM2_NAME}" ]]; then
+    if [[ "${S4F7J_RESTART_PHASE:-primary}" == "primary" && "${DI_S4F7AO_TEST_INJECT_RESTART_B_FAIL:-0}" == "1" && "$name" == "${SYNQDRIVE_REPLICA_B_PM2_NAME}" ]]; then
+      return 1
+    fi
+    if [[ "${DI_S4F7AO_TEST_INJECT_RECOVERY_RESTART_A_FAIL:-0}" == "1" && "$name" == "${SYNQDRIVE_REPLICA_A_PM2_NAME}" && "${S4F7J_RESTART_PHASE:-}" == "recovery" ]]; then
+      return 1
+    fi
+    if [[ "${DI_S4F7AO_TEST_INJECT_RECOVERY_RESTART_B_FAIL:-0}" == "1" && "$name" == "${SYNQDRIVE_REPLICA_B_PM2_NAME}" && "${S4F7J_RESTART_PHASE:-}" == "recovery" ]]; then
       return 1
     fi
     return 0
   }
-  vps_replica_wait_healthy() { return 0; }
+  vps_replica_wait_healthy() {
+    local name=$1
+    if [[ "${S4F7J_RESTART_PHASE:-primary}" == "primary" && "${DI_S4F7AO_TEST_INJECT_HEALTH_A_FAIL:-0}" == "1" && "$name" == "${SYNQDRIVE_REPLICA_A_PM2_NAME}" ]]; then
+      return 1
+    fi
+    if [[ "${S4F7J_RESTART_PHASE:-primary}" == "primary" && "${DI_S4F7AO_TEST_INJECT_HEALTH_B_FAIL:-0}" == "1" && "$name" == "${SYNQDRIVE_REPLICA_B_PM2_NAME}" ]]; then
+      return 1
+    fi
+    return 0
+  }
+  vps_replica_verify_scheduler_leaders() { return 0; }
+  vps_replica_nginx_dual_upstream_ok() { return 0; }
 }
 
 s4f7ao_fail_closed() {
@@ -56,12 +103,14 @@ s4f7ao_emit_terminal() {
   fi
 }
 
-s4f7ao_recovery_restart_replica() {
-  local label="$1" name="$2" port="$3" target_sha="$4"
-  vps_replica_restart_one "$name" || return 1
-  vps_replica_wait_healthy "$name" "$port" "$target_sha" || return 1
+s4f7ao_prove_replica_prestate_runtime() {
+  local label="$1" port="$2"
   S4F7J_RUNTIME_PROOF_MODE=RECOVERY_PRESTATE
   export S4F7J_RUNTIME_PROOF_MODE
+  if [[ "${DI_S4F7AO_TEST_INJECT_RECOVERY_ATTESTATION_FAIL:-0}" == "1" ]]; then
+    echo "REPLICA_${label}_RECOVERY_PRESTATE_ATTESTATION=FAIL"
+    return 1
+  fi
   if ! s4f7j_prove_replica_staging_runtime "$label" "$port" "$BACKEND_ENV"; then
     echo "REPLICA_${label}_RECOVERY_PRESTATE_ATTESTATION=FAIL"
     return 1
@@ -70,20 +119,30 @@ s4f7ao_recovery_restart_replica() {
   return 0
 }
 
+s4f7ao_recovery_restart_replica() {
+  local name="$1" port="$2" target_sha="$3"
+  S4F7J_RESTART_PHASE=recovery
+  export S4F7J_RESTART_PHASE
+  vps_replica_restart_one "$name" || return 1
+  vps_replica_wait_healthy "$name" "$port" "$target_sha" || return 1
+  return 0
+}
+
 s4f7ao_recovery_rolling_restart() {
   local target_sha="$1"
   local restarted_any=0
+  s4f7ao_compute_rollback_replica_scope
   vps_replica_ensure_registered || return 1
-  if [[ "$S4F7AO_REPLICA_A_RESTARTED" == "1" ]]; then
+  if [[ "$S4F7AO_RECOVER_A" == "1" ]]; then
     restarted_any=1
     echo "ROLLBACK_REPLICA_A_RECOVERY=ATTEMPTED"
-    s4f7ao_recovery_restart_replica A "${SYNQDRIVE_REPLICA_A_PM2_NAME}" "${SYNQDRIVE_REPLICA_A_PORT}" "$target_sha" || return 1
+    s4f7ao_recovery_restart_replica "${SYNQDRIVE_REPLICA_A_PM2_NAME}" "${SYNQDRIVE_REPLICA_A_PORT}" "$target_sha" || return 1
     echo "ROLLBACK_REPLICA_A_RECOVERY=COMPLETE"
   fi
-  if [[ "$S4F7AO_REPLICA_B_RESTARTED" == "1" ]]; then
+  if [[ "$S4F7AO_RECOVER_B" == "1" ]]; then
     restarted_any=1
     echo "ROLLBACK_REPLICA_B_RECOVERY=ATTEMPTED"
-    s4f7ao_recovery_restart_replica B "${SYNQDRIVE_REPLICA_B_PM2_NAME}" "${SYNQDRIVE_REPLICA_B_PORT}" "$target_sha" || return 1
+    s4f7ao_recovery_restart_replica "${SYNQDRIVE_REPLICA_B_PM2_NAME}" "${SYNQDRIVE_REPLICA_B_PORT}" "$target_sha" || return 1
     echo "ROLLBACK_REPLICA_B_RECOVERY=COMPLETE"
   fi
   if [[ "$restarted_any" == "0" ]]; then
@@ -129,21 +188,26 @@ s4f7ao_recovery_post_verify() {
     return 1
   fi
   echo "ROLLBACK_S4_ZERO_STATE_VERIFIED=YES"
-  if [[ "$S4F7AO_REPLICA_A_RESTARTED" == "1" ]]; then
-    vps_replica_wait_healthy "${SYNQDRIVE_REPLICA_A_PM2_NAME}" "${SYNQDRIVE_REPLICA_A_PORT}" "$target_sha" || return 1
-    s4f7j_verify_steady_state_replica A "${SYNQDRIVE_REPLICA_A_PM2_NAME}" "${SYNQDRIVE_REPLICA_A_PORT}" "$target_sha" "$release_dir" || return 1
+  vps_replica_wait_healthy "${SYNQDRIVE_REPLICA_A_PM2_NAME}" "${SYNQDRIVE_REPLICA_A_PORT}" "$target_sha" || return 1
+  s4f7j_verify_steady_state_replica A "${SYNQDRIVE_REPLICA_A_PM2_NAME}" "${SYNQDRIVE_REPLICA_A_PORT}" "$target_sha" "$release_dir" || return 1
+  if ! s4f7ao_prove_replica_prestate_runtime A "${SYNQDRIVE_REPLICA_A_PORT}"; then
+    echo "FULL_A_B_PRESTATE_PROOF=NO"
+    return 1
   fi
-  if [[ "$S4F7AO_REPLICA_B_RESTARTED" == "1" ]]; then
+  if [[ "${SYNQDRIVE_PRODUCTION_REPLICA_COUNT}" -ge 2 ]]; then
     vps_replica_wait_healthy "${SYNQDRIVE_REPLICA_B_PM2_NAME}" "${SYNQDRIVE_REPLICA_B_PORT}" "$target_sha" || return 1
     s4f7j_verify_steady_state_replica B "${SYNQDRIVE_REPLICA_B_PM2_NAME}" "${SYNQDRIVE_REPLICA_B_PORT}" "$target_sha" "$release_dir" || return 1
+    if ! s4f7ao_prove_replica_prestate_runtime B "${SYNQDRIVE_REPLICA_B_PORT}"; then
+      echo "FULL_A_B_PRESTATE_PROOF=NO"
+      return 1
+    fi
   fi
-  if [[ "$S4F7AO_REPLICA_A_RESTARTED" == "1" || "$S4F7AO_REPLICA_B_RESTARTED" == "1" ]]; then
-    echo "ROLLBACK_REPLICA_IDENTITIES_VERIFIED=YES"
-    vps_replica_verify_scheduler_leaders 1 || return 1
-    vps_replica_nginx_dual_upstream_ok || return 1
-    echo "ROLLBACK_SCHEDULER_VERIFIED=YES"
-    echo "ROLLBACK_NGINX_VERIFIED=YES"
-  fi
+  echo "FULL_A_B_PRESTATE_PROOF=YES"
+  echo "ROLLBACK_REPLICA_IDENTITIES_VERIFIED=YES"
+  vps_replica_verify_scheduler_leaders 1 || return 1
+  vps_replica_nginx_dual_upstream_ok || return 1
+  echo "ROLLBACK_SCHEDULER_VERIFIED=YES"
+  echo "ROLLBACK_NGINX_VERIFIED=YES"
   if ! s4f7j_live_budget_redis_preflight "$release_dir"; then
     echo "ROLLBACK_GLOBAL_BUDGET_VERIFIED=NO"
     return 1
@@ -167,6 +231,7 @@ s4f7ao_execute_rollback() {
   if [[ "${DI_S4F7AO_TEST_INJECT_BACKUP_RESTORE_FAIL:-0}" == "1" ]]; then
     export DI_S4F4_TEST_INJECT_BACKUP_RESTORE_FAIL=1
   fi
+  s4f7ao_compute_rollback_replica_scope
   if ! s4f4_restore_backend_env_atomic "$BACKEND_ENV" "$S4F7AO_BACKUP_FILE" "$S4F7AO_BACKEND_ENV_SHA256_BEFORE"; then
     echo "ROLLBACK_RESULT=FAILED"
     echo "CRITICAL_RECOVERY_STATE=YES"
@@ -315,21 +380,21 @@ s4f7ao_execute_five_flag_transaction() {
   release_dir="$(s4f7j_resolve_release_dir)"
   vps_replica_ensure_registered || { s4f7ao_fail_closed "topology"; return 1; }
 
-  if [[ "${DI_S4F7AO_TEST_INJECT_RESTART_A_FAIL:-0}" == "1" ]]; then
-    s4f7ao_fail_closed "replica_a"
-    return 1
-  fi
+  S4F7J_RESTART_PHASE=primary
+  export S4F7J_RESTART_PHASE
+  s4f7ao_mark_replica_a_runtime_dirty
   vps_replica_restart_one "${SYNQDRIVE_REPLICA_A_PM2_NAME}" || { s4f7ao_fail_closed "replica_a"; return 1; }
   vps_replica_wait_healthy "${SYNQDRIVE_REPLICA_A_PM2_NAME}" "${SYNQDRIVE_REPLICA_A_PORT}" "$TARGET_SHA" || { s4f7ao_fail_closed "replica_a_health"; return 1; }
-  s4f7ao_prove_replica_five_flag_runtime A "${SYNQDRIVE_REPLICA_A_PORT}" "$BACKEND_ENV" "$expected_fp" || { s4f7ao_fail_closed "replica_a_attestation"; return 1; }
-  S4F7AO_REPLICA_A_RESTARTED=1
-  echo "REPLICA_A_RESTART=YES"
-
-  if [[ "${DI_S4F7AO_TEST_INJECT_RESTART_B_FAIL:-0}" == "1" ]]; then
-    s4f7ao_fail_closed "replica_b"
+  if [[ "${DI_S4F7AO_TEST_INJECT_ATTESTATION_A_FAIL:-0}" == "1" ]]; then
+    s4f7ao_fail_closed "replica_a_attestation"
     return 1
   fi
+  s4f7ao_prove_replica_five_flag_runtime A "${SYNQDRIVE_REPLICA_A_PORT}" "$BACKEND_ENV" "$expected_fp" || { s4f7ao_fail_closed "replica_a_attestation"; return 1; }
+  S4F7AO_REPLICA_A_FIVE_FLAG_PROVEN=1
+  echo "REPLICA_A_RESTART=YES"
+
   if [[ "${SYNQDRIVE_PRODUCTION_REPLICA_COUNT}" -ge 2 ]]; then
+    s4f7ao_mark_replica_b_runtime_dirty
     vps_replica_restart_one "${SYNQDRIVE_REPLICA_B_PM2_NAME}" || { s4f7ao_fail_closed "replica_b"; return 1; }
     vps_replica_wait_healthy "${SYNQDRIVE_REPLICA_B_PM2_NAME}" "${SYNQDRIVE_REPLICA_B_PORT}" "$TARGET_SHA" || { s4f7ao_fail_closed "replica_b_health"; return 1; }
     if [[ "${DI_S4F7AO_TEST_INJECT_ATTESTATION_B_FAIL:-0}" == "1" ]]; then
@@ -337,7 +402,6 @@ s4f7ao_execute_five_flag_transaction() {
       return 1
     fi
     s4f7ao_prove_replica_five_flag_runtime B "${SYNQDRIVE_REPLICA_B_PORT}" "$BACKEND_ENV" "$expected_fp" || { s4f7ao_fail_closed "replica_b_attestation"; return 1; }
-    S4F7AO_REPLICA_B_RESTARTED=1
     echo "REPLICA_B_RESTART=YES"
   fi
 

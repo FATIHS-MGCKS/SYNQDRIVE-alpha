@@ -1729,6 +1729,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | TESTS | `npm run test:di:s4f7ao:five-flag-operator` (24); S4F-7J regression 47 PASS; shared `s4f7j_resolve_deployed_sha` / `s4f7j_resolve_release_dir` in `di-v0-s4-tiny-staging-production.lib.sh` for sourced wrappers |
 | NON_EFFECTS | No Production env write/restart/deploy; Gate 6 **NOT_GRANTED**; S4 not activated; certified S4F-7Y operator unchanged |
 
+### EXP-021 S4F-7AO.2 replica recovery boundary (2026-10-09)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | PR #1943 — mark replica runtime dirty before restart; rollback scope A vs A+B from `FIVE_FLAG_PROVEN`/dirty flags; `FULL_A_B_PRESTATE_PROOF` on both replicas; evidence `EXP021_S4F7AO2_RECOVERY_BOUNDARY.md` |
+| TESTS | `test:di:s4f7ao:five-flag-operator` 36 PASS |
+| NON_EFFECTS | No Production execution |
+
 ### EXP-021 S4F-7AO.1 five-flag operator safety closure (2026-10-09)
 
 | Event | Detail |
