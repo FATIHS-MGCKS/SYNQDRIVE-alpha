@@ -6,6 +6,16 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B1-A0 single-operator governance adoption & dormant authorization prep
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Path B adoption proposal + governance mode contract V2; governance-mode readiness adapter; dormant P1 trusted-auth eval (`NO_GO`); operator signing/trust provisioning doc; P1B1-A0 negative tests |
+| **WHY** | Owner confirmed Path B governance model; prepare P1B1 without enabling production execution |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1b1-a0*` + full HV-H4 unit suite; `resolvePhaseAProductionP1AuthorizationV1` unchanged `NO_GO` |
+| **NON_EFFECTS** | No production access, keys, deployment probe, or execution gate `GO` wiring |
+| **DECISION_STATUS** | PROPOSED — adoption record template `PENDING_OWNER_CONTROLLED_REPOSITORY_MERGE` until owner merge |
+
 ## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B0-H3 Ed25519 DER canonicalization & revocation alias closure
 
 | Field | Value |

@@ -33,6 +33,7 @@ import {
   validatePhaseAIndependentVerifierTimestampV1,
   validatePhaseAStopConditionsV1,
 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-readiness-validation.v1';
+import { evaluatePhaseAHumanVerificationReadinessV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-governance-mode.v1';
 
 export const M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_RECORD_JSON_ENV =
   'M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_RECORD_JSON' as const;
@@ -376,26 +377,40 @@ function evaluatePhaseAProductionOperationalReadinessInnerV1(
       pass(checks, 'APPROVAL_WINDOW_CURRENT');
     }
 
-    const verifier = go.independentAuthorizationVerification.verifierIdentity.trim().toLowerCase();
-    const author = approval.approvingAuthority.trim().toLowerCase();
-    const humanApprover = go.authorizedHumanApprover.trim().toLowerCase();
-    if (!verifier || verifier === author || verifier === humanApprover) {
-      fail(checks, 'INDEPENDENT_HUMAN_VERIFICATION', 'PHASE_A_GO_NO_GO_VERIFIER_NOT_INDEPENDENT');
-      blockers.push('PHASE_A_GO_NO_GO_VERIFIER_NOT_INDEPENDENT');
+    const humanVerification = evaluatePhaseAHumanVerificationReadinessV1(env, {
+      verifierIdentity: go.independentAuthorizationVerification.verifierIdentity,
+      approvingAuthority: approval.approvingAuthority,
+      authorizedHumanApprover: go.authorizedHumanApprover,
+      changeTicket: go.changeTicket,
+    });
+    if (!humanVerification.ok) {
+      fail(checks, 'INDEPENDENT_HUMAN_VERIFICATION', humanVerification.reasonCode);
+      blockers.push(humanVerification.reasonCode);
+    } else if (humanVerification.path === 'MULTI_PARTY_INDEPENDENT_VERIFIER') {
+      pass(checks, 'INDEPENDENT_HUMAN_VERIFICATION');
+      const verifierTs = validatePhaseAIndependentVerifierTimestampV1(
+        go.independentAuthorizationVerification.verifiedAtUtc,
+        now,
+        go.approvalBinding.validFrom,
+      );
+      if (!verifierTs.ok) {
+        fail(checks, 'INDEPENDENT_VERIFIER_TIMESTAMP', verifierTs.reasonCode);
+        blockers.push(verifierTs.reasonCode);
+      } else {
+        pass(checks, 'INDEPENDENT_VERIFIER_TIMESTAMP');
+      }
     } else {
       pass(checks, 'INDEPENDENT_HUMAN_VERIFICATION');
-    }
-
-    const verifierTs = validatePhaseAIndependentVerifierTimestampV1(
-      go.independentAuthorizationVerification.verifiedAtUtc,
-      now,
-      go.approvalBinding.validFrom,
-    );
-    if (!verifierTs.ok) {
-      fail(checks, 'INDEPENDENT_VERIFIER_TIMESTAMP', verifierTs.reasonCode);
-      blockers.push(verifierTs.reasonCode);
-    } else {
-      pass(checks, 'INDEPENDENT_VERIFIER_TIMESTAMP');
+      pushCheck(checks, {
+        checkId: 'INDEPENDENT_VERIFIER_TIMESTAMP',
+        status: 'SKIP',
+        reasonCode: 'PHASE_A_SINGLE_OPERATOR_PATH_B_NO_SECOND_HUMAN_VERIFIER',
+      });
+      pushCheck(checks, {
+        checkId: 'OPERATOR_RISK_ACCEPTANCE',
+        status: 'PASS',
+        reasonCode: 'PHASE_A_SINGLE_OPERATOR_RISK_ACCEPTANCE_PRESENT',
+      });
     }
   }
 

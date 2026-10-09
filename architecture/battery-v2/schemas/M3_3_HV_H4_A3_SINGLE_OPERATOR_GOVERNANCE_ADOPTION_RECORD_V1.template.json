@@ -1,0 +1,24 @@
+{
+  "contractVersion": "M3_3_HV_H4_A3_SINGLE_OPERATOR_GOVERNANCE_ADOPTION_RECORD_V1",
+  "governanceMode": "SINGLE_OPERATOR_V1",
+  "policyPath": "B",
+  "ratificationStatus": "PENDING_OWNER_CONTROLLED_REPOSITORY_MERGE",
+  "governanceContractId": "M3_3_HV_H4_A3_SINGLE_OPERATOR_GOVERNANCE_CONTRACT_V1",
+  "governanceModeContractId": "M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GOVERNANCE_MODE_V2",
+  "authorities": {
+    "humanOwnerOperator": "AUTHORITY_A",
+    "aiTechnicalReview": "AUTHORITY_B_ADVISORY_ONLY",
+    "machineAuthorization": "AUTHORITY_C_CRYPTOGRAPHIC_FUTURE"
+  },
+  "acknowledgements": {
+    "noSecondHumanSecurityReviewerAtPolicyLevel": true,
+    "residualRiskSingleOperatorGovernance": true,
+    "multiPartyModePreservedForOtherOperations": true,
+    "externalSeparationOfDutiesCannotBeSelfWaived": true,
+    "doesNotAuthorizeProductionExecution": true,
+    "doesNotGrantPerChangeRiskAcceptance": true
+  },
+  "ownerDeclaredChoice": "PATH_B_SINGLE_OPERATOR_SECURITY_REVIEW_EXCEPTION",
+  "ratificationMethod": null,
+  "governanceProposalRef": "architecture/battery-v2/governance/M3_3_HV_H4_A3_SINGLE_OPERATOR_GOVERNANCE_ADOPTION_PROPOSAL_2026-10-09.md"
+}
