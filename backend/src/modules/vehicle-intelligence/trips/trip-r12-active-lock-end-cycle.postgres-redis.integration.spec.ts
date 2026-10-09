@@ -125,6 +125,11 @@ if (REQUIRED) {
         releaseEvHold = resolve;
       });
 
+      let releaseSuccHold: (() => void) | undefined;
+      const succHold = new Promise<void>((resolve) => {
+        releaseSuccHold = resolve;
+      });
+
       const runJobWithActiveHold = async (
         bullJob: Job<TripTrackingJobData>,
       ): Promise<void> => {
@@ -133,6 +138,9 @@ if (REQUIRED) {
           bullJob.id === evPrimaryId
         ) {
           await evHold;
+        }
+        if (bullJob.id === evSuccId) {
+          await succHold;
         }
         await harness.runJob(bullJob.data);
       };
@@ -172,16 +180,25 @@ if (REQUIRED) {
           expect(familyAfterCompete.primaryState).toBe('active');
           expect(await stableSlotFamilyHasFutureAuthority(familyAfterCompete)).toBe(true);
 
-          await waitForHarnessCondition(
-            async () => (await trackingQueue.getJob(evSuccId)) != null,
-            15_000,
-            'successor job after competing scheduleEndValidation',
+          await waitForTripTrackingJobState(trackingQueue, evSuccId, 'active', 15_000);
+
+          const familyWithSuccessor = await inspectStableSlotFamily(
+            trackingQueue,
+            evPrimaryId,
           );
+          expect(familyWithSuccessor.successorState).toBe('active');
+
           const successor = await trackingQueue.getJob(evSuccId);
-          expect(successor).not.toBeNull();
-          expect(await successor!.getState()).not.toBe('failed');
+          expect(successor).toBeDefined();
+          expect(await successor!.getState()).toBe('active');
 
           releaseEvHold?.();
+          await waitForHarnessCondition(
+            async () => (await trackingQueue.getJob(evPrimaryId)) === undefined,
+            15_000,
+            'primary END_VALIDATION removed after completion',
+          );
+          releaseSuccHold?.();
 
           const deadline = Date.now() + 60_000;
           let trip = await prisma.vehicleTrip.findUnique({ where: { id: fixture.trip.id } });
@@ -220,6 +237,7 @@ if (REQUIRED) {
           );
         } finally {
           releaseEvHold?.();
+          releaseSuccHold?.();
           await closeTripTrackingWorkers(workers);
         }
       } finally {
