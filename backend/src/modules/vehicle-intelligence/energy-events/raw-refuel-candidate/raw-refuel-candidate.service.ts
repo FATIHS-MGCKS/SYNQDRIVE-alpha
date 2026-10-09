@@ -204,6 +204,16 @@ export class RawRefuelCandidateService {
         }
       }
 
+      const lateReconcile = await this.tryLateSamePhysicalRiseReconcile(
+        tx,
+        observation,
+        organizationId,
+        serviceNow,
+      );
+      if (lateReconcile) {
+        return lateReconcile;
+      }
+
       assertNoV2ShiftedBucketDuplicateInsert(
         observation,
         organizationId,
@@ -369,6 +379,46 @@ export class RawRefuelCandidateService {
       );
       return { kind: 'APPLIED', result };
     });
+  }
+
+  private async tryLateSamePhysicalRiseReconcile(
+    tx: Prisma.TransactionClient,
+    observation: RawRefuelCandidateObservation,
+    organizationId: string,
+    serviceNow: Date,
+  ): Promise<RawRefuelCandidateResolveResult | null> {
+    const window = computeRawRefuelCandidateRediscoveryWindow(observation, serviceNow);
+    const candidates = await this.repository.findRediscoveryCandidatesInWindow(
+      tx,
+      observation.vehicleId,
+      observation.signalChannel,
+      window,
+    );
+    const slice = { ...observation, organizationId };
+    const sameRows: RawRefuelCandidate[] = [];
+    for (const row of candidates) {
+      const overlap = classifyRawRefuelCandidateOverlap(slice, row);
+      if (overlap === 'SAME_PHYSICAL_RISE') {
+        sameRows.push(row);
+      }
+    }
+    if (sameRows.length > 1) {
+      throw new RawRefuelCandidateAmbiguityError(
+        'MULTIPLE_SAME_PHYSICAL_RISE',
+        observation.vehicleId,
+        sameRows.map((row) => row.id),
+      );
+    }
+    if (sameRows.length === 1) {
+      return this.reconcileExistingCandidate(
+        tx,
+        sameRows[0],
+        observation,
+        organizationId,
+        serviceNow,
+      );
+    }
+    return null;
   }
 
   private async insertCandidate(
