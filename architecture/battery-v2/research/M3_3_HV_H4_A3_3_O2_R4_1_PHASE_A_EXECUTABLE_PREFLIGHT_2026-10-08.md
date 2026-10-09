@@ -111,17 +111,11 @@ npx ts-node -r tsconfig-paths/register scripts/ops/m3-3-hv-h4-a3-o2-r4-1-phase-a
 - `_prisma_migrations` and battery objects are referenced only after `to_regclass` guards (planning-safe).
 - Transaction explicitly `SET TRANSACTION READ ONLY`; mutations cannot commit.
 
-## 6. O2-R4.2 — human approval gate (future, not in R4.1)
+## 6. O2-R4.2A — production admission preparation (2026-10-08)
 
-Before any **authorized production** Phase-A run:
+Implemented in **O2-R4.2A** (repository only — no production execution): see `M3_3_HV_H4_A3_3_O2_R4_2A_PRODUCTION_PHASE_A_ADMISSION_2026-10-08.md` and operator runbook `architecture/battery-v2/operations/M3_3_HV_H4_A3_PHASE_A_PRODUCTION_PREFLIGHT_RUNBOOK_2026-10-08.md`.
 
-1. Explicit change ticket + security sign-off recorded out-of-band.
-2. Dedicated read-only audit login URL provisioned (not app/issuer pools).
-3. `M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_ENABLED` + production-safe URL allowlist policy (separate slice).
-4. Operator attests `PRODUCTION_DB_ACCESS=AUTHORIZED_READ_ONLY` in run evidence.
-5. Phase B provisioning / post-provision certification remain **separate** slices (no role DDL in R4.1/R4.2 Phase A).
-
-R4.1 does **not** implement R4.2 gates or production hostname allowlisting beyond fail-closed blocklist for accidental misuse.
+R4.1 isolated admission remains the default for `admissionPolicy` omitted or `ISOLATED_R4_1_DEFAULT`.
 
 ## 7. Validation
 

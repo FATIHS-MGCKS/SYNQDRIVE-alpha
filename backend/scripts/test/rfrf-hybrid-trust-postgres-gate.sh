@@ -119,7 +119,7 @@ sync_schema_drift_if_needed
 export RAW_REFUEL_HYBRID_TRUST_INTEGRATION=1
 
 npm test -- --runInBand --forceExit \
-  --testPathPattern=raw-fuel-hybrid-trust.postgres.integration.spec.ts
+  --testPathPatterns=raw-fuel-hybrid-trust.postgres.integration.spec.ts
 test_exit=$?
 if [[ "${test_exit}" -ne 0 ]]; then
   echo "RFRF hybrid trust PostgreSQL integration tests failed (exit=${test_exit})" >&2

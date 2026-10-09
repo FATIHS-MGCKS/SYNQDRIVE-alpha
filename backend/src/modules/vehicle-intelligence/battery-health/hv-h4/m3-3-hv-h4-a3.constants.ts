@@ -77,6 +77,8 @@ export const A3_ATTESTATION_PRODUCTION_ROLE_PREFLIGHT_SPEC_PRESENT = true as con
 export const A3_ATTESTATION_REVISION_TENANT_SCOPE_MATCH_VERIFIED_BY_ISSUER = true as const;
 export const A3_ATTESTATION_REQUESTED_BY_AUTHENTICATED = false as const;
 export const A3_ATTESTATION_INTERNAL_WORKFLOW_ORIGIN_AUTHORIZED = false as const;
+/** O2-R4.2A: documented human approval + target identity gate (repository; not production-certified). */
+export const A3_ATTESTATION_PRODUCTION_PHASE_A_ADMISSION_CONTRACT_PRESENT = true as const;
 export const A3_ATTESTATION_PRODUCTION_ADMISSION_AUTHORITY_COMPLETE = false as const;
 export const A3_ATTESTATION_FUTURE_ADMISSION_AUTHORITY_CONTRACT_DEFINED = true as const;
 export const A3_ATTESTATION_ISSUER_FACTORY_EXPECTED_DB_LOGIN_REQUIRED = true as const;

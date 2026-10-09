@@ -106,6 +106,6 @@ sync_schema_drift_if_needed
 export RAW_FUEL_REFUEL_BASELINE_RECENCY_INTEGRATION=1
 
 npm test -- --runInBand --forceExit \
-  --testPathPattern=raw-refuel-baseline-recency.postgres.integration.spec.ts
+  --testPathPatterns=raw-refuel-baseline-recency.postgres.integration.spec.ts
 
 echo "RFRF_BASELINE_RECENCY_POSTGRES_GATE=PASS"
