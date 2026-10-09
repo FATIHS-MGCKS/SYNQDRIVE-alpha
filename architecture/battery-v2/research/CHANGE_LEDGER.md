@@ -6,6 +6,15 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B1-A1-H2 evidence parser & acceptance timestamp binding
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Shared fail-closed signature parse; operator-risk attestation V2 with signed `acceptedAtUtc`; claims binding rejects timestamp-only tampering; negative parser tests |
+| **WHY** | H2 review — malformed signatures must not throw; acceptance time must be cryptographically bound or non-authoritative |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1b1-a1-h2-evidence-parser-integrity.spec.ts` + HV-H4 unit suite (293 tests) |
+| **NON_EFFECTS** | Independent authority verifier remains disabled; P1 `NO_GO`; no production access |
+
 ## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B1-A1-H1 trust anchor & replay boundary closure
 
 | Field | Value |

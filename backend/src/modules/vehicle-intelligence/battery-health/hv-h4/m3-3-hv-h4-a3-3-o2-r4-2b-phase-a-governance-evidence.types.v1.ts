@@ -13,6 +13,10 @@ export const M3_3_HV_H4_A3_GOVERNANCE_RATIFICATION_ATTESTATION_CONTRACT_V1 =
 export const M3_3_HV_H4_A3_GOVERNANCE_OPERATOR_RISK_ATTESTATION_CONTRACT_V1 =
   'M3_3_HV_H4_A3_GOVERNANCE_OPERATOR_RISK_ATTESTATION_V1' as const;
 
+/** V2 adds cryptographically bound acceptedAtUtc (P1B1-A1-H2). */
+export const M3_3_HV_H4_A3_GOVERNANCE_OPERATOR_RISK_ATTESTATION_CONTRACT_V2 =
+  'M3_3_HV_H4_A3_GOVERNANCE_OPERATOR_RISK_ATTESTATION_V2' as const;
+
 export const M3_3_HV_H4_A3_DEPLOYMENT_IDENTITY_EVIDENCE_CONTRACT_V1 =
   'M3_3_HV_H4_A3_DEPLOYMENT_IDENTITY_EVIDENCE_V1' as const;
 
@@ -91,7 +95,7 @@ export type M3_3HvH4A3GovernanceRatificationAttestationV1 = {
 };
 
 export type M3_3HvH4A3GovernanceOperatorRiskAttestationV1 = {
-  contractVersion: typeof M3_3_HV_H4_A3_GOVERNANCE_OPERATOR_RISK_ATTESTATION_CONTRACT_V1;
+  contractVersion: typeof M3_3_HV_H4_A3_GOVERNANCE_OPERATOR_RISK_ATTESTATION_CONTRACT_V2;
   acceptanceId: string;
   operatorLogin: string;
   changeTicket: string;
@@ -102,6 +106,8 @@ export type M3_3HvH4A3GovernanceOperatorRiskAttestationV1 = {
   maintenanceWindow: { startUtc: string; endUtc: string };
   pathBSecurityReviewExceptionScope: string;
   residualRiskAcknowledgement: true;
+  /** Bound to operator risk acceptance claims — included in signing payload. */
+  acceptedAtUtc: string;
   evidenceNonce: string;
   issuedAtUtc: string;
   expiresAtUtc: string;

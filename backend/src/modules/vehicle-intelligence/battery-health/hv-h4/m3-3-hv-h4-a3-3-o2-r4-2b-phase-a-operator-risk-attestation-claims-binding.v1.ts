@@ -92,8 +92,12 @@ export function bindOperatorRiskSignedAttestationToClaimsV1(input: {
   const bindingFrom = parseUtcIsoTimestampV1(input.approvalBinding.validFrom);
   const bindingUntil = parseUtcIsoTimestampV1(input.approvalBinding.validUntil);
   const acceptedAt = parseUtcIsoTimestampV1(claims.acceptedAtUtc);
-  if (!bindingFrom.ok || !bindingUntil.ok || !acceptedAt.ok) {
+  const attAcceptedAt = parseUtcIsoTimestampV1(att.acceptedAtUtc);
+  if (!bindingFrom.ok || !bindingUntil.ok || !acceptedAt.ok || !attAcceptedAt.ok) {
     return { ok: false, reasonCode: 'PHASE_A_OPERATOR_RISK_ACCEPTANCE_TIMESTAMP_INVALID' };
+  }
+  if (attAcceptedAt.epochMs !== acceptedAt.epochMs) {
+    return { ok: false, reasonCode: 'PHASE_A_OPERATOR_RISK_ACCEPTANCE_TIMESTAMP_SIGNATURE_MISMATCH' };
   }
   const nowMs = input.now.getTime();
   if (nowMs < bindingFrom.epochMs || nowMs > bindingUntil.epochMs) {

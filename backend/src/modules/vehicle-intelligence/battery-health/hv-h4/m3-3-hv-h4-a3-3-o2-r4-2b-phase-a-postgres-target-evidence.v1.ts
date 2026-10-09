@@ -5,6 +5,7 @@ import {
   type M3_3HvH4A3GovernanceTrustStoreV1,
   type M3_3HvH4A3PostgresTargetEvidenceV1,
 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-governance-evidence.types.v1';
+import { parseGovernanceSignedAttestationV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-governance-evidence.signature-parse.v1';
 import { parseUtcInstantStrictV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1-trusted-authorization.utc-instant.v1';
 
 export type M3_3HvH4A3PostgresTargetEvidenceVerifyResultV1 =
@@ -23,16 +24,26 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export function parsePostgresTargetEvidenceV1(
   parsed: unknown,
 ): { ok: true; evidence: M3_3HvH4A3PostgresTargetEvidenceV1 } | { ok: false; reasonCode: string } {
-  if (!isRecord(parsed) || parsed.contractVersion !== M3_3_HV_H4_A3_POSTGRES_TARGET_EVIDENCE_CONTRACT_V1) {
+  try {
+    if (!isRecord(parsed) || parsed.contractVersion !== M3_3_HV_H4_A3_POSTGRES_TARGET_EVIDENCE_CONTRACT_V1) {
+      return { ok: false, reasonCode: 'PHASE_A_POSTGRES_TARGET_EVIDENCE_INVALID' };
+    }
+    if (parsed.verificationStatus === 'LIVE_DATABASE_ROLE_VERIFIED') {
+      return { ok: false, reasonCode: 'PHASE_A_POSTGRES_TARGET_LIVE_ROLE_CLAIM_FORBIDDEN_IN_A1' };
+    }
+    if (parsed.verificationStatus !== 'TARGET_CONFIGURATION_MATCHED') {
+      return { ok: false, reasonCode: 'PHASE_A_POSTGRES_TARGET_EVIDENCE_INVALID' };
+    }
+    const signature = parseGovernanceSignedAttestationV1(parsed.signature);
+    if (!signature.ok) {
+      return { ok: false, reasonCode: 'PHASE_A_POSTGRES_TARGET_EVIDENCE_INVALID' };
+    }
+    const evidence = parsed as M3_3HvH4A3PostgresTargetEvidenceV1;
+    evidence.signature = signature.signature;
+    return { ok: true, evidence };
+  } catch {
     return { ok: false, reasonCode: 'PHASE_A_POSTGRES_TARGET_EVIDENCE_INVALID' };
   }
-  if (parsed.verificationStatus === 'LIVE_DATABASE_ROLE_VERIFIED') {
-    return { ok: false, reasonCode: 'PHASE_A_POSTGRES_TARGET_LIVE_ROLE_CLAIM_FORBIDDEN_IN_A1' };
-  }
-  if (parsed.verificationStatus !== 'TARGET_CONFIGURATION_MATCHED') {
-    return { ok: false, reasonCode: 'PHASE_A_POSTGRES_TARGET_EVIDENCE_INVALID' };
-  }
-  return { ok: true, evidence: parsed as M3_3HvH4A3PostgresTargetEvidenceV1 };
 }
 
 export function verifyPostgresTargetEvidenceOfflineV1(

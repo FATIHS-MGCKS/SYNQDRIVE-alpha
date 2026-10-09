@@ -6,7 +6,7 @@ import {
 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-governance-evidence.crypto-verification.types.v1';
 import { verifyGovernanceEd25519SignatureV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-governance-evidence.crypto.v1';
 import {
-  M3_3_HV_H4_A3_GOVERNANCE_OPERATOR_RISK_ATTESTATION_CONTRACT_V1,
+  M3_3_HV_H4_A3_GOVERNANCE_OPERATOR_RISK_ATTESTATION_CONTRACT_V2,
   type M3_3HvH4A3GovernanceOperatorRiskAttestationV1,
   type M3_3HvH4A3GovernanceOwnerPolicyV1,
   type M3_3HvH4A3GovernanceTrustStoreV1,
@@ -14,6 +14,7 @@ import {
 import { describeGovernanceEphemeralNonceDedupScopeV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-governance-replay-boundary.v1';
 import { bindOperatorRiskSignedAttestationToClaimsV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-operator-risk-attestation-claims-binding.v1';
 import type { M3_3HvH4A3OperatorRiskAcceptanceV2 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-governance-mode.types.v1';
+import { parseGovernanceSignedAttestationV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-governance-evidence.signature-parse.v1';
 import { parseUtcInstantStrictV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1-trusted-authorization.utc-instant.v1';
 
 export type M3_3HvH4A3OperatorRiskAttestationOfflineVerifyResultV1 =
@@ -34,14 +35,21 @@ export function parseGovernanceOperatorRiskAttestationV1(
   parsed: unknown,
 ): { ok: true; attestation: M3_3HvH4A3GovernanceOperatorRiskAttestationV1 } | { ok: false; reasonCode: string } {
   try {
-    if (!isRecord(parsed) || parsed.contractVersion !== M3_3_HV_H4_A3_GOVERNANCE_OPERATOR_RISK_ATTESTATION_CONTRACT_V1) {
+    if (!isRecord(parsed) || parsed.contractVersion !== M3_3_HV_H4_A3_GOVERNANCE_OPERATOR_RISK_ATTESTATION_CONTRACT_V2) {
       return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_OPERATOR_RISK_ATTESTATION_INVALID' };
     }
     if (parsed.attestationPurpose !== 'OPERATOR_RISK_ACCEPTANCE_V2' || parsed.residualRiskAcknowledgement !== true) {
       return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_OPERATOR_RISK_ATTESTATION_INVALID' };
     }
-    const sig = parsed.signature;
-    if (!isRecord(sig) || sig.algorithm !== 'Ed25519' || typeof sig.keyId !== 'string' || typeof sig.detachedBase64 !== 'string') {
+    const signature = parseGovernanceSignedAttestationV1(parsed.signature);
+    if (!signature.ok) {
+      return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_OPERATOR_RISK_ATTESTATION_INVALID' };
+    }
+    if (typeof parsed.acceptedAtUtc !== 'string' || !parsed.acceptedAtUtc.trim()) {
+      return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_OPERATOR_RISK_ATTESTATION_INVALID' };
+    }
+    const acceptedAt = parseUtcIsoTimestampV1(parsed.acceptedAtUtc);
+    if (!acceptedAt.ok) {
       return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_OPERATOR_RISK_ATTESTATION_INVALID' };
     }
     const release = normalizePhaseAAuthorizedReleaseShaV1(
@@ -55,6 +63,8 @@ export function parseGovernanceOperatorRiskAttestationV1(
     }
     const attestation = parsed as M3_3HvH4A3GovernanceOperatorRiskAttestationV1;
     attestation.authorizedReleaseSha = release.normalized;
+    attestation.signature = signature.signature;
+    attestation.acceptedAtUtc = parsed.acceptedAtUtc.trim();
     if (attestation.operatorLogin.trim().toUpperCase() === 'AUTHORITY_A') {
       return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_OPERATOR_RISK_ROLE_LABEL_FORBIDDEN' };
     }
@@ -65,6 +75,34 @@ export function parseGovernanceOperatorRiskAttestationV1(
 }
 
 export function verifyGovernanceOperatorRiskAttestationOfflineV1(
+  input: {
+    trustStore: M3_3HvH4A3GovernanceTrustStoreV1;
+    ownerPolicy: M3_3HvH4A3GovernanceOwnerPolicyV1;
+    attestation: M3_3HvH4A3GovernanceOperatorRiskAttestationV1;
+    riskAcceptanceClaims: M3_3HvH4A3OperatorRiskAcceptanceV2;
+    authorizedHumanApprover: string;
+    changeTicket: string;
+    approvalBinding: {
+      approvalId: string;
+      executeNonce: string;
+      validFrom: string;
+      validUntil: string;
+    };
+    maintenanceWindow: { startUtc: string; endUtc: string };
+    authorizedReleaseSha: string;
+    postgresTargetFingerprint: string;
+    now: Date;
+    seenAcceptanceIds?: Set<string>;
+  },
+): M3_3HvH4A3OperatorRiskAttestationOfflineVerifyResultV1 {
+  try {
+    return verifyGovernanceOperatorRiskAttestationOfflineInnerV1(input);
+  } catch {
+    return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_OPERATOR_RISK_ATTESTATION_INVALID', cryptographicVerificationStatus: 'SIGNATURE_INVALID' };
+  }
+}
+
+function verifyGovernanceOperatorRiskAttestationOfflineInnerV1(
   input: {
     trustStore: M3_3HvH4A3GovernanceTrustStoreV1;
     ownerPolicy: M3_3HvH4A3GovernanceOwnerPolicyV1;

@@ -21,6 +21,7 @@ import {
   materializeEd25519TrustSpkiV1,
   sha256HexFingerprintV1,
 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1-trusted-authorization.crypto-trust.v1';
+import { parseGovernanceSignedAttestationV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-governance-evidence.signature-parse.v1';
 import { parseUtcInstantStrictV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1-trusted-authorization.utc-instant.v1';
 
 const TRUST_STORE_CONTRACT = 'M3_3_HV_H4_A3_GOVERNANCE_TRUST_STORE_V1' as const;
@@ -149,28 +150,50 @@ export function parseRepositoryMergeEvidenceV1(
 export function parseGovernanceRatificationAttestationV1(
   parsed: unknown,
 ): { ok: true; attestation: M3_3HvH4A3GovernanceRatificationAttestationV1 } | { ok: false; reasonCode: string } {
-  if (!isRecord(parsed) || parsed.contractVersion !== M3_3_HV_H4_A3_GOVERNANCE_RATIFICATION_ATTESTATION_CONTRACT_V1) {
+  try {
+    if (!isRecord(parsed) || parsed.contractVersion !== M3_3_HV_H4_A3_GOVERNANCE_RATIFICATION_ATTESTATION_CONTRACT_V1) {
+      return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_RATIFICATION_ATTESTATION_INVALID' };
+    }
+    if (parsed.attestationPurpose !== 'GOVERNANCE_RATIFICATION_V1') {
+      return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_RATIFICATION_ATTESTATION_INVALID' };
+    }
+    const signature = parseGovernanceSignedAttestationV1(parsed.signature);
+    if (!signature.ok) {
+      return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_RATIFICATION_ATTESTATION_INVALID' };
+    }
+    const mergeSha = normalizePhaseAAuthorizedReleaseShaV1(
+      typeof parsed.mergeCommitSha === 'string' ? parsed.mergeCommitSha : undefined,
+    );
+    if (!mergeSha.ok) {
+      return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_RATIFICATION_ATTESTATION_MERGE_SHA_INVALID' };
+    }
+    const attestation = parsed as M3_3HvH4A3GovernanceRatificationAttestationV1;
+    attestation.mergeCommitSha = mergeSha.normalized;
+    attestation.signature = signature.signature;
+    return { ok: true, attestation };
+  } catch {
     return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_RATIFICATION_ATTESTATION_INVALID' };
   }
-  if (parsed.attestationPurpose !== 'GOVERNANCE_RATIFICATION_V1') {
-    return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_RATIFICATION_ATTESTATION_INVALID' };
-  }
-  const sig = parsed.signature;
-  if (!isRecord(sig) || sig.algorithm !== 'Ed25519') {
-    return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_RATIFICATION_ATTESTATION_INVALID' };
-  }
-  const mergeSha = normalizePhaseAAuthorizedReleaseShaV1(
-    typeof parsed.mergeCommitSha === 'string' ? parsed.mergeCommitSha : undefined,
-  );
-  if (!mergeSha.ok) {
-    return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_RATIFICATION_ATTESTATION_MERGE_SHA_INVALID' };
-  }
-  const attestation = parsed as M3_3HvH4A3GovernanceRatificationAttestationV1;
-  attestation.mergeCommitSha = mergeSha.normalized;
-  return { ok: true, attestation };
 }
 
 export function verifyGovernanceRatificationOfflineV1(
+  input: {
+    trustStore: M3_3HvH4A3GovernanceTrustStoreV1;
+    ownerPolicy: M3_3HvH4A3GovernanceOwnerPolicyV1;
+    repositoryEvidence: M3_3HvH4A3RepositoryMergeEvidenceV1;
+    attestation: M3_3HvH4A3GovernanceRatificationAttestationV1;
+    now: Date;
+    seenEvidenceNonces?: Set<string>;
+  },
+): M3_3HvH4A3GovernanceRatificationOfflineVerifyResultV1 {
+  try {
+    return verifyGovernanceRatificationOfflineInnerV1(input);
+  } catch {
+    return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_RATIFICATION_ATTESTATION_INVALID', cryptographicVerificationStatus: 'SIGNATURE_INVALID' };
+  }
+}
+
+function verifyGovernanceRatificationOfflineInnerV1(
   input: {
     trustStore: M3_3HvH4A3GovernanceTrustStoreV1;
     ownerPolicy: M3_3HvH4A3GovernanceOwnerPolicyV1;

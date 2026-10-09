@@ -6,6 +6,7 @@ import {
   type M3_3HvH4A3DeploymentIdentityEvidenceV1,
   type M3_3HvH4A3GovernanceTrustStoreV1,
 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-governance-evidence.types.v1';
+import { parseGovernanceSignedAttestationV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-governance-evidence.signature-parse.v1';
 import { parseUtcInstantStrictV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1-trusted-authorization.utc-instant.v1';
 
 export type M3_3HvH4A3DeploymentIdentityEvidenceVerifyResultV1 =
@@ -19,18 +20,27 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export function parseDeploymentIdentityEvidenceV1(
   parsed: unknown,
 ): { ok: true; evidence: M3_3HvH4A3DeploymentIdentityEvidenceV1 } | { ok: false; reasonCode: string } {
-  if (!isRecord(parsed) || parsed.contractVersion !== M3_3_HV_H4_A3_DEPLOYMENT_IDENTITY_EVIDENCE_CONTRACT_V1) {
+  try {
+    if (!isRecord(parsed) || parsed.contractVersion !== M3_3_HV_H4_A3_DEPLOYMENT_IDENTITY_EVIDENCE_CONTRACT_V1) {
+      return { ok: false, reasonCode: 'PHASE_A_DEPLOYMENT_IDENTITY_EVIDENCE_INVALID' };
+    }
+    const signature = parseGovernanceSignedAttestationV1(parsed.signature);
+    if (!signature.ok) {
+      return { ok: false, reasonCode: 'PHASE_A_DEPLOYMENT_IDENTITY_EVIDENCE_INVALID' };
+    }
+    const sha = normalizePhaseAAuthorizedReleaseShaV1(
+      typeof parsed.releaseCheckoutSha === 'string' ? parsed.releaseCheckoutSha : undefined,
+    );
+    if (!sha.ok) {
+      return { ok: false, reasonCode: 'PHASE_A_DEPLOYMENT_IDENTITY_RELEASE_SHA_INVALID' };
+    }
+    const evidence = parsed as M3_3HvH4A3DeploymentIdentityEvidenceV1;
+    evidence.releaseCheckoutSha = sha.normalized;
+    evidence.signature = signature.signature;
+    return { ok: true, evidence };
+  } catch {
     return { ok: false, reasonCode: 'PHASE_A_DEPLOYMENT_IDENTITY_EVIDENCE_INVALID' };
   }
-  const sha = normalizePhaseAAuthorizedReleaseShaV1(
-    typeof parsed.releaseCheckoutSha === 'string' ? parsed.releaseCheckoutSha : undefined,
-  );
-  if (!sha.ok) {
-    return { ok: false, reasonCode: 'PHASE_A_DEPLOYMENT_IDENTITY_RELEASE_SHA_INVALID' };
-  }
-  const evidence = parsed as M3_3HvH4A3DeploymentIdentityEvidenceV1;
-  evidence.releaseCheckoutSha = sha.normalized;
-  return { ok: true, evidence };
 }
 
 export function verifyDeploymentIdentityEvidenceOfflineV1(

@@ -14,7 +14,7 @@ import {
 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-governance-evidence.canonical.v1';
 import {
   M3_3_HV_H4_A3_DEPLOYMENT_IDENTITY_EVIDENCE_CONTRACT_V1,
-  M3_3_HV_H4_A3_GOVERNANCE_OPERATOR_RISK_ATTESTATION_CONTRACT_V1,
+  M3_3_HV_H4_A3_GOVERNANCE_OPERATOR_RISK_ATTESTATION_CONTRACT_V2,
   M3_3_HV_H4_A3_GOVERNANCE_OWNER_POLICY_CONTRACT_V1,
   M3_3_HV_H4_A3_GOVERNANCE_RATIFICATION_ATTESTATION_CONTRACT_V1,
   M3_3_HV_H4_A3_GOVERNANCE_TRUST_STORE_CONTRACT_V1,
@@ -189,7 +189,7 @@ function buildSignedRatificationAttestation(
 
 function buildSignedRiskAttestation(keys: PurposeKey): M3_3HvH4A3GovernanceOperatorRiskAttestationV1 {
   const draft: M3_3HvH4A3GovernanceOperatorRiskAttestationV1 = {
-    contractVersion: M3_3_HV_H4_A3_GOVERNANCE_OPERATOR_RISK_ATTESTATION_CONTRACT_V1,
+    contractVersion: M3_3_HV_H4_A3_GOVERNANCE_OPERATOR_RISK_ATTESTATION_CONTRACT_V2,
     acceptanceId: 'risk-accept-a1',
     operatorLogin: OWNER_LOGIN,
     changeTicket: CHANGE_TICKET,
@@ -200,6 +200,7 @@ function buildSignedRiskAttestation(keys: PurposeKey): M3_3HvH4A3GovernanceOpera
     maintenanceWindow: MAINTENANCE,
     pathBSecurityReviewExceptionScope: 'Phase-A read-only audit SQL under Path B exception',
     residualRiskAcknowledgement: true,
+    acceptedAtUtc: BINDING.validFrom,
     evidenceNonce: 'risk-nonce-a1',
     issuedAtUtc: '2026-10-09T11:00:00.000Z',
     expiresAtUtc: '2026-10-09T15:00:00.000Z',

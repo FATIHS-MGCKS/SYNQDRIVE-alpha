@@ -1,6 +1,7 @@
 import { createPublicKey, verify, type KeyObject } from 'node:crypto';
 import { materializeEd25519TrustSpkiV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1-trusted-authorization.crypto-trust.v1';
 import { parseUtcInstantStrictV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1-trusted-authorization.utc-instant.v1';
+import { parseGovernanceSignedAttestationV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-governance-evidence.signature-parse.v1';
 import type {
   M3_3HvH4A3GovernanceSignedAttestationV1,
   M3_3HvH4A3GovernanceTrustStoreV1,
@@ -46,13 +47,14 @@ export function verifyGovernanceEd25519SignatureV1(
   digest: Buffer,
   now: Date,
 ): { ok: true } | { ok: false; reasonCode: string } {
-  if (signature.algorithm !== 'Ed25519' || signature.keyId !== signature.keyId.trim()) {
-    return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_SIGNATURE_INVALID' };
-  }
-  const key = resolveGovernanceTrustKeyV1(trustStore, signature.keyId, issuerPurpose, now);
-  if (!key.ok) return key;
   try {
-    const detached = Buffer.from(signature.detachedBase64, 'base64');
+    const parsedSig = parseGovernanceSignedAttestationV1(signature);
+    if (!parsedSig.ok) {
+      return parsedSig;
+    }
+    const key = resolveGovernanceTrustKeyV1(trustStore, parsedSig.signature.keyId, issuerPurpose, now);
+    if (!key.ok) return key;
+    const detached = Buffer.from(parsedSig.signature.detachedBase64, 'base64');
     if (detached.length !== 64) {
       return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_SIGNATURE_MALFORMED' };
     }

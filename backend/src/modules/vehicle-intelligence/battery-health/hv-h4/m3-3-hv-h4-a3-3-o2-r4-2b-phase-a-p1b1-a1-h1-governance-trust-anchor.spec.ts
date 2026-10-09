@@ -11,7 +11,7 @@ import {
   hashRepositoryMergeEvidenceFingerprintV1,
 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-governance-evidence.canonical.v1';
 import {
-  M3_3_HV_H4_A3_GOVERNANCE_OPERATOR_RISK_ATTESTATION_CONTRACT_V1,
+  M3_3_HV_H4_A3_GOVERNANCE_OPERATOR_RISK_ATTESTATION_CONTRACT_V2,
   M3_3_HV_H4_A3_GOVERNANCE_OWNER_POLICY_CONTRACT_V1,
   M3_3_HV_H4_A3_GOVERNANCE_RATIFICATION_ATTESTATION_CONTRACT_V1,
   M3_3_HV_H4_A3_GOVERNANCE_TRUST_STORE_CONTRACT_V1,
@@ -179,7 +179,7 @@ describe('P1B1-A1-H1 trust anchor and replay boundary closure', () => {
       authorizedOwnerLogins: [OWNER_A, OWNER_B],
     };
     const attestation = {
-      contractVersion: M3_3_HV_H4_A3_GOVERNANCE_OPERATOR_RISK_ATTESTATION_CONTRACT_V1,
+      contractVersion: M3_3_HV_H4_A3_GOVERNANCE_OPERATOR_RISK_ATTESTATION_CONTRACT_V2,
       acceptanceId: 'acc-1',
       operatorLogin: OWNER_A,
       changeTicket: 'CHG-1',
@@ -190,6 +190,7 @@ describe('P1B1-A1-H1 trust anchor and replay boundary closure', () => {
       maintenanceWindow: { startUtc: '2026-10-09T10:00:00.000Z', endUtc: '2026-10-09T15:00:00.000Z' },
       pathBSecurityReviewExceptionScope: 'scope',
       residualRiskAcknowledgement: true as const,
+      acceptedAtUtc: '2026-10-09T11:00:00.000Z',
       evidenceNonce: 'n1',
       issuedAtUtc: '2026-10-09T11:00:00.000Z',
       expiresAtUtc: '2026-10-09T15:00:00.000Z',
