@@ -34,13 +34,16 @@ Define how a **single human owner/operator** may govern production Phase-A read-
 
 ## 3. Policy supersession (two-human verifier)
 
+Three authorities (§2) remain **separate**. Owner-operated mode changes **which human records** satisfy offline readiness — it does **not** remove the need for explicit human policy approval (§7) or cryptographic Authority C for execution.
+
 | When | Rule |
 |------|------|
-| **Default (multi-party governance)** | `M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_V1` requires distinct human `independentAuthorizationVerification`. |
-| **Owner-operated mode enabled** | Org documents acceptance of `M3_3_HV_H4_A3_SINGLE_OPERATOR_GOVERNANCE_CONTRACT_V1` in change policy. Offline readiness **stops requiring** a second human verifier field; instead requires `operatorRiskAcceptance` + signed P1 evidence schema present for execution (future). |
-| **Never** | Fabricated verifier identities; AI listed as human verifier; silent removal of `INDEPENDENT_HUMAN_VERIFICATION` without governance mode flag. |
+| **Default (multi-party governance)** | `M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_V1` requires distinct human `independentAuthorizationVerification` for readiness and activation paths that reference two-human policy. |
+| **Owner-operated mode (this contract V1, PROPOSED)** | Org **owner** documents supersession: acceptance of `M3_3_HV_H4_A3_SINGLE_OPERATOR_GOVERNANCE_CONTRACT_V1` in change policy (append-only ledger). Offline readiness **substitutes** `operatorRiskAcceptance` for the **second human verifier field** — **not** for Authority C. AI technical review (Authority B) remains **advisory only** and is **never** a second human. |
+| **Activation while PROPOSED** | `REQUIRES_HUMAN_POLICY_APPROVAL=YES` — runtime `p1Authorization` stays `NO_GO`; no mode switch until §7 boxes are checked. An unavailable second human is **not** unconditionally required when owner-operated supersession is **documented**; until then, default two-human rules apply. |
+| **Never** | Fabricated verifier identities; AI listed as human verifier; silent deletion of two-human policy without documented supersession + `governanceMode: SINGLE_OPERATOR_V1`. |
 
-**Versioning:** enabling owner-operated mode is a **new governance contract version** (V1 → V2) if material fields change — append-only ledger entry required.
+**Versioning:** material policy changes require a **new governance contract version** (V1 → V2) and append-only ledger entry. Supersession **extends** policy; it does not erase historical two-human requirements from the ledger.
 
 ## 4. Record shapes (governance JSON, non-executing)
 

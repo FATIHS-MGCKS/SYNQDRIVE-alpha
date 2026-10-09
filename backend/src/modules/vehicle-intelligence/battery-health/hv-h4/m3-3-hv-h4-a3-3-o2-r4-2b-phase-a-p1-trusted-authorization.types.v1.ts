@@ -4,6 +4,15 @@ export const M3_3_HV_H4_A3_PHASE_A_P1_TRUSTED_AUTHORIZATION_EVIDENCE_CONTRACT_V1
 export const M3_3_HV_H4_A3_PHASE_A_P1_TRUST_STORE_CONTRACT_V1 =
   'M3_3_HV_H4_A3_PHASE_A_P1_TRUST_STORE_V1' as const;
 
+export const M3_3_HV_H4_A3_PHASE_A_P1_TRUSTED_AUTHORIZATION_SIGNING_DOMAIN_V1 =
+  'synqdrive.battery-v2.hv-h4.phase-a.p1-trusted-authorization.v1' as const;
+
+export const M3_3_HV_H4_A3_PHASE_A_P1_AUTHORIZATION_PURPOSE_V1 =
+  'PHASE_A_PRODUCTION_READ_ONLY_AUDIT_V1' as const;
+
+export const M3_3_HV_H4_A3_PHASE_A_P1_AUTHORIZATION_SCOPE_V1 =
+  'HV_H4_A3_O2_R4_2B_SINGLE_OPERATOR_OFFLINE_VERIFY_V1' as const;
+
 export type M3_3HvH4A3PhaseAP1TrustedAuthorizationEvidenceV1 = {
   contractVersion: typeof M3_3_HV_H4_A3_PHASE_A_P1_TRUSTED_AUTHORIZATION_EVIDENCE_CONTRACT_V1;
   authorizationId: string;
@@ -39,6 +48,8 @@ export type M3_3HvH4A3PhaseAP1TrustedAuthorizationEvidenceV1 = {
     reconciliationActivationAuthorized: false;
     backfillActivationAuthorized: false;
   };
+  authorizationPolicyId: string;
+  maintenanceWindowPolicyId: string;
   evidenceStorageDestination: string;
   consumptionStoreBinding: {
     absolutePathSha256: string;
@@ -67,10 +78,25 @@ export type M3_3HvH4A3PhaseAP1TrustStoreV1 = {
   revokedKeyIds: string[];
 };
 
+/**
+ * Independently sourced verification bindings for eventual P1 execution.
+ * P1B0: synthetic fixture values only — `liveDeploymentIdentityVerified` must remain `false`.
+ */
 export type M3_3HvH4A3PhaseAP1TrustedAuthorizationVerifyContextV1 = {
-  authorizedReleaseSha: string;
+  runningReleaseSha: string;
+  deploymentHost: string;
+  deploymentLabel: string;
   postgresTargetFingerprint: string;
+  auditRoleLogin: string;
+  approvalId: string;
+  executeNonce: string;
+  changeTicket: string;
+  authorizationId: string;
   queryManifestFingerprint: string;
+  consumptionStorePathSha256: string;
+  maintenanceWindowPolicyId: string;
+  authorizationPolicyId: string;
+  liveDeploymentIdentityVerified: false;
 };
 
 export type M3_3HvH4A3PhaseAP1TrustedAuthorizationOfflineVerifyResultV1 =

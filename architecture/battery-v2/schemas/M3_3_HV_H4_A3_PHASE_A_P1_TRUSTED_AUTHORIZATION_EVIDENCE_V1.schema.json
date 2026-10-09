@@ -18,6 +18,8 @@
     "approvalBinding",
     "maintenanceWindow",
     "authorizationLimits",
+    "authorizationPolicyId",
+    "maintenanceWindowPolicyId",
     "evidenceStorageDestination",
     "consumptionStoreBinding",
     "issuedAtUtc",
@@ -103,6 +105,16 @@
         "startUtc": { "type": "string", "format": "date-time" },
         "endUtc": { "type": "string", "format": "date-time" }
       }
+    },
+    "authorizationPolicyId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "maintenanceWindowPolicyId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
     },
     "authorizationLimits": {
       "type": "object",

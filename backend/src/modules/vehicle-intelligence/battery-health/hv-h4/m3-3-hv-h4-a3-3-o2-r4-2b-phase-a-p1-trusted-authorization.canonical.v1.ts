@@ -1,6 +1,11 @@
 import { createHash } from 'node:crypto';
 import { M3_3_HV_H4_A3_PHASE_A_QUERY_MANIFEST_V1 } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.query-manifest.v1';
-import type { M3_3HvH4A3PhaseAP1TrustedAuthorizationEvidenceV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1-trusted-authorization.types.v1';
+import {
+  M3_3_HV_H4_A3_PHASE_A_P1_AUTHORIZATION_PURPOSE_V1,
+  M3_3_HV_H4_A3_PHASE_A_P1_AUTHORIZATION_SCOPE_V1,
+  M3_3_HV_H4_A3_PHASE_A_P1_TRUSTED_AUTHORIZATION_SIGNING_DOMAIN_V1,
+  type M3_3HvH4A3PhaseAP1TrustedAuthorizationEvidenceV1,
+} from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1-trusted-authorization.types.v1';
 
 function stableStringifyV1(value: unknown): string {
   if (value === null || typeof value !== 'object') {
@@ -27,11 +32,37 @@ export function computePhaseAQueryManifestFingerprintV1(): string {
   return createHash('sha256').update(stableStringifyV1(entries), 'utf8').digest('hex');
 }
 
+export type PhaseAP1TrustedAuthorizationSigningPayloadV1 = {
+  signingDomain: typeof M3_3_HV_H4_A3_PHASE_A_P1_TRUSTED_AUTHORIZATION_SIGNING_DOMAIN_V1;
+  signingHeader: {
+    contractVersion: M3_3HvH4A3PhaseAP1TrustedAuthorizationEvidenceV1['contractVersion'];
+    signatureAlgorithm: 'Ed25519';
+    signingKeyId: string;
+    authorizationPurpose: typeof M3_3_HV_H4_A3_PHASE_A_P1_AUTHORIZATION_PURPOSE_V1;
+    authorizationScope: typeof M3_3_HV_H4_A3_PHASE_A_P1_AUTHORIZATION_SCOPE_V1;
+  };
+  authorizationBody: Omit<M3_3HvH4A3PhaseAP1TrustedAuthorizationEvidenceV1, 'signature'>;
+};
+
+/**
+ * Domain-separated signed payload: binds algorithm, key id, contract version, purpose, scope,
+ * and authorization body. Only `signature.detachedBase64` is excluded from the signed material.
+ */
 export function buildPhaseAP1TrustedAuthorizationSigningPayloadV1(
   artifact: M3_3HvH4A3PhaseAP1TrustedAuthorizationEvidenceV1,
-): Record<string, unknown> {
-  const { signature: _signature, ...payload } = artifact;
-  return payload;
+): PhaseAP1TrustedAuthorizationSigningPayloadV1 {
+  const { signature, ...authorizationBody } = artifact;
+  return {
+    signingDomain: M3_3_HV_H4_A3_PHASE_A_P1_TRUSTED_AUTHORIZATION_SIGNING_DOMAIN_V1,
+    signingHeader: {
+      contractVersion: artifact.contractVersion,
+      signatureAlgorithm: signature.algorithm,
+      signingKeyId: signature.keyId,
+      authorizationPurpose: M3_3_HV_H4_A3_PHASE_A_P1_AUTHORIZATION_PURPOSE_V1,
+      authorizationScope: M3_3_HV_H4_A3_PHASE_A_P1_AUTHORIZATION_SCOPE_V1,
+    },
+    authorizationBody,
+  };
 }
 
 export function hashPhaseAP1TrustedAuthorizationSigningPayloadV1(
