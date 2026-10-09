@@ -175,7 +175,11 @@ if ! vps_replica_rolling_deploy "$RELEASE_DIR" "$TARGET_SHA"; then
   echo "!! ABORT: multi-replica rolling deploy failed for ${RELEASE_ID}" >&2
   if [[ "$ROLLBACK_ON_FAIL" -eq 1 ]]; then
     echo "==> Rolling back to previous release"
-    vps_replica_rollback "$DEPLOY_STATE_FILE" || true
+    if ! vps_replica_rollback "$DEPLOY_STATE_FILE"; then
+      if declare -F vps_vo5c_log_unsafe_rollback_containment >/dev/null; then
+        vps_vo5c_log_unsafe_rollback_containment "deploy_rolling_fail_rollback_blocked"
+      fi
+    fi
   fi
   exit 1
 fi
@@ -184,7 +188,11 @@ if ! vps_replica_verify_post_deploy "$RELEASE_DIR" "$TARGET_SHA"; then
   echo "!! ABORT: post-deploy multi-replica verification failed for ${RELEASE_ID}" >&2
   if [[ "$ROLLBACK_ON_FAIL" -eq 1 ]]; then
     echo "==> Rolling back to previous release"
-    vps_replica_rollback "$DEPLOY_STATE_FILE" || true
+    if ! vps_replica_rollback "$DEPLOY_STATE_FILE"; then
+      if declare -F vps_vo5c_log_unsafe_rollback_containment >/dev/null; then
+        vps_vo5c_log_unsafe_rollback_containment "deploy_verify_fail_rollback_blocked"
+      fi
+    fi
   fi
   exit 1
 fi
