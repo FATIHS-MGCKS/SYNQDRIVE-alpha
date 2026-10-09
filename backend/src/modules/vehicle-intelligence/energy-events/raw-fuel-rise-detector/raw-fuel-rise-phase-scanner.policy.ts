@@ -47,17 +47,27 @@ export function validatePhaseScannerCalibrationBundle(
   if (nums.some((n) => typeof n !== 'number' || !Number.isFinite(n) || n < 0)) {
     return { ok: false, reason: 'MALFORMED_BUNDLE' };
   }
-  if (bundle.classification !== 'REPLAY_HYPOTHESIS' && bundle.classification !== 'PRODUCTION_AUTHORIZED') {
+  if (bundle.maxPeakToSettledDropRatioOfRise > 1) {
+    return { ok: false, reason: 'MALFORMED_BUNDLE' };
+  }
+  if (bundle.classification !== 'REPLAY_HYPOTHESIS') {
     return { ok: false, reason: 'UNSUPPORTED_CLASSIFICATION' };
   }
   return { ok: true };
 }
 
+/** Any terminal F3 rejection blocks R3A maturity (including unknown/future reasons). */
 export function isF3TerminalSafetyDominant(input: {
   lifecycleState: RawRefuelCandidateLifecycleState;
   rejectionReason: RawRefuelCandidateRejectionReason | null;
 }): boolean {
-  if (input.lifecycleState !== 'REJECTED') return false;
-  if (input.rejectionReason == null) return true;
-  return TERMINAL_F3_SAFETY_REJECTIONS.has(input.rejectionReason);
+  return input.lifecycleState === 'REJECTED';
+}
+
+/** Documented subset used for reinterpretation labeling only. */
+export function isKnownF3TerminalSafetyRejection(
+  rejectionReason: RawRefuelCandidateRejectionReason | null,
+): boolean {
+  if (rejectionReason == null) return true;
+  return TERMINAL_F3_SAFETY_REJECTIONS.has(rejectionReason);
 }

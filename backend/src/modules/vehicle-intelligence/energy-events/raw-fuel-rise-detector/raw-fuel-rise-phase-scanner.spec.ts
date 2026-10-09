@@ -321,7 +321,42 @@ describe('R3A raw-fuel-rise-phase-scanner', () => {
       pt('2026-09-30T05:00:00.000Z', 20),
     ];
     const r = scanRawFuelRisePhases(baseInput(samples));
-    expect(r.holdReason).toBe('UNSTABLE_RISE');
+    expect(r.holdReason).toBe('MALFORMED_INPUT');
+  });
+
+  it('T21 — two in-window rises 6→20→19 then 27→26 do not merge to delta 20', () => {
+    const samples = [
+      pt('2026-09-30T04:55:00.000Z', 6),
+      pt('2026-09-30T04:56:00.000Z', 6),
+      pt('2026-09-30T04:58:00.000Z', 15),
+      pt('2026-09-30T04:59:00.000Z', 18),
+      pt('2026-09-30T05:00:00.000Z', 20),
+      pt('2026-09-30T05:01:00.000Z', 20),
+      pt('2026-09-30T05:02:00.000Z', 20),
+      pt('2026-09-30T05:03:30.000Z', 19),
+      pt('2026-09-30T05:04:30.000Z', 19),
+      pt('2026-09-30T05:05:30.000Z', 19),
+      pt('2026-09-30T05:06:30.000Z', 19),
+      pt('2026-09-30T05:20:00.000Z', 22),
+      pt('2026-09-30T05:21:00.000Z', 27),
+      pt('2026-09-30T05:22:00.000Z', 27),
+      pt('2026-09-30T05:23:30.000Z', 26),
+      pt('2026-09-30T05:24:30.000Z', 26),
+      pt('2026-09-30T05:25:30.000Z', 26),
+      pt('2026-09-30T05:26:30.000Z', 26),
+    ];
+    const r = scanRawFuelRisePhases(
+      baseInput(samples, {
+        riseAnchors: {
+          riseOnsetAt: new Date('2026-09-30T04:57:00.000Z'),
+          riseEndAt: new Date('2026-09-30T05:02:30.000Z'),
+        },
+      }),
+    );
+    expect(r.holdReason).toBe('SECOND_REFUEL_SEPARATED');
+    expect(r.maturityStatus).not.toBe('MATURE_SHADOW_READY');
+    expect(r.proposal.proposedDeltaLiters).not.toBe(20);
+    expect(r.instantaneousPeakLiters).toBe(20);
   });
 
   it('T19 — repeated execution is deterministic', () => {
@@ -336,6 +371,23 @@ describe('R3A raw-fuel-rise-phase-scanner', () => {
     const a = scanRawFuelRisePhases(baseInput(samples));
     const b = scanRawFuelRisePhases(baseInput(samples));
     expect(a).toEqual(b);
+  });
+
+  it('T20a — unknown future F3 rejection reason remains blocked', () => {
+    const samples = [
+      pt('2026-09-30T04:55:00.000Z', 6),
+      pt('2026-09-30T05:00:00.000Z', 20),
+      pt('2026-09-30T05:04:00.000Z', 19),
+      pt('2026-09-30T05:05:00.000Z', 19),
+      pt('2026-09-30T05:06:00.000Z', 19),
+    ];
+    const r = scanRawFuelRisePhases(
+      baseInput(samples, {
+        f3Context: { lifecycleState: 'REJECTED', rejectionReason: 'MOTION_EVIDENCE_CONFLICT' },
+      }),
+    );
+    expect(r.maturityStatus).toBe('REFUSED');
+    expect(r.holdReason).toBe('PHASE_AWARE_REINTERPRETATION_ONLY');
   });
 
   it('T20 — terminal F3 REJECTED remains dominant', () => {

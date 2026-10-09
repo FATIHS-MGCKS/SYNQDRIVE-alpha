@@ -77,3 +77,10 @@ Policy: `RFRF_RISE_PHASE_SCANNER_POLICY_VERSION=rfrf-rise-phase-scanner-v1`
 ## R3B follow-up
 
 - v2→v2 rediscovery with changed settled post may still classify `SAME_PHYSICAL_RISE` under current matcher — duplicate candidate risk documented; **no** silent matcher change in R3A
+
+## 2026-10-09 — Final safety closure (same PR)
+
+- Anchored peak selection within `[riseOnsetAt, riseEndAt]`; second in-window material rise → `SECOND_REFUEL_SEPARATED` (T21)
+- Per-event F3 pre-plateau median + `baselineRecencyClassification === FRESH'` (no hardcoded 6 L in fleet replay)
+- Input/policy/calibration firewalls (`raw-fuel-rise-phase-scanner.validation.ts`); all `REJECTED` F3 lifecycles blocked
+- Adversarial A1–A12 explicit scan accounting in replay spec

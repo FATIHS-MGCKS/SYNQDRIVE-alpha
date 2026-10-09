@@ -13,29 +13,7 @@ import type {
   RawFuelRisePhaseScannerSample,
   RawFuelRisePhaseTransition,
 } from './raw-fuel-rise-phase-scanner.types';
-
-function sortAndDedupeSamples(
-  samples: RawFuelRisePhaseScannerSample[],
-): RawFuelRisePhaseScannerSample[] | { error: 'OUT_OF_ORDER_OR_DUPLICATE' } {
-  const sorted = [...samples].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-  for (let i = 1; i < sorted.length; i++) {
-    const dt = sorted[i].timestamp.getTime() - sorted[i - 1].timestamp.getTime();
-    if (dt < 0) return { error: 'OUT_OF_ORDER_OR_DUPLICATE' };
-    if (dt === 0 && sorted[i].absoluteLiters !== sorted[i - 1].absoluteLiters) {
-      return { error: 'OUT_OF_ORDER_OR_DUPLICATE' };
-    }
-  }
-  const deduped: RawFuelRisePhaseScannerSample[] = [];
-  for (const s of sorted) {
-    const last = deduped[deduped.length - 1];
-    if (last && last.timestamp.getTime() === s.timestamp.getTime()) {
-      deduped[deduped.length - 1] = s;
-      continue;
-    }
-    deduped.push(s);
-  }
-  return deduped;
-}
+import { validatePhaseScannerInput } from './raw-fuel-rise-phase-scanner.validation';
 
 function maxGapMs(series: RawFuelRisePhaseScannerSample[]): number {
   let max = 0;
@@ -57,7 +35,10 @@ function pushTransition(
   transitions.push({ phase, at, liters });
 }
 
-function countSeparatedMaterialRises(
+/**
+ * Distinct material rises that return near pre-baseline between episodes (legacy path).
+ */
+function countBaselineSeparatedRises(
   series: RawFuelRisePhaseScannerSample[],
   preMedian: number,
   material: number,
@@ -77,6 +58,89 @@ function countSeparatedMaterialRises(
   }
   if (inRise && localPeak >= preMedian + material) episodes += 1;
   return episodes;
+}
+
+function findAnchoredPeak(
+  series: RawFuelRisePhaseScannerSample[],
+  onsetMs: number,
+  endMs: number,
+): { peakIdx: number; peakVal: number } | null {
+  let peakIdx = -1;
+  let peakVal = -Infinity;
+  for (let i = 0; i < series.length; i++) {
+    const t = series[i].timestamp.getTime();
+    if (t < onsetMs || t > endMs) continue;
+    if (series[i].absoluteLiters > peakVal) {
+      peakVal = series[i].absoluteLiters;
+      peakIdx = i;
+    }
+  }
+  if (peakIdx < 0 || !Number.isFinite(peakVal)) return null;
+  return { peakIdx, peakVal };
+}
+
+/**
+ * Second refuel inside the bounded post-search window while remaining above pre-baseline
+ * (e.g. 6→20→19 then 27→26 without returning to baseline).
+ */
+function findSecondMaterialRiseStartIndex(
+  series: RawFuelRisePhaseScannerSample[],
+  peakIdx: number,
+  anchoredPeak: number,
+  preMedian: number,
+  material: number,
+): number | null {
+  let settledFloor = anchoredPeak;
+  for (let i = peakIdx + 1; i < series.length; i++) {
+    const v = series[i].absoluteLiters;
+    if (v < anchoredPeak - material * 0.15) {
+      settledFloor = Math.min(settledFloor, v);
+    }
+    if (v <= preMedian + material * 0.5) {
+      settledFloor = preMedian;
+    }
+    if (v >= anchoredPeak + material) {
+      return i;
+    }
+    if (v >= settledFloor + material && v > anchoredPeak + 1) {
+      return i;
+    }
+  }
+  return null;
+}
+
+function countPhaseAwareEpisodes(
+  series: RawFuelRisePhaseScannerSample[],
+  onsetMs: number,
+  riseEndMs: number,
+  searchEndMs: number,
+  preMedian: number,
+  material: number,
+): number {
+  const windowSeries = series.filter(
+    (p) => p.timestamp.getTime() >= onsetMs && p.timestamp.getTime() <= searchEndMs,
+  );
+  if (windowSeries.length === 0) return 0;
+
+  const anchored = findAnchoredPeak(windowSeries, onsetMs, riseEndMs);
+  if (!anchored) return 0;
+
+  const baselineSeparated = countBaselineSeparatedRises(windowSeries, preMedian, material);
+  const secondIdx = findSecondMaterialRiseStartIndex(
+    windowSeries,
+    anchored.peakIdx,
+    anchored.peakVal,
+    preMedian,
+    material,
+  );
+  if (secondIdx != null) {
+    return Math.max(2, baselineSeparated);
+  }
+  const globalPeak = windowSeries.reduce((m, p) => Math.max(m, p.absoluteLiters), -Infinity);
+  if (globalPeak > anchored.peakVal + 0.01) {
+    return Math.max(2, baselineSeparated);
+  }
+  return Math.max(1, baselineSeparated);
 }
 
 function detectSensorResetOrBaselineReturn(
@@ -116,7 +180,12 @@ export function scanRawFuelRisePhases(
     policyVersion,
     phaseTransitions: transitions,
     terminalPhase: null,
-    maturityStatus: hold === 'INVALID_CALIBRATION_BUNDLE' ? 'REFUSED' : 'HOLD',
+    maturityStatus:
+      hold === 'INVALID_CALIBRATION_BUNDLE' ||
+      hold === 'TERMINAL_F3_DOMINANCE' ||
+      hold === 'PHASE_AWARE_REINTERPRETATION_ONLY'
+        ? 'REFUSED'
+        : 'HOLD',
     holdReason: hold,
     instantaneousPeakLiters: null,
     peakAt: null,
@@ -135,10 +204,11 @@ export function scanRawFuelRisePhases(
     separatedEpisodeCount: 0,
   });
 
-  const sorted = sortAndDedupeSamples(input.samples);
-  if ('error' in sorted) {
-    return empty('UNSTABLE_RISE');
+  const validated = validatePhaseScannerInput(input);
+  if (!validated.ok) {
+    return empty(validated.holdReason);
   }
+  const sorted = validated.samples;
 
   if (!input.preBaseline.fresh) {
     return empty('STALE_PRE_BASELINE');
@@ -147,31 +217,40 @@ export function scanRawFuelRisePhases(
   const preMedian = input.preBaseline.medianLiters;
   const onsetMs = input.riseAnchors.riseOnsetAt.getTime();
   const endMs = input.riseAnchors.riseEndAt.getTime();
-  const inRiseWindow = sorted.filter(
-    (p) => p.timestamp.getTime() >= onsetMs && p.timestamp.getTime() <= endMs + symbols.maxPostSearchAfterRiseEndMs,
-  );
+  const searchEndMs = endMs + symbols.maxPostSearchAfterRiseEndMs;
+
+  const inRiseWindow = sorted.filter((p) => {
+    const t = p.timestamp.getTime();
+    return t >= onsetMs && t <= searchEndMs;
+  });
   if (inRiseWindow.length === 0) {
     return empty('MISSING_POST_SAMPLES');
   }
 
-  const separatedEpisodeCount = countSeparatedMaterialRises(
+  const anchoredForEpisode = findAnchoredPeak(inRiseWindow, onsetMs, endMs);
+
+  const separatedEpisodeCount = countPhaseAwareEpisodes(
     sorted,
+    onsetMs,
+    endMs,
+    searchEndMs,
     preMedian,
     symbols.materialRiseLiters,
   );
   if (separatedEpisodeCount > 1) {
     const r = empty('SECOND_REFUEL_SEPARATED');
     r.separatedEpisodeCount = separatedEpisodeCount;
+    if (anchoredForEpisode) {
+      r.instantaneousPeakLiters = anchoredForEpisode.peakVal;
+      r.peakAt = inRiseWindow[anchoredForEpisode.peakIdx].timestamp;
+    }
     return r;
   }
 
-  if (
-    input.f3Context &&
-    isF3TerminalSafetyDominant({
-      lifecycleState: input.f3Context.lifecycleState as 'REJECTED',
-      rejectionReason: input.f3Context.rejectionReason as import('@prisma/client').RawRefuelCandidateRejectionReason | null,
-    })
-  ) {
+  if (input.f3Context && isF3TerminalSafetyDominant({
+    lifecycleState: input.f3Context.lifecycleState as import('@prisma/client').RawRefuelCandidateLifecycleState,
+    rejectionReason: input.f3Context.rejectionReason as import('@prisma/client').RawRefuelCandidateRejectionReason | null,
+  })) {
     const r = empty('TERMINAL_F3_DOMINANCE');
     r.maturityStatus = 'REFUSED';
     r.hypotheticalReinterpretation = true;
@@ -179,16 +258,32 @@ export function scanRawFuelRisePhases(
     return r;
   }
 
-  let peakIdx = 0;
-  let peakVal = -Infinity;
-  for (let i = 0; i < inRiseWindow.length; i++) {
-    if (inRiseWindow[i].absoluteLiters > peakVal) {
-      peakVal = inRiseWindow[i].absoluteLiters;
-      peakIdx = i;
-    }
+  if (!anchoredForEpisode) {
+    return empty('EPISODE_AMBIGUOUS');
   }
+  const peakIdx = anchoredForEpisode.peakIdx;
+  const peakVal = anchoredForEpisode.peakVal;
   const peakAt = inRiseWindow[peakIdx].timestamp;
-  pushTransition(transitions, 'RISING', input.riseAnchors.riseOnsetAt, inRiseWindow[0].absoluteLiters);
+
+  const secondRiseIdx = findSecondMaterialRiseStartIndex(
+    inRiseWindow,
+    peakIdx,
+    peakVal,
+    preMedian,
+    symbols.materialRiseLiters,
+  );
+  if (secondRiseIdx != null) {
+    const r = empty('SECOND_REFUEL_SEPARATED');
+    r.separatedEpisodeCount = 2;
+    r.instantaneousPeakLiters = peakVal;
+    r.peakAt = peakAt;
+    return r;
+  }
+
+  const episodeSeries =
+    secondRiseIdx != null ? inRiseWindow.slice(0, secondRiseIdx) : inRiseWindow;
+
+  pushTransition(transitions, 'RISING', input.riseAnchors.riseOnsetAt, episodeSeries[0].absoluteLiters);
   pushTransition(transitions, 'PEAK_REACHED', peakAt, peakVal);
 
   const riseSpan = peakVal - preMedian;
@@ -197,7 +292,7 @@ export function scanRawFuelRisePhases(
   }
 
   const safety = detectSensorResetOrBaselineReturn(
-    inRiseWindow,
+    episodeSeries,
     peakIdx,
     preMedian,
     symbols.materialRiseLiters,
@@ -217,11 +312,11 @@ export function scanRawFuelRisePhases(
     : {};
 
   const riseEndMs = endMs;
-  const hasLaterSettlingBelowPeak = inRiseWindow
+  const hasLaterSettlingBelowPeak = episodeSeries
     .slice(peakIdx + 1)
     .some((p) => p.absoluteLiters < peakVal - 0.01);
   const searchStarts = hasLaterSettlingBelowPeak
-    ? inRiseWindow
+    ? episodeSeries
         .map((p, idx) => ({ p, idx }))
         .filter(({ p, idx }) => idx > peakIdx && p.absoluteLiters < peakVal - 0.01)
         .map(({ idx }) => idx)
@@ -235,20 +330,22 @@ export function scanRawFuelRisePhases(
   } | null = null;
 
   for (const searchStart of searchStarts) {
-    for (let i = searchStart; i < inRiseWindow.length; i++) {
-      const t0 = inRiseWindow[i].timestamp.getTime();
+    for (let i = searchStart; i < episodeSeries.length; i++) {
+      const t0 = episodeSeries[i].timestamp.getTime();
       if (t0 - riseEndMs > symbols.maxPostSearchAfterRiseEndMs) break;
-      if (inRiseWindow[i].absoluteLiters < preMedian + symbols.materialRiseLiters) continue;
+      if (episodeSeries[i].absoluteLiters < preMedian + symbols.materialRiseLiters) continue;
 
-      const window: RawFuelRisePhaseScannerSample[] = [inRiseWindow[i]];
-      for (let j = i + 1; j < inRiseWindow.length; j++) {
-        if (inRiseWindow[j].timestamp.getTime() - riseEndMs > symbols.maxPostSearchAfterRiseEndMs) break;
+      const window: RawFuelRisePhaseScannerSample[] = [episodeSeries[i]];
+      for (let j = i + 1; j < episodeSeries.length; j++) {
+        if (episodeSeries[j].timestamp.getTime() - riseEndMs > symbols.maxPostSearchAfterRiseEndMs) {
+          break;
+        }
 
         const gapMs =
-          inRiseWindow[j].timestamp.getTime() - inRiseWindow[j - 1].timestamp.getTime();
+          episodeSeries[j].timestamp.getTime() - episodeSeries[j - 1].timestamp.getTime();
         if (gapMs > symbols.settledWindowMaxInternalGapMs) break;
 
-        const candidateValues = [...window.map((p) => p.absoluteLiters), inRiseWindow[j].absoluteLiters];
+        const candidateValues = [...window.map((p) => p.absoluteLiters), episodeSeries[j].absoluteLiters];
         const { valid, median: center } = validatePlateauWindow(
           candidateValues,
           symbols.postPlateauToleranceLiters,
@@ -256,14 +353,14 @@ export function scanRawFuelRisePhases(
         if (!valid) break;
         if (center < preMedian + symbols.materialRiseLiters) break;
 
-        window.push(inRiseWindow[j]);
+        window.push(episodeSeries[j]);
 
         if (window.length >= symbols.postPlateauMinSamples) {
           const persistenceMs =
             window[window.length - 1].timestamp.getTime() - window[0].timestamp.getTime();
           if (persistenceMs < symbols.postPlateauMinPersistenceMs) continue;
 
-          const peakToSettledPath = inRiseWindow.slice(peakIdx, j + 1);
+          const peakToSettledPath = episodeSeries.slice(peakIdx, j + 1);
           const continuityGapMs = maxGapMs(peakToSettledPath);
 
           settledResult = {
@@ -282,7 +379,7 @@ export function scanRawFuelRisePhases(
   }
 
   if (!settledResult) {
-    const postPeak = inRiseWindow.slice(peakIdx + 1);
+    const postPeak = episodeSeries.slice(peakIdx + 1);
     if (postPeak.length === 0) {
       return empty('MISSING_POST_SAMPLES');
     }
@@ -290,7 +387,10 @@ export function scanRawFuelRisePhases(
       postPeak.length >= 3 &&
       postPeak.some((p) => p.absoluteLiters < peakVal - symbols.negativeWobbleLiters) &&
       postPeak.some((p) => p.absoluteLiters > peakVal - symbols.negativeWobbleLiters * 0.25);
-    if (oscillating && peakVal - median(postPeak.map((p) => p.absoluteLiters)) > symbols.negativeWobbleLiters) {
+    if (
+      oscillating &&
+      peakVal - median(postPeak.map((p) => p.absoluteLiters)) > symbols.negativeWobbleLiters
+    ) {
       const r = empty('UNSTABLE_RISE');
       r.instantaneousPeakLiters = peakVal;
       r.peakAt = peakAt;

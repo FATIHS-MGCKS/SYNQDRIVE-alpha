@@ -1,10 +1,7 @@
-import { detectRawFuelRises } from './raw-fuel-rise-detector';
 import { detectChannelRises } from './raw-fuel-rise-state-machine';
 import type { NormalizedRawFuelSample } from './raw-fuel-rise-normalizer';
 import { RAW_FUEL_RISE_DETECTOR_CONFIG_V1 } from './raw-fuel-rise-detector.config';
 import { normalizeRawFuelSamples } from './raw-fuel-rise-normalizer';
-import { buildDetectorPhysicsContext } from './testing/raw-fuel-rise-detector-test.util';
-import type { RawRefuelCandidateObservation } from '../raw-refuel-candidate/raw-refuel-candidate.types';
 import {
   ADVERSARIAL_REPLAY_CASES,
   KS_MS_661_2026_09_30_NATURAL_SAMPLES,
@@ -20,37 +17,7 @@ import {
   type RawFuelRisePhaseScannerSample,
 } from './raw-fuel-rise-phase-scanner.types';
 import { RFRF_RISE_PHASE_SCANNER_POLICY_VERSION } from './raw-fuel-rise-phase-scanner.policy';
-
-function coalesceDate(...candidates: (Date | null | undefined)[]): Date {
-  for (const candidate of candidates) {
-    if (candidate instanceof Date && !Number.isNaN(candidate.getTime())) {
-      return candidate;
-    }
-  }
-  return new Date(0);
-}
-
-function riseAnchorsFromCandidate(primary: RawRefuelCandidateObservation) {
-  const riseOnsetAt = coalesceDate(
-    primary.riseOnsetAt,
-    primary.physicalEvidenceStart,
-    primary.scanWindowStart,
-  );
-  const riseEndAt = coalesceDate(
-    primary.riseEndAt,
-    primary.physicalEvidenceEnd,
-    primary.scanWindowEnd,
-    riseOnsetAt,
-  );
-  return { riseOnsetAt, riseEndAt };
-}
-
-function f3ContextFromCandidate(primary: RawRefuelCandidateObservation) {
-  return {
-    lifecycleState: primary.lifecycleState,
-    rejectionReason: primary.rejectionReason ?? null,
-  };
-}
+import { preBaselineFromChannelRise } from './raw-fuel-rise-phase-scanner.replay-support';
 
 const REPLAY_CALIBRATION = {
   bundleVersion: 'replay-hypothesis-v1',
@@ -93,30 +60,29 @@ describe('R3A phase scanner — offline replay bridge', () => {
     if (!norm.ok) {
       throw new Error(`normalize failed: ${norm.reason}`);
     }
-    const ctx = buildDetectorPhysicsContext({
-      organizationId: 'org',
-      vehicleId: 'veh',
-      scanWindowStart: new Date(window.from),
-      scanWindowEnd: new Date(window.to),
-    });
-    const f3 = detectRawFuelRises({ context: ctx, samples: norm.samples });
-    expect(f3.candidates.length).toBeGreaterThan(0);
-    const primary = f3.candidates[0];
-    expect(primary.lifecycleState).toBe('OBSERVED');
+    const rise = pickPrimaryChannelRise(norm.samples);
+    if (!rise) throw new Error('expected channel rise');
+    expect(rise.lifecycleState).toBe('OBSERVED');
+
+    const preBaseline = preBaselineFromChannelRise(rise);
+    expect(preBaseline.fresh).toBe(true);
 
     const r3a = scanRawFuelRisePhases({
       samples: toScannerSamples(KS_MS_661_2026_09_30_NATURAL_SAMPLES),
-      preBaseline: { medianLiters: 6, fresh: true, staleReason: null },
-      riseAnchors: riseAnchorsFromCandidate(primary),
+      preBaseline,
+      riseAnchors: { riseOnsetAt: rise.riseOnsetAt, riseEndAt: rise.riseEndAt },
       structuralSymbols: buildStructuralSymbolsFromDetectorConfig(RAW_FUEL_RISE_DETECTOR_CONFIG_V1),
       calibrationBundle: REPLAY_CALIBRATION,
       policyVersion: RFRF_RISE_PHASE_SCANNER_POLICY_VERSION,
       physicalIdentityAnchors: {
-        prePlateauBucket: 6,
-        riseOnsetAt: riseAnchorsFromCandidate(primary).riseOnsetAt,
+        prePlateauBucket: Math.round(preBaseline.medianLiters),
+        riseOnsetAt: rise.riseOnsetAt,
         signalChannel: 'ABSOLUTE_LITERS',
       },
-      f3Context: f3ContextFromCandidate(primary),
+      f3Context: {
+        lifecycleState: rise.lifecycleState,
+        rejectionReason: rise.rejectionReason ?? null,
+      },
       evidenceProvenance: { caseId: 'KS_MS_661_2026_09_30', tier: 'CRITICAL_PATH_FULL_REPLAY' },
     });
 
@@ -126,10 +92,24 @@ describe('R3A phase scanner — offline replay bridge', () => {
     expect(r3a.instantaneousPeakLiters).toBe(20);
   });
 
-  it('adversarial A1–A12: SAFETY_NEGATIVE never MATURE_SHADOW_READY', () => {
+  it('adversarial A1–A12: explicit accounting and safety negatives', () => {
+    const totalCases = ADVERSARIAL_REPLAY_CASES.length;
+    expect(totalCases).toBe(13);
+
+    let scanned = 0;
+    let skipped = 0;
+    const skipReasons: Record<string, number> = {};
+    let safetyNegativeExamined = 0;
     let safetyReadyCount = 0;
+    let positiveExamined = 0;
+    const positiveReady: string[] = [];
+
     for (const def of ADVERSARIAL_REPLAY_CASES) {
-      if (def.samples.length === 0) continue;
+      if (def.samples.length === 0) {
+        skipped += 1;
+        skipReasons.EMPTY_SAMPLES = (skipReasons.EMPTY_SAMPLES ?? 0) + 1;
+        continue;
+      }
       const norm = normalizeRawFuelSamples(
         def.samples,
         new Date(def.window.from),
@@ -137,10 +117,23 @@ describe('R3A phase scanner — offline replay bridge', () => {
         RAW_FUEL_RISE_DETECTOR_CONFIG_V1.relativeValidRange,
       );
       if (!norm.ok) {
+        skipped += 1;
+        skipReasons.NORMALIZE_FAIL = (skipReasons.NORMALIZE_FAIL ?? 0) + 1;
         continue;
       }
       const rise = pickPrimaryChannelRise(norm.samples);
-      if (!rise) continue;
+      if (!rise) {
+        skipped += 1;
+        skipReasons.NO_CHANNEL_RISE = (skipReasons.NO_CHANNEL_RISE ?? 0) + 1;
+        continue;
+      }
+
+      const preBaseline = preBaselineFromChannelRise(rise);
+      if (!preBaseline.fresh) {
+        skipReasons.STALE_PRE_BASELINE = (skipReasons.STALE_PRE_BASELINE ?? 0) + 1;
+      }
+
+      scanned += 1;
 
       const f3Terminal = isCurrentF3TerminalSafetyRejection({
         lifecycleState: rise.lifecycleState,
@@ -149,15 +142,8 @@ describe('R3A phase scanner — offline replay bridge', () => {
 
       const r3a = scanRawFuelRisePhases({
         samples: toScannerSamples(def.samples),
-        preBaseline: {
-          medianLiters: rise.prePlateau.median,
-          fresh: true,
-          staleReason: null,
-        },
-        riseAnchors: {
-          riseOnsetAt: rise.riseOnsetAt,
-          riseEndAt: rise.riseEndAt,
-        },
+        preBaseline,
+        riseAnchors: { riseOnsetAt: rise.riseOnsetAt, riseEndAt: rise.riseEndAt },
         structuralSymbols: buildStructuralSymbolsFromDetectorConfig(RAW_FUEL_RISE_DETECTOR_CONFIG_V1),
         calibrationBundle: REPLAY_CALIBRATION,
         policyVersion: RFRF_RISE_PHASE_SCANNER_POLICY_VERSION,
@@ -169,13 +155,27 @@ describe('R3A phase scanner — offline replay bridge', () => {
         evidenceProvenance: { adversarialId: def.id },
       });
 
-      if (def.expectedSemanticClass === 'SAFETY_NEGATIVE' && r3a.maturityStatus === 'MATURE_SHADOW_READY') {
-        safetyReadyCount += 1;
+      if (def.expectedSemanticClass === 'SAFETY_NEGATIVE') {
+        safetyNegativeExamined += 1;
+        if (r3a.maturityStatus === 'MATURE_SHADOW_READY') {
+          safetyReadyCount += 1;
+        }
+      }
+      if (def.expectedSemanticClass === 'POSITIVE_CONTROL') {
+        positiveExamined += 1;
+        if (r3a.maturityStatus === 'MATURE_SHADOW_READY') {
+          positiveReady.push(def.id);
+        }
       }
       if (f3Terminal) {
         expect(r3a.maturityStatus).not.toBe('MATURE_SHADOW_READY');
       }
     }
+
+    expect(scanned + skipped).toBe(totalCases);
+    expect(safetyNegativeExamined).toBeGreaterThan(0);
     expect(safetyReadyCount).toBe(0);
+    expect(positiveReady).toEqual(expect.arrayContaining(['A8', 'A10_POS']));
+    expect(positiveExamined).toBeGreaterThanOrEqual(2);
   });
 });
