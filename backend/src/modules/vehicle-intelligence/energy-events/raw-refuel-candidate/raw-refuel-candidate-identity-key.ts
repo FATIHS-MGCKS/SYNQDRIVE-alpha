@@ -1,7 +1,10 @@
 import { createHash } from 'node:crypto';
 import type { RawRefuelCandidateSignalChannel } from '@prisma/client';
 import { RFRF_RISE_DETECTION_VERSION } from '../raw-fuel-rise-detector/raw-fuel-rise-detector.config';
-import { RFRF_PLANNED_SETTLED_POST_DETECTION_VERSION } from './raw-refuel-candidate-cross-version-compatibility.authority';
+import {
+  RFRF_LEGACY_RISE_DETECTION_VERSION_V1,
+  RFRF_PLANNED_SETTLED_POST_DETECTION_VERSION,
+} from './raw-refuel-candidate-cross-version-compatibility.authority';
 import {
   buildPhysicalCandidateIdentityKeyV1,
 } from './raw-refuel-candidate-physical-identity.authority';
@@ -74,7 +77,10 @@ export function tryBuildCandidateIdentityKeyFromEvidence(input: {
   const prePlateauBucket = derivePrePlateauBucketFromObservation(input);
   if (prePlateauBucket == null) return null;
 
-  if (input.detectionVersion === RFRF_RISE_DETECTION_VERSION) {
+  if (
+    input.detectionVersion === RFRF_RISE_DETECTION_VERSION ||
+    input.detectionVersion === RFRF_LEGACY_RISE_DETECTION_VERSION_V1
+  ) {
     return buildCandidateIdentityKey({
       vehicleId: input.vehicleId,
       detectionVersion: input.detectionVersion,

@@ -1,5 +1,8 @@
 import type { RawRefuelCandidateLifecycleState } from '@prisma/client';
-import { RFRF_DETECTION_VERSION, RFRF_DETECTOR_VERSION } from '../raw-refuel-candidate.constants';
+import {
+  RFRF_RISE_DETECTION_VERSION,
+  RFRF_RISE_DETECTOR_VERSION,
+} from '../../raw-fuel-rise-detector/raw-fuel-rise-detector.config';
 import type { RawRefuelCandidateObservation } from '../raw-refuel-candidate.types';
 
 export function buildTestObservation(
@@ -9,8 +12,8 @@ export function buildTestObservation(
   },
 ): RawRefuelCandidateObservation {
   return {
-    detectionVersion: RFRF_DETECTION_VERSION,
-    detectorVersion: RFRF_DETECTOR_VERSION,
+    detectionVersion: RFRF_RISE_DETECTION_VERSION,
+    detectorVersion: RFRF_RISE_DETECTOR_VERSION,
     signalChannel: 'ABSOLUTE_LITERS',
     lifecycleState: 'OBSERVED',
     preFuelAbsoluteLiters: 7,
