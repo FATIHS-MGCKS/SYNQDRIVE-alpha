@@ -6,9 +6,23 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
 fi
 
 _VO5C_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [[ -f "${_VO5C_LIB_DIR}/vps-vo5c-security-floor.lib.sh" ]]; then
-  # shellcheck source=lib/vps-vo5c-security-floor.lib.sh
-  source "${_VO5C_LIB_DIR}/vps-vo5c-security-floor.lib.sh"
+if [[ -n "${SYNQDRIVE_VO5C_ROLLBACK_AUTHORITY_OPS_DIR:-}" ]]; then
+  _VO5C_AUTHORITY_LIB="${SYNQDRIVE_VO5C_ROLLBACK_AUTHORITY_OPS_DIR}/lib/vps-vo5c-security-floor.lib.sh"
+else
+  _VO5C_AUTHORITY_LIB="${_VO5C_LIB_DIR}/vps-vo5c-security-floor.lib.sh"
+fi
+if [[ ! -f "${_VO5C_AUTHORITY_LIB}" ]]; then
+  echo "ABORT: VO5C rollback authority library missing (${_VO5C_AUTHORITY_LIB})" >&2
+  return 1
+fi
+# shellcheck source=lib/vps-vo5c-security-floor.lib.sh
+if ! source "${_VO5C_AUTHORITY_LIB}"; then
+  echo "ABORT: VO5C rollback authority library load failed" >&2
+  return 1
+fi
+if ! vps_vo5c_require_rollback_guard_ready; then
+  echo "ABORT: VO5C rollback guard not ready" >&2
+  return 1
 fi
 
 vps_replica_log() {
@@ -445,14 +459,15 @@ vps_replica_rollback() {
   local previous_sha
   previous_sha="$(vps_replica_release_sha "${PREVIOUS_CURRENT_RELEASE}")"
 
-  if declare -F vps_vo5c_assert_release_rollback_eligible >/dev/null; then
-    if ! vps_vo5c_assert_release_rollback_eligible "${PREVIOUS_CURRENT_RELEASE}" "$previous_sha"; then
-      vps_replica_log "ABORT: ${VO5C_UNSAFE_ROLLBACK_DENIED_CODE:-VO5C_UNSAFE_ROLLBACK_DENIED}"
-      if declare -F vps_vo5c_log_unsafe_rollback_containment >/dev/null; then
-        vps_vo5c_log_unsafe_rollback_containment "rollback_denied_before_symlink"
-      fi
-      return 1
-    fi
+  if ! vps_vo5c_require_rollback_guard_ready; then
+    vps_replica_log "ABORT: ${VO5C_UNSAFE_ROLLBACK_DENIED_CODE}"
+    vps_vo5c_log_unsafe_rollback_containment "rollback_guard_missing"
+    return 1
+  fi
+  if ! vps_vo5c_assert_release_rollback_eligible "${PREVIOUS_CURRENT_RELEASE}" "$previous_sha"; then
+    vps_replica_log "ABORT: ${VO5C_UNSAFE_ROLLBACK_DENIED_CODE}"
+    vps_vo5c_log_unsafe_rollback_containment "rollback_denied_before_symlink"
+    return 1
   fi
 
   vps_replica_log "ROLLBACK: restoring ${PREVIOUS_CURRENT_RELEASE}"
@@ -464,19 +479,10 @@ vps_replica_rollback() {
   vps_replica_log "ROLLBACK_FORWARD_GATE_DISABLED=YES"
 
   vps_replica_rolling_deploy "${PREVIOUS_CURRENT_RELEASE}" "$previous_sha" || {
-    vps_replica_log "ROLLBACK WARN: rolling restart failed — attempting PM2 dump restore"
+    vps_replica_log "ROLLBACK WARN: rolling restart failed — PM2 dump resurrect disabled (VO5C forward recovery)"
     if [[ -n "${PM2_DUMP:-}" && -f "${PM2_DUMP}" ]]; then
-      if declare -F vps_vo5c_assert_pm2_dump_restore_allowed >/dev/null; then
-        if ! vps_vo5c_assert_pm2_dump_restore_allowed "${PREVIOUS_CURRENT_RELEASE}" "$previous_sha"; then
-          vps_replica_log "ABORT: PM2 dump restore blocked (${VO5C_UNSAFE_ROLLBACK_DENIED_CODE:-VO5C_UNSAFE_ROLLBACK_DENIED})"
-          if declare -F vps_vo5c_log_unsafe_rollback_containment >/dev/null; then
-            vps_vo5c_log_unsafe_rollback_containment "pm2_dump_restore_denied"
-          fi
-          return 1
-        fi
-      fi
-      cp "${PM2_DUMP}" /root/.pm2/dump.pm2
-      pm2 resurrect || true
+      vps_vo5c_assert_pm2_dump_restore_allowed "${PREVIOUS_CURRENT_RELEASE}" "$previous_sha" "${PM2_DUMP}" || true
+      vps_vo5c_log_unsafe_rollback_containment "pm2_dump_resurrect_disabled"
     fi
     return 1
   }

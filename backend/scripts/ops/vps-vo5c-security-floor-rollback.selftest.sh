@@ -60,9 +60,9 @@ cleanup_worktree() {
 WT_BASE="$(mktemp -d)"
 trap 'for d in "$WT_BASE"/*; do [[ -d "$d" ]] && cleanup_worktree "$d" || true; done; rm -rf "$WT_BASE"' EXIT
 
-FLOOR_SHA="${VO5C_SECURITY_FLOOR_SHA}"
-OLD_PROD_SHA="${VO5C_PRODUCTION_OLD_SHA}"
-OLDER_SHA="${VO5C_KNOWN_UNSAFE_ROLLBACK_SHA}"
+FLOOR_SHA="$(vps_vo5c_security_floor_sha)"
+OLD_PROD_SHA='3b557e208c1a06e91c0a13fb8ba861b1255ee375'
+OLDER_SHA='54fc704fb50c285c68470d8fa274d72a67438482'
 
 WT_OLD="${WT_BASE}/old-prod"
 make_release_worktree "$OLD_PROD_SHA" "$WT_OLD"
@@ -144,9 +144,8 @@ if vps_replica_rollback "$SAFE_STATE" >/dev/null 2>&1; then
   fail "expected rolling deploy failure path"
 fi
 if [[ "$PM2_RESURRECT_CALLED" -eq 1 ]]; then
-  pass "pm2_dump_restore_runs_only_after_floor_eligible"
-else
-  pass "pm2_dump_restore_not_reached_or_blocked_in_denied_paths"
+  fail "pm2 resurrect must remain disabled"
 fi
+pass "pm2_dump_resurrect_disabled_on_rollback_failure"
 
 echo "vps-vo5c-security-floor-rollback selftest: OK"

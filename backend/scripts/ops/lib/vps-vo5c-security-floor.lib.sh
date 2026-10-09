@@ -6,12 +6,18 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   exit 1
 fi
 
-# Canonical VO5C security-floor reference (P2B1 + P2B2 + P2B3 + P2B4-0).
-VO5C_SECURITY_FLOOR_SHA="${VO5C_SECURITY_FLOOR_SHA:-39775cbb0cdc0addc7a71b26a39e2395c9f36c63}"
-VO5C_UNSAFE_ROLLBACK_DENIED_CODE="${VO5C_UNSAFE_ROLLBACK_DENIED_CODE:-VO5C_UNSAFE_ROLLBACK_DENIED}"
+if [[ -n "${_VO5C_SECURITY_FLOOR_LIB_LOADED:-}" ]]; then
+  return 0
+fi
 
-VO5C_PRODUCTION_OLD_SHA="${VO5C_PRODUCTION_OLD_SHA:-3b557e208c1a06e91c0a13fb8ba861b1255ee375}"
-VO5C_KNOWN_UNSAFE_ROLLBACK_SHA="${VO5C_KNOWN_UNSAFE_ROLLBACK_SHA:-54fc704fb50c285c68470d8fa274d72a67438482}"
+# Immutable VO5C security-floor reference (P2B1 + P2B2 + P2B3 + P2B4-0). Not overridable.
+readonly _VO5C_PINNED_SECURITY_FLOOR_SHA='39775cbb0cdc0addc7a71b26a39e2395c9f36c63'
+readonly VO5C_UNSAFE_ROLLBACK_DENIED_CODE='VO5C_UNSAFE_ROLLBACK_DENIED'
+_VO5C_SECURITY_FLOOR_LIB_LOADED=1
+
+vps_vo5c_security_floor_sha() {
+  printf '%s' "$_VO5C_PINNED_SECURITY_FLOOR_SHA"
+}
 
 vps_vo5c_log() {
   printf '[vo5c-security-floor] %s\n' "$*"
@@ -22,7 +28,7 @@ vps_vo5c_correlation_id() {
     printf '%s' "${SYNQDRIVE_DEPLOY_CORRELATION_ID}"
     return 0
   fi
-  date -u +%Y%m%dT%H%M%SZ
+  date -u +%Y%m%dT%H:%M%SZ
 }
 
 vps_vo5c_emit_rollback_denied() {
@@ -33,6 +39,39 @@ vps_vo5c_emit_rollback_denied() {
   corr="$(vps_vo5c_correlation_id)"
   vps_vo5c_log "code=${VO5C_UNSAFE_ROLLBACK_DENIED_CODE} reason=${reason} target_sha=${target_sha} current_sha=${current_sha} correlation_id=${corr}"
   return 1
+}
+
+vps_vo5c_require_rollback_guard_ready() {
+  if ! declare -F vps_vo5c_assert_release_rollback_eligible >/dev/null; then
+    vps_vo5c_log "ABORT: ${VO5C_UNSAFE_ROLLBACK_DENIED_CODE} reason=rollback_guard_function_missing"
+    return 1
+  fi
+  if ! declare -F vps_vo5c_security_floor_sha >/dev/null; then
+    vps_vo5c_log "ABORT: ${VO5C_UNSAFE_ROLLBACK_DENIED_CODE} reason=rollback_guard_incomplete"
+    return 1
+  fi
+  local pinned observed
+  pinned="$(vps_vo5c_security_floor_sha)"
+  if [[ "$pinned" != "$_VO5C_PINNED_SECURITY_FLOOR_SHA" ]]; then
+    vps_vo5c_log "ABORT: ${VO5C_UNSAFE_ROLLBACK_DENIED_CODE} reason=security_floor_tamper_detected"
+    return 1
+  fi
+  return 0
+}
+
+vps_vo5c_load_authority_from_ops_dir() {
+  local ops_dir=$1
+  local lib="${ops_dir}/lib/vps-vo5c-security-floor.lib.sh"
+  if [[ ! -f "$lib" ]]; then
+    vps_vo5c_log "ABORT: ${VO5C_UNSAFE_ROLLBACK_DENIED_CODE} reason=rollback_authority_library_missing path=${lib}"
+    return 1
+  fi
+  # shellcheck disable=SC1090
+  if ! source "$lib"; then
+    vps_vo5c_log "ABORT: ${VO5C_UNSAFE_ROLLBACK_DENIED_CODE} reason=rollback_authority_library_load_failed"
+    return 1
+  fi
+  vps_vo5c_require_rollback_guard_ready
 }
 
 vps_vo5c_is_full_sha() {
@@ -61,7 +100,6 @@ vps_vo5c_ensure_git_object() {
       || true
   fi
 
-  # Bounded shallow fetch — read-only provenance recovery for deploy clones.
   if ! git -C "$release_dir" fetch --depth=1 origin "${object}" 2>/dev/null; then
     if ! git -C "$release_dir" fetch --depth=32 origin "${object}" 2>/dev/null; then
       return 1
@@ -74,7 +112,8 @@ vps_vo5c_ensure_git_object() {
 vps_vo5c_verify_ancestry_includes_floor() {
   local release_dir=$1
   local candidate_sha=$2
-  local floor_sha="${VO5C_SECURITY_FLOOR_SHA}"
+  local floor_sha
+  floor_sha="$(vps_vo5c_security_floor_sha)"
 
   if ! vps_vo5c_is_full_sha "$candidate_sha" || ! vps_vo5c_is_full_sha "$floor_sha"; then
     return 1
@@ -116,10 +155,13 @@ vps_vo5c_verify_protection_markers() {
   return 1
 }
 
-# Returns 0 when release_dir is eligible for production rollback/promotion fallback.
 vps_vo5c_assert_release_rollback_eligible() {
   local release_dir=$1
   local claimed_sha=${2:-}
+
+  if ! vps_vo5c_require_rollback_guard_ready; then
+    return 1
+  fi
 
   if [[ -z "$release_dir" || ! -d "$release_dir" ]]; then
     vps_vo5c_emit_rollback_denied "missing_release_directory" "${claimed_sha:-unknown}" \
@@ -166,10 +208,61 @@ vps_vo5c_assert_release_rollback_eligible() {
   return 0
 }
 
+vps_vo5c_pm2_dump_resurrect_permitted() {
+  # Fail-closed: PM2 dump resurrect disabled during VO5C security-floor era.
+  vps_vo5c_log "PM2 dump resurrect disabled — use forward recovery (VO5C security floor)"
+  return 1
+}
+
+vps_vo5c_validate_pm2_dump_paths() {
+  local dump_file=$1
+  local eligible_release_dir=$2
+  local eligible_sha=$3
+
+  if [[ ! -f "$dump_file" ]]; then
+    return 1
+  fi
+
+  local unsafe_patterns=(
+    "3b557e208c1a06e91c0a13fb8ba861b1255ee375"
+    "54fc704fb50c285c68470d8fa274d72a67438482"
+    "/releases/20261008182454"
+    "/releases/20261008001031"
+  )
+
+  local content
+  content="$(cat "$dump_file" 2>/dev/null || true)"
+  local pattern
+  for pattern in "${unsafe_patterns[@]}"; do
+    if [[ "$content" == *"$pattern"* ]]; then
+      vps_vo5c_emit_rollback_denied "pm2_dump_unsafe_release_reference" "$eligible_sha" "$(basename "$eligible_release_dir")"
+      return 1
+    fi
+  done
+
+  if [[ -n "$eligible_release_dir" && "$content" != *"$eligible_release_dir"* ]]; then
+    vps_vo5c_emit_rollback_denied "pm2_dump_release_path_mismatch" "$eligible_sha" "$(basename "$eligible_release_dir")"
+    return 1
+  fi
+
+  return 0
+}
+
 vps_vo5c_assert_pm2_dump_restore_allowed() {
   local release_dir=$1
   local target_sha=$2
-  vps_vo5c_assert_release_rollback_eligible "$release_dir" "$target_sha"
+  local dump_file=${3:-}
+
+  if ! vps_vo5c_assert_release_rollback_eligible "$release_dir" "$target_sha"; then
+    return 1
+  fi
+  if ! vps_vo5c_pm2_dump_resurrect_permitted; then
+    return 1
+  fi
+  if [[ -n "$dump_file" ]]; then
+    vps_vo5c_validate_pm2_dump_paths "$dump_file" "$release_dir" "$target_sha"
+  fi
+  return 1
 }
 
 vps_vo5c_log_unsafe_rollback_containment() {

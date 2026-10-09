@@ -133,6 +133,11 @@ echo "==> Switch current + rolling multi-replica restart"
 # symlink copy of this script (P1.8.3 / OQ-18 bootstrap caveat: old current would
 # load pre-P1.8.3.1 verify_post_deploy without the convergence gate).
 RELEASE_OPS_DIR="${RELEASE_DIR}/backend/scripts/ops"
+# Candidate release carries canonical VO5C rollback authority (required before any replica ops).
+# shellcheck source=lib/vps-vo5c-security-floor.lib.sh
+source "${RELEASE_OPS_DIR}/lib/vps-vo5c-security-floor.lib.sh"
+vps_vo5c_require_rollback_guard_ready || exit 1
+export SYNQDRIVE_VO5C_ROLLBACK_AUTHORITY_OPS_DIR="${RELEASE_OPS_DIR}"
 # shellcheck source=vps-production-replica-topology.config.sh
 source "${RELEASE_OPS_DIR}/vps-production-replica-topology.config.sh"
 if [[ "${SYNQDRIVE_DI_S4F7Q_EXACT_RC_ATTESTATION_GATE:-0}" == "1" ]]; then
@@ -145,8 +150,12 @@ if [[ "${SYNQDRIVE_DI_S4F7Q_EXACT_RC_ATTESTATION_GATE:-0}" == "1" ]]; then
   vps_deploy_controller_verify_exact_sha || exit 1
   CONTROLLER_OPS_DIR="$(vps_deploy_controller_ops_dir)"
   echo "==> S4F-7R guarded deploy: orchestration from controller ${EXPECTED_DEPLOY_CONTROLLER_SHA:0:12}"
+  vps_vo5c_load_authority_from_ops_dir "${RELEASE_OPS_DIR}" || exit 1
+  export SYNQDRIVE_VO5C_ROLLBACK_AUTHORITY_OPS_DIR="${RELEASE_OPS_DIR}"
+  # Rolling + rollback helpers must come from the candidate release (VO5C guard), not an older controller copy.
   # shellcheck source=lib/vps-production-replica.lib.sh
-  source "${CONTROLLER_OPS_DIR}/lib/vps-production-replica.lib.sh"
+  source "${RELEASE_OPS_DIR}/lib/vps-production-replica.lib.sh"
+  vps_vo5c_require_rollback_guard_ready || exit 1
   export SYNQDRIVE_DI_S4F7Q_FORWARD_EXACT_RC_GATE=1
 else
   # shellcheck source=lib/vps-deploy-controller.lib.sh
@@ -176,9 +185,7 @@ if ! vps_replica_rolling_deploy "$RELEASE_DIR" "$TARGET_SHA"; then
   if [[ "$ROLLBACK_ON_FAIL" -eq 1 ]]; then
     echo "==> Rolling back to previous release"
     if ! vps_replica_rollback "$DEPLOY_STATE_FILE"; then
-      if declare -F vps_vo5c_log_unsafe_rollback_containment >/dev/null; then
-        vps_vo5c_log_unsafe_rollback_containment "deploy_rolling_fail_rollback_blocked"
-      fi
+      vps_vo5c_log_unsafe_rollback_containment "deploy_rolling_fail_rollback_blocked"
     fi
   fi
   exit 1

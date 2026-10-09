@@ -5,6 +5,14 @@
 **Production pre-R2 SHA (R1):** `3b557e208c1a06e91c0a13fb8ba861b1255ee375`  
 **Known unsafe rollback SHA:** `54fc704fb50c285c68470d8fa274d72a67438482`
 
+## R2-H1 mandatory fixes
+
+- **Immutable security floor** — `39775cbb…` pinned in code; environment cannot override.
+- **Fail-closed guard** — missing VO5C library, load failure, or missing guard function denies rollback.
+- **S4F7Q path** — candidate `RELEASE_OPS_DIR` replica library only (not older controller copy); `SYNQDRIVE_VO5C_ROLLBACK_AUTHORITY_OPS_DIR` pins authority.
+- **PM2 dump resurrect** — disabled; forward recovery only.
+- **Migration fixture** — baseline deploy uses migration tree **without** Battery R2 folders; forward deploy uses full tree (no `_prisma_migrations` row deletion).
+
 ## Protected rollback entry points
 
 | Path | Mechanism |
