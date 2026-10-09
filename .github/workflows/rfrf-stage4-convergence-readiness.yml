@@ -27,7 +27,6 @@ jobs:
       RFRF_CI_POSTGRES_SUPERUSER_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
     services:
       postgres:
-        # AWS ECR public mirror avoids Docker Hub unauthenticated pull rate limits on GHA runners.
         image: public.ecr.aws/docker/library/postgres:16-alpine
         env:
           POSTGRES_USER: postgres

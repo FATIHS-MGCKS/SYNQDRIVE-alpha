@@ -87,9 +87,22 @@ cd backend && npm run test:battery:v2:hv-h4:postgres:ci
 cd backend && npm test -- m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-operational-readiness
 ```
 
+## P1B0 — Single-operator trusted authorization (architecture only)
+
+| Deliverable | Path |
+|-------------|------|
+| ADR | `decisions/M3_3_HV_H4_A3_PHASE_A_SINGLE_OPERATOR_P1_AUTHORIZATION_ADR_2026-10-09.md` |
+| Governance contract | `governance/M3_3_HV_H4_A3_PHASE_A_SINGLE_OPERATOR_GOVERNANCE_CONTRACT_V1.md` |
+| Evidence schema | `schemas/M3_3_HV_H4_A3_PHASE_A_P1_TRUSTED_AUTHORIZATION_EVIDENCE_V1.schema.json` |
+| Offline verification test plan | `validation/M3_3_HV_H4_A3_PHASE_A_P1_OFFLINE_AUTHORIZATION_VERIFICATION_TEST_PLAN_2026-10-09.md` |
+| Isolated offline verifier | `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1-trusted-authorization.verify-offline.v1.ts` |
+
+**P1 execution:** still `NO_GO` — verifier is **not** wired to `resolvePhaseAProductionP1AuthorizationV1`.  
+**Policy:** two-human `independentAuthorizationVerification` remains until org adopts `M3_3_HV_H4_A3_SINGLE_OPERATOR_GOVERNANCE_CONTRACT_V1` (human policy approval required).
+
 ## Remaining production gaps (post-P0)
 
-- Independent human verification is a **documented attestation** — not cryptographic proof
+- Independent human verification is a **documented attestation** — not cryptographic proof (Ed25519 path designed in P1B0, not activated)
 - Production audit login provisioning and CA distribution are org-operational
 - P1 execution still requires separate human merge/deploy authorization and explicit execute ack
 - Phase-B certification and issuer architecture remain out of scope

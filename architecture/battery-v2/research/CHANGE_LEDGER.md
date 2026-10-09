@@ -6,6 +6,78 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B1-A0-H2 eliminate self-asserted trusted governance evidence
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | External authority verifier port (disabled A0); reject `TRUSTED_EXTERNAL_VERIFIED` in claim JSON; split `CLAIMS_STRUCTURALLY_VALID` vs `AUTHORITY_VERIFIED`; Path B readiness fail-closed without verifier |
+| **WHY** | H1 review — self-authored trust status in env/JSON must not satisfy governance readiness |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1b1-a0-h2-governance-authority.spec.ts` + HV-H4 unit suite |
+| **NON_EFFECTS** | No env bypass, no production access, P1 authorization remains `NO_GO` |
+| **DECISION_STATUS** | PROPOSED — future slice wires GitHub/hosted verifier producing verified evidence results |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B1-A0-H1 governance trust boundary closure
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | GO/NO-GO V2 adapter (`SINGLE_OPERATOR_V1` forbids fabricated verifier); ratification provenance contract; operator risk acceptance V2; readiness check `SINGLE_OPERATOR_POLICY_AND_RISK_ACCEPTANCE`; block self-declared `RATIFIED` adoption JSON |
+| **WHY** | DO NOT MERGE review — Path B must not depend on fictional second-human verifier or unauthenticated ratification |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1b1-a0-h1-governance-trust.spec.ts` + HV-H4 unit suite (268 tests); P1 execution gate remains `NO_GO` |
+| **NON_EFFECTS** | No production DB/SSH, keys, migrations, or Authority C execution wiring |
+| **DECISION_STATUS** | PROPOSED — owner repository ratification + trusted provenance still required before governance READY |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B1-A0 single-operator governance adoption & dormant authorization prep
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Path B adoption proposal + governance mode contract V2; governance-mode readiness adapter; dormant P1 trusted-auth eval (`NO_GO`); operator signing/trust provisioning doc; P1B1-A0 negative tests |
+| **WHY** | Owner confirmed Path B governance model; prepare P1B1 without enabling production execution |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1b1-a0*` + full HV-H4 unit suite; `resolvePhaseAProductionP1AuthorizationV1` unchanged `NO_GO` |
+| **NON_EFFECTS** | No production access, keys, deployment probe, or execution gate `GO` wiring |
+| **DECISION_STATUS** | PROPOSED — adoption record template `PENDING_OWNER_CONTROLLED_REPOSITORY_MERGE` until owner merge |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B0-H3 Ed25519 DER canonicalization & revocation alias closure
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | `materializeEd25519TrustSpkiV1` requires input SPKI DER === `createPublicKey` re-export; fingerprint SHA-256(canonical export DER); `PHASE_A_P1_TRUST_KEY_SPKI_DER_NONCANONICAL` for trailing bytes / alternate ASN.1 |
+| **WHY** | Independent repro: Node accepts SPKI+trailing byte and long-form SEQUENCE length; raw-DER SHA-256 alias bypass |
+| **VALIDATION** | Extended `crypto-trust` + full offline verifier Jest family; HV-H4 unit suite |
+| **NON_EFFECTS** | P1 `NO_GO`; H1/H2 calendar, signing header, governance unchanged |
+| **DECISION_STATUS** | PROPOSED |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B0-H2 trust key canonicalization, calendar validation, governance closure
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Ed25519 SPKI SHA-256 fingerprint dedup + canonical Base64 enforcement; strict UTC calendar validation (`parseUtcInstantStrictV1`); finite verification clock; governance §7.0–§7.2 single-operator security-review exception vs multi-party path |
+| **WHY** | Residual review: Base64 string alias bypass; `Date.parse` calendar rollover; §7 contradicted §3 on unconditional second human reviewer |
+| **VALIDATION** | Extended Jest (`utc-instant`, `crypto-trust`, offline verifier); `npm run test:battery:v2:hv-h4`; registry + graph validators |
+| **NON_EFFECTS** | P1 execution `NO_GO`; no production access or signing keys |
+| **DECISION_STATUS** | PROPOSED — owner policy adoption still required |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B0-H1 offline trusted authorization security closure
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Domain-separated signing header (algorithm, keyId, contract version, purpose, scope); strict `unknown` parsers for artifact/trust store/context; full temporal policy; independent runtime binding context; trust-store duplicate keyId/SPKI alias rejection; governance §3 supersession wording; test plan H1-T21–T25; 28 offline verifier Jest cases |
+| **WHY** | Security review DO NOT MERGE: unsigned keyId/algorithm enabled substitution; partial temporal/context validation; malformed JSON not fail-closed |
+| **VALIDATION** | `npx jest m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1-trusted-authorization*` (28); `npm run test:battery:v2:hv-h4` (237); `resolvePhaseAProductionP1AuthorizationV1` still `NO_GO`; verifier static boundary (no Prisma/preflight/consumeApproval) |
+| **NON_EFFECTS** | No execution gate wiring; no production keys/signatures; live deployment identity UNVERIFIED in P1B0 fixtures |
+| **REMAINING_GAPS** | P1B1 integration; human policy approval (`REQUIRES_HUMAN_POLICY_APPROVAL=YES`) |
+| **DECISION_STATUS** | PROPOSED |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B0 single-operator trusted authorization architecture
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | ADR + governance contract + JSON evidence schema + offline verification test plan; isolated Ed25519 offline verifier (`verifyPhaseAProductionP1TrustedAuthorizationEvidenceOfflineV1`) and manifest fingerprint helper |
+| **WHY** | Sole owner/operator cannot satisfy two-human verifier policy without fabricating identities; need honest AI-advisory vs human-risk vs machine-crypto separation |
+| **VALIDATION** | `npx jest m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1-trusted-authorization*`; `npm run test:battery:v2:hv-h4`; runtime `resolvePhaseAProductionP1AuthorizationV1` unchanged `NO_GO` |
+| **NON_EFFECTS** | No production connect, no signing keys in repo/CI, no execution gate integration |
+| **REMAINING_GAPS** | Human policy approval to enable SINGLE_OPERATOR governance mode; P1B1 integration + deployment SHA probe + operator signing CLI |
+| **DECISION_STATUS** | PROPOSED |
+
 ## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1A-H2 P1 authorization enforcement + audit credential isolation
 
 | Field | Value |
