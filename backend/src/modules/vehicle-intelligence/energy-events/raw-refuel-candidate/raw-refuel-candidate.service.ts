@@ -15,10 +15,14 @@ import {
   RawRefuelCandidateLifecycleValidationError,
   RawRefuelCandidateOrgVehicleIntegrityError,
   RawRefuelCandidateVehicleNotFoundError,
+  RawRefuelCandidateUnsupportedDetectionVersionError,
   RawRefuelCandidateVersionedTerminalConflictError,
 } from './raw-refuel-candidate.errors';
 import { classifyCandidateDetectionVersionCompatibility } from './raw-refuel-candidate-cross-version-compatibility.authority';
-import { tryBuildCandidateIdentityKeyFromEvidence } from './raw-refuel-candidate-identity-key';
+import {
+  isSupportedCandidateDetectionVersionForIdentity,
+  tryBuildCandidateIdentityKeyFromEvidence,
+} from './raw-refuel-candidate-identity-key';
 import {
   isRawRefuelCandidateTerminal,
   resolveNextLifecycleState,
@@ -77,6 +81,7 @@ export class RawRefuelCandidateService {
     observation: RawRefuelCandidateObservation,
   ): Promise<RawRefuelCandidateResolveResult> {
     validateObservationLifecycleRequest(observation);
+    assertSupportedObservationDetectionVersion(observation);
     const serviceNow = this.clock.now();
 
     return this.prisma.$transaction(async (tx) => {
@@ -440,6 +445,17 @@ function resolveAssignedIdentityKey(
     return existing.candidateIdentityKey;
   }
   return tryBuildCandidateIdentityKeyFromEvidence(mergedEvidence);
+}
+
+function assertSupportedObservationDetectionVersion(
+  observation: RawRefuelCandidateObservation,
+): void {
+  if (!isSupportedCandidateDetectionVersionForIdentity(observation.detectionVersion)) {
+    throw new RawRefuelCandidateUnsupportedDetectionVersionError(
+      observation.vehicleId,
+      observation.detectionVersion,
+    );
+  }
 }
 
 function validateObservationLifecycleRequest(observation: RawRefuelCandidateObservation): void {

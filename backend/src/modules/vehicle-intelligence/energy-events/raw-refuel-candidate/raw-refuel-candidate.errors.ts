@@ -79,6 +79,20 @@ export class RawRefuelCandidateVersionedTerminalConflictError extends Error {
   }
 }
 
+export class RawRefuelCandidateUnsupportedDetectionVersionError extends Error {
+  readonly code = 'RAW_REFUEL_CANDIDATE_UNSUPPORTED_DETECTION_VERSION';
+
+  constructor(
+    readonly vehicleId: string,
+    readonly detectionVersion: string,
+  ) {
+    super(
+      `Unsupported raw refuel candidate detectionVersion ${detectionVersion} for vehicle ${vehicleId}`,
+    );
+    this.name = 'RawRefuelCandidateUnsupportedDetectionVersionError';
+  }
+}
+
 export class RawRefuelCandidateCrossVersionInsufficientEvidenceError extends Error {
   readonly code = 'RAW_REFUEL_CANDIDATE_CROSS_VERSION_INSUFFICIENT_EVIDENCE';
 

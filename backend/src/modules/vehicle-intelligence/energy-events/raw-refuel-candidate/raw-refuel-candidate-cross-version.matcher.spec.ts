@@ -186,4 +186,39 @@ describe('R2 cross-version matcher', () => {
     });
     expect(classifyRawRefuelCandidateOverlap(obs, stored)).toBe('DISTINCT_PHYSICAL_RISE');
   });
+
+  it('M13 distant physical + null pre => DISTINCT not INSUFFICIENT', () => {
+    const stored = asStoredRow(v1Base, {
+      preFuelAbsoluteLiters: null,
+      riseOnsetAt: new Date('2026-09-30T01:00:00.000Z'),
+      physicalEvidenceStart: new Date('2026-09-30T00:50:00.000Z'),
+      physicalEvidenceEnd: new Date('2026-09-30T01:10:00.000Z'),
+    });
+    const obs = v2Observation(v1Base, {
+      riseOnsetAt: new Date('2026-09-30T08:00:00.000Z'),
+      physicalEvidenceStart: new Date('2026-09-30T07:50:00.000Z'),
+      physicalEvidenceEnd: new Date('2026-09-30T08:10:00.000Z'),
+    });
+    expect(classifyRawRefuelCandidateOverlap(obs, stored)).toBe('DISTINCT_PHYSICAL_RISE');
+  });
+
+  it('M14 v1 PEAK + v2 PEAK same physical => INSUFFICIENT', () => {
+    const stored = asStoredRow(v1Base);
+    const obs = v2Observation(v1Base, {
+      evidenceMeta: { postFuelAuthority: 'PEAK_INSTANTANEOUS' },
+    });
+    expect(classifyRawRefuelCandidateOverlap(obs, stored)).toBe('INSUFFICIENT_EVIDENCE');
+  });
+
+  it('M15 stored malformed authority => INSUFFICIENT', () => {
+    const stored = asStoredRow(v1Base, { evidenceMeta: { postFuelAuthority: 'BOGUS' } });
+    const obs = v2Observation(v1Base, { postFuelAbsoluteLiters: 19 });
+    expect(classifyRawRefuelCandidateOverlap(obs, stored)).toBe('INSUFFICIENT_EVIDENCE');
+  });
+
+  it('M16 absent legacy authority still allows SAME via PEAK inference', () => {
+    const stored = asStoredRow(v1Base, { evidenceMeta: null });
+    const obs = v2Observation(v1Base, { postFuelAbsoluteLiters: 19 });
+    expect(classifyRawRefuelCandidateOverlap(obs, stored)).toBe('SAME_PHYSICAL_RISE');
+  });
 });

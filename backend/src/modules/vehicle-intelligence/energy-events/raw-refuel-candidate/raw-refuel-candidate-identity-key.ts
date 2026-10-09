@@ -1,6 +1,5 @@
 import { createHash } from 'node:crypto';
 import type { RawRefuelCandidateSignalChannel } from '@prisma/client';
-import { RFRF_RISE_DETECTION_VERSION } from '../raw-fuel-rise-detector/raw-fuel-rise-detector.config';
 import {
   RFRF_LEGACY_RISE_DETECTION_VERSION_V1,
   RFRF_PLANNED_SETTLED_POST_DETECTION_VERSION,
@@ -65,6 +64,16 @@ export function derivePrePlateauBucketFromObservation(input: {
   return bucketPrePlateauLevel(input.signalChannel, input.preFuelRelativePercent);
 }
 
+/** R2 supported detection versions for candidate identity assignment (immutable anchors). */
+export function isSupportedCandidateDetectionVersionForIdentity(
+  detectionVersion: string,
+): boolean {
+  return (
+    detectionVersion === RFRF_LEGACY_RISE_DETECTION_VERSION_V1 ||
+    detectionVersion === RFRF_PLANNED_SETTLED_POST_DETECTION_VERSION
+  );
+}
+
 export function tryBuildCandidateIdentityKeyFromEvidence(input: {
   vehicleId: string;
   detectionVersion: string;
@@ -77,10 +86,7 @@ export function tryBuildCandidateIdentityKeyFromEvidence(input: {
   const prePlateauBucket = derivePrePlateauBucketFromObservation(input);
   if (prePlateauBucket == null) return null;
 
-  if (
-    input.detectionVersion === RFRF_RISE_DETECTION_VERSION ||
-    input.detectionVersion === RFRF_LEGACY_RISE_DETECTION_VERSION_V1
-  ) {
+  if (input.detectionVersion === RFRF_LEGACY_RISE_DETECTION_VERSION_V1) {
     return buildCandidateIdentityKey({
       vehicleId: input.vehicleId,
       detectionVersion: input.detectionVersion,

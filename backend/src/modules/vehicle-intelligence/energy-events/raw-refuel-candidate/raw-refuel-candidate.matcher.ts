@@ -226,16 +226,16 @@ function classifyAuthorizedCrossVersionOverlap(
 ): RawRefuelCandidateOverlapClassification {
   const versionCompatibility = 'AUTHORIZED_CROSS_VERSION';
 
+  if (!physicalNeighborhoodCorresponds(observation, candidate)) {
+    return 'DISTINCT_PHYSICAL_RISE';
+  }
+
   const preCompatible = hasCompatiblePrePlateau(observation, candidate);
   if (preCompatible === false) {
     return 'DISTINCT_PHYSICAL_RISE';
   }
   if (preCompatible !== true) {
     return 'INSUFFICIENT_EVIDENCE';
-  }
-
-  if (!physicalNeighborhoodCorresponds(observation, candidate)) {
-    return 'DISTINCT_PHYSICAL_RISE';
   }
 
   const observationAuthority = resolveObservationPostFuelAuthorityForCrossVersion(
@@ -258,17 +258,13 @@ function classifyAuthorizedCrossVersionOverlap(
     candidateAuthority: storedAuthority,
     versionCompatibility,
   });
-  if (authorityTransition === 'UNAUTHORIZED_AUTHORITY_SHIFT') {
-    return 'DISTINCT_PHYSICAL_RISE';
-  }
-  if (authorityTransition === 'UNKNOWN_AUTHORITY') {
+  if (authorityTransition !== 'AUTHORIZED_AUTHORITY_SHIFT') {
     return 'INSUFFICIENT_EVIDENCE';
   }
 
   const postCompatible = hasCompatiblePostPlateau(observation, candidate);
-  const authorizedPeakToSettledShift = authorityTransition === 'AUTHORIZED_AUTHORITY_SHIFT';
-  if (postCompatible === false && !authorizedPeakToSettledShift) {
-    return 'DISTINCT_PHYSICAL_RISE';
+  if (postCompatible === false) {
+    // Authorized PEAK→SETTLED shift: post tolerance must not block cross-version identity.
   }
 
   if (existingLifecycle != null) {

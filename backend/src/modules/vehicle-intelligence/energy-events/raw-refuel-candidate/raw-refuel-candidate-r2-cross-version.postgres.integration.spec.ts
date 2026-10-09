@@ -1,16 +1,17 @@
 import { randomUUID } from 'crypto';
 import { PrismaClient } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
-import { RFRF_RISE_DETECTION_VERSION } from '../raw-fuel-rise-detector/raw-fuel-rise-detector.config';
 import {
   RFRF_LEGACY_RISE_DETECTION_VERSION_V1,
   RFRF_PLANNED_SETTLED_POST_DETECTION_VERSION,
 } from './raw-refuel-candidate-cross-version-compatibility.authority';
 import {
   RawRefuelCandidateCrossVersionInsufficientEvidenceError,
+  RawRefuelCandidateUnsupportedDetectionVersionError,
   RawRefuelCandidateVersionedTerminalConflictError,
 } from './raw-refuel-candidate.errors';
 import { buildEvidenceRevisionFingerprint } from './raw-refuel-candidate-evidence-fingerprint';
+import { candidateRowToEvidenceSlice } from './raw-refuel-candidate-evidence-merge';
 import { buildCandidateIdentityKey } from './raw-refuel-candidate-identity-key';
 import { buildPhysicalCandidateIdentityKeyV1 } from './raw-refuel-candidate-physical-identity.authority';
 import { RawRefuelCandidateService } from './raw-refuel-candidate.service';
@@ -71,7 +72,7 @@ async function cleanup(prisma: PrismaClient, vehicleId: string, organizationId: 
 function ksLegacyIdentityKey(vehicleId: string): string {
   return buildCandidateIdentityKey({
     vehicleId,
-    detectionVersion: RFRF_RISE_DETECTION_VERSION,
+    detectionVersion: RFRF_LEGACY_RISE_DETECTION_VERSION_V1,
     signalChannel: 'ABSOLUTE_LITERS',
     prePlateauBucket: 6,
     riseOnsetAt: KS_RISE_ONSET,
@@ -203,6 +204,9 @@ async function seedKsV1Candidate(
         expect(row?.postFuelAbsoluteLiters).toBe(19);
         expect(row?.candidateIdentityKey).toBe(originalKey);
         expect(row?.evidenceRevisionFingerprint).toBe(result.evidenceRevisionFingerprint);
+        expect(row?.evidenceRevisionFingerprint).toBe(
+          buildEvidenceRevisionFingerprint(candidateRowToEvidenceSlice(row!)),
+        );
         expect(await prisma.rawRefuelCandidate.count({ where: { vehicleId: vehicle.id } })).toBe(1);
       } finally {
         await cleanup(prisma, vehicle.id, org.id);
@@ -286,7 +290,7 @@ async function seedKsV1Candidate(
       });
     }
 
-    it('PG7 unauthorized v99→v1 does not reconcile', async () => {
+    it('PG13 unknown v99 observation fails closed without insert', async () => {
       const suffix = randomUUID().slice(0, 8);
       const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
       try {
@@ -295,10 +299,10 @@ async function seedKsV1Candidate(
           detectionVersion: 'rfrf-rise-v99',
           lifecycleState: 'OBSERVED',
         });
-        const result = await service.resolveOrCreateCandidate(v99);
-        expect(result.candidateId).not.toBe(KS_MS_661_CANONICAL_CANDIDATE_ID);
-        expect(result.created).toBe(true);
-        expect(await prisma.rawRefuelCandidate.count({ where: { vehicleId: vehicle.id } })).toBe(2);
+        await expect(service.resolveOrCreateCandidate(v99)).rejects.toBeInstanceOf(
+          RawRefuelCandidateUnsupportedDetectionVersionError,
+        );
+        expect(await prisma.rawRefuelCandidate.count({ where: { vehicleId: vehicle.id } })).toBe(1);
       } finally {
         await cleanup(prisma, vehicle.id, org.id);
       }
@@ -365,6 +369,92 @@ async function seedKsV1Candidate(
           }),
         );
         expect(await prisma.rawRefuelCandidate.count({ where: { vehicleId: vehicle.id } })).toBe(2);
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
+    it('PG11 distant v1 null-pre does not block distinct v2 insert', async () => {
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      try {
+        await prisma.rawRefuelCandidate.create({
+          data: {
+            organizationId: org.id,
+            vehicleId: vehicle.id,
+            candidateIdentityKey: ksLegacyIdentityKey(vehicle.id),
+            detectionVersion: RFRF_LEGACY_RISE_DETECTION_VERSION_V1,
+            detectorVersion: 'rfrf-rise-detector-v1',
+            signalChannel: 'ABSOLUTE_LITERS',
+            lifecycleState: 'OBSERVED',
+            evidenceRevisionFingerprint: 'fp-distant-v1',
+            riseOnsetAt: new Date('2026-09-30T01:00:00.000Z'),
+            riseEndAt: new Date('2026-09-30T01:05:00.000Z'),
+            preFuelAbsoluteLiters: null,
+            postFuelAbsoluteLiters: 20,
+            physicalEvidenceStart: new Date('2026-09-30T00:50:00.000Z'),
+            physicalEvidenceEnd: new Date('2026-09-30T01:10:00.000Z'),
+            scanWindowStart: new Date('2026-09-30T00:00:00.000Z'),
+            scanWindowEnd: new Date('2026-09-30T12:00:00.000Z'),
+            firstObservedAt: new Date('2026-09-30T01:00:00.000Z'),
+            lastObservedAt: new Date('2026-09-30T01:00:00.000Z'),
+            recoveryNextAttemptAt: new Date('2026-09-30T01:00:00.000Z'),
+          },
+        });
+        const distinct = ksV2Observation(org.id, vehicle.id, {
+          riseOnsetAt: new Date('2026-09-30T08:00:00.000Z'),
+          physicalEvidenceStart: new Date('2026-09-30T07:50:00.000Z'),
+          physicalEvidenceEnd: new Date('2026-09-30T08:10:00.000Z'),
+          preFuelAbsoluteLiters: 10,
+          postFuelAbsoluteLiters: 25,
+        });
+        const result = await service.resolveOrCreateCandidate(distinct);
+        expect(result.created).toBe(true);
+        expect(await prisma.rawRefuelCandidate.count({ where: { vehicleId: vehicle.id } })).toBe(2);
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
+    it('PG12 malformed stored legacy authority fails closed without mutation', async () => {
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      try {
+        const identityKey = ksLegacyIdentityKey(vehicle.id);
+        await prisma.rawRefuelCandidate.create({
+          data: {
+            id: KS_MS_661_CANONICAL_CANDIDATE_ID,
+            organizationId: org.id,
+            vehicleId: vehicle.id,
+            candidateIdentityKey: identityKey,
+            detectionVersion: RFRF_LEGACY_RISE_DETECTION_VERSION_V1,
+            detectorVersion: 'rfrf-rise-detector-v1',
+            signalChannel: 'ABSOLUTE_LITERS',
+            lifecycleState: 'OBSERVED',
+            evidenceRevisionFingerprint: 'fp-malformed-authority',
+            evidenceMeta: { postFuelAuthority: 'BOGUS' },
+            riseOnsetAt: KS_RISE_ONSET,
+            riseEndAt: KS_RISE_END,
+            preFuelAbsoluteLiters: 6,
+            postFuelAbsoluteLiters: 20,
+            physicalEvidenceStart: new Date('2026-09-30T04:50:00.000Z'),
+            physicalEvidenceEnd: new Date('2026-09-30T05:05:00.000Z'),
+            firstObservedAt: new Date('2026-09-30T04:00:00.000Z'),
+            lastObservedAt: new Date('2026-09-30T04:00:00.000Z'),
+            recoveryNextAttemptAt: new Date('2026-09-30T04:00:00.000Z'),
+          },
+        });
+        const before = await prisma.rawRefuelCandidate.findUnique({
+          where: { id: KS_MS_661_CANONICAL_CANDIDATE_ID },
+        });
+        await expect(
+          service.resolveOrCreateCandidate(ksV2Observation(org.id, vehicle.id)),
+        ).rejects.toBeInstanceOf(RawRefuelCandidateCrossVersionInsufficientEvidenceError);
+        const after = await prisma.rawRefuelCandidate.findUnique({
+          where: { id: KS_MS_661_CANONICAL_CANDIDATE_ID },
+        });
+        expect(after?.evidenceRevisionFingerprint).toBe(before?.evidenceRevisionFingerprint);
+        expect(await prisma.rawRefuelCandidate.count({ where: { vehicleId: vehicle.id } })).toBe(1);
       } finally {
         await cleanup(prisma, vehicle.id, org.id);
       }
