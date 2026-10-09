@@ -1,5 +1,13 @@
 # KG-EED Changelog
 
+## 2026-10-09 — OQ-014 R3A phase-aware settled-post scanner (EED-EV-0107)
+
+- Pure offline `scanRawFuelRisePhases` (RISING→PEAK_REACHED→SETTLING→SETTLED); proposal/shadow only
+- Calibration firewall: no Production numeric defaults; REPLAY_HYPOTHESIS bundles in tests/replay only
+- Terminal F3 safety rejections cannot become `MATURE_SHADOW_READY`; KS MS 661 2026-09-30 offline 6→20→19 L shadow
+- T01–T20 unit matrix + A1–A12 bridge; Stage-3 gate runs R3A Jest + settled-post replay; R2 matcher unchanged (v2→v2 duplicate risk noted for R3B)
+- **NOT_RUNTIME_AUTHORITATIVE**; OQ-014 **OPEN**; OQ-019 **PARTIALLY_RESOLVED**
+
 ## 2026-10-09 — OQ-014 R2 cross-version candidate rediscovery (EED-EV-0106)
 
 - Matcher/resolver integration for authorized `rfrf-rise-v2` → `rfrf-rise-v1`; same-version semantics preserved
