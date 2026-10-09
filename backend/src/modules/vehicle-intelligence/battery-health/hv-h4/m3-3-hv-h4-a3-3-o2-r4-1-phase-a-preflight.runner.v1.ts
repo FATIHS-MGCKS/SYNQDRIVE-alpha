@@ -10,7 +10,11 @@ import {
   sanitizePhaseAPreflightErrorV1,
 } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.errors.v1';
 import { evaluatePhaseAPreflightDatabaseAdmissionV1 } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.admission.v1';
-import { evaluatePhaseAPreflightProductionAdmissionV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-admission.v1';
+import {
+  commitPhaseAProductionApprovalConsumptionV1,
+  evaluatePhaseAPreflightProductionAdmissionV1,
+} from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-admission.v1';
+import { verifyPhaseAProductionTlsNegotiationV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-tls-probe.v1';
 import { parsePhaseAProductionTargetSpecFromEnvV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-target.v1';
 import {
   capturePhaseAProductionSessionIdentityV1,
@@ -109,15 +113,20 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
     | M3_3HvH4A3PhaseAPreflightReportV1['productionAdmissionEvidence']
     | undefined;
 
+  let productionAdmissionReady:
+    | Extract<ReturnType<typeof evaluatePhaseAPreflightProductionAdmissionV1>, { ok: true }>
+    | undefined;
+
   if (admissionPolicy === 'PRODUCTION_AUTHORIZED_R4_2A') {
     const productionAdmission = evaluatePhaseAPreflightProductionAdmissionV1(
       input.databaseUrl,
       process.env,
-      { consumeApproval: true },
+      { consumeApproval: false },
     );
     if (!productionAdmission.ok) {
       return { ok: false, reasonCode: productionAdmission.reasonCode, status: 'BLOCKED' };
     }
+    productionAdmissionReady = productionAdmission;
     productionAdmissionEvidence = {
       admissionChannel: productionAdmission.evidence.admissionChannel,
       approvalId: productionAdmission.evidence.approvalId,
@@ -125,6 +134,8 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
       approvingAuthority: productionAdmission.evidence.approvingAuthority,
       authenticationKind: productionAdmission.evidence.authenticationKind,
       cryptographicAuthentication: false,
+      operationStatus: 'ATTEMPTED',
+      tlsIdentityCertified: false,
     };
   } else {
     const admission = evaluatePhaseAPreflightDatabaseAdmissionV1(input.databaseUrl, process.env);
@@ -146,23 +157,69 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
   let hadError = false;
   const txGuard = new PhaseATransactionGuardV1();
 
+  let blockedBeforeTransaction: M3_3HvH4A3PhaseAPreflightRunnerOutcomeV1 | undefined;
+
   try {
     await client.$connect();
 
-    if (admissionPolicy === 'PRODUCTION_AUTHORIZED_R4_2A') {
+    if (admissionPolicy === 'PRODUCTION_AUTHORIZED_R4_2A' && productionAdmissionReady) {
       const specParsed = parsePhaseAProductionTargetSpecFromEnvV1(process.env);
       if (!specParsed.ok) {
-        return { ok: false, reasonCode: specParsed.reasonCode, status: 'BLOCKED' };
+        blockedBeforeTransaction = {
+          ok: false,
+          reasonCode: specParsed.reasonCode,
+          status: 'BLOCKED',
+        };
+      } else {
+        const tlsProbe = await verifyPhaseAProductionTlsNegotiationV1(client);
+        if (!tlsProbe.ok) {
+          blockedBeforeTransaction = {
+            ok: false,
+            reasonCode: tlsProbe.reasonCode,
+            status: 'BLOCKED',
+          };
+        } else {
+          const identity = await capturePhaseAProductionSessionIdentityV1(client);
+          const identityOk = validatePhaseAProductionSessionIdentityAgainstSpecV1(
+            identity,
+            specParsed.spec,
+          );
+          if (!identityOk.ok) {
+            blockedBeforeTransaction = {
+              ok: false,
+              reasonCode: identityOk.reasonCode,
+              status: 'BLOCKED',
+            };
+          } else {
+            sessionIdentity = {
+              sessionUser: identity.sessionUser,
+              currentUser: identity.currentUser,
+            };
+            const consumed = commitPhaseAProductionApprovalConsumptionV1(
+              productionAdmissionReady,
+              new Date(),
+            );
+            if (!consumed.ok) {
+              blockedBeforeTransaction = {
+                ok: false,
+                reasonCode: consumed.reasonCode,
+                status: 'BLOCKED',
+              };
+            } else if (productionAdmissionEvidence) {
+              productionAdmissionEvidence = {
+                ...productionAdmissionEvidence,
+                operationStatus: 'ADMITTED',
+                tlsIdentityCertified: true,
+                executeConsumedAt: consumed.executeConsumedAt,
+              };
+            }
+          }
+        }
       }
-      const identity = await capturePhaseAProductionSessionIdentityV1(client);
-      const identityOk = validatePhaseAProductionSessionIdentityAgainstSpecV1(
-        identity,
-        specParsed.spec,
-      );
-      if (!identityOk.ok) {
-        return { ok: false, reasonCode: identityOk.reasonCode, status: 'BLOCKED' };
-      }
-      sessionIdentity = { sessionUser: identity.sessionUser, currentUser: identity.currentUser };
+    }
+
+    if (blockedBeforeTransaction) {
+      return blockedBeforeTransaction;
     }
 
     await client.$transaction(
@@ -382,16 +439,15 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
       { timeout: 120_000 },
     );
   } catch (error) {
-    await client.$disconnect().catch(() => undefined);
     const sanitized = sanitizePhaseAPreflightErrorV1(error);
     return {
       ok: false,
       reasonCode: formatPhaseAPreflightPublicErrorV1(sanitized),
       status: 'ERROR',
     };
+  } finally {
+    await client.$disconnect().catch(() => undefined);
   }
-
-  await client.$disconnect();
 
   const orderedChecks = orderChecksV1(checks);
   const discoveryComplete = !hadError && !checks.some((c) => c.status === 'ERROR');
@@ -425,7 +481,14 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
     ...(queryTelemetryEnabled
       ? { testDiagnostics: { approvedQueryInvocations } }
       : {}),
-    ...(productionAdmissionEvidence ? { productionAdmissionEvidence } : {}),
+    ...(productionAdmissionEvidence
+      ? {
+          productionAdmissionEvidence: {
+            ...productionAdmissionEvidence,
+            operationStatus: 'COMPLETED',
+          },
+        }
+      : {}),
   };
 
   assertNoSecretsInReportPayloadV1(report);

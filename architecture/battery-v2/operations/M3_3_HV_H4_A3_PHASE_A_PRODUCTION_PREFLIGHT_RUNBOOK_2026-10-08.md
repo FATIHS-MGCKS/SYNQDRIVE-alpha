@@ -8,7 +8,7 @@
 2. Security officer (or delegated authority) documented in approval record — **human approval, not cryptographic signature**.
 3. Dedicated read-only **audit login** provisioned out-of-band (not `DATABASE_URL`, not issuer pool).
 4. Target spec matches real hostname, port, database, and audit login.
-5. TLS: production URL uses `sslmode=verify-full` (or `verify-ca` with CA pinned in URL) when identity verification is required.
+5. TLS (mandatory): production URL must use **`sslmode=verify-full`** and non-empty **`sslrootcert`** pointing at a trusted CA bundle. `verify-ca`, `require`, `prefer`, `allow`, and `disable` are rejected. After connect, tooling verifies `pg_stat_ssl.ssl=true` for the session.
 6. No SSH port-forward of production PostgreSQL to local loopback during Phase A.
 7. R4.1 isolated-test harness env vars **unset** in operator shell.
 
@@ -23,7 +23,8 @@
 1. Parse expected target spec JSON (hostname, port, database, audit login).
 2. Confirm URL host/port/database/login match spec (tooling: `evaluatePhaseAPreflightProductionAdmissionV1` dry path via config parse).
 3. Confirm URL is **not** identical canonical target to application `DATABASE_URL` or issuer URL.
-4. Confirm `sslmode` meets policy (no `disable`).
+4. Confirm `sslmode=verify-full` and `sslrootcert` are set; admission rejects all other modes.
+5. Provision consumption directory **before** execution: absolute path, writable only to operators, containing marker file `.synqdrive_phase_a_production_consumption_store_v1`. Do not use `/tmp` or freshly created arbitrary directories without the marker.
 
 ## One-time authorized execution workflow
 
@@ -33,7 +34,7 @@
    - `M3_3_HV_H4_A3_PHASE_A_PRODUCTION_DATABASE_URL` (secret)
    - `M3_3_HV_H4_A3_PHASE_A_PRODUCTION_APPROVAL_RECORD_PATH`
    - `M3_3_HV_H4_A3_PHASE_A_PRODUCTION_TARGET_SPEC_JSON`
-   - `M3_3_HV_H4_A3_PHASE_A_PRODUCTION_APPROVAL_CONSUMPTION_DIR` (empty writable dir)
+   - `M3_3_HV_H4_A3_PHASE_A_PRODUCTION_APPROVAL_CONSUMPTION_DIR` (pre-provisioned store with marker file; see architecture H1-D trust limits)
 3. Operator **deliberate execute** (separate step):
    - `M3_3_HV_H4_A3_PHASE_A_PRODUCTION_EXECUTE_ACK=1`
    - `M3_3_HV_H4_A3_PHASE_A_PRODUCTION_EXECUTE_APPROVAL_ID=<id>`

@@ -1,8 +1,12 @@
 import { readFileSync } from 'node:fs';
+import { assertPhaseAProductionApprovalIdSafeV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-consumption-store.v1';
 import {
   M3_3_HV_H4_A3_PHASE_A_PRODUCTION_APPROVAL_CONTRACT_V1,
   type M3_3HvH4A3PhaseAProductionApprovalRecordV1,
 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-approval.types.v1';
+
+/** Maximum bounded validity window for a single production Phase-A approval (72 hours). */
+export const M3_3_HV_H4_A3_PHASE_A_PRODUCTION_APPROVAL_MAX_LIFETIME_MS = 72 * 60 * 60 * 1000;
 
 export const M3_3_HV_H4_A3_PHASE_A_PRODUCTION_PREFLIGHT_ENABLED_ENV =
   'M3_3_HV_H4_A3_PHASE_A_PRODUCTION_PREFLIGHT_ENABLED' as const;
@@ -64,14 +68,31 @@ export function loadPhaseAProductionApprovalRecordV1(
     return { ok: false, reasonCode: 'PHASE_A_PRODUCTION_APPROVAL_RECORD_INVALID_JSON' };
   }
 
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    return { ok: false, reasonCode: 'PHASE_A_PRODUCTION_APPROVAL_RECORD_INVALID_SHAPE' };
+  }
   const record = parsed as M3_3HvH4A3PhaseAProductionApprovalRecordV1;
   if (record.contractVersion !== M3_3_HV_H4_A3_PHASE_A_PRODUCTION_APPROVAL_CONTRACT_V1) {
     return { ok: false, reasonCode: 'PHASE_A_PRODUCTION_APPROVAL_CONTRACT_MISMATCH' };
   }
-  if (!record.approvalId?.trim() || !record.changeTicket?.trim() || !record.approvingAuthority?.trim()) {
+  if (
+    typeof record.approvalId !== 'string' ||
+    typeof record.changeTicket !== 'string' ||
+    typeof record.approvingAuthority !== 'string' ||
+    typeof record.approvedTargetKey !== 'string' ||
+    typeof record.validFrom !== 'string' ||
+    typeof record.validUntil !== 'string' ||
+    typeof record.executeNonce !== 'string'
+  ) {
+    return { ok: false, reasonCode: 'PHASE_A_PRODUCTION_APPROVAL_RECORD_INVALID_TYPES' };
+  }
+  const idSafe = assertPhaseAProductionApprovalIdSafeV1(record.approvalId);
+  if (!idSafe.ok) return idSafe;
+
+  if (!record.changeTicket.trim() || !record.approvingAuthority.trim()) {
     return { ok: false, reasonCode: 'PHASE_A_PRODUCTION_APPROVAL_RECORD_INCOMPLETE' };
   }
-  if (!record.approvedTargetKey?.trim() || !record.executeNonce?.trim()) {
+  if (!record.approvedTargetKey.trim() || !record.executeNonce.trim()) {
     return { ok: false, reasonCode: 'PHASE_A_PRODUCTION_APPROVAL_RECORD_INCOMPLETE' };
   }
   if (record.authenticationKind !== 'DOCUMENTED_HUMAN_APPROVAL') {
@@ -89,6 +110,12 @@ export function validatePhaseAProductionApprovalWindowV1(
   const until = Date.parse(record.validUntil);
   if (Number.isNaN(from) || Number.isNaN(until)) {
     return { ok: false, reasonCode: 'PHASE_A_PRODUCTION_APPROVAL_VALIDITY_INVALID' };
+  }
+  if (until <= from) {
+    return { ok: false, reasonCode: 'PHASE_A_PRODUCTION_APPROVAL_VALIDITY_REVERSED' };
+  }
+  if (until - from > M3_3_HV_H4_A3_PHASE_A_PRODUCTION_APPROVAL_MAX_LIFETIME_MS) {
+    return { ok: false, reasonCode: 'PHASE_A_PRODUCTION_APPROVAL_LIFETIME_EXCEEDED' };
   }
   const ts = now.getTime();
   if (ts < from) {

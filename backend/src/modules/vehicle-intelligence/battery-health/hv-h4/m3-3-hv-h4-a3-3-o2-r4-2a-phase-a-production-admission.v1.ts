@@ -3,8 +3,9 @@ import { M3_3_HV_H4_A3_ATTESTATION_ISSUER_DATABASE_URL_ENV } from './m3-3-hv-h4-
 import { M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_HARNESS_ACTIVE_ENV } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.isolated-target.v1';
 import {
   assertPhaseAProductionApprovalNotConsumedV1,
-  markPhaseAProductionApprovalConsumedV1,
-} from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-approval-consumption.v1';
+  markPhaseAProductionApprovalConsumedAtomicV1,
+  validatePhaseAProductionConsumptionStoreV1,
+} from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-consumption-store.v1';
 import {
   loadPhaseAProductionApprovalRecordV1,
   M3_3_HV_H4_A3_PHASE_A_PRODUCTION_APPROVAL_CONSUMPTION_DIR_ENV,
@@ -20,7 +21,12 @@ import {
 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-target.v1';
 
 export type M3_3HvH4A3PhaseAProductionAdmissionResultV1 =
-  | { ok: true; evidence: M3_3HvH4A3PhaseAProductionAdmissionEvidenceV1 }
+  | {
+      ok: true;
+      evidence: M3_3HvH4A3PhaseAProductionAdmissionEvidenceV1;
+      consumptionStorePath: string;
+      record: { approvalId: string; executeNonce: string };
+    }
   | { ok: false; reasonCode: string };
 
 function urlsRepresentSameTargetV1(a: string, b: string): boolean {
@@ -36,10 +42,6 @@ function isTruthyEnabled(raw: string | undefined): boolean {
   return v === '1' || v === 'true' || v === 'yes';
 }
 
-/**
- * Production Phase-A admission — default DENY. Documented human approval + deliberate execute ack + one-time consumption.
- * Does not use isolated-test harness bypass. Does not authorize from ENABLED alone.
- */
 export function evaluatePhaseAPreflightProductionAdmissionV1(
   databaseUrl: string,
   env: NodeJS.ProcessEnv = process.env,
@@ -90,23 +92,23 @@ export function evaluatePhaseAPreflightProductionAdmissionV1(
   }
 
   const consumptionDir = env[M3_3_HV_H4_A3_PHASE_A_PRODUCTION_APPROVAL_CONSUMPTION_DIR_ENV]?.trim();
+  const store = validatePhaseAProductionConsumptionStoreV1(consumptionDir);
+  if (!store.ok) return store;
+
   const notConsumed = assertPhaseAProductionApprovalNotConsumedV1(
-    consumptionDir,
+    store.resolvedPath,
     recordLoaded.record.approvalId,
   );
   if (!notConsumed.ok) return notConsumed;
 
-  if (options.consumeApproval !== false && consumptionDir) {
-    try {
-      markPhaseAProductionApprovalConsumedV1(
-        consumptionDir,
-        recordLoaded.record.approvalId,
-        recordLoaded.record.executeNonce,
-        now,
-      );
-    } catch {
-      return { ok: false, reasonCode: 'PHASE_A_PRODUCTION_APPROVAL_ALREADY_CONSUMED' };
-    }
+  if (options.consumeApproval) {
+    const consumed = markPhaseAProductionApprovalConsumedAtomicV1(
+      store.resolvedPath,
+      recordLoaded.record.approvalId,
+      recordLoaded.record.executeNonce,
+      now,
+    );
+    if (!consumed.ok) return consumed;
   }
 
   return {
@@ -119,7 +121,28 @@ export function evaluatePhaseAPreflightProductionAdmissionV1(
       approvedTargetKey: recordLoaded.record.approvedTargetKey,
       authenticationKind: recordLoaded.record.authenticationKind,
       cryptographicAuthentication: false,
-      executeConsumedAt: now.toISOString(),
+      operationStatus: options.consumeApproval ? 'ADMITTED' : 'ATTEMPTED',
+      tlsIdentityCertified: false,
+      ...(options.consumeApproval ? { executeConsumedAt: now.toISOString() } : {}),
+    },
+    consumptionStorePath: store.resolvedPath,
+    record: {
+      approvalId: recordLoaded.record.approvalId,
+      executeNonce: recordLoaded.record.executeNonce,
     },
   };
+}
+
+export function commitPhaseAProductionApprovalConsumptionV1(
+  admission: Extract<M3_3HvH4A3PhaseAProductionAdmissionResultV1, { ok: true }>,
+  consumedAt: Date,
+): { ok: true; executeConsumedAt: string } | { ok: false; reasonCode: string } {
+  const consumed = markPhaseAProductionApprovalConsumedAtomicV1(
+    admission.consumptionStorePath,
+    admission.record.approvalId,
+    admission.record.executeNonce,
+    consumedAt,
+  );
+  if (!consumed.ok) return consumed;
+  return { ok: true, executeConsumedAt: consumedAt.toISOString() };
 }

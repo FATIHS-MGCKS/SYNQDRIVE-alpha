@@ -59,6 +59,9 @@ export type M3_3HvH4A3PhaseAPreflightReportV1 = {
     approvingAuthority: string;
     authenticationKind: string;
     cryptographicAuthentication: false;
+    operationStatus: string;
+    tlsIdentityCertified: boolean;
+    executeConsumedAt?: string;
   };
 };
 

@@ -27,10 +27,18 @@ export type M3_3HvH4A3PhaseAProductionTargetSpecV1 = {
   port: number;
   database: string;
   expectedAuditLogin: string;
-  /** Require sslmode verify-full or verify-ca on the database URL. */
-  requireTlsIdentityVerification: boolean;
-  forbidSuperuserSession: boolean;
+  /**
+   * Must be true in production (H1-B). False/missing rejected at parse time.
+   * @deprecated Field retained for contract version only — production parser requires true.
+   */
+  forbidSuperuserSession?: boolean;
 };
+
+export type M3_3HvH4A3PhaseAProductionAdmissionOperationStatusV1 =
+  | 'REJECTED'
+  | 'ADMITTED'
+  | 'ATTEMPTED'
+  | 'COMPLETED';
 
 export type M3_3HvH4A3PhaseAProductionAdmissionEvidenceV1 = {
   admissionChannel: 'PRODUCTION_AUTHORIZED_R4_2A';
@@ -40,5 +48,7 @@ export type M3_3HvH4A3PhaseAProductionAdmissionEvidenceV1 = {
   approvedTargetKey: string;
   authenticationKind: M3_3HvH4A3PhaseAProductionApprovalAuthenticationKindV1;
   cryptographicAuthentication: false;
-  executeConsumedAt: string;
+  executeConsumedAt?: string;
+  operationStatus: M3_3HvH4A3PhaseAProductionAdmissionOperationStatusV1;
+  tlsIdentityCertified: boolean;
 };

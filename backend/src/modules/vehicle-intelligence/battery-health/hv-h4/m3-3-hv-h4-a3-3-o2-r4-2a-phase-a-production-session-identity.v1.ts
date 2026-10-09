@@ -8,6 +8,9 @@ export type PhaseAProductionSessionIdentitySnapshotV1 = {
   serverAddr: string | null;
   serverPort: number | null;
   isSuperuser: boolean;
+  rolcreaterole: boolean;
+  rolcreatedb: boolean;
+  rolbypassrls: boolean;
 };
 
 export async function capturePhaseAProductionSessionIdentityV1(
@@ -30,10 +33,12 @@ export async function capturePhaseAProductionSessionIdentityV1(
   const row = rows[0];
   const currentUser = row?.current_user ?? '';
 
-  const superRows = await client.$queryRawUnsafe<Array<{ rolsuper: boolean }>>(
-    `SELECT rolsuper FROM pg_roles WHERE rolname = current_user`,
+  const roleRows = await client.$queryRawUnsafe<
+    Array<{ rolsuper: boolean; rolcreaterole: boolean; rolcreatedb: boolean; rolbypassrls: boolean }>
+  >(
+    `SELECT rolsuper, rolcreaterole, rolcreatedb, rolbypassrls FROM pg_roles WHERE rolname = current_user`,
   );
-  const isSuperuser = Boolean(superRows[0]?.rolsuper);
+  const role = roleRows[0];
 
   return {
     sessionUser: row?.session_user ?? '',
@@ -41,7 +46,10 @@ export async function capturePhaseAProductionSessionIdentityV1(
     currentDatabase: row?.current_database ?? '',
     serverAddr: row?.server_addr,
     serverPort: row?.server_port ?? null,
-    isSuperuser,
+    isSuperuser: Boolean(role?.rolsuper),
+    rolcreaterole: Boolean(role?.rolcreaterole),
+    rolcreatedb: Boolean(role?.rolcreatedb),
+    rolbypassrls: Boolean(role?.rolbypassrls),
   };
 }
 
@@ -58,8 +66,14 @@ export function validatePhaseAProductionSessionIdentityAgainstSpecV1(
   if (identity.currentDatabase !== spec.database) {
     return { ok: false, reasonCode: 'PHASE_A_PRODUCTION_SESSION_DATABASE_MISMATCH' };
   }
-  if (spec.forbidSuperuserSession && identity.isSuperuser) {
+  if (spec.forbidSuperuserSession !== true) {
+    return { ok: false, reasonCode: 'PHASE_A_PRODUCTION_FORBID_SUPERUSER_REQUIRED' };
+  }
+  if (identity.isSuperuser) {
     return { ok: false, reasonCode: 'PHASE_A_PRODUCTION_SUPERUSER_SESSION_FORBIDDEN' };
+  }
+  if (identity.rolcreaterole || identity.rolcreatedb || identity.rolbypassrls) {
+    return { ok: false, reasonCode: 'PHASE_A_PRODUCTION_ADMIN_PRIVILEGE_FORBIDDEN' };
   }
   return { ok: true };
 }

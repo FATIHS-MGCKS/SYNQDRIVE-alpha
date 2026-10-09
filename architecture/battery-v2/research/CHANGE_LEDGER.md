@@ -6,6 +6,19 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2A-H1 production admission security closure
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Mandatory verify-full + sslrootcert; runtime `pg_stat_ssl` probe; mandatory `forbidSuperuserSession=true` with admin privilege denial; runner `try/finally` disconnect; deferred approval consume until post-identity; durable consumption store marker + ephemeral path rejection; approval window max 72h; expanded unit/postgres integration tests |
+| **WHY** | R4.2A preparation path must not admit production execution without TLS identity policy, non-superuser audit identity, connection cleanup, or replay-safe consumption semantics |
+| **VALIDATION** | R4.2A admission/target/consumption unit specs; postgres integration (harness, ephemeral store, TLS probe on plain DB, audit fixture identity); HV-H4 CI |
+| **OBSERVED_EFFECT** | CI plain PostgreSQL: `PHASE_A_PRODUCTION_TLS_HANDSHAKE_NOT_ENCRYPTED`; `tlsIdentityCertified` remains false until TLS-enabled fixture exists |
+| **NON_EFFECTS** | No production DB access; `PRODUCTION_CERTIFICATION=NO`; cryptographic approval still false |
+| **REMAINING_GAPS** | TLS verify-full negative matrix on isolated TLS PostgreSQL; production readiness blocked until `TLS_IDENTITY_CERTIFIED=YES` demonstrated |
+| **DECISION_STATUS** | VALIDATED (repository / isolated fixture); **NOT_READY** for production certification |
+| **EVIDENCE** | `M3_3_HV_H4_A3_3_O2_R4_2A_PRODUCTION_PHASE_A_ADMISSION_2026-10-08.md` § H1; production preflight runbook |
+
 ## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R4.2A production Phase-A admission preparation
 
 | Field | Value |

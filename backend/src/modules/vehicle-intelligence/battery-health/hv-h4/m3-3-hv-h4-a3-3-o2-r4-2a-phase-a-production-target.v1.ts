@@ -25,6 +25,10 @@ function isLoopbackHost(hostname: string): boolean {
   return false;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 export function parsePhaseAProductionTargetSpecFromEnvV1(
   env: NodeJS.ProcessEnv,
 ): { ok: true; spec: M3_3HvH4A3PhaseAProductionTargetSpecV1 } | { ok: false; reasonCode: string } {
@@ -38,17 +42,64 @@ export function parsePhaseAProductionTargetSpecFromEnvV1(
   } catch {
     return { ok: false, reasonCode: 'PHASE_A_PRODUCTION_TARGET_SPEC_INVALID_JSON' };
   }
-  const spec = parsed as M3_3HvH4A3PhaseAProductionTargetSpecV1;
-  if (spec.contractVersion !== M3_3_HV_H4_A3_PHASE_A_PRODUCTION_TARGET_SPEC_CONTRACT_V1) {
+  if (!isRecord(parsed)) {
+    return { ok: false, reasonCode: 'PHASE_A_PRODUCTION_TARGET_SPEC_INVALID_SHAPE' };
+  }
+  if (parsed.contractVersion !== M3_3_HV_H4_A3_PHASE_A_PRODUCTION_TARGET_SPEC_CONTRACT_V1) {
     return { ok: false, reasonCode: 'PHASE_A_PRODUCTION_TARGET_SPEC_CONTRACT_MISMATCH' };
   }
-  if (!spec.hostname?.trim() || !spec.database?.trim() || !spec.expectedAuditLogin?.trim()) {
+  if (typeof parsed.hostname !== 'string' || !parsed.hostname.trim()) {
     return { ok: false, reasonCode: 'PHASE_A_PRODUCTION_TARGET_SPEC_INCOMPLETE' };
   }
-  if (!Number.isFinite(spec.port) || spec.port <= 0 || spec.port > 65535) {
+  if (typeof parsed.database !== 'string' || !parsed.database.trim()) {
     return { ok: false, reasonCode: 'PHASE_A_PRODUCTION_TARGET_SPEC_INCOMPLETE' };
   }
+  if (typeof parsed.expectedAuditLogin !== 'string' || !parsed.expectedAuditLogin.trim()) {
+    return { ok: false, reasonCode: 'PHASE_A_PRODUCTION_TARGET_SPEC_INCOMPLETE' };
+  }
+  if (typeof parsed.port !== 'number' || !Number.isFinite(parsed.port) || parsed.port <= 0 || parsed.port > 65535) {
+    return { ok: false, reasonCode: 'PHASE_A_PRODUCTION_TARGET_SPEC_INCOMPLETE' };
+  }
+  if (parsed.forbidSuperuserSession !== true) {
+    return { ok: false, reasonCode: 'PHASE_A_PRODUCTION_FORBID_SUPERUSER_REQUIRED' };
+  }
+
+  const spec: M3_3HvH4A3PhaseAProductionTargetSpecV1 = {
+    contractVersion: M3_3_HV_H4_A3_PHASE_A_PRODUCTION_TARGET_SPEC_CONTRACT_V1,
+    hostname: parsed.hostname.trim(),
+    port: parsed.port,
+    database: parsed.database.trim(),
+    expectedAuditLogin: parsed.expectedAuditLogin.trim(),
+    forbidSuperuserSession: true,
+  };
+
   return { ok: true, spec };
+}
+
+export function validatePhaseAProductionTlsUrlPolicyV1(
+  databaseUrl: string,
+): { ok: true } | { ok: false; reasonCode: string } {
+  const parsed = parseDatabaseUrlV1(databaseUrl);
+  if (!parsed) {
+    return { ok: false, reasonCode: 'PHASE_A_DATABASE_URL_INVALID' };
+  }
+
+  const sslmode = (parsed.searchParams.get('sslmode') ?? '').toLowerCase();
+  if (sslmode !== 'verify-full') {
+    return { ok: false, reasonCode: 'PHASE_A_PRODUCTION_TLS_VERIFY_FULL_REQUIRED' };
+  }
+
+  const sslrootcert = parsed.searchParams.get('sslrootcert')?.trim();
+  if (!sslrootcert) {
+    return { ok: false, reasonCode: 'PHASE_A_PRODUCTION_TLS_SSLROOTCERT_REQUIRED' };
+  }
+
+  const rejectedModes = ['disable', 'allow', 'prefer', 'require', 'verify-ca'];
+  if (rejectedModes.includes(sslmode)) {
+    return { ok: false, reasonCode: 'PHASE_A_PRODUCTION_TLS_VERIFY_FULL_REQUIRED' };
+  }
+
+  return { ok: true };
 }
 
 export function validatePhaseAProductionDatabaseUrlAgainstTargetSpecV1(
@@ -88,7 +139,7 @@ export function validatePhaseAProductionDatabaseUrlAgainstTargetSpecV1(
     return { ok: false, reasonCode: 'PHASE_A_DATABASE_URL_INVALID' };
   }
 
-  const tls = validatePhaseAProductionTlsPolicyV1(databaseUrl, spec);
+  const tls = validatePhaseAProductionTlsUrlPolicyV1(databaseUrl);
   if (!tls.ok) return tls;
 
   const tunnel = detectPhaseAProductionTunnelAmbiguityV1(databaseUrl, spec);
@@ -97,39 +148,14 @@ export function validatePhaseAProductionDatabaseUrlAgainstTargetSpecV1(
   return { ok: true, canonicalTargetKey };
 }
 
+/** @deprecated H1-A — production always requires verify-full; use validatePhaseAProductionTlsUrlPolicyV1 */
 export function validatePhaseAProductionTlsPolicyV1(
   databaseUrl: string,
-  spec: M3_3HvH4A3PhaseAProductionTargetSpecV1,
+  _spec: M3_3HvH4A3PhaseAProductionTargetSpecV1,
 ): { ok: true } | { ok: false; reasonCode: string } {
-  if (!spec.requireTlsIdentityVerification) {
-    return { ok: true };
-  }
-
-  const parsed = parseDatabaseUrlV1(databaseUrl);
-  if (!parsed) {
-    return { ok: false, reasonCode: 'PHASE_A_DATABASE_URL_INVALID' };
-  }
-
-  const sslmode = (parsed.searchParams.get('sslmode') ?? '').toLowerCase();
-  if (!sslmode) {
-    return { ok: false, reasonCode: 'PHASE_A_PRODUCTION_TLS_SSLMODE_REQUIRED' };
-  }
-  if (sslmode === 'disable' || sslmode === 'allow') {
-    return { ok: false, reasonCode: 'PHASE_A_PRODUCTION_TLS_INSECURE_SSLMODE' };
-  }
-  if (sslmode !== 'verify-full' && sslmode !== 'verify-ca' && sslmode !== 'require') {
-    return { ok: false, reasonCode: 'PHASE_A_PRODUCTION_TLS_SSLMODE_UNSUPPORTED' };
-  }
-  if (sslmode === 'require') {
-    return { ok: false, reasonCode: 'PHASE_A_PRODUCTION_TLS_SERVER_IDENTITY_NOT_VERIFIED' };
-  }
-
-  return { ok: true };
+  return validatePhaseAProductionTlsUrlPolicyV1(databaseUrl);
 }
 
-/**
- * Loopback URL with non-loopback declared target (or inverse) indicates port-forward / proxy ambiguity.
- */
 export function detectPhaseAProductionTunnelAmbiguityV1(
   databaseUrl: string,
   spec: M3_3HvH4A3PhaseAProductionTargetSpecV1,

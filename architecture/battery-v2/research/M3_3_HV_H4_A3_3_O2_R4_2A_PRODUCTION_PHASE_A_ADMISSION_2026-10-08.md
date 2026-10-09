@@ -23,14 +23,44 @@ This slice does **not** execute against production and does **not** certify issu
 
 R4.1 isolated loopback policy is **unchanged** for default admission.
 
-## 3. Target identity
+## 3. Target identity (O2-R4.2A-H1)
 
 Target spec JSON (`M3_3_HV_H4_A3_PHASE_A_PRODUCTION_TARGET_SPEC_JSON`):
 
 - Explicit hostname, port, database, `expectedAuditLogin`
-- TLS: when `requireTlsIdentityVerification`, URL must use `sslmode=verify-full` or `verify-ca` (not `disable` / `require` alone)
+- **`forbidSuperuserSession` must be `true`** — missing/false rejected at parse time
+- TLS (H1-A): **only** `sslmode=verify-full` with non-empty `sslrootcert`; rejects `disable`, `allow`, `prefer`, `require`, `verify-ca`, and missing `sslmode`
+- Runtime TLS evidence: `pg_stat_ssl` for current backend PID must show `ssl=true` (`verifyPhaseAProductionTlsNegotiationV1`) — URL inspection alone is insufficient
 - Tunnel ambiguity: URL host loopback vs non-loopback spec host → `PHASE_A_PRODUCTION_TUNNEL_IDENTITY_AMBIGUOUS`
-- Post-connect: `session_user`, `current_user`, `current_database()`, optional superuser denial
+- Post-connect: `session_user`, `current_user`, `current_database()` must match spec; deny superuser and `rolcreaterole` / `rolcreatedb` / `rolbypassrls`
+
+### H1 certification limits
+
+| Control | CI / repository | Production readiness |
+|---------|-----------------|----------------------|
+| TLS verify-full URL policy | Unit tests | Required |
+| TLS handshake + hostname/CA (driver) | **Not demonstrated** on plain CI PostgreSQL | Requires TLS-enabled fixture or production-like environment |
+| `tlsIdentityCertified` in evidence | Set `true` only after `pg_stat_ssl` encrypted session | `TLS_IDENTITY_CERTIFIED=NO` until demonstrated |
+
+## 3.1 Connection lifecycle (H1-C)
+
+- `PrismaClient.$disconnect()` in `finally` on every runner path
+- Production approval consumption **after** connect, TLS probe, and session identity — **before** `SET TRANSACTION READ ONLY`
+- Early `BLOCKED` outcomes must not execute Phase-A discovery SQL
+
+## 3.2 Approval consumption store (H1-D)
+
+- Directory must be absolute, pre-provisioned, non-ephemeral (rejects `/tmp`, etc.)
+- Marker file `.synqdrive_phase_a_production_consumption_store_v1` required — **mkdtemp without marker is rejected**
+- Atomic exclusive consume via `openSync(..., 'wx')`; approval IDs validated before path join
+- **Trust limits:** filesystem replay protection depends on OS permissions, backup/restore discipline, and absence of hostile symlink races on the store path; it does not prove historical human approval cryptographically
+
+## 3.3 Approval validation (H1-E)
+
+- Validity window: reject reversed `validFrom`/`validUntil`, expired, or lifetime **> 72h**
+- Malformed JSON / wrong field types → stable reason codes (no raw parse throws to caller)
+- `cryptographicAuthentication` remains **false**; `DOCUMENTED_HUMAN_APPROVAL` only
+- Evidence `operationStatus`: `ATTEMPTED` → `ADMITTED` (post-identity) → `COMPLETED` (successful report) or blocked/rejected earlier
 
 Shared physical database is allowed; authorization is **audit login identity**, not exclusive database name.
 
@@ -44,7 +74,9 @@ Unchanged R4.1 guarantees: manifest SELECT-only, `SET TRANSACTION READ ONLY`, no
 |----------|------|
 | `m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-approval.v1.ts` | Approval load/validate |
 | `m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-admission.v1.ts` | Production admission gate |
-| `m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-target.v1.ts` | Target + TLS policy |
+| `m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-target.v1.ts` | Target + mandatory verify-full TLS URL policy |
+| `m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-tls-probe.v1.ts` | Runtime `pg_stat_ssl` negotiation evidence |
+| `m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-consumption-store.v1.ts` | Durable consumption store validation + atomic consume |
 | `m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-session-identity.v1.ts` | Session identity checks |
 | `scripts/ops/m3-3-hv-h4-a3-o2-r4-2a-phase-a-production-preflight.ts` | Ops CLI (preparation) |
 | `operations/M3_3_HV_H4_A3_PHASE_A_PRODUCTION_PREFLIGHT_RUNBOOK_2026-10-08.md` | Operator runbook |
