@@ -21,10 +21,15 @@ import {
   type Gate6OpenGuardInput,
 } from './di-v0-s4-gate6-open-rekill-production.lib';
 import {
-  computeGate6LiveOpenDispatchDigest,
-  evaluateGate6LiveOpenAuthority,
+  consumeGate6LiveOpenDispatchFromEnv,
   evaluateGate6ProductionPathIsolation,
+  GATE6_PRODUCTION_FORBIDDEN_FIXTURE_ENV_KEYS,
 } from './di-v0-s4-gate6-live-authority.lib';
+import {
+  issueLiveOpenDispatchToken,
+  DI_S4_GATE6_LIVE_OPEN_DISPATCH_TOKEN_FILE_ENV,
+} from './di-v0-s4-gate6-dispatch-token.lib';
+import { resolveCanonicalBackendEnvPathFromFilesystem } from './di-v0-s4-gate6-trusted-authority.lib';
 
 const CLI = path.join(__dirname, 'di-v0-s4-gate6-open-rekill-production-cli.ts');
 const BACKEND_ROOT = path.resolve(__dirname, '../../..');
@@ -122,39 +127,44 @@ describe('S4F-7AS Gate-6 open guards (lib)', () => {
     expect(evaluateEmergencyRekillAck(undefined, 'reason', 'actor')).toBe(false);
   });
 
-  it('live open authority requires dispatch digest and audit fields', () => {
-    const input = baseOpenInput();
-    const bad = evaluateGate6LiveOpenAuthority(input, {}, { reason: '', actor: '' });
-    expect(bad.ok).toBe(false);
-    expect(bad.failures).toContain('AUDIT_FIELDS_MISSING');
-    expect(bad.failures).toContain('DISPATCH_NONCE_MISSING');
+  it('live-open dispatch requires one-shot token file (env digest not accepted)', () => {
+    const tokenDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gate6-dispatch-spec-'));
+    const { filePath } = issueLiveOpenDispatchToken(tokenDir, {
+      requiredSha: 'a'.repeat(40),
+      requiredReleaseId: 'rel',
+      requiredEnvSha256: 'b'.repeat(64),
+      reason: 'r',
+      actor: 'a',
+    });
+    const withoutToken = consumeGate6LiveOpenDispatchFromEnv({});
+    expect(withoutToken.ok).toBe(false);
+    const digestOnly = consumeGate6LiveOpenDispatchFromEnv({
+      DI_S4_GATE6_LIVE_OPEN_DISPATCH_DIGEST: 'deadbeef',
+      DI_S4_GATE6_LIVE_OPEN_DISPATCH_NONCE: 'n1',
+    });
+    expect(digestOnly.ok).toBe(false);
+    const withToken = consumeGate6LiveOpenDispatchFromEnv({
+      [DI_S4_GATE6_LIVE_OPEN_DISPATCH_TOKEN_FILE_ENV]: filePath,
+    });
+    expect(withToken.ok).toBe(true);
+    fs.rmSync(tokenDir, { recursive: true, force: true });
   });
 
-  it('dispatch digest binds pins nonce and audit', () => {
-    const input = baseOpenInput();
-    const d1 = computeGate6LiveOpenDispatchDigest({
-      requiredSha: input.requiredSha!,
-      requiredReleaseId: input.requiredReleaseId!,
-      requiredEnvSha256: input.requiredEnvSha256!,
-      nonce: 'n1',
-      reason: 'r',
-      actor: 'a',
-    });
-    const d2 = computeGate6LiveOpenDispatchDigest({
-      requiredSha: input.requiredSha!,
-      requiredReleaseId: input.requiredReleaseId!,
-      requiredEnvSha256: input.requiredEnvSha256!,
-      nonce: 'n2',
-      reason: 'r',
-      actor: 'a',
-    });
-    expect(d1).not.toBe(d2);
-    const env = {
-      DI_S4_GATE6_LIVE_OPEN_DISPATCH_NONCE: 'n1',
-      DI_S4_GATE6_LIVE_OPEN_DISPATCH_DIGEST: d1,
-    };
-    const ok = evaluateGate6LiveOpenAuthority(input, env, { reason: 'r', actor: 'a' });
-    expect(ok.failures).not.toContain('DISPATCH_DIGEST_INVALID');
+  it('forbidden fixture list blocks env-computed digest bypass keys on production path', () => {
+    expect(GATE6_PRODUCTION_FORBIDDEN_FIXTURE_ENV_KEYS).toContain('DI_S4_GATE6_LIVE_OPEN_DISPATCH_DIGEST');
+    expect(GATE6_PRODUCTION_FORBIDDEN_FIXTURE_ENV_KEYS).toContain('DI_S4_GATE6_LIVE_OPEN_DISPATCH_NONCE');
+  });
+
+  it('resolveCanonicalBackendEnvPathFromFilesystem uses realpath', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gate6-env-'));
+    const envFile = path.join(dir, 'backend.env');
+    fs.writeFileSync(envFile, 'X=1\n', 'utf8');
+    const link = path.join(dir, 'link.env');
+    fs.symlinkSync(envFile, link);
+    const resolved = resolveCanonicalBackendEnvPathFromFilesystem({ SYNQDRIVE_BACKEND_ENV: link });
+    expect(resolved.ok).toBe(true);
+    if (resolved.ok) expect(resolved.canonicalPath).toBe(fs.realpathSync(envFile));
+    fs.rmSync(dir, { recursive: true, force: true });
   });
 
   it('production fixture env vars fail closed on canonical production backend.env', () => {
@@ -182,7 +192,7 @@ describe('S4F-7AS CLI authority', () => {
     }
   });
 
-  it('live-open-authorized fails without dispatch on production canonical env', () => {
+  it('live-open-authorized fails without dispatch token on production canonical env', () => {
     expect(() =>
       execFileSync(
         'npx',
@@ -207,6 +217,31 @@ describe('S4F-7AS CLI authority', () => {
         },
       ),
     ).toThrow();
+  });
+
+  it('live-open-authorized rejects self-issued digest env without token file', () => {
+    try {
+      execFileSync(
+        'npx',
+        ['--yes', 'ts-node', '--transpile-only', CLI, 'live-open-authorized'],
+        {
+          encoding: 'utf8',
+          cwd: BACKEND_ROOT,
+          env: {
+            ...process.env,
+            DI_S4_GATE6_LIVE_OPEN_DISPATCH_DIGEST: 'a'.repeat(64),
+            DI_S4_GATE6_LIVE_OPEN_DISPATCH_NONCE: 'self-issued',
+            DI_S4_GATE6_OPEN_ACK: 'YES',
+            DI_S4_GATE6_OPEN_AUTHORIZED: 'YES',
+          },
+        },
+      );
+      throw new Error('expected exit');
+    } catch (error: unknown) {
+      const e = error as { stdout?: string; stderr?: string; status?: number };
+      const combined = `${e.stdout ?? ''}${e.stderr ?? ''}`;
+      expect(combined).toContain('DISPATCH_TOKEN_FILE_MISSING');
+    }
   });
 });
 

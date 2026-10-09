@@ -59,6 +59,8 @@ DI_S4F7J_FIXTURE_VEHICLE_DB_LINES
 DI_S4F7J_FIXTURE_DEPLOYED_SHA
 DI_S4F7J_FIXTURE_RELEASE_DIR
 DI_S4F7AS_ENGINEERING_TEST_HARNESS
+DI_S4_GATE6_LIVE_OPEN_DISPATCH_DIGEST
+DI_S4_GATE6_LIVE_OPEN_DISPATCH_NONCE
 EOF
   return 1
 }
@@ -190,28 +192,21 @@ s4f7as_issue_live_open_dispatch() {
     echo "AUDIT_FIELDS_MISSING=YES"
     return 1
   fi
-  local nonce
-  nonce="$(python3 - <<'PY'
-import uuid
-print(uuid.uuid4())
-PY
-)"
-  export DI_S4_GATE6_LIVE_OPEN_DISPATCH_NONCE="$nonce"
-  export DI_S4_GATE6_LIVE_OPEN_DISPATCH_DIGEST="$(
-    python3 - <<PY
-import hashlib, os
-parts = [
-  os.environ["DI_S4_TINY_STAGING_REQUIRED_SHA"],
-  os.environ["DI_S4_TINY_STAGING_REQUIRED_RELEASE_ID"],
-  os.environ["DI_S4_TINY_STAGING_REQUIRED_PRE_ENV_SHA256"],
-  os.environ["DI_S4_GATE6_LIVE_OPEN_DISPATCH_NONCE"],
-  os.environ["DI_S4_GATE6_OPERATOR_REASON"].strip(),
-  os.environ["DI_S4_GATE6_OPERATOR_ACTOR"].strip(),
-]
-print(hashlib.sha256(chr(0).join(parts).encode("utf-8")).hexdigest())
-PY
-  )"
+  if [[ -z "${DI_S4_GATE6_DISPATCH_TOKEN_DIR:-}" ]]; then
+    echo "DISPATCH_TOKEN_DIR_MISSING=YES"
+    return 1
+  fi
+  local issue_out
+  issue_out="$(s4f7as_run_cli issue-dispatch-token)" || return 1
+  local token_file
+  token_file="$(printf '%s\n' "$issue_out" | awk -F= '/^DISPATCH_TOKEN_FILE=/{print $2}')"
+  if [[ -z "$token_file" ]]; then
+    echo "DISPATCH_TOKEN_ISSUE_FAILED=YES"
+    return 1
+  fi
+  export DI_S4_GATE6_LIVE_OPEN_DISPATCH_TOKEN_FILE="$token_file"
   echo "LIVE_OPEN_DISPATCH_ISSUED=YES"
+  echo "DISPATCH_TOKEN_ONE_SHOT=YES"
   return 0
 }
 
@@ -255,6 +250,7 @@ s4f7as_execute_open_mode() {
     echo "DURABLE_BACKUP_DIR_MISSING=YES"
     return 1
   fi
+  export DI_S4_GATE6_DISPATCH_TOKEN_DIR="${DI_S4_GATE6_DISPATCH_TOKEN_DIR:-${DI_S4_TINY_STAGING_DURABLE_BACKUP_DIR:-}}"
   s4f7as_issue_live_open_dispatch || return 1
   if ! s4f7as_run_cli live-open-authorized; then
     echo "LIVE_OPEN_FAILED=YES"

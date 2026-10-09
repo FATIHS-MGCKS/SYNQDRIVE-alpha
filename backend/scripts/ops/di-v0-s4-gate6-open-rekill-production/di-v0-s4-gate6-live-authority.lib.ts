@@ -1,12 +1,10 @@
-import { createHash } from 'crypto';
 import { PRODUCTION_SHARED_BACKEND_ENV_PATH } from '../di-v0-s4-fresh-tiny-staging-production/di-v0-s4-fresh-tiny-staging-live-authority.lib';
 import {
-  evaluateGate6OpenGuards,
-  type Gate6OpenGuardInput,
-} from './di-v0-s4-gate6-open-rekill-production.lib';
+  consumeLiveOpenDispatchToken,
+  DI_S4_GATE6_LIVE_OPEN_DISPATCH_TOKEN_FILE_ENV,
+  type DispatchTokenFailure,
+} from './di-v0-s4-gate6-dispatch-token.lib';
 
-export const DI_S4_GATE6_LIVE_OPEN_DISPATCH_NONCE_ENV = 'DI_S4_GATE6_LIVE_OPEN_DISPATCH_NONCE';
-export const DI_S4_GATE6_LIVE_OPEN_DISPATCH_DIGEST_ENV = 'DI_S4_GATE6_LIVE_OPEN_DISPATCH_DIGEST';
 export const SYNQDRIVE_BACKEND_ENV_CANONICAL_ENV = 'SYNQDRIVE_BACKEND_ENV_CANONICAL';
 
 /** Production path must not accept simulated metrics/DB proof env vars. */
@@ -25,35 +23,11 @@ export const GATE6_PRODUCTION_FORBIDDEN_FIXTURE_ENV_KEYS = [
   'DI_S4F7AS_TEST_MODE',
   'DI_S4F7J_TEST_MODE',
   'DI_S4F7AO_TEST_MODE',
+  'DI_S4_GATE6_LIVE_OPEN_DISPATCH_DIGEST',
+  'DI_S4_GATE6_LIVE_OPEN_DISPATCH_NONCE',
 ] as const;
 
-export type Gate6LiveOpenAuthorityFailure =
-  | 'DIRECT_CLI_LIVE_OPEN_FORBIDDEN'
-  | 'DISPATCH_NONCE_MISSING'
-  | 'DISPATCH_DIGEST_MISSING'
-  | 'DISPATCH_DIGEST_INVALID'
-  | 'AUDIT_FIELDS_MISSING'
-  | 'PRODUCTION_FIXTURE_CONTROL_PRESENT'
-  | 'PRODUCTION_BACKEND_ENV_CANONICAL_MISSING';
-
-export function computeGate6LiveOpenDispatchDigest(input: {
-  requiredSha: string;
-  requiredReleaseId: string;
-  requiredEnvSha256: string;
-  nonce: string;
-  reason: string;
-  actor: string;
-}): string {
-  const payload = [
-    input.requiredSha,
-    input.requiredReleaseId,
-    input.requiredEnvSha256,
-    input.nonce,
-    input.reason.trim(),
-    input.actor.trim(),
-  ].join('\0');
-  return createHash('sha256').update(payload, 'utf8').digest('hex');
-}
+export type Gate6LiveOpenAuthorityFailure = DispatchTokenFailure | 'PRODUCTION_FIXTURE_CONTROL_PRESENT' | 'PRODUCTION_BACKEND_ENV_CANONICAL_MISSING';
 
 export function isCanonicalProductionBackendEnv(env: NodeJS.ProcessEnv = process.env): boolean {
   const canonical = (env[SYNQDRIVE_BACKEND_ENV_CANONICAL_ENV] ?? '').trim();
@@ -83,47 +57,13 @@ export function evaluateGate6ProductionPathIsolation(
   return { ok: failures.length === 0, failures };
 }
 
-export function evaluateGate6LiveOpenAuthority(
-  guardInput: Gate6OpenGuardInput,
-  env: NodeJS.ProcessEnv = process.env,
-  audit: { reason: string; actor: string },
-): { ok: boolean; failures: (Gate6LiveOpenAuthorityFailure | string)[] } {
-  const failures: (Gate6LiveOpenAuthorityFailure | string)[] = [];
-
-  const isolation = evaluateGate6ProductionPathIsolation(env);
-  if (!isolation.ok) failures.push(...isolation.failures);
-
-  if (!audit.reason.trim() || !audit.actor.trim()) {
-    failures.push('AUDIT_FIELDS_MISSING');
+/**
+ * One-shot dispatch token file (wrapper-issued secret MAC). Env-only digest is not accepted.
+ */
+export function consumeGate6LiveOpenDispatchFromEnv(env: NodeJS.ProcessEnv = process.env) {
+  const tokenFile = (env[DI_S4_GATE6_LIVE_OPEN_DISPATCH_TOKEN_FILE_ENV] ?? '').trim();
+  if (!tokenFile) {
+    return { ok: false as const, failures: ['DISPATCH_TOKEN_FILE_MISSING' as DispatchTokenFailure], consumed: false };
   }
-
-  const guards = evaluateGate6OpenGuards(guardInput);
-  if (!guards.ok) failures.push(...guards.failures);
-
-  const nonce = (env[DI_S4_GATE6_LIVE_OPEN_DISPATCH_NONCE_ENV] ?? '').trim();
-  const digest = (env[DI_S4_GATE6_LIVE_OPEN_DISPATCH_DIGEST_ENV] ?? '').trim();
-  if (!nonce) failures.push('DISPATCH_NONCE_MISSING');
-  if (!digest) failures.push('DISPATCH_DIGEST_MISSING');
-
-  if (
-    nonce &&
-    digest &&
-    guardInput.requiredSha &&
-    guardInput.requiredReleaseId &&
-    guardInput.requiredEnvSha256 &&
-    audit.reason.trim() &&
-    audit.actor.trim()
-  ) {
-    const expected = computeGate6LiveOpenDispatchDigest({
-      requiredSha: guardInput.requiredSha,
-      requiredReleaseId: guardInput.requiredReleaseId,
-      requiredEnvSha256: guardInput.requiredEnvSha256,
-      nonce,
-      reason: audit.reason,
-      actor: audit.actor,
-    });
-    if (expected !== digest) failures.push('DISPATCH_DIGEST_INVALID');
-  }
-
-  return { ok: failures.length === 0, failures };
+  return consumeLiveOpenDispatchToken(tokenFile);
 }
