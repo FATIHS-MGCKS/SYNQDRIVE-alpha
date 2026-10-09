@@ -6,6 +6,16 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B1-A0-H2 eliminate self-asserted trusted governance evidence
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | External authority verifier port (disabled A0); reject `TRUSTED_EXTERNAL_VERIFIED` in claim JSON; split `CLAIMS_STRUCTURALLY_VALID` vs `AUTHORITY_VERIFIED`; Path B readiness fail-closed without verifier |
+| **WHY** | H1 review — self-authored trust status in env/JSON must not satisfy governance readiness |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1b1-a0-h2-governance-authority.spec.ts` + HV-H4 unit suite |
+| **NON_EFFECTS** | No env bypass, no production access, P1 authorization remains `NO_GO` |
+| **DECISION_STATUS** | PROPOSED — future slice wires GitHub/hosted verifier producing verified evidence results |
+
 ## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B1-A0-H1 governance trust boundary closure
 
 | Field | Value |

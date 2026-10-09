@@ -10,9 +10,8 @@ export const M3_3_HV_H4_A3_OPERATOR_RISK_ACCEPTANCE_CONTRACT_V1 =
 export const M3_3_HV_H4_A3_OPERATOR_RISK_ACCEPTANCE_CONTRACT_V2 =
   'M3_3_HV_H4_A3_OPERATOR_RISK_ACCEPTANCE_V2' as const;
 
-export type M3_3HvH4A3OperatorRiskAcceptanceAuthenticationStatusV1 =
-  | 'UNVERIFIED'
-  | 'TRUSTED_EXTERNAL_VERIFIED';
+/** Claim-only — `TRUSTED_EXTERNAL_VERIFIED` is rejected at load. */
+export type M3_3HvH4A3OperatorRiskAcceptanceAuthenticationStatusV1 = 'UNVERIFIED';
 
 export type M3_3HvH4A3PhaseAProductionGovernanceModeV1 = 'MULTI_PARTY_V1' | 'SINGLE_OPERATOR_V1';
 

@@ -79,7 +79,10 @@ export function loadGovernanceRatificationProvenanceV1(
     return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_RATIFICATION_PROVENANCE_ACTION_INVALID' };
   }
   const authStatus = parsed.provenanceAuthenticationStatus;
-  if (authStatus !== 'UNVERIFIED' && authStatus !== 'TRUSTED_EXTERNAL_VERIFIED') {
+  if (authStatus === 'TRUSTED_EXTERNAL_VERIFIED') {
+    return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_SELF_ASSERTED_TRUST_STATUS_FORBIDDEN' };
+  }
+  if (authStatus !== 'UNVERIFIED') {
     return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_RATIFICATION_PROVENANCE_AUTH_STATUS_INVALID' };
   }
 
@@ -88,13 +91,11 @@ export function loadGovernanceRatificationProvenanceV1(
   return { ok: true, record };
 }
 
-export function validateGovernanceRatificationProvenanceAgainstAdoptionV1(
+/** Structural consistency of claim records — not authentication or merge proof. */
+export function validateGovernanceRatificationProvenanceClaimsAgainstAdoptionV1(
   provenance: M3_3HvH4A3GovernanceRatificationProvenanceV1,
   adoption: M3_3HvH4A3SingleOperatorGovernanceAdoptionRecordV1,
 ): { ok: true } | { ok: false; reasonCode: string } {
-  if (provenance.provenanceAuthenticationStatus !== 'TRUSTED_EXTERNAL_VERIFIED') {
-    return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_RATIFICATION_PROVENANCE_UNTRUSTED' };
-  }
   if (provenance.governancePolicyId.trim() !== adoption.governanceContractId.trim()) {
     return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_RATIFICATION_PROVENANCE_POLICY_MISMATCH' };
   }

@@ -36,7 +36,10 @@ import {
   validatePhaseAIndependentVerifierTimestampV1,
   validatePhaseAStopConditionsV1,
 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-readiness-validation.v1';
-import { evaluatePhaseAHumanVerificationReadinessV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-governance-mode.v1';
+import {
+  evaluatePhaseAHumanVerificationReadinessV1,
+  evaluatePhaseASingleOperatorGovernanceClaimsStructuralValidityV1,
+} from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-governance-mode.v1';
 
 export const M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_RECORD_JSON_ENV =
   'M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_RECORD_JSON' as const;
@@ -504,6 +507,11 @@ function evaluatePhaseAProductionOperationalReadinessInnerV1(
         }
       }
       pushCheck(checks, {
+        checkId: 'SINGLE_OPERATOR_GOVERNANCE_CLAIMS',
+        status: 'SKIP',
+        reasonCode: 'PHASE_A_SINGLE_OPERATOR_POLICY_NOT_APPLICABLE_MULTI_PARTY',
+      });
+      pushCheck(checks, {
         checkId: 'SINGLE_OPERATOR_POLICY_AND_RISK_ACCEPTANCE',
         status: 'SKIP',
         reasonCode: 'PHASE_A_SINGLE_OPERATOR_POLICY_NOT_APPLICABLE_MULTI_PARTY',
@@ -519,6 +527,19 @@ function evaluatePhaseAProductionOperationalReadinessInnerV1(
         status: 'SKIP',
         reasonCode: 'PHASE_A_SECOND_HUMAN_VERIFICATION_NOT_APPLICABLE_SINGLE_OPERATOR',
       });
+      const claimsOnly = evaluatePhaseASingleOperatorGovernanceClaimsStructuralValidityV1(env, {
+        authorizedHumanApprover: go.authorizedHumanApprover,
+        changeTicket: go.changeTicket,
+        approvalBinding: go.approvalBinding,
+        maintenanceWindow: go.maintenanceWindow,
+        now,
+      });
+      if (!claimsOnly.ok) {
+        fail(checks, 'SINGLE_OPERATOR_GOVERNANCE_CLAIMS', claimsOnly.reasonCode);
+        blockers.push(claimsOnly.reasonCode);
+      } else {
+        pass(checks, 'SINGLE_OPERATOR_GOVERNANCE_CLAIMS');
+      }
       const pathB = evaluatePhaseAHumanVerificationReadinessV1(env, {
         approvingAuthority: approval.approvingAuthority,
         authorizedHumanApprover: go.authorizedHumanApprover,

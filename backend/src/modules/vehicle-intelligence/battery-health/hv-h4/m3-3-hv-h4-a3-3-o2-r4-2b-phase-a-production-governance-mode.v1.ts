@@ -1,8 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { parseUtcInstantStrictV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1-trusted-authorization.utc-instant.v1';
 import {
+  resolvePhaseAGovernanceExternalAuthorityVerifierV1,
+} from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-governance-external-authority.v1';
+import {
   loadGovernanceRatificationProvenanceV1,
-  validateGovernanceRatificationProvenanceAgainstAdoptionV1,
+  validateGovernanceRatificationProvenanceClaimsAgainstAdoptionV1,
 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-governance-ratification-provenance.v1';
 import {
   M3_3_HV_H4_A3_OPERATOR_RISK_ACCEPTANCE_CONTRACT_V1,
@@ -202,7 +205,10 @@ export function loadOperatorRiskAcceptanceV2(
     return { ok: false, reasonCode: 'PHASE_A_OPERATOR_RISK_ACCEPTANCE_RESIDUAL_RISK_REQUIRED' };
   }
   const authStatus = parsed.provenanceAuthenticationStatus;
-  if (authStatus !== 'UNVERIFIED' && authStatus !== 'TRUSTED_EXTERNAL_VERIFIED') {
+  if (authStatus === 'TRUSTED_EXTERNAL_VERIFIED') {
+    return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_SELF_ASSERTED_TRUST_STATUS_FORBIDDEN' };
+  }
+  if (authStatus !== 'UNVERIFIED') {
     return { ok: false, reasonCode: 'PHASE_A_OPERATOR_RISK_ACCEPTANCE_AUTH_STATUS_INVALID' };
   }
   if (typeof parsed.attestation !== 'string' || parsed.attestation.length < 8) {
@@ -251,7 +257,8 @@ export function loadOperatorRiskAcceptanceV2(
   return { ok: true, record: parsed as M3_3HvH4A3OperatorRiskAcceptanceV2 };
 }
 
-export function validateOperatorRiskAcceptanceV2AgainstGoNoGoV1(
+/** Structural claim binding — not authenticated owner identity or human consent. */
+export function validateOperatorRiskAcceptanceV2ClaimsAgainstGoNoGoV1(
   risk: M3_3HvH4A3OperatorRiskAcceptanceV2,
   options: {
     authorizedHumanApprover: string;
@@ -266,9 +273,6 @@ export function validateOperatorRiskAcceptanceV2AgainstGoNoGoV1(
     now: Date;
   },
 ): { ok: true } | { ok: false; reasonCode: string } {
-  if (risk.provenanceAuthenticationStatus !== 'TRUSTED_EXTERNAL_VERIFIED') {
-    return { ok: false, reasonCode: 'PHASE_A_OPERATOR_RISK_ACCEPTANCE_UNTRUSTED' };
-  }
   const owner = risk.authorizedOwnerIdentity.trim().toLowerCase();
   const approver = options.authorizedHumanApprover.trim().toLowerCase();
   const operator = risk.operatorIdentity.trim().toLowerCase();
@@ -315,8 +319,61 @@ export function validateOperatorRiskAcceptanceV2AgainstGoNoGoV1(
   if (acceptedAt.epochMs < bindingFrom.epochMs || acceptedAt.epochMs > bindingUntil.epochMs) {
     return { ok: false, reasonCode: 'PHASE_A_OPERATOR_RISK_ACCEPTANCE_STALE_ACCEPTANCE' };
   }
+  if (acceptedAt.epochMs > nowMs) {
+    return { ok: false, reasonCode: 'PHASE_A_OPERATOR_RISK_ACCEPTANCE_FUTURE_ACCEPTANCE' };
+  }
 
   return { ok: true };
+}
+
+export type M3_3HvH4A3PhaseASingleOperatorGovernanceClaimsEvaluationV1 =
+  | { ok: true; claimsStructurallyValid: true }
+  | { ok: false; reasonCode: string };
+
+export function evaluatePhaseASingleOperatorGovernanceClaimsStructuralValidityV1(
+  env: NodeJS.ProcessEnv,
+  options: {
+    authorizedHumanApprover: string;
+    changeTicket: string;
+    approvalBinding: {
+      approvalId: string;
+      executeNonce: string;
+      validFrom: string;
+      validUntil: string;
+    };
+    maintenanceWindow: { startUtc: string; endUtc: string };
+    now?: Date;
+  },
+): M3_3HvH4A3PhaseASingleOperatorGovernanceClaimsEvaluationV1 {
+  const adoption = loadSingleOperatorGovernanceAdoptionRecordV1(env);
+  if (!adoption.ok) return adoption;
+
+  if (adoption.record.ratificationStatus === 'RATIFIED') {
+    return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_SELF_DECLARED_RATIFIED_UNTRUSTED' };
+  }
+
+  const provenance = loadGovernanceRatificationProvenanceV1(env);
+  if (!provenance.ok) return provenance;
+
+  const provenanceClaims = validateGovernanceRatificationProvenanceClaimsAgainstAdoptionV1(
+    provenance.record,
+    adoption.record,
+  );
+  if (!provenanceClaims.ok) return provenanceClaims;
+
+  const riskLoaded = loadOperatorRiskAcceptanceV2(env);
+  if (!riskLoaded.ok) return riskLoaded;
+
+  const riskClaims = validateOperatorRiskAcceptanceV2ClaimsAgainstGoNoGoV1(riskLoaded.record, {
+    authorizedHumanApprover: options.authorizedHumanApprover,
+    changeTicket: options.changeTicket,
+    approvalBinding: options.approvalBinding,
+    maintenanceWindow: options.maintenanceWindow,
+    now: options.now ?? new Date(),
+  });
+  if (!riskClaims.ok) return riskClaims;
+
+  return { ok: true, claimsStructurallyValid: true };
 }
 
 export type M3_3HvH4A3PhaseAHumanVerificationReadinessResultV1 =
@@ -362,36 +419,49 @@ export function evaluatePhaseAHumanVerificationReadinessV1(
     return { ok: true, path: 'MULTI_PARTY_INDEPENDENT_VERIFIER' };
   }
 
-  const adoption = loadSingleOperatorGovernanceAdoptionRecordV1(env);
-  if (!adoption.ok) return adoption;
+  const adoptionPrecheck = loadSingleOperatorGovernanceAdoptionRecordV1(env);
+  if (!adoptionPrecheck.ok) return adoptionPrecheck;
 
-  if (adoption.record.ratificationStatus === 'RATIFIED') {
-    return { ok: false, reasonCode: 'PHASE_A_GOVERNANCE_SELF_DECLARED_RATIFIED_UNTRUSTED' };
-  }
-
-  const provenance = loadGovernanceRatificationProvenanceV1(env);
-  if (!provenance.ok) return provenance;
-  const provenanceBound = validateGovernanceRatificationProvenanceAgainstAdoptionV1(
-    provenance.record,
-    adoption.record,
-  );
-  if (!provenanceBound.ok) return provenanceBound;
-
-  const riskLoaded = loadOperatorRiskAcceptanceV2(env);
-  if (!riskLoaded.ok) {
-    return riskLoaded;
-  }
   if (!options.approvalBinding || !options.maintenanceWindow) {
     return { ok: false, reasonCode: 'PHASE_A_OPERATOR_RISK_ACCEPTANCE_CONTEXT_INCOMPLETE' };
   }
-  const riskValidated = validateOperatorRiskAcceptanceV2AgainstGoNoGoV1(riskLoaded.record, {
+
+  const claims = evaluatePhaseASingleOperatorGovernanceClaimsStructuralValidityV1(env, {
+    authorizedHumanApprover: options.authorizedHumanApprover,
+    changeTicket: options.changeTicket,
+    approvalBinding: options.approvalBinding,
+    maintenanceWindow: options.maintenanceWindow,
+    now: options.now,
+  });
+  if (!claims.ok) return claims;
+
+  const adoption = loadSingleOperatorGovernanceAdoptionRecordV1(env);
+  if (!adoption.ok) return adoption;
+  const provenance = loadGovernanceRatificationProvenanceV1(env);
+  if (!provenance.ok) return provenance;
+  const riskLoaded = loadOperatorRiskAcceptanceV2(env);
+  if (!riskLoaded.ok) return riskLoaded;
+
+  const authorityVerifier = resolvePhaseAGovernanceExternalAuthorityVerifierV1(env);
+  const ratificationAuthority = authorityVerifier.verifyRatificationProvenanceV1({
+    provenanceClaims: provenance.record,
+    adoptionRecord: adoption.record,
+  });
+  if (ratificationAuthority.authorityStatus !== 'AUTHORITY_VERIFIED') {
+    return { ok: false, reasonCode: ratificationAuthority.reasonCode };
+  }
+
+  const riskAuthority = authorityVerifier.verifyOperatorRiskAcceptanceV1({
+    riskAcceptanceClaims: riskLoaded.record,
     authorizedHumanApprover: options.authorizedHumanApprover,
     changeTicket: options.changeTicket,
     approvalBinding: options.approvalBinding,
     maintenanceWindow: options.maintenanceWindow,
     now: options.now ?? new Date(),
   });
-  if (!riskValidated.ok) return riskValidated;
+  if (riskAuthority.authorityStatus !== 'AUTHORITY_VERIFIED') {
+    return { ok: false, reasonCode: riskAuthority.reasonCode };
+  }
 
   return { ok: true, path: 'SINGLE_OPERATOR_PATH_B' };
 }

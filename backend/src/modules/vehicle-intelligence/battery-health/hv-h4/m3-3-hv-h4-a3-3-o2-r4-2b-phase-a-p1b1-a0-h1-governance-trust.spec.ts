@@ -55,7 +55,7 @@ function buildPendingAdoptionJson(): string {
   });
 }
 
-function buildTrustedProvenanceJson(mergeSha: string): string {
+function buildProvenanceClaimsJson(mergeSha: string): string {
   return JSON.stringify({
     contractVersion: M3_3_HV_H4_A3_GOVERNANCE_RATIFICATION_PROVENANCE_CONTRACT_V1,
     governancePolicyId: POLICY_ID,
@@ -64,7 +64,7 @@ function buildTrustedProvenanceJson(mergeSha: string): string {
     ratifiedMergeCommitSha: mergeSha,
     authorizedOwnerIdentity: OWNER,
     ratificationAction: 'OWNER_CONTROLLED_REPOSITORY_MERGE',
-    provenanceAuthenticationStatus: 'TRUSTED_EXTERNAL_VERIFIED',
+    provenanceAuthenticationStatus: 'UNVERIFIED',
   });
 }
 
@@ -77,7 +77,6 @@ function buildRiskAcceptanceV2Json(options: {
     validUntil: string;
   };
   maintenanceWindow: { startUtc: string; endUtc: string };
-  trusted?: boolean;
   owner?: string;
 }): string {
   return JSON.stringify({
@@ -90,7 +89,7 @@ function buildRiskAcceptanceV2Json(options: {
     maintenanceWindow: options.maintenanceWindow,
     pathBSecurityReviewExceptionScope: 'Phase-A read-only audit SQL under Path B exception',
     residualRiskAcknowledgement: true,
-    provenanceAuthenticationStatus: options.trusted ? 'TRUSTED_EXTERNAL_VERIFIED' : 'UNVERIFIED',
+    provenanceAuthenticationStatus: 'UNVERIFIED',
     acceptedAtUtc: options.approvalBinding.validFrom,
     attestation: 'Test fixture — does not authorize production execution.',
   });
@@ -224,14 +223,14 @@ describe('P1B1-A0-H1 governance trust boundaries', () => {
     }
   });
 
-  it('accepts Path B structural readiness only with trusted provenance and risk acceptance V2', () => {
+  it('does not grant Path B governance readiness without external authority verifier', () => {
     const go = buildSingleOperatorGoNoGoV2();
     const mergeSha = 'a5b45a186774fd64e0af2ddf57cfdcd0a350550e';
     const result = evaluatePhaseAHumanVerificationReadinessV1(
       {
         [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GOVERNANCE_MODE_ENV]: 'SINGLE_OPERATOR_V1',
         [M3_3_HV_H4_A3_SINGLE_OPERATOR_GOVERNANCE_ADOPTION_RECORD_JSON_ENV]: buildPendingAdoptionJson(),
-        [M3_3_HV_H4_A3_GOVERNANCE_RATIFICATION_PROVENANCE_JSON_ENV]: buildTrustedProvenanceJson(mergeSha),
+        [M3_3_HV_H4_A3_GOVERNANCE_RATIFICATION_PROVENANCE_JSON_ENV]: buildProvenanceClaimsJson(mergeSha),
         [M3_3_HV_H4_A3_OPERATOR_RISK_ACCEPTANCE_JSON_ENV]: buildRiskAcceptanceV2Json({
           changeTicket: go.changeTicket as string,
           approvalBinding: go.approvalBinding as {
@@ -241,48 +240,6 @@ describe('P1B1-A0-H1 governance trust boundaries', () => {
             validUntil: string;
           },
           maintenanceWindow: go.maintenanceWindow as { startUtc: string; endUtc: string },
-          trusted: true,
-        }),
-      },
-      {
-        approvingAuthority: 'author@example.com',
-        authorizedHumanApprover: OWNER,
-        changeTicket: go.changeTicket as string,
-        approvalBinding: go.approvalBinding as {
-          approvalId: string;
-          executeNonce: string;
-          validFrom: string;
-          validUntil: string;
-        },
-        maintenanceWindow: go.maintenanceWindow as { startUtc: string; endUtc: string },
-        governanceModeFromGoRecord: 'SINGLE_OPERATOR_V1',
-        now: new Date((go.approvalBinding as { validFrom: string }).validFrom),
-      },
-    );
-    expect(result.ok).toBe(true);
-    if (result.ok) expect(result.path).toBe('SINGLE_OPERATOR_PATH_B');
-    expect(resolvePhaseAProductionP1AuthorizationV1()).toBe('NO_GO');
-  });
-
-  it('fails closed on untrusted risk acceptance attestation', () => {
-    const go = buildSingleOperatorGoNoGoV2();
-    const result = evaluatePhaseAHumanVerificationReadinessV1(
-      {
-        [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GOVERNANCE_MODE_ENV]: 'SINGLE_OPERATOR_V1',
-        [M3_3_HV_H4_A3_SINGLE_OPERATOR_GOVERNANCE_ADOPTION_RECORD_JSON_ENV]: buildPendingAdoptionJson(),
-        [M3_3_HV_H4_A3_GOVERNANCE_RATIFICATION_PROVENANCE_JSON_ENV]: buildTrustedProvenanceJson(
-          'a5b45a186774fd64e0af2ddf57cfdcd0a350550e',
-        ),
-        [M3_3_HV_H4_A3_OPERATOR_RISK_ACCEPTANCE_JSON_ENV]: buildRiskAcceptanceV2Json({
-          changeTicket: go.changeTicket as string,
-          approvalBinding: go.approvalBinding as {
-            approvalId: string;
-            executeNonce: string;
-            validFrom: string;
-            validUntil: string;
-          },
-          maintenanceWindow: go.maintenanceWindow as { startUtc: string; endUtc: string },
-          trusted: false,
         }),
       },
       {
@@ -301,7 +258,10 @@ describe('P1B1-A0-H1 governance trust boundaries', () => {
       },
     );
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.reasonCode).toBe('PHASE_A_OPERATOR_RISK_ACCEPTANCE_UNTRUSTED');
+    if (!result.ok) {
+      expect(result.reasonCode).toBe('PHASE_A_GOVERNANCE_EXTERNAL_AUTHORITY_VERIFIER_NOT_CONFIGURED');
+    }
+    expect(resolvePhaseAProductionP1AuthorizationV1()).toBe('NO_GO');
   });
 
   it('legacy multi-party mode still requires independent verifier', () => {

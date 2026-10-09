@@ -13,8 +13,8 @@
 ## SINGLE_OPERATOR_V1 requirements
 
 1. **Governance adoption record** (`M3_3_HV_H4_A3_SINGLE_OPERATOR_GOVERNANCE_ADOPTION_RECORD_V1`) with owner-declared intent only (`ratificationStatus: PENDING_OWNER_CONTROLLED_REPOSITORY_MERGE` in-repo until owner merge).
-2. **Independent ratification provenance** (`M3_3_HV_H4_A3_GOVERNANCE_RATIFICATION_PROVENANCE_V1`) with `provenanceAuthenticationStatus: TRUSTED_EXTERNAL_VERIFIED` — self-authored `ratificationStatus: RATIFIED` in adoption JSON is **not** proof.
-3. **Per-change `operatorRiskAcceptance` V2** aligned to GO/NO-GO `changeTicket`, approval binding, maintenance window, and authorized owner identity (not granted by policy adoption alone).
+2. **Ratification provenance claims** (`M3_3_HV_H4_A3_GOVERNANCE_RATIFICATION_PROVENANCE_V1`) — claim JSON only (`provenanceAuthenticationStatus: UNVERIFIED`). Self-authored `TRUSTED_EXTERNAL_VERIFIED` is **rejected**. Authority requires `M3_3_HV_H4_A3_GOVERNANCE_VERIFIED_EVIDENCE_RESULT_V1` from an external verifier (not configured in P1B1-A0).
+3. **Per-change `operatorRiskAcceptance` V2** claim records (same trust boundary — no self-asserted trusted status).
 4. **AI advisory** (`aiTechnicalReviewAdvisory`) optional; never satisfies human verification or execution `GO`.
 5. **R4.2A admission** controls unchanged.
 6. **Future Authority C** — offline Ed25519 trusted authorization (P1B0) plus independent deployment/target evidence (future P1B1); **P1B1-A0 keeps execution `NO_GO`.**

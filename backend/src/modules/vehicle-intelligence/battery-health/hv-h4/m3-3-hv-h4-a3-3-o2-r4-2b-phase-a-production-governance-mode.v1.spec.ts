@@ -52,13 +52,25 @@ describe('loadSingleOperatorGovernanceAdoptionRecordV1', () => {
         [M3_3_HV_H4_A3_SINGLE_OPERATOR_GOVERNANCE_ADOPTION_RECORD_JSON_ENV]: JSON.stringify(record),
       },
       {
-        verifierIdentity: 'v@example.com',
         approvingAuthority: 'a@example.com',
         authorizedHumanApprover: 'o@example.com',
         changeTicket: 'CHG',
+        approvalBinding: {
+          approvalId: 'apr',
+          executeNonce: 'nonce',
+          validFrom: '2026-10-09T11:00:00.000Z',
+          validUntil: '2026-10-09T14:00:00.000Z',
+        },
+        maintenanceWindow: {
+          startUtc: '2026-10-09T10:00:00.000Z',
+          endUtc: '2026-10-09T15:00:00.000Z',
+        },
+        governanceModeFromGoRecord: 'SINGLE_OPERATOR_V1',
       },
     );
     expect(readiness.ok).toBe(false);
-    if (!readiness.ok) expect(readiness.reasonCode).toBe('PHASE_A_GOVERNANCE_RATIFICATION_PROVENANCE_REQUIRED');
+    if (!readiness.ok) {
+      expect(readiness.reasonCode).toBe('PHASE_A_GOVERNANCE_RATIFICATION_PROVENANCE_REQUIRED');
+    }
   });
 });
