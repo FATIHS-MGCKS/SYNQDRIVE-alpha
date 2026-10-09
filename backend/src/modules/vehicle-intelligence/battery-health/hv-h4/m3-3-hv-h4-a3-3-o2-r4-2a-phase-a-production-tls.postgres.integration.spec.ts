@@ -21,6 +21,7 @@ import {
   M3_3_HV_H4_A3_PHASE_A_PRODUCTION_TARGET_SPEC_JSON_ENV,
 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-approval.v1';
 import { M3_3_HV_H4_A3_PHASE_A_PRODUCTION_TARGET_SPEC_CONTRACT_V1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-approval.types.v1';
+import { M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_HARNESS_ACTIVE_ENV } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.isolated-target.v1';
 import {
   assertPrismaConnectOutcomeV1,
   buildPhaseAProductionVerifyFullDatabaseUrlV1,
@@ -177,7 +178,9 @@ function reloadTlsServerCert(certSubdir: string): void {
       };
       const prev: Record<string, string | undefined> = {};
       for (const k of Object.keys(env)) prev[k] = process.env[k];
+      const prevHarness = process.env[M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_HARNESS_ACTIVE_ENV];
       Object.assign(process.env, env);
+      delete process.env[M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_HARNESS_ACTIVE_ENV];
 
       try {
         expect(evaluatePhaseAPreflightProductionAdmissionV1(verifyFullAuditUrl, env).ok).toBe(true);
@@ -187,7 +190,9 @@ function reloadTlsServerCert(certSubdir: string): void {
           admissionPolicy: 'PRODUCTION_AUTHORIZED_R4_2A',
         });
         expect(outcome.ok).toBe(true);
-        if (!outcome.ok) throw new Error(outcome.reasonCode);
+        if (!outcome.ok) {
+          throw new Error(`${outcome.status}:${outcome.reasonCode}`);
+        }
         expect(outcome.report.productionAdmissionEvidence?.tlsIdentityCertified).toBe(true);
         const sessionCheck = outcome.report.checks.find((c) => c.checkId === 'PHASE_A_SESSION_CONTEXT');
         expect(sessionCheck?.data?.productionSameSessionAnchorPid).toBe(sessionCheck?.data?.discoveryBackendPid);
@@ -196,6 +201,11 @@ function reloadTlsServerCert(certSubdir: string): void {
         for (const k of Object.keys(env)) {
           if (prev[k] === undefined) delete process.env[k];
           else process.env[k] = prev[k];
+        }
+        if (prevHarness === undefined) {
+          delete process.env[M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_HARNESS_ACTIVE_ENV];
+        } else {
+          process.env[M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_HARNESS_ACTIVE_ENV] = prevHarness;
         }
         rmSync(consumptionDir, { recursive: true, force: true });
       }

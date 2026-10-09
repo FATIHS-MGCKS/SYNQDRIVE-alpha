@@ -60,16 +60,17 @@ export async function assertPrismaConnectOutcomeV1(
     './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-target.v1'
   );
   const { PrismaClient } = await import('@prisma/client');
-  const client = validatePhaseAProductionTlsUrlPolicyV1(databaseUrl).ok
-    ? createPhaseAProductionPrismaClientV1(databaseUrl)
-    : new PrismaClient({ datasources: { db: { url: databaseUrl } } });
+  let client;
   try {
+    client = validatePhaseAProductionTlsUrlPolicyV1(databaseUrl).ok
+      ? createPhaseAProductionPrismaClientV1(databaseUrl)
+      : new PrismaClient({ datasources: { db: { url: databaseUrl } } });
     await client.$connect();
     await client.$queryRawUnsafe('SELECT 1');
     return { ok: true };
   } catch (error) {
     return { ok: false, error };
   } finally {
-    await client.$disconnect().catch(() => undefined);
+    await client?.$disconnect().catch(() => undefined);
   }
 }
