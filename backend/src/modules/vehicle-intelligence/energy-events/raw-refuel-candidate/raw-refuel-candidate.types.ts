@@ -8,7 +8,8 @@ import type {
 export type RawRefuelCandidateOverlapClassification =
   | 'SAME_PHYSICAL_RISE'
   | 'DISTINCT_PHYSICAL_RISE'
-  | 'INSUFFICIENT_EVIDENCE';
+  | 'INSUFFICIENT_EVIDENCE'
+  | 'VERSIONED_TERMINAL_CONFLICT';
 
 /** Normalized detector output supplied to persistence (not the F3 detector itself). */
 export interface RawRefuelCandidateObservation {

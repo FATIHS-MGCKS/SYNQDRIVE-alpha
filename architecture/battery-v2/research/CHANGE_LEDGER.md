@@ -6,6 +6,171 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P0-H2 evidence semantics + explicit UTC timestamps
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | `EXTERNAL_HUMAN_AUTHORIZATION_AUTHENTICATION` check → `SKIP` + `PHASE_A_EXTERNAL_HUMAN_AUTHORIZATION_UNVERIFIED`; `parseUtcIsoTimestampV1` requires explicit UTC (`Z` / `±00:00`); approval record timestamps validated in readiness path |
+| **WHY** | PASS on an UNVERIFIED check mis-stated certification; `Date.parse` accepted ambiguous local/date-only strings |
+| **VALIDATION** | readiness + validation unit specs; READY still possible with `externalHumanAuthorizationAuthentication: UNVERIFIED` |
+| **DECISION_STATUS** | VALIDATED (repository offline) |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P0-H1 offline GO/NO-GO fail-closed validation
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Required `AUTHORIZED_RELEASE_SHA` env (40-char hex); audit credential expectation runtime validation; fail-closed GO/NO-GO parse (maintenance window, stop conditions, nested objects); verifier timestamp checks; report `UNVERIFIED` human auth + configuration-only release binding |
+| **WHY** | P0 dry-run must never pass with missing release binding or malformed JSON; must not imply deployed-release or authenticated human approval from self-authored JSON |
+| **VALIDATION** | Extended `operational-readiness` + `readiness-validation` unit specs; CLI NO_GO JSON test |
+| **DECISION_STATUS** | VALIDATED (repository offline) |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P0 production Phase-A operational readiness (offline)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | GO/NO-GO contract types; `evaluatePhaseAProductionOperationalReadinessV1` offline evaluator; ops CLI `battery:hv-h4:a3-phase-a-production-operational-readiness`; P0 audit matrix + P1 execution runbook |
+| **WHY** | R4.2A admission exists but P1 production execution requires separate operational authorization, independent human verification, and offline validation without PostgreSQL access |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-operational-readiness.v1.spec.ts`; HV-H4 unit + postgres CI (no R4.2A regression) |
+| **NON_EFFECTS** | No production access; no approval consumption in dry-run; no schema/issuer/hybrid-loader changes |
+| **REMAINING_GAPS** | Production audit login + CA provisioning; cryptographic approval optional future |
+| **DECISION_STATUS** | VALIDATED (repository offline) |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2A-H3 Jest 30 CLI compatibility (repository-wide)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Replace removed Jest 30 `--testPathPattern` with `--testPathPatterns` in `backend/package.json` npm scripts, RFRF/Legal/VO verify shell gates, Trip FSM workflow (via `test:trip-fsm:production-readiness:r10`), EXP-021 gate script, fleet connectivity verify |
+| **WHY** | Jest 30.5.2 security upgrade removed `--testPathPattern`; CI/workflows still passed the obsolete flag → zero matching suites (false green) |
+| **VALIDATION** | `npx jest --listTests`: obsolete flag 0 paths vs `--testPathPatterns=legal-document` 37 paths; `npm run test:trip-fsm:production-readiness:r10` (9 suites / 98 tests); `npm run test:legal-documents` selection parity (46 suites matched) |
+| **OBSERVED_EFFECT** | Intended regex suites execute under Jest 30; `--testPathIgnorePatterns` unchanged |
+| **NON_EFFECTS** | Jest 30.5.2 / audit gate policy unchanged; no production migration edits |
+| **REGRESSIONS_OR_TRADEOFFS** | `.github/workflows/trip-fsm-production-readiness.yml` touch requires `i18n-governance-authority-change` label on PR |
+| **DECISION_STATUS** | VALIDATED (repository CLI parity) |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2A security closure: Jest 30.5.2 (baseline audit regression)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Backend devDependencies: `jest@^30.5.2`, `ts-jest@^29.4.14`, `@types/jest@^30.0.0` — `jest-resolve-dependencies@30.5.2` |
+| **WHY** | PR lockfile delta (`pg` / `@prisma/adapter-pg`) changed npm audit fallback identity for existing Jest 29.7.0 high finding → `SECURITY_REGRESSION=true` in Legal Documents baseline-aware scan |
+| **VALIDATION** | `scripts/audits/audit-dependencies.sh` (PR base `main` vs head); HV-H4 Jest suite |
+| **OBSERVED_EFFECT** | `SECURITY_REGRESSION=false`; `jest-resolve-dependencies` no longer high severity |
+| **DECISION_STATUS** | VALIDATED (repository) |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2A-H2 merge-gate: fail-closed production Prisma factory
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Removed insecure `PrismaClient` fallback when TLS URL policy fails; `PHASE_A_PRODUCTION_TLS_SSLROOTCERT_UNREADABLE` on CA load failure; production client construction inside runner `try` + sanitized error boundary; unit tests for factory fail-closed behavior |
+| **WHY** | Weak-TLS fallback could instantiate a production client without verify-full/pg adapter identity path |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-prisma-client.v1.spec.ts`; HV-H4 unit + postgres CI |
+| **NON_EFFECTS** | `@prisma/adapter-pg` verify-full path unchanged; no production execution |
+| **DECISION_STATUS** | VALIDATED (repository) |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2A-H2 TLS identity certification + same-session seal
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | TLS-enabled PostgreSQL CI fixture; Prisma verify-full negative/positive matrix; `certifyPhaseAProductionTlsIdentityV1` (ssl≠identity); production gates moved inside READ ONLY transaction; same `pg_backend_pid` evidence; HV-H4 postgres CI integrates fixture |
+| **WHY** | H1 left `TLS_IDENTITY_CERTIFIED=NO` and pre-transaction probes allowed TOCTOU between identity and discovery |
+| **VALIDATION** | tls-identity unit spec; `m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-tls.postgres.integration.spec.ts`; HV-H4 postgres CI job |
+| **OBSERVED_EFFECT** | `tlsIdentityCertified=true` only when verify-full connect + encrypted session + PID anchor match inside transaction |
+| **NON_EFFECTS** | `productionCertification=NOT_CERTIFIED`; no production access |
+| **REMAINING_GAPS** | Production operator run still requires org-managed CA material outside CI fixture |
+| **DECISION_STATUS** | VALIDATED (repository TLS fixture) |
+| **EVIDENCE** | R4.2A architecture § H2; TLS fixture script |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2A-H1 production admission security closure
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Mandatory verify-full + sslrootcert; runtime `pg_stat_ssl` probe; mandatory `forbidSuperuserSession=true` with admin privilege denial; runner `try/finally` disconnect; deferred approval consume until post-identity; durable consumption store marker + ephemeral path rejection; approval window max 72h; expanded unit/postgres integration tests |
+| **WHY** | R4.2A preparation path must not admit production execution without TLS identity policy, non-superuser audit identity, connection cleanup, or replay-safe consumption semantics |
+| **VALIDATION** | R4.2A admission/target/consumption unit specs; postgres integration (harness, ephemeral store, TLS probe on plain DB, audit fixture identity); HV-H4 CI |
+| **OBSERVED_EFFECT** | CI plain PostgreSQL: `PHASE_A_PRODUCTION_TLS_HANDSHAKE_NOT_ENCRYPTED`; `tlsIdentityCertified` remains false until TLS-enabled fixture exists |
+| **NON_EFFECTS** | No production DB access; `PRODUCTION_CERTIFICATION=NO`; cryptographic approval still false |
+| **REMAINING_GAPS** | TLS verify-full negative matrix on isolated TLS PostgreSQL; production readiness blocked until `TLS_IDENTITY_CERTIFIED=YES` demonstrated |
+| **DECISION_STATUS** | VALIDATED (repository / isolated fixture); **NOT_READY** for production certification |
+| **EVIDENCE** | `M3_3_HV_H4_A3_3_O2_R4_2A_PRODUCTION_PHASE_A_ADMISSION_2026-10-08.md` § H1; production preflight runbook |
+
+## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R4.2A production Phase-A admission preparation
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Production admission contract (documented human approval + execute ack + one-time consumption); target identity + TLS policy; session identity gate; production ops CLI; operator runbook; reuses R4.1 runner |
+| **WHY** | R4.1 isolated loopback path cannot authorize production; need separate fail-closed gate before any future authorized production read-only run |
+| **VALIDATION** | production admission/target unit specs; postgres integration fixture; HV-H4 CI |
+| **OBSERVED_EFFECT** | `PHASE_A_PRODUCTION_EXECUTE_ACK_REQUIRED` without execute binding; harness forbidden on production path |
+| **NON_EFFECTS** | No production execution in repo slice; no role provisioning; `productionCertification` remains NOT_CERTIFIED |
+| **REMAINING_GAPS** | R4.2B operational production execution gate; cryptographic approval optional future |
+| **DECISION_STATUS** | VALIDATED (repository / isolated fixture) |
+| **EVIDENCE** | `M3_3_HV_H4_A3_3_O2_R4_2A_PRODUCTION_PHASE_A_ADMISSION_2026-10-08.md`; runbook under `architecture/battery-v2/operations/` |
+
+## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R4.1-H2 admission boundary + merge gate
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Runner/CLI shared admission (app + issuer URL isolation); remove remote allowlist; strict read-only SQLSTATE 25006; migration SELECT denial integration fixture; integration harness env |
+| **WHY** | Direct runner invocation bypassed credential isolation; loopback allowlists weakened isolated-test policy |
+| **VALIDATION** | admission/runner/isolated-target unit specs; HV-H4 postgres integration job |
+| **OBSERVED_EFFECT** | `PHASE_A_CANNOT_REUSE_DATABASE_URL` at runner boundary; harness bypass test-only; migration-denial fixture teardown revokes role grants before `DROP ROLE` (HV-H4 postgres integration green on `eebd50cbf`) |
+| **NON_EFFECTS** | No R4.2 production authorization |
+| **REMAINING_GAPS** | O2-R4.2 production read-only gate |
+| **DECISION_STATUS** | VALIDATED (repository / isolated fixture) |
+| **EVIDENCE** | `M3_3_HV_H4_A3_3_O2_R4_1_PHASE_A_EXECUTABLE_PREFLIGHT_2026-10-08.md` §4.2 |
+
+## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R4.1-H1 security + integration test hardening
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Sanitized stable error codes; isolated-target approval policy (loopback-only fail-closed); runner entry guard; mandatory integration DB env (no silent skips); transaction abort guard; regproc function identity checks; securityCertification=NOT_CERTIFIED |
+| **WHY** | Raw Prisma/URL leakage and hostname blocklists are insufficient; aborted transactions must not continue; integration evidence must fail closed |
+| **VALIDATION** | R4.1 unit + postgres integration specs; HV-H4 CI postgres job |
+| **OBSERVED_EFFECT** | `PHASE_A_INTEGRATION_DATABASE_URL_REQUIRED` when misconfigured; read-only probe records SQLSTATE when present |
+| **NON_EFFECTS** | No production authorization (R4.2); no role provisioning |
+| **REMAINING_GAPS** | O2-R4.2 authorized production read-only execution gate |
+| **DECISION_STATUS** | VALIDATED (repository / isolated fixture) |
+| **EVIDENCE** | `M3_3_HV_H4_A3_3_O2_R4_1_PHASE_A_EXECUTABLE_PREFLIGHT_2026-10-08.md` § H1 |
+
+## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R4.1 executable Phase-A read-only preflight
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Standalone Phase-A runner + ops CLI; approved SELECT manifest; dedicated env URL (`M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_*`); READ ONLY transaction; classified statuses; JSON report + redaction; unit + isolated postgres tests |
+| **WHY** | O2-R3 spec defined phases but had no fail-closed executable discovery path; implicit `DATABASE_URL` reuse would break separate-process credential isolation |
+| **VALIDATION** | `test:battery:v2:hv-h4` + `test:battery:v2:hv-h4:postgres`; manifest/read-only/config specs |
+| **OBSERVED_EFFECT** | `A3_ATTESTATION_PHASE_A_EXECUTABLE_PREFLIGHT_RUNNER_PRESENT=true`; default execution OFF; `phaseBCertified` always false |
+| **NON_EFFECTS** | No production DB/SSH/deploy; no role DDL; no Nest issuer registration; no Phase B certification |
+| **REMAINING_GAPS** | O2-R4.2 human approval + authorized production read-only run; provisioning + Phase B certification separate |
+| **DECISION_STATUS** | VALIDATED (repository / isolated fixture) |
+| **EVIDENCE** | `M3_3_HV_H4_A3_3_O2_R4_1_PHASE_A_EXECUTABLE_PREFLIGHT_2026-10-08.md` |
+
+## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R3-H1 admission boundary + preflight phase closure
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Split tenant scope gate vs future authenticated admission contract; factory requires expected DB login + canonical target rejection + sanitized errors; preflight spec Phase A/B V2 with effective privilege checks |
+| **WHY** | `requestedBy` string is not authentication; single-phase preflight conflated pre-provision discovery with post-provision certification |
+| **VALIDATION** | R3-H1 unit/postgres specs; preflight validator; HV-H4 CI |
+| **OBSERVED_EFFECT** | `REQUESTED_BY_AUTHENTICATED=NO`; `PRE_PROVISION` + `POST_PROVISION` phases defined; factory fail-closed without expected login |
+| **NON_EFFECTS** | No production execution; no Nest registration; no writer/loader/bootstrap |
+| **REMAINING_GAPS** | Execute Phase A/B on Production (authorized); implement future admission evaluator at integration slice |
+| **DECISION_STATUS** | PROPOSED (architecture) |
+| **EVIDENCE** | `M3_3_HV_H4_A3_3_O2_R3_ISSUER_RUNTIME_TOPOLOGY_PREFLIGHT_2026-10-08.md` §10 |
+
+## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R3 issuer process isolation + production role preflight architecture
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Runtime topology audit; `SEPARATE_TRUSTED_ISSUER_PROCESS` decision; admission contract + `issueM3_3HvH4A3IntegrityAttestationWithAdmissionV1`; inert issuer DB factory (dedicated env, no `DATABASE_URL` fallback); machine-readable production role preflight JSON spec |
+| **WHY** | Second in-process Prisma pool does not isolate credentials from API compromise; production roles not yet proven; revisionId-only calls are unsafe across tenants |
+| **VALIDATION** | Unit + postgres admission/factory specs; preflight spec structure test; HV-H4 CI; `validate-module-registry.sh` |
+| **OBSERVED_EFFECT** | `RECOMMENDED_ISSUER_PROCESS_MODEL=SEPARATE_TRUSTED_ISSUER_PROCESS`; `PRODUCTION_ROLE_PREFLIGHT_DEFINED=YES`; factory not Nest-registered |
+| **NON_EFFECTS** | No production DB/SSH; no deploy; no writer/hybrid loader/bootstrap/retention changes |
+| **REMAINING_GAPS** | Execute preflight on Production (authorized); provision MIGRATION_OWNER / GENERAL_APP_RUNTIME / TRUSTED_ATTESTATION_ISSUER |
+| **DECISION_STATUS** | PROPOSED (architecture) |
+| **EVIDENCE** | `M3_3_HV_H4_A3_3_O2_R3_ISSUER_RUNTIME_TOPOLOGY_PREFLIGHT_2026-10-08.md` |
+
 ## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R2-H2 true issuer-login isolation + lock-observed concurrency
 
 | Field | Value |

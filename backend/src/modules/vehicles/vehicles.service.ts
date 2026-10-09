@@ -31,7 +31,10 @@ import { DimoAuthService } from '@modules/dimo/dimo-auth.service';
 import { DimoTelemetryService } from '@modules/dimo/dimo-telemetry.service';
 import { buildDimoProviderRequestContext } from '@modules/dimo/provider/dimo-provider-request-context.util';
 import { VehicleProviderConsentService } from './vehicle-provider-consent.service';
-import { legacyVehicleDestructionDisabledException } from './legacy-vehicle-destruction.errors';
+import {
+  legacyVehicleDeleteDisabledException,
+  legacyVehicleDestructionDisabledException,
+} from './legacy-vehicle-destruction.errors';
 import { BatteryCapabilityRefreshService } from '@modules/vehicle-intelligence/battery-health/capability-preflight/battery-capability-refresh.service';
 import { BatteryCapabilityRefreshTrigger } from '@modules/vehicle-intelligence/battery-health/capability-preflight/battery-capability-lifecycle.policy';
 import dimoConfig from '@config/dimo.config';
@@ -2131,16 +2134,15 @@ export class VehiclesService {
     });
   }
 
-  async delete(id: string, organizationId?: string): Promise<Vehicle> {
-    const where: Prisma.VehicleWhereUniqueInput = { id };
-    if (organizationId) {
-      await this.prisma.vehicle.findFirstOrThrow({
-        where: { id, ...this.withOrgScope(organizationId) },
-      });
-    } else {
-      await this.prisma.vehicle.findUniqueOrThrow({ where: { id } });
-    }
-    return this.prisma.vehicle.delete({ where });
+  /**
+   * VO5C-P2B3: physical vehicle DELETE retired — fail-closed.
+   */
+  async delete(_id: string, _organizationId?: string): Promise<never> {
+    this.logger.warn({
+      msg: 'legacy_vehicle_delete_blocked',
+      code: 'LEGACY_VEHICLE_DESTRUCTION_DISABLED',
+    });
+    throw legacyVehicleDeleteDisabledException();
   }
 
   /**

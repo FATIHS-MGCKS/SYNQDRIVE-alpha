@@ -105,6 +105,12 @@ echo "TEST_SCHEMA_BOOTSTRAP_MODE=RESILIENT_EPHEMERAL_RECOVERY"
 cd "${BACKEND_ROOT}"
 npx prisma generate
 
+echo "==> RFRF OQ-014 R3A phase scanner (pure unit + offline replay)"
+npm test -- \
+  raw-fuel-rise-phase-scanner \
+  --runInBand --verbose --forceExit
+npm run test:rfrf:settled-post-replay
+
 PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 bash scripts/test/prisma-migrate-deploy-resilient.sh
 sync_schema_drift_if_needed
 
@@ -117,4 +123,5 @@ npm test -- \
   raw-fuel-rise-detector-f2-handoff.postgres.integration.spec.ts \
   raw-fuel-rise-liveness.postgres.integration.spec.ts \
   raw-refuel-candidate.postgres.integration.spec.ts \
+  raw-refuel-candidate-r2-cross-version.postgres.integration.spec.ts \
   --runInBand --verbose --forceExit

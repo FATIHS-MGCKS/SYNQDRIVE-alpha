@@ -22,6 +22,11 @@
 | 2026-10-01 | **VO-4.10** — Master Admin provider candidate discovery projection (DIMO + HM); read-only; no VehicleCandidate entity | Adoption HTTP unchanged; no legacy cutover |
 | 2026-10-01 | **VO-4.10.1** — provider-aware combined pagination cursor + postgres pagination/multi-holder integrity seal | Raw mirror UUID cursors removed; COMBINED `m/p/i` cursor; no adoption semantic change |
 | 2026-10-01 | **VO-5A.1** — integrity seal: semantic outbox replay, assignment close, DIMO scheduler/processor OFFBOARDED gate, provider-link + HM canonical gates, consent revoke, actor in outbox v2 | PR #1874 |
+| 2026-10-09 | **VO5C-R2** — VPS security-floor rollback guard (`VO5C_UNSAFE_ROLLBACK_DENIED`); isolated Prisma battery/APDS ordering harness; deploy executor bootstrap notes | Ops scripts only; no production deploy; security floor ref `39775cbb` |
+| 2026-10-09 | **VO5C-R2-H1** — Immutable floor pin; fail-closed guard load; S4F7Q uses candidate replica lib; PM2 resurrect disabled; production-faithful migration fixture | Ops/test scripts only; no production deploy |
+| 2026-10-09 | **VO5C-R2-H2** — Pinned R2 executor preflight/runner; executor selection simulation; shallow-only ancestry reconstruction; bootstrap + shallow selftests | First VO5C promotion must not use unprotected `/current` executor; no production deploy |
+| 2026-10-09 | **VO5C-R2-H3** — Mandatory deploy target admission; executor tree integrity; genuine depth-1 shallow tests; S4F7Q positive preflight | Direct `vps-deploy-release.sh` cannot bypass VO5C target floor before migrations |
+| 2026-10-09 | **VO5C-R2-H4** — Legacy `/current` executor warns only; pinned R2 preflight pass | First-deploy production has old current present; execution remains pinned-only |
 | 2026-10-01 | **VO-5A** — offboarding audit + internal `VehicleOffboardingService` (ACTIVE→OFFBOARDED + outbox); legacy deregister unchanged | Must deprecate hard-delete deregister before cutover |
 | 2026-10-01 | **VO-5B** — Registry `VEHICLE_OFFBOARDED` outbox → Billing quantity bridge; billable policy registry lifecycle; scheduler worker; no public HTTP / no Stripe in consumer | Billing projection idempotent; `VEHICLE_ACTIVATED` bridge deferred |
 | 2026-10-02 | **VO-5B.1** — Integrity seal: event-time base item/assignment/ledger authority; outbox claim/CAS; preserve unhandled lifecycle events; VO-5B PostgreSQL CI | PR #1883 |
@@ -33,7 +38,12 @@
 | 2026-10-08 | **VO5C-P2A** — Connected Vehicles UI offboard cutover; `api.vehicleOnboarding.offboardVehicle`; MFA + stable idempotency; lifecycle badges; server `registryLifecycle` filter; legacy backend routes unchanged | `AUDIT_IN_PROGRESS`; P2B lockdown + production route verification still required |
 | 2026-10-08 | **VO5C-P2B1** — Legacy `POST admin/vehicles/:vehicleId/deregister` fail-closed **409** `LEGACY_VEHICLE_DESTRUCTION_DISABLED`; `MASTER_ADMIN` + `MASTER_INTEGRATIONS` MFA; `VehiclesService.deregister` retired; zero mutation; tenant DELETE + prune unchanged | `AUDIT_IN_PROGRESS`; P2B2–P2B4 + production route verification remain |
 | 2026-10-08 | **VO5C-P2B2** — Removed `api.vehicles.deregister` frontend client; repo-wide negative tests; canonical offboard client unchanged; org-scoped delete wrapper retained (P2B3) | `AUDIT_IN_PROGRESS`; P2B3 DELETE lockdown + P2B4 prune review remain |
+<<<<<<< HEAD
 | 2026-10-09 | **VO5C-P4A** — Default-OFF server admission guard for canonical offboard HTTP; release SHA + route-verified attestation; requires `IAM_MFA_MASTER_ADMIN_ENABLED`; dual frontend UI gate; HTTP+Postgres security matrix; operator runbook | No production activation; `AUDIT_IN_PROGRESS` |
+=======
+| 2026-10-08 | **VO5C-P2B3** — Tenant org-scoped and direct `DELETE` vehicle routes fail-closed **409**; `VehiclesService.delete` retired; guards preserved | `AUDIT_IN_PROGRESS`; P2B4 remediation continues |
+| 2026-10-08 | **VO5C-P2B4-0** — Emergency containment: HTTP/CLI/service platform prune fail-closed `PLATFORM_PRUNE_DISABLED`; no env override; replacement prune not implemented | `AUDIT_IN_PROGRESS`; `SECURITY_REMEDIATION_IN_PROGRESS` |
+>>>>>>> github/main
 
 ## VO-0B — REUSE-FIRST components (do not replace without VO-1+ proof)
 

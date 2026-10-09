@@ -2,6 +2,7 @@
 set -euo pipefail
 
 DEPLOY_EXECUTOR_OPS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DEPLOY_EXECUTOR_ROOT="$(cd "${DEPLOY_EXECUTOR_OPS_DIR}/../../.." && pwd)"
 # shellcheck source=lib/vps-exp021-fleet-deploy-guard.lib.sh
 source "${DEPLOY_EXECUTOR_OPS_DIR}/lib/vps-exp021-fleet-deploy-guard.lib.sh"
 
@@ -15,6 +16,26 @@ vps_validate_requested_deploy_sha() {
     exit 1
   fi
 }
+
+if [[ -z "$REQUESTED_SHA" ]]; then
+  echo "!! ABORT: SYNQDRIVE_REQUESTED_DEPLOY_SHA is required (VO5C deploy target admission)" >&2
+  exit 1
+fi
+vps_validate_requested_deploy_sha "$REQUESTED_SHA"
+
+if [[ -f "${DEPLOY_EXECUTOR_OPS_DIR}/lib/vps-vo5c-security-floor.lib.sh" ]]; then
+  # shellcheck source=lib/vps-vo5c-security-floor.lib.sh
+  source "${DEPLOY_EXECUTOR_OPS_DIR}/lib/vps-vo5c-security-floor.lib.sh"
+  # shellcheck source=lib/vps-vo5c-deploy-admission.lib.sh
+  source "${DEPLOY_EXECUTOR_OPS_DIR}/lib/vps-vo5c-deploy-admission.lib.sh"
+  EXECUTOR_HEAD="$(git -C "$DEPLOY_EXECUTOR_ROOT" rev-parse HEAD 2>/dev/null || true)"
+  if [[ -n "$EXECUTOR_HEAD" ]]; then
+    vps_vo5c_verify_executor_tree_integrity "$DEPLOY_EXECUTOR_ROOT" "$EXECUTOR_HEAD" || {
+      echo "!! ABORT: deploy executor tree integrity check failed (VO5C)" >&2
+      exit 1
+    }
+  fi
+fi
 
 vps_clone_release_at_sha() {
   local dest=$1
@@ -63,6 +84,18 @@ fi
 
 echo "==> Clone release ${RELEASE_ID}"
 vps_clone_release_at_sha "$RELEASE_DIR" "$REQUESTED_SHA"
+
+RELEASE_OPS_DIR="${RELEASE_DIR}/backend/scripts/ops"
+# VO5C: target admission before migrations, promotion, or process restarts.
+# shellcheck source=lib/vps-vo5c-security-floor.lib.sh
+source "${RELEASE_OPS_DIR}/lib/vps-vo5c-security-floor.lib.sh"
+# shellcheck source=lib/vps-vo5c-deploy-admission.lib.sh
+source "${RELEASE_OPS_DIR}/lib/vps-vo5c-deploy-admission.lib.sh"
+if ! vps_vo5c_assert_deploy_target_admitted "$RELEASE_DIR" "$REQUESTED_SHA"; then
+  echo "!! ABORT: deploy target failed VO5C security-floor admission for ${REQUESTED_SHA}" >&2
+  exit 1
+fi
+echo "==> VO5C deploy target admitted: ${REQUESTED_SHA:0:12}"
 
 echo "==> Link shared env/uploads"
 ln -sfn /opt/synqdrive/shared/backend.env "$RELEASE_DIR/backend/.env"
@@ -132,7 +165,9 @@ echo "==> Switch current + rolling multi-replica restart"
 # Source ops libs from the NEW release being promoted — not the pre-switch current
 # symlink copy of this script (P1.8.3 / OQ-18 bootstrap caveat: old current would
 # load pre-P1.8.3.1 verify_post_deploy without the convergence gate).
-RELEASE_OPS_DIR="${RELEASE_DIR}/backend/scripts/ops"
+# Candidate release carries canonical VO5C rollback authority (required before any replica ops).
+vps_vo5c_require_rollback_guard_ready || exit 1
+export SYNQDRIVE_VO5C_ROLLBACK_AUTHORITY_OPS_DIR="${RELEASE_OPS_DIR}"
 # shellcheck source=vps-production-replica-topology.config.sh
 source "${RELEASE_OPS_DIR}/vps-production-replica-topology.config.sh"
 if [[ "${SYNQDRIVE_DI_S4F7Q_EXACT_RC_ATTESTATION_GATE:-0}" == "1" ]]; then
@@ -145,8 +180,12 @@ if [[ "${SYNQDRIVE_DI_S4F7Q_EXACT_RC_ATTESTATION_GATE:-0}" == "1" ]]; then
   vps_deploy_controller_verify_exact_sha || exit 1
   CONTROLLER_OPS_DIR="$(vps_deploy_controller_ops_dir)"
   echo "==> S4F-7R guarded deploy: orchestration from controller ${EXPECTED_DEPLOY_CONTROLLER_SHA:0:12}"
+  vps_vo5c_load_authority_from_ops_dir "${RELEASE_OPS_DIR}" || exit 1
+  export SYNQDRIVE_VO5C_ROLLBACK_AUTHORITY_OPS_DIR="${RELEASE_OPS_DIR}"
+  # Rolling + rollback helpers must come from the candidate release (VO5C guard), not an older controller copy.
   # shellcheck source=lib/vps-production-replica.lib.sh
-  source "${CONTROLLER_OPS_DIR}/lib/vps-production-replica.lib.sh"
+  source "${RELEASE_OPS_DIR}/lib/vps-production-replica.lib.sh"
+  vps_vo5c_require_rollback_guard_ready || exit 1
   export SYNQDRIVE_DI_S4F7Q_FORWARD_EXACT_RC_GATE=1
 else
   # shellcheck source=lib/vps-deploy-controller.lib.sh
@@ -175,7 +214,9 @@ if ! vps_replica_rolling_deploy "$RELEASE_DIR" "$TARGET_SHA"; then
   echo "!! ABORT: multi-replica rolling deploy failed for ${RELEASE_ID}" >&2
   if [[ "$ROLLBACK_ON_FAIL" -eq 1 ]]; then
     echo "==> Rolling back to previous release"
-    vps_replica_rollback "$DEPLOY_STATE_FILE" || true
+    if ! vps_replica_rollback "$DEPLOY_STATE_FILE"; then
+      vps_vo5c_log_unsafe_rollback_containment "deploy_rolling_fail_rollback_blocked"
+    fi
   fi
   exit 1
 fi
@@ -184,7 +225,11 @@ if ! vps_replica_verify_post_deploy "$RELEASE_DIR" "$TARGET_SHA"; then
   echo "!! ABORT: post-deploy multi-replica verification failed for ${RELEASE_ID}" >&2
   if [[ "$ROLLBACK_ON_FAIL" -eq 1 ]]; then
     echo "==> Rolling back to previous release"
-    vps_replica_rollback "$DEPLOY_STATE_FILE" || true
+    if ! vps_replica_rollback "$DEPLOY_STATE_FILE"; then
+      if declare -F vps_vo5c_log_unsafe_rollback_containment >/dev/null; then
+        vps_vo5c_log_unsafe_rollback_containment "deploy_verify_fail_rollback_blocked"
+      fi
+    fi
   fi
   exit 1
 fi

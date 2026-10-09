@@ -102,10 +102,10 @@ SYNQDRIVE_CURRENT_LINK="$REPO_ROOT" bash scripts/ops/rfrf-monitoring-verify-aler
 }
 
 echo "==> Existing cutover semantics (unchanged runtime)"
-npm test -- --runInBand --forceExit --testPathPattern=raw-refuel-promotion-cutover.util.spec 2>/dev/null | tail -5
+npm test -- --runInBand --forceExit --testPathPatterns=raw-refuel-promotion-cutover.util.spec 2>/dev/null | tail -5
 
 echo "==> Prometheus config unit tests"
-npm test -- --runInBand --forceExit --testPathPattern=prometheus-config.spec 2>/dev/null | tail -5
+npm test -- --runInBand --forceExit --testPathPatterns=prometheus-config.spec 2>/dev/null | tail -5
 
 echo "==> Backend build"
 npm run build

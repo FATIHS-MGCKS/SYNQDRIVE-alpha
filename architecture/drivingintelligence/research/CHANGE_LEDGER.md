@@ -1682,6 +1682,76 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | Production `ee958854…` unchanged; GLOBAL row **missing**; S4 counts **0**; initializer @ deployed SHA **safe**; postgres concurrency tests **PASS**; **`DB_KILL_INITIALIZATION_READINESS=BLOCKED`** — `PRODUCTION_EXECUTION_WRAPPER_REQUIRED` |
 | NON_EFFECTS | No initializer execution, no Production DB/env/deploy/restart, no Tiny/operator grant |
 
+### EXP-021 S4F-7AI S4F-7AH bootstrap authority migration (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `cloud-agent-s4f7ai-fresh-jit-production-dry-run.sh` + `lib/cloud-agent-s4f7ai-tool-pin.lib.sh` + `cloud-agent-s4f7ai-tool-pin.test.sh`; evidence `EXP021_S4F7AI_NEW_TOOL_BOOTSTRAP_AUTHORITY.md` |
+| AUTHORITY | Reads `NEW_EXPECTED_FRESH_TINY_STAGING_TOOL_SHA` from S4F-7AH evidence only @ `ed78748bc…`; six-file blob + stale-pin fail-closed; AA.1 Z2 bootstrap **unchanged** |
+| NON_EFFECTS | No Production SSH/env/deploy/restart; no `DRY_RUN=0`; no live auth reuse; Production dry-run **not** executed in slice |
+
+### EXP-021 S4F-7AJ corrected-tool Production dry-run (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | One Production `DRY_RUN=1` via S4F-7AI bootstrap @ tool `ed78748bc…`; fresh JIT `2026-10-08T20:11:22.464Z`; evidence `EXP021_S4F7AJ_CORRECTED_TOOL_PRODUCTION_DRY_RUN.md` |
+| FINDING | `DRY_RUN_CERTIFIED=YES`; `GUARDS_OK=YES`; initial/final DB clock + fresh authority **PASS**; `DRY_RUN_ENV_MUTATION_COUNT=0`; POSTSTATE parity **YES** |
+| NON_EFFECTS | No `DRY_RUN=0`; no live auth reuse; no S4 activation; Gate 6 unchanged |
+
+### EXP-021 S4F-7AK final live staging readiness (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Read-only Production observation + authority reconciliation after #1937; evidence `EXP021_S4F7AK_FINAL_LIVE_STAGING_READINESS.md` |
+| FINDING | `READINESS=TECHNICALLY_READY_PENDING_HUMAN_AUTHORIZATION`; S4 prestate **PASS**; `PRODUCTION_DRIFT_FROM_AJ=YES` (env SHA + PIDs); partial release-tree operator blob drift — **S4F-7AI bootstrap mandatory for Production `DRY_RUN=1` only** (not live); live path = detached `ed78748bc…` S4F-7Y operator |
+| NON_EFFECTS | No JIT/live auth; no `DRY_RUN=0`; no env/restart/deploy; `HUMAN_FREEZE_CONFIRMATION=PENDING`; Gate 6 unchanged |
+
+### EXP-021 S4F-7AK.1 authority boundary & drift closure (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | PR #1939 scope trim (remove non-required `ChangesView.tsx`); evidence `EXP021_S4F7AK1_FINAL_AUTHORITY_BOUNDARY.md` |
+| FINDING | `PRODUCTION_DRIFT_CAUSE=APDS_P25_SHADOW_ENABLE_20261008T201328Z` — pre-backup SHA matches S4F-7AJ POST; `WORKER_APD_SHADOW_ENABLED` value change; PM2 recreate @ 20:13:28Z |
+| NON_EFFECTS | No live dispatch execution; S4F-7AI bootstrap remains DRY_RUN=1-only |
+
+### EXP-021 S4F-7AK.2 dispatch documentation consistency (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | PR #1939 — align S4F-7AK / CURRENT_STATE / CHANGE_LEDGER: S4F-7AI = Production **`DRY_RUN=1` only**; live = detached `ed78748bc…` S4F-7Y operator (not S4F-7AI) |
+| NON_EFFECTS | No operator code change; no Production execution |
+
+### EXP-021 S4F-7AO minimal five-flag activation operator (2026-10-09)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Engineering operator `di-v0-s4-enable-tiny-five-flags-production.sh` + TS libs — exactly five S4 enable flags ON, `NATIVE` OFF, staged Tiny keys preserved, GLOBAL **KILLED** only (no DB kill mutation); evidence `EXP021_S4F7AO_MINIMAL_FLAG_OPERATOR.md` |
+| TESTS | `npm run test:di:s4f7ao:five-flag-operator` (24); S4F-7J regression 47 PASS; shared `s4f7j_resolve_deployed_sha` / `s4f7j_resolve_release_dir` in `di-v0-s4-tiny-staging-production.lib.sh` for sourced wrappers |
+| NON_EFFECTS | No Production env write/restart/deploy; Gate 6 **NOT_GRANTED**; S4 not activated; certified S4F-7Y operator unchanged |
+
+### EXP-021 S4F-7AO.2 replica recovery boundary (2026-10-09)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | PR #1943 — mark replica runtime dirty before restart; rollback scope A vs A+B from `FIVE_FLAG_PROVEN`/dirty flags; `FULL_A_B_PRESTATE_PROOF` on both replicas; evidence `EXP021_S4F7AO2_RECOVERY_BOUNDARY.md` |
+| TESTS | `test:di:s4f7ao:five-flag-operator` 36 PASS |
+| NON_EFFECTS | No Production execution |
+
+### EXP-021 S4F-7AO.1 five-flag operator safety closure (2026-10-09)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | PR #1943 — full runtime rollback (atomic env restore + selective replica `RECOVERY_PRESTATE`), production test/fixture/harness isolation on shared `backend.env`, explicit `DRY_RUN` required, durable backup dir via `s4f7j_require_durable_backup_dir`; evidence `EXP021_S4F7AO1_SAFETY_CLOSURE.md` |
+| TESTS | `test:di:s4f7ao:five-flag-operator` 31 PASS; S4F-7J 47; S4F-7Y wrapper 131 |
+| NON_EFFECTS | No Production execution; S4F-7Y operator contract unchanged |
+
+### EXP-021 S4F-7AI.1 bootstrap safety closure (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Reject legacy `DI_S4F7V_LIVE_STAGING_AUTHORIZED=YES`; remote unset both live flags; `S4F7AI_SKIP_DETACHED_FETCH` only with `S4F7AI_SKIP_PRODUCTION_DISPATCH=1` |
+| NON_EFFECTS | Certified tool SHA unchanged; AA.1 bootstrap unchanged; no Production dispatch |
+
 ### EXP-021 S4F-7AH post-merge tool authority seal (2026-10-08)
 
 | Event | Detail |

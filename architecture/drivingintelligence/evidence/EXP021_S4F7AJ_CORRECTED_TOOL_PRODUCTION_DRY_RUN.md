@@ -1,0 +1,167 @@
+# EXP-021 S4F-7AJ — Corrected S4F-7AG operator Production fresh-JIT dry-run
+
+**Date (UTC):** 2026-10-08  
+**Scope:** Exactly **one** Production `DRY_RUN=1` via S4F-7AI bootstrap @ certified tool `ed78748bc9493cdc8da56000e333e4940114f9f1`. **No** `DRY_RUN=0`, deploy, migration, restart, env write, S4 activation, or live authorization reuse.
+
+---
+
+## Git / bootstrap authority (pre-run)
+
+| Field | Value |
+|-------|--------|
+| `CURRENT_MAIN_SHA` (agent workspace) | `69d9bf59662e2692f94f0b7c9f386eaf4df37fb2` |
+| `BOOTSTRAP_PATH` | `.cursor/scripts/cloud-agent-s4f7ai-fresh-jit-production-dry-run.sh` |
+| `BOOTSTRAP_SHA256` | `d380c3119cd028aa2afa2cf9ab335d27977f3b5149b819c4ca38d99cfa73d871` |
+| `CERTIFIED_TOOL_SHA` | `ed78748bc9493cdc8da56000e333e4940114f9f1` |
+| `SIX_FILE_BLOB_PARITY` | **PASS** (bootstrap local + detached fetch) |
+| `DETACHED_TOOL_CHECKOUT_VERIFIED` | **YES** |
+| Skip flags | **unset** (`S4F7AI_SKIP_PRODUCTION_DISPATCH`, `S4F7AI_SKIP_DETACHED_FETCH`) |
+| Live auth env | **unset** (`DI_S4F7Y_*`, `DI_S4F7V_*`) |
+
+---
+
+## Production PRESTATE (observed)
+
+| Check | Value |
+|-------|--------|
+| `PRODUCTION_SHA` | `3b557e208c1a06e91c0a13fb8ba861b1255ee375` |
+| `PRODUCTION_RELEASE_ID` | `20261008182454_v4994` |
+| `PRE_BACKEND_ENV_SHA256` | `778da0aa6e5205e8b81da7fd9061b6f8526438e0d46005ad02474b3d52afeb24` |
+| `PRE_REPLICA_A_PID` / `PRE_REPLICA_B_PID` | `2174936` / `2174949` |
+| A/B attestation | **PRESTATE** / fingerprint `b648908a5f74798f765b0631cd16d5c50a390222d36b63fb03f787367176750d` |
+| `GLOBAL_KILL_STATE` | **KILLED** |
+| S4 flags | **all OFF** |
+| Tiny staging keys | **all MISSING** |
+| S4 pipeline / work items | **0** / **0** |
+| `SCHEDULER_LEADER_COUNT` | **1** |
+| Topology / Redis / DIMO budget | **PASS** |
+
+---
+
+## Fresh JIT (new, not reused)
+
+| Field | Value |
+|-------|--------|
+| `JIT_FRESH_NOT_BEFORE` | `2026-10-08T20:11:22.464Z` |
+| `JIT_AGE_SECONDS` (at wrapper) | `3.271` (≤900) |
+| `JIT_EXPECTED_FINGERPRINT` | `190fec2cd7162b5c645df7c1ed1313ec75a4dc5255a71c91775d8ed4548eceac` |
+| `NO_BACKFILL_GATE` | **PASS** |
+| Tool checkout on Production | `ed78748bc9493cdc8da56000e333e4940114f9f1` |
+
+---
+
+## S4F-7AG operator path (dry-run)
+
+| Evidence line | Result |
+|---------------|--------|
+| `DB_CLOCK_CANONICAL_UTC` + `INITIAL_DB_CLOCK_EXPORTED=YES` | **VALID** |
+| `FRESH_AUTHORITY_OK=YES` (initial) | **PASS** |
+| `FINAL_DB_CLOCK_CANONICAL_UTC=2026-10-08T20:11:41.336Z` | **re-query OK** |
+| `GUARDS_OK=YES` | **YES** |
+| `DRY_RUN_FULL_GUARD_PATH_EXECUTED=YES` | **YES** |
+| `INTENDED_ENV_CHANGED_KEY_COUNT=3` | **3** |
+| `INTENDED_UNEXPECTED_ENV_CHANGED_KEY_COUNT=0` | **0** |
+| `DRY_RUN_ENV_MUTATION_COUNT=0` | **0** |
+| `DRY_RUN_RESTART_COUNT=0` | **0** |
+| `DRY_RUN_WRAPPER_EXIT_CODE` | **0** |
+| `REMOTE_SSH_EXIT_CODE` | **0** |
+
+---
+
+## POSTSTATE
+
+| Check | Result |
+|-------|--------|
+| Production SHA / release | **unchanged** |
+| `POST_BACKEND_ENV_SHA256` | **equals PRE** |
+| Replica PIDs | **unchanged** |
+| Attestation fingerprints | **unchanged** |
+| Global kill | **KILLED** |
+| S4 zero-state | **unchanged** |
+| `PRODUCTION_ENV_MUTATION_OCCURRED` | **NO** |
+| `S4_ACTIVATION_OCCURRED` | **NO** |
+
+---
+
+## Certification
+
+| Field | Value |
+|-------|--------|
+| `DRY_RUN_CERTIFIED` | **YES** |
+| `LIVE_CONFIG_STAGING_COMMITTED` | **NO** |
+| `S4_TINY_ACTIVATED` | **NO** |
+| `GATE_6` | **NOT_SATISFIED** |
+| AF.1C live authorization | **consumed** — not reused |
+| Sanitized log | `/opt/cursor/artifacts/s4f7aj-production-dry-run-sanitized.log` |
+
+---
+
+## Machine block
+
+```
+EXP021_S4F7AJ_CORRECTED_TOOL_PRODUCTION_DRY_RUN_RESULT=PASS
+
+CURRENT_MAIN_SHA=69d9bf59662e2692f94f0b7c9f386eaf4df37fb2
+BOOTSTRAP_PATH=.cursor/scripts/cloud-agent-s4f7ai-fresh-jit-production-dry-run.sh
+BOOTSTRAP_SHA256=d380c3119cd028aa2afa2cf9ab335d27977f3b5149b819c4ca38d99cfa73d871
+CERTIFIED_TOOL_SHA=ed78748bc9493cdc8da56000e333e4940114f9f1
+TOOL_CHECKOUT_SHA=ed78748bc9493cdc8da56000e333e4940114f9f1
+SIX_FILE_BLOB_PARITY=PASS
+
+PRODUCTION_SHA=3b557e208c1a06e91c0a13fb8ba861b1255ee375
+PRODUCTION_RELEASE_ID=20261008182454_v4994
+
+PRE_BACKEND_ENV_SHA256=778da0aa6e5205e8b81da7fd9061b6f8526438e0d46005ad02474b3d52afeb24
+POST_BACKEND_ENV_SHA256=778da0aa6e5205e8b81da7fd9061b6f8526438e0d46005ad02474b3d52afeb24
+PRODUCTION_ENV_UNCHANGED=YES
+
+PRE_REPLICA_A_PID=2174936
+POST_REPLICA_A_PID=2174936
+PRE_REPLICA_B_PID=2174949
+POST_REPLICA_B_PID=2174949
+REPLICA_PID_PARITY=YES
+
+PRE_A_ATTESTATION=PRESTATE/b648908a…
+PRE_B_ATTESTATION=PRESTATE/b648908a…
+POST_A_ATTESTATION=PRESTATE/b648908a…
+POST_B_ATTESTATION=PRESTATE/b648908a…
+RUNTIME_PRESTATE_PARITY=YES
+
+GLOBAL_KILL_STATE=KILLED
+ALL_S4_FLAGS_OFF=YES
+THREE_STAGING_KEYS_MISSING=YES
+S4_ZERO_STATE=YES
+
+FRESH_JIT_CREATED=2026-10-08T20:11:22.464Z
+JIT_AGE_SECONDS=3.271
+FRESH_FINGERPRINT_MATCH=YES
+INITIAL_DB_CLOCK_VALID=YES
+FINAL_DB_CLOCK_VALID=YES
+INITIAL_FRESH_AUTHORITY_PASS=YES
+FINAL_FRESH_AUTHORITY_PASS=YES
+NO_BACKFILL_GATE=PASS
+
+DRY_RUN1_INVOCATION_COUNT=1
+DRY_RUN1_EXIT_CODE=0
+REMOTE_SSH_EXIT_CODE=0
+GUARDS_OK=YES
+INTENDED_ENV_CHANGED_KEY_COUNT=3
+UNEXPECTED_CHANGED_KEY_COUNT=0
+ACTUAL_ENV_MUTATION_COUNT=0
+RESTART_COUNT=0
+PROVIDER_CALL_COUNT=0
+
+SCHEDULER_SINGLE_LEADER=YES
+NGINX_DUAL_UPSTREAM=YES
+REDIS=YES
+DIMO_BUDGET=ENABLED_BOTH
+
+DRY_RUN_CERTIFIED=YES
+DRY_RUN0_EXECUTED=NO
+LIVE_CONFIG_STAGING_COMMITTED=NO
+S4_TINY_ACTIVATED=NO
+GATE_6=NOT_SATISFIED
+
+SANITIZED_EVIDENCE_PATH=/opt/cursor/artifacts/s4f7aj-production-dry-run-sanitized.log
+FINAL_RESULT=PASS
+```
