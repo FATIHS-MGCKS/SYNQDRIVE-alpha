@@ -39,8 +39,12 @@ export function resolveApprovedProductionBackendEnvPath(): { ok: true; canonical
 export function enforceExactProductionBackendEnvForLiveOpen(
   env: NodeJS.ProcessEnv,
   resolvedCandidate: { ok: true; canonicalPath: string } | { ok: false; reason: string },
+  options?: { permitFixtureAlternateBackendEnv?: boolean },
 ): { ok: true; trustedEnvPath: string } | { ok: false; failures: string[] } {
-  if (env.DI_S4F7AS_FIXTURE_MODE === '1' || env.DI_S4F7J_FIXTURE_MODE === '1') {
+  if (
+    options?.permitFixtureAlternateBackendEnv &&
+    (env.DI_S4F7AS_FIXTURE_MODE === '1' || env.DI_S4F7J_FIXTURE_MODE === '1')
+  ) {
     if (!resolvedCandidate.ok) return { ok: false, failures: [resolvedCandidate.reason] };
     return { ok: true, trustedEnvPath: resolvedCandidate.canonicalPath };
   }

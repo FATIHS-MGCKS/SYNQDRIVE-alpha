@@ -11,7 +11,7 @@ import {
   GATE6_PRODUCTION_HUMAN_APPROVAL_PUBLIC_KEY_PATH,
   GATE6_PRODUCTION_TRUST_SHARED_ROOT,
 } from './di-v0-s4-gate6-production-paths.lib';
-import { isCanonicalProductionBackendEnv } from './di-v0-s4-gate6-live-authority.lib';
+import { isProductionBackendEnvSurface } from './di-v0-s4-gate6-live-authority.lib';
 import {
   enforceExactProductionBackendEnvForLiveOpen,
   resolveCanonicalBackendEnvPathFromFilesystem,
@@ -26,22 +26,15 @@ export type ProductionTrustAnchorFailure =
   | 'HUMAN_APPROVAL_PUBLIC_KEY_TRUST_ANCHOR_MISSING'
   | 'HUMAN_APPROVAL_PUBLIC_KEY_TRUST_ANCHOR_INVALID'
   | 'APPROVAL_CONSUMPTION_REGISTER_TRUST_ANCHOR_MISSING'
-  | 'APPROVAL_CONSUMPTION_REGISTER_TRUST_ANCHOR_INVALID';
+  | 'APPROVAL_CONSUMPTION_REGISTER_TRUST_ANCHOR_INVALID'
+  | 'HUMAN_APPROVAL_PUBLIC_KEY_TRUST_ANCHOR_PERMISSIONS_INVALID'
+  | 'APPROVAL_CONSUMPTION_REGISTER_TRUST_ANCHOR_PERMISSIONS_INVALID'
+  | 'PRODUCTION_TRUST_ANCHOR_PARENT_DIR_INVALID';
 
-function isFixtureIssuance(env: NodeJS.ProcessEnv): boolean {
-  return env.DI_S4F7AS_FIXTURE_MODE === '1' || env.DI_S4F7J_FIXTURE_MODE === '1';
-}
+export { isProductionGate6IssuanceContext } from './di-v0-s4-gate6-live-open-boundary.lib';
 
-/**
- * True when OPEN dispatch issuance must use pinned Production trust anchors (backend.env + public key + register).
- */
-export function isProductionGate6IssuanceContext(env: NodeJS.ProcessEnv = process.env): boolean {
-  if (isFixtureIssuance(env)) return false;
-  if (isCanonicalProductionBackendEnv(env)) return true;
-  const resolved = resolveCanonicalBackendEnvPathFromFilesystem(env);
-  const enforced = enforceExactProductionBackendEnvForLiveOpen(env, resolved);
-  return enforced.ok;
-}
+const GATE6_PRODUCTION_TRUST_OWNER_UID = 0;
+const GATE6_PRODUCTION_TRUST_OWNER_GID = 0;
 
 function assertPinnedPathNotSymlink(pinnedPath: string, requireProductionSharedRoot: boolean): boolean {
   const resolved = fs.realpathSync(pinnedPath);
@@ -50,6 +43,41 @@ function assertPinnedPathNotSymlink(pinnedPath: string, requireProductionSharedR
     return false;
   }
   return true;
+}
+
+function verifyParentDirectoryChain(
+  pinnedPath: string,
+  requireProductionSharedRoot: boolean,
+): { ok: true } | { ok: false; failure: ProductionTrustAnchorFailure } {
+  try {
+    let dir = path.dirname(pinnedPath);
+    const root = path.resolve(GATE6_PRODUCTION_TRUST_SHARED_ROOT);
+    while (true) {
+      const lst = fs.lstatSync(dir);
+      if (lst.isSymbolicLink()) {
+        return { ok: false, failure: 'PRODUCTION_TRUST_ANCHOR_PARENT_DIR_INVALID' };
+      }
+      const mode = lst.mode & 0o777;
+      if (mode & 0o002) {
+        return { ok: false, failure: 'PRODUCTION_TRUST_ANCHOR_PARENT_DIR_INVALID' };
+      }
+      if (requireProductionSharedRoot) {
+        if (lst.uid !== GATE6_PRODUCTION_TRUST_OWNER_UID || lst.gid !== GATE6_PRODUCTION_TRUST_OWNER_GID) {
+          return { ok: false, failure: 'PRODUCTION_TRUST_ANCHOR_PARENT_DIR_INVALID' };
+        }
+        if (mode & 0o077) {
+          return { ok: false, failure: 'PRODUCTION_TRUST_ANCHOR_PARENT_DIR_INVALID' };
+        }
+      }
+      if (path.resolve(dir) === root) break;
+      const parent = path.dirname(dir);
+      if (parent === dir) break;
+      dir = parent;
+    }
+    return { ok: true };
+  } catch {
+    return { ok: false, failure: 'PRODUCTION_TRUST_ANCHOR_PARENT_DIR_INVALID' };
+  }
 }
 
 function verifyPinnedRegularFileTrustAnchor(
@@ -70,6 +98,16 @@ function verifyPinnedRegularFileTrustAnchor(
     const mode = lst.mode & 0o777;
     if (mode & 0o002) {
       return { ok: false, failure: 'HUMAN_APPROVAL_PUBLIC_KEY_TRUST_ANCHOR_INVALID' };
+    }
+    if (requireProductionSharedRoot) {
+      if (lst.uid !== GATE6_PRODUCTION_TRUST_OWNER_UID || lst.gid !== GATE6_PRODUCTION_TRUST_OWNER_GID) {
+        return { ok: false, failure: 'HUMAN_APPROVAL_PUBLIC_KEY_TRUST_ANCHOR_PERMISSIONS_INVALID' };
+      }
+      if (mode & 0o077 || mode > 0o640) {
+        return { ok: false, failure: 'HUMAN_APPROVAL_PUBLIC_KEY_TRUST_ANCHOR_PERMISSIONS_INVALID' };
+      }
+      const parents = verifyParentDirectoryChain(pinnedPath, true);
+      if (!parents.ok) return parents;
     }
     if (!assertPinnedPathNotSymlink(pinnedPath, requireProductionSharedRoot)) {
       return { ok: false, failure: 'HUMAN_APPROVAL_PUBLIC_KEY_TRUST_ANCHOR_INVALID' };
@@ -99,6 +137,16 @@ function verifyPinnedDirectoryTrustAnchor(
     if (mode & 0o002) {
       return { ok: false, failure: 'APPROVAL_CONSUMPTION_REGISTER_TRUST_ANCHOR_INVALID' };
     }
+    if (requireProductionSharedRoot) {
+      if (lst.uid !== GATE6_PRODUCTION_TRUST_OWNER_UID || lst.gid !== GATE6_PRODUCTION_TRUST_OWNER_GID) {
+        return { ok: false, failure: 'APPROVAL_CONSUMPTION_REGISTER_TRUST_ANCHOR_PERMISSIONS_INVALID' };
+      }
+      if (mode & 0o027) {
+        return { ok: false, failure: 'APPROVAL_CONSUMPTION_REGISTER_TRUST_ANCHOR_PERMISSIONS_INVALID' };
+      }
+      const parents = verifyParentDirectoryChain(pinnedPath, true);
+      if (!parents.ok) return parents;
+    }
     if (!assertPinnedPathNotSymlink(pinnedPath, requireProductionSharedRoot)) {
       return { ok: false, failure: 'APPROVAL_CONSUMPTION_REGISTER_TRUST_ANCHOR_INVALID' };
     }
@@ -111,7 +159,7 @@ function verifyPinnedDirectoryTrustAnchor(
 export function evaluateProductionGate6IssuanceTrustAnchors(
   env: NodeJS.ProcessEnv = process.env,
 ): { ok: true } | { ok: false; failures: ProductionTrustAnchorFailure[] } {
-  if (!isProductionGate6IssuanceContext(env)) {
+  if (!isProductionBackendEnvSurface(env)) {
     return { ok: true };
   }
 
@@ -166,7 +214,7 @@ export function evaluateProductionGate6IssuanceTrustAnchors(
 export function resolveProductionPinnedPublicKeyPath(
   env: NodeJS.ProcessEnv = process.env,
 ): { ok: true; path: string } | { ok: false; failure: ProductionTrustAnchorFailure } {
-  if (!isProductionGate6IssuanceContext(env)) {
+  if (!isProductionBackendEnvSurface(env)) {
     return { ok: false, failure: 'HUMAN_APPROVAL_PUBLIC_KEY_TRUST_ANCHOR_MISSING' };
   }
   const anchor = evaluateProductionGate6IssuanceTrustAnchors(env);
@@ -183,7 +231,7 @@ export function resolveProductionPinnedPublicKeyPath(
 export function resolveProductionPinnedConsumptionRegisterDir(
   env: NodeJS.ProcessEnv = process.env,
 ): { ok: true; dir: string } | { ok: false; failure: ProductionTrustAnchorFailure } {
-  if (!isProductionGate6IssuanceContext(env)) {
+  if (!isProductionBackendEnvSurface(env)) {
     return { ok: false, failure: 'APPROVAL_CONSUMPTION_REGISTER_TRUST_ANCHOR_MISSING' };
   }
   const anchor = evaluateProductionGate6IssuanceTrustAnchors(env);

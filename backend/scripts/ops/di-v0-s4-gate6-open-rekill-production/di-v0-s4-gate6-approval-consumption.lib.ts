@@ -1,9 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import {
-  isProductionGate6IssuanceContext,
-  resolveProductionPinnedConsumptionRegisterDir,
-} from './di-v0-s4-gate6-production-trust-anchor.lib';
+import { isProductionBackendEnvSurface } from './di-v0-s4-gate6-live-authority.lib';
+import { resolveProductionPinnedConsumptionRegisterDir } from './di-v0-s4-gate6-production-trust-anchor.lib';
 import {
   DI_S4_GATE6_APPROVAL_CONSUMPTION_REGISTER_DIR_ENV,
   GATE6_PRODUCTION_APPROVAL_CONSUMPTION_REGISTER_DIR,
@@ -21,8 +19,24 @@ export type ApprovalConsumptionFailure =
   | 'APPROVAL_CONSUMPTION_REGISTER_TRUST_ANCHOR_MISSING'
   | 'APPROVAL_CONSUMPTION_REGISTER_TRUST_ANCHOR_INVALID';
 
-function consumedMarkerPath(registerDir: string, approvalId: string): string {
+export function consumedMarkerPath(registerDir: string, approvalId: string): string {
   return path.join(registerDir, `gate6-approval-id.${approvalId}.consumed`);
+}
+
+/**
+ * Production register dirs must be root-owned without group/other write so operators cannot unlink markers.
+ */
+export function consumptionRegisterBlocksOperatorUnlink(registerDir: string): boolean {
+  try {
+    const lst = fs.lstatSync(registerDir);
+    if (!lst.isDirectory() || lst.isSymbolicLink()) return false;
+    const mode = lst.mode & 0o777;
+    if (mode & 0o022) return false;
+    if (lst.uid !== 0) return false;
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function isSafeApprovalId(approvalId: string): boolean {
@@ -32,7 +46,7 @@ function isSafeApprovalId(approvalId: string): boolean {
 export function resolveApprovalConsumptionRegisterDir(
   env: NodeJS.ProcessEnv = process.env,
 ): { ok: true; dir: string } | { ok: false; failure: ApprovalConsumptionFailure } {
-  if (isProductionGate6IssuanceContext(env)) {
+  if (isProductionBackendEnvSurface(env)) {
     if ((env[DI_S4_GATE6_APPROVAL_CONSUMPTION_REGISTER_DIR_ENV] ?? '').trim()) {
       return { ok: false, failure: 'APPROVAL_CONSUMPTION_REGISTER_ENV_OVERRIDE_FORBIDDEN' };
     }

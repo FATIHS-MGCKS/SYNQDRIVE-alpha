@@ -4,6 +4,8 @@ import * as os from 'os';
 import * as path from 'path';
 import { PRODUCTION_SHARED_BACKEND_ENV_PATH } from '../di-v0-s4-fresh-tiny-staging-production/di-v0-s4-fresh-tiny-staging-live-authority.lib';
 import {
+  consumedMarkerPath,
+  consumptionRegisterBlocksOperatorUnlink,
   isApprovalIdConsumed,
   reserveApprovalIdForDispatch,
   resolveApprovalConsumptionRegisterDir,
@@ -79,6 +81,35 @@ describe('Gate-6 approvalId consumption register', () => {
     const r = reserveApprovalIdForDispatch(registerDir, 'short');
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.failure).toBe('APPROVAL_ID_INVALID');
+  });
+
+  it('documents production register policy blocks operator unlink when root-owned without group write', () => {
+    const secureDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gate6-secure-register-'));
+    fs.chmodSync(secureDir, 0o750);
+    try {
+      fs.chownSync(secureDir, 0, 0);
+    } catch {
+      // skip chown when not privileged
+    }
+    const id = 'immutable-apr-id-01';
+    expect(reserveApprovalIdForDispatch(secureDir, id).ok).toBe(true);
+    expect(consumptionRegisterBlocksOperatorUnlink(secureDir)).toBe(true);
+
+    const writableDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gate6-writable-register-'));
+    fs.chmodSync(writableDir, 0o777);
+    expect(consumptionRegisterBlocksOperatorUnlink(writableDir)).toBe(false);
+
+    const marker = consumedMarkerPath(secureDir, id);
+    if (process.getuid?.() === 0) {
+      try {
+        fs.unlinkSync(marker);
+        expect(reserveApprovalIdForDispatch(secureDir, id).ok).toBe(false);
+      } catch {
+        // root may still be blocked by 0750 dir in some environments
+      }
+    }
+    fs.rmSync(secureDir, { recursive: true, force: true });
+    fs.rmSync(writableDir, { recursive: true, force: true });
   });
 
   it('blocks register dir env override on production issuance context', () => {

@@ -18,7 +18,10 @@ import {
   issueLiveOpenDispatchToken,
 } from './di-v0-s4-gate6-dispatch-token.lib';
 import { resolveApprovalConsumptionRegisterDir, reserveApprovalIdForDispatch } from './di-v0-s4-gate6-approval-consumption.lib';
-import { evaluateProductionGate6IssuanceTrustAnchors } from './di-v0-s4-gate6-production-trust-anchor.lib';
+import {
+  evaluateProductionGate6DispatchIssuanceBoundary,
+  evaluateProductionGate6LiveOpenBoundary,
+} from './di-v0-s4-gate6-live-open-boundary.lib';
 import { approvalIdFromVerified, loadAndVerifyHumanApprovalFile } from './di-v0-s4-gate6-human-approval.lib';
 import {
   consumeGate6LiveOpenDispatchFromEnv,
@@ -100,9 +103,9 @@ async function main(): Promise<void> {
         console.log('AUDIT_FIELDS_MISSING=YES');
         process.exit(1);
       }
-      const productionAnchors = evaluateProductionGate6IssuanceTrustAnchors(process.env);
-      if (!productionAnchors.ok) {
-        console.log(`PRODUCTION_TRUST_ANCHOR_FAILURES=${productionAnchors.failures.join(',')}`);
+      const dispatchBoundary = evaluateProductionGate6DispatchIssuanceBoundary(process.env);
+      if (!dispatchBoundary.ok) {
+        console.log(`PRODUCTION_LIVE_OPEN_BOUNDARY_FAILURES=${dispatchBoundary.failures.join(',')}`);
         process.exit(1);
       }
       const tokenDir = (process.env[DI_S4_GATE6_DISPATCH_TOKEN_DIR_ENV] ?? '').trim();
@@ -193,6 +196,11 @@ async function main(): Promise<void> {
     }
     case 'live-open-authorized': {
       assertProductionFixtureAllowedForCommand();
+      const liveBoundary = evaluateProductionGate6LiveOpenBoundary(process.env);
+      if (!liveBoundary.ok) {
+        console.log(`PRODUCTION_LIVE_OPEN_BOUNDARY_FAILURES=${liveBoundary.failures.join(',')}`);
+        process.exit(1);
+      }
       const audit = auditFromEnv();
       const consumed = consumeGate6LiveOpenDispatchFromEnv(process.env);
       if (!consumed.ok) {

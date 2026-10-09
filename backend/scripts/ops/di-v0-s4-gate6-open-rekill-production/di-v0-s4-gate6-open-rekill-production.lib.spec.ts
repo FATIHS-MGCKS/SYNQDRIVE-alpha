@@ -359,6 +359,38 @@ describe('S4F-7AS CLI authority', () => {
     }
   });
 
+  it('live-open-authorized rejects fixture bypass before DB mutation', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gate6-live-fixture-bypass-'));
+    const envFile = path.join(dir, 'backend.env');
+    fs.writeFileSync(envFile, 'X=1\n', 'utf8');
+    try {
+      execFileSync('npx', ['--yes', 'ts-node', '--transpile-only', CLI, 'live-open-authorized'], {
+        encoding: 'utf8',
+        cwd: BACKEND_ROOT,
+        env: {
+          ...process.env,
+          DI_S4F7AS_FIXTURE_MODE: '1',
+          SYNQDRIVE_BACKEND_ENV: envFile,
+          DI_S4_GATE6_OPEN_ACK: 'YES',
+          DI_S4_GATE6_OPEN_AUTHORIZED: 'YES',
+          DI_S4F7AS_TOPOLOGY_OK: 'YES',
+          DI_S4F7AS_BUDGET_CONFIG_OK: 'YES',
+          DI_S4F7AS_BUDGET_RUNTIME_OK: 'YES',
+          DI_S4F7AS_REDIS_OK: 'YES',
+          DI_S4_GATE6_OPERATOR_REASON: 'fixture-bypass',
+          DI_S4_GATE6_OPERATOR_ACTOR: 'fixture',
+        },
+      });
+      throw new Error('expected exit');
+    } catch (error: unknown) {
+      const e = error as { stdout?: string; stderr?: string };
+      const combined = `${e.stdout ?? ''}${e.stderr ?? ''}`;
+      expect(combined).toContain('PRODUCTION_LIVE_OPEN_BOUNDARY_FAILURES=');
+      expect(combined).not.toContain('GLOBAL_DB_MUTATION_OCCURRED=YES');
+    }
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
   it('live-open-authorized rejects self-issued digest env without token file', () => {
     try {
       execFileSync(
@@ -380,7 +412,7 @@ describe('S4F-7AS CLI authority', () => {
     } catch (error: unknown) {
       const e = error as { stdout?: string; stderr?: string; status?: number };
       const combined = `${e.stdout ?? ''}${e.stderr ?? ''}`;
-      expect(combined).toContain('DISPATCH_TOKEN_FILE_MISSING');
+      expect(combined).toMatch(/DISPATCH_TOKEN_FILE_MISSING|PRODUCTION_LIVE_OPEN_BOUNDARY_FAILURES/);
     }
   });
 });
