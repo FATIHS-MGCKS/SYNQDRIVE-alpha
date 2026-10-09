@@ -10,6 +10,10 @@ import {
   sanitizePhaseAPreflightErrorV1,
 } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.errors.v1';
 import { evaluatePhaseAPreflightDatabaseAdmissionV1 } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.admission.v1';
+import { evaluatePhaseAPreflightProductionAdmissionV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-admission.v1';
+import { createPhaseAProductionPrismaClientV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-prisma-client.v1';
+import { runPhaseAProductionSameSessionGateV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-same-session-gate.v1';
+import { readPhaseAProductionBackendPidV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-tls-identity.v1';
 import { M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_QUERY_TELEMETRY_ENV } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.isolated-target.v1';
 import {
   M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_CONTRACT_V1,
@@ -98,29 +102,105 @@ class PhaseATransactionGuardV1 {
 export async function runM3_3HvH4A3PhaseAPreflightV1(
   input: M3_3HvH4A3PhaseAPreflightRunnerInputV1,
 ): Promise<M3_3HvH4A3PhaseAPreflightRunnerOutcomeV1> {
-  const admission = evaluatePhaseAPreflightDatabaseAdmissionV1(input.databaseUrl, process.env);
-  if (!admission.ok) {
-    return { ok: false, reasonCode: admission.reasonCode, status: 'BLOCKED' };
+  const admissionPolicy = input.admissionPolicy ?? 'ISOLATED_R4_1_DEFAULT';
+  let productionAdmissionEvidence:
+    | M3_3HvH4A3PhaseAPreflightReportV1['productionAdmissionEvidence']
+    | undefined;
+
+  let productionAdmissionReady:
+    | Extract<ReturnType<typeof evaluatePhaseAPreflightProductionAdmissionV1>, { ok: true }>
+    | undefined;
+
+  if (admissionPolicy === 'PRODUCTION_AUTHORIZED_R4_2A') {
+    const productionAdmission = evaluatePhaseAPreflightProductionAdmissionV1(
+      input.databaseUrl,
+      process.env,
+      { consumeApproval: false },
+    );
+    if (!productionAdmission.ok) {
+      return { ok: false, reasonCode: productionAdmission.reasonCode, status: 'BLOCKED' };
+    }
+    productionAdmissionReady = productionAdmission;
+    productionAdmissionEvidence = {
+      admissionChannel: productionAdmission.evidence.admissionChannel,
+      approvalId: productionAdmission.evidence.approvalId,
+      changeTicket: productionAdmission.evidence.changeTicket,
+      approvingAuthority: productionAdmission.evidence.approvingAuthority,
+      authenticationKind: productionAdmission.evidence.authenticationKind,
+      cryptographicAuthentication: false,
+      operationStatus: 'ATTEMPTED',
+      tlsIdentityCertified: false,
+    };
+  } else {
+    const admission = evaluatePhaseAPreflightDatabaseAdmissionV1(input.databaseUrl, process.env);
+    if (!admission.ok) {
+      return { ok: false, reasonCode: admission.reasonCode, status: 'BLOCKED' };
+    }
   }
 
   const queryTelemetryEnabled =
     process.env[M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_QUERY_TELEMETRY_ENV] === '1';
   let approvedQueryInvocations = 0;
 
-  const client = new PrismaClient({
-    datasources: { db: { url: input.databaseUrl } },
-  });
+  let client: PrismaClient | undefined;
 
   const checks: M3_3HvH4A3PhaseAPreflightCheckResultV1[] = [];
   let sessionIdentity: { sessionUser: string; currentUser: string } | undefined;
   let hadError = false;
   const txGuard = new PhaseATransactionGuardV1();
 
+  let blockedAfterProductionGate: M3_3HvH4A3PhaseAPreflightRunnerOutcomeV1 | undefined;
+  let productionGateAnchorPid: number | undefined;
+  let discoveryAnchorPid: number | undefined;
+
   try {
+    client =
+      admissionPolicy === 'PRODUCTION_AUTHORIZED_R4_2A'
+        ? createPhaseAProductionPrismaClientV1(input.databaseUrl)
+        : new PrismaClient({
+            datasources: { db: { url: input.databaseUrl } },
+          });
+
     await client.$connect();
+
     await client.$transaction(
       async (tx) => {
         await tx.$executeRawUnsafe('SET TRANSACTION READ ONLY');
+
+        if (admissionPolicy === 'PRODUCTION_AUTHORIZED_R4_2A' && productionAdmissionReady) {
+          const gate = await runPhaseAProductionSameSessionGateV1(
+            tx,
+            input.databaseUrl,
+            process.env,
+            productionAdmissionReady,
+            new Date(),
+          );
+          if (!gate.ok) {
+            blockedAfterProductionGate = {
+              ok: false,
+              reasonCode: gate.reasonCode,
+              status: 'BLOCKED',
+            };
+            return;
+          }
+          productionGateAnchorPid = gate.anchorBackendPid;
+          sessionIdentity = {
+            sessionUser: gate.sessionUser,
+            currentUser: gate.currentUser,
+          };
+          if (productionAdmissionEvidence) {
+            productionAdmissionEvidence = {
+              ...productionAdmissionEvidence,
+              operationStatus: 'ADMITTED',
+              tlsIdentityCertified: gate.tlsIdentityCertified,
+              executeConsumedAt: gate.executeConsumedAt,
+            };
+          }
+        }
+
+        if (blockedAfterProductionGate) {
+          return;
+        }
 
         const runQuery = async <T>(
           manifestId: M3_3HvH4A3PhaseAQueryManifestIdV1,
@@ -138,6 +218,18 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
           }
         };
 
+        if (admissionPolicy === 'PRODUCTION_AUTHORIZED_R4_2A' && productionGateAnchorPid !== undefined) {
+          discoveryAnchorPid = await readPhaseAProductionBackendPidV1(tx);
+          if (discoveryAnchorPid !== productionGateAnchorPid) {
+            blockedAfterProductionGate = {
+              ok: false,
+              reasonCode: 'PHASE_A_PRODUCTION_SESSION_PID_MISMATCH',
+              status: 'BLOCKED',
+            };
+            return;
+          }
+        }
+
         const sessionRows = await runQuery<{
           session_user: string;
           current_user: string;
@@ -151,14 +243,25 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
             detail: 'SESSION_IDENTITY_UNAVAILABLE',
           });
         } else {
-          sessionIdentity = {
-            sessionUser: sessionRow.session_user,
-            currentUser: sessionRow.current_user,
-          };
+          if (admissionPolicy !== 'PRODUCTION_AUTHORIZED_R4_2A') {
+            sessionIdentity = {
+              sessionUser: sessionRow.session_user,
+              currentUser: sessionRow.current_user,
+            };
+          }
           pushCheck(checks, {
             checkId: 'PHASE_A_SESSION_CONTEXT',
             status: 'PASS',
-            data: sessionIdentity,
+            data: {
+              sessionUser: sessionRow.session_user,
+              currentUser: sessionRow.current_user,
+              ...(productionGateAnchorPid !== undefined
+                ? {
+                    productionSameSessionAnchorPid: productionGateAnchorPid,
+                    discoveryBackendPid: discoveryAnchorPid ?? productionGateAnchorPid,
+                  }
+                : {}),
+            },
           });
         }
 
@@ -334,17 +437,20 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
       },
       { timeout: 120_000 },
     );
+
+    if (blockedAfterProductionGate) {
+      return blockedAfterProductionGate;
+    }
   } catch (error) {
-    await client.$disconnect().catch(() => undefined);
     const sanitized = sanitizePhaseAPreflightErrorV1(error);
     return {
       ok: false,
       reasonCode: formatPhaseAPreflightPublicErrorV1(sanitized),
       status: 'ERROR',
     };
+  } finally {
+    await client?.$disconnect().catch(() => undefined);
   }
-
-  await client.$disconnect();
 
   const orderedChecks = orderChecksV1(checks);
   const discoveryComplete = !hadError && !checks.some((c) => c.status === 'ERROR');
@@ -377,6 +483,14 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
     summary,
     ...(queryTelemetryEnabled
       ? { testDiagnostics: { approvedQueryInvocations } }
+      : {}),
+    ...(productionAdmissionEvidence
+      ? {
+          productionAdmissionEvidence: {
+            ...productionAdmissionEvidence,
+            operationStatus: discoveryComplete ? 'COMPLETED' : 'ADMITTED',
+          },
+        }
       : {}),
   };
 

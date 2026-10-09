@@ -10,7 +10,7 @@ BATTERY_V2_PATTERN='battery-health|dimo-battery-signal|drive-profile-resolver|ba
 run_unit() {
   echo "==> Battery V2 unit tests"
   npm test -- \
-    --testPathPattern="$BATTERY_V2_PATTERN" \
+    --testPathPatterns="$BATTERY_V2_PATTERN" \
     --testPathIgnorePatterns='integration' \
     --passWithNoTests
 }
