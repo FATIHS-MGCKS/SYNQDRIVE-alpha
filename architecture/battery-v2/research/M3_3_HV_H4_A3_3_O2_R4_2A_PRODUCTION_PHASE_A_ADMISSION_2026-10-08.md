@@ -43,7 +43,7 @@ See **O2-R4.2A-H2** for TLS fixture + same-session authority.
 | Control | Behavior |
 |---------|----------|
 | TLS fixture | `backend/scripts/test/m3-3-hv-h4-a3-phase-a-tls-postgres-fixture.sh` — ephemeral CA/certs, Docker PostgreSQL 16 SSL on `:5433` |
-| Driver proof | Prisma connect matrix: trusted CA + SAN, untrusted CA, hostname mismatch, missing CA, expired cert (with `faketime` in CI) |
+| Driver proof | Prisma + `@prisma/adapter-pg` with explicit `pg` TLS (`rejectUnauthorized`, CA file, `servername`) for verify-full URLs; connect matrix in CI |
 | `tlsIdentityCertified` | **Not** `pg_stat_ssl.ssl` alone — requires verify-full URL policy re-check + successful verify-full connect + encrypted session on **same** `pg_backend_pid()` as discovery |
 | Same session | Production TLS + identity + approval consume + Phase-A discovery share one interactive `READ ONLY` transaction connection |
 | PID evidence | `PHASE_A_SESSION_CONTEXT` check data includes `productionSameSessionAnchorPid` / `discoveryBackendPid` on production path |

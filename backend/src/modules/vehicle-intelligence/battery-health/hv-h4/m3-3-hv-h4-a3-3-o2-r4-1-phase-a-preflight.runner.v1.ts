@@ -11,6 +11,7 @@ import {
 } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.errors.v1';
 import { evaluatePhaseAPreflightDatabaseAdmissionV1 } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.admission.v1';
 import { evaluatePhaseAPreflightProductionAdmissionV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-admission.v1';
+import { createPhaseAProductionPrismaClientV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-prisma-client.v1';
 import { runPhaseAProductionSameSessionGateV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-same-session-gate.v1';
 import { readPhaseAProductionBackendPidV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-tls-identity.v1';
 import { M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_QUERY_TELEMETRY_ENV } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.isolated-target.v1';
@@ -141,9 +142,12 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
     process.env[M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_QUERY_TELEMETRY_ENV] === '1';
   let approvedQueryInvocations = 0;
 
-  const client = new PrismaClient({
-    datasources: { db: { url: input.databaseUrl } },
-  });
+  const client =
+    admissionPolicy === 'PRODUCTION_AUTHORIZED_R4_2A'
+      ? createPhaseAProductionPrismaClientV1(input.databaseUrl)
+      : new PrismaClient({
+          datasources: { db: { url: input.databaseUrl } },
+        });
 
   const checks: M3_3HvH4A3PhaseAPreflightCheckResultV1[] = [];
   let sessionIdentity: { sessionUser: string; currentUser: string } | undefined;

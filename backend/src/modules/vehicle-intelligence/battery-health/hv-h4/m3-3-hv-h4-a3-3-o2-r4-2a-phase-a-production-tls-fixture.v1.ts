@@ -53,10 +53,19 @@ export function buildPhaseAProductionVerifyFullDatabaseUrlV1(params: {
 export async function assertPrismaConnectOutcomeV1(
   databaseUrl: string,
 ): Promise<{ ok: true } | { ok: false; error: unknown }> {
+  const { createPhaseAProductionPrismaClientV1 } = await import(
+    './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-prisma-client.v1'
+  );
+  const { validatePhaseAProductionTlsUrlPolicyV1 } = await import(
+    './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-target.v1'
+  );
   const { PrismaClient } = await import('@prisma/client');
-  const client = new PrismaClient({ datasources: { db: { url: databaseUrl } } });
+  const client = validatePhaseAProductionTlsUrlPolicyV1(databaseUrl).ok
+    ? createPhaseAProductionPrismaClientV1(databaseUrl)
+    : new PrismaClient({ datasources: { db: { url: databaseUrl } } });
   try {
     await client.$connect();
+    await client.$queryRawUnsafe('SELECT 1');
     return { ok: true };
   } catch (error) {
     return { ok: false, error };

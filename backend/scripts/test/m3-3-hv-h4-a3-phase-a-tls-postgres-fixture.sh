@@ -143,6 +143,7 @@ install_tls_material() {
 
 install_tls_material server-valid
 docker exec -u root "$CONTAINER_NAME" sh -c "grep -q '^ssl = on' /var/lib/postgresql/data/postgresql.conf || printf '%s\n' 'ssl = on' 'ssl_cert_file = '\''/var/lib/postgresql/ssl/server.crt'\''' 'ssl_key_file = '\''/var/lib/postgresql/ssl/server.key'\''' >> /var/lib/postgresql/data/postgresql.conf"
+docker exec -u root "$CONTAINER_NAME" sh -c "printf '%s\n' 'hostnossl all all all reject' 'hostssl all all all scram-sha-256' >> /var/lib/postgresql/data/pg_hba.conf"
 docker restart "$CONTAINER_NAME" >/dev/null
 
 for _ in $(seq 1 30); do
@@ -154,8 +155,7 @@ done
 docker exec "$CONTAINER_NAME" pg_isready -U "$PG_USER" >/dev/null
 
 TRUSTED_CA="$FIXTURE_DIR/trusted-ca/ca.crt"
-ENC_CA="$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=''))" "$TRUSTED_CA")"
-TLS_DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@127.0.0.1:${PG_PORT}/${PG_DB}?sslmode=verify-full&sslrootcert=${ENC_CA}"
+TLS_DATABASE_URL="postgresql://${PG_USER}:${PG_PASSWORD}@127.0.0.1:${PG_PORT}/${PG_DB}?sslmode=verify-full&sslrootcert=${TRUSTED_CA}"
 
 export M3_3_HV_H4_A3_PHASE_A_TLS_FIXTURE_ACTIVE=1
 export M3_3_HV_H4_A3_PHASE_A_TLS_FIXTURE_DIR="$FIXTURE_DIR"
