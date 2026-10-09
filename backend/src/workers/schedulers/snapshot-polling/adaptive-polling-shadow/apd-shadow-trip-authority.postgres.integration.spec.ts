@@ -228,7 +228,7 @@ describePg('APDS R4 P2 trip authority (Postgres integration)', () => {
       where: { organizationId, vehicleId: vehicleArteon, activationEpochId: epochId },
     });
     expect(rows.every((r) => r.reconciliation === false)).toBe(true);
-    expect(rows.every((r) => r.decision === 'FORCED_TRIP_SAFETY')).toBe(true);
+    expect(rows.every((r) => r.decision === 'FORCED_SOURCE_TIMESTAMP_MISSING')).toBe(true);
   });
 
   it('delayed ingestion cannot contaminate profile corpus at earlier decision time', async () => {
