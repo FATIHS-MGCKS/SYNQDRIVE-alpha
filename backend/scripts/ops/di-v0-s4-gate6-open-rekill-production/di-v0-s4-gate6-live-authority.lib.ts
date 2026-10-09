@@ -1,7 +1,9 @@
 import { PRODUCTION_SHARED_BACKEND_ENV_PATH } from '../di-v0-s4-fresh-tiny-staging-production/di-v0-s4-fresh-tiny-staging-live-authority.lib';
 import {
   consumeLiveOpenDispatchToken,
+  DI_S4_GATE6_DISPATCH_SIGNING_KEY_FILE_ENV,
   DI_S4_GATE6_LIVE_OPEN_DISPATCH_TOKEN_FILE_ENV,
+  dispatchSigningKeySidecarPath,
   type DispatchTokenFailure,
 } from './di-v0-s4-gate6-dispatch-token.lib';
 
@@ -25,6 +27,7 @@ export const GATE6_PRODUCTION_FORBIDDEN_FIXTURE_ENV_KEYS = [
   'DI_S4F7AO_TEST_MODE',
   'DI_S4_GATE6_LIVE_OPEN_DISPATCH_DIGEST',
   'DI_S4_GATE6_LIVE_OPEN_DISPATCH_NONCE',
+  'DI_S4F7AS_FIXTURE_GATE6_APPROVAL_ROOT_KEY_FILE',
 ] as const;
 
 export type Gate6LiveOpenAuthorityFailure = DispatchTokenFailure | 'PRODUCTION_FIXTURE_CONTROL_PRESENT' | 'PRODUCTION_BACKEND_ENV_CANONICAL_MISSING';
@@ -65,5 +68,7 @@ export function consumeGate6LiveOpenDispatchFromEnv(env: NodeJS.ProcessEnv = pro
   if (!tokenFile) {
     return { ok: false as const, failures: ['DISPATCH_TOKEN_FILE_MISSING' as DispatchTokenFailure], consumed: false };
   }
-  return consumeLiveOpenDispatchToken(tokenFile);
+  const signingKeyFile =
+    (env[DI_S4_GATE6_DISPATCH_SIGNING_KEY_FILE_ENV] ?? '').trim() || dispatchSigningKeySidecarPath(tokenFile);
+  return consumeLiveOpenDispatchToken(tokenFile, { signingKeyFile });
 }

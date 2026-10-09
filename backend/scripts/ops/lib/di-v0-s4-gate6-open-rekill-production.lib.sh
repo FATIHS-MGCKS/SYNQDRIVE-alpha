@@ -196,17 +196,27 @@ s4f7as_issue_live_open_dispatch() {
     echo "DISPATCH_TOKEN_DIR_MISSING=YES"
     return 1
   fi
+  if [[ -z "${DI_S4_GATE6_LIVE_OPEN_HUMAN_APPROVAL_FILE:-}" || ! -f "${DI_S4_GATE6_LIVE_OPEN_HUMAN_APPROVAL_FILE}" ]]; then
+    echo "HUMAN_APPROVAL_FILE_MISSING=YES"
+    echo "INDEPENDENT_APPROVAL_AUTHORITY=BLOCKED"
+    return 1
+  fi
   local issue_out
   issue_out="$(s4f7as_run_cli issue-dispatch-token)" || return 1
-  local token_file
+  local token_file signing_key_file approval_id
   token_file="$(printf '%s\n' "$issue_out" | awk -F= '/^DISPATCH_TOKEN_FILE=/{print $2}')"
-  if [[ -z "$token_file" ]]; then
+  signing_key_file="$(printf '%s\n' "$issue_out" | awk -F= '/^DISPATCH_SIGNING_KEY_FILE=/{print $2}')"
+  approval_id="$(printf '%s\n' "$issue_out" | awk -F= '/^LIVE_OPEN_APPROVAL_ID=/{print $2}')"
+  if [[ -z "$token_file" || -z "$signing_key_file" || -z "$approval_id" ]]; then
     echo "DISPATCH_TOKEN_ISSUE_FAILED=YES"
     return 1
   fi
   export DI_S4_GATE6_LIVE_OPEN_DISPATCH_TOKEN_FILE="$token_file"
+  export DI_S4_GATE6_DISPATCH_SIGNING_KEY_FILE="$signing_key_file"
+  export DI_S4_GATE6_LIVE_OPEN_APPROVAL_ID="$approval_id"
   echo "LIVE_OPEN_DISPATCH_ISSUED=YES"
   echo "DISPATCH_TOKEN_ONE_SHOT=YES"
+  echo "DISPATCH_AUTO_REISSUE=NO"
   return 0
 }
 

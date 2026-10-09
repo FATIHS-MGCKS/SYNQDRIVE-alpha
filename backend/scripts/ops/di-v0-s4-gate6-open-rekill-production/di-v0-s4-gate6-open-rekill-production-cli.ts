@@ -13,9 +13,11 @@ import {
   type Gate6OpenGuardInput,
 } from './di-v0-s4-gate6-open-rekill-production.lib';
 import {
+  DI_S4_GATE6_DISPATCH_SIGNING_KEY_FILE_ENV,
   DI_S4_GATE6_DISPATCH_TOKEN_DIR_ENV,
   issueLiveOpenDispatchToken,
 } from './di-v0-s4-gate6-dispatch-token.lib';
+import { loadAndVerifyHumanApprovalFile } from './di-v0-s4-gate6-human-approval.lib';
 import {
   consumeGate6LiveOpenDispatchFromEnv,
   evaluateGate6ProductionPathIsolation,
@@ -96,24 +98,40 @@ async function main(): Promise<void> {
         console.log('AUDIT_FIELDS_MISSING=YES');
         process.exit(1);
       }
-      if (process.env.DI_S4_GATE6_OPEN_ACK !== 'YES' || process.env.DI_S4_GATE6_OPEN_AUTHORIZED !== 'YES') {
-        console.log('GATE6_OPEN_AUTHORIZATION=MISSING');
-        process.exit(1);
-      }
       const tokenDir = (process.env[DI_S4_GATE6_DISPATCH_TOKEN_DIR_ENV] ?? '').trim();
       if (!tokenDir) {
         console.log('DISPATCH_TOKEN_DIR_MISSING=YES');
         process.exit(1);
       }
-      const { filePath } = issueLiveOpenDispatchToken(tokenDir, {
+      const pins = {
         requiredSha: process.env.DI_S4_TINY_STAGING_REQUIRED_SHA ?? '',
         requiredReleaseId: process.env.DI_S4_TINY_STAGING_REQUIRED_RELEASE_ID ?? '',
         requiredEnvSha256: process.env.DI_S4_TINY_STAGING_REQUIRED_PRE_ENV_SHA256 ?? '',
         reason: audit.reason,
         actor: audit.actor,
+      };
+      const approval = loadAndVerifyHumanApprovalFile(process.env, pins);
+      if (!approval.ok) {
+        if (approval.failures.includes('INDEPENDENT_APPROVAL_AUTHORITY_BLOCKED')) {
+          console.log('INDEPENDENT_APPROVAL_AUTHORITY=BLOCKED');
+        }
+        console.log(`HUMAN_APPROVAL_FAILURES=${approval.failures.join(',')}`);
+        process.exit(1);
+      }
+      console.log('INDEPENDENT_APPROVAL_AUTHORITY=VERIFIED');
+      const { filePath, signingKeyFilePath } = issueLiveOpenDispatchToken(tokenDir, {
+        approvalId: approval.record.approvalId,
+        requiredSha: pins.requiredSha,
+        requiredReleaseId: pins.requiredReleaseId,
+        requiredEnvSha256: pins.requiredEnvSha256,
+        reason: audit.reason,
+        actor: audit.actor,
       });
       console.log(`DISPATCH_TOKEN_FILE=${filePath}`);
+      console.log(`DISPATCH_SIGNING_KEY_FILE=${signingKeyFilePath}`);
+      console.log(`LIVE_OPEN_APPROVAL_ID=${approval.record.approvalId}`);
       console.log('DISPATCH_TOKEN_ISSUED=YES');
+      console.log('HMAC_KEY_SEPARATION=YES');
       break;
     }
     case 'dry-run-open': {

@@ -27,6 +27,7 @@ import {
 } from './di-v0-s4-gate6-live-authority.lib';
 import {
   issueLiveOpenDispatchToken,
+  DI_S4_GATE6_DISPATCH_SIGNING_KEY_FILE_ENV,
   DI_S4_GATE6_LIVE_OPEN_DISPATCH_TOKEN_FILE_ENV,
 } from './di-v0-s4-gate6-dispatch-token.lib';
 import { resolveCanonicalBackendEnvPathFromFilesystem } from './di-v0-s4-gate6-trusted-authority.lib';
@@ -127,9 +128,10 @@ describe('S4F-7AS Gate-6 open guards (lib)', () => {
     expect(evaluateEmergencyRekillAck(undefined, 'reason', 'actor')).toBe(false);
   });
 
-  it('live-open dispatch requires one-shot token file (env digest not accepted)', () => {
+  it('live-open dispatch requires one-shot token file and signing key sidecar (env digest not accepted)', () => {
     const tokenDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gate6-dispatch-spec-'));
-    const { filePath } = issueLiveOpenDispatchToken(tokenDir, {
+    const { filePath, signingKeyFilePath } = issueLiveOpenDispatchToken(tokenDir, {
+      approvalId: 'apr-spec',
       requiredSha: 'a'.repeat(40),
       requiredReleaseId: 'rel',
       requiredEnvSha256: 'b'.repeat(64),
@@ -145,6 +147,7 @@ describe('S4F-7AS Gate-6 open guards (lib)', () => {
     expect(digestOnly.ok).toBe(false);
     const withToken = consumeGate6LiveOpenDispatchFromEnv({
       [DI_S4_GATE6_LIVE_OPEN_DISPATCH_TOKEN_FILE_ENV]: filePath,
+      [DI_S4_GATE6_DISPATCH_SIGNING_KEY_FILE_ENV]: signingKeyFilePath,
     });
     expect(withToken.ok).toBe(true);
     fs.rmSync(tokenDir, { recursive: true, force: true });
@@ -217,6 +220,31 @@ describe('S4F-7AS CLI authority', () => {
         },
       ),
     ).toThrow();
+  });
+
+  it('issue-dispatch-token is blocked without independent human approval file', () => {
+    try {
+      execFileSync('npx', ['--yes', 'ts-node', '--transpile-only', CLI, 'issue-dispatch-token'], {
+        encoding: 'utf8',
+        cwd: BACKEND_ROOT,
+        env: {
+          ...process.env,
+          DI_S4_GATE6_DISPATCH_TOKEN_DIR: os.tmpdir(),
+          DI_S4_GATE6_OPEN_ACK: 'YES',
+          DI_S4_GATE6_OPEN_AUTHORIZED: 'YES',
+          DI_S4_GATE6_OPERATOR_REASON: 'r',
+          DI_S4_GATE6_OPERATOR_ACTOR: 'a',
+          DI_S4_TINY_STAGING_REQUIRED_SHA: 'a'.repeat(40),
+          DI_S4_TINY_STAGING_REQUIRED_RELEASE_ID: 'rel',
+          DI_S4_TINY_STAGING_REQUIRED_PRE_ENV_SHA256: 'b'.repeat(64),
+        },
+      });
+      throw new Error('expected exit');
+    } catch (error: unknown) {
+      const e = error as { stdout?: string; stderr?: string };
+      const combined = `${e.stdout ?? ''}${e.stderr ?? ''}`;
+      expect(combined).toMatch(/HUMAN_APPROVAL|INDEPENDENT_APPROVAL_AUTHORITY=BLOCKED/);
+    }
   });
 
   it('live-open-authorized rejects self-issued digest env without token file', () => {
