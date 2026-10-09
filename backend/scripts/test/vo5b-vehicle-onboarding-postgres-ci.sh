@@ -9,6 +9,7 @@ export VO5A_OFFBOARDING_PG=1
 export VO5B_REGISTRY_BILLING_PG=1
 export VO5B_AB1_REGISTRY_BILLING_PG=1
 export VO5C_P1_OFFBOARD_PG=1
+export VO5C_P4A_OFFBOARD_HTTP_PG=1
 export VO49_SOURCE_ADOPTION_PG=1
 
 parse_database_url() {
@@ -53,4 +54,5 @@ npm run test:vehicle-onboarding:vo5a:postgres
 npm run test:vehicle-onboarding:vo5b:postgres
 npm run test:vehicle-onboarding:vo5b-ab1:postgres
 npm run test:vehicle-onboarding:vo5c-p1:postgres
+npm run test:vehicle-onboarding:vo5c-p4a:offboard-http:postgres
 npm run test:vehicle-onboarding:vo49:postgres
