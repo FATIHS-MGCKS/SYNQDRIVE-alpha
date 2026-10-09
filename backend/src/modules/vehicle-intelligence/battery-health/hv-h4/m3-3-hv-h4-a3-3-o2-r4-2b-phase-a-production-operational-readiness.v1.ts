@@ -26,6 +26,13 @@ import {
   type M3_3HvH4A3PhaseAOperationalReadinessReportV1,
   type M3_3HvH4A3PhaseAProductionGoNoGoRecordV1,
 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-go-no-go.types.v1';
+import {
+  normalizePhaseAAuthorizedReleaseShaV1,
+  parseUtcIsoTimestampV1,
+  validatePhaseAAuditCredentialExpectationsV1,
+  validatePhaseAIndependentVerifierTimestampV1,
+  validatePhaseAStopConditionsV1,
+} from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-readiness-validation.v1';
 
 export const M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_RECORD_JSON_ENV =
   'M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_RECORD_JSON' as const;
@@ -91,7 +98,13 @@ export function loadPhaseAProductionGoNoGoRecordV1(
   if (record.operatorDecision !== 'GO' && record.operatorDecision !== 'NO_GO') {
     return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_DECISION_INVALID' };
   }
-  if (!record.authorizedReleaseSha?.trim() || !record.changeTicket?.trim()) {
+  const recordRelease = normalizePhaseAAuthorizedReleaseShaV1(record.authorizedReleaseSha);
+  if (!recordRelease.ok) {
+    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_RELEASE_SHA_MALFORMED' };
+  }
+  record.authorizedReleaseSha = recordRelease.normalized;
+
+  if (!record.changeTicket?.trim()) {
     return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_RECORD_INCOMPLETE' };
   }
   if (!record.authorizedHumanApprover?.trim()) {
@@ -116,12 +129,21 @@ export function loadPhaseAProductionGoNoGoRecordV1(
   if (
     !pt ||
     typeof pt.hostname !== 'string' ||
+    !pt.hostname.trim() ||
     typeof pt.database !== 'string' ||
+    !pt.database.trim() ||
     typeof pt.auditLogin !== 'string' ||
-    typeof pt.port !== 'number'
+    !pt.auditLogin.trim() ||
+    typeof pt.port !== 'number' ||
+    !Number.isFinite(pt.port) ||
+    pt.port <= 0 ||
+    pt.port > 65535
   ) {
     return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_TARGET_INCOMPLETE' };
   }
+
+  const auditExpectations = validatePhaseAAuditCredentialExpectationsV1(record.auditCredentialExpectations);
+  if (!auditExpectations.ok) return auditExpectations;
 
   const limits = record.authorizationLimits;
   if (
@@ -135,9 +157,9 @@ export function loadPhaseAProductionGoNoGoRecordV1(
     return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_LIMITS_INVALID' };
   }
 
-  if (!Array.isArray(record.stopConditions) || record.stopConditions.length === 0) {
-    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_STOP_CONDITIONS_REQUIRED' };
-  }
+  const stop = validatePhaseAStopConditionsV1(record.stopConditions);
+  if (!stop.ok) return stop;
+  record.stopConditions = stop.conditions;
   if (!record.incidentHandling?.trim() || !record.evidenceStorageDestination?.trim()) {
     return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_INCIDENT_OR_EVIDENCE_INCOMPLETE' };
   }
@@ -146,11 +168,23 @@ export function loadPhaseAProductionGoNoGoRecordV1(
   if (
     !binding ||
     typeof binding.approvalId !== 'string' ||
+    !binding.approvalId.trim() ||
     typeof binding.executeNonce !== 'string' ||
+    !binding.executeNonce.trim() ||
     typeof binding.validFrom !== 'string' ||
-    typeof binding.validUntil !== 'string'
+    !binding.validFrom.trim() ||
+    typeof binding.validUntil !== 'string' ||
+    !binding.validUntil.trim()
   ) {
     return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_APPROVAL_BINDING_INCOMPLETE' };
+  }
+  const bindingFrom = parseUtcIsoTimestampV1(binding.validFrom);
+  const bindingUntil = parseUtcIsoTimestampV1(binding.validUntil);
+  if (!bindingFrom.ok || !bindingUntil.ok) {
+    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_APPROVAL_BINDING_TIMESTAMP_INVALID' };
+  }
+  if (bindingUntil.epochMs <= bindingFrom.epochMs) {
+    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_APPROVAL_BINDING_WINDOW_REVERSED' };
   }
 
   const store = record.consumptionStore;
@@ -185,6 +219,25 @@ export function loadPhaseAProductionGoNoGoRecordV1(
     return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_SQL_SCOPE_INVALID' };
   }
 
+  const mw = record.maintenanceWindow;
+  if (
+    !mw ||
+    typeof mw.startUtc !== 'string' ||
+    !mw.startUtc.trim() ||
+    typeof mw.endUtc !== 'string' ||
+    !mw.endUtc.trim()
+  ) {
+    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_MAINTENANCE_WINDOW_INCOMPLETE' };
+  }
+  const mwStart = parseUtcIsoTimestampV1(mw.startUtc);
+  const mwEnd = parseUtcIsoTimestampV1(mw.endUtc);
+  if (!mwStart.ok || !mwEnd.ok) {
+    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_MAINTENANCE_WINDOW_INVALID' };
+  }
+  if (mwEnd.epochMs <= mwStart.epochMs) {
+    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_MAINTENANCE_WINDOW_REVERSED' };
+  }
+
   return { ok: true, record };
 }
 
@@ -202,18 +255,41 @@ export function evaluatePhaseAProductionOperationalReadinessV1(
   env: NodeJS.ProcessEnv = process.env,
   options: { now?: Date } = {},
 ): M3_3HvH4A3PhaseAOperationalReadinessReportV1 {
+  try {
+    return evaluatePhaseAProductionOperationalReadinessInnerV1(env, options);
+  } catch {
+    return finalizeReport([], ['PHASE_A_OPERATIONAL_READINESS_EVALUATION_ABORTED'], {}, {
+      authorizedReleaseShaBinding: 'NOT_EVALUATED',
+    });
+  }
+}
+
+function evaluatePhaseAProductionOperationalReadinessInnerV1(
+  env: NodeJS.ProcessEnv,
+  options: { now?: Date } = {},
+): M3_3HvH4A3PhaseAOperationalReadinessReportV1 {
   const now = options.now ?? new Date();
   const checks: M3_3HvH4A3PhaseAOperationalReadinessCheckV1[] = [];
   const blockers: string[] = [];
+  let releaseBinding: M3_3HvH4A3PhaseAOperationalReadinessReportV1['authorizedReleaseShaBinding'] =
+    'NOT_EVALUATED';
 
   const goLoaded = loadPhaseAProductionGoNoGoRecordV1(env);
   if (!goLoaded.ok) {
     fail(checks, 'GO_NO_GO_RECORD', goLoaded.reasonCode);
     blockers.push(goLoaded.reasonCode);
-    return finalizeReport(checks, blockers, {});
+    return finalizeReport(checks, blockers, {}, { authorizedReleaseShaBinding: releaseBinding });
   }
   pass(checks, 'GO_NO_GO_RECORD');
   const go = goLoaded.record;
+
+  const auditRuntime = validatePhaseAAuditCredentialExpectationsV1(go.auditCredentialExpectations);
+  if (!auditRuntime.ok) {
+    fail(checks, 'AUDIT_CREDENTIAL_EXPECTATIONS', auditRuntime.reasonCode);
+    blockers.push(auditRuntime.reasonCode);
+  } else {
+    pass(checks, 'AUDIT_CREDENTIAL_EXPECTATIONS');
+  }
 
   if (go.operatorDecision !== 'GO') {
     fail(checks, 'GO_NO_GO_OPERATOR_DECISION', 'PHASE_A_GO_NO_GO_OPERATOR_DECISION_NO_GO');
@@ -222,13 +298,25 @@ export function evaluatePhaseAProductionOperationalReadinessV1(
     pass(checks, 'GO_NO_GO_OPERATOR_DECISION');
   }
 
-  const releaseShaEnv = env[M3_3_HV_H4_A3_PHASE_A_PRODUCTION_AUTHORIZED_RELEASE_SHA_ENV]?.trim();
-  if (releaseShaEnv && releaseShaEnv !== go.authorizedReleaseSha.trim()) {
+  const releaseShaParsed = normalizePhaseAAuthorizedReleaseShaV1(
+    env[M3_3_HV_H4_A3_PHASE_A_PRODUCTION_AUTHORIZED_RELEASE_SHA_ENV],
+  );
+  if (!releaseShaParsed.ok) {
+    fail(checks, 'AUTHORIZED_RELEASE_SHA', releaseShaParsed.reasonCode);
+    blockers.push(releaseShaParsed.reasonCode);
+  } else if (releaseShaParsed.normalized !== go.authorizedReleaseSha) {
     fail(checks, 'AUTHORIZED_RELEASE_SHA', 'PHASE_A_GO_NO_GO_RELEASE_SHA_MISMATCH');
     blockers.push('PHASE_A_GO_NO_GO_RELEASE_SHA_MISMATCH');
+    releaseBinding = 'CONFIGURATION_CONSISTENCY_ONLY';
   } else {
     pass(checks, 'AUTHORIZED_RELEASE_SHA');
+    releaseBinding = 'CONFIGURATION_CONSISTENCY_ONLY';
   }
+  pushCheck(checks, {
+    checkId: 'AUTHORIZED_RELEASE_SHA_DEPLOYED_EXECUTABLE',
+    status: 'SKIP',
+    reasonCode: 'PHASE_A_RELEASE_SHA_BINDING_CONFIGURATION_ONLY_NOT_DEPLOYED_EXECUTABLE',
+  });
 
   const approvalLoaded = loadPhaseAProductionApprovalRecordV1(env);
   if (!approvalLoaded.ok) {
@@ -282,7 +370,25 @@ export function evaluatePhaseAProductionOperationalReadinessV1(
     } else {
       pass(checks, 'INDEPENDENT_HUMAN_VERIFICATION');
     }
+
+    const verifierTs = validatePhaseAIndependentVerifierTimestampV1(
+      go.independentAuthorizationVerification.verifiedAtUtc,
+      now,
+      go.approvalBinding.validFrom,
+    );
+    if (!verifierTs.ok) {
+      fail(checks, 'INDEPENDENT_VERIFIER_TIMESTAMP', verifierTs.reasonCode);
+      blockers.push(verifierTs.reasonCode);
+    } else {
+      pass(checks, 'INDEPENDENT_VERIFIER_TIMESTAMP');
+    }
   }
+
+  pushCheck(checks, {
+    checkId: 'EXTERNAL_HUMAN_AUTHORIZATION_AUTHENTICATION',
+    status: 'PASS',
+    reasonCode: 'UNVERIFIED_NO_TRUSTED_EXTERNAL_EVIDENCE_SOURCE',
+  });
 
   const specParsed = parsePhaseAProductionTargetSpecFromEnvV1(env);
   if (!specParsed.ok) {
@@ -383,14 +489,14 @@ export function evaluatePhaseAProductionOperationalReadinessV1(
     }
   }
 
-  const mwStart = Date.parse(go.maintenanceWindow.startUtc);
-  const mwEnd = Date.parse(go.maintenanceWindow.endUtc);
-  if (Number.isNaN(mwStart) || Number.isNaN(mwEnd) || mwEnd <= mwStart) {
+  const mwStart = parseUtcIsoTimestampV1(go.maintenanceWindow.startUtc);
+  const mwEnd = parseUtcIsoTimestampV1(go.maintenanceWindow.endUtc);
+  if (!mwStart.ok || !mwEnd.ok) {
     fail(checks, 'MAINTENANCE_WINDOW', 'PHASE_A_GO_NO_GO_MAINTENANCE_WINDOW_INVALID');
     blockers.push('PHASE_A_GO_NO_GO_MAINTENANCE_WINDOW_INVALID');
   } else {
     const ts = now.getTime();
-    if (ts < mwStart || ts > mwEnd) {
+    if (ts < mwStart.epochMs || ts > mwEnd.epochMs) {
       fail(checks, 'MAINTENANCE_WINDOW', 'PHASE_A_GO_NO_GO_OUTSIDE_MAINTENANCE_WINDOW');
       blockers.push('PHASE_A_GO_NO_GO_OUTSIDE_MAINTENANCE_WINDOW');
     } else {
@@ -407,20 +513,28 @@ export function evaluatePhaseAProductionOperationalReadinessV1(
   const approvedTargetKeyRedacted =
     databaseUrl && specParsed.ok ? redactPostgresDatabaseTargetV1(databaseUrl) : undefined;
 
-  return finalizeReport(checks, blockers, {
-    changeTicket: go.changeTicket,
-    approvalId: go.approvalBinding.approvalId,
-    authorizedReleaseSha: go.authorizedReleaseSha,
-    approvedTargetKeyRedacted,
-    consumptionStorePath: resolvedConsumptionPath,
-    evidenceStorageDestination: go.evidenceStorageDestination,
-  });
+  return finalizeReport(
+    checks,
+    blockers,
+    {
+      changeTicket: go.changeTicket,
+      approvalId: go.approvalBinding.approvalId,
+      authorizedReleaseSha: go.authorizedReleaseSha,
+      approvedTargetKeyRedacted,
+      consumptionStorePath: resolvedConsumptionPath,
+      evidenceStorageDestination: go.evidenceStorageDestination,
+    },
+    { authorizedReleaseShaBinding: releaseBinding },
+  );
 }
 
 function finalizeReport(
   checks: M3_3HvH4A3PhaseAOperationalReadinessCheckV1[],
   blockers: string[],
   sanitizedBinding: M3_3HvH4A3PhaseAOperationalReadinessReportV1['sanitizedBinding'],
+  options: {
+    authorizedReleaseShaBinding?: M3_3HvH4A3PhaseAOperationalReadinessReportV1['authorizedReleaseShaBinding'];
+  } = {},
 ): M3_3HvH4A3PhaseAOperationalReadinessReportV1 {
   const uniqueBlockers = [...new Set(blockers)];
   const decision: M3_3HvH4A3PhaseAOperationalReadinessReportV1['decision'] =
@@ -433,6 +547,9 @@ function finalizeReport(
     productionNetworkAccessAttempted: false,
     postgresClientInstantiated: false,
     approvalConsumed: false,
+    externalHumanAuthorizationAuthentication: 'UNVERIFIED',
+    authorizedReleaseShaBinding: options.authorizedReleaseShaBinding ?? 'NOT_EVALUATED',
+    auditCredentialExpectationsDeclaredOnly: true,
     checks,
     blockers: uniqueBlockers,
     sanitizedBinding,

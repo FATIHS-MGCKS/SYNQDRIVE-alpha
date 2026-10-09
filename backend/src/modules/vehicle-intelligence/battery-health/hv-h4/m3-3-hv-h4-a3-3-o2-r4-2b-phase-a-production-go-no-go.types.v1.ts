@@ -84,6 +84,17 @@ export type M3_3HvH4A3PhaseAOperationalReadinessCheckV1 = {
  */
 export type M3_3HvH4A3PhaseAOperationalReadinessDecisionV1 = 'NO_GO' | 'READY';
 
+/** Self-authored JSON cannot prove real human authentication without trusted external evidence. */
+export type M3_3HvH4A3PhaseAExternalHumanAuthorizationAuthenticationV1 = 'UNVERIFIED';
+
+/**
+ * Comparing env `AUTHORIZED_RELEASE_SHA` to GO/NO-GO record proves configuration consistency only —
+ * not that production is running that executable (P1 operational gate).
+ */
+export type M3_3HvH4A3PhaseAAuthorizedReleaseShaBindingKindV1 =
+  | 'CONFIGURATION_CONSISTENCY_ONLY'
+  | 'NOT_EVALUATED';
+
 export type M3_3HvH4A3PhaseAOperationalReadinessReportV1 = {
   contractVersion: typeof M3_3_HV_H4_A3_PHASE_A_OPERATIONAL_READINESS_REPORT_CONTRACT_V1;
   decision: M3_3HvH4A3PhaseAOperationalReadinessDecisionV1;
@@ -91,6 +102,12 @@ export type M3_3HvH4A3PhaseAOperationalReadinessReportV1 = {
   productionNetworkAccessAttempted: false;
   postgresClientInstantiated: false;
   approvalConsumed: false;
+  externalHumanAuthorizationAuthentication: M3_3HvH4A3PhaseAExternalHumanAuthorizationAuthenticationV1;
+  authorizedReleaseShaBinding: M3_3HvH4A3PhaseAAuthorizedReleaseShaBindingKindV1;
+  /**
+   * Declarations in GO/NO-GO JSON are policy attestations — not proof a live PostgreSQL audit role exists.
+   */
+  auditCredentialExpectationsDeclaredOnly: true;
   checks: M3_3HvH4A3PhaseAOperationalReadinessCheckV1[];
   blockers: string[];
   sanitizedBinding: {

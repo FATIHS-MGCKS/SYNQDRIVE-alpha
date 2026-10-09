@@ -6,6 +6,15 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P0-H1 offline GO/NO-GO fail-closed validation
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Required `AUTHORIZED_RELEASE_SHA` env (40-char hex); audit credential expectation runtime validation; fail-closed GO/NO-GO parse (maintenance window, stop conditions, nested objects); verifier timestamp checks; report `UNVERIFIED` human auth + configuration-only release binding |
+| **WHY** | P0 dry-run must never pass with missing release binding or malformed JSON; must not imply deployed-release or authenticated human approval from self-authored JSON |
+| **VALIDATION** | Extended `operational-readiness` + `readiness-validation` unit specs; CLI NO_GO JSON test |
+| **DECISION_STATUS** | VALIDATED (repository offline) |
+
 ## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P0 production Phase-A operational readiness (offline)
 
 | Field | Value |

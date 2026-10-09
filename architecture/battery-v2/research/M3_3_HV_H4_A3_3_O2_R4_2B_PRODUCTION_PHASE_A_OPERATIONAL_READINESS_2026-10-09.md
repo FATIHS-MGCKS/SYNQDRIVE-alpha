@@ -47,7 +47,9 @@ Authentication remains `DOCUMENTED_HUMAN_APPROVAL` on the R4.2A approval record.
 
 Readiness evaluator: `evaluatePhaseAProductionOperationalReadinessV1` — no `PrismaClient`, no DNS/TCP to PostgreSQL, no approval consumption, no execute-ack requirement (pre-execution).
 
-Env inputs (non-secret paths/JSON): `M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_RECORD_{JSON,PATH}`, existing R4.2A approval/target/URL/consumption env vars, optional `M3_3_HV_H4_A3_PHASE_A_PRODUCTION_AUTHORIZED_RELEASE_SHA`.
+Env inputs (non-secret paths/JSON): `M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_RECORD_{JSON,PATH}`, existing R4.2A approval/target/URL/consumption env vars, **required** `M3_3_HV_H4_A3_PHASE_A_PRODUCTION_AUTHORIZED_RELEASE_SHA` (40-char hex, must match GO record — configuration consistency only, not deployed-executable proof).
+
+Report fields (P0-H1): `externalHumanAuthorizationAuthentication=UNVERIFIED` (no trusted external evidence in offline tool); `authorizedReleaseShaBinding=CONFIGURATION_CONSISTENCY_ONLY` when env/record SHA match; `auditCredentialExpectationsDeclaredOnly=true` (not proof of live audit role).
 
 Output: `M3_3_HV_H4_A3_PHASE_A_OPERATIONAL_READINESS_REPORT_V1` JSON (`decision`: `READY` | `NO_GO`).
 

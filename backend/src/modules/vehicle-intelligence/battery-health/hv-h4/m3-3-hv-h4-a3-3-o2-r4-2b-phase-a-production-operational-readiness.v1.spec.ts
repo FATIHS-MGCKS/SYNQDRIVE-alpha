@@ -1,4 +1,5 @@
-import { rmSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { canonicalPostgresTargetKeyV1 } from './m3-3-hv-h4-a3-3-o2-r3-h1-postgres-url-identity.v1';
 import * as phaseAPreflightRunner from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.runner.v1';
@@ -16,7 +17,10 @@ import { M3_3_HV_H4_A3_PHASE_A_PRODUCTION_TARGET_SPEC_CONTRACT_V1 } from './m3-3
 import { M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_CONTRACT_V1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-go-no-go.types.v1';
 import {
   evaluatePhaseAProductionOperationalReadinessV1,
+  loadPhaseAProductionGoNoGoRecordV1,
+  M3_3_HV_H4_A3_PHASE_A_PRODUCTION_AUTHORIZED_RELEASE_SHA_ENV,
   M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_RECORD_JSON_ENV,
+  M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_RECORD_PATH_ENV,
 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-operational-readiness.v1';
 
 const DB_URL =
@@ -129,6 +133,7 @@ function baseEnv(overrides: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
     [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_TARGET_SPEC_JSON_ENV]: JSON.stringify(spec),
     [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_APPROVAL_CONSUMPTION_DIR_ENV]: dir,
     [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_DATABASE_URL_ENV]: DB_URL,
+    [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_AUTHORIZED_RELEASE_SHA_ENV]: go.authorizedReleaseSha,
     ...overrides,
     __consumptionDir: dir,
   } as NodeJS.ProcessEnv;
@@ -169,6 +174,9 @@ describe('evaluatePhaseAProductionOperationalReadinessV1', () => {
     const env = baseEnv();
     const report = evaluatePhaseAProductionOperationalReadinessV1(env);
     expect(report.decision).toBe('READY');
+    expect(report.externalHumanAuthorizationAuthentication).toBe('UNVERIFIED');
+    expect(report.authorizedReleaseShaBinding).toBe('CONFIGURATION_CONSISTENCY_ONLY');
+    expect(report.auditCredentialExpectationsDeclaredOnly).toBe(true);
     expect(report.productionPhaseAExecuted).toBe(false);
     expect(report.approvalConsumed).toBe(false);
     expect(prismaSpy).not.toHaveBeenCalled();
@@ -177,11 +185,154 @@ describe('evaluatePhaseAProductionOperationalReadinessV1', () => {
     rmSync(env.__consumptionDir as string, { recursive: true, force: true });
   });
 
+  it('requires AUTHORIZED_RELEASE_SHA env binding', () => {
+    const env = baseEnv();
+    delete env[M3_3_HV_H4_A3_PHASE_A_PRODUCTION_AUTHORIZED_RELEASE_SHA_ENV];
+    const report = evaluatePhaseAProductionOperationalReadinessV1(env);
+    expect(report.decision).toBe('NO_GO');
+    expect(report.blockers).toContain('PHASE_A_AUTHORIZED_RELEASE_SHA_REQUIRED');
+    rmSync(env.__consumptionDir as string, { recursive: true, force: true });
+  });
+
+  it('rejects release SHA mismatch between env and GO record', () => {
+    const env = baseEnv({
+      [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_AUTHORIZED_RELEASE_SHA_ENV]:
+        '0000000000000000000000000000000000000000',
+    });
+    const report = evaluatePhaseAProductionOperationalReadinessV1(env);
+    expect(report.decision).toBe('NO_GO');
+    expect(report.blockers).toContain('PHASE_A_GO_NO_GO_RELEASE_SHA_MISMATCH');
+    rmSync(env.__consumptionDir as string, { recursive: true, force: true });
+  });
+
+  it('returns NO_GO for malformed GO JSON without throwing', () => {
+    const report = evaluatePhaseAProductionOperationalReadinessV1({
+      [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_RECORD_JSON_ENV]: '{not-json',
+    });
+    expect(report.decision).toBe('NO_GO');
+    expect(report.blockers).toContain('PHASE_A_GO_NO_GO_RECORD_INVALID_JSON');
+  });
+
+  it('returns NO_GO for unreadable GO record path', () => {
+    const report = evaluatePhaseAProductionOperationalReadinessV1({
+      [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_RECORD_PATH_ENV]: '/nonexistent/go-no-go.json',
+    });
+    expect(report.decision).toBe('NO_GO');
+    expect(report.blockers).toContain('PHASE_A_GO_NO_GO_RECORD_UNREADABLE');
+  });
+
+  it('returns NO_GO when maintenanceWindow is missing', () => {
+    const env = baseEnv();
+    const go = JSON.parse(env[M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_RECORD_JSON_ENV] as string);
+    delete go.maintenanceWindow;
+    env[M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_RECORD_JSON_ENV] = JSON.stringify(go);
+    const loaded = loadPhaseAProductionGoNoGoRecordV1(env);
+    expect(loaded.ok).toBe(false);
+    if (!loaded.ok) {
+      expect(loaded.reasonCode).toBe('PHASE_A_GO_NO_GO_MAINTENANCE_WINDOW_INCOMPLETE');
+    }
+    const report = evaluatePhaseAProductionOperationalReadinessV1(env);
+    expect(report.decision).toBe('NO_GO');
+    rmSync(env.__consumptionDir as string, { recursive: true, force: true });
+  });
+
+  it('returns NO_GO for reversed maintenance window timestamps', () => {
+    const env = baseEnv();
+    const go = buildGoRecord({
+      maintenanceWindow: {
+        startUtc: new Date(Date.now() + 3600_000).toISOString(),
+        endUtc: new Date(Date.now() - 3600_000).toISOString(),
+      },
+    });
+    env[M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_RECORD_JSON_ENV] = JSON.stringify(go);
+    const loaded = loadPhaseAProductionGoNoGoRecordV1(env);
+    expect(loaded.ok).toBe(false);
+    if (!loaded.ok) {
+      expect(loaded.reasonCode).toBe('PHASE_A_GO_NO_GO_MAINTENANCE_WINDOW_REVERSED');
+    }
+    rmSync(env.__consumptionDir as string, { recursive: true, force: true });
+  });
+
+  it('returns NO_GO for invalid stopConditions element types', () => {
+    const env = baseEnv();
+    const go = buildGoRecord({ stopConditions: ['valid', 42] });
+    env[M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_RECORD_JSON_ENV] = JSON.stringify(go);
+    const report = evaluatePhaseAProductionOperationalReadinessV1(env);
+    expect(report.decision).toBe('NO_GO');
+    expect(report.blockers).toContain('PHASE_A_GO_NO_GO_STOP_CONDITIONS_INVALID');
+    rmSync(env.__consumptionDir as string, { recursive: true, force: true });
+  });
+
+  it('returns NO_GO when auditCredentialExpectations field is false', () => {
+    const env = baseEnv();
+    const go = buildGoRecord({
+      auditCredentialExpectations: {
+        dedicatedReadOnlyAuditLogin: true,
+        distinctFromApplicationDatabaseUrl: false,
+        distinctFromMigrationOwnerCredentials: true,
+        distinctFromAttestationIssuerPool: true,
+      },
+    });
+    env[M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_RECORD_JSON_ENV] = JSON.stringify(go);
+    const report = evaluatePhaseAProductionOperationalReadinessV1(env);
+    expect(report.decision).toBe('NO_GO');
+    expect(report.blockers).toContain('PHASE_A_GO_NO_GO_AUDIT_CREDENTIAL_EXPECTATIONS_INVALID');
+    rmSync(env.__consumptionDir as string, { recursive: true, force: true });
+  });
+
+  it('returns NO_GO for verifier timestamp in the future', () => {
+    const env = baseEnv();
+    const go = JSON.parse(env[M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_RECORD_JSON_ENV] as string);
+    go.independentAuthorizationVerification.verifiedAtUtc = new Date(Date.now() + 3600_000).toISOString();
+    env[M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_RECORD_JSON_ENV] = JSON.stringify(go);
+    const report = evaluatePhaseAProductionOperationalReadinessV1(env);
+    expect(report.decision).toBe('NO_GO');
+    expect(report.blockers).toContain('PHASE_A_GO_NO_GO_VERIFIER_TIMESTAMP_FUTURE');
+    rmSync(env.__consumptionDir as string, { recursive: true, force: true });
+  });
+
   it('does not import or invoke production runner when module loads', () => {
     const env = baseEnv();
     evaluatePhaseAProductionOperationalReadinessV1(env);
     expect(runnerSpy).not.toHaveBeenCalled();
     rmSync(env.__consumptionDir as string, { recursive: true, force: true });
+  });
+});
+
+describe('operational readiness CLI', () => {
+  it('exits non-zero and prints structured NO_GO JSON on invalid input', () => {
+    let stderr = '';
+    let stdout = '';
+    let exitCode = 0;
+    try {
+      stdout = execFileSync(
+        'npx',
+        [
+          'ts-node',
+          '-r',
+          'tsconfig-paths/register',
+          'scripts/ops/m3-3-hv-h4-a3-o2-r4-2b-phase-a-production-operational-readiness.ts',
+        ],
+        {
+          cwd: join(__dirname, '../../../../..'),
+          env: {
+            ...process.env,
+            M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_RECORD_JSON: '{bad-json',
+          },
+          encoding: 'utf8',
+        },
+      );
+    } catch (error: unknown) {
+      const e = error as { status?: number; stdout?: string; stderr?: string };
+      exitCode = e.status ?? 1;
+      stdout = e.stdout ?? '';
+      stderr = e.stderr ?? '';
+    }
+    expect(exitCode).not.toBe(0);
+    const combined = `${stdout}\n${stderr}`;
+    expect(combined).toContain('PHASE_A_OPERATIONAL_READINESS_SUMMARY');
+    expect(combined).toContain('"decision": "NO_GO"');
+    expect(combined).not.toMatch(/postgresql:\/\//);
   });
 });
 
