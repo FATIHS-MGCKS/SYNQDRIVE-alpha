@@ -48,3 +48,8 @@ cd backend && npm test -- raw-refuel-candidate-v2-rediscovery.matcher.spec.ts --
 RAW_REFUEL_CANDIDATE_POSTGRES_INTEGRATION=1 npm test -- raw-refuel-candidate-r3b-v2-rediscovery.postgres.integration.spec.ts --runInBand
 bash scripts/test/rfrf-f4-pr2-runtime-postgres-gate.sh
 ```
+
+## CI repair (2026-10-09)
+
+- Stage-3/4 workflows use `public.ecr.aws/docker/library/postgres:16-alpine` when Docker Hub rate limits block `postgres:16-alpine`.
+- R2 PG10: v2 observations carry explicit `FRESH` baseline meta so post cross-version upgrade, repeat v2→v2 rediscovery stays idempotent on KS MS 661.
