@@ -53,44 +53,13 @@ function withVerifyFullTlsParams(databaseUrl: string, sslrootcert = DEFAULT_SSLR
 
 function buildProductionFixtureEnv(
   productionDatabaseUrl: string,
-  options: { consumptionDir: string },
+  options: { consumptionDir: string; migrationOwnerDatabaseUrl: string },
 ): NodeJS.ProcessEnv {
-  const parsed = new URL(productionDatabaseUrl.replace(/^postgresql:/, 'postgres:'));
-  const login = parsePostgresUrlLoginV1(productionDatabaseUrl) ?? 'synqdrive';
-  const key = canonicalPostgresTargetKeyV1(productionDatabaseUrl)!;
-  const approvalId = `apr-int-${Date.now()}`;
-  const nonce = `nonce-${Date.now()}`;
-  const record = {
-    contractVersion: M3_3_HV_H4_A3_PHASE_A_PRODUCTION_APPROVAL_CONTRACT_V1,
-    approvalId,
-    changeTicket: 'CHG-INTEGRATION-FIXTURE',
-    approvingAuthority: 'ci-fixture@synqdrive.local',
-    approvedTargetKey: key,
-    validFrom: new Date(Date.now() - 60_000).toISOString(),
-    validUntil: new Date(Date.now() + 3600_000).toISOString(),
-    executeNonce: nonce,
-    authenticationKind: 'DOCUMENTED_HUMAN_APPROVAL' as const,
-  };
-  const spec = {
-    contractVersion: M3_3_HV_H4_A3_PHASE_A_PRODUCTION_TARGET_SPEC_CONTRACT_V1,
-    hostname: parsed.hostname,
-    port: Number(parsed.port || '5432'),
-    database: parsed.pathname.replace(/^\//, '').split('/')[0],
-    expectedAuditLogin: login,
-    forbidSuperuserSession: true,
-  };
-
-  return {
-    [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_PREFLIGHT_ENABLED_ENV]: '1',
-    [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_DATABASE_URL_ENV]: productionDatabaseUrl,
-    [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_EXECUTE_ACK_ENV]: '1',
-    [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_EXECUTE_APPROVAL_ID_ENV]: approvalId,
-    [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_EXECUTE_NONCE_ENV]: nonce,
-    [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_APPROVAL_RECORD_JSON_ENV]: JSON.stringify(record),
-    [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_TARGET_SPEC_JSON_ENV]: JSON.stringify(spec),
-    [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_APPROVAL_CONSUMPTION_DIR_ENV]: options.consumptionDir,
-    __consumptionDir: options.consumptionDir,
-  } as NodeJS.ProcessEnv;
+  return buildPhaseAProductionP1IntegrationEnvV1({
+    productionDatabaseUrl,
+    migrationOwnerDatabaseUrl: options.migrationOwnerDatabaseUrl,
+    consumptionDir: options.consumptionDir,
+  });
 }
 
 function restoreEnv(keys: string[], prev: Record<string, string | undefined>): void {
@@ -114,7 +83,10 @@ function restoreEnv(keys: string[], prev: Record<string, string | undefined>): v
       const consumptionDir = join(process.cwd(), `.phase-a-prod-no-go-${Date.now()}`);
       provisionPhaseAProductionConsumptionStoreFixtureV1(consumptionDir);
       const verifyFullUrl = withVerifyFullTlsParams(integrationDatabaseUrl);
-      const fixture = buildProductionFixtureEnv(verifyFullUrl, { consumptionDir });
+      const fixture = buildProductionFixtureEnv(verifyFullUrl, {
+        consumptionDir,
+        migrationOwnerDatabaseUrl: integrationDatabaseUrl,
+      });
       const keys = Object.keys(fixture);
       const prev: Record<string, string | undefined> = {};
       for (const k of keys) prev[k] = process.env[k];
@@ -140,7 +112,10 @@ function restoreEnv(keys: string[], prev: Record<string, string | undefined>): v
       const consumptionDir = join(process.cwd(), `.phase-a-prod-harness-${Date.now()}`);
       provisionPhaseAProductionConsumptionStoreFixtureV1(consumptionDir);
       const verifyFullUrl = withVerifyFullTlsParams(integrationDatabaseUrl);
-      const fixture = buildProductionFixtureEnv(verifyFullUrl, { consumptionDir });
+      const fixture = buildProductionFixtureEnv(verifyFullUrl, {
+        consumptionDir,
+        migrationOwnerDatabaseUrl: integrationDatabaseUrl,
+      });
       const keys = Object.keys(fixture);
       const prev: Record<string, string | undefined> = {};
       for (const k of keys) prev[k] = process.env[k];
@@ -174,6 +149,7 @@ function restoreEnv(keys: string[], prev: Record<string, string | undefined>): v
       const ephemeralDir = mkdtempSync(join(tmpdir(), 'phase-a-prod-ephemeral-'));
       const fixture = buildProductionFixtureEnv(verifyFullUrl, {
         consumptionDir: ephemeralDir,
+        migrationOwnerDatabaseUrl: integrationDatabaseUrl,
       });
       const admission = evaluatePhaseAPreflightProductionAdmissionV1(verifyFullUrl, fixture, {
         consumeApproval: false,
@@ -279,7 +255,10 @@ function restoreEnv(keys: string[], prev: Record<string, string | undefined>): v
         integrationDatabaseUrl,
       );
       const verifyFullUrl = withVerifyFullTlsParams(auditDatabaseUrl);
-      const fixture = buildProductionFixtureEnv(verifyFullUrl, { consumptionDir });
+      const fixture = buildProductionFixtureEnv(verifyFullUrl, {
+        consumptionDir,
+        migrationOwnerDatabaseUrl: integrationDatabaseUrl,
+      });
       const keys = Object.keys(fixture);
       const prev: Record<string, string | undefined> = {};
       for (const k of keys) prev[k] = process.env[k];
