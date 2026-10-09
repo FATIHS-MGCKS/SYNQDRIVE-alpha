@@ -37,7 +37,7 @@ describe('p25-apd-shadow-overlay', () => {
       reconnectPending: false,
       tripAuthorityDisagreement: true,
     });
-    expect(out.decision).toBe('FORCED_TRIP_SAFETY');
+    expect(out.decision).toBe('NOT_ELIGIBLE_ACTIVE_TRIP');
     expect(out.reason).toBe('TRIP_AUTHORITY_DISAGREEMENT');
   });
 

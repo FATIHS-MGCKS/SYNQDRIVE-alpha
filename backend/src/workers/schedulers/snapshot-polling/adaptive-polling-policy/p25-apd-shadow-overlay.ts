@@ -70,13 +70,10 @@ export function applyP25ApdShadowSafetyOverlay(
     const mapped = mapProfileInvalidationToShadowOverlay(overlay.invalidationReason);
     return { ...decision, ...mapped };
   }
-  if (
-    overlay.tripAuthorityDisagreement &&
-    decision.decision === 'WOULD_SKIP'
-  ) {
+  if (overlay.tripAuthorityDisagreement && decision.decision === 'WOULD_SKIP') {
     return {
       ...decision,
-      decision: 'FORCED_TRIP_SAFETY',
+      decision: 'NOT_ELIGIBLE_ACTIVE_TRIP',
       reason: 'TRIP_AUTHORITY_DISAGREEMENT',
     };
   }

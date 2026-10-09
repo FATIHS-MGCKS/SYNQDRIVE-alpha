@@ -6,6 +6,7 @@ import {
   evaluateP25ApdB4V1Core,
   evaluateP25ApdB2V1Core,
 } from '../adaptive-polling-policy/p25-apd-policy-engine';
+import { buildP25ApdProfileLvLoaderWhere } from '../adaptive-polling-policy/p25-apd-profile-lv-loader';
 import { evaluateP25ApdProfile } from '../adaptive-polling-policy/p25-apd-profile-evaluator';
 import { applyP25ApdShadowSafetyOverlay } from '../adaptive-polling-policy/p25-apd-shadow-overlay';
 import type { P25ApdShadowPrePollInput } from '../adaptive-polling-policy/p25-apd-shadow-decision.types';
@@ -412,12 +413,7 @@ export class AdaptivePollingShadowService {
     decisionAtMs: number,
   ): Promise<number[]> {
     const rows = await this.prisma.batteryMeasurement.findMany({
-      where: {
-        vehicleId,
-        type: 'LIVE_VOLTAGE',
-        quality: 'VALID',
-        providerTimestamp: { not: null, lte: new Date(decisionAtMs) },
-      },
+      where: buildP25ApdProfileLvLoaderWhere(vehicleId, decisionAtMs),
       orderBy: { providerTimestamp: 'desc' },
       take: 24,
       select: { providerTimestamp: true },

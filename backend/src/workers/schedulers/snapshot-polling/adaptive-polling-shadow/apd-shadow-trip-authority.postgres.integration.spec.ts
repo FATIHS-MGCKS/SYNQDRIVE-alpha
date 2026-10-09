@@ -105,7 +105,7 @@ describePg('APDS R4 P2 trip authority (Postgres integration)', () => {
         vehicleId: vehicleArteon,
         startTime: new Date('2026-08-01T11:25:00Z'),
         endTime: null,
-        tripStatus: TripStatus.CANCELLED,
+        tripStatus: TripStatus.ONGOING,
       },
     });
 
@@ -229,6 +229,38 @@ describePg('APDS R4 P2 trip authority (Postgres integration)', () => {
     });
     expect(rows.every((r) => r.reconciliation === false)).toBe(true);
     expect(rows.every((r) => r.decision === 'FORCED_TRIP_SAFETY')).toBe(true);
+  });
+
+  it('delayed ingestion cannot contaminate profile corpus at earlier decision time', async () => {
+    const lateObserved = new Date(decisionAtMs + 60_000);
+    await prisma.batteryMeasurement.create({
+      data: {
+        organizationId,
+        vehicleId: vehicleAudi,
+        type: BatteryMeasurementType.LIVE_VOLTAGE,
+        scope: BatteryEvidenceScope.LV,
+        quality: BatteryMeasurementQuality.VALID,
+        numericValue: 12.5,
+        unit: 'V',
+        providerTimestamp: new Date(decisionAtMs - 120_000),
+        observedAt: lateObserved,
+        idempotencyKey: `audi-late-ingest:${randomUUID()}`,
+      },
+    });
+    const where = {
+      vehicleId: vehicleAudi,
+      type: BatteryMeasurementType.LIVE_VOLTAGE,
+      quality: BatteryMeasurementQuality.VALID,
+      providerTimestamp: { not: null, lte: new Date(decisionAtMs) },
+      observedAt: { lte: new Date(decisionAtMs) },
+    };
+    const rows = await prisma.batteryMeasurement.findMany({
+      where,
+      orderBy: { providerTimestamp: 'desc' },
+      take: 24,
+    });
+    expect(rows.every((r) => r.observedAt.getTime() <= decisionAtMs)).toBe(true);
+    expect(rows.some((r) => r.observedAt.getTime() === lateObserved.getTime())).toBe(false);
   });
 
   it('Tesla proxy: zero decision-bounded LV corpus but historical visibility at poll completion', async () => {
