@@ -42,7 +42,8 @@ vps_vo5c_deploy_script_has_r2_bootstrap_markers() {
   [[ -f "$deploy_script_path" ]] \
     && grep -q 'vps-vo5c-security-floor.lib.sh' "$deploy_script_path" \
     && grep -q 'vps_vo5c_require_rollback_guard_ready' "$deploy_script_path" \
-    && grep -q 'SYNQDRIVE_VO5C_ROLLBACK_AUTHORITY_OPS_DIR' "$deploy_script_path"
+    && grep -q 'SYNQDRIVE_VO5C_ROLLBACK_AUTHORITY_OPS_DIR' "$deploy_script_path" \
+    && grep -q 'vps_vo5c_assert_deploy_target_admitted' "$deploy_script_path"
 }
 
 vps_vo5c_executor_root_has_r2_authority() {

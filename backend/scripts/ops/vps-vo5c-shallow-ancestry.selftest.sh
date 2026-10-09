@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# VO5C — shallow git clone ancestry verification (isolated).
+# VO5C — production-like shallow git clone ancestry verification (isolated).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -23,41 +23,57 @@ fi
 pass "IMMUTABLE_FLOOR_PRESERVED"
 unset VO5C_SECURITY_FLOOR_SHA
 
-clone_shallow() {
+production_like_shallow_clone() {
   local sha=$1
   local dest=$2
-  git clone --depth 1 --branch "$sha" "file://${REPO_ROOT}" "$dest" 2>/dev/null || {
-    git clone "file://${REPO_ROOT}" "$dest" >/dev/null
-    git -C "$dest" checkout -q "$sha" >/dev/null
-    git -C "$dest" repack -adf >/dev/null 2>&1 || true
-  }
+  rm -rf "$dest"
+  mkdir -p "$dest"
+  git -C "$dest" init -q
+  git -C "$dest" remote add origin "file://${REPO_ROOT}"
+  git -C "$dest" fetch --depth=1 origin "$sha"
+  git -C "$dest" checkout -q FETCH_HEAD
+  if [[ "$(git -C "$dest" rev-parse --is-shallow-repository 2>/dev/null)" != "true" ]]; then
+    fail "fixture must remain shallow (depth=1) before ancestry reconstruction sha=${sha}"
+  fi
 }
 
 WT_FLOOR="$(mktemp -d)"
-clone_shallow "$FLOOR_SHA" "$WT_FLOOR"
+production_like_shallow_clone "$FLOOR_SHA" "$WT_FLOOR"
+pass "GENUINE_DEPTH1_FIXTURE"
 if ! vps_vo5c_assert_release_rollback_eligible "$WT_FLOOR" "$FLOOR_SHA" >/dev/null 2>&1; then
   fail "shallow floor should be allowed"
 fi
 pass "SHALLOW_SECURITY_FLOOR_ALLOWED"
 
 WT_DESC="$(mktemp -d)"
-clone_shallow "$DESCENDANT_SHA" "$WT_DESC"
+production_like_shallow_clone "$DESCENDANT_SHA" "$WT_DESC"
 if ! vps_vo5c_assert_release_rollback_eligible "$WT_DESC" >/dev/null 2>&1; then
   fail "shallow safe descendant should be allowed after reconstruction"
 fi
-pass "SHALLOW_SAFE_DESCENDANT_ALLOWED"
+pass "SAFE_SHALLOW_DESCENDANT_PASS"
 
 WT_OLD="$(mktemp -d)"
-clone_shallow "$OLD_PROD_SHA" "$WT_OLD"
+production_like_shallow_clone "$OLD_PROD_SHA" "$WT_OLD"
 if vps_vo5c_assert_release_rollback_eligible "$WT_OLD" "$OLD_PROD_SHA" >/dev/null 2>&1; then
   fail "shallow pre-floor must be denied"
 fi
-pass "SHALLOW_UNSAFE_ANCESTOR_DENIED"
+pass "UNSAFE_SHALLOW_ANCESTOR_DENIED"
 
 if vps_vo5c_assert_release_rollback_eligible "$WT_DESC" "$UNRELATED_SHA" >/dev/null 2>&1; then
   fail "unrelated sha must be denied"
 fi
 pass "SHALLOW_UNKNOWN_ANCESTRY_DENIED"
 
-rm -rf "$WT_FLOOR" "$WT_DESC" "$WT_OLD"
+WT_UNAVAIL="$(mktemp -d)"
+production_like_shallow_clone "$DESCENDANT_SHA" "$WT_UNAVAIL"
+git -C "$WT_UNAVAIL" remote set-url origin "file:///nonexistent-vo5c-shallow-${WT_UNAVAIL##*/}"
+export SYNQDRIVE_GIT_REPO="file://${REPO_ROOT}"
+if vps_vo5c_assert_release_rollback_eligible "$WT_UNAVAIL" "$DESCENDANT_SHA" >/dev/null 2>&1; then
+  unset SYNQDRIVE_GIT_REPO
+  fail "unavailable ancestry must be denied when floor history cannot be recovered"
+fi
+unset SYNQDRIVE_GIT_REPO
+pass "UNAVAILABLE_SHALLOW_HISTORY_DENIED"
+
+rm -rf "$WT_FLOOR" "$WT_DESC" "$WT_OLD" "$WT_UNAVAIL"
 echo "vps-vo5c-shallow-ancestry selftest: OK"

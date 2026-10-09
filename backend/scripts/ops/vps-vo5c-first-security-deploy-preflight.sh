@@ -7,6 +7,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib/vps-vo5c-security-floor.lib.sh"
 # shellcheck source=lib/vps-vo5c-deploy-executor-selection.lib.sh
 source "${SCRIPT_DIR}/lib/vps-vo5c-deploy-executor-selection.lib.sh"
+# shellcheck source=lib/vps-vo5c-deploy-admission.lib.sh
+source "${SCRIPT_DIR}/lib/vps-vo5c-deploy-admission.lib.sh"
 # shellcheck source=lib/vps-deploy-controller.lib.sh
 source "${SCRIPT_DIR}/lib/vps-deploy-controller.lib.sh"
 
@@ -30,9 +32,21 @@ if [[ -z "$PINNED_EXECUTOR_SHA" ]] || ! vps_vo5c_is_full_sha "$PINNED_EXECUTOR_S
   abort "pinned_executor_sha_invalid"
 fi
 
+if [[ -z "$REQUESTED_DEPLOY_SHA" ]] || ! vps_vo5c_is_full_sha "$REQUESTED_DEPLOY_SHA"; then
+  abort "requested_deploy_sha_required"
+fi
+
+if [[ -z "$STAGED_RELEASE_ROOT" || ! -d "$STAGED_RELEASE_ROOT" ]]; then
+  abort "staged_release_root_required"
+fi
+
 actual_executor_sha="$(git -C "$PINNED_EXECUTOR_ROOT" rev-parse HEAD 2>/dev/null || true)"
 if [[ "$actual_executor_sha" != "$PINNED_EXECUTOR_SHA" ]]; then
   abort "pinned_executor_sha_mismatch actual=${actual_executor_sha:-unknown}"
+fi
+
+if ! vps_vo5c_verify_executor_tree_integrity "$PINNED_EXECUTOR_ROOT" "$PINNED_EXECUTOR_SHA"; then
+  abort "pinned_executor_tree_integrity_failed"
 fi
 
 deploy_script="${PINNED_EXECUTOR_ROOT}/backend/scripts/ops/vps-deploy-release.sh"
@@ -54,23 +68,15 @@ if ! vps_vo5c_verify_ancestry_includes_floor "$PINNED_EXECUTOR_ROOT" "$PINNED_EX
   abort "pinned_executor_below_security_floor"
 fi
 
-if [[ -n "$REQUESTED_DEPLOY_SHA" ]]; then
-  if ! vps_vo5c_is_full_sha "$REQUESTED_DEPLOY_SHA"; then
-    abort "requested_deploy_sha_invalid"
-  fi
+staged_sha="$(vps_vo5c_release_head_sha "$STAGED_RELEASE_ROOT")"
+if [[ -z "$staged_sha" ]]; then
+  abort "staged_release_not_git_checkout"
 fi
-
-if [[ -n "$STAGED_RELEASE_ROOT" ]]; then
-  staged_sha="$(vps_vo5c_release_head_sha "$STAGED_RELEASE_ROOT")"
-  if [[ -z "$staged_sha" ]]; then
-    abort "staged_release_not_git_checkout"
-  fi
-  if [[ -n "$REQUESTED_DEPLOY_SHA" && "$staged_sha" != "$REQUESTED_DEPLOY_SHA" ]]; then
-    abort "staged_release_sha_mismatch"
-  fi
-  if ! vps_vo5c_assert_release_rollback_eligible "$STAGED_RELEASE_ROOT" "$staged_sha"; then
-    abort "staged_release_not_rollback_eligible"
-  fi
+if [[ "$staged_sha" != "$REQUESTED_DEPLOY_SHA" ]]; then
+  abort "staged_release_sha_mismatch"
+fi
+if ! vps_vo5c_assert_deploy_target_admitted "$STAGED_RELEASE_ROOT" "$REQUESTED_DEPLOY_SHA"; then
+  abort "staged_deploy_target_not_admitted"
 fi
 
 replica_source="$(vps_vo5c_simulate_replica_lib_source_from_deploy_script "$deploy_script" "$S4F7Q_GATE")"
@@ -89,10 +95,8 @@ fi
 
 if [[ -f "$CURRENT_EXECUTOR_SCRIPT" ]]; then
   if ! vps_vo5c_deploy_script_has_r2_bootstrap_markers "$CURRENT_EXECUTOR_SCRIPT"; then
-    vps_vo5c_log "WARN current_executor_unprotected path=${CURRENT_EXECUTOR_SCRIPT}"
-    if [[ "${SYNQDRIVE_VO5C_ALLOW_CURRENT_EXECUTOR:-0}" != "1" ]]; then
-      abort "first_security_deploy_requires_pinned_executor_not_current"
-    fi
+    vps_vo5c_log "INFO legacy_current_executor_present path=${CURRENT_EXECUTOR_SCRIPT} (not used for execution)"
+    abort "first_security_deploy_requires_pinned_executor_not_current"
   fi
   current_source="$(vps_vo5c_simulate_replica_lib_source_from_deploy_script "$CURRENT_EXECUTOR_SCRIPT" "$S4F7Q_GATE")"
   if [[ "$current_source" == "controller" ]]; then
@@ -100,5 +104,5 @@ if [[ -f "$CURRENT_EXECUTOR_SCRIPT" ]]; then
   fi
 fi
 
-vps_vo5c_log "PREFLIGHT_PASS pinned_executor_sha=${PINNED_EXECUTOR_SHA} replica_source=${replica_source} s4f7q=${S4F7Q_GATE}"
+vps_vo5c_log "PREFLIGHT_PASS pinned_executor_sha=${PINNED_EXECUTOR_SHA} target_sha=${REQUESTED_DEPLOY_SHA} replica_source=${replica_source} s4f7q=${S4F7Q_GATE}"
 exit 0

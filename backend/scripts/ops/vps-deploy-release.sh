@@ -2,6 +2,7 @@
 set -euo pipefail
 
 DEPLOY_EXECUTOR_OPS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DEPLOY_EXECUTOR_ROOT="$(cd "${DEPLOY_EXECUTOR_OPS_DIR}/../../.." && pwd)"
 # shellcheck source=lib/vps-exp021-fleet-deploy-guard.lib.sh
 source "${DEPLOY_EXECUTOR_OPS_DIR}/lib/vps-exp021-fleet-deploy-guard.lib.sh"
 
@@ -15,6 +16,26 @@ vps_validate_requested_deploy_sha() {
     exit 1
   fi
 }
+
+if [[ -z "$REQUESTED_SHA" ]]; then
+  echo "!! ABORT: SYNQDRIVE_REQUESTED_DEPLOY_SHA is required (VO5C deploy target admission)" >&2
+  exit 1
+fi
+vps_validate_requested_deploy_sha "$REQUESTED_SHA"
+
+if [[ -f "${DEPLOY_EXECUTOR_OPS_DIR}/lib/vps-vo5c-security-floor.lib.sh" ]]; then
+  # shellcheck source=lib/vps-vo5c-security-floor.lib.sh
+  source "${DEPLOY_EXECUTOR_OPS_DIR}/lib/vps-vo5c-security-floor.lib.sh"
+  # shellcheck source=lib/vps-vo5c-deploy-admission.lib.sh
+  source "${DEPLOY_EXECUTOR_OPS_DIR}/lib/vps-vo5c-deploy-admission.lib.sh"
+  EXECUTOR_HEAD="$(git -C "$DEPLOY_EXECUTOR_ROOT" rev-parse HEAD 2>/dev/null || true)"
+  if [[ -n "$EXECUTOR_HEAD" ]]; then
+    vps_vo5c_verify_executor_tree_integrity "$DEPLOY_EXECUTOR_ROOT" "$EXECUTOR_HEAD" || {
+      echo "!! ABORT: deploy executor tree integrity check failed (VO5C)" >&2
+      exit 1
+    }
+  fi
+fi
 
 vps_clone_release_at_sha() {
   local dest=$1
@@ -63,6 +84,18 @@ fi
 
 echo "==> Clone release ${RELEASE_ID}"
 vps_clone_release_at_sha "$RELEASE_DIR" "$REQUESTED_SHA"
+
+RELEASE_OPS_DIR="${RELEASE_DIR}/backend/scripts/ops"
+# VO5C: target admission before migrations, promotion, or process restarts.
+# shellcheck source=lib/vps-vo5c-security-floor.lib.sh
+source "${RELEASE_OPS_DIR}/lib/vps-vo5c-security-floor.lib.sh"
+# shellcheck source=lib/vps-vo5c-deploy-admission.lib.sh
+source "${RELEASE_OPS_DIR}/lib/vps-vo5c-deploy-admission.lib.sh"
+if ! vps_vo5c_assert_deploy_target_admitted "$RELEASE_DIR" "$REQUESTED_SHA"; then
+  echo "!! ABORT: deploy target failed VO5C security-floor admission for ${REQUESTED_SHA}" >&2
+  exit 1
+fi
+echo "==> VO5C deploy target admitted: ${REQUESTED_SHA:0:12}"
 
 echo "==> Link shared env/uploads"
 ln -sfn /opt/synqdrive/shared/backend.env "$RELEASE_DIR/backend/.env"
@@ -132,10 +165,7 @@ echo "==> Switch current + rolling multi-replica restart"
 # Source ops libs from the NEW release being promoted — not the pre-switch current
 # symlink copy of this script (P1.8.3 / OQ-18 bootstrap caveat: old current would
 # load pre-P1.8.3.1 verify_post_deploy without the convergence gate).
-RELEASE_OPS_DIR="${RELEASE_DIR}/backend/scripts/ops"
 # Candidate release carries canonical VO5C rollback authority (required before any replica ops).
-# shellcheck source=lib/vps-vo5c-security-floor.lib.sh
-source "${RELEASE_OPS_DIR}/lib/vps-vo5c-security-floor.lib.sh"
 vps_vo5c_require_rollback_guard_ready || exit 1
 export SYNQDRIVE_VO5C_ROLLBACK_AUTHORITY_OPS_DIR="${RELEASE_OPS_DIR}"
 # shellcheck source=vps-production-replica-topology.config.sh

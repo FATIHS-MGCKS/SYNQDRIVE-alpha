@@ -87,10 +87,12 @@ assert_denied "mismatched_claimed_sha" vps_vo5c_assert_release_rollback_eligible
 assert_denied "missing_release_directory" vps_vo5c_assert_release_rollback_eligible "/nonexistent/vo5c-release" "$FLOOR_SHA"
 
 SHALLOW_DIR="$(mktemp -d "${WT_BASE}/shallow.XXXX")"
-if ! git clone --depth 1 --branch "$OLD_PROD_SHA" "file://${REPO_ROOT}" "$SHALLOW_DIR" >/dev/null 2>&1; then
-  git clone "file://${REPO_ROOT}" "$SHALLOW_DIR" >/dev/null
-  git -C "$SHALLOW_DIR" checkout -q "$OLD_PROD_SHA" >/dev/null
-fi
+rm -rf "$SHALLOW_DIR"
+mkdir -p "$SHALLOW_DIR"
+git -C "$SHALLOW_DIR" init -q
+git -C "$SHALLOW_DIR" remote add origin "file://${REPO_ROOT}"
+git -C "$SHALLOW_DIR" fetch --depth=1 origin "$OLD_PROD_SHA"
+git -C "$SHALLOW_DIR" checkout -q FETCH_HEAD
 if ! vps_vo5c_assert_release_rollback_eligible "$SHALLOW_DIR" "$OLD_PROD_SHA" >/dev/null 2>&1; then
   pass "shallow_or_old_history_denied"
 else
