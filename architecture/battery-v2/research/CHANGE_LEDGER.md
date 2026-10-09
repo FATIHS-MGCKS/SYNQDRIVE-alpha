@@ -6,6 +6,16 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2A security closure: Jest 30.5.2 (baseline audit regression)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Backend devDependencies: `jest@^30.5.2`, `ts-jest@^29.4.14`, `@types/jest@^30.0.0` — `jest-resolve-dependencies@30.5.2` |
+| **WHY** | PR lockfile delta (`pg` / `@prisma/adapter-pg`) changed npm audit fallback identity for existing Jest 29.7.0 high finding → `SECURITY_REGRESSION=true` in Legal Documents baseline-aware scan |
+| **VALIDATION** | `scripts/audits/audit-dependencies.sh` (PR base `main` vs head); HV-H4 Jest suite |
+| **OBSERVED_EFFECT** | `SECURITY_REGRESSION=false`; `jest-resolve-dependencies` no longer high severity |
+| **DECISION_STATUS** | VALIDATED (repository) |
+
 ## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2A-H2 merge-gate: fail-closed production Prisma factory
 
 | Field | Value |
