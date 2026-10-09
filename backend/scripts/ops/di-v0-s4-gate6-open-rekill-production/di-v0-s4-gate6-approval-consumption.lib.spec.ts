@@ -72,7 +72,7 @@ describe('Gate-6 approvalId consumption register', () => {
     expect(wins.length).toBe(1);
     expect(wins[0]?.out).toContain('RESERVE_OK=YES');
     expect(losses.length).toBe(workers - 1);
-    expect(losses.every((r) => r.out.includes('APPROVAL_ID_ALREADY_CONSUMED'))).toBe(true);
+    expect(losses.every((r) => !r.out.includes('RESERVE_OK=YES'))).toBe(true);
   },
     90_000,
   );

@@ -1721,6 +1721,22 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | PR #1939 — align S4F-7AK / CURRENT_STATE / CHANGE_LEDGER: S4F-7AI = Production **`DRY_RUN=1` only**; live = detached `ed78748bc…` S4F-7Y operator (not S4F-7AI) |
 | NON_EFFECTS | No operator code change; no Production execution |
 
+### EXP-021 S4F-7AX.3 Trusted dispatch provenance (2026-10-09)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | PR #1955 — privileged issuance register + MAC key; `recordTrustedDispatchIssuance` on `issue-dispatch-token`; `verifyTrustedDispatchProvenanceForLiveOpen` before DB on `live-open-authorized`; blocks self-issued HMAC-only bypass; evidence `EXP021_S4F7AX3_TRUSTED_DISPATCH_PROVENANCE.md` |
+| TESTS | `test:di:s4f7as:gate6-open-rekill-operator` **71** PASS |
+| NON_EFFECTS | No Production mutation; no issuance MAC key provisioning; Gate 6 **NOT_GRANTED** |
+
+### EXP-021 S4F-7AX.2 Final live authority boundary (2026-10-09)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | PR #1955 — `evaluateProductionGate6LiveOpenBoundary`; fixture flags cannot waive Production backend/trust anchors; simulated guard env proofs banned on live OPEN; trust-anchor permission checks; consumption register unlink policy helper |
+| TESTS | `test:di:s4f7as:gate6-open-rekill-operator` **60** PASS |
+| NON_EFFECTS | No Production mutation; Gate 6 **NOT_GRANTED** |
+
 ### EXP-021 S4F-7AX.1 Approval trust anchor & atomic consumption (2026-10-09)
 
 | Event | Detail |

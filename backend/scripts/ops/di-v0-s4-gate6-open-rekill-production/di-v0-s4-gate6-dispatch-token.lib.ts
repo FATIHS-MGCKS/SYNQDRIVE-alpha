@@ -153,6 +153,78 @@ function markTokenSpent(originalTokenPath: string): void {
   fs.writeFileSync(dispatchTokenSpentMarkerPath(originalTokenPath), `${Date.now()}\n`, { encoding: 'utf8', mode: 0o600 });
 }
 
+/**
+ * Read-only dispatch token validation (MAC + TTL). Does not claim, spend, or remove sidecars.
+ */
+export function peekLiveOpenDispatchToken(
+  filePath: string,
+  options: { signingKeyFile: string; nowMs?: number },
+): { ok: true; record: LiveOpenDispatchTokenRecord } | { ok: false; failures: DispatchTokenFailure[] } {
+  const nowMs = options.nowMs ?? Date.now();
+  const failures: DispatchTokenFailure[] = [];
+  if (!filePath.trim()) failures.push('DISPATCH_TOKEN_FILE_MISSING');
+  const signingKeyFile = (options.signingKeyFile ?? '').trim();
+  if (!signingKeyFile) failures.push('DISPATCH_SIGNING_KEY_MISSING');
+  if (failures.length) return { ok: false, failures };
+
+  const spent = dispatchTokenSpentMarkerPath(filePath);
+  if (fs.existsSync(spent)) {
+    return { ok: false, failures: ['DISPATCH_TOKEN_REPLAY_DETECTED'] };
+  }
+  if (!fs.existsSync(filePath)) {
+    return { ok: false, failures: ['DISPATCH_TOKEN_FILE_MISSING'] };
+  }
+
+  const expectedKeyPath = dispatchSigningKeySidecarPath(filePath);
+  if (path.resolve(signingKeyFile) !== path.resolve(expectedKeyPath)) {
+    failures.push('DISPATCH_SIGNING_KEY_MISMATCH');
+  }
+  const signingKey = readSigningKey(signingKeyFile);
+  if (!signingKey) failures.push('DISPATCH_SIGNING_KEY_MISSING');
+
+  let raw: string;
+  try {
+    raw = fs.readFileSync(filePath, 'utf8');
+  } catch {
+    return { ok: false, failures: ['DISPATCH_TOKEN_FILE_UNREADABLE'] };
+  }
+
+  let parsed: LiveOpenDispatchTokenRecord;
+  try {
+    const json = JSON.parse(raw) as Record<string, unknown>;
+    if (json.v !== 2 || json.secret) {
+      failures.push('DISPATCH_TOKEN_PARSE_INVALID');
+    }
+    parsed = json as unknown as LiveOpenDispatchTokenRecord;
+  } catch {
+    return { ok: false, failures: ['DISPATCH_TOKEN_PARSE_INVALID'] };
+  }
+
+  if (parsed.v !== 2 || !parsed.nonce || !parsed.approvalId) {
+    failures.push('DISPATCH_TOKEN_PARSE_INVALID');
+  } else if (signingKey) {
+    const expectedMac = computeDispatchTokenMac(signingKey, {
+      v: parsed.v,
+      nonce: parsed.nonce,
+      issuedAtMs: parsed.issuedAtMs,
+      approvalId: parsed.approvalId,
+      requiredSha: parsed.requiredSha,
+      requiredReleaseId: parsed.requiredReleaseId,
+      requiredEnvSha256: parsed.requiredEnvSha256,
+      reason: parsed.reason,
+      actor: parsed.actor,
+    });
+    if (expectedMac !== parsed.mac) failures.push('DISPATCH_TOKEN_MAC_INVALID');
+  }
+
+  if (nowMs - parsed.issuedAtMs > DISPATCH_TOKEN_TTL_MS) {
+    failures.push('DISPATCH_TOKEN_EXPIRED');
+  }
+
+  if (failures.length) return { ok: false, failures };
+  return { ok: true, record: parsed };
+}
+
 export function consumeLiveOpenDispatchToken(
   filePath: string,
   options: { signingKeyFile: string; nowMs?: number } ,

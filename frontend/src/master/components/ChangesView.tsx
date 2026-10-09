@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'di-exp021-s4f7ax3-trusted-dispatch-provenance-2026-10-09',
+    version: 'engineering',
+    title: 'EXP-021 S4F-7AX.3 — Gate-6 trusted dispatch provenance (engineering only)',
+    summary: [
+      'Privileged issuance register + MAC key binds dispatch nonce/digest to verified Ed25519 approval consumption.',
+      'live-open-authorized re-verifies human approval and trusted issuance record before any Prisma OPEN mutation.',
+      'Self-issued HMAC sidecar alone cannot satisfy live OPEN; 71 operator tests PASS.',
+      'No Production mutation, live OPEN, or issuance key provisioning.',
+    ],
+    reason:
+      'Dispatch per-token HMAC sidecars are generated at issuance and do not prove independent human approval on Production.',
+    previousBehavior:
+      'live-open-authorized consumed dispatch token MAC only; Ed25519 approval was not re-verified at OPEN boundary.',
+    details: 'architecture/drivingintelligence/evidence/EXP021_S4F7AX3_TRUSTED_DISPATCH_PROVENANCE.md',
+    affectsArchitecture: true,
+    module: 'Driving Intelligence',
+    createdAt: '2026-10-09T23:45:00.000Z',
+  },
+  {
     id: 'p25-apds-9-3-durable-t0-foundation-2026-10-08',
     version: '4.9.2232',
     title: 'P2.5 APDS-9.3 — durable shadow activation epoch + T0 gate (engineering only)',

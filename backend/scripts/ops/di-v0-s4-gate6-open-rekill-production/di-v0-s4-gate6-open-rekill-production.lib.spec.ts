@@ -227,9 +227,13 @@ describe('S4F-7AS CLI authority', () => {
   it('issue-dispatch-token consumes approvalId once (Ed25519 v2 + register)', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gate6-issue-dispatch-'));
     const registerDir = path.join(dir, 'register');
+    const issuanceDir = path.join(dir, 'issuance');
     const tokenDir = path.join(dir, 'tokens');
+    const macKeyPath = path.join(dir, 'issuance-mac.key');
     fs.mkdirSync(registerDir);
+    fs.mkdirSync(issuanceDir);
     fs.mkdirSync(tokenDir);
+    fs.writeFileSync(macKeyPath, require('crypto').randomBytes(32).toString('hex'), 'utf8');
     const { generateGate6Ed25519FixtureKeyPair, signGate6HumanApprovalRecordV2 } = require('./di-v0-s4-gate6-human-approval-ed25519.lib');
     const { publicKeyPem, privateKeyPem } = generateGate6Ed25519FixtureKeyPair();
     const publicPath = path.join(dir, 'public.pem');
@@ -253,6 +257,8 @@ describe('S4F-7AS CLI authority', () => {
       ...process.env,
       DI_S4_GATE6_DISPATCH_TOKEN_DIR: tokenDir,
       DI_S4_GATE6_APPROVAL_CONSUMPTION_REGISTER_DIR: registerDir,
+      DI_S4_GATE6_DISPATCH_ISSUANCE_REGISTER_DIR: issuanceDir,
+      DI_S4_GATE6_DISPATCH_ISSUANCE_MAC_KEY_FILE: macKeyPath,
       DI_S4_GATE6_HUMAN_APPROVAL_PUBLIC_KEY_FILE: publicPath,
       DI_S4_GATE6_OPERATOR_REASON: 'reason-r',
       DI_S4_GATE6_OPERATOR_ACTOR: 'actor-a',
@@ -266,6 +272,7 @@ describe('S4F-7AS CLI authority', () => {
       env: { ...baseEnv, DI_S4_GATE6_LIVE_OPEN_HUMAN_APPROVAL_FILE: approvalPath },
     });
     expect(first).toContain('APPROVAL_ID_CONSUMPTION_RESERVED=YES');
+    expect(first).toContain('TRUSTED_DISPATCH_ISSUANCE_RECORDED=YES');
     expect(first).toContain('DISPATCH_TOKEN_ISSUED=YES');
     try {
       execFileSync('npx', ['--yes', 'ts-node', '--transpile-only', CLI, 'issue-dispatch-token'], {
