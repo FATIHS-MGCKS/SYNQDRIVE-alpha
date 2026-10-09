@@ -11,6 +11,7 @@ import {
   parsePhaseAP1TrustedAuthorizationVerifyContextV1,
   parseUtcInstantStrictV1,
 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1-trusted-authorization.parse.v1';
+import { resolveVerificationClockV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1-trusted-authorization.utc-instant.v1';
 import {
   PHASE_A_P1_TRUSTED_AUTHORIZATION_ISSUED_AT_FUTURE_SKEW_MS_V1,
   PHASE_A_P1_TRUSTED_AUTHORIZATION_MAX_LIFETIME_MS_V1,
@@ -240,7 +241,9 @@ export function verifyPhaseAProductionP1TrustedAuthorizationEvidenceOfflineV1(
   contextInput: unknown,
   options: { now?: Date } = {},
 ): M3_3HvH4A3PhaseAP1TrustedAuthorizationOfflineVerifyResultV1 {
-  const now = options.now ?? new Date();
+  const clock = resolveVerificationClockV1(options);
+  if (!clock.ok) return clock;
+  const now = clock.now;
 
   try {
     const trustParsed = parsePhaseAP1TrustStoreV1(trustStoreInput);

@@ -98,10 +98,23 @@ This record is **not** cryptographically sufficient for execution without Author
 
 ## 7. Activation gate (human policy)
 
-Before any code enables `SINGLE_OPERATOR` readiness branching or execution `GO`:
+Before any code enables `SINGLE_OPERATOR` readiness branching or execution `GO`, the **owner/operator (Authority A)** must complete the mandatory checklist below. This contract remains **`PROPOSED`** until the owner explicitly adopts it in org change policy — agents must **not** generate or simulate operator approval.
 
-- [ ] Owner documents acceptance of this contract in org change policy.
+### 7.0 Mandatory checklist (all paths)
+
+- [ ] Owner documents acceptance of this contract in org change policy (append-only ledger entry).
 - [ ] Trust store provisioning procedure reviewed.
-- [ ] Independent **human** security review of P1B1 integration PR (AI review attached only as §4.2 advisory).
+- [ ] `operatorRiskAcceptance` recorded for the change (Authority A) — separate from machine `GO` (Authority C).
 
-**`REQUIRES_HUMAN_POLICY_APPROVAL=YES`** until all boxes checked.
+### 7.1 Security review path (choose one documented path)
+
+| Path | When | Requirement |
+|------|------|-------------|
+| **A — Multi-party default** | Two-human / independent-verifier governance still active | Independent **human** security review of the P1B1 integration PR. AI review may be attached only as §4.2 **advisory** — never as the human reviewer. |
+| **B — Single-operator exception** | Owner-operated supersession per §3 is **documented** and `governanceMode: SINGLE_OPERATOR_V1` applies | Owner documents the **single-operator security-review exception**: explicit owner acceptance that no separate human security reviewer is available, with **residual risk** acknowledged in `operatorRiskAcceptance` (including security-review scope). Optional §4.2 AI advisory may supplement but **does not** satisfy this path. |
+
+**Non-waivable external duties:** Mandatory **legal, regulatory, or organizational separation-of-duties** requirements imposed on the organization (outside this repository) **cannot** be self-waived by this contract or by an AI agent. Where external SoD mandates a distinct human control, Path B does **not** apply until org counsel/compliance confirms otherwise.
+
+### 7.2 Status
+
+**`REQUIRES_HUMAN_POLICY_APPROVAL=YES`** and **`OWNER_POLICY_APPROVAL=STILL_REQUIRED`** until §7.0 and one §7.1 path are satisfied by the owner — not by automated or AI simulation.

@@ -1,4 +1,5 @@
-import { createPublicKey } from 'node:crypto';
+import { materializeEd25519TrustSpkiV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1-trusted-authorization.crypto-trust.v1';
+import { parseUtcInstantStrictV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1-trusted-authorization.utc-instant.v1';
 import {
   M3_3_HV_H4_A3_PHASE_A_P1_TRUSTED_AUTHORIZATION_EVIDENCE_CONTRACT_V1,
   M3_3_HV_H4_A3_PHASE_A_P1_TRUST_STORE_CONTRACT_V1,
@@ -11,15 +12,7 @@ const RELEASE_SHA_RE = /^[a-f0-9]{40}$/;
 const SHA256_HEX_RE = /^[a-f0-9]{64}$/;
 const ED25519_DETACHED_SIGNATURE_BYTES = 64;
 
-export function parseUtcInstantStrictV1(raw: string): Date | null {
-  const trimmed = raw.trim();
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/.test(trimmed)) {
-    return null;
-  }
-  const ms = Date.parse(trimmed);
-  if (!Number.isFinite(ms)) return null;
-  return new Date(ms);
-}
+export { parseUtcInstantStrictV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1-trusted-authorization.utc-instant.v1';
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -210,7 +203,10 @@ export function parsePhaseAP1TrustedAuthorizationEvidenceV1(
   if (!validUntilUtc.ok) return validUntilUtc;
   const approvalFromInstant = parseUtcInstantStrictV1(validFromUtc.value);
   const approvalUntilInstant = parseUtcInstantStrictV1(validUntilUtc.value);
-  if (!approvalFromInstant || !approvalUntilInstant || approvalUntilInstant <= approvalFromInstant) {
+  if (!approvalFromInstant || !approvalUntilInstant) {
+    return { ok: false, reasonCode: 'PHASE_A_P1_TEMPORAL_INSTANT_INVALID' };
+  }
+  if (approvalUntilInstant <= approvalFromInstant) {
     return { ok: false, reasonCode: 'PHASE_A_P1_APPROVAL_WINDOW_INVALID' };
   }
 
@@ -224,7 +220,7 @@ export function parsePhaseAP1TrustedAuthorizationEvidenceV1(
   const endUtc = requireString(input.maintenanceWindow, 'endUtc', 20, 32);
   if (!endUtc.ok) return endUtc;
   if (!parseUtcInstantStrictV1(startUtc.value) || !parseUtcInstantStrictV1(endUtc.value)) {
-    return { ok: false, reasonCode: 'PHASE_A_P1_TRUSTED_AUTHORIZATION_SCHEMA_INVALID' };
+    return { ok: false, reasonCode: 'PHASE_A_P1_TEMPORAL_INSTANT_INVALID' };
   }
 
   const limits = parseAuthorizationLimitsV1(input.authorizationLimits);
@@ -255,7 +251,7 @@ export function parsePhaseAP1TrustedAuthorizationEvidenceV1(
   const expiresAtUtc = requireString(input, 'expiresAtUtc', 20, 32);
   if (!expiresAtUtc.ok) return expiresAtUtc;
   if (!parseUtcInstantStrictV1(issuedAtUtc.value) || !parseUtcInstantStrictV1(expiresAtUtc.value)) {
-    return { ok: false, reasonCode: 'PHASE_A_P1_TRUSTED_AUTHORIZATION_SCHEMA_INVALID' };
+    return { ok: false, reasonCode: 'PHASE_A_P1_TEMPORAL_INSTANT_INVALID' };
   }
 
   if (!isPlainObject(input.signature)) {
@@ -338,7 +334,7 @@ export function parsePhaseAP1TrustStoreV1(
   }
 
   const seenKeyIds = new Set<string>();
-  const seenSpki = new Map<string, string>();
+  const seenSpkiFingerprint = new Map<string, string>();
   const keys: M3_3HvH4A3PhaseAP1TrustStoreV1['keys'] = [];
 
   for (const entry of input.keys) {
@@ -367,48 +363,37 @@ export function parsePhaseAP1TrustStoreV1(
     if (!spkiB64.ok) {
       return { ok: false, reasonCode: 'PHASE_A_P1_TRUST_STORE_SCHEMA_INVALID' };
     }
-    let der: Buffer;
-    try {
-      der = Buffer.from(spkiB64.value, 'base64');
-    } catch {
-      return { ok: false, reasonCode: 'PHASE_A_P1_TRUST_KEY_MALFORMED' };
-    }
-    if (der.length === 0) {
-      return { ok: false, reasonCode: 'PHASE_A_P1_TRUST_KEY_MALFORMED' };
-    }
-    try {
-      const pk = createPublicKey({ key: der, format: 'der', type: 'spki' });
-      if (pk.asymmetricKeyType !== 'ed25519') {
-        return { ok: false, reasonCode: 'PHASE_A_P1_TRUST_KEY_TYPE_UNSUPPORTED' };
-      }
-    } catch {
-      return { ok: false, reasonCode: 'PHASE_A_P1_TRUST_KEY_MALFORMED' };
-    }
+    const spkiMaterialized = materializeEd25519TrustSpkiV1(spkiB64.value);
+    if (!spkiMaterialized.ok) return spkiMaterialized;
 
-    const aliasOwner = seenSpki.get(spkiB64.value);
+    const aliasOwner = seenSpkiFingerprint.get(spkiMaterialized.value.spkiSha256Hex);
     if (aliasOwner && aliasOwner !== keyId.value) {
       return { ok: false, reasonCode: 'PHASE_A_P1_TRUST_STORE_DUPLICATE_KEY_ALIAS' };
     }
-    seenSpki.set(spkiB64.value, keyId.value);
+    seenSpkiFingerprint.set(spkiMaterialized.value.spkiSha256Hex, keyId.value);
+
+    if (spkiB64.value !== spkiMaterialized.value.canonicalSpkiBase64) {
+      return { ok: false, reasonCode: 'PHASE_A_P1_TRUST_KEY_SPKI_BASE64_NONCANONICAL' };
+    }
 
     let notBeforeUtc: string | undefined;
     if (entry.notBeforeUtc !== undefined) {
       if (typeof entry.notBeforeUtc !== 'string' || !parseUtcInstantStrictV1(entry.notBeforeUtc)) {
-        return { ok: false, reasonCode: 'PHASE_A_P1_TRUST_STORE_SCHEMA_INVALID' };
+        return { ok: false, reasonCode: 'PHASE_A_P1_TEMPORAL_INSTANT_INVALID' };
       }
       notBeforeUtc = entry.notBeforeUtc;
     }
     let notAfterUtc: string | undefined;
     if (entry.notAfterUtc !== undefined) {
       if (typeof entry.notAfterUtc !== 'string' || !parseUtcInstantStrictV1(entry.notAfterUtc)) {
-        return { ok: false, reasonCode: 'PHASE_A_P1_TRUST_STORE_SCHEMA_INVALID' };
+        return { ok: false, reasonCode: 'PHASE_A_P1_TEMPORAL_INSTANT_INVALID' };
       }
       notAfterUtc = entry.notAfterUtc;
     }
 
     keys.push({
       keyId: keyId.value,
-      publicKeySpkiBase64: spkiB64.value,
+      publicKeySpkiBase64: spkiMaterialized.value.canonicalSpkiBase64,
       notBeforeUtc,
       notAfterUtc,
     });

@@ -46,6 +46,11 @@ Unit tests use `crypto.generateKeyPairSync('ed25519')` — **never** commit priv
 
 **P1B0-H1 (2026-10-09):** Canonical payload uses domain-separated `signingHeader` (algorithm, keyId, contract version, purpose, scope) + `authorizationBody`; only `detachedBase64` is unsigned. Live deployment identity remains **UNVERIFIED** in fixtures (`liveDeploymentIdentityVerified: false`).
 
+| H2-T26 | Trust store: padded vs unpadded same Ed25519 SPKI, different keyIds | `TRUST_STORE_DUPLICATE_KEY_ALIAS` |
+| H2-T27 | Trust store: revoked keyId + active alias same SPKI | `TRUST_STORE_DUPLICATE_KEY_ALIAS` (no bypass) |
+| H2-T28 | Artifact `2026-02-30` issuedAt | `TEMPORAL_INSTANT_INVALID` |
+| H2-T29 | Verification `now: NaN` | `VERIFICATION_CLOCK_INVALID` |
+
 ## Security checks (static)
 
 - Grep: verifier module must not import `runM3_3HvH4A3PhaseAPreflightV1`, `createPhaseAProductionPrismaClientV1`, or mutate `process.env` production URLs.

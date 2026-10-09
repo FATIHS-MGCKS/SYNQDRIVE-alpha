@@ -6,6 +6,16 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B0-H2 trust key canonicalization, calendar validation, governance closure
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Ed25519 SPKI SHA-256 fingerprint dedup + canonical Base64 enforcement; strict UTC calendar validation (`parseUtcInstantStrictV1`); finite verification clock; governance §7.0–§7.2 single-operator security-review exception vs multi-party path |
+| **WHY** | Residual review: Base64 string alias bypass; `Date.parse` calendar rollover; §7 contradicted §3 on unconditional second human reviewer |
+| **VALIDATION** | Extended Jest (`utc-instant`, `crypto-trust`, offline verifier); `npm run test:battery:v2:hv-h4`; registry + graph validators |
+| **NON_EFFECTS** | P1 execution `NO_GO`; no production access or signing keys |
+| **DECISION_STATUS** | PROPOSED — owner policy adoption still required |
+
 ## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B0-H1 offline trusted authorization security closure
 
 | Field | Value |

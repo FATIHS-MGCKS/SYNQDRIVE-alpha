@@ -219,6 +219,27 @@ describe('verifyPhaseAProductionP1TrustedAuthorizationEvidenceOfflineV1', () => 
     if (!result.ok) expect(result.reasonCode).toBe('PHASE_A_P1_TRUST_KEY_REVOKED');
   });
 
+  it('rejects revoked-key alias bypass via alternate keyId with same SPKI (H2)', () => {
+    const signed = signArtifactV1(buildBaseArtifact({}, fixedNow.getTime()), privateKey, keyId);
+    const spki = publicKey.export({ type: 'spki', format: 'der' }).toString('base64');
+    const bypassStore: M3_3HvH4A3PhaseAP1TrustStoreV1 = {
+      contractVersion: M3_3_HV_H4_A3_PHASE_A_P1_TRUST_STORE_CONTRACT_V1,
+      keys: [
+        { keyId: 'operator-key-1', publicKeySpkiBase64: spki },
+        { keyId: 'operator-key-bypass', publicKeySpkiBase64: spki },
+      ],
+      revokedKeyIds: ['operator-key-1'],
+    };
+    const result = verifyPhaseAProductionP1TrustedAuthorizationEvidenceOfflineV1(
+      signed,
+      bypassStore,
+      context,
+      { now: fixedNow },
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reasonCode).toBe('PHASE_A_P1_TRUST_STORE_DUPLICATE_KEY_ALIAS');
+  });
+
   it('rejects duplicate public-key alias in trust store (H1)', () => {
     const signed = signArtifactV1(buildBaseArtifact({}, fixedNow.getTime()), privateKey, keyId);
     const spki = publicKey.export({ type: 'spki', format: 'der' }).toString('base64');
@@ -544,6 +565,31 @@ describe('verifyPhaseAProductionP1TrustedAuthorizationEvidenceOfflineV1', () => 
     expect(payload.signingHeader.contractVersion).toBe(
       M3_3_HV_H4_A3_PHASE_A_P1_TRUSTED_AUTHORIZATION_EVIDENCE_CONTRACT_V1,
     );
+  });
+
+  it('rejects impossible calendar date in artifact (H2)', () => {
+    const signed = signArtifactV1(buildBaseArtifact({}, fixedNow.getTime()), privateKey, keyId);
+    signed.issuedAtUtc = '2026-02-30T10:00:00.000Z';
+    const result = verifyPhaseAProductionP1TrustedAuthorizationEvidenceOfflineV1(
+      signed,
+      trustStore,
+      context,
+      { now: fixedNow },
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reasonCode).toBe('PHASE_A_P1_TEMPORAL_INSTANT_INVALID');
+  });
+
+  it('rejects invalid verification clock without throwing (H2)', () => {
+    const signed = signArtifactV1(buildBaseArtifact({}, fixedNow.getTime()), privateKey, keyId);
+    const result = verifyPhaseAProductionP1TrustedAuthorizationEvidenceOfflineV1(
+      signed,
+      trustStore,
+      context,
+      { now: new Date(Number.NaN) },
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reasonCode).toBe('PHASE_A_P1_VERIFICATION_CLOCK_INVALID');
   });
 
   it('rejects non-object artifact without throwing (H1)', () => {
