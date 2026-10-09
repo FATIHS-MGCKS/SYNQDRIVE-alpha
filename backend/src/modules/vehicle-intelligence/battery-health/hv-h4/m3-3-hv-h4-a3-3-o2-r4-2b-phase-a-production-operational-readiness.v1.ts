@@ -353,6 +353,18 @@ function evaluatePhaseAProductionOperationalReadinessInnerV1(
       pass(checks, 'APPROVAL_WINDOW_ALIGNMENT');
     }
 
+    const approvalFromUtc = parseUtcIsoTimestampV1(approval.validFrom);
+    const approvalUntilUtc = parseUtcIsoTimestampV1(approval.validUntil);
+    if (!approvalFromUtc.ok) {
+      fail(checks, 'APPROVAL_RECORD_TIMESTAMP_UTC', approvalFromUtc.reasonCode);
+      blockers.push(approvalFromUtc.reasonCode);
+    } else if (!approvalUntilUtc.ok) {
+      fail(checks, 'APPROVAL_RECORD_TIMESTAMP_UTC', approvalUntilUtc.reasonCode);
+      blockers.push(approvalUntilUtc.reasonCode);
+    } else {
+      pass(checks, 'APPROVAL_RECORD_TIMESTAMP_UTC');
+    }
+
     const window = validatePhaseAProductionApprovalWindowV1(approval, now);
     if (!window.ok) {
       fail(checks, 'APPROVAL_WINDOW_CURRENT', window.reasonCode);
@@ -386,8 +398,8 @@ function evaluatePhaseAProductionOperationalReadinessInnerV1(
 
   pushCheck(checks, {
     checkId: 'EXTERNAL_HUMAN_AUTHORIZATION_AUTHENTICATION',
-    status: 'PASS',
-    reasonCode: 'UNVERIFIED_NO_TRUSTED_EXTERNAL_EVIDENCE_SOURCE',
+    status: 'SKIP',
+    reasonCode: 'PHASE_A_EXTERNAL_HUMAN_AUTHORIZATION_UNVERIFIED',
   });
 
   const specParsed = parsePhaseAProductionTargetSpecFromEnvV1(env);

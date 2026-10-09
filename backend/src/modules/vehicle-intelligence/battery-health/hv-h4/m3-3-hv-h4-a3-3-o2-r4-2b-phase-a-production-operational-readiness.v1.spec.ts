@@ -175,6 +175,12 @@ describe('evaluatePhaseAProductionOperationalReadinessV1', () => {
     const report = evaluatePhaseAProductionOperationalReadinessV1(env);
     expect(report.decision).toBe('READY');
     expect(report.externalHumanAuthorizationAuthentication).toBe('UNVERIFIED');
+    const externalCheck = report.checks.find((c) => c.checkId === 'EXTERNAL_HUMAN_AUTHORIZATION_AUTHENTICATION');
+    expect(externalCheck?.status).toBe('SKIP');
+    expect(externalCheck?.reasonCode).toBe('PHASE_A_EXTERNAL_HUMAN_AUTHORIZATION_UNVERIFIED');
+    expect(report.checks.some((c) => c.checkId === 'EXTERNAL_HUMAN_AUTHORIZATION_AUTHENTICATION' && c.status === 'PASS')).toBe(
+      false,
+    );
     expect(report.authorizedReleaseShaBinding).toBe('CONFIGURATION_CONSISTENCY_ONLY');
     expect(report.auditCredentialExpectationsDeclaredOnly).toBe(true);
     expect(report.productionPhaseAExecuted).toBe(false);
@@ -277,6 +283,23 @@ describe('evaluatePhaseAProductionOperationalReadinessV1', () => {
     const report = evaluatePhaseAProductionOperationalReadinessV1(env);
     expect(report.decision).toBe('NO_GO');
     expect(report.blockers).toContain('PHASE_A_GO_NO_GO_AUDIT_CREDENTIAL_EXPECTATIONS_INVALID');
+    rmSync(env.__consumptionDir as string, { recursive: true, force: true });
+  });
+
+  it('returns NO_GO for timezone-less maintenance window timestamps', () => {
+    const env = baseEnv();
+    const go = buildGoRecord({
+      maintenanceWindow: {
+        startUtc: '2026-10-09T00:00:00',
+        endUtc: '2026-10-09T23:59:59',
+      },
+    });
+    env[M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_RECORD_JSON_ENV] = JSON.stringify(go);
+    const loaded = loadPhaseAProductionGoNoGoRecordV1(env);
+    expect(loaded.ok).toBe(false);
+    if (!loaded.ok) {
+      expect(loaded.reasonCode).toBe('PHASE_A_GO_NO_GO_MAINTENANCE_WINDOW_INVALID');
+    }
     rmSync(env.__consumptionDir as string, { recursive: true, force: true });
   });
 

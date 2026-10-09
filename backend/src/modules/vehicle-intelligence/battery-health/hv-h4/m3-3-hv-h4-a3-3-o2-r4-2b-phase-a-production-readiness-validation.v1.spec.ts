@@ -1,5 +1,6 @@
 import {
   normalizePhaseAAuthorizedReleaseShaV1,
+  parseUtcIsoTimestampV1,
   validatePhaseAAuditCredentialExpectationsV1,
   validatePhaseAStopConditionsV1,
 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-readiness-validation.v1';
@@ -40,6 +41,27 @@ describe('validatePhaseAAuditCredentialExpectationsV1', () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.reasonCode).toBe('PHASE_A_GO_NO_GO_AUDIT_CREDENTIAL_EXPECTATIONS_INVALID');
+    }
+  });
+});
+
+describe('parseUtcIsoTimestampV1', () => {
+  it('accepts explicit UTC Z and +00:00 instants', () => {
+    expect(parseUtcIsoTimestampV1('2026-10-09T12:00:00.000Z').ok).toBe(true);
+    expect(parseUtcIsoTimestampV1('2026-10-09T12:00:00+00:00').ok).toBe(true);
+  });
+
+  it('rejects date-only and timezone-less datetime strings', () => {
+    const dateOnly = parseUtcIsoTimestampV1('2026-10-09');
+    expect(dateOnly.ok).toBe(false);
+    if (!dateOnly.ok) {
+      expect(dateOnly.reasonCode).toBe('PHASE_A_GO_NO_GO_TIMESTAMP_NOT_EXPLICIT_UTC');
+    }
+
+    const noTz = parseUtcIsoTimestampV1('2026-10-09T12:00:00');
+    expect(noTz.ok).toBe(false);
+    if (!noTz.ok) {
+      expect(noTz.reasonCode).toBe('PHASE_A_GO_NO_GO_TIMESTAMP_NOT_EXPLICIT_UTC');
     }
   });
 });

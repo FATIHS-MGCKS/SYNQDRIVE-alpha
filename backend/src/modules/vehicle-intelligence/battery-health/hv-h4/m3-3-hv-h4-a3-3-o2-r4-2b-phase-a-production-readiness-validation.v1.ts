@@ -14,12 +14,22 @@ export function normalizePhaseAAuthorizedReleaseShaV1(
   return { ok: true, normalized };
 }
 
+/**
+ * Requires ISO-8601 instant with explicit UTC (`Z` or `+00:00` / `-00:00`).
+ * Rejects date-only strings and timezone-less local datetime forms.
+ */
+const EXPLICIT_UTC_ISO_INSTANT_PATTERN =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?(Z|[+-]00:00)$/;
+
 export function parseUtcIsoTimestampV1(
   raw: string | undefined,
 ): { ok: true; epochMs: number } | { ok: false; reasonCode: string } {
   const trimmed = raw?.trim();
   if (!trimmed) {
     return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_TIMESTAMP_REQUIRED' };
+  }
+  if (!EXPLICIT_UTC_ISO_INSTANT_PATTERN.test(trimmed)) {
+    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_TIMESTAMP_NOT_EXPLICIT_UTC' };
   }
   const epochMs = Date.parse(trimmed);
   if (Number.isNaN(epochMs)) {

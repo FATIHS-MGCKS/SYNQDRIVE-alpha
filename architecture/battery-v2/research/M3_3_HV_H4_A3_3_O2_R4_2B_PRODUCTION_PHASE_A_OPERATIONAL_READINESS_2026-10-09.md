@@ -49,7 +49,7 @@ Readiness evaluator: `evaluatePhaseAProductionOperationalReadinessV1` — no `Pr
 
 Env inputs (non-secret paths/JSON): `M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_RECORD_{JSON,PATH}`, existing R4.2A approval/target/URL/consumption env vars, **required** `M3_3_HV_H4_A3_PHASE_A_PRODUCTION_AUTHORIZED_RELEASE_SHA` (40-char hex, must match GO record — configuration consistency only, not deployed-executable proof).
 
-Report fields (P0-H1): `externalHumanAuthorizationAuthentication=UNVERIFIED` (no trusted external evidence in offline tool); `authorizedReleaseShaBinding=CONFIGURATION_CONSISTENCY_ONLY` when env/record SHA match; `auditCredentialExpectationsDeclaredOnly=true` (not proof of live audit role).
+Report fields (P0-H1/H2): `externalHumanAuthorizationAuthentication=UNVERIFIED` with check `EXTERNAL_HUMAN_AUTHORIZATION_AUTHENTICATION` status **SKIP** (never PASS — not independently authenticated); `authorizedReleaseShaBinding=CONFIGURATION_CONSISTENCY_ONLY` when env/record SHA match; `auditCredentialExpectationsDeclaredOnly=true` (not proof of live audit role). Timestamps must be explicit UTC ISO instants (`Z` or `+00:00`).
 
 Output: `M3_3_HV_H4_A3_PHASE_A_OPERATIONAL_READINESS_REPORT_V1` JSON (`decision`: `READY` | `NO_GO`).
 

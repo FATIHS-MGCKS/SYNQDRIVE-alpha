@@ -6,6 +6,15 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P0-H2 evidence semantics + explicit UTC timestamps
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | `EXTERNAL_HUMAN_AUTHORIZATION_AUTHENTICATION` check → `SKIP` + `PHASE_A_EXTERNAL_HUMAN_AUTHORIZATION_UNVERIFIED`; `parseUtcIsoTimestampV1` requires explicit UTC (`Z` / `±00:00`); approval record timestamps validated in readiness path |
+| **WHY** | PASS on an UNVERIFIED check mis-stated certification; `Date.parse` accepted ambiguous local/date-only strings |
+| **VALIDATION** | readiness + validation unit specs; READY still possible with `externalHumanAuthorizationAuthentication: UNVERIFIED` |
+| **DECISION_STATUS** | VALIDATED (repository offline) |
+
 ## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P0-H1 offline GO/NO-GO fail-closed validation
 
 | Field | Value |
