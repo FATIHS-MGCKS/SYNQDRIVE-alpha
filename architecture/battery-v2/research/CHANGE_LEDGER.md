@@ -6,6 +6,17 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B1-A1 governance evidence foundation (offline verification)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Domain-separated Ed25519 attestations + trust store; offline ratification/risk/deployment/postgres evidence contracts; env-loaded external authority verifier (readiness only); operational readiness binds release SHA + Postgres fingerprint for Path B |
+| **WHY** | R4.2B-P1B1-A1 — independently verifiable evidence under SINGLE_OPERATOR_V1 without production activation |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1b1-a1-governance-evidence.spec.ts` + full HV-H4 unit suite (282 tests) |
+| **NON_EFFECTS** | No production SSH/DB, no P1 `GO`, governance signatures are not execution authorization |
+| **REMAINING_GAPS** | Live GitHub merge proof acquisition, deployment probe issuer runtime, live DB role audit |
+| **DECISION_STATUS** | PROPOSED — next slice: runtime-bound evidence + trusted issuer operations outside repo |
+
 ## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B1-A0-H2 eliminate self-asserted trusted governance evidence
 
 | Field | Value |

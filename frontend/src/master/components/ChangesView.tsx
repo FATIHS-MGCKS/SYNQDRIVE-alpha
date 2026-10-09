@@ -36,6 +36,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'm3-3-hv-h4-a3-p1b1-a1-governance-evidence-foundation-2026-10-09',
+    version: '4.9.2233',
+    title: 'M3.3 HV-H4 A3 P1B1-A1 — offline governance evidence foundation (verification only)',
+    summary: [
+      'Ed25519 domain-separated attestations for ratification, operator risk, deployment probe, and Postgres target configuration.',
+      'Offline external authority verifier wired for Path B readiness only; P1 execution gate remains NO_GO.',
+      'Adversarial HV-H4 tests; no production SSH/DB, no real owner keys in CI.',
+    ],
+    reason: 'R4.2B-P1B1-A1 trusted evidence foundation under SINGLE_OPERATOR_V1 without production activation.',
+    previousBehavior:
+      'Governance claims could be structurally valid but authority verifier was always disabled; no deployment/Postgres evidence contracts.',
+    details:
+      'architecture/battery-v2/governance/M3_3_HV_H4_A3_P1B1_A1_GOVERNANCE_EVIDENCE_FOUNDATION_2026-10-09.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-09T23:10:00.000Z',
+  },
+  {
     id: 'p25-apds-9-3-durable-t0-foundation-2026-10-08',
     version: '4.9.2232',
     title: 'P2.5 APDS-9.3 — durable shadow activation epoch + T0 gate (engineering only)',

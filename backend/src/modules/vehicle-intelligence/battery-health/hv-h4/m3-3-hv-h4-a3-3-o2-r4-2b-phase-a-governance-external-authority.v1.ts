@@ -1,3 +1,4 @@
+import { tryCreatePhaseAGovernanceExternalAuthorityVerifierFromEnvV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-governance-external-authority-offline.v1';
 import {
   M3_3_HV_H4_A3_GOVERNANCE_VERIFIED_EVIDENCE_RESULT_CONTRACT_V1,
   type M3_3HvH4A3GovernanceRatificationVerifiedEvidenceV1,
@@ -11,6 +12,7 @@ export type PhaseAGovernanceExternalAuthorityVerifierV1 = {
   verifyRatificationProvenanceV1(input: {
     provenanceClaims: M3_3HvH4A3GovernanceRatificationProvenanceV1;
     adoptionRecord: M3_3HvH4A3SingleOperatorGovernanceAdoptionRecordV1;
+    now?: Date;
   }): M3_3HvH4A3GovernanceRatificationVerifiedEvidenceV1;
   verifyOperatorRiskAcceptanceV1(input: {
     riskAcceptanceClaims: M3_3HvH4A3OperatorRiskAcceptanceV2;
@@ -23,6 +25,8 @@ export type PhaseAGovernanceExternalAuthorityVerifierV1 = {
       validUntil: string;
     };
     maintenanceWindow: { startUtc: string; endUtc: string };
+    authorizedReleaseSha?: string;
+    postgresTargetFingerprint?: string;
     now: Date;
   }): M3_3HvH4A3OperatorRiskAcceptanceVerifiedEvidenceV1;
 };
@@ -57,10 +61,13 @@ export function createPhaseAGovernanceExternalAuthorityVerifierDisabledV1(): Pha
 
 /**
  * Resolves the governance external authority verifier for production readiness.
- * Intentionally ignores env/JSON — self-asserted trust cannot enable a verifier in A0.
+ * Offline verifier activates only when trusted trust-store + signed attestations + owner policy are configured;
+ * self-asserted JSON trust fields never enable verification.
  */
 export function resolvePhaseAGovernanceExternalAuthorityVerifierV1(
-  _env: NodeJS.ProcessEnv = process.env,
+  env: NodeJS.ProcessEnv = process.env,
 ): PhaseAGovernanceExternalAuthorityVerifierV1 {
+  const offline = tryCreatePhaseAGovernanceExternalAuthorityVerifierFromEnvV1(env);
+  if (offline) return offline;
   return createPhaseAGovernanceExternalAuthorityVerifierDisabledV1();
 }

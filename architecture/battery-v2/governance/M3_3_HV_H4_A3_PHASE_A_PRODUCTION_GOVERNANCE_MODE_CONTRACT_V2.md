@@ -13,7 +13,7 @@
 ## SINGLE_OPERATOR_V1 requirements
 
 1. **Governance adoption record** (`M3_3_HV_H4_A3_SINGLE_OPERATOR_GOVERNANCE_ADOPTION_RECORD_V1`) with owner-declared intent only (`ratificationStatus: PENDING_OWNER_CONTROLLED_REPOSITORY_MERGE` in-repo until owner merge).
-2. **Ratification provenance claims** (`M3_3_HV_H4_A3_GOVERNANCE_RATIFICATION_PROVENANCE_V1`) — claim JSON only (`provenanceAuthenticationStatus: UNVERIFIED`). Self-authored `TRUSTED_EXTERNAL_VERIFIED` is **rejected**. Authority requires `M3_3_HV_H4_A3_GOVERNANCE_VERIFIED_EVIDENCE_RESULT_V1` from an external verifier (not configured in P1B1-A0).
+2. **Ratification provenance claims** (`M3_3_HV_H4_A3_GOVERNANCE_RATIFICATION_PROVENANCE_V1`) — claim JSON only (`provenanceAuthenticationStatus: UNVERIFIED`). Self-authored `TRUSTED_EXTERNAL_VERIFIED` is **rejected**. Authority requires `M3_3_HV_H4_A3_GOVERNANCE_VERIFIED_EVIDENCE_RESULT_V1` from the external verifier (offline Ed25519 + trust store in P1B1-A1 when configured; otherwise disabled).
 3. **Per-change `operatorRiskAcceptance` V2** claim records (same trust boundary — no self-asserted trusted status).
 4. **AI advisory** (`aiTechnicalReviewAdvisory`) optional; never satisfies human verification or execution `GO`.
 5. **R4.2A admission** controls unchanged.
