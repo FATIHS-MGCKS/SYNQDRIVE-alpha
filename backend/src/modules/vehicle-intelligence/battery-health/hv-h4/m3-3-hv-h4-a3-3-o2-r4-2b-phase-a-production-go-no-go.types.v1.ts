@@ -88,7 +88,9 @@ export type M3_3HvH4A3PhaseAOperationalReadinessCheckV1 = {
 export type M3_3HvH4A3PhaseAOperationalReadinessDecisionV1 = 'NO_GO' | 'READY';
 
 /** Self-authored JSON cannot prove real human authentication without trusted external evidence. */
-export type M3_3HvH4A3PhaseAExternalHumanAuthorizationAuthenticationV1 = 'UNVERIFIED';
+export type M3_3HvH4A3PhaseAExternalHumanAuthorizationAuthenticationV1 =
+  | 'UNVERIFIED'
+  | 'TRUSTED_EXTERNAL';
 
 /**
  * Comparing env `AUTHORIZED_RELEASE_SHA` to GO/NO-GO record proves configuration consistency only —

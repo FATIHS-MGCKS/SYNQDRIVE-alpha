@@ -39,7 +39,7 @@ import {
 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-tls-identity.v1';
 import { evaluatePhaseAPreflightProductionAdmissionV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-admission.v1';
 import { buildPhaseAProductionP1IntegrationEnvV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-p1-integration-env.fixture.v1';
-import { M3_3_HV_H4_A3_PHASE_A_PRODUCTION_MIGRATION_OWNER_DATABASE_URL_ENV } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-migration-owner-boundary.v1';
+import { PHASE_A_P1_EXTERNAL_AUTHORIZATION_UNVERIFIED } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-p1-execution-gate.v1';
 
 const integrationJobActive = isPhaseAPreflightPostgresIntegrationJobV1();
 
@@ -54,11 +54,11 @@ function withVerifyFullTlsParams(databaseUrl: string, sslrootcert = DEFAULT_SSLR
 
 function buildProductionFixtureEnv(
   productionDatabaseUrl: string,
-  options: { consumptionDir: string; migrationOwnerDatabaseUrl: string },
+  options: { consumptionDir: string; migrationOwnerRoleIdentityReference?: string },
 ): NodeJS.ProcessEnv {
   return buildPhaseAProductionP1IntegrationEnvV1({
     productionDatabaseUrl,
-    migrationOwnerDatabaseUrl: options.migrationOwnerDatabaseUrl,
+    migrationOwnerRoleIdentityReference: options.migrationOwnerRoleIdentityReference,
     consumptionDir: options.consumptionDir,
   });
 }
@@ -86,14 +86,11 @@ function restoreEnv(keys: string[], prev: Record<string, string | undefined>): v
       const keys = [
         M3_3_HV_H4_A3_PHASE_A_PRODUCTION_PREFLIGHT_ENABLED_ENV,
         M3_3_HV_H4_A3_PHASE_A_PRODUCTION_DATABASE_URL_ENV,
-        M3_3_HV_H4_A3_PHASE_A_PRODUCTION_MIGRATION_OWNER_DATABASE_URL_ENV,
       ];
       const prev: Record<string, string | undefined> = {};
       for (const k of keys) prev[k] = process.env[k];
       process.env[M3_3_HV_H4_A3_PHASE_A_PRODUCTION_PREFLIGHT_ENABLED_ENV] = '1';
       process.env[M3_3_HV_H4_A3_PHASE_A_PRODUCTION_DATABASE_URL_ENV] = fictionalAuditUrl;
-      process.env[M3_3_HV_H4_A3_PHASE_A_PRODUCTION_MIGRATION_OWNER_DATABASE_URL_ENV] =
-        integrationDatabaseUrl;
 
       try {
         const outcome = await runM3_3HvH4A3PhaseAPreflightV1({
@@ -119,7 +116,6 @@ function restoreEnv(keys: string[], prev: Record<string, string | undefined>): v
       const verifyFullUrl = withVerifyFullTlsParams(auditDatabaseUrl);
       const fixture = buildProductionFixtureEnv(verifyFullUrl, {
         consumptionDir,
-        migrationOwnerDatabaseUrl: integrationDatabaseUrl,
       });
       const keys = Object.keys(fixture);
       const prev: Record<string, string | undefined> = {};
@@ -147,6 +143,39 @@ function restoreEnv(keys: string[], prev: Record<string, string | undefined>): v
       }
     });
 
+    it('blocks production runner before connect when offline contracts pass but P1 authorization is NO_GO', async () => {
+      const consumptionDir = join(process.cwd(), `.phase-a-prod-p1-block-${Date.now()}`);
+      const { databaseUrl: auditDatabaseUrl } = await provisionPhaseAProductionAuditFixtureUrlV1(
+        integrationDatabaseUrl,
+      );
+      const verifyFullUrl = withVerifyFullTlsParams(auditDatabaseUrl);
+      const fixture = buildProductionFixtureEnv(verifyFullUrl, { consumptionDir });
+      const keys = Object.keys(fixture);
+      const prev: Record<string, string | undefined> = {};
+      for (const k of keys) prev[k] = process.env[k];
+      const prevHarness = process.env[M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_HARNESS_ACTIVE_ENV];
+      Object.assign(process.env, fixture);
+      delete process.env[M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_HARNESS_ACTIVE_ENV];
+
+      try {
+        const outcome = await runM3_3HvH4A3PhaseAPreflightV1({
+          databaseUrl: verifyFullUrl,
+          roleNames: DEFAULT_M3_3_HV_H4_A3_PHASE_A_ROLE_NAMES_V1,
+          admissionPolicy: 'PRODUCTION_AUTHORIZED_R4_2A',
+        });
+        expect(outcome.ok).toBe(false);
+        if (!outcome.ok) {
+          expect(outcome.reasonCode).toBe(PHASE_A_P1_EXTERNAL_AUTHORIZATION_UNVERIFIED);
+        }
+      } finally {
+        await teardownPhaseAProductionAuditFixtureV1(integrationDatabaseUrl);
+        restoreEnv(keys, prev);
+        if (prevHarness === undefined) delete process.env[M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_HARNESS_ACTIVE_ENV];
+        else process.env[M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_HARNESS_ACTIVE_ENV] = prevHarness;
+        rmSync(consumptionDir, { recursive: true, force: true });
+      }
+    });
+
     it('rejects ephemeral /tmp consumption store at admission', async () => {
       const { databaseUrl: auditDatabaseUrl } = await provisionPhaseAProductionAuditFixtureUrlV1(
         integrationDatabaseUrl,
@@ -155,7 +184,6 @@ function restoreEnv(keys: string[], prev: Record<string, string | undefined>): v
       const ephemeralDir = mkdtempSync(join(tmpdir(), 'phase-a-prod-ephemeral-'));
       const fixture = buildProductionFixtureEnv(verifyFullUrl, {
         consumptionDir: ephemeralDir,
-        migrationOwnerDatabaseUrl: integrationDatabaseUrl,
       });
       const admission = evaluatePhaseAPreflightProductionAdmissionV1(verifyFullUrl, fixture, {
         consumeApproval: false,
@@ -263,7 +291,6 @@ function restoreEnv(keys: string[], prev: Record<string, string | undefined>): v
       const verifyFullUrl = withVerifyFullTlsParams(auditDatabaseUrl);
       const fixture = buildProductionFixtureEnv(verifyFullUrl, {
         consumptionDir,
-        migrationOwnerDatabaseUrl: integrationDatabaseUrl,
       });
       const keys = Object.keys(fixture);
       const prev: Record<string, string | undefined> = {};

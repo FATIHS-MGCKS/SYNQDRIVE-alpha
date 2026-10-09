@@ -1,10 +1,19 @@
-import { evaluatePhaseAProductionP1ExecutionGateV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-p1-execution-gate.v1';
+import {
+  evaluatePhaseAProductionP1ExecutionGateV1,
+  evaluatePhaseAProductionP1OfflineContractGateV1,
+  PHASE_A_P1_EXTERNAL_AUTHORIZATION_UNVERIFIED,
+  resolvePhaseAProductionP1AuthorizationV1,
+} from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-p1-execution-gate.v1';
 import {
   evaluatePhaseAProductionOperationalReadinessV1,
   M3_3_HV_H4_A3_PHASE_A_PRODUCTION_AUTHORIZED_RELEASE_SHA_ENV,
   M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_RECORD_JSON_ENV,
 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-operational-readiness.v1';
-import { M3_3_HV_H4_A3_PHASE_A_PRODUCTION_MIGRATION_OWNER_DATABASE_URL_ENV } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-migration-owner-boundary.v1';
+import {
+  M3_3_HV_H4_A3_PHASE_A_PRODUCTION_MIGRATION_OWNER_DATABASE_URL_ENV,
+  M3_3_HV_H4_A3_PHASE_A_PRODUCTION_MIGRATION_OWNER_ROLE_IDENTITY_REFERENCE_ENV,
+  PHASE_A_MIGRATION_OWNER_CREDENTIAL_MATERIAL_FORBIDDEN_IN_AUDIT_CONTEXT,
+} from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-migration-owner-boundary.v1';
 import { provisionPhaseAProductionConsumptionStoreFixtureV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-consumption-store.v1';
 import { join } from 'node:path';
 import { rmSync } from 'node:fs';
@@ -25,8 +34,7 @@ import { M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_CONTRACT_V1 } from './m3-3-hv
 
 const DB_URL =
   'postgresql://audit_ro@prod-db.example.com:5432/synqdrive?sslmode=verify-full&sslrootcert=/etc/ssl/certs/org-ca.pem';
-const MIGRATION_URL =
-  'postgresql://migration_owner@prod-db.example.com:5432/synqdrive?sslmode=verify-full&sslrootcert=/etc/ssl/certs/org-ca.pem';
+const MIGRATION_ROLE = 'migration_owner';
 
 function buildReadyEnv(): NodeJS.ProcessEnv {
   const dir = join(process.cwd(), `.phase-a-p1-gate-${Date.now()}`);
@@ -126,7 +134,7 @@ function buildReadyEnv(): NodeJS.ProcessEnv {
     [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_APPROVAL_CONSUMPTION_DIR_ENV]: dir,
     [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_DATABASE_URL_ENV]: DB_URL,
     [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_AUTHORIZED_RELEASE_SHA_ENV]: releaseSha,
-    [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_MIGRATION_OWNER_DATABASE_URL_ENV]: MIGRATION_URL,
+    [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_MIGRATION_OWNER_ROLE_IDENTITY_REFERENCE_ENV]: MIGRATION_ROLE,
     [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_PREFLIGHT_ENABLED_ENV]: '1',
     [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_EXECUTE_ACK_ENV]: '1',
     [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_EXECUTE_APPROVAL_ID_ENV]: approvalId,
@@ -157,29 +165,50 @@ describe('evaluatePhaseAProductionP1ExecutionGateV1', () => {
     rmSync(env.__consumptionDir as string, { recursive: true, force: true });
   });
 
-  it('blocks when migration owner reference is missing', () => {
+  it('blocks when migration owner role identity reference is missing', () => {
     const env = buildReadyEnv();
-    delete env[M3_3_HV_H4_A3_PHASE_A_PRODUCTION_MIGRATION_OWNER_DATABASE_URL_ENV];
+    delete env[M3_3_HV_H4_A3_PHASE_A_PRODUCTION_MIGRATION_OWNER_ROLE_IDENTITY_REFERENCE_ENV];
     const gate = evaluatePhaseAProductionP1ExecutionGateV1(DB_URL, env);
     expect(gate.ok).toBe(false);
     if (!gate.ok) {
-      expect(gate.reasonCode).toBe('PHASE_A_PRODUCTION_MIGRATION_OWNER_REFERENCE_REQUIRED');
+      expect(gate.reasonCode).toBe('PHASE_A_PRODUCTION_MIGRATION_OWNER_ROLE_IDENTITY_REFERENCE_REQUIRED');
     }
     rmSync(env.__consumptionDir as string, { recursive: true, force: true });
   });
 
-  it('passes gate with READY artifacts but p1Authorization remains NO_GO', () => {
+  it('blocks production execution when offline contracts pass but P1 authorization is NO_GO', () => {
     const env = buildReadyEnv();
+    const offline = evaluatePhaseAProductionP1OfflineContractGateV1(DB_URL, env);
+    expect(offline.ok).toBe(true);
+
+    expect(resolvePhaseAProductionP1AuthorizationV1()).toBe('NO_GO');
+
     const gate = evaluatePhaseAProductionP1ExecutionGateV1(DB_URL, env);
-    expect(gate.ok).toBe(true);
-    if (gate.ok) {
+    expect(gate.ok).toBe(false);
+    if (!gate.ok) {
+      expect(gate.reasonCode).toBe(PHASE_A_P1_EXTERNAL_AUTHORIZATION_UNVERIFIED);
       expect(gate.p1Authorization).toBe('NO_GO');
       expect(gate.externalHumanAuthorizationAuthentication).toBe('UNVERIFIED');
       expect(gate.operationalReadinessDecision).toBe('READY');
+      expect(gate.offlineContractValidated).toBe(true);
     }
     const readiness = evaluatePhaseAProductionOperationalReadinessV1(env);
     expect(readiness.decision).toBe('READY');
     expect(readiness.externalHumanAuthorizationAuthentication).toBe('UNVERIFIED');
+    rmSync(env.__consumptionDir as string, { recursive: true, force: true });
+  });
+
+  it('rejects migration-owner credential material in audit env without echoing secrets', () => {
+    const env = buildReadyEnv();
+    env[M3_3_HV_H4_A3_PHASE_A_PRODUCTION_MIGRATION_OWNER_DATABASE_URL_ENV] =
+      'postgresql://secret_user:secret_pass@prod-db.example.com:5432/synqdrive';
+    const gate = evaluatePhaseAProductionP1ExecutionGateV1(DB_URL, env);
+    expect(gate.ok).toBe(false);
+    if (!gate.ok) {
+      expect(gate.reasonCode).toBe(PHASE_A_MIGRATION_OWNER_CREDENTIAL_MATERIAL_FORBIDDEN_IN_AUDIT_CONTEXT);
+      expect(JSON.stringify(gate)).not.toMatch(/secret_pass/);
+      expect(JSON.stringify(gate)).not.toMatch(/postgresql:\/\//);
+    }
     rmSync(env.__consumptionDir as string, { recursive: true, force: true });
   });
 });

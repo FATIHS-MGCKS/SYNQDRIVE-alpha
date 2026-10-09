@@ -15,7 +15,7 @@
 ## 2. Pre-execution validation (offline — no PostgreSQL)
 
 1. Pin exact release SHA in GO/NO-GO record **and** set `M3_3_HV_H4_A3_PHASE_A_PRODUCTION_AUTHORIZED_RELEASE_SHA` to the same 40-character lowercase hex commit (configuration consistency only — not proof of deployed executable).
-2. Set env: GO/NO-GO record, approval record, target spec JSON, consumption store path (pre-provisioned marker), production audit URL (secret — verify-full + `sslrootcert` only), and migration-owner reference URL (`M3_3_HV_H4_A3_PHASE_A_PRODUCTION_MIGRATION_OWNER_DATABASE_URL`) for fail-closed credential isolation (must differ from audit URL and login).
+2. Set env: GO/NO-GO record, approval record, target spec JSON, consumption store path (pre-provisioned marker), production audit URL (secret — verify-full + `sslrootcert` only), and non-secret migration-owner **role identity reference** (`M3_3_HV_H4_A3_PHASE_A_PRODUCTION_MIGRATION_OWNER_ROLE_IDENTITY_REFERENCE` — declarative only; must differ from audit login). **Do not** supply migration-owner database URLs or passwords to the audit execution process (`PHASE_A_MIGRATION_OWNER_CREDENTIAL_MATERIAL_FORBIDDEN_IN_AUDIT_CONTEXT`).
 3. Run:
    ```bash
    cd backend && npm run battery:hv-h4:a3-phase-a-production-operational-readiness

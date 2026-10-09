@@ -18,13 +18,13 @@ import {
   M3_3_HV_H4_A3_PHASE_A_PRODUCTION_AUTHORIZED_RELEASE_SHA_ENV,
   M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_RECORD_JSON_ENV,
 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-operational-readiness.v1';
-import { M3_3_HV_H4_A3_PHASE_A_PRODUCTION_MIGRATION_OWNER_DATABASE_URL_ENV } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-migration-owner-boundary.v1';
+import { M3_3_HV_H4_A3_PHASE_A_PRODUCTION_MIGRATION_OWNER_ROLE_IDENTITY_REFERENCE_ENV } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-migration-owner-boundary.v1';
 
 const DEFAULT_RELEASE_SHA = '675bb252b5f18daa5da96275b48b39afa15ef305';
 
 export type BuildPhaseAProductionP1IntegrationEnvOptionsV1 = {
   productionDatabaseUrl: string;
-  migrationOwnerDatabaseUrl: string;
+  migrationOwnerRoleIdentityReference?: string;
   consumptionDir?: string;
   releaseSha?: string;
 };
@@ -39,6 +39,8 @@ export function buildPhaseAProductionP1IntegrationEnvV1(
 
   const parsed = new URL(options.productionDatabaseUrl.replace(/^postgresql:/, 'postgres:'));
   const login = parsePostgresUrlLoginV1(options.productionDatabaseUrl) ?? 'synqdrive';
+  const migrationOwnerRole =
+    options.migrationOwnerRoleIdentityReference ?? 'migration_owner_ci_fixture';
   const key = canonicalPostgresTargetKeyV1(options.productionDatabaseUrl)!;
   const approvalId = `apr-p1-int-${Date.now()}`;
   const nonce = `nonce-p1-${Date.now()}`;
@@ -135,8 +137,8 @@ export function buildPhaseAProductionP1IntegrationEnvV1(
   return {
     [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_PREFLIGHT_ENABLED_ENV]: '1',
     [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_DATABASE_URL_ENV]: options.productionDatabaseUrl,
-    [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_MIGRATION_OWNER_DATABASE_URL_ENV]:
-      options.migrationOwnerDatabaseUrl,
+    [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_MIGRATION_OWNER_ROLE_IDENTITY_REFERENCE_ENV]:
+      migrationOwnerRole,
     [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_EXECUTE_ACK_ENV]: '1',
     [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_EXECUTE_APPROVAL_ID_ENV]: approvalId,
     [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_EXECUTE_NONCE_ENV]: nonce,

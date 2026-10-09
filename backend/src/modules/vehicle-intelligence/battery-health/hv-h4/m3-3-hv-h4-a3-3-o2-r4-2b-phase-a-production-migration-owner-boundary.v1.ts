@@ -1,41 +1,87 @@
-import {
-  canonicalPostgresTargetKeyV1,
-  parsePostgresUrlLoginV1,
-} from './m3-3-hv-h4-a3-3-o2-r3-h1-postgres-url-identity.v1';
+import { parsePostgresUrlLoginV1 } from './m3-3-hv-h4-a3-3-o2-r3-h1-postgres-url-identity.v1';
 
-/** Reference URL for migration-owner credentials (secret); used for fail-closed isolation checks only. */
+/**
+ * Non-secret PostgreSQL role identity for migration-owner separation declarations.
+ * Declarative only — does not prove live production credential isolation.
+ */
+export const M3_3_HV_H4_A3_PHASE_A_PRODUCTION_MIGRATION_OWNER_ROLE_IDENTITY_REFERENCE_ENV =
+  'M3_3_HV_H4_A3_PHASE_A_PRODUCTION_MIGRATION_OWNER_ROLE_IDENTITY_REFERENCE' as const;
+
+/**
+ * @deprecated Must not be supplied to audit execution processes — credential material forbidden.
+ */
 export const M3_3_HV_H4_A3_PHASE_A_PRODUCTION_MIGRATION_OWNER_DATABASE_URL_ENV =
   'M3_3_HV_H4_A3_PHASE_A_PRODUCTION_MIGRATION_OWNER_DATABASE_URL' as const;
 
-function urlsRepresentSameTargetV1(a: string, b: string): boolean {
-  if (a === b) return true;
-  const keyA = canonicalPostgresTargetKeyV1(a);
-  const keyB = canonicalPostgresTargetKeyV1(b);
-  return Boolean(keyA && keyB && keyA === keyB);
+export const PHASE_A_MIGRATION_OWNER_CREDENTIAL_MATERIAL_FORBIDDEN_IN_AUDIT_CONTEXT =
+  'PHASE_A_MIGRATION_OWNER_CREDENTIAL_MATERIAL_FORBIDDEN_IN_AUDIT_CONTEXT' as const;
+
+function isPostgresCredentialMaterialV1(value: string): boolean {
+  const trimmed = value.trim();
+  if (/^postgres(ql)?:\/\//i.test(trimmed)) return true;
+  if (trimmed.includes('@') && trimmed.includes(':')) return true;
+  return false;
+}
+
+function assertSafeRoleIdentityReferenceV1(reference: string): boolean {
+  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(reference);
 }
 
 /**
- * Fail-closed: production Phase-A audit URL must not match migration-owner reference URL or login.
- * Does not prove live production provisioning — configuration isolation only.
+ * Fail-closed: audit execution must not receive migration-owner URLs or passwords.
  */
-export function validatePhaseAProductionMigrationOwnerCredentialIsolationV1(
+export function rejectPhaseAProductionMigrationOwnerCredentialMaterialInAuditEnvV1(
+  env: NodeJS.ProcessEnv = process.env,
+): { ok: true } | { ok: false; reasonCode: string } {
+  const legacyUrl = env[M3_3_HV_H4_A3_PHASE_A_PRODUCTION_MIGRATION_OWNER_DATABASE_URL_ENV]?.trim();
+  if (legacyUrl) {
+    return { ok: false, reasonCode: PHASE_A_MIGRATION_OWNER_CREDENTIAL_MATERIAL_FORBIDDEN_IN_AUDIT_CONTEXT };
+  }
+
+  const reference =
+    env[M3_3_HV_H4_A3_PHASE_A_PRODUCTION_MIGRATION_OWNER_ROLE_IDENTITY_REFERENCE_ENV]?.trim();
+  if (reference && isPostgresCredentialMaterialV1(reference)) {
+    return { ok: false, reasonCode: PHASE_A_MIGRATION_OWNER_CREDENTIAL_MATERIAL_FORBIDDEN_IN_AUDIT_CONTEXT };
+  }
+
+  return { ok: true };
+}
+
+/**
+ * Declarative boundary: audit login must differ from documented migration-owner role identity.
+ * Configuration consistency only — not proof of production credential separation.
+ */
+export function validatePhaseAProductionMigrationOwnerDeclarativeBoundaryV1(
   auditDatabaseUrl: string,
   env: NodeJS.ProcessEnv = process.env,
 ): { ok: true } | { ok: false; reasonCode: string } {
-  const migrationUrl = env[M3_3_HV_H4_A3_PHASE_A_PRODUCTION_MIGRATION_OWNER_DATABASE_URL_ENV]?.trim();
-  if (!migrationUrl) {
-    return { ok: false, reasonCode: 'PHASE_A_PRODUCTION_MIGRATION_OWNER_REFERENCE_REQUIRED' };
+  const credentialReject = rejectPhaseAProductionMigrationOwnerCredentialMaterialInAuditEnvV1(env);
+  if (!credentialReject.ok) {
+    return credentialReject;
   }
 
-  if (urlsRepresentSameTargetV1(auditDatabaseUrl, migrationUrl)) {
-    return { ok: false, reasonCode: 'PHASE_A_CANNOT_REUSE_MIGRATION_OWNER_DATABASE_URL' };
+  const reference =
+    env[M3_3_HV_H4_A3_PHASE_A_PRODUCTION_MIGRATION_OWNER_ROLE_IDENTITY_REFERENCE_ENV]?.trim();
+  if (!reference) {
+    return { ok: false, reasonCode: 'PHASE_A_PRODUCTION_MIGRATION_OWNER_ROLE_IDENTITY_REFERENCE_REQUIRED' };
+  }
+
+  if (!assertSafeRoleIdentityReferenceV1(reference)) {
+    return { ok: false, reasonCode: 'PHASE_A_PRODUCTION_MIGRATION_OWNER_ROLE_IDENTITY_REFERENCE_INVALID' };
   }
 
   const auditLogin = parsePostgresUrlLoginV1(auditDatabaseUrl);
-  const migrationLogin = parsePostgresUrlLoginV1(migrationUrl);
-  if (auditLogin && migrationLogin && auditLogin === migrationLogin) {
+  if (auditLogin && auditLogin === reference) {
     return { ok: false, reasonCode: 'PHASE_A_PRODUCTION_AUDIT_LOGIN_MATCHES_MIGRATION_OWNER' };
   }
 
   return { ok: true };
+}
+
+/** @deprecated Use validatePhaseAProductionMigrationOwnerDeclarativeBoundaryV1 */
+export function validatePhaseAProductionMigrationOwnerCredentialIsolationV1(
+  auditDatabaseUrl: string,
+  env: NodeJS.ProcessEnv = process.env,
+): { ok: true } | { ok: false; reasonCode: string } {
+  return validatePhaseAProductionMigrationOwnerDeclarativeBoundaryV1(auditDatabaseUrl, env);
 }

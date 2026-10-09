@@ -14,7 +14,11 @@ import { evaluatePhaseAPreflightProductionAdmissionV1 } from './m3-3-hv-h4-a3-3-
 import { createPhaseAProductionPrismaClientV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-prisma-client.v1';
 import { applyPhaseAProductionReadOnlySessionLimitsV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-session-limits.v1';
 import { runPhaseAProductionSameSessionGateV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-same-session-gate.v1';
-import { evaluatePhaseAProductionP1ExecutionGateV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-p1-execution-gate.v1';
+import {
+  evaluatePhaseAProductionP1ExecutionGateV1,
+  isPhaseAProductionP1ExecutionAuthorizedV1,
+  PHASE_A_P1_EXTERNAL_AUTHORIZATION_UNVERIFIED,
+} from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-p1-execution-gate.v1';
 import { readPhaseAProductionBackendPidV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-tls-identity.v1';
 import { M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_QUERY_TELEMETRY_ENV } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.isolated-target.v1';
 import {
@@ -115,8 +119,11 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
 
   if (admissionPolicy === 'PRODUCTION_AUTHORIZED_R4_2A') {
     const p1Gate = evaluatePhaseAProductionP1ExecutionGateV1(input.databaseUrl, process.env);
-    if (!p1Gate.ok) {
-      return { ok: false, reasonCode: p1Gate.reasonCode, status: 'BLOCKED' };
+    if (!isPhaseAProductionP1ExecutionAuthorizedV1(p1Gate)) {
+      const reasonCode = p1Gate.ok
+        ? PHASE_A_P1_EXTERNAL_AUTHORIZATION_UNVERIFIED
+        : p1Gate.reasonCode;
+      return { ok: false, reasonCode, status: 'BLOCKED' };
     }
 
     const productionAdmission = evaluatePhaseAPreflightProductionAdmissionV1(
