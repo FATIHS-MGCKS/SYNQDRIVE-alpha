@@ -1721,6 +1721,22 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | PR #1939 — align S4F-7AK / CURRENT_STATE / CHANGE_LEDGER: S4F-7AI = Production **`DRY_RUN=1` only**; live = detached `ed78748bc…` S4F-7Y operator (not S4F-7AI) |
 | NON_EFFECTS | No operator code change; no Production execution |
 
+### EXP-021 S4F-7AS.1 Gate-6 safety closure (2026-10-09)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | PR #1949 — post-commit OPEN orchestration + compensating REKILL; `live-open-authorized` + dispatch digest; direct `live-open` forbidden; canonical Production backend.env fixture isolation; evidence `EXP021_S4F7AS1_GATE6_SAFETY_CLOSURE.md` |
+| TESTS | `test:di:s4f7as:gate6-open-rekill-operator` 22 PASS |
+| NON_EFFECTS | No Production execution; Gate 6 **NOT_GRANTED** |
+
+### EXP-021 S4F-7AS Gate-6 OPEN / EMERGENCY_REKILL operator (2026-10-09)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Minimal Gate-6 operator `di-v0-s4-gate6-open-rekill-production.sh` — OPEN (`KILLED`→`NOT_KILLED`) with full preflight + `DRY_RUN`; EMERGENCY_REKILL (`NOT_KILLED`→`KILLED`) without OPEN guards; transactional `di-v0-s4-global-kill-transition.ts` (no missing-row insert); monitoring query/abort constants; evidence `EXP021_S4F7AS_GATE6_OPEN_REKILL_OPERATOR.md` |
+| TESTS | `test:di:s4f7as:gate6-open-rekill-operator` (11); S4A Postgres CI includes kill-transition integration (+9) |
+| NON_EFFECTS | No Production DB/env/restart/deploy; Gate 6 **NOT_GRANTED**; GLOBAL remains **KILLED** on Production; kill initializer unchanged |
+
 ### EXP-021 S4F-7AO minimal five-flag activation operator (2026-10-09)
 
 | Event | Detail |
