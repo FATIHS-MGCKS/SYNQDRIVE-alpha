@@ -57,6 +57,24 @@ Output: `M3_3_HV_H4_A3_PHASE_A_OPERATIONAL_READINESS_REPORT_V1` JSON (`decision`
 
 See `architecture/battery-v2/operations/M3_3_HV_H4_A3_PHASE_A_R4_2B_P1_EXECUTION_RUNBOOK_2026-10-09.md`.
 
+## P1A-H2 — Production execution authorization (fail-closed)
+
+| Control | Module |
+|---------|--------|
+| Offline contracts (`READY` + R4.2A admission pre-check) | `evaluatePhaseAProductionP1OfflineContractGateV1` — success does **not** authorize connect |
+| Production execution authorization | `resolvePhaseAProductionP1AuthorizationV1` → always **`NO_GO`** in repository; runner/config require **`GO`** |
+| Blocker when contracts pass but auth unverified | `PHASE_A_P1_EXTERNAL_AUTHORIZATION_UNVERIFIED` |
+| Migration-owner declarative boundary (no secrets in audit env) | `M3_3_HV_H4_A3_PHASE_A_PRODUCTION_MIGRATION_OWNER_ROLE_IDENTITY_REFERENCE` + `validatePhaseAProductionMigrationOwnerDeclarativeBoundaryV1`; legacy `MIGRATION_OWNER_DATABASE_URL` **forbidden** in audit process |
+
+## P1A-H1 — Production execution gate (fail-closed)
+
+| Control | Module |
+|---------|--------|
+| Combined gate (contracts + authorization) | `evaluatePhaseAProductionP1ExecutionGateV1` (runner + production config CLI) |
+| `p1Authorization` | Always **`NO_GO`** until an independently trusted authorization system exists (not self-authored JSON) |
+| Session statement bounds | `applyPhaseAProductionReadOnlySessionLimitsV1` — `SET LOCAL statement_timeout` / `lock_timeout` inside READ ONLY tx |
+| Retention / reconciliation / backfill | GO `authorizationLimits` must be `false` for all three |
+
 ## P0-E — Regression / isolation
 
 No changes to hybrid loader activation, issuer runtime, attestation DML paths, retention/reconciliation, or R4.2A TLS/same-session code paths beyond additive R4.2B modules. No new Prisma migrations.

@@ -10,17 +10,11 @@ import {
   teardownPhaseAProductionAuditFixtureV1,
 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-audit.fixture.v1';
 import { provisionPhaseAProductionConsumptionStoreFixtureV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-consumption-store.v1';
-import { M3_3_HV_H4_A3_PHASE_A_PRODUCTION_APPROVAL_CONTRACT_V1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-approval.types.v1';
+import { buildPhaseAProductionP1IntegrationEnvV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-p1-integration-env.fixture.v1';
 import {
-  M3_3_HV_H4_A3_PHASE_A_PRODUCTION_APPROVAL_CONSUMPTION_DIR_ENV,
-  M3_3_HV_H4_A3_PHASE_A_PRODUCTION_APPROVAL_RECORD_JSON_ENV,
-  M3_3_HV_H4_A3_PHASE_A_PRODUCTION_EXECUTE_ACK_ENV,
-  M3_3_HV_H4_A3_PHASE_A_PRODUCTION_EXECUTE_APPROVAL_ID_ENV,
-  M3_3_HV_H4_A3_PHASE_A_PRODUCTION_EXECUTE_NONCE_ENV,
-  M3_3_HV_H4_A3_PHASE_A_PRODUCTION_PREFLIGHT_ENABLED_ENV,
-  M3_3_HV_H4_A3_PHASE_A_PRODUCTION_TARGET_SPEC_JSON_ENV,
-} from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-approval.v1';
-import { M3_3_HV_H4_A3_PHASE_A_PRODUCTION_TARGET_SPEC_CONTRACT_V1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-approval.types.v1';
+  evaluatePhaseAProductionP1ExecutionGateV1,
+  PHASE_A_P1_EXTERNAL_AUTHORIZATION_UNVERIFIED,
+} from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-p1-execution-gate.v1';
 import { M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_HARNESS_ACTIVE_ENV } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.isolated-target.v1';
 import {
   assertPrismaConnectOutcomeV1,
@@ -133,7 +127,7 @@ function reloadTlsServerCert(certSubdir: string): void {
       reloadTlsServerCert('server-valid');
     });
 
-    it('production runner certifies TLS identity and keeps same backend PID through discovery', async () => {
+    it('production runner blocks before connect when P1 authorization is NO_GO (TLS path not reached)', async () => {
       const { databaseUrl: auditUrl } = await provisionPhaseAProductionAuditFixtureUrlV1(tlsAdminUrl);
       const parsed = new URL(auditUrl.replace(/^postgresql:/, 'postgres:'));
       const login = parsePostgresUrlLoginV1(auditUrl)!;
@@ -145,37 +139,13 @@ function reloadTlsServerCert(certSubdir: string): void {
         database: parsed.pathname.replace(/^\//, ''),
         sslrootcertPath: trustedCa,
       });
-      const key = canonicalPostgresTargetKeyV1(verifyFullAuditUrl)!;
       const consumptionDir = join(process.cwd(), `.phase-a-tls-prod-run-${Date.now()}`);
       provisionPhaseAProductionConsumptionStoreFixtureV1(consumptionDir);
-      const approvalId = `apr-tls-${Date.now()}`;
-      const nonce = `nonce-tls-${Date.now()}`;
-      const env: NodeJS.ProcessEnv = {
-        [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_PREFLIGHT_ENABLED_ENV]: '1',
-        [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_EXECUTE_ACK_ENV]: '1',
-        [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_EXECUTE_APPROVAL_ID_ENV]: approvalId,
-        [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_EXECUTE_NONCE_ENV]: nonce,
-        [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_APPROVAL_RECORD_JSON_ENV]: JSON.stringify({
-          contractVersion: M3_3_HV_H4_A3_PHASE_A_PRODUCTION_APPROVAL_CONTRACT_V1,
-          approvalId,
-          changeTicket: 'CHG-TLS-FIXTURE',
-          approvingAuthority: 'ci-tls@synqdrive.local',
-          approvedTargetKey: key,
-          validFrom: new Date(Date.now() - 60_000).toISOString(),
-          validUntil: new Date(Date.now() + 3600_000).toISOString(),
-          executeNonce: nonce,
-          authenticationKind: 'DOCUMENTED_HUMAN_APPROVAL',
-        }),
-        [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_TARGET_SPEC_JSON_ENV]: JSON.stringify({
-          contractVersion: M3_3_HV_H4_A3_PHASE_A_PRODUCTION_TARGET_SPEC_CONTRACT_V1,
-          hostname: parsed.hostname,
-          port: Number(parsed.port || '5433'),
-          database: parsed.pathname.replace(/^\//, ''),
-          expectedAuditLogin: login,
-          forbidSuperuserSession: true,
-        }),
-        [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_APPROVAL_CONSUMPTION_DIR_ENV]: consumptionDir,
-      };
+      const env = buildPhaseAProductionP1IntegrationEnvV1({
+        productionDatabaseUrl: verifyFullAuditUrl,
+        migrationOwnerRoleIdentityReference: 'phase_a_tls_migration_owner_fixture',
+        consumptionDir,
+      });
       const prev: Record<string, string | undefined> = {};
       for (const k of Object.keys(env)) prev[k] = process.env[k];
       const prevHarness = process.env[M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_HARNESS_ACTIVE_ENV];
@@ -183,19 +153,20 @@ function reloadTlsServerCert(certSubdir: string): void {
       delete process.env[M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_HARNESS_ACTIVE_ENV];
 
       try {
-        expect(evaluatePhaseAPreflightProductionAdmissionV1(verifyFullAuditUrl, env).ok).toBe(true);
+        const gate = evaluatePhaseAProductionP1ExecutionGateV1(verifyFullAuditUrl, env);
+        expect(gate.ok).toBe(false);
+        if (!gate.ok) {
+          expect(gate.reasonCode).toBe(PHASE_A_P1_EXTERNAL_AUTHORIZATION_UNVERIFIED);
+        }
         const outcome = await runM3_3HvH4A3PhaseAPreflightV1({
           databaseUrl: verifyFullAuditUrl,
           roleNames: DEFAULT_M3_3_HV_H4_A3_PHASE_A_ROLE_NAMES_V1,
           admissionPolicy: 'PRODUCTION_AUTHORIZED_R4_2A',
         });
-        expect(outcome.ok).toBe(true);
+        expect(outcome.ok).toBe(false);
         if (!outcome.ok) {
-          throw new Error(`${outcome.status}:${outcome.reasonCode}`);
+          expect(outcome.reasonCode).toBe(PHASE_A_P1_EXTERNAL_AUTHORIZATION_UNVERIFIED);
         }
-        expect(outcome.report.productionAdmissionEvidence?.tlsIdentityCertified).toBe(true);
-        const sessionCheck = outcome.report.checks.find((c) => c.checkId === 'PHASE_A_SESSION_CONTEXT');
-        expect(sessionCheck?.data?.productionSameSessionAnchorPid).toBe(sessionCheck?.data?.discoveryBackendPid);
       } finally {
         await teardownPhaseAProductionAuditFixtureV1(tlsAdminUrl);
         for (const k of Object.keys(env)) {

@@ -152,7 +152,10 @@ export function loadPhaseAProductionGoNoGoRecordV1(
     limits.issuanceActivationAuthorized !== false ||
     limits.applicationRuntimeFlagChangesAuthorized !== false ||
     limits.hybridLoaderActivationAuthorized !== false ||
-    limits.attestationInsertOrUpdateAuthorized !== false
+    limits.attestationInsertOrUpdateAuthorized !== false ||
+    limits.retentionActivationAuthorized !== false ||
+    limits.reconciliationActivationAuthorized !== false ||
+    limits.backfillActivationAuthorized !== false
   ) {
     return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_LIMITS_INVALID' };
   }

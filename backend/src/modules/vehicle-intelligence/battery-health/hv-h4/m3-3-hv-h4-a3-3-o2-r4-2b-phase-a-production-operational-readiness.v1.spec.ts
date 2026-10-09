@@ -86,6 +86,9 @@ function buildGoRecord(overrides: Record<string, unknown> = {}) {
       applicationRuntimeFlagChangesAuthorized: false,
       hybridLoaderActivationAuthorized: false,
       attestationInsertOrUpdateAuthorized: false,
+      retentionActivationAuthorized: false,
+      reconciliationActivationAuthorized: false,
+      backfillActivationAuthorized: false,
     },
     ...overrides,
   };
