@@ -32,7 +32,8 @@ const productionFiles = fs
   .filter(
     (name) =>
       name.endsWith('.ts') &&
-      name !== 'di-v0-s4-control-kill-initializer.ts', // operator-only SQL primitive (S4F-7A); not app bootstrap
+      name !== 'di-v0-s4-control-kill-initializer.ts' && // operator-only SQL primitive (S4F-7A); not app bootstrap
+      name !== 'di-v0-s4-global-kill-transition.ts', // Gate-6 operator-only GLOBAL kill transition (S4F-7AS); not app bootstrap
   )
   .map((name) => path.join(FOUNDATION_DIR, name));
 
@@ -98,7 +99,8 @@ describe('DI V0 S4A dormant-by-construction audit', () => {
           file.includes(`${path.sep}di-v0-s4-global-kill-init-production${path.sep}`) ||
           file.includes(`${path.sep}di-v0-s4-tiny-staging-production${path.sep}`) ||
           file.includes(`${path.sep}di-v0-s4-fresh-tiny-staging-production${path.sep}`) ||
-          file.includes(`${path.sep}di-v0-s4-five-flag-tiny-activation-production${path.sep}`)
+          file.includes(`${path.sep}di-v0-s4-five-flag-tiny-activation-production${path.sep}`) ||
+          file.includes(`${path.sep}di-v0-s4-gate6-open-rekill-production${path.sep}`)
         ) {
           continue;
         }
