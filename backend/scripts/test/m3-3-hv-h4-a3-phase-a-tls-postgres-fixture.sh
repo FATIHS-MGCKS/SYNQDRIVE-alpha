@@ -120,12 +120,30 @@ docker run -d --name "$CONTAINER_NAME" \
   -e POSTGRES_DB="$PG_DB" \
   -p "${PG_PORT}:5432" \
   -v "$FIXTURE_DIR:/tls-mount:ro" \
-  -v "$FIXTURE_DIR/server-valid/server.crt:/var/lib/postgresql/server.crt:ro" \
-  -v "$FIXTURE_DIR/server-valid/server.key:/var/lib/postgresql/server.key:ro" \
-  postgres:16-alpine \
-  -c ssl=on \
-  -c ssl_cert_file=/var/lib/postgresql/server.crt \
-  -c ssl_key_file=/var/lib/postgresql/server.key
+  postgres:16-alpine
+
+for _ in $(seq 1 30); do
+  if docker exec "$CONTAINER_NAME" pg_isready -U "$PG_USER" >/dev/null 2>&1; then
+    break
+  fi
+  sleep 1
+done
+docker exec "$CONTAINER_NAME" pg_isready -U "$PG_USER" >/dev/null
+
+install_tls_material() {
+  local cert_subdir="$1"
+  docker exec -u root "$CONTAINER_NAME" sh -c "
+    mkdir -p /var/lib/postgresql/ssl &&
+    cp /tls-mount/${cert_subdir}/server.crt /var/lib/postgresql/ssl/server.crt &&
+    cp /tls-mount/${cert_subdir}/server.key /var/lib/postgresql/ssl/server.key &&
+    chown -R postgres:postgres /var/lib/postgresql/ssl &&
+    chmod 600 /var/lib/postgresql/ssl/server.key
+  "
+}
+
+install_tls_material server-valid
+docker exec -u root "$CONTAINER_NAME" sh -c "grep -q '^ssl = on' /var/lib/postgresql/data/postgresql.conf || printf '%s\n' 'ssl = on' 'ssl_cert_file = '\''/var/lib/postgresql/ssl/server.crt'\''' 'ssl_key_file = '\''/var/lib/postgresql/ssl/server.key'\''' >> /var/lib/postgresql/data/postgresql.conf"
+docker restart "$CONTAINER_NAME" >/dev/null
 
 for _ in $(seq 1 30); do
   if docker exec "$CONTAINER_NAME" pg_isready -U "$PG_USER" >/dev/null 2>&1; then

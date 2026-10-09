@@ -34,7 +34,7 @@ const tlsFixtureActive = isPhaseAProductionTlsFixtureJobV1();
 function reloadTlsServerCert(certSubdir: string): void {
   const container = process.env.M3_3_HV_H4_A3_PHASE_A_TLS_FIXTURE_CONTAINER ?? 'phase_a_tls_postgres_ci';
   execSync(
-    `docker exec ${container} sh -c "cp /tls-mount/${certSubdir}/server.crt /var/lib/postgresql/server.crt && cp /tls-mount/${certSubdir}/server.key /var/lib/postgresql/server.key && chmod 600 /var/lib/postgresql/server.key && kill -HUP 1"`,
+    `docker exec -u root ${container} sh -c "cp /tls-mount/${certSubdir}/server.crt /var/lib/postgresql/ssl/server.crt && cp /tls-mount/${certSubdir}/server.key /var/lib/postgresql/ssl/server.key && chown postgres:postgres /var/lib/postgresql/ssl/server.crt /var/lib/postgresql/ssl/server.key && chmod 600 /var/lib/postgresql/ssl/server.key && kill -HUP 1"`,
     { stdio: 'pipe' },
   );
 }
