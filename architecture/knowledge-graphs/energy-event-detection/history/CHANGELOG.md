@@ -1,5 +1,13 @@
 # KG-EED Changelog
 
+## 2026-10-09 — OQ-014 R3B v2→v2 physical candidate rediscovery (EED-EV-0108)
+
+- Version-aware v2→v2 matcher authority: revised `SETTLED_MEDIAN` reconciles when physical identity + FRESH baseline proven; fail-closed otherwise
+- M1–M6 unit + PG-R3B-1..6 PostgreSQL (concurrency, tenant isolation, KS661 canonical, terminal protection)
+- Stage-3 gate: R3B matcher Jest + `raw-refuel-candidate-r3b-v2-rediscovery.postgres.integration.spec.ts`
+- v1→v1 and R2 v2→v1 paths unchanged; no detector/runtime version bump
+- OQ-014 **OPEN**; OQ-019 **PARTIALLY_RESOLVED**
+
 ## 2026-10-09 — OQ-014 R3A phase-aware settled-post scanner (EED-EV-0107)
 
 - Pure offline `scanRawFuelRisePhases` (RISING→PEAK_REACHED→SETTLING→SETTLED); proposal/shadow only

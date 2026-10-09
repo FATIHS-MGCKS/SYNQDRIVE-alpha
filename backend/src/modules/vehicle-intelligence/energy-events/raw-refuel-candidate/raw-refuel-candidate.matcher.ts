@@ -16,6 +16,10 @@ import type {
   RawRefuelCandidateEvidenceSlice,
   RawRefuelCandidateOverlapClassification,
 } from './raw-refuel-candidate.types';
+import {
+  classifyV2SameVersionRawRefuelCandidateOverlap,
+  isV2SameVersionPair,
+} from './raw-refuel-candidate-v2-same-version-rediscovery.authority';
 
 function msBetween(a: Date, b: Date): number {
   return Math.abs(a.getTime() - b.getTime());
@@ -161,6 +165,10 @@ export function classifySameVersionRawRefuelCandidateOverlap(
 ): RawRefuelCandidateOverlapClassification {
   if (observation.detectionVersion !== candidate.detectionVersion) {
     return 'DISTINCT_PHYSICAL_RISE';
+  }
+
+  if (isV2SameVersionPair(observation, candidate)) {
+    return classifyV2SameVersionRawRefuelCandidateOverlap(observation, candidate);
   }
 
   const obsRise = observation.riseOnsetAt;

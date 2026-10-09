@@ -118,10 +118,16 @@ export RAW_FUEL_REFUEL_F4_PR2_INTEGRATION=1
 export RAW_FUEL_RISE_F2_HANDOFF_INTEGRATION=1
 export RAW_REFUEL_CANDIDATE_POSTGRES_INTEGRATION=1
 
+echo "==> RFRF OQ-014 R3B v2→v2 rediscovery matcher (unit)"
+npm test -- \
+  raw-refuel-candidate-v2-rediscovery.matcher.spec.ts \
+  --runInBand --verbose --forceExit
+
 npm test -- \
   raw-fuel-refuel-fallback-runtime.postgres.integration.spec.ts \
   raw-fuel-rise-detector-f2-handoff.postgres.integration.spec.ts \
   raw-fuel-rise-liveness.postgres.integration.spec.ts \
   raw-refuel-candidate.postgres.integration.spec.ts \
   raw-refuel-candidate-r2-cross-version.postgres.integration.spec.ts \
+  raw-refuel-candidate-r3b-v2-rediscovery.postgres.integration.spec.ts \
   --runInBand --verbose --forceExit
