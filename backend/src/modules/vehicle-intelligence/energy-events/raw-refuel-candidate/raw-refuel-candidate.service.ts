@@ -23,7 +23,10 @@ import {
   classifyCandidateDetectionVersionCompatibility,
   RFRF_PLANNED_SETTLED_POST_DETECTION_VERSION,
 } from './raw-refuel-candidate-cross-version-compatibility.authority';
-import { isV2SameVersionPair } from './raw-refuel-candidate-v2-same-version-rediscovery.authority';
+import {
+  isV2SameVersionPair,
+  isV2ShiftedIdentityBucketStaleAmbiguity,
+} from './raw-refuel-candidate-v2-same-version-rediscovery.authority';
 import {
   isSupportedCandidateDetectionVersionForIdentity,
   tryBuildCandidateIdentityKeyFromEvidence,
@@ -33,7 +36,10 @@ import {
   resolveNextLifecycleState,
 } from './raw-refuel-candidate-lifecycle';
 import { buildRawRefuelCandidateLockKey } from './raw-refuel-candidate-lock.util';
-import { classifyRawRefuelCandidateOverlap } from './raw-refuel-candidate.matcher';
+import {
+  candidateToEvidenceSlice,
+  classifyRawRefuelCandidateOverlap,
+} from './raw-refuel-candidate.matcher';
 import { computeRawRefuelCandidateRediscoveryWindow } from './raw-refuel-candidate-rediscovery-window';
 import { RawRefuelCandidateRepository } from './raw-refuel-candidate.repository';
 import type {
@@ -197,6 +203,12 @@ export class RawRefuelCandidateService {
           );
         }
       }
+
+      assertNoV2ShiftedBucketDuplicateInsert(
+        observation,
+        organizationId,
+        classified.distinct,
+      );
 
       return this.insertCandidate(tx, observation, organizationId, serviceNow);
     });
@@ -470,11 +482,35 @@ function assertV2IdentityKeyFallbackReconcileAllowed(
   if (!isV2SameVersionPair(observation, existing)) {
     return;
   }
-  const overlap = classifyRawRefuelCandidateOverlap(observation, existing);
+  const overlap = classifyRawRefuelCandidateOverlap(
+    observation,
+    candidateToEvidenceSlice(existing),
+  );
   if (overlap !== 'SAME_PHYSICAL_RISE') {
     throw new RawRefuelCandidateV2RediscoveryInsufficientEvidenceError(
       observation.vehicleId,
       [existing.id],
+    );
+  }
+}
+
+function assertNoV2ShiftedBucketDuplicateInsert(
+  observation: RawRefuelCandidateObservation,
+  organizationId: string,
+  distinctNeighbors: RawRefuelCandidate[],
+): void {
+  const slice = { ...observation, organizationId };
+  const ambiguousIds: string[] = [];
+  for (const row of distinctNeighbors) {
+    const candidate = candidateToEvidenceSlice(row);
+    if (isV2ShiftedIdentityBucketStaleAmbiguity(slice, candidate)) {
+      ambiguousIds.push(row.id);
+    }
+  }
+  if (ambiguousIds.length > 0) {
+    throw new RawRefuelCandidateV2RediscoveryInsufficientEvidenceError(
+      observation.vehicleId,
+      ambiguousIds,
     );
   }
 }

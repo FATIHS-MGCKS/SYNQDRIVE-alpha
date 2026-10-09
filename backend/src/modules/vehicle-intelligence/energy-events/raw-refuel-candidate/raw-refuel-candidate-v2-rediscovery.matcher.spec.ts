@@ -218,6 +218,40 @@ describe('R3B v2→v2 settled-post rediscovery matcher', () => {
     expect(classifyRawRefuelCandidateOverlap(second, stored)).toBe('DISTINCT_PHYSICAL_RISE');
   });
 
+  it('M10 shifted bucket + stale baseline is ambiguity not distinct merge', () => {
+    const stored = storedV2Row(
+      buildTestObservation({
+        organizationId: 'org-r3b',
+        vehicleId: 'veh-r3b',
+        detectionVersion: RFRF_PLANNED_SETTLED_POST_DETECTION_VERSION,
+        detectorVersion: V2_DETECTOR,
+        preFuelAbsoluteLiters: 6,
+        postFuelAbsoluteLiters: 20,
+        riseOnsetAt: riseOnset,
+        riseEndAt: riseEnd,
+        evidenceMeta: freshV2Meta(),
+      }),
+      { evidenceMeta: freshV2Meta() as Prisma.JsonValue },
+    );
+    const incoming = buildTestObservation({
+      organizationId: 'org-r3b',
+      vehicleId: 'veh-r3b',
+      detectionVersion: RFRF_PLANNED_SETTLED_POST_DETECTION_VERSION,
+      detectorVersion: V2_DETECTOR,
+      preFuelAbsoluteLiters: 6,
+      postFuelAbsoluteLiters: 17,
+      riseOnsetAt: new Date('2026-09-30T05:04:04.772Z'),
+      riseEndAt: new Date('2026-09-30T05:07:34.774Z'),
+      physicalEvidenceStart: new Date('2026-09-30T04:50:00.000Z'),
+      physicalEvidenceEnd: new Date('2026-09-30T05:10:00.000Z'),
+      evidenceMeta: {
+        postFuelAuthority: 'SETTLED_MEDIAN',
+        baselineRecencyClassification: 'STALE',
+      },
+    });
+    expect(classifyRawRefuelCandidateOverlap(incoming, stored)).toBe('DISTINCT_PHYSICAL_RISE');
+  });
+
   it('M6 tenant isolation — different organization', () => {
     const base = buildTestObservation({
       organizationId: 'org-a',

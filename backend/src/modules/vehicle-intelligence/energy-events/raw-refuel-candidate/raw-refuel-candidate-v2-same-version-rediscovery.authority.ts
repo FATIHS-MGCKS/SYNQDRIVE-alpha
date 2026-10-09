@@ -147,14 +147,73 @@ export function bothExplicitSettledMedianPostFuelAuthority(
   return observationAuthority === 'SETTLED_MEDIAN' && storedAuthority === 'SETTLED_MEDIAN';
 }
 
+export type V2DetectionVersionCarrier = {
+  detectionVersion: string | null | undefined;
+};
+
 export function isV2SameVersionPair(
-  observation: RawRefuelCandidateEvidenceSlice,
-  candidate: RawRefuelCandidateEvidenceSlice,
+  observation: V2DetectionVersionCarrier,
+  candidate: V2DetectionVersionCarrier,
 ): boolean {
   return (
     observation.detectionVersion === RFRF_PLANNED_SETTLED_POST_DETECTION_VERSION &&
     candidate.detectionVersion === RFRF_PLANNED_SETTLED_POST_DETECTION_VERSION
   );
+}
+
+function hasCompatiblePrePlateauForAmbiguityGuard(
+  left: RawRefuelCandidateEvidenceSlice,
+  right: RawRefuelCandidateEvidenceSlice,
+): boolean {
+  if (left.signalChannel === 'ABSOLUTE_LITERS') {
+    if (left.preFuelAbsoluteLiters == null || right.preFuelAbsoluteLiters == null) {
+      return false;
+    }
+    return (
+      Math.abs(left.preFuelAbsoluteLiters - right.preFuelAbsoluteLiters) <=
+      RAW_REFUEL_CANDIDATE_PRE_PLATEAU_TOLERANCE_LITERS
+    );
+  }
+  if (left.preFuelRelativePercent == null || right.preFuelRelativePercent == null) {
+    return false;
+  }
+  return (
+    Math.abs(left.preFuelRelativePercent - right.preFuelRelativePercent) <=
+    RAW_REFUEL_CANDIDATE_PRE_PLATEAU_TOLERANCE_PERCENT
+  );
+}
+
+/**
+ * Fail-closed when a shifted identity bucket plus stale/missing baseline would otherwise
+ * fork a second candidate for the same physical rise neighborhood.
+ */
+export function isV2ShiftedIdentityBucketStaleAmbiguity(
+  observation: RawRefuelCandidateEvidenceSlice,
+  candidate: RawRefuelCandidateEvidenceSlice,
+): boolean {
+  if (!isV2SameVersionPair(observation, candidate)) {
+    return false;
+  }
+  if (!bothExplicitSettledMedianPostFuelAuthority(observation, candidate)) {
+    return false;
+  }
+  if (!hasCompatiblePrePlateauForAmbiguityGuard(observation, candidate)) {
+    return false;
+  }
+  if (!physicalNeighborhoodCorresponds(observation, candidate)) {
+    return false;
+  }
+
+  const obsBaseline = readBaselineRecencyFromEvidenceMeta(observation.evidenceMeta);
+  const candBaseline = readBaselineRecencyFromEvidenceMeta(candidate.evidenceMeta);
+  const baselineUncertain =
+    obsBaseline !== 'FRESH' || candBaseline !== 'FRESH';
+  if (!baselineUncertain) {
+    return false;
+  }
+
+  const identityMatch = physicalIdentityKeysMatch(observation, candidate);
+  return identityMatch === false;
 }
 
 /**

@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { RFRF_PLANNED_SETTLED_POST_DETECTION_VERSION } from './raw-refuel-candidate-cross-version-compatibility.authority';
 import { buildPhysicalCandidateIdentityKeyV1 } from './raw-refuel-candidate-physical-identity.authority';
@@ -23,6 +23,10 @@ function freshV2Meta(): Record<string, unknown> {
     postFuelAuthority: 'SETTLED_MEDIAN',
     baselineRecencyClassification: 'FRESH',
   };
+}
+
+function freshV2MetaJson(): Prisma.InputJsonValue {
+  return freshV2Meta() as Prisma.InputJsonValue;
 }
 
 async function probeDatabase(): Promise<boolean> {
@@ -305,7 +309,7 @@ function ksPureV2Observation(orgId: string, vehicleId: string, overrides: Record
             lifecycleState: 'REJECTED',
             rejectionReason: 'INSUFFICIENT_POST_PLATEAU',
             evidenceRevisionFingerprint: 'fp-terminal-v2',
-            evidenceMeta: freshV2Meta(),
+            evidenceMeta: freshV2MetaJson(),
             riseOnsetAt: KS_RISE_ONSET,
             riseEndAt: KS_RISE_END,
             preFuelAbsoluteLiters: 6,
@@ -378,7 +382,7 @@ function ksPureV2Observation(orgId: string, vehicleId: string, overrides: Record
             signalChannel: 'ABSOLUTE_LITERS',
             lifecycleState: 'OBSERVED',
             evidenceRevisionFingerprint: 'fp-r3b-8',
-            evidenceMeta: freshV2Meta(),
+            evidenceMeta: freshV2MetaJson(),
             riseOnsetAt: KS_RISE_ONSET,
             riseEndAt: KS_RISE_END,
             preFuelAbsoluteLiters: 6,
@@ -403,6 +407,113 @@ function ksPureV2Observation(orgId: string, vehicleId: string, overrides: Record
         expect(await prisma.rawRefuelCandidate.count({ where: { vehicleId: vehicle.id } })).toBe(
           countBefore,
         );
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
+    it('PG-R3B-10 identity-key fallback guard without rediscovery-window hit', async () => {
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      const identityKey = buildPhysicalCandidateIdentityKeyV1({
+        vehicleId: vehicle.id,
+        signalChannel: 'ABSOLUTE_LITERS',
+        prePlateauBucket: 6,
+        riseOnsetAt: KS_RISE_ONSET,
+      });
+      try {
+        const storedId = randomUUID();
+        await prisma.rawRefuelCandidate.create({
+          data: {
+            id: storedId,
+            organizationId: org.id,
+            vehicleId: vehicle.id,
+            candidateIdentityKey: identityKey,
+            detectionVersion: RFRF_PLANNED_SETTLED_POST_DETECTION_VERSION,
+            detectorVersion: V2_DETECTOR,
+            signalChannel: 'ABSOLUTE_LITERS',
+            lifecycleState: 'OBSERVED',
+            evidenceRevisionFingerprint: 'fp-r3b-10-fallback',
+            evidenceMeta: freshV2MetaJson(),
+            preFuelAbsoluteLiters: 6,
+            postFuelAbsoluteLiters: 20,
+            firstObservedAt: new Date('2020-01-01T00:00:00.000Z'),
+            lastObservedAt: new Date('2020-01-01T00:00:00.000Z'),
+            recoveryNextAttemptAt: new Date('2020-01-01T00:00:00.000Z'),
+          },
+        });
+        const before = await prisma.rawRefuelCandidate.findUnique({ where: { id: storedId } });
+        const incoming = ksPureV2Observation(org.id, vehicle.id, {
+          postFuelAbsoluteLiters: 17,
+          evidenceMeta: { postFuelAuthority: 'SETTLED_MEDIAN' },
+        });
+        await expect(service.resolveOrCreateCandidate(incoming)).rejects.toBeInstanceOf(
+          RawRefuelCandidateV2RediscoveryInsufficientEvidenceError,
+        );
+        const after = await prisma.rawRefuelCandidate.findUnique({ where: { id: storedId } });
+        expect(after?.candidateIdentityKey).toBe(before?.candidateIdentityKey);
+        expect(after?.evidenceRevisionFingerprint).toBe(before?.evidenceRevisionFingerprint);
+        expect(after?.postFuelAbsoluteLiters).toBe(20);
+        expect(await prisma.rawRefuelCandidate.count({ where: { vehicleId: vehicle.id } })).toBe(1);
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
+    it('PG-R3B-11 stale baseline + shifted bucket cannot duplicate original rise', async () => {
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      const shiftedRiseOnset = new Date('2026-09-30T05:04:04.772Z');
+      try {
+        const seeded = await service.resolveOrCreateCandidate(
+          ksPureV2Observation(org.id, vehicle.id, { postFuelAbsoluteLiters: 20 }),
+        );
+        const before = await prisma.rawRefuelCandidate.findUnique({
+          where: { id: seeded.candidateId },
+        });
+        const incoming = ksPureV2Observation(org.id, vehicle.id, {
+          riseOnsetAt: shiftedRiseOnset,
+          riseEndAt: new Date('2026-09-30T05:07:34.774Z'),
+          postFuelAbsoluteLiters: 17,
+          evidenceMeta: {
+            postFuelAuthority: 'SETTLED_MEDIAN',
+            baselineRecencyClassification: 'STALE',
+          },
+        });
+        await expect(service.resolveOrCreateCandidate(incoming)).rejects.toBeInstanceOf(
+          RawRefuelCandidateV2RediscoveryInsufficientEvidenceError,
+        );
+        const after = await prisma.rawRefuelCandidate.findUnique({
+          where: { id: seeded.candidateId },
+        });
+        expect(after?.candidateIdentityKey).toBe(before?.candidateIdentityKey);
+        expect(after?.evidenceRevisionFingerprint).toBe(before?.evidenceRevisionFingerprint);
+        expect(await prisma.rawRefuelCandidate.count({ where: { vehicleId: vehicle.id } })).toBe(1);
+      } finally {
+        await cleanup(prisma, vehicle.id, org.id);
+      }
+    });
+
+    it('PG-R3B-12 genuinely separate refuel still inserts when pre and rise differ', async () => {
+      const suffix = randomUUID().slice(0, 8);
+      const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
+      try {
+        await service.resolveOrCreateCandidate(ksPureV2Observation(org.id, vehicle.id));
+        const separate = ksPureV2Observation(org.id, vehicle.id, {
+          riseOnsetAt: new Date('2026-09-30T08:00:00.000Z'),
+          riseEndAt: new Date('2026-09-30T08:05:00.000Z'),
+          physicalEvidenceStart: new Date('2026-09-30T07:50:00.000Z'),
+          physicalEvidenceEnd: new Date('2026-09-30T08:10:00.000Z'),
+          preFuelAbsoluteLiters: 10,
+          postFuelAbsoluteLiters: 25,
+          evidenceMeta: {
+            postFuelAuthority: 'SETTLED_MEDIAN',
+            baselineRecencyClassification: 'STALE',
+          },
+        });
+        const result = await service.resolveOrCreateCandidate(separate);
+        expect(result.created).toBe(true);
+        expect(await prisma.rawRefuelCandidate.count({ where: { vehicleId: vehicle.id } })).toBe(2);
       } finally {
         await cleanup(prisma, vehicle.id, org.id);
       }
