@@ -6,6 +6,17 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P0 production Phase-A operational readiness (offline)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | GO/NO-GO contract types; `evaluatePhaseAProductionOperationalReadinessV1` offline evaluator; ops CLI `battery:hv-h4:a3-phase-a-production-operational-readiness`; P0 audit matrix + P1 execution runbook |
+| **WHY** | R4.2A admission exists but P1 production execution requires separate operational authorization, independent human verification, and offline validation without PostgreSQL access |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-operational-readiness.v1.spec.ts`; HV-H4 unit + postgres CI (no R4.2A regression) |
+| **NON_EFFECTS** | No production access; no approval consumption in dry-run; no schema/issuer/hybrid-loader changes |
+| **REMAINING_GAPS** | Production audit login + CA provisioning; cryptographic approval optional future |
+| **DECISION_STATUS** | VALIDATED (repository offline) |
+
 ## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2A-H3 Jest 30 CLI compatibility (repository-wide)
 
 | Field | Value |

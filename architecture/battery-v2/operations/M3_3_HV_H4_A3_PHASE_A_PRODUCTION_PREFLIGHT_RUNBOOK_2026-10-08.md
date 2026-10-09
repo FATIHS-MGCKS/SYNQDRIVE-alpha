@@ -2,6 +2,8 @@
 
 **Status:** preparation slice in repository — **do not execute against production** until change management completes R4.2B operational gate review.
 
+**R4.2B-P0 offline readiness:** `npm run battery:hv-h4:a3-phase-a-production-operational-readiness` (no PostgreSQL). **READY ≠ production authorization.** See `M3_3_HV_H4_A3_PHASE_A_R4_2B_P1_EXECUTION_RUNBOOK_2026-10-09.md` for future P1 steps.
+
 ## Preconditions
 
 1. Change ticket approved (record id in approval JSON).

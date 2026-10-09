@@ -83,6 +83,7 @@
     "battery:hv-h4:charge-throughput-report": "ts-node -r tsconfig-paths/register scripts/ops/battery-hv-h4-charge-throughput-report.ts",
     "battery:hv-h4:a3-phase-a-preflight": "ts-node -r tsconfig-paths/register scripts/ops/m3-3-hv-h4-a3-o2-r4-1-phase-a-preflight.ts",
     "battery:hv-h4:a3-phase-a-production-preflight": "ts-node -r tsconfig-paths/register scripts/ops/m3-3-hv-h4-a3-o2-r4-2a-phase-a-production-preflight.ts",
+    "battery:hv-h4:a3-phase-a-production-operational-readiness": "ts-node -r tsconfig-paths/register scripts/ops/m3-3-hv-h4-a3-o2-r4-2b-phase-a-production-operational-readiness.ts",
     "test:battery:v2:hv-h4": "jest m3-3-hv-h4 --testPathIgnorePatterns=postgres.integration",
     "test:battery:v2:hv-h4:postgres": "BATTERY_HV_H4_REPORT_INTEGRATION=1 jest 'm3-3-hv-h4.*postgres.integration' --runInBand",
     "test:battery:v2:hv-h4:postgres:ci": "bash scripts/test/battery-hv-h4-coverage-report-postgres-ci.sh",

@@ -90,10 +90,12 @@ Unchanged R4.1 guarantees: manifest SELECT-only, `SET TRANSACTION READ ONLY`, no
 
 ## 6. Outstanding gaps (R4.2B+)
 
+- **R4.2B-P0 (offline):** GO/NO-GO contract + operational readiness dry-run — see `M3_3_HV_H4_A3_3_O2_R4_2B_PRODUCTION_PHASE_A_OPERATIONAL_READINESS_2026-10-09.md`
+- **R4.2B-P1 (future execution):** operator procedure — `operations/M3_3_HV_H4_A3_PHASE_A_R4_2B_P1_EXECUTION_RUNBOOK_2026-10-09.md`
 - Cryptographic approval attestation (optional future)
 - Production hostname allowlist registry integration
 - Phase-B post-provision certification execution
-- Role provisioning runbooks
+- Role provisioning runbooks (org-operational; not repository DDL)
 
 ## 7. References
 
