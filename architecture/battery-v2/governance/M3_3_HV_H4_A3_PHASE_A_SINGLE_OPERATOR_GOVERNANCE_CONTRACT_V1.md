@@ -1,7 +1,7 @@
 # Governance contract — Single-operator production Phase-A (V1)
 
 **Contract ID:** `M3_3_HV_H4_A3_SINGLE_OPERATOR_GOVERNANCE_CONTRACT_V1`  
-**Status:** `PROPOSED` — **requires explicit human policy approval** before any runtime mode switch.  
+**Status:** `PROPOSED` — owner Path B choice documented in adoption **proposal** (`M3_3_HV_H4_A3_SINGLE_OPERATOR_GOVERNANCE_ADOPTION_PROPOSAL_2026-10-09.md`); **repository ratification** still required before runtime single-operator readiness substitution.  
 **Does not authorize production execution** by itself.
 
 ## 1. Purpose

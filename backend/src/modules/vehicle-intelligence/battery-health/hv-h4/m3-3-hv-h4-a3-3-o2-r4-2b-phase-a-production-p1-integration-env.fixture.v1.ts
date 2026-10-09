@@ -13,7 +13,10 @@ import {
   M3_3_HV_H4_A3_PHASE_A_PRODUCTION_TARGET_SPEC_JSON_ENV,
 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-approval.v1';
 import { M3_3_HV_H4_A3_PHASE_A_PRODUCTION_TARGET_SPEC_CONTRACT_V1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-approval.types.v1';
-import { M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_CONTRACT_V1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-go-no-go.types.v1';
+import {
+  M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_CONTRACT_V1,
+  M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_CONTRACT_V2,
+} from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-go-no-go.types.v1';
 import {
   M3_3_HV_H4_A3_PHASE_A_PRODUCTION_AUTHORIZED_RELEASE_SHA_ENV,
   M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_RECORD_JSON_ENV,
@@ -27,6 +30,7 @@ export type BuildPhaseAProductionP1IntegrationEnvOptionsV1 = {
   migrationOwnerRoleIdentityReference?: string;
   consumptionDir?: string;
   releaseSha?: string;
+  governanceMode?: 'MULTI_PARTY_V1' | 'SINGLE_OPERATOR_V1';
 };
 
 /** CI/integration fixture — not production authorization evidence. */
@@ -70,18 +74,12 @@ export function buildPhaseAProductionP1IntegrationEnvV1(
     forbidSuperuserSession: true,
   };
 
-  const go = {
-    contractVersion: M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_CONTRACT_V1,
+  const governanceMode = options.governanceMode ?? 'MULTI_PARTY_V1';
+  const goBase = {
     operatorDecision: 'GO' as const,
     authorizedReleaseSha: releaseSha,
     changeTicket: record.changeTicket,
     authorizedHumanApprover: 'ci-change-manager@synqdrive.local',
-    independentAuthorizationVerification: {
-      verifierIdentity: 'ci-verifier@synqdrive.local',
-      verifiedAtUtc: new Date(now - 30_000).toISOString(),
-      verificationMethod: 'CI_FIXTURE_PEER_REVIEW',
-      attestsIndependentFromApprovalAuthor: true as const,
-    },
     productionTarget: {
       hostname: spec.hostname,
       port: spec.port,
@@ -133,6 +131,24 @@ export function buildPhaseAProductionP1IntegrationEnvV1(
       backfillActivationAuthorized: false,
     },
   };
+
+  const go =
+    governanceMode === 'SINGLE_OPERATOR_V1'
+      ? {
+          contractVersion: M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_CONTRACT_V2,
+          governanceMode: 'SINGLE_OPERATOR_V1' as const,
+          ...goBase,
+        }
+      : {
+          contractVersion: M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_CONTRACT_V1,
+          ...goBase,
+          independentAuthorizationVerification: {
+            verifierIdentity: 'ci-verifier@synqdrive.local',
+            verifiedAtUtc: new Date(now - 30_000).toISOString(),
+            verificationMethod: 'CI_FIXTURE_PEER_REVIEW',
+            attestsIndependentFromApprovalAuthor: true as const,
+          },
+        };
 
   return {
     [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_PREFLIGHT_ENABLED_ENV]: '1',

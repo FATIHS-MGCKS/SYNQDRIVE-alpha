@@ -6,6 +6,36 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B1-A0-H2 eliminate self-asserted trusted governance evidence
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | External authority verifier port (disabled A0); reject `TRUSTED_EXTERNAL_VERIFIED` in claim JSON; split `CLAIMS_STRUCTURALLY_VALID` vs `AUTHORITY_VERIFIED`; Path B readiness fail-closed without verifier |
+| **WHY** | H1 review — self-authored trust status in env/JSON must not satisfy governance readiness |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1b1-a0-h2-governance-authority.spec.ts` + HV-H4 unit suite |
+| **NON_EFFECTS** | No env bypass, no production access, P1 authorization remains `NO_GO` |
+| **DECISION_STATUS** | PROPOSED — future slice wires GitHub/hosted verifier producing verified evidence results |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B1-A0-H1 governance trust boundary closure
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | GO/NO-GO V2 adapter (`SINGLE_OPERATOR_V1` forbids fabricated verifier); ratification provenance contract; operator risk acceptance V2; readiness check `SINGLE_OPERATOR_POLICY_AND_RISK_ACCEPTANCE`; block self-declared `RATIFIED` adoption JSON |
+| **WHY** | DO NOT MERGE review — Path B must not depend on fictional second-human verifier or unauthenticated ratification |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1b1-a0-h1-governance-trust.spec.ts` + HV-H4 unit suite (268 tests); P1 execution gate remains `NO_GO` |
+| **NON_EFFECTS** | No production DB/SSH, keys, migrations, or Authority C execution wiring |
+| **DECISION_STATUS** | PROPOSED — owner repository ratification + trusted provenance still required before governance READY |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B1-A0 single-operator governance adoption & dormant authorization prep
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Path B adoption proposal + governance mode contract V2; governance-mode readiness adapter; dormant P1 trusted-auth eval (`NO_GO`); operator signing/trust provisioning doc; P1B1-A0 negative tests |
+| **WHY** | Owner confirmed Path B governance model; prepare P1B1 without enabling production execution |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1b1-a0*` + full HV-H4 unit suite; `resolvePhaseAProductionP1AuthorizationV1` unchanged `NO_GO` |
+| **NON_EFFECTS** | No production access, keys, deployment probe, or execution gate `GO` wiring |
+| **DECISION_STATUS** | PROPOSED — adoption record template `PENDING_OWNER_CONTROLLED_REPOSITORY_MERGE` until owner merge |
+
 ## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B0-H3 Ed25519 DER canonicalization & revocation alias closure
 
 | Field | Value |

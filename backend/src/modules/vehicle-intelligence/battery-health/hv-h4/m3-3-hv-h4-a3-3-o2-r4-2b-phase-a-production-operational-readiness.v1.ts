@@ -21,10 +21,13 @@ import {
 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-target.v1';
 import {
   M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_CONTRACT_V1,
+  M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_CONTRACT_V2,
   M3_3_HV_H4_A3_PHASE_A_OPERATIONAL_READINESS_REPORT_CONTRACT_V1,
   type M3_3HvH4A3PhaseAOperationalReadinessCheckV1,
   type M3_3HvH4A3PhaseAOperationalReadinessReportV1,
-  type M3_3HvH4A3PhaseAProductionGoNoGoRecordV1,
+  type M3_3HvH4A3PhaseAProductionGoNoGoIndependentVerificationV1,
+  type M3_3HvH4A3PhaseAProductionGoNoGoLoadedV1,
+  type M3_3HvH4A3PhaseAProductionGoNoGoOperationalBodyV1,
 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-go-no-go.types.v1';
 import {
   normalizePhaseAAuthorizedReleaseShaV1,
@@ -33,6 +36,10 @@ import {
   validatePhaseAIndependentVerifierTimestampV1,
   validatePhaseAStopConditionsV1,
 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-readiness-validation.v1';
+import {
+  evaluatePhaseAHumanVerificationReadinessV1,
+  evaluatePhaseASingleOperatorGovernanceClaimsStructuralValidityV1,
+} from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-governance-mode.v1';
 
 export const M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_RECORD_JSON_ENV =
   'M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_RECORD_JSON' as const;
@@ -62,9 +69,205 @@ function pass(checks: M3_3HvH4A3PhaseAOperationalReadinessCheckV1[], checkId: st
   pushCheck(checks, { checkId, status: 'PASS' });
 }
 
+function validateIndependentAuthorizationVerificationV1(
+  iv: unknown,
+): { ok: true; record: M3_3HvH4A3PhaseAProductionGoNoGoIndependentVerificationV1 } | { ok: false; reasonCode: string } {
+  if (
+    !iv ||
+    typeof iv !== 'object' ||
+    typeof (iv as M3_3HvH4A3PhaseAProductionGoNoGoIndependentVerificationV1).verifierIdentity !==
+      'string' ||
+    !(iv as M3_3HvH4A3PhaseAProductionGoNoGoIndependentVerificationV1).verifierIdentity.trim() ||
+    typeof (iv as M3_3HvH4A3PhaseAProductionGoNoGoIndependentVerificationV1).verifiedAtUtc !==
+      'string' ||
+    !(iv as M3_3HvH4A3PhaseAProductionGoNoGoIndependentVerificationV1).verifiedAtUtc.trim() ||
+    typeof (iv as M3_3HvH4A3PhaseAProductionGoNoGoIndependentVerificationV1).verificationMethod !==
+      'string' ||
+    !(iv as M3_3HvH4A3PhaseAProductionGoNoGoIndependentVerificationV1).verificationMethod.trim() ||
+    (iv as M3_3HvH4A3PhaseAProductionGoNoGoIndependentVerificationV1)
+      .attestsIndependentFromApprovalAuthor !== true
+  ) {
+    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_INDEPENDENT_VERIFICATION_INCOMPLETE' };
+  }
+  return { ok: true, record: iv as M3_3HvH4A3PhaseAProductionGoNoGoIndependentVerificationV1 };
+}
+
+function validatePhaseAProductionGoNoGoOperationalBodyV1(
+  parsed: Record<string, unknown>,
+): { ok: true; body: M3_3HvH4A3PhaseAProductionGoNoGoOperationalBodyV1 } | { ok: false; reasonCode: string } {
+  const operatorDecision = parsed.operatorDecision;
+  if (operatorDecision !== 'GO' && operatorDecision !== 'NO_GO') {
+    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_DECISION_INVALID' };
+  }
+  const recordRelease = normalizePhaseAAuthorizedReleaseShaV1(
+    typeof parsed.authorizedReleaseSha === 'string' ? parsed.authorizedReleaseSha : undefined,
+  );
+  if (!recordRelease.ok) {
+    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_RELEASE_SHA_MALFORMED' };
+  }
+  if (typeof parsed.changeTicket !== 'string' || !parsed.changeTicket.trim()) {
+    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_RECORD_INCOMPLETE' };
+  }
+  if (typeof parsed.authorizedHumanApprover !== 'string' || !parsed.authorizedHumanApprover.trim()) {
+    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_RECORD_INCOMPLETE' };
+  }
+
+  const pt = parsed.productionTarget;
+  if (
+    !pt ||
+    typeof pt !== 'object' ||
+    typeof (pt as { hostname?: string }).hostname !== 'string' ||
+    !(pt as { hostname: string }).hostname.trim() ||
+    typeof (pt as { database?: string }).database !== 'string' ||
+    !(pt as { database: string }).database.trim() ||
+    typeof (pt as { auditLogin?: string }).auditLogin !== 'string' ||
+    !(pt as { auditLogin: string }).auditLogin.trim() ||
+    typeof (pt as { port?: number }).port !== 'number' ||
+    !Number.isFinite((pt as { port: number }).port) ||
+    (pt as { port: number }).port <= 0 ||
+    (pt as { port: number }).port > 65535
+  ) {
+    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_TARGET_INCOMPLETE' };
+  }
+
+  const auditExpectations = validatePhaseAAuditCredentialExpectationsV1(
+    parsed.auditCredentialExpectations as M3_3HvH4A3PhaseAProductionGoNoGoOperationalBodyV1['auditCredentialExpectations'],
+  );
+  if (!auditExpectations.ok) return auditExpectations;
+
+  const limits = parsed.authorizationLimits;
+  if (
+    !limits ||
+    typeof limits !== 'object' ||
+    (limits as { schemaChangesAuthorized?: boolean }).schemaChangesAuthorized !== false ||
+    (limits as { issuanceActivationAuthorized?: boolean }).issuanceActivationAuthorized !== false ||
+    (limits as { applicationRuntimeFlagChangesAuthorized?: boolean }).applicationRuntimeFlagChangesAuthorized !==
+      false ||
+    (limits as { hybridLoaderActivationAuthorized?: boolean }).hybridLoaderActivationAuthorized !== false ||
+    (limits as { attestationInsertOrUpdateAuthorized?: boolean }).attestationInsertOrUpdateAuthorized !== false ||
+    (limits as { retentionActivationAuthorized?: boolean }).retentionActivationAuthorized !== false ||
+    (limits as { reconciliationActivationAuthorized?: boolean }).reconciliationActivationAuthorized !== false ||
+    (limits as { backfillActivationAuthorized?: boolean }).backfillActivationAuthorized !== false
+  ) {
+    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_LIMITS_INVALID' };
+  }
+
+  const stop = validatePhaseAStopConditionsV1(parsed.stopConditions);
+  if (!stop.ok) return stop;
+  if (
+    typeof parsed.incidentHandling !== 'string' ||
+    !parsed.incidentHandling.trim() ||
+    typeof parsed.evidenceStorageDestination !== 'string' ||
+    !parsed.evidenceStorageDestination.trim()
+  ) {
+    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_INCIDENT_OR_EVIDENCE_INCOMPLETE' };
+  }
+
+  const binding = parsed.approvalBinding;
+  if (
+    !binding ||
+    typeof binding !== 'object' ||
+    typeof (binding as { approvalId?: string }).approvalId !== 'string' ||
+    !(binding as { approvalId: string }).approvalId.trim() ||
+    typeof (binding as { executeNonce?: string }).executeNonce !== 'string' ||
+    !(binding as { executeNonce: string }).executeNonce.trim() ||
+    typeof (binding as { validFrom?: string }).validFrom !== 'string' ||
+    !(binding as { validFrom: string }).validFrom.trim() ||
+    typeof (binding as { validUntil?: string }).validUntil !== 'string' ||
+    !(binding as { validUntil: string }).validUntil.trim()
+  ) {
+    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_APPROVAL_BINDING_INCOMPLETE' };
+  }
+  const bindingFrom = parseUtcIsoTimestampV1((binding as { validFrom: string }).validFrom);
+  const bindingUntil = parseUtcIsoTimestampV1((binding as { validUntil: string }).validUntil);
+  if (!bindingFrom.ok || !bindingUntil.ok) {
+    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_APPROVAL_BINDING_TIMESTAMP_INVALID' };
+  }
+  if (bindingUntil.epochMs <= bindingFrom.epochMs) {
+    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_APPROVAL_BINDING_WINDOW_REVERSED' };
+  }
+
+  const store = parsed.consumptionStore;
+  if (
+    !store ||
+    typeof store !== 'object' ||
+    typeof (store as { absolutePath?: string }).absolutePath !== 'string' ||
+    !(store as { absolutePath: string }).absolutePath.trim() ||
+    typeof (store as { operationalOwner?: string }).operationalOwner !== 'string' ||
+    !(store as { operationalOwner: string }).operationalOwner.trim() ||
+    (store as { markerFileName?: string }).markerFileName !==
+      '.synqdrive_phase_a_production_consumption_store_v1'
+  ) {
+    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_CONSUMPTION_STORE_INCOMPLETE' };
+  }
+
+  const tls = parsed.tlsRequirements;
+  if (
+    !tls ||
+    typeof tls !== 'object' ||
+    (tls as { sslmode?: string }).sslmode !== 'verify-full' ||
+    (tls as { trustedCaBundleRequired?: boolean }).trustedCaBundleRequired !== true ||
+    (tls as { hostnameValidationRequired?: boolean }).hostnameValidationRequired !== true
+  ) {
+    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_TLS_REQUIREMENTS_INVALID' };
+  }
+
+  const sqlScope = parsed.readOnlySqlScope;
+  if (
+    !sqlScope ||
+    typeof sqlScope !== 'object' ||
+    (sqlScope as { approvedQueryManifestOnly?: boolean }).approvedQueryManifestOnly !== true ||
+    (sqlScope as { singleSessionReadOnlyTransaction?: boolean }).singleSessionReadOnlyTransaction !== true ||
+    (sqlScope as { boundedStatementTimeoutRequired?: boolean }).boundedStatementTimeoutRequired !== true
+  ) {
+    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_SQL_SCOPE_INVALID' };
+  }
+
+  const mw = parsed.maintenanceWindow;
+  if (
+    !mw ||
+    typeof mw !== 'object' ||
+    typeof (mw as { startUtc?: string }).startUtc !== 'string' ||
+    !(mw as { startUtc: string }).startUtc.trim() ||
+    typeof (mw as { endUtc?: string }).endUtc !== 'string' ||
+    !(mw as { endUtc: string }).endUtc.trim()
+  ) {
+    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_MAINTENANCE_WINDOW_INCOMPLETE' };
+  }
+  const mwStart = parseUtcIsoTimestampV1((mw as { startUtc: string }).startUtc);
+  const mwEnd = parseUtcIsoTimestampV1((mw as { endUtc: string }).endUtc);
+  if (!mwStart.ok || !mwEnd.ok) {
+    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_MAINTENANCE_WINDOW_INVALID' };
+  }
+  if (mwEnd.epochMs <= mwStart.epochMs) {
+    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_MAINTENANCE_WINDOW_REVERSED' };
+  }
+
+  const body: M3_3HvH4A3PhaseAProductionGoNoGoOperationalBodyV1 = {
+    operatorDecision: operatorDecision as M3_3HvH4A3PhaseAProductionGoNoGoOperationalBodyV1['operatorDecision'],
+    authorizedReleaseSha: recordRelease.normalized,
+    changeTicket: (parsed.changeTicket as string).trim(),
+    authorizedHumanApprover: (parsed.authorizedHumanApprover as string).trim(),
+    productionTarget: pt as M3_3HvH4A3PhaseAProductionGoNoGoOperationalBodyV1['productionTarget'],
+    auditCredentialExpectations:
+      parsed.auditCredentialExpectations as M3_3HvH4A3PhaseAProductionGoNoGoOperationalBodyV1['auditCredentialExpectations'],
+    tlsRequirements: tls as M3_3HvH4A3PhaseAProductionGoNoGoOperationalBodyV1['tlsRequirements'],
+    approvalBinding: binding as M3_3HvH4A3PhaseAProductionGoNoGoOperationalBodyV1['approvalBinding'],
+    consumptionStore: store as M3_3HvH4A3PhaseAProductionGoNoGoOperationalBodyV1['consumptionStore'],
+    readOnlySqlScope: sqlScope as M3_3HvH4A3PhaseAProductionGoNoGoOperationalBodyV1['readOnlySqlScope'],
+    maintenanceWindow: mw as M3_3HvH4A3PhaseAProductionGoNoGoOperationalBodyV1['maintenanceWindow'],
+    stopConditions: stop.conditions,
+    incidentHandling: (parsed.incidentHandling as string).trim(),
+    evidenceStorageDestination: (parsed.evidenceStorageDestination as string).trim(),
+    authorizationLimits: limits as M3_3HvH4A3PhaseAProductionGoNoGoOperationalBodyV1['authorizationLimits'],
+  };
+
+  return { ok: true, body };
+}
+
 export function loadPhaseAProductionGoNoGoRecordV1(
   env: NodeJS.ProcessEnv,
-): { ok: true; record: M3_3HvH4A3PhaseAProductionGoNoGoRecordV1 } | { ok: false; reasonCode: string } {
+): { ok: true; record: M3_3HvH4A3PhaseAProductionGoNoGoLoadedV1 } | { ok: false; reasonCode: string } {
   const jsonInline = env[M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_RECORD_JSON_ENV]?.trim();
   const path = env[M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_RECORD_PATH_ENV]?.trim();
 
@@ -90,156 +293,51 @@ export function loadPhaseAProductionGoNoGoRecordV1(
   if (!isRecord(parsed)) {
     return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_RECORD_INVALID_SHAPE' };
   }
-  if (parsed.contractVersion !== M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_CONTRACT_V1) {
+  const contractVersion = parsed.contractVersion;
+  if (
+    contractVersion !== M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_CONTRACT_V1 &&
+    contractVersion !== M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_CONTRACT_V2
+  ) {
     return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_CONTRACT_MISMATCH' };
   }
 
-  const record = parsed as M3_3HvH4A3PhaseAProductionGoNoGoRecordV1;
-  if (record.operatorDecision !== 'GO' && record.operatorDecision !== 'NO_GO') {
-    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_DECISION_INVALID' };
-  }
-  const recordRelease = normalizePhaseAAuthorizedReleaseShaV1(record.authorizedReleaseSha);
-  if (!recordRelease.ok) {
-    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_RELEASE_SHA_MALFORMED' };
-  }
-  record.authorizedReleaseSha = recordRelease.normalized;
+  const bodyValidated = validatePhaseAProductionGoNoGoOperationalBodyV1(parsed);
+  if (!bodyValidated.ok) return bodyValidated;
 
-  if (!record.changeTicket?.trim()) {
-    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_RECORD_INCOMPLETE' };
-  }
-  if (!record.authorizedHumanApprover?.trim()) {
-    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_RECORD_INCOMPLETE' };
-  }
+  let governanceMode: M3_3HvH4A3PhaseAProductionGoNoGoLoadedV1['governanceMode'];
+  let independentAuthorizationVerification:
+    | M3_3HvH4A3PhaseAProductionGoNoGoIndependentVerificationV1
+    | undefined;
 
-  const iv = record.independentAuthorizationVerification;
-  if (
-    !iv ||
-    typeof iv.verifierIdentity !== 'string' ||
-    !iv.verifierIdentity.trim() ||
-    typeof iv.verifiedAtUtc !== 'string' ||
-    !iv.verifiedAtUtc.trim() ||
-    typeof iv.verificationMethod !== 'string' ||
-    !iv.verificationMethod.trim() ||
-    iv.attestsIndependentFromApprovalAuthor !== true
-  ) {
-    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_INDEPENDENT_VERIFICATION_INCOMPLETE' };
-  }
-
-  const pt = record.productionTarget;
-  if (
-    !pt ||
-    typeof pt.hostname !== 'string' ||
-    !pt.hostname.trim() ||
-    typeof pt.database !== 'string' ||
-    !pt.database.trim() ||
-    typeof pt.auditLogin !== 'string' ||
-    !pt.auditLogin.trim() ||
-    typeof pt.port !== 'number' ||
-    !Number.isFinite(pt.port) ||
-    pt.port <= 0 ||
-    pt.port > 65535
-  ) {
-    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_TARGET_INCOMPLETE' };
+  if (contractVersion === M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_CONTRACT_V1) {
+    governanceMode = 'MULTI_PARTY_V1';
+    const iv = validateIndependentAuthorizationVerificationV1(parsed.independentAuthorizationVerification);
+    if (!iv.ok) return iv;
+    independentAuthorizationVerification = iv.record;
+  } else {
+    const mode = parsed.governanceMode;
+    if (mode !== 'MULTI_PARTY_V1' && mode !== 'SINGLE_OPERATOR_V1') {
+      return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_GOVERNANCE_MODE_INVALID' };
+    }
+    governanceMode = mode;
+    const hasIv = parsed.independentAuthorizationVerification !== undefined && parsed.independentAuthorizationVerification !== null;
+    if (governanceMode === 'SINGLE_OPERATOR_V1') {
+      if (hasIv) {
+        return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_FABRICATED_SECOND_HUMAN_VERIFIER_FORBIDDEN' };
+      }
+    } else {
+      const iv = validateIndependentAuthorizationVerificationV1(parsed.independentAuthorizationVerification);
+      if (!iv.ok) return iv;
+      independentAuthorizationVerification = iv.record;
+    }
   }
 
-  const auditExpectations = validatePhaseAAuditCredentialExpectationsV1(record.auditCredentialExpectations);
-  if (!auditExpectations.ok) return auditExpectations;
-
-  const limits = record.authorizationLimits;
-  if (
-    !limits ||
-    limits.schemaChangesAuthorized !== false ||
-    limits.issuanceActivationAuthorized !== false ||
-    limits.applicationRuntimeFlagChangesAuthorized !== false ||
-    limits.hybridLoaderActivationAuthorized !== false ||
-    limits.attestationInsertOrUpdateAuthorized !== false ||
-    limits.retentionActivationAuthorized !== false ||
-    limits.reconciliationActivationAuthorized !== false ||
-    limits.backfillActivationAuthorized !== false
-  ) {
-    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_LIMITS_INVALID' };
-  }
-
-  const stop = validatePhaseAStopConditionsV1(record.stopConditions);
-  if (!stop.ok) return stop;
-  record.stopConditions = stop.conditions;
-  if (!record.incidentHandling?.trim() || !record.evidenceStorageDestination?.trim()) {
-    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_INCIDENT_OR_EVIDENCE_INCOMPLETE' };
-  }
-
-  const binding = record.approvalBinding;
-  if (
-    !binding ||
-    typeof binding.approvalId !== 'string' ||
-    !binding.approvalId.trim() ||
-    typeof binding.executeNonce !== 'string' ||
-    !binding.executeNonce.trim() ||
-    typeof binding.validFrom !== 'string' ||
-    !binding.validFrom.trim() ||
-    typeof binding.validUntil !== 'string' ||
-    !binding.validUntil.trim()
-  ) {
-    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_APPROVAL_BINDING_INCOMPLETE' };
-  }
-  const bindingFrom = parseUtcIsoTimestampV1(binding.validFrom);
-  const bindingUntil = parseUtcIsoTimestampV1(binding.validUntil);
-  if (!bindingFrom.ok || !bindingUntil.ok) {
-    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_APPROVAL_BINDING_TIMESTAMP_INVALID' };
-  }
-  if (bindingUntil.epochMs <= bindingFrom.epochMs) {
-    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_APPROVAL_BINDING_WINDOW_REVERSED' };
-  }
-
-  const store = record.consumptionStore;
-  if (
-    !store ||
-    typeof store.absolutePath !== 'string' ||
-    !store.absolutePath.trim() ||
-    typeof store.operationalOwner !== 'string' ||
-    !store.operationalOwner.trim() ||
-    store.markerFileName !== '.synqdrive_phase_a_production_consumption_store_v1'
-  ) {
-    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_CONSUMPTION_STORE_INCOMPLETE' };
-  }
-
-  const tls = record.tlsRequirements;
-  if (
-    !tls ||
-    tls.sslmode !== 'verify-full' ||
-    tls.trustedCaBundleRequired !== true ||
-    tls.hostnameValidationRequired !== true
-  ) {
-    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_TLS_REQUIREMENTS_INVALID' };
-  }
-
-  const sqlScope = record.readOnlySqlScope;
-  if (
-    !sqlScope ||
-    sqlScope.approvedQueryManifestOnly !== true ||
-    sqlScope.singleSessionReadOnlyTransaction !== true ||
-    sqlScope.boundedStatementTimeoutRequired !== true
-  ) {
-    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_SQL_SCOPE_INVALID' };
-  }
-
-  const mw = record.maintenanceWindow;
-  if (
-    !mw ||
-    typeof mw.startUtc !== 'string' ||
-    !mw.startUtc.trim() ||
-    typeof mw.endUtc !== 'string' ||
-    !mw.endUtc.trim()
-  ) {
-    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_MAINTENANCE_WINDOW_INCOMPLETE' };
-  }
-  const mwStart = parseUtcIsoTimestampV1(mw.startUtc);
-  const mwEnd = parseUtcIsoTimestampV1(mw.endUtc);
-  if (!mwStart.ok || !mwEnd.ok) {
-    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_MAINTENANCE_WINDOW_INVALID' };
-  }
-  if (mwEnd.epochMs <= mwStart.epochMs) {
-    return { ok: false, reasonCode: 'PHASE_A_GO_NO_GO_MAINTENANCE_WINDOW_REVERSED' };
-  }
+  const record: M3_3HvH4A3PhaseAProductionGoNoGoLoadedV1 = {
+    contractVersion,
+    governanceMode,
+    independentAuthorizationVerification,
+    ...bodyValidated.body,
+  };
 
   return { ok: true, record };
 }
@@ -376,26 +474,87 @@ function evaluatePhaseAProductionOperationalReadinessInnerV1(
       pass(checks, 'APPROVAL_WINDOW_CURRENT');
     }
 
-    const verifier = go.independentAuthorizationVerification.verifierIdentity.trim().toLowerCase();
-    const author = approval.approvingAuthority.trim().toLowerCase();
-    const humanApprover = go.authorizedHumanApprover.trim().toLowerCase();
-    if (!verifier || verifier === author || verifier === humanApprover) {
-      fail(checks, 'INDEPENDENT_HUMAN_VERIFICATION', 'PHASE_A_GO_NO_GO_VERIFIER_NOT_INDEPENDENT');
-      blockers.push('PHASE_A_GO_NO_GO_VERIFIER_NOT_INDEPENDENT');
+    if (go.governanceMode === 'MULTI_PARTY_V1') {
+      const iv = go.independentAuthorizationVerification;
+      if (!iv) {
+        fail(checks, 'INDEPENDENT_HUMAN_VERIFICATION', 'PHASE_A_GO_NO_GO_INDEPENDENT_VERIFICATION_INCOMPLETE');
+        blockers.push('PHASE_A_GO_NO_GO_INDEPENDENT_VERIFICATION_INCOMPLETE');
+      } else {
+        const humanVerification = evaluatePhaseAHumanVerificationReadinessV1(env, {
+          verifierIdentity: iv.verifierIdentity,
+          approvingAuthority: approval.approvingAuthority,
+          authorizedHumanApprover: go.authorizedHumanApprover,
+          changeTicket: go.changeTicket,
+          governanceModeFromGoRecord: go.governanceMode,
+          now,
+        });
+        if (!humanVerification.ok) {
+          fail(checks, 'INDEPENDENT_HUMAN_VERIFICATION', humanVerification.reasonCode);
+          blockers.push(humanVerification.reasonCode);
+        } else {
+          pass(checks, 'INDEPENDENT_HUMAN_VERIFICATION');
+          const verifierTs = validatePhaseAIndependentVerifierTimestampV1(
+            iv.verifiedAtUtc,
+            now,
+            go.approvalBinding.validFrom,
+          );
+          if (!verifierTs.ok) {
+            fail(checks, 'INDEPENDENT_VERIFIER_TIMESTAMP', verifierTs.reasonCode);
+            blockers.push(verifierTs.reasonCode);
+          } else {
+            pass(checks, 'INDEPENDENT_VERIFIER_TIMESTAMP');
+          }
+        }
+      }
+      pushCheck(checks, {
+        checkId: 'SINGLE_OPERATOR_GOVERNANCE_CLAIMS',
+        status: 'SKIP',
+        reasonCode: 'PHASE_A_SINGLE_OPERATOR_POLICY_NOT_APPLICABLE_MULTI_PARTY',
+      });
+      pushCheck(checks, {
+        checkId: 'SINGLE_OPERATOR_POLICY_AND_RISK_ACCEPTANCE',
+        status: 'SKIP',
+        reasonCode: 'PHASE_A_SINGLE_OPERATOR_POLICY_NOT_APPLICABLE_MULTI_PARTY',
+      });
     } else {
-      pass(checks, 'INDEPENDENT_HUMAN_VERIFICATION');
-    }
-
-    const verifierTs = validatePhaseAIndependentVerifierTimestampV1(
-      go.independentAuthorizationVerification.verifiedAtUtc,
-      now,
-      go.approvalBinding.validFrom,
-    );
-    if (!verifierTs.ok) {
-      fail(checks, 'INDEPENDENT_VERIFIER_TIMESTAMP', verifierTs.reasonCode);
-      blockers.push(verifierTs.reasonCode);
-    } else {
-      pass(checks, 'INDEPENDENT_VERIFIER_TIMESTAMP');
+      pushCheck(checks, {
+        checkId: 'INDEPENDENT_HUMAN_VERIFICATION',
+        status: 'SKIP',
+        reasonCode: 'PHASE_A_SECOND_HUMAN_VERIFICATION_NOT_APPLICABLE_SINGLE_OPERATOR',
+      });
+      pushCheck(checks, {
+        checkId: 'INDEPENDENT_VERIFIER_TIMESTAMP',
+        status: 'SKIP',
+        reasonCode: 'PHASE_A_SECOND_HUMAN_VERIFICATION_NOT_APPLICABLE_SINGLE_OPERATOR',
+      });
+      const claimsOnly = evaluatePhaseASingleOperatorGovernanceClaimsStructuralValidityV1(env, {
+        authorizedHumanApprover: go.authorizedHumanApprover,
+        changeTicket: go.changeTicket,
+        approvalBinding: go.approvalBinding,
+        maintenanceWindow: go.maintenanceWindow,
+        now,
+      });
+      if (!claimsOnly.ok) {
+        fail(checks, 'SINGLE_OPERATOR_GOVERNANCE_CLAIMS', claimsOnly.reasonCode);
+        blockers.push(claimsOnly.reasonCode);
+      } else {
+        pass(checks, 'SINGLE_OPERATOR_GOVERNANCE_CLAIMS');
+      }
+      const pathB = evaluatePhaseAHumanVerificationReadinessV1(env, {
+        approvingAuthority: approval.approvingAuthority,
+        authorizedHumanApprover: go.authorizedHumanApprover,
+        changeTicket: go.changeTicket,
+        approvalBinding: go.approvalBinding,
+        maintenanceWindow: go.maintenanceWindow,
+        governanceModeFromGoRecord: go.governanceMode,
+        now,
+      });
+      if (!pathB.ok) {
+        fail(checks, 'SINGLE_OPERATOR_POLICY_AND_RISK_ACCEPTANCE', pathB.reasonCode);
+        blockers.push(pathB.reasonCode);
+      } else {
+        pass(checks, 'SINGLE_OPERATOR_POLICY_AND_RISK_ACCEPTANCE');
+      }
     }
   }
 
