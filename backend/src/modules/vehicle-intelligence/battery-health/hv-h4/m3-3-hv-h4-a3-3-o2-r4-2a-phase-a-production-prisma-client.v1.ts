@@ -8,6 +8,10 @@ function parseDatabaseUrlV1(databaseUrl: string): URL {
   return new URL(databaseUrl.trim().replace(/^postgresql:/, 'postgres:'));
 }
 
+export function throwPhaseAProductionPrismaClientConfigurationErrorV1(reasonCode: string): never {
+  throw new Error(reasonCode);
+}
+
 /**
  * Production Phase-A verify-full URLs use @prisma/adapter-pg with explicit pg TLS
  * (CA file + hostname verification). Default Prisma engine TLS is not used for production admission.
@@ -15,12 +19,25 @@ function parseDatabaseUrlV1(databaseUrl: string): URL {
 export function createPhaseAProductionPrismaClientV1(databaseUrl: string): PrismaClient {
   const tlsPolicy = validatePhaseAProductionTlsUrlPolicyV1(databaseUrl);
   if (!tlsPolicy.ok) {
-    return new PrismaClient({ datasources: { db: { url: databaseUrl } } });
+    throwPhaseAProductionPrismaClientConfigurationErrorV1(tlsPolicy.reasonCode);
   }
 
   const parsed = parseDatabaseUrlV1(databaseUrl);
-  const sslrootcert = parsed.searchParams.get('sslrootcert')!.trim();
-  const ca = readFileSync(sslrootcert, 'utf8');
+  const sslrootcert = parsed.searchParams.get('sslrootcert')?.trim();
+  if (!sslrootcert) {
+    throwPhaseAProductionPrismaClientConfigurationErrorV1(
+      'PHASE_A_PRODUCTION_TLS_SSLROOTCERT_REQUIRED',
+    );
+  }
+
+  let ca: string;
+  try {
+    ca = readFileSync(sslrootcert, 'utf8');
+  } catch {
+    throwPhaseAProductionPrismaClientConfigurationErrorV1(
+      'PHASE_A_PRODUCTION_TLS_SSLROOTCERT_UNREADABLE',
+    );
+  }
 
   const pool = new Pool({
     host: parsed.hostname,

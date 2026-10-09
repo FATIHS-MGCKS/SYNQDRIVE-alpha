@@ -142,12 +142,7 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
     process.env[M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_QUERY_TELEMETRY_ENV] === '1';
   let approvedQueryInvocations = 0;
 
-  const client =
-    admissionPolicy === 'PRODUCTION_AUTHORIZED_R4_2A'
-      ? createPhaseAProductionPrismaClientV1(input.databaseUrl)
-      : new PrismaClient({
-          datasources: { db: { url: input.databaseUrl } },
-        });
+  let client: PrismaClient | undefined;
 
   const checks: M3_3HvH4A3PhaseAPreflightCheckResultV1[] = [];
   let sessionIdentity: { sessionUser: string; currentUser: string } | undefined;
@@ -159,6 +154,13 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
   let discoveryAnchorPid: number | undefined;
 
   try {
+    client =
+      admissionPolicy === 'PRODUCTION_AUTHORIZED_R4_2A'
+        ? createPhaseAProductionPrismaClientV1(input.databaseUrl)
+        : new PrismaClient({
+            datasources: { db: { url: input.databaseUrl } },
+          });
+
     await client.$connect();
 
     await client.$transaction(
@@ -447,7 +449,7 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
       status: 'ERROR',
     };
   } finally {
-    await client.$disconnect().catch(() => undefined);
+    await client?.$disconnect().catch(() => undefined);
   }
 
   const orderedChecks = orderChecksV1(checks);

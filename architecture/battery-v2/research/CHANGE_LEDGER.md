@@ -6,6 +6,16 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2A-H2 merge-gate: fail-closed production Prisma factory
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Removed insecure `PrismaClient` fallback when TLS URL policy fails; `PHASE_A_PRODUCTION_TLS_SSLROOTCERT_UNREADABLE` on CA load failure; production client construction inside runner `try` + sanitized error boundary; unit tests for factory fail-closed behavior |
+| **WHY** | Weak-TLS fallback could instantiate a production client without verify-full/pg adapter identity path |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-prisma-client.v1.spec.ts`; HV-H4 unit + postgres CI |
+| **NON_EFFECTS** | `@prisma/adapter-pg` verify-full path unchanged; no production execution |
+| **DECISION_STATUS** | VALIDATED (repository) |
+
 ## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2A-H2 TLS identity certification + same-session seal
 
 | Field | Value |
