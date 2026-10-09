@@ -1,5 +1,5 @@
-import { PrismaClient } from '@prisma/client';
 import type { M3_3HvH4A3PhaseAProductionTargetSpecV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-approval.types.v1';
+import type { PhaseAProductionSqlQueryableV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-tls-identity.v1';
 
 export type PhaseAProductionSessionIdentitySnapshotV1 = {
   sessionUser: string;
@@ -14,7 +14,7 @@ export type PhaseAProductionSessionIdentitySnapshotV1 = {
 };
 
 export async function capturePhaseAProductionSessionIdentityV1(
-  client: PrismaClient,
+  client: PhaseAProductionSqlQueryableV1,
 ): Promise<PhaseAProductionSessionIdentitySnapshotV1> {
   const rows = await client.$queryRawUnsafe<
     Array<{

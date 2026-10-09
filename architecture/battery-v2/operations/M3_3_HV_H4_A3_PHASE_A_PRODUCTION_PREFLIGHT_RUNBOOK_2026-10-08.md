@@ -8,7 +8,7 @@
 2. Security officer (or delegated authority) documented in approval record — **human approval, not cryptographic signature**.
 3. Dedicated read-only **audit login** provisioned out-of-band (not `DATABASE_URL`, not issuer pool).
 4. Target spec matches real hostname, port, database, and audit login.
-5. TLS (mandatory): production URL must use **`sslmode=verify-full`** and non-empty **`sslrootcert`** pointing at a trusted CA bundle. `verify-ca`, `require`, `prefer`, `allow`, and `disable` are rejected. After connect, tooling verifies `pg_stat_ssl.ssl=true` for the session.
+5. TLS (mandatory): production URL must use **`sslmode=verify-full`** and non-empty **`sslrootcert`** pointing at a trusted CA bundle. `verify-ca`, `require`, `prefer`, `allow`, and `disable` are rejected. Identity certification requires a successful verify-full **driver** handshake plus an encrypted session on the **same** PostgreSQL backend PID that executes Phase-A discovery (`pg_stat_ssl.ssl=true` is necessary but not sufficient alone).
 6. No SSH port-forward of production PostgreSQL to local loopback during Phase A.
 7. R4.1 isolated-test harness env vars **unset** in operator shell.
 

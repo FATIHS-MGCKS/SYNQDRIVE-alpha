@@ -34,13 +34,19 @@ Target spec JSON (`M3_3_HV_H4_A3_PHASE_A_PRODUCTION_TARGET_SPEC_JSON`):
 - Tunnel ambiguity: URL host loopback vs non-loopback spec host → `PHASE_A_PRODUCTION_TUNNEL_IDENTITY_AMBIGUOUS`
 - Post-connect: `session_user`, `current_user`, `current_database()` must match spec; deny superuser and `rolcreaterole` / `rolcreatedb` / `rolbypassrls`
 
-### H1 certification limits
+### H1 certification limits (superseded by H2 for CI)
 
-| Control | CI / repository | Production readiness |
-|---------|-----------------|----------------------|
-| TLS verify-full URL policy | Unit tests | Required |
-| TLS handshake + hostname/CA (driver) | **Not demonstrated** on plain CI PostgreSQL | Requires TLS-enabled fixture or production-like environment |
-| `tlsIdentityCertified` in evidence | Set `true` only after `pg_stat_ssl` encrypted session | `TLS_IDENTITY_CERTIFIED=NO` until demonstrated |
+See **O2-R4.2A-H2** for TLS fixture + same-session authority.
+
+## 4. O2-R4.2A-H2 — TLS identity certification + same-session authority
+
+| Control | Behavior |
+|---------|----------|
+| TLS fixture | `backend/scripts/test/m3-3-hv-h4-a3-phase-a-tls-postgres-fixture.sh` — ephemeral CA/certs, Docker PostgreSQL 16 SSL on `:5433` |
+| Driver proof | Prisma connect matrix: trusted CA + SAN, untrusted CA, hostname mismatch, missing CA, expired cert (with `faketime` in CI) |
+| `tlsIdentityCertified` | **Not** `pg_stat_ssl.ssl` alone — requires verify-full URL policy re-check + successful verify-full connect + encrypted session on **same** `pg_backend_pid()` as discovery |
+| Same session | Production TLS + identity + approval consume + Phase-A discovery share one interactive `READ ONLY` transaction connection |
+| PID evidence | `PHASE_A_SESSION_CONTEXT` check data includes `productionSameSessionAnchorPid` / `discoveryBackendPid` on production path |
 
 ## 3.1 Connection lifecycle (H1-C)
 

@@ -32,7 +32,10 @@ import {
   capturePhaseAProductionSessionIdentityV1,
   validatePhaseAProductionSessionIdentityAgainstSpecV1,
 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-session-identity.v1';
-import { verifyPhaseAProductionTlsNegotiationV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-tls-probe.v1';
+import {
+  evaluatePhaseAProductionTlsIdentityInSessionV1,
+  readPhaseAProductionBackendPidV1,
+} from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-tls-identity.v1';
 import { evaluatePhaseAPreflightProductionAdmissionV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-admission.v1';
 
 const integrationJobActive = isPhaseAPreflightPostgresIntegrationJobV1();
@@ -161,7 +164,14 @@ function restoreEnv(keys: string[], prev: Record<string, string | undefined>): v
       });
       try {
         await client.$connect();
-        const probe = await verifyPhaseAProductionTlsNegotiationV1(client);
+        const anchorPid = await readPhaseAProductionBackendPidV1(client);
+        const plainUrl =
+          'postgresql://u@127.0.0.1:5432/db?sslmode=verify-full&sslrootcert=/etc/ssl/certs/ca-certificates.crt';
+        const probe = await evaluatePhaseAProductionTlsIdentityInSessionV1(
+          client,
+          plainUrl,
+          anchorPid,
+        );
         expect(probe.ok).toBe(false);
         if (!probe.ok) {
           expect(probe.reasonCode).toBe('PHASE_A_PRODUCTION_TLS_HANDSHAKE_NOT_ENCRYPTED');

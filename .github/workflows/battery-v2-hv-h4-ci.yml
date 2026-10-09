@@ -10,6 +10,7 @@ on:
       - 'backend/scripts/ops/battery-hv-h4-charge-throughput-report.ts'
       - 'backend/scripts/ops/m3-3-hv-h4-a3-o2-r4-1-phase-a-preflight.ts'
       - 'backend/scripts/test/battery-hv-h4-coverage-report-postgres-ci.sh'
+      - 'backend/scripts/test/m3-3-hv-h4-a3-phase-a-tls-postgres-fixture.sh'
       - 'architecture/battery-v2/scripts/validate-h4-exposure-coverage-contracts.sh'
       - 'architecture/battery-v2/CURRENT_STATE.md'
       - 'architecture/battery-v2/graph/**'
@@ -91,6 +92,8 @@ jobs:
         working-directory: backend
         env:
           DATABASE_URL: ${{ env.DATABASE_URL }}
+      - name: Install faketime for Phase-A TLS expired-cert fixture
+        run: sudo apt-get update && sudo apt-get install -y faketime
       - run: npm run test:battery:v2:hv-h4:postgres:ci
         working-directory: backend
         env:

@@ -6,6 +6,19 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2A-H2 TLS identity certification + same-session seal
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | TLS-enabled PostgreSQL CI fixture; Prisma verify-full negative/positive matrix; `certifyPhaseAProductionTlsIdentityV1` (ssl≠identity); production gates moved inside READ ONLY transaction; same `pg_backend_pid` evidence; HV-H4 postgres CI integrates fixture |
+| **WHY** | H1 left `TLS_IDENTITY_CERTIFIED=NO` and pre-transaction probes allowed TOCTOU between identity and discovery |
+| **VALIDATION** | tls-identity unit spec; `m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-tls.postgres.integration.spec.ts`; HV-H4 postgres CI job |
+| **OBSERVED_EFFECT** | `tlsIdentityCertified=true` only when verify-full connect + encrypted session + PID anchor match inside transaction |
+| **NON_EFFECTS** | `productionCertification=NOT_CERTIFIED`; no production access |
+| **REMAINING_GAPS** | Production operator run still requires org-managed CA material outside CI fixture |
+| **DECISION_STATUS** | VALIDATED (repository TLS fixture) |
+| **EVIDENCE** | R4.2A architecture § H2; TLS fixture script |
+
 ## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2A-H1 production admission security closure
 
 | Field | Value |

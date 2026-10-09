@@ -10,16 +10,9 @@ import {
   sanitizePhaseAPreflightErrorV1,
 } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.errors.v1';
 import { evaluatePhaseAPreflightDatabaseAdmissionV1 } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.admission.v1';
-import {
-  commitPhaseAProductionApprovalConsumptionV1,
-  evaluatePhaseAPreflightProductionAdmissionV1,
-} from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-admission.v1';
-import { verifyPhaseAProductionTlsNegotiationV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-tls-probe.v1';
-import { parsePhaseAProductionTargetSpecFromEnvV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-target.v1';
-import {
-  capturePhaseAProductionSessionIdentityV1,
-  validatePhaseAProductionSessionIdentityAgainstSpecV1,
-} from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-session-identity.v1';
+import { evaluatePhaseAPreflightProductionAdmissionV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-admission.v1';
+import { runPhaseAProductionSameSessionGateV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-same-session-gate.v1';
+import { readPhaseAProductionBackendPidV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-tls-identity.v1';
 import { M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_QUERY_TELEMETRY_ENV } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.isolated-target.v1';
 import {
   M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_CONTRACT_V1,
@@ -157,74 +150,51 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
   let hadError = false;
   const txGuard = new PhaseATransactionGuardV1();
 
-  let blockedBeforeTransaction: M3_3HvH4A3PhaseAPreflightRunnerOutcomeV1 | undefined;
+  let blockedAfterProductionGate: M3_3HvH4A3PhaseAPreflightRunnerOutcomeV1 | undefined;
+  let productionGateAnchorPid: number | undefined;
+  let discoveryAnchorPid: number | undefined;
 
   try {
     await client.$connect();
 
-    if (admissionPolicy === 'PRODUCTION_AUTHORIZED_R4_2A' && productionAdmissionReady) {
-      const specParsed = parsePhaseAProductionTargetSpecFromEnvV1(process.env);
-      if (!specParsed.ok) {
-        blockedBeforeTransaction = {
-          ok: false,
-          reasonCode: specParsed.reasonCode,
-          status: 'BLOCKED',
-        };
-      } else {
-        const tlsProbe = await verifyPhaseAProductionTlsNegotiationV1(client);
-        if (!tlsProbe.ok) {
-          blockedBeforeTransaction = {
-            ok: false,
-            reasonCode: tlsProbe.reasonCode,
-            status: 'BLOCKED',
-          };
-        } else {
-          const identity = await capturePhaseAProductionSessionIdentityV1(client);
-          const identityOk = validatePhaseAProductionSessionIdentityAgainstSpecV1(
-            identity,
-            specParsed.spec,
-          );
-          if (!identityOk.ok) {
-            blockedBeforeTransaction = {
-              ok: false,
-              reasonCode: identityOk.reasonCode,
-              status: 'BLOCKED',
-            };
-          } else {
-            sessionIdentity = {
-              sessionUser: identity.sessionUser,
-              currentUser: identity.currentUser,
-            };
-            const consumed = commitPhaseAProductionApprovalConsumptionV1(
-              productionAdmissionReady,
-              new Date(),
-            );
-            if (!consumed.ok) {
-              blockedBeforeTransaction = {
-                ok: false,
-                reasonCode: consumed.reasonCode,
-                status: 'BLOCKED',
-              };
-            } else if (productionAdmissionEvidence) {
-              productionAdmissionEvidence = {
-                ...productionAdmissionEvidence,
-                operationStatus: 'ADMITTED',
-                tlsIdentityCertified: true,
-                executeConsumedAt: consumed.executeConsumedAt,
-              };
-            }
-          }
-        }
-      }
-    }
-
-    if (blockedBeforeTransaction) {
-      return blockedBeforeTransaction;
-    }
-
     await client.$transaction(
       async (tx) => {
         await tx.$executeRawUnsafe('SET TRANSACTION READ ONLY');
+
+        if (admissionPolicy === 'PRODUCTION_AUTHORIZED_R4_2A' && productionAdmissionReady) {
+          const gate = await runPhaseAProductionSameSessionGateV1(
+            tx,
+            input.databaseUrl,
+            process.env,
+            productionAdmissionReady,
+            new Date(),
+          );
+          if (!gate.ok) {
+            blockedAfterProductionGate = {
+              ok: false,
+              reasonCode: gate.reasonCode,
+              status: 'BLOCKED',
+            };
+            return;
+          }
+          productionGateAnchorPid = gate.anchorBackendPid;
+          sessionIdentity = {
+            sessionUser: gate.sessionUser,
+            currentUser: gate.currentUser,
+          };
+          if (productionAdmissionEvidence) {
+            productionAdmissionEvidence = {
+              ...productionAdmissionEvidence,
+              operationStatus: 'ADMITTED',
+              tlsIdentityCertified: gate.tlsIdentityCertified,
+              executeConsumedAt: gate.executeConsumedAt,
+            };
+          }
+        }
+
+        if (blockedAfterProductionGate) {
+          return;
+        }
 
         const runQuery = async <T>(
           manifestId: M3_3HvH4A3PhaseAQueryManifestIdV1,
@@ -242,6 +212,18 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
           }
         };
 
+        if (admissionPolicy === 'PRODUCTION_AUTHORIZED_R4_2A' && productionGateAnchorPid !== undefined) {
+          discoveryAnchorPid = await readPhaseAProductionBackendPidV1(tx);
+          if (discoveryAnchorPid !== productionGateAnchorPid) {
+            blockedAfterProductionGate = {
+              ok: false,
+              reasonCode: 'PHASE_A_PRODUCTION_SESSION_PID_MISMATCH',
+              status: 'BLOCKED',
+            };
+            return;
+          }
+        }
+
         const sessionRows = await runQuery<{
           session_user: string;
           current_user: string;
@@ -255,14 +237,25 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
             detail: 'SESSION_IDENTITY_UNAVAILABLE',
           });
         } else {
-          sessionIdentity = {
-            sessionUser: sessionRow.session_user,
-            currentUser: sessionRow.current_user,
-          };
+          if (admissionPolicy !== 'PRODUCTION_AUTHORIZED_R4_2A') {
+            sessionIdentity = {
+              sessionUser: sessionRow.session_user,
+              currentUser: sessionRow.current_user,
+            };
+          }
           pushCheck(checks, {
             checkId: 'PHASE_A_SESSION_CONTEXT',
             status: 'PASS',
-            data: sessionIdentity,
+            data: {
+              sessionUser: sessionRow.session_user,
+              currentUser: sessionRow.current_user,
+              ...(productionGateAnchorPid !== undefined
+                ? {
+                    productionSameSessionAnchorPid: productionGateAnchorPid,
+                    discoveryBackendPid: discoveryAnchorPid ?? productionGateAnchorPid,
+                  }
+                : {}),
+            },
           });
         }
 
@@ -438,6 +431,10 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
       },
       { timeout: 120_000 },
     );
+
+    if (blockedAfterProductionGate) {
+      return blockedAfterProductionGate;
+    }
   } catch (error) {
     const sanitized = sanitizePhaseAPreflightErrorV1(error);
     return {
@@ -485,7 +482,7 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
       ? {
           productionAdmissionEvidence: {
             ...productionAdmissionEvidence,
-            operationStatus: 'COMPLETED',
+            operationStatus: discoveryComplete ? 'COMPLETED' : 'ADMITTED',
           },
         }
       : {}),
