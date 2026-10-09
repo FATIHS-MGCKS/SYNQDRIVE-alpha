@@ -1,5 +1,10 @@
 import { createHash } from 'node:crypto';
 import type { RawRefuelCandidateSignalChannel } from '@prisma/client';
+import { RFRF_RISE_DETECTION_VERSION } from '../raw-fuel-rise-detector/raw-fuel-rise-detector.config';
+import { RFRF_PLANNED_SETTLED_POST_DETECTION_VERSION } from './raw-refuel-candidate-cross-version-compatibility.authority';
+import {
+  buildPhysicalCandidateIdentityKeyV1,
+} from './raw-refuel-candidate-physical-identity.authority';
 import { RAW_REFUEL_CANDIDATE_IDENTITY_RISE_BUCKET_MS } from './raw-refuel-candidate.constants';
 
 export function floorToUtcBucket(timestamp: Date, bucketMs: number): Date {
@@ -68,11 +73,25 @@ export function tryBuildCandidateIdentityKeyFromEvidence(input: {
   if (!input.riseOnsetAt) return null;
   const prePlateauBucket = derivePrePlateauBucketFromObservation(input);
   if (prePlateauBucket == null) return null;
-  return buildCandidateIdentityKey({
-    vehicleId: input.vehicleId,
-    detectionVersion: input.detectionVersion,
-    signalChannel: input.signalChannel,
-    prePlateauBucket,
-    riseOnsetAt: input.riseOnsetAt,
-  });
+
+  if (input.detectionVersion === RFRF_RISE_DETECTION_VERSION) {
+    return buildCandidateIdentityKey({
+      vehicleId: input.vehicleId,
+      detectionVersion: input.detectionVersion,
+      signalChannel: input.signalChannel,
+      prePlateauBucket,
+      riseOnsetAt: input.riseOnsetAt,
+    });
+  }
+
+  if (input.detectionVersion === RFRF_PLANNED_SETTLED_POST_DETECTION_VERSION) {
+    return buildPhysicalCandidateIdentityKeyV1({
+      vehicleId: input.vehicleId,
+      signalChannel: input.signalChannel,
+      prePlateauBucket,
+      riseOnsetAt: input.riseOnsetAt,
+    });
+  }
+
+  return null;
 }

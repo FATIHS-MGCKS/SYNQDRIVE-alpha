@@ -64,3 +64,31 @@ export class RawRefuelCandidateLifecycleValidationError extends Error {
     this.name = 'RawRefuelCandidateLifecycleValidationError';
   }
 }
+
+export class RawRefuelCandidateVersionedTerminalConflictError extends Error {
+  readonly code = 'RAW_REFUEL_CANDIDATE_VERSIONED_TERMINAL_CONFLICT';
+
+  constructor(
+    readonly vehicleId: string,
+    readonly candidateIds: string[],
+  ) {
+    super(
+      `Versioned terminal conflict for vehicle ${vehicleId}: ${candidateIds.join(', ')}`,
+    );
+    this.name = 'RawRefuelCandidateVersionedTerminalConflictError';
+  }
+}
+
+export class RawRefuelCandidateCrossVersionInsufficientEvidenceError extends Error {
+  readonly code = 'RAW_REFUEL_CANDIDATE_CROSS_VERSION_INSUFFICIENT_EVIDENCE';
+
+  constructor(
+    readonly vehicleId: string,
+    readonly candidateIds: string[],
+  ) {
+    super(
+      `Cross-version insufficient evidence for vehicle ${vehicleId}: ${candidateIds.join(', ')}`,
+    );
+    this.name = 'RawRefuelCandidateCrossVersionInsufficientEvidenceError';
+  }
+}

@@ -1,10 +1,17 @@
-import type { RawRefuelCandidate } from '@prisma/client';
+import type { RawRefuelCandidate, RawRefuelCandidateLifecycleState } from '@prisma/client';
 import {
   RAW_REFUEL_CANDIDATE_POST_PLATEAU_TOLERANCE_LITERS,
   RAW_REFUEL_CANDIDATE_PRE_PLATEAU_TOLERANCE_LITERS,
   RAW_REFUEL_CANDIDATE_PRE_PLATEAU_TOLERANCE_PERCENT,
   RAW_REFUEL_CANDIDATE_RISE_NEIGHBORHOOD_MS,
 } from './raw-refuel-candidate.constants';
+import { classifyCandidateDetectionVersionCompatibility } from './raw-refuel-candidate-cross-version-compatibility.authority';
+import { classifyVersionedTerminalConflict } from './raw-refuel-candidate-cross-version-overlap.contract';
+import {
+  resolveObservationPostFuelAuthorityForCrossVersion,
+  resolveStoredEffectivePostFuelAuthority,
+} from './raw-refuel-candidate-post-fuel-authority.resolver';
+import { classifyPostFuelAuthorityTransition } from './raw-refuel-post-fuel-authority.types';
 import type {
   RawRefuelCandidateEvidenceSlice,
   RawRefuelCandidateOverlapClassification,
@@ -109,28 +116,49 @@ function candidateToEvidenceSlice(row: RawRefuelCandidate): RawRefuelCandidateEv
   };
 }
 
-/**
- * Semantic overlap matcher — tri-state, fail-closed.
- * Does NOT compare candidateIdentityKey or 5-minute buckets alone.
- */
-export function classifyRawRefuelCandidateOverlap(
-  observation: RawRefuelCandidateEvidenceSlice,
+function resolveCandidateSlice(
   existing: RawRefuelCandidate | RawRefuelCandidateEvidenceSlice,
-): RawRefuelCandidateOverlapClassification {
-  const candidate =
-    'signalChannel' in existing && 'organizationId' in existing && !('candidateIdentityKey' in existing)
-      ? existing
-      : candidateToEvidenceSlice(existing as RawRefuelCandidate);
+): RawRefuelCandidateEvidenceSlice {
+  return 'signalChannel' in existing && 'organizationId' in existing && !('candidateIdentityKey' in existing)
+    ? existing
+    : candidateToEvidenceSlice(existing as RawRefuelCandidate);
+}
 
-  if (observation.vehicleId !== candidate.vehicleId) {
-    return 'DISTINCT_PHYSICAL_RISE';
+function resolveExistingLifecycle(
+  existing: RawRefuelCandidate | RawRefuelCandidateEvidenceSlice,
+): RawRefuelCandidateLifecycleState | null {
+  if ('lifecycleState' in existing && typeof existing.lifecycleState === 'string') {
+    return existing.lifecycleState;
   }
-  if (observation.organizationId !== candidate.organizationId) {
-    return 'DISTINCT_PHYSICAL_RISE';
-  }
-  if (observation.signalChannel !== candidate.signalChannel) {
-    return 'DISTINCT_PHYSICAL_RISE';
-  }
+  return null;
+}
+
+export function physicalNeighborhoodCorresponds(
+  observation: RawRefuelCandidateEvidenceSlice,
+  candidate: RawRefuelCandidateEvidenceSlice,
+): boolean {
+  const obsRise = observation.riseOnsetAt;
+  const candRise = candidate.riseOnsetAt;
+  return (
+    windowsOverlap(
+      observation.physicalEvidenceStart,
+      observation.physicalEvidenceEnd,
+      candidate.physicalEvidenceStart,
+      candidate.physicalEvidenceEnd,
+    ) ||
+    (obsRise != null &&
+      candRise != null &&
+      msBetween(obsRise, candRise) <= RAW_REFUEL_CANDIDATE_RISE_NEIGHBORHOOD_MS)
+  );
+}
+
+/**
+ * Same-detection-version matcher — preserved F2 semantics (tri-state).
+ */
+export function classifySameVersionRawRefuelCandidateOverlap(
+  observation: RawRefuelCandidateEvidenceSlice,
+  candidate: RawRefuelCandidateEvidenceSlice,
+): RawRefuelCandidateOverlapClassification {
   if (observation.detectionVersion !== candidate.detectionVersion) {
     return 'DISTINCT_PHYSICAL_RISE';
   }
@@ -156,16 +184,7 @@ export function classifyRawRefuelCandidateOverlap(
     return 'DISTINCT_PHYSICAL_RISE';
   }
 
-  const temporalOverlap =
-    windowsOverlap(
-      observation.physicalEvidenceStart,
-      observation.physicalEvidenceEnd,
-      candidate.physicalEvidenceStart,
-      candidate.physicalEvidenceEnd,
-    ) ||
-    (obsRise &&
-      candRise &&
-      msBetween(obsRise, candRise) <= RAW_REFUEL_CANDIDATE_RISE_NEIGHBORHOOD_MS);
+  const temporalOverlap = physicalNeighborhoodCorresponds(observation, candidate);
 
   if (!temporalOverlap) {
     if (preCompatible === true) {
@@ -198,6 +217,112 @@ export function classifyRawRefuelCandidateOverlap(
   }
 
   return 'SAME_PHYSICAL_RISE';
+}
+
+function classifyAuthorizedCrossVersionOverlap(
+  observation: RawRefuelCandidateEvidenceSlice,
+  candidate: RawRefuelCandidateEvidenceSlice,
+  existingLifecycle: RawRefuelCandidateLifecycleState | null,
+): RawRefuelCandidateOverlapClassification {
+  const versionCompatibility = 'AUTHORIZED_CROSS_VERSION';
+
+  const preCompatible = hasCompatiblePrePlateau(observation, candidate);
+  if (preCompatible === false) {
+    return 'DISTINCT_PHYSICAL_RISE';
+  }
+  if (preCompatible !== true) {
+    return 'INSUFFICIENT_EVIDENCE';
+  }
+
+  if (!physicalNeighborhoodCorresponds(observation, candidate)) {
+    return 'DISTINCT_PHYSICAL_RISE';
+  }
+
+  const observationAuthority = resolveObservationPostFuelAuthorityForCrossVersion(
+    observation.evidenceMeta,
+  );
+  if (observationAuthority == null) {
+    return 'INSUFFICIENT_EVIDENCE';
+  }
+
+  const storedAuthority = resolveStoredEffectivePostFuelAuthority({
+    storedDetectionVersion: candidate.detectionVersion,
+    evidenceMeta: candidate.evidenceMeta,
+  });
+  if (storedAuthority == null) {
+    return 'INSUFFICIENT_EVIDENCE';
+  }
+
+  const authorityTransition = classifyPostFuelAuthorityTransition({
+    observationAuthority,
+    candidateAuthority: storedAuthority,
+    versionCompatibility,
+  });
+  if (authorityTransition === 'UNAUTHORIZED_AUTHORITY_SHIFT') {
+    return 'DISTINCT_PHYSICAL_RISE';
+  }
+  if (authorityTransition === 'UNKNOWN_AUTHORITY') {
+    return 'INSUFFICIENT_EVIDENCE';
+  }
+
+  const postCompatible = hasCompatiblePostPlateau(observation, candidate);
+  const authorizedPeakToSettledShift = authorityTransition === 'AUTHORIZED_AUTHORITY_SHIFT';
+  if (postCompatible === false && !authorizedPeakToSettledShift) {
+    return 'DISTINCT_PHYSICAL_RISE';
+  }
+
+  if (existingLifecycle != null) {
+    const terminalConflict = classifyVersionedTerminalConflict({
+      existingLifecycleState: existingLifecycle,
+      versionCompatibility,
+      physicalNeighborhoodCorresponds: true,
+    });
+    if (terminalConflict === 'VERSIONED_TERMINAL_CONFLICT') {
+      return 'VERSIONED_TERMINAL_CONFLICT';
+    }
+  }
+
+  return 'SAME_PHYSICAL_RISE';
+}
+
+/**
+ * Semantic overlap matcher — fail-closed.
+ * Does NOT compare candidateIdentityKey or 5-minute buckets alone.
+ */
+export function classifyRawRefuelCandidateOverlap(
+  observation: RawRefuelCandidateEvidenceSlice,
+  existing: RawRefuelCandidate | RawRefuelCandidateEvidenceSlice,
+): RawRefuelCandidateOverlapClassification {
+  const candidate = resolveCandidateSlice(existing);
+
+  if (observation.vehicleId !== candidate.vehicleId) {
+    return 'DISTINCT_PHYSICAL_RISE';
+  }
+  if (observation.organizationId !== candidate.organizationId) {
+    return 'DISTINCT_PHYSICAL_RISE';
+  }
+  if (observation.signalChannel !== candidate.signalChannel) {
+    return 'DISTINCT_PHYSICAL_RISE';
+  }
+
+  const versionCompatibility = classifyCandidateDetectionVersionCompatibility({
+    observationDetectionVersion: observation.detectionVersion,
+    candidateDetectionVersion: candidate.detectionVersion,
+  });
+
+  if (versionCompatibility === 'UNAUTHORIZED_VERSION_PAIR') {
+    return 'DISTINCT_PHYSICAL_RISE';
+  }
+
+  if (versionCompatibility === 'SAME_VERSION') {
+    return classifySameVersionRawRefuelCandidateOverlap(observation, candidate);
+  }
+
+  return classifyAuthorizedCrossVersionOverlap(
+    observation,
+    candidate,
+    resolveExistingLifecycle(existing),
+  );
 }
 
 export { candidateToEvidenceSlice };

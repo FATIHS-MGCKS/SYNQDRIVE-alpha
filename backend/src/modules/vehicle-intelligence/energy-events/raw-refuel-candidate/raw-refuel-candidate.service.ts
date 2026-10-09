@@ -11,10 +11,13 @@ import { buildEvidenceRevisionFingerprint } from './raw-refuel-candidate-evidenc
 import { mergeCandidateEvidence } from './raw-refuel-candidate-evidence-merge';
 import {
   RawRefuelCandidateAmbiguityError,
+  RawRefuelCandidateCrossVersionInsufficientEvidenceError,
   RawRefuelCandidateLifecycleValidationError,
   RawRefuelCandidateOrgVehicleIntegrityError,
   RawRefuelCandidateVehicleNotFoundError,
+  RawRefuelCandidateVersionedTerminalConflictError,
 } from './raw-refuel-candidate.errors';
+import { classifyCandidateDetectionVersionCompatibility } from './raw-refuel-candidate-cross-version-compatibility.authority';
 import { tryBuildCandidateIdentityKeyFromEvidence } from './raw-refuel-candidate-identity-key';
 import {
   isRawRefuelCandidateTerminal,
@@ -96,6 +99,20 @@ export class RawRefuelCandidateService {
         window,
       );
       const classified = classifyRediscoveryCandidates(observation, candidates, organizationId);
+
+      if (classified.versionedTerminalConflict.length > 0) {
+        throw new RawRefuelCandidateVersionedTerminalConflictError(
+          observation.vehicleId,
+          classified.versionedTerminalConflict.map((row) => row.id),
+        );
+      }
+
+      if (classified.crossVersionInsufficient.length > 0) {
+        throw new RawRefuelCandidateCrossVersionInsufficientEvidenceError(
+          observation.vehicleId,
+          classified.crossVersionInsufficient.map((row) => row.id),
+        );
+      }
 
       if (classified.same.length > 1) {
         throw new RawRefuelCandidateAmbiguityError(
@@ -350,6 +367,8 @@ interface RediscoveryClassification {
   same: RawRefuelCandidate[];
   insufficient: RawRefuelCandidate[];
   distinct: RawRefuelCandidate[];
+  versionedTerminalConflict: RawRefuelCandidate[];
+  crossVersionInsufficient: RawRefuelCandidate[];
 }
 
 function classifyRediscoveryCandidates(
@@ -362,26 +381,51 @@ function classifyRediscoveryCandidates(
     same: [],
     insufficient: [],
     distinct: [],
+    versionedTerminalConflict: [],
+    crossVersionInsufficient: [],
   };
 
   for (const row of candidates) {
     const overlap = classifyRawRefuelCandidateOverlap(slice, row);
-    bucketClassification(classified, overlap, row);
+    bucketClassification(classified, overlap, row, observation.detectionVersion);
   }
 
   return classified;
+}
+
+function isAuthorizedCrossVersionPair(
+  observationDetectionVersion: string,
+  candidateDetectionVersion: string,
+): boolean {
+  return (
+    classifyCandidateDetectionVersionCompatibility({
+      observationDetectionVersion,
+      candidateDetectionVersion,
+    }) === 'AUTHORIZED_CROSS_VERSION'
+  );
 }
 
 function bucketClassification(
   classified: RediscoveryClassification,
   overlap: RawRefuelCandidateOverlapClassification,
   row: RawRefuelCandidate,
+  observationDetectionVersion: string,
 ): void {
+  if (overlap === 'VERSIONED_TERMINAL_CONFLICT') {
+    classified.versionedTerminalConflict.push(row);
+    return;
+  }
   if (overlap === 'SAME_PHYSICAL_RISE') {
     classified.same.push(row);
     return;
   }
   if (overlap === 'INSUFFICIENT_EVIDENCE') {
+    if (
+      isAuthorizedCrossVersionPair(observationDetectionVersion, row.detectionVersion)
+    ) {
+      classified.crossVersionInsufficient.push(row);
+      return;
+    }
     classified.insufficient.push(row);
     return;
   }

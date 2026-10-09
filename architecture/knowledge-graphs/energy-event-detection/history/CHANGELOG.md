@@ -1,5 +1,11 @@
 # KG-EED Changelog
 
+## 2026-10-09 — OQ-014 R2 cross-version candidate rediscovery (EED-EV-0106)
+
+- Matcher/resolver integration for authorized `rfrf-rise-v2` → `rfrf-rise-v1`; same-version semantics preserved
+- Fail-closed `VERSIONED_TERMINAL_CONFLICT` and cross-version insufficient evidence (no reconcile)
+- KS MS 661 PostgreSQL proof; v2 physical identity for new rows; active runtime detection/detector constants unchanged
+
 ## 2026-10-01 — OQ-014 R1 identity + cross-version authority foundation (EED-EV-0105)
 
 - Unwired backend foundations: physical identity v1, cross-version compatibility registry, post-authority transition types, `VERSIONED_TERMINAL_CONFLICT` contract, settled F3 activation parser types
