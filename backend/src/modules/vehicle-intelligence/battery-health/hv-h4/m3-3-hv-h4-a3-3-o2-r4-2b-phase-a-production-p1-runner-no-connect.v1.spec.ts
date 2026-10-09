@@ -30,6 +30,7 @@ describe('Phase-A P1 NO_GO blocks production connect (R4.2B-P1A-H2)', () => {
     });
     const prev: Record<string, string | undefined> = {};
     for (const k of Object.keys(env)) prev[k] = process.env[k];
+    const prevHarness = process.env[M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_HARNESS_ACTIVE_ENV];
     Object.assign(process.env, env);
     delete process.env[M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_HARNESS_ACTIVE_ENV];
 
@@ -57,6 +58,11 @@ describe('Phase-A P1 NO_GO blocks production connect (R4.2B-P1A-H2)', () => {
       for (const k of Object.keys(env)) {
         if (prev[k] === undefined) delete process.env[k];
         else process.env[k] = prev[k];
+      }
+      if (prevHarness === undefined) {
+        delete process.env[M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_HARNESS_ACTIVE_ENV];
+      } else {
+        process.env[M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_HARNESS_ACTIVE_ENV] = prevHarness;
       }
       rmSync(consumptionDir, { recursive: true, force: true });
     }
