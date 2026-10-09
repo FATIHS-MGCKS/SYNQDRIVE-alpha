@@ -17,6 +17,6 @@ if [[ ! -f "$PINNED_DEPLOY_SCRIPT" ]]; then
   echo "!! ABORT: pinned deploy executor missing: ${PINNED_DEPLOY_SCRIPT}" >&2
   exit 1
 fi
-# Never delegate to /opt/synqdrive/current — only the verified pinned R2 executor.
+# Never delegate to the legacy production-current executor — only the verified pinned R2 tree.
 export SYNQDRIVE_VO5C_PINNED_EXECUTOR_INVOKE=1
 exec "$PINNED_DEPLOY_SCRIPT" "$@"

@@ -86,6 +86,14 @@ Harness: `backend/scripts/test/vo5c-r2-battery-migration-order-ephemeral.sh`
 
 Fixture: full `migrate deploy`, delete Battery R2 `_prisma_migrations` rows, keep `20261008150000_apd_shadow_epoch_activated_at_timestamptz`, re-run `prisma migrate deploy`. Records exact Prisma error code (no assumed P3016).
 
+## R2-H3 — deploy target admission and executor integrity
+
+- **Mandatory target SHA** — `SYNQDRIVE_REQUESTED_DEPLOY_SHA` + staged release root required in preflight; `vps_vo5c_assert_deploy_target_admitted` in `vps-deploy-release.sh` **before** Prisma migrate / promotion.
+- **Executor integrity** — `vps_vo5c_verify_executor_tree_integrity` compares tracked ops files to `HEAD` (not HEAD alone).
+- **Shallow fixture** — production-like `git init && git fetch --depth=1 origin <sha> && checkout FETCH_HEAD` (no full-clone fallback).
+- **S4F7Q positive path** — preflight PASS with pinned controller fixture + `EXPECTED_DEPLOY_CONTROLLER_SHA`.
+- **Pinned runner** — `exec` only `${PINNED_EXECUTOR_ROOT}/.../vps-deploy-release.sh` (legacy current never invoked).
+
 ## R2-H2 — first security deploy bootstrap seal
 
 **Problem:** Pre-promotion production invokes `/opt/synqdrive/current/.../vps-deploy-release.sh` (old executor at `3b557e…`). With `SYNQDRIVE_DI_S4F7Q_EXACT_RC_ATTESTATION_GATE=1`, that executor sources `CONTROLLER_OPS_DIR/lib/vps-production-replica.lib.sh` (unguarded). Patching only the **candidate** release tree does not repair the **executing** script.
