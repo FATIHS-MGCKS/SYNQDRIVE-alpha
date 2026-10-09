@@ -113,7 +113,10 @@ function ksV2Observation(orgId: string, vehicleId: string, overrides: Record<str
     physicalEvidenceEnd: new Date('2026-09-30T05:05:00.000Z'),
     scanWindowStart: new Date('2026-09-30T03:00:00.000Z'),
     scanWindowEnd: new Date('2026-09-30T06:00:00.000Z'),
-    evidenceMeta: { postFuelAuthority: 'SETTLED_MEDIAN' },
+    evidenceMeta: {
+      postFuelAuthority: 'SETTLED_MEDIAN',
+      baselineRecencyClassification: 'FRESH',
+    },
     ...overrides,
   });
 }

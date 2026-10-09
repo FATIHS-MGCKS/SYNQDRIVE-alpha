@@ -97,6 +97,9 @@ function hasCompatibleFreshPreBaseline(
 ): boolean | null {
   const obsBaseline = readBaselineRecencyFromEvidenceMeta(observation.evidenceMeta);
   const candBaseline = readBaselineRecencyFromEvidenceMeta(candidate.evidenceMeta);
+  if (obsBaseline == null) {
+    return null;
+  }
   if (obsBaseline !== 'FRESH') {
     return false;
   }

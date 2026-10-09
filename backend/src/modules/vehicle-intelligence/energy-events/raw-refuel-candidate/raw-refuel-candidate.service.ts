@@ -397,7 +397,7 @@ export class RawRefuelCandidateService {
     const slice = { ...observation, organizationId };
     const sameRows: RawRefuelCandidate[] = [];
     for (const row of candidates) {
-      const overlap = classifyRawRefuelCandidateOverlap(slice, row);
+      const overlap = classifyRawRefuelCandidateOverlap(slice, candidateToEvidenceSlice(row));
       if (overlap === 'SAME_PHYSICAL_RISE') {
         sameRows.push(row);
       }
