@@ -8,6 +8,7 @@ import { DEFAULT_M3_3_HV_H4_A3_PHASE_A_ROLE_NAMES_V1 } from './m3-3-hv-h4-a3-3-o
 import { parseM3_3HvH4A3PhaseAProductionPreflightConfigFromEnvV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-config.v1';
 import { PHASE_A_P1_EXTERNAL_AUTHORIZATION_UNVERIFIED } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-p1-execution-gate.v1';
 import { buildPhaseAProductionP1IntegrationEnvV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-p1-integration-env.fixture.v1';
+import { M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_HARNESS_ACTIVE_ENV } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.isolated-target.v1';
 
 const DB_URL =
   'postgresql://audit_ro@prod-db.example.com:5432/synqdrive?sslmode=verify-full&sslrootcert=/etc/ssl/certs/org-ca.pem';
@@ -30,6 +31,7 @@ describe('Phase-A P1 NO_GO blocks production connect (R4.2B-P1A-H2)', () => {
     const prev: Record<string, string | undefined> = {};
     for (const k of Object.keys(env)) prev[k] = process.env[k];
     Object.assign(process.env, env);
+    delete process.env[M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_HARNESS_ACTIVE_ENV];
 
     try {
       const parsed = parseM3_3HvH4A3PhaseAProductionPreflightConfigFromEnvV1(process.env);
