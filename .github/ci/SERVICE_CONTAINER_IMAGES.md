@@ -16,3 +16,16 @@ These are the same upstream tags as `postgres:16-alpine` and `redis:7-alpine` on
 ## When adding workflows
 
 Do not reference bare `postgres:16-alpine` or `redis:7-alpine` in GitHub Actions service containers. Use the ECR Public paths above (or extend this document if a new major version is required).
+
+## Nested `docker run` in CI fixture scripts
+
+Some integration tests start a **second** database container from shell (for example TLS on a non-default port) in addition to the workflow `services:` Postgres on 5432. Those `docker run` invocations hit the same Docker Hub rate limits.
+
+Use the same ECR Public image variables in scripts, for example:
+
+```bash
+PG_IMAGE="${M3_3_HV_H4_A3_PHASE_A_TLS_FIXTURE_PG_IMAGE:-public.ecr.aws/docker/library/postgres:16-alpine}"
+docker run -d ... "$PG_IMAGE"
+```
+
+Canonical script: `backend/scripts/test/m3-3-hv-h4-a3-phase-a-tls-postgres-fixture.sh` (port 5433, SSL fixtures unchanged).
