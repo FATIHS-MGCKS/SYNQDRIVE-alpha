@@ -39,6 +39,7 @@ import {
 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-tls-identity.v1';
 import { evaluatePhaseAPreflightProductionAdmissionV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-admission.v1';
 import { buildPhaseAProductionP1IntegrationEnvV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-p1-integration-env.fixture.v1';
+import { M3_3_HV_H4_A3_PHASE_A_PRODUCTION_MIGRATION_OWNER_DATABASE_URL_ENV } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-migration-owner-boundary.v1';
 
 const integrationJobActive = isPhaseAPreflightPostgresIntegrationJobV1();
 
@@ -80,21 +81,23 @@ function restoreEnv(keys: string[], prev: Record<string, string | undefined>): v
     });
 
     it('blocks production runner before connect when GO/NO-GO evidence is absent', async () => {
-      const consumptionDir = join(process.cwd(), `.phase-a-prod-no-go-${Date.now()}`);
-      provisionPhaseAProductionConsumptionStoreFixtureV1(consumptionDir);
-      const verifyFullUrl = withVerifyFullTlsParams(integrationDatabaseUrl);
-      const fixture = buildProductionFixtureEnv(verifyFullUrl, {
-        consumptionDir,
-        migrationOwnerDatabaseUrl: integrationDatabaseUrl,
-      });
-      const keys = Object.keys(fixture);
+      const fictionalAuditUrl =
+        'postgresql://audit_ro@prod-db.example.com:5432/synqdrive?sslmode=verify-full&sslrootcert=/etc/ssl/certs/ca-certificates.crt';
+      const keys = [
+        M3_3_HV_H4_A3_PHASE_A_PRODUCTION_PREFLIGHT_ENABLED_ENV,
+        M3_3_HV_H4_A3_PHASE_A_PRODUCTION_DATABASE_URL_ENV,
+        M3_3_HV_H4_A3_PHASE_A_PRODUCTION_MIGRATION_OWNER_DATABASE_URL_ENV,
+      ];
       const prev: Record<string, string | undefined> = {};
       for (const k of keys) prev[k] = process.env[k];
-      Object.assign(process.env, fixture);
+      process.env[M3_3_HV_H4_A3_PHASE_A_PRODUCTION_PREFLIGHT_ENABLED_ENV] = '1';
+      process.env[M3_3_HV_H4_A3_PHASE_A_PRODUCTION_DATABASE_URL_ENV] = fictionalAuditUrl;
+      process.env[M3_3_HV_H4_A3_PHASE_A_PRODUCTION_MIGRATION_OWNER_DATABASE_URL_ENV] =
+        integrationDatabaseUrl;
 
       try {
         const outcome = await runM3_3HvH4A3PhaseAPreflightV1({
-          databaseUrl: verifyFullUrl,
+          databaseUrl: fictionalAuditUrl,
           roleNames: DEFAULT_M3_3_HV_H4_A3_PHASE_A_ROLE_NAMES_V1,
           admissionPolicy: 'PRODUCTION_AUTHORIZED_R4_2A',
         });
@@ -104,14 +107,16 @@ function restoreEnv(keys: string[], prev: Record<string, string | undefined>): v
         }
       } finally {
         restoreEnv(keys, prev);
-        rmSync(consumptionDir, { recursive: true, force: true });
       }
     });
 
     it('blocks production path when integration harness is active', async () => {
       const consumptionDir = join(process.cwd(), `.phase-a-prod-harness-${Date.now()}`);
       provisionPhaseAProductionConsumptionStoreFixtureV1(consumptionDir);
-      const verifyFullUrl = withVerifyFullTlsParams(integrationDatabaseUrl);
+      const { databaseUrl: auditDatabaseUrl } = await provisionPhaseAProductionAuditFixtureUrlV1(
+        integrationDatabaseUrl,
+      );
+      const verifyFullUrl = withVerifyFullTlsParams(auditDatabaseUrl);
       const fixture = buildProductionFixtureEnv(verifyFullUrl, {
         consumptionDir,
         migrationOwnerDatabaseUrl: integrationDatabaseUrl,
@@ -134,6 +139,7 @@ function restoreEnv(keys: string[], prev: Record<string, string | undefined>): v
           expect(outcome.reasonCode).toBe('PHASE_A_PRODUCTION_INTEGRATION_HARNESS_FORBIDDEN');
         }
       } finally {
+        await teardownPhaseAProductionAuditFixtureV1(integrationDatabaseUrl);
         restoreEnv(keys, prev);
         if (prevHarness === undefined) delete process.env[M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_HARNESS_ACTIVE_ENV];
         else process.env[M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_INTEGRATION_HARNESS_ACTIVE_ENV] = prevHarness;
