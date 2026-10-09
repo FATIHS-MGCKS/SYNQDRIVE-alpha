@@ -1,23 +1,29 @@
 export const M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_CONTRACT_V1 =
   'M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_V1' as const;
 
+export const M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_CONTRACT_V2 =
+  'M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_V2' as const;
+
 export type M3_3HvH4A3PhaseAProductionGoNoGoDecisionV1 = 'GO' | 'NO_GO';
 
-/** Fail-closed authorization record for future R4.2B-P1 execution — not cryptographic. */
-export type M3_3HvH4A3PhaseAProductionGoNoGoRecordV1 = {
-  contractVersion: typeof M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_CONTRACT_V1;
-  /** Human-authored intent; dry-run still requires all structural checks to pass for READY. */
+export type M3_3HvH4A3PhaseAProductionGoNoGoGovernanceModeV1 =
+  | 'MULTI_PARTY_V1'
+  | 'SINGLE_OPERATOR_V1';
+
+export type M3_3HvH4A3PhaseAProductionGoNoGoIndependentVerificationV1 = {
+  verifierIdentity: string;
+  verifiedAtUtc: string;
+  verificationMethod: string;
+  /** Must be true — confirms verification is not self-approval by record author alone. */
+  attestsIndependentFromApprovalAuthor: true;
+};
+
+/** Shared operational fields across V1 and V2 GO/NO-GO records. */
+export type M3_3HvH4A3PhaseAProductionGoNoGoOperationalBodyV1 = {
   operatorDecision: M3_3HvH4A3PhaseAProductionGoNoGoDecisionV1;
   authorizedReleaseSha: string;
   changeTicket: string;
   authorizedHumanApprover: string;
-  independentAuthorizationVerification: {
-    verifierIdentity: string;
-    verifiedAtUtc: string;
-    verificationMethod: string;
-    /** Must be true — confirms verification is not self-approval by record author alone. */
-    attestsIndependentFromApprovalAuthor: true;
-  };
   productionTarget: {
     hostname: string;
     port: number;
@@ -69,6 +75,27 @@ export type M3_3HvH4A3PhaseAProductionGoNoGoRecordV1 = {
     backfillActivationAuthorized: false;
   };
 };
+
+/** Fail-closed authorization record for future R4.2B-P1 execution — not cryptographic. */
+export type M3_3HvH4A3PhaseAProductionGoNoGoRecordV1 = {
+  contractVersion: typeof M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_CONTRACT_V1;
+  independentAuthorizationVerification: M3_3HvH4A3PhaseAProductionGoNoGoIndependentVerificationV1;
+} & M3_3HvH4A3PhaseAProductionGoNoGoOperationalBodyV1;
+
+export type M3_3HvH4A3PhaseAProductionGoNoGoRecordV2 = {
+  contractVersion: typeof M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_CONTRACT_V2;
+  governanceMode: M3_3HvH4A3PhaseAProductionGoNoGoGovernanceModeV1;
+  independentAuthorizationVerification?: M3_3HvH4A3PhaseAProductionGoNoGoIndependentVerificationV1;
+} & M3_3HvH4A3PhaseAProductionGoNoGoOperationalBodyV1;
+
+/** Normalized loader output — governance mode drives human-verification checks. */
+export type M3_3HvH4A3PhaseAProductionGoNoGoLoadedV1 = {
+  contractVersion:
+    | typeof M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_CONTRACT_V1
+    | typeof M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_CONTRACT_V2;
+  governanceMode: M3_3HvH4A3PhaseAProductionGoNoGoGovernanceModeV1;
+  independentAuthorizationVerification?: M3_3HvH4A3PhaseAProductionGoNoGoIndependentVerificationV1;
+} & M3_3HvH4A3PhaseAProductionGoNoGoOperationalBodyV1;
 
 export const M3_3_HV_H4_A3_PHASE_A_OPERATIONAL_READINESS_REPORT_CONTRACT_V1 =
   'M3_3_HV_H4_A3_PHASE_A_OPERATIONAL_READINESS_REPORT_V1' as const;

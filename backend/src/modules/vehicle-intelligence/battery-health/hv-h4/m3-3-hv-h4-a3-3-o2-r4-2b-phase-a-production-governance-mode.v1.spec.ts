@@ -59,6 +59,6 @@ describe('loadSingleOperatorGovernanceAdoptionRecordV1', () => {
       },
     );
     expect(readiness.ok).toBe(false);
-    if (!readiness.ok) expect(readiness.reasonCode).toBe('PHASE_A_GOVERNANCE_ADOPTION_NOT_RATIFIED');
+    if (!readiness.ok) expect(readiness.reasonCode).toBe('PHASE_A_GOVERNANCE_RATIFICATION_PROVENANCE_REQUIRED');
   });
 });

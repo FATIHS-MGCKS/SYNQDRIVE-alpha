@@ -7,6 +7,13 @@ export const M3_3_HV_H4_A3_SINGLE_OPERATOR_GOVERNANCE_ADOPTION_RECORD_CONTRACT_V
 export const M3_3_HV_H4_A3_OPERATOR_RISK_ACCEPTANCE_CONTRACT_V1 =
   'M3_3_HV_H4_A3_OPERATOR_RISK_ACCEPTANCE_V1' as const;
 
+export const M3_3_HV_H4_A3_OPERATOR_RISK_ACCEPTANCE_CONTRACT_V2 =
+  'M3_3_HV_H4_A3_OPERATOR_RISK_ACCEPTANCE_V2' as const;
+
+export type M3_3HvH4A3OperatorRiskAcceptanceAuthenticationStatusV1 =
+  | 'UNVERIFIED'
+  | 'TRUSTED_EXTERNAL_VERIFIED';
+
 export type M3_3HvH4A3PhaseAProductionGovernanceModeV1 = 'MULTI_PARTY_V1' | 'SINGLE_OPERATOR_V1';
 
 export type M3_3HvH4A3SingleOperatorGovernanceAdoptionRecordV1 = {
@@ -41,4 +48,28 @@ export type M3_3HvH4A3OperatorRiskAcceptanceV1 = {
   acceptedAtUtc: string;
   attestation: string;
   governanceMode: 'SINGLE_OPERATOR_V1';
+};
+
+/** Per-change Path B risk acceptance — JSON presence does not authenticate human consent. */
+export type M3_3HvH4A3OperatorRiskAcceptanceV2 = {
+  contractVersion: typeof M3_3_HV_H4_A3_OPERATOR_RISK_ACCEPTANCE_CONTRACT_V2;
+  governanceMode: 'SINGLE_OPERATOR_V1';
+  operatorIdentity: string;
+  authorizedOwnerIdentity: string;
+  changeTicket: string;
+  approvalBinding: {
+    approvalId: string;
+    executeNonce: string;
+    validFrom: string;
+    validUntil: string;
+  };
+  maintenanceWindow: {
+    startUtc: string;
+    endUtc: string;
+  };
+  pathBSecurityReviewExceptionScope: string;
+  residualRiskAcknowledgement: true;
+  provenanceAuthenticationStatus: M3_3HvH4A3OperatorRiskAcceptanceAuthenticationStatusV1;
+  acceptedAtUtc: string;
+  attestation: string;
 };

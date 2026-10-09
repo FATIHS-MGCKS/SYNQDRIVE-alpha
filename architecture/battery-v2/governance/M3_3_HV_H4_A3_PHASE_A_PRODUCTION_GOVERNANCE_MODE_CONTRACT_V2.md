@@ -8,15 +8,16 @@
 | Mode | Env value | Human verification readiness |
 |------|-----------|------------------------------|
 | **Multi-party (default)** | `MULTI_PARTY_V1` or unset | Requires distinct `independentAuthorizationVerification` per GO/NO-GO V1 (legacy behavior). |
-| **Single-operator** | `SINGLE_OPERATOR_V1` | Requires **ratified** governance adoption record + **change-specific** `operatorRiskAcceptance`; does **not** require a fictional second human verifier. |
+| **Single-operator** | `SINGLE_OPERATOR_V1` | Requires **GO/NO-GO V2** (`M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_V2`) without `independentAuthorizationVerification`, **trusted** `M3_3_HV_H4_A3_GOVERNANCE_RATIFICATION_PROVENANCE_V1` (not self-declared `ratificationStatus`), and **change-specific** `M3_3_HV_H4_A3_OPERATOR_RISK_ACCEPTANCE_V2` with trusted provenance authentication. |
 
 ## SINGLE_OPERATOR_V1 requirements
 
-1. **Governance adoption record** (`M3_3_HV_H4_A3_SINGLE_OPERATOR_GOVERNANCE_ADOPTION_RECORD_V1`) with `ratificationStatus: RATIFIED` (owner-controlled repository merge only).
-2. **Per-change `operatorRiskAcceptance`** aligned to GO/NO-GO `changeTicket` (not granted by policy adoption alone).
-3. **AI advisory** (`aiTechnicalReviewAdvisory`) optional; never satisfies human verification or execution `GO`.
-4. **R4.2A admission** controls unchanged.
-5. **Future Authority C** — offline Ed25519 trusted authorization (P1B0) plus independent deployment/target evidence (future P1B1); **P1B1-A0 keeps execution `NO_GO`.**
+1. **Governance adoption record** (`M3_3_HV_H4_A3_SINGLE_OPERATOR_GOVERNANCE_ADOPTION_RECORD_V1`) with owner-declared intent only (`ratificationStatus: PENDING_OWNER_CONTROLLED_REPOSITORY_MERGE` in-repo until owner merge).
+2. **Independent ratification provenance** (`M3_3_HV_H4_A3_GOVERNANCE_RATIFICATION_PROVENANCE_V1`) with `provenanceAuthenticationStatus: TRUSTED_EXTERNAL_VERIFIED` — self-authored `ratificationStatus: RATIFIED` in adoption JSON is **not** proof.
+3. **Per-change `operatorRiskAcceptance` V2** aligned to GO/NO-GO `changeTicket`, approval binding, maintenance window, and authorized owner identity (not granted by policy adoption alone).
+4. **AI advisory** (`aiTechnicalReviewAdvisory`) optional; never satisfies human verification or execution `GO`.
+5. **R4.2A admission** controls unchanged.
+6. **Future Authority C** — offline Ed25519 trusted authorization (P1B0) plus independent deployment/target evidence (future P1B1); **P1B1-A0 keeps execution `NO_GO`.**
 
 ## MULTI_PARTY_V1 preservation
 

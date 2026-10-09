@@ -7,13 +7,11 @@ import {
   PHASE_A_P1_DORMANT_EXECUTION_DISABLED,
 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1-dormant-trusted-authorization-eval.v1';
 import {
-  M3_3_HV_H4_A3_OPERATOR_RISK_ACCEPTANCE_JSON_ENV,
   M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GOVERNANCE_MODE_ENV,
   M3_3_HV_H4_A3_SINGLE_OPERATOR_GOVERNANCE_ADOPTION_RECORD_JSON_ENV,
   evaluatePhaseAHumanVerificationReadinessV1,
 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-governance-mode.v1';
 import {
-  M3_3_HV_H4_A3_OPERATOR_RISK_ACCEPTANCE_CONTRACT_V1,
   M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GOVERNANCE_MODE_CONTRACT_V2,
   M3_3_HV_H4_A3_SINGLE_OPERATOR_GOVERNANCE_ADOPTION_RECORD_CONTRACT_V1,
 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-governance-mode.types.v1';
@@ -27,19 +25,18 @@ import {
   evaluatePhaseAProductionP1ExecutionGateV1,
 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-p1-execution-gate.v1';
 import { evaluatePhaseAProductionOperationalReadinessV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-operational-readiness.v1';
-import { M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_RECORD_JSON_ENV } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-operational-readiness.v1';
 import { buildPhaseAProductionP1IntegrationEnvV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-p1-integration-env.fixture.v1';
 
 const RELEASE_SHA = '129bfeebcfb5c6466dfaba610c33d32f50d9f56f';
 const DB_URL =
   'postgresql://audit_ro@prod-db.example.com:5432/synqdrive?sslmode=verify-full&sslrootcert=/etc/ssl/certs/org-ca.pem';
 
-function buildRatifiedAdoptionJson(): string {
+function buildPendingAdoptionJson(): string {
   return JSON.stringify({
     contractVersion: M3_3_HV_H4_A3_SINGLE_OPERATOR_GOVERNANCE_ADOPTION_RECORD_CONTRACT_V1,
     governanceMode: 'SINGLE_OPERATOR_V1',
     policyPath: 'B',
-    ratificationStatus: 'RATIFIED',
+    ratificationStatus: 'PENDING_OWNER_CONTROLLED_REPOSITORY_MERGE',
     governanceContractId: 'M3_3_HV_H4_A3_SINGLE_OPERATOR_GOVERNANCE_CONTRACT_V1',
     governanceModeContractId: M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GOVERNANCE_MODE_CONTRACT_V2,
     authorities: {
@@ -56,22 +53,11 @@ function buildRatifiedAdoptionJson(): string {
       doesNotGrantPerChangeRiskAcceptance: true,
     },
     ownerDeclaredChoice: 'PATH_B_SINGLE_OPERATOR_SECURITY_REVIEW_EXCEPTION',
-    ratificationMethod: 'OWNER_CONTROLLED_REPOSITORY_MERGE',
     governanceProposalRef:
       'architecture/battery-v2/governance/M3_3_HV_H4_A3_SINGLE_OPERATOR_GOVERNANCE_ADOPTION_PROPOSAL_2026-10-09.md',
   });
 }
 
-function buildRiskAcceptanceJson(changeTicket: string): string {
-  return JSON.stringify({
-    contractVersion: M3_3_HV_H4_A3_OPERATOR_RISK_ACCEPTANCE_CONTRACT_V1,
-    operatorIdentity: 'owner@example.com',
-    changeTicket,
-    acceptedAtUtc: '2026-10-09T12:00:00.000Z',
-    attestation: 'Test fixture only — does not authorize production execution.',
-    governanceMode: 'SINGLE_OPERATOR_V1',
-  });
-}
 
 describe('P1B1-A0 governance adoption & dormant authorization', () => {
   it('keeps default production P1 authorization NO_GO', () => {
@@ -108,39 +94,31 @@ describe('P1B1-A0 governance adoption & dormant authorization', () => {
     if (!result.ok) expect(result.reasonCode).toBe('PHASE_A_GO_NO_GO_VERIFIER_NOT_INDEPENDENT');
   });
 
-  it('single-operator mode requires change-specific risk acceptance when adoption ratified', () => {
-    const adoptionPending = JSON.parse(buildRatifiedAdoptionJson());
-    adoptionPending.ratificationStatus = 'PENDING_OWNER_CONTROLLED_REPOSITORY_MERGE';
+  it('single-operator mode requires trusted ratification provenance and risk acceptance V2', () => {
     const pending = evaluatePhaseAHumanVerificationReadinessV1(
       {
         [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GOVERNANCE_MODE_ENV]: 'SINGLE_OPERATOR_V1',
-        [M3_3_HV_H4_A3_SINGLE_OPERATOR_GOVERNANCE_ADOPTION_RECORD_JSON_ENV]:
-          JSON.stringify(adoptionPending),
+        [M3_3_HV_H4_A3_SINGLE_OPERATOR_GOVERNANCE_ADOPTION_RECORD_JSON_ENV]: buildPendingAdoptionJson(),
       },
       {
-        verifierIdentity: 'x@example.com',
         approvingAuthority: 'author@example.com',
         authorizedHumanApprover: 'owner@example.com',
         changeTicket: 'CHG-TEST',
+        approvalBinding: {
+          approvalId: 'apr',
+          executeNonce: 'nonce',
+          validFrom: '2026-10-09T11:00:00.000Z',
+          validUntil: '2026-10-09T14:00:00.000Z',
+        },
+        maintenanceWindow: {
+          startUtc: '2026-10-09T10:00:00.000Z',
+          endUtc: '2026-10-09T15:00:00.000Z',
+        },
+        governanceModeFromGoRecord: 'SINGLE_OPERATOR_V1',
       },
     );
     expect(pending.ok).toBe(false);
-    if (!pending.ok) expect(pending.reasonCode).toBe('PHASE_A_GOVERNANCE_ADOPTION_NOT_RATIFIED');
-
-    const missingRisk = evaluatePhaseAHumanVerificationReadinessV1(
-      {
-        [M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GOVERNANCE_MODE_ENV]: 'SINGLE_OPERATOR_V1',
-        [M3_3_HV_H4_A3_SINGLE_OPERATOR_GOVERNANCE_ADOPTION_RECORD_JSON_ENV]: buildRatifiedAdoptionJson(),
-      },
-      {
-        verifierIdentity: 'x@example.com',
-        approvingAuthority: 'author@example.com',
-        authorizedHumanApprover: 'owner@example.com',
-        changeTicket: 'CHG-TEST',
-      },
-    );
-    expect(missingRisk.ok).toBe(false);
-    if (!missingRisk.ok) expect(missingRisk.reasonCode).toBe('PHASE_A_GOVERNANCE_RECORD_REQUIRED');
+    if (!pending.ok) expect(pending.reasonCode).toBe('PHASE_A_GOVERNANCE_RATIFICATION_PROVENANCE_REQUIRED');
   });
 
   it('dormant eval never promotes execution even when offline verify inputs are well-formed', () => {
@@ -239,9 +217,7 @@ describe('P1B1-A0 governance adoption & dormant authorization', () => {
       consumptionDir: `/tmp/phase-a-p1b1-a0-${Date.now()}`,
     });
     env[M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GOVERNANCE_MODE_ENV] = 'SINGLE_OPERATOR_V1';
-    env[M3_3_HV_H4_A3_SINGLE_OPERATOR_GOVERNANCE_ADOPTION_RECORD_JSON_ENV] = buildRatifiedAdoptionJson();
-    const go = JSON.parse(env[M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_RECORD_JSON_ENV] as string);
-    env[M3_3_HV_H4_A3_OPERATOR_RISK_ACCEPTANCE_JSON_ENV] = buildRiskAcceptanceJson(go.changeTicket);
+    env[M3_3_HV_H4_A3_SINGLE_OPERATOR_GOVERNANCE_ADOPTION_RECORD_JSON_ENV] = buildPendingAdoptionJson();
 
     const gate = evaluatePhaseAProductionP1ExecutionGateV1(DB_URL, env);
     expect(gate.p1Authorization).toBe('NO_GO');
@@ -249,23 +225,21 @@ describe('P1B1-A0 governance adoption & dormant authorization', () => {
     prismaSpy.mockRestore();
   });
 
-  it('single-operator readiness can pass human verification substitute only with ratified adoption + risk acceptance', () => {
+  it('single-operator GO V2 skips second-human verification check semantics', () => {
     const env = buildPhaseAProductionP1IntegrationEnvV1({
       productionDatabaseUrl: DB_URL,
       consumptionDir: `/tmp/phase-a-p1b1-a0-ready-${Date.now()}`,
+      governanceMode: 'SINGLE_OPERATOR_V1',
     });
     env[M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GOVERNANCE_MODE_ENV] = 'SINGLE_OPERATOR_V1';
-    env[M3_3_HV_H4_A3_SINGLE_OPERATOR_GOVERNANCE_ADOPTION_RECORD_JSON_ENV] = buildRatifiedAdoptionJson();
-    const go = JSON.parse(env[M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_RECORD_JSON_ENV] as string);
-    env[M3_3_HV_H4_A3_OPERATOR_RISK_ACCEPTANCE_JSON_ENV] = buildRiskAcceptanceJson(go.changeTicket);
-    go.independentAuthorizationVerification.verifierIdentity = go.authorizedHumanApprover;
-    env[M3_3_HV_H4_A3_PHASE_A_PRODUCTION_GO_NO_GO_RECORD_JSON_ENV] = JSON.stringify(go);
+    env[M3_3_HV_H4_A3_SINGLE_OPERATOR_GOVERNANCE_ADOPTION_RECORD_JSON_ENV] = buildPendingAdoptionJson();
 
     const report = evaluatePhaseAProductionOperationalReadinessV1(env, {
-      now: new Date('2026-10-09T12:00:00.000Z'),
+      now: new Date(Date.now()),
     });
     const humanCheck = report.checks.find((c) => c.checkId === 'INDEPENDENT_HUMAN_VERIFICATION');
-    expect(humanCheck?.status).toBe('PASS');
+    expect(humanCheck?.status).toBe('SKIP');
+    expect(humanCheck?.reasonCode).toBe('PHASE_A_SECOND_HUMAN_VERIFICATION_NOT_APPLICABLE_SINGLE_OPERATOR');
     expect(resolvePhaseAProductionP1AuthorizationV1()).toBe('NO_GO');
   });
 });
