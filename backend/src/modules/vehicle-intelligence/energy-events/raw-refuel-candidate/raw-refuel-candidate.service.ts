@@ -193,6 +193,7 @@ export class RawRefuelCandidateService {
     organizationId: string,
     serviceNow: Date,
   ): Promise<RawRefuelCandidateResolveResult> {
+    assertSupportedObservationDetectionVersion(observation);
     if (isRawRefuelCandidateTerminal(existing.lifecycleState)) {
       return toResolveResult(existing, { created: false, updated: false });
     }

@@ -221,4 +221,18 @@ describe('R2 cross-version matcher', () => {
     const obs = v2Observation(v1Base, { postFuelAbsoluteLiters: 19 });
     expect(classifyRawRefuelCandidateOverlap(obs, stored)).toBe('SAME_PHYSICAL_RISE');
   });
+
+  it('M17 stored v1 post=null + valid v2 SETTLED post => INSUFFICIENT_EVIDENCE', () => {
+    const stored = asStoredRow(v1Base);
+    stored.postFuelAbsoluteLiters = null;
+    const obs = v2Observation(v1Base, { postFuelAbsoluteLiters: 19 });
+    expect(classifyRawRefuelCandidateOverlap(obs, stored)).toBe('INSUFFICIENT_EVIDENCE');
+  });
+
+  it('M18 incoming v2 post=null + valid v1 peak => INSUFFICIENT_EVIDENCE', () => {
+    const stored = asStoredRow(v1Base, { postFuelAbsoluteLiters: 20 });
+    const obs = v2Observation(v1Base);
+    obs.postFuelAbsoluteLiters = null;
+    expect(classifyRawRefuelCandidateOverlap(obs, stored)).toBe('INSUFFICIENT_EVIDENCE');
+  });
 });

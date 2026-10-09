@@ -263,6 +263,9 @@ function classifyAuthorizedCrossVersionOverlap(
   }
 
   const postCompatible = hasCompatiblePostPlateau(observation, candidate);
+  if (postCompatible == null) {
+    return 'INSUFFICIENT_EVIDENCE';
+  }
   if (postCompatible === false) {
     // Authorized PEAK→SETTLED shift: post tolerance must not block cross-version identity.
   }

@@ -5,6 +5,7 @@
 - Matcher/resolver integration for authorized `rfrf-rise-v2` → `rfrf-rise-v1`; same-version semantics preserved
 - Fail-closed `VERSIONED_TERMINAL_CONFLICT` and cross-version insufficient evidence (no reconcile)
 - KS MS 661 PostgreSQL proof; v2 physical identity for new rows; active runtime detection/detector constants unchanged
+- Final persistence firewall: R2 Postgres in Stage-3 gate; unsupported `detectionVersion` on all reconcile paths; cross-version SAME requires both post levels present
 
 ## 2026-10-01 — OQ-014 R1 identity + cross-version authority foundation (EED-EV-0105)
 

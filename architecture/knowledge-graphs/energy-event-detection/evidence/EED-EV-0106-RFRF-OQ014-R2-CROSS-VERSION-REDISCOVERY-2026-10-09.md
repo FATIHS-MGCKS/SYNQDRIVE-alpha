@@ -20,8 +20,15 @@
 - Settled F3 activation env not wired into runtime
 - OQ-014 **OPEN**; OQ-019 **PARTIALLY_RESOLVED**
 
+## R2 final persistence firewall (2026-10-09)
+
+- Stage-3 F4-PR2 PostgreSQL gate includes `raw-refuel-candidate-r2-cross-version.postgres.integration.spec.ts` (PG1–PG15).
+- `assertSupportedObservationDetectionVersion` enforced in shared `reconcileExistingCandidate` (resolve-by-id + recovery claim paths).
+- Authorized cross-version SAME requires present post plateau on both sides; null post → `INSUFFICIENT_EVIDENCE` (PEAK→SETTLED numeric mismatch may still SAME).
+
 ## Validation
 
-- `raw-refuel-candidate-cross-version.matcher.spec.ts` (M1–M12)
-- `raw-refuel-candidate-r2-cross-version.postgres.integration.spec.ts` (PG1–PG10, `RAW_REFUEL_CANDIDATE_POSTGRES_INTEGRATION=1`)
+- `raw-refuel-candidate-cross-version.matcher.spec.ts` (M1–M18)
+- `raw-refuel-candidate-r2-cross-version.postgres.integration.spec.ts` (PG1–PG15, U2–U3, `RAW_REFUEL_CANDIDATE_POSTGRES_INTEGRATION=1`)
+- `backend/scripts/test/rfrf-f4-pr2-runtime-postgres-gate.sh` — R2 spec in Stage-3 chain
 - Existing same-version matcher + candidate unit suites
