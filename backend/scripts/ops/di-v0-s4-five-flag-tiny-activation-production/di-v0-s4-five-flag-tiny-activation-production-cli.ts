@@ -134,7 +134,7 @@ function cmdPostMutationConfigAudit(file: string): void {
   const staging = assertStagingKeysPresentAndPinned(content);
   const nativeOff = assertNativeRemainsOff(content);
   const inert = assertDiscoveryWorkerInertWhileKilled(envMapFromFileContent(content));
-  const cfg = classifyConfigFileFromEnvContent(content);
+  const cfg = classifyConfigFileFromEnvContent(content, true);
   console.log(`DIMO_GLOBAL_BUDGET_CONFIG_STATE=${cfg}`);
   console.log(`NATIVE_REMAINS_OFF=${nativeOff ? 'YES' : 'NO'}`);
   console.log(`DISCOVERY_EFFECTIVE_ENABLED=${inert.discoveryEnabled ? 'YES' : 'NO'}`);
