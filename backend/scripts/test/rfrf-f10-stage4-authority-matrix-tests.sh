@@ -24,14 +24,14 @@ grep -q 'handoffAfterPromotionCommit' "$g2" || fail "G2 handoff service present"
 
 cd "$BACKEND"
 npm test -- --runInBand --forceExit \
-  --testPathPattern='raw-refuel-convergence-metrics.spec' \
+  --testPathPatterns='raw-refuel-convergence-metrics.spec' \
   >/tmp/rfrf-stage4-convergence-metrics.log 2>&1 || {
   tail -40 /tmp/rfrf-stage4-convergence-metrics.log >&2
   fail "convergence metrics spec failed"
 }
 
 npm test -- --runInBand --forceExit \
-  --testPathPattern='raw-fuel-refuel-fallback.config.spec' \
+  --testPathPatterns='raw-fuel-refuel-fallback.config.spec' \
   --testNamePattern='F5 promotion requires BOTH convergence and promotion execution authorities' \
   >/tmp/rfrf-stage4-config.log 2>&1 || {
   tail -40 /tmp/rfrf-stage4-config.log >&2
@@ -39,7 +39,7 @@ npm test -- --runInBand --forceExit \
 }
 
 npm test -- --runInBand --forceExit \
-  --testPathPattern='raw-fuel-refuel-fallback.config.f4-pr3.spec' \
+  --testPathPatterns='raw-fuel-refuel-fallback.config.f4-pr3.spec' \
   --testNamePattern='master + persist + convergence flags cannot authorize VEE promotion alone' \
   >/tmp/rfrf-stage4-f4pr3.log 2>&1 || {
   tail -40 /tmp/rfrf-stage4-f4pr3.log >&2
@@ -47,7 +47,7 @@ npm test -- --runInBand --forceExit \
 }
 
 npm test -- --runInBand --forceExit \
-  --testPathPattern='raw-refuel-native-fallback-convergence.evaluator.spec' \
+  --testPathPatterns='raw-refuel-native-fallback-convergence.evaluator.spec' \
   >/tmp/rfrf-stage4-evaluator.log 2>&1 || {
   tail -40 /tmp/rfrf-stage4-evaluator.log >&2
   fail "native-fallback convergence evaluator spec failed"

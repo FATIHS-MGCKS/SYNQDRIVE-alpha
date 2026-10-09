@@ -6,6 +6,18 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2A-H3 Jest 30 CLI compatibility (repository-wide)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Replace removed Jest 30 `--testPathPattern` with `--testPathPatterns` in `backend/package.json` npm scripts, RFRF/Legal/VO verify shell gates, Trip FSM workflow (via `test:trip-fsm:production-readiness:r10`), EXP-021 gate script, fleet connectivity verify |
+| **WHY** | Jest 30.5.2 security upgrade removed `--testPathPattern`; CI/workflows still passed the obsolete flag → zero matching suites (false green) |
+| **VALIDATION** | `npx jest --listTests`: obsolete flag 0 paths vs `--testPathPatterns=legal-document` 37 paths; `npm run test:trip-fsm:production-readiness:r10` (9 suites / 98 tests); `npm run test:legal-documents` selection parity (46 suites matched) |
+| **OBSERVED_EFFECT** | Intended regex suites execute under Jest 30; `--testPathIgnorePatterns` unchanged |
+| **NON_EFFECTS** | Jest 30.5.2 / audit gate policy unchanged; no production migration edits |
+| **REGRESSIONS_OR_TRADEOFFS** | `.github/workflows/trip-fsm-production-readiness.yml` touch requires `i18n-governance-authority-change` label on PR |
+| **DECISION_STATUS** | VALIDATED (repository CLI parity) |
+
 ## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2A security closure: Jest 30.5.2 (baseline audit regression)
 
 | Field | Value |

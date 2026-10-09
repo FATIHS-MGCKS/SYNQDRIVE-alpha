@@ -147,7 +147,7 @@ run_f9_independent_replica_tests() {
   export RAW_FUEL_REFUEL_F9_POSTGRES_REQUIRED=1
   export RAW_FUEL_REFUEL_F9_REDIS_REQUIRED=1
   npm test -- --runInBand --forceExit \
-    --testPathPattern=raw-fuel-refuel-fallback-f9-multi-replica.postgres.integration.spec.ts
+    --testPathPatterns=raw-fuel-refuel-fallback-f9-multi-replica.postgres.integration.spec.ts
 
   cleanup_f9
   trap - EXIT
@@ -179,11 +179,11 @@ bash "${SCRIPT_DIR}/rfrf-f8-operational-telemetry-gate.sh"
 echo "==> G2.1b/c/d semantic recovery regression"
 cd "${BACKEND_ROOT}"
 npm test -- --runInBand --forceExit \
-  --testPathPattern='physical-refuel-g21[bcd]'
+  --testPathPatterns='physical-refuel-g21[bcd]'
 
 echo "==> RFRF metrics regression"
 npm test -- --runInBand --forceExit \
-  --testPathPattern=raw-fuel-refuel-fallback-metrics.service.spec.ts
+  --testPathPatterns=raw-fuel-refuel-fallback-metrics.service.spec.ts
 
 echo "==> Backend build"
 npm run build

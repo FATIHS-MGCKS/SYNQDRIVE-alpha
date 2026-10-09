@@ -16,7 +16,7 @@ grep -q 'persistSkippedBecauseFlagOff' "$runtime" || fail "persist skip metric m
 
 cd "$BACKEND"
 npm test -- --runInBand --forceExit \
-  --testPathPattern=raw-fuel-refuel-fallback-runtime.service.spec \
+  --testPathPatterns=raw-fuel-refuel-fallback-runtime.service.spec \
   --testNamePattern='master=true persist=false detects but does not persist' \
   >/tmp/rfrf-stage2-authority-jest.log 2>&1 || {
   tail -30 /tmp/rfrf-stage2-authority-jest.log >&2

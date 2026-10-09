@@ -10,7 +10,7 @@ BOOKING_PATTERN='modules/bookings|booking-pickup-gate|booking-document-|booking-
 run_unit() {
   echo "==> Booking unit & characterization tests"
   npm test -- \
-    --testPathPattern="$BOOKING_PATTERN" \
+    --testPathPatterns="$BOOKING_PATTERN" \
     --testPathIgnorePatterns='postgres\.invariants|e2e-flow' \
     --passWithNoTests
 }

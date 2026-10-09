@@ -97,6 +97,6 @@ sync_schema_drift_if_needed
 export RAW_FUEL_REFUEL_F6_INTEGRATION=1
 export RAW_FUEL_REFUEL_F6_POSTGRES_REQUIRED=1
 
-npm test -- --runInBand --forceExit --testPathPattern=raw-fuel-refuel-fallback-f6-g2-payload.postgres.integration.spec.ts
+npm test -- --runInBand --forceExit --testPathPatterns=raw-fuel-refuel-fallback-f6-g2-payload.postgres.integration.spec.ts
 
 echo "RFRF F6 gate PASS"

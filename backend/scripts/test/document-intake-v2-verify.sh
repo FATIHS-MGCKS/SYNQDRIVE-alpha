@@ -10,7 +10,7 @@ DOCUMENT_INTAKE_V2_PATTERN='modules/document-extraction'
 run_unit() {
   echo "==> Document Intake V2 unit tests"
   npm test -- \
-    --testPathPattern="$DOCUMENT_INTAKE_V2_PATTERN" \
+    --testPathPatterns="$DOCUMENT_INTAKE_V2_PATTERN" \
     --testPathIgnorePatterns='integration|\.live\.integration\.' \
     --passWithNoTests
 }
