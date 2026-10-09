@@ -25,7 +25,11 @@ require_cmd docker
 if ! command -v faketime >/dev/null 2>&1; then
   if command -v apt-get >/dev/null 2>&1; then
     log "installing faketime for expired-cert fixture generation"
-    apt-get update -qq && apt-get install -y -qq faketime
+    if command -v sudo >/dev/null 2>&1 && [ "$(id -u)" -ne 0 ]; then
+      sudo apt-get update -qq && sudo apt-get install -y -qq faketime
+    else
+      apt-get update -qq && apt-get install -y -qq faketime
+    fi
   else
     log "faketime is required for expired server cert fixture" >&2
     exit 1
