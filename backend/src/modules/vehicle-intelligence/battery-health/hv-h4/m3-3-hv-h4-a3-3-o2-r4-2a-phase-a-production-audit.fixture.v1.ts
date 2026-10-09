@@ -34,6 +34,24 @@ export async function provisionPhaseAProductionAuditFixtureUrlV1(
   return { databaseUrl };
 }
 
+/** Fixture-only: audit role must not hold direct INSERT on public catalog tables. */
+export async function assertPhaseAProductionAuditFixtureCannotInsertOnPublicV1(
+  auditDatabaseUrl: string,
+): Promise<{ ok: true } | { ok: false; reasonCode: string }> {
+  const client = new PrismaClient({ datasources: { db: { url: auditDatabaseUrl } } });
+  try {
+    await client.$connect();
+    await client.$executeRawUnsafe(
+      `INSERT INTO pg_catalog.pg_roles (rolname) VALUES ('phase_a_audit_write_probe_should_fail')`,
+    );
+    return { ok: false, reasonCode: 'PHASE_A_AUDIT_FIXTURE_UNEXPECTED_WRITE_CAPABILITY' };
+  } catch {
+    return { ok: true };
+  } finally {
+    await client.$disconnect().catch(() => undefined);
+  }
+}
+
 export async function teardownPhaseAProductionAuditFixtureV1(adminDatabaseUrl: string): Promise<void> {
   const admin = new PrismaClient({ datasources: { db: { url: adminDatabaseUrl } } });
   const role = M3_3_HV_H4_A3_PHASE_A_PRODUCTION_AUDIT_FIXTURE_ROLE;

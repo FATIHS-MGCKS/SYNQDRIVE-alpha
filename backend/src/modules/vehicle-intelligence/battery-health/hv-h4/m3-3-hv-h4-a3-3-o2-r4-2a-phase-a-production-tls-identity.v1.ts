@@ -21,6 +21,7 @@ export type PhaseAProductionTlsIdentityCertificationV1 = {
 
 export type PhaseAProductionSqlQueryableV1 = {
   $queryRawUnsafe: <T = unknown>(query: string, ...values: unknown[]) => Promise<T>;
+  $executeRawUnsafe: (query: string, ...values: unknown[]) => Promise<number>;
 };
 
 export async function readPhaseAProductionBackendPidV1(

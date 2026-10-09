@@ -6,6 +6,28 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1A-H2 P1 authorization enforcement + audit credential isolation
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Split offline contract gate from production execution authorization; `evaluatePhaseAProductionP1ExecutionGateV1` returns `ok:false` + `PHASE_A_P1_EXTERNAL_AUTHORIZATION_UNVERIFIED` when contracts pass but `p1Authorization` is `NO_GO`; runner + production config CLI require `p1Authorization===GO`; migration-owner URL removed from audit env — non-secret `M3_3_HV_H4_A3_PHASE_A_PRODUCTION_MIGRATION_OWNER_ROLE_IDENTITY_REFERENCE` only; legacy migration-owner DATABASE URL rejected in audit context |
+| **WHY** | Security review: `ok:true` with `p1Authorization=NO_GO` allowed production Prisma connect; migration-owner passwords in audit process env weakened credential isolation |
+| **VALIDATION** | P1 gate + migration boundary + runner no-connect unit specs; production runner/TLS postgres integration expects P1 block before connect |
+| **NON_EFFECTS** | R4.1 isolated path; session timeouts; TLS verify-full policy; READ ONLY manifest; consumption semantics |
+| **REMAINING_GAPS** | Privileged migration-owner separation proof requires separate operational process; trusted external P1 authorization not integrated |
+| **DECISION_STATUS** | VALIDATED (repository + CI fixtures) |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1A-H1 production Phase-A admission safety closure
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | `evaluatePhaseAProductionP1ExecutionGateV1` binds R4.2B-P0 readiness + R4.2A admission pre-checks before PostgreSQL connect; migration-owner reference URL isolation; GO `authorizationLimits` extended (retention/reconciliation/backfill); `SET LOCAL` statement/lock timeouts in production READ ONLY tx |
+| **WHY** | P1A inventory: production executor could bypass GO/NO-GO; migration-owner separation was declarative-only; statement timeout was Prisma tx only |
+| **VALIDATION** | P1 gate unit spec; runner unit block without GO; session-limits postgres integration; audit fixture write denial; TLS/production integration fixtures updated |
+| **NON_EFFECTS** | `p1Authorization` remains `NO_GO`; external human auth `UNVERIFIED`; isolated R4.1 path unchanged |
+| **REMAINING_GAPS** | Independently trusted authorization system not in repository — cannot set `P1_AUTHORIZATION=GO` without external evidence |
+| **DECISION_STATUS** | VALIDATED (repository + CI fixtures) |
+
 ## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P0-H2 evidence semantics + explicit UTC timestamps
 
 | Field | Value |

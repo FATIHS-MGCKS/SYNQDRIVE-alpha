@@ -52,6 +52,20 @@ describe('m3-3-hv-h4-a3-o2-r4-1 phase-a runner (unit)', () => {
     }
   });
 
+  it('blocks production admission policy when R4.2B GO/NO-GO evidence is missing', async () => {
+    const outcome = await runM3_3HvH4A3PhaseAPreflightV1({
+      databaseUrl:
+        'postgresql://audit_ro@127.0.0.1:9/synqdrive?sslmode=verify-full&sslrootcert=/etc/ssl/certs/ca.pem',
+      roleNames: DEFAULT_M3_3_HV_H4_A3_PHASE_A_ROLE_NAMES_V1,
+      admissionPolicy: 'PRODUCTION_AUTHORIZED_R4_2A',
+    });
+    expect(outcome.ok).toBe(false);
+    if (!outcome.ok) {
+      expect(outcome.status).toBe('BLOCKED');
+      expect(outcome.reasonCode).toBe('PHASE_A_GO_NO_GO_RECORD_REQUIRED');
+    }
+  });
+
   it('blocks runner reuse of issuer database URL', async () => {
     const issuerUrl = 'postgresql://issuer@127.0.0.1:5432/issuer_db';
     process.env[M3_3_HV_H4_A3_ATTESTATION_ISSUER_DATABASE_URL_ENV] = issuerUrl;

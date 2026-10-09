@@ -12,7 +12,13 @@ import {
 import { evaluatePhaseAPreflightDatabaseAdmissionV1 } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.admission.v1';
 import { evaluatePhaseAPreflightProductionAdmissionV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-admission.v1';
 import { createPhaseAProductionPrismaClientV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-prisma-client.v1';
+import { applyPhaseAProductionReadOnlySessionLimitsV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-session-limits.v1';
 import { runPhaseAProductionSameSessionGateV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-same-session-gate.v1';
+import {
+  evaluatePhaseAProductionP1ExecutionGateV1,
+  isPhaseAProductionP1ExecutionAuthorizedV1,
+  PHASE_A_P1_EXTERNAL_AUTHORIZATION_UNVERIFIED,
+} from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-p1-execution-gate.v1';
 import { readPhaseAProductionBackendPidV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-tls-identity.v1';
 import { M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_QUERY_TELEMETRY_ENV } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.isolated-target.v1';
 import {
@@ -112,6 +118,14 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
     | undefined;
 
   if (admissionPolicy === 'PRODUCTION_AUTHORIZED_R4_2A') {
+    const p1Gate = evaluatePhaseAProductionP1ExecutionGateV1(input.databaseUrl, process.env);
+    if (!isPhaseAProductionP1ExecutionAuthorizedV1(p1Gate)) {
+      const reasonCode = p1Gate.ok
+        ? PHASE_A_P1_EXTERNAL_AUTHORIZATION_UNVERIFIED
+        : p1Gate.reasonCode;
+      return { ok: false, reasonCode, status: 'BLOCKED' };
+    }
+
     const productionAdmission = evaluatePhaseAPreflightProductionAdmissionV1(
       input.databaseUrl,
       process.env,
@@ -166,6 +180,18 @@ export async function runM3_3HvH4A3PhaseAPreflightV1(
     await client.$transaction(
       async (tx) => {
         await tx.$executeRawUnsafe('SET TRANSACTION READ ONLY');
+
+        if (admissionPolicy === 'PRODUCTION_AUTHORIZED_R4_2A') {
+          const sessionLimits = await applyPhaseAProductionReadOnlySessionLimitsV1(tx);
+          if (!sessionLimits.ok) {
+            blockedAfterProductionGate = {
+              ok: false,
+              reasonCode: sessionLimits.reasonCode,
+              status: 'BLOCKED',
+            };
+            return;
+          }
+        }
 
         if (admissionPolicy === 'PRODUCTION_AUTHORIZED_R4_2A' && productionAdmissionReady) {
           const gate = await runPhaseAProductionSameSessionGateV1(
