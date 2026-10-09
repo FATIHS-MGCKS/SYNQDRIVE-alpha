@@ -64,6 +64,9 @@ export type M3_3HvH4A3PhaseAProductionGoNoGoRecordV1 = {
     applicationRuntimeFlagChangesAuthorized: false;
     hybridLoaderActivationAuthorized: false;
     attestationInsertOrUpdateAuthorized: false;
+    retentionActivationAuthorized: false;
+    reconciliationActivationAuthorized: false;
+    backfillActivationAuthorized: false;
   };
 };
 

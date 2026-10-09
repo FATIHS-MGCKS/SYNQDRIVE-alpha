@@ -57,6 +57,16 @@ Output: `M3_3_HV_H4_A3_PHASE_A_OPERATIONAL_READINESS_REPORT_V1` JSON (`decision`
 
 See `architecture/battery-v2/operations/M3_3_HV_H4_A3_PHASE_A_R4_2B_P1_EXECUTION_RUNBOOK_2026-10-09.md`.
 
+## P1A-H1 — Production execution gate (fail-closed)
+
+| Control | Module |
+|---------|--------|
+| R4.2B-P0 `READY` + GO record alignment required before connect | `evaluatePhaseAProductionP1ExecutionGateV1` (runner + production config CLI) |
+| Migration-owner credential isolation | `M3_3_HV_H4_A3_PHASE_A_PRODUCTION_MIGRATION_OWNER_DATABASE_URL` + `validatePhaseAProductionMigrationOwnerCredentialIsolationV1` |
+| `p1Authorization` | Always **`NO_GO`** until an independently trusted authorization system exists (not self-authored JSON) |
+| Session statement bounds | `applyPhaseAProductionReadOnlySessionLimitsV1` — `SET LOCAL statement_timeout` / `lock_timeout` inside READ ONLY tx |
+| Retention / reconciliation / backfill | GO `authorizationLimits` must be `false` for all three |
+
 ## P0-E — Regression / isolation
 
 No changes to hybrid loader activation, issuer runtime, attestation DML paths, retention/reconciliation, or R4.2A TLS/same-session code paths beyond additive R4.2B modules. No new Prisma migrations.

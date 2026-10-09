@@ -24,6 +24,7 @@ import {
 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-approval.v1';
 import { M3_3_HV_H4_A3_PHASE_A_PRODUCTION_TARGET_SPEC_CONTRACT_V1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-approval.types.v1';
 import {
+  assertPhaseAProductionAuditFixtureCannotInsertOnPublicV1,
   provisionPhaseAProductionAuditFixtureUrlV1,
   teardownPhaseAProductionAuditFixtureV1,
 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-audit.fixture.v1';
@@ -37,6 +38,7 @@ import {
   readPhaseAProductionBackendPidV1,
 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-tls-identity.v1';
 import { evaluatePhaseAPreflightProductionAdmissionV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-admission.v1';
+import { buildPhaseAProductionP1IntegrationEnvV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-p1-integration-env.fixture.v1';
 
 const integrationJobActive = isPhaseAPreflightPostgresIntegrationJobV1();
 
@@ -106,6 +108,32 @@ function restoreEnv(keys: string[], prev: Record<string, string | undefined>): v
     beforeAll(async () => {
       integrationDatabaseUrl = resolvePhaseAPreflightIntegrationDatabaseUrlV1();
       await assertPhaseAPreflightIntegrationDatabaseReachableV1(integrationDatabaseUrl);
+    });
+
+    it('blocks production runner before connect when GO/NO-GO evidence is absent', async () => {
+      const consumptionDir = join(process.cwd(), `.phase-a-prod-no-go-${Date.now()}`);
+      provisionPhaseAProductionConsumptionStoreFixtureV1(consumptionDir);
+      const verifyFullUrl = withVerifyFullTlsParams(integrationDatabaseUrl);
+      const fixture = buildProductionFixtureEnv(verifyFullUrl, { consumptionDir });
+      const keys = Object.keys(fixture);
+      const prev: Record<string, string | undefined> = {};
+      for (const k of keys) prev[k] = process.env[k];
+      Object.assign(process.env, fixture);
+
+      try {
+        const outcome = await runM3_3HvH4A3PhaseAPreflightV1({
+          databaseUrl: verifyFullUrl,
+          roleNames: DEFAULT_M3_3_HV_H4_A3_PHASE_A_ROLE_NAMES_V1,
+          admissionPolicy: 'PRODUCTION_AUTHORIZED_R4_2A',
+        });
+        expect(outcome.ok).toBe(false);
+        if (!outcome.ok) {
+          expect(outcome.reasonCode).toBe('PHASE_A_GO_NO_GO_RECORD_REQUIRED');
+        }
+      } finally {
+        restoreEnv(keys, prev);
+        rmSync(consumptionDir, { recursive: true, force: true });
+      }
     });
 
     it('blocks production path when integration harness is active', async () => {
@@ -179,6 +207,15 @@ function restoreEnv(keys: string[], prev: Record<string, string | undefined>): v
       } finally {
         await client.$disconnect().catch(() => undefined);
       }
+    });
+
+    it('fixture audit login cannot perform catalog writes (least-privilege)', async () => {
+      const { databaseUrl: auditDatabaseUrl } = await provisionPhaseAProductionAuditFixtureUrlV1(
+        integrationDatabaseUrl,
+      );
+      const writeCheck = await assertPhaseAProductionAuditFixtureCannotInsertOnPublicV1(auditDatabaseUrl);
+      expect(writeCheck.ok).toBe(true);
+      await teardownPhaseAProductionAuditFixtureV1(integrationDatabaseUrl);
     });
 
     it('validates dedicated audit fixture login is non-superuser', async () => {

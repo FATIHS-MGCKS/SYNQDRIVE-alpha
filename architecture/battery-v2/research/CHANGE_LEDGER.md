@@ -6,6 +6,17 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1A-H1 production Phase-A admission safety closure
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | `evaluatePhaseAProductionP1ExecutionGateV1` binds R4.2B-P0 readiness + R4.2A admission pre-checks before PostgreSQL connect; migration-owner reference URL isolation; GO `authorizationLimits` extended (retention/reconciliation/backfill); `SET LOCAL` statement/lock timeouts in production READ ONLY tx |
+| **WHY** | P1A inventory: production executor could bypass GO/NO-GO; migration-owner separation was declarative-only; statement timeout was Prisma tx only |
+| **VALIDATION** | P1 gate unit spec; runner unit block without GO; session-limits postgres integration; audit fixture write denial; TLS/production integration fixtures updated |
+| **NON_EFFECTS** | `p1Authorization` remains `NO_GO`; external human auth `UNVERIFIED`; isolated R4.1 path unchanged |
+| **REMAINING_GAPS** | Independently trusted authorization system not in repository — cannot set `P1_AUTHORIZATION=GO` without external evidence |
+| **DECISION_STATUS** | VALIDATED (repository + CI fixtures) |
+
 ## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P0-H2 evidence semantics + explicit UTC timestamps
 
 | Field | Value |

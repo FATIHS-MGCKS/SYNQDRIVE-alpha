@@ -1,7 +1,7 @@
 import { parsePostgresUrlLoginV1 } from './m3-3-hv-h4-a3-3-o2-r3-h1-postgres-url-identity.v1';
 import { DEFAULT_M3_3_HV_H4_A3_PHASE_A_ROLE_NAMES_V1 } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.config.v1';
 import type { M3_3HvH4A3PhaseAPreflightRoleNamesV1 } from './m3-3-hv-h4-a3-3-o2-r4-1-phase-a-preflight.types.v1';
-import { evaluatePhaseAPreflightProductionAdmissionV1 } from './m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-admission.v1';
+import { evaluatePhaseAProductionP1ExecutionGateV1 } from './m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-p1-execution-gate.v1';
 import {
   M3_3_HV_H4_A3_PHASE_A_PRODUCTION_DATABASE_URL_ENV,
   M3_3_HV_H4_A3_PHASE_A_PRODUCTION_PREFLIGHT_ENABLED_ENV,
@@ -32,11 +32,9 @@ export function parseM3_3HvH4A3PhaseAProductionPreflightConfigFromEnvV1(
     return { ok: false, reasonCode: 'PHASE_A_DATABASE_URL_LOGIN_REQUIRED' };
   }
 
-  const admission = evaluatePhaseAPreflightProductionAdmissionV1(databaseUrl, env, {
-    consumeApproval: options.consumeApproval ?? false,
-  });
-  if (!admission.ok) {
-    return { ok: false, reasonCode: admission.reasonCode };
+  const p1Gate = evaluatePhaseAProductionP1ExecutionGateV1(databaseUrl, env);
+  if (!p1Gate.ok) {
+    return { ok: false, reasonCode: p1Gate.reasonCode };
   }
 
   return {
