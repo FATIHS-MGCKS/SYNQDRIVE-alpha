@@ -1721,6 +1721,13 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | PR #1939 — align S4F-7AK / CURRENT_STATE / CHANGE_LEDGER: S4F-7AI = Production **`DRY_RUN=1` only**; live = detached `ed78748bc…` S4F-7Y operator (not S4F-7AI) |
 | NON_EFFECTS | No operator code change; no Production execution |
 
+### EXP-021 S4F-7AY Post-merge Gate-6 infra readiness (2026-10-10)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Read-only Production attestation + Gate-6 trust path inventory after merge #1955; provisioning plan A–G (not executed); evidence `EXP021_S4F7AY_POSTMERGE_INFRA_READINESS.md` |
+| NON_EFFECTS | No deploy, no keys, no approval/dispatch artifacts, no Gate-6 grant |
+
 ### EXP-021 S4F-7AX.3 Trusted dispatch provenance (2026-10-09)
 
 | Event | Detail |
