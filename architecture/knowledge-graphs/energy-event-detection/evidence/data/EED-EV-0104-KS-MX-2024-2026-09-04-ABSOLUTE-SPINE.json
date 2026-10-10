@@ -7,6 +7,11 @@
     "from": "2026-09-04T03:30:00.000Z",
     "to": "2026-09-04T04:10:00.000Z"
   },
+  "canonicalPhysicalEpisode": {
+    "refuelRiseStartUtc": "2026-09-04T03:47:45.000Z",
+    "provenance": "PRODUCTION_FORENSIC_FIXTURE_KS_MX_2024_SEPT04_EVENT_A",
+    "evidenceRef": "backend/src/modules/dimo/fixtures/ks-mx-2024-sept04-refuel.fixture.ts"
+  },
   "providerAggregationSemantics": {
     "signal": "powertrainFuelSystemAbsoluteLevel",
     "aggregation": "AVG",

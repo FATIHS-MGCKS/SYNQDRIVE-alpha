@@ -1,5 +1,11 @@
 # KG-EED Changelog
 
+## 2026-10-10 — OQ-014 R4A canonical event attribution final seal (EED-EV-0109)
+
+- Independent canonical refuel anchors (`rfrf-oq014-r4a-canonical-event-anchors.lib.ts`); fail-closed rise attribution without nearest-rise or first-sample ground truth
+- Per-event CI artifact **v3**; authoritative calibration metric N=5 vs population N=6; `WOB_7503_2026_09_15` remains `UNVERIFIED_EVENT_ANCHOR`
+- Jest: `rfrf-oq014-r4a-canonical-attribution-seal.spec.ts` + updated attribution/metrics specs; **CALIBRATION_INSUFFICIENT** unchanged
+
 ## 2026-10-09 — OQ-014 R3B v2→v2 physical candidate rediscovery (EED-EV-0108)
 
 - Version-aware v2→v2 matcher authority: revised `SETTLED_MEDIAN` reconciles when physical identity + FRESH baseline proven; fail-closed otherwise
@@ -27,6 +33,19 @@
 
 - Unwired backend foundations: physical identity v1, cross-version compatibility registry, post-authority transition types, `VERSIONED_TERMINAL_CONFLICT` contract, settled F3 activation parser types
 - Legacy F2 identity/matcher/service/runtime **unchanged**; no numeric Production caps; no settled F3 activation
+
+## 2026-10-10 — OQ-014 R4A evidence quality closure (PR #1958)
+
+- Measured settled-window internal gaps (distinct from scanner config limit)
+- Event-timestamp rise attribution (fail-closed on ambiguity)
+- Registry validation + committed `RFRF-OQ014-R4A-PER-EVENT-CALIBRATION-RESULTS.json` CI artifact
+
+## 2026-10-10 — OQ-014 R4A calibration integrity & sufficiency (EED-EV-0109)
+
+- Machine-verifiable event accounting (`RFRF-OQ014-R4A-EVENT-ACCOUNTING.json` + `rfrf-oq014-r4a-event-accounting.ts`)
+- **WOB concentration correction:** eligible set is **3/6** WOB L 7503 (addendum to EED-EV-0104 — historical doc preserved)
+- Offline per-event metrics + adversarial replay integrity spec (`rfrf-oq014-r4a-calibration-integrity.spec.ts`)
+- **CALIBRATION_INSUFFICIENT** — no Production numeric caps; next slice **R4B** spine promotion gate
 
 ## 2026-10-01 — OQ-014 fleet calibration + settled locality evidence (EED-EV-0104)
 

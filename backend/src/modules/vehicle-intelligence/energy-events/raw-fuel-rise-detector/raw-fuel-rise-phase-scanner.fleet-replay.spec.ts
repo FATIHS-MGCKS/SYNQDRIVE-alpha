@@ -11,15 +11,23 @@ import { RAW_FUEL_RISE_DETECTOR_CONFIG_V1 } from './raw-fuel-rise-detector.confi
 import { normalizeRawFuelSamples } from './raw-fuel-rise-normalizer';
 import type { NormalizedRawFuelSample } from './raw-fuel-rise-normalizer';
 import { detectChannelRises } from './raw-fuel-rise-state-machine';
+import { resolveCanonicalEventAnchors } from '../../../../../scripts/ops/rfrf-settled-post/rfrf-oq014-r4a-canonical-event-anchors.lib';
+import { attributeChannelRiseToCanonicalEvent } from '../../../../../scripts/ops/rfrf-settled-post/rfrf-oq014-r4a-rise-attribution.lib';
 import { scanRawFuelRisePhases } from './raw-fuel-rise-phase-scanner';
 import { buildStructuralSymbolsFromDetectorConfig } from './raw-fuel-rise-phase-scanner.types';
 import { RFRF_RISE_PHASE_SCANNER_POLICY_VERSION } from './raw-fuel-rise-phase-scanner.policy';
 import { preBaselineFromChannelRise } from './raw-fuel-rise-phase-scanner.replay-support';
 
-/** EED-EV-0104 authoritative inventory — not all rows have committed replay spines. */
-const NATURAL_ELIGIBLE_N = 6;
+import {
+  COMMITTED_FULL_REPLAY_FIXTURE_IDS,
+  NATURAL_CALIBRATION_ELIGIBLE_EVENT_IDS,
+  maxEventsFromSingleVehicle,
+} from '../../../../../scripts/ops/rfrf-settled-post/rfrf-oq014-r4a-event-accounting';
+
+/** EED-EV-0104 / R4A authoritative inventory — not all rows have committed replay spines. */
+const NATURAL_ELIGIBLE_N = NATURAL_CALIBRATION_ELIGIBLE_EVENT_IDS.length;
 const NATURAL_ELIGIBLE_VEHICLE_N = 3;
-const COMMITTED_REPLAY_N = 5;
+const COMMITTED_REPLAY_N = COMMITTED_FULL_REPLAY_FIXTURE_IDS.length;
 
 const CALIBRATION_BUNDLE = {
   bundleVersion: 'replay-hypothesis-v1',
@@ -29,14 +37,14 @@ const CALIBRATION_BUNDLE = {
   maxPeakToSettledContinuityGapMs: 45 * 60 * 1000,
 };
 
-function pickPrimaryChannelRise(samples: NormalizedRawFuelSample[]) {
+function pickAttributedChannelRise(
+  samples: NormalizedRawFuelSample[],
+  row: (typeof DEFENSIBLE_NATURAL_CALIBRATION_ROWS)[number],
+) {
   const rises = detectChannelRises(samples, 'ABSOLUTE_LITERS', RAW_FUEL_RISE_DETECTOR_CONFIG_V1);
-  if (rises.length === 0) return null;
-  return rises.reduce((best, r) => {
-    const peak = Math.max(...r.risePoints.map((p) => p.value));
-    const bestPeak = Math.max(...best.risePoints.map((p) => p.value));
-    return peak > bestPeak ? r : best;
-  });
+  const anchors = resolveCanonicalEventAnchors(row.id, row, null);
+  const attribution = attributeChannelRiseToCanonicalEvent(rises, anchors);
+  return attribution.status === 'ATTRIBUTED' ? attribution.rise : null;
 }
 
 describe('R3A fleet replay metrics (EED-EV-0104 baseline)', () => {
@@ -44,9 +52,14 @@ describe('R3A fleet replay metrics (EED-EV-0104 baseline)', () => {
     expect(CALIBRATION_PACK_MANIFEST.defensibleNaturalRows).toBe(7);
     expect(NATURAL_ELIGIBLE_N).toBe(6);
     expect(NATURAL_ELIGIBLE_VEHICLE_N).toBe(3);
+    const wob = maxEventsFromSingleVehicle(NATURAL_CALIBRATION_ELIGIBLE_EVENT_IDS);
+    expect(wob.count).toBe(3);
+    expect(wob.fraction).toBe(0.5);
 
     const replayable = DEFENSIBLE_NATURAL_CALIBRATION_ROWS.filter((r) => r.samples.length > 0);
-    expect(replayable.length).toBe(COMMITTED_REPLAY_N);
+    /** Five in-pack series; sixth eligible (WOB 09-15) + KS MX 09-04 replay via EED-EV-0104 spine JSON (R4A metrics). */
+    expect(replayable.length).toBe(5);
+    expect(COMMITTED_REPLAY_N).toBe(6);
 
     let evaluated = 0;
     let skipped = 0;
@@ -67,7 +80,7 @@ describe('R3A fleet replay metrics (EED-EV-0104 baseline)', () => {
         continue;
       }
 
-      const rise = pickPrimaryChannelRise(norm.samples);
+      const rise = pickAttributedChannelRise(norm.samples, row);
       if (!rise) {
         skipped += 1;
         skipReasons.NO_CHANNEL_RISE = (skipReasons.NO_CHANNEL_RISE ?? 0) + 1;
@@ -105,8 +118,8 @@ describe('R3A fleet replay metrics (EED-EV-0104 baseline)', () => {
     }
 
     expect(evaluated).toBeGreaterThan(0);
-    expect(evaluated).toBeLessThanOrEqual(COMMITTED_REPLAY_N);
-    expect(skipped + evaluated).toBe(COMMITTED_REPLAY_N);
+    expect(evaluated).toBeLessThanOrEqual(replayable.length);
+    expect(skipped + evaluated).toBe(replayable.length);
     expect(EXCLUDED_SUSPECT_CONTROLS.length).toBeGreaterThan(0);
     expect(matureShadow).toBeGreaterThan(0);
     expect(drops.length).toBeGreaterThan(0);
