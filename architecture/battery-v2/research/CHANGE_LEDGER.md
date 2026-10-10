@@ -6,6 +6,15 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-10 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B1-A2 independent provenance foundation
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | GitHub provenance acquisition/verify; trust-anchor provisioning boundary; deployment probe + Postgres mock audit foundations; four-state evidence pipeline report |
+| **WHY** | R4.2B-P1B1-A2 — distinguish received/structural/crypto/independent authority without enabling P1 GO |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1b1-a2-independent-provenance.spec.ts` + HV-H4 unit suite (308 tests) |
+| **NON_EFFECTS** | Production resolver disabled; no prod SSH/DB; operator risk NOT_GRANTED |
+
 ## 2026-10-10 — P1B1-A1 governance authority documentation consistency (PR #1956)
 
 | Field | Value |
