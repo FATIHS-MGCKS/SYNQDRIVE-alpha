@@ -6,6 +6,53 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-10 — P1B1-A1 governance authority documentation consistency (PR #1956)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Phase-A governance mode contract V2 + ChangesView A1 note: resolver unconditionally disabled; offline crypto diagnostics-only; P1 `NO_GO` explicit |
+| **WHY** | Remove outdated “verifier wired for Path B readiness” wording after H1–H3 |
+| **VALIDATION** | Doc review; `validate-module-registry.sh` |
+| **NON_EFFECTS** | No runtime code changes |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B1-A1-H3 canonical Ed25519 Base64 closure
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Strict Base64 round-trip + exact keyId in `parseGovernanceSignedAttestationV1`; adversarial encoding tests |
+| **WHY** | H3 review — reject non-canonical Base64 aliases and silent keyId normalization |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1b1-a1-h3-canonical-signature-encoding.spec.ts` + HV-H4 unit suite |
+| **NON_EFFECTS** | H2 timestamp binding, disabled independent authority, P1 `NO_GO` |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B1-A1-H2 evidence parser & acceptance timestamp binding
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Shared fail-closed signature parse; operator-risk attestation V2 with signed `acceptedAtUtc`; claims binding rejects timestamp-only tampering; negative parser tests |
+| **WHY** | H2 review — malformed signatures must not throw; acceptance time must be cryptographically bound or non-authoritative |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1b1-a1-h2-evidence-parser-integrity.spec.ts` + HV-H4 unit suite (293 tests) |
+| **NON_EFFECTS** | Independent authority verifier remains disabled; P1 `NO_GO`; no production access |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B1-A1-H1 trust anchor & replay boundary closure
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Production authority resolver always disabled; separate crypto vs independent authority; fixture GitHub evidence non-authoritative; operator-risk claims binding; ephemeral replay scope documented; trust-store canonicalization |
+| **WHY** | Security review — env cannot self-promote trust; signed synthetic evidence must not yield governance READY |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1b1-a1-h1-governance-trust-anchor.spec.ts` + HV-H4 unit suite |
+| **NON_EFFECTS** | P1 `NO_GO`, no production access, no durable replay store activation |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B1-A1 governance evidence foundation (offline verification)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Domain-separated Ed25519 attestations + trust store; offline ratification/risk/deployment/postgres evidence contracts; env-loaded external authority verifier (readiness only); operational readiness binds release SHA + Postgres fingerprint for Path B |
+| **WHY** | R4.2B-P1B1-A1 — independently verifiable evidence under SINGLE_OPERATOR_V1 without production activation |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1b1-a1-governance-evidence.spec.ts` + full HV-H4 unit suite (282 tests) |
+| **NON_EFFECTS** | No production SSH/DB, no P1 `GO`, governance signatures are not execution authorization |
+| **REMAINING_GAPS** | Live GitHub merge proof acquisition, deployment probe issuer runtime, live DB role audit |
+| **DECISION_STATUS** | PROPOSED — next slice: runtime-bound evidence + trusted issuer operations outside repo |
+
 ## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B1-A0-H2 eliminate self-asserted trusted governance evidence
 
 | Field | Value |
