@@ -53,7 +53,7 @@ function notVerifiedRisk(reasonCode: string): M3_3HvH4A3OperatorRiskAcceptanceVe
   };
 }
 
-/** Production governance authority verifier — always fail-closed in A1/H1. */
+/** Production governance authority verifier — always fail-closed in A1/H1/H2/H3/A2. */
 export function createPhaseAGovernanceExternalAuthorityVerifierDisabledV1(): PhaseAGovernanceExternalAuthorityVerifierV1 {
   return {
     verifyRatificationProvenanceV1: () =>
