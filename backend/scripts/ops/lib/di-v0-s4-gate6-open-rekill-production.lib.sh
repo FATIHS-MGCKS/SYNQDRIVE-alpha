@@ -130,7 +130,10 @@ S4F7AS_GUARD_PROOF_BUNDLE_KEYS=(
 
 s4f7as_write_guard_proof_bundle_file() {
   local bundle="$1"
-  local key val
+  local key val dir tmp
+  dir="$(dirname "$bundle")"
+  tmp="$(mktemp "${dir}/.gate6-guard-proof.XXXXXX")"
+  chmod 600 "$tmp"
   {
     echo "COLLECTOR=GATE6_WRAPPER_V1"
     for key in "${S4F7AS_GUARD_PROOF_BUNDLE_KEYS[@]}"; do
@@ -143,7 +146,122 @@ s4f7as_write_guard_proof_bundle_file() {
         fi
       fi
     done
-  } >"$bundle"
+  } >"$tmp"
+  mv -f "$tmp" "$bundle"
+  chmod 600 "$bundle"
+}
+
+s4f7as_load_trusted_backend_env_content_for_guard_proof() {
+  local env_path="${BACKEND_ENV:-}"
+  if [[ -z "$env_path" || ! -r "$env_path" ]]; then
+    echo "GUARD_PROOF_ENV_READ_FAILED=YES"
+    return 1
+  fi
+  if [[ "${DI_S4F7AS_TEST_GUARD_PROOF_ENV_READ_FAIL:-}" == "YES" ]]; then
+    echo "GUARD_PROOF_ENV_READ_FAILED=YES"
+    return 1
+  fi
+  local content
+  if ! content="$(cat "$env_path")"; then
+    echo "GUARD_PROOF_ENV_READ_FAILED=YES"
+    return 1
+  fi
+  if [[ -z "$content" ]]; then
+    echo "GUARD_PROOF_ENV_CONTENT_EMPTY=YES"
+    return 1
+  fi
+  if [[ "$content" != *"DI_V0_S4_MASTER_ENABLED="* ]]; then
+    echo "GUARD_PROOF_ENV_CONTENT_INVALID=YES"
+    return 1
+  fi
+  printf '%s' "$content"
+  return 0
+}
+
+s4f7as_assert_guard_proof_vehicle_db_lines_valid() {
+  local -a lines=("$@")
+  if [[ ${#lines[@]} -lt 6 ]]; then
+    echo "GUARD_PROOF_VEHICLE_DB_LINES_INVALID=YES"
+    return 1
+  fi
+  if [[ "${lines[0]}" == *"FAILED"* || "${lines[0]}" != "1" ]]; then
+    echo "GUARD_PROOF_VEHICLE_DB_LINES_INVALID=YES"
+    return 1
+  fi
+  if [[ -z "${lines[1]// }" ]]; then
+    echo "GUARD_PROOF_VEHICLE_DB_LINES_INVALID=YES"
+    return 1
+  fi
+  if [[ "${lines[3]}" == "*" ]]; then
+    echo "GUARD_PROOF_VEHICLE_DB_LINES_INVALID=YES"
+    return 1
+  fi
+  case "${lines[4]}" in 0|1|true|false|TRUE|FALSE) ;; *) echo "GUARD_PROOF_VEHICLE_DB_LINES_INVALID=YES"; return 1 ;; esac
+  case "${lines[5]}" in 0|1|true|false|TRUE|FALSE) ;; *) echo "GUARD_PROOF_VEHICLE_DB_LINES_INVALID=YES"; return 1 ;; esac
+  return 0
+}
+
+s4f7as_load_trusted_vehicle_db_proof_for_guard_proof() {
+  if [[ "${DI_S4F7AS_TEST_GUARD_PROOF_VEHICLE_DB_FAIL:-}" == "YES" ]]; then
+    echo "GUARD_PROOF_VEHICLE_DB_QUERY_FAILED=YES"
+    return 1
+  fi
+  local -a vehicle_lines=()
+  if ! mapfile -t vehicle_lines < <(s4f7j_query_vehicle_db); then
+    echo "GUARD_PROOF_VEHICLE_DB_QUERY_FAILED=YES"
+    return 1
+  fi
+  if [[ ${#vehicle_lines[@]} -eq 0 ]]; then
+    echo "GUARD_PROOF_VEHICLE_DB_QUERY_FAILED=YES"
+    return 1
+  fi
+  if [[ "${vehicle_lines[0]}" == *"FAILED"* ]]; then
+    echo "GUARD_PROOF_VEHICLE_DB_QUERY_FAILED=YES"
+    return 1
+  fi
+  if ! s4f7as_assert_guard_proof_vehicle_db_lines_valid "${vehicle_lines[@]}"; then
+    return 1
+  fi
+  printf '%s\n' "${vehicle_lines[@]}"
+  return 0
+}
+
+s4f7as_assert_guard_proof_global_row_lines_valid() {
+  local -a lines=("$@")
+  if [[ ${#lines[@]} -lt 2 ]]; then
+    echo "GUARD_PROOF_GLOBAL_ROW_INVALID=YES"
+    return 1
+  fi
+  if [[ "${lines[0]}" == *"FAILED"* || "${lines[1]}" == *"FAILED"* ]]; then
+    echo "GUARD_PROOF_GLOBAL_ROW_INVALID=YES"
+    return 1
+  fi
+  return 0
+}
+
+s4f7as_assert_guard_proof_s4_persistence_lines_valid() {
+  local -a lines=("$@")
+  if [[ ${#lines[@]} -lt 6 ]]; then
+    echo "GUARD_PROOF_S4_PERSISTENCE_INVALID=YES"
+    return 1
+  fi
+  if printf '%s\n' "${lines[@]}" | grep -q 'FAILED'; then
+    echo "GUARD_PROOF_S4_PERSISTENCE_INVALID=YES"
+    return 1
+  fi
+  return 0
+}
+
+s4f7as_guard_proof_bundle_has_required_keys() {
+  local bundle="$1"
+  local key
+  for key in "${S4F7AS_GUARD_PROOF_BUNDLE_KEYS[@]}"; do
+    if ! grep -q "^${key}=" "$bundle" 2>/dev/null; then
+      echo "GUARD_PROOF_BUNDLE_MISSING_KEY=${key}"
+      return 1
+    fi
+  done
+  return 0
 }
 
 s4f7as_guard_proof_bundle_has_collector() {
@@ -198,10 +316,38 @@ s4f7as_refresh_guard_proof_security_gates_before_mutation() {
     echo "GUARD_PROOF_BUNDLE_NOT_MATERIALIZED=YES"
     return 1
   fi
+  local env_content
+  if ! env_content="$(s4f7as_load_trusted_backend_env_content_for_guard_proof)"; then
+    return 1
+  fi
+  export DI_S4F7AS_ENV_CONTENT="$env_content"
+  local vehicle_blob
+  local -a vehicle_lines=()
+  if ! vehicle_blob="$(s4f7as_load_trusted_vehicle_db_proof_for_guard_proof)"; then
+    return 1
+  fi
+  mapfile -t vehicle_lines <<<"$vehicle_blob"
+  export DI_S4F7AS_VEHICLE_DB_LINES="$(printf '%s\n' "${vehicle_lines[@]}")"
+  local global_blob
   local -a global_lines=()
-  mapfile -t global_lines < <(s4f7j_query_global_row_db)
+  if ! global_blob="$(s4f7j_query_global_row_db)"; then
+    echo "GUARD_PROOF_GLOBAL_ROW_QUERY_FAILED=YES"
+    return 1
+  fi
+  mapfile -t global_lines <<<"$global_blob"
+  if ! s4f7as_assert_guard_proof_global_row_lines_valid "${global_lines[@]}"; then
+    return 1
+  fi
+  local s4_blob
   local -a s4_lines=()
-  mapfile -t s4_lines < <(s4f7j_query_s4_counts_db)
+  if ! s4_blob="$(s4f7j_query_s4_counts_db)"; then
+    echo "GUARD_PROOF_S4_PERSISTENCE_QUERY_FAILED=YES"
+    return 1
+  fi
+  mapfile -t s4_lines <<<"$s4_blob"
+  if ! s4f7as_assert_guard_proof_s4_persistence_lines_valid "${s4_lines[@]}"; then
+    return 1
+  fi
   export DI_S4F7AS_GLOBAL_ROW_LINES="$(printf '%s\n' "${global_lines[@]}")"
   export DI_S4F7AS_S4_PERSISTENCE_LINES="$(printf '%s\n' "${s4_lines[@]}")"
   if ! s4f7j_live_topology_preflight "$TARGET_SHA" "$(s4f7j_resolve_release_dir)"; then
@@ -217,11 +363,16 @@ s4f7as_refresh_guard_proof_security_gates_before_mutation() {
   export DI_S4F7AS_BUDGET_RUNTIME_OK=YES
   export DI_S4F7AS_REDIS_OK=YES
   s4f7as_write_guard_proof_bundle_file "${S4F7AS_GUARD_PROOF_BUNDLE_FILE}"
+  if ! s4f7as_guard_proof_bundle_has_required_keys "${S4F7AS_GUARD_PROOF_BUNDLE_FILE}"; then
+    echo "GUARD_PROOF_BUNDLE_INCOMPLETE_AFTER_REFRESH=YES"
+    return 1
+  fi
   for key in "${S4F7AS_GUARD_PROOF_BUNDLE_KEYS[@]}"; do
     unset "$key" || true
   done
   export DI_S4_GATE6_GUARD_PROOF_BUNDLE_PATH="${S4F7AS_GUARD_PROOF_BUNDLE_FILE}"
   echo "GUARD_PROOF_SECURITY_GATES_REFRESHED=YES"
+  echo "GUARD_PROOF_ATOMIC_REFRESH=YES"
   return 0
 }
 

@@ -34,6 +34,7 @@ import {
   DI_S4_GATE6_WRAPPER_ACTION_ENV,
 } from './di-v0-s4-gate6-os-authorization.lib';
 import { resolveCanonicalBackendEnvPathFromFilesystem } from './di-v0-s4-gate6-trusted-authority.lib';
+import { readGuardProofBundleFile } from './di-v0-s4-gate6-guard-proof-bundle.lib';
 
 const CLI = path.join(__dirname, 'di-v0-s4-gate6-open-rekill-production-cli.ts');
 const BACKEND_ROOT = path.resolve(__dirname, '../../..');
@@ -41,6 +42,10 @@ const WRAPPER = path.join(__dirname, '../di-v0-s4-gate6-open-rekill-production.s
 const WORKSPACE_ROOT = path.resolve(__dirname, '../../../..');
 
 const STAGED_NOT_BEFORE = '2026-10-09T07:03:05.861Z';
+
+function normalizeEnvFileContent(content: string): string {
+  return content.replace(/\r\n/g, '\n').trimEnd();
+}
 
 function buildBaseStagedEnv(wave: 1 | 2 | 3 = 1): string {
   return [
@@ -227,20 +232,63 @@ describe('S4F-7AS OS contract admin/root e2e (bash)', () => {
 
 describe('S4F-7AS guard proof bundle lifecycle (bash)', () => {
   const LIB = path.join(__dirname, '../lib/di-v0-s4-gate6-open-rekill-production.lib.sh');
+  const JLIB = path.join(__dirname, '../lib/di-v0-s4-tiny-staging-production.lib.sh');
+  const esc = (p: string) => p.replace(/'/g, "'\\''");
 
-  it('reuses one materialized bundle across two publish cycles (preflight→mutation sequence)', () => {
-    const out = execFileSync(
+  function runGuardProofHarness(scriptBody: string): string {
+    const opsDir = path.join(__dirname, '..');
+    return execFileSync(
       'bash',
       [
         '-c',
         `
 set -euo pipefail
+export S4F7J_SCRIPT_DIR='${esc(opsDir)}'
+export S4F7AS_SCRIPT_DIR='${esc(opsDir)}'
+export S4F7F_SCRIPT_DIR='${esc(opsDir)}'
 export DI_S4_GATE6_TEST_GUARD_PROOF_LIFECYCLE=YES
-source '${LIB.replace(/'/g, "'\\''")}'
+export DI_S4F7J_FIXTURE_MODE=1
+export DI_S4F7F_FIXTURE_MODE=1
+source '${esc(path.join(opsDir, 'vps-production-replica-topology.config.sh'))}'
+source '${esc(path.join(opsDir, 'lib/vps-production-replica.lib.sh'))}'
+source '${esc(path.join(opsDir, 'lib/di-v0-s4-global-kill-init-production.lib.sh'))}'
+source '${esc(JLIB)}'
+source '${esc(LIB)}'
+${scriptBody}
+`,
+      ],
+      { encoding: 'utf8' },
+    );
+  }
+
+  const fixtureProofExports = `
 export DI_S4F7AS_GLOBAL_ROW_LINES=$'1\\nKILLED'
 export DI_S4F7AS_S4_PERSISTENCE_LINES=$'0\\n0\\n0\\n0\\n0\\n0'
+export DI_S4F7AS_ENV_CONTENT='DI_V0_S4_MASTER_ENABLED=true\\nDI_V0_S4_DISCOVERY_ENABLED=true\\n'
+export DI_S4F7AS_VEHICLE_DB_LINES=$'1\\n${CANONICAL_TINY_ORGANIZATION_ID}\\nACTIVE\\nLTE_R1\\n1\\n1'
+export DI_S4F7AS_TOPOLOGY_OK=YES
+export DI_S4F7AS_BUDGET_CONFIG_OK=YES
+export DI_S4F7AS_BUDGET_RUNTIME_OK=YES
+export DI_S4F7AS_REDIS_OK=YES
+`;
+
+  it('A: initial materialization contains all required proof keys', () => {
+    const out = runGuardProofHarness(`
+${fixtureProofExports}
+s4f7as_materialize_guard_proof_bundle_once
+s4f7as_guard_proof_bundle_has_required_keys "$S4F7AS_GUARD_PROOF_BUNDLE_FILE"
+echo GUARD_PROOF_MATERIALIZE_ALL_KEYS=YES
+`);
+    expect(out).toContain('GUARD_PROOF_BUNDLE_MATERIALIZED=YES');
+    expect(out).toContain('GUARD_PROOF_MATERIALIZE_ALL_KEYS=YES');
+  });
+
+  it('reuses one materialized bundle across two publish cycles (preflight→mutation sequence)', () => {
+    const out = runGuardProofHarness(`
 export DI_S4F7AS_ENV_CONTENT='DI_V0_S4_MASTER_ENABLED=true\\n'
-export DI_S4F7AS_VEHICLE_DB_LINES='1'
+export DI_S4F7AS_VEHICLE_DB_LINES=$'1\\n${CANONICAL_TINY_ORGANIZATION_ID}\\nACTIVE\\nLTE_R1\\n1\\n1'
+export DI_S4F7AS_GLOBAL_ROW_LINES=$'1\\nKILLED'
+export DI_S4F7AS_S4_PERSISTENCE_LINES=$'0\\n0\\n0\\n0\\n0\\n0'
 export DI_S4F7AS_TOPOLOGY_OK=YES
 export DI_S4F7AS_BUDGET_CONFIG_OK=YES
 export DI_S4F7AS_BUDGET_RUNTIME_OK=YES
@@ -250,12 +298,109 @@ s4f7as_publish_guard_proof_bundle_for_cli
 s4f7as_publish_guard_proof_bundle_for_cli
 grep -q '^DI_S4F7AS_GLOBAL_ROW_LINES=' "$S4F7AS_GUARD_PROOF_BUNDLE_FILE"
 echo GUARD_PROOF_LIFECYCLE_OK=YES
-`,
-      ],
-      { encoding: 'utf8' },
-    );
+`);
     expect(out).toContain('GUARD_PROOF_BUNDLE_MATERIALIZED=YES');
     expect(out).toContain('GUARD_PROOF_LIFECYCLE_OK=YES');
+  });
+
+  it('B: materialize → refresh preserves env, vehicle, global and S4 proofs', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 's4f7as-guard-'));
+    const envFile = path.join(dir, 'backend.env');
+    const envContent = buildFiveFlagOnEnv();
+    fs.writeFileSync(envFile, envContent, 'utf8');
+    const bundleOut = runGuardProofHarness(`
+export BACKEND_ENV='${esc(envFile)}'
+export SYNQDRIVE_BACKEND_ENV='${esc(envFile)}'
+export TARGET_SHA='${'a'.repeat(40)}'
+export DI_S4F7J_FIXTURE_DEPLOYED_SHA='${'a'.repeat(40)}'
+export DI_S4F7J_FIXTURE_RELEASE_DIR='${esc(WORKSPACE_ROOT)}'
+${fixtureProofExports}
+s4f7as_materialize_guard_proof_bundle_once
+for key in DI_S4F7AS_GLOBAL_ROW_LINES DI_S4F7AS_S4_PERSISTENCE_LINES DI_S4F7AS_ENV_CONTENT DI_S4F7AS_VEHICLE_DB_LINES DI_S4F7AS_TOPOLOGY_OK DI_S4F7AS_BUDGET_CONFIG_OK DI_S4F7AS_BUDGET_RUNTIME_OK DI_S4F7AS_REDIS_OK; do unset "$key" || true; done
+s4f7as_refresh_guard_proof_security_gates_before_mutation
+echo BUNDLE_PATH="$S4F7AS_GUARD_PROOF_BUNDLE_FILE"
+`);
+    expect(bundleOut).toContain('GUARD_PROOF_SECURITY_GATES_REFRESHED=YES');
+    expect(bundleOut).toContain('GUARD_PROOF_ATOMIC_REFRESH=YES');
+    const bundlePath = bundleOut.split('\n').find((l) => l.startsWith('BUNDLE_PATH='))?.slice('BUNDLE_PATH='.length);
+    expect(bundlePath).toBeTruthy();
+    const bundle = readGuardProofBundleFile(bundlePath!);
+    expect(bundle.ok).toBe(true);
+    if (!bundle.ok) return;
+    expect(normalizeEnvFileContent(bundle.values.DI_S4F7AS_ENV_CONTENT)).toBe(
+      normalizeEnvFileContent(fs.readFileSync(envFile, 'utf8')),
+    );
+    expect(bundle.values.DI_S4F7AS_VEHICLE_DB_LINES?.split('\n').filter(Boolean).length).toBeGreaterThanOrEqual(6);
+    expect(bundle.values.DI_S4F7AS_GLOBAL_ROW_LINES).toContain('KILLED');
+    expect(bundle.values.DI_S4F7AS_S4_PERSISTENCE_LINES?.split('\n').filter(Boolean).length).toBe(6);
+  });
+
+  it('C: vehicle DB query failure fails refresh closed', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 's4f7as-guard-'));
+    const envFile = path.join(dir, 'backend.env');
+    fs.writeFileSync(envFile, buildFiveFlagOnEnv(), 'utf8');
+    expect(() =>
+      runGuardProofHarness(`
+export BACKEND_ENV='${esc(envFile)}'
+export SYNQDRIVE_BACKEND_ENV='${esc(envFile)}'
+export TARGET_SHA='${'a'.repeat(40)}'
+export DI_S4F7J_FIXTURE_DEPLOYED_SHA='${'a'.repeat(40)}'
+export DI_S4F7J_FIXTURE_RELEASE_DIR='${esc(WORKSPACE_ROOT)}'
+${fixtureProofExports}
+s4f7as_materialize_guard_proof_bundle_once
+for key in DI_S4F7AS_ENV_CONTENT DI_S4F7AS_VEHICLE_DB_LINES; do unset "$key" || true; done
+export DI_S4F7AS_TEST_GUARD_PROOF_VEHICLE_DB_FAIL=YES
+s4f7as_refresh_guard_proof_security_gates_before_mutation
+`),
+    ).toThrow();
+  });
+
+  it('D: environment read failure fails refresh closed', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 's4f7as-guard-'));
+    const envFile = path.join(dir, 'backend.env');
+    fs.writeFileSync(envFile, buildFiveFlagOnEnv(), 'utf8');
+    expect(() =>
+      runGuardProofHarness(`
+export BACKEND_ENV='${esc(envFile)}'
+export SYNQDRIVE_BACKEND_ENV='${esc(envFile)}'
+export TARGET_SHA='${'a'.repeat(40)}'
+export DI_S4F7J_FIXTURE_DEPLOYED_SHA='${'a'.repeat(40)}'
+export DI_S4F7J_FIXTURE_RELEASE_DIR='${esc(WORKSPACE_ROOT)}'
+${fixtureProofExports}
+s4f7as_materialize_guard_proof_bundle_once
+for key in DI_S4F7AS_ENV_CONTENT DI_S4F7AS_VEHICLE_DB_LINES; do unset "$key" || true; done
+export DI_S4F7AS_TEST_GUARD_PROOF_ENV_READ_FAIL=YES
+s4f7as_refresh_guard_proof_security_gates_before_mutation
+`),
+    ).toThrow();
+  });
+
+  it('E: refresh does not replace env proof with empty content', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 's4f7as-guard-'));
+    const envFile = path.join(dir, 'backend.env');
+    const envContent = buildFiveFlagOnEnv();
+    fs.writeFileSync(envFile, envContent, 'utf8');
+    const bundleOut = runGuardProofHarness(`
+export BACKEND_ENV='${esc(envFile)}'
+export SYNQDRIVE_BACKEND_ENV='${esc(envFile)}'
+export TARGET_SHA='${'a'.repeat(40)}'
+export DI_S4F7J_FIXTURE_DEPLOYED_SHA='${'a'.repeat(40)}'
+export DI_S4F7J_FIXTURE_RELEASE_DIR='${esc(WORKSPACE_ROOT)}'
+${fixtureProofExports}
+s4f7as_materialize_guard_proof_bundle_once
+for key in DI_S4F7AS_ENV_CONTENT DI_S4F7AS_VEHICLE_DB_LINES; do unset "$key" || true; done
+s4f7as_refresh_guard_proof_security_gates_before_mutation
+echo BUNDLE_PATH="$S4F7AS_GUARD_PROOF_BUNDLE_FILE"
+`);
+    expect(bundleOut).toContain('GUARD_PROOF_SECURITY_GATES_REFRESHED=YES');
+    const bundlePath = bundleOut.split('\n').find((l) => l.startsWith('BUNDLE_PATH='))?.slice('BUNDLE_PATH='.length);
+    const bundle = readGuardProofBundleFile(bundlePath!);
+    expect(bundle.ok).toBe(true);
+    if (!bundle.ok) return;
+    expect(bundle.values.DI_S4F7AS_ENV_CONTENT.length).toBeGreaterThan(0);
+    expect(createHash('sha256').update(normalizeEnvFileContent(bundle.values.DI_S4F7AS_ENV_CONTENT)).digest('hex')).toBe(
+      createHash('sha256').update(normalizeEnvFileContent(fs.readFileSync(envFile, 'utf8'))).digest('hex'),
+    );
   });
 });
 
@@ -300,10 +445,19 @@ describe('S4F-7AS wrapper (fixture)', () => {
     });
   }
 
-  it('DRY_RUN completes under fixture', () => {
+  it('F: DRY_RUN completes under fixture (preflight → refresh → dry-run-open)', () => {
     const out = runDry({ DI_S4F7J_FIXTURE_GLOBAL_KILL_STATE: 'KILLED' });
     expect(out).toContain('OPEN_PREFLIGHT_OK=YES');
     expect(out).toContain('DRY_RUN_OPEN_COMPLETE=YES');
+    expect(out).toContain('GLOBAL_DB_MUTATION_OCCURRED=NO');
+  });
+
+  it('G: LIVE_OPEN guard evaluation unchanged (preflight without ack)', () => {
+    expect(evaluateGate6PreflightGuards(baseOpenInput({ gate6Ack: undefined, gate6Authorized: undefined })).ok).toBe(
+      true,
+    );
+    expect(evaluateGate6OpenGuards(baseOpenInput()).ok).toBe(true);
+    expect(evaluateEmergencyRekillAck('YES', 'fixture', 'fixture')).toBe(true);
   });
 
   it('EMERGENCY_REKILL fixture mode', () => {
