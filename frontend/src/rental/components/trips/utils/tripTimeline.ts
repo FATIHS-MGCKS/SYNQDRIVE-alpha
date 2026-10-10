@@ -45,8 +45,26 @@ export function normalizeTimelineItem(item: unknown): TripTimelineItem {
   throw new Error(`Unbekanntes Timeline-Item: ${String(raw.itemType)}`);
 }
 
+function timelineItemSortInstant(item: TripTimelineItem): number {
+  if (item.itemType === 'trip') {
+    const trip = item.trip;
+    const sortIso = trip.endTime ?? trip.canonicalEndTime ?? trip.startTime;
+    return new Date(sortIso).getTime();
+  }
+  return new Date(item.startTime).getTime();
+}
+
+export function compareTimelineItemsDescending(a: TripTimelineItem, b: TripTimelineItem): number {
+  return timelineItemSortInstant(b) - timelineItemSortInstant(a);
+}
+
+/** Deterministic DESC sort by effective timeline anchor (item.startTime after normalization). */
+export function sortTimelineItemsDescending(items: TripTimelineItem[]): TripTimelineItem[] {
+  return [...items].sort(compareTimelineItemsDescending);
+}
+
 export function normalizeTimelineItems(items: unknown[]): TripTimelineItem[] {
-  return items.map(normalizeTimelineItem);
+  return sortTimelineItemsDescending(items.map(normalizeTimelineItem));
 }
 
 /**
@@ -92,9 +110,7 @@ export function buildMergedTimelineItems(
     startTime: energyEventTimelineAnchorIso(event),
     event,
   }));
-  return [...tripItems, ...eventItems].sort(
-    (a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime(),
-  );
+  return sortTimelineItemsDescending([...tripItems, ...eventItems]);
 }
 
 export function summarizeDay(

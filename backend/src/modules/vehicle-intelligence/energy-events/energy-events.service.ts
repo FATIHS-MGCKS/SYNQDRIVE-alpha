@@ -11,6 +11,10 @@ import {
   type VehicleEnergyEvent,
 } from '@prisma/client';
 import { toEnergyEventDto, type EnergyEventDto } from './energy-events.types';
+import {
+  buildEnergyEventProductReadListWhere,
+  filterEnergyEventDtosByProductTimelineAnchor,
+} from './energy-event-product-timeline-anchor';
 import { projectCanonicalProductEnergyEvents } from './canonical-energy-events.projection';
 import { resolveEffectiveV2OwnershipCutoverAt } from './v2-ownership-cutover.util';
 import {
@@ -106,7 +110,8 @@ export class EnergyEventsService {
         this.erdRechargeProductReadDedupeMetrics?.recordResults(metricResults);
       },
     );
-    return canonical.map(toEnergyEventDto);
+    const dtos = canonical.map(toEnergyEventDto);
+    return filterEnergyEventDtosByProductTimelineAnchor(dtos, options);
   }
 
   /**
@@ -153,17 +158,7 @@ export class EnergyEventsService {
     vehicleId: string,
     options: { from?: Date; to?: Date },
   ) {
-    return {
-      vehicleId,
-      ...(options.from || options.to
-        ? {
-            startTime: {
-              ...(options.from ? { gte: options.from } : {}),
-              ...(options.to ? { lte: options.to } : {}),
-            },
-          }
-        : {}),
-    };
+    return buildEnergyEventProductReadListWhere(vehicleId, options);
   }
 
   /** @deprecated use queryEnergyEventRowsForRaw or queryEnergyEventRowsForCanonical */

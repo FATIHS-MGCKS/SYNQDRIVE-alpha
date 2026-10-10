@@ -42,7 +42,8 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'TripTimelineEnergyCard shows approximate fuel-level-rise start (not detection envelope) as primary REFUEL time.',
       'Signal-rise interval + detection window moved to secondary/technical copy; RECHARGE presentation unchanged.',
-      'Timeline sort/day grouping anchors on fuelLevelRiseStart when valid (canonical + fallback merge paths).',
+      'Timeline sort/day grouping anchors on fuelLevelRiseStart when valid; normalizeTimelineItems re-sorts canonical API order.',
+      'Backend product read: bounded OR query + post-filter on product timeline anchor (midnight-safe with local day filters).',
     ],
     reason: 'WOB L 7503 2026-10-09: envelope 19:32–21:09 misrepresented ~20:47 pump observation.',
     previousBehavior: 'REFUEL cards used startTime/endTime envelope as the headline time range.',

@@ -5,6 +5,7 @@ import {
   groupTimelineByDate,
   localDayRangeIso,
   normalizeTimelineItem,
+  normalizeTimelineItems,
 } from './tripTimeline';
 import {
   energyEventTimelineAnchorIso,
@@ -37,21 +38,94 @@ describe('refuel timeline time UX', () => {
     expect(berlinStart).not.toBe(envelopeFrom);
   });
 
-  it('sorts REFUEL by fuel rise start, not envelope start', () => {
+  it('WOB 7503 — refuel between trips 19:44–19:53 and 20:43–21:09 (Berlin)', () => {
     const refuel = wob7503Refuel20261009();
-    const trip = {
-      id: 'trip-after-refuel',
+    const tripBefore = {
+      id: 'trip-1944-berlin',
       vehicleId: refuel.vehicleId,
       tripStatus: 'COMPLETED' as const,
-      startTime: '2026-10-09T19:30:00.000Z',
-      endTime: '2026-10-09T20:00:00.000Z',
-      distanceKm: 12,
-      durationMinutes: 30,
+      startTime: '2026-10-09T17:44:00.000Z',
+      endTime: '2026-10-09T17:53:00.000Z',
+      distanceKm: 5,
+      durationMinutes: 9,
     };
-    const merged = buildMergedTimelineItems([trip], [refuel]);
-    expect(merged[0].itemType).toBe('trip');
-    expect(merged[1].itemType).toBe('energy-event');
-    expect(energyEventTimelineAnchorIso(refuel)).toBe('2026-10-09T18:48:52.000Z');
+    const tripAfter = {
+      id: 'trip-2043-berlin',
+      vehicleId: refuel.vehicleId,
+      tripStatus: 'COMPLETED' as const,
+      startTime: '2026-10-09T18:43:00.000Z',
+      endTime: '2026-10-09T19:09:00.000Z',
+      distanceKm: 8,
+      durationMinutes: 26,
+    };
+    const merged = buildMergedTimelineItems([tripBefore, tripAfter], [refuel]);
+    expect(merged.map((i) => i.id)).toEqual([
+      'trip-2043-berlin',
+      refuel.id,
+      'trip-1944-berlin',
+    ]);
+  });
+
+  it('normalizeTimelineItems re-sorts canonical API envelope-ordered payload', () => {
+    const refuel = wob7503Refuel20261009();
+    const canonicalBackendOrder = [
+      {
+        itemType: 'energy-event' as const,
+        ...refuel,
+        startTime: refuel.startTime,
+      },
+      {
+        itemType: 'trip' as const,
+        id: 'trip-2043-berlin',
+        vehicleId: refuel.vehicleId,
+        tripStatus: 'COMPLETED',
+        startTime: '2026-10-09T18:43:00.000Z',
+        endTime: '2026-10-09T19:09:00.000Z',
+      },
+      {
+        itemType: 'trip' as const,
+        id: 'trip-1944-berlin',
+        vehicleId: refuel.vehicleId,
+        tripStatus: 'COMPLETED',
+        startTime: '2026-10-09T17:44:00.000Z',
+        endTime: '2026-10-09T17:53:00.000Z',
+      },
+    ];
+    const normalized = normalizeTimelineItems(canonicalBackendOrder);
+    expect(normalized.map((i) => i.id)).toEqual([
+      'trip-2043-berlin',
+      refuel.id,
+      'trip-1944-berlin',
+    ]);
+    if (normalized[1].itemType === 'energy-event') {
+      expect(normalized[1].startTime).toBe('2026-10-09T18:48:52.000Z');
+      expect(normalized[1].event.startTime).toBe(refuel.startTime);
+    }
+  });
+
+  it('fallback merge path matches canonical sort order', () => {
+    const refuel = wob7503Refuel20261009();
+    const trips = [
+      {
+        id: 'trip-1944-berlin',
+        vehicleId: refuel.vehicleId,
+        tripStatus: 'COMPLETED' as const,
+        startTime: '2026-10-09T17:44:00.000Z',
+      },
+      {
+        id: 'trip-2043-berlin',
+        vehicleId: refuel.vehicleId,
+        tripStatus: 'COMPLETED' as const,
+        startTime: '2026-10-09T18:43:00.000Z',
+      },
+    ];
+    const canonical = normalizeTimelineItems([
+      { itemType: 'energy-event', ...refuel, startTime: refuel.startTime },
+      { itemType: 'trip', ...trips[1] },
+      { itemType: 'trip', ...trips[0] },
+    ]);
+    const fallback = buildMergedTimelineItems(trips, [refuel]);
+    expect(fallback.map((i) => i.id)).toEqual(canonical.map((i) => i.id));
   });
 
   it('missing rise timestamps — undetermined presentation, envelope anchor for sort', () => {
