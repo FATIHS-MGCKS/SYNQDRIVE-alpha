@@ -259,11 +259,12 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   },
   {
     id: 'battery-v2-production-alpha-g3-h1-safe-shadow-2026-10-10',
-    version: '4.9.2232',
-    title: 'Battery V2 production alpha G3-H1 — isolated safe shadow + customer read contract',
+    version: '4.9.2233',
+    title: 'Battery V2 production alpha G3-H1/H2 — safe shadow + HV compat fallback closure',
     summary: [
       'Legacy LV rest capture disabled whenever canonical REST shadow pipeline is on (publication no longer re-enables legacy ingestion).',
       'Customer LV SOH and HV telemetry SOC gated by publication flag + legacy publication safety + observation freshness.',
+      'GET hv-battery-status: no legacy SOC/range/SOH/telemetry bypass when canonical observation is stale.',
       'Flag-combination regression matrix and snapshot duplicate-enqueue guard tests.',
     ],
     reason:
