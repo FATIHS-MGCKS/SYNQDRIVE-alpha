@@ -800,7 +800,7 @@ describe('CanonicalBatteryHealthService', () => {
     });
 
     const summary = await svc.getSummary('veh-1');
-    expect(summary?.canonical.liveState.hv.signals.providerSohPercent.value).toBe(82);
+    expect(summary?.canonical.liveState.hv.signals.providerSohPercent.value).toBeNull();
     expect(summary?.canonical.liveState.hv.signals.providerSohPercent.freshness.freshnessState).toBe('STALE');
     expect(summary?.canonical.liveState.hv.freshness.socPercent.freshnessState).toBe('FRESH');
     expect(summary?.lv.fetchFreshness?.fetchState).toBe('FRESH');
@@ -812,7 +812,8 @@ describe('CanonicalBatteryHealthService', () => {
     const summary = await svc.getSummary('veh-1');
     expect(summary?.currentState?.sohPercent).toBeNull();
     expect(summary?.currentState?.publishedSohPct).toBeNull();
-    expect(summary?.canonical.legacy.v2Features?.publishedSohPct).toBe(80);
+    expect(summary?.canonical.legacy.v2Features?.publishedSohPct).toBeNull();
+    expect(summary?.canonical.legacy.v2Features?.rawSohPct).toBeNull();
   });
 
   it('does not present stale HV SOC as current telemetry (Tesla-class carrier)', async () => {
@@ -853,7 +854,14 @@ describe('CanonicalBatteryHealthService', () => {
     expect(summary?.hv.telemetry.chargingCableConnected).toBeNull();
     expect(summary?.canonical?.hv?.soc.percent).toBeNull();
     expect(summary?.canonical?.hv?.currentEnergy.kwh).toBeNull();
-    expect(summary?.canonical.liveState.hv.signals.socPercent.value).toBe(87);
+    expect(summary?.canonical?.hv?.chargingState?.isCharging).toBeNull();
+    expect(summary?.canonical?.hv?.chargingState?.powerKw).toBeNull();
+    expect(summary?.canonical.liveState.hv.values.socPercent).toBeNull();
+    expect(summary?.canonical.liveState.hv.values.currentEnergyKwh).toBeNull();
+    expect(summary?.canonical.liveState.hv.signals.socPercent.value).toBeNull();
+    expect(summary?.canonical.liveState.hv.signals.socPercent.freshness.freshnessState).toBe(
+      'STALE',
+    );
     expect(summary?.currentTelemetry?.observationFreshness?.observationState).toBe(
       'STALE',
     );
@@ -886,6 +894,7 @@ describe('CanonicalBatteryHealthService', () => {
   });
 
   it('redacts legacy lvDiagnostic SOH scores from customer canonical legacy', async () => {
+    process.env.BATTERY_V2_PUBLICATION_ENABLED = 'false';
     const { svc, lvCanonicalResolver } = buildService();
     lvCanonicalResolver.resolveForVehicle.mockResolvedValue({
       resolverVersion: '1.0.0',
@@ -933,7 +942,8 @@ describe('CanonicalBatteryHealthService', () => {
     });
     const summary = await svc.getSummary('veh-1');
     expect(summary?.canonical.legacy.lvDiagnostic?.publishedSohPct).toBeNull();
-    expect(summary?.canonical.legacy.v2Features?.publishedSohPct).toBe(80);
+    expect(summary?.canonical.legacy.v2Features?.publishedSohPct).toBeNull();
+    expect(summary?.canonical.legacy.v2Features?.rawSohPct).toBeNull();
   });
 
   it('ICE resting voltage classification is unchanged when HV telemetry is stale', async () => {

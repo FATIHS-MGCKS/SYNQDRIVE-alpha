@@ -6,6 +6,17 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-10 — G5B-F1 customer response safety closure (PR #1969)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | G5B masked summary `hv.telemetry` but `canonical.liveState.hv.values/signals` and `canonical.hv.chargingState` could still expose stale measurements; `canonical.legacy.v2Features` leaked stored SOH when publication OFF; HV compat inferred provider-SOH freshness from non-null telemetry |
+| **CHANGE** | Extended `applyCustomerFacingBatterySummaryBoundaries` to mask all canonical HV customer paths (values, signal `.value`, chargingState, provider SOH percent) while preserving freshness metadata; redact `v2Features` SOH when LV publication not customer-visible; HV compat independently fail-closes via observation + `canonical.hv.providerSoh.decisionFresh` |
+| **VALIDATION** | `battery-customer-response.presenter.spec.ts`; extended canonical + compat specs |
+| **NON_EFFECTS** | REST/shadow/queue/assessment scheduling unchanged |
+
+---
+
 ## 2026-10-10 — G5B customer HV telemetry freshness + legacy customer boundary
 
 | Field | Value |

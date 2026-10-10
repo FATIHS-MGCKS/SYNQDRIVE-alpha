@@ -1403,7 +1403,9 @@ export class CanonicalBatteryHealthService {
       canonical,
     };
 
-    return applyCustomerFacingBatterySummaryBoundaries(summary, customerHvTelemetry);
+    return applyCustomerFacingBatterySummaryBoundaries(summary, customerHvTelemetry, {
+      lvPublicationCustomerVisible: lvCustomerSohVisible,
+    });
   }
 
   async getDetail(vehicleId: string) {

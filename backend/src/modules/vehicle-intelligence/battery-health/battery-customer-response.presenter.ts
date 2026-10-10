@@ -31,6 +31,25 @@ type CustomerBatterySummaryLike = {
   canonical?: CanonicalBatteryDto | null;
 };
 
+export type CustomerBatterySummaryBoundaryOptions = {
+  /** True when LV published SOH may appear on customer surfaces (publication ON + safety gates). */
+  lvPublicationCustomerVisible: boolean;
+};
+
+const HV_LIVE_VALUE_KEYS = [
+  'socPercent',
+  'rangeKm',
+  'currentEnergyKwh',
+  'grossCapacityKwh',
+  'addedEnergyKwh',
+  'chargingPowerKw',
+  'currentVoltageV',
+  'temperatureC',
+  'isCharging',
+  'chargingCableConnected',
+  'providerSohPercent',
+] as const;
+
 function redactCustomerLegacyLvDiagnostic(
   diagnostic: LvCanonicalLegacyDiagnostic | null | undefined,
 ): LvCanonicalLegacyDiagnostic | null {
@@ -38,6 +57,25 @@ function redactCustomerLegacyLvDiagnostic(
   if (diagnostic.decisionCapable) return diagnostic;
   return {
     ...diagnostic,
+    publishedSohPct: null,
+    stabilizedSohPct: null,
+    rawSohPct: null,
+  };
+}
+
+function redactCustomerLegacyV2Features<
+  T extends {
+    publishedSohPct: number | null;
+    stabilizedSohPct: number | null;
+    rawSohPct: number | null;
+    publicationState: string | null;
+    scoredAt: string | null;
+  } | null,
+>(v2Features: T, publicationCustomerVisible: boolean): T {
+  if (!v2Features) return v2Features;
+  if (publicationCustomerVisible) return v2Features;
+  return {
+    ...v2Features,
     publishedSohPct: null,
     stabilizedSohPct: null,
     rawSohPct: null,
@@ -58,13 +96,67 @@ function redactCustomerHvLegacyCapacity(
   };
 }
 
+function maskCanonicalHvCustomerSurfaces(
+  canonical: CanonicalBatteryDto,
+  customerHvTelemetry: HvCustomerTelemetryFields,
+): void {
+  if (canonical.hv) {
+    canonical.hv.soc.percent = customerHvTelemetry.socPercent;
+    canonical.hv.currentEnergy.kwh = customerHvTelemetry.currentEnergyKwh;
+    if (canonical.hv.providerSoh) {
+      canonical.hv.providerSoh.percent = customerHvTelemetry.providerSohPercent;
+    }
+    if (canonical.hv.chargingState) {
+      canonical.hv.chargingState.isCharging = customerHvTelemetry.isCharging;
+      canonical.hv.chargingState.cableConnected =
+        customerHvTelemetry.chargingCableConnected;
+      canonical.hv.chargingState.powerKw = customerHvTelemetry.chargingPowerKw;
+      canonical.hv.chargingState.state =
+        customerHvTelemetry.isCharging == null
+          ? 'unknown'
+          : customerHvTelemetry.isCharging
+            ? 'charging'
+            : 'not_charging';
+    }
+  }
+
+  const hvLive = canonical.liveState?.hv;
+  if (!hvLive) return;
+
+  hvLive.values = {
+    ...hvLive.values,
+    socPercent: customerHvTelemetry.socPercent,
+    rangeKm: customerHvTelemetry.rangeKm,
+    currentEnergyKwh: customerHvTelemetry.currentEnergyKwh,
+    grossCapacityKwh: customerHvTelemetry.grossCapacityKwh,
+    addedEnergyKwh: customerHvTelemetry.addedEnergyKwh,
+    chargingPowerKw: customerHvTelemetry.chargingPowerKw,
+    currentVoltageV: customerHvTelemetry.currentVoltageV,
+    temperatureC: customerHvTelemetry.temperatureC,
+    isCharging: customerHvTelemetry.isCharging,
+    chargingCableConnected: customerHvTelemetry.chargingCableConnected,
+    providerSohPercent: customerHvTelemetry.providerSohPercent,
+  };
+
+  for (const key of HV_LIVE_VALUE_KEYS) {
+    const envelope = hvLive.signals[key];
+    if (!envelope || typeof envelope !== 'object') continue;
+    const maskedValue = customerHvTelemetry[key];
+    (envelope as { value: unknown }).value = maskedValue;
+  }
+}
+
 /**
  * Applies customer-facing presentation boundaries on an assembled battery summary.
  * Canonical signal freshness metadata is preserved; dynamic "current" values are masked.
  */
 export function applyCustomerFacingBatterySummaryBoundaries<
   T extends CustomerBatterySummaryLike,
->(summary: T, customerHvTelemetry: HvCustomerTelemetryFields): T {
+>(
+  summary: T,
+  customerHvTelemetry: HvCustomerTelemetryFields,
+  options: CustomerBatterySummaryBoundaryOptions,
+): T {
   if (summary.hv?.telemetry) {
     summary.hv.telemetry = { ...customerHvTelemetry };
   }
@@ -90,16 +182,18 @@ export function applyCustomerFacingBatterySummaryBoundaries<
   }
 
   const canonical = summary.canonical;
-  if (canonical?.hv) {
-    canonical.hv.soc.percent = customerHvTelemetry.socPercent;
-    canonical.hv.currentEnergy.kwh = customerHvTelemetry.currentEnergyKwh;
-  }
-
-  if (canonical?.legacy) {
-    canonical.legacy = {
-      ...canonical.legacy,
-      lvDiagnostic: redactCustomerLegacyLvDiagnostic(canonical.legacy.lvDiagnostic),
-    };
+  if (canonical) {
+    maskCanonicalHvCustomerSurfaces(canonical, customerHvTelemetry);
+    if (canonical.legacy) {
+      canonical.legacy = {
+        ...canonical.legacy,
+        lvDiagnostic: redactCustomerLegacyLvDiagnostic(canonical.legacy.lvDiagnostic),
+        v2Features: redactCustomerLegacyV2Features(
+          canonical.legacy.v2Features,
+          options.lvPublicationCustomerVisible,
+        ),
+      };
+    }
   }
 
   return summary;

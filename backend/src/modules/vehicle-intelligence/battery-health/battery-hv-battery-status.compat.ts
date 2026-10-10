@@ -38,6 +38,10 @@ export type HvBatteryStatusCompatSummaryInput = {
         capacityKwh?: number | null;
         verificationStatus?: string | null;
       } | null;
+      providerSoh?: {
+        percent?: number | null;
+        decisionFresh?: boolean;
+      } | null;
     } | null;
   } | null;
   currentTelemetry?: {
@@ -57,6 +61,43 @@ export function hvTelemetryObservationIsDecisionFresh(
   return observationFreshnessIsDecisionFresh(freshness);
 }
 
+export function hvProviderSohObservationIsDecisionFresh(
+  summary: HvBatteryStatusCompatSummaryInput,
+): boolean {
+  const decisionFresh = summary.canonical?.hv?.providerSoh?.decisionFresh;
+  if (decisionFresh === true) return true;
+  if (decisionFresh === false) return false;
+  return false;
+}
+
+function buildCompatCustomerTelemetry(
+  summary: HvBatteryStatusCompatSummaryInput,
+): ReturnType<typeof presentHvCustomerTelemetryFields> | null {
+  const hvTelemetry = summary.hv?.telemetry;
+  if (!hvTelemetry) return null;
+
+  const carrierObservationFresh = hvTelemetryObservationIsDecisionFresh(summary);
+  const providerSohObservationFresh = hvProviderSohObservationIsDecisionFresh(summary);
+
+  return presentHvCustomerTelemetryFields({
+    raw: {
+      socPercent: hvTelemetry.socPercent ?? null,
+      rangeKm: hvTelemetry.rangeKm ?? null,
+      currentEnergyKwh: hvTelemetry.currentEnergyKwh ?? null,
+      grossCapacityKwhFromTelemetry: hvTelemetry.grossCapacityKwh ?? null,
+      addedEnergyKwh: hvTelemetry.addedEnergyKwh ?? null,
+      chargingPowerKw: hvTelemetry.chargingPowerKw ?? null,
+      currentVoltageV: hvTelemetry.currentVoltageV ?? null,
+      temperatureC: hvTelemetry.temperatureC ?? null,
+      isCharging: hvTelemetry.isCharging ?? null,
+      chargingCableConnected: hvTelemetry.chargingCableConnected ?? null,
+      providerSohPercent: hvTelemetry.providerSohPercent ?? null,
+    },
+    carrierObservationFresh,
+    providerSohObservationFresh,
+  });
+}
+
 /**
  * Customer-facing HV compat fields: canonical/summary truth only.
  * Legacy service output is exposed only under `legacy` for diagnostics.
@@ -68,34 +109,12 @@ export function presentHvBatteryStatusCompatResponse(
   const hv = summary.hv;
   const canonicalHv = summary.canonical?.hv ?? null;
   const telemetryFresh = hvTelemetryObservationIsDecisionFresh(summary);
+  const customerTelemetry = buildCompatCustomerTelemetry(summary);
 
-  const customerSoc = summary.currentTelemetry?.socPercent ?? null;
-  const customerRange = telemetryFresh
-    ? summary.currentTelemetry?.rangeKm ?? null
-    : null;
+  const customerSoc = customerTelemetry?.socPercent ?? null;
+  const customerRange = customerTelemetry?.rangeKm ?? null;
 
   const customerSoh = hv?.sohPct ?? hv?.healthPercent ?? null;
-
-  const customerTelemetry =
-    telemetryFresh && hv?.telemetry
-      ? presentHvCustomerTelemetryFields({
-          raw: {
-            socPercent: hv.telemetry.socPercent ?? null,
-            rangeKm: hv.telemetry.rangeKm ?? null,
-            currentEnergyKwh: hv.telemetry.currentEnergyKwh ?? null,
-            grossCapacityKwhFromTelemetry: hv.telemetry.grossCapacityKwh ?? null,
-            addedEnergyKwh: hv.telemetry.addedEnergyKwh ?? null,
-            chargingPowerKw: hv.telemetry.chargingPowerKw ?? null,
-            currentVoltageV: hv.telemetry.currentVoltageV ?? null,
-            temperatureC: hv.telemetry.temperatureC ?? null,
-            isCharging: hv.telemetry.isCharging ?? null,
-            chargingCableConnected: hv.telemetry.chargingCableConnected ?? null,
-            providerSohPercent: hv.telemetry.providerSohPercent ?? null,
-          },
-          carrierObservationFresh: true,
-          providerSohObservationFresh: hv.telemetry.providerSohPercent != null,
-        })
-      : null;
 
   const nominalCapacityKwh = resolveCustomerHvNominalCapacityKwh({
     referenceCapacity:
@@ -106,7 +125,7 @@ export function presentHvBatteryStatusCompatResponse(
           }
         : null,
     legacyNominalCapacityKwh: legacy?.nominalCapacityKwh as number | null | undefined,
-    telemetryGrossCapacityKwh: hv?.telemetry?.grossCapacityKwh ?? null,
+    telemetryGrossCapacityKwh: customerTelemetry?.grossCapacityKwh ?? null,
     carrierObservationFresh: telemetryFresh,
   });
 

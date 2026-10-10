@@ -40,7 +40,8 @@ describe('battery-hv-battery-status.compat', () => {
     const out = presentHvBatteryStatusCompatResponse(summary, legacy);
     expect(out.currentSocPercent).toBeNull();
     expect(out.estimatedRangeKm).toBeNull();
-    expect(out.telemetry).toBeNull();
+    expect(out.telemetry?.socPercent).toBeNull();
+    expect(out.telemetry?.rangeKm).toBeNull();
     expect(out.sohPercent).toBe(82);
     expect(out.legacy).toEqual(legacy);
   });
@@ -115,6 +116,62 @@ describe('battery-hv-battery-status.compat', () => {
       nominalCapacityKwh: 60,
     });
     expect(out.nominalCapacityKwh).toBe(77.5);
+  });
+
+  it('independently masks leaked upstream telemetry when observation is stale', () => {
+    const summary = {
+      hv: {
+        sohPct: 82,
+        telemetry: {
+          socPercent: 87,
+          rangeKm: 278,
+          currentEnergyKwh: 50,
+          grossCapacityKwh: 76,
+          providerSohPercent: 82,
+        },
+      },
+      canonical: {
+        hv: {
+          providerSoh: { percent: 82, decisionFresh: false },
+        },
+      },
+      currentTelemetry: {
+        socPercent: 87,
+        rangeKm: 278,
+        observationFreshness: staleObservation,
+      },
+    };
+    const out = presentHvBatteryStatusCompatResponse(summary, {
+      currentSocPercent: 99,
+      estimatedRangeKm: 999,
+    });
+    expect(out.currentSocPercent).toBeNull();
+    expect(out.estimatedRangeKm).toBeNull();
+    expect(out.telemetry?.socPercent).toBeNull();
+    expect(out.telemetry?.currentEnergyKwh).toBeNull();
+    expect(out.telemetry?.providerSohPercent).toBeNull();
+  });
+
+  it('gates provider SOH in compat telemetry on canonical decisionFresh, not non-null value', () => {
+    const summary = {
+      hv: {
+        telemetry: { providerSohPercent: 82, socPercent: 66, rangeKm: 200 },
+      },
+      canonical: {
+        hv: { providerSoh: { percent: 82, decisionFresh: true } },
+      },
+      currentTelemetry: { observationFreshness: freshObservation },
+    };
+    const out = presentHvBatteryStatusCompatResponse(summary, {});
+    expect(out.telemetry?.providerSohPercent).toBe(82);
+
+    const staleProvider = {
+      ...summary,
+      canonical: { hv: { providerSoh: { percent: 82, decisionFresh: false } } },
+    };
+    const masked = presentHvBatteryStatusCompatResponse(staleProvider, {});
+    expect(masked.telemetry?.providerSohPercent).toBeNull();
+    expect(masked.telemetry?.socPercent).toBe(66);
   });
 
   it('does not present legacy SOH as validated when canonical SOH is unavailable', () => {
