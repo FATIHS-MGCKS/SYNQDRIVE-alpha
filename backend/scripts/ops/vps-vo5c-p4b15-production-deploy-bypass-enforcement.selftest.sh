@@ -139,12 +139,14 @@ fi
 pass "MALFORMED_AUTHORITY_FAIL_CLOSED"
 
 write_authority 1
-chmod 000 "$AUTH_FILE"
+rm -f "$AUTH_FILE"
+mkdir "$AUTH_FILE"
 if run_load_authority_only 2>/dev/null; then
-  chmod 644 "$AUTH_FILE"
+  rmdir "$AUTH_FILE"
   fail "unreadable authority file must fail closed"
 fi
-chmod 644 "$AUTH_FILE"
+rmdir "$AUTH_FILE"
+write_authority 1
 pass "UNREADABLE_AUTHORITY_FAIL_CLOSED"
 
 write_authority 1
