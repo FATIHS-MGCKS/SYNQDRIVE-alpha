@@ -5,6 +5,7 @@ import {
 } from '../../../src/modules/vehicle-intelligence/driving-intelligence/s4a-foundation/di-v0-s4-global-kill-transition';
 import {
   orchestrateLiveOpenWithRecovery,
+  orchestrateWavePromotionVerify,
   readGlobalKillState,
   runOpenTransaction,
   runRekillTransaction,
@@ -286,6 +287,26 @@ describe('orchestrateLiveOpenWithRecovery', () => {
     const r = await orchestrateLiveOpenWithRecovery(prisma, AUDIT);
     expect(r.outcome).toBe('OPEN_COMMITTED_POST_READ_FAILED_REKILL_VERIFIED');
     expect(r.compensatingRekill?.killedProven).toBe(true);
+  });
+});
+
+describe('orchestrateWavePromotionVerify', () => {
+  beforeEach(() => {
+    mockedOpen.mockClear();
+    mockedRekill.mockClear();
+  });
+
+  it('verifies NOT_KILLED without running GLOBAL OPEN transaction', async () => {
+    const prisma = prismaWithReads(['NOT_KILLED']);
+    const r = await orchestrateWavePromotionVerify(prisma);
+    expect(r.outcome).toBe('WAVE_PROMOTION_VERIFIED_NOT_KILLED');
+    expect(mockedOpen).not.toHaveBeenCalled();
+  });
+
+  it('refuses promotion when GLOBAL is still KILLED', async () => {
+    const prisma = prismaWithReads(['KILLED']);
+    const r = await orchestrateWavePromotionVerify(prisma);
+    expect(r.outcome).toBe('WAVE_PROMOTION_REFUSED_PRESTATE_KILLED');
   });
 });
 

@@ -1,0 +1,93 @@
+# EXP-021 — Simple Gate-6 operator + fleet rollout readiness
+
+**Date:** 2026-10-10 (UTC)  
+**Owner decision:** Drop custom Ed25519/HMAC/dispatch issuance chain; use pinned wrapper + OS authorization + existing production guards.
+
+## A — Simplified Gate-6
+
+| Removed from active path | Replacement |
+|--------------------------|-------------|
+| Ed25519 human approval JSON | Wrapper attestation + sudo root for `LIVE_OPEN` |
+| Approval consumption register | N/A |
+| Trusted dispatch issuance + MAC key | N/A |
+| Dispatch token HMAC sidecars | N/A |
+| `issue-dispatch-token` / `live-open-authorized` crypto chain | `live-open` with `evaluateSimpleLiveOpenAuthority` |
+
+**Preserved:** GLOBAL kill orchestration, compensating REKILL, production fixture isolation, exact `backend.env` pin, five flags, native OFF, replica attestation, S4 zero-state, EMERGENCY_REKILL (wrapper action, independent of OPEN).
+
+**OS authorization:** `DI_S4_GATE6_WRAPPER_ATTESTATION=SYNQDRIVE_GATE6_PINNED_WRAPPER_V1` (set only by `di-v0-s4-gate6-open-rekill-production.sh`). `LIVE_OPEN` requires effective root (`sudo` re-exec) + pilot vehicle confirmation. Env `OPEN_ACK` / `OPEN_AUTHORIZED` alone are **insufficient**.
+
+**Legacy Production file:** `gate6-live-open-approval-root.key` — **no remaining backend references** in Gate-6 operator; **not deleted** on Production (code-only task).
+
+## B — Fleet capability (Production read-only 2026-10-10)
+
+| Vehicle ID | Org | Hardware | DIMO consent | dimo_vehicle_id | S4 eligible |
+|------------|-----|----------|--------------|-----------------|-------------|
+| `c10351f8-b6a2-4258-947f-631aeaa6d359` | `faa710c9-…` | LTE_R1 | yes | yes | **yes** (pilot) |
+| `19fedd4b-c4e8-4de8-a125-dab293326e7e` | `faa710c9-…` | LTE_R1 | yes | yes | **yes** |
+| `68868291-5478-42cd-b0c4-cc77b2a78e21` | `faa710c9-…` | LTE_R1 | yes | yes | **yes** |
+| `8c850ff1-4201-432b-af2e-2711dbc7ca48` | `faa710c9-…` | LTE_R1 | yes | yes | **yes** |
+| `a60c0749-a7cd-494e-b5b9-dea3c6b97d63` | `faa710c9-…` | LTE_R1 | yes | yes | **yes** |
+| `c43c3b45-b911-498f-baf9-4376dd585588` | `faa710c9-…` | LTE_R1 | yes | yes | **yes** |
+| `17ae4a96-f658-43d4-b262-65d4624a5320` | other org | UNKNOWN | no | no | **no** |
+| `1469e60d-afba-4c35-81ad-a38b02544102` | other org | UNKNOWN | no | no | **no** |
+| `staging-synthetic-vehicle` | staging | UNKNOWN | no | no | **no** |
+
+**S4 provider path:** R1 / `RUPTELA_R1` work items with DIMO-linked vehicles; **NATIVE=OFF** excludes native provider processing.
+
+**Parallel legacy vs S4:** GLOBAL kill gates all S4 discovery/worker paths; legacy enrichment/scoring remains until S4 outputs validated — no automatic replacement of historical scores.
+
+## C — Rollout waves (engineering manifest)
+
+| Wave | Vehicles | Env change (when authorized) |
+|------|----------|------------------------------|
+| 1 | Pilot `c10351f8-…` only | `DI_V0_S4_VEHICLE_ALLOWLIST` = wave 1 set |
+| 2 | Pilot + `19fedd4b-…`, `68868291-…` | Expand allowlist; org unchanged |
+| 3 | All six LTE_R1 fleet vehicles | Full eligible set |
+
+Code authority: `di-v0-s4-fleet-rollout.lib.ts` — `evaluateRolloutWaveAllowlists` enforced at OPEN preflight.
+
+**Health gates between waves:** trip boundaries, no duplicate work items, tenant isolation, replica/budget/redis health, S4 outputs, latency/error thresholds (`ROLLOUT_WAVE_HEALTH_CRITERIA`).
+
+## D — Operator workflow (four actions)
+
+1. **PREFLIGHT** — `DI_S4_GATE6_OPERATOR_MODE=PREFLIGHT`  
+2. **DRY_RUN** — transactional OPEN test, rollback  
+3. **LIVE_OPEN** — owner-authorized; `sudo` + pins + acks + pilot confirm  
+4. **EMERGENCY_REKILL** — independent shutdown  
+
+**Not executed in this workstream:** Production mutation, deploy, kill switch OPEN, env allowlist edits on VPS.
+
+## E — PR #1962 final live execution closure (2026-10-10)
+
+| Fix | Detail |
+|-----|--------|
+| LIVE_OPEN preflight vs boundary | Wrapper writes `DI_S4F7AS_*` proofs to `DI_S4_GATE6_GUARD_PROOF_BUNDLE_PATH` (600 file, `COLLECTOR=GATE6_WRAPPER_V1`); keys **unset** from process env before CLI on Production; `evaluateProductionGuardProofChannel` rejects caller-injected `DI_S4F7AS_*` |
+| Root execution | `sudo -n` runs pinned `di-v0-s4-gate6-live-open-as-root.sh` with whitelist intent file — no `sudo -E env`; CLI uses `node_modules/.bin/ts-node` (no `npx --yes` under root on Production) |
+| Explicit confirmations | No defaults for `DI_S4_GATE6_PILOT_VEHICLE_CONFIRM` (wave 1) or `DI_S4_GATE6_ROLLOUT_WAVE`; `DI_S4_GATE6_ROLLOUT_WAVE_CONFIRM` must match wave |
+| Wave promotion | `WAVE_PROMOTION` when GLOBAL `NOT_KILLED` + S4 persistence nonzero — skips initial OPEN transaction (`orchestrateWavePromotionVerify`); allowlist guards still apply per target wave |
+| Monitoring scope | `monitoringQueriesForWave(wave)` scopes tenant-isolation SQL to current rollout vehicle set |
+
+**Tests:** `npm run test:di:s4f7as:gate6-open-rekill-operator` — 43 PASS (fixture wrapper PREFLIGHT→DRY_RUN path; bundle channel; wave promotion orchestration).
+
+## F — PR #1962 operator runtime fix (2026-10-10)
+
+| Fix | Detail |
+|-----|--------|
+| Root helper pin | Only `/opt/synqdrive/current/backend/scripts/ops/di-v0-s4-gate6-live-open-as-root.sh` + wrapper at pinned path; no caller-supplied wrapper; parent dir root-owned / not world-writable |
+| Intent file | Created under `/opt/synqdrive/shared/gate6-live-open-intent/` (`600`, no symlinks, canonical path) |
+| Proof lifecycle | Single materialized bundle per run; reused across `guards-open` + `dry-run-open` / `live-open`; security gates refreshed immediately before mutation |
+| Root CLI | Removed `npx` presence check; only pinned `node_modules/.bin/ts-node` under backend root |
+
+**Sudoers (Production):** `NOPASSWD` for `synqdrive-admin` (or operator account) → `/opt/synqdrive/current/backend/scripts/ops/di-v0-s4-gate6-live-open-as-root.sh` **only** — no shell, no wrapper path argument, intent path passed as sole argument.
+
+## G — OS permission contract (2026-10-10)
+
+| Surface | Contract |
+|---------|----------|
+| Admin intent | `~/.synqdrive/gate6-live-open-intent/gate6-live-open.*` — dir `700` owned by invoking admin; file `600` owned by same uid |
+| Root helper | Requires `SUDO_UID`; intent owner must equal `SUDO_UID`; rejects symlinks, non-canonical paths, other users’ homes, `644`/`g+w` |
+| Release integrity | Pinned helper/wrapper + `ts-node` + Gate-6 CLI + lib under `/opt/synqdrive/current|releases/*` — root-owned, no group/other write |
+| Env bypass | Root helper rejects `NODE_OPTIONS` / `NPM_CONFIG_*` before re-exec |
+
+**E2E:** `di-v0-s4-gate6-os-contract-e2e.selftest.sh` (invoked from Gate-6 operator Jest suite).

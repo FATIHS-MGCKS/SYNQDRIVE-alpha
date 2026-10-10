@@ -1721,6 +1721,38 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | PR #1939 — align S4F-7AK / CURRENT_STATE / CHANGE_LEDGER: S4F-7AI = Production **`DRY_RUN=1` only**; live = detached `ed78748bc…` S4F-7Y operator (not S4F-7AI) |
 | NON_EFFECTS | No operator code change; no Production execution |
 
+### EXP-021 Simple Gate-6 + fleet rollout (2026-10-10)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Remove custom Gate-6 crypto chain; OS wrapper auth; fleet waves 1–3; evidence `EXP021_SIMPLE_GATE6_FLEET_ROLLOUT.md` |
+| TESTS | `test:di:s4f7as:gate6-open-rekill-operator` **37** PASS |
+| NON_EFFECTS | No Production mutation; GLOBAL **KILLED**; legacy HMAC root key not removed on VPS |
+
+### EXP-021 PR #1962 final live execution closure (2026-10-10)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Guard proof bundle channel; pinned root re-exec; explicit wave/pilot confirm; wave promotion verify path; scoped monitoring queries — §E in `EXP021_SIMPLE_GATE6_FLEET_ROLLOUT.md` |
+| TESTS | `test:di:s4f7as:gate6-open-rekill-operator` **43** PASS |
+| NON_EFFECTS | No Production mutation; no deploy; `LIVE_OPEN` not executed |
+
+### EXP-021 PR #1962 operator runtime fix (2026-10-10)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Absolute root/helper pins; intent dir hardening; guard-proof bundle reuse + pre-mutation refresh; remove root `npx` false positive — §F in `EXP021_SIMPLE_GATE6_FLEET_ROLLOUT.md` |
+| TESTS | Gate-6 operator suite + bash lifecycle test |
+| NON_EFFECTS | No Production mutation; no deploy |
+
+### EXP-021 PR #1962 OS permission contract (2026-10-10)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Admin-private intent under `~/.synqdrive/gate6-live-open-intent`; root `SUDO_UID` validation; release execution integrity (no g+w) — §G in `EXP021_SIMPLE_GATE6_FLEET_ROLLOUT.md` |
+| TESTS | `di-v0-s4-gate6-os-contract-e2e.selftest.sh` + operator Jest |
+| NON_EFFECTS | No Production mutation; no deploy |
+
 ### EXP-021 S4F-7AZ Privileged writer model closure (2026-10-10)
 
 | Event | Detail |

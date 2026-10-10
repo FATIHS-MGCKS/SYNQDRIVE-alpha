@@ -8,6 +8,9 @@ fi
 S4F7AS_SCRIPT_DIR="${S4F7AS_SCRIPT_DIR:-}"
 S4F7AS_PRODUCTION_SHARED_BACKEND_ENV="/opt/synqdrive/shared/backend.env"
 
+# shellcheck source=di-v0-s4-gate6-production-operator-paths.lib.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/di-v0-s4-gate6-production-operator-paths.lib.sh"
+
 s4f7as_resolve_canonical_backend_env() {
   local p="${BACKEND_ENV:-}"
   [[ -z "$p" ]] && return 1
@@ -37,6 +40,13 @@ s4f7as_is_fixture_mode() {
   [[ "${DI_S4F7AS_FIXTURE_MODE:-0}" == "1" || "${DI_S4F7J_FIXTURE_MODE:-0}" == "1" || "${DI_S4F7AO_FIXTURE_MODE:-0}" == "1" ]]
 }
 
+s4f7as_uses_guard_proof_bundle_channel() {
+  if s4f7as_is_production_backend_env_path; then
+    return 0
+  fi
+  [[ "${DI_S4_GATE6_TEST_GUARD_PROOF_LIFECYCLE:-}" == "YES" ]]
+}
+
 s4f7as_production_fixture_env_present() {
   local name
   while IFS= read -r name; do
@@ -59,8 +69,6 @@ DI_S4F7J_FIXTURE_VEHICLE_DB_LINES
 DI_S4F7J_FIXTURE_DEPLOYED_SHA
 DI_S4F7J_FIXTURE_RELEASE_DIR
 DI_S4F7AS_ENGINEERING_TEST_HARNESS
-DI_S4_GATE6_LIVE_OPEN_DISPATCH_DIGEST
-DI_S4_GATE6_LIVE_OPEN_DISPATCH_NONCE
 EOF
   return 1
 }
@@ -109,11 +117,198 @@ s4f7as_wrapper_backend_root() {
   return 1
 }
 
+S4F7AS_GUARD_PROOF_BUNDLE_KEYS=(
+  DI_S4F7AS_GLOBAL_ROW_LINES
+  DI_S4F7AS_S4_PERSISTENCE_LINES
+  DI_S4F7AS_ENV_CONTENT
+  DI_S4F7AS_VEHICLE_DB_LINES
+  DI_S4F7AS_TOPOLOGY_OK
+  DI_S4F7AS_BUDGET_CONFIG_OK
+  DI_S4F7AS_BUDGET_RUNTIME_OK
+  DI_S4F7AS_REDIS_OK
+)
+
+s4f7as_write_guard_proof_bundle_file() {
+  local bundle="$1"
+  local key val
+  {
+    echo "COLLECTOR=GATE6_WRAPPER_V1"
+    for key in "${S4F7AS_GUARD_PROOF_BUNDLE_KEYS[@]}"; do
+      val="${!key:-}"
+      if [[ -n "$val" ]]; then
+        if base64 -w0 </dev/null >/dev/null 2>&1; then
+          printf '%s=%s\n' "$key" "$(printf '%s' "$val" | base64 -w0)"
+        else
+          printf '%s=%s\n' "$key" "$(printf '%s' "$val" | base64)"
+        fi
+      fi
+    done
+  } >"$bundle"
+}
+
+s4f7as_guard_proof_bundle_has_collector() {
+  local bundle="$1"
+  [[ -f "$bundle" ]] && grep -q '^COLLECTOR=GATE6_WRAPPER_V1$' "$bundle" 2>/dev/null
+}
+
+s4f7as_materialize_guard_proof_bundle_once() {
+  if ! s4f7as_uses_guard_proof_bundle_channel; then
+    return 0
+  fi
+  if [[ -n "${S4F7AS_GUARD_PROOF_BUNDLE_FILE:-}" ]] && s4f7as_guard_proof_bundle_has_collector "${S4F7AS_GUARD_PROOF_BUNDLE_FILE}"; then
+    export DI_S4_GATE6_GUARD_PROOF_BUNDLE_PATH="${S4F7AS_GUARD_PROOF_BUNDLE_FILE}"
+    for key in "${S4F7AS_GUARD_PROOF_BUNDLE_KEYS[@]}"; do
+      unset "$key" || true
+    done
+    echo "GUARD_PROOF_BUNDLE_REUSED=YES"
+    return 0
+  fi
+  local bundle
+  bundle="$(mktemp "${TMPDIR:-/tmp}/gate6-guard-proof.XXXXXX")"
+  chmod 600 "$bundle"
+  s4f7as_write_guard_proof_bundle_file "$bundle"
+  S4F7AS_GUARD_PROOF_BUNDLE_FILE="$bundle"
+  export DI_S4_GATE6_GUARD_PROOF_BUNDLE_PATH="$bundle"
+  for key in "${S4F7AS_GUARD_PROOF_BUNDLE_KEYS[@]}"; do
+    unset "$key" || true
+  done
+  echo "GUARD_PROOF_BUNDLE_MATERIALIZED=YES"
+  return 0
+}
+
+s4f7as_publish_guard_proof_bundle_for_cli() {
+  if ! s4f7as_uses_guard_proof_bundle_channel; then
+    return 0
+  fi
+  if [[ -n "${S4F7AS_GUARD_PROOF_BUNDLE_FILE:-}" ]] && s4f7as_guard_proof_bundle_has_collector "${S4F7AS_GUARD_PROOF_BUNDLE_FILE}"; then
+    export DI_S4_GATE6_GUARD_PROOF_BUNDLE_PATH="${S4F7AS_GUARD_PROOF_BUNDLE_FILE}"
+    for key in "${S4F7AS_GUARD_PROOF_BUNDLE_KEYS[@]}"; do
+      unset "$key" || true
+    done
+    return 0
+  fi
+  s4f7as_materialize_guard_proof_bundle_once
+}
+
+s4f7as_refresh_guard_proof_security_gates_before_mutation() {
+  if ! s4f7as_uses_guard_proof_bundle_channel; then
+    return 0
+  fi
+  if [[ -z "${S4F7AS_GUARD_PROOF_BUNDLE_FILE:-}" ]] || ! s4f7as_guard_proof_bundle_has_collector "${S4F7AS_GUARD_PROOF_BUNDLE_FILE}"; then
+    echo "GUARD_PROOF_BUNDLE_NOT_MATERIALIZED=YES"
+    return 1
+  fi
+  local -a global_lines=()
+  mapfile -t global_lines < <(s4f7j_query_global_row_db)
+  local -a s4_lines=()
+  mapfile -t s4_lines < <(s4f7j_query_s4_counts_db)
+  export DI_S4F7AS_GLOBAL_ROW_LINES="$(printf '%s\n' "${global_lines[@]}")"
+  export DI_S4F7AS_S4_PERSISTENCE_LINES="$(printf '%s\n' "${s4_lines[@]}")"
+  if ! s4f7j_live_topology_preflight "$TARGET_SHA" "$(s4f7j_resolve_release_dir)"; then
+    export DI_S4F7AS_TOPOLOGY_OK=NO
+    return 1
+  fi
+  export DI_S4F7AS_TOPOLOGY_OK=YES
+  if ! s4f7j_live_budget_redis_preflight "$(s4f7j_resolve_release_dir)"; then
+    export DI_S4F7AS_BUDGET_RUNTIME_OK=NO
+    return 1
+  fi
+  export DI_S4F7AS_BUDGET_CONFIG_OK=YES
+  export DI_S4F7AS_BUDGET_RUNTIME_OK=YES
+  export DI_S4F7AS_REDIS_OK=YES
+  s4f7as_write_guard_proof_bundle_file "${S4F7AS_GUARD_PROOF_BUNDLE_FILE}"
+  for key in "${S4F7AS_GUARD_PROOF_BUNDLE_KEYS[@]}"; do
+    unset "$key" || true
+  done
+  export DI_S4_GATE6_GUARD_PROOF_BUNDLE_PATH="${S4F7AS_GUARD_PROOF_BUNDLE_FILE}"
+  echo "GUARD_PROOF_SECURITY_GATES_REFRESHED=YES"
+  return 0
+}
+
+s4f7as_cleanup_guard_proof_bundle() {
+  if [[ -n "${S4F7AS_GUARD_PROOF_BUNDLE_FILE:-}" && -f "${S4F7AS_GUARD_PROOF_BUNDLE_FILE}" ]]; then
+    rm -f "${S4F7AS_GUARD_PROOF_BUNDLE_FILE}"
+  fi
+  unset S4F7AS_GUARD_PROOF_BUNDLE_FILE
+  unset DI_S4_GATE6_GUARD_PROOF_BUNDLE_PATH
+}
+
+s4f7as_assert_production_cli_runtime_safe() {
+  if ! s4f7as_is_production_backend_env_path; then
+    return 0
+  fi
+  if [[ "$(id -u)" -eq 0 ]]; then
+    if [[ -n "${NODE_OPTIONS:-}" || -n "${NPM_CONFIG_PREFIX:-}" || -n "${NPM_CONFIG_CACHE:-}" ]]; then
+      echo "ROOT_ENV_INJECTION_BLOCKED=YES"
+      return 1
+    fi
+  fi
+  return 0
+}
+
 s4f7as_run_cli() {
   local backend_root
   backend_root="$(s4f7as_wrapper_backend_root)" || return 1
+  s4f7as_publish_guard_proof_bundle_for_cli || return 1
+  s4f7as_assert_production_cli_runtime_safe || return 1
   local cli_rel="scripts/ops/di-v0-s4-gate6-open-rekill-production/di-v0-s4-gate6-open-rekill-production-cli.ts"
-  (cd "$backend_root" && npx --yes ts-node --transpile-only "$cli_rel" "$@")
+  local ts_node="${backend_root}/node_modules/.bin/ts-node"
+  if [[ ! -x "$ts_node" ]]; then
+    echo "PINNED_TS_NODE_MISSING=YES"
+    return 1
+  fi
+  if s4f7as_is_production_backend_env_path && [[ "$(id -u)" -eq 0 ]]; then
+    case "$ts_node" in
+      "${backend_root}"/*) ;;
+      *)
+        echo "ROOT_TS_NODE_PATH_UNPINNED=YES"
+        return 1
+        ;;
+    esac
+  fi
+  (cd "$backend_root" && "$ts_node" --transpile-only "$cli_rel" "$@")
+}
+
+s4f7as_assert_explicit_rollout_wave() {
+  if [[ -z "${DI_S4_GATE6_ROLLOUT_WAVE:-}" ]]; then
+    echo "ROLLOUT_WAVE_MISSING=YES"
+    return 1
+  fi
+  case "${DI_S4_GATE6_ROLLOUT_WAVE}" in
+    1 | 2 | 3)
+      echo "EXPLICIT_ROLLOUT_WAVE=${DI_S4_GATE6_ROLLOUT_WAVE}"
+      return 0
+      ;;
+    *)
+      echo "ROLLOUT_WAVE_INVALID=YES"
+      return 1
+      ;;
+  esac
+}
+
+s4f7as_assert_rollout_wave_confirm() {
+  if [[ -z "${DI_S4_GATE6_ROLLOUT_WAVE_CONFIRM:-}" ]]; then
+    echo "ROLLOUT_WAVE_CONFIRM_MISSING=YES"
+    return 1
+  fi
+  if [[ "${DI_S4_GATE6_ROLLOUT_WAVE_CONFIRM}" != "${DI_S4_GATE6_ROLLOUT_WAVE:-}" ]]; then
+    echo "ROLLOUT_WAVE_CONFIRM_MISMATCH=YES"
+    return 1
+  fi
+  echo "ROLLOUT_WAVE_CONFIRM_OK=YES"
+  return 0
+}
+
+s4f7as_assert_pilot_vehicle_confirm_for_wave1() {
+  if [[ "${DI_S4_GATE6_ROLLOUT_WAVE:-}" != "1" ]]; then
+    return 0
+  fi
+  if [[ -z "${DI_S4_GATE6_PILOT_VEHICLE_CONFIRM:-}" ]]; then
+    echo "PILOT_VEHICLE_CONFIRM_MISSING=YES"
+    return 1
+  fi
+  echo "PILOT_VEHICLE_CONFIRM_PRESENT=YES"
+  return 0
 }
 
 s4f7as_fetch_replica_metrics_body() {
@@ -183,40 +378,21 @@ s4f7as_collect_open_preflight_exports() {
   return 0
 }
 
-s4f7as_issue_live_open_dispatch() {
+s4f7as_export_wrapper_attestation() {
+  export DI_S4_GATE6_WRAPPER_ATTESTATION="${DI_S4_GATE6_WRAPPER_ATTESTATION:-SYNQDRIVE_GATE6_PINNED_WRAPPER_V1}"
+  echo "WRAPPER_ATTESTATION_EXPORTED=YES"
+  return 0
+}
+
+s4f7as_assert_open_audit_and_pins() {
   if [[ -z "${DI_S4_TINY_STAGING_REQUIRED_SHA:-}" || -z "${DI_S4_TINY_STAGING_REQUIRED_RELEASE_ID:-}" || -z "${DI_S4_TINY_STAGING_REQUIRED_PRE_ENV_SHA256:-}" ]]; then
-    echo "LIVE_OPEN_DISPATCH_PINS_INCOMPLETE=YES"
+    echo "LIVE_OPEN_PINS_INCOMPLETE=YES"
     return 1
   fi
   if [[ -z "${DI_S4_GATE6_OPERATOR_REASON:-}" || -z "${DI_S4_GATE6_OPERATOR_ACTOR:-}" ]]; then
     echo "AUDIT_FIELDS_MISSING=YES"
     return 1
   fi
-  if [[ -z "${DI_S4_GATE6_DISPATCH_TOKEN_DIR:-}" ]]; then
-    echo "DISPATCH_TOKEN_DIR_MISSING=YES"
-    return 1
-  fi
-  if [[ -z "${DI_S4_GATE6_LIVE_OPEN_HUMAN_APPROVAL_FILE:-}" || ! -f "${DI_S4_GATE6_LIVE_OPEN_HUMAN_APPROVAL_FILE}" ]]; then
-    echo "HUMAN_APPROVAL_FILE_MISSING=YES"
-    echo "INDEPENDENT_APPROVAL_AUTHORITY=BLOCKED"
-    return 1
-  fi
-  local issue_out
-  issue_out="$(s4f7as_run_cli issue-dispatch-token)" || return 1
-  local token_file signing_key_file approval_id
-  token_file="$(printf '%s\n' "$issue_out" | awk -F= '/^DISPATCH_TOKEN_FILE=/{print $2}')"
-  signing_key_file="$(printf '%s\n' "$issue_out" | awk -F= '/^DISPATCH_SIGNING_KEY_FILE=/{print $2}')"
-  approval_id="$(printf '%s\n' "$issue_out" | awk -F= '/^LIVE_OPEN_APPROVAL_ID=/{print $2}')"
-  if [[ -z "$token_file" || -z "$signing_key_file" || -z "$approval_id" ]]; then
-    echo "DISPATCH_TOKEN_ISSUE_FAILED=YES"
-    return 1
-  fi
-  export DI_S4_GATE6_LIVE_OPEN_DISPATCH_TOKEN_FILE="$token_file"
-  export DI_S4_GATE6_DISPATCH_SIGNING_KEY_FILE="$signing_key_file"
-  export DI_S4_GATE6_LIVE_OPEN_APPROVAL_ID="$approval_id"
-  echo "LIVE_OPEN_DISPATCH_ISSUED=YES"
-  echo "DISPATCH_TOKEN_ONE_SHOT=YES"
-  echo "DISPATCH_AUTO_REISSUE=NO"
   return 0
 }
 
@@ -229,40 +405,54 @@ s4f7as_preflight_open_readonly() {
     echo "PRE_ENV_HASH_MISMATCH=YES"
     return 1
   fi
+  s4f7as_materialize_guard_proof_bundle_once || return 1
   s4f7as_run_cli guards-open || return 1
   echo "OPEN_PREFLIGHT_OK=YES"
   return 0
 }
 
-s4f7as_execute_open_mode() {
+s4f7as_execute_preflight_mode() {
   s4f7as_assert_production_test_isolation || return 1
+  s4f7as_preflight_open_readonly || return 1
+  return 0
+}
+
+s4f7as_execute_dry_run_mode() {
+  s4f7as_assert_production_test_isolation || return 1
+  s4f7as_assert_explicit_rollout_wave || return 1
+  s4f7as_assert_rollout_wave_confirm || return 1
+  s4f7as_assert_pilot_vehicle_confirm_for_wave1 || return 1
   if [[ "${DI_S4_GATE6_OPEN_ACK:-}" != "YES" || "${DI_S4_GATE6_OPEN_AUTHORIZED:-}" != "YES" ]]; then
     echo "GATE6_OPEN_AUTHORIZATION=MISSING"
     return 1
   fi
-  if [[ -z "${DI_S4_GATE6_OPERATOR_REASON:-}" || -z "${DI_S4_GATE6_OPERATOR_ACTOR:-}" ]]; then
-    echo "AUDIT_FIELDS_MISSING=YES"
-    return 1
-  fi
-  s4f7as_assert_explicit_dry_run_mode || return 1
+  export DI_S4_GATE6_DRY_RUN_AUTHORIZED=YES
+  export DRY_RUN=1
+  s4f7as_assert_open_audit_and_pins || return 1
   s4f7as_preflight_open_readonly || return 1
+  s4f7as_refresh_guard_proof_security_gates_before_mutation || return 1
+  s4f7as_run_cli dry-run-open || return 1
+  s4f7as_run_cli read-global || true
+  echo "DRY_RUN_OPEN_COMPLETE=YES"
+  echo "GLOBAL_DB_MUTATION_OCCURRED=NO"
+  echo "S4_ACTIVATION_OCCURRED=NO"
+  return 0
+}
 
-  if [[ "${DRY_RUN}" == "1" ]]; then
-    s4f7as_run_cli dry-run-open || return 1
-    s4f7as_run_cli read-global || true
-    echo "DRY_RUN_OPEN_COMPLETE=YES"
-    echo "GLOBAL_DB_MUTATION_OCCURRED=NO"
-    echo "S4_ACTIVATION_OCCURRED=NO"
-    return 0
-  fi
-
-  if ! s4f7j_require_durable_backup_dir; then
-    echo "DURABLE_BACKUP_DIR_MISSING=YES"
+s4f7as_execute_live_open_mode() {
+  s4f7as_assert_production_test_isolation || return 1
+  s4f7as_assert_explicit_rollout_wave || return 1
+  s4f7as_assert_rollout_wave_confirm || return 1
+  s4f7as_assert_pilot_vehicle_confirm_for_wave1 || return 1
+  if [[ "${DI_S4_GATE6_OPEN_ACK:-}" != "YES" || "${DI_S4_GATE6_OPEN_AUTHORIZED:-}" != "YES" ]]; then
+    echo "GATE6_OPEN_AUTHORIZATION=MISSING"
     return 1
   fi
-  export DI_S4_GATE6_DISPATCH_TOKEN_DIR="${DI_S4_GATE6_DISPATCH_TOKEN_DIR:-${DI_S4_TINY_STAGING_DURABLE_BACKUP_DIR:-}}"
-  s4f7as_issue_live_open_dispatch || return 1
-  if ! s4f7as_run_cli live-open-authorized; then
+  export DRY_RUN=0
+  s4f7as_assert_open_audit_and_pins || return 1
+  s4f7as_preflight_open_readonly || return 1
+  s4f7as_refresh_guard_proof_security_gates_before_mutation || return 1
+  if ! s4f7as_run_cli live-open; then
     echo "LIVE_OPEN_FAILED=YES"
     return 1
   fi
@@ -270,6 +460,15 @@ s4f7as_execute_open_mode() {
   echo "GLOBAL_KILL_OPENED=YES"
   echo "GLOBAL_DB_MUTATION_OCCURRED=YES"
   return 0
+}
+
+# Legacy entry for older callers.
+s4f7as_execute_open_mode() {
+  if [[ "${DRY_RUN:-}" == "1" ]]; then
+    s4f7as_execute_dry_run_mode
+  else
+    s4f7as_execute_live_open_mode
+  fi
 }
 
 s4f7as_execute_emergency_rekill_mode() {
