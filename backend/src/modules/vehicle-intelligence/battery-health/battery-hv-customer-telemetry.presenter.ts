@@ -2,6 +2,20 @@ import type { ObservationFreshness } from './battery-freshness.policy';
 import { observationFreshnessIsDecisionFresh } from './battery-freshness.policy';
 import type { CanonicalBatteryHvReferenceCapacity } from './canonical-battery/canonical-battery.types';
 
+export const EMPTY_HV_CUSTOMER_TELEMETRY: HvCustomerTelemetryFields = {
+  socPercent: null,
+  rangeKm: null,
+  currentEnergyKwh: null,
+  grossCapacityKwh: null,
+  addedEnergyKwh: null,
+  chargingPowerKw: null,
+  currentVoltageV: null,
+  temperatureC: null,
+  isCharging: null,
+  chargingCableConnected: null,
+  providerSohPercent: null,
+};
+
 export type HvCustomerTelemetryFields = {
   socPercent: number | null;
   rangeKm: number | null;

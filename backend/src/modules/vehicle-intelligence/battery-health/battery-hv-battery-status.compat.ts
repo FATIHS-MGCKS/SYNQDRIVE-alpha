@@ -3,11 +3,16 @@ import {
   type ObservationFreshness,
 } from './battery-freshness.policy';
 import {
+  EMPTY_HV_CUSTOMER_TELEMETRY,
   type HvCustomerTelemetryFields,
+  type HvCustomerTelemetryRawInput,
   presentHvCustomerTelemetryFields,
   resolveCustomerHvNominalCapacityKwh,
 } from './battery-hv-customer-telemetry.presenter';
-import type { CanonicalBatteryDto } from './canonical-battery/canonical-battery.types';
+import type {
+  CanonicalBatteryDto,
+  CanonicalBatteryLegacySection,
+} from './canonical-battery/canonical-battery.types';
 import { maskCanonicalHvCustomerSurfaces } from './battery-customer-response.presenter';
 
 type HvCompatCanonicalHvSlice = {
@@ -21,7 +26,11 @@ type HvCompatCanonicalHvSlice = {
   } | null;
   soc?: { percent?: number | null };
   currentEnergy?: { kwh?: number | null };
-  chargingState?: Record<string, unknown> | null;
+  chargingState?: {
+    isCharging?: boolean | null;
+    cableConnected?: boolean | null;
+    powerKw?: number | null;
+  } | null;
 };
 
 /** Minimal summary slice for HV compat endpoint assembly (no legacy telemetry bypass). */
@@ -35,6 +44,7 @@ export type HvBatteryStatusCompatSummaryInput = {
     confidence?: string | null;
     snapshotCount?: number | null;
     freshness?: { observedAt?: string | null } | null;
+    legacyCapacity?: Record<string, unknown> | null;
     telemetry?: {
       socPercent?: number | null;
       rangeKm?: number | null;
@@ -62,6 +72,23 @@ export type HvBatteryStatusCompatSummaryInput = {
 
 export type HvBatteryStatusLegacyDiagnostic = Record<string, unknown> | null;
 
+export type HvCompatLegacyCustomerProjection = {
+  diagnosticOnly: true;
+  telemetry: HvCustomerTelemetryFields;
+};
+
+export type HvCompatCanonicalSummaryProjection = {
+  sohPct: number | null;
+  healthPercent: number | null;
+  method: string | null;
+  sohSource: string | null;
+  publicationState: string | null;
+  confidence: string | null;
+  snapshotCount: number;
+  freshness: { observedAt?: string | null } | null;
+  telemetry: HvCustomerTelemetryFields;
+};
+
 export function hvTelemetryObservationIsDecisionFresh(
   summary: HvBatteryStatusCompatSummaryInput,
 ): boolean {
@@ -79,29 +106,71 @@ export function hvProviderSohObservationIsDecisionFresh(
   return false;
 }
 
+function resolveCompatTelemetryRaw(
+  summary: HvBatteryStatusCompatSummaryInput,
+): HvCustomerTelemetryRawInput {
+  const hvTelemetry = summary.hv?.telemetry;
+  const canonical = summary.canonical as CanonicalBatteryDto | undefined;
+  const liveValues = canonical?.liveState?.hv?.values;
+  const canonicalHv = summary.canonical?.hv;
+  const charging = canonicalHv?.chargingState;
+
+  return {
+    socPercent:
+      hvTelemetry?.socPercent ??
+      liveValues?.socPercent ??
+      canonicalHv?.soc?.percent ??
+      summary.currentTelemetry?.socPercent ??
+      null,
+    rangeKm:
+      hvTelemetry?.rangeKm ??
+      liveValues?.rangeKm ??
+      summary.currentTelemetry?.rangeKm ??
+      null,
+    currentEnergyKwh:
+      hvTelemetry?.currentEnergyKwh ??
+      liveValues?.currentEnergyKwh ??
+      canonicalHv?.currentEnergy?.kwh ??
+      null,
+    grossCapacityKwhFromTelemetry:
+      hvTelemetry?.grossCapacityKwh ?? liveValues?.grossCapacityKwh ?? null,
+    addedEnergyKwh:
+      hvTelemetry?.addedEnergyKwh ?? liveValues?.addedEnergyKwh ?? null,
+    chargingPowerKw:
+      hvTelemetry?.chargingPowerKw ??
+      liveValues?.chargingPowerKw ??
+      charging?.powerKw ??
+      summary.currentTelemetry?.chargingPowerKw ??
+      null,
+    currentVoltageV:
+      hvTelemetry?.currentVoltageV ?? liveValues?.currentVoltageV ?? null,
+    temperatureC: hvTelemetry?.temperatureC ?? liveValues?.temperatureC ?? null,
+    isCharging:
+      hvTelemetry?.isCharging ??
+      liveValues?.isCharging ??
+      charging?.isCharging ??
+      null,
+    chargingCableConnected:
+      hvTelemetry?.chargingCableConnected ??
+      liveValues?.chargingCableConnected ??
+      charging?.cableConnected ??
+      null,
+    providerSohPercent:
+      hvTelemetry?.providerSohPercent ??
+      liveValues?.providerSohPercent ??
+      canonicalHv?.providerSoh?.percent ??
+      null,
+  };
+}
+
 function buildCompatCustomerTelemetry(
   summary: HvBatteryStatusCompatSummaryInput,
-): HvCustomerTelemetryFields | null {
-  const hvTelemetry = summary.hv?.telemetry;
-  if (!hvTelemetry) return null;
-
+): HvCustomerTelemetryFields {
   const carrierObservationFresh = hvTelemetryObservationIsDecisionFresh(summary);
   const providerSohObservationFresh = hvProviderSohObservationIsDecisionFresh(summary);
 
   return presentHvCustomerTelemetryFields({
-    raw: {
-      socPercent: hvTelemetry.socPercent ?? null,
-      rangeKm: hvTelemetry.rangeKm ?? null,
-      currentEnergyKwh: hvTelemetry.currentEnergyKwh ?? null,
-      grossCapacityKwhFromTelemetry: hvTelemetry.grossCapacityKwh ?? null,
-      addedEnergyKwh: hvTelemetry.addedEnergyKwh ?? null,
-      chargingPowerKw: hvTelemetry.chargingPowerKw ?? null,
-      currentVoltageV: hvTelemetry.currentVoltageV ?? null,
-      temperatureC: hvTelemetry.temperatureC ?? null,
-      isCharging: hvTelemetry.isCharging ?? null,
-      chargingCableConnected: hvTelemetry.chargingCableConnected ?? null,
-      providerSohPercent: hvTelemetry.providerSohPercent ?? null,
-    },
+    raw: resolveCompatTelemetryRaw(summary),
     carrierObservationFresh,
     providerSohObservationFresh,
   });
@@ -109,17 +178,21 @@ function buildCompatCustomerTelemetry(
 
 function presentCompatSanitizedCurrentTelemetry(
   currentTelemetry: HvBatteryStatusCompatSummaryInput['currentTelemetry'],
-  customerTelemetry: HvCustomerTelemetryFields | null,
+  customerTelemetry: HvCustomerTelemetryFields,
 ) {
   if (!currentTelemetry) return null;
   return {
-    ...currentTelemetry,
-    socPercent: customerTelemetry?.socPercent ?? null,
-    rangeKm: customerTelemetry?.rangeKm ?? null,
-    genericEnergyPercent: customerTelemetry?.socPercent ?? null,
-    chargingPowerKw: customerTelemetry?.chargingPowerKw ?? null,
+    observationFreshness: currentTelemetry.observationFreshness ?? null,
+    fetchFreshness: (currentTelemetry as { fetchFreshness?: unknown }).fetchFreshness ?? null,
+    freshnessBundle: (currentTelemetry as { freshnessBundle?: unknown }).freshnessBundle ?? null,
+    observedAt: (currentTelemetry as { observedAt?: string | null }).observedAt ?? null,
+    lvVoltageV: (currentTelemetry as { lvVoltageV?: number | null }).lvVoltageV ?? null,
+    socPercent: customerTelemetry.socPercent,
+    rangeKm: customerTelemetry.rangeKm,
+    genericEnergyPercent: customerTelemetry.socPercent,
+    chargingPowerKw: customerTelemetry.chargingPowerKw,
     chargingState:
-      customerTelemetry?.isCharging == null
+      customerTelemetry.isCharging == null
         ? null
         : customerTelemetry.isCharging
           ? 'charging'
@@ -129,41 +202,92 @@ function presentCompatSanitizedCurrentTelemetry(
 
 function presentCompatSanitizedCanonicalSummary(
   hv: HvBatteryStatusCompatSummaryInput['hv'],
-  customerTelemetry: HvCustomerTelemetryFields | null,
-) {
+  customerTelemetry: HvCustomerTelemetryFields,
+): HvCompatCanonicalSummaryProjection | null {
   if (!hv) return null;
   return {
-    ...hv,
+    sohPct: hv.sohPct ?? hv.healthPercent ?? null,
+    healthPercent: hv.healthPercent ?? null,
+    method: hv.method ?? null,
+    sohSource: hv.sohSource ?? null,
+    publicationState: hv.publicationState ?? null,
+    confidence: hv.confidence ?? null,
+    snapshotCount: hv.snapshotCount ?? 0,
+    freshness: hv.freshness ?? null,
     telemetry: customerTelemetry,
+  };
+}
+
+function presentCompatSanitizedCanonicalLegacy(
+  legacy: CanonicalBatteryLegacySection | undefined,
+): CanonicalBatteryLegacySection | undefined {
+  if (!legacy) return legacy;
+  const hvLegacy = legacy.hvLegacyCapacity as Record<string, unknown> | null;
+  return {
+    ...legacy,
+    collapsed: true,
+    lvDiagnostic: legacy.lvDiagnostic
+      ? {
+          ...legacy.lvDiagnostic,
+          publishedSohPct: null,
+          stabilizedSohPct: null,
+          rawSohPct: null,
+        }
+      : null,
+    v2Features: legacy.v2Features
+      ? {
+          ...legacy.v2Features,
+          publishedSohPct: null,
+          stabilizedSohPct: null,
+          rawSohPct: null,
+        }
+      : legacy.v2Features,
+    hvLegacyCapacity: hvLegacy
+      ? {
+          displayMode: hvLegacy.displayMode,
+          decisionCapable: hvLegacy.decisionCapable,
+          diagnosticLabelDe: hvLegacy.diagnosticLabelDe,
+          measurementMethod: hvLegacy.measurementMethod,
+          snapshotCadenceMs: hvLegacy.snapshotCadenceMs,
+          diagnosticEstimatedCapacityKwh: null,
+          diagnosticSohPercent: null,
+          operationalEstimatedCapacityKwh: null,
+          operationalSohPercent: null,
+        }
+      : legacy.hvLegacyCapacity,
   };
 }
 
 function presentCompatSanitizedCanonical(
   canonical: HvBatteryStatusCompatSummaryInput['canonical'],
-  customerTelemetry: HvCustomerTelemetryFields | null,
+  customerTelemetry: HvCustomerTelemetryFields,
 ): HvBatteryStatusCompatSummaryInput['canonical'] {
   if (!canonical || typeof canonical !== 'object') return null;
-  if (!customerTelemetry) return canonical;
 
   const clone = JSON.parse(JSON.stringify(canonical)) as CanonicalBatteryDto;
-  if (clone.liveState?.hv || clone.hv) {
+  const hasHvCarrier =
+    clone.liveState?.hv != null ||
+    clone.hv != null ||
+    clone.legacy?.hvLegacyCapacity != null;
+
+  if (hasHvCarrier) {
     maskCanonicalHvCustomerSurfaces(clone, customerTelemetry);
+  }
+  if (clone.legacy) {
+    clone.legacy = presentCompatSanitizedCanonicalLegacy(clone.legacy) ?? clone.legacy;
   }
   return clone;
 }
 
 function presentCompatSanitizedLegacy(
   legacy: HvBatteryStatusLegacyDiagnostic,
-  customerTelemetry: HvCustomerTelemetryFields | null,
-): HvBatteryStatusLegacyDiagnostic | undefined {
+  customerTelemetry: HvCustomerTelemetryFields,
+): HvCompatLegacyCustomerProjection | undefined {
   if (!legacy) return undefined;
-  const out: Record<string, unknown> = { ...legacy };
-  out.currentSocPercent = customerTelemetry?.socPercent ?? null;
-  out.estimatedRangeKm = customerTelemetry?.rangeKm ?? null;
-  if (out.telemetry != null && typeof out.telemetry === 'object') {
-    out.telemetry = customerTelemetry;
-  }
-  return out;
+  return {
+    diagnosticOnly: true,
+    telemetry: customerTelemetry,
+  };
 }
 
 /**
@@ -178,8 +302,8 @@ export function presentHvBatteryStatusCompatResponse(
   const telemetryFresh = hvTelemetryObservationIsDecisionFresh(summary);
   const customerTelemetry = buildCompatCustomerTelemetry(summary);
 
-  const customerSoc = customerTelemetry?.socPercent ?? null;
-  const customerRange = customerTelemetry?.rangeKm ?? null;
+  const customerSoc = customerTelemetry.socPercent;
+  const customerRange = customerTelemetry.rangeKm;
 
   const customerSoh = hv?.sohPct ?? hv?.healthPercent ?? null;
 
@@ -194,7 +318,7 @@ export function presentHvBatteryStatusCompatResponse(
           }
         : null,
     legacyNominalCapacityKwh: undefined,
-    telemetryGrossCapacityKwh: customerTelemetry?.grossCapacityKwh ?? null,
+    telemetryGrossCapacityKwh: customerTelemetry.grossCapacityKwh,
     carrierObservationFresh: telemetryFresh,
   });
 
@@ -225,3 +349,5 @@ export function presentHvBatteryStatusCompatResponse(
     legacy: presentCompatSanitizedLegacy(legacy, customerTelemetry),
   };
 }
+
+export { EMPTY_HV_CUSTOMER_TELEMETRY };
