@@ -394,6 +394,8 @@ export function evaluatePhaseAHumanVerificationReadinessV1(
       validUntil: string;
     };
     maintenanceWindow?: { startUtc: string; endUtc: string };
+    authorizedReleaseSha?: string;
+    postgresTargetFingerprint?: string;
     governanceModeFromGoRecord?: M3_3HvH4A3PhaseAProductionGovernanceModeV1;
     now?: Date;
   },
@@ -446,6 +448,7 @@ export function evaluatePhaseAHumanVerificationReadinessV1(
   const ratificationAuthority = authorityVerifier.verifyRatificationProvenanceV1({
     provenanceClaims: provenance.record,
     adoptionRecord: adoption.record,
+    now: options.now ?? new Date(),
   });
   if (ratificationAuthority.authorityStatus !== 'AUTHORITY_VERIFIED') {
     return { ok: false, reasonCode: ratificationAuthority.reasonCode };
@@ -457,6 +460,8 @@ export function evaluatePhaseAHumanVerificationReadinessV1(
     changeTicket: options.changeTicket,
     approvalBinding: options.approvalBinding,
     maintenanceWindow: options.maintenanceWindow,
+    authorizedReleaseSha: options.authorizedReleaseSha,
+    postgresTargetFingerprint: options.postgresTargetFingerprint,
     now: options.now ?? new Date(),
   });
   if (riskAuthority.authorityStatus !== 'AUTHORITY_VERIFIED') {

@@ -65,7 +65,9 @@ function verifyParentDirectoryChain(
         if (lst.uid !== GATE6_PRODUCTION_TRUST_OWNER_UID || lst.gid !== GATE6_PRODUCTION_TRUST_OWNER_GID) {
           return { ok: false, failure: 'PRODUCTION_TRUST_ANCHOR_PARENT_DIR_INVALID' };
         }
-        if (mode & 0o077) {
+        // Production `/opt/synqdrive/shared` is historically `755` (group/other read+execute).
+        // Fail closed on group/other **write** and world-writable dirs; gate6 leaf paths stay strict.
+        if (mode & 0o022) {
           return { ok: false, failure: 'PRODUCTION_TRUST_ANCHOR_PARENT_DIR_INVALID' };
         }
       }

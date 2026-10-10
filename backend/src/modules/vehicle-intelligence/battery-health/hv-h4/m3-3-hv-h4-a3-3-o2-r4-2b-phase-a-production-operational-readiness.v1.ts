@@ -540,12 +540,16 @@ function evaluatePhaseAProductionOperationalReadinessInnerV1(
       } else {
         pass(checks, 'SINGLE_OPERATOR_GOVERNANCE_CLAIMS');
       }
+      const pt = go.productionTarget;
+      const postgresTargetFingerprint = `${pt.auditLogin}@${pt.hostname}:${pt.port}/${pt.database}`;
       const pathB = evaluatePhaseAHumanVerificationReadinessV1(env, {
         approvingAuthority: approval.approvingAuthority,
         authorizedHumanApprover: go.authorizedHumanApprover,
         changeTicket: go.changeTicket,
         approvalBinding: go.approvalBinding,
         maintenanceWindow: go.maintenanceWindow,
+        authorizedReleaseSha: go.authorizedReleaseSha,
+        postgresTargetFingerprint,
         governanceModeFromGoRecord: go.governanceMode,
         now,
       });
