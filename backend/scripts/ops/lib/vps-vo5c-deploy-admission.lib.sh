@@ -11,6 +11,7 @@ _VO5C_EXECUTOR_INTEGRITY_PATHS=(
   backend/scripts/ops/lib/vps-production-replica.lib.sh
   backend/scripts/ops/lib/vps-vo5c-deploy-admission.lib.sh
   backend/scripts/ops/lib/vps-vo5c-deploy-executor-selection.lib.sh
+  backend/scripts/ops/lib/vps-vo5c-production-deploy-bypass-enforcement.lib.sh
 )
 
 vps_vo5c_normalize_git_remote_url() {
