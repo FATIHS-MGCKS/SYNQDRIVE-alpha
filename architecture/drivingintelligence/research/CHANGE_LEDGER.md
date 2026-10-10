@@ -1721,6 +1721,13 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | PR #1939 — align S4F-7AK / CURRENT_STATE / CHANGE_LEDGER: S4F-7AI = Production **`DRY_RUN=1` only**; live = detached `ed78748bc…` S4F-7Y operator (not S4F-7AI) |
 | NON_EFFECTS | No operator code change; no Production execution |
 
+### EXP-021 S4F-7BA Gate-6 infra provisioning attempt (2026-10-10)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Phase A Production preflight PASS; Phase B stopped `OWNER_PUBLIC_KEY_REQUIRED` — no owner `public.pem`; P1–P6 **not** executed; evidence `EXP021_S4F7BA_GATE6_INFRA_PROVISIONING.md` |
+| NON_EFFECTS | No Production filesystem/DB mutation; no keys; Gate-6 live **NOT** authorized |
+
 ### EXP-021 S4F-7AZ Privileged writer model closure (2026-10-10)
 
 | Event | Detail |
