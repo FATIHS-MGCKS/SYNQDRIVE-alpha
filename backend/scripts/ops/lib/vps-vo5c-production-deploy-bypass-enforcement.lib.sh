@@ -62,7 +62,7 @@ vps_vo5c_realpath_or_pwd() {
   if command -v realpath >/dev/null 2>&1; then
     realpath "$path" 2>/dev/null || printf '%s' "$(cd "$(dirname "$path")" && pwd)/$(basename "$path")"
   else
-    (cd "$(dirname "$path")" && pwd)/$(basename "$path")
+    printf '%s' "$(cd "$(dirname "$path")" && pwd)/$(basename "$path")"
   fi
 }
 
