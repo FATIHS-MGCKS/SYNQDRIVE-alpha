@@ -9,9 +9,21 @@ if [[ "${SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED:-0}" != "1" ]]; then
   exit 1
 fi
 
-bash "${SCRIPT_DIR}/vps-vo5c-first-security-deploy-preflight.sh"
-
 PINNED_EXECUTOR_ROOT="${SYNQDRIVE_PINNED_EXECUTOR_ROOT:?}"
+PINNED_OPS_DIR="${PINNED_EXECUTOR_ROOT}/backend/scripts/ops"
+if [[ ! -d "$PINNED_OPS_DIR" ]]; then
+  echo "!! ABORT: pinned executor ops dir missing: ${PINNED_OPS_DIR}" >&2
+  exit 1
+fi
+SCRIPT_DIR_RESOLVED="$(cd "$SCRIPT_DIR" && pwd -P)"
+PINNED_OPS_RESOLVED="$(cd "$PINNED_OPS_DIR" && pwd -P)"
+if [[ "$SCRIPT_DIR_RESOLVED" != "$PINNED_OPS_RESOLVED" ]]; then
+  echo "!! ABORT: invoke runner only from pinned executor ops tree:" >&2
+  echo "    ${PINNED_OPS_DIR}/vps-vo5c-run-pinned-security-deploy.sh" >&2
+  exit 1
+fi
+
+bash "${PINNED_OPS_DIR}/vps-vo5c-first-security-deploy-preflight.sh"
 PINNED_DEPLOY_SCRIPT="${PINNED_EXECUTOR_ROOT}/backend/scripts/ops/vps-deploy-release.sh"
 if [[ ! -f "$PINNED_DEPLOY_SCRIPT" ]]; then
   echo "!! ABORT: pinned deploy executor missing: ${PINNED_DEPLOY_SCRIPT}" >&2

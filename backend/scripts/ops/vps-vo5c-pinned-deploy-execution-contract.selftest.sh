@@ -25,7 +25,14 @@ fi
 pass "RUNNER_USES_BASH_EXEC"
 
 WT="$(mktemp -d)"
-trap 'git -C "$REPO_ROOT" worktree remove --force "$WT" 2>/dev/null || rm -rf "$WT"' EXIT
+WT_ALT=""
+cleanup() {
+  git -C "$REPO_ROOT" worktree remove --force "$WT" 2>/dev/null || rm -rf "$WT"
+  if [[ -n "$WT_ALT" ]]; then
+    git -C "$REPO_ROOT" worktree remove --force "$WT_ALT" 2>/dev/null || rm -rf "$WT_ALT"
+  fi
+}
+trap cleanup EXIT
 git -C "$REPO_ROOT" worktree add --detach "$WT" HEAD >/dev/null
 DEPLOY="${WT}/${DEPLOY_REL}"
 chmod 644 "$DEPLOY"
@@ -55,5 +62,19 @@ fi
 pass "BASH_INVOCATION_ALLOWED_ON_MODE_644"
 
 mv "${DEPLOY}.real" "$DEPLOY"
+
+WT_ALT="$(mktemp -d)"
+git -C "$REPO_ROOT" worktree add --detach "$WT_ALT" HEAD >/dev/null
+export SYNQDRIVE_PINNED_EXECUTOR_ROOT="$WT"
+export SYNQDRIVE_PINNED_EXECUTOR_SHA="$(git -C "$WT" rev-parse HEAD)"
+export SYNQDRIVE_REQUESTED_DEPLOY_SHA="$SYNQDRIVE_PINNED_EXECUTOR_SHA"
+export SYNQDRIVE_STAGED_RELEASE_ROOT="$WT"
+export SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1
+LEGACY_RUNNER="${WT_ALT}/backend/scripts/ops/vps-vo5c-run-pinned-security-deploy.sh"
+if bash "$LEGACY_RUNNER" >/dev/null 2>&1; then
+  fail "runner invoked from non-pinned ops dir must abort"
+fi
+pass "NON_PINNED_RUNNER_ENTRY_DENIED"
+
 pass "EXECUTION_CONTRACT_SELFTEST_OK"
 echo "vps-vo5c-pinned-deploy-execution-contract selftest: OK"

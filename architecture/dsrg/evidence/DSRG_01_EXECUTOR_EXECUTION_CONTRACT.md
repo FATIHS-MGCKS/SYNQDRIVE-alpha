@@ -29,6 +29,12 @@ exec bash "$PINNED_DEPLOY_SCRIPT" "$@"
 
 Preserves: git-clean integrity, security-floor libs loaded inside deploy script, no auto-authorization.
 
+## Canonical runner entry (DSRG-01 R1)
+
+The runner must be executed from the **pinned executor ops tree** (`$SYNQDRIVE_PINNED_EXECUTOR_ROOT/backend/scripts/ops/...`). Invoking the copy under `/opt/synqdrive/current` while pointing `SYNQDRIVE_PINNED_EXECUTOR_ROOT` at the pin would run the wrong preflight revision; the runner now **fails closed** on path mismatch.
+
+Future `vo5c-pinned-deploy-wrapper.sh` (sudoers example) should `exec` the pinned-runner path loaded from `vo5c-pinned-executor.env`.
+
 ## Promotion note
 
-Installed production pin at `40c6dd9` **does not** include this fix until a **new pinned executor promotion** (or hotfix pin SHA). Live app deploy is not required for the code fix to land in git.
+Installed production pin at `40c6dd9` **does not** include DSRG-01 fixes until a **new pinned executor promotion** after merge. Live app at `7f47c9f` is not the authorized deploy entrypoint.

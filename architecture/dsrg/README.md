@@ -31,6 +31,16 @@ This directory is **documentation-only**. It does not replace:
 
 Enforcement (`VO5C_PRODUCTION_DEPLOY_ENFORCEMENT_ACTIVE=1`) and OS sudoers remain **not activated** as of DSRG-01.
 
+## Registry follow-up (formal)
+
+DSRG is a **documentation hub** today. To register in `architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md`:
+
+1. Add inventory row (mini description: deploy security & release governance).
+2. Set initial `registry coverage status` to `AUDIT_IN_PROGRESS` per `MODULE_AUTHORITY_STANDARD.md`.
+3. Promote to `AUTHORITY_ACTIVE` only after Production read-only VPS audit of deploy paths and validator commands are recorded.
+
+Until then, VO5C evidence under `architecture/vehicle-onboarding/evidence/` remains the implementation authority; DSRG indexes and cross-links.
+
 ## Related evidence (preserved in place)
 
 VO5C engineering evidence stays under `architecture/vehicle-onboarding/evidence/` (for example `VO5C_P4B15_DEPLOY_BYPASS_ENFORCEMENT.md`, `VO5C_R2_SECURITY_FLOOR_ROLLBACK.md`). DSRG links and summarizes; it does not move or rename those files.

@@ -11,7 +11,7 @@
 
 See `architecture/vehicle-onboarding/evidence/VO5C_P4B15_DEPLOY_BYPASS_ENFORCEMENT.md` for the full bypass table (A–E).
 
-**Routine production path (target state):** `vps-vo5c-run-pinned-security-deploy.sh` → preflight → `exec bash` pinned `vps-deploy-release.sh`.
+**Routine production path (target state):** invoke **`${SYNQDRIVE_PINNED_EXECUTOR_ROOT}/backend/scripts/ops/vps-vo5c-run-pinned-security-deploy.sh`** (not `/opt/synqdrive/current/...`) with `SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1` and pin env → preflight from pinned ops → `exec bash` pinned `vps-deploy-release.sh`. The runner aborts if invoked from a non-pinned ops directory.
 
 ## Preflight vs execution contract (DSRG-01)
 
