@@ -1,5 +1,6 @@
 import { EnergyEventKind } from '@prisma/client';
 import {
+  buildEnergyEventEnvelopeStartListWhere,
   buildEnergyEventProductReadListWhere,
   filterEnergyEventDtosByProductTimelineAnchor,
   parseRefuelFuelLevelRiseRow,
@@ -128,6 +129,17 @@ describe('energy-event-product-timeline-anchor', () => {
     });
     expect(filtered).toHaveLength(1);
     expect(filtered[0].fuelLevelRiseStart).toBe('2026-10-09T18:48:52.000Z');
+  });
+
+  it('raw envelope where filters on startTime only (no product OR)', () => {
+    const from = new Date('2026-10-08T22:00:00.000Z');
+    const to = new Date('2026-10-09T21:59:59.999Z');
+    const where = buildEnergyEventEnvelopeStartListWhere('veh-1', { from, to });
+    expect(where).toEqual({
+      vehicleId: 'veh-1',
+      startTime: { gte: from, lte: to },
+    });
+    expect(where).not.toHaveProperty('OR');
   });
 
   it('buildEnergyEventProductReadListWhere uses bounded OR (no unbounded scan)', () => {

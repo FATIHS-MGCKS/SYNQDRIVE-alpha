@@ -95,6 +95,21 @@ function boundedRange(from?: Date, to?: Date) {
  * - REFUEL with rise present but envelope in window (invalid/inconsistent rise → post-filter uses envelope)
  * - RECHARGE: envelope start in window (unchanged)
  */
+/** Forensic/raw reads — detection envelope `startTime` only (legacy semantics). */
+export function buildEnergyEventEnvelopeStartListWhere(
+  vehicleId: string,
+  options: { from?: Date; to?: Date },
+) {
+  if (!options.from && !options.to) {
+    return { vehicleId };
+  }
+  const range = boundedRange(options.from, options.to);
+  return {
+    vehicleId,
+    startTime: range,
+  };
+}
+
 export function buildEnergyEventProductReadListWhere(
   vehicleId: string,
   options: { from?: Date; to?: Date },

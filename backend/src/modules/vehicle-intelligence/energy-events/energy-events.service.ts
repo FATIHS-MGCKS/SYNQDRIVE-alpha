@@ -12,6 +12,7 @@ import {
 } from '@prisma/client';
 import { toEnergyEventDto, type EnergyEventDto } from './energy-events.types';
 import {
+  buildEnergyEventEnvelopeStartListWhere,
   buildEnergyEventProductReadListWhere,
   filterEnergyEventDtosByProductTimelineAnchor,
 } from './energy-event-product-timeline-anchor';
@@ -130,7 +131,7 @@ export class EnergyEventsService {
     options: { from?: Date; to?: Date } = {},
   ) {
     return this.prisma.vehicleEnergyEvent.findMany({
-      where: this.buildEnergyEventListWhere(vehicleId, options),
+      where: buildEnergyEventEnvelopeStartListWhere(vehicleId, options),
       include: {
         fuelStationEnrichment: true,
         chargingStationEnrichment: true,
@@ -144,7 +145,7 @@ export class EnergyEventsService {
     options: { from?: Date; to?: Date } = {},
   ) {
     return this.prisma.vehicleEnergyEvent.findMany({
-      where: this.buildEnergyEventListWhere(vehicleId, options),
+      where: buildEnergyEventProductReadListWhere(vehicleId, options),
       include: {
         fuelStationEnrichment: true,
         chargingStationEnrichment: true,
@@ -152,13 +153,6 @@ export class EnergyEventsService {
       },
       orderBy: { startTime: 'asc' },
     });
-  }
-
-  private buildEnergyEventListWhere(
-    vehicleId: string,
-    options: { from?: Date; to?: Date },
-  ) {
-    return buildEnergyEventProductReadListWhere(vehicleId, options);
   }
 
   /** @deprecated use queryEnergyEventRowsForRaw or queryEnergyEventRowsForCanonical */

@@ -103,6 +103,51 @@ describe('refuel timeline time UX', () => {
     }
   });
 
+  it('overlapping trips without refuel stay ordered by trip startTime (not endTime)', () => {
+    const tripLateStart = {
+      id: 'trip-late-start',
+      vehicleId: 'veh-1',
+      tripStatus: 'COMPLETED' as const,
+      startTime: '2026-10-09T11:00:00.000Z',
+      endTime: '2026-10-09T11:30:00.000Z',
+      distanceKm: 3,
+      durationMinutes: 30,
+    };
+    const tripEarlyStartLonger = {
+      id: 'trip-early-long',
+      vehicleId: 'veh-1',
+      tripStatus: 'COMPLETED' as const,
+      startTime: '2026-10-09T10:00:00.000Z',
+      endTime: '2026-10-09T12:00:00.000Z',
+      distanceKm: 20,
+      durationMinutes: 120,
+    };
+    const merged = buildMergedTimelineItems([tripEarlyStartLonger, tripLateStart], []);
+    expect(merged.map((i) => i.id)).toEqual(['trip-late-start', 'trip-early-long']);
+    if (merged[0].itemType === 'trip') {
+      expect(merged[0].startTime).toBe(tripLateStart.startTime);
+    }
+  });
+
+  it('regular trips without refuel sort by startTime DESC', () => {
+    const later = {
+      id: 'trip-b',
+      vehicleId: 'veh-1',
+      tripStatus: 'COMPLETED' as const,
+      startTime: '2026-10-09T14:00:00.000Z',
+      endTime: '2026-10-09T15:00:00.000Z',
+    };
+    const earlier = {
+      id: 'trip-a',
+      vehicleId: 'veh-1',
+      tripStatus: 'COMPLETED' as const,
+      startTime: '2026-10-09T12:00:00.000Z',
+      endTime: '2026-10-09T13:00:00.000Z',
+    };
+    const merged = buildMergedTimelineItems([earlier, later], []);
+    expect(merged.map((i) => i.id)).toEqual(['trip-b', 'trip-a']);
+  });
+
   it('fallback merge path matches canonical sort order', () => {
     const refuel = wob7503Refuel20261009();
     const trips = [
@@ -111,12 +156,14 @@ describe('refuel timeline time UX', () => {
         vehicleId: refuel.vehicleId,
         tripStatus: 'COMPLETED' as const,
         startTime: '2026-10-09T17:44:00.000Z',
+        endTime: '2026-10-09T17:53:00.000Z',
       },
       {
         id: 'trip-2043-berlin',
         vehicleId: refuel.vehicleId,
         tripStatus: 'COMPLETED' as const,
         startTime: '2026-10-09T18:43:00.000Z',
+        endTime: '2026-10-09T19:09:00.000Z',
       },
     ];
     const canonical = normalizeTimelineItems([
