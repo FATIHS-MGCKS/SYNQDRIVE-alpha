@@ -6,6 +6,17 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-10 — Production alpha G3-H2 HV compat legacy fallback closure
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | `GET hv-battery-status` fell back to legacy `HvBatteryHealthService` SOC/range/SOH/telemetry when canonical masked stale observations |
+| **CHANGE** | `presentHvBatteryStatusCompatResponse` — customer fields from canonical summary only; legacy retained under `legacy`; HV range masked with telemetry observation freshness |
+| **VALIDATION** | `battery-hv-battery-status.compat.spec.ts`; canonical stale SOC/range spec |
+| **NON_EFFECTS** | No HV SOH publication activation; workshop/document SOH path unchanged in canonical resolver |
+
+---
+
 ## 2026-10-10 — Production alpha G3 safe shadow + user-facing battery masking (G3-H1 isolated)
 
 | Field | Value |

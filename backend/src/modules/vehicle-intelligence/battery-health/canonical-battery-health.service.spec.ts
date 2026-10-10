@@ -837,8 +837,10 @@ describe('CanonicalBatteryHealthService', () => {
 
     const summary = await svc.getSummary('veh-1');
     expect(summary?.currentTelemetry?.socPercent).toBeNull();
+    expect(summary?.currentTelemetry?.rangeKm).toBeNull();
     expect(summary?.currentTelemetry?.genericEnergyPercent).toBeNull();
     expect(summary?.hv.telemetry.socPercent).toBeNull();
+    expect(summary?.hv.telemetry.rangeKm).toBeNull();
     expect(summary?.currentTelemetry?.observationFreshness?.observationState).toBe(
       'STALE',
     );

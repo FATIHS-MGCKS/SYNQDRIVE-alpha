@@ -809,6 +809,11 @@ export class CanonicalBatteryHealthService {
     const hvTelemetrySocForDisplay = hvTelemetrySocDecisionFresh
       ? hvTelemetrySocRaw
       : null;
+    const hvTelemetryRangeRaw =
+      parseNum(latestState?.rangeKm) ?? parseNum(hvStatusAny?.estimatedRangeKm);
+    const hvTelemetryRangeForDisplay = hvTelemetrySocDecisionFresh
+      ? hvTelemetryRangeRaw
+      : null;
 
     const hvStatusLabel: BatteryStatus = !isEv
       ? 'unsupported'
@@ -1287,9 +1292,7 @@ export class CanonicalBatteryHealthService {
         },
         telemetry: {
           socPercent: hvTelemetrySocForDisplay,
-          rangeKm:
-            parseNum(latestState?.rangeKm) ??
-            parseNum(hvStatusAny?.estimatedRangeKm),
+          rangeKm: hvTelemetryRangeForDisplay,
           chargingPowerKw:
             parseNum(latestState?.tractionBatteryChargingPowerKw) ??
             parseNum(hvStatusAny?.telemetry?.chargingPowerKw) ??
@@ -1325,7 +1328,7 @@ export class CanonicalBatteryHealthService {
         observationFreshness: currentTelemetryObservationFreshness,
         freshnessBundle: currentTelemetryFreshnessBundle,
         socPercent: hvTelemetrySocForDisplay,
-        rangeKm: parseNum(latestState?.rangeKm),
+        rangeKm: hvTelemetryRangeForDisplay,
         chargingState:
           latestState?.tractionBatteryIsCharging == null
             ? null

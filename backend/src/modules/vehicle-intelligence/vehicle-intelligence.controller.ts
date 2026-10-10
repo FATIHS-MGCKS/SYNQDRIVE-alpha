@@ -56,6 +56,7 @@ import { HvBatteryHealthService } from './battery-health/hv-battery-health.servi
 import { BatteryV2Service } from './battery-health/battery-v2.service';
 import { presentLegacyCrankFeatures } from './battery-health/battery-crank-policy';
 import { presentBatteryV2CustomerHealthPayload } from './battery-health/battery-v2-customer-health.read';
+import { presentHvBatteryStatusCompatResponse } from './battery-health/battery-hv-battery-status.compat';
 import { CanonicalBatteryHealthService } from './battery-health/canonical-battery-health.service';
 import { BatteryEvidenceService } from './battery-health/battery-evidence.service';
 import { LvRestShadowSummaryService } from './battery-health/lv-rest-window/lv-rest-shadow-summary.service';
@@ -1862,34 +1863,7 @@ export class VehicleIntelligenceController {
       .getHvBatteryStatus(vehicleId)
       .catch(() => null);
 
-    const hv = summary.hv;
-    const canonicalHv = summary.canonical?.hv ?? null;
-
-    return {
-      _compat: true,
-      _canonical: 'Prefer battery-health-summary.canonical.hv for new consumers.',
-      isEv: true,
-      nominalCapacityKwh:
-        canonicalHv?.referenceCapacity?.capacityKwh ??
-        legacy?.nominalCapacityKwh ??
-        hv?.telemetry?.grossCapacityKwh ??
-        null,
-      currentSocPercent: hv?.telemetry?.socPercent ?? legacy?.currentSocPercent ?? null,
-      estimatedRangeKm: hv?.telemetry?.rangeKm ?? legacy?.estimatedRangeKm ?? null,
-      sohPercent: hv?.sohPct ?? legacy?.sohPercent ?? null,
-      publishedSohPercent: hv?.sohPct ?? legacy?.publishedSohPercent ?? null,
-      sohMethod: hv?.method ?? legacy?.sohMethod ?? 'canonical',
-      sohSourceType: hv?.sohSource ?? legacy?.sohSourceType ?? null,
-      publicationState: hv?.publicationState ?? legacy?.publicationState ?? null,
-      maturityConfidence: hv?.confidence ?? legacy?.maturityConfidence ?? null,
-      snapshotCount: hv?.snapshotCount ?? legacy?.snapshotCount ?? 0,
-      telemetry: hv?.telemetry ?? legacy?.telemetry ?? null,
-      lastRecordedAt: hv?.freshness?.observedAt ?? legacy?.lastRecordedAt ?? null,
-      canonical: canonicalHv,
-      canonicalSummary: hv,
-      currentTelemetry: summary.currentTelemetry ?? null,
-      legacy: legacy ?? undefined,
-    };
+    return presentHvBatteryStatusCompatResponse(summary, legacy);
   }
 
   /** Canonical Health-tab summary — RentalHealthV1 is operational status truth. */
