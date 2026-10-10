@@ -16,10 +16,16 @@ import { buildStructuralSymbolsFromDetectorConfig } from './raw-fuel-rise-phase-
 import { RFRF_RISE_PHASE_SCANNER_POLICY_VERSION } from './raw-fuel-rise-phase-scanner.policy';
 import { preBaselineFromChannelRise } from './raw-fuel-rise-phase-scanner.replay-support';
 
-/** EED-EV-0104 authoritative inventory — not all rows have committed replay spines. */
-const NATURAL_ELIGIBLE_N = 6;
+import {
+  COMMITTED_FULL_REPLAY_FIXTURE_IDS,
+  NATURAL_CALIBRATION_ELIGIBLE_EVENT_IDS,
+  maxEventsFromSingleVehicle,
+} from '../../../../../scripts/ops/rfrf-settled-post/rfrf-oq014-r4a-event-accounting';
+
+/** EED-EV-0104 / R4A authoritative inventory — not all rows have committed replay spines. */
+const NATURAL_ELIGIBLE_N = NATURAL_CALIBRATION_ELIGIBLE_EVENT_IDS.length;
 const NATURAL_ELIGIBLE_VEHICLE_N = 3;
-const COMMITTED_REPLAY_N = 5;
+const COMMITTED_REPLAY_N = COMMITTED_FULL_REPLAY_FIXTURE_IDS.length;
 
 const CALIBRATION_BUNDLE = {
   bundleVersion: 'replay-hypothesis-v1',
@@ -44,9 +50,14 @@ describe('R3A fleet replay metrics (EED-EV-0104 baseline)', () => {
     expect(CALIBRATION_PACK_MANIFEST.defensibleNaturalRows).toBe(7);
     expect(NATURAL_ELIGIBLE_N).toBe(6);
     expect(NATURAL_ELIGIBLE_VEHICLE_N).toBe(3);
+    const wob = maxEventsFromSingleVehicle(NATURAL_CALIBRATION_ELIGIBLE_EVENT_IDS);
+    expect(wob.count).toBe(3);
+    expect(wob.fraction).toBe(0.5);
 
     const replayable = DEFENSIBLE_NATURAL_CALIBRATION_ROWS.filter((r) => r.samples.length > 0);
-    expect(replayable.length).toBe(COMMITTED_REPLAY_N);
+    /** Five in-pack series; sixth eligible (WOB 09-15) + KS MX 09-04 replay via EED-EV-0104 spine JSON (R4A metrics). */
+    expect(replayable.length).toBe(5);
+    expect(COMMITTED_REPLAY_N).toBe(6);
 
     let evaluated = 0;
     let skipped = 0;
@@ -105,8 +116,8 @@ describe('R3A fleet replay metrics (EED-EV-0104 baseline)', () => {
     }
 
     expect(evaluated).toBeGreaterThan(0);
-    expect(evaluated).toBeLessThanOrEqual(COMMITTED_REPLAY_N);
-    expect(skipped + evaluated).toBe(COMMITTED_REPLAY_N);
+    expect(evaluated).toBeLessThanOrEqual(replayable.length);
+    expect(skipped + evaluated).toBe(replayable.length);
     expect(EXCLUDED_SUSPECT_CONTROLS.length).toBeGreaterThan(0);
     expect(matureShadow).toBeGreaterThan(0);
     expect(drops.length).toBeGreaterThan(0);

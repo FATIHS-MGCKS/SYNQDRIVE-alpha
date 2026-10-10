@@ -28,6 +28,13 @@
 - Unwired backend foundations: physical identity v1, cross-version compatibility registry, post-authority transition types, `VERSIONED_TERMINAL_CONFLICT` contract, settled F3 activation parser types
 - Legacy F2 identity/matcher/service/runtime **unchanged**; no numeric Production caps; no settled F3 activation
 
+## 2026-10-10 — OQ-014 R4A calibration integrity & sufficiency (EED-EV-0109)
+
+- Machine-verifiable event accounting (`RFRF-OQ014-R4A-EVENT-ACCOUNTING.json` + `rfrf-oq014-r4a-event-accounting.ts`)
+- **WOB concentration correction:** eligible set is **3/6** WOB L 7503 (addendum to EED-EV-0104 — historical doc preserved)
+- Offline per-event metrics + adversarial replay integrity spec (`rfrf-oq014-r4a-calibration-integrity.spec.ts`)
+- **CALIBRATION_INSUFFICIENT** — no Production numeric caps; next slice **R4B** spine promotion gate
+
 ## 2026-10-01 — OQ-014 fleet calibration + settled locality evidence (EED-EV-0104)
 
 - Read-only Production forensics: **14** canonical physical events (**13** positive-labeled, **1** suspect)
