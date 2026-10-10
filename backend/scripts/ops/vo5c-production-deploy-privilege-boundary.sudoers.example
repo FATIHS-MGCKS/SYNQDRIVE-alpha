@@ -1,20 +1,29 @@
-# VO5C P4B15 — illustrative OS privilege boundary (install manually after SRE review).
-# Goal: routine operators cannot invoke vps-deploy-release.sh except via pinned runner + human auth.
+# VO5C P4B15/R2 — illustrative OS privilege boundary (install manually after SRE review).
+# Script guards alone do not stop unrestricted root.
+#
+# Goals:
+# - Routine deploy role cannot invoke promotion scripts except pinned runner.
+# - sudo preserves a sanitized environment (no caller-controlled SYNQDRIVE_* injection).
 #
 # 1) Deploy service account (example): synqdrive-deploy
 # 2) Root-owned immutable pinned executor tree (chmod -R a-w, root:root)
-# 3) Authority file root:root 0444
-# 4) sudoers: allow synqdrive-deploy ONLY:
-#      /opt/synqdrive/current/backend/scripts/ops/vps-vo5c-run-pinned-security-deploy.sh
-#    Deny direct:
-#      /opt/synqdrive/current/backend/scripts/ops/vps-deploy-release.sh
-#      /opt/synqdrive/releases/*/backend/scripts/ops/vps-deploy-release.sh
+# 3) Authority file /opt/synqdrive/shared/vo5c-production-deploy-authority.env root:root 0444
+# 4) Wrapper script root:root 0755 that exports only fixed pins before exec:
+#      /opt/synqdrive/shared/bin/vo5c-pinned-deploy-wrapper.sh
 #
-# Example (fragment — validate with visudo):
+# Example sudoers fragment (validate with visudo):
 #
-# Defaults:synqdrive-deploy !env_reset
-# synqdrive-deploy ALL=(root) NOPASSWD: /opt/synqdrive/current/backend/scripts/ops/vps-vo5c-run-pinned-security-deploy.sh
+# Defaults:synqdrive-deploy env_reset
+# Defaults:synqdrive-deploy secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+# Defaults:synqdrive-deploy !setenv
 #
-# Emergency containment (class E) remains root-only:
+# synqdrive-deploy ALL=(root) NOPASSWD: /opt/synqdrive/shared/bin/vo5c-pinned-deploy-wrapper.sh
+#
+# Deny direct promotion entrypoints at the OS layer (chmod 0750 root:vo5c-breakglass or absent from PATH):
+#   /opt/synqdrive/current/backend/scripts/ops/vps-deploy-release.sh
+#   /opt/synqdrive/current/backend/scripts/ops/vps-deploy-connectivity-staging.sh
+#   shallow-fetch cloud-agent deploy paths
+#
+# Emergency containment (class E) remains root-only / break-glass:
 #   pm2 stop, di-v0-s4-gate6-open-rekill-production.sh, rfrf-production-rollback.sh
 # RFRF safety rollback (class C) is NOT blocked by deploy enforcement.

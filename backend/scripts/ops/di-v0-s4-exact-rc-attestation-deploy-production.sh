@@ -49,8 +49,8 @@ export SYNQDRIVE_DI_S4F7Q_EXACT_RC_ATTESTATION_GATE=1
 source "${OPS_DIR}/lib/vps-vo5c-security-floor.lib.sh"
 # shellcheck source=lib/vps-vo5c-production-deploy-bypass-enforcement.lib.sh
 source "${OPS_DIR}/lib/vps-vo5c-production-deploy-bypass-enforcement.lib.sh"
-if vps_vo5c_production_deploy_enforcement_active; then
-  echo "ABORT: VO5C production deploy enforcement active — use vps-vo5c-run-pinned-security-deploy.sh with SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1"
+if ! vps_vo5c_assert_protected_deploy_entry_authority "di-v0-s4-exact-rc-attestation-deploy-production"; then
+  echo "ABORT: VO5C production deploy authority unresolved or enforcement active — use vps-vo5c-run-pinned-security-deploy.sh with SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1" >&2
   exit 1
 fi
 bash "${OPS_DIR}/vps-deploy-release.sh"

@@ -46,6 +46,17 @@ Script guards alone do not stop a root shell from editing trees or invoking depl
 
 **ROOT_BYPASS_RISK:** HIGH until sudoers + immutable pinned tree + authority file are installed and `VO5C_PRODUCTION_DEPLOY_ENFORCEMENT_ACTIVE=1` is set with SRE sign-off.
 
+## P4B15 R2 security findings (offline)
+
+| ID | Finding | Preconditions | Mitigation in PR |
+|----|---------|---------------|------------------|
+| A | Caller `SYNQDRIVE_VO5C_DEPLOY_SELFTEST` could redirect authority file | Attacker exports selftest env before invoking deploy | Removed from production lib; selftest uses harness-only function override |
+| B | Authority load failure treated as inactive | Present but unreadable/malformed authority file | Fail closed when file exists; invalid `ACTIVE` flag denied |
+| C | `!env_reset` sudoers example | Compromised operator env inherits into root sudo | Example uses `env_reset`, `secure_path`, `!setenv`, wrapper script |
+| D | `vps-deploy-connectivity-staging.sh` promotes `current` | Enforcement inactive or root bypasses script guard | `vps_vo5c_assert_protected_deploy_entry_authority` + OS chmod deny list |
+| E | Cloud-agent shallow-fetch deploy | Enforcement inactive or SSH root | Remote pre-check; blocks when authority active or invalid |
+| F | Pinned executor `dc30d2c` lacks P4B15 lib | `ENFORCEMENT_ACTIVE=1` before executor promotion | Promotion required before activation; dc30 is ancestor of `7f47c9f` app target |
+
 ## Release attestation gap (P4B16 scope)
 
 Observed: `SYNQDRIVE_DEPLOYED_GIT_SHA=dc30d2c…` while replicas run `7f47c9f…` (mixed-replica rolling deploy without post-deploy attestation sync).
