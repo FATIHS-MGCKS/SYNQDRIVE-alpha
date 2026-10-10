@@ -115,6 +115,19 @@ describe('EnergyEventsService canonical product read (F10.6.6-B.2)', () => {
     );
   });
 
+  it('listCanonicalEnergyEvents uses product-read widened where when from/to set', async () => {
+    const from = new Date('2026-10-08T22:00:00.000Z');
+    const to = new Date('2026-10-09T21:59:59.999Z');
+    await service.listCanonicalEnergyEvents(VEHICLE_ID, { from, to }, testEnv);
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: expect.any(Array),
+        }),
+      }),
+    );
+  });
+
   it('WOB service path — 3 DB rows → 1 canonical product refuel', async () => {
     expect(wobRows).toHaveLength(3);
     const canonical = await service.listCanonicalEnergyEvents(VEHICLE_ID, {}, testEnv);

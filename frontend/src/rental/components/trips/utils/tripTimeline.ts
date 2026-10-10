@@ -2,6 +2,7 @@ import type { EnergyEvent, TripBehaviorEvent } from '../../../../lib/api';
 import type { TripData, TripDaySummary, TripTimelineItem, TripTimelineTrip } from '../trips.types';
 import { dateKeyFromIso, formatTripDateLong } from './tripFormatters';
 import { resolveNotableEventCount } from '../behavior-event-count.utils';
+import { energyEventTimelineAnchorIso } from './refuelTimelineTime';
 
 /**
  * Normalizes API `trips-timeline` items (flat trip/event fields + itemType)
@@ -24,22 +25,95 @@ export function normalizeTimelineItem(item: unknown): TripTimelineItem {
   }
   if (raw.itemType === 'energy-event') {
     if (raw.event && typeof raw.event === 'object') {
-      return raw as TripTimelineItem;
+      const event = raw.event as EnergyEvent;
+      return {
+        itemType: 'energy-event',
+        id: event.id,
+        startTime: energyEventTimelineAnchorIso(event),
+        event,
+      };
     }
     const { itemType: _i, ...eventFields } = raw;
     const event = eventFields as unknown as EnergyEvent;
     return {
       itemType: 'energy-event',
       id: event.id,
-      startTime: event.startTime,
+      startTime: energyEventTimelineAnchorIso(event),
       event,
     };
   }
   throw new Error(`Unbekanntes Timeline-Item: ${String(raw.itemType)}`);
 }
 
+function parseTimelineInstantMs(iso: string): number {
+  return new Date(iso).getTime();
+}
+
+function tripEndInstantMs(trip: TripTimelineTrip): number {
+  const endIso = trip.endTime ?? trip.canonicalEndTime ?? trip.startTime;
+  return parseTimelineInstantMs(endIso);
+}
+
+function tripOverlapsRefuelAnchor(trip: TripTimelineTrip, refuelAnchorMs: number): boolean {
+  const startMs = parseTimelineInstantMs(trip.startTime);
+  const endMs = tripEndInstantMs(trip);
+  return refuelAnchorMs >= startMs && refuelAnchorMs <= endMs;
+}
+
+/** Trips that contain a REFUEL rise anchor use trip end for sort only (WOB interleaving). */
+function collectTripIdsWithOverlappingRefuel(items: TripTimelineItem[]): Set<string> {
+  const tripIds = new Set<string>();
+  const refuelAnchors = items
+    .filter(
+      (i): i is Extract<TripTimelineItem, { itemType: 'energy-event' }> =>
+        i.itemType === 'energy-event' && i.event.kind === 'REFUEL',
+    )
+    .map((i) => parseTimelineInstantMs(i.startTime));
+
+  for (const item of items) {
+    if (item.itemType !== 'trip') continue;
+    for (const anchorMs of refuelAnchors) {
+      if (tripOverlapsRefuelAnchor(item.trip, anchorMs)) {
+        tripIds.add(item.id);
+        break;
+      }
+    }
+  }
+  return tripIds;
+}
+
+function timelineItemSortInstant(item: TripTimelineItem, tripsWithRefuelOverlap: Set<string>): number {
+  if (item.itemType === 'trip') {
+    if (tripsWithRefuelOverlap.has(item.id)) {
+      return tripEndInstantMs(item.trip);
+    }
+    return parseTimelineInstantMs(item.trip.startTime);
+  }
+  return parseTimelineInstantMs(item.startTime);
+}
+
+export function compareTimelineItemsDescending(
+  a: TripTimelineItem,
+  b: TripTimelineItem,
+  tripsWithRefuelOverlap: Set<string>,
+): number {
+  return (
+    timelineItemSortInstant(b, tripsWithRefuelOverlap) -
+    timelineItemSortInstant(a, tripsWithRefuelOverlap)
+  );
+}
+
+/**
+ * Deterministic DESC sort: trip `startTime` authority (R8), except trips overlapping an
+ * in-window REFUEL rise use trip end for interleaving only.
+ */
+export function sortTimelineItemsDescending(items: TripTimelineItem[]): TripTimelineItem[] {
+  const tripsWithRefuelOverlap = collectTripIdsWithOverlappingRefuel(items);
+  return [...items].sort((a, b) => compareTimelineItemsDescending(a, b, tripsWithRefuelOverlap));
+}
+
 export function normalizeTimelineItems(items: unknown[]): TripTimelineItem[] {
-  return items.map(normalizeTimelineItem);
+  return sortTimelineItemsDescending(items.map(normalizeTimelineItem));
 }
 
 /**
@@ -82,12 +156,10 @@ export function buildMergedTimelineItems(
   const eventItems: TripTimelineItem[] = energyEvents.map((event) => ({
     itemType: 'energy-event',
     id: event.id,
-    startTime: event.startTime,
+    startTime: energyEventTimelineAnchorIso(event),
     event,
   }));
-  return [...tripItems, ...eventItems].sort(
-    (a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime(),
-  );
+  return sortTimelineItemsDescending([...tripItems, ...eventItems]);
 }
 
 export function summarizeDay(
