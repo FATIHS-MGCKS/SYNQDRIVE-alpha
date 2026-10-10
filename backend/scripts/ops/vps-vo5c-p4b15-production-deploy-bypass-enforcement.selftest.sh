@@ -61,7 +61,7 @@ run_deploy_guard() {
     ROOT='${wt}'
     REQUESTED_SHA='${requested}'
     source \"\${OPS}/lib/vps-vo5c-security-floor.lib.sh\"
-    source \"\${OPS}/lib/vps-vo5c-deploy-admission.lib.sh\"
+    source '${SCRIPT_DIR}/lib/vps-vo5c-deploy-admission.lib.sh'
     source '${SCRIPT_DIR}/lib/vps-vo5c-production-deploy-bypass-enforcement.lib.sh'
     _VO5C_PRODUCTION_DEPLOY_ENFORCEMENT_LOADED=0
     vps_vo5c_load_production_deploy_authority_from_path '${auth_file}' '${armed_stamp}'
@@ -136,7 +136,6 @@ fi
 pass "PINNED_INVOCATION_CAN_SUCCEED"
 
 echo "# tamper" >>"${WT_PINNED}/backend/scripts/ops/vps-deploy-release.sh"
-HEAD_SHA="$(git -C "$WT_PINNED" rev-parse HEAD)"
 if run_deploy_guard "$WT_PINNED" "$HEAD_SHA" 1 2>/dev/null; then
   fail "tampered executor must be rejected"
 fi
@@ -237,5 +236,8 @@ if git -C "$REPO_ROOT" cat-file -e "${PROD_TARGET_SHA}^{commit}" 2>/dev/null \
 else
   pass "PROD_TARGET_SHA_COMPAT_CHECK_SKIPPED"
 fi
+
+bash "${SCRIPT_DIR}/vps-vo5c-pinned-deploy-execution-contract.selftest.sh"
+pass "PINNED_DEPLOY_EXECUTION_CONTRACT"
 
 echo "VO5C_P4B15_SELFTEST_SUMMARY=PASS"

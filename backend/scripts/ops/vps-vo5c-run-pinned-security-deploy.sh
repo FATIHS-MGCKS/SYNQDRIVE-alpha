@@ -19,4 +19,5 @@ if [[ ! -f "$PINNED_DEPLOY_SCRIPT" ]]; then
 fi
 # Never delegate to the legacy production-current executor — only the verified pinned R2 tree.
 export SYNQDRIVE_VO5C_PINNED_EXECUTOR_INVOKE=1
-exec "$PINNED_DEPLOY_SCRIPT" "$@"
+# Git tracks vps-deploy-release.sh as 100644; pinned trees must stay git-clean (no chmod +x).
+exec bash "$PINNED_DEPLOY_SCRIPT" "$@"
