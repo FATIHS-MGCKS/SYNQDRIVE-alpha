@@ -30,7 +30,7 @@
 
 ## B. Calibration sufficiency (reproducible offline)
 
-Per-event metrics computed by `rfrf-oq014-r4a-calibration-metrics.lib.ts` + Jest `rfrf-oq014-r4a-calibration-integrity.spec.ts` (REPLAY_HYPOTHESIS bundle only).
+Per-event metrics computed by `rfrf-oq014-r4a-calibration-metrics.lib.ts` + Jest `rfrf-oq014-r4a-calibration-integrity.spec.ts` (REPLAY_HYPOTHESIS bundle only). **Observed** `maxSettledWindowInternalGapMs` is measured inside the R3A settled window; `configuredScannerMaxSampleGapMs` is reported separately. Rise selection uses event-timestamp attribution (`rfrf-oq014-r4a-rise-attribution.lib.ts`), not highest-peak heuristics. CI-committed artifact: `evidence/data/RFRF-OQ014-R4A-PER-EVENT-CALIBRATION-RESULTS.json`.
 
 | Statistic (eligible N=6) | Observed (offline replay) |
 |--------------------------|---------------------------|

@@ -28,6 +28,12 @@
 - Unwired backend foundations: physical identity v1, cross-version compatibility registry, post-authority transition types, `VERSIONED_TERMINAL_CONFLICT` contract, settled F3 activation parser types
 - Legacy F2 identity/matcher/service/runtime **unchanged**; no numeric Production caps; no settled F3 activation
 
+## 2026-10-10 — OQ-014 R4A evidence quality closure (PR #1958)
+
+- Measured settled-window internal gaps (distinct from scanner config limit)
+- Event-timestamp rise attribution (fail-closed on ambiguity)
+- Registry validation + committed `RFRF-OQ014-R4A-PER-EVENT-CALIBRATION-RESULTS.json` CI artifact
+
 ## 2026-10-10 — OQ-014 R4A calibration integrity & sufficiency (EED-EV-0109)
 
 - Machine-verifiable event accounting (`RFRF-OQ014-R4A-EVENT-ACCOUNTING.json` + `rfrf-oq014-r4a-event-accounting.ts`)

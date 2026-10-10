@@ -24,6 +24,8 @@ import {
   RFRF_OQ014_R4A_EVENT_ACCOUNTING,
   SETTLING_TIMING_CALIBRATION_ELIGIBLE_EVENT_IDS,
 } from './rfrf-oq014-r4a-event-accounting';
+import { attributeChannelRiseToCanonicalEvent } from './rfrf-oq014-r4a-rise-attribution.lib';
+import { measureMaxSettledWindowInternalGapMs } from './rfrf-oq014-r4a-settled-gap-measurement.lib';
 
 const REPLAY_HYPOTHESIS_BUNDLE = {
   bundleVersion: 'replay-hypothesis-v1',
@@ -33,21 +35,35 @@ const REPLAY_HYPOTHESIS_BUNDLE = {
   maxPeakToSettledContinuityGapMs: 45 * 60 * 1000,
 };
 
+export const KS_MS_661_CANONICAL_CALIBRATION_EVENT_ID = 'KS_MS_661_2026_09_30';
+
+export type R4aSourceProvenanceGrade =
+  | 'COMMITTED_DEFENSIBLE_PACK_IN_WINDOW_SAMPLES'
+  | 'BOUNDED_SPINE_EXTRACT_REPLAYABLE_NOT_CALIBRATION_GRADE'
+  | 'MISSING';
+
+export type R4aRiseAttributionStatus = 'ATTRIBUTED' | 'AMBIGUOUS' | 'NONE' | 'NOT_ATTEMPTED';
+
 export interface R4aPerEventCalibrationMetrics {
   eventId: string;
   vehicleLabel: string;
   settledDesignReplay: CaseReplayResult | null;
+  sourceProvenanceGrade: R4aSourceProvenanceGrade;
+  riseAttributionStatus: R4aRiseAttributionStatus;
+  riseAttributionReason: string | null;
   peakToSettledDropLiters: number | null;
   peakToSettledDropRatio: number | null;
   peakToSettledElapsedMs: number | null;
   maxPeakToSettledContinuityGapMs: number | null;
   maxSettledWindowInternalGapMs: number | null;
+  maxSettledWindowInternalGapUnavailableReason: string | null;
+  configuredScannerMaxSampleGapMs: number;
   preBaselineFresh: boolean | null;
   preBaselineStaleReason: string | null;
   r3aMaturityStatus: string | null;
   settlingTimingCalibrationEligible: boolean;
   localityCalibrationEligible: boolean;
-  sourceProvenance: 'FIXTURE' | 'SPINE_JSON' | 'MISSING';
+  metricsUnavailableReason: string | null;
 }
 
 function repoRootFromOpsScript(): string {
@@ -92,14 +108,20 @@ function resolveReplayCase(eventId: string): ReplayCaseDefinition | null {
   return null;
 }
 
-function pickPrimaryRise(samples: { samples: import('../../../src/modules/vehicle-intelligence/energy-events/raw-fuel-rise-detector/raw-fuel-rise-normalizer').NormalizedRawFuelSample[] }) {
-  const rises = detectChannelRises(samples.samples, 'ABSOLUTE_LITERS', RAW_FUEL_RISE_DETECTOR_CONFIG_V1);
-  if (rises.length === 0) return null;
-  return rises.reduce((best, r) => {
-    const peak = Math.max(...r.risePoints.map((p) => p.value));
-    const bestPeak = Math.max(...best.risePoints.map((p) => p.value));
-    return peak > bestPeak ? r : best;
-  });
+function classifySourceProvenanceGrade(
+  eventId: string,
+  replayDef: ReplayCaseDefinition | null,
+): R4aSourceProvenanceGrade {
+  if (!replayDef || replayDef.samples.length === 0) return 'MISSING';
+  const packRow = DEFENSIBLE_NATURAL_CALIBRATION_ROWS.find((r) => r.id === eventId);
+  if (packRow && packRow.samples.length > 0) {
+    return 'COMMITTED_DEFENSIBLE_PACK_IN_WINDOW_SAMPLES';
+  }
+  const row = RFRF_OQ014_R4A_EVENT_ACCOUNTING.find((r) => r.eventId === eventId);
+  if (row?.spineArtifactPath) {
+    return 'BOUNDED_SPINE_EXTRACT_REPLAYABLE_NOT_CALIBRATION_GRADE';
+  }
+  return 'MISSING';
 }
 
 export function computeR4aPerEventMetrics(eventId: string): R4aPerEventCalibrationMetrics | null {
@@ -108,20 +130,21 @@ export function computeR4aPerEventMetrics(eventId: string): R4aPerEventCalibrati
 
   const replayDef = resolveReplayCase(eventId);
   const settledDesignReplay = replayDef ? replayCase(replayDef) : null;
-  const sourceProvenance: R4aPerEventCalibrationMetrics['sourceProvenance'] = replayDef
-    ? replayDef.notes?.includes('Loaded from')
-      ? 'SPINE_JSON'
-      : 'FIXTURE'
-    : 'MISSING';
+  const sourceProvenanceGrade = classifySourceProvenanceGrade(eventId, replayDef);
+  const configuredScannerMaxSampleGapMs = RAW_FUEL_RISE_DETECTOR_CONFIG_V1.absolute.maxSampleGapMs;
 
+  let riseAttributionStatus: R4aRiseAttributionStatus = 'NOT_ATTEMPTED';
+  let riseAttributionReason: string | null = null;
   let peakToSettledDropLiters: number | null = settledDesignReplay?.peakToSettledDrop ?? null;
   let peakToSettledDropRatio: number | null = null;
   let peakToSettledElapsedMs: number | null = null;
   let maxPeakToSettledContinuityGapMs: number | null = null;
   let maxSettledWindowInternalGapMs: number | null = null;
+  let maxSettledWindowInternalGapUnavailableReason: string | null = null;
   let preBaselineFresh: boolean | null = null;
   let preBaselineStaleReason: string | null = null;
   let r3aMaturityStatus: string | null = null;
+  let metricsUnavailableReason: string | null = null;
 
   if (replayDef && replayDef.samples.length > 0) {
     const norm = normalizeRawFuelSamples(
@@ -130,17 +153,32 @@ export function computeR4aPerEventMetrics(eventId: string): R4aPerEventCalibrati
       new Date(replayDef.window.to),
       RAW_FUEL_RISE_DETECTOR_CONFIG_V1.relativeValidRange,
     );
-    if (norm.ok) {
-      const rise = pickPrimaryRise(norm);
-      if (rise) {
+    if (!norm.ok) {
+      riseAttributionStatus = 'NONE';
+      riseAttributionReason = 'NORMALIZE_FAIL';
+      metricsUnavailableReason = 'NORMALIZE_FAIL';
+    } else {
+      const rises = detectChannelRises(norm.samples, 'ABSOLUTE_LITERS', RAW_FUEL_RISE_DETECTOR_CONFIG_V1);
+      const attribution = attributeChannelRiseToCanonicalEvent(rises, {
+        eventId,
+        eventTimestamp: new Date(replayDef.eventTimestamp),
+        episodeWindowFrom: new Date(replayDef.window.from),
+        episodeWindowTo: new Date(replayDef.window.to),
+      });
+
+      if (attribution.status === 'ATTRIBUTED') {
+        riseAttributionStatus = 'ATTRIBUTED';
+        const rise = attribution.rise;
         const preBaseline = preBaselineFromChannelRise(rise);
         preBaselineFresh = preBaseline.fresh;
         preBaselineStaleReason = preBaseline.staleReason;
 
+        const absoluteSamples = replayDef.samples
+          .filter((s) => typeof s.absoluteLiters === 'number')
+          .map((s) => ({ timestamp: s.timestamp, absoluteLiters: s.absoluteLiters as number }));
+
         const r3a = scanRawFuelRisePhases({
-          samples: replayDef.samples
-            .filter((s) => typeof s.absoluteLiters === 'number')
-            .map((s) => ({ timestamp: s.timestamp, absoluteLiters: s.absoluteLiters as number })),
+          samples: absoluteSamples,
           preBaseline,
           riseAnchors: { riseOnsetAt: rise.riseOnsetAt, riseEndAt: rise.riseEndAt },
           structuralSymbols: buildStructuralSymbolsFromDetectorConfig(RAW_FUEL_RISE_DETECTOR_CONFIG_V1),
@@ -158,20 +196,41 @@ export function computeR4aPerEventMetrics(eventId: string): R4aPerEventCalibrati
         peakToSettledDropRatio = r3a.peakToSettledDropRatio;
         peakToSettledElapsedMs = r3a.peakToSettledElapsedMs;
         maxPeakToSettledContinuityGapMs = r3a.maxPeakToSettledContinuityGapMs;
-        maxSettledWindowInternalGapMs = RAW_FUEL_RISE_DETECTOR_CONFIG_V1.absolute.maxSampleGapMs;
+
+        const measuredGap = measureMaxSettledWindowInternalGapMs(
+          absoluteSamples,
+          r3a.settledWindowStart,
+          r3a.settledWindowEnd,
+        );
+        maxSettledWindowInternalGapMs = measuredGap.maxSettledWindowInternalGapMs;
+        maxSettledWindowInternalGapUnavailableReason = measuredGap.unavailableReason;
+      } else if (attribution.status === 'AMBIGUOUS') {
+        riseAttributionStatus = 'AMBIGUOUS';
+        riseAttributionReason = attribution.reason;
+        metricsUnavailableReason = attribution.reason;
+        peakToSettledDropLiters = null;
+      } else {
+        riseAttributionStatus = 'NONE';
+        riseAttributionReason = attribution.reason;
+        metricsUnavailableReason = attribution.reason;
+        peakToSettledDropLiters = null;
       }
     }
+  } else {
+    riseAttributionStatus = 'NONE';
+    riseAttributionReason = 'MISSING_REPLAY_SAMPLES';
+    metricsUnavailableReason = 'MISSING_REPLAY_SAMPLES';
   }
 
   if (
     peakToSettledDropRatio == null &&
+    peakToSettledDropLiters != null &&
     settledDesignReplay?.peak != null &&
-    settledDesignReplay?.preMedian != null &&
-    settledDesignReplay.peakToSettledDrop != null
+    settledDesignReplay?.preMedian != null
   ) {
     const rise = settledDesignReplay.peak - settledDesignReplay.preMedian;
     if (rise > 0) {
-      peakToSettledDropRatio = settledDesignReplay.peakToSettledDrop / rise;
+      peakToSettledDropRatio = peakToSettledDropLiters / rise;
     }
   }
 
@@ -186,17 +245,22 @@ export function computeR4aPerEventMetrics(eventId: string): R4aPerEventCalibrati
     eventId,
     vehicleLabel: meta.vehicleLabel,
     settledDesignReplay,
+    sourceProvenanceGrade,
+    riseAttributionStatus,
+    riseAttributionReason,
     peakToSettledDropLiters,
     peakToSettledDropRatio,
     peakToSettledElapsedMs,
     maxPeakToSettledContinuityGapMs,
     maxSettledWindowInternalGapMs,
+    maxSettledWindowInternalGapUnavailableReason,
+    configuredScannerMaxSampleGapMs,
     preBaselineFresh,
     preBaselineStaleReason,
     r3aMaturityStatus,
     settlingTimingCalibrationEligible,
     localityCalibrationEligible,
-    sourceProvenance,
+    metricsUnavailableReason,
   };
 }
 
@@ -204,6 +268,68 @@ export function computeAllR4aEligibleMetrics(): R4aPerEventCalibrationMetrics[] 
   return NATURAL_CALIBRATION_ELIGIBLE_EVENT_IDS.map((id) => computeR4aPerEventMetrics(id)).filter(
     (r): r is R4aPerEventCalibrationMetrics => r != null,
   );
+}
+
+export interface R4aPerEventCalibrationEvidenceArtifact {
+  schemaVersion: 'rfrf-oq014-r4a-per-event-calibration-v2';
+  calibrationDecision: 'CALIBRATION_INSUFFICIENT';
+  evidenceAcquisitionPlanningTargets: {
+    additionalIndependentVehiclesMin: number;
+    additionalEligibleNaturalsMin: number;
+    note: string;
+  };
+  events: Array<{
+    eventId: string;
+    vehicleLabel: string;
+    sourceProvenanceGrade: R4aSourceProvenanceGrade;
+    riseAttributionStatus: R4aRiseAttributionStatus;
+    riseAttributionReason: string | null;
+    peakToSettledDropLiters: number | null;
+    peakToSettledDropRatio: number | null;
+    peakToSettledElapsedMs: number | null;
+    maxPeakToSettledContinuityGapMs: number | null;
+    maxSettledWindowInternalGapMs: number | null;
+    maxSettledWindowInternalGapUnavailableReason: string | null;
+    configuredScannerMaxSampleGapMs: number;
+    r3aMaturityStatus: string | null;
+    preBaselineFresh: boolean | null;
+    settlingTimingCalibrationEligible: boolean;
+    metricsUnavailableReason: string | null;
+  }>;
+}
+
+export function buildR4aPerEventCalibrationEvidenceArtifact(): R4aPerEventCalibrationEvidenceArtifact {
+  const metrics = computeAllR4aEligibleMetrics();
+  return {
+    schemaVersion: 'rfrf-oq014-r4a-per-event-calibration-v2',
+    calibrationDecision: 'CALIBRATION_INSUFFICIENT',
+    evidenceAcquisitionPlanningTargets: {
+      additionalIndependentVehiclesMin: 3,
+      additionalEligibleNaturalsMin: 12,
+      note:
+        'Planning targets for a future evidence acquisition slice — not statistically validated guarantees of sufficiency.',
+    },
+    events: metrics
+      .map((m) => ({
+        eventId: m.eventId,
+        vehicleLabel: m.vehicleLabel,
+        sourceProvenanceGrade: m.sourceProvenanceGrade,
+        riseAttributionStatus: m.riseAttributionStatus,
+        riseAttributionReason: m.riseAttributionReason,
+        peakToSettledDropLiters: m.peakToSettledDropLiters,
+        peakToSettledDropRatio: m.peakToSettledDropRatio,
+        peakToSettledElapsedMs: m.peakToSettledElapsedMs,
+        maxPeakToSettledContinuityGapMs: m.maxPeakToSettledContinuityGapMs,
+        maxSettledWindowInternalGapMs: m.maxSettledWindowInternalGapMs,
+        maxSettledWindowInternalGapUnavailableReason: m.maxSettledWindowInternalGapUnavailableReason,
+        configuredScannerMaxSampleGapMs: m.configuredScannerMaxSampleGapMs,
+        r3aMaturityStatus: m.r3aMaturityStatus,
+        preBaselineFresh: m.preBaselineFresh,
+        settlingTimingCalibrationEligible: m.settlingTimingCalibrationEligible,
+        metricsUnavailableReason: m.metricsUnavailableReason,
+      }))
+      .sort((a, b) => a.eventId.localeCompare(b.eventId)),
+  };
 }
 
 export function summarizeDropCalibration(metrics: R4aPerEventCalibrationMetrics[]) {

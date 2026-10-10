@@ -11,6 +11,7 @@ import { RAW_FUEL_RISE_DETECTOR_CONFIG_V1 } from './raw-fuel-rise-detector.confi
 import { normalizeRawFuelSamples } from './raw-fuel-rise-normalizer';
 import type { NormalizedRawFuelSample } from './raw-fuel-rise-normalizer';
 import { detectChannelRises } from './raw-fuel-rise-state-machine';
+import { attributeChannelRiseToCanonicalEvent } from '../../../../../scripts/ops/rfrf-settled-post/rfrf-oq014-r4a-rise-attribution.lib';
 import { scanRawFuelRisePhases } from './raw-fuel-rise-phase-scanner';
 import { buildStructuralSymbolsFromDetectorConfig } from './raw-fuel-rise-phase-scanner.types';
 import { RFRF_RISE_PHASE_SCANNER_POLICY_VERSION } from './raw-fuel-rise-phase-scanner.policy';
@@ -35,14 +36,18 @@ const CALIBRATION_BUNDLE = {
   maxPeakToSettledContinuityGapMs: 45 * 60 * 1000,
 };
 
-function pickPrimaryChannelRise(samples: NormalizedRawFuelSample[]) {
+function pickAttributedChannelRise(
+  samples: NormalizedRawFuelSample[],
+  row: { id: string; eventTimestamp: string; window: { from: string; to: string } },
+) {
   const rises = detectChannelRises(samples, 'ABSOLUTE_LITERS', RAW_FUEL_RISE_DETECTOR_CONFIG_V1);
-  if (rises.length === 0) return null;
-  return rises.reduce((best, r) => {
-    const peak = Math.max(...r.risePoints.map((p) => p.value));
-    const bestPeak = Math.max(...best.risePoints.map((p) => p.value));
-    return peak > bestPeak ? r : best;
+  const attribution = attributeChannelRiseToCanonicalEvent(rises, {
+    eventId: row.id,
+    eventTimestamp: new Date(row.eventTimestamp),
+    episodeWindowFrom: new Date(row.window.from),
+    episodeWindowTo: new Date(row.window.to),
   });
+  return attribution.status === 'ATTRIBUTED' ? attribution.rise : null;
 }
 
 describe('R3A fleet replay metrics (EED-EV-0104 baseline)', () => {
@@ -78,7 +83,7 @@ describe('R3A fleet replay metrics (EED-EV-0104 baseline)', () => {
         continue;
       }
 
-      const rise = pickPrimaryChannelRise(norm.samples);
+      const rise = pickAttributedChannelRise(norm.samples, row);
       if (!rise) {
         skipped += 1;
         skipReasons.NO_CHANNEL_RISE = (skipReasons.NO_CHANNEL_RISE ?? 0) + 1;

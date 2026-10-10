@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "rfrf-oq014-r4a-event-accounting-v1",
+  "schemaVersion": "rfrf-oq014-r4a-event-accounting-v2",
   "baselineMainSha": "d717caf8e168f4671ea1cf592d52c3f7bca38bb4",
   "correctsEvidenceId": "EED-EV-0104",
   "addendumEvidenceId": "EED-EV-0104-ADDENDUM-R4A-WOB-CONCENTRATION-2026-10-10",
@@ -29,6 +29,11 @@
     "eedEv0104NarrativeError": "Section 2 claimed MAX_EVENTS_FROM_SINGLE_VEHICLE=4 (0.667); authoritative eligible table lists three WOB events. The locality matrix value NATURAL_READY=4 at 30s cap is a different metric (events passing cap), not vehicle concentration."
   },
   "settlingTimingIneligibleEventIds": ["WOB_7503_2026_09_19"],
+  "evidenceAcquisitionPlanningTargets": {
+    "additionalIndependentVehiclesMin": 3,
+    "additionalEligibleNaturalsMin": 12,
+    "note": "Planning targets for a future authorized evidence slice — not statistically validated guarantees of sufficiency."
+  },
   "calibrationDecision": "CALIBRATION_INSUFFICIENT",
   "productionUpperBoundEstablished": false
 }
