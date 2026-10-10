@@ -1,3 +1,4 @@
+import * as fs from 'fs';
 import { PRODUCTION_SHARED_BACKEND_ENV_PATH } from '../di-v0-s4-fresh-tiny-staging-production/di-v0-s4-fresh-tiny-staging-live-authority.lib';
 import {
   consumeLiveOpenDispatchToken,
@@ -37,6 +38,20 @@ export function isCanonicalProductionBackendEnv(env: NodeJS.ProcessEnv = process
   return canonical.length > 0 && canonical === PRODUCTION_SHARED_BACKEND_ENV_PATH;
 }
 
+/** True when the resolved backend.env candidate is the approved Production shared file. */
+export function isProductionBackendEnvSurface(env: NodeJS.ProcessEnv = process.env): boolean {
+  if (isCanonicalProductionBackendEnv(env)) return true;
+  const candidate = (env.SYNQDRIVE_BACKEND_ENV ?? env.BACKEND_ENV ?? '').trim();
+  if (!candidate) return false;
+  try {
+    const resolved = fs.realpathSync(candidate);
+    const approved = fs.realpathSync(PRODUCTION_SHARED_BACKEND_ENV_PATH);
+    return resolved === approved;
+  } catch {
+    return false;
+  }
+}
+
 export function firstProductionFixtureControlPresent(env: NodeJS.ProcessEnv = process.env): string | undefined {
   for (const key of GATE6_PRODUCTION_FORBIDDEN_FIXTURE_ENV_KEYS) {
     const value = (env[key] ?? '').trim();
@@ -49,7 +64,7 @@ export function evaluateGate6ProductionPathIsolation(
   env: NodeJS.ProcessEnv = process.env,
 ): { ok: boolean; failures: string[] } {
   const failures: string[] = [];
-  if (!isCanonicalProductionBackendEnv(env)) {
+  if (!isProductionBackendEnvSurface(env)) {
     return { ok: true, failures };
   }
   if (!(env[SYNQDRIVE_BACKEND_ENV_CANONICAL_ENV] ?? '').trim()) {
