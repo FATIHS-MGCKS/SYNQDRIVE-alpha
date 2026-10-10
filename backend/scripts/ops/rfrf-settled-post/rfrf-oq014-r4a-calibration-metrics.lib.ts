@@ -19,11 +19,18 @@ import {
 import { replayCase, type CaseReplayResult } from './settled-post-replay.lib';
 import {
   COMMITTED_FULL_REPLAY_FIXTURE_IDS,
+  DROP_CALIBRATION_ELIGIBLE_EVENT_IDS,
   LOCALITY_CALIBRATION_ELIGIBLE_EVENT_IDS,
   NATURAL_CALIBRATION_ELIGIBLE_EVENT_IDS,
   RFRF_OQ014_R4A_EVENT_ACCOUNTING,
   SETTLING_TIMING_CALIBRATION_ELIGIBLE_EVENT_IDS,
 } from './rfrf-oq014-r4a-event-accounting';
+import {
+  type R4aCanonicalPhysicalEpisodeFromSpine,
+  type R4aCanonicalRefuelTimestampProvenance,
+  type R4aResolvedCanonicalEventAnchors,
+  resolveCanonicalEventAnchors,
+} from './rfrf-oq014-r4a-canonical-event-anchors.lib';
 import { attributeChannelRiseToCanonicalEvent } from './rfrf-oq014-r4a-rise-attribution.lib';
 import { measureMaxSettledWindowInternalGapMs } from './rfrf-oq014-r4a-settled-gap-measurement.lib';
 
@@ -42,13 +49,23 @@ export type R4aSourceProvenanceGrade =
   | 'BOUNDED_SPINE_EXTRACT_REPLAYABLE_NOT_CALIBRATION_GRADE'
   | 'MISSING';
 
-export type R4aRiseAttributionStatus = 'ATTRIBUTED' | 'AMBIGUOUS' | 'NONE' | 'NOT_ATTEMPTED';
+export type R4aRiseAttributionStatus =
+  | 'ATTRIBUTED'
+  | 'AMBIGUOUS'
+  | 'NONE'
+  | 'NOT_ATTEMPTED'
+  | 'UNVERIFIED_EVENT_ANCHOR'
+  | 'INVALID_EVENT_ANCHOR'
+  | 'ANCHOR_NOT_CONTAINED_IN_RISE';
 
 export interface R4aPerEventCalibrationMetrics {
   eventId: string;
   vehicleLabel: string;
   settledDesignReplay: CaseReplayResult | null;
   sourceProvenanceGrade: R4aSourceProvenanceGrade;
+  canonicalEventAnchor: R4aResolvedCanonicalEventAnchors;
+  dropCalibrationPopulationEligible: boolean;
+  authoritativeCalibrationMetricEligible: boolean;
   riseAttributionStatus: R4aRiseAttributionStatus;
   riseAttributionReason: string | null;
   peakToSettledDropLiters: number | null;
@@ -68,6 +85,17 @@ export interface R4aPerEventCalibrationMetrics {
 
 function repoRootFromOpsScript(): string {
   return path.resolve(__dirname, '../../../..');
+}
+
+function loadSpineCanonicalEpisode(eventId: string): R4aCanonicalPhysicalEpisodeFromSpine | null {
+  const row = RFRF_OQ014_R4A_EVENT_ACCOUNTING.find((r) => r.eventId === eventId);
+  if (!row?.spineArtifactPath) return null;
+  const abs = path.join(repoRootFromOpsScript(), row.spineArtifactPath);
+  if (!fs.existsSync(abs)) return null;
+  const parsed = JSON.parse(fs.readFileSync(abs, 'utf8')) as {
+    canonicalPhysicalEpisode?: R4aCanonicalPhysicalEpisodeFromSpine;
+  };
+  return parsed.canonicalPhysicalEpisode ?? null;
 }
 
 function loadSpineReplayCase(eventId: string): ReplayCaseDefinition | null {
@@ -91,7 +119,8 @@ function loadSpineReplayCase(eventId: string): ReplayCaseDefinition | null {
     kind: 'PRODUCTION_LABELED',
     label: `${parsed.vehicleLabel} spine ${eventId}`,
     vehicle: parsed.vehicleLabel,
-    eventTimestamp: samples[0]?.timestamp.toISOString() ?? parsed.queryWindowUtc.from,
+    /** Query-window placeholder only — canonical refuel time comes from resolveCanonicalEventAnchors(). */
+    eventTimestamp: parsed.queryWindowUtc.from,
     replayEvidenceTier: 'FULL_REPLAY',
     window: parsed.queryWindowUtc,
     samples,
@@ -106,6 +135,12 @@ function resolveReplayCase(eventId: string): ReplayCaseDefinition | null {
   const spine = loadSpineReplayCase(eventId);
   if (spine && spine.samples.length > 0) return spine;
   return null;
+}
+
+export function resolveCanonicalAnchorsForEligibleEvent(eventId: string): R4aResolvedCanonicalEventAnchors {
+  const replayDef = resolveReplayCase(eventId);
+  const spineEpisode = loadSpineCanonicalEpisode(eventId);
+  return resolveCanonicalEventAnchors(eventId, replayDef, spineEpisode);
 }
 
 function classifySourceProvenanceGrade(
@@ -124,18 +159,27 @@ function classifySourceProvenanceGrade(
   return 'MISSING';
 }
 
+export function isAuthoritativeCalibrationMetric(m: R4aPerEventCalibrationMetrics): boolean {
+  return m.authoritativeCalibrationMetricEligible;
+}
+
 export function computeR4aPerEventMetrics(eventId: string): R4aPerEventCalibrationMetrics | null {
   const meta = RFRF_OQ014_R4A_EVENT_ACCOUNTING.find((r) => r.eventId === eventId);
   if (!meta) return null;
 
   const replayDef = resolveReplayCase(eventId);
+  const canonicalEventAnchor = resolveCanonicalAnchorsForEligibleEvent(eventId);
   const settledDesignReplay = replayDef ? replayCase(replayDef) : null;
   const sourceProvenanceGrade = classifySourceProvenanceGrade(eventId, replayDef);
   const configuredScannerMaxSampleGapMs = RAW_FUEL_RISE_DETECTOR_CONFIG_V1.absolute.maxSampleGapMs;
 
+  const dropCalibrationPopulationEligible = DROP_CALIBRATION_ELIGIBLE_EVENT_IDS.includes(
+    eventId as (typeof DROP_CALIBRATION_ELIGIBLE_EVENT_IDS)[number],
+  );
+
   let riseAttributionStatus: R4aRiseAttributionStatus = 'NOT_ATTEMPTED';
   let riseAttributionReason: string | null = null;
-  let peakToSettledDropLiters: number | null = settledDesignReplay?.peakToSettledDrop ?? null;
+  let peakToSettledDropLiters: number | null = null;
   let peakToSettledDropRatio: number | null = null;
   let peakToSettledElapsedMs: number | null = null;
   let maxPeakToSettledContinuityGapMs: number | null = null;
@@ -159,12 +203,7 @@ export function computeR4aPerEventMetrics(eventId: string): R4aPerEventCalibrati
       metricsUnavailableReason = 'NORMALIZE_FAIL';
     } else {
       const rises = detectChannelRises(norm.samples, 'ABSOLUTE_LITERS', RAW_FUEL_RISE_DETECTOR_CONFIG_V1);
-      const attribution = attributeChannelRiseToCanonicalEvent(rises, {
-        eventId,
-        eventTimestamp: new Date(replayDef.eventTimestamp),
-        episodeWindowFrom: new Date(replayDef.window.from),
-        episodeWindowTo: new Date(replayDef.window.to),
-      });
+      const attribution = attributeChannelRiseToCanonicalEvent(rises, canonicalEventAnchor);
 
       if (attribution.status === 'ATTRIBUTED') {
         riseAttributionStatus = 'ATTRIBUTED';
@@ -204,16 +243,10 @@ export function computeR4aPerEventMetrics(eventId: string): R4aPerEventCalibrati
         );
         maxSettledWindowInternalGapMs = measuredGap.maxSettledWindowInternalGapMs;
         maxSettledWindowInternalGapUnavailableReason = measuredGap.unavailableReason;
-      } else if (attribution.status === 'AMBIGUOUS') {
-        riseAttributionStatus = 'AMBIGUOUS';
-        riseAttributionReason = attribution.reason;
-        metricsUnavailableReason = attribution.reason;
-        peakToSettledDropLiters = null;
       } else {
-        riseAttributionStatus = 'NONE';
+        riseAttributionStatus = attribution.status;
         riseAttributionReason = attribution.reason;
         metricsUnavailableReason = attribution.reason;
-        peakToSettledDropLiters = null;
       }
     }
   } else {
@@ -222,17 +255,7 @@ export function computeR4aPerEventMetrics(eventId: string): R4aPerEventCalibrati
     metricsUnavailableReason = 'MISSING_REPLAY_SAMPLES';
   }
 
-  if (
-    peakToSettledDropRatio == null &&
-    peakToSettledDropLiters != null &&
-    settledDesignReplay?.peak != null &&
-    settledDesignReplay?.preMedian != null
-  ) {
-    const rise = settledDesignReplay.peak - settledDesignReplay.preMedian;
-    if (rise > 0) {
-      peakToSettledDropRatio = peakToSettledDropLiters / rise;
-    }
-  }
+  const authoritativeCalibrationMetricEligible = riseAttributionStatus === 'ATTRIBUTED';
 
   const settlingTimingCalibrationEligible = SETTLING_TIMING_CALIBRATION_ELIGIBLE_EVENT_IDS.includes(
     eventId as (typeof SETTLING_TIMING_CALIBRATION_ELIGIBLE_EVENT_IDS)[number],
@@ -246,6 +269,9 @@ export function computeR4aPerEventMetrics(eventId: string): R4aPerEventCalibrati
     vehicleLabel: meta.vehicleLabel,
     settledDesignReplay,
     sourceProvenanceGrade,
+    canonicalEventAnchor,
+    dropCalibrationPopulationEligible,
+    authoritativeCalibrationMetricEligible,
     riseAttributionStatus,
     riseAttributionReason,
     peakToSettledDropLiters,
@@ -271,8 +297,10 @@ export function computeAllR4aEligibleMetrics(): R4aPerEventCalibrationMetrics[] 
 }
 
 export interface R4aPerEventCalibrationEvidenceArtifact {
-  schemaVersion: 'rfrf-oq014-r4a-per-event-calibration-v2';
+  schemaVersion: 'rfrf-oq014-r4a-per-event-calibration-v3';
   calibrationDecision: 'CALIBRATION_INSUFFICIENT';
+  dropCalibrationPopulationN: number;
+  authoritativeCalibrationMetricN: number;
   evidenceAcquisitionPlanningTargets: {
     additionalIndependentVehiclesMin: number;
     additionalEligibleNaturalsMin: number;
@@ -281,7 +309,14 @@ export interface R4aPerEventCalibrationEvidenceArtifact {
   events: Array<{
     eventId: string;
     vehicleLabel: string;
+    dropCalibrationPopulationEligible: boolean;
+    authoritativeCalibrationMetricEligible: boolean;
     sourceProvenanceGrade: R4aSourceProvenanceGrade;
+    queryWindowFromUtc: string;
+    queryWindowToUtc: string;
+    firstSampleTimestampUtc: string | null;
+    canonicalRefuelTimestampUtc: string | null;
+    canonicalRefuelTimestampProvenance: R4aCanonicalRefuelTimestampProvenance;
     riseAttributionStatus: R4aRiseAttributionStatus;
     riseAttributionReason: string | null;
     peakToSettledDropLiters: number | null;
@@ -300,9 +335,12 @@ export interface R4aPerEventCalibrationEvidenceArtifact {
 
 export function buildR4aPerEventCalibrationEvidenceArtifact(): R4aPerEventCalibrationEvidenceArtifact {
   const metrics = computeAllR4aEligibleMetrics();
+  const authoritative = metrics.filter(isAuthoritativeCalibrationMetric);
   return {
-    schemaVersion: 'rfrf-oq014-r4a-per-event-calibration-v2',
+    schemaVersion: 'rfrf-oq014-r4a-per-event-calibration-v3',
     calibrationDecision: 'CALIBRATION_INSUFFICIENT',
+    dropCalibrationPopulationN: metrics.filter((m) => m.dropCalibrationPopulationEligible).length,
+    authoritativeCalibrationMetricN: authoritative.length,
     evidenceAcquisitionPlanningTargets: {
       additionalIndependentVehiclesMin: 3,
       additionalEligibleNaturalsMin: 12,
@@ -313,7 +351,14 @@ export function buildR4aPerEventCalibrationEvidenceArtifact(): R4aPerEventCalibr
       .map((m) => ({
         eventId: m.eventId,
         vehicleLabel: m.vehicleLabel,
+        dropCalibrationPopulationEligible: m.dropCalibrationPopulationEligible,
+        authoritativeCalibrationMetricEligible: m.authoritativeCalibrationMetricEligible,
         sourceProvenanceGrade: m.sourceProvenanceGrade,
+        queryWindowFromUtc: m.canonicalEventAnchor.queryWindowFromUtc,
+        queryWindowToUtc: m.canonicalEventAnchor.queryWindowToUtc,
+        firstSampleTimestampUtc: m.canonicalEventAnchor.firstSampleTimestampUtc,
+        canonicalRefuelTimestampUtc: m.canonicalEventAnchor.canonicalRefuelTimestampUtc,
+        canonicalRefuelTimestampProvenance: m.canonicalEventAnchor.canonicalRefuelTimestampProvenance,
         riseAttributionStatus: m.riseAttributionStatus,
         riseAttributionReason: m.riseAttributionReason,
         peakToSettledDropLiters: m.peakToSettledDropLiters,
@@ -333,10 +378,11 @@ export function buildR4aPerEventCalibrationEvidenceArtifact(): R4aPerEventCalibr
 }
 
 export function summarizeDropCalibration(metrics: R4aPerEventCalibrationMetrics[]) {
-  const drops = metrics
+  const authoritative = metrics.filter(isAuthoritativeCalibrationMetric);
+  const drops = authoritative
     .map((m) => m.peakToSettledDropLiters)
     .filter((d): d is number => d != null);
-  const ratios = metrics
+  const ratios = authoritative
     .map((m) => m.peakToSettledDropRatio)
     .filter((r): r is number => r != null);
   const sortNum = (a: number, b: number) => a - b;
@@ -347,7 +393,8 @@ export function summarizeDropCalibration(metrics: R4aPerEventCalibrationMetrics[
     return s.length % 2 === 0 ? (s[mid - 1] + s[mid]) / 2 : s[mid];
   };
   return {
-    n: metrics.length,
+    populationN: metrics.length,
+    authoritativeN: authoritative.length,
     dropMin: drops.length ? Math.min(...drops) : null,
     dropMedian: median(drops),
     dropMax: drops.length ? Math.max(...drops) : null,

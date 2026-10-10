@@ -7,6 +7,11 @@
     "from": "2026-09-15T08:50:00.000Z",
     "to": "2026-09-15T09:45:00.000Z"
   },
+  "canonicalPhysicalEpisode": {
+    "refuelRiseStartUtc": null,
+    "provenance": "UNVERIFIED_NO_INDEPENDENT_ANCHOR",
+    "evidenceRef": "EED-EV-0104 bounded spine only — first sample is not independent ground truth"
+  },
   "providerAggregationSemantics": {
     "signal": "powertrainFuelSystemAbsoluteLevel",
     "aggregation": "AVG",

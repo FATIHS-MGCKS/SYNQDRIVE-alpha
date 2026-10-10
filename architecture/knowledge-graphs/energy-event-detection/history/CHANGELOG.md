@@ -1,5 +1,11 @@
 # KG-EED Changelog
 
+## 2026-10-10 — OQ-014 R4A canonical event attribution final seal (EED-EV-0109)
+
+- Independent canonical refuel anchors (`rfrf-oq014-r4a-canonical-event-anchors.lib.ts`); fail-closed rise attribution without nearest-rise or first-sample ground truth
+- Per-event CI artifact **v3**; authoritative calibration metric N=5 vs population N=6; `WOB_7503_2026_09_15` remains `UNVERIFIED_EVENT_ANCHOR`
+- Jest: `rfrf-oq014-r4a-canonical-attribution-seal.spec.ts` + updated attribution/metrics specs; **CALIBRATION_INSUFFICIENT** unchanged
+
 ## 2026-10-09 — OQ-014 R3B v2→v2 physical candidate rediscovery (EED-EV-0108)
 
 - Version-aware v2→v2 matcher authority: revised `SETTLED_MEDIAN` reconciles when physical identity + FRESH baseline proven; fail-closed otherwise

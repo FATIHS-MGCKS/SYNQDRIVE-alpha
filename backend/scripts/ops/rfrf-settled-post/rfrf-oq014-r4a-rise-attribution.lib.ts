@@ -1,8 +1,10 @@
 import type { DetectedRiseDraft } from '../../../src/modules/vehicle-intelligence/energy-events/raw-fuel-rise-detector/raw-fuel-rise-state-machine';
+import type { R4aResolvedCanonicalEventAnchors } from './rfrf-oq014-r4a-canonical-event-anchors.lib';
+import { anchorIsVerifiedForAttribution } from './rfrf-oq014-r4a-canonical-event-anchors.lib';
 
 export interface R4aEventRiseAnchors {
   eventId: string;
-  eventTimestamp: Date;
+  canonicalRefuelTimestamp: Date;
   episodeWindowFrom: Date;
   episodeWindowTo: Date;
 }
@@ -10,13 +12,29 @@ export interface R4aEventRiseAnchors {
 export type R4aRiseAttributionResult =
   | { status: 'ATTRIBUTED'; rise: DetectedRiseDraft }
   | { status: 'AMBIGUOUS'; candidateCount: number; reason: string }
-  | { status: 'NONE'; reason: string };
+  | { status: 'NONE'; reason: string }
+  | { status: 'UNVERIFIED_EVENT_ANCHOR'; reason: string }
+  | { status: 'INVALID_EVENT_ANCHOR'; reason: string }
+  | { status: 'ANCHOR_NOT_CONTAINED_IN_RISE'; reason: string };
 
-const INDISTINGUISHABLE_PROXIMITY_MS = 60_000;
+function risePhysicalEpisodeBounds(rise: DetectedRiseDraft): { startMs: number; endMs: number } {
+  const risePointTimes = rise.risePoints.map((p) => p.timestamp.getTime());
+  const preTimes = rise.prePlateau.samples.map((p) => p.timestamp.getTime());
+  const postTimes = rise.postPlateau?.samples.map((p) => p.timestamp.getTime()) ?? [];
+  const candidates = [
+    rise.riseOnsetAt.getTime(),
+    rise.riseEndAt.getTime(),
+    ...risePointTimes,
+    ...preTimes,
+    ...postTimes,
+  ];
+  return { startMs: Math.min(...candidates), endMs: Math.max(...candidates) };
+}
 
-function riseContainsEventTimestamp(rise: DetectedRiseDraft, eventTimestamp: Date): boolean {
-  const t = eventTimestamp.getTime();
-  return rise.riseOnsetAt.getTime() <= t && t <= rise.riseEndAt.getTime();
+function riseContainsCanonicalTimestamp(rise: DetectedRiseDraft, canonicalRefuelTimestamp: Date): boolean {
+  const t = canonicalRefuelTimestamp.getTime();
+  const { startMs, endMs } = risePhysicalEpisodeBounds(rise);
+  return startMs <= t && t <= endMs;
 }
 
 function riseOverlapsEpisodeWindow(
@@ -30,31 +48,42 @@ function riseOverlapsEpisodeWindow(
   );
 }
 
-function distanceToRiseIntervalMs(rise: DetectedRiseDraft, eventTimestamp: Date): number {
-  const t = eventTimestamp.getTime();
-  const start = rise.riseOnsetAt.getTime();
-  const end = rise.riseEndAt.getTime();
-  if (t < start) return start - t;
-  if (t > end) return t - end;
-  return 0;
-}
-
 /**
- * Attribute exactly one channel rise to a canonical calibration event using
- * episode window + event timestamp anchors — never highest-peak heuristics alone.
+ * Attribute a channel rise only when an independently verified canonical refuel timestamp
+ * lies inside exactly one detected rise interval — no nearest-rise fallback.
  */
 export function attributeChannelRiseToCanonicalEvent(
   rises: DetectedRiseDraft[],
-  anchors: R4aEventRiseAnchors,
+  resolvedAnchors: R4aResolvedCanonicalEventAnchors,
 ): R4aRiseAttributionResult {
+  if (!anchorIsVerifiedForAttribution(resolvedAnchors)) {
+    return {
+      status: 'UNVERIFIED_EVENT_ANCHOR',
+      reason: resolvedAnchors.provenanceDetail,
+    };
+  }
+
+  const canonicalRefuelTimestamp = new Date(resolvedAnchors.canonicalRefuelTimestampUtc!);
+  if (!Number.isFinite(canonicalRefuelTimestamp.getTime())) {
+    return { status: 'INVALID_EVENT_ANCHOR', reason: 'CANONICAL_REFUEL_TIMESTAMP_INVALID' };
+  }
+
+  const episodeWindowFrom = new Date(resolvedAnchors.queryWindowFromUtc);
+  const episodeWindowTo = new Date(resolvedAnchors.queryWindowToUtc);
+  if (!Number.isFinite(episodeWindowFrom.getTime()) || !Number.isFinite(episodeWindowTo.getTime())) {
+    return { status: 'INVALID_EVENT_ANCHOR', reason: 'QUERY_WINDOW_INVALID' };
+  }
+
   const inEpisode = rises.filter((r) =>
-    riseOverlapsEpisodeWindow(r, anchors.episodeWindowFrom, anchors.episodeWindowTo),
+    riseOverlapsEpisodeWindow(r, episodeWindowFrom, episodeWindowTo),
   );
   if (inEpisode.length === 0) {
     return { status: 'NONE', reason: 'NO_RISE_IN_EPISODE_WINDOW' };
   }
 
-  const containing = inEpisode.filter((r) => riseContainsEventTimestamp(r, anchors.eventTimestamp));
+  const containing = inEpisode.filter((r) =>
+    riseContainsCanonicalTimestamp(r, canonicalRefuelTimestamp),
+  );
   if (containing.length === 1) {
     return { status: 'ATTRIBUTED', rise: containing[0] };
   }
@@ -62,24 +91,12 @@ export function attributeChannelRiseToCanonicalEvent(
     return {
       status: 'AMBIGUOUS',
       candidateCount: containing.length,
-      reason: 'MULTIPLE_RISES_CONTAIN_EVENT_TIMESTAMP',
+      reason: 'MULTIPLE_RISES_CONTAIN_CANONICAL_REFUEL_TIMESTAMP',
     };
   }
 
-  const ranked = inEpisode
-    .map((rise) => ({ rise, distMs: distanceToRiseIntervalMs(rise, anchors.eventTimestamp) }))
-    .sort((a, b) => a.distMs - b.distMs);
-
-  if (
-    ranked.length >= 2 &&
-    ranked[1].distMs - ranked[0].distMs < INDISTINGUISHABLE_PROXIMITY_MS
-  ) {
-    return {
-      status: 'AMBIGUOUS',
-      candidateCount: inEpisode.length,
-      reason: 'INDISTINGUISHABLE_RISE_PROXIMITY_TO_EVENT_ANCHOR',
-    };
-  }
-
-  return { status: 'ATTRIBUTED', rise: ranked[0].rise };
+  return {
+    status: 'ANCHOR_NOT_CONTAINED_IN_RISE',
+    reason: 'CANONICAL_REFUEL_TIMESTAMP_NOT_INSIDE_ANY_DETECTED_RISE',
+  };
 }

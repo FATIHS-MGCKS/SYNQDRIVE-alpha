@@ -11,6 +11,7 @@ import { RAW_FUEL_RISE_DETECTOR_CONFIG_V1 } from './raw-fuel-rise-detector.confi
 import { normalizeRawFuelSamples } from './raw-fuel-rise-normalizer';
 import type { NormalizedRawFuelSample } from './raw-fuel-rise-normalizer';
 import { detectChannelRises } from './raw-fuel-rise-state-machine';
+import { resolveCanonicalEventAnchors } from '../../../../../scripts/ops/rfrf-settled-post/rfrf-oq014-r4a-canonical-event-anchors.lib';
 import { attributeChannelRiseToCanonicalEvent } from '../../../../../scripts/ops/rfrf-settled-post/rfrf-oq014-r4a-rise-attribution.lib';
 import { scanRawFuelRisePhases } from './raw-fuel-rise-phase-scanner';
 import { buildStructuralSymbolsFromDetectorConfig } from './raw-fuel-rise-phase-scanner.types';
@@ -38,15 +39,11 @@ const CALIBRATION_BUNDLE = {
 
 function pickAttributedChannelRise(
   samples: NormalizedRawFuelSample[],
-  row: { id: string; eventTimestamp: string; window: { from: string; to: string } },
+  row: (typeof DEFENSIBLE_NATURAL_CALIBRATION_ROWS)[number],
 ) {
   const rises = detectChannelRises(samples, 'ABSOLUTE_LITERS', RAW_FUEL_RISE_DETECTOR_CONFIG_V1);
-  const attribution = attributeChannelRiseToCanonicalEvent(rises, {
-    eventId: row.id,
-    eventTimestamp: new Date(row.eventTimestamp),
-    episodeWindowFrom: new Date(row.window.from),
-    episodeWindowTo: new Date(row.window.to),
-  });
+  const anchors = resolveCanonicalEventAnchors(row.id, row, null);
+  const attribution = attributeChannelRiseToCanonicalEvent(rises, anchors);
   return attribution.status === 'ATTRIBUTED' ? attribution.rise : null;
 }
 

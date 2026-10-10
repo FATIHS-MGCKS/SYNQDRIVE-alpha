@@ -32,6 +32,7 @@ import {
   computeAllR4aEligibleMetrics,
   computeR4aPerEventMetrics,
   KS_MS_661_CANONICAL_CALIBRATION_EVENT_ID,
+  isAuthoritativeCalibrationMetric,
   summarizeDropCalibration,
 } from './rfrf-oq014-r4a-calibration-metrics.lib';
 import { RAW_FUEL_RISE_DETECTOR_CONFIG_V1 } from '../../../src/modules/vehicle-intelligence/energy-events/raw-fuel-rise-detector/raw-fuel-rise-detector.config';
@@ -136,6 +137,11 @@ describe('RFRF OQ-014 R4A calibration integrity (offline)', () => {
     expect(wob915.sourceProvenanceGrade).toBe(
       'BOUNDED_SPINE_EXTRACT_REPLAYABLE_NOT_CALIBRATION_GRADE',
     );
+    expect(wob915.riseAttributionStatus).toBe('UNVERIFIED_EVENT_ANCHOR');
+    expect(wob915.authoritativeCalibrationMetricEligible).toBe(false);
+    expect(wob915.canonicalEventAnchor.firstSampleTimestampUtc).not.toBe(
+      wob915.canonicalEventAnchor.canonicalRefuelTimestampUtc,
+    );
 
     const ksMx904 = byId.get('KS_MX_2024_2026_09_04')!;
     expect(ksMx904.sourceProvenanceGrade).toBe(
@@ -143,15 +149,19 @@ describe('RFRF OQ-014 R4A calibration integrity (offline)', () => {
     );
 
     const summary = summarizeDropCalibration(metrics);
-    expect(summary.n).toBe(6);
+    expect(summary.populationN).toBe(6);
+    expect(summary.authoritativeN).toBe(metrics.filter(isAuthoritativeCalibrationMetric).length);
+    expect(summary.authoritativeN).toBeLessThan(6);
     expect(summary.dropMin).toBe(0);
     expect(summary.dropMax).toBe(1);
-    expect(summary.dropMedian).toBe(0);
   });
 
   it('R4A-MET-2 committed per-event CI evidence artifact matches live computation', () => {
     const live = buildR4aPerEventCalibrationEvidenceArtifact();
+    expect(live.schemaVersion).toBe('rfrf-oq014-r4a-per-event-calibration-v3');
     expect(live.events.length).toBe(6);
+    expect(live.dropCalibrationPopulationN).toBe(6);
+    expect(live.authoritativeCalibrationMetricN).toBeLessThan(6);
     expect(live.calibrationDecision).toBe('CALIBRATION_INSUFFICIENT');
     expect(live.evidenceAcquisitionPlanningTargets.note).toContain('Planning targets');
 

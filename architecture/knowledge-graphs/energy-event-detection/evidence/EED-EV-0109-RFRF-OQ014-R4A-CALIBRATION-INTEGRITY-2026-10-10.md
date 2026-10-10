@@ -30,10 +30,14 @@
 
 ## B. Calibration sufficiency (reproducible offline)
 
-Per-event metrics computed by `rfrf-oq014-r4a-calibration-metrics.lib.ts` + Jest `rfrf-oq014-r4a-calibration-integrity.spec.ts` (REPLAY_HYPOTHESIS bundle only). **Observed** `maxSettledWindowInternalGapMs` is measured inside the R3A settled window; `configuredScannerMaxSampleGapMs` is reported separately. Rise selection uses event-timestamp attribution (`rfrf-oq014-r4a-rise-attribution.lib.ts`), not highest-peak heuristics. CI-committed artifact: `evidence/data/RFRF-OQ014-R4A-PER-EVENT-CALIBRATION-RESULTS.json`.
+Per-event metrics computed by `rfrf-oq014-r4a-calibration-metrics.lib.ts` + Jest `rfrf-oq014-r4a-calibration-integrity.spec.ts` (REPLAY_HYPOTHESIS bundle only). **Observed** `maxSettledWindowInternalGapMs` is measured inside the R3A settled window; `configuredScannerMaxSampleGapMs` is reported separately.
 
-| Statistic (eligible N=6) | Observed (offline replay) |
-|--------------------------|---------------------------|
+**Canonical event attribution (R4A seal):** `resolveCanonicalEventAnchors` separates query-window bounds, first telemetry sample, and independently verified canonical refuel timestamps (`COMMITTED_DEFENSIBLE_PACK_PHYSICAL_EVENT`, `PRODUCTION_FORENSIC_PHYSICAL_EPISODE`, or `UNVERIFIED`). `attributeChannelRiseToCanonicalEvent` attributes only when the verified canonical timestamp lies inside exactly one detected rise physical episode — **no** first-sample ground truth and **no** nearest-rise fallback. `UNVERIFIED_EVENT_ANCHOR` / `ANCHOR_NOT_CONTAINED_IN_RISE` exclude rows from **authoritative** calibration statistics while preserving drop-calibration **population** N=6. CI-committed artifact: `evidence/data/RFRF-OQ014-R4A-PER-EVENT-CALIBRATION-RESULTS.json` (**schema v3**).
+
+| Statistic | Observed (offline replay) |
+|-----------|---------------------------|
+| Drop-calibration population N | 6 |
+| Authoritative calibration metric N (verified attribution) | 5 (excludes `WOB_7503_2026_09_15` — `UNVERIFIED_EVENT_ANCHOR`) |
 | Peak→settled drop L min / median / max | 0 / 0 / 1 |
 | Peak→settled ratio min / median / max | 0 / 0 / ≤0.0714 |
 | WOB 09-19 `peakToSettledElapsedMs` | 2_325_000 (**observation delay**, timing-ineligible) |
@@ -53,7 +57,7 @@ Per-event metrics computed by `rfrf-oq014-r4a-calibration-metrics.lib.ts` + Jest
 | Terminal F3 dominance | `assertTerminalRejectionDominatesSettledPost` — PASS |
 | REPLAY_HYPOTHESIS sensitivity grid SAFETY_NEGATIVE leaks | 0 at default hypothesis point |
 | A12 second refuel (T21 class) | remains SAFETY_NEGATIVE |
-| R3A + settled-post harness | 17/17 Jest tests PASS (`npm run test:rfrf:settled-post-replay`) |
+| R3A + settled-post harness | 28/28 Jest tests PASS (`npm run test:rfrf:settled-post-replay`) |
 
 Per-event eligible outcomes recorded in spec **R4A-MET-2** (stdout contract in CI).
 
