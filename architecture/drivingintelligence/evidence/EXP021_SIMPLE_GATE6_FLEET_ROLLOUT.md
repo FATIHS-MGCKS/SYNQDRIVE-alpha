@@ -57,3 +57,15 @@ Code authority: `di-v0-s4-fleet-rollout.lib.ts` — `evaluateRolloutWaveAllowlis
 4. **EMERGENCY_REKILL** — independent shutdown  
 
 **Not executed in this workstream:** Production mutation, deploy, kill switch OPEN, env allowlist edits on VPS.
+
+## E — PR #1962 final live execution closure (2026-10-10)
+
+| Fix | Detail |
+|-----|--------|
+| LIVE_OPEN preflight vs boundary | Wrapper writes `DI_S4F7AS_*` proofs to `DI_S4_GATE6_GUARD_PROOF_BUNDLE_PATH` (600 file, `COLLECTOR=GATE6_WRAPPER_V1`); keys **unset** from process env before CLI on Production; `evaluateProductionGuardProofChannel` rejects caller-injected `DI_S4F7AS_*` |
+| Root execution | `sudo -n` runs pinned `di-v0-s4-gate6-live-open-as-root.sh` with whitelist intent file — no `sudo -E env`; CLI uses `node_modules/.bin/ts-node` (no `npx --yes` under root on Production) |
+| Explicit confirmations | No defaults for `DI_S4_GATE6_PILOT_VEHICLE_CONFIRM` (wave 1) or `DI_S4_GATE6_ROLLOUT_WAVE`; `DI_S4_GATE6_ROLLOUT_WAVE_CONFIRM` must match wave |
+| Wave promotion | `WAVE_PROMOTION` when GLOBAL `NOT_KILLED` + S4 persistence nonzero — skips initial OPEN transaction (`orchestrateWavePromotionVerify`); allowlist guards still apply per target wave |
+| Monitoring scope | `monitoringQueriesForWave(wave)` scopes tenant-isolation SQL to current rollout vehicle set |
+
+**Tests:** `npm run test:di:s4f7as:gate6-open-rekill-operator` — 43 PASS (fixture wrapper PREFLIGHT→DRY_RUN path; bundle channel; wave promotion orchestration).

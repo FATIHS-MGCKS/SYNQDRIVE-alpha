@@ -1721,6 +1721,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | PR #1939 — align S4F-7AK / CURRENT_STATE / CHANGE_LEDGER: S4F-7AI = Production **`DRY_RUN=1` only**; live = detached `ed78748bc…` S4F-7Y operator (not S4F-7AI) |
 | NON_EFFECTS | No operator code change; no Production execution |
 
+### EXP-021 Simple Gate-6 + fleet rollout (2026-10-10)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Remove custom Gate-6 crypto chain; OS wrapper auth; fleet waves 1–3; evidence `EXP021_SIMPLE_GATE6_FLEET_ROLLOUT.md` |
+| TESTS | `test:di:s4f7as:gate6-open-rekill-operator` **37** PASS |
+| NON_EFFECTS | No Production mutation; GLOBAL **KILLED**; legacy HMAC root key not removed on VPS |
+
 ### EXP-021 S4F-7AZ Privileged writer model closure (2026-10-10)
 
 | Event | Detail |

@@ -20,6 +20,7 @@ import {
   DI_S4_GATE6_ROLLOUT_WAVE_ENV,
   evaluateRolloutWaveAllowlists,
   parseRolloutWave,
+  ROLLOUT_WAVE_VEHICLE_IDS,
   type RolloutWave,
 } from './di-v0-s4-fleet-rollout.lib';
 import { envMapFromFileContent } from '../di-v0-s4f-global-budget-rollout/di-v0-s4f-global-budget-rollout.lib';
@@ -30,19 +31,31 @@ export const DI_S4_GATE6_OPEN_AUTHORIZED_ENV = 'DI_S4_GATE6_OPEN_AUTHORIZED';
 export const DI_S4_GATE6_EMERGENCY_REKILL_ACK_ENV = 'DI_S4_GATE6_EMERGENCY_REKILL_ACK';
 export const DI_S4_GATE6_ACCEPTED_ACK = 'YES';
 
-export const GATE6_MONITORING_QUERIES = {
-  globalKill: `SELECT kill_state::text, left(reason, 80), left(actor, 80), updated_at FROM di_v0_s4_control WHERE id = 'GLOBAL';`,
-  s4WorkItemsPilot: `SELECT id, status, trip_id, organization_id, vehicle_id, updated_at
+export function monitoringQueriesForWave(wave: RolloutWave): {
+  globalKill: string;
+  s4WorkItemsRollout: string;
+  s4SnapshotsRollout: string;
+  unexpectedTenantWork: string;
+} {
+  const vehicleIds = ROLLOUT_WAVE_VEHICLE_IDS[wave];
+  const vehicleInSql = vehicleIds.map((id) => `'${id}'`).join(', ');
+  return {
+    globalKill: `SELECT kill_state::text, left(reason, 80), left(actor, 80), updated_at FROM di_v0_s4_control WHERE id = 'GLOBAL';`,
+    s4WorkItemsRollout: `SELECT id, status, trip_id, organization_id, vehicle_id, updated_at
 FROM di_v0_s4_work_items
-WHERE vehicle_id = '${CANONICAL_TINY_VEHICLE_ID}'
+WHERE vehicle_id IN (${vehicleInSql})
 ORDER BY updated_at DESC LIMIT 20;`,
-  s4SnapshotsPilot: `SELECT id, trip_id, created_at FROM di_v0_s4_evidence_snapshots
-WHERE trip_id IN (SELECT id FROM vehicle_trips WHERE vehicle_id = '${CANONICAL_TINY_VEHICLE_ID}')
+    s4SnapshotsRollout: `SELECT id, trip_id, created_at FROM di_v0_s4_evidence_snapshots
+WHERE trip_id IN (SELECT id FROM vehicle_trips WHERE vehicle_id IN (${vehicleInSql}))
 ORDER BY created_at DESC LIMIT 20;`,
-  unexpectedTenantWork: `SELECT COUNT(*)::text FROM di_v0_s4_work_items
+    unexpectedTenantWork: `SELECT COUNT(*)::text FROM di_v0_s4_work_items
 WHERE organization_id <> '${CANONICAL_TINY_ORGANIZATION_ID}'
-   OR vehicle_id <> '${CANONICAL_TINY_VEHICLE_ID}';`,
-} as const;
+   OR vehicle_id NOT IN (${vehicleInSql});`,
+  };
+}
+
+/** Wave-1 monitoring queries (legacy alias). */
+export const GATE6_MONITORING_QUERIES = monitoringQueriesForWave(1);
 
 export const GATE6_ABORT_CONDITIONS = [
   'GLOBAL_KILL_STATE unexpected (not NOT_KILLED during pilot window)',
@@ -78,7 +91,13 @@ export type Gate6OpenGuardFailure =
   | 'ATTESTATION_FP_MISMATCH_B'
   | 'ATTESTATION_FP_PARITY'
   | 'EXPECTED_ATTESTATION_FP_MISMATCH'
-  | 'ROLLOUT_ALLOWLIST_INVALID';
+  | 'ROLLOUT_ALLOWLIST_INVALID'
+  | 'ROLLOUT_WAVE_MISSING'
+  | 'ROLLOUT_WAVE_INVALID'
+  | 'GLOBAL_PRESTATE_MUST_BE_KILLED_FOR_INITIAL_OPEN'
+  | 'GLOBAL_PRESTATE_MUST_BE_NOT_KILLED_FOR_WAVE_PROMOTION';
+
+export type Gate6OpenIntent = 'INITIAL_OPEN' | 'WAVE_PROMOTION';
 
 export interface Gate6OpenGuardInput {
   gate6Ack: string | undefined;
@@ -117,9 +136,31 @@ export function assertFiveFlagsOnInEnv(
   return { ok: failures.length === 0, failures };
 }
 
+function s4PersistenceNonZero(s4Read: ReturnType<typeof parseS4PersistenceDbLines>): boolean {
+  if (!s4Read.ok) return false;
+  const c = s4Read.counts;
+  return (
+    c.pipelineRegistry > 0 ||
+    c.workItems > 0 ||
+    c.activeWorkItems > 0 ||
+    c.evidenceSnapshots > 0 ||
+    c.shadowRuns > 0 ||
+    c.shadowIntervals > 0
+  );
+}
+
+export function resolveGate6OpenIntent(input: Gate6OpenGuardInput): Gate6OpenIntent {
+  const globalRead = parseGlobalRowDbLines(input.globalRowLines, false);
+  const s4Read = parseS4PersistenceDbLines(input.s4PersistenceLines);
+  if (globalRead.ok && globalRead.killState === 'NOT_KILLED' && s4PersistenceNonZero(s4Read)) {
+    return 'WAVE_PROMOTION';
+  }
+  return 'INITIAL_OPEN';
+}
+
 function evaluateGate6CoreGuards(
   input: Gate6OpenGuardInput,
-  options: { requireOperatorAck: boolean },
+  options: { requireOperatorAck: boolean; openIntent?: Gate6OpenIntent },
 ): { ok: boolean; failures: Gate6OpenGuardFailure[] } {
   const failures: Gate6OpenGuardFailure[] = [];
   if (options.requireOperatorAck) {
@@ -139,22 +180,20 @@ function evaluateGate6CoreGuards(
     failures.push('ENV_HASH_MISMATCH');
   }
 
+  const openIntent = options.openIntent ?? resolveGate6OpenIntent(input);
+
   const globalRead = parseGlobalRowDbLines(input.globalRowLines, false);
   if (!globalRead.ok) failures.push('GLOBAL_PRESTATE_READ_FAILED');
-  else if (globalRead.killState !== 'KILLED') failures.push('GLOBAL_PRESTATE_NOT_KILLED');
+  else if (openIntent === 'INITIAL_OPEN' && globalRead.killState !== 'KILLED') {
+    failures.push('GLOBAL_PRESTATE_NOT_KILLED');
+  } else if (openIntent === 'WAVE_PROMOTION' && globalRead.killState !== 'NOT_KILLED') {
+    failures.push('GLOBAL_PRESTATE_MUST_BE_NOT_KILLED_FOR_WAVE_PROMOTION');
+  }
 
   const s4Read = parseS4PersistenceDbLines(input.s4PersistenceLines);
   if (!s4Read.ok) failures.push('S4_PERSISTENCE_READ_FAILED');
-  else {
-    const c = s4Read.counts;
-    const nonzero =
-      c.pipelineRegistry > 0 ||
-      c.workItems > 0 ||
-      c.activeWorkItems > 0 ||
-      c.evidenceSnapshots > 0 ||
-      c.shadowRuns > 0 ||
-      c.shadowIntervals > 0;
-    if (nonzero) failures.push('S4_PERSISTENCE_NONZERO');
+  else if (openIntent === 'INITIAL_OPEN' && s4PersistenceNonZero(s4Read)) {
+    failures.push('S4_PERSISTENCE_NONZERO');
   }
 
   const five = assertFiveFlagsOnInEnv(input.envContent, input.rolloutWave);
@@ -196,8 +235,21 @@ export function evaluateGate6PreflightGuards(input: Gate6OpenGuardInput): { ok: 
   return evaluateGate6CoreGuards(input, { requireOperatorAck: false });
 }
 
+export function requireRolloutWaveFromEnv(
+  env: NodeJS.ProcessEnv = process.env,
+): { ok: true; wave: RolloutWave } | { ok: false; failure: 'ROLLOUT_WAVE_MISSING' | 'ROLLOUT_WAVE_INVALID' } {
+  const raw = (env[DI_S4_GATE6_ROLLOUT_WAVE_ENV] ?? '').trim();
+  if (!raw) return { ok: false, failure: 'ROLLOUT_WAVE_MISSING' };
+  const wave = parseRolloutWave(raw);
+  if (!wave) return { ok: false, failure: 'ROLLOUT_WAVE_INVALID' };
+  return { ok: true, wave };
+}
+
+/** @deprecated prefer requireRolloutWaveFromEnv for mutating operator paths */
 export function rolloutWaveFromEnv(env: NodeJS.ProcessEnv = process.env): RolloutWave {
-  return parseRolloutWave(env[DI_S4_GATE6_ROLLOUT_WAVE_ENV]) ?? 1;
+  const required = requireRolloutWaveFromEnv(env);
+  if (!required.ok) return 1;
+  return required.wave;
 }
 
 export function parseReplicaAttestationFingerprint(metricsBody: string): string {

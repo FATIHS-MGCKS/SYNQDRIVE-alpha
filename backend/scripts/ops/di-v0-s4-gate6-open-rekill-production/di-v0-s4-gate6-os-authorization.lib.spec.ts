@@ -4,6 +4,7 @@ import {
 import {
   DI_S4_GATE6_DRY_RUN_AUTHORIZED_ENV,
   DI_S4_GATE6_PILOT_VEHICLE_CONFIRM_ENV,
+  DI_S4_GATE6_ROLLOUT_WAVE_CONFIRM_ENV,
   DI_S4_GATE6_TEST_OS_ROOT_ENV,
   DI_S4_GATE6_WRAPPER_ATTESTATION_ENV,
   DI_S4_GATE6_WRAPPER_ATTESTATION_VALUE,
@@ -20,6 +21,8 @@ describe('Gate-6 OS authorization', () => {
     const r = evaluateGate6OsAuthorizationForAction('LIVE_OPEN', {
       [DI_S4_GATE6_WRAPPER_ACTION_ENV]: 'LIVE_OPEN',
       [DI_S4_GATE6_PILOT_VEHICLE_CONFIRM_ENV]: CANONICAL_TINY_VEHICLE_ID,
+      DI_S4_GATE6_ROLLOUT_WAVE: '1',
+      [DI_S4_GATE6_ROLLOUT_WAVE_CONFIRM_ENV]: '1',
       DI_S4F7AS_TEST_MODE: '1',
       [DI_S4_GATE6_TEST_OS_ROOT_ENV]: '1',
     });
@@ -31,6 +34,8 @@ describe('Gate-6 OS authorization', () => {
       ...baseWrapper,
       [DI_S4_GATE6_WRAPPER_ACTION_ENV]: 'LIVE_OPEN',
       [DI_S4_GATE6_PILOT_VEHICLE_CONFIRM_ENV]: CANONICAL_TINY_VEHICLE_ID,
+      DI_S4_GATE6_ROLLOUT_WAVE: '1',
+      [DI_S4_GATE6_ROLLOUT_WAVE_CONFIRM_ENV]: '1',
       DI_S4F7AS_TEST_MODE: '0',
     });
     const isRoot = typeof process.geteuid === 'function' && process.geteuid() === 0;
@@ -40,6 +45,8 @@ describe('Gate-6 OS authorization', () => {
       ...baseWrapper,
       [DI_S4_GATE6_WRAPPER_ACTION_ENV]: 'LIVE_OPEN',
       [DI_S4_GATE6_PILOT_VEHICLE_CONFIRM_ENV]: CANONICAL_TINY_VEHICLE_ID,
+      DI_S4_GATE6_ROLLOUT_WAVE: '1',
+      [DI_S4_GATE6_ROLLOUT_WAVE_CONFIRM_ENV]: '1',
       DI_S4F7AS_TEST_MODE: '1',
       [DI_S4_GATE6_TEST_OS_ROOT_ENV]: '1',
     });

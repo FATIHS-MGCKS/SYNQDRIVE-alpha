@@ -107,11 +107,116 @@ s4f7as_wrapper_backend_root() {
   return 1
 }
 
+S4F7AS_GUARD_PROOF_BUNDLE_KEYS=(
+  DI_S4F7AS_GLOBAL_ROW_LINES
+  DI_S4F7AS_S4_PERSISTENCE_LINES
+  DI_S4F7AS_ENV_CONTENT
+  DI_S4F7AS_VEHICLE_DB_LINES
+  DI_S4F7AS_TOPOLOGY_OK
+  DI_S4F7AS_BUDGET_CONFIG_OK
+  DI_S4F7AS_BUDGET_RUNTIME_OK
+  DI_S4F7AS_REDIS_OK
+)
+
+s4f7as_publish_guard_proof_bundle_for_cli() {
+  if ! s4f7as_is_production_backend_env_path; then
+    return 0
+  fi
+  local bundle key val
+  bundle="$(mktemp)"
+  chmod 600 "$bundle"
+  {
+    echo "COLLECTOR=GATE6_WRAPPER_V1"
+    for key in "${S4F7AS_GUARD_PROOF_BUNDLE_KEYS[@]}"; do
+      val="${!key:-}"
+      if [[ -n "$val" ]]; then
+        if base64 -w0 </dev/null >/dev/null 2>&1; then
+          printf '%s=%s\n' "$key" "$(printf '%s' "$val" | base64 -w0)"
+        else
+          printf '%s=%s\n' "$key" "$(printf '%s' "$val" | base64)"
+        fi
+      fi
+    done
+  } >"$bundle"
+  export DI_S4_GATE6_GUARD_PROOF_BUNDLE_PATH="$bundle"
+  for key in "${S4F7AS_GUARD_PROOF_BUNDLE_KEYS[@]}"; do
+    unset "$key" || true
+  done
+  echo "GUARD_PROOF_BUNDLE_PUBLISHED=YES"
+  return 0
+}
+
+s4f7as_assert_production_cli_runtime_safe() {
+  if ! s4f7as_is_production_backend_env_path; then
+    return 0
+  fi
+  if [[ "$(id -u)" -eq 0 ]]; then
+    if [[ -n "${NODE_OPTIONS:-}" || -n "${NPM_CONFIG_PREFIX:-}" || -n "${NPM_CONFIG_CACHE:-}" ]]; then
+      echo "ROOT_ENV_INJECTION_BLOCKED=YES"
+      return 1
+    fi
+  fi
+  return 0
+}
+
 s4f7as_run_cli() {
   local backend_root
   backend_root="$(s4f7as_wrapper_backend_root)" || return 1
+  s4f7as_publish_guard_proof_bundle_for_cli || return 1
+  s4f7as_assert_production_cli_runtime_safe || return 1
   local cli_rel="scripts/ops/di-v0-s4-gate6-open-rekill-production/di-v0-s4-gate6-open-rekill-production-cli.ts"
-  (cd "$backend_root" && npx --yes ts-node --transpile-only "$cli_rel" "$@")
+  local ts_node="${backend_root}/node_modules/.bin/ts-node"
+  if [[ ! -x "$ts_node" ]]; then
+    echo "PINNED_TS_NODE_MISSING=YES"
+    return 1
+  fi
+  if s4f7as_is_production_backend_env_path && [[ "$(id -u)" -eq 0 ]] && command -v npx >/dev/null 2>&1; then
+    echo "ROOT_NPX_FORBIDDEN=YES"
+    return 1
+  fi
+  (cd "$backend_root" && "$ts_node" --transpile-only "$cli_rel" "$@")
+}
+
+s4f7as_assert_explicit_rollout_wave() {
+  if [[ -z "${DI_S4_GATE6_ROLLOUT_WAVE:-}" ]]; then
+    echo "ROLLOUT_WAVE_MISSING=YES"
+    return 1
+  fi
+  case "${DI_S4_GATE6_ROLLOUT_WAVE}" in
+    1 | 2 | 3)
+      echo "EXPLICIT_ROLLOUT_WAVE=${DI_S4_GATE6_ROLLOUT_WAVE}"
+      return 0
+      ;;
+    *)
+      echo "ROLLOUT_WAVE_INVALID=YES"
+      return 1
+      ;;
+  esac
+}
+
+s4f7as_assert_rollout_wave_confirm() {
+  if [[ -z "${DI_S4_GATE6_ROLLOUT_WAVE_CONFIRM:-}" ]]; then
+    echo "ROLLOUT_WAVE_CONFIRM_MISSING=YES"
+    return 1
+  fi
+  if [[ "${DI_S4_GATE6_ROLLOUT_WAVE_CONFIRM}" != "${DI_S4_GATE6_ROLLOUT_WAVE:-}" ]]; then
+    echo "ROLLOUT_WAVE_CONFIRM_MISMATCH=YES"
+    return 1
+  fi
+  echo "ROLLOUT_WAVE_CONFIRM_OK=YES"
+  return 0
+}
+
+s4f7as_assert_pilot_vehicle_confirm_for_wave1() {
+  if [[ "${DI_S4_GATE6_ROLLOUT_WAVE:-}" != "1" ]]; then
+    return 0
+  fi
+  if [[ -z "${DI_S4_GATE6_PILOT_VEHICLE_CONFIRM:-}" ]]; then
+    echo "PILOT_VEHICLE_CONFIRM_MISSING=YES"
+    return 1
+  fi
+  echo "PILOT_VEHICLE_CONFIRM_PRESENT=YES"
+  return 0
 }
 
 s4f7as_fetch_replica_metrics_body() {
@@ -221,6 +326,9 @@ s4f7as_execute_preflight_mode() {
 
 s4f7as_execute_dry_run_mode() {
   s4f7as_assert_production_test_isolation || return 1
+  s4f7as_assert_explicit_rollout_wave || return 1
+  s4f7as_assert_rollout_wave_confirm || return 1
+  s4f7as_assert_pilot_vehicle_confirm_for_wave1 || return 1
   if [[ "${DI_S4_GATE6_OPEN_ACK:-}" != "YES" || "${DI_S4_GATE6_OPEN_AUTHORIZED:-}" != "YES" ]]; then
     echo "GATE6_OPEN_AUTHORIZATION=MISSING"
     return 1
@@ -239,11 +347,13 @@ s4f7as_execute_dry_run_mode() {
 
 s4f7as_execute_live_open_mode() {
   s4f7as_assert_production_test_isolation || return 1
+  s4f7as_assert_explicit_rollout_wave || return 1
+  s4f7as_assert_rollout_wave_confirm || return 1
+  s4f7as_assert_pilot_vehicle_confirm_for_wave1 || return 1
   if [[ "${DI_S4_GATE6_OPEN_ACK:-}" != "YES" || "${DI_S4_GATE6_OPEN_AUTHORIZED:-}" != "YES" ]]; then
     echo "GATE6_OPEN_AUTHORIZATION=MISSING"
     return 1
   fi
-  export DI_S4_GATE6_PILOT_VEHICLE_CONFIRM="${DI_S4_GATE6_PILOT_VEHICLE_CONFIRM:-c10351f8-b6a2-4258-947f-631aeaa6d359}"
   export DRY_RUN=0
   s4f7as_assert_open_audit_and_pins || return 1
   s4f7as_preflight_open_readonly || return 1

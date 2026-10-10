@@ -12,23 +12,38 @@ import {
   evaluateGate6OpenGuards,
   evaluateGate6PreflightGuards,
   type Gate6OpenGuardInput,
-  rolloutWaveFromEnv,
+  requireRolloutWaveFromEnv,
+  resolveGate6OpenIntent,
 } from './di-v0-s4-gate6-open-rekill-production.lib';
 import { evaluateProductionGate6LiveOpenBoundary } from './di-v0-s4-gate6-live-open-boundary.lib';
+import { resolveGate6GuardProofValues } from './di-v0-s4-gate6-guard-proof-bundle.lib';
 import { evaluateGate6ProductionPathIsolation } from './di-v0-s4-gate6-live-authority.lib';
 import { evaluateSimpleLiveOpenAuthority } from './di-v0-s4-gate6-simple-live-authority.lib';
 import {
   evaluateGate6OsAuthorizationForAction,
   type Gate6WrapperAction,
 } from './di-v0-s4-gate6-os-authorization.lib';
-import { orchestrateLiveOpenWithRecovery, readGlobalKillState } from './di-v0-s4-gate6-open-orchestration.lib';
+import {
+  orchestrateLiveOpenWithRecovery,
+  orchestrateWavePromotionVerify,
+  readGlobalKillState,
+} from './di-v0-s4-gate6-open-orchestration.lib';
 import { resolveCanonicalBackendEnvPathFromFilesystem } from './di-v0-s4-gate6-trusted-authority.lib';
 
-function buildOpenGuardInputFromEnv(): Gate6OpenGuardInput {
+function buildOpenGuardInputFromEnv(): Gate6OpenGuardInput | { error: string } {
+  const waveReq = requireRolloutWaveFromEnv(process.env);
+  if (!waveReq.ok) {
+    return { error: waveReq.failure };
+  }
+  const proof = resolveGate6GuardProofValues(process.env);
+  if (!proof.ok) {
+    return { error: proof.failures.join(',') };
+  }
+  const pv = proof.values;
   return {
     gate6Ack: process.env.DI_S4_GATE6_OPEN_ACK,
     gate6Authorized: process.env.DI_S4_GATE6_OPEN_AUTHORIZED,
-    rolloutWave: rolloutWaveFromEnv(process.env),
+    rolloutWave: waveReq.wave,
     requiredSha: process.env.DI_S4_TINY_STAGING_REQUIRED_SHA,
     actualSha: process.env.DI_S4_TINY_STAGING_ACTUAL_SHA,
     requiredReleaseId: process.env.DI_S4_TINY_STAGING_REQUIRED_RELEASE_ID,
@@ -38,15 +53,24 @@ function buildOpenGuardInputFromEnv(): Gate6OpenGuardInput {
     expectedAttestationFingerprint: process.env.DI_S4_GATE6_EXPECTED_ATTESTATION_FINGERPRINT,
     replicaAFingerprint: process.env.DI_S4_GATE6_REPLICA_A_ATTESTATION_FINGERPRINT,
     replicaBFingerprint: process.env.DI_S4_GATE6_REPLICA_B_ATTESTATION_FINGERPRINT,
-    globalRowLines: (process.env.DI_S4F7AS_GLOBAL_ROW_LINES ?? '').split('\n').filter(Boolean),
-    s4PersistenceLines: (process.env.DI_S4F7AS_S4_PERSISTENCE_LINES ?? '').split('\n').filter(Boolean),
-    envContent: process.env.DI_S4F7AS_ENV_CONTENT ?? '',
-    vehicleDbLines: (process.env.DI_S4F7AS_VEHICLE_DB_LINES ?? '').split('\n').filter(Boolean),
-    topologyOk: process.env.DI_S4F7AS_TOPOLOGY_OK === 'YES',
-    budgetConfigOk: process.env.DI_S4F7AS_BUDGET_CONFIG_OK === 'YES',
-    budgetRuntimeOk: process.env.DI_S4F7AS_BUDGET_RUNTIME_OK === 'YES',
-    redisOk: process.env.DI_S4F7AS_REDIS_OK === 'YES',
+    globalRowLines: (pv.DI_S4F7AS_GLOBAL_ROW_LINES ?? '').split('\n').filter(Boolean),
+    s4PersistenceLines: (pv.DI_S4F7AS_S4_PERSISTENCE_LINES ?? '').split('\n').filter(Boolean),
+    envContent: pv.DI_S4F7AS_ENV_CONTENT ?? '',
+    vehicleDbLines: (pv.DI_S4F7AS_VEHICLE_DB_LINES ?? '').split('\n').filter(Boolean),
+    topologyOk: pv.DI_S4F7AS_TOPOLOGY_OK === 'YES',
+    budgetConfigOk: pv.DI_S4F7AS_BUDGET_CONFIG_OK === 'YES',
+    budgetRuntimeOk: pv.DI_S4F7AS_BUDGET_RUNTIME_OK === 'YES',
+    redisOk: pv.DI_S4F7AS_REDIS_OK === 'YES',
   };
+}
+
+function guardInputOrExit(): Gate6OpenGuardInput {
+  const built = buildOpenGuardInputFromEnv();
+  if ('error' in built) {
+    console.log(`GUARD_INPUT_FAILURES=${built.error}`);
+    process.exit(1);
+  }
+  return built;
 }
 
 function auditFromEnv(): { reason: string; actor: string } {
@@ -85,15 +109,16 @@ async function main(): Promise<void> {
   switch (cmd) {
     case 'preflight':
     case 'guards-open': {
-      const r = evaluateGate6PreflightGuards(buildOpenGuardInputFromEnv());
+      const guardInput = guardInputOrExit();
+      const r = evaluateGate6PreflightGuards(guardInput);
       if (!r.ok) {
         console.log(`GUARD_FAILURES=${r.failures.join(',')}`);
         process.exit(1);
       }
       console.log('PREFLIGHT_OK=YES');
       console.log('GUARDS_OK=YES');
-      console.log('GLOBAL_PRESTATE_KILLED=YES');
-      console.log(`ROLLOUT_WAVE=${rolloutWaveFromEnv(process.env)}`);
+      console.log(`OPEN_INTENT=${resolveGate6OpenIntent(guardInput)}`);
+      console.log(`ROLLOUT_WAVE=${guardInput.rolloutWave}`);
       break;
     }
     case 'dry-run-open': {
@@ -104,7 +129,7 @@ async function main(): Promise<void> {
         console.log('AUDIT_FIELDS_MISSING=YES');
         process.exit(1);
       }
-      const guardInput = buildOpenGuardInputFromEnv();
+      const guardInput = guardInputOrExit();
       const guard = evaluateGate6OpenGuards(guardInput);
       if (!guard.ok) {
         console.log(`GUARD_FAILURES=${guard.failures.join(',')}`);
@@ -148,14 +173,24 @@ async function main(): Promise<void> {
       }
       const prisma = new PrismaClient();
       try {
-        const authority = await evaluateSimpleLiveOpenAuthority(prisma, buildOpenGuardInputFromEnv(), process.env);
+        const guardInput = guardInputOrExit();
+        const openIntent = resolveGate6OpenIntent(guardInput);
+        console.log(`OPEN_INTENT=${openIntent}`);
+        const authority = await evaluateSimpleLiveOpenAuthority(prisma, guardInput, process.env);
         if (!authority.ok) {
           console.log(`LIVE_OPEN_AUTHORITY_FAILURES=${authority.failures.join(',')}`);
           process.exit(1);
         }
         console.log('TRUSTED_BACKEND_ENV_VERIFIED=YES');
-        console.log('TRUSTED_GLOBAL_PRESTATE_KILLED=YES');
-        const orchestration = await orchestrateLiveOpenWithRecovery(prisma, audit);
+        const orchestration =
+          openIntent === 'WAVE_PROMOTION'
+            ? await orchestrateWavePromotionVerify(prisma)
+            : await orchestrateLiveOpenWithRecovery(prisma, audit);
+        if (openIntent === 'INITIAL_OPEN') {
+          console.log('TRUSTED_GLOBAL_PRESTATE_KILLED=YES');
+        } else {
+          console.log('TRUSTED_GLOBAL_PRESTATE_NOT_KILLED=YES');
+        }
         console.log(`LIVE_OPEN_OUTCOME=${orchestration.openResult?.outcome ?? 'COMMIT_OUTCOME_UNKNOWN'}`);
         console.log(`LIVE_OPEN_ORCHESTRATION=${orchestration.outcome}`);
         if (orchestration.openCommitUnknown) {
@@ -179,6 +214,17 @@ async function main(): Promise<void> {
           console.log('ENV_MUTATION_OCCURRED=NO');
           console.log('RESTART_OCCURRED=NO');
           break;
+        }
+        if (orchestration.outcome === 'WAVE_PROMOTION_VERIFIED_NOT_KILLED') {
+          console.log('GLOBAL_DB_MUTATION_OCCURRED=NO');
+          console.log('WAVE_PROMOTION_VERIFIED=YES');
+          console.log(`ROLLOUT_WAVE=${guardInput.rolloutWave}`);
+          console.log('ENV_MUTATION_OCCURRED=NO');
+          console.log('RESTART_OCCURRED=NO');
+          break;
+        }
+        if (orchestration.outcome === 'WAVE_PROMOTION_REFUSED_PRESTATE_KILLED') {
+          process.exit(1);
         }
         if (
           orchestration.outcome === 'OPEN_COMMITTED_POST_VERIFY_UNEXPECTED_REKILL_VERIFIED' ||

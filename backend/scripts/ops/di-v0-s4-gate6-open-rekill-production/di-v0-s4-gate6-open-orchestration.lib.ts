@@ -103,6 +103,8 @@ export async function attemptCompensatingRekillToKilled(
 
 export type LiveOpenOrchestrationOutcome =
   | 'OPEN_VERIFIED_NOT_KILLED'
+  | 'WAVE_PROMOTION_VERIFIED_NOT_KILLED'
+  | 'WAVE_PROMOTION_REFUSED_PRESTATE_KILLED'
   | 'OPEN_REFUSED'
   | 'OPEN_REFUSED_PRESTATE_NOT_KILLED'
   | 'OPEN_COMMITTED_POST_VERIFY_UNEXPECTED_REKILL_VERIFIED'
@@ -192,5 +194,22 @@ export async function orchestrateLiveOpenWithRecovery(
     openResult: openPhase.result,
     postOpenRead,
     compensatingRekill,
+  };
+}
+
+/** Allowlist wave promotion when GLOBAL is already NOT_KILLED — no repeat GLOBAL OPEN transaction. */
+export async function orchestrateWavePromotionVerify(
+  prisma: PrismaClient,
+): Promise<LiveOpenOrchestrationResult> {
+  const preOpen = await readGlobalKillState(prisma);
+  if (!preOpen.ok || preOpen.killState !== 'NOT_KILLED') {
+    return {
+      outcome: 'WAVE_PROMOTION_REFUSED_PRESTATE_KILLED',
+      postOpenRead: preOpen,
+    };
+  }
+  return {
+    outcome: 'WAVE_PROMOTION_VERIFIED_NOT_KILLED',
+    postOpenRead: preOpen,
   };
 }

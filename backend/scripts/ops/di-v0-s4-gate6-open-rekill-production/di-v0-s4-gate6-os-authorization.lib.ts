@@ -1,4 +1,5 @@
 import { CANONICAL_TINY_VEHICLE_ID } from '../di-v0-s4-fresh-tiny-staging-production/di-v0-s4-fresh-tiny-staging-authority';
+import { requireRolloutWaveFromEnv } from './di-v0-s4-gate6-open-rekill-production.lib';
 
 /** Set only by the pinned root-owned Gate-6 wrapper — not sufficient alone for LIVE_OPEN. */
 export const DI_S4_GATE6_WRAPPER_ATTESTATION_ENV = 'DI_S4_GATE6_WRAPPER_ATTESTATION';
@@ -9,6 +10,7 @@ export type Gate6WrapperAction = 'PREFLIGHT' | 'DRY_RUN' | 'LIVE_OPEN' | 'EMERGE
 
 export const DI_S4_GATE6_DRY_RUN_AUTHORIZED_ENV = 'DI_S4_GATE6_DRY_RUN_AUTHORIZED';
 export const DI_S4_GATE6_PILOT_VEHICLE_CONFIRM_ENV = 'DI_S4_GATE6_PILOT_VEHICLE_CONFIRM';
+export const DI_S4_GATE6_ROLLOUT_WAVE_CONFIRM_ENV = 'DI_S4_GATE6_ROLLOUT_WAVE_CONFIRM';
 
 /** Engineering tests only — never set on Production. */
 export const DI_S4_GATE6_TEST_OS_ROOT_ENV = 'DI_S4_GATE6_TEST_OS_ROOT';
@@ -21,7 +23,11 @@ export type Gate6OsAuthorizationFailure =
   | 'DRY_RUN_AUTHORIZATION_MISSING'
   | 'LIVE_OPEN_REQUIRES_ROOT_EUID'
   | 'PILOT_VEHICLE_CONFIRM_MISSING'
-  | 'PILOT_VEHICLE_CONFIRM_MISMATCH';
+  | 'PILOT_VEHICLE_CONFIRM_MISMATCH'
+  | 'ROLLOUT_WAVE_MISSING'
+  | 'ROLLOUT_WAVE_INVALID'
+  | 'ROLLOUT_WAVE_CONFIRM_MISSING'
+  | 'ROLLOUT_WAVE_CONFIRM_MISMATCH';
 
 function isEffectiveRoot(env: NodeJS.ProcessEnv): boolean {
   if (env.DI_S4F7AS_TEST_MODE === '1' && env[DI_S4_GATE6_TEST_OS_ROOT_ENV] === '1') {
@@ -75,9 +81,16 @@ export function evaluateGate6OsAuthorizationForAction(
 
   if (action === 'LIVE_OPEN') {
     if (!isEffectiveRoot(env)) failures.push('LIVE_OPEN_REQUIRES_ROOT_EUID');
-    const confirm = (env[DI_S4_GATE6_PILOT_VEHICLE_CONFIRM_ENV] ?? '').trim();
-    if (!confirm) failures.push('PILOT_VEHICLE_CONFIRM_MISSING');
-    else if (confirm !== CANONICAL_TINY_VEHICLE_ID) failures.push('PILOT_VEHICLE_CONFIRM_MISMATCH');
+    const waveReq = requireRolloutWaveFromEnv(env);
+    if (!waveReq.ok) failures.push(waveReq.failure);
+    const waveConfirm = (env[DI_S4_GATE6_ROLLOUT_WAVE_CONFIRM_ENV] ?? '').trim();
+    if (!waveConfirm) failures.push('ROLLOUT_WAVE_CONFIRM_MISSING');
+    else if (waveReq.ok && waveConfirm !== String(waveReq.wave)) failures.push('ROLLOUT_WAVE_CONFIRM_MISMATCH');
+    if (waveReq.ok && waveReq.wave === 1) {
+      const confirm = (env[DI_S4_GATE6_PILOT_VEHICLE_CONFIRM_ENV] ?? '').trim();
+      if (!confirm) failures.push('PILOT_VEHICLE_CONFIRM_MISSING');
+      else if (confirm !== CANONICAL_TINY_VEHICLE_ID) failures.push('PILOT_VEHICLE_CONFIRM_MISMATCH');
+    }
   }
 
   return failures.length ? { ok: false, failures } : { ok: true };

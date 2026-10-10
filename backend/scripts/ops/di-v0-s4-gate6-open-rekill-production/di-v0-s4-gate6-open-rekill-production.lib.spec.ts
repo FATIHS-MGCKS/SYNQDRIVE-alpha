@@ -21,6 +21,7 @@ import {
   evaluateEmergencyRekillAck,
   evaluateGate6OpenGuards,
   evaluateGate6PreflightGuards,
+  resolveGate6OpenIntent,
   type Gate6OpenGuardInput,
 } from './di-v0-s4-gate6-open-rekill-production.lib';
 import { evaluateGate6ProductionPathIsolation } from './di-v0-s4-gate6-live-authority.lib';
@@ -41,18 +42,18 @@ const WORKSPACE_ROOT = path.resolve(__dirname, '../../../..');
 
 const STAGED_NOT_BEFORE = '2026-10-09T07:03:05.861Z';
 
-function buildBaseStagedEnv(): string {
+function buildBaseStagedEnv(wave: 1 | 2 | 3 = 1): string {
   return [
     'DIMO_GLOBAL_BUDGET_ENABLED=true',
     `DI_V0_S4_DISCOVERY_TRIP_END_NOT_BEFORE=${STAGED_NOT_BEFORE}`,
     `${DI_V0_S4_ENV_ALLOWLISTS.organization}=${CANONICAL_TINY_ORGANIZATION_ID}`,
-    `${DI_V0_S4_ENV_ALLOWLISTS.vehicle}=${expectedVehicleAllowlistForWave(1)}`,
+    `${DI_V0_S4_ENV_ALLOWLISTS.vehicle}=${expectedVehicleAllowlistForWave(wave)}`,
     ...Object.values(DI_V0_S4_ENV_FLAGS).map((k) => `${k}=false`),
   ].join('\n') + '\n';
 }
 
-function buildFiveFlagOnEnv(): string {
-  const staged = buildBaseStagedEnv();
+function buildFiveFlagOnEnv(wave: 1 | 2 | 3 = 1): string {
+  const staged = buildBaseStagedEnv(wave);
   const { nextContent } = applyFiveFlagMutation(staged);
   return nextContent;
 }
@@ -106,6 +107,17 @@ describe('S4F-7AS Gate-6 open guards (lib)', () => {
   it('fails when GLOBAL prestate is NOT_KILLED', () => {
     const g = evaluateGate6OpenGuards(baseOpenInput({ globalRowLines: ['1', 'NOT_KILLED'] }));
     expect(g.failures).toContain('GLOBAL_PRESTATE_NOT_KILLED');
+  });
+
+  it('resolves wave promotion when GLOBAL NOT_KILLED and S4 persistence nonzero', () => {
+    const input = baseOpenInput({
+      globalRowLines: ['1', 'NOT_KILLED'],
+      s4PersistenceLines: ['0', '1', '0', '0', '0', '0'],
+    });
+    expect(resolveGate6OpenIntent(input)).toBe('WAVE_PROMOTION');
+    const g = evaluateGate6OpenGuards(input);
+    expect(g.failures).not.toContain('GLOBAL_PRESTATE_NOT_KILLED');
+    expect(g.failures).not.toContain('S4_PERSISTENCE_NONZERO');
   });
 
   it('fails on Gate-6 authorization missing for mutating guards', () => {
@@ -180,6 +192,8 @@ describe('S4F-7AS CLI (simple Gate-6)', () => {
         env: wrapperEnv({
           [DI_S4_GATE6_WRAPPER_ACTION_ENV]: 'LIVE_OPEN',
           [DI_S4_GATE6_PILOT_VEHICLE_CONFIRM_ENV]: CANONICAL_TINY_VEHICLE_ID,
+          DI_S4_GATE6_ROLLOUT_WAVE: '1',
+          DI_S4_GATE6_ROLLOUT_WAVE_CONFIRM: '1',
           DI_S4F7AS_TEST_MODE: '1',
           [DI_S4_GATE6_TEST_OS_ROOT_ENV]: '1',
           SYNQDRIVE_BACKEND_ENV_CANONICAL: PRODUCTION_SHARED_BACKEND_ENV_PATH,
@@ -221,6 +235,9 @@ describe('S4F-7AS wrapper (fixture)', () => {
         DI_S4F7J_FIXTURE_MODE: '1',
         DI_S4_GATE6_OPEN_ACK: 'YES',
         DI_S4_GATE6_OPEN_AUTHORIZED: 'YES',
+        DI_S4_GATE6_ROLLOUT_WAVE: '1',
+        DI_S4_GATE6_ROLLOUT_WAVE_CONFIRM: '1',
+        DI_S4_GATE6_PILOT_VEHICLE_CONFIRM: CANONICAL_TINY_VEHICLE_ID,
         DI_S4_GATE6_OPERATOR_REASON: 'FIXTURE',
         DI_S4_GATE6_OPERATOR_ACTOR: 'FIXTURE',
         DI_S4_TINY_STAGING_REQUIRED_SHA: 'a'.repeat(40),

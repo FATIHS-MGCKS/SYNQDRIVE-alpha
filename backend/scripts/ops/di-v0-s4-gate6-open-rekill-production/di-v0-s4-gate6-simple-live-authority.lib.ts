@@ -5,7 +5,9 @@ import {
   DI_S4_GATE6_OPEN_AUTHORIZED_ENV,
   DI_S4_GATE6_ACCEPTED_ACK,
   evaluateGate6OpenGuards,
+  resolveGate6OpenIntent,
   type Gate6OpenGuardInput,
+  type Gate6OpenIntent,
 } from './di-v0-s4-gate6-open-rekill-production.lib';
 import { readGlobalKillState } from './di-v0-s4-gate6-open-orchestration.lib';
 import {
@@ -69,9 +71,15 @@ export async function evaluateSimpleLiveOpenAuthority(
     }
   }
 
+  const openIntent: Gate6OpenIntent = resolveGate6OpenIntent(guardInput);
+
   const global = await readGlobalKillState(prisma);
   if (!global.ok) failures.push('GLOBAL_PRESTATE_READ_FAILED');
-  else if (global.killState !== 'KILLED') failures.push('GLOBAL_PRESTATE_NOT_KILLED');
+  else if (openIntent === 'INITIAL_OPEN' && global.killState !== 'KILLED') {
+    failures.push('GLOBAL_PRESTATE_NOT_KILLED');
+  } else if (openIntent === 'WAVE_PROMOTION' && global.killState !== 'NOT_KILLED') {
+    failures.push('GLOBAL_PRESTATE_MUST_BE_NOT_KILLED_FOR_WAVE_PROMOTION');
+  }
 
   const guards = evaluateGate6OpenGuards(guardInput);
   if (!guards.ok) failures.push(...guards.failures);

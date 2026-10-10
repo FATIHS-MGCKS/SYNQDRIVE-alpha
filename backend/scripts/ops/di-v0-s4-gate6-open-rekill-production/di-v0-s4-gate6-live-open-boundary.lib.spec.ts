@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { PRODUCTION_SHARED_BACKEND_ENV_PATH } from '../di-v0-s4-fresh-tiny-staging-production/di-v0-s4-fresh-tiny-staging-live-authority.lib';
 import { evaluateProductionGate6LiveOpenBoundary } from './di-v0-s4-gate6-live-open-boundary.lib';
 
 describe('Gate-6 production live-open boundary (S4F-7AX.2)', () => {
@@ -11,7 +12,8 @@ describe('Gate-6 production live-open boundary (S4F-7AX.2)', () => {
 
     const boundary = evaluateProductionGate6LiveOpenBoundary({
       DI_S4F7AS_FIXTURE_MODE: '1',
-      SYNQDRIVE_BACKEND_ENV: envFile,
+      SYNQDRIVE_BACKEND_ENV: PRODUCTION_SHARED_BACKEND_ENV_PATH,
+      SYNQDRIVE_BACKEND_ENV_CANONICAL: PRODUCTION_SHARED_BACKEND_ENV_PATH,
       DI_S4_GATE6_OPEN_ACK: 'YES',
       DI_S4_GATE6_OPEN_AUTHORIZED: 'YES',
       DI_S4F7AS_TOPOLOGY_OK: 'YES',
@@ -24,7 +26,7 @@ describe('Gate-6 production live-open boundary (S4F-7AX.2)', () => {
     expect(boundary.ok).toBe(false);
     if (!boundary.ok) {
       expect(boundary.failures.some((f) => f.startsWith('PRODUCTION_FIXTURE_CONTROL_PRESENT'))).toBe(true);
-      expect(boundary.failures.some((f) => f.startsWith('PRODUCTION_SIMULATED_GUARD_PROOF_PRESENT'))).toBe(true);
+      expect(boundary.failures).toContain('GUARD_PROOF_INJECTED_IN_PROCESS_ENV');
       expect(
         boundary.failures.some((f) =>
           ['LIVE_OPEN_NON_PRODUCTION_BACKEND_ENV', 'EXACT_PRODUCTION_BACKEND_ENV_MISMATCH', 'PRODUCTION_BACKEND_ENV_REALPATH_FAILED'].includes(

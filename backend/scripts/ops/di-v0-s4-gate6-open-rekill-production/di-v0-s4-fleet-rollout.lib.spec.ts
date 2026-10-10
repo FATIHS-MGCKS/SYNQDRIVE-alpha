@@ -32,6 +32,15 @@ describe('S4 fleet rollout waves', () => {
     expect(evaluateRolloutWaveAllowlists(waveEnv(1), 1).ok).toBe(true);
   });
 
+  it('monitoring queries scope tenant isolation to rollout wave vehicles', () => {
+    const { monitoringQueriesForWave } = require('./di-v0-s4-gate6-open-rekill-production.lib');
+    const wave1 = monitoringQueriesForWave(1);
+    const wave3 = monitoringQueriesForWave(3);
+    expect(wave1.unexpectedTenantWork).toContain(CANONICAL_TINY_VEHICLE_ID);
+    expect(wave3.unexpectedTenantWork).toContain('19fedd4b-c4e8-4de8-a125-dab293326e7e');
+    expect(wave1.unexpectedTenantWork).not.toEqual(wave3.unexpectedTenantWork);
+  });
+
   it('wave 3 covers all eligible fleet vehicles', () => {
     expect(ROLLOUT_WAVE_VEHICLE_IDS[3].length).toBe(S4_ELIGIBLE_FLEET_VEHICLE_IDS.length);
     expect(evaluateRolloutWaveAllowlists(waveEnv(3), 3).ok).toBe(true);
