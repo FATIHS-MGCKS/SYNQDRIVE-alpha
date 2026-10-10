@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'refuel-time-ux-correction-2026-10-10',
+    version: '4.9.2236',
+    title: 'REFUEL trip timeline — observed fuel-rise time vs DIMO detection envelope',
+    summary: [
+      'TripTimelineEnergyCard shows approximate fuel-level-rise start (not detection envelope) as primary REFUEL time.',
+      'Signal-rise interval + detection window moved to secondary/technical copy; RECHARGE presentation unchanged.',
+      'Timeline sort/day grouping anchors on fuelLevelRiseStart when valid (canonical + fallback merge paths).',
+    ],
+    reason: 'WOB L 7503 2026-10-09: envelope 19:32–21:09 misrepresented ~20:47 pump observation.',
+    previousBehavior: 'REFUEL cards used startTime/endTime envelope as the headline time range.',
+    details:
+      'trip-timeline-shared.tsx, trips-energy-i18n.ts, utils/refuelTimelineTime.ts, utils/tripTimeline.ts.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-10T11:10:00.000Z',
+  },
+  {
     id: 'm3-3-hv-h4-a3-p1b1-a1-h3-canonical-signature-encoding-2026-10-09',
     version: '4.9.2235',
     title: 'M3.3 HV-H4 A3 P1B1-A1-H3 — canonical Ed25519 detached Base64 closure',

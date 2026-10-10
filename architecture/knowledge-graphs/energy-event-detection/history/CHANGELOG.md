@@ -1,5 +1,10 @@
 # KG-EED Changelog
 
+## 2026-10-10 — REFUEL trips-timeline display semantics (UI contract)
+
+- Frontend presents `fuelLevelRiseStart`/`End` as observed REFUEL time; `startTime`/`endTime` remain detection envelope (secondary copy only).
+- Timeline sort anchor uses rise start when valid; backend DTO unchanged.
+
 ## 2026-10-10 — OQ-014 R4A canonical event attribution final seal (EED-EV-0109)
 
 - Independent canonical refuel anchors (`rfrf-oq014-r4a-canonical-event-anchors.lib.ts`); fail-closed rise attribution without nearest-rise or first-sample ground truth

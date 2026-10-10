@@ -2,6 +2,7 @@ import type { EnergyEvent, TripBehaviorEvent } from '../../../../lib/api';
 import type { TripData, TripDaySummary, TripTimelineItem, TripTimelineTrip } from '../trips.types';
 import { dateKeyFromIso, formatTripDateLong } from './tripFormatters';
 import { resolveNotableEventCount } from '../behavior-event-count.utils';
+import { energyEventTimelineAnchorIso } from './refuelTimelineTime';
 
 /**
  * Normalizes API `trips-timeline` items (flat trip/event fields + itemType)
@@ -24,14 +25,20 @@ export function normalizeTimelineItem(item: unknown): TripTimelineItem {
   }
   if (raw.itemType === 'energy-event') {
     if (raw.event && typeof raw.event === 'object') {
-      return raw as TripTimelineItem;
+      const event = raw.event as EnergyEvent;
+      return {
+        itemType: 'energy-event',
+        id: event.id,
+        startTime: energyEventTimelineAnchorIso(event),
+        event,
+      };
     }
     const { itemType: _i, ...eventFields } = raw;
     const event = eventFields as unknown as EnergyEvent;
     return {
       itemType: 'energy-event',
       id: event.id,
-      startTime: event.startTime,
+      startTime: energyEventTimelineAnchorIso(event),
       event,
     };
   }
@@ -82,7 +89,7 @@ export function buildMergedTimelineItems(
   const eventItems: TripTimelineItem[] = energyEvents.map((event) => ({
     itemType: 'energy-event',
     id: event.id,
-    startTime: event.startTime,
+    startTime: energyEventTimelineAnchorIso(event),
     event,
   }));
   return [...tripItems, ...eventItems].sort(
