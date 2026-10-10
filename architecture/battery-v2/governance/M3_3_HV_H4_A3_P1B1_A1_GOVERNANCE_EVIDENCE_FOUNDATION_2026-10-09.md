@@ -19,11 +19,11 @@
 - Governance signatures are **not** execution authorization.
 - `LIVE_DATABASE_ROLE_VERIFIED` claims are rejected in A1 parsers.
 
-## Runtime integration (P1B1-A1-H1)
+## Runtime integration (P1B1-A1-H1 through H3)
 
-`resolvePhaseAGovernanceExternalAuthorityVerifierV1(env)` is **always fail-closed** — caller-supplied trust-store / owner-policy JSON from the same channel as claims cannot establish production authority (`PHASE_A_GOVERNANCE_INDEPENDENT_TRUST_ANCHOR_NOT_PROVISIONED`).
+`resolvePhaseAGovernanceExternalAuthorityVerifierV1(env)` is **unconditionally disabled** (fail-closed through A1/H1/H2/H3) — caller-supplied trust-store / owner-policy JSON from the same channel as claims cannot establish production authority (`PHASE_A_GOVERNANCE_INDEPENDENT_TRUST_ANCHOR_NOT_PROVISIONED`).
 
-Offline cryptographic verifiers may return `SIGNATURE_VALID_WITH_SUPPLIED_KEY` for diagnostics/tests; that is **separate** from `INDEPENDENT_AUTHORITY_VERIFIED`. Fixture GitHub merge evidence never promotes to production ratification (`REPOSITORY_MERGE_PROVENANCE_UNVERIFIED`). Human verification readiness does not pass from synthetic env bundles; P1 execution gate unchanged.
+Offline cryptographic verifiers may return `SIGNATURE_VALID_WITH_SUPPLIED_KEY` for diagnostics/tests; that is **separate** from `INDEPENDENT_AUTHORITY_VERIFIED`. Fixture GitHub merge evidence never promotes to production ratification (`REPOSITORY_MERGE_PROVENANCE_UNVERIFIED`). Human verification readiness does not pass from synthetic env bundles; **`resolvePhaseAProductionP1AuthorizationV1()` remains `NO_GO`** (`P1_AUTHORIZATION=NO_GO`).
 
 ## Parser integrity (P1B1-A1-H2 / H3)
 

@@ -6,6 +6,15 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-10 — P1B1-A1 governance authority documentation consistency (PR #1956)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Phase-A governance mode contract V2 + ChangesView A1 note: resolver unconditionally disabled; offline crypto diagnostics-only; P1 `NO_GO` explicit |
+| **WHY** | Remove outdated “verifier wired for Path B readiness” wording after H1–H3 |
+| **VALIDATION** | Doc review; `validate-module-registry.sh` |
+| **NON_EFFECTS** | No runtime code changes |
+
 ## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B1-A1-H3 canonical Ed25519 Base64 closure
 
 | Field | Value |
