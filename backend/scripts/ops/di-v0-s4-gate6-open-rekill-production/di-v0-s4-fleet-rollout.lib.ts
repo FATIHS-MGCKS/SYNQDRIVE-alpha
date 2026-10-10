@@ -13,18 +13,26 @@ import {
 
 export const DI_S4_GATE6_ROLLOUT_WAVE_ENV = 'DI_S4_GATE6_ROLLOUT_WAVE';
 
-/** Production-verified LTE_R1 + active DIMO consent + dimo_vehicle_id (2026-10-10). */
+/**
+ * Production direct-pilot fleet (LTE_R1, on-fleet, not sold/removed).
+ * KS MX 2024 / DIMO 187336 sold and physically removed ~2026-09-29 — excluded intentionally.
+ */
 export const S4_ELIGIBLE_FLEET_VEHICLE_IDS = [
   '19fedd4b-c4e8-4de8-a125-dab293326e7e',
   '68868291-5478-42cd-b0c4-cc77b2a78e21',
   '8c850ff1-4201-432b-af2e-2711dbc7ca48',
-  'a60c0749-a7cd-494e-b5b9-dea3c6b97d63',
   CANONICAL_TINY_VEHICLE_ID,
   'c43c3b45-b911-498f-baf9-4376dd585588',
 ] as const;
 
-/** Active vehicles without LTE_R1 / DIMO — must remain outside S4 allowlists. */
+/** Sold/removed from fleet — stale registry or DIMO rows must not re-enter S4 allowlists. */
+export const S4_SOLD_OR_REMOVED_FLEET_VEHICLE_IDS = [
+  'a60c0749-a7cd-494e-b5b9-dea3c6b97d63',
+] as const;
+
+/** Active vehicles without LTE_R1 / DIMO / sold — must remain outside S4 allowlists. */
 export const S4_UNSUPPORTED_VEHICLE_IDS = [
+  ...S4_SOLD_OR_REMOVED_FLEET_VEHICLE_IDS,
   '17ae4a96-f658-43d4-b262-65d4624a5320',
   '1469e60d-afba-4c35-81ad-a38b02544102',
   'staging-synthetic-vehicle',

@@ -27,7 +27,7 @@
 | `19fedd4b-c4e8-4de8-a125-dab293326e7e` | `faa710c9-…` | LTE_R1 | yes | yes | **yes** |
 | `68868291-5478-42cd-b0c4-cc77b2a78e21` | `faa710c9-…` | LTE_R1 | yes | yes | **yes** |
 | `8c850ff1-4201-432b-af2e-2711dbc7ca48` | `faa710c9-…` | LTE_R1 | yes | yes | **yes** |
-| `a60c0749-a7cd-494e-b5b9-dea3c6b97d63` | `faa710c9-…` | LTE_R1 | yes | yes | **yes** |
+| `a60c0749-a7cd-494e-b5b9-dea3c6b97d63` | `faa710c9-…` | LTE_R1 | stale | stale | **no** (sold/removed ~2026-09-29; owner override) |
 | `c43c3b45-b911-498f-baf9-4376dd585588` | `faa710c9-…` | LTE_R1 | yes | yes | **yes** |
 | `17ae4a96-f658-43d4-b262-65d4624a5320` | other org | UNKNOWN | no | no | **no** |
 | `1469e60d-afba-4c35-81ad-a38b02544102` | other org | UNKNOWN | no | no | **no** |
@@ -43,7 +43,7 @@
 |------|----------|------------------------------|
 | 1 | Pilot `c10351f8-…` only | `DI_V0_S4_VEHICLE_ALLOWLIST` = wave 1 set |
 | 2 | Pilot + `19fedd4b-…`, `68868291-…` | Expand allowlist; org unchanged |
-| 3 | All six LTE_R1 fleet vehicles | Full eligible set |
+| 3 | Five on-fleet LTE_R1 vehicles (excludes sold KS MX 2024 / DIMO 187336) | Full eligible set |
 
 Code authority: `di-v0-s4-fleet-rollout.lib.ts` — `evaluateRolloutWaveAllowlists` enforced at OPEN preflight.
 
