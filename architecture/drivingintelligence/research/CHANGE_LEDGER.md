@@ -1745,6 +1745,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | TESTS | Gate-6 operator suite + bash lifecycle test |
 | NON_EFFECTS | No Production mutation; no deploy |
 
+### EXP-021 PR #1962 OS permission contract (2026-10-10)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Admin-private intent under `~/.synqdrive/gate6-live-open-intent`; root `SUDO_UID` validation; release execution integrity (no g+w) — §G in `EXP021_SIMPLE_GATE6_FLEET_ROLLOUT.md` |
+| TESTS | `di-v0-s4-gate6-os-contract-e2e.selftest.sh` + operator Jest |
+| NON_EFFECTS | No Production mutation; no deploy |
+
 ### EXP-021 S4F-7AZ Privileged writer model closure (2026-10-10)
 
 | Event | Detail |

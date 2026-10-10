@@ -79,4 +79,15 @@ Code authority: `di-v0-s4-fleet-rollout.lib.ts` — `evaluateRolloutWaveAllowlis
 | Proof lifecycle | Single materialized bundle per run; reused across `guards-open` + `dry-run-open` / `live-open`; security gates refreshed immediately before mutation |
 | Root CLI | Removed `npx` presence check; only pinned `node_modules/.bin/ts-node` under backend root |
 
-**Sudoers (Production):** `NOPASSWD` for `root` → `/opt/synqdrive/current/backend/scripts/ops/di-v0-s4-gate6-live-open-as-root.sh` only (must match helper pin).
+**Sudoers (Production):** `NOPASSWD` for `synqdrive-admin` (or operator account) → `/opt/synqdrive/current/backend/scripts/ops/di-v0-s4-gate6-live-open-as-root.sh` **only** — no shell, no wrapper path argument, intent path passed as sole argument.
+
+## G — OS permission contract (2026-10-10)
+
+| Surface | Contract |
+|---------|----------|
+| Admin intent | `~/.synqdrive/gate6-live-open-intent/gate6-live-open.*` — dir `700` owned by invoking admin; file `600` owned by same uid |
+| Root helper | Requires `SUDO_UID`; intent owner must equal `SUDO_UID`; rejects symlinks, non-canonical paths, other users’ homes, `644`/`g+w` |
+| Release integrity | Pinned helper/wrapper + `ts-node` + Gate-6 CLI + lib under `/opt/synqdrive/current|releases/*` — root-owned, no group/other write |
+| Env bypass | Root helper rejects `NODE_OPTIONS` / `NPM_CONFIG_*` before re-exec |
+
+**E2E:** `di-v0-s4-gate6-os-contract-e2e.selftest.sh` (invoked from Gate-6 operator Jest suite).

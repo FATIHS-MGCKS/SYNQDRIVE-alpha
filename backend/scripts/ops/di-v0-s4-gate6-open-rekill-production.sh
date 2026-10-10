@@ -74,7 +74,7 @@ if [[ "$MODE" == "LIVE_OPEN" && "$(id -u)" -ne 0 && "${DI_S4_GATE6_ROOT_REEXEC_D
   if ! s4f7as_assert_pinned_script_executable "$ROOT_HELPER" "ROOT_HELPER"; then
     exit 1
   fi
-  intent="$(s4f7as_create_pinned_intent_file)" || {
+  intent="$(s4f7as_create_admin_intent_file)" || {
     echo "INTENT_FILE_CREATE_FAILED=YES"
     exit 1
   }

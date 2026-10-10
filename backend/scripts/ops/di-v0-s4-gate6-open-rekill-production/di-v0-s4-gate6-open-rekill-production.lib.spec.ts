@@ -213,6 +213,18 @@ describe('S4F-7AS CLI (simple Gate-6)', () => {
   });
 });
 
+describe('S4F-7AS OS contract admin/root e2e (bash)', () => {
+  const E2E = path.join(__dirname, '../di-v0-s4-gate6-os-contract-e2e.selftest.sh');
+
+  it('admin private intent + root validation + execution integrity', () => {
+    const out = execFileSync('bash', [E2E], { encoding: 'utf8' });
+    expect(out).toContain('OS_CONTRACT_E2E_OK=YES');
+    expect(out).toContain('ADMIN_INTENT_CREATE');
+    expect(out).toMatch(/ROOT_INTENT_VALIDATION|OS_CONTRACT_E2E_SKIP_ROOT_VALIDATION/);
+    expect(out).toContain('SCRIPT_INTEGRITY');
+  });
+});
+
 describe('S4F-7AS guard proof bundle lifecycle (bash)', () => {
   const LIB = path.join(__dirname, '../lib/di-v0-s4-gate6-open-rekill-production.lib.sh');
 

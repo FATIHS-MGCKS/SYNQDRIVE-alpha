@@ -28,9 +28,13 @@ if [[ "$SELF_REAL" != "$HELPER_REAL" ]]; then
   exit 1
 fi
 
-s4f7as_assert_pinned_script_executable "$PINNED_HELPER" "ROOT_HELPER" || exit 1
-s4f7as_assert_pinned_script_executable "$PINNED_WRAPPER" "ROOT_WRAPPER" || exit 1
+s4f7as_assert_production_execution_integrity || exit 1
 s4f7as_validate_root_reexec_intent_file "$INTENT_FILE" || exit 1
+
+if [[ -n "${NODE_OPTIONS:-}" || -n "${NPM_CONFIG_PREFIX:-}" || -n "${NPM_CONFIG_CACHE:-}" ]]; then
+  echo "ROOT_ENV_INJECTION_BLOCKED=YES"
+  exit 1
+fi
 
 ALLOWED_KEYS=(
   DI_S4_GATE6_OPERATOR_MODE
