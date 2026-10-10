@@ -13,11 +13,21 @@ import {
 
 describe('CanonicalBatteryHealthService', () => {
   const now = new Date('2026-04-13T10:00:00.000Z');
+  const envBackup = { ...process.env };
+
+  beforeEach(() => {
+    process.env.BATTERY_V2_PUBLICATION_ENABLED = 'true';
+  });
+
+  afterEach(() => {
+    process.env = { ...envBackup };
+  });
 
   const buildService = () => {
     const prisma = {
       vehicle: { findUnique: jest.fn() },
       vehicleLatestState: { findUnique: jest.fn() },
+      batteryFeatures: { findUnique: jest.fn() },
       vehicleBatterySpec: { findMany: jest.fn() },
       vehicleServiceEvent: { findMany: jest.fn() },
       vehicleBatteryReferenceCapacity: { findFirst: jest.fn() },
@@ -208,7 +218,7 @@ describe('CanonicalBatteryHealthService', () => {
       { recordedAt: new Date('2026-04-13T10:00:00.000Z'), sohPercent: 79, voltageV: 12.5 },
     ]);
 
-    batteryV2Service.getV2Health.mockResolvedValue({
+    prisma.batteryFeatures.findUnique.mockResolvedValue({
       publicationState: SohPublicationState.STABLE,
       publishedSohPct: 80,
       maturityConfidence: 'high',
@@ -413,8 +423,8 @@ describe('CanonicalBatteryHealthService', () => {
   });
 
   it('exposes legacy crank diagnostically without operational effect by default', async () => {
-    const { svc, batteryV2Service } = buildService();
-    batteryV2Service.getV2Health.mockResolvedValue({
+    const { svc, prisma } = buildService();
+    prisma.batteryFeatures.findUnique.mockResolvedValue({
       publicationState: SohPublicationState.STABLE,
       publishedSohPct: 80,
       maturityConfidence: 'high',
@@ -459,8 +469,8 @@ describe('CanonicalBatteryHealthService', () => {
   });
 
   it('excludes unsafe legacy publication from operational LV health status', async () => {
-    const { svc, batteryV2Service } = buildService();
-    batteryV2Service.getV2Health.mockResolvedValue({
+    const { svc, prisma } = buildService();
+    prisma.batteryFeatures.findUnique.mockResolvedValue({
       publicationState: SohPublicationState.STABLE,
       publishedSohPct: 35,
       maturityConfidence: 'high',
@@ -794,5 +804,43 @@ describe('CanonicalBatteryHealthService', () => {
     expect(summary?.canonical.liveState.hv.signals.providerSohPercent.freshness.freshnessState).toBe('STALE');
     expect(summary?.canonical.liveState.hv.freshness.socPercent.freshnessState).toBe('FRESH');
     expect(summary?.lv.fetchFreshness?.fetchState).toBe('FRESH');
+  });
+
+  it('hides stored LV published SOH from customer fields when publication is disabled', async () => {
+    process.env.BATTERY_V2_PUBLICATION_ENABLED = 'false';
+    const { svc } = buildService();
+    const summary = await svc.getSummary('veh-1');
+    expect(summary?.currentState?.sohPercent).toBeNull();
+    expect(summary?.currentState?.publishedSohPct).toBeNull();
+    expect(summary?.canonical.legacy.v2Features?.publishedSohPct).toBe(80);
+  });
+
+  it('does not present stale HV SOC as current telemetry (Tesla-class carrier)', async () => {
+    const { svc, prisma } = buildService();
+    prisma.vehicleLatestState.findUnique.mockResolvedValue({
+      lastSeenAt: now,
+      providerFetchedAt: now,
+      sourceTimestamp: new Date('2026-01-01T10:00:00.000Z'),
+      lvBatteryVoltage: 12.4,
+      evSoc: 87,
+      rangeKm: 278,
+      tractionBatterySohPercent: 82,
+      tractionBatteryTemperatureC: 24,
+      tractionBatteryChargingPowerKw: null,
+      tractionBatteryIsCharging: false,
+      tractionBatteryChargingCableConnected: false,
+      tractionBatteryCurrentVoltage: 380,
+      tractionBatteryGrossCapacityKwh: 76,
+      tractionBatteryCurrentEnergyKwh: 50,
+      tractionBatteryAddedEnergyKwh: null,
+    });
+
+    const summary = await svc.getSummary('veh-1');
+    expect(summary?.currentTelemetry?.socPercent).toBeNull();
+    expect(summary?.currentTelemetry?.genericEnergyPercent).toBeNull();
+    expect(summary?.hv.telemetry.socPercent).toBeNull();
+    expect(summary?.currentTelemetry?.observationFreshness?.observationState).toBe(
+      'STALE',
+    );
   });
 });

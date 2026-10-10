@@ -1,6 +1,15 @@
+import {
+  BATTERY_V2_PUBLICATION_ENABLED_ENV,
+  BATTERY_V2_REST_SHADOW_ENABLED_ENV,
+} from '@config/battery-health-v2.config';
 import { BatteryV2SnapshotIngestionService } from './battery-v2-snapshot-ingestion.service';
 
 describe('BatteryV2SnapshotIngestionService', () => {
+  const envBackup = { ...process.env };
+
+  afterEach(() => {
+    process.env = { ...envBackup };
+  });
   const basePayload = {
     organizationId: 'org-1',
     vehicleId: 'veh-1',
@@ -76,6 +85,7 @@ describe('BatteryV2SnapshotIngestionService', () => {
   });
 
   it('enqueues LV assessment recompute after rest capture (B-01)', async () => {
+    process.env[BATTERY_V2_REST_SHADOW_ENABLED_ENV] = 'false';
     const { service, jobProducer } = buildService();
 
     await service.ingestObservationClassify(basePayload as any);
@@ -88,6 +98,17 @@ describe('BatteryV2SnapshotIngestionService', () => {
         assessmentType: 'LV_HEALTH',
       }),
     );
+  });
+
+  it('does not enqueue legacy LV assessment when canonical shadow is on and publication is off', async () => {
+    process.env[BATTERY_V2_REST_SHADOW_ENABLED_ENV] = 'true';
+    process.env[BATTERY_V2_PUBLICATION_ENABLED_ENV] = 'false';
+    const { service, batteryV2, jobProducer } = buildService();
+
+    await service.ingestObservationClassify(basePayload as any);
+
+    expect(batteryV2.onSnapshot).not.toHaveBeenCalled();
+    expect(jobProducer.enqueue).not.toHaveBeenCalled();
   });
 
   it('skips assessment enqueue when rest was not captured', async () => {

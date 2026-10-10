@@ -193,13 +193,11 @@ export const isBatteryV2CanonicalRestPipelineEnabled = isBatteryV2RestShadowEnab
 
 /**
  * Legacy `battery_features` rest capture (60m/6h) + legacy assessment enqueue.
- * Disabled when canonical pipeline + publication are both active (single authority).
+ * Disabled whenever the canonical REST pipeline is active (single ingestion authority).
+ * Customer publication (`BATTERY_V2_PUBLICATION_ENABLED`) is independent of ingestion.
  */
 export function isBatteryV2LegacyRestCaptureEnabled(): boolean {
-  if (!isBatteryV2RestShadowEnabled()) {
-    return true;
-  }
-  return !isBatteryV2PublicationEnabled();
+  return !isBatteryV2RestShadowEnabled();
 }
 
 export function isBatteryV2DlqReplayEnabled(): boolean {

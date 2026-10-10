@@ -55,6 +55,7 @@ import { ManualGroundTruthConfirmationConflictError } from './battery-health/gro
 import { HvBatteryHealthService } from './battery-health/hv-battery-health.service';
 import { BatteryV2Service } from './battery-health/battery-v2.service';
 import { presentLegacyCrankFeatures } from './battery-health/battery-crank-policy';
+import { presentBatteryV2CustomerHealthPayload } from './battery-health/battery-v2-customer-health.read';
 import { CanonicalBatteryHealthService } from './battery-health/canonical-battery-health.service';
 import { BatteryEvidenceService } from './battery-health/battery-evidence.service';
 import { LvRestShadowSummaryService } from './battery-health/lv-rest-window/lv-rest-shadow-summary.service';
@@ -1657,38 +1658,7 @@ export class VehicleIntelligenceController {
       lv: summary.lv,
       hv: summary.hv,
       currentTelemetry: summary.currentTelemetry,
-      v2: v2
-        ? {
-            estimatedSocPct: v2.estimatedSocPct,
-            /** @deprecated Prefer estimatedLvHealthScore — LV behaviour score, not HV SOH */
-            estimatedSohPct: v2.estimatedSohPct,
-            estimatedLvHealthScore: v2.estimatedSohPct,
-            confidence: v2.confidence,
-            badge: v2.badge,
-            scoredAt: v2.scoredAt,
-            publishedSohPct: v2.publishedSohPct,
-            publicationState: v2.publicationState,
-            maturityConfidence: v2.maturityConfidence,
-            signalConfidence: v2.signalConfidence ?? v2.confidence,
-            restFeatures: {
-              vOff60m: v2.vOff60m,
-              vOff6h: v2.vOff6h,
-              deltaVRest: v2.deltaVRest,
-              restWindowStartedAt: v2.restWindowStartedAt,
-              rest60mCapturedAt: v2.rest60mCapturedAt,
-              rest6hCapturedAt: v2.rest6hCapturedAt,
-            },
-            crankFeatures: presentLegacyCrankFeatures({
-              vPreCrank: v2.vPreCrank,
-              vMinCrank: v2.vMinCrank,
-              crankDrop: v2.crankDrop,
-              vRecovery5s: v2.vRecovery5s,
-              vRecovery30s: v2.vRecovery30s,
-              crankAt: v2.crankAt,
-              crankTripId: v2.crankTripId,
-            }),
-          }
-        : null,
+      v2: v2 ? presentBatteryV2CustomerHealthPayload(v2) : null,
     };
   }
 
@@ -1702,51 +1672,37 @@ export class VehicleIntelligenceController {
       }),
     ]);
 
-    const crankPresentation = v2
-      ? presentLegacyCrankFeatures({
-          vPreCrank: v2.vPreCrank,
-          vMinCrank: v2.vMinCrank,
-          crankDrop: v2.crankDrop,
-          vRecovery5s: v2.vRecovery5s,
-          vRecovery30s: v2.vRecovery30s,
-          crankAt: v2.crankAt,
-          crankTripId: v2.crankTripId,
-        })
-      : null;
+    const payload = v2 ? presentBatteryV2CustomerHealthPayload(v2) : null;
+    const crankPresentation = payload?.crankFeatures ?? null;
 
     return {
       latestVoltage: latestState?.lvBatteryVoltage ?? null,
-      estimatedSocPct: v2?.estimatedSocPct ?? null,
-      /** @deprecated Prefer estimatedLvHealthScore — LV behaviour score, not HV SOH */
-      estimatedSohPct: v2?.estimatedSohPct ?? null,
-      estimatedLvHealthScore: v2?.estimatedSohPct ?? null,
-      confidence: v2?.confidence ?? 'insufficient_data',
-      badge: v2?.badge ?? 'unknown',
-      scoredAt: v2?.scoredAt ?? null,
+      estimatedSocPct: payload?.estimatedSocPct ?? null,
+      /** @deprecated Prefer estimatedLvHealthScore — gated customer LV score, not HV SOH */
+      estimatedSohPct: payload?.estimatedSohPct ?? null,
+      estimatedLvHealthScore: payload?.estimatedLvHealthScore ?? null,
+      userFacingSohPct: payload?.userFacingSohPct ?? null,
+      legacyPublicationSafety: payload?.legacyPublicationSafety ?? null,
+      confidence: payload?.confidence ?? 'insufficient_data',
+      badge: payload?.badge ?? 'unknown',
+      scoredAt: payload?.scoredAt ?? null,
       dataAvailability: {
-        hasRestData: v2?.vOff60m != null || v2?.vOff6h != null,
+        hasRestData:
+          payload?.restFeatures.vOff60m != null ||
+          payload?.restFeatures.vOff6h != null,
         hasCrankData: crankPresentation?.diagnosticCrankDrop != null,
-        hasRecoveryData: v2?.vRecovery5s != null,
+        hasRecoveryData: v2?.crank.vRecovery5s != null,
       },
-      rest: v2
-        ? {
-            vOff60m: v2.vOff60m,
-            vOff6h: v2.vOff6h,
-            deltaVRest: v2.deltaVRest,
-            restWindowStartedAt: v2.restWindowStartedAt,
-            rest60mCapturedAt: v2.rest60mCapturedAt,
-            rest6hCapturedAt: v2.rest6hCapturedAt,
-          }
-        : null,
+      rest: payload?.restFeatures ?? null,
       crank: crankPresentation
         ? {
             ...crankPresentation,
-            vPreCrank: v2!.vPreCrank,
-            vMinCrank: v2!.vMinCrank,
-            vRecovery5s: v2!.vRecovery5s,
-            vRecovery30s: v2!.vRecovery30s,
-            crankAt: v2!.crankAt,
-            tripId: v2!.crankTripId,
+            vPreCrank: v2!.crank.vPreCrank,
+            vMinCrank: v2!.crank.vMinCrank,
+            vRecovery5s: v2!.crank.vRecovery5s,
+            vRecovery30s: v2!.crank.vRecovery30s,
+            crankAt: v2!.crank.crankAt,
+            tripId: v2!.crank.crankTripId,
           }
         : null,
     };
