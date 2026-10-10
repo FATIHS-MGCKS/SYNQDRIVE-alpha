@@ -893,6 +893,58 @@ describe('CanonicalBatteryHealthService', () => {
     expect(summary?.hv.telemetry.currentEnergyKwh).toBeNull();
   });
 
+  it('redacts lvDiagnostic SOH when publication is off even if legacy decisionCapable=true', async () => {
+    process.env.BATTERY_V2_PUBLICATION_ENABLED = 'false';
+    const { svc, lvCanonicalResolver } = buildService();
+    lvCanonicalResolver.resolveForVehicle.mockResolvedValue({
+      resolverVersion: '1.0.0',
+      vehicleId: 'veh-1',
+      resolvedAt: now.toISOString(),
+      profile: {
+        profile: 'ICE_STANDARD',
+        driveProfile: BatteryDriveProfile.BEV,
+        lvAssessmentAllowed: true,
+        supported: true,
+      },
+      chemistry: {
+        chemistry: BatteryChemistry.LITHIUM,
+        chemicalSocEstimationAllowed: true,
+      },
+      primaryTruth: {
+        source: 'V2_PUBLICATION_STABLE',
+        estimatedHealthScore: 80,
+        semanticType: 'ESTIMATED_HEALTH_NOT_SOH',
+        labelDe: 'Geschätzter 12V-Batteriezustand',
+        decisionCapable: true,
+      },
+      liveVoltage: null,
+      latestQualifiedRestMeasurement: null,
+      latestStartProxy: null,
+      assessment: null,
+      publication: null,
+      freshness: { fetch: null, observation: null },
+      quality: {
+        aggregate: { status: 'ESTIMATED', labelDe: 'Geschätzt' },
+        primaryTruth: { status: 'ESTIMATED', labelDe: 'Geschätzt' },
+      },
+      legacyDiagnostic: {
+        displayMode: 'LEGACY_UNVERIFIED',
+        decisionCapable: true,
+        publishedSohPct: 91,
+        stabilizedSohPct: 90,
+        rawSohPct: 92,
+        publicationState: 'STABLE',
+        scoredAt: now.toISOString(),
+        supersededByPrimary: false,
+      },
+      unsupported: false,
+      unavailable: false,
+    });
+    const summary = await svc.getSummary('veh-1');
+    expect(summary?.canonical.legacy.lvDiagnostic?.publishedSohPct).toBeNull();
+    expect(summary?.canonical.legacy.lvDiagnostic?.rawSohPct).toBeNull();
+  });
+
   it('redacts legacy lvDiagnostic SOH scores from customer canonical legacy', async () => {
     process.env.BATTERY_V2_PUBLICATION_ENABLED = 'false';
     const { svc, lvCanonicalResolver } = buildService();

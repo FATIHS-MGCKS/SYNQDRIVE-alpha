@@ -6,6 +6,16 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-10 — G5B-F2 LV publication + HV compat nested closure (PR #1969)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | `redactCustomerLegacyLvDiagnostic` exposed raw SOH when `decisionCapable=true` even with publication OFF; HV compat returned unmasked `currentTelemetry`, `canonicalSummary`, `canonical`, and `legacy` nested objects |
+| **CHANGE** | LV diagnostic SOH requires publication customer visibility **and** decision capability; compat projects sanitized nested objects and drops legacy nominal fallback for nominal capacity |
+| **VALIDATION** | Extended `battery-customer-response.presenter.spec.ts`, `battery-hv-battery-status.compat.spec.ts`, `canonical-battery-health.service.spec.ts` |
+
+---
+
 ## 2026-10-10 — G5B-F1 customer response safety closure (PR #1969)
 
 | Field | Value |

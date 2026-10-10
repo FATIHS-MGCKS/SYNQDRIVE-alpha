@@ -3,9 +3,26 @@ import {
   type ObservationFreshness,
 } from './battery-freshness.policy';
 import {
+  type HvCustomerTelemetryFields,
   presentHvCustomerTelemetryFields,
   resolveCustomerHvNominalCapacityKwh,
 } from './battery-hv-customer-telemetry.presenter';
+import type { CanonicalBatteryDto } from './canonical-battery/canonical-battery.types';
+import { maskCanonicalHvCustomerSurfaces } from './battery-customer-response.presenter';
+
+type HvCompatCanonicalHvSlice = {
+  referenceCapacity?: {
+    capacityKwh?: number | null;
+    verificationStatus?: string | null;
+  } | null;
+  providerSoh?: {
+    percent?: number | null;
+    decisionFresh?: boolean;
+  } | null;
+  soc?: { percent?: number | null };
+  currentEnergy?: { kwh?: number | null };
+  chargingState?: Record<string, unknown> | null;
+};
 
 /** Minimal summary slice for HV compat endpoint assembly (no legacy telemetry bypass). */
 export type HvBatteryStatusCompatSummaryInput = {
@@ -32,21 +49,13 @@ export type HvBatteryStatusCompatSummaryInput = {
       providerSohPercent?: number | null;
     } | null;
   } | null;
-  canonical?: {
-    hv?: {
-      referenceCapacity?: {
-        capacityKwh?: number | null;
-        verificationStatus?: string | null;
-      } | null;
-      providerSoh?: {
-        percent?: number | null;
-        decisionFresh?: boolean;
-      } | null;
-    } | null;
-  } | null;
+  canonical?: CanonicalBatteryDto | { hv?: HvCompatCanonicalHvSlice | null } | null;
   currentTelemetry?: {
     socPercent?: number | null;
     rangeKm?: number | null;
+    genericEnergyPercent?: number | null;
+    chargingPowerKw?: number | null;
+    chargingState?: string | null;
     observationFreshness?: ObservationFreshness | null;
   } | null;
 };
@@ -72,7 +81,7 @@ export function hvProviderSohObservationIsDecisionFresh(
 
 function buildCompatCustomerTelemetry(
   summary: HvBatteryStatusCompatSummaryInput,
-): ReturnType<typeof presentHvCustomerTelemetryFields> | null {
+): HvCustomerTelemetryFields | null {
   const hvTelemetry = summary.hv?.telemetry;
   if (!hvTelemetry) return null;
 
@@ -98,6 +107,65 @@ function buildCompatCustomerTelemetry(
   });
 }
 
+function presentCompatSanitizedCurrentTelemetry(
+  currentTelemetry: HvBatteryStatusCompatSummaryInput['currentTelemetry'],
+  customerTelemetry: HvCustomerTelemetryFields | null,
+) {
+  if (!currentTelemetry) return null;
+  return {
+    ...currentTelemetry,
+    socPercent: customerTelemetry?.socPercent ?? null,
+    rangeKm: customerTelemetry?.rangeKm ?? null,
+    genericEnergyPercent: customerTelemetry?.socPercent ?? null,
+    chargingPowerKw: customerTelemetry?.chargingPowerKw ?? null,
+    chargingState:
+      customerTelemetry?.isCharging == null
+        ? null
+        : customerTelemetry.isCharging
+          ? 'charging'
+          : 'not_charging',
+  };
+}
+
+function presentCompatSanitizedCanonicalSummary(
+  hv: HvBatteryStatusCompatSummaryInput['hv'],
+  customerTelemetry: HvCustomerTelemetryFields | null,
+) {
+  if (!hv) return null;
+  return {
+    ...hv,
+    telemetry: customerTelemetry,
+  };
+}
+
+function presentCompatSanitizedCanonical(
+  canonical: HvBatteryStatusCompatSummaryInput['canonical'],
+  customerTelemetry: HvCustomerTelemetryFields | null,
+): HvBatteryStatusCompatSummaryInput['canonical'] {
+  if (!canonical || typeof canonical !== 'object') return null;
+  if (!customerTelemetry) return canonical;
+
+  const clone = JSON.parse(JSON.stringify(canonical)) as CanonicalBatteryDto;
+  if (clone.liveState?.hv || clone.hv) {
+    maskCanonicalHvCustomerSurfaces(clone, customerTelemetry);
+  }
+  return clone;
+}
+
+function presentCompatSanitizedLegacy(
+  legacy: HvBatteryStatusLegacyDiagnostic,
+  customerTelemetry: HvCustomerTelemetryFields | null,
+): HvBatteryStatusLegacyDiagnostic | undefined {
+  if (!legacy) return undefined;
+  const out: Record<string, unknown> = { ...legacy };
+  out.currentSocPercent = customerTelemetry?.socPercent ?? null;
+  out.estimatedRangeKm = customerTelemetry?.rangeKm ?? null;
+  if (out.telemetry != null && typeof out.telemetry === 'object') {
+    out.telemetry = customerTelemetry;
+  }
+  return out;
+}
+
 /**
  * Customer-facing HV compat fields: canonical/summary truth only.
  * Legacy service output is exposed only under `legacy` for diagnostics.
@@ -107,7 +175,6 @@ export function presentHvBatteryStatusCompatResponse(
   legacy: HvBatteryStatusLegacyDiagnostic,
 ) {
   const hv = summary.hv;
-  const canonicalHv = summary.canonical?.hv ?? null;
   const telemetryFresh = hvTelemetryObservationIsDecisionFresh(summary);
   const customerTelemetry = buildCompatCustomerTelemetry(summary);
 
@@ -116,6 +183,8 @@ export function presentHvBatteryStatusCompatResponse(
 
   const customerSoh = hv?.sohPct ?? hv?.healthPercent ?? null;
 
+  const canonicalHv: HvCompatCanonicalHvSlice | null =
+    summary.canonical?.hv ?? null;
   const nominalCapacityKwh = resolveCustomerHvNominalCapacityKwh({
     referenceCapacity:
       canonicalHv?.referenceCapacity?.verificationStatus != null
@@ -124,7 +193,7 @@ export function presentHvBatteryStatusCompatResponse(
             verificationStatus: canonicalHv.referenceCapacity.verificationStatus,
           }
         : null,
-    legacyNominalCapacityKwh: legacy?.nominalCapacityKwh as number | null | undefined,
+    legacyNominalCapacityKwh: undefined,
     telemetryGrossCapacityKwh: customerTelemetry?.grossCapacityKwh ?? null,
     carrierObservationFresh: telemetryFresh,
   });
@@ -147,9 +216,12 @@ export function presentHvBatteryStatusCompatResponse(
     lastRecordedAt: telemetryFresh
       ? hv?.freshness?.observedAt ?? null
       : summary.currentTelemetry?.observationFreshness?.observedAt ?? null,
-    canonical: canonicalHv,
-    canonicalSummary: hv,
-    currentTelemetry: summary.currentTelemetry ?? null,
-    legacy: legacy ?? undefined,
+    canonical: presentCompatSanitizedCanonical(summary.canonical, customerTelemetry),
+    canonicalSummary: presentCompatSanitizedCanonicalSummary(hv, customerTelemetry),
+    currentTelemetry: presentCompatSanitizedCurrentTelemetry(
+      summary.currentTelemetry,
+      customerTelemetry,
+    ),
+    legacy: presentCompatSanitizedLegacy(legacy, customerTelemetry),
   };
 }

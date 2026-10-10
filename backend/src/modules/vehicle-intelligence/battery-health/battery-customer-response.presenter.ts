@@ -52,9 +52,13 @@ const HV_LIVE_VALUE_KEYS = [
 
 function redactCustomerLegacyLvDiagnostic(
   diagnostic: LvCanonicalLegacyDiagnostic | null | undefined,
+  publicationCustomerVisible: boolean,
 ): LvCanonicalLegacyDiagnostic | null {
   if (!diagnostic) return null;
-  if (diagnostic.decisionCapable) return diagnostic;
+  const decisionCapable = (diagnostic as { decisionCapable?: boolean }).decisionCapable;
+  const scoresCustomerVisible =
+    publicationCustomerVisible && decisionCapable === true;
+  if (scoresCustomerVisible) return diagnostic;
   return {
     ...diagnostic,
     publishedSohPct: null,
@@ -96,13 +100,18 @@ function redactCustomerHvLegacyCapacity(
   };
 }
 
-function maskCanonicalHvCustomerSurfaces(
+/** Masks customer-visible HV dynamic values on a canonical DTO (freshness metadata preserved). */
+export function maskCanonicalHvCustomerSurfaces(
   canonical: CanonicalBatteryDto,
   customerHvTelemetry: HvCustomerTelemetryFields,
 ): void {
   if (canonical.hv) {
-    canonical.hv.soc.percent = customerHvTelemetry.socPercent;
-    canonical.hv.currentEnergy.kwh = customerHvTelemetry.currentEnergyKwh;
+    if (canonical.hv.soc) {
+      canonical.hv.soc.percent = customerHvTelemetry.socPercent;
+    }
+    if (canonical.hv.currentEnergy) {
+      canonical.hv.currentEnergy.kwh = customerHvTelemetry.currentEnergyKwh;
+    }
     if (canonical.hv.providerSoh) {
       canonical.hv.providerSoh.percent = customerHvTelemetry.providerSohPercent;
     }
@@ -187,7 +196,10 @@ export function applyCustomerFacingBatterySummaryBoundaries<
     if (canonical.legacy) {
       canonical.legacy = {
         ...canonical.legacy,
-        lvDiagnostic: redactCustomerLegacyLvDiagnostic(canonical.legacy.lvDiagnostic),
+        lvDiagnostic: redactCustomerLegacyLvDiagnostic(
+          canonical.legacy.lvDiagnostic,
+          options.lvPublicationCustomerVisible,
+        ),
         v2Features: redactCustomerLegacyV2Features(
           canonical.legacy.v2Features,
           options.lvPublicationCustomerVisible,

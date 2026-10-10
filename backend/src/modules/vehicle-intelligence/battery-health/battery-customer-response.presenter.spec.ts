@@ -86,4 +86,65 @@ describe('battery-customer-response.presenter', () => {
     expect(summary.canonical.hv.providerSoh.percent).toBeNull();
     expect(summary.canonical.legacy.v2Features?.publishedSohPct).toBeNull();
   });
+
+  it('redacts lvDiagnostic SOH when publication is off even if decisionCapable=true', () => {
+    const summary = {
+      canonical: {
+        legacy: {
+          collapsed: true,
+          lvDiagnostic: {
+            displayMode: 'LEGACY_UNVERIFIED',
+            decisionCapable: true,
+            publishedSohPct: 91,
+            stabilizedSohPct: 90,
+            rawSohPct: 92,
+            publicationState: 'STABLE',
+            scoredAt: null,
+            supersededByPrimary: false,
+          },
+          hvLegacyCapacity: null,
+          crankDiagnostic: null,
+          startProxyDiagnostic: null,
+          v2Features: null,
+        },
+      },
+    } as any;
+
+    applyCustomerFacingBatterySummaryBoundaries(summary, masked, {
+      lvPublicationCustomerVisible: false,
+    });
+
+    expect(summary.canonical.legacy.lvDiagnostic?.publishedSohPct).toBeNull();
+    expect(summary.canonical.legacy.lvDiagnostic?.rawSohPct).toBeNull();
+  });
+
+  it('preserves lvDiagnostic SOH when publication and decisionCapable are both true', () => {
+    const summary = {
+      canonical: {
+        legacy: {
+          collapsed: true,
+          lvDiagnostic: {
+            displayMode: 'LEGACY_UNVERIFIED',
+            decisionCapable: true,
+            publishedSohPct: 91,
+            stabilizedSohPct: 90,
+            rawSohPct: 92,
+            publicationState: 'STABLE',
+            scoredAt: null,
+            supersededByPrimary: false,
+          },
+          hvLegacyCapacity: null,
+          crankDiagnostic: null,
+          startProxyDiagnostic: null,
+          v2Features: null,
+        },
+      },
+    } as any;
+
+    applyCustomerFacingBatterySummaryBoundaries(summary, masked, {
+      lvPublicationCustomerVisible: true,
+    });
+
+    expect(summary.canonical.legacy.lvDiagnostic?.publishedSohPct).toBe(91);
+  });
 });
