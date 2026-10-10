@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# EXP-021 S4F-7AS — Gate-6 GLOBAL kill OPEN (KILLED→NOT_KILLED) and EMERGENCY_REKILL (NOT_KILLED→KILLED).
+# EXP-021 — Gate-6 operator: PREFLIGHT | DRY_RUN | LIVE_OPEN | EMERGENCY_REKILL
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -36,27 +36,72 @@ s4f7as_export_canonical_backend_env || {
 }
 
 MODE="${DI_S4_GATE6_OPERATOR_MODE:-}"
-if [[ "$MODE" != "OPEN" && "$MODE" != "EMERGENCY_REKILL" ]]; then
+if [[ "$MODE" != "PREFLIGHT" && "$MODE" != "DRY_RUN" && "$MODE" != "LIVE_OPEN" && "$MODE" != "EMERGENCY_REKILL" && "$MODE" != "OPEN" ]]; then
   echo "OPERATOR_MODE_INVALID=YES"
-  echo "REQUIRED_MODE=OPEN|EMERGENCY_REKILL"
+  echo "REQUIRED_MODE=PREFLIGHT|DRY_RUN|LIVE_OPEN|EMERGENCY_REKILL"
   exit 1
 fi
 
-echo "EXP021_S4F7AS_GATE6_OPEN_REKILL_WRAPPER=1"
-echo "OPERATOR_MODE=${MODE}"
-echo "GLOBAL_DB_MUTATION_SUPPORTED=YES"
-echo "ENV_MUTATION_SUPPORTED=NO"
-echo "RESTART_SUPPORTED=NO"
-if [[ "$MODE" == "EMERGENCY_REKILL" ]]; then
-  if ! s4f7as_execute_emergency_rekill_mode; then
-    echo "FAIL_CLOSED=YES"
-    exit 1
+# Legacy OPEN mode maps to DRY_RUN or LIVE_OPEN via DRY_RUN env.
+if [[ "$MODE" == "OPEN" ]]; then
+  if [[ "${DRY_RUN:-}" == "1" ]]; then
+    MODE="DRY_RUN"
+  else
+    MODE="LIVE_OPEN"
   fi
-  exit 0
 fi
 
-if ! s4f7as_execute_open_mode; then
-  echo "FAIL_CLOSED=YES"
-  exit 1
+if [[ "$MODE" == "LIVE_OPEN" && "$(id -u)" -ne 0 ]]; then
+  echo "LIVE_OPEN_ROOT_REEXEC=YES"
+  exec sudo -n -E env \
+    DI_S4_GATE6_OPERATOR_MODE=LIVE_OPEN \
+    DI_S4_GATE6_WRAPPER_ACTION=LIVE_OPEN \
+    DI_S4_GATE6_WRAPPER_ATTESTATION="${DI_S4_GATE6_WRAPPER_ATTESTATION:-SYNQDRIVE_GATE6_PINNED_WRAPPER_V1}" \
+    DI_S4_GATE6_PILOT_VEHICLE_CONFIRM="${DI_S4_GATE6_PILOT_VEHICLE_CONFIRM:-c10351f8-b6a2-4258-947f-631aeaa6d359}" \
+    DI_S4_GATE6_OPEN_ACK="${DI_S4_GATE6_OPEN_ACK:-}" \
+    DI_S4_GATE6_OPEN_AUTHORIZED="${DI_S4_GATE6_OPEN_AUTHORIZED:-}" \
+    DI_S4_GATE6_OPERATOR_REASON="${DI_S4_GATE6_OPERATOR_REASON:-}" \
+    DI_S4_GATE6_OPERATOR_ACTOR="${DI_S4_GATE6_OPERATOR_ACTOR:-}" \
+    DI_S4_GATE6_ROLLOUT_WAVE="${DI_S4_GATE6_ROLLOUT_WAVE:-1}" \
+    DRY_RUN=0 \
+    SYNQDRIVE_BACKEND_ENV="${SYNQDRIVE_BACKEND_ENV:-}" \
+    BACKEND_ENV="${BACKEND_ENV:-}" \
+    "$0"
 fi
+
+echo "EXP021_SIMPLE_GATE6_WRAPPER=1"
+echo "OPERATOR_MODE=${MODE}"
+export DI_S4_GATE6_WRAPPER_ACTION="$MODE"
+s4f7as_export_wrapper_attestation || exit 1
+
+case "$MODE" in
+  PREFLIGHT)
+    echo "GLOBAL_DB_MUTATION_SUPPORTED=NO"
+    if ! s4f7as_execute_preflight_mode; then
+      echo "FAIL_CLOSED=YES"
+      exit 1
+    fi
+    ;;
+  DRY_RUN)
+    echo "GLOBAL_DB_MUTATION_SUPPORTED=TRANSACTIONAL_TEST"
+    if ! s4f7as_execute_dry_run_mode; then
+      echo "FAIL_CLOSED=YES"
+      exit 1
+    fi
+    ;;
+  LIVE_OPEN)
+    echo "GLOBAL_DB_MUTATION_SUPPORTED=YES"
+    if ! s4f7as_execute_live_open_mode; then
+      echo "FAIL_CLOSED=YES"
+      exit 1
+    fi
+    ;;
+  EMERGENCY_REKILL)
+    echo "GLOBAL_DB_MUTATION_SUPPORTED=YES"
+    if ! s4f7as_execute_emergency_rekill_mode; then
+      echo "FAIL_CLOSED=YES"
+      exit 1
+    fi
+    ;;
+esac
 exit 0

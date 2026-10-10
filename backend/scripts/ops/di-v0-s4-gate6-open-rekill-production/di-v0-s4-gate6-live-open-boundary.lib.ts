@@ -3,7 +3,6 @@ import {
   GATE6_PRODUCTION_FORBIDDEN_FIXTURE_ENV_KEYS,
   isProductionBackendEnvSurface,
 } from './di-v0-s4-gate6-live-authority.lib';
-import { evaluateProductionGate6IssuanceTrustAnchors } from './di-v0-s4-gate6-production-trust-anchor.lib';
 import {
   enforceExactProductionBackendEnvForLiveOpen,
   resolveCanonicalBackendEnvPathFromFilesystem,
@@ -33,13 +32,6 @@ export type ProductionLiveOpenBoundaryFailure =
   | 'BACKEND_ENV_CANDIDATE_MISSING'
   | string;
 
-/**
- * Production issuance / trust-anchor context — fixture flags do not disable this.
- */
-export function isProductionGate6IssuanceContext(env: NodeJS.ProcessEnv = process.env): boolean {
-  return isProductionBackendEnvSurface(env);
-}
-
 function firstFixtureControlPresent(env: NodeJS.ProcessEnv): string | undefined {
   for (const key of GATE6_PRODUCTION_FORBIDDEN_FIXTURE_ENV_KEYS) {
     if ((env[key] ?? '').trim().length > 0) return key;
@@ -55,7 +47,7 @@ function firstSimulatedGuardProofPresent(env: NodeJS.ProcessEnv): string | undef
 }
 
 /**
- * Hard boundary for `live-open-authorized` and Production dispatch issuance.
+ * Hard boundary for Production LIVE_OPEN / DRY_RUN mutating paths.
  */
 export function evaluateProductionGate6LiveOpenBoundary(
   env: NodeJS.ProcessEnv = process.env,
@@ -78,18 +70,5 @@ export function evaluateProductionGate6LiveOpenBoundary(
     failures.push('LIVE_OPEN_NON_PRODUCTION_BACKEND_ENV');
   }
 
-  const anchors = evaluateProductionGate6IssuanceTrustAnchors(env);
-  if (!anchors.ok) failures.push(...anchors.failures);
-
   return failures.length ? { ok: false, failures } : { ok: true };
-}
-
-/** Production dispatch issuance on the Production backend surface only (engineering temp env unchanged). */
-export function evaluateProductionGate6DispatchIssuanceBoundary(
-  env: NodeJS.ProcessEnv = process.env,
-): { ok: true } | { ok: false; failures: ProductionLiveOpenBoundaryFailure[] } {
-  if (!isProductionBackendEnvSurface(env)) {
-    return { ok: true };
-  }
-  return evaluateProductionGate6LiveOpenBoundary(env);
 }

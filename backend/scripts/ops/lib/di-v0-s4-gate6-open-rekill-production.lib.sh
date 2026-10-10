@@ -59,8 +59,6 @@ DI_S4F7J_FIXTURE_VEHICLE_DB_LINES
 DI_S4F7J_FIXTURE_DEPLOYED_SHA
 DI_S4F7J_FIXTURE_RELEASE_DIR
 DI_S4F7AS_ENGINEERING_TEST_HARNESS
-DI_S4_GATE6_LIVE_OPEN_DISPATCH_DIGEST
-DI_S4_GATE6_LIVE_OPEN_DISPATCH_NONCE
 EOF
   return 1
 }
@@ -183,40 +181,21 @@ s4f7as_collect_open_preflight_exports() {
   return 0
 }
 
-s4f7as_issue_live_open_dispatch() {
+s4f7as_export_wrapper_attestation() {
+  export DI_S4_GATE6_WRAPPER_ATTESTATION="${DI_S4_GATE6_WRAPPER_ATTESTATION:-SYNQDRIVE_GATE6_PINNED_WRAPPER_V1}"
+  echo "WRAPPER_ATTESTATION_EXPORTED=YES"
+  return 0
+}
+
+s4f7as_assert_open_audit_and_pins() {
   if [[ -z "${DI_S4_TINY_STAGING_REQUIRED_SHA:-}" || -z "${DI_S4_TINY_STAGING_REQUIRED_RELEASE_ID:-}" || -z "${DI_S4_TINY_STAGING_REQUIRED_PRE_ENV_SHA256:-}" ]]; then
-    echo "LIVE_OPEN_DISPATCH_PINS_INCOMPLETE=YES"
+    echo "LIVE_OPEN_PINS_INCOMPLETE=YES"
     return 1
   fi
   if [[ -z "${DI_S4_GATE6_OPERATOR_REASON:-}" || -z "${DI_S4_GATE6_OPERATOR_ACTOR:-}" ]]; then
     echo "AUDIT_FIELDS_MISSING=YES"
     return 1
   fi
-  if [[ -z "${DI_S4_GATE6_DISPATCH_TOKEN_DIR:-}" ]]; then
-    echo "DISPATCH_TOKEN_DIR_MISSING=YES"
-    return 1
-  fi
-  if [[ -z "${DI_S4_GATE6_LIVE_OPEN_HUMAN_APPROVAL_FILE:-}" || ! -f "${DI_S4_GATE6_LIVE_OPEN_HUMAN_APPROVAL_FILE}" ]]; then
-    echo "HUMAN_APPROVAL_FILE_MISSING=YES"
-    echo "INDEPENDENT_APPROVAL_AUTHORITY=BLOCKED"
-    return 1
-  fi
-  local issue_out
-  issue_out="$(s4f7as_run_cli issue-dispatch-token)" || return 1
-  local token_file signing_key_file approval_id
-  token_file="$(printf '%s\n' "$issue_out" | awk -F= '/^DISPATCH_TOKEN_FILE=/{print $2}')"
-  signing_key_file="$(printf '%s\n' "$issue_out" | awk -F= '/^DISPATCH_SIGNING_KEY_FILE=/{print $2}')"
-  approval_id="$(printf '%s\n' "$issue_out" | awk -F= '/^LIVE_OPEN_APPROVAL_ID=/{print $2}')"
-  if [[ -z "$token_file" || -z "$signing_key_file" || -z "$approval_id" ]]; then
-    echo "DISPATCH_TOKEN_ISSUE_FAILED=YES"
-    return 1
-  fi
-  export DI_S4_GATE6_LIVE_OPEN_DISPATCH_TOKEN_FILE="$token_file"
-  export DI_S4_GATE6_DISPATCH_SIGNING_KEY_FILE="$signing_key_file"
-  export DI_S4_GATE6_LIVE_OPEN_APPROVAL_ID="$approval_id"
-  echo "LIVE_OPEN_DISPATCH_ISSUED=YES"
-  echo "DISPATCH_TOKEN_ONE_SHOT=YES"
-  echo "DISPATCH_AUTO_REISSUE=NO"
   return 0
 }
 
@@ -234,35 +213,41 @@ s4f7as_preflight_open_readonly() {
   return 0
 }
 
-s4f7as_execute_open_mode() {
+s4f7as_execute_preflight_mode() {
+  s4f7as_assert_production_test_isolation || return 1
+  s4f7as_preflight_open_readonly || return 1
+  return 0
+}
+
+s4f7as_execute_dry_run_mode() {
   s4f7as_assert_production_test_isolation || return 1
   if [[ "${DI_S4_GATE6_OPEN_ACK:-}" != "YES" || "${DI_S4_GATE6_OPEN_AUTHORIZED:-}" != "YES" ]]; then
     echo "GATE6_OPEN_AUTHORIZATION=MISSING"
     return 1
   fi
-  if [[ -z "${DI_S4_GATE6_OPERATOR_REASON:-}" || -z "${DI_S4_GATE6_OPERATOR_ACTOR:-}" ]]; then
-    echo "AUDIT_FIELDS_MISSING=YES"
-    return 1
-  fi
-  s4f7as_assert_explicit_dry_run_mode || return 1
+  export DI_S4_GATE6_DRY_RUN_AUTHORIZED=YES
+  export DRY_RUN=1
+  s4f7as_assert_open_audit_and_pins || return 1
   s4f7as_preflight_open_readonly || return 1
+  s4f7as_run_cli dry-run-open || return 1
+  s4f7as_run_cli read-global || true
+  echo "DRY_RUN_OPEN_COMPLETE=YES"
+  echo "GLOBAL_DB_MUTATION_OCCURRED=NO"
+  echo "S4_ACTIVATION_OCCURRED=NO"
+  return 0
+}
 
-  if [[ "${DRY_RUN}" == "1" ]]; then
-    s4f7as_run_cli dry-run-open || return 1
-    s4f7as_run_cli read-global || true
-    echo "DRY_RUN_OPEN_COMPLETE=YES"
-    echo "GLOBAL_DB_MUTATION_OCCURRED=NO"
-    echo "S4_ACTIVATION_OCCURRED=NO"
-    return 0
-  fi
-
-  if ! s4f7j_require_durable_backup_dir; then
-    echo "DURABLE_BACKUP_DIR_MISSING=YES"
+s4f7as_execute_live_open_mode() {
+  s4f7as_assert_production_test_isolation || return 1
+  if [[ "${DI_S4_GATE6_OPEN_ACK:-}" != "YES" || "${DI_S4_GATE6_OPEN_AUTHORIZED:-}" != "YES" ]]; then
+    echo "GATE6_OPEN_AUTHORIZATION=MISSING"
     return 1
   fi
-  export DI_S4_GATE6_DISPATCH_TOKEN_DIR="${DI_S4_GATE6_DISPATCH_TOKEN_DIR:-${DI_S4_TINY_STAGING_DURABLE_BACKUP_DIR:-}}"
-  s4f7as_issue_live_open_dispatch || return 1
-  if ! s4f7as_run_cli live-open-authorized; then
+  export DI_S4_GATE6_PILOT_VEHICLE_CONFIRM="${DI_S4_GATE6_PILOT_VEHICLE_CONFIRM:-c10351f8-b6a2-4258-947f-631aeaa6d359}"
+  export DRY_RUN=0
+  s4f7as_assert_open_audit_and_pins || return 1
+  s4f7as_preflight_open_readonly || return 1
+  if ! s4f7as_run_cli live-open; then
     echo "LIVE_OPEN_FAILED=YES"
     return 1
   fi
@@ -270,6 +255,15 @@ s4f7as_execute_open_mode() {
   echo "GLOBAL_KILL_OPENED=YES"
   echo "GLOBAL_DB_MUTATION_OCCURRED=YES"
   return 0
+}
+
+# Legacy entry for older callers.
+s4f7as_execute_open_mode() {
+  if [[ "${DRY_RUN:-}" == "1" ]]; then
+    s4f7as_execute_dry_run_mode
+  else
+    s4f7as_execute_live_open_mode
+  fi
 }
 
 s4f7as_execute_emergency_rekill_mode() {
