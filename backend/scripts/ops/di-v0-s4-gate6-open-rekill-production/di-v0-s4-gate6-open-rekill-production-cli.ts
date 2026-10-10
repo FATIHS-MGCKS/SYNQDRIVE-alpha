@@ -17,7 +17,17 @@ import {
   DI_S4_GATE6_DISPATCH_TOKEN_DIR_ENV,
   issueLiveOpenDispatchToken,
 } from './di-v0-s4-gate6-dispatch-token.lib';
-import { loadAndVerifyHumanApprovalFile } from './di-v0-s4-gate6-human-approval.lib';
+import {
+  finalizeTrustedDispatchIssuanceSpendForLiveOpen,
+  recordTrustedDispatchIssuance,
+  verifyTrustedDispatchProvenanceForLiveOpen,
+} from './di-v0-s4-gate6-trusted-dispatch-issuance.lib';
+import { resolveApprovalConsumptionRegisterDir, reserveApprovalIdForDispatch } from './di-v0-s4-gate6-approval-consumption.lib';
+import {
+  evaluateProductionGate6DispatchIssuanceBoundary,
+  evaluateProductionGate6LiveOpenBoundary,
+} from './di-v0-s4-gate6-live-open-boundary.lib';
+import { approvalIdFromVerified, loadAndVerifyHumanApprovalFile } from './di-v0-s4-gate6-human-approval.lib';
 import {
   consumeGate6LiveOpenDispatchFromEnv,
   evaluateGate6ProductionPathIsolation,
@@ -98,6 +108,11 @@ async function main(): Promise<void> {
         console.log('AUDIT_FIELDS_MISSING=YES');
         process.exit(1);
       }
+      const dispatchBoundary = evaluateProductionGate6DispatchIssuanceBoundary(process.env);
+      if (!dispatchBoundary.ok) {
+        console.log(`PRODUCTION_LIVE_OPEN_BOUNDARY_FAILURES=${dispatchBoundary.failures.join(',')}`);
+        process.exit(1);
+      }
       const tokenDir = (process.env[DI_S4_GATE6_DISPATCH_TOKEN_DIR_ENV] ?? '').trim();
       if (!tokenDir) {
         console.log('DISPATCH_TOKEN_DIR_MISSING=YES');
@@ -119,17 +134,38 @@ async function main(): Promise<void> {
         process.exit(1);
       }
       console.log('INDEPENDENT_APPROVAL_AUTHORITY=VERIFIED');
-      const { filePath, signingKeyFilePath } = issueLiveOpenDispatchToken(tokenDir, {
-        approvalId: approval.record.approvalId,
+      const approvalId = approvalIdFromVerified(approval.verified);
+      const registerResolved = resolveApprovalConsumptionRegisterDir(process.env);
+      if (!registerResolved.ok) {
+        console.log(`APPROVAL_CONSUMPTION_FAILURE=${registerResolved.failure}`);
+        process.exit(1);
+      }
+      const reserved = reserveApprovalIdForDispatch(registerResolved.dir, approvalId);
+      if (!reserved.ok) {
+        console.log(`APPROVAL_CONSUMPTION_FAILURE=${reserved.failure}`);
+        process.exit(1);
+      }
+      console.log('APPROVAL_ID_CONSUMPTION_RESERVED=YES');
+      const { filePath, signingKeyFilePath, record } = issueLiveOpenDispatchToken(tokenDir, {
+        approvalId,
         requiredSha: pins.requiredSha,
         requiredReleaseId: pins.requiredReleaseId,
         requiredEnvSha256: pins.requiredEnvSha256,
         reason: audit.reason,
         actor: audit.actor,
       });
+      const issuanceRecorded = recordTrustedDispatchIssuance(process.env, {
+        tokenRecord: record,
+        verifiedApproval: approval.verified,
+      });
+      if (!issuanceRecorded.ok) {
+        console.log(`TRUSTED_DISPATCH_ISSUANCE_FAILURE=${issuanceRecorded.failure}`);
+        process.exit(1);
+      }
+      console.log('TRUSTED_DISPATCH_ISSUANCE_RECORDED=YES');
       console.log(`DISPATCH_TOKEN_FILE=${filePath}`);
       console.log(`DISPATCH_SIGNING_KEY_FILE=${signingKeyFilePath}`);
-      console.log(`LIVE_OPEN_APPROVAL_ID=${approval.record.approvalId}`);
+      console.log(`LIVE_OPEN_APPROVAL_ID=${approvalId}`);
       console.log('DISPATCH_TOKEN_ISSUED=YES');
       console.log('HMAC_KEY_SEPARATION=YES');
       break;
@@ -174,10 +210,27 @@ async function main(): Promise<void> {
     }
     case 'live-open-authorized': {
       assertProductionFixtureAllowedForCommand();
+      const liveBoundary = evaluateProductionGate6LiveOpenBoundary(process.env);
+      if (!liveBoundary.ok) {
+        console.log(`PRODUCTION_LIVE_OPEN_BOUNDARY_FAILURES=${liveBoundary.failures.join(',')}`);
+        process.exit(1);
+      }
       const audit = auditFromEnv();
+      const provenance = verifyTrustedDispatchProvenanceForLiveOpen(process.env, { consumeIssuance: false });
+      if (!provenance.ok) {
+        console.log(`LIVE_OPEN_TRUSTED_DISPATCH_FAILURES=${provenance.failures.join(',')}`);
+        process.exit(1);
+      }
+      console.log('SIGNED_APPROVAL_REVERIFIED_AT_LIVE_OPEN=YES');
+      console.log('TRUSTED_DISPATCH_ISSUANCE_BOUND=YES');
       const consumed = consumeGate6LiveOpenDispatchFromEnv(process.env);
       if (!consumed.ok) {
         console.log(`LIVE_OPEN_DISPATCH_FAILURES=${consumed.failures.join(',')}`);
+        process.exit(1);
+      }
+      const issuanceSpent = finalizeTrustedDispatchIssuanceSpendForLiveOpen(process.env, consumed.record.nonce);
+      if (!issuanceSpent.ok) {
+        console.log(`LIVE_OPEN_TRUSTED_DISPATCH_FAILURES=${issuanceSpent.failure}`);
         process.exit(1);
       }
       console.log('DISPATCH_TOKEN_CONSUMED=YES');
