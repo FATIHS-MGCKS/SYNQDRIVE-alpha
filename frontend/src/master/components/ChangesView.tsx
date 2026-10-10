@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'm3-3-hv-h4-a3-p1b1-a1-h3-canonical-signature-encoding-2026-10-09',
+    version: '4.9.2235',
+    title: 'M3.3 HV-H4 A3 P1B1-A1-H3 — canonical Ed25519 detached Base64 closure',
+    summary: [
+      'Governance signature parse requires padded canonical Base64 round-trip for 64-byte Ed25519 detached signatures.',
+      'keyId preserved exactly without silent trim; rejects unpadded and padding-bit alias encodings.',
+      'H2 timestamp binding and fail-closed independent authority unchanged.',
+    ],
+    reason: 'R4.2B-P1B1-A1-H3 — eliminate non-canonical Base64 acceptance in offline evidence verification.',
+    previousBehavior: 'Detached Base64 could decode with lenient aliases; keyId was trimmed on parse.',
+    details:
+      'architecture/battery-v2/governance/M3_3_HV_H4_A3_P1B1_A1_GOVERNANCE_EVIDENCE_FOUNDATION_2026-10-09.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-10T00:05:00.000Z',
+  },
+  {
     id: 'm3-3-hv-h4-a3-p1b1-a1-h2-evidence-parser-integrity-2026-10-09',
     version: '4.9.2234',
     title: 'M3.3 HV-H4 A3 P1B1-A1-H2 — evidence parser integrity & signed acceptance timestamp',

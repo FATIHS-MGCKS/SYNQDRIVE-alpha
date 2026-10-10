@@ -6,6 +6,15 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B1-A1-H3 canonical Ed25519 Base64 closure
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Strict Base64 round-trip + exact keyId in `parseGovernanceSignedAttestationV1`; adversarial encoding tests |
+| **WHY** | H3 review — reject non-canonical Base64 aliases and silent keyId normalization |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1b1-a1-h3-canonical-signature-encoding.spec.ts` + HV-H4 unit suite |
+| **NON_EFFECTS** | H2 timestamp binding, disabled independent authority, P1 `NO_GO` |
+
 ## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B1-A1-H2 evidence parser & acceptance timestamp binding
 
 | Field | Value |

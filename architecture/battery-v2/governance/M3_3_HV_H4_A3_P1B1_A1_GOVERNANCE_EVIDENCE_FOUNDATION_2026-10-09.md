@@ -25,9 +25,9 @@
 
 Offline cryptographic verifiers may return `SIGNATURE_VALID_WITH_SUPPLIED_KEY` for diagnostics/tests; that is **separate** from `INDEPENDENT_AUTHORITY_VERIFIED`. Fixture GitHub merge evidence never promotes to production ratification (`REPOSITORY_MERGE_PROVENANCE_UNVERIFIED`). Human verification readiness does not pass from synthetic env bundles; P1 execution gate unchanged.
 
-## Parser integrity (P1B1-A1-H2)
+## Parser integrity (P1B1-A1-H2 / H3)
 
-- Shared `parseGovernanceSignedAttestationV1`: Ed25519 only, non-empty canonical `keyId`, canonical Base64 detached signature (64 bytes), required field types; fail-closed before crypto.
+- Shared `parseGovernanceSignedAttestationV1`: Ed25519 only; `keyId` must be non-empty and **exact** (no leading/trailing whitespace normalization); detached Base64 must be **88-character canonical padded** encoding of exactly 64 signature bytes with `Buffer.from(s, 'base64').toString('base64') === s` (rejects unpadded equivalents and padding-bit aliases); required field types; fail-closed before crypto.
 - All offline evidence parsers and `verifyGovernanceEd25519SignatureV1` use the shared parser; exported offline paths wrap parsing so malformed JSON cannot throw.
 - Operator risk attestation **V2** includes `acceptedAtUtc` in the signed payload; claims binding rejects `PHASE_A_OPERATOR_RISK_ACCEPTANCE_TIMESTAMP_SIGNATURE_MISMATCH` when only the claim timestamp is tampered.
 
@@ -45,4 +45,4 @@ Offline cryptographic verifiers may return `SIGNATURE_VALID_WITH_SUPPLIED_KEY` f
 cd backend && npm run test:battery:v2:hv-h4
 ```
 
-Adversarial coverage: `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1b1-a1-governance-evidence.spec.ts`, `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1b1-a1-h1-governance-trust-anchor.spec.ts`, `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1b1-a1-h2-evidence-parser-integrity.spec.ts`.
+Adversarial coverage: `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1b1-a1-governance-evidence.spec.ts`, `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1b1-a1-h1-governance-trust-anchor.spec.ts`, `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1b1-a1-h2-evidence-parser-integrity.spec.ts`, `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1b1-a1-h3-canonical-signature-encoding.spec.ts`.
