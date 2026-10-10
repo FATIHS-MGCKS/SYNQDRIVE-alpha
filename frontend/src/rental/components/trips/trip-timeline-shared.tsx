@@ -2,8 +2,11 @@ import { Icon } from '../ui/Icon';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import type { EnergyEvent } from './timeline.types';
 import {
+  buildRefuelObservedTimePresentation,
+  formatDetectionEnvelopeTimes,
   formatRechargeDurationMinutes,
   formatRefuelSignalChangeMinutes,
+  refuelCardDateIso,
   refuelPrimaryFuelDelta,
   refuelSecondaryFuelDelta,
 } from './trips-energy-i18n';
@@ -12,17 +15,28 @@ import { resolveRefuelFuelStationPresentation } from './trips-fuel-station-enric
 export function TripTimelineEnergyCard({ event, isDark }: { event: EnergyEvent; isDark: boolean }) {
   const { t, locale } = useLanguage();
   const isRefuel = event.kind === 'REFUEL';
-  const date = new Date(event.startTime);
-  const end = new Date(event.endTime);
-  const dateLabel = date.toLocaleDateString(locale, {
+
+  const headerDateSource = isRefuel ? refuelCardDateIso(event) : event.startTime;
+  const headerDate = new Date(headerDateSource);
+  const dateLabel = headerDate.toLocaleDateString(locale, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
   });
-  const timeLabel = `${date.toLocaleTimeString(locale, {
-    hour: '2-digit',
-    minute: '2-digit',
-  })} – ${end.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}`;
+
+  const refuelTime = isRefuel ? buildRefuelObservedTimePresentation(event, locale) : null;
+
+  const rechargeStart = new Date(event.startTime);
+  const rechargeEnd = new Date(event.endTime);
+  const rechargeTimeLabel = !isRefuel
+    ? `${rechargeStart.toLocaleTimeString(locale, {
+        hour: '2-digit',
+        minute: '2-digit',
+      })} – ${rechargeEnd.toLocaleTimeString(locale, {
+        hour: '2-digit',
+        minute: '2-digit',
+      })}`
+    : null;
 
   const primaryDelta = isRefuel
     ? refuelPrimaryFuelDelta(event)
@@ -43,6 +57,8 @@ export function TripTimelineEnergyCard({ event, isDark }: { event: EnergyEvent; 
   const rechargeDurationMinutes = !isRefuel
     ? formatRechargeDurationMinutes(event.durationSeconds)
     : null;
+
+  const envelopeTimes = isRefuel ? formatDetectionEnvelopeTimes(event, locale) : null;
 
   const accentBg = isRefuel
     ? isDark
@@ -89,7 +105,21 @@ export function TripTimelineEnergyCard({ event, isDark }: { event: EnergyEvent; 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
             <span className="text-[10px] font-bold text-foreground">{dateLabel}</span>
-            <span className="text-[10px] font-medium text-muted-foreground">{timeLabel}</span>
+            {isRefuel && refuelTime?.mode === 'approximate' && (
+              <span className="text-[10px] font-medium text-muted-foreground">
+                {t('trips.energy.refuel.approximateObservedTime', {
+                  time: refuelTime.primaryTimeLabel,
+                })}
+              </span>
+            )}
+            {isRefuel && refuelTime?.mode === 'undetermined' && (
+              <span className="text-[10px] font-medium text-muted-foreground italic">
+                {t('trips.energy.refuel.timeUndetermined')}
+              </span>
+            )}
+            {!isRefuel && rechargeTimeLabel && (
+              <span className="text-[10px] font-medium text-muted-foreground">{rechargeTimeLabel}</span>
+            )}
             <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${pillBg}`}>
               {isRefuel ? t('trips.energy.refuel.kindLabel') : t('trips.energy.recharge.kindLabel')}
             </span>
@@ -150,6 +180,14 @@ export function TripTimelineEnergyCard({ event, isDark }: { event: EnergyEvent; 
             )}
             {primaryDelta && <span className={`font-semibold ${accentText}`}>{primaryDelta}</span>}
             {secondaryDelta && <span>{secondaryDelta}</span>}
+            {isRefuel && refuelTime?.mode === 'approximate' && (
+              <span>
+                {t('trips.energy.refuel.fuelLevelRiseInterval', {
+                  from: refuelTime.intervalFrom,
+                  to: refuelTime.intervalTo,
+                })}
+              </span>
+            )}
             {refuelSignalChangeMinutes != null && (
               <span>
                 {t('trips.energy.refuel.signalChangeMinutes', {
@@ -164,17 +202,11 @@ export function TripTimelineEnergyCard({ event, isDark }: { event: EnergyEvent; 
                 })}
               </span>
             )}
-            {isRefuel && (
-              <span className="text-[9px] text-muted-foreground/80">
+            {isRefuel && envelopeTimes && (
+              <span className="text-[9px] text-muted-foreground/70">
                 {t('trips.energy.refuel.detectionWindow', {
-                  from: date.toLocaleTimeString(locale, {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  }),
-                  to: end.toLocaleTimeString(locale, {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  }),
+                  from: envelopeTimes.from,
+                  to: envelopeTimes.to,
                 })}
               </span>
             )}

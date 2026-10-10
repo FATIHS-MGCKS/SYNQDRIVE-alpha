@@ -36,6 +36,97 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'refuel-time-ux-correction-2026-10-10',
+    version: '4.9.2236',
+    title: 'REFUEL trip timeline — observed fuel-rise time vs DIMO detection envelope',
+    summary: [
+      'TripTimelineEnergyCard shows approximate fuel-level-rise start (not detection envelope) as primary REFUEL time.',
+      'Signal-rise interval + detection window moved to secondary/technical copy; RECHARGE presentation unchanged.',
+      'Timeline sort/day grouping anchors on fuelLevelRiseStart when valid; normalizeTimelineItems re-sorts canonical API order.',
+      'Backend product read: bounded OR query + post-filter on product timeline anchor (midnight-safe with local day filters).',
+    ],
+    reason: 'WOB L 7503 2026-10-09: envelope 19:32–21:09 misrepresented ~20:47 pump observation.',
+    previousBehavior: 'REFUEL cards used startTime/endTime envelope as the headline time range.',
+    details:
+      'trip-timeline-shared.tsx, trips-energy-i18n.ts, utils/refuelTimelineTime.ts, utils/tripTimeline.ts.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-10T11:10:00.000Z',
+  },
+  {
+    id: 'm3-3-hv-h4-a3-p1b1-a1-h3-canonical-signature-encoding-2026-10-09',
+    version: '4.9.2235',
+    title: 'M3.3 HV-H4 A3 P1B1-A1-H3 — canonical Ed25519 detached Base64 closure',
+    summary: [
+      'Governance signature parse requires padded canonical Base64 round-trip for 64-byte Ed25519 detached signatures.',
+      'keyId preserved exactly without silent trim; rejects unpadded and padding-bit alias encodings.',
+      'H2 timestamp binding and fail-closed independent authority unchanged.',
+    ],
+    reason: 'R4.2B-P1B1-A1-H3 — eliminate non-canonical Base64 acceptance in offline evidence verification.',
+    previousBehavior: 'Detached Base64 could decode with lenient aliases; keyId was trimmed on parse.',
+    details:
+      'architecture/battery-v2/governance/M3_3_HV_H4_A3_P1B1_A1_GOVERNANCE_EVIDENCE_FOUNDATION_2026-10-09.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-10T00:05:00.000Z',
+  },
+  {
+    id: 'di-exp021-s4f7ax3-trusted-dispatch-provenance-2026-10-09',
+    version: 'engineering',
+    title: 'EXP-021 S4F-7AX.3 — Gate-6 trusted dispatch provenance (engineering only)',
+    summary: [
+      'Privileged issuance register + MAC key binds dispatch nonce/digest to verified Ed25519 approval consumption.',
+      'live-open-authorized re-verifies human approval and trusted issuance record before any Prisma OPEN mutation.',
+      'Self-issued HMAC sidecar alone cannot satisfy live OPEN; 71 operator tests PASS.',
+      'No Production mutation, live OPEN, or issuance key provisioning.',
+    ],
+    reason:
+      'Dispatch per-token HMAC sidecars are generated at issuance and do not prove independent human approval on Production.',
+    previousBehavior:
+      'live-open-authorized consumed dispatch token MAC only; Ed25519 approval was not re-verified at OPEN boundary.',
+    details: 'architecture/drivingintelligence/evidence/EXP021_S4F7AX3_TRUSTED_DISPATCH_PROVENANCE.md',
+    affectsArchitecture: true,
+    module: 'Driving Intelligence',
+    createdAt: '2026-10-09T23:45:00.000Z',
+  },
+  {
+    id: 'm3-3-hv-h4-a3-p1b1-a1-h2-evidence-parser-integrity-2026-10-09',
+    version: '4.9.2234',
+    title: 'M3.3 HV-H4 A3 P1B1-A1-H2 — evidence parser integrity & signed acceptance timestamp',
+    summary: [
+      'Fail-closed Ed25519 signature parsing across offline governance evidence verifiers.',
+      'Operator-risk attestation V2 binds acceptedAtUtc in signed payload; claims tampering rejected.',
+      'Independent authority verifier remains disabled; P1 gate NO_GO.',
+    ],
+    reason: 'R4.2B-P1B1-A1-H2 closure — malformed signatures cannot throw; acceptance time cryptographically bound.',
+    previousBehavior:
+      'Malformed signature fields could reach crypto paths; operator-risk acceptedAtUtc was claim-only.',
+    details:
+      'architecture/battery-v2/governance/M3_3_HV_H4_A3_P1B1_A1_GOVERNANCE_EVIDENCE_FOUNDATION_2026-10-09.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-09T23:35:00.000Z',
+  },
+  {
+    id: 'm3-3-hv-h4-a3-p1b1-a1-governance-evidence-foundation-2026-10-09',
+    version: '4.9.2233',
+    title: 'M3.3 HV-H4 A3 P1B1-A1 — offline governance evidence foundation (verification only)',
+    summary: [
+      'Ed25519 domain-separated attestations for ratification, operator risk, deployment probe, and Postgres target configuration.',
+      'Offline cryptographic verification helpers for diagnostics/tests only; production governance authority resolver stays disabled (H1).',
+      'Independent governance authority is not configured; Path B readiness is not granted from env bundles; P1_AUTHORIZATION=NO_GO.',
+      'Adversarial HV-H4 tests; no production SSH/DB, no real owner keys in CI.',
+    ],
+    reason: 'R4.2B-P1B1-A1 trusted evidence foundation under SINGLE_OPERATOR_V1 without production activation.',
+    previousBehavior:
+      'Governance claims could be structurally valid but independent authority was not provisioned; no deployment/Postgres evidence contracts.',
+    details:
+      'architecture/battery-v2/governance/M3_3_HV_H4_A3_P1B1_A1_GOVERNANCE_EVIDENCE_FOUNDATION_2026-10-09.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-09T23:10:00.000Z',
+  },
+  {
     id: 'p25-apds-9-3-durable-t0-foundation-2026-10-08',
     version: '4.9.2232',
     title: 'P2.5 APDS-9.3 — durable shadow activation epoch + T0 gate (engineering only)',
@@ -183,6 +274,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     affectsArchitecture: true,
     module: 'Vehicle Onboarding',
     createdAt: '2026-09-30T05:00:00.000Z',
+  },
+  {
+    id: 'battery-v2-production-alpha-g3-h1-safe-shadow-2026-10-10',
+    version: '4.9.2233',
+    title: 'Battery V2 production alpha G3-H1/H2 — safe shadow + HV compat fallback closure',
+    summary: [
+      'Legacy LV rest capture disabled whenever canonical REST shadow pipeline is on (publication no longer re-enables legacy ingestion).',
+      'Customer LV SOH and HV telemetry SOC gated by publication flag + legacy publication safety + observation freshness.',
+      'GET hv-battery-status: no legacy SOC/range/SOH/telemetry bypass when canonical observation is stale.',
+      'Flag-combination regression matrix and snapshot duplicate-enqueue guard tests.',
+    ],
+    reason:
+      'Production alpha G2 RCA: REST_SHADOW + PUBLICATION=false incorrectly dual-pathed legacy capture; stale Tesla SOC and stored LV SOH exposed as current customer truth.',
+    previousBehavior:
+      'Publication off with REST shadow on enabled legacy rest capture; userFacingSohPct mirrored publishedSohPct; stale sourceTimestamp SOC still shown when fetch was fresh.',
+    details:
+      'backend/src/config/battery-health-v2.config.ts; battery-v2-user-facing-lv.policy.ts; canonical-battery-health.service.ts; architecture/battery-v2/research/CHANGE_LEDGER.md',
+    affectsArchitecture: true,
+    module: 'Battery V2',
+    createdAt: '2026-10-10T10:00:00.000Z',
   },
   {
     id: 'vehicle-onboarding-vo3-orchestrator-2026-09-30',

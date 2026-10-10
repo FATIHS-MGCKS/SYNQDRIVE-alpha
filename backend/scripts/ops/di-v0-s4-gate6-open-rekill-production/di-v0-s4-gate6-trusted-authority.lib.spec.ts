@@ -16,6 +16,7 @@ describe('exact Production backend.env enforcement', () => {
     const enforced = enforceExactProductionBackendEnvForLiveOpen(
       { DI_S4F7AS_FIXTURE_MODE: '1', SYNQDRIVE_BACKEND_ENV: envFile },
       resolved,
+      { permitFixtureAlternateBackendEnv: true },
     );
     expect(enforced.ok).toBe(true);
     fs.rmSync(dir, { recursive: true, force: true });

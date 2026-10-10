@@ -106,3 +106,17 @@ export class RawRefuelCandidateCrossVersionInsufficientEvidenceError extends Err
     this.name = 'RawRefuelCandidateCrossVersionInsufficientEvidenceError';
   }
 }
+
+export class RawRefuelCandidateV2RediscoveryInsufficientEvidenceError extends Error {
+  readonly code = 'RAW_REFUEL_CANDIDATE_V2_REDISCOVERY_INSUFFICIENT_EVIDENCE';
+
+  constructor(
+    readonly vehicleId: string,
+    readonly candidateIds: string[],
+  ) {
+    super(
+      `v2→v2 rediscovery insufficient evidence for vehicle ${vehicleId}: ${candidateIds.join(', ')}`,
+    );
+    this.name = 'RawRefuelCandidateV2RediscoveryInsufficientEvidenceError';
+  }
+}

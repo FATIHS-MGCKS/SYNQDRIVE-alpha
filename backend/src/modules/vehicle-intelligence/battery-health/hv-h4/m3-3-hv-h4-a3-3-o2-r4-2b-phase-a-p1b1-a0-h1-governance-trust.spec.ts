@@ -259,7 +259,7 @@ describe('P1B1-A0-H1 governance trust boundaries', () => {
     );
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.reasonCode).toBe('PHASE_A_GOVERNANCE_EXTERNAL_AUTHORITY_VERIFIER_NOT_CONFIGURED');
+      expect(result.reasonCode).toBe('PHASE_A_GOVERNANCE_INDEPENDENT_TRUST_ANCHOR_NOT_PROVISIONED');
     }
     expect(resolvePhaseAProductionP1AuthorizationV1()).toBe('NO_GO');
   });

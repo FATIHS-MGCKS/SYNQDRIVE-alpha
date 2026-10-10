@@ -3,19 +3,18 @@ import { RFRF_PLANNED_SETTLED_POST_DETECTION_VERSION } from '../raw-refuel-candi
 import { buildTestObservation } from '../raw-refuel-candidate/testing/raw-refuel-candidate-test.util';
 import type { RawRefuelCandidate } from '@prisma/client';
 
-/**
- * R3B documentation: v2→v2 same physical identity with changed settled post
- * remains SAME_VERSION matcher semantics — duplicate candidate risk is an
- * explicit R3B activation blocker (no matcher change in R3A).
- */
-describe('R3A — R2 v2→v2 rediscovery semantic note (unchanged matcher)', () => {
+/** R3B regression: v2→v2 settled median revision within tolerance stays SAME_PHYSICAL_RISE. */
+describe('R3B — v2→v2 rediscovery matcher regression', () => {
   it('documents SAME_VERSION when post liters change within tolerance', () => {
     const base = buildTestObservation({
       organizationId: 'org-r3a',
       vehicleId: 'veh-r3a',
       detectionVersion: RFRF_PLANNED_SETTLED_POST_DETECTION_VERSION,
       postFuelAbsoluteLiters: 19,
-      evidenceMeta: { postFuelAuthority: 'SETTLED_MEDIAN' },
+      evidenceMeta: {
+        postFuelAuthority: 'SETTLED_MEDIAN',
+        baselineRecencyClassification: 'FRESH',
+      },
     });
     const stored: RawRefuelCandidate = {
       ...(base as unknown as RawRefuelCandidate),
@@ -35,7 +34,10 @@ describe('R3A — R2 v2→v2 rediscovery semantic note (unchanged matcher)', () 
     const incoming = buildTestObservation({
       ...base,
       postFuelAbsoluteLiters: 18,
-      evidenceMeta: { postFuelAuthority: 'SETTLED_MEDIAN' },
+      evidenceMeta: {
+        postFuelAuthority: 'SETTLED_MEDIAN',
+        baselineRecencyClassification: 'FRESH',
+      },
     });
     const overlap = classifyRawRefuelCandidateOverlap(incoming, stored);
     expect(overlap).toBe('SAME_PHYSICAL_RISE');

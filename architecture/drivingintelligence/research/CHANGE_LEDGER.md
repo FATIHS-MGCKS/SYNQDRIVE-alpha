@@ -1721,6 +1721,85 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | PR #1939 — align S4F-7AK / CURRENT_STATE / CHANGE_LEDGER: S4F-7AI = Production **`DRY_RUN=1` only**; live = detached `ed78748bc…` S4F-7Y operator (not S4F-7AI) |
 | NON_EFFECTS | No operator code change; no Production execution |
 
+### EXP-021 Simple Gate-6 + fleet rollout (2026-10-10)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Remove custom Gate-6 crypto chain; OS wrapper auth; fleet waves 1–3; evidence `EXP021_SIMPLE_GATE6_FLEET_ROLLOUT.md` |
+| TESTS | `test:di:s4f7as:gate6-open-rekill-operator` **37** PASS |
+| NON_EFFECTS | No Production mutation; GLOBAL **KILLED**; legacy HMAC root key not removed on VPS |
+
+### EXP-021 PR #1962 final live execution closure (2026-10-10)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Guard proof bundle channel; pinned root re-exec; explicit wave/pilot confirm; wave promotion verify path; scoped monitoring queries — §E in `EXP021_SIMPLE_GATE6_FLEET_ROLLOUT.md` |
+| TESTS | `test:di:s4f7as:gate6-open-rekill-operator` **43** PASS |
+| NON_EFFECTS | No Production mutation; no deploy; `LIVE_OPEN` not executed |
+
+### EXP-021 PR #1962 operator runtime fix (2026-10-10)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Absolute root/helper pins; intent dir hardening; guard-proof bundle reuse + pre-mutation refresh; remove root `npx` false positive — §F in `EXP021_SIMPLE_GATE6_FLEET_ROLLOUT.md` |
+| TESTS | Gate-6 operator suite + bash lifecycle test |
+| NON_EFFECTS | No Production mutation; no deploy |
+
+### EXP-021 PR #1962 OS permission contract (2026-10-10)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Admin-private intent under `~/.synqdrive/gate6-live-open-intent`; root `SUDO_UID` validation; release execution integrity (no g+w) — §G in `EXP021_SIMPLE_GATE6_FLEET_ROLLOUT.md` |
+| TESTS | `di-v0-s4-gate6-os-contract-e2e.selftest.sh` + operator Jest |
+| NON_EFFECTS | No Production mutation; no deploy |
+
+### EXP-021 S4F-7AZ Privileged writer model closure (2026-10-10)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Production shared-root `755` compatibility in `verifyParentDirectoryChain` (`0o022` write mask); privileged writer matrix + one-shot provisioning contract P1–P7; evidence `EXP021_S4F7AZ_PRIVILEGED_WRITER_CLOSURE.md` |
+| TESTS | `test:di:s4f7as:gate6-open-rekill-operator` **72** PASS |
+| NON_EFFECTS | No Production mutation; no keys/registers; no sudoers install; Gate-6 **NOT_GRANTED** |
+
+### EXP-021 S4F-7AY Post-merge Gate-6 infra readiness (2026-10-10)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Read-only Production attestation + Gate-6 trust path inventory after merge #1955; provisioning plan A–G (not executed); evidence `EXP021_S4F7AY_POSTMERGE_INFRA_READINESS.md` |
+| NON_EFFECTS | No deploy, no keys, no approval/dispatch artifacts, no Gate-6 grant |
+
+### EXP-021 S4F-7AX.3 Trusted dispatch provenance (2026-10-09)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | PR #1955 — privileged issuance register + MAC key; `recordTrustedDispatchIssuance` on `issue-dispatch-token`; `verifyTrustedDispatchProvenanceForLiveOpen` before DB on `live-open-authorized`; blocks self-issued HMAC-only bypass; evidence `EXP021_S4F7AX3_TRUSTED_DISPATCH_PROVENANCE.md` |
+| TESTS | `test:di:s4f7as:gate6-open-rekill-operator` **71** PASS |
+| NON_EFFECTS | No Production mutation; no issuance MAC key provisioning; Gate 6 **NOT_GRANTED** |
+
+### EXP-021 S4F-7AX.2 Final live authority boundary (2026-10-09)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | PR #1955 — `evaluateProductionGate6LiveOpenBoundary`; fixture flags cannot waive Production backend/trust anchors; simulated guard env proofs banned on live OPEN; trust-anchor permission checks; consumption register unlink policy helper |
+| TESTS | `test:di:s4f7as:gate6-open-rekill-operator` **60** PASS |
+| NON_EFFECTS | No Production mutation; Gate 6 **NOT_GRANTED** |
+
+### EXP-021 S4F-7AX.1 Approval trust anchor & atomic consumption (2026-10-09)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | PR #1955 — pinned Production Ed25519 trust anchor (no env/symlink override); `issue-dispatch-token` trust gate; O_EXCL-only consumption marker; 20-process concurrency proof |
+| TESTS | `test:di:s4f7as:gate6-open-rekill-operator` **57** PASS |
+| NON_EFFECTS | No Production mutation; Gate 6 **NOT_GRANTED** |
+
+### EXP-021 S4F-7AX Gate-6 independent approval boundary (2026-10-09)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Ed25519 v2 human approval verify-only on Production canonical path; HMAC v1 approval forbidden when `SYNQDRIVE_BACKEND_ENV_CANONICAL` is Production shared env; approvalId single-use consumption register before dispatch token issuance; evidence `EXP021_S4F7AX_INDEPENDENT_APPROVAL_BOUNDARY.md` |
+| TESTS | `test:di:s4f7as:gate6-open-rekill-operator` **52** PASS (Ed25519 + consumption + CLI replay) |
+| NON_EFFECTS | EMERGENCY_REKILL unchanged; no Production mutation; HMAC root key from S4F-7AW not deleted; Gate 6 **NOT_GRANTED** |
+
 ### EXP-021 S4F-7AS.3 Gate-6 authority seal (2026-10-09)
 
 | Event | Detail |

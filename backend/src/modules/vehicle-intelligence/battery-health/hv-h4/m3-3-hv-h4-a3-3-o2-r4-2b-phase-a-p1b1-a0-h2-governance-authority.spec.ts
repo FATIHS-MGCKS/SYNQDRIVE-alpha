@@ -173,7 +173,7 @@ describe('P1B1-A0-H2 governance authority vs self-asserted claims', () => {
     const readiness = evaluatePhaseAHumanVerificationReadinessV1(pathBEnv(), readinessOptions());
     expect(readiness.ok).toBe(false);
     if (!readiness.ok) {
-      expect(readiness.reasonCode).toBe('PHASE_A_GOVERNANCE_EXTERNAL_AUTHORITY_VERIFIER_NOT_CONFIGURED');
+      expect(readiness.reasonCode).toBe('PHASE_A_GOVERNANCE_INDEPENDENT_TRUST_ANCHOR_NOT_PROVISIONED');
     }
   });
 

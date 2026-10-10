@@ -11,6 +11,18 @@
 #     "GIT_BRANCH=cursor/connectivity-release-candidate-2e0d bash /opt/synqdrive/current/backend/scripts/ops/vps-deploy-connectivity-staging.sh"
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/vps-vo5c-security-floor.lib.sh
+source "${SCRIPT_DIR}/lib/vps-vo5c-security-floor.lib.sh"
+# shellcheck source=lib/vps-vo5c-production-deploy-bypass-enforcement.lib.sh
+source "${SCRIPT_DIR}/lib/vps-vo5c-production-deploy-bypass-enforcement.lib.sh"
+if ! vps_vo5c_assert_protected_deploy_entry_authority "vps-deploy-connectivity-staging"; then
+  echo "!! ABORT: connectivity staging cannot promote production while VO5C deploy enforcement is active or authority is invalid" >&2
+  echo "    Use vps-vo5c-run-pinned-security-deploy.sh for production releases, or fix /opt/synqdrive/shared/vo5c-production-deploy-authority.env" >&2
+  echo "    OS boundary: remove execute permission on this script for non-break-glass roles when enforcement is enabled." >&2
+  exit 1
+fi
+
 GIT_BRANCH="${GIT_BRANCH:-cursor/connectivity-release-candidate-2e0d}"
 GIT_REPO="${GIT_REPO:-https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git}"
 RELEASE_ID="$(date -u +%Y%m%d%H%M%S)_connectivity-rc"

@@ -35,6 +35,12 @@ if [[ -f "${DEPLOY_EXECUTOR_OPS_DIR}/lib/vps-vo5c-security-floor.lib.sh" ]]; the
       exit 1
     }
   fi
+  # shellcheck source=lib/vps-vo5c-production-deploy-bypass-enforcement.lib.sh
+  source "${DEPLOY_EXECUTOR_OPS_DIR}/lib/vps-vo5c-production-deploy-bypass-enforcement.lib.sh"
+  vps_vo5c_assert_production_deploy_canonical_authority "$DEPLOY_EXECUTOR_ROOT" "$REQUESTED_SHA" || {
+    echo "!! ABORT: production deploy bypass enforcement (VO5C P4B15)" >&2
+    exit 1
+  }
 fi
 
 vps_clone_release_at_sha() {

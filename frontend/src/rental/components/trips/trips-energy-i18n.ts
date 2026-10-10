@@ -1,10 +1,14 @@
 import type { TranslationKey } from '../../../i18n/translations/en';
 import type { EnergyEvent } from '../../../lib/api';
+import { formatTimeHm, parseRefuelFuelLevelRise } from './utils/refuelTimelineTime';
 
 export const TRIPS_ENERGY_I18N_KEYS = [
   'trips.energy.refuel.detected',
   'trips.energy.refuel.signalChangeMinutes',
   'trips.energy.refuel.detectionWindow',
+  'trips.energy.refuel.approximateObservedTime',
+  'trips.energy.refuel.fuelLevelRiseInterval',
+  'trips.energy.refuel.timeUndetermined',
   'trips.energy.refuel.kindLabel',
   'trips.energy.refuel.stationPossible',
   'trips.energy.refuel.stationAmbiguous',
@@ -37,13 +41,43 @@ export function refuelSecondaryFuelDelta(event: EnergyEvent): string | null {
   return null;
 }
 
-export function shouldShowRefuelEnvelopeDuration(event: EnergyEvent): boolean {
-  return event.kind === 'REFUEL';
+export type RefuelObservedTimePresentation =
+  | { mode: 'approximate'; primaryTimeLabel: string; intervalFrom: string; intervalTo: string }
+  | { mode: 'undetermined' };
+
+export function buildRefuelObservedTimePresentation(
+  event: EnergyEvent,
+  locale: string,
+): RefuelObservedTimePresentation {
+  const rise = parseRefuelFuelLevelRise(event);
+  if (!rise.ok) {
+    return { mode: 'undetermined' };
+  }
+  return {
+    mode: 'approximate',
+    primaryTimeLabel: formatTimeHm(rise.start, locale),
+    intervalFrom: formatTimeHm(rise.start, locale),
+    intervalTo: formatTimeHm(rise.end, locale),
+  };
 }
 
-/** REFUEL cards must never use detection-envelope duration as implicit pump time. */
-export function refuelDisplaysEnvelopeAsDuration(event: EnergyEvent): boolean {
-  if (event.kind !== 'REFUEL') return false;
-  if (event.fuelLevelRiseDurationSeconds != null) return false;
-  return false;
+/** Calendar date for REFUEL card header — follows observed rise when valid. */
+export function refuelCardDateIso(event: EnergyEvent): string {
+  const rise = parseRefuelFuelLevelRise(event);
+  if (rise.ok) {
+    return rise.start.toISOString();
+  }
+  return event.startTime;
+}
+
+export function formatDetectionEnvelopeTimes(event: EnergyEvent, locale: string): {
+  from: string;
+  to: string;
+} {
+  const from = new Date(event.startTime);
+  const to = new Date(event.endTime);
+  return {
+    from: formatTimeHm(from, locale),
+    to: formatTimeHm(to, locale),
+  };
 }
