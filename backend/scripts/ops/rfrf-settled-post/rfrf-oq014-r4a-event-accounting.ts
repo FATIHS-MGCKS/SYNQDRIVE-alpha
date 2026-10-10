@@ -39,6 +39,7 @@ export const CANONICAL_PHYSICAL_EVENT_IDS: readonly string[] = [
   'KS_MX_2024_2026_09_16',
   'KS_MX_2024_2026_09_04',
   'HMUE_C_215_2026_09_29',
+  'WOB_7503_2026_10_09',
 ] as const;
 
 export const SUSPECT_PHYSICAL_EVENT_IDS: readonly string[] = [
@@ -162,6 +163,21 @@ export const RFRF_OQ014_R4A_EVENT_ACCOUNTING: readonly RfrfCalibrationEventRecor
     replayFixtureId: 'WOB_7503_2026_09_15',
     spineArtifactPath:
       'architecture/knowledge-graphs/energy-event-detection/evidence/data/EED-EV-0104-WOB-L-7503-2026-09-15-ABSOLUTE-SPINE.json',
+  },
+  {
+    eventId: 'WOB_7503_2026_10_09',
+    vehicleLabel: 'WOB L 7503',
+    populations: [
+      'CANONICAL_PHYSICAL',
+      'POSITIVE_LABELED',
+      'EXCLUDED_FROM_ELIGIBLE',
+      'PARTIAL_RECOVERY_TARGET',
+    ],
+    replayFixtureId: null,
+    spineArtifactPath:
+      'architecture/knowledge-graphs/energy-event-detection/evidence/data/EED-EV-0110-WOB-L-7503-2026-10-09-ABSOLUTE-SPINE.json',
+    notes:
+      'R4B bounded admission EED-EV-0110 — not R4A eligible N=6; 3040s observation gap; user pump quantity anchor only',
   },
   {
     eventId: 'WOB_7503_2026_09_02',

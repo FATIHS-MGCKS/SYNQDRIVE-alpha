@@ -1,5 +1,11 @@
 # KG-EED Changelog
 
+## 2026-10-10 — OQ-014 R4B WOB L 7503 2026-10-09 natural evidence admission (EED-EV-0110)
+
+- Read-only production crosscheck → committed 109-sample spine (`EED-EV-0110`); **3040 s** observation gap preserved
+- R4B admission manifest + Jest (`rfrf-oq014-r4b-wob-7503-admission.spec.ts`); offline R3A `REPLAY_HYPOTHESIS` on spine; **not** promoted to R4A eligible N=6
+- Canonical physical population +15 (`WOB_7503_2026_10_09`); **CALIBRATION_INSUFFICIENT** unchanged; OQ-014 **OPEN**; OQ-019 **PARTIALLY_RESOLVED**
+
 ## 2026-10-10 — OQ-014 R4A canonical event attribution final seal (EED-EV-0109)
 
 - Independent canonical refuel anchors (`rfrf-oq014-r4a-canonical-event-anchors.lib.ts`); fail-closed rise attribution without nearest-rise or first-sample ground truth

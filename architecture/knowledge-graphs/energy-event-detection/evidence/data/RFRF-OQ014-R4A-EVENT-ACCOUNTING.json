@@ -4,8 +4,8 @@
   "correctsEvidenceId": "EED-EV-0104",
   "addendumEvidenceId": "EED-EV-0104-ADDENDUM-R4A-WOB-CONCENTRATION-2026-10-10",
   "populationCounts": {
-    "canonicalPhysical": 14,
-    "positiveLabeledPhysical": 13,
+    "canonicalPhysical": 15,
+    "positiveLabeledPhysical": 14,
     "suspectPhysical": 1,
     "naturalCalibrationEligible": 6,
     "dropCalibrationEligible": 6,
@@ -28,7 +28,9 @@
     "fraction": 0.5,
     "eedEv0104NarrativeError": "Section 2 claimed MAX_EVENTS_FROM_SINGLE_VEHICLE=4 (0.667); authoritative eligible table lists three WOB events. The locality matrix value NATURAL_READY=4 at 30s cap is a different metric (events passing cap), not vehicle concentration."
   },
-  "settlingTimingIneligibleEventIds": ["WOB_7503_2026_09_19"],
+  "settlingTimingIneligibleEventIds": [
+    "WOB_7503_2026_09_19"
+  ],
   "evidenceAcquisitionPlanningTargets": {
     "additionalIndependentVehiclesMin": 3,
     "additionalEligibleNaturalsMin": 12,

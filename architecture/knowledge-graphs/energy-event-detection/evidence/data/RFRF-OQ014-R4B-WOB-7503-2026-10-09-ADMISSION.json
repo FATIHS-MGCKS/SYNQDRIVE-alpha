@@ -1,0 +1,45 @@
+{
+  "schemaVersion": "rfrf-oq014-r4b-admission-v1",
+  "eventId": "WOB_7503_2026_10_09",
+  "vehicleLabel": "WOB L 7503",
+  "dimoTokenId": 192922,
+  "productionSha": "ab72f574014d6657cac158c253696b7237cdd3e6",
+  "spineArtifactPath": "architecture/knowledge-graphs/energy-event-detection/evidence/data/EED-EV-0110-WOB-L-7503-2026-10-09-ABSOLUTE-SPINE.json",
+  "evidenceDocumentPath": "architecture/knowledge-graphs/energy-event-detection/evidence/EED-EV-0110-RFRF-OQ014-R4B-WOB-7503-2026-10-09-ADMISSION.md",
+  "calibrationDecision": "CALIBRATION_INSUFFICIENT",
+  "r4bAdmissionGrade": "BOUNDED_SPINE_EXTRACT_REPLAYABLE_NOT_CALIBRATION_GRADE",
+  "notPromotedToR4aEligibleN": true,
+  "groundTruth": {
+    "userPumpLiters": 18.11,
+    "approxAnchorUtc": "2026-10-09T18:47:00.000Z",
+    "dimoMeasuredRiseLiters": 18,
+    "pumpVsSensorDifferenceLiters": 0.11
+  },
+  "telemetry": {
+    "sampleCount": 109,
+    "intervalSeconds": 20,
+    "maxObservationGapSeconds": 3040,
+    "observationGapsOver300s": 2
+  },
+  "productionCanonical": {
+    "canonicalVehicleEnergyEventId": "412f17f7-7380-4dd0-8e24-6939be4809d6",
+    "nativeRowCount": 2,
+    "productCanonicalCount": 1,
+    "reconciliationGroupId": "19fedd4b-c4e8-4de8-a125-dab293326e7e:412f17f7-7380-4dd0-8e24-6939be4809d6|5ba5a03c-8713-47c2-9373-a744e1bce30e",
+    "classification": "SAME_PHYSICAL_REFUEL",
+    "finalityState": "FINAL_CANONICAL"
+  },
+  "fallbackCandidateId": "e4d65b04-dc27-4630-803f-eda548aa6210",
+  "fallbackConvergenceDetail": "multiple_same_native_siblings",
+  "metricEligibility": {
+    "quantityValidation": "USABLE_OFFLINE_REPLAY_HYPOTHESIS",
+    "physicalEventIdentity": "USABLE_READ_ONLY_FORENSIC",
+    "settlingTimingCalibration": "EXCLUDED",
+    "localityCalibration": "EXCLUDED",
+    "authoritativeR4aCalibrationStatistics": "EXCLUDED"
+  },
+  "openQuestions": {
+    "EED-OQ-014": "OPEN",
+    "EED-OQ-019": "PARTIALLY_RESOLVED"
+  }
+}

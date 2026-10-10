@@ -84,9 +84,9 @@ describe('RFRF OQ-014 R4A calibration integrity (offline)', () => {
 
   it('R4A-ACC-3 population counts derived from canonical membership', () => {
     const derived = derivePopulationCountsFromRegistry();
-    expect(derived.canonicalPhysical).toBe(14);
+    expect(derived.canonicalPhysical).toBe(15);
     expect(derived.suspectPhysical).toBe(1);
-    expect(derived.positiveLabeledPhysical).toBe(13);
+    expect(derived.positiveLabeledPhysical).toBe(14);
     expect(derived.dropCalibrationEligible).toBe(6);
     expect(derived.settlingTimingCalibrationEligible).toBe(5);
     expect(derived.localityCalibrationEligible).toBe(5);

@@ -1,0 +1,615 @@
+{
+  "evidenceId": "EED-EV-0110",
+  "eventId": "WOB_7503_2026_10_09",
+  "vehicleLabel": "WOB L 7503",
+  "dimoTokenId": 192922,
+  "sourceClassification": "BOUNDED_DIMO_READONLY_PRODUCTION_EXTRACT",
+  "sourceProvenance": {
+    "fetchMethod": "fetchRefuelEvidenceSignalsStandalone",
+    "telemetryApi": "https://telemetry-api.dimo.zone/query",
+    "productionShaAtExtract": "ab72f574014d6657cac158c253696b7237cdd3e6",
+    "extractedAtUtc": "2026-10-10T10:18:00Z",
+    "agentArtifactPath": "/opt/cursor/artifacts/wob-7503-2026-10-09-dimo.json",
+    "observationTimestampOnly": true,
+    "ingestionTimestampAvailable": false
+  },
+  "queryWindowUtc": {
+    "from": "2026-10-09T16:47:00.000Z",
+    "to": "2026-10-10T00:47:00.000Z"
+  },
+  "providerAggregationSemantics": {
+    "signal": "powertrainFuelSystemAbsoluteLevel",
+    "relativeSignal": "powertrainFuelSystemRelativeLevel",
+    "aggregation": "AVG",
+    "interval": "20s"
+  },
+  "telemetryObservationGaps": [
+    {
+      "fromUtc": "2026-10-09T17:36:40Z",
+      "toUtc": "2026-10-09T17:44:40Z",
+      "durationSeconds": 480
+    },
+    {
+      "fromUtc": "2026-10-09T17:54:00Z",
+      "toUtc": "2026-10-09T18:44:40Z",
+      "durationSeconds": 3040
+    }
+  ],
+  "maxObservationGapSeconds": 3040,
+  "userReportedGroundTruth": {
+    "pumpVolumeLiters": 18.11,
+    "approxRefuelAnchorUtc": "2026-10-09T18:47:00.000Z",
+    "provenance": "USER_PHOTO_PUMP_ASSOCIATION",
+    "notIndependentRiseOnset": true
+  },
+  "productionNativeCanonical": {
+    "vehicleEnergyEventId": "412f17f7-7380-4dd0-8e24-6939be4809d6",
+    "dimoSegmentId": "dimo-refuel-192922-1791567172000",
+    "reconciliationGroupId": "19fedd4b-c4e8-4de8-a125-dab293326e7e:412f17f7-7380-4dd0-8e24-6939be4809d6|5ba5a03c-8713-47c2-9373-a744e1bce30e",
+    "lateSiblingEnergyEventId": "5ba5a03c-8713-47c2-9373-a744e1bce30e",
+    "readOnlyVerifiedAtUtc": "2026-10-10T10:43:00Z"
+  },
+  "canonicalPhysicalEpisode": {
+    "refuelRiseStartUtc": "2026-10-09T18:48:52.000Z",
+    "provenance": "PRODUCTION_NATIVE_VEE_fuel_level_rise_start",
+    "evidenceRef": "vehicle_energy_events.412f17f7 fuel_level_rise_start \u2014 not user pump anchor"
+  },
+  "r4bAdmissionGrade": "BOUNDED_SPINE_EXTRACT_REPLAYABLE_NOT_CALIBRATION_GRADE",
+  "calibrationPopulationStatus": {
+    "quantityValidation": "USABLE_OFFLINE_HYPOTHESIS",
+    "physicalEventIdentity": "PROVEN_ONE_CANONICAL_NATIVE",
+    "settlingTimingCalibration": "EXCLUDED_LARGE_OBSERVATION_GAP",
+    "localityCalibration": "EXCLUDED_PENDING_FORENSIC_ROUTE",
+    "dropCalibrationEligibleN": false,
+    "authoritativeCalibrationMetricEligible": false
+  },
+  "sampleCount": 109,
+  "samples": [
+    {
+      "timestamp": "2026-10-09T17:22:20Z",
+      "absoluteLiters": null,
+      "relativePercent": null
+    },
+    {
+      "timestamp": "2026-10-09T17:23:40Z",
+      "absoluteLiters": null,
+      "relativePercent": null
+    },
+    {
+      "timestamp": "2026-10-09T17:24:00Z",
+      "absoluteLiters": 6.333333333333333,
+      "relativePercent": 11.76470588235294
+    },
+    {
+      "timestamp": "2026-10-09T17:24:20Z",
+      "absoluteLiters": 6,
+      "relativePercent": 11.76470588235294
+    },
+    {
+      "timestamp": "2026-10-09T17:24:40Z",
+      "absoluteLiters": 6,
+      "relativePercent": 11.76470588235294
+    },
+    {
+      "timestamp": "2026-10-09T17:25:00Z",
+      "absoluteLiters": 6,
+      "relativePercent": 11.76470588235294
+    },
+    {
+      "timestamp": "2026-10-09T17:25:20Z",
+      "absoluteLiters": 6,
+      "relativePercent": 11.76470588235294
+    },
+    {
+      "timestamp": "2026-10-09T17:25:40Z",
+      "absoluteLiters": 6,
+      "relativePercent": 11.76470588235294
+    },
+    {
+      "timestamp": "2026-10-09T17:26:00Z",
+      "absoluteLiters": 6,
+      "relativePercent": 11.76470588235294
+    },
+    {
+      "timestamp": "2026-10-09T17:26:20Z",
+      "absoluteLiters": 6,
+      "relativePercent": 11.76470588235294
+    },
+    {
+      "timestamp": "2026-10-09T17:26:40Z",
+      "absoluteLiters": 6,
+      "relativePercent": 11.76470588235294
+    },
+    {
+      "timestamp": "2026-10-09T17:27:00Z",
+      "absoluteLiters": 6,
+      "relativePercent": 11.76470588235294
+    },
+    {
+      "timestamp": "2026-10-09T17:27:20Z",
+      "absoluteLiters": 6,
+      "relativePercent": 11.76470588235294
+    },
+    {
+      "timestamp": "2026-10-09T17:27:40Z",
+      "absoluteLiters": 6,
+      "relativePercent": 11.76470588235294
+    },
+    {
+      "timestamp": "2026-10-09T17:28:00Z",
+      "absoluteLiters": 6,
+      "relativePercent": 11.76470588235294
+    },
+    {
+      "timestamp": "2026-10-09T17:28:20Z",
+      "absoluteLiters": 6,
+      "relativePercent": 11.76470588235294
+    },
+    {
+      "timestamp": "2026-10-09T17:28:40Z",
+      "absoluteLiters": 6,
+      "relativePercent": 11.76470588235294
+    },
+    {
+      "timestamp": "2026-10-09T17:29:00Z",
+      "absoluteLiters": 6,
+      "relativePercent": 11.76470588235294
+    },
+    {
+      "timestamp": "2026-10-09T17:29:20Z",
+      "absoluteLiters": 6,
+      "relativePercent": 11.568627450980392
+    },
+    {
+      "timestamp": "2026-10-09T17:29:40Z",
+      "absoluteLiters": 6,
+      "relativePercent": 11.372549019607844
+    },
+    {
+      "timestamp": "2026-10-09T17:32:20Z",
+      "absoluteLiters": 6,
+      "relativePercent": 11.372549019607844
+    },
+    {
+      "timestamp": "2026-10-09T17:32:40Z",
+      "absoluteLiters": 6,
+      "relativePercent": 10.980392156862745
+    },
+    {
+      "timestamp": "2026-10-09T17:33:00Z",
+      "absoluteLiters": 6,
+      "relativePercent": 10.980392156862743
+    },
+    {
+      "timestamp": "2026-10-09T17:33:20Z",
+      "absoluteLiters": 6,
+      "relativePercent": 10.980392156862745
+    },
+    {
+      "timestamp": "2026-10-09T17:34:20Z",
+      "absoluteLiters": 6,
+      "relativePercent": 10.980392156862745
+    },
+    {
+      "timestamp": "2026-10-09T17:34:40Z",
+      "absoluteLiters": 6,
+      "relativePercent": 10.980392156862745
+    },
+    {
+      "timestamp": "2026-10-09T17:35:00Z",
+      "absoluteLiters": 6,
+      "relativePercent": 10.980392156862745
+    },
+    {
+      "timestamp": "2026-10-09T17:35:20Z",
+      "absoluteLiters": 6,
+      "relativePercent": 10.980392156862743
+    },
+    {
+      "timestamp": "2026-10-09T17:35:40Z",
+      "absoluteLiters": 6,
+      "relativePercent": 10.980392156862745
+    },
+    {
+      "timestamp": "2026-10-09T17:36:00Z",
+      "absoluteLiters": 6,
+      "relativePercent": 10.980392156862743
+    },
+    {
+      "timestamp": "2026-10-09T17:36:20Z",
+      "absoluteLiters": 6,
+      "relativePercent": 10.980392156862747
+    },
+    {
+      "timestamp": "2026-10-09T17:36:40Z",
+      "absoluteLiters": 6,
+      "relativePercent": 10.980392156862745
+    },
+    {
+      "timestamp": "2026-10-09T17:44:40Z",
+      "absoluteLiters": null,
+      "relativePercent": null
+    },
+    {
+      "timestamp": "2026-10-09T17:45:00Z",
+      "absoluteLiters": 6,
+      "relativePercent": 10.980392156862747
+    },
+    {
+      "timestamp": "2026-10-09T17:45:20Z",
+      "absoluteLiters": 6,
+      "relativePercent": 10.980392156862747
+    },
+    {
+      "timestamp": "2026-10-09T17:45:40Z",
+      "absoluteLiters": 6,
+      "relativePercent": 10.980392156862745
+    },
+    {
+      "timestamp": "2026-10-09T17:49:40Z",
+      "absoluteLiters": 6,
+      "relativePercent": 10.980392156862745
+    },
+    {
+      "timestamp": "2026-10-09T17:50:00Z",
+      "absoluteLiters": 6,
+      "relativePercent": 10.980392156862743
+    },
+    {
+      "timestamp": "2026-10-09T17:50:20Z",
+      "absoluteLiters": 6,
+      "relativePercent": 10.980392156862745
+    },
+    {
+      "timestamp": "2026-10-09T17:50:40Z",
+      "absoluteLiters": 6,
+      "relativePercent": 10.980392156862745
+    },
+    {
+      "timestamp": "2026-10-09T17:51:00Z",
+      "absoluteLiters": 6,
+      "relativePercent": 10.980392156862743
+    },
+    {
+      "timestamp": "2026-10-09T17:51:20Z",
+      "absoluteLiters": 6,
+      "relativePercent": 10.980392156862745
+    },
+    {
+      "timestamp": "2026-10-09T17:51:40Z",
+      "absoluteLiters": 6,
+      "relativePercent": 10.980392156862745
+    },
+    {
+      "timestamp": "2026-10-09T17:52:00Z",
+      "absoluteLiters": 6,
+      "relativePercent": 10.980392156862745
+    },
+    {
+      "timestamp": "2026-10-09T17:53:40Z",
+      "absoluteLiters": 6,
+      "relativePercent": 10.980392156862747
+    },
+    {
+      "timestamp": "2026-10-09T17:54:00Z",
+      "absoluteLiters": 6,
+      "relativePercent": 10.980392156862745
+    },
+    {
+      "timestamp": "2026-10-09T18:44:40Z",
+      "absoluteLiters": null,
+      "relativePercent": null
+    },
+    {
+      "timestamp": "2026-10-09T18:45:00Z",
+      "absoluteLiters": 6,
+      "relativePercent": 10.980392156862747
+    },
+    {
+      "timestamp": "2026-10-09T18:45:20Z",
+      "absoluteLiters": 6,
+      "relativePercent": 10.980392156862747
+    },
+    {
+      "timestamp": "2026-10-09T18:45:40Z",
+      "absoluteLiters": 6,
+      "relativePercent": 10.980392156862747
+    },
+    {
+      "timestamp": "2026-10-09T18:46:00Z",
+      "absoluteLiters": 6,
+      "relativePercent": 10.980392156862743
+    },
+    {
+      "timestamp": "2026-10-09T18:49:00Z",
+      "absoluteLiters": 8,
+      "relativePercent": 17.45098039215686
+    },
+    {
+      "timestamp": "2026-10-09T18:49:20Z",
+      "absoluteLiters": 13,
+      "relativePercent": 26.666666666666668
+    },
+    {
+      "timestamp": "2026-10-09T18:49:40Z",
+      "absoluteLiters": 16,
+      "relativePercent": 32.15686274509804
+    },
+    {
+      "timestamp": "2026-10-09T18:50:00Z",
+      "absoluteLiters": 18,
+      "relativePercent": 35.294117647058826
+    },
+    {
+      "timestamp": "2026-10-09T18:50:20Z",
+      "absoluteLiters": 19,
+      "relativePercent": 36.470588235294116
+    },
+    {
+      "timestamp": "2026-10-09T18:50:40Z",
+      "absoluteLiters": 20,
+      "relativePercent": 38.8235294117647
+    },
+    {
+      "timestamp": "2026-10-09T18:51:00Z",
+      "absoluteLiters": 21.666666666666668,
+      "relativePercent": 41.1764705882353
+    },
+    {
+      "timestamp": "2026-10-09T18:51:20Z",
+      "absoluteLiters": 23,
+      "relativePercent": 42.35294117647059
+    },
+    {
+      "timestamp": "2026-10-09T18:51:40Z",
+      "absoluteLiters": 23,
+      "relativePercent": 42.745098039215684
+    },
+    {
+      "timestamp": "2026-10-09T18:52:00Z",
+      "absoluteLiters": 23,
+      "relativePercent": 43.13725490196078
+    },
+    {
+      "timestamp": "2026-10-09T18:52:20Z",
+      "absoluteLiters": 23,
+      "relativePercent": 43.529411764705884
+    },
+    {
+      "timestamp": "2026-10-09T18:52:40Z",
+      "absoluteLiters": 23.5,
+      "relativePercent": 43.72549019607843
+    },
+    {
+      "timestamp": "2026-10-09T18:53:00Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.31372549019608
+    },
+    {
+      "timestamp": "2026-10-09T18:53:20Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.31372549019608
+    },
+    {
+      "timestamp": "2026-10-09T18:53:40Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.31372549019608
+    },
+    {
+      "timestamp": "2026-10-09T18:54:00Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T18:54:20Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T18:54:40Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T18:55:00Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T18:55:20Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T18:55:40Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T18:56:00Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.70588235294118
+    },
+    {
+      "timestamp": "2026-10-09T18:56:20Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T18:56:40Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T18:57:00Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T18:57:20Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T18:57:40Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T18:58:00Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T18:58:20Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T18:58:40Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T18:59:00Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T18:59:20Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T18:59:40Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T19:00:00Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T19:00:20Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T19:00:40Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T19:01:00Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T19:01:20Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T19:01:40Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T19:02:00Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T19:02:20Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T19:02:40Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T19:03:00Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T19:03:20Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T19:03:40Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T19:04:00Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T19:04:20Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T19:04:40Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T19:05:00Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T19:05:20Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T19:05:40Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T19:06:00Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T19:06:20Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.70588235294118
+    },
+    {
+      "timestamp": "2026-10-09T19:07:40Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.70588235294118
+    },
+    {
+      "timestamp": "2026-10-09T19:08:00Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.705882352941174
+    },
+    {
+      "timestamp": "2026-10-09T19:08:20Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.70588235294118
+    },
+    {
+      "timestamp": "2026-10-09T19:08:40Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.70588235294118
+    },
+    {
+      "timestamp": "2026-10-09T19:09:00Z",
+      "absoluteLiters": 24,
+      "relativePercent": 44.70588235294118
+    }
+  ],
+  "contentSha256": "81d6c54316e012a346866d3fd5b3b24cce51550ddafddf6f54b6dffa69f49375"
+}
