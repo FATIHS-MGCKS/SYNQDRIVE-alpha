@@ -29,6 +29,8 @@ source "${SCRIPT_DIR}/lib/di-v0-s4-five-flag-tiny-activation-production.lib.sh"
 # shellcheck source=lib/di-v0-s4-gate6-open-rekill-production.lib.sh
 source "${SCRIPT_DIR}/lib/di-v0-s4-gate6-open-rekill-production.lib.sh"
 
+trap 's4f7as_cleanup_guard_proof_bundle' EXIT
+
 BACKEND_ENV="${SYNQDRIVE_BACKEND_ENV:-/opt/synqdrive/shared/backend.env}"
 s4f7as_export_canonical_backend_env || {
   echo "BACKEND_ENV_CANONICAL_RESOLUTION_FAILED=YES"
@@ -65,8 +67,17 @@ if [[ "$MODE" == "LIVE_OPEN" && "$(id -u)" -ne 0 && "${DI_S4_GATE6_ROOT_REEXEC_D
     exit 1
   fi
   echo "LIVE_OPEN_ROOT_REEXEC=YES"
-  intent="$(mktemp)"
-  chmod 600 "$intent"
+  ROOT_HELPER="$(s4f7as_resolve_pinned_root_helper_path)" || {
+    echo "ROOT_HELPER_PIN_RESOLVE_FAILED=YES"
+    exit 1
+  }
+  if ! s4f7as_assert_pinned_script_executable "$ROOT_HELPER" "ROOT_HELPER"; then
+    exit 1
+  fi
+  intent="$(s4f7as_create_pinned_intent_file)" || {
+    echo "INTENT_FILE_CREATE_FAILED=YES"
+    exit 1
+  }
   {
     printf '%s=%s\n' DI_S4_GATE6_OPERATOR_MODE LIVE_OPEN
     printf '%s=%s\n' DI_S4_GATE6_WRAPPER_ACTION LIVE_OPEN
@@ -86,7 +97,7 @@ if [[ "$MODE" == "LIVE_OPEN" && "$(id -u)" -ne 0 && "${DI_S4_GATE6_ROOT_REEXEC_D
     printf '%s=%s\n' DI_S4_TINY_STAGING_REQUIRED_RELEASE_ID "${DI_S4_TINY_STAGING_REQUIRED_RELEASE_ID:-}"
     printf '%s=%s\n' DI_S4_TINY_STAGING_REQUIRED_PRE_ENV_SHA256 "${DI_S4_TINY_STAGING_REQUIRED_PRE_ENV_SHA256:-}"
   } >"$intent"
-  exec sudo -n "${SCRIPT_DIR}/di-v0-s4-gate6-live-open-as-root.sh" "$intent" "$0"
+  exec sudo -n "$ROOT_HELPER" "$intent"
 fi
 
 echo "EXP021_SIMPLE_GATE6_WRAPPER=1"

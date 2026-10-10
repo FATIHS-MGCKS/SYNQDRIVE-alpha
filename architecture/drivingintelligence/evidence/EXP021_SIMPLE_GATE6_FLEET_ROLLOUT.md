@@ -69,3 +69,14 @@ Code authority: `di-v0-s4-fleet-rollout.lib.ts` — `evaluateRolloutWaveAllowlis
 | Monitoring scope | `monitoringQueriesForWave(wave)` scopes tenant-isolation SQL to current rollout vehicle set |
 
 **Tests:** `npm run test:di:s4f7as:gate6-open-rekill-operator` — 43 PASS (fixture wrapper PREFLIGHT→DRY_RUN path; bundle channel; wave promotion orchestration).
+
+## F — PR #1962 operator runtime fix (2026-10-10)
+
+| Fix | Detail |
+|-----|--------|
+| Root helper pin | Only `/opt/synqdrive/current/backend/scripts/ops/di-v0-s4-gate6-live-open-as-root.sh` + wrapper at pinned path; no caller-supplied wrapper; parent dir root-owned / not world-writable |
+| Intent file | Created under `/opt/synqdrive/shared/gate6-live-open-intent/` (`600`, no symlinks, canonical path) |
+| Proof lifecycle | Single materialized bundle per run; reused across `guards-open` + `dry-run-open` / `live-open`; security gates refreshed immediately before mutation |
+| Root CLI | Removed `npx` presence check; only pinned `node_modules/.bin/ts-node` under backend root |
+
+**Sudoers (Production):** `NOPASSWD` for `root` → `/opt/synqdrive/current/backend/scripts/ops/di-v0-s4-gate6-live-open-as-root.sh` only (must match helper pin).

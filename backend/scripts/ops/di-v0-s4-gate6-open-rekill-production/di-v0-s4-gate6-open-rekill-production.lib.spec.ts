@@ -213,6 +213,40 @@ describe('S4F-7AS CLI (simple Gate-6)', () => {
   });
 });
 
+describe('S4F-7AS guard proof bundle lifecycle (bash)', () => {
+  const LIB = path.join(__dirname, '../lib/di-v0-s4-gate6-open-rekill-production.lib.sh');
+
+  it('reuses one materialized bundle across two publish cycles (preflight→mutation sequence)', () => {
+    const out = execFileSync(
+      'bash',
+      [
+        '-c',
+        `
+set -euo pipefail
+export DI_S4_GATE6_TEST_GUARD_PROOF_LIFECYCLE=YES
+source '${LIB.replace(/'/g, "'\\''")}'
+export DI_S4F7AS_GLOBAL_ROW_LINES=$'1\\nKILLED'
+export DI_S4F7AS_S4_PERSISTENCE_LINES=$'0\\n0\\n0\\n0\\n0\\n0'
+export DI_S4F7AS_ENV_CONTENT='DI_V0_S4_MASTER_ENABLED=true\\n'
+export DI_S4F7AS_VEHICLE_DB_LINES='1'
+export DI_S4F7AS_TOPOLOGY_OK=YES
+export DI_S4F7AS_BUDGET_CONFIG_OK=YES
+export DI_S4F7AS_BUDGET_RUNTIME_OK=YES
+export DI_S4F7AS_REDIS_OK=YES
+s4f7as_materialize_guard_proof_bundle_once
+s4f7as_publish_guard_proof_bundle_for_cli
+s4f7as_publish_guard_proof_bundle_for_cli
+grep -q '^DI_S4F7AS_GLOBAL_ROW_LINES=' "$S4F7AS_GUARD_PROOF_BUNDLE_FILE"
+echo GUARD_PROOF_LIFECYCLE_OK=YES
+`,
+      ],
+      { encoding: 'utf8' },
+    );
+    expect(out).toContain('GUARD_PROOF_BUNDLE_MATERIALIZED=YES');
+    expect(out).toContain('GUARD_PROOF_LIFECYCLE_OK=YES');
+  });
+});
+
 describe('S4F-7AS wrapper (fixture)', () => {
   function runDry(extra: Record<string, string> = {}): string {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 's4f7as-'));

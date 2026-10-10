@@ -1729,6 +1729,22 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | TESTS | `test:di:s4f7as:gate6-open-rekill-operator` **37** PASS |
 | NON_EFFECTS | No Production mutation; GLOBAL **KILLED**; legacy HMAC root key not removed on VPS |
 
+### EXP-021 PR #1962 final live execution closure (2026-10-10)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Guard proof bundle channel; pinned root re-exec; explicit wave/pilot confirm; wave promotion verify path; scoped monitoring queries — §E in `EXP021_SIMPLE_GATE6_FLEET_ROLLOUT.md` |
+| TESTS | `test:di:s4f7as:gate6-open-rekill-operator` **43** PASS |
+| NON_EFFECTS | No Production mutation; no deploy; `LIVE_OPEN` not executed |
+
+### EXP-021 PR #1962 operator runtime fix (2026-10-10)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Absolute root/helper pins; intent dir hardening; guard-proof bundle reuse + pre-mutation refresh; remove root `npx` false positive — §F in `EXP021_SIMPLE_GATE6_FLEET_ROLLOUT.md` |
+| TESTS | Gate-6 operator suite + bash lifecycle test |
+| NON_EFFECTS | No Production mutation; no deploy |
+
 ### EXP-021 S4F-7AZ Privileged writer model closure (2026-10-10)
 
 | Event | Detail |

@@ -8,6 +8,9 @@ fi
 S4F7AS_SCRIPT_DIR="${S4F7AS_SCRIPT_DIR:-}"
 S4F7AS_PRODUCTION_SHARED_BACKEND_ENV="/opt/synqdrive/shared/backend.env"
 
+# shellcheck source=di-v0-s4-gate6-production-operator-paths.lib.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/di-v0-s4-gate6-production-operator-paths.lib.sh"
+
 s4f7as_resolve_canonical_backend_env() {
   local p="${BACKEND_ENV:-}"
   [[ -z "$p" ]] && return 1
@@ -35,6 +38,13 @@ s4f7as_is_test_mode() {
 
 s4f7as_is_fixture_mode() {
   [[ "${DI_S4F7AS_FIXTURE_MODE:-0}" == "1" || "${DI_S4F7J_FIXTURE_MODE:-0}" == "1" || "${DI_S4F7AO_FIXTURE_MODE:-0}" == "1" ]]
+}
+
+s4f7as_uses_guard_proof_bundle_channel() {
+  if s4f7as_is_production_backend_env_path; then
+    return 0
+  fi
+  [[ "${DI_S4_GATE6_TEST_GUARD_PROOF_LIFECYCLE:-}" == "YES" ]]
 }
 
 s4f7as_production_fixture_env_present() {
@@ -118,13 +128,9 @@ S4F7AS_GUARD_PROOF_BUNDLE_KEYS=(
   DI_S4F7AS_REDIS_OK
 )
 
-s4f7as_publish_guard_proof_bundle_for_cli() {
-  if ! s4f7as_is_production_backend_env_path; then
-    return 0
-  fi
-  local bundle key val
-  bundle="$(mktemp)"
-  chmod 600 "$bundle"
+s4f7as_write_guard_proof_bundle_file() {
+  local bundle="$1"
+  local key val
   {
     echo "COLLECTOR=GATE6_WRAPPER_V1"
     for key in "${S4F7AS_GUARD_PROOF_BUNDLE_KEYS[@]}"; do
@@ -138,12 +144,93 @@ s4f7as_publish_guard_proof_bundle_for_cli() {
       fi
     done
   } >"$bundle"
+}
+
+s4f7as_guard_proof_bundle_has_collector() {
+  local bundle="$1"
+  [[ -f "$bundle" ]] && grep -q '^COLLECTOR=GATE6_WRAPPER_V1$' "$bundle" 2>/dev/null
+}
+
+s4f7as_materialize_guard_proof_bundle_once() {
+  if ! s4f7as_uses_guard_proof_bundle_channel; then
+    return 0
+  fi
+  if [[ -n "${S4F7AS_GUARD_PROOF_BUNDLE_FILE:-}" ]] && s4f7as_guard_proof_bundle_has_collector "${S4F7AS_GUARD_PROOF_BUNDLE_FILE}"; then
+    export DI_S4_GATE6_GUARD_PROOF_BUNDLE_PATH="${S4F7AS_GUARD_PROOF_BUNDLE_FILE}"
+    for key in "${S4F7AS_GUARD_PROOF_BUNDLE_KEYS[@]}"; do
+      unset "$key" || true
+    done
+    echo "GUARD_PROOF_BUNDLE_REUSED=YES"
+    return 0
+  fi
+  local bundle
+  bundle="$(mktemp "${TMPDIR:-/tmp}/gate6-guard-proof.XXXXXX")"
+  chmod 600 "$bundle"
+  s4f7as_write_guard_proof_bundle_file "$bundle"
+  S4F7AS_GUARD_PROOF_BUNDLE_FILE="$bundle"
   export DI_S4_GATE6_GUARD_PROOF_BUNDLE_PATH="$bundle"
   for key in "${S4F7AS_GUARD_PROOF_BUNDLE_KEYS[@]}"; do
     unset "$key" || true
   done
-  echo "GUARD_PROOF_BUNDLE_PUBLISHED=YES"
+  echo "GUARD_PROOF_BUNDLE_MATERIALIZED=YES"
   return 0
+}
+
+s4f7as_publish_guard_proof_bundle_for_cli() {
+  if ! s4f7as_uses_guard_proof_bundle_channel; then
+    return 0
+  fi
+  if [[ -n "${S4F7AS_GUARD_PROOF_BUNDLE_FILE:-}" ]] && s4f7as_guard_proof_bundle_has_collector "${S4F7AS_GUARD_PROOF_BUNDLE_FILE}"; then
+    export DI_S4_GATE6_GUARD_PROOF_BUNDLE_PATH="${S4F7AS_GUARD_PROOF_BUNDLE_FILE}"
+    for key in "${S4F7AS_GUARD_PROOF_BUNDLE_KEYS[@]}"; do
+      unset "$key" || true
+    done
+    return 0
+  fi
+  s4f7as_materialize_guard_proof_bundle_once
+}
+
+s4f7as_refresh_guard_proof_security_gates_before_mutation() {
+  if ! s4f7as_uses_guard_proof_bundle_channel; then
+    return 0
+  fi
+  if [[ -z "${S4F7AS_GUARD_PROOF_BUNDLE_FILE:-}" ]] || ! s4f7as_guard_proof_bundle_has_collector "${S4F7AS_GUARD_PROOF_BUNDLE_FILE}"; then
+    echo "GUARD_PROOF_BUNDLE_NOT_MATERIALIZED=YES"
+    return 1
+  fi
+  local -a global_lines=()
+  mapfile -t global_lines < <(s4f7j_query_global_row_db)
+  local -a s4_lines=()
+  mapfile -t s4_lines < <(s4f7j_query_s4_counts_db)
+  export DI_S4F7AS_GLOBAL_ROW_LINES="$(printf '%s\n' "${global_lines[@]}")"
+  export DI_S4F7AS_S4_PERSISTENCE_LINES="$(printf '%s\n' "${s4_lines[@]}")"
+  if ! s4f7j_live_topology_preflight "$TARGET_SHA" "$(s4f7j_resolve_release_dir)"; then
+    export DI_S4F7AS_TOPOLOGY_OK=NO
+    return 1
+  fi
+  export DI_S4F7AS_TOPOLOGY_OK=YES
+  if ! s4f7j_live_budget_redis_preflight "$(s4f7j_resolve_release_dir)"; then
+    export DI_S4F7AS_BUDGET_RUNTIME_OK=NO
+    return 1
+  fi
+  export DI_S4F7AS_BUDGET_CONFIG_OK=YES
+  export DI_S4F7AS_BUDGET_RUNTIME_OK=YES
+  export DI_S4F7AS_REDIS_OK=YES
+  s4f7as_write_guard_proof_bundle_file "${S4F7AS_GUARD_PROOF_BUNDLE_FILE}"
+  for key in "${S4F7AS_GUARD_PROOF_BUNDLE_KEYS[@]}"; do
+    unset "$key" || true
+  done
+  export DI_S4_GATE6_GUARD_PROOF_BUNDLE_PATH="${S4F7AS_GUARD_PROOF_BUNDLE_FILE}"
+  echo "GUARD_PROOF_SECURITY_GATES_REFRESHED=YES"
+  return 0
+}
+
+s4f7as_cleanup_guard_proof_bundle() {
+  if [[ -n "${S4F7AS_GUARD_PROOF_BUNDLE_FILE:-}" && -f "${S4F7AS_GUARD_PROOF_BUNDLE_FILE}" ]]; then
+    rm -f "${S4F7AS_GUARD_PROOF_BUNDLE_FILE}"
+  fi
+  unset S4F7AS_GUARD_PROOF_BUNDLE_FILE
+  unset DI_S4_GATE6_GUARD_PROOF_BUNDLE_PATH
 }
 
 s4f7as_assert_production_cli_runtime_safe() {
@@ -170,9 +257,14 @@ s4f7as_run_cli() {
     echo "PINNED_TS_NODE_MISSING=YES"
     return 1
   fi
-  if s4f7as_is_production_backend_env_path && [[ "$(id -u)" -eq 0 ]] && command -v npx >/dev/null 2>&1; then
-    echo "ROOT_NPX_FORBIDDEN=YES"
-    return 1
+  if s4f7as_is_production_backend_env_path && [[ "$(id -u)" -eq 0 ]]; then
+    case "$ts_node" in
+      "${backend_root}"/*) ;;
+      *)
+        echo "ROOT_TS_NODE_PATH_UNPINNED=YES"
+        return 1
+        ;;
+    esac
   fi
   (cd "$backend_root" && "$ts_node" --transpile-only "$cli_rel" "$@")
 }
@@ -313,6 +405,7 @@ s4f7as_preflight_open_readonly() {
     echo "PRE_ENV_HASH_MISMATCH=YES"
     return 1
   fi
+  s4f7as_materialize_guard_proof_bundle_once || return 1
   s4f7as_run_cli guards-open || return 1
   echo "OPEN_PREFLIGHT_OK=YES"
   return 0
@@ -337,6 +430,7 @@ s4f7as_execute_dry_run_mode() {
   export DRY_RUN=1
   s4f7as_assert_open_audit_and_pins || return 1
   s4f7as_preflight_open_readonly || return 1
+  s4f7as_refresh_guard_proof_security_gates_before_mutation || return 1
   s4f7as_run_cli dry-run-open || return 1
   s4f7as_run_cli read-global || true
   echo "DRY_RUN_OPEN_COMPLETE=YES"
@@ -357,6 +451,7 @@ s4f7as_execute_live_open_mode() {
   export DRY_RUN=0
   s4f7as_assert_open_audit_and_pins || return 1
   s4f7as_preflight_open_readonly || return 1
+  s4f7as_refresh_guard_proof_security_gates_before_mutation || return 1
   if ! s4f7as_run_cli live-open; then
     echo "LIVE_OPEN_FAILED=YES"
     return 1

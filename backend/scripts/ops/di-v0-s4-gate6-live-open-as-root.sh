@@ -3,9 +3,12 @@
 set -euo pipefail
 
 INTENT_FILE="${1:-}"
-WRAPPER_SCRIPT="${2:-}"
 
-if [[ -z "$INTENT_FILE" || -z "$WRAPPER_SCRIPT" || ! -f "$INTENT_FILE" || ! -f "$WRAPPER_SCRIPT" ]]; then
+S4F7AS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/di-v0-s4-gate6-production-operator-paths.lib.sh
+source "${S4F7AS_SCRIPT_DIR}/lib/di-v0-s4-gate6-production-operator-paths.lib.sh"
+
+if [[ -z "$INTENT_FILE" ]]; then
   echo "ROOT_REEXEC_ARGS_INVALID=YES"
   exit 1
 fi
@@ -15,13 +18,19 @@ if [[ "$(id -u)" -ne 0 ]]; then
   exit 1
 fi
 
-WRAPPER_REAL="$(readlink -f "$WRAPPER_SCRIPT")"
-SCRIPT_DIR="$(cd "$(dirname "$WRAPPER_REAL")" && pwd)"
-ALLOWED_WRAPPER="${SCRIPT_DIR}/di-v0-s4-gate6-open-rekill-production.sh"
-if [[ "$WRAPPER_REAL" != "$(readlink -f "$ALLOWED_WRAPPER")" ]]; then
-  echo "ROOT_REEXEC_WRAPPER_NOT_PINNED=YES"
+PINNED_HELPER="$S4F7AS_PINNED_ROOT_HELPER"
+PINNED_WRAPPER="$S4F7AS_PINNED_PRODUCTION_WRAPPER"
+
+SELF_REAL="$(readlink -f "${BASH_SOURCE[0]}")"
+HELPER_REAL="$(readlink -f "$PINNED_HELPER")"
+if [[ "$SELF_REAL" != "$HELPER_REAL" ]]; then
+  echo "ROOT_REEXEC_HELPER_NOT_PINNED=YES"
   exit 1
 fi
+
+s4f7as_assert_pinned_script_executable "$PINNED_HELPER" "ROOT_HELPER" || exit 1
+s4f7as_assert_pinned_script_executable "$PINNED_WRAPPER" "ROOT_WRAPPER" || exit 1
+s4f7as_validate_root_reexec_intent_file "$INTENT_FILE" || exit 1
 
 ALLOWED_KEYS=(
   DI_S4_GATE6_OPERATOR_MODE
@@ -68,4 +77,4 @@ export DI_S4_GATE6_WRAPPER_ACTION=LIVE_OPEN
 export DRY_RUN=0
 
 rm -f "$INTENT_FILE"
-exec bash "$WRAPPER_REAL"
+exec bash "$PINNED_WRAPPER"
