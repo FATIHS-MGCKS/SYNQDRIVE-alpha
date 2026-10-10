@@ -6,6 +6,16 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-10 — G5B final HV compat allowlisted customer projection (PR #1969)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | `presentCompatSanitizedLegacy` spread historical `sohPercent` / `nominalCapacityKwh`; `canonicalSummary` could retain `legacyCapacity`; compat canonical masking skipped when `summary.hv.telemetry` absent despite nested canonical HV carriers |
+| **CHANGE** | Allowlisted `legacy: { diagnosticOnly, telemetry }` and explicit `canonicalSummary` projection (no `legacyCapacity`); `resolveCompatTelemetryRaw` aggregates carriers then `presentHvCustomerTelemetryFields` fail-closes; `maskCanonicalHvCustomerSurfaces` when `liveState.hv`, `hv`, or `legacy.hvLegacyCapacity` present; canonical.legacy HV/LV SOH capacity numerics redacted on compat path |
+| **VALIDATION** | `battery-hv-battery-status.compat.spec.ts` comprehensive regression (missing `hv.telemetry`, stale carrier, legacy SOH/capacity, nested canonical leak, verified reference 77.5 kWh preserved); 40 focused battery presenter/service tests |
+
+---
+
 ## 2026-10-10 — G5B-F2 LV publication + HV compat nested closure (PR #1969)
 
 | Field | Value |
