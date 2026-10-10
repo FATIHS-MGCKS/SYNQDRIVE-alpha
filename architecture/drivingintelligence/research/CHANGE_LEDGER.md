@@ -1721,6 +1721,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | PR #1939 — align S4F-7AK / CURRENT_STATE / CHANGE_LEDGER: S4F-7AI = Production **`DRY_RUN=1` only**; live = detached `ed78748bc…` S4F-7Y operator (not S4F-7AI) |
 | NON_EFFECTS | No operator code change; no Production execution |
 
+### EXP-021 S4F-7AZ Privileged writer model closure (2026-10-10)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Production shared-root `755` compatibility in `verifyParentDirectoryChain` (`0o022` write mask); privileged writer matrix + one-shot provisioning contract P1–P7; evidence `EXP021_S4F7AZ_PRIVILEGED_WRITER_CLOSURE.md` |
+| TESTS | `test:di:s4f7as:gate6-open-rekill-operator` **72** PASS |
+| NON_EFFECTS | No Production mutation; no keys/registers; no sudoers install; Gate-6 **NOT_GRANTED** |
+
 ### EXP-021 S4F-7AY Post-merge Gate-6 infra readiness (2026-10-10)
 
 | Event | Detail |
