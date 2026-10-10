@@ -12,13 +12,21 @@ import { mergeCandidateEvidence } from './raw-refuel-candidate-evidence-merge';
 import {
   RawRefuelCandidateAmbiguityError,
   RawRefuelCandidateCrossVersionInsufficientEvidenceError,
+  RawRefuelCandidateV2RediscoveryInsufficientEvidenceError,
   RawRefuelCandidateLifecycleValidationError,
   RawRefuelCandidateOrgVehicleIntegrityError,
   RawRefuelCandidateVehicleNotFoundError,
   RawRefuelCandidateUnsupportedDetectionVersionError,
   RawRefuelCandidateVersionedTerminalConflictError,
 } from './raw-refuel-candidate.errors';
-import { classifyCandidateDetectionVersionCompatibility } from './raw-refuel-candidate-cross-version-compatibility.authority';
+import {
+  classifyCandidateDetectionVersionCompatibility,
+  RFRF_PLANNED_SETTLED_POST_DETECTION_VERSION,
+} from './raw-refuel-candidate-cross-version-compatibility.authority';
+import {
+  isV2SameVersionPair,
+  isV2ShiftedIdentityBucketStaleAmbiguity,
+} from './raw-refuel-candidate-v2-same-version-rediscovery.authority';
 import {
   isSupportedCandidateDetectionVersionForIdentity,
   tryBuildCandidateIdentityKeyFromEvidence,
@@ -28,7 +36,10 @@ import {
   resolveNextLifecycleState,
 } from './raw-refuel-candidate-lifecycle';
 import { buildRawRefuelCandidateLockKey } from './raw-refuel-candidate-lock.util';
-import { classifyRawRefuelCandidateOverlap } from './raw-refuel-candidate.matcher';
+import {
+  candidateToEvidenceSlice,
+  classifyRawRefuelCandidateOverlap,
+} from './raw-refuel-candidate.matcher';
 import { computeRawRefuelCandidateRediscoveryWindow } from './raw-refuel-candidate-rediscovery-window';
 import { RawRefuelCandidateRepository } from './raw-refuel-candidate.repository';
 import type {
@@ -119,6 +130,13 @@ export class RawRefuelCandidateService {
         );
       }
 
+      if (classified.v2RediscoveryInsufficient.length > 0) {
+        throw new RawRefuelCandidateV2RediscoveryInsufficientEvidenceError(
+          observation.vehicleId,
+          classified.v2RediscoveryInsufficient.map((row) => row.id),
+        );
+      }
+
       if (classified.same.length > 1) {
         throw new RawRefuelCandidateAmbiguityError(
           'MULTIPLE_SAME_PHYSICAL_RISE',
@@ -172,6 +190,10 @@ export class RawRefuelCandidateService {
           lookupIdentityKey,
         );
         if (byKey) {
+          assertV2IdentityKeyFallbackReconcileAllowed(
+            { ...observation, organizationId },
+            byKey,
+          );
           return this.reconcileExistingCandidate(
             tx,
             byKey,
@@ -181,6 +203,22 @@ export class RawRefuelCandidateService {
           );
         }
       }
+
+      const lateReconcile = await this.tryLateSamePhysicalRiseReconcile(
+        tx,
+        observation,
+        organizationId,
+        serviceNow,
+      );
+      if (lateReconcile) {
+        return lateReconcile;
+      }
+
+      assertNoV2ShiftedBucketDuplicateInsert(
+        observation,
+        organizationId,
+        classified.distinct,
+      );
 
       return this.insertCandidate(tx, observation, organizationId, serviceNow);
     });
@@ -343,6 +381,46 @@ export class RawRefuelCandidateService {
     });
   }
 
+  private async tryLateSamePhysicalRiseReconcile(
+    tx: Prisma.TransactionClient,
+    observation: RawRefuelCandidateObservation,
+    organizationId: string,
+    serviceNow: Date,
+  ): Promise<RawRefuelCandidateResolveResult | null> {
+    const window = computeRawRefuelCandidateRediscoveryWindow(observation, serviceNow);
+    const candidates = await this.repository.findRediscoveryCandidatesInWindow(
+      tx,
+      observation.vehicleId,
+      observation.signalChannel,
+      window,
+    );
+    const slice = { ...observation, organizationId };
+    const sameRows: RawRefuelCandidate[] = [];
+    for (const row of candidates) {
+      const overlap = classifyRawRefuelCandidateOverlap(slice, candidateToEvidenceSlice(row));
+      if (overlap === 'SAME_PHYSICAL_RISE') {
+        sameRows.push(row);
+      }
+    }
+    if (sameRows.length > 1) {
+      throw new RawRefuelCandidateAmbiguityError(
+        'MULTIPLE_SAME_PHYSICAL_RISE',
+        observation.vehicleId,
+        sameRows.map((row) => row.id),
+      );
+    }
+    if (sameRows.length === 1) {
+      return this.reconcileExistingCandidate(
+        tx,
+        sameRows[0],
+        observation,
+        organizationId,
+        serviceNow,
+      );
+    }
+    return null;
+  }
+
   private async insertCandidate(
     tx: Prisma.TransactionClient,
     observation: RawRefuelCandidateObservation,
@@ -375,6 +453,7 @@ interface RediscoveryClassification {
   distinct: RawRefuelCandidate[];
   versionedTerminalConflict: RawRefuelCandidate[];
   crossVersionInsufficient: RawRefuelCandidate[];
+  v2RediscoveryInsufficient: RawRefuelCandidate[];
 }
 
 function classifyRediscoveryCandidates(
@@ -389,6 +468,7 @@ function classifyRediscoveryCandidates(
     distinct: [],
     versionedTerminalConflict: [],
     crossVersionInsufficient: [],
+    v2RediscoveryInsufficient: [],
   };
 
   for (const row of candidates) {
@@ -432,10 +512,57 @@ function bucketClassification(
       classified.crossVersionInsufficient.push(row);
       return;
     }
+    if (
+      observationDetectionVersion === RFRF_PLANNED_SETTLED_POST_DETECTION_VERSION &&
+      row.detectionVersion === RFRF_PLANNED_SETTLED_POST_DETECTION_VERSION
+    ) {
+      classified.v2RediscoveryInsufficient.push(row);
+      return;
+    }
     classified.insufficient.push(row);
     return;
   }
   classified.distinct.push(row);
+}
+
+function assertV2IdentityKeyFallbackReconcileAllowed(
+  observation: RawRefuelCandidateObservation & { organizationId: string },
+  existing: RawRefuelCandidate,
+): void {
+  if (!isV2SameVersionPair(observation, existing)) {
+    return;
+  }
+  const overlap = classifyRawRefuelCandidateOverlap(
+    observation,
+    candidateToEvidenceSlice(existing),
+  );
+  if (overlap !== 'SAME_PHYSICAL_RISE') {
+    throw new RawRefuelCandidateV2RediscoveryInsufficientEvidenceError(
+      observation.vehicleId,
+      [existing.id],
+    );
+  }
+}
+
+function assertNoV2ShiftedBucketDuplicateInsert(
+  observation: RawRefuelCandidateObservation,
+  organizationId: string,
+  distinctNeighbors: RawRefuelCandidate[],
+): void {
+  const slice = { ...observation, organizationId };
+  const ambiguousIds: string[] = [];
+  for (const row of distinctNeighbors) {
+    const candidate = candidateToEvidenceSlice(row);
+    if (isV2ShiftedIdentityBucketStaleAmbiguity(slice, candidate)) {
+      ambiguousIds.push(row.id);
+    }
+  }
+  if (ambiguousIds.length > 0) {
+    throw new RawRefuelCandidateV2RediscoveryInsufficientEvidenceError(
+      observation.vehicleId,
+      ambiguousIds,
+    );
+  }
 }
 
 function resolveAssignedIdentityKey(

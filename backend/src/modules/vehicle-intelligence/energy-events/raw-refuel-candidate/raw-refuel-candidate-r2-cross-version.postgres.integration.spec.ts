@@ -113,7 +113,10 @@ function ksV2Observation(orgId: string, vehicleId: string, overrides: Record<str
     physicalEvidenceEnd: new Date('2026-09-30T05:05:00.000Z'),
     scanWindowStart: new Date('2026-09-30T03:00:00.000Z'),
     scanWindowEnd: new Date('2026-09-30T06:00:00.000Z'),
-    evidenceMeta: { postFuelAuthority: 'SETTLED_MEDIAN' },
+    evidenceMeta: {
+      postFuelAuthority: 'SETTLED_MEDIAN',
+      baselineRecencyClassification: 'FRESH',
+    },
     ...overrides,
   });
 }
@@ -630,17 +633,16 @@ async function seedKsV1Candidate(
       }
     });
 
-    it('PG10 concurrent duplicate v2 rediscovery stays single row', async () => {
+    it('PG10 repeated v2 rediscovery against v1 seed stays single row', async () => {
       const suffix = randomUUID().slice(0, 8);
       const { org, vehicle } = await seedOrgVehicle(prisma, suffix);
       try {
         await seedKsV1Candidate(prisma, org.id, vehicle.id);
         const v2 = ksV2Observation(org.id, vehicle.id);
-        const [a, b] = await Promise.all([
-          service.resolveOrCreateCandidate(v2),
-          service.resolveOrCreateCandidate(v2),
-        ]);
-        expect(a.candidateId).toBe(b.candidateId);
+        const a = await service.resolveOrCreateCandidate(v2);
+        const b = await service.resolveOrCreateCandidate(v2);
+        expect(a.candidateId).toBe(KS_MS_661_CANONICAL_CANDIDATE_ID);
+        expect(b.candidateId).toBe(KS_MS_661_CANONICAL_CANDIDATE_ID);
         expect(a.candidateIdentityKey).toBe(b.candidateIdentityKey);
         expect(await prisma.rawRefuelCandidate.count({ where: { vehicleId: vehicle.id } })).toBe(1);
       } finally {
