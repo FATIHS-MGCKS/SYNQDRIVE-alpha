@@ -54,6 +54,34 @@ describe('Gate-6 production trust anchors (S4F-7AX.1)', () => {
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
+  it('accepts production-like shared root 755 with strict gate6 leaf directories', () => {
+    const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'gate6-prod-755-shared-'));
+    const shared = path.join(fixtureRoot, 'shared');
+    fs.mkdirSync(shared, { mode: 0o755 });
+    const registerDir = path.join(shared, 'gate6-live-open-approval-consumption');
+    fs.mkdirSync(registerDir, { mode: 0o750 });
+    const publicKeyPath = path.join(shared, 'gate6-live-open-approval-public.pem');
+    fs.writeFileSync(publicKeyPath, '-----BEGIN PUBLIC KEY-----\nTEST\n-----END PUBLIC KEY-----\n', {
+      mode: 0o640,
+    });
+    const backendEnvPath = path.join(shared, 'backend.env');
+    fs.writeFileSync(backendEnvPath, 'X=1\n', { mode: 0o600 });
+    try {
+      fs.chownSync(shared, 0, 0);
+      fs.chownSync(registerDir, 0, 0);
+      fs.chownSync(publicKeyPath, 0, 0);
+      fs.chownSync(backendEnvPath, 0, 0);
+    } catch {
+      // skip chown when not root in CI
+    }
+    const evaluated = evaluateProductionGate6IssuanceTrustAnchorsWithPinnedPaths(
+      { SYNQDRIVE_BACKEND_ENV: backendEnvPath },
+      { publicKeyPath, registerDir, backendEnvPath },
+    );
+    expect(evaluated.ok).toBe(true);
+    fs.rmSync(fixtureRoot, { recursive: true, force: true });
+  });
+
   it('accepts pinned fixture anchors when backend env realpath matches', () => {
     const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'gate6-prod-fixture-'));
     const pinned = productionTrustAnchorFixturePaths(fixtureRoot);
