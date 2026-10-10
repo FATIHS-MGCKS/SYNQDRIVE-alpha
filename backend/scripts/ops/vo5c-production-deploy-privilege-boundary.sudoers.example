@@ -1,0 +1,20 @@
+# VO5C P4B15 — illustrative OS privilege boundary (install manually after SRE review).
+# Goal: routine operators cannot invoke vps-deploy-release.sh except via pinned runner + human auth.
+#
+# 1) Deploy service account (example): synqdrive-deploy
+# 2) Root-owned immutable pinned executor tree (chmod -R a-w, root:root)
+# 3) Authority file root:root 0444
+# 4) sudoers: allow synqdrive-deploy ONLY:
+#      /opt/synqdrive/current/backend/scripts/ops/vps-vo5c-run-pinned-security-deploy.sh
+#    Deny direct:
+#      /opt/synqdrive/current/backend/scripts/ops/vps-deploy-release.sh
+#      /opt/synqdrive/releases/*/backend/scripts/ops/vps-deploy-release.sh
+#
+# Example (fragment — validate with visudo):
+#
+# Defaults:synqdrive-deploy !env_reset
+# synqdrive-deploy ALL=(root) NOPASSWD: /opt/synqdrive/current/backend/scripts/ops/vps-vo5c-run-pinned-security-deploy.sh
+#
+# Emergency containment (class E) remains root-only:
+#   pm2 stop, di-v0-s4-gate6-open-rekill-production.sh, rfrf-production-rollback.sh
+# RFRF safety rollback (class C) is NOT blocked by deploy enforcement.
