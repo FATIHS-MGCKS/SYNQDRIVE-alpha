@@ -92,7 +92,8 @@ import {
 import {
   buildCanonicalBatterySignalFreshness,
   collectCapabilitySignalErrors,
-} from './canonical-battery/canonical-battery-signal-freshness.builder';
+} from './canonical-battery';
+import { isLvPublishedSohCustomerVisible } from './battery-v2-user-facing-lv.policy';
 import {
   classifyBatteryModuleError,
   type BatterySignalError,
@@ -448,7 +449,6 @@ export class CanonicalBatteryHealthService {
     // never as a prominent "SOH %". The legacy voltage→SOH lookup table has
     // been removed, so there is no second LV truth anymore.
     const lvPublishedSoh = parseNum(v2?.publishedSohPct);
-    const lvHealthPercent = lvIsCalibrating ? null : lvPublishedSoh;
     const lvEstimatedHealthPercent = lvIsCalibrating
       ? parseNum(v2?.stabilizedSohPct) ??
         parseNum(v2?.rawSohPct) ??
@@ -479,6 +479,11 @@ export class CanonicalBatteryHealthService {
         sourceType: e.sourceType,
       })),
     });
+    const lvCustomerSohVisible = isLvPublishedSohCustomerVisible(
+      legacyPublicationSafety,
+    );
+    const lvHealthPercent =
+      lvIsCalibrating || !lvCustomerSohVisible ? null : lvPublishedSoh;
     const lvEstimatedHealthStatus: BatteryHealthStatus =
       effectiveLvEstimatedHealthStatusForDecisions(
         lvEstimatedHealthStatusRaw,
@@ -486,7 +491,9 @@ export class CanonicalBatteryHealthService {
       );
     const lvEstimatedHealthScorePct = lvIsCalibrating
       ? lvEstimatedHealthPercent
-      : lvPublishedSoh;
+      : lvCustomerSohVisible
+        ? lvPublishedSoh
+        : null;
 
     // Resting voltage: only a genuine resting reading is evaluated. The V2
     // rest capture and document-confirmed snapshots persist `restingVoltage`;
@@ -794,6 +801,14 @@ export class CanonicalBatteryHealthService {
       fetch: telemetryFetchFreshness,
       observation: currentTelemetryObservationFreshness,
     });
+    const hvTelemetrySocRaw =
+      parseNum(latestState?.evSoc) ?? parseNum(hvStatusAny?.currentSocPercent);
+    const hvTelemetrySocDecisionFresh = observationFreshnessIsDecisionFresh(
+      currentTelemetryObservationFreshness,
+    );
+    const hvTelemetrySocForDisplay = hvTelemetrySocDecisionFresh
+      ? hvTelemetrySocRaw
+      : null;
 
     const hvStatusLabel: BatteryStatus = !isEv
       ? 'unsupported'
@@ -943,9 +958,7 @@ export class CanonicalBatteryHealthService {
       engineRunning: latestLvSnapshot?.engineRunning ?? null,
     };
     const hvLiveValues = {
-      socPercent:
-        parseNum(latestState?.evSoc) ??
-        parseNum(hvStatusAny?.currentSocPercent),
+      socPercent: hvTelemetrySocForDisplay,
       rangeKm:
         parseNum(latestState?.rangeKm) ??
         parseNum(hvStatusAny?.estimatedRangeKm),
@@ -1273,9 +1286,7 @@ export class CanonicalBatteryHealthService {
           ),
         },
         telemetry: {
-          socPercent:
-            parseNum(latestState?.evSoc) ??
-            parseNum(hvStatusAny?.currentSocPercent),
+          socPercent: hvTelemetrySocForDisplay,
           rangeKm:
             parseNum(latestState?.rangeKm) ??
             parseNum(hvStatusAny?.estimatedRangeKm),
@@ -1313,7 +1324,7 @@ export class CanonicalBatteryHealthService {
         fetchFreshness: telemetryFetchFreshness,
         observationFreshness: currentTelemetryObservationFreshness,
         freshnessBundle: currentTelemetryFreshnessBundle,
-        socPercent: parseNum(latestState?.evSoc),
+        socPercent: hvTelemetrySocForDisplay,
         rangeKm: parseNum(latestState?.rangeKm),
         chargingState:
           latestState?.tractionBatteryIsCharging == null
@@ -1325,7 +1336,7 @@ export class CanonicalBatteryHealthService {
           parseNum(latestState?.tractionBatteryChargingPowerKw) ??
           parseNum(latestState?.tractionBatteryPowerKw),
         lvVoltageV: parseNum(latestState?.lvBatteryVoltage),
-        genericEnergyPercent: parseNum(latestState?.evSoc),
+        genericEnergyPercent: hvTelemetrySocForDisplay,
       },
       watchpoints,
       recommendations,
@@ -1335,9 +1346,11 @@ export class CanonicalBatteryHealthService {
         sohPercent: lvHealthPercent,
         sohPercentSemantic:
           lvHealthPercent != null ? LEGACY_ESTIMATED_LV_HEALTH_SEMANTIC : null,
-        publishedSohPct: lvPublishedSoh,
+        publishedSohPct: lvCustomerSohVisible ? lvPublishedSoh : null,
         publishedSohPctSemantic:
-          lvPublishedSoh != null ? LEGACY_ESTIMATED_LV_HEALTH_SEMANTIC : null,
+          lvCustomerSohVisible && lvPublishedSoh != null
+            ? LEGACY_ESTIMATED_LV_HEALTH_SEMANTIC
+            : null,
         estimatedSohPct: lvEstimatedHealthPercent,
         estimatedSohPctSemantic:
           lvEstimatedHealthPercent != null

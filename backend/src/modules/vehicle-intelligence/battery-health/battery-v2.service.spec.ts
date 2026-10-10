@@ -17,6 +17,9 @@ describe('BatteryV2Service crank deprecation', () => {
         update: jest.fn(),
       },
       vehicleTripDetectionState: { findUnique: jest.fn() },
+      vehicle: {
+        findUnique: jest.fn().mockResolvedValue({ organizationId: 'org-1' }),
+      },
     } as any;
 
     const segments = {
@@ -213,11 +216,56 @@ describe('BatteryV2Service crank deprecation', () => {
     expect(recomputeSpy).not.toHaveBeenCalled();
   });
 
-  it('skips legacy rest capture when canonical publication authority is active', async () => {
+  it('skips legacy rest capture when canonical REST pipeline is active (publication on)', async () => {
     process.env[BATTERY_V2_REST_SHADOW_ENABLED_ENV] = 'true';
     process.env[BATTERY_V2_PUBLICATION_ENABLED_ENV] = 'true';
     const { svc } = buildService();
     const result = await svc.onSnapshot('veh-1', 12.5, new Date());
     expect(result.restCaptured).toBe(false);
+  });
+
+  it('skips legacy rest capture in shadow mode when publication is off', async () => {
+    process.env[BATTERY_V2_REST_SHADOW_ENABLED_ENV] = 'true';
+    process.env[BATTERY_V2_PUBLICATION_ENABLED_ENV] = 'false';
+    const { svc } = buildService();
+    const result = await svc.onSnapshot('veh-1', 12.5, new Date());
+    expect(result.restCaptured).toBe(false);
+  });
+});
+
+describe('BatteryV2Service getV2Health user-facing SOH', () => {
+  const envBackup = { ...process.env };
+  const now = new Date('2026-04-13T10:00:00.000Z');
+
+  afterEach(() => {
+    process.env = { ...envBackup };
+  });
+
+  it('masks stored published SOH when publication flag is off', async () => {
+    process.env[BATTERY_V2_PUBLICATION_ENABLED_ENV] = 'false';
+    const prisma = {
+      batteryFeatures: {
+        findUnique: jest.fn().mockResolvedValue({
+          vehicleId: 'veh-1',
+          publicationState: 'STABLE',
+          publishedSohPct: 82,
+          maturityConfidence: 'high',
+          vOff60m: 12.62,
+          vOff6h: 12.6,
+          rest60mCapturedAt: now,
+          rest6hCapturedAt: now,
+          crankDrop: null,
+          crankObservationCount: 0,
+          crankAt: now,
+          scoredAt: now,
+          lastPublishedAt: now,
+          confidence: 'high',
+        }),
+      },
+    } as any;
+    const svc = new BatteryV2Service(prisma, {} as any, {} as any);
+    const health = await svc.getV2Health('veh-1');
+    expect(health?.publishedSohPct).toBe(82);
+    expect(health?.userFacingSohPct).toBeNull();
   });
 });

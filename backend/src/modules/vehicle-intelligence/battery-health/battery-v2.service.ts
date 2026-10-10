@@ -22,6 +22,7 @@ import {
   isStartWindowCollectionEnabled,
   isBatteryV2LegacyRestCaptureEnabled,
 } from '../../../config/battery-health-v2.config';
+import { resolveBatteryV2UserFacingSohPct } from './battery-v2-user-facing-lv.policy';
 import {
   isLeadAcidCurveApplicable,
   resolveLvBatteryChemistry,
@@ -601,10 +602,26 @@ export class BatteryV2Service {
     });
     if (!f) return null;
 
+    const { userFacingSohPct, legacyPublicationSafety } =
+      resolveBatteryV2UserFacingSohPct(f.publishedSohPct, {
+        publicationState: f.publicationState,
+        publishedSohPct: f.publishedSohPct,
+        maturityConfidence: f.maturityConfidence,
+        vOff60m: f.vOff60m,
+        vOff6h: f.vOff6h,
+        rest60mCapturedAt: f.rest60mCapturedAt,
+        rest6hCapturedAt: f.rest6hCapturedAt,
+        crankDrop: f.crankDrop,
+        crankObservationCount: f.crankObservationCount,
+        crankAt: f.crankAt,
+        scoredAt: f.scoredAt,
+        lastPublishedAt: f.lastPublishedAt,
+      });
+
     return {
       ...f,
-      // User-facing SOH: published when available, null during calibration
-      userFacingSohPct: f.publishedSohPct,
+      userFacingSohPct,
+      legacyPublicationSafety,
       publicationState: f.publicationState,
       maturityConfidence: f.maturityConfidence,
       signalConfidence: f.confidence,

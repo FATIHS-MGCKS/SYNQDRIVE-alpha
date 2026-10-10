@@ -6,6 +6,21 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-10 — Production alpha G3 safe shadow + user-facing battery masking
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | `isBatteryV2LegacyRestCaptureEnabled()` returned true when `REST_SHADOW=true` and `PUBLICATION=false`, re-enabling legacy rest capture alongside canonical REST; `getV2Health().userFacingSohPct` mirrored stored `publishedSohPct` without publication/safety gates; canonical summary exposed stale HV SOC when `sourceTimestamp` was old but poll fetch was fresh |
+| **CHANGE** | Legacy rest capture only when canonical REST pipeline is off (`!REST_SHADOW`); `resolveBatteryV2UserFacingSohPct` gates customer LV SOH on `PUBLICATION` + `evaluateLegacyPublicationSafety`; canonical summary masks customer `sohPercent` / telemetry SOC when publication off or observation not decision-fresh |
+| **WHY** | Alpha shadow intent: canonical ingestion without dual-path queue amplification; publication must not re-enable legacy capture; stale Tesla-class HV SOC and unverified LV estimates must not read as current customer truth |
+| **VALIDATION** | `battery-v2-cutover.policy.spec.ts` flag matrix; `battery-v2-user-facing-lv.policy.spec.ts`; `battery-v2.service.spec.ts`; `battery-v2-snapshot-ingestion.service.spec.ts` duplicate-enqueue guard; `canonical-battery-health.service.spec.ts` publication-off + stale SOC |
+| **NON_EFFECTS** | No production deploy; no env/DB mutation; no contamination threshold changes; diagnostic `canonical.legacy.v2Features` retains stored values |
+| **REMAINING_GAPS** | Arteon `vehicle_battery_specs`; Tiguan VALID+`sourceObservationId` handoff; Audi A4 assessment scheduling; Tesla DIMO HV carrier freshness (follow-up, not bypassed) |
+| **DECISION_STATUS** | VALIDATED (repository tests) |
+| **EVIDENCE** | G3 draft PR; production read-only G2 RCA @ `ab72f574` |
+
+---
+
 ## 2026-10-03 — M3.3-HV-H4-A3.5 bounded evidence reconciliation scheduler
 
 | Field | Value |
