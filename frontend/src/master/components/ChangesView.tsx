@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-g5b-customer-hv-telemetry-freshness-2026-10-10',
+    version: '4.9.2237',
+    title: 'Battery V2 G5B — customer HV telemetry freshness boundary',
+    summary: [
+      'All customer HV dynamic fields (energy, capacity, charging, temperature, cable, provider SOH in telemetry) gated on vehicle source-observation freshness.',
+      'Canonical summary + HV compat + currentTelemetry stay consistent; stale carrier values remain in canonical signal metadata only.',
+      'Verified HV reference capacity only for compat nominal; legacy diagnostic SOH/capacity redacted on customer legacy sections when not decision-capable.',
+    ],
+    reason: 'G5A documented gap: nested hv.telemetry could still present recently-fetched but stale-observation Tesla-class values as current.',
+    previousBehavior: 'SOC/range masked on stale observation; other hv.telemetry fields and charging state could still leak.',
+    details:
+      'battery-hv-customer-telemetry.presenter.ts, battery-customer-response.presenter.ts, canonical-battery-health.service.ts, battery-hv-battery-status.compat.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-10T22:30:00.000Z',
+  },
+  {
     id: 'refuel-time-ux-correction-2026-10-10',
     version: '4.9.2236',
     title: 'REFUEL trip timeline — observed fuel-rise time vs DIMO detection envelope',

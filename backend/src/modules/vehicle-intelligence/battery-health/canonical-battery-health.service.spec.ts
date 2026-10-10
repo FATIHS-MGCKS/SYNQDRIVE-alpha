@@ -826,23 +826,155 @@ describe('CanonicalBatteryHealthService', () => {
       rangeKm: 278,
       tractionBatterySohPercent: 82,
       tractionBatteryTemperatureC: 24,
-      tractionBatteryChargingPowerKw: null,
-      tractionBatteryIsCharging: false,
-      tractionBatteryChargingCableConnected: false,
+      tractionBatteryChargingPowerKw: 11,
+      tractionBatteryIsCharging: true,
+      tractionBatteryChargingCableConnected: true,
       tractionBatteryCurrentVoltage: 380,
       tractionBatteryGrossCapacityKwh: 76,
       tractionBatteryCurrentEnergyKwh: 50,
-      tractionBatteryAddedEnergyKwh: null,
+      tractionBatteryAddedEnergyKwh: 6,
     });
 
     const summary = await svc.getSummary('veh-1');
     expect(summary?.currentTelemetry?.socPercent).toBeNull();
     expect(summary?.currentTelemetry?.rangeKm).toBeNull();
     expect(summary?.currentTelemetry?.genericEnergyPercent).toBeNull();
+    expect(summary?.currentTelemetry?.chargingPowerKw).toBeNull();
+    expect(summary?.currentTelemetry?.chargingState).toBeNull();
     expect(summary?.hv.telemetry.socPercent).toBeNull();
     expect(summary?.hv.telemetry.rangeKm).toBeNull();
+    expect(summary?.hv.telemetry.currentEnergyKwh).toBeNull();
+    expect(summary?.hv.telemetry.grossCapacityKwh).toBeNull();
+    expect(summary?.hv.telemetry.addedEnergyKwh).toBeNull();
+    expect(summary?.hv.telemetry.chargingPowerKw).toBeNull();
+    expect(summary?.hv.telemetry.currentVoltageV).toBeNull();
+    expect(summary?.hv.telemetry.temperatureC).toBeNull();
+    expect(summary?.hv.telemetry.isCharging).toBeNull();
+    expect(summary?.hv.telemetry.chargingCableConnected).toBeNull();
+    expect(summary?.canonical?.hv?.soc.percent).toBeNull();
+    expect(summary?.canonical?.hv?.currentEnergy.kwh).toBeNull();
+    expect(summary?.canonical.liveState.hv.signals.socPercent.value).toBe(87);
     expect(summary?.currentTelemetry?.observationFreshness?.observationState).toBe(
       'STALE',
     );
+  });
+
+  it('preserves fresh HV dynamic telemetry on customer surfaces', async () => {
+    const { svc } = buildService();
+    const summary = await svc.getSummary('veh-1');
+    expect(summary?.hv.telemetry.socPercent).toBe(66);
+    expect(summary?.hv.telemetry.currentEnergyKwh).toBe(50);
+    expect(summary?.currentTelemetry?.socPercent).toBe(66);
+    expect(summary?.canonical?.hv?.soc.percent).toBe(66);
+  });
+
+  it('fail-closes HV customer telemetry when source timestamp is missing', async () => {
+    const { svc, prisma } = buildService();
+    prisma.vehicleLatestState.findUnique.mockResolvedValue({
+      lastSeenAt: now,
+      providerFetchedAt: now,
+      sourceTimestamp: null,
+      lvBatteryVoltage: 12.4,
+      evSoc: 55,
+      rangeKm: 200,
+      tractionBatteryCurrentEnergyKwh: 40,
+      tractionBatteryGrossCapacityKwh: 76,
+    });
+    const summary = await svc.getSummary('veh-1');
+    expect(summary?.hv.telemetry.socPercent).toBeNull();
+    expect(summary?.hv.telemetry.currentEnergyKwh).toBeNull();
+  });
+
+  it('redacts legacy lvDiagnostic SOH scores from customer canonical legacy', async () => {
+    const { svc, lvCanonicalResolver } = buildService();
+    lvCanonicalResolver.resolveForVehicle.mockResolvedValue({
+      resolverVersion: '1.0.0',
+      vehicleId: 'veh-1',
+      resolvedAt: now.toISOString(),
+      profile: {
+        profile: 'ICE_STANDARD',
+        driveProfile: BatteryDriveProfile.BEV,
+        lvAssessmentAllowed: true,
+        supported: true,
+      },
+      chemistry: {
+        chemistry: BatteryChemistry.LITHIUM,
+        chemicalSocEstimationAllowed: true,
+      },
+      primaryTruth: {
+        source: 'LIVE_TELEMETRY',
+        estimatedHealthScore: null,
+        semanticType: 'ESTIMATED_HEALTH_NOT_SOH',
+        labelDe: 'Geschätzter 12V-Batteriezustand',
+        decisionCapable: false,
+      },
+      liveVoltage: null,
+      latestQualifiedRestMeasurement: null,
+      latestStartProxy: null,
+      assessment: null,
+      publication: null,
+      freshness: { fetch: null, observation: null },
+      quality: {
+        aggregate: { status: 'LEGACY_UNVERIFIED', labelDe: 'Legacy' },
+        primaryTruth: { status: 'LEGACY_UNVERIFIED', labelDe: 'Legacy' },
+      },
+      legacyDiagnostic: {
+        displayMode: 'LEGACY_UNVERIFIED',
+        decisionCapable: false,
+        publishedSohPct: 89,
+        stabilizedSohPct: 87.5,
+        rawSohPct: 90,
+        publicationState: 'STABLE',
+        scoredAt: now.toISOString(),
+        supersededByPrimary: true,
+      },
+      unsupported: false,
+      unavailable: false,
+    });
+    const summary = await svc.getSummary('veh-1');
+    expect(summary?.canonical.legacy.lvDiagnostic?.publishedSohPct).toBeNull();
+    expect(summary?.canonical.legacy.v2Features?.publishedSohPct).toBe(80);
+  });
+
+  it('ICE resting voltage classification is unchanged when HV telemetry is stale', async () => {
+    const { svc, prisma, policyProfileService } = buildService();
+    prisma.vehicle.findUnique.mockResolvedValue({
+      id: 'veh-ice',
+      organizationId: 'org-1',
+      fuelType: 'GASOLINE',
+      hvBatteryCapacityKwh: null,
+    });
+    policyProfileService.resolveForVehicle.mockResolvedValue(
+      resolveBatteryPolicy({
+        driveProfile: BatteryDriveProfile.ICE,
+        chemistry: BatteryChemistry.AGM,
+        lvSignalPresent: true,
+      }),
+    );
+    const iceLatestState = {
+      lastSeenAt: now,
+      providerFetchedAt: now,
+      lvBatteryVoltage: 12.72,
+      evSoc: null,
+      rangeKm: null,
+    };
+    prisma.vehicleLatestState.findUnique.mockResolvedValue({
+      ...iceLatestState,
+      sourceTimestamp: now,
+    });
+    const freshSummary = await svc.getSummary('veh-ice');
+    prisma.vehicleLatestState.findUnique.mockResolvedValue({
+      ...iceLatestState,
+      sourceTimestamp: new Date('2026-01-01T10:00:00.000Z'),
+    });
+    const staleSummary = await svc.getSummary('veh-ice');
+    expect(staleSummary?.lv.restingVoltage.status).toBe(
+      freshSummary?.lv.restingVoltage.status,
+    );
+    expect(staleSummary?.lv.restingVoltage.valueV).toBe(
+      freshSummary?.lv.restingVoltage.valueV,
+    );
+    expect(staleSummary?.lv.restingVoltage.batteryType).toBe('AGM');
+    expect(staleSummary?.support.hv).toBe(false);
   });
 });

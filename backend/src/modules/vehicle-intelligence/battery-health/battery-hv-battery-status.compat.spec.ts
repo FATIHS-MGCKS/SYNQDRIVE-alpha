@@ -75,6 +75,48 @@ describe('battery-hv-battery-status.compat', () => {
     expect(hvTelemetryObservationIsDecisionFresh(summary)).toBe(true);
   });
 
+  it('does not use legacy nominal capacity when reference is unverified and telemetry is stale', () => {
+    const summary = {
+      hv: {
+        telemetry: { grossCapacityKwh: 76 },
+      },
+      canonical: {
+        hv: {
+          referenceCapacity: {
+            capacityKwh: 77,
+            verificationStatus: 'PENDING',
+          },
+        },
+      },
+      currentTelemetry: {
+        observationFreshness: staleObservation,
+      },
+    };
+    const out = presentHvBatteryStatusCompatResponse(summary, {
+      nominalCapacityKwh: 60,
+    });
+    expect(out.nominalCapacityKwh).toBeNull();
+  });
+
+  it('prefers verified reference capacity over legacy nominal', () => {
+    const summary = {
+      hv: { telemetry: { grossCapacityKwh: 76 } },
+      canonical: {
+        hv: {
+          referenceCapacity: {
+            capacityKwh: 77.5,
+            verificationStatus: 'VERIFIED',
+          },
+        },
+      },
+      currentTelemetry: { observationFreshness: freshObservation },
+    };
+    const out = presentHvBatteryStatusCompatResponse(summary, {
+      nominalCapacityKwh: 60,
+    });
+    expect(out.nominalCapacityKwh).toBe(77.5);
+  });
+
   it('does not present legacy SOH as validated when canonical SOH is unavailable', () => {
     const summary = {
       hv: {

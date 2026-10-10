@@ -2,6 +2,10 @@ import {
   observationFreshnessIsDecisionFresh,
   type ObservationFreshness,
 } from './battery-freshness.policy';
+import {
+  presentHvCustomerTelemetryFields,
+  resolveCustomerHvNominalCapacityKwh,
+} from './battery-hv-customer-telemetry.presenter';
 
 /** Minimal summary slice for HV compat endpoint assembly (no legacy telemetry bypass). */
 export type HvBatteryStatusCompatSummaryInput = {
@@ -29,7 +33,12 @@ export type HvBatteryStatusCompatSummaryInput = {
     } | null;
   } | null;
   canonical?: {
-    hv?: { referenceCapacity?: { capacityKwh?: number | null } | null } | null;
+    hv?: {
+      referenceCapacity?: {
+        capacityKwh?: number | null;
+        verificationStatus?: string | null;
+      } | null;
+    } | null;
   } | null;
   currentTelemetry?: {
     socPercent?: number | null;
@@ -60,21 +69,46 @@ export function presentHvBatteryStatusCompatResponse(
   const canonicalHv = summary.canonical?.hv ?? null;
   const telemetryFresh = hvTelemetryObservationIsDecisionFresh(summary);
 
-  const customerSoc =
-    summary.currentTelemetry?.socPercent ?? hv?.telemetry?.socPercent ?? null;
+  const customerSoc = summary.currentTelemetry?.socPercent ?? null;
   const customerRange = telemetryFresh
-    ? summary.currentTelemetry?.rangeKm ?? hv?.telemetry?.rangeKm ?? null
+    ? summary.currentTelemetry?.rangeKm ?? null
     : null;
 
   const customerSoh = hv?.sohPct ?? hv?.healthPercent ?? null;
 
-  const customerTelemetry = telemetryFresh && hv?.telemetry ? hv.telemetry : null;
+  const customerTelemetry =
+    telemetryFresh && hv?.telemetry
+      ? presentHvCustomerTelemetryFields({
+          raw: {
+            socPercent: hv.telemetry.socPercent ?? null,
+            rangeKm: hv.telemetry.rangeKm ?? null,
+            currentEnergyKwh: hv.telemetry.currentEnergyKwh ?? null,
+            grossCapacityKwhFromTelemetry: hv.telemetry.grossCapacityKwh ?? null,
+            addedEnergyKwh: hv.telemetry.addedEnergyKwh ?? null,
+            chargingPowerKw: hv.telemetry.chargingPowerKw ?? null,
+            currentVoltageV: hv.telemetry.currentVoltageV ?? null,
+            temperatureC: hv.telemetry.temperatureC ?? null,
+            isCharging: hv.telemetry.isCharging ?? null,
+            chargingCableConnected: hv.telemetry.chargingCableConnected ?? null,
+            providerSohPercent: hv.telemetry.providerSohPercent ?? null,
+          },
+          carrierObservationFresh: true,
+          providerSohObservationFresh: hv.telemetry.providerSohPercent != null,
+        })
+      : null;
 
-  const nominalCapacityKwh =
-    canonicalHv?.referenceCapacity?.capacityKwh ??
-    (legacy?.nominalCapacityKwh as number | null | undefined) ??
-    hv?.telemetry?.grossCapacityKwh ??
-    null;
+  const nominalCapacityKwh = resolveCustomerHvNominalCapacityKwh({
+    referenceCapacity:
+      canonicalHv?.referenceCapacity?.verificationStatus != null
+        ? {
+            capacityKwh: canonicalHv.referenceCapacity.capacityKwh ?? null,
+            verificationStatus: canonicalHv.referenceCapacity.verificationStatus,
+          }
+        : null,
+    legacyNominalCapacityKwh: legacy?.nominalCapacityKwh as number | null | undefined,
+    telemetryGrossCapacityKwh: hv?.telemetry?.grossCapacityKwh ?? null,
+    carrierObservationFresh: telemetryFresh,
+  });
 
   return {
     _compat: true as const,

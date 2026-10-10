@@ -6,6 +6,19 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-10 — G5B customer HV telemetry freshness + legacy customer boundary
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | Canonical summary masked stale HV SOC/range on `currentTelemetry` but `hv.telemetry` still exposed stale energy/capacity/charging/temperature/provider SOH when `sourceTimestamp` was old; compat could still prefer masked telemetry SOC fallback paths; legacy nominal capacity could surface as customer nominal capacity |
+| **CHANGE** | `presentHvCustomerTelemetryFields` + `applyCustomerFacingBatterySummaryBoundaries` gate all HV dynamic customer fields on carrier observation freshness (separate provider-SOH gate); HV compat uses verified reference capacity only; customer `canonical.legacy.lvDiagnostic` SOH scores redacted when not decision-capable; unverified HV legacy capacity diagnostics redacted on customer summary |
+| **WHY** | G5A acceptance `ACCEPT_WITH_DOCUMENTED_GAPS` — close Tesla-class stale-carrier customer leakage without erasing DB evidence or canonical signal freshness metadata |
+| **VALIDATION** | `battery-hv-customer-telemetry.presenter.spec.ts`; extended `canonical-battery-health.service.spec.ts`; extended `battery-hv-battery-status.compat.spec.ts` |
+| **NON_EFFECTS** | REST capture, shadow flags, queue admission, assessment scheduling unchanged; canonical `liveState.hv.signals` retain stale values with freshness metadata for diagnostics |
+| **DECISION_STATUS** | VALIDATED (repository tests) |
+
+---
+
 ## 2026-10-10 — Production alpha G3-H2 HV compat legacy fallback closure
 
 | Field | Value |
