@@ -16,6 +16,8 @@
 # Defaults:synqdrive-deploy env_reset
 # Defaults:synqdrive-deploy secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 # Defaults:synqdrive-deploy !setenv
+# env_reset clears imported Bash functions (BASH_FUNC_*), SYNQDRIVE_* injection, and selftest env.
+# Wrapper script must re-export only pinned executor pins from root-owned files — never caller env.
 #
 # synqdrive-deploy ALL=(root) NOPASSWD: /opt/synqdrive/shared/bin/vo5c-pinned-deploy-wrapper.sh
 #

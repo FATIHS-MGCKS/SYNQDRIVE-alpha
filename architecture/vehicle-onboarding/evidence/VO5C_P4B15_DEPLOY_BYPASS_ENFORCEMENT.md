@@ -57,6 +57,18 @@ Script guards alone do not stop a root shell from editing trees or invoking depl
 | E | Cloud-agent shallow-fetch deploy | Enforcement inactive or SSH root | Remote pre-check; blocks when authority active or invalid |
 | F | Pinned executor `dc30d2c` lacks P4B15 lib | `ENFORCEMENT_ACTIVE=1` before executor promotion | Promotion required before activation; dc30 is ancestor of `7f47c9f` app target |
 
+## P4B15 R3 final gate (offline)
+
+| ID | Control | Behavior |
+|----|---------|----------|
+| A | Authority absent (pre-bootstrap) | Inactive; deploy allowed via legacy paths until armed |
+| A | Unreadable / malformed / dangling symlink | Fail closed when path exists or symlink broken |
+| B | Authority missing after activation | Fail closed when `/opt/synqdrive/shared/vo5c-production-deploy-enforcement-armed` exists |
+| B | OS monitoring | Alert on stamp without valid authority; audit root removal of authority file |
+| C | Bash `vps_vo5c_production_deploy_authority_file` override | Production lib `unset -f` + rebind canonical path on every source |
+| D | sudoers env | `env_reset` + `!setenv`; wrapper re-exports pins from root-owned files only |
+| E | Alternate entrypoints | connectivity staging, S4F-7Q wrapper, cloud-agent pre-check; rollback/RFRF unchanged |
+
 ## Release attestation gap (P4B16 scope)
 
 Observed: `SYNQDRIVE_DEPLOYED_GIT_SHA=dc30d2c…` while replicas run `7f47c9f…` (mixed-replica rolling deploy without post-deploy attestation sync).
