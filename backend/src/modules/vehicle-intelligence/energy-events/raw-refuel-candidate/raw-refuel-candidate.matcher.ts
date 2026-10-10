@@ -16,6 +16,11 @@ import type {
   RawRefuelCandidateEvidenceSlice,
   RawRefuelCandidateOverlapClassification,
 } from './raw-refuel-candidate.types';
+import {
+  bothExplicitSettledMedianPostFuelAuthority,
+  classifyV2SettledMedianPhysicalRediscoveryOverlap,
+  isV2SameVersionPair,
+} from './raw-refuel-candidate-v2-same-version-rediscovery.authority';
 
 function msBetween(a: Date, b: Date): number {
   return Math.abs(a.getTime() - b.getTime());
@@ -153,16 +158,12 @@ export function physicalNeighborhoodCorresponds(
 }
 
 /**
- * Same-detection-version matcher — preserved F2 semantics (tri-state).
+ * Legacy F2 same-version matcher — preserved v1 semantics (tri-state).
  */
-export function classifySameVersionRawRefuelCandidateOverlap(
+export function classifyLegacySameVersionRawRefuelCandidateOverlap(
   observation: RawRefuelCandidateEvidenceSlice,
   candidate: RawRefuelCandidateEvidenceSlice,
 ): RawRefuelCandidateOverlapClassification {
-  if (observation.detectionVersion !== candidate.detectionVersion) {
-    return 'DISTINCT_PHYSICAL_RISE';
-  }
-
   const obsRise = observation.riseOnsetAt;
   const candRise = candidate.riseOnsetAt;
   if (obsRise && candRise) {
@@ -217,6 +218,34 @@ export function classifySameVersionRawRefuelCandidateOverlap(
   }
 
   return 'SAME_PHYSICAL_RISE';
+}
+
+/**
+ * Same-detection-version matcher — v2 settled-post path or legacy F2 semantics.
+ */
+export function classifySameVersionRawRefuelCandidateOverlap(
+  observation: RawRefuelCandidateEvidenceSlice,
+  candidate: RawRefuelCandidateEvidenceSlice,
+): RawRefuelCandidateOverlapClassification {
+  if (observation.detectionVersion !== candidate.detectionVersion) {
+    return 'DISTINCT_PHYSICAL_RISE';
+  }
+
+  if (isV2SameVersionPair(observation, candidate)) {
+    return classifyV2SameVersionRawRefuelCandidateOverlap(observation, candidate);
+  }
+
+  return classifyLegacySameVersionRawRefuelCandidateOverlap(observation, candidate);
+}
+
+function classifyV2SameVersionRawRefuelCandidateOverlap(
+  observation: RawRefuelCandidateEvidenceSlice,
+  candidate: RawRefuelCandidateEvidenceSlice,
+): RawRefuelCandidateOverlapClassification {
+  if (bothExplicitSettledMedianPostFuelAuthority(observation, candidate)) {
+    return classifyV2SettledMedianPhysicalRediscoveryOverlap(observation, candidate);
+  }
+  return classifyLegacySameVersionRawRefuelCandidateOverlap(observation, candidate);
 }
 
 function classifyAuthorizedCrossVersionOverlap(

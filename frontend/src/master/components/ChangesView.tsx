@@ -53,6 +53,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-10-10T00:05:00.000Z',
   },
   {
+    id: 'di-exp021-s4f7ax3-trusted-dispatch-provenance-2026-10-09',
+    version: 'engineering',
+    title: 'EXP-021 S4F-7AX.3 — Gate-6 trusted dispatch provenance (engineering only)',
+    summary: [
+      'Privileged issuance register + MAC key binds dispatch nonce/digest to verified Ed25519 approval consumption.',
+      'live-open-authorized re-verifies human approval and trusted issuance record before any Prisma OPEN mutation.',
+      'Self-issued HMAC sidecar alone cannot satisfy live OPEN; 71 operator tests PASS.',
+      'No Production mutation, live OPEN, or issuance key provisioning.',
+    ],
+    reason:
+      'Dispatch per-token HMAC sidecars are generated at issuance and do not prove independent human approval on Production.',
+    previousBehavior:
+      'live-open-authorized consumed dispatch token MAC only; Ed25519 approval was not re-verified at OPEN boundary.',
+    details: 'architecture/drivingintelligence/evidence/EXP021_S4F7AX3_TRUSTED_DISPATCH_PROVENANCE.md',
+    affectsArchitecture: true,
+    module: 'Driving Intelligence',
+    createdAt: '2026-10-09T23:45:00.000Z',
+  },
+  {
     id: 'm3-3-hv-h4-a3-p1b1-a1-h2-evidence-parser-integrity-2026-10-09',
     version: '4.9.2234',
     title: 'M3.3 HV-H4 A3 P1B1-A1-H2 — evidence parser integrity & signed acceptance timestamp',
