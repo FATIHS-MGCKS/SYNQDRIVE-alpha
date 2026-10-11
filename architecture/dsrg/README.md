@@ -35,9 +35,9 @@ Enforcement (`VO5C_PRODUCTION_DEPLOY_ENFORCEMENT_ACTIVE=1`) and OS sudoers remai
 
 | Field | Value |
 |-------|-------|
-| **Registry coverage** | `AUDIT_IN_PROGRESS` (DSRG-03 R0, 2026-10-11) |
-| **Previously** | Absent from central inventory; hub existed under `architecture/dsrg/` only |
-| **Promotion** | See [`evidence/GATE_A_READINESS.md`](evidence/GATE_A_READINESS.md) — separate promotion review only |
+| **Registry coverage** | `AUTHORITY_ACTIVE` (DSRG-03 R6 promotion PR — **effective on authorized merge**) |
+| **Previously** | `AUDIT_IN_PROGRESS` (DSRG-03 R0–R5, 2026-10-11); absent from inventory before R0 |
+| **Runtime enforcement** | **Not activated** — see [`evidence/GATE_A_READINESS.md`](evidence/GATE_A_READINESS.md) enforcement track |
 
 **Mandatory entry:** [AUDIT_MANIFEST.md](./AUDIT_MANIFEST.md) · [CURRENT_STATE.md](./CURRENT_STATE.md) · [AGENT_CONTRACT.md](./AGENT_CONTRACT.md) · [KNOWLEDGE_GRAPH.md](./KNOWLEDGE_GRAPH.md) · [decisions/DECISION_REGISTER.md](./decisions/DECISION_REGISTER.md) · [evidence/](./evidence/) · [contradictions/](./contradictions/) · [research/CHANGE_LEDGER.md](./research/CHANGE_LEDGER.md)
 

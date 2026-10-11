@@ -41,10 +41,32 @@ Production enforcement **does not** need to be ON for architecture authority. In
 
 **ENFORCEMENT_READINESS:** **BLOCKED** — expected; documented open work (P4B17+).
 
-## Promotion decision (this workstream)
+## Promotion decision (R3 workstream — historical)
 
 | Field | Value |
 |-------|-------|
-| **AUTHORITY_PROMOTION_READINESS** | **READY_FOR_SEPARATE_HUMAN_APPROVAL** |
-| **Registry change in DSRG-03 R3 PR** | **None** — status stays `AUDIT_IN_PROGRESS` |
-| **Human action** | Separate PR to set `AUTHORITY_ACTIVE` after review |
+| **AUTHORITY_PROMOTION_READINESS** | **READY_FOR_SEPARATE_HUMAN_APPROVAL** (recorded R3) |
+| **Registry change in DSRG-03 R3 PR** | **None** — status stayed `AUDIT_IN_PROGRESS` |
+| **Human action** | Separate promotion PR (DSRG-03 R6) |
+
+---
+
+## DSRG-03 R6 revalidation (architecture promotion only)
+
+**Revalidated @:** `2026-10-11` (repository; no new Production audit)  
+**Main @ certification:** `f456350c72daf8da08ca80b00090276da8ff60f1` (#1976 merged)  
+**Gate A matrix (R3):** **unchanged** — still **PASS** for `AUTHORITY_ACTIVE` knowledge gate  
+**Invalidating drift:** **none identified** (merge is docs/validators only relative to R3 audit scope)
+
+| Safety separation (still required) | Status |
+|-----------------------------------|--------|
+| `ENFORCEMENT_ACTIVE` | **OFF** |
+| `BREAK_GLASS_READY` | **NOT_VERIFIED** |
+| OS VO5C sudoers boundary | **NOT_READY** |
+| Deploy authority file on VPS | **ABSENT** |
+| P4B16 attestation automation | **OPEN** |
+| Live pinned-runner production deploy proof | **NOT CLAIMED** |
+| Bypass / legacy path risk | **ACKNOWLEDGED** — `EXECUTION_PATH_INVENTORY.md` |
+
+**R6 registry action:** `AUDIT_IN_PROGRESS` → `AUTHORITY_ACTIVE` in promotion PR — **effective only after authorized merge**.  
+**Evidence:** [`DSRG_03_R6_AUTHORITY_PROMOTION.md`](DSRG_03_R6_AUTHORITY_PROMOTION.md)

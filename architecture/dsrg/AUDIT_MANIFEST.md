@@ -10,10 +10,11 @@ Standard: [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) v1.0
 | **MODULE_KEY** | `DSRG` |
 | **MODULE_SLUG** | `dsrg` |
 | **AUDIT_STARTED_AT** | `2026-10-11T00:50:00Z` (DSRG-03 R0) |
-| **AUDIT_COMPLETED_AT** | `IN_PROGRESS` (architecture Gate A pass; registry promotion deferred to human PR) |
-| **REGISTRY_STATUS_AT_END** | `AUDIT_IN_PROGRESS` |
+| **AUDIT_COMPLETED_AT** | `2026-10-11T13:49:49Z` (Gate A @ R3 Production audit) |
+| **REGISTRY_STATUS_AT_END** | `AUTHORITY_ACTIVE` (proposed DSRG-03 R6 — effective on promotion PR merge) |
 | **REPOSITORY** | `FATIHS-MGCKS/SYNQDRIVE-alpha` |
-| **ORIGIN_MAIN_SHA** | `299205bc7fa07f3494f50961c49fd5a591e029fe` (DSRG-03 R3; #1975 merged) |
+| **ORIGIN_MAIN_SHA** | `f456350c72daf8da08ca80b00090276da8ff60f1` (#1976 merge; DSRG-03 R5) |
+| **GATE_A_AUDIT_MAIN_SHA** | `299205bc7fa07f3494f50961c49fd5a591e029fe` (frozen R3 certification baseline) |
 | **AUDIT_BRANCH_SHA** | `b24203d82d6` — frozen R0 capture (unchanged) |
 | **PRODUCTION_AUDITED_AT** | `2026-10-11T13:49:49Z` (DSRG-03 R3) |
 | **PRODUCTION_ACCESS** | `VERIFIED_READ_ONLY` |
@@ -29,7 +30,7 @@ Standard: [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) v1.0
 | Phase | Status |
 |-------|--------|
 | **0–4** | **Complete** (R3 fresh Production + execution inventory) |
-| **5 — Promotion** | Architecture **READY_FOR_SEPARATE_HUMAN_APPROVAL**; **not** applied in R3 PR |
+| **5 — Promotion** | **PROPOSED** DSRG-03 R6 (`AUTHORITY_ACTIVE` registry); runtime enforcement **not** in scope |
 
 ## Canonical ledger
 
