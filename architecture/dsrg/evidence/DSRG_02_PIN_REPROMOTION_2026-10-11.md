@@ -78,4 +78,4 @@ PR #1970 CI all green at merge head `3f821036e54` / merge commit `448a889` — *
 
 ## DSRG registry follow-up
 
-Register **DSRG** in `architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md` as `AUDIT_IN_PROGRESS` documentation hub; promote after read-only Production deploy-path audit. VO5C evidence under `architecture/vehicle-onboarding/evidence/` remains canonical for P4B15 implementation history.
+Completed in **DSRG-03 R0** (registry row `AUDIT_IN_PROGRESS`, authority bootstrap). Promotion to `AUTHORITY_ACTIVE` remains open. VO5C evidence under `architecture/vehicle-onboarding/evidence/` remains canonical for P4B15 implementation history.

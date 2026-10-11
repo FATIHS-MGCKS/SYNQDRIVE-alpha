@@ -31,15 +31,17 @@ This directory is **documentation-only**. It does not replace:
 
 Enforcement (`VO5C_PRODUCTION_DEPLOY_ENFORCEMENT_ACTIVE=1`) and OS sudoers remain **not activated** as of DSRG-02 R2 seal.
 
-## Registry follow-up (formal)
+## Registry status
 
-DSRG is a **documentation hub** today. To register in `architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md`:
+| Field | Value |
+|-------|-------|
+| **Registry coverage** | `AUDIT_IN_PROGRESS` (DSRG-03 R0, 2026-10-11) |
+| **Previously** | Absent from central inventory; hub existed under `architecture/dsrg/` only |
+| **Promotion** | `AUTHORITY_ACTIVE` **not** eligible until graphs, decisions, and validators per [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) |
 
-1. Add inventory row (mini description: deploy security & release governance).
-2. Set initial `registry coverage status` to `AUDIT_IN_PROGRESS` per `MODULE_AUTHORITY_STANDARD.md`.
-3. Promote to `AUTHORITY_ACTIVE` only after Production read-only VPS audit of deploy paths and validator commands are recorded.
+**Mandatory entry (partial):** [AUDIT_MANIFEST.md](./AUDIT_MANIFEST.md) · [CURRENT_STATE.md](./CURRENT_STATE.md) · [AGENT_CONTRACT.md](./AGENT_CONTRACT.md) · [evidence/PRODUCTION_BASELINE.md](./evidence/PRODUCTION_BASELINE.md) · [evidence/EVIDENCE_INDEX.md](./evidence/EVIDENCE_INDEX.md) · [contradictions/KNOWLEDGE_GAPS.md](./contradictions/KNOWLEDGE_GAPS.md)
 
-Until then, VO5C evidence under `architecture/vehicle-onboarding/evidence/` remains the implementation authority; DSRG indexes and cross-links.
+VO5C implementation evidence under `architecture/vehicle-onboarding/evidence/` remains authoritative for VO5C phases; DSRG indexes and cross-links.
 
 ## Related evidence (preserved in place)
 
