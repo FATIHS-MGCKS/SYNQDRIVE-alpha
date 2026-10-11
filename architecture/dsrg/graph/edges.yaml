@@ -99,6 +99,14 @@ edges:
     relation: governs
     to: DSRG-POL-P4B15-001
 
+  - from: DSRG-DEC-004
+    relation: governs
+    to: DSRG-STATE-DEPLOY-ATTEST-001
+
+  - from: DSRG-EVID-P4B16-R0-001
+    relation: supports
+    to: DSRG-DEC-004
+
   - from: DSRG-REJECT-001
     relation: superseded_by
     to: DSRG-DEC-001

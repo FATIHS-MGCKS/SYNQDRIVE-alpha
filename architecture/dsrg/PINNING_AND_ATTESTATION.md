@@ -20,9 +20,17 @@
 
 | Field | Meaning | Must align with |
 |-------|---------|-----------------|
-| `git -C current rev-parse HEAD` | Running app | Replica processes |
-| `SYNQDRIVE_DEPLOYED_GIT_SHA` | Declared deploy attestation in `backend.env` | Live release after successful deploy (P4B16 target) |
-| `APD_SHADOW_EPOCH_APPROVED_RELEASE_SHA` | APDS authorized release | **Independent** workflow; never auto-updated on deploy |
+| `git -C current rev-parse HEAD` | Release tree identity (when `.git` present) | Symlink target after deploy |
+| `SYNQDRIVE_DEPLOYED_GIT_SHA` | Declared deploy attestation in `backend.env` | **P4B16:** commit only after post-deploy verify (**today:** manual / stale risk — see R0 audit) |
+| `SYNQDRIVE_REQUESTED_DEPLOY_SHA` | Admitted deploy target | Clone + `TARGET_SHA` invariant in `vps-deploy-release.sh` |
+| `SYNQDRIVE_DEPLOY_IN_PROGRESS_SHA` | Rolling target marker | **NOT_IMPLEMENTED** (P4B16 design) |
+| `APD_SHADOW_EPOCH_APPROVED_RELEASE_SHA` | APDS authorized release | **Independent** workflow; **never** auto-updated by deploy/attestation |
+
+**P4B16 R0 evidence:** [`evidence/P4B16_R0_PRODUCTION_ATTESTATION_AUDIT.md`](evidence/P4B16_R0_PRODUCTION_ATTESTATION_AUDIT.md) · [`evidence/P4B16_R0_ATTESTATION_DESIGN.md`](evidence/P4B16_R0_ATTESTATION_DESIGN.md)
+
+**PM2 note:** Updating `backend.env` does **not** reload in-memory `process.env` in running Node processes. P4B16 (R0A) uses a **single authoritative** `release-attestation.state` + **journal** (`PUBLISHED` before `COMMITTED`), a **legacy mirror** line in `backend.env`, and a proposed **per-replica runtime identity** HTTP surface — see [`evidence/P4B16_R0_ATTESTATION_DESIGN.md`](evidence/P4B16_R0_ATTESTATION_DESIGN.md).
+
+**Frozen R0 drift snapshot (audit time, not live):** live tree `2b89f746…` vs `backend.env` attestation `3a4bb944…` — pin `448a889…` unchanged.
 
 ## Production pin lineage (VPS)
 

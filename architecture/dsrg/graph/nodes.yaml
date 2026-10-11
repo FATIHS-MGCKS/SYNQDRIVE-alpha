@@ -37,11 +37,12 @@ nodes:
     type: state
     title: Deployed application SHA attestation
     epistemic_status: CONFIRMED
-    summary: SYNQDRIVE_DEPLOYED_GIT_SHA in backend.env; release path may lack git metadata.
+    summary: SYNQDRIVE_DEPLOYED_GIT_SHA in shared backend.env; may diverge from current release git HEAD until P4B16 commit (R0 mismatch observed).
     source_paths:
-      - architecture/dsrg/evidence/PRODUCTION_BASELINE.md
+      - architecture/dsrg/evidence/P4B16_R0_PRODUCTION_ATTESTATION_AUDIT.md
+      - architecture/dsrg/PINNING_AND_ATTESTATION.md
     evidence:
-      - DSRG-EVID-PROD-R2-001
+      - DSRG-EVID-P4B16-R0-001
 
   - id: DSRG-PIPE-PREFLIGHT-001
     type: pipeline
@@ -189,6 +190,27 @@ nodes:
       - architecture/dsrg/DEPLOYMENT_AUTHORIZATION.md
     evidence:
       - DSRG-EVID-PROD-R2-001
+
+  - id: DSRG-DEC-004
+    type: decision
+    title: P4B16 post-verify atomic release attestation commit
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: Journal-published state authority after multi-replica verify + runtime identity; backend.env mirror; no APDS pin mutation.
+    source_paths:
+      - architecture/dsrg/evidence/P4B16_R0_ATTESTATION_DESIGN.md
+      - architecture/dsrg/evidence/P4B16_R0A_DESIGN_CORRECTION.md
+    evidence:
+      - DSRG-EVID-P4B16-R0-001
+
+  - id: DSRG-EVID-P4B16-R0-001
+    type: evidence
+    title: P4B16 R0 production attestation audit
+    epistemic_status: CONFIRMED
+    source_type: AUDIT_DOCUMENT
+    summary: Read-only VPS R0; attestation vs current git mismatch; design boundaries.
+    source_paths:
+      - architecture/dsrg/evidence/P4B16_R0_PRODUCTION_ATTESTATION_AUDIT.md
 
   - id: DSRG-EVID-AUDIT-REGISTRY-001
     type: evidence
