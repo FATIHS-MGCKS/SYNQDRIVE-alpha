@@ -1,6 +1,7 @@
 import {
   hvTelemetryObservationIsDecisionFresh,
   presentHvBatteryStatusCompatResponse,
+  type HvBatteryStatusCompatSummaryInput,
 } from './battery-hv-battery-status.compat';
 
 describe('battery-hv-battery-status.compat', () => {
@@ -40,9 +41,16 @@ describe('battery-hv-battery-status.compat', () => {
     const out = presentHvBatteryStatusCompatResponse(summary, legacy);
     expect(out.currentSocPercent).toBeNull();
     expect(out.estimatedRangeKm).toBeNull();
-    expect(out.telemetry).toBeNull();
+    expect(out.telemetry?.socPercent).toBeNull();
+    expect(out.telemetry?.rangeKm).toBeNull();
     expect(out.sohPercent).toBe(82);
-    expect(out.legacy).toEqual(legacy);
+    expect(out.legacy).toEqual({
+      diagnosticOnly: true,
+      telemetry: expect.objectContaining({
+        socPercent: null,
+        rangeKm: null,
+      }),
+    });
   });
 
   it('returns fresh telemetry SOC and range when observation is decision-fresh', () => {
@@ -73,6 +81,303 @@ describe('battery-hv-battery-status.compat', () => {
     expect(out.estimatedRangeKm).toBe(278);
     expect(out.telemetry?.temperatureC).toBe(24);
     expect(hvTelemetryObservationIsDecisionFresh(summary)).toBe(true);
+  });
+
+  it('does not use legacy nominal capacity when reference is unverified and telemetry is stale', () => {
+    const summary = {
+      hv: {
+        telemetry: { grossCapacityKwh: 76 },
+      },
+      canonical: {
+        hv: {
+          referenceCapacity: {
+            capacityKwh: 77,
+            verificationStatus: 'PENDING',
+          },
+        },
+      },
+      currentTelemetry: {
+        observationFreshness: staleObservation,
+      },
+    };
+    const out = presentHvBatteryStatusCompatResponse(summary, {
+      nominalCapacityKwh: 60,
+    });
+    expect(out.nominalCapacityKwh).toBeNull();
+  });
+
+  it('prefers verified reference capacity over legacy nominal', () => {
+    const summary = {
+      hv: { telemetry: { grossCapacityKwh: 76 } },
+      canonical: {
+        hv: {
+          referenceCapacity: {
+            capacityKwh: 77.5,
+            verificationStatus: 'VERIFIED',
+          },
+        },
+      },
+      currentTelemetry: { observationFreshness: freshObservation },
+    };
+    const out = presentHvBatteryStatusCompatResponse(summary, {
+      nominalCapacityKwh: 60,
+    });
+    expect(out.nominalCapacityKwh).toBe(77.5);
+  });
+
+  it('independently masks leaked upstream telemetry when observation is stale', () => {
+    const summary = {
+      hv: {
+        sohPct: 82,
+        telemetry: {
+          socPercent: 87,
+          rangeKm: 278,
+          currentEnergyKwh: 50,
+          grossCapacityKwh: 76,
+          providerSohPercent: 82,
+        },
+      },
+      canonical: {
+        hv: {
+          providerSoh: { percent: 82, decisionFresh: false },
+        },
+      },
+      currentTelemetry: {
+        socPercent: 87,
+        rangeKm: 278,
+        observationFreshness: staleObservation,
+      },
+    };
+    const out = presentHvBatteryStatusCompatResponse(summary, {
+      currentSocPercent: 99,
+      estimatedRangeKm: 999,
+    });
+    expect(out.currentSocPercent).toBeNull();
+    expect(out.estimatedRangeKm).toBeNull();
+    expect(out.telemetry?.socPercent).toBeNull();
+    expect(out.telemetry?.currentEnergyKwh).toBeNull();
+    expect(out.telemetry?.providerSohPercent).toBeNull();
+  });
+
+  it('gates provider SOH in compat telemetry on canonical decisionFresh, not non-null value', () => {
+    const summary = {
+      hv: {
+        telemetry: { providerSohPercent: 82, socPercent: 66, rangeKm: 200 },
+      },
+      canonical: {
+        hv: { providerSoh: { percent: 82, decisionFresh: true } },
+      },
+      currentTelemetry: { observationFreshness: freshObservation },
+    };
+    const out = presentHvBatteryStatusCompatResponse(summary, {});
+    expect(out.telemetry?.providerSohPercent).toBe(82);
+
+    const staleProvider = {
+      ...summary,
+      canonical: { hv: { providerSoh: { percent: 82, decisionFresh: false } } },
+    };
+    const masked = presentHvBatteryStatusCompatResponse(staleProvider, {});
+    expect(masked.telemetry?.providerSohPercent).toBeNull();
+    expect(masked.telemetry?.socPercent).toBe(66);
+  });
+
+  it('sanitizes nested currentTelemetry, canonicalSummary, canonical and legacy on stale upstream leak', () => {
+    const summary = {
+      hv: {
+        sohPct: 82,
+        telemetry: {
+          socPercent: 87,
+          rangeKm: 278,
+          currentEnergyKwh: 50,
+          grossCapacityKwh: 76,
+          temperatureC: 24,
+          isCharging: true,
+          chargingPowerKw: 11,
+          providerSohPercent: 82,
+        },
+      },
+      canonical: {
+        hv: {
+          soc: { percent: 87 },
+          currentEnergy: { kwh: 50 },
+          providerSoh: { percent: 82, decisionFresh: false },
+          referenceCapacity: { capacityKwh: 77.5, verificationStatus: 'VERIFIED' },
+          chargingState: { isCharging: true, powerKw: 11, state: 'charging' },
+        },
+        liveState: {
+          hv: {
+            values: { socPercent: 87, currentEnergyKwh: 50 },
+            signals: {
+              socPercent: { value: 87, freshness: { freshnessState: 'STALE' }, error: null },
+            },
+          },
+        },
+      },
+      currentTelemetry: {
+        socPercent: 87,
+        rangeKm: 278,
+        genericEnergyPercent: 87,
+        chargingPowerKw: 11,
+        chargingState: 'charging',
+        observationFreshness: staleObservation,
+      },
+    };
+    const legacy = {
+      currentSocPercent: 87,
+      estimatedRangeKm: 310,
+      nominalCapacityKwh: 60,
+      telemetry: { socPercent: 87, temperatureC: 22 },
+    };
+
+    const out = presentHvBatteryStatusCompatResponse(
+      summary as HvBatteryStatusCompatSummaryInput,
+      legacy,
+    );
+    const canonical = out.canonical as {
+      hv?: { soc?: { percent?: number | null } };
+      liveState?: {
+        hv?: {
+          values?: { socPercent?: number | null };
+          signals?: { socPercent?: { value?: number | null } };
+        };
+      };
+    } | null;
+    expect(out.currentTelemetry?.socPercent).toBeNull();
+    expect(out.currentTelemetry?.rangeKm).toBeNull();
+    expect(out.canonicalSummary?.telemetry?.socPercent).toBeNull();
+    expect(canonical?.hv?.soc?.percent).toBeNull();
+    expect(canonical?.liveState?.hv?.values?.socPercent).toBeNull();
+    expect(canonical?.liveState?.hv?.signals?.socPercent?.value).toBeNull();
+    expect(out.legacy).toEqual({
+      diagnosticOnly: true,
+      telemetry: expect.objectContaining({
+        socPercent: null,
+        rangeKm: null,
+      }),
+    });
+    expect(out.nominalCapacityKwh).toBe(77.5);
+  });
+
+  it('G5B final: fail-closed without hv.telemetry when canonical/liveState/legacy carry stale dynamic HV', () => {
+    const summary = {
+      hv: {
+        sohPct: 81,
+        healthPercent: 81,
+        method: 'provider',
+        publicationState: 'OFF',
+        legacyCapacity: {
+          diagnosticSohPercent: 95,
+          diagnosticEstimatedCapacityKwh: 88,
+        },
+      },
+      canonical: {
+        hv: {
+          soc: { percent: 72 },
+          currentEnergy: { kwh: 44 },
+          providerSoh: { percent: 91, decisionFresh: false },
+          referenceCapacity: { capacityKwh: 77.5, verificationStatus: 'VERIFIED' },
+          chargingState: { isCharging: true, powerKw: 22, cableConnected: true },
+        },
+        liveState: {
+          hv: {
+            values: {
+              socPercent: 72,
+              rangeKm: 400,
+              grossCapacityKwh: 88,
+              providerSohPercent: 91,
+            },
+            signals: {
+              socPercent: { value: 72, freshness: { freshnessState: 'STALE' }, error: null },
+            },
+          },
+        },
+        legacy: {
+          collapsed: false,
+          hvLegacyCapacity: {
+            displayMode: 'diagnostic',
+            decisionCapable: true,
+            diagnosticSohPercent: 95,
+            diagnosticEstimatedCapacityKwh: 88,
+            operationalSohPercent: 90,
+            operationalEstimatedCapacityKwh: 85,
+          },
+          v2Features: {
+            publishedSohPct: 88,
+            stabilizedSohPct: 87,
+            rawSohPct: 86,
+          },
+        },
+      },
+      currentTelemetry: {
+        socPercent: 72,
+        rangeKm: 400,
+        observationFreshness: staleObservation,
+      },
+    };
+    const legacy = {
+      sohPercent: 95,
+      publishedSohPercent: 94,
+      nominalCapacityKwh: 88,
+      currentSocPercent: 72,
+      estimatedRangeKm: 400,
+      telemetry: {
+        socPercent: 72,
+        grossCapacityKwh: 88,
+        providerSohPercent: 91,
+      },
+    };
+
+    const out = presentHvBatteryStatusCompatResponse(
+      summary as HvBatteryStatusCompatSummaryInput,
+      legacy,
+    );
+
+    expect(out.nominalCapacityKwh).toBe(77.5);
+    expect(out.currentSocPercent).toBeNull();
+    expect(out.estimatedRangeKm).toBeNull();
+    expect(out.telemetry?.socPercent).toBeNull();
+    expect(out.telemetry?.grossCapacityKwh).toBeNull();
+    expect(out.telemetry?.providerSohPercent).toBeNull();
+
+    expect(out.canonicalSummary).not.toHaveProperty('legacyCapacity');
+    expect(out.canonicalSummary?.telemetry?.socPercent).toBeNull();
+
+    expect(out.legacy).toEqual({
+      diagnosticOnly: true,
+      telemetry: expect.objectContaining({
+        socPercent: null,
+        grossCapacityKwh: null,
+        providerSohPercent: null,
+      }),
+    });
+    expect(out.legacy).not.toHaveProperty('sohPercent');
+    expect(out.legacy).not.toHaveProperty('nominalCapacityKwh');
+    expect(out.legacy).not.toHaveProperty('publishedSohPercent');
+
+    const canonical = out.canonical as {
+      hv?: {
+        soc?: { percent?: number | null };
+        currentEnergy?: { kwh?: number | null };
+        providerSoh?: { percent?: number | null };
+        chargingState?: { powerKw?: number | null };
+      };
+      liveState?: { hv?: { values?: { socPercent?: number | null } } };
+      legacy?: {
+        hvLegacyCapacity?: {
+          diagnosticSohPercent?: number | null;
+          operationalSohPercent?: number | null;
+        };
+        v2Features?: { publishedSohPct?: number | null };
+      };
+    } | null;
+
+    expect(canonical?.hv?.soc?.percent).toBeNull();
+    expect(canonical?.hv?.currentEnergy?.kwh).toBeNull();
+    expect(canonical?.hv?.providerSoh?.percent).toBeNull();
+    expect(canonical?.liveState?.hv?.values?.socPercent).toBeNull();
+    expect(canonical?.legacy?.hvLegacyCapacity?.diagnosticSohPercent).toBeNull();
+    expect(canonical?.legacy?.hvLegacyCapacity?.operationalSohPercent).toBeNull();
+    expect(canonical?.legacy?.v2Features?.publishedSohPct).toBeNull();
   });
 
   it('does not present legacy SOH as validated when canonical SOH is unavailable', () => {

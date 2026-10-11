@@ -6,6 +6,50 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-10 — G5B final HV compat allowlisted customer projection (PR #1969)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | `presentCompatSanitizedLegacy` spread historical `sohPercent` / `nominalCapacityKwh`; `canonicalSummary` could retain `legacyCapacity`; compat canonical masking skipped when `summary.hv.telemetry` absent despite nested canonical HV carriers |
+| **CHANGE** | Allowlisted `legacy: { diagnosticOnly, telemetry }` and explicit `canonicalSummary` projection (no `legacyCapacity`); `resolveCompatTelemetryRaw` aggregates carriers then `presentHvCustomerTelemetryFields` fail-closes; `maskCanonicalHvCustomerSurfaces` when `liveState.hv`, `hv`, or `legacy.hvLegacyCapacity` present; canonical.legacy HV/LV SOH capacity numerics redacted on compat path |
+| **VALIDATION** | `battery-hv-battery-status.compat.spec.ts` comprehensive regression (missing `hv.telemetry`, stale carrier, legacy SOH/capacity, nested canonical leak, verified reference 77.5 kWh preserved); 40 focused battery presenter/service tests |
+
+---
+
+## 2026-10-10 — G5B-F2 LV publication + HV compat nested closure (PR #1969)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | `redactCustomerLegacyLvDiagnostic` exposed raw SOH when `decisionCapable=true` even with publication OFF; HV compat returned unmasked `currentTelemetry`, `canonicalSummary`, `canonical`, and `legacy` nested objects |
+| **CHANGE** | LV diagnostic SOH requires publication customer visibility **and** decision capability; compat projects sanitized nested objects and drops legacy nominal fallback for nominal capacity |
+| **VALIDATION** | Extended `battery-customer-response.presenter.spec.ts`, `battery-hv-battery-status.compat.spec.ts`, `canonical-battery-health.service.spec.ts` |
+
+---
+
+## 2026-10-10 — G5B-F1 customer response safety closure (PR #1969)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | G5B masked summary `hv.telemetry` but `canonical.liveState.hv.values/signals` and `canonical.hv.chargingState` could still expose stale measurements; `canonical.legacy.v2Features` leaked stored SOH when publication OFF; HV compat inferred provider-SOH freshness from non-null telemetry |
+| **CHANGE** | Extended `applyCustomerFacingBatterySummaryBoundaries` to mask all canonical HV customer paths (values, signal `.value`, chargingState, provider SOH percent) while preserving freshness metadata; redact `v2Features` SOH when LV publication not customer-visible; HV compat independently fail-closes via observation + `canonical.hv.providerSoh.decisionFresh` |
+| **VALIDATION** | `battery-customer-response.presenter.spec.ts`; extended canonical + compat specs |
+| **NON_EFFECTS** | REST/shadow/queue/assessment scheduling unchanged |
+
+---
+
+## 2026-10-10 — G5B customer HV telemetry freshness + legacy customer boundary
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | Canonical summary masked stale HV SOC/range on `currentTelemetry` but `hv.telemetry` still exposed stale energy/capacity/charging/temperature/provider SOH when `sourceTimestamp` was old; compat could still prefer masked telemetry SOC fallback paths; legacy nominal capacity could surface as customer nominal capacity |
+| **CHANGE** | `presentHvCustomerTelemetryFields` + `applyCustomerFacingBatterySummaryBoundaries` gate all HV dynamic customer fields on carrier observation freshness (separate provider-SOH gate); HV compat uses verified reference capacity only; customer `canonical.legacy.lvDiagnostic` SOH scores redacted when not decision-capable; unverified HV legacy capacity diagnostics redacted on customer summary |
+| **WHY** | G5A acceptance `ACCEPT_WITH_DOCUMENTED_GAPS` — close Tesla-class stale-carrier customer leakage without erasing DB evidence or canonical signal freshness metadata |
+| **VALIDATION** | `battery-hv-customer-telemetry.presenter.spec.ts`; extended `canonical-battery-health.service.spec.ts`; extended `battery-hv-battery-status.compat.spec.ts` |
+| **NON_EFFECTS** | REST capture, shadow flags, queue admission, assessment scheduling unchanged; canonical `liveState.hv.signals` retain stale values with freshness metadata for diagnostics |
+| **DECISION_STATUS** | VALIDATED (repository tests) |
+
+---
+
 ## 2026-10-10 — Production alpha G3-H2 HV compat legacy fallback closure
 
 | Field | Value |
