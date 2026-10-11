@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **Evidence ID** | `DIM-EV-R22-RESILIENCE-001` |
-| **Status** | **PROPOSED** — no implementation in R2.2 |
+| **Status** | **ENGINEERING_IN_PROGRESS** — R2.5 implements A+B offline (PR #1984); VPS orchestrator wiring pending |
 
 ## Problem statement
 
