@@ -1,5 +1,14 @@
 # KG-EED Changelog
 
+## 2026-10-10 — REFUEL time UX production validation (EED-EV-0110, PR #1964)
+
+- Production SHA `7f47c9f5b5e35c425deb3c2b6bdaed9df73e5c7c`: WOB L 7503 **2026-10-09** canonical product **1** REFUEL / raw **2** DIMO rows (`SAME_PHYSICAL_REFUEL` siblings preserved)
+- Rise anchor `18:48:52Z` → **~20:48** Europe/Berlin; interval **20:48–20:55**; telemetry **+18 L**; detection envelope **19:32–21:09** Berlin remains secondary in UI contract
+- Operator authenticated UI attestation: timeline order between trips **20:43–21:09** and **19:44–19:53**; station **WK Tank, Eisenschmiede, Kassel** (matches persisted enrichment)
+- **GROUND_TRUTH_RECEIPT_NOT_RECORDED** — product/API/UI layers only
+- Natural campaign protocol: `governance/NATURAL-REFUEL-VALIDATION-PROTOCOL-2026-10-10.md` (R4A/R4B gates; read-only)
+- **EED-OQ-014:** **OPEN**; **EED-OQ-019:** **PARTIALLY_RESOLVED**; no Production calibration caps
+
 ## 2026-10-10 — REFUEL trips-timeline display semantics (UI contract)
 
 - Frontend presents `fuelLevelRiseStart`/`End` as observed REFUEL time; `startTime`/`endTime` remain detection envelope (secondary copy only).
