@@ -1896,3 +1896,12 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | AUTHORITY | NO_BACKFILL on S4B overlay; frozen S4A contract v2 **unchanged** |
 | NON_EFFECTS | No Production deploy/migrate/env/restart; no operator `GRANTED`; no Tiny activation; no GLOBAL `NOT_KILLED` seed |
 | NEXT | Review/merge S4F-7A → separate **dormant** Production deploy preflight |
+
+### EXP-021 S4P1 production readiness & safety simplification (2026-10-11)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Read-only runtime/safety audit; evidence `EXP021_S4P1_PRODUCTION_READINESS_SAFETY_SIMPLIFICATION.md`; regression `di-v0-s4p1-safety-gate-contract.spec.ts` |
+| FINDING | S4 active path = shadow `di_v0_s4_*` + DIMO budget only; Wave-3 human 24h gate was **operational triage**, not Gate-6 code; **no** automatic EMERGENCY_REKILL in app; post–Wave-3 Production **KILLED** after containment |
+| AUTHORITY | Proposed regular ops: owner auth + technical preflight/DRY_RUN/LIVE_OPEN + automated monitoring + manual rekill |
+| NON_EFFECTS | No Production mutation; no deploy; no env/kill/APDS/Battery changes in this slice |
