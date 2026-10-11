@@ -1,0 +1,9 @@
+{
+  "name": "@synqdrive/dsrg-graph-validator",
+  "private": true,
+  "description": "Pinned runtime for DSRG knowledge-graph YAML validation (docs-only; no backend coupling).",
+  "type": "module",
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  }
+}

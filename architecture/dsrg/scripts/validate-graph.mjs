@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * Validate Tankstellenerkennung knowledge graph YAML — docs only.
+ * Validate DSRG knowledge graph YAML — docs only.
  * Usage: node architecture/dsrg/scripts/validate-graph.mjs
+ * Self-test: node architecture/dsrg/scripts/validate-graph.mjs --fixture-negative (must exit 1)
  */
 import fs from 'fs';
 import path from 'path';
@@ -11,9 +12,23 @@ import { createRequire } from 'module';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(__dirname, '../../..');
 const require = createRequire(import.meta.url);
-const yaml = require(path.join(repo, 'backend/node_modules/js-yaml'));
 
-const graphDir = path.join(repo, 'architecture/dsrg/graph');
+const scriptsDir = __dirname;
+const yamlModulePath = path.join(scriptsDir, 'node_modules/js-yaml');
+if (!fs.existsSync(path.join(yamlModulePath, 'package.json'))) {
+  console.error('==> DSRG graph validator: missing js-yaml dependency');
+  console.error(`    Expected: ${yamlModulePath}`);
+  console.error('    Install:  npm ci --ignore-scripts --prefix architecture/dsrg/scripts');
+  console.error('    (Ordinary validator runs must not mutate backend/node_modules.)');
+  process.exit(2);
+}
+const yaml = require(yamlModulePath);
+
+const args = process.argv.slice(2);
+const fixtureMode = args.includes('--fixture-negative');
+const graphDir = fixtureMode
+  ? path.join(scriptsDir, 'fixtures/negative-graph')
+  : path.join(repo, 'architecture/dsrg/graph');
 const authorityDir = path.join(repo, 'architecture/dsrg');
 
 const errors = [];
@@ -250,9 +265,12 @@ function validateSemanticEdge(e, nodeById) {
 
 console.log('==> YAML syntax');
 const schema = load('schema.yaml');
+const graphLabel = fixtureMode
+  ? 'architecture/dsrg/scripts/fixtures/negative-graph'
+  : 'architecture/dsrg/graph';
 for (const name of ['nodes.yaml', 'edges.yaml', 'invariants.yaml']) {
   load(name);
-  console.log('  OK architecture/dsrg/graph/' + name);
+  console.log(`  OK ${graphLabel}/${name}`);
 }
 
 for (const [key, label] of [
@@ -384,10 +402,13 @@ console.log('==> Invariant checks:', invariants.length, 'OK');
 const paths = new Set();
 for (const n of nodes) for (const p of n.source_paths ?? []) paths.add(p);
 for (const inv of invariants) for (const p of inv.source_paths ?? []) paths.add(p);
-const missingPaths = [...paths].filter((p) => !fs.existsSync(path.join(repo, p))).sort();
-for (const p of missingPaths) fail(`MISSING source_path: ${p}`);
-console.log('==> Source paths:', paths.size, missingPaths.length ? 'FAIL' : 'OK');
+if (!fixtureMode) {
+  const missingPaths = [...paths].filter((p) => !fs.existsSync(path.join(repo, p))).sort();
+  for (const p of missingPaths) fail(`MISSING source_path: ${p}`);
+  console.log('==> Source paths:', paths.size, missingPaths.length ? 'FAIL' : 'OK');
+}
 
+if (!fixtureMode) {
 const gapPattern = /DSRG-GAP-[A-Z0-9-]+/g;
 const hypPattern = /DSRG-HYP-[A-Z0-9-]+/g;
 const contraPattern = /DSRG-CONTRA-[A-Z0-9-]+/g;
@@ -525,6 +546,11 @@ console.log(
   'decisions checked,',
   evidenceCardinalityPass ? 'PASS' : 'FAIL',
 );
+}
+
+if (fixtureMode && errors.length === 0) {
+  fail('Negative fixture graph must fail validation (expected duplicate node id)');
+}
 
 if (errors.length) {
   console.error('\n==> VALIDATION FAILED');
