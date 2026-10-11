@@ -5,7 +5,6 @@ import {
 } from '../../../src/modules/vehicle-intelligence/driving-intelligence/s4a-foundation/di-v0-s4a-control-plane';
 import { deriveFiveFlagAttestationFingerprint } from '../di-v0-s4-five-flag-tiny-activation-production/di-v0-s4-five-flag-tiny-activation-production.lib';
 import {
-  assertStagingKeysPresentAndPinned,
   assertNativeRemainsOff,
   FIVE_FLAG_ON_KEYS,
   FIVE_FLAG_TRUE_VALUE,
@@ -23,6 +22,7 @@ import {
   ROLLOUT_WAVE_VEHICLE_IDS,
   type RolloutWave,
 } from './di-v0-s4-fleet-rollout.lib';
+import { assertGate6WaveStagingKeysPresentAndPinned } from './di-v0-s4-gate6-wave-staging.lib';
 import { envMapFromFileContent } from '../di-v0-s4f-global-budget-rollout/di-v0-s4f-global-budget-rollout.lib';
 import { parseDiV0S4RuntimeConfigAttestationFromPrometheusBody } from '../../../src/modules/vehicle-intelligence/driving-intelligence/s4-runtime/di-v0-s4-runtime-config-attestation-metric-parse';
 
@@ -201,7 +201,7 @@ function evaluateGate6CoreGuards(
     if (five.failures.some((f) => f.startsWith('FLAG_OFF_'))) failures.push('FIVE_FLAGS_NOT_ALL_ON');
     else failures.push('ROLLOUT_ALLOWLIST_INVALID');
   }
-  const staging = assertStagingKeysPresentAndPinned(input.envContent);
+  const staging = assertGate6WaveStagingKeysPresentAndPinned(input.envContent, input.rolloutWave);
   if (!staging.ok) failures.push('STAGING_KEYS_INVALID');
   if (!assertNativeRemainsOff(input.envContent)) failures.push('NATIVE_FLAG_ON');
   if (input.rolloutWave === 1 && !parseVehicleDbProofLines(input.vehicleDbLines).ok) {
