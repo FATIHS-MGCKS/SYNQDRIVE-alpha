@@ -6,7 +6,8 @@
 | **DIM-OQ-002** | Which segment reconciliation paths are exclusively DIMO-owned vs Trip Detection-owned? | High | **RESOLVED** — TDL-OQ-006 / DIM-GAP-001 (see Trip Detection evidence) |
 | **DIM-OQ-R1-001** | Are `WORKER_SNAPSHOT_TIER_*_MS` overrides set on Production or do code defaults apply? | Medium | **OPEN** — R1 grep found activity-tier flag names only |
 | **DIM-OQ-R1-002** | Is R9 authorized cohort still 5/5 subscribed @ Production `2b89f746…`? | High | **RESOLVED** — 5/5 @ `DIM-EV-R2-R9-GET-001`; R9 defs `failed` → `DIM-CX-005` |
-| **DIM-OQ-R2-001** | Root cause and ops remediation for R9 webhook `status: failed` | High | **PARTIALLY_ANSWERED** — RCA **CONFIRMED** HTTP delivery failures @ 2026-10-09 (`DIM-EV-R21-RCA-001`); remediation **PREPARED** PUT plan only — `research/R9_RECOVERY_PLAN.md`; **NOT EXECUTED** |
+| **DIM-OQ-R2-001** | Root cause and ops remediation for R9 webhook `status: failed` | High | **PARTIALLY_ANSWERED** — mechanism + VO5C maintenance 503 **CONFIRMED** (`DIM-EV-R22-DEPLOY-RCA-001`); PUT spec in `R9_RECOVERY_OWNER_GATE.md`; **NOT EXECUTED** |
+| **DIM-OQ-R22-001** | Should VO5C deploy maintenance exempt `/api/v1/webhooks/dimo` or use zero-downtime proxy instead of global 503? | High | **OPEN** — options in `R9_PERMANENT_RESILIENCE_OPTIONS.md` Option A |
 | **DIM-OQ-R2-002** | Official numeric privilege ID matrix | Medium | **OPEN** |
 | **DIM-OQ-R1-003** | Official numeric privilege ID → capability matrix | Medium | **OPEN** — DIMO MCP auth failed @ R1 |
 

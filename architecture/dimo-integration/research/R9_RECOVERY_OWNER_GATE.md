@@ -11,7 +11,7 @@
 | Gate | Question | R2.2 recommendation |
 |------|----------|----------------------|
 | **GATE-A — Webhook recovery** | May we `PUT` enable both R9 UUIDs? | **Preflight PASS** for transport; execute only outside deploy maintenance window |
-| **GATE-B — Cohort hygiene** | May tokenId **187336** remain subscribed after recovery? | **HOLD** — open `device_connection_episodes` **OPEN** unplug since **2026-09-29**; stale `last_signal`; owner must confirm sale/disconnect |
+| **GATE-B — Cohort hygiene** | May tokenId **187336** remain subscribed after recovery? | **OWNER: sold — offboard authorized 2026-10-11**; execution **BLOCKED** (P4A/MFA) — see `evidence/VO5C_DIMO_187336_AUTHORIZED_PRODUCTION_OFFBOARD_2026-10-11.md`. Until offboard completes, **do not** GATE-A R9 PUT without resolving B. |
 
 **Rule:** GATE-A approval **does not** imply GATE-B approval. Recovery without GATE-B re-enables wakes for **187336** if provider fires.
 

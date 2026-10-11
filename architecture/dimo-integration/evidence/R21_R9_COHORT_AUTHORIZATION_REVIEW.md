@@ -42,7 +42,7 @@ Columns: `token_id | registry_lifecycle | vehicle_status | connection_status | p
 | DB connection | **CONNECTED** (mirror) |
 | Telemetry freshness | **`last_signal` ~12 days stale** vs cohort peers (Oct 11) — **CONTRADICTS** “sold/disconnected device” hypothesis **partially**: registry still authorizes; **operational eligibility for fast trip wake is degraded** |
 | Offboarding / `registry_lifecycle` | **ACTIVE** — no offboard marker in schema used |
-| Recommended action | **Owner decision**: confirm real-world ownership/device; if sold → **offboard + unsubscribe** (separate authorized mutation); **do not auto-unsubscribe in R21** |
+| Recommended action | **Owner authorized offboard 2026-10-11** — execution **BLOCKED** (P4A HTTP admission + MFA); see [VO5C_DIMO_187336_AUTHORIZED_PRODUCTION_OFFBOARD_2026-10-11.md](VO5C_DIMO_187336_AUTHORIZED_PRODUCTION_OFFBOARD_2026-10-11.md) |
 
 ### tokenId **190497** — exclusion verification
 
