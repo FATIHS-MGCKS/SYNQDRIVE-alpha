@@ -29,6 +29,7 @@
 | 2026-10-09 | **VO5C-R2-H4** — Legacy `/current` executor warns only; pinned R2 preflight pass | First-deploy production has old current present; execution remains pinned-only |
 | 2026-10-10 | **VO5C-P4B15** — Production deploy bypass enforcement lib; authority file contract; cloud-agent + S4F-7Q fail-closed; offline selftest; sudoers example | Ops scripts only; `VO5C_PRODUCTION_DEPLOY_ENFORCEMENT_ACTIVE` not set on VPS |
 | 2026-10-10 | **VO5C-P4B15-R2** — Remove selftest authority redirect; fail-closed malformed authority; connectivity-staging guard; sudoers env_reset example | PR #1967 hardening only; no production activation |
+| 2026-10-10 | **DSRG-01** — Deploy governance doc hub (`architecture/dsrg/`); pinned runner `exec bash` fix + execution-contract selftest | Docs + ops scripts; no VPS pin mutation |
 | 2026-10-01 | **VO-5A** — offboarding audit + internal `VehicleOffboardingService` (ACTIVE→OFFBOARDED + outbox); legacy deregister unchanged | Must deprecate hard-delete deregister before cutover |
 | 2026-10-01 | **VO-5B** — Registry `VEHICLE_OFFBOARDED` outbox → Billing quantity bridge; billable policy registry lifecycle; scheduler worker; no public HTTP / no Stripe in consumer | Billing projection idempotent; `VEHICLE_ACTIVATED` bridge deferred |
 | 2026-10-02 | **VO-5B.1** — Integrity seal: event-time base item/assignment/ledger authority; outbox claim/CAS; preserve unhandled lifecycle events; VO-5B PostgreSQL CI | PR #1883 |
