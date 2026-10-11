@@ -5,7 +5,9 @@
 | **DIM-OQ-001** | What is the canonical read-only method to inventory active DIMO Vehicle Triggers per org without mutation? | High | **RESOLVED (R9 cohort method established)** — see below |
 | **DIM-OQ-002** | Which segment reconciliation paths are exclusively DIMO-owned vs Trip Detection-owned? | High | **RESOLVED** — TDL-OQ-006 / DIM-GAP-001 (see Trip Detection evidence) |
 | **DIM-OQ-R1-001** | Are `WORKER_SNAPSHOT_TIER_*_MS` overrides set on Production or do code defaults apply? | Medium | **OPEN** — R1 grep found activity-tier flag names only |
-| **DIM-OQ-R1-002** | Is R9 authorized cohort still 5/5 subscribed @ Production `2b89f746…`? | High | **OPEN** — no provider GET in R1 pass (read-only budget) |
+| **DIM-OQ-R1-002** | Is R9 authorized cohort still 5/5 subscribed @ Production `2b89f746…`? | High | **RESOLVED** — 5/5 @ `DIM-EV-R2-R9-GET-001`; R9 defs `failed` → `DIM-CX-005` |
+| **DIM-OQ-R2-001** | Root cause and ops remediation for R9 webhook `status: failed` | High | **OPEN** — provider PUT recovery may need owner-authorized mutation |
+| **DIM-OQ-R2-002** | Official numeric privilege ID matrix | Medium | **OPEN** |
 | **DIM-OQ-R1-003** | Official numeric privilege ID → capability matrix | Medium | **OPEN** — DIMO MCP auth failed @ R1 |
 
 ---

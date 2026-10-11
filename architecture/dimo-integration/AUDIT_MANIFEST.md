@@ -31,7 +31,8 @@ Standard: [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) v1.0
 | **REPO_PRODUCTION_DRIFT (historical @ 01541c2ab…)** | R8 #1549 and R9 were **NOT_ON_PRODUCTION** at pre-R9 release — **HISTORICAL** |
 | **REPO_PRODUCTION_DRIFT (current @ `8a1d9c658…`)** | R9 runtime **present**; **R9 authorized provider cohort 5/5** subscribed (TDL-OQ-009 re-read); natural R9 **start** wake **observed** historically; fleet-wide wake-rate KPI **unknown**; **1** stale former-fleet scheduler mirror (DIM-GAP-005) |
 | **AUDIT_MODE** | `READ_ONLY` |
-| **VALIDATION_STATUS** | `PASS` — authority graph + registry validators (latest semantic cleanup pass) |
+| **VALIDATION_STATUS** | `PASS` — registry + dimo graph + query-invocation validator @ R2 |
+| **R2_AUDIT_AT** | `2026-10-11` — invocation graph, R9 GET re-audit, production runtime contract |
 
 ## Lifecycle phase status
 

@@ -70,8 +70,14 @@ Flat `architecture/DIMO_*.md` files are **supporting evidence**, not routing aut
 | [research/CROSS_MODULE_CONSUMER_GRAPH.md](research/CROSS_MODULE_CONSUMER_GRAPH.md) | Downstream consumers |
 | [research/DIMO_CAPABILITY_GAP_ANALYSIS.md](research/DIMO_CAPABILITY_GAP_ANALYSIS.md) | Gaps and R2 backlog |
 | [research/AGENT_TROUBLESHOOTING_GUIDE.md](research/AGENT_TROUBLESHOOTING_GUIDE.md) | Agent quickstart |
+| [research/QUERY_INVOCATION_GRAPH.md](research/QUERY_INVOCATION_GRAPH.md) | R2 invocation graph |
+| [research/END_TO_END_CONSUMER_TRACES.md](research/END_TO_END_CONSUMER_TRACES.md) | Consumer traces |
+| [research/R1_QUALITY_RECONCILIATION.md](research/R1_QUALITY_RECONCILIATION.md) | R1 QA |
+| [research/AUTHORITY_PROMOTION_ASSESSMENT.md](research/AUTHORITY_PROMOTION_ASSESSMENT.md) | Promotion gate |
 
 Machine inventory: [evidence/R1_REPOSITORY_INVENTORY.json](evidence/R1_REPOSITORY_INVENTORY.json)
+
+Query graph: [graph/query-invocation-nodes.json](graph/query-invocation-nodes.json)
 
 ## Validation
 

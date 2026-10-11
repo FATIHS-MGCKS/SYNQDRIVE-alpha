@@ -223,6 +223,15 @@ nodes:
       - architecture/dimo-integration/contradictions/OPEN_CONTRADICTIONS.md
       - architecture/dimo-integration/evidence/R1_PRODUCTION_FORENSICS_2026-10-11.md
 
+  - id: DIM-CX-005
+    type: contradiction
+    title: R9 webhook definition status failed vs historical enabled assumption
+    epistemic_status: CONFIRMED
+    summary: Provider GET @ 2026-10-11 shows R9 speed/ignition webhooks status failed; subscriptions 5/5 remain on cohort vehicles.
+    source_paths:
+      - architecture/dimo-integration/evidence/R2_R9_PROVIDER_READ_AUDIT_2026-10-11.md
+      - architecture/dimo-integration/contradictions/OPEN_CONTRADICTIONS.md
+
   - id: DIM-HYP-001
     type: hypothesis
     title: Production receives speed/ignition webhooks for active R9 cohort

@@ -38,7 +38,15 @@ flowchart LR
 | Activity-tier polling | enabled | `WORKER_SNAPSHOT_ACTIVITY_TIER_POLLING_ENABLED` |
 | Legacy fixed cadence rollback | `WORKER_SNAPSHOT_LEGACY_FIXED_CADENCE=true` | Enqueues all eligible every tick |
 
-**Production @ R1:** `WORKER_SNAPSHOT_ACTIVITY_TIER_POLLING_ENABLED` **name present** on VPS; numeric tier overrides **not observed** in sanitized grep → **defaults likely** (**INFERRED**).
+**Production @ R2 (`DIM-EV-R2-PROD-RUNTIME-001`):**
+
+| Knob | Value |
+|------|-------|
+| `WORKER_SNAPSHOT_ACTIVITY_TIER_POLLING_ENABLED` | `true` |
+| `WORKER_SNAPSHOT_INTERVAL_MS` | `30000` |
+| `WORKER_SNAPSHOT_CONCURRENCY` | `8` |
+| `WORKER_SNAPSHOT_TIER_*_MS` | **unset** → code defaults (30s/60s/5m/30m) |
+| `DIMO_GLOBAL_BUDGET_ENABLED` | `true` |
 
 ## Promotion / demotion
 

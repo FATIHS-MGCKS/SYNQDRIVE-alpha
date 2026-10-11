@@ -27,7 +27,14 @@ Callers pass `category` + `priority` into `DimoRequestExecutor.execute()`. Examp
 
 **Circuit / cooldown:** Implemented in budget Lua scripts (see DI `EXP021_S4F2_PROVIDER_BACKPRESSURE_CLOSURE` evidence).
 
-## R1 gaps
+## Production @ R2
 
-- Exact global budget numeric limits on Production: **UNKNOWN** (values redacted)
+| Setting | State |
+|---------|-------|
+| `DIMO_GLOBAL_BUDGET_ENABLED` | **`true`** (DEPLOY_CONFIGURED) |
+| Numeric limits / tokens per window | **UNKNOWN_REDACTED** — env values not exported |
+
+## R2 gaps
+
 - Per-category counters on Production: **UNKNOWN** without metrics scrape (read-only)
+- Observed 429 rate: **UNKNOWN**

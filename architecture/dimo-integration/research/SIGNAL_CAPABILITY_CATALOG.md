@@ -1,6 +1,8 @@
-# R1 — Signal capability catalog (index)
+# R2 — Signal capability catalog
 
-Full per-vehicle matrices remain in historical Phase 2B–2F audits under `docs/audits/`. R1 does **not** duplicate 41-signal tables; it records **architecture** and **pointers**.
+Machine extract (Q001 fields): [`evidence/R2_SIGNAL_LINEAGE.json`](../evidence/R2_SIGNAL_LINEAGE.json) — **32** telemetry field selections + `lastSeen` on Q001 @ `0633d0831`.
+
+Full per-vehicle matrices remain in historical Phase 2B–2F audits under `docs/audits/`.
 
 ## Layers
 
