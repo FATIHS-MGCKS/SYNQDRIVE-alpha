@@ -196,9 +196,10 @@ nodes:
     title: P4B16 post-verify atomic release attestation commit
     epistemic_status: CONFIRMED
     decision_status: PROPOSED
-    summary: Commit SYNQDRIVE_DEPLOYED_GIT_SHA only after multi-replica verify; durable lifecycle state; no APDS pin mutation.
+    summary: Journal-published state authority after multi-replica verify + runtime identity; backend.env mirror; no APDS pin mutation.
     source_paths:
       - architecture/dsrg/evidence/P4B16_R0_ATTESTATION_DESIGN.md
+      - architecture/dsrg/evidence/P4B16_R0A_DESIGN_CORRECTION.md
     evidence:
       - DSRG-EVID-P4B16-R0-001
 

@@ -1,114 +1,181 @@
-# P4B16 R0 — Release attestation design (proposed)
+# P4B16 — Release attestation design (proposed, R0 + R0A)
 
-**Status:** `PROPOSED` — no runtime script changes in R0.  
-**Pin for future execution:** `448a88985b78b6a7c4d973913b9a6213bae3e9b4` (new logic ships via **main → pin promotion → authorized deploy**).
+**Status:** `PROPOSED` — documentation only through R0A; no runtime script changes.  
+**Pin (unchanged):** `448a88985b78b6a7c4d973913b9a6213bae3e9b4` — no promotion in R0/R0A.  
+**R0A correction:** single authoritative state + journal publication; PM2/env consumer matrix; per-replica runtime identity; entrypoint coverage.
 
-## Root cause (repository + production)
+## Frozen production drift (R0 audit snapshot — not live truth)
 
-1. `vps-deploy-release.sh` ends after `vps_replica_verify_post_deploy` **without** writing `SYNQDRIVE_DEPLOYED_GIT_SHA` to `/opt/synqdrive/shared/backend.env`.
-2. `backend.env` is **shared** across releases (`ln -sfn` into each release). Edits persist; PM2 **does not** reload `process.env` when the file changes — only **restart** picks up file contents loaded at process start (and only for vars read at bootstrap unless explicit reload).
-3. Deploy verification uses **release tree git** (`vps_replica_release_sha`) and **current symlink**, not the attestation env var.
-4. Consumers (APDS operator CLI, VO5C master offboard gates, frontend build-time `VITE_*`) can therefore observe **stale or divergent** attestation vs running tree.
+Observed **2026-10-11T16:05:00Z** (read-only). Values **may have changed** since; do **not** manually correct Production in documentation workstreams.
 
-## Variable classification
+| Label | SHA |
+|-------|-----|
+| **LIVE_RELEASE_SHA** (`git -C current HEAD`) | `2b89f7466836b81a4ba344138d0ad9817c5d14ee` |
+| **BACKEND_ENV_ATTESTATION_SHA** | `3a4bb9448279cd9e04a88c3639059c948c62f3ed` |
+| **PIN_SHA** | `448a88985b78b6a7c4d973913b9a6213bae3e9b4` |
 
-| Variable | Status | Writer (today) | Reader (today) |
-|----------|--------|----------------|----------------|
-| `SYNQDRIVE_REQUESTED_DEPLOY_SHA` | **EXISTING** | Operator / `cloud-agent-deploy.sh` / selftests | `vps-deploy-release.sh`, preflight, admission libs |
-| `SYNQDRIVE_DEPLOYED_GIT_SHA` | **EXISTING** (manual / ops) | **No automated deploy writer** | APDS epoch CLI/authority, VO5C offboard admission, `.env.example` |
-| `SYNQDRIVE_DEPLOY_IN_PROGRESS_SHA` | **NOT_IMPLEMENTED** | — | P4B15 design only |
-| `APD_SHADOW_EPOCH_APPROVED_RELEASE_SHA` | **EXISTING** | Separate APDS ops / manual env | APDS activation authority (**must not** be updated by P4B16) |
+## Root cause (unchanged)
 
-## Durable state contract (proposed)
+1. `vps-deploy-release.sh` does not publish attestation after `vps_replica_verify_post_deploy`.
+2. `backend.env` is shared; **editing the file does not reload** NestJS `process.env` in already-running PM2 workers.
+3. Deploy verification uses release-tree git + `current` symlink, not attestation consumers.
+4. Per-replica runtime SHA is **not** independently attestable via health API today.
 
-**Primary file:** `/opt/synqdrive/shared/deploy-state/release-attestation.env` (new, root-owned `0640`).
+---
 
-| Key | Meaning |
-|-----|---------|
-| `ATTESTATION_PHASE` | Lifecycle enum (below) |
-| `REQUESTED_SHA` | Target admitted at deploy start |
-| `IN_PROGRESS_SHA` | Active rollout target (equals REQUESTED during deploy) |
-| `CURRENT_SYMLINK_SHA` | Last observed `git -C current HEAD` |
-| `REPLICA_A_OBSERVED_SHA` | Post-restart observation |
-| `REPLICA_B_OBSERVED_SHA` | Post-restart observation |
-| `COMMITTED_SHA` | Written only after full verification |
-| `PREVIOUS_COMMITTED_SHA` | Prior COMMITTED before this deploy |
-| `CORRELATION_ID` | Matches `SYNQDRIVE_DEPLOY_CORRELATION_ID` when set |
-| `CAPTURED_AT` / `UPDATED_AT` | ISO-8601 UTC |
-| `CHECKSUM` | sha256 of canonical body (excluding CHECKSUM line) |
+## 1. Single authoritative durable state (R0A)
 
-**Secondary:** extend `last-deploy-state.env` only for rollback rollback pointers (keep VO5C floor semantics).
+### Problem with R0 sketch
 
-### Lifecycle (`ATTESTATION_PHASE`)
+Separate atomic `mv` for `release-attestation.env` and `backend.env` is **not** one transaction. Crash after the first rename yields **partial publication** while `ATTESTATION_PHASE=COMMITTED` could be misread.
 
-| Phase | Entry | Exit |
-|-------|-------|------|
-| `PREPARED` | Deploy admitted; pre-switch state captured | Rolling restart starts |
-| `IN_PROGRESS` | First replica restart for target | All replicas healthy on target OR failure |
-| `VERIFIED` | `vps_replica_verify_post_deploy` PASS | Atomic commit started |
-| `COMMITTED` | Attestation + `SYNQDRIVE_DEPLOYED_GIT_SHA` updated **after** verify | Next deploy PREPARED |
-| `FAILED` | Rolling or verify abort | Rollback or manual containment |
-| `ROLLBACK_IN_PROGRESS` | `vps_replica_rollback` started | Rollback verify pass/fail |
-| `ROLLED_BACK` | Rollback verify PASS | Reconcile attestation to `PREVIOUS_SHA` |
-| `CONTAINED` | Rollback denied / unsafe / partial | Human break-glass |
+### Authority model
 
-**Fail-closed:** Readers treat `REQUESTED_SHA != COMMITTED_SHA` or `CURRENT_SYMLINK_SHA != COMMITTED_SHA` as **not COMMITTED** (mixed or stale), unless phase is `IN_PROGRESS` / `ROLLBACK_IN_PROGRESS`.
+| Layer | Role |
+|-------|------|
+| **`release-attestation.state`** | **Single source of truth** for lifecycle + `COMMITTED_SHA` + per-replica observations |
+| **`attestation.journal`** | Append-only **recovery / publication log** (intent → durable state → mirrors) |
+| **`backend.env` line** | **Legacy mirror** for bootstrap-time consumers only — not authoritative |
+| **`release-attestation.state.sha256`** | Checksum of **state file only** (not a second transaction target) |
 
-## Atomic commit design
+**Paths (proposed):**
 
-1. **Never** set `COMMITTED` before `vps_replica_verify_post_deploy` succeeds (including scheduler convergence + no mixed SHA).
-2. Write new env to `backend.env.new` + `release-attestation.env.new` with backup `*.bak-<ts>`.
-3. Record checksum file `release-attestation.env.sha256`.
-4. `mv` atomically into place (same filesystem).
-5. **Do not** claim PM2 env updated until replicas restarted **after** commit (deploy path already restarted; commit runs **after** verify — order: verify running processes on target SHA, then commit attestation to match **tree**, not vice versa).
-6. Optional: emit metrics/log line `synqdrive_deploy_attestation_committed{sha=...}`.
+- `/opt/synqdrive/shared/deploy-state/release-attestation.state` — root:root **`0640`**
+- `/opt/synqdrive/shared/deploy-state/attestation.journal` — root:root **`0640`**, append-only
+- `/opt/synqdrive/shared/deploy-state/.attestation.lock` — `flock` (deploy **and** rollback)
+- `backend.env` — existing path; **symlink target must remain real file** (reject if `backend.env` is symlink to attacker path)
 
-## Rollback reconciliation
+**No secrets** in state/journal (SHAs and phase enums only).
 
-On successful `vps_replica_rollback`:
+### Publication ordering (fail-closed)
 
-- Set phase `ROLLED_BACK`
-- Set `COMMITTED_SHA` = `PREVIOUS_SHA` from rollback state file (from git in previous release dir)
-- Update `SYNQDRIVE_DEPLOYED_GIT_SHA` to match **only after** rollback verify PASS
-- Clear `IN_PROGRESS_SHA`
-- On rollback **denied** (security floor): phase `CONTAINED`, do **not** mutate attestation to target SHA
+`COMMITTED` is **not** visible to readers until **all** of the following complete:
 
-## Crash recovery
+1. Post-deploy verification PASS (including per-replica runtime identity — §3).
+2. Journal append: `BEGIN_COMMIT gen=N sha=…`
+3. Write `release-attestation.state.tmp` → `fsync` file → `rename` → `fsync` parent dir.
+4. Journal append: `STATE_DURABLE gen=N`
+5. Optional mirror: patch `SYNQDRIVE_DEPLOYED_GIT_SHA` in `backend.env` via copy-on-write temp + single `rename` (same filesystem).
+6. Journal append: `BACKEND_ENV_MIRROR gen=N` (or `MIRROR_SKIPPED` if mirror fails → **remain not COMMITTED**).
+7. Journal append: `PUBLISHED gen=N` — only now set `ATTESTATION_PHASE=COMMITTED` inside state (state file rewritten once with COMMITTED in step 3 **or** final rewrite in step 7; preferred: **one** state write with phase `VERIFIED` then journal-driven promote to `COMMITTED` in step 7 second rename).
 
-- On deploy script start: if phase is `IN_PROGRESS` and `UPDATED_AT` older than threshold → fail-closed or require `--recover-attestation` human flag.
-- Re-read `current` symlink + git HEAD + replica health; reconcile or enter `CONTAINED`.
-- Idempotent commit: if `COMMITTED_SHA == REQUESTED_SHA` and verify passes, no-op success.
+**Simpler variant (recommended):** state file carries `PHASE=VERIFIED` until step 7; step 7 writes final state with `PHASE=COMMITTED` + `PUBLISHED_AT` in **one** rename after mirror success.
 
-## Lock semantics
+### Crash / partial commit recovery
 
-- Exclusive lock file `deploy-state/.attestation.lock` (flock) held for IN_PROGRESS→COMMITTED window.
-- Duplicate deploy: second writer aborts if lock held.
+| Crash point | On restart |
+|-------------|------------|
+| Before `STATE_DURABLE` | Replay from journal; state may be stale — remain `IN_PROGRESS` or `VERIFIED` |
+| After state, before mirror | Journal shows no `PUBLISHED` — readers **fail-closed** (not COMMITTED) |
+| After mirror, before `PUBLISHED` | Reconcile: if runtime identity matches target, append `PUBLISHED` idempotently |
+| Mid-backup of `backend.env` | Only `*.bak-<ts>` touched; live `backend.env` unchanged until successful rename |
 
-## Implementation boundaries (follow-up phases)
+**Idempotent retry:** If journal tail is `STATE_DURABLE` for `gen=N` and verify still PASS, resume mirror + `PUBLISHED` without re-deploy.
 
-| Layer | P4B16 change |
-|-------|----------------|
-| **Main repo** | New `lib/vps-release-attestation.lib.sh`; hooks in `vps-deploy-release.sh` + `vps_replica_rollback` |
-| **Application release** | Deploy runs **candidate** release copy of scripts (already sourced from `RELEASE_OPS_DIR`) |
-| **Pinned executor** | Must promote pin containing P4B16 before pinned-runner production use |
-| **Not in P4B16** | APDS pin, Gate-6, RFRF, enforcement, sudoers |
+**Verification after replace:** Re-read state checksum; grep mirror line; call runtime identity endpoint on **each** replica; **all** must match `COMMITTED_SHA` before `PUBLISHED`.
 
-## Non-interference (mandatory)
+### Reader fail-closed rules
 
-- **No write** to `APD_SHADOW_EPOCH_APPROVED_RELEASE_SHA` from attestation module.
-- **No** APDS epoch activation/side effects.
-- **No** EXP021 Gate-6 open/rekill.
-- **No** RFRF stage changes.
-- **No** VO5C product admission flag mutation.
-- **No** enforcement / authority file / armed stamp installation.
+1. If journal tail ≠ `PUBLISHED` for current `gen`, treat as **not COMMITTED** (even if state file says COMMITTED — corrupted/partial).
+2. If `COMMITTED_SHA` ≠ independent runtime identity on **any** replica → **not COMMITTED** / alert.
+3. If `backend.env` ≠ state `COMMITTED_SHA` → legacy consumers may be stale; **prefer state file** for new code; alert CRITICAL.
 
-`BREAK_GLASS_READY` remains `NOT_VERIFIED`.
+### Durability assumptions
 
-## Alerting thresholds (proposed)
+- Same filesystem for `rename` atomicity (`/opt/synqdrive/shared`).
+- `fsync` on state file and journal after each append (document VPS ext4 defaults; no remote FS).
+- Lock held from `PREPARED` through publish complete or `FAILED`/`CONTAINED`.
 
-| Condition | Severity |
-|-----------|----------|
-| `COMMITTED_SHA` ≠ `git -C current HEAD` > 5 min | CRITICAL |
-| Phase `IN_PROGRESS` > 30 min | WARNING |
-| Phase `CONTAINED` | PAGE |
-| `SYNQDRIVE_DEPLOYED_GIT_SHA` ≠ `COMMITTED_SHA` | CRITICAL |
+### State file fields (authoritative)
+
+Includes lifecycle phase, `REQUESTED_SHA`, `COMMITTED_SHA`, `PREVIOUS_COMMITTED_SHA`, `REPLICA_A_RUNTIME_SHA`, `REPLICA_B_RUNTIME_SHA`, `RELEASE_ID`, `CORRELATION_ID`, `GENERATION`, `UPDATED_AT`.  
+Does **not** include APDS / Gate-6 / RFRF / VO5C product fields.
+
+---
+
+## 2. PM2 / env consumer semantics (R0A)
+
+| Consumer | Mechanism | Freshness today | P4B16 target |
+|----------|-----------|-----------------|--------------|
+| **NestJS long-lived workers** | `process.env` at PM2 start from `backend/.env` symlink | Stale until replica restart | **No extra restart** for attestation-only: use **runtime identity API** (§3) for truth; mirror `backend.env` for **next** restart bootstrap |
+| **APDS operator CLI** | Shell `process.env` / `--expected-sha` + `resolveObservedDeployedGitSha()` reads env | CLI invocation reads **current shell** env, not PM2 | CLI should accept `--observed-from-state` or query runtime identity; compare to `APD_SHADOW_EPOCH_APPROVED_RELEASE_SHA` separately |
+| **APDS in-process authority** | `process.env.SYNQDRIVE_DEPLOYED_GIT_SHA` in running scheduler | Stale until restart | Epoch **mutations** must compare against **runtime identity** or state file, not file-only attestation |
+| **VO5C offboard admission** | `evaluateMasterVehicleOffboardHttpAdmission()` reads `process.env` at request time | Stale if env not reloaded | Gate on **runtime identity** + optional `MASTER_VEHICLE_OFFBOARD_ATTESTED_RELEASE_SHA`; document mismatch as `RELEASE_ATTESTATION_MISMATCH` |
+| **Frontend Master UI** | `import.meta.env.VITE_SYNQDRIVE_DEPLOYED_GIT_SHA` **build-time** | Fixed until frontend rebuild/redeploy | Build pipeline must inject SHA from **deployed** release build; independent from `backend.env` patch timing |
+| **Ops / humans** | `grep backend.env` | Often wrong (R0) | Read `release-attestation.state` + runtime identity |
+
+**Explicit non-claim:** Changing `backend.env` does **not** update PM2 `process.env`. P4B16 does **not** mandate a third full rolling restart solely to refresh env if runtime identity API is authoritative for gates.
+
+---
+
+## 3. Per-replica runtime identity (R0A)
+
+Shared `current` symlink proves **intended** release tree, not independent process build identity.
+
+### Proposed runtime contract (implementation phase)
+
+At deploy promote, write **immutable** file in release tree:
+
+- `${RELEASE_DIR}/.synqdrive-release-manifest.json` — `{ "gitSha": "<REQUESTED_SHA>", "releaseId": "...", "builtAt": "..." }`
+
+PM2 ecosystem template sets optional env `SYNQDRIVE_RUNTIME_MANIFEST_PATH` pointing into **that** release dir (per replica cwd).
+
+**HTTP (new):** `GET /api/v1/health/runtime-identity` (or extend readiness `details`):
+
+```json
+{
+  "replicaId": "replica-b",
+  "releaseGitSha": "<40-char>",
+  "manifestPath": "...",
+  "pm2Name": "synqdrive-b",
+  "observedAt": "ISO-8601"
+}
+```
+
+Sourced from manifest file + process start binding, **not** from shared `backend.env`.
+
+Attestation commit requires **both** replicas return matching `releaseGitSha == REQUESTED_SHA` after verify.
+
+---
+
+## 4. Deployment entrypoint coverage (R0A)
+
+| Entrypoint | Invokes `vps-deploy-release.sh` | P4B16 commit attestation | Notes |
+|------------|--------------------------------|--------------------------|-------|
+| **Pinned runner** (`vps-vo5c-run-pinned-security-deploy.sh` → `exec bash` deploy) | Yes (pinned tree) | **YES** (target) | Canonical governed path |
+| **Direct `vps-deploy-release.sh`** from `/current` | Yes | **YES** when script version includes P4B16 lib | **Still reachable**; enforcement OFF → bypass risk remains |
+| **Cloud-agent deploy** | Yes (fetched script) | **YES** if deployed script contains P4B16 | Parallel path; not pin-governed |
+| **DI exact-RC gate** (`SYNQDRIVE_DI_S4F7Q_*`) | Yes, optional branch | **YES** same hook | Does not replace P4B16 product attestation |
+| **Connectivity staging** | Separate script; may mutate env | **NO** | Out of scope; must not publish COMMITTED |
+| **Manual rollback** (`vps_replica_rollback`, `vps-rollback-production-release.sh`) | Rollback path | **YES** — journal `ROLLBACK_PUBLISHED` | Same lock as deploy |
+| **Pin promotion only** | No | **NO** | DSRG-02 class |
+
+**Honesty:** Full protection is **not** claimed while legacy direct/cloud paths remain reachable with `ENFORCEMENT_ACTIVE=OFF`. P4B16 improves **honesty** of attestation on paths that run the updated deploy script; P4B17+ enforcement reduces bypass.
+
+---
+
+## 5. Lifecycle phases (summary)
+
+`PREPARED` → `IN_PROGRESS` → `VERIFIED` → (journal) → `COMMITTED` | `FAILED` | `ROLLBACK_IN_PROGRESS` → `ROLLED_BACK` | `CONTAINED`
+
+`COMMITTED` ≡ journal `PUBLISHED` + runtime identity match + state checksum valid.
+
+---
+
+## 6. Non-interference (unchanged)
+
+No automatic updates to: `APD_SHADOW_EPOCH_APPROVED_RELEASE_SHA`, APDS ACTIVE epoch, EXP021 Gate-6, RFRF, VO5C product flags.  
+`ENFORCEMENT_ACTIVE=OFF` · `BREAK_GLASS_READY=NOT_VERIFIED`.
+
+---
+
+## 7. Implementation boundaries
+
+| Layer | Change |
+|-------|--------|
+| Main repo | `lib/vps-release-attestation.lib.sh`, health runtime-identity, hooks in deploy + rollback |
+| Release tree | Manifest file at promote; deploy script from candidate release |
+| Pinned executor | Requires pin promotion **after** implementation merge |
+| Frontend | Build-time `VITE_*` alignment in deploy pipeline (separate step) |
+
+Evidence: [`P4B16_R0_PRODUCTION_ATTESTATION_AUDIT.md`](P4B16_R0_PRODUCTION_ATTESTATION_AUDIT.md) · [`P4B16_R0A_DESIGN_CORRECTION.md`](P4B16_R0A_DESIGN_CORRECTION.md)

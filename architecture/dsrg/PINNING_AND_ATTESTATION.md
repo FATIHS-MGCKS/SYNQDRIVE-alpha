@@ -28,7 +28,9 @@
 
 **P4B16 R0 evidence:** [`evidence/P4B16_R0_PRODUCTION_ATTESTATION_AUDIT.md`](evidence/P4B16_R0_PRODUCTION_ATTESTATION_AUDIT.md) · [`evidence/P4B16_R0_ATTESTATION_DESIGN.md`](evidence/P4B16_R0_ATTESTATION_DESIGN.md)
 
-**PM2 note:** Updating `backend.env` does **not** reload in-memory `process.env` in running Node processes; attestation commit must align with **verified** restart on target release tree, not file write alone.
+**PM2 note:** Updating `backend.env` does **not** reload in-memory `process.env` in running Node processes. P4B16 (R0A) uses a **single authoritative** `release-attestation.state` + **journal** (`PUBLISHED` before `COMMITTED`), a **legacy mirror** line in `backend.env`, and a proposed **per-replica runtime identity** HTTP surface — see [`evidence/P4B16_R0_ATTESTATION_DESIGN.md`](evidence/P4B16_R0_ATTESTATION_DESIGN.md).
+
+**Frozen R0 drift snapshot (audit time, not live):** live tree `2b89f746…` vs `backend.env` attestation `3a4bb944…` — pin `448a889…` unchanged.
 
 ## Production pin lineage (VPS)
 

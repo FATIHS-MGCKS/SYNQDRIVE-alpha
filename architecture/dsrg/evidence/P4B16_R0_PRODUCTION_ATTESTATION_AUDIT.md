@@ -61,6 +61,16 @@ Per-replica **runtime SHA** is not exposed via health API (design gap). Identity
 | EXP021 Gate-6 `di_v0_s4_control` | `KILLED` @ `2026-10-02T05:46:16Z` |
 | APDS ACTIVE epoch | SQL probe attempted; use R3 evidence if row empty |
 
+## Frozen drift snapshot (R0 / R0A — audit timestamp only)
+
+| Label | SHA |
+|-------|-----|
+| **LIVE_RELEASE_SHA** | `2b89f7466836b81a4ba344138d0ad9817c5d14ee` |
+| **BACKEND_ENV_ATTESTATION_SHA** | `3a4bb9448279cd9e04a88c3639059c948c62f3ed` |
+| **PIN_SHA** | `448a88985b78b6a7c4d973913b9a6213bae3e9b4` |
+
+Values are **not** maintained as live Production truth after the audit instant; no manual correction in R0A.
+
 ## Drift vs DSRG-03 R3 baseline
 
 R3 recorded live app `7f47c9f…`. Production has since advanced (authorized deploy activity outside this audit). R0 audit **does not** rewrite R3 timestamps; it records **current** bounded observations above.
