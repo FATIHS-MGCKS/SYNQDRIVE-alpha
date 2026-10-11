@@ -69,17 +69,6 @@ vps_attest_mirror_count_sha_keys() {
   fi
 }
 
-vps_attest_mirror_contains_forbidden_key() {
-  local path=$1
-  local k
-  for k in "${VPS_ATTESTATION_FORBIDDEN_KEYS[@]}"; do
-    if [[ -f "$path" ]] && grep -qE "^${k}=" "$path" 2>/dev/null; then
-      return 0
-    fi
-  done
-  return 1
-}
-
 # Patch or append mirror key; never modify forbidden keys; reject duplicate mirror keys.
 vps_attest_mirror_build_content() {
   local src=$1
@@ -119,16 +108,14 @@ vps_attest_mirror_build_content() {
 
 vps_attest_mirror_fsync_file() {
   local f=$1
-  if [[ -f "$f" ]]; then
-    sync -f "$f" 2>/dev/null || true
-  fi
+  [[ -f "$f" ]] || return 0
+  sync -f "$f" 2>/dev/null || return 1
 }
 
 vps_attest_mirror_fsync_dir() {
   local d=$1
-  if [[ -d "$d" ]]; then
-    sync -f "$d" 2>/dev/null || true
-  fi
+  [[ -d "$d" ]] || return 0
+  sync -f "$d" 2>/dev/null || return 1
 }
 
 # Args: backend_env_path target_sha (40-char, normalized by caller)
@@ -181,7 +168,7 @@ vps_attest_mirror_deployed_git_sha() {
   done
 
   chmod 640 "$tmp" 2>/dev/null || true
-  vps_attest_mirror_fsync_file "$tmp"
+  vps_attest_mirror_fsync_file "$tmp" || { rm -f "$tmp"; return 1; }
   vps_attest_mirror_crash_hook after_MIRROR_TMP
 
   if ! mv -f "$tmp" "$env_path"; then
@@ -189,16 +176,7 @@ vps_attest_mirror_deployed_git_sha() {
     vps_attest_mirror_fail "mirror rename failed"
     return 1
   fi
-  vps_attest_mirror_fsync_dir "$parent"
+  vps_attest_mirror_fsync_dir "$parent" || return 1
   vps_attest_mirror_crash_hook after_MIRROR_RENAME
-  return 0
-}
-
-vps_attest_mirror_recover_from_backup() {
-  local env_path=$1
-  local latest
-  latest="$(ls -1t "${env_path}.bak-"* 2>/dev/null | head -n 1 || true)"
-  [[ -n "$latest" && -f "$latest" ]] || return 1
-  cp -a "$latest" "$env_path"
   return 0
 }

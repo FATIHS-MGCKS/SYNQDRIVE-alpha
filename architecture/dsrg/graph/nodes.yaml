@@ -222,19 +222,18 @@ nodes:
     title: P4B16 R1A durable attestation engine
     epistemic_status: CONFIRMED
     source_type: CURRENT_CODE
-    summary: State/journal/mirror libs; offline selftest; not wired to deploy or Production.
+    summary: Atomic state + mirror libs; replica verify delegation; offline selftest; not deployed.
     source_paths:
       - architecture/dsrg/evidence/P4B16_R1A_DURABLE_ATTESTATION_ENGINE.md
       - backend/scripts/ops/lib/vps-release-attestation.lib.sh
       - backend/scripts/ops/lib/vps-release-attestation-env-mirror.lib.sh
-      - backend/scripts/ops/lib/vps-runtime-identity-contract.lib.sh
 
   - id: DSRG-TEST-P4B16-R1A-001
     type: test_evidence
     title: P4B16 R1A attestation offline selftest
     epistemic_status: CONFIRMED
     source_type: CURRENT_TEST
-    summary: Fixture-only certification for publication ordering, crash recovery, mirror, rollback.
+    summary: Fixture-only certification for verify gate, atomic record, mirror, rollback.
     source_paths:
       - backend/scripts/ops/vps-release-attestation.selftest.sh
     evidence:
