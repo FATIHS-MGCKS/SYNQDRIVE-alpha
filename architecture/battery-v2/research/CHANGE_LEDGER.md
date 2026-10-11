@@ -6,6 +6,19 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-11 — G5C-N2 post-anchor trip-phase telemetry must not veto finalized-trip session arming
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | `ensureLvRestWindowForFinalizedTrip` applied full `canOpenRestWindowCandidate` gates whenever `source_timestamp >= trip.endTime`, so deceleration snapshots (`speed_not_zero`) and alternator-band LV (`charging_context`) blocked `LV_REST_WINDOW` creation despite authoritative COMPLETED + RESTING |
+| **OBSERVATION** | Production post-T0 trips `6f1090c0`, `08f2e58c`, `f123d957` (org `faa710c9…`, SHA `7f47c9f5`): `BATTERY_LV_REST_SESSION_OPEN` invoked via finalize + reconciliation; handler `outcome=not_eligible` with `charging_context` / `speed_not_zero`; zero sessions post-T0 |
+| **CHANGE** | Strip volatile trip-phase context unless post-anchor observation **passes** `canOpenRestWindowCandidate`; open `CANDIDATE` with unknown momentary context otherwise (parity with pre-anchor stall path); REST_SNAPSHOT promotion unchanged |
+| **WHY** | Trip Detection finalizes before latest_state reflects stationary rest; timestamp alone is not rest-period evidence |
+| **VALIDATION** | `lv-rest-window-session-arming.service.spec.ts` G5C-N2 Tiguan/Audi production shapes + missing-provider rejection (23 tests) |
+| **NON_EFFECTS** | REST target evaluation gates, wake/charging/movement measurement quality, publication, shadow flags, production deploy |
+
+---
+
 ## 2026-10-10 — G5B final HV compat allowlisted customer projection (PR #1969)
 
 | Field | Value |
