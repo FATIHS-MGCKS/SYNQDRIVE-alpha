@@ -1,7 +1,8 @@
 # DSRG — Current state (repository vs Production)
 
-**Audit base:** `origin/main` @ `299205bc7fa07f3494f50961c49fd5a591e029fe` (DSRG-03 R3)  
-**Classification axes:** registry `AUDIT_IN_PROGRESS` · epistemic per-row · validation per-row
+**Audit base (repository):** `main` @ `f456350c72daf8da08ca80b00090276da8ff60f1` (#1976 merge)  
+**Production evidence baseline:** DSRG-03 R3 @ `2026-10-11T13:49:49Z` (unchanged — no new VPS audit in R6)  
+**Classification axes:** registry `AUTHORITY_ACTIVE` (effective on R6 merge) · epistemic per-row · validation per-row
 
 ## Repository vs Production drift
 
@@ -111,4 +112,4 @@ Authoritative read-only: [`evidence/DSRG_03_R3_PRODUCTION_AUDIT.md`](evidence/DS
 
 ## Registry
 
-`AUDIT_IN_PROGRESS` — graph validators present; **not** `AUTHORITY_ACTIVE`. VO5C evidence preserved under `architecture/vehicle-onboarding/evidence/`.
+`AUTHORITY_ACTIVE` (DSRG-03 R6 promotion) — architecture governance only. **Enforcement OFF** · **BREAK_GLASS_READY=NOT_VERIFIED** · legacy deploy bypass risk documented in [`evidence/EXECUTION_PATH_INVENTORY.md`](evidence/EXECUTION_PATH_INVENTORY.md). VO5C evidence preserved under `architecture/vehicle-onboarding/evidence/`.

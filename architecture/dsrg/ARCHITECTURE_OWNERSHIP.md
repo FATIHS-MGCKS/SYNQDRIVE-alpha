@@ -14,7 +14,7 @@
 
 ## Registry coverage
 
-DSRG is registered in `architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md` as **`AUDIT_IN_PROGRESS`** (DSRG-03 R0, 2026-10-11). It was **previously absent** from the central inventory.
+DSRG is registered in `architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md` as **`AUTHORITY_ACTIVE`** (DSRG-03 R6 promotion — effective on merge). It was **`AUDIT_IN_PROGRESS`** from DSRG-03 R0 through R5 and **previously absent** from the central inventory.
 
 | Layer | Authority |
 |-------|-----------|
