@@ -1,40 +1,58 @@
-# Offline promtool rule tests for alerts-di-s4.yml (EXP021-S4P2-R1)
+# Offline promtool rule tests for alerts-di-s4.yml (EXP021-S4P2-R2)
 rule_files:
   - alerts-di-s4.yml
 
 evaluation_interval: 1m
 
 tests:
-  - name: dormant_no_global_kill_open
+  - name: dormant_killed_no_suspect
     interval: 1m
     input_series:
       - series: 'synqdrive_di_v0_s4_global_not_killed{}'
-        values: '1+0x30'
-      - series: 'synqdrive_di_v0_s4_activity_signal{}'
+        values: '0+0x30'
+      - series: 'synqdrive_di_v0_s4_shadow_plane_engaged{}'
         values: '0+0x30'
     alert_rule_test:
       - eval_time: 30m
-        alertname: DiV0S4GlobalKillOpen
+        alertname: DiV0S4GlobalKillSuspectOrphan
         exp_alerts: []
 
-  - name: active_global_kill_open_fires
+  - name: authorized_staged_pilot_no_suspect
     interval: 1m
     input_series:
       - series: 'synqdrive_di_v0_s4_global_not_killed{}'
-        values: '1+0x10'
+        values: '1+0x35'
+      - series: 'synqdrive_di_v0_s4_runtime_config_attestation_info{state="STAGED"}'
+        values: '1+0x35'
+      - series: 'synqdrive_di_v0_s4_shadow_plane_engaged{}'
+        values: '1+0x35'
       - series: 'synqdrive_di_v0_s4_activity_signal{}'
-        values: '1+0x10'
+        values: '1+0x35'
     alert_rule_test:
-      - eval_time: 10m
-        alertname: DiV0S4GlobalKillOpen
+      - eval_time: 35m
+        alertname: DiV0S4GlobalKillSuspectOrphan
+        exp_alerts: []
+
+  - name: suspect_orphan_open_fires
+    interval: 1m
+    input_series:
+      - series: 'synqdrive_di_v0_s4_global_not_killed{}'
+        values: '1+0x35'
+      - series: 'synqdrive_di_v0_s4_shadow_plane_engaged{}'
+        values: '0+0x35'
+      - series: 'synqdrive_di_v0_s4_runtime_config_attestation_info{state="STAGED"}'
+        values: '0+0x35'
+    alert_rule_test:
+      - eval_time: 35m
+        alertname: DiV0S4GlobalKillSuspectOrphan
         exp_alerts:
           - exp_labels:
               severity: warning
               component: driving_intelligence_s4
             exp_annotations:
-              summary: DI S4 GLOBAL kill row is NOT_KILLED during active shadow processing
-              description: Verify an owner-authorized LIVE_OPEN or wave promotion is in effect; otherwise run EMERGENCY_REKILL containment.
-              runbook_url: architecture/drivingintelligence/evidence/EXP021_S4P2_UNATTENDED_OPS_ALERT_INTEGRATION.md#global-kill
+              summary: DI S4 GLOBAL is NOT_KILLED without staged pilot config
+              description: Kill row is open but runtime attestation is not STAGED and shadow plane is not engaged — investigate unauthorized or orphan OPEN; authorized pilots with STAGED config do not match.
+              runbook_url: architecture/drivingintelligence/evidence/EXP021_S4P2_R2_MONITORING_CORRECTNESS.md#global-kill
 
   - name: dimo_budget_min_across_replicas
     interval: 1m
@@ -62,7 +80,7 @@ tests:
   - name: operational_metrics_stale
     interval: 1m
     input_series:
-      - series: 'synqdrive_di_v0_s4_activity_signal{}'
+      - series: 'synqdrive_di_v0_s4_shadow_plane_engaged{}'
         values: '1+0x20'
       - series: 'synqdrive_di_v0_s4_operational_last_success_unixtime{}'
         values: '400+0x20'
@@ -79,6 +97,43 @@ tests:
               summary: S4 operational Prometheus aggregates are stale or failed
               description: Leader refresh has not succeeded within 180s or last refresh failed — do not trust shadow health gauges.
               runbook_url: architecture/drivingintelligence/evidence/EXP021_S4P2_R1_ALERT_RELIABILITY.md#metric-freshness
+
+  - name: refresh_failure_retains_engaged_stale_fires
+    interval: 1m
+    input_series:
+      - series: 'synqdrive_di_v0_s4_shadow_plane_engaged{}'
+        values: '1+0x10'
+      - series: 'synqdrive_di_v0_s4_activity_signal{}'
+        values: '1x10 0+0x10'
+      - series: 'synqdrive_di_v0_s4_operational_refresh_error{}'
+        values: '0x1 1+0x19'
+      - series: 'synqdrive_di_v0_s4_operational_last_success_unixtime{}'
+        values: '0+0x20'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: DiV0S4OperationalMetricsStale
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              component: driving_intelligence_s4
+            exp_annotations:
+              summary: S4 operational Prometheus aggregates are stale or failed
+              description: Leader refresh has not succeeded within 180s or last refresh failed — do not trust shadow health gauges.
+              runbook_url: architecture/drivingintelligence/evidence/EXP021_S4P2_R1_ALERT_RELIABILITY.md#metric-freshness
+
+  - name: refresh_recovery_clears_stale
+    interval: 1m
+    input_series:
+      - series: 'synqdrive_di_v0_s4_shadow_plane_engaged{}'
+        values: '1+0x15'
+      - series: 'synqdrive_di_v0_s4_operational_refresh_error{}'
+        values: '1x5 0+0x10'
+      - series: 'synqdrive_di_v0_s4_operational_last_success_unixtime{}'
+        values: '0x5 1700000000+60x10'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: DiV0S4OperationalMetricsStale
+        exp_alerts: []
 
   - name: discovery_missing_grace_before_series
     interval: 1m

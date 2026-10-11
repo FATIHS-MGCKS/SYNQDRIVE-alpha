@@ -38,20 +38,27 @@ docker_container_running() {
 
 promtool_check_rules_file() {
   local rules_file="$1"
-  if command -v promtool >/dev/null 2>&1; then
-    promtool check rules "$rules_file"
-    return 0
+  local dir base promtool_bin
+  dir="$(cd "$(dirname "$rules_file")" && pwd)"
+  base="$(basename "$rules_file")"
+  promtool_bin="${PROMTOOL_BIN:-}"
+  if [[ -z "$promtool_bin" ]] && command -v promtool >/dev/null 2>&1; then
+    promtool_bin="$(command -v promtool)"
+    if ! "$promtool_bin" --version >/dev/null 2>&1; then
+      promtool_bin=""
+    fi
   fi
-  if docker_container_running "$PROM_CONTAINER"; then
-    docker exec "$PROM_CONTAINER" promtool check rules "/etc/prometheus/$(basename "$rules_file")" 2>/dev/null && return 0
+  if [[ -n "$promtool_bin" ]]; then
+    "$promtool_bin" check rules "$rules_file"
+    return $?
   fi
   if command -v docker >/dev/null 2>&1; then
-    docker run --rm -v "$(dirname "$rules_file"):/rules:ro" prom/prometheus:v2.54.1 \
-      promtool check rules "/rules/$(basename "$rules_file")"
-    return 0
+    docker run --rm -v "${dir}:/rules:ro" prom/prometheus:v2.54.1 \
+      promtool check rules "/rules/${base}"
+    return $?
   fi
-  echo "WARN: promtool unavailable — skip rule validation for $(basename "$rules_file")" >&2
-  return 0
+  echo "ERROR: promtool unavailable — cannot validate candidate Prometheus rules ($(basename "$rules_file"))" >&2
+  return 1
 }
 
 validate_prometheus_bundle() {
@@ -65,6 +72,25 @@ validate_prometheus_bundle() {
   promtool_check_rules_file "$tmp/alerts-infra.yml"
   promtool_check_rules_file "$tmp/alerts-di-s4.yml"
   rm -rf "$tmp"
+}
+
+snapshot_prometheus_dir() {
+  local snap="${PROM_DIR}.pre_refresh.$(date -u +%Y%m%dT%H%M%SZ)"
+  mkdir -p "$snap"
+  if [[ -d "$PROM_DIR" ]]; then
+    cp -a "$PROM_DIR/." "$snap/" 2>/dev/null || true
+  fi
+  echo "$snap"
+}
+
+restore_prometheus_dir_snapshot() {
+  local snap="$1"
+  if [[ ! -d "$snap" ]]; then
+    echo "ERROR: missing Prometheus rollback snapshot $snap" >&2
+    return 1
+  fi
+  mkdir -p "$PROM_DIR"
+  cp -a "$snap/." "$PROM_DIR/"
 }
 
 install_prometheus_rules_atomic() {
@@ -100,9 +126,12 @@ refresh_prometheus() {
   chmod 644 "$PROM_DIR/secrets/metrics_bearer_token"
 
   if ! validate_prometheus_bundle; then
-    echo "ERROR: Prometheus rule validation failed — keeping existing $PROM_DIR configs" >&2
+    echo "ERROR: Prometheus candidate validation failed — leaving $PROM_DIR unchanged" >&2
     return 1
   fi
+
+  local pre_snapshot
+  pre_snapshot="$(snapshot_prometheus_dir)"
 
   install_prometheus_rules_atomic "$PROM_DIR/alerts.yml" "$SRC_PROM/alerts.yml"
   install_prometheus_rules_atomic "$PROM_DIR/alerts-infra.yml" "$SRC_PROM/alerts-infra.yml"
@@ -116,11 +145,16 @@ refresh_prometheus() {
     echo "==> Prometheus: config synced, reloading $PROM_CONTAINER"
     if curl -sf -X POST "http://127.0.0.1:9090/-/reload" >/dev/null; then
       echo "Prometheus reload: OK"
-    else
-      echo "WARN: Prometheus reload failed — restarting container" >&2
-      docker restart "$PROM_CONTAINER" >/dev/null
+      return 0
     fi
-    return 0
+    echo "ERROR: Prometheus reload failed — rolling back to pre-refresh snapshot" >&2
+    restore_prometheus_dir_snapshot "$pre_snapshot" || return 1
+    if curl -sf -X POST "http://127.0.0.1:9090/-/reload" >/dev/null; then
+      echo "Prometheus rollback reload: OK"
+    else
+      echo "ERROR: Prometheus rollback reload failed — manual intervention required" >&2
+    fi
+    return 1
   fi
 
   if [[ "$AUTO_BOOTSTRAP" == "1" ]]; then

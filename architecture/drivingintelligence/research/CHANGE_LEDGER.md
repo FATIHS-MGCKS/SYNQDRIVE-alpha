@@ -1921,3 +1921,10 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 |-------|--------|
 | CHANGE | Operational metric freshness gauges + leader/follower reset; alert semantics (min DIMO budget, discovery missing/stale, dormant activity_signal); promtool tests; VPS monitoring validate-before-copy + AM restart skip; evidence `EXP021_S4P2_R1_ALERT_RELIABILITY.md` |
 | NON_EFFECTS | No merge/deploy; delivery still UNVERIFIED |
+
+### EXP-021 S4P2-R2 monitoring correctness (2026-10-11)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `shadow_plane_engaged` gauge + failure retention; in-flight work sum; `DiV0S4GlobalKillSuspectOrphan`; VPS candidate promtool + reload rollback; promtool/Jest contracts; evidence `EXP021_S4P2_R2_MONITORING_CORRECTNESS.md` |
+| NON_EFFECTS | No Production mutation; GLOBAL_KILL=KILLED; PR #1988 remains draft pending #1987 merge |

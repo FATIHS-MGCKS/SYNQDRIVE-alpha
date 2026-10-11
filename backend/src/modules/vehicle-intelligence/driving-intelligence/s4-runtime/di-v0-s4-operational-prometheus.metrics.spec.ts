@@ -7,10 +7,13 @@ import { DI_V0_S4F_KEYSET_CURSOR_AUTHORITY } from '../s4f-observability/di-v0-s4
 import { DI_V0_S4F_OPERATIONAL_AGGREGATE_INDEX_NOTES, DI_V0_S4F_OPERATIONAL_AGGREGATE_SCAN_KIND } from '../s4f-observability/di-v0-s4f-operational-aggregates';
 import {
   computeDiV0S4ActivitySignal,
+  computeDiV0S4ShadowPlaneEngaged,
   DI_V0_S4_OPERATIONAL_METRICS,
+  markDiV0S4OperationalRefreshFailed,
   publishDiV0S4OperationalPrometheusMetrics,
   registerDiV0S4OperationalPrometheusMetrics,
   resetDiV0S4OperationalPrometheusMetrics,
+  sumInFlightShadowWorkItems,
 } from './di-v0-s4-operational-prometheus.metrics';
 
 function emptySnapshot(): DiV0S4fObservabilitySnapshotV1 {
@@ -105,9 +108,41 @@ describe('DiV0S4 operational Prometheus metrics', () => {
     expect(text).not.toMatch(/vehicle_id=/);
   });
 
-  it('activity signal stays 0 when KILLED with no work (dormant staged config)', () => {
+  it('shadow plane engaged stays 0 when KILLED with no in-flight work (dormant staged config)', () => {
+    expect(computeDiV0S4ShadowPlaneEngaged(true, 'KILLED', 0)).toBe(0);
+    expect(computeDiV0S4ShadowPlaneEngaged(true, 'NOT_KILLED', 0)).toBe(1);
     expect(computeDiV0S4ActivitySignal(true, 'KILLED', 0)).toBe(0);
-    expect(computeDiV0S4ActivitySignal(true, 'NOT_KILLED', 0)).toBe(1);
+  });
+
+  it('COMPLETED history alone does not engage shadow plane while KILLED', () => {
+    const snapshot = emptySnapshot();
+    snapshot.operational.workLifecycle = {
+      PENDING: 0,
+      LEASED: 0,
+      FAILED_RETRYABLE: 0,
+      FAILED_TERMINAL: 0,
+      SUPERSEDED: 0,
+      COMPLETED: 99,
+      SKIPPED_INELIGIBLE: 0,
+    };
+    expect(sumInFlightShadowWorkItems(snapshot)).toBe(0);
+    expect(computeDiV0S4ShadowPlaneEngaged(true, 'KILLED', sumInFlightShadowWorkItems(snapshot))).toBe(0);
+  });
+
+  it('retains shadow_plane_engaged on refresh failure so stale alert is not self-suppressed', async () => {
+    const registry = new Registry();
+    const handles = registerDiV0S4OperationalPrometheusMetrics(registry);
+    publishDiV0S4OperationalPrometheusMetrics(handles, emptySnapshot(), 1, true, 1_700_000_000);
+    markDiV0S4OperationalRefreshFailed(handles, 1);
+    const text = await registry.metrics();
+    expect(text).toContain(`${DI_V0_S4_OPERATIONAL_METRICS.shadowPlaneEngaged} 1`);
+    expect(text).toContain(`${DI_V0_S4_OPERATIONAL_METRICS.refreshError} 1`);
+    expect(text).toContain(`${DI_V0_S4_OPERATIONAL_METRICS.activitySignal} 1`);
+    expect(text).toContain(`${DI_V0_S4_OPERATIONAL_METRICS.lastSuccessUnixtime} 0`);
+    publishDiV0S4OperationalPrometheusMetrics(handles, emptySnapshot(), 1, true, 1_700_000_100);
+    const recovered = await registry.metrics();
+    expect(recovered).toContain(`${DI_V0_S4_OPERATIONAL_METRICS.refreshError} 0`);
+    expect(recovered).toContain(`${DI_V0_S4_OPERATIONAL_METRICS.lastSuccessUnixtime} 1700000100`);
   });
 
   it('clears follower gauges on reset', async () => {

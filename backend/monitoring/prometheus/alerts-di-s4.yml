@@ -43,7 +43,7 @@ groups:
 
       - alert: DiV0S4OperationalMetricsStale
         expr: |
-          max(synqdrive_di_v0_s4_activity_signal) >= 1
+          max(synqdrive_di_v0_s4_shadow_plane_engaged) >= 1
           and (
             max(synqdrive_di_v0_s4_operational_refresh_error) == 1
             or max(synqdrive_di_v0_s4_operational_last_success_unixtime) == 0
@@ -58,18 +58,19 @@ groups:
           description: Leader refresh has not succeeded within 180s or last refresh failed — do not trust shadow health gauges.
           runbook_url: architecture/drivingintelligence/evidence/EXP021_S4P2_R1_ALERT_RELIABILITY.md#metric-freshness
 
-      - alert: DiV0S4GlobalKillOpen
+      - alert: DiV0S4GlobalKillSuspectOrphan
         expr: |
-          max(synqdrive_di_v0_s4_activity_signal) >= 1
-          and max(synqdrive_di_v0_s4_global_not_killed) == 1
-        for: 5m
+          max(synqdrive_di_v0_s4_global_not_killed) == 1
+          and max(synqdrive_di_v0_s4_runtime_config_attestation_info{state="STAGED"}) == 0
+          and max(synqdrive_di_v0_s4_shadow_plane_engaged) == 0
+        for: 30m
         labels:
           severity: warning
           component: driving_intelligence_s4
         annotations:
-          summary: DI S4 GLOBAL kill row is NOT_KILLED during active shadow processing
-          description: Verify an owner-authorized LIVE_OPEN or wave promotion is in effect; otherwise run EMERGENCY_REKILL containment.
-          runbook_url: architecture/drivingintelligence/evidence/EXP021_S4P2_UNATTENDED_OPS_ALERT_INTEGRATION.md#global-kill
+          summary: DI S4 GLOBAL is NOT_KILLED without staged pilot config
+          description: Kill row is open but runtime attestation is not STAGED and shadow plane is not engaged — investigate unauthorized or orphan OPEN; authorized pilots with STAGED config do not match.
+          runbook_url: architecture/drivingintelligence/evidence/EXP021_S4P2_R2_MONITORING_CORRECTNESS.md#global-kill
 
       - alert: DiV0S4AllowlistTenantViolation
         expr: |

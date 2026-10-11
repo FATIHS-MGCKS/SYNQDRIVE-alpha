@@ -26,6 +26,8 @@ export class DiV0S4OperationalMetricsService implements OnModuleInit, OnModuleDe
   private handles!: DiV0S4OperationalPrometheusHandles;
   private timer: NodeJS.Timeout | null = null;
   private refreshInFlight = false;
+  /** Last known engaged state on leader — retained across refresh failures for alerting. */
+  private lastShadowPlaneEngaged = 0;
   private readonly reconciliation = new DiV0S4fReconciliationService(this.prisma);
 
   constructor(
@@ -51,6 +53,7 @@ export class DiV0S4OperationalMetricsService implements OnModuleInit, OnModuleDe
 
   private async refreshCycle(): Promise<void> {
     if (!this.leaderElection.isLeader()) {
+      this.lastShadowPlaneEngaged = 0;
       resetDiV0S4OperationalPrometheusMetrics(this.handles);
       return;
     }
@@ -76,7 +79,7 @@ export class DiV0S4OperationalMetricsService implements OnModuleInit, OnModuleDe
       ]);
       const attestation = evaluateDiV0S4RuntimeConfigAttestationFromProcess();
       const staged = classifyDiV0S4RuntimeAttestationState(process.env) === 'STAGED';
-      publishDiV0S4OperationalPrometheusMetrics(
+      this.lastShadowPlaneEngaged = publishDiV0S4OperationalPrometheusMetrics(
         this.handles,
         snapshot,
         allowlistViolations,
@@ -85,7 +88,7 @@ export class DiV0S4OperationalMetricsService implements OnModuleInit, OnModuleDe
       );
     } catch (error) {
       this.logger.warn(`S4 operational metrics refresh failed: ${String(error)}`);
-      markDiV0S4OperationalRefreshFailed(this.handles);
+      markDiV0S4OperationalRefreshFailed(this.handles, this.lastShadowPlaneEngaged);
     }
   }
 }

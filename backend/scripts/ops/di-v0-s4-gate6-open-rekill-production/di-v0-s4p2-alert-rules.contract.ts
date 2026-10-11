@@ -30,15 +30,19 @@ export const DI_V0_S4P2_PROMETHEUS_ALERT_RULES: readonly DiV0S4PrometheusAlertRu
     alert: 'DiV0S4OperationalMetricsStale',
     severity: 'critical',
     metricFamilies: [
-      'synqdrive_di_v0_s4_activity_signal',
+      'synqdrive_di_v0_s4_shadow_plane_engaged',
       'synqdrive_di_v0_s4_operational_last_success_unixtime',
       'synqdrive_di_v0_s4_operational_refresh_error',
     ],
   },
   {
-    alert: 'DiV0S4GlobalKillOpen',
+    alert: 'DiV0S4GlobalKillSuspectOrphan',
     severity: 'warning',
-    metricFamilies: ['synqdrive_di_v0_s4_activity_signal', 'synqdrive_di_v0_s4_global_not_killed'],
+    metricFamilies: [
+      'synqdrive_di_v0_s4_global_not_killed',
+      'synqdrive_di_v0_s4_runtime_config_attestation_info',
+      'synqdrive_di_v0_s4_shadow_plane_engaged',
+    ],
   },
   {
     alert: 'DiV0S4AllowlistTenantViolation',
