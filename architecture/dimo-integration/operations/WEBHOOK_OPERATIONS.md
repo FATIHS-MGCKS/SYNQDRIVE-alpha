@@ -73,7 +73,8 @@ Pattern used in R9 canary and GT-R1 preflight:
 | Update definition | PUT | `/v1/webhooks/{webhookId}` | [DIMO docs](https://www.dimo.org/docs/api-references/vehicle-triggers-api); **VERIFIED** GT-R1 UNPLUG recovery 2026-09-12 |
 | Delete definition | DELETE | `/v1/webhooks/{webhookId}` | R9 rollback — requires unsubscribe all first |
 | Subscribe vehicle | POST | `/v1/webhooks/{webhookId}/subscribe/{assetDID}` | R9 canary (empty body) |
-| Unsubscribe vehicle | DELETE | `/v1/webhooks/{webhookId}/unsubscribe/{assetDID}` | R9 rollback |
+| Unsubscribe vehicle | DELETE | `/v1/webhooks/{webhookId}/unsubscribe/{assetDID}` | R9 rollback; R2.3 @ 2026-10-11 token 187336 |
+| Re-enable failed R9 definition | PUT | `/v1/webhooks/{webhookId}` with `status: enabled` | R2.4 @ 2026-10-11 — `r9-r24-webhook-recovery.mjs` |
 | Subscribe all | POST | `/v1/webhooks/{webhookId}/subscribe/all` | DIMO docs — **not executed in SynqDrive** |
 | Unsubscribe all | DELETE | `/v1/webhooks/{webhookId}/unsubscribe/all` | DIMO docs — **not executed in SynqDrive** |
 

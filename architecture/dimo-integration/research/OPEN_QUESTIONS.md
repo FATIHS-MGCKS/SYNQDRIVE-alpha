@@ -6,7 +6,7 @@
 | **DIM-OQ-002** | Which segment reconciliation paths are exclusively DIMO-owned vs Trip Detection-owned? | High | **RESOLVED** — TDL-OQ-006 / DIM-GAP-001 (see Trip Detection evidence) |
 | **DIM-OQ-R1-001** | Are `WORKER_SNAPSHOT_TIER_*_MS` overrides set on Production or do code defaults apply? | Medium | **OPEN** — R1 grep found activity-tier flag names only |
 | **DIM-OQ-R1-002** | Is R9 authorized cohort still 5/5 subscribed @ Production `2b89f746…`? | High | **RESOLVED** — 5/5 @ `DIM-EV-R2-R9-GET-001`; R9 defs `failed` → `DIM-CX-005` |
-| **DIM-OQ-R2-001** | Root cause and ops remediation for R9 webhook `status: failed` | High | **PARTIALLY_ANSWERED** — mechanism + VO5C maintenance 503 **CONFIRMED** (`DIM-EV-R22-DEPLOY-RCA-001`); PUT spec in `R9_RECOVERY_OWNER_GATE.md`; **NOT EXECUTED** |
+| **DIM-OQ-R2-001** | Root cause and ops remediation for R9 webhook `status: failed` | High | **PUT_RECOVERED** @ `2026-10-11` (`DIM-EV-R24-R9-RECOVERY-001`); recurrence risk **OPEN** until deploy maintenance fixed |
 | **DIM-OQ-R23-001** | Sold tokenId **187336**: provider webhooks removed; when must local VO5C offboard + consent revoke occur to stop polling/billing/privacy exposure? | High | **OPEN** — interim ACTIVE documented `DIM-EV-R23-187336-PROVIDER-UNSUB-001` |
 | **DIM-OQ-R22-001** | Should VO5C deploy maintenance exempt `/api/v1/webhooks/dimo` or use zero-downtime proxy instead of global 503? | High | **OPEN** — options in `R9_PERMANENT_RESILIENCE_OPTIONS.md` Option A |
 | **DIM-OQ-R2-002** | Official numeric privilege ID matrix | Medium | **OPEN** |
