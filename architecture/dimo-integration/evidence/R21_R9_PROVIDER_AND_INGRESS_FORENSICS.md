@@ -56,18 +56,20 @@ DIMO Vehicle Triggers API → HTTPS POST app.synqdrive.eu/api/v1/webhooks/dimo
 
 ## 4. Nginx aggregate — `POST /api/v1/webhooks/dimo` (UTC days)
 
-| Date (UTC) | POST count |
-|------------|------------|
+> **Correction (R2.2):** The 2026-10-09 row below was wrong in R2.1 (used `grep 'Oct/2026:09'`, which matches **hour 09** only). Authoritative Oct-9 totals: **791 POST = 751×200 + 40×503**. See [R22_R9_PREFLIGHT_AND_EVIDENCE_CORRECTION.md](R22_R9_PREFLIGHT_AND_EVIDENCE_CORRECTION.md) and `scripts/r22-nginx-dimo-webhook-aggregate.sh`.
+
+| Date (UTC) | POST count (correct filter `DD/Mon/YYYY:`) |
+|------------|---------------------------------------------|
 | 2026-10-04 | 237 |
 | 2026-10-05 | 466 |
 | 2026-10-06 | 73 |
 | 2026-10-07 | 31 |
 | 2026-10-08 | 199 |
-| 2026-10-09 | 381 (**751×200 + 40×503** on that day) |
+| 2026-10-09 | **791** (**751×200 + 40×503**) |
 | 2026-10-10 | 1424 |
-| 2026-10-11 | 1257 (partial day) |
+| 2026-10-11 | 1257 (partial day at R2.1 audit) |
 
-**Oct 9 15:xx UTC:** burst of **40× HTTP 503** between `15:21:03` and `15:21:30` (sampled); aligns with provider `updatedAt` **15:22:29 / 15:22:50** and release folder `20261009152645_v4994` @ **15:27**.
+**Oct 9 15:21–15:22 UTC:** **40× HTTP 503** to `DIMO-Webhook/1.0`; aligns with provider `updatedAt` **15:22:29 / 15:22:50**. **Cause (R2.2):** VO5C deploy orchestrator **nginx maintenance stub** — not PM2 rolling (rolling @ **15:38**). Release dir mtime **15:27** is mid-orchestration, not incident start.
 
 **Oct 10–11:** sampled nginx lines show **200** only for webhook POST (no non-2xx in sample).
 
@@ -93,7 +95,8 @@ DIMO Vehicle Triggers API → HTTPS POST app.synqdrive.eu/api/v1/webhooks/dimo
 | 2026-10-09 ~15:21 | nginx | 40× webhook POST **503** |
 | 2026-10-09 15:22:29 | Provider | Ignition → **failed**, fc=12 |
 | 2026-10-09 15:22:50 | Provider | Speed → **failed**, fc=28 |
-| 2026-10-09 15:27 | VPS | Deploy release `20261009152645_v4994` |
+| 2026-10-09 15:26–15:38 | VPS | VO5C orchestrator (maintenance → build → rolling @ 15:38) |
+| 2026-10-09 15:27 | VPS | Release dir `20261009152645_v4994` mtime (not incident start) |
 | 2026-10-10 – 11 | nginx | High volume webhook POST **200** (all webhooks) |
 | 2026-10-11 19:26 | Provider GET | R9 still **failed**, subs **5/5** |
 
@@ -109,7 +112,7 @@ States A–D per mission; numerators/denominators explicit.
 | **C HTTP acceptance Oct 10–11** | all sampled 200 | sampled | **~100%** | No non-2xx in sample |
 | **D Wake admission (R9 Oct 4–11)** | 0 PM2 `Received DIMO webhook` | — | **INSUFFICIENT_EVIDENCE** | Logging/retention gap |
 | **Wake→snapshot (R9)** | — | — | **INSUFFICIENT_EVIDENCE** | No correlated wake logs |
-| **Snapshot freshness (cohort)** | 4/5 `last_signal` on 2026-10-11 | 5 vehicles | **80% same-day** | See cohort review; 187336 stale |
+| **Snapshot freshness (cohort)** | 3/5 `last_signal` on 2026-10-11 | 5 vehicles | **60% same-day** | R2.2 fix: 186946 last_signal 2026-10-01; 187336 2026-09-29 |
 | **Polling fallback** | Scheduler tier polling **enabled** @ Production | `DIM-EV-R2-PROD-RUNTIME-001` | **ACTIVE** | Trip start may lag vs R9 wake |
 
 ## 8. Mutations

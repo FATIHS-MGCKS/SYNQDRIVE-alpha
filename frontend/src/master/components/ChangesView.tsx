@@ -36,6 +36,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-integration-r22-r9-preflight-2026-10-11',
+    version: '4.9.2242',
+    title: 'DIMO Integration — R2.2 R9 recovery preflight & deploy 503 RCA',
+    summary: [
+      'Corrected R2.1 nginx Oct-9 counts (791 POST = 751×200 + 40×503); freshness KPI 3/5 not 4/5.',
+      'VO5C deploy maintenance nginx 503 caused DIMO circuit-breaker before rolling restart (15:38).',
+      'Owner gate + PUT diff ready; resilience options A–D documented; no provider mutations.',
+    ],
+    reason: 'Make recovery approval-safe and prevent repeat maintenance-induced R9 failed state.',
+    previousBehavior: 'R2.1 had aggregation filter bug and overstated RCA/deploy timing certainty.',
+    details:
+      'architecture/dimo-integration/evidence/R22_R9_PREFLIGHT_AND_EVIDENCE_CORRECTION.md, research/R9_DEPLOYMENT_AVAILABILITY_RCA.md, R9_RECOVERY_OWNER_GATE.md',
+    affectsArchitecture: true,
+    module: 'DIMO Integration',
+    createdAt: '2026-10-11T20:15:00.000Z',
+  },
+  {
     id: 'dimo-integration-r21-r9-forensics-2026-10-11',
     version: '4.9.2241',
     title: 'DIMO Integration — R2.1 R9 webhook failure forensics (read-only)',

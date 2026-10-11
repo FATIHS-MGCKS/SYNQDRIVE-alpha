@@ -21,13 +21,21 @@
 | **STALE_COHORT** | Stale token still subscribed | **187336** stale `last_signal`; still subscribed | Does **not** explain **definition-level** `failed` | MEDIUM | **OPEN** (ops hygiene, not RCA for failed) |
 | **INSUFFICIENT_EVIDENCE** | — | PM2 lacks per-request R9 trail Oct 2026 | — | — | **PARTIAL** for KPI D |
 
-## Primary root cause (closed chain)
+## Primary root cause (layered — R2.2)
 
-**CONFIRMED:** DIMO marked both R9 webhook definitions `failed` because the Vehicle Triggers service recorded **too many consecutive HTTP callback delivery failures** (`IncrementTriggerFailureCount` → `status=failed`), during a window where SynqDrive’s nginx returned **HTTP 503** on `POST /api/v1/webhooks/dimo` (**2026-10-09 ~15:21 UTC**), immediately before provider `updatedAt` timestamps (**15:22:29Z** / **15:22:50Z**).
+| Layer | Finding | Status |
+|-------|---------|--------|
+| **Mechanism** | DIMO `IncrementTriggerFailureCount` → `status=failed`; delivery halted while `failed` | **CONFIRMED** |
+| **SynqDrive HTTP** | **40×503** on `POST /api/v1/webhooks/dimo` @ 2026-10-09 **15:21–15:22 UTC** | **CONFIRMED** (nginx aggregate) |
+| **503 generator** | VO5C orchestrator Phase 1 nginx `return 503 "SynqDrive scheduled maintenance"` | **CONFIRMED** (VPS script) |
+| **Correlation** | Provider `updatedAt` **15:22:29 / 15:22:50** within burst | **CONFIRMED** |
+| **Rolling PM2 @ 15:38** | Cause of **15:21** 503 | **REJECTED** (timing) |
+| **Per-request DIMO log** | Each 503 counted once | **INFERRED** |
+| **R9-only share of 503 burst** | — | **UNKNOWN** (nginx) |
 
-**Effect:** With `status=failed`, provider **stops attempting** R9 deliveries (`ShouldAttemptWebhook`). Subscriptions **remain** but **state B→D is broken** for R9 until recovery PUT.
+**Effect:** Subscriptions **remain**; R9 path **B→D blocked** until authorized `PUT`.
 
-**Not CONFIRMED:** Exact count of R9 vs RPM/OBD posts in the 503 burst (nginx cannot split).
+Detail: [R9_DEPLOYMENT_AVAILABILITY_RCA.md](R9_DEPLOYMENT_AVAILABILITY_RCA.md), [R22_R9_PREFLIGHT_AND_EVIDENCE_CORRECTION.md](../evidence/R22_R9_PREFLIGHT_AND_EVIDENCE_CORRECTION.md).
 
 ## Secondary findings
 

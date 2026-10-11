@@ -25,8 +25,8 @@ Columns: `token_id | registry_lifecycle | vehicle_status | connection_status | p
 
 | tokenId | registry_lifecycle | vehicle_status | connection_status | consent | last_signal (UTC) | synced_at (UTC) |
 |---------|-------------------|----------------|-------------------|---------|-------------------|-----------------|
-| 186946 | ACTIVE | AVAILABLE | CONNECTED | ACTIVE | 2026-10-01 13:46:44 | 2026-10-11 09:46:11 |
-| **187336** | ACTIVE | AVAILABLE | CONNECTED | ACTIVE | **2026-09-29 17:25:26** | **2026-10-01 09:46:11** |
+| 186946 | ACTIVE | AVAILABLE | CONNECTED | ACTIVE | **2026-10-01** 13:46:44 (stale vs peers) | 2026-10-11 09:46:11 — sync without new signals |
+| **187336** | ACTIVE | AVAILABLE | CONNECTED | ACTIVE | **2026-09-29 17:25:26** | **2026-10-01 09:46:11** — **OPEN unplug episode** same timestamp (R2.2) |
 | 187361 | ACTIVE | AVAILABLE | CONNECTED | ACTIVE | 2026-10-11 08:45:19 | 2026-10-11 09:46:11 |
 | 187784 | ACTIVE | AVAILABLE | CONNECTED | ACTIVE | 2026-10-11 09:26:30 | 2026-10-11 09:46:11 |
 | 192922 | ACTIVE | AVAILABLE | CONNECTED | ACTIVE | 2026-10-11 07:08:53 | 2026-10-11 09:46:11 |
