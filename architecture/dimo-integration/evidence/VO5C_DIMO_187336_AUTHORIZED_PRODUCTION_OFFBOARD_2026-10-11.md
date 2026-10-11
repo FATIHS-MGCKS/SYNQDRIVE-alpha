@@ -93,6 +93,8 @@ R9 definition UUIDs (global, **unchanged** `failed`):
 
 ## 7. Recovery path (owner / operator)
 
+**P4A readiness (2026-10-11):** [VO5C_P4A_OPERATOR_READINESS_2026-10-11.md](VO5C_P4A_OPERATOR_READINESS_2026-10-11.md) + [operator runbook](../../../docs/runbooks/vo5c-p4a-production-offboard-187336-operator.md). Blockers: **0/2 MFA enrolled**, HTTP admission env **not set**.
+
 1. **Enable VO5C-P4A track B+C** per runbook (maintenance window, MFA enrollment verified) — **separate** change authorization from this offboard scope if not already done.
 2. **Master Admin** with **MFA step-up** (`MASTER_INTEGRATIONS`):  
    `POST /api/v1/admin/vehicle-onboarding/organizations/faa710c9-6d91-4079-a7d5-91fdccdec14a/vehicles/a60c0749-a7cd-494e-b5b9-dea3c6b97d63/offboard`  
