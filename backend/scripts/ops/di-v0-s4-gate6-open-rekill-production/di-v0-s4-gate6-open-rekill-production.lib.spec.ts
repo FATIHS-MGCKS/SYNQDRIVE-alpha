@@ -13,9 +13,16 @@ import { PRODUCTION_SHARED_BACKEND_ENV_PATH } from '../di-v0-s4-fresh-tiny-stagi
 import {
   applyFiveFlagMutation,
   deriveFiveFlagAttestationFingerprint,
+  FIVE_FLAG_ON_KEYS,
+  FIVE_FLAG_TRUE_VALUE,
 } from '../di-v0-s4-five-flag-tiny-activation-production/di-v0-s4-five-flag-tiny-activation-production.lib';
 import { envMapFromFileContent } from '../di-v0-s4f-global-budget-rollout/di-v0-s4f-global-budget-rollout.lib';
-import { expectedVehicleAllowlistForWave } from './di-v0-s4-fleet-rollout.lib';
+import {
+  expectedVehicleAllowlistForWave,
+  ROLLOUT_WAVE_VEHICLE_IDS,
+  S4_SOLD_OR_REMOVED_FLEET_VEHICLE_IDS,
+} from './di-v0-s4-fleet-rollout.lib';
+import { assertGate6WaveStagingKeysPresentAndPinned } from './di-v0-s4-gate6-wave-staging.lib';
 import {
   assertFiveFlagsOnInEnv,
   evaluateEmergencyRekillAck,
@@ -57,10 +64,36 @@ function buildBaseStagedEnv(wave: 1 | 2 | 3 = 1): string {
   ].join('\n') + '\n';
 }
 
+function enableFiveFlagsOnStagedEnv(staged: string): string {
+  let content = staged;
+  for (const key of FIVE_FLAG_ON_KEYS) {
+    content = content.replace(`${key}=false`, `${key}=${FIVE_FLAG_TRUE_VALUE}`);
+  }
+  return content;
+}
+
 function buildFiveFlagOnEnv(wave: 1 | 2 | 3 = 1): string {
   const staged = buildBaseStagedEnv(wave);
-  const { nextContent } = applyFiveFlagMutation(staged);
-  return nextContent;
+  if (wave === 1) {
+    const { nextContent } = applyFiveFlagMutation(staged);
+    return nextContent;
+  }
+  return enableFiveFlagsOnStagedEnv(staged);
+}
+
+function baseOpenInputForWave(wave: 1 | 2 | 3, overrides: Partial<Gate6OpenGuardInput> = {}): Gate6OpenGuardInput {
+  const envContent = buildFiveFlagOnEnv(wave);
+  const envSha = createHash('sha256').update(envContent).digest('hex');
+  const fp = deriveFiveFlagAttestationFingerprint(envMapFromFileContent(envContent));
+  return baseOpenInput({
+    rolloutWave: wave,
+    envContent,
+    requiredEnvSha256: envSha,
+    actualEnvSha256: envSha,
+    replicaAFingerprint: fp,
+    replicaBFingerprint: fp,
+    ...overrides,
+  });
 }
 
 function baseOpenInput(overrides: Partial<Gate6OpenGuardInput> = {}): Gate6OpenGuardInput {
@@ -134,6 +167,99 @@ describe('S4F-7AS Gate-6 open guards (lib)', () => {
     expect(assertFiveFlagsOnInEnv(buildFiveFlagOnEnv(), 1).ok).toBe(true);
     const bad = buildFiveFlagOnEnv().replace(expectedVehicleAllowlistForWave(1), CANONICAL_TINY_VEHICLE_ID + ',bad');
     expect(assertFiveFlagsOnInEnv(bad, 1).ok).toBe(false);
+  });
+});
+
+describe('S4F-7AS Gate-6 wave-3 staging guard fix', () => {
+  it('legacy tiny assertStaging would fail wave-3 env while wave-aware staging passes', () => {
+    const env = buildFiveFlagOnEnv(3);
+    expect(assertGate6WaveStagingKeysPresentAndPinned(env, 3).ok).toBe(true);
+  });
+
+  it('wave 2 preflight passes with expanded allowlist', () => {
+    expect(
+      evaluateGate6PreflightGuards(
+        baseOpenInputForWave(2, { gate6Ack: undefined, gate6Authorized: undefined }),
+      ).ok,
+    ).toBe(true);
+  });
+
+  it('wave 3 INITIAL_OPEN with GLOBAL KILLED and zero S4 passes preflight', () => {
+    expect(
+      evaluateGate6PreflightGuards(
+        baseOpenInputForWave(3, { gate6Ack: undefined, gate6Authorized: undefined }),
+      ).ok,
+    ).toBe(true);
+  });
+
+  it('wave 3 with four vehicles fails STAGING_KEYS_INVALID', () => {
+    const four = ROLLOUT_WAVE_VEHICLE_IDS[3].slice(0, 4).join(',');
+    const env = buildFiveFlagOnEnv(3).replace(expectedVehicleAllowlistForWave(3), four);
+    const g = evaluateGate6PreflightGuards(baseOpenInputForWave(3, { envContent: env }));
+    expect(g.failures).toContain('STAGING_KEYS_INVALID');
+  });
+
+  it('wave 3 sold vehicle fails staging and rollout guards', () => {
+    const sold = S4_SOLD_OR_REMOVED_FLEET_VEHICLE_IDS[0];
+    const env = buildFiveFlagOnEnv(3).replace(expectedVehicleAllowlistForWave(3), sold);
+    const g = evaluateGate6PreflightGuards(baseOpenInputForWave(3, { envContent: env }));
+    expect(g.failures.some((f) => f === 'STAGING_KEYS_INVALID' || f === 'ROLLOUT_ALLOWLIST_INVALID')).toBe(true);
+  });
+
+  it('foreign-tenant vehicle in allowlist rejected', () => {
+    const foreign = '17ae4a96-f658-43d4-b262-65d4624a5320';
+    const env = buildFiveFlagOnEnv(3).replace(expectedVehicleAllowlistForWave(3), foreign);
+    const g = evaluateGate6PreflightGuards(baseOpenInputForWave(3, { envContent: env }));
+    expect(g.ok).toBe(false);
+  });
+
+  it('wrong organization rejected', () => {
+    const env = buildFiveFlagOnEnv(3).replace(CANONICAL_TINY_ORGANIZATION_ID, '00000000-0000-0000-0000-000000000099');
+    expect(evaluateGate6PreflightGuards(baseOpenInputForWave(3, { envContent: env })).failures).toContain(
+      'STAGING_KEYS_INVALID',
+    );
+  });
+
+  it('native flag ON rejected', () => {
+    const env = buildFiveFlagOnEnv(3).replace(`${DI_V0_S4_ENV_FLAGS.native}=false`, `${DI_V0_S4_ENV_FLAGS.native}=true`);
+    expect(evaluateGate6PreflightGuards(baseOpenInputForWave(3, { envContent: env })).failures).toContain(
+      'NATIVE_FLAG_ON',
+    );
+  });
+
+  it('one S4 flag OFF rejected', () => {
+    const env = buildFiveFlagOnEnv(3).replace(`${FIVE_FLAG_ON_KEYS[0]}=true`, `${FIVE_FLAG_ON_KEYS[0]}=false`);
+    expect(evaluateGate6PreflightGuards(baseOpenInputForWave(3, { envContent: env })).failures).toContain(
+      'FIVE_FLAGS_NOT_ALL_ON',
+    );
+  });
+
+  it('incorrect environment SHA rejected', () => {
+    const g = evaluateGate6PreflightGuards(
+      baseOpenInputForWave(3, { actualEnvSha256: '0'.repeat(64) }),
+    );
+    expect(g.failures).toContain('ENV_HASH_MISMATCH');
+  });
+
+  it('replica fingerprint mismatch rejected', () => {
+    const g = evaluateGate6PreflightGuards(
+      baseOpenInputForWave(3, { replicaAFingerprint: 'deadbeef', replicaBFingerprint: 'deadbeef' }),
+    );
+    expect(g.failures).toContain('ATTESTATION_FP_MISMATCH_A');
+  });
+
+  it('GLOBAL NOT_KILLED rejected for INITIAL_OPEN', () => {
+    const g = evaluateGate6PreflightGuards(
+      baseOpenInputForWave(3, { globalRowLines: ['1', 'NOT_KILLED'] }),
+    );
+    expect(g.failures).toContain('GLOBAL_PRESTATE_NOT_KILLED');
+  });
+
+  it('nonzero S4 persistence rejected for INITIAL_OPEN', () => {
+    const g = evaluateGate6PreflightGuards(
+      baseOpenInputForWave(3, { s4PersistenceLines: ['1', '0', '0', '0', '0', '0'] }),
+    );
+    expect(g.failures).toContain('S4_PERSISTENCE_NONZERO');
   });
 });
 
