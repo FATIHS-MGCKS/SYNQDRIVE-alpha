@@ -16,9 +16,11 @@
 | E-P4B16-R0A | [`P4B16_R0A_DESIGN_CORRECTION.md`](P4B16_R0A_DESIGN_CORRECTION.md) | ARCHITECTURE_DOCUMENT | R0A correction record |
 | E-P4B16-R0-CODE | [`P4B16_R0_CODE_INVENTORY.md`](P4B16_R0_CODE_INVENTORY.md) | REPOSITORY | Writer/reader inventory |
 | E-P4B16-R0-TESTS | [`P4B16_R0_OFFLINE_TEST_MATRIX.md`](P4B16_R0_OFFLINE_TEST_MATRIX.md) | ARCHITECTURE_DOCUMENT | Offline test matrix backlog |
+| E-P4B16-R1A | [`P4B16_R1A_DURABLE_ATTESTATION_ENGINE.md`](P4B16_R1A_DURABLE_ATTESTATION_ENGINE.md) | REPOSITORY + TEST | R1A engine libs; offline selftest PASS |
 | E-VO5C-P4B15 | [`../../vehicle-onboarding/evidence/VO5C_P4B15_DEPLOY_BYPASS_ENFORCEMENT.md`](../../vehicle-onboarding/evidence/VO5C_P4B15_DEPLOY_BYPASS_ENFORCEMENT.md) | REPOSITORY | P4B15 (preserved) |
 | E-VO5C-R2 | [`../../vehicle-onboarding/evidence/VO5C_R2_SECURITY_FLOOR_ROLLBACK.md`](../../vehicle-onboarding/evidence/VO5C_R2_SECURITY_FLOOR_ROLLBACK.md) | REPOSITORY | Security floor (preserved) |
 | E-OPS-SELFTEST | `backend/scripts/ops/vps-vo5c-*.selftest.sh` | CURRENT_TEST | Offline only; not live deploy proof |
+| E-OPS-P4B16-R1A | `backend/scripts/ops/vps-release-attestation.selftest.sh` | CURRENT_TEST | P4B16 R1A attestation certification |
 
 ## Ledger
 

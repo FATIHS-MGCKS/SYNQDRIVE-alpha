@@ -56,7 +56,7 @@
 | **STATUS** | PROPOSED |
 | **BEFORE** | `SYNQDRIVE_DEPLOYED_GIT_SHA` may diverge from `current` release tree after successful deploy |
 | **WHY** | APDS/VO5C gates and operators need fail-closed, rollback-safe release identity |
-| **CHANGE** | After verify PASS, publish via **journal + single authoritative state file**; `COMMITTED` only after `PUBLISHED` + per-replica runtime identity match; `backend.env` as legacy mirror (no PM2 env reload claim); rollback shares lock; never mutate APDS approved pin |
+| **CHANGE** | After `vps_replica_verify_post_deploy` PASS, record **single atomic state file** (`STATUS=COMMITTED`, `DEPLOYED_SHA`) + legacy `backend.env` mirror; rollback shares lock; never mutate APDS approved pin |
 | **EVIDENCE** | DSRG-EVID-P4B16-R0-001 |
-| **VALIDATION** | Offline matrix P4B16_R0; implementation phase + pin promotion |
+| **VALIDATION** | R1A offline selftest PASS (`vps-release-attestation.selftest.sh`); deploy hook + pin promotion remain future |
 | **NON-EFFECT** | No enforcement, sudoers, APDS epoch, Gate-6, or RFRF changes |

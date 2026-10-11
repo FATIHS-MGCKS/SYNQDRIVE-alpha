@@ -13,7 +13,7 @@ Operator (human)
   → vps-vo5c-first-security-deploy-preflight.sh
   → exec bash vps-deploy-release.sh (pinned tree)
   → release promotion / PM2 / migrations
-  → post-verify attestation commit (P4B16 — **PROPOSED**; not automated today)
+  → post-verify attestation commit (P4B16 — **R1A libs OFFLINE_VALIDATED**; not wired to deploy)
   → SYNQDRIVE_DEPLOYED_GIT_SHA in shared backend.env
 ```
 

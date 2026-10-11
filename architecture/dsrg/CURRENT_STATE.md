@@ -1,6 +1,6 @@
 # DSRG — Current state (repository vs Production)
 
-**Audit base (repository):** `main` @ `b3c5a0b970162b44496e817e3b13a9b0e89615e4` (post #1977)  
+**Audit base (repository):** `main` @ `0633d08311803b1473c6e7a274e5074e4cb69a08` (post #1979 P4B16 R0/R0A) · **P4B16 R1A** engine branch adds offline libs (not on `main` until merge)  
 **Production evidence baseline:** DSRG-03 R3 @ `2026-10-11T13:49:49Z` · **P4B16 R0** @ `2026-10-11T16:05:00Z` (read-only attestation)  
 **Classification axes:** registry `AUTHORITY_ACTIVE` (effective on R6 merge) · epistemic per-row · validation per-row
 
@@ -65,8 +65,9 @@ Do **not** equate merged repository code with live runtime. Status labels:
 
 | Source | IMPLEMENTED | DEPLOYED | ACTIVATED |
 |--------|-------------|----------|-----------|
-| `SYNQDRIVE_DEPLOYED_GIT_SHA` in `backend.env` | yes | yes = `7f47c9f…` | **yes** |
-| Primary deploy SHA attestation file (authority) | spec in examples | **absent** | **no** |
+| `SYNQDRIVE_DEPLOYED_GIT_SHA` in `backend.env` | yes | yes (P4B16 R0 snapshot `3a4bb944…`) | **yes** |
+| `release-attestation.state` + journal (P4B16 R1A libs) | **yes** (repo; offline) | **absent** | **no** |
+| Primary deploy SHA attestation file (authority) | R1A libs **OFFLINE_VALIDATED** | **absent** on VPS | **no** |
 | Armed enforcement stamp | documented | **absent** | **no** |
 
 ---
@@ -100,11 +101,12 @@ Do **not** equate merged repository code with live runtime. Status labels:
 | Step | IMPLEMENTED | DEPLOYED | ACTIVATED | VALIDATED |
 |------|-------------|----------|-----------|-----------|
 | Full pinned deploy chain | yes in pin tree | scripts on VPS | **no** (runner not executed in audits) | selftests only |
-| P4B16 attestation automation | **PLANNED** | **UNKNOWN** | **no** | — |
+| P4B16 attestation automation | **R1A IMPLEMENTED** (libs only) | **no** | **no** | `vps-release-attestation.selftest.sh` PASS (fixtures) |
 
 ## Security tests (repository — offline)
 
 - `vps-vo5c-pinned-deploy-execution-contract.selftest.sh` — **PASS** @ DSRG-03 R2  
+- `vps-release-attestation.selftest.sh` — **PASS** @ P4B16 R1A (16 scenario classes)  
 - Does **not** imply Production deploy readiness.
 
 ## Production observation (DSRG-03 R3)

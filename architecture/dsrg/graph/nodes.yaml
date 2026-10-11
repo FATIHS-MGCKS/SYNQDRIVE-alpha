@@ -37,12 +37,15 @@ nodes:
     type: state
     title: Deployed application SHA attestation
     epistemic_status: CONFIRMED
-    summary: SYNQDRIVE_DEPLOYED_GIT_SHA in shared backend.env; may diverge from current release git HEAD until P4B16 commit (R0 mismatch observed).
+    summary: Legacy backend.env mirror may diverge from release tree; R1A durable state/journal libs exist in repo (NOT_DEPLOYED).
     source_paths:
       - architecture/dsrg/evidence/P4B16_R0_PRODUCTION_ATTESTATION_AUDIT.md
+      - architecture/dsrg/evidence/P4B16_R1A_DURABLE_ATTESTATION_ENGINE.md
       - architecture/dsrg/PINNING_AND_ATTESTATION.md
+      - backend/scripts/ops/lib/vps-release-attestation.lib.sh
     evidence:
       - DSRG-EVID-P4B16-R0-001
+      - DSRG-EVID-P4B16-R1A-001
 
   - id: DSRG-PIPE-PREFLIGHT-001
     type: pipeline
@@ -200,8 +203,10 @@ nodes:
     source_paths:
       - architecture/dsrg/evidence/P4B16_R0_ATTESTATION_DESIGN.md
       - architecture/dsrg/evidence/P4B16_R0A_DESIGN_CORRECTION.md
+      - architecture/dsrg/evidence/P4B16_R1A_DURABLE_ATTESTATION_ENGINE.md
     evidence:
       - DSRG-EVID-P4B16-R0-001
+      - DSRG-EVID-P4B16-R1A-001
 
   - id: DSRG-EVID-P4B16-R0-001
     type: evidence
@@ -211,6 +216,28 @@ nodes:
     summary: Read-only VPS R0; attestation vs current git mismatch; design boundaries.
     source_paths:
       - architecture/dsrg/evidence/P4B16_R0_PRODUCTION_ATTESTATION_AUDIT.md
+
+  - id: DSRG-EVID-P4B16-R1A-001
+    type: evidence
+    title: P4B16 R1A durable attestation engine
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: Atomic state + mirror libs; replica verify delegation; offline selftest; not deployed.
+    source_paths:
+      - architecture/dsrg/evidence/P4B16_R1A_DURABLE_ATTESTATION_ENGINE.md
+      - backend/scripts/ops/lib/vps-release-attestation.lib.sh
+      - backend/scripts/ops/lib/vps-release-attestation-env-mirror.lib.sh
+
+  - id: DSRG-TEST-P4B16-R1A-001
+    type: test_evidence
+    title: P4B16 R1A attestation offline selftest
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: Fixture-only certification for verify gate, atomic record, mirror, rollback.
+    source_paths:
+      - backend/scripts/ops/vps-release-attestation.selftest.sh
+    evidence:
+      - DSRG-EVID-P4B16-R1A-001
 
   - id: DSRG-EVID-AUDIT-REGISTRY-001
     type: evidence
