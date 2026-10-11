@@ -16,7 +16,7 @@
 
 ## Record ordering (R1A)
 
-1. `vps_replica_verify_post_deploy(release_dir, target_sha)` — mandatory unless `VPS_ATTESTATION_SKIP_REPLICA_VERIFY=1` (selftests only)
+1. `vps_replica_verify_post_deploy(release_dir, target_sha)` — mandatory (selftests mock this function only)
 2. Mirror `backend.env` (atomic)
 3. Single state write `STATUS=COMMITTED` + `DEPLOYED_SHA` (atomic + checksum; fsync errors propagate)
 

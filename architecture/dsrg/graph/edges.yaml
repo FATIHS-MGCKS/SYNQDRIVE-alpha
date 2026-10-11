@@ -111,9 +111,17 @@ edges:
     relation: supports
     to: DSRG-DEC-004
 
+  - from: DSRG-EVID-P4B16-R1B-001
+    relation: supports
+    to: DSRG-DEC-004
+
   - from: DSRG-DEC-004
     relation: tested_by
     to: DSRG-TEST-P4B16-R1A-001
+
+  - from: DSRG-DEC-004
+    relation: tested_by
+    to: DSRG-TEST-P4B16-R1B-001
 
   - from: DSRG-REJECT-001
     relation: superseded_by
