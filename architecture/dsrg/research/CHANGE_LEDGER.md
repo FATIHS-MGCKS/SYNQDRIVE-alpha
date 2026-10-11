@@ -20,5 +20,6 @@
 | 2026-10-11 | **DSRG-03-R6** | Propose registry `AUTHORITY_ACTIVE`; Gate A revalidated; runtime enforcement explicitly not promoted | None (docs/registry) |
 | 2026-10-11 | **P4B16-R0** | Read-only VPS attestation audit; code inventory; lifecycle design; offline test matrix; no ops script changes | None (docs/audit) |
 | 2026-10-11 | **P4B16-R0A** | Design correction: journal publication, PM2 consumer matrix, per-replica runtime identity, entrypoint coverage | None (docs) |
+| 2026-10-11 | **P4B16-R1A** | Durable attestation libs + offline selftest; **not** wired to deploy/Production | None (repo-only; NOT_DEPLOYED) |
 
 Historical VO5C deploy-governance entries remain in [`../../vehicle-onboarding/research/CHANGE_LEDGER.md`](../../vehicle-onboarding/research/CHANGE_LEDGER.md) — reference only.
