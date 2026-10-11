@@ -14,11 +14,28 @@
 
 ## Registry coverage
 
-DSRG is a **documentation hub**, not a separate row in `SYNQDRIVE_RENTAL_ARCHITECTURE.md` until promoted under `MODULE_AUTHORITY_STANDARD.md`. Until then:
+DSRG is registered in `architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md` as **`AUDIT_IN_PROGRESS`** (DSRG-03 R0, 2026-10-11). It was **previously absent** from the central inventory.
 
-- **Epistemic source for deploy governance narrative:** `architecture/dsrg/*`
-- **Canonical VO5C evidence:** `architecture/vehicle-onboarding/evidence/VO5C_*`
-- **Runtime source of truth:** `backend/scripts/ops/*` on VPS pinned tree + live release
+| Layer | Authority |
+|-------|-----------|
+| Deploy governance architecture (cross-cutting) | `architecture/dsrg/*` |
+| VO5C phase implementation evidence | `architecture/vehicle-onboarding/evidence/VO5C_*` |
+| Runtime behavior | `backend/scripts/ops/*` on VPS pinned tree + live release |
+| APDS approved pin / epochs | APDS owning module (see [CROSS_MODULE_DEPENDENCIES.md](./CROSS_MODULE_DEPENDENCIES.md)) |
+| EXP021 / Gate-6 | Driving Intelligence + EXP021 ops |
+| RFRF rollback | RFRF contracts and scripts |
+
+## DSRG responsibilities (this workstream)
+
+- Deployment governance architecture and pinned-executor execution contract
+- Release authorization, attestation, and enforcement **policy**
+- OS privilege boundary readiness and security-floor / rollback **interaction** with deploy paths
+- Production deploy enforcement rollout (when explicitly authorized)
+
+## Vehicle Onboarding responsibilities (unchanged)
+
+- Vehicle onboarding and offboarding product flows
+- VO5C product admission and MFA (historical P4A–P4B evidence preserved in place)
 
 ## Change approval (production)
 

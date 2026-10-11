@@ -8,5 +8,6 @@
 | 2026-10-11 | **DSRG-02-R0** | Read-only preflight for pin `40c6dd9` → `448a889` | None |
 | 2026-10-11 | **DSRG-02-R1** | VPS pin promotion; config pointer only; `40c6dd9` tree preserved | Live app unchanged |
 | 2026-10-11 | **DSRG-02-R2** | Final seal + evidence `DSRG_02_PIN_REPROMOTION_2026-10-11.md` | None (audit/docs) |
+| 2026-10-11 | **DSRG-03-R0** | Central registry row + authority bootstrap (`AUDIT_MANIFEST`, `CURRENT_STATE`, Production baseline); **no** `AUTHORITY_ACTIVE` | None (docs/audit) |
 
-Historical VO5C deploy-governance entries remain in `architecture/vehicle-onboarding/research/CHANGE_LEDGER.md`.
+Historical VO5C deploy-governance entries remain in `architecture/vehicle-onboarding/research/CHANGE_LEDGER.md` — **reference only**; do not duplicate rows here.
