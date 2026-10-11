@@ -16,5 +16,6 @@
 | 2026-10-11 | **DSRG-03-R2** | Knowledge graph, validators, Production R2 reconciliation, ledger migration | None (docs/audit) |
 | 2026-10-11 | **DSRG-03-R3** | Final authority audit; R3 Production + SQL; Gate A split; execution inventory; graph via registry CI chain | None (docs/audit) |
 | 2026-10-11 | **DSRG-03-R4** | Graph validator isolated deps (`architecture/dsrg/scripts`); no backend `npm ci`; negative fixture self-test; break-glass prerequisites BG-A–F; `BREAK_GLASS_READY=NOT_VERIFIED` | None (docs/validators) |
+| 2026-10-11 | **DSRG-03-R5** | Correct break-glass VPS paths to `/opt/synqdrive/shared/`; recovery mechanisms classified NOT_VERIFIED where unproven | None (docs) |
 
 Historical VO5C deploy-governance entries remain in [`../../vehicle-onboarding/research/CHANGE_LEDGER.md`](../../vehicle-onboarding/research/CHANGE_LEDGER.md) — reference only.

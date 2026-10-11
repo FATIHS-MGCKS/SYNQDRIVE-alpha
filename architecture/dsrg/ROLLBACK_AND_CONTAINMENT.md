@@ -18,9 +18,9 @@
 
 ## Pin pointer rollback
 
-On failed post-switch verification: restore `vo5c-pinned-executor.env.bak-<ts>`; do **not** restart PM2 or change `current` unless a separate deploy authorization exists.
+On failed post-switch verification: restore `/opt/synqdrive/shared/vo5c-pinned-executor.env` from `/opt/synqdrive/shared/vo5c-pinned-executor.env.bak-<ts>` (see DSRG-02 R1 backup naming); do **not** restart PM2 or change `current` unless a separate deploy authorization exists.
 
-## Break-glass recovery (documentation only — R4)
+## Break-glass recovery (documentation only — not production-verified)
 
 **Purpose:** Recover deployability when normal SSH/deploy credentials are unavailable, enforcement misconfigures the host, or the pinned path is locked. **Do not** store secrets, keys, or provider credentials in git or DSRG evidence markdown.
 
@@ -39,24 +39,26 @@ On failed post-switch verification: restore `vo5c-pinned-executor.env.bak-<ts>`;
 
 ### BG-C — Backup / restore: pin config and sudoers
 
-| Artifact | Typical path | Backup expectation |
-|----------|--------------|-------------------|
-| Pinned executor pointer | `/opt/synqdrive/config/vo5c-pinned-executor.env` | Timestamped `.bak-*` beside config on promotion (see DSRG-02 evidence) |
-| VO5C sudoers fragment | `/etc/sudoers.d/synqdrive-vo5c-deploy` | **Not installed** as of R3 audit; when installed, root-owned copy in encrypted ops vault + `visudo -c` after restore |
-| Pin tree | `/opt/synqdrive/pinned-executors/<sha>/` | Prior SHAs retained on disk; do not delete until floor policy allows |
+| Artifact | Verified path (DSRG-02 R1/R2, R3 audit) | Backup / status |
+|----------|----------------------------------------|-----------------|
+| Pinned executor pointer | `/opt/synqdrive/shared/vo5c-pinned-executor.env` | Timestamped `.bak-*` in same directory on promotion (e.g. `vo5c-pinned-executor.env.bak-20261011T002400Z`) |
+| Pin tree | `/opt/synqdrive/shared/pinned-executor/<full-sha>/` | Prior SHAs retained under `pinned-executor/` (e.g. `40c6dd9…`, `448a889…`); do not delete until floor policy allows |
+| VO5C sudoers fragment | `/etc/sudoers.d/synqdrive-vo5c-deploy` | **Not installed** as of R3 audit — restore procedure **NOT_VERIFIED** on production |
+| Pinned deploy wrapper (example) | `/opt/synqdrive/shared/bin/vo5c-pinned-deploy-wrapper.sh` | **Not installed** — example only in `vo5c-production-deploy-privilege-boundary.sudoers.example` |
+| Canonical pinned runner (in-tree) | `<PINNED_ROOT>/backend/scripts/ops/vps-vo5c-run-pinned-security-deploy.sh` where `PINNED_ROOT` comes from env | Verified at DSRG-02 seal; live invocation without deploy auth **NOT_VERIFIED** as routine operator path |
 
-Restore order: (1) sudoers removed or reverted if erroneous, (2) pin env pointer restored from backup, (3) `exec bash` runner smoke on pin tree, (4) only then consider deploy authorization.
+Restore order (documented; **NOT_VERIFIED** until BG-E drill): (1) if erroneous sudoers blocks recovery, root removes or reverts `/etc/sudoers.d/synqdrive-vo5c-deploy` and runs `visudo -c` — **NOT_VERIFIED** on VPS; (2) restore pin env from `.bak-*` in `/opt/synqdrive/shared/`; (3) read-only preflight on active pin tree (`vps-vo5c-first-security-deploy-preflight.sh`); (4) only then consider deploy authorization.
 
 ### BG-D — Erroneous enforcement / locked deploy path
 
-1. Set `ENFORCEMENT_ACTIVE` / VO5C enforcement env to **off** via approved config change (not documented here as live prod steps in R4).
-2. Remove or disable VO5C sudoers fragment if it blocks legitimate floor-qualified rollback.
-3. Run security-floor-qualified rollback script if release tree is bad; use Class C for RFRF-specific state.
+1. Set `ENFORCEMENT_ACTIVE` / VO5C enforcement env to **off** via approved config change — production steps **NOT_VERIFIED** in DSRG-03 (enforcement remains OFF).
+2. If a future VO5C sudoers rule blocks floor-qualified rollback: root must remove or disable `/etc/sudoers.d/synqdrive-vo5c-deploy` (or restore vault copy) — **NOT_VERIFIED** (fragment absent today).
+3. Run security-floor-qualified rollback script if release tree is bad; use Class C for RFRF-specific state — floor scripts exist in repo/pin; erroneous-policy recovery **NOT_VERIFIED** end-to-end.
 4. Re-run pinned preflight **without** production mutate until human sign-off.
 
 ### BG-E — Recovery drill (mandatory before enforcement go-live)
 
-Scheduled drill must cover: simulated lost deploy key (tabletop or provider test account), pin config restore from backup, sudoers install/remove dry-run on staging, and denied rollback path. **Not executed in DSRG-03 R4.**
+Scheduled drill must cover: simulated lost deploy key (tabletop or provider test account), pin config restore from backup under `/opt/synqdrive/shared/`, sudoers install/remove dry-run on staging, and denied rollback path. **Not executed** (DSRG-03 R4/R5).
 
 ### BG-F — Audit and approval
 
