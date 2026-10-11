@@ -196,6 +196,42 @@ nodes:
     source_paths:
       - architecture/dimo-integration/contradictions/OPEN_CONTRADICTIONS.md
 
+  - id: DIM-CX-002
+    type: contradiction
+    title: Legacy DimoTriggersService subscribe path vs Vehicle Triggers API
+    epistemic_status: CONFIRMED
+    summary: Nest client uses POST /vehicles/{tokenId}; official API uses /subscribe/{tokenDID}; ops scripts use current API.
+    source_paths:
+      - architecture/dimo-integration/contradictions/OPEN_CONTRADICTIONS.md
+      - backend/src/modules/dimo/dimo-triggers.service.ts
+
+  - id: DIM-CX-003
+    type: contradiction
+    title: Legacy DimoTriggersService createWebhook payload vs Vehicle Triggers API
+    epistemic_status: CONFIRMED
+    summary: Nest client posts {name,url}; official API requires CEL webhook definition fields.
+    source_paths:
+      - architecture/dimo-integration/contradictions/OPEN_CONTRADICTIONS.md
+      - backend/src/modules/dimo/dimo-triggers.service.ts
+
+  - id: DIM-CX-004
+    type: contradiction
+    title: Authority SHA drift vs R1 read-only Production forensics
+    epistemic_status: CONFIRMED
+    summary: Pre-R1 docs stale; R1 records Production 2b89f746… and origin/main 0633d0831….
+    source_paths:
+      - architecture/dimo-integration/contradictions/OPEN_CONTRADICTIONS.md
+      - architecture/dimo-integration/evidence/R1_PRODUCTION_FORENSICS_2026-10-11.md
+
+  - id: DIM-CX-005
+    type: contradiction
+    title: R9 webhook definition status failed vs historical enabled assumption
+    epistemic_status: CONFIRMED
+    summary: Provider GET @ 2026-10-11 shows R9 speed/ignition webhooks status failed; subscriptions 5/5 remain on cohort vehicles.
+    source_paths:
+      - architecture/dimo-integration/evidence/R2_R9_PROVIDER_READ_AUDIT_2026-10-11.md
+      - architecture/dimo-integration/contradictions/OPEN_CONTRADICTIONS.md
+
   - id: DIM-HYP-001
     type: hypothesis
     title: Production receives speed/ignition webhooks for active R9 cohort

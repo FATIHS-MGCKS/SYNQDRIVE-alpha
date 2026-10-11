@@ -4,6 +4,7 @@ Append-only record for this authority directory.
 
 | Date (UTC) | Change | Workstream | Evidence |
 |------------|--------|------------|----------|
+| 2026-10-11 | Cross-ref DIMO R2.1 — R9 provider defs `failed` since 2026-10-09; ingress wake path **inactive**; tiered polling fallback remains; no TDL code change | DIMO R2.1 forensics (docs-only) | [../../dimo-integration/evidence/R21_R9_PROVIDER_AND_INGRESS_FORENSICS.md](../../dimo-integration/evidence/R21_R9_PROVIDER_AND_INGRESS_FORENSICS.md) |
 | 2026-09-06 | Created partial authority at `architecture/trip-detection-lifecycle/` | Canonical authority bootstrap | Branch `cursor/trip-detection-lifecycle-authority-bootstrap-64c8` |
 | 2026-09-06 | Registry transition `NOT_STARTED` → `AUDIT_IN_PROGRESS` | Same | `architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md` |
 | 2026-09-06 | Indexed P1 + P2–R8 + Production evidence | Same | [EVIDENCE_INDEX.md](../evidence/EVIDENCE_INDEX.md) |

@@ -1,0 +1,195 @@
+3390927 bash -c pgrep -af vps-deploy || echo no_deploy; cd /opt/synqdrive/current/backend && sudo node scripts/ops/r23-187336-provider-unsubscribe.mjs --execute
+{
+  "mode": "EXECUTE",
+  "observedAt": "2026-10-11T20:25:50.509Z",
+  "assetDid": "did:erc721:137:0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF:187336",
+  "before": {
+    "linkCount": 6,
+    "inventory": [
+      {
+        "webhookId": "f6bdbe85-dec0-4e60-ad61-d9183cd55484",
+        "stableId": "1f96faea6569",
+        "displayName": "High RPM Triger",
+        "service": "signals",
+        "metricName": "vss.powertrainCombustionEngineSpeed",
+        "status": "enabled",
+        "callbackMatch": true,
+        "synqDriveOwned": true
+      },
+      {
+        "webhookId": "7a0562d3-369a-45eb-b5ed-8d35258091dd",
+        "stableId": "b977124a025a",
+        "displayName": "OBD Device Plugged in",
+        "service": "signals",
+        "metricName": "vss.obdIsPluggedIn",
+        "status": "disabled",
+        "callbackMatch": true,
+        "synqDriveOwned": true
+      },
+      {
+        "webhookId": "49438f51-3ca5-4808-81d5-3598336c53a3",
+        "stableId": "a257daa23ee5",
+        "displayName": "OBD Device unplugged",
+        "service": "signals",
+        "metricName": "vss.obdIsPluggedIn",
+        "status": "enabled",
+        "callbackMatch": true,
+        "synqDriveOwned": true
+      },
+      {
+        "webhookId": "3a2fcd34-1a74-45db-bee9-75e340f36b00",
+        "stableId": "5d611d470eab",
+        "displayName": "SynqDrive R9 Ignition Wake",
+        "service": "signals",
+        "metricName": "vss.isIgnitionOn",
+        "status": "failed",
+        "callbackMatch": true,
+        "synqDriveOwned": true
+      },
+      {
+        "webhookId": "7a5e81bc-8f48-4b62-877a-9df104c1f42e",
+        "stableId": "9eeb7158afee",
+        "displayName": "SynqDrive R9 Speed Wake",
+        "service": "signals",
+        "metricName": "vss.speed",
+        "status": "failed",
+        "callbackMatch": true,
+        "synqDriveOwned": true
+      },
+      {
+        "webhookId": "03213b1b-7335-4565-bd5c-6f158c671b60",
+        "stableId": "581ffa8afea0",
+        "displayName": "SynqDrive VDC OBD PLUG Canary KS MX 2024 (TEMP)",
+        "service": "signals",
+        "metricName": "vss.obdIsPluggedIn",
+        "status": "enabled",
+        "callbackMatch": true,
+        "synqDriveOwned": true
+      }
+    ]
+  },
+  "mutations": [
+    {
+      "webhookId": "7a5e81bc-8f48-4b62-877a-9df104c1f42e",
+      "stableId": "9eeb7158afee",
+      "displayName": "SynqDrive R9 Speed Wake",
+      "httpStatus": 200,
+      "error": null,
+      "subscriberCountBefore": 5,
+      "subscriberCountAfter": 4,
+      "has187336After": false,
+      "vehicleStillLinked": false
+    },
+    {
+      "webhookId": "3a2fcd34-1a74-45db-bee9-75e340f36b00",
+      "stableId": "5d611d470eab",
+      "displayName": "SynqDrive R9 Ignition Wake",
+      "httpStatus": 200,
+      "error": null,
+      "subscriberCountBefore": 5,
+      "subscriberCountAfter": 4,
+      "has187336After": false,
+      "vehicleStillLinked": false
+    },
+    {
+      "webhookId": "f6bdbe85-dec0-4e60-ad61-d9183cd55484",
+      "stableId": "1f96faea6569",
+      "displayName": "High RPM Triger",
+      "httpStatus": 200,
+      "error": null,
+      "subscriberCountBefore": 7,
+      "subscriberCountAfter": 6,
+      "has187336After": false,
+      "vehicleStillLinked": false
+    },
+    {
+      "webhookId": "7a0562d3-369a-45eb-b5ed-8d35258091dd",
+      "stableId": "b977124a025a",
+      "displayName": "OBD Device Plugged in",
+      "httpStatus": 200,
+      "error": null,
+      "subscriberCountBefore": 6,
+      "subscriberCountAfter": 5,
+      "has187336After": false,
+      "vehicleStillLinked": false
+    },
+    {
+      "webhookId": "49438f51-3ca5-4808-81d5-3598336c53a3",
+      "stableId": "a257daa23ee5",
+      "displayName": "OBD Device unplugged",
+      "httpStatus": 200,
+      "error": null,
+      "subscriberCountBefore": 7,
+      "subscriberCountAfter": 6,
+      "has187336After": false,
+      "vehicleStillLinked": false
+    },
+    {
+      "webhookId": "03213b1b-7335-4565-bd5c-6f158c671b60",
+      "stableId": "581ffa8afea0",
+      "displayName": "SynqDrive VDC OBD PLUG Canary KS MX 2024 (TEMP)",
+      "httpStatus": 200,
+      "error": null,
+      "subscriberCountBefore": 1,
+      "subscriberCountAfter": 0,
+      "has187336After": false,
+      "vehicleStillLinked": false
+    }
+  ],
+  "after": {
+    "linkCount": 0,
+    "inventory": []
+  },
+  "cohortSnapshot": {
+    "186946": {
+      "linkCount": 5,
+      "speed": true,
+      "ign": true
+    },
+    "187336": {
+      "linkCount": 0,
+      "speed": false,
+      "ign": false
+    },
+    "187361": {
+      "linkCount": 5,
+      "speed": true,
+      "ign": true
+    },
+    "187784": {
+      "linkCount": 5,
+      "speed": true,
+      "ign": true
+    },
+    "190497": {
+      "linkCount": 3,
+      "speed": false,
+      "ign": false
+    },
+    "192922": {
+      "linkCount": 5,
+      "speed": true,
+      "ign": true
+    }
+  },
+  "r9Definitions": [
+    {
+      "id": "3a2fcd34-1a74-45db-bee9-75e340f36b00",
+      "stableId": "5d611d470eab",
+      "displayName": "SynqDrive R9 Ignition Wake",
+      "metricName": "vss.isIgnitionOn",
+      "status": "failed",
+      "condition": "valueNumber == 1",
+      "coolDownPeriod": 30
+    },
+    {
+      "id": "7a5e81bc-8f48-4b62-877a-9df104c1f42e",
+      "stableId": "9eeb7158afee",
+      "displayName": "SynqDrive R9 Speed Wake",
+      "metricName": "vss.speed",
+      "status": "failed",
+      "condition": "valueNumber > 3",
+      "coolDownPeriod": 30
+    }
+  ]
+}

@@ -1,0 +1,176 @@
+{
+  "generatedAt": "2026-10-11T19:09:40.612Z",
+  "auditHeadSha": "017f163586967e4c8e7a16ba2af3f91c58453e87",
+  "edges": [
+    {
+      "from": "entry:DimoSnapshotScheduler",
+      "to": "IMPL-Q001-SNAPSHOT",
+      "kind": "triggers"
+    },
+    {
+      "from": "DimoTelemetryService.fetchLatestVehicleSnapshot",
+      "to": "IMPL-Q001-SNAPSHOT",
+      "kind": "direct_call"
+    },
+    {
+      "from": "TripDetectionOrchestrationService (post-snapshot)",
+      "to": "IMPL-Q001-SNAPSHOT",
+      "kind": "indirect_call"
+    },
+    {
+      "from": "BatteryV2SnapshotObservationProducer",
+      "to": "IMPL-Q001-SNAPSHOT",
+      "kind": "indirect_call"
+    },
+    {
+      "from": "entry:VehiclesService on-demand",
+      "to": "IMPL-Q002-LASTSEEN",
+      "kind": "triggers"
+    },
+    {
+      "from": "DimoTelemetryService.fetchLastSeenLocation",
+      "to": "IMPL-Q002-LASTSEEN",
+      "kind": "direct_call"
+    },
+    {
+      "from": "Fleet map fallback",
+      "to": "IMPL-Q002-LASTSEEN",
+      "kind": "indirect_call"
+    },
+    {
+      "from": "entry:DimoController",
+      "to": "IMPL-Q003-VEHICLE-SUMMARY-INLINE",
+      "kind": "triggers"
+    },
+    {
+      "from": "entry:DimoApiSyncService",
+      "to": "IMPL-Q003-VEHICLE-SUMMARY-INLINE",
+      "kind": "triggers"
+    },
+    {
+      "from": "DimoTelemetryService.fetchVehicleSummary",
+      "to": "IMPL-Q003-VEHICLE-SUMMARY-INLINE",
+      "kind": "direct_call"
+    },
+    {
+      "from": "entry:Vehicle sync / onboarding paths",
+      "to": "IMPL-Q004-VIN-INLINE",
+      "kind": "triggers"
+    },
+    {
+      "from": "entry:dimo-dtc.processor scheduled poll",
+      "to": "IMPL-Q005-DTC",
+      "kind": "triggers"
+    },
+    {
+      "from": "entry:webhook obdDTCList",
+      "to": "IMPL-Q005-DTC",
+      "kind": "triggers"
+    },
+    {
+      "from": "entry:TripDetectionOrchestrationService active trip ticks",
+      "to": "IMPL-Q006-TRIP-CORE",
+      "kind": "triggers"
+    },
+    {
+      "from": "DimoSegmentsService.fetchRawTripCoreData",
+      "to": "IMPL-Q006-TRIP-CORE",
+      "kind": "direct_call"
+    },
+    {
+      "from": "DimoSegmentsService.fetchRouteEnrichmentData",
+      "to": "IMPL-Q007-ROUTE",
+      "kind": "direct_call"
+    },
+    {
+      "from": "DimoSegmentsService.fetchPerformanceData",
+      "to": "IMPL-Q008-PERF",
+      "kind": "direct_call"
+    },
+    {
+      "from": "DimoSegmentsService.fetchHighFrequencyData",
+      "to": "IMPL-Q009-HF",
+      "kind": "direct_call"
+    },
+    {
+      "from": "Driving Intelligence",
+      "to": "IMPL-Q009-HF",
+      "kind": "indirect_call"
+    },
+    {
+      "from": "Reference capture",
+      "to": "IMPL-Q009-HF",
+      "kind": "indirect_call"
+    },
+    {
+      "from": "Energy calibration scripts",
+      "to": "IMPL-Q009-HF",
+      "kind": "indirect_call"
+    },
+    {
+      "from": "DimoSegmentsService.fetchTirePressureHistory",
+      "to": "IMPL-Q011-TIRE-HISTORY",
+      "kind": "direct_call"
+    },
+    {
+      "from": "DimoSegmentsService.fetchBatteryCrankWindow",
+      "to": "IMPL-Q012-CRANK",
+      "kind": "direct_call"
+    },
+    {
+      "from": "Battery V2",
+      "to": "IMPL-Q012-CRANK",
+      "kind": "indirect_call"
+    },
+    {
+      "from": "DimoSegmentsService.fetchDrivingEvents*",
+      "to": "IMPL-Q015-EVENTS",
+      "kind": "direct_call"
+    },
+    {
+      "from": "dimo-available-signals-preflight",
+      "to": "IMPL-Q018-DATA-SUMMARY",
+      "kind": "direct_call"
+    },
+    {
+      "from": "reference-capture-preflight",
+      "to": "IMPL-Q018-DATA-SUMMARY",
+      "kind": "direct_call"
+    },
+    {
+      "from": "DimoTelemetryService.fetchBatteryCapabilityPreflightSnapshot",
+      "to": "IMPL-Q020-BATTERY-PREFLIGHT",
+      "kind": "direct_call"
+    },
+    {
+      "from": "battery-capability-preflight.service",
+      "to": "IMPL-Q020-BATTERY-PREFLIGHT",
+      "kind": "direct_call"
+    },
+    {
+      "from": "DimoTelemetryService.probeRechargeSegments",
+      "to": "IMPL-Q021-RECHARGE-PROBE",
+      "kind": "direct_call"
+    },
+    {
+      "from": "DimoSegmentsService.fetchTripSegments*",
+      "to": "IMPL-Q022-TRIP-SEGMENTS",
+      "kind": "direct_call"
+    },
+    {
+      "from": "Trip detection",
+      "to": "IMPL-Q022-TRIP-SEGMENTS",
+      "kind": "indirect_call"
+    },
+    {
+      "from": "Reconciliation",
+      "to": "IMPL-Q022-TRIP-SEGMENTS",
+      "kind": "indirect_call"
+    },
+    {
+      "from": "Energy Events / KG-EED",
+      "to": "IMPL-Q023-REFUEL-SEG",
+      "kind": "indirect_call"
+    }
+  ]
+}
