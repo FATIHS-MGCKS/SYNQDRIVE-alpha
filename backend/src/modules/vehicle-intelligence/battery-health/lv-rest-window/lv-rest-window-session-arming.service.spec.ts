@@ -309,6 +309,62 @@ describe('LvRestWindowSessionArmingService (finalized-trip liveness fix)', () =>
     });
   });
 
+  describe('G5C-N2 post-anchor trip-phase telemetry (production)', () => {
+    it('opens CANDIDATE when source_timestamp is at anchor but speed is still non-zero (Tiguan WOB L 7503)', async () => {
+      latestStates.set(VEHICLE, {
+        ...frozenAtAnchorLatestState(),
+        speedKmh: 32,
+        isIgnitionOn: true,
+        engineLoad: 14.12,
+        lvBatteryVoltage: 14.504,
+        sourceTimestamp: new Date(ANCHOR.getTime() + 2_000),
+        providerFetchedAt: new Date(FINALIZED_AT.getTime() + 3_600_000),
+      });
+
+      const result = await ensure();
+
+      expect(result.outcome).toBe('opened');
+      expect(result.promotedToResting).toBe(false);
+      expect([...sessions.values()][0].metadata.lvRestWindowState).toBe(
+        LvRestWindowState.CANDIDATE,
+      );
+      expect(restTargetProducer.scheduleRest60m).not.toHaveBeenCalled();
+    });
+
+    it('opens CANDIDATE when post-anchor alternator voltage implies charging_context (KS MS 661)', async () => {
+      latestStates.set(VEHICLE, {
+        ...frozenAtAnchorLatestState(),
+        speedKmh: 0,
+        isIgnitionOn: false,
+        engineLoad: 35.69,
+        lvBatteryVoltage: 13.7,
+        sourceTimestamp: new Date(ANCHOR.getTime() + 2_000),
+        providerFetchedAt: new Date(FINALIZED_AT.getTime() + 60_000),
+      });
+
+      const result = await ensure();
+
+      expect(result.outcome).toBe('opened');
+      expect(result.promotedToResting).toBe(false);
+      expect([...sessions.values()][0].metadata.lvRestWindowState).toBe(
+        LvRestWindowState.CANDIDATE,
+      );
+    });
+
+    it('still rejects when provider observation is missing', async () => {
+      latestStates.set(VEHICLE, {
+        ...frozenAtAnchorLatestState(),
+        sourceTimestamp: null,
+        providerFetchedAt: new Date(FINALIZED_AT.getTime()),
+      });
+
+      const result = await ensure();
+      expect(result.outcome).toBe('not_eligible');
+      expect(result.reason).toBe('missing_provider_observed_at');
+      expect(sessions.size).toBe(0);
+    });
+  });
+
   describe('stalled pre-anchor telemetry (B variant)', () => {
     it('opens a CANDIDATE with unknown momentary context when the last observation predates the anchor', async () => {
       // Trip end was interpolated AFTER the last observation: frozen mid-trip

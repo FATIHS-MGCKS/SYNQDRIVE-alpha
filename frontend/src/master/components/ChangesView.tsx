@@ -36,6 +36,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-g5c-n2-rest-session-opening-liveness-2026-10-11',
+    version: '4.9.2238',
+    title: 'Battery V2 G5C-N2 — finalized-trip REST session opening vs trip-phase telemetry',
+    summary: [
+      'Post-anchor latest_state that still shows movement or alternator-band LV no longer vetoes LV_REST_WINDOW CANDIDATE creation on finalized trips.',
+      'Full opening gates apply only when the observation credibly passes canOpenRestWindowCandidate; otherwise momentary context is stripped (same as pre-anchor stall).',
+      'REST_SNAPSHOT promotion and in-window measurement quality gates unchanged.',
+    ],
+    reason:
+      'Production post-T0 completed trips invoked BATTERY_LV_REST_SESSION_OPEN but returned not_eligible (speed_not_zero / charging_context) with zero new sessions.',
+    previousBehavior:
+      'Any source_timestamp at/after trip.endTime used full TRIP_ENDED opening gates, blocking sessions when trip detection finalized before telemetry reflected rest.',
+    details: 'lv-rest-window-session-arming.service.ts (+ spec G5C-N2 production shapes)',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-11T01:05:00.000Z',
+  },
+  {
     id: 'battery-v2-g5b-customer-hv-telemetry-freshness-2026-10-10',
     version: '4.9.2237',
     title: 'Battery V2 G5B — customer HV telemetry freshness boundary',
