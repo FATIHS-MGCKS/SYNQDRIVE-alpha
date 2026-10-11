@@ -24,8 +24,17 @@
 | `SYNQDRIVE_DEPLOYED_GIT_SHA` | Declared deploy attestation in `backend.env` | Live release after successful deploy (P4B16 target) |
 | `APD_SHADOW_EPOCH_APPROVED_RELEASE_SHA` | APDS authorized release | **Independent** workflow; never auto-updated on deploy |
 
-## P6 seal notes
+## Production pin lineage (VPS)
 
-- New pin directory `555` root:root; parent `755` root:root
-- `chattr +i` not applied until OS activation phase
-- dc30 tree preserved side-by-side
+| Pin SHA | Role | Status |
+|---------|------|--------|
+| `dc30d2c91e458603c7d45ba2e25c1ca0a1d0c672` | Pre-P4B15 bootstrap | Preserved on disk |
+| `40c6dd99d60cb07575bcb687586c66c50651e213` | P4B15 merge (P6) | Preserved; superseded in config |
+| `448a88985b78b6a7c4d973913b9a6213bae3e9b4` | DSRG-01 merge (#1970) | **Active** in `vo5c-pinned-executor.env` |
+
+## Seal notes
+
+- Prefer **git-clean** ops trees over `chmod +x` on `vps-deploy-release.sh` (mode 100644).
+- Invoke runner only from `$PINNED_EXECUTOR_ROOT/backend/scripts/ops/`.
+- `chattr +i` not applied until OS activation phase (R2 seal: absent).
+- Side-by-side old pin directories retained for rollback forensics.

@@ -23,13 +23,13 @@ This directory is **documentation-only**. It does not replace:
 
 ## Certified production pin (reference)
 
-| Role | SHA (2026-10-10) |
-|------|------------------|
-| Pinned executor (post P6) | `40c6dd99d60cb07575bcb687586c66c50651e213` |
+| Role | SHA |
+|------|-----|
+| Active pinned executor (post DSRG-02 R1) | `448a88985b78b6a7c4d973913b9a6213bae3e9b4` |
 | Live application release | `7f47c9f5b5e35c425deb3c2b6bdaed9df73e5c7c` |
-| Prior pinned executor (preserved) | `dc30d2c91e458603c7d45ba2e25c1ca0a1d0c672` |
+| Prior pins preserved on VPS | `40c6dd9…`, `dc30d2c…` |
 
-Enforcement (`VO5C_PRODUCTION_DEPLOY_ENFORCEMENT_ACTIVE=1`) and OS sudoers remain **not activated** as of DSRG-01.
+Enforcement (`VO5C_PRODUCTION_DEPLOY_ENFORCEMENT_ACTIVE=1`) and OS sudoers remain **not activated** as of DSRG-02 R2 seal.
 
 ## Registry follow-up (formal)
 
