@@ -6,8 +6,9 @@
 ## Mandatory read-first sequence
 
 1. [README.md](README.md), [AUDIT_MANIFEST.md](AUDIT_MANIFEST.md), [CURRENT_STATE.md](CURRENT_STATE.md)
-2. [evidence/EVIDENCE_INDEX.md](evidence/EVIDENCE_INDEX.md), [evidence/PRODUCTION_BASELINE.md](evidence/PRODUCTION_BASELINE.md), [operations/WEBHOOK_OPERATIONS.md](operations/WEBHOOK_OPERATIONS.md) (provider webhook mutations)
-3. [decisions/DECISION_REGISTER.md](decisions/DECISION_REGISTER.md) — includes **DIM-R9-001**
+2. R1 corpus: [research/AGENT_TROUBLESHOOTING_GUIDE.md](research/AGENT_TROUBLESHOOTING_GUIDE.md) + linked `research/*` chapters in [README.md](README.md)
+3. [evidence/EVIDENCE_INDEX.md](evidence/EVIDENCE_INDEX.md), [evidence/PRODUCTION_BASELINE.md](evidence/PRODUCTION_BASELINE.md), [evidence/R1_PRODUCTION_FORENSICS_2026-10-11.md](evidence/R1_PRODUCTION_FORENSICS_2026-10-11.md), [operations/WEBHOOK_OPERATIONS.md](operations/WEBHOOK_OPERATIONS.md) (provider webhook mutations)
+4. [decisions/DECISION_REGISTER.md](decisions/DECISION_REGISTER.md) — includes **DIM-R9-001**
 4. Neighbor: [Trip Detection & Lifecycle](../trip-detection-lifecycle/README.md) for R9 wake boundary
 
 ## Substantive change duty

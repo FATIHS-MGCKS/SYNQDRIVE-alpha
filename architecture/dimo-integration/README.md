@@ -5,7 +5,7 @@
 | **Registry coverage status** | `AUDIT_IN_PROGRESS` |
 | **Authority maturity** | `PARTIAL_RECONSTRUCTION` |
 | **Authority directory** | `architecture/dimo-integration/` |
-| **Last updated** | 2026-09-26 |
+| **Last updated** | 2026-10-11 (R1 deep audit) |
 
 ## Status banner
 
@@ -17,9 +17,9 @@ Bootstrap triggered by **R9 pre-merge governance correction** — substantive we
 |-------|--------|
 | **0 — Entry and scope** | **Complete** |
 | **1 — Repository current-state audit** | **Initial consolidated baseline** — in progress |
-| **2 — Production read-only audit** | **Verified baseline established** — R9 runtime on Production (ancestor of `8a1d9c658…` @ `20260925182907_v4994`); **R9 authorized provider cohort 5/5** speed+ignition (TDL-OQ-009 / DIM-EV-R9-CANARY-001 re-read); natural R9 **start** wake **PRODUCTION_OBSERVED / PARTIALLY_VALIDATED** (KS MS 661); fleet-wide wake-rate KPI **unknown** |
-| **3 — Reconciliation and classification** | **Pending / in progress** |
-| **4 — Authority construction** | **Partial** — bootstrap graph + R9 cross-module decision + canary evidence |
+| **2 — Production read-only audit** | **R1 refresh @ 2026-10-11** — Production `2b89f746…` @ `20261011154442_v4994` ([evidence/R1_PRODUCTION_FORENSICS_2026-10-11.md](evidence/R1_PRODUCTION_FORENSICS_2026-10-11.md)); historical R9 cohort evidence retained |
+| **3 — Reconciliation and classification** | **In progress** — R1 repo vs Production SHA drift documented (`DIM-CX-004`) |
+| **4 — Authority construction** | **Partial** — bootstrap graph + **R1 `research/*` corpus** + machine inventory |
 | **5 — Validation and promotion gate** | **Pending** |
 
 ## Scope
@@ -53,6 +53,25 @@ Flat `architecture/DIMO_*.md` files are **supporting evidence**, not routing aut
 | Document | Role |
 |----------|------|
 | [operations/WEBHOOK_OPERATIONS.md](operations/WEBHOOK_OPERATIONS.md) | Verified DIMO Vehicle Triggers API workflows (R9-proven); webhook recovery design |
+
+## R1 deep audit research corpus (`2026-10-11`)
+
+| Document | Topic |
+|----------|--------|
+| [research/REPOSITORY_INVENTORY.md](research/REPOSITORY_INVENTORY.md) | Repo-wide file/symbol inventory |
+| [research/DIMO_PROVIDER_CAPABILITIES.md](research/DIMO_PROVIDER_CAPABILITIES.md) | Provider APIs vs SynqDrive |
+| [research/AUTHENTICATION_AND_PRIVILEGES.md](research/AUTHENTICATION_AND_PRIVILEGES.md) | JWT chain + privileges |
+| [research/GRAPHQL_QUERY_REGISTRY.md](research/GRAPHQL_QUERY_REGISTRY.md) | Q001–Q027 re-validation |
+| [research/SIGNAL_CAPABILITY_CATALOG.md](research/SIGNAL_CAPABILITY_CATALOG.md) | Signal layers + preflight |
+| [research/POLLING_AND_WAKE_ARCHITECTURE.md](research/POLLING_AND_WAKE_ARCHITECTURE.md) | Scheduler, tiers, R9 wake |
+| [research/WEBHOOK_AND_TRIGGER_ARCHITECTURE.md](research/WEBHOOK_AND_TRIGGER_ARCHITECTURE.md) | Ingress trust + triggers API drift |
+| [research/PROVIDER_BUDGET_AND_FAILURES.md](research/PROVIDER_BUDGET_AND_FAILURES.md) | Budget executor + failures |
+| [research/VEHICLE_IDENTITY_AND_CONSENT.md](research/VEHICLE_IDENTITY_AND_CONSENT.md) | Links + consent pointers |
+| [research/CROSS_MODULE_CONSUMER_GRAPH.md](research/CROSS_MODULE_CONSUMER_GRAPH.md) | Downstream consumers |
+| [research/DIMO_CAPABILITY_GAP_ANALYSIS.md](research/DIMO_CAPABILITY_GAP_ANALYSIS.md) | Gaps and R2 backlog |
+| [research/AGENT_TROUBLESHOOTING_GUIDE.md](research/AGENT_TROUBLESHOOTING_GUIDE.md) | Agent quickstart |
+
+Machine inventory: [evidence/R1_REPOSITORY_INVENTORY.json](evidence/R1_REPOSITORY_INVENTORY.json)
 
 ## Validation
 

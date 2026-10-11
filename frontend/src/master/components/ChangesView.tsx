@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-integration-r1-deep-audit-2026-10-11',
+    version: '4.9.2239',
+    title: 'DIMO Integration — R1 deep audit authority corpus (docs only)',
+    summary: [
+      'Repository-wide DIMO forensics at origin/main 0633d0831… with Production read-only baseline 2b89f746… @ 20261011154442_v4994.',
+      'New research/* chapters: inventory, provider capabilities, auth, GraphQL Q001–Q027 re-validation, polling/wake, webhooks, consumer graph, agent quickstart.',
+      'Registered contradictions DIM-CX-002/003 (legacy DimoTriggersService vs current Vehicle Triggers API) and DIM-CX-004 (authority SHA drift).',
+    ],
+    reason:
+      'Future coding agents need a navigable DIMO authority without re-deriving entry points, query registry, and production/repo drift.',
+    previousBehavior:
+      'DIMO Integration AUDIT_IN_PROGRESS with partial bootstrap docs and historical Production SHA 8a1d9c658… only.',
+    details:
+      'architecture/dimo-integration/research/*, evidence/R1_REPOSITORY_INVENTORY.json, evidence/R1_PRODUCTION_FORENSICS_2026-10-11.md',
+    affectsArchitecture: true,
+    module: 'DIMO Integration',
+    createdAt: '2026-10-11T18:55:00.000Z',
+  },
+  {
     id: 'battery-v2-g5c-n2-rest-session-opening-liveness-2026-10-11',
     version: '4.9.2238',
     title: 'Battery V2 G5C-N2 — finalized-trip REST session opening vs trip-phase telemetry',

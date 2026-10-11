@@ -2,10 +2,12 @@
 
 | Field | Value |
 |-------|-------|
-| **origin/main (current)** | `1393095f5d8faa2ff73e9dce5fe84024841e2528` — includes R9 runtime merged via #1553 @ `4bef60463…` |
+| **origin/main (R1 current @ 2026-10-11)** | `0633d08311803b1473c6e7a274e5074e4cb69a08` |
+| **origin/main (historical @ 2026-09-26)** | `1393095f5d8faa2ff73e9dce5fe84024841e2528` — includes R9 runtime merged via #1553 @ `4bef60463…` |
 | **R9 merge on main** | `4bef60463…` (PR #1553) |
 | **R9 audit branch (historical)** | `1186e9d23a9b07e24da17b06a72f2614038db77a` — pre-merge audit baseline; superseded by main merge |
-| **Production baseline (current)** | `8a1d9c6586cbddc41bb6c94870f9d51226d71aa2` @ `/opt/synqdrive/releases/20260925182907_v4994` (TDL-OQ-008 / TDL-OQ-009 read-only) |
+| **Production baseline (R1 current @ 2026-10-11)** | `2b89f7466836b81a4ba344138d0ad9817c5d14ee` @ `/opt/synqdrive/releases/20261011154442_v4994` — [evidence/R1_PRODUCTION_FORENSICS_2026-10-11.md](evidence/R1_PRODUCTION_FORENSICS_2026-10-11.md) |
+| **Production baseline (historical @ 2026-09-26)** | `8a1d9c6586cbddc41bb6c94870f9d51226d71aa2` @ `/opt/synqdrive/releases/20260925182907_v4994` (TDL-OQ-008 / TDL-OQ-009 read-only) |
 | **Production baseline (historical R10)** | `68495041974135f7c6565fd5b836b3e2f9176fae` @ `/opt/synqdrive/releases/20260908172927_v4994` |
 | **Pre-R10 Production (historical)** | `0ba96e03fc2f1551db79d2dae151c928a9fd936a` @ `/opt/synqdrive/releases/20260907204434_v4994` |
 | **Last verified Production evidence** | `2026-09-26` — subscription re-read @ `8a1d9c658…` (TDL-EVID-OQ009-R9-INGRESS-001 cross-ref); KS MS 661 natural start wake historical @ `684950419…` / `f7eb94cb…` |

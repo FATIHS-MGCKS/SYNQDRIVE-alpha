@@ -1,8 +1,10 @@
 # DIMO Integration — Evidence Index
 
-**origin/main (current):** `1393095f5d8faa2ff73e9dce5fe84024841e2528` — includes R9 merged via #1553 @ `4bef60463…`
+**origin/main (R1 @ 2026-10-11):** `0633d08311803b1473c6e7a274e5074e4cb69a08`
+**origin/main (historical):** `1393095f5d8faa2ff73e9dce5fe84024841e2528` — includes R9 merged via #1553 @ `4bef60463…`
 **R9 audit branch (historical):** `1186e9d23a9b07e24da17b06a72f2614038db77a` — pre-merge audit baseline
-**Production release (current):** `8a1d9c6586cbddc41bb6c94870f9d51226d71aa2` @ `/opt/synqdrive/releases/20260925182907_v4994` (TDL-OQ-009 read-only @ `2026-09-26`)
+**Production release (R1 current @ 2026-10-11):** `2b89f7466836b81a4ba344138d0ad9817c5d14ee` @ `/opt/synqdrive/releases/20261011154442_v4994` — [R1_PRODUCTION_FORENSICS_2026-10-11.md](R1_PRODUCTION_FORENSICS_2026-10-11.md)
+**Production release (historical @ 2026-09-26):** `8a1d9c6586cbddc41bb6c94870f9d51226d71aa2` @ `/opt/synqdrive/releases/20260925182907_v4994` (TDL-OQ-009 read-only)
 **Production release (historical R9 canary):** `0ba96e03fc2f1551db79d2dae151c928a9fd936a` @ `/opt/synqdrive/releases/20260907204434_v4994`
 **Production release (historical pre-R9):** `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac` @ `/opt/synqdrive/releases/20260906213654_v4994`
 
@@ -27,6 +29,9 @@
 | DIM-EV-KS-MS-661-R9-002 | PRODUCTION_OBSERVATION | [KS_MS_661_R9_WAKE_R11_2026-09-09.md](KS_MS_661_R9_WAKE_R11_2026-09-09.md) | **Second** natural start wake @ R11 `f7eb94cb…`; FSM `DIMO_TRIGGER`/`IGNITION_ON` @ 04:38:17Z; replica A | CONFIRMED_AT_PRODUCTION_RELEASE @ `f7eb94cb…` | Start wake only; end-path wake not observed |
 | DIM-EV-WEBHOOK-OPS-001 | OPERATIONS_RUNBOOK | [operations/WEBHOOK_OPERATIONS.md](../operations/WEBHOOK_OPERATIONS.md) | Verified DIMO Vehicle Triggers API workflows (auth, list, create, subscribe, PUT update, rollback); UNPLUG recovery PUT executed 2026-09-12 | CONFIRMED | Cross-ref VDC-EVID-GT-R1-UNPLUG-RECOVERY-001 |
 | DIM-EVID-OQ006-BOUNDARY-001 | PRODUCTION_OBSERVATION | [../trip-detection-lifecycle/evidence/TDL_OQ_006_DIMO_SEGMENT_FSM_BOUNDARY_AUDIT_2026-09-25.md](../trip-detection-lifecycle/evidence/TDL_OQ_006_DIMO_SEGMENT_FSM_BOUNDARY_AUDIT_2026-09-25.md) | DIM-GAP-001 / segment vs FSM boundary ownership | CONFIRMED @ `99d722b4…` audit window | Cross-ref TDL-EVID-OQ006-BOUNDARY-001 |
+| DIM-EV-R1-PROD-001 | PRODUCTION_OBSERVATION | [R1_PRODUCTION_FORENSICS_2026-10-11.md](R1_PRODUCTION_FORENSICS_2026-10-11.md) | Production SHA/path/PM2 + DIMO env **names** @ `2026-10-11` read-only SSH | CONFIRMED @ `2026-10-11` | No provider GET replay; tier env values not captured |
+| DIM-EV-R1-REPO-001 | CODE_INVENTORY | [R1_REPOSITORY_INVENTORY.json](R1_REPOSITORY_INVENTORY.json) | File/symbol counts @ `0633d0831…` | CONFIRMED_ON_MAIN @ R1 head | Not a full call graph |
+| DIM-EV-R1-PROVIDER-DOC-001 | PROVIDER_DOCUMENTATION | https://dimo.org/docs/api-references/vehicle-triggers-api | Current subscribe URL schema vs legacy Nest client | CONFIRMED @ fetch `2026-10-11` | DIMO MCP unavailable (auth timeout) |
 | DIM-EVID-DI-S3B-R1-SCHEMA-001 | PROVIDER_SCHEMA_OBSERVATION | [../../drivingintelligence/evidence/EXP021_C1D9_R1_FIELD_AUTHORITY_V03_CORRECTION.md](../../drivingintelligence/evidence/EXP021_C1D9_R1_FIELD_AUTHORITY_V03_CORRECTION.md) | DIMO telemetry `signals` field schema (Float + `FloatAggregation`), units, gear/ignition representation; R1 availability (4 Ruptela vehicles, read-only) | CONFIRMED @ introspection sha256 `a10f4729…` (2026-09-27) | Cross-ref DI-EVID-EXP021-C1D9-001; DI-owned consumer, no DIMO Integration code change |
 
 ## Cross-reference
