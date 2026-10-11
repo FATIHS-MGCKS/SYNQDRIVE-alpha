@@ -21,6 +21,8 @@
 | E-VO5C-R2 | [`../../vehicle-onboarding/evidence/VO5C_R2_SECURITY_FLOOR_ROLLBACK.md`](../../vehicle-onboarding/evidence/VO5C_R2_SECURITY_FLOOR_ROLLBACK.md) | REPOSITORY | Security floor (preserved) |
 | E-OPS-SELFTEST | `backend/scripts/ops/vps-vo5c-*.selftest.sh` | CURRENT_TEST | Offline only; not live deploy proof |
 | E-OPS-P4B16-R1A | `backend/scripts/ops/vps-release-attestation.selftest.sh` | CURRENT_TEST | P4B16 R1A attestation certification |
+| E-P4B16-R1B | [`P4B16_R1B_DEPLOY_INTEGRATION.md`](P4B16_R1B_DEPLOY_INTEGRATION.md) | REPOSITORY + TEST | R1B deploy/rollback hooks; offline integration selftest |
+| E-OPS-P4B16-R1B | `backend/scripts/ops/vps-release-attestation-integration.selftest.sh` | CURRENT_TEST | P4B16 R1B hook certification |
 
 ## Ledger
 

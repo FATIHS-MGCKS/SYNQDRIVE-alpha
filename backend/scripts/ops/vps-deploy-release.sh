@@ -241,6 +241,21 @@ if ! vps_replica_verify_post_deploy "$RELEASE_DIR" "$TARGET_SHA"; then
 fi
 
 echo "==> Multi-replica deploy verification PASS"
+
+P4B16_ATTEST_RC=0
+if [[ -f "${RELEASE_OPS_DIR}/lib/vps-release-attestation-integration.lib.sh" ]]; then
+  # shellcheck source=lib/vps-release-attestation-integration.lib.sh
+  source "${RELEASE_OPS_DIR}/lib/vps-release-attestation-integration.lib.sh"
+  if ! vps_p4b16_publish_after_deploy_verify "$RELEASE_OPS_DIR" "$RELEASE_DIR" "$TARGET_SHA"; then
+    P4B16_ATTEST_RC=$?
+  fi
+else
+  echo "WARN: release ops tree lacks P4B16 attestation integration — legacy path (not attestation-protected)" >&2
+fi
+if [[ "$P4B16_ATTEST_RC" -eq "${VPS_P4B16_PARTIAL_SUCCESS_RC:-3}" ]]; then
+  echo "==> Deploy finished with PARTIAL_SUCCESS (exit ${P4B16_ATTEST_RC}): replicas healthy; attestation reconciliation required" >&2
+  exit "$P4B16_ATTEST_RC"
+fi
 echo "    TARGET_SHA=${TARGET_SHA}"
 echo "    REPLICA_COUNT=${SYNQDRIVE_PRODUCTION_REPLICA_COUNT}"
 echo "Deployed release: ${RELEASE_ID} ($(git -C "$RELEASE_DIR" rev-parse --short HEAD))"

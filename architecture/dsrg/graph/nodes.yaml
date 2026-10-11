@@ -204,9 +204,11 @@ nodes:
       - architecture/dsrg/evidence/P4B16_R0_ATTESTATION_DESIGN.md
       - architecture/dsrg/evidence/P4B16_R0A_DESIGN_CORRECTION.md
       - architecture/dsrg/evidence/P4B16_R1A_DURABLE_ATTESTATION_ENGINE.md
+      - architecture/dsrg/evidence/P4B16_R1B_DEPLOY_INTEGRATION.md
     evidence:
       - DSRG-EVID-P4B16-R0-001
       - DSRG-EVID-P4B16-R1A-001
+      - DSRG-EVID-P4B16-R1B-001
 
   - id: DSRG-EVID-P4B16-R0-001
     type: evidence
@@ -238,6 +240,29 @@ nodes:
       - backend/scripts/ops/vps-release-attestation.selftest.sh
     evidence:
       - DSRG-EVID-P4B16-R1A-001
+
+  - id: DSRG-EVID-P4B16-R1B-001
+    type: evidence
+    title: P4B16 R1B deploy rollback integration
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: Post-verify deploy/rollback hooks; partial-success exit 3; legacy path documented.
+    source_paths:
+      - architecture/dsrg/evidence/P4B16_R1B_DEPLOY_INTEGRATION.md
+      - backend/scripts/ops/lib/vps-release-attestation-integration.lib.sh
+      - backend/scripts/ops/vps-deploy-release.sh
+      - backend/scripts/ops/lib/vps-production-replica.lib.sh
+
+  - id: DSRG-TEST-P4B16-R1B-001
+    type: test_evidence
+    title: P4B16 R1B integration offline selftest
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: Hook certification for deploy, rollback, partial success, legacy path.
+    source_paths:
+      - backend/scripts/ops/vps-release-attestation-integration.selftest.sh
+    evidence:
+      - DSRG-EVID-P4B16-R1B-001
 
   - id: DSRG-EVID-AUDIT-REGISTRY-001
     type: evidence

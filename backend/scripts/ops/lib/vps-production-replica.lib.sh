@@ -459,14 +459,27 @@ vps_replica_rollback() {
   local previous_sha
   previous_sha="$(vps_replica_release_sha "${PREVIOUS_CURRENT_RELEASE}")"
 
+  local _replica_ops_dir
+  _replica_ops_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
   if ! vps_vo5c_require_rollback_guard_ready; then
     vps_replica_log "ABORT: ${VO5C_UNSAFE_ROLLBACK_DENIED_CODE}"
     vps_vo5c_log_unsafe_rollback_containment "rollback_guard_missing"
+    if [[ -f "${_replica_ops_dir}/lib/vps-release-attestation-integration.lib.sh" ]]; then
+      # shellcheck source=lib/vps-release-attestation-integration.lib.sh
+      source "${_replica_ops_dir}/lib/vps-release-attestation-integration.lib.sh"
+      vps_p4b16_on_rollback_denied "$_replica_ops_dir" "$(vps_replica_current_release_dir)" || true
+    fi
     return 1
   fi
   if ! vps_vo5c_assert_release_rollback_eligible "${PREVIOUS_CURRENT_RELEASE}" "$previous_sha"; then
     vps_replica_log "ABORT: ${VO5C_UNSAFE_ROLLBACK_DENIED_CODE}"
     vps_vo5c_log_unsafe_rollback_containment "rollback_denied_before_symlink"
+    if [[ -f "${_replica_ops_dir}/lib/vps-release-attestation-integration.lib.sh" ]]; then
+      # shellcheck source=lib/vps-release-attestation-integration.lib.sh
+      source "${_replica_ops_dir}/lib/vps-release-attestation-integration.lib.sh"
+      vps_p4b16_on_rollback_denied "$_replica_ops_dir" "$(vps_replica_current_release_dir)" || true
+    fi
     return 1
   fi
 
@@ -488,6 +501,20 @@ vps_replica_rollback() {
   }
 
   vps_replica_verify_post_deploy "${PREVIOUS_CURRENT_RELEASE}" "$previous_sha" || return 1
+
+  if [[ -f "${_replica_ops_dir}/lib/vps-release-attestation-integration.lib.sh" ]]; then
+    # shellcheck source=lib/vps-release-attestation-integration.lib.sh
+    source "${_replica_ops_dir}/lib/vps-release-attestation-integration.lib.sh"
+    local _attest_rc=0
+    if ! vps_p4b16_publish_after_rollback_verify "$_replica_ops_dir" "${PREVIOUS_CURRENT_RELEASE}" "$previous_sha"; then
+      _attest_rc=$?
+    fi
+    if [[ "$_attest_rc" -eq "${VPS_P4B16_PARTIAL_SUCCESS_RC:-3}" ]]; then
+      vps_replica_log "ROLLBACK PARTIAL_SUCCESS: replicas restored; attestation reconciliation required"
+      return "$_attest_rc"
+    fi
+  fi
+
   vps_replica_log "ROLLBACK complete → ${previous_sha:0:12}"
   return 0
 }
