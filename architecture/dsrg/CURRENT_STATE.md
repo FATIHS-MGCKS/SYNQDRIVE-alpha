@@ -1,7 +1,16 @@
 # DSRG — Current state (repository vs Production)
 
-**Audit base:** `origin/main` @ `2a44f5cdc6ce0f1e4ec3846243352f8a82aef072`  
+**Audit base:** `origin/main` @ `2a44f5cdc6ce0f1e4ec3846243352f8a82aef072` (DSRG-03 R1; PR #1973 not merged)  
 **Classification axes:** registry `AUDIT_IN_PROGRESS` · epistemic per-row · validation per-row
+
+## Repository vs Production drift
+
+| Dimension | Repository (`main`) | Production (VPS) | Notes |
+|-----------|---------------------|------------------|-------|
+| Application SHA | Tip `2a44f5c…` includes commits after `7f47c9f…` | `SYNQDRIVE_DEPLOYED_GIT_SHA` = `7f47c9f…` | **Drift:** deployed app is an **ancestor** of `main`, not `main` tip |
+| Release path git HEAD | N/A | **No git metadata** on `/opt/synqdrive/releases/20261010184619_v4994` | Identity from **attestation env only** |
+| Pinned executor | `448a889…` on `main` (#1970) | Config + tree @ `448a889…` | **Aligned** (pin-only promotion; live app unchanged) |
+| Enforcement / authority | Examples in repo | Files **absent**; flags **off** | **Not production-ready** for enforced deploy path |
 
 Do **not** equate merged repository code with live runtime. Status labels:
 

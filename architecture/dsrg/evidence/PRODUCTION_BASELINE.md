@@ -11,11 +11,12 @@
 
 | Item | Observed value | Evidence class |
 |------|----------------|----------------|
-| `current` symlink | `/opt/synqdrive/releases/20261010184619_v4994` | SSH `readlink` |
-| `SYNQDRIVE_DEPLOYED_GIT_SHA` | `7f47c9f5b5e35c425deb3c2b6bdaed9df73e5c7c` | `backend.env` (sudo grep) |
+| **PRODUCTION_RELEASE_PATH** | `/opt/synqdrive/releases/20261010184619_v4994` | SSH `readlink` on `current` |
+| **PRODUCTION_RELEASE_SHA** (attestation) | `7f47c9f5b5e35c425deb3c2b6bdaed9df73e5c7c` | `SYNQDRIVE_DEPLOYED_GIT_SHA` in `backend.env` (sudo grep) |
+| Independent git HEAD on release path | **Not available** | `git rev-parse` **failed** on release dir — **do not** claim checkout identity |
 | Health | `GET https://app.synqdrive.eu/api/v1/health` → `status: ok` | HTTP read |
 
-Release directory is not a git checkout on VPS (`git rev-parse` failed) — attestation relies on `SYNQDRIVE_DEPLOYED_GIT_SHA`.
+**Drift vs `origin/main` @ `2a44f5c…`:** deployed application SHA is **behind** `main` tip (expected until a full application deploy). Pinned executor SHA **matches** merged ops contract on `main`.
 
 ## PM2 topology
 
