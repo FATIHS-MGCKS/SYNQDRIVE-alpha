@@ -6,7 +6,7 @@
 
 **Central registry validator:** `bash architecture/scripts/validate-module-registry.sh`
 
-**Last updated:** 2026-10-11 (DSRG registry bootstrap — `AUDIT_IN_PROGRESS`; Vehicle Onboarding unchanged)
+**Last updated:** 2026-10-11 (DSRG-03 R2 authority reconstruction — `AUDIT_IN_PROGRESS`; Vehicle Onboarding unchanged)
 
 ---
 
@@ -291,15 +291,15 @@ Detailed sections for modules with usable living authorities. See [Module invent
 
 | Field | Value |
 |-------|-------|
-| **Registry coverage status** | `AUDIT_IN_PROGRESS` — DSRG-03 R0 bootstrap; **not** `AUTHORITY_ACTIVE`; partial authority only |
+| **Registry coverage status** | `AUDIT_IN_PROGRESS` — DSRG-03 R2 graph + validators; **not** `AUTHORITY_ACTIVE` |
 | **Module key** | `DSRG` |
 | **Scope** | Production VPS deploy governance: pinned executor install and integrity, deploy preflight and admission, human authorization and attestation, security-floor and bypass enforcement libraries, OS privilege boundary (sudoers/wrapper), rollback and emergency containment contracts, cloud-agent connectivity staging, coexistence with APDS shadow epochs, EXP021 Gate-6, and RFRF rollback. **Does not** own vehicle onboarding product logic, APDS epoch activation, EXP021 experiment semantics, or RFRF stage definitions. |
 | **Authority directory** | [`architecture/dsrg/`](dsrg/) |
-| **Authority-native status** | Bootstrap audit / partial reconstruction (2026-10-11) · DSRG-01/#1970 merged · DSRG-02 pin promotion sealed · registry row **new** |
+| **Authority-native status** | Bootstrap audit / substantial reconstruction (2026-10-11) · DSRG-01/#1970 · DSRG-02 pin sealed · DSRG-03 R2 graph validators |
 | **Ownership boundary** | **Owns** cross-cutting deploy governance architecture and ops execution contracts. **Does not own** VO5C admission/MFA product flags (→ Vehicle Onboarding evidence), APDS approved release pin (→ APDS), EXP021 scheduler/Gate-6 (→ Driving Intelligence / EXP021 ops), RFRF rollback traps (→ RFRF). Runtime implementation remains `backend/scripts/ops/*` on VPS; VO5C historical evidence stays under `architecture/vehicle-onboarding/evidence/`. |
-| **Reconstruction status** | Phase **0–3** repository + read-only Production baseline started (DSRG-03 R0); Phase **4** graphs/decisions/validators **not** complete; Phase **5** promotion **not** eligible. |
-| **Mandatory entry documents (partial)** | [README.md](dsrg/README.md) · [AUDIT_MANIFEST.md](dsrg/AUDIT_MANIFEST.md) · [CURRENT_STATE.md](dsrg/CURRENT_STATE.md) · [AGENT_CONTRACT.md](dsrg/AGENT_CONTRACT.md) · [evidence/EVIDENCE_INDEX.md](dsrg/evidence/EVIDENCE_INDEX.md) · [evidence/PRODUCTION_BASELINE.md](dsrg/evidence/PRODUCTION_BASELINE.md) · [contradictions/KNOWLEDGE_GAPS.md](dsrg/contradictions/KNOWLEDGE_GAPS.md) |
-| **Validation** | `bash architecture/scripts/validate-module-registry.sh` · ops selftests under `backend/scripts/ops/vps-vo5c-*.selftest.sh` (repository); graph validator **not yet** |
+| **Reconstruction status** | Phase **0–4** complete (DSRG-03 R2); Phase **5** promotion **not** eligible — see [GATE_A_READINESS.md](dsrg/evidence/GATE_A_READINESS.md). |
+| **Mandatory entry documents** | [README.md](dsrg/README.md) · [AUDIT_MANIFEST.md](dsrg/AUDIT_MANIFEST.md) · [CURRENT_STATE.md](dsrg/CURRENT_STATE.md) · [AGENT_CONTRACT.md](dsrg/AGENT_CONTRACT.md) · [KNOWLEDGE_GRAPH.md](dsrg/KNOWLEDGE_GRAPH.md) · [decisions/DECISION_REGISTER.md](dsrg/decisions/DECISION_REGISTER.md) · [evidence/EVIDENCE_INDEX.md](dsrg/evidence/EVIDENCE_INDEX.md) · [evidence/PRODUCTION_BASELINE.md](dsrg/evidence/PRODUCTION_BASELINE.md) · [contradictions/KNOWLEDGE_GAPS.md](dsrg/contradictions/KNOWLEDGE_GAPS.md) · [contradictions/OPEN_CONTRADICTIONS.md](dsrg/contradictions/OPEN_CONTRADICTIONS.md) |
+| **Validation** | `bash architecture/scripts/validate-module-registry.sh` · `bash architecture/dsrg/scripts/validate-graph.sh` |
 
 ---
 

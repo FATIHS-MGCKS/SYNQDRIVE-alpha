@@ -1,0 +1,101 @@
+# DSRG Knowledge Graph — Edges
+
+edges:
+  - from: DSRG-AUTH-HUMAN-001
+    relation: input_to
+    to: DSRG-ORCH-PINNED-RUNNER-001
+    notes: Operator must set SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1
+
+  - from: DSRG-STATE-PIN-CONFIG-001
+    relation: upstream_of
+    to: DSRG-ORCH-PINNED-RUNNER-001
+
+  - from: DSRG-PIPE-PREFLIGHT-001
+    relation: upstream_of
+    to: DSRG-ORCH-PINNED-RUNNER-001
+
+  - from: DSRG-ORCH-PINNED-RUNNER-001
+    relation: downstream_of
+    to: DSRG-ORCH-DEPLOY-RELEASE-001
+
+  - from: DSRG-POL-SECURITY-FLOOR-001
+    relation: governs
+    to: DSRG-ORCH-DEPLOY-RELEASE-001
+
+  - from: DSRG-POL-ADMISSION-001
+    relation: governs
+    to: DSRG-ORCH-DEPLOY-RELEASE-001
+
+  - from: DSRG-POL-P4B15-001
+    relation: governs
+    to: DSRG-ORCH-DEPLOY-RELEASE-001
+
+  - from: DSRG-POL-OS-BOUNDARY-001
+    relation: governs
+    to: DSRG-ORCH-PINNED-RUNNER-001
+
+  - from: DSRG-ORCH-DEPLOY-RELEASE-001
+    relation: downstream_of
+    to: DSRG-STATE-DEPLOY-ATTEST-001
+
+  - from: DSRG-AUTH-XREF-APDS-001
+    relation: governs
+    to: DSRG-DOM-001
+    notes: Non-interference constraint
+
+  - from: DSRG-AUTH-XREF-EXP021-001
+    relation: governs
+    to: DSRG-DOM-001
+
+  - from: DSRG-AUTH-XREF-VO5C-001
+    relation: governs
+    to: DSRG-DOM-001
+
+  - from: DSRG-AUTH-XREF-RFRF-001
+    relation: governs
+    to: DSRG-DOM-001
+
+  - from: DSRG-EVID-PROD-R2-001
+    relation: supports
+    to: DSRG-STATE-PIN-CONFIG-001
+
+  - from: DSRG-EVID-PROD-R2-001
+    relation: supports
+    to: DSRG-STATE-DEPLOY-ATTEST-001
+
+  - from: DSRG-EVID-CODE-RUNNER-001
+    relation: supports
+    to: DSRG-DEC-001
+
+  - from: DSRG-TEST-EXEC-CONTRACT-001
+    relation: supports
+    to: DSRG-DEC-001
+
+  - from: DSRG-TEST-EXEC-CONTRACT-001
+    relation: supports
+    to: DSRG-DEC-002
+
+  - from: DSRG-TEST-P4B15-001
+    relation: supports
+    to: DSRG-POL-P4B15-001
+
+  - from: DSRG-TEST-ROLLBACK-001
+    relation: supports
+    to: DSRG-POL-SECURITY-FLOOR-001
+
+  - from: DSRG-ORCH-PINNED-RUNNER-001
+    relation: tested_by
+    to: DSRG-TEST-EXEC-CONTRACT-001
+
+  - from: DSRG-DEC-003
+    relation: governs
+    to: DSRG-POL-P4B15-001
+
+  - from: DSRG-REJECT-001
+    relation: superseded_by
+    to: DSRG-DEC-001
+
+  - from: DSRG-CONTRA-001
+    relation: contradicts
+    to: DSRG-GAP-01
+    notes: Resolved; kept for traceability

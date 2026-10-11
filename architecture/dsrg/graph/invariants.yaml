@@ -1,0 +1,59 @@
+# DSRG Knowledge Graph — Invariants
+
+invariants:
+  - id: DSRG-INV-HUMAN-AUTH-001
+    kind: CONFIRMED_INVARIANT
+    title: Pinned deploy requires explicit human authorization env
+    epistemic_status: CONFIRMED
+    statement: >
+      vps-vo5c-run-pinned-security-deploy.sh aborts unless SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1.
+      Preflight alone does not authorize production deploy.
+    source_paths:
+      - backend/scripts/ops/vps-vo5c-run-pinned-security-deploy.sh
+    evidence:
+      - DSRG-EVID-CODE-RUNNER-001
+
+  - id: DSRG-INV-644-NO-CHMOD-001
+    kind: CONFIRMED_INVARIANT
+    title: Pinned ops trees stay git-clean without chmod +x on 644 deploy script
+    epistemic_status: CONFIRMED
+    statement: >
+      vps-deploy-release.sh remains mode 100644 in git; runner delegates with exec bash.
+    source_paths:
+      - backend/scripts/ops/vps-vo5c-run-pinned-security-deploy.sh
+    evidence:
+      - DSRG-TEST-EXEC-CONTRACT-001
+
+  - id: DSRG-INV-PINNED-OPS-PATH-001
+    kind: CONFIRMED_INVARIANT
+    title: Runner rejects invocation outside pinned executor ops directory
+    epistemic_status: CONFIRMED
+    statement: >
+      SCRIPT_DIR must resolve to PINNED_EXECUTOR_ROOT/backend/scripts/ops.
+    source_paths:
+      - backend/scripts/ops/vps-vo5c-run-pinned-security-deploy.sh
+    evidence:
+      - DSRG-TEST-EXEC-CONTRACT-001
+
+  - id: DSRG-INV-NO-CURRENT-DELEGATION-001
+    kind: CONDITIONAL_INVARIANT
+    title: Pinned runner must not delegate to legacy current executor
+    epistemic_status: CONFIRMED
+    statement: >
+      When SYNQDRIVE_VO5C_PINNED_EXECUTOR_INVOKE=1, deploy script path must be under pinned root.
+    source_paths:
+      - backend/scripts/ops/vps-vo5c-run-pinned-security-deploy.sh
+    evidence:
+      - DSRG-EVID-CODE-RUNNER-001
+
+  - id: DSRG-INV-ENFORCEMENT-OFF-001
+    kind: CONDITIONAL_INVARIANT
+    title: Bypass enforcement inactive while Production enforcement env absent
+    epistemic_status: CONFIRMED
+    statement: >
+      P4B15 library present in repository and pin tree; VO5C_PRODUCTION_DEPLOY_ENFORCEMENT_ACTIVE
+      not observed on VPS as of DSRG-03 R2 — direct deploy paths may still exist.
+    source_paths:
+      - architecture/dsrg/evidence/DSRG_03_R2_PRODUCTION_RECONCILIATION.md
+    evidence:
+      - DSRG-EVID-PROD-R2-001

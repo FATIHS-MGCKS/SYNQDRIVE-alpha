@@ -37,9 +37,11 @@ Enforcement (`VO5C_PRODUCTION_DEPLOY_ENFORCEMENT_ACTIVE=1`) and OS sudoers remai
 |-------|-------|
 | **Registry coverage** | `AUDIT_IN_PROGRESS` (DSRG-03 R0, 2026-10-11) |
 | **Previously** | Absent from central inventory; hub existed under `architecture/dsrg/` only |
-| **Promotion** | `AUTHORITY_ACTIVE` **not** eligible until graphs, decisions, and validators per [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) |
+| **Promotion** | See [`evidence/GATE_A_READINESS.md`](evidence/GATE_A_READINESS.md) — separate promotion review only |
 
-**Mandatory entry (partial):** [AUDIT_MANIFEST.md](./AUDIT_MANIFEST.md) · [CURRENT_STATE.md](./CURRENT_STATE.md) · [AGENT_CONTRACT.md](./AGENT_CONTRACT.md) · [evidence/PRODUCTION_BASELINE.md](./evidence/PRODUCTION_BASELINE.md) · [evidence/EVIDENCE_INDEX.md](./evidence/EVIDENCE_INDEX.md) · [contradictions/KNOWLEDGE_GAPS.md](./contradictions/KNOWLEDGE_GAPS.md)
+**Mandatory entry:** [AUDIT_MANIFEST.md](./AUDIT_MANIFEST.md) · [CURRENT_STATE.md](./CURRENT_STATE.md) · [AGENT_CONTRACT.md](./AGENT_CONTRACT.md) · [KNOWLEDGE_GRAPH.md](./KNOWLEDGE_GRAPH.md) · [decisions/DECISION_REGISTER.md](./decisions/DECISION_REGISTER.md) · [evidence/](./evidence/) · [contradictions/](./contradictions/) · [research/CHANGE_LEDGER.md](./research/CHANGE_LEDGER.md)
+
+**Validation:** `bash architecture/dsrg/scripts/validate-graph.sh` · `bash architecture/scripts/validate-module-registry.sh`
 
 VO5C implementation evidence under `architecture/vehicle-onboarding/evidence/` remains authoritative for VO5C phases; DSRG indexes and cross-links.
 

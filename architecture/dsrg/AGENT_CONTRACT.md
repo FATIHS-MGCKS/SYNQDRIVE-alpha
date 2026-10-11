@@ -40,7 +40,7 @@
 
 ## Change ledger
 
-- Append DSRG workstream entries only to [`CHANGE_LEDGER.md`](CHANGE_LEDGER.md).
+- Append DSRG workstream entries only to [`research/CHANGE_LEDGER.md`](research/CHANGE_LEDGER.md) (canonical).
 - Reference VO5C historical entries in [`../vehicle-onboarding/research/CHANGE_LEDGER.md`](../vehicle-onboarding/research/CHANGE_LEDGER.md); do not fork duplicate narratives.
 
 ## Registry updates

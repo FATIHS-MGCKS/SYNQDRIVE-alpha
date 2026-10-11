@@ -4,7 +4,7 @@
 |-------|-------|
 | **PRODUCTION_ACCESS** | `VERIFIED_READ_ONLY` |
 | **Connectivity check** | `bash .cursor/scripts/cloud-agent-verify-vps.sh` — SSH OK `synqdrive-admin@srv1374778.hstgr.cloud` (2026-10-11) |
-| **Audit timestamp (UTC)** | `2026-10-11T00:47:51Z` |
+| **Audit timestamp (UTC)** | `2026-10-11T00:47:51Z` (R0); **superseded for pin/app checks by** [`DSRG_03_R2_PRODUCTION_RECONCILIATION.md`](DSRG_03_R2_PRODUCTION_RECONCILIATION.md) @ `2026-10-11T10:14:01Z` |
 | **Mutations** | **None** — deploy runner not executed |
 
 ## Release and application

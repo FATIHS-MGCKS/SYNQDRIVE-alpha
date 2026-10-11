@@ -1,6 +1,6 @@
 # DSRG — Current state (repository vs Production)
 
-**Audit base:** `origin/main` @ `2a44f5cdc6ce0f1e4ec3846243352f8a82aef072` (DSRG-03 R1; PR #1973 not merged)  
+**Audit base:** `origin/main` @ `46478500ef8dee5d22fda89a7c1876a5e37270ca` (DSRG-03 R2)  
 **Classification axes:** registry `AUDIT_IN_PROGRESS` · epistemic per-row · validation per-row
 
 ## Repository vs Production drift
@@ -83,25 +83,32 @@ Do **not** equate merged repository code with live runtime. Status labels:
 | Module | Observation | DSRG relation |
 |--------|-------------|---------------|
 | **APDS** | `APD_SHADOW_EPOCH_APPROVED_RELEASE_SHA=ab72f574…` in Production `backend.env` | must not mutate during DSRG work |
-| **EXP021** | Fleet/coordinator flags present in `backend.env`; Gate-6 **KILLED** per DSRG-02 seal | **UNKNOWN** re-verified live kill registry in DSRG-03 R0 |
+| **EXP021** | Fleet flags may be present; Gate-6 **KILLED** per DSRG-02 **HISTORICAL** seal | **UNKNOWN** live kill registry in DSRG-03 R2 (DSRG-GAP-01) |
 | **VO5C product admission / MFA** | **UNKNOWN** in `backend.env` grep | owned by Vehicle Onboarding evidence |
 | **Live app** | release dir `20261010184619_v4994`; PM2 `synqdrive` + `synqdrive-b` online | unchanged by pin-only promotion |
 
 ---
 
-## Security tests (repository)
+## Execution chains (repository — not live activation proof)
 
-Executed during DSRG-03 R0 (local):
+**Authorized pinned path:** human `SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1` → `vo5c-pinned-executor.env` → `vps-vo5c-run-pinned-security-deploy.sh` (pinned ops dir) → preflight → `exec bash vps-deploy-release.sh` → release/PM2 → `SYNQDRIVE_DEPLOYED_GIT_SHA`. See [`KNOWLEDGE_GRAPH.md`](KNOWLEDGE_GRAPH.md).
 
-- `vps-vo5c-pinned-deploy-execution-contract.selftest.sh` — **PASS**
+**Legacy / rejected:** direct `current` deploy; bare `exec` (**DSRG-REJECT-001**); cloud-agent path without pinned contract.
 
-Additional selftests documented in [`evidence/DSRG_02_PIN_REPROMOTION_2026-10-11.md`](evidence/DSRG_02_PIN_REPROMOTION_2026-10-11.md) at pin `448a889`.
+| Step | IMPLEMENTED | DEPLOYED | ACTIVATED | VALIDATED |
+|------|-------------|----------|-----------|-----------|
+| Full pinned deploy chain | yes in pin tree | scripts on VPS | **no** (runner not executed in audits) | selftests only |
+| P4B16 attestation automation | **PLANNED** | **UNKNOWN** | **no** | — |
 
----
+## Security tests (repository — offline)
 
-## Documentation hub (pre-registry)
+- `vps-vo5c-pinned-deploy-execution-contract.selftest.sh` — **PASS** @ DSRG-03 R2  
+- Does **not** imply Production deploy readiness.
 
-| Artifact | Status |
-|----------|--------|
-| `architecture/dsrg/*` hub | **IMPLEMENTED** before registry row; **now** `AUDIT_IN_PROGRESS` authority |
-| VO5C P4B15/P4B16 evidence | **preserved** under `architecture/vehicle-onboarding/evidence/` |
+## Production observation (DSRG-03 R2)
+
+Fresh read-only: [`evidence/DSRG_03_R2_PRODUCTION_RECONCILIATION.md`](evidence/DSRG_03_R2_PRODUCTION_RECONCILIATION.md) @ `2026-10-11T10:14:01Z`.
+
+## Registry
+
+`AUDIT_IN_PROGRESS` — graph validators present; **not** `AUTHORITY_ACTIVE`. VO5C evidence preserved under `architecture/vehicle-onboarding/evidence/`.

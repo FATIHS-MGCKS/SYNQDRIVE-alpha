@@ -15,6 +15,8 @@ All production release promotion paths that can change `/opt/synqdrive/current`,
 | P4B16 | Deploy attestation sync | **Design** | `SYNQDRIVE_DEPLOYED_GIT_SHA` vs replica SHA; no auto APDS pin |
 | DSRG-01 | Execution contract fix | **Merged** PR #1970 | `exec bash`; canonical pinned-ops runner |
 | DSRG-02 | Pin re-promotion | **Done** 2026-10-11 | Config → `448a889`; `40c6dd9` preserved; app `7f47c9f` |
+| DSRG-03 R0/R1 | Registry bootstrap | **Merged** #1973 | `AUDIT_IN_PROGRESS` inventory row |
+| DSRG-03 R2 | Authority reconstruction | **In PR** | Knowledge graph, validators, R2 Production reconciliation, ledger migration |
 | P4B17+ | OS boundary activation | **Not started** | sudoers, optional `chattr +i`, `ENFORCEMENT_ACTIVE=1`, dual approval |
 
 ## Non-goals (DSRG)

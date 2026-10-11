@@ -1,0 +1,360 @@
+# DSRG Knowledge Graph — Nodes (bootstrap reconstruction)
+# Validate: bash architecture/dsrg/scripts/validate-graph.sh
+
+nodes:
+  - id: DSRG-DOM-001
+    type: domain
+    title: Deployment Security & Release Governance
+    epistemic_status: CONFIRMED
+    summary: Cross-cutting VPS production deploy governance — pinned executor, authorization, attestation, enforcement policy; not vehicle onboarding product logic.
+    source_paths:
+      - architecture/dsrg/README.md
+      - architecture/SYNQDRIVE_RENTAL_ARCHITECTURE.md
+    evidence:
+      - DSRG-EVID-AUDIT-REGISTRY-001
+
+  - id: DSRG-AUTH-HUMAN-001
+    type: authority
+    title: Human deploy authorization gate
+    epistemic_status: CONFIRMED
+    summary: SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1 required before pinned runner proceeds; not set by preflight alone.
+    source_paths:
+      - backend/scripts/ops/vps-vo5c-run-pinned-security-deploy.sh
+    evidence:
+      - DSRG-EVID-CODE-RUNNER-001
+
+  - id: DSRG-STATE-PIN-CONFIG-001
+    type: state
+    title: Pinned executor configuration pointer
+    epistemic_status: CONFIRMED
+    summary: vo5c-pinned-executor.env defines SYNQDRIVE_PINNED_EXECUTOR_ROOT and SHA on VPS.
+    source_paths:
+      - architecture/dsrg/evidence/DSRG_02_PIN_REPROMOTION_2026-10-11.md
+    evidence:
+      - DSRG-EVID-PROD-R2-001
+
+  - id: DSRG-STATE-DEPLOY-ATTEST-001
+    type: state
+    title: Deployed application SHA attestation
+    epistemic_status: CONFIRMED
+    summary: SYNQDRIVE_DEPLOYED_GIT_SHA in backend.env; release path may lack git metadata.
+    source_paths:
+      - architecture/dsrg/evidence/PRODUCTION_BASELINE.md
+    evidence:
+      - DSRG-EVID-PROD-R2-001
+
+  - id: DSRG-PIPE-PREFLIGHT-001
+    type: pipeline
+    title: First security deploy preflight
+    epistemic_status: CONFIRMED
+    summary: vps-vo5c-first-security-deploy-preflight.sh validates pin tree before deploy delegation.
+    source_paths:
+      - backend/scripts/ops/vps-vo5c-first-security-deploy-preflight.sh
+    evidence:
+      - DSRG-EVID-CODE-PREFLIGHT-001
+
+  - id: DSRG-ORCH-PINNED-RUNNER-001
+    type: orchestrator
+    title: Pinned security deploy runner
+    epistemic_status: CONFIRMED
+    summary: vps-vo5c-run-pinned-security-deploy.sh; must execute from pinned ops dir; exec bash on 644 deploy script.
+    source_paths:
+      - backend/scripts/ops/vps-vo5c-run-pinned-security-deploy.sh
+    evidence:
+      - DSRG-EVID-CODE-RUNNER-001
+      - DSRG-TEST-EXEC-CONTRACT-001
+
+  - id: DSRG-ORCH-DEPLOY-RELEASE-001
+    type: orchestrator
+    title: VPS deploy release controller
+    epistemic_status: CONFIRMED
+    summary: vps-deploy-release.sh promotes release, PM2, migrations per existing ops contract.
+    source_paths:
+      - backend/scripts/ops/vps-deploy-release.sh
+    evidence:
+      - DSRG-EVID-CODE-DEPLOY-001
+
+  - id: DSRG-ORCH-CLOUD-AGENT-001
+    type: orchestrator
+    title: Cloud agent deploy orchestration
+    epistemic_status: CONFIRMED
+    summary: .cursor/scripts/cloud-agent-deploy.sh SSH deploy path; separate human git push gate.
+    source_paths:
+      - .cursor/scripts/cloud-agent-deploy.sh
+    evidence:
+      - DSRG-EVID-DOC-CLOUD-001
+
+  - id: DSRG-POL-SECURITY-FLOOR-001
+    type: policy
+    title: Security floor and shallow ancestry
+    epistemic_status: CONFIRMED
+    summary: vps-vo5c-security-floor.lib.sh blocks unsafe target SHAs.
+    source_paths:
+      - backend/scripts/ops/lib/vps-vo5c-security-floor.lib.sh
+    evidence:
+      - DSRG-TEST-ROLLBACK-001
+
+  - id: DSRG-POL-ADMISSION-001
+    type: policy
+    title: Deploy target admission
+    epistemic_status: CONFIRMED
+    summary: vps-vo5c-deploy-admission.lib.sh target admission checks.
+    source_paths:
+      - backend/scripts/ops/lib/vps-vo5c-deploy-admission.lib.sh
+
+  - id: DSRG-POL-P4B15-001
+    type: policy
+    title: Production deploy bypass enforcement (P4B15)
+    epistemic_status: CONFIRMED
+    summary: Bypass enforcement library; ACTIVATED only when enforcement env and authority files armed.
+    source_paths:
+      - backend/scripts/ops/lib/vps-vo5c-production-deploy-bypass-enforcement.lib.sh
+      - architecture/vehicle-onboarding/evidence/VO5C_P4B15_DEPLOY_BYPASS_ENFORCEMENT.md
+    evidence:
+      - DSRG-TEST-P4B15-001
+
+  - id: DSRG-POL-OS-BOUNDARY-001
+    type: policy
+    title: OS privilege boundary (sudoers / wrapper)
+    epistemic_status: INFERRED
+    summary: Example sudoers and wrapper; NOT_READY on Production per R2 VPS probe.
+    source_paths:
+      - backend/scripts/ops/vo5c-production-deploy-privilege-boundary.sudoers.example
+      - architecture/dsrg/OS_PRIVILEGE_BOUNDARY.md
+    evidence:
+      - DSRG-EVID-PROD-R2-001
+
+  - id: DSRG-AUTH-XREF-APDS-001
+    type: authority
+    title: APDS shadow epoch authority (external)
+    epistemic_status: CONFIRMED
+    summary: DSRG must not mutate APD_SHADOW_EPOCH_APPROVED_RELEASE_SHA during pin work.
+    source_paths:
+      - architecture/dsrg/CROSS_MODULE_DEPENDENCIES.md
+
+  - id: DSRG-AUTH-XREF-EXP021-001
+    type: authority
+    title: EXP021 Gate-6 authority (external)
+    epistemic_status: HISTORICAL
+    summary: Gate-6 KILLED per DSRG-02 seal; live state UNKNOWN in DSRG-03 R2 bounded probe.
+    source_paths:
+      - architecture/dsrg/CROSS_MODULE_DEPENDENCIES.md
+
+  - id: DSRG-AUTH-XREF-VO5C-001
+    type: authority
+    title: Vehicle Onboarding product authority (external)
+    epistemic_status: CONFIRMED
+    summary: VO5C admission/MFA and P4B evidence owned under vehicle-onboarding/.
+    source_paths:
+      - architecture/vehicle-onboarding/README.md
+
+  - id: DSRG-AUTH-XREF-RFRF-001
+    type: authority
+    title: RFRF rollback authority (external)
+    epistemic_status: CONFIRMED
+    summary: RFRF stage rollback contracts; DSRG must not weaken traps.
+    source_paths:
+      - architecture/dsrg/ROLLBACK_AND_CONTAINMENT.md
+
+  - id: DSRG-DEC-001
+    type: decision
+    title: Delegate deploy via exec bash on git-clean 644 script
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: Pinned runner uses exec bash not bare exec on vps-deploy-release.sh (DSRG-01).
+    source_paths:
+      - backend/scripts/ops/vps-vo5c-run-pinned-security-deploy.sh
+    evidence:
+      - DSRG-EVID-CODE-RUNNER-001
+      - DSRG-TEST-EXEC-CONTRACT-001
+
+  - id: DSRG-DEC-002
+    type: decision
+    title: Invoke pinned runner only from pinned ops directory
+    epistemic_status: CONFIRMED
+    decision_status: VALIDATED
+    summary: Reject runner invocation from /current or non-pin paths (DSRG-01 R1).
+    source_paths:
+      - backend/scripts/ops/vps-vo5c-run-pinned-security-deploy.sh
+    evidence:
+      - DSRG-TEST-EXEC-CONTRACT-001
+
+  - id: DSRG-DEC-003
+    type: decision
+    title: Defer enforcement activation until authority file and OS boundary
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+    summary: VO5C_PRODUCTION_DEPLOY_ENFORCEMENT_ACTIVE remains off until dual approval and negative tests.
+    source_paths:
+      - architecture/dsrg/DEPLOYMENT_AUTHORIZATION.md
+    evidence:
+      - DSRG-EVID-PROD-R2-001
+
+  - id: DSRG-EVID-AUDIT-REGISTRY-001
+    type: evidence
+    title: DSRG registry bootstrap
+    epistemic_status: CONFIRMED
+    source_type: AUDIT_DOCUMENT
+    summary: PR #1973 merged registry row AUDIT_IN_PROGRESS.
+    source_paths:
+      - architecture/dsrg/AUDIT_MANIFEST.md
+
+  - id: DSRG-EVID-CODE-RUNNER-001
+    type: evidence
+    title: Pinned runner source
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: Authorization gate and exec bash delegation.
+    source_paths:
+      - backend/scripts/ops/vps-vo5c-run-pinned-security-deploy.sh
+
+  - id: DSRG-EVID-CODE-PREFLIGHT-001
+    type: evidence
+    title: Preflight script source
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: Pin integrity checks before deploy.
+    source_paths:
+      - backend/scripts/ops/vps-vo5c-first-security-deploy-preflight.sh
+
+  - id: DSRG-EVID-CODE-DEPLOY-001
+    type: evidence
+    title: Deploy release script
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: Canonical deploy controller on VPS.
+    source_paths:
+      - backend/scripts/ops/vps-deploy-release.sh
+
+  - id: DSRG-EVID-DOC-CLOUD-001
+    type: evidence
+    title: Cloud agent deploy documentation path
+    epistemic_status: CONFIRMED
+    source_type: ARCHITECTURE_DOCUMENT
+    summary: AGENTS.md cloud deploy flow.
+    source_paths:
+      - AGENTS.md
+
+  - id: DSRG-EVID-PROD-R2-001
+    type: evidence
+    title: DSRG-03 R2 Production read-only reconciliation
+    epistemic_status: CONFIRMED
+    source_type: PRODUCTION_OBSERVATION
+    summary: VPS observation 2026-10-11T10:14:01Z; no mutations.
+    source_paths:
+      - architecture/dsrg/evidence/DSRG_03_R2_PRODUCTION_RECONCILIATION.md
+
+  - id: DSRG-TEST-EXEC-CONTRACT-001
+    type: test_evidence
+    title: Pinned deploy execution contract selftest
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: Repository selftest; does not prove live deploy execution.
+    source_paths:
+      - backend/scripts/ops/vps-vo5c-pinned-deploy-execution-contract.selftest.sh
+
+  - id: DSRG-TEST-P4B15-001
+    type: test_evidence
+    title: P4B15 bypass enforcement selftest
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: Offline policy test only.
+    source_paths:
+      - backend/scripts/ops/vps-vo5c-p4b15-production-deploy-bypass-enforcement.selftest.sh
+
+  - id: DSRG-TEST-ROLLBACK-001
+    type: test_evidence
+    title: Security floor rollback selftest
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_TEST
+    summary: Offline rollback eligibility test.
+    source_paths:
+      - backend/scripts/ops/vps-vo5c-security-floor-rollback.selftest.sh
+
+  - id: DSRG-REJECT-001
+    type: rejected_approach
+    title: Bare exec on mode-644 deploy script
+    epistemic_status: HISTORICAL
+    summary: Broke git-clean executor integrity; superseded by exec bash (DSRG-01).
+    source_paths:
+      - architecture/dsrg/evidence/DSRG_01_EXECUTOR_EXECUTION_CONTRACT.md
+
+  - id: DSRG-GAP-01
+    type: gap
+    title: Gate-6 live kill registry not re-probed
+    epistemic_status: UNKNOWN
+    summary: EXP021 safety relies on DSRG-02 HISTORICAL seal.
+    source_paths:
+      - architecture/dsrg/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: DSRG-GAP-02
+    type: gap
+    title: APDS ACTIVE epoch not re-queried
+    epistemic_status: UNKNOWN
+    summary: Approved pin observed; epoch row stale in docs.
+    source_paths:
+      - architecture/dsrg/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: DSRG-GAP-03
+    type: gap
+    title: VO5C admission/MFA Production state
+    epistemic_status: UNKNOWN
+    summary: Not in DSRG scope; Vehicle Onboarding authority owns product flags.
+    source_paths:
+      - architecture/dsrg/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: DSRG-GAP-04
+    type: gap
+    title: main tip vs deployed app mapping
+    epistemic_status: INFERRED
+    summary: Deployed 7f47c9f is ancestor of main; attestation documented.
+    source_paths:
+      - architecture/dsrg/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: DSRG-GAP-05
+    type: gap
+    title: OS sudoers not installed
+    epistemic_status: CONFIRMED
+    summary: Enforcement blocked until OS boundary ready.
+    source_paths:
+      - architecture/dsrg/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: DSRG-GAP-06
+    type: gap
+    title: Graph and validators (closed in R2)
+    epistemic_status: HISTORICAL
+    summary: Was blocking AUTHORITY_ACTIVE before DSRG-03 R2; validators now present.
+    source_paths:
+      - architecture/dsrg/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: DSRG-GAP-07
+    type: gap
+    title: RFRF traps on VPS not exercised
+    epistemic_status: UNKNOWN
+    summary: Repository selftests only.
+    source_paths:
+      - architecture/dsrg/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: DSRG-GAP-08
+    type: gap
+    title: Negative test while enforcement OFF
+    epistemic_status: UNKNOWN
+    summary: Direct current deploy reachability unvalidated until enforcement armed.
+    source_paths:
+      - architecture/dsrg/contradictions/KNOWLEDGE_GAPS.md
+
+  - id: DSRG-CONTRA-001
+    type: contradiction
+    title: PIN_INSTALLED reporting vs DSRG-02 promotion
+    epistemic_status: HISTORICAL
+    summary: Early read-only preflight reported pin absent; DSRG-02 promotion and R2 VPS verify pin present — resolved by independent observation.
+    source_paths:
+      - architecture/dsrg/contradictions/OPEN_CONTRADICTIONS.md
+
+  - id: DSRG-HYP-001
+    type: hypothesis
+    title: Enforcement can arm without chattr +i on pin trees
+    epistemic_status: INFERRED
+    summary: chattr optional per DSRG-02 seal; integrity relies on git porcelain checks.
+    source_paths:
+      - architecture/dsrg/research/OPEN_HYPOTHESES.md
