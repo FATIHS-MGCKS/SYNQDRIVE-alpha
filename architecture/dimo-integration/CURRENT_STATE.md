@@ -91,7 +91,7 @@ Do not treat pre-R9 Production observations as current state.
 
 | Gap | Status |
 |-----|--------|
-| Natural R9 webhook wake end-to-end delivery | **PARTIALLY VALIDATED** — natural **start** wake reconfirmed tokenId 187361 @ R11 `f7eb94cb…` (DIM-EV-KS-MS-661-R9-002); first observation @ `684950419…` (DIM-EV-KS-MS-661-R9-001); in-trip/end-path wake + payload archive **OPEN** (DIM-GAP-006) |
+| Natural R9 webhook wake end-to-end delivery | **REGRESSED @ 2026-10-09** — provider R9 defs `failed` → delivery **stopped** (R21); historical **start** wakes still valid @ Sept (`DIM-EV-KS-MS-661-R9-*`); post–Oct-9 R9 path **inactive**; polling fallback **ON** (R2 runtime); recovery PUT **prepared not executed** |
 | Full fleet-wide trigger inventory beyond active R9 cohort | **PARTIAL** — GET-based method established for audited cohort (DIM-GAP-002) |
 | Complete DIMO env flag matrix | **UNKNOWN** (DIM-GAP-003) |
 | Segment reconciliation ownership vs Trip Detection | **RESOLVED** (DIM-GAP-001 / TDL-OQ-006) — see [TDL_OQ_006 audit](../trip-detection-lifecycle/evidence/TDL_OQ_006_DIMO_SEGMENT_FSM_BOUNDARY_AUDIT_2026-09-25.md) |

@@ -33,6 +33,7 @@ Standard: [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) v1.0
 | **AUDIT_MODE** | `READ_ONLY` |
 | **VALIDATION_STATUS** | `PASS` — registry + dimo graph + query-invocation validator @ R2 |
 | **R2_AUDIT_AT** | `2026-10-11` — invocation graph, R9 GET re-audit, production runtime contract |
+| **R21_AUDIT_AT** | `2026-10-11` — R9 `failed` forensics, nginx ingress timeline, cohort authorization review; **no provider/runtime mutations** |
 
 ## Lifecycle phase status
 

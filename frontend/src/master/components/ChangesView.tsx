@@ -36,6 +36,40 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-integration-r21-r9-forensics-2026-10-11',
+    version: '4.9.2241',
+    title: 'DIMO Integration — R2.1 R9 webhook failure forensics (read-only)',
+    summary: [
+      'Provider source + GET: R9 speed/ignition definitions status failed since 2026-10-09 ~15:22 UTC; subscriptions remain 5/5.',
+      'Nginx: 40× HTTP 503 on POST /webhooks/dimo during deploy window; RCA CONFIRMED delivery circuit-breaker, not subscription loss.',
+      'Recovery PUT plan prepared (not executed); tokenId 187336 stale last_signal — owner decision; 190497 still excluded.',
+    ],
+    reason: 'Close P0 R9 failed-status mystery with production evidence and safe recovery preparation.',
+    previousBehavior: 'R2 observed failed defs without closed RCA or ingress timeline.',
+    details:
+      'architecture/dimo-integration/evidence/R21_*, research/R9_FAILED_STATUS_SEMANTICS.md, R9_ROOT_CAUSE_ASSESSMENT.md, R9_RECOVERY_PLAN.md',
+    affectsArchitecture: true,
+    module: 'DIMO Integration',
+    createdAt: '2026-10-11T20:00:00.000Z',
+  },
+  {
+    id: 'dimo-integration-r2-deep-completion-2026-10-11',
+    version: '4.9.2240',
+    title: 'DIMO Integration — R2 deep completion (invocation graph, production truth)',
+    summary: [
+      'Query invocation graph (25 surfaces) with JSON nodes/edges and validator; Q011 DORMANT proven (no callers).',
+      'Production R9 GET re-audit @ 2b89f746…: 5/5 subscriptions; R9 webhook definitions status failed (DIM-CX-005).',
+      'Runtime contract: global budget on, snapshot concurrency 8, tier overrides unset; legacy trigger bootstrap off.',
+    ],
+    reason: 'Close R1 PARTIAL_COMPLETE gaps with code-traced invocation graph and read-only production evidence.',
+    previousBehavior: 'R1 index-only signal catalog and no invocation graph or R9 re-read on current production SHA.',
+    details:
+      'architecture/dimo-integration/research/QUERY_INVOCATION_GRAPH.md, graph/query-invocation-*.json, evidence/R2_*',
+    affectsArchitecture: true,
+    module: 'DIMO Integration',
+    createdAt: '2026-10-11T19:30:00.000Z',
+  },
+  {
     id: 'dimo-integration-r1-deep-audit-2026-10-11',
     version: '4.9.2239',
     title: 'DIMO Integration — R1 deep audit authority corpus (docs only)',
