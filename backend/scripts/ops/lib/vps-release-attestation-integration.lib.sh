@@ -8,6 +8,17 @@ fi
 # Exit code when replicas are verified but attestation persistence failed (no app rollback).
 VPS_P4B16_PARTIAL_SUCCESS_RC=3
 
+vps_p4b16_is_partial_success_rc() {
+  local rc=$1
+  [[ "$rc" -eq "${VPS_P4B16_PARTIAL_SUCCESS_RC}" ]]
+}
+
+# Rollback restored replicas (0) or only attestation incomplete (3) — not a physical rollback failure.
+vps_p4b16_rollback_runtime_ok() {
+  local rc=$1
+  [[ "$rc" -eq 0 ]] || vps_p4b16_is_partial_success_rc "$rc"
+}
+
 vps_p4b16_shared_backend_env() {
   echo "${SYNQDRIVE_BACKEND_ENV:-/opt/synqdrive/shared/backend.env}"
 }
@@ -42,8 +53,9 @@ vps_p4b16_publish_after_deploy_verify() {
   local target_sha=$3
 
   if ! vps_p4b16_load_attestation "$release_ops_dir"; then
-    echo "WARN: P4B16 attestation library absent in release ops tree — not recorded (legacy deploy path)" >&2
-    return 0
+    echo "!! P4B16 integration active but core attestation library missing — attestation incomplete" >&2
+    vps_p4b16_log_partial_success "deploy ${target_sha:0:12} (missing core lib)"
+    return "${VPS_P4B16_PARTIAL_SUCCESS_RC}"
   fi
 
   if ! vps_attest_lock_acquire; then
@@ -67,8 +79,9 @@ vps_p4b16_publish_after_rollback_verify() {
   local restored_sha=$3
 
   if ! vps_p4b16_load_attestation "$release_ops_dir"; then
-    echo "WARN: P4B16 attestation library absent — rollback not recorded (legacy path)" >&2
-    return 0
+    echo "!! P4B16 integration active but core attestation library missing — rollback attestation incomplete" >&2
+    vps_p4b16_log_partial_success "rollback ${restored_sha:0:12} (missing core lib)"
+    return "${VPS_P4B16_PARTIAL_SUCCESS_RC}"
   fi
 
   if ! vps_attest_lock_acquire; then

@@ -506,11 +506,16 @@ vps_replica_rollback() {
     # shellcheck source=lib/vps-release-attestation-integration.lib.sh
     source "${_replica_ops_dir}/lib/vps-release-attestation-integration.lib.sh"
     local _attest_rc=0
-    if ! vps_p4b16_publish_after_rollback_verify "$_replica_ops_dir" "${PREVIOUS_CURRENT_RELEASE}" "$previous_sha"; then
-      _attest_rc=$?
-    fi
-    if [[ "$_attest_rc" -eq "${VPS_P4B16_PARTIAL_SUCCESS_RC:-3}" ]]; then
+    set +e
+    vps_p4b16_publish_after_rollback_verify "$_replica_ops_dir" "${PREVIOUS_CURRENT_RELEASE}" "$previous_sha"
+    _attest_rc=$?
+    set -e
+    if vps_p4b16_is_partial_success_rc "$_attest_rc"; then
       vps_replica_log "ROLLBACK PARTIAL_SUCCESS: replicas restored; attestation reconciliation required"
+      return "$_attest_rc"
+    fi
+    if [[ "$_attest_rc" -ne 0 ]]; then
+      vps_replica_log "ABORT: P4B16 rollback attestation hook failed (exit ${_attest_rc})"
       return "$_attest_rc"
     fi
   fi

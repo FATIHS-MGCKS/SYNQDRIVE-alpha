@@ -15,7 +15,9 @@
 
 **Ordering:** Attestation never runs before replica verification. No extra PM2 restart. No new HTTP endpoint.
 
-**Library availability:** Hooks load P4B16 libs from the target release ops directory (deploy) or current ops tree (rollback). Releases **without** `vps-release-attestation-integration.lib.sh` log a legacy-path warning and **do not** claim attestation protection.
+**Library availability:** Hooks load P4B16 libs from the target release ops directory (deploy) or current ops tree (rollback). Releases **without** `vps-release-attestation-integration.lib.sh` log a legacy-path warning and **do not** claim attestation protection. If the integration file is present but `vps-release-attestation.lib.sh` is missing, callers treat the outcome as **partial success (exit 3)** — not silent full success.
+
+**Exit codes:** Callers capture attestation/rollback status with `set +e` / explicit `$?` (never inside `if ! cmd; then $?` — that records the `if` test status, not the command). Rollback exit **3** means replicas restored; attestation incomplete — not an unsafe physical rollback failure.
 
 **Pinned executor:** `vps-deploy-release.sh` still runs from the pinned executor checkout; post-verify attestation uses libs shipped in the **cloned release** at `REQUESTED_SHA`, not the executor tree alone.
 
@@ -53,6 +55,7 @@ Attestation **re-invokes** this verifier inside `vps_attest_record_deploy_succes
 ```bash
 bash backend/scripts/ops/vps-release-attestation.selftest.sh
 bash backend/scripts/ops/vps-release-attestation-integration.selftest.sh
+bash backend/scripts/ops/vps-release-attestation-exitcode.selftest.sh
 bash architecture/dsrg/scripts/validate-graph.sh
 bash architecture/scripts/validate-module-registry.sh
 ```

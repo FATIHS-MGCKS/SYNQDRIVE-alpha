@@ -220,7 +220,19 @@ if ! vps_replica_rolling_deploy "$RELEASE_DIR" "$TARGET_SHA"; then
   echo "!! ABORT: multi-replica rolling deploy failed for ${RELEASE_ID}" >&2
   if [[ "$ROLLBACK_ON_FAIL" -eq 1 ]]; then
     echo "==> Rolling back to previous release"
-    if ! vps_replica_rollback "$DEPLOY_STATE_FILE"; then
+    set +e
+    vps_replica_rollback "$DEPLOY_STATE_FILE"
+    _P4B16_RB_RC=$?
+    set -e
+    if [[ -f "${RELEASE_OPS_DIR}/lib/vps-release-attestation-integration.lib.sh" ]]; then
+      # shellcheck source=lib/vps-release-attestation-integration.lib.sh
+      source "${RELEASE_OPS_DIR}/lib/vps-release-attestation-integration.lib.sh"
+      if vps_p4b16_is_partial_success_rc "$_P4B16_RB_RC"; then
+        echo "==> Rollback replicas restored; P4B16 attestation reconciliation required (exit ${_P4B16_RB_RC})" >&2
+      elif ! vps_p4b16_rollback_runtime_ok "$_P4B16_RB_RC"; then
+        vps_vo5c_log_unsafe_rollback_containment "deploy_rolling_fail_rollback_blocked"
+      fi
+    elif [[ "$_P4B16_RB_RC" -ne 0 ]]; then
       vps_vo5c_log_unsafe_rollback_containment "deploy_rolling_fail_rollback_blocked"
     fi
   fi
@@ -231,7 +243,21 @@ if ! vps_replica_verify_post_deploy "$RELEASE_DIR" "$TARGET_SHA"; then
   echo "!! ABORT: post-deploy multi-replica verification failed for ${RELEASE_ID}" >&2
   if [[ "$ROLLBACK_ON_FAIL" -eq 1 ]]; then
     echo "==> Rolling back to previous release"
-    if ! vps_replica_rollback "$DEPLOY_STATE_FILE"; then
+    set +e
+    vps_replica_rollback "$DEPLOY_STATE_FILE"
+    _P4B16_RB_RC=$?
+    set -e
+    if [[ -f "${RELEASE_OPS_DIR}/lib/vps-release-attestation-integration.lib.sh" ]]; then
+      # shellcheck source=lib/vps-release-attestation-integration.lib.sh
+      source "${RELEASE_OPS_DIR}/lib/vps-release-attestation-integration.lib.sh"
+      if vps_p4b16_is_partial_success_rc "$_P4B16_RB_RC"; then
+        echo "==> Rollback replicas restored; P4B16 attestation reconciliation required (exit ${_P4B16_RB_RC})" >&2
+      elif ! vps_p4b16_rollback_runtime_ok "$_P4B16_RB_RC"; then
+        if declare -F vps_vo5c_log_unsafe_rollback_containment >/dev/null; then
+          vps_vo5c_log_unsafe_rollback_containment "deploy_verify_fail_rollback_blocked"
+        fi
+      fi
+    elif [[ "$_P4B16_RB_RC" -ne 0 ]]; then
       if declare -F vps_vo5c_log_unsafe_rollback_containment >/dev/null; then
         vps_vo5c_log_unsafe_rollback_containment "deploy_verify_fail_rollback_blocked"
       fi
@@ -246,15 +272,22 @@ P4B16_ATTEST_RC=0
 if [[ -f "${RELEASE_OPS_DIR}/lib/vps-release-attestation-integration.lib.sh" ]]; then
   # shellcheck source=lib/vps-release-attestation-integration.lib.sh
   source "${RELEASE_OPS_DIR}/lib/vps-release-attestation-integration.lib.sh"
-  if ! vps_p4b16_publish_after_deploy_verify "$RELEASE_OPS_DIR" "$RELEASE_DIR" "$TARGET_SHA"; then
-    P4B16_ATTEST_RC=$?
-  fi
+  set +e
+  vps_p4b16_publish_after_deploy_verify "$RELEASE_OPS_DIR" "$RELEASE_DIR" "$TARGET_SHA"
+  P4B16_ATTEST_RC=$?
+  set -e
 else
   echo "WARN: release ops tree lacks P4B16 attestation integration — legacy path (not attestation-protected)" >&2
 fi
-if [[ "$P4B16_ATTEST_RC" -eq "${VPS_P4B16_PARTIAL_SUCCESS_RC:-3}" ]]; then
-  echo "==> Deploy finished with PARTIAL_SUCCESS (exit ${P4B16_ATTEST_RC}): replicas healthy; attestation reconciliation required" >&2
-  exit "$P4B16_ATTEST_RC"
+if [[ -f "${RELEASE_OPS_DIR}/lib/vps-release-attestation-integration.lib.sh" ]]; then
+  if vps_p4b16_is_partial_success_rc "$P4B16_ATTEST_RC"; then
+    echo "==> Deploy finished with PARTIAL_SUCCESS (exit ${P4B16_ATTEST_RC}): replicas healthy; attestation reconciliation required" >&2
+    exit "$P4B16_ATTEST_RC"
+  fi
+  if [[ "$P4B16_ATTEST_RC" -ne 0 ]]; then
+    echo "!! ABORT: P4B16 attestation hook failed (exit ${P4B16_ATTEST_RC})" >&2
+    exit "$P4B16_ATTEST_RC"
+  fi
 fi
 echo "    TARGET_SHA=${TARGET_SHA}"
 echo "    REPLICA_COUNT=${SYNQDRIVE_PRODUCTION_REPLICA_COUNT}"

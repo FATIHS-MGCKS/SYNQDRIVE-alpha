@@ -154,12 +154,14 @@ vps_p4b16_publish_after_deploy_verify "$OPS" "$REL_DIR" "$SHA_A" >/dev/null
 grep -q "^APD_SHADOW_EPOCH_APPROVED_RELEASE_SHA=${APDS_PIN}$" "${VPS_ATTESTATION_BACKEND_ENV}" && pass "integration_apds_pin_unchanged"
 rm -rf "$ROOT_APDS"
 
-# Legacy ops tree without attestation lib → warn, success (not protected)
+# Integration without core attestation lib → partial success RC 3 (not silent full success)
 OPS_LEGACY="$(mktemp -d)"
 make_ops_tree "$OPS_LEGACY" 0
-if ! vps_p4b16_publish_after_deploy_verify "$OPS_LEGACY" "$REL_DIR" "$SHA_A" 2>/dev/null; then
-  fail "legacy_missing_lib_should_not_fail_deploy_hook"
-fi
-pass "integration_legacy_path_no_attest_lib"
+set +e
+vps_p4b16_publish_after_deploy_verify "$OPS_LEGACY" "$REL_DIR" "$SHA_A" >/dev/null
+_legacy_rc=$?
+set -e
+[[ "$_legacy_rc" -eq 3 ]] || fail "integration_without_core_lib_rc3"
+pass "integration_missing_core_lib_rc3"
 
 echo "ALL_INTEGRATION_TESTS_PASS"
