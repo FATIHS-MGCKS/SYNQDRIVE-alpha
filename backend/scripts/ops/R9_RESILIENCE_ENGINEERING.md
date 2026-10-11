@@ -1,48 +1,40 @@
 # R9 resilience — engineering scope (runtime/ops only)
 
-This document belongs to the **isolated engineering PR** (not DIMO audit PR #1982).
+Engineering draft PR **#1985** (`cursor/r26-r9-resilience-engineering-1d7d`). DIMO audit/evidence: **#1982** only.
 
-## Files
+See `PR_ANCESTRY_R9_RESILIENCE.md` for PR overlap / R24 authority.
 
-| Path | Role |
-|------|------|
-| `r9-r24-webhook-recovery.mjs` | Authorized PUT recovery (gated) |
-| `r9-r25-circuit-monitor.mjs` | Read-only DIMO GET monitor |
-| `lib/vps-vo5c-nginx-webhook-safe-maintenance.lib.sh` | Phase-1 nginx generator |
-| `test/r9-resilience-nginx.docker-failover.sh` | Docker failover tests |
-| `templates/vo5c-joint-deploy-phase1-webhook-safe.README.md` | Orchestrator integration notes |
+## R2.7 executed tests (2026-10-11 UTC)
 
-## Monitor contract (R2.6)
+| Command | Env | Exit | Result |
+|---------|-----|------|--------|
+| `vps-vo5c-nginx-webhook-safe-maintenance.selftest.sh` | agent | 0 | PASS |
+| `test/vo5c-http-check.selftest.sh` | agent | 0 | PASS (503 without curl -f) |
+| `test/r9-resilience-nginx.config-test.sh` | agent + nginx | 0 | PASS `nginx -t` |
+| `test/r9-resilience-nginx.local-failover.sh` | agent | 0 | PASS |
+| `test/r9-resilience-nginx.composite-integration.sh` | agent | 0 | PASS (generated Phase-1 config) |
+| `node --test r9-r25-circuit-monitor.lib.spec.mjs` | agent | 0 | PASS (10 cases) |
+| `node --test r9-r24-webhook-recovery.lib.spec.mjs` | agent | 0 | PASS |
+| `vps-vo5c-security-floor-rollback.selftest.sh` | agent | 0 | PASS |
+| `vps-vo5c-pinned-deploy-execution-contract.selftest.sh` | agent | 0 | PASS |
+| `test/r9-resilience-nginx.docker-failover.sh` | agent | — | **NOT_RUN** (no dockerd) |
 
-- **No** POST to `/api/v1/webhooks/dimo`.
-- Optional `--check-public-health` → GET `/api/v1/health` only.
-- DIMO API/auth failures → exit **2**, `healthy: false`.
-- Rate limit: set `R9_MONITOR_MIN_INTERVAL_MS` when wrapping with cron (default 60s documented).
+## Staging-only gates (not executed offline)
 
-## Rollout gates
+- Full `vo5c-joint-deploy-orchestrate.webhook-safe.sh` on VPS (requires owner SHA pins + replicas)
+- Competing deploy / build-migration failure / nginx reload failure with real `systemctl`
+- Docker compose failover harness
 
-1. Merge engineering PR.
-2. VPS: adopt Phase-1 generator in joint orchestrator (separate change).
-3. Staging deploy drill + `test/r9-resilience-nginx.local-failover.sh` green.
-4. Enable read-only monitor cron (separate approval).
+## Monitor contract (R2.7)
 
-## R2.6 executed tests (2026-10-11 UTC)
+- No POST to `/api/v1/webhooks/dimo`
+- DIMO GET + optional `--check-public-health`
+- Malformed subscribers / unknown `failureCount` / contract drift → unhealthy
+- Local rate limit via `R9_MONITOR_STATE_PATH` + `R9_MONITOR_MIN_INTERVAL_MS` (exit 3)
+- No credentials in JSON output
 
-| Scenario | Harness | Result |
-|----------|---------|--------|
-| Generator validation + injection rejection | `vps-vo5c-nginx-webhook-safe-maintenance.selftest.sh` | PASS |
-| Full `nginx -t` on Phase-1 snippet | `test/r9-resilience-nginx.config-test.sh` | PASS |
-| Both replicas up / A down / both down | `test/r9-resilience-nginx.local-failover.sh` | PASS |
-| Monitor lib contract | `node --test r9-r25-circuit-monitor.lib.spec.mjs` | PASS |
-| R24 recovery lib | `node --test r9-r24-webhook-recovery.lib.spec.mjs` | PASS |
-| Docker compose failover | `test/r9-resilience-nginx.docker-failover.sh` | BLOCKED (no dockerd in CI agent) |
+## Rollout
 
-## Documented-only (staging/VPS drill before prod)
-
-- nginx reload failure → golden restore
-- Build/migration failure → Phase 4 restore path
-- Competing deploy lock
-- Security-floor preflight violation
-- Incompatible Prisma migration
-
-Operator escalation (monitor): exit 2 → page on-call; inspect `dimoApiError.state`, `FAILURE_COUNT_NONZERO`, `COHORT_DRIFT`; no auto PUT (use gated `r9-r24-webhook-recovery.mjs`).
+1. Human merge #1985 after CI green + review
+2. Staging VO5C drill with webhook-safe orchestrator
+3. Separate approval: VPS Phase-1 swap + optional read-only monitor cron

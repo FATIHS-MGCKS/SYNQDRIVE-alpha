@@ -14,10 +14,15 @@ import {
   evaluatePublicHealthGet,
   parseSubscriberList,
   classifyDimoApiError,
+  R9_DEFINITION_CONTRACTS,
 } from './r9-r25-circuit-monitor.lib.mjs';
+import { enforceMonitorRateLimit } from './r9-r25-circuit-monitor-rate.lib.mjs';
 
 const CHECK_PUBLIC_HEALTH = process.argv.includes('--check-public-health');
 const MIN_INTERVAL_MS = parseInt(process.env.R9_MONITOR_MIN_INTERVAL_MS || '60000', 10);
+const RATE_STATE_PATH =
+  process.env.R9_MONITOR_STATE_PATH ||
+  '/opt/synqdrive/shared/deploy-state/r9-circuit-monitor-rate-state.json';
 
 function loadEnv(path) {
   const env = {};
@@ -92,6 +97,14 @@ const report = {
   healthy: false,
 };
 
+const rate = enforceMonitorRateLimit(RATE_STATE_PATH, MIN_INTERVAL_MS);
+if (!rate.ok) {
+  report.rateLimit = rate;
+  report.healthy = false;
+  console.log(JSON.stringify(report, null, 2));
+  process.exit(3);
+}
+
 try {
   const headers = await authenticate(env);
   const listRaw = (await axios.get(`${api}/v1/webhooks`, { headers, timeout: 20000 })).data;
@@ -114,8 +127,16 @@ try {
   const speedParsed = parseSubscriberList(speedSubsRaw);
   const ignParsed = parseSubscriberList(ignSubsRaw);
 
-  const speedHealth = evaluateR9DefinitionHealth(speedDef, speedParsed.ok ? speedParsed.tokenIds : []);
-  const ignHealth = evaluateR9DefinitionHealth(ignDef, ignParsed.ok ? ignParsed.tokenIds : []);
+  const speedHealth = evaluateR9DefinitionHealth(
+    speedDef,
+    speedParsed.ok ? speedParsed.tokenIds : [],
+    R9_DEFINITION_CONTRACTS.speed,
+  );
+  const ignHealth = evaluateR9DefinitionHealth(
+    ignDef,
+    ignParsed.ok ? ignParsed.tokenIds : [],
+    R9_DEFINITION_CONTRACTS.ignition,
+  );
 
   if (!speedParsed.ok) speedHealth.alerts.push({ code: speedParsed.error, severity: 'CRITICAL' });
   if (!ignParsed.ok) ignHealth.alerts.push({ code: ignParsed.error, severity: 'CRITICAL' });

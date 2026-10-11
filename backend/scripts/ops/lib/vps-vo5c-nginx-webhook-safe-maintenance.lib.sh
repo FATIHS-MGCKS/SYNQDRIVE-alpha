@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# R2.6 — Webhook-safe VO5C Phase-1 nginx maintenance (offline generator + validators).
+# R2.7 — Webhook-safe VO5C Phase-1 nginx maintenance (offline generator + validators).
 set -euo pipefail
 
 VO5C_WEBHOOK_LOCATION_PATH="${VO5C_WEBHOOK_LOCATION_PATH:-/api/v1/webhooks/dimo}"
@@ -77,6 +77,34 @@ server {
 EOF
 }
 
+# Phase-1 file: single upstream + TLS server + HTTP redirect (replaces entire sites-available file).
+vo5c_emit_phase1_maintenance_nginx_file() {
+  local upstream_name="${1:-synqdrive_backend}"
+  local webhook_path="${2:-$VO5C_WEBHOOK_LOCATION_PATH}"
+  vo5c_emit_webhook_safe_maintenance_site "$upstream_name" "$webhook_path"
+  cat <<'NGINX_HTTP'
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name app.synqdrive.eu srv1374778.hstgr.cloud _;
+    return 301 https://app.synqdrive.eu$request_uri;
+}
+NGINX_HTTP
+}
+
+vo5c_count_upstream_blocks() {
+  local file="$1"
+  grep -c '^upstream ' "$file" 2>/dev/null || echo 0
+}
+
+vo5c_validate_single_upstream_block() {
+  local file="$1"
+  local count
+  count="$(vo5c_count_upstream_blocks "$file")"
+  [[ "$count" -eq 1 ]] || return 1
+  return 0
+}
+
 # Returns 0 if webhook location appears before catch-all 503 and uses proxy_pass.
 vo5c_validate_webhook_safe_site() {
   local file="$1"
@@ -90,5 +118,6 @@ vo5c_validate_webhook_safe_site() {
   catchall_line="$(grep -n 'location / {' "$file" | head -1 | cut -d: -f1)"
   [[ -n "$webhook_line" && -n "$catchall_line" ]] || return 5
   [[ "$webhook_line" -lt "$catchall_line" ]] || return 6
+  vo5c_validate_single_upstream_block "$file" || return 7
   return 0
 }

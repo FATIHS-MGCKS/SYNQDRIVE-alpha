@@ -21,5 +21,9 @@ fi
 grep -q 'location = /api/v1/webhooks/dimo' "$TMP"
 grep -q 'max_fails=2' "$TMP"
 grep -q 'proxy_set_header X-Forwarded-Proto' "$TMP"
+PHASE="$(mktemp)"
+vo5c_emit_phase1_maintenance_nginx_file synqdrive_backend /api/v1/webhooks/dimo >"$PHASE"
+vo5c_validate_webhook_safe_site "$PHASE" /api/v1/webhooks/dimo
+rm -f "$PHASE"
 rm -f "$TMP"
 echo "PASS webhook-safe maintenance selftest"

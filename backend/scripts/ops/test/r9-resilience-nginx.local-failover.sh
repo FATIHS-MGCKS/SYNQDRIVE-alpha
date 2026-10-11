@@ -12,6 +12,7 @@ PORT_B=19002
 PORT_N=18081
 
 cleanup() {
+  [[ -f "${TEST_DIR}/.nginx-master.pid" ]] && kill "$(cat "${TEST_DIR}/.nginx-master.pid")" 2>/dev/null || true
   [[ -f "$PID_N" ]] && kill "$(cat "$PID_N")" 2>/dev/null || true
   [[ -f "$PID_A" ]] && kill "$(cat "$PID_A")" 2>/dev/null || true
   [[ -f "$PID_B" ]] && kill "$(cat "$PID_B")" 2>/dev/null || true
