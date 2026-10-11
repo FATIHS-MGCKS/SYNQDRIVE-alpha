@@ -214,6 +214,71 @@ describe('AdaptivePollingShadowService', () => {
     expect(metrics.recordFailure).toHaveBeenCalledWith('pre_poll');
   });
 
+  it('FSM ACTIVE_TRIP without vehicle_trips interval does not force PROFILE_OBSERVABILITY_GAP profile invalidation', async () => {
+    enableShadowWithCohort();
+    const decisionAtMs = 3_000_000_000;
+    const lvRows = Array.from({ length: 8 }, (_, i) => ({
+      providerTimestamp: new Date(decisionAtMs - (8 - i) * 120_000),
+    }));
+    (prisma.batteryMeasurement.findMany as jest.Mock).mockResolvedValueOnce(lvRows);
+    (prisma.vehicleTrip.findFirst as jest.Mock).mockResolvedValueOnce(null);
+    (prisma.vehicle.findUnique as jest.Mock).mockResolvedValueOnce({ fuelType: 'GASOLINE' });
+    const service = new AdaptivePollingShadowService(
+      prisma as never,
+      repository,
+      activationEpochAllowing(),
+      metrics,
+    );
+    await service.observeActualBaselinePollStart({
+      organizationId: 'org-1',
+      vehicleId: 'veh-1',
+      pollStartedAtMs: decisionAtMs,
+      origin: 'SCHEDULED',
+      tripDetectionState: TripDetectionState.ACTIVE_TRIP,
+      lastProviderFetchedAtMs: decisionAtMs - 60_000,
+      providerGapOpen: false,
+      connectivityState: 'CONNECTED',
+      r9WakeKnown: false,
+      wakeCorrelationId: null,
+      deviceReconnectRecent: false,
+      providerReconnectRecent: false,
+    });
+    const calls = (repository.upsertPrePollDecision as jest.Mock).mock.calls.map((c) => c[0]);
+    for (const row of calls) {
+      expect(row.reconciliation).toBe(true);
+      expect(row.decision).not.toBe('FORCED_PROFILE_INVALID');
+      expect(row.reason).not.toBe('PROFILE_OBSERVABILITY_GAP');
+    }
+  });
+
+  it('LV loader query is bounded by poll start (no future provider timestamps)', async () => {
+    enableShadowWithCohort();
+    const decisionAtMs = 3_000_000_000;
+    (prisma.vehicleTrip.findFirst as jest.Mock).mockResolvedValue(null);
+    const service = new AdaptivePollingShadowService(
+      prisma as never,
+      repository,
+      activationEpochAllowing(),
+      metrics,
+    );
+    await service.observeActualBaselinePollStart({
+      organizationId: 'org-1',
+      vehicleId: 'veh-1',
+      pollStartedAtMs: decisionAtMs,
+      origin: 'SCHEDULED',
+      tripDetectionState: TripDetectionState.RESTING,
+      lastProviderFetchedAtMs: null,
+      providerGapOpen: false,
+      connectivityState: null,
+      r9WakeKnown: false,
+      wakeCorrelationId: null,
+      deviceReconnectRecent: false,
+      providerReconnectRecent: false,
+    });
+    const findManyArgs = (prisma.batteryMeasurement.findMany as jest.Mock).mock.calls[0][0];
+    expect(findManyArgs.where.providerTimestamp.lte).toEqual(new Date(decisionAtMs));
+  });
+
   it('active trip uses vehicle_trips reconciliation classification', async () => {
     enableShadowWithCohort();
     (prisma.vehicleTrip.findFirst as jest.Mock).mockResolvedValueOnce({ id: 'trip' });

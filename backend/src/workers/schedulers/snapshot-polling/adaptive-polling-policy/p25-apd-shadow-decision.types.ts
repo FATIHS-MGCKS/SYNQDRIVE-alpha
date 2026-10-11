@@ -27,6 +27,8 @@ export type P25ApdShadowDecisionReason =
   | 'PROFILE_INSUFFICIENT_EVIDENCE'
   | 'MISSING_LV_SOURCE_TIMESTAMP'
   | 'R9_PROVIDER_WAKE'
+  | 'TRIP_ACTIVE'
+  | 'TRIP_AUTHORITY_DISAGREEMENT'
   | 'SHADOW_NOT_EVALUATED';
 
 export interface P25ApdShadowPrePollInput {

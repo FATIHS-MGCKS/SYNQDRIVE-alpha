@@ -1,5 +1,4 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
-import { TripDetectionState } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import type { SnapshotWakeOutcome } from '../../../snapshot-wake/snapshot-wake.types';
 import { P25_APD_B2_V1, P25_APD_B4_V1 } from '../adaptive-polling-policy/p25-apd-policy-versions';
@@ -7,6 +6,7 @@ import {
   evaluateP25ApdB4V1Core,
   evaluateP25ApdB2V1Core,
 } from '../adaptive-polling-policy/p25-apd-policy-engine';
+import { buildP25ApdProfileLvLoaderWhere } from '../adaptive-polling-policy/p25-apd-profile-lv-loader';
 import { evaluateP25ApdProfile } from '../adaptive-polling-policy/p25-apd-profile-evaluator';
 import { applyP25ApdShadowSafetyOverlay } from '../adaptive-polling-policy/p25-apd-shadow-overlay';
 import type { P25ApdShadowPrePollInput } from '../adaptive-polling-policy/p25-apd-shadow-decision.types';
@@ -24,6 +24,7 @@ import { AdaptivePollingShadowRepository } from './adaptive-polling-shadow.repos
 import { buildApdShadowOpportunityId } from './apd-shadow-opportunity.util';
 import { evaluateLvProviderTimestampAdmission } from './p25-apd-shadow-lv-bootstrap.contract';
 import { P25_APD_SHADOW_EXECUTION_VERSION_CURRENT } from './p25-apd-shadow-execution-versions';
+import { resolveApdShadowTripAuthority } from './apd-shadow-trip-authority';
 import { isVehicleInActiveTripAtMs } from './apd-shadow-trip-reconciliation.util';
 import type {
   AdaptivePollingShadowActualPollStartContext,
@@ -275,11 +276,16 @@ export class AdaptivePollingShadowService {
     activeEpoch: ApdShadowActiveEpochView,
   ): Promise<string> {
     const decisionAtMs = ctx.pollStartedAtMs;
-    const reconciliation = !(await isVehicleInActiveTripAtMs(
+    const inTripPerVehicleTrips = await isVehicleInActiveTripAtMs(
       this.prisma,
       ctx.vehicleId,
       decisionAtMs,
-    ));
+    );
+    const reconciliation = !inTripPerVehicleTrips;
+    const tripAuthority = resolveApdShadowTripAuthority({
+      inTripPerVehicleTripsAtDecision: inTripPerVehicleTrips,
+      tripDetectionState: ctx.tripDetectionState,
+    });
 
     const opportunityId = buildApdShadowOpportunityId({
       organizationId: ctx.organizationId,
@@ -288,12 +294,8 @@ export class AdaptivePollingShadowService {
       origin: ctx.origin,
     });
 
-    const tripActive =
-      ctx.tripDetectionState === TripDetectionState.ACTIVE_TRIP ||
-      ctx.tripDetectionState === TripDetectionState.POSSIBLE_START;
-
     const [lvTimestamps, vehicleFuel] = await Promise.all([
-      this.loadRecentLvProviderTimestampsMs(ctx.vehicleId),
+      this.loadRecentLvProviderTimestampsMs(ctx.vehicleId, decisionAtMs),
       this.prisma.vehicle.findUnique({
         where: { id: ctx.vehicleId },
         select: { fuelType: true },
@@ -305,7 +307,7 @@ export class AdaptivePollingShadowService {
       lvProviderTimestampsMs: lvTimestamps,
       vehicleFuelType: vehicleFuel?.fuelType ?? null,
       providerGapOpen: ctx.providerGapOpen,
-      tripActive,
+      tripActive: tripAuthority.profileTripInvalidationActive,
       r9WakeRecent: ctx.r9WakeKnown,
       deviceReconnectRecent: ctx.deviceReconnectRecent,
       providerReconnectRecent: ctx.providerReconnectRecent,
@@ -327,6 +329,7 @@ export class AdaptivePollingShadowService {
       invalidationReason: profile.invalidationReason,
       providerGapOpen: ctx.providerGapOpen,
       reconnectPending: ctx.deviceReconnectRecent || ctx.providerReconnectRecent,
+      tripAuthorityDisagreement: tripAuthority.tripAuthorityDisagreement,
     };
 
     const policies = [
@@ -357,7 +360,7 @@ export class AdaptivePollingShadowService {
         lastProviderFetchedAtMs: ctx.lastProviderFetchedAtMs,
         profileVersion: profile.profileVersion,
         medianIntervalMs,
-        tripFsmActive: tripActive,
+        tripFsmActive: tripAuthority.conservativeTripSafetyLatch,
         providerGapOpen: ctx.providerGapOpen,
         r9WakePending: ctx.r9WakeKnown,
         profileClass: profile.profileClass,
@@ -407,14 +410,10 @@ export class AdaptivePollingShadowService {
 
   private async loadRecentLvProviderTimestampsMs(
     vehicleId: string,
+    decisionAtMs: number,
   ): Promise<number[]> {
     const rows = await this.prisma.batteryMeasurement.findMany({
-      where: {
-        vehicleId,
-        type: 'LIVE_VOLTAGE',
-        quality: 'VALID',
-        providerTimestamp: { not: null },
-      },
+      where: buildP25ApdProfileLvLoaderWhere(vehicleId, decisionAtMs),
       orderBy: { providerTimestamp: 'desc' },
       take: 24,
       select: { providerTimestamp: true },

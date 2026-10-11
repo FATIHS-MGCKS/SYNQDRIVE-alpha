@@ -19,6 +19,13 @@ export type P25ApdShadowExecutionVersion =
 export const P25_APD_SHADOW_EXECUTION_VERSION_CURRENT: P25ApdShadowExecutionVersion =
   P25_APD_SHADOW_EXECUTION_V2_1;
 
+/**
+ * Overlay reason visibility (APDS R4 P2/P2B) does not require a new execution version:
+ * advancing decisions, bootstrap eligibility, and post-poll admission contracts are unchanged.
+ * Scientific separation remains `activation_epoch_id` + per-row `shadow_execution_version`.
+ * Deploy boundary marks distinct persisted `reason`/`decision` strings on new rows only.
+ */
+
 /** Decisions that may advance durable lastAllowed after a successful real baseline poll. */
 export const P25_APD_SHADOW_ADVANCING_DECISIONS = [
   'WOULD_POLL',
