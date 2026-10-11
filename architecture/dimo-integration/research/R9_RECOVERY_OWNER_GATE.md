@@ -10,7 +10,7 @@
 
 | Gate | Question | R2.2 recommendation |
 |------|----------|----------------------|
-| **GATE-A — Webhook recovery** | May we `PUT` enable both R9 UUIDs? | **Preflight PASS** for transport; execute only outside deploy maintenance window |
+| **GATE-A — Webhook recovery** | May we `PUT` enable both R9 UUIDs? | **EXECUTED** `2026-10-11` — `DIM-EV-R24-R9-RECOVERY-001` (both enabled, failureCount 0) |
 | **GATE-B — Cohort hygiene** | May tokenId **187336** remain subscribed after recovery? | **RESOLVED (provider)** — R2.3 removed all 6 webhook subs for 187336; local offboard still pending — `evidence/R23_187336_PROVIDER_ONLY_UNSUBSCRIBE_2026-10-11.md`. R9 PUT recovery does not require 187336 on subscriber list. |
 
 **Rule:** GATE-A approval **does not** imply GATE-B approval. Recovery without GATE-B re-enables wakes for **187336** if provider fires.
