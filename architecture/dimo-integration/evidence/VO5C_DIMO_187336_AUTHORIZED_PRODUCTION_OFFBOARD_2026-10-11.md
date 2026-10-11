@@ -6,7 +6,7 @@
 | **Owner authorization** | **YES** — target **187336 only** (sold vehicle; SynqDrive offboard + SynqDrive-owned DIMO webhook unsubscribes). **NOT** authorized: R9 webhook reactivation, deploy, feature flags, global webhook defs, other vehicles. |
 | **Execution window (UTC)** | `2026-10-11T20:00:00Z` – `20:05:00Z` (read-only preflight + gate evaluation) |
 | **AUDIT_MODE** | Preflight **READ_ONLY**; **no** canonical offboard or provider DELETE executed |
-| **FINAL_STATUS** | **`BLOCKED_PRECONDITION`** |
+| **FINAL_STATUS** | **`BLOCKED_PRECONDITION`** (canonical HTTP offboard) — **Provider-only unsubscribe completed separately:** [R23_187336_PROVIDER_ONLY_UNSUBSCRIBE_2026-10-11.md](R23_187336_PROVIDER_ONLY_UNSUBSCRIBE_2026-10-11.md) |
 
 ## 1. Production baseline
 

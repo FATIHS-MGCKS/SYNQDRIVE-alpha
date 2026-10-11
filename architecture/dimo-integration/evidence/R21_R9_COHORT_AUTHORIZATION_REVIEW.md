@@ -42,7 +42,7 @@ Columns: `token_id | registry_lifecycle | vehicle_status | connection_status | p
 | DB connection | **CONNECTED** (mirror) |
 | Telemetry freshness | **`last_signal` ~12 days stale** vs cohort peers (Oct 11) — **CONTRADICTS** “sold/disconnected device” hypothesis **partially**: registry still authorizes; **operational eligibility for fast trip wake is degraded** |
 | Offboarding / `registry_lifecycle` | **ACTIVE** — no offboard marker in schema used |
-| Recommended action | **Owner authorized offboard 2026-10-11** — execution **BLOCKED** (P4A HTTP admission + MFA); see [VO5C_DIMO_187336_AUTHORIZED_PRODUCTION_OFFBOARD_2026-10-11.md](VO5C_DIMO_187336_AUTHORIZED_PRODUCTION_OFFBOARD_2026-10-11.md) |
+| Recommended action | **R2.3 (2026-10-11):** all **6** provider webhook subs removed for 187336 — [R23_187336_PROVIDER_ONLY_UNSUBSCRIBE_2026-10-11.md](R23_187336_PROVIDER_ONLY_UNSUBSCRIBE_2026-10-11.md). **Local VO5C offboard still pending** (P4A/MFA). |
 
 ### tokenId **190497** — exclusion verification
 
