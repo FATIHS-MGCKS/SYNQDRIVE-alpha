@@ -16,7 +16,7 @@ Standard: [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) v1.0
 | **REPOSITORY** | `FATIHS-MGCKS/SYNQDRIVE-alpha` |
 | **REPO_BASE_BRANCH** | `main` |
 | **ORIGIN_MAIN_SHA** | `2a44f5cdc6ce0f1e4ec3846243352f8a82aef072` |
-| **AUDIT_BRANCH_SHA** | Set at DSRG-03 R0 commit (see PR head) |
+| **AUDIT_BRANCH_SHA** | `b24203d82d6` (DSRG-03 R0; see PR head if amended) |
 | **PRODUCTION_AUDITED_AT** | `2026-10-11T00:47:51Z` (read-only SSH; no deploy runner invoked) |
 | **PRODUCTION_ACCESS** | `VERIFIED_READ_ONLY` |
 | **PRODUCTION_RELEASE_SHA** | `7f47c9f5b5e35c425deb3c2b6bdaed9df73e5c7c` (`SYNQDRIVE_DEPLOYED_GIT_SHA` on VPS) |
