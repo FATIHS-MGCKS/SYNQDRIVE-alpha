@@ -1,0 +1,127 @@
+# DSRG Knowledge Graph — Schema
+
+version: "1.0"
+description: >
+  Schema for Deployment Security & Release Governance living architecture authority.
+  Maintained per MODULE_AUTHORITY_STANDARD.md and AGENT_CONTRACT.md.
+
+node_types:
+  - domain
+  - pipeline
+  - orchestrator
+  - policy
+  - authority
+  - state
+  - decision
+  - evidence
+  - test_evidence
+  - hypothesis
+  - gap
+  - contradiction
+  - failed_approach
+  - rejected_approach
+  - superseded_approach
+
+epistemic_status_values:
+  - CONFIRMED
+  - INFERRED
+  - HISTORICAL
+  - UNKNOWN
+  - CONTRADICTED
+
+decision_status_values:
+  - PROPOSED
+  - EXPERIMENTAL
+  - VALIDATED
+  - PRODUCTION_VALIDATED
+  - REJECTED
+  - SUPERSEDED
+
+decision_status_permitted_types:
+  - decision
+  - rejected_approach
+
+reconstruction_maturity_values:
+  - NONE
+  - PARTIAL
+  - SUBSTANTIAL
+  - COMPLETE
+
+invariant_kinds:
+  - CONFIRMED_INVARIANT
+  - CONDITIONAL_INVARIANT
+  - CANDIDATE_INVARIANT
+  - DISPROVEN_OR_CONTRADICTED
+
+evidence_source_types:
+  - CURRENT_CODE
+  - CURRENT_TEST
+  - PRODUCTION_OBSERVATION
+  - ARCHITECTURE_DOCUMENT
+  - AUDIT_DOCUMENT
+  - PR_HISTORY
+  - COMMIT_HISTORY
+  - SYNTHETIC_TEST
+  - DOMAIN_REASONING
+
+evidence_reference_permitted_types:
+  - evidence
+  - test_evidence
+
+relation_types:
+  - upstream_of
+  - downstream_of
+  - governs
+  - uses
+  - input_to
+  - supports
+  - tested_by
+  - gates
+  - contradicts
+  - supersedes
+  - superseded_by
+
+relation_semantics_doc: architecture/dsrg/AGENT_CONTRACT.md
+
+id_prefixes:
+  domain: DSRG-DOM-
+  pipeline: DSRG-PIPE-
+  orchestrator: DSRG-ORCH-
+  policy: DSRG-POL-
+  authority: DSRG-AUTH-
+  state: DSRG-STATE-
+  decision: DSRG-DEC-
+  evidence: DSRG-EVID-
+  test_evidence: DSRG-TEST-
+  hypothesis: DSRG-HYP-
+  gap: DSRG-GAP-
+  contradiction: DSRG-CONTRA-
+  failed_approach: DSRG-FAIL-
+  rejected_approach: DSRG-REJECT-
+  superseded_approach: DSRG-SUPERSEDED-
+
+node_fields:
+  required:
+    - id
+    - type
+    - title
+    - epistemic_status
+    - summary
+  optional:
+    - decision_status
+    - reconstruction_maturity
+    - source_type
+    - source_paths
+    - evidence
+    - notes
+
+evidence_required_fields:
+  - source_type
+
+edge_fields:
+  required:
+    - from
+    - relation
+    - to
+  optional:
+    - notes
