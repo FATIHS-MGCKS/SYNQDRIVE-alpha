@@ -9,8 +9,7 @@ VPS_ATTESTATION_STATE_DIR="${VPS_ATTESTATION_STATE_DIR:-${SYNQDRIVE_DEPLOY_STATE
 VPS_ATTESTATION_STATE_FILE="${VPS_ATTESTATION_STATE_FILE:-release-attestation.state}"
 VPS_ATTESTATION_LOCK_FILE="${VPS_ATTESTATION_LOCK_FILE:-.attestation.lock}"
 VPS_ATTESTATION_CHECKSUM_FILE="${VPS_ATTESTATION_CHECKSUM_FILE:-release-attestation.state.sha256}"
-# Offline selftests only (both required; never set in production):
-#   VPS_ATTESTATION_OFFLINE_SELFTEST=1 VPS_ATTESTATION_SKIP_REPLICA_VERIFY=1
+# Selftests: mock vps_replica_verify_post_deploy in the shell (no production skip flags).
 # Selftests: VPS_ATTESTATION_CRASH_HOOK=before_state_write|after_mirror
 VPS_ATTESTATION_CRASH_HOOK="${VPS_ATTESTATION_CRASH_HOOK:-}"
 
@@ -125,10 +124,6 @@ vps_attest_require_lock_held() {
   return 0
 }
 
-vps_attest_verify_skip_allowed() {
-  [[ "${VPS_ATTESTATION_OFFLINE_SELFTEST:-}" == "1" && "${VPS_ATTESTATION_SKIP_REPLICA_VERIFY:-}" == "1" ]]
-}
-
 vps_attest_last_recorded_deployed_sha() {
   if ! vps_attest_state_verify_checksum 2>/dev/null; then
     echo ""
@@ -221,26 +216,37 @@ UPDATED_AT=${ts}
 EOF
 }
 
-# Mandatory: both-replica deploy verification via existing ops library (when present).
+# Mandatory: both-replica deploy verification via existing ops library.
 vps_attest_require_replica_verify() {
   local release_dir=$1
   local target_sha=$2
   vps_attest_validate_sha "$target_sha" || return 1
   target_sha="$(vps_attest_normalize_sha "$target_sha")"
-
-  if vps_attest_verify_skip_allowed; then
-    vps_attest_log "offline selftest: skipping replica verify"
-    return 0
-  fi
-  if [[ "${VPS_ATTESTATION_SKIP_REPLICA_VERIFY:-}" == "1" ]]; then
-    vps_attest_fail "SKIP_REPLICA_VERIFY without OFFLINE_SELFTEST is not allowed"
-    return 1
-  fi
   if ! declare -f vps_replica_verify_post_deploy >/dev/null 2>&1; then
     vps_attest_fail "vps_replica_verify_post_deploy unavailable — cannot record deploy"
     return 1
   fi
   vps_replica_verify_post_deploy "$release_dir" "$target_sha"
+}
+
+vps_attest_mirror_sha_matches() {
+  local target_sha=$1
+  # shellcheck source=lib/vps-release-attestation-env-mirror.lib.sh
+  source "$(dirname "${BASH_SOURCE[0]}")/vps-release-attestation-env-mirror.lib.sh"
+  local mirrored
+  mirrored="$(vps_attest_mirror_read_sha_from_file "${VPS_ATTESTATION_BACKEND_ENV:-}" 2>/dev/null || true)"
+  [[ -n "$mirrored" ]] || return 1
+  [[ "$(vps_attest_normalize_sha "$mirrored")" == "$(vps_attest_normalize_sha "$target_sha")" ]]
+}
+
+vps_attest_ensure_mirror_matches() {
+  local target_sha=$1
+  if vps_attest_mirror_sha_matches "$target_sha"; then
+    return 0
+  fi
+  # shellcheck source=lib/vps-release-attestation-env-mirror.lib.sh
+  source "$(dirname "${BASH_SOURCE[0]}")/vps-release-attestation-env-mirror.lib.sh"
+  vps_attest_mirror_deployed_git_sha "${VPS_ATTESTATION_BACKEND_ENV:-}" "$target_sha"
 }
 
 vps_attest_reader_is_committed() {
@@ -272,6 +278,7 @@ vps_attest_record_deploy_success() {
   if vps_attest_reader_is_committed 2>/dev/null; then
     cur="$(vps_attest_normalize_sha "$(vps_attest_state_read_kv DEPLOYED_SHA)")"
     if [[ "$cur" == "$target_sha" ]]; then
+      vps_attest_ensure_mirror_matches "$target_sha" || return 1
       return 0
     fi
   fi
@@ -326,6 +333,7 @@ vps_attest_resume_incomplete_deploy() {
     local cur
     cur="$(vps_attest_normalize_sha "$(vps_attest_state_read_kv DEPLOYED_SHA)")"
     [[ "$cur" == "$target_sha" ]] || return 1
+    vps_attest_ensure_mirror_matches "$target_sha" || return 1
     return 0
   fi
   # shellcheck source=lib/vps-release-attestation-env-mirror.lib.sh
@@ -362,8 +370,6 @@ vps_attest_record_rollback_success() {
   # shellcheck source=lib/vps-release-attestation-env-mirror.lib.sh
   source "$(dirname "${BASH_SOURCE[0]}")/vps-release-attestation-env-mirror.lib.sh"
   if ! vps_attest_mirror_deployed_git_sha "${VPS_ATTESTATION_BACKEND_ENV:-}" "$previous_sha"; then
-    body="$(vps_attest_build_state_body COMMITTED "$gen" "$cur" "$(vps_attest_state_read_kv PREVIOUS_SHA)")"
-    vps_attest_state_write_atomic "$body" || true
     return 1
   fi
   body="$(vps_attest_build_state_body COMMITTED "$gen" "$previous_sha" "$cur")"
@@ -371,15 +377,16 @@ vps_attest_record_rollback_success() {
 }
 
 vps_attest_record_rollback_denied() {
+  local release_dir=$1
   vps_attest_require_lock_held || return 1
-  local gen cur prev body
-  gen="$(vps_attest_next_generation)"
-  cur="$(vps_attest_state_read_kv DEPLOYED_SHA)"
-  prev="$(vps_attest_state_read_kv PREVIOUS_SHA)"
-  cur="${cur:-}"
-  # Fail-closed: do not publish ROLLED_BACK or change DEPLOYED_SHA on denied rollback.
-  body="$(vps_attest_build_state_body COMMITTED "$gen" "$cur" "$prev")"
-  vps_attest_state_write_atomic "$body"
+  local cur
+  cur="$(vps_attest_last_recorded_deployed_sha)"
+  if [[ -z "$cur" ]]; then
+    return 0
+  fi
+  vps_attest_require_replica_verify "$release_dir" "$cur" || return 1
+  vps_attest_ensure_mirror_matches "$cur" || return 1
+  return 0
 }
 
 vps_attest_reader_is_rolled_back() {

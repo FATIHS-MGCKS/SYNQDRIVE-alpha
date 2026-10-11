@@ -118,6 +118,32 @@ vps_attest_mirror_fsync_dir() {
   sync -f "$d" 2>/dev/null || return 1
 }
 
+vps_attest_mirror_assert_metadata() {
+  local path=$1 want_uid=$2 want_gid=$3 want_mode=$4
+  local got_uid got_gid got_mode
+  got_uid="$(stat -c '%u' "$path")"
+  got_gid="$(stat -c '%g' "$path")"
+  got_mode="$(stat -c '%a' "$path")"
+  if [[ -n "$want_uid" && -n "$want_gid" ]]; then
+    [[ "$got_uid" == "$want_uid" && "$got_gid" == "$want_gid" ]] || return 1
+  fi
+  [[ "$got_mode" == "$want_mode" ]] || return 1
+  return 0
+}
+
+vps_attest_mirror_apply_metadata_strict() {
+  local path=$1 uid=$2 gid=$3 mode=$4
+  if [[ "${VPS_ATTESTATION_MIRROR_METADATA_FAIL:-}" == "1" ]]; then
+    vps_attest_mirror_fail "simulated metadata restore failure (selftest)"
+    return 1
+  fi
+  if [[ -n "$uid" && -n "$gid" ]]; then
+    chown "${uid}:${gid}" "$path" || return 1
+  fi
+  chmod "$mode" "$path" || return 1
+  vps_attest_mirror_assert_metadata "$path" "$uid" "$gid" "$mode" || return 1
+}
+
 # Args: backend_env_path target_sha (40-char, normalized by caller)
 vps_attest_mirror_deployed_git_sha() {
   local env_path=$1
@@ -170,10 +196,11 @@ vps_attest_mirror_deployed_git_sha() {
     fi
   done
 
-  if [[ -n "$meta_uid" && -n "$meta_gid" ]]; then
-    chown "${meta_uid}:${meta_gid}" "$tmp" 2>/dev/null || true
+  if ! vps_attest_mirror_apply_metadata_strict "$tmp" "$meta_uid" "$meta_gid" "$meta_mode"; then
+    rm -f "$tmp"
+    vps_attest_mirror_fail "mirror temp metadata apply failed"
+    return 1
   fi
-  chmod "$meta_mode" "$tmp" 2>/dev/null || chmod 640 "$tmp"
   vps_attest_mirror_fsync_file "$tmp" || { rm -f "$tmp"; return 1; }
   vps_attest_mirror_crash_hook after_MIRROR_TMP
 
@@ -182,9 +209,9 @@ vps_attest_mirror_deployed_git_sha() {
     vps_attest_mirror_fail "mirror rename failed"
     return 1
   fi
-  chmod "$meta_mode" "$env_path" 2>/dev/null || true
-  if [[ -n "$meta_uid" && -n "$meta_gid" ]]; then
-    chown "${meta_uid}:${meta_gid}" "$env_path" 2>/dev/null || true
+  if ! vps_attest_mirror_apply_metadata_strict "$env_path" "$meta_uid" "$meta_gid" "$meta_mode"; then
+    vps_attest_mirror_fail "mirror metadata restore failed after rename"
+    return 1
   fi
   vps_attest_mirror_fsync_dir "$parent" || return 1
   vps_attest_mirror_crash_hook after_MIRROR_RENAME
