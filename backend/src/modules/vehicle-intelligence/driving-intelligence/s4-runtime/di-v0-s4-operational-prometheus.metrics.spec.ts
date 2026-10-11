@@ -6,9 +6,11 @@ import {
 import { DI_V0_S4F_KEYSET_CURSOR_AUTHORITY } from '../s4f-observability/di-v0-s4f-keyset-cursor';
 import { DI_V0_S4F_OPERATIONAL_AGGREGATE_INDEX_NOTES, DI_V0_S4F_OPERATIONAL_AGGREGATE_SCAN_KIND } from '../s4f-observability/di-v0-s4f-operational-aggregates';
 import {
+  computeDiV0S4ActivitySignal,
   DI_V0_S4_OPERATIONAL_METRICS,
   publishDiV0S4OperationalPrometheusMetrics,
   registerDiV0S4OperationalPrometheusMetrics,
+  resetDiV0S4OperationalPrometheusMetrics,
 } from './di-v0-s4-operational-prometheus.metrics';
 
 function emptySnapshot(): DiV0S4fObservabilitySnapshotV1 {
@@ -91,7 +93,7 @@ describe('DiV0S4 operational Prometheus metrics', () => {
   it('publishes low-cardinality gauges from reconciliation snapshot', async () => {
     const registry = new Registry();
     const handles = registerDiV0S4OperationalPrometheusMetrics(registry);
-    publishDiV0S4OperationalPrometheusMetrics(handles, emptySnapshot(), 4, false);
+    publishDiV0S4OperationalPrometheusMetrics(handles, emptySnapshot(), 4, false, 1_700_000_000);
 
     const text = await registry.metrics();
     expect(text).toContain(DI_V0_S4_OPERATIONAL_METRICS.globalNotKilled);
@@ -99,6 +101,22 @@ describe('DiV0S4 operational Prometheus metrics', () => {
     expect(text).toContain(`${DI_V0_S4_OPERATIONAL_METRICS.expiredLeased} 3`);
     expect(text).toContain(`${DI_V0_S4_OPERATIONAL_METRICS.allowlistViolation} 4`);
     expect(text).toContain(`${DI_V0_S4_OPERATIONAL_METRICS.activitySignal} 1`);
+    expect(text).toContain(`${DI_V0_S4_OPERATIONAL_METRICS.lastSuccessUnixtime} 1700000000`);
     expect(text).not.toMatch(/vehicle_id=/);
+  });
+
+  it('activity signal stays 0 when KILLED with no work (dormant staged config)', () => {
+    expect(computeDiV0S4ActivitySignal(true, 'KILLED', 0)).toBe(0);
+    expect(computeDiV0S4ActivitySignal(true, 'NOT_KILLED', 0)).toBe(1);
+  });
+
+  it('clears follower gauges on reset', async () => {
+    const registry = new Registry();
+    const handles = registerDiV0S4OperationalPrometheusMetrics(registry);
+    publishDiV0S4OperationalPrometheusMetrics(handles, emptySnapshot(), 1, true, 100);
+    resetDiV0S4OperationalPrometheusMetrics(handles);
+    const text = await registry.metrics();
+    expect(text).toContain(`${DI_V0_S4_OPERATIONAL_METRICS.activitySignal} 0`);
+    expect(text).toContain(`${DI_V0_S4_OPERATIONAL_METRICS.lastSuccessUnixtime} 0`);
   });
 });

@@ -36,6 +36,47 @@ docker_container_running() {
   docker ps --format '{{.Names}}' 2>/dev/null | grep -qx "$name"
 }
 
+promtool_check_rules_file() {
+  local rules_file="$1"
+  if command -v promtool >/dev/null 2>&1; then
+    promtool check rules "$rules_file"
+    return 0
+  fi
+  if docker_container_running "$PROM_CONTAINER"; then
+    docker exec "$PROM_CONTAINER" promtool check rules "/etc/prometheus/$(basename "$rules_file")" 2>/dev/null && return 0
+  fi
+  if command -v docker >/dev/null 2>&1; then
+    docker run --rm -v "$(dirname "$rules_file"):/rules:ro" prom/prometheus:v2.54.1 \
+      promtool check rules "/rules/$(basename "$rules_file")"
+    return 0
+  fi
+  echo "WARN: promtool unavailable — skip rule validation for $(basename "$rules_file")" >&2
+  return 0
+}
+
+validate_prometheus_bundle() {
+  local tmp
+  tmp="$(mktemp -d)"
+  cp "$SRC_PROM/alerts.yml" "$tmp/alerts.yml"
+  cp "$SRC_PROM/alerts-infra.yml" "$tmp/alerts-infra.yml"
+  cp "$SRC_PROM/alerts-di-s4.yml" "$tmp/alerts-di-s4.yml"
+  cp "$SRC_PROM/prometheus.vps.yml" "$tmp/prometheus.yml"
+  promtool_check_rules_file "$tmp/alerts.yml"
+  promtool_check_rules_file "$tmp/alerts-infra.yml"
+  promtool_check_rules_file "$tmp/alerts-di-s4.yml"
+  rm -rf "$tmp"
+}
+
+install_prometheus_rules_atomic() {
+  local dest="$1"
+  local src="$2"
+  local backup="${dest}.bak.$(date -u +%Y%m%dT%H%M%SZ)"
+  if [[ -f "$dest" ]]; then
+    cp -a "$dest" "$backup"
+  fi
+  cp "$src" "$dest"
+}
+
 refresh_prometheus() {
   if [[ ! -f "$SRC_PROM/prometheus.vps.yml" ]]; then
     echo "WARN: $SRC_PROM/prometheus.vps.yml missing — skip Prometheus refresh" >&2
@@ -58,9 +99,14 @@ refresh_prometheus() {
   printf '%s' "$token" > "$PROM_DIR/secrets/metrics_bearer_token"
   chmod 644 "$PROM_DIR/secrets/metrics_bearer_token"
 
-  cp "$SRC_PROM/alerts.yml" "$PROM_DIR/alerts.yml"
-  cp "$SRC_PROM/alerts-infra.yml" "$PROM_DIR/alerts-infra.yml"
-  cp "$SRC_PROM/alerts-di-s4.yml" "$PROM_DIR/alerts-di-s4.yml"
+  if ! validate_prometheus_bundle; then
+    echo "ERROR: Prometheus rule validation failed — keeping existing $PROM_DIR configs" >&2
+    return 1
+  fi
+
+  install_prometheus_rules_atomic "$PROM_DIR/alerts.yml" "$SRC_PROM/alerts.yml"
+  install_prometheus_rules_atomic "$PROM_DIR/alerts-infra.yml" "$SRC_PROM/alerts-infra.yml"
+  install_prometheus_rules_atomic "$PROM_DIR/alerts-di-s4.yml" "$SRC_PROM/alerts-di-s4.yml"
   cp "$SRC_PROM/prometheus.vps.yml" "$PROM_DIR/prometheus.yml"
   if [[ "$BACKEND_PORT" != "3001" ]]; then
     sed -i "s/127.0.0.1:3001/127.0.0.1:${BACKEND_PORT}/" "$PROM_DIR/prometheus.yml"
@@ -87,6 +133,7 @@ refresh_prometheus() {
 }
 
 refresh_alertmanager() {
+  local am_config_changed=0
   if [[ ! -f "$SRC_AM/alertmanager.yml.example" ]]; then
     echo "WARN: Alertmanager template missing — skip" >&2
     return 0
@@ -118,15 +165,26 @@ refresh_alertmanager() {
       cp "$SRC_AM/alertmanager.email.yml.example" "$AM_DIR/alertmanager.yml.template"
     fi
 
-    envsubst < "$AM_DIR/alertmanager.yml.template" > "$AM_DIR/alertmanager.yml"
-    chmod 600 "$AM_DIR/alertmanager.yml"
-    chown 65534:65534 "$AM_DIR/alertmanager.yml" 2>/dev/null || chmod 640 "$AM_DIR/alertmanager.yml"
+    local rendered="$AM_DIR/alertmanager.yml"
+    envsubst < "$AM_DIR/alertmanager.yml.template" > "${rendered}.new"
+    chmod 600 "${rendered}.new"
+    chown 65534:65534 "${rendered}.new" 2>/dev/null || chmod 640 "${rendered}.new"
+    if [[ -f "$rendered" ]] && cmp -s "${rendered}.new" "$rendered"; then
+      rm -f "${rendered}.new"
+    else
+      mv "${rendered}.new" "$rendered"
+      am_config_changed=1
+    fi
   else
     cp "$SRC_AM/alertmanager.yml.example" "$AM_DIR/alertmanager.yml.template"
   fi
 
   if docker_container_running "$AM_CONTAINER"; then
-    echo "==> Alertmanager: config synced, restarting $AM_CONTAINER"
+    if [[ "$am_config_changed" != "1" ]]; then
+      echo "==> Alertmanager: config unchanged — skip restart"
+      return 0
+    fi
+    echo "==> Alertmanager: config changed, restarting $AM_CONTAINER"
     docker restart "$AM_CONTAINER" >/dev/null
     sleep 3
     if curl -sf "http://127.0.0.1:9093/-/healthy" >/dev/null; then

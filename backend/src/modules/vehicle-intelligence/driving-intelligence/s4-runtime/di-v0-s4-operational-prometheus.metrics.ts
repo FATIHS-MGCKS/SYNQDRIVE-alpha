@@ -11,7 +11,14 @@ export const DI_V0_S4_OPERATIONAL_METRICS = {
   pinRequiredMissing: 'synqdrive_di_v0_s4_pin_required_missing_work_items',
   controlPlaneReadable: 'synqdrive_di_v0_s4_control_plane_readable',
   activitySignal: 'synqdrive_di_v0_s4_activity_signal',
+  refreshLeader: 'synqdrive_di_v0_s4_operational_refresh_leader',
+  lastSuccessUnixtime: 'synqdrive_di_v0_s4_operational_last_success_unixtime',
+  refreshError: 'synqdrive_di_v0_s4_operational_refresh_error',
 } as const;
+
+/** Prometheus alert staleness threshold (seconds) — must exceed refresh interval + scrape slack. */
+export const DI_V0_S4_OPERATIONAL_REFRESH_INTERVAL_SECONDS = 60;
+export const DI_V0_S4_OPERATIONAL_STALE_AFTER_SECONDS = 180;
 
 export interface DiV0S4OperationalPrometheusHandles {
   globalNotKilled: Gauge<string>;
@@ -22,6 +29,9 @@ export interface DiV0S4OperationalPrometheusHandles {
   pinRequiredMissing: Gauge<string>;
   controlPlaneReadable: Gauge<string>;
   activitySignal: Gauge<string>;
+  refreshLeader: Gauge<string>;
+  lastSuccessUnixtime: Gauge<string>;
+  refreshError: Gauge<string>;
 }
 
 export function registerDiV0S4OperationalPrometheusMetrics(registry: Registry): DiV0S4OperationalPrometheusHandles {
@@ -64,7 +74,22 @@ export function registerDiV0S4OperationalPrometheusMetrics(registry: Registry): 
     }),
     activitySignal: new Gauge({
       name: DI_V0_S4_OPERATIONAL_METRICS.activitySignal,
-      help: '1 when S4 shadow plane shows staged config or any work items exist (gates alert noise)',
+      help: '1 when S4 shadow plane is actively processing (NOT_KILLED+staged or work items present)',
+      registers: [registry],
+    }),
+    refreshLeader: new Gauge({
+      name: DI_V0_S4_OPERATIONAL_METRICS.refreshLeader,
+      help: '1 on the scheduler leader replica publishing fresh operational aggregates, else 0',
+      registers: [registry],
+    }),
+    lastSuccessUnixtime: new Gauge({
+      name: DI_V0_S4_OPERATIONAL_METRICS.lastSuccessUnixtime,
+      help: 'Unix time of last successful leader operational metrics refresh (0 when not leader or never succeeded)',
+      registers: [registry],
+    }),
+    refreshError: new Gauge({
+      name: DI_V0_S4_OPERATIONAL_METRICS.refreshError,
+      help: '1 when the last leader refresh attempt failed (aggregates cleared), else 0',
       registers: [registry],
     }),
   };
@@ -83,11 +108,37 @@ function sumWorkItems(snapshot: DiV0S4fObservabilitySnapshotV1): number {
   );
 }
 
+/** Dormant when GLOBAL_KILL=KILLED and no shadow work items (staged-only config does not page). */
+export function computeDiV0S4ActivitySignal(
+  runtimeAttestationStaged: boolean,
+  killState: 'KILLED' | 'NOT_KILLED' | 'UNKNOWN',
+  workItemSum: number,
+): number {
+  if (workItemSum > 0) return 1;
+  if (killState !== 'NOT_KILLED') return 0;
+  return runtimeAttestationStaged ? 1 : 0;
+}
+
+export function resetDiV0S4OperationalPrometheusMetrics(handles: DiV0S4OperationalPrometheusHandles): void {
+  handles.globalNotKilled.set(0);
+  handles.controlPlaneReadable.set(0);
+  handles.workItems.reset();
+  handles.expiredLeased.set(0);
+  handles.attemptsExhausted.set(0);
+  handles.pinRequiredMissing.set(0);
+  handles.allowlistViolation.set(0);
+  handles.activitySignal.set(0);
+  handles.refreshLeader.set(0);
+  handles.lastSuccessUnixtime.set(0);
+  handles.refreshError.set(0);
+}
+
 export function publishDiV0S4OperationalPrometheusMetrics(
   handles: DiV0S4OperationalPrometheusHandles,
   snapshot: DiV0S4fObservabilitySnapshotV1,
   allowlistViolationCount: number,
   runtimeAttestationStaged: boolean,
+  refreshUnixtime: number,
 ): void {
   const cp = snapshot.operational.controlPlane;
   handles.globalNotKilled.set(cp.killState === 'NOT_KILLED' ? 1 : 0);
@@ -103,6 +154,18 @@ export function publishDiV0S4OperationalPrometheusMetrics(
   handles.pinRequiredMissing.set(snapshot.operational.evidenceStorage.pinRequiredButMissingCount);
   handles.allowlistViolation.set(allowlistViolationCount);
 
-  const activity = runtimeAttestationStaged || sumWorkItems(snapshot) > 0 ? 1 : 0;
-  handles.activitySignal.set(activity);
+  const workSum = sumWorkItems(snapshot);
+  handles.activitySignal.set(
+    computeDiV0S4ActivitySignal(runtimeAttestationStaged, cp.killState, workSum),
+  );
+
+  handles.refreshLeader.set(1);
+  handles.lastSuccessUnixtime.set(refreshUnixtime);
+  handles.refreshError.set(0);
+}
+
+export function markDiV0S4OperationalRefreshFailed(handles: DiV0S4OperationalPrometheusHandles): void {
+  resetDiV0S4OperationalPrometheusMetrics(handles);
+  handles.refreshLeader.set(1);
+  handles.refreshError.set(1);
 }

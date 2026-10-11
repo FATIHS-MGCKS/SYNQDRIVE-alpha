@@ -1914,3 +1914,10 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | Repo has Prometheus/Alertmanager stack; S4 had no dedicated rules/metrics; production alert **delivery not re-tested** in this slice |
 | AUTHORITY | CRITICAL → existing Alertmanager receivers; containment remains manual EMERGENCY_REKILL |
 | NON_EFFECTS | No Production mutation; GLOBAL_KILL=KILLED; five-vehicle scope unchanged |
+
+### EXP-021 S4P2-R1 alert reliability (2026-10-11)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Operational metric freshness gauges + leader/follower reset; alert semantics (min DIMO budget, discovery missing/stale, dormant activity_signal); promtool tests; VPS monitoring validate-before-copy + AM restart skip; evidence `EXP021_S4P2_R1_ALERT_RELIABILITY.md` |
+| NON_EFFECTS | No merge/deploy; delivery still UNVERIFIED |

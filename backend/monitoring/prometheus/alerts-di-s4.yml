@@ -1,7 +1,7 @@
 # DI V0 S4 (EXP021) — unattended shadow operations
 #
-# Low-cardinality metrics only. Many rules gate on synqdrive_di_v0_s4_activity_signal
-# to avoid noise while GLOBAL_KILL=KILLED and the shadow plane is dormant.
+# Low-cardinality metrics only. Rules gate on synqdrive_di_v0_s4_activity_signal
+# (NOT_KILLED + staged, or shadow work items) to avoid noise while GLOBAL_KILL=KILLED.
 
 groups:
   - name: synqdrive_di_v0_s4_shadow
@@ -9,6 +9,7 @@ groups:
       - alert: DiV0S4RuntimeConfigAttestationReplicaDrift
         expr: |
           max(synqdrive_di_v0_s4_activity_signal) >= 1
+          and count(up{job="synqdrive-backend"} == 1) >= 2
           and count(
             count by (fingerprint) (
               synqdrive_di_v0_s4_runtime_config_attestation_info
@@ -20,12 +21,13 @@ groups:
           component: driving_intelligence_s4
         annotations:
           summary: DI S4 runtime config attestation fingerprint mismatch across replicas
-          description: Replica A/B report different nine-key S4 config fingerprints — investigate env drift before continuing shadow processing.
+          description: Both backend replicas are up but report different nine-key S4 config fingerprints — investigate env drift before continuing shadow processing.
           runbook_url: architecture/drivingintelligence/evidence/EXP021_S4P2_UNATTENDED_OPS_ALERT_INTEGRATION.md#replica-drift
 
       - alert: DiV0S4SchedulerLeaderElectionBroken
         expr: |
           max(synqdrive_di_v0_s4_activity_signal) >= 1
+          and count(up{job="synqdrive-backend"} == 1) >= 1
           and (
             sum(synqdrive_scheduler_leader_status == 1) != 1
             or absent(synqdrive_scheduler_leader_status)
@@ -39,15 +41,33 @@ groups:
           description: Exactly one backend replica must hold the scheduler leader lease when S4 shadow work is active.
           runbook_url: architecture/drivingintelligence/evidence/EXP021_S4P2_UNATTENDED_OPS_ALERT_INTEGRATION.md#scheduler-leader
 
+      - alert: DiV0S4OperationalMetricsStale
+        expr: |
+          max(synqdrive_di_v0_s4_activity_signal) >= 1
+          and (
+            max(synqdrive_di_v0_s4_operational_refresh_error) == 1
+            or max(synqdrive_di_v0_s4_operational_last_success_unixtime) == 0
+            or (time() - max(synqdrive_di_v0_s4_operational_last_success_unixtime)) > 180
+          )
+        for: 5m
+        labels:
+          severity: critical
+          component: driving_intelligence_s4
+        annotations:
+          summary: S4 operational Prometheus aggregates are stale or failed
+          description: Leader refresh has not succeeded within 180s or last refresh failed — do not trust shadow health gauges.
+          runbook_url: architecture/drivingintelligence/evidence/EXP021_S4P2_R1_ALERT_RELIABILITY.md#metric-freshness
+
       - alert: DiV0S4GlobalKillOpen
         expr: |
-          max(synqdrive_di_v0_s4_global_not_killed) == 1
+          max(synqdrive_di_v0_s4_activity_signal) >= 1
+          and max(synqdrive_di_v0_s4_global_not_killed) == 1
         for: 5m
         labels:
           severity: warning
           component: driving_intelligence_s4
         annotations:
-          summary: DI S4 GLOBAL kill row is NOT_KILLED
+          summary: DI S4 GLOBAL kill row is NOT_KILLED during active shadow processing
           description: Verify an owner-authorized LIVE_OPEN or wave promotion is in effect; otherwise run EMERGENCY_REKILL containment.
           runbook_url: architecture/drivingintelligence/evidence/EXP021_S4P2_UNATTENDED_OPS_ALERT_INTEGRATION.md#global-kill
 
@@ -106,6 +126,7 @@ groups:
       - alert: DiV0S4ControlPlaneUnreadable
         expr: |
           max(synqdrive_di_v0_s4_activity_signal) >= 1
+          and max(synqdrive_di_v0_s4_operational_last_success_unixtime) > 0
           and max(synqdrive_di_v0_s4_control_plane_readable) == 0
         for: 5m
         labels:
@@ -118,15 +139,16 @@ groups:
 
       - alert: DiV0S4DimoBudgetDisabledWhileStaged
         expr: |
-          max(synqdrive_di_v0_s4_runtime_config_attestation_info{state="STAGED"}) >= 1
-          and max(synqdrive_dimo_global_budget_enabled) == 0
+          max(synqdrive_di_v0_s4_activity_signal) >= 1
+          and max(synqdrive_di_v0_s4_runtime_config_attestation_info{state="STAGED"}) >= 1
+          and min(synqdrive_dimo_global_budget_enabled) == 0
         for: 10m
         labels:
           severity: critical
           component: driving_intelligence_s4
         annotations:
-          summary: DIMO global budget disabled while S4 config is staged
-          description: S4C acquisition requires POST_TRIP_ENRICHMENT budget — enable budget or re-kill shadow plane.
+          summary: DIMO global budget disabled on a replica while S4 is active
+          description: S4C acquisition requires POST_TRIP_ENRICHMENT budget on every replica — enable budget or re-kill shadow plane.
           runbook_url: architecture/drivingintelligence/evidence/EXP021_S4P2_UNATTENDED_OPS_ALERT_INTEGRATION.md#dimo-budget
 
       - alert: DiV0S4DimoBudgetCooldownSustained
@@ -155,18 +177,37 @@ groups:
           description: S4C may be failing with PROVIDER_BUDGET_UNAVAILABLE — inspect budget and backlog.
           runbook_url: architecture/drivingintelligence/evidence/EXP021_S4P2_UNATTENDED_OPS_ALERT_INTEGRATION.md#dimo-budget
 
-      - alert: DiV0S4DiscoverySchedulerStale
+      - alert: DiV0S4DiscoverySchedulerMissing
         expr: |
-          max(synqdrive_di_v0_s4_runtime_config_attestation_info{state="STAGED"}) >= 1
-          and rate(synqdrive_scheduler_tick_total{scheduler="di_v0_s4_discovery",result="success"}[2h]) == 0
-        for: 30m
+          max(synqdrive_di_v0_s4_activity_signal) >= 1
+          and max(synqdrive_di_v0_s4_runtime_config_attestation_info{state="STAGED"}) >= 1
+          and absent(
+            synqdrive_scheduler_tick_total{scheduler="di_v0_s4_discovery",result="success"}
+          )
+        for: 20m
         labels:
           severity: warning
           component: driving_intelligence_s4
         annotations:
-          summary: S4 discovery scheduler not ticking
-          description: No successful di_v0_s4_discovery leader ticks in 2h while discovery is staged — inspect leader election and errors.
-          runbook_url: architecture/drivingintelligence/evidence/EXP021_S4P2_UNATTENDED_OPS_ALERT_INTEGRATION.md#discovery
+          summary: S4 discovery scheduler success counter never exported
+          description: Discovery is staged but no di_v0_s4_discovery success ticks are visible — inspect scheduler registration and leader election.
+          runbook_url: architecture/drivingintelligence/evidence/EXP021_S4P2_R1_ALERT_RELIABILITY.md#discovery
+
+      - alert: DiV0S4DiscoverySchedulerStale
+        expr: |
+          max(synqdrive_di_v0_s4_activity_signal) >= 1
+          and max(synqdrive_di_v0_s4_runtime_config_attestation_info{state="STAGED"}) >= 1
+          and sum(
+            increase(synqdrive_scheduler_tick_total{scheduler="di_v0_s4_discovery",result="success"}[1h])
+          ) < 1
+        for: 20m
+        labels:
+          severity: warning
+          component: driving_intelligence_s4
+        annotations:
+          summary: S4 discovery scheduler success ticks stalled
+          description: No successful di_v0_s4_discovery leader ticks in the last hour while discovery is staged — inspect leader election and errors.
+          runbook_url: architecture/drivingintelligence/evidence/EXP021_S4P2_R1_ALERT_RELIABILITY.md#discovery
 
       - alert: DiV0S4FailedTerminalWorkItems
         expr: |
