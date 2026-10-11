@@ -137,16 +137,19 @@ vps_attest_mirror_deployed_git_sha() {
     return 1
   fi
 
-  local parent tmp bak
+  local parent tmp meta_uid meta_gid meta_mode
   parent="$(dirname "$env_path")"
   mkdir -p "$parent" 2>/dev/null || true
-  tmp="${env_path}.mirror.tmp.$$"
-  bak="${env_path}.bak-$(date -u +%Y%m%dT%H%M%SZ)"
-
+  meta_uid=""
+  meta_gid=""
+  meta_mode="640"
   if [[ -f "$env_path" ]]; then
-    cp -a "$env_path" "$bak"
-    vps_attest_mirror_crash_hook after_MIRROR_BACKUP
+    meta_uid="$(stat -c '%u' "$env_path")"
+    meta_gid="$(stat -c '%g' "$env_path")"
+    meta_mode="$(stat -c '%a' "$env_path")"
   fi
+  tmp="$(mktemp "${parent}/.synqdrive-mirror.XXXXXXXX")"
+  chmod 600 "$tmp" || { rm -f "$tmp"; return 1; }
 
   if ! vps_attest_mirror_build_content "$env_path" "$sha" >"$tmp"; then
     rm -f "$tmp"
@@ -167,7 +170,10 @@ vps_attest_mirror_deployed_git_sha() {
     fi
   done
 
-  chmod 640 "$tmp" 2>/dev/null || true
+  if [[ -n "$meta_uid" && -n "$meta_gid" ]]; then
+    chown "${meta_uid}:${meta_gid}" "$tmp" 2>/dev/null || true
+  fi
+  chmod "$meta_mode" "$tmp" 2>/dev/null || chmod 640 "$tmp"
   vps_attest_mirror_fsync_file "$tmp" || { rm -f "$tmp"; return 1; }
   vps_attest_mirror_crash_hook after_MIRROR_TMP
 
@@ -175,6 +181,10 @@ vps_attest_mirror_deployed_git_sha() {
     rm -f "$tmp"
     vps_attest_mirror_fail "mirror rename failed"
     return 1
+  fi
+  chmod "$meta_mode" "$env_path" 2>/dev/null || true
+  if [[ -n "$meta_uid" && -n "$meta_gid" ]]; then
+    chown "${meta_uid}:${meta_gid}" "$env_path" 2>/dev/null || true
   fi
   vps_attest_mirror_fsync_dir "$parent" || return 1
   vps_attest_mirror_crash_hook after_MIRROR_RENAME
