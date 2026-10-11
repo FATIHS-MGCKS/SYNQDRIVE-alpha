@@ -36,6 +36,3 @@ jobs:
 
       - name: Validate central module registry
         run: bash architecture/scripts/validate-module-registry.sh
-
-      - name: Validate DSRG knowledge graph
-        run: bash architecture/dsrg/scripts/validate-graph.sh

@@ -9,6 +9,7 @@
 | E-DSRG-03-R3 | [`DSRG_03_R3_PRODUCTION_AUDIT.md`](DSRG_03_R3_PRODUCTION_AUDIT.md) | PRODUCTION_READ_ONLY + SQL SELECT | R3 audit @ 2026-10-11T13:49:49Z |
 | E-EXEC-PATHS | [`EXECUTION_PATH_INVENTORY.md`](EXECUTION_PATH_INVENTORY.md) | ARCHITECTURE_DOCUMENT | Six deploy/rollback path classes |
 | E-GATE-A | [`GATE_A_READINESS.md`](GATE_A_READINESS.md) | AUDIT_DOCUMENT | Gate A matrix; promotion deferred |
+| E-CI-GRAPH | [`CI_GRAPH_GATE.md`](CI_GRAPH_GATE.md) | ARCHITECTURE_DOCUMENT | Registry CI chain for graph validator |
 | E-VO5C-P4B15 | [`../../vehicle-onboarding/evidence/VO5C_P4B15_DEPLOY_BYPASS_ENFORCEMENT.md`](../../vehicle-onboarding/evidence/VO5C_P4B15_DEPLOY_BYPASS_ENFORCEMENT.md) | REPOSITORY | P4B15 (preserved) |
 | E-VO5C-R2 | [`../../vehicle-onboarding/evidence/VO5C_R2_SECURITY_FLOOR_ROLLBACK.md`](../../vehicle-onboarding/evidence/VO5C_R2_SECURITY_FLOOR_ROLLBACK.md) | REPOSITORY | Security floor (preserved) |
 | E-OPS-SELFTEST | `backend/scripts/ops/vps-vo5c-*.selftest.sh` | CURRENT_TEST | Offline only; not live deploy proof |

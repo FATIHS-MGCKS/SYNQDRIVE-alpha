@@ -14,6 +14,6 @@
 | 2026-10-11 | **DSRG-03-R0** | Central registry row + authority bootstrap; **no** `AUTHORITY_ACTIVE` | None (docs/audit) |
 | 2026-10-11 | **DSRG-03-R1** | Manifest metadata final gate for PR #1973 | None (docs) |
 | 2026-10-11 | **DSRG-03-R2** | Knowledge graph, validators, Production R2 reconciliation, ledger migration | None (docs/audit) |
-| 2026-10-11 | **DSRG-03-R3** | Final authority audit; R3 Production + SQL; Gate A split; execution inventory; CI graph step | None (docs/audit) |
+| 2026-10-11 | **DSRG-03-R3** | Final authority audit; R3 Production + SQL; Gate A split; execution inventory; graph via registry CI chain | None (docs/audit) |
 
 Historical VO5C deploy-governance entries remain in [`../../vehicle-onboarding/research/CHANGE_LEDGER.md`](../../vehicle-onboarding/research/CHANGE_LEDGER.md) — reference only.

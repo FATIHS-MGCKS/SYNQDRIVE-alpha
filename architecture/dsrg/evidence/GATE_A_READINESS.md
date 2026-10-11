@@ -22,7 +22,7 @@ Production enforcement **does not** need to be ON for architecture authority. In
 | Evidence indexed + provenance | **PASS** | R0/R2/R3 evidence chain |
 | Gaps / contradictions / hypotheses | **PASS** | Classified in `KNOWLEDGE_GAPS.md` |
 | Human + machine graphs aligned | **PASS** | Validators PASS |
-| Module graph validator | **PASS** | `validate-graph.sh` (+ CI step in R3 PR) |
+| Module graph validator | **PASS** | `validate-graph.sh`; invoked from `validate-module-registry.sh` on `architecture/**` CI |
 | Central registry validator | **PASS** | `validate-module-registry.sh` |
 
 **ARCHITECTURE_GATE_A:** **PASS** — eligible for **separate human** `AUTHORITY_ACTIVE` promotion review.
