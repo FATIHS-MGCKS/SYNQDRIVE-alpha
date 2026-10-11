@@ -1,0 +1,11 @@
+nodes:
+  - id: DSRG-DEC-DUP-001
+    type: decision
+    title: Duplicate id negative fixture A
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED
+  - id: DSRG-DEC-DUP-001
+    type: decision
+    title: Duplicate id negative fixture B
+    epistemic_status: CONFIRMED
+    decision_status: PROPOSED

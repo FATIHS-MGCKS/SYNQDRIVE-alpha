@@ -18,6 +18,7 @@ All production release promotion paths that can change `/opt/synqdrive/current`,
 | DSRG-03 R0/R1 | Registry bootstrap | **Merged** #1973 | `AUDIT_IN_PROGRESS` inventory row |
 | DSRG-03 R2 | Authority reconstruction | **In PR** | Knowledge graph, validators, R2 Production reconciliation, ledger migration |
 | P4B17+ | OS boundary activation | **Not started** | sudoers, optional `chattr +i`, `ENFORCEMENT_ACTIVE=1`, dual approval |
+| DSRG-03 R4 | Graph validator hardening + break-glass docs | **In PR #1976** | Isolated `architecture/dsrg/scripts` deps; no backend `npm ci`; break-glass prerequisites BG-A–F documented; `BREAK_GLASS_READY=NOT_VERIFIED` |
 
 ## Non-goals (DSRG)
 
