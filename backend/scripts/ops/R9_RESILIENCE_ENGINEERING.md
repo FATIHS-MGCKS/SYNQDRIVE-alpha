@@ -4,6 +4,14 @@ Engineering draft PR **#1985** (`cursor/r26-r9-resilience-engineering-1d7d`). DI
 
 See `PR_ANCESTRY_R9_RESILIENCE.md` for PR overlap / R24 authority.
 
+## R2.7b abort safety (2026-10-11 UTC)
+
+| Command | Result |
+|---------|--------|
+| `test/vo5c-orchestrator-abort-injection.selftest.sh` | PASS (explicit exit, idempotent restore, SIGTERM) |
+| `test/vo5c-phase1-routing-gate.selftest.sh` | PASS (no POST probe) |
+| `lib/vps-vo5c-orchestrator-abort.lib.sh` | Central EXIT/INT/TERM + `vo5c_abort_fail` restore |
+
 ## R2.7 executed tests (2026-10-11 UTC)
 
 | Command | Env | Exit | Result |

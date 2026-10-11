@@ -1,37 +1,37 @@
 #!/usr/bin/env bash
-# R2.7 — Strict Phase-1 gates for webhook-safe maintenance (fail-closed).
+# R2.7b — Read-only Phase-1 routing gate (no webhook POST; no NestJS mutation).
 set -euo pipefail
 
 # shellcheck source=vps-vo5c-http-check.lib.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/vps-vo5c-http-check.lib.sh"
+# shellcheck source=vps-vo5c-nginx-webhook-safe-maintenance.lib.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/vps-vo5c-nginx-webhook-safe-maintenance.lib.sh"
 
-# Validates maintenance nginx after reload. No curl -f. No DIMO provider calls.
-# Optional edge POST uses --resolve to 127.0.0.1 (local nginx), not external DIMO.
-vo5c_phase1_assert_public_isolation() {
-  local public_root_url="${1:-https://app.synqdrive.eu/}"
+# Validates: exact webhook location in nginx file, public GET / → 503, replica GET health only.
+# Does NOT prove authenticated DIMO webhook delivery (natural traffic / T+24 only).
+vo5c_phase1_assert_read_only_routing_gate() {
+  local nginx_site="$1"
   local webhook_path="${2:-/api/v1/webhooks/dimo}"
-  local webhook_edge_url="https://app.synqdrive.eu${webhook_path}"
+  local public_root_url="${3:-https://app.synqdrive.eu/}"
+
+  vo5c_validate_webhook_safe_site "$nginx_site" "$webhook_path" || return 1
 
   vo5c_http_probe GET "$public_root_url"
   export VO5C_PHASE1_ROOT_HTTP="$VO5C_HTTP_CODE"
   export VO5C_PHASE1_ROOT_CURL_EXIT="$VO5C_CURL_EXIT"
-  [[ "$VO5C_HTTP_CODE" == "503" ]] || return 1
+  [[ "$VO5C_HTTP_CODE" == "503" ]] || return 2
 
-  local a_ok=0 b_ok=0
-  vo5c_replica_health_ok 3001 && a_ok=1
-  vo5c_replica_health_ok 3002 && b_ok=1
+  vo5c_replica_health_ok 3001
+  export VO5C_PHASE1_REPLICA_A_HTTP="$VO5C_HTTP_CODE"
+  local a_ok=$?
 
-  vo5c_http_probe POST "$webhook_edge_url" \
-    --resolve "app.synqdrive.eu:443:127.0.0.1" \
-    -H 'Content-Type: application/json' \
-    -d '{}'
-  export VO5C_PHASE1_WEBHOOK_HTTP="$VO5C_HTTP_CODE"
-  export VO5C_PHASE1_WEBHOOK_CURL_EXIT="$VO5C_CURL_EXIT"
+  vo5c_replica_health_ok 3002
+  export VO5C_PHASE1_REPLICA_B_HTTP="$VO5C_HTTP_CODE"
+  local b_ok=$?
 
-  if [[ "$a_ok" -eq 1 || "$b_ok" -eq 1 ]]; then
-    [[ "$VO5C_HTTP_CODE" =~ ^2 ]] || return 2
-  else
-    [[ "$VO5C_HTTP_CODE" != "200" ]] || return 3
-  fi
+  [[ "$a_ok" -eq 0 || "$b_ok" -eq 0 ]] || return 3
+
+  export VO5C_PHASE1_ROUTING_GATE=PASS
+  export VO5C_PHASE1_WEBHOOK_AUTHENTICATED_DELIVERY=NOT_PROBED
   return 0
 }
