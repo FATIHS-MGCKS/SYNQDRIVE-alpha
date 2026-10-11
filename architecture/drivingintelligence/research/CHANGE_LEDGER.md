@@ -1905,3 +1905,12 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | S4 active path = shadow `di_v0_s4_*` + DIMO budget only; Wave-3 human 24h gate was **operational triage**, not Gate-6 code; **no** automatic EMERGENCY_REKILL in app; post–Wave-3 Production **KILLED** after containment |
 | AUTHORITY | Proposed regular ops: owner auth + technical preflight/DRY_RUN/LIVE_OPEN + automated monitoring + manual rekill |
 | NON_EFFECTS | No Production mutation; no deploy; no env/kill/APDS/Battery changes in this slice |
+
+### EXP-021 S4P2 unattended operations & alert integration (2026-10-11)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `alerts-di-s4.yml`; `DiV0S4OperationalMetricsService` + operational Prometheus gauges; VPS Prometheus refresh copies; contract `di-v0-s4p2-alert-rules.contract.ts` + tests; evidence `EXP021_S4P2_UNATTENDED_OPS_ALERT_INTEGRATION.md` |
+| FINDING | Repo has Prometheus/Alertmanager stack; S4 had no dedicated rules/metrics; production alert **delivery not re-tested** in this slice |
+| AUTHORITY | CRITICAL → existing Alertmanager receivers; containment remains manual EMERGENCY_REKILL |
+| NON_EFFECTS | No Production mutation; GLOBAL_KILL=KILLED; five-vehicle scope unchanged |

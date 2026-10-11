@@ -7,6 +7,7 @@ import { DiV0S4eDriftWatcherModule } from '../s4e-drift-watcher/di-v0-s4e-drift-
 import { DiV0S4fObservabilityModule } from '../s4f-observability/di-v0-s4f.module';
 import { DiV0S4cRuntimeBootstrap } from './di-v0-s4c-runtime.bootstrap';
 import { DiV0S4RuntimeConfigAttestationService } from './di-v0-s4-runtime-config-attestation.service';
+import { DiV0S4OperationalMetricsService } from './di-v0-s4-operational-metrics.service';
 
 /**
  * DI V0 S4 runtime composition (S4F-7A). Imported by VehicleIntelligenceModule.
@@ -21,7 +22,7 @@ import { DiV0S4RuntimeConfigAttestationService } from './di-v0-s4-runtime-config
     DiV0S4eDriftWatcherModule,
     DiV0S4fObservabilityModule,
   ],
-  providers: [DiV0S4cRuntimeBootstrap, DiV0S4RuntimeConfigAttestationService],
+  providers: [DiV0S4cRuntimeBootstrap, DiV0S4RuntimeConfigAttestationService, DiV0S4OperationalMetricsService],
   exports: [DiV0S4bOrchestrationModule, DiV0S4eDriftWatcherModule, DiV0S4fObservabilityModule],
 })
 export class DiV0S4RuntimeModule {}

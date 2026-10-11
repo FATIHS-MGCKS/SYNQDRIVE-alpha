@@ -21,6 +21,7 @@ alerting:
 rule_files:
   - /etc/prometheus/alerts.yml
   - /etc/prometheus/alerts-infra.yml
+  - /etc/prometheus/alerts-di-s4.yml
 
 scrape_configs:
   # F10.1: scrape both PM2 replicas — recovery scheduler + RFRF metrics are per-process.

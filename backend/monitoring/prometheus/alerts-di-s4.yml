@@ -1,0 +1,182 @@
+# DI V0 S4 (EXP021) — unattended shadow operations
+#
+# Low-cardinality metrics only. Many rules gate on synqdrive_di_v0_s4_activity_signal
+# to avoid noise while GLOBAL_KILL=KILLED and the shadow plane is dormant.
+
+groups:
+  - name: synqdrive_di_v0_s4_shadow
+    rules:
+      - alert: DiV0S4RuntimeConfigAttestationReplicaDrift
+        expr: |
+          max(synqdrive_di_v0_s4_activity_signal) >= 1
+          and count(
+            count by (fingerprint) (
+              synqdrive_di_v0_s4_runtime_config_attestation_info
+            )
+          ) > 1
+        for: 10m
+        labels:
+          severity: critical
+          component: driving_intelligence_s4
+        annotations:
+          summary: DI S4 runtime config attestation fingerprint mismatch across replicas
+          description: Replica A/B report different nine-key S4 config fingerprints — investigate env drift before continuing shadow processing.
+          runbook_url: architecture/drivingintelligence/evidence/EXP021_S4P2_UNATTENDED_OPS_ALERT_INTEGRATION.md#replica-drift
+
+      - alert: DiV0S4SchedulerLeaderElectionBroken
+        expr: |
+          max(synqdrive_di_v0_s4_activity_signal) >= 1
+          and (
+            sum(synqdrive_scheduler_leader_status == 1) != 1
+            or absent(synqdrive_scheduler_leader_status)
+          )
+        for: 10m
+        labels:
+          severity: critical
+          component: driving_intelligence_s4
+        annotations:
+          summary: Scheduler leader election unhealthy while S4 is active
+          description: Exactly one backend replica must hold the scheduler leader lease when S4 shadow work is active.
+          runbook_url: architecture/drivingintelligence/evidence/EXP021_S4P2_UNATTENDED_OPS_ALERT_INTEGRATION.md#scheduler-leader
+
+      - alert: DiV0S4GlobalKillOpen
+        expr: |
+          max(synqdrive_di_v0_s4_global_not_killed) == 1
+        for: 5m
+        labels:
+          severity: warning
+          component: driving_intelligence_s4
+        annotations:
+          summary: DI S4 GLOBAL kill row is NOT_KILLED
+          description: Verify an owner-authorized LIVE_OPEN or wave promotion is in effect; otherwise run EMERGENCY_REKILL containment.
+          runbook_url: architecture/drivingintelligence/evidence/EXP021_S4P2_UNATTENDED_OPS_ALERT_INTEGRATION.md#global-kill
+
+      - alert: DiV0S4AllowlistTenantViolation
+        expr: |
+          max(synqdrive_di_v0_s4_activity_signal) >= 1
+          and max(synqdrive_di_v0_s4_allowlist_violation_work_items) > 0
+        for: 2m
+        labels:
+          severity: critical
+          component: driving_intelligence_s4
+        annotations:
+          summary: S4 work items outside org/vehicle allowlists
+          description: Shadow work exists for tenants or vehicles outside configured DI_V0_S4 allowlists — stop processing and contain.
+          runbook_url: architecture/drivingintelligence/evidence/EXP021_S4P2_UNATTENDED_OPS_ALERT_INTEGRATION.md#allowlist
+
+      - alert: DiV0S4ExpiredLeasesPersistent
+        expr: |
+          max(synqdrive_di_v0_s4_activity_signal) >= 1
+          and max(synqdrive_di_v0_s4_expired_leased_work_items) > 0
+        for: 15m
+        labels:
+          severity: warning
+          component: driving_intelligence_s4
+        annotations:
+          summary: S4 work items stuck with expired leases
+          description: Claim loop or executor may be unhealthy — inspect scheduler ticks and worker errors.
+          runbook_url: architecture/drivingintelligence/evidence/EXP021_S4P2_UNATTENDED_OPS_ALERT_INTEGRATION.md#stuck-leases
+
+      - alert: DiV0S4AttemptsExhausted
+        expr: |
+          max(synqdrive_di_v0_s4_activity_signal) >= 1
+          and max(synqdrive_di_v0_s4_attempts_exhausted_work_items) > 0
+        for: 5m
+        labels:
+          severity: critical
+          component: driving_intelligence_s4
+        annotations:
+          summary: S4 work items exhausted retry budget
+          description: Terminal failure candidates present — inspect executor/DIMO errors and Gate-6 abort playbook.
+          runbook_url: architecture/drivingintelligence/evidence/EXP021_S4P2_UNATTENDED_OPS_ALERT_INTEGRATION.md#retries-exhausted
+
+      - alert: DiV0S4EvidencePinInconsistent
+        expr: |
+          max(synqdrive_di_v0_s4_activity_signal) >= 1
+          and max(synqdrive_di_v0_s4_pin_required_missing_work_items) > 0
+        for: 10m
+        labels:
+          severity: warning
+          component: driving_intelligence_s4
+        annotations:
+          summary: S4 evidence pin state inconsistent
+          description: Work items require pinned evidence that is missing — persistence or executor path may be failing.
+          runbook_url: architecture/drivingintelligence/evidence/EXP021_S4P2_UNATTENDED_OPS_ALERT_INTEGRATION.md#evidence-persistence
+
+      - alert: DiV0S4ControlPlaneUnreadable
+        expr: |
+          max(synqdrive_di_v0_s4_activity_signal) >= 1
+          and max(synqdrive_di_v0_s4_control_plane_readable) == 0
+        for: 5m
+        labels:
+          severity: critical
+          component: driving_intelligence_s4
+        annotations:
+          summary: di_v0_s4_control GLOBAL row unreadable
+          description: Fail-closed kill authority cannot be read — treat as unsafe for shadow processing.
+          runbook_url: architecture/drivingintelligence/evidence/EXP021_S4P2_UNATTENDED_OPS_ALERT_INTEGRATION.md#control-plane
+
+      - alert: DiV0S4DimoBudgetDisabledWhileStaged
+        expr: |
+          max(synqdrive_di_v0_s4_runtime_config_attestation_info{state="STAGED"}) >= 1
+          and max(synqdrive_dimo_global_budget_enabled) == 0
+        for: 10m
+        labels:
+          severity: critical
+          component: driving_intelligence_s4
+        annotations:
+          summary: DIMO global budget disabled while S4 config is staged
+          description: S4C acquisition requires POST_TRIP_ENRICHMENT budget — enable budget or re-kill shadow plane.
+          runbook_url: architecture/drivingintelligence/evidence/EXP021_S4P2_UNATTENDED_OPS_ALERT_INTEGRATION.md#dimo-budget
+
+      - alert: DiV0S4DimoBudgetCooldownSustained
+        expr: |
+          max(synqdrive_di_v0_s4_activity_signal) >= 1
+          and max(synqdrive_dimo_global_budget_cooldown_active) == 1
+        for: 30m
+        labels:
+          severity: warning
+          component: driving_intelligence_s4
+        annotations:
+          summary: DIMO global budget cooldown active during S4 activity
+          description: Sustained 429 pressure on DIMO — shadow enrichment may stall; review provider limits.
+          runbook_url: architecture/drivingintelligence/evidence/EXP021_S4P2_UNATTENDED_OPS_ALERT_INTEGRATION.md#dimo-budget
+
+      - alert: DiV0S4DimoPostTripAcquireTimeouts
+        expr: |
+          max(synqdrive_di_v0_s4_activity_signal) >= 1
+          and rate(synqdrive_dimo_acquire_timeout_total{category="POST_TRIP_ENRICHMENT"}[30m]) > 0
+        for: 15m
+        labels:
+          severity: warning
+          component: driving_intelligence_s4
+        annotations:
+          summary: DIMO POST_TRIP_ENRICHMENT permit acquire timeouts
+          description: S4C may be failing with PROVIDER_BUDGET_UNAVAILABLE — inspect budget and backlog.
+          runbook_url: architecture/drivingintelligence/evidence/EXP021_S4P2_UNATTENDED_OPS_ALERT_INTEGRATION.md#dimo-budget
+
+      - alert: DiV0S4DiscoverySchedulerStale
+        expr: |
+          max(synqdrive_di_v0_s4_runtime_config_attestation_info{state="STAGED"}) >= 1
+          and rate(synqdrive_scheduler_tick_total{scheduler="di_v0_s4_discovery",result="success"}[2h]) == 0
+        for: 30m
+        labels:
+          severity: warning
+          component: driving_intelligence_s4
+        annotations:
+          summary: S4 discovery scheduler not ticking
+          description: No successful di_v0_s4_discovery leader ticks in 2h while discovery is staged — inspect leader election and errors.
+          runbook_url: architecture/drivingintelligence/evidence/EXP021_S4P2_UNATTENDED_OPS_ALERT_INTEGRATION.md#discovery
+
+      - alert: DiV0S4FailedTerminalWorkItems
+        expr: |
+          max(synqdrive_di_v0_s4_activity_signal) >= 1
+          and max(synqdrive_di_v0_s4_work_items{status="FAILED_TERMINAL"}) > 0
+        for: 10m
+        labels:
+          severity: warning
+          component: driving_intelligence_s4
+        annotations:
+          summary: S4 FAILED_TERMINAL work items present
+          description: Review failure reasons in di_v0_s4_work_items and evidence snapshots.
+          runbook_url: architecture/drivingintelligence/evidence/EXP021_S4P2_UNATTENDED_OPS_ALERT_INTEGRATION.md#worker-failures
