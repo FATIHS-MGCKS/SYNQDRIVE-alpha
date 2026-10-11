@@ -6,7 +6,7 @@
 
 **Central registry validator:** `bash architecture/scripts/validate-module-registry.sh`
 
-**Last updated:** 2026-10-11 (DSRG-03 R6 — DSRG registry promotion to `AUTHORITY_ACTIVE` proposed in open PR; effective on merge only)
+**Last updated:** 2026-10-11 (DSRG P4B16 R0 release attestation audit — design PR; DSRG `AUTHORITY_ACTIVE`)
 
 ---
 
@@ -297,7 +297,7 @@ Detailed sections for modules with usable living authorities. See [Module invent
 | **Authority directory** | [`architecture/dsrg/`](dsrg/) |
 | **Authority-native status** | Cross-cutting deployment governance authority · DSRG-01/#1970 · DSRG-02 pin sealed · DSRG-03 graph + validators · **runtime enforcement / OS boundary activation not claimed** |
 | **Ownership boundary** | **Owns** cross-cutting deploy governance architecture and ops execution contracts. **Does not own** VO5C admission/MFA product flags (→ Vehicle Onboarding evidence), APDS approved release pin (→ APDS), EXP021 scheduler/Gate-6 (→ Driving Intelligence / EXP021 ops), RFRF rollback traps (→ RFRF). Runtime implementation remains `backend/scripts/ops/*` on VPS; VO5C historical evidence stays under `architecture/vehicle-onboarding/evidence/`. |
-| **Reconstruction status** | Phase **0–5** architecture reconstruction **COMPLETE** (DSRG-03 R3 Gate A); **runtime activation** (enforcement, sudoers, live pinned deploy) remains **separate** — see [GATE_A_READINESS.md](dsrg/evidence/GATE_A_READINESS.md) enforcement track |
+| **Reconstruction status** | Phase **0–5** architecture reconstruction **COMPLETE** (DSRG-03 R3 Gate A); **P4B16 R0** attestation design in progress; **runtime activation** (enforcement, sudoers, attestation automation) remains **separate** — see [GATE_A_READINESS.md](dsrg/evidence/GATE_A_READINESS.md) enforcement track |
 | **Mandatory entry documents** | [README.md](dsrg/README.md) · [AUDIT_MANIFEST.md](dsrg/AUDIT_MANIFEST.md) · [CURRENT_STATE.md](dsrg/CURRENT_STATE.md) · [AGENT_CONTRACT.md](dsrg/AGENT_CONTRACT.md) · [KNOWLEDGE_GRAPH.md](dsrg/KNOWLEDGE_GRAPH.md) · [decisions/DECISION_REGISTER.md](dsrg/decisions/DECISION_REGISTER.md) · [evidence/EVIDENCE_INDEX.md](dsrg/evidence/EVIDENCE_INDEX.md) · [evidence/PRODUCTION_BASELINE.md](dsrg/evidence/PRODUCTION_BASELINE.md) · [contradictions/KNOWLEDGE_GAPS.md](dsrg/contradictions/KNOWLEDGE_GAPS.md) · [contradictions/OPEN_CONTRADICTIONS.md](dsrg/contradictions/OPEN_CONTRADICTIONS.md) |
 | **Validation** | `bash architecture/scripts/validate-module-registry.sh` · `bash architecture/dsrg/scripts/validate-graph.sh` |
 

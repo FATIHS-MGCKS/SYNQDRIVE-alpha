@@ -12,7 +12,7 @@ All production release promotion paths that can change `/opt/synqdrive/current`,
 | P4B12–P4B14 | *(inventory / admission precursors)* | See [VO5C_P4B12_P4B16_HISTORY.md](./VO5C_P4B12_P4B16_HISTORY.md) | Evidence scattered in VO5C P4A/P2 tracks |
 | P4B15 | Deploy bypass enforcement (code) | **Merged** PR #1967 @ `40c6dd9` | Authority file contract; entrypoint wiring; offline tests |
 | P4B15-P6 | Pin promotion | **Done** on VPS | Config → `40c6dd9`; prior pins preserved; enforcement off |
-| P4B16 | Deploy attestation sync | **Design** | `SYNQDRIVE_DEPLOYED_GIT_SHA` vs replica SHA; no auto APDS pin |
+| P4B16 | Deploy attestation sync | **R0 audit complete** (design PR) | Lifecycle + atomic commit; mismatch observed on VPS R0; implementation + pin promotion follow |
 | DSRG-01 | Execution contract fix | **Merged** PR #1970 | `exec bash`; canonical pinned-ops runner |
 | DSRG-02 | Pin re-promotion | **Done** 2026-10-11 | Config → `448a889`; `40c6dd9` preserved; app `7f47c9f` |
 | DSRG-03 R0/R1 | Registry bootstrap | **Merged** #1973 | `AUDIT_IN_PROGRESS` inventory row |

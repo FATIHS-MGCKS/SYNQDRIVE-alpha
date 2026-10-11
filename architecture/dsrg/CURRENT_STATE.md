@@ -1,14 +1,15 @@
 # DSRG — Current state (repository vs Production)
 
-**Audit base (repository):** `main` @ `f456350c72daf8da08ca80b00090276da8ff60f1` (#1976 merge)  
-**Production evidence baseline:** DSRG-03 R3 @ `2026-10-11T13:49:49Z` (unchanged — no new VPS audit in R6)  
+**Audit base (repository):** `main` @ `b3c5a0b970162b44496e817e3b13a9b0e89615e4` (post #1977)  
+**Production evidence baseline:** DSRG-03 R3 @ `2026-10-11T13:49:49Z` · **P4B16 R0** @ `2026-10-11T16:05:00Z` (read-only attestation)  
 **Classification axes:** registry `AUTHORITY_ACTIVE` (effective on R6 merge) · epistemic per-row · validation per-row
 
 ## Repository vs Production drift
 
 | Dimension | Repository (`main`) | Production (VPS) | Notes |
 |-----------|---------------------|------------------|-------|
-| Application SHA | Tip `2a44f5c…` includes commits after `7f47c9f…` | `SYNQDRIVE_DEPLOYED_GIT_SHA` = `7f47c9f…` | **Drift:** deployed app is an **ancestor** of `main`, not `main` tip |
+| Application SHA | `main` tip advances continuously | `git -C current` = `2b89f746…` (P4B16 R0) | **Drift:** tree SHA ≠ `SYNQDRIVE_DEPLOYED_GIT_SHA` (`3a4bb944…`) |
+| Attestation env | P4B16 design in R0 | `SYNQDRIVE_DEPLOYED_GIT_SHA` stale vs `current` | **CONFIRMED mismatch** — no auto writer in deploy script |
 | Release path git HEAD | N/A | **No git metadata** on `/opt/synqdrive/releases/20261010184619_v4994` | Identity from **attestation env only** |
 | Pinned executor | `448a889…` on `main` (#1970) | Config + tree @ `448a889…` | **Aligned** (pin-only promotion; live app unchanged) |
 | Enforcement / authority | Examples in repo | Files **absent**; flags **off** | **Not production-ready** for enforced deploy path |

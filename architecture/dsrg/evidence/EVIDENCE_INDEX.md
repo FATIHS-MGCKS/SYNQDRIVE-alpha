@@ -11,6 +11,10 @@
 | E-GATE-A | [`GATE_A_READINESS.md`](GATE_A_READINESS.md) | AUDIT_DOCUMENT | Gate A matrix; R6 promotion revalidation |
 | E-DSRG-03-R6 | [`DSRG_03_R6_AUTHORITY_PROMOTION.md`](DSRG_03_R6_AUTHORITY_PROMOTION.md) | AUDIT_DOCUMENT | Registry promotion proposal; safety separation |
 | E-CI-GRAPH | [`CI_GRAPH_GATE.md`](CI_GRAPH_GATE.md) | ARCHITECTURE_DOCUMENT | Registry CI chain for graph validator |
+| E-P4B16-R0-AUDIT | [`P4B16_R0_PRODUCTION_ATTESTATION_AUDIT.md`](P4B16_R0_PRODUCTION_ATTESTATION_AUDIT.md) | PRODUCTION_READ_ONLY | R0 VPS attestation vs release tree |
+| E-P4B16-R0-DESIGN | [`P4B16_R0_ATTESTATION_DESIGN.md`](P4B16_R0_ATTESTATION_DESIGN.md) | ARCHITECTURE_DOCUMENT | Lifecycle + atomic commit proposal |
+| E-P4B16-R0-CODE | [`P4B16_R0_CODE_INVENTORY.md`](P4B16_R0_CODE_INVENTORY.md) | REPOSITORY | Writer/reader inventory |
+| E-P4B16-R0-TESTS | [`P4B16_R0_OFFLINE_TEST_MATRIX.md`](P4B16_R0_OFFLINE_TEST_MATRIX.md) | ARCHITECTURE_DOCUMENT | Offline test matrix backlog |
 | E-VO5C-P4B15 | [`../../vehicle-onboarding/evidence/VO5C_P4B15_DEPLOY_BYPASS_ENFORCEMENT.md`](../../vehicle-onboarding/evidence/VO5C_P4B15_DEPLOY_BYPASS_ENFORCEMENT.md) | REPOSITORY | P4B15 (preserved) |
 | E-VO5C-R2 | [`../../vehicle-onboarding/evidence/VO5C_R2_SECURITY_FLOOR_ROLLBACK.md`](../../vehicle-onboarding/evidence/VO5C_R2_SECURITY_FLOOR_ROLLBACK.md) | REPOSITORY | Security floor (preserved) |
 | E-OPS-SELFTEST | `backend/scripts/ops/vps-vo5c-*.selftest.sh` | CURRENT_TEST | Offline only; not live deploy proof |

@@ -13,7 +13,8 @@ Operator (human)
   → vps-vo5c-first-security-deploy-preflight.sh
   → exec bash vps-deploy-release.sh (pinned tree)
   → release promotion / PM2 / migrations
-  → SYNQDRIVE_DEPLOYED_GIT_SHA attestation
+  → post-verify attestation commit (P4B16 — **PROPOSED**; not automated today)
+  → SYNQDRIVE_DEPLOYED_GIT_SHA in shared backend.env
 ```
 
 **Rejected / legacy paths (documented, not removed pre-enforcement):**
@@ -29,6 +30,7 @@ Operator (human)
 | DSRG-DEC-001 | VALIDATED |
 | DSRG-DEC-002 | VALIDATED |
 | DSRG-DEC-003 | PROPOSED |
+| DSRG-DEC-004 | PROPOSED |
 
 ## Cross-module boundaries
 
