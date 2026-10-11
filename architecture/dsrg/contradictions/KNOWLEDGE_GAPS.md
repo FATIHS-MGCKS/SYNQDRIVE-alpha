@@ -1,18 +1,18 @@
-# DSRG — Knowledge gaps
+# DSRG — Knowledge gaps (R3 classification)
 
-Stable IDs align with graph nodes (`DSRG-GAP-*`). Epistemic state per row.
+Graph nodes: `DSRG-GAP-*` in [`graph/nodes.yaml`](../graph/nodes.yaml).
 
-| ID | Gap | Impact | Next verification |
-|----|-----|--------|-------------------|
-| DSRG-GAP-01 | Gate-6 live kill registry not re-probed in DSRG-03 R2 | EXP021 safety claims rely on DSRG-02 **HISTORICAL** seal | Bounded read of Gate-6 guard state (read-only) |
-| DSRG-GAP-02 | APDS ACTIVE epoch row not re-queried on VPS | Shadow epoch stability | SQL or APDS admin read-only API |
-| DSRG-GAP-03 | VO5C admission/MFA flags absent from `backend.env` grep | Product admission vs deploy governance boundary | Vehicle Onboarding Production audit |
-| DSRG-GAP-04 | `main` tip vs live app `7f47c9f` | Release attestation completeness | **INFERRED:** `7f47c9f` is ancestor of `main` @ `46478500` |
-| DSRG-GAP-05 | OS sudoers / wrapper not installed | Enforcement phase blocked | Inspect `/etc/sudoers.d/` when authorized |
-| DSRG-GAP-06 | Knowledge graph validators | Was promotion blocker pre-R2 | **Addressed** in DSRG-03 R2 — re-validate after substantive changes |
-| DSRG-GAP-07 | RFRF rollback traps on VPS not independently exercised | Cross-module rollback confidence | RFRF read-only audit |
-| DSRG-GAP-08 | Direct `current` deploy while enforcement OFF | Expected pre-enforcement; negative test missing | Authorized enforcement drill |
+| ID | Classification | Summary | Evidence |
+|----|----------------|---------|----------|
+| DSRG-GAP-01 | **CLOSED_WITH_EVIDENCE** | Gate-6 GLOBAL kill state | `di_v0_s4_control`: `KILLED` @ `2026-10-02T05:46:16Z` — [`DSRG_03_R3_PRODUCTION_AUDIT.md`](../evidence/DSRG_03_R3_PRODUCTION_AUDIT.md) |
+| DSRG-GAP-02 | **CLOSED_WITH_EVIDENCE** | APDS ACTIVE epoch | Epoch `3cbc5d95-a5fb-4259-8c00-88f0df93e77a` @ `2026-10-09T21:40:53.798Z`; pin `ab72f574…` — R3 SQL + `backend.env` |
+| DSRG-GAP-03 | **OPEN_NONBLOCKING** (authority) | VO5C admission/MFA not in `backend.env` | Vehicle Onboarding Production audit — not DSRG deploy-governance blocker |
+| DSRG-GAP-04 | **CLOSED_WITH_EVIDENCE** | `main` vs deployed app | `7f47c9f` ancestor of `main` @ `299205bc` |
+| DSRG-GAP-05 | **OPEN_BLOCKING_ENFORCEMENT** | OS sudoers / wrapper not installed | R3: `synqdrive-vo5c-deploy` sudoers **absent** |
+| DSRG-GAP-06 | **CLOSED_WITH_EVIDENCE** | Graph validators | DSRG-03 R2 + CI hook R3 |
+| DSRG-GAP-07 | **OPEN_NONBLOCKING** | RFRF traps not exercised on VPS | RFRF scripts present on live release; no drill run |
+| DSRG-GAP-08 | **OPEN_BLOCKING_ENFORCEMENT** | Negative bypass test while enforcement OFF | Requires authorized enforcement drill |
 
-## Contradictions
+**OPEN_BLOCKING_AUTHORITY:** **none** after R3 (architecture Gate A pass).
 
-See [`OPEN_CONTRADICTIONS.md`](OPEN_CONTRADICTIONS.md) — **DSRG-CONTRA-001** resolved.
+See [`OPEN_CONTRADICTIONS.md`](OPEN_CONTRADICTIONS.md).

@@ -135,8 +135,8 @@ nodes:
   - id: DSRG-AUTH-XREF-EXP021-001
     type: authority
     title: EXP021 Gate-6 authority (external)
-    epistemic_status: HISTORICAL
-    summary: Gate-6 KILLED per DSRG-02 seal; live state UNKNOWN in DSRG-03 R2 bounded probe.
+    epistemic_status: CONFIRMED
+    summary: Gate-6 GLOBAL kill_state KILLED verified R3 Production SQL (di_v0_s4_control).
     source_paths:
       - architecture/dsrg/CROSS_MODULE_DEPENDENCIES.md
 
@@ -244,6 +244,15 @@ nodes:
     source_paths:
       - architecture/dsrg/evidence/DSRG_03_R2_PRODUCTION_RECONCILIATION.md
 
+  - id: DSRG-EVID-PROD-R3-001
+    type: evidence
+    title: DSRG-03 R3 Production audit
+    epistemic_status: CONFIRMED
+    source_type: PRODUCTION_OBSERVATION
+    summary: Full R3 bounded audit incl. SQL Gate-6 and APDS epoch.
+    source_paths:
+      - architecture/dsrg/evidence/DSRG_03_R3_PRODUCTION_AUDIT.md
+
   - id: DSRG-TEST-EXEC-CONTRACT-001
     type: test_evidence
     title: Pinned deploy execution contract selftest
@@ -282,16 +291,16 @@ nodes:
   - id: DSRG-GAP-01
     type: gap
     title: Gate-6 live kill registry not re-probed
-    epistemic_status: UNKNOWN
-    summary: EXP021 safety relies on DSRG-02 HISTORICAL seal.
+    epistemic_status: CONFIRMED
+    summary: "CLOSED R3: di_v0_s4_control GLOBAL kill_state=KILLED (2026-10-02T05:46:16Z)."
     source_paths:
       - architecture/dsrg/contradictions/KNOWLEDGE_GAPS.md
 
   - id: DSRG-GAP-02
     type: gap
     title: APDS ACTIVE epoch not re-queried
-    epistemic_status: UNKNOWN
-    summary: Approved pin observed; epoch row stale in docs.
+    epistemic_status: CONFIRMED
+    summary: "CLOSED R3: ACTIVE epoch 3cbc5d95… @ 2026-10-09T21:40:53.798Z; pin ab72f574…"
     source_paths:
       - architecture/dsrg/contradictions/KNOWLEDGE_GAPS.md
 
@@ -306,8 +315,8 @@ nodes:
   - id: DSRG-GAP-04
     type: gap
     title: main tip vs deployed app mapping
-    epistemic_status: INFERRED
-    summary: Deployed 7f47c9f is ancestor of main; attestation documented.
+    epistemic_status: CONFIRMED
+    summary: "CLOSED R3: 7f47c9f ancestor of main @ 299205bc."
     source_paths:
       - architecture/dsrg/contradictions/KNOWLEDGE_GAPS.md
 

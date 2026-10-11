@@ -1,6 +1,6 @@
 # DSRG — Current state (repository vs Production)
 
-**Audit base:** `origin/main` @ `46478500ef8dee5d22fda89a7c1876a5e37270ca` (DSRG-03 R2)  
+**Audit base:** `origin/main` @ `299205bc7fa07f3494f50961c49fd5a591e029fe` (DSRG-03 R3)  
 **Classification axes:** registry `AUDIT_IN_PROGRESS` · epistemic per-row · validation per-row
 
 ## Repository vs Production drift
@@ -82,8 +82,8 @@ Do **not** equate merged repository code with live runtime. Status labels:
 
 | Module | Observation | DSRG relation |
 |--------|-------------|---------------|
-| **APDS** | `APD_SHADOW_EPOCH_APPROVED_RELEASE_SHA=ab72f574…` in Production `backend.env` | must not mutate during DSRG work |
-| **EXP021** | Fleet flags may be present; Gate-6 **KILLED** per DSRG-02 **HISTORICAL** seal | **UNKNOWN** live kill registry in DSRG-03 R2 (DSRG-GAP-01) |
+| **APDS** | Approved pin `ab72f574…`; ACTIVE epoch `3cbc5d95…` @ `2026-10-09` (R3 SQL) | must not mutate during DSRG work |
+| **EXP021** | Gate-6 GLOBAL **KILLED** (`di_v0_s4_control`, updated `2026-10-02`) | **CONFIRMED** R3 SQL; scheduler leader metric **UNKNOWN** |
 | **VO5C product admission / MFA** | **UNKNOWN** in `backend.env` grep | owned by Vehicle Onboarding evidence |
 | **Live app** | release dir `20261010184619_v4994`; PM2 `synqdrive` + `synqdrive-b` online | unchanged by pin-only promotion |
 
@@ -105,9 +105,9 @@ Do **not** equate merged repository code with live runtime. Status labels:
 - `vps-vo5c-pinned-deploy-execution-contract.selftest.sh` — **PASS** @ DSRG-03 R2  
 - Does **not** imply Production deploy readiness.
 
-## Production observation (DSRG-03 R2)
+## Production observation (DSRG-03 R3)
 
-Fresh read-only: [`evidence/DSRG_03_R2_PRODUCTION_RECONCILIATION.md`](evidence/DSRG_03_R2_PRODUCTION_RECONCILIATION.md) @ `2026-10-11T10:14:01Z`.
+Authoritative read-only: [`evidence/DSRG_03_R3_PRODUCTION_AUDIT.md`](evidence/DSRG_03_R3_PRODUCTION_AUDIT.md). Execution paths: [`evidence/EXECUTION_PATH_INVENTORY.md`](evidence/EXECUTION_PATH_INVENTORY.md).
 
 ## Registry
 

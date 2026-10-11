@@ -63,6 +63,14 @@ edges:
     relation: supports
     to: DSRG-STATE-DEPLOY-ATTEST-001
 
+  - from: DSRG-EVID-PROD-R3-001
+    relation: supports
+    to: DSRG-STATE-PIN-CONFIG-001
+
+  - from: DSRG-EVID-PROD-R3-001
+    relation: supports
+    to: DSRG-AUTH-XREF-EXP021-001
+
   - from: DSRG-EVID-CODE-RUNNER-001
     relation: supports
     to: DSRG-DEC-001

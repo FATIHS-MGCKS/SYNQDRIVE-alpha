@@ -1,0 +1,14 @@
+# DSRG — Execution path inventory (R3)
+
+Epistemic labels: **CONFIRMED** (code or Production read), **INFERRED**, **HISTORICAL**, **UNKNOWN**.
+
+| # | Path | Entry / caller | Privilege | Authorization preconditions | Pin relation | Fail-closed controls | Reachability (Production) | Enforcement OFF | Residual risk | Evidence |
+|---|------|----------------|-----------|---------------------------|--------------|----------------------|---------------------------|-----------------|---------------|----------|
+| 1 | **Canonical pinned deploy** | Operator → `vps-vo5c-run-pinned-security-deploy.sh` in pinned ops dir | root (typical) | `SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1`, pin env sourced | **Required** path guard + preflight | Human auth env; preflight; security-floor/admission in deploy script chain | **Reachable** if operator has root + env; **not executed** in audits | P4B15 bypass lib **inactive** without enforcement env | Legacy `current` path may still work | Code + pin tree CONFIRMED; live run UNKNOWN |
+| 2 | **Legacy direct production deploy** | Operator → `vps-deploy-release.sh` under `/opt/synqdrive/current/.../ops` | root | Historical VPS deploy practice | **None** | Partial script guards when enforcement armed; **OFF** today | **Reachable** (scripts on live release) | No fail-closed OS block observed | High bypass until enforcement + sudoers | CONFIRMED scripts on release; OS block **not** proven |
+| 3 | **Cloud-agent deploy** | Cursor agent → `.cursor/scripts/cloud-agent-deploy.sh` → SSH → `vps-deploy-release.sh` on VPS | deploy SSH user (+ sudo on VPS) | Git push + clean tree preflight in script | **Not** pinned runner by default | Human/process gate in AGENTS.md | **Reachable** for authorized agents with SSH | Does not auto-set VO5C pin contract | Parallel path to pinned governance | AGENTS.md CONFIRMED |
+| 4 | **Connectivity staging** | `vps-deploy-connectivity-staging.sh` | root | Operator | Optional / staging | Staging-specific | **UNKNOWN** usage frequency | N/A | Staging misuse | Code IMPLEMENTED |
+| 5 | **DI / EXP021 controlled deploy** | `di-v0-s4-exact-rc-attestation-deploy-production.sh` etc. | root | Gate-6 + attestation libs | May bundle fleet guards | Gate-6 GLOBAL **KILLED** blocks open paths | Gate-6 **KILLED** CONFIRMED DB; deploy scripts **present** on release | Kill state independent of VO5C enforcement | Opening Gate-6 is separate EXP021 authority | R3 SQL + ops tree |
+| 6 | **Rollback / emergency** | `vps-vo5c-security-floor-rollback` libs + RFRF prove scripts | root | Operator + script contracts | Pin-aware in VO5C libs | Security-floor ancestry | Scripts **present**; **not executed** in R3 | N/A | RFRF trap state UNKNOWN | Repo selftests + file presence |
+
+**DSRG scope:** document and govern paths 1–4; coordinate with 5–6 without owning EXP021/RFRF semantics.
