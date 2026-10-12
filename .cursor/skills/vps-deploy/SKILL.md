@@ -1,118 +1,102 @@
 ---
 name: vps-deploy
 description: >-
-  Commit, push, and deploy SynqDrive to production VPS from Cursor (local or Cloud Agent).
-  Use when the user asks to deploy, commit and deploy, release to production, or VPS deploy.
+  Commit, push, and deploy SynqDrive to production on the single Hostinger VPS via the
+  VO5C pinned runner. Use when the user asks to deploy, commit and deploy, release to
+  production, or VPS deploy. No separate staging VPS.
 ---
-# VPS production deploy
+# VPS production deploy (single VPS, VO5C pinned)
 
 ## When to use
 
 User says: deploy, commit and deploy, release, production, VPS.
 
-## Prerequisites (Cloud Agent only)
+## Canonical contract (routine production)
+
+```
+Human SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1 (never set by agents)
+  → exact SYNQDRIVE_REQUESTED_DEPLOY_SHA
+  → source vo5c-pinned-executor.env
+  → vps-vo5c-run-pinned-security-deploy.sh (from pinned ops dir only)
+  → preflight / admission
+  → exec bash pinned vps-deploy-release.sh
+  → rolling replicas A/B + verify
+  → P4B16 attestation
+```
+
+**Agents:** may `git push` and run `cloud-agent-deploy.sh`, which **delegates** to the pinned runner on the VPS. Agents **must not** set `SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1`. Operator creates a short-lived VPS session file or runs the pinned runner manually (see below).
+
+## Prerequisites (Cloud Agent)
 
 [Cursor Cloud Agents dashboard](https://cursor.com/dashboard/cloud-agents) → Secrets.
 
-**Deploy without Tailscale (path A):**
-
-| Name | Type |
-|------|------|
-| `CLOUD_AGENT_SSH_PRIVATE_KEY` | Runtime Secret |
-| `CLOUD_AGENT_VPS_HOST` | Environment Variable → `srv1374778.hstgr.cloud` |
-| `CLOUD_AGENT_SSH_USER` | Environment Variable → `root` |
-
-Do **not** add `TAILSCALE_AUTH_KEY`.
-
-**With Tailscale (path B):** add `TAILSCALE_AUTH_KEY` (Runtime Secret) and set host to `mein-vps.internal`.
-
-See `AGENTS.md` for full checklist and Runtime Secret vs Environment Variable guidance.
-
-## Canonical deployment path (required)
-
-**Always use** the Cloud Agent deploy script — do **not** invoke `/opt/synqdrive/current/.../vps-deploy-release.sh` directly.
-
-```bash
-bash .cursor/scripts/cloud-agent-deploy.sh
-```
-
-### Why not `current`?
-
-Pre-success `current` may lack the latest deploy lifecycle (OQ-18). The canonical path:
-
-1. Resolves **one immutable `REQUESTED_DEPLOY_SHA`** from local `origin/main` after git preflight
-2. Bootstraps the deploy entry script at **that exact SHA** on the VPS (not stale `current`)
-3. `vps-deploy-release.sh` clones/builds **that same SHA** (`SYNQDRIVE_REQUESTED_DEPLOY_SHA`)
-4. Sources multi-replica libs from **`RELEASE_DIR`** (RELEASE_OPS_DIR / DEC-015)
-5. Rolling restart + scheduler convergence gate (P1.8.3.1) + invariants
-6. Auto-rollback on failure
-
-**Invariant (DEC-016):**
-
-```
-REQUESTED_DEPLOY_SHA == BOOTSTRAP_SCRIPT_SHA == RELEASE_SOURCE_SHA == TARGET_SHA == REPLICA_A_SHA == REPLICA_B_SHA
-```
-
-Any mismatch → fail closed; rollback if promotion began.
+Path A (no Tailscale): `CLOUD_AGENT_SSH_PRIVATE_KEY`, `CLOUD_AGENT_VPS_HOST=srv1374778.hstgr.cloud`, `CLOUD_AGENT_SSH_USER=synqdrive-admin`.
 
 ## Workflow
 
-1. `git status` and `git diff` — do not commit `.env` or secrets.
-2. If changes exist: stage, commit (concise message), `git push origin main`.
-3. Deploy:
+1. `git status` / `git diff` — no secrets in commits.
+2. Commit + `git push origin main` when needed.
+3. **Operator (VPS):** authorize release (example session file):
+
+```bash
+sudo tee /opt/synqdrive/shared/vo5c-operator-deploy-session.env <<EOF
+SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1
+AUTHORIZED_REQUESTED_SHA=<full-40-char-sha>
+AUTHORIZED_UNTIL_EPOCH=$(date -u -d '+30 minutes' +%s)
+EOF
+sudo chmod 600 /opt/synqdrive/shared/vo5c-operator-deploy-session.env
+```
+
+4. **Agent or operator workstation:**
 
 ```bash
 bash .cursor/scripts/cloud-agent-deploy.sh
 ```
 
-## What the deploy does
+Exit codes: `0` pinned+public health OK; `2` deploy OK but public health failed; `3` P4B16 partial success; `42` missing human VO5C authorization (see script instructions).
 
-Remote lifecycle (`backend/scripts/ops/vps-deploy-release.sh`):
+## Manual pinned deploy (preferred when not using cloud-agent)
 
-- Pre-deploy PostgreSQL backup
-- Clone **exact requested SHA** into `/opt/synqdrive/releases/<id>` (not mutable branch tip)
-- Symlink `backend.env`, `frontend.env`, uploads
-- `npm ci`, Prisma migrate, backend + frontend build
-- Boot check before promoting release
-- Switch `/opt/synqdrive/current`, rolling multi-replica PM2 restart (3001 + 3002)
-- Scheduler leader convergence gate (bounded poll; 0=transient, >1=split-brain)
-- nginx dual-upstream + external health verification
-- Auto-rollback via `vps-rollback-production-release.sh` on failure
+On VPS:
 
-## Multi-replica topology
+```bash
+source /opt/synqdrive/shared/vo5c-pinned-executor.env
+export SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1
+export SYNQDRIVE_REQUESTED_DEPLOY_SHA=<approved-sha>
+cd "${SYNQDRIVE_PINNED_EXECUTOR_ROOT}/backend/scripts/ops"
+bash vps-vo5c-run-pinned-security-deploy.sh
+```
 
-| Replica | PM2 name | Port |
-|---------|----------|------|
-| A | `synqdrive` | 3001 |
-| B | `synqdrive-b` | 3002 |
+Optional: `SYNQDRIVE_STAGED_RELEASE_ROOT` — isolated **checkout on the same VPS** for admission/preflight (not a second VM).
 
-nginx upstream `synqdrive_backend` → 3001 + 3002.
+## Not supported for routine production
+
+| Path | Status |
+|------|--------|
+| Shallow-fetch `vps-deploy-release.sh` from `/current` or ephemeral git | **Blocked** in `cloud-agent-deploy.sh` |
+| `vps-deploy-connectivity-staging.sh` | **Fail-closed** unless `SYNQDRIVE_VO5C_CONNECTIVITY_STAGING_ALLOW=1` (production-mutating break-glass) |
+| Direct `current/.../vps-deploy-release.sh` without pin | Legacy; blocked when VO5C enforcement armed |
 
 ## Rollback
-
-Deploy captures state in `/opt/synqdrive/shared/deploy-state/last-deploy-state.env`. On invariant failure, automatic rollback restores previous release + rolling restart. Manual:
 
 ```bash
 sudo bash /opt/synqdrive/current/backend/scripts/ops/vps-rollback-production-release.sh
 ```
 
-## Local agent alternative
+Exit `3` = replicas restored; P4B16 attestation incomplete (not unsafe physical rollback).
 
-Prefer `cloud-agent-deploy.sh`. If SSH-only:
+## Multi-replica
 
-```bash
-REQUESTED_SHA="$(git rev-parse origin/main)"
-ssh -i ~/.ssh/id_ed25519 -o BatchMode=yes synqdrive-admin@srv1374778.hstgr.cloud \
-  "sudo -n -H bash -c 'TMP=\$(mktemp -d); git init -q \$TMP; git -C \$TMP remote add origin https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git; git -C \$TMP fetch --depth 1 origin ${REQUESTED_SHA}; git -C \$TMP checkout -q FETCH_HEAD; SYNQDRIVE_REQUESTED_DEPLOY_SHA=${REQUESTED_SHA} bash \$TMP/backend/scripts/ops/vps-deploy-release.sh'"
-```
+| Replica | PM2 | Port |
+|---------|-----|------|
+| A | `synqdrive` | 3001 |
+| B | `synqdrive-b` | 3002 |
 
-## Failure modes
+## Status vocabulary
 
-| Symptom | Fix |
-|---------|-----|
-| Git preflight: unpushed commits | `git push origin main` |
-| `SYNQDRIVE_REQUESTED_DEPLOY_SHA is required` | Use canonical deploy path above |
-| SSH auth failed | Check `CLOUD_AGENT_SSH_PRIVATE_KEY`; without Tailscale check Hostinger firewall (port 22) |
-| Scheduler leaders=0 abort (no convergence wait) | Stale bootstrap — use canonical path; verify RELEASE_OPS_DIR sourcing |
-| Health check exit 7 | Often timing; verify `app.synqdrive.eu/api/v1/health` manually |
-| Mapbox broken after deploy | Ensure VPS symlinks `frontend.env` (in deploy script) |
+| Term | Meaning |
+|------|---------|
+| IMPLEMENTED | Script/libs in repository |
+| DEPLOYED | Change promoted on VPS `/current` |
+| ACTIVATED | P4B16 / enforcement / gates actually exercised in production |
+| VALIDATED | Fresh production evidence (not claimed by docs-only PRs) |

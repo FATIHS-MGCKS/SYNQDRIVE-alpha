@@ -23,5 +23,6 @@
 | 2026-10-11 | **P4B16-R1A** | Durable attestation libs + offline selftest; **not** wired to deploy/Production | None (repo-only; NOT_DEPLOYED) |
 | 2026-10-11 | **P4B16-R1A-MIN** | Minimalism pass: drop journal/phase machine; delegate replica verify to existing ops lib | None (repo-only) |
 | 2026-10-11 | **P4B16-R1B** | Wire attestation into `vps-deploy-release.sh` + `vps_replica_rollback`; partial-success exit 3; offline integration selftest | None (repo-only; NOT_DEPLOYED) |
+| 2026-10-12 | **DSRG-DEPLOY-CONSOLIDATION** | Single-VPS contract: cloud-agent → pinned runner; connectivity staging fail-closed; deploy outcome/monitoring exit 4; docs/skill harmonization | None (repo-only) |
 
 Historical VO5C deploy-governance entries remain in [`../../vehicle-onboarding/research/CHANGE_LEDGER.md`](../../vehicle-onboarding/research/CHANGE_LEDGER.md) — reference only.

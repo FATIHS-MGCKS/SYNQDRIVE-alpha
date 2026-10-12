@@ -24,6 +24,7 @@
 | E-OPS-SELFTEST | `backend/scripts/ops/vps-vo5c-*.selftest.sh` | CURRENT_TEST | Offline only; not live deploy proof |
 | E-OPS-P4B16-R1A | `backend/scripts/ops/vps-release-attestation.selftest.sh` | CURRENT_TEST | P4B16 R1A attestation certification |
 | E-P4B16-R1B | [`P4B16_R1B_DEPLOY_INTEGRATION.md`](P4B16_R1B_DEPLOY_INTEGRATION.md) | REPOSITORY + TEST | R1B deploy/rollback hooks; offline integration selftest |
+| E-DSRG-DEPLOY-CONSOLIDATION | [`DSRG_DEPLOYMENT_CONSOLIDATION_SINGLE_VPS.md`](DSRG_DEPLOYMENT_CONSOLIDATION_SINGLE_VPS.md) | REPOSITORY + TEST | Single VPS pinned-runner contract; legacy path guards |
 | E-OPS-P4B16-R1B | `backend/scripts/ops/vps-release-attestation-integration.selftest.sh` | CURRENT_TEST | P4B16 R1B hook certification |
 
 ## Ledger
