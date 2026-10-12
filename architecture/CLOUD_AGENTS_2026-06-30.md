@@ -1,5 +1,7 @@
 # Changes & Architektur — Cursor Cloud Agents + VPS Deploy (2026-06-30)
 
+> **HISTORICAL (2026-06-30 snapshot).** For **current** Production SSH/deploy, use [dsrg/PRODUCTION_VPS_ACCESS_AND_DEPLOY_RUNBOOK.md](./dsrg/PRODUCTION_VPS_ACCESS_AND_DEPLOY_RUNBOOK.md). Path B (Tailscale / `mein-vps.internal`) and shallow-fetch `vps-deploy-release.sh` via Cloud Agent are not the canonical routine contract after DSRG consolidation (#1991).
+
 ## Changes
 
 - Restored `.cursor/environment.json` — SynqDrive Cloud environment (Dockerfile build,

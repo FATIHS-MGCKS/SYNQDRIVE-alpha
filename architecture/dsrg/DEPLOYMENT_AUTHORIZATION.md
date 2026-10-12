@@ -1,5 +1,7 @@
 # Deployment authorization
 
+**Operational runbook (SSH, Cloud Agent, bootstrap):** [PRODUCTION_VPS_ACCESS_AND_DEPLOY_RUNBOOK.md](./PRODUCTION_VPS_ACCESS_AND_DEPLOY_RUNBOOK.md)
+
 ## Layers (fail-closed stack)
 
 1. **Human:** `SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1` only at pinned runner entry (never cloud-agent auto-set).
