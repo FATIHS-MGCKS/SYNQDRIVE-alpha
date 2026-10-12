@@ -56,7 +56,7 @@ Do **not** equate merged repository code with live runtime. Status labels:
 | Path | IMPLEMENTED | DEPLOYED | ACTIVATED | Notes |
 |------|-------------|----------|-----------|-------|
 | `vps-deploy-release.sh` (current release) | yes | yes under `/opt/synqdrive/releases/…` | **yes** for past deploys | Live app not re-deployed in DSRG-02 |
-| `cloud-agent-deploy.sh` | yes — **pinned delegate** (consolidation) | operator session + SSH | exit `42` without human VO5C auth | |
+| `cloud-agent-deploy.sh` | yes — **fixed VPS bootstrap** (R4; fail-closed until installed) | operator session + SSH SHA-only | exit `44` bootstrap missing; `42` without session | |
 | `vps-deploy-connectivity-staging.sh` | yes — **fail-closed** unless break-glass allow | production-mutating on same VPS | not routine staging infra | |
 
 ---
