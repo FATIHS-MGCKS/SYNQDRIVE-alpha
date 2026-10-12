@@ -30,10 +30,11 @@ Human SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1 (never set by agents)
 
 [Cursor Cloud Agents dashboard](https://cursor.com/dashboard/cloud-agents) → Secrets.
 
-Path A (no Tailscale): `CLOUD_AGENT_SSH_PRIVATE_KEY`, `CLOUD_AGENT_VPS_HOST=srv1374778.hstgr.cloud`, `CLOUD_AGENT_SSH_USER=synqdrive-admin`.
+Path A (no Tailscale): `CLOUD_AGENT_VPS_HOST=srv1374778.hstgr.cloud`, `CLOUD_AGENT_SSH_USER=synqdrive-admin` (or omit — scripts map Hostinger hosts). `CLOUD_AGENT_SSH_PRIVATE_KEY` only when the agent image has no baked `~/.ssh/id_ed25519`. Record a **verified** host key in `CLOUD_AGENT_SSH_KNOWN_HOSTS_FILE` or `~/.ssh/known_hosts` before first production SSH (no blind `ssh-keyscan` on deploy).
 
 ## Workflow
 
+0. `bash .cursor/scripts/cloud-agent-ssh-preflight.sh` (fail-closed SSH identity + auth).
 1. `git status` / `git diff` — no secrets in commits.
 2. Commit + `git push origin main` when needed.
 3. **Operator (VPS):** authorize release (example session file):

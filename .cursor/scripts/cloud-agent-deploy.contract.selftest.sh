@@ -31,6 +31,14 @@ grep -q 'fixed VPS bootstrap' "$SCRIPT" || fail "missing_fixed_bootstrap_invoke"
 grep -q 'CLOUD_AGENT_REMOTE_EXIT_BOOTSTRAP_MISSING' "$SCRIPT" || fail "missing_bootstrap_missing_exit_44"
 pass "invokes_fixed_vps_bootstrap_only"
 
+if grep -q 'ssh-keyscan' "$SCRIPT"; then
+  fail "deploy_script_still_uses_blind_keyscan"
+fi
+pass "no_blind_ssh_keyscan_in_deploy"
+
+grep -q 'cloud_agent_ssh_auth_preflight' "$SCRIPT" || fail "missing_ssh_auth_preflight"
+pass "ssh_auth_preflight_wired"
+
 grep -q 'exit 42' "$SCRIPT" || fail "missing_operator_auth_exit_42"
 pass "operator_auth_fail_closed"
 

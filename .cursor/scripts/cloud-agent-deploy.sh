@@ -6,7 +6,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
-VPS_HOST="${CLOUD_AGENT_VPS_HOST:-mein-vps.internal}"
+VPS_HOST="${CLOUD_AGENT_VPS_HOST:-srv1374778.hstgr.cloud}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=cloud-agent-ssh-common.sh
 source "${SCRIPT_DIR}/cloud-agent-ssh-common.sh"
@@ -17,12 +17,9 @@ source "${SCRIPT_DIR}/lib/cloud-agent-vo5c-bootstrap-contract.lib.sh"
 # shellcheck source=lib/cloud-agent-vo5c-bootstrap-remote.lib.sh
 source "${SCRIPT_DIR}/lib/cloud-agent-vo5c-bootstrap-remote.lib.sh"
 
-SSH_USER="$(cloud_agent_ssh_user)"
-if [[ "${VPS_HOST}" == *"hstgr.cloud"* ]] && [[ "${SSH_USER}" == "root" ]]; then
-  SSH_USER="synqdrive-admin"
-fi
+SSH_USER="$(cloud_agent_ssh_user "$VPS_HOST")"
 SSH_PORT="${CLOUD_AGENT_VPS_SSH_PORT:-22}"
-SSH_KEY="${HOME}/.ssh/id_ed25519"
+SSH_KEY="$(cloud_agent_ssh_key_path)"
 HEALTH_URL="${CLOUD_AGENT_HEALTH_URL:-https://app.synqdrive.eu/api/v1/health}"
 GIT_REMOTE="${CLOUD_AGENT_GIT_REMOTE:-origin}"
 GIT_BRANCH="${CLOUD_AGENT_GIT_BRANCH:-main}"
@@ -60,15 +57,17 @@ validate_config_paths() {
   fi
 }
 
+cloud_agent_build_ssh_argv() {
+  CLOUD_AGENT_SSH_ARGV=()
+  cloud_agent_ssh_append_openssh_opts CLOUD_AGENT_SSH_ARGV "$VPS_HOST" "$SSH_PORT" || return 1
+  CLOUD_AGENT_SSH_ARGV+=( "${SSH_USER}@${VPS_HOST}" )
+  return 0
+}
+
 ensure_ssh_key() {
-  if [[ -f "$SSH_KEY" ]]; then
-    return 0
-  fi
-  if ! cloud_agent_materialize_ssh_key "$SSH_KEY"; then
-    echo "[cloud-agent] ERROR: SSH key missing. Set CLOUD_AGENT_SSH_PRIVATE_KEY in Cursor Dashboard → Secrets." >&2
-    exit 1
-  fi
-  ssh-keyscan -H "$VPS_HOST" >> "${HOME}/.ssh/known_hosts" 2>/dev/null || true
+  cloud_agent_require_ssh_identity || exit 1
+  cloud_agent_ssh_require_trusted_host_key "$VPS_HOST" "$SSH_PORT" || exit 1
+  cloud_agent_ssh_auth_preflight "$VPS_HOST" || exit 1
 }
 
 preflight_git() {
@@ -151,7 +150,8 @@ run_remote_pinned_deploy() {
   fi
 
   if [[ "${CLOUD_AGENT_SKIP_BOOTSTRAP_PREFLIGHT:-0}" != "1" ]]; then
-    local ssh_check=(ssh -p "$SSH_PORT" -i "$SSH_KEY" -o BatchMode=yes -o ConnectTimeout=20 "${SSH_USER}@${VPS_HOST}")
+    cloud_agent_build_ssh_argv || exit 1
+    local ssh_check=(ssh "${CLOUD_AGENT_SSH_ARGV[@]}")
     local preflight_cmd
     preflight_cmd="$(cloud_agent_vo5c_remote_bootstrap_preflight_command "$CLOUD_AGENT_VO5C_BOOTSTRAP_PATH" "$SSH_USER")"
     set +e
@@ -175,7 +175,8 @@ run_remote_pinned_deploy() {
   echo "[cloud-agent] REQUESTED_DEPLOY_SHA=${requested_sha}"
   echo "[cloud-agent] BOOTSTRAP=${CLOUD_AGENT_VO5C_BOOTSTRAP_PATH}"
 
-  local ssh_prefix=(ssh -p "$SSH_PORT" -i "$SSH_KEY" -o BatchMode=yes -o ConnectTimeout=20 "${SSH_USER}@${VPS_HOST}")
+  cloud_agent_build_ssh_argv || exit 1
+  local ssh_prefix=(ssh "${CLOUD_AGENT_SSH_ARGV[@]}")
   local remote_invocation
   remote_invocation="$(cloud_agent_vo5c_remote_bootstrap_invoke_command "$CLOUD_AGENT_VO5C_BOOTSTRAP_PATH" "$SSH_USER" "$requested_sha")"
 

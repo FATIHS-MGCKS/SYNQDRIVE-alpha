@@ -20,6 +20,9 @@ write_mock_ssh() {
   local remote_rc=$1
   cat >"${MOCK_BIN}/ssh" <<'EOS'
 #!/usr/bin/env bash
+if [[ "$*" == *"echo ok"* ]]; then
+  exit 0
+fi
 if [[ -n "${MOCK_SSH_FAIL_BOOTSTRAP_TEST:-}" ]] && [[ "$*" == *"--preflight-check"* ]]; then
   exit 1
 fi
