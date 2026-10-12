@@ -8,11 +8,7 @@ VPS_HOST="${CLOUD_AGENT_VPS_HOST:-mein-vps.internal}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=cloud-agent-ssh-common.sh
 source "${SCRIPT_DIR}/cloud-agent-ssh-common.sh"
-SSH_USER="$(cloud_agent_ssh_user)"
-# Production VPS (2A.2): root SSH disabled — use synqdrive-admin on Hostinger.
-if [[ "${VPS_HOST}" == *"hstgr.cloud"* ]] && [[ "${SSH_USER}" == "root" ]]; then
-  SSH_USER="synqdrive-admin"
-fi
+SSH_USER="$(cloud_agent_ssh_user "$VPS_HOST")"
 SSH_PORT="${CLOUD_AGENT_VPS_SSH_PORT:-22}"
 SSH_KEY="${HOME}/.ssh/id_ed25519"
 DEPLOY_SCRIPT="${CLOUD_AGENT_VPS_DEPLOY_SCRIPT:-/opt/synqdrive/current/backend/scripts/ops/vps-deploy-release.sh}"
@@ -36,14 +32,9 @@ process.stdout.write(r.sha);
 }
 
 ensure_ssh_key() {
-  if [[ -f "$SSH_KEY" ]]; then
-    return 0
-  fi
-  if ! cloud_agent_materialize_ssh_key "$SSH_KEY"; then
-    echo "[cloud-agent] ERROR: SSH key missing. Set CLOUD_AGENT_SSH_PRIVATE_KEY in Cursor Dashboard → Secrets." >&2
-    exit 1
-  fi
+  cloud_agent_require_ssh_identity || exit 1
   ssh-keyscan -H "$VPS_HOST" >> "${HOME}/.ssh/known_hosts" 2>/dev/null || true
+  cloud_agent_ssh_auth_preflight "$VPS_HOST" || exit 1
 }
 
 preflight_git() {

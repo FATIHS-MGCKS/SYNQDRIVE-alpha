@@ -10,10 +10,7 @@ source "${SCRIPT_DIR}/cloud-agent-ssh-common.sh"
 source "${SCRIPT_DIR}/lib/cloud-agent-s4f7aa-tool-pin.lib.sh"
 
 VPS_HOST="${CLOUD_AGENT_VPS_HOST:-srv1374778.hstgr.cloud}"
-SSH_USER="$(cloud_agent_ssh_user)"
-if [[ "${VPS_HOST}" == *"hstgr.cloud"* ]] && [[ "${SSH_USER}" == "root" ]]; then
-  SSH_USER="synqdrive-admin"
-fi
+SSH_USER="$(cloud_agent_ssh_user "$VPS_HOST")"
 SSH_PORT="${CLOUD_AGENT_VPS_SSH_PORT:-22}"
 SSH_KEY="${HOME}/.ssh/id_ed25519"
 GIT_REMOTE_URL="${CLOUD_AGENT_S4_TINY_STAGING_GIT_REMOTE_URL:-https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git}"

@@ -5,10 +5,7 @@ VPS_HOST="${CLOUD_AGENT_VPS_HOST:-mein-vps.internal}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=cloud-agent-ssh-common.sh
 source "${SCRIPT_DIR}/cloud-agent-ssh-common.sh"
-SSH_USER="$(cloud_agent_ssh_user)"
-if [[ "${VPS_HOST}" == *"hstgr.cloud"* ]] && [[ "${SSH_USER}" == "root" ]]; then
-  SSH_USER="synqdrive-admin"
-fi
+SSH_USER="$(cloud_agent_ssh_user "$VPS_HOST")"
 SSH_PORT="${CLOUD_AGENT_VPS_SSH_PORT:-22}"
 PG_PORT="${CLOUD_AGENT_VPS_PG_PORT:-5432}"
 
@@ -47,12 +44,12 @@ if [[ -n "${DATABASE_URL:-}" ]]; then
   fi
 fi
 
-if [[ -n "${CLOUD_AGENT_SSH_PRIVATE_KEY:-}" ]]; then
-  cloud_agent_materialize_ssh_key "${HOME}/.ssh/id_ed25519" || true
-  if timeout 10 ssh -p "$SSH_PORT" -o BatchMode=yes -o ConnectTimeout=5 \
-    "${SSH_USER}@${VPS_HOST}" 'echo ok' >/dev/null 2>&1; then
+if cloud_agent_require_ssh_identity 2>/dev/null; then
+  if cloud_agent_ssh_auth_preflight "$VPS_HOST"; then
     echo "[cloud-agent] SSH auth OK for ${SSH_USER}@${VPS_HOST}."
   else
     echo "[cloud-agent] WARN: SSH auth failed for ${SSH_USER}@${VPS_HOST}." >&2
   fi
+else
+  echo "[cloud-agent] WARN: SSH identity not available (no key file and CLOUD_AGENT_SSH_PRIVATE_KEY unset)." >&2
 fi
