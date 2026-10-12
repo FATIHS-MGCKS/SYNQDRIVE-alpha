@@ -253,7 +253,7 @@
 |----|---------|---|--------------|------------|--------|
 | DIM-RISK-001 | R9 speed/ignition webhooks lack inbox-level dedup (coordinator may coalesce) | P2 | SUSPECTED | DIMO Integration / Trip Detection | OPEN |
 | DIM-RISK-002 | Stale GPS with fresh snapshot poll could present as “live” fleet connectivity | P1 | SUSPECTED (R4.2 prod + R4.3 UI path) | Rental UI | OPEN |
-| DIM-RISK-003 | Webhook replay attack surface: unsigned trigger POSTs when verification token configured | P3 | VERIFIED_CODE (by design) | Security / DIMO Integration | OPEN |
+| DIM-RISK-003 | Unauthenticated trigger POST body: optional HMAC not enforced when signature header absent (`dimo-webhook.controller.ts` ~106–128); public `POST /api/v1/webhooks/dimo` via HTTPS + nginx upstream to both replicas. **Impact:** spoofed speed/ignition/device-connection for known `tokenId` → wake churn or inbox rows; FSM/coalesce limits trip impact. **Not P1** — no demonstrated exploit; URL not secret but payload must match trigger shape + valid fleet tokenId. | **P2** | VERIFIED_CODE + ingress model (R4.5) | Security / DIMO Integration | OPEN |
 | DIM-RISK-004 | Multi-replica webhook ingress duplicate delivery | P2 | SUSPECTED | Scaling Process | OPEN |
 
 ---

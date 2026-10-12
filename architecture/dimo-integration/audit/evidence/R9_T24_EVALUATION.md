@@ -36,3 +36,7 @@ sudo grep 'Received DIMO webhook' /root/.pm2/logs/synqdrive-out.log | grep '2026
 ```
 
 **No synthetic webhooks. No provider mutations.**
+
+## Full 24h window
+
+See [R9_T24_24H_RETROSPECTIVE.md](./R9_T24_24H_RETROSPECTIVE.md) (`2026-10-11T20:41:00Z` → `2026-10-12T20:41:00Z`).

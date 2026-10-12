@@ -31,6 +31,8 @@
 | DIM-EV-R4-PROD-SHA-001 | PRODUCTION_OBSERVATION | R4 read-only VPS session | Deployed release `a4d06c602ff192aa7ba6688a6472100033417bca` — metrics, PG sample, PM2 forensics | CONFIRMED @ 2026-10-12 | Artifacts under `/opt/cursor/artifacts/DIMO_R4*`; index [../audit/evidence/R4_DEEP_AUDIT_ARTIFACT_INDEX.md](../audit/evidence/R4_DEEP_AUDIT_ARTIFACT_INDEX.md) |
 | DIM-EV-R4-DEFECT-REG-001 | AUDIT_DOCUMENT | [../audit/DEFECT_REGISTER.md](../audit/DEFECT_REGISTER.md) | Canonical defect/risk register (R4.0–R4.3 + A–F) | CONFIRMED @ audit branch 2026-10-12 | Supersedes ad-hoc R4 findings lists; maps legacy DIM-GAP-* |
 | DIM-EV-R45-T24-001 | PRODUCTION_OBSERVATION | [../audit/evidence/R9_T24_EVALUATION.md](../audit/evidence/R9_T24_EVALUATION.md) | R9 T+24 gate @ `2026-10-12T20:41:00Z`; provider wiring PASS; natural wake NOT_OBSERVED post-gate | CONFIRMED @ `a4d06c60…` 2026-10-12 | Artifact `/opt/cursor/artifacts/DIMO_R45_R9_T24_PRODUCTION.txt` |
+| DIM-EV-R45-T24-24H-001 | PRODUCTION_OBSERVATION | [../audit/evidence/R9_T24_24H_RETROSPECTIVE.md](../audit/evidence/R9_T24_24H_RETROSPECTIVE.md) | 24h window ingress + wake/snapshot correlation; E2E NOT_OBSERVED | CONFIRMED partial @ R4.5 session | Deploy reset caveat documented |
+| DIM-EV-R45-SIGNOFF-001 | AUDIT_DOCUMENT | [../audit/DIMO_R45_FINAL_SIGNOFF_GATE.md](../audit/DIMO_R45_FINAL_SIGNOFF_GATE.md) | PR #1999 docs-only sign-off gate | CONFIRMED 2026-10-12 | DIM-RISK-003 P2 |
 
 ## Cross-reference
 

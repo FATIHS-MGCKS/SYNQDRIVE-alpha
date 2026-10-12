@@ -1,41 +1,61 @@
-# Webhook Security & Event Delivery (R4.5-B)
+# Webhook Security & Event Delivery (R4.5-B / final)
 
-**Code anchor:** `dimo-webhook.controller.ts`
+**Code anchor:** `backend/src/modules/dimo/dimo-webhook.controller.ts`
 
-## Authentication model
+## Ingress (production)
+
+| Layer | Behavior | Evidence |
+|-------|----------|----------|
+| Public URL | `https://app.synqdrive.eu/api/v1/webhooks/dimo` | WEBHOOK_OPERATIONS.md |
+| TLS | HTTPS redirect on :80 | nginx test templates / VDC forensics |
+| Upstream | `synqdrive_backend` → `127.0.0.1:3001` + `3002` (R9 resilience pattern) | `r9-phase1.stripped.conf`, R9_RESILIENCE_ENGINEERING.md |
+| App auth | Nest global API prefix `/api/v1` | dimo-webhook `@Controller('webhooks/dimo')` |
+
+**NOT_MEASURED in this pass:** production nginx rate-limit / WAF rules on live VPS (no read-only nginx dump). No dedicated `limit_req` in repository test template for webhook location.
+
+## Trigger POST authentication
 
 | Step | Control | On failure |
 |------|---------|------------|
-| URL verification | `DIMO_WEBHOOK_VERIFICATION_TOKEN` echo | `503 verification_not_configured` |
-| Trigger payload | Must match Vehicle Triggers shape | `rejected invalid_payload` |
-| Optional HMAC | `DIMO_WEBHOOK_SECRET` + `x-dimo-signature` timing-safe compare | `rejected invalid_signature` |
-| Unsigned POST | **Accepted** when secret unset or signature absent | Debug log — provider does not sign standard trigger POSTs |
+| URL verification (subscription) | `DIMO_WEBHOOK_VERIFICATION_TOKEN` echo | `503 verification_not_configured` |
+| Trigger payload | `isDimoTriggerPayload` shape | `rejected invalid_payload` |
+| HMAC when **both** secret and `x-dimo-signature` present | `timingSafeEqual` on sha256 body | `rejected invalid_signature` |
+| Secret configured, **signature absent** | **Request accepted** — debug log only (~121–124) | — |
+| Secret unset (non-dev) | Still requires verification token configured for subscription; trigger POST accepted without HMAC | — |
 
-**Trust assumption (documented):** DIMO subscription-time `verificationToken` + HTTPS callback URL — not per-POST HMAC for speed/ignition.
+**DIM-RISK-003 (P2):** Attacker who learns the public URL can POST plausible trigger JSON for a **valid fleet `tokenId`** without shared signing. Mitigations: HTTPS, non-guessable tokenIds, FSM `IGNORED_FSM_ACTIVE`, snapshot coalesce, device-connection inbox dedup. **Does not** re-verify subscription `verificationToken` on each trigger POST.
+
+## Manipulated event impact
+
+| Signal path | Manipulation effect | Guards |
+|-------------|---------------------|--------|
+| speed / ignition | `SnapshotWakeIntakeService` — may enqueue snapshot if RESTING | FSM active → IGNORED; coordinator coalesce |
+| OBD plug | Inbox + async queue | `provider_providerEventId` dedup |
+| DTC / RPM | Vehicle-scoped side effects | RPM thresholds; DTC normalization |
+| Unknown tokenId | No processing | `ignored unknown_vehicle` |
 
 ## Replay / deduplication
 
-| Event class | Dedup | Replay risk |
-|-------------|-------|-------------|
-| Device connection (OBD plug) | Inbox `provider_providerEventId` unique + terminal status short-circuit | Low for same event id |
-| Speed / ignition wake | **No webhook inbox** — direct `SnapshotWakeIntakeService` | Duplicate POSTs may hit coordinator; Redis coalesce scripts mitigate snapshot enqueue — **DIM-RISK-001** |
-| DTC / RPM | Vehicle-scoped processing; RPM candidate intake rules | Medium without global nonce |
-| Unknown tokenId | `ignored unknown_vehicle` | No side effect |
+| Class | Dedup | Residual |
+|-------|-------|----------|
+| Device connection | Inbox unique `provider_providerEventId` | Low replay impact |
+| Speed / ignition | **None at webhook layer** | DIM-RISK-001 — duplicate POSTs |
+| Multi-replica | Both replicas may process if load-balanced duplicate delivery | DIM-RISK-004 SUSPECTED |
 
-## Security risk rating (guard-based)
+## DIM-RISK-003 classification (R4.5 final)
 
-| Threat | Mitigation present | Residual |
-|--------|-------------------|----------|
-| Spoofed POST without secret | Verification token not re-checked on each trigger POST | **Medium** — relies on URL secrecy + HTTPS; no shared signing on trigger body |
-| Replay of captured webhook | No timestamp/nonce gate on speed/ignition | **Low–Medium** — wake mostly no-ops when FSM active; could add queue churn |
-| Invalid signature | Rejected before processing | **Low** when secret configured |
-| Cross-tenant vehicle binding | tokenId → vehicle mapping | **Medium** — integrity of link table |
+| Axis | Assessment |
+|------|------------|
+| Likelihood | **Medium** — endpoint is public; signing optional |
+| Impact | **Low–Medium** — ops noise, wake/snapshot churn; limited trip corruption when FSM active |
+| Priority | **P2** (reclassified from P3) |
+| Promote to P1? | **No** — without evidence of successful abuse or customer data breach |
 
 ## Device connection queue reliability
 
-- Bull job: `attempts: 5`, `removeOnFail: { count: 5000, age: 7d }` — `device-connection-webhook-queue.producer.ts`
-- Inbox processor: exponential backoff → dead letter after `maxAttempts` — `device-connection-webhook-processing.service.ts` ~168–210
+- Bull: `attempts: 5`, `removeOnFail` retention — `device-connection-webhook-queue.producer.ts`
+- Inbox DLQ after max attempts — `device-connection-webhook-processing.service.ts`
 
-## Production observability (R4.1a @ `a4d06c60…`)
+## Observability
 
-`synqdrive_trip_snapshot_wake_total` — dominant `IGNORED_FSM_ACTIVE` (expected when vehicle already in trip).
+R4.1a / R9 retrospective: `synqdrive_trip_snapshot_wake_total` — `IGNORED_FSM_ACTIVE` dominant when vehicles in trip.

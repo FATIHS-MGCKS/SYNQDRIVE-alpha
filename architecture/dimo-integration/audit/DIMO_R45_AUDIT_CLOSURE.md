@@ -40,6 +40,10 @@
 **RECOMMEND_AUDIT_CLOSE** — R9 T+24 read-only pass complete ([R9_T24_EVALUATION.md](./evidence/R9_T24_EVALUATION.md)); natural wake **NOT_OBSERVED** in gate window; remaining blockers are **ClickHouse** (EXT-001) and optional UI capture (EXT-005) — non-gating for audit sign-off.  
 **Do not merge** remediation PRs until owner signs priority order.
 
+## Final sign-off
+
+See [DIMO_R45_FINAL_SIGNOFF_GATE.md](./DIMO_R45_FINAL_SIGNOFF_GATE.md).
+
 ## Remaining blockers
 
-See [EXTERNAL_EVIDENCE_GAPS.md](./EXTERNAL_EVIDENCE_GAPS.md) and R9 T+24 doc.
+[EXTERNAL_EVIDENCE_GAPS.md](./EXTERNAL_EVIDENCE_GAPS.md) — external only; not claimed validated.
