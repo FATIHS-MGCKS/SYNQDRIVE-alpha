@@ -39,13 +39,16 @@ Path A (no Tailscale): `CLOUD_AGENT_SSH_PRIVATE_KEY`, `CLOUD_AGENT_VPS_HOST=srv1
 3. **Operator (VPS):** authorize release (example session file):
 
 ```bash
+sudo install -m 600 /dev/null /opt/synqdrive/shared/vo5c-operator-deploy-session.env
 sudo tee /opt/synqdrive/shared/vo5c-operator-deploy-session.env <<EOF
 SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1
 AUTHORIZED_REQUESTED_SHA=<full-40-char-sha>
-AUTHORIZED_UNTIL_EPOCH=$(date -u -d '+30 minutes' +%s)
+AUTHORIZED_UNTIL_EPOCH=$(date -u -d '+15 minutes' +%s)
 EOF
-sudo chmod 600 /opt/synqdrive/shared/vo5c-operator-deploy-session.env
+# Revoke after deploy: sudo rm -f /opt/synqdrive/shared/vo5c-operator-deploy-session.env
 ```
+
+Session is parsed line-by-line on the VPS (never `source`d). Max TTL 1800s; must be root-owned mode `600` and not a symlink.
 
 4. **Agent or operator workstation:**
 
