@@ -1,6 +1,6 @@
 # DSRG — Current state (repository vs Production)
 
-**Audit base (repository):** `main` @ `0633d08311803b1473c6e7a274e5074e4cb69a08` (post #1979 P4B16 R0/R0A) · **P4B16 R1A** engine branch adds offline libs (not on `main` until merge)  
+**Audit base (repository):** `main` @ `7d44f86157ff69fb47e37ba9ecc1c5c40f9a6d3c` (post #1991 DSRG deploy consolidation + SSH R5) · **Operational runbook:** [PRODUCTION_VPS_ACCESS_AND_DEPLOY_RUNBOOK.md](./PRODUCTION_VPS_ACCESS_AND_DEPLOY_RUNBOOK.md)  
 **Production evidence baseline:** DSRG-03 R3 @ `2026-10-11T13:49:49Z` · **P4B16 R0** @ `2026-10-11T16:05:00Z` (read-only attestation)  
 **Classification axes:** registry `AUTHORITY_ACTIVE` (effective on R6 merge) · epistemic per-row · validation per-row
 

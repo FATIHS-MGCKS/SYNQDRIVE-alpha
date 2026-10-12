@@ -7,6 +7,8 @@ description: >-
 ---
 # VPS production deploy (single VPS, VO5C pinned)
 
+**Canonical runbook:** [architecture/dsrg/PRODUCTION_VPS_ACCESS_AND_DEPLOY_RUNBOOK.md](../../../architecture/dsrg/PRODUCTION_VPS_ACCESS_AND_DEPLOY_RUNBOOK.md)
+
 ## When to use
 
 User says: deploy, commit and deploy, release, production, VPS.

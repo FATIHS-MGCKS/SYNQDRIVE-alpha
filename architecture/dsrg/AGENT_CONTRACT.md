@@ -3,7 +3,8 @@
 ## Before substantive DSRG work
 
 1. Read [`AGENTS.md`](../../AGENTS.md) and the DSRG row + detail section in [`SYNQDRIVE_RENTAL_ARCHITECTURE.md`](../SYNQDRIVE_RENTAL_ARCHITECTURE.md).
-2. Read **all mandatory entry documents** listed in the registry detail section (at minimum):
+2. Before **any** Production VPS access or deploy task, read [PRODUCTION_VPS_ACCESS_AND_DEPLOY_RUNBOOK.md](./PRODUCTION_VPS_ACCESS_AND_DEPLOY_RUNBOOK.md).
+3. Read **all mandatory entry documents** listed in the registry detail section (at minimum):
    - [`AUDIT_MANIFEST.md`](AUDIT_MANIFEST.md)
    - [`CURRENT_STATE.md`](CURRENT_STATE.md)
    - [`KNOWLEDGE_GRAPH.md`](KNOWLEDGE_GRAPH.md)
@@ -12,8 +13,8 @@
    - [`evidence/PRODUCTION_BASELINE.md`](evidence/PRODUCTION_BASELINE.md)
    - [`contradictions/KNOWLEDGE_GAPS.md`](contradictions/KNOWLEDGE_GAPS.md)
    - [`contradictions/OPEN_CONTRADICTIONS.md`](contradictions/OPEN_CONTRADICTIONS.md)
-3. While registry coverage is `AUTHORITY_ACTIVE`, treat this directory as **canonical architectural memory** for deploy governance — update authority artifacts in the **same PR** as substantive behavior or contract changes.
-4. Read [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) when touching registry coverage status or reconstructing a **new** module — not for routine DSRG maintenance under active authority.
+4. While registry coverage is `AUTHORITY_ACTIVE`, treat this directory as **canonical architectural memory** for deploy governance — update authority artifacts in the **same PR** as substantive behavior or contract changes.
+5. Read [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) when touching registry coverage status or reconstructing a **new** module — not for routine DSRG maintenance under active authority.
 
 ## Scope (DSRG owns documentation + contracts for)
 
