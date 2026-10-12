@@ -12,7 +12,7 @@
 | Item | Observed value | Evidence class |
 |------|----------------|----------------|
 | **PRODUCTION_RELEASE_PATH** | `/opt/synqdrive/releases/20261010184619_v4994` | SSH `readlink` on `current` |
-| **PRODUCTION_RELEASE_SHA** (attestation) | `7f47c9f5b5e35c425deb3c2b6bdaed9df73e5c7c` | `SYNQDRIVE_DEPLOYED_GIT_SHA` in `backend.env` (sudo grep) |
+| **PRODUCTION_RELEASE_SHA** (attestation) | `bc7e80715d09767312b0f389f5cb0978f8ec0dbb` (S4P4D 2026-10-12) | `SYNQDRIVE_DEPLOYED_GIT_SHA` + P4B16 `release-attestation.state` |
 | Independent git HEAD on release path | **Not available** | `git rev-parse` **failed** on release dir — **do not** claim checkout identity |
 | Health | `GET https://app.synqdrive.eu/api/v1/health` → `status: ok` | HTTP read |
 
