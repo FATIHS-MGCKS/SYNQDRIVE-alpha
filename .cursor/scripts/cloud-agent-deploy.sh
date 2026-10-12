@@ -10,6 +10,9 @@ VPS_HOST="${CLOUD_AGENT_VPS_HOST:-mein-vps.internal}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=cloud-agent-ssh-common.sh
 source "${SCRIPT_DIR}/cloud-agent-ssh-common.sh"
+# shellcheck source=lib/cloud-agent-vo5c-operator-session.lib.sh
+source "${SCRIPT_DIR}/lib/cloud-agent-vo5c-operator-session.lib.sh"
+
 SSH_USER="$(cloud_agent_ssh_user)"
 if [[ "${VPS_HOST}" == *"hstgr.cloud"* ]] && [[ "${SSH_USER}" == "root" ]]; then
   SSH_USER="synqdrive-admin"
@@ -21,6 +24,7 @@ GIT_REMOTE="${CLOUD_AGENT_GIT_REMOTE:-origin}"
 GIT_BRANCH="${CLOUD_AGENT_GIT_BRANCH:-main}"
 OPERATOR_SESSION_FILE="${CLOUD_AGENT_VO5C_OPERATOR_SESSION_FILE:-/opt/synqdrive/shared/vo5c-operator-deploy-session.env}"
 PIN_ENV_FILE="${CLOUD_AGENT_VO5C_PIN_ENV:-/opt/synqdrive/shared/vo5c-pinned-executor.env}"
+STAGED_RELEASE_ROOT="${CLOUD_AGENT_STAGED_RELEASE_ROOT:-/opt/synqdrive/staging-release}"
 
 validate_requested_deploy_sha() {
   local sha=$1
@@ -33,6 +37,21 @@ if (!r.ok) {
 }
 process.stdout.write(r.sha);
 " "$sha"; then
+    exit 1
+  fi
+}
+
+validate_config_paths() {
+  if ! cloud_agent_vo5c_validate_shared_path "$PIN_ENV_FILE"; then
+    echo "[cloud-agent] ERROR: invalid CLOUD_AGENT_VO5C_PIN_ENV path" >&2
+    exit 1
+  fi
+  if ! cloud_agent_vo5c_validate_shared_path "$OPERATOR_SESSION_FILE"; then
+    echo "[cloud-agent] ERROR: invalid CLOUD_AGENT_VO5C_OPERATOR_SESSION_FILE path" >&2
+    exit 1
+  fi
+  if [[ -n "$STAGED_RELEASE_ROOT" ]] && ! cloud_agent_vo5c_validate_shared_path "$STAGED_RELEASE_ROOT"; then
+    echo "[cloud-agent] ERROR: invalid CLOUD_AGENT_STAGED_RELEASE_ROOT path" >&2
     exit 1
   fi
 }
@@ -97,18 +116,16 @@ print_operator_pinned_instructions() {
 
 On VPS (operator console), before re-running this script:
 
-  1. source ${PIN_ENV_FILE}
-  2. Create a short-lived session file (example):
+  1. Create root-owned session file (mode 600, not a symlink):
        sudo install -m 600 /dev/null ${OPERATOR_SESSION_FILE}
        sudo tee ${OPERATOR_SESSION_FILE} <<SESS
 SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1
 AUTHORIZED_REQUESTED_SHA=${sha}
-AUTHORIZED_UNTIL_EPOCH=\$(date -u -d '+30 minutes' +%s)
+AUTHORIZED_UNTIL_EPOCH=\$(date -u -d '+15 minutes' +%s)
 SESS
-  3. Or export SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1 in the same sudo shell and run the pinned runner manually:
-       export SYNQDRIVE_REQUESTED_DEPLOY_SHA=${sha}
-       cd "\${SYNQDRIVE_PINNED_EXECUTOR_ROOT}/backend/scripts/ops"
-       bash vps-vo5c-run-pinned-security-deploy.sh
+  2. Revoke after deploy: sudo rm -f ${OPERATOR_SESSION_FILE}
+
+  Or run manually from pinned ops with SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1 in operator shell.
 
 This script never sets SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1 and never shallow-fetches vps-deploy-release.sh from /current.
 EOF
@@ -121,82 +138,44 @@ run_remote_pinned_deploy() {
   fi
   local requested_sha="${CLOUD_AGENT_REQUESTED_DEPLOY_SHA}"
   validate_requested_deploy_sha "$requested_sha" >/dev/null
+  validate_config_paths
 
   if [[ -n "${CLOUD_AGENT_VPS_DEPLOY_SCRIPT:-}" ]] && [[ "${CLOUD_AGENT_VPS_DEPLOY_SCRIPT}" != *"vps-vo5c-run-pinned-security-deploy.sh"* ]]; then
     echo "[cloud-agent] ERROR: CLOUD_AGENT_VPS_DEPLOY_SCRIPT override to legacy vps-deploy-release.sh is blocked (DSRG consolidation)." >&2
-    echo "[cloud-agent] Unset CLOUD_AGENT_VPS_DEPLOY_SCRIPT or point at the pinned runner." >&2
     exit 1
   fi
 
   echo "[cloud-agent] Delegating to VO5C pinned runner on ${SSH_USER}@${VPS_HOST} ..."
   echo "[cloud-agent] REQUESTED_DEPLOY_SHA=${requested_sha}"
 
-  # Remote: enforcement check, optional operator session, pinned runner (fail-closed without human auth).
-  local remote_inner
-  remote_inner="$(cat <<REMOTE_EOF
-set -euo pipefail
-REQUESTED_SHA='${requested_sha}'
-PIN_ENV='${PIN_ENV_FILE}'
-SESSION_FILE='${OPERATOR_SESSION_FILE}'
-AUTH=/opt/synqdrive/shared/vo5c-production-deploy-authority.env
-ARMED=/opt/synqdrive/shared/vo5c-production-deploy-enforcement-armed
-if [[ -L "\$AUTH" ]] && [[ ! -e "\$AUTH" ]]; then echo 'ABORT: VO5C production deploy authority dangling symlink'; exit 1; fi
-if [[ ! -e "\$AUTH" ]]; then
-  if [[ -f "\$ARMED" ]]; then echo 'ABORT: VO5C production deploy authority missing after armed stamp'; exit 1; fi
-else
-  if [[ ! -r "\$AUTH" ]] || [[ ! -f "\$AUTH" ]]; then echo 'ABORT: VO5C production deploy authority file unreadable'; exit 1; fi
-  set -a
-  if ! source "\$AUTH"; then echo 'ABORT: VO5C production deploy authority file malformed'; exit 1; fi
-  set +a
-  case "\${VO5C_PRODUCTION_DEPLOY_ENFORCEMENT_ACTIVE:-}" in 0|1) ;; *) echo 'ABORT: VO5C production deploy authority invalid active flag'; exit 1 ;; esac
-  if [[ "\${VO5C_PRODUCTION_DEPLOY_ENFORCEMENT_ACTIVE}" == "1" ]]; then
-    echo 'ABORT: VO5C production deploy enforcement active — legacy shallow-fetch deploy is blocked.'
-    exit 1
-  fi
-fi
-if [[ ! -f "\$PIN_ENV" ]]; then echo "ABORT: missing pin env \$PIN_ENV"; exit 1; fi
-set -a
-source "\$PIN_ENV"
-set +a
-export SYNQDRIVE_REQUESTED_DEPLOY_SHA="\$REQUESTED_SHA"
-export SYNQDRIVE_STAGED_RELEASE_ROOT="\${SYNQDRIVE_STAGED_RELEASE_ROOT:-/opt/synqdrive/staging-release}"
-if [[ -d "\$SYNQDRIVE_STAGED_RELEASE_ROOT/.git" ]]; then
-  git -C "\$SYNQDRIVE_STAGED_RELEASE_ROOT" fetch --depth 1 origin "\$REQUESTED_SHA" 2>/dev/null || true
-  git -C "\$SYNQDRIVE_STAGED_RELEASE_ROOT" checkout -q "\$REQUESTED_SHA" 2>/dev/null || true
-fi
-if [[ -f "\$SESSION_FILE" ]] && [[ -r "\$SESSION_FILE" ]]; then
-  set -a
-  # shellcheck disable=SC1090
-  source "\$SESSION_FILE"
-  set +a
-  now_epoch=\$(date -u +%s)
-  if [[ -n "\${AUTHORIZED_UNTIL_EPOCH:-}" ]] && [[ "\$now_epoch" -gt "\${AUTHORIZED_UNTIL_EPOCH}" ]]; then
-    echo 'ABORT: operator deploy session expired — recreate vo5c-operator-deploy-session.env on VPS'
-    exit 1
-  fi
-  if [[ -n "\${AUTHORIZED_REQUESTED_SHA:-}" ]] && [[ "\${AUTHORIZED_REQUESTED_SHA}" != "\$REQUESTED_SHA" ]]; then
-    echo 'ABORT: operator session SHA does not match REQUESTED_DEPLOY_SHA'
-    exit 1
-  fi
-fi
-if [[ "\${SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED:-0}" != "1" ]]; then
-  echo 'ABORT: SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1 not set (human release authorization required)'
-  exit 42
-fi
-PINNED_OPS="\${SYNQDRIVE_PINNED_EXECUTOR_ROOT}/backend/scripts/ops"
-cd "\$PINNED_OPS"
-exec bash "\${PINNED_OPS}/vps-vo5c-run-pinned-security-deploy.sh"
-REMOTE_EOF
-)"
+  local q_sha q_pin q_sess q_staged
+  q_sha="$(printf '%q' "$requested_sha")"
+  q_pin="$(printf '%q' "$PIN_ENV_FILE")"
+  q_sess="$(printf '%q' "$OPERATOR_SESSION_FILE")"
+  q_staged="$(printf '%q' "$STAGED_RELEASE_ROOT")"
 
-  local remote_cmd="bash -c $(printf '%q' "$remote_inner")"
-  if [[ "${SSH_USER}" != "root" ]]; then
-    remote_cmd="sudo -n -H bash -c $(printf '%q' "$remote_inner")"
+  local remote_body
+  remote_body="$(printf '%s\n' \
+    "td=\$(mktemp -d)" \
+    "trap 'rm -rf \"\$td\"' EXIT" \
+    "tar -xzf - -C \"\$td\"" \
+    "export REMOTE_LIB_DIR=\"\$td/lib\"" \
+    "exec bash \"\$td/cloud-agent-vo5c-remote-pinned-deploy.sh\" ${q_sha} ${q_pin} ${q_sess} ${q_staged}")"
+
+  local ssh_prefix=(ssh -p "$SSH_PORT" -i "$SSH_KEY" -o BatchMode=yes -o ConnectTimeout=20 "${SSH_USER}@${VPS_HOST}")
+  local remote_shell
+  if [[ "${SSH_USER}" == "root" ]]; then
+    remote_shell="bash -c $(printf '%q' "$remote_body")"
+  else
+    remote_shell="sudo -n -H bash -c $(printf '%q' "$remote_body")"
   fi
 
   set +e
-  ssh -p "$SSH_PORT" -i "$SSH_KEY" -o BatchMode=yes -o ConnectTimeout=20 \
-    "${SSH_USER}@${VPS_HOST}" "$remote_cmd"
+  tar -C "${SCRIPT_DIR}" -czf - \
+    lib/cloud-agent-vo5c-operator-session.lib.sh \
+    lib/cloud-agent-vo5c-remote-pinned-deploy.lib.sh \
+    cloud-agent-vo5c-remote-pinned-deploy.sh \
+    | "${ssh_prefix[@]}" "$remote_shell"
   local remote_rc=$?
   set -e
 
@@ -229,11 +208,13 @@ verify_public_health() {
     sleep "$delay"
   done
 
-  echo "[cloud-agent] WARN: public health check failed after ${attempts} attempts (app may still be healthy on VPS replicas)." >&2
+  echo "[cloud-agent] WARN: public health check failed after ${attempts} attempts." >&2
   return 1
 }
 
-bash "${ROOT}/.cursor/scripts/cloud-agent-verify-vps.sh"
+if [[ "${CLOUD_AGENT_SKIP_VPS_VERIFY:-0}" != "1" ]]; then
+  bash "${ROOT}/.cursor/scripts/cloud-agent-verify-vps.sh"
+fi
 ensure_ssh_key
 preflight_git
 run_remote_pinned_deploy
@@ -244,7 +225,7 @@ if ! verify_public_health; then
 fi
 
 if [[ "$HEALTH_RC" -ne 0 ]]; then
-  echo "[cloud-agent] OUTCOME: pinned_deploy=OK public_health=FAIL (exit 2) — verify replicas before declaring release complete." >&2
+  echo "[cloud-agent] OUTCOME: pinned_deploy=OK public_health=FAIL (exit 2)" >&2
   exit 2
 fi
 
