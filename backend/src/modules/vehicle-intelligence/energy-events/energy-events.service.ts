@@ -38,6 +38,8 @@ import type { RawFuelRefuelFallbackScanResult } from './raw-fuel-refuel-fallback
 import { ErdRechargeShadowParityRuntimeService } from './erd-recharge-shadow-parity/erd-recharge-shadow-parity.runtime';
 import { isErdRechargeProductReadDedupeEnabled } from './erd-recharge-product-read-dedupe/erd-recharge-product-read-dedupe.config';
 import { ErdRechargeProductReadDedupeMetricsService } from './erd-recharge-product-read-dedupe/erd-recharge-product-read-dedupe.metrics';
+import { isErdRechargeLegacyFragmentProductReadEnabled } from './erd-recharge-legacy-fragment-product-read/erd-recharge-legacy-fragment-product-read.config';
+import { ErdRechargeLegacyFragmentProductReadMetricsService } from './erd-recharge-legacy-fragment-product-read/erd-recharge-legacy-fragment-product-read.metrics';
 import { evaluateLegacyRechargeWriteGate } from './erd-recharge-write-authority/erd-recharge-write-gate.policy';
 import { ErdRechargeWriteAuthorityMetricsService } from './erd-recharge-write-authority/erd-recharge-write-authority.metrics';
 import type { ErdRechargeLegacyWriteGateOutcome } from './erd-recharge-write-authority/erd-recharge-write-authority.constants';
@@ -83,6 +85,8 @@ export class EnergyEventsService {
     @Optional()
     private readonly erdRechargeProductReadDedupeMetrics?: ErdRechargeProductReadDedupeMetricsService,
     @Optional()
+    private readonly erdRechargeLegacyFragmentProductReadMetrics?: ErdRechargeLegacyFragmentProductReadMetricsService,
+    @Optional()
     private readonly erdRechargeWriteAuthorityMetrics?: ErdRechargeWriteAuthorityMetricsService,
   ) {}
 
@@ -103,12 +107,18 @@ export class EnergyEventsService {
     const rows = await this.queryEnergyEventRowsForCanonical(vehicleId, options);
     const cutover = resolveEffectiveV2OwnershipCutoverAt(env);
     const rechargeReadDedupeEnabled = isErdRechargeProductReadDedupeEnabled(env);
+    const legacyFragmentProductReadEnabled =
+      isErdRechargeLegacyFragmentProductReadEnabled(env);
     const canonical = projectCanonicalProductEnergyEvents(
       rows,
       cutover,
       rechargeReadDedupeEnabled,
       (metricResults) => {
         this.erdRechargeProductReadDedupeMetrics?.recordResults(metricResults);
+      },
+      legacyFragmentProductReadEnabled,
+      (metricResults) => {
+        this.erdRechargeLegacyFragmentProductReadMetrics?.recordResults(metricResults);
       },
     );
     const dtos = canonical.map(toEnergyEventDto);
