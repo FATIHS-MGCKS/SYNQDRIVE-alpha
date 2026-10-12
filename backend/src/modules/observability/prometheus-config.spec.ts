@@ -120,6 +120,14 @@ describe('TripMetricsService label cardinality', () => {
 describe('Prometheus infra alert rules', () => {
   const root = join(__dirname, '../../../monitoring/prometheus');
 
+  it('alerts-di-s4.yml defines DI S4 shadow operational alerts', () => {
+    const yaml = readFileSync(join(root, 'alerts-di-s4.yml'), 'utf8');
+    expect(yaml).toContain('DiV0S4AllowlistTenantViolation');
+    expect(yaml).toContain('synqdrive_di_v0_s4_activity_signal');
+    expect(yaml).toContain('component: driving_intelligence_s4');
+    expect(yaml).not.toContain('vehicle_id');
+  });
+
   it('alerts-infra.yml defines platform and host alerts', () => {
     const yaml = readFileSync(join(root, 'alerts-infra.yml'), 'utf8');
     expect(yaml).toContain('PostgreSQLUnavailable');
@@ -137,6 +145,7 @@ describe('Prometheus infra alert rules', () => {
     expect(yaml).toContain('alertmanagers');
     expect(yaml).toContain('127.0.0.1:9093');
     expect(yaml).toContain('alerts-infra.yml');
+    expect(yaml).toContain('alerts-di-s4.yml');
     expect(yaml).toContain('job_name: node');
     expect(yaml).toContain('blackbox-ssl');
   });

@@ -1905,3 +1905,26 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | S4 active path = shadow `di_v0_s4_*` + DIMO budget only; Wave-3 human 24h gate was **operational triage**, not Gate-6 code; **no** automatic EMERGENCY_REKILL in app; post–Wave-3 Production **KILLED** after containment |
 | AUTHORITY | Proposed regular ops: owner auth + technical preflight/DRY_RUN/LIVE_OPEN + automated monitoring + manual rekill |
 | NON_EFFECTS | No Production mutation; no deploy; no env/kill/APDS/Battery changes in this slice |
+
+### EXP-021 S4P2 unattended operations & alert integration (2026-10-11)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `alerts-di-s4.yml`; `DiV0S4OperationalMetricsService` + operational Prometheus gauges; VPS Prometheus refresh copies; contract `di-v0-s4p2-alert-rules.contract.ts` + tests; evidence `EXP021_S4P2_UNATTENDED_OPS_ALERT_INTEGRATION.md` |
+| FINDING | Repo has Prometheus/Alertmanager stack; S4 had no dedicated rules/metrics; production alert **delivery not re-tested** in this slice |
+| AUTHORITY | CRITICAL → existing Alertmanager receivers; containment remains manual EMERGENCY_REKILL |
+| NON_EFFECTS | No Production mutation; GLOBAL_KILL=KILLED; five-vehicle scope unchanged |
+
+### EXP-021 S4P2-R1 alert reliability (2026-10-11)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Operational metric freshness gauges + leader/follower reset; alert semantics (min DIMO budget, discovery missing/stale, dormant activity_signal); promtool tests; VPS monitoring validate-before-copy + AM restart skip; evidence `EXP021_S4P2_R1_ALERT_RELIABILITY.md` |
+| NON_EFFECTS | No merge/deploy; delivery still UNVERIFIED |
+
+### EXP-021 S4P2-R2 monitoring correctness (2026-10-11)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `shadow_plane_engaged` gauge + failure retention; in-flight work sum; `DiV0S4GlobalKillSuspectOrphan`; VPS candidate promtool + reload rollback; promtool/Jest contracts; evidence `EXP021_S4P2_R2_MONITORING_CORRECTNESS.md` |
+| NON_EFFECTS | No Production mutation; GLOBAL_KILL=KILLED; PR #1988 remains draft pending #1987 merge |

@@ -41,6 +41,7 @@ chmod 644 "$PROM_DIR/secrets/metrics_bearer_token"
 
 cp "$SRC_PROM/alerts.yml" "$PROM_DIR/alerts.yml"
 cp "$SRC_PROM/alerts-infra.yml" "$PROM_DIR/alerts-infra.yml"
+cp "$SRC_PROM/alerts-di-s4.yml" "$PROM_DIR/alerts-di-s4.yml"
 cp "$SRC_PROM/prometheus.vps.yml" "$PROM_DIR/prometheus.yml"
 
 # Allow custom backend port without editing the checked-in template.
