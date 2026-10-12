@@ -191,9 +191,14 @@ pass "CONNECTIVITY_STAGING_BLOCKED_WHEN_ENFORCEMENT_ACTIVE"
 
 write_authority 0
 if ! run_protected_entry "vps-deploy-connectivity-staging"; then
-  fail "connectivity staging must remain available when enforcement inactive"
+  fail "connectivity staging protected-entry guard must pass when enforcement inactive"
 fi
-pass "CONNECTIVITY_STAGING_ALLOWED_WHEN_ENFORCEMENT_INACTIVE"
+pass "CONNECTIVITY_STAGING_PROTECTED_ENTRY_WHEN_ENFORCEMENT_INACTIVE"
+
+if SYNQDRIVE_VO5C_CONNECTIVITY_STAGING_ALLOW=0 bash "${SCRIPT_DIR}/vps-deploy-connectivity-staging.sh" 2>/dev/null; then
+  fail "connectivity staging script must fail closed without break-glass allow"
+fi
+pass "CONNECTIVITY_STAGING_FAIL_CLOSED_WITHOUT_ALLOW"
 
 export SYNQDRIVE_PINNED_EXECUTOR_ROOT="$WT_PINNED"
 export SYNQDRIVE_PINNED_EXECUTOR_SHA="$HEAD_SHA"

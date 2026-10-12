@@ -24,6 +24,9 @@
 | E-OPS-SELFTEST | `backend/scripts/ops/vps-vo5c-*.selftest.sh` | CURRENT_TEST | Offline only; not live deploy proof |
 | E-OPS-P4B16-R1A | `backend/scripts/ops/vps-release-attestation.selftest.sh` | CURRENT_TEST | P4B16 R1A attestation certification |
 | E-P4B16-R1B | [`P4B16_R1B_DEPLOY_INTEGRATION.md`](P4B16_R1B_DEPLOY_INTEGRATION.md) | REPOSITORY + TEST | R1B deploy/rollback hooks; offline integration selftest |
+| E-DSRG-DEPLOY-CONSOLIDATION | [`DSRG_DEPLOYMENT_CONSOLIDATION_SINGLE_VPS.md`](DSRG_DEPLOYMENT_CONSOLIDATION_SINGLE_VPS.md) | REPOSITORY + TEST | Single VPS pinned-runner contract; legacy path guards |
+| E-DSRG-CLOUD-AGENT-BOOTSTRAP | [`VO5C_CLOUD_AGENT_PINNED_BOOTSTRAP_INSTALL.md`](VO5C_CLOUD_AGENT_PINNED_BOOTSTRAP_INSTALL.md) | REPOSITORY + TEST | Fixed VPS bootstrap install/rollback; fail-closed until evidenced |
+| E-DSRG-SSH-RCA-S4P8 | [`DSRG_SSH_RCA_CLOUD_AGENT_VPS_ACCESS_2026-10-12.md`](DSRG_SSH_RCA_CLOUD_AGENT_VPS_ACCESS_2026-10-12.md) | REPOSITORY + TEST | EXP021-S4P8 SSH failure RCA; Hostinger principal + trusted host-key policy |
 | E-OPS-P4B16-R1B | `backend/scripts/ops/vps-release-attestation-integration.selftest.sh` | CURRENT_TEST | P4B16 R1B hook certification |
 
 ## Ledger

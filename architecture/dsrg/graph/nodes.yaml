@@ -241,6 +241,17 @@ nodes:
     evidence:
       - DSRG-EVID-P4B16-R1A-001
 
+  - id: DSRG-EVID-DEPLOY-CONSOLIDATION-001
+    type: evidence
+    title: DSRG single-VPS deployment consolidation
+    epistemic_status: CONFIRMED
+    source_type: CURRENT_CODE
+    summary: Pinned-runner-only cloud-agent delegate; connectivity staging fail-closed; deploy outcome semantics.
+    source_paths:
+      - architecture/dsrg/evidence/DSRG_DEPLOYMENT_CONSOLIDATION_SINGLE_VPS.md
+      - .cursor/scripts/cloud-agent-deploy.sh
+      - backend/scripts/ops/vps-deploy-connectivity-staging.sh
+
   - id: DSRG-EVID-P4B16-R1B-001
     type: evidence
     title: P4B16 R1B deploy rollback integration

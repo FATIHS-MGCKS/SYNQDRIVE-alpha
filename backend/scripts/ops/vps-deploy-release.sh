@@ -5,6 +5,8 @@ DEPLOY_EXECUTOR_OPS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEPLOY_EXECUTOR_ROOT="$(cd "${DEPLOY_EXECUTOR_OPS_DIR}/../../.." && pwd)"
 # shellcheck source=lib/vps-exp021-fleet-deploy-guard.lib.sh
 source "${DEPLOY_EXECUTOR_OPS_DIR}/lib/vps-exp021-fleet-deploy-guard.lib.sh"
+# shellcheck source=lib/vps-deploy-monitoring-outcome.lib.sh
+source "${DEPLOY_EXECUTOR_OPS_DIR}/lib/vps-deploy-monitoring-outcome.lib.sh"
 
 GIT_REPO="${SYNQDRIVE_GIT_REPO:-https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git}"
 REQUESTED_SHA="${SYNQDRIVE_REQUESTED_DEPLOY_SHA:-}"
@@ -291,13 +293,30 @@ if [[ -f "${RELEASE_OPS_DIR}/lib/vps-release-attestation-integration.lib.sh" ]];
 fi
 echo "    TARGET_SHA=${TARGET_SHA}"
 echo "    REPLICA_COUNT=${SYNQDRIVE_PRODUCTION_REPLICA_COUNT}"
-echo "Deployed release: ${RELEASE_ID} ($(git -C "$RELEASE_DIR" rev-parse --short HEAD))"
+
+DEPLOY_APP_VERIFIED=YES
+if [[ -f "${RELEASE_OPS_DIR}/lib/vps-release-attestation-integration.lib.sh" ]]; then
+  DEPLOY_ATTESTATION_STATUS=committed
+else
+  DEPLOY_ATTESTATION_STATUS=legacy_unprotected
+fi
+MONITORING_REFRESH_STATUS=skipped
 
 if [[ "${MONITORING_AUTO_REFRESH:-auto}" == "auto" ]]; then
   echo "==> Monitoring refresh (Prometheus reload + Grafana dashboards)"
+  MONITORING_REFRESH_STATUS=failed
   if bash "$RELEASE_DIR/backend/scripts/ops/vps-refresh-monitoring.sh"; then
-    echo "Monitoring refresh: OK"
+    MONITORING_REFRESH_STATUS=ok
   else
-    echo "WARN: monitoring refresh failed — app deploy succeeded; fix monitoring manually" >&2
+    echo "!! WARN: monitoring refresh failed after verified replica deploy — not unqualified success" >&2
   fi
+fi
+
+echo "==> DEPLOY_OUTCOME app_verified=${DEPLOY_APP_VERIFIED} attestation=${DEPLOY_ATTESTATION_STATUS} monitoring_refresh=${MONITORING_REFRESH_STATUS}"
+echo "Deployed release: ${RELEASE_ID} ($(git -C "$RELEASE_DIR" rev-parse --short HEAD))"
+
+if [[ "$MONITORING_REFRESH_STATUS" == "failed" ]]; then
+  _MONITORING_FAIL_RC="$(vps_deploy_monitoring_failure_exit_rc)"
+  echo "==> Exit ${_MONITORING_FAIL_RC}: replicas promoted; post-deploy monitoring refresh failed (reconcile manually)" >&2
+  exit "${_MONITORING_FAIL_RC}"
 fi
