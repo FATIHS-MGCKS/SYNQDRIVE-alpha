@@ -86,8 +86,8 @@ describePg('S4P9B historical backlog quarantine (postgres)', () => {
     );
     const pipelineKey = `DI_V0_S4_PIPELINE_V1:test:${randomUUID()}`;
     await prisma.$executeRaw`
-      INSERT INTO di_v0_s4_pipeline_versions (pipeline_version_key, status, manifest, created_at)
-      VALUES (${pipelineKey}, 'ACTIVE', '{}'::jsonb, now())`;
+      INSERT INTO di_v0_s4_pipeline_versions (pipeline_version_key, manifest, status)
+      VALUES (${pipelineKey}, '{}'::jsonb, 'ACTIVE')`;
     for (const id of [id1, id2]) {
       await prisma.$executeRaw`
         INSERT INTO di_v0_s4_work_items (
@@ -163,8 +163,8 @@ describePg('S4P9B historical backlog quarantine (postgres)', () => {
     const manifestJson = s4aManifestFor(config);
     const pipelineKey = buildDiV0S4PipelineVersionKey(manifestJson);
     await prisma.$executeRaw`
-      INSERT INTO di_v0_s4_pipeline_versions (pipeline_version_key, status, manifest, created_at)
-      VALUES (${pipelineKey}, 'ACTIVE', ${JSON.stringify(manifestJson)}::jsonb, now())`;
+      INSERT INTO di_v0_s4_pipeline_versions (pipeline_version_key, manifest, status)
+      VALUES (${pipelineKey}, ${JSON.stringify(manifestJson)}::jsonb, 'ACTIVE')`;
     await prisma.$executeRaw`
       INSERT INTO di_v0_s4_work_items (
         id, organization_id, vehicle_id, trip_id, source_family, run_purpose, purpose_discriminator,
