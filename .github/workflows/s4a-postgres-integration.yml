@@ -80,6 +80,8 @@ jobs:
               backend/src/modules/vehicle-intelligence/driving-intelligence/r1-obd-acquisition/di-v0-r1-obd-snapshot-semantic-validate.ts) return 0 ;;
               backend/src/modules/vehicle-intelligence/driving-intelligence/shadow-persistence/*) return 0 ;;
               backend/scripts/test/di-v0-s4a-*) return 0 ;;
+              backend/scripts/ops/di-v0-s4-historical-backlog-quarantine-production/*) return 0 ;;
+              backend/scripts/ops/di-v0-s4-gate6-open-rekill-production/*) return 0 ;;
               backend/scripts/test/prisma-migrate-deploy-resilient.sh) return 0 ;;
               backend/prisma/migrations/20260927200000_di_v0_s4a_dormant_foundation/*) return 0 ;;
               backend/prisma/schema.prisma) return 0 ;;
@@ -174,6 +176,8 @@ jobs:
           npm run test:di:s4d
           npm run test:di:s4e
           npm run test:di:s4f
+          npm run test:di:s4p9b:backlog-quarantine
+          npm run test:di:s4p9b:gate6-reopen-contract
           npm run test:dimo:provider-budget
           npm run test:dimo:provider-budget:redis
 
@@ -244,6 +248,7 @@ jobs:
           npm run test:di:s4d:postgres
           npm run test:di:s4e:postgres
           npm run test:di:s4f:postgres
+          npm run test:di:s4p9b:backlog-quarantine:postgres
 
   s4a-postgres-integration:
     name: S4A PostgreSQL integration
