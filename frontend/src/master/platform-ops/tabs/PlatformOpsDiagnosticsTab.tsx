@@ -16,15 +16,17 @@ import type { PlatformOpsAlertGroupDto, PlatformOpsDiagnosticsTab, Communication
 import { formatRelativeDe } from '../platform-ops.utils';
 import { api } from '../../../lib/api';
 import { SystemMonitoringView } from '../../components/SystemMonitoringView';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import { DrivingIntelligenceS4DiagnosticsPanel } from './DrivingIntelligenceS4DiagnosticsPanel';
 
-const DIAG_TABS = [
-  { id: 'alerts', label: 'Alarme' },
-  { id: 'driving-intelligence-s4', label: 'Driving Intelligence S4' },
-  { id: 'poll-logs', label: 'Abfrage-Protokolle' },
-  { id: 'token-health', label: 'Token-Status' },
-  { id: 'communication', label: 'Communication' },
-  { id: 'tools', label: 'Tools' },
+const DIAG_TAB_IDS = [
+  { id: 'alerts', labelKey: null as string | null, labelDe: 'Alarme' },
+  { id: 'driving-intelligence-s4', labelKey: 'master.platformOps.diS4.tab' as TranslationKey, labelDe: null },
+  { id: 'poll-logs', labelKey: null, labelDe: 'Abfrage-Protokolle' },
+  { id: 'token-health', labelKey: null, labelDe: 'Token-Status' },
+  { id: 'communication', labelKey: null, labelDe: 'Communication' },
+  { id: 'tools', labelKey: null, labelDe: 'Tools' },
 ] as const;
 
 export function PlatformOpsDiagnosticsTabView({
@@ -34,19 +36,25 @@ export function PlatformOpsDiagnosticsTabView({
   activeTab: PlatformOpsDiagnosticsTab;
   onTabChange: (tab: PlatformOpsDiagnosticsTab) => void;
 }) {
+  const { t } = useLanguage();
+  const diagTabs = DIAG_TAB_IDS.map((tab) => ({
+    id: tab.id,
+    label: tab.labelKey ? t(tab.labelKey as TranslationKey) : (tab.labelDe ?? tab.id),
+  }));
+
   return (
     <div className="space-y-4">
       <div className="sq-tab-bar flex gap-1 p-1 rounded-md overflow-x-auto w-fit max-w-full" role="tablist">
-        {DIAG_TABS.map((t) => (
+        {diagTabs.map((tab) => (
           <button
-            key={t.id}
+            key={tab.id}
             type="button"
             role="tab"
-            aria-selected={activeTab === t.id}
-            className={activeTab === t.id ? 'sq-tab-active px-4 py-2 rounded-xl text-sm font-bold' : 'sq-tab px-4 py-2 rounded-xl text-sm font-bold text-muted-foreground'}
-            onClick={() => onTabChange(t.id)}
+            aria-selected={activeTab === tab.id}
+            className={activeTab === tab.id ? 'sq-tab-active px-4 py-2 rounded-xl text-sm font-bold' : 'sq-tab px-4 py-2 rounded-xl text-sm font-bold text-muted-foreground'}
+            onClick={() => onTabChange(tab.id)}
           >
-            {t.label}
+            {tab.label}
           </button>
         ))}
       </div>

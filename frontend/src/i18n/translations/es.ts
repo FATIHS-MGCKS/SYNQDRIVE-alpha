@@ -1,5 +1,6 @@
 import type { PartialTranslationDictionary } from '../dictionary-types';
 import { rentalLegacyGapES } from './rental-legacy-gap.es';
+import { masterPlatformOpsDiS4Es } from './master.platformOps.diS4.es';
 
 export const es = {
   'dashboard.welcomeBack': 'Bienvenido de nuevo, {name}',
@@ -108,4 +109,5 @@ export const es = {
   'documents.vehicleDocuments': 'Documentos del vehiculo', 'documents.monthlyFixedCosts': 'Costes fijos mensuales',
   'customerDetail.title': 'Detalles del cliente', 'customerDetail.customerDocuments': 'Documentos del cliente', 'customerDetail.customerAlerts': 'Alertas del cliente', 'customerDetail.customerNotes': 'Notas del cliente',   'customerDetail.drivingScore': 'Puntuacion de conduccion',
   ...rentalLegacyGapES,
+  ...masterPlatformOpsDiS4Es,
 } satisfies PartialTranslationDictionary;

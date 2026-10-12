@@ -2,6 +2,7 @@
 import { act, createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { LanguageProvider } from '../../i18n/LanguageContext';
 import { DrivingIntelligenceS4DiagnosticsPanel } from './tabs/DrivingIntelligenceS4DiagnosticsPanel';
 
 const sampleStatus = {
@@ -84,12 +85,16 @@ describe('DrivingIntelligenceS4DiagnosticsPanel', () => {
 
   it('renders operational status, 15 rules, and cohort count', async () => {
     await act(async () => {
-      root.render(createElement(DrivingIntelligenceS4DiagnosticsPanel));
+      root.render(
+        createElement(LanguageProvider, {
+          children: createElement(DrivingIntelligenceS4DiagnosticsPanel),
+        }),
+      );
     });
     const text = container.textContent ?? '';
     expect(text).toContain('DISABLED');
     expect(text).toContain('Monitoring: HEALTHY');
-    expect(text).toContain('Autorisierte Fahrzeuge: 5');
+    expect(text).toContain('Authorized vehicles: 5');
     expect(text).toContain('DiV0S4Rule0');
     expect(text).toContain('IamSeedAdminEnabledInProduction');
   });
