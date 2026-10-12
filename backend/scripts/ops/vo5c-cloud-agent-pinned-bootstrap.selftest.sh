@@ -4,6 +4,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${ROOT}/../../.." && pwd)"
+# shellcheck source=lib/vo5c-cloud-agent-pinned-bootstrap-verify.lib.sh
+source "${ROOT}/lib/vo5c-cloud-agent-pinned-bootstrap-verify.lib.sh"
 # shellcheck source=lib/vo5c-cloud-agent-pinned-bootstrap.lib.sh
 source "${ROOT}/lib/vo5c-cloud-agent-pinned-bootstrap.lib.sh"
 
@@ -21,13 +23,14 @@ export VO5C_OPERATOR_SESSION_TEST_SKIP_PATH_ROOT=1
 export VO5C_OPERATOR_SESSION_TEST_PATH_ROOT="${SD_ROOT}/synqdrive"
 
 VO5C_CLOUD_AGENT_BOOTSTRAP_PATH="${SHARED}/vo5c-cloud-agent-pinned-deploy-bootstrap.sh"
+VO5C_CLOUD_AGENT_BOOTSTRAP_VERIFY_LIB="${SHARED}/vo5c-cloud-agent-pinned-bootstrap-verify.lib.sh"
 VO5C_CLOUD_AGENT_BOOTSTRAP_MANIFEST="${SHARED}/vo5c-cloud-agent-pinned-deploy-bootstrap.manifest.env"
 VO5C_CLOUD_AGENT_PIN_ENV="${SHARED}/vo5c-pinned-executor.env"
 VO5C_CLOUD_AGENT_OPERATOR_SESSION="${SHARED}/vo5c-operator-deploy-session.env"
 VO5C_CLOUD_AGENT_AUTHORITY_ENV="${SHARED}/vo5c-production-deploy-authority.env"
 VO5C_CLOUD_AGENT_ENFORCEMENT_ARMED="${SHARED}/vo5c-production-deploy-enforcement-armed"
 VO5C_CLOUD_AGENT_STAGED_ROOT="${SD_ROOT}/synqdrive/staging-release"
-export VO5C_CLOUD_AGENT_BOOTSTRAP_PATH VO5C_CLOUD_AGENT_BOOTSTRAP_MANIFEST
+export VO5C_CLOUD_AGENT_BOOTSTRAP_PATH VO5C_CLOUD_AGENT_BOOTSTRAP_VERIFY_LIB VO5C_CLOUD_AGENT_BOOTSTRAP_MANIFEST
 export VO5C_CLOUD_AGENT_PIN_ENV VO5C_CLOUD_AGENT_OPERATOR_SESSION
 export VO5C_CLOUD_AGENT_AUTHORITY_ENV VO5C_CLOUD_AGENT_ENFORCEMENT_ARMED VO5C_CLOUD_AGENT_STAGED_ROOT
 
@@ -36,12 +39,15 @@ WT_PIN="$(mktemp -d)"
 git -C "$REPO_ROOT" worktree add --detach "$WT_PIN" "$HEAD_SHA" >/dev/null
 trap 'git -C "$REPO_ROOT" worktree remove --force "$WT_PIN" 2>/dev/null || rm -rf "$WT_PIN"; rm -rf "$SD_ROOT"' EXIT
 
-install_bootstrap_copy() {
+install_bootstrap_bundle() {
   cp "${ROOT}/vo5c-cloud-agent-pinned-deploy-bootstrap.sh" "$VO5C_CLOUD_AGENT_BOOTSTRAP_PATH"
+  cp "${ROOT}/lib/vo5c-cloud-agent-pinned-bootstrap-verify.lib.sh" "$VO5C_CLOUD_AGENT_BOOTSTRAP_VERIFY_LIB"
   chmod 750 "$VO5C_CLOUD_AGENT_BOOTSTRAP_PATH"
+  chmod 600 "$VO5C_CLOUD_AGENT_BOOTSTRAP_VERIFY_LIB"
   export VO5C_CLOUD_AGENT_BOOTSTRAP_SELF_PATH="$VO5C_CLOUD_AGENT_BOOTSTRAP_PATH"
   bash "${ROOT}/vo5c-cloud-agent-pinned-deploy-bootstrap-write-manifest.sh" \
-    "$VO5C_CLOUD_AGENT_BOOTSTRAP_PATH" "$VO5C_CLOUD_AGENT_BOOTSTRAP_MANIFEST" "$HEAD_SHA" >/dev/null
+    "$VO5C_CLOUD_AGENT_BOOTSTRAP_PATH" "$VO5C_CLOUD_AGENT_BOOTSTRAP_VERIFY_LIB" \
+    "$VO5C_CLOUD_AGENT_BOOTSTRAP_MANIFEST" "$WT_PIN" "$HEAD_SHA" >/dev/null
 }
 
 write_session() {
@@ -65,49 +71,42 @@ EOF
 }
 
 set +e
-vo5c_cloud_agent_bootstrap_verify_installation >/dev/null 2>&1
+vo5c_cloud_agent_bootstrap_verify_shared_installation >/dev/null 2>&1
 rc=$?
 set -e
 [[ "$rc" -ne 0 ]] && pass bootstrap_missing_fail_closed
 
-install_bootstrap_copy
+install_bootstrap_bundle
 setup_pin_and_auth
-vo5c_cloud_agent_bootstrap_verify_installation && pass bootstrap_integrity_ok
+vo5c_cloud_agent_bootstrap_verify_shared_installation && pass bootstrap_integrity_ok
+vo5c_cloud_agent_bootstrap_verify_pinned_libraries "$WT_PIN" "$HEAD_SHA" && pass pinned_library_integrity_ok
 
-printf 'tamper\n' >>"$VO5C_CLOUD_AGENT_BOOTSTRAP_PATH"
+printf 'tamper\n' >>"${WT_PIN}/backend/scripts/ops/lib/vo5c-cloud-agent-pinned-bootstrap.lib.sh"
 set +e
-vo5c_cloud_agent_bootstrap_verify_installation >/dev/null 2>&1
+vo5c_cloud_agent_bootstrap_verify_pinned_libraries "$WT_PIN" "$HEAD_SHA" >/dev/null 2>&1
 rc=$?
 set -e
-[[ "$rc" -eq 45 ]] && pass bootstrap_altered_file_reject
-cp "${ROOT}/vo5c-cloud-agent-pinned-deploy-bootstrap.sh" "$VO5C_CLOUD_AGENT_BOOTSTRAP_PATH"
-chmod 750 "$VO5C_CLOUD_AGENT_BOOTSTRAP_PATH"
-bash "${ROOT}/vo5c-cloud-agent-pinned-deploy-bootstrap-write-manifest.sh" \
-  "$VO5C_CLOUD_AGENT_BOOTSTRAP_PATH" "$VO5C_CLOUD_AGENT_BOOTSTRAP_MANIFEST" "$HEAD_SHA" >/dev/null
+[[ "$rc" -eq 45 ]] && pass pinned_impl_tamper_reject
+git -C "$WT_PIN" checkout -- backend/scripts/ops/lib/vo5c-cloud-agent-pinned-bootstrap.lib.sh
 
+install_bootstrap_bundle
 echo 'VO5C_CLOUD_AGENT_BOOTSTRAP_SHA256=0000000000000000000000000000000000000000000000000000000000000000' >"$VO5C_CLOUD_AGENT_BOOTSTRAP_MANIFEST"
+echo "VO5C_CLOUD_AGENT_BOOTSTRAP_VERIFY_LIB_SHA256=0000000000000000000000000000000000000000000000000000000000000000" >>"$VO5C_CLOUD_AGENT_BOOTSTRAP_MANIFEST"
 echo "VO5C_CLOUD_AGENT_BOOTSTRAP_INSTALLED_FROM_COMMIT=${HEAD_SHA}" >>"$VO5C_CLOUD_AGENT_BOOTSTRAP_MANIFEST"
-echo 'VO5C_CLOUD_AGENT_BOOTSTRAP_VERSION=1' >>"$VO5C_CLOUD_AGENT_BOOTSTRAP_MANIFEST"
+echo 'VO5C_CLOUD_AGENT_PINNED_IMPL_SHA256=0000000000000000000000000000000000000000000000000000000000000000' >>"$VO5C_CLOUD_AGENT_BOOTSTRAP_MANIFEST"
+echo 'VO5C_CLOUD_AGENT_PINNED_SESSION_LIB_SHA256=0000000000000000000000000000000000000000000000000000000000000000' >>"$VO5C_CLOUD_AGENT_BOOTSTRAP_MANIFEST"
+echo 'VO5C_CLOUD_AGENT_BOOTSTRAP_VERSION=2' >>"$VO5C_CLOUD_AGENT_BOOTSTRAP_MANIFEST"
 chmod 600 "$VO5C_CLOUD_AGENT_BOOTSTRAP_MANIFEST"
 set +e
-vo5c_cloud_agent_bootstrap_verify_installation >/dev/null 2>&1
+vo5c_cloud_agent_bootstrap_verify_shared_installation >/dev/null 2>&1
 rc=$?
 set -e
-[[ "$rc" -eq 45 ]] && pass bootstrap_wrong_manifest_hash_reject
-install_bootstrap_copy
-
-ln -sf "$VO5C_CLOUD_AGENT_BOOTSTRAP_PATH" "${SHARED}/bootstrap-link.sh"
-export VO5C_CLOUD_AGENT_BOOTSTRAP_SELF_PATH="${SHARED}/bootstrap-link.sh"
-set +e
-vo5c_cloud_agent_bootstrap_verify_filesystem "${SHARED}/bootstrap-link.sh" >/dev/null 2>&1
-rc=$?
-set -e
-[[ "$rc" -ne 0 ]] && pass bootstrap_symlink_reject
-export VO5C_CLOUD_AGENT_BOOTSTRAP_SELF_PATH="$VO5C_CLOUD_AGENT_BOOTSTRAP_PATH"
+[[ "$rc" -eq 45 ]] && pass manifest_mismatch_reject
+install_bootstrap_bundle
 
 chmod 644 "$VO5C_CLOUD_AGENT_BOOTSTRAP_PATH"
 set +e
-vo5c_cloud_agent_bootstrap_verify_filesystem "$VO5C_CLOUD_AGENT_BOOTSTRAP_PATH" >/dev/null 2>&1
+vo5c_bootstrap_verify_root_owned_no_world_access "$VO5C_CLOUD_AGENT_BOOTSTRAP_PATH" "750" >/dev/null 2>&1
 rc=$?
 set -e
 [[ "$rc" -ne 0 ]] && pass bootstrap_mode_reject

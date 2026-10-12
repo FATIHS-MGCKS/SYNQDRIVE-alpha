@@ -20,12 +20,16 @@ write_mock_ssh() {
   local remote_rc=$1
   cat >"${MOCK_BIN}/ssh" <<'EOS'
 #!/usr/bin/env bash
-if [[ -n "${MOCK_SSH_FAIL_BOOTSTRAP_TEST:-}" ]] && [[ "$*" == *"test -x"* ]]; then
+if [[ -n "${MOCK_SSH_FAIL_BOOTSTRAP_TEST:-}" ]] && [[ "$*" == *"--preflight-check"* ]]; then
+  exit 1
+fi
+if [[ -n "${MOCK_SSH_FAIL_SUDO:-}" ]] && [[ "$*" == sudo* ]]; then
+  echo "sudo: a password is required" >&2
   exit 1
 fi
 if [[ "$*" == *"vo5c-cloud-agent-pinned-deploy-bootstrap.sh"* ]]; then
   :
-elif [[ "$*" == *"test -x"* ]]; then
+elif [[ "$*" == *"--preflight-check"* ]]; then
   exit 0
 else
   echo "FAIL: unexpected ssh invocation: $*" >&2

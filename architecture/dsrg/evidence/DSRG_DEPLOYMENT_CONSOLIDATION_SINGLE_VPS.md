@@ -14,7 +14,8 @@ One Hostinger VPS for production. No second staging VM. Canonical routine path =
 |------|----------|
 | Human gate (Cloud Agent) | Root-owned `/opt/synqdrive/shared/vo5c-operator-deploy-session.env` only — **never** operator-shell `SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED` for `cloud-agent-deploy.sh` |
 | Human gate (manual VPS console) | Operator may `export SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1` and run `vps-vo5c-run-pinned-security-deploy.sh` from the pinned ops tree |
-| Cloud Agent remote | Fixed `/opt/synqdrive/shared/vo5c-cloud-agent-pinned-deploy-bootstrap.sh` + **only** `REQUESTED_DEPLOY_SHA` argument (no tar-stream) |
+| Cloud Agent remote | `sudo -n -H` fixed bootstrap + **only** `REQUESTED_DEPLOY_SHA` (or `--preflight-check`); no tar-stream |
+| Sudoers | Dedicated NOPASSWD for bootstrap path only (`synqdrive-admin`) — see install doc |
 | Bootstrap install | One-time operator procedure: [`VO5C_CLOUD_AGENT_PINNED_BOOTSTRAP_INSTALL.md`](VO5C_CLOUD_AGENT_PINNED_BOOTSTRAP_INSTALL.md) — **not executed in repo PRs** |
 | Session format | `SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1`, exact 40-char `AUTHORIZED_REQUESTED_SHA`, finite `AUTHORIZED_UNTIL_EPOCH` (≤ 1800s TTL); parsed line-by-line (**not** `source`d) |
 | Revocation | `sudo rm -f /opt/synqdrive/shared/vo5c-operator-deploy-session.env` after deploy or on abort |

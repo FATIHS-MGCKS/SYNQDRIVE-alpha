@@ -48,6 +48,7 @@ head -20 "$CONN" | grep -q 'SYNQDRIVE_VO5C_CONNECTIVITY_STAGING_ALLOW' || fail "
 pass "connectivity_staging_fail_closed_guard"
 
 bash "${ROOT}/backend/scripts/ops/vo5c-cloud-agent-pinned-bootstrap.selftest.sh"
+bash "${ROOT}/backend/scripts/ops/vo5c-cloud-agent-pinned-bootstrap-execution.selftest.sh"
 bash "${ROOT}/.cursor/scripts/cloud-agent-deploy.outcome.selftest.sh"
 
 echo "ALL_CLOUD_AGENT_CONTRACT_TESTS_PASS"

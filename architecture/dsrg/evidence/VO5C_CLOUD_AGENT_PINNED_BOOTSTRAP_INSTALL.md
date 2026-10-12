@@ -5,77 +5,103 @@
 
 ## Purpose
 
-Replace mutable agent tar-stream root execution with a **fixed**, root-owned bootstrap on the existing Hostinger VPS. Cloud Agent invokes **only**:
+Cloud Agent invokes **only** a fixed VPS bootstrap with a single deploy SHA (no tar-stream, no arbitrary remote scripts):
 
 ```text
-/opt/synqdrive/shared/vo5c-cloud-agent-pinned-deploy-bootstrap.sh <REQUESTED_DEPLOY_SHA>
+sudo -n -H /opt/synqdrive/shared/vo5c-cloud-agent-pinned-deploy-bootstrap.sh <REQUESTED_DEPLOY_SHA>
 ```
 
-All other paths (`pin` env, operator session, staged root, authority) are **hard-coded** inside the bootstrap implementation shipped from the **pinned executor** tree.
+Preflight (from Cloud Agent as `synqdrive-admin`):
+
+```text
+sudo -n -H /opt/synqdrive/shared/vo5c-cloud-agent-pinned-deploy-bootstrap.sh --preflight-check
+```
+
+Bootstrap is **root-owned mode `750`** (`rwxr-x---`, group `root`). Non-root SSH users **must not** rely on group membership; they **must** use the sudoers contract below. **No** world (`other`) bits.
 
 ## Artifacts (repository)
 
-| File | Role |
-|------|------|
-| `backend/scripts/ops/vo5c-cloud-agent-pinned-deploy-bootstrap.sh` | VPS-installed entry (copy to shared) |
-| `backend/scripts/ops/lib/vo5c-cloud-agent-pinned-bootstrap.lib.sh` | Logic loaded from **pinned** ops tree after install |
-| `backend/scripts/ops/vo5c-cloud-agent-pinned-deploy-bootstrap-write-manifest.sh` | Operator manifest generator |
-| `backend/scripts/ops/lib/vo5c-operator-deploy-session.lib.sh` | Session parse-only helper (pinned tree) |
+| VPS path | Repo source |
+|----------|-------------|
+| `vo5c-cloud-agent-pinned-deploy-bootstrap.sh` | `backend/scripts/ops/vo5c-cloud-agent-pinned-deploy-bootstrap.sh` |
+| `vo5c-cloud-agent-pinned-bootstrap-verify.lib.sh` | `backend/scripts/ops/lib/vo5c-cloud-agent-pinned-bootstrap-verify.lib.sh` |
+| `vo5c-cloud-agent-pinned-deploy-bootstrap.manifest.env` | generated on VPS |
+| Pinned impl + session libs | `${SYNQDRIVE_PINNED_EXECUTOR_ROOT}/backend/scripts/ops/lib/…` (hash-bound in manifest) |
 
-## One-time install (operator, on VPS — do not run from Cloud Agent)
+## Sudoers contract (separately authorized VPS change)
 
-Prerequisites: promoted `vo5c-pinned-executor.env` pointing at release commit **C** that contains these files.
+Install a **dedicated** sudoers drop-in (visudo / configuration management). Example only — adjust after operator review:
 
-1. Copy bootstrap from pinned tree (example):
+```sudoers
+Defaults:synqdrive-admin !requiretty
+synqdrive-admin ALL=(root) NOPASSWD: /opt/synqdrive/shared/vo5c-cloud-agent-pinned-deploy-bootstrap.sh
+```
+
+Rules:
+
+- **Only** that absolute bootstrap path — no wildcards, no `sudo bash`, no directory.
+- Cloud Agent exit **48** when `sudo -n` is denied.
+- Do **not** grant sudo to pin env, session files, or pinned runner scripts.
+
+## One-time install (operator on VPS — not Cloud Agent)
+
+Prerequisites: **pinned executor promotion** already points `vo5c-pinned-executor.env` at commit **C** containing R4.1+ bootstrap artifacts.
+
+1. Copy shared install bundle from pinned tree:
 
    ```bash
    PIN_ROOT="$(source /opt/synqdrive/shared/vo5c-pinned-executor.env && echo "$SYNQDRIVE_PINNED_EXECUTOR_ROOT")"
    sudo install -m 750 -o root -g root \
      "${PIN_ROOT}/backend/scripts/ops/vo5c-cloud-agent-pinned-deploy-bootstrap.sh" \
      /opt/synqdrive/shared/vo5c-cloud-agent-pinned-deploy-bootstrap.sh
+   sudo install -m 600 -o root -g root \
+     "${PIN_ROOT}/backend/scripts/ops/lib/vo5c-cloud-agent-pinned-bootstrap-verify.lib.sh" \
+     /opt/synqdrive/shared/vo5c-cloud-agent-pinned-bootstrap-verify.lib.sh
    ```
 
-2. Write manifest (binds bootstrap bytes to commit **C**):
+2. Write manifest (SHA256 binds bootstrap, verify lib, and pinned impl/session libs to **C**):
 
    ```bash
    COMMIT="$(source /opt/synqdrive/shared/vo5c-pinned-executor.env && echo "$SYNQDRIVE_PINNED_EXECUTOR_SHA")"
    sudo bash "${PIN_ROOT}/backend/scripts/ops/vo5c-cloud-agent-pinned-deploy-bootstrap-write-manifest.sh" \
      /opt/synqdrive/shared/vo5c-cloud-agent-pinned-deploy-bootstrap.sh \
+     /opt/synqdrive/shared/vo5c-cloud-agent-pinned-bootstrap-verify.lib.sh \
      /opt/synqdrive/shared/vo5c-cloud-agent-pinned-deploy-bootstrap.manifest.env \
-     "$COMMIT"
+     "$PIN_ROOT" "$COMMIT"
    ```
 
-3. Preflight verification (read-only):
+3. Preflight (as `synqdrive-admin`, read-only):
 
    ```bash
-   sudo test -x /opt/synqdrive/shared/vo5c-cloud-agent-pinned-deploy-bootstrap.sh
-   sudo test -f /opt/synqdrive/shared/vo5c-cloud-agent-pinned-deploy-bootstrap.manifest.env
-   sha256sum -c <<<"$(grep VO5C_CLOUD_AGENT_BOOTSTRAP_SHA256= /opt/synqdrive/shared/vo5c-cloud-agent-pinned-deploy-bootstrap.manifest.env | cut -d= -f2)  /opt/synqdrive/shared/vo5c-cloud-agent-pinned-deploy-bootstrap.sh"
+   sudo -n -H /opt/synqdrive/shared/vo5c-cloud-agent-pinned-deploy-bootstrap.sh --preflight-check
    ```
 
-4. **Do not** enable new enforcement flags in this procedure. Manual pinned deploy remains available without Cloud Agent.
+4. **Do not** enable new VO5C enforcement flags in this procedure.
 
-## Rollback
+## Recovery / rollback
 
 ```bash
 sudo rm -f /opt/synqdrive/shared/vo5c-cloud-agent-pinned-deploy-bootstrap.sh \
+           /opt/synqdrive/shared/vo5c-cloud-agent-pinned-bootstrap-verify.lib.sh \
            /opt/synqdrive/shared/vo5c-cloud-agent-pinned-deploy-bootstrap.manifest.env
 ```
 
-Cloud Agent `cloud-agent-deploy.sh` fails closed with exit **44** when bootstrap is absent. Manual `vps-vo5c-run-pinned-security-deploy.sh` is unchanged.
+Remove the sudoers drop-in when rolling back Cloud Agent deploy. Manual pinned-runner deploy (`SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1` on VPS console) remains available.
+
+Cloud Agent fails closed with exit **44** (bootstrap missing / preflight fail) or **45** (integrity / pin mismatch).
 
 ## Trust boundary
 
 | Layer | Trust |
 |-------|--------|
-| Cloud Agent | SSH + single SHA argument only; **no** tar, no arbitrary remote script |
-| VPS bootstrap | Root-owned `750`, SHA256 manifest, commit-bound to pin |
-| Pinned runner | Existing VO5C security floor, session file, P4B16 attestation |
+| Cloud Agent | SSH + SHA-only via `sudo -n -H` bootstrap |
+| Shared bootstrap | Root-owned, manifest SHA256, verify lib co-installed |
+| Pinned tree | Impl/session SHA256 + `vps_vo5c_verify_executor_tree_integrity` before `source` |
+| Pinned runner | VO5C security floor, session file, P4B16 attestation |
 
-Until install + preflight evidence exists, treat Cloud Agent production deploy as **disabled** (fail-closed).
-
-## Offline test
+## Offline tests
 
 ```bash
 bash backend/scripts/ops/vo5c-cloud-agent-pinned-bootstrap.selftest.sh
+bash backend/scripts/ops/vo5c-cloud-agent-pinned-bootstrap-execution.selftest.sh
 ```

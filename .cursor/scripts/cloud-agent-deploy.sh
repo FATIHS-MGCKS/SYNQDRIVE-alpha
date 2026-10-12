@@ -14,6 +14,8 @@ source "${SCRIPT_DIR}/cloud-agent-ssh-common.sh"
 source "${SCRIPT_DIR}/lib/cloud-agent-vo5c-operator-session.lib.sh"
 # shellcheck source=lib/cloud-agent-vo5c-bootstrap-contract.lib.sh
 source "${SCRIPT_DIR}/lib/cloud-agent-vo5c-bootstrap-contract.lib.sh"
+# shellcheck source=lib/cloud-agent-vo5c-bootstrap-remote.lib.sh
+source "${SCRIPT_DIR}/lib/cloud-agent-vo5c-bootstrap-remote.lib.sh"
 
 SSH_USER="$(cloud_agent_ssh_user)"
 if [[ "${VPS_HOST}" == *"hstgr.cloud"* ]] && [[ "${SSH_USER}" == "root" ]]; then
@@ -150,10 +152,19 @@ run_remote_pinned_deploy() {
 
   if [[ "${CLOUD_AGENT_SKIP_BOOTSTRAP_PREFLIGHT:-0}" != "1" ]]; then
     local ssh_check=(ssh -p "$SSH_PORT" -i "$SSH_KEY" -o BatchMode=yes -o ConnectTimeout=20 "${SSH_USER}@${VPS_HOST}")
-    local q_bootstrap_check
-    q_bootstrap_check="$(printf '%q' "$CLOUD_AGENT_VO5C_BOOTSTRAP_PATH")"
-    if ! "${ssh_check[@]}" "test -x ${q_bootstrap_check}" 2>/dev/null; then
-      echo "[cloud-agent] ERROR: VO5C Cloud Agent bootstrap not installed or not executable on VPS: ${CLOUD_AGENT_VO5C_BOOTSTRAP_PATH}" >&2
+    local preflight_cmd
+    preflight_cmd="$(cloud_agent_vo5c_remote_bootstrap_preflight_command "$CLOUD_AGENT_VO5C_BOOTSTRAP_PATH" "$SSH_USER")"
+    set +e
+    local preflight_out preflight_rc
+    preflight_out="$("${ssh_check[@]}" "$preflight_cmd" 2>&1)"
+    preflight_rc=$?
+    set -e
+    if [[ "$preflight_rc" -ne 0 ]]; then
+      if echo "$preflight_out" | grep -qiE 'sudo:.*password|not allowed|sorry, user'; then
+        echo "[cloud-agent] ERROR: passwordless sudo not authorized for VO5C bootstrap (see sudoers contract in install doc)." >&2
+        exit "$CLOUD_AGENT_REMOTE_EXIT_SUDO_DENIED"
+      fi
+      echo "[cloud-agent] ERROR: VO5C Cloud Agent bootstrap preflight failed on VPS: ${CLOUD_AGENT_VO5C_BOOTSTRAP_PATH}" >&2
       echo "[cloud-agent] Install from promoted pin per architecture/dsrg/evidence/VO5C_CLOUD_AGENT_PINNED_BOOTSTRAP_INSTALL.md (fail-closed until verified)." >&2
       print_operator_pinned_instructions "$requested_sha"
       exit "$CLOUD_AGENT_REMOTE_EXIT_BOOTSTRAP_MISSING"
@@ -164,22 +175,19 @@ run_remote_pinned_deploy() {
   echo "[cloud-agent] REQUESTED_DEPLOY_SHA=${requested_sha}"
   echo "[cloud-agent] BOOTSTRAP=${CLOUD_AGENT_VO5C_BOOTSTRAP_PATH}"
 
-  local q_sha q_bootstrap
-  q_sha="$(printf '%q' "$requested_sha")"
-  q_bootstrap="$(printf '%q' "$CLOUD_AGENT_VO5C_BOOTSTRAP_PATH")"
-
   local ssh_prefix=(ssh -p "$SSH_PORT" -i "$SSH_KEY" -o BatchMode=yes -o ConnectTimeout=20 "${SSH_USER}@${VPS_HOST}")
   local remote_invocation
-  if [[ "${SSH_USER}" == "root" ]]; then
-    remote_invocation="${q_bootstrap} ${q_sha}"
-  else
-    remote_invocation="sudo -n -H ${q_bootstrap} ${q_sha}"
-  fi
+  remote_invocation="$(cloud_agent_vo5c_remote_bootstrap_invoke_command "$CLOUD_AGENT_VO5C_BOOTSTRAP_PATH" "$SSH_USER" "$requested_sha")"
 
   set +e
-  "${ssh_prefix[@]}" "$remote_invocation"
+  local remote_out
+  remote_out="$("${ssh_prefix[@]}" "$remote_invocation" 2>&1)"
   local remote_rc=$?
   set -e
+  if [[ "$remote_rc" -ne 0 ]] && echo "$remote_out" | grep -qiE 'sudo:.*password|not allowed|sorry, user'; then
+    echo "[cloud-agent] ERROR: passwordless sudo denied for bootstrap invocation." >&2
+    exit "$CLOUD_AGENT_REMOTE_EXIT_SUDO_DENIED"
+  fi
 
   if [[ "$remote_rc" -eq "$CLOUD_AGENT_REMOTE_EXIT_BOOTSTRAP_MISSING" ]]; then
     echo "[cloud-agent] ERROR: VPS bootstrap missing (exit ${remote_rc})." >&2

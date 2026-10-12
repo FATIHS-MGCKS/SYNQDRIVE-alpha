@@ -211,10 +211,6 @@ vo5c_cloud_agent_run_pinned_deploy() {
     return 1
   fi
 
-  if ! vo5c_cloud_agent_bootstrap_verify_installation; then
-    return "$VO5C_CLOUD_AGENT_EXIT_BOOTSTRAP_INTEGRITY"
-  fi
-
   for p in "$VO5C_CLOUD_AGENT_PIN_ENV" "$VO5C_CLOUD_AGENT_OPERATOR_SESSION" "$VO5C_CLOUD_AGENT_AUTHORITY_ENV" "$VO5C_CLOUD_AGENT_STAGED_ROOT"; do
     vo5c_operator_session_validate_shared_path "$p" || { echo "ABORT: invalid configured path ${p}" >&2; return 1; }
   done
@@ -234,11 +230,6 @@ vo5c_cloud_agent_run_pinned_deploy() {
   # shellcheck disable=SC1090
   source "$VO5C_CLOUD_AGENT_PIN_ENV"
   set +a
-
-  if [[ "$(vo5c_operator_session_normalize_sha "${SYNQDRIVE_PINNED_EXECUTOR_SHA:-}")" != "$VO5C_MANIFEST_INSTALLED_FROM_COMMIT" ]]; then
-    echo "ABORT: pin executor SHA does not match bootstrap manifest INSTALLED_FROM_COMMIT" >&2
-    return "$VO5C_CLOUD_AGENT_EXIT_BOOTSTRAP_INTEGRITY"
-  fi
 
   export SYNQDRIVE_REQUESTED_DEPLOY_SHA="$(vo5c_operator_session_normalize_sha "$requested_sha")"
 
