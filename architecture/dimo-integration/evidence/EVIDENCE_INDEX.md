@@ -53,6 +53,7 @@
 | DIM-EV-R2-PROD-RUNTIME-001 | PRODUCTION_OBSERVATION | [R2_PRODUCTION_RUNTIME_CONTRACT.md](R2_PRODUCTION_RUNTIME_CONTRACT.md) | Whitelisted worker/budget env @ R2 | CONFIRMED @ `2b89f746…` | No queue metrics |
 | DIM-EV-R1-PROVIDER-DOC-001 | PROVIDER_DOCUMENTATION | https://dimo.org/docs/api-references/vehicle-triggers-api | Current subscribe URL schema vs legacy Nest client | CONFIRMED @ fetch `2026-10-11` | DIMO MCP unavailable (auth timeout) |
 | DIM-EVID-DI-S3B-R1-SCHEMA-001 | PROVIDER_SCHEMA_OBSERVATION | [../../drivingintelligence/evidence/EXP021_C1D9_R1_FIELD_AUTHORITY_V03_CORRECTION.md](../../drivingintelligence/evidence/EXP021_C1D9_R1_FIELD_AUTHORITY_V03_CORRECTION.md) | DIMO telemetry `signals` field schema (Float + `FloatAggregation`), units, gear/ignition representation; R1 availability (4 Ruptela vehicles, read-only) | CONFIRMED @ introspection sha256 `a10f4729…` (2026-09-27) | Cross-ref DI-EVID-EXP021-C1D9-001; DI-owned consumer, no DIMO Integration code change |
+| DIM-EV-R28-STAGING-001 | AUDIT_DOCUMENT | [R28_STAGING_ACCEPTANCE_2026-10-12.md](R28_STAGING_ACCEPTANCE_2026-10-12.md) | Post-merge R9+P4B16 offline contract acceptance; **no isolated staging** — full VO5C E2E **NOT_RUN** | CONFIRMED @ `bc7e80715…` main / prod `92d3d611…` | Production mutations **NONE**; blocked until dedicated staging host |
 
 ## Cross-reference
 
