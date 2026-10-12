@@ -11,6 +11,7 @@ This directory is **documentation-only**. It does not replace:
 
 | Topic | Primary doc |
 |-------|-------------|
+| **Production VPS access & deploy (canonical)** | [PRODUCTION_VPS_ACCESS_AND_DEPLOY_RUNBOOK.md](./PRODUCTION_VPS_ACCESS_AND_DEPLOY_RUNBOOK.md) |
 | Roadmap & phases | [ROADMAP.md](./ROADMAP.md) |
 | Ownership & decision rights | [ARCHITECTURE_OWNERSHIP.md](./ARCHITECTURE_OWNERSHIP.md) |
 | VO5C P4B12–P4B16 narrative map | [VO5C_P4B12_P4B16_HISTORY.md](./VO5C_P4B12_P4B16_HISTORY.md) |

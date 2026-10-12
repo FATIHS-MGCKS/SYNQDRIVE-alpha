@@ -23,5 +23,13 @@
 | 2026-10-11 | **P4B16-R1A** | Durable attestation libs + offline selftest; **not** wired to deploy/Production | None (repo-only; NOT_DEPLOYED) |
 | 2026-10-11 | **P4B16-R1A-MIN** | Minimalism pass: drop journal/phase machine; delegate replica verify to existing ops lib | None (repo-only) |
 | 2026-10-11 | **P4B16-R1B** | Wire attestation into `vps-deploy-release.sh` + `vps_replica_rollback`; partial-success exit 3; offline integration selftest | None (repo-only; NOT_DEPLOYED) |
+| 2026-10-12 | **DSRG-DEPLOY-CONSOLIDATION** | Single-VPS contract: cloud-agent → pinned runner; connectivity staging fail-closed; deploy outcome/monitoring exit 4; docs/skill harmonization | None (repo-only) |
+| 2026-10-12 | **DSRG-DEPLOY-CONSOLIDATION-R2** | Operator session parse-without-source; tar-stream pinned delegate; enforcement ACTIVE allows pinned path; executable offline selftests (mock SSH); `DEPLOY_ATTESTATION_STATUS` committed vs legacy_unprotected | None (repo-only) |
+| 2026-10-12 | **DSRG-DEPLOY-CONSOLIDATION-R3** | Cloud Agent session-file-only auth; shared-path canonicalization + symlink escape; immutable monitoring-fail exit 4; documented tar-stream root trust boundary | None (repo-only) |
+| 2026-10-12 | **DSRG-DEPLOY-CONSOLIDATION-R4** | Fixed VPS bootstrap contract; tar-stream removed; Cloud Agent fail-closed until bootstrap installed; install doc + offline bootstrap selftests | None (repo-only; bootstrap NOT installed on prod) |
+| 2026-10-12 | **DSRG-DEPLOY-CONSOLIDATION-R4.1** | sudo -n bootstrap preflight/invoke for synqdrive-admin; verify lib + pinned impl/session SHA256 before source; sudoers install contract; execution selftests | None (repo-only) |
+| 2026-10-12 | **DSRG-DEPLOY-CONSOLIDATION-R4.2** | Trusted co-installed verify lib runs independent git/worktree integrity (`vo5c_bootstrap_verify_pinned_executor_tree_trusted`) before sourcing any pin-tree library; negative selftests for tampered security-floor/admission | None (repo-only) |
+| 2026-10-12 | **DSRG-DEPLOY-CONSOLIDATION-R5** | Integrate EXP021-S4P8 SSH RCA into #1991: synqdrive-admin mapping, identity preflight, trusted host-key policy (no blind keyscan), preserve VO5C bootstrap + R4.2; rebase onto main incl. DIMO R3.1 | None (repo-only) |
+| 2026-10-12 | **DSRG-04-R6** | Canonical Production VPS runbook reconciled to merged #1991; bootstrap readiness checklist; `docs/runbooks/00-canonical-production-vps.md`; AGENTS/DSRG cross-links; legacy root/Tailscale/legacy deploy marked historical | None (docs; bootstrap NOT installed on prod) |
 
 Historical VO5C deploy-governance entries remain in [`../../vehicle-onboarding/research/CHANGE_LEDGER.md`](../../vehicle-onboarding/research/CHANGE_LEDGER.md) — reference only.

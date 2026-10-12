@@ -10,6 +10,21 @@
 | `.cursor/rules/` | Project engineering rules (always apply) |
 | `.cursor/scripts/` | Cloud Agent bootstrap + VPS deploy helpers |
 
+## Production VPS (mandatory before access or deploy)
+
+**Canonical runbook:** [`architecture/dsrg/PRODUCTION_VPS_ACCESS_AND_DEPLOY_RUNBOOK.md`](architecture/dsrg/PRODUCTION_VPS_ACCESS_AND_DEPLOY_RUNBOOK.md)
+
+| Current Production | Value |
+|--------------------|--------|
+| Transport | **Direct public SSH** (`StrictHostKeyChecking=yes`, verified host key) |
+| Host | `srv1374778.hstgr.cloud` |
+| SSH port | `22` |
+| SSH principal | **`synqdrive-admin`** |
+| SSH identity | Existing authorized `~/.ssh/id_ed25519` when present; else `CLOUD_AGENT_SSH_PRIVATE_KEY` (Cursor Secret) |
+| Deploy entry | Fixed VPS bootstrap (when installed) → **pinned VO5C executor** + **separate explicit human authorization** |
+
+An unset `CLOUD_AGENT_SSH_PRIVATE_KEY` does **not** prove SSH is impossible when `~/.ssh/id_ed25519` already exists from bootstrap. Path B (Tailscale / `mein-vps.internal`) is **optional** and not the routine Production deploy transport.
+
 ## Mandatory architecture-first workflow
 
 Before inspecting or changing any SynqDrive module, every agent **must** follow this workflow.
@@ -184,9 +199,10 @@ Build-time-only credentials (private npm registries) → **Build Secret** (not u
 
 | Name | Cursor type | Path A (public SSH) | Path B (Tailscale) |
 |------|-------------|---------------------|---------------------|
-| `CLOUD_AGENT_SSH_PRIVATE_KEY` | **Runtime Secret** | Required | Required |
+| `CLOUD_AGENT_SSH_PRIVATE_KEY` | **Runtime Secret** | Optional when the environment image already has `~/.ssh/id_ed25519`; required on fresh agents without a baked key | Required |
 | `CLOUD_AGENT_VPS_HOST` | Environment Variable | `srv1374778.hstgr.cloud` | `mein-vps.internal` |
-| `CLOUD_AGENT_SSH_USER` | Environment Variable | `root` (optional) | `root` (optional) |
+| `CLOUD_AGENT_SSH_USER` | Environment Variable | Omit or `synqdrive-admin` (Hostinger disables root SSH) | `root` (optional) |
+| `CLOUD_AGENT_SSH_KNOWN_HOSTS_FILE` | Environment Variable | Optional path to operator-verified `known_hosts` for production (required before first Hostinger SSH if `~/.ssh/known_hosts` has no entry) | Optional |
 | `TAILSCALE_AUTH_KEY` | **Runtime Secret** | **omit** | Required |
 | `DATABASE_URL` | **Runtime Secret** | omit (unless needed) | Optional (prod DB via tailnet) |
 | `CLERK_SECRET_KEY`, `CLERK_PUBLISHABLE_KEY` | Runtime Secret | As needed for task | As needed |
@@ -227,8 +243,9 @@ On boot, `cloud-agent-start.sh`:
 Manual verification inside a Cloud Agent shell:
 
 ```bash
+bash .cursor/scripts/cloud-agent-ssh-preflight.sh
 bash .cursor/scripts/cloud-agent-verify-vps.sh
-ssh ${CLOUD_AGENT_SSH_USER:-root}@${CLOUD_AGENT_VPS_HOST:-srv1374778.hstgr.cloud} 'hostname'
+ssh synqdrive-admin@${CLOUD_AGENT_VPS_HOST:-srv1374778.hstgr.cloud} 'hostname'
 ```
 
 Path B only — HTTP(S) via Tailscale proxy:
@@ -245,9 +262,9 @@ No Tailscale account or auth key required. Same deploy script as path B.
 
 | Name | Type | Value |
 |------|------|-------|
-| `CLOUD_AGENT_SSH_PRIVATE_KEY` | Runtime Secret | Your `id_ed25519` private key (full PEM) |
+| `CLOUD_AGENT_SSH_PRIVATE_KEY` | Runtime Secret | Your `id_ed25519` private key (full PEM) — omit only if the agent image already ships the authorized key |
 | `CLOUD_AGENT_VPS_HOST` | Environment Variable | `srv1374778.hstgr.cloud` |
-| `CLOUD_AGENT_SSH_USER` | Environment Variable | `root` |
+| `CLOUD_AGENT_SSH_USER` | Environment Variable | `synqdrive-admin` (or omit; scripts map Hostinger hosts automatically) |
 
 **Do not add** `TAILSCALE_AUTH_KEY`.
 
@@ -258,56 +275,52 @@ No Tailscale account or auth key required. Same deploy script as path B.
 **Test in Cloud Agent terminal:**
 
 ```bash
-ssh -o BatchMode=yes root@srv1374778.hstgr.cloud hostname
+bash .cursor/scripts/cloud-agent-ssh-preflight.sh
 bash .cursor/scripts/cloud-agent-deploy.sh
 ```
 
 ---
 
-## Production deploy (Cloud Agent)
+## Production deploy (single VPS, VO5C pinned runner)
 
-The VPS deploy clones **`main` from GitHub** — not the agent workspace. Always **push before deploy**.
+**Full procedure:** [architecture/dsrg/PRODUCTION_VPS_ACCESS_AND_DEPLOY_RUNBOOK.md](architecture/dsrg/PRODUCTION_VPS_ACCESS_AND_DEPLOY_RUNBOOK.md) and [architecture/dsrg/DEPLOYMENT_AUTHORIZATION.md](architecture/dsrg/DEPLOYMENT_AUTHORIZATION.md).
 
-### Standard flow (same as local agent)
+SynqDrive production runs on **one Hostinger VPS** — there is no separate staging VM. Routine releases use the **pinned VO5C executor** (`vps-vo5c-run-pinned-security-deploy.sh` → `vps-deploy-release.sh` → replica verify → P4B16 attestation).
 
-When the user asks to **commit and deploy**:
+**Agents must never set `SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1`.** Human release authorization is set on the VPS (operator session file or operator shell) before deploy.
 
-1. `git status` / `git diff` — review changes; never commit secrets (`.env`, keys).
-2. Commit with a concise message if there are changes.
-3. `git push origin main`
+Always **push `main` to GitHub** before deploy; the requested SHA must match the pushed commit.
+
+### Standard flow (commit + deploy)
+
+1. `git status` / `git diff` — review changes; never commit secrets.
+2. Commit and `git push origin main` when needed.
+3. Operator creates short-lived authorization on VPS (see `.cursor/skills/vps-deploy/SKILL.md`).
 4. Run:
 
 ```bash
 bash .cursor/scripts/cloud-agent-deploy.sh
 ```
 
-The deploy script:
+The script: SSH identity + trusted host key → git preflight → SSH → **fixed VPS bootstrap** → pinned runner only (legacy shallow-fetch `/current/.../vps-deploy-release.sh` is blocked) → public health check.
 
-- Verifies SSH to the VPS (Tailscale optional)
-- Ensures working tree is clean and `main` is pushed to `origin`
-- SSHs to the VPS and runs `backend/scripts/ops/vps-deploy-release.sh`
-- That remote script: DB backup → clone release → link `backend.env` + `frontend.env` → `npm ci` + build → Prisma migrate → PM2 restart → health check
-- Verifies `https://app.synqdrive.eu/api/v1/health`
+Exit codes: `0` success; `2` deploy OK but public health failed; `3` P4B16 partial success; `4` monitoring outcome failure; `42` session/authorization; `44` bootstrap missing; `45` bootstrap/pin integrity; `48` `sudo -n` denied.
 
-### Deploy-only (no new commits)
+### Deploy-only / explicit SHA
 
 ```bash
-bash .cursor/scripts/cloud-agent-deploy.sh
+CLOUD_AGENT_SKIP_GIT_PREFLIGHT=1 CLOUD_AGENT_REQUESTED_DEPLOY_SHA=<40-char-sha> bash .cursor/scripts/cloud-agent-deploy.sh
 ```
 
-Skip git preflight (e.g. redeploy current `main` without local checkout):
-
-```bash
-CLOUD_AGENT_SKIP_GIT_PREFLIGHT=1 bash .cursor/scripts/cloud-agent-deploy.sh
-```
-
-### Override targets (optional)
+### Overrides (optional)
 
 | Name | Type | Default |
 |------|------|---------|
-| `CLOUD_AGENT_VPS_HOST` | Environment Variable | `mein-vps.internal` (use `srv1374778.hstgr.cloud` without Tailscale) |
-| `CLOUD_AGENT_VPS_DEPLOY_SCRIPT` | Environment Variable | `/opt/synqdrive/current/backend/scripts/ops/vps-deploy-release.sh` |
+| `CLOUD_AGENT_VPS_HOST` | Environment Variable | `srv1374778.hstgr.cloud` |
 | `CLOUD_AGENT_HEALTH_URL` | Environment Variable | `https://app.synqdrive.eu/api/v1/health` |
+| `CLOUD_AGENT_VO5C_OPERATOR_SESSION_FILE` | Environment Variable | `/opt/synqdrive/shared/vo5c-operator-deploy-session.env` |
+
+Do **not** set `CLOUD_AGENT_VPS_DEPLOY_SCRIPT` to legacy `/current/.../vps-deploy-release.sh` — blocked by consolidation contract.
 
 ---
 
