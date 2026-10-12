@@ -3373,6 +3373,12 @@ export const en = {
     'Vehicle core data, tires, LV battery, and brake baselines are saved after create via existing org-scoped APIs. No DIMO or telematics connection is created.',
   'master.cv.addVehicle.manualServiceHistoryUnavailable':
     'Service history dates and High Mobility activation are not available in manual create — use DIMO registration or update the vehicle after onboarding.',
+  'master.cv.addVehicle.partialBaselineTitle': 'Vehicle created — some baseline data was not saved',
+  'master.cv.addVehicle.partialBaselineBody':
+    'The vehicle record exists. These sections could not be saved: {{areas}}. Complete them from the vehicle detail view.',
+  'master.cv.addVehicle.partialBaselineAreaTires': 'tires',
+  'master.cv.addVehicle.partialBaselineAreaBattery': 'LV battery',
+  'master.cv.addVehicle.partialBaselineAreaBrakes': 'brakes',
 
   // ─── Fleet Condition ───
   'fleetCondition.title': 'Fleet Condition',

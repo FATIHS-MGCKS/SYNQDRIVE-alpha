@@ -33,6 +33,7 @@ import type { DimoVehicle, RegisteredVehicle } from '../data/platform-data';
 import {
   mapApiDimoToDimoVehicle,
   persistMasterRegisteredVehicle,
+  type ManualBaselineArea,
 } from './master-vehicle-registration';
 import { api } from '../../lib/api';
 
@@ -296,7 +297,19 @@ export function ConnectedVehiclesHub({
         const result = await persistMasterRegisteredVehicle(rv, {
           dimoVehicleId: registrationDimo?.id ?? null,
         });
-        toast.success(t('master.cv.addVehicle.success'));
+        const baselineAreaLabel = (area: ManualBaselineArea) => {
+          if (area === 'tires') return t('master.cv.addVehicle.partialBaselineAreaTires');
+          if (area === 'battery') return t('master.cv.addVehicle.partialBaselineAreaBattery');
+          return t('master.cv.addVehicle.partialBaselineAreaBrakes');
+        };
+        if (result.baselineFailures?.length) {
+          const failedAreas = result.baselineFailures.map((f) => baselineAreaLabel(f.area)).join(', ');
+          toast.warning(t('master.cv.addVehicle.partialBaselineTitle'), {
+            description: t('master.cv.addVehicle.partialBaselineBody', { areas: failedAreas }),
+          });
+        } else {
+          toast.success(t('master.cv.addVehicle.success'));
+        }
         setRegistrationOpen(false);
         setRegistrationDimo(null);
         setRegistrationPrefillOrgId(null);

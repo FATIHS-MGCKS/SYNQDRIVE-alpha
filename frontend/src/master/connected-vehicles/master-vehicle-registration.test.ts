@@ -4,12 +4,19 @@ import {
   buildVehicleExtraData,
   buildVehicleManualSpecs,
   mapApiDimoToDimoVehicle,
+  persistMasterRegisteredVehicle,
 } from './master-vehicle-registration';
 import { api } from '../../lib/api';
 
+const createMock = vi.fn();
+const upsertTiresMock = vi.fn();
+
 vi.mock('../../lib/api', () => ({
   api: {
-    vehicles: { upsertTires: vi.fn().mockResolvedValue({}) },
+    vehicles: {
+      create: (...args: unknown[]) => createMock(...args),
+      upsertTires: (...args: unknown[]) => upsertTiresMock(...args),
+    },
     vehicleIntelligence: {
       createBatterySpec: vi.fn().mockResolvedValue({}),
       brakeHealthInitialize: vi.fn().mockResolvedValue({}),
@@ -115,7 +122,7 @@ describe('master-vehicle-registration payloads', () => {
       'veh-1',
       minimalRv({ batteryType: 'AGM', batteryAmpere: '70', batteryVolt: '12' }),
     );
-    expect(api.vehicles.upsertTires).toHaveBeenCalled();
+    expect(upsertTiresMock).toHaveBeenCalled();
     expect(api.vehicleIntelligence.createBatterySpec).toHaveBeenCalled();
     expect(api.vehicleIntelligence.brakeHealthInitialize).toHaveBeenCalled();
   });
@@ -125,5 +132,16 @@ describe('master-vehicle-registration payloads', () => {
     expect(specs?.brakes).toBeTruthy();
     expect(specs?.tires).toBeTruthy();
     expect((specs?.tires as { treadFL?: number }).treadFL).toBe(6);
+  });
+
+  it('persistMasterRegisteredVehicle returns vehicleId when baselines fail (partial success)', async () => {
+    createMock.mockResolvedValueOnce({ id: 'veh-partial-1' });
+    upsertTiresMock.mockRejectedValueOnce(new Error('tires API down'));
+
+    const result = await persistMasterRegisteredVehicle(minimalRv());
+
+    expect(result.vehicleId).toBe('veh-partial-1');
+    expect(result.baselineFailures?.some((f) => f.area === 'tires')).toBe(true);
+    expect(createMock).toHaveBeenCalledTimes(1);
   });
 });

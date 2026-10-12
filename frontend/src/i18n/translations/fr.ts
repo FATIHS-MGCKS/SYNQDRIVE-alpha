@@ -510,6 +510,12 @@ export const fr = {
   'master.cv.addVehicle.manualBaselineTitle': 'Fiche flotte manuelle',
   'master.cv.addVehicle.manualBaselineHint': 'Donnees de base, pneus, batterie LV et freins enregistres apres creation via APIs org.',
   'master.cv.addVehicle.manualServiceHistoryUnavailable': 'Historique service et HM indisponibles en creation manuelle.',
+  'master.cv.addVehicle.partialBaselineTitle': 'Vehicule cree — certaines donnees de base non enregistrees',
+  'master.cv.addVehicle.partialBaselineBody':
+    'Le vehicule existe. Sections non enregistrees : {{areas}}. Completez depuis la fiche vehicule.',
+  'master.cv.addVehicle.partialBaselineAreaTires': 'pneus',
+  'master.cv.addVehicle.partialBaselineAreaBattery': 'batterie LV',
+  'master.cv.addVehicle.partialBaselineAreaBrakes': 'freins',
 
   'fleetCondition.title': 'Etat de la flotte',
   'fleetCondition.healthScore': 'Score de sante',

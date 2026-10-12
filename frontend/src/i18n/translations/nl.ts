@@ -130,6 +130,12 @@ export const nl = {
   'master.cv.addVehicle.manualBaselineTitle': 'Handmatig fleetrecord',
   'master.cv.addVehicle.manualBaselineHint': 'Basisdata, banden, LV-accu en remmen worden na aanmaken via org-APIs opgeslagen.',
   'master.cv.addVehicle.manualServiceHistoryUnavailable': 'Servicehistorie en HM niet beschikbaar bij handmatig aanmaken.',
+  'master.cv.addVehicle.partialBaselineTitle': 'Voertuig aangemaakt — sommige basisdata niet opgeslagen',
+  'master.cv.addVehicle.partialBaselineBody':
+    'Het voertuigrecord bestaat. Niet opgeslagen: {{areas}}. Vul aan via voertuigdetail.',
+  'master.cv.addVehicle.partialBaselineAreaTires': 'banden',
+  'master.cv.addVehicle.partialBaselineAreaBattery': 'LV-accu',
+  'master.cv.addVehicle.partialBaselineAreaBrakes': 'remmen',
 
   'fleetCondition.title': 'Vlootstatus', 'fleetCondition.healthScore': 'Gezondheidsscore', 'fleetCondition.goodCondition': 'Goed', 'fleetCondition.warnings': 'Waarschuwingen', 'fleetCondition.critical': 'Kritiek',
   'newBooking.title': 'Nieuwe boeking', 'newBooking.selectCustomer': 'Klant selecteren', 'newBooking.selectVehicle': 'Voertuig selecteren', 'newBooking.timePeriod': 'Periode en ophaling', 'newBooking.mileagePackages': 'Kilometerpakketten', 'newBooking.insurancePackages': 'Verzekeringspakketten', 'newBooking.extras': 'Extra\'s', 'newBooking.invoice': 'Factuur', 'newBooking.rentalContract': 'Huurovereenkomst', 'newBooking.createCustomer': 'Nieuwe klant aanmaken', 'newBooking.bookingCreated': 'Boeking aangemaakt!',

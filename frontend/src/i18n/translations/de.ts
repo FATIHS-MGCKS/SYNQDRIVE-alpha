@@ -3482,6 +3482,12 @@ export const de: Record<TranslationKey, string> = {
     'Stammdaten, Reifen, LV-Batterie und Brems-Baseline werden nach dem Anlegen über bestehende Org-APIs gespeichert. Es wird keine DIMO- oder Telematik-Verbindung erzeugt.',
   'master.cv.addVehicle.manualServiceHistoryUnavailable':
     'Service-Historie-Daten und High-Mobility-Aktivierung sind bei manueller Anlage nicht verfügbar — DIMO-Registrierung nutzen oder Fahrzeug nach dem Onboarding pflegen.',
+  'master.cv.addVehicle.partialBaselineTitle': 'Fahrzeug angelegt — einige Basisdaten wurden nicht gespeichert',
+  'master.cv.addVehicle.partialBaselineBody':
+    'Der Fahrzeugdatensatz existiert. Diese Bereiche konnten nicht gespeichert werden: {{areas}}. Bitte im Fahrzeugdetail ergänzen.',
+  'master.cv.addVehicle.partialBaselineAreaTires': 'Reifen',
+  'master.cv.addVehicle.partialBaselineAreaBattery': 'LV-Batterie',
+  'master.cv.addVehicle.partialBaselineAreaBrakes': 'Bremsen',
 
   // ─── Fleet Condition ───
   'fleetCondition.title': 'Flottenzustand',

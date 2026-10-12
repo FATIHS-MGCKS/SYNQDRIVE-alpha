@@ -129,6 +129,12 @@ export const cs = {
   'master.cv.addVehicle.manualBaselineTitle': 'Rucni zaznam flotily',
   'master.cv.addVehicle.manualBaselineHint': 'Zakladni data, pneu, LV baterie a brzdy se ulozi po vytvoreni pres org API.',
   'master.cv.addVehicle.manualServiceHistoryUnavailable': 'Historie servisu a HM pri rucnim vytvoreni nedostupne.',
+  'master.cv.addVehicle.partialBaselineTitle': 'Vozidlo vytvoreno — cast zakladnich dat se neulozila',
+  'master.cv.addVehicle.partialBaselineBody':
+    'Zaznam vozidla existuje. Neulozeno: {{areas}}. Doplnte v detailu vozidla.',
+  'master.cv.addVehicle.partialBaselineAreaTires': 'pneumatiky',
+  'master.cv.addVehicle.partialBaselineAreaBattery': 'LV baterie',
+  'master.cv.addVehicle.partialBaselineAreaBrakes': 'brzdy',
 
   'fleetCondition.title': 'Stav flotily', 'fleetCondition.healthScore': 'Skore zdravi', 'fleetCondition.goodCondition': 'Dobry', 'fleetCondition.warnings': 'Varovani', 'fleetCondition.critical': 'Kriticky',
   'newBooking.title': 'Nova rezervace', 'newBooking.selectCustomer': 'Vybrat zakaznika', 'newBooking.selectVehicle': 'Vybrat vozidlo', 'newBooking.timePeriod': 'Obdobi a vyzvednuti', 'newBooking.mileagePackages': 'Kilometrove balicky', 'newBooking.insurancePackages': 'Pojistne balicky', 'newBooking.extras': 'Doplnky', 'newBooking.invoice': 'Faktura', 'newBooking.rentalContract': 'Najemni smlouva', 'newBooking.createCustomer': 'Vytvorit noveho zakaznika', 'newBooking.bookingCreated': 'Rezervace vytvorena!',

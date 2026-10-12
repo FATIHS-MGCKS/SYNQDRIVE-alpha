@@ -126,9 +126,24 @@ export function buildVehicleManualSpecs(rv: RegisteredVehicle) {
   return Object.keys(manualSpecs).length > 0 ? manualSpecs : undefined;
 }
 
+export type ManualBaselineArea = 'tires' | 'battery' | 'brakes';
+
+export type ManualBaselineFailure = {
+  area: ManualBaselineArea;
+  message: string;
+};
+
 export type PersistMasterVehicleResult = {
   vehicleId: string;
+  /** Present when the vehicle was created but post-create baseline APIs failed (manual create only). */
+  baselineFailures?: ManualBaselineFailure[];
 };
+
+function baselineErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === 'string') return error;
+  return 'UNKNOWN_ERROR';
+}
 
 type ManualTirePayload = {
   frontDimension?: string | null;
@@ -171,13 +186,15 @@ export async function applyManualBaselinesAfterCreate(
   orgId: string,
   vehicleId: string,
   rv: RegisteredVehicle,
-): Promise<void> {
+): Promise<ManualBaselineFailure[]> {
+  const failures: ManualBaselineFailure[] = [];
   const manualSpecs = buildVehicleManualSpecs(rv);
-  if (!manualSpecs) return;
+  if (!manualSpecs) return failures;
 
   const tires = manualSpecs.tires as ManualTirePayload | undefined;
   if (tires) {
-    await api.vehicles.upsertTires(orgId, vehicleId, {
+    try {
+      await api.vehicles.upsertTires(orgId, vehicleId, {
       frontDimension: tires.frontDimension ?? null,
       rearDimension: tires.rearDimension ?? null,
       brandModelFront: tires.brandModelFront ?? null,
@@ -194,18 +211,25 @@ export async function applyManualBaselinesAfterCreate(
       treadFR: tires.treadFR ?? null,
       treadBL: tires.treadBL ?? null,
       treadBR: tires.treadBR ?? null,
-    });
+      });
+    } catch (error) {
+      failures.push({ area: 'tires', message: baselineErrorMessage(error) });
+    }
   }
 
   const battery = manualSpecs.battery as ManualBatteryPayload | undefined;
   if (battery) {
-    await api.vehicleIntelligence.createBatterySpec(vehicleId, {
+    try {
+      await api.vehicleIntelligence.createBatterySpec(vehicleId, {
       batteryType: battery.batteryType ?? null,
       batteryAmpere: battery.batteryAmpere ?? null,
       batteryVolt: battery.batteryVolt ?? null,
       sourceType: 'MANUAL',
       sourceConfidence: 1,
-    });
+      });
+    } catch (error) {
+      failures.push({ area: 'battery', message: baselineErrorMessage(error) });
+    }
   }
 
   const brakes = manualSpecs.brakes as ManualBrakePayload | undefined;
@@ -216,16 +240,22 @@ export async function applyManualBaselinesAfterCreate(
       brakes.frontRotorWidth != null ||
       brakes.rearRotorWidth != null;
     if (hasPad) {
-      await api.vehicleIntelligence.brakeHealthInitialize(vehicleId, {
-        serviceDate: new Date().toISOString(),
-        odometerKm: brakes.odometerKm ?? parseOptionalNumber(rv.mileage) ?? undefined,
-        frontPadMm: brakes.frontPadThickness ?? undefined,
-        rearPadMm: brakes.rearPadThickness ?? undefined,
-        frontRotorWidthMm: brakes.frontRotorWidth ?? undefined,
-        rearRotorWidthMm: brakes.rearRotorWidth ?? undefined,
-      });
+      try {
+        await api.vehicleIntelligence.brakeHealthInitialize(vehicleId, {
+          serviceDate: new Date().toISOString(),
+          odometerKm: brakes.odometerKm ?? parseOptionalNumber(rv.mileage) ?? undefined,
+          frontPadMm: brakes.frontPadThickness ?? undefined,
+          rearPadMm: brakes.rearPadThickness ?? undefined,
+          frontRotorWidthMm: brakes.frontRotorWidth ?? undefined,
+          rearRotorWidthMm: brakes.rearRotorWidth ?? undefined,
+        });
+      } catch (error) {
+        failures.push({ area: 'brakes', message: baselineErrorMessage(error) });
+      }
     }
   }
+
+  return failures;
 }
 
 export async function persistMasterRegisteredVehicle(
@@ -271,6 +301,9 @@ export async function persistMasterRegisteredVehicle(
     throw new Error('MANUAL_CREATE_NO_VEHICLE_ID');
   }
   const id = String(vehicleId);
-  await applyManualBaselinesAfterCreate(orgId, id, rv);
-  return { vehicleId: id };
+  const baselineFailures = await applyManualBaselinesAfterCreate(orgId, id, rv);
+  return {
+    vehicleId: id,
+    baselineFailures: baselineFailures.length > 0 ? baselineFailures : undefined,
+  };
 }

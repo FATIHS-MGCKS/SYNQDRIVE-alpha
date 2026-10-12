@@ -129,6 +129,12 @@ export const es = {
   'master.cv.addVehicle.manualBaselineTitle': 'Registro manual de flota',
   'master.cv.addVehicle.manualBaselineHint': 'Datos base, neumaticos, bateria LV y frenos se guardan tras crear via APIs de org.',
   'master.cv.addVehicle.manualServiceHistoryUnavailable': 'Historial de servicio y HM no disponibles en creacion manual.',
+  'master.cv.addVehicle.partialBaselineTitle': 'Vehiculo creado — algunos datos base no se guardaron',
+  'master.cv.addVehicle.partialBaselineBody':
+    'El registro del vehiculo existe. No se guardo: {{areas}}. Complete en el detalle del vehiculo.',
+  'master.cv.addVehicle.partialBaselineAreaTires': 'neumaticos',
+  'master.cv.addVehicle.partialBaselineAreaBattery': 'bateria LV',
+  'master.cv.addVehicle.partialBaselineAreaBrakes': 'frenos',
 
   'fleetCondition.title': 'Estado de la flota', 'fleetCondition.healthScore': 'Puntuacion de salud', 'fleetCondition.goodCondition': 'Bueno', 'fleetCondition.warnings': 'Advertencias', 'fleetCondition.critical': 'Critico',
   'newBooking.title': 'Nueva reserva', 'newBooking.selectCustomer': 'Seleccionar cliente', 'newBooking.selectVehicle': 'Seleccionar vehiculo', 'newBooking.timePeriod': 'Periodo y recogida', 'newBooking.mileagePackages': 'Paquetes de kilometraje', 'newBooking.insurancePackages': 'Paquetes de seguro', 'newBooking.extras': 'Extras', 'newBooking.invoice': 'Factura', 'newBooking.rentalContract': 'Contrato de alquiler', 'newBooking.createCustomer': 'Crear nuevo cliente', 'newBooking.bookingCreated': 'Reserva creada!',

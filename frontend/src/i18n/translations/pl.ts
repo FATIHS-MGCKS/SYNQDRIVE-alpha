@@ -129,6 +129,12 @@ export const pl = {
   'master.cv.addVehicle.manualBaselineTitle': 'Rekord floty reczny',
   'master.cv.addVehicle.manualBaselineHint': 'Dane podstawowe, opony, bateria LV i hamulce zapisywane po utworzeniu przez org API.',
   'master.cv.addVehicle.manualServiceHistoryUnavailable': 'Historia serwisu i HM niedostepne przy recznym tworzeniu — uzyj DIMO lub edycji pozniej.',
+  'master.cv.addVehicle.partialBaselineTitle': 'Pojazd utworzony — czesc danych bazowych nie zapisana',
+  'master.cv.addVehicle.partialBaselineBody':
+    'Rekord pojazdu istnieje. Nie zapisano: {{areas}}. Uzupelnij w szczegolach pojazdu.',
+  'master.cv.addVehicle.partialBaselineAreaTires': 'opony',
+  'master.cv.addVehicle.partialBaselineAreaBattery': 'bateria LV',
+  'master.cv.addVehicle.partialBaselineAreaBrakes': 'hamulce',
 
   'fleetCondition.title': 'Stan floty', 'fleetCondition.healthScore': 'Wynik zdrowia', 'fleetCondition.goodCondition': 'Dobry', 'fleetCondition.warnings': 'Ostrzezenia', 'fleetCondition.critical': 'Krytyczny',
   'newBooking.title': 'Nowa rezerwacja', 'newBooking.selectCustomer': 'Wybierz klienta', 'newBooking.selectVehicle': 'Wybierz pojazd', 'newBooking.timePeriod': 'Okres i odbior', 'newBooking.mileagePackages': 'Pakiety kilometrowe', 'newBooking.insurancePackages': 'Pakiety ubezpieczeniowe', 'newBooking.extras': 'Dodatki', 'newBooking.invoice': 'Faktura', 'newBooking.rentalContract': 'Umowa najmu', 'newBooking.createCustomer': 'Utworz nowego klienta', 'newBooking.bookingCreated': 'Rezerwacja utworzona!',
