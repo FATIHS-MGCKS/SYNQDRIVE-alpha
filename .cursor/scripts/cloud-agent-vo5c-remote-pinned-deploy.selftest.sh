@@ -21,8 +21,15 @@ export CLOUD_AGENT_VO5C_SESSION_TEST_SKIP_OWNER=1
 cloud_agent_vo5c_validate_shared_path '/opt/synqdrive/shared/foo' && pass path_valid_opt
 if cloud_agent_vo5c_validate_shared_path '/tmp/evil'; then fail path_outside_opt; else pass path_outside_opt; fi
 if cloud_agent_vo5c_validate_shared_path '/opt/synqdrive/$(id)'; then fail path_metachar; else pass path_metachar_reject; fi
+if cloud_agent_vo5c_validate_shared_path '/opt/synqdrive/../etc/passwd'; then fail path_traversal; else pass path_traversal_reject; fi
 
+SD_ROOT="${ROOT_T}/synqdrive"
+mkdir -p "${SD_ROOT}/shared"
+mkdir -p "${ROOT_T}/outside"
+ln -s "${ROOT_T}/outside" "${SD_ROOT}/escape"
 export CLOUD_AGENT_VO5C_TEST_SKIP_PATH_ROOT=1
+export CLOUD_AGENT_VO5C_TEST_PATH_ROOT="${SD_ROOT}"
+if cloud_agent_vo5c_validate_shared_path "${SD_ROOT}/escape/foo"; then fail symlink_escape; else pass symlink_escape_reject; fi
 
 write_session() {
   local file=$1
@@ -66,21 +73,21 @@ WT_PIN="$(mktemp -d)"
 git -C "$REPO_ROOT" worktree add --detach "$WT_PIN" "$HEAD_SHA" >/dev/null
 trap 'git -C "$REPO_ROOT" worktree remove --force "$WT_PIN" 2>/dev/null || rm -rf "$WT_PIN"; rm -rf "$ROOT_T"' EXIT
 
-PIN_FILE="${ROOT_T}/pin.env"
+PIN_FILE="${SD_ROOT}/shared/pin.env"
 cat >"$PIN_FILE" <<EOF
 SYNQDRIVE_PINNED_EXECUTOR_ROOT=${WT_PIN}
 SYNQDRIVE_PINNED_EXECUTOR_SHA=${HEAD_SHA}
 EOF
 
-AUTH_OFF="${ROOT_T}/auth-off.env"
+AUTH_OFF="${SD_ROOT}/shared/auth-off.env"
 echo 'VO5C_PRODUCTION_DEPLOY_ENFORCEMENT_ACTIVE=0' >"$AUTH_OFF"
-AUTH_ON="${ROOT_T}/auth-on.env"
+AUTH_ON="${SD_ROOT}/shared/auth-on.env"
 cat >"$AUTH_ON" <<EOF
 VO5C_PRODUCTION_DEPLOY_ENFORCEMENT_ACTIVE=1
 SYNQDRIVE_PINNED_EXECUTOR_ROOT=${WT_PIN}
 SYNQDRIVE_PINNED_EXECUTOR_SHA=${HEAD_SHA}
 EOF
-AUTH_BAD="${ROOT_T}/auth-bad.env"
+AUTH_BAD="${SD_ROOT}/shared/auth-bad.env"
 echo 'VO5C_PRODUCTION_DEPLOY_ENFORCEMENT_ACTIVE=maybe' >"$AUTH_BAD"
 
 cloud_agent_vo5c_invoke_pinned_runner_hook() {
@@ -88,22 +95,22 @@ cloud_agent_vo5c_invoke_pinned_runner_hook() {
   return 0
 }
 
-write_session "${ROOT_T}/sess-ok" "$HEAD_SHA" "$until"
+write_session "${SD_ROOT}/shared/sess-ok" "$HEAD_SHA" "$until"
 set +e
-out=$(cloud_agent_vo5c_run_remote_pinned_deploy "$HEAD_SHA" "$PIN_FILE" "${ROOT_T}/sess-ok" "$AUTH_OFF" "$ARMED" "" 2>&1)
+out=$(cloud_agent_vo5c_run_remote_pinned_deploy "$HEAD_SHA" "$PIN_FILE" "${SD_ROOT}/shared/sess-ok" "$AUTH_OFF" "$ARMED" "" 2>&1)
 rc=$?
 set -e
 [[ "$rc" -eq 0 ]] && echo "$out" | grep -q MOCK_RUNNER_INVOKED && pass enforcement_off_pinned_ok || fail "enforcement_off_pinned_ok rc=${rc} out=${out}"
 
-write_session "${ROOT_T}/sess-on" "$HEAD_SHA" "$until"
+write_session "${SD_ROOT}/shared/sess-on" "$HEAD_SHA" "$until"
 set +e
-out=$(cloud_agent_vo5c_run_remote_pinned_deploy "$HEAD_SHA" "$PIN_FILE" "${ROOT_T}/sess-on" "$AUTH_ON" "$ARMED" "" 2>&1)
+out=$(cloud_agent_vo5c_run_remote_pinned_deploy "$HEAD_SHA" "$PIN_FILE" "${SD_ROOT}/shared/sess-on" "$AUTH_ON" "$ARMED" "" 2>&1)
 rc=$?
 set -e
 [[ "$rc" -eq 0 ]] && echo "$out" | grep -q 'enforcement ACTIVE' && pass enforcement_on_pinned_ok || fail "enforcement_on_pinned_ok rc=${rc}"
 
 set +e
-rc_bad=$(cloud_agent_vo5c_run_remote_pinned_deploy "$HEAD_SHA" "$PIN_FILE" "${ROOT_T}/sess-on" "$AUTH_BAD" "$ARMED" "" 2>/dev/null)
+rc_bad=$(cloud_agent_vo5c_run_remote_pinned_deploy "$HEAD_SHA" "$PIN_FILE" "${SD_ROOT}/shared/sess-on" "$AUTH_BAD" "$ARMED" "" 2>/dev/null)
 set -e
 [[ "$rc_bad" -ne 0 ]] && pass invalid_authority_reject
 
@@ -111,14 +118,21 @@ rm -f "$AUTH_OFF"
 touch "${ROOT_T}/armed-stamp"
 ! cloud_agent_vo5c_load_authority_state "$AUTH_OFF" "${ROOT_T}/armed-stamp" && pass missing_authority_after_armed
 
-echo 'VO5C_PRODUCTION_DEPLOY_ENFORCEMENT_ACTIVE=0' >"${ROOT_T}/auth-off.env"
-write_session "${ROOT_T}/sess-miss" "$HEAD_SHA" "$until"
-rm -f "${ROOT_T}/sess-miss"
+echo 'VO5C_PRODUCTION_DEPLOY_ENFORCEMENT_ACTIVE=0' >"${SD_ROOT}/shared/auth-off.env"
+write_session "${SD_ROOT}/shared/sess-miss" "$HEAD_SHA" "$until"
+rm -f "${SD_ROOT}/shared/sess-miss"
+export SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1
 set +e
-cloud_agent_vo5c_run_remote_pinned_deploy "$HEAD_SHA" "$PIN_FILE" "${ROOT_T}/sess-miss" "${ROOT_T}/auth-off.env" "$ARMED" "" >/dev/null 2>&1
+cloud_agent_vo5c_run_remote_pinned_deploy "$HEAD_SHA" "$PIN_FILE" "${SD_ROOT}/shared/sess-miss" "${SD_ROOT}/shared/auth-off.env" "$ARMED" "" >/dev/null 2>&1
 rc=$?
 set -e
 [[ "$rc" -eq 42 ]] && pass missing_auth_exit_42 || fail "missing_auth_exit_42 rc=${rc}"
+unset SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED
+
+write_session "${SD_ROOT}/shared/sess-resolve" "$HEAD_SHA" "$until"
+cloud_agent_vo5c_resolve_human_authorization "${SD_ROOT}/shared/sess-resolve" "$HEAD_SHA" && pass session_resolve_positive
+export SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1
+! cloud_agent_vo5c_resolve_human_authorization "${SD_ROOT}/shared/no-session" "$HEAD_SHA" && pass shell_env_fallback_rejected
 
 STAGED_TEST="${ROOT_T}/staged2"
 mkdir -p "$STAGED_TEST"
@@ -128,7 +142,7 @@ actual=$(git -C "$STAGED_TEST" rev-parse HEAD)
 [[ "$(echo "$actual" | tr '[:upper:]' '[:lower:]')" == "$(echo "$HEAD_SHA" | tr '[:upper:]' '[:lower:]')" ]] && pass staged_fixture_exact_sha
 
 set +e
-cloud_agent_vo5c_prepare_staged_release_checkout "${ROOT_T}/staged-missing" "$SHA_B" >/dev/null 2>&1
+cloud_agent_vo5c_prepare_staged_release_checkout "${SD_ROOT}/staging-missing" "$SHA_B" >/dev/null 2>&1
 rc_stg=$?
 set -e
 [[ "$rc_stg" -ne 0 ]] && pass staged_preflight_failure_fail_closed || fail staged_preflight
@@ -137,6 +151,6 @@ write_session "${ROOT_T}/sess-revoke" "$HEAD_SHA" "$until"
 cloud_agent_vo5c_revoke_operator_session_file "${ROOT_T}/sess-revoke"
 [[ ! -f "${ROOT_T}/sess-revoke" ]] && pass session_revoke
 
-grep -q 'SYNQDRIVE_DEPLOY_MONITORING_FAIL_RC:-4' "${REPO_ROOT}/backend/scripts/ops/vps-deploy-release.sh" && pass monitoring_exit_4_stable
+bash "${REPO_ROOT}/backend/scripts/ops/vps-deploy-monitoring-outcome.selftest.sh" && pass monitoring_exit_4_immutable
 
 echo "ALL_CLOUD_AGENT_REMOTE_SELFTEST_PASS"

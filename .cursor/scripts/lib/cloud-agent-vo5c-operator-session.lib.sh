@@ -17,19 +17,90 @@ cloud_agent_vo5c_normalize_sha() {
   printf '%s' "$1" | tr '[:upper:]' '[:lower:]'
 }
 
+cloud_agent_vo5c_shared_path_root() {
+  if [[ "${CLOUD_AGENT_VO5C_TEST_SKIP_PATH_ROOT:-0}" == "1" ]]; then
+    printf '%s' "${CLOUD_AGENT_VO5C_TEST_PATH_ROOT:-/tmp/synqdrive-vo5c-test}"
+  else
+    printf '%s' '/opt/synqdrive'
+  fi
+}
+
+cloud_agent_vo5c_path_has_forbidden_dot_segments() {
+  local path=$1
+  local seg
+  local IFS='/'
+  for seg in $path; do
+    [[ "$seg" == "." || "$seg" == ".." ]] && return 0
+  done
+  return 1
+}
+
+# Fail-closed path gate: canonical path must remain under shared root; parent symlinks cannot escape.
 cloud_agent_vo5c_validate_shared_path() {
   local path=$1
   [[ -n "$path" ]] || return 1
-  if [[ "${CLOUD_AGENT_VO5C_TEST_SKIP_PATH_ROOT:-0}" != "1" ]]; then
-    [[ "$path" == /opt/synqdrive/* ]] || return 1
-  else
-    [[ "$path" == /* ]] || return 1
-  fi
+  [[ "$path" == /* ]] || return 1
   [[ "$path" != *$'\n'* ]] || return 1
   case "$path" in
     *';'*|*'|'*|*'`'*|*'$('*|*'>'*|*'<'*|*'&'*|*'('*|*')'*|*'#'*|*'!'*) return 1 ;;
   esac
+  if cloud_agent_vo5c_path_has_forbidden_dot_segments "$path"; then
+    return 1
+  fi
+  if ! command -v realpath >/dev/null 2>&1; then
+    echo "ABORT: realpath required for VO5C shared path validation" >&2
+    return 1
+  fi
+
+  local root root_prefix
+  root="$(cloud_agent_vo5c_shared_path_root)"
+  root_prefix="${root}/"
+
+  if [[ "$path" != "$root" && "$path" != "${root_prefix}"* ]]; then
+    return 1
+  fi
+
+  local canon
+  canon="$(realpath -m "$path")"
+  if [[ "$canon" != "$root" && "$canon" != "${root_prefix}"* ]]; then
+    return 1
+  fi
+
+  local rel="${path#${root}/}"
+  if [[ "$path" == "$root" ]]; then
+    rel=""
+  fi
+  local current="$root"
+  if [[ -n "$rel" ]]; then
+    local seg
+    local IFS='/'
+    for seg in $rel; do
+      [[ -z "$seg" ]] && continue
+      current="${current}/${seg}"
+      if [[ -L "$current" ]]; then
+        local link_phys
+        link_phys="$(realpath -P "$current")"
+        if [[ "$link_phys" != "$root" && "$link_phys" != "${root_prefix}"* ]]; then
+          return 1
+        fi
+      fi
+    done
+  fi
+
+  if [[ -e "$path" || -L "$path" ]]; then
+    local phys
+    phys="$(realpath -P "$path")"
+    if [[ "$phys" != "$root" && "$phys" != "${root_prefix}"* ]]; then
+      return 1
+    fi
+  fi
   return 0
+}
+
+cloud_agent_vo5c_canonical_shared_path() {
+  local path=$1
+  cloud_agent_vo5c_validate_shared_path "$path" || return 1
+  realpath -m "$path"
 }
 
 cloud_agent_vo5c_validate_operator_session_file_metadata() {

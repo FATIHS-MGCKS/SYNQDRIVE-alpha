@@ -72,54 +72,50 @@ cloud_agent_vo5c_prepare_staged_release_checkout() {
   if [[ -z "$staged_root" ]]; then
     return 0
   fi
-  if ! cloud_agent_vo5c_validate_shared_path "$staged_root"; then
+  local staged_canon
+  if ! staged_canon="$(cloud_agent_vo5c_canonical_shared_path "$staged_root")"; then
     echo "ABORT: invalid SYNQDRIVE_STAGED_RELEASE_ROOT" >&2
     return 1
   fi
-  mkdir -p "$staged_root"
-  if [[ ! -d "${staged_root}/.git" ]]; then
-    git init -q "$staged_root"
-    git -C "$staged_root" remote add origin "${SYNQDRIVE_GIT_REPO:-https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git}" 2>/dev/null \
-      || git -C "$staged_root" remote set-url origin "${SYNQDRIVE_GIT_REPO:-https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git}"
+  mkdir -p "$staged_canon"
+  if [[ ! -d "${staged_canon}/.git" ]]; then
+    git init -q "$staged_canon"
+    git -C "$staged_canon" remote add origin "${SYNQDRIVE_GIT_REPO:-https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git}" 2>/dev/null \
+      || git -C "$staged_canon" remote set-url origin "${SYNQDRIVE_GIT_REPO:-https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git}"
   fi
-  if ! git -C "$staged_root" fetch --depth 1 origin "$requested_sha"; then
+  if ! git -C "$staged_canon" fetch --depth 1 origin "$requested_sha"; then
     echo "ABORT: staged release fetch failed for ${requested_sha}" >&2
     return 1
   fi
-  if ! git -C "$staged_root" checkout -q FETCH_HEAD; then
+  if ! git -C "$staged_canon" checkout -q FETCH_HEAD; then
     echo "ABORT: staged release checkout failed" >&2
     return 1
   fi
   local actual
-  actual="$(git -C "$staged_root" rev-parse HEAD)"
+  actual="$(git -C "$staged_canon" rev-parse HEAD)"
   actual="$(cloud_agent_vo5c_normalize_sha "$actual")"
   if [[ "$actual" != "$(cloud_agent_vo5c_normalize_sha "$requested_sha")" ]]; then
     echo "ABORT: staged release HEAD ${actual} != requested ${requested_sha}" >&2
     return 1
   fi
-  export SYNQDRIVE_STAGED_RELEASE_ROOT="$staged_root"
+  export SYNQDRIVE_STAGED_RELEASE_ROOT="$staged_canon"
   return 0
 }
 
+# Cloud Agent / tar-stream delegate: operator session file only (no shell env fallback).
+# Manual VPS pinned-runner invocation may still export SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1 directly.
 cloud_agent_vo5c_resolve_human_authorization() {
   local session_file=$1
   local requested_sha=$2
-  SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=0
 
-  if [[ -f "$session_file" ]]; then
-    if cloud_agent_vo5c_parse_operator_session_file "$session_file" "$requested_sha"; then
-      SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1
-      export SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED
-      return 0
-    fi
+  if [[ ! -f "$session_file" ]]; then
     return 1
   fi
-
-  if [[ "${SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED:-0}" == "1" ]]; then
-    export SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED
-    return 0
+  if ! cloud_agent_vo5c_parse_operator_session_file "$session_file" "$requested_sha"; then
+    return 1
   fi
-  return 1
+  export SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1
+  return 0
 }
 
 cloud_agent_vo5c_run_remote_pinned_deploy() {
@@ -164,7 +160,7 @@ cloud_agent_vo5c_run_remote_pinned_deploy() {
   export SYNQDRIVE_REQUESTED_DEPLOY_SHA="$(cloud_agent_vo5c_normalize_sha "$requested_sha")"
 
   if ! cloud_agent_vo5c_resolve_human_authorization "$session_file" "$requested_sha"; then
-    echo "ABORT: SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1 not set (human release authorization required)" >&2
+    echo "ABORT: operator deploy session file missing or invalid (Cloud Agent requires VPS session file)" >&2
     return "$CLOUD_AGENT_REMOTE_EXIT_MISSING_AUTH"
   fi
 

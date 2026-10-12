@@ -27,6 +27,11 @@ pass "delegates_pinned_runner_via_tar"
 grep -q 'exit 42' "$SCRIPT" || fail "missing_operator_auth_exit_42"
 pass "operator_auth_fail_closed"
 
+if grep -A20 'cloud_agent_vo5c_resolve_human_authorization' "${ROOT}/.cursor/scripts/lib/cloud-agent-vo5c-remote-pinned-deploy.lib.sh" | grep -q 'SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED:-'; then
+  fail "cloud_agent_delegate_still_has_shell_env_fallback"
+fi
+pass "cloud_agent_session_file_only_authorization"
+
 grep -q 'enforcement active — legacy shallow-fetch' "$SCRIPT" && fail "legacy_enforcement_block_on_pinned"
 pass "no_legacy_only_enforcement_abort_in_wrapper"
 

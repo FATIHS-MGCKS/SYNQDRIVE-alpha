@@ -5,6 +5,8 @@ DEPLOY_EXECUTOR_OPS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEPLOY_EXECUTOR_ROOT="$(cd "${DEPLOY_EXECUTOR_OPS_DIR}/../../.." && pwd)"
 # shellcheck source=lib/vps-exp021-fleet-deploy-guard.lib.sh
 source "${DEPLOY_EXECUTOR_OPS_DIR}/lib/vps-exp021-fleet-deploy-guard.lib.sh"
+# shellcheck source=lib/vps-deploy-monitoring-outcome.lib.sh
+source "${DEPLOY_EXECUTOR_OPS_DIR}/lib/vps-deploy-monitoring-outcome.lib.sh"
 
 GIT_REPO="${SYNQDRIVE_GIT_REPO:-https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git}"
 REQUESTED_SHA="${SYNQDRIVE_REQUESTED_DEPLOY_SHA:-}"
@@ -314,6 +316,7 @@ echo "==> DEPLOY_OUTCOME app_verified=${DEPLOY_APP_VERIFIED} attestation=${DEPLO
 echo "Deployed release: ${RELEASE_ID} ($(git -C "$RELEASE_DIR" rev-parse --short HEAD))"
 
 if [[ "$MONITORING_REFRESH_STATUS" == "failed" ]]; then
-  echo "==> Exit ${SYNQDRIVE_DEPLOY_MONITORING_FAIL_RC:-4}: replicas promoted; post-deploy monitoring refresh failed (reconcile manually)" >&2
-  exit "${SYNQDRIVE_DEPLOY_MONITORING_FAIL_RC:-4}"
+  _MONITORING_FAIL_RC="$(vps_deploy_monitoring_failure_exit_rc)"
+  echo "==> Exit ${_MONITORING_FAIL_RC}: replicas promoted; post-deploy monitoring refresh failed (reconcile manually)" >&2
+  exit "${_MONITORING_FAIL_RC}"
 fi

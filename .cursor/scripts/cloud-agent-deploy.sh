@@ -125,7 +125,8 @@ AUTHORIZED_UNTIL_EPOCH=\$(date -u -d '+15 minutes' +%s)
 SESS
   2. Revoke after deploy: sudo rm -f ${OPERATOR_SESSION_FILE}
 
-  Or run manually from pinned ops with SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1 in operator shell.
+Cloud Agent accepts only the VPS session file (not operator-shell SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED).
+Manual pinned deploy on the VPS console: export SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1 and run vps-vo5c-run-pinned-security-deploy.sh from the pinned ops tree.
 
 This script never sets SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1 and never shallow-fetches vps-deploy-release.sh from /current.
 EOF
