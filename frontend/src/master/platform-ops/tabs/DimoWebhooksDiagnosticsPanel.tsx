@@ -3,11 +3,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { DataCard, ErrorState, SectionHeader, StatusChip } from '../../../components/patterns';
 import { MasterLoadingState, MasterPageSection } from '../../shell';
 import { api } from '../../../lib/api';
-import { formatRelativeDe } from '../platform-ops.utils';
-import { PLATFORM_OPS_REFRESH_MS } from '../platform-ops.utils';
+import { formatRelativeDe, PLATFORM_OPS_REFRESH_MS } from '../platform-ops.utils';
 import type { DimoR9WebhookHealthDto } from '../dimo-webhook-health.types';
 import {
   DIMO_R9_OVERALL_LABEL_DE,
+  DIMO_R9_UI,
   dimoR9HintMessagesDe,
   dimoR9OverallTone,
 } from '../dimo-webhook-health.presentation';
@@ -30,15 +30,15 @@ function ChannelCard({
       </div>
       <p className="text-xs text-muted-foreground">{def?.triggerSemantics ?? '—'}</p>
       <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-        <dt className="text-muted-foreground">Provider-Status</dt>
-        <dd>{def?.status ?? 'unbekannt'}</dd>
-        <dt className="text-muted-foreground">Failure Count</dt>
+        <dt className="text-muted-foreground">{DIMO_R9_UI.providerStatusLabel}</dt>
+        <dd>{def?.status ?? DIMO_R9_UI.unknownStatus}</dd>
+        <dt className="text-muted-foreground">{DIMO_R9_UI.failureCountLabel}</dt>
         <dd>{def?.failureCount ?? '—'}</dd>
-        <dt className="text-muted-foreground">Abonnements</dt>
+        <dt className="text-muted-foreground">{DIMO_R9_UI.subscriptionsLabel}</dt>
         <dd>
           {channel.subscriberCount} / {channel.expectedSubscriberTokenIds.length}
         </dd>
-        <dt className="text-muted-foreground">Token-IDs</dt>
+        <dt className="text-muted-foreground">{DIMO_R9_UI.tokenIdsLabel}</dt>
         <dd className="font-mono break-all">{channel.subscriberTokenIds.join(', ') || '—'}</dd>
       </dl>
     </DataCard>
@@ -61,7 +61,7 @@ export function DimoWebhooksDiagnosticsPanel() {
       );
       setData(res);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'DIMO Webhook-Status konnte nicht geladen werden');
+      setError(e instanceof Error ? e.message : DIMO_R9_UI.loadError);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -75,7 +75,11 @@ export function DimoWebhooksDiagnosticsPanel() {
   }, [load]);
 
   if (loading && !data) return <MasterLoadingState variant="card" />;
-  if (error && !data) return <ErrorState title="DIMO Webhooks" error={error} onRetry={() => void load(true)} />;
+  if (error && !data) {
+    return (
+      <ErrorState title={DIMO_R9_UI.panelTitle} error={error} onRetry={() => void load(true)} />
+    );
+  }
   if (!data) return null;
 
   const hints = dimoR9HintMessagesDe(data);
@@ -87,13 +91,17 @@ export function DimoWebhooksDiagnosticsPanel() {
           {DIMO_R9_OVERALL_LABEL_DE[data.overall]}
         </StatusChip>
         <span className="text-xs text-muted-foreground">
-          Provider-Zugang: {data.providerAccessState}
-          {data.checkedAt ? ` · Zuletzt geprüft ${formatRelativeDe(data.checkedAt)}` : ''}
-          {data.servedFromCache ? ' · Cache' : ' · Live'}
+          {DIMO_R9_UI.providerAccessPrefix}: {data.providerAccessState}
+          {data.checkedAt
+            ? ` · ${DIMO_R9_UI.lastCheckedPrefix} ${formatRelativeDe(data.checkedAt)}`
+            : ''}
+          {data.servedFromCache ? ` · ${DIMO_R9_UI.cacheSuffix}` : ` · ${DIMO_R9_UI.liveSuffix}`}
         </span>
         <span className="text-xs text-muted-foreground">
-          Auto-Refresh alle {Math.round(data.refreshCadenceMs / 1000)}s · manuell min.{' '}
-          {Math.round(data.minManualRefreshIntervalMs / 1000)}s
+          {DIMO_R9_UI.autoRefreshPrefix} {Math.round(data.refreshCadenceMs / 1000)}
+          {DIMO_R9_UI.secondsSuffix} · {DIMO_R9_UI.manualMinPrefix}{' '}
+          {Math.round(data.minManualRefreshIntervalMs / 1000)}
+          {DIMO_R9_UI.secondsSuffix}
         </span>
         <button
           type="button"
@@ -102,15 +110,12 @@ export function DimoWebhooksDiagnosticsPanel() {
           onClick={() => void load(true)}
         >
           <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-          Jetzt prüfen
+          {DIMO_R9_UI.refreshNow}
         </button>
       </DataCard>
 
       {data.wakePipelineEvidence === 'NOT_EVALUATED' && (
-        <p className="text-xs text-muted-foreground px-1">
-          Wake-to-Snapshot und Trip-FSM werden hier nicht End-to-End bewertet — nur DIMO-Webhook-Definitionen
-          und Abonnements.
-        </p>
+        <p className="text-xs text-muted-foreground px-1">{DIMO_R9_UI.wakeDisclaimer}</p>
       )}
 
       {hints.length > 0 && (
@@ -122,27 +127,29 @@ export function DimoWebhooksDiagnosticsPanel() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <ChannelCard title="Speed-Webhooks" channel={data.speed} />
-        <ChannelCard title="Ignition-Webhooks" channel={data.ignition} />
+        <ChannelCard title={DIMO_R9_UI.speedCardTitle} channel={data.speed} />
+        <ChannelCard title={DIMO_R9_UI.ignitionCardTitle} channel={data.ignition} />
       </div>
 
       <MasterPageSection>
-        <SectionHeader title="Cohort & Ausschlüsse" />
+        <SectionHeader title={DIMO_R9_UI.cohortSectionTitle} />
         <DataCard bodyClassName="p-4 text-xs space-y-2 font-mono">
           <p>
-            Erwartet: {data.cohort.expectedTokenIds.join(', ')}
+            {DIMO_R9_UI.expectedLabel}: {data.cohort.expectedTokenIds.join(', ')}
           </p>
           <p>
-            Ausgeschlossen: {data.cohort.excludedTokenIds.join(', ')}
+            {DIMO_R9_UI.excludedLabel}: {data.cohort.excludedTokenIds.join(', ')}
           </p>
           {data.cohort.excludedSubscribedTokenIds.length > 0 && (
             <p className="text-red-600">
-              Unerwartet abonniert (ausgeschlossen): {data.cohort.excludedSubscribedTokenIds.join(', ')}
+              {DIMO_R9_UI.excludedSubscribedLabel}:{' '}
+              {data.cohort.excludedSubscribedTokenIds.join(', ')}
             </p>
           )}
           {data.lastProviderError && (
             <p className="text-muted-foreground">
-              Letzter Fehler ({data.lastProviderError.state}): {data.lastProviderError.message}
+              {DIMO_R9_UI.lastErrorPrefix} ({data.lastProviderError.state}):{' '}
+              {data.lastProviderError.message}
             </p>
           )}
         </DataCard>

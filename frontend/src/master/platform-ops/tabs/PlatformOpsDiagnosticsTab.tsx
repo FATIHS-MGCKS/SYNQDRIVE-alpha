@@ -17,13 +17,14 @@ import { formatRelativeDe } from '../platform-ops.utils';
 import { api } from '../../../lib/api';
 import { SystemMonitoringView } from '../../components/SystemMonitoringView';
 import { DimoWebhooksDiagnosticsPanel } from './DimoWebhooksDiagnosticsPanel';
+import { DIMO_R9_UI } from '../dimo-webhook-health.presentation';
 
 const DIAG_TABS = [
   { id: 'alerts', label: 'Alarme' },
   { id: 'poll-logs', label: 'Abfrage-Protokolle' },
   { id: 'token-health', label: 'Token-Status' },
   { id: 'communication', label: 'Communication' },
-  { id: 'dimo-webhooks', label: 'DIMO Webhooks' },
+  { id: 'dimo-webhooks', label: DIMO_R9_UI.panelTitle },
   { id: 'tools', label: 'Tools' },
 ] as const;
 

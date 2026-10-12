@@ -4108,6 +4108,16 @@
       "introducedAt": "2026-08-30",
       "reviewAt": "2026-12-01",
       "surfaceStatus": "mounted"
+    },
+    {
+      "id": "dimo-r9-webhook-health-master-admin-presentation",
+      "classification": "OTHER_JUSTIFIED",
+      "pathPattern": "dimo-webhook-health\\.presentation",
+      "owner": "platform-frontend",
+      "reason": "Master Admin Platform Ops diagnostics presentation adapter for DIMO R9 webhook monitoring (German ops copy; aligned with sibling diagnostics tabs).",
+      "introducedAt": "2026-10-12",
+      "reviewAt": "2026-12-01",
+      "surfaceStatus": "mounted"
     }
   ],
   "entries": [],

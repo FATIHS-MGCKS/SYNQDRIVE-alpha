@@ -1,6 +1,34 @@
 import type { StatusTone } from '../../components/patterns';
 import type { DimoR9WebhookHealthDto, DimoR9WebhookOverallState } from './dimo-webhook-health.types';
 
+/** Master Admin Platform Ops — presentation adapter (German ops copy). */
+export const DIMO_R9_UI = {
+  panelTitle: 'DIMO Webhooks',
+  refreshNow: 'Jetzt prüfen',
+  loadError: 'DIMO Webhook-Status konnte nicht geladen werden',
+  cohortSectionTitle: 'Cohort & Ausschlüsse',
+  speedCardTitle: 'Speed-Webhooks',
+  ignitionCardTitle: 'Ignition-Webhooks',
+  providerStatusLabel: 'Provider-Status',
+  failureCountLabel: 'Failure Count',
+  subscriptionsLabel: 'Abonnements',
+  tokenIdsLabel: 'Token-IDs',
+  expectedLabel: 'Erwartet',
+  excludedLabel: 'Ausgeschlossen',
+  excludedSubscribedLabel: 'Unerwartet abonniert (ausgeschlossen)',
+  lastErrorPrefix: 'Letzter Fehler',
+  wakeDisclaimer:
+    'Wake-to-Snapshot und Trip-FSM werden hier nicht End-to-End bewertet — nur DIMO-Webhook-Definitionen und Abonnements.',
+  providerAccessPrefix: 'Provider-Zugang',
+  lastCheckedPrefix: 'Zuletzt geprüft',
+  cacheSuffix: 'Cache',
+  liveSuffix: 'Live',
+  autoRefreshPrefix: 'Auto-Refresh alle',
+  manualMinPrefix: 'manuell min.',
+  secondsSuffix: 's',
+  unknownStatus: 'unbekannt',
+};
+
 export const DIMO_R9_OVERALL_LABEL_DE: Record<DimoR9WebhookOverallState, string> = {
   HEALTHY: 'Betriebsbereit',
   DEGRADED: 'Eingeschränkt',
