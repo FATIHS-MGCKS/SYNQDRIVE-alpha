@@ -5,7 +5,7 @@
 | **Registry coverage status** | `AUDIT_IN_PROGRESS` |
 | **Authority maturity** | `PARTIAL_RECONSTRUCTION` |
 | **Authority directory** | `architecture/dimo-integration/` |
-| **Last updated** | 2026-09-26 |
+| **Last updated** | 2026-10-12 |
 
 ## Status banner
 
@@ -47,6 +47,14 @@ Bootstrap triggered by **R9 pre-merge governance correction** — substantive we
 | [KG-EED](../knowledge-graphs/energy-event-detection/) | REFUEL/RECHARGE event semantics |
 
 Flat `architecture/DIMO_*.md` files are **supporting evidence**, not routing authority.
+
+## Deep audit (AUDIT_FIRST)
+
+| Document | Role |
+|----------|------|
+| [audit/DEFECT_REGISTER.md](audit/DEFECT_REGISTER.md) | **Canonical** defect / risk / observability register (R4.0–R4.3 + A–F) |
+| [audit/DIMO_FULL_AUDIT_REPORT_2026-10-12.md](audit/DIMO_FULL_AUDIT_REPORT_2026-10-12.md) | Consolidated coverage, fix packs, open proofs |
+| [audit/COVERAGE_MATRIX.md](audit/COVERAGE_MATRIX.md) | DONE / PARTIAL / OPEN / BLOCKED per dimension |
 
 ## Operations runbooks
 
