@@ -406,6 +406,7 @@ export function ConnectedVehiclesHub({
         dimoVehicle={registrationDimo ?? undefined}
         organizations={organizations}
         initialOrganizationId={registrationPrefillOrgId}
+        manualCreateOnly={!registrationDimo}
         onRegister={(rv) => handlePersistRegistration(rv)}
       />
 

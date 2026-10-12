@@ -1,9 +1,21 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
+  applyManualBaselinesAfterCreate,
   buildVehicleExtraData,
   buildVehicleManualSpecs,
   mapApiDimoToDimoVehicle,
 } from './master-vehicle-registration';
+import { api } from '../../lib/api';
+
+vi.mock('../../lib/api', () => ({
+  api: {
+    vehicles: { upsertTires: vi.fn().mockResolvedValue({}) },
+    vehicleIntelligence: {
+      createBatterySpec: vi.fn().mockResolvedValue({}),
+      brakeHealthInitialize: vi.fn().mockResolvedValue({}),
+    },
+  },
+}));
 import type { RegisteredVehicle } from '../data/platform-data';
 
 function minimalRv(overrides: Partial<RegisteredVehicle> = {}): RegisteredVehicle {
@@ -95,6 +107,17 @@ describe('master-vehicle-registration payloads', () => {
     expect(extra.mileageKm).toBe(1500);
     expect(extra.hardwareType).toBe('LTE_R1');
     expect(extra.licensePlate).toBe('B-AB 123');
+  });
+
+  it('applyManualBaselinesAfterCreate calls tire, battery, and brake APIs', async () => {
+    await applyManualBaselinesAfterCreate(
+      'org-1',
+      'veh-1',
+      minimalRv({ batteryType: 'AGM', batteryAmpere: '70', batteryVolt: '12' }),
+    );
+    expect(api.vehicles.upsertTires).toHaveBeenCalled();
+    expect(api.vehicleIntelligence.createBatterySpec).toHaveBeenCalled();
+    expect(api.vehicleIntelligence.brakeHealthInitialize).toHaveBeenCalled();
   });
 
   it('builds manualSpecs when brake or tire data present', () => {

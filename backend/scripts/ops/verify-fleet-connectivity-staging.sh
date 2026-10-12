@@ -149,7 +149,7 @@ if grep -q '"apply":true' "${OUT}/reconciliation-dry-run.json" 2>/dev/null; then
 fi
 
 log "==> Jest: incident replay + negative paths + kill switch"
-npm test -- --testPathPattern='device-connection-episode-resolution\.service\.spec|device-connection-webhook-processing\.service\.spec|device-connection-episode-resolution-outbox-processor\.service\.spec|connectivity-recovery\.policy\.spec|device-connection-episode-reconciliation-evidence-package\.spec' \
+npm test -- --testPathPatterns='device-connection-episode-resolution\.service\.spec|device-connection-webhook-processing\.service\.spec|device-connection-episode-resolution-outbox-processor\.service\.spec|connectivity-recovery\.policy\.spec|device-connection-episode-reconciliation-evidence-package\.spec' \
   --passWithNoTests 2>&1 | tee "${OUT}/jest-connectivity.txt"
 
 if grep -E 'Tests:.*[1-9][0-9]* failed' "${OUT}/jest-connectivity.txt"; then

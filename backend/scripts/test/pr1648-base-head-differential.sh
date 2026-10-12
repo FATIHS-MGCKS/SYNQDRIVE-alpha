@@ -26,7 +26,7 @@ run_r10() {
   cd "$dir/backend"
   set +e
   npm test -- \
-    --testPathPattern="trip-fsm-motor-off-pause-r10|trip-end-cycle-reset|trip-end-validation-r5|trip-terminal-resting-recovery-r7" \
+    --testPathPatterns="trip-fsm-motor-off-pause-r10|trip-end-cycle-reset|trip-end-validation-r5|trip-terminal-resting-recovery-r7" \
     --no-coverage \
     > "$OUT_DIR/${label}_r10.log" 2>&1
   local code=$?

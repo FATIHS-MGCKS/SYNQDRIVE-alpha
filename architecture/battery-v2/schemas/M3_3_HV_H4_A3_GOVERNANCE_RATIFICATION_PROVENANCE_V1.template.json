@@ -1,0 +1,10 @@
+{
+  "contractVersion": "M3_3_HV_H4_A3_GOVERNANCE_RATIFICATION_PROVENANCE_V1",
+  "governancePolicyId": "M3_3_HV_H4_A3_SINGLE_OPERATOR_GOVERNANCE_CONTRACT_V1",
+  "governanceAdoptionProposalRef": "architecture/battery-v2/governance/M3_3_HV_H4_A3_SINGLE_OPERATOR_GOVERNANCE_ADOPTION_PROPOSAL_2026-10-09.md",
+  "pullRequestNumber": 0,
+  "ratifiedMergeCommitSha": "0000000000000000000000000000000000000000",
+  "authorizedOwnerIdentity": "AUTHORITY_A",
+  "ratificationAction": "OWNER_CONTROLLED_REPOSITORY_MERGE",
+  "provenanceAuthenticationStatus": "UNVERIFIED"
+}

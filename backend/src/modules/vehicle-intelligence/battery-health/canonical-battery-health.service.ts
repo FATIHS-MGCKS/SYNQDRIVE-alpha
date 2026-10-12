@@ -30,6 +30,11 @@ import {
   mapLvEvidenceValueType,
 } from './battery-lv-semantics';
 import {
+  hvCarrierObservationIsDecisionFresh,
+  presentHvCustomerTelemetryFields,
+} from './battery-hv-customer-telemetry.presenter';
+import { applyCustomerFacingBatterySummaryBoundaries } from './battery-customer-response.presenter';
+import {
   effectiveHvMeasuredSohForDecisions,
   presentLegacyHvCapacity,
 } from './hv-capacity-policy';
@@ -92,7 +97,8 @@ import {
 import {
   buildCanonicalBatterySignalFreshness,
   collectCapabilitySignalErrors,
-} from './canonical-battery/canonical-battery-signal-freshness.builder';
+} from './canonical-battery';
+import { isLvPublishedSohCustomerVisible } from './battery-v2-user-facing-lv.policy';
 import {
   classifyBatteryModuleError,
   type BatterySignalError,
@@ -232,7 +238,7 @@ export class CanonicalBatteryHealthService {
       this.batteryHealthService.getLatest(vehicleId),
       this.batteryHealthService.getSohTrend(vehicleId, 7),
       this.batteryHealthService.getSohTrend(vehicleId, 30),
-      this.batteryV2Service.getV2Health(vehicleId),
+      this.prisma.batteryFeatures.findUnique({ where: { vehicleId } }),
       this.hvBatteryHealthService.getHvBatteryStatus(vehicleId),
       this.prisma.vehicleBatterySpec.findMany({
         where: { vehicleId },
@@ -448,7 +454,6 @@ export class CanonicalBatteryHealthService {
     // never as a prominent "SOH %". The legacy voltage→SOH lookup table has
     // been removed, so there is no second LV truth anymore.
     const lvPublishedSoh = parseNum(v2?.publishedSohPct);
-    const lvHealthPercent = lvIsCalibrating ? null : lvPublishedSoh;
     const lvEstimatedHealthPercent = lvIsCalibrating
       ? parseNum(v2?.stabilizedSohPct) ??
         parseNum(v2?.rawSohPct) ??
@@ -479,6 +484,11 @@ export class CanonicalBatteryHealthService {
         sourceType: e.sourceType,
       })),
     });
+    const lvCustomerSohVisible = isLvPublishedSohCustomerVisible(
+      legacyPublicationSafety,
+    );
+    const lvHealthPercent =
+      lvIsCalibrating || !lvCustomerSohVisible ? null : lvPublishedSoh;
     const lvEstimatedHealthStatus: BatteryHealthStatus =
       effectiveLvEstimatedHealthStatusForDecisions(
         lvEstimatedHealthStatusRaw,
@@ -486,7 +496,9 @@ export class CanonicalBatteryHealthService {
       );
     const lvEstimatedHealthScorePct = lvIsCalibrating
       ? lvEstimatedHealthPercent
-      : lvPublishedSoh;
+      : lvCustomerSohVisible
+        ? lvPublishedSoh
+        : null;
 
     // Resting voltage: only a genuine resting reading is evaluated. The V2
     // rest capture and document-confirmed snapshots persist `restingVoltage`;
@@ -794,6 +806,43 @@ export class CanonicalBatteryHealthService {
       fetch: telemetryFetchFreshness,
       observation: currentTelemetryObservationFreshness,
     });
+    const hvTelemetrySocRaw =
+      parseNum(latestState?.evSoc) ?? parseNum(hvStatusAny?.currentSocPercent);
+    const hvCarrierObservationFresh = hvCarrierObservationIsDecisionFresh(
+      currentTelemetryObservationFreshness,
+    );
+    const hvTelemetryRangeRaw =
+      parseNum(latestState?.rangeKm) ?? parseNum(hvStatusAny?.estimatedRangeKm);
+    const customerHvTelemetry = presentHvCustomerTelemetryFields({
+      raw: {
+        socPercent: hvTelemetrySocRaw,
+        rangeKm: hvTelemetryRangeRaw,
+        currentEnergyKwh: parseNum(latestState?.tractionBatteryCurrentEnergyKwh),
+        grossCapacityKwhFromTelemetry: parseNum(
+          latestState?.tractionBatteryGrossCapacityKwh,
+        ),
+        addedEnergyKwh: parseNum(latestState?.tractionBatteryAddedEnergyKwh),
+        chargingPowerKw:
+          parseNum(latestState?.tractionBatteryChargingPowerKw) ??
+          parseNum(hvStatusAny?.telemetry?.chargingPowerKw) ??
+          parseNum(hvStatusAny?.chargingPowerKw),
+        currentVoltageV: parseNum(latestState?.tractionBatteryCurrentVoltage),
+        temperatureC:
+          parseNum(latestState?.tractionBatteryTemperatureC) ??
+          parseNum(hvStatusAny?.telemetry?.temperatureC) ??
+          parseNum(hvStatusAny?.temperatureC),
+        isCharging:
+          latestState?.tractionBatteryIsCharging ??
+          (hvStatusAny?.telemetry?.isCharging ??
+            hvStatusAny?.isCharging ??
+            null),
+        chargingCableConnected:
+          latestState?.tractionBatteryChargingCableConnected ?? null,
+        providerSohPercent: providerSoh,
+      },
+      carrierObservationFresh: hvCarrierObservationFresh,
+      providerSohObservationFresh: providerSohUsable,
+    });
 
     const hvStatusLabel: BatteryStatus = !isEv
       ? 'unsupported'
@@ -943,16 +992,10 @@ export class CanonicalBatteryHealthService {
       engineRunning: latestLvSnapshot?.engineRunning ?? null,
     };
     const hvLiveValues = {
-      socPercent:
-        parseNum(latestState?.evSoc) ??
-        parseNum(hvStatusAny?.currentSocPercent),
-      rangeKm:
-        parseNum(latestState?.rangeKm) ??
-        parseNum(hvStatusAny?.estimatedRangeKm),
+      socPercent: hvTelemetrySocRaw,
+      rangeKm: hvTelemetryRangeRaw,
       currentEnergyKwh: parseNum(latestState?.tractionBatteryCurrentEnergyKwh),
-      grossCapacityKwh:
-        parseNum(latestState?.tractionBatteryGrossCapacityKwh) ??
-        parseNum(hvStatusAny?.nominalCapacityKwh),
+      grossCapacityKwh: parseNum(latestState?.tractionBatteryGrossCapacityKwh),
       addedEnergyKwh: parseNum(latestState?.tractionBatteryAddedEnergyKwh),
       chargingPowerKw:
         parseNum(latestState?.tractionBatteryChargingPowerKw) ??
@@ -1272,39 +1315,7 @@ export class CanonicalBatteryHealthService {
             hvFreshness.observedAt,
           ),
         },
-        telemetry: {
-          socPercent:
-            parseNum(latestState?.evSoc) ??
-            parseNum(hvStatusAny?.currentSocPercent),
-          rangeKm:
-            parseNum(latestState?.rangeKm) ??
-            parseNum(hvStatusAny?.estimatedRangeKm),
-          chargingPowerKw:
-            parseNum(latestState?.tractionBatteryChargingPowerKw) ??
-            parseNum(hvStatusAny?.telemetry?.chargingPowerKw) ??
-            parseNum(hvStatusAny?.chargingPowerKw),
-          isCharging:
-            latestState?.tractionBatteryIsCharging ??
-            (hvStatusAny?.telemetry?.isCharging ??
-              hvStatusAny?.isCharging ??
-              null),
-          chargingCableConnected:
-            latestState?.tractionBatteryChargingCableConnected ?? null,
-          temperatureC:
-            parseNum(latestState?.tractionBatteryTemperatureC) ??
-            parseNum(hvStatusAny?.telemetry?.temperatureC) ??
-            parseNum(hvStatusAny?.temperatureC),
-          currentVoltageV:
-            parseNum(latestState?.tractionBatteryCurrentVoltage) ?? null,
-          grossCapacityKwh:
-            parseNum(latestState?.tractionBatteryGrossCapacityKwh) ??
-            parseNum(hvStatusAny?.nominalCapacityKwh),
-          currentEnergyKwh:
-            parseNum(latestState?.tractionBatteryCurrentEnergyKwh) ?? null,
-          addedEnergyKwh:
-            parseNum(latestState?.tractionBatteryAddedEnergyKwh) ?? null,
-          providerSohPercent: providerSoh,
-        },
+        telemetry: { ...customerHvTelemetry },
         snapshotCount: parseNum(hvStatusAny?.snapshotCount) ?? 0,
         interpretation: hvStatusAny?.sohInterpretation ?? null,
       },
@@ -1313,19 +1324,17 @@ export class CanonicalBatteryHealthService {
         fetchFreshness: telemetryFetchFreshness,
         observationFreshness: currentTelemetryObservationFreshness,
         freshnessBundle: currentTelemetryFreshnessBundle,
-        socPercent: parseNum(latestState?.evSoc),
-        rangeKm: parseNum(latestState?.rangeKm),
+        socPercent: customerHvTelemetry.socPercent,
+        rangeKm: customerHvTelemetry.rangeKm,
         chargingState:
-          latestState?.tractionBatteryIsCharging == null
+          customerHvTelemetry.isCharging == null
             ? null
-            : latestState.tractionBatteryIsCharging
+            : customerHvTelemetry.isCharging
               ? 'charging'
               : 'not_charging',
-        chargingPowerKw:
-          parseNum(latestState?.tractionBatteryChargingPowerKw) ??
-          parseNum(latestState?.tractionBatteryPowerKw),
+        chargingPowerKw: customerHvTelemetry.chargingPowerKw,
         lvVoltageV: parseNum(latestState?.lvBatteryVoltage),
-        genericEnergyPercent: parseNum(latestState?.evSoc),
+        genericEnergyPercent: customerHvTelemetry.socPercent,
       },
       watchpoints,
       recommendations,
@@ -1335,9 +1344,11 @@ export class CanonicalBatteryHealthService {
         sohPercent: lvHealthPercent,
         sohPercentSemantic:
           lvHealthPercent != null ? LEGACY_ESTIMATED_LV_HEALTH_SEMANTIC : null,
-        publishedSohPct: lvPublishedSoh,
+        publishedSohPct: lvCustomerSohVisible ? lvPublishedSoh : null,
         publishedSohPctSemantic:
-          lvPublishedSoh != null ? LEGACY_ESTIMATED_LV_HEALTH_SEMANTIC : null,
+          lvCustomerSohVisible && lvPublishedSoh != null
+            ? LEGACY_ESTIMATED_LV_HEALTH_SEMANTIC
+            : null,
         estimatedSohPct: lvEstimatedHealthPercent,
         estimatedSohPctSemantic:
           lvEstimatedHealthPercent != null
@@ -1392,7 +1403,9 @@ export class CanonicalBatteryHealthService {
       canonical,
     };
 
-    return summary;
+    return applyCustomerFacingBatterySummaryBoundaries(summary, customerHvTelemetry, {
+      lvPublicationCustomerVisible: lvCustomerSohVisible,
+    });
   }
 
   async getDetail(vehicleId: string) {

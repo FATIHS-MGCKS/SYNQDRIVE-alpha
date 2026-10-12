@@ -10,7 +10,7 @@ WORKFLOW_PATTERN='modules/workflows|task-automation|task-automation-outbox|booki
 run_unit() {
   echo "==> Workflow Automation unit & service tests"
   npm test -- \
-    --testPathPattern="$WORKFLOW_PATTERN" \
+    --testPathPatterns="$WORKFLOW_PATTERN" \
     --testPathIgnorePatterns='postgres\.invariants|integration\.spec' \
     --passWithNoTests
 }

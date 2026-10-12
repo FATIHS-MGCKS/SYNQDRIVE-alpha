@@ -15,7 +15,7 @@ echo "STAGE4_CONVERGENCE_REAL_PG=PASS"
 echo "==> RFRF F5-PR2 promotion boundary (P20 convergence ON / promotion OFF)"
 cd "${BACKEND_ROOT}"
 npm test -- --runInBand --forceExit \
-  --testPathPattern=raw-fuel-refuel-fallback-f5-pr2-promotion.postgres.integration.spec.ts \
+  --testPathPatterns=raw-fuel-refuel-fallback-f5-pr2-promotion.postgres.integration.spec.ts \
   --testNamePattern='P20 — convergence ON but promotion execution OFF => zero VEE'
 
 echo "==> RFRF F9 multi-replica convergence safety (independent replica + prior gates)"

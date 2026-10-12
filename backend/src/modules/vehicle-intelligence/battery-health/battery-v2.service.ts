@@ -23,6 +23,10 @@ import {
   isBatteryV2LegacyRestCaptureEnabled,
 } from '../../../config/battery-health-v2.config';
 import {
+  buildBatteryV2CustomerHealthReadModel,
+  type BatteryV2CustomerHealthReadModel,
+} from './battery-v2-customer-health.read';
+import {
   isLeadAcidCurveApplicable,
   resolveLvBatteryChemistry,
 } from '../lv-battery-chemistry/lv-battery-chemistry-resolver';
@@ -595,19 +599,12 @@ export class BatteryV2Service {
   //  PUBLIC READ
   // ══════════════════════════════════════════════════════════
 
-  async getV2Health(vehicleId: string) {
+  async getV2Health(vehicleId: string): Promise<BatteryV2CustomerHealthReadModel | null> {
     const f = await this.prisma.batteryFeatures.findUnique({
       where: { vehicleId },
     });
     if (!f) return null;
 
-    return {
-      ...f,
-      // User-facing SOH: published when available, null during calibration
-      userFacingSohPct: f.publishedSohPct,
-      publicationState: f.publicationState,
-      maturityConfidence: f.maturityConfidence,
-      signalConfidence: f.confidence,
-    };
+    return buildBatteryV2CustomerHealthReadModel(this.prisma, f);
   }
 }

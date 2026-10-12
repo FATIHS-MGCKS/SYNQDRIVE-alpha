@@ -53,10 +53,7 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - run: npm ci && npx prisma generate
         working-directory: backend
-      - run: >-
-          npm test --
-          --testPathPattern="trip-fsm-motor-off-pause-r10|trip-end-cycle-reset|trip-end-validation-r5|trip-terminal-resting-recovery-r7|trip-decision.engine.registry-admission"
-          --no-coverage
+      - run: npm run test:trip-fsm:production-readiness:r10 -- --no-coverage
         working-directory: backend
 
   backend-trip-finalize-postgres:
@@ -65,7 +62,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        image: public.ecr.aws/docker/library/postgres:16-alpine
         env:
           POSTGRES_USER: synqdrive
           POSTGRES_PASSWORD: synqdrive
@@ -147,7 +144,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        image: public.ecr.aws/docker/library/postgres:16-alpine
         env:
           POSTGRES_USER: synqdrive
           POSTGRES_PASSWORD: synqdrive
@@ -183,7 +180,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        image: public.ecr.aws/docker/library/postgres:16-alpine
         env:
           POSTGRES_USER: synqdrive
           POSTGRES_PASSWORD: synqdrive

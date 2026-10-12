@@ -11,6 +11,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { HealthService } from '@modules/health/health.service';
 import { QueueMonitoringService, type QueueJobCounts } from '@modules/observability/queue-monitoring.service';
 import { DimoAuthService } from '../dimo/dimo-auth.service';
+import { platformPruneDisabledException } from './platform-prune.errors';
 
 export interface ActivityLogEntry {
   id: string;
@@ -154,45 +155,11 @@ export class PlatformAdminService {
   }
 
   /**
-   * ⚠️  DRIFT WARNING — mirrors the CLI script at
-   *     `prisma/prune-master-data.ts`. When adding new entities to the prune
-   *     list, keep both paths in sync (see the header of that file).
+   * VO5C-P2B4-0: legacy platform-wide prune retired — unconditional fail-closed.
+   * Historical mutation inventory: see architecture/vehicle-onboarding/evidence/VO5C_P2B4_0_PRUNE_EMERGENCY_CONTAINMENT.md
    */
-  async pruneMasterData(): Promise<{ message: string }> {
-    await this.prisma.booking.deleteMany({});
-    await this.prisma.customer.deleteMany({});
-    await this.prisma.prospect.updateMany({ data: { convertedOrgId: null } });
-    await this.prisma.prospect.deleteMany({});
-    await this.prisma.vehicleLatestState.deleteMany({});
-    await this.prisma.vehiclePositionUpdate.deleteMany({});
-    await this.prisma.analyticsCache.deleteMany({});
-    await this.prisma.dimoPollLog.deleteMany({});
-    await this.prisma.vehicleEnrichmentJob.deleteMany({});
-    await this.prisma.vehicleServiceEvent.deleteMany({});
-    await this.prisma.vehicleTireTreadMeasurement.deleteMany({});
-    await this.prisma.vehicleTireSetup.deleteMany({});
-    await this.prisma.vehicleBrakeReferenceSpec.deleteMany({});
-    await this.prisma.vehicleBatterySpec.deleteMany({});
-    await this.prisma.vehicle.deleteMany({});
-    await this.prisma.station.deleteMany({});
-    await this.prisma.organizationIntegration.deleteMany({});
-    await this.prisma.organizationProduct.deleteMany({});
-    await this.prisma.billingInvoiceLine.deleteMany({});
-    await this.prisma.billingUsageSnapshot.deleteMany({});
-    await this.prisma.billingOrganizationPriceOverride.deleteMany({});
-    await this.prisma.billingPaymentMethod.deleteMany({});
-    // Audit logs are append-only (Phase 2A.7) — retained for full history.
-    await this.prisma.billingInvoice.deleteMany({});
-    await this.prisma.billingSubscription.deleteMany({});
-    await this.prisma.organizationMembership.deleteMany({});
-    // activity_logs are append-only — prune does not delete audit history.
-    await this.prisma.supportTicket.deleteMany({});
-    await this.prisma.organization.deleteMany({});
-    await this.prisma.user.deleteMany({
-      where: { platformRole: { not: 'MASTER_ADMIN' } },
-    });
-    await this.prisma.dimoVehicle.deleteMany({});
-    return { message: 'All organizations, users, vehicles, and prospects removed.' };
+  async pruneMasterData(): Promise<never> {
+    throw platformPruneDisabledException();
   }
 
   async getRevenueStats() {

@@ -49,8 +49,32 @@ assert_key_parseable "${TMPDIR}/multi" "multi-line PEM"
 
 echo "==> cloud_agent_ssh_user trims whitespace"
 CLOUD_AGENT_SSH_USER=$' root \n'
+CLOUD_AGENT_VPS_HOST=example.internal
 [[ "$(cloud_agent_ssh_user)" == "root" ]] || fail "ssh user trim"
 pass "ssh user trim"
+
+echo "==> cloud_agent_ssh_user maps Hostinger root default to synqdrive-admin"
+CLOUD_AGENT_VPS_HOST=srv1374778.hstgr.cloud
+CLOUD_AGENT_SSH_USER=root
+[[ "$(cloud_agent_ssh_user "$CLOUD_AGENT_VPS_HOST")" == "synqdrive-admin" ]] || fail "hostinger admin mapping"
+unset CLOUD_AGENT_SSH_USER
+[[ "$(cloud_agent_ssh_user "$CLOUD_AGENT_VPS_HOST")" == "synqdrive-admin" ]] || fail "hostinger unset user mapping"
+pass "hostinger admin mapping"
+
+echo "==> strict host key required for Hostinger without trusted entry"
+CLOUD_AGENT_VPS_HOST=srv1374778.hstgr.cloud
+CLOUD_AGENT_SSH_STRICT_HOST_KEY=1
+KH="${TMPDIR}/empty-known_hosts"
+: >"$KH"
+mkdir -p "${TMPDIR}/empty-home/.ssh"
+: >"${TMPDIR}/empty-home/.ssh/known_hosts"
+HOME="${TMPDIR}/empty-home"
+CLOUD_AGENT_SSH_KNOWN_HOSTS_FILE="$KH"
+if cloud_agent_ssh_require_trusted_host_key "$CLOUD_AGENT_VPS_HOST" 22; then
+  fail "expected missing host key to fail"
+fi
+pass "hostinger host key fail closed"
+unset CLOUD_AGENT_SSH_KNOWN_HOSTS_FILE
 
 if [[ -n "${CLOUD_AGENT_SSH_PRIVATE_KEY:-}" ]]; then
   echo "==> live secret from environment"

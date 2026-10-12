@@ -80,6 +80,6 @@ PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 bash scripts/test/prisma-migrate-deploy-resi
 sync_schema_drift_if_needed
 export RAW_REFUEL_CANDIDATE_RECOVERY_F10_6_8_C_INTEGRATION=1
 npm test -- --runInBand --forceExit \
-  --testPathPattern='raw-refuel-candidate-recovery-f10-6-8-c.postgres.integration.spec.ts'
+  --testPathPatterns='raw-refuel-candidate-recovery-f10-6-8-c.postgres.integration.spec.ts'
 
 echo "F10_6_8_C_RECOVERY_PROMOTION_GATE=PASS"

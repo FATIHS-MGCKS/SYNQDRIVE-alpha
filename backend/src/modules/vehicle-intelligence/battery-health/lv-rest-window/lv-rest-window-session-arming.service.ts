@@ -10,6 +10,7 @@ import {
 import { BatteryMeasurementSessionRepository } from '../battery-measurement-session.repository';
 import {
   buildLvRestWindowPolicyContext,
+  canOpenRestWindowCandidate,
   isPlausibleLvVoltage,
 } from './lv-rest-window.policy';
 import { LvRestWindowStateMachineService } from './lv-rest-window.service';
@@ -227,17 +228,28 @@ export class LvRestWindowSessionArmingService {
       signal.providerObservedAt != null &&
       signal.providerObservedAt.getTime() >= anchorAt.getTime();
 
-    const gateSignal: LvRestWindowSignalContext = hasAtOrPostAnchorObservation
+    const stripVolatileTripPhaseContext = (): LvRestWindowSignalContext => ({
+      ...signal,
+      speedKmh: null,
+      ignitionOn: null,
+      engineRunning: null,
+      lvVoltage: null,
+      isLvCharging: false,
+      isHvCharging: false,
+    });
+
+    // Post-anchor timestamps alone do not prove rest-period context: trip
+    // detection may finalize while latest_state still carries deceleration /
+    // alternator telemetry (G5C-N2 production). Only apply full opening
+    // gates when the observation credibly passes them; otherwise open CANDIDATE
+    // with unknown momentary context (same as pre-anchor stall).
+    const credibleRestOpeningObservation =
+      hasAtOrPostAnchorObservation &&
+      canOpenRestWindowCandidate(signal, policy).ok;
+
+    const gateSignal: LvRestWindowSignalContext = credibleRestOpeningObservation
       ? signal
-      : {
-          ...signal,
-          speedKmh: null,
-          ignitionOn: null,
-          engineRunning: null,
-          lvVoltage: null,
-          isLvCharging: false,
-          isHvCharging: false,
-        };
+      : stripVolatileTripPhaseContext();
 
     const eventAt = new Date(
       Math.max(anchorAt.getTime(), signal.observedAt.getTime()),
@@ -292,7 +304,10 @@ export class LvRestWindowSessionArmingService {
     // scheduled without waiting for another observation. The FSM validates the
     // snapshot (retroactive/wake/charging/max-resting) — no policy is bypassed.
     let promotedToResting = false;
-    if (hasAtOrPostAnchorObservation && isPlausibleLvVoltage(signal.lvVoltage)) {
+    if (
+      credibleRestOpeningObservation &&
+      isPlausibleLvVoltage(signal.lvVoltage)
+    ) {
       const snapshotTransition = await this.fsm.processEvent(
         input.organizationId,
         input.vehicleId,

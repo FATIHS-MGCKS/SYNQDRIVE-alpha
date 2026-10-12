@@ -106,6 +106,6 @@ sync_schema_drift_if_needed
 export RAW_FUEL_REFUEL_OQ015_INTEGRATION=1
 
 npm test -- --runInBand --forceExit \
-  --testPathPattern=raw-refuel-oq015-stretched-end.postgres.integration.spec.ts
+  --testPathPatterns=raw-refuel-oq015-stretched-end.postgres.integration.spec.ts
 
 echo "RFRF_OQ015_STRETCHED_END_POSTGRES_GATE=PASS"

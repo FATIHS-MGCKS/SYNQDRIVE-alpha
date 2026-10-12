@@ -7,11 +7,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=cloud-agent-ssh-common.sh
 source "${SCRIPT_DIR}/cloud-agent-ssh-common.sh"
 
-VPS_HOST="${CLOUD_AGENT_VPS_HOST:-mein-vps.internal}"
-SSH_USER="$(cloud_agent_ssh_user)"
-if [[ "${VPS_HOST}" == *"hstgr.cloud"* ]] && [[ "${SSH_USER}" == "root" ]]; then
-  SSH_USER="synqdrive-admin"
-fi
+VPS_HOST="${CLOUD_AGENT_VPS_HOST:-srv1374778.hstgr.cloud}"
+SSH_USER="$(cloud_agent_ssh_user "$VPS_HOST")"
 SSH_PORT="${CLOUD_AGENT_VPS_SSH_PORT:-22}"
 SSH_KEY="${HOME}/.ssh/id_ed25519"
 GIT_REMOTE_URL="${CLOUD_AGENT_S4_KILL_GIT_REMOTE_URL:-https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git}"
@@ -42,14 +39,8 @@ require_sha() {
 }
 
 ensure_ssh_key() {
-  if [[ -f "$SSH_KEY" ]]; then
-    return 0
-  fi
-  if ! cloud_agent_materialize_ssh_key "$SSH_KEY"; then
-    echo "[s4-kill-bootstrap] ERROR: SSH key missing. Set CLOUD_AGENT_SSH_PRIVATE_KEY." >&2
-    exit 1
-  fi
-  ssh-keyscan -H "$VPS_HOST" >> "${HOME}/.ssh/known_hosts" 2>/dev/null || true
+  cloud_agent_require_ssh_identity || exit 1
+  cloud_agent_ssh_require_trusted_host_key "$VPS_HOST" "$SSH_PORT" || exit 1
 }
 
 require_sha "CLOUD_AGENT_S4_KILL_WRAPPER_SHA" "$WRAPPER_SHA"

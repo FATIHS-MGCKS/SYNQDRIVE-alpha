@@ -184,7 +184,7 @@ export function ConnectedVehicleImportWizard({
                   <Button
                     type="button"
                     variant="outline"
-                    disabled={importing}
+                    disabled={!preflight.canProceed || importing || preflightLoading}
                     onClick={() => onAdvancedRegister(selectedDimoId, organizationId)}
                     data-testid="cv-import-advanced-register"
                   >
@@ -193,11 +193,15 @@ export function ConnectedVehicleImportWizard({
                 ) : null}
               </div>
             </>
+          ) : error && !preflightLoading ? (
+            <p className="text-sm text-[color:var(--status-critical)]" role="alert">
+              {error}
+            </p>
           ) : null}
         </div>
       ) : null}
 
-      {error ? (
+      {error && (!organizationId || !selectedDimoId) ? (
         <p className="text-sm text-[color:var(--status-critical)]" role="alert">
           {error}
         </p>

@@ -64,3 +64,59 @@ export class RawRefuelCandidateLifecycleValidationError extends Error {
     this.name = 'RawRefuelCandidateLifecycleValidationError';
   }
 }
+
+export class RawRefuelCandidateVersionedTerminalConflictError extends Error {
+  readonly code = 'RAW_REFUEL_CANDIDATE_VERSIONED_TERMINAL_CONFLICT';
+
+  constructor(
+    readonly vehicleId: string,
+    readonly candidateIds: string[],
+  ) {
+    super(
+      `Versioned terminal conflict for vehicle ${vehicleId}: ${candidateIds.join(', ')}`,
+    );
+    this.name = 'RawRefuelCandidateVersionedTerminalConflictError';
+  }
+}
+
+export class RawRefuelCandidateUnsupportedDetectionVersionError extends Error {
+  readonly code = 'RAW_REFUEL_CANDIDATE_UNSUPPORTED_DETECTION_VERSION';
+
+  constructor(
+    readonly vehicleId: string,
+    readonly detectionVersion: string,
+  ) {
+    super(
+      `Unsupported raw refuel candidate detectionVersion ${detectionVersion} for vehicle ${vehicleId}`,
+    );
+    this.name = 'RawRefuelCandidateUnsupportedDetectionVersionError';
+  }
+}
+
+export class RawRefuelCandidateCrossVersionInsufficientEvidenceError extends Error {
+  readonly code = 'RAW_REFUEL_CANDIDATE_CROSS_VERSION_INSUFFICIENT_EVIDENCE';
+
+  constructor(
+    readonly vehicleId: string,
+    readonly candidateIds: string[],
+  ) {
+    super(
+      `Cross-version insufficient evidence for vehicle ${vehicleId}: ${candidateIds.join(', ')}`,
+    );
+    this.name = 'RawRefuelCandidateCrossVersionInsufficientEvidenceError';
+  }
+}
+
+export class RawRefuelCandidateV2RediscoveryInsufficientEvidenceError extends Error {
+  readonly code = 'RAW_REFUEL_CANDIDATE_V2_REDISCOVERY_INSUFFICIENT_EVIDENCE';
+
+  constructor(
+    readonly vehicleId: string,
+    readonly candidateIds: string[],
+  ) {
+    super(
+      `v2→v2 rediscovery insufficient evidence for vehicle ${vehicleId}: ${candidateIds.join(', ')}`,
+    );
+    this.name = 'RawRefuelCandidateV2RediscoveryInsufficientEvidenceError';
+  }
+}

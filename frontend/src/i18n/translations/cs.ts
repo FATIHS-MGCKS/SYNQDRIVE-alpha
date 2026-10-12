@@ -1,5 +1,7 @@
 import type { PartialTranslationDictionary } from '../dictionary-types';
 import { rentalLegacyGapCS } from './rental-legacy-gap.cs';
+import { dimoWebhookHealthCs } from './dimo-webhook-health.cs';
+import { masterPlatformOpsDiS4Cs } from './master.platformOps.diS4.cs';
 
 export const cs = {
   'dashboard.welcomeBack': 'Vítejte zpět, {name}',
@@ -124,6 +126,9 @@ export const cs = {
   'master.cv.addVehicle.dimoLoadFailed': 'Nepodarilo se nacist DIMO vozidla',
   'master.cv.addVehicle.demoUnavailableTitle': 'Demo vozidla',
   'master.cv.addVehicle.demoUnavailableBody': 'Bezpecne demo onboarding API neexistuje; DEMO vyjimka jen pres billingBillableVehicleAssignment.',
+  'master.cv.addVehicle.manualBaselineTitle': 'Rucni zaznam flotily',
+  'master.cv.addVehicle.manualBaselineHint': 'Zakladni data, pneu, LV baterie a brzdy se ulozi po vytvoreni pres org API.',
+  'master.cv.addVehicle.manualServiceHistoryUnavailable': 'Historie servisu a HM pri rucnim vytvoreni nedostupne.',
 
   'fleetCondition.title': 'Stav flotily', 'fleetCondition.healthScore': 'Skore zdravi', 'fleetCondition.goodCondition': 'Dobry', 'fleetCondition.warnings': 'Varovani', 'fleetCondition.critical': 'Kriticky',
   'newBooking.title': 'Nova rezervace', 'newBooking.selectCustomer': 'Vybrat zakaznika', 'newBooking.selectVehicle': 'Vybrat vozidlo', 'newBooking.timePeriod': 'Obdobi a vyzvednuti', 'newBooking.mileagePackages': 'Kilometrove balicky', 'newBooking.insurancePackages': 'Pojistne balicky', 'newBooking.extras': 'Doplnky', 'newBooking.invoice': 'Faktura', 'newBooking.rentalContract': 'Najemni smlouva', 'newBooking.createCustomer': 'Vytvorit noveho zakaznika', 'newBooking.bookingCreated': 'Rezervace vytvorena!',
@@ -134,4 +139,6 @@ export const cs = {
   'documents.vehicleDocuments': 'Dokumenty vozidla', 'documents.monthlyFixedCosts': 'Mesicni fixni naklady',
   'customerDetail.title': 'Detail zakaznika', 'customerDetail.customerDocuments': 'Dokumenty zakaznika', 'customerDetail.customerAlerts': 'Upozorneni zakaznika', 'customerDetail.customerNotes': 'Poznamky zakaznika',   'customerDetail.drivingScore': 'Skore jizdy',
   ...rentalLegacyGapCS,
+  ...dimoWebhookHealthCs,
+  ...masterPlatformOpsDiS4Cs,
 } satisfies PartialTranslationDictionary;

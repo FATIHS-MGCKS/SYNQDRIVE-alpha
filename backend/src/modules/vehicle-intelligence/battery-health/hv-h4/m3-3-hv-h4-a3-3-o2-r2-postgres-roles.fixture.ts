@@ -177,11 +177,17 @@ export async function createRestrictedAppRoleScopedPostgresClientV1(): Promise<P
   return createRestrictedAppLoginPostgresClientV1();
 }
 
+/** CI fixture URL for issuer-login pool tests (not for production runtime). */
+export function buildIssuerLoginDatabaseUrlForCiV1(): string | undefined {
+  const loginUrl = buildLoginDatabaseUrlV1(M3_3_HV_H4_A3_O2_R2_ISSUER_LOGIN_ROLE, ISSUER_LOGIN_PASSWORD);
+  return loginUrl ? withPrismaSingleConnectionUrlV1(loginUrl) : undefined;
+}
+
 /** Dedicated issuer-login Prisma pool (CI fixture credentials only). */
 export async function createIssuerLoginPostgresClientV1(): Promise<
   M3_3HvH4A3IntegrityAttestationIssuerDbV1 | undefined
 > {
-  const loginUrl = buildLoginDatabaseUrlV1(M3_3_HV_H4_A3_O2_R2_ISSUER_LOGIN_ROLE, ISSUER_LOGIN_PASSWORD);
+  const loginUrl = buildIssuerLoginDatabaseUrlForCiV1();
   if (!loginUrl) return undefined;
   const client = new PrismaClient({
     datasources: { db: { url: withPrismaSingleConnectionUrlV1(loginUrl) } },

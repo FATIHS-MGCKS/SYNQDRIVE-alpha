@@ -1,6 +1,7 @@
 import { X, Sparkles, ChevronDown, ChevronUp, Save, AlertCircle, CheckCircle2, XCircle, Loader2, Bot, Pencil, Radio, Search, Link2, Shield, Camera } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { api, streamAiSpecs, streamAiTireSpecs } from '../../lib/api';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { AgentStep, AiSpecsStreamEvent, AiTireSpecsStreamEvent, HmAvailabilityDto } from '../../lib/api';
 import type { DimoVehicle, Organization, RegisteredVehicle } from '../data/platform-data';
 import { aiWorkerData, getAiWorkerKey, generateId } from '../data/platform-data';
@@ -18,6 +19,8 @@ interface VehicleRegistrationModalProps {
   existingVehicle?: RegisteredVehicle;
   organizations: Organization[];
   initialOrganizationId?: string | null;
+  /** When true, service history / HM blocks are hidden (not persisted on manual create). */
+  manualCreateOnly?: boolean;
   onRegister: (vehicle: RegisteredVehicle) => void | Promise<void>;
   onUpdate?: (vehicle: RegisteredVehicle) => void | Promise<void>;
 }
@@ -43,9 +46,10 @@ const HIGH_MOBILITY_SIGNALS = [
   { id: 'parking_brake_status', label: 'Parking Brake Status' },
 ] as const;
 
-export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehicle, existingVehicle, organizations, initialOrganizationId, onRegister, onUpdate }: VehicleRegistrationModalProps) {
+export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehicle, existingVehicle, organizations, initialOrganizationId, manualCreateOnly = false, onRegister, onUpdate }: VehicleRegistrationModalProps) {
+  const { t } = useLanguage();
   const isEditMode = !!existingVehicle;
-  const isManualCreate = !isEditMode && !dimoVehicle;
+  const isManualCreate = manualCreateOnly || (!isEditMode && !dimoVehicle);
 
   const [manualVin, setManualVin] = useState('');
   const [manualMake, setManualMake] = useState('');
@@ -787,6 +791,14 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
 
         <div className="px-8 py-5 space-y-1 max-h-[72vh] overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
 
+          {isManualCreate && !isEditMode ? (
+            <div className="mb-4 rounded-xl border border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
+              <p className="font-medium text-foreground">{t('master.cv.addVehicle.manualBaselineTitle')}</p>
+              <p className="mt-1">{t('master.cv.addVehicle.manualBaselineHint')}</p>
+              <p className="mt-1">{t('master.cv.addVehicle.manualServiceHistoryUnavailable')}</p>
+            </div>
+          ) : null}
+
           {/* ═══════════════════════════════════════════════
               SECTION 0 — Vehicle Identity (read-only)
              ═══════════════════════════════════════════════ */}
@@ -1203,8 +1215,8 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
           {/* ═══════════════════════════════════════════════
               SECTION 7 — Service History
              ═══════════════════════════════════════════════ */}
-          {sectionHeader('history', '7', 'Service History')}
-          {expandedSections.includes('history') && (
+          {!isManualCreate ? sectionHeader('history', '7', 'Service History') : null}
+          {!isManualCreate && expandedSections.includes('history') && (
             <div className="grid grid-cols-2 gap-3 pl-1 pb-3">
               <div><label className={labelClass}>Last TÜV</label><input type="date" value={lastTuev} onChange={e => setLastTuev(e.target.value)} className={inputClass} /></div>
               <div><label className={labelClass}>Last BOKraft</label><input type="date" value={lastBokraft} onChange={e => setLastBokraft(e.target.value)} className={inputClass} /></div>
@@ -1236,8 +1248,8 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
           {/* ═══════════════════════════════════════════════
               SECTION 9 — High Mobility Data
              ═══════════════════════════════════════════════ */}
-          {sectionHeader('hm', '9', 'High Mobility Data')}
-          {expandedSections.includes('hm') && (
+          {!isManualCreate ? sectionHeader('hm', '9', 'High Mobility Data') : null}
+          {!isManualCreate && expandedSections.includes('hm') && (
             <div className="pl-1 pb-3 space-y-3">
               {/* Loading state */}
               {hmAvailabilityLoading && (

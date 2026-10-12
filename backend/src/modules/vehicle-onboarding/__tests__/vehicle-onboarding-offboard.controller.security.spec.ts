@@ -3,6 +3,7 @@ import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { MASTER_ADMIN_MFA_ACTION_KEY } from '@shared/decorators/require-master-admin-mfa.decorator';
 import { ROLES_KEY } from '@shared/decorators/roles.decorator';
+import { MasterVehicleOffboardAdmissionGuard } from '../guards/master-vehicle-offboard-admission.guard';
 import { VehicleOnboardingOffboardController } from '../controllers/vehicle-onboarding-offboard.controller';
 
 describe('VehicleOnboardingOffboardController security', () => {
@@ -14,7 +15,11 @@ describe('VehicleOnboardingOffboardController security', () => {
       { name: string }
     >;
     expect(guards?.map((g) => g.name)).toEqual(
-      expect.arrayContaining([RolesGuard.name, MasterAdminMfaGuard.name]),
+      expect.arrayContaining([
+        RolesGuard.name,
+        MasterVehicleOffboardAdmissionGuard.name,
+        MasterAdminMfaGuard.name,
+      ]),
     );
 
     const stepUp = Reflect.getMetadata(

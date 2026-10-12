@@ -20,7 +20,7 @@ grep -q 'convergenceSkippedNotAuthorized' "$runtime" || fail "convergence not-au
 
 cd "$BACKEND"
 npm test -- --runInBand --forceExit \
-  --testPathPattern=raw-fuel-refuel-fallback-runtime.service.spec \
+  --testPathPatterns=raw-fuel-refuel-fallback-runtime.service.spec \
   --testNamePattern='master=true persist=false detects but does not persist|preserves F4.1 UNKNOWN promotion trust with ADMISSIBLE detection' \
   >/tmp/rfrf-stage3-authority-jest.log 2>&1 || {
   tail -40 /tmp/rfrf-stage3-authority-jest.log >&2

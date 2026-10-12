@@ -30,6 +30,8 @@
 | VDC-EVID-P25-APDS-2-7-001 | APDS-2…7 dual shadow observability (B2/B4, flag OFF, durable forensics) | CURRENT_CODE + TEST | IMPLEMENTATION_PRESENT | [P25_APDS_2_7_SHADOW_OBSERVABILITY_2026-10-03.md](./P25_APDS_2_7_SHADOW_OBSERVABILITY_2026-10-03.md) |
 | VDC-EVID-P25-APDS-9-0-001 | APDS-9.0 fail-closed LTE_R1 cohort selector (`WORKER_APD_SHADOW_COHORT_JSON`); engineering only — no Production activation | CURRENT_CODE + TEST | IMPLEMENTATION_PRESENT | [P25_APDS_9_0_COHORT_SELECTOR_2026-10-07.md](./P25_APDS_9_0_COHORT_SELECTOR_2026-10-07.md) |
 | VDC-EVID-P25-APDS-9-3-001 | APDS-9.3 durable shadow activation epoch + T0 gate; nullable epoch FK for legacy 366 rows; cohort vehicle 187336 NOT_READY audit | CURRENT_CODE + TEST | IMPLEMENTATION_PRESENT | [P25_APDS_9_3_DURABLE_T0_FOUNDATION_2026-10-08.md](./P25_APDS_9_3_DURABLE_T0_FOUNDATION_2026-10-08.md) |
+| VDC-EVID-P25-APDS-9-5B-001 | APDS-9.5B shadow execution V2.1 LV bootstrap fix — forced-missing reconciliation SUCCESS may seed simulated LV without advancing lastAllowed; engineering only | CURRENT_CODE + TEST | IMPLEMENTATION_PRESENT (not Production-deployed) | [P25_APDS_9_5B_SHADOW_LV_BOOTSTRAP_EXECUTION_V2_1_2026-10-08.md](./P25_APDS_9_5B_SHADOW_LV_BOOTSTRAP_EXECUTION_V2_1_2026-10-08.md) |
+| VDC-EVID-P25-APDS-9-5C-001 | APDS-9.5C production read-only replay certification + T+1h observation (PR #1938 merge gate) | PRODUCTION_OBSERVATION + CURRENT_CODE | CONFIRMED (engineering) | [P25_APDS_9_5C_REPLAY_CERTIFICATION_2026-10-08.md](./P25_APDS_9_5C_REPLAY_CERTIFICATION_2026-10-08.md) |
 
 ## Code evidence (repository — bootstrap index)
 

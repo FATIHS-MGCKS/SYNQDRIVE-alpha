@@ -1682,6 +1682,187 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | FINDING | Production `ee958854…` unchanged; GLOBAL row **missing**; S4 counts **0**; initializer @ deployed SHA **safe**; postgres concurrency tests **PASS**; **`DB_KILL_INITIALIZATION_READINESS=BLOCKED`** — `PRODUCTION_EXECUTION_WRAPPER_REQUIRED` |
 | NON_EFFECTS | No initializer execution, no Production DB/env/deploy/restart, no Tiny/operator grant |
 
+### EXP-021 S4F-7AI S4F-7AH bootstrap authority migration (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `cloud-agent-s4f7ai-fresh-jit-production-dry-run.sh` + `lib/cloud-agent-s4f7ai-tool-pin.lib.sh` + `cloud-agent-s4f7ai-tool-pin.test.sh`; evidence `EXP021_S4F7AI_NEW_TOOL_BOOTSTRAP_AUTHORITY.md` |
+| AUTHORITY | Reads `NEW_EXPECTED_FRESH_TINY_STAGING_TOOL_SHA` from S4F-7AH evidence only @ `ed78748bc…`; six-file blob + stale-pin fail-closed; AA.1 Z2 bootstrap **unchanged** |
+| NON_EFFECTS | No Production SSH/env/deploy/restart; no `DRY_RUN=0`; no live auth reuse; Production dry-run **not** executed in slice |
+
+### EXP-021 S4F-7AJ corrected-tool Production dry-run (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | One Production `DRY_RUN=1` via S4F-7AI bootstrap @ tool `ed78748bc…`; fresh JIT `2026-10-08T20:11:22.464Z`; evidence `EXP021_S4F7AJ_CORRECTED_TOOL_PRODUCTION_DRY_RUN.md` |
+| FINDING | `DRY_RUN_CERTIFIED=YES`; `GUARDS_OK=YES`; initial/final DB clock + fresh authority **PASS**; `DRY_RUN_ENV_MUTATION_COUNT=0`; POSTSTATE parity **YES** |
+| NON_EFFECTS | No `DRY_RUN=0`; no live auth reuse; no S4 activation; Gate 6 unchanged |
+
+### EXP-021 S4F-7AK final live staging readiness (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Read-only Production observation + authority reconciliation after #1937; evidence `EXP021_S4F7AK_FINAL_LIVE_STAGING_READINESS.md` |
+| FINDING | `READINESS=TECHNICALLY_READY_PENDING_HUMAN_AUTHORIZATION`; S4 prestate **PASS**; `PRODUCTION_DRIFT_FROM_AJ=YES` (env SHA + PIDs); partial release-tree operator blob drift — **S4F-7AI bootstrap mandatory for Production `DRY_RUN=1` only** (not live); live path = detached `ed78748bc…` S4F-7Y operator |
+| NON_EFFECTS | No JIT/live auth; no `DRY_RUN=0`; no env/restart/deploy; `HUMAN_FREEZE_CONFIRMATION=PENDING`; Gate 6 unchanged |
+
+### EXP-021 S4F-7AK.1 authority boundary & drift closure (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | PR #1939 scope trim (remove non-required `ChangesView.tsx`); evidence `EXP021_S4F7AK1_FINAL_AUTHORITY_BOUNDARY.md` |
+| FINDING | `PRODUCTION_DRIFT_CAUSE=APDS_P25_SHADOW_ENABLE_20261008T201328Z` — pre-backup SHA matches S4F-7AJ POST; `WORKER_APD_SHADOW_ENABLED` value change; PM2 recreate @ 20:13:28Z |
+| NON_EFFECTS | No live dispatch execution; S4F-7AI bootstrap remains DRY_RUN=1-only |
+
+### EXP-021 S4F-7AK.2 dispatch documentation consistency (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | PR #1939 — align S4F-7AK / CURRENT_STATE / CHANGE_LEDGER: S4F-7AI = Production **`DRY_RUN=1` only**; live = detached `ed78748bc…` S4F-7Y operator (not S4F-7AI) |
+| NON_EFFECTS | No operator code change; no Production execution |
+
+### EXP-021 Simple Gate-6 + fleet rollout (2026-10-10)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Remove custom Gate-6 crypto chain; OS wrapper auth; fleet waves 1–3; evidence `EXP021_SIMPLE_GATE6_FLEET_ROLLOUT.md` |
+| TESTS | `test:di:s4f7as:gate6-open-rekill-operator` **37** PASS |
+| NON_EFFECTS | No Production mutation; GLOBAL **KILLED**; legacy HMAC root key not removed on VPS |
+
+### EXP-021 PR #1962 final live execution closure (2026-10-10)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Guard proof bundle channel; pinned root re-exec; explicit wave/pilot confirm; wave promotion verify path; scoped monitoring queries — §E in `EXP021_SIMPLE_GATE6_FLEET_ROLLOUT.md` |
+| TESTS | `test:di:s4f7as:gate6-open-rekill-operator` **43** PASS |
+| NON_EFFECTS | No Production mutation; no deploy; `LIVE_OPEN` not executed |
+
+### EXP-021 PR #1962 operator runtime fix (2026-10-10)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Absolute root/helper pins; intent dir hardening; guard-proof bundle reuse + pre-mutation refresh; remove root `npx` false positive — §F in `EXP021_SIMPLE_GATE6_FLEET_ROLLOUT.md` |
+| TESTS | Gate-6 operator suite + bash lifecycle test |
+| NON_EFFECTS | No Production mutation; no deploy |
+
+### EXP-021 PR #1962 OS permission contract (2026-10-10)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Admin-private intent under `~/.synqdrive/gate6-live-open-intent`; root `SUDO_UID` validation; release execution integrity (no g+w) — §G in `EXP021_SIMPLE_GATE6_FLEET_ROLLOUT.md` |
+| TESTS | `di-v0-s4-gate6-os-contract-e2e.selftest.sh` + operator Jest |
+| NON_EFFECTS | No Production mutation; no deploy |
+
+### EXP-021 S4F-7AZ Privileged writer model closure (2026-10-10)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Production shared-root `755` compatibility in `verifyParentDirectoryChain` (`0o022` write mask); privileged writer matrix + one-shot provisioning contract P1–P7; evidence `EXP021_S4F7AZ_PRIVILEGED_WRITER_CLOSURE.md` |
+| TESTS | `test:di:s4f7as:gate6-open-rekill-operator` **72** PASS |
+| NON_EFFECTS | No Production mutation; no keys/registers; no sudoers install; Gate-6 **NOT_GRANTED** |
+
+### EXP-021 S4F-7AY Post-merge Gate-6 infra readiness (2026-10-10)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Read-only Production attestation + Gate-6 trust path inventory after merge #1955; provisioning plan A–G (not executed); evidence `EXP021_S4F7AY_POSTMERGE_INFRA_READINESS.md` |
+| NON_EFFECTS | No deploy, no keys, no approval/dispatch artifacts, no Gate-6 grant |
+
+### EXP-021 S4F-7AX.3 Trusted dispatch provenance (2026-10-09)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | PR #1955 — privileged issuance register + MAC key; `recordTrustedDispatchIssuance` on `issue-dispatch-token`; `verifyTrustedDispatchProvenanceForLiveOpen` before DB on `live-open-authorized`; blocks self-issued HMAC-only bypass; evidence `EXP021_S4F7AX3_TRUSTED_DISPATCH_PROVENANCE.md` |
+| TESTS | `test:di:s4f7as:gate6-open-rekill-operator` **71** PASS |
+| NON_EFFECTS | No Production mutation; no issuance MAC key provisioning; Gate 6 **NOT_GRANTED** |
+
+### EXP-021 S4F-7AX.2 Final live authority boundary (2026-10-09)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | PR #1955 — `evaluateProductionGate6LiveOpenBoundary`; fixture flags cannot waive Production backend/trust anchors; simulated guard env proofs banned on live OPEN; trust-anchor permission checks; consumption register unlink policy helper |
+| TESTS | `test:di:s4f7as:gate6-open-rekill-operator` **60** PASS |
+| NON_EFFECTS | No Production mutation; Gate 6 **NOT_GRANTED** |
+
+### EXP-021 S4F-7AX.1 Approval trust anchor & atomic consumption (2026-10-09)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | PR #1955 — pinned Production Ed25519 trust anchor (no env/symlink override); `issue-dispatch-token` trust gate; O_EXCL-only consumption marker; 20-process concurrency proof |
+| TESTS | `test:di:s4f7as:gate6-open-rekill-operator` **57** PASS |
+| NON_EFFECTS | No Production mutation; Gate 6 **NOT_GRANTED** |
+
+### EXP-021 S4F-7AX Gate-6 independent approval boundary (2026-10-09)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Ed25519 v2 human approval verify-only on Production canonical path; HMAC v1 approval forbidden when `SYNQDRIVE_BACKEND_ENV_CANONICAL` is Production shared env; approvalId single-use consumption register before dispatch token issuance; evidence `EXP021_S4F7AX_INDEPENDENT_APPROVAL_BOUNDARY.md` |
+| TESTS | `test:di:s4f7as:gate6-open-rekill-operator` **52** PASS (Ed25519 + consumption + CLI replay) |
+| NON_EFFECTS | EMERGENCY_REKILL unchanged; no Production mutation; HMAC root key from S4F-7AW not deleted; Gate 6 **NOT_GRANTED** |
+
+### EXP-021 S4F-7AS.3 Gate-6 authority seal (2026-10-09)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | PR #1949 — HMAC v2 dispatch (key sidecar); human approval file + root key issuance gate; atomic one-shot + replay marker; exact Production backend.env enforcement; evidence `EXP021_S4F7AS3_GATE6_AUTHORITY_SEAL.md` |
+| TESTS | `test:di:s4f7as:gate6-open-rekill-operator` 44 PASS |
+| NON_EFFECTS | Unknown-commit recovery unchanged; no Production execution; Gate 6 **NOT_GRANTED** |
+
+### EXP-021 S4F-7AS.2 Final OPEN authority + unknown-commit closure (2026-10-09)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | PR #1949 — OPEN/REKILL transaction `COMMIT_OUTCOME_UNKNOWN` recovery without OPEN retry; HMAC one-shot dispatch token + trusted env `realpath`/hash + GLOBAL prestate re-verify (env digest bypass removed); evidence `EXP021_S4F7AS2_FINAL_AUTHORITY_CLOSURE.md` |
+| TESTS | `test:di:s4f7as:gate6-open-rekill-operator` expanded (orchestration + dispatch token) |
+| NON_EFFECTS | No Production execution; Gate 6 **NOT_GRANTED** |
+
+### EXP-021 S4F-7AS.1 Gate-6 safety closure (2026-10-09)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | PR #1949 — post-commit OPEN orchestration + compensating REKILL; `live-open-authorized` + dispatch digest; direct `live-open` forbidden; canonical Production backend.env fixture isolation; evidence `EXP021_S4F7AS1_GATE6_SAFETY_CLOSURE.md` |
+| TESTS | `test:di:s4f7as:gate6-open-rekill-operator` 22 PASS |
+| NON_EFFECTS | No Production execution; Gate 6 **NOT_GRANTED** |
+
+### EXP-021 S4F-7AS Gate-6 OPEN / EMERGENCY_REKILL operator (2026-10-09)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Minimal Gate-6 operator `di-v0-s4-gate6-open-rekill-production.sh` — OPEN (`KILLED`→`NOT_KILLED`) with full preflight + `DRY_RUN`; EMERGENCY_REKILL (`NOT_KILLED`→`KILLED`) without OPEN guards; transactional `di-v0-s4-global-kill-transition.ts` (no missing-row insert); monitoring query/abort constants; evidence `EXP021_S4F7AS_GATE6_OPEN_REKILL_OPERATOR.md` |
+| TESTS | `test:di:s4f7as:gate6-open-rekill-operator` (11); S4A Postgres CI includes kill-transition integration (+9) |
+| NON_EFFECTS | No Production DB/env/restart/deploy; Gate 6 **NOT_GRANTED**; GLOBAL remains **KILLED** on Production; kill initializer unchanged |
+
+### EXP-021 S4F-7AO minimal five-flag activation operator (2026-10-09)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Engineering operator `di-v0-s4-enable-tiny-five-flags-production.sh` + TS libs — exactly five S4 enable flags ON, `NATIVE` OFF, staged Tiny keys preserved, GLOBAL **KILLED** only (no DB kill mutation); evidence `EXP021_S4F7AO_MINIMAL_FLAG_OPERATOR.md` |
+| TESTS | `npm run test:di:s4f7ao:five-flag-operator` (24); S4F-7J regression 47 PASS; shared `s4f7j_resolve_deployed_sha` / `s4f7j_resolve_release_dir` in `di-v0-s4-tiny-staging-production.lib.sh` for sourced wrappers |
+| NON_EFFECTS | No Production env write/restart/deploy; Gate 6 **NOT_GRANTED**; S4 not activated; certified S4F-7Y operator unchanged |
+
+### EXP-021 S4F-7AO.2 replica recovery boundary (2026-10-09)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | PR #1943 — mark replica runtime dirty before restart; rollback scope A vs A+B from `FIVE_FLAG_PROVEN`/dirty flags; `FULL_A_B_PRESTATE_PROOF` on both replicas; evidence `EXP021_S4F7AO2_RECOVERY_BOUNDARY.md` |
+| TESTS | `test:di:s4f7ao:five-flag-operator` 36 PASS |
+| NON_EFFECTS | No Production execution |
+
+### EXP-021 S4F-7AO.1 five-flag operator safety closure (2026-10-09)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | PR #1943 — full runtime rollback (atomic env restore + selective replica `RECOVERY_PRESTATE`), production test/fixture/harness isolation on shared `backend.env`, explicit `DRY_RUN` required, durable backup dir via `s4f7j_require_durable_backup_dir`; evidence `EXP021_S4F7AO1_SAFETY_CLOSURE.md` |
+| TESTS | `test:di:s4f7ao:five-flag-operator` 31 PASS; S4F-7J 47; S4F-7Y wrapper 131 |
+| NON_EFFECTS | No Production execution; S4F-7Y operator contract unchanged |
+
+### EXP-021 S4F-7AI.1 bootstrap safety closure (2026-10-08)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Reject legacy `DI_S4F7V_LIVE_STAGING_AUTHORIZED=YES`; remote unset both live flags; `S4F7AI_SKIP_DETACHED_FETCH` only with `S4F7AI_SKIP_PRODUCTION_DISPATCH=1` |
+| NON_EFFECTS | Certified tool SHA unchanged; AA.1 bootstrap unchanged; no Production dispatch |
+
 ### EXP-021 S4F-7AH post-merge tool authority seal (2026-10-08)
 
 | Event | Detail |
@@ -1715,3 +1896,35 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | AUTHORITY | NO_BACKFILL on S4B overlay; frozen S4A contract v2 **unchanged** |
 | NON_EFFECTS | No Production deploy/migrate/env/restart; no operator `GRANTED`; no Tiny activation; no GLOBAL `NOT_KILLED` seed |
 | NEXT | Review/merge S4F-7A → separate **dormant** Production deploy preflight |
+
+### EXP-021 S4P1 production readiness & safety simplification (2026-10-11)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Read-only runtime/safety audit; evidence `EXP021_S4P1_PRODUCTION_READINESS_SAFETY_SIMPLIFICATION.md`; regression `di-v0-s4p1-safety-gate-contract.spec.ts` |
+| FINDING | S4 active path = shadow `di_v0_s4_*` + DIMO budget only; Wave-3 human 24h gate was **operational triage**, not Gate-6 code; **no** automatic EMERGENCY_REKILL in app; post–Wave-3 Production **KILLED** after containment |
+| AUTHORITY | Proposed regular ops: owner auth + technical preflight/DRY_RUN/LIVE_OPEN + automated monitoring + manual rekill |
+| NON_EFFECTS | No Production mutation; no deploy; no env/kill/APDS/Battery changes in this slice |
+
+### EXP-021 S4P2 unattended operations & alert integration (2026-10-11)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `alerts-di-s4.yml`; `DiV0S4OperationalMetricsService` + operational Prometheus gauges; VPS Prometheus refresh copies; contract `di-v0-s4p2-alert-rules.contract.ts` + tests; evidence `EXP021_S4P2_UNATTENDED_OPS_ALERT_INTEGRATION.md` |
+| FINDING | Repo has Prometheus/Alertmanager stack; S4 had no dedicated rules/metrics; production alert **delivery not re-tested** in this slice |
+| AUTHORITY | CRITICAL → existing Alertmanager receivers; containment remains manual EMERGENCY_REKILL |
+| NON_EFFECTS | No Production mutation; GLOBAL_KILL=KILLED; five-vehicle scope unchanged |
+
+### EXP-021 S4P2-R1 alert reliability (2026-10-11)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Operational metric freshness gauges + leader/follower reset; alert semantics (min DIMO budget, discovery missing/stale, dormant activity_signal); promtool tests; VPS monitoring validate-before-copy + AM restart skip; evidence `EXP021_S4P2_R1_ALERT_RELIABILITY.md` |
+| NON_EFFECTS | No merge/deploy; delivery still UNVERIFIED |
+
+### EXP-021 S4P2-R2 monitoring correctness (2026-10-11)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `shadow_plane_engaged` gauge + failure retention; in-flight work sum; `DiV0S4GlobalKillSuspectOrphan`; VPS candidate promtool + reload rollback; promtool/Jest contracts; evidence `EXP021_S4P2_R2_MONITORING_CORRECTNESS.md` |
+| NON_EFFECTS | No Production mutation; GLOBAL_KILL=KILLED; PR #1988 remains draft pending #1987 merge |

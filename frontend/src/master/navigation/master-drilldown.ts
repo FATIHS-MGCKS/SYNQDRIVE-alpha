@@ -57,7 +57,12 @@ export function applyMasterDrilldownUrl(
         processingTab: (tab === 'workers' || tab === 'queues' || tab === 'schedulers'
           ? tab
           : 'workers') as PlatformOpsProcessingTab,
-        diagnosticsTab: (tab === 'alerts' || tab === 'poll-logs' || tab === 'token-health' || tab === 'tools'
+        diagnosticsTab: (tab === 'alerts' ||
+        tab === 'poll-logs' ||
+        tab === 'token-health' ||
+        tab === 'communication' ||
+        tab === 'driving-intelligence-s4' ||
+        tab === 'tools'
           ? tab
           : 'alerts') as PlatformOpsDiagnosticsTab,
         incidentId: params?.incidentId ?? null,

@@ -5,6 +5,26 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   exit 1
 fi
 
+_VO5C_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ -n "${SYNQDRIVE_VO5C_ROLLBACK_AUTHORITY_OPS_DIR:-}" ]]; then
+  _VO5C_AUTHORITY_LIB="${SYNQDRIVE_VO5C_ROLLBACK_AUTHORITY_OPS_DIR}/lib/vps-vo5c-security-floor.lib.sh"
+else
+  _VO5C_AUTHORITY_LIB="${_VO5C_LIB_DIR}/vps-vo5c-security-floor.lib.sh"
+fi
+if [[ ! -f "${_VO5C_AUTHORITY_LIB}" ]]; then
+  echo "ABORT: VO5C rollback authority library missing (${_VO5C_AUTHORITY_LIB})" >&2
+  return 1
+fi
+# shellcheck source=lib/vps-vo5c-security-floor.lib.sh
+if ! source "${_VO5C_AUTHORITY_LIB}"; then
+  echo "ABORT: VO5C rollback authority library load failed" >&2
+  return 1
+fi
+if ! vps_vo5c_require_rollback_guard_ready; then
+  echo "ABORT: VO5C rollback guard not ready" >&2
+  return 1
+fi
+
 vps_replica_log() {
   printf '[%s] [multi-replica] %s\n' "$(date -u +%H:%M:%S)" "$*"
 }
@@ -436,11 +456,35 @@ vps_replica_rollback() {
     return 1
   fi
 
-  vps_replica_log "ROLLBACK: restoring ${PREVIOUS_CURRENT_RELEASE}"
-  ln -sfn "${PREVIOUS_CURRENT_RELEASE}" "${SYNQDRIVE_CURRENT_LINK}"
-
   local previous_sha
   previous_sha="$(vps_replica_release_sha "${PREVIOUS_CURRENT_RELEASE}")"
+
+  local _replica_ops_dir
+  _replica_ops_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+  if ! vps_vo5c_require_rollback_guard_ready; then
+    vps_replica_log "ABORT: ${VO5C_UNSAFE_ROLLBACK_DENIED_CODE}"
+    vps_vo5c_log_unsafe_rollback_containment "rollback_guard_missing"
+    if [[ -f "${_replica_ops_dir}/lib/vps-release-attestation-integration.lib.sh" ]]; then
+      # shellcheck source=lib/vps-release-attestation-integration.lib.sh
+      source "${_replica_ops_dir}/lib/vps-release-attestation-integration.lib.sh"
+      vps_p4b16_on_rollback_denied "$_replica_ops_dir" "$(vps_replica_current_release_dir)" || true
+    fi
+    return 1
+  fi
+  if ! vps_vo5c_assert_release_rollback_eligible "${PREVIOUS_CURRENT_RELEASE}" "$previous_sha"; then
+    vps_replica_log "ABORT: ${VO5C_UNSAFE_ROLLBACK_DENIED_CODE}"
+    vps_vo5c_log_unsafe_rollback_containment "rollback_denied_before_symlink"
+    if [[ -f "${_replica_ops_dir}/lib/vps-release-attestation-integration.lib.sh" ]]; then
+      # shellcheck source=lib/vps-release-attestation-integration.lib.sh
+      source "${_replica_ops_dir}/lib/vps-release-attestation-integration.lib.sh"
+      vps_p4b16_on_rollback_denied "$_replica_ops_dir" "$(vps_replica_current_release_dir)" || true
+    fi
+    return 1
+  fi
+
+  vps_replica_log "ROLLBACK: restoring ${PREVIOUS_CURRENT_RELEASE}"
+  ln -sfn "${PREVIOUS_CURRENT_RELEASE}" "${SYNQDRIVE_CURRENT_LINK}"
 
   # S4F-7R: rollback must not re-apply forward exact-RC attestation / SHA pins.
   export SYNQDRIVE_DI_S4F7Q_EXACT_RC_ATTESTATION_GATE=0
@@ -448,15 +492,34 @@ vps_replica_rollback() {
   vps_replica_log "ROLLBACK_FORWARD_GATE_DISABLED=YES"
 
   vps_replica_rolling_deploy "${PREVIOUS_CURRENT_RELEASE}" "$previous_sha" || {
-    vps_replica_log "ROLLBACK WARN: rolling restart failed — attempting PM2 dump restore"
+    vps_replica_log "ROLLBACK WARN: rolling restart failed — PM2 dump resurrect disabled (VO5C forward recovery)"
     if [[ -n "${PM2_DUMP:-}" && -f "${PM2_DUMP}" ]]; then
-      cp "${PM2_DUMP}" /root/.pm2/dump.pm2
-      pm2 resurrect || true
+      vps_vo5c_assert_pm2_dump_restore_allowed "${PREVIOUS_CURRENT_RELEASE}" "$previous_sha" "${PM2_DUMP}" || true
+      vps_vo5c_log_unsafe_rollback_containment "pm2_dump_resurrect_disabled"
     fi
     return 1
   }
 
   vps_replica_verify_post_deploy "${PREVIOUS_CURRENT_RELEASE}" "$previous_sha" || return 1
+
+  if [[ -f "${_replica_ops_dir}/lib/vps-release-attestation-integration.lib.sh" ]]; then
+    # shellcheck source=lib/vps-release-attestation-integration.lib.sh
+    source "${_replica_ops_dir}/lib/vps-release-attestation-integration.lib.sh"
+    local _attest_rc=0
+    set +e
+    vps_p4b16_publish_after_rollback_verify "$_replica_ops_dir" "${PREVIOUS_CURRENT_RELEASE}" "$previous_sha"
+    _attest_rc=$?
+    set -e
+    if vps_p4b16_is_partial_success_rc "$_attest_rc"; then
+      vps_replica_log "ROLLBACK PARTIAL_SUCCESS: replicas restored; attestation reconciliation required"
+      return "$_attest_rc"
+    fi
+    if [[ "$_attest_rc" -ne 0 ]]; then
+      vps_replica_log "ABORT: P4B16 rollback attestation hook failed (exit ${_attest_rc})"
+      return "$_attest_rc"
+    fi
+  fi
+
   vps_replica_log "ROLLBACK complete → ${previous_sha:0:12}"
   return 0
 }

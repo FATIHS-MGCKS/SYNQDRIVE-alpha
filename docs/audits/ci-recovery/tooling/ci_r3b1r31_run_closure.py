@@ -290,7 +290,7 @@ def main() -> int:
         "prisma_validate": run(["npm", "run", "prisma:validate"], cwd=BACKEND),
         "backend_build": run(["npm", "run", "build"], cwd=BACKEND, timeout=1200),
         "frontend_build": run(["npm", "run", "build"], cwd=FRONTEND, timeout=1200),
-        "jest_discovery": run(["npx", "jest", "--listTests", "--testPathPattern=legal-document"], cwd=BACKEND, timeout=300),
+        "jest_discovery": run(["npx", "jest", "--listTests", "--testPathPatterns=legal-document"], cwd=BACKEND, timeout=300),
         "jest_execution_smoke": run(["npx", "jest", "legal-documents.util.spec.ts"], cwd=BACKEND, timeout=300),
         "nest_cli_build": run(["npx", "nest", "build"], cwd=BACKEND, timeout=1200),
     }

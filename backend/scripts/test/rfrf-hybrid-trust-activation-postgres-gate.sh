@@ -60,6 +60,6 @@ sync_schema_drift_if_needed
 
 export RAW_REFUEL_HYBRID_TRUST_ACTIVATION_INTEGRATION=1
 npm test -- --runInBand --forceExit \
-  --testPathPattern='raw-fuel-hybrid-trust-activation.postgres.integration.spec.ts'
+  --testPathPatterns='raw-fuel-hybrid-trust-activation.postgres.integration.spec.ts'
 
 echo "RFRF_HYBRID_TRUST_ACTIVATION_POSTGRES_GATE=PASS"

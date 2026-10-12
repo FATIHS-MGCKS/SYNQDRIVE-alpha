@@ -8,7 +8,9 @@ import {
 } from './adaptive-polling-shadow-cohort.config';
 import { mockActivationEpochServiceForCohort } from './apd-shadow-test-epoch.helper';
 import type { ApdShadowCohortConfig } from './adaptive-polling-shadow-cohort.config';
-import { P25_APD_SHADOW_EXECUTION_V2 } from './p25-apd-shadow-execution-versions';
+import {
+  P25_APD_SHADOW_EXECUTION_VERSION_CURRENT,
+} from './p25-apd-shadow-execution-versions';
 import {
   evaluateP25ApdB2V1Core,
   evaluateP25ApdB4V1Core,
@@ -25,12 +27,16 @@ describe('APDS-9.2B execution contract V2 (poll-start authority)', () => {
       return lastAllowedB4;
     }),
     resolveSimulatedLastLvSourceMs: jest.fn().mockResolvedValue(null),
+    findPrePollDecisionForOpportunity: jest.fn().mockResolvedValue({
+      decision: 'WOULD_POLL',
+      reconciliation: true,
+    }),
     upsertPrePollDecision: jest.fn(async (row) => {
       upsertCalls.push({
         decision: row.decision,
         reconciliation: row.reconciliation,
       });
-      expect(row.shadowExecutionVersion).toBe(P25_APD_SHADOW_EXECUTION_V2);
+      expect(row.shadowExecutionVersion).toBe(P25_APD_SHADOW_EXECUTION_VERSION_CURRENT);
     }),
     patchEnqueueOutcome: jest.fn().mockResolvedValue(undefined),
     updateSuccessfulPollOutcome: jest.fn().mockResolvedValue(undefined),
@@ -62,6 +68,10 @@ describe('APDS-9.2B execution contract V2 (poll-start authority)', () => {
     },
     apdShadowReconciliationDecision: {
       findFirst: jest.fn().mockResolvedValue({ id: 'row-1' }),
+      findUnique: jest.fn().mockResolvedValue({
+        decision: 'WOULD_POLL',
+        reconciliation: true,
+      }),
     },
   };
 
@@ -162,6 +172,41 @@ describe('APDS-9.2B execution contract V2 (poll-start authority)', () => {
       expect.objectContaining({
         realPollStartedAt: new Date(baseCtx.pollStartedAtMs),
         realPollCompletedAt: new Date(completedAt),
+      }),
+    );
+    expect(lastAllowedB2).toBe(0);
+  });
+
+  it('forced-missing SUCCESS post-poll uses V2.1 bootstrap path without advancing lastAllowed', async () => {
+    (repository.findPrePollDecisionForOpportunity as jest.Mock).mockResolvedValue({
+      decision: 'FORCED_SOURCE_TIMESTAMP_MISSING',
+      reconciliation: true,
+    });
+    const service = new AdaptivePollingShadowService(
+      prisma as never,
+      repository,
+      activationEpoch(),
+      metrics,
+    );
+    const completedAt = baseCtx.pollStartedAtMs + 60_000;
+    const visibleLv = baseCtx.pollStartedAtMs - 5_000;
+    await service.observePostPoll({
+      organizationId: 'org-1',
+      vehicleId: 'veh-1',
+      opportunityId: 'opp-forced-missing',
+      realPollId: 'poll-bootstrap-1',
+      pollStartedAtMs: baseCtx.pollStartedAtMs,
+      pollCompletedAtMs: completedAt,
+      realPollVisibleLvSourceAtMs: visibleLv,
+      previousLvSourceMs: null,
+      newLvSourceMs: visibleLv,
+      previousTopLevelSourceMs: null,
+      newTopLevelSourceMs: completedAt,
+      providerFetchedAtMs: null,
+    });
+    expect(repository.updateSuccessfulPollOutcome).toHaveBeenCalledWith(
+      expect.objectContaining({
+        realPollVisibleLvSourceAt: new Date(visibleLv),
       }),
     );
     expect(lastAllowedB2).toBe(0);

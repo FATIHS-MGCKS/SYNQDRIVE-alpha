@@ -92,6 +92,6 @@ export RAW_REFUEL_READY_EVIDENCE_REFRESH_INTEGRATION=1
 export RAW_REFUEL_CANDIDATE_RECOVERY_F10_6_8_B_INTEGRATION=1
 
 npm test -- --runInBand --forceExit \
-  --testPathPattern=raw-refuel-ready-evidence-refresh.postgres.integration.spec.ts
+  --testPathPatterns=raw-refuel-ready-evidence-refresh.postgres.integration.spec.ts
 
 echo "RFRF_READY_EVIDENCE_REFRESH_POSTGRES_GATE=PASS"

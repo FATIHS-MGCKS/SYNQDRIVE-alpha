@@ -6,6 +6,395 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-11 — G5C-N2 post-anchor trip-phase telemetry must not veto finalized-trip session arming
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | `ensureLvRestWindowForFinalizedTrip` applied full `canOpenRestWindowCandidate` gates whenever `source_timestamp >= trip.endTime`, so deceleration snapshots (`speed_not_zero`) and alternator-band LV (`charging_context`) blocked `LV_REST_WINDOW` creation despite authoritative COMPLETED + RESTING |
+| **OBSERVATION** | Production post-T0 trips `6f1090c0`, `08f2e58c`, `f123d957` (org `faa710c9…`, SHA `7f47c9f5`): `BATTERY_LV_REST_SESSION_OPEN` invoked via finalize + reconciliation; handler `outcome=not_eligible` with `charging_context` / `speed_not_zero`; zero sessions post-T0 |
+| **CHANGE** | Strip volatile trip-phase context unless post-anchor observation **passes** `canOpenRestWindowCandidate`; open `CANDIDATE` with unknown momentary context otherwise (parity with pre-anchor stall path); REST_SNAPSHOT promotion unchanged |
+| **WHY** | Trip Detection finalizes before latest_state reflects stationary rest; timestamp alone is not rest-period evidence |
+| **VALIDATION** | `lv-rest-window-session-arming.service.spec.ts` G5C-N2 Tiguan/Audi production shapes + missing-provider rejection (23 tests) |
+| **NON_EFFECTS** | REST target evaluation gates, wake/charging/movement measurement quality, publication, shadow flags, production deploy |
+
+---
+
+## 2026-10-10 — G5B final HV compat allowlisted customer projection (PR #1969)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | `presentCompatSanitizedLegacy` spread historical `sohPercent` / `nominalCapacityKwh`; `canonicalSummary` could retain `legacyCapacity`; compat canonical masking skipped when `summary.hv.telemetry` absent despite nested canonical HV carriers |
+| **CHANGE** | Allowlisted `legacy: { diagnosticOnly, telemetry }` and explicit `canonicalSummary` projection (no `legacyCapacity`); `resolveCompatTelemetryRaw` aggregates carriers then `presentHvCustomerTelemetryFields` fail-closes; `maskCanonicalHvCustomerSurfaces` when `liveState.hv`, `hv`, or `legacy.hvLegacyCapacity` present; canonical.legacy HV/LV SOH capacity numerics redacted on compat path |
+| **VALIDATION** | `battery-hv-battery-status.compat.spec.ts` comprehensive regression (missing `hv.telemetry`, stale carrier, legacy SOH/capacity, nested canonical leak, verified reference 77.5 kWh preserved); 40 focused battery presenter/service tests |
+
+---
+
+## 2026-10-10 — G5B-F2 LV publication + HV compat nested closure (PR #1969)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | `redactCustomerLegacyLvDiagnostic` exposed raw SOH when `decisionCapable=true` even with publication OFF; HV compat returned unmasked `currentTelemetry`, `canonicalSummary`, `canonical`, and `legacy` nested objects |
+| **CHANGE** | LV diagnostic SOH requires publication customer visibility **and** decision capability; compat projects sanitized nested objects and drops legacy nominal fallback for nominal capacity |
+| **VALIDATION** | Extended `battery-customer-response.presenter.spec.ts`, `battery-hv-battery-status.compat.spec.ts`, `canonical-battery-health.service.spec.ts` |
+
+---
+
+## 2026-10-10 — G5B-F1 customer response safety closure (PR #1969)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | G5B masked summary `hv.telemetry` but `canonical.liveState.hv.values/signals` and `canonical.hv.chargingState` could still expose stale measurements; `canonical.legacy.v2Features` leaked stored SOH when publication OFF; HV compat inferred provider-SOH freshness from non-null telemetry |
+| **CHANGE** | Extended `applyCustomerFacingBatterySummaryBoundaries` to mask all canonical HV customer paths (values, signal `.value`, chargingState, provider SOH percent) while preserving freshness metadata; redact `v2Features` SOH when LV publication not customer-visible; HV compat independently fail-closes via observation + `canonical.hv.providerSoh.decisionFresh` |
+| **VALIDATION** | `battery-customer-response.presenter.spec.ts`; extended canonical + compat specs |
+| **NON_EFFECTS** | REST/shadow/queue/assessment scheduling unchanged |
+
+---
+
+## 2026-10-10 — G5B customer HV telemetry freshness + legacy customer boundary
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | Canonical summary masked stale HV SOC/range on `currentTelemetry` but `hv.telemetry` still exposed stale energy/capacity/charging/temperature/provider SOH when `sourceTimestamp` was old; compat could still prefer masked telemetry SOC fallback paths; legacy nominal capacity could surface as customer nominal capacity |
+| **CHANGE** | `presentHvCustomerTelemetryFields` + `applyCustomerFacingBatterySummaryBoundaries` gate all HV dynamic customer fields on carrier observation freshness (separate provider-SOH gate); HV compat uses verified reference capacity only; customer `canonical.legacy.lvDiagnostic` SOH scores redacted when not decision-capable; unverified HV legacy capacity diagnostics redacted on customer summary |
+| **WHY** | G5A acceptance `ACCEPT_WITH_DOCUMENTED_GAPS` — close Tesla-class stale-carrier customer leakage without erasing DB evidence or canonical signal freshness metadata |
+| **VALIDATION** | `battery-hv-customer-telemetry.presenter.spec.ts`; extended `canonical-battery-health.service.spec.ts`; extended `battery-hv-battery-status.compat.spec.ts` |
+| **NON_EFFECTS** | REST capture, shadow flags, queue admission, assessment scheduling unchanged; canonical `liveState.hv.signals` retain stale values with freshness metadata for diagnostics |
+| **DECISION_STATUS** | VALIDATED (repository tests) |
+
+---
+
+## 2026-10-10 — Production alpha G3-H2 HV compat legacy fallback closure
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | `GET hv-battery-status` fell back to legacy `HvBatteryHealthService` SOC/range/SOH/telemetry when canonical masked stale observations |
+| **CHANGE** | `presentHvBatteryStatusCompatResponse` — customer fields from canonical summary only; legacy retained under `legacy`; HV range masked with telemetry observation freshness |
+| **VALIDATION** | `battery-hv-battery-status.compat.spec.ts`; canonical stale SOC/range spec |
+| **NON_EFFECTS** | No HV SOH publication activation; workshop/document SOH path unchanged in canonical resolver |
+
+---
+
+## 2026-10-10 — Production alpha G3 safe shadow + user-facing battery masking (G3-H1 isolated)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | `isBatteryV2LegacyRestCaptureEnabled()` returned true when `REST_SHADOW=true` and `PUBLICATION=false`, re-enabling legacy rest capture alongside canonical REST; `getV2Health().userFacingSohPct` mirrored stored `publishedSohPct` without publication/safety gates; canonical summary exposed stale HV SOC when `sourceTimestamp` was old but poll fetch was fresh |
+| **CHANGE** | Legacy rest capture only when canonical REST pipeline is off (`!REST_SHADOW`); `resolveBatteryV2UserFacingSohPct` gates customer LV SOH on `PUBLICATION` + `evaluateLegacyPublicationSafety` (incl. chemistry + evidence); canonical summary masks customer `sohPercent` / telemetry SOC when publication off or observation not decision-fresh; customer V2 API omits raw legacy SOH fields |
+| **WHY** | Alpha shadow intent: canonical ingestion without dual-path queue amplification; publication must not re-enable legacy capture; stale Tesla-class HV SOC and unverified LV estimates must not read as current customer truth |
+| **VALIDATION** | `battery-v2-cutover.policy.spec.ts` flag matrix; `battery-v2-user-facing-lv.policy.spec.ts`; `battery-v2.service.spec.ts`; `battery-v2-snapshot-ingestion.service.spec.ts`; `canonical-battery-health.service.spec.ts`; controller contract tests |
+| **NON_EFFECTS** | No production deploy; no env/DB mutation; no contamination threshold changes; diagnostic `canonical.legacy.v2Features` retains stored values |
+| **REMAINING_GAPS** | Arteon `vehicle_battery_specs`; Tiguan VALID+`sourceObservationId` handoff; Audi A4 assessment scheduling; Tesla DIMO HV carrier freshness (follow-up, not bypassed) |
+| **DECISION_STATUS** | VALIDATED (repository tests) |
+| **EVIDENCE** | G3-H1 replacement PR; production read-only G2 RCA @ `ab72f574` |
+
+---
+
+## 2026-10-10 — P1B1-A1 governance authority documentation consistency (PR #1956)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Phase-A governance mode contract V2 + ChangesView A1 note: resolver unconditionally disabled; offline crypto diagnostics-only; P1 `NO_GO` explicit |
+| **WHY** | Remove outdated “verifier wired for Path B readiness” wording after H1–H3 |
+| **VALIDATION** | Doc review; `validate-module-registry.sh` |
+| **NON_EFFECTS** | No runtime code changes |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B1-A1-H3 canonical Ed25519 Base64 closure
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Strict Base64 round-trip + exact keyId in `parseGovernanceSignedAttestationV1`; adversarial encoding tests |
+| **WHY** | H3 review — reject non-canonical Base64 aliases and silent keyId normalization |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1b1-a1-h3-canonical-signature-encoding.spec.ts` + HV-H4 unit suite |
+| **NON_EFFECTS** | H2 timestamp binding, disabled independent authority, P1 `NO_GO` |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B1-A1-H2 evidence parser & acceptance timestamp binding
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Shared fail-closed signature parse; operator-risk attestation V2 with signed `acceptedAtUtc`; claims binding rejects timestamp-only tampering; negative parser tests |
+| **WHY** | H2 review — malformed signatures must not throw; acceptance time must be cryptographically bound or non-authoritative |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1b1-a1-h2-evidence-parser-integrity.spec.ts` + HV-H4 unit suite (293 tests) |
+| **NON_EFFECTS** | Independent authority verifier remains disabled; P1 `NO_GO`; no production access |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B1-A1-H1 trust anchor & replay boundary closure
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Production authority resolver always disabled; separate crypto vs independent authority; fixture GitHub evidence non-authoritative; operator-risk claims binding; ephemeral replay scope documented; trust-store canonicalization |
+| **WHY** | Security review — env cannot self-promote trust; signed synthetic evidence must not yield governance READY |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1b1-a1-h1-governance-trust-anchor.spec.ts` + HV-H4 unit suite |
+| **NON_EFFECTS** | P1 `NO_GO`, no production access, no durable replay store activation |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B1-A1 governance evidence foundation (offline verification)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Domain-separated Ed25519 attestations + trust store; offline ratification/risk/deployment/postgres evidence contracts; env-loaded external authority verifier (readiness only); operational readiness binds release SHA + Postgres fingerprint for Path B |
+| **WHY** | R4.2B-P1B1-A1 — independently verifiable evidence under SINGLE_OPERATOR_V1 without production activation |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1b1-a1-governance-evidence.spec.ts` + full HV-H4 unit suite (282 tests) |
+| **NON_EFFECTS** | No production SSH/DB, no P1 `GO`, governance signatures are not execution authorization |
+| **REMAINING_GAPS** | Live GitHub merge proof acquisition, deployment probe issuer runtime, live DB role audit |
+| **DECISION_STATUS** | PROPOSED — next slice: runtime-bound evidence + trusted issuer operations outside repo |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B1-A0-H2 eliminate self-asserted trusted governance evidence
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | External authority verifier port (disabled A0); reject `TRUSTED_EXTERNAL_VERIFIED` in claim JSON; split `CLAIMS_STRUCTURALLY_VALID` vs `AUTHORITY_VERIFIED`; Path B readiness fail-closed without verifier |
+| **WHY** | H1 review — self-authored trust status in env/JSON must not satisfy governance readiness |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1b1-a0-h2-governance-authority.spec.ts` + HV-H4 unit suite |
+| **NON_EFFECTS** | No env bypass, no production access, P1 authorization remains `NO_GO` |
+| **DECISION_STATUS** | PROPOSED — future slice wires GitHub/hosted verifier producing verified evidence results |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B1-A0-H1 governance trust boundary closure
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | GO/NO-GO V2 adapter (`SINGLE_OPERATOR_V1` forbids fabricated verifier); ratification provenance contract; operator risk acceptance V2; readiness check `SINGLE_OPERATOR_POLICY_AND_RISK_ACCEPTANCE`; block self-declared `RATIFIED` adoption JSON |
+| **WHY** | DO NOT MERGE review — Path B must not depend on fictional second-human verifier or unauthenticated ratification |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1b1-a0-h1-governance-trust.spec.ts` + HV-H4 unit suite (268 tests); P1 execution gate remains `NO_GO` |
+| **NON_EFFECTS** | No production DB/SSH, keys, migrations, or Authority C execution wiring |
+| **DECISION_STATUS** | PROPOSED — owner repository ratification + trusted provenance still required before governance READY |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B1-A0 single-operator governance adoption & dormant authorization prep
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Path B adoption proposal + governance mode contract V2; governance-mode readiness adapter; dormant P1 trusted-auth eval (`NO_GO`); operator signing/trust provisioning doc; P1B1-A0 negative tests |
+| **WHY** | Owner confirmed Path B governance model; prepare P1B1 without enabling production execution |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1b1-a0*` + full HV-H4 unit suite; `resolvePhaseAProductionP1AuthorizationV1` unchanged `NO_GO` |
+| **NON_EFFECTS** | No production access, keys, deployment probe, or execution gate `GO` wiring |
+| **DECISION_STATUS** | PROPOSED — adoption record template `PENDING_OWNER_CONTROLLED_REPOSITORY_MERGE` until owner merge |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B0-H3 Ed25519 DER canonicalization & revocation alias closure
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | `materializeEd25519TrustSpkiV1` requires input SPKI DER === `createPublicKey` re-export; fingerprint SHA-256(canonical export DER); `PHASE_A_P1_TRUST_KEY_SPKI_DER_NONCANONICAL` for trailing bytes / alternate ASN.1 |
+| **WHY** | Independent repro: Node accepts SPKI+trailing byte and long-form SEQUENCE length; raw-DER SHA-256 alias bypass |
+| **VALIDATION** | Extended `crypto-trust` + full offline verifier Jest family; HV-H4 unit suite |
+| **NON_EFFECTS** | P1 `NO_GO`; H1/H2 calendar, signing header, governance unchanged |
+| **DECISION_STATUS** | PROPOSED |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B0-H2 trust key canonicalization, calendar validation, governance closure
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Ed25519 SPKI SHA-256 fingerprint dedup + canonical Base64 enforcement; strict UTC calendar validation (`parseUtcInstantStrictV1`); finite verification clock; governance §7.0–§7.2 single-operator security-review exception vs multi-party path |
+| **WHY** | Residual review: Base64 string alias bypass; `Date.parse` calendar rollover; §7 contradicted §3 on unconditional second human reviewer |
+| **VALIDATION** | Extended Jest (`utc-instant`, `crypto-trust`, offline verifier); `npm run test:battery:v2:hv-h4`; registry + graph validators |
+| **NON_EFFECTS** | P1 execution `NO_GO`; no production access or signing keys |
+| **DECISION_STATUS** | PROPOSED — owner policy adoption still required |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B0-H1 offline trusted authorization security closure
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Domain-separated signing header (algorithm, keyId, contract version, purpose, scope); strict `unknown` parsers for artifact/trust store/context; full temporal policy; independent runtime binding context; trust-store duplicate keyId/SPKI alias rejection; governance §3 supersession wording; test plan H1-T21–T25; 28 offline verifier Jest cases |
+| **WHY** | Security review DO NOT MERGE: unsigned keyId/algorithm enabled substitution; partial temporal/context validation; malformed JSON not fail-closed |
+| **VALIDATION** | `npx jest m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1-trusted-authorization*` (28); `npm run test:battery:v2:hv-h4` (237); `resolvePhaseAProductionP1AuthorizationV1` still `NO_GO`; verifier static boundary (no Prisma/preflight/consumeApproval) |
+| **NON_EFFECTS** | No execution gate wiring; no production keys/signatures; live deployment identity UNVERIFIED in P1B0 fixtures |
+| **REMAINING_GAPS** | P1B1 integration; human policy approval (`REQUIRES_HUMAN_POLICY_APPROVAL=YES`) |
+| **DECISION_STATUS** | PROPOSED |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1B0 single-operator trusted authorization architecture
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | ADR + governance contract + JSON evidence schema + offline verification test plan; isolated Ed25519 offline verifier (`verifyPhaseAProductionP1TrustedAuthorizationEvidenceOfflineV1`) and manifest fingerprint helper |
+| **WHY** | Sole owner/operator cannot satisfy two-human verifier policy without fabricating identities; need honest AI-advisory vs human-risk vs machine-crypto separation |
+| **VALIDATION** | `npx jest m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-p1-trusted-authorization*`; `npm run test:battery:v2:hv-h4`; runtime `resolvePhaseAProductionP1AuthorizationV1` unchanged `NO_GO` |
+| **NON_EFFECTS** | No production connect, no signing keys in repo/CI, no execution gate integration |
+| **REMAINING_GAPS** | Human policy approval to enable SINGLE_OPERATOR governance mode; P1B1 integration + deployment SHA probe + operator signing CLI |
+| **DECISION_STATUS** | PROPOSED |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1A-H2 P1 authorization enforcement + audit credential isolation
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Split offline contract gate from production execution authorization; `evaluatePhaseAProductionP1ExecutionGateV1` returns `ok:false` + `PHASE_A_P1_EXTERNAL_AUTHORIZATION_UNVERIFIED` when contracts pass but `p1Authorization` is `NO_GO`; runner + production config CLI require `p1Authorization===GO`; migration-owner URL removed from audit env — non-secret `M3_3_HV_H4_A3_PHASE_A_PRODUCTION_MIGRATION_OWNER_ROLE_IDENTITY_REFERENCE` only; legacy migration-owner DATABASE URL rejected in audit context |
+| **WHY** | Security review: `ok:true` with `p1Authorization=NO_GO` allowed production Prisma connect; migration-owner passwords in audit process env weakened credential isolation |
+| **VALIDATION** | P1 gate + migration boundary + runner no-connect unit specs; production runner/TLS postgres integration expects P1 block before connect |
+| **NON_EFFECTS** | R4.1 isolated path; session timeouts; TLS verify-full policy; READ ONLY manifest; consumption semantics |
+| **REMAINING_GAPS** | Privileged migration-owner separation proof requires separate operational process; trusted external P1 authorization not integrated |
+| **DECISION_STATUS** | VALIDATED (repository + CI fixtures) |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P1A-H1 production Phase-A admission safety closure
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | `evaluatePhaseAProductionP1ExecutionGateV1` binds R4.2B-P0 readiness + R4.2A admission pre-checks before PostgreSQL connect; migration-owner reference URL isolation; GO `authorizationLimits` extended (retention/reconciliation/backfill); `SET LOCAL` statement/lock timeouts in production READ ONLY tx |
+| **WHY** | P1A inventory: production executor could bypass GO/NO-GO; migration-owner separation was declarative-only; statement timeout was Prisma tx only |
+| **VALIDATION** | P1 gate unit spec; runner unit block without GO; session-limits postgres integration; audit fixture write denial; TLS/production integration fixtures updated |
+| **NON_EFFECTS** | `p1Authorization` remains `NO_GO`; external human auth `UNVERIFIED`; isolated R4.1 path unchanged |
+| **REMAINING_GAPS** | Independently trusted authorization system not in repository — cannot set `P1_AUTHORIZATION=GO` without external evidence |
+| **DECISION_STATUS** | VALIDATED (repository + CI fixtures) |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P0-H2 evidence semantics + explicit UTC timestamps
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | `EXTERNAL_HUMAN_AUTHORIZATION_AUTHENTICATION` check → `SKIP` + `PHASE_A_EXTERNAL_HUMAN_AUTHORIZATION_UNVERIFIED`; `parseUtcIsoTimestampV1` requires explicit UTC (`Z` / `±00:00`); approval record timestamps validated in readiness path |
+| **WHY** | PASS on an UNVERIFIED check mis-stated certification; `Date.parse` accepted ambiguous local/date-only strings |
+| **VALIDATION** | readiness + validation unit specs; READY still possible with `externalHumanAuthorizationAuthentication: UNVERIFIED` |
+| **DECISION_STATUS** | VALIDATED (repository offline) |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P0-H1 offline GO/NO-GO fail-closed validation
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Required `AUTHORIZED_RELEASE_SHA` env (40-char hex); audit credential expectation runtime validation; fail-closed GO/NO-GO parse (maintenance window, stop conditions, nested objects); verifier timestamp checks; report `UNVERIFIED` human auth + configuration-only release binding |
+| **WHY** | P0 dry-run must never pass with missing release binding or malformed JSON; must not imply deployed-release or authenticated human approval from self-authored JSON |
+| **VALIDATION** | Extended `operational-readiness` + `readiness-validation` unit specs; CLI NO_GO JSON test |
+| **DECISION_STATUS** | VALIDATED (repository offline) |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2B-P0 production Phase-A operational readiness (offline)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | GO/NO-GO contract types; `evaluatePhaseAProductionOperationalReadinessV1` offline evaluator; ops CLI `battery:hv-h4:a3-phase-a-production-operational-readiness`; P0 audit matrix + P1 execution runbook |
+| **WHY** | R4.2A admission exists but P1 production execution requires separate operational authorization, independent human verification, and offline validation without PostgreSQL access |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r4-2b-phase-a-production-operational-readiness.v1.spec.ts`; HV-H4 unit + postgres CI (no R4.2A regression) |
+| **NON_EFFECTS** | No production access; no approval consumption in dry-run; no schema/issuer/hybrid-loader changes |
+| **REMAINING_GAPS** | Production audit login + CA provisioning; cryptographic approval optional future |
+| **DECISION_STATUS** | VALIDATED (repository offline) |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2A-H3 Jest 30 CLI compatibility (repository-wide)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Replace removed Jest 30 `--testPathPattern` with `--testPathPatterns` in `backend/package.json` npm scripts, RFRF/Legal/VO verify shell gates, Trip FSM workflow (via `test:trip-fsm:production-readiness:r10`), EXP-021 gate script, fleet connectivity verify |
+| **WHY** | Jest 30.5.2 security upgrade removed `--testPathPattern`; CI/workflows still passed the obsolete flag → zero matching suites (false green) |
+| **VALIDATION** | `npx jest --listTests`: obsolete flag 0 paths vs `--testPathPatterns=legal-document` 37 paths; `npm run test:trip-fsm:production-readiness:r10` (9 suites / 98 tests); `npm run test:legal-documents` selection parity (46 suites matched) |
+| **OBSERVED_EFFECT** | Intended regex suites execute under Jest 30; `--testPathIgnorePatterns` unchanged |
+| **NON_EFFECTS** | Jest 30.5.2 / audit gate policy unchanged; no production migration edits |
+| **REGRESSIONS_OR_TRADEOFFS** | `.github/workflows/trip-fsm-production-readiness.yml` touch requires `i18n-governance-authority-change` label on PR |
+| **DECISION_STATUS** | VALIDATED (repository CLI parity) |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2A security closure: Jest 30.5.2 (baseline audit regression)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Backend devDependencies: `jest@^30.5.2`, `ts-jest@^29.4.14`, `@types/jest@^30.0.0` — `jest-resolve-dependencies@30.5.2` |
+| **WHY** | PR lockfile delta (`pg` / `@prisma/adapter-pg`) changed npm audit fallback identity for existing Jest 29.7.0 high finding → `SECURITY_REGRESSION=true` in Legal Documents baseline-aware scan |
+| **VALIDATION** | `scripts/audits/audit-dependencies.sh` (PR base `main` vs head); HV-H4 Jest suite |
+| **OBSERVED_EFFECT** | `SECURITY_REGRESSION=false`; `jest-resolve-dependencies` no longer high severity |
+| **DECISION_STATUS** | VALIDATED (repository) |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2A-H2 merge-gate: fail-closed production Prisma factory
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Removed insecure `PrismaClient` fallback when TLS URL policy fails; `PHASE_A_PRODUCTION_TLS_SSLROOTCERT_UNREADABLE` on CA load failure; production client construction inside runner `try` + sanitized error boundary; unit tests for factory fail-closed behavior |
+| **WHY** | Weak-TLS fallback could instantiate a production client without verify-full/pg adapter identity path |
+| **VALIDATION** | `m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-prisma-client.v1.spec.ts`; HV-H4 unit + postgres CI |
+| **NON_EFFECTS** | `@prisma/adapter-pg` verify-full path unchanged; no production execution |
+| **DECISION_STATUS** | VALIDATED (repository) |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2A-H2 TLS identity certification + same-session seal
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | TLS-enabled PostgreSQL CI fixture; Prisma verify-full negative/positive matrix; `certifyPhaseAProductionTlsIdentityV1` (ssl≠identity); production gates moved inside READ ONLY transaction; same `pg_backend_pid` evidence; HV-H4 postgres CI integrates fixture |
+| **WHY** | H1 left `TLS_IDENTITY_CERTIFIED=NO` and pre-transaction probes allowed TOCTOU between identity and discovery |
+| **VALIDATION** | tls-identity unit spec; `m3-3-hv-h4-a3-3-o2-r4-2a-phase-a-production-tls.postgres.integration.spec.ts`; HV-H4 postgres CI job |
+| **OBSERVED_EFFECT** | `tlsIdentityCertified=true` only when verify-full connect + encrypted session + PID anchor match inside transaction |
+| **NON_EFFECTS** | `productionCertification=NOT_CERTIFIED`; no production access |
+| **REMAINING_GAPS** | Production operator run still requires org-managed CA material outside CI fixture |
+| **DECISION_STATUS** | VALIDATED (repository TLS fixture) |
+| **EVIDENCE** | R4.2A architecture § H2; TLS fixture script |
+
+## 2026-10-09 — M3.3-HV-H4-A3.3-O2-R4.2A-H1 production admission security closure
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Mandatory verify-full + sslrootcert; runtime `pg_stat_ssl` probe; mandatory `forbidSuperuserSession=true` with admin privilege denial; runner `try/finally` disconnect; deferred approval consume until post-identity; durable consumption store marker + ephemeral path rejection; approval window max 72h; expanded unit/postgres integration tests |
+| **WHY** | R4.2A preparation path must not admit production execution without TLS identity policy, non-superuser audit identity, connection cleanup, or replay-safe consumption semantics |
+| **VALIDATION** | R4.2A admission/target/consumption unit specs; postgres integration (harness, ephemeral store, TLS probe on plain DB, audit fixture identity); HV-H4 CI |
+| **OBSERVED_EFFECT** | CI plain PostgreSQL: `PHASE_A_PRODUCTION_TLS_HANDSHAKE_NOT_ENCRYPTED`; `tlsIdentityCertified` remains false until TLS-enabled fixture exists |
+| **NON_EFFECTS** | No production DB access; `PRODUCTION_CERTIFICATION=NO`; cryptographic approval still false |
+| **REMAINING_GAPS** | TLS verify-full negative matrix on isolated TLS PostgreSQL; production readiness blocked until `TLS_IDENTITY_CERTIFIED=YES` demonstrated |
+| **DECISION_STATUS** | VALIDATED (repository / isolated fixture); **NOT_READY** for production certification |
+| **EVIDENCE** | `M3_3_HV_H4_A3_3_O2_R4_2A_PRODUCTION_PHASE_A_ADMISSION_2026-10-08.md` § H1; production preflight runbook |
+
+## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R4.2A production Phase-A admission preparation
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Production admission contract (documented human approval + execute ack + one-time consumption); target identity + TLS policy; session identity gate; production ops CLI; operator runbook; reuses R4.1 runner |
+| **WHY** | R4.1 isolated loopback path cannot authorize production; need separate fail-closed gate before any future authorized production read-only run |
+| **VALIDATION** | production admission/target unit specs; postgres integration fixture; HV-H4 CI |
+| **OBSERVED_EFFECT** | `PHASE_A_PRODUCTION_EXECUTE_ACK_REQUIRED` without execute binding; harness forbidden on production path |
+| **NON_EFFECTS** | No production execution in repo slice; no role provisioning; `productionCertification` remains NOT_CERTIFIED |
+| **REMAINING_GAPS** | R4.2B operational production execution gate; cryptographic approval optional future |
+| **DECISION_STATUS** | VALIDATED (repository / isolated fixture) |
+| **EVIDENCE** | `M3_3_HV_H4_A3_3_O2_R4_2A_PRODUCTION_PHASE_A_ADMISSION_2026-10-08.md`; runbook under `architecture/battery-v2/operations/` |
+
+## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R4.1-H2 admission boundary + merge gate
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Runner/CLI shared admission (app + issuer URL isolation); remove remote allowlist; strict read-only SQLSTATE 25006; migration SELECT denial integration fixture; integration harness env |
+| **WHY** | Direct runner invocation bypassed credential isolation; loopback allowlists weakened isolated-test policy |
+| **VALIDATION** | admission/runner/isolated-target unit specs; HV-H4 postgres integration job |
+| **OBSERVED_EFFECT** | `PHASE_A_CANNOT_REUSE_DATABASE_URL` at runner boundary; harness bypass test-only; migration-denial fixture teardown revokes role grants before `DROP ROLE` (HV-H4 postgres integration green on `eebd50cbf`) |
+| **NON_EFFECTS** | No R4.2 production authorization |
+| **REMAINING_GAPS** | O2-R4.2 production read-only gate |
+| **DECISION_STATUS** | VALIDATED (repository / isolated fixture) |
+| **EVIDENCE** | `M3_3_HV_H4_A3_3_O2_R4_1_PHASE_A_EXECUTABLE_PREFLIGHT_2026-10-08.md` §4.2 |
+
+## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R4.1-H1 security + integration test hardening
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Sanitized stable error codes; isolated-target approval policy (loopback-only fail-closed); runner entry guard; mandatory integration DB env (no silent skips); transaction abort guard; regproc function identity checks; securityCertification=NOT_CERTIFIED |
+| **WHY** | Raw Prisma/URL leakage and hostname blocklists are insufficient; aborted transactions must not continue; integration evidence must fail closed |
+| **VALIDATION** | R4.1 unit + postgres integration specs; HV-H4 CI postgres job |
+| **OBSERVED_EFFECT** | `PHASE_A_INTEGRATION_DATABASE_URL_REQUIRED` when misconfigured; read-only probe records SQLSTATE when present |
+| **NON_EFFECTS** | No production authorization (R4.2); no role provisioning |
+| **REMAINING_GAPS** | O2-R4.2 authorized production read-only execution gate |
+| **DECISION_STATUS** | VALIDATED (repository / isolated fixture) |
+| **EVIDENCE** | `M3_3_HV_H4_A3_3_O2_R4_1_PHASE_A_EXECUTABLE_PREFLIGHT_2026-10-08.md` § H1 |
+
+## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R4.1 executable Phase-A read-only preflight
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Standalone Phase-A runner + ops CLI; approved SELECT manifest; dedicated env URL (`M3_3_HV_H4_A3_PHASE_A_PREFLIGHT_*`); READ ONLY transaction; classified statuses; JSON report + redaction; unit + isolated postgres tests |
+| **WHY** | O2-R3 spec defined phases but had no fail-closed executable discovery path; implicit `DATABASE_URL` reuse would break separate-process credential isolation |
+| **VALIDATION** | `test:battery:v2:hv-h4` + `test:battery:v2:hv-h4:postgres`; manifest/read-only/config specs |
+| **OBSERVED_EFFECT** | `A3_ATTESTATION_PHASE_A_EXECUTABLE_PREFLIGHT_RUNNER_PRESENT=true`; default execution OFF; `phaseBCertified` always false |
+| **NON_EFFECTS** | No production DB/SSH/deploy; no role DDL; no Nest issuer registration; no Phase B certification |
+| **REMAINING_GAPS** | O2-R4.2 human approval + authorized production read-only run; provisioning + Phase B certification separate |
+| **DECISION_STATUS** | VALIDATED (repository / isolated fixture) |
+| **EVIDENCE** | `M3_3_HV_H4_A3_3_O2_R4_1_PHASE_A_EXECUTABLE_PREFLIGHT_2026-10-08.md` |
+
+## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R3-H1 admission boundary + preflight phase closure
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Split tenant scope gate vs future authenticated admission contract; factory requires expected DB login + canonical target rejection + sanitized errors; preflight spec Phase A/B V2 with effective privilege checks |
+| **WHY** | `requestedBy` string is not authentication; single-phase preflight conflated pre-provision discovery with post-provision certification |
+| **VALIDATION** | R3-H1 unit/postgres specs; preflight validator; HV-H4 CI |
+| **OBSERVED_EFFECT** | `REQUESTED_BY_AUTHENTICATED=NO`; `PRE_PROVISION` + `POST_PROVISION` phases defined; factory fail-closed without expected login |
+| **NON_EFFECTS** | No production execution; no Nest registration; no writer/loader/bootstrap |
+| **REMAINING_GAPS** | Execute Phase A/B on Production (authorized); implement future admission evaluator at integration slice |
+| **DECISION_STATUS** | PROPOSED (architecture) |
+| **EVIDENCE** | `M3_3_HV_H4_A3_3_O2_R3_ISSUER_RUNTIME_TOPOLOGY_PREFLIGHT_2026-10-08.md` §10 |
+
+## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R3 issuer process isolation + production role preflight architecture
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Runtime topology audit; `SEPARATE_TRUSTED_ISSUER_PROCESS` decision; admission contract + `issueM3_3HvH4A3IntegrityAttestationWithAdmissionV1`; inert issuer DB factory (dedicated env, no `DATABASE_URL` fallback); machine-readable production role preflight JSON spec |
+| **WHY** | Second in-process Prisma pool does not isolate credentials from API compromise; production roles not yet proven; revisionId-only calls are unsafe across tenants |
+| **VALIDATION** | Unit + postgres admission/factory specs; preflight spec structure test; HV-H4 CI; `validate-module-registry.sh` |
+| **OBSERVED_EFFECT** | `RECOMMENDED_ISSUER_PROCESS_MODEL=SEPARATE_TRUSTED_ISSUER_PROCESS`; `PRODUCTION_ROLE_PREFLIGHT_DEFINED=YES`; factory not Nest-registered |
+| **NON_EFFECTS** | No production DB/SSH; no deploy; no writer/hybrid loader/bootstrap/retention changes |
+| **REMAINING_GAPS** | Execute preflight on Production (authorized); provision MIGRATION_OWNER / GENERAL_APP_RUNTIME / TRUSTED_ATTESTATION_ISSUER |
+| **DECISION_STATUS** | PROPOSED (architecture) |
+| **EVIDENCE** | `M3_3_HV_H4_A3_3_O2_R3_ISSUER_RUNTIME_TOPOLOGY_PREFLIGHT_2026-10-08.md` |
+
 ## 2026-10-08 — M3.3-HV-H4-A3.3-O2-R2-H2 true issuer-login isolation + lock-observed concurrency
 
 | Field | Value |

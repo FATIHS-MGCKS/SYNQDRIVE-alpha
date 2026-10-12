@@ -3,6 +3,7 @@ import { legalDocumentsEn } from './legal-documents.en';
 import { settingsAdminEn } from './settings-admin.en';
 import { stationsTabEn } from './stations-tab.en';
 import { voiceAssistantEn } from './voice-assistant.en';
+import { dimoWebhookHealthEn } from './dimo-webhook-health.en';
 import { supportEn } from './support.en';
 import { finesEn } from './fines.en';
 import { insurancesEn } from './insurances.en';
@@ -53,6 +54,7 @@ import { rentalHelpCenterEn } from './rental.helpCenter.en';
 import { rentalMicroChromeEn } from './rental.microChrome.en';
 import { rentalHostPresentationEn } from './rental.hostPresentation.en';
 import { rentalLegacyGapEN } from './rental-legacy-gap.en';
+import { masterPlatformOpsDiS4En } from './master.platformOps.diS4.en';
 
 export const en = {
   // ─── Navigation / Sidebar ───
@@ -3366,6 +3368,11 @@ export const en = {
   'master.cv.addVehicle.demoUnavailableTitle': 'Demo vehicles',
   'master.cv.addVehicle.demoUnavailableBody':
     'No safe standalone demo-vehicle onboarding API exists. Billing supports DEMO assignment exclusion only via billingBillableVehicleAssignment with reasonCode DEMO — not via a dedicated demo fleet create flow.',
+  'master.cv.addVehicle.manualBaselineTitle': 'Manual fleet record',
+  'master.cv.addVehicle.manualBaselineHint':
+    'Vehicle core data, tires, LV battery, and brake baselines are saved after create via existing org-scoped APIs. No DIMO or telematics connection is created.',
+  'master.cv.addVehicle.manualServiceHistoryUnavailable':
+    'Service history dates and High Mobility activation are not available in manual create — use DIMO registration or update the vehicle after onboarding.',
 
   // ─── Fleet Condition ───
   'fleetCondition.title': 'Fleet Condition',
@@ -5873,6 +5880,7 @@ export const en = {
   ...automationWorkflowEn,
   ...stationsTabEn,
   ...voiceAssistantEn,
+  ...dimoWebhookHealthEn,
   ...whatsappEn,
   ...supportEn,
   ...supportOpsEn,
@@ -5923,6 +5931,7 @@ export const en = {
   ...rentalMicroChromeEn,
   ...rentalHostPresentationEn,
   ...rentalLegacyGapEN,
+  ...masterPlatformOpsDiS4En,
 } as const;
 
 export type TranslationKey = keyof typeof en;

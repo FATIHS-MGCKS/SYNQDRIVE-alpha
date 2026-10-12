@@ -1,5 +1,7 @@
 import type { PartialTranslationDictionary } from '../dictionary-types';
 import { rentalLegacyGapPL } from './rental-legacy-gap.pl';
+import { dimoWebhookHealthPl } from './dimo-webhook-health.pl';
+import { masterPlatformOpsDiS4Pl } from './master.platformOps.diS4.pl';
 
 export const pl = {
   'dashboard.welcomeBack': 'Witaj ponownie, {name}',
@@ -124,6 +126,9 @@ export const pl = {
   'master.cv.addVehicle.dimoLoadFailed': 'Nie mozna zaladowac listy DIMO',
   'master.cv.addVehicle.demoUnavailableTitle': 'Pojazdy demo',
   'master.cv.addVehicle.demoUnavailableBody': 'Brak bezpiecznego API onboarding demo; wykluczenie DEMO tylko przez billingBillableVehicleAssignment.',
+  'master.cv.addVehicle.manualBaselineTitle': 'Rekord floty reczny',
+  'master.cv.addVehicle.manualBaselineHint': 'Dane podstawowe, opony, bateria LV i hamulce zapisywane po utworzeniu przez org API.',
+  'master.cv.addVehicle.manualServiceHistoryUnavailable': 'Historia serwisu i HM niedostepne przy recznym tworzeniu — uzyj DIMO lub edycji pozniej.',
 
   'fleetCondition.title': 'Stan floty', 'fleetCondition.healthScore': 'Wynik zdrowia', 'fleetCondition.goodCondition': 'Dobry', 'fleetCondition.warnings': 'Ostrzezenia', 'fleetCondition.critical': 'Krytyczny',
   'newBooking.title': 'Nowa rezerwacja', 'newBooking.selectCustomer': 'Wybierz klienta', 'newBooking.selectVehicle': 'Wybierz pojazd', 'newBooking.timePeriod': 'Okres i odbior', 'newBooking.mileagePackages': 'Pakiety kilometrowe', 'newBooking.insurancePackages': 'Pakiety ubezpieczeniowe', 'newBooking.extras': 'Dodatki', 'newBooking.invoice': 'Faktura', 'newBooking.rentalContract': 'Umowa najmu', 'newBooking.createCustomer': 'Utworz nowego klienta', 'newBooking.bookingCreated': 'Rezerwacja utworzona!',
@@ -134,4 +139,6 @@ export const pl = {
   'documents.vehicleDocuments': 'Dokumenty pojazdu', 'documents.monthlyFixedCosts': 'Miesieczne koszty stale',
   'customerDetail.title': 'Szczegoly klienta', 'customerDetail.customerDocuments': 'Dokumenty klienta', 'customerDetail.customerAlerts': 'Alerty klienta', 'customerDetail.customerNotes': 'Notatki klienta',   'customerDetail.drivingScore': 'Wynik jazdy',
   ...rentalLegacyGapPL,
+  ...dimoWebhookHealthPl,
+  ...masterPlatformOpsDiS4Pl,
 } satisfies PartialTranslationDictionary;

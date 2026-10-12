@@ -13,6 +13,7 @@ Append-only decision registry. Stable IDs in `graph/nodes.yaml`.
 | `BAT-V2-DEC-LV-SINGLE-AUTHORITY-CUTOVER-001` | Battery V2 single-authority cutover / configuration invariant (D3) | `VALIDATED` | PR #1504 (2026-09-02) | PKG-01 IMPLEMENTATION_READY; HANDOFF flag rejected |
 | `BAT-V2-DEC-LV-PUBLICATION-TRACK-AUTHORITY-001` | LV publication assessment-track authority (D4) | `VALIDATED` | — | PKG-02 spec closure; refines PH4 + publication handoff gaps; D5 closed |
 | `BAT-V2-DEC-LV-PUBLICATION-VERSION-AUTHORITY-001` | LV publication version authority (D5) | `VALIDATED` | — | PKG-02 IMPLEMENTATION_READY; refines PH4 + publication gaps |
+| `BAT-V2-DEC-HV-H4-A3-P1B0-SINGLE-OPERATOR-AUTHZ-001` | Single-operator Phase-A P1 Ed25519 trusted authorization (governance + offline verifier) | `PROPOSED` | — | Supersedes two-human verifier **only** when org adopts `M3_3_HV_H4_A3_SINGLE_OPERATOR_GOVERNANCE_CONTRACT_V1`; does not authorize execution in P1B0 |
 
 ## Validation semantics
 

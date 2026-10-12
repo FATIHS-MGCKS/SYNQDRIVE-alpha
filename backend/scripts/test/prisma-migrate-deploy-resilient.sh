@@ -19,6 +19,12 @@ export PRISMA_MIGRATE_EPHEMERAL_RECOVERY="${PRISMA_MIGRATE_EPHEMERAL_RECOVERY:-0
 LOG="$(mktemp /tmp/prisma-migrate-deploy-resilient.XXXXXX.log)"
 trap 'rm -f "$LOG"' EXIT
 
+prisma_schema_args() {
+  if [[ -n "${PRISMA_SCHEMA_PATH:-}" ]]; then
+    printf '%s' "--schema=${PRISMA_SCHEMA_PATH}"
+  fi
+}
+
 ephemeral_recovery_allowed() {
   [[ "${PRISMA_MIGRATE_EPHEMERAL_RECOVERY:-}" == "1" ]]
 }
@@ -26,7 +32,7 @@ ephemeral_recovery_allowed() {
 recover_special_composite_index() {
   echo "==> Special migration $SPECIAL_MIGRATION: applying via apply-composite-indexes.ts"
   npx ts-node scripts/apply-composite-indexes.ts
-  npx prisma migrate resolve --applied "$SPECIAL_MIGRATION"
+  npx prisma migrate resolve $(prisma_schema_args) --applied "$SPECIAL_MIGRATION"
 }
 
 verify_m252_exact_parity() {
@@ -41,7 +47,7 @@ recover_m252_identifier_collision() {
   echo "==> Historical migration $M252_MIGRATION: applying ephemeral corrected semantic DDL"
   npx ts-node scripts/apply-m252-ephemeral-recovery.ts
   verify_m252_exact_parity
-  npx prisma migrate resolve --applied "$M252_MIGRATION"
+  npx prisma migrate resolve $(prisma_schema_args) --applied "$M252_MIGRATION"
 }
 
 recover_duplicate_tail_m252() {
@@ -51,7 +57,7 @@ recover_duplicate_tail_m252() {
   fi
   echo "==> Tail migration $TAIL_MIGRATION: verifying exact M252 semantic parity before resolve"
   verify_m252_exact_parity
-  npx prisma migrate resolve --applied "$TAIL_MIGRATION"
+  npx prisma migrate resolve $(prisma_schema_args) --applied "$TAIL_MIGRATION"
 }
 
 attempt=0
@@ -59,7 +65,7 @@ max_attempts=6
 while (( attempt < max_attempts )); do
   attempt=$((attempt + 1))
   set +e
-  npx prisma migrate deploy 2>&1 | tee "$LOG"
+  npx prisma migrate deploy $(prisma_schema_args) 2>&1 | tee "$LOG"
   deploy_exit=${PIPESTATUS[0]}
   set -e
   if [[ "$deploy_exit" -eq 0 ]]; then

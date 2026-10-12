@@ -2,8 +2,11 @@
 set -euo pipefail
 
 DEPLOY_EXECUTOR_OPS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DEPLOY_EXECUTOR_ROOT="$(cd "${DEPLOY_EXECUTOR_OPS_DIR}/../../.." && pwd)"
 # shellcheck source=lib/vps-exp021-fleet-deploy-guard.lib.sh
 source "${DEPLOY_EXECUTOR_OPS_DIR}/lib/vps-exp021-fleet-deploy-guard.lib.sh"
+# shellcheck source=lib/vps-deploy-monitoring-outcome.lib.sh
+source "${DEPLOY_EXECUTOR_OPS_DIR}/lib/vps-deploy-monitoring-outcome.lib.sh"
 
 GIT_REPO="${SYNQDRIVE_GIT_REPO:-https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git}"
 REQUESTED_SHA="${SYNQDRIVE_REQUESTED_DEPLOY_SHA:-}"
@@ -15,6 +18,32 @@ vps_validate_requested_deploy_sha() {
     exit 1
   fi
 }
+
+if [[ -z "$REQUESTED_SHA" ]]; then
+  echo "!! ABORT: SYNQDRIVE_REQUESTED_DEPLOY_SHA is required (VO5C deploy target admission)" >&2
+  exit 1
+fi
+vps_validate_requested_deploy_sha "$REQUESTED_SHA"
+
+if [[ -f "${DEPLOY_EXECUTOR_OPS_DIR}/lib/vps-vo5c-security-floor.lib.sh" ]]; then
+  # shellcheck source=lib/vps-vo5c-security-floor.lib.sh
+  source "${DEPLOY_EXECUTOR_OPS_DIR}/lib/vps-vo5c-security-floor.lib.sh"
+  # shellcheck source=lib/vps-vo5c-deploy-admission.lib.sh
+  source "${DEPLOY_EXECUTOR_OPS_DIR}/lib/vps-vo5c-deploy-admission.lib.sh"
+  EXECUTOR_HEAD="$(git -C "$DEPLOY_EXECUTOR_ROOT" rev-parse HEAD 2>/dev/null || true)"
+  if [[ -n "$EXECUTOR_HEAD" ]]; then
+    vps_vo5c_verify_executor_tree_integrity "$DEPLOY_EXECUTOR_ROOT" "$EXECUTOR_HEAD" || {
+      echo "!! ABORT: deploy executor tree integrity check failed (VO5C)" >&2
+      exit 1
+    }
+  fi
+  # shellcheck source=lib/vps-vo5c-production-deploy-bypass-enforcement.lib.sh
+  source "${DEPLOY_EXECUTOR_OPS_DIR}/lib/vps-vo5c-production-deploy-bypass-enforcement.lib.sh"
+  vps_vo5c_assert_production_deploy_canonical_authority "$DEPLOY_EXECUTOR_ROOT" "$REQUESTED_SHA" || {
+    echo "!! ABORT: production deploy bypass enforcement (VO5C P4B15)" >&2
+    exit 1
+  }
+fi
 
 vps_clone_release_at_sha() {
   local dest=$1
@@ -63,6 +92,18 @@ fi
 
 echo "==> Clone release ${RELEASE_ID}"
 vps_clone_release_at_sha "$RELEASE_DIR" "$REQUESTED_SHA"
+
+RELEASE_OPS_DIR="${RELEASE_DIR}/backend/scripts/ops"
+# VO5C: target admission before migrations, promotion, or process restarts.
+# shellcheck source=lib/vps-vo5c-security-floor.lib.sh
+source "${RELEASE_OPS_DIR}/lib/vps-vo5c-security-floor.lib.sh"
+# shellcheck source=lib/vps-vo5c-deploy-admission.lib.sh
+source "${RELEASE_OPS_DIR}/lib/vps-vo5c-deploy-admission.lib.sh"
+if ! vps_vo5c_assert_deploy_target_admitted "$RELEASE_DIR" "$REQUESTED_SHA"; then
+  echo "!! ABORT: deploy target failed VO5C security-floor admission for ${REQUESTED_SHA}" >&2
+  exit 1
+fi
+echo "==> VO5C deploy target admitted: ${REQUESTED_SHA:0:12}"
 
 echo "==> Link shared env/uploads"
 ln -sfn /opt/synqdrive/shared/backend.env "$RELEASE_DIR/backend/.env"
@@ -132,7 +173,9 @@ echo "==> Switch current + rolling multi-replica restart"
 # Source ops libs from the NEW release being promoted — not the pre-switch current
 # symlink copy of this script (P1.8.3 / OQ-18 bootstrap caveat: old current would
 # load pre-P1.8.3.1 verify_post_deploy without the convergence gate).
-RELEASE_OPS_DIR="${RELEASE_DIR}/backend/scripts/ops"
+# Candidate release carries canonical VO5C rollback authority (required before any replica ops).
+vps_vo5c_require_rollback_guard_ready || exit 1
+export SYNQDRIVE_VO5C_ROLLBACK_AUTHORITY_OPS_DIR="${RELEASE_OPS_DIR}"
 # shellcheck source=vps-production-replica-topology.config.sh
 source "${RELEASE_OPS_DIR}/vps-production-replica-topology.config.sh"
 if [[ "${SYNQDRIVE_DI_S4F7Q_EXACT_RC_ATTESTATION_GATE:-0}" == "1" ]]; then
@@ -145,8 +188,12 @@ if [[ "${SYNQDRIVE_DI_S4F7Q_EXACT_RC_ATTESTATION_GATE:-0}" == "1" ]]; then
   vps_deploy_controller_verify_exact_sha || exit 1
   CONTROLLER_OPS_DIR="$(vps_deploy_controller_ops_dir)"
   echo "==> S4F-7R guarded deploy: orchestration from controller ${EXPECTED_DEPLOY_CONTROLLER_SHA:0:12}"
+  vps_vo5c_load_authority_from_ops_dir "${RELEASE_OPS_DIR}" || exit 1
+  export SYNQDRIVE_VO5C_ROLLBACK_AUTHORITY_OPS_DIR="${RELEASE_OPS_DIR}"
+  # Rolling + rollback helpers must come from the candidate release (VO5C guard), not an older controller copy.
   # shellcheck source=lib/vps-production-replica.lib.sh
-  source "${CONTROLLER_OPS_DIR}/lib/vps-production-replica.lib.sh"
+  source "${RELEASE_OPS_DIR}/lib/vps-production-replica.lib.sh"
+  vps_vo5c_require_rollback_guard_ready || exit 1
   export SYNQDRIVE_DI_S4F7Q_FORWARD_EXACT_RC_GATE=1
 else
   # shellcheck source=lib/vps-deploy-controller.lib.sh
@@ -175,7 +222,21 @@ if ! vps_replica_rolling_deploy "$RELEASE_DIR" "$TARGET_SHA"; then
   echo "!! ABORT: multi-replica rolling deploy failed for ${RELEASE_ID}" >&2
   if [[ "$ROLLBACK_ON_FAIL" -eq 1 ]]; then
     echo "==> Rolling back to previous release"
-    vps_replica_rollback "$DEPLOY_STATE_FILE" || true
+    set +e
+    vps_replica_rollback "$DEPLOY_STATE_FILE"
+    _P4B16_RB_RC=$?
+    set -e
+    if [[ -f "${RELEASE_OPS_DIR}/lib/vps-release-attestation-integration.lib.sh" ]]; then
+      # shellcheck source=lib/vps-release-attestation-integration.lib.sh
+      source "${RELEASE_OPS_DIR}/lib/vps-release-attestation-integration.lib.sh"
+      if vps_p4b16_is_partial_success_rc "$_P4B16_RB_RC"; then
+        echo "==> Rollback replicas restored; P4B16 attestation reconciliation required (exit ${_P4B16_RB_RC})" >&2
+      elif ! vps_p4b16_rollback_runtime_ok "$_P4B16_RB_RC"; then
+        vps_vo5c_log_unsafe_rollback_containment "deploy_rolling_fail_rollback_blocked"
+      fi
+    elif [[ "$_P4B16_RB_RC" -ne 0 ]]; then
+      vps_vo5c_log_unsafe_rollback_containment "deploy_rolling_fail_rollback_blocked"
+    fi
   fi
   exit 1
 fi
@@ -184,21 +245,78 @@ if ! vps_replica_verify_post_deploy "$RELEASE_DIR" "$TARGET_SHA"; then
   echo "!! ABORT: post-deploy multi-replica verification failed for ${RELEASE_ID}" >&2
   if [[ "$ROLLBACK_ON_FAIL" -eq 1 ]]; then
     echo "==> Rolling back to previous release"
-    vps_replica_rollback "$DEPLOY_STATE_FILE" || true
+    set +e
+    vps_replica_rollback "$DEPLOY_STATE_FILE"
+    _P4B16_RB_RC=$?
+    set -e
+    if [[ -f "${RELEASE_OPS_DIR}/lib/vps-release-attestation-integration.lib.sh" ]]; then
+      # shellcheck source=lib/vps-release-attestation-integration.lib.sh
+      source "${RELEASE_OPS_DIR}/lib/vps-release-attestation-integration.lib.sh"
+      if vps_p4b16_is_partial_success_rc "$_P4B16_RB_RC"; then
+        echo "==> Rollback replicas restored; P4B16 attestation reconciliation required (exit ${_P4B16_RB_RC})" >&2
+      elif ! vps_p4b16_rollback_runtime_ok "$_P4B16_RB_RC"; then
+        if declare -F vps_vo5c_log_unsafe_rollback_containment >/dev/null; then
+          vps_vo5c_log_unsafe_rollback_containment "deploy_verify_fail_rollback_blocked"
+        fi
+      fi
+    elif [[ "$_P4B16_RB_RC" -ne 0 ]]; then
+      if declare -F vps_vo5c_log_unsafe_rollback_containment >/dev/null; then
+        vps_vo5c_log_unsafe_rollback_containment "deploy_verify_fail_rollback_blocked"
+      fi
+    fi
   fi
   exit 1
 fi
 
 echo "==> Multi-replica deploy verification PASS"
+
+P4B16_ATTEST_RC=0
+if [[ -f "${RELEASE_OPS_DIR}/lib/vps-release-attestation-integration.lib.sh" ]]; then
+  # shellcheck source=lib/vps-release-attestation-integration.lib.sh
+  source "${RELEASE_OPS_DIR}/lib/vps-release-attestation-integration.lib.sh"
+  set +e
+  vps_p4b16_publish_after_deploy_verify "$RELEASE_OPS_DIR" "$RELEASE_DIR" "$TARGET_SHA"
+  P4B16_ATTEST_RC=$?
+  set -e
+else
+  echo "WARN: release ops tree lacks P4B16 attestation integration — legacy path (not attestation-protected)" >&2
+fi
+if [[ -f "${RELEASE_OPS_DIR}/lib/vps-release-attestation-integration.lib.sh" ]]; then
+  if vps_p4b16_is_partial_success_rc "$P4B16_ATTEST_RC"; then
+    echo "==> Deploy finished with PARTIAL_SUCCESS (exit ${P4B16_ATTEST_RC}): replicas healthy; attestation reconciliation required" >&2
+    exit "$P4B16_ATTEST_RC"
+  fi
+  if [[ "$P4B16_ATTEST_RC" -ne 0 ]]; then
+    echo "!! ABORT: P4B16 attestation hook failed (exit ${P4B16_ATTEST_RC})" >&2
+    exit "$P4B16_ATTEST_RC"
+  fi
+fi
 echo "    TARGET_SHA=${TARGET_SHA}"
 echo "    REPLICA_COUNT=${SYNQDRIVE_PRODUCTION_REPLICA_COUNT}"
-echo "Deployed release: ${RELEASE_ID} ($(git -C "$RELEASE_DIR" rev-parse --short HEAD))"
+
+DEPLOY_APP_VERIFIED=YES
+if [[ -f "${RELEASE_OPS_DIR}/lib/vps-release-attestation-integration.lib.sh" ]]; then
+  DEPLOY_ATTESTATION_STATUS=committed
+else
+  DEPLOY_ATTESTATION_STATUS=legacy_unprotected
+fi
+MONITORING_REFRESH_STATUS=skipped
 
 if [[ "${MONITORING_AUTO_REFRESH:-auto}" == "auto" ]]; then
   echo "==> Monitoring refresh (Prometheus reload + Grafana dashboards)"
+  MONITORING_REFRESH_STATUS=failed
   if bash "$RELEASE_DIR/backend/scripts/ops/vps-refresh-monitoring.sh"; then
-    echo "Monitoring refresh: OK"
+    MONITORING_REFRESH_STATUS=ok
   else
-    echo "WARN: monitoring refresh failed — app deploy succeeded; fix monitoring manually" >&2
+    echo "!! WARN: monitoring refresh failed after verified replica deploy — not unqualified success" >&2
   fi
+fi
+
+echo "==> DEPLOY_OUTCOME app_verified=${DEPLOY_APP_VERIFIED} attestation=${DEPLOY_ATTESTATION_STATUS} monitoring_refresh=${MONITORING_REFRESH_STATUS}"
+echo "Deployed release: ${RELEASE_ID} ($(git -C "$RELEASE_DIR" rev-parse --short HEAD))"
+
+if [[ "$MONITORING_REFRESH_STATUS" == "failed" ]]; then
+  _MONITORING_FAIL_RC="$(vps_deploy_monitoring_failure_exit_rc)"
+  echo "==> Exit ${_MONITORING_FAIL_RC}: replicas promoted; post-deploy monitoring refresh failed (reconcile manually)" >&2
+  exit "${_MONITORING_FAIL_RC}"
 fi

@@ -1,4 +1,7 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import dimoR9WebhookHealthConfig from '@config/dimo-r9-webhook-health.config';
+import { RedisModule } from '@shared/redis/redis.module';
 import { IamMfaModule } from '@modules/iam-mfa/iam-mfa.module';
 import { AuthApiModule } from '@modules/auth/auth.module';
 import { PlatformAdminController } from './platform-admin.controller';
@@ -14,6 +17,7 @@ import {
 import { PlatformOpsAlertmanagerService } from './platform-ops-alertmanager.service';
 import { PlatformOpsInfrastructureService } from './platform-ops-infrastructure.service';
 import { PlatformOpsService } from './platform-ops.service';
+import { PlatformOpsDiS4Service } from './platform-ops-di-s4.service';
 import { DimoModule } from '../dimo/dimo.module';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
 import { HealthModule } from '../health/health.module';
@@ -26,9 +30,12 @@ import { PlatformIntegrationsController } from './platform-integrations.controll
 import { PlatformIntegrationsService } from './platform-integrations.service';
 import { BatteryGeneralizedEvidenceModule } from '../vehicle-intelligence/battery-health/generalized-evidence/generalized-evidence.module';
 import { BatteryV2RestSessionFeatureInspectionAdminService } from './battery-v2-rest-session-feature-inspection.admin.service';
+import { DimoR9WebhookHealthService } from './dimo-r9-webhook-health/dimo-r9-webhook-health.service';
 
 @Module({
   imports: [
+    ConfigModule.forFeature(dimoR9WebhookHealthConfig),
+    RedisModule,
     AuthApiModule,
     DimoModule,
     BatteryGeneralizedEvidenceModule,
@@ -53,7 +60,9 @@ import { BatteryV2RestSessionFeatureInspectionAdminService } from './battery-v2-
     PlatformOpsService,
     PlatformOpsAlertmanagerService,
     PlatformOpsInfrastructureService,
+    PlatformOpsDiS4Service,
     BatteryV2RestSessionFeatureInspectionAdminService,
+    DimoR9WebhookHealthService,
   ],
   exports: [PlatformAdminService, PlatformDashboardService, PlatformConnectivitySummaryService],
 })

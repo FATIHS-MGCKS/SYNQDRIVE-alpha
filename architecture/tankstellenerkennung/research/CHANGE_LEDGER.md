@@ -101,6 +101,15 @@ Scientific history of the fuel-station identification workstream. Epistemic rigo
 | **NON_EFFECTS** | No runtime changes; no main re-sync |
 | **STATUS** | Documentation only |
 
+## 2026-10-10 — WOB L 7503 natural MATCHED enrichment (EED-EV-0110)
+
+| Field | Detail |
+|-------|--------|
+| **CHANGE** | Record production observation `FST-EVID-WOB-7503-PRODUCTION-REFUEL-2026-10-09-001`; update `CURRENT_STATE.md` + evidence index |
+| **EVIDENCE** | Read-only Postgres: **WK Tank**, Eisenschmiede, 34127 Kassel; MATCHED MEDIUM on canonical `412f17f7…` and sibling `5ba5a03c…` |
+| **NON_EFFECTS** | No resolver/enrichment code change; no receipt ground truth; fleet-wide positive-path gate unchanged |
+| **STATUS** | PRODUCTION_OBSERVATION (single event) |
+
 ## Open epistemic gate
 
-**FST-GAP-REAL-POST-CUTOVER-REFUEL-001** — ARCHITECTURE DEPLOYED ≠ natural positive-path PRODUCTION_VALIDATED.
+**FST-GAP-REAL-POST-CUTOVER-REFUEL-001** — ARCHITECTURE DEPLOYED ≠ fleet-wide natural positive-path PRODUCTION_VALIDATED (WOB 2026-10-09 is a **partial** positive MATCHED datapoint only).

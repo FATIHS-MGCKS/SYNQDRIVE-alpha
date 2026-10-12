@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://synqdrive.eu/schemas/battery-v2/M3_3_HV_H4_A3_PHASE_A_P1_TRUSTED_AUTHORIZATION_EVIDENCE_V1.schema.json",
+  "title": "M3_3_HV_H4_A3_PHASE_A_P1_TRUSTED_AUTHORIZATION_EVIDENCE_V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "authorizationId",
+    "governanceMode",
+    "operatorIdentity",
+    "changeTicket",
+    "authorizedReleaseSha",
+    "deploymentIdentity",
+    "postgresTargetFingerprint",
+    "auditRoleLogin",
+    "queryManifestFingerprint",
+    "approvalBinding",
+    "maintenanceWindow",
+    "authorizationLimits",
+    "authorizationPolicyId",
+    "maintenanceWindowPolicyId",
+    "evidenceStorageDestination",
+    "consumptionStoreBinding",
+    "issuedAtUtc",
+    "expiresAtUtc",
+    "signature"
+  ],
+  "properties": {
+    "contractVersion": {
+      "const": "M3_3_HV_H4_A3_PHASE_A_P1_TRUSTED_AUTHORIZATION_EVIDENCE_V1"
+    },
+    "authorizationId": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 128
+    },
+    "governanceMode": {
+      "const": "SINGLE_OPERATOR_V1"
+    },
+    "operatorIdentity": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 320
+    },
+    "changeTicket": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "authorizedReleaseSha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "deploymentIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["releaseCheckoutSha", "deploymentHost", "deploymentLabel"],
+      "properties": {
+        "releaseCheckoutSha": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "deploymentHost": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 253
+        },
+        "deploymentLabel": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      }
+    },
+    "postgresTargetFingerprint": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 512
+    },
+    "auditRoleLogin": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+    },
+    "queryManifestFingerprint": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "approvalBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["approvalId", "executeNonce", "validFromUtc", "validUntilUtc"],
+      "properties": {
+        "approvalId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "executeNonce": { "type": "string", "minLength": 8, "maxLength": 128 },
+        "validFromUtc": { "type": "string", "format": "date-time" },
+        "validUntilUtc": { "type": "string", "format": "date-time" }
+      }
+    },
+    "maintenanceWindow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["startUtc", "endUtc"],
+      "properties": {
+        "startUtc": { "type": "string", "format": "date-time" },
+        "endUtc": { "type": "string", "format": "date-time" }
+      }
+    },
+    "authorizationPolicyId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "maintenanceWindowPolicyId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "authorizationLimits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaChangesAuthorized",
+        "issuanceActivationAuthorized",
+        "applicationRuntimeFlagChangesAuthorized",
+        "hybridLoaderActivationAuthorized",
+        "attestationInsertOrUpdateAuthorized",
+        "retentionActivationAuthorized",
+        "reconciliationActivationAuthorized",
+        "backfillActivationAuthorized"
+      ],
+      "properties": {
+        "schemaChangesAuthorized": { "const": false },
+        "issuanceActivationAuthorized": { "const": false },
+        "applicationRuntimeFlagChangesAuthorized": { "const": false },
+        "hybridLoaderActivationAuthorized": { "const": false },
+        "attestationInsertOrUpdateAuthorized": { "const": false },
+        "retentionActivationAuthorized": { "const": false },
+        "reconciliationActivationAuthorized": { "const": false },
+        "backfillActivationAuthorized": { "const": false }
+      }
+    },
+    "evidenceStorageDestination": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "consumptionStoreBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["absolutePathSha256", "markerFileName"],
+      "properties": {
+        "absolutePathSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "markerFileName": {
+          "const": ".synqdrive_phase_a_production_consumption_store_v1"
+        }
+      }
+    },
+    "issuedAtUtc": { "type": "string", "format": "date-time" },
+    "expiresAtUtc": { "type": "string", "format": "date-time" },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "keyId", "detachedBase64"],
+      "properties": {
+        "algorithm": { "const": "Ed25519" },
+        "keyId": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "detachedBase64": { "type": "string", "minLength": 44, "maxLength": 128 }
+      }
+    }
+  }
+}

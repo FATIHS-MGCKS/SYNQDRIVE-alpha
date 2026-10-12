@@ -1,9 +1,66 @@
 # KG-EED Changelog
 
+## 2026-10-10 — REFUEL time UX production validation (EED-EV-0110, PR #1964)
+
+- Production SHA `7f47c9f5b5e35c425deb3c2b6bdaed9df73e5c7c`: WOB L 7503 **2026-10-09** canonical product **1** REFUEL / raw **2** DIMO rows (`SAME_PHYSICAL_REFUEL` siblings preserved)
+- Rise anchor `18:48:52Z` → **~20:48** Europe/Berlin; interval **20:48–20:55**; telemetry **+18 L**; detection envelope **19:32–21:09** Berlin remains secondary in UI contract
+- Operator authenticated UI attestation: timeline order between trips **20:43–21:09** and **19:44–19:53**; station **WK Tank, Eisenschmiede, Kassel** (matches persisted enrichment)
+- **GROUND_TRUTH_RECEIPT_NOT_RECORDED** — product/API/UI layers only
+- Natural campaign protocol: `governance/NATURAL-REFUEL-VALIDATION-PROTOCOL-2026-10-10.md` (R4A/R4B gates; read-only)
+- **EED-OQ-014:** **OPEN**; **EED-OQ-019:** **PARTIALLY_RESOLVED**; no Production calibration caps
+
+## 2026-10-10 — REFUEL trips-timeline display semantics (UI contract)
+
+- Frontend presents `fuelLevelRiseStart`/`End` as observed REFUEL time; `startTime`/`endTime` remain detection envelope (secondary copy only).
+- Timeline sort anchor uses rise start when valid; `normalizeTimelineItems` re-sorts after canonical API payload.
+- Product read query: bounded Prisma OR + post-filter on product timeline anchor (`energy-event-product-timeline-anchor.ts`).
+
+## 2026-10-10 — OQ-014 R4A canonical event attribution final seal (EED-EV-0109)
+
+- Independent canonical refuel anchors (`rfrf-oq014-r4a-canonical-event-anchors.lib.ts`); fail-closed rise attribution without nearest-rise or first-sample ground truth
+- Per-event CI artifact **v3**; authoritative calibration metric N=5 vs population N=6; `WOB_7503_2026_09_15` remains `UNVERIFIED_EVENT_ANCHOR`
+- Jest: `rfrf-oq014-r4a-canonical-attribution-seal.spec.ts` + updated attribution/metrics specs; **CALIBRATION_INSUFFICIENT** unchanged
+
+## 2026-10-09 — OQ-014 R3B v2→v2 physical candidate rediscovery (EED-EV-0108)
+
+- Version-aware v2→v2 matcher authority: revised `SETTLED_MEDIAN` reconciles when physical identity + FRESH baseline proven; fail-closed otherwise
+- M1–M6 unit + PG-R3B-1..6 PostgreSQL (concurrency, tenant isolation, KS661 canonical, terminal protection)
+- Stage-3 gate: R3B matcher Jest + `raw-refuel-candidate-r3b-v2-rediscovery.postgres.integration.spec.ts`
+- v1→v1 and R2 v2→v1 paths unchanged; no detector/runtime version bump
+- OQ-014 **OPEN**; OQ-019 **PARTIALLY_RESOLVED**
+
+## 2026-10-09 — OQ-014 R3A phase-aware settled-post scanner (EED-EV-0107)
+
+- Pure offline `scanRawFuelRisePhases` (RISING→PEAK_REACHED→SETTLING→SETTLED); proposal/shadow only
+- Calibration firewall: no Production numeric defaults; REPLAY_HYPOTHESIS bundles in tests/replay only
+- Terminal F3 safety rejections cannot become `MATURE_SHADOW_READY`; KS MS 661 2026-09-30 offline 6→20→19 L shadow
+- T01–T20 unit matrix + A1–A12 bridge; Stage-3 gate runs R3A Jest + settled-post replay; R2 matcher unchanged (v2→v2 duplicate risk noted for R3B)
+- **NOT_RUNTIME_AUTHORITATIVE**; OQ-014 **OPEN**; OQ-019 **PARTIALLY_RESOLVED**
+
+## 2026-10-09 — OQ-014 R2 cross-version candidate rediscovery (EED-EV-0106)
+
+- Matcher/resolver integration for authorized `rfrf-rise-v2` → `rfrf-rise-v1`; same-version semantics preserved
+- Fail-closed `VERSIONED_TERMINAL_CONFLICT` and cross-version insufficient evidence (no reconcile)
+- KS MS 661 PostgreSQL proof; v2 physical identity for new rows; active runtime detection/detector constants unchanged
+- Final persistence firewall: R2 Postgres in Stage-3 gate; unsupported `detectionVersion` on all reconcile paths; cross-version SAME requires both post levels present
+
 ## 2026-10-01 — OQ-014 R1 identity + cross-version authority foundation (EED-EV-0105)
 
 - Unwired backend foundations: physical identity v1, cross-version compatibility registry, post-authority transition types, `VERSIONED_TERMINAL_CONFLICT` contract, settled F3 activation parser types
 - Legacy F2 identity/matcher/service/runtime **unchanged**; no numeric Production caps; no settled F3 activation
+
+## 2026-10-10 — OQ-014 R4A evidence quality closure (PR #1958)
+
+- Measured settled-window internal gaps (distinct from scanner config limit)
+- Event-timestamp rise attribution (fail-closed on ambiguity)
+- Registry validation + committed `RFRF-OQ014-R4A-PER-EVENT-CALIBRATION-RESULTS.json` CI artifact
+
+## 2026-10-10 — OQ-014 R4A calibration integrity & sufficiency (EED-EV-0109)
+
+- Machine-verifiable event accounting (`RFRF-OQ014-R4A-EVENT-ACCOUNTING.json` + `rfrf-oq014-r4a-event-accounting.ts`)
+- **WOB concentration correction:** eligible set is **3/6** WOB L 7503 (addendum to EED-EV-0104 — historical doc preserved)
+- Offline per-event metrics + adversarial replay integrity spec (`rfrf-oq014-r4a-calibration-integrity.spec.ts`)
+- **CALIBRATION_INSUFFICIENT** — no Production numeric caps; next slice **R4B** spine promotion gate
 
 ## 2026-10-01 — OQ-014 fleet calibration + settled locality evidence (EED-EV-0104)
 

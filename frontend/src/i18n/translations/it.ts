@@ -1,5 +1,7 @@
 import type { PartialTranslationDictionary } from '../dictionary-types';
 import { rentalLegacyGapIT } from './rental-legacy-gap.it';
+import { dimoWebhookHealthIt } from './dimo-webhook-health.it';
+import { masterPlatformOpsDiS4It } from './master.platformOps.diS4.it';
 
 export const it = {
   'dashboard.welcomeBack': 'Bentornato, {name}',
@@ -124,6 +126,9 @@ export const it = {
   'master.cv.addVehicle.dimoLoadFailed': 'Caricamento veicoli DIMO non riuscito',
   'master.cv.addVehicle.demoUnavailableTitle': 'Veicoli demo',
   'master.cv.addVehicle.demoUnavailableBody': 'Nessuna API demo dedicata; esclusione DEMO solo via billingBillableVehicleAssignment.',
+  'master.cv.addVehicle.manualBaselineTitle': 'Record flotta manuale',
+  'master.cv.addVehicle.manualBaselineHint': 'Dati base, pneumatici, batteria LV e freni salvati dopo la creazione via API org.',
+  'master.cv.addVehicle.manualServiceHistoryUnavailable': 'Storico servizi e HM non disponibili in creazione manuale.',
 
   'fleetCondition.title': 'Stato della flotta', 'fleetCondition.healthScore': 'Punteggio salute', 'fleetCondition.goodCondition': 'Buono', 'fleetCondition.warnings': 'Avvisi', 'fleetCondition.critical': 'Critico',
   'newBooking.title': 'Nuova prenotazione', 'newBooking.selectCustomer': 'Seleziona cliente', 'newBooking.selectVehicle': 'Seleziona veicolo', 'newBooking.timePeriod': 'Periodo e ritiro', 'newBooking.mileagePackages': 'Pacchetti chilometrici', 'newBooking.insurancePackages': 'Pacchetti assicurativi', 'newBooking.extras': 'Extra', 'newBooking.invoice': 'Fattura', 'newBooking.rentalContract': 'Contratto di noleggio', 'newBooking.createCustomer': 'Crea nuovo cliente', 'newBooking.bookingCreated': 'Prenotazione creata!',
@@ -134,4 +139,6 @@ export const it = {
   'documents.vehicleDocuments': 'Documenti veicolo', 'documents.monthlyFixedCosts': 'Costi fissi mensili',
   'customerDetail.title': 'Dettagli cliente', 'customerDetail.customerDocuments': 'Documenti cliente', 'customerDetail.customerAlerts': 'Avvisi cliente', 'customerDetail.customerNotes': 'Note cliente',   'customerDetail.drivingScore': 'Punteggio di guida',
   ...rentalLegacyGapIT,
+  ...dimoWebhookHealthIt,
+  ...masterPlatformOpsDiS4It,
 } satisfies PartialTranslationDictionary;

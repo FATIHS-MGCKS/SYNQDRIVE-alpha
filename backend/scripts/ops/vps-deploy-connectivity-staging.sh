@@ -1,15 +1,30 @@
 #!/usr/bin/env bash
-# Deploy Fleet Connectivity Release Candidate to VPS for staging validation.
-# Uses a feature branch (not main) and enforces reconciliation apply kill switch defaults.
+# DEPRECATED — production-mutating path on the single Hostinger VPS (not isolated staging infrastructure).
+# Migrates production DB, switches /opt/synqdrive/current, and restarts PM2.
 #
-# Usage (on VPS as root):
-#   GIT_BRANCH=cursor/connectivity-release-candidate-2e0d \
-#     bash backend/scripts/ops/vps-deploy-connectivity-staging.sh
-#
-# From Cloud Agent:
-#   ssh root@srv1374778.hstgr.cloud \
-#     "GIT_BRANCH=cursor/connectivity-release-candidate-2e0d bash /opt/synqdrive/current/backend/scripts/ops/vps-deploy-connectivity-staging.sh"
+# Routine production releases: VO5C pinned runner + vps-deploy-release.sh only.
+# Break-glass only: SYNQDRIVE_VO5C_CONNECTIVITY_STAGING_ALLOW=1 (operator acknowledgment).
 set -euo pipefail
+
+if [[ "${SYNQDRIVE_VO5C_CONNECTIVITY_STAGING_ALLOW:-0}" != "1" ]]; then
+  echo "!! ABORT: vps-deploy-connectivity-staging.sh is not a supported routine deploy entrypoint (DSRG consolidation)." >&2
+  echo "    This script mutates production PostgreSQL, shared backend.env, current, and PM2 on the single VPS." >&2
+  echo "    Canonical path: SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1 + vps-vo5c-run-pinned-security-deploy.sh" >&2
+  echo "    Emergency-only: SYNQDRIVE_VO5C_CONNECTIVITY_STAGING_ALLOW=1 (documented break-glass; still production-mutating)" >&2
+  exit 1
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/vps-vo5c-security-floor.lib.sh
+source "${SCRIPT_DIR}/lib/vps-vo5c-security-floor.lib.sh"
+# shellcheck source=lib/vps-vo5c-production-deploy-bypass-enforcement.lib.sh
+source "${SCRIPT_DIR}/lib/vps-vo5c-production-deploy-bypass-enforcement.lib.sh"
+if ! vps_vo5c_assert_protected_deploy_entry_authority "vps-deploy-connectivity-staging"; then
+  echo "!! ABORT: connectivity staging cannot promote production while VO5C deploy enforcement is active or authority is invalid" >&2
+  echo "    Use vps-vo5c-run-pinned-security-deploy.sh for production releases, or fix /opt/synqdrive/shared/vo5c-production-deploy-authority.env" >&2
+  echo "    OS boundary: remove execute permission on this script for non-break-glass roles when enforcement is enabled." >&2
+  exit 1
+fi
 
 GIT_BRANCH="${GIT_BRANCH:-cursor/connectivity-release-candidate-2e0d}"
 GIT_REPO="${GIT_REPO:-https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git}"

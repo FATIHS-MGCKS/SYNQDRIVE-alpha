@@ -1,5 +1,7 @@
 import type { PartialTranslationDictionary } from '../dictionary-types';
 import { rentalLegacyGapNL } from './rental-legacy-gap.nl';
+import { dimoWebhookHealthNl } from './dimo-webhook-health.nl';
+import { masterPlatformOpsDiS4Nl } from './master.platformOps.diS4.nl';
 
 // Dutch translations - start with English as base, override with Dutch
 export const nl = {
@@ -125,6 +127,9 @@ export const nl = {
   'master.cv.addVehicle.dimoLoadFailed': 'DIMO-voertuigen laden mislukt',
   'master.cv.addVehicle.demoUnavailableTitle': 'Demovoertuigen',
   'master.cv.addVehicle.demoUnavailableBody': 'Geen veilige demo-onboarding-API; DEMO-uitsluiting alleen via billingBillableVehicleAssignment.',
+  'master.cv.addVehicle.manualBaselineTitle': 'Handmatig fleetrecord',
+  'master.cv.addVehicle.manualBaselineHint': 'Basisdata, banden, LV-accu en remmen worden na aanmaken via org-APIs opgeslagen.',
+  'master.cv.addVehicle.manualServiceHistoryUnavailable': 'Servicehistorie en HM niet beschikbaar bij handmatig aanmaken.',
 
   'fleetCondition.title': 'Vlootstatus', 'fleetCondition.healthScore': 'Gezondheidsscore', 'fleetCondition.goodCondition': 'Goed', 'fleetCondition.warnings': 'Waarschuwingen', 'fleetCondition.critical': 'Kritiek',
   'newBooking.title': 'Nieuwe boeking', 'newBooking.selectCustomer': 'Klant selecteren', 'newBooking.selectVehicle': 'Voertuig selecteren', 'newBooking.timePeriod': 'Periode en ophaling', 'newBooking.mileagePackages': 'Kilometerpakketten', 'newBooking.insurancePackages': 'Verzekeringspakketten', 'newBooking.extras': 'Extra\'s', 'newBooking.invoice': 'Factuur', 'newBooking.rentalContract': 'Huurovereenkomst', 'newBooking.createCustomer': 'Nieuwe klant aanmaken', 'newBooking.bookingCreated': 'Boeking aangemaakt!',
@@ -135,4 +140,6 @@ export const nl = {
   'documents.vehicleDocuments': 'Voertuigdocumenten', 'documents.monthlyFixedCosts': 'Maandelijkse vaste kosten',
   'customerDetail.title': 'Klantdetails', 'customerDetail.customerDocuments': 'Klantdocumenten', 'customerDetail.customerAlerts': 'Klantwaarschuwingen', 'customerDetail.customerNotes': 'Klantnotities',   'customerDetail.drivingScore': 'Rijscore',
   ...rentalLegacyGapNL,
+  ...dimoWebhookHealthNl,
+  ...masterPlatformOpsDiS4Nl,
 } satisfies PartialTranslationDictionary;

@@ -169,6 +169,6 @@ echo "TEST_REDIS_HOST=${REDIS_HOST}"
 echo "TEST_REDIS_PORT=${REDIS_PORT}"
 echo "TEST_REDIS_IS_PRODUCTION=NO"
 
-npm test -- --runInBand --forceExit --testPathPattern=raw-fuel-refuel-fallback-f5-pr3-g2-handoff.postgres.integration.spec.ts
+npm test -- --runInBand --forceExit --testPathPatterns=raw-fuel-refuel-fallback-f5-pr3-g2-handoff.postgres.integration.spec.ts
 
 echo "RFRF F5-PR3.1 gate PASS"

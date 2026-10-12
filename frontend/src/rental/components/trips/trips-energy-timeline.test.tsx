@@ -16,7 +16,9 @@ import { es } from '../../../i18n/translations/es';
 import { it as itLocale } from '../../../i18n/translations/it';
 import { pl } from '../../../i18n/translations/pl';
 import { cs } from '../../../i18n/translations/cs';
+import { rentalLegacyGapTR } from '../../../i18n/translations/rental-legacy-gap.tr';
 import type { Locale } from '../../../i18n/LanguageContext';
+import { wob7503Refuel20261009 } from './utils/wob7503-refuel.fixture';
 
 const locales: Record<Locale, Record<string, string>> = {
   en,
@@ -27,7 +29,7 @@ const locales: Record<Locale, Record<string, string>> = {
   it: itLocale,
   pl,
   cs,
-  tr: {},
+  tr: rentalLegacyGapTR,
 };
 
 function baseEvent(overrides: Partial<EnergyEvent> = {}): EnergyEvent {
@@ -67,6 +69,19 @@ describe('trips energy timeline semantics', () => {
     }
   });
 
+  it('WOB 7503 2026-10-09 — shows approximate observed time, not envelope as primary header', () => {
+    const event = wob7503Refuel20261009();
+    const html = renderToStaticMarkup(
+      <LanguageProvider>
+        <TripTimelineEnergyCard event={event} isDark={false} />
+      </LanguageProvider>,
+    );
+    expect(html).toContain('approx.');
+    expect(html).toContain('Fuel level change');
+    expect(html).toContain('Detection window');
+    expect(html).not.toMatch(/17:32\s*–\s*19:09/);
+  });
+
   it('does not render envelope duration as implicit refuel minutes', () => {
     const html = renderToStaticMarkup(
       <LanguageProvider>
@@ -76,6 +91,7 @@ describe('trips energy timeline semantics', () => {
     expect(html).not.toMatch(/\b80\s*min\b/i);
     expect(html).toContain('Fuel level rise ~5 min');
     expect(html).toContain('Detection window');
+    expect(html).toContain('approx.');
     expect(html).toContain('+23.0 L');
   });
 
@@ -94,6 +110,7 @@ describe('trips energy timeline semantics', () => {
     );
     expect(html).not.toMatch(/\b80\s*min\b/i);
     expect(html).not.toContain('Fuel level rise');
+    expect(html).toContain('Refuel time cannot be determined precisely');
     expect(html).toContain('Refuel detected');
   });
 
@@ -107,6 +124,8 @@ describe('trips energy timeline semantics', () => {
       socDeltaPercent: 42,
       energyDeltaKwh: 18,
       fuelLevelRiseDurationSeconds: null,
+      fuelLevelRiseStart: null,
+      fuelLevelRiseEnd: null,
     });
     expect(formatRechargeDurationMinutes(recharge.durationSeconds)).toBe(60);
     const html = renderToStaticMarkup(
@@ -116,6 +135,7 @@ describe('trips energy timeline semantics', () => {
     );
     expect(html).toContain('60 min');
     expect(html).not.toContain('Fuel level rise');
+    expect(html).toMatch(/09:00\s*PM\s*–\s*10:21\s*PM/);
   });
 
   it('formats KS MX fuel-rise minutes from observation field', () => {

@@ -48,11 +48,20 @@ function seedActiveEpochCache(
 export function mockActivationEpochServiceForCohort(
   config: ApdShadowCohortConfig,
   organizationId: string,
+  epochOverride?: Partial<ApdShadowActiveEpochView>,
 ): ApdShadowActivationEpochService {
   const fingerprint = computeApdShadowCohortFingerprintSha256(config);
-  const epoch = buildTestActiveEpochView(config, organizationId);
+  const epoch: ApdShadowActiveEpochView = {
+    ...buildTestActiveEpochView(config, organizationId),
+    ...epochOverride,
+  };
   const service = new ApdShadowActivationEpochService({} as never);
-  seedActiveEpochCache(service, config, organizationId);
+  const scopeKey = buildApdShadowActivationScopeKey(fingerprint);
+  (
+    service as unknown as {
+      positiveCacheByScope: Map<string, { epoch: ApdShadowActiveEpochView; loadedAtMs: number }>;
+    }
+  ).positiveCacheByScope.set(scopeKey, { epoch, loadedAtMs: Date.now() });
 
   jest.spyOn(service, 'loadActiveEpochForScope').mockImplementation(async (fp) => {
     return fp === fingerprint ? epoch : null;

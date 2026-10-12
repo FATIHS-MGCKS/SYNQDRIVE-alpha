@@ -11,6 +11,8 @@ import {
 import type { DashboardIncidentDto } from './platform-dashboard.types';
 import { PlatformOpsAlertmanagerService } from './platform-ops-alertmanager.service';
 import { PlatformOpsInfrastructureService } from './platform-ops-infrastructure.service';
+import { PlatformOpsDiS4Service } from './platform-ops-di-s4.service';
+import type { PlatformOpsDiS4StatusDto } from './platform-ops-di-s4.types';
 import type {
   PlatformOpsAlertGroupDto,
   PlatformOpsAlertsDto,
@@ -54,8 +56,13 @@ export class PlatformOpsService {
     private readonly connectivitySummary: PlatformConnectivitySummaryService,
     private readonly alertmanager: PlatformOpsAlertmanagerService,
     private readonly infrastructure: PlatformOpsInfrastructureService,
+    private readonly diS4: PlatformOpsDiS4Service,
     private readonly config: ConfigService,
   ) {}
+
+  async getDrivingIntelligenceS4Status(): Promise<PlatformOpsDiS4StatusDto> {
+    return this.diS4.getStatus();
+  }
 
   async getOverview(): Promise<PlatformOpsOverviewDto> {
     const ctx = await this.loadContext();

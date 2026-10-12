@@ -6,7 +6,7 @@
 
 **Central registry validator:** `bash architecture/scripts/validate-module-registry.sh`
 
-**Last updated:** 2026-09-30 (Vehicle Onboarding VO-1 target architecture — `AUDIT_IN_PROGRESS`)
+**Last updated:** 2026-10-11 (DSRG P4B16 R0 release attestation audit — design PR; DSRG `AUTHORITY_ACTIVE`)
 
 ---
 
@@ -34,6 +34,7 @@ Canonical overview of known modules. **Every row includes module name, mini desc
 | Dashboard Utilization | Fleet utilization metrics and dashboard aggregates for rental operations. | `NOT_STARTED` | N/A — inventory only | — |
 | Data Analyse | Advanced org analytics including driving analyses and misuse-case views for permitted roles. | `NOT_STARTED` | N/A — inventory only | — |
 | Data Authorizations | Tenant data-access consent and authorization enforcement for AI and sensitive APIs. | `NOT_STARTED` | N/A — inventory only | — |
+| Deployment Security & Release Governance (DSRG) | Cross-cutting production deployment security, pinned executors, release attestation, authorization, privilege boundaries, rollback and enforcement. | `AUTHORITY_ACTIVE` | Cross-cutting deployment governance · Gate A complete (DSRG-03 R3); runtime enforcement separate | [`architecture/dsrg/`](dsrg/) |
 | DIMO Integration | DIMO auth, telemetry, segments, triggers, webhooks, device-connection episodes, and provider gateway. | `AUDIT_IN_PROGRESS` | Bootstrap audit · R9 webhook cross-module trigger (2026-09-07) | [`architecture/dimo-integration/`](dimo-integration/) |
 | Document Extraction (AI Upload) | Shared upload-to-extraction-to-review-to-apply flow for operational document intake. | `NOT_STARTED` | N/A — inventory only | — |
 | Documents | Document storage, legal texts, rental contracts, booking document bundles, retention, and integrity controls. | `NOT_STARTED` | N/A — inventory only | — |
@@ -83,7 +84,7 @@ Canonical overview of known modules. **Every row includes module name, mini desc
 | WhatsApp Business | Meta WhatsApp Business API integration, webhooks, and tenant WhatsApp configuration. | `NOT_STARTED` | N/A — inventory only | — |
 | Workflows | Configurable workflow engine with maker-checker, shadow mode, rollout gates, and audit trails. | `NOT_STARTED` | N/A — inventory only | — |
 
-**Inventory boundary:** The overview table above is the canonical complete module inventory as of 2026-09-06. Rows with `NOT_STARTED` are inventoried only — they are not audited, Production-verified, or safe for substantive work without following [`MODULE_AUTHORITY_STANDARD.md`](MODULE_AUTHORITY_STANDARD.md). Discovery evidence: [`MODULE_INVENTORY_DISCOVERY_2026-09-06.md`](MODULE_INVENTORY_DISCOVERY_2026-09-06.md). Do not infer module understanding from flat `architecture/*.md` mentions alone.
+**Inventory boundary:** The overview table above is the canonical complete module inventory as of 2026-09-06, plus **DSRG** registered 2026-10-11 (previously absent from inventory; hub docs existed under `architecture/dsrg/` before registry row). Rows with `NOT_STARTED` are inventoried only — they are not audited, Production-verified, or safe for substantive work without following [`MODULE_AUTHORITY_STANDARD.md`](MODULE_AUTHORITY_STANDARD.md). Discovery evidence: [`MODULE_INVENTORY_DISCOVERY_2026-09-06.md`](MODULE_INVENTORY_DISCOVERY_2026-09-06.md). Do not infer module understanding from flat `architecture/*.md` mentions alone.
 
 ---
 
@@ -283,6 +284,22 @@ Detailed sections for modules with usable living authorities. See [Module invent
 | **Reconstruction status** | Phase **0–1** complete (VO-0A/0B); **VO-1 architecture** complete; Phase **2** Production read-only **not** started; Phase **5** promotion **not** eligible. |
 | **Mandatory entry documents (partial)** | [README.md](vehicle-onboarding/README.md) · [TARGET_ARCHITECTURE.md](vehicle-onboarding/TARGET_ARCHITECTURE.md) · [CURRENT_STATE.md](vehicle-onboarding/CURRENT_STATE.md) · [governance/AUTHORITY_BOUNDARIES.md](vehicle-onboarding/governance/AUTHORITY_BOUNDARIES.md) · [decisions/DECISION_REGISTER.md](vehicle-onboarding/decisions/DECISION_REGISTER.md) · [contradictions/KNOWLEDGE_GAPS.md](vehicle-onboarding/contradictions/KNOWLEDGE_GAPS.md) · [research/VO1_QUESTION_RESOLUTIONS.md](vehicle-onboarding/research/VO1_QUESTION_RESOLUTIONS.md) |
 | **Validation** | `bash architecture/scripts/validate-module-registry.sh` · `bash architecture/vehicle-onboarding/scripts/validate-graph.sh` |
+
+---
+
+### Deployment Security & Release Governance (DSRG)
+
+| Field | Value |
+|-------|-------|
+| **Registry coverage status** | `AUTHORITY_ACTIVE` — promoted via DSRG-03 R6 (Gate A complete @ R3 Production audit); **effective on authorized merge** of promotion PR |
+| **Module key** | `DSRG` |
+| **Scope** | Production VPS deploy governance: pinned executor install and integrity, deploy preflight and admission, human authorization and attestation, security-floor and bypass enforcement libraries, OS privilege boundary (sudoers/wrapper), rollback and emergency containment contracts, cloud-agent connectivity staging, coexistence with APDS shadow epochs, EXP021 Gate-6, and RFRF rollback. **Does not** own vehicle onboarding product logic, APDS epoch activation, EXP021 experiment semantics, or RFRF stage definitions. |
+| **Authority directory** | [`architecture/dsrg/`](dsrg/) |
+| **Authority-native status** | Cross-cutting deployment governance authority · DSRG-01/#1970 · DSRG-02 pin sealed · DSRG-03 graph + validators · **runtime enforcement / OS boundary activation not claimed** |
+| **Ownership boundary** | **Owns** cross-cutting deploy governance architecture and ops execution contracts. **Does not own** VO5C admission/MFA product flags (→ Vehicle Onboarding evidence), APDS approved release pin (→ APDS), EXP021 scheduler/Gate-6 (→ Driving Intelligence / EXP021 ops), RFRF rollback traps (→ RFRF). Runtime implementation remains `backend/scripts/ops/*` on VPS; VO5C historical evidence stays under `architecture/vehicle-onboarding/evidence/`. |
+| **Reconstruction status** | Phase **0–5** architecture reconstruction **COMPLETE** (DSRG-03 R3 Gate A); **P4B16 R0** attestation design in progress; **runtime activation** (enforcement, sudoers, attestation automation) remains **separate** — see [GATE_A_READINESS.md](dsrg/evidence/GATE_A_READINESS.md) enforcement track |
+| **Mandatory entry documents** | [README.md](dsrg/README.md) · [PRODUCTION_VPS_ACCESS_AND_DEPLOY_RUNBOOK.md](dsrg/PRODUCTION_VPS_ACCESS_AND_DEPLOY_RUNBOOK.md) · [AUDIT_MANIFEST.md](dsrg/AUDIT_MANIFEST.md) · [CURRENT_STATE.md](dsrg/CURRENT_STATE.md) · [AGENT_CONTRACT.md](dsrg/AGENT_CONTRACT.md) · [KNOWLEDGE_GRAPH.md](dsrg/KNOWLEDGE_GRAPH.md) · [decisions/DECISION_REGISTER.md](dsrg/decisions/DECISION_REGISTER.md) · [evidence/EVIDENCE_INDEX.md](dsrg/evidence/EVIDENCE_INDEX.md) · [evidence/PRODUCTION_BASELINE.md](dsrg/evidence/PRODUCTION_BASELINE.md) · [contradictions/KNOWLEDGE_GAPS.md](dsrg/contradictions/KNOWLEDGE_GAPS.md) · [contradictions/OPEN_CONTRADICTIONS.md](dsrg/contradictions/OPEN_CONTRADICTIONS.md) |
+| **Validation** | `bash architecture/scripts/validate-module-registry.sh` · `bash architecture/dsrg/scripts/validate-graph.sh` |
 
 ---
 

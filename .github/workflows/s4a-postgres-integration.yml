@@ -136,7 +136,7 @@ jobs:
     if: needs.detect-s4a-changes.outputs.run_s4a == 'true'
     services:
       redis:
-        image: redis:7-alpine
+        image: public.ecr.aws/docker/library/redis:7-alpine
         ports:
           - 6379:6379
         options: >-
@@ -185,7 +185,7 @@ jobs:
     if: needs.detect-s4a-changes.outputs.run_s4a == 'true'
     services:
       postgres:
-        image: postgres:16-alpine
+        image: public.ecr.aws/docker/library/postgres:16-alpine
         env:
           POSTGRES_USER: s4a_ci_test
           POSTGRES_PASSWORD: s4a_ci_test_local

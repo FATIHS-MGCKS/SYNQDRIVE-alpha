@@ -59,7 +59,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        image: public.ecr.aws/docker/library/postgres:16-alpine
         env:
           POSTGRES_USER: exp021_pr1649_test
           POSTGRES_PASSWORD: exp021_pr1649_test_local
@@ -113,7 +113,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        image: public.ecr.aws/docker/library/postgres:16-alpine
         env:
           POSTGRES_USER: exp021_pr1649_test
           POSTGRES_PASSWORD: exp021_pr1649_test_local
@@ -151,7 +151,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        image: public.ecr.aws/docker/library/postgres:16-alpine
         env:
           POSTGRES_USER: exp021_pr1649_test
           POSTGRES_PASSWORD: exp021_pr1649_test_local
@@ -210,7 +210,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        image: public.ecr.aws/docker/library/postgres:16-alpine
         env:
           POSTGRES_USER: exp021_pr1649_test
           POSTGRES_PASSWORD: exp021_pr1649_test_local
@@ -277,7 +277,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        image: public.ecr.aws/docker/library/postgres:16-alpine
         env:
           POSTGRES_USER: exp021_pr1649_test
           POSTGRES_PASSWORD: exp021_pr1649_test_local

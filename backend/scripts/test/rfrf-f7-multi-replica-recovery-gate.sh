@@ -92,6 +92,6 @@ PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 bash scripts/test/prisma-migrate-deploy-resi
 
 export PHYSICAL_REFUEL_MULTI_REPLICA_INTEGRATION=1
 npm test -- --runInBand --forceExit \
-  --testPathPattern=physical-refuel-multi-replica-recovery.postgres-redis.integration.spec.ts
+  --testPathPatterns=physical-refuel-multi-replica-recovery.postgres-redis.integration.spec.ts
 
 echo "RFRF F7 multi-replica gate PASS"

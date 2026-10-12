@@ -7,10 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/cloud-agent-ssh-common.sh"
 
 VPS_HOST="${CLOUD_AGENT_VPS_HOST:-srv1374778.hstgr.cloud}"
-SSH_USER="$(cloud_agent_ssh_user)"
-if [[ "${VPS_HOST}" == *"hstgr.cloud"* ]] && [[ "${SSH_USER}" == "root" ]]; then
-  SSH_USER="synqdrive-admin"
-fi
+SSH_USER="$(cloud_agent_ssh_user "$VPS_HOST")"
 SSH_PORT="${CLOUD_AGENT_VPS_SSH_PORT:-22}"
 SSH_KEY="${HOME}/.ssh/id_ed25519"
 GIT_REMOTE_URL="${CLOUD_AGENT_S4_TINY_STAGING_GIT_REMOTE_URL:-https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha.git}"
@@ -22,14 +19,8 @@ PRE_ENV_SHA="${DI_S4_TINY_STAGING_REQUIRED_PRE_ENV_SHA256:-}"
 DRY_RUN="${DRY_RUN:-1}"
 
 ensure_ssh_key() {
-  if [[ -f "$SSH_KEY" ]]; then
-    return 0
-  fi
-  if cloud_agent_materialize_ssh_key "$SSH_KEY"; then
-    ssh-keyscan -H "$VPS_HOST" >> "${HOME}/.ssh/known_hosts" 2>/dev/null || true
-    return 0
-  fi
-  return 1
+  cloud_agent_require_ssh_identity || return 1
+  cloud_agent_ssh_require_trusted_host_key "$VPS_HOST" "$SSH_PORT" || return 1
 }
 
 require_sha() {

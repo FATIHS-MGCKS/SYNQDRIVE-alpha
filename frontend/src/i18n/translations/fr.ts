@@ -1,5 +1,7 @@
 import type { PartialTranslationDictionary } from '../dictionary-types';
 import { rentalLegacyGapFR } from './rental-legacy-gap.fr';
+import { dimoWebhookHealthFr } from './dimo-webhook-health.fr';
+import { masterPlatformOpsDiS4Fr } from './master.platformOps.diS4.fr';
 
 export const fr = {
   'dashboard.welcomeBack': 'Bon retour, {name}',
@@ -505,6 +507,9 @@ export const fr = {
   'master.cv.addVehicle.dimoLoadFailed': 'Echec du chargement DIMO',
   'master.cv.addVehicle.demoUnavailableTitle': 'Vehicules demo',
   'master.cv.addVehicle.demoUnavailableBody': 'Pas d API demo dediee; exclusion DEMO via billingBillableVehicleAssignment uniquement.',
+  'master.cv.addVehicle.manualBaselineTitle': 'Fiche flotte manuelle',
+  'master.cv.addVehicle.manualBaselineHint': 'Donnees de base, pneus, batterie LV et freins enregistres apres creation via APIs org.',
+  'master.cv.addVehicle.manualServiceHistoryUnavailable': 'Historique service et HM indisponibles en creation manuelle.',
 
   'fleetCondition.title': 'Etat de la flotte',
   'fleetCondition.healthScore': 'Score de sante',
@@ -875,4 +880,6 @@ export const fr = {
   'support.supportTeam': 'Support SYNQDRIVE',
   'support.replyPlaceholder': 'Tapez votre reponse...',
   ...rentalLegacyGapFR,
+  ...dimoWebhookHealthFr,
+  ...masterPlatformOpsDiS4Fr,
 } satisfies PartialTranslationDictionary;

@@ -99,6 +99,6 @@ export RAW_FUEL_REFUEL_F7_INTEGRATION=1
 export RAW_FUEL_REFUEL_F7_POSTGRES_REQUIRED=1
 
 npm test -- --runInBand --forceExit \
-  --testPathPattern='raw-fuel-refuel-fallback-f7-recovery.postgres.integration.spec.ts|physical-refuel-reconciliation-recovery.scheduler.spec.ts'
+  --testPathPatterns='raw-fuel-refuel-fallback-f7-recovery.postgres.integration.spec.ts|physical-refuel-reconciliation-recovery.scheduler.spec.ts'
 
 echo "RFRF F7 gate PASS"

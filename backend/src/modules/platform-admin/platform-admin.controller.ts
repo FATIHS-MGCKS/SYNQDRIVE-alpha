@@ -35,6 +35,11 @@ import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
 import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-mfa.decorator';
 import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 import { BatteryV2RestSessionFeatureInspectionAdminService } from './battery-v2-rest-session-feature-inspection.admin.service';
+import { DimoR9WebhookHealthService } from './dimo-r9-webhook-health/dimo-r9-webhook-health.service';
+import {
+  PLATFORM_PRUNE_DISABLED_CODE,
+  platformPruneDisabledException,
+} from './platform-prune.errors';
 
 @Controller('admin')
 @UseGuards(RolesGuard, MasterAdminMfaGuard)
@@ -56,6 +61,7 @@ export class PlatformAdminController {
     private readonly batteryShadowValidation: BatteryShadowValidationService,
     private readonly platformOpsService: PlatformOpsService,
     private readonly batteryV2RestSessionFeatureInspection: BatteryV2RestSessionFeatureInspectionAdminService,
+    private readonly dimoR9WebhookHealthService: DimoR9WebhookHealthService,
   ) {}
 
   @Get('changelogs')
@@ -79,22 +85,17 @@ export class PlatformAdminController {
   @UseGuards(StepUpGuard)
   @RequireStepUp(STEP_UP_ACTION.BREAK_GLASS)
   async pruneMasterData(
-    @Req() req: any,
-    @Body() body: { confirm?: string },
+    @Req() _req: any,
+    @Body() _body: { confirm?: string },
   ) {
-    if (body?.confirm !== 'PRUNE_ALL_MASTER_DATA') {
-      throw new BadRequestException(
-        'Destructive prune requires body.confirm = PRUNE_ALL_MASTER_DATA',
-      );
-    }
     void this.audit.critical({
-      ...AuditService.contextFromRequest(req),
+      ...AuditService.contextFromRequest(_req),
       action: ActivityAction.PRUNE,
       entity: ActivityEntity.ADMIN_OPERATION,
-      description: 'Platform admin triggered pruneMasterData',
-      changeSummary: 'Destructive: master data pruned',
+      description: 'Platform prune blocked (legacy path disabled)',
+      changeSummary: `code=${PLATFORM_PRUNE_DISABLED_CODE}`,
     });
-    return this.platformAdminService.pruneMasterData();
+    throw platformPruneDisabledException();
   }
 
   @Get('dashboard')
@@ -178,6 +179,11 @@ export class PlatformAdminController {
     return this.platformOpsService.getAlerts();
   }
 
+  @Get('ops/driving-intelligence-s4')
+  async getOpsDrivingIntelligenceS4() {
+    return this.platformOpsService.getDrivingIntelligenceS4Status();
+  }
+
   @Get('ops/resilience')
   async getOpsResilience() {
     return this.platformOpsService.getResilience();
@@ -186,6 +192,13 @@ export class PlatformAdminController {
   @Get('ops/tools')
   async getOpsTools() {
     return this.platformOpsService.getTools();
+  }
+
+  @Get('ops/dimo-webhook-health')
+  async getDimoWebhookHealth(@Query('refresh') refresh?: string) {
+    return this.dimoR9WebhookHealthService.getHealth({
+      forceRefresh: refresh === '1' || refresh === 'true',
+    });
   }
 
   @Get('connectivity/platform-summary')

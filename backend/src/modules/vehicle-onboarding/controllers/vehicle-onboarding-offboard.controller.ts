@@ -5,12 +5,13 @@ import { Roles } from '@shared/decorators/roles.decorator';
 import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-mfa.decorator';
 import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { MasterVehicleOffboardAdmissionGuard } from '../guards/master-vehicle-offboard-admission.guard';
 import { runVehicleOnboardingHttp } from '../http/vehicle-onboarding-http.util';
 import { parseOffboardRequestBody } from '../policy/offboard-request.validation';
 import { VehicleOnboardingOffboardService } from '../services/vehicle-onboarding-offboard.service';
 
 @Controller('admin/vehicle-onboarding')
-@UseGuards(RolesGuard, MasterAdminMfaGuard)
+@UseGuards(RolesGuard, MasterVehicleOffboardAdmissionGuard, MasterAdminMfaGuard)
 @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_INTEGRATIONS)
 @Roles('MASTER_ADMIN')
 export class VehicleOnboardingOffboardController {

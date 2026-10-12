@@ -1,0 +1,26 @@
+# Offline failure-injection harness for webhook-safe maintenance nginx (R2.6).
+# Usage: see r9-resilience-nginx.docker-failover.sh
+services:
+  backend_a:
+    image: node:22-alpine
+    command: ["node", "-e", "require('http').createServer((q,r)=>{if(q.url==='/api/v1/webhooks/dimo'&&q.method==='POST'){r.writeHead(200);r.end('ok-a')}else if(q.url==='/api/v1/health'){r.writeHead(200);r.end('ok')}else{r.writeHead(404);r.end()}}).listen(80)"]
+    networks: [r9test]
+
+  backend_b:
+    image: node:22-alpine
+    command: ["node", "-e", "require('http').createServer((q,r)=>{if(q.url==='/api/v1/webhooks/dimo'&&q.method==='POST'){r.writeHead(200);r.end('ok-b')}else if(q.url==='/api/v1/health'){r.writeHead(200);r.end('ok')}else{r.writeHead(404);r.end()}}).listen(80)"]
+    networks: [r9test]
+
+  nginx:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./r9-resilience-nginx.generated.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "18080:8080"
+    depends_on:
+      - backend_a
+      - backend_b
+    networks: [r9test]
+
+networks:
+  r9test:

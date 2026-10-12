@@ -130,6 +130,104 @@ export type PersistMasterVehicleResult = {
   vehicleId: string;
 };
 
+type ManualTirePayload = {
+  frontDimension?: string | null;
+  rearDimension?: string | null;
+  brandModelFront?: string | null;
+  brandModelRear?: string | null;
+  tireSeason?: string | null;
+  loadIndexFront?: string | null;
+  speedIndexFront?: string | null;
+  loadIndexRear?: string | null;
+  speedIndexRear?: string | null;
+  dotCodeFront?: string | null;
+  dotCodeRear?: string | null;
+  tireCondition?: string | null;
+  treadFL?: number | null;
+  treadFR?: number | null;
+  treadBL?: number | null;
+  treadBR?: number | null;
+};
+type ManualBrakePayload = {
+  odometerKm?: number | null;
+  frontPadThickness?: number | null;
+  rearPadThickness?: number | null;
+  frontRotorWidth?: number | null;
+  rearRotorWidth?: number | null;
+};
+type ManualBatteryPayload = {
+  batteryType?: string | null;
+  batteryAmpere?: number | null;
+  batteryVolt?: number | null;
+};
+
+/** Fields only applied via register-from-dimo today (no safe post-create API). */
+export const MANUAL_CREATE_UNSUPPORTED_REGISTERED_VEHICLE_FIELDS = [
+  'serviceHistory',
+  'highMobilityActivation',
+] as const;
+
+export async function applyManualBaselinesAfterCreate(
+  orgId: string,
+  vehicleId: string,
+  rv: RegisteredVehicle,
+): Promise<void> {
+  const manualSpecs = buildVehicleManualSpecs(rv);
+  if (!manualSpecs) return;
+
+  const tires = manualSpecs.tires as ManualTirePayload | undefined;
+  if (tires) {
+    await api.vehicles.upsertTires(orgId, vehicleId, {
+      frontDimension: tires.frontDimension ?? null,
+      rearDimension: tires.rearDimension ?? null,
+      brandModelFront: tires.brandModelFront ?? null,
+      brandModelRear: tires.brandModelRear ?? null,
+      tireSeason: tires.tireSeason ?? null,
+      loadIndexFront: tires.loadIndexFront ?? null,
+      speedIndexFront: tires.speedIndexFront ?? null,
+      loadIndexRear: tires.loadIndexRear ?? null,
+      speedIndexRear: tires.speedIndexRear ?? null,
+      dotCodeFront: tires.dotCodeFront ?? null,
+      dotCodeRear: tires.dotCodeRear ?? null,
+      tireCondition: tires.tireCondition ?? null,
+      treadFL: tires.treadFL ?? null,
+      treadFR: tires.treadFR ?? null,
+      treadBL: tires.treadBL ?? null,
+      treadBR: tires.treadBR ?? null,
+    });
+  }
+
+  const battery = manualSpecs.battery as ManualBatteryPayload | undefined;
+  if (battery) {
+    await api.vehicleIntelligence.createBatterySpec(vehicleId, {
+      batteryType: battery.batteryType ?? null,
+      batteryAmpere: battery.batteryAmpere ?? null,
+      batteryVolt: battery.batteryVolt ?? null,
+      sourceType: 'MANUAL',
+      sourceConfidence: 1,
+    });
+  }
+
+  const brakes = manualSpecs.brakes as ManualBrakePayload | undefined;
+  if (brakes) {
+    const hasPad =
+      brakes.frontPadThickness != null ||
+      brakes.rearPadThickness != null ||
+      brakes.frontRotorWidth != null ||
+      brakes.rearRotorWidth != null;
+    if (hasPad) {
+      await api.vehicleIntelligence.brakeHealthInitialize(vehicleId, {
+        serviceDate: new Date().toISOString(),
+        odometerKm: brakes.odometerKm ?? parseOptionalNumber(rv.mileage) ?? undefined,
+        frontPadMm: brakes.frontPadThickness ?? undefined,
+        rearPadMm: brakes.rearPadThickness ?? undefined,
+        frontRotorWidthMm: brakes.frontRotorWidth ?? undefined,
+        rearRotorWidthMm: brakes.rearRotorWidth ?? undefined,
+      });
+    }
+  }
+}
+
 export async function persistMasterRegisteredVehicle(
   rv: RegisteredVehicle,
   options: { dimoVehicleId?: string | null } = {},
@@ -172,5 +270,7 @@ export async function persistMasterRegisteredVehicle(
   if (!vehicleId) {
     throw new Error('MANUAL_CREATE_NO_VEHICLE_ID');
   }
-  return { vehicleId: String(vehicleId) };
+  const id = String(vehicleId);
+  await applyManualBaselinesAfterCreate(orgId, id, rv);
+  return { vehicleId: id };
 }

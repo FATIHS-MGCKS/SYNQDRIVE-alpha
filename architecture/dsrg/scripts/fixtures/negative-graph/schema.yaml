@@ -1,0 +1,27 @@
+node_types:
+  - decision
+node_fields:
+  required:
+    - id
+    - type
+    - title
+    - epistemic_status
+id_prefixes:
+  decision: DSRG-DEC-
+epistemic_status_values:
+  - CONFIRMED
+decision_status_values:
+  - PROPOSED
+relation_types:
+  - supports
+edge_fields:
+  required:
+    - from
+    - relation
+    - to
+invariant_kinds:
+  - CONFIRMED_INVARIANT
+evidence_source_types:
+  - CODE
+evidence_reference_permitted_types:
+  - evidence

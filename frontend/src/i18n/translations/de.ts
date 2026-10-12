@@ -5,6 +5,7 @@ import { legalDocumentsDe } from './legal-documents.de';
 import { settingsAdminDe } from './settings-admin.de';
 import { stationsTabDe } from './stations-tab.de';
 import { voiceAssistantDe } from './voice-assistant.de';
+import { dimoWebhookHealthDe } from './dimo-webhook-health.de';
 import { supportDe } from './support.de';
 import { finesDe } from './fines.de';
 import { insurancesDe } from './insurances.de';
@@ -55,6 +56,7 @@ import { rentalHostPresentationDe } from './rental.hostPresentation.de';
 import { supportOpsDe } from './support.ops.de';
 import { whatsappDe } from './whatsapp.de';
 import { rentalLegacyGapDE } from './rental-legacy-gap.de';
+import { masterPlatformOpsDiS4De } from './master.platformOps.diS4.de';
 
 export const de: Record<TranslationKey, string> = {
   // ─── Navigation / Sidebar ───
@@ -3475,6 +3477,11 @@ export const de: Record<TranslationKey, string> = {
   'master.cv.addVehicle.demoUnavailableTitle': 'Demo-Fahrzeuge',
   'master.cv.addVehicle.demoUnavailableBody':
     'Es gibt keine sichere eigenständige Demo-Fahrzeug-Onboarding-API. Abrechnung unterstützt DEMO-Ausschluss nur über billingBillableVehicleAssignment mit reasonCode DEMO — nicht über einen dedizierten Demo-Flotten-Create-Flow.',
+  'master.cv.addVehicle.manualBaselineTitle': 'Manueller Flottendatensatz',
+  'master.cv.addVehicle.manualBaselineHint':
+    'Stammdaten, Reifen, LV-Batterie und Brems-Baseline werden nach dem Anlegen über bestehende Org-APIs gespeichert. Es wird keine DIMO- oder Telematik-Verbindung erzeugt.',
+  'master.cv.addVehicle.manualServiceHistoryUnavailable':
+    'Service-Historie-Daten und High-Mobility-Aktivierung sind bei manueller Anlage nicht verfügbar — DIMO-Registrierung nutzen oder Fahrzeug nach dem Onboarding pflegen.',
 
   // ─── Fleet Condition ───
   'fleetCondition.title': 'Flottenzustand',
@@ -5883,6 +5890,7 @@ export const de: Record<TranslationKey, string> = {
   ...automationWorkflowDe,
   ...stationsTabDe,
   ...voiceAssistantDe,
+  ...dimoWebhookHealthDe,
   ...whatsappDe,
   ...supportDe,
   ...supportOpsDe,
@@ -5933,4 +5941,5 @@ export const de: Record<TranslationKey, string> = {
   ...rentalMicroChromeDe,
   ...rentalHostPresentationDe,
   ...rentalLegacyGapDE,
+  ...masterPlatformOpsDiS4De,
 } satisfies CompleteTranslationDictionary;

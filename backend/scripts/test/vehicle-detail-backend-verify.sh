@@ -11,7 +11,7 @@ VEHICLE_DETAIL_SECURITY_PATTERN='vehicles-security-negative|vehicles\.controller
 run_unit() {
   echo "==> Vehicle detail unit & characterization tests"
   npm test -- \
-    --testPathPattern="$VD_PATTERN" \
+    --testPathPatterns="$VD_PATTERN" \
     --testPathIgnorePatterns='integration|postgres\.invariants' \
     --passWithNoTests
 }
@@ -19,7 +19,7 @@ run_unit() {
 run_security() {
   echo "==> Vehicle detail security & characterization matrix"
   npm test -- \
-    --testPathPattern="$VEHICLE_DETAIL_SECURITY_PATTERN" \
+    --testPathPatterns="$VEHICLE_DETAIL_SECURITY_PATTERN" \
     --passWithNoTests
 }
 

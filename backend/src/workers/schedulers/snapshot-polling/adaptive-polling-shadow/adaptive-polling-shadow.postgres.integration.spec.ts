@@ -590,6 +590,7 @@ describePg('ApdShadowReconciliationDecision Postgres integration (APDS-7.1)', ()
       vehicleId: isolatedVehicleId,
       opportunityId: opportunityIdV2,
       policyVersion: P25_APD_B2_V1,
+      activationEpochId: integrationActivationEpochId,
       realPollId: '00000000-0000-4000-8000-00000000v2',
       realPollStartedAt: startedAtV2,
       realPollCompletedAt: new Date('2026-10-07T14:00:00.000Z'),
@@ -600,6 +601,7 @@ describePg('ApdShadowReconciliationDecision Postgres integration (APDS-7.1)', ()
       organizationId,
       vehicleId: isolatedVehicleId,
       policyVersion: P25_APD_B2_V1,
+      activationEpochId: integrationActivationEpochId,
     });
     expect(last).toBe(startedAtV2.getTime());
   });

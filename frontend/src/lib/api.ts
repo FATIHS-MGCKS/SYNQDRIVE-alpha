@@ -3600,8 +3600,18 @@ export const api = {
       schedulers: () => get<any>('/admin/ops/schedulers'),
       infrastructure: () => get<any>('/admin/ops/infrastructure-summary'),
       alerts: () => get<any>('/admin/ops/alerts'),
+      drivingIntelligenceS4: () =>
+        get<import('../master/platform-ops/types').PlatformOpsDiS4StatusDto>(
+          '/admin/ops/driving-intelligence-s4',
+        ),
       resilience: () => get<import('../master/platform-ops/types').PlatformOpsResilienceDto>('/admin/ops/resilience'),
       tools: () => get<any>('/admin/ops/tools'),
+      dimoWebhookHealth: (params?: { refresh?: boolean }) => {
+        const q = params?.refresh ? '?refresh=1' : '';
+        return get<import('../master/platform-ops/dimo-webhook-health.types').DimoR9WebhookHealthDto>(
+          `/admin/ops/dimo-webhook-health${q}`,
+        );
+      },
     },
     communication: {
       operationalHealth: (organizationId?: string) => {
@@ -7120,6 +7130,16 @@ export const api = {
     drivingAssessmentQuality: (vehicleId: string) =>
       get<DrivingAssessmentQualityResponse>(`/vehicles/${vehicleId}/driving-assessment-quality`),
     battery: (vehicleId: string) => get<any>(`/vehicles/${vehicleId}/battery`),
+    createBatterySpec: (
+      vehicleId: string,
+      data: {
+        batteryType?: string | null;
+        batteryAmpere?: number | null;
+        batteryVolt?: number | null;
+        sourceType?: string;
+        sourceConfidence?: number;
+      },
+    ) => post<any>(`/vehicles/${vehicleId}/battery`, data),
     tires: (vehicleId: string) => get<any>(`/vehicles/${vehicleId}/tires`),
     tireWearAnalysis: (vehicleId: string) => get<TireWearAnalysis | null>(`/vehicles/${vehicleId}/tires/wear-analysis`),
     tireHealthSummary: (vehicleId: string) => get<TireHealthSummaryResponse | null>(`/vehicles/${vehicleId}/tires/summary`),
