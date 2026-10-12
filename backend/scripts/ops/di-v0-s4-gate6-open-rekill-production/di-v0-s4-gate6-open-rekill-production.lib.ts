@@ -29,6 +29,8 @@ import { parseDiV0S4RuntimeConfigAttestationFromPrometheusBody } from '../../../
 export const DI_S4_GATE6_OPEN_ACK_ENV = 'DI_S4_GATE6_OPEN_ACK';
 export const DI_S4_GATE6_OPEN_AUTHORIZED_ENV = 'DI_S4_GATE6_OPEN_AUTHORIZED';
 export const DI_S4_GATE6_EMERGENCY_REKILL_ACK_ENV = 'DI_S4_GATE6_EMERGENCY_REKILL_ACK';
+export const DI_S4_GATE6_REOPEN_WITH_HISTORY_ACK_ENV = 'DI_S4_GATE6_REOPEN_WITH_HISTORY_ACK';
+export const DI_S4_GATE6_OPEN_INTENT_ENV = 'DI_S4_GATE6_OPEN_INTENT';
 export const DI_S4_GATE6_ACCEPTED_ACK = 'YES';
 
 export function monitoringQueriesForWave(wave: RolloutWave): {
@@ -95,9 +97,13 @@ export type Gate6OpenGuardFailure =
   | 'ROLLOUT_WAVE_MISSING'
   | 'ROLLOUT_WAVE_INVALID'
   | 'GLOBAL_PRESTATE_MUST_BE_KILLED_FOR_INITIAL_OPEN'
-  | 'GLOBAL_PRESTATE_MUST_BE_NOT_KILLED_FOR_WAVE_PROMOTION';
+  | 'GLOBAL_PRESTATE_MUST_BE_NOT_KILLED_FOR_WAVE_PROMOTION'
+  | 'GLOBAL_PRESTATE_MUST_BE_KILLED_FOR_REOPEN_WITH_HISTORY'
+  | 'REOPEN_WITH_HISTORY_ACK_INVALID'
+  | 'REOPEN_WITH_HISTORY_BACKLOG_UNSAFE'
+  | 'REOPEN_WITH_HISTORY_MISCLASSIFIED_AS_WAVE_PROMOTION';
 
-export type Gate6OpenIntent = 'INITIAL_OPEN' | 'WAVE_PROMOTION';
+export type Gate6OpenIntent = 'INITIAL_OPEN' | 'WAVE_PROMOTION' | 'REOPEN_WITH_HISTORY';
 
 export interface Gate6OpenGuardInput {
   gate6Ack: string | undefined;
@@ -120,6 +126,12 @@ export interface Gate6OpenGuardInput {
   budgetConfigOk: boolean;
   budgetRuntimeOk: boolean;
   redisOk: boolean;
+  /** Explicit operator intent; never inferred from persistence alone. */
+  explicitOpenIntent?: Gate6OpenIntent;
+  reopenWithHistoryAck?: string;
+  /** Fail-closed proof that historical backlog is non-claimable (not aggregate zero-row fiction). */
+  backlogSafetyOk?: boolean;
+  backlogRunnableCount?: number;
 }
 
 export function assertFiveFlagsOnInEnv(
@@ -158,9 +170,31 @@ export function resolveGate6OpenIntent(input: Gate6OpenGuardInput): Gate6OpenInt
   return 'INITIAL_OPEN';
 }
 
+/** Operator-declared intent only (env / wrapper). Does not weaken auto `resolveGate6OpenIntent`. */
+export function resolveExplicitGate6OpenIntentFromEnv(
+  env: NodeJS.ProcessEnv = process.env,
+): Gate6OpenIntent | undefined {
+  const rawIntent = (env[DI_S4_GATE6_OPEN_INTENT_ENV] ?? '').trim();
+  if (rawIntent === 'REOPEN_WITH_HISTORY') return 'REOPEN_WITH_HISTORY';
+  if (rawIntent === 'INITIAL_OPEN' || rawIntent === 'WAVE_PROMOTION') return rawIntent;
+  if (env[DI_S4_GATE6_REOPEN_WITH_HISTORY_ACK_ENV] === DI_S4_GATE6_ACCEPTED_ACK) {
+    return 'REOPEN_WITH_HISTORY';
+  }
+  return undefined;
+}
+
+export function resolveEffectiveGate6OpenIntent(
+  input: Gate6OpenGuardInput,
+  env: NodeJS.ProcessEnv = process.env,
+): Gate6OpenIntent {
+  const explicit = input.explicitOpenIntent ?? resolveExplicitGate6OpenIntentFromEnv(env);
+  if (explicit) return explicit;
+  return resolveGate6OpenIntent(input);
+}
+
 function evaluateGate6CoreGuards(
   input: Gate6OpenGuardInput,
-  options: { requireOperatorAck: boolean; openIntent?: Gate6OpenIntent },
+  options: { requireOperatorAck: boolean; openIntent?: Gate6OpenIntent; env?: NodeJS.ProcessEnv },
 ): { ok: boolean; failures: Gate6OpenGuardFailure[] } {
   const failures: Gate6OpenGuardFailure[] = [];
   if (options.requireOperatorAck) {
@@ -180,7 +214,8 @@ function evaluateGate6CoreGuards(
     failures.push('ENV_HASH_MISMATCH');
   }
 
-  const openIntent = options.openIntent ?? resolveGate6OpenIntent(input);
+  const env = options.env ?? process.env;
+  const openIntent = options.openIntent ?? resolveEffectiveGate6OpenIntent(input, env);
 
   const globalRead = parseGlobalRowDbLines(input.globalRowLines, false);
   if (!globalRead.ok) failures.push('GLOBAL_PRESTATE_READ_FAILED');
@@ -188,6 +223,19 @@ function evaluateGate6CoreGuards(
     failures.push('GLOBAL_PRESTATE_NOT_KILLED');
   } else if (openIntent === 'WAVE_PROMOTION' && globalRead.killState !== 'NOT_KILLED') {
     failures.push('GLOBAL_PRESTATE_MUST_BE_NOT_KILLED_FOR_WAVE_PROMOTION');
+  } else if (openIntent === 'REOPEN_WITH_HISTORY' && globalRead.killState !== 'KILLED') {
+    failures.push('GLOBAL_PRESTATE_MUST_BE_KILLED_FOR_REOPEN_WITH_HISTORY');
+  }
+
+  if (openIntent === 'REOPEN_WITH_HISTORY') {
+    const ack = input.reopenWithHistoryAck ?? env[DI_S4_GATE6_REOPEN_WITH_HISTORY_ACK_ENV];
+    if (ack !== DI_S4_GATE6_ACCEPTED_ACK) failures.push('REOPEN_WITH_HISTORY_ACK_INVALID');
+    const auto = resolveGate6OpenIntent(input);
+    if (auto === 'WAVE_PROMOTION') failures.push('REOPEN_WITH_HISTORY_MISCLASSIFIED_AS_WAVE_PROMOTION');
+    if (input.backlogSafetyOk !== true) failures.push('REOPEN_WITH_HISTORY_BACKLOG_UNSAFE');
+    if (typeof input.backlogRunnableCount === 'number' && input.backlogRunnableCount > 0) {
+      failures.push('REOPEN_WITH_HISTORY_BACKLOG_UNSAFE');
+    }
   }
 
   const s4Read = parseS4PersistenceDbLines(input.s4PersistenceLines);
@@ -227,12 +275,18 @@ function evaluateGate6CoreGuards(
   return { ok: failures.length === 0, failures };
 }
 
-export function evaluateGate6OpenGuards(input: Gate6OpenGuardInput): { ok: boolean; failures: Gate6OpenGuardFailure[] } {
-  return evaluateGate6CoreGuards(input, { requireOperatorAck: true });
+export function evaluateGate6OpenGuards(
+  input: Gate6OpenGuardInput,
+  env: NodeJS.ProcessEnv = process.env,
+): { ok: boolean; failures: Gate6OpenGuardFailure[] } {
+  return evaluateGate6CoreGuards(input, { requireOperatorAck: true, env });
 }
 
-export function evaluateGate6PreflightGuards(input: Gate6OpenGuardInput): { ok: boolean; failures: Gate6OpenGuardFailure[] } {
-  return evaluateGate6CoreGuards(input, { requireOperatorAck: false });
+export function evaluateGate6PreflightGuards(
+  input: Gate6OpenGuardInput,
+  env: NodeJS.ProcessEnv = process.env,
+): { ok: boolean; failures: Gate6OpenGuardFailure[] } {
+  return evaluateGate6CoreGuards(input, { requireOperatorAck: false, env });
 }
 
 export function requireRolloutWaveFromEnv(
