@@ -2,13 +2,16 @@ import { randomUUID } from 'crypto';
 import { PrismaClient } from '@prisma/client';
 import {
   assertS4aPostgresCiEnv,
+  cleanupS4aTenant,
   newS4aClient,
+  s4aConfigFor,
   s4aManifestFor,
+  seedS4aTenant,
+  setKillState,
+  type S4aTenant,
   S4A_POSTGRES_LIVE,
 } from '../../../src/modules/vehicle-intelligence/driving-intelligence/s4a-foundation/__tests__/di-v0-s4a-postgres-harness';
 import { DiV0S4WorkItemRepository } from '../../../src/modules/vehicle-intelligence/driving-intelligence/s4a-foundation/di-v0-s4a-work-item.repository';
-import { parseDiV0S4ControlPlaneConfig } from '../../../src/modules/vehicle-intelligence/driving-intelligence/s4a-foundation/di-v0-s4a-control-plane';
-import { buildDiV0S4PipelineVersionKey } from '../../../src/modules/vehicle-intelligence/driving-intelligence/s4a-foundation/di-v0-s4a-identity';
 import {
   applyHistoricalBacklogQuarantine,
   DI_S4_HISTORICAL_BACKLOG_QUARANTINE_ACCEPTED_ACK,
@@ -22,90 +25,91 @@ const describePg =
 
 describePg('S4P9B historical backlog quarantine (postgres)', () => {
   let prisma: PrismaClient;
-  const testOrganizationIds: string[] = [];
+  const tenants: S4aTenant[] = [];
 
-  beforeAll(() => {
+  beforeAll(async () => {
     assertS4aPostgresCiEnv();
     prisma = newS4aClient();
+    // Global manifest contract: every row in di_v0_s4_work_items must be listed. This spec runs last in CI.
+    await prisma.$executeRaw`DELETE FROM di_v0_s4_work_items`;
   });
 
   afterEach(async () => {
-    for (const orgId of testOrganizationIds) {
-      await prisma.$executeRaw`DELETE FROM di_v0_s4_work_items WHERE organization_id = ${orgId}`;
-      await prisma.$executeRaw`
-        DELETE FROM vehicle_trips
-        WHERE vehicle_id IN (SELECT id FROM vehicles WHERE organization_id = ${orgId})`;
-      await prisma.$executeRaw`DELETE FROM vehicles WHERE organization_id = ${orgId}`;
-      await prisma.$executeRaw`DELETE FROM organizations WHERE id = ${orgId}`;
+    while (tenants.length > 0) {
+      const tenant = tenants.pop();
+      if (tenant) await cleanupS4aTenant(prisma, tenant);
     }
-    testOrganizationIds.length = 0;
   });
 
   afterAll(async () => {
     await prisma?.$disconnect();
   });
 
-  async function seedGlobalKilled(): Promise<void> {
-    await prisma.$executeRaw`
-      INSERT INTO di_v0_s4_control (id, kill_state, reason, actor, updated_at)
-      VALUES ('GLOBAL', 'KILLED', 'test', 'test', now())
-      ON CONFLICT (id) DO UPDATE SET kill_state = 'KILLED', updated_at = now()`;
+  async function registerTenant(): Promise<S4aTenant> {
+    const tenant = await seedS4aTenant(prisma);
+    tenants.push(tenant);
+    return tenant;
+  }
+
+  async function addCompletedTripForVehicle(tenant: S4aTenant): Promise<string> {
+    const tripId = randomUUID();
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO vehicle_trips (id, vehicle_id, trip_status, start_time, end_time, dimo_segment_id, created_at,
+         start_latitude, start_longitude, distance_km, max_speed_kmh, avg_speed_kmh, harsh_brake_count, driving_score)
+       VALUES ($1, $2, 'COMPLETED', ($3::timestamptz AT TIME ZONE 'UTC'), ($4::timestamptz AT TIME ZONE 'UTC'), $5,
+         ($4::timestamptz AT TIME ZONE 'UTC'), 52, 9, 12, 77, 45, 2, 88)`,
+      tripId,
+      tenant.vehicleId,
+      tenant.startTime.toISOString(),
+      tenant.endTime.toISOString(),
+      `seg-${randomUUID()}`,
+    );
+    return tripId;
+  }
+
+  async function createPrimaryWorkItem(tenant: S4aTenant, tripId: string): Promise<string> {
+    await setKillState(prisma, 'NOT_KILLED');
+    const config = s4aConfigFor([tenant], {
+      DI_V0_S4_DISCOVERY_TRIP_END_NOT_BEFORE: new Date(0).toISOString(),
+    });
+    const manifest = s4aManifestFor(config);
+    const repo = new DiV0S4WorkItemRepository(prisma, config);
+    const created = await repo.createWorkItem({
+      tripId,
+      sourceFamily: 'RUPTELA_R1',
+      runPurpose: 'PRIMARY',
+      pipelineManifest: manifest,
+      expectedOrganizationId: tenant.organizationId,
+      expectedVehicleId: tenant.vehicleId,
+    });
+    return created.workItemId;
+  }
+
+  function orderedPair(a: string, b: string): { first: string; second: string } {
+    return a.localeCompare(b) < 0 ? { first: a, second: b } : { first: b, second: a };
   }
 
   it('rolls back partial supersession on late failure', async () => {
-    await seedGlobalKilled();
-    const org = randomUUID();
-    testOrganizationIds.push(org);
-    const vehicle = randomUUID();
-    const trip = randomUUID();
-    const id1 = randomUUID();
-    const id2 = randomUUID();
-    await prisma.$executeRawUnsafe(
-      `INSERT INTO organizations (id, company_name, business_type, status, created_at, updated_at)
-       VALUES ($1, 'q', 'RENTAL', 'ACTIVE', now(), now())`,
-      org,
-    );
-    await prisma.$executeRawUnsafe(
-      `INSERT INTO vehicles (id, organization_id, vin, license_plate, make, model, year, fuel_type, status, created_at, updated_at)
-       VALUES ($1, $2, $3, 'PLATE', 'T', 'T', 2024, 'GASOLINE', 'AVAILABLE', now(), now())`,
-      vehicle,
-      org,
-      `VIN${randomUUID().replace(/-/g, '').slice(0, 14)}`,
-    );
-    await prisma.$executeRawUnsafe(
-      `INSERT INTO vehicle_trips (
-         id, vehicle_id, trip_status, start_time, end_time, dimo_segment_id, created_at,
-         start_latitude, start_longitude, distance_km, max_speed_kmh, avg_speed_kmh, harsh_brake_count, driving_score
-       ) VALUES (
-         $1, $2, 'COMPLETED', now() - interval '1 day', now() - interval '23 hours', $3,
-         now() - interval '23 hours', 52, 9, 12, 77, 45, 2, 88
-       )`,
-      trip,
-      vehicle,
-      `seg-${randomUUID()}`,
-    );
-    const pipelineKey = `DI_V0_S4_PIPELINE_V1:test:${randomUUID()}`;
+    const tenant = await registerTenant();
+    const tripA = tenant.tripId;
+    const tripB = await addCompletedTripForVehicle(tenant);
+    const idA = await createPrimaryWorkItem(tenant, tripA);
+    const idB = await createPrimaryWorkItem(tenant, tripB);
+    const { first, second } = orderedPair(idA, idB);
+
+    await setKillState(prisma, 'KILLED');
     await prisma.$executeRaw`
-      INSERT INTO di_v0_s4_pipeline_versions (pipeline_version_key, manifest, status)
-      VALUES (${pipelineKey}, '{}'::jsonb, 'ACTIVE')`;
-    for (const id of [id1, id2]) {
-      await prisma.$executeRaw`
-        INSERT INTO di_v0_s4_work_items (
-          id, organization_id, vehicle_id, trip_id, source_family, run_purpose, purpose_discriminator,
-          boundary_fingerprint, boundary_occurrence, pipeline_version_key, pipeline_version_manifest, status, lease_epoch,
-          attempt_count, next_attempt_at, settlement_anchor_at, eligible_at
-        ) VALUES (
-          ${id}, ${org}, ${vehicle}, ${trip}, 'RUPTELA_R1', 'PRIMARY', 'PRIMARY',
-          'fp', 1, ${pipelineKey}, '{}'::jsonb, 'PENDING', 0, 0, now(), now(), now()
-        )`;
-    }
+      UPDATE di_v0_s4_work_items
+      SET lease_owner = 'worker-late-fail',
+          lease_expires_at = clock_timestamp() + interval '1 hour'
+      WHERE id = ${second}`;
 
     const manifest: HistoricalBacklogManifest = {
-      quarantineWorkItemIds: [id1, id2],
+      quarantineWorkItemIds: [idA, idB],
       preserveCompletedWorkItemIds: [],
-      expectedTotalWorkItems: 3,
-      organizationId: org,
-      allowedVehicleIds: [vehicle],
+      expectedTotalWorkItems: 2,
+      organizationId: tenant.organizationId,
+      allowedVehicleIds: [tenant.vehicleId],
     };
 
     const result = await applyHistoricalBacklogQuarantine(
@@ -115,74 +119,36 @@ describePg('S4P9B historical backlog quarantine (postgres)', () => {
       { ack: DI_S4_HISTORICAL_BACKLOG_QUARANTINE_ACCEPTED_ACK },
     );
     expect(result.outcome).toBe('REFUSED');
+    if (result.outcome === 'REFUSED') {
+      expect(result.failures).toContain('WORK_ITEM_LEASE_ACTIVE');
+    }
 
     const rows = await prisma.$queryRaw<Array<{ id: string; status: string }>>`
-      SELECT id, status FROM di_v0_s4_work_items WHERE id = ANY(${[id1, id2]}::text[]) ORDER BY id`;
+      SELECT id, status FROM di_v0_s4_work_items WHERE id = ANY(${[idA, idB]}::text[]) ORDER BY id`;
+    expect(rows).toHaveLength(2);
     expect(rows.every((r) => r.status === 'PENDING')).toBe(true);
+
+    const firstRow = rows.find((r) => r.id === first);
+    expect(firstRow?.status).toBe('PENDING');
   });
 
   it('concurrent claim loses race to quarantine transaction', async () => {
-    await seedGlobalKilled();
-    const org = randomUUID();
-    testOrganizationIds.push(org);
-    const vehicle = randomUUID();
-    const trip = randomUUID();
-    const workId = randomUUID();
-    await prisma.$executeRawUnsafe(
-      `INSERT INTO organizations (id, company_name, business_type, status, created_at, updated_at)
-       VALUES ($1, 'q2', 'RENTAL', 'ACTIVE', now(), now())`,
-      org,
-    );
-    await prisma.$executeRawUnsafe(
-      `INSERT INTO vehicles (id, organization_id, vin, license_plate, make, model, year, fuel_type, status, created_at, updated_at)
-       VALUES ($1, $2, $3, 'PLATE2', 'T', 'T', 2024, 'GASOLINE', 'AVAILABLE', now(), now())`,
-      vehicle,
-      org,
-      `VIN${randomUUID().replace(/-/g, '').slice(0, 14)}`,
-    );
-    await prisma.$executeRawUnsafe(
-      `INSERT INTO vehicle_trips (
-         id, vehicle_id, trip_status, start_time, end_time, dimo_segment_id, created_at,
-         start_latitude, start_longitude, distance_km, max_speed_kmh, avg_speed_kmh, harsh_brake_count, driving_score
-       ) VALUES (
-         $1, $2, 'COMPLETED', now() - interval '1 day', now() - interval '23 hours', $3,
-         now() - interval '23 hours', 52, 9, 12, 77, 45, 2, 88
-       )`,
-      trip,
-      vehicle,
-      `seg-${randomUUID()}`,
-    );
-    const config = parseDiV0S4ControlPlaneConfig({
-      DI_V0_S4_MASTER_ENABLED: 'true',
-      DI_V0_S4_WORKER_ENABLED: 'true',
-      DI_V0_S4_POSITION_ENABLED: 'true',
-      DI_V0_S4_ORGANIZATION_ALLOWLIST: org,
-      DI_V0_S4_VEHICLE_ALLOWLIST: vehicle,
-      DI_V0_S4_DISCOVERY_TRIP_END_NOT_BEFORE: new Date().toISOString(),
+    const tenant = await registerTenant();
+    const workId = await createPrimaryWorkItem(tenant, tenant.tripId);
+    const config = s4aConfigFor([tenant], {
+      DI_V0_S4_DISCOVERY_TRIP_END_NOT_BEFORE: new Date(0).toISOString(),
     });
     const manifestJson = s4aManifestFor(config);
-    const pipelineKey = buildDiV0S4PipelineVersionKey(manifestJson);
-    await prisma.$executeRaw`
-      INSERT INTO di_v0_s4_pipeline_versions (pipeline_version_key, manifest, status)
-      VALUES (${pipelineKey}, ${JSON.stringify(manifestJson)}::jsonb, 'ACTIVE')`;
-    await prisma.$executeRaw`
-      INSERT INTO di_v0_s4_work_items (
-        id, organization_id, vehicle_id, trip_id, source_family, run_purpose, purpose_discriminator,
-        boundary_fingerprint, boundary_occurrence, pipeline_version_key, pipeline_version_manifest, status, lease_epoch,
-        attempt_count, next_attempt_at, settlement_anchor_at, eligible_at
-      ) VALUES (
-        ${workId}, ${org}, ${vehicle}, ${trip}, 'RUPTELA_R1', 'PRIMARY', 'PRIMARY',
-        'fp', 1, ${pipelineKey}, ${JSON.stringify(manifestJson)}::jsonb, 'PENDING', 0, 0, now(), now(), now()
-      )`;
-
     const repo = new DiV0S4WorkItemRepository(prisma, config);
+
+    await setKillState(prisma, 'KILLED');
 
     const manifest: HistoricalBacklogManifest = {
       quarantineWorkItemIds: [workId],
       preserveCompletedWorkItemIds: [],
       expectedTotalWorkItems: 1,
-      organizationId: org,
-      allowedVehicleIds: [vehicle],
+      organizationId: tenant.organizationId,
+      allowedVehicleIds: [tenant.vehicleId],
     };
 
     await expect(
