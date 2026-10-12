@@ -7130,6 +7130,16 @@ export const api = {
     drivingAssessmentQuality: (vehicleId: string) =>
       get<DrivingAssessmentQualityResponse>(`/vehicles/${vehicleId}/driving-assessment-quality`),
     battery: (vehicleId: string) => get<any>(`/vehicles/${vehicleId}/battery`),
+    createBatterySpec: (
+      vehicleId: string,
+      data: {
+        batteryType?: string | null;
+        batteryAmpere?: number | null;
+        batteryVolt?: number | null;
+        sourceType?: string;
+        sourceConfidence?: number;
+      },
+    ) => post<any>(`/vehicles/${vehicleId}/battery`, data),
     tires: (vehicleId: string) => get<any>(`/vehicles/${vehicleId}/tires`),
     tireWearAnalysis: (vehicleId: string) => get<TireWearAnalysis | null>(`/vehicles/${vehicleId}/tires/wear-analysis`),
     tireHealthSummary: (vehicleId: string) => get<TireHealthSummaryResponse | null>(`/vehicles/${vehicleId}/tires/summary`),

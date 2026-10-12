@@ -149,5 +149,13 @@ describe('energy-event-product-timeline-anchor', () => {
     expect(where.OR).toHaveLength(4);
     expect(JSON.stringify(where)).toContain('fuelLevelRiseStart');
     expect(JSON.stringify(where)).toContain('RECHARGE');
+    const rechargeBranch = (where.OR as Array<Record<string, unknown>>).find(
+      (branch) => branch.kind === 'RECHARGE',
+    );
+    expect(rechargeBranch).toEqual({
+      kind: EnergyEventKind.RECHARGE,
+      startTime: { lte: to },
+      endTime: { gte: from },
+    });
   });
 });

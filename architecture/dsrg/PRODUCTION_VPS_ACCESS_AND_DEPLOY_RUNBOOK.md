@@ -76,7 +76,17 @@ Expected: `synqdrive-admin` and host identity `srv1374778` (or documented equiva
 | Owner authorization | **`CLOUD_AGENT_OWNER_DEPLOY_AUTHORIZED=1`** when the owner explicitly requested production deploy in the Cursor task (replaces mandatory VO5C operator session for routine releases). |
 | Deploy entry | `CLOUD_AGENT_OWNER_DEPLOY_AUTHORIZED=1 bash .cursor/scripts/cloud-agent-deploy.sh` after push (or explicit SHA). |
 
-### `cloud-agent-deploy.sh` flow (fail-closed)
+### B.2 Fixed VPS deploy bootstrap + `cloud-agent-deploy.sh` (NOT_INSTALLED_INACTIVE)
+
+| Field | Value |
+|-------|--------|
+| Status constant | `CLOUD_AGENT_DEPLOY_BOOTSTRAP_STATUS=NOT_INSTALLED_INACTIVE` |
+| R8B | Additional fixed bootstrap **not** installed; deliberate deferral |
+| VPS path (when installed) | `/opt/synqdrive/shared/vo5c-cloud-agent-pinned-deploy-bootstrap.sh` |
+| Agent rule | **Do not** describe or run `bash .cursor/scripts/cloud-agent-deploy.sh` as production-ready until owner installs bootstrap and updates this runbook |
+| Install procedure (historical / future) | [evidence/VO5C_CLOUD_AGENT_PINNED_BOOTSTRAP_INSTALL.md](./evidence/VO5C_CLOUD_AGENT_PINNED_BOOTSTRAP_INSTALL.md) — **inactive** until separately authorized |
+
+### B.3 `cloud-agent-deploy.sh` flow (repository design — inactive until bootstrap installed)
 
 1. Optional `cloud-agent-verify-vps.sh`.
 2. **SSH identity** + **trusted host key** + **`cloud_agent_ssh_auth_preflight`**.

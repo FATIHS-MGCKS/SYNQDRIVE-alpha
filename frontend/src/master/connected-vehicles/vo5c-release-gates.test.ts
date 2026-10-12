@@ -2,6 +2,8 @@ import { describe, expect, it, vi, afterEach } from 'vitest';
 import { evaluateMasterOffboardUiGate, isMasterOffboardUiEnabled } from './vo5c-release-gates';
 
 const DEPLOYED_SHA = 'ab72f574014d6657cac158c253696b7237cdd3e6';
+const SHA_A = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+const SHA_B = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
 
 function stubGateEnv(overrides: Record<string, string | undefined>) {
   const base: Record<string, string> = {
@@ -66,5 +68,16 @@ describe('evaluateMasterOffboardUiGate (VO5C-P4A dual gate)', () => {
     });
     expect(evaluateMasterOffboardUiGate().enabled).toBe(true);
     expect(isMasterOffboardUiEnabled()).toBe(true);
+  });
+
+  it('evaluateMasterOffboardUiGate reports mismatch (direct env object)', () => {
+    const gate = evaluateMasterOffboardUiGate({
+      VITE_MASTER_VEHICLE_OFFBOARD_UI: 'on',
+      VITE_MASTER_VEHICLE_OFFBOARD_BACKEND_ROUTE_VERIFIED: 'YES',
+      VITE_SYNQDRIVE_DEPLOYED_GIT_SHA: SHA_A,
+      VITE_MASTER_VEHICLE_OFFBOARD_BACKEND_ATTESTED_SHA: SHA_B,
+    });
+    expect(gate.enabled).toBe(false);
+    expect(gate.releaseAttestationMatch).toBe(false);
   });
 });

@@ -210,6 +210,7 @@ import { BrakingEventLedgerService } from './brakes/braking-event-ledger.service
 import { EnergyEventsService } from './energy-events/energy-events.service';
 import { ErdRechargeShadowParityMetricsService } from './energy-events/erd-recharge-shadow-parity/erd-recharge-shadow-parity.metrics';
 import { ErdRechargeProductReadDedupeMetricsService } from './energy-events/erd-recharge-product-read-dedupe/erd-recharge-product-read-dedupe.metrics';
+import { ErdRechargeLegacyFragmentProductReadMetricsService } from './energy-events/erd-recharge-legacy-fragment-product-read/erd-recharge-legacy-fragment-product-read.metrics';
 import { ErdRechargeWriteAuthorityMetricsService } from './energy-events/erd-recharge-write-authority/erd-recharge-write-authority.metrics';
 import { ErdRechargeWriteCutoverReadinessService } from './energy-events/erd-recharge-write-authority/erd-recharge-write-cutover-readiness.service';
 import { ErdRechargeCanonicalProjectionRuntimeService } from './energy-events/erd-recharge-write-authority/erd-recharge-canonical-projection-runtime.service';
@@ -558,6 +559,7 @@ import { DiV0S4RuntimeModule } from './driving-intelligence/s4-runtime/di-v0-s4-
     ErdRechargeShadowParityRepository,
     ErdRechargeShadowParityMetricsService,
     ErdRechargeProductReadDedupeMetricsService,
+    ErdRechargeLegacyFragmentProductReadMetricsService,
     ErdRechargeWriteAuthorityMetricsService,
     ErdRechargeWriteCutoverReadinessService,
     ErdRechargeCanonicalProjectionRuntimeService,

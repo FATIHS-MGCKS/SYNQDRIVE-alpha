@@ -4,18 +4,22 @@ import { Button } from '../../components/ui/button';
 import { api } from '../../lib/api';
 import type { Organization } from '../data/platform-data';
 import type { VehicleImportPreflightDto, VehicleOperationalRowDto } from './types';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 interface ConnectedVehicleImportWizardProps {
   organizations: Organization[];
   onImported: () => void;
   onOpenVehicle: (vehicleId: string) => void;
+  onAdvancedRegister?: (dimoVehicleId: string, organizationId: string) => void;
 }
 
 export function ConnectedVehicleImportWizard({
   organizations,
   onImported,
   onOpenVehicle,
+  onAdvancedRegister,
 }: ConnectedVehicleImportWizardProps) {
+  const { t } = useLanguage();
   const [organizationId, setOrganizationId] = useState('');
   const [candidates, setCandidates] = useState<VehicleOperationalRowDto[]>([]);
   const [candidatesLoading, setCandidatesLoading] = useState(false);
@@ -168,23 +172,45 @@ export function ConnectedVehicleImportWizard({
                   <li key={effect}>{effect}</li>
                 ))}
               </ul>
-              <Button
-                type="button"
-                disabled={!preflight.canProceed || importing}
-                onClick={() => void handleImport()}
-              >
-                {importing ? 'Import läuft…' : 'Import bestätigen'}
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  disabled={!preflight.canProceed || importing}
+                  onClick={() => void handleImport()}
+                >
+                  {importing ? 'Import läuft…' : 'Import bestätigen'}
+                </Button>
+                {onAdvancedRegister && selectedDimoId && organizationId ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={!preflight.canProceed || importing || preflightLoading}
+                    onClick={() => onAdvancedRegister(selectedDimoId, organizationId)}
+                    data-testid="cv-import-advanced-register"
+                  >
+                    {t('master.cv.addVehicle.advancedDimoRegister')}
+                  </Button>
+                ) : null}
+              </div>
             </>
+          ) : error && !preflightLoading ? (
+            <p className="text-sm text-[color:var(--status-critical)]" role="alert">
+              {error}
+            </p>
           ) : null}
         </div>
       ) : null}
 
-      {error ? (
+      {error && (!organizationId || !selectedDimoId) ? (
         <p className="text-sm text-[color:var(--status-critical)]" role="alert">
           {error}
         </p>
       ) : null}
+
+      <div className="rounded-xl border border-border bg-muted/20 p-4 text-xs text-muted-foreground space-y-1">
+        <p className="font-semibold text-foreground">{t('master.cv.addVehicle.demoUnavailableTitle')}</p>
+        <p>{t('master.cv.addVehicle.demoUnavailableBody')}</p>
+      </div>
 
       {successVehicleId ? (
         <div className="rounded-xl border border-[color:var(--status-success)]/40 p-4 flex flex-wrap items-center gap-3">

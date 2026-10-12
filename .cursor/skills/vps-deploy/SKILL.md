@@ -9,11 +9,19 @@ description: >-
 
 **Canonical runbook:** [architecture/dsrg/PRODUCTION_VPS_ACCESS_AND_DEPLOY_RUNBOOK.md](../../../architecture/dsrg/PRODUCTION_VPS_ACCESS_AND_DEPLOY_RUNBOOK.md)
 
-## When to use
+## Operational standard (current)
 
 User says: deploy, commit and deploy, release, production, VPS — **only after an explicit owner production-deploy instruction**.
 
-## Canonical contract (routine production)
+**Agents:** develop, test, and open PRs in the normal Cursor Cloud Agent environment. **Do not** run `cloud-agent-deploy.sh` or install the fixed VPS bootstrap unless the owner explicitly authorizes a bootstrap install workstream.
+
+## When to use this skill
+
+User says: deploy, commit and deploy, release, production, VPS deploy.
+
+If the user only wants **git push** or **CI**, do that — production deploy still requires a **human operator** on the VPS unless bootstrap status changes.
+
+## VO5C operator workflow (authoritative)
 
 ```
 Owner production-deploy instruction in Cursor
@@ -92,3 +100,7 @@ Exit `3` = replicas restored; P4B16 attestation incomplete (not unsafe physical 
 | DEPLOYED | Change promoted on VPS `/current` |
 | ACTIVATED | P4B16 / enforcement / gates actually exercised in production |
 | VALIDATED | Fresh production evidence (not claimed by docs-only PRs) |
+
+## Stop rule
+
+If pinned executor env, human authorization, or runner path is unavailable — **stop and report**. Do not invent alternate deploy paths.
