@@ -12,9 +12,16 @@ Incremental DIMO sliding-window recharge segments persist as separate legacy `Ve
 
 - Module: `erd-recharge-legacy-fragment-product-read/`
 - Gate: `ERD_RECHARGE_LEGACY_FRAGMENT_PRODUCT_READ_ENABLED` — strict `1`/`true` only
-- Proof (fail-closed): E5.4A-aligned **strict temporal containment** + **shared `dimo-recharge-{tokenId}-*` identity** + **incremental single-segment coalesce metadata** + **unique maximal legacy envelope** per vehicle cohort
+- Proof (fail-closed, PR #1997 hardening):
+  - **Primary physical anchor:** legacy envelope `dimoSegmentId` must **exactly match** a bounded `HvChargeSession` native segment for the same vehicle (read-only), with temporal overlap — not token scope alone
+  - E5.4A **strict temporal containment** of fragment inside envelope
+  - **Incremental single-segment** coalesce metadata on fragment
+  - **SOC/energy telemetry nesting** from `rawDetectionMeta` (reject distinct nested physical bands)
+  - **Cross-episode HV identity conflict** checks (E5.4A-style) before suppression
+  - **Unique** proven HV episode envelope owner; ambiguity → fail open
+- Bounded product-read query: RECHARGE rows fetched by **interval overlap** with window; missing HV parent envelopes fetched by `dimoSegmentId` (vehicle-scoped) before projection
 - Preserves all raw DB rows; `listEnergyEventsRaw` unchanged
-- Does **not** modify HvChargeSession, write authority, or E5.5 identity rules
+- Does **not** modify HvChargeSession persistence, write authority, or E5.5 identity rules
 
 ## Tests
 

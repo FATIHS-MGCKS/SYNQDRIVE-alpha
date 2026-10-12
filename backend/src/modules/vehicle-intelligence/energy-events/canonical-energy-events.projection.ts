@@ -14,7 +14,10 @@ import { vehicleEnergyEventToRefuelRow } from './physical-refuel-row.mapper';
 import { applyRechargeProductReadDedupe } from './erd-recharge-product-read-dedupe/erd-recharge-product-read-dedupe';
 import type { RechargeProductReadDedupeMetricResult } from './erd-recharge-product-read-dedupe/erd-recharge-product-read-dedupe';
 import { applyLegacyRechargeFragmentProductReadToProductRows } from './erd-recharge-legacy-fragment-product-read/erd-recharge-legacy-fragment-product-read';
-import type { LegacyFragmentProductReadMetricResult } from './erd-recharge-legacy-fragment-product-read/erd-recharge-legacy-fragment-product-read';
+import type {
+  LegacyFragmentProductReadMetricResult,
+  LegacyRechargeFragmentProductReadContext,
+} from './erd-recharge-legacy-fragment-product-read/erd-recharge-legacy-fragment-product-read';
 
 export type EnergyEventWithReconciliation = VehicleEnergyEvent & {
   refuelReconciliation?: VehicleEnergyEventRefuelReconciliation | null;
@@ -41,6 +44,9 @@ export function projectCanonicalProductEnergyEvents<T extends EnergyEventWithRec
   onRechargeDedupeMetrics?: (results: RechargeProductReadDedupeMetricResult[]) => void,
   legacyFragmentProductReadEnabled = false,
   onLegacyFragmentMetrics?: (results: LegacyFragmentProductReadMetricResult[]) => void,
+  legacyFragmentProductReadContext: LegacyRechargeFragmentProductReadContext = {
+    hvPhysicalAnchors: [],
+  },
 ): T[] {
   const nonRefuelNonRecharge = rows.filter(
     (row) => row.kind !== EnergyEventKind.REFUEL && row.kind !== EnergyEventKind.RECHARGE,
@@ -120,6 +126,7 @@ export function projectCanonicalProductEnergyEvents<T extends EnergyEventWithRec
     applyLegacyRechargeFragmentProductReadToProductRows(
       afterRechargeDedupe,
       legacyFragmentProductReadEnabled,
+      legacyFragmentProductReadContext,
     );
   onLegacyFragmentMetrics?.(legacyFragmentMetrics);
 

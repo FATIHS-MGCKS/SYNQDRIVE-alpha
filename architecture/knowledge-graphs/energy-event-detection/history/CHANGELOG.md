@@ -1,5 +1,10 @@
 # KG-EED Changelog
 
+## 2026-10-12 — ERD legacy RECHARGE fragment product-read hardening (EED-EV-0111, PR #1997)
+
+- HV `HvChargeSession` primary-pair anchor required for suppression; SOC/energy telemetry nesting; nested distinct session fail-open
+- Product-read RECHARGE query uses interval overlap + bounded parent envelope context fetch
+
 ## 2026-10-12 — ERD legacy RECHARGE fragment product-read (EED-EV-0111)
 
 - Product-read collapse for proven nested legacy DIMO sliding-window fragments (E5.4A containment + token lineage + incremental coalesce metadata)

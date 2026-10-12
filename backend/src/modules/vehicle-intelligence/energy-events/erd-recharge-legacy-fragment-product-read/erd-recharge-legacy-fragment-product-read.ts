@@ -9,6 +9,14 @@ import {
   sharesDimoRechargeToken,
 } from './erd-recharge-legacy-fragment-identity.policy';
 import { isStrictlyContainedInEnvelope } from './erd-recharge-legacy-fragment-interval.policy';
+import {
+  hasHvCrossEpisodeIdentityConflict,
+  indicatesDistinctNestedPhysicalSession,
+  isFragmentTelemetryConsistentWithEnvelope,
+  isHvPrimaryAnchorLegacyRow,
+  isHvProvenPrimaryEpisodeEnvelope,
+  type LegacyFragmentHvPhysicalAnchor,
+} from './erd-recharge-legacy-fragment-physical-episode.policy';
 
 export type LegacyFragmentProductReadMetricResult =
   | 'flag_off'
@@ -16,7 +24,14 @@ export type LegacyFragmentProductReadMetricResult =
   | 'fragment_suppressed'
   | 'ambiguous_preserved'
   | 'malformed_preserved'
-  | 'non_legacy_preserved';
+  | 'non_legacy_preserved'
+  | 'unproven_episode_preserved'
+  | 'identity_conflict_preserved'
+  | 'telemetry_conflict_preserved';
+
+export interface LegacyRechargeFragmentProductReadContext {
+  hvPhysicalAnchors: LegacyFragmentHvPhysicalAnchor[];
+}
 
 export interface ApplyLegacyRechargeFragmentProductReadResult<T extends VehicleEnergyEvent> {
   visible: T[];
@@ -69,9 +84,10 @@ function isMaximalLegacyEnvelope(
   return true;
 }
 
-function proveFragmentOwnedByEnvelope(
+function proveFragmentOwnedByHvEpisodeEnvelope(
   fragment: VehicleEnergyEvent,
   envelope: VehicleEnergyEvent,
+  anchors: LegacyFragmentHvPhysicalAnchor[],
 ): boolean {
   if (fragment.id === envelope.id) return false;
   if (!isLegacyDirectDimoRechargeRow(fragment)) return false;
@@ -83,23 +99,41 @@ function proveFragmentOwnedByEnvelope(
   if (!sharesDimoRechargeToken(envelope, fragment)) return false;
   if (!isIncrementalSingleSegmentLegacyFragment(fragment)) return false;
   if (!isStrictlyContainedInEnvelope({ row: fragment, envelope })) return false;
+  if (!isHvProvenPrimaryEpisodeEnvelope(envelope, anchors)) return false;
+  if (isHvPrimaryAnchorLegacyRow(fragment, anchors)) return false;
+  if (
+    hasHvCrossEpisodeIdentityConflict({
+      legacy: fragment,
+      ownerEnvelope: envelope,
+      anchors,
+    })
+  ) {
+    return false;
+  }
+  if (indicatesDistinctNestedPhysicalSession(fragment, envelope)) return false;
+  if (!isFragmentTelemetryConsistentWithEnvelope(fragment, envelope)) return false;
   return true;
 }
 
 function resolveEnvelopeOwnersForFragment(
   fragment: VehicleEnergyEvent,
   envelopes: VehicleEnergyEvent[],
+  anchors: LegacyFragmentHvPhysicalAnchor[],
 ): VehicleEnergyEvent[] {
-  return envelopes.filter((envelope) => proveFragmentOwnedByEnvelope(fragment, envelope));
+  return envelopes.filter((envelope) =>
+    proveFragmentOwnedByHvEpisodeEnvelope(fragment, envelope, anchors),
+  );
 }
 
 /**
- * Product-read collapse for proven legacy DIMO sliding-window fragments (E5.4A-aligned containment + token lineage).
- * Read projection only — raw rows remain in DB. Fail-open on ambiguity or incomplete identity proof.
+ * Product-read collapse for proven legacy DIMO sliding-window fragments.
+ * Requires HvChargeSession primary-pair anchor (exact native dimo) plus E5.4A containment,
+ * incremental coalesce metadata, and consistent SOC/energy telemetry. Fail-open otherwise.
  */
 export function applyLegacyRechargeFragmentProductRead<T extends VehicleEnergyEvent>(
   rechargeRows: T[],
   enabled: boolean,
+  context: LegacyRechargeFragmentProductReadContext = { hvPhysicalAnchors: [] },
 ): ApplyLegacyRechargeFragmentProductReadResult<T> {
   if (!enabled) {
     return {
@@ -117,10 +151,16 @@ export function applyLegacyRechargeFragmentProductRead<T extends VehicleEnergyEv
   }
 
   const suppressedIds = new Set<string>();
+  const anchors = context.hvPhysicalAnchors;
 
   for (const cohort of byVehicle.values()) {
     const legacyCohort = cohort.filter((row) => isLegacyDirectDimoRechargeRow(row));
-    const envelopes = legacyCohort.filter((row) => isMaximalLegacyEnvelope(row, legacyCohort));
+    const maximalEnvelopes = legacyCohort.filter((row) =>
+      isMaximalLegacyEnvelope(row, legacyCohort),
+    );
+    const episodeEnvelopes = maximalEnvelopes.filter((row) =>
+      isHvProvenPrimaryEpisodeEnvelope(row, anchors),
+    );
 
     for (const row of cohort) {
       if (isCanonicalErdRechargeRow(row)) {
@@ -132,7 +172,7 @@ export function applyLegacyRechargeFragmentProductRead<T extends VehicleEnergyEv
         continue;
       }
 
-      const owners = resolveEnvelopeOwnersForFragment(row, envelopes);
+      const owners = resolveEnvelopeOwnersForFragment(row, episodeEnvelopes, anchors);
       if (owners.length > 1) {
         metricResults.push('ambiguous_preserved');
         continue;
@@ -140,6 +180,16 @@ export function applyLegacyRechargeFragmentProductRead<T extends VehicleEnergyEv
       if (owners.length === 0) {
         if (parseDimoRechargeSegmentId(row.dimoSegmentId) == null) {
           metricResults.push('malformed_preserved');
+        } else if (
+          isIncrementalSingleSegmentLegacyFragment(row) &&
+          maximalEnvelopes.some((envelope) =>
+            isStrictlyContainedInEnvelope({ row, envelope }),
+          ) &&
+          !episodeEnvelopes.some((envelope) =>
+            isStrictlyContainedInEnvelope({ row, envelope }),
+          )
+        ) {
+          metricResults.push('unproven_episode_preserved');
         } else {
           metricResults.push('envelope_preserved');
         }
@@ -149,6 +199,24 @@ export function applyLegacyRechargeFragmentProductRead<T extends VehicleEnergyEv
       const owner = owners[0]!;
       if (owner.id === row.id) {
         metricResults.push('envelope_preserved');
+        continue;
+      }
+
+      if (
+        hasHvCrossEpisodeIdentityConflict({
+          legacy: row,
+          ownerEnvelope: owner,
+          anchors,
+        })
+      ) {
+        metricResults.push('identity_conflict_preserved');
+        continue;
+      }
+      if (
+        indicatesDistinctNestedPhysicalSession(row, owner) ||
+        !isFragmentTelemetryConsistentWithEnvelope(row, owner)
+      ) {
+        metricResults.push('telemetry_conflict_preserved');
         continue;
       }
 
@@ -165,17 +233,19 @@ export function applyLegacyRechargeFragmentProductRead<T extends VehicleEnergyEv
   };
 }
 
-/**
- * Applies legacy fragment collapse to mixed-kind product rows (RECHARGE-only mutation).
- */
 export function applyLegacyRechargeFragmentProductReadToProductRows<
   T extends VehicleEnergyEvent,
->(rows: T[], enabled: boolean): ApplyLegacyRechargeFragmentProductReadResult<T> {
+>(
+  rows: T[],
+  enabled: boolean,
+  context: LegacyRechargeFragmentProductReadContext = { hvPhysicalAnchors: [] },
+): ApplyLegacyRechargeFragmentProductReadResult<T> {
   const recharges = rows.filter((row) => row.kind === EnergyEventKind.RECHARGE);
   const other = rows.filter((row) => row.kind !== EnergyEventKind.RECHARGE);
   const { visible, metricResults } = applyLegacyRechargeFragmentProductRead(
     recharges,
     enabled,
+    context,
   );
   return {
     visible: [...other, ...visible],

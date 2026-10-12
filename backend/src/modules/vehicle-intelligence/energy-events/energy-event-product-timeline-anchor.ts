@@ -134,7 +134,8 @@ export function buildEnergyEventProductReadListWhere(
       },
       {
         kind: EnergyEventKind.RECHARGE,
-        startTime: range,
+        startTime: { lte: options.to ?? new Date(8_640_000_000_000_000) },
+        endTime: { gte: options.from ?? new Date(0) },
       },
     ],
   };

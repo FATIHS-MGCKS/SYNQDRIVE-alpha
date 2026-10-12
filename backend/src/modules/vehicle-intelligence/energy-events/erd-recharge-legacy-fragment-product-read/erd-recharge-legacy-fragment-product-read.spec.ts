@@ -14,7 +14,9 @@ import {
   applyLegacyRechargeFragmentProductReadToProductRows,
 } from './erd-recharge-legacy-fragment-product-read';
 import { isErdRechargeLegacyFragmentProductReadEnabled } from './erd-recharge-legacy-fragment-product-read.config';
+import type { LegacyFragmentHvPhysicalAnchor } from './erd-recharge-legacy-fragment-physical-episode.policy';
 import {
+  buildTesla20261012HvPhysicalAnchor,
   buildTesla20261012LegacyRechargeFragmentFixture,
   TESLA_FRAGMENT_FIXTURE_VEHICLE_ID,
 } from './tesla-2026-10-12-legacy-recharge-fragment.fixture';
@@ -30,12 +32,20 @@ function legacyRecharge(input: {
   endIso: string;
   energyDeltaKwh: number;
   coalescedOnlySelf?: boolean;
+  energyStartKwh?: number;
+  energyEndKwh?: number;
+  socStartPercent?: number;
+  socEndPercent?: number;
 }): VehicleEnergyEvent {
   const dimoSegmentId = `dimo-recharge-${input.tokenId}-${input.suffixMs}`;
   const coalescedFromSegmentIds =
     input.coalescedOnlySelf !== false ? [dimoSegmentId] : [dimoSegmentId, 'other-parent'];
   const start = new Date(input.startIso);
   const end = new Date(input.endIso);
+  const energyStartKwh = input.energyStartKwh ?? 10;
+  const energyEndKwh = input.energyEndKwh ?? energyStartKwh + input.energyDeltaKwh;
+  const socStartPercent = input.socStartPercent ?? 20;
+  const socEndPercent = input.socEndPercent ?? socStartPercent + 5;
   return {
     id: input.id,
     vehicleId: input.vehicleId,
@@ -53,10 +63,31 @@ function legacyRecharge(input: {
     rawDetectionMeta: {
       coalescedFromCount: coalescedFromSegmentIds.length,
       coalescedFromSegmentIds,
+      energyStartKwh,
+      energyEndKwh,
+      socStartPercent,
+      socEndPercent,
     },
     createdAt: start,
     updatedAt: start,
   } as unknown as VehicleEnergyEvent;
+}
+
+function hvAnchorForRow(
+  row: VehicleEnergyEvent,
+  overrides?: Partial<LegacyFragmentHvPhysicalAnchor>,
+): LegacyFragmentHvPhysicalAnchor {
+  const meta = row.rawDetectionMeta as Record<string, number>;
+  return {
+    dimoSegmentId: row.dimoSegmentId!,
+    startAt: row.startTime,
+    endAt: row.endTime,
+    startSocPercent: meta.socStartPercent ?? null,
+    endSocPercent: meta.socEndPercent ?? null,
+    startEnergyKwh: meta.energyStartKwh ?? null,
+    endEnergyKwh: meta.energyEndKwh ?? null,
+    ...overrides,
+  };
 }
 
 describe('erd-recharge-legacy-fragment-product-read', () => {
@@ -69,10 +100,20 @@ describe('erd-recharge-legacy-fragment-product-read', () => {
 
   it('T1: Tesla 2026-10-12 parent + seven fragments → one product RECHARGE when gate ON', () => {
     const rows = buildTesla20261012LegacyRechargeFragmentFixture();
-    const { visible } = applyLegacyRechargeFragmentProductRead(rows, true);
+    const { visible } = applyLegacyRechargeFragmentProductRead(rows, true, {
+      hvPhysicalAnchors: [buildTesla20261012HvPhysicalAnchor()],
+    });
     expect(visible).toHaveLength(1);
     expect(visible[0]!.id).toBe('420c253b-676a-4ab6-8e89-7528d538a7d8');
     expect(visible[0]!.energyDeltaKwh).toBeCloseTo(5.259999882429838, 6);
+  });
+
+  it('T1b: gate ON without HV anchor proof — fail open (8 rows)', () => {
+    const rows = buildTesla20261012LegacyRechargeFragmentFixture();
+    const { visible } = applyLegacyRechargeFragmentProductRead(rows, true, {
+      hvPhysicalAnchors: [],
+    });
+    expect(visible).toHaveLength(8);
   });
 
   it('T2: gate OFF → eight legacy rows unchanged', () => {
@@ -84,7 +125,9 @@ describe('erd-recharge-legacy-fragment-product-read', () => {
   it('T3: raw rows preserved — projection only filters product read', () => {
     const rows = buildTesla20261012LegacyRechargeFragmentFixture();
     expect(rows).toHaveLength(8);
-    applyLegacyRechargeFragmentProductRead(rows, true);
+    applyLegacyRechargeFragmentProductRead(rows, true, {
+      hvPhysicalAnchors: [buildTesla20261012HvPhysicalAnchor()],
+    });
     expect(rows).toHaveLength(8);
   });
 
@@ -130,11 +173,67 @@ describe('erd-recharge-legacy-fragment-product-read', () => {
         energyDeltaKwh: 1.5,
       }),
     ];
+    const envA = sessionA[0]!;
+    const envB = sessionB[0]!;
     const { visible } = applyLegacyRechargeFragmentProductRead(
       [...sessionA, ...sessionB],
       true,
+      {
+        hvPhysicalAnchors: [hvAnchorForRow(envA), hvAnchorForRow(envB)],
+      },
     );
     expect(visible.map((row) => row.id).sort()).toEqual(['env-a', 'env-b']);
+  });
+
+  it('T5b: nested distinct session inside unproven broad envelope — fail open', () => {
+    const vehicleId = 'veh-nested-distinct';
+    const broad = legacyRecharge({
+      id: 'broad-unproven',
+      vehicleId,
+      tokenId: '99',
+      suffixMs: '1000',
+      startIso: '2026-10-12T08:00:00.000Z',
+      endIso: '2026-10-12T22:00:00.000Z',
+      energyDeltaKwh: 20,
+      energyStartKwh: 10,
+      energyEndKwh: 30,
+      socStartPercent: 20,
+      socEndPercent: 90,
+    });
+    const eveningEnv = legacyRecharge({
+      id: 'evening-env',
+      vehicleId,
+      tokenId: '99',
+      suffixMs: '5000',
+      startIso: '2026-10-12T18:00:00.000Z',
+      endIso: '2026-10-12T20:00:00.000Z',
+      energyDeltaKwh: 6,
+      energyStartKwh: 40,
+      energyEndKwh: 46,
+      socStartPercent: 50,
+      socEndPercent: 80,
+    });
+    const eveningFrag = legacyRecharge({
+      id: 'evening-frag',
+      vehicleId,
+      tokenId: '99',
+      suffixMs: '6000',
+      startIso: '2026-10-12T18:30:00.000Z',
+      endIso: '2026-10-12T19:00:00.000Z',
+      energyDeltaKwh: 2,
+      energyStartKwh: 41,
+      energyEndKwh: 43,
+      socStartPercent: 55,
+      socEndPercent: 65,
+    });
+    const { visible } = applyLegacyRechargeFragmentProductRead(
+      [broad, eveningEnv, eveningFrag],
+      true,
+      { hvPhysicalAnchors: [hvAnchorForRow(eveningEnv)] },
+    );
+    expect(visible.map((row) => row.id).sort()).toEqual(
+      ['broad-unproven', 'evening-env', 'evening-frag'].sort(),
+    );
   });
 
   it('T5: ambiguous dual-envelope ownership → fail open (keep fragment)', () => {
@@ -169,6 +268,7 @@ describe('erd-recharge-legacy-fragment-product-read', () => {
     const { visible, metricResults } = applyLegacyRechargeFragmentProductRead(
       [envelope1, envelope2, fragment],
       true,
+      { hvPhysicalAnchors: [hvAnchorForRow(envelope1), hvAnchorForRow(envelope2)] },
     );
     expect(visible).toHaveLength(3);
     expect(metricResults).toContain('ambiguous_preserved');
@@ -209,22 +309,33 @@ describe('erd-recharge-legacy-fragment-product-read', () => {
       endIso: '2026-10-12T14:00:00.000Z',
       energyDeltaKwh: 5,
     });
-    const { visible } = applyLegacyRechargeFragmentProductRead([fragA, envB], true);
+    const { visible } = applyLegacyRechargeFragmentProductRead([fragA, envB], true, {
+      hvPhysicalAnchors: [hvAnchorForRow(envB)],
+    });
     expect(visible).toHaveLength(2);
   });
 
   it('T8: shuffled arrival order → deterministic single parent', () => {
     const rows = buildTesla20261012LegacyRechargeFragmentFixture();
     const shuffled = [...rows].reverse();
-    const first = applyLegacyRechargeFragmentProductRead(shuffled, true);
-    const second = applyLegacyRechargeFragmentProductRead(rows, true);
+    const ctx = { hvPhysicalAnchors: [buildTesla20261012HvPhysicalAnchor()] };
+    const first = applyLegacyRechargeFragmentProductRead(shuffled, true, ctx);
+    const second = applyLegacyRechargeFragmentProductRead(rows, true, ctx);
     expect(first.visible.map((r) => r.id)).toEqual(second.visible.map((r) => r.id));
   });
 
   it('T9: trips-timeline path uses canonical projection with gate', () => {
     const rows = buildTesla20261012LegacyRechargeFragmentFixture();
     const off = projectCanonicalProductEnergyEvents(rows, V2_CUTOVER, false, undefined, false);
-    const on = projectCanonicalProductEnergyEvents(rows, V2_CUTOVER, false, undefined, true);
+    const on = projectCanonicalProductEnergyEvents(
+      rows,
+      V2_CUTOVER,
+      false,
+      undefined,
+      true,
+      undefined,
+      { hvPhysicalAnchors: [buildTesla20261012HvPhysicalAnchor()] },
+    );
     expect(off.filter((r) => r.kind === EnergyEventKind.RECHARGE)).toHaveLength(8);
     expect(on.filter((r) => r.kind === EnergyEventKind.RECHARGE)).toHaveLength(1);
   });
@@ -232,7 +343,9 @@ describe('erd-recharge-legacy-fragment-product-read', () => {
   it('T10: energy values come from envelope row, never summed across fragments', () => {
     const rows = buildTesla20261012LegacyRechargeFragmentFixture();
     const parent = rows[0]!;
-    const { visible } = applyLegacyRechargeFragmentProductRead(rows, true);
+    const { visible } = applyLegacyRechargeFragmentProductRead(rows, true, {
+      hvPhysicalAnchors: [buildTesla20261012HvPhysicalAnchor()],
+    });
     expect(visible[0]!.energyDeltaKwh).toBe(parent.energyDeltaKwh);
     const fragmentSum = rows.slice(1).reduce((acc, row) => acc + (row.energyDeltaKwh ?? 0), 0);
     expect(visible[0]!.energyDeltaKwh).not.toBeCloseTo(fragmentSum, 1);
@@ -264,10 +377,9 @@ describe('erd-recharge-legacy-fragment-product-read', () => {
       energyDeltaKwh: 5,
     });
     const e55 = applyRechargeProductReadDedupe([canonical, legacyDup], true);
-    const combined = applyLegacyRechargeFragmentProductReadToProductRows(
-      e55.visible,
-      true,
-    );
+    const combined = applyLegacyRechargeFragmentProductReadToProductRows(e55.visible, true, {
+      hvPhysicalAnchors: [],
+    });
     expect(combined.visible.map((r) => r.id)).toEqual(['canonical-1']);
   });
 
@@ -297,7 +409,11 @@ describe('erd-recharge-legacy-fragment-product-read', () => {
       energyDeltaKwh: 2,
       coalescedOnlySelf: false,
     });
-    const { visible } = applyLegacyRechargeFragmentProductRead([envelope, notIncremental], true);
+    const { visible } = applyLegacyRechargeFragmentProductRead(
+      [envelope, notIncremental],
+      true,
+      { hvPhysicalAnchors: [hvAnchorForRow(envelope)] },
+    );
     expect(visible).toHaveLength(2);
   });
 });

@@ -3,6 +3,7 @@ import {
   EnergyEventKind,
   type VehicleEnergyEvent,
 } from '@prisma/client';
+import type { LegacyFragmentHvPhysicalAnchor } from './erd-recharge-legacy-fragment-physical-episode.policy';
 
 /** Sanitized Tesla Natural Test #1 — legacy DIMO sliding-window fragmentation (2026-10-12). */
 export const TESLA_FRAGMENT_FIXTURE_VEHICLE_ID =
@@ -55,6 +56,18 @@ function buildRow(input: {
     createdAt: new Date(input.startIso),
     updatedAt: new Date(input.startIso),
   } as unknown as VehicleEnergyEvent;
+}
+
+export function buildTesla20261012HvPhysicalAnchor(): LegacyFragmentHvPhysicalAnchor {
+  return {
+    dimoSegmentId: `dimo-recharge-${TOKEN}-1791810415314`,
+    startAt: new Date('2026-10-12T13:06:55.314Z'),
+    endAt: new Date('2026-10-12T15:10:30.313Z'),
+    startSocPercent: 89.17638483965014,
+    endSocPercent: 99,
+    startEnergyKwh: 49.61999889090657,
+    endEnergyKwh: 54.23999878764153,
+  };
 }
 
 export function buildTesla20261012LegacyRechargeFragmentFixture(): VehicleEnergyEvent[] {
