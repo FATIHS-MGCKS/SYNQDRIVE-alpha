@@ -7,6 +7,24 @@ fi
 
 VO5C_CLOUD_AGENT_EXIT_BOOTSTRAP_INTEGRITY=45
 
+# Pinned-executor paths verified in the co-installed trusted lib before sourcing any pin-tree library.
+_VO5C_BOOTSTRAP_TRUSTED_INTEGRITY_PATHS=(
+  backend/scripts/ops/vps-deploy-release.sh
+  backend/scripts/ops/vps-vo5c-run-pinned-security-deploy.sh
+  backend/scripts/ops/lib/vps-vo5c-security-floor.lib.sh
+  backend/scripts/ops/lib/vps-production-replica.lib.sh
+  backend/scripts/ops/lib/vps-vo5c-deploy-admission.lib.sh
+  backend/scripts/ops/lib/vps-vo5c-deploy-executor-selection.lib.sh
+  backend/scripts/ops/lib/vps-vo5c-production-deploy-bypass-enforcement.lib.sh
+  backend/scripts/ops/lib/vo5c-cloud-agent-pinned-bootstrap.lib.sh
+  backend/scripts/ops/lib/vo5c-operator-deploy-session.lib.sh
+)
+
+vo5c_bootstrap_is_full_sha() {
+  local sha=$1
+  [[ "$sha" =~ ^[0-9a-fA-F]{40}$ ]]
+}
+
 vo5c_bootstrap_verify_sha256_file() {
   local path=$1
   local expected=$2
@@ -117,22 +135,110 @@ vo5c_cloud_agent_bootstrap_verify_shared_installation() {
   return 0
 }
 
+# Fail-closed git/worktree integrity for the pinned executor — no pin-tree library may be sourced before this passes.
+vo5c_bootstrap_verify_pinned_executor_tree_trusted() {
+  local executor_root=$1
+  local expected_sha=$2
+  local rel_path status_line tracked
+
+  expected_sha="$(echo "$expected_sha" | tr '[:upper:]' '[:lower:]')"
+
+  if [[ -z "$executor_root" || ! -d "$executor_root" ]]; then
+    echo "ABORT: bootstrap_trusted_integrity_root_missing" >&2
+    return 1
+  fi
+  if ! vo5c_bootstrap_is_full_sha "$expected_sha"; then
+    echo "ABORT: bootstrap_trusted_integrity_expected_sha_invalid" >&2
+    return 1
+  fi
+  if ! git -C "$executor_root" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "ABORT: bootstrap_trusted_integrity_not_git_checkout" >&2
+    return 1
+  fi
+
+  local head_sha
+  head_sha="$(git -C "$executor_root" rev-parse HEAD 2>/dev/null || true)"
+  head_sha="$(echo "$head_sha" | tr '[:upper:]' '[:lower:]')"
+  if [[ "$head_sha" != "$expected_sha" ]]; then
+    echo "ABORT: bootstrap_trusted_integrity_head_mismatch expected=${expected_sha} actual=${head_sha:-unknown}" >&2
+    return 1
+  fi
+
+  if [[ -n "$(git -C "$executor_root" status --porcelain -- backend/scripts/ops 2>/dev/null)" ]]; then
+    echo "ABORT: bootstrap_trusted_integrity_dirty_ops_tree" >&2
+    return 1
+  fi
+
+  while IFS= read -r status_line; do
+    [[ -z "$status_line" ]] && continue
+    rel_path="${status_line:3}"
+    if [[ -L "${executor_root}/${rel_path}" ]]; then
+      echo "ABORT: bootstrap_trusted_integrity_unsafe_symlink path=${rel_path}" >&2
+      return 1
+    fi
+    if [[ -x "${executor_root}/${rel_path}" ]]; then
+      echo "ABORT: bootstrap_trusted_integrity_untracked_executable path=${rel_path}" >&2
+      return 1
+    fi
+  done < <(git -C "$executor_root" ls-files --others --exclude-standard -- backend/scripts/ops 2>/dev/null || true)
+
+  for tracked in "${_VO5C_BOOTSTRAP_TRUSTED_INTEGRITY_PATHS[@]}"; do
+    if [[ -L "${executor_root}/${tracked}" ]]; then
+      echo "ABORT: bootstrap_trusted_integrity_symlink_replacement path=${tracked}" >&2
+      return 1
+    fi
+    if ! git -C "$executor_root" cat-file -e "HEAD:${tracked}" 2>/dev/null; then
+      if [[ -e "${executor_root}/${tracked}" ]]; then
+        echo "ABORT: bootstrap_trusted_integrity_untracked_replacement path=${tracked}" >&2
+        return 1
+      fi
+      echo "ABORT: bootstrap_trusted_integrity_required_path_missing_in_head path=${tracked}" >&2
+      return 1
+    fi
+    if [[ ! -f "${executor_root}/${tracked}" ]]; then
+      echo "ABORT: bootstrap_trusted_integrity_tracked_file_missing path=${tracked}" >&2
+      return 1
+    fi
+    if ! git -C "$executor_root" diff --quiet HEAD -- "$tracked" 2>/dev/null; then
+      echo "ABORT: bootstrap_trusted_integrity_tracked_file_modified path=${tracked}" >&2
+      return 1
+    fi
+    if ! git -C "$executor_root" diff --cached --quiet HEAD -- "$tracked" 2>/dev/null; then
+      echo "ABORT: bootstrap_trusted_integrity_tracked_file_staged path=${tracked}" >&2
+      return 1
+    fi
+    if ! cmp -s "${executor_root}/${tracked}" <(git -C "$executor_root" show "HEAD:${tracked}" 2>/dev/null); then
+      echo "ABORT: bootstrap_trusted_integrity_worktree_differs_from_head path=${tracked}" >&2
+      return 1
+    fi
+  done
+
+  return 0
+}
+
 vo5c_cloud_agent_bootstrap_verify_pinned_libraries() {
   local pin_root=$1
   local pin_sha=$2
   local impl="${pin_root}/backend/scripts/ops/lib/vo5c-cloud-agent-pinned-bootstrap.lib.sh"
   local session="${pin_root}/backend/scripts/ops/lib/vo5c-operator-deploy-session.lib.sh"
   local floor="${pin_root}/backend/scripts/ops/lib/vps-vo5c-security-floor.lib.sh"
+  local admission="${pin_root}/backend/scripts/ops/lib/vps-vo5c-deploy-admission.lib.sh"
 
   pin_sha="$(echo "$pin_sha" | tr '[:upper:]' '[:lower:]')"
   if [[ "$pin_sha" != "$VO5C_MANIFEST_INSTALLED_FROM_COMMIT" ]]; then
     echo "ABORT: pin executor SHA does not match bootstrap manifest INSTALLED_FROM_COMMIT" >&2
     return "$VO5C_CLOUD_AGENT_EXIT_BOOTSTRAP_INTEGRITY"
   fi
-  [[ -f "$impl" && -f "$session" && -f "$floor" ]] || {
+  [[ -f "$impl" && -f "$session" && -f "$floor" && -f "$admission" ]] || {
     echo "ABORT: pinned bootstrap dependencies missing under executor tree" >&2
     return "$VO5C_CLOUD_AGENT_EXIT_BOOTSTRAP_INTEGRITY"
   }
+
+  if ! vo5c_bootstrap_verify_pinned_executor_tree_trusted "$pin_root" "$pin_sha"; then
+    echo "ABORT: pinned executor trusted pre-source integrity check failed" >&2
+    return "$VO5C_CLOUD_AGENT_EXIT_BOOTSTRAP_INTEGRITY"
+  fi
+
   vo5c_bootstrap_verify_sha256_file "$impl" "$VO5C_MANIFEST_PINNED_IMPL_SHA256" || {
     echo "ABORT: pinned implementation library SHA256 mismatch" >&2
     return "$VO5C_CLOUD_AGENT_EXIT_BOOTSTRAP_INTEGRITY"

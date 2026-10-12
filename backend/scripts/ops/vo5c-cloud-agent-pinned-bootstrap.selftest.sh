@@ -89,6 +89,41 @@ set -e
 [[ "$rc" -eq 45 ]] && pass pinned_impl_tamper_reject
 git -C "$WT_PIN" checkout -- backend/scripts/ops/lib/vo5c-cloud-agent-pinned-bootstrap.lib.sh
 
+NEG_MARKER="${SD_ROOT}/neg_presource_sourced.marker"
+rm -f "$NEG_MARKER"
+FLOOR_LIB="${WT_PIN}/backend/scripts/ops/lib/vps-vo5c-security-floor.lib.sh"
+{
+  echo ": >\"${NEG_MARKER}\" # vo5c_neg_test_presource"
+  cat "$FLOOR_LIB"
+} >"${FLOOR_LIB}.tampered"
+mv "${FLOOR_LIB}.tampered" "$FLOOR_LIB"
+set +e
+vo5c_cloud_agent_bootstrap_verify_pinned_libraries "$WT_PIN" "$HEAD_SHA" >/dev/null 2>&1
+rc=$?
+set -e
+[[ "$rc" -eq 45 ]] || fail "security_floor_tamper expected exit 45 got ${rc}"
+[[ ! -f "$NEG_MARKER" ]] || fail "security_floor_tamper executed before rejection"
+pass pinned_security_floor_tamper_reject_presource
+git -C "$WT_PIN" checkout -- backend/scripts/ops/lib/vps-vo5c-security-floor.lib.sh
+rm -f "$NEG_MARKER"
+
+rm -f "$NEG_MARKER"
+ADMISSION_LIB="${WT_PIN}/backend/scripts/ops/lib/vps-vo5c-deploy-admission.lib.sh"
+{
+  echo ": >\"${NEG_MARKER}\" # vo5c_neg_test_presource"
+  cat "$ADMISSION_LIB"
+} >"${ADMISSION_LIB}.tampered"
+mv "${ADMISSION_LIB}.tampered" "$ADMISSION_LIB"
+set +e
+vo5c_cloud_agent_bootstrap_verify_pinned_libraries "$WT_PIN" "$HEAD_SHA" >/dev/null 2>&1
+rc=$?
+set -e
+[[ "$rc" -eq 45 ]] || fail "admission_tamper expected exit 45 got ${rc}"
+[[ ! -f "$NEG_MARKER" ]] || fail "admission_tamper executed before rejection"
+pass pinned_admission_tamper_reject_presource
+git -C "$WT_PIN" checkout -- backend/scripts/ops/lib/vps-vo5c-deploy-admission.lib.sh
+rm -f "$NEG_MARKER"
+
 install_bootstrap_bundle
 echo 'VO5C_CLOUD_AGENT_BOOTSTRAP_SHA256=0000000000000000000000000000000000000000000000000000000000000000' >"$VO5C_CLOUD_AGENT_BOOTSTRAP_MANIFEST"
 echo "VO5C_CLOUD_AGENT_BOOTSTRAP_VERIFY_LIB_SHA256=0000000000000000000000000000000000000000000000000000000000000000" >>"$VO5C_CLOUD_AGENT_BOOTSTRAP_MANIFEST"
