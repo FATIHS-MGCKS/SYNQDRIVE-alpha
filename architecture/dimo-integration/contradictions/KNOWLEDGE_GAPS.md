@@ -1,5 +1,7 @@
 # DIMO Integration — Knowledge Gaps
 
+**R4-class defects and risks:** see [audit/DEFECT_REGISTER.md](../audit/DEFECT_REGISTER.md) (canonical). This table retains legacy `DIM-GAP-*` IDs for graph compatibility.
+
 | Gap ID | Topic | Epistemic | Notes |
 |--------|-------|-----------|-------|
 | **DIM-GAP-001** | Segment reconciliation vs Trip FSM ownership | **RESOLVED** | TDL-DEC-OQ006-001 / DIM-DEC-OQ006-001 — provider transport vs TripDecisionEngine mutations |
