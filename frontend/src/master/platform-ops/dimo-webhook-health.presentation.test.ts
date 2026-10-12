@@ -1,10 +1,16 @@
 import { describe, expect, it } from 'vitest';
+import { dimoWebhookHealthDe } from '../../i18n/translations/dimo-webhook-health.de';
+import type { TranslationKey } from '../../i18n/translations/en';
 import {
-  DIMO_R9_OVERALL_LABEL_DE,
-  dimoR9HintMessagesDe,
+  dimoR9HintMessages,
+  dimoR9OverallLabel,
   dimoR9OverallTone,
+  type DimoR9Translate,
 } from './dimo-webhook-health.presentation';
 import type { DimoR9WebhookHealthDto } from './dimo-webhook-health.types';
+
+const tDe: DimoR9Translate = (key: TranslationKey) =>
+  dimoWebhookHealthDe[key as keyof typeof dimoWebhookHealthDe] ?? key;
 
 const basePayload = (): DimoR9WebhookHealthDto => ({
   generatedAt: new Date().toISOString(),
@@ -55,16 +61,16 @@ describe('dimo webhook health presentation', () => {
     expect(dimoR9OverallTone('UNKNOWN')).toBe('neutral');
   });
 
-  it('provides German labels', () => {
-    expect(DIMO_R9_OVERALL_LABEL_DE.HEALTHY).toBeTruthy();
-    expect(DIMO_R9_OVERALL_LABEL_DE.NOT_CONFIGURED).not.toBe('NOT_CONFIGURED');
+  it('provides localized overall labels', () => {
+    expect(dimoR9OverallLabel(tDe, 'HEALTHY')).toBe('Betriebsbereit');
+    expect(dimoR9OverallLabel(tDe, 'NOT_CONFIGURED')).not.toBe('NOT_CONFIGURED');
   });
 
-  it('builds German hints for known alert codes', () => {
+  it('builds localized hints for known alert codes', () => {
     const data = basePayload();
     data.speed.alerts = [{ code: 'FAILURE_COUNT_NONZERO', severity: 'HIGH' }];
     data.providerAccessState = 'AUTH_ERROR';
-    const hints = dimoR9HintMessagesDe(data);
+    const hints = dimoR9HintMessages(tDe, data);
     expect(hints.some((h) => h.includes('Zustellungen'))).toBe(true);
     expect(hints.some((h) => h.includes('DIMO konnte nicht'))).toBe(true);
   });

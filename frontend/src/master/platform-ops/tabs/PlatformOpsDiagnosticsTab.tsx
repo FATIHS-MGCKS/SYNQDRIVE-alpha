@@ -16,17 +16,8 @@ import type { PlatformOpsAlertGroupDto, PlatformOpsDiagnosticsTab, Communication
 import { formatRelativeDe } from '../platform-ops.utils';
 import { api } from '../../../lib/api';
 import { SystemMonitoringView } from '../../components/SystemMonitoringView';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { DimoWebhooksDiagnosticsPanel } from './DimoWebhooksDiagnosticsPanel';
-import { DIMO_R9_UI } from '../dimo-webhook-health.presentation';
-
-const DIAG_TABS = [
-  { id: 'alerts', label: 'Alarme' },
-  { id: 'poll-logs', label: 'Abfrage-Protokolle' },
-  { id: 'token-health', label: 'Token-Status' },
-  { id: 'communication', label: 'Communication' },
-  { id: 'dimo-webhooks', label: DIMO_R9_UI.panelTitle },
-  { id: 'tools', label: 'Tools' },
-] as const;
 
 export function PlatformOpsDiagnosticsTabView({
   activeTab,
@@ -35,19 +26,29 @@ export function PlatformOpsDiagnosticsTabView({
   activeTab: PlatformOpsDiagnosticsTab;
   onTabChange: (tab: PlatformOpsDiagnosticsTab) => void;
 }) {
+  const { t } = useLanguage();
+  const diagTabs = [
+    { id: 'alerts' as const, label: 'Alarme' },
+    { id: 'poll-logs' as const, label: 'Abfrage-Protokolle' },
+    { id: 'token-health' as const, label: 'Token-Status' },
+    { id: 'communication' as const, label: 'Communication' },
+    { id: 'dimo-webhooks' as const, label: t('master.platformOps.dimoWebhooks.panelTitle') },
+    { id: 'tools' as const, label: 'Tools' },
+  ];
+
   return (
     <div className="space-y-4">
       <div className="sq-tab-bar flex gap-1 p-1 rounded-md overflow-x-auto w-fit max-w-full" role="tablist">
-        {DIAG_TABS.map((t) => (
+        {diagTabs.map((tab) => (
           <button
-            key={t.id}
+            key={tab.id}
             type="button"
             role="tab"
-            aria-selected={activeTab === t.id}
-            className={activeTab === t.id ? 'sq-tab-active px-4 py-2 rounded-xl text-sm font-bold' : 'sq-tab px-4 py-2 rounded-xl text-sm font-bold text-muted-foreground'}
-            onClick={() => onTabChange(t.id)}
+            aria-selected={activeTab === tab.id}
+            className={activeTab === tab.id ? 'sq-tab-active px-4 py-2 rounded-xl text-sm font-bold' : 'sq-tab px-4 py-2 rounded-xl text-sm font-bold text-muted-foreground'}
+            onClick={() => onTabChange(tab.id)}
           >
-            {t.label}
+            {tab.label}
           </button>
         ))}
       </div>
