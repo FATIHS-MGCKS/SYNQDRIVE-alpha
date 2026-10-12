@@ -6,6 +6,8 @@ import {
   type EmergencyRekillTransitionResult,
   type OpenGlobalKillTransitionResult,
 } from '../../../src/modules/vehicle-intelligence/driving-intelligence/s4a-foundation/di-v0-s4-global-kill-transition';
+import type { HistoricalBacklogManifest } from '../di-v0-s4-historical-backlog-quarantine-production/di-v0-s4-historical-backlog-quarantine-production.lib';
+import { runReopenWithHistoryOpenTransaction } from './di-v0-s4-gate6-reopen-open-transaction.lib';
 
 export type GlobalKillReadResult =
   | { ok: true; killState: 'KILLED' | 'NOT_KILLED' }
@@ -198,6 +200,68 @@ export async function orchestrateLiveOpenWithRecovery(
 }
 
 /** Allowlist wave promotion when GLOBAL is already NOT_KILLED — no repeat GLOBAL OPEN transaction. */
+export async function orchestrateReopenWithHistoryLiveOpen(
+  prisma: PrismaClient,
+  audit: DiV0S4GlobalKillTransitionAudit,
+  manifest: HistoricalBacklogManifest,
+): Promise<LiveOpenOrchestrationResult> {
+  const preOpen = await readGlobalKillState(prisma);
+  if (!preOpen.ok || preOpen.killState !== 'KILLED') {
+    return {
+      outcome: 'OPEN_REFUSED_PRESTATE_NOT_KILLED',
+      openResult: REFUSED_PLACEHOLDER,
+      postOpenRead: preOpen,
+    };
+  }
+
+  const openPhase = await runReopenWithHistoryOpenTransaction(prisma, audit, manifest);
+  if (openPhase.phase === 'REFUSED') {
+    return { outcome: 'OPEN_REFUSED', openResult: openPhase.result };
+  }
+  if (openPhase.phase === 'COMMIT_OUTCOME_UNKNOWN') {
+    const compensatingRekill = await attemptCompensatingRekillToKilled(prisma, audit);
+    if (compensatingRekill.killedProven) {
+      return {
+        outcome: 'OPEN_COMMIT_UNKNOWN_ALREADY_KILLED',
+        openCommitUnknown: true,
+        openTransactionError: openPhase.error,
+        compensatingRekill,
+      };
+    }
+    return {
+      outcome: 'CRITICAL_RECOVERY_STATE',
+      openCommitUnknown: true,
+      openTransactionError: openPhase.error,
+      compensatingRekill,
+    };
+  }
+
+  const postOpenRead = await readGlobalKillState(prisma);
+  if (postOpenRead.ok && postOpenRead.killState === 'NOT_KILLED') {
+    return {
+      outcome: 'OPEN_VERIFIED_NOT_KILLED',
+      openResult: openPhase.result,
+      postOpenRead,
+    };
+  }
+
+  const compensatingRekill = await attemptCompensatingRekillToKilled(prisma, audit);
+  if (compensatingRekill.killedProven) {
+    return {
+      outcome: 'OPEN_COMMITTED_POST_VERIFY_UNEXPECTED_REKILL_VERIFIED',
+      openResult: openPhase.result,
+      postOpenRead,
+      compensatingRekill,
+    };
+  }
+  return {
+    outcome: 'CRITICAL_RECOVERY_STATE',
+    openResult: openPhase.result,
+    postOpenRead,
+    compensatingRekill,
+  };
+}
+
 export async function orchestrateWavePromotionVerify(
   prisma: PrismaClient,
 ): Promise<LiveOpenOrchestrationResult> {

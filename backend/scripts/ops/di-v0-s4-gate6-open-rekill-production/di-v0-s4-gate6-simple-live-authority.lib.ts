@@ -5,7 +5,7 @@ import {
   DI_S4_GATE6_OPEN_AUTHORIZED_ENV,
   DI_S4_GATE6_ACCEPTED_ACK,
   evaluateGate6OpenGuards,
-  resolveGate6OpenIntent,
+  resolveEffectiveGate6OpenIntent,
   type Gate6OpenGuardInput,
   type Gate6OpenIntent,
 } from './di-v0-s4-gate6-open-rekill-production.lib';
@@ -19,6 +19,10 @@ import {
   resolveCanonicalBackendEnvPathFromFilesystem,
   sha256FileHex,
 } from './di-v0-s4-gate6-trusted-authority.lib';
+import {
+  evaluateTrustedReopenBacklogProofFromDatabase,
+  resolveReopenManifestFromEnv,
+} from './di-v0-s4-gate6-reopen-backlog-proof.lib';
 
 export type SimpleLiveOpenAuthorityFailure =
   | 'BACKEND_ENV_PATH_UNTRUSTED'
@@ -71,7 +75,18 @@ export async function evaluateSimpleLiveOpenAuthority(
     }
   }
 
-  const openIntent: Gate6OpenIntent = resolveGate6OpenIntent(guardInput);
+  const openIntent: Gate6OpenIntent = resolveEffectiveGate6OpenIntent(guardInput, env);
+
+  if (openIntent === 'REOPEN_WITH_HISTORY') {
+    const manifest = resolveReopenManifestFromEnv(env);
+    if (!manifest) {
+      failures.push('REOPEN_MANIFEST_MISSING');
+    } else {
+      const trusted = await evaluateTrustedReopenBacklogProofFromDatabase(prisma, manifest);
+      if (!trusted.ok) failures.push(...trusted.failures);
+      else guardInput = { ...guardInput, trustedReopenBacklogProof: trusted.proof };
+    }
+  }
 
   const global = await readGlobalKillState(prisma);
   if (!global.ok) failures.push('GLOBAL_PRESTATE_READ_FAILED');
@@ -79,6 +94,8 @@ export async function evaluateSimpleLiveOpenAuthority(
     failures.push('GLOBAL_PRESTATE_NOT_KILLED');
   } else if (openIntent === 'WAVE_PROMOTION' && global.killState !== 'NOT_KILLED') {
     failures.push('GLOBAL_PRESTATE_MUST_BE_NOT_KILLED_FOR_WAVE_PROMOTION');
+  } else if (openIntent === 'REOPEN_WITH_HISTORY' && global.killState !== 'KILLED') {
+    failures.push('GLOBAL_PRESTATE_MUST_BE_KILLED_FOR_REOPEN_WITH_HISTORY');
   }
 
   const guards = evaluateGate6OpenGuards(guardInput);

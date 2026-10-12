@@ -13,6 +13,8 @@ import {
   evaluateGate6PreflightGuards,
   type Gate6OpenGuardInput,
   requireRolloutWaveFromEnv,
+  resolveEffectiveGate6OpenIntent,
+  resolveExplicitGate6OpenIntentFromEnv,
   resolveGate6OpenIntent,
 } from './di-v0-s4-gate6-open-rekill-production.lib';
 import { evaluateProductionGate6LiveOpenBoundary } from './di-v0-s4-gate6-live-open-boundary.lib';
@@ -25,9 +27,11 @@ import {
 } from './di-v0-s4-gate6-os-authorization.lib';
 import {
   orchestrateLiveOpenWithRecovery,
+  orchestrateReopenWithHistoryLiveOpen,
   orchestrateWavePromotionVerify,
   readGlobalKillState,
 } from './di-v0-s4-gate6-open-orchestration.lib';
+import { resolveReopenManifestFromEnv } from './di-v0-s4-gate6-reopen-backlog-proof.lib';
 import { resolveCanonicalBackendEnvPathFromFilesystem } from './di-v0-s4-gate6-trusted-authority.lib';
 
 function buildOpenGuardInputFromEnv(): Gate6OpenGuardInput | { error: string } {
@@ -61,6 +65,8 @@ function buildOpenGuardInputFromEnv(): Gate6OpenGuardInput | { error: string } {
     budgetConfigOk: pv.DI_S4F7AS_BUDGET_CONFIG_OK === 'YES',
     budgetRuntimeOk: pv.DI_S4F7AS_BUDGET_RUNTIME_OK === 'YES',
     redisOk: pv.DI_S4F7AS_REDIS_OK === 'YES',
+    explicitOpenIntent: resolveExplicitGate6OpenIntentFromEnv(process.env),
+    reopenWithHistoryAck: process.env.DI_S4_GATE6_REOPEN_WITH_HISTORY_ACK,
   };
 }
 
@@ -117,7 +123,8 @@ async function main(): Promise<void> {
       }
       console.log('PREFLIGHT_OK=YES');
       console.log('GUARDS_OK=YES');
-      console.log(`OPEN_INTENT=${resolveGate6OpenIntent(guardInput)}`);
+      console.log(`OPEN_INTENT=${resolveEffectiveGate6OpenIntent(guardInput)}`);
+      console.log(`OPEN_INTENT_AUTO=${resolveGate6OpenIntent(guardInput)}`);
       console.log(`ROLLOUT_WAVE=${guardInput.rolloutWave}`);
       break;
     }
@@ -174,7 +181,7 @@ async function main(): Promise<void> {
       const prisma = new PrismaClient();
       try {
         const guardInput = guardInputOrExit();
-        const openIntent = resolveGate6OpenIntent(guardInput);
+        const openIntent = resolveEffectiveGate6OpenIntent(guardInput);
         console.log(`OPEN_INTENT=${openIntent}`);
         const authority = await evaluateSimpleLiveOpenAuthority(prisma, guardInput, process.env);
         if (!authority.ok) {
@@ -182,14 +189,25 @@ async function main(): Promise<void> {
           process.exit(1);
         }
         console.log('TRUSTED_BACKEND_ENV_VERIFIED=YES');
+        const reopenManifest =
+          openIntent === 'REOPEN_WITH_HISTORY' ? resolveReopenManifestFromEnv(process.env) : null;
+        if (openIntent === 'REOPEN_WITH_HISTORY' && !reopenManifest) {
+          console.log('REOPEN_MANIFEST_MISSING=YES');
+          process.exit(1);
+        }
         const orchestration =
           openIntent === 'WAVE_PROMOTION'
             ? await orchestrateWavePromotionVerify(prisma)
-            : await orchestrateLiveOpenWithRecovery(prisma, audit);
-        if (openIntent === 'INITIAL_OPEN') {
+            : openIntent === 'REOPEN_WITH_HISTORY' && reopenManifest
+              ? await orchestrateReopenWithHistoryLiveOpen(prisma, audit, reopenManifest)
+              : await orchestrateLiveOpenWithRecovery(prisma, audit);
+        if (openIntent === 'INITIAL_OPEN' || openIntent === 'REOPEN_WITH_HISTORY') {
           console.log('TRUSTED_GLOBAL_PRESTATE_KILLED=YES');
         } else {
           console.log('TRUSTED_GLOBAL_PRESTATE_NOT_KILLED=YES');
+        }
+        if (openIntent === 'REOPEN_WITH_HISTORY') {
+          console.log('REOPEN_WITH_HISTORY_CONTRACT=VERIFIED_PREFLIGHT_ONLY');
         }
         console.log(`LIVE_OPEN_OUTCOME=${orchestration.openResult?.outcome ?? 'COMMIT_OUTCOME_UNKNOWN'}`);
         console.log(`LIVE_OPEN_ORCHESTRATION=${orchestration.outcome}`);

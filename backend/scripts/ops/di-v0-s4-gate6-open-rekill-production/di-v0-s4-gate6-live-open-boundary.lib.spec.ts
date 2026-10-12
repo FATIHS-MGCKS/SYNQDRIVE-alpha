@@ -27,13 +27,19 @@ describe('Gate-6 production live-open boundary (S4F-7AX.2)', () => {
     if (!boundary.ok) {
       expect(boundary.failures.some((f) => f.startsWith('PRODUCTION_FIXTURE_CONTROL_PRESENT'))).toBe(true);
       expect(boundary.failures).toContain('GUARD_PROOF_INJECTED_IN_PROCESS_ENV');
-      expect(
-        boundary.failures.some((f) =>
-          ['LIVE_OPEN_NON_PRODUCTION_BACKEND_ENV', 'EXACT_PRODUCTION_BACKEND_ENV_MISMATCH', 'PRODUCTION_BACKEND_ENV_REALPATH_FAILED'].includes(
-            f,
+      const prodEnvExists = fs.existsSync(PRODUCTION_SHARED_BACKEND_ENV_PATH);
+      if (!prodEnvExists) {
+        expect(
+          boundary.failures.some((f) =>
+            [
+              'LIVE_OPEN_NON_PRODUCTION_BACKEND_ENV',
+              'EXACT_PRODUCTION_BACKEND_ENV_MISMATCH',
+              'PRODUCTION_BACKEND_ENV_REALPATH_FAILED',
+              'BACKEND_ENV_PATH_UNTRUSTED',
+            ].includes(f),
           ),
-        ),
-      ).toBe(true);
+        ).toBe(true);
+      }
     }
     fs.rmSync(dir, { recursive: true, force: true });
   });

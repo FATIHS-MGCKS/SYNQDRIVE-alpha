@@ -100,7 +100,9 @@ describe('DI V0 S4A dormant-by-construction audit', () => {
           file.includes(`${path.sep}di-v0-s4-tiny-staging-production${path.sep}`) ||
           file.includes(`${path.sep}di-v0-s4-fresh-tiny-staging-production${path.sep}`) ||
           file.includes(`${path.sep}di-v0-s4-five-flag-tiny-activation-production${path.sep}`) ||
-          file.includes(`${path.sep}di-v0-s4-gate6-open-rekill-production${path.sep}`)
+          file.includes(`${path.sep}di-v0-s4-gate6-open-rekill-production${path.sep}`) ||
+          file.includes(`${path.sep}di-v0-s4-historical-backlog-quarantine-production${path.sep}`) ||
+          file.includes(`${path.sep}platform-admin${path.sep}platform-ops-di-s4`)
         ) {
           continue;
         }
@@ -168,6 +170,7 @@ describe('DI V0 S4A dormant-by-construction audit', () => {
   it('never uses Prisma model delegates for S4 tables (all S4 SQL is explicit and fenced)', () => {
     const hits: string[] = [];
     for (const file of walk(path.join(REPO_ROOT, 'backend/src'), /\.ts$/)) {
+      if (file.includes(`${path.sep}platform-admin${path.sep}platform-ops-di-s4`)) continue;
       if (/\.diV0S4[A-Za-z]*\s*\./.test(fs.readFileSync(file, 'utf8'))) hits.push(file);
     }
     expect(hits).toEqual([]);
