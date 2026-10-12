@@ -265,7 +265,16 @@ export type QuarantineApplyResult =
   | { outcome: 'QUARANTINED'; supersededIds: string[]; alreadySupersededIds: string[] }
   | { outcome: 'REFUSED'; failures: HistoricalBacklogQuarantineFailure[] };
 
-type TxClient = Pick<import('@prisma/client').PrismaClient, '$queryRaw' | '$executeRaw'>;
+/** Read-only S4 work-item queries for backlog quarantine / reopen proof. */
+export type HistoricalBacklogQuarantineQueryClient = Pick<
+  import('@prisma/client').PrismaClient,
+  '$queryRaw'
+>;
+
+type HistoricalBacklogQuarantineTxClient = Pick<
+  import('@prisma/client').PrismaClient,
+  '$queryRaw' | '$executeRaw'
+>;
 
 interface DbRow {
   id: string;
@@ -297,7 +306,9 @@ function mapDbRow(r: DbRow): WorkItemSnapshotRow {
   };
 }
 
-export async function loadAllWorkItemSnapshots(db: TxClient): Promise<WorkItemSnapshotRow[]> {
+export async function loadAllWorkItemSnapshots(
+  db: HistoricalBacklogQuarantineQueryClient,
+): Promise<WorkItemSnapshotRow[]> {
   const rows = await db.$queryRaw<DbRow[]>`
     SELECT id, status, organization_id, vehicle_id, lease_owner,
       (lease_expires_at IS NOT NULL AND lease_expires_at < clock_timestamp()) AS lease_expired,
@@ -311,7 +322,7 @@ export async function loadAllWorkItemSnapshots(db: TxClient): Promise<WorkItemSn
 }
 
 export async function loadScopedWorkItemSnapshots(
-  db: TxClient,
+  db: HistoricalBacklogQuarantineQueryClient,
   manifest: HistoricalBacklogManifest,
 ): Promise<WorkItemSnapshotRow[]> {
   const rows = await db.$queryRaw<DbRow[]>`
@@ -329,7 +340,7 @@ export async function loadScopedWorkItemSnapshots(
 }
 
 export async function assertPersistencePinsUnchanged(
-  db: TxClient,
+  db: HistoricalBacklogQuarantineQueryClient,
   manifest: HistoricalBacklogManifest,
 ): Promise<void> {
   if (!manifest.expectedPersistence) return;
@@ -359,7 +370,7 @@ export async function assertPersistencePinsUnchanged(
   }
 }
 
-export async function lockGlobalKillMustBeKilled(db: TxClient): Promise<void> {
+export async function lockGlobalKillMustBeKilled(db: HistoricalBacklogQuarantineQueryClient): Promise<void> {
   const rows = await db.$queryRaw<Array<{ kill_state: unknown }>>`
     SELECT kill_state FROM di_v0_s4_control WHERE id = 'GLOBAL' FOR UPDATE`;
   if (rows.length !== 1) throw new HistoricalBacklogQuarantineAbortError(['GLOBAL_KILL_LOCK_FAILED']);
@@ -367,7 +378,7 @@ export async function lockGlobalKillMustBeKilled(db: TxClient): Promise<void> {
 }
 
 export async function readGlobalKillStateForQuarantine(
-  db: TxClient,
+  db: HistoricalBacklogQuarantineQueryClient,
 ): Promise<'KILLED' | 'NOT_KILLED' | 'MALFORMED' | 'MISSING'> {
   const rows = await db.$queryRaw<Array<{ kill_state: unknown }>>`
     SELECT kill_state FROM di_v0_s4_control WHERE id = 'GLOBAL'`;
@@ -379,7 +390,7 @@ export async function readGlobalKillStateForQuarantine(
 }
 
 export async function countClaimableWorkItemsForManifest(
-  db: TxClient,
+  db: HistoricalBacklogQuarantineQueryClient,
   manifest: HistoricalBacklogManifest,
 ): Promise<number> {
   const rows = await loadAllWorkItemSnapshots(db);
@@ -391,7 +402,7 @@ export async function countClaimableWorkItemsForManifest(
 }
 
 export async function applyHistoricalBacklogQuarantineInTransaction(
-  tx: TxClient,
+  tx: HistoricalBacklogQuarantineTxClient,
   manifest: HistoricalBacklogManifest,
   audit: { actor: string; reason: string },
   options: { ack: string | undefined },

@@ -59,11 +59,16 @@ describePg('S4P9B historical backlog quarantine (postgres)', () => {
       `VIN${randomUUID().replace(/-/g, '').slice(0, 14)}`,
     );
     await prisma.$executeRawUnsafe(
-      `INSERT INTO vehicle_trips (id, organization_id, vehicle_id, status, start_time, end_time, created_at, updated_at)
-       VALUES ($1, $2, $3, 'COMPLETED', now() - interval '1 day', now() - interval '23 hours', now(), now())`,
+      `INSERT INTO vehicle_trips (
+         id, vehicle_id, trip_status, start_time, end_time, dimo_segment_id, created_at,
+         start_latitude, start_longitude, distance_km, max_speed_kmh, avg_speed_kmh, harsh_brake_count, driving_score
+       ) VALUES (
+         $1, $2, 'COMPLETED', now() - interval '1 day', now() - interval '23 hours', $3,
+         now() - interval '23 hours', 52, 9, 12, 77, 45, 2, 88
+       )`,
       trip,
-      org,
       vehicle,
+      `seg-${randomUUID()}`,
     );
     const pipelineKey = `DI_V0_S4_PIPELINE_V1:test:${randomUUID()}`;
     await prisma.$executeRaw`
@@ -121,11 +126,16 @@ describePg('S4P9B historical backlog quarantine (postgres)', () => {
       `VIN${randomUUID().replace(/-/g, '').slice(0, 14)}`,
     );
     await prisma.$executeRawUnsafe(
-      `INSERT INTO vehicle_trips (id, organization_id, vehicle_id, status, start_time, end_time, created_at, updated_at)
-       VALUES ($1, $2, $3, 'COMPLETED', now() - interval '1 day', now() - interval '23 hours', now(), now())`,
+      `INSERT INTO vehicle_trips (
+         id, vehicle_id, trip_status, start_time, end_time, dimo_segment_id, created_at,
+         start_latitude, start_longitude, distance_km, max_speed_kmh, avg_speed_kmh, harsh_brake_count, driving_score
+       ) VALUES (
+         $1, $2, 'COMPLETED', now() - interval '1 day', now() - interval '23 hours', $3,
+         now() - interval '23 hours', 52, 9, 12, 77, 45, 2, 88
+       )`,
       trip,
-      org,
       vehicle,
+      `seg-${randomUUID()}`,
     );
     const config = parseDiV0S4ControlPlaneConfig({
       DI_V0_S4_MASTER_ENABLED: 'true',

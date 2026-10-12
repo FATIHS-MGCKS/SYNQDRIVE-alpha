@@ -1,4 +1,3 @@
-import type { PrismaClient } from '@prisma/client';
 import {
   countClaimableWorkItemsForManifest,
   evaluateHistoricalBacklogSafetyProof,
@@ -6,6 +5,7 @@ import {
   loadScopedWorkItemSnapshots,
   parseHistoricalBacklogManifestFromEnv,
   type HistoricalBacklogManifest,
+  type HistoricalBacklogQuarantineQueryClient,
 } from '../di-v0-s4-historical-backlog-quarantine-production/di-v0-s4-historical-backlog-quarantine-production.lib';
 
 export const DI_S4_GATE6_REOPEN_MANIFEST_REQUIRED_ENV = 'DI_S4_HISTORICAL_BACKLOG_QUARANTINE_IDS';
@@ -29,7 +29,7 @@ export function resolveReopenManifestFromEnv(env: NodeJS.ProcessEnv = process.en
 }
 
 export async function evaluateTrustedReopenBacklogProofFromDatabase(
-  client: Pick<PrismaClient, '$queryRaw'>,
+  client: HistoricalBacklogQuarantineQueryClient,
   manifest: HistoricalBacklogManifest,
 ): Promise<
   | { ok: true; proof: TrustedReopenBacklogProof }
