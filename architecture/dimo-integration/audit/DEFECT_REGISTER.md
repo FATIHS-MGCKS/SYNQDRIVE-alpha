@@ -266,7 +266,7 @@
 | DIM-OBS-002 | R4.1 provider GraphQL/query inventory | P3 | VERIFIED_CODE | [evidence/PROVIDER_QUERY_INVENTORY.md](./evidence/PROVIDER_QUERY_INVENTORY.md) @ R4.5 | **CLOSED (doc)** |
 | DIM-OBS-003 | Complete DIMO env/feature-flag matrix | P3 | UNKNOWN | `DIM-GAP-003` | OPEN |
 | DIM-OBS-004 | ClickHouse read-only correlation for signal lineage | P2 | NOT_MEASURED | R4.3 CH auth blocked | OPEN |
-| DIM-OBS-005 | Fleet-wide R9 wake-rate KPI | P2 | NOT_MEASURED | `DIM-GAP-006` | BLOCKED (R9 T+24 window) |
+| DIM-OBS-005 | Fleet-wide R9 wake-rate KPI (T+24 window) | P2 | VERIFIED_PRODUCTION | [R9_T24_EVALUATION.md](./evidence/R9_T24_EVALUATION.md) — **NOT_OBSERVED** post-gate; wiring PASS | **CLOSED (measured)** |
 
 ---
 

@@ -19,7 +19,7 @@
 | **E** Registry / tenant boundaries | **DONE** | [evidence/TENANT_AND_REGISTRY_BOUNDARIES.md](./evidence/TENANT_AND_REGISTRY_BOUNDARIES.md) |
 | **F** Data integrity (PG) | **DONE** | R4.2/4.3 PG samples |
 | **F** Data integrity (CH) | **BLOCKED** | [EXTERNAL_EVIDENCE_GAPS.md](./EXTERNAL_EVIDENCE_GAPS.md) EXT-001 |
-| **R9 T+24** natural evaluation | **OPEN/BLOCKED** | [evidence/R9_T24_EVALUATION.md](./evidence/R9_T24_EVALUATION.md) — earliest `2026-10-12T20:41:00Z` |
+| **R9 T+24** natural evaluation | **DONE** | [evidence/R9_T24_EVALUATION.md](./evidence/R9_T24_EVALUATION.md) — natural E2E **NOT_OBSERVED**; provider wiring **PASS** |
 
 ## Completion score
 
@@ -28,8 +28,8 @@
 | R4 slices | 35% | 35% |
 | A–F technical | 45% | ~40% (C partial, CH blocked) |
 | R9 T+24 + external | 20% | pending window |
-| **Estimated AUDIT_COVERAGE_PERCENT** | | **~88%** pre-T+24; **~92%** if T+24 completes with NOT_OBSERVED acceptable |
+| **Estimated AUDIT_COVERAGE_PERCENT** | | **~93%** (CH remains BLOCKED) |
 
 ## Audit closure rule
 
-Dimensions may be **DONE** with documented external blockers (CH, optional UI capture). **R9 T+24** must be **attempted** after the allowed window before recommending **CLOSED**.
+Dimensions may be **DONE** with documented external blockers (CH, optional UI capture). **R9 T+24** completed @ `2026-10-12T20:59:45Z`.

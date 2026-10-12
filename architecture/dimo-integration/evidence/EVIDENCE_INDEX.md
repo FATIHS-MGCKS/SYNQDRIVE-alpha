@@ -30,6 +30,7 @@
 | DIM-EVID-DI-S3B-R1-SCHEMA-001 | PROVIDER_SCHEMA_OBSERVATION | [../../drivingintelligence/evidence/EXP021_C1D9_R1_FIELD_AUTHORITY_V03_CORRECTION.md](../../drivingintelligence/evidence/EXP021_C1D9_R1_FIELD_AUTHORITY_V03_CORRECTION.md) | DIMO telemetry `signals` field schema (Float + `FloatAggregation`), units, gear/ignition representation; R1 availability (4 Ruptela vehicles, read-only) | CONFIRMED @ introspection sha256 `a10f4729…` (2026-09-27) | Cross-ref DI-EVID-EXP021-C1D9-001; DI-owned consumer, no DIMO Integration code change |
 | DIM-EV-R4-PROD-SHA-001 | PRODUCTION_OBSERVATION | R4 read-only VPS session | Deployed release `a4d06c602ff192aa7ba6688a6472100033417bca` — metrics, PG sample, PM2 forensics | CONFIRMED @ 2026-10-12 | Artifacts under `/opt/cursor/artifacts/DIMO_R4*`; index [../audit/evidence/R4_DEEP_AUDIT_ARTIFACT_INDEX.md](../audit/evidence/R4_DEEP_AUDIT_ARTIFACT_INDEX.md) |
 | DIM-EV-R4-DEFECT-REG-001 | AUDIT_DOCUMENT | [../audit/DEFECT_REGISTER.md](../audit/DEFECT_REGISTER.md) | Canonical defect/risk register (R4.0–R4.3 + A–F) | CONFIRMED @ audit branch 2026-10-12 | Supersedes ad-hoc R4 findings lists; maps legacy DIM-GAP-* |
+| DIM-EV-R45-T24-001 | PRODUCTION_OBSERVATION | [../audit/evidence/R9_T24_EVALUATION.md](../audit/evidence/R9_T24_EVALUATION.md) | R9 T+24 gate @ `2026-10-12T20:41:00Z`; provider wiring PASS; natural wake NOT_OBSERVED post-gate | CONFIRMED @ `a4d06c60…` 2026-10-12 | Artifact `/opt/cursor/artifacts/DIMO_R45_R9_T24_PRODUCTION.txt` |
 
 ## Cross-reference
 

@@ -37,7 +37,7 @@
 
 ## AUDIT_CLOSURE_RECOMMENDATION
 
-**CONDITIONAL_CLOSE** after R9 T+24 evaluation file is finalized (observed or NOT_OBSERVED).  
+**RECOMMEND_AUDIT_CLOSE** — R9 T+24 read-only pass complete ([R9_T24_EVALUATION.md](./evidence/R9_T24_EVALUATION.md)); natural wake **NOT_OBSERVED** in gate window; remaining blockers are **ClickHouse** (EXT-001) and optional UI capture (EXT-005) — non-gating for audit sign-off.  
 **Do not merge** remediation PRs until owner signs priority order.
 
 ## Remaining blockers
