@@ -65,6 +65,18 @@ Pattern used in R9 canary and GT-R1 preflight:
 | List vehicle subscriptions | GET | `/v1/webhooks/vehicles/{assetDID}` | GT-R1 preflight |
 | List triggerable signals | GET | `/v1/webhooks/signals` | fleet-connectivity audit |
 
+### Master Admin read-only monitoring (R3.1)
+
+| Surface | Detail |
+|---------|--------|
+| UI | Master Admin → Plattform & Betrieb → Diagnostik → **DIMO Webhooks** |
+| API | `GET /api/v1/admin/ops/dimo-webhook-health` (`?refresh=1` rate-limited manual refresh) |
+| Auth | Master Admin + existing MFA step-up guards (no new MFA flags) |
+| Provider | GET-only via `DimoAuthService.getDeveloperJwt()` and shared `DimoRequestExecutor` / provider budget |
+| Rules | Same R9 health evaluation as `backend/scripts/ops/r9-r25-circuit-monitor.lib.mjs` (speed UUID `7a5e81bc-8f48-4b62-877a-9df104c1f42e`, ignition `3a2fcd34-1a74-45db-bee9-75e340f36b00`) |
+| Cohort | `DIMO_R9_AUTHORIZED_COHORT_TOKEN_IDS` / `DIMO_R9_EXCLUDED_TOKEN_IDS` (defaults: 186946,187361,187784,192922 / 187336,190497) |
+| Limits | Does **not** assert wake-to-snapshot or trip FSM health — webhook definitions and subscriptions only |
+
 ## VERIFIED write operations (require authorization)
 
 | Operation | Method | Path | Evidence |
