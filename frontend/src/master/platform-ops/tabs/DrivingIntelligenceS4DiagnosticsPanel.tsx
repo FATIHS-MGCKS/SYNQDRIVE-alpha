@@ -12,19 +12,23 @@ import { formatRelativeDe } from '../platform-ops.utils';
 import { api } from '../../../lib/api';
 import type { PlatformOpsDiS4StatusDto, PlatformOpsDiS4RuleHealthDto } from '../types';
 
-function statusTone(status: PlatformOpsDiS4StatusDto['operationalStatus']) {
-  switch (status) {
+function monitoringTone(health: PlatformOpsDiS4StatusDto['monitoringHealth']) {
+  switch (health) {
     case 'HEALTHY':
       return 'healthy';
     case 'WARNING':
       return 'warning';
     case 'CRITICAL':
       return 'critical';
-    case 'DISABLED':
-      return 'neutral';
     default:
       return 'warning';
   }
+}
+
+function processingTone(state: PlatformOpsDiS4StatusDto['processingState']) {
+  if (state === 'ACTIVE') return 'healthy';
+  if (state === 'DISABLED') return 'neutral';
+  return 'warning';
 }
 
 export function DrivingIntelligenceS4DiagnosticsPanel() {
@@ -89,12 +93,12 @@ export function DrivingIntelligenceS4DiagnosticsPanel() {
     { key: 'summary', header: 'Zusammenfassung', cell: (r) => r.summary },
   ];
 
-  const modeLabel =
-    data.operationalMode === 'active'
-      ? 'Aktiv (Shadow engaged)'
-      : data.operationalMode === 'paused'
-        ? 'Pausiert / GLOBAL_KILL oder inaktiv'
-        : 'Unbekannt';
+  const processingLabel =
+    data.processingState === 'ACTIVE'
+      ? 'S4-Verarbeitung: ACTIVE (Shadow engaged)'
+      : data.processingState === 'DISABLED'
+        ? 'S4-Verarbeitung: DISABLED (GLOBAL_KILL / inaktiv)'
+        : 'S4-Verarbeitung: UNKNOWN';
 
   return (
     <div className="space-y-4">
@@ -104,15 +108,31 @@ export function DrivingIntelligenceS4DiagnosticsPanel() {
       />
 
       <DataCard bodyClassName="p-4 flex flex-wrap gap-3 items-center">
-        <StatusChip tone={statusTone(data.operationalStatus)}>{data.operationalStatus}</StatusChip>
-        <StatusChip tone={data.operationalMode === 'active' ? 'healthy' : 'neutral'}>{modeLabel}</StatusChip>
-        <StatusChip tone={data.globalKill.state === 'KILLED' ? 'warning' : 'healthy'}>
+        <StatusChip tone={processingTone(data.processingState)}>{processingLabel}</StatusChip>
+        <StatusChip tone={monitoringTone(data.monitoringHealth)}>
+          Monitoring: {data.monitoringHealth}
+        </StatusChip>
+        <StatusChip
+          tone={
+            data.globalKill.state === 'UNKNOWN'
+              ? 'warning'
+              : data.globalKill.state === 'KILLED'
+                ? 'warning'
+                : 'healthy'
+          }
+        >
           GLOBAL_KILL: {data.globalKill.state}
         </StatusChip>
         {!data.prometheusAvailable && (
-          <StatusChip tone="warning">Prometheus nicht verfügbar — kein HEALTHY aus fehlenden Daten</StatusChip>
+          <StatusChip tone="warning">Prometheus nicht verfügbar — Monitoring nie HEALTHY</StatusChip>
         )}
       </DataCard>
+
+      {data.monitoringGaps.length > 0 && (
+        <DataCard title="Monitoring-Lücken" bodyClassName="p-4 text-xs font-mono text-muted-foreground">
+          {data.monitoringGaps.join(' · ')}
+        </DataCard>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2">
         <DataCard title="Laufzeit-Flags" bodyClassName="p-4 text-sm space-y-1">
@@ -210,7 +230,10 @@ export function DrivingIntelligenceS4DiagnosticsPanel() {
         )}
       </DataCard>
 
-      <DataCard title="IAM: IamSeedAdminEnabledInProduction" bodyClassName="p-4 text-sm space-y-2">
+      <DataCard title="IAM: IamSeedAdminEnabledInProduction (nicht Teil von S4-Monitoring-Health)" bodyClassName="p-4 text-sm space-y-2">
+        <p className="text-xs text-muted-foreground">
+          Sichtbar unter Platform Ops → Alarme. Beeinflusst nicht `monitoringHealth` (nur DiV0S4*-Alarme).
+        </p>
         <StatusChip tone={data.iamSeedAdminFinding.representedInPlatformAlerts ? 'critical' : 'healthy'}>
           In Platform-Alarmen: {data.iamSeedAdminFinding.representedInPlatformAlerts ? 'sichtbar' : 'nicht aktiv'}
         </StatusChip>

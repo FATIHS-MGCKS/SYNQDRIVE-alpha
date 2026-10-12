@@ -1,6 +1,7 @@
 # EXP021-S4P7 — Master Admin S4 Monitoring
 
 **Date:** 2026-10-12  
+**R1 (PR #1990 repair):** Branch rebased on `main` (`bc7e807`); duplicate S4P2 commits removed. Recovery ref: `recovery/exp021-s4p7-pr1990-head-87114fcfac`.  
 **Mode:** Implementation only — no production deploy, no S4 activation, no synthetic alerts.
 
 ## Backend
@@ -8,7 +9,7 @@
 - **Route:** `GET /admin/ops/driving-intelligence-s4`
 - **Auth:** Same as other Platform Ops routes (`MASTER_ADMIN`, `MasterAdminMfaGuard`, step-up).
 - **Service:** `PlatformOpsDiS4Service` — PostgreSQL (`di_v0_s4_control`, `di_v0_s4_work_items`), process env S4 flags/allowlists, Prometheus (`/api/v1/query`, `/api/v1/rules`), Alertmanager (`/api/v2/alerts`).
-- **Status semantics:** `computePlatformOpsDiS4OperationalStatus` never returns `HEALTHY` when Prometheus is unavailable or operational metrics freshness is unknown/stale.
+- **Status semantics (R1):** Separate `processingState` (`DISABLED` | `ACTIVE` | `UNKNOWN`) from `monitoringHealth` (`HEALTHY` | `WARNING` | `CRITICAL` | `UNKNOWN`). `monitoringHealth` never returns `HEALTHY` without mandatory evidence (15 rules, replicas a/b, fresh metrics, leader=1, etc.). Unrecognized DB kill → `UNKNOWN`, not silently `KILLED`. IAM seed-admin alert does not affect `monitoringHealth`.
 
 ## Frontend
 

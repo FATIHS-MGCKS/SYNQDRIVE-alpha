@@ -1,11 +1,6 @@
-export type PlatformOpsDiS4OperationalStatus =
-  | 'DISABLED'
-  | 'HEALTHY'
-  | 'WARNING'
-  | 'CRITICAL'
-  | 'UNKNOWN';
+export type PlatformOpsDiS4ProcessingState = 'DISABLED' | 'ACTIVE' | 'UNKNOWN';
 
-export type PlatformOpsDiS4OperationalMode = 'paused' | 'active' | 'unknown';
+export type PlatformOpsDiS4MonitoringHealth = 'HEALTHY' | 'WARNING' | 'CRITICAL' | 'UNKNOWN';
 
 export type PlatformOpsDiS4RuleEvaluationState =
   | 'inactive'
@@ -52,6 +47,7 @@ export interface PlatformOpsDiS4ActiveAlertDto {
 export interface PlatformOpsDiS4IamSeedAdminFindingDto {
   alertname: 'IamSeedAdminEnabledInProduction';
   representedInPlatformAlerts: boolean;
+  /** Informational only — not used in S4 monitoringHealth. */
   representedInS4Panel: boolean;
   cause: string;
   impact: string;
@@ -60,8 +56,9 @@ export interface PlatformOpsDiS4IamSeedAdminFindingDto {
 
 export interface PlatformOpsDiS4StatusDto {
   generatedAt: string;
-  operationalStatus: PlatformOpsDiS4OperationalStatus;
-  operationalMode: PlatformOpsDiS4OperationalMode;
+  processingState: PlatformOpsDiS4ProcessingState;
+  monitoringHealth: PlatformOpsDiS4MonitoringHealth;
+  monitoringGaps: string[];
   prometheusAvailable: boolean;
   alertmanagerAvailable: boolean;
   globalKill: {
@@ -93,6 +90,7 @@ export interface PlatformOpsDiS4StatusDto {
   schedulerLeader: {
     leaderCount: number | null;
     operationalRefreshLeaderCount: number | null;
+    expectedReplicaCount: number;
     replicas: PlatformOpsDiS4SchedulerReplicaDto[];
   };
   dimoBudget: {

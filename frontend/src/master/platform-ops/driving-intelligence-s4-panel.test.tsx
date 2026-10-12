@@ -6,8 +6,9 @@ import { DrivingIntelligenceS4DiagnosticsPanel } from './tabs/DrivingIntelligenc
 
 const sampleStatus = {
   generatedAt: '2026-10-12T00:00:00.000Z',
-  operationalStatus: 'DISABLED' as const,
-  operationalMode: 'paused' as const,
+  processingState: 'DISABLED' as const,
+  monitoringHealth: 'HEALTHY' as const,
+  monitoringGaps: [] as string[],
   prometheusAvailable: true,
   alertmanagerAvailable: true,
   globalKill: { state: 'KILLED' as const, updatedAt: '2026-10-12T00:00:00.000Z', readable: true },
@@ -28,7 +29,7 @@ const sampleStatus = {
     refreshError: false,
     metricsFresh: true,
   },
-  schedulerLeader: { leaderCount: 1, operationalRefreshLeaderCount: 1, replicas: [] },
+  schedulerLeader: { leaderCount: 1, operationalRefreshLeaderCount: 1, expectedReplicaCount: 2, replicas: [] },
   dimoBudget: { replicas: [], allReplicasBudgetEnabled: true },
   shadowProcessing: { shadowPlaneEngaged: false, activitySignal: false, workItemsByStatus: { PENDING: 1 } },
   prometheusRules: {
@@ -87,6 +88,7 @@ describe('DrivingIntelligenceS4DiagnosticsPanel', () => {
     });
     const text = container.textContent ?? '';
     expect(text).toContain('DISABLED');
+    expect(text).toContain('Monitoring: HEALTHY');
     expect(text).toContain('Autorisierte Fahrzeuge: 5');
     expect(text).toContain('DiV0S4Rule0');
     expect(text).toContain('IamSeedAdminEnabledInProduction');

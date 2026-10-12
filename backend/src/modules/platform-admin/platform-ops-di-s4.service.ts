@@ -10,9 +10,11 @@ import {
 } from '../vehicle-intelligence/driving-intelligence/s4a-foundation/di-v0-s4a-control-plane';
 import { PlatformOpsAlertmanagerService } from './platform-ops-alertmanager.service';
 import {
-  computePlatformOpsDiS4OperationalMode,
-  computePlatformOpsDiS4OperationalStatus,
+  PLATFORM_OPS_DI_S4_EXPECTED_BACKEND_REPLICAS,
+  computeS4MonitoringHealth,
+  computeS4ProcessingState,
   isMetricsFresh,
+  listS4MonitoringGaps,
 } from './platform-ops-di-s4.status';
 import type {
   PlatformOpsDiS4ActiveAlertDto,
@@ -107,20 +109,40 @@ export class PlatformOpsDiS4Service {
 
     const iamInPlatformAlerts = amAlerts.some((a) => a.alertname === IAM_SEED_ALERT);
 
-    const operationalStatus = computePlatformOpsDiS4OperationalStatus({
-      masterEnabled: runtimeConfig.masterEnabled,
-      globalKillState: globalKill.state,
+    const schedulerReplicasObserved = promBundle.schedulerLeaderByReplica
+      ? Object.keys(promBundle.schedulerLeaderByReplica)
+      : [];
+    const dimoBudgetReplicasObserved = promBundle.dimoBudgetEnabledByReplica
+      ? Object.keys(promBundle.dimoBudgetEnabledByReplica)
+      : [];
+    const dimoBudgetDisabledOnReplica = dimoReplicas.some(
+      (r) =>
+        (PLATFORM_OPS_DI_S4_EXPECTED_BACKEND_REPLICAS as readonly string[]).includes(r.replica) &&
+        r.budgetEnabled === false,
+    );
+
+    const monitoringEvidence = {
       prometheusAvailable: promBundle.available,
+      alertmanagerAvailable: amSummary.available,
+      globalKillReadable: globalKill.readable,
       metricsFresh,
       refreshError: promBundle.refreshError,
-      s4FiringCriticalCount: s4FiringCritical,
-      s4FiringWarningCount: s4FiringWarning,
+      rulesLoadedCount: ruleHealth.filter((r) => r.loadedInPrometheus).length,
+      expectedRuleCount: DI_V0_S4P2_PROMETHEUS_ALERT_RULES.length,
       ruleHealthErrCount,
       schedulerLeaderCount: leaderCount,
-      shadowPlaneEngaged: promBundle.shadowPlaneEngaged,
-    });
+      expectedReplicas: PLATFORM_OPS_DI_S4_EXPECTED_BACKEND_REPLICAS,
+      schedulerReplicasObserved,
+      dimoBudgetReplicasObserved,
+      dimoBudgetDisabledOnReplica,
+      controlPlaneReadable: promBundle.controlPlaneReadable,
+      s4FiringCriticalCount: s4FiringCritical,
+      s4FiringWarningCount: s4FiringWarning,
+    };
 
-    const operationalMode = computePlatformOpsDiS4OperationalMode({
+    const monitoringHealth = computeS4MonitoringHealth(monitoringEvidence);
+    const monitoringGaps = listS4MonitoringGaps(monitoringEvidence);
+    const processingState = computeS4ProcessingState({
       masterEnabled: runtimeConfig.masterEnabled,
       globalKillState: globalKill.state,
       shadowPlaneEngaged: promBundle.shadowPlaneEngaged,
@@ -138,8 +160,9 @@ export class PlatformOpsDiS4Service {
 
     return {
       generatedAt,
-      operationalStatus,
-      operationalMode,
+      processingState,
+      monitoringHealth,
+      monitoringGaps,
       prometheusAvailable: promBundle.available,
       alertmanagerAvailable: amSummary.available,
       globalKill,
@@ -167,6 +190,7 @@ export class PlatformOpsDiS4Service {
       schedulerLeader: {
         leaderCount,
         operationalRefreshLeaderCount,
+        expectedReplicaCount: PLATFORM_OPS_DI_S4_EXPECTED_BACKEND_REPLICAS.length,
         replicas: schedulerReplicas,
       },
       dimoBudget: {
@@ -225,7 +249,10 @@ export class PlatformOpsDiS4Service {
       if (!row) {
         return { state: 'UNKNOWN', updatedAt: null, readable: false };
       }
-      const state = row.killState === 'NOT_KILLED' ? 'NOT_KILLED' : 'KILLED';
+      let state: 'KILLED' | 'NOT_KILLED' | 'UNKNOWN';
+      if (row.killState === 'NOT_KILLED') state = 'NOT_KILLED';
+      else if (row.killState === 'KILLED') state = 'KILLED';
+      else state = 'UNKNOWN';
       return {
         state,
         updatedAt: row.updatedAt.toISOString(),

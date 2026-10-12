@@ -52,7 +52,8 @@ describe('PlatformOpsService', () => {
   const diS4 = {
     getStatus: jest.fn().mockResolvedValue({
       generatedAt: new Date().toISOString(),
-      operationalStatus: 'UNKNOWN',
+      processingState: 'UNKNOWN',
+      monitoringHealth: 'UNKNOWN',
     }),
   };
   const infrastructure = {

@@ -18,14 +18,9 @@ export type PlatformOpsDiagnosticsTab =
   | 'driving-intelligence-s4'
   | 'tools';
 
-export type PlatformOpsDiS4OperationalStatus =
-  | 'DISABLED'
-  | 'HEALTHY'
-  | 'WARNING'
-  | 'CRITICAL'
-  | 'UNKNOWN';
+export type PlatformOpsDiS4ProcessingState = 'DISABLED' | 'ACTIVE' | 'UNKNOWN';
 
-export type PlatformOpsDiS4OperationalMode = 'paused' | 'active' | 'unknown';
+export type PlatformOpsDiS4MonitoringHealth = 'HEALTHY' | 'WARNING' | 'CRITICAL' | 'UNKNOWN';
 
 export interface PlatformOpsDiS4RuleHealthDto {
   alertname: string;
@@ -37,8 +32,9 @@ export interface PlatformOpsDiS4RuleHealthDto {
 
 export interface PlatformOpsDiS4StatusDto {
   generatedAt: string;
-  operationalStatus: PlatformOpsDiS4OperationalStatus;
-  operationalMode: PlatformOpsDiS4OperationalMode;
+  processingState: PlatformOpsDiS4ProcessingState;
+  monitoringHealth: PlatformOpsDiS4MonitoringHealth;
+  monitoringGaps: string[];
   prometheusAvailable: boolean;
   alertmanagerAvailable: boolean;
   globalKill: {
@@ -70,6 +66,7 @@ export interface PlatformOpsDiS4StatusDto {
   schedulerLeader: {
     leaderCount: number | null;
     operationalRefreshLeaderCount: number | null;
+    expectedReplicaCount: number;
     replicas: Array<{
       replica: string;
       schedulerLeader: boolean | null;
