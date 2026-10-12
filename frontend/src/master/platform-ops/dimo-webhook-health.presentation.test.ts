@@ -74,4 +74,9 @@ describe('dimo webhook health presentation', () => {
     expect(hints.some((h) => h.includes('Zustellungen'))).toBe(true);
     expect(hints.some((h) => h.includes('DIMO konnte nicht'))).toBe(true);
   });
+
+  it('maps STALE overall to warning tone', () => {
+    expect(dimoR9OverallTone('STALE')).toBe('warning');
+    expect(dimoR9OverallLabel(tDe, 'STALE')).toBe('Veraltet');
+  });
 });
