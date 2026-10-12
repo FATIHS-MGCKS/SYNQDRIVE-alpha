@@ -1,5 +1,17 @@
 # KG-EED Changelog
 
+## 2026-10-12 — ERD legacy RECHARGE fragment product-read hardening (EED-EV-0111, PR #1997)
+
+- HV `HvChargeSession` primary-pair anchor required for suppression; SOC/energy telemetry nesting; nested distinct session fail-open
+- Product-read RECHARGE query uses interval overlap + bounded parent envelope context fetch
+
+## 2026-10-12 — ERD legacy RECHARGE fragment product-read (EED-EV-0111)
+
+- Product-read collapse for proven nested legacy DIMO sliding-window fragments (E5.4A containment + token lineage + incremental coalesce metadata)
+- Default-OFF gate `ERD_RECHARGE_LEGACY_FRAGMENT_PRODUCT_READ_ENABLED`; metric `synqdrive_erd_recharge_legacy_fragment_product_read_total`
+- Tesla Natural Test #1 sanitized fixture: parent + 7 fragments → **1** product row when gate ON; raw rows preserved
+- **No** production enablement, deploy, or DB mutation in this change
+
 ## 2026-10-10 — REFUEL time UX production validation (EED-EV-0110, PR #1964)
 
 - Production SHA `7f47c9f5b5e35c425deb3c2b6bdaed9df73e5c7c`: WOB L 7503 **2026-10-09** canonical product **1** REFUEL / raw **2** DIMO rows (`SAME_PHYSICAL_REFUEL` siblings preserved)

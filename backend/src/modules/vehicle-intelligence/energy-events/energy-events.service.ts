@@ -38,6 +38,16 @@ import type { RawFuelRefuelFallbackScanResult } from './raw-fuel-refuel-fallback
 import { ErdRechargeShadowParityRuntimeService } from './erd-recharge-shadow-parity/erd-recharge-shadow-parity.runtime';
 import { isErdRechargeProductReadDedupeEnabled } from './erd-recharge-product-read-dedupe/erd-recharge-product-read-dedupe.config';
 import { ErdRechargeProductReadDedupeMetricsService } from './erd-recharge-product-read-dedupe/erd-recharge-product-read-dedupe.metrics';
+import { isErdRechargeLegacyFragmentProductReadEnabled } from './erd-recharge-legacy-fragment-product-read/erd-recharge-legacy-fragment-product-read.config';
+import { ErdRechargeLegacyFragmentProductReadMetricsService } from './erd-recharge-legacy-fragment-product-read/erd-recharge-legacy-fragment-product-read.metrics';
+import {
+  buildHvChargeSessionOverlapWhere,
+  buildParentEnvelopeFetchWhere,
+  mapHvChargeSessionsToPhysicalAnchors,
+  mergeVehicleEnergyEventsById,
+  selectMissingParentDimoSegmentIds,
+} from './erd-recharge-legacy-fragment-product-read/legacy-recharge-envelope-context';
+import type { LegacyRechargeFragmentProductReadContext } from './erd-recharge-legacy-fragment-product-read/erd-recharge-legacy-fragment-product-read';
 import { evaluateLegacyRechargeWriteGate } from './erd-recharge-write-authority/erd-recharge-write-gate.policy';
 import { ErdRechargeWriteAuthorityMetricsService } from './erd-recharge-write-authority/erd-recharge-write-authority.metrics';
 import type { ErdRechargeLegacyWriteGateOutcome } from './erd-recharge-write-authority/erd-recharge-write-authority.constants';
@@ -83,6 +93,8 @@ export class EnergyEventsService {
     @Optional()
     private readonly erdRechargeProductReadDedupeMetrics?: ErdRechargeProductReadDedupeMetricsService,
     @Optional()
+    private readonly erdRechargeLegacyFragmentProductReadMetrics?: ErdRechargeLegacyFragmentProductReadMetricsService,
+    @Optional()
     private readonly erdRechargeWriteAuthorityMetrics?: ErdRechargeWriteAuthorityMetricsService,
   ) {}
 
@@ -100,7 +112,10 @@ export class EnergyEventsService {
     options: { from?: Date; to?: Date } = {},
     env: NodeJS.ProcessEnv = process.env,
   ): Promise<EnergyEventDto[]> {
-    const rows = await this.queryEnergyEventRowsForCanonical(vehicleId, options);
+    const legacyFragmentProductReadEnabled =
+      isErdRechargeLegacyFragmentProductReadEnabled(env);
+    const { rows, legacyFragmentContext } =
+      await this.queryEnergyEventRowsForCanonical(vehicleId, options, env);
     const cutover = resolveEffectiveV2OwnershipCutoverAt(env);
     const rechargeReadDedupeEnabled = isErdRechargeProductReadDedupeEnabled(env);
     const canonical = projectCanonicalProductEnergyEvents(
@@ -110,6 +125,11 @@ export class EnergyEventsService {
       (metricResults) => {
         this.erdRechargeProductReadDedupeMetrics?.recordResults(metricResults);
       },
+      legacyFragmentProductReadEnabled,
+      (metricResults) => {
+        this.erdRechargeLegacyFragmentProductReadMetrics?.recordResults(metricResults);
+      },
+      legacyFragmentContext,
     );
     const dtos = canonical.map(toEnergyEventDto);
     return filterEnergyEventDtosByProductTimelineAnchor(dtos, options);
@@ -143,16 +163,63 @@ export class EnergyEventsService {
   private async queryEnergyEventRowsForCanonical(
     vehicleId: string,
     options: { from?: Date; to?: Date } = {},
-  ) {
-    return this.prisma.vehicleEnergyEvent.findMany({
+    env: NodeJS.ProcessEnv = process.env,
+  ): Promise<{
+    rows: Awaited<ReturnType<typeof this.prisma.vehicleEnergyEvent.findMany>>;
+    legacyFragmentContext: LegacyRechargeFragmentProductReadContext;
+  }> {
+    const include = {
+      fuelStationEnrichment: true,
+      chargingStationEnrichment: true,
+      refuelReconciliation: true,
+    };
+    let rows = await this.prisma.vehicleEnergyEvent.findMany({
       where: buildEnergyEventProductReadListWhere(vehicleId, options),
-      include: {
-        fuelStationEnrichment: true,
-        chargingStationEnrichment: true,
-        refuelReconciliation: true,
-      },
+      include,
       orderBy: { startTime: 'asc' },
     });
+
+    const legacyFragmentContext: LegacyRechargeFragmentProductReadContext = {
+      hvPhysicalAnchors: [],
+    };
+    if (!isErdRechargeLegacyFragmentProductReadEnabled(env)) {
+      return { rows, legacyFragmentContext };
+    }
+
+    const hvSessions = await this.prisma.hvChargeSession.findMany({
+      where: buildHvChargeSessionOverlapWhere({ vehicleId, ...options }),
+      select: {
+        dimoSegmentId: true,
+        startAt: true,
+        endAt: true,
+        startSocPercent: true,
+        endSocPercent: true,
+        startEnergyKwh: true,
+        endEnergyKwh: true,
+      },
+      orderBy: { startAt: 'asc' },
+    });
+    legacyFragmentContext.hvPhysicalAnchors =
+      mapHvChargeSessionsToPhysicalAnchors(hvSessions);
+
+    const missingParentDimoIds = selectMissingParentDimoSegmentIds({
+      rows,
+      anchors: legacyFragmentContext.hvPhysicalAnchors,
+    });
+    const parentWhere = buildParentEnvelopeFetchWhere({
+      vehicleId,
+      dimoSegmentIds: missingParentDimoIds,
+    });
+    if (parentWhere) {
+      const parentRows = await this.prisma.vehicleEnergyEvent.findMany({
+        where: parentWhere,
+        include,
+        orderBy: { startTime: 'asc' },
+      });
+      rows = mergeVehicleEnergyEventsById(rows, parentRows);
+    }
+
+    return { rows, legacyFragmentContext };
   }
 
   /** @deprecated use queryEnergyEventRowsForRaw or queryEnergyEventRowsForCanonical */
