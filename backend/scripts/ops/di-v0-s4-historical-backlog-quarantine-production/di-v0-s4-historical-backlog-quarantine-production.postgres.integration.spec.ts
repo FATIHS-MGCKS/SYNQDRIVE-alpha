@@ -22,10 +22,23 @@ const describePg =
 
 describePg('S4P9B historical backlog quarantine (postgres)', () => {
   let prisma: PrismaClient;
+  const testOrganizationIds: string[] = [];
 
   beforeAll(() => {
     assertS4aPostgresCiEnv();
     prisma = newS4aClient();
+  });
+
+  afterEach(async () => {
+    for (const orgId of testOrganizationIds) {
+      await prisma.$executeRaw`DELETE FROM di_v0_s4_work_items WHERE organization_id = ${orgId}`;
+      await prisma.$executeRaw`
+        DELETE FROM vehicle_trips
+        WHERE vehicle_id IN (SELECT id FROM vehicles WHERE organization_id = ${orgId})`;
+      await prisma.$executeRaw`DELETE FROM vehicles WHERE organization_id = ${orgId}`;
+      await prisma.$executeRaw`DELETE FROM organizations WHERE id = ${orgId}`;
+    }
+    testOrganizationIds.length = 0;
   });
 
   afterAll(async () => {
@@ -42,6 +55,7 @@ describePg('S4P9B historical backlog quarantine (postgres)', () => {
   it('rolls back partial supersession on late failure', async () => {
     await seedGlobalKilled();
     const org = randomUUID();
+    testOrganizationIds.push(org);
     const vehicle = randomUUID();
     const trip = randomUUID();
     const id1 = randomUUID();
@@ -110,6 +124,7 @@ describePg('S4P9B historical backlog quarantine (postgres)', () => {
   it('concurrent claim loses race to quarantine transaction', async () => {
     await seedGlobalKilled();
     const org = randomUUID();
+    testOrganizationIds.push(org);
     const vehicle = randomUUID();
     const trip = randomUUID();
     const workId = randomUUID();
