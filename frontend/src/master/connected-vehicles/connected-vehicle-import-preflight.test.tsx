@@ -106,4 +106,27 @@ describe('ConnectedVehicleImportWizard preflight gating', () => {
 
     document.body.innerHTML = '';
   });
+
+  it('disables advanced register when preflight API fails', async () => {
+    importPreflightMock.mockRejectedValue(new Error('network'));
+
+    await renderWizard(vi.fn());
+
+    const orgSelect = document.querySelector('select[aria-label="Zielorganisation wählen"]') as HTMLSelectElement;
+    const dimoSelect = document.querySelector('select[aria-label="DIMO-Fahrzeug wählen"]') as HTMLSelectElement;
+
+    await act(async () => {
+      orgSelect.value = 'org-1';
+      orgSelect.dispatchEvent(new Event('change', { bubbles: true }));
+      dimoSelect.value = 'dimo-1';
+      dimoSelect.dispatchEvent(new Event('change', { bubbles: true }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const advancedBtn = document.body.querySelector('[data-testid="cv-import-advanced-register"]');
+    expect(advancedBtn).toBeNull();
+
+    document.body.innerHTML = '';
+  });
 });
