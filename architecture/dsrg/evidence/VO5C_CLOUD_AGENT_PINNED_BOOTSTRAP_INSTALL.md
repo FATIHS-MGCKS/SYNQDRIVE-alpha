@@ -45,7 +45,7 @@ Rules:
 
 ## One-time install (operator on VPS — not Cloud Agent)
 
-Prerequisites: **pinned executor promotion** already points `vo5c-pinned-executor.env` at commit **C** containing R4.1+ bootstrap artifacts.
+Prerequisites: **pinned executor promotion** already points `vo5c-pinned-executor.env` at commit **C** containing R4.2+ bootstrap artifacts (co-installed verify lib with pre-source git/worktree integrity).
 
 1. Copy shared install bundle from pinned tree:
 
@@ -96,7 +96,7 @@ Cloud Agent fails closed with exit **44** (bootstrap missing / preflight fail) o
 |-------|--------|
 | Cloud Agent | SSH + SHA-only via `sudo -n -H` bootstrap |
 | Shared bootstrap | Root-owned, manifest SHA256, verify lib co-installed |
-| Pinned tree | Impl/session SHA256 + `vps_vo5c_verify_executor_tree_integrity` before `source` |
+| Pinned tree | Co-installed `vo5c_bootstrap_verify_pinned_executor_tree_trusted` (no pin-tree `source` until pass); then impl/session SHA256; then `vps_vo5c_verify_executor_tree_integrity` via pinned admission/floor libs |
 | Pinned runner | VO5C security floor, session file, P4B16 attestation |
 
 ## Offline tests
