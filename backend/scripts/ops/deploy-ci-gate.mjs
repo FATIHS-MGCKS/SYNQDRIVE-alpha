@@ -98,11 +98,7 @@ export function fetchAllCheckRunsForCommit(sha, opts = {}) {
       gh,
       [
         'api',
-        `repos/${repo}/commits/${sha}/check-runs`,
-        '-f',
-        `per_page=${perPage}`,
-        '-f',
-        `page=${page}`,
+        `repos/${repo}/commits/${sha}/check-runs?per_page=${perPage}&page=${page}`,
       ],
       { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
     );
