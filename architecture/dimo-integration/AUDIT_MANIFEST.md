@@ -24,6 +24,7 @@ Standard: [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) v1.0
 | **PRODUCTION_AUDITED_AT** | `2026-09-07T22:35:00Z` (read-only SSH + provider GET audit) |
 | **PRODUCTION_ACCESS** | `VERIFIED_READ_ONLY` |
 | **PRODUCTION_RELEASE_SHA (current)** | `8a1d9c6586cbddc41bb6c94870f9d51226d71aa2` @ `/opt/synqdrive/releases/20260925182907_v4994` (TDL-OQ-009 read-only @ `2026-09-26`) |
+| **PRODUCTION_RELEASE_SHA (R4 deep audit pin)** | `a4d06c602ff192aa7ba6688a6472100033417bca` — R4.1a–R4.3 read-only forensics @ 2026-10-12 |
 | **PRODUCTION_RELEASE_SHA (historical R9 canary)** | `0ba96e03fc2f1551db79d2dae151c928a9fd936a` @ `/opt/synqdrive/releases/20260907204434_v4994` |
 | **PRODUCTION_RELEASE_SHA (historical pre-R9)** | `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac` @ `/opt/synqdrive/releases/20260906213654_v4994` |
 | **REPO_PRODUCTION_DRIFT (historical @ 01541c2ab…)** | R8 #1549 and R9 were **NOT_ON_PRODUCTION** at pre-R9 release — **HISTORICAL** |
