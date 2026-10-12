@@ -1,38 +1,10 @@
 # Production VPS access and deployment — canonical runbook
 
-**Status:** CURRENT_CANONICAL (DSRG-04, R6 + deploy-standard doc fix)  
-**Repository baseline:** `main` includes merged [DSRG deployment consolidation #1991](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1991) (R4.2 pre-source integrity + R5 SSH recovery)  
+**Status:** CURRENT_CANONICAL (DSRG-04, direct SSH standard restored 2026-10-12)  
+**Repository baseline:** `main` — routine production deploy via **direct SSH** to `vps-deploy-release.sh` (owner-instructed Cursor agent).  
 **Audience:** Cursor Cloud Agents, operators, and any agent performing Production VPS read-only audit or authorized deploy.
 
----
-
-## 0. Operational standard (read first)
-
-| Item | Current binding rule |
-|------|----------------------|
-| **Production footprint** | Exactly **one** Hostinger VPS: **`srv1374778.hstgr.cloud`** — no second VPS, no staging VM, no alternate deploy target |
-| **SSH login** | **`synqdrive-admin`** — **never** `root@` for routine operations |
-| **Authoritative release path** | **VO5C pinned operator deployment** on the VPS using the **pinned executor** tree |
-| **SHA + CI** | Owner-authorized exact **`SYNQDRIVE_REQUESTED_DEPLOY_SHA`** (40 hex) with **successful CI** on that commit |
-| **Runner chain** | `vps-vo5c-first-security-deploy-preflight.sh` (optional) → `vps-vo5c-run-pinned-security-deploy.sh` → `exec bash` pinned `vps-deploy-release.sh` → rolling replicas **A** (`3001`) / **B** (`3002`) → health/readiness → **P4B16 attestation** |
-| **Cloud Agent dev environment** | Normal: build, test, PRs, read-only audit when separately authorized — **distinct** from production deploy |
-| **Cloud Agent VPS deploy bootstrap** | **`CLOUD_AGENT_DEPLOY_BOOTSTRAP_STATUS=NOT_INSTALLED_INACTIVE`** (R8B — fixed bootstrap **not** installed; further introduction **deferred**) |
-| **`cloud-agent-deploy.sh`** | **Not** an operational standard while bootstrap is inactive — **do not** auto-run from agents; fail-closed exit **44** is expected until install |
-
-**Agent stop rule:** If the VO5C operator path (pinned env + human authorization + runner) is unavailable, **stop and report**. Do not invent tar-stream, shallow-fetch, `/current` direct deploy, or agent-side authorization.
-
-**Documented production evidence (do not over-claim):**
-
-| Record | What is evidenced |
-|--------|-------------------|
-| [DSRG_02_PIN_REPROMOTION_2026-10-11.md](./evidence/DSRG_02_PIN_REPROMOTION_2026-10-11.md) | Authorized operator pin promotion on Production; `vps-vo5c-first-security-deploy-preflight.sh` **PREFLIGHT_PASS**; dual-replica scheduler roles on `:3001` / `:3002` |
-| Ops selftests @ pin SHA (same doc) | Pinned runner / rollback contract **TEST_EXECUTED** offline on promoted pin tree |
-| [GATE_A_READINESS.md](./evidence/GATE_A_READINESS.md) | Live pinned-runner **application** deploy proof — **NOT CLAIMED** in repository evidence |
-| [DSRG_SSH_RCA_CLOUD_AGENT_VPS_ACCESS_2026-10-12.md](./evidence/DSRG_SSH_RCA_CLOUD_AGENT_VPS_ACCESS_2026-10-12.md) | Failed Cloud Agent deploy attempt did **not** execute VPS release (SSH principal correction) |
-
----
-
-This document is the **single authoritative operational runbook** for SynqDrive Production on the **one Hostinger VPS**. It supersedes conflicting instructions that recommend `root` SSH, `mein-vps.internal`, routine Tailscale deploy, treating inactive `cloud-agent-deploy` as ready, or bare `/opt/synqdrive/current/.../vps-deploy-release.sh` as the security deploy entry when VO5C pinning applies.
+This document is the **single authoritative operational runbook** for SynqDrive Production on the **one Hostinger VPS**. It supersedes conflicting instructions that require mandatory VO5C operator sessions or Cloud Agent bootstrap for **routine** releases. Optional VO5C pinned-runner paths remain when production enforcement is **armed** on the VPS.
 
 **Related governance (read before deploy):**
 
@@ -94,17 +66,15 @@ Expected: `synqdrive-admin` and host identity `srv1374778` (or documented equiva
 
 ---
 
-## B. Cursor Cloud Agent — development vs production deploy
-
-### B.1 Development environment (active)
+## B. Cursor Cloud Agent — repository contract (direct SSH)
 
 | Step | Behavior |
 |------|----------|
-| Purpose | Code, tests, PRs, MCP, local/CI validation — **no** implied production deploy |
-| Env | `CLOUD_AGENT_VPS_HOST=srv1374778.hstgr.cloud` for SSH **preflight/audit** when authorized |
+| Env | `CLOUD_AGENT_VPS_HOST=srv1374778.hstgr.cloud` (default). **Do not** use `mein-vps.internal` for routine Production. |
 | User | `cloud_agent_ssh_user` maps `*hstgr.cloud*` + unset/`root` → **`synqdrive-admin`**. |
-| Tailscale | `cloud-agent-start.sh` connects **only if** `TAILSCALE_AUTH_KEY` is set (Path B). Path A omits it. |
-| SSH check | `bash .cursor/scripts/cloud-agent-ssh-preflight.sh` — connectivity only |
+| Tailscale | Optional Path B only when `TAILSCALE_AUTH_KEY` is set. |
+| Owner authorization | **`CLOUD_AGENT_OWNER_DEPLOY_AUTHORIZED=1`** when the owner explicitly requested production deploy in the Cursor task (replaces mandatory VO5C operator session for routine releases). |
+| Deploy entry | `CLOUD_AGENT_OWNER_DEPLOY_AUTHORIZED=1 bash .cursor/scripts/cloud-agent-deploy.sh` after push (or explicit SHA). |
 
 ### B.2 Fixed VPS deploy bootstrap + `cloud-agent-deploy.sh` (NOT_INSTALLED_INACTIVE)
 
@@ -118,25 +88,28 @@ Expected: `synqdrive-admin` and host identity `srv1374778` (or documented equiva
 
 ### B.3 `cloud-agent-deploy.sh` flow (repository design — inactive until bootstrap installed)
 
-1. Optional `cloud-agent-verify-vps.sh` (TCP/DNS; SSH auth when identity available).
+1. Optional `cloud-agent-verify-vps.sh`.
 2. **SSH identity** + **trusted host key** + **`cloud_agent_ssh_auth_preflight`**.
-3. Git preflight: clean tree, `HEAD` == `origin/main`, resolve `REQUESTED_DEPLOY_SHA`.
-4. SSH → **`sudo -n -H /opt/synqdrive/shared/vo5c-cloud-agent-pinned-deploy-bootstrap.sh --preflight-check`** then **`…/vo5c-cloud-agent-pinned-deploy-bootstrap.sh <SHA>`** (SHA only).
-5. Bootstrap verifies co-installed manifest + **R4.2 pre-source executor integrity** before sourcing pin-tree libs; then pinned **`vps-vo5c-run-pinned-security-deploy.sh`** on VPS.
-6. Public health check (`https://app.synqdrive.eu/api/v1/health`).
+3. Owner deploy ack (`CLOUD_AGENT_OWNER_DEPLOY_AUTHORIZED=1`).
+4. Git preflight: clean tree, `HEAD` == `origin/main` (or explicit `CLOUD_AGENT_REQUESTED_DEPLOY_SHA`).
+5. **CI gate (non-bypassable):** latest `CI gate (all critical jobs)` check run **completed/success** on `REQUESTED_DEPLOY_SHA` (`deploy-ci-gate.mjs` / `gh`; no skip env).
+6. SSH → **`bash /opt/synqdrive/current/backend/scripts/ops/vps-deploy-release.sh`** with `SYNQDRIVE_REQUESTED_DEPLOY_SHA` (path validated under `/opt/synqdrive/…`).
+7. Public health check (`https://app.synqdrive.eu/api/v1/health`).
 
 | Exit | Meaning |
 |------|---------|
-| `0` | Pinned deploy OK + public health OK |
-| `2` | Deploy OK; public health failed |
+| `0` | Release OK + public health OK |
+| `2` | Release OK; public health failed |
 | `3` | P4B16 partial success (replicas OK; attestation reconciliation) |
-| `4` | Monitoring outcome failure (immutable) |
-| `42` | Missing/invalid operator session or SHA mismatch |
-| `44` | Bootstrap missing / preflight failed |
-| `45` | Bootstrap or pin integrity failure |
-| `48` | `sudo -n` denied for bootstrap |
+| `4` | Monitoring outcome failure (from release script) |
+| `41` | Missing `CLOUD_AGENT_OWNER_DEPLOY_AUTHORIZED=1` |
+| `46` | VPS `vps-deploy-release.sh` missing |
 
-**Agents must never** set `SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1` or use legacy `CLOUD_AGENT_VPS_DEPLOY_SCRIPT` → `/current/.../vps-deploy-release.sh` (blocked).
+**Agents must never** set `SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1`.
+
+### Optional VO5C path (enforcement armed only)
+
+When `/opt/synqdrive/shared/vo5c-production-deploy-authority.env` sets `VO5C_PRODUCTION_DEPLOY_ENFORCEMENT_ACTIVE=1`, direct `vps-deploy-release.sh` from non-pinned trees is **blocked** — use pinned `vps-vo5c-run-pinned-security-deploy.sh` with operator authorization. Cloud Agent bootstrap (`vo5c-cloud-agent-pinned-deploy-bootstrap.sh`) remains an **optional** delegate, not installed by default.
 
 ---
 
@@ -165,48 +138,38 @@ curl -sS http://127.0.0.1:3002/api/v1/health
 
 ## D. Canonical deployment procedure
 
-Deployment requires **explicit owner authorization**, exact **40-character** `SYNQDRIVE_REQUESTED_DEPLOY_SHA`, and **accepted CI** on that SHA (aggregate gates **success** — cancelled is not pass).
+Deployment requires **explicit owner instruction** (Cursor: `CLOUD_AGENT_OWNER_DEPLOY_AUTHORIZED=1`), exact **40-character** `SYNQDRIVE_REQUESTED_DEPLOY_SHA`, and **accepted CI** on that SHA (aggregate gates **success** — cancelled is not pass).
 
-**Authoritative path today:** **§D.1 operator console** on `srv1374778.hstgr.cloud`. §D.2 Cloud Agent delegate path remains **blocked** until bootstrap install changes `CLOUD_AGENT_DEPLOY_BOOTSTRAP_STATUS`.
+### D.1 Cloud Agent (routine)
 
-### D.1 Operator console (VPS) — operational standard
+```bash
+bash .cursor/scripts/cloud-agent-ssh-preflight.sh
+git push origin main   # when deploying main tip
+CLOUD_AGENT_OWNER_DEPLOY_AUTHORIZED=1 bash .cursor/scripts/cloud-agent-deploy.sh
+```
 
-After human authorization:
+Explicit approved SHA (not necessarily `main` tip):
+
+```bash
+CLOUD_AGENT_OWNER_DEPLOY_AUTHORIZED=1 \
+CLOUD_AGENT_SKIP_GIT_PREFLIGHT=1 \
+CLOUD_AGENT_REQUESTED_DEPLOY_SHA=<40-char-hex> \
+bash .cursor/scripts/cloud-agent-deploy.sh
+```
+
+Remote execution: `vps-deploy-release.sh` on VPS — DB backup → clone at SHA → admission/security floor inside release → migrate → rolling **A/B** (3001/3002) → **P4B16** → public health.
+
+### D.2 Optional VO5C pinned runner (break-glass / enforcement)
+
+When enforcement is armed or operator policy requires pin-only entry:
 
 ```bash
 export SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1
 export SYNQDRIVE_REQUESTED_DEPLOY_SHA=<40-char-hex>
-# optional: SYNQDRIVE_STAGED_RELEASE_ROOT, pin env already on VPS
 bash "${SYNQDRIVE_PINNED_EXECUTOR_ROOT}/backend/scripts/ops/vps-vo5c-run-pinned-security-deploy.sh"
 ```
 
-Preflight (must pass before runner):
-
-```bash
-bash "${SYNQDRIVE_PINNED_EXECUTOR_ROOT}/backend/scripts/ops/vps-vo5c-first-security-deploy-preflight.sh"
-```
-
-Runner: preflight → admission → security floor → **`exec bash`** pinned `vps-deploy-release.sh` → rolling replicas **A/B** (3001/3002) → **P4B16 attestation** → eligible VO5C rollback on promotion failure.
-
-Post-deploy verification (operator):
-
-```bash
-curl -sS http://127.0.0.1:3001/api/v1/health
-curl -sS http://127.0.0.1:3002/api/v1/health
-curl -sS https://app.synqdrive.eu/api/v1/health
-```
-
-### D.2 Cloud Agent delegate deploy (inactive — bootstrap not installed)
-
-**Status:** `CLOUD_AGENT_DEPLOY_BOOTSTRAP_STATUS=NOT_INSTALLED_INACTIVE` — agents **must not** execute this path as standard operations.
-
-When bootstrap is **installed** (future, owner-authorized only):
-
-1. Operator creates **root-owned** session file `/opt/synqdrive/shared/vo5c-operator-deploy-session.env` (mode `600`, TTL-bound) — see `.cursor/skills/vps-deploy/SKILL.md`.
-2. Operator verifies bootstrap preflight on VPS.
-3. Human runs `cloud-agent-ssh-preflight.sh` then `cloud-agent-deploy.sh` from an authorized workstation/agent.
-
-Cloud Agent accepts **only** the VPS session file for delegate authorization (not shell `SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED` on the agent).
+Optional Cloud Agent bootstrap path: see [VO5C_CLOUD_AGENT_PINNED_BOOTSTRAP_INSTALL.md](./evidence/VO5C_CLOUD_AGENT_PINNED_BOOTSTRAP_INSTALL.md) — **not** required for routine deploy.
 
 ### D.3 Post-deploy attestation
 
@@ -250,9 +213,8 @@ Deploy fails?
 |------|----------------|
 | `root@srv1374778.hstgr.cloud` | **OUTDATED** — use `synqdrive-admin` |
 | `mein-vps.internal` / routine Tailscale deploy | **HISTORICAL Path B** — not current Production transport |
-| Shallow-fetch `vps-deploy-release.sh` via Cloud Agent | **REMOVED** (#1991) |
-| `cloud-agent-deploy.sh` while bootstrap not installed | **NOT_INSTALLED_INACTIVE** — do not use as deploy standard |
-| Bare `/opt/synqdrive/current/.../vps-deploy-release.sh` as security entry | **OUTDATED** when pin required |
+| Shallow-fetch `vps-deploy-release.sh` from agent workspace to VPS | **NOT USED** |
+| Mandatory VO5C operator session + Cloud Agent bootstrap for routine deploy | **RETIRED** (optional when enforcement armed) |
 | Deploy without exact SHA + CI success | **FORBIDDEN** |
 
 Historical evidence (EXP021 S4F-7X, older deploy reports) remains **HISTORICAL**; follow this runbook for **current** operations.
