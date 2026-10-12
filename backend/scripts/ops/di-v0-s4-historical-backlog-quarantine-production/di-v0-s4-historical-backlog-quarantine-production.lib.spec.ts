@@ -1,114 +1,135 @@
 import {
-  evaluateGate6PreflightGuards,
-  resolveEffectiveGate6OpenIntent,
-  resolveGate6OpenIntent,
-  type Gate6OpenGuardInput,
-} from '../di-v0-s4-gate6-open-rekill-production/di-v0-s4-gate6-open-rekill-production.lib';
-import { createHash } from 'crypto';
-import { DI_V0_S4_ENV_FLAGS } from '../../../src/modules/vehicle-intelligence/driving-intelligence/s4a-foundation/di-v0-s4a-control-plane';
-import { DI_V0_S4_ENV_ALLOWLISTS } from '../../../src/modules/vehicle-intelligence/driving-intelligence/s4-runtime/di-v0-s4-runtime-config-attestation';
-import {
-  CANONICAL_TINY_ORGANIZATION_ID,
-  CANONICAL_TINY_VEHICLE_ID,
-} from '../di-v0-s4-fresh-tiny-staging-production/di-v0-s4-fresh-tiny-staging-authority';
-import {
-  deriveFiveFlagAttestationFingerprint,
-  FIVE_FLAG_ON_KEYS,
-  FIVE_FLAG_TRUE_VALUE,
-} from '../di-v0-s4-five-flag-tiny-activation-production/di-v0-s4-five-flag-tiny-activation-production.lib';
-import { envMapFromFileContent } from '../di-v0-s4f-global-budget-rollout/di-v0-s4f-global-budget-rollout.lib';
-import { expectedVehicleAllowlistForWave } from '../di-v0-s4-gate6-open-rekill-production/di-v0-s4-fleet-rollout.lib';
+  DI_S4_HISTORICAL_BACKLOG_QUARANTINE_ACCEPTED_ACK,
+  DI_S4_HISTORICAL_BACKLOG_QUARANTINE_MARKER,
+  evaluateHistoricalBacklogQuarantinePreflight,
+  evaluateHistoricalBacklogSafetyProof,
+  evaluateManifestCompleteness,
+  hasQuarantineMarker,
+  isClaimEligibleWorkItemRow,
+  type HistoricalBacklogManifest,
+  type WorkItemSnapshotRow,
+} from './di-v0-s4-historical-backlog-quarantine-production.lib';
 
-function wave3Env(): string {
-  const staged = [
-    'DIMO_GLOBAL_BUDGET_ENABLED=true',
-    `DI_V0_S4_DISCOVERY_TRIP_END_NOT_BEFORE=2026-10-09T07:03:05.861Z`,
-    `${DI_V0_S4_ENV_ALLOWLISTS.organization}=${CANONICAL_TINY_ORGANIZATION_ID}`,
-    `${DI_V0_S4_ENV_ALLOWLISTS.vehicle}=${expectedVehicleAllowlistForWave(3)}`,
-    ...Object.values(DI_V0_S4_ENV_FLAGS).map((k) => `${k}=false`),
-  ].join('\n');
-  let content = staged;
-  for (const key of FIVE_FLAG_ON_KEYS) {
-    content = content.replace(`${key}=false`, `${key}=${FIVE_FLAG_TRUE_VALUE}`);
-  }
-  return content;
+const ORG = 'faa710c9-0000-4000-8000-000000000001';
+const V1 = 'c10351f8-0000-4000-8000-000000000001';
+const V2 = '19fedd4b-0000-4000-8000-000000000002';
+
+function manifest(pendingIds: string[], completedId?: string): HistoricalBacklogManifest {
+  const preserve = completedId ? [completedId] : [];
+  return {
+    quarantineWorkItemIds: pendingIds,
+    preserveCompletedWorkItemIds: preserve,
+    expectedTotalWorkItems: pendingIds.length + preserve.length,
+    organizationId: ORG,
+    allowedVehicleIds: [V1, V2],
+  };
 }
 
-function reopenInput(overrides: Partial<Gate6OpenGuardInput> = {}): Gate6OpenGuardInput {
-  const envContent = wave3Env();
-  const envSha = createHash('sha256').update(envContent).digest('hex');
-  const fp = deriveFiveFlagAttestationFingerprint(envMapFromFileContent(envContent));
+function row(
+  id: string,
+  status: string,
+  overrides: Partial<WorkItemSnapshotRow> = {},
+): WorkItemSnapshotRow {
   return {
-    gate6Ack: 'YES',
-    gate6Authorized: 'YES',
-    rolloutWave: 3,
-    requiredSha: 'f'.repeat(40),
-    actualSha: 'f'.repeat(40),
-    requiredReleaseId: '20261012091511_v4994',
-    actualReleaseId: '20261012091511_v4994',
-    requiredEnvSha256: envSha,
-    actualEnvSha256: envSha,
-    expectedAttestationFingerprint: undefined,
-    replicaAFingerprint: fp,
-    replicaBFingerprint: fp,
-    globalRowLines: ['1', 'KILLED'],
-    s4PersistenceLines: ['1', '19', '19', '1', '1', '1018'],
-    envContent,
-    vehicleDbLines: ['1', CANONICAL_TINY_ORGANIZATION_ID, 'ACTIVE', 'LTE_R1', '1', '1'],
-    topologyOk: true,
-    budgetConfigOk: true,
-    budgetRuntimeOk: true,
-    redisOk: true,
-    reopenWithHistoryAck: 'YES',
-    backlogSafetyOk: true,
-    backlogRunnableCount: 0,
-    explicitOpenIntent: 'REOPEN_WITH_HISTORY',
+    id,
+    status,
+    organizationId: ORG,
+    vehicleId: V2,
+    leaseOwner: null,
+    leaseExpired: true,
+    nextAttemptAt: null,
+    nextAttemptEligible: true,
+    attemptCount: 0,
+    supersededReason: null,
+    failureReason: null,
     ...overrides,
   };
 }
 
-describe('S4P9B REOPEN_WITH_HISTORY gate-6 contract', () => {
-  it('INITIAL_OPEN still fails S4_PERSISTENCE_NONZERO when persistence present', () => {
-    const g = evaluateGate6PreflightGuards(
-      reopenInput({
-        explicitOpenIntent: undefined,
-        reopenWithHistoryAck: undefined,
-        backlogSafetyOk: undefined,
-        s4PersistenceLines: ['1', '19', '19', '1', '1', '1018'],
-      }),
-    );
-    expect(g.failures).toContain('S4_PERSISTENCE_NONZERO');
-  });
+describe('historical backlog quarantine lib', () => {
+  const pending = Array.from({ length: 18 }, (_, i) =>
+    `00000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`,
+  );
+  const completed = '00000000-0000-4000-8000-000000000099';
+  const m = manifest(pending, completed);
 
-  it('auto intent remains INITIAL_OPEN under KILLED + nonzero persistence', () => {
-    const input = reopenInput({ explicitOpenIntent: undefined });
-    expect(resolveGate6OpenIntent(input)).toBe('INITIAL_OPEN');
-  });
-
-  it('REOPEN_WITH_HISTORY passes preflight when backlog safety proof is present', () => {
-    const env = { DI_S4_GATE6_REOPEN_WITH_HISTORY_ACK: 'YES' };
+  it('claim eligibility matches repository semantics', () => {
+    expect(isClaimEligibleWorkItemRow(row('a', 'PENDING'))).toBe(true);
     expect(
-      evaluateGate6PreflightGuards(reopenInput(), env).ok,
+      isClaimEligibleWorkItemRow(row('a', 'PENDING', { nextAttemptEligible: false, nextAttemptAt: new Date('2099-01-01') })),
+    ).toBe(false);
+    expect(
+      isClaimEligibleWorkItemRow(row('a', 'FAILED_RETRYABLE', { nextAttemptEligible: true })),
     ).toBe(true);
-    expect(resolveEffectiveGate6OpenIntent(reopenInput(), env)).toBe('REOPEN_WITH_HISTORY');
+    expect(
+      isClaimEligibleWorkItemRow(row('a', 'LEASED', { leaseExpired: true, leaseOwner: 'worker-1' })),
+    ).toBe(true);
+    expect(
+      isClaimEligibleWorkItemRow(row('a', 'LEASED', { leaseExpired: false, leaseOwner: 'worker-1' })),
+    ).toBe(false);
+    expect(isClaimEligibleWorkItemRow(row('a', 'PENDING', { attemptCount: 5 }))).toBe(false);
   });
 
-  it('REOPEN_WITH_HISTORY fails without backlog safety proof', () => {
-    const g = evaluateGate6PreflightGuards(reopenInput({ backlogSafetyOk: false }));
-    expect(g.failures).toContain('REOPEN_WITH_HISTORY_BACKLOG_UNSAFE');
+  it('manifest completeness requires exact global id set', () => {
+    const globalRows = [...pending.map((id) => row(id, 'PENDING')), row(completed, 'COMPLETED', { vehicleId: V1 })];
+    expect(evaluateManifestCompleteness(m, globalRows)).toEqual([]);
+    const extra = [...globalRows, row('00000000-0000-4000-8000-00000000aa', 'PENDING')];
+    const drift = evaluateManifestCompleteness({ ...m, expectedTotalWorkItems: 20 }, extra);
+    expect(drift.some((f) => f === 'GLOBAL_WORK_ITEM_COUNT_DRIFT' || f === 'UNKNOWN_TENANT_WORK_ITEM')).toBe(true);
   });
 
-  it('REOPEN_WITH_HISTORY refuses when auto intent would be WAVE_PROMOTION', () => {
-    const g = evaluateGate6PreflightGuards(
-      reopenInput({
-        globalRowLines: ['1', 'NOT_KILLED'],
-      }),
-    );
-    expect(g.failures).toContain('REOPEN_WITH_HISTORY_MISCLASSIFIED_AS_WAVE_PROMOTION');
+  it('preflight rejects outside-allowlist claimable work', () => {
+    const outsider = '00000000-0000-4000-8000-00000000aa';
+    const globalRows = [
+      ...pending.map((id) => row(id, 'PENDING')),
+      row(completed, 'COMPLETED', { vehicleId: V1 }),
+      row(outsider, 'PENDING', { organizationId: 'other-org' }),
+    ];
+    const scopedRows = globalRows.filter((r) => r.organizationId === ORG);
+    const r = evaluateHistoricalBacklogQuarantinePreflight({
+      ack: DI_S4_HISTORICAL_BACKLOG_QUARANTINE_ACCEPTED_ACK,
+      globalKillState: 'KILLED',
+      manifest: { ...m, expectedTotalWorkItems: globalRows.length },
+      globalRows,
+      scopedRows,
+    });
+    expect(r.failures).toContain('UNKNOWN_TENANT_WORK_ITEM');
   });
 
-  it('REOPEN_WITH_HISTORY requires GLOBAL KILLED', () => {
-    const g = evaluateGate6PreflightGuards(reopenInput({ globalRowLines: ['1', 'NOT_KILLED'] }));
-    expect(g.failures).toContain('GLOBAL_PRESTATE_MUST_BE_KILLED_FOR_REOPEN_WITH_HISTORY');
+  it('safety proof requires quarantine marker on superseded rows', () => {
+    const supersededNoMarker = row(pending[0], 'SUPERSEDED', {
+      supersededReason: 'OPERATOR',
+      failureReason: null,
+    });
+    const globalRows = [
+      supersededNoMarker,
+      ...pending.slice(1).map((id) =>
+        row(id, 'SUPERSEDED', {
+          supersededReason: 'OPERATOR',
+          failureReason: `${DI_S4_HISTORICAL_BACKLOG_QUARANTINE_MARKER}:op`,
+        }),
+      ),
+      row(completed, 'COMPLETED', { vehicleId: V1 }),
+    ];
+    const safety = evaluateHistoricalBacklogSafetyProof({
+      manifest: m,
+      globalRows,
+      scopedRows: globalRows,
+    });
+    expect(safety.failures).toContain('QUARANTINE_MARKER_DRIFT');
+    expect(hasQuarantineMarker(`${DI_S4_HISTORICAL_BACKLOG_QUARANTINE_MARKER}:op`)).toBe(true);
+  });
+
+  it('expired LEASED row is claimable and must be listed or superseded', () => {
+    const leased = row(pending[0], 'LEASED', { leaseOwner: 'w', leaseExpired: true });
+    const globalRows = [leased, ...pending.slice(1).map((id) => row(id, 'PENDING')), row(completed, 'COMPLETED', { vehicleId: V1 })];
+    const r = evaluateHistoricalBacklogQuarantinePreflight({
+      ack: DI_S4_HISTORICAL_BACKLOG_QUARANTINE_ACCEPTED_ACK,
+      globalKillState: 'KILLED',
+      manifest: m,
+      globalRows,
+      scopedRows: globalRows,
+    });
+    expect(r.failures).toContain('WORK_ITEM_STATUS_DRIFT');
   });
 });

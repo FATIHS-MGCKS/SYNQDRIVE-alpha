@@ -18,14 +18,24 @@
 5. **Concurrency:** per-id `FOR UPDATE`, total row-count drift guard inside transaction; idempotent on already-quarantined rows.
 6. **CLI:** `backend/scripts/ops/di-v0-s4-historical-backlog-quarantine-production/di-v0-s4-historical-backlog-quarantine-production-cli.ts` — `preflight` | `safety-proof` | `apply`
 
-## Gate-6 `REOPEN_WITH_HISTORY` intent
+## Gate-6 `REOPEN_WITH_HISTORY` intent (S4P9B-R1)
 
 Explicit only (never inferred from persistence):
 
 - `DI_S4_GATE6_REOPEN_WITH_HISTORY_ACK=YES` or `DI_S4_GATE6_OPEN_INTENT=REOPEN_WITH_HISTORY`
 - Requires `GLOBAL=KILLED` at entry (not `WAVE_PROMOTION`)
-- Skips pristine `S4_PERSISTENCE_NONZERO` only when `DI_S4_GATE6_BACKLOG_SAFETY_OK=YES` and `DI_S4_GATE6_BACKLOG_RUNNABLE_COUNT=0`
+- **Trusted DB proof only** — `evaluateTrustedReopenBacklogProofFromDatabase` at live-open authority boundary; env flags `DI_S4_GATE6_BACKLOG_SAFETY_OK` / `DI_S4_GATE6_BACKLOG_RUNNABLE_COUNT` are **rejected** (`REOPEN_BACKLOG_PROOF_FORGED`)
+- Claimable count uses canonical T02 claim semantics (PENDING/FAILED_RETRYABLE with eligible `next_attempt_at`, expired LEASED)
+- OPEN transaction: `lockGlobalKillMustBeKilled` → claimable count `0` → `openGlobalKillRow` in one DB transaction (TOCTOU-resistant)
+- Root re-exec allowlist includes reopen intent + minimal manifest env keys only
 - **Does not** weaken `INITIAL_OPEN` (still requires zero persistence)
+
+## Quarantine atomicity (S4P9B-R1)
+
+- Failures inside `applyHistoricalBacklogQuarantineInTransaction` throw `HistoricalBacklogQuarantineAbortError` → full transaction rollback
+- GLOBAL row locked `FOR UPDATE` before work-item mutations (canonical ordering)
+- Manifest completeness uses **global** work-item identity set (not tenant-filtered-only)
+- Idempotent SUPERSEDED rows must carry `HISTORICAL_BACKLOG_QUARANTINE_S4P9B` marker in `failure_reason`
 
 ## Master Admin S4 monitoring smoke (authenticated)
 

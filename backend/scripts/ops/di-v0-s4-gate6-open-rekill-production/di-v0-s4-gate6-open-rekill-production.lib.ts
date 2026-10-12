@@ -25,6 +25,7 @@ import {
 import { assertGate6WaveStagingKeysPresentAndPinned } from './di-v0-s4-gate6-wave-staging.lib';
 import { envMapFromFileContent } from '../di-v0-s4f-global-budget-rollout/di-v0-s4f-global-budget-rollout.lib';
 import { parseDiV0S4RuntimeConfigAttestationFromPrometheusBody } from '../../../src/modules/vehicle-intelligence/driving-intelligence/s4-runtime/di-v0-s4-runtime-config-attestation-metric-parse';
+import type { TrustedReopenBacklogProof } from './di-v0-s4-gate6-reopen-backlog-proof.lib';
 
 export const DI_S4_GATE6_OPEN_ACK_ENV = 'DI_S4_GATE6_OPEN_ACK';
 export const DI_S4_GATE6_OPEN_AUTHORIZED_ENV = 'DI_S4_GATE6_OPEN_AUTHORIZED';
@@ -101,6 +102,8 @@ export type Gate6OpenGuardFailure =
   | 'GLOBAL_PRESTATE_MUST_BE_KILLED_FOR_REOPEN_WITH_HISTORY'
   | 'REOPEN_WITH_HISTORY_ACK_INVALID'
   | 'REOPEN_WITH_HISTORY_BACKLOG_UNSAFE'
+  | 'REOPEN_BACKLOG_PROOF_MISSING'
+  | 'REOPEN_BACKLOG_PROOF_FORGED'
   | 'REOPEN_WITH_HISTORY_MISCLASSIFIED_AS_WAVE_PROMOTION';
 
 export type Gate6OpenIntent = 'INITIAL_OPEN' | 'WAVE_PROMOTION' | 'REOPEN_WITH_HISTORY';
@@ -129,9 +132,8 @@ export interface Gate6OpenGuardInput {
   /** Explicit operator intent; never inferred from persistence alone. */
   explicitOpenIntent?: Gate6OpenIntent;
   reopenWithHistoryAck?: string;
-  /** Fail-closed proof that historical backlog is non-claimable (not aggregate zero-row fiction). */
-  backlogSafetyOk?: boolean;
-  backlogRunnableCount?: number;
+  /** Fresh DB-backed proof; never accept env-injected backlog safety flags. */
+  trustedReopenBacklogProof?: TrustedReopenBacklogProof;
 }
 
 export function assertFiveFlagsOnInEnv(
@@ -232,8 +234,12 @@ function evaluateGate6CoreGuards(
     if (ack !== DI_S4_GATE6_ACCEPTED_ACK) failures.push('REOPEN_WITH_HISTORY_ACK_INVALID');
     const auto = resolveGate6OpenIntent(input);
     if (auto === 'WAVE_PROMOTION') failures.push('REOPEN_WITH_HISTORY_MISCLASSIFIED_AS_WAVE_PROMOTION');
-    if (input.backlogSafetyOk !== true) failures.push('REOPEN_WITH_HISTORY_BACKLOG_UNSAFE');
-    if (typeof input.backlogRunnableCount === 'number' && input.backlogRunnableCount > 0) {
+    if (env.DI_S4_GATE6_BACKLOG_SAFETY_OK || env.DI_S4_GATE6_BACKLOG_RUNNABLE_COUNT) {
+      failures.push('REOPEN_BACKLOG_PROOF_FORGED');
+    }
+    const proof = input.trustedReopenBacklogProof;
+    if (!proof) failures.push('REOPEN_BACKLOG_PROOF_MISSING');
+    else if (proof.source !== 'DATABASE' || proof.claimableCount !== 0) {
       failures.push('REOPEN_WITH_HISTORY_BACKLOG_UNSAFE');
     }
   }

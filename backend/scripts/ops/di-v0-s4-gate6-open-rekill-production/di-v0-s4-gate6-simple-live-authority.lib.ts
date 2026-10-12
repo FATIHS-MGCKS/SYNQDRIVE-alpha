@@ -19,6 +19,10 @@ import {
   resolveCanonicalBackendEnvPathFromFilesystem,
   sha256FileHex,
 } from './di-v0-s4-gate6-trusted-authority.lib';
+import {
+  evaluateTrustedReopenBacklogProofFromDatabase,
+  resolveReopenManifestFromEnv,
+} from './di-v0-s4-gate6-reopen-backlog-proof.lib';
 
 export type SimpleLiveOpenAuthorityFailure =
   | 'BACKEND_ENV_PATH_UNTRUSTED'
@@ -72,6 +76,17 @@ export async function evaluateSimpleLiveOpenAuthority(
   }
 
   const openIntent: Gate6OpenIntent = resolveEffectiveGate6OpenIntent(guardInput, env);
+
+  if (openIntent === 'REOPEN_WITH_HISTORY') {
+    const manifest = resolveReopenManifestFromEnv(env);
+    if (!manifest) {
+      failures.push('REOPEN_MANIFEST_MISSING');
+    } else {
+      const trusted = await evaluateTrustedReopenBacklogProofFromDatabase(prisma, manifest);
+      if (!trusted.ok) failures.push(...trusted.failures);
+      else guardInput = { ...guardInput, trustedReopenBacklogProof: trusted.proof };
+    }
+  }
 
   const global = await readGlobalKillState(prisma);
   if (!global.ok) failures.push('GLOBAL_PRESTATE_READ_FAILED');

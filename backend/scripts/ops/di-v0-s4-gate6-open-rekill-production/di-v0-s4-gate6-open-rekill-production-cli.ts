@@ -27,9 +27,11 @@ import {
 } from './di-v0-s4-gate6-os-authorization.lib';
 import {
   orchestrateLiveOpenWithRecovery,
+  orchestrateReopenWithHistoryLiveOpen,
   orchestrateWavePromotionVerify,
   readGlobalKillState,
 } from './di-v0-s4-gate6-open-orchestration.lib';
+import { resolveReopenManifestFromEnv } from './di-v0-s4-gate6-reopen-backlog-proof.lib';
 import { resolveCanonicalBackendEnvPathFromFilesystem } from './di-v0-s4-gate6-trusted-authority.lib';
 
 function buildOpenGuardInputFromEnv(): Gate6OpenGuardInput | { error: string } {
@@ -65,10 +67,6 @@ function buildOpenGuardInputFromEnv(): Gate6OpenGuardInput | { error: string } {
     redisOk: pv.DI_S4F7AS_REDIS_OK === 'YES',
     explicitOpenIntent: resolveExplicitGate6OpenIntentFromEnv(process.env),
     reopenWithHistoryAck: process.env.DI_S4_GATE6_REOPEN_WITH_HISTORY_ACK,
-    backlogSafetyOk: process.env.DI_S4_GATE6_BACKLOG_SAFETY_OK === 'YES' ? true : undefined,
-    backlogRunnableCount: Number.isFinite(Number(process.env.DI_S4_GATE6_BACKLOG_RUNNABLE_COUNT))
-      ? Number(process.env.DI_S4_GATE6_BACKLOG_RUNNABLE_COUNT)
-      : undefined,
   };
 }
 
@@ -191,10 +189,18 @@ async function main(): Promise<void> {
           process.exit(1);
         }
         console.log('TRUSTED_BACKEND_ENV_VERIFIED=YES');
+        const reopenManifest =
+          openIntent === 'REOPEN_WITH_HISTORY' ? resolveReopenManifestFromEnv(process.env) : null;
+        if (openIntent === 'REOPEN_WITH_HISTORY' && !reopenManifest) {
+          console.log('REOPEN_MANIFEST_MISSING=YES');
+          process.exit(1);
+        }
         const orchestration =
           openIntent === 'WAVE_PROMOTION'
             ? await orchestrateWavePromotionVerify(prisma)
-            : await orchestrateLiveOpenWithRecovery(prisma, audit);
+            : openIntent === 'REOPEN_WITH_HISTORY' && reopenManifest
+              ? await orchestrateReopenWithHistoryLiveOpen(prisma, audit, reopenManifest)
+              : await orchestrateLiveOpenWithRecovery(prisma, audit);
         if (openIntent === 'INITIAL_OPEN' || openIntent === 'REOPEN_WITH_HISTORY') {
           console.log('TRUSTED_GLOBAL_PRESTATE_KILLED=YES');
         } else {

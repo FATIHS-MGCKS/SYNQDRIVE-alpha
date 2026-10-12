@@ -8,10 +8,11 @@ import {
   applyHistoricalBacklogQuarantine,
   evaluateHistoricalBacklogQuarantinePreflight,
   evaluateHistoricalBacklogSafetyProof,
-  loadWorkItemSnapshots,
+  loadAllWorkItemSnapshots,
+  loadScopedWorkItemSnapshots,
   parseHistoricalBacklogManifestFromEnv,
   readGlobalKillStateForQuarantine,
-} from '../../../src/modules/vehicle-intelligence/driving-intelligence/s4a-foundation/di-v0-s4-historical-backlog-quarantine';
+} from './di-v0-s4-historical-backlog-quarantine-production.lib';
 
 function auditFromEnv(): { reason: string; actor: string } {
   return {
@@ -34,13 +35,15 @@ async function main(): Promise<void> {
       case 'preflight':
       case 'safety-proof': {
         const globalKillState = await readGlobalKillStateForQuarantine(prisma);
-        const rows = await loadWorkItemSnapshots(prisma, manifest);
+        const globalRows = await loadAllWorkItemSnapshots(prisma);
+        const scopedRows = await loadScopedWorkItemSnapshots(prisma, manifest);
         if (cmd === 'preflight') {
           const r = evaluateHistoricalBacklogQuarantinePreflight({
             ack: process.env[DI_S4_HISTORICAL_BACKLOG_QUARANTINE_ACK_ENV],
             globalKillState,
             manifest,
-            rows,
+            globalRows,
+            scopedRows,
           });
           if (!r.ok) {
             console.log(`QUARANTINE_PREFLIGHT_FAILURES=${r.failures.join(',')}`);
@@ -50,8 +53,8 @@ async function main(): Promise<void> {
           console.log(`QUARANTINE_PENDING_COUNT=${manifest.quarantineWorkItemIds.length}`);
           break;
         }
-        const safety = evaluateHistoricalBacklogSafetyProof({ manifest, rows });
-        console.log(`BACKLOG_RUNNABLE_COUNT=${safety.runnableCount}`);
+        const safety = evaluateHistoricalBacklogSafetyProof({ manifest, globalRows, scopedRows });
+        console.log(`BACKLOG_CLAIMABLE_COUNT=${safety.claimableCount}`);
         if (!safety.ok) {
           console.log(`BACKLOG_SAFETY_FAILURES=${safety.failures.join(',')}`);
           process.exit(1);
@@ -69,11 +72,9 @@ async function main(): Promise<void> {
           console.log('QUARANTINE_OUTCOME=FIXTURE_NO_DB_MUTATION');
           process.exit(0);
         }
-        const result = await prisma.$transaction(async (tx) =>
-          applyHistoricalBacklogQuarantine(tx, manifest, audit, {
-            ack: process.env[DI_S4_HISTORICAL_BACKLOG_QUARANTINE_ACK_ENV],
-          }),
-        );
+        const result = await applyHistoricalBacklogQuarantine(prisma, manifest, audit, {
+          ack: process.env[DI_S4_HISTORICAL_BACKLOG_QUARANTINE_ACK_ENV],
+        });
         if (result.outcome === 'REFUSED') {
           console.log(`QUARANTINE_FAILURES=${result.failures.join(',')}`);
           process.exit(1);
