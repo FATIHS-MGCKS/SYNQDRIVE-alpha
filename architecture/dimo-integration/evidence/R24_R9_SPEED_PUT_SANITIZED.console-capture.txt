@@ -1,0 +1,87 @@
+MODE=AUTHORIZED_MUTATION
+{
+  "sessionUtc": "2026-10-11T20:40:44.402Z",
+  "mode": "AUTHORIZED_MUTATION",
+  "executionGate": {
+    "mode": "AUTHORIZED_MUTATION",
+    "authorized": true,
+    "webhookId": "7a5e81bc-8f48-4b62-877a-9df104c1f42e"
+  },
+  "abort": false,
+  "preflight": {
+    "speed": {
+      "definition": {
+        "id": "7a5e81bc-8f48-4b62-877a-9df104c1f42e",
+        "stableId": "9eeb7158afee",
+        "service": "signals",
+        "metricName": "vss.speed",
+        "condition": "valueNumber > 3",
+        "coolDownPeriod": 30,
+        "displayName": "SynqDrive R9 Speed Wake",
+        "description": "R9 five-vehicle canary speed wake trigger for SynqDrive Production",
+        "targetURL": "https://app.synqdrive.eu/api/v1/webhooks/dimo",
+        "status": "failed",
+        "failureCount": 28
+      },
+      "subscriberTokenIds": [
+        186946,
+        187361,
+        187784,
+        192922
+      ],
+      "cohortOk": true
+    },
+    "ignition": {
+      "definition": {
+        "id": "3a2fcd34-1a74-45db-bee9-75e340f36b00",
+        "stableId": "5d611d470eab",
+        "service": "signals",
+        "metricName": "vss.isIgnitionOn",
+        "condition": "valueNumber == 1",
+        "coolDownPeriod": 30,
+        "displayName": "SynqDrive R9 Ignition Wake",
+        "description": "R9 five-vehicle canary ignition wake trigger for SynqDrive Production",
+        "targetURL": "https://app.synqdrive.eu/api/v1/webhooks/dimo",
+        "status": "failed",
+        "failureCount": 12
+      },
+      "subscriberTokenIds": [
+        186946,
+        187361,
+        187784,
+        192922
+      ],
+      "cohortOk": true
+    }
+  },
+  "put": {
+    "webhookId": "7a5e81bc-8f48-4b62-877a-9df104c1f42e",
+    "httpStatus": 200,
+    "completedUtc": "2026-10-11T20:40:46.080Z"
+  },
+  "after": {
+    "definition": {
+      "id": "7a5e81bc-8f48-4b62-877a-9df104c1f42e",
+      "stableId": "9eeb7158afee",
+      "service": "signals",
+      "metricName": "vss.speed",
+      "condition": "valueNumber > 3",
+      "coolDownPeriod": 30,
+      "displayName": "SynqDrive R9 Speed Wake",
+      "description": "R9 five-vehicle canary speed wake trigger for SynqDrive Production",
+      "targetURL": "https://app.synqdrive.eu/api/v1/webhooks/dimo",
+      "status": "enabled",
+      "failureCount": 0
+    },
+    "subscriberTokenIds": [
+      186946,
+      187361,
+      187784,
+      192922
+    ],
+    "cohortOk": true,
+    "subscriptionsUnchanged": true,
+    "semanticsPreserved": true
+  },
+  "success": true
+}

@@ -1,0 +1,52 @@
+{
+  "generatedAt": "2026-10-11T18:51:14.971Z",
+  "auditHeadSha": "0633d08311803b1473c6e7a274e5074e4cb69a08",
+  "counts": {
+    "dimoModuleTypeScriptFiles": 337,
+    "filenameContainsDimo": 273,
+    "rgFilesMentioningDimo": 2232,
+    "queryBuilderFiles": 16
+  },
+  "queryBuilderPaths": [
+    "backend/src/modules/dimo/queries/available-signals.query.ts",
+    "backend/src/modules/dimo/queries/battery-capability-preflight.query.ts",
+    "backend/src/modules/dimo/queries/battery-crank.query.ts",
+    "backend/src/modules/dimo/queries/data-summary.query.ts",
+    "backend/src/modules/dimo/queries/driving-events.query.ts",
+    "backend/src/modules/dimo/queries/energy-event-segments.query.ts",
+    "backend/src/modules/dimo/queries/environment-temperature.query.ts",
+    "backend/src/modules/dimo/queries/high-frequency.query.ts",
+    "backend/src/modules/dimo/queries/last-seen-location.query.ts",
+    "backend/src/modules/dimo/queries/latest-dtc.query.ts",
+    "backend/src/modules/dimo/queries/latest-vehicle-snapshot.query.ts",
+    "backend/src/modules/dimo/queries/performance.query.ts",
+    "backend/src/modules/dimo/queries/route-enrichment.query.ts",
+    "backend/src/modules/dimo/queries/tire-pressure-history.query.ts",
+    "backend/src/modules/dimo/queries/trip-detection-core.query.ts",
+    "backend/src/modules/dimo/queries/trip-segments.query.ts"
+  ],
+  "graphqlRootReferenceFileCounts": {
+    "signalsLatest": 42,
+    "signals(": 0,
+    "segments(": 0,
+    "events(": 0,
+    "availableSignals": 63,
+    "dataSummary": 11,
+    "identity": 472
+  },
+  "symbolReferenceFileCounts": {
+    "getVehicleJwt": 53,
+    "DimoTriggersService": 7,
+    "DimoWebhookController": 3,
+    "SnapshotWakeIntakeService": 4,
+    "DimoSnapshotScheduler": 7,
+    "DimoSnapshotProcessor": 11
+  },
+  "entryPoints": [
+    "backend/src/modules/dimo/dimo.module.ts",
+    "backend/src/modules/dimo/dimo.controller.ts",
+    "backend/src/modules/dimo/dimo-webhook.controller.ts",
+    "backend/src/workers/schedulers/dimo-snapshot.scheduler.ts",
+    "backend/src/workers/processors/dimo-snapshot.processor.ts"
+  ]
+}

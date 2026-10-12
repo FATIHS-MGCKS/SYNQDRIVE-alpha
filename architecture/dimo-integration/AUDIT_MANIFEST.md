@@ -15,7 +15,8 @@ Standard: [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) v1.0
 | **REPOSITORY** | `FATIHS-MGCKS/SYNQDRIVE-alpha` |
 | **REPO_BASE_BRANCH** | `main` |
 | **ORIGIN_MAIN_SHA (historical R9 rebase)** | `a4725514866a03099e7a1e485ccf0b7ea37d6fec` — **does not contain R9** |
-| **CURRENT_ORIGIN_MAIN_SHA** | `1393095f5d8faa2ff73e9dce5fe84024841e2528` — includes R9 runtime merged via #1553 @ `4bef60463…` |
+| **CURRENT_ORIGIN_MAIN_SHA (R1 @ 2026-10-11)** | `0633d08311803b1473c6e7a274e5074e4cb69a08` |
+| **CURRENT_ORIGIN_MAIN_SHA (historical @ 2026-09-26)** | `1393095f5d8faa2ff73e9dce5fe84024841e2528` — includes R9 runtime merged via #1553 @ `4bef60463…` |
 | **R9_MERGE_ON_MAIN_SHA** | `4bef60463…` (PR #1553) |
 | **PRIOR_ORIGIN_MAIN_SHA** | `feaf1f13559ba906f28bdd8641393227a90880a3` (pre-canary docs merge baseline) |
 | **AUDIT_BRANCH (historical)** | `trip-fsm/r9-adaptive-polling-wake` |
@@ -23,13 +24,17 @@ Standard: [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) v1.0
 | **PRE_CORRECTION_GOVERNANCE_HEAD** | `5383391c27c8265c2bff12c068a6f8d527a1102e` |
 | **PRODUCTION_AUDITED_AT** | `2026-09-07T22:35:00Z` (read-only SSH + provider GET audit) |
 | **PRODUCTION_ACCESS** | `VERIFIED_READ_ONLY` |
-| **PRODUCTION_RELEASE_SHA (current)** | `8a1d9c6586cbddc41bb6c94870f9d51226d71aa2` @ `/opt/synqdrive/releases/20260925182907_v4994` (TDL-OQ-009 read-only @ `2026-09-26`) |
+| **PRODUCTION_RELEASE_SHA (R1 current @ 2026-10-11)** | `2b89f7466836b81a4ba344138d0ad9817c5d14ee` @ `/opt/synqdrive/releases/20261011154442_v4994` — [evidence/R1_PRODUCTION_FORENSICS_2026-10-11.md](evidence/R1_PRODUCTION_FORENSICS_2026-10-11.md) |
+| **PRODUCTION_RELEASE_SHA (historical @ 2026-09-26)** | `8a1d9c6586cbddc41bb6c94870f9d51226d71aa2` @ `/opt/synqdrive/releases/20260925182907_v4994` (TDL-OQ-009 read-only) |
 | **PRODUCTION_RELEASE_SHA (historical R9 canary)** | `0ba96e03fc2f1551db79d2dae151c928a9fd936a` @ `/opt/synqdrive/releases/20260907204434_v4994` |
 | **PRODUCTION_RELEASE_SHA (historical pre-R9)** | `01541c2ab3b1ff0c918a92bb0d35e1830b6f6aac` @ `/opt/synqdrive/releases/20260906213654_v4994` |
 | **REPO_PRODUCTION_DRIFT (historical @ 01541c2ab…)** | R8 #1549 and R9 were **NOT_ON_PRODUCTION** at pre-R9 release — **HISTORICAL** |
 | **REPO_PRODUCTION_DRIFT (current @ `8a1d9c658…`)** | R9 runtime **present**; **R9 authorized provider cohort 5/5** subscribed (TDL-OQ-009 re-read); natural R9 **start** wake **observed** historically; fleet-wide wake-rate KPI **unknown**; **1** stale former-fleet scheduler mirror (DIM-GAP-005) |
 | **AUDIT_MODE** | `READ_ONLY` |
-| **VALIDATION_STATUS** | `PASS` — authority graph + registry validators (latest semantic cleanup pass) |
+| **VALIDATION_STATUS** | `PASS` — registry + dimo graph + query-invocation validator @ R2 |
+| **R2_AUDIT_AT** | `2026-10-11` — invocation graph, R9 GET re-audit, production runtime contract |
+| **R21_AUDIT_AT** | `2026-10-11` — R9 `failed` forensics, nginx ingress timeline, cohort authorization review; **no provider/runtime mutations** |
+| **R22_AUDIT_AT** | `2026-10-11` — evidence corrections, VO5C deploy 503 RCA, recovery owner gate, resilience options; **no mutations** |
 
 ## Lifecycle phase status
 
@@ -38,9 +43,9 @@ Standard: [`MODULE_AUTHORITY_STANDARD.md`](../MODULE_AUTHORITY_STANDARD.md) v1.0
 | **0 — Entry and scope** | **Complete** |
 | **1 — Repository current-state audit** | **Initial consolidated baseline** — `backend/src/modules/dimo/` inspected |
 | **2 — Production read-only audit** | **Verified** — release SHA, health, PM2, deployed build grep, provider GET audit, Redis prefix counts |
-| **3 — Reconciliation** | **Pending** |
-| **4 — Authority construction** | **Partial** — bootstrap graph + DIM-DEC-R9-001 + canary evidence |
-| **5 — Promotion gate** | **Pending** — not `AUTHORITY_ACTIVE` |
+| **3 — Reconciliation** | **In progress** — R1 deep audit reconciles repo @ `0633d0831…` vs Production @ `2b89f746…` |
+| **4 — Authority construction** | **Partial** — bootstrap graph + R1 `research/*` corpus + machine inventory |
+| **5 — Promotion gate** | **Pending** — not `AUTHORITY_ACTIVE` (R1 explicitly does not promote) |
 
 ## Mutations performed
 

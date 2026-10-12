@@ -1,0 +1,518 @@
+{
+  "generatedAt": "2026-10-11T19:09:40.612Z",
+  "auditHeadSha": "017f163586967e4c8e7a16ba2af3f91c58453e87",
+  "nodes": [
+    {
+      "id": "IMPL-Q001-SNAPSHOT",
+      "type": "query_invocation",
+      "implementationId": "IMPL-Q001-SNAPSHOT",
+      "queryId": "DIMO-Q001",
+      "registryName": "LatestVehicleSnapshot",
+      "sourceFile": "backend/src/modules/dimo/queries/latest-vehicle-snapshot.query.ts",
+      "sourceSymbol": "buildLatestSnapshotQuery",
+      "graphqlRoot": "signalsLatest",
+      "authentication": "vehicleJwt",
+      "privileges": "[1,2,3,4,5,6] default",
+      "endpoint": "dimo.telemetryApiUrl POST GraphQL",
+      "entrypoints": [
+        "DimoSnapshotScheduler → dimo.snapshot.poll → DimoSnapshotProcessor.process"
+      ],
+      "directCallers": [
+        "DimoTelemetryService.fetchLatestVehicleSnapshot"
+      ],
+      "indirectCallers": [
+        "TripDetectionOrchestrationService (post-snapshot)",
+        "BatteryV2SnapshotObservationProducer"
+      ],
+      "triggerConditions": "Tier-eligible CONNECTED vehicle; registry operational active",
+      "schedulerOrWebhook": "scheduler 30s tick + R9 wake coalesce",
+      "queueAndProcessor": "QUEUE_NAMES.DIMO_SNAPSHOT / DimoSnapshotProcessor",
+      "rateBudgetCategory": "LIVE_SNAPSHOT / HIGH",
+      "pollingOrExecutionFrequency": "tier: 30s–30min; scheduler tick 30s",
+      "aggregationInterval": "signalsLatest (point-in-time)",
+      "responseNormalizer": "VLS mappers, tire pressure, battery mapper, trip start eval",
+      "persistenceTarget": "VehicleLatestState; optional ClickHouse telemetry_snapshots",
+      "downstreamConsumers": [
+        "Fleet map",
+        "Vehicle detail",
+        "Trip FSM",
+        "Battery V2 snapshot obs",
+        "Connectivity episodes"
+      ],
+      "errorSemantics": "BullMQ retry; job failure blocks jobId until removed next tick",
+      "featureFlags": [
+        "WORKER_SNAPSHOT_ACTIVITY_TIER_POLLING_ENABLED",
+        "WORKER_SNAPSHOT_LEGACY_FIXED_CADENCE"
+      ],
+      "runtimeReachability": "ACTIVE",
+      "productionVerification": "INFERRED from deployed processor @ 2b89f746…",
+      "evidence": [
+        "backend/src/workers/processors/dimo-snapshot.processor.ts:327",
+        "backend/src/modules/dimo/dimo-telemetry.service.ts:87-99"
+      ],
+      "auditHeadSha": "017f163586967e4c8e7a16ba2af3f91c58453e87",
+      "epistemic_status": "CONFIRMED_FROM_CODE"
+    },
+    {
+      "id": "IMPL-Q002-LASTSEEN",
+      "type": "query_invocation",
+      "implementationId": "IMPL-Q002-LASTSEEN",
+      "queryId": "DIMO-Q002",
+      "registryName": "LastSeenLocation",
+      "sourceFile": "backend/src/modules/dimo/queries/last-seen-location.query.ts",
+      "sourceSymbol": "buildLastSeenLocationQuery",
+      "graphqlRoot": "signalsLatest",
+      "authentication": "vehicleJwt",
+      "privileges": "default",
+      "endpoint": "telemetry GraphQL",
+      "entrypoints": [
+        "VehiclesService on-demand"
+      ],
+      "directCallers": [
+        "DimoTelemetryService.fetchLastSeenLocation"
+      ],
+      "indirectCallers": [
+        "Fleet map fallback"
+      ],
+      "runtimeReachability": "ACTIVE",
+      "rateBudgetCategory": "on-demand via gateway",
+      "productionVerification": "CONFIRMED_FROM_CODE",
+      "evidence": [
+        "backend/src/modules/vehicles/vehicles.service.ts"
+      ],
+      "auditHeadSha": "017f163586967e4c8e7a16ba2af3f91c58453e87",
+      "epistemic_status": "CONFIRMED_FROM_CODE"
+    },
+    {
+      "id": "IMPL-Q003-VEHICLE-SUMMARY-INLINE",
+      "type": "query_invocation",
+      "implementationId": "IMPL-Q003-VEHICLE-SUMMARY-INLINE",
+      "queryId": "DIMO-Q003",
+      "registryName": "VehicleSummary",
+      "sourceFile": "backend/src/modules/dimo/dimo-telemetry.service.ts",
+      "sourceSymbol": "fetchVehicleSummary (inline GraphQL)",
+      "graphqlRoot": "signalsLatest",
+      "authentication": "vehicleJwt",
+      "entrypoints": [
+        "DimoController",
+        "DimoApiSyncService"
+      ],
+      "directCallers": [
+        "DimoTelemetryService.fetchVehicleSummary"
+      ],
+      "runtimeReachability": "ACTIVE",
+      "rateBudgetCategory": "IDENTITY",
+      "evidence": [
+        "dimo-telemetry.service.ts:326-387"
+      ],
+      "auditHeadSha": "017f163586967e4c8e7a16ba2af3f91c58453e87",
+      "epistemic_status": "CONFIRMED_FROM_CODE"
+    },
+    {
+      "id": "IMPL-Q004-VIN-INLINE",
+      "type": "query_invocation",
+      "implementationId": "IMPL-Q004-VIN-INLINE",
+      "queryId": "DIMO-Q004",
+      "registryName": "VehicleVin",
+      "sourceFile": "backend/src/modules/dimo/dimo-telemetry.service.ts",
+      "sourceSymbol": "fetchVehicleVin",
+      "graphqlRoot": "vinVCLatest",
+      "authentication": "vehicleJwt",
+      "entrypoints": [
+        "Vehicle sync / onboarding paths"
+      ],
+      "runtimeReachability": "ACTIVE",
+      "errorSemantics": "returns null on failure (swallowed)",
+      "evidence": [
+        "dimo-telemetry.service.ts:389-421"
+      ],
+      "auditHeadSha": "017f163586967e4c8e7a16ba2af3f91c58453e87",
+      "epistemic_status": "CONFIRMED_FROM_CODE"
+    },
+    {
+      "id": "IMPL-Q005-DTC",
+      "type": "query_invocation",
+      "implementationId": "IMPL-Q005-DTC",
+      "queryId": "DIMO-Q005",
+      "registryName": "GetLatestDTCs",
+      "sourceFile": "backend/src/modules/dimo/queries/latest-dtc.query.ts",
+      "sourceSymbol": "buildLatestDtcQuery",
+      "graphqlRoot": "signalsLatest",
+      "entrypoints": [
+        "dimo-dtc.processor scheduled poll",
+        "webhook obdDTCList"
+      ],
+      "queueAndProcessor": "DTC poll queue",
+      "runtimeReachability": "ACTIVE",
+      "evidence": [
+        "backend/src/workers/processors/dimo-dtc.processor.ts"
+      ],
+      "auditHeadSha": "017f163586967e4c8e7a16ba2af3f91c58453e87",
+      "epistemic_status": "CONFIRMED_FROM_CODE"
+    },
+    {
+      "id": "IMPL-Q006-TRIP-CORE",
+      "type": "query_invocation",
+      "implementationId": "IMPL-Q006-TRIP-CORE",
+      "queryId": "DIMO-Q006",
+      "registryName": "TripDetectionCore",
+      "sourceFile": "backend/src/modules/dimo/queries/trip-detection-core.query.ts",
+      "sourceSymbol": "buildTripDetectionCoreQuery",
+      "graphqlRoot": "signals",
+      "entrypoints": [
+        "TripDetectionOrchestrationService active trip ticks"
+      ],
+      "directCallers": [
+        "DimoSegmentsService.fetchRawTripCoreData"
+      ],
+      "runtimeReachability": "ACTIVE",
+      "aggregationInterval": "windowed buckets (trip phase)",
+      "errorSemantics": "returns [] on failure",
+      "evidence": [
+        "dimo-segments.service.ts:566-621"
+      ],
+      "auditHeadSha": "017f163586967e4c8e7a16ba2af3f91c58453e87",
+      "epistemic_status": "CONFIRMED_FROM_CODE"
+    },
+    {
+      "id": "IMPL-Q007-ROUTE",
+      "type": "query_invocation",
+      "implementationId": "IMPL-Q007-ROUTE",
+      "queryId": "DIMO-Q007",
+      "registryName": "RouteEnrichment",
+      "sourceSymbol": "buildRouteEnrichmentQuery",
+      "graphqlRoot": "signals",
+      "directCallers": [
+        "DimoSegmentsService.fetchRouteEnrichmentData"
+      ],
+      "runtimeReachability": "ACTIVE",
+      "evidence": [
+        "dimo-segments.service.ts"
+      ],
+      "auditHeadSha": "017f163586967e4c8e7a16ba2af3f91c58453e87",
+      "epistemic_status": "CONFIRMED_FROM_CODE"
+    },
+    {
+      "id": "IMPL-Q008-PERF",
+      "type": "query_invocation",
+      "implementationId": "IMPL-Q008-PERF",
+      "queryId": "DIMO-Q008",
+      "registryName": "Performance",
+      "sourceSymbol": "buildPerformanceQuery",
+      "graphqlRoot": "signals",
+      "directCallers": [
+        "DimoSegmentsService.fetchPerformanceData"
+      ],
+      "runtimeReachability": "ACTIVE",
+      "evidence": [
+        "dimo-segments.service.ts:850+"
+      ],
+      "auditHeadSha": "017f163586967e4c8e7a16ba2af3f91c58453e87",
+      "epistemic_status": "CONFIRMED_FROM_CODE"
+    },
+    {
+      "id": "IMPL-Q009-HF",
+      "type": "query_invocation",
+      "implementationId": "IMPL-Q009-HF",
+      "queryId": "DIMO-Q009",
+      "registryName": "HighFrequency",
+      "sourceSymbol": "buildHighFrequencyQuery",
+      "graphqlRoot": "signals",
+      "directCallers": [
+        "DimoSegmentsService.fetchHighFrequencyData"
+      ],
+      "indirectCallers": [
+        "Driving Intelligence",
+        "Reference capture",
+        "Energy calibration scripts"
+      ],
+      "aggregationInterval": "1s requested buckets",
+      "runtimeReachability": "ACTIVE",
+      "evidence": [
+        "dimo-segments.service.ts:964+"
+      ],
+      "auditHeadSha": "017f163586967e4c8e7a16ba2af3f91c58453e87",
+      "epistemic_status": "CONFIRMED_FROM_CODE"
+    },
+    {
+      "id": "IMPL-Q010-ENV-TEMP",
+      "type": "query_invocation",
+      "implementationId": "IMPL-Q010-ENV-TEMP",
+      "queryId": "DIMO-Q010",
+      "registryName": "EnvironmentTemperature",
+      "sourceSymbol": "buildEnvironmentTemperatureQuery",
+      "graphqlRoot": "signals",
+      "runtimeReachability": "ACTIVE",
+      "evidence": [
+        "dimo-segments.service.ts"
+      ],
+      "auditHeadSha": "017f163586967e4c8e7a16ba2af3f91c58453e87",
+      "epistemic_status": "CONFIRMED_FROM_CODE"
+    },
+    {
+      "id": "IMPL-Q011-TIRE-HISTORY",
+      "type": "query_invocation",
+      "implementationId": "IMPL-Q011-TIRE-HISTORY",
+      "queryId": "DIMO-Q011",
+      "registryName": "TirePressureHistory",
+      "sourceSymbol": "buildTirePressureHistoryQuery",
+      "graphqlRoot": "signals",
+      "directCallers": [
+        "DimoSegmentsService.fetchTirePressureHistory"
+      ],
+      "runtimeReachability": "DORMANT",
+      "productionVerification": "NO_CALLERS outside dimo-segments.service.ts",
+      "evidence": [
+        "grep fetchTirePressureHistory → definition only"
+      ],
+      "auditHeadSha": "017f163586967e4c8e7a16ba2af3f91c58453e87",
+      "epistemic_status": "CONFIRMED"
+    },
+    {
+      "id": "IMPL-Q012-CRANK",
+      "type": "query_invocation",
+      "implementationId": "IMPL-Q012-CRANK",
+      "queryId": "DIMO-Q012",
+      "registryName": "BatteryCrankWindow",
+      "sourceSymbol": "buildBatteryCrankQuery",
+      "graphqlRoot": "signals",
+      "directCallers": [
+        "DimoSegmentsService.fetchBatteryCrankWindow"
+      ],
+      "indirectCallers": [
+        "Battery V2"
+      ],
+      "runtimeReachability": "ACTIVE",
+      "evidence": [
+        "dimo-segments.service.ts"
+      ],
+      "auditHeadSha": "017f163586967e4c8e7a16ba2af3f91c58453e87",
+      "epistemic_status": "CONFIRMED_FROM_CODE"
+    },
+    {
+      "id": "IMPL-Q013-FUEL-SEGMENTS",
+      "type": "query_invocation",
+      "implementationId": "IMPL-Q013-FUEL-SEGMENTS",
+      "queryId": "DIMO-Q013",
+      "registryName": "TripFuelSummary",
+      "sourceSymbol": "inline / trip-segments builders",
+      "graphqlRoot": "segments|signals",
+      "runtimeReachability": "ACTIVE",
+      "evidence": [
+        "dimo-segments.service.ts trip fuel paths"
+      ],
+      "auditHeadSha": "017f163586967e4c8e7a16ba2af3f91c58453e87",
+      "epistemic_status": "CONFIRMED_FROM_CODE"
+    },
+    {
+      "id": "IMPL-Q015-EVENTS",
+      "type": "query_invocation",
+      "implementationId": "IMPL-Q015-EVENTS",
+      "queryId": "DIMO-Q015",
+      "registryName": "DrivingEvents",
+      "sourceSymbol": "buildDrivingEventsQuery",
+      "graphqlRoot": "events",
+      "directCallers": [
+        "DimoSegmentsService.fetchDrivingEvents*"
+      ],
+      "errorSemantics": "DIM-GAP-007 empty array on failure",
+      "runtimeReachability": "ACTIVE",
+      "evidence": [
+        "dimo-segments.service.ts",
+        "queries/driving-events.query.ts"
+      ],
+      "auditHeadSha": "017f163586967e4c8e7a16ba2af3f91c58453e87",
+      "epistemic_status": "CONFIRMED_FROM_CODE"
+    },
+    {
+      "id": "IMPL-Q017-EVENT-SUMMARY",
+      "type": "query_invocation",
+      "implementationId": "IMPL-Q017-EVENT-SUMMARY",
+      "queryId": "DIMO-Q017",
+      "registryName": "EventDataSummary",
+      "sourceSymbol": "buildEventDataSummaryQuery",
+      "graphqlRoot": "dataSummary",
+      "runtimeReachability": "ACTIVE",
+      "evidence": [
+        "dimo-segments.service.ts"
+      ],
+      "auditHeadSha": "017f163586967e4c8e7a16ba2af3f91c58453e87",
+      "epistemic_status": "CONFIRMED_FROM_CODE"
+    },
+    {
+      "id": "IMPL-Q018-DATA-SUMMARY",
+      "type": "query_invocation",
+      "implementationId": "IMPL-Q018-DATA-SUMMARY",
+      "queryId": "DIMO-Q018",
+      "registryName": "DataSummary",
+      "sourceSymbol": "buildDataSummaryQuery",
+      "graphqlRoot": "dataSummary",
+      "directCallers": [
+        "dimo-available-signals-preflight",
+        "reference-capture-preflight"
+      ],
+      "runtimeReachability": "ACTIVE",
+      "rateBudgetCategory": "diagnostic / preflight",
+      "evidence": [
+        "queries/data-summary.query.ts"
+      ],
+      "auditHeadSha": "017f163586967e4c8e7a16ba2af3f91c58453e87",
+      "epistemic_status": "CONFIRMED_FROM_CODE"
+    },
+    {
+      "id": "IMPL-Q019-AVAILABLE",
+      "type": "query_invocation",
+      "implementationId": "IMPL-Q019-AVAILABLE",
+      "queryId": "DIMO-Q019",
+      "registryName": "AvailableSignals",
+      "sourceSymbol": "buildAvailableSignalsQuery",
+      "graphqlRoot": "availableSignals",
+      "runtimeReachability": "ACTIVE",
+      "evidence": [
+        "queries/available-signals.query.ts"
+      ],
+      "auditHeadSha": "017f163586967e4c8e7a16ba2af3f91c58453e87",
+      "epistemic_status": "CONFIRMED_FROM_CODE"
+    },
+    {
+      "id": "IMPL-Q020-BATTERY-PREFLIGHT",
+      "type": "query_invocation",
+      "implementationId": "IMPL-Q020-BATTERY-PREFLIGHT",
+      "queryId": "DIMO-Q020",
+      "registryName": "BatteryCapabilityPreflight",
+      "sourceSymbol": "buildBatteryCapabilityPreflightQuery",
+      "graphqlRoot": "availableSignals+signalsLatest+segments",
+      "directCallers": [
+        "DimoTelemetryService.fetchBatteryCapabilityPreflightSnapshot",
+        "battery-capability-preflight.service"
+      ],
+      "runtimeReachability": "ACTIVE",
+      "evidence": [
+        "dimo-telemetry.service.ts:120-159"
+      ],
+      "auditHeadSha": "017f163586967e4c8e7a16ba2af3f91c58453e87",
+      "epistemic_status": "CONFIRMED_FROM_CODE"
+    },
+    {
+      "id": "IMPL-Q021-RECHARGE-PROBE",
+      "type": "query_invocation",
+      "implementationId": "IMPL-Q021-RECHARGE-PROBE",
+      "queryId": "DIMO-Q021",
+      "registryName": "RechargeSegmentsProbe",
+      "sourceSymbol": "buildRechargeSegmentsProbeQuery",
+      "graphqlRoot": "segments",
+      "directCallers": [
+        "DimoTelemetryService.probeRechargeSegments"
+      ],
+      "runtimeReachability": "ACTIVE",
+      "evidence": [
+        "dimo-telemetry.service.ts:162-196"
+      ],
+      "auditHeadSha": "017f163586967e4c8e7a16ba2af3f91c58453e87",
+      "epistemic_status": "CONFIRMED_FROM_CODE"
+    },
+    {
+      "id": "IMPL-Q022-TRIP-SEGMENTS",
+      "type": "query_invocation",
+      "implementationId": "IMPL-Q022-TRIP-SEGMENTS",
+      "queryId": "DIMO-Q022",
+      "registryName": "TripSegments",
+      "sourceSymbol": "buildTripSegmentsQuery",
+      "graphqlRoot": "segments",
+      "directCallers": [
+        "DimoSegmentsService.fetchTripSegments*"
+      ],
+      "indirectCallers": [
+        "Trip detection",
+        "Reconciliation"
+      ],
+      "runtimeReachability": "ACTIVE",
+      "evidence": [
+        "dimo-segments.service.ts:624+"
+      ],
+      "auditHeadSha": "017f163586967e4c8e7a16ba2af3f91c58453e87",
+      "epistemic_status": "CONFIRMED_FROM_CODE"
+    },
+    {
+      "id": "IMPL-Q023-REFUEL-SEG",
+      "type": "query_invocation",
+      "implementationId": "IMPL-Q023-REFUEL-SEG",
+      "queryId": "DIMO-Q023",
+      "registryName": "EnergyEventSegments refuel",
+      "sourceSymbol": "buildEnergyEventSegmentsQuery",
+      "graphqlRoot": "segments",
+      "indirectCallers": [
+        "Energy Events / KG-EED"
+      ],
+      "runtimeReachability": "ACTIVE",
+      "evidence": [
+        "queries/energy-event-segments.query.ts"
+      ],
+      "auditHeadSha": "017f163586967e4c8e7a16ba2af3f91c58453e87",
+      "epistemic_status": "CONFIRMED_FROM_CODE"
+    },
+    {
+      "id": "IMPL-Q025-RECHARGE-SEG",
+      "type": "query_invocation",
+      "implementationId": "IMPL-Q025-RECHARGE-SEG",
+      "queryId": "DIMO-Q025",
+      "registryName": "DimoRechargeSegments",
+      "sourceSymbol": "DimoRechargeSegmentsClient",
+      "graphqlRoot": "segments(mechanism:recharge)",
+      "runtimeReachability": "ACTIVE",
+      "evidence": [
+        "recharge-segments/"
+      ],
+      "auditHeadSha": "017f163586967e4c8e7a16ba2af3f91c58453e87",
+      "epistemic_status": "CONFIRMED_FROM_CODE"
+    },
+    {
+      "id": "IMPL-ADMIN-GRAPHQL",
+      "type": "query_invocation",
+      "implementationId": "IMPL-ADMIN-GRAPHQL",
+      "queryId": "N/A",
+      "registryName": "Admin arbitrary GraphQL",
+      "sourceSymbol": "DimoController.queryGraphQL",
+      "graphqlRoot": "user-supplied",
+      "runtimeReachability": "OPS_ONLY",
+      "authentication": "vehicleJwt",
+      "evidence": [
+        "dimo.controller.ts:363"
+      ],
+      "auditHeadSha": "017f163586967e4c8e7a16ba2af3f91c58453e87",
+      "epistemic_status": "CONFIRMED_FROM_CODE"
+    },
+    {
+      "id": "IMPL-DI-S4-DORMANT",
+      "type": "query_invocation",
+      "implementationId": "IMPL-DI-S4-DORMANT",
+      "queryId": "DIMO-Q009 context",
+      "registryName": "DI S4C queryGraphQL",
+      "sourceSymbol": "di-v0-s4c-dimo-ports",
+      "runtimeReachability": "FLAG_GATED",
+      "productionVerification": "Dormant module — no live caller per DI specs",
+      "evidence": [
+        "driving-intelligence/s4-runtime dormant specs"
+      ],
+      "auditHeadSha": "017f163586967e4c8e7a16ba2af3f91c58453e87",
+      "epistemic_status": "CONFIRMED_FROM_CODE"
+    },
+    {
+      "id": "IMPL-REF-CAPTURE",
+      "type": "query_invocation",
+      "implementationId": "IMPL-REF-CAPTURE",
+      "queryId": "DIMO-Q026/Q027",
+      "registryName": "Reference capture HF",
+      "sourceSymbol": "queryGraphQLWithIngressTiming",
+      "runtimeReachability": "FLAG_GATED",
+      "featureFlags": [
+        "reference capture feature flags"
+      ],
+      "evidence": [
+        "reference-capture-acquisition.service.ts"
+      ],
+      "auditHeadSha": "017f163586967e4c8e7a16ba2af3f91c58453e87",
+      "epistemic_status": "CONFIRMED_FROM_CODE"
+    }
+  ]
+}
