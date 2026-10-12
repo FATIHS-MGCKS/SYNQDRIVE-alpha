@@ -1,5 +1,6 @@
 import type { PartialTranslationDictionary } from '../dictionary-types';
 import { rentalLegacyGapNL } from './rental-legacy-gap.nl';
+import { masterPlatformOpsDiS4Nl } from './master.platformOps.diS4.nl';
 
 // Dutch translations - start with English as base, override with Dutch
 export const nl = {
@@ -109,4 +110,5 @@ export const nl = {
   'documents.vehicleDocuments': 'Voertuigdocumenten', 'documents.monthlyFixedCosts': 'Maandelijkse vaste kosten',
   'customerDetail.title': 'Klantdetails', 'customerDetail.customerDocuments': 'Klantdocumenten', 'customerDetail.customerAlerts': 'Klantwaarschuwingen', 'customerDetail.customerNotes': 'Klantnotities',   'customerDetail.drivingScore': 'Rijscore',
   ...rentalLegacyGapNL,
+  ...masterPlatformOpsDiS4Nl,
 } satisfies PartialTranslationDictionary;

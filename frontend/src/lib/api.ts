@@ -3600,6 +3600,10 @@ export const api = {
       schedulers: () => get<any>('/admin/ops/schedulers'),
       infrastructure: () => get<any>('/admin/ops/infrastructure-summary'),
       alerts: () => get<any>('/admin/ops/alerts'),
+      drivingIntelligenceS4: () =>
+        get<import('../master/platform-ops/types').PlatformOpsDiS4StatusDto>(
+          '/admin/ops/driving-intelligence-s4',
+        ),
       resilience: () => get<import('../master/platform-ops/types').PlatformOpsResilienceDto>('/admin/ops/resilience'),
       tools: () => get<any>('/admin/ops/tools'),
     },
