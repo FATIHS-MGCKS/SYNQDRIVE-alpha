@@ -1,10 +1,38 @@
 # Production VPS access and deployment — canonical runbook
 
-**Status:** CURRENT_CANONICAL (DSRG-04, updated R6 post–#1991 merge)  
+**Status:** CURRENT_CANONICAL (DSRG-04, R6 + deploy-standard doc fix)  
 **Repository baseline:** `main` includes merged [DSRG deployment consolidation #1991](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/1991) (R4.2 pre-source integrity + R5 SSH recovery)  
 **Audience:** Cursor Cloud Agents, operators, and any agent performing Production VPS read-only audit or authorized deploy.
 
-This document is the **single authoritative operational runbook** for SynqDrive Production on the **one Hostinger VPS**. It supersedes conflicting instructions that recommend `root` SSH, `mein-vps.internal`, routine Tailscale deploy, shallow-fetch `cloud-agent-deploy`, or bare `/opt/synqdrive/current/.../vps-deploy-release.sh` as the security deploy entry when VO5C pinning applies.
+---
+
+## 0. Operational standard (read first)
+
+| Item | Current binding rule |
+|------|----------------------|
+| **Production footprint** | Exactly **one** Hostinger VPS: **`srv1374778.hstgr.cloud`** — no second VPS, no staging VM, no alternate deploy target |
+| **SSH login** | **`synqdrive-admin`** — **never** `root@` for routine operations |
+| **Authoritative release path** | **VO5C pinned operator deployment** on the VPS using the **pinned executor** tree |
+| **SHA + CI** | Owner-authorized exact **`SYNQDRIVE_REQUESTED_DEPLOY_SHA`** (40 hex) with **successful CI** on that commit |
+| **Runner chain** | `vps-vo5c-first-security-deploy-preflight.sh` (optional) → `vps-vo5c-run-pinned-security-deploy.sh` → `exec bash` pinned `vps-deploy-release.sh` → rolling replicas **A** (`3001`) / **B** (`3002`) → health/readiness → **P4B16 attestation** |
+| **Cloud Agent dev environment** | Normal: build, test, PRs, read-only audit when separately authorized — **distinct** from production deploy |
+| **Cloud Agent VPS deploy bootstrap** | **`CLOUD_AGENT_DEPLOY_BOOTSTRAP_STATUS=NOT_INSTALLED_INACTIVE`** (R8B — fixed bootstrap **not** installed; further introduction **deferred**) |
+| **`cloud-agent-deploy.sh`** | **Not** an operational standard while bootstrap is inactive — **do not** auto-run from agents; fail-closed exit **44** is expected until install |
+
+**Agent stop rule:** If the VO5C operator path (pinned env + human authorization + runner) is unavailable, **stop and report**. Do not invent tar-stream, shallow-fetch, `/current` direct deploy, or agent-side authorization.
+
+**Documented production evidence (do not over-claim):**
+
+| Record | What is evidenced |
+|--------|-------------------|
+| [DSRG_02_PIN_REPROMOTION_2026-10-11.md](./evidence/DSRG_02_PIN_REPROMOTION_2026-10-11.md) | Authorized operator pin promotion on Production; `vps-vo5c-first-security-deploy-preflight.sh` **PREFLIGHT_PASS**; dual-replica scheduler roles on `:3001` / `:3002` |
+| Ops selftests @ pin SHA (same doc) | Pinned runner / rollback contract **TEST_EXECUTED** offline on promoted pin tree |
+| [GATE_A_READINESS.md](./evidence/GATE_A_READINESS.md) | Live pinned-runner **application** deploy proof — **NOT CLAIMED** in repository evidence |
+| [DSRG_SSH_RCA_CLOUD_AGENT_VPS_ACCESS_2026-10-12.md](./evidence/DSRG_SSH_RCA_CLOUD_AGENT_VPS_ACCESS_2026-10-12.md) | Failed Cloud Agent deploy attempt did **not** execute VPS release (SSH principal correction) |
+
+---
+
+This document is the **single authoritative operational runbook** for SynqDrive Production on the **one Hostinger VPS**. It supersedes conflicting instructions that recommend `root` SSH, `mein-vps.internal`, routine Tailscale deploy, treating inactive `cloud-agent-deploy` as ready, or bare `/opt/synqdrive/current/.../vps-deploy-release.sh` as the security deploy entry when VO5C pinning applies.
 
 **Related governance (read before deploy):**
 
@@ -66,16 +94,29 @@ Expected: `synqdrive-admin` and host identity `srv1374778` (or documented equiva
 
 ---
 
-## B. Cursor Cloud Agent — repository contract (post–#1991)
+## B. Cursor Cloud Agent — development vs production deploy
+
+### B.1 Development environment (active)
 
 | Step | Behavior |
 |------|----------|
-| Env | `CLOUD_AGENT_VPS_HOST=srv1374778.hstgr.cloud` (default in deploy/preflight scripts). **Do not** use `mein-vps.internal` for current Production. |
+| Purpose | Code, tests, PRs, MCP, local/CI validation — **no** implied production deploy |
+| Env | `CLOUD_AGENT_VPS_HOST=srv1374778.hstgr.cloud` for SSH **preflight/audit** when authorized |
 | User | `cloud_agent_ssh_user` maps `*hstgr.cloud*` + unset/`root` → **`synqdrive-admin`**. |
 | Tailscale | `cloud-agent-start.sh` connects **only if** `TAILSCALE_AUTH_KEY` is set (Path B). Path A omits it. |
-| Deploy entry | `bash .cursor/scripts/cloud-agent-deploy.sh` after `git push origin main` and **operator VPS session file** (see §D). |
+| SSH check | `bash .cursor/scripts/cloud-agent-ssh-preflight.sh` — connectivity only |
 
-### `cloud-agent-deploy.sh` flow (fail-closed)
+### B.2 Fixed VPS deploy bootstrap + `cloud-agent-deploy.sh` (NOT_INSTALLED_INACTIVE)
+
+| Field | Value |
+|-------|--------|
+| Status constant | `CLOUD_AGENT_DEPLOY_BOOTSTRAP_STATUS=NOT_INSTALLED_INACTIVE` |
+| R8B | Additional fixed bootstrap **not** installed; deliberate deferral |
+| VPS path (when installed) | `/opt/synqdrive/shared/vo5c-cloud-agent-pinned-deploy-bootstrap.sh` |
+| Agent rule | **Do not** describe or run `bash .cursor/scripts/cloud-agent-deploy.sh` as production-ready until owner installs bootstrap and updates this runbook |
+| Install procedure (historical / future) | [evidence/VO5C_CLOUD_AGENT_PINNED_BOOTSTRAP_INSTALL.md](./evidence/VO5C_CLOUD_AGENT_PINNED_BOOTSTRAP_INSTALL.md) — **inactive** until separately authorized |
+
+### B.3 `cloud-agent-deploy.sh` flow (repository design — inactive until bootstrap installed)
 
 1. Optional `cloud-agent-verify-vps.sh` (TCP/DNS; SSH auth when identity available).
 2. **SSH identity** + **trusted host key** + **`cloud_agent_ssh_auth_preflight`**.
@@ -126,7 +167,9 @@ curl -sS http://127.0.0.1:3002/api/v1/health
 
 Deployment requires **explicit owner authorization**, exact **40-character** `SYNQDRIVE_REQUESTED_DEPLOY_SHA`, and **accepted CI** on that SHA (aggregate gates **success** — cancelled is not pass).
 
-### D.1 Operator console (VPS)
+**Authoritative path today:** **§D.1 operator console** on `srv1374778.hstgr.cloud`. §D.2 Cloud Agent delegate path remains **blocked** until bootstrap install changes `CLOUD_AGENT_DEPLOY_BOOTSTRAP_STATUS`.
+
+### D.1 Operator console (VPS) — operational standard
 
 After human authorization:
 
@@ -145,11 +188,23 @@ bash "${SYNQDRIVE_PINNED_EXECUTOR_ROOT}/backend/scripts/ops/vps-vo5c-first-secur
 
 Runner: preflight → admission → security floor → **`exec bash`** pinned `vps-deploy-release.sh` → rolling replicas **A/B** (3001/3002) → **P4B16 attestation** → eligible VO5C rollback on promotion failure.
 
-### D.2 Cloud Agent (after `main` push)
+Post-deploy verification (operator):
+
+```bash
+curl -sS http://127.0.0.1:3001/api/v1/health
+curl -sS http://127.0.0.1:3002/api/v1/health
+curl -sS https://app.synqdrive.eu/api/v1/health
+```
+
+### D.2 Cloud Agent delegate deploy (inactive — bootstrap not installed)
+
+**Status:** `CLOUD_AGENT_DEPLOY_BOOTSTRAP_STATUS=NOT_INSTALLED_INACTIVE` — agents **must not** execute this path as standard operations.
+
+When bootstrap is **installed** (future, owner-authorized only):
 
 1. Operator creates **root-owned** session file `/opt/synqdrive/shared/vo5c-operator-deploy-session.env` (mode `600`, TTL-bound) — see `.cursor/skills/vps-deploy/SKILL.md`.
-2. Operator installs **fixed VPS bootstrap** once (separate authorized change) — see bootstrap install doc + readiness checklist.
-3. Agent runs `cloud-agent-ssh-preflight.sh` then `cloud-agent-deploy.sh`.
+2. Operator verifies bootstrap preflight on VPS.
+3. Human runs `cloud-agent-ssh-preflight.sh` then `cloud-agent-deploy.sh` from an authorized workstation/agent.
 
 Cloud Agent accepts **only** the VPS session file for delegate authorization (not shell `SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED` on the agent).
 
@@ -196,6 +251,7 @@ Deploy fails?
 | `root@srv1374778.hstgr.cloud` | **OUTDATED** — use `synqdrive-admin` |
 | `mein-vps.internal` / routine Tailscale deploy | **HISTORICAL Path B** — not current Production transport |
 | Shallow-fetch `vps-deploy-release.sh` via Cloud Agent | **REMOVED** (#1991) |
+| `cloud-agent-deploy.sh` while bootstrap not installed | **NOT_INSTALLED_INACTIVE** — do not use as deploy standard |
 | Bare `/opt/synqdrive/current/.../vps-deploy-release.sh` as security entry | **OUTDATED** when pin required |
 | Deploy without exact SHA + CI success | **FORBIDDEN** |
 
