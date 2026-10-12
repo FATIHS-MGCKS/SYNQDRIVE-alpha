@@ -3449,6 +3449,45 @@ export const de: Record<TranslationKey, string> = {
   'master.cv.offboard.uncertainAbandon': 'Diesen Versuch verwerfen',
   'master.cv.release.blockedBackend':
     'Ausbuchung ist deaktiviert, bis die Backend-Fähigkeit in Produktion verifiziert ist.',
+  'master.cv.release.offboardDisabledTitle': 'Ausbuchung vorübergehend nicht verfügbar (Release-Gate)',
+  'master.cv.release.offboardDisabledDescription':
+    'Die Ausbuchungsaktion ist sichtbar, aber blockiert, bis die Produktions-Release-Attestierung mit dem deployten Backend übereinstimmt. Fail-closed — Produktions-Flags nicht im UI aktivieren.',
+  'master.cv.release.gate.uiFlag': 'Master-Offboard-UI-Flag',
+  'master.cv.release.gate.routeVerified': 'Backend-Route verifiziert',
+  'master.cv.release.gate.attestation': 'Deploy-SHA entspricht attestiertem SHA',
+  'master.cv.release.gate.ok': 'OK',
+  'master.cv.release.gate.missing': 'Fehlt',
+  'master.cv.hub.title': 'Verbundene Fahrzeuge',
+  'master.cv.hub.description': 'Plattformweite Governance für Fahrzeug ↔ Organisation ↔ DIMO',
+  'master.cv.hub.tab.overview': 'Übersicht',
+  'master.cv.hub.tab.vehicles': 'Fahrzeuge',
+  'master.cv.hub.tab.import': 'Import',
+  'master.cv.addVehicle.action': 'Fahrzeug hinzufügen',
+  'master.cv.addVehicle.menuDismiss': 'Menü schließen',
+  'master.cv.addVehicle.importDimo': 'Bestehendes DIMO-Fahrzeug importieren',
+  'master.cv.addVehicle.importDimoHint': 'Nicht zugeordnetes DIMO-Fahrzeug einer Organisation zuweisen',
+  'master.cv.addVehicle.manual': 'Fahrzeug manuell anlegen',
+  'master.cv.addVehicle.manualHint': 'Ohne Telematik — nur Flottendatensatz',
+  'master.cv.addVehicle.advancedDimoRegister': 'Mit vollständigem Formular registrieren',
+  'master.cv.addVehicle.success': 'Fahrzeug erfolgreich registriert',
+  'master.cv.addVehicle.errorGeneric': 'Registrierung fehlgeschlagen',
+  'master.cv.addVehicle.errorDuplicateVin': 'Ein Fahrzeug mit dieser VIN existiert bereits in der Organisation',
+  'master.cv.addVehicle.dimoNotFound': 'DIMO-Fahrzeug konnte nicht geladen werden',
+  'master.cv.addVehicle.dimoLoadFailed': 'DIMO-Fahrzeuge konnten nicht geladen werden',
+  'master.cv.addVehicle.demoUnavailableTitle': 'Demo-Fahrzeuge',
+  'master.cv.addVehicle.demoUnavailableBody':
+    'Es gibt keine sichere eigenständige Demo-Fahrzeug-Onboarding-API. Abrechnung unterstützt DEMO-Ausschluss nur über billingBillableVehicleAssignment mit reasonCode DEMO — nicht über einen dedizierten Demo-Flotten-Create-Flow.',
+  'master.cv.addVehicle.manualBaselineTitle': 'Manueller Flottendatensatz',
+  'master.cv.addVehicle.manualBaselineHint':
+    'Stammdaten, Reifen, LV-Batterie und Brems-Baseline werden nach dem Anlegen über bestehende Org-APIs gespeichert. Es wird keine DIMO- oder Telematik-Verbindung erzeugt.',
+  'master.cv.addVehicle.manualServiceHistoryUnavailable':
+    'Service-Historie-Daten und High-Mobility-Aktivierung sind bei manueller Anlage nicht verfügbar — DIMO-Registrierung nutzen oder Fahrzeug nach dem Onboarding pflegen.',
+  'master.cv.addVehicle.partialBaselineTitle': 'Fahrzeug angelegt — einige Basisdaten wurden nicht gespeichert',
+  'master.cv.addVehicle.partialBaselineBody':
+    'Der Fahrzeugdatensatz existiert. Diese Bereiche konnten nicht gespeichert werden: {{areas}}. Bitte im Fahrzeugdetail ergänzen.',
+  'master.cv.addVehicle.partialBaselineAreaTires': 'Reifen',
+  'master.cv.addVehicle.partialBaselineAreaBattery': 'LV-Batterie',
+  'master.cv.addVehicle.partialBaselineAreaBrakes': 'Bremsen',
 
   // ─── Fleet Condition ───
   'fleetCondition.title': 'Flottenzustand',

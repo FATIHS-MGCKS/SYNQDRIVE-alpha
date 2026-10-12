@@ -3340,6 +3340,45 @@ export const en = {
   'master.cv.offboard.uncertainAbandon': 'Abandon this attempt',
   'master.cv.release.blockedBackend':
     'Offboard is disabled until production backend capability is verified.',
+  'master.cv.release.offboardDisabledTitle': 'Offboard temporarily unavailable (release gate)',
+  'master.cv.release.offboardDisabledDescription':
+    'The offboard action is visible but blocked until production release attestation matches the deployed backend. This is intentional fail-closed behavior — do not enable production flags from the UI.',
+  'master.cv.release.gate.uiFlag': 'Master offboard UI flag',
+  'master.cv.release.gate.routeVerified': 'Backend route verified marker',
+  'master.cv.release.gate.attestation': 'Deployed SHA matches attested SHA',
+  'master.cv.release.gate.ok': 'OK',
+  'master.cv.release.gate.missing': 'Missing',
+  'master.cv.hub.title': 'Connected vehicles',
+  'master.cv.hub.description': 'Platform-wide governance for vehicle ↔ organization ↔ DIMO',
+  'master.cv.hub.tab.overview': 'Overview',
+  'master.cv.hub.tab.vehicles': 'Vehicles',
+  'master.cv.hub.tab.import': 'Import',
+  'master.cv.addVehicle.action': 'Add vehicle',
+  'master.cv.addVehicle.menuDismiss': 'Close menu',
+  'master.cv.addVehicle.importDimo': 'Import existing DIMO vehicle',
+  'master.cv.addVehicle.importDimoHint': 'Assign an unregistered DIMO vehicle to an organization',
+  'master.cv.addVehicle.manual': 'Create vehicle manually',
+  'master.cv.addVehicle.manualHint': 'No telematics connection — fleet record only',
+  'master.cv.addVehicle.advancedDimoRegister': 'Register with full form',
+  'master.cv.addVehicle.success': 'Vehicle registered successfully',
+  'master.cv.addVehicle.errorGeneric': 'Registration failed',
+  'master.cv.addVehicle.errorDuplicateVin': 'A vehicle with this VIN already exists in the organization',
+  'master.cv.addVehicle.dimoNotFound': 'DIMO vehicle could not be loaded',
+  'master.cv.addVehicle.dimoLoadFailed': 'Failed to load DIMO vehicles',
+  'master.cv.addVehicle.demoUnavailableTitle': 'Demo vehicles',
+  'master.cv.addVehicle.demoUnavailableBody':
+    'No safe standalone demo-vehicle onboarding API exists. Billing supports DEMO assignment exclusion only via billingBillableVehicleAssignment with reasonCode DEMO — not via a dedicated demo fleet create flow.',
+  'master.cv.addVehicle.manualBaselineTitle': 'Manual fleet record',
+  'master.cv.addVehicle.manualBaselineHint':
+    'Vehicle core data, tires, LV battery, and brake baselines are saved after create via existing org-scoped APIs. No DIMO or telematics connection is created.',
+  'master.cv.addVehicle.manualServiceHistoryUnavailable':
+    'Service history dates and High Mobility activation are not available in manual create — use DIMO registration or update the vehicle after onboarding.',
+  'master.cv.addVehicle.partialBaselineTitle': 'Vehicle created — some baseline data was not saved',
+  'master.cv.addVehicle.partialBaselineBody':
+    'The vehicle record exists. These sections could not be saved: {{areas}}. Complete them from the vehicle detail view.',
+  'master.cv.addVehicle.partialBaselineAreaTires': 'tires',
+  'master.cv.addVehicle.partialBaselineAreaBattery': 'LV battery',
+  'master.cv.addVehicle.partialBaselineAreaBrakes': 'brakes',
 
   // ─── Fleet Condition ───
   'fleetCondition.title': 'Fleet Condition',

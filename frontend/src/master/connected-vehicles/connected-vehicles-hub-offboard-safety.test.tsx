@@ -65,8 +65,18 @@ vi.mock('./useConnectedVehiclesOperational', async (importOriginal) => {
   };
 });
 
-vi.mock('./vo5c-release-gates', () => ({
-  isMasterOffboardUiEnabled: () => true,
+vi.mock('./vo5c-release-gates', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./vo5c-release-gates')>();
+  return { ...actual, isMasterOffboardUiEnabled: () => true };
+});
+
+vi.mock('../../context/AppThemeContext', () => ({
+  useAppTheme: () => ({
+    isDarkMode: false,
+    preference: 'light' as const,
+    setThemePreference: vi.fn(),
+    cycleThemePreference: vi.fn(),
+  }),
 }));
 
 async function confirmOffboardFromDrawer() {

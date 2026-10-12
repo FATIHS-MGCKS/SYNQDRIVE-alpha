@@ -20,7 +20,7 @@ vi.mock('./useConnectedVehiclesOperational', () => ({
 }));
 
 describe('offboard release flag UI', () => {
-  it('hides offboard action when flag disabled', async () => {
+  it('shows release gate panel instead of offboard action when flag disabled', async () => {
     const container = document.createElement('div');
     document.body.appendChild(container);
     const root = createRoot(container);
@@ -40,10 +40,8 @@ describe('offboard release flag UI', () => {
       );
     });
 
-    const offboardBtn = Array.from(container.querySelectorAll('button')).find((b) =>
-      b.textContent?.includes('Remove from active fleet'),
-    );
-    expect(offboardBtn).toBeUndefined();
+    expect(document.body.querySelector('[data-testid="offboard-release-gate-panel"]')).toBeTruthy();
+    expect(document.body.querySelector('[data-testid="offboard-action-button"]')).toBeNull();
 
     root.unmount();
     container.remove();
