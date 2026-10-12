@@ -17,6 +17,7 @@ import {
 import { PlatformOpsAlertmanagerService } from './platform-ops-alertmanager.service';
 import { PlatformOpsInfrastructureService } from './platform-ops-infrastructure.service';
 import { PlatformOpsService } from './platform-ops.service';
+import { PlatformOpsDiS4Service } from './platform-ops-di-s4.service';
 import { DimoModule } from '../dimo/dimo.module';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
 import { HealthModule } from '../health/health.module';
@@ -59,6 +60,7 @@ import { DimoR9WebhookHealthService } from './dimo-r9-webhook-health/dimo-r9-web
     PlatformOpsService,
     PlatformOpsAlertmanagerService,
     PlatformOpsInfrastructureService,
+    PlatformOpsDiS4Service,
     BatteryV2RestSessionFeatureInspectionAdminService,
     DimoR9WebhookHealthService,
   ],

@@ -179,6 +179,11 @@ export class PlatformAdminController {
     return this.platformOpsService.getAlerts();
   }
 
+  @Get('ops/driving-intelligence-s4')
+  async getOpsDrivingIntelligenceS4() {
+    return this.platformOpsService.getDrivingIntelligenceS4Status();
+  }
+
   @Get('ops/resilience')
   async getOpsResilience() {
     return this.platformOpsService.getResilience();

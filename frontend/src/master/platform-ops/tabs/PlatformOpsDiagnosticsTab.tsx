@@ -17,7 +17,23 @@ import { formatRelativeDe } from '../platform-ops.utils';
 import { api } from '../../../lib/api';
 import { SystemMonitoringView } from '../../components/SystemMonitoringView';
 import { useLanguage } from '../../../i18n/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations/en';
 import { DimoWebhooksDiagnosticsPanel } from './DimoWebhooksDiagnosticsPanel';
+import { DrivingIntelligenceS4DiagnosticsPanel } from './DrivingIntelligenceS4DiagnosticsPanel';
+
+const DIAG_TAB_IDS = [
+  { id: 'alerts', labelKey: null as string | null, labelDe: 'Alarme' },
+  { id: 'driving-intelligence-s4', labelKey: 'master.platformOps.diS4.tab' as TranslationKey, labelDe: null },
+  {
+    id: 'dimo-webhooks',
+    labelKey: 'master.platformOps.dimoWebhooks.panelTitle' as TranslationKey,
+    labelDe: null,
+  },
+  { id: 'poll-logs', labelKey: null, labelDe: 'Abfrage-Protokolle' },
+  { id: 'token-health', labelKey: null, labelDe: 'Token-Status' },
+  { id: 'communication', labelKey: null, labelDe: 'Communication' },
+  { id: 'tools', labelKey: null, labelDe: 'Tools' },
+] as const;
 
 export function PlatformOpsDiagnosticsTabView({
   activeTab,
@@ -27,14 +43,10 @@ export function PlatformOpsDiagnosticsTabView({
   onTabChange: (tab: PlatformOpsDiagnosticsTab) => void;
 }) {
   const { t } = useLanguage();
-  const diagTabs = [
-    { id: 'alerts' as const, label: 'Alarme' },
-    { id: 'poll-logs' as const, label: 'Abfrage-Protokolle' },
-    { id: 'token-health' as const, label: 'Token-Status' },
-    { id: 'communication' as const, label: 'Communication' },
-    { id: 'dimo-webhooks' as const, label: t('master.platformOps.dimoWebhooks.panelTitle') },
-    { id: 'tools' as const, label: 'Tools' },
-  ];
+  const diagTabs = DIAG_TAB_IDS.map((tab) => ({
+    id: tab.id,
+    label: tab.labelKey ? t(tab.labelKey as TranslationKey) : (tab.labelDe ?? tab.id),
+  }));
 
   return (
     <div className="space-y-4">
@@ -54,6 +66,7 @@ export function PlatformOpsDiagnosticsTabView({
       </div>
 
       {activeTab === 'alerts' && <AlertsPanel />}
+      {activeTab === 'driving-intelligence-s4' && <DrivingIntelligenceS4DiagnosticsPanel />}
       {activeTab === 'communication' && <CommunicationHealthPanel />}
       {activeTab === 'dimo-webhooks' && <DimoWebhooksDiagnosticsPanel />}
       {(activeTab === 'poll-logs' || activeTab === 'token-health') && (

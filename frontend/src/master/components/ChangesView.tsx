@@ -54,6 +54,23 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-10-12T06:20:00.000Z',
   },
   {
+    id: 'exp021-s4p7-master-admin-s4-monitoring-2026-10-12',
+    version: '4.9.2240',
+    title: 'EXP021-S4P7 — Master Admin Driving Intelligence S4 diagnostics panel',
+    summary: [
+      'Master-admin API GET /admin/ops/driving-intelligence-s4 aggregates DB kill state, S4 flags, Prometheus rule health (15), DIMO budget per replica, scheduler leader, and Alertmanager DiV0S4 alerts.',
+      'Platform Ops → Diagnostics tab “Driving Intelligence S4” surfaces operational status (DISABLED/HEALTHY/WARNING/CRITICAL/UNKNOWN) without claiming HEALTHY on stale/missing Prometheus data.',
+      'Documents IamSeedAdminEnabledInProduction cause/impact/remediation read-only in-panel.',
+    ],
+    reason: 'Unattended S4 production safety requires a single Master Admin operational view without new monitoring infrastructure.',
+    previousBehavior: 'S4 rule health and operational gauges were only visible via raw Prometheus/Alertmanager; Platform Ops alarms lacked a dedicated DI S4 panel.',
+    details:
+      'platform-ops-di-s4.service.ts, PlatformOpsDiagnosticsTab.tsx, DrivingIntelligenceS4DiagnosticsPanel.tsx',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-10-12T05:45:00.000Z',
+  },
+  {
     id: 'battery-v2-g5c-n2-rest-session-opening-liveness-2026-10-11',
     version: '4.9.2238',
     title: 'Battery V2 G5C-N2 — finalized-trip REST session opening vs trip-phase telemetry',

@@ -1,6 +1,7 @@
 import type { PartialTranslationDictionary } from '../dictionary-types';
 import { rentalLegacyGapFR } from './rental-legacy-gap.fr';
 import { dimoWebhookHealthFr } from './dimo-webhook-health.fr';
+import { masterPlatformOpsDiS4Fr } from './master.platformOps.diS4.fr';
 
 export const fr = {
   'dashboard.welcomeBack': 'Bon retour, {name}',
@@ -851,4 +852,5 @@ export const fr = {
   'support.replyPlaceholder': 'Tapez votre reponse...',
   ...rentalLegacyGapFR,
   ...dimoWebhookHealthFr,
+  ...masterPlatformOpsDiS4Fr,
 } satisfies PartialTranslationDictionary;

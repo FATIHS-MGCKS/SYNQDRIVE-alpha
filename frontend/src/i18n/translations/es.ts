@@ -1,6 +1,7 @@
 import type { PartialTranslationDictionary } from '../dictionary-types';
 import { rentalLegacyGapES } from './rental-legacy-gap.es';
 import { dimoWebhookHealthEs } from './dimo-webhook-health.es';
+import { masterPlatformOpsDiS4Es } from './master.platformOps.diS4.es';
 
 export const es = {
   'dashboard.welcomeBack': 'Bienvenido de nuevo, {name}',
@@ -110,4 +111,5 @@ export const es = {
   'customerDetail.title': 'Detalles del cliente', 'customerDetail.customerDocuments': 'Documentos del cliente', 'customerDetail.customerAlerts': 'Alertas del cliente', 'customerDetail.customerNotes': 'Notas del cliente',   'customerDetail.drivingScore': 'Puntuacion de conduccion',
   ...rentalLegacyGapES,
   ...dimoWebhookHealthEs,
+  ...masterPlatformOpsDiS4Es,
 } satisfies PartialTranslationDictionary;
