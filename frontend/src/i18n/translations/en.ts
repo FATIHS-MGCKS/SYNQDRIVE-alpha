@@ -3,6 +3,7 @@ import { legalDocumentsEn } from './legal-documents.en';
 import { settingsAdminEn } from './settings-admin.en';
 import { stationsTabEn } from './stations-tab.en';
 import { voiceAssistantEn } from './voice-assistant.en';
+import { dimoWebhookHealthEn } from './dimo-webhook-health.en';
 import { supportEn } from './support.en';
 import { finesEn } from './fines.en';
 import { insurancesEn } from './insurances.en';
@@ -5846,6 +5847,7 @@ export const en = {
   ...automationWorkflowEn,
   ...stationsTabEn,
   ...voiceAssistantEn,
+  ...dimoWebhookHealthEn,
   ...whatsappEn,
   ...supportEn,
   ...supportOpsEn,

@@ -1,5 +1,6 @@
 import type { PartialTranslationDictionary } from '../dictionary-types';
 import { rentalLegacyGapPL } from './rental-legacy-gap.pl';
+import { dimoWebhookHealthPl } from './dimo-webhook-health.pl';
 import { masterPlatformOpsDiS4Pl } from './master.platformOps.diS4.pl';
 
 export const pl = {
@@ -109,5 +110,6 @@ export const pl = {
   'documents.vehicleDocuments': 'Dokumenty pojazdu', 'documents.monthlyFixedCosts': 'Miesieczne koszty stale',
   'customerDetail.title': 'Szczegoly klienta', 'customerDetail.customerDocuments': 'Dokumenty klienta', 'customerDetail.customerAlerts': 'Alerty klienta', 'customerDetail.customerNotes': 'Notatki klienta',   'customerDetail.drivingScore': 'Wynik jazdy',
   ...rentalLegacyGapPL,
+  ...dimoWebhookHealthPl,
   ...masterPlatformOpsDiS4Pl,
 } satisfies PartialTranslationDictionary;

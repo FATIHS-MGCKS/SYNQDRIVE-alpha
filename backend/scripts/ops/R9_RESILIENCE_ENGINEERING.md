@@ -46,3 +46,9 @@ See `PR_ANCESTRY_R9_RESILIENCE.md` for PR overlap / R24 authority.
 1. Human merge #1985 after CI green + review
 2. Staging VO5C drill with webhook-safe orchestrator
 3. Separate approval: VPS Phase-1 swap + optional read-only monitor cron
+
+## R3.1 Master Admin monitoring (engineering)
+
+- API: `GET /api/v1/admin/ops/dimo-webhook-health` (`?refresh=1` manual, rate-limited)
+- UI: Plattform & Betrieb → Diagnostik → **DIMO Webhooks**
+- Evaluation: `r9-r25-circuit-monitor.lib.mjs` via server bridge (cohort override via env `DIMO_R9_AUTHORIZED_COHORT_TOKEN_IDS` / `DIMO_R9_EXCLUDED_TOKEN_IDS`)

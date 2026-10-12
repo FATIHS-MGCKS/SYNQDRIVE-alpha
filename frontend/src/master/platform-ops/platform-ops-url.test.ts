@@ -19,4 +19,20 @@ describe('platform-ops-url', () => {
     expect(loc.section).toBe('incidents');
     expect(loc.incidentId).toBe('inc-1');
   });
+
+  it('reads dimo-webhooks diagnostics tab', () => {
+    const loc = readPlatformOpsLocation(
+      '?view=platform-ops&platformOps=diagnostics&platformOpsTab=dimo-webhooks',
+    );
+    expect(loc.section).toBe('diagnostics');
+    expect(loc.diagnosticsTab).toBe('dimo-webhooks');
+  });
+
+  it('reads driving-intelligence-s4 diagnostics tab', () => {
+    const loc = readPlatformOpsLocation(
+      '?view=platform-ops&platformOps=diagnostics&platformOpsTab=driving-intelligence-s4',
+    );
+    expect(loc.section).toBe('diagnostics');
+    expect(loc.diagnosticsTab).toBe('driving-intelligence-s4');
+  });
 });

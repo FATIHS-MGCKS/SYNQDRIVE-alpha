@@ -18,11 +18,17 @@ import { api } from '../../../lib/api';
 import { SystemMonitoringView } from '../../components/SystemMonitoringView';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import type { TranslationKey } from '../../../i18n/translations/en';
+import { DimoWebhooksDiagnosticsPanel } from './DimoWebhooksDiagnosticsPanel';
 import { DrivingIntelligenceS4DiagnosticsPanel } from './DrivingIntelligenceS4DiagnosticsPanel';
 
 const DIAG_TAB_IDS = [
   { id: 'alerts', labelKey: null as string | null, labelDe: 'Alarme' },
   { id: 'driving-intelligence-s4', labelKey: 'master.platformOps.diS4.tab' as TranslationKey, labelDe: null },
+  {
+    id: 'dimo-webhooks',
+    labelKey: 'master.platformOps.dimoWebhooks.panelTitle' as TranslationKey,
+    labelDe: null,
+  },
   { id: 'poll-logs', labelKey: null, labelDe: 'Abfrage-Protokolle' },
   { id: 'token-health', labelKey: null, labelDe: 'Token-Status' },
   { id: 'communication', labelKey: null, labelDe: 'Communication' },
@@ -62,6 +68,7 @@ export function PlatformOpsDiagnosticsTabView({
       {activeTab === 'alerts' && <AlertsPanel />}
       {activeTab === 'driving-intelligence-s4' && <DrivingIntelligenceS4DiagnosticsPanel />}
       {activeTab === 'communication' && <CommunicationHealthPanel />}
+      {activeTab === 'dimo-webhooks' && <DimoWebhooksDiagnosticsPanel />}
       {(activeTab === 'poll-logs' || activeTab === 'token-health') && (
         <SystemMonitoringView embedded initialFocus={activeTab === 'token-health' ? 'tokens' : 'poll-logs'} />
       )}

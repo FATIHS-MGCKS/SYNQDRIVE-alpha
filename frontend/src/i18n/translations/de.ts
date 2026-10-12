@@ -5,6 +5,7 @@ import { legalDocumentsDe } from './legal-documents.de';
 import { settingsAdminDe } from './settings-admin.de';
 import { stationsTabDe } from './stations-tab.de';
 import { voiceAssistantDe } from './voice-assistant.de';
+import { dimoWebhookHealthDe } from './dimo-webhook-health.de';
 import { supportDe } from './support.de';
 import { finesDe } from './fines.de';
 import { insurancesDe } from './insurances.de';
@@ -5856,6 +5857,7 @@ export const de: Record<TranslationKey, string> = {
   ...automationWorkflowDe,
   ...stationsTabDe,
   ...voiceAssistantDe,
+  ...dimoWebhookHealthDe,
   ...whatsappDe,
   ...supportDe,
   ...supportOpsDe,

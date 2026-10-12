@@ -16,6 +16,7 @@ export type PlatformOpsDiagnosticsTab =
   | 'token-health'
   | 'communication'
   | 'driving-intelligence-s4'
+  | 'dimo-webhooks'
   | 'tools';
 
 export type PlatformOpsDiS4ProcessingState = 'DISABLED' | 'ACTIVE' | 'UNKNOWN';
