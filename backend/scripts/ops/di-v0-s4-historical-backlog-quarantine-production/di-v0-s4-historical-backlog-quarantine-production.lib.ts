@@ -136,8 +136,30 @@ export function validateManifestShape(manifest: HistoricalBacklogManifest): Hist
   return failures;
 }
 
+const FAILURE_REASON_RE = /^[A-Z0-9_]{1,128}$/;
+
+/** DB `di_v0_s4_wi_failure_reason_ck` allows only A-Z, 0-9, underscore (no colons). */
+export function quarantineFailureReasonForActor(actor: string): string {
+  const normalized = actor
+    .trim()
+    .replace(/[^A-Za-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .toUpperCase();
+  const marker = normalized
+    ? `${DI_S4_HISTORICAL_BACKLOG_QUARANTINE_MARKER}_${normalized}`
+    : DI_S4_HISTORICAL_BACKLOG_QUARANTINE_MARKER;
+  if (!FAILURE_REASON_RE.test(marker)) {
+    throw new Error(`quarantine failure_reason exceeds DB format: ${marker}`);
+  }
+  return marker;
+}
+
 export function hasQuarantineMarker(failureReason: string | null): boolean {
-  return (failureReason ?? '').startsWith(`${DI_S4_HISTORICAL_BACKLOG_QUARANTINE_MARKER}:`);
+  if (!failureReason) return false;
+  return (
+    failureReason === DI_S4_HISTORICAL_BACKLOG_QUARANTINE_MARKER ||
+    failureReason.startsWith(`${DI_S4_HISTORICAL_BACKLOG_QUARANTINE_MARKER}_`)
+  );
 }
 
 /** Mirrors T02_CLAIM candidate eligibility in `DiV0S4WorkItemRepository.claim`. */
@@ -401,11 +423,22 @@ export async function countClaimableWorkItemsForManifest(
   }).length;
 }
 
+export interface HistoricalBacklogQuarantineApplyOptions {
+  ack: string | undefined;
+  /** Postgres integration only: run after each successful supersede inside the open transaction. */
+  integrationHooks?: {
+    afterSupersededWorkItemId?: (
+      tx: HistoricalBacklogQuarantineTxClient,
+      workItemId: string,
+    ) => Promise<void>;
+  };
+}
+
 export async function applyHistoricalBacklogQuarantineInTransaction(
   tx: HistoricalBacklogQuarantineTxClient,
   manifest: HistoricalBacklogManifest,
   audit: { actor: string; reason: string },
-  options: { ack: string | undefined },
+  options: HistoricalBacklogQuarantineApplyOptions,
 ): Promise<QuarantineApplyResult> {
   await lockGlobalKillMustBeKilled(tx);
   await assertPersistencePinsUnchanged(tx, manifest);
@@ -426,7 +459,7 @@ export async function applyHistoricalBacklogQuarantineInTransaction(
   const sortedIds = [...manifest.quarantineWorkItemIds].sort();
   const supersededIds: string[] = [];
   const alreadySupersededIds: string[] = [];
-  const marker = `${DI_S4_HISTORICAL_BACKLOG_QUARANTINE_MARKER}:${audit.actor}`;
+  const marker = quarantineFailureReasonForActor(audit.actor);
 
   if (sortedIds.length > 0) {
     await tx.$queryRaw`
@@ -486,6 +519,9 @@ export async function applyHistoricalBacklogQuarantineInTransaction(
       WHERE id = ${id} AND status = 'PENDING'`;
     if (updated !== 1) throw new HistoricalBacklogQuarantineAbortError(['CONDITIONAL_UPDATE_LOST']);
     supersededIds.push(id);
+    if (options.integrationHooks?.afterSupersededWorkItemId) {
+      await options.integrationHooks.afterSupersededWorkItemId(tx, id);
+    }
   }
 
   const postGlobal = await loadAllWorkItemSnapshots(tx);
@@ -500,7 +536,7 @@ export async function applyHistoricalBacklogQuarantine(
   prisma: Pick<import('@prisma/client').PrismaClient, '$transaction'>,
   manifest: HistoricalBacklogManifest,
   audit: { actor: string; reason: string },
-  options: { ack: string | undefined },
+  options: HistoricalBacklogQuarantineApplyOptions,
 ): Promise<QuarantineApplyResult> {
   try {
     return await prisma.$transaction((tx) =>

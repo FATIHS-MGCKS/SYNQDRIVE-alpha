@@ -106,7 +106,7 @@ describe('historical backlog quarantine lib', () => {
       ...pending.slice(1).map((id) =>
         row(id, 'SUPERSEDED', {
           supersededReason: 'OPERATOR',
-          failureReason: `${DI_S4_HISTORICAL_BACKLOG_QUARANTINE_MARKER}:op`,
+          failureReason: `${DI_S4_HISTORICAL_BACKLOG_QUARANTINE_MARKER}_OP`,
         }),
       ),
       row(completed, 'COMPLETED', { vehicleId: V1 }),
@@ -117,7 +117,7 @@ describe('historical backlog quarantine lib', () => {
       scopedRows: globalRows,
     });
     expect(safety.failures).toContain('QUARANTINE_MARKER_DRIFT');
-    expect(hasQuarantineMarker(`${DI_S4_HISTORICAL_BACKLOG_QUARANTINE_MARKER}:op`)).toBe(true);
+    expect(hasQuarantineMarker(`${DI_S4_HISTORICAL_BACKLOG_QUARANTINE_MARKER}_OP`)).toBe(true);
   });
 
   it('expired LEASED row is claimable and must be listed or superseded', () => {

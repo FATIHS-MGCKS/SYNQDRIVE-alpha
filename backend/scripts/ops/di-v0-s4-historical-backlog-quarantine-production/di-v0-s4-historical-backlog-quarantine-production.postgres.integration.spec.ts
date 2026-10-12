@@ -15,8 +15,9 @@ import { DiV0S4WorkItemRepository } from '../../../src/modules/vehicle-intellige
 import {
   applyHistoricalBacklogQuarantine,
   DI_S4_HISTORICAL_BACKLOG_QUARANTINE_ACCEPTED_ACK,
-  DI_S4_HISTORICAL_BACKLOG_QUARANTINE_MARKER,
+  hasQuarantineMarker,
   loadAllWorkItemSnapshots,
+  quarantineFailureReasonForActor,
   type HistoricalBacklogManifest,
 } from './di-v0-s4-historical-backlog-quarantine-production.lib';
 
@@ -85,24 +86,14 @@ describePg('S4P9B historical backlog quarantine (postgres)', () => {
     return created.workItemId;
   }
 
-  function orderedPair(a: string, b: string): { first: string; second: string } {
-    return a.localeCompare(b) < 0 ? { first: a, second: b } : { first: b, second: a };
-  }
-
   it('rolls back partial supersession on late failure', async () => {
     const tenant = await registerTenant();
     const tripA = tenant.tripId;
     const tripB = await addCompletedTripForVehicle(tenant);
     const idA = await createPrimaryWorkItem(tenant, tripA);
     const idB = await createPrimaryWorkItem(tenant, tripB);
-    const { first, second } = orderedPair(idA, idB);
 
     await setKillState(prisma, 'KILLED');
-    await prisma.$executeRaw`
-      UPDATE di_v0_s4_work_items
-      SET lease_owner = 'worker-late-fail',
-          lease_expires_at = clock_timestamp() + interval '1 hour'
-      WHERE id = ${second}`;
 
     const manifest: HistoricalBacklogManifest = {
       quarantineWorkItemIds: [idA, idB],
@@ -116,20 +107,34 @@ describePg('S4P9B historical backlog quarantine (postgres)', () => {
       prisma,
       manifest,
       { actor: 'op', reason: 'late-fail' },
-      { ack: DI_S4_HISTORICAL_BACKLOG_QUARANTINE_ACCEPTED_ACK },
+      {
+        ack: DI_S4_HISTORICAL_BACKLOG_QUARANTINE_ACCEPTED_ACK,
+        integrationHooks: {
+          afterSupersededWorkItemId: async (_tx, supersededId) => {
+            const tripC = await addCompletedTripForVehicle(tenant);
+            await prisma.$executeRaw`
+              INSERT INTO di_v0_s4_work_items (
+                id, organization_id, vehicle_id, trip_id, source_family, run_purpose, purpose_discriminator,
+                boundary_fingerprint, boundary_occurrence, pipeline_version_key, pipeline_version_manifest,
+                status, lease_epoch, attempt_count, next_attempt_at, settlement_anchor_at, eligible_at
+              )
+              SELECT gen_random_uuid()::text, organization_id, vehicle_id, ${tripC}::text, source_family, run_purpose,
+                purpose_discriminator, boundary_fingerprint, boundary_occurrence, pipeline_version_key,
+                pipeline_version_manifest, 'PENDING', 0, 0, next_attempt_at, settlement_anchor_at, eligible_at
+              FROM di_v0_s4_work_items WHERE id = ${supersededId}::text`;
+          },
+        },
+      },
     );
     expect(result.outcome).toBe('REFUSED');
     if (result.outcome === 'REFUSED') {
-      expect(result.failures).toContain('WORK_ITEM_LEASE_ACTIVE');
+      expect(result.failures).toContain('NEW_WORK_ITEM_DURING_TRANSACTION');
     }
 
     const rows = await prisma.$queryRaw<Array<{ id: string; status: string }>>`
       SELECT id, status FROM di_v0_s4_work_items WHERE id = ANY(${[idA, idB]}::text[]) ORDER BY id`;
     expect(rows).toHaveLength(2);
     expect(rows.every((r) => r.status === 'PENDING')).toBe(true);
-
-    const firstRow = rows.find((r) => r.id === first);
-    expect(firstRow?.status).toBe('PENDING');
   });
 
   it('concurrent claim loses race to quarantine transaction', async () => {
@@ -166,6 +171,7 @@ describePg('S4P9B historical backlog quarantine (postgres)', () => {
     const snapshots = await loadAllWorkItemSnapshots(prisma);
     const row = snapshots.find((r) => r.id === workId);
     expect(row?.status).toBe('SUPERSEDED');
-    expect(row?.failureReason?.startsWith(DI_S4_HISTORICAL_BACKLOG_QUARANTINE_MARKER)).toBe(true);
+    expect(hasQuarantineMarker(row?.failureReason ?? null)).toBe(true);
+    expect(row?.failureReason).toBe(quarantineFailureReasonForActor('op'));
   });
 });
