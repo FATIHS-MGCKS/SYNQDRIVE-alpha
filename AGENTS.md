@@ -184,9 +184,9 @@ Build-time-only credentials (private npm registries) → **Build Secret** (not u
 
 | Name | Cursor type | Path A (public SSH) | Path B (Tailscale) |
 |------|-------------|---------------------|---------------------|
-| `CLOUD_AGENT_SSH_PRIVATE_KEY` | **Runtime Secret** | Required | Required |
+| `CLOUD_AGENT_SSH_PRIVATE_KEY` | **Runtime Secret** | Optional when the environment image already has `~/.ssh/id_ed25519`; required on fresh agents without a baked key | Required |
 | `CLOUD_AGENT_VPS_HOST` | Environment Variable | `srv1374778.hstgr.cloud` | `mein-vps.internal` |
-| `CLOUD_AGENT_SSH_USER` | Environment Variable | `root` (optional) | `root` (optional) |
+| `CLOUD_AGENT_SSH_USER` | Environment Variable | Omit or `synqdrive-admin` (Hostinger disables root SSH) | `root` (optional) |
 | `TAILSCALE_AUTH_KEY` | **Runtime Secret** | **omit** | Required |
 | `DATABASE_URL` | **Runtime Secret** | omit (unless needed) | Optional (prod DB via tailnet) |
 | `CLERK_SECRET_KEY`, `CLERK_PUBLISHABLE_KEY` | Runtime Secret | As needed for task | As needed |
@@ -227,8 +227,9 @@ On boot, `cloud-agent-start.sh`:
 Manual verification inside a Cloud Agent shell:
 
 ```bash
+bash .cursor/scripts/cloud-agent-ssh-preflight.sh
 bash .cursor/scripts/cloud-agent-verify-vps.sh
-ssh ${CLOUD_AGENT_SSH_USER:-root}@${CLOUD_AGENT_VPS_HOST:-srv1374778.hstgr.cloud} 'hostname'
+ssh synqdrive-admin@${CLOUD_AGENT_VPS_HOST:-srv1374778.hstgr.cloud} 'hostname'
 ```
 
 Path B only — HTTP(S) via Tailscale proxy:
@@ -245,9 +246,9 @@ No Tailscale account or auth key required. Same deploy script as path B.
 
 | Name | Type | Value |
 |------|------|-------|
-| `CLOUD_AGENT_SSH_PRIVATE_KEY` | Runtime Secret | Your `id_ed25519` private key (full PEM) |
+| `CLOUD_AGENT_SSH_PRIVATE_KEY` | Runtime Secret | Your `id_ed25519` private key (full PEM) — omit only if the agent image already ships the authorized key |
 | `CLOUD_AGENT_VPS_HOST` | Environment Variable | `srv1374778.hstgr.cloud` |
-| `CLOUD_AGENT_SSH_USER` | Environment Variable | `root` |
+| `CLOUD_AGENT_SSH_USER` | Environment Variable | `synqdrive-admin` (or omit; scripts map Hostinger hosts automatically) |
 
 **Do not add** `TAILSCALE_AUTH_KEY`.
 
@@ -258,7 +259,7 @@ No Tailscale account or auth key required. Same deploy script as path B.
 **Test in Cloud Agent terminal:**
 
 ```bash
-ssh -o BatchMode=yes root@srv1374778.hstgr.cloud hostname
+bash .cursor/scripts/cloud-agent-ssh-preflight.sh
 bash .cursor/scripts/cloud-agent-deploy.sh
 ```
 

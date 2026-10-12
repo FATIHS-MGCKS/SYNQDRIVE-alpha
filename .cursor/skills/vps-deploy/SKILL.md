@@ -20,7 +20,7 @@ User says: deploy, commit and deploy, release, production, VPS.
 |------|------|
 | `CLOUD_AGENT_SSH_PRIVATE_KEY` | Runtime Secret |
 | `CLOUD_AGENT_VPS_HOST` | Environment Variable → `srv1374778.hstgr.cloud` |
-| `CLOUD_AGENT_SSH_USER` | Environment Variable → `root` |
+| `CLOUD_AGENT_SSH_USER` | Environment Variable → `synqdrive-admin` on Hostinger (or omit) |
 
 Do **not** add `TAILSCALE_AUTH_KEY`.
 
