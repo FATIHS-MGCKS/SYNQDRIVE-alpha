@@ -6,6 +6,7 @@ import { BillingAdminService } from '../billing/billing-admin.service';
 import { PlatformResilienceStatusService, PlatformConnectivitySummaryService } from './platform-dashboard.service';
 import { PlatformOpsAlertmanagerService } from './platform-ops-alertmanager.service';
 import { PlatformOpsInfrastructureService } from './platform-ops-infrastructure.service';
+import { PlatformOpsDiS4Service } from './platform-ops-di-s4.service';
 
 describe('PlatformOpsService', () => {
   let service: PlatformOpsService;
@@ -48,6 +49,12 @@ describe('PlatformOpsService', () => {
     getAlertGroups: jest.fn().mockResolvedValue([]),
     getAlertmanagerUrl: jest.fn().mockReturnValue('http://127.0.0.1:9093'),
   };
+  const diS4 = {
+    getStatus: jest.fn().mockResolvedValue({
+      generatedAt: new Date().toISOString(),
+      operationalStatus: 'UNKNOWN',
+    }),
+  };
   const infrastructure = {
     getSummary: jest.fn().mockResolvedValue({
       generatedAt: new Date().toISOString(),
@@ -74,6 +81,7 @@ describe('PlatformOpsService', () => {
         { provide: PlatformConnectivitySummaryService, useValue: connectivitySummary },
         { provide: PlatformOpsAlertmanagerService, useValue: alertmanager },
         { provide: PlatformOpsInfrastructureService, useValue: infrastructure },
+        { provide: PlatformOpsDiS4Service, useValue: diS4 },
         {
           provide: ConfigService,
           useValue: { get: jest.fn((key: string) => (key === 'METRICS_BEARER_TOKEN' ? 'token' : undefined)) },

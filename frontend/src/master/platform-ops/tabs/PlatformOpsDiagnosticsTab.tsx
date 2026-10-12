@@ -16,9 +16,11 @@ import type { PlatformOpsAlertGroupDto, PlatformOpsDiagnosticsTab, Communication
 import { formatRelativeDe } from '../platform-ops.utils';
 import { api } from '../../../lib/api';
 import { SystemMonitoringView } from '../../components/SystemMonitoringView';
+import { DrivingIntelligenceS4DiagnosticsPanel } from './DrivingIntelligenceS4DiagnosticsPanel';
 
 const DIAG_TABS = [
   { id: 'alerts', label: 'Alarme' },
+  { id: 'driving-intelligence-s4', label: 'Driving Intelligence S4' },
   { id: 'poll-logs', label: 'Abfrage-Protokolle' },
   { id: 'token-health', label: 'Token-Status' },
   { id: 'communication', label: 'Communication' },
@@ -50,6 +52,7 @@ export function PlatformOpsDiagnosticsTabView({
       </div>
 
       {activeTab === 'alerts' && <AlertsPanel />}
+      {activeTab === 'driving-intelligence-s4' && <DrivingIntelligenceS4DiagnosticsPanel />}
       {activeTab === 'communication' && <CommunicationHealthPanel />}
       {(activeTab === 'poll-logs' || activeTab === 'token-health') && (
         <SystemMonitoringView embedded initialFocus={activeTab === 'token-health' ? 'tokens' : 'poll-logs'} />
