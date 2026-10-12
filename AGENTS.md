@@ -21,20 +21,18 @@
 | SSH port | `22` |
 | SSH principal | **`synqdrive-admin`** |
 | SSH identity | Existing authorized `~/.ssh/id_ed25519` when present; else `CLOUD_AGENT_SSH_PRIVATE_KEY` (Cursor Secret) |
-| Deploy entry | **Direct SSH** (`cloud-agent-deploy.sh` → `vps-deploy-release.sh` on VPS) after **owner deploy instruction** + CI gate |
+| Deploy entry | **Direct SSH** (`CLOUD_AGENT_OWNER_DEPLOY_AUTHORIZED=1` → `cloud-agent-deploy.sh` → `vps-deploy-release.sh` on VPS) |
+| CI gate | **Mandatory, non-bypassable** — latest `CI gate (all critical jobs)` **success** on `REQUESTED_DEPLOY_SHA` |
 
-**Cursor Cloud Agent development** (this repository’s `.cursor/environment.json`, `npm test`, PRs, read-only Production audit when authorized) is **normal and allowed**. That is **not** the same as the **fixed VPS deploy bootstrap** (`vo5c-cloud-agent-pinned-deploy-bootstrap.sh`), which is **not** installed on Production today.
-
-**Agents must not** run `bash .cursor/scripts/cloud-agent-deploy.sh` as a routine or automatic production deploy step while bootstrap status is `NOT_INSTALLED_INACTIVE` (expect fail-closed exit **44**). If the VO5C operator path is unavailable, **stop and report** — do not invent an alternate deploy path.
+**Agents** run `cloud-agent-deploy.sh` only when the owner explicitly requested a production release in the current task. VO5C operator session and Cloud Agent bootstrap are **not** required for routine deploy.
 
 ### Agent binding rules (production)
 
-- Do not change the deployment procedure on your own.
-- Do not install or “fix” the Cloud Agent pinned bootstrap without separate owner authorization.
-- No automatic deployment approvals or production mutations from agents.
-- No legacy direct `/opt/synqdrive/current/.../vps-deploy-release.sh` as the security entry.
+- Set `CLOUD_AGENT_OWNER_DEPLOY_AUTHORIZED=1` only after explicit owner deploy instruction; never set `SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1`.
+- Do not bypass or skip the production CI gate (no `CLOUD_AGENT_SKIP_CI_GATE`).
+- No automatic production mutations without owner deploy instruction.
 - No EXP021 / APDS / Battery / RFRF side effects unless explicitly scoped.
-- SSH preflight (`cloud-agent-ssh-preflight.sh`) is for connectivity checks only — not a deploy trigger.
+- SSH preflight (`cloud-agent-ssh-preflight.sh`) is connectivity/read-only prep — not a deploy substitute.
 
 | SSH identity | Existing authorized `~/.ssh/id_ed25519` when present; else `CLOUD_AGENT_SSH_PRIVATE_KEY` (Cursor Secret). Unset secret does **not** prove SSH is impossible when a baked key exists. |
 | Path B (Tailscale / `mein-vps.internal`) | Optional for some operator setups — **not** the documented routine Production deploy transport for Hostinger Path A. |
@@ -316,7 +314,7 @@ Always **push `main` to GitHub** before deploy when using default git preflight;
 CLOUD_AGENT_OWNER_DEPLOY_AUTHORIZED=1 bash .cursor/scripts/cloud-agent-deploy.sh
 ```
 
-The script: SSH identity + trusted host key → git preflight → **CI gate (all critical jobs)** → SSH → `vps-deploy-release.sh` on VPS → public health check.
+The script: SSH identity + trusted host key → git preflight → **mandatory CI gate (all critical jobs; not bypassable)** → SSH → `vps-deploy-release.sh` on VPS → public health check.
 
 Exit codes: `0` success; `2` release OK but public health failed; `3` P4B16 partial success; `4` monitoring outcome failure; `41` missing owner deploy ack; `46` VPS deploy script missing.
 

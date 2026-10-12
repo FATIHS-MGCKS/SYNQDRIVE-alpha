@@ -30,6 +30,7 @@ pass "no_mandatory_vo5c_bootstrap"
 grep -q 'CLOUD_AGENT_OWNER_DEPLOY_AUTHORIZED' "$SCRIPT" || fail "missing_owner_deploy_ack"
 grep -q 'vps-deploy-release.sh' "$SCRIPT" || fail "missing_vps_deploy_release_invoke"
 grep -q 'deploy-ci-gate.mjs' "$SCRIPT" || fail "missing_ci_gate"
+grep -q 'CLOUD_AGENT_SKIP_CI_GATE' "$SCRIPT" && fail "ci_gate_bypass_still_present"
 pass "direct_ssh_contract_wired"
 
 if grep -q 'ssh-keyscan' "$SCRIPT"; then

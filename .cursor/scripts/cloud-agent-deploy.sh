@@ -100,14 +100,10 @@ preflight_git() {
 }
 
 preflight_ci_gate() {
-  if [[ "${CLOUD_AGENT_SKIP_CI_GATE:-0}" == "1" ]]; then
-    echo "[cloud-agent] WARN: skipping CI gate (CLOUD_AGENT_SKIP_CI_GATE=1) — not for production." >&2
-    return 0
-  fi
   local sha="${CLOUD_AGENT_REQUESTED_DEPLOY_SHA:?}"
   echo "[cloud-agent] Verifying CI gate (all critical jobs) for ${sha:0:12} ..."
   if ! node "${ROOT}/backend/scripts/ops/deploy-ci-gate.mjs" "$sha"; then
-    echo "[cloud-agent] ERROR: mandatory CI gate not successful for REQUESTED_DEPLOY_SHA." >&2
+    echo "[cloud-agent] ERROR: mandatory CI gate not successful for REQUESTED_DEPLOY_SHA (non-bypassable)." >&2
     exit 1
   fi
 }

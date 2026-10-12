@@ -92,7 +92,7 @@ Expected: `synqdrive-admin` and host identity `srv1374778` (or documented equiva
 2. **SSH identity** + **trusted host key** + **`cloud_agent_ssh_auth_preflight`**.
 3. Owner deploy ack (`CLOUD_AGENT_OWNER_DEPLOY_AUTHORIZED=1`).
 4. Git preflight: clean tree, `HEAD` == `origin/main` (or explicit `CLOUD_AGENT_REQUESTED_DEPLOY_SHA`).
-5. **CI gate:** `CI gate (all critical jobs)` **success** on `REQUESTED_DEPLOY_SHA` (`deploy-ci-gate.mjs` / `gh`).
+5. **CI gate (non-bypassable):** latest `CI gate (all critical jobs)` check run **completed/success** on `REQUESTED_DEPLOY_SHA` (`deploy-ci-gate.mjs` / `gh`; no skip env).
 6. SSH → **`bash /opt/synqdrive/current/backend/scripts/ops/vps-deploy-release.sh`** with `SYNQDRIVE_REQUESTED_DEPLOY_SHA` (path validated under `/opt/synqdrive/…`).
 7. Public health check (`https://app.synqdrive.eu/api/v1/health`).
 
