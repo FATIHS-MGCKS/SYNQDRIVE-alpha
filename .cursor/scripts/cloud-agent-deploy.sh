@@ -12,6 +12,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/cloud-agent-ssh-common.sh"
 # shellcheck source=lib/cloud-agent-vo5c-operator-session.lib.sh
 source "${SCRIPT_DIR}/lib/cloud-agent-vo5c-operator-session.lib.sh"
+# shellcheck source=lib/cloud-agent-vo5c-bootstrap-contract.lib.sh
+source "${SCRIPT_DIR}/lib/cloud-agent-vo5c-bootstrap-contract.lib.sh"
 
 SSH_USER="$(cloud_agent_ssh_user)"
 if [[ "${VPS_HOST}" == *"hstgr.cloud"* ]] && [[ "${SSH_USER}" == "root" ]]; then
@@ -146,40 +148,47 @@ run_remote_pinned_deploy() {
     exit 1
   fi
 
-  echo "[cloud-agent] Delegating to VO5C pinned runner on ${SSH_USER}@${VPS_HOST} ..."
+  if [[ "${CLOUD_AGENT_SKIP_BOOTSTRAP_PREFLIGHT:-0}" != "1" ]]; then
+    local ssh_check=(ssh -p "$SSH_PORT" -i "$SSH_KEY" -o BatchMode=yes -o ConnectTimeout=20 "${SSH_USER}@${VPS_HOST}")
+    local q_bootstrap_check
+    q_bootstrap_check="$(printf '%q' "$CLOUD_AGENT_VO5C_BOOTSTRAP_PATH")"
+    if ! "${ssh_check[@]}" "test -x ${q_bootstrap_check}" 2>/dev/null; then
+      echo "[cloud-agent] ERROR: VO5C Cloud Agent bootstrap not installed or not executable on VPS: ${CLOUD_AGENT_VO5C_BOOTSTRAP_PATH}" >&2
+      echo "[cloud-agent] Install from promoted pin per architecture/dsrg/evidence/VO5C_CLOUD_AGENT_PINNED_BOOTSTRAP_INSTALL.md (fail-closed until verified)." >&2
+      print_operator_pinned_instructions "$requested_sha"
+      exit "$CLOUD_AGENT_REMOTE_EXIT_BOOTSTRAP_MISSING"
+    fi
+  fi
+
+  echo "[cloud-agent] Invoking fixed VPS bootstrap on ${SSH_USER}@${VPS_HOST} ..."
   echo "[cloud-agent] REQUESTED_DEPLOY_SHA=${requested_sha}"
+  echo "[cloud-agent] BOOTSTRAP=${CLOUD_AGENT_VO5C_BOOTSTRAP_PATH}"
 
-  local q_sha q_pin q_sess q_staged
+  local q_sha q_bootstrap
   q_sha="$(printf '%q' "$requested_sha")"
-  q_pin="$(printf '%q' "$PIN_ENV_FILE")"
-  q_sess="$(printf '%q' "$OPERATOR_SESSION_FILE")"
-  q_staged="$(printf '%q' "$STAGED_RELEASE_ROOT")"
-
-  local remote_body
-  remote_body="$(printf '%s\n' \
-    "td=\$(mktemp -d)" \
-    "trap 'rm -rf \"\$td\"' EXIT" \
-    "tar -xzf - -C \"\$td\"" \
-    "export REMOTE_LIB_DIR=\"\$td/lib\"" \
-    "exec bash \"\$td/cloud-agent-vo5c-remote-pinned-deploy.sh\" ${q_sha} ${q_pin} ${q_sess} ${q_staged}")"
+  q_bootstrap="$(printf '%q' "$CLOUD_AGENT_VO5C_BOOTSTRAP_PATH")"
 
   local ssh_prefix=(ssh -p "$SSH_PORT" -i "$SSH_KEY" -o BatchMode=yes -o ConnectTimeout=20 "${SSH_USER}@${VPS_HOST}")
-  local remote_shell
+  local remote_invocation
   if [[ "${SSH_USER}" == "root" ]]; then
-    remote_shell="bash -c $(printf '%q' "$remote_body")"
+    remote_invocation="${q_bootstrap} ${q_sha}"
   else
-    remote_shell="sudo -n -H bash -c $(printf '%q' "$remote_body")"
+    remote_invocation="sudo -n -H ${q_bootstrap} ${q_sha}"
   fi
 
   set +e
-  tar -C "${SCRIPT_DIR}" -czf - \
-    lib/cloud-agent-vo5c-operator-session.lib.sh \
-    lib/cloud-agent-vo5c-remote-pinned-deploy.lib.sh \
-    cloud-agent-vo5c-remote-pinned-deploy.sh \
-    | "${ssh_prefix[@]}" "$remote_shell"
+  "${ssh_prefix[@]}" "$remote_invocation"
   local remote_rc=$?
   set -e
 
+  if [[ "$remote_rc" -eq "$CLOUD_AGENT_REMOTE_EXIT_BOOTSTRAP_MISSING" ]]; then
+    echo "[cloud-agent] ERROR: VPS bootstrap missing (exit ${remote_rc})." >&2
+    exit "$remote_rc"
+  fi
+  if [[ "$remote_rc" -eq "$CLOUD_AGENT_REMOTE_EXIT_BOOTSTRAP_INTEGRITY" ]]; then
+    echo "[cloud-agent] ERROR: VPS bootstrap integrity verification failed (exit ${remote_rc})." >&2
+    exit "$remote_rc"
+  fi
   if [[ "$remote_rc" -eq 42 ]]; then
     print_operator_pinned_instructions "$requested_sha"
     exit 42

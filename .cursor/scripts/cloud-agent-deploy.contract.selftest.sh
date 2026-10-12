@@ -9,7 +9,7 @@ fail() { echo "FAIL: $*" >&2; exit 1; }
 pass() { echo "PASS: $*"; }
 
 bash -n "$SCRIPT" && pass "bash_n_cloud_agent_deploy"
-bash -n "${ROOT}/.cursor/scripts/cloud-agent-vo5c-remote-pinned-deploy.sh"
+bash -n "${ROOT}/backend/scripts/ops/vo5c-cloud-agent-pinned-deploy-bootstrap.sh"
 
 if grep -q 'git fetch --depth 1 origin.*vps-deploy-release' "$SCRIPT"; then
   fail "shallow_fetch_direct_deploy_still_present"
@@ -21,13 +21,20 @@ if grep -Eq '^\s*export SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1' "$SCRIPT"; then
 fi
 pass "no_agent_auto_vo5c_authorized_export"
 
-grep -q 'tar -C' "$SCRIPT" && grep -q 'cloud-agent-vo5c-remote-pinned-deploy.sh' "$SCRIPT" || fail "missing_tar_pinned_delegate"
-pass "delegates_pinned_runner_via_tar"
+if grep -q 'tar -C' "$SCRIPT" || grep -q 'tar -xzf' "$SCRIPT"; then
+  fail "tar_stream_delegate_still_present"
+fi
+pass "cloud_agent_tar_stream_removed"
+
+grep -q 'CLOUD_AGENT_VO5C_BOOTSTRAP_PATH' "$SCRIPT" || fail "missing_fixed_bootstrap_invoke"
+grep -q 'fixed VPS bootstrap' "$SCRIPT" || fail "missing_fixed_bootstrap_invoke"
+grep -q 'CLOUD_AGENT_REMOTE_EXIT_BOOTSTRAP_MISSING' "$SCRIPT" || fail "missing_bootstrap_missing_exit_44"
+pass "invokes_fixed_vps_bootstrap_only"
 
 grep -q 'exit 42' "$SCRIPT" || fail "missing_operator_auth_exit_42"
 pass "operator_auth_fail_closed"
 
-if grep -A20 'cloud_agent_vo5c_resolve_human_authorization' "${ROOT}/.cursor/scripts/lib/cloud-agent-vo5c-remote-pinned-deploy.lib.sh" | grep -q 'SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED:-'; then
+if grep -A15 'vo5c_cloud_agent_resolve_session_authorization' "${ROOT}/backend/scripts/ops/lib/vo5c-cloud-agent-pinned-bootstrap.lib.sh" | grep -q 'SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED:-'; then
   fail "cloud_agent_delegate_still_has_shell_env_fallback"
 fi
 pass "cloud_agent_session_file_only_authorization"
@@ -40,7 +47,7 @@ bash -n "$CONN"
 head -20 "$CONN" | grep -q 'SYNQDRIVE_VO5C_CONNECTIVITY_STAGING_ALLOW' || fail "connectivity_guard_missing"
 pass "connectivity_staging_fail_closed_guard"
 
-bash "${ROOT}/.cursor/scripts/cloud-agent-vo5c-remote-pinned-deploy.selftest.sh"
+bash "${ROOT}/backend/scripts/ops/vo5c-cloud-agent-pinned-bootstrap.selftest.sh"
 bash "${ROOT}/.cursor/scripts/cloud-agent-deploy.outcome.selftest.sh"
 
 echo "ALL_CLOUD_AGENT_CONTRACT_TESTS_PASS"

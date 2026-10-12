@@ -26,5 +26,6 @@
 | 2026-10-12 | **DSRG-DEPLOY-CONSOLIDATION** | Single-VPS contract: cloud-agent → pinned runner; connectivity staging fail-closed; deploy outcome/monitoring exit 4; docs/skill harmonization | None (repo-only) |
 | 2026-10-12 | **DSRG-DEPLOY-CONSOLIDATION-R2** | Operator session parse-without-source; tar-stream pinned delegate; enforcement ACTIVE allows pinned path; executable offline selftests (mock SSH); `DEPLOY_ATTESTATION_STATUS` committed vs legacy_unprotected | None (repo-only) |
 | 2026-10-12 | **DSRG-DEPLOY-CONSOLIDATION-R3** | Cloud Agent session-file-only auth; shared-path canonicalization + symlink escape; immutable monitoring-fail exit 4; documented tar-stream root trust boundary | None (repo-only) |
+| 2026-10-12 | **DSRG-DEPLOY-CONSOLIDATION-R4** | Fixed VPS bootstrap contract; tar-stream removed; Cloud Agent fail-closed until bootstrap installed; install doc + offline bootstrap selftests | None (repo-only; bootstrap NOT installed on prod) |
 
 Historical VO5C deploy-governance entries remain in [`../../vehicle-onboarding/research/CHANGE_LEDGER.md`](../../vehicle-onboarding/research/CHANGE_LEDGER.md) — reference only.

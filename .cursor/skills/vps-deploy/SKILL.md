@@ -24,7 +24,7 @@ Human SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1 (never set by agents)
   → P4B16 attestation
 ```
 
-**Agents:** may `git push` and run `cloud-agent-deploy.sh`, which **delegates** to the pinned runner on the VPS. Agents **must not** set `SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1`. Operator creates a short-lived VPS session file or runs the pinned runner manually (see below).
+**Agents:** may `git push` and run `cloud-agent-deploy.sh`, which SSH-invokes the **fixed VPS bootstrap** (`/opt/synqdrive/shared/vo5c-cloud-agent-pinned-deploy-bootstrap.sh`) with the deploy SHA only — **fail-closed (exit 44)** until that bootstrap is installed on the VPS. Agents **must not** set `SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1`. Operator creates a short-lived VPS session file or runs the pinned runner manually (see below).
 
 ## Prerequisites (Cloud Agent)
 

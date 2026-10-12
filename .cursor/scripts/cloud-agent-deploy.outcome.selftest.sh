@@ -20,12 +20,22 @@ write_mock_ssh() {
   local remote_rc=$1
   cat >"${MOCK_BIN}/ssh" <<'EOS'
 #!/usr/bin/env bash
-# Consume tar stream from stdin (pinned delegate bundle).
-cat >/dev/null
+if [[ -n "${MOCK_SSH_FAIL_BOOTSTRAP_TEST:-}" ]] && [[ "$*" == *"test -x"* ]]; then
+  exit 1
+fi
+if [[ "$*" == *"vo5c-cloud-agent-pinned-deploy-bootstrap.sh"* ]]; then
+  :
+elif [[ "$*" == *"test -x"* ]]; then
+  exit 0
+else
+  echo "FAIL: unexpected ssh invocation: $*" >&2
+  exit 99
+fi
 exit "${MOCK_SSH_REMOTE_RC:-0}"
 EOS
   chmod +x "${MOCK_BIN}/ssh"
   export MOCK_SSH_REMOTE_RC="$remote_rc"
+  unset MOCK_SSH_FAIL_BOOTSTRAP_TEST
 }
 
 write_mock_curl_fail() {
@@ -49,6 +59,7 @@ run_deploy() {
   PATH="${MOCK_BIN}:${PATH}" \
     CLOUD_AGENT_SKIP_VPS_VERIFY=1 \
     CLOUD_AGENT_SKIP_GIT_PREFLIGHT=1 \
+    CLOUD_AGENT_SKIP_BOOTSTRAP_PREFLIGHT=1 \
     CLOUD_AGENT_REQUESTED_DEPLOY_SHA="$REQUESTED_SHA" \
     CLOUD_AGENT_VO5C_PIN_ENV=/opt/synqdrive/shared/vo5c-pinned-executor.env \
     CLOUD_AGENT_VO5C_OPERATOR_SESSION_FILE=/opt/synqdrive/shared/vo5c-operator-deploy-session.env \
@@ -56,6 +67,18 @@ run_deploy() {
     CLOUD_AGENT_VPS_HOST=mock.example \
     bash "$DEPLOY" "$@" 2>&1
 }
+
+# Bootstrap missing on VPS (fail-closed 44)
+export MOCK_SSH_FAIL_BOOTSTRAP_TEST=1
+write_mock_ssh 0
+set +e
+out=$(PATH="${MOCK_BIN}:${PATH}" CLOUD_AGENT_SKIP_VPS_VERIFY=1 CLOUD_AGENT_SKIP_GIT_PREFLIGHT=1 \
+  CLOUD_AGENT_REQUESTED_DEPLOY_SHA="$REQUESTED_SHA" CLOUD_AGENT_VPS_HOST=mock.example \
+  bash "$DEPLOY" 2>&1)
+rc=$?
+set -e
+unset MOCK_SSH_FAIL_BOOTSTRAP_TEST
+[[ "$rc" -eq 44 ]] && echo "$out" | grep -q 'bootstrap not installed' && pass bootstrap_missing_exit_44
 
 # Legacy override blocked
 set +e
