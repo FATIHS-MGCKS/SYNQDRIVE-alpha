@@ -36,6 +36,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-r31-master-admin-r9-webhook-monitoring-2026-10-12',
+    version: '4.9.2240',
+    title: 'DIMO R3.1 — Master Admin read-only R9 webhook health',
+    summary: [
+      'Master Admin → Plattform & Betrieb → Diagnostik → DIMO Webhooks: Speed/Ignition definition status, failure counts, cohort parity, provider access, cache freshness.',
+      'GET /api/v1/admin/ops/dimo-webhook-health (optional ?refresh=1) — Master Admin + MFA guards; DIMO GET only via DimoAuthService and provider budget; Redis/in-memory cache + single-flight.',
+      'Evaluator aligned with r9-r25-circuit-monitor; cohort via DIMO_R9_AUTHORIZED_COHORT_TOKEN_IDS / DIMO_R9_EXCLUDED_TOKEN_IDS. Wake/trip FSM not end-to-end evaluated in UI.',
+    ],
+    reason:
+      'Replace ad-hoc ops scripts as the only R9 visibility path; native monitoring without Slack, email, or a second VPS service.',
+    previousBehavior: 'R9 health checks required backend/scripts/ops/r9-r25-circuit-monitor.mjs (CLI/cron) outside Master Admin.',
+    details:
+      'platform-admin/dimo-r9-webhook-health/*, PlatformOpsDiagnosticsTab dimo-webhooks, DimoWebhooksDiagnosticsPanel, i18n master.platformOps.dimoWebhooks.*',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-10-12T06:20:00.000Z',
+  },
+  {
     id: 'battery-v2-g5c-n2-rest-session-opening-liveness-2026-10-11',
     version: '4.9.2238',
     title: 'Battery V2 G5C-N2 — finalized-trip REST session opening vs trip-phase telemetry',
