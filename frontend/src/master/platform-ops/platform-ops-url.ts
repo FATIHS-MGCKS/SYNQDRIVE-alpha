@@ -42,6 +42,8 @@ export function readPlatformOpsLocation(search: string): PlatformOpsLocation {
     diagnosticsTab:
       diagnosticsTab === 'poll-logs' ||
       diagnosticsTab === 'token-health' ||
+      diagnosticsTab === 'communication' ||
+      diagnosticsTab === 'dimo-webhooks' ||
       diagnosticsTab === 'tools'
         ? diagnosticsTab
         : 'alerts',

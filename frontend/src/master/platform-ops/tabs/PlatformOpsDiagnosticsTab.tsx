@@ -16,12 +16,14 @@ import type { PlatformOpsAlertGroupDto, PlatformOpsDiagnosticsTab, Communication
 import { formatRelativeDe } from '../platform-ops.utils';
 import { api } from '../../../lib/api';
 import { SystemMonitoringView } from '../../components/SystemMonitoringView';
+import { DimoWebhooksDiagnosticsPanel } from './DimoWebhooksDiagnosticsPanel';
 
 const DIAG_TABS = [
   { id: 'alerts', label: 'Alarme' },
   { id: 'poll-logs', label: 'Abfrage-Protokolle' },
   { id: 'token-health', label: 'Token-Status' },
   { id: 'communication', label: 'Communication' },
+  { id: 'dimo-webhooks', label: 'DIMO Webhooks' },
   { id: 'tools', label: 'Tools' },
 ] as const;
 
@@ -51,6 +53,7 @@ export function PlatformOpsDiagnosticsTabView({
 
       {activeTab === 'alerts' && <AlertsPanel />}
       {activeTab === 'communication' && <CommunicationHealthPanel />}
+      {activeTab === 'dimo-webhooks' && <DimoWebhooksDiagnosticsPanel />}
       {(activeTab === 'poll-logs' || activeTab === 'token-health') && (
         <SystemMonitoringView embedded initialFocus={activeTab === 'token-health' ? 'tokens' : 'poll-logs'} />
       )}

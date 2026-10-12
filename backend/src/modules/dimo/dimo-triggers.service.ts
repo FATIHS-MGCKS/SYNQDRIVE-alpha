@@ -40,6 +40,37 @@ export class DimoTriggersService {
     return result.webhooks;
   }
 
+  async getWebhookSubscriberEntries(webhookId: string): Promise<{
+    entries: unknown[] | null;
+    error: { code: string; message: string; httpStatus?: number } | null;
+  }> {
+    try {
+      const jwt = await this.auth.getDeveloperJwt();
+      const res = await this.dimoRequestExecutor.execute({
+        category: 'ADMIN',
+        priority: 'BACKGROUND',
+        execute: () =>
+          axios.get(`${this.triggersApiUrl}/v1/webhooks/${webhookId}`, {
+            headers: { Authorization: `Bearer ${jwt}` },
+            timeout: this.conf.requestTimeoutMs,
+          }),
+      });
+      const entries = Array.isArray(res.data) ? res.data : [];
+      return { entries, error: null };
+    } catch (err: any) {
+      const message = err?.message ?? String(err);
+      this.logger.warn(`Webhook subscribers GET failed for ${webhookId}: ${message}`);
+      return {
+        entries: null,
+        error: {
+          code: 'DIMO_API_UNAVAILABLE',
+          message,
+          httpStatus: err?.response?.status,
+        },
+      };
+    }
+  }
+
   async listWebhooksDetailed(): Promise<{
     webhooks: any[];
     error: { code: string; message: string } | null;

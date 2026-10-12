@@ -63,7 +63,12 @@ function contractAlerts(definition, contract) {
   return alerts;
 }
 
-export function evaluateR9DefinitionHealth(definition, subscriberTokenIds, contract = null) {
+export function evaluateR9DefinitionHealth(
+  definition,
+  subscriberTokenIds,
+  contract = null,
+  options = {},
+) {
   const alerts = [];
   if (!definition) {
     alerts.push({ code: 'DEFINITION_MISSING', severity: 'CRITICAL' });
@@ -84,11 +89,13 @@ export function evaluateR9DefinitionHealth(definition, subscriberTokenIds, contr
   alerts.push(...contractAlerts(definition, contract));
 
   const subs = uniqueSortedTokenIds(subscriberTokenIds);
-  const expected = [...EXPECTED_R9_COHORT].sort((a, b) => a - b);
+  const expectedSource = options.expectedCohort ?? EXPECTED_R9_COHORT;
+  const excludedSource = options.excludedTokens ?? EXCLUDED_TOKENS;
+  const expected = [...expectedSource].sort((a, b) => a - b);
   if (JSON.stringify(subs) !== JSON.stringify(expected)) {
     alerts.push({ code: 'COHORT_DRIFT', severity: 'CRITICAL', expected, actual: subs });
   }
-  for (const t of EXCLUDED_TOKENS) {
+  for (const t of excludedSource) {
     if (subs.includes(t)) {
       alerts.push({ code: 'EXCLUDED_TOKEN_SUBSCRIBED', severity: 'CRITICAL', tokenId: t });
     }

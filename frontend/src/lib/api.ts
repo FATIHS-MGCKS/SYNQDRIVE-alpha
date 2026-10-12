@@ -3602,6 +3602,12 @@ export const api = {
       alerts: () => get<any>('/admin/ops/alerts'),
       resilience: () => get<import('../master/platform-ops/types').PlatformOpsResilienceDto>('/admin/ops/resilience'),
       tools: () => get<any>('/admin/ops/tools'),
+      dimoWebhookHealth: (params?: { refresh?: boolean }) => {
+        const q = params?.refresh ? '?refresh=1' : '';
+        return get<import('../master/platform-ops/dimo-webhook-health.types').DimoR9WebhookHealthDto>(
+          `/admin/ops/dimo-webhook-health${q}`,
+        );
+      },
     },
     communication: {
       operationalHealth: (organizationId?: string) => {

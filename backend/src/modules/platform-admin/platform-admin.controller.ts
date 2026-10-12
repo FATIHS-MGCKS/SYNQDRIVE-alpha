@@ -35,6 +35,7 @@ import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
 import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-mfa.decorator';
 import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 import { BatteryV2RestSessionFeatureInspectionAdminService } from './battery-v2-rest-session-feature-inspection.admin.service';
+import { DimoR9WebhookHealthService } from './dimo-r9-webhook-health/dimo-r9-webhook-health.service';
 import {
   PLATFORM_PRUNE_DISABLED_CODE,
   platformPruneDisabledException,
@@ -60,6 +61,7 @@ export class PlatformAdminController {
     private readonly batteryShadowValidation: BatteryShadowValidationService,
     private readonly platformOpsService: PlatformOpsService,
     private readonly batteryV2RestSessionFeatureInspection: BatteryV2RestSessionFeatureInspectionAdminService,
+    private readonly dimoR9WebhookHealthService: DimoR9WebhookHealthService,
   ) {}
 
   @Get('changelogs')
@@ -185,6 +187,13 @@ export class PlatformAdminController {
   @Get('ops/tools')
   async getOpsTools() {
     return this.platformOpsService.getTools();
+  }
+
+  @Get('ops/dimo-webhook-health')
+  async getDimoWebhookHealth(@Query('refresh') refresh?: string) {
+    return this.dimoR9WebhookHealthService.getHealth({
+      forceRefresh: refresh === '1' || refresh === 'true',
+    });
   }
 
   @Get('connectivity/platform-summary')

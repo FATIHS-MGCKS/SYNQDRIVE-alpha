@@ -10,7 +10,13 @@ export type PlatformOpsSection =
   | 'diagnostics';
 
 export type PlatformOpsProcessingTab = 'queues' | 'workers' | 'schedulers';
-export type PlatformOpsDiagnosticsTab = 'alerts' | 'poll-logs' | 'token-health' | 'communication' | 'tools';
+export type PlatformOpsDiagnosticsTab =
+  | 'alerts'
+  | 'poll-logs'
+  | 'token-health'
+  | 'communication'
+  | 'dimo-webhooks'
+  | 'tools';
 
 export type CommunicationHealthState =
   | 'HEALTHY'
