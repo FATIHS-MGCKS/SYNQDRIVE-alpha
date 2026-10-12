@@ -16,6 +16,7 @@ import {
 } from './ConnectedVehicleStatusChips';
 import { ConnectivityDiagnosticPanel } from './ConnectivityDiagnosticPanel';
 import { formatDateTimeDe } from './cv.utils';
+import { OffboardReleaseGatePanel } from './OffboardReleaseGatePanel';
 
 interface ConnectedVehicleDetailDrawerProps {
   open: boolean;
@@ -77,11 +78,11 @@ export function ConnectedVehicleDetailDrawer({
     onRegisterDetailRefresh?.(refresh);
   }, [onRegisterDetailRefresh, refresh]);
 
+  const lifecycleAllowsOffboard = Boolean(detail && canOffboardRegisteredVehicle(detail));
   const offboardAllowed =
-    offboardUiEnabled &&
-    Boolean(onOffboard) &&
-    detail &&
-    canOffboardRegisteredVehicle(detail);
+    offboardUiEnabled && Boolean(onOffboard) && lifecycleAllowsOffboard;
+  const showReleaseGatePanel =
+    Boolean(vehicleId && detail?.organizationId && lifecycleAllowsOffboard && !offboardUiEnabled);
 
   const handleOffboardConfirm = async (input: {
     reason: VehicleOffboardReasonCode;
@@ -350,12 +351,14 @@ export function ConnectedVehicleDetailDrawer({
                   onClick={() => setShowOffboard(true)}
                   className="w-full sm:w-auto"
                   disabled={offboardSubmitting}
+                  data-testid="offboard-action-button"
                 >
                   <ShieldOff className="h-4 w-4 mr-2" aria-hidden />
                   {t('master.cv.offboard.action')}
                 </Button>
               </div>
             ) : null}
+            {showReleaseGatePanel ? <OffboardReleaseGatePanel /> : null}
             {vehicleId && detail && !offboardAllowed && detail.registrationState === 'registered' ? (
               <p className="text-xs text-muted-foreground border-t border-border pt-4">
                 {detail.registryLifecycle == null

@@ -26,6 +26,15 @@ import { OffboardPendingIntentConflictError } from './offboard-pending-intent';
 import { useVehicleOffboard } from './useVehicleOffboard';
 import { isMasterOffboardUiEnabled } from './vo5c-release-gates';
 import { VehicleOffboardRequestError } from './vehicle-offboard.api-error';
+import { ConnectedVehicleAddMenu } from './ConnectedVehicleAddMenu';
+import { VehicleRegistrationModal } from '../components/VehicleRegistrationModal';
+import { useAppTheme } from '../../context/AppThemeContext';
+import type { DimoVehicle, RegisteredVehicle } from '../data/platform-data';
+import {
+  mapApiDimoToDimoVehicle,
+  persistMasterRegisteredVehicle,
+} from './master-vehicle-registration';
+import { api } from '../../lib/api';
 
 interface ConnectedVehiclesHubProps {
   organizations: Organization[];
@@ -46,6 +55,7 @@ export function ConnectedVehiclesHub({
   onOpenPlatformHealth,
 }: ConnectedVehiclesHubProps) {
   const { t } = useLanguage();
+  const { isDarkMode } = useAppTheme();
   const initial = useMemo(() => readCvLocation(window.location.search), []);
   const [section, setSection] = useState<CvSection>(initial.section);
   const [vehicleId, setVehicleId] = useState<string | null>(initial.vehicleId);
@@ -57,6 +67,9 @@ export function ConnectedVehiclesHub({
   const [mfaOpen, setMfaOpen] = useState(false);
   const skipMfaCancelCleanupRef = useRef(false);
   const detailRefreshRef = useRef<(() => void) | null>(null);
+  const [registrationOpen, setRegistrationOpen] = useState(false);
+  const [registrationDimo, setRegistrationDimo] = useState<DimoVehicle | null>(null);
+  const [registrationPrefillOrgId, setRegistrationPrefillOrgId] = useState<string | null>(null);
 
   const navigateSection = useCallback((next: CvSection, replace = false) => {
     setSection(next);
@@ -245,16 +258,79 @@ export function ConnectedVehiclesHub({
   }, [finishOffboardSuccess, offboard, t]);
 
   const tabs = [
-    { id: 'overview', label: 'Übersicht' },
-    { id: 'vehicles', label: 'Fahrzeuge' },
-    { id: 'import', label: 'Import' },
+    { id: 'overview', label: t('master.cv.hub.tab.overview') },
+    { id: 'vehicles', label: t('master.cv.hub.tab.vehicles') },
+    { id: 'import', label: t('master.cv.hub.tab.import') },
   ] as const;
+
+  const openManualRegistration = useCallback(() => {
+    setRegistrationDimo(null);
+    setRegistrationPrefillOrgId(null);
+    setRegistrationOpen(true);
+  }, []);
+
+  const openDimoRegistration = useCallback(
+    async (dimoVehicleId: string, organizationId?: string | null) => {
+      try {
+        const list = await api.dimo.nonRegistered();
+        const match = (list ?? []).find(
+          (row: { id?: string }) => String(row.id) === dimoVehicleId,
+        );
+        if (!match) {
+          toast.error(t('master.cv.addVehicle.dimoNotFound'));
+          return;
+        }
+        setRegistrationDimo(mapApiDimoToDimoVehicle(match as Record<string, unknown>));
+        setRegistrationPrefillOrgId(organizationId ?? null);
+        setRegistrationOpen(true);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : t('master.cv.addVehicle.dimoLoadFailed'));
+      }
+    },
+    [t],
+  );
+
+  const handlePersistRegistration = useCallback(
+    async (rv: RegisteredVehicle) => {
+      try {
+        const result = await persistMasterRegisteredVehicle(rv, {
+          dimoVehicleId: registrationDimo?.id ?? null,
+        });
+        toast.success(t('master.cv.addVehicle.success'));
+        setRegistrationOpen(false);
+        setRegistrationDimo(null);
+        setRegistrationPrefillOrgId(null);
+        overviewState.refresh();
+        emitConnectedVehiclesRefresh();
+        navigateSection('vehicles');
+        openVehicle(result.vehicleId);
+      } catch (e) {
+        const message =
+          e instanceof Error && e.message === 'VEHICLE_VIN_ALREADY_EXISTS'
+            ? t('master.cv.addVehicle.errorDuplicateVin')
+            : e instanceof Error
+              ? e.message
+              : t('master.cv.addVehicle.errorGeneric');
+        toast.error(message);
+        throw e;
+      }
+    },
+    [navigateSection, openVehicle, overviewState, registrationDimo?.id, t],
+  );
 
   return (
     <div className="space-y-5" data-testid="connected-vehicles-hub">
       <MasterPageHeader
-        title="Verbundene Fahrzeuge"
-        description="Plattformweite Governance für Fahrzeug ↔ Organisation ↔ DIMO"
+        title={t('master.cv.hub.title')}
+        description={t('master.cv.hub.description')}
+        actions={
+          <ConnectedVehicleAddMenu
+            onAction={(action) => {
+              if (action === 'import_dimo') navigateSection('import');
+              else openManualRegistration();
+            }}
+          />
+        }
         tabs={tabs.map((tab) => ({ id: tab.id, label: tab.label }))}
         activeTabId={section}
         onTabChange={(id) => navigateSection(id as CvSection)}
@@ -293,6 +369,9 @@ export function ConnectedVehiclesHub({
             navigateSection('vehicles');
           }}
           onOpenVehicle={(id) => openVehicle(id)}
+          onAdvancedRegister={(dimoVehicleId, organizationId) => {
+            void openDimoRegistration(dimoVehicleId, organizationId);
+          }}
         />
       ) : null}
 
@@ -314,6 +393,20 @@ export function ConnectedVehiclesHub({
           detailRefreshRef.current = fn;
         }}
         onOpenOrganization={onOpenOrganization}
+      />
+
+      <VehicleRegistrationModal
+        isDarkMode={isDarkMode}
+        isOpen={registrationOpen}
+        onClose={() => {
+          setRegistrationOpen(false);
+          setRegistrationDimo(null);
+          setRegistrationPrefillOrgId(null);
+        }}
+        dimoVehicle={registrationDimo ?? undefined}
+        organizations={organizations}
+        initialOrganizationId={registrationPrefillOrgId}
+        onRegister={(rv) => handlePersistRegistration(rv)}
       />
 
       <MfaStepUpDialog
