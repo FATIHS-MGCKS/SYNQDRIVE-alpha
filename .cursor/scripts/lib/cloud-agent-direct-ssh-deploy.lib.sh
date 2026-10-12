@@ -54,11 +54,11 @@ cloud_agent_direct_ssh_remote_invoke_command() {
   local q_script q_sha inner
   q_script="$(printf '%q' "$deploy_script")"
   q_sha="$(printf '%q' "$requested_sha")"
-  # bash (not exec) so SSH remote exit code propagates; deploy script may be mode 644.
-  inner="$(printf 'export SYNQDRIVE_REQUESTED_DEPLOY_SHA=%s; bash %s' "$q_sha" "$q_script")"
+  # Non-root login (Hostinger synqdrive-admin): elevate only to run the validated release script.
+  # Uses `env` + `bash <pinned path>` — no login shell (`-lc`) and no new sudoers entries in-repo.
   if [[ "$ssh_user" != "root" ]]; then
-    printf 'sudo -n -H bash -lc %s' "$(printf '%q' "$inner")"
+    printf 'sudo -n -H env SYNQDRIVE_REQUESTED_DEPLOY_SHA=%s bash %s' "$q_sha" "$q_script"
   else
-    printf '%s' "$inner"
+    printf 'env SYNQDRIVE_REQUESTED_DEPLOY_SHA=%s bash %s' "$q_sha" "$q_script"
   fi
 }
