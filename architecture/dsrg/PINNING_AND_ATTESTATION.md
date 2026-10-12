@@ -38,7 +38,8 @@
 |---------|------|--------|
 | `dc30d2c91e458603c7d45ba2e25c1ca0a1d0c672` | Pre-P4B15 bootstrap | Preserved on disk |
 | `40c6dd99d60cb07575bcb687586c66c50651e213` | P4B15 merge (P6) | Preserved; superseded in config |
-| `448a88985b78b6a7c4d973913b9a6213bae3e9b4` | DSRG-01 merge (#1970) | **Active** in `vo5c-pinned-executor.env` |
+| `448a88985b78b6a7c4d973913b9a6213bae3e9b4` | DSRG-01 merge (#1970) | Preserved on disk; superseded in config |
+| `bc7e80715d09767312b0f389f5cb0978f8ec0dbb` | EXP021-S4P4B (#1987/#1988 on `main`) | **Active** in `vo5c-pinned-executor.env` (2026-10-12) |
 
 ## Seal notes
 

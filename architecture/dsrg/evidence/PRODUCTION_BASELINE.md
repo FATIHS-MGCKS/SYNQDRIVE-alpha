@@ -5,7 +5,7 @@
 | **PRODUCTION_ACCESS** | `VERIFIED_READ_ONLY` |
 | **Connectivity check** | `bash .cursor/scripts/cloud-agent-verify-vps.sh` — SSH OK `synqdrive-admin@srv1374778.hstgr.cloud` (2026-10-11) |
 | **Audit timestamp (UTC)** | R0 `00:47:51Z`; R2 `10:14:01Z`; **authoritative for Gate A:** [`DSRG_03_R3_PRODUCTION_AUDIT.md`](DSRG_03_R3_PRODUCTION_AUDIT.md) @ `13:49:49Z` |
-| **Mutations** | **None** — deploy runner not executed |
+| **Mutations** | **Pin-only** @ 2026-10-12T04:05:51Z (EXP021-S4P4B) — `vo5c-pinned-executor.env` → `bc7e807…`; no deploy runner executed |
 
 ## Release and application
 
@@ -32,11 +32,12 @@ Observed via `sudo pm2 list` (2026-10-11). Matches DSRG-02 R2 seal (PIDs unchang
 | Item | Value |
 |------|--------|
 | Config file | `/opt/synqdrive/shared/vo5c-pinned-executor.env` (`0600` root:root) |
-| `SYNQDRIVE_PINNED_EXECUTOR_ROOT` | `/opt/synqdrive/shared/pinned-executor/448a88985b78b6a7c4d973913b9a6213bae3e9b4` |
-| `SYNQDRIVE_PINNED_EXECUTOR_SHA` | `448a88985b78b6a7c4d973913b9a6213bae3e9b4` |
-| Tree `git rev-parse HEAD` | `448a88985b78b6a7c4d973913b9a6213bae3e9b4` |
+| `SYNQDRIVE_PINNED_EXECUTOR_ROOT` | `/opt/synqdrive/shared/pinned-executor/bc7e80715d09767312b0f389f5cb0978f8ec0dbb` |
+| `SYNQDRIVE_PINNED_EXECUTOR_SHA` | `bc7e80715d09767312b0f389f5cb0978f8ec0dbb` |
+| Tree `git rev-parse HEAD` | `bc7e80715d09767312b0f389f5cb0978f8ec0dbb` (full clone; porcelain `0`) |
 | `chattr +i` on pin dir | **absent** (`lsattr` → `e` only) |
-| Preserved trees | `40c6dd9…`, `dc30d2c…` present under `pinned-executor/` |
+| Preserved trees | `40c6dd9…`, `448a889…`, `dc30d2c…` under `pinned-executor/` |
+| Config backup | `vo5c-pinned-executor.env.bak-20261012T040551Z` |
 
 ## Deploy authority and enforcement
 

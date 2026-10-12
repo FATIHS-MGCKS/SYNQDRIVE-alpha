@@ -11,7 +11,7 @@
 | Application SHA | `main` tip advances continuously | `git -C current` = `2b89f746…` (P4B16 R0) | **Drift:** tree SHA ≠ `SYNQDRIVE_DEPLOYED_GIT_SHA` (`3a4bb944…`) |
 | Attestation env | P4B16 design in R0 | `SYNQDRIVE_DEPLOYED_GIT_SHA` stale vs `current` | **CONFIRMED mismatch** — no auto writer in deploy script |
 | Release path git HEAD | N/A | **No git metadata** on `/opt/synqdrive/releases/20261010184619_v4994` | Identity from **attestation env only** |
-| Pinned executor | `448a889…` on `main` (#1970) | Config + tree @ `448a889…` | **Aligned** (pin-only promotion; live app unchanged) |
+| Pinned executor | `bc7e807…` on `main` (#1987/#1988) | Config + tree @ `bc7e807…` (S4P4B 2026-10-12) | **Aligned** (pin-only; live app still `92d3d611…`) |
 | Enforcement / authority | Examples in repo | Files **absent**; flags **off** | **Not production-ready** for enforced deploy path |
 
 Do **not** equate merged repository code with live runtime. Status labels:
@@ -33,7 +33,7 @@ Do **not** equate merged repository code with live runtime. Status labels:
 |-----------|-------------|----------|-----------|-----------|-------|
 | `vps-vo5c-run-pinned-security-deploy.sh` | yes @ `448a889` ancestry on `main` | yes in pin tree `448a889…` on VPS | **no** (not executed in DSRG-03) | selftest PASS @ audit branch | Requires `SYNQDRIVE_VO5C_DEPLOY_AUTHORIZED=1` + invoke from pinned ops dir |
 | `vps-vo5c-first-security-deploy-preflight.sh` | yes | yes in pin tree | **UNKNOWN** (last PASS DSRG-02 R1) | prior seal + selftests | |
-| Pin config `vo5c-pinned-executor.env` | example only in repo | yes `/opt/synqdrive/shared/` | **yes** (points at `448a889…`) | VPS read 2026-10-11 | mode `0600` root:root |
+| Pin config `vo5c-pinned-executor.env` | example only in repo | yes `/opt/synqdrive/shared/` | **yes** (points at `bc7e807…`) | VPS read 2026-10-12 S4P4B | mode `0600` root:root |
 | Preserved pin trees `40c6dd9`, `dc30d2c` | **UNKNOWN** in repo alone | yes on VPS | dormant | DSRG-02 evidence | |
 | `exec bash` on `vps-deploy-release.sh` (644) | yes (#1970) | yes in active pin | **UNKNOWN** until deploy | execution-contract selftest | |
 

@@ -22,5 +22,6 @@
 | 2026-10-11 | **P4B16-R0A** | Design correction: journal publication, PM2 consumer matrix, per-replica runtime identity, entrypoint coverage | None (docs) |
 | 2026-10-11 | **P4B16-R1A** | Durable attestation libs + offline selftest; **not** wired to deploy/Production | None (repo-only; NOT_DEPLOYED) |
 | 2026-10-11 | **P4B16-R1A-MIN** | Minimalism pass: drop journal/phase machine; delegate replica verify to existing ops lib | None (repo-only) |
+| 2026-10-12 | **EXP021-S4P4B** | Owner-authorized VPS pin `448a889…` → `bc7e807…`; VO5C selftests PASS; backup `vo5c-pinned-executor.env.bak-20261012T040551Z` | Pin pointer only; live app `92d3d611…` unchanged |
 
 Historical VO5C deploy-governance entries remain in [`../../vehicle-onboarding/research/CHANGE_LEDGER.md`](../../vehicle-onboarding/research/CHANGE_LEDGER.md) — reference only.
