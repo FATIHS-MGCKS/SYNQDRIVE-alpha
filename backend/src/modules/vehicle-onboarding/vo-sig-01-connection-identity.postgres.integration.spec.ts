@@ -263,10 +263,11 @@ async function sealDimoCase(prisma: PrismaClient, orgId: string, caseId: string)
     });
     const caseRow = await harness.caseService.openOrResumeFromDimo(dimoOnboardingActor(orgId), dimoId);
     await sealDimoCase(prisma, orgId, caseRow.id);
-    await prisma.dimoVehicle.update({
-      where: { id: dimoId },
-      data: { rawJson: R1_RAW },
-    });
+    await prisma.$executeRaw`
+      UPDATE dimo_vehicles
+      SET raw_json = ${JSON.stringify(R1_RAW)}::jsonb, updated_at = NOW()
+      WHERE id::text = ${dimoId}
+    `;
     await expect(
       activateForTest(harness, {
         organizationId: orgId,
@@ -306,7 +307,7 @@ async function sealDimoCase(prisma: PrismaClient, orgId: string, caseId: string)
       make: 'Fleet',
       model: 'Trailer',
       year: 2019,
-      fuelType: 'NONE',
+      fuelType: 'OTHER',
       vehicleName: 'Manual fleet',
       licensePlate: 'MAN-1',
       stationId: null,
@@ -323,7 +324,7 @@ async function sealDimoCase(prisma: PrismaClient, orgId: string, caseId: string)
           make: 'Fleet',
           model: 'Trailer',
           year: 2019,
-          fuelType: 'NONE',
+          fuelType: 'OTHER',
           sourceEvidenceRefs: [],
         },
       },

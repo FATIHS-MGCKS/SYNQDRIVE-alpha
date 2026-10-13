@@ -26,6 +26,7 @@ import { VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION_V2 } from './contracts/vo-docu
 import { ONBOARDING_SOURCE_SNAPSHOT_VERSION } from './contracts/vo-document-versions';
 import { DIMO_PLATFORM_DEVELOPER_LICENSE_SCOPE } from './adapters/connection-scope.constants';
 import { buildDimoOnboardingSourceSnapshot } from './adapters/dimo-onboarding-source.adapter';
+import { insertDimoMirrorForPostgresTests } from './testing/dimo-mirror-postgres.fixture';
 
 const run =
   process.env.VO491_SOURCE_ADOPTION_PG === '1' ||
@@ -50,10 +51,7 @@ async function createOrg(prisma: PrismaClient) {
 }
 
 async function createDimoMirror(prisma: PrismaClient, dimoId: string, externalId: string, vin: string | null = null) {
-  await prisma.$executeRaw`
-    INSERT INTO dimo_vehicles (id, external_id, vin, make, model, year, fuel_type, connection_status, created_at, updated_at)
-    VALUES (${dimoId}, ${externalId}, ${vin}, 'Audi', 'A3', 2021, 'GASOLINE', 'CONNECTED'::"DimoConnectionStatus", NOW(), NOW())
-  `;
+  await insertDimoMirrorForPostgresTests(prisma, { id: dimoId, externalId, vin });
 }
 
 async function createHm(
@@ -82,8 +80,14 @@ async function createHm(
       sourceMode: 'HM_ONLY',
       clearanceStatus,
       isActive,
+      hmVehicleReference: `hm-ref-${hmId.slice(0, 8)}`,
     },
   });
+}
+
+async function assertCaseReadyForActivation(prisma: PrismaClient, caseId: string) {
+  const row = await prisma.vehicleOnboardingCase.findUniqueOrThrow({ where: { id: caseId } });
+  expect(row.status).toBe('READY_FOR_ACTIVATION');
 }
 
 function fullHarness(prisma: PrismaClient) {
@@ -365,6 +369,7 @@ async function activationCounts(prisma: PrismaClient, orgId: string, caseId: str
       hmId,
     );
     await sealHmPrimaryReady(harness, prisma, orgId, caseRow.id, vin);
+    await assertCaseReadyForActivation(prisma, caseRow.id);
     const before = await activationCounts(prisma, orgId, caseRow.id);
     await prisma.highMobilityVehicle.update({
       where: { id: hmId },
@@ -400,6 +405,7 @@ async function activationCounts(prisma: PrismaClient, orgId: string, caseId: str
       hmId,
     );
     await sealDimoHmCompositeReady(harness, prisma, orgId, caseRow.id, vin);
+    await assertCaseReadyForActivation(prisma, caseRow.id);
     const before = await activationCounts(prisma, orgId, caseRow.id);
     await prisma.highMobilityVehicle.update({
       where: { id: hmId },
@@ -432,6 +438,7 @@ async function activationCounts(prisma: PrismaClient, orgId: string, caseId: str
       hmId,
     );
     await sealDimoHmCompositeReady(harness, prisma, orgId, caseRow.id, vin);
+    await assertCaseReadyForActivation(prisma, caseRow.id);
     await prisma.highMobilityVehicle.update({
       where: { id: hmId },
       data: { isActive: false },
@@ -688,6 +695,8 @@ async function activationCounts(prisma: PrismaClient, orgId: string, caseId: str
           fuelType: 'GASOLINE',
           sourceEvidenceRefs: [],
         },
+        draftTechnicalBaselineJson: technicalBaselineV2HvBattery() as unknown as Prisma.InputJsonValue,
+        draftTechnicalBaselineVersion: VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION_V2,
       },
     });
     const t0 = caseRow.concurrencyToken!;

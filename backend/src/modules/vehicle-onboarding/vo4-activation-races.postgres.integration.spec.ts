@@ -20,6 +20,7 @@ import {
 } from './policy/persisted-contract.validation';
 import { VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION_V2 } from './contracts/vo-document-versions';
 import { technicalBaselineV2HvBattery } from './testing/technical-baseline-test.fixtures';
+import { insertDimoMirrorForPostgresTests } from './testing/dimo-mirror-postgres.fixture';
 
 const run = process.env.VO4_ACTIVATION_RACE_PG === '1' || process.env.VO4_READINESS_PG === '1';
 
@@ -41,19 +42,7 @@ async function createOrgWithRental(prisma: PrismaClient) {
 }
 
 async function createDimoMirror(prisma: PrismaClient, dimoId: string, externalId: string) {
-  await prisma.dimoVehicle.create({
-    data: {
-      id: dimoId,
-      externalId,
-      vin: null,
-      make: 'Audi',
-      model: 'A3',
-      year: 2021,
-      fuelType: 'GASOLINE',
-      connectionStatus: 'CONNECTED',
-      rawJson: { syntheticDevice: { integration: 'vo4-ci-fixture' } },
-    },
-  });
+  await insertDimoMirrorForPostgresTests(prisma, { id: dimoId, externalId, vin: null });
 }
 
 async function sealReadyDimoCase(

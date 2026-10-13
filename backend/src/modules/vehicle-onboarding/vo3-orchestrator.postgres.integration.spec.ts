@@ -17,6 +17,7 @@ import { activationOutboxIdempotencyKey } from './services/vehicle-onboarding-ac
 import type { Vo3ActivationFaultStage } from './services/vehicle-onboarding-activation.service';
 import { DEFAULT_TENANT_SOURCE_ADOPTION } from './source-adoption/source-adoption.context';
 import { PLATFORM_TRUSTED_SOURCE_ADOPTION } from './source-adoption/platform-trusted-adoption.context';
+import { insertDimoMirrorForPostgresTests } from './testing/dimo-mirror-postgres.fixture';
 
 const run = process.env.VO3_ORCHESTRATOR_PG === '1';
 
@@ -37,22 +38,15 @@ async function createDimoMirror(
   dimoId: string,
   externalId: string,
   vin: string | null,
-  make = 'Audi',
-  model = 'A3',
-  rawJson: object = { syntheticDevice: { integration: 'vo3-ci-fixture' } },
+  _make = 'Audi',
+  _model = 'A3',
+  rawJson?: object,
 ) {
-  await prisma.dimoVehicle.create({
-    data: {
-      id: dimoId,
-      externalId,
-      vin,
-      make,
-      model,
-      year: 2021,
-      fuelType: 'GASOLINE',
-      connectionStatus: 'CONNECTED',
-      rawJson,
-    },
+  await insertDimoMirrorForPostgresTests(prisma, {
+    id: dimoId,
+    externalId,
+    vin,
+    rawJson,
   });
 }
 
@@ -615,6 +609,7 @@ async function sealHmCaseReady(
           packageType: 'HEALTH',
           sourceMode: 'HM_ONLY',
           clearanceStatus: 'APPROVED',
+          hmVehicleReference: `hm-ref-${hmId.slice(0, 8)}`,
         },
       });
       const caseRow = await harness.caseService.openOrResumeFromHighMobility(
