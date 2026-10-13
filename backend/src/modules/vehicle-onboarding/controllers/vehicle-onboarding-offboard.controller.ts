@@ -3,15 +3,15 @@ import type { Request } from 'express';
 import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-mfa.decorator';
-import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { MasterVehicleOffboardAdmissionGuard } from '../guards/master-vehicle-offboard-admission.guard';
+import { MasterVehicleOffboardMfaGuard } from '../guards/master-vehicle-offboard-mfa.guard';
 import { runVehicleOnboardingHttp } from '../http/vehicle-onboarding-http.util';
 import { parseOffboardRequestBody } from '../policy/offboard-request.validation';
 import { VehicleOnboardingOffboardService } from '../services/vehicle-onboarding-offboard.service';
 
 @Controller('admin/vehicle-onboarding')
-@UseGuards(RolesGuard, MasterVehicleOffboardAdmissionGuard, MasterAdminMfaGuard)
+@UseGuards(RolesGuard, MasterVehicleOffboardAdmissionGuard, MasterVehicleOffboardMfaGuard)
 @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_INTEGRATIONS)
 @Roles('MASTER_ADMIN')
 export class VehicleOnboardingOffboardController {

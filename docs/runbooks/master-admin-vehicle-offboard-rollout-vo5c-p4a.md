@@ -11,7 +11,7 @@
 | C | Backend admission (see below) | OFF |
 | D | `VITE_MASTER_VEHICLE_OFFBOARD_UI=on` + frontend attestation | OFF |
 
-Never enable C without B. Never enable D without C verified on the same release SHA.
+Never enable C without B **unless** the temporary owner-only MFA exception (below) is explicitly enabled for the verified owner user. Never enable D without C verified on the same release SHA.
 
 ## Backend admission (track C)
 
@@ -20,10 +20,25 @@ Set on **backend** shared env only after P3.1-style certification on the target 
 1. `SYNQDRIVE_DEPLOYED_GIT_SHA=<40-char git SHA actually running>`
 2. `SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_ROUTE_VERIFIED=YES` (operator attestation — not automatic)
 3. `SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_ATTESTED_RELEASE_SHA=<same SHA>`
-4. `IAM_MFA_MASTER_ADMIN_ENABLED=true`
+4. `IAM_MFA_MASTER_ADMIN_ENABLED=true` **or** temporary owner MFA exception (track B′, default OFF)
 5. `SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_HTTP_ADMISSION_ENABLED=true`
 
 Rejected with `409` / `MASTER_VEHICLE_OFFBOARD_ADMISSION_DISABLED` if any prerequisite fails.
+
+### Temporary owner-only MFA exception (track B′ — default OFF)
+
+Use only until Master Admin MFA enrollment is complete. Does **not** weaken `MasterAdminMfaGuard` on other routes.
+
+1. Complete steps 1–3 and 5 from track C (release attestation + HTTP admission ON).
+2. Set **all** of:
+   - `SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_ENABLED=true`
+   - `SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_USER_ID=<single verified owner UUID>`
+   - `SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_EXPIRES_AT=<ISO-8601 UTC, must be in the future>`
+3. Leave `IAM_MFA_MASTER_ADMIN_ENABLED` unset/false until MFA rollout (track B) is ready.
+4. Only the configured owner `user.id` is admitted; other `MASTER_ADMIN` users receive `OWNER_MFA_EXCEPTION_USER_MISMATCH` or `MFA_ROLLOUT_NOT_ENABLED`.
+5. When `IAM_MFA_MASTER_ADMIN_ENABLED=true`, the exception does **not** skip MFA — owner must step up like any other Master Admin.
+
+**Removal plan (post-MFA):** disable and delete the three `…OWNER_MFA_EXCEPTION…` env vars, enable track B, remove `MasterVehicleOffboardMfaGuard` owner bypass in a follow-up PR after MFA is validated in production.
 
 ## Frontend cutover (track D)
 
@@ -45,8 +60,9 @@ Build-time / `frontend.env`:
 ## Emergency recovery
 
 1. Set `SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_HTTP_ADMISSION_ENABLED=false` (immediate stop of offboard writes).
-2. Set `VITE_MASTER_VEHICLE_OFFBOARD_UI=off` or remove flag.
-3. MFA can remain on for other admin surfaces; disabling `IAM_MFA_MASTER_ADMIN_ENABLED` reduces MFA enforcement globally for Master Admins — use only with security approval.
+2. Set `SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_ENABLED=false` (revoke owner bypass immediately).
+3. Set `VITE_MASTER_VEHICLE_OFFBOARD_UI=off` or remove flag.
+4. MFA can remain on for other admin surfaces; disabling `IAM_MFA_MASTER_ADMIN_ENABLED` reduces MFA enforcement globally for Master Admins — use only with security approval.
 
 ## Validation commands
 

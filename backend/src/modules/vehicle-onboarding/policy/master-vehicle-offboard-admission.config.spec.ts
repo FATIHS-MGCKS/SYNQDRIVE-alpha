@@ -37,18 +37,19 @@ describe('evaluateMasterVehicleOffboardHttpAdmission', () => {
     expect(result.blockReason).toBe('RELEASE_ATTESTATION_MISMATCH');
   });
 
-  it('requires master admin MFA rollout', () => {
+  it('requires master admin MFA rollout when owner exception inactive', () => {
     const result = evaluateMasterVehicleOffboardHttpAdmission({
       httpAdmissionEnabled: true,
       routeVerified: true,
       attestedReleaseSha: TEST_SHA,
       deployedReleaseSha: TEST_SHA,
       mfaMasterAdminEnabled: false,
+      actorUserId: '51cf9144-8aa5-4a19-994a-dc8c9efa6ccb',
     });
     expect(result.blockReason).toBe('MFA_ROLLOUT_NOT_ENABLED');
   });
 
-  it('admits when all gates satisfied', () => {
+  it('admits via standard MFA rollout path', () => {
     const result = evaluateMasterVehicleOffboardHttpAdmission({
       httpAdmissionEnabled: true,
       routeVerified: true,
@@ -58,5 +59,69 @@ describe('evaluateMasterVehicleOffboardHttpAdmission', () => {
     });
     expect(result.admitted).toBe(true);
     expect(result.blockReason).toBeNull();
+    expect(result.admissionPath).toBe('STANDARD_MFA_ROLLOUT');
+  });
+
+  it('admits owner via temporary MFA exception when rollout off', () => {
+    const ownerId = '51cf9144-8aa5-4a19-994a-dc8c9efa6ccb';
+    const futureMs = Date.now() + 120_000;
+    const result = evaluateMasterVehicleOffboardHttpAdmission({
+      httpAdmissionEnabled: true,
+      routeVerified: true,
+      attestedReleaseSha: TEST_SHA,
+      deployedReleaseSha: TEST_SHA,
+      mfaMasterAdminEnabled: false,
+      actorUserId: ownerId,
+      nowMs: futureMs - 1,
+    });
+    expect(result.admitted).toBe(false);
+    expect(result.blockReason).toBe('MFA_ROLLOUT_NOT_ENABLED');
+
+    process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_ENABLED = 'true';
+    process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_USER_ID = ownerId;
+    process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_EXPIRES_AT =
+      new Date(futureMs).toISOString();
+
+    const withException = evaluateMasterVehicleOffboardHttpAdmission({
+      httpAdmissionEnabled: true,
+      routeVerified: true,
+      attestedReleaseSha: TEST_SHA,
+      deployedReleaseSha: TEST_SHA,
+      mfaMasterAdminEnabled: false,
+      actorUserId: ownerId,
+      nowMs: futureMs - 1,
+    });
+    expect(withException.admitted).toBe(true);
+    expect(withException.admissionPath).toBe('OWNER_MFA_EXCEPTION');
+    expect(withException.ownerMfaExceptionActive).toBe(true);
+
+    delete process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_ENABLED;
+    delete process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_USER_ID;
+    delete process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_EXPIRES_AT;
+  });
+
+  it('rejects non-owner master admin when exception configured', () => {
+    const ownerId = '51cf9144-8aa5-4a19-994a-dc8c9efa6ccb';
+    const futureMs = Date.now() + 120_000;
+    process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_ENABLED = 'true';
+    process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_USER_ID = ownerId;
+    process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_EXPIRES_AT =
+      new Date(futureMs).toISOString();
+
+    const result = evaluateMasterVehicleOffboardHttpAdmission({
+      httpAdmissionEnabled: true,
+      routeVerified: true,
+      attestedReleaseSha: TEST_SHA,
+      deployedReleaseSha: TEST_SHA,
+      mfaMasterAdminEnabled: false,
+      actorUserId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+      nowMs: futureMs - 1,
+    });
+    expect(result.admitted).toBe(false);
+    expect(result.blockReason).toBe('OWNER_MFA_EXCEPTION_USER_MISMATCH');
+
+    delete process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_ENABLED;
+    delete process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_USER_ID;
+    delete process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_EXPIRES_AT;
   });
 });

@@ -29,6 +29,7 @@ import { RolesGuard } from '@shared/auth/roles.guard';
 import { PrismaService } from '@shared/database/prisma.service';
 import { VehicleOnboardingOffboardController } from './controllers/vehicle-onboarding-offboard.controller';
 import { MasterVehicleOffboardAdmissionGuard } from './guards/master-vehicle-offboard-admission.guard';
+import { MasterVehicleOffboardMfaGuard } from './guards/master-vehicle-offboard-mfa.guard';
 import { VehicleOffboardPreflightService } from './offboarding/vehicle-offboard-preflight.service';
 import {
   MASTER_VEHICLE_OFFBOARD_ADMISSION_DISABLED_CODE,
@@ -41,6 +42,7 @@ import { ensureOrganizationProductEntitlement } from './testing/org-product-test
 const run = process.env.VO5C_P4A_OFFBOARD_HTTP_PG === '1';
 
 const TEST_RELEASE_SHA = 'ab72f574014d6657cac158c253696b7237cdd3e6';
+const OWNER_USER_ID = '51cf9144-8aa5-4a19-994a-dc8c9efa6ccb';
 
 @Injectable()
 class TestAuthGuard implements CanActivate {
@@ -99,6 +101,29 @@ function clearAdmissionEnv() {
   delete process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_ROUTE_VERIFIED;
   delete process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_ATTESTED_RELEASE_SHA;
   delete process.env.SYNQDRIVE_DEPLOYED_GIT_SHA;
+  clearOwnerMfaExceptionEnv();
+}
+
+function clearOwnerMfaExceptionEnv() {
+  delete process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_ENABLED;
+  delete process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_USER_ID;
+  delete process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_EXPIRES_AT;
+}
+
+function applyOwnerMfaExceptionEnv(ownerUserId: string = OWNER_USER_ID) {
+  process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_ENABLED = 'true';
+  process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_USER_ID = ownerUserId;
+  process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_EXPIRES_AT = new Date(
+    Date.now() + 3600_000,
+  ).toISOString();
+}
+
+function applyAdmittedOffboardEnvWithoutMfaRollout() {
+  process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_HTTP_ADMISSION_ENABLED = 'true';
+  process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_ROUTE_VERIFIED = 'YES';
+  process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_ATTESTED_RELEASE_SHA = TEST_RELEASE_SHA;
+  process.env.SYNQDRIVE_DEPLOYED_GIT_SHA = TEST_RELEASE_SHA;
+  process.env.IAM_MFA_MASTER_ADMIN_ENABLED = 'false';
 }
 
 (run ? describe : describe.skip)('VO5C-P4A offboard HTTP security (PostgreSQL)', () => {
@@ -146,6 +171,7 @@ function clearAdmissionEnv() {
         RolesGuard,
         MasterVehicleOffboardAdmissionGuard,
         MasterAdminMfaGuard,
+        MasterVehicleOffboardMfaGuard,
         VehicleOnboardingOffboardService,
         VehicleOffboardingService,
         VehicleOffboardPreflightService,
@@ -451,5 +477,82 @@ function clearAdmissionEnv() {
       { reason: 'REMOVE_FROM_PRODUCT', idempotencyKey: randomUUID() },
       { 'x-step-up-token': 'valid-grant' },
     ).expect(201);
+  });
+
+  it('owner MFA exception allows offboard without MFA rollout or step-up', async () => {
+    applyAdmittedOffboardEnvWithoutMfaRollout();
+    applyOwnerMfaExceptionEnv(OWNER_USER_ID);
+    await ensureMasterAdminMfaEnrollment(OWNER_USER_ID);
+    const orgId = await createOrg(prisma);
+    const { vehicleId } = await createActiveVehicle(prisma, orgId);
+    await postOffboard(
+      orgId,
+      vehicleId,
+      {
+        id: OWNER_USER_ID,
+        platformRole: UserPlatformRole.MASTER_ADMIN,
+        sessionClaims: buildPasswordOnlyClaims(),
+      },
+      { reason: 'REMOVE_FROM_PRODUCT', idempotencyKey: randomUUID() },
+    ).expect(201);
+  });
+
+  it('other MASTER_ADMIN denied when owner MFA exception active (409)', async () => {
+    applyAdmittedOffboardEnvWithoutMfaRollout();
+    applyOwnerMfaExceptionEnv(OWNER_USER_ID);
+    const orgId = await createOrg(prisma);
+    const { vehicleId } = await createActiveVehicle(prisma, orgId);
+    const res = await postOffboard(
+      orgId,
+      vehicleId,
+      { ...masterWithMfa, sessionClaims: buildPasswordOnlyClaims() },
+      { reason: 'REMOVE_FROM_PRODUCT', idempotencyKey: randomUUID() },
+    ).expect(409);
+    expect(res.body.blockReason).toBe('OWNER_MFA_EXCEPTION_USER_MISMATCH');
+  });
+
+  it('expired owner MFA exception denied (409)', async () => {
+    applyAdmittedOffboardEnvWithoutMfaRollout();
+    process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_ENABLED = 'true';
+    process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_USER_ID = OWNER_USER_ID;
+    process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_EXPIRES_AT =
+      '2000-01-01T00:00:00.000Z';
+    await ensureMasterAdminMfaEnrollment(OWNER_USER_ID);
+    const orgId = await createOrg(prisma);
+    const { vehicleId } = await createActiveVehicle(prisma, orgId);
+    const res = await postOffboard(
+      orgId,
+      vehicleId,
+      {
+        id: OWNER_USER_ID,
+        platformRole: UserPlatformRole.MASTER_ADMIN,
+        sessionClaims: buildPasswordOnlyClaims(),
+      },
+      { reason: 'REMOVE_FROM_PRODUCT', idempotencyKey: randomUUID() },
+    ).expect(409);
+    expect(res.body.blockReason).toBe('MFA_ROLLOUT_NOT_ENABLED');
+  });
+
+  it('owner MFA exception does not bypass MFA when rollout enabled without step-up', async () => {
+    applyAdmittedOffboardEnv();
+    applyOwnerMfaExceptionEnv(OWNER_USER_ID);
+    process.env.IAM_MFA_MASTER_ADMIN_ENABLED = 'true';
+    await ensureMasterAdminMfaEnrollment(OWNER_USER_ID);
+    const orgId = await createOrg(prisma);
+    const { vehicleId } = await createActiveVehicle(prisma, orgId);
+    const res = await postOffboard(
+      orgId,
+      vehicleId,
+      {
+        id: OWNER_USER_ID,
+        platformRole: UserPlatformRole.MASTER_ADMIN,
+        sessionClaims: buildPasswordOnlyClaims(),
+      },
+      { reason: 'REMOVE_FROM_PRODUCT', idempotencyKey: randomUUID() },
+    ).expect(403);
+    expect(
+      res.body.code === MFA_ERROR.STEP_UP_REQUIRED ||
+        (res.body.message as { code?: string })?.code === MFA_ERROR.STEP_UP_REQUIRED,
+    ).toBe(true);
   });
 });
