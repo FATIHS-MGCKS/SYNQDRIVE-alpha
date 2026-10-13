@@ -1,10 +1,12 @@
 import type { OnboardingSourceSnapshotV1 } from '../contracts/onboarding-source-snapshot.v1';
 import type { VehicleIdentityDraftV1 } from '../contracts/vehicle-identity-draft.v1';
 import type { VehicleAdministrativeBaselineDraftV1 } from '../contracts/vehicle-admin-baseline-draft.v1';
+import { proposeDefaultConnectionModality } from '../connection-identity/vehicle-connection-identity.classifier';
 import {
-  mergeConnectionIdentityIntoBindingMetadata,
-  proposeDefaultConnectionModality,
-} from '../connection-identity/vehicle-connection-identity.classifier';
+  applyVerifiedConnectionIdentityToSnapshot,
+  mergeProposedOnly,
+  verifyManualConnectionEvidence,
+} from '../connection-identity/connection-modality-verification';
 
 export interface ManualOnboardingInput {
   vin?: string | null;
@@ -45,7 +47,9 @@ export function buildManualOnboardingSourceSnapshot(
     bindingMetadata: {},
   };
   const proposed = proposeDefaultConnectionModality(base);
-  return mergeConnectionIdentityIntoBindingMetadata(base, proposed, ['MANUAL_CAPTURE']);
+  const snap = mergeProposedOnly(base, proposed, ['MANUAL_CAPTURE']);
+  const verified = verifyManualConnectionEvidence();
+  return applyVerifiedConnectionIdentityToSnapshot(snap, proposed, verified);
 }
 
 export function identityDraftFromManualInput(input: ManualOnboardingInput): VehicleIdentityDraftV1 {
@@ -59,7 +63,7 @@ export function identityDraftFromManualInput(input: ManualOnboardingInput): Vehi
     model: input.model?.trim() || null,
     year: input.year ?? null,
     fuelType: input.fuelType?.trim() || null,
-    sourceEvidenceRefs: [{ provider: 'MANUAL', sourceMirrorId: null }],
+    sourceEvidenceRefs: [],
   };
 }
 

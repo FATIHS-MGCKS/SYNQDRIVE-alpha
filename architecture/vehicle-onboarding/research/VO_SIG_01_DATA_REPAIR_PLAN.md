@@ -34,3 +34,15 @@ Rollback: reverse `UPDATE` using audit table primary key.
 ## Idempotency
 
 Re-running dry-run or backfill must leave already-correct rows unchanged (`provider` already `HIGH_MOBILITY`).
+
+## Production fleet disposition (read-only inventory 2026-10-13)
+
+| Vehicle / link | Disposition | Operator action |
+|----------------|-------------|-----------------|
+| 9 ACTIVE vehicles | Mix of pilot DIMO R1, Tesla software, HM composite, staging UNKNOWN hardware | No auto-mutation; new onboardings gated by P1 verified modality |
+| 7 active links | 6 with explicit provider; 1 HM `UNKNOWN` | HM UNKNOWN → `SAFE_AUTOMATIC` provider fix when approved |
+| DIMO 187336, 190497 | Sold, still ACTIVE | **Offboard only** (`MANUAL_REVIEW_OFFBOARD`) — no reconnect/backfill |
+| Staging rows (`hardwareType=UNKNOWN`, no fleet intent) | Non-authoritative for modality | Do not invent hardware/connections |
+| Legacy `Vehicle.dimoVehicleId` without link | Bypasses VO-3 link materialization | `MANUAL_REVIEW` — governed link materialization or re-adoption |
+
+Helpers: `vo-sig-01-backfill-dry-run.lib.cjs` (`classifyLinkProviderRepair`, `classifySoldVehicleRepair`).

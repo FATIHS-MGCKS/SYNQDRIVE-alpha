@@ -3,6 +3,7 @@ export {
   VehicleConnectionModality,
   type VehicleConnectionIdentityRecordV1,
   type VoConnectionIdentityBindingMetadataV1,
+  type ModalityVerificationStatus,
 } from './vehicle-connection-identity.contract';
 export {
   HIGH_MOBILITY_DATA_SOURCE_PROVIDER,
@@ -14,7 +15,20 @@ export {
   detectConflictingProviderIdentity,
   isManualOnlySourceSet,
   isTelemetryConnectedSourceRef,
-  mergeConnectionIdentityIntoBindingMetadata,
   proposeDefaultConnectionModality,
   type ConnectionIdentityReadinessVerdict,
 } from './vehicle-connection-identity.classifier';
+export {
+  applyVerifiedConnectionIdentityToSnapshot,
+  getVerifiedModalityFromSnapshot,
+  mergeProposedOnly,
+  verifyDimoConnectionFromMirrorEvidence,
+  verifyHighMobilityConnectionFromMirrorEvidence,
+  verifyManualConnectionEvidence,
+} from './connection-modality-verification';
+export {
+  assertHardwareDeviceBindingFromEvidence,
+  assertPersistedSourceLinksMatchSnapshots,
+  assertTelemetryConnectionIdentityForActivationTx,
+  type PerProviderConnectionIdentityAssessment,
+} from './activation-connection-identity.assertions';

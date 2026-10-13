@@ -1,15 +1,11 @@
 /**
  * VO-SIG-01 — Vehicle Onboarding connection identity contract (owned by Vehicle Onboarding).
- *
- * Provider identity and connection modality are separate axes.
- * VSI/APDS must consume classified facts from onboarding — not invent them.
  */
 
 export const VO_CONNECTION_IDENTITY_CONTRACT_VERSION = 'vo-connection-identity-v1' as const;
 
 export type VoConnectionIdentityContractVersion = typeof VO_CONNECTION_IDENTITY_CONTRACT_VERSION;
 
-/** Proposed modality vocabulary — not a Prisma enum. */
 export const VehicleConnectionModality = {
   HARDWARE_DEVICE: 'HARDWARE_DEVICE',
   OEM_CLOUD: 'OEM_CLOUD',
@@ -21,33 +17,50 @@ export const VehicleConnectionModality = {
 export type VehicleConnectionModality =
   (typeof VehicleConnectionModality)[keyof typeof VehicleConnectionModality];
 
+export type ModalityVerificationStatus =
+  | 'PROPOSED_ONLY'
+  | 'VERIFIED_PROVIDER_EVIDENCE'
+  | 'VERIFIED_ADMIN';
+
+export type VoConnectionIdentityBindingMetadataV1 = {
+  connectionIdentity?: {
+    contractVersion: VoConnectionIdentityContractVersion;
+    /** Capture-time hint only — not sufficient for activation. */
+    proposedModality: VehicleConnectionModality;
+    /** Required for telemetry-connected activation. */
+    verifiedModality: VehicleConnectionModality | null;
+    modalityVerification: ModalityVerificationStatus;
+    provider: string;
+    providerVehicleReference: string;
+    /** Pre-activation onboarding case source ref id. */
+    providerSourceRefId?: string;
+    physicalDeviceReference?: string | 'NOT_APPLICABLE' | 'UNKNOWN';
+    deviceBindingRequired?: boolean;
+    deviceBindingEvidence?: {
+      source: 'DIMO_TELEMETRY_SOURCE_FAMILY';
+      telemetrySourceFamily: 'RUPTELA_R1' | 'API_SYNTHETIC' | 'UNKNOWN';
+      deviceSerial: string | null;
+    } | null;
+    verificationEvidence?: string[];
+    classifiedAt?: string;
+    /** @deprecated P0 — use verifiedModality; ignored for activation. */
+    classifiedModality?: VehicleConnectionModality;
+    deviceBindingPresent?: boolean | 'UNKNOWN';
+  };
+};
+
 export type VehicleConnectionIdentityRecordV1 = {
   contractVersion: VoConnectionIdentityContractVersion;
   provider: string;
-  /** Resolved onboarding source ref / data-source link id when known. */
   providerSourceLinkId: string | 'UNRESOLVED';
-  /** Provider-native vehicle identity (DIMO externalId, HM reference, etc.). */
+  providerSourceRefId?: string;
   providerVehicleReference: string;
-  classifiedModality: VehicleConnectionModality;
-  /** Physical device reference when modality requires hardware — never invented. */
+  proposedModality: VehicleConnectionModality;
+  verifiedModality: VehicleConnectionModality;
   physicalDeviceReference: string | 'NOT_APPLICABLE' | 'UNKNOWN';
   verificationEvidence: readonly string[];
   classifiedAt: string;
   lifecycle: 'DRAFT' | 'ACTIVE' | 'SUPERSEDED';
   organizationId: string;
   vehicleId: string | 'PRE_ACTIVATION';
-};
-
-export type VoConnectionIdentityBindingMetadataV1 = {
-  connectionIdentity?: {
-    contractVersion: VoConnectionIdentityContractVersion;
-    classifiedModality: VehicleConnectionModality;
-    provider: string;
-    providerVehicleReference: string;
-    physicalDeviceReference?: string | 'NOT_APPLICABLE' | 'UNKNOWN';
-    deviceBindingRequired?: boolean;
-    deviceBindingPresent?: boolean | 'UNKNOWN';
-    verificationEvidence?: string[];
-    classifiedAt?: string;
-  };
 };

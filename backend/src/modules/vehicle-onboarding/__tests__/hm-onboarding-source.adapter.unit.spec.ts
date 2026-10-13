@@ -24,6 +24,7 @@ describe('HM onboarding source adapter', () => {
         sourceMode: 'HM_ONLY',
         packageType: 'HEALTH',
         appContainerType: 'HM_HEALTH_APP',
+        organizationId: 'org-1',
         updatedAt: new Date(),
       },
       'org-1',

@@ -39,6 +39,10 @@ import {
 } from './vehicle-onboarding-observability';
 import { materializeTechnicalBaselineInActivationTx } from './technical-baseline-materialization';
 import { assertCurrentProviderSourcesValidForActivation } from '../source-adoption/activation-current-source-revalidation';
+import {
+  assertPersistedSourceLinksMatchSnapshots,
+  assertTelemetryConnectionIdentityForActivationTx,
+} from '../connection-identity/activation-connection-identity.assertions';
 
 /** Integration-test fault injection only (not used in production HTTP). */
 export type Vo3ActivationFaultStage =
@@ -138,6 +142,12 @@ export class VehicleOnboardingActivationService {
         const hmRef = hmRefs[0] ?? null;
 
         await assertCurrentProviderSourcesValidForActivation(
+          tx,
+          input.organizationId,
+          caseRow.sourceRefs,
+        );
+
+        await assertTelemetryConnectionIdentityForActivationTx(
           tx,
           input.organizationId,
           caseRow.sourceRefs,
@@ -375,6 +385,11 @@ export class VehicleOnboardingActivationService {
           onboardingCaseId: caseRow.id,
           activatedAt,
         });
+
+        const persistedLinks = await tx.vehicleDataSourceLink.findMany({
+          where: { vehicleId: vehicle.id },
+        });
+        assertPersistedSourceLinksMatchSnapshots(caseRow.sourceRefs, persistedLinks);
 
         const completed = await tx.vehicleOnboardingCase.update({
           where: { id: caseRow.id },

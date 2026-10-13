@@ -2,14 +2,14 @@ import type { VehicleOnboardingCaseSourceRef } from '@prisma/client';
 import type { OnboardingSourceSnapshotV1 } from '../contracts/onboarding-source-snapshot.v1';
 import { parseValidatedSourceSnapshot } from '../policy/persisted-contract.validation';
 import {
-  VO_CONNECTION_IDENTITY_CONTRACT_VERSION,
   VehicleConnectionModality,
   type VoConnectionIdentityBindingMetadataV1,
   type VehicleConnectionModality as Modality,
 } from './vehicle-connection-identity.contract';
+import { getVerifiedModalityFromSnapshot } from './connection-modality-verification';
 
 export type ConnectionIdentityReadinessVerdict =
-  | { ok: true; modality: Modality; evidence: string[] }
+  | { ok: true; perProvider: Array<{ provider: string; verifiedModality: Modality }>; evidence: string[] }
   | { ok: false; reasonCode: string; evidence: string[] };
 
 function readBindingIdentity(
@@ -29,7 +29,7 @@ export function isManualOnlySourceSet(sourceRefs: VehicleOnboardingCaseSourceRef
   return telemetry.length === 0 && manual.length > 0;
 }
 
-/** Default modality proposals at snapshot capture — operator may override before seal. */
+/** Proposed modality only — never treated as verified (no make/model/fuel inference). */
 export function proposeDefaultConnectionModality(
   snap: OnboardingSourceSnapshotV1,
 ): Modality {
@@ -40,42 +40,9 @@ export function proposeDefaultConnectionModality(
     return VehicleConnectionModality.OEM_CLOUD;
   }
   if (snap.providerType === 'DIMO') {
-    const make = snap.make?.toLowerCase() ?? '';
-    if (make.includes('tesla')) {
-      return VehicleConnectionModality.SOFTWARE_INTEGRATION;
-    }
-    return VehicleConnectionModality.HARDWARE_DEVICE;
+    return VehicleConnectionModality.UNKNOWN_REQUIRES_REVIEW;
   }
   return VehicleConnectionModality.UNKNOWN_REQUIRES_REVIEW;
-}
-
-export function mergeConnectionIdentityIntoBindingMetadata(
-  snap: OnboardingSourceSnapshotV1,
-  modality: Modality,
-  evidence: string[],
-): OnboardingSourceSnapshotV1 {
-  const existing = readBindingIdentity(snap);
-  const providerVehicleReference = snap.externalVehicleIdentity;
-  return {
-    ...snap,
-    bindingMetadata: {
-      ...snap.bindingMetadata,
-      connectionIdentity: {
-        contractVersion: VO_CONNECTION_IDENTITY_CONTRACT_VERSION,
-        classifiedModality: existing?.classifiedModality ?? modality,
-        provider: snap.providerType,
-        providerVehicleReference,
-        physicalDeviceReference:
-          modality === VehicleConnectionModality.HARDWARE_DEVICE ? 'UNKNOWN' : 'NOT_APPLICABLE',
-        deviceBindingRequired: modality === VehicleConnectionModality.HARDWARE_DEVICE,
-        deviceBindingPresent: modality === VehicleConnectionModality.HARDWARE_DEVICE
-          ? 'UNKNOWN'
-          : false,
-        verificationEvidence: evidence,
-        classifiedAt: existing?.classifiedAt ?? new Date().toISOString(),
-      },
-    },
-  };
 }
 
 export function assessTelemetryConnectionIdentityForActivation(
@@ -84,7 +51,7 @@ export function assessTelemetryConnectionIdentityForActivation(
   if (isManualOnlySourceSet(sourceRefs)) {
     return {
       ok: true,
-      modality: VehicleConnectionModality.MANUAL_NO_TELEMETRY,
+      perProvider: [{ provider: 'MANUAL', verifiedModality: VehicleConnectionModality.MANUAL_NO_TELEMETRY }],
       evidence: ['MANUAL_ONLY_SOURCE_SET'],
     };
   }
@@ -103,24 +70,22 @@ export function assessTelemetryConnectionIdentityForActivation(
     return { ok: false, reasonCode: 'DUPLICATE_PROVIDER_BINDING', evidence: [conflict] };
   }
 
-  const modalities: Modality[] = [];
+  const perProvider: Array<{ provider: string; verifiedModality: Modality }> = [];
   const evidence: string[] = [];
 
   for (const ref of telemetryRefs) {
     try {
       const snap = parseValidatedSourceSnapshot(ref);
-      const binding = readBindingIdentity(snap);
-      const modality =
-        binding?.classifiedModality ?? proposeDefaultConnectionModality(snap);
-      modalities.push(modality);
-      evidence.push(`${ref.provider}:${modality}`);
-      if (modality === VehicleConnectionModality.UNKNOWN_REQUIRES_REVIEW) {
+      const verified = getVerifiedModalityFromSnapshot(snap);
+      if (!verified || verified === VehicleConnectionModality.UNKNOWN_REQUIRES_REVIEW) {
         return {
           ok: false,
-          reasonCode: 'CONNECTION_MODALITY_UNKNOWN',
-          evidence,
+          reasonCode: 'CONNECTION_MODALITY_UNVERIFIED',
+          evidence: [...evidence, `${ref.provider}:unverified`],
         };
       }
+      perProvider.push({ provider: ref.provider, verifiedModality: verified });
+      evidence.push(`${ref.provider}:${verified}`);
     } catch {
       return {
         ok: false,
@@ -130,30 +95,17 @@ export function assessTelemetryConnectionIdentityForActivation(
     }
   }
 
-  return { ok: true, modality: modalities[0]!, evidence };
+  return { ok: true, perProvider, evidence };
 }
 
+/** @deprecated P0 — use activation-connection-identity.assertions device evidence path. */
 export function assertHardwareDeviceBindingForActivation(
   binding: VoConnectionIdentityBindingMetadataV1['connectionIdentity'] | null | undefined,
-): ConnectionIdentityReadinessVerdict {
-  if (!binding) {
-    return {
-      ok: false,
-      reasonCode: 'PHYSICAL_DEVICE_BINDING_MISSING',
-      evidence: ['NO_CONNECTION_IDENTITY_BINDING'],
-    };
+): { ok: true } | { ok: false; reasonCode: string } {
+  if (!binding?.deviceBindingEvidence?.deviceSerial?.trim()) {
+    return { ok: false, reasonCode: 'PHYSICAL_DEVICE_BINDING_MISSING' };
   }
-  if (binding.classifiedModality !== VehicleConnectionModality.HARDWARE_DEVICE) {
-    return { ok: true, modality: binding.classifiedModality, evidence: ['NOT_HARDWARE_MODALITY'] };
-  }
-  if (binding.deviceBindingPresent !== true) {
-    return {
-      ok: false,
-      reasonCode: 'PHYSICAL_DEVICE_BINDING_MISSING',
-      evidence: [`deviceBindingPresent=${String(binding.deviceBindingPresent)}`],
-    };
-  }
-  return { ok: true, modality: binding.classifiedModality, evidence: ['DEVICE_BINDING_PRESENT'] };
+  return { ok: true };
 }
 
 export function detectConflictingProviderIdentity(

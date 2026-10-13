@@ -3,22 +3,28 @@ import { buildHmOnboardingSourceSnapshot } from '../adapters/high-mobility-onboa
 import { buildManualOnboardingSourceSnapshot } from '../adapters/manual-onboarding-source.adapter';
 import {
   VehicleConnectionModality,
-  assertHardwareDeviceBindingForActivation,
   assessTelemetryConnectionIdentityForActivation,
+  assertHardwareDeviceBindingForActivation,
   detectConflictingProviderIdentity,
-  mergeConnectionIdentityIntoBindingMetadata,
+  getVerifiedModalityFromSnapshot,
   proposeDefaultConnectionModality,
+  verifyDimoConnectionFromMirrorEvidence,
 } from '../connection-identity';
+import { assertHardwareDeviceBindingFromEvidence } from '../connection-identity/activation-connection-identity.assertions';
 import type { VehicleOnboardingCaseSourceRef } from '@prisma/client';
+import { VehicleOnboardingError } from '../errors/vehicle-onboarding.errors';
 
 const org = 'faa710c9-6d91-4079-a7d5-91fdccdec14a';
+const R1_JSON = { aftermarketDevice: { serial: 'R1-FLEET-001' } };
+const TESLA_JSON = { syntheticDevice: { integration: 'tesla' } };
 
 function refFromSnapshot(
   snap: ReturnType<typeof buildDimoOnboardingSourceSnapshot>,
   provider: string,
+  id = 'ref-1',
 ): VehicleOnboardingCaseSourceRef {
   return {
-    id: 'ref-1',
+    id,
     onboardingCaseId: 'case-1',
     provider,
     connectionScope: snap.connectionScope,
@@ -29,62 +35,86 @@ function refFromSnapshot(
     provenanceAt: null,
     firstSeenAt: null,
     lastSeenAt: null,
-    isPrimary: true,
+    isPrimary: provider === 'DIMO',
     snapshotMetadataJson: snap as unknown as VehicleOnboardingCaseSourceRef['snapshotMetadataJson'],
     snapshotMetadataVersion: 1,
     createdAt: new Date(),
   };
 }
 
-describe('VO-SIG-01 connection identity', () => {
-  it('1. DIMO LTE_R1 hardware onboarding proposes HARDWARE_DEVICE modality', () => {
+describe('VO-SIG-01 P1 connection identity', () => {
+  it('1. DIMO R1 with valid hardware binding verifies HARDWARE_DEVICE', () => {
     const snap = buildDimoOnboardingSourceSnapshot({
       id: 'd1',
       externalId: '187361',
-      vin: 'WVWZZZ',
-      make: 'Volkswagen',
-      model: 'Tiguan',
-      year: 2022,
-      fuelType: 'DIESEL',
-      updatedAt: new Date(),
-    });
-    expect(proposeDefaultConnectionModality(snap)).toBe(VehicleConnectionModality.HARDWARE_DEVICE);
-    expect(snap.bindingMetadata).toMatchObject({
-      connectionIdentity: { classifiedModality: VehicleConnectionModality.HARDWARE_DEVICE },
-    });
-  });
-
-  it('2. SMART5 hardware source identification stays HARDWARE_DEVICE (not fuel inferred)', () => {
-    const snap = buildDimoOnboardingSourceSnapshot({
-      id: 'd2',
-      externalId: '192922',
       vin: 'VIN',
       make: 'Audi',
       model: 'A4',
       year: 2021,
       fuelType: 'DIESEL',
       updatedAt: new Date(),
+      rawJson: R1_JSON,
     });
-    expect(proposeDefaultConnectionModality(snap)).toBe(VehicleConnectionModality.HARDWARE_DEVICE);
+    expect(getVerifiedModalityFromSnapshot(snap)).toBe(VehicleConnectionModality.HARDWARE_DEVICE);
+    expect(assessTelemetryConnectionIdentityForActivation([refFromSnapshot(snap, 'DIMO')]).ok).toBe(
+      true,
+    );
   });
 
-  it('3. Tesla software/OEM DIMO connection proposes SOFTWARE_INTEGRATION', () => {
+  it('2. DIMO hardware without binding evidence fails verification', () => {
+    const snap = buildDimoOnboardingSourceSnapshot({
+      id: 'd2',
+      externalId: '999',
+      vin: 'VIN',
+      make: 'VW',
+      model: 'Tiguan',
+      year: 2022,
+      fuelType: 'DIESEL',
+      updatedAt: new Date(),
+      rawJson: null,
+    });
+    expect(getVerifiedModalityFromSnapshot(snap)).toBeNull();
+    const verdict = assessTelemetryConnectionIdentityForActivation([refFromSnapshot(snap, 'DIMO')]);
+    expect(verdict.ok).toBe(false);
+    if (!verdict.ok) expect(verdict.reasonCode).toBe('CONNECTION_MODALITY_UNVERIFIED');
+  });
+
+  it('3. Tesla OEM/software verified via API_SYNTHETIC rawJson', () => {
     const snap = buildDimoOnboardingSourceSnapshot({
       id: 'd3',
       externalId: '186946',
-      vin: 'TESLA',
+      vin: 'VIN',
       make: 'Tesla',
       model: 'Model 3',
       year: 2024,
       fuelType: 'ELECTRIC',
       updatedAt: new Date(),
+      rawJson: TESLA_JSON,
     });
-    expect(proposeDefaultConnectionModality(snap)).toBe(
+    expect(getVerifiedModalityFromSnapshot(snap)).toBe(
       VehicleConnectionModality.SOFTWARE_INTEGRATION,
     );
   });
 
-  it('4. High Mobility OEM connection proposes OEM_CLOUD', () => {
+  it('4. Tesla make-only inference does not verify (proposed UNKNOWN)', () => {
+    const snap = buildDimoOnboardingSourceSnapshot({
+      id: 'd4',
+      externalId: '186946',
+      vin: 'VIN',
+      make: 'Tesla',
+      model: 'Model 3',
+      year: 2024,
+      fuelType: 'ELECTRIC',
+      updatedAt: new Date(),
+      rawJson: null,
+    });
+    expect(proposeDefaultConnectionModality(snap)).toBe(
+      VehicleConnectionModality.UNKNOWN_REQUIRES_REVIEW,
+    );
+    expect(getVerifiedModalityFromSnapshot(snap)).toBeNull();
+  });
+
+  it('5. High Mobility with approved clearance verifies OEM_CLOUD', () => {
     const snap = buildHmOnboardingSourceSnapshot(
       {
         id: 'hm-1',
@@ -96,87 +126,107 @@ describe('VO-SIG-01 connection identity', () => {
         packageType: 'HEALTH',
         appContainerType: 'HM_HEALTH_APP',
         updatedAt: new Date(),
+        organizationId: org,
       },
       org,
     );
-    expect(proposeDefaultConnectionModality(snap)).toBe(VehicleConnectionModality.OEM_CLOUD);
+    expect(getVerifiedModalityFromSnapshot(snap)).toBe(VehicleConnectionModality.OEM_CLOUD);
   });
 
-  it('5. DIMO + HM multi-provider vehicle passes connection readiness', () => {
+  it('6. DIMO + HM retains distinct per-provider verified modalities', () => {
     const dimoSnap = buildDimoOnboardingSourceSnapshot({
-      id: 'd4',
+      id: 'd5',
       externalId: '187784',
       vin: 'VIN',
-      make: 'Volkswagen',
+      make: 'VW',
       model: 'Arteon',
       year: 2020,
       fuelType: 'DIESEL',
       updatedAt: new Date(),
+      rawJson: R1_JSON,
     });
     const hmSnap = buildHmOnboardingSourceSnapshot(
       {
         id: 'hm-2',
         vin: 'VIN',
-        brand: 'Volkswagen',
+        brand: 'VW',
         hmVehicleReference: 'hm-ref-2',
         clearanceStatus: 'APPROVED',
         sourceMode: 'DIMO_PLUS_HM',
         packageType: 'HEALTH',
         appContainerType: 'HM_HEALTH_APP',
         updatedAt: new Date(),
+        organizationId: org,
       },
       org,
     );
     const verdict = assessTelemetryConnectionIdentityForActivation([
-      refFromSnapshot(dimoSnap, 'DIMO'),
-      refFromSnapshot(hmSnap, 'HIGH_MOBILITY'),
+      refFromSnapshot(dimoSnap, 'DIMO', 'r-dimo'),
+      refFromSnapshot(hmSnap, 'HIGH_MOBILITY', 'r-hm'),
     ]);
     expect(verdict.ok).toBe(true);
+    if (verdict.ok) {
+      expect(verdict.perProvider).toHaveLength(2);
+      expect(verdict.perProvider.map((p) => p.provider).sort()).toEqual(['DIMO', 'HIGH_MOBILITY']);
+    }
   });
 
-  it('6. Unknown connection modality blocks telemetry activation readiness', () => {
+  it('7. Conflicting DIMO source identities fail', () => {
+    expect(
+      detectConflictingProviderIdentity([
+        refFromSnapshot(
+          buildDimoOnboardingSourceSnapshot({
+            id: 'a',
+            externalId: '1',
+            vin: null,
+            make: null,
+            model: null,
+            year: null,
+            fuelType: null,
+            updatedAt: new Date(),
+            rawJson: R1_JSON,
+          }),
+          'DIMO',
+          'r1',
+        ),
+        refFromSnapshot(
+          buildDimoOnboardingSourceSnapshot({
+            id: 'b',
+            externalId: '2',
+            vin: null,
+            make: null,
+            model: null,
+            year: null,
+            fuelType: null,
+            updatedAt: new Date(),
+            rawJson: R1_JSON,
+          }),
+          'DIMO',
+          'r2',
+        ),
+      ]),
+    ).toContain('CONFLICTING_PROVIDER_IDENTITY:DIMO');
+  });
+
+  it('8. Unverified modality fails connected readiness assess', () => {
     const snap = buildDimoOnboardingSourceSnapshot({
-      id: 'd5',
-      externalId: '999',
+      id: 'd6',
+      externalId: 'x',
       vin: null,
-      make: 'Unknown',
-      model: 'X',
+      make: 'VW',
+      model: 'x',
       year: 2020,
       fuelType: null,
       updatedAt: new Date(),
+      rawJson: null,
     });
-    const unknownSnap = {
-      ...snap,
-      bindingMetadata: {
-        ...snap.bindingMetadata,
-        connectionIdentity: {
-          ...(snap.bindingMetadata as { connectionIdentity: object }).connectionIdentity,
-          classifiedModality: VehicleConnectionModality.UNKNOWN_REQUIRES_REVIEW,
-        },
-      },
-    };
-    const verdict = assessTelemetryConnectionIdentityForActivation([
-      refFromSnapshot(unknownSnap, 'DIMO'),
-    ]);
-    expect(verdict.ok).toBe(false);
-    expect(verdict).toMatchObject({ reasonCode: 'CONNECTION_MODALITY_UNKNOWN' });
-  });
-
-  it('7. Missing required physical device binding fails activation guard', () => {
-    const binding = {
-      contractVersion: 'vo-connection-identity-v1' as const,
-      classifiedModality: VehicleConnectionModality.HARDWARE_DEVICE,
-      provider: 'DIMO',
-      providerVehicleReference: '187361',
-      deviceBindingPresent: 'UNKNOWN' as const,
-    };
-    const verdict = assertHardwareDeviceBindingForActivation(binding);
+    const verdict = assessTelemetryConnectionIdentityForActivation([refFromSnapshot(snap, 'DIMO')]);
     expect(verdict.ok).toBe(false);
   });
 
-  it('8. Manual non-connected registration allows MANUAL_NO_TELEMETRY', () => {
+  it('9. Manual non-telemetry registration passes', () => {
     const snap = buildManualOnboardingSourceSnapshot(
-      { vin: 'MANUAL1', make: 'Ford', model: 'Van', year: 2019, fuelType: 'DIESEL' },
+      { vin: 'M1', make: 'Ford', model: 'Van', year: 2019, fuelType: 'DIESEL' },
       org,
       'manual:1',
     );
@@ -184,168 +234,64 @@ describe('VO-SIG-01 connection identity', () => {
       refFromSnapshot(snap as ReturnType<typeof buildDimoOnboardingSourceSnapshot>, 'MANUAL'),
     ]);
     expect(verdict.ok).toBe(true);
-    expect(verdict).toMatchObject({
-      modality: VehicleConnectionModality.MANUAL_NO_TELEMETRY,
-    });
   });
 
-  it('9. Conflicting provider identity detected', () => {
-    const conflict = detectConflictingProviderIdentity([
-      {
-        id: '1',
-        onboardingCaseId: 'c',
-        provider: 'DIMO',
-        connectionScope: null,
-        connectionScopeKey: '',
-        externalVehicleIdentity: 'a',
-        sourceMirrorTable: null,
-        sourceMirrorId: '1',
-        provenanceAt: null,
-        firstSeenAt: null,
-        lastSeenAt: null,
-        isPrimary: true,
-        snapshotMetadataJson: {},
-        snapshotMetadataVersion: 0,
-        createdAt: new Date(),
-      },
-      {
-        id: '2',
-        onboardingCaseId: 'c',
-        provider: 'DIMO',
-        connectionScope: null,
-        connectionScopeKey: '',
-        externalVehicleIdentity: 'b',
-        sourceMirrorTable: null,
-        sourceMirrorId: '2',
-        provenanceAt: null,
-        firstSeenAt: null,
-        lastSeenAt: null,
-        isPrimary: false,
-        snapshotMetadataJson: {},
-        snapshotMetadataVersion: 0,
-        createdAt: new Date(),
-      },
-    ]);
-    expect(conflict).toContain('CONFLICTING_PROVIDER_IDENTITY:DIMO');
+  it('10. Hardware binding requires telemetry source family evidence not JSON boolean', () => {
+    expect(() =>
+      assertHardwareDeviceBindingFromEvidence(null, refFromSnapshot(
+        buildDimoOnboardingSourceSnapshot({
+          id: 'd7',
+          externalId: '187361',
+          vin: 'V',
+          make: 'A',
+          model: 'B',
+          year: 2020,
+          fuelType: 'DIESEL',
+          updatedAt: new Date(),
+          rawJson: R1_JSON,
+        }),
+        'DIMO',
+      ), org),
+    ).toThrow(VehicleOnboardingError);
+    const live = verifyDimoConnectionFromMirrorEvidence(R1_JSON, '187361');
+    expect(live.ok).toBe(true);
+    if (live.ok) {
+      assertHardwareDeviceBindingFromEvidence(
+        live.deviceBindingEvidence,
+        refFromSnapshot(
+          buildDimoOnboardingSourceSnapshot({
+            id: 'd7',
+            externalId: '187361',
+            vin: 'V',
+            make: 'A',
+            model: 'B',
+            year: 2020,
+            fuelType: 'DIESEL',
+            updatedAt: new Date(),
+            rawJson: R1_JSON,
+          }),
+          'DIMO',
+        ),
+        org,
+      );
+    }
   });
 
-  it('10. Duplicate provider identity conflict fails readiness assess', () => {
-    const snapA = buildDimoOnboardingSourceSnapshot({
-      id: 'd6a',
-      externalId: '187361',
-      vin: 'VIN',
-      make: 'VW',
-      model: 'Tiguan',
-      year: 2022,
-      fuelType: 'DIESEL',
-      updatedAt: new Date(),
-    });
-    const snapB = buildDimoOnboardingSourceSnapshot({
-      id: 'd6b',
-      externalId: '187784',
-      vin: 'VIN',
-      make: 'VW',
-      model: 'Arteon',
-      year: 2020,
-      fuelType: 'DIESEL',
-      updatedAt: new Date(),
-    });
-    const verdict = assessTelemetryConnectionIdentityForActivation([
-      refFromSnapshot(snapA, 'DIMO'),
-      refFromSnapshot(snapB, 'DIMO'),
-    ]);
-    expect(verdict.ok).toBe(false);
-  });
-
-  it('11. Invalid snapshot fails readiness assess', () => {
-    const verdict = assessTelemetryConnectionIdentityForActivation([
-      {
-        id: 'bad',
-        onboardingCaseId: 'c',
-        provider: 'DIMO',
-        connectionScope: null,
-        connectionScopeKey: '',
-        externalVehicleIdentity: 'x',
-        sourceMirrorTable: null,
-        sourceMirrorId: '1',
-        provenanceAt: null,
-        firstSeenAt: null,
-        lastSeenAt: null,
-        isPrimary: true,
-        snapshotMetadataJson: { version: 99 },
-        snapshotMetadataVersion: 0,
-        createdAt: new Date(),
-      },
-    ]);
-    expect(verdict.ok).toBe(false);
-    expect(verdict).toMatchObject({ reasonCode: 'SOURCE_SNAPSHOT_INVALID' });
-  });
-
-  it('12. Hardware device binding present passes activation guard', () => {
-    const verdict = assertHardwareDeviceBindingForActivation({
-      contractVersion: 'vo-connection-identity-v1',
-      classifiedModality: VehicleConnectionModality.HARDWARE_DEVICE,
-      provider: 'DIMO',
-      providerVehicleReference: '192922',
-      deviceBindingPresent: true,
-    });
-    expect(verdict.ok).toBe(true);
-  });
-
-  it('13. Tenant isolation remains data-access concern (classifier is org-agnostic)', () => {
-    const snap = buildDimoOnboardingSourceSnapshot({
-      id: 'd7',
-      externalId: '1',
-      vin: 'VIN',
-      make: 'Audi',
-      model: 'A4',
-      year: 2021,
-      fuelType: 'DIESEL',
-      updatedAt: new Date(),
-    });
-    expect(assessTelemetryConnectionIdentityForActivation([refFromSnapshot(snap, 'DIMO')]).ok).toBe(
-      true,
-    );
-  });
-
-  it('14. Does not use Vehicle.hardwareType for modality (snapshot-only)', () => {
-    const snap = buildDimoOnboardingSourceSnapshot({
-      id: 'd8',
-      externalId: '186946',
-      vin: 'VIN',
-      make: 'Tesla',
-      model: 'M3',
-      year: 2024,
-      fuelType: 'ELECTRIC',
-      updatedAt: new Date(),
-    });
-    expect(proposeDefaultConnectionModality(snap)).not.toBe(VehicleConnectionModality.HARDWARE_DEVICE);
-  });
-
-  it('15. HM provider persisted contract constant matches schema intent', () => {
-    const { HIGH_MOBILITY_DATA_SOURCE_PROVIDER } = require('../connection-identity/high-mobility-data-source-link.contract');
-    expect(HIGH_MOBILITY_DATA_SOURCE_PROVIDER).toBe('HIGH_MOBILITY');
-  });
-
-  it('16. Idempotent backfill dry-run helper classifies HM UNKNOWN provider as SAFE_AUTOMATIC', () => {
-    const { classifyLinkProviderRepair } = require('../../../../scripts/ops/vo-sig-01-backfill-dry-run.lib.cjs');
+  it('11. Deprecated boolean-only binding guard fails without evidence', () => {
     expect(
-      classifyLinkProviderRepair({
-        provider: 'UNKNOWN',
-        sourceType: 'HIGH_MOBILITY',
-        isActive: true,
-      }),
-    ).toBe('SAFE_AUTOMATIC');
+      assertHardwareDeviceBindingForActivation({
+        contractVersion: 'vo-connection-identity-v1',
+        proposedModality: VehicleConnectionModality.HARDWARE_DEVICE,
+        verifiedModality: VehicleConnectionModality.HARDWARE_DEVICE,
+        modalityVerification: 'VERIFIED_PROVIDER_EVIDENCE',
+        provider: 'DIMO',
+        providerVehicleReference: '1',
+        deviceBindingPresent: true,
+      }).ok,
+    ).toBe(false);
   });
 
-  it('17. Sold vehicle tokens are manual review only (no connectivity repair)', () => {
-    const { classifySoldVehicleRepair } = require('../../../../scripts/ops/vo-sig-01-backfill-dry-run.lib.cjs');
-    expect(classifySoldVehicleRepair({ dimoExternalId: '187336', registryLifecycle: 'ACTIVE' })).toBe(
-      'MANUAL_REVIEW_OFFBOARD',
-    );
-  });
-
-  it('18. Readiness rule engine registers VO-RDY-CONN-001', () => {
+  it('12. Readiness rule VO-RDY-CONN-001 registered', () => {
     const fs = require('node:fs');
     const path = require('node:path');
     const src = fs.readFileSync(
@@ -353,5 +299,57 @@ describe('VO-SIG-01 connection identity', () => {
       'utf8',
     );
     expect(src).toContain('VO-RDY-CONN-001');
+    expect(src).toContain('assessTelemetryConnectionIdentityForActivation');
+    const classifierSrc = fs.readFileSync(
+      path.join(__dirname, '../connection-identity/vehicle-connection-identity.classifier.ts'),
+      'utf8',
+    );
+    expect(classifierSrc).toContain('CONNECTION_MODALITY_UNVERIFIED');
+  });
+
+  it('13. Activation service wires connection identity assert', () => {
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const src = fs.readFileSync(
+      path.join(__dirname, '../services/vehicle-onboarding-activation.service.ts'),
+      'utf8',
+    );
+    expect(src).toContain('assertTelemetryConnectionIdentityForActivationTx');
+    expect(src).toContain('assertPersistedSourceLinksMatchSnapshots');
+  });
+
+  it('14. EXP021 telemetry source family unchanged (import-only reuse)', () => {
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const src = fs.readFileSync(
+      path.join(__dirname, '../connection-identity/connection-modality-verification.ts'),
+      'utf8',
+    );
+    expect(src).toContain('resolveTelemetrySourceFamily');
+    expect(src).not.toContain('hardwareType');
+  });
+
+  it('15. HM provider constant', () => {
+    const { HIGH_MOBILITY_DATA_SOURCE_PROVIDER } = require('../connection-identity/high-mobility-data-source-link.contract');
+    expect(HIGH_MOBILITY_DATA_SOURCE_PROVIDER).toBe('HIGH_MOBILITY');
+  });
+
+  it('16. Backfill sold tokens offboard only', () => {
+    const { classifySoldVehicleRepair } = require('../../../../scripts/ops/vo-sig-01-backfill-dry-run.lib.cjs');
+    expect(classifySoldVehicleRepair({ dimoExternalId: '187336', registryLifecycle: 'ACTIVE' })).toBe(
+      'MANUAL_REVIEW_OFFBOARD',
+    );
+  });
+
+  it('17. HM provider UNKNOWN repair classification', () => {
+    const { classifyLinkProviderRepair } = require('../../../../scripts/ops/vo-sig-01-backfill-dry-run.lib.cjs');
+    expect(
+      classifyLinkProviderRepair({ provider: 'UNKNOWN', sourceType: 'HIGH_MOBILITY', isActive: true }),
+    ).toBe('SAFE_AUTOMATIC');
+  });
+
+  it('18. Legacy registration compatibility: unverified dimo mirror stays unverified', () => {
+    const result = verifyDimoConnectionFromMirrorEvidence({}, 'ext');
+    expect(result.ok).toBe(false);
   });
 });

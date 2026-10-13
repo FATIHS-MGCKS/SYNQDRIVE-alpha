@@ -13,6 +13,21 @@
 | A | `Vehicle.hardwareType` defaults `UNKNOWN`; VO-3 activation does not persist hardware classification | **CONFIRMED** — `insertActivatedVehicleRow` does not set `hardwareType` |
 | B | HM activation `vehicleDataSourceLink.create` omitted `provider` (DB default `UNKNOWN`) | **CONFIRMED** — fixed in VO-SIG-01 PR |
 | C | Readiness validated source sets but lacked explicit connection modality gate | **CONFIRMED** — `VO-RDY-CONN-001` added |
+| D | Proposed vs verified connection modality conflated (make/model inference) | **CONFIRMED** — P1: `connection-modality-verification.ts` + sealed `verifiedModality` in snapshots |
+| E | Activation did not revalidate device binding from mirror evidence | **CONFIRMED** — P1: `assertTelemetryConnectionIdentityForActivationTx` + `assertHardwareDeviceBindingFromEvidence` |
+| F | Multi-provider cases could collapse to single modality assessment | **CONFIRMED** — P1: per-ref assessments + `assertPersistedSourceLinksMatchSnapshots` post-link |
+
+## P1 enforcement (draft PR #2005)
+
+| Control | Mechanism |
+|---------|-----------|
+| Verified modality | `getVerifiedModalityFromSnapshot` — UNKNOWN / null blocks readiness (`CONNECTION_MODALITY_UNVERIFIED`) and activation |
+| DIMO proof | `verifyDimoConnectionFromMirrorEvidence` via `resolveTelemetrySourceFamily` on `DimoVehicle.rawJson` (not make/fuel) |
+| HM proof | `verifyHighMobilityConnectionFromMirrorEvidence` — clearance + org + `hmVehicleReference` |
+| Manual | `MANUAL_NO_TELEMETRY` verified without telemetry refs |
+| Hardware binding | Serial + `RUPTELA_R1` family from evidence — `deviceBindingPresent` boolean alone rejected |
+| Readiness seal drift | Activation re-reads mirror; mismatch → `READINESS_SEAL_STALE` |
+| Link persistence | Post-activation `VehicleDataSourceLink.provider` must match `DIMO` / `HIGH_MOBILITY` constants |
 
 ## Authoritative classifications elsewhere
 
