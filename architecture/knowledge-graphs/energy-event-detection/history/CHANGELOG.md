@@ -1,5 +1,12 @@
 # KG-EED Changelog
 
+## 2026-10-13 — Natural Charge Audit #2 Tesla 2026-10-13 (EED-NCA-20261013-001)
+
+- Prospective real-world charge after ERD global activation; vehicle `68868291-5478-42cd-b0c4-cc77b2a78e21` / token `186946`
+- Telemetry `13:06:30Z`–`16:12:09Z`; raw RECHARGE **11**; HV **1**; offline product **11** (transient) → **1** after primary VEE `updated_at` **18:02:32Z**
+- Classified `TELEMETRY_CONSISTENT_GT_MISSING` with `TRANSIENT_FALSE_SPLIT` observation; owner GT partial; authenticated product API not verified
+- Evidence: `EED-NCA-20261013-001-TESLA-NATURAL-CHARGE-AUDIT-2.md`; ledger `EED-NCA-LEDGER-2026-10-13.md`
+
 ## 2026-10-13 — ERD legacy RECHARGE fragment product-read global activation (EED-EV-0112)
 
 - Production env-only: `ERD_RECHARGE_LEGACY_FRAGMENT_PRODUCT_READ_ENABLED=1` @ SHA `1bc3a3a1863abaa4feab7d242b0678f071e806b2`; activation T0 `2026-10-13T07:17:13Z`
