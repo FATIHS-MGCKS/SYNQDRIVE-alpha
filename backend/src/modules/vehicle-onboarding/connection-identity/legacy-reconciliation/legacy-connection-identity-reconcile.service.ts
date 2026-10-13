@@ -1,6 +1,10 @@
-import type { Prisma, PrismaClient } from '@prisma/client';
-import type { VehicleConnectionIdentityReconciliationAudit } from '@prisma/client';
-import { VehicleRegistryLifecycle } from '@prisma/client';
+import {
+  Prisma,
+  VehicleProviderConsentGrantType,
+  VehicleProviderConsentStatus,
+  VehicleRegistryLifecycle,
+} from '@prisma/client';
+import type { PrismaClient, VehicleConnectionIdentityReconciliationAudit } from '@prisma/client';
 import { DIMO_DATA_SOURCE_PROVIDER, DIMO_DATA_SOURCE_TYPE } from '@modules/dimo/dimo-vehicle-data-source-link.contract';
 import {
   buildLegacyReconciliationConnectionIdentityV2,
@@ -31,8 +35,10 @@ import { assertLegacyReconcileLinkGuards } from './legacy-reconcile-link-guards'
 import {
   classifyLinkMetadataStorage,
   fingerprintLinkMetadataStorage,
+  auditJsonValueForPrismaWrite,
   mergeConnectionIdentityIntoMetadata,
   snapshotLinkMetadataForAudit,
+  type LinkMetadataAuditSnapshot,
   type LinkMetadataStorageState,
 } from './legacy-reconcile-metadata-snapshot';
 import {
@@ -63,8 +69,8 @@ type LinkRow = {
     vehicleId: string;
     organizationId: string;
     provider: string;
-    grantType: string;
-    status: string;
+    grantType: VehicleProviderConsentGrantType;
+    status: VehicleProviderConsentStatus;
     revokedAt: Date | null;
     expiresAt: Date | null;
     providerVehicleRef: string | null;
@@ -340,7 +346,10 @@ export function mergeConnectionIdentityMetadata(
   existing: Prisma.JsonValue | null,
   connectionIdentity: VoSourceLinkConnectionIdentityMetadataV2,
 ): Record<string, unknown> {
-  const merged = mergeConnectionIdentityIntoMetadata(existing, connectionIdentity);
+  const merged = mergeConnectionIdentityIntoMetadata(
+    existing,
+    connectionIdentity as Prisma.InputJsonValue,
+  );
   return merged as Record<string, unknown>;
 }
 
@@ -580,7 +589,10 @@ export async function applyLegacyConnectionIdentityReconciliation(
         }
 
         const beforeSnapshot = snapshotLinkMetadataForAudit(guards.metadata);
-        const merged = mergeConnectionIdentityIntoMetadata(guards.metadata, proposed);
+        const merged = mergeConnectionIdentityIntoMetadata(
+          guards.metadata,
+          proposed as Prisma.InputJsonValue,
+        );
         const afterFingerprint = fingerprintLinkMetadata(merged);
 
         const updateCount = await tx.$executeRaw`
@@ -648,9 +660,7 @@ export async function applyLegacyConnectionIdentityReconciliation(
   return results;
 }
 
-function resolveRollbackBeforeSnapshot(
-  audit: VehicleConnectionIdentityReconciliationAudit,
-): { storageState: LinkMetadataStorageState; metadataJson?: Prisma.InputJsonValue } {
+function resolveRollbackBeforeSnapshot(audit: VehicleConnectionIdentityReconciliationAudit): LinkMetadataAuditSnapshot {
   const provenance = audit.evidenceProvenance as { beforeMetadataStorageState?: LinkMetadataStorageState };
   const storageState = provenance.beforeMetadataStorageState ?? 'OBJECT';
   if (storageState === 'SQL_ABSENT') {
@@ -750,7 +760,7 @@ export async function rollbackLegacyConnectionIdentityReconciliation(
           beforeMetadataFingerprint: audit.afterMetadataFingerprint,
           afterMetadataFingerprint: afterRollbackFingerprint,
           beforeMetadataJson: locked.metadata as Prisma.InputJsonValue,
-          afterMetadataJson: beforeSnapshot.metadataJson,
+          afterMetadataJson: auditJsonValueForPrismaWrite(beforeSnapshot.metadataJson),
           beforeLastVerifiedAt: locked.lastVerifiedAt,
           afterLastVerifiedAt: audit.beforeLastVerifiedAt,
           evidenceProvenance: { rollbackOf: audit.id, runId: auth.runId, restoreValueKind: beforeSnapshot.storageState },

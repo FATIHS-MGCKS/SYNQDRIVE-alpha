@@ -31,6 +31,7 @@ import {
 import { buildSourceLinkConnectionIdentityMetadata } from './connection-identity/source-link-connection-identity.metadata';
 import { VO_SOURCE_LINK_CONNECTION_IDENTITY_VERSION } from './connection-identity/source-link-connection-identity.metadata';
 import { fingerprintLinkMetadata } from './connection-identity/legacy-reconciliation/stable-metadata-fingerprint';
+import { inspectLinkMetadataStorageFromDatabase } from './connection-identity/legacy-reconciliation/legacy-reconcile-metadata-snapshot';
 
 const run = process.env.VO_SIG_B1_LEGACY_RECONCILE_PG === '1' || process.env.VO_SIG_01_CONN_IDENTITY_PG === '1';
 
@@ -53,11 +54,8 @@ function buildExecuteAuth(
   const auth: LegacyReconcileAuthorization = {
     ownerAuthorized: true,
     allowlistedLinkIds: new Set(input.linkIds),
-    manifestFingerprint,
     tenantScopeOrganizationId: input.organizationId,
-    authorizationReference,
     operatorReference: 'test-operator',
-    runId,
     productionReleaseSha: TRUSTED_RELEASE_SHA,
     mode: 'EXECUTE',
     ...overrides,
@@ -812,7 +810,13 @@ function buildExecuteAuth(
       UPDATE vehicle_data_source_links SET metadata = 'null'::jsonb WHERE id = ${jsonNull.linkId}::text
     `;
 
-    for (const linkId of [sqlNull.linkId, jsonNull.linkId]) {
+    const cases = [
+      { linkId: sqlNull.linkId, storage: 'SQL_ABSENT' as const },
+      { linkId: jsonNull.linkId, storage: 'JSON_NULL' as const },
+    ];
+
+    for (const { linkId, storage } of cases) {
+      expect(await inspectLinkMetadataStorageFromDatabase(prisma, linkId)).toBe(storage);
       const plan = await planLegacyConnectionIdentityReconciliation(prisma, {
         organizationId: orgId,
         linkIds: [linkId],
@@ -829,6 +833,9 @@ function buildExecuteAuth(
       const audit = await prisma.vehicleConnectionIdentityReconciliationAudit.findFirst({
         where: { sourceLinkId: linkId, outcome: 'APPLIED' },
       });
+      const provenance = audit!.evidenceProvenance as { beforeMetadataStorageState?: string };
+      expect(provenance.beforeMetadataStorageState).toBe(storage);
+
       const rolled = await rollbackLegacyConnectionIdentityReconciliation(prisma, {
         mode: 'ROLLBACK_EXECUTE',
         ownerAuthorized: true,
@@ -840,9 +847,7 @@ function buildExecuteAuth(
       expect(rolled.outcome).toBe('ROLLED_BACK');
       const after = await prisma.vehicleDataSourceLink.findUnique({ where: { id: linkId } });
       expect(readConnectionIdentityFromLinkMetadataV2(after!.metadata)).toBeNull();
-      if (linkId === sqlNull.linkId) {
-        expect(after!.metadata).toBeNull();
-      }
+      expect(await inspectLinkMetadataStorageFromDatabase(prisma, linkId)).toBe(storage);
     }
   });
 
