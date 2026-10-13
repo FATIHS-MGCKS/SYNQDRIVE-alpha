@@ -18,7 +18,11 @@ Pure, versioned speed quality overlay for DI V0 shadow intervals. **Does not** m
 
 ## Center label contract
 
-`centerBucketLabel` must normalize to the same calendar second as `shadow.referenceTime` or QC returns `REFERENCE_TIME_MISMATCH` (fail closed).
+`centerBucketLabel` must normalize to the same calendar second as `shadow.referenceTime` or QC returns `REFERENCE_TIME_MISMATCH` (fail closed). Unparseable `referenceTime` values use the same path (no thrown `RangeError`).
+
+Conflicting duplicate `r1Obd` rows for one `bucketLabel` → `DUPLICATE_R1_BUCKET_LABEL` before any R1 witness logic.
+
+`STATIONARY_BAND` → `TRUSTED_LIMITED` only when center calendar position is `PRESENT` with valid coordinates; otherwise `MISSING_POSITION_EVIDENCE`.
 
 ## R1 temporal authority
 
