@@ -41,6 +41,19 @@ class InMemoryRedis {
   }
 }
 
+function setReconciliationCohortEnvV1(organizationId: string, vehicleId: string): void {
+  process.env.BATTERY_HV_H4_A3_RECONCILIATION_COHORT_JSON = JSON.stringify({
+    version: 'M3_3_HV_H4_A3_RECONCILIATION_COHORT_V1',
+    members: [{ organizationId, vehicleId }],
+  });
+}
+
+async function createOrgVehicleForReconciliation(prisma: PrismaClient) {
+  const pair = await createGtOrgVehicle(prisma);
+  setReconciliationCohortEnvV1(pair.organizationId, pair.vehicleId);
+  return pair;
+}
+
 async function createSession(
   prisma: PrismaClient,
   organizationId: string,
@@ -111,12 +124,13 @@ async function createSession(
       await prisma.batteryHvChargeSessionEvidenceAck.deleteMany();
       await prisma.batteryHvChargeSessionEvidenceRevision.deleteMany();
       await prisma.hvChargeSession.deleteMany();
+      delete process.env.BATTERY_HV_H4_A3_RECONCILIATION_COHORT_JSON;
       process.env.BATTERY_HV_H4_A3_RECONCILIATION_BATCH_SIZE = '25';
       process.env.BATTERY_HV_H4_A3_RECONCILIATION_INSPECTION_LIMIT = '50';
     });
 
     it('C) missing revision → exact revision + ACK', async () => {
-      const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
+      const { organizationId, vehicleId } = await createOrgVehicleForReconciliation(prisma);
       const session = await createSession(prisma, organizationId, vehicleId);
       const outcome = await service.reconcileLiveSessionRow(session.id);
       expect(outcome.classification).toBe('CREATED');
@@ -130,7 +144,7 @@ async function createSession(
     });
 
     it('D) idempotent second pass', async () => {
-      const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
+      const { organizationId, vehicleId } = await createOrgVehicleForReconciliation(prisma);
       const session = await createSession(prisma, organizationId, vehicleId);
       expect((await service.reconcileLiveSessionRow(session.id)).classification).toBe('CREATED');
       const revCount = await prisma.batteryHvChargeSessionEvidenceRevision.count();
@@ -144,7 +158,7 @@ async function createSession(
 
     it('E) stale revision → new current revision', async () => {
       const writer = createM3_3HvH4ChargeSessionEvidenceWriterService(prisma);
-      const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
+      const { organizationId, vehicleId } = await createOrgVehicleForReconciliation(prisma);
       const session = await createSession(prisma, organizationId, vehicleId);
       await writer.persistFromHvChargeSession(session);
       const r1 = await prisma.batteryHvChargeSessionEvidenceRevision.count();
@@ -162,7 +176,7 @@ async function createSession(
 
     it('F) exact current ACK repair — historical ACK does not mask', async () => {
       const writer = createM3_3HvH4ChargeSessionEvidenceWriterService(prisma);
-      const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
+      const { organizationId, vehicleId } = await createOrgVehicleForReconciliation(prisma);
       const session = await createSession(prisma, organizationId, vehicleId, {
         energyAddedKwh: 10,
       });
@@ -188,7 +202,7 @@ async function createSession(
 
     it('M) re-ingested raw id B independent of A', async () => {
       const writer = createM3_3HvH4ChargeSessionEvidenceWriterService(prisma);
-      const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
+      const { organizationId, vehicleId } = await createOrgVehicleForReconciliation(prisma);
       const fp = `fp-reingest-${randomUUID()}`;
       const idA = randomUUID();
       const sessionA = await createSession(prisma, organizationId, vehicleId, {
@@ -207,7 +221,7 @@ async function createSession(
       process.env.BATTERY_HV_H4_A3_RECONCILIATION_INSPECTION_LIMIT = '2';
       process.env.BATTERY_HV_H4_A3_RECONCILIATION_BATCH_SIZE = '25';
       const writer = createM3_3HvH4ChargeSessionEvidenceWriterService(prisma);
-      const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
+      const { organizationId, vehicleId } = await createOrgVehicleForReconciliation(prisma);
       const ids = [
         'aaaaaaaa-aaaa-4aaa-8aaa-000000000001',
         'aaaaaaaa-aaaa-4aaa-8aaa-000000000002',
@@ -252,7 +266,7 @@ async function createSession(
       process.env.BATTERY_HV_H4_A3_RECONCILIATION_INSPECTION_LIMIT = '2';
       process.env.BATTERY_HV_H4_A3_RECONCILIATION_BATCH_SIZE = '25';
       const writer = createM3_3HvH4ChargeSessionEvidenceWriterService(prisma);
-      const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
+      const { organizationId, vehicleId } = await createOrgVehicleForReconciliation(prisma);
       const idA = 'aaaaaaaa-aaaa-4aaa-8aaa-000000000001';
       const idB = 'aaaaaaaa-aaaa-4aaa-8aaa-000000000002';
       const idC = 'aaaaaaaa-aaaa-4aaa-8aaa-000000000003';
@@ -328,7 +342,7 @@ async function createSession(
     });
 
     it('O) concurrent reconcileLiveSessionRow converges', async () => {
-      const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
+      const { organizationId, vehicleId } = await createOrgVehicleForReconciliation(prisma);
       const session = await createSession(prisma, organizationId, vehicleId);
       const settled = await Promise.allSettled([
         service.reconcileLiveSessionRow(session.id),
@@ -349,7 +363,7 @@ async function createSession(
     });
 
     it('Q) retention handoff — reconciliation establishes durability, gate deletes', async () => {
-      const { organizationId, vehicleId } = await createGtOrgVehicle(prisma);
+      const { organizationId, vehicleId } = await createOrgVehicleForReconciliation(prisma);
       const session = await createSession(prisma, organizationId, vehicleId);
       const blocked = await prisma.$transaction((tx) =>
         deleteHvChargeSessionIfDurablyAcknowledgedV1({

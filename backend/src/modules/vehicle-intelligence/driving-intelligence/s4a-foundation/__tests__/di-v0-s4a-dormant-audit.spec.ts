@@ -69,6 +69,7 @@ const ALLOWED_MUTATION_TABLES = new Set([
 describe('DI V0 S4A dormant-by-construction audit', () => {
   it('has production files to audit', () => {
     expect(productionFiles.map((f) => path.basename(f)).sort()).toEqual([
+      'di-v0-s4-settlement-policy-segment.ts',
       'di-v0-s4a-contract.ts',
       'di-v0-s4a-control-plane.ts',
       'di-v0-s4a-errors.ts',

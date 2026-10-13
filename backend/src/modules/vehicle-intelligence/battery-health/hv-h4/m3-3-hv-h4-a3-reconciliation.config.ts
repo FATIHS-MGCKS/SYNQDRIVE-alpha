@@ -25,14 +25,16 @@ function parseStrictPositiveIntEnv(value: string | undefined, defaultValue: numb
   return parsed;
 }
 
-const boolEnv = (key: string, def: boolean): boolean => {
-  const raw = process.env[key];
+const boolEnv = (key: string, def: boolean, env: NodeJS.ProcessEnv = process.env): boolean => {
+  const raw = env[key];
   if (raw === undefined || raw.trim() === '') return def;
   return raw.toLowerCase() === 'true' || raw === '1';
 };
 
-export function isBatteryHvH4A3ReconciliationEnabled(): boolean {
-  return boolEnv(BATTERY_HV_H4_A3_RECONCILIATION_ENABLED_ENV, false);
+export function isBatteryHvH4A3ReconciliationEnabled(
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  return boolEnv(BATTERY_HV_H4_A3_RECONCILIATION_ENABLED_ENV, false, env);
 }
 
 export function getBatteryHvH4A3ReconciliationIntervalMs(): number {

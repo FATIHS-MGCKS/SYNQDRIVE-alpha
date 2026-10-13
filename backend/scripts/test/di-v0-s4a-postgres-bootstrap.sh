@@ -69,7 +69,12 @@ trap 'rm -f "$DEPLOY_LOG"' EXIT
 DATABASE_URL="${RACE_URL}?schema=public" npx prisma migrate deploy 2>&1 | tee "$DEPLOY_LOG"
 grep -q "$S4A_MIGRATION" "$DEPLOY_LOG" || { echo "S4A migration was not applied" >&2; exit 1; }
 DATABASE_URL="${RACE_URL}?schema=public" npx prisma migrate deploy 2>&1 | tee "$DEPLOY_LOG"
-grep -qE 'No pending migrations to apply' "$DEPLOY_LOG" || { echo "second deploy was not a no-op" >&2; exit 1; }
+grep -qE '20261013120000_di_v0_s4_near_realtime_eligible_ck|No pending migrations to apply' "$DEPLOY_LOG" || {
+  echo "near-realtime eligible_ck migration must apply after S4A foundation on race DB" >&2
+  exit 1
+}
+DATABASE_URL="${RACE_URL}?schema=public" npx prisma migrate deploy 2>&1 | tee "$DEPLOY_LOG"
+grep -qE 'No pending migrations to apply' "$DEPLOY_LOG" || { echo "third deploy was not a no-op" >&2; exit 1; }
 
 log "ready"
 printf 'export DATABASE_URL=%q\n' "${RACE_URL}?schema=public"
