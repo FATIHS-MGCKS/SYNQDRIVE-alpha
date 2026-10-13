@@ -41,6 +41,49 @@ describe('DI_V0_SPEED_QC_POLICY_V1 pre-merge hardening', () => {
     expect(v.reasonCodes).toContain(DI_V0_SPEED_QC_REASON.REFERENCE_TIME_MISMATCH);
   });
 
+  it('invalid shadow.referenceTime fails closed without throwing', () => {
+    const base = syntheticHighway130Input();
+    const input = {
+      ...base,
+      shadow: { ...base.shadow, referenceTime: 'not-a-valid-iso-timestamp' },
+    };
+    expect(() => evaluateDiV0SpeedQcInterval(input)).not.toThrow();
+    const v = evaluateDiV0SpeedQcInterval(input);
+    expect(v.trustLevel).toBe('UNTRUSTED');
+    expect(v.reasonCodes).toContain(DI_V0_SPEED_QC_REASON.REFERENCE_TIME_MISMATCH);
+  });
+
+  it('duplicate R1 bucket labels with conflicting speeds fail closed (no independent witness)', () => {
+    const base = syntheticHighway130Input();
+    const v = evaluateDiV0SpeedQcInterval({
+      ...base,
+      r1Obd: [
+        { bucketLabel: base.centerBucketLabel, speedKmh: 130 },
+        { bucketLabel: base.centerBucketLabel, speedKmh: 50 },
+      ],
+    });
+    expect(v.trustLevel).toBe('UNTRUSTED');
+    expect(v.reasonCodes).toContain(DI_V0_SPEED_QC_REASON.DUPLICATE_R1_BUCKET_LABEL);
+    expect(v.sourceCorroboration.r1IndependentWitness).toBe(false);
+  });
+
+  it('STATIONARY_BAND without center position evidence cannot reach TRUSTED_LIMITED', () => {
+    const base = syntheticHighway130Input();
+    const v = evaluateDiV0SpeedQcInterval({
+      ...base,
+      positions: base.positions.filter((p) => p.bucketLabel !== base.centerBucketLabel),
+      shadow: {
+        ...base.shadow,
+        speedEvidenceState: 'STATIONARY_BAND',
+        motionState: 'STATIONARY_SUPPORTED',
+        estimatedSpeedKmh: 0,
+      },
+    });
+    expect(v.trustLevel).toBe('UNTRUSTED');
+    expect(v.reasonCodes).toContain(DI_V0_SPEED_QC_REASON.MISSING_POSITION_EVIDENCE);
+    expect(v.qcTrustedSpeedKmh).toBeNull();
+  });
+
   it('does not treat R1_INTERVAL_ONLY as independent corroboration', () => {
     const base = syntheticHighway130Input();
     const v = evaluateDiV0SpeedQcInterval({

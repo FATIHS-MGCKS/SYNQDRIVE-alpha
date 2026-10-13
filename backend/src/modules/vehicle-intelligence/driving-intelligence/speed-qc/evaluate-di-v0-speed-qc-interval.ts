@@ -2,8 +2,9 @@ import type { PositionState } from '../core/types';
 import { DI_V0_SPEED_QC_CALIBRATION_PROVISIONAL_V1 } from './di-v0-speed-qc-calibration';
 import {
   buildDiV0SpeedQcPositionIndex,
+  buildDiV0SpeedQcR1Index,
   isValidGeoCoordinate,
-  normalizeBucketLabel,
+  normalizeBucketLabelSafe,
 } from './di-v0-speed-qc-position-index';
 import { DI_V0_SPEED_QC_POLICY_V1 } from './di-v0-speed-qc-policy.version';
 import { DI_V0_SPEED_QC_REASON, type DiV0SpeedQcReasonCode } from './di-v0-speed-qc-reason-codes';
@@ -127,8 +128,13 @@ export function evaluateDiV0SpeedQcInterval(input: DiV0SpeedQcEvaluateInput): Di
     return untrusted([DI_V0_SPEED_QC_REASON.INVALID_INPUT], basePartial());
   }
 
-  if (normalizeBucketLabel(centerLabel) !== normalizeBucketLabel(shadow.referenceTime)) {
-    return untrusted([DI_V0_SPEED_QC_REASON.REFERENCE_TIME_MISMATCH], basePartial());
+  const centerRef = normalizeBucketLabelSafe(centerLabel);
+  const shadowRef = normalizeBucketLabelSafe(shadow.referenceTime);
+  if (centerRef == null || shadowRef == null || centerRef !== shadowRef) {
+    return untrusted(
+      [DI_V0_SPEED_QC_REASON.REFERENCE_TIME_MISMATCH],
+      basePartial(),
+    );
   }
 
   const positionIndex = buildDiV0SpeedQcPositionIndex(input.positions);
@@ -137,10 +143,11 @@ export function evaluateDiV0SpeedQcInterval(input: DiV0SpeedQcEvaluateInput): Di
   }
   const posMap = positionIndex.byLabel;
 
-  const r1Map = new Map<string, { speedKmh: number | null }>();
-  for (const r of input.r1Obd ?? []) {
-    r1Map.set(r.bucketLabel, r);
+  const r1Index = buildDiV0SpeedQcR1Index(input.r1Obd);
+  if (!r1Index.ok) {
+    return untrusted([DI_V0_SPEED_QC_REASON.DUPLICATE_R1_BUCKET_LABEL], basePartial());
   }
+  const r1Map = r1Index.byLabel;
 
   const prevLabel = bucketLabelMinusSeconds(centerLabel, 1);
   const nextLabel = bucketLabelPlusSeconds(centerLabel, 1);
@@ -208,6 +215,16 @@ export function evaluateDiV0SpeedQcInterval(input: DiV0SpeedQcEvaluateInput): Di
     }
     if (shadow.motionState !== 'STATIONARY_SUPPORTED') {
       return buildVerdict('UNTRUSTED', [DI_V0_SPEED_QC_REASON.STATIONARY_INCONSISTENT], null);
+    }
+    const centerPos = posMap.get(centerLabel);
+    if (
+      !centerPos ||
+      centerPos.availability !== 'PRESENT' ||
+      centerPos.latitude == null ||
+      centerPos.longitude == null ||
+      !isValidGeoCoordinate(centerPos.latitude, centerPos.longitude)
+    ) {
+      return buildVerdict('UNTRUSTED', [DI_V0_SPEED_QC_REASON.MISSING_POSITION_EVIDENCE], null);
     }
     return buildVerdict('TRUSTED_LIMITED', [DI_V0_SPEED_QC_REASON.OK_MODERATE], null);
   }
