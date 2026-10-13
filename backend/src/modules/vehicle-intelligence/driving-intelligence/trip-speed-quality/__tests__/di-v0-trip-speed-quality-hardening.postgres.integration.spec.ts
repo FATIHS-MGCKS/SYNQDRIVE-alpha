@@ -209,6 +209,34 @@ assertS4aPostgresCiEnv();
     });
   }, 120_000);
 
+  it('PG15 idempotent retry after work item superseded rejects (no stale success)', async () => {
+    await withFixture(async (fx, repo) => {
+      const projection = buildSyntheticTripSpeedProjection(fx.tenant, {
+        workItemId: fx.workItemId,
+        shadowRunId: fx.shadowRunId,
+        snapshotHash: fx.snapshotHash,
+        boundaryFingerprint: fx.boundaryFingerprint,
+      });
+      const gate = {
+        organizationId: fx.tenant.organizationId,
+        tripId: fx.tenant.tripId,
+        workItemId: fx.workItemId,
+        boundaryFingerprint: fx.boundaryFingerprint,
+        pinnedSnapshotHash: fx.snapshotHash,
+        shadowRunId: fx.shadowRunId,
+      };
+      const first = await repo.persistCurrentProjection(projection, gate);
+      expect(first.lifecycleStatus).toBe('CURRENT');
+      await db.$executeRaw`
+        UPDATE di_v0_s4_work_items
+        SET status = 'SUPERSEDED', superseded_reason = 'OPERATOR', superseded_at = now()
+        WHERE id = ${fx.workItemId}`;
+      await expect(repo.persistCurrentProjection(projection, gate)).rejects.toMatchObject({
+        code: 'PERSIST_AUTHORITY_REJECTED',
+      });
+    });
+  }, 120_000);
+
   it('PG6 superseded work item rejected at persist gate', async () => {
     await withFixture(async (fx, repo) => {
       await db.$executeRaw`

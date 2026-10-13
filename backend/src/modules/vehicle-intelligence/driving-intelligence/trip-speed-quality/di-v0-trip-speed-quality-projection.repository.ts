@@ -105,6 +105,16 @@ export class DiV0TripSpeedQualityProjectionRepository {
               'idempotency key reuse with different projection body',
             );
           }
+          if (authorityGate) {
+            try {
+              await assertDiV0TripSpeedQualityPersistAuthority(tx, authorityGate);
+            } catch (error) {
+              throw new DiV0TripSpeedQualityProjectionPersistenceError(
+                'PERSIST_AUTHORITY_REJECTED',
+                error instanceof Error ? error.message : String(error),
+              );
+            }
+          }
           return this.mapRow(existing[0]);
         }
 
