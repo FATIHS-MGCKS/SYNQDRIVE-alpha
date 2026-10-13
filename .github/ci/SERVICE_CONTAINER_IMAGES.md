@@ -9,12 +9,13 @@ Use the [Amazon ECR Public Gallery](https://gallery.ecr.aws/) mirrors of the off
 | Role | Image |
 |------|--------|
 | PostgreSQL 16 (Alpine) | `public.ecr.aws/docker/library/postgres:16-alpine` |
-| PostgreSQL 16 (Alpine) fallback | `ghcr.io/docker-library/postgres:16-alpine` |
+| PostgreSQL 16 (Alpine) fallback | `mirror.gcr.io/library/postgres:16-alpine` |
+| PostgreSQL 16 (Alpine) last resort | `postgres:16-alpine` (Docker Hub; rate limits may apply) |
 | Redis 7 (Alpine) | `public.ecr.aws/docker/library/redis:7-alpine` |
 
 These are the same upstream tags as `postgres:16-alpine` and `redis:7-alpine` on Docker Hub. Keep existing `POSTGRES_*` env, ports, and `--health-cmd` options unchanged.
 
-When ECR Public returns `toomanyrequests: Data limit exceeded` during **Initialize containers**, switch the affected workflow’s `services.postgres.image` to the GHCR fallback above (no application test changes). Prefer ECR when pulls succeed; use GHCR only for CI service containers that hit the ECR data cap.
+When ECR Public returns `toomanyrequests: Data limit exceeded` during **Initialize containers**, prefer a step-driven start with ordered pull retries (see `backend/scripts/test/vo5b-ci-start-postgres.sh` and `vehicle-onboarding-vo5b-postgres-ci.yml`) instead of skipping tests.
 
 ## When adding workflows
 
