@@ -68,5 +68,6 @@ DATABASE_URL="${INT_DATABASE_URL}" npx jest "vo4-(readiness|activation-races).po
 
 export VO_SIG_01_CONN_IDENTITY_PG=1
 DATABASE_URL="${INT_DATABASE_URL}" npx jest vo-sig-01-connection-identity.postgres.integration --runInBand --forceExit
+DATABASE_URL="${INT_DATABASE_URL}" npx jest vo-sig-01-b1-legacy-reconciliation.postgres.integration --runInBand --forceExit
 
 log_ci "all gates passed"

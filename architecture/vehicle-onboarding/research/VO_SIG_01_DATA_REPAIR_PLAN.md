@@ -46,3 +46,14 @@ Re-running dry-run or backfill must leave already-correct rows unchanged (`provi
 | Legacy `Vehicle.dimoVehicleId` without link | Bypasses VO-3 link materialization | `MANUAL_REVIEW` — governed link materialization or re-adoption |
 
 Helpers: `vo-sig-01-backfill-dry-run.lib.cjs` (`classifyLinkProviderRepair`, `classifySoldVehicleRepair`).
+
+## B1 legacy connection identity (2026-10-13)
+
+| Item | Path |
+|------|------|
+| Contract v2 | `backend/src/modules/vehicle-onboarding/connection-identity/legacy-reconciliation/connection-identity-metadata-v2.ts` |
+| Planner + executor | `legacy-connection-identity-reconcile.service.ts` |
+| Dry-run CLI | `backend/scripts/ops/vo-sig-01-legacy-connection-identity-reconcile-dry-run.ts` |
+| Evidence | [VO_SIG_01_B1_LEGACY_CONNECTION_IDENTITY_RECONCILIATION.md](../evidence/VO_SIG_01_B1_LEGACY_CONNECTION_IDENTITY_RECONCILIATION.md) |
+
+**Not** the same as provider-repair dry-run (`vo-sig-01-backfill-dry-run.mjs`). B1 writes `metadata.connectionIdentity` v2 only after separate owner-approved execute authorization.

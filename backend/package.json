@@ -136,6 +136,8 @@
     "test:vehicle-onboarding:vo3": "jest vehicle-onboarding --testPathIgnorePatterns=postgres.integration",
     "test:vehicle-onboarding:vo3:postgres": "VO3_ORCHESTRATOR_PG=1 jest vo3-orchestrator.postgres.integration --runInBand --forceExit",
     "test:vehicle-onboarding:vo-sig-01:postgres": "VO_SIG_01_CONN_IDENTITY_PG=1 jest vo-sig-01-connection-identity.postgres.integration --runInBand --forceExit",
+    "test:vehicle-onboarding:vo-sig-b1:postgres": "VO_SIG_B1_LEGACY_RECONCILE_PG=1 jest vo-sig-01-b1-legacy-reconciliation.postgres.integration --runInBand --forceExit",
+    "ops:vo-sig-b1:legacy-reconcile:dry-run": "ts-node -r tsconfig-paths/register scripts/ops/vo-sig-01-legacy-connection-identity-reconcile-dry-run.ts",
     "test:vehicle-onboarding:vo4:postgres": "VO4_READINESS_PG=1 jest 'vo4-readiness|vo45-baseline|vo46-baseline-integrity'\\.postgres\\.integration --runInBand --forceExit",
     "test:vehicle-onboarding:vo48:postgres": "VO48_CAPTURE_PG=1 jest vo48-capture.postgres.integration --runInBand --forceExit",
     "test:vehicle-onboarding:vo49:postgres": "VO49_SOURCE_ADOPTION_PG=1 jest 'vo49-source-(adoption(|-integrity)|identity-continuity)\\.postgres\\.integration' --runInBand --forceExit",
