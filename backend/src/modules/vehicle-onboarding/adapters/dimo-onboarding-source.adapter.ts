@@ -1,6 +1,10 @@
 import type { DimoVehicle } from '@prisma/client';
 import type { OnboardingSourceSnapshotV1 } from '../contracts/onboarding-source-snapshot.v1';
 import { DIMO_PLATFORM_DEVELOPER_LICENSE_SCOPE } from './connection-scope.constants';
+import {
+  mergeConnectionIdentityIntoBindingMetadata,
+  proposeDefaultConnectionModality,
+} from '../connection-identity/vehicle-connection-identity.classifier';
 
 export function buildDimoOnboardingSourceSnapshot(
   dimoVehicle: Pick<DimoVehicle, 'id' | 'externalId' | 'vin' | 'make' | 'model' | 'year' | 'fuelType' | 'updatedAt'>,
@@ -9,7 +13,7 @@ export function buildDimoOnboardingSourceSnapshot(
   const externalVehicleIdentity = dimoVehicle.externalId?.trim() || dimoVehicle.id;
   const vin = dimoVehicle.vin?.trim() || null;
 
-  return {
+  const base: OnboardingSourceSnapshotV1 = {
     version: 1,
     providerType: 'DIMO',
     connectionScope: DIMO_PLATFORM_DEVELOPER_LICENSE_SCOPE,
@@ -33,6 +37,11 @@ export function buildDimoOnboardingSourceSnapshot(
       dimoVehicleId: dimoVehicle.id,
     },
   };
+  const proposed = proposeDefaultConnectionModality(base);
+  return mergeConnectionIdentityIntoBindingMetadata(base, proposed, [
+    'DIMO_MIRROR_SNAPSHOT',
+    `externalId:${dimoVehicle.externalId}`,
+  ]);
 }
 
 export function identityDraftFromDimoSnapshot(

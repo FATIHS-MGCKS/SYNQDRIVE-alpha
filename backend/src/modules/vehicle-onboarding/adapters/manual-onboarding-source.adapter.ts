@@ -1,6 +1,10 @@
 import type { OnboardingSourceSnapshotV1 } from '../contracts/onboarding-source-snapshot.v1';
 import type { VehicleIdentityDraftV1 } from '../contracts/vehicle-identity-draft.v1';
 import type { VehicleAdministrativeBaselineDraftV1 } from '../contracts/vehicle-admin-baseline-draft.v1';
+import {
+  mergeConnectionIdentityIntoBindingMetadata,
+  proposeDefaultConnectionModality,
+} from '../connection-identity/vehicle-connection-identity.classifier';
 
 export interface ManualOnboardingInput {
   vin?: string | null;
@@ -21,7 +25,7 @@ export function buildManualOnboardingSourceSnapshot(
   observedAt: Date = new Date(),
 ): OnboardingSourceSnapshotV1 {
   const vin = input.vin?.trim() || null;
-  return {
+  const base: OnboardingSourceSnapshotV1 = {
     version: 1,
     providerType: 'MANUAL',
     connectionScope: `ORG:${organizationId}`,
@@ -40,6 +44,8 @@ export function buildManualOnboardingSourceSnapshot(
     sourceEvidence: { entry: 'manual' },
     bindingMetadata: {},
   };
+  const proposed = proposeDefaultConnectionModality(base);
+  return mergeConnectionIdentityIntoBindingMetadata(base, proposed, ['MANUAL_CAPTURE']);
 }
 
 export function identityDraftFromManualInput(input: ManualOnboardingInput): VehicleIdentityDraftV1 {

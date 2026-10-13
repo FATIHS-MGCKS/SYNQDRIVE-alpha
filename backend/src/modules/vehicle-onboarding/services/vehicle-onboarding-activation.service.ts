@@ -28,6 +28,10 @@ import {
 import { insertActivatedVehicleRow } from './vehicle-onboarding-activation.persistence';
 import { appendHmCanonicalRegistrationHistoryIfNeeded } from './hm-canonical-activation.binding';
 import {
+  HIGH_MOBILITY_DATA_SOURCE_PROVIDER,
+  HIGH_MOBILITY_DATA_SOURCE_TYPE,
+} from '../connection-identity/high-mobility-data-source-link.contract';
+import {
   logActivationAttempt,
   logActivationConflict,
   logActivationRollback,
@@ -290,7 +294,8 @@ export class VehicleOnboardingActivationService {
             await tx.vehicleDataSourceLink.create({
               data: {
                 vehicleId: vehicle.id,
-                sourceType: 'HIGH_MOBILITY',
+                provider: HIGH_MOBILITY_DATA_SOURCE_PROVIDER,
+                sourceType: HIGH_MOBILITY_DATA_SOURCE_TYPE,
                 sourceSubtype: subtype,
                 sourceReferenceId: hm.id,
                 consentId: hmConsentId,

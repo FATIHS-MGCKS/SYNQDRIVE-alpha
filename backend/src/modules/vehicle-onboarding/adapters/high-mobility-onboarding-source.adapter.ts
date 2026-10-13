@@ -4,6 +4,10 @@ import {
   HM_MIRROR_SURROGATE_PREFIX,
   hmConnectionScopeForOrganization,
 } from './connection-scope.constants';
+import {
+  mergeConnectionIdentityIntoBindingMetadata,
+  proposeDefaultConnectionModality,
+} from '../connection-identity/vehicle-connection-identity.classifier';
 
 export function resolveHmExternalVehicleIdentity(
   hm: Pick<HighMobilityVehicle, 'id' | 'hmVehicleReference'>,
@@ -33,7 +37,7 @@ export function buildHmOnboardingSourceSnapshot(
   const vin = hm.vin?.trim() || null;
   const isSurrogate = externalVehicleIdentity.startsWith(HM_MIRROR_SURROGATE_PREFIX);
 
-  return {
+  const base: OnboardingSourceSnapshotV1 = {
     version: 1,
     providerType: 'HIGH_MOBILITY',
     connectionScope: hmConnectionScopeForOrganization(organizationId),
@@ -61,6 +65,12 @@ export function buildHmOnboardingSourceSnapshot(
       hmVehicleReference: hm.hmVehicleReference,
     },
   };
+  const proposed = proposeDefaultConnectionModality(base);
+  return mergeConnectionIdentityIntoBindingMetadata(base, proposed, [
+    'HM_MIRROR_SNAPSHOT',
+    `clearance:${hm.clearanceStatus}`,
+    `sourceMode:${hm.sourceMode}`,
+  ]);
 }
 
 export function identityDraftFromHmSnapshot(

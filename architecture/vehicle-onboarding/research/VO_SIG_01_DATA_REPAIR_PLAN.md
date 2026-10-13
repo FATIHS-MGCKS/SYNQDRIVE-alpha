@@ -1,0 +1,36 @@
+# VO-SIG-01 data repair plan (dry-run only — not executed)
+
+## Principles
+
+- No production execution in VO-SIG-01 workstream.
+- No `hardwareType` promotion `UNKNOWN → LTE_R1/SMART5` without DI routing regression proof.
+- Sold vehicles `187336` / `190497`: **offboard** via canonical Master Admin HTTP — never backfill connectivity.
+
+## SAFE_AUTOMATIC (post-approval)
+
+| Target | Before | After | Evidence |
+|--------|--------|-------|----------|
+| Active HM link with `provider=UNKNOWN` | `provider: UNKNOWN` | `provider: HIGH_MOBILITY` | `sourceType=HIGH_MOBILITY`, org + vehicle ownership match |
+
+Script: `backend/scripts/ops/vo-sig-01-backfill-dry-run.mjs` (read-only).
+
+## MANUAL_REVIEW
+
+| Case | Action |
+|------|--------|
+| ACTIVE vehicle, no active `VehicleDataSourceLink`, legacy `dimoVehicleId` set | Materialize DIMO link via governed backfill or re-adoption — **not** auto in VO-SIG-01 |
+| `hardwareType=UNKNOWN` with DIMO telemetry | Classify connection modality + DI hardware profile separately |
+| Sold tokens 187336 / 190497 still ACTIVE | Offboard through `VehicleOffboardingService` |
+
+## Transactional backfill shape (future)
+
+1. `BEGIN`
+2. `UPDATE vehicle_data_source_links SET provider = 'HIGH_MOBILITY' WHERE id = :id AND provider = 'UNKNOWN' AND source_type = 'HIGH_MOBILITY'`
+3. Insert audit row / outbox event `VEHICLE_CONNECTION_IDENTITY_REPAIRED`
+4. `COMMIT`
+
+Rollback: reverse `UPDATE` using audit table primary key.
+
+## Idempotency
+
+Re-running dry-run or backfill must leave already-correct rows unchanged (`provider` already `HIGH_MOBILITY`).
