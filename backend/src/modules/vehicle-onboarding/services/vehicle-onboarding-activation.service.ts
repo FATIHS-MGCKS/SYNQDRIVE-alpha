@@ -43,6 +43,7 @@ import {
   assertPersistedSourceLinksMatchSnapshots,
   assertTelemetryConnectionIdentityForActivationTx,
 } from '../connection-identity/activation-connection-identity.assertions';
+import { persistConnectionIdentityOnActiveSourceLinksTx } from '../connection-identity/source-link-connection-identity.metadata';
 
 /** Integration-test fault injection only (not used in production HTTP). */
 export type Vo3ActivationFaultStage =
@@ -147,7 +148,7 @@ export class VehicleOnboardingActivationService {
           caseRow.sourceRefs,
         );
 
-        await assertTelemetryConnectionIdentityForActivationTx(
+        const connectionIdentityAssessments = await assertTelemetryConnectionIdentityForActivationTx(
           tx,
           input.organizationId,
           caseRow.sourceRefs,
@@ -384,6 +385,13 @@ export class VehicleOnboardingActivationService {
           organizationId: input.organizationId,
           onboardingCaseId: caseRow.id,
           activatedAt,
+        });
+
+        await persistConnectionIdentityOnActiveSourceLinksTx(tx, {
+          organizationId: input.organizationId,
+          vehicleId: vehicle.id,
+          sourceRefs: caseRow.sourceRefs,
+          assessments: connectionIdentityAssessments,
         });
 
         const persistedLinks = await tx.vehicleDataSourceLink.findMany({

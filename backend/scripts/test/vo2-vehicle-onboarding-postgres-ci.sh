@@ -66,4 +66,7 @@ export VO4_READINESS_PG=1
 export VO4_ACTIVATION_RACE_PG=1
 DATABASE_URL="${INT_DATABASE_URL}" npx jest "vo4-(readiness|activation-races).postgres.integration" --runInBand --forceExit
 
+export VO_SIG_01_CONN_IDENTITY_PG=1
+DATABASE_URL="${INT_DATABASE_URL}" npx jest vo-sig-01-connection-identity.postgres.integration --runInBand --forceExit
+
 log_ci "all gates passed"

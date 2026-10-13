@@ -41,10 +41,19 @@ async function createOrgWithRental(prisma: PrismaClient) {
 }
 
 async function createDimoMirror(prisma: PrismaClient, dimoId: string, externalId: string) {
-  await prisma.$executeRaw`
-    INSERT INTO dimo_vehicles (id, external_id, vin, make, model, year, fuel_type, connection_status, created_at, updated_at)
-    VALUES (${dimoId}, ${externalId}, null, 'Audi', 'A3', 2021, 'GASOLINE', 'CONNECTED'::"DimoConnectionStatus", NOW(), NOW())
-  `;
+  await prisma.dimoVehicle.create({
+    data: {
+      id: dimoId,
+      externalId,
+      vin: null,
+      make: 'Audi',
+      model: 'A3',
+      year: 2021,
+      fuelType: 'GASOLINE',
+      connectionStatus: 'CONNECTED',
+      rawJson: { syntheticDevice: { integration: 'vo4-ci-fixture' } },
+    },
+  });
 }
 
 async function sealReadyDimoCase(

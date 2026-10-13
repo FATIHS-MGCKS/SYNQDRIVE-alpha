@@ -39,22 +39,21 @@ async function createDimoMirror(
   vin: string | null,
   make = 'Audi',
   model = 'A3',
+  rawJson: object = { syntheticDevice: { integration: 'vo3-ci-fixture' } },
 ) {
-  await prisma.$executeRaw`
-    INSERT INTO dimo_vehicles (id, external_id, vin, make, model, year, fuel_type, connection_status, created_at, updated_at)
-    VALUES (
-      ${dimoId},
-      ${externalId},
-      ${vin},
-      ${make},
-      ${model},
-      2021,
-      'GASOLINE',
-      'CONNECTED'::"DimoConnectionStatus",
-      NOW(),
-      NOW()
-    )
-  `;
+  await prisma.dimoVehicle.create({
+    data: {
+      id: dimoId,
+      externalId,
+      vin,
+      make,
+      model,
+      year: 2021,
+      fuelType: 'GASOLINE',
+      connectionStatus: 'CONNECTED',
+      rawJson,
+    },
+  });
 }
 
 interface ActivationAttemptBaseline {

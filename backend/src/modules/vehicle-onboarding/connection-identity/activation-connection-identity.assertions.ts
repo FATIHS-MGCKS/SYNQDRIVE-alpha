@@ -14,6 +14,12 @@ import {
   type DeviceBindingEvidence,
 } from './connection-modality-verification';
 import {
+  assertDimoHardwareDeviceBindingForActivation,
+  enrichDimoDeviceBindingEvidence,
+  type DeviceBindingAssuranceLevel,
+} from './device-binding-assurance';
+import { readConnectionIdentityFromLinkMetadata } from './source-link-connection-identity.metadata';
+import {
   detectConflictingProviderIdentity,
   isManualOnlySourceSet,
   isTelemetryConnectedSourceRef,
@@ -27,6 +33,7 @@ export type PerProviderConnectionIdentityAssessment = {
   verifiedModality: string;
   physicalDeviceReference: string | 'NOT_APPLICABLE' | 'UNKNOWN';
   deviceBindingEvidence: DeviceBindingEvidence | null;
+  deviceBindingAssurance: DeviceBindingAssuranceLevel | null;
   evidence: string[];
 };
 
@@ -73,7 +80,7 @@ export async function assertTelemetryConnectionIdentityForActivationTx(
     if (ref.provider === 'DIMO' && ref.sourceMirrorId) {
       const dimo = await tx.dimoVehicle.findUnique({
         where: { id: ref.sourceMirrorId },
-        select: { id: true, externalId: true, rawJson: true },
+        select: { id: true, externalId: true, rawJson: true, tokenId: true },
       });
       if (!dimo) {
         throw new VehicleOnboardingError(
@@ -95,8 +102,21 @@ export async function assertTelemetryConnectionIdentityForActivationTx(
           live: live.verifiedModality,
         });
       }
+      let deviceBindingAssurance: DeviceBindingAssuranceLevel | null = null;
+      let deviceBindingEvidence = live.deviceBindingEvidence;
       if (live.verifiedModality === VehicleConnectionModality.HARDWARE_DEVICE) {
-        assertHardwareDeviceBindingFromEvidence(live.deviceBindingEvidence, ref, organizationId);
+        deviceBindingAssurance = await assertDimoHardwareDeviceBindingForActivation(tx, {
+          evidence: live.deviceBindingEvidence,
+          ref,
+          organizationId,
+          dimo,
+        });
+        if (live.deviceBindingEvidence) {
+          deviceBindingEvidence = enrichDimoDeviceBindingEvidence(
+            live.deviceBindingEvidence,
+            dimo,
+          );
+        }
       }
       assessments.push({
         provider: 'DIMO',
@@ -105,7 +125,8 @@ export async function assertTelemetryConnectionIdentityForActivationTx(
         providerVehicleReference: ref.externalVehicleIdentity,
         verifiedModality: live.verifiedModality,
         physicalDeviceReference: live.physicalDeviceReference,
-        deviceBindingEvidence: live.deviceBindingEvidence,
+        deviceBindingEvidence,
+        deviceBindingAssurance,
         evidence: live.evidence,
       });
       continue;
@@ -149,6 +170,7 @@ export async function assertTelemetryConnectionIdentityForActivationTx(
         verifiedModality: live.verifiedModality,
         physicalDeviceReference: live.physicalDeviceReference,
         deviceBindingEvidence: null,
+        deviceBindingAssurance: null,
         evidence: live.evidence,
       });
       continue;
@@ -164,16 +186,16 @@ export async function assertTelemetryConnectionIdentityForActivationTx(
   return assessments;
 }
 
+/** @deprecated P1 — use assertDimoHardwareDeviceBindingForActivation (mirror + tenant scope). */
 export function assertHardwareDeviceBindingFromEvidence(
   evidence: DeviceBindingEvidence | null,
-  ref: VehicleOnboardingCaseSourceRef,
-  organizationId: string,
+  _ref: VehicleOnboardingCaseSourceRef,
+  _organizationId: string,
 ): void {
   if (!evidence || evidence.telemetrySourceFamily !== 'RUPTELA_R1') {
     throw new VehicleOnboardingError(
       'ACTIVATION_PRECONDITION_FAILED',
       'PHYSICAL_DEVICE_BINDING_MISSING',
-      { provider: ref.provider, organizationId },
     );
   }
   if (!evidence.deviceSerial?.trim()) {
@@ -219,6 +241,25 @@ export function assertPersistedSourceLinksMatchSnapshots(
           'DIMO link identity mismatch vs snapshot',
         );
       }
+      const persisted = readConnectionIdentityFromLinkMetadata(link.metadata);
+      if (verified && !persisted) {
+        throw new VehicleOnboardingError(
+          'ACTIVATION_PRECONDITION_FAILED',
+          'DIMO link connection identity metadata missing',
+        );
+      }
+      if (persisted && persisted.providerSourceLinkId !== link.id) {
+        throw new VehicleOnboardingError(
+          'ACTIVATION_PRECONDITION_FAILED',
+          'DIMO link connection identity link id mismatch',
+        );
+      }
+      if (persisted && persisted.preActivationProviderSourceRefId !== ref.id) {
+        throw new VehicleOnboardingError(
+          'ACTIVATION_PRECONDITION_FAILED',
+          'DIMO link pre-activation source ref mismatch',
+        );
+      }
     }
 
     if (ref.provider === 'HIGH_MOBILITY') {
@@ -240,6 +281,19 @@ export function assertPersistedSourceLinksMatchSnapshots(
           'ACTIVATION_PRECONDITION_FAILED',
           'HM source link provider mismatch',
           { provider: link.provider },
+        );
+      }
+      const persisted = readConnectionIdentityFromLinkMetadata(link.metadata);
+      if (verified && !persisted) {
+        throw new VehicleOnboardingError(
+          'ACTIVATION_PRECONDITION_FAILED',
+          'HM link connection identity metadata missing',
+        );
+      }
+      if (persisted && persisted.providerSourceLinkId !== link.id) {
+        throw new VehicleOnboardingError(
+          'ACTIVATION_PRECONDITION_FAILED',
+          'HM link connection identity link id mismatch',
         );
       }
     }

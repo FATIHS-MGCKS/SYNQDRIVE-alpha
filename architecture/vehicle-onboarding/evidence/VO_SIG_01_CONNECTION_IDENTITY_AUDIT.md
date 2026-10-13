@@ -25,7 +25,9 @@
 | DIMO proof | `verifyDimoConnectionFromMirrorEvidence` via `resolveTelemetrySourceFamily` on `DimoVehicle.rawJson` (not make/fuel) |
 | HM proof | `verifyHighMobilityConnectionFromMirrorEvidence` — clearance + org + `hmVehicleReference` |
 | Manual | `MANUAL_NO_TELEMETRY` verified without telemetry refs |
-| Hardware binding | Serial + `RUPTELA_R1` family from evidence — `deviceBindingPresent` boolean alone rejected |
+| Hardware binding | Serial + `RUPTELA_R1` + mirror `externalId`/`id` alignment + no cross-tenant active DIMO link; optional `tokenId` → `providerDeviceIdHash` scope (**not** episode/physical-state proof at activation) |
+| Post-activation link facts | `VehicleDataSourceLink.metadata.connectionIdentity` (`vo-source-link-connection-identity-v1`) with canonical `providerSourceLinkId` distinct from pre-activation source ref |
+| SMART5 onboarding | **Not supported** in `resolveTelemetrySourceFamily` — unknown aftermarket serial families fail closed; `Vehicle.hardwareType=SMART5` remains DI routing only, not VO modality proof |
 | Readiness seal drift | Activation re-reads mirror; mismatch → `READINESS_SEAL_STALE` |
 | Link persistence | Post-activation `VehicleDataSourceLink.provider` must match `DIMO` / `HIGH_MOBILITY` constants |
 

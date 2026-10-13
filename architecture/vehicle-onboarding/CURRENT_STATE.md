@@ -37,6 +37,7 @@ SynqDrive today separates **provider mirrors** (`DimoVehicle`, `HighMobilityVehi
 - **VO5C-P2B4-0 (2026-10-08):** `POST /admin/prune`, `PlatformAdminService.pruneMasterData`, and `npm run prisma:prune` unconditionally fail-closed; recovery-grade prune **not implemented**; `SECURITY_REMEDIATION_IN_PROGRESS` (see [VO5C_P2B4_0_PRUNE_EMERGENCY_CONTAINMENT.md](./evidence/VO5C_P2B4_0_PRUNE_EMERGENCY_CONTAINMENT.md)).
 - **VO-SIG-01 (2026-10-13):** Connection identity contract (`connection-identity/*`), readiness rule `VO-RDY-CONN-001`, HM activation persists `provider=HIGH_MOBILITY`; production read-only inventory — see [VO_SIG_01_CONNECTION_IDENTITY_AUDIT.md](./evidence/VO_SIG_01_CONNECTION_IDENTITY_AUDIT.md) and [VO_SIG_01_DATA_REPAIR_PLAN.md](./research/VO_SIG_01_DATA_REPAIR_PLAN.md).
 - **VO-SIG-01 P1 (2026-10-13):** Proposed vs verified modality separation, activation-time mirror revalidation + hardware device evidence, multi-provider per-ref identity, post-link snapshot parity; regression suite `vehicle-connection-identity.unit.spec.ts` (18 cases).
+- **VO-SIG-01 P1 closure (2026-10-13):** Device-binding assurance levels, link `metadata.connectionIdentity` persistence for VSI-03, PostgreSQL certification `vo-sig-01-connection-identity.postgres.integration.spec.ts`.
 
 ---
 

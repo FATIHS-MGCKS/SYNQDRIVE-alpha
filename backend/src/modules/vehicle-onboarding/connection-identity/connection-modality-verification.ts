@@ -26,6 +26,9 @@ export type DeviceBindingEvidence = {
   source: 'DIMO_TELEMETRY_SOURCE_FAMILY';
   telemetrySourceFamily: 'RUPTELA_R1' | 'API_SYNTHETIC' | 'UNKNOWN';
   deviceSerial: string | null;
+  assurance?: import('./device-binding-assurance').DeviceBindingAssuranceLevel;
+  dimoTokenId?: number | null;
+  providerDeviceIdHash?: string | null;
 };
 
 function readBinding(snap: OnboardingSourceSnapshotV1) {
