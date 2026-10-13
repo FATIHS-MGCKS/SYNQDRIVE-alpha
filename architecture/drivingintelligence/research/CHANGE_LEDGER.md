@@ -1928,3 +1928,20 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 |-------|--------|
 | CHANGE | `shadow_plane_engaged` gauge + failure retention; in-flight work sum; `DiV0S4GlobalKillSuspectOrphan`; VPS candidate promtool + reload rollback; promtool/Jest contracts; evidence `EXP021_S4P2_R2_MONITORING_CORRECTNESS.md` |
 | NON_EFFECTS | No Production mutation; GLOBAL_KILL=KILLED; PR #1988 remains draft pending #1987 merge |
+
+### EXP-021 near-real-time trip processing contract correction (2026-10-13)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `quietPeriodSeconds` / `settlementQuietPeriodSeconds` **86400 → 600**; repository T01/successor use `make_interval(secs => quiet)`; migration relaxes `di_v0_s4_wi_eligible_ck`; evidence `EXP021_NEAR_REALTIME_TRIP_PROCESSING_CORRECTION.md` |
+| WHY | Owner product decision: DI must run soon after trip completion; 24h quiet was safety/settlement-shadow heritage, not desired latency |
+| NON_EFFECTS | No Production deploy/backfill/kill/allowlist change; existing work items not reset; T24 cutoff remains retrospective QA — segment metrics on policy deploy |
+| VALIDATION | `validate-s4a-contract.mjs`; `di-v0-s4a-settlement-policy.spec.ts`; S4B D05 updated |
+
+### EXP-021 PR #2001 final hardening (2026-10-13)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Frozen quiet-period floor/ceiling in validator (N09B/N09C); `di-v0-s4-settlement-policy-segment.ts`; NR01–NR09 Postgres proofs; bootstrap strip re-applies near-realtime migration; CI Postgres image `mirror.gcr.io/library/postgres:16-alpine` |
+| EVIDENCE | Read-only prod audit: 0 active PENDING; 12 trips held only by 24h discovery gate (all 600s-eligible by anchor) |
+| NON_EFFECTS | No merge/deploy/kill/allowlist mutation |

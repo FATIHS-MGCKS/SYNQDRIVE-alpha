@@ -91,7 +91,7 @@ All identifiers are `text` (matching existing Prisma `String @id` UUID usage). A
 | `…_pin_all_or_none_ck` | the three `pinned_*` columns are all NULL or all NOT NULL |
 | `…_attempts_ck` | `attempt_count BETWEEN 0 AND 5` |
 | `…_format_ck` | prefixes of `boundary_fingerprint`, `pipeline_version_key`, `combined_input_identity`, `execution_identity`, `pinned_snapshot_hash` |
-| `…_eligible_ck` | `eligible_at = settlement_anchor_at + interval '24 hours'` |
+| `…_eligible_ck` | `eligible_at` between `settlement_anchor_at` and `settlement_anchor_at + 24h` (application sets `anchor + quietPeriodSeconds`; legacy rows may retain `+24h`) |
 
 **Indexes (new table only):** claim index (`status`, `next_attempt_at`) WHERE status IN ('PENDING','FAILED_RETRYABLE'); reap index (`lease_expires_at`) WHERE status='LEASED'; (`organization_id`, `trip_id`).
 
