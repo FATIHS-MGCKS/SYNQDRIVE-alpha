@@ -16469,6 +16469,10 @@ model VehicleConnectionIdentityReconciliationAudit {
   outcome                   VehicleConnectionIdentityReconciliationOutcome
   beforeMetadataFingerprint String                                          @map("before_metadata_fingerprint")
   afterMetadataFingerprint  String                                          @map("after_metadata_fingerprint")
+  beforeMetadataJson        Json?                                           @map("before_metadata_json")
+  afterMetadataJson         Json?                                           @map("after_metadata_json")
+  beforeLastVerifiedAt      DateTime?                                       @map("before_last_verified_at")
+  afterLastVerifiedAt       DateTime?                                       @map("after_last_verified_at")
   evidenceProvenance        Json                                            @map("evidence_provenance")
   operatorReference         String?                                         @map("operator_reference")
   authorizationReference    String                                          @map("authorization_reference")
@@ -16477,7 +16481,7 @@ model VehicleConnectionIdentityReconciliationAudit {
   rollbackAuditId           String?                                         @unique @map("rollback_audit_id")
   createdAt                 DateTime                                        @default(now()) @map("created_at")
 
-  sourceLink VehicleDataSourceLink @relation(fields: [sourceLinkId], references: [id], onDelete: Cascade)
+  sourceLink VehicleDataSourceLink @relation(fields: [sourceLinkId], references: [id], onDelete: Restrict)
 
   @@index([organizationId])
   @@index([vehicleId])

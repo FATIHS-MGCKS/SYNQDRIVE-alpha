@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { VehicleRegistryLifecycle } from '@prisma/client';
 import { DIMO_DATA_SOURCE_PROVIDER, DIMO_DATA_SOURCE_TYPE } from '@modules/dimo/dimo-vehicle-data-source-link.contract';
@@ -10,6 +9,18 @@ import {
 } from './connection-identity-metadata-v2';
 import { evaluateLegacyDimoLinkProviderEvidence } from './legacy-connection-identity-evidence';
 import {
+  buildApprovalManifestEntry,
+  computeDeterministicApprovalManifestFingerprint,
+  entriesMatchApprovedManifest,
+  type LegacyReconcileApprovalManifestEntry,
+} from './legacy-reconcile-approval-manifest';
+import {
+  assertLegacyReconcileExecuteAuthorization,
+  assertLegacyReconcileRollbackAuthorization,
+  type LegacyReconcileRollbackAuthorization,
+} from './legacy-reconcile-authorization';
+import { assertLegacyReconcileLinkGuards } from './legacy-reconcile-link-guards';
+import {
   LEGACY_RECONCILE_ELIGIBILITY,
   type LegacyReconcileAuthorization,
   type LegacyReconcilePlanRow,
@@ -17,16 +28,12 @@ import {
 
 const ACTIVE_CONSENT_GRANT = 'DIMO_DIRECT';
 
+/** @deprecated Use computeDeterministicApprovalManifestFingerprint */
 export function computeManifestFingerprint(rows: LegacyReconcilePlanRow[]): string {
-  const payload = rows
-    .filter((r) => r.eligibility === LEGACY_RECONCILE_ELIGIBILITY.ELIGIBLE)
-    .map((r) => ({
-      sourceLinkId: r.sourceLinkId,
-      proposedMetadataFingerprint: r.proposedMetadataFingerprint,
-    }))
-    .sort((a, b) => a.sourceLinkId.localeCompare(b.sourceLinkId));
-  return createHash('sha256').update(JSON.stringify(payload)).digest('hex');
+  return computeDeterministicApprovalManifestFingerprint(rows);
 }
+
+export { computeDeterministicApprovalManifestFingerprint };
 
 type LinkRow = {
   id: string;
@@ -144,6 +151,7 @@ export async function planLegacyConnectionIdentityReconciliation(
         proposedMetadataV2: null,
         proposedMetadataFingerprint: null,
         evidenceClassification: null,
+        approvalManifestEntry: null,
       });
       continue;
     }
@@ -237,7 +245,7 @@ export async function planLegacyConnectionIdentityReconciliation(
     const proposedEnvelope = mergeConnectionIdentityMetadata(link.metadata, proposed);
     const proposedFingerprint = fingerprintLinkMetadata(proposedEnvelope);
 
-    rows.push({
+    const planRow: LegacyReconcilePlanRow = {
       sourceLinkId: link.id,
       vehicleId: link.vehicleId,
       organizationId: link.vehicle.organizationId,
@@ -252,7 +260,10 @@ export async function planLegacyConnectionIdentityReconciliation(
       proposedMetadataV2: proposed,
       proposedMetadataFingerprint: proposedFingerprint,
       evidenceClassification: evidence.telemetrySourceFamily,
-    });
+      approvalManifestEntry: null,
+    };
+    planRow.approvalManifestEntry = buildApprovalManifestEntry(planRow);
+    rows.push(planRow);
   }
 
   return rows;
@@ -280,6 +291,7 @@ function emptyPlan(
     proposedMetadataV2: null,
     proposedMetadataFingerprint: null,
     evidenceClassification: null,
+    approvalManifestEntry: null,
   };
 }
 
@@ -299,17 +311,81 @@ export type LegacyReconcileApplyResult =
   | { outcome: 'APPLIED'; sourceLinkId: string; auditId: string; afterFingerprint: string }
   | { outcome: 'SKIPPED'; sourceLinkId: string; eligibility: string; reasonCodes: string[] };
 
+async function buildFreshApprovalEntryInTx(
+  tx: Prisma.TransactionClient,
+  row: LegacyReconcilePlanRow,
+  now: Date,
+): Promise<LegacyReconcileApprovalManifestEntry> {
+  const guards = await assertLegacyReconcileLinkGuards(tx, {
+    organizationId: row.organizationId,
+    vehicleId: row.vehicleId,
+    sourceLinkId: row.sourceLinkId,
+    now,
+  });
+
+  const freshEvidence = await evaluateLegacyDimoLinkProviderEvidence(tx, {
+    organizationId: row.organizationId,
+    vehicleId: row.vehicleId,
+    linkId: row.sourceLinkId,
+    dimoVehicleId: guards.dimoVehicleId,
+    externalId: guards.dimoExternalId,
+  });
+  if (!freshEvidence.ok) {
+    throw new Error(`FRESH_EVIDENCE_FAILED:${freshEvidence.reasonCode}`);
+  }
+
+  const dimoRow = await tx.dimoVehicle.findUnique({
+    where: { id: guards.dimoVehicleId },
+    select: { id: true, externalId: true, tokenId: true, rawJson: true },
+  });
+  if (!dimoRow) {
+    throw new Error('FRESH_DIMO_MIRROR_MISSING');
+  }
+
+  const proposed = buildLegacyReconciliationConnectionIdentityV2({
+    link: { id: row.sourceLinkId },
+    organizationId: row.organizationId,
+    vehicleId: row.vehicleId,
+    dimo: {
+      id: dimoRow.id,
+      externalId: dimoRow.externalId,
+      tokenId: dimoRow.tokenId,
+      rawJson: dimoRow.rawJson,
+    },
+    verifiedModality: freshEvidence.verifiedModality,
+    modalityVerification: 'VERIFIED_PROVIDER_EVIDENCE',
+    physicalDeviceReference: freshEvidence.physicalDeviceReference,
+    deviceBindingAssurance: freshEvidence.deviceBindingAssurance,
+    providerDeviceIdHash: freshEvidence.deviceBindingEvidence?.providerDeviceIdHash ?? null,
+    verificationEvidence: freshEvidence.evidence,
+    verifiedAt: now,
+    priorLinkLastVerifiedAt: guards.lastVerifiedAt,
+    reconciliationProvenance: {
+      runId: 'MANIFEST_CHECK',
+      authorizationReference: 'MANIFEST_CHECK',
+      evidenceCheckedAt: now.toISOString(),
+    },
+  });
+
+  const freshRow: LegacyReconcilePlanRow = {
+    ...row,
+    currentMetadataFingerprint: fingerprintLinkMetadata(guards.metadata),
+    proposedMetadataV2: proposed,
+    evidenceClassification: freshEvidence.telemetrySourceFamily,
+  };
+  const entry = buildApprovalManifestEntry(freshRow);
+  if (!entry) {
+    throw new Error('FRESH_MANIFEST_ENTRY_FAILED');
+  }
+  return entry;
+}
+
 export async function applyLegacyConnectionIdentityReconciliation(
   prisma: PrismaClient,
   auth: LegacyReconcileAuthorization,
   input: { organizationId: string; linkIds: string[]; now?: Date },
 ): Promise<LegacyReconcileApplyResult[]> {
-  if (auth.mode === 'DRY_RUN') {
-    throw new Error('LEGACY_RECONCILE_EXECUTE_REQUIRES_EXECUTE_MODE');
-  }
-  if (!auth.ownerAuthorized) {
-    throw new Error('LEGACY_RECONCILE_OWNER_AUTHORIZATION_REQUIRED');
-  }
+  assertLegacyReconcileExecuteAuthorization(auth, input);
 
   const now = input.now ?? new Date();
   const plan = await planLegacyConnectionIdentityReconciliation(prisma, {
@@ -319,9 +395,16 @@ export async function applyLegacyConnectionIdentityReconciliation(
     now,
   });
 
-  const manifest = computeManifestFingerprint(plan);
-  if (auth.manifestFingerprint && auth.manifestFingerprint !== manifest) {
+  const manifest = computeDeterministicApprovalManifestFingerprint(plan);
+  if (auth.manifestFingerprint!.trim() !== manifest) {
     throw new Error('LEGACY_RECONCILE_MANIFEST_FINGERPRINT_MISMATCH');
+  }
+
+  const approvedByLink = new Map<string, LegacyReconcileApprovalManifestEntry>();
+  for (const row of plan) {
+    if (row.approvalManifestEntry) {
+      approvedByLink.set(row.sourceLinkId, row.approvalManifestEntry);
+    }
   }
 
   const results: LegacyReconcileApplyResult[] = [];
@@ -350,6 +433,17 @@ export async function applyLegacyConnectionIdentityReconciliation(
       continue;
     }
 
+    const approvedEntry = approvedByLink.get(row.sourceLinkId);
+    if (!approvedEntry) {
+      results.push({
+        outcome: 'SKIPPED',
+        sourceLinkId: row.sourceLinkId,
+        eligibility: LEGACY_RECONCILE_ELIGIBILITY.CONCURRENT_CHANGE_RISK,
+        reasonCodes: ['APPROVED_MANIFEST_ENTRY_MISSING'],
+      });
+      continue;
+    }
+
     const proposed = {
       ...row.proposedMetadataV2,
       reconciliationProvenance: {
@@ -364,43 +458,38 @@ export async function applyLegacyConnectionIdentityReconciliation(
 
     try {
       const applied = await prisma.$transaction(async (tx) => {
-        const freshEvidence = await evaluateLegacyDimoLinkProviderEvidence(tx, {
+        await tx.$executeRaw`
+          SELECT id FROM vehicle_data_source_links
+          WHERE id = ${row.sourceLinkId}::text
+          FOR UPDATE
+        `;
+
+        const freshEntry = await buildFreshApprovalEntryInTx(tx, row, now);
+        if (!entriesMatchApprovedManifest(approvedEntry, freshEntry)) {
+          throw new Error('APPROVED_MANIFEST_STALE');
+        }
+
+        const guards = await assertLegacyReconcileLinkGuards(tx, {
           organizationId: row.organizationId,
           vehicleId: row.vehicleId,
-          linkId: row.sourceLinkId,
-          dimoVehicleId: row.sourceMirrorId!,
-          externalId: row.dimoExternalId!,
+          sourceLinkId: row.sourceLinkId,
+          now,
         });
-        if (!freshEvidence.ok) {
-          throw new Error(`FRESH_EVIDENCE_FAILED:${freshEvidence.reasonCode}`);
-        }
 
-        const locked = await tx.vehicleDataSourceLink.findFirst({
-          where: {
-            id: row.sourceLinkId,
-            vehicleId: row.vehicleId,
-            isActive: true,
-            vehicle: {
-              organizationId: row.organizationId,
-              registryLifecycle: VehicleRegistryLifecycle.ACTIVE,
-            },
-          },
-        });
-        if (!locked) {
-          throw new Error('CONCURRENT_CHANGE_RISK');
-        }
-
-        const beforeFingerprint = fingerprintLinkMetadata(locked.metadata);
+        const beforeFingerprint = fingerprintLinkMetadata(guards.metadata);
         if (beforeFingerprint !== row.currentMetadataFingerprint) {
           throw new Error('CONCURRENT_CHANGE_RISK');
         }
 
-        const parsed = parseConnectionIdentityFromLinkMetadata(locked.metadata);
+        const parsed = parseConnectionIdentityFromLinkMetadata(guards.metadata);
         if (parsed) {
           throw new Error('ALREADY_RECONCILED');
         }
 
-        const merged = mergeConnectionIdentityMetadata(locked.metadata, proposed);
+        const beforeMetadataJson = guards.metadata;
+        const beforeLastVerifiedAt = guards.lastVerifiedAt;
+
+        const merged = mergeConnectionIdentityMetadata(guards.metadata, proposed);
         const afterFingerprint = fingerprintLinkMetadata(merged);
 
         const updateCount = await tx.$executeRaw`
@@ -424,9 +513,14 @@ export async function applyLegacyConnectionIdentityReconciliation(
             outcome: 'APPLIED',
             beforeMetadataFingerprint: beforeFingerprint,
             afterMetadataFingerprint: afterFingerprint,
+            beforeMetadataJson: beforeMetadataJson as Prisma.InputJsonValue,
+            afterMetadataJson: merged as Prisma.InputJsonValue,
+            beforeLastVerifiedAt,
+            afterLastVerifiedAt: now,
             evidenceProvenance: {
-              telemetrySourceFamily: freshEvidence.telemetrySourceFamily,
-              verificationEvidence: freshEvidence.evidence,
+              telemetrySourceFamily: row.evidenceClassification,
+              approvalManifestEntry: approvedEntry,
+              verificationEvidence: proposed.verificationEvidence,
               physicalEpisodeAttestation: {
                 independentlyProven: false,
                 reason: 'PROVIDER_MIRROR_ONLY_NOT_EPISODE_PROOF',
@@ -463,10 +557,12 @@ export async function applyLegacyConnectionIdentityReconciliation(
 
 export async function rollbackLegacyConnectionIdentityReconciliation(
   prisma: PrismaClient,
-  input: { auditId: string; authorizationReference: string },
+  auth: LegacyReconcileRollbackAuthorization,
 ): Promise<{ outcome: 'ROLLED_BACK' | 'NO_OP'; reason?: string }> {
+  assertLegacyReconcileRollbackAuthorization(auth);
+
   const audit = await prisma.vehicleConnectionIdentityReconciliationAudit.findUnique({
-    where: { id: input.auditId },
+    where: { id: auth.targetAuditId.trim() },
   });
   if (!audit || audit.outcome !== 'APPLIED') {
     return { outcome: 'NO_OP', reason: 'AUDIT_NOT_APPLIED' };
@@ -474,59 +570,73 @@ export async function rollbackLegacyConnectionIdentityReconciliation(
   if (audit.rollbackAuditId) {
     return { outcome: 'NO_OP', reason: 'ALREADY_ROLLED_BACK' };
   }
-
-  const link = await prisma.vehicleDataSourceLink.findUnique({
-    where: { id: audit.sourceLinkId },
-  });
-  if (!link) {
-    return { outcome: 'NO_OP', reason: 'LINK_MISSING' };
+  if (!audit.beforeMetadataJson) {
+    return { outcome: 'NO_OP', reason: 'ROLLBACK_SNAPSHOT_MISSING' };
   }
 
-  const currentFingerprint = fingerprintLinkMetadata(link.metadata);
-  if (currentFingerprint !== audit.afterMetadataFingerprint) {
-    return { outcome: 'NO_OP', reason: 'NEWER_LEGITIMATE_CHANGE' };
-  }
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`
+        SELECT id FROM vehicle_data_source_links
+        WHERE id = ${audit.sourceLinkId}::text
+        FOR UPDATE
+      `;
 
-  await prisma.$transaction(async (tx) => {
-    const locked = await tx.vehicleDataSourceLink.findUnique({ where: { id: audit.sourceLinkId } });
-    if (!locked) throw new Error('LINK_MISSING');
-    if (fingerprintLinkMetadata(locked.metadata) !== audit.afterMetadataFingerprint) {
-      throw new Error('NEWER_LEGITIMATE_CHANGE');
+      const locked = await tx.vehicleDataSourceLink.findUnique({ where: { id: audit.sourceLinkId } });
+      if (!locked) {
+        throw new Error('LINK_MISSING');
+      }
+
+      const currentFingerprint = fingerprintLinkMetadata(locked.metadata);
+      if (currentFingerprint !== audit.afterMetadataFingerprint) {
+        throw new Error('NEWER_LEGITIMATE_CHANGE');
+      }
+
+      const rollbackCount = await tx.$executeRaw`
+        UPDATE vehicle_data_source_links
+        SET metadata = ${JSON.stringify(audit.beforeMetadataJson)}::jsonb,
+            last_verified_at = ${audit.beforeLastVerifiedAt}
+        WHERE id = ${audit.sourceLinkId}
+          AND is_active = true
+      `;
+      if (rollbackCount !== 1) {
+        throw new Error('ROLLBACK_CAS_FAILED');
+      }
+
+      const afterRollbackFingerprint = fingerprintLinkMetadata(audit.beforeMetadataJson);
+      const rollbackAudit = await tx.vehicleConnectionIdentityReconciliationAudit.create({
+        data: {
+          organizationId: audit.organizationId,
+          vehicleId: audit.vehicleId,
+          sourceLinkId: audit.sourceLinkId,
+          idempotencyKey: `${audit.idempotencyKey}:rollback`,
+          outcome: 'ROLLED_BACK',
+          beforeMetadataFingerprint: audit.afterMetadataFingerprint,
+          afterMetadataFingerprint: afterRollbackFingerprint,
+          beforeMetadataJson: locked.metadata as Prisma.InputJsonValue,
+          afterMetadataJson: audit.beforeMetadataJson as Prisma.InputJsonValue,
+          beforeLastVerifiedAt: locked.lastVerifiedAt,
+          afterLastVerifiedAt: audit.beforeLastVerifiedAt,
+          evidenceProvenance: { rollbackOf: audit.id, runId: auth.runId },
+          operatorReference: auth.operatorReference,
+          authorizationReference: auth.authorizationReference,
+          runId: auth.runId,
+          productionReleaseSha: audit.productionReleaseSha,
+        },
+      });
+
+      await tx.vehicleConnectionIdentityReconciliationAudit.update({
+        where: { id: audit.id },
+        data: { rollbackAuditId: rollbackAudit.id },
+      });
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'UNKNOWN';
+    if (message === 'NEWER_LEGITIMATE_CHANGE' || message === 'ROLLBACK_CAS_FAILED') {
+      return { outcome: 'NO_OP', reason: message };
     }
-
-    const meta =
-      locked.metadata && typeof locked.metadata === 'object' && !Array.isArray(locked.metadata)
-        ? { ...(locked.metadata as Record<string, unknown>) }
-        : {};
-    delete meta.connectionIdentity;
-
-    await tx.vehicleDataSourceLink.update({
-      where: { id: audit.sourceLinkId },
-      data: { metadata: meta as Prisma.InputJsonValue },
-    });
-
-    const rollbackAudit = await tx.vehicleConnectionIdentityReconciliationAudit.create({
-      data: {
-        organizationId: audit.organizationId,
-        vehicleId: audit.vehicleId,
-        sourceLinkId: audit.sourceLinkId,
-        idempotencyKey: `${audit.idempotencyKey}:rollback`,
-        outcome: 'ROLLED_BACK',
-        beforeMetadataFingerprint: audit.afterMetadataFingerprint,
-        afterMetadataFingerprint: audit.beforeMetadataFingerprint,
-        evidenceProvenance: { rollbackOf: audit.id },
-        operatorReference: null,
-        authorizationReference: input.authorizationReference,
-        runId: `rollback:${audit.runId}`,
-        productionReleaseSha: audit.productionReleaseSha,
-      },
-    });
-
-    await tx.vehicleConnectionIdentityReconciliationAudit.update({
-      where: { id: audit.id },
-      data: { rollbackAuditId: rollbackAudit.id },
-    });
-  });
+    throw err;
+  }
 
   return { outcome: 'ROLLED_BACK' };
 }

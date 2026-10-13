@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { fingerprintLinkMetadata as fingerprintLinkMetadataCanonical } from './stable-metadata-fingerprint';
 import type { DeviceBindingAssuranceLevel } from '../device-binding-assurance';
 import {
   VO_CONNECTION_IDENTITY_CONTRACT_VERSION,
@@ -81,7 +82,7 @@ export function sha256CanonicalJson(value: unknown): string {
 }
 
 export function fingerprintLinkMetadata(metadata: unknown): string {
-  return createHash('sha256').update(JSON.stringify(metadata ?? null)).digest('hex');
+  return fingerprintLinkMetadataCanonical(metadata);
 }
 
 export function buildLegacyReconciliationConnectionIdentityV2(input: {

@@ -1,4 +1,5 @@
 import type { VoSourceLinkConnectionIdentityMetadataV2 } from './connection-identity-metadata-v2';
+import type { LegacyReconcileApprovalManifestEntry } from './legacy-reconcile-approval-manifest';
 
 export const LEGACY_RECONCILE_ELIGIBILITY = {
   ELIGIBLE: 'ELIGIBLE',
@@ -31,6 +32,7 @@ export type LegacyReconcilePlanRow = {
   proposedMetadataV2: VoSourceLinkConnectionIdentityMetadataV2 | null;
   proposedMetadataFingerprint: string | null;
   evidenceClassification: string | null;
+  approvalManifestEntry: LegacyReconcileApprovalManifestEntry | null;
 };
 
 export type LegacyReconcileExecutionMode = 'DRY_RUN' | 'EXECUTE';
@@ -38,7 +40,9 @@ export type LegacyReconcileExecutionMode = 'DRY_RUN' | 'EXECUTE';
 export type LegacyReconcileAuthorization = {
   ownerAuthorized: boolean;
   allowlistedLinkIds: ReadonlySet<string>;
+  /** Required non-empty for EXECUTE — deterministic approval manifest over immutable evidence. */
   manifestFingerprint: string | null;
+  tenantScopeOrganizationId: string;
   authorizationReference: string;
   operatorReference?: string | null;
   runId: string;

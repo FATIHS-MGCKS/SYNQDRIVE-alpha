@@ -65,6 +65,25 @@ export async function evaluateLegacyDimoLinkProviderEvidence(
     return { ok: false, reasonCode: live.reasonCode, evidence: live.evidence };
   }
 
+  const crossTenant = await tx.vehicleDataSourceLink.findFirst({
+    where: {
+      provider: DIMO_DATA_SOURCE_PROVIDER,
+      sourceType: DIMO_DATA_SOURCE_TYPE,
+      dimoVehicleId: dimo.id,
+      isActive: true,
+      id: { not: input.linkId },
+      vehicle: { organizationId: { not: input.organizationId } },
+    },
+    select: { id: true },
+  });
+  if (crossTenant) {
+    return {
+      ok: false,
+      reasonCode: 'DIMO_MIRROR_ACTIVE_IN_OTHER_TENANT',
+      evidence: [`otherLink:${crossTenant.id}`],
+    };
+  }
+
   if (family === 'API_SYNTHETIC') {
     if (live.verifiedModality !== VehicleConnectionModality.SOFTWARE_INTEGRATION) {
       return {
@@ -97,24 +116,6 @@ export async function evaluateLegacyDimoLinkProviderEvidence(
         ok: false,
         reasonCode: 'RUPTELA_SERIAL_MISSING',
         evidence: live.evidence,
-      };
-    }
-
-    const crossTenant = await tx.vehicleDataSourceLink.findFirst({
-      where: {
-        provider: DIMO_DATA_SOURCE_PROVIDER,
-        sourceType: DIMO_DATA_SOURCE_TYPE,
-        dimoVehicleId: dimo.id,
-        isActive: true,
-        vehicle: { organizationId: { not: input.organizationId } },
-      },
-      select: { id: true },
-    });
-    if (crossTenant) {
-      return {
-        ok: false,
-        reasonCode: 'DIMO_MIRROR_ACTIVE_IN_OTHER_TENANT',
-        evidence: [`otherLink:${crossTenant.id}`],
       };
     }
 

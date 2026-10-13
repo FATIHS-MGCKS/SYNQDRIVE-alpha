@@ -5,7 +5,7 @@
  */
 import { PrismaClient } from '@prisma/client';
 import {
-  computeManifestFingerprint,
+  computeDeterministicApprovalManifestFingerprint,
   planLegacyConnectionIdentityReconciliation,
 } from '../../src/modules/vehicle-onboarding/connection-identity/legacy-reconciliation/legacy-connection-identity-reconcile.service';
 
@@ -21,7 +21,7 @@ async function main() {
     allowlistLinkIds: allowlist?.length ? new Set(allowlist) : undefined,
   });
 
-  const manifestFingerprint = computeManifestFingerprint(plan);
+  const manifestFingerprint = computeDeterministicApprovalManifestFingerprint(plan);
   console.log(
     JSON.stringify(
       {

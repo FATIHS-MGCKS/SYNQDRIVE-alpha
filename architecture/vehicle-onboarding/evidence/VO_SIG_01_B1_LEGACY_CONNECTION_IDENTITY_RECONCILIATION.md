@@ -19,11 +19,12 @@ Activation parity: legacy v2 links fail closed with `LEGACY_RECONCILED_DIMO_LINK
 ## Ops
 
 - Dry-run: `npm run ops:vo-sig-b1:legacy-reconcile:dry-run` (env: `VO_SIG_B1_ORGANIZATION_ID`, optional `VO_SIG_B1_LINK_IDS`, `VO_SIG_B1_ALLOWLIST_LINK_IDS`).
-- Execute (non-production default): service `applyLegacyConnectionIdentityReconciliation` requires `mode=EXECUTE`, owner authorization, allowlist, manifest fingerprint match.
+- Execute (non-production default): `applyLegacyConnectionIdentityReconciliation` requires `mode=EXECUTE`, owner authorization, operator + tenant scope, allowlisted links, **non-empty deterministic approval manifest** (`computeDeterministicApprovalManifestFingerprint`), and trusted release SHA (`VO_SIG_B1_TRUSTED_RELEASE_SHA`).
+- Approval manifest hashes immutable evidence + link/tenant scope + current metadata fingerprint (excludes execution timestamps / DRY_RUN provenance).
 
 ## Audit
 
-Table `vehicle_connection_identity_reconciliation_audits` — atomic with metadata `UPDATE` (conditional `connectionIdentity` absent).
+Table `vehicle_connection_identity_reconciliation_audits` — atomic with metadata `UPDATE` (`FOR UPDATE` + conditional `connectionIdentity` absent + metadata fingerprint CAS). FK `source_link_id` **ON DELETE RESTRICT**; rollback snapshots stored in `before_metadata_json` / `before_last_verified_at`.
 
 ## Tests
 
