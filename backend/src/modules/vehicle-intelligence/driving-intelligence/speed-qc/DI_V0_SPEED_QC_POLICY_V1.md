@@ -59,6 +59,6 @@ When `expectedPinnedSnapshotHash` is set on input, it must equal `pinnedSnapshot
 
 Golden tests use **synthetic** coordinates (not production traces). No ground-truth precision/recall claims in P1.
 
-## Next step (P2)
+## P2 projector (internal)
 
-Idempotent projector on PRIMARY work-item completion → `di_v0_trip_speed_quality_v1` (internal ops only).
+`DI_V0_TRIP_SPEED_QUALITY_PROJECTION_V1` in `trip-speed-quality/` persists to `di_v0_trip_speed_quality_projections_v1` via `DiV0TripSpeedQualityProjectionService` (ops-only; **not** wired to S4 T06 completion or schedulers in P2).
