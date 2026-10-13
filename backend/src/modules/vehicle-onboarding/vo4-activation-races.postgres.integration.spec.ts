@@ -173,6 +173,7 @@ async function assertActivationRaceOutcome(prisma: PrismaClient, orgId: string, 
         packageType: 'HEALTH',
         sourceMode: 'HM_ONLY',
         clearanceStatus: 'APPROVED',
+        hmVehicleReference: `hm-ref-${hmId.slice(0, 8)}`,
       },
     });
     const caseRow = await harness.caseService.openOrResumeFromHighMobility(

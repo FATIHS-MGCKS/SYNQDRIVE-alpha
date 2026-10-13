@@ -42,8 +42,20 @@ async function createDimoMirror(
   vin: string | null,
 ) {
   await prisma.$executeRaw`
-    INSERT INTO dimo_vehicles (id, external_id, vin, make, model, year, fuel_type, connection_status, created_at, updated_at)
-    VALUES (${dimoId}, ${externalId}, ${vin}, 'Audi', 'A3', 2021, 'GASOLINE', 'CONNECTED'::"DimoConnectionStatus", NOW(), NOW())
+    INSERT INTO dimo_vehicles (id, external_id, vin, make, model, year, fuel_type, connection_status, raw_json, created_at, updated_at)
+    VALUES (
+      ${dimoId},
+      ${externalId},
+      ${vin},
+      'Audi',
+      'A3',
+      2021,
+      'GASOLINE',
+      'CONNECTED'::"DimoConnectionStatus",
+      ${JSON.stringify({ syntheticDevice: { integration: 'vo49-ci-fixture' } })}::jsonb,
+      NOW(),
+      NOW()
+    )
   `;
 }
 
@@ -69,6 +81,7 @@ async function createHm(
       appContainerType: overrides.appContainerType ?? null,
       clearanceStatus: 'APPROVED',
       isActive: true,
+      hmVehicleReference: `hm-ref-${hmId.slice(0, 8)}`,
     },
   });
 }

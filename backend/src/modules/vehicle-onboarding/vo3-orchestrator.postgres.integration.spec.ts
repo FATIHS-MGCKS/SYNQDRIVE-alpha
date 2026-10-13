@@ -231,6 +231,7 @@ async function sealHmCaseReady(
         packageType: 'HEALTH',
         sourceMode: 'HM_ONLY',
         clearanceStatus: 'APPROVED',
+        hmVehicleReference: `hm-ref-${hmId.slice(0, 8)}`,
       },
     });
     const dimoId = randomUUID();
@@ -263,6 +264,7 @@ async function sealHmCaseReady(
         packageType: 'HEALTH',
         sourceMode: 'HM_ONLY',
         clearanceStatus: 'APPROVED',
+        hmVehicleReference: `hm-ref-${hmId.slice(0, 8)}`,
       },
     });
     const dimoId = randomUUID();
@@ -292,6 +294,7 @@ async function sealHmCaseReady(
         packageType: 'HEALTH',
         sourceMode: 'HM_ONLY',
         clearanceStatus: 'APPROVED',
+        hmVehicleReference: `hm-ref-${hmId.slice(0, 8)}`,
       },
     });
     const dimoId = randomUUID();
@@ -321,6 +324,7 @@ async function sealHmCaseReady(
         packageType: 'HEALTH',
         sourceMode: 'HM_ONLY',
         clearanceStatus: 'APPROVED',
+        hmVehicleReference: `hm-ref-${hmId.slice(0, 8)}`,
       },
     });
     const dimoId = randomUUID();
@@ -360,6 +364,7 @@ async function sealHmCaseReady(
         packageType: 'HEALTH',
         sourceMode: 'HM_ONLY',
         clearanceStatus: 'APPROVED',
+        hmVehicleReference: `hm-ref-${hmId.slice(0, 8)}`,
       },
     });
     const caseRow = await harness.caseService.openOrResumeFromDimo(
@@ -401,6 +406,7 @@ async function sealHmCaseReady(
         packageType: 'HEALTH',
         sourceMode: 'HM_ONLY',
         clearanceStatus: 'APPROVED',
+        hmVehicleReference: `hm-ref-${hmId.slice(0, 8)}`,
       },
     });
     const caseRow = await harness.caseService.openOrResumeFromDimo(
