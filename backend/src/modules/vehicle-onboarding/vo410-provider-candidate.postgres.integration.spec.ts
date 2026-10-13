@@ -417,6 +417,7 @@ async function collectAllCandidates(
       year: 2021,
       fuelType: 'GASOLINE',
       updatedAt: new Date(),
+      rawJson: null,
     });
     const scopeKey = DIMO_PLATFORM_DEVELOPER_LICENSE_SCOPE ?? '';
     for (const [orgId, caseId] of [[orgA, randomUUID()], [orgB, randomUUID()]] as const) {
