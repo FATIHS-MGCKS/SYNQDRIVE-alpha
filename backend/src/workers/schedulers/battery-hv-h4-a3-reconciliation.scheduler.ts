@@ -46,6 +46,14 @@ export class BatteryHvH4A3ReconciliationScheduler {
     try {
       const outcome = await this.reconciliation.runBoundedReconciliationTick();
       const durationSeconds = Number(process.hrtime.bigint() - started) / 1_000_000_000;
+      if (outcome.result === 'SKIPPED_COHORT_NOT_CONFIGURED') {
+        recordM3_3HvH4A3ReconciliationSchedulerTick(
+          this.metrics,
+          'COHORT_NOT_CONFIGURED',
+          durationSeconds,
+        );
+        return;
+      }
       if (outcome.result === 'CURSOR_UNAVAILABLE') {
         recordM3_3HvH4A3ReconciliationSchedulerTick(
           this.metrics,

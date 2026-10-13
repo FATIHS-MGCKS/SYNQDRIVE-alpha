@@ -20,11 +20,32 @@ jest.mock('./m3-3-hv-h4-a3-reconciliation.config', () => ({
   getBatteryHvH4A3ReconciliationInspectionLimit: jest.fn(() => 50),
 }));
 
+jest.mock('./m3-3-hv-h4-a3-reconciliation-cohort.config', () => ({
+  evaluateBatteryHvH4A3ReconciliationCohortRuntimeV1: jest.fn(),
+  buildHvH4A3ReconciliationCohortPrismaOrV1: jest.fn(),
+  isHvH4A3ReconciliationCohortMemberV1: jest.fn(),
+}));
+
 import {
   getBatteryHvH4A3ReconciliationBatchSize,
   getBatteryHvH4A3ReconciliationInspectionLimit,
   isBatteryHvH4A3ReconciliationEnabled,
 } from './m3-3-hv-h4-a3-reconciliation.config';
+import {
+  buildHvH4A3ReconciliationCohortPrismaOrV1,
+  evaluateBatteryHvH4A3ReconciliationCohortRuntimeV1,
+} from './m3-3-hv-h4-a3-reconciliation-cohort.config';
+
+const ORG = '10000000-0000-4000-8000-000000000001';
+const VEH = '20000000-0000-4000-8000-000000000002';
+const cohortReady = {
+  state: 'READY' as const,
+  config: {
+    version: 'M3_3_HV_H4_A3_RECONCILIATION_COHORT_V1' as const,
+    members: [{ organizationId: ORG, vehicleId: VEH }],
+  },
+  configFingerprintSha256: 'abc',
+};
 
 const row = (
   classification: M3_3HvH4A3ReconciliationRowClassificationV1,
@@ -36,6 +57,8 @@ const row = (
 
 describe('M3_3HvH4A3ReconciliationService', () => {
   const enabledMock = isBatteryHvH4A3ReconciliationEnabled as jest.Mock;
+  const cohortRuntimeMock = evaluateBatteryHvH4A3ReconciliationCohortRuntimeV1 as jest.Mock;
+  const cohortPrismaOrMock = buildHvH4A3ReconciliationCohortPrismaOrV1 as jest.Mock;
 
   const prisma = {
     hvChargeSession: { findMany: jest.fn(), findUnique: jest.fn() },
@@ -56,6 +79,8 @@ describe('M3_3HvH4A3ReconciliationService', () => {
     (getBatteryHvH4A3ReconciliationBatchSize as jest.Mock).mockReturnValue(25);
     (getBatteryHvH4A3ReconciliationInspectionLimit as jest.Mock).mockReturnValue(50);
     enabledMock.mockReturnValue(true);
+    cohortRuntimeMock.mockReturnValue(cohortReady);
+    cohortPrismaOrMock.mockReturnValue([{ organizationId: ORG, vehicleId: VEH }]);
     (cursorStore.load as jest.Mock).mockResolvedValue({ status: 'ABSENT' });
     (cursorStore.save as jest.Mock).mockResolvedValue(true);
 
@@ -74,6 +99,17 @@ describe('M3_3HvH4A3ReconciliationService', () => {
     enabledMock.mockReturnValue(false);
     const outcome = await service.runBoundedReconciliationTick();
     expect(outcome.result).toBe('SKIPPED_FLAG_OFF');
+    expect(prisma.hvChargeSession.findMany).not.toHaveBeenCalled();
+  });
+
+  it('cohort MISSING — fail closed, no fleet scan', async () => {
+    cohortRuntimeMock.mockReturnValue({
+      state: 'MISSING',
+      config: null,
+      configFingerprintSha256: null,
+    });
+    const outcome = await service.runBoundedReconciliationTick();
+    expect(outcome.result).toBe('SKIPPED_COHORT_NOT_CONFIGURED');
     expect(prisma.hvChargeSession.findMany).not.toHaveBeenCalled();
   });
 
@@ -173,11 +209,13 @@ describe('M3_3HvH4A3ReconciliationService', () => {
     await service.runBoundedReconciliationTick();
     expect(findManyCalls).toBeGreaterThanOrEqual(2);
     const secondCall = (prisma.hvChargeSession.findMany as jest.Mock).mock.calls[1][0];
-    expect(secondCall.where).toEqual({});
+    expect(secondCall.where).toEqual({ OR: [{ organizationId: ORG, vehicleId: VEH }] });
   });
 });
 
 describe('M3_3HvH4A3ReconciliationService.reconcileLiveSessionRow', () => {
+  const enabledRowMock = isBatteryHvH4A3ReconciliationEnabled as jest.Mock;
+
   const session = {
     id: '30000000-0000-4000-8000-000000000003',
     organizationId: '10000000-0000-4000-8000-000000000001',
@@ -215,6 +253,7 @@ describe('M3_3HvH4A3ReconciliationService.reconcileLiveSessionRow', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    enabledRowMock.mockReturnValue(false);
     const moduleRef = await Test.createTestingModule({
       providers: [
         M3_3HvH4A3ReconciliationService,
@@ -278,6 +317,16 @@ describe('M3_3HvH4A3ReconciliationService.reconcileLiveSessionRow', () => {
     const result = await service.reconcileLiveSessionRow(session.id);
     expect(result.classification).toBe('SOURCE_CHANGED_DURING_RECONCILIATION');
     expect(result.persistenceEffect).toBe('REVISION_CREATED');
+  });
+
+  it('ongoing session — SKIPPED_SESSION_ONGOING without writer', async () => {
+    (prisma.hvChargeSession.findUnique as jest.Mock).mockResolvedValue({
+      ...session,
+      isOngoing: true,
+    });
+    const result = await service.reconcileLiveSessionRow(session.id);
+    expect(result.classification).toBe('SKIPPED_SESSION_ONGOING');
+    expect(writer.persistFromHvChargeSession).not.toHaveBeenCalled();
   });
 
   it('N) tenant mismatch — BLOCKED_TENANT_INVARIANT', async () => {

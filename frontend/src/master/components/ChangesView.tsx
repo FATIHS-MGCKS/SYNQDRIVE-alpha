@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'm3-3-hv-h4-a3-r6-automatic-reconciliation-cohort-2026-10-13',
+    version: '4.9.2241',
+    title: 'M3.3 HV-H4 A3.5 R6 — automatic reconciliation cohort gate (default OFF)',
+    summary: [
+      'BATTERY_HV_H4_A3_RECONCILIATION_ENABLED=true alone no longer fleet-scans: BATTERY_HV_H4_A3_RECONCILIATION_COHORT_JSON must be READY (explicit tenant/vehicle members).',
+      'Per-row BLOCKED_COHORT_UNAUTHORIZED and SKIPPED_SESSION_ONGOING; tick SKIPPED_COHORT_NOT_CONFIGURED when allowlist missing/invalid.',
+      'Existing leader election, Redis cursor, writer idempotency, and scientific projection unchanged; no production activation in this change.',
+    ],
+    reason:
+      'Prepare continuous natural HvChargeSession → canonical revision + durability ACK without fleet-wide evidence writes when reconciliation is enabled.',
+    previousBehavior:
+      'Reconciliation flag ON could process all completed HvChargeSession rows with no explicit production cohort allowlist.',
+    details:
+      'm3-3-hv-h4-a3-reconciliation-cohort.config.ts, reconciliation service/scheduler, architecture/battery-v2/research/M3_3_HV_H4_A3_R6_AUTOMATIC_RECONCILIATION_OPERATIONS.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-13T09:20:00.000Z',
+  },
+  {
     id: 'dimo-r31-master-admin-r9-webhook-monitoring-2026-10-12',
     version: '4.9.2240',
     title: 'DIMO R3.1 — Master Admin read-only R9 webhook health',

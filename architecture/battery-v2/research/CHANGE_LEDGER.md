@@ -6,6 +6,19 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-13 — M3.3-HV-H4-A3 R6 automatic reconciliation cohort gate
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | A3.5 reconciliation flag ON scanned fleet-wide `hv_charge_sessions` with no tenant/vehicle allowlist; ongoing sessions could be materialized |
+| **CHANGE** | `BATTERY_HV_H4_A3_RECONCILIATION_COHORT_JSON` fail-closed allowlist; tick `SKIPPED_COHORT_NOT_CONFIGURED` when missing/invalid; cohort-scoped fleet scan; row `BLOCKED_COHORT_UNAUTHORIZED` / `SKIPPED_SESSION_ONGOING`; ops doc `M3_3_HV_H4_A3_R6_AUTOMATIC_RECONCILIATION_OPERATIONS.md` |
+| **WHY** | R6 production readiness: continuous automatic evidence only for owner-authorized cohorts; prevent fleet-wide writes when flag is enabled without explicit scope |
+| **VALIDATION** | `m3-3-hv-h4-a3-reconciliation-cohort.config.spec.ts`, `m3-3-hv-h4-a3-reconciliation-r6.runtime.spec.ts`, updated A3.5 unit specs; `validate-h4-exposure-coverage-contracts.sh` |
+| **NON_EFFECTS** | Default `BATTERY_HV_H4_A3_RECONCILIATION_ENABLED` remains false; no production activation; no EED/LV/APDS changes; `H4_AUTOMATIC_RUNTIME_REACHABLE` unchanged; Phase-A P1 unchanged |
+| **REMAINING_GAPS** | Live Gate B-F empirical validation requires owner-authorized production enable + observed natural charge after deploy |
+
+---
+
 ## 2026-10-11 — G5C-N2 post-anchor trip-phase telemetry must not veto finalized-trip session arming
 
 | Field | Value |
