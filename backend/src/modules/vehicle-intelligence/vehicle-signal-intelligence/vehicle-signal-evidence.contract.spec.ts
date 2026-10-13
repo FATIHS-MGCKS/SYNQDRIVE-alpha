@@ -1,5 +1,6 @@
 import {
   VSI_UNRESOLVED_PROVIDER_SOURCE_LINK_ID,
+  VsiAuthorizationRequestKind,
   VsiAuthorizationStatus,
   VsiConsumerEligibilityStatus,
   VsiEmpiricalObservationStatus,
@@ -13,6 +14,7 @@ import {
   deriveEmpiricalObservationFromSamples,
   deriveProviderCatalogStatus,
   evaluateStrictSourceAdvance,
+  formatProviderSourceLinkScopeSegment,
   mapBatteryProviderObservationOutcomeToVsiQuality,
   observationStatusDuringSuppressionWindow,
 } from './vehicle-signal-evidence.contract';
@@ -24,6 +26,18 @@ const VEH_TIGUAN = '19fedd4b-c4e8-4de8-a125-dab293326e7e';
 const VEH_ARTEON = '8c850ff1-4201-432b-af2e-2711dbc7ca48';
 const LINK_DIMO = { kind: 'resolved' as const, providerSourceLinkId: 'link-dimo-1' };
 const LINK_HM = { kind: 'resolved' as const, providerSourceLinkId: 'link-hm-1' };
+const PROVIDER_DIMO = 'DIMO';
+const PROVIDER_HM = 'HIGH_MOBILITY';
+
+const scope = (overrides: Partial<Parameters<typeof buildVsiEvidenceScopeKey>[0]>) =>
+  buildVsiEvidenceScopeKey({
+    organizationId: ORG_A,
+    vehicleId: VEH_AUDI,
+    providerIdentity: PROVIDER_DIMO,
+    providerSourceLinkRef: LINK_DIMO,
+    canonicalSignalKey: 'lv_voltage',
+    ...overrides,
+  });
 
 describe('vehicle-signal-evidence.contract scenarios', () => {
   it('T01: Tesla LV listed in catalog but zero usable values → LISTED + NEVER_OBSERVED', () => {
@@ -77,12 +91,14 @@ describe('vehicle-signal-evidence.contract scenarios', () => {
     const dimoKey = buildVsiEvidenceScopeKey({
       organizationId: ORG_A,
       vehicleId: VEH_TESLA,
+      providerIdentity: PROVIDER_DIMO,
       providerSourceLinkRef: LINK_DIMO,
       canonicalSignalKey: 'hv_battery_soc',
     });
     const hmKey = buildVsiEvidenceScopeKey({
       organizationId: ORG_A,
       vehicleId: VEH_TESLA,
+      providerIdentity: PROVIDER_HM,
       providerSourceLinkRef: LINK_HM,
       canonicalSignalKey: 'hv_battery_soc',
     });
@@ -118,25 +134,15 @@ describe('vehicle-signal-evidence.contract scenarios', () => {
     );
   });
 
-  it('T11: cross-tenant scope keys cannot collide', () => {
+  it('T11: distinct org ids yield distinct scope key strings (not tenant authorization)', () => {
     const orgB = '00000000-0000-4000-8000-000000000099';
-    const keyA = buildVsiEvidenceScopeKey({
-      organizationId: ORG_A,
-      vehicleId: VEH_AUDI,
-      providerSourceLinkRef: LINK_DIMO,
-      canonicalSignalKey: 'lv_voltage',
-    });
-    const keyB = buildVsiEvidenceScopeKey({
-      organizationId: orgB,
-      vehicleId: VEH_AUDI,
-      providerSourceLinkRef: LINK_DIMO,
-      canonicalSignalKey: 'lv_voltage',
-    });
+    const keyA = scope({ organizationId: ORG_A, vehicleId: VEH_AUDI });
+    const keyB = scope({ organizationId: orgB, vehicleId: VEH_AUDI });
     expect(keyA).not.toBe(keyB);
     expect(() => assertDistinctTenantScope('', VEH_AUDI)).toThrow();
   });
 
-  it('T12: VSI projection cannot overwrite immutable R5 historical decision fields', () => {
+  it('T12: projection merge guard rejects overwriting immutable R5 historical fields', () => {
     const historical = {
       decision: 'FORCED_INSUFFICIENT_PROFILE',
       decisionAt: '2026-10-12T17:58:21.898Z',
@@ -152,6 +158,12 @@ describe('vehicle-signal-evidence.contract scenarios', () => {
     if (result.ok === false) {
       expect(result.violatedKey).toBe('decision');
     }
+    const unchanged = assertVsiProjectionDoesNotOverwriteHistoricalFields(
+      historical,
+      { vsiProjectionAsOf: new Date().toISOString() },
+      ['decision', 'decisionAt', 'activationEpochId'],
+    );
+    expect(unchanged.ok).toBe(true);
   });
 
   it('T13: unit conflicts remain unresolved without explicit mapping', () => {
@@ -165,10 +177,118 @@ describe('vehicle-signal-evidence.contract scenarios', () => {
     const unresolvedKey = buildVsiEvidenceScopeKey({
       organizationId: ORG_A,
       vehicleId: VEH_TIGUAN,
+      providerIdentity: PROVIDER_DIMO,
       providerSourceLinkRef: { kind: 'unresolved', reason: 'not_loaded' },
       canonicalSignalKey: 'lv_voltage',
     });
     expect(unresolvedKey).toContain(VSI_UNRESOLVED_PROVIDER_SOURCE_LINK_ID);
+    expect(unresolvedKey).toContain('DIMO');
     expect(unresolvedKey).not.toContain(LINK_DIMO.providerSourceLinkId);
+  });
+});
+
+describe('vehicle-signal-evidence.contract hardening', () => {
+  it('H01: multiple unresolved provider links do not share one scope bucket', () => {
+    const dimoUnresolved = buildVsiEvidenceScopeKey({
+      organizationId: ORG_A,
+      vehicleId: VEH_TESLA,
+      providerIdentity: PROVIDER_DIMO,
+      providerSourceLinkRef: { kind: 'unresolved', reason: 'link_row_missing' },
+      canonicalSignalKey: 'lv_voltage',
+    });
+    const hmUnresolved = buildVsiEvidenceScopeKey({
+      organizationId: ORG_A,
+      vehicleId: VEH_TESLA,
+      providerIdentity: PROVIDER_HM,
+      providerSourceLinkRef: { kind: 'unresolved', reason: 'link_row_missing' },
+      canonicalSignalKey: 'lv_voltage',
+    });
+    expect(dimoUnresolved).not.toBe(hmUnresolved);
+  });
+
+  it('H02: unresolved DIMO links with different reasons stay distinct', () => {
+    const a = formatProviderSourceLinkScopeSegment(PROVIDER_DIMO, {
+      kind: 'unresolved',
+      reason: 'preflight_pending',
+    });
+    const b = formatProviderSourceLinkScopeSegment(PROVIDER_DIMO, {
+      kind: 'unresolved',
+      reason: 'registry_stale',
+    });
+    expect(a).not.toBe(b);
+  });
+
+  it('H03: HTTP auth classification matrix', () => {
+    expect(deriveAuthorizationFromHttpStatus(401)).toBe(VsiAuthorizationStatus.AUTH_BLOCKED);
+    expect(deriveAuthorizationFromHttpStatus(403)).toBe(VsiAuthorizationStatus.AUTH_BLOCKED);
+    expect(deriveAuthorizationFromHttpStatus(404)).toBe(VsiAuthorizationStatus.UNKNOWN);
+    expect(deriveAuthorizationFromHttpStatus(400)).toBe(VsiAuthorizationStatus.UNKNOWN);
+    expect(deriveAuthorizationFromHttpStatus(429)).toBe(VsiAuthorizationStatus.UNKNOWN);
+    expect(deriveAuthorizationFromHttpStatus(500)).toBe(VsiAuthorizationStatus.UNKNOWN);
+    expect(deriveAuthorizationFromHttpStatus(402)).toBe(VsiAuthorizationStatus.ENTITLEMENT_GAP);
+  });
+
+  it('H04: HTTP 2xx without proven source link does not imply AUTHORIZED', () => {
+    expect(deriveAuthorizationFromHttpStatus(200)).toBe(VsiAuthorizationStatus.UNKNOWN);
+    expect(
+      deriveAuthorizationFromHttpStatus(200, {
+        requestKind: VsiAuthorizationRequestKind.TELEMETRY_FETCH,
+        sourceLinkProven: false,
+      }),
+    ).toBe(VsiAuthorizationStatus.UNKNOWN);
+    expect(
+      deriveAuthorizationFromHttpStatus(200, {
+        requestKind: VsiAuthorizationRequestKind.DIMO_IDENTITY_JWT,
+        sourceLinkProven: true,
+      }),
+    ).toBe(VsiAuthorizationStatus.UNKNOWN);
+    expect(
+      deriveAuthorizationFromHttpStatus(200, {
+        requestKind: VsiAuthorizationRequestKind.TELEMETRY_FETCH,
+        sourceLinkProven: true,
+      }),
+    ).toBe(VsiAuthorizationStatus.AUTHORIZED);
+  });
+
+  it('H05: missing previous source timestamp → strict advance UNKNOWN', () => {
+    expect(
+      evaluateStrictSourceAdvance({
+        previousSourceMs: null,
+        latestSourceMs: 9_000,
+      }),
+    ).toBe('UNKNOWN');
+    expect(
+      evaluateStrictSourceAdvance({
+        previousSourceMs: undefined,
+        latestSourceMs: 9_000,
+      }),
+    ).toBe('UNKNOWN');
+  });
+
+  it('H06: flat and advancing source timestamps with valid baseline', () => {
+    expect(
+      evaluateStrictSourceAdvance({ previousSourceMs: 100, latestSourceMs: 100 }),
+    ).toBe(false);
+    expect(
+      evaluateStrictSourceAdvance({ previousSourceMs: 100, latestSourceMs: 101 }),
+    ).toBe(true);
+    expect(
+      evaluateStrictSourceAdvance({ previousSourceMs: 200, latestSourceMs: 100 }),
+    ).toBe(false);
+  });
+
+  it('H07: Tesla DIMO LV listed but never observed (catalog vs empirical)', () => {
+    expect(deriveProviderCatalogStatus(true)).toBe(VsiProviderCatalogStatus.LISTED);
+    expect(
+      deriveEmpiricalObservationFromSamples({ usableSampleCount: 0, windowActive: false }),
+    ).toBe(VsiEmpiricalObservationStatus.NEVER_OBSERVED);
+    const teslaLvScope = buildVsiEvidenceScopeKey({
+      organizationId: ORG_A,
+      vehicleId: VEH_TESLA,
+      providerIdentity: PROVIDER_DIMO,
+      providerSourceLinkRef: LINK_DIMO,
+      canonicalSignalKey: 'lv_voltage',
+    });
+    expect(teslaLvScope).toContain('lv_voltage');
   });
 });

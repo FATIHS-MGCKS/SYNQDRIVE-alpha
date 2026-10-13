@@ -11,9 +11,11 @@ export {
   VSI_CANONICAL_SIGNAL_DEFINITIONS,
   getVsiCanonicalSignalDefinition,
   isVsiCanonicalSignalKey,
+  evaluateCanonicalProviderNativeAlias,
   type VsiCanonicalSignalContractVersion,
   type VsiCanonicalSignalKey,
   type VsiCanonicalSignalDefinition,
+  type VsiCanonicalAliasMappingVerdict,
 } from './canonical-signal-keys';
 
 export {
@@ -25,7 +27,10 @@ export {
   VsiSignalQualityStatus,
   VsiConsumerEligibilityStatus,
   buildVsiEvidenceScopeKey,
+  formatProviderSourceLinkScopeSegment,
   assertDistinctTenantScope,
+  assertProviderIdentityForScope,
+  VsiAuthorizationRequestKind,
   deriveProviderCatalogStatus,
   deriveEmpiricalObservationFromSamples,
   deriveAuthorizationFromHttpStatus,
@@ -45,4 +50,6 @@ export {
   type VsiConsumerEligibilityEvidence,
   type VsiVehicleSignalEvidenceDescriptorV1,
   type VsiEvidenceScopeKeyInput,
+  type VsiProviderIdentity,
+  type VsiAuthorizationHttpContext,
 } from './vehicle-signal-evidence.contract';

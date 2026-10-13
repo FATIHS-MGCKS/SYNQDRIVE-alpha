@@ -97,12 +97,23 @@ export type VsiCanonicalSignalDefinition = {
    */
   primaryDimoSignalName?: string;
   /**
+   * Provider-native names that must not auto-map to this key (unsafe alias equivalence).
+   */
+  prohibitedAutoAliases?: readonly string[];
+  /** Non-normative semantics clarifications for reviewers and VSI-03 mappers. */
+  semanticNotes?: readonly string[];
+  /**
    * Related driving-intelligence canonical key when the same quantity is already named there.
    */
   drivingCanonicalKey?: string;
   iceOnly?: boolean;
   evOnly?: boolean;
 };
+
+export type VsiCanonicalAliasMappingVerdict =
+  | 'EXPLICIT_PRIMARY_ALIAS'
+  | 'ALIAS_CONFLICT_UNRESOLVED'
+  | 'UNKNOWN_SIGNAL';
 
 export const VSI_CANONICAL_SIGNAL_DEFINITIONS: Readonly<
   Record<VsiCanonicalSignalKey, VsiCanonicalSignalDefinition>
@@ -112,18 +123,28 @@ export const VSI_CANONICAL_SIGNAL_DEFINITIONS: Readonly<
     contractVersion: VSI_CANONICAL_SIGNAL_CONTRACT_VERSION,
     family: VsiSignalFamily.POWERTRAIN_ENERGY,
     valueCategory: VsiSignalValueCategory.PHYSICAL_MEASUREMENT,
-    semanticMeaning: 'Auxiliary / low-voltage battery terminal voltage (12V-class supply)',
+    semanticMeaning:
+      'Auxiliary low-voltage rail terminal voltage (typical 12V-class; 16V mild-hybrid only when domain maps the same physical quantity)',
     canonicalUnit: VsiCanonicalUnit.VOLT,
     primaryDimoSignalName: 'lowVoltageBatteryCurrentVoltage',
+    semanticNotes: [
+      'Not HV traction pack voltage',
+      'Listed-in-catalog without samples does not prove 12V/16V support',
+    ],
   },
   hv_battery_soc: {
     key: 'hv_battery_soc',
     contractVersion: VSI_CANONICAL_SIGNAL_CONTRACT_VERSION,
     family: VsiSignalFamily.POWERTRAIN_ENERGY,
     valueCategory: VsiSignalValueCategory.PHYSICAL_MEASUREMENT,
-    semanticMeaning: 'High-voltage traction battery state of charge (physical SOC, not display SOC)',
+    semanticMeaning: 'High-voltage traction battery physical state of charge (BMS-reported, not display/estimated SOC)',
     canonicalUnit: VsiCanonicalUnit.PERCENT,
     primaryDimoSignalName: 'powertrainTractionBatteryStateOfChargeCurrent',
+    prohibitedAutoAliases: [
+      'powertrainTractionBatteryStateOfChargeDisplay',
+      'powertrainTractionBatteryStateOfChargeTarget',
+    ],
+    semanticNotes: ['Display or target SOC requires a separate canonical mapping decision'],
     evOnly: true,
   },
   hv_charging_active: {
@@ -171,9 +192,13 @@ export const VSI_CANONICAL_SIGNAL_DEFINITIONS: Readonly<
     contractVersion: VSI_CANONICAL_SIGNAL_CONTRACT_VERSION,
     family: VsiSignalFamily.MOVEMENT,
     valueCategory: VsiSignalValueCategory.PHYSICAL_MEASUREMENT,
-    semanticMeaning: 'Accumulated distance travelled',
+    semanticMeaning: 'Lifetime odometer / total distance counter (not trip segment distance)',
     canonicalUnit: VsiCanonicalUnit.KILOMETER,
     primaryDimoSignalName: 'powertrainTransmissionTravelledDistance',
+    semanticNotes: [
+      'DIMO powertrainTransmissionTravelledDistance may be trip-relative on some vehicles — do not auto-equate without domain mapper',
+      'Distinct from trip_activity and segment distance accumulators',
+    ],
   },
   position_coordinates: {
     key: 'position_coordinates',
@@ -197,9 +222,13 @@ export const VSI_CANONICAL_SIGNAL_DEFINITIONS: Readonly<
     contractVersion: VSI_CANONICAL_SIGNAL_CONTRACT_VERSION,
     family: VsiSignalFamily.CONNECTIVITY,
     valueCategory: VsiSignalValueCategory.DERIVED_STATE,
-    semanticMeaning: 'Device or vehicle online / reachable via provider',
+    semanticMeaning: 'Reachability / online state derived from provider connectivity semantics',
     canonicalUnit: VsiCanonicalUnit.DIMENSIONLESS,
-    primaryDimoSignalName: 'lastSeen',
+    prohibitedAutoAliases: ['lastSeen'],
+    semanticNotes: [
+      'lastSeen is a provider timestamp sample — not equivalent to device_connectivity without explicit derivation',
+      'Use provider_last_successful_fetch or provider_source_timestamp for fetch timing metadata',
+    ],
   },
   provider_source_timestamp: {
     key: 'provider_source_timestamp',
@@ -247,9 +276,13 @@ export const VSI_CANONICAL_SIGNAL_DEFINITIONS: Readonly<
     contractVersion: VSI_CANONICAL_SIGNAL_CONTRACT_VERSION,
     family: VsiSignalFamily.HEALTH,
     valueCategory: VsiSignalValueCategory.PHYSICAL_MEASUREMENT,
-    semanticMeaning: 'Wheel tire pressure (per-wheel keys resolved in domain mappers)',
+    semanticMeaning: 'Tire pressure logical family — each wheel position is a separate observation axis',
     canonicalUnit: VsiCanonicalUnit.PASCAL,
     primaryDimoSignalName: 'chassisAxleRow1WheelLeftTirePressure',
+    semanticNotes: [
+      'Do not aggregate left/right/axle native signals into one sample without wheel identity',
+      'warning_indicator is not interchangeable with scalar tire_pressure',
+    ],
   },
   warning_indicator: {
     key: 'warning_indicator',
@@ -286,4 +319,28 @@ export function getVsiCanonicalSignalDefinition(
 
 export function isVsiCanonicalSignalKey(value: string): value is VsiCanonicalSignalKey {
   return Object.prototype.hasOwnProperty.call(VSI_CANONICAL_SIGNAL_DEFINITIONS, value);
+}
+
+/**
+ * Rejects unsafe automatic alias equivalence (no implicit cross-signal merging).
+ */
+export function evaluateCanonicalProviderNativeAlias(
+  canonicalKey: VsiCanonicalSignalKey,
+  providerNativeSignalName: string | null | undefined,
+): VsiCanonicalAliasMappingVerdict {
+  if (!providerNativeSignalName?.trim()) {
+    return 'UNKNOWN_SIGNAL';
+  }
+  const native = providerNativeSignalName.trim();
+  const def = VSI_CANONICAL_SIGNAL_DEFINITIONS[canonicalKey];
+  if (def.prohibitedAutoAliases?.includes(native)) {
+    return 'ALIAS_CONFLICT_UNRESOLVED';
+  }
+  if (def.primaryDimoSignalName && def.primaryDimoSignalName === native) {
+    return 'EXPLICIT_PRIMARY_ALIAS';
+  }
+  if (def.primaryDimoSignalName && def.primaryDimoSignalName !== native) {
+    return 'ALIAS_CONFLICT_UNRESOLVED';
+  }
+  return 'UNKNOWN_SIGNAL';
 }

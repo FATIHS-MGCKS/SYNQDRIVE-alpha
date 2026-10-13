@@ -10,8 +10,33 @@ export const VSI_EVIDENCE_CONTRACT_VERSION = 'vsi-evidence-v1' as const;
 
 export type VsiEvidenceContractVersion = typeof VSI_EVIDENCE_CONTRACT_VERSION;
 
-/** Explicit unresolved provider source-link — never substitute another link. */
+/**
+ * Marker segment for unresolved provider source links in scope keys.
+ * Always paired with `providerIdentity` (and reason token) — never alone across providers.
+ */
 export const VSI_UNRESOLVED_PROVIDER_SOURCE_LINK_ID = 'UNRESOLVED_PROVIDER_SOURCE_LINK' as const;
+
+export type VsiProviderIdentity = string;
+
+export const VsiAuthorizationRequestKind = {
+  TELEMETRY_FETCH: 'TELEMETRY_FETCH',
+  DIMO_IDENTITY_JWT: 'DIMO_IDENTITY_JWT',
+  DIMO_VEHICLE_ACQUISITION: 'DIMO_VEHICLE_ACQUISITION',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+export type VsiAuthorizationRequestKind =
+  (typeof VsiAuthorizationRequestKind)[keyof typeof VsiAuthorizationRequestKind];
+
+/** HTTP status alone does not prove vehicle/source-link authorization without context. */
+export type VsiAuthorizationHttpContext = {
+  requestKind: VsiAuthorizationRequestKind;
+  /**
+   * When not `true`, a 2xx response must not be classified as AUTHORIZED for this
+   * evidence scope (e.g. identity JWT exchange vs telemetry for a specific link).
+   */
+  sourceLinkProven?: boolean | 'UNKNOWN';
+};
 
 export type VsiProviderSourceLinkRef =
   | { kind: 'resolved'; providerSourceLinkId: string }
@@ -155,17 +180,23 @@ export type VsiVehicleSignalEvidenceDescriptorV1 = {
 export type VsiEvidenceScopeKeyInput = {
   organizationId: string;
   vehicleId: string;
+  /** Known provider identity (e.g. DIMO, HIGH_MOBILITY) — required for collision-safe scope. */
+  providerIdentity: VsiProviderIdentity;
   providerSourceLinkRef: VsiProviderSourceLinkRef;
   canonicalSignalKey: VsiCanonicalSignalKey;
 };
 
-/** Deterministic scope key — one provider source link per key (T07, T11, T14). */
+/**
+ * Deterministic evidence scope key for projection indexing only.
+ * Does not enforce tenant authorization — org-scoped data access remains in VSI-03+.
+ */
 export function buildVsiEvidenceScopeKey(input: VsiEvidenceScopeKeyInput): string {
   assertDistinctTenantScope(input.organizationId, input.vehicleId);
-  const linkPart =
-    input.providerSourceLinkRef.kind === 'resolved'
-      ? input.providerSourceLinkRef.providerSourceLinkId
-      : VSI_UNRESOLVED_PROVIDER_SOURCE_LINK_ID;
+  assertProviderIdentityForScope(input.providerIdentity, input.providerSourceLinkRef);
+  const linkPart = formatProviderSourceLinkScopeSegment(
+    input.providerIdentity,
+    input.providerSourceLinkRef,
+  );
   return `${input.organizationId}:${input.vehicleId}:${linkPart}:${input.canonicalSignalKey}`;
 }
 
@@ -173,6 +204,45 @@ export function assertDistinctTenantScope(organizationId: string, vehicleId: str
   if (!organizationId?.trim() || !vehicleId?.trim()) {
     throw new Error('organizationId and vehicleId are required for VSI evidence scope');
   }
+}
+
+export function assertProviderIdentityForScope(
+  providerIdentity: string,
+  providerSourceLinkRef: VsiProviderSourceLinkRef,
+): void {
+  if (!providerIdentity?.trim()) {
+    throw new Error('providerIdentity is required for VSI evidence scope');
+  }
+  if (providerSourceLinkRef.kind === 'unresolved' && !providerSourceLinkRef.reason?.trim()) {
+    throw new Error('unresolved providerSourceLinkRef requires a non-empty reason');
+  }
+}
+
+function normalizeProviderIdentityForScope(providerIdentity: string): string {
+  return providerIdentity.trim().toUpperCase().replace(/\s+/g, '_');
+}
+
+function normalizeUnresolvedReasonToken(reason: string): string {
+  const trimmed = reason.trim();
+  if (!trimmed) return 'NO_REASON';
+  const slug = trimmed
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  return slug.slice(0, 64) || 'NO_REASON';
+}
+
+/** Resolved links use stable link id; unresolved links never collapse across provider identities. */
+export function formatProviderSourceLinkScopeSegment(
+  providerIdentity: string,
+  providerSourceLinkRef: VsiProviderSourceLinkRef,
+): string {
+  if (providerSourceLinkRef.kind === 'resolved') {
+    return `link:${providerSourceLinkRef.providerSourceLinkId}`;
+  }
+  const provider = normalizeProviderIdentityForScope(providerIdentity);
+  const reason = normalizeUnresolvedReasonToken(providerSourceLinkRef.reason);
+  return `${VSI_UNRESOLVED_PROVIDER_SOURCE_LINK_ID}:${provider}:${reason}`;
 }
 
 export function deriveProviderCatalogStatus(
@@ -205,18 +275,43 @@ export function deriveEmpiricalObservationFromSamples(input: {
 
 export function deriveAuthorizationFromHttpStatus(
   httpStatus: number | null | undefined,
+  context?: VsiAuthorizationHttpContext,
 ): VsiAuthorizationStatus {
   if (httpStatus == null || !Number.isFinite(httpStatus)) {
     return VsiAuthorizationStatus.UNKNOWN;
   }
-  if (httpStatus === 403 || httpStatus === 401) {
+  if (httpStatus === 401 || httpStatus === 403) {
     return VsiAuthorizationStatus.AUTH_BLOCKED;
   }
-  if (httpStatus >= 400 && httpStatus < 500) {
+  if (httpStatus === 429) {
+    return VsiAuthorizationStatus.UNKNOWN;
+  }
+  if (httpStatus === 402) {
     return VsiAuthorizationStatus.ENTITLEMENT_GAP;
   }
+  if (httpStatus === 400 || httpStatus === 404) {
+    return VsiAuthorizationStatus.UNKNOWN;
+  }
+  if (httpStatus >= 400 && httpStatus < 500) {
+    return VsiAuthorizationStatus.UNKNOWN;
+  }
   if (httpStatus >= 200 && httpStatus < 300) {
-    return VsiAuthorizationStatus.AUTHORIZED;
+    if (!context || context.requestKind === VsiAuthorizationRequestKind.UNKNOWN) {
+      return VsiAuthorizationStatus.UNKNOWN;
+    }
+    if (context.requestKind === VsiAuthorizationRequestKind.DIMO_IDENTITY_JWT) {
+      return VsiAuthorizationStatus.UNKNOWN;
+    }
+    if (context.sourceLinkProven !== true) {
+      return VsiAuthorizationStatus.UNKNOWN;
+    }
+    if (
+      context.requestKind === VsiAuthorizationRequestKind.TELEMETRY_FETCH ||
+      context.requestKind === VsiAuthorizationRequestKind.DIMO_VEHICLE_ACQUISITION
+    ) {
+      return VsiAuthorizationStatus.AUTHORIZED;
+    }
+    return VsiAuthorizationStatus.UNKNOWN;
   }
   return VsiAuthorizationStatus.UNKNOWN;
 }
@@ -228,7 +323,7 @@ export function evaluateStrictSourceAdvance(input: {
 }): boolean | 'UNKNOWN' {
   const { previousSourceMs, latestSourceMs } = input;
   if (latestSourceMs == null) return 'UNKNOWN';
-  if (previousSourceMs == null) return false;
+  if (previousSourceMs == null) return 'UNKNOWN';
   if (!Number.isFinite(previousSourceMs) || !Number.isFinite(latestSourceMs)) {
     return 'UNKNOWN';
   }
@@ -265,7 +360,11 @@ export function observationStatusDuringSuppressionWindow(
     : VsiEmpiricalObservationStatus.NEVER_OBSERVED;
 }
 
-/** VSI projections must not mutate immutable historical domain records (T12). */
+/**
+ * Projection-layer guard: rejects patches that would overwrite protected historical
+ * fields in an in-memory merge. Does not enforce database writes — persistence
+ * protection remains with the owning domain store (T12).
+ */
 export function assertVsiProjectionDoesNotOverwriteHistoricalFields<
   T extends Record<string, unknown>,
 >(
