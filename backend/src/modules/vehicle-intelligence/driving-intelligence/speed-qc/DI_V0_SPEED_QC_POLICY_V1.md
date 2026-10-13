@@ -7,10 +7,22 @@ Pure, versioned speed quality overlay for DI V0 shadow intervals. **Does not** m
 | `trustLevel` | Meaning |
 |--------------|---------|
 | `TRUSTED` | May feed trip-level QC max (P2 projector) without extra caveats |
-| `TRUSTED_LIMITED` | Usable with explicit limitations (moderate shadow confidence or stationary) |
+| `TRUSTED_LIMITED` | Moderate shadow confidence or consistent stationary band — **not** a full numeric speed claim |
 | `UNTRUSTED` | Must not be used for quality-gated speed claims |
 
 `NUMERIC_HIGH` shadow rows may evaluate to `UNTRUSTED`.
+
+## Snapshot identity boundary
+
+`inputEvidenceIdentity.pinnedSnapshotHash` (and optional `expectedPinnedSnapshotHash`) are **opaque reference strings** for projector binding. QC performs **string equality only** — it does **not** verify gzip payload bytes or channel manifests. Cryptographic attestation remains upstream at S4 evidence pin time.
+
+## Center label contract
+
+`centerBucketLabel` must normalize to the same calendar second as `shadow.referenceTime` or QC returns `REFERENCE_TIME_MISMATCH` (fail closed).
+
+## R1 temporal authority
+
+R1 samples are **bucket-aligned**. `R1_INTERVAL_ONLY` on the shadow row prevents treating R1 as an independent point witness even when speeds numerically agree. Missing R1 never upgrades trust.
 
 ## Rules (Q1–Q10)
 
@@ -23,7 +35,7 @@ Pure, versioned speed quality overlay for DI V0 shadow intervals. **Does not** m
 | Q4 | Support compromise flags on shadow row | `UNTRUSTED` / `SUPPORT_WINDOW_COMPROMISED` |
 | — | Missing calendar position triple or coords | `UNTRUSTED` / `MISSING_POSITION_EVIDENCE` |
 | Q9 | FROZEN/RELEASE in t−1,t,t+1 | `UNTRUSTED` / `FROZEN_OR_RELEASE_IN_SUPPORT` |
-| Q7 | `ROW_ABSENT` in post-gap lookback before center | `UNTRUSTED` / `POST_GAP_REACQUIRE` |
+| Q7 | `ROW_ABSENT` in lookback **and** (geometry/accel spike or `L3_SUPPORT_CROSSES_GAP`) | `UNTRUSTED` / `POST_GAP_REACQUIRE` |
 | Q6 | Leg implied speed > max leg (corroboration-aware) | `UNTRUSTED` / `GEOMETRY_JUMP` |
 | Q5 | \|accel\| between legs > provisional max | `UNTRUSTED` / `KINEMATIC_IMPLAUSIBLE_LEG` |
 | Q8 | R1 present and disagrees with L3 | `UNTRUSTED` / `R1_DISAGREEMENT` |

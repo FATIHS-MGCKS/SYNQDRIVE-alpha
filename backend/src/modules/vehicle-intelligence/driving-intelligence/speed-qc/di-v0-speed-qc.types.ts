@@ -11,6 +11,12 @@ import type { DiV0SpeedQcReasonCode } from './di-v0-speed-qc-reason-codes';
 
 export type DiV0SpeedQcTrustLevel = 'TRUSTED' | 'TRUSTED_LIMITED' | 'UNTRUSTED';
 
+/**
+ * Snapshot reference identity for QC input binding.
+ * String equality on `pinnedSnapshotHash` / `expectedPinnedSnapshotHash` is a
+ * **container identity check only** — not cryptographic validation of gzip payload bytes.
+ * Payload attestation remains an upstream S4 pin responsibility (P2 projector).
+ */
 export interface DiV0SpeedQcEvidenceIdentity {
   pinnedSnapshotHash: string;
   /** When set, must match pinnedSnapshotHash or evaluation fails closed. */
@@ -68,8 +74,11 @@ export interface DiV0SpeedQcSupportAssessment {
 export interface DiV0SpeedQcSourceCorroboration {
   r1PresentAtCenter: boolean;
   r1SpeedKmhAtCenter: number | null;
+  /** Bucket-aligned speed agreement — not interval-only semantics. */
   r1CorroboratesL3: boolean;
+  /** True only when R1 corroborates and shadow is not R1_INTERVAL_ONLY at center. */
   r1IndependentWitness: boolean;
+  r1IntervalOnlyAtCenter: boolean;
 }
 
 export interface DiV0SpeedQcPhysicalPlausibility {

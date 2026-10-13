@@ -13,7 +13,14 @@ describe('DI_V0_SPEED_QC_POLICY_V1 golden scenarios', () => {
     expect(v.qcPolicyVersion).toBe(DI_V0_SPEED_QC_POLICY_V1);
     expect(v.trustLevel).toBe('UNTRUSTED');
     expect(v.qcTrustedSpeedKmh).toBeNull();
-    expect(v.reasonCodes).toContain(DI_V0_SPEED_QC_REASON.POST_GAP_REACQUIRE);
+    const spikeReasons = [
+      DI_V0_SPEED_QC_REASON.POST_GAP_REACQUIRE,
+      DI_V0_SPEED_QC_REASON.GEOMETRY_JUMP,
+      DI_V0_SPEED_QC_REASON.KINEMATIC_IMPLAUSIBLE_LEG,
+    ];
+    expect(v.reasonCodes.some((r) => spikeReasons.includes(r as (typeof spikeReasons)[number]))).toBe(
+      true,
+    );
     expect(v.originalEstimatedSpeedKmh).toBe(1652);
   });
 
