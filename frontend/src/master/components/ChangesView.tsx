@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'erd-legacy-fragment-global-activation-2026-10-13',
+    version: '4.9.2242',
+    title: 'ERD — global legacy RECHARGE fragment product-read activation',
+    summary: [
+      'Production env-only: ERD_RECHARGE_LEGACY_FRAGMENT_PRODUCT_READ_ENABLED=1 @ SHA 1bc3a3a… (no deploy).',
+      'Product-read collapse for incremental DIMO fragments with fail-closed HV anchor proof; raw VehicleEnergyEvent rows unchanged.',
+      'Tesla Natural Test #1 (2026-10-12) verified product RECHARGE 1 vs raw 8 vs HV 1; prospective natural-charge audit ledger from 2026-10-13T07:17:13Z.',
+    ],
+    reason:
+      'Owner-authorized global correction for legacy incremental RECHARGE fragmentation on product timelines without E5.7 allowlist or historical backfill.',
+    previousBehavior:
+      'Flag default OFF; product API returned one card per legacy DIMO fragment (e.g. 8 cards for one physical Tesla charge).',
+    details:
+      'EED-EV-0112, vps-enable-erd-recharge-legacy-fragment-product-read-production.sh, erd-recharge-legacy-fragment-product-read/*',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-13T07:20:00.000Z',
+  },
+  {
     id: 'dimo-r31-master-admin-r9-webhook-monitoring-2026-10-12',
     version: '4.9.2240',
     title: 'DIMO R3.1 — Master Admin read-only R9 webhook health',
