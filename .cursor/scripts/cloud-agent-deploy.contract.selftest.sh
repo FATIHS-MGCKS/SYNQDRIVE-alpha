@@ -33,6 +33,12 @@ grep -q 'deploy-ci-gate.mjs' "$SCRIPT" || fail "missing_ci_gate"
 grep -q 'CLOUD_AGENT_SKIP_CI_GATE' "$SCRIPT" && fail "ci_gate_bypass_still_present"
 pass "direct_ssh_contract_wired"
 
+grep -q 'sudo -n -H env SYNQDRIVE_REQUESTED_DEPLOY_SHA=' "$LIB" || fail "missing_least_privilege_sudo_env_invoke"
+if grep -q 'bash -lc' "$LIB"; then
+  fail "login_shell_sudo_still_present"
+fi
+pass "sudo_invokes_validated_release_script_only"
+
 if grep -q 'ssh-keyscan' "$SCRIPT"; then
   fail "deploy_script_still_uses_blind_keyscan"
 fi

@@ -140,7 +140,7 @@ run_remote_direct_deploy() {
   echo "[cloud-agent] VPS_DEPLOY_SCRIPT=${VPS_DEPLOY_SCRIPT}"
 
   local remote_invocation
-  remote_invocation="$(cloud_agent_direct_ssh_remote_invoke_command "$VPS_DEPLOY_SCRIPT" "$requested_sha")"
+  remote_invocation="$(cloud_agent_direct_ssh_remote_invoke_command "$VPS_DEPLOY_SCRIPT" "$requested_sha" "$SSH_USER")"
 
   set +e
   local remote_out

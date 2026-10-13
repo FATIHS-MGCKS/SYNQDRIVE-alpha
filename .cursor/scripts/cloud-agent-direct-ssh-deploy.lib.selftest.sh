@@ -20,6 +20,12 @@ pass reject_wrong_suffix
 cmd="$(cloud_agent_direct_ssh_remote_invoke_command '/opt/synqdrive/current/backend/scripts/ops/vps-deploy-release.sh' '0123456789abcdef0123456789abcdef01234567')"
 echo "$cmd" | grep -q 'SYNQDRIVE_REQUESTED_DEPLOY_SHA=' || fail 'invoke_exports_sha'
 echo "$cmd" | grep -q 'vps-deploy-release.sh' || fail 'invoke_calls_script'
-pass remote_invoke_command_shape
+pass remote_invoke_command_shape_root
+
+cmd_admin="$(cloud_agent_direct_ssh_remote_invoke_command '/opt/synqdrive/current/backend/scripts/ops/vps-deploy-release.sh' '0123456789abcdef0123456789abcdef01234567' 'synqdrive-admin')"
+echo "$cmd_admin" | grep -q 'sudo -n -H env SYNQDRIVE_REQUESTED_DEPLOY_SHA=' || fail 'invoke_sudo_env_for_admin'
+echo "$cmd_admin" | grep -q 'bash /opt/synqdrive/current/backend/scripts/ops/vps-deploy-release.sh' || fail 'invoke_pinned_release_script'
+echo "$cmd_admin" | grep -q 'bash -lc' && fail 'invoke_must_not_use_login_shell'
+pass remote_invoke_command_shape_admin
 
 echo "ALL_DIRECT_SSH_LIB_SELFTEST_PASS"

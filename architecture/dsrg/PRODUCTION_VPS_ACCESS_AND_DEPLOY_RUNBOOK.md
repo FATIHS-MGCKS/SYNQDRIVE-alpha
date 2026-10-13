@@ -76,24 +76,24 @@ Expected: `synqdrive-admin` and host identity `srv1374778` (or documented equiva
 | Owner authorization | **`CLOUD_AGENT_OWNER_DEPLOY_AUTHORIZED=1`** when the owner explicitly requested production deploy in the Cursor task (replaces mandatory VO5C operator session for routine releases). |
 | Deploy entry | `CLOUD_AGENT_OWNER_DEPLOY_AUTHORIZED=1 bash .cursor/scripts/cloud-agent-deploy.sh` after push (or explicit SHA). |
 
-### B.2 Fixed VPS deploy bootstrap + `cloud-agent-deploy.sh` (NOT_INSTALLED_INACTIVE)
+### B.2 Optional VO5C pinned bootstrap (not required for routine deploy)
 
 | Field | Value |
 |-------|--------|
-| Status constant | `CLOUD_AGENT_DEPLOY_BOOTSTRAP_STATUS=NOT_INSTALLED_INACTIVE` |
-| R8B | Additional fixed bootstrap **not** installed; deliberate deferral |
+| Routine Path A | **Direct SSH** → validated `vps-deploy-release.sh` (DSRG-05 / PR #1998+) |
+| Bootstrap status | `vo5c-cloud-agent-pinned-deploy-bootstrap.sh` — **optional** delegate when enforcement armed or operator policy requires pin-only entry |
 | VPS path (when installed) | `/opt/synqdrive/shared/vo5c-cloud-agent-pinned-deploy-bootstrap.sh` |
-| Agent rule | **Do not** describe or run `bash .cursor/scripts/cloud-agent-deploy.sh` as production-ready until owner installs bootstrap and updates this runbook |
-| Install procedure (historical / future) | [evidence/VO5C_CLOUD_AGENT_PINNED_BOOTSTRAP_INSTALL.md](./evidence/VO5C_CLOUD_AGENT_PINNED_BOOTSTRAP_INSTALL.md) — **inactive** until separately authorized |
+| Agent rule | **Do not** require VO5C operator session or bootstrap for owner-authorized `cloud-agent-deploy.sh` when `VO5C_PRODUCTION_DEPLOY_ENFORCEMENT_ACTIVE` is **not** set on the VPS |
+| Install procedure | [evidence/VO5C_CLOUD_AGENT_PINNED_BOOTSTRAP_INSTALL.md](./evidence/VO5C_CLOUD_AGENT_PINNED_BOOTSTRAP_INSTALL.md) |
 
-### B.3 `cloud-agent-deploy.sh` flow (repository design — inactive until bootstrap installed)
+### B.3 `cloud-agent-deploy.sh` flow (canonical when enforcement inactive)
 
 1. Optional `cloud-agent-verify-vps.sh`.
 2. **SSH identity** + **trusted host key** + **`cloud_agent_ssh_auth_preflight`**.
 3. Owner deploy ack (`CLOUD_AGENT_OWNER_DEPLOY_AUTHORIZED=1`).
 4. Git preflight: clean tree, `HEAD` == `origin/main` (or explicit `CLOUD_AGENT_REQUESTED_DEPLOY_SHA`).
 5. **CI gate (non-bypassable):** latest `CI gate (all critical jobs)` check run **completed/success** on `REQUESTED_DEPLOY_SHA` (`deploy-ci-gate.mjs` / `gh`; no skip env).
-6. SSH → **`bash /opt/synqdrive/current/backend/scripts/ops/vps-deploy-release.sh`** with `SYNQDRIVE_REQUESTED_DEPLOY_SHA` (path validated under `/opt/synqdrive/…`).
+6. SSH → for **`synqdrive-admin`**: `sudo -n -H env SYNQDRIVE_REQUESTED_DEPLOY_SHA=<sha> bash /opt/synqdrive/current/backend/scripts/ops/vps-deploy-release.sh` (path validated under `/opt/synqdrive/…`; **no** login shell). Existing VPS sudo grants elevation to run the release script only — this PR does **not** add new sudoers fragments.
 7. Public health check (`https://app.synqdrive.eu/api/v1/health`).
 
 | Exit | Meaning |

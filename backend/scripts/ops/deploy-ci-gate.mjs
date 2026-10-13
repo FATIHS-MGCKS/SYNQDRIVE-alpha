@@ -82,28 +82,33 @@ export function evaluateCriticalGateFromCheckRuns(runs, gateName = CRITICAL_GATE
 }
 
 /**
+ * @param {string} repo
  * @param {string} sha
- * @param {{ repo?: string; ghBin?: string }} [opts]
+ * @param {number} page
+ * @param {number} [perPage]
+ */
+export function buildCommitCheckRunsApiEndpoint(repo, sha, page, perPage = 100) {
+  return `repos/${repo}/commits/${sha}/check-runs?per_page=${perPage}&page=${page}`;
+}
+
+/**
+ * @param {string} sha
+ * @param {{ repo?: string; ghBin?: string; execFileSync?: typeof import('node:child_process').execFileSync }} [opts]
  * @returns {Array<Record<string, unknown>>}
  */
 export function fetchAllCheckRunsForCommit(sha, opts = {}) {
   const repo = opts.repo ?? DEFAULT_REPO;
   const gh = opts.ghBin ?? 'gh';
+  const runGh = opts.execFileSync ?? execFileSync;
   const all = [];
   let page = 1;
   const perPage = 100;
 
   while (true) {
-    const raw = execFileSync(
+    const endpoint = buildCommitCheckRunsApiEndpoint(repo, sha, page, perPage);
+    const raw = runGh(
       gh,
-      [
-        'api',
-        `repos/${repo}/commits/${sha}/check-runs`,
-        '-f',
-        `per_page=${perPage}`,
-        '-f',
-        `page=${page}`,
-      ],
+      ['api', endpoint],
       { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
     );
     const payload = JSON.parse(raw);

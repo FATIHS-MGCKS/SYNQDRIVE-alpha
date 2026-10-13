@@ -128,6 +128,42 @@ rc=$?
 set -e
 [[ "$rc" -eq 0 ]] && echo "$out" | grep -q 'public_health=OK' && pass release_ok_public_health_ok
 
+cat >"${MOCK_BIN}/ssh" <<'EOS'
+#!/usr/bin/env bash
+if [[ "$*" == *"echo ok"* ]]; then
+  exit 0
+fi
+if [[ "$*" == *"test -f"* ]]; then
+  echo DEPLOY_SCRIPT_OK
+  exit 0
+fi
+if [[ "$*" == *"sudo -n -H env SYNQDRIVE_REQUESTED_DEPLOY_SHA="* ]]; then
+  echo SUDO_RELEASE_INVOKE_OK
+  exit 0
+fi
+echo "FAIL: unexpected ssh invocation: $*" >&2
+exit 99
+EOS
+chmod +x "${MOCK_BIN}/ssh"
+write_mock_gh_ci_ok
+write_mock_curl_ok
+set +e
+out=$(PATH="${MOCK_BIN}:${PATH}" \
+  CLOUD_AGENT_SKIP_VPS_VERIFY=1 \
+  CLOUD_AGENT_SKIP_GIT_PREFLIGHT=1 \
+  CLOUD_AGENT_OWNER_DEPLOY_AUTHORIZED=1 \
+  CLOUD_AGENT_REQUESTED_DEPLOY_SHA="$REQUESTED_SHA" \
+  CLOUD_AGENT_VPS_HOST=srv1374778.hstgr.cloud \
+  CLOUD_AGENT_SSH_STRICT_HOST_KEY=0 \
+  bash "$DEPLOY" 2>&1)
+rc=$?
+set -e
+if [[ "$rc" -ne 0 ]] || ! echo "$out" | grep -q 'SUDO_RELEASE_INVOKE_OK'; then
+  echo "$out" >&2
+  fail 'hostinger_admin_sudo_release_invoke'
+fi
+pass hostinger_admin_sudo_release_invoke
+
 grep -q 'CLOUD_AGENT_SKIP_CI_GATE' "$DEPLOY" && fail 'ci_gate_bypass_env_still_documented_in_script'
 pass ci_gate_non_bypassable_in_script
 
