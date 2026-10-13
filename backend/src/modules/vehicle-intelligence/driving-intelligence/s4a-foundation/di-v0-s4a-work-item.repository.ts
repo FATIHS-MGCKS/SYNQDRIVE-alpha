@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { gunzipSync, gzipSync } from 'zlib';
-import { Prisma, type PrismaClient } from '@prisma/client';
+import { Prisma, type PrismaClient, type VehicleRegistryLifecycle } from '@prisma/client';
 import { readCurrentBoundaryRepairGeneration } from '../../trips/boundary-repair.state.util';
 import type { DiV0VersionTuple } from '../core/versions';
 import type { DiV0ShadowPersistedIntervalInput } from '../shadow-persistence/di-v0-shadow-types';
@@ -44,6 +44,7 @@ import {
   type DiV0S4EvidenceChannelInput,
   type DiV0S4EvidenceChannelManifestEntry,
 } from './di-v0-s4a-identity';
+import { isVehicleRegistryOperationalActive } from '@modules/vehicles/registry/vehicle-registry-admission';
 import { persistDiV0S4FencedS2Run } from './di-v0-s4a-s2-fenced-persistence';
 import { assertDiV0S4TransitionFrom } from './di-v0-s4a-state-machine';
 import type { DiV0S4ParsedEvidenceContainer } from './di-v0-s4a-evidence-container-parse';
@@ -147,6 +148,7 @@ interface TripScopeRow {
   trip_id: string;
   vehicle_id: string;
   organization_id: string;
+  registry_lifecycle: string;
   trip_status: string;
   start_time: Date;
   end_time: Date | null;
@@ -219,6 +221,13 @@ export class DiV0S4WorkItemRepository {
         (input.expectedVehicleId !== undefined && input.expectedVehicleId !== scope.vehicle_id)
       ) {
         reject(tid, 'TENANT_SCOPE_INVALID', 'caller scope differs from trip -> vehicle -> organization');
+      }
+      // PRIMARY admission only: RECALIBRATION_REPLAY / REACQUISITION keep historical replay semantics unchanged.
+      if (
+        purpose.runPurpose === 'PRIMARY' &&
+        !isVehicleRegistryOperationalActive(scope.registry_lifecycle as VehicleRegistryLifecycle)
+      ) {
+        reject(tid, 'TENANT_SCOPE_INVALID', 'vehicle registry not ACTIVE for PRIMARY');
       }
       this.requireEnabled(
         tid,
@@ -1069,7 +1078,8 @@ export class DiV0S4WorkItemRepository {
   /** Unlocked canonical read: S4 never blocks canonical trip writers. */
   private async readTripScope(db: Db, tripId: string): Promise<TripScopeRow | null> {
     const rows = await db.$queryRaw<TripScopeRow[]>`
-      SELECT t.id AS trip_id, t.vehicle_id, v.organization_id, t.trip_status::text AS trip_status,
+      SELECT t.id AS trip_id, t.vehicle_id, v.organization_id, v.registry_lifecycle::text AS registry_lifecycle,
+        t.trip_status::text AS trip_status,
         t.start_time AT TIME ZONE 'UTC' AS start_time, t.end_time AT TIME ZONE 'UTC' AS end_time,
         t.dimo_segment_id, t.merge_parent_trip_id, t.raw_detection_meta
       FROM vehicle_trips t JOIN vehicles v ON v.id = t.vehicle_id

@@ -29,7 +29,7 @@
     "test:di:s4a:postgres": "bash scripts/test/di-v0-s4a-postgres-ci.sh",
     "test:di:s4a:postgres:ci": "DI_V0_S4A_POSTGRES_REQUIRED=1 bash scripts/test/di-v0-s4a-postgres-ci.sh",
     "test:di:s4b": "jest s4b-orchestration --testPathIgnorePatterns=postgres.integration",
-    "test:di:s4b:postgres": "DI_V0_S4A_POSTGRES_INTEGRATION=1 jest --runInBand --forceExit src/modules/vehicle-intelligence/driving-intelligence/s4b-orchestration/__tests__/di-v0-s4b-orchestration.postgres.integration.spec.ts",
+    "test:di:s4b:postgres": "DI_V0_S4A_POSTGRES_INTEGRATION=1 jest --runInBand --forceExit src/modules/vehicle-intelligence/driving-intelligence/s4b-orchestration/__tests__/di-v0-s4b-orchestration.postgres.integration.spec.ts src/modules/vehicle-intelligence/driving-intelligence/s4b-orchestration/__tests__/di-v0-s4b-registry-lifecycle.postgres.integration.spec.ts",
     "test:di:speed-qc": "jest speed-qc --testPathIgnorePatterns=postgres",
     "test:di:trip-speed-quality": "jest trip-speed-quality --testPathIgnorePatterns=postgres.integration",
     "test:di:trip-speed-quality:postgres": "bash scripts/test/di-v0-p2-trip-speed-quality-postgres-ci.sh",
