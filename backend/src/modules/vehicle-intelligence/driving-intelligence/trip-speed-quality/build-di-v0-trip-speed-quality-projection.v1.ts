@@ -7,6 +7,10 @@ import {
   deriveDiV0TripSpeedQualityAssessability,
   resolveDiV0TripSpeedMaxAssessability,
 } from './di-v0-trip-speed-quality-assessability';
+import {
+  emptyDiV0TripSpeedQualityMotionCounts,
+  incrementDiV0TripSpeedQualityMotionCounter,
+} from './di-v0-trip-speed-quality-motion';
 import type { DiV0TripSpeedQualityEvidenceBundle } from './di-v0-trip-speed-quality-evidence';
 import { DI_V0_TRIP_SPEED_QUALITY_PROJECTION_V1 } from './di-v0-trip-speed-quality-projection.version';
 import type {
@@ -80,24 +84,9 @@ function bandForTrustedSpeed(kmh: number): DiV0TripSpeedQualityTrustedDistributi
   return null;
 }
 
-function countMotion(motion: string, motionCounts: DiV0TripSpeedQualityProjectionV1['motion']): void {
-  switch (motion) {
-    case 'STATIONARY_SUPPORTED':
-      motionCounts.stationarySupportedCount += 1;
-      break;
-    case 'MOVING_SPEED_ESTIMATED':
-      motionCounts.movingEstimatedCount += 1;
-      break;
-    case 'MOVING_SPEED_UNKNOWN':
-      motionCounts.movingUnknownCount += 1;
-      break;
-    case 'UNCERTAIN':
-      motionCounts.uncertainCount += 1;
-      break;
-    default:
-      motionCounts.noMotionEvidenceCount += 1;
-      break;
-  }
+function percent(numerator: number, denominator: number): number | null {
+  if (denominator === 0) return null;
+  return Math.round((1000 * numerator) / denominator) / 10;
 }
 
 export function buildDiV0TripSpeedQualityProjectionV1(input: {
@@ -120,6 +109,8 @@ export function buildDiV0TripSpeedQualityProjectionV1(input: {
   let numericSpeedCount = 0;
   let trustedNumericCount = 0;
   let trustedLimitedCount = 0;
+  let trustedLimitedStationaryCount = 0;
+  let trustedLimitedNumericCount = 0;
   let untrustedCount = 0;
   let missingEvidenceCount = 0;
   let sourceConflictCount = 0;
@@ -131,17 +122,11 @@ export function buildDiV0TripSpeedQualityProjectionV1(input: {
     bandCounts.set(b.label, 0);
   }
 
-  const motion = {
-    stationarySupportedCount: 0,
-    movingEstimatedCount: 0,
-    movingUnknownCount: 0,
-    uncertainCount: 0,
-    noMotionEvidenceCount: 0,
-  };
+  const motion = emptyDiV0TripSpeedQualityMotionCounts();
 
   for (const row of input.shadowIntervals) {
     const shadow = toShadowInterval(row);
-    countMotion(shadow.motionState, motion);
+    incrementDiV0TripSpeedQualityMotionCounter(shadow.motionState, motion);
     if (shadow.estimatedSpeedKmh != null && Number.isFinite(shadow.estimatedSpeedKmh)) {
       numericSpeedCount += 1;
       shadowRawMax = shadowRawMax == null ? shadow.estimatedSpeedKmh : Math.max(shadowRawMax, shadow.estimatedSpeedKmh);
@@ -176,15 +161,24 @@ export function buildDiV0TripSpeedQualityProjectionV1(input: {
       }
     } else if (verdict.trustLevel === 'TRUSTED_LIMITED') {
       trustedLimitedCount += 1;
+      const stationaryLimited =
+        shadow.speedEvidenceState === 'STATIONARY_BAND' || shadow.motionState === 'STATIONARY_SUPPORTED';
+      if (stationaryLimited) {
+        trustedLimitedStationaryCount += 1;
+      } else {
+        trustedLimitedNumericCount += 1;
+      }
     } else {
       untrustedCount += 1;
     }
   }
 
   const totalIntervalCount = input.shadowIntervals.length;
-  const trustedEligible = trustedNumericCount + trustedLimitedCount;
-  const trustedCoveragePercent =
-    totalIntervalCount === 0 ? null : Math.round((1000 * trustedEligible) / totalIntervalCount) / 10;
+  const numericCoveragePercent = percent(numericSpeedCount, totalIntervalCount);
+  const trustedNumericCoveragePercent = percent(trustedNumericCount, totalIntervalCount);
+  const trustedLimitedCoveragePercent = percent(trustedLimitedCount, totalIntervalCount);
+  const nonUntrustedCoveragePercent = percent(trustedNumericCount + trustedLimitedCount, totalIntervalCount);
+  const trustedCoveragePercent = trustedNumericCoveragePercent;
 
   const trustedSpeedDistribution: DiV0TripSpeedQualityTrustedDistributionBand[] = TRUSTED_SPEED_BANDS.map((b) => ({
     label: b.label,
@@ -205,7 +199,13 @@ export function buildDiV0TripSpeedQualityProjectionV1(input: {
     numericSpeedCount,
     trustedNumericCount,
     trustedLimitedCount,
+    trustedLimitedStationaryCount,
+    trustedLimitedNumericCount,
     untrustedCount,
+    numericCoveragePercent,
+    trustedNumericCoveragePercent,
+    trustedLimitedCoveragePercent,
+    nonUntrustedCoveragePercent,
     trustedCoveragePercent,
     reasonCodeBreakdown,
     missingEvidenceCount,

@@ -1,5 +1,5 @@
+import { DI_V0_TRIP_SPEED_QUALITY_ASSESSABILITY_CRITERIA_V1 } from './di-v0-trip-speed-quality-assessability-criteria.v1';
 import type {
-  DiV0TripSpeedQualityAssessability,
   DiV0TripSpeedQualityProjectionAssessabilityV1,
   DiV0TripSpeedQualityProjectionQualityV1,
   DiV0TripSpeedMaxAssessability,
@@ -29,14 +29,19 @@ export function deriveDiV0TripSpeedQualityAssessability(
   speed: Pick<DiV0TripSpeedQualityProjectionSpeedV1, 'maxSpeedAssessability'>,
   snapshotVerified: boolean,
 ): DiV0TripSpeedQualityProjectionAssessabilityV1 {
+  const criteria = DI_V0_TRIP_SPEED_QUALITY_ASSESSABILITY_CRITERIA_V1;
   const reasons: string[] = [];
+  const base = {
+    assessabilityCriteriaVersion: criteria.criteriaVersion,
+    provisionalCalibration: true as const,
+    customerClaimAuthorized: false as const,
+  };
   if (!snapshotVerified) {
     reasons.push('SNAPSHOT_NOT_VERIFIED');
     return {
       level: 'UNASSESSABLE',
       reasons,
-      provisionalCalibration: true,
-      customerClaimAuthorized: false,
+      ...base,
     };
   }
   if (quality.numericSpeedCount === 0) {
@@ -44,46 +49,50 @@ export function deriveDiV0TripSpeedQualityAssessability(
     return {
       level: 'UNASSESSABLE',
       reasons,
-      provisionalCalibration: true,
-      customerClaimAuthorized: false,
+      ...base,
     };
   }
-  const coverage = quality.trustedCoveragePercent ?? 0;
   if (quality.trustedNumericCount === 0 && quality.trustedLimitedCount === 0) {
     reasons.push('NO_TRUSTED_OR_LIMITED_INTERVALS');
     return {
       level: 'INSUFFICIENT',
       reasons,
-      provisionalCalibration: true,
-      customerClaimAuthorized: false,
+      ...base,
     };
   }
-  if (coverage >= 70 && quality.trustedNumericCount > 0) {
-    reasons.push('TRUSTED_COVERAGE_HIGH');
+  const trustedNumericCoverage = quality.trustedNumericCoveragePercent ?? 0;
+  const meetsFullNumericCoverage =
+    trustedNumericCoverage >= criteria.full.minTrustedNumericCoveragePercent &&
+    quality.trustedNumericCount >= criteria.full.minTrustedNumericIntervalCount;
+  if (meetsFullNumericCoverage) {
+    reasons.push('TRUSTED_NUMERIC_COVERAGE_HIGH_PROVISIONAL');
     return {
       level: 'FULL',
       reasons,
-      provisionalCalibration: true,
-      customerClaimAuthorized: false,
+      ...base,
     };
   }
-  if (quality.trustedNumericCount > 0 || quality.trustedLimitedCount > 0) {
+  if (
+    quality.trustedNumericCount >= criteria.partial.minTrustedNumericIntervalCount ||
+    quality.trustedLimitedCount > 0
+  ) {
     reasons.push('TRUSTED_COVERAGE_PARTIAL');
+    if (quality.trustedNumericCount === 0 && quality.trustedLimitedCount > 0) {
+      reasons.push('TRUSTED_LIMITED_ONLY_NO_NUMERIC_TRUSTED');
+    }
     if (speed.maxSpeedAssessability === 'SHADOW_RAW_ONLY') {
       reasons.push('TRUSTED_MAX_NOT_AVAILABLE');
     }
     return {
       level: 'PARTIAL',
       reasons,
-      provisionalCalibration: true,
-      customerClaimAuthorized: false,
+      ...base,
     };
   }
   reasons.push('INSUFFICIENT_TRUSTED_EVIDENCE');
   return {
     level: 'INSUFFICIENT',
     reasons,
-    provisionalCalibration: true,
-    customerClaimAuthorized: false,
+    ...base,
   };
 }

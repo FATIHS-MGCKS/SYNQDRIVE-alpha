@@ -2,8 +2,13 @@ import type { PrismaClient } from '@prisma/client';
 import type { DiV0S4SourceFamily } from '../s4a-foundation/di-v0-s4a-contract';
 import { verifyAndParseDiV0PinnedEvidenceSnapshot } from '../s4d-replay/di-v0-s4d-verified-snapshot';
 import { buildDiV0TripSpeedQualityProjectionV1 } from './build-di-v0-trip-speed-quality-projection.v1';
+import { resolveDiV0TripSpeedQualityCalibrationBundle } from './di-v0-trip-speed-quality-calibration';
 import { buildDiV0TripSpeedQualityEvidenceFromParsedContainer } from './di-v0-trip-speed-quality-evidence';
-import { DiV0TripSpeedQualityProjectionError } from './di-v0-trip-speed-quality-projection.errors';
+import {
+  DiV0TripSpeedQualityProjectionError,
+  mapPersistAuthorityError,
+  DiV0TripSpeedQualityProjectionPersistenceError,
+} from './di-v0-trip-speed-quality-projection.errors';
 import {
   DiV0TripSpeedQualityProjectionRepository,
   type DiV0TripSpeedQualityPersistedRow,
@@ -88,16 +93,28 @@ export class DiV0TripSpeedQualityProjectionService {
       );
     }
 
-    const evidence = buildDiV0TripSpeedQualityEvidenceFromParsedContainer(verified.parsed);
+    const shadowRun = await this.prisma.diV0ShadowRun.findFirst({
+      where: { id: wi.shadow_run_id, organizationId: wi.organization_id, tripId: wi.trip_id },
+      select: { inputEvidenceVersion: true, calibrationVersion: true },
+    });
+    if (!shadowRun) {
+      throw new DiV0TripSpeedQualityProjectionError('MISSING_SHADOW_RUN', 'shadow run row missing');
+    }
+    let calibration;
+    try {
+      calibration = resolveDiV0TripSpeedQualityCalibrationBundle(shadowRun.calibrationVersion);
+    } catch {
+      throw new DiV0TripSpeedQualityProjectionError(
+        'UNSUPPORTED_CALIBRATION_VERSION',
+        shadowRun.calibrationVersion,
+      );
+    }
+
+    const evidence = buildDiV0TripSpeedQualityEvidenceFromParsedContainer(verified.parsed, calibration);
     const shadowIntervals = await this.loadShadowIntervals(wi.shadow_run_id, wi.organization_id, wi.trip_id);
     if (shadowIntervals.length === 0) {
       throw new DiV0TripSpeedQualityProjectionError('SHADOW_INTERVALS_MISSING', 'no intervals');
     }
-
-    const shadowRun = await this.prisma.diV0ShadowRun.findFirst({
-      where: { id: wi.shadow_run_id, organizationId: wi.organization_id, tripId: wi.trip_id },
-      select: { inputEvidenceVersion: true },
-    });
 
     const projection = buildDiV0TripSpeedQualityProjectionV1({
       organizationId: wi.organization_id,
@@ -109,14 +126,31 @@ export class DiV0TripSpeedQualityProjectionService {
       boundaryFingerprint: wi.boundary_fingerprint,
       sourceFamily: wi.source_family as DiV0S4SourceFamily,
       combinedInputIdentity: wi.combined_input_identity,
-      shadowInputEvidenceVersion: shadowRun?.inputEvidenceVersion ?? null,
+      shadowInputEvidenceVersion: shadowRun.inputEvidenceVersion ?? null,
       workItemCompletedAt: wi.completed_at,
       snapshotVerified: true,
       evidence,
       shadowIntervals,
     });
 
-    return this.repository.persistCurrentProjection(projection);
+    try {
+      return await this.repository.persistCurrentProjection(projection, {
+        organizationId: wi.organization_id,
+        tripId: wi.trip_id,
+        workItemId: wi.id,
+        boundaryFingerprint: wi.boundary_fingerprint,
+        pinnedSnapshotHash: wi.pinned_snapshot_hash,
+        shadowRunId: wi.shadow_run_id,
+      });
+    } catch (error) {
+      if (error instanceof DiV0TripSpeedQualityProjectionPersistenceError) {
+        if (error.code === 'IDEMPOTENCY_CONTENT_MISMATCH') {
+          throw new DiV0TripSpeedQualityProjectionError('IDEMPOTENCY_CONTENT_MISMATCH', error.message);
+        }
+        throw mapPersistAuthorityError(error);
+      }
+      throw error;
+    }
   }
 
   async readCurrentOpsProjection(
@@ -125,7 +159,25 @@ export class DiV0TripSpeedQualityProjectionService {
   ): Promise<DiV0TripSpeedQualityPersistedRow | null> {
     const { DI_V0_SPEED_QC_POLICY_V1 } = await import('../speed-qc/di-v0-speed-qc-policy.version');
     const { DI_V0_TRIP_SPEED_QUALITY_PROJECTION_V1 } = await import('./di-v0-trip-speed-quality-projection.version');
-    return this.repository.readCurrentForTrip(organizationId, tripId, DI_V0_SPEED_QC_POLICY_V1, DI_V0_TRIP_SPEED_QUALITY_PROJECTION_V1);
+    const row = await this.repository.readCurrentForTrip(
+      organizationId,
+      tripId,
+      DI_V0_SPEED_QC_POLICY_V1,
+      DI_V0_TRIP_SPEED_QUALITY_PROJECTION_V1,
+    );
+    if (!row) return null;
+    const activeId = await this.resolveActivePrimaryWorkItemId(organizationId, tripId);
+    if (activeId !== row.workItemId) {
+      return null;
+    }
+    const wi = await this.loadWorkItem(row.workItemId);
+    if (!wi || wi.organization_id !== organizationId || wi.trip_id !== tripId) {
+      return null;
+    }
+    if (wi.status !== 'COMPLETED' || wi.run_purpose !== 'PRIMARY' || wi.purpose_discriminator !== 'PRIMARY') {
+      return null;
+    }
+    return row;
   }
 
   private async resolveActivePrimaryWorkItemId(organizationId: string, tripId: string): Promise<string | null> {
@@ -135,7 +187,7 @@ export class DiV0TripSpeedQualityProjectionService {
         AND trip_id = ${tripId}
         AND run_purpose = 'PRIMARY'
         AND purpose_discriminator = 'PRIMARY'
-        AND status = 'COMPLETED'
+        AND status <> 'SUPERSEDED'
       ORDER BY boundary_occurrence DESC, created_at DESC
       LIMIT 1`;
     return rows[0]?.id ?? null;

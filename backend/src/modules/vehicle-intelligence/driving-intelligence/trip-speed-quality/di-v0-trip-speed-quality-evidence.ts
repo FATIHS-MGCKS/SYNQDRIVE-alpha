@@ -1,4 +1,5 @@
 import { CALIBRATION_UNSET_V0_BUNDLE } from '../core/calibration/CALIBRATION_UNSET_V0';
+import type { DiV0CalibrationBundle } from '../core/calibration/types';
 import { classifyPositionRows } from '../core/position/hold-release';
 import type { PositionState } from '../core/types';
 import { parseDiV0PositionSnapshot } from '../position-acquisition/di-v0-position-snapshot-parse';
@@ -17,6 +18,7 @@ export interface DiV0TripSpeedQualityEvidenceBundle {
 /** Derives per-bucket position samples with S1 hold/release classification (not shadow center state). */
 export function buildDiV0TripSpeedQualityEvidenceFromParsedContainer(
   parsed: DiV0S4ParsedEvidenceContainer,
+  calibration: DiV0CalibrationBundle = CALIBRATION_UNSET_V0_BUNDLE,
 ): DiV0TripSpeedQualityEvidenceBundle {
   const positionEntry = parsed.channelManifest.find((c) => c.channel === 'POSITION');
   const r1Entry = parsed.channelManifest.find((c) => c.channel === 'R1_OBD');
@@ -27,7 +29,7 @@ export function buildDiV0TripSpeedQualityEvidenceFromParsedContainer(
     const material = parseDiV0PositionSnapshot(parsed.channelPayloads.POSITION);
     const classified = classifyPositionRows(
       material.buckets.map((b) => b.observation),
-      CALIBRATION_UNSET_V0_BUNDLE,
+      calibration,
     );
     for (const row of classified) {
       const obs = row.observation;

@@ -34,7 +34,20 @@ export interface DiV0TripSpeedQualityProjectionQualityV1 {
   numericSpeedCount: number;
   trustedNumericCount: number;
   trustedLimitedCount: number;
+  trustedLimitedStationaryCount: number;
+  trustedLimitedNumericCount: number;
   untrustedCount: number;
+  /** Share of intervals with any numeric speed estimate (shadow), 0–100. */
+  numericCoveragePercent: number | null;
+  /** Share of intervals with trustLevel TRUSTED (numeric QC), 0–100. */
+  trustedNumericCoveragePercent: number | null;
+  /** Share of intervals with trustLevel TRUSTED_LIMITED, 0–100. */
+  trustedLimitedCoveragePercent: number | null;
+  /** Share of intervals that are not UNTRUSTED (TRUSTED + TRUSTED_LIMITED), 0–100. */
+  nonUntrustedCoveragePercent: number | null;
+  /**
+   * @deprecated Use trustedNumericCoveragePercent — kept for JSON backward compatibility in V1 rows.
+   */
   trustedCoveragePercent: number | null;
   reasonCodeBreakdown: Partial<Record<DiV0SpeedQcReasonCode, number>>;
   missingEvidenceCount: number;
@@ -65,6 +78,7 @@ export interface DiV0TripSpeedQualityProjectionMotionV1 {
 export interface DiV0TripSpeedQualityProjectionAssessabilityV1 {
   level: DiV0TripSpeedQualityAssessability;
   reasons: string[];
+  assessabilityCriteriaVersion: string;
   provisionalCalibration: true;
   customerClaimAuthorized: false;
 }
