@@ -60,3 +60,27 @@ T24 (`2026-10-14T04:38:41Z`) is **retrospective QA only** — not a processing w
 - S4A contract v2 value change (not a new contract version id).
 - Migration `20261013120000_di_v0_s4_near_realtime_eligible_ck` only relaxes CHECK.
 - Run `node architecture/drivingintelligence/scripts/validate-s4a-contract.mjs` before merge.
+- **i18n authority gate:** Do not mix `architecture/drivingintelligence/*` contract validators with `frontend/src/master/*` in the same PR (`MIXED_GOVERNANCE_AUTHORITY_AND_PRODUCT_CHANGE`). Master Admin changelog UI belongs in a separate product PR.
+
+## E — Production read-only discovery audit (2026-10-13)
+
+**Script:** `backend/scripts/ops/di-v0-s4-near-realtime-production-readonly-audit.sh` (+ `.sql`)  
+**Allowlist source:** `/opt/synqdrive/shared/backend.env` (`DI_V0_S4_*`); active `pipeline_version_key` from `di_v0_s4_pipeline_versions` where `status = 'ACTIVE'`.  
+**Predicates:** mirror `DiV0S4DiscoveryService.selectCandidates()` (COMPLETED, `end_time`, NOT_BEFORE, org/vehicle allowlist, settlement anchor + repairs, quiet period, active PRIMARY for active PVK, `ORDER BY anchor, trip_id`, `LIMIT 50`).
+
+| Metric | Value |
+|--------|------:|
+| `NOT_BEFORE` | `2026-10-09T07:03:05.861Z` |
+| Completed trips (5 vehicles) | 2353 |
+| Before NOT_BEFORE | 2310 |
+| After NOT_BEFORE | 43 |
+| Has active PRIMARY (post-NOT_BEFORE) | 31 |
+| No PRIMARY (post-NOT_BEFORE) | 12 |
+| Discovery eligible @ 86400s (now) | 0 |
+| Discovery eligible @ 600s (now) | 12 |
+| First scheduler batch @ 600s | 12 trips (all candidates; batch limit 50) |
+| Theoretical max WI @ 30m / 60m (50/5min) | 300 / 600 (upper bound; actual catch-up ≈12) |
+
+**2322 clarification:** the large historical count is **pre-NOT_BEFORE containment** (2310 excluded). Post-deploy automatic discovery catch-up is **bounded to ~12 trips** (~2–3 discovery passes), not mass backfill. **Do not change NOT_BEFORE** without explicit owner approval.
+
+**Provider / worker / disk:** ~12 additional PRIMARY work items ≈ normal DIMO acquisition load for a handful of trips; no evidence of runaway backlog under current scheduler (5 min, batch 50).

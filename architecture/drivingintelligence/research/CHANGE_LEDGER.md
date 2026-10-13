@@ -1937,3 +1937,11 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | WHY | Owner product decision: DI must run soon after trip completion; 24h quiet was safety/settlement-shadow heritage, not desired latency |
 | NON_EFFECTS | No Production deploy/backfill/kill/allowlist change; existing work items not reset; T24 cutoff remains retrospective QA — segment metrics on policy deploy |
 | VALIDATION | `validate-s4a-contract.mjs`; `di-v0-s4a-settlement-policy.spec.ts`; S4B D05 updated |
+
+### EXP-021 PR #2001 final hardening (2026-10-13)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Frozen quiet-period floor/ceiling in validator (N09B/N09C); `di-v0-s4-settlement-policy-segment.ts`; NR01–NR09 Postgres proofs; bootstrap strip re-applies near-realtime migration; CI Postgres image `mirror.gcr.io/library/postgres:16-alpine` |
+| EVIDENCE | Read-only prod audit: 0 active PENDING; 12 trips held only by 24h discovery gate (all 600s-eligible by anchor) |
+| NON_EFFECTS | No merge/deploy/kill/allowlist mutation |
