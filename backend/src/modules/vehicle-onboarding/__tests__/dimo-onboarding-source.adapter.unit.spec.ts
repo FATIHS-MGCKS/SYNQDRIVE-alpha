@@ -11,6 +11,7 @@ describe('Dimo onboarding source adapter', () => {
       year: null,
       fuelType: null,
       updatedAt: new Date(),
+      rawJson: null,
     });
     expect(snap.vin).toBeNull();
     expect(snap.externalVehicleIdentity).toBe('ext-99');
@@ -26,6 +27,7 @@ describe('Dimo onboarding source adapter', () => {
       year: 2020,
       fuelType: 'GASOLINE',
       updatedAt: new Date(),
+      rawJson: { aftermarketDevice: { serial: 'R1-TEST-001' } },
     });
     expect(snap.vin).toBe('WVWZZZ1JZXW000001');
     expect(snap.vinVerificationState).toBe('UNVERIFIED');

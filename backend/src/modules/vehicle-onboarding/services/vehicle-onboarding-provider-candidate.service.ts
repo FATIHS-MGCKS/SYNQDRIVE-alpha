@@ -269,6 +269,7 @@ export class VehicleOnboardingProviderCandidateService {
       fuelType: true,
       connectionStatus: true,
       updatedAt: true,
+      rawJson: true,
     };
   }
 
@@ -294,7 +295,16 @@ export class VehicleOnboardingProviderCandidateService {
     organizationId: string,
     dimo: Pick<
       DimoVehicle,
-      'id' | 'externalId' | 'vin' | 'make' | 'model' | 'year' | 'fuelType' | 'connectionStatus' | 'updatedAt'
+      | 'id'
+      | 'externalId'
+      | 'vin'
+      | 'make'
+      | 'model'
+      | 'year'
+      | 'fuelType'
+      | 'connectionStatus'
+      | 'updatedAt'
+      | 'rawJson'
     >,
   ): Promise<ProviderCandidateDto | null> {
     try {

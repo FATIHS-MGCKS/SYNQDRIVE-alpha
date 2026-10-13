@@ -20,6 +20,7 @@ import {
 } from './policy/persisted-contract.validation';
 import { VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION_V2 } from './contracts/vo-document-versions';
 import { technicalBaselineV2HvBattery } from './testing/technical-baseline-test.fixtures';
+import { insertDimoMirrorForPostgresTests } from './testing/dimo-mirror-postgres.fixture';
 
 const run = process.env.VO4_ACTIVATION_RACE_PG === '1' || process.env.VO4_READINESS_PG === '1';
 
@@ -41,10 +42,7 @@ async function createOrgWithRental(prisma: PrismaClient) {
 }
 
 async function createDimoMirror(prisma: PrismaClient, dimoId: string, externalId: string) {
-  await prisma.$executeRaw`
-    INSERT INTO dimo_vehicles (id, external_id, vin, make, model, year, fuel_type, connection_status, created_at, updated_at)
-    VALUES (${dimoId}, ${externalId}, null, 'Audi', 'A3', 2021, 'GASOLINE', 'CONNECTED'::"DimoConnectionStatus", NOW(), NOW())
-  `;
+  await insertDimoMirrorForPostgresTests(prisma, { id: dimoId, externalId, vin: null });
 }
 
 async function sealReadyDimoCase(
@@ -164,6 +162,7 @@ async function assertActivationRaceOutcome(prisma: PrismaClient, orgId: string, 
         packageType: 'HEALTH',
         sourceMode: 'HM_ONLY',
         clearanceStatus: 'APPROVED',
+        hmVehicleReference: `hm-ref-${hmId.slice(0, 8)}`,
       },
     });
     const caseRow = await harness.caseService.openOrResumeFromHighMobility(
