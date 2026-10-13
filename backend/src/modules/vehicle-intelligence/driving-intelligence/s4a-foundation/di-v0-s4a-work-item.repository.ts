@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { gunzipSync, gzipSync } from 'zlib';
-import { Prisma, type PrismaClient, type VehicleRegistryLifecycle } from '@prisma/client';
+import { Prisma, type PrismaClient } from '@prisma/client';
 import { readCurrentBoundaryRepairGeneration } from '../../trips/boundary-repair.state.util';
 import type { DiV0VersionTuple } from '../core/versions';
 import type { DiV0ShadowPersistedIntervalInput } from '../shadow-persistence/di-v0-shadow-types';
@@ -44,7 +44,6 @@ import {
   type DiV0S4EvidenceChannelInput,
   type DiV0S4EvidenceChannelManifestEntry,
 } from './di-v0-s4a-identity';
-import { isVehicleRegistryOperationalActive } from '@modules/vehicles/registry/vehicle-registry-admission';
 import { persistDiV0S4FencedS2Run } from './di-v0-s4a-s2-fenced-persistence';
 import { assertDiV0S4TransitionFrom } from './di-v0-s4a-state-machine';
 import type { DiV0S4ParsedEvidenceContainer } from './di-v0-s4a-evidence-container-parse';
@@ -183,7 +182,11 @@ const reject = (transitionId: DiV0S4TransitionId, code: DiV0S4RejectionCode, det
  * DI V0 S4 work-item repository (DI_V0_S4A_CONTRACT_V2). One method per contract transition; there
  * is no generic status setter. Every method runs in one READ COMMITTED transaction and follows the
  * contract lock order: work-item rows FOR UPDATE → `di_v0_s4_control` FOR UPDATE (kill proof) →
- * pipeline registry FOR SHARE. All lease arithmetic uses `clock_timestamp()`.
+ * pipeline registry FOR SHARE. T01 PRIMARY additionally locks the canonical `vehicles` row
+ * (`FOR UPDATE`) after the control-row kill proof and before insert, serializing with VO5C
+ * offboarding (`vehicles` `FOR UPDATE`) so OFFBOARDED cannot commit between scope read and WI insert.
+ * REPLAY / REACQUISITION T01 paths do not take the vehicle registry lock. All lease arithmetic
+ * uses `clock_timestamp()`.
  *
  * Dormant: nothing in the application graph constructs this class (S4A dormant audit spec).
  */
@@ -222,12 +225,8 @@ export class DiV0S4WorkItemRepository {
       ) {
         reject(tid, 'TENANT_SCOPE_INVALID', 'caller scope differs from trip -> vehicle -> organization');
       }
-      // PRIMARY admission only: RECALIBRATION_REPLAY / REACQUISITION keep historical replay semantics unchanged.
-      if (
-        purpose.runPurpose === 'PRIMARY' &&
-        !isVehicleRegistryOperationalActive(scope.registry_lifecycle as VehicleRegistryLifecycle)
-      ) {
-        reject(tid, 'TENANT_SCOPE_INVALID', 'vehicle registry not ACTIVE for PRIMARY');
+      if (purpose.runPurpose === 'PRIMARY') {
+        await this.requirePrimaryVehicleRegistryActive(db, tid, scope.organization_id, scope.vehicle_id);
       }
       this.requireEnabled(
         tid,
@@ -1073,6 +1072,26 @@ export class DiV0S4WorkItemRepository {
   private holderPredicate(lease: DiV0S4Lease): Prisma.Sql {
     return Prisma.sql`id = ${lease.workItemId} AND lease_epoch = ${lease.leaseEpoch} AND lease_owner = ${lease.leaseOwner}
       AND status = 'LEASED' AND lease_expires_at > clock_timestamp()`;
+  }
+
+  /**
+   * PRIMARY registry admission: authoritative `vehicles` row lock (same resource as VO5C offboarding).
+   * After this returns, OFFBOARDED/ARCHIVED cannot commit until this transaction ends.
+   */
+  private async requirePrimaryVehicleRegistryActive(
+    db: Db,
+    tid: DiV0S4TransitionId,
+    organizationId: string,
+    vehicleId: string,
+  ): Promise<void> {
+    const rows = await db.$queryRaw<Array<{ registry_lifecycle: string }>>`
+      SELECT registry_lifecycle::text AS registry_lifecycle FROM vehicles
+      WHERE id = ${vehicleId} AND organization_id = ${organizationId}
+      FOR UPDATE`;
+    if (rows.length !== 1) reject(tid, 'TENANT_SCOPE_INVALID', 'vehicle not found for organization');
+    if (rows[0].registry_lifecycle !== 'ACTIVE') {
+      reject(tid, 'TENANT_SCOPE_INVALID', 'vehicle registry not ACTIVE for PRIMARY');
+    }
   }
 
   /** Unlocked canonical read: S4 never blocks canonical trip writers. */

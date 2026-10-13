@@ -15,8 +15,12 @@
 | Surface | Guard |
 |---------|--------|
 | S4B discovery SQL | `v.registry_lifecycle::text = 'ACTIVE'` for regular PRIMARY discovery |
-| S4A T01 | PRIMARY only: `isVehicleRegistryOperationalActive(registry_lifecycle)` inside `createWorkItem` tx; reject `TENANT_SCOPE_INVALID` (no new skip reasons) |
+| S4A T01 | PRIMARY only: `vehicles` row `FOR UPDATE` after kill-proof control lock; reject `TENANT_SCOPE_INVALID` if lifecycle ≠ ACTIVE (serializes with VO5C offboarding `vehicles` `FOR UPDATE`) |
 | Maturation shadow | `resolveAuthoritativeTokenId` requires `registryLifecycle === 'ACTIVE'` |
+
+## T01_OFFBOARD_LINEARIZATION
+
+From the moment VO5C offboarding **commits** `registry_lifecycle = OFFBOARDED`, no new PRIMARY work item can be admitted: T01 blocks on the same `vehicles` row lock until offboarding finishes, then reads OFFBOARDED and rejects. If T01 holds the vehicle lock first and commits while ACTIVE, that PRIMARY WI is valid; a subsequent offboard may still transition the vehicle to OFFBOARDED without retracting the WI.
 
 ## HISTORICAL_REPLAY_SEMANTICS
 
@@ -25,7 +29,7 @@
 ## VALIDATION
 
 - `reference-capture-exp021-maturation-shadow-registry-guard.spec.ts` (unit)
-- `di-v0-s4b-registry-lifecycle.postgres.integration.spec.ts` (6 cases: ACTIVE discovery, OFFBOARDED/ARCHIVED exclusion, T01 reject, offboard race, replay unchanged)
+- `di-v0-s4b-registry-lifecycle.postgres.integration.spec.ts` (lifecycle + **concurrent** offboard/T01 order A & B with `deferred` barriers, no sleep races)
 - `npm run test:di:s4a:postgres:ci` with local `DI_V0_S4A_PG_ADMIN_URL` (92/92 passing in agent run)
 
 ## NON_EFFECTS

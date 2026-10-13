@@ -6,11 +6,14 @@ import { DiV0S4WorkItemRepository } from '../../s4a-foundation/di-v0-s4a-work-it
 import {
   assertS4aPostgresCiEnv,
   cleanupS4aTenant,
+  deferred,
   newS4aClient,
   S4A_POSTGRES_LIVE,
   seedS4aSnapshot,
   seedS4aTenant,
+  settle,
   setKillState,
+  waitForVehicleRowLockWaiter,
   type S4aTenant,
 } from '../../s4a-foundation/__tests__/di-v0-s4a-postgres-harness';
 import { DiV0S4DiscoveryService } from '../di-v0-s4b-discovery.service';
@@ -67,6 +70,24 @@ assertS4aPostgresCiEnv();
         lifecycle,
         vehicleId,
       );
+    }
+
+    async function insertCompletedTrip(vehicleId: string): Promise<string> {
+      const tripId = randomUUID();
+      const start = new Date(Date.now() - 4 * 86_400_000);
+      const end = new Date(start.getTime() + 20 * 60_000);
+      await admin.$executeRawUnsafe(
+        `INSERT INTO vehicle_trips (id, vehicle_id, trip_status, start_time, end_time, dimo_segment_id, created_at,
+           start_latitude, start_longitude, distance_km, max_speed_kmh, avg_speed_kmh, harsh_brake_count, driving_score)
+         VALUES ($1, $2, 'COMPLETED', ($3::timestamptz AT TIME ZONE 'UTC'), ($4::timestamptz AT TIME ZONE 'UTC'), $5,
+           ($4::timestamptz AT TIME ZONE 'UTC'), 52, 9, 12, 77, 45, 2, 88)`,
+        tripId,
+        vehicleId,
+        start.toISOString(),
+        end.toISOString(),
+        `seg-${randomUUID()}`,
+      );
+      return tripId;
     }
 
     function stack(t: S4aTenant) {
@@ -158,20 +179,7 @@ assertS4aPostgresCiEnv();
       const first = await discovery.runDiscoveryPass({ limit: 5 });
       expect(first.created).toBe(1);
       await setRegistryLifecycle(t.vehicleId, 'OFFBOARDED');
-      const trip2 = randomUUID();
-      const start = new Date(Date.now() - 4 * 86_400_000);
-      const end = new Date(start.getTime() + 20 * 60_000);
-      await admin.$executeRawUnsafe(
-        `INSERT INTO vehicle_trips (id, vehicle_id, trip_status, start_time, end_time, dimo_segment_id, created_at,
-           start_latitude, start_longitude, distance_km, max_speed_kmh, avg_speed_kmh, harsh_brake_count, driving_score)
-         VALUES ($1, $2, 'COMPLETED', ($3::timestamptz AT TIME ZONE 'UTC'), ($4::timestamptz AT TIME ZONE 'UTC'), $5,
-           ($4::timestamptz AT TIME ZONE 'UTC'), 52, 9, 12, 77, 45, 2, 88)`,
-        trip2,
-        t.vehicleId,
-        start.toISOString(),
-        end.toISOString(),
-        `seg-${randomUUID()}`,
-      );
+      const trip2 = await insertCompletedTrip(t.vehicleId);
       await expect(
         repository.createWorkItem({
           tripId: trip2,
@@ -185,5 +193,105 @@ assertS4aPostgresCiEnv();
       const second = await discovery.runDiscoveryPass({ limit: 5 });
       expect(second.created).toBe(0);
     });
+
+    it('concurrent order A: offboard holds vehicles FOR UPDATE then T01 PRIMARY cannot commit', async () => {
+      const t = await tenant();
+      const trip2 = await insertCompletedTrip(t.vehicleId);
+      const { repository, pipeline } = stack(t);
+      const offboardConn = client();
+      const observer = client();
+      const offboardHoldingVehicle = deferred();
+      const offboardMayCommit = deferred();
+      const offboardTx = offboardConn.$transaction(
+        async (tx) => {
+          await tx.$queryRaw`
+            SELECT registry_lifecycle FROM vehicles WHERE id = ${t.vehicleId} AND organization_id = ${t.organizationId}
+            FOR UPDATE`;
+          offboardHoldingVehicle.resolve();
+          await offboardMayCommit.promise;
+          await tx.$executeRaw`
+            UPDATE vehicles SET registry_lifecycle = 'OFFBOARDED'::"VehicleRegistryLifecycle", updated_at = now()
+            WHERE id = ${t.vehicleId} AND organization_id = ${t.organizationId}`;
+        },
+        { timeout: 60_000, maxWait: 10_000 },
+      );
+      await offboardHoldingVehicle.promise;
+      const t01 = settle(
+        repository.createWorkItem({
+          tripId: trip2,
+          sourceFamily: 'API_SYNTHETIC',
+          runPurpose: 'PRIMARY',
+          pipelineManifest: pipeline.manifest,
+          expectedOrganizationId: t.organizationId,
+          expectedVehicleId: t.vehicleId,
+        }),
+      );
+      await waitForVehicleRowLockWaiter(observer);
+      offboardMayCommit.resolve();
+      await offboardTx;
+      const t01Result = await t01;
+      expect(t01Result.ok).toBe(false);
+      if (!t01Result.ok) {
+        expect(t01Result.error).toMatchObject({ code: 'TENANT_SCOPE_INVALID' });
+      }
+      const rows = await admin.$queryRaw<Array<{ c: bigint }>>`
+        SELECT COUNT(*)::bigint AS c FROM di_v0_s4_work_items WHERE trip_id = ${trip2}`;
+      expect(Number(rows[0]?.c ?? 0)).toBe(0);
+    });
+
+    it(
+      'concurrent order B: T01 acquires vehicles row lock while ACTIVE then offboard follows',
+      async () => {
+        const t = await tenant();
+        const trip2 = await insertCompletedTrip(t.vehicleId);
+        const { repository, pipeline } = stack(t);
+        const gateConn = client();
+        const observer = client();
+        const offboardConn = client();
+        const gateHoldingVehicle = deferred();
+        const releaseGate = deferred();
+        const gateTx = gateConn.$transaction(
+          async (tx) => {
+            await tx.$queryRaw`
+              SELECT registry_lifecycle FROM vehicles WHERE id = ${t.vehicleId} AND organization_id = ${t.organizationId}
+              FOR UPDATE`;
+            gateHoldingVehicle.resolve();
+            await releaseGate.promise;
+          },
+          { timeout: 60_000, maxWait: 10_000 },
+        );
+        await gateHoldingVehicle.promise;
+        const t01 = settle(
+          repository.createWorkItem({
+            tripId: trip2,
+            sourceFamily: 'API_SYNTHETIC',
+            runPurpose: 'PRIMARY',
+            pipelineManifest: pipeline.manifest,
+            expectedOrganizationId: t.organizationId,
+            expectedVehicleId: t.vehicleId,
+          }),
+        );
+        await waitForVehicleRowLockWaiter(observer);
+        releaseGate.resolve();
+        await gateTx;
+        const t01Result = await t01;
+        expect(t01Result.ok).toBe(true);
+        await offboardConn.$transaction(async (tx) => {
+          await tx.$queryRaw`
+            SELECT registry_lifecycle FROM vehicles WHERE id = ${t.vehicleId} AND organization_id = ${t.organizationId}
+            FOR UPDATE`;
+          await tx.$executeRaw`
+            UPDATE vehicles SET registry_lifecycle = 'OFFBOARDED'::"VehicleRegistryLifecycle", updated_at = now()
+            WHERE id = ${t.vehicleId} AND organization_id = ${t.organizationId}`;
+        });
+        const rows = await admin.$queryRaw<Array<{ c: bigint }>>`
+          SELECT COUNT(*)::bigint AS c FROM di_v0_s4_work_items WHERE trip_id = ${trip2}`;
+        expect(Number(rows[0]?.c ?? 0)).toBe(1);
+        const lifecycle = await admin.$queryRaw<Array<{ registry_lifecycle: string }>>`
+          SELECT registry_lifecycle::text AS registry_lifecycle FROM vehicles WHERE id = ${t.vehicleId}`;
+        expect(lifecycle[0]?.registry_lifecycle).toBe('OFFBOARDED');
+      },
+      60_000,
+    );
   },
 );
