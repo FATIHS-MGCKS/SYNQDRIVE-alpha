@@ -34,7 +34,26 @@
 
 ## D — T24 metric segmentation
 
-When deploying this policy change during the active T24 window, tag discovery latency and work-item success metrics with `processing_policy=quiet_600s` vs pre-deploy `quiet_86400s` so retrospective T24 dashboards do not mix policies.
+T24 (`2026-10-14T04:38:41Z`) is **retrospective QA only** — not a processing wait.
+
+**Persisted technical label (no new column):**  
+`settlement_quiet_seconds = extract(epoch FROM (eligible_at - settlement_anchor_at))` on `di_v0_s4_work_items`, classified via `classifyDiV0S4SettlementPolicySegment()` (`NEAR_REALTIME_600` | `LEGACY_86400` | `OTHER`).
+
+**Segment T24 metrics at query time:**
+
+- `deployed_at` = production release timestamp when this PR ships.
+- Rows with `created_at < deployed_at` and `settlement_quiet_seconds ≈ 86400` → `processing_policy=legacy_86400`.
+- Rows with `created_at >= deployed_at` and `settlement_quiet_seconds ≈ 600` → `processing_policy=near_realtime_600`.
+- Mixed-era latency (trip end → discovery → claim → COMPLETED) must be reported **per segment**, not blended.
+
+**Latency axes (product goal ≠ measured SLA until post-deploy):**
+
+| Axis | Measurement |
+|------|-------------|
+| Trip end → discovery (T01) | `min(work_item.created_at) - trip.end_time` per trip |
+| Discovery → enqueue | N/A (T01 is synchronous insert); use created_at as enqueue |
+| Enqueue → worker COMPLETED | `completed_at - first claim (lease_acquired_at)` |
+| Trip end → business result | `completed_at - trip.end_time` (shadow/S2 availability) |
 
 ## Governance
 

@@ -4,18 +4,20 @@ GitHub-hosted runners pull workflow `services:` images without Docker Hub creden
 
 ## Canonical mirrors (no secrets)
 
-Use the [Amazon ECR Public Gallery](https://gallery.ecr.aws/) mirrors of the official Docker Library images:
+Use official Docker Library images via a **rate-limit-resistant** public mirror (not bare Docker Hub on GitHub-hosted runners).
 
-| Role | Image |
-|------|--------|
-| PostgreSQL 16 (Alpine) | `public.ecr.aws/docker/library/postgres:16-alpine` |
-| Redis 7 (Alpine) | `public.ecr.aws/docker/library/redis:7-alpine` |
+| Role | Primary image (workflows) | Alternate |
+|------|-------------------------|-----------|
+| PostgreSQL 16 (Alpine) | `mirror.gcr.io/library/postgres:16-alpine` | `public.ecr.aws/docker/library/postgres:16-alpine` |
+| Redis 7 (Alpine) | `public.ecr.aws/docker/library/redis:7-alpine` | — |
 
-These are the same upstream tags as `postgres:16-alpine` and `redis:7-alpine` on Docker Hub. Keep existing `POSTGRES_*` env, ports, and `--health-cmd` options unchanged.
+`mirror.gcr.io` serves the same `library/postgres` tags as Docker Hub and avoids both Docker Hub anonymous limits and intermittent ECR Public `toomanyrequests: Data limit exceeded` during **Initialize containers**.
+
+Keep existing `POSTGRES_*` env, ports, and `--health-cmd` options unchanged.
 
 ## When adding workflows
 
-Do not reference bare `postgres:16-alpine` or `redis:7-alpine` in GitHub Actions service containers. Use the ECR Public paths above (or extend this document if a new major version is required).
+Do not reference bare `postgres:16-alpine` or `redis:7-alpine` in GitHub Actions service containers. Use the primary paths above (or extend this document if a new major version is required).
 
 ## Nested `docker run` in CI fixture scripts
 

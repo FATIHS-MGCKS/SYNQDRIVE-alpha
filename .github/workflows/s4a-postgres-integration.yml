@@ -21,6 +21,7 @@ on:
       - 'backend/scripts/test/di-v0-s4a-*.sh'
       - 'backend/scripts/test/prisma-migrate-deploy-resilient.sh'
       - 'backend/prisma/migrations/20260927200000_di_v0_s4a_dormant_foundation/**'
+      - 'backend/prisma/migrations/20261013120000_di_v0_s4_near_realtime_eligible_ck/**'
       - 'backend/prisma/schema.prisma'
       - 'backend/package.json'
       - 'backend/package-lock.json'
@@ -84,6 +85,7 @@ jobs:
               backend/scripts/ops/di-v0-s4-gate6-open-rekill-production/*) return 0 ;;
               backend/scripts/test/prisma-migrate-deploy-resilient.sh) return 0 ;;
               backend/prisma/migrations/20260927200000_di_v0_s4a_dormant_foundation/*) return 0 ;;
+              backend/prisma/migrations/20261013120000_di_v0_s4_near_realtime_eligible_ck/*) return 0 ;;
               backend/prisma/schema.prisma) return 0 ;;
               backend/package.json) return 0 ;;
               backend/package-lock.json) return 0 ;;
@@ -189,7 +191,7 @@ jobs:
     if: needs.detect-s4a-changes.outputs.run_s4a == 'true'
     services:
       postgres:
-        image: public.ecr.aws/docker/library/postgres:16-alpine
+        image: mirror.gcr.io/library/postgres:16-alpine
         env:
           POSTGRES_USER: s4a_ci_test
           POSTGRES_PASSWORD: s4a_ci_test_local

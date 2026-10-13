@@ -17,6 +17,10 @@ export const DESIGN_DIR = path.join(here, '..', 'design', 's4a');
 const sha256 = (s) => crypto.createHash('sha256').update(s, 'utf8').digest('hex');
 const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
+/** Frozen governance bounds — contract metadata cannot weaken these by editing JSON alone. */
+const SETTLEMENT_QUIET_PERIOD_FLOOR_SECONDS = 300;
+const SETTLEMENT_QUIET_PERIOD_CEILING_SECONDS = 86_400;
+
 const REQUIRED_SECTIONS = [
   'contractVersion', 'limits', 'executionAuthority', 'controlPlane', 'killPolicy', 'authoritativeWrites', 'states',
   'transitions', 'mustBeIllegal', 'runPurposes', 'identity', 'identityLayers', 's2ExecutionIdentity', 'pipelineVersion',
@@ -564,13 +568,21 @@ export function validateContract(c, { docs = [], printHashes = false } = {}) {
   // ── J. Settlement ──────────────────────────────────────────────────────────
   section('settlement', () => {
     const s = c.settlement;
-    const minQuiet = s.quietPeriodSecondsMinimum ?? 300;
-    const maxQuiet = s.quietPeriodSecondsMaximum ?? 86_400;
-    if (!(s.quietPeriodSeconds >= minQuiet)) {
-      fail(`settlement quiet period must be >= ${minQuiet}s (got ${s.quietPeriodSeconds}s)`);
+    if (s.quietPeriodSecondsMinimum !== SETTLEMENT_QUIET_PERIOD_FLOOR_SECONDS) {
+      fail(
+        `quietPeriodSecondsMinimum must be frozen at ${SETTLEMENT_QUIET_PERIOD_FLOOR_SECONDS}s (got ${s.quietPeriodSecondsMinimum})`,
+      );
     }
-    if (!(s.quietPeriodSeconds <= maxQuiet)) {
-      fail(`settlement quiet period must be <= ${maxQuiet}s (got ${s.quietPeriodSeconds}s)`);
+    if (s.quietPeriodSecondsMaximum !== SETTLEMENT_QUIET_PERIOD_CEILING_SECONDS) {
+      fail(
+        `quietPeriodSecondsMaximum must be frozen at ${SETTLEMENT_QUIET_PERIOD_CEILING_SECONDS}s (got ${s.quietPeriodSecondsMaximum})`,
+      );
+    }
+    if (!(s.quietPeriodSeconds >= SETTLEMENT_QUIET_PERIOD_FLOOR_SECONDS)) {
+      fail(`settlement quiet period must be >= ${SETTLEMENT_QUIET_PERIOD_FLOOR_SECONDS}s (got ${s.quietPeriodSeconds}s)`);
+    }
+    if (!(s.quietPeriodSeconds <= SETTLEMENT_QUIET_PERIOD_CEILING_SECONDS)) {
+      fail(`settlement quiet period must be <= ${SETTLEMENT_QUIET_PERIOD_CEILING_SECONDS}s (got ${s.quietPeriodSeconds}s)`);
     }
     if (!(s.driftHorizonSeconds >= 864000)) fail(`drift horizon must be >= 10d (got ${s.driftHorizonSeconds}s)`);
     if (!(s.driftHorizonSeconds > s.quietPeriodSeconds)) fail('drift horizon must exceed the quiet period');

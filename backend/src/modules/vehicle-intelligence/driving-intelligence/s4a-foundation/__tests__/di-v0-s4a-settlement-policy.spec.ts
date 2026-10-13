@@ -1,6 +1,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { DI_V0_S4_LIMITS } from '../di-v0-s4a-contract';
+import {
+  DI_V0_S4_LIMITS,
+  DI_V0_S4_SETTLEMENT_QUIET_PERIOD_CEILING_SECONDS,
+  DI_V0_S4_SETTLEMENT_QUIET_PERIOD_FLOOR_SECONDS,
+} from '../di-v0-s4a-contract';
+import { classifyDiV0S4SettlementPolicySegment } from '../di-v0-s4-settlement-policy-segment';
 
 const contract = JSON.parse(
   fs.readFileSync(
@@ -35,5 +40,16 @@ describe('DI V0 S4A settlement policy (EXP021 near-realtime)', () => {
 
   it('does not re-arm the full quiet timer on every boundary mutation (repairs move anchor only)', () => {
     expect(contract.settlement.everyBoundaryMutationRearmsQuietTimer).toBe(false);
+  });
+
+  it('freezes governance floor/ceiling metadata to validator constants', () => {
+    expect(contract.settlement.quietPeriodSecondsMinimum).toBe(DI_V0_S4_SETTLEMENT_QUIET_PERIOD_FLOOR_SECONDS);
+    expect(contract.settlement.quietPeriodSecondsMaximum).toBe(DI_V0_S4_SETTLEMENT_QUIET_PERIOD_CEILING_SECONDS);
+  });
+
+  it('classifies T24 policy segments from persisted quiet seconds', () => {
+    expect(classifyDiV0S4SettlementPolicySegment(600)).toBe('NEAR_REALTIME_600');
+    expect(classifyDiV0S4SettlementPolicySegment(86_400)).toBe('LEGACY_86400');
+    expect(classifyDiV0S4SettlementPolicySegment(60)).toBe('INVALID');
   });
 });

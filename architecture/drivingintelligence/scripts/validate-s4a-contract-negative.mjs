@@ -27,6 +27,26 @@ const NEGATIVE = [
   ['N07', 'tenancy guard missing', (c) => { delete c.tenancy.scopeGuards.di_v0_s4_work_items; drop(c, 'T01_CREATE', 'TENANT_SCOPE_VALID'); }, /scope guard missing for di_v0_s4_work_items|T01_CREATE lacks TENANT_SCOPE_VALID/],
   ['N08', 'duplicate active PRIMARY permitted', (c) => { delete c.identity.activePrimaryKey; drop(c, 'T01_CREATE', 'ACTIVE_PRIMARY_UNIQUE'); }, /active-PRIMARY unique key missing|ACTIVE_PRIMARY_UNIQUE/],
   ['N09', '1-minute settlement (below floor)', (c) => { c.settlement.quietPeriodSeconds = 60; }, /quiet period must be >= 300s/],
+  [
+    'N09B',
+    'tampered quietPeriodSecondsMinimum bypass',
+    (c) => {
+      c.settlement.quietPeriodSecondsMinimum = 60;
+      c.settlement.quietPeriodSeconds = 120;
+      return c;
+    },
+    /quietPeriodSecondsMinimum must be frozen at 300s/,
+  ],
+  [
+    'N09C',
+    'tampered quietPeriodSecondsMaximum bypass',
+    (c) => {
+      c.settlement.quietPeriodSecondsMaximum = 200_000;
+      c.settlement.quietPeriodSeconds = 100_000;
+      return c;
+    },
+    /quietPeriodSecondsMaximum must be frozen at 86400s/,
+  ],
   ['N10', 'illegal state transition permitted', (c) => c.transitions.push({ id: 'TX_REOPEN', from: ['COMPLETED'], to: 'LEASED', actor: 'WORKER', leaseEpoch: 'INCREMENT', attemptCount: 'INCREMENT', lease: 'SET', guards: ['PIPELINE_VERSION_MATCH', 'CONTROL_PLANE_WORKER_ENABLED', 'PIPELINE_VERSION_ACTIVE', 'ATTEMPTS_REMAINING'] }), /illegal transition permitted: COMPLETED->LEASED/],
   ['N11', 'disabled and not-applicable collapsed', (c) => { for (const ch of ['R1_OBD', 'NATIVE_EVENT']) c.channelOutcomes[ch] = c.channelOutcomes[ch].filter((o) => o !== 'DISABLED'); }, /must distinguish DISABLED/],
   ['N12', 'empty allowlist means ALL', (c) => { c.controlPlane.allowlists.organization.emptyMeans = 'ALL'; c.controlPlane.allowlists.vehicle.emptyMeans = 'ALL'; }, /empty (organization|vehicle) allowlist must mean NONE/],

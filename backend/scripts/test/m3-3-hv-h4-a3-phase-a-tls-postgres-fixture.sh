@@ -11,7 +11,7 @@ PG_USER="${M3_3_HV_H4_A3_PHASE_A_TLS_FIXTURE_USER:-synqdrive}"
 PG_PASSWORD="${M3_3_HV_H4_A3_PHASE_A_TLS_FIXTURE_PASSWORD:-synqdrive}"
 PG_DB="${M3_3_HV_H4_A3_PHASE_A_TLS_FIXTURE_DB:-synqdrive}"
 # Same tag as workflow services; ECR Public avoids Docker Hub unauthenticated rate limits on CI runners.
-PG_IMAGE="${M3_3_HV_H4_A3_PHASE_A_TLS_FIXTURE_PG_IMAGE:-public.ecr.aws/docker/library/postgres:16-alpine}"
+PG_IMAGE="${M3_3_HV_H4_A3_PHASE_A_TLS_FIXTURE_PG_IMAGE:-mirror.gcr.io/library/postgres:16-alpine}"
 
 log() { printf '[phase-a-tls-postgres-fixture] %s\n' "$*"; }
 

@@ -18,6 +18,10 @@ export const DI_V0_S4_EVIDENCE_SNAPSHOT_HASH_PREFIX = 'DI_V0_S4_EVIDENCE_V1';
 export const DI_V0_S4_EVIDENCE_CONTAINER_VERSION = 'DI_V0_S4_EVIDENCE_CONTAINER_V1';
 export const DI_V0_S4_CHANNEL_POLICY_V1 = 'DI_V0_S4_CHANNEL_POLICY_V1';
 
+/** Frozen S4A governance bounds (must match validate-s4a-contract.mjs and s4a-contract.v2.json metadata). */
+export const DI_V0_S4_SETTLEMENT_QUIET_PERIOD_FLOOR_SECONDS = 300;
+export const DI_V0_S4_SETTLEMENT_QUIET_PERIOD_CEILING_SECONDS = 86_400;
+
 export const DI_V0_S4_LIMITS = {
   maxAcquisitionWindowSeconds: 28_800,
   leaseDurationSeconds: 300,
