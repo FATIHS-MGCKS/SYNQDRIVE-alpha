@@ -28,6 +28,8 @@ Historical fleet projection (185→114) is **not** physical validation — prosp
 **Ledger file:** `EED-NCA-LEDGER-2026-10-13.md` (same directory)  
 **Convention:** one record per **physical charging episode** (not per DIMO segment); outcomes per EED/RFRF natural-event audit vocabulary.
 
+**First prospective episode (settled):** `EED-NCA-20261013-001` — Tesla 2026-10-13; see `EED-NCA-20261013-001-TESLA-NATURAL-CHARGE-AUDIT-2.md`.
+
 ## Monitoring
 
 - Counter: `synqdrive_erd_recharge_legacy_fragment_product_read_total`  

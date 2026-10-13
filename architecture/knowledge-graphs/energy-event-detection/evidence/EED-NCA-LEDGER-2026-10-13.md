@@ -1,14 +1,59 @@
 # EED Natural Charge Audit ledger (prospective)
 
 **AUDIT_CUTOFF_UTC:** `2026-10-13T07:17:13Z`  
-**Scope:** charging episodes **first detected at or after** cutoff on production (`1bc3a3a…`).  
+**Scope:** charging episodes **first detected at or after** cutoff on production (`1bc3a3a…` activation; runtime SHA may advance).  
 **Rule:** one row per candidate **physical** episode; never sum kWh across overlapping incremental DIMO windows as independent sessions.
 
 ## Episode index
 
 | Audit ID | Vehicle ID | First detection (UTC) | Outcome | GT |
 |----------|------------|------------------------|---------|-----|
-| _(no prospective episodes @ 2026-10-13T07:40Z read-only scan)_ | — | — | — | — |
+| EED-NCA-20261013-001 | `68868291-5478-42cd-b0c4-cc77b2a78e21` | `2026-10-13T13:20:31Z` | `TELEMETRY_CONSISTENT_GT_MISSING` + `TRANSIENT_FALSE_SPLIT` | partial (plug ~15:06 Berlin, SOC ~83–85%; end pending) |
+
+**Detail:** `EED-NCA-20261013-001-TESLA-NATURAL-CHARGE-AUDIT-2.md`
+
+## EED-NCA-20261013-001 (settled record)
+
+```
+AUDIT_ID: EED-NCA-20261013-001
+IDENTITY
+  vehicle_id: 68868291-5478-42cd-b0c4-cc77b2a78e21
+  organization_id: (fleet org — see production vehicle row)
+  dimo_token_id: 186946
+  source_provenance: DIMO native RECHARGE segments → VEE; Battery V2 HvChargeSession
+  first_detection_at: 2026-10-13T13:20:31.405Z
+  latest_detection_at: 2026-10-13T18:02:32.540Z
+
+GROUND_TRUTH
+  physical_start_end: plug ~15:06 Europe/Berlin (owner); telemetry 13:06:30Z–16:12:09Z
+  plug_unplug: plug ~15:06 Berlin confirmed; unplug UNKNOWN
+  station_app_evidence: UNKNOWN
+  soc_before_after: owner ~83–85% start; final SOC UNKNOWN
+  measured_kwh: UNKNOWN
+  gt_confidence: PARTIAL_OWNER_REPORT
+  gt_source: owner (SynqDrive operator)
+
+TELEMETRY
+  raw_dimo_recharge_segment_ids: dimo-recharge-186946-1791896790194 … 1791906450194 (11)
+  raw_segment_count: 11
+  native_vee_ids: (11 UUIDs — see evidence doc)
+  interval_start_end: 2026-10-13T13:06:30.194Z / 2026-10-13T16:12:09.193Z
+  parent_child_containment: post-18:02Z primary VEE spans episode; fragments 2–11 strictly contained
+  signal_quality_notes: sliding-window incremental coalesceFromCount=1 each; primary VEE stretch at 18:02:32Z
+
+PRODUCT_HV
+  product_recharge_card_count: 11 (transient, pre-convergence offline) → 1 (post-convergence offline)
+  hv_charge_session_ids: [795c7dcb-4f71-4105-9868-5830ebc67597]
+  primary_dimo_anchor: dimo-recharge-186946-1791896790194
+  suppressed_fragment_ids: (10 siblings — post-convergence offline projection)
+  suppressed_fragment_count: 10 (post-convergence)
+  ambiguous_fragments_retained: []
+  separate_episodes_retained: []
+
+AUDIT_OUTCOME: TELEMETRY_CONSISTENT_GT_MISSING
+OBSERVATION: TRANSIENT_FALSE_SPLIT (ERD flag ON; collapse lag until primary VEE envelope matched HV span)
+PRODUCT_API: NOT_VERIFIED (HTTP 401 without auth; offline projection only)
+```
 
 ## Daily operator procedure (manual — not a cron job)
 
