@@ -45,6 +45,8 @@ export type LegacyReconcileAuthorization = {
   tenantScopeOrganizationId: string;
   authorizationReference: string;
   operatorReference?: string | null;
+  /** HMAC proof bound to manifest + run + authorization reference (operator admission boundary). */
+  operatorAdmissionProof?: string | null;
   runId: string;
   productionReleaseSha?: string | null;
   mode: LegacyReconcileExecutionMode;

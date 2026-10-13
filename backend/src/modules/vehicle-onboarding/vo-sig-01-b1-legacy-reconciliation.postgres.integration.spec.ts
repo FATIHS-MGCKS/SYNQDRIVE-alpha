@@ -13,6 +13,8 @@ import {
   planLegacyConnectionIdentityReconciliation,
   rollbackLegacyConnectionIdentityReconciliation,
 } from './connection-identity/legacy-reconciliation/legacy-connection-identity-reconcile.service';
+import { computeCohortApprovalManifestFingerprint } from './connection-identity/legacy-reconciliation/legacy-reconcile-cohort';
+import { computeLegacyReconcileOperatorAdmissionProof } from './connection-identity/legacy-reconciliation/legacy-reconcile-operator-admission';
 import { LEGACY_RECONCILE_ELIGIBILITY } from './connection-identity/legacy-reconciliation/legacy-connection-identity-reconcile.types';
 import type { LegacyReconcileAuthorization } from './connection-identity/legacy-reconciliation/legacy-connection-identity-reconcile.types';
 import {
@@ -33,6 +35,7 @@ import { fingerprintLinkMetadata } from './connection-identity/legacy-reconcilia
 const run = process.env.VO_SIG_B1_LEGACY_RECONCILE_PG === '1' || process.env.VO_SIG_01_CONN_IDENTITY_PG === '1';
 
 const TRUSTED_RELEASE_SHA = 'b1-pg-trusted-release-sha';
+const ADMISSION_SECRET = 'b1-pg-operator-admission-secret';
 
 function buildExecuteAuth(
   input: {
@@ -40,21 +43,35 @@ function buildExecuteAuth(
     linkIds: string[];
     manifest: string;
     runId?: string;
+    authorizationReference?: string;
   },
   overrides?: Partial<LegacyReconcileAuthorization>,
 ): LegacyReconcileAuthorization {
-  return {
+  const runId = input.runId ?? overrides?.runId ?? randomUUID();
+  const authorizationReference = input.authorizationReference ?? overrides?.authorizationReference ?? 'test-auth';
+  const manifestFingerprint = input.manifest;
+  const auth: LegacyReconcileAuthorization = {
     ownerAuthorized: true,
     allowlistedLinkIds: new Set(input.linkIds),
-    manifestFingerprint: input.manifest,
+    manifestFingerprint,
     tenantScopeOrganizationId: input.organizationId,
-    authorizationReference: 'test-auth',
+    authorizationReference,
     operatorReference: 'test-operator',
-    runId: input.runId ?? randomUUID(),
+    runId,
     productionReleaseSha: TRUSTED_RELEASE_SHA,
     mode: 'EXECUTE',
     ...overrides,
+    manifestFingerprint,
+    runId,
+    authorizationReference,
   };
+  auth.operatorAdmissionProof = computeLegacyReconcileOperatorAdmissionProof({
+    manifestFingerprint,
+    runId: auth.runId,
+    authorizationReference: auth.authorizationReference,
+    secret: ADMISSION_SECRET,
+  });
+  return auth;
 }
 
 (run ? describe : describe.skip)('VO-SIG-01 B1 legacy reconciliation (postgres)', () => {
@@ -62,7 +79,7 @@ function buildExecuteAuth(
   const fixedNow = new Date('2026-10-13T12:00:00.000Z');
 
   beforeAll(() => {
-    process.env.VO_SIG_B1_TRUSTED_RELEASE_SHA = TRUSTED_RELEASE_SHA;
+    process.env.VO_SIG_B1_OPERATOR_ADMISSION_SECRET = ADMISSION_SECRET;
   });
 
   afterAll(async () => {
@@ -604,5 +621,303 @@ function buildExecuteAuth(
       now: fixedNow,
     });
     expect(plan[0].eligibility).toBe(LEGACY_RECONCILE_ELIGIBILITY.ALREADY_RECONCILED);
+  });
+
+  it('repeat execute with same approved manifest is NO_OP with zero new audits', async () => {
+    const orgId = await createLegacyReconcileOrg(prisma);
+    const runId = randomUUID();
+    const { linkId } = await createLegacyDimoLinkFixture(prisma, {
+      organizationId: orgId,
+      externalId: 'repeat-exec',
+      rawJson: B1_TESLA_RAW,
+    });
+    const dryPlan = await planLegacyConnectionIdentityReconciliation(prisma, {
+      organizationId: orgId,
+      linkIds: [linkId],
+      now: fixedNow,
+    });
+    const approvedManifest = computeDeterministicApprovalManifestFingerprint(dryPlan);
+    const auth = buildExecuteAuth({
+      organizationId: orgId,
+      linkIds: [linkId],
+      manifest: approvedManifest,
+      runId,
+    });
+
+    const first = await applyLegacyConnectionIdentityReconciliation(prisma, auth, {
+      organizationId: orgId,
+      linkIds: [linkId],
+      now: fixedNow,
+    });
+    expect(first[0].outcome).toBe('APPLIED');
+    const identityAfterFirst = await prisma.vehicleDataSourceLink.findUnique({ where: { id: linkId } });
+    const auditCountAfterFirst = await prisma.vehicleConnectionIdentityReconciliationAudit.count({
+      where: { sourceLinkId: linkId },
+    });
+
+    const postPlan = await planLegacyConnectionIdentityReconciliation(prisma, {
+      organizationId: orgId,
+      linkIds: [linkId],
+      now: fixedNow,
+    });
+    expect(postPlan[0].eligibility).toBe(LEGACY_RECONCILE_ELIGIBILITY.ALREADY_RECONCILED);
+    const appliedAudit = await prisma.vehicleConnectionIdentityReconciliationAudit.findFirst({
+      where: { sourceLinkId: linkId, outcome: 'APPLIED' },
+    });
+    const cohortManifest = computeCohortApprovalManifestFingerprint(
+      [linkId],
+      postPlan,
+      new Map([[linkId, appliedAudit!]]),
+    );
+    expect(cohortManifest).toBe(approvedManifest);
+
+    const second = await applyLegacyConnectionIdentityReconciliation(prisma, auth, {
+      organizationId: orgId,
+      linkIds: [linkId],
+      now: fixedNow,
+    });
+    expect(second[0].outcome).toBe('NO_OP');
+    const auditCountAfterSecond = await prisma.vehicleConnectionIdentityReconciliationAudit.count({
+      where: { sourceLinkId: linkId },
+    });
+    expect(auditCountAfterSecond).toBe(auditCountAfterFirst);
+    const identityAfterSecond = await prisma.vehicleDataSourceLink.findUnique({ where: { id: linkId } });
+    expect(identityAfterSecond!.metadata).toEqual(identityAfterFirst!.metadata);
+    expect(identityAfterSecond!.lastVerifiedAt?.toISOString()).toBe(
+      identityAfterFirst!.lastVerifiedAt?.toISOString(),
+    );
+  });
+
+  it('rejects repeat execute when authorization or cohort does not match', async () => {
+    const orgId = await createLegacyReconcileOrg(prisma);
+    const runId = randomUUID();
+    const { linkId } = await createLegacyDimoLinkFixture(prisma, {
+      organizationId: orgId,
+      externalId: 'repeat-auth',
+      rawJson: B1_TESLA_RAW,
+    });
+    const dryPlan = await planLegacyConnectionIdentityReconciliation(prisma, {
+      organizationId: orgId,
+      linkIds: [linkId],
+      now: fixedNow,
+    });
+    const approvedManifest = computeDeterministicApprovalManifestFingerprint(dryPlan);
+    const auth = buildExecuteAuth({
+      organizationId: orgId,
+      linkIds: [linkId],
+      manifest: approvedManifest,
+      runId,
+    });
+    await applyLegacyConnectionIdentityReconciliation(prisma, auth, {
+      organizationId: orgId,
+      linkIds: [linkId],
+      now: fixedNow,
+    });
+
+    const wrongRun = buildExecuteAuth({
+      organizationId: orgId,
+      linkIds: [linkId],
+      manifest: approvedManifest,
+      runId: randomUUID(),
+    });
+    await expect(
+      applyLegacyConnectionIdentityReconciliation(prisma, wrongRun, {
+        organizationId: orgId,
+        linkIds: [linkId],
+        now: fixedNow,
+      }),
+    ).rejects.toThrow('LEGACY_RECONCILE_REPEAT_RUN_MISMATCH');
+
+    const otherOrg = await createLegacyReconcileOrg(prisma);
+    const wrongTenant = buildExecuteAuth({
+      organizationId: otherOrg,
+      linkIds: [linkId],
+      manifest: approvedManifest,
+      runId,
+    });
+    await expect(
+      applyLegacyConnectionIdentityReconciliation(prisma, wrongTenant, {
+        organizationId: otherOrg,
+        linkIds: [linkId],
+        now: fixedNow,
+      }),
+    ).rejects.toThrow('LEGACY_RECONCILE_COHORT_TENANT_MISMATCH');
+  });
+
+  it('dry-run flags expired consent as ineligible', async () => {
+    const orgId = await createLegacyReconcileOrg(prisma);
+    const { linkId, consentId } = await createLegacyDimoLinkFixture(prisma, {
+      organizationId: orgId,
+      externalId: 'expired-consent',
+      rawJson: B1_TESLA_RAW,
+    });
+    await prisma.vehicleProviderConsent.update({
+      where: { id: consentId },
+      data: { expiresAt: new Date('2020-01-01T00:00:00.000Z') },
+    });
+    const plan = await planLegacyConnectionIdentityReconciliation(prisma, {
+      organizationId: orgId,
+      linkIds: [linkId],
+      now: fixedNow,
+    });
+    expect(plan[0].eligibility).toBe(LEGACY_RECONCILE_ELIGIBILITY.CONSENT_INVALID);
+    expect(plan[0].reasonCodes).toContain('CONSENT_EXPIRED');
+  });
+
+  it('execute rejects missing or duplicate cohort link ids', async () => {
+    const orgId = await createLegacyReconcileOrg(prisma);
+    const { linkId } = await createLegacyDimoLinkFixture(prisma, {
+      organizationId: orgId,
+      externalId: 'cohort-shape',
+      rawJson: B1_TESLA_RAW,
+    });
+    const dryPlan = await planLegacyConnectionIdentityReconciliation(prisma, {
+      organizationId: orgId,
+      linkIds: [linkId],
+      now: fixedNow,
+    });
+    const manifest = computeDeterministicApprovalManifestFingerprint(dryPlan);
+    const auth = buildExecuteAuth({ organizationId: orgId, linkIds: [linkId], manifest });
+    await expect(
+      applyLegacyConnectionIdentityReconciliation(prisma, auth, {
+        organizationId: orgId,
+        linkIds: [linkId, randomUUID()],
+      }),
+    ).rejects.toThrow('LEGACY_RECONCILE_COHORT_LINK_MISSING');
+    await expect(
+      applyLegacyConnectionIdentityReconciliation(prisma, auth, {
+        organizationId: orgId,
+        linkIds: [linkId, linkId],
+      }),
+    ).rejects.toThrow('LEGACY_RECONCILE_DUPLICATE_LINK_ID');
+  });
+
+  it('null metadata SQL and JSON null round-trip through apply and rollback', async () => {
+    const orgId = await createLegacyReconcileOrg(prisma);
+    const sqlNull = await createLegacyDimoLinkFixture(prisma, {
+      organizationId: orgId,
+      externalId: 'sql-null-meta',
+      rawJson: B1_TESLA_RAW,
+    });
+    await prisma.$executeRaw`
+      UPDATE vehicle_data_source_links SET metadata = NULL WHERE id = ${sqlNull.linkId}::text
+    `;
+
+    const jsonNull = await createLegacyDimoLinkFixture(prisma, {
+      organizationId: orgId,
+      externalId: 'json-null-meta',
+      rawJson: B1_TESLA_RAW,
+    });
+    await prisma.$executeRaw`
+      UPDATE vehicle_data_source_links SET metadata = 'null'::jsonb WHERE id = ${jsonNull.linkId}::text
+    `;
+
+    for (const linkId of [sqlNull.linkId, jsonNull.linkId]) {
+      const plan = await planLegacyConnectionIdentityReconciliation(prisma, {
+        organizationId: orgId,
+        linkIds: [linkId],
+        now: fixedNow,
+      });
+      const manifest = computeDeterministicApprovalManifestFingerprint(plan);
+      const auth = buildExecuteAuth({ organizationId: orgId, linkIds: [linkId], manifest });
+      const applied = await applyLegacyConnectionIdentityReconciliation(prisma, auth, {
+        organizationId: orgId,
+        linkIds: [linkId],
+        now: fixedNow,
+      });
+      expect(applied[0].outcome).toBe('APPLIED');
+      const audit = await prisma.vehicleConnectionIdentityReconciliationAudit.findFirst({
+        where: { sourceLinkId: linkId, outcome: 'APPLIED' },
+      });
+      const rolled = await rollbackLegacyConnectionIdentityReconciliation(prisma, {
+        mode: 'ROLLBACK_EXECUTE',
+        ownerAuthorized: true,
+        targetAuditId: audit!.id,
+        authorizationReference: 'rb-null',
+        operatorReference: 'op',
+        runId: randomUUID(),
+      });
+      expect(rolled.outcome).toBe('ROLLED_BACK');
+      const after = await prisma.vehicleDataSourceLink.findUnique({ where: { id: linkId } });
+      expect(readConnectionIdentityFromLinkMetadataV2(after!.metadata)).toBeNull();
+      if (linkId === sqlNull.linkId) {
+        expect(after!.metadata).toBeNull();
+      }
+    }
+  });
+
+  it('rollback blocked when lastVerifiedAt changed after apply', async () => {
+    const orgId = await createLegacyReconcileOrg(prisma);
+    const { linkId } = await createLegacyDimoLinkFixture(prisma, {
+      organizationId: orgId,
+      externalId: 'rollback-ts',
+      rawJson: B1_TESLA_RAW,
+    });
+    const plan = await planLegacyConnectionIdentityReconciliation(prisma, {
+      organizationId: orgId,
+      linkIds: [linkId],
+      now: fixedNow,
+    });
+    const manifest = computeDeterministicApprovalManifestFingerprint(plan);
+    await applyLegacyConnectionIdentityReconciliation(
+      prisma,
+      buildExecuteAuth({ organizationId: orgId, linkIds: [linkId], manifest }),
+      { organizationId: orgId, linkIds: [linkId], now: fixedNow },
+    );
+    const audit = await prisma.vehicleConnectionIdentityReconciliationAudit.findFirst({
+      where: { sourceLinkId: linkId, outcome: 'APPLIED' },
+    });
+    await prisma.vehicleDataSourceLink.update({
+      where: { id: linkId },
+      data: { lastVerifiedAt: new Date('2099-01-01T00:00:00.000Z') },
+    });
+    const rolled = await rollbackLegacyConnectionIdentityReconciliation(prisma, {
+      mode: 'ROLLBACK_EXECUTE',
+      ownerAuthorized: true,
+      targetAuditId: audit!.id,
+      authorizationReference: 'rb',
+      operatorReference: 'op',
+      runId: randomUUID(),
+    });
+    expect(rolled.outcome).toBe('NO_OP');
+    expect(rolled.reason).toBe('NEWER_LEGITIMATE_CHANGE');
+  });
+
+  it('concurrent consent revocation inside locked transaction aborts apply', async () => {
+    const orgId = await createLegacyReconcileOrg(prisma);
+    const { linkId, vehicleId, consentId } = await createLegacyDimoLinkFixture(prisma, {
+      organizationId: orgId,
+      externalId: 'race-consent',
+      rawJson: B1_TESLA_RAW,
+    });
+    const plan = await planLegacyConnectionIdentityReconciliation(prisma, {
+      organizationId: orgId,
+      linkIds: [linkId],
+      now: fixedNow,
+    });
+    const manifest = computeDeterministicApprovalManifestFingerprint(plan);
+    const auth = buildExecuteAuth({ organizationId: orgId, linkIds: [linkId], manifest });
+
+    await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`
+        SELECT id FROM vehicles WHERE id = ${vehicleId}::text FOR UPDATE
+      `;
+      await tx.vehicleProviderConsent.update({
+        where: { id: consentId },
+        data: { status: VehicleProviderConsentStatus.REVOKED, revokedAt: new Date() },
+      });
+    });
+
+    const result = await applyLegacyConnectionIdentityReconciliation(prisma, auth, {
+      organizationId: orgId,
+      linkIds: [linkId],
+      now: fixedNow,
+    });
+    expect(result[0].outcome).toBe('SKIPPED');
+    if (result[0].outcome === 'SKIPPED') {
+      expect(result[0].reasonCodes.some((c: string) => c.includes('GUARD_CONSENT'))).toBe(true);
+    }
+    const link = await prisma.vehicleDataSourceLink.findUnique({ where: { id: linkId } });
+    expect(readConnectionIdentityFromLinkMetadataV2(link!.metadata)).toBeNull();
   });
 });

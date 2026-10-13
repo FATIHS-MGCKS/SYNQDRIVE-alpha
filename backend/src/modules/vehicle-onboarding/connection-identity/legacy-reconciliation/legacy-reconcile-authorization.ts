@@ -1,31 +1,18 @@
 import type { LegacyReconcileAuthorization } from './legacy-connection-identity-reconcile.types';
+import {
+  assertLegacyReconcileOperatorAdmissionBoundary,
+  isTrustedLegacyReconcileReleaseSha,
+} from './legacy-reconcile-operator-admission';
 
-const TRUSTED_RELEASE_ENV = 'VO_SIG_B1_TRUSTED_RELEASE_SHA';
-
-export function resolveTrustedLegacyReconcileReleaseShas(): ReadonlySet<string> {
-  const raw = process.env[TRUSTED_RELEASE_ENV] ?? '';
-  const parts = raw
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-  return new Set(parts);
-}
-
-export function isTrustedLegacyReconcileReleaseSha(sha: string): boolean {
-  const normalized = sha.trim();
-  if (!normalized) return false;
-  return resolveTrustedLegacyReconcileReleaseShas().has(normalized);
-}
+export { isTrustedLegacyReconcileReleaseSha };
 
 export function assertLegacyReconcileExecuteAuthorization(
   auth: LegacyReconcileAuthorization,
   input: { organizationId: string; linkIds: string[] },
+  manifestFingerprint: string,
 ): void {
   if (auth.mode !== 'EXECUTE') {
     throw new Error('LEGACY_RECONCILE_EXECUTE_REQUIRES_EXECUTE_MODE');
-  }
-  if (!auth.ownerAuthorized) {
-    throw new Error('LEGACY_RECONCILE_OWNER_AUTHORIZATION_REQUIRED');
   }
   if (!auth.authorizationReference?.trim()) {
     throw new Error('LEGACY_RECONCILE_AUTHORIZATION_REFERENCE_REQUIRED');
@@ -40,6 +27,9 @@ export function assertLegacyReconcileExecuteAuthorization(
   if (!manifest) {
     throw new Error('LEGACY_RECONCILE_MANIFEST_FINGERPRINT_REQUIRED');
   }
+  if (manifest !== manifestFingerprint.trim()) {
+    throw new Error('LEGACY_RECONCILE_MANIFEST_FINGERPRINT_MISMATCH');
+  }
   const releaseSha = auth.productionReleaseSha?.trim();
   if (!releaseSha || !isTrustedLegacyReconcileReleaseSha(releaseSha)) {
     throw new Error('LEGACY_RECONCILE_UNTRUSTED_RELEASE_SHA');
@@ -53,6 +43,7 @@ export function assertLegacyReconcileExecuteAuthorization(
       throw new Error(`LEGACY_RECONCILE_LINK_NOT_ALLOWLISTED:${linkId}`);
     }
   }
+  assertLegacyReconcileOperatorAdmissionBoundary(auth, manifestFingerprint);
 }
 
 export type LegacyReconcileRollbackAuthorization = {

@@ -1,12 +1,12 @@
 import type { Prisma } from '@prisma/client';
-import {
-  VehicleProviderConsentGrantType,
-  VehicleProviderConsentStatus,
-  VehicleRegistryLifecycle,
-} from '@prisma/client';
+import { VehicleRegistryLifecycle } from '@prisma/client';
 import { DIMO_DATA_SOURCE_PROVIDER, DIMO_DATA_SOURCE_TYPE } from '@modules/dimo/dimo-vehicle-data-source-link.contract';
-
-const CONSENT_PROVIDER = 'DIMO';
+import { validateLegacyReconcileConsent } from './legacy-reconcile-consent';
+import { lockLegacyReconcileDependencyRows } from './legacy-reconcile-transaction-locks';
+import {
+  classifyLinkMetadataStorage,
+  type LinkMetadataStorageState,
+} from './legacy-reconcile-metadata-snapshot';
 
 export type LegacyReconcileGuardContext = {
   organizationId: string;
@@ -20,6 +20,7 @@ export async function assertLegacyReconcileLinkGuards(
   ctx: LegacyReconcileGuardContext,
 ): Promise<{
   metadata: Prisma.JsonValue | null;
+  metadataStorageState: LinkMetadataStorageState;
   lastVerifiedAt: Date | null;
   dimoVehicleId: string;
   dimoExternalId: string;
@@ -79,34 +80,26 @@ export async function assertLegacyReconcileLinkGuards(
     throw new Error('GUARD_CONSENT_MISSING');
   }
 
+  await lockLegacyReconcileDependencyRows(tx, {
+    organizationId: ctx.organizationId,
+    vehicleId: ctx.vehicleId,
+    sourceLinkId: ctx.sourceLinkId,
+    consentId: link.consentId,
+    dimoVehicleId: link.dimoVehicleId,
+  });
+
   const consent = await tx.vehicleProviderConsent.findUnique({
     where: { id: link.consentId },
   });
-  if (!consent) {
-    throw new Error('GUARD_CONSENT_MISSING');
-  }
-  if (consent.vehicleId !== ctx.vehicleId || consent.organizationId !== ctx.organizationId) {
-    throw new Error('GUARD_CONSENT_OWNERSHIP_MISMATCH');
-  }
-  if (consent.provider !== CONSENT_PROVIDER) {
-    throw new Error('GUARD_CONSENT_PROVIDER_MISMATCH');
-  }
-  if (consent.grantType !== VehicleProviderConsentGrantType.DIMO_DIRECT) {
-    throw new Error('GUARD_CONSENT_GRANT_MISMATCH');
-  }
-  if (consent.status !== VehicleProviderConsentStatus.ACTIVE) {
-    throw new Error('GUARD_CONSENT_NOT_ACTIVE');
-  }
-  if (consent.revokedAt) {
-    throw new Error('GUARD_CONSENT_REVOKED');
-  }
-  if (consent.expiresAt && consent.expiresAt.getTime() <= ctx.now.getTime()) {
-    throw new Error('GUARD_CONSENT_EXPIRED');
-  }
-  const providerRef = consent.providerVehicleRef?.trim();
-  const mirrorExt = link.dimoVehicle.externalId?.trim();
-  if (providerRef && mirrorExt && providerRef !== mirrorExt) {
-    throw new Error('GUARD_CONSENT_PROVIDER_VEHICLE_REF_MISMATCH');
+  const consentVerdict = validateLegacyReconcileConsent({
+    consent,
+    vehicleId: ctx.vehicleId,
+    organizationId: ctx.organizationId,
+    dimoExternalId: link.dimoVehicle.externalId,
+    now: ctx.now,
+  });
+  if (!consentVerdict.ok) {
+    throw new Error(`GUARD_${consentVerdict.reasonCode}`);
   }
 
   const crossTenant = await tx.vehicleDataSourceLink.findFirst({
@@ -126,6 +119,7 @@ export async function assertLegacyReconcileLinkGuards(
 
   return {
     metadata: link.metadata,
+    metadataStorageState: classifyLinkMetadataStorage(link.metadata),
     lastVerifiedAt: link.lastVerifiedAt,
     dimoVehicleId: link.dimoVehicleId,
     dimoExternalId: link.dimoVehicle.externalId,
