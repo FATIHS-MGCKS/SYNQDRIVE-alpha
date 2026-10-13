@@ -6,7 +6,7 @@ GitHub Actions `services.postgres` with `public.ecr.aws/docker/library/postgres:
 
 `toomanyrequests: Data limit exceeded`
 
-Affected PR #2008 jobs (infra only): EXP-021 short A/B PostgreSQL, Battery D3 longitudinal PostgreSQL, Legal Documents backend integration.
+Affected PR #2008 jobs (infra only): EXP-021 short A/B PostgreSQL, Battery D3 longitudinal PostgreSQL, Legal Documents backend integration; follow-up: Battery F4.1 reconciliation PostgreSQL (same workflow, same ECR pull failure).
 
 ## Mitigation
 
