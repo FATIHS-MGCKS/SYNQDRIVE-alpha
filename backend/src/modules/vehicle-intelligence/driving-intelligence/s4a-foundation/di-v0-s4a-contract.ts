@@ -26,7 +26,8 @@ export const DI_V0_S4_LIMITS = {
   absoluteLeaseLifetimeCeilingSeconds: 900,
   maxAttempts: 5,
   retryBackoffSeconds: [900, 3_600, 14_400, 14_400, 14_400] as readonly number[],
-  settlementQuietPeriodSeconds: 86_400,
+  /** Post-trip settlement buffer before discovery / first claim (EXP021 near-realtime; contract v2). */
+  settlementQuietPeriodSeconds: 600,
   driftHorizonSeconds: 864_000,
   maxUncompressedSnapshotBytes: 16_777_216,
 } as const;

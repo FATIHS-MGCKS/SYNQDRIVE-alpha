@@ -26,7 +26,7 @@ const NEGATIVE = [
   ['N06', 'live DIMO re-query declared replay', (c) => { c.replay.liveProviderRequeryIsReplay = true; c.runPurposes.RECALIBRATION_REPLAY.providerAcquisitionAllowed = true; }, /re-query/],
   ['N07', 'tenancy guard missing', (c) => { delete c.tenancy.scopeGuards.di_v0_s4_work_items; drop(c, 'T01_CREATE', 'TENANT_SCOPE_VALID'); }, /scope guard missing for di_v0_s4_work_items|T01_CREATE lacks TENANT_SCOPE_VALID/],
   ['N08', 'duplicate active PRIMARY permitted', (c) => { delete c.identity.activePrimaryKey; drop(c, 'T01_CREATE', 'ACTIVE_PRIMARY_UNIQUE'); }, /active-PRIMARY unique key missing|ACTIVE_PRIMARY_UNIQUE/],
-  ['N09', '10-minute settlement', (c) => { c.settlement.quietPeriodSeconds = 600; }, /quiet period must be >= 24h/],
+  ['N09', '1-minute settlement (below floor)', (c) => { c.settlement.quietPeriodSeconds = 60; }, /quiet period must be >= 300s/],
   ['N10', 'illegal state transition permitted', (c) => c.transitions.push({ id: 'TX_REOPEN', from: ['COMPLETED'], to: 'LEASED', actor: 'WORKER', leaseEpoch: 'INCREMENT', attemptCount: 'INCREMENT', lease: 'SET', guards: ['PIPELINE_VERSION_MATCH', 'CONTROL_PLANE_WORKER_ENABLED', 'PIPELINE_VERSION_ACTIVE', 'ATTEMPTS_REMAINING'] }), /illegal transition permitted: COMPLETED->LEASED/],
   ['N11', 'disabled and not-applicable collapsed', (c) => { for (const ch of ['R1_OBD', 'NATIVE_EVENT']) c.channelOutcomes[ch] = c.channelOutcomes[ch].filter((o) => o !== 'DISABLED'); }, /must distinguish DISABLED/],
   ['N12', 'empty allowlist means ALL', (c) => { c.controlPlane.allowlists.organization.emptyMeans = 'ALL'; c.controlPlane.allowlists.vehicle.emptyMeans = 'ALL'; }, /empty (organization|vehicle) allowlist must mean NONE/],
@@ -91,7 +91,8 @@ const NEGATIVE = [
 const POSITIVE_VARIANTS = [
   ['P01', 'canonical v2 contract', (c) => c],
   ['P02', 'top-level key order reversed', (c) => Object.fromEntries(Object.entries(c).reverse())],
-  ['P03', 'stricter 36 h quiet period', (c) => { c.settlement.quietPeriodSeconds = 129600; return c; }],
+  ['P03', 'legacy 24 h quiet period (ceiling)', (c) => { c.settlement.quietPeriodSeconds = 86400; return c; }],
+  ['P07', 'canonical 10-minute near-realtime quiet period', (c) => { c.settlement.quietPeriodSeconds = 600; return c; }],
   ['P04', 'longer 14 d drift horizon', (c) => { c.settlement.driftHorizonSeconds = 1209600; return c; }],
   ['P05', 'extra forbidden S2 component', (c) => { c.s2ExecutionIdentity.forbiddenComponents.push('requestId'); return c; }],
   ['P06', 'extra already-illegal pair listed', (c) => { c.mustBeIllegal.push('SKIPPED_INELIGIBLE->COMPLETED'); return c; }],

@@ -260,7 +260,9 @@ export class DiV0S4WorkItemRepository {
           ${purpose.runPurpose}, ${purpose.purposeDiscriminator}, ${purpose.replaySourceSnapshotHash}::text,
           ${purpose.reacquisitionRequestId}::text, ${boundaryFingerprint}, ${boundaryOccurrence},
           ${pipelineVersionKey}, ${JSON.stringify(input.pipelineManifest)}::jsonb, 'PENDING', 0, 0,
-          a.anchor + interval '24 hours', a.anchor, a.anchor + interval '24 hours',
+          a.anchor + make_interval(secs => ${DI_V0_S4_LIMITS.settlementQuietPeriodSeconds}::int),
+          a.anchor,
+          a.anchor + make_interval(secs => ${DI_V0_S4_LIMITS.settlementQuietPeriodSeconds}::int),
           ${purpose.replaySourceSnapshotHash}::text,
           CASE WHEN ${replay}::boolean THEN clock_timestamp() END,
           CASE WHEN ${replay}::boolean THEN 0::bigint END
@@ -636,7 +638,9 @@ export class DiV0S4WorkItemRepository {
             SELECT ${successorId}, ${row.organization_id}, ${row.vehicle_id}, ${row.trip_id}, ${row.source_family},
               'PRIMARY', 'PRIMARY', ${currentFingerprint}, ${successorOccurrence}, ${row.pipeline_version_key},
               ${JSON.stringify(row.pipeline_version_manifest)}::jsonb, 'PENDING', 0, 0,
-              a.anchor + interval '24 hours', a.anchor, a.anchor + interval '24 hours'
+              a.anchor + make_interval(secs => ${DI_V0_S4_LIMITS.settlementQuietPeriodSeconds}::int),
+              a.anchor,
+              a.anchor + make_interval(secs => ${DI_V0_S4_LIMITS.settlementQuietPeriodSeconds}::int)
             FROM (${this.settlementAnchorSql(row.trip_id)}) a`;
         } catch (error) {
           return reject(tid, 'SUCCESSOR_INSERT_REJECTED', error instanceof Error ? error.message.slice(0, 200) : undefined);

@@ -564,7 +564,14 @@ export function validateContract(c, { docs = [], printHashes = false } = {}) {
   // ── J. Settlement ──────────────────────────────────────────────────────────
   section('settlement', () => {
     const s = c.settlement;
-    if (!(s.quietPeriodSeconds >= 86400)) fail(`settlement quiet period must be >= 24h (got ${s.quietPeriodSeconds}s)`);
+    const minQuiet = s.quietPeriodSecondsMinimum ?? 300;
+    const maxQuiet = s.quietPeriodSecondsMaximum ?? 86_400;
+    if (!(s.quietPeriodSeconds >= minQuiet)) {
+      fail(`settlement quiet period must be >= ${minQuiet}s (got ${s.quietPeriodSeconds}s)`);
+    }
+    if (!(s.quietPeriodSeconds <= maxQuiet)) {
+      fail(`settlement quiet period must be <= ${maxQuiet}s (got ${s.quietPeriodSeconds}s)`);
+    }
     if (!(s.driftHorizonSeconds >= 864000)) fail(`drift horizon must be >= 10d (got ${s.driftHorizonSeconds}s)`);
     if (!(s.driftHorizonSeconds > s.quietPeriodSeconds)) fail('drift horizon must exceed the quiet period');
     for (const p of ['ATTEMPT_START_AFTER_CLAIM', 'COMPLETION_TX_BEFORE_S2_WRITE']) if (!s.fingerprintRecheckPoints?.includes(p)) fail(`boundary fingerprint re-check missing at ${p}`);

@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'exp021-near-realtime-s4-settlement-2026-10-13',
+    version: '4.9.2242',
+    title: 'EXP021 — S4 near-real-time post-trip processing (600s quiet period)',
+    summary: [
+      'S4A contract + runtime: settlement quiet period 86400s → 600s for discovery and T01 next_attempt_at (10 min buffer after trip anchor).',
+      'Work-item repository uses contract constant (no hardcoded 24h SQL); DB eligible_ck relaxed to allow legacy + new delays.',
+      'T24 audit cutoff remains retrospective QA — segment metrics when deploying during active T24 window.',
+    ],
+    reason:
+      'Owner product decision: Driving Intelligence should analyze completed trips within minutes, not after a blanket 24-hour settlement gate.',
+    previousBehavior:
+      'Discovery and new PRIMARY work items waited until settlement_anchor + 24h; claim eligibility followed the same next_attempt_at schedule.',
+    details:
+      's4a-contract.v2.json, di-v0-s4a-contract.ts, di-v0-s4a-work-item.repository.ts, migration 20261013120000_di_v0_s4_near_realtime_eligible_ck, EXP021_NEAR_REALTIME_TRIP_PROCESSING_CORRECTION.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-13T06:30:00.000Z',
+  },
+  {
     id: 'dimo-r31-master-admin-r9-webhook-monitoring-2026-10-12',
     version: '4.9.2240',
     title: 'DIMO R3.1 — Master Admin read-only R9 webhook health',

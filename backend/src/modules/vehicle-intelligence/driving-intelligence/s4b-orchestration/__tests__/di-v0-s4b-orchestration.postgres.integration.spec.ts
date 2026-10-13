@@ -250,19 +250,24 @@ type FakeExecute = (ctx: DiV0S4ExecutionContext) => Promise<DiV0S4ExecutionOutco
     expect(await nextOccurrence(t)).toBe(1);
   });
 
-  it('D05 settlement: trips inside the 24 h quiet period and trips with a recent APPLIED repair are not discovered', async () => {
-    const fresh = await tenant(3_600);
+  it('D05 settlement: trips inside the quiet period and trips with a recent APPLIED repair are not discovered', async () => {
+    const fresh = await tenant(120);
     const repaired = await tenant();
     const rejectedRepair = await tenant();
-    for (const [t, status] of [
-      [repaired, 'APPLIED'],
-      [rejectedRepair, 'REJECTED'],
+    for (const [t, status, appliedOffset] of [
+      [repaired, 'APPLIED', "interval '2 minutes'"],
+      [rejectedRepair, 'REJECTED', "interval '1 hour'"],
     ] as const) {
-      await admin.$executeRaw`
-        INSERT INTO trip_repairs (id, vehicle_id, trip_id, repair_type, status, reason, confidence, window_from, window_to, applied_at, created_at)
-        VALUES (${randomUUID()}, ${t.vehicleId}, ${t.tripId}, 'MISSING_END', ${status}, 'S4B_TEST', 'HIGH',
+      await admin.$executeRawUnsafe(
+        `INSERT INTO trip_repairs (id, vehicle_id, trip_id, repair_type, status, reason, confidence, window_from, window_to, applied_at, created_at)
+        VALUES ($1, $2, $3, 'MISSING_END', $4, 'S4B_TEST', 'HIGH',
           (now() AT TIME ZONE 'UTC') - interval '4 days', (now() AT TIME ZONE 'UTC') - interval '3 days',
-          (now() AT TIME ZONE 'UTC') - interval '1 hour', (now() AT TIME ZONE 'UTC'))`;
+          (now() AT TIME ZONE 'UTC') - ${appliedOffset}, (now() AT TIME ZONE 'UTC'))`,
+        randomUUID(),
+        t.vehicleId,
+        t.tripId,
+        status,
+      );
     }
     const { service } = discovery(configFor([fresh, repaired, rejectedRepair]));
     await expect(service.runDiscoveryPass()).resolves.toMatchObject({ candidates: 1, created: 1 });
