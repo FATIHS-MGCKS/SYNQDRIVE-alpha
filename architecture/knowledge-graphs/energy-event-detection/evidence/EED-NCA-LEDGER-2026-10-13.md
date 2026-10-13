@@ -8,7 +8,15 @@
 
 | Audit ID | Vehicle ID | First detection (UTC) | Outcome | GT |
 |----------|------------|------------------------|---------|-----|
-| _(none yet @ T0+immediate)_ | — | — | — | — |
+| _(no prospective episodes @ 2026-10-13T07:40Z read-only scan)_ | — | — | — | — |
+
+## Daily operator procedure (manual — not a cron job)
+
+1. **Cutoff guard:** only episodes with `hv_charge_sessions.created_at >= AUDIT_CUTOFF` **or** first post-cutoff `vehicle_energy_events` RECHARGE cluster for a new physical window (dedupe by `vehicle_id` + overlapping `start_time`/`end_time`).
+2. **Bounded SQL** (read-only): new HV rows, new RECHARGE VEE rows, `updated_at` refreshes on legacy rows; paginate `LIMIT 50`.
+3. **Per episode:** product `listCanonicalEnergyEvents` window including parent start (ops script `erd-tesla-natural-test1-product-read-verify.mjs` pattern); compare raw fragment count vs product count vs HV IDs; never treat telemetry-only agreement as PHYSICALLY_VERIFIED.
+4. **Ledger:** append one template block per episode to this file in git; reference `AUDIT_ID` in EED-EV-0112 addendum if incident.
+5. **Delayed DIMO:** re-run prior 24h window daily until provider quiesces; use `latest_detection_at` updates without duplicating `AUDIT_ID` when the same physical episode gains fragments.
 
 ## Template (copy per episode)
 
