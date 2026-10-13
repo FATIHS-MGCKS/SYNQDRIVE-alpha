@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vo-sig-01-p1-connection-identity-2026-10-13',
+    version: '4.9.2242',
+    title: 'VO-SIG-01 P1 — verified connection modality + activation identity enforcement',
+    summary: [
+      'Separates proposed vs verified connection modality in onboarding snapshots; UNKNOWN/unverified telemetry modality blocks readiness (VO-RDY-CONN-001) and activation.',
+      'Activation revalidates DIMO/HM mirror evidence, requires RUPTELA_R1 serial for hardware paths, and asserts VehicleDataSourceLink provider parity post-link.',
+      'HM activation persists provider=HIGH_MOBILITY; dry-run repair helpers for prod UNKNOWN HM link + sold DIMO tokens 187336/190497 (offboard only).',
+    ],
+    reason:
+      'Provider/make inference was insufficient proof of software vs hardware connection; HM links could persist provider=UNKNOWN; device binding could not rely on JSON booleans alone.',
+    previousBehavior:
+      'Connection modality was implicit; Tesla make could imply software path; activation did not fail closed on unverified modality or missing device evidence.',
+    details:
+      'vehicle-onboarding/connection-identity/*, readiness VO-RDY-CONN-001, vehicle-onboarding-activation.service.ts, vehicle-connection-identity.unit.spec.ts (18)',
+    affectsArchitecture: true,
+    module: 'Vehicle Onboarding',
+    createdAt: '2026-10-13T08:30:00.000Z',
+  },
+  {
     id: 'dimo-r31-master-admin-r9-webhook-monitoring-2026-10-12',
     version: '4.9.2240',
     title: 'DIMO R3.1 — Master Admin read-only R9 webhook health',
