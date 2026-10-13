@@ -50,6 +50,7 @@ describe('DI V0 S4A settlement policy (EXP021 near-realtime)', () => {
   it('classifies T24 policy segments from persisted quiet seconds', () => {
     expect(classifyDiV0S4SettlementPolicySegment(600)).toBe('NEAR_REALTIME_600');
     expect(classifyDiV0S4SettlementPolicySegment(86_400)).toBe('LEGACY_86400');
-    expect(classifyDiV0S4SettlementPolicySegment(60)).toBe('INVALID');
+    expect(classifyDiV0S4SettlementPolicySegment(60)).toBe('OTHER');
+    expect(classifyDiV0S4SettlementPolicySegment(-1)).toBe('INVALID');
   });
 });
