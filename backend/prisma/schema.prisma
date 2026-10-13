@@ -16441,6 +16441,7 @@ model VehicleDataSourceLink {
   supersedes   VehicleDataSourceLink[] @relation("DataSourceLinkSupersession")
   hmVehicle   HighMobilityVehicle? @relation(fields: [sourceReferenceId], references: [id])
   dimoVehicle DimoVehicle?         @relation(fields: [dimoVehicleId], references: [id], onDelete: Restrict)
+  connectionIdentityReconciliationAudits VehicleConnectionIdentityReconciliationAudit[]
 
   /// Active-link uniqueness: DB partial index `uq_vehicle_data_source_link_active_scope` (see migration VO-2.1).
   /// Inactive episodes are unlimited; do not reintroduce Prisma @@unique on is_active.
@@ -16451,6 +16452,38 @@ model VehicleDataSourceLink {
   @@index([dimoVehicleId])
   @@index([consentId])
   @@map("vehicle_data_source_links")
+}
+
+enum VehicleConnectionIdentityReconciliationOutcome {
+  APPLIED
+  ROLLED_BACK
+}
+
+/// VO-SIG-01 B1 — durable audit for legacy connection-identity reconciliation (atomic with link metadata writes).
+model VehicleConnectionIdentityReconciliationAudit {
+  id                        String                                          @id @default(uuid())
+  organizationId            String                                          @map("organization_id")
+  vehicleId                 String                                          @map("vehicle_id")
+  sourceLinkId              String                                          @map("source_link_id")
+  idempotencyKey            String                                          @unique @map("idempotency_key")
+  outcome                   VehicleConnectionIdentityReconciliationOutcome
+  beforeMetadataFingerprint String                                          @map("before_metadata_fingerprint")
+  afterMetadataFingerprint  String                                          @map("after_metadata_fingerprint")
+  evidenceProvenance        Json                                            @map("evidence_provenance")
+  operatorReference         String?                                         @map("operator_reference")
+  authorizationReference    String                                          @map("authorization_reference")
+  runId                     String                                          @map("run_id")
+  productionReleaseSha      String?                                         @map("production_release_sha")
+  rollbackAuditId           String?                                         @unique @map("rollback_audit_id")
+  createdAt                 DateTime                                        @default(now()) @map("created_at")
+
+  sourceLink VehicleDataSourceLink @relation(fields: [sourceLinkId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([vehicleId])
+  @@index([sourceLinkId])
+  @@index([runId])
+  @@map("vehicle_connection_identity_reconciliation_audits")
 }
 
 // ------------------------------------------------
