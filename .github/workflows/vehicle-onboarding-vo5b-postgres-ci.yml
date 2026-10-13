@@ -37,7 +37,8 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: public.ecr.aws/docker/library/postgres:16-alpine
+        # GHCR fallback: ECR Public can hit "Data limit exceeded" on busy runners (see .github/ci/SERVICE_CONTAINER_IMAGES.md).
+        image: ghcr.io/docker-library/postgres:16-alpine
         env:
           POSTGRES_USER: synqdrive
           POSTGRES_PASSWORD: synqdrive

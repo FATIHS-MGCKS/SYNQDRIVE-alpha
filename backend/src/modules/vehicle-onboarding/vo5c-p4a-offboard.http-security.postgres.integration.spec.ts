@@ -107,14 +107,22 @@ function clearAdmissionEnv() {
 function clearOwnerMfaExceptionEnv() {
   delete process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_ENABLED;
   delete process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_USER_ID;
+  delete process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_ACTIVATED_AT;
   delete process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_EXPIRES_AT;
 }
 
-function applyOwnerMfaExceptionEnv(ownerUserId: string = OWNER_USER_ID) {
+function applyOwnerMfaExceptionEnv(
+  ownerUserId: string = OWNER_USER_ID,
+  windowMs: number = 3600_000,
+) {
+  const activatedAtMs = Date.now();
   process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_ENABLED = 'true';
   process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_USER_ID = ownerUserId;
+  process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_ACTIVATED_AT = new Date(
+    activatedAtMs,
+  ).toISOString();
   process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_EXPIRES_AT = new Date(
-    Date.now() + 3600_000,
+    activatedAtMs + windowMs,
   ).toISOString();
 }
 
@@ -157,6 +165,19 @@ function applyAdmittedOffboardEnvWithoutMfaRollout() {
       )
       ON CONFLICT (user_id, factor_type) DO UPDATE SET enabled_at = NOW(), verified_at = NOW()
     `;
+  }
+
+  async function ensureMasterAdminPlatformUserWithoutMfaFactors(userId: string) {
+    const email = `${userId}@vo5c-p4a.test`;
+    await prisma.$executeRaw`
+      INSERT INTO users (id, email, name, status, platform_role, created_at, updated_at)
+      VALUES (
+        ${userId}, ${email}, 'Verified Owner (no MFA)', 'ACTIVE'::"UserStatus",
+        'MASTER_ADMIN'::"UserPlatformRole", NOW(), NOW()
+      )
+      ON CONFLICT (id) DO UPDATE SET platform_role = 'MASTER_ADMIN'::"UserPlatformRole"
+    `;
+    await prisma.$executeRaw`DELETE FROM user_mfa_factors WHERE user_id = ${userId}`;
   }
 
   beforeAll(async () => {
@@ -479,10 +500,14 @@ function applyAdmittedOffboardEnvWithoutMfaRollout() {
     ).expect(201);
   });
 
-  it('owner MFA exception allows offboard without MFA rollout or step-up', async () => {
+  it('verified owner without MFA factors offboards via owner exception (PostgreSQL)', async () => {
     applyAdmittedOffboardEnvWithoutMfaRollout();
     applyOwnerMfaExceptionEnv(OWNER_USER_ID);
-    await ensureMasterAdminMfaEnrollment(OWNER_USER_ID);
+    await ensureMasterAdminPlatformUserWithoutMfaFactors(OWNER_USER_ID);
+    const factorRows = await prisma.$queryRaw<Array<{ count: bigint }>>`
+      SELECT COUNT(*)::bigint AS count FROM user_mfa_factors WHERE user_id = ${OWNER_USER_ID}
+    `;
+    expect(Number(factorRows[0]?.count ?? 0)).toBe(0);
     const orgId = await createOrg(prisma);
     const { vehicleId } = await createActiveVehicle(prisma, orgId);
     await postOffboard(
@@ -515,9 +540,38 @@ function applyAdmittedOffboardEnvWithoutMfaRollout() {
     applyAdmittedOffboardEnvWithoutMfaRollout();
     process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_ENABLED = 'true';
     process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_USER_ID = OWNER_USER_ID;
+    process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_ACTIVATED_AT =
+      '1999-12-31T00:00:00.000Z';
     process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_EXPIRES_AT =
       '2000-01-01T00:00:00.000Z';
-    await ensureMasterAdminMfaEnrollment(OWNER_USER_ID);
+    await ensureMasterAdminPlatformUserWithoutMfaFactors(OWNER_USER_ID);
+    const orgId = await createOrg(prisma);
+    const { vehicleId } = await createActiveVehicle(prisma, orgId);
+    const res = await postOffboard(
+      orgId,
+      vehicleId,
+      {
+        id: OWNER_USER_ID,
+        platformRole: UserPlatformRole.MASTER_ADMIN,
+        sessionClaims: buildPasswordOnlyClaims(),
+      },
+      { reason: 'REMOVE_FROM_PRODUCT', idempotencyKey: randomUUID() },
+    ).expect(409);
+    expect(res.body.blockReason).toBe('MFA_ROLLOUT_NOT_ENABLED');
+  });
+
+  it('owner exception beyond 24h activation window denied (409)', async () => {
+    applyAdmittedOffboardEnvWithoutMfaRollout();
+    const activatedAtMs = Date.now() - 60_000;
+    process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_ENABLED = 'true';
+    process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_USER_ID = OWNER_USER_ID;
+    process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_ACTIVATED_AT = new Date(
+      activatedAtMs,
+    ).toISOString();
+    process.env.SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_EXPIRES_AT = new Date(
+      activatedAtMs + 25 * 60 * 60 * 1000,
+    ).toISOString();
+    await ensureMasterAdminPlatformUserWithoutMfaFactors(OWNER_USER_ID);
     const orgId = await createOrg(prisma);
     const { vehicleId } = await createActiveVehicle(prisma, orgId);
     const res = await postOffboard(

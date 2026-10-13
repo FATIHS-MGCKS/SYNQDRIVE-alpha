@@ -33,7 +33,8 @@ Use only until Master Admin MFA enrollment is complete. Does **not** weaken `Mas
 2. Set **all** of:
    - `SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_ENABLED=true`
    - `SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_USER_ID=<single verified owner UUID>`
-   - `SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_EXPIRES_AT=<ISO-8601 UTC, must be in the future>`
+   - `SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_ACTIVATED_AT=<ISO-8601 UTC when exception was enabled>`
+   - `SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_EXPIRES_AT=<ISO-8601 UTC, after activation, at most 24h later>`
 3. Leave `IAM_MFA_MASTER_ADMIN_ENABLED` unset/false until MFA rollout (track B) is ready.
 4. Only the configured owner `user.id` is admitted; other `MASTER_ADMIN` users receive `OWNER_MFA_EXCEPTION_USER_MISMATCH` or `MFA_ROLLOUT_NOT_ENABLED`.
 5. When `IAM_MFA_MASTER_ADMIN_ENABLED=true`, the exception does **not** skip MFA — owner must step up like any other Master Admin.
