@@ -260,6 +260,7 @@ async function activationCounts(prisma: PrismaClient, orgId: string, caseId: str
       year: 2021,
       fuelType: 'GASOLINE',
       updatedAt: new Date(),
+      rawJson: null,
     });
     const scopeKey = DIMO_PLATFORM_DEVELOPER_LICENSE_SCOPE ?? '';
     for (const [orgId, caseId] of [[orgA, case1], [orgB, case2]] as const) {
