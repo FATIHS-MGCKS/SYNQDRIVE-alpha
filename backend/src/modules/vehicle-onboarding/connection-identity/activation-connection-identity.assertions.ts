@@ -18,7 +18,11 @@ import {
   enrichDimoDeviceBindingEvidence,
   type DeviceBindingAssuranceLevel,
 } from './device-binding-assurance';
-import { readConnectionIdentityFromLinkMetadata } from './source-link-connection-identity.metadata';
+import {
+  readConnectionIdentityFromLinkMetadata,
+  readConnectionIdentityFromLinkMetadataV2,
+} from './source-link-connection-identity.metadata';
+import { VO_SOURCE_LINK_CONNECTION_IDENTITY_V2_VERSION } from './legacy-reconciliation/connection-identity-metadata-v2';
 import {
   detectConflictingProviderIdentity,
   isManualOnlySourceSet,
@@ -239,6 +243,13 @@ export function assertPersistedSourceLinksMatchSnapshots(
         throw new VehicleOnboardingError(
           'ACTIVATION_PRECONDITION_FAILED',
           'DIMO link identity mismatch vs snapshot',
+        );
+      }
+      const legacyV2 = readConnectionIdentityFromLinkMetadataV2(link.metadata);
+      if (legacyV2?.version === VO_SOURCE_LINK_CONNECTION_IDENTITY_V2_VERSION && legacyV2.origin === 'LEGACY_RECONCILIATION') {
+        throw new VehicleOnboardingError(
+          'ACTIVATION_PRECONDITION_FAILED',
+          'LEGACY_RECONCILED_DIMO_LINK_NOT_ONBOARDING_ACTIVATION',
         );
       }
       const persisted = readConnectionIdentityFromLinkMetadata(link.metadata);

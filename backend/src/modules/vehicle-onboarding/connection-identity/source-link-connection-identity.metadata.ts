@@ -7,6 +7,7 @@ import {
   type VehicleConnectionModality,
 } from './vehicle-connection-identity.contract';
 import type { DeviceBindingAssuranceLevel } from './device-binding-assurance';
+import { parseConnectionIdentityFromLinkMetadata } from './legacy-reconciliation/connection-identity-metadata-v2';
 
 export const VO_SOURCE_LINK_CONNECTION_IDENTITY_VERSION = 'vo-source-link-connection-identity-v1' as const;
 
@@ -144,9 +145,15 @@ export async function persistConnectionIdentityOnActiveSourceLinksTx(
 export function readConnectionIdentityFromLinkMetadata(
   metadata: unknown,
 ): VoSourceLinkConnectionIdentityMetadataV1 | null {
-  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return null;
-  const ci = (metadata as { connectionIdentity?: VoSourceLinkConnectionIdentityMetadataV1 })
-    .connectionIdentity;
-  if (!ci || ci.version !== VO_SOURCE_LINK_CONNECTION_IDENTITY_VERSION) return null;
-  return ci;
+  const parsed = parseConnectionIdentityFromLinkMetadata(metadata);
+  if (!parsed || parsed.kind !== 'v1') return null;
+  return parsed.record;
+}
+
+export function readConnectionIdentityFromLinkMetadataV2(
+  metadata: unknown,
+): import('./legacy-reconciliation/connection-identity-metadata-v2').VoSourceLinkConnectionIdentityMetadataV2 | null {
+  const parsed = parseConnectionIdentityFromLinkMetadata(metadata);
+  if (!parsed || parsed.kind !== 'v2') return null;
+  return parsed.record;
 }
