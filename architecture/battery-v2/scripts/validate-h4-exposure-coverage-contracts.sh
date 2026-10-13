@@ -64,6 +64,14 @@ grep -q 'battery_hv_h4_a3_reconciliation' "$ROOT/backend/src/workers/schedulers/
   || fail "A3.5 scheduler must use leader guard battery_hv_h4_a3_reconciliation"
 grep -q 'BATTERY_HV_H4_A3_RECONCILIATION_ENABLED' "$HV_H4/m3-3-hv-h4-a3-reconciliation.config.ts" \
   || fail "missing A3.5 reconciliation enable flag"
+grep -q 'BATTERY_HV_H4_A3_RECONCILIATION_COHORT_JSON' "$HV_H4/m3-3-hv-h4-a3-reconciliation-cohort.config.ts" \
+  || fail "missing A3.5 reconciliation cohort JSON env"
+grep -q 'evaluateBatteryHvH4A3ReconciliationCohortRuntimeV1' "$HV_H4/m3-3-hv-h4-a3-reconciliation-cohort.config.ts" \
+  || fail "missing A3.5 cohort runtime evaluator"
+grep -q 'SKIPPED_COHORT_NOT_CONFIGURED' "$HV_H4/m3-3-hv-h4-a3-reconciliation.types.v1.ts" \
+  || fail "missing A3.5 cohort fail-closed tick result"
+grep -q 'SKIPPED_SESSION_ONGOING' "$HV_H4/m3-3-hv-h4-a3-reconciliation.service.ts" \
+  || fail "A3.5 must skip ongoing sessions before materialization"
 grep -q 'computeM3_3HvH4ChargeSessionSourceRevisionFingerprintV1' "$HV_H4/m3-3-hv-h4-a3-charge-session-evidence-fingerprint.v1.ts" \
   || fail "missing A3 source revision fingerprint authority"
 

@@ -20,6 +20,10 @@ import { resolveActivationVehicleFields } from '../policy/activation-field-resol
 import { VehicleOnboardingError } from '../errors/vehicle-onboarding.errors';
 import { classifyPowertrainFromFuelType } from './powertrain-classification';
 import type { ReadinessDecisionV2 } from '../contracts/readiness-snapshot.v2';
+import {
+  assessTelemetryConnectionIdentityForActivation,
+  detectConflictingProviderIdentity,
+} from '../connection-identity/vehicle-connection-identity.classifier';
 
 const RULE_VERSION = '1.0.0';
 
@@ -399,6 +403,32 @@ export function evaluateReadinessRules(ctx: ReadinessEvaluationContext): {
       'DIMO_MIRROR_NOT_TENANT_OWNERSHIP_PROOF',
     ),
   );
+
+  const providerConflict = detectConflictingProviderIdentity(ctx.sourceRefs);
+  if (providerConflict) {
+    results.push(
+      result(
+        'VO-RDY-CONN-001',
+        'MANDATORY_FOR_IDENTITY',
+        'FAIL',
+        true,
+        'PROVIDER_IDENTITY_CONFLICT',
+        [providerConflict],
+      ),
+    );
+  } else {
+    const conn = assessTelemetryConnectionIdentityForActivation(ctx.sourceRefs);
+    results.push(
+      result(
+        'VO-RDY-CONN-001',
+        'MANDATORY_FOR_IDENTITY',
+        conn.ok ? 'PASS' : 'FAIL',
+        true,
+        conn.ok ? 'CONNECTION_IDENTITY_CLASSIFIED' : conn.reasonCode,
+        conn.evidence,
+      ),
+    );
+  }
 
   const blockingFailureCount = results.filter(
     (r) => r.blocking && (r.status === 'FAIL' || r.status === 'REVIEW_REQUIRED'),

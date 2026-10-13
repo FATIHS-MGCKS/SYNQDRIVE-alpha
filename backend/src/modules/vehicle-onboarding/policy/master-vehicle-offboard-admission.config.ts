@@ -3,6 +3,8 @@
  * Independent of frontend VITE flags.
  */
 
+import { evaluateMasterVehicleOffboardOwnerMfaException } from './master-vehicle-offboard-owner-mfa-exception.config';
+
 export const MASTER_VEHICLE_OFFBOARD_HTTP_ADMISSION_ENV =
   'SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_HTTP_ADMISSION_ENABLED';
 
@@ -44,16 +46,23 @@ export type MasterVehicleOffboardAdmissionBlockReason =
   | 'DEPLOYED_SHA_MISSING'
   | 'ATTESTED_SHA_INVALID'
   | 'RELEASE_ATTESTATION_MISMATCH'
-  | 'MFA_ROLLOUT_NOT_ENABLED';
+  | 'MFA_ROLLOUT_NOT_ENABLED'
+  | 'OWNER_MFA_EXCEPTION_USER_MISMATCH';
+
+export type MasterVehicleOffboardAdmissionPath =
+  | 'STANDARD_MFA_ROLLOUT'
+  | 'OWNER_MFA_EXCEPTION';
 
 export type MasterVehicleOffboardAdmissionEvaluation = {
   admitted: boolean;
   blockReason: MasterVehicleOffboardAdmissionBlockReason | null;
+  admissionPath: MasterVehicleOffboardAdmissionPath | null;
   httpAdmissionEnabled: boolean;
   routeVerified: boolean;
   attestedReleaseSha: string | null;
   deployedReleaseSha: string | null;
   mfaMasterAdminEnabled: boolean;
+  ownerMfaExceptionActive: boolean;
 };
 
 export function evaluateMasterVehicleOffboardHttpAdmission(input?: {
@@ -62,6 +71,8 @@ export function evaluateMasterVehicleOffboardHttpAdmission(input?: {
   attestedReleaseSha?: string | null;
   deployedReleaseSha?: string | null;
   mfaMasterAdminEnabled?: boolean;
+  actorUserId?: string | null;
+  nowMs?: number;
 }): MasterVehicleOffboardAdmissionEvaluation {
   const httpAdmissionEnabled =
     input?.httpAdmissionEnabled ??
@@ -78,27 +89,32 @@ export function evaluateMasterVehicleOffboardHttpAdmission(input?: {
       ? input.deployedReleaseSha
       : normalizeGitSha(process.env[SYNQDRIVE_DEPLOYED_GIT_SHA_ENV]);
   const mfaMasterAdminEnabled = input?.mfaMasterAdminEnabled ?? false;
+  const actorUserId = input?.actorUserId ?? null;
+  const nowMs = input?.nowMs;
+
+  const baseFields = {
+    httpAdmissionEnabled,
+    routeVerified,
+    attestedReleaseSha,
+    deployedReleaseSha,
+    mfaMasterAdminEnabled,
+    ownerMfaExceptionActive: false,
+  };
 
   if (!httpAdmissionEnabled) {
     return {
       admitted: false,
       blockReason: 'ADMISSION_DISABLED',
-      httpAdmissionEnabled,
-      routeVerified,
-      attestedReleaseSha,
-      deployedReleaseSha,
-      mfaMasterAdminEnabled,
+      admissionPath: null,
+      ...baseFields,
     };
   }
   if (!routeVerified) {
     return {
       admitted: false,
       blockReason: 'ROUTE_NOT_VERIFIED',
-      httpAdmissionEnabled,
-      routeVerified,
-      attestedReleaseSha,
-      deployedReleaseSha,
-      mfaMasterAdminEnabled,
+      admissionPath: null,
+      ...baseFields,
     };
   }
   if (!attestedReleaseSha) {
@@ -106,54 +122,65 @@ export function evaluateMasterVehicleOffboardHttpAdmission(input?: {
     return {
       admitted: false,
       blockReason: invalidRaw ? 'ATTESTED_SHA_INVALID' : 'ATTESTED_SHA_MISSING',
-      httpAdmissionEnabled,
-      routeVerified,
-      attestedReleaseSha,
-      deployedReleaseSha,
-      mfaMasterAdminEnabled,
+      admissionPath: null,
+      ...baseFields,
     };
   }
   if (!deployedReleaseSha) {
     return {
       admitted: false,
       blockReason: 'DEPLOYED_SHA_MISSING',
-      httpAdmissionEnabled,
-      routeVerified,
-      attestedReleaseSha,
-      deployedReleaseSha,
-      mfaMasterAdminEnabled,
+      admissionPath: null,
+      ...baseFields,
     };
   }
   if (attestedReleaseSha !== deployedReleaseSha) {
     return {
       admitted: false,
       blockReason: 'RELEASE_ATTESTATION_MISMATCH',
-      httpAdmissionEnabled,
-      routeVerified,
-      attestedReleaseSha,
-      deployedReleaseSha,
-      mfaMasterAdminEnabled,
+      admissionPath: null,
+      ...baseFields,
     };
   }
-  if (!mfaMasterAdminEnabled) {
+
+  if (mfaMasterAdminEnabled) {
+    return {
+      admitted: true,
+      blockReason: null,
+      admissionPath: 'STANDARD_MFA_ROLLOUT',
+      ...baseFields,
+    };
+  }
+
+  const ownerException = evaluateMasterVehicleOffboardOwnerMfaException({
+    actorUserId,
+    nowMs,
+  });
+
+  if (ownerException.active) {
+    return {
+      admitted: true,
+      blockReason: null,
+      admissionPath: 'OWNER_MFA_EXCEPTION',
+      ...baseFields,
+      ownerMfaExceptionActive: true,
+    };
+  }
+
+  if (ownerException.inactiveReason === 'ACTOR_USER_MISMATCH') {
     return {
       admitted: false,
-      blockReason: 'MFA_ROLLOUT_NOT_ENABLED',
-      httpAdmissionEnabled,
-      routeVerified,
-      attestedReleaseSha,
-      deployedReleaseSha,
-      mfaMasterAdminEnabled,
+      blockReason: 'OWNER_MFA_EXCEPTION_USER_MISMATCH',
+      admissionPath: null,
+      ...baseFields,
+      ownerMfaExceptionActive: false,
     };
   }
 
   return {
-    admitted: true,
-    blockReason: null,
-    httpAdmissionEnabled,
-    routeVerified,
-    attestedReleaseSha,
-    deployedReleaseSha,
-    mfaMasterAdminEnabled,
+    admitted: false,
+    blockReason: 'MFA_ROLLOUT_NOT_ENABLED',
+    admissionPath: null,
+    ...baseFields,
   };
 }

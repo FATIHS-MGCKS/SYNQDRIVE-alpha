@@ -15,6 +15,11 @@ import {
   M3_3_HV_H4_DURABLE_SOURCE_REVISION_ACK_V1,
 } from './m3-3-hv-h4-a3.constants';
 import {
+  buildHvH4A3ReconciliationCohortPrismaOrV1,
+  evaluateBatteryHvH4A3ReconciliationCohortRuntimeV1,
+  isHvH4A3ReconciliationCohortMemberV1,
+} from './m3-3-hv-h4-a3-reconciliation-cohort.config';
+import {
   getBatteryHvH4A3ReconciliationBatchSize,
   getBatteryHvH4A3ReconciliationInspectionLimit,
   isBatteryHvH4A3ReconciliationEnabled,
@@ -47,6 +52,18 @@ function fleetCursorWhere(
       },
     ],
   };
+}
+
+function fleetScanWhere(
+  cursor: M3_3HvH4A3FleetCursorV1 | null,
+  cohortMembers: ReturnType<typeof buildHvH4A3ReconciliationCohortPrismaOrV1>,
+): Prisma.HvChargeSessionWhereInput {
+  const cohortScope: Prisma.HvChargeSessionWhereInput = { OR: cohortMembers };
+  const cursorPart = fleetCursorWhere(cursor);
+  if (Object.keys(cursorPart).length === 0) {
+    return cohortScope;
+  }
+  return { AND: [cursorPart, cohortScope] };
 }
 
 function currentSourceRevisionFingerprint(session: HvChargeSession): string {
@@ -89,8 +106,10 @@ export class M3_3HvH4A3ReconciliationService {
 
   async runBoundedReconciliationTick(): Promise<M3_3HvH4A3ReconciliationTickOutcomeV1> {
     const started = Date.now();
-    const empty = (): M3_3HvH4A3ReconciliationTickOutcomeV1 => ({
-      result: 'SKIPPED_FLAG_OFF',
+    const empty = (
+      result: M3_3HvH4A3ReconciliationTickOutcomeV1['result'],
+    ): M3_3HvH4A3ReconciliationTickOutcomeV1 => ({
+      result,
       inspectedCount: 0,
       createdCount: 0,
       existingCount: 0,
@@ -98,29 +117,33 @@ export class M3_3HvH4A3ReconciliationService {
       sourceChangedCount: 0,
       blockedIntegrityCount: 0,
       blockedTenantCount: 0,
+      blockedCohortCount: 0,
+      skippedOngoingCount: 0,
       errorCount: 0,
       materializedOrRepairedCount: 0,
       durationMs: Date.now() - started,
     });
 
     if (!isBatteryHvH4A3ReconciliationEnabled()) {
-      return empty();
+      return empty('SKIPPED_FLAG_OFF');
     }
+
+    const cohortRuntime = evaluateBatteryHvH4A3ReconciliationCohortRuntimeV1();
+    if (cohortRuntime.state !== 'READY' || !cohortRuntime.config) {
+      const outcome = empty('SKIPPED_COHORT_NOT_CONFIGURED');
+      recordM3_3HvH4A3ReconciliationTick(this.metrics, outcome);
+      this.logger.warn(
+        `hv_h4_a3_reconciliation_tick_skipped cohort_state=${cohortRuntime.state}`,
+      );
+      return outcome;
+    }
+
+    const cohortMembers = buildHvH4A3ReconciliationCohortPrismaOrV1(cohortRuntime.config);
 
     const cursorLoad = await this.cursorStore.load();
     if (cursorLoad.status === 'UNAVAILABLE') {
       const outcome: M3_3HvH4A3ReconciliationTickOutcomeV1 = {
-        result: 'CURSOR_UNAVAILABLE',
-        inspectedCount: 0,
-        createdCount: 0,
-        existingCount: 0,
-        ackRepairCount: 0,
-        sourceChangedCount: 0,
-        blockedIntegrityCount: 0,
-        blockedTenantCount: 0,
-        errorCount: 0,
-        materializedOrRepairedCount: 0,
-        durationMs: Date.now() - started,
+        ...empty('CURSOR_UNAVAILABLE'),
       };
       recordM3_3HvH4A3ReconciliationTick(this.metrics, outcome);
       return outcome;
@@ -139,6 +162,8 @@ export class M3_3HvH4A3ReconciliationService {
     let sourceChangedCount = 0;
     let blockedIntegrityCount = 0;
     let blockedTenantCount = 0;
+    let blockedCohortCount = 0;
+    let skippedOngoingCount = 0;
     let errorCount = 0;
     let materializedOrRepairedCount = 0;
 
@@ -147,7 +172,7 @@ export class M3_3HvH4A3ReconciliationService {
 
     while (remainingInspect > 0 && materializedOrRepairedCount < batchSize) {
       const rows = await this.prisma.hvChargeSession.findMany({
-        where: fleetCursorWhere(fleetCursor),
+        where: fleetScanWhere(fleetCursor, cohortMembers),
         select: {
           id: true,
           organizationId: true,
@@ -200,6 +225,12 @@ export class M3_3HvH4A3ReconciliationService {
           case 'BLOCKED_TENANT_INVARIANT':
             blockedTenantCount += 1;
             break;
+          case 'BLOCKED_COHORT_UNAUTHORIZED':
+            blockedCohortCount += 1;
+            break;
+          case 'SKIPPED_SESSION_ONGOING':
+            skippedOngoingCount += 1;
+            break;
           case 'ERROR':
             errorCount += 1;
             break;
@@ -232,6 +263,8 @@ export class M3_3HvH4A3ReconciliationService {
       sourceChangedCount,
       blockedIntegrityCount,
       blockedTenantCount,
+      blockedCohortCount,
+      skippedOngoingCount,
       errorCount,
       materializedOrRepairedCount,
       durationMs: Date.now() - started,
@@ -239,7 +272,7 @@ export class M3_3HvH4A3ReconciliationService {
     recordM3_3HvH4A3ReconciliationTick(this.metrics, outcome);
     if (inspectedCount > 0) {
       this.logger.log(
-        `hv_h4_a3_reconciliation_tick result=${tickResult} inspected=${inspectedCount} created=${createdCount} existing=${existingCount} ack_repair=${ackRepairCount} source_changed=${sourceChangedCount} blocked_integrity=${blockedIntegrityCount} blocked_tenant=${blockedTenantCount} errors=${errorCount} mutating_writes=${materializedOrRepairedCount} durationMs=${outcome.durationMs}`,
+        `hv_h4_a3_reconciliation_tick result=${tickResult} inspected=${inspectedCount} created=${createdCount} existing=${existingCount} ack_repair=${ackRepairCount} source_changed=${sourceChangedCount} blocked_integrity=${blockedIntegrityCount} blocked_tenant=${blockedTenantCount} blocked_cohort=${blockedCohortCount} skipped_ongoing=${skippedOngoingCount} errors=${errorCount} mutating_writes=${materializedOrRepairedCount} durationMs=${outcome.durationMs}`,
       );
     }
     return outcome;
@@ -256,6 +289,25 @@ export class M3_3HvH4A3ReconciliationService {
     });
     if (!vehicle || vehicle.organizationId !== session.organizationId) {
       return { classification: 'BLOCKED_TENANT_INVARIANT', persistenceEffect: none };
+    }
+
+    if (isBatteryHvH4A3ReconciliationEnabled()) {
+      const cohortRuntime = evaluateBatteryHvH4A3ReconciliationCohortRuntimeV1();
+      if (
+        cohortRuntime.state !== 'READY' ||
+        !cohortRuntime.config ||
+        !isHvH4A3ReconciliationCohortMemberV1(
+          cohortRuntime.config,
+          session.organizationId,
+          session.vehicleId,
+        )
+      ) {
+        return { classification: 'BLOCKED_COHORT_UNAUTHORIZED', persistenceEffect: none };
+      }
+    }
+
+    if (session.isOngoing) {
+      return { classification: 'SKIPPED_SESSION_ONGOING', persistenceEffect: none };
     }
 
     const currentFp = currentSourceRevisionFingerprint(session);

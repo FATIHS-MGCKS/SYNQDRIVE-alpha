@@ -28,6 +28,10 @@ import {
 import { insertActivatedVehicleRow } from './vehicle-onboarding-activation.persistence';
 import { appendHmCanonicalRegistrationHistoryIfNeeded } from './hm-canonical-activation.binding';
 import {
+  HIGH_MOBILITY_DATA_SOURCE_PROVIDER,
+  HIGH_MOBILITY_DATA_SOURCE_TYPE,
+} from '../connection-identity/high-mobility-data-source-link.contract';
+import {
   logActivationAttempt,
   logActivationConflict,
   logActivationRollback,
@@ -35,6 +39,11 @@ import {
 } from './vehicle-onboarding-observability';
 import { materializeTechnicalBaselineInActivationTx } from './technical-baseline-materialization';
 import { assertCurrentProviderSourcesValidForActivation } from '../source-adoption/activation-current-source-revalidation';
+import {
+  assertPersistedSourceLinksMatchSnapshots,
+  assertTelemetryConnectionIdentityForActivationTx,
+} from '../connection-identity/activation-connection-identity.assertions';
+import { persistConnectionIdentityOnActiveSourceLinksTx } from '../connection-identity/source-link-connection-identity.metadata';
 
 /** Integration-test fault injection only (not used in production HTTP). */
 export type Vo3ActivationFaultStage =
@@ -134,6 +143,12 @@ export class VehicleOnboardingActivationService {
         const hmRef = hmRefs[0] ?? null;
 
         await assertCurrentProviderSourcesValidForActivation(
+          tx,
+          input.organizationId,
+          caseRow.sourceRefs,
+        );
+
+        const connectionIdentityAssessments = await assertTelemetryConnectionIdentityForActivationTx(
           tx,
           input.organizationId,
           caseRow.sourceRefs,
@@ -290,7 +305,8 @@ export class VehicleOnboardingActivationService {
             await tx.vehicleDataSourceLink.create({
               data: {
                 vehicleId: vehicle.id,
-                sourceType: 'HIGH_MOBILITY',
+                provider: HIGH_MOBILITY_DATA_SOURCE_PROVIDER,
+                sourceType: HIGH_MOBILITY_DATA_SOURCE_TYPE,
                 sourceSubtype: subtype,
                 sourceReferenceId: hm.id,
                 consentId: hmConsentId,
@@ -370,6 +386,18 @@ export class VehicleOnboardingActivationService {
           onboardingCaseId: caseRow.id,
           activatedAt,
         });
+
+        await persistConnectionIdentityOnActiveSourceLinksTx(tx, {
+          organizationId: input.organizationId,
+          vehicleId: vehicle.id,
+          sourceRefs: caseRow.sourceRefs,
+          assessments: connectionIdentityAssessments,
+        });
+
+        const persistedLinks = await tx.vehicleDataSourceLink.findMany({
+          where: { vehicleId: vehicle.id },
+        });
+        assertPersistedSourceLinksMatchSnapshots(caseRow.sourceRefs, persistedLinks);
 
         const completed = await tx.vehicleOnboardingCase.update({
           where: { id: caseRow.id },

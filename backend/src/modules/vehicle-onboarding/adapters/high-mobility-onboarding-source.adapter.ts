@@ -4,6 +4,12 @@ import {
   HM_MIRROR_SURROGATE_PREFIX,
   hmConnectionScopeForOrganization,
 } from './connection-scope.constants';
+import { proposeDefaultConnectionModality } from '../connection-identity/vehicle-connection-identity.classifier';
+import {
+  applyVerifiedConnectionIdentityToSnapshot,
+  mergeProposedOnly,
+  verifyHighMobilityConnectionFromMirrorEvidence,
+} from '../connection-identity/connection-modality-verification';
 
 export function resolveHmExternalVehicleIdentity(
   hm: Pick<HighMobilityVehicle, 'id' | 'hmVehicleReference'>,
@@ -25,6 +31,7 @@ export function buildHmOnboardingSourceSnapshot(
     | 'packageType'
     | 'appContainerType'
     | 'updatedAt'
+    | 'organizationId'
   >,
   organizationId: string,
   observedAt: Date = new Date(),
@@ -33,7 +40,7 @@ export function buildHmOnboardingSourceSnapshot(
   const vin = hm.vin?.trim() || null;
   const isSurrogate = externalVehicleIdentity.startsWith(HM_MIRROR_SURROGATE_PREFIX);
 
-  return {
+  const base: OnboardingSourceSnapshotV1 = {
     version: 1,
     providerType: 'HIGH_MOBILITY',
     connectionScope: hmConnectionScopeForOrganization(organizationId),
@@ -61,6 +68,22 @@ export function buildHmOnboardingSourceSnapshot(
       hmVehicleReference: hm.hmVehicleReference,
     },
   };
+  const proposed = proposeDefaultConnectionModality(base);
+  let snap = mergeProposedOnly(base, proposed, [
+    'HM_MIRROR_SNAPSHOT',
+    `clearance:${hm.clearanceStatus}`,
+  ]);
+  const verified = verifyHighMobilityConnectionFromMirrorEvidence({
+    clearanceStatus: hm.clearanceStatus,
+    hmVehicleReference: hm.hmVehicleReference,
+    vin: hm.vin,
+    organizationId: hm.organizationId,
+    expectedOrganizationId: organizationId,
+  });
+  if (verified.ok) {
+    snap = applyVerifiedConnectionIdentityToSnapshot(snap, proposed, verified);
+  }
+  return snap;
 }
 
 export function identityDraftFromHmSnapshot(

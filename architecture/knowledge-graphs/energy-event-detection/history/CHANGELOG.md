@@ -1,5 +1,11 @@
 # KG-EED Changelog
 
+## 2026-10-13 — ERD legacy RECHARGE fragment product-read global activation (EED-EV-0112)
+
+- Production env-only: `ERD_RECHARGE_LEGACY_FRAGMENT_PRODUCT_READ_ENABLED=1` @ SHA `1bc3a3a1863abaa4feab7d242b0678f071e806b2`; activation T0 `2026-10-13T07:17:13Z`
+- Evidence: `EED-EV-0112-ERD-LEGACY-FRAGMENT-GLOBAL-ACTIVATION-2026-10-13.md`; prospective NCA ledger `EED-NCA-LEDGER-2026-10-13.md`
+- Tesla Natural Test #1 window: product RECHARGE **1**, raw **8**, HV **1**; rollback documented as **single-key** revert only (no wholesale `backend.env` restore)
+
 ## 2026-10-12 — ERD legacy RECHARGE fragment product-read hardening (EED-EV-0111, PR #1997)
 
 - HV `HvChargeSession` primary-pair anchor required for suppression; SOC/energy telemetry nesting; nested distinct session fail-open
