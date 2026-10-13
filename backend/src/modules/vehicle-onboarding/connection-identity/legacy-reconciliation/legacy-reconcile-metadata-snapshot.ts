@@ -1,5 +1,4 @@
-import { Prisma } from '@prisma/client';
-import type { PrismaClient } from '@prisma/client';
+import { Prisma, type PrismaClient } from '@prisma/client';
 import { fingerprintLinkMetadata } from './stable-metadata-fingerprint';
 
 export type LinkMetadataStorageState = 'SQL_ABSENT' | 'JSON_NULL' | 'OBJECT';
@@ -15,6 +14,21 @@ export function classifyLinkMetadataStorage(metadata: unknown): LinkMetadataStor
     return 'JSON_NULL';
   }
   return 'OBJECT';
+}
+
+/** Distinguish SQL NULL vs jsonb null when Prisma surfaces both as `null`. */
+export async function resolveLinkMetadataStorageState(
+  db: PrismaClient | Prisma.TransactionClient,
+  linkId: string,
+  metadata: unknown,
+): Promise<LinkMetadataStorageState> {
+  if (metadata !== null && metadata !== undefined && metadata !== Prisma.JsonNull) {
+    return 'OBJECT';
+  }
+  if (metadata === Prisma.JsonNull) {
+    return 'JSON_NULL';
+  }
+  return inspectLinkMetadataStorageFromDatabase(db as PrismaClient, linkId);
 }
 
 /** Classify metadata using PostgreSQL storage (SQL NULL vs jsonb null vs object). */
@@ -58,8 +72,11 @@ export type LinkMetadataAuditSnapshot = {
   metadataJson?: LinkMetadataAuditJsonValue;
 };
 
-export function snapshotLinkMetadataForAudit(metadata: unknown): LinkMetadataAuditSnapshot {
-  const storageState = classifyLinkMetadataStorage(metadata);
+export function snapshotLinkMetadataForAudit(
+  metadata: unknown,
+  storageStateOverride?: LinkMetadataStorageState,
+): LinkMetadataAuditSnapshot {
+  const storageState = storageStateOverride ?? classifyLinkMetadataStorage(metadata);
   if (storageState === 'SQL_ABSENT') {
     return { storageState };
   }

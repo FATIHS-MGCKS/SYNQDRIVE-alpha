@@ -31,7 +31,7 @@ export async function insertDimoMirrorRaw(
       id, external_id, vin, make, model, year, fuel_type, connection_status, raw_json, token_id, created_at, updated_at
     )
     VALUES (
-      ${input.id}::uuid,
+      ${input.id}::text,
       ${input.externalId},
       NULL,
       'Make',

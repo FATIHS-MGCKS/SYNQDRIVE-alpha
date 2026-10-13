@@ -32,6 +32,7 @@ import { buildSourceLinkConnectionIdentityMetadata } from './connection-identity
 import { VO_SOURCE_LINK_CONNECTION_IDENTITY_VERSION } from './connection-identity/source-link-connection-identity.metadata';
 import { fingerprintLinkMetadata } from './connection-identity/legacy-reconciliation/stable-metadata-fingerprint';
 import { inspectLinkMetadataStorageFromDatabase } from './connection-identity/legacy-reconciliation/legacy-reconcile-metadata-snapshot';
+import { evaluateLegacyDimoLinkProviderEvidence } from './connection-identity/legacy-reconciliation/legacy-connection-identity-evidence';
 
 const run = process.env.VO_SIG_B1_LEGACY_RECONCILE_PG === '1' || process.env.VO_SIG_01_CONN_IDENTITY_PG === '1';
 
@@ -197,7 +198,7 @@ function buildExecuteAuth(
     );
   });
 
-  it('rejects wrong-org consent at execute time', async () => {
+  it('rejects wrong-org consent at execute time (fail-closed cohort manifest)', async () => {
     const orgId = await createLegacyReconcileOrg(prisma);
     const otherOrg = await createLegacyReconcileOrg(prisma);
     const { linkId, consentId } = await createLegacyDimoLinkFixture(prisma, {
@@ -215,83 +216,102 @@ function buildExecuteAuth(
       linkIds: [linkId],
       now: fixedNow,
     });
+    expect(plan[0].eligibility).toBe(LEGACY_RECONCILE_ELIGIBILITY.CONSENT_INVALID);
+    expect(plan[0].reasonCodes).toContain('CONSENT_OWNERSHIP_MISMATCH');
     const manifest = computeDeterministicApprovalManifestFingerprint(plan);
     const auth = buildExecuteAuth({ organizationId: orgId, linkIds: [linkId], manifest });
-    const result = await applyLegacyConnectionIdentityReconciliation(prisma, auth, {
-      organizationId: orgId,
-      linkIds: [linkId],
-      now: fixedNow,
-    });
-    expect(result[0].outcome).toBe('SKIPPED');
-    if (result[0].outcome === 'SKIPPED') {
-      expect(result[0].reasonCodes.some((c: string) => c.includes('GUARD_CONSENT'))).toBe(true);
-    }
+    await expect(
+      applyLegacyConnectionIdentityReconciliation(prisma, auth, {
+        organizationId: orgId,
+        linkIds: [linkId],
+        now: fixedNow,
+      }),
+    ).rejects.toThrow('LEGACY_RECONCILE_COHORT_INELIGIBLE');
   });
 
-  it('rejects cross-tenant active DIMO mirror claim (Ruptela)', async () => {
+  it('database rejects second active link on same dimo_vehicle_id (uq_vdsl_active_dimo_vehicle)', async () => {
     const orgA = await createLegacyReconcileOrg(prisma);
     const orgB = await createLegacyReconcileOrg(prisma);
-    const externalId = 'shared-dimo';
-    const serial = 'R1-SHARED-TENANT-001';
-    await createLegacyDimoLinkFixture(prisma, {
+    const serial = 'R1-DB-UNIQUE-001';
+    const { dimoId: dimoA } = await createLegacyDimoLinkFixture(prisma, {
       organizationId: orgA,
-      externalId,
+      externalId: 'ruptela-db-unique-a',
       rawJson: B1_RUPTELA_RAW(serial),
     });
     const { linkId: linkB } = await createLegacyDimoLinkFixture(prisma, {
       organizationId: orgB,
+      externalId: 'ruptela-db-unique-b',
+      rawJson: B1_RUPTELA_RAW(`${serial}-b`),
+    });
+
+    await expect(
+      prisma.vehicleDataSourceLink.update({
+        where: { id: linkB },
+        data: { dimoVehicleId: dimoA },
+      }),
+    ).rejects.toMatchObject({ code: 'P2002' });
+  });
+
+  it('rejects cross-tenant active DIMO mirror claim (Ruptela) via provider evidence', async () => {
+    const orgA = await createLegacyReconcileOrg(prisma);
+    const orgB = await createLegacyReconcileOrg(prisma);
+    const externalId = 'shared-dimo';
+    const serial = 'R1-SHARED-TENANT-001';
+    const { dimoId: dimoA } = await createLegacyDimoLinkFixture(prisma, {
+      organizationId: orgA,
+      externalId,
+      rawJson: B1_RUPTELA_RAW(serial),
+    });
+    const { linkId: linkB, vehicleId: vehicleB } = await createLegacyDimoLinkFixture(prisma, {
+      organizationId: orgB,
       externalId: `${externalId}-b`,
       rawJson: B1_RUPTELA_RAW(serial),
     });
-    const linkBRow = await prisma.vehicleDataSourceLink.findUnique({ where: { id: linkB } });
-    const dimoFromA = await prisma.vehicle.findFirst({
-      where: { organizationId: orgA },
-      select: { dimoVehicleId: true },
-    });
-    await prisma.vehicleDataSourceLink.update({
-      where: { id: linkB },
-      data: { dimoVehicleId: dimoFromA!.dimoVehicleId! },
-    });
-    await prisma.vehicle.update({
-      where: { id: linkBRow!.vehicleId },
-      data: { dimoVehicleId: dimoFromA!.dimoVehicleId! },
-    });
 
-    const plan = await planLegacyConnectionIdentityReconciliation(prisma, { organizationId: orgB, now: fixedNow });
-    const row = plan.find((p) => p.sourceLinkId === linkB);
-    expect(row?.eligibility).toBe(LEGACY_RECONCILE_ELIGIBILITY.INSUFFICIENT_EVIDENCE);
-    expect(row?.reasonCodes).toContain('DIMO_MIRROR_ACTIVE_IN_OTHER_TENANT');
+    const verdict = await prisma.$transaction((tx) =>
+      evaluateLegacyDimoLinkProviderEvidence(tx, {
+        organizationId: orgB,
+        vehicleId: vehicleB,
+        linkId: linkB,
+        dimoVehicleId: dimoA,
+        externalId,
+      }),
+    );
+    expect(verdict.ok).toBe(false);
+    if (!verdict.ok) {
+      expect(verdict.reasonCode).toBe('DIMO_MIRROR_ACTIVE_IN_OTHER_TENANT');
+    }
   });
 
-  it('rejects Tesla API_SYNTHETIC cross-tenant mirror conflict', async () => {
+  it('rejects Tesla API_SYNTHETIC cross-tenant mirror conflict via provider evidence', async () => {
     const orgA = await createLegacyReconcileOrg(prisma);
     const orgB = await createLegacyReconcileOrg(prisma);
-    await createLegacyDimoLinkFixture(prisma, {
+    const { dimoId: dimoA } = await createLegacyDimoLinkFixture(prisma, {
       organizationId: orgA,
       externalId: 'tesla-a',
       rawJson: B1_TESLA_RAW,
       tokenId: 186001,
     });
-    const dimoFromA = await prisma.dimoVehicle.findFirst({ where: { externalId: 'tesla-a' } });
-    const { linkId: linkB } = await createLegacyDimoLinkFixture(prisma, {
+    const { linkId: linkB, vehicleId: vehicleB } = await createLegacyDimoLinkFixture(prisma, {
       organizationId: orgB,
       externalId: 'tesla-b',
       rawJson: B1_TESLA_RAW,
       tokenId: 186002,
     });
-    await prisma.vehicleDataSourceLink.update({
-      where: { id: linkB },
-      data: { dimoVehicleId: dimoFromA!.id },
-    });
-    await prisma.vehicle.updateMany({
-      where: { organizationId: orgB },
-      data: { dimoVehicleId: dimoFromA!.id },
-    });
 
-    const plan = await planLegacyConnectionIdentityReconciliation(prisma, { organizationId: orgB, now: fixedNow });
-    const row = plan.find((p) => p.sourceLinkId === linkB);
-    expect(row?.eligibility).toBe(LEGACY_RECONCILE_ELIGIBILITY.INSUFFICIENT_EVIDENCE);
-    expect(row?.reasonCodes).toContain('DIMO_MIRROR_ACTIVE_IN_OTHER_TENANT');
+    const verdict = await prisma.$transaction((tx) =>
+      evaluateLegacyDimoLinkProviderEvidence(tx, {
+        organizationId: orgB,
+        vehicleId: vehicleB,
+        linkId: linkB,
+        dimoVehicleId: dimoA,
+        externalId: 'tesla-a',
+      }),
+    );
+    expect(verdict.ok).toBe(false);
+    if (!verdict.ok) {
+      expect(verdict.reasonCode).toBe('DIMO_MIRROR_ACTIVE_IN_OTHER_TENANT');
+    }
   });
 
   it('missing manifest fingerprint rejects execution', async () => {
@@ -328,10 +348,11 @@ function buildExecuteAuth(
       now: fixedNow,
     });
     const staleManifest = computeDeterministicApprovalManifestFingerprint(plan);
-    await prisma.dimoVehicle.update({
-      where: { id: dimoId },
-      data: { rawJson: { syntheticDevice: { id: 'mutated' } } },
-    });
+    await prisma.$executeRaw`
+      UPDATE dimo_vehicles
+      SET raw_json = ${JSON.stringify({ syntheticDevice: { id: 'mutated' } })}::jsonb
+      WHERE id = ${dimoId}::text
+    `;
     const auth = buildExecuteAuth({ organizationId: orgId, linkIds: [linkId], manifest: staleManifest });
     await expect(
       applyLegacyConnectionIdentityReconciliation(prisma, auth, {
@@ -363,7 +384,7 @@ function buildExecuteAuth(
     });
     await expect(
       applyLegacyConnectionIdentityReconciliation(prisma, auth, {
-        organizationId: otherOrg,
+        organizationId: orgId,
         linkIds: [linkId],
       }),
     ).rejects.toThrow('LEGACY_RECONCILE_TENANT_SCOPE_MISMATCH');
@@ -424,7 +445,10 @@ function buildExecuteAuth(
     expect(readConnectionIdentityFromLinkMetadata(link!.metadata)).toBeNull();
     expect(link!.lastVerifiedAt?.toISOString()).toBe(fixedNow.toISOString());
 
-    const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
+    const vehicle = await prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { hardwareType: true },
+    });
     expect(vehicle?.hardwareType).toBe('LTE_R1');
 
     const second = await applyLegacyConnectionIdentityReconciliation(prisma, auth, {
@@ -516,15 +540,13 @@ function buildExecuteAuth(
       where: { id: linkId },
       data: { metadata: { race: true, unrelated: 'stamp' } },
     });
-    const result = await applyLegacyConnectionIdentityReconciliation(prisma, auth, {
-      organizationId: orgId,
-      linkIds: [linkId],
-      now: fixedNow,
-    });
-    expect(result[0].outcome).toBe('SKIPPED');
-    if (result[0].outcome === 'SKIPPED') {
-      expect(result[0].reasonCodes).toContain('CONCURRENT_CHANGE_RISK');
-    }
+    await expect(
+      applyLegacyConnectionIdentityReconciliation(prisma, auth, {
+        organizationId: orgId,
+        linkIds: [linkId],
+        now: fixedNow,
+      }),
+    ).rejects.toThrow('LEGACY_RECONCILE_MANIFEST_FINGERPRINT_MISMATCH');
     const link = await prisma.vehicleDataSourceLink.findUnique({ where: { id: linkId } });
     expect(readConnectionIdentityFromLinkMetadataV2(link!.metadata)).toBeNull();
   });
@@ -735,11 +757,11 @@ function buildExecuteAuth(
     });
     await expect(
       applyLegacyConnectionIdentityReconciliation(prisma, wrongTenant, {
-        organizationId: otherOrg,
+        organizationId: orgId,
         linkIds: [linkId],
         now: fixedNow,
       }),
-    ).rejects.toThrow('LEGACY_RECONCILE_COHORT_TENANT_MISMATCH');
+    ).rejects.toThrow('LEGACY_RECONCILE_TENANT_SCOPE_MISMATCH');
   });
 
   it('dry-run flags expired consent as ineligible', async () => {
@@ -913,15 +935,13 @@ function buildExecuteAuth(
       });
     });
 
-    const result = await applyLegacyConnectionIdentityReconciliation(prisma, auth, {
-      organizationId: orgId,
-      linkIds: [linkId],
-      now: fixedNow,
-    });
-    expect(result[0].outcome).toBe('SKIPPED');
-    if (result[0].outcome === 'SKIPPED') {
-      expect(result[0].reasonCodes.some((c: string) => c.includes('GUARD_CONSENT'))).toBe(true);
-    }
+    await expect(
+      applyLegacyConnectionIdentityReconciliation(prisma, auth, {
+        organizationId: orgId,
+        linkIds: [linkId],
+        now: fixedNow,
+      }),
+    ).rejects.toThrow('LEGACY_RECONCILE_COHORT_INELIGIBLE');
     const link = await prisma.vehicleDataSourceLink.findUnique({ where: { id: linkId } });
     expect(readConnectionIdentityFromLinkMetadataV2(link!.metadata)).toBeNull();
   });

@@ -4,7 +4,7 @@ import { DIMO_DATA_SOURCE_PROVIDER, DIMO_DATA_SOURCE_TYPE } from '@modules/dimo/
 import { validateLegacyReconcileConsent } from './legacy-reconcile-consent';
 import { lockLegacyReconcileDependencyRows } from './legacy-reconcile-transaction-locks';
 import {
-  classifyLinkMetadataStorage,
+  resolveLinkMetadataStorageState,
   type LinkMetadataStorageState,
 } from './legacy-reconcile-metadata-snapshot';
 
@@ -119,7 +119,7 @@ export async function assertLegacyReconcileLinkGuards(
 
   return {
     metadata: link.metadata,
-    metadataStorageState: classifyLinkMetadataStorage(link.metadata),
+    metadataStorageState: await resolveLinkMetadataStorageState(tx, ctx.sourceLinkId, link.metadata),
     lastVerifiedAt: link.lastVerifiedAt,
     dimoVehicleId: link.dimoVehicleId,
     dimoExternalId: link.dimoVehicle.externalId,

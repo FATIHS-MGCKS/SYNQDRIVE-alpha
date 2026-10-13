@@ -33,7 +33,7 @@ import {
 } from './legacy-reconcile-authorization';
 import { assertLegacyReconcileLinkGuards } from './legacy-reconcile-link-guards';
 import {
-  classifyLinkMetadataStorage,
+  resolveLinkMetadataStorageState,
   fingerprintLinkMetadataStorage,
   auditJsonValueForPrismaWrite,
   mergeConnectionIdentityIntoMetadata,
@@ -169,7 +169,7 @@ export async function planLegacyConnectionIdentityReconciliation(
 
   for (const link of links) {
     const reasonCodes: string[] = [];
-    const metadataStorageState = classifyLinkMetadataStorage(link.metadata);
+    const metadataStorageState = await resolveLinkMetadataStorageState(prisma, link.id, link.metadata);
     const currentFingerprint = fingerprintLinkMetadataStorage(link.metadata, metadataStorageState);
     const parsed = parseConnectionIdentityFromLinkMetadata(link.metadata);
     const currentCi =
@@ -588,7 +588,10 @@ export async function applyLegacyConnectionIdentityReconciliation(
           throw new Error('ALREADY_RECONCILED');
         }
 
-        const beforeSnapshot = snapshotLinkMetadataForAudit(guards.metadata);
+        const beforeSnapshot = snapshotLinkMetadataForAudit(
+          guards.metadata,
+          guards.metadataStorageState,
+        );
         const merged = mergeConnectionIdentityIntoMetadata(
           guards.metadata,
           proposed as Prisma.InputJsonValue,

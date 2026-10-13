@@ -36,7 +36,7 @@ export async function lockLegacyReconcileDependencyRows(
 
   const dimoLock = await tx.$queryRaw<{ id: string }[]>`
     SELECT id FROM dimo_vehicles
-    WHERE id = ${ctx.dimoVehicleId}::uuid
+    WHERE id = ${ctx.dimoVehicleId}::text
     FOR UPDATE
   `;
   if (dimoLock.length !== 1) {

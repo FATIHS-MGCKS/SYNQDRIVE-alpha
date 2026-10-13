@@ -30,3 +30,11 @@ Table `vehicle_connection_identity_reconciliation_audits` — atomic with metada
 
 - Unit: `connection-identity-metadata-v2.unit.spec.ts`
 - PostgreSQL: `vo-sig-01-b1-legacy-reconciliation.postgres.integration.spec.ts` (`VO_SIG_B1_LEGACY_RECONCILE_PG=1`, wired in `vo2-vehicle-onboarding-postgres-ci.sh`)
+
+## Validation (2026-10-13 PG runtime closure)
+
+- `dimo_vehicles.id` row locks and mirror fixtures use **TEXT** ids (not `::uuid`) — fixes PostgreSQL `42883 text = uuid` during `FOR UPDATE`.
+- Cohort manifest is **fail-closed**: ineligible plan rows, consent drift, and pre-execute metadata drift reject with `LEGACY_RECONCILE_COHORT_INELIGIBLE` / `LEGACY_RECONCILE_MANIFEST_FINGERPRINT_MISMATCH` (not per-link `SKIPPED` downgrade).
+- Cross-tenant coverage splits **DB** `uq_vdsl_active_dimo_vehicle` rejection vs **service** `DIMO_MIRROR_ACTIVE_IN_OTHER_TENANT` via `evaluateLegacyDimoLinkProviderEvidence`.
+- Metadata storage: `resolveLinkMetadataStorageState` distinguishes SQL `NULL` vs jsonb `'null'` for fingerprints and audit provenance.
+- Ephemeral migrate + B1 suite: **26/26 PASS** (local VO-2 integration DB).
