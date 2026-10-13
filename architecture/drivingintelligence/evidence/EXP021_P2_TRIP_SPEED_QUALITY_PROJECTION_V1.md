@@ -13,7 +13,8 @@ Internal ops read model aggregating per-interval QC over COMPLETED PRIMARY work 
 ## Validation
 
 - `npm run test:di:trip-speed-quality`
-- `npm run test:di:trip-speed-quality:postgres:ci` (PG1–PG14, `DI_V0_S4A_POSTGRES_REQUIRED=1`)
+- `npm run test:di:trip-speed-quality:postgres:ci` (PG1–PG15, `DI_V0_S4A_POSTGRES_REQUIRED=1`)
+- Migration release notes: `EXP021_P2_MIGRATION_RELEASE_READINESS_20261013.md`
 - Dormant audit: no import from AppModule / VehicleIntelligenceModule / S4C executor
 
 ## Pre-merge hardening (P2)
@@ -21,6 +22,6 @@ Internal ops read model aggregating per-interval QC over COMPLETED PRIMARY work 
 - Motion counters use canonical `MotionState` (`TRANSITION_UNCERTAIN`, not `UNCERTAIN`); unknown states throw.
 - Coverage split: numeric, trusted numeric, trusted limited (+ stationary/numeric split), non-untrusted; `trustedCoveragePercent` aliases trusted numeric only.
 - Assessability: `DI_V0_TRIP_SPEED_QUALITY_ASSESSABILITY_CRITERIA_V1` (provisional); `FULL` requires trusted **numeric** coverage ≥70%, not TRUSTED_LIMITED padding.
-- Persist: per-scope `pg_advisory_xact_lock`, idempotency fingerprint mismatch fail-closed, transactional S4 authority gate before CURRENT write.
+- Persist: per-scope `pg_advisory_xact_lock`, idempotency fingerprint mismatch fail-closed, transactional S4 authority gate before CURRENT write **and before idempotent hit return** (PG15).
 - Ops read: `readCurrentOpsProjection` returns null when CURRENT work item is not the active non-`SUPERSEDED` PRIMARY or not `COMPLETED`.
 - Calibration: position re-classification uses shadow run `calibration_version` via `resolveDiV0TripSpeedQualityCalibrationBundle` (fail-closed).

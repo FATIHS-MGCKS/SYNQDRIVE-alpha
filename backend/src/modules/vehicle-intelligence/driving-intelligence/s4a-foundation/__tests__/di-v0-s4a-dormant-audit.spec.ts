@@ -1,5 +1,14 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import {
+  collectP2S4aFenceViolations,
+  importsOf,
+  isP2TripSpeedQualityFile,
+  isUnauthorizedNonP2S4aImport,
+  P2_ALLOWED_PRODUCTION_S4A_IMPORTS,
+  P2_TRIP_SPEED_QUALITY_DIR,
+  stripComments,
+} from './di-v0-s4a-dormant-audit.p2-fence';
 
 const REPO_ROOT = path.join(__dirname, '../../../../../../..');
 const FOUNDATION_DIR = path.join(__dirname, '..');
@@ -25,8 +34,6 @@ function walk(dir: string, pattern: RegExp, acc: string[] = []): string[] {
   return acc;
 }
 
-const stripComments = (source: string): string => source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
-
 const productionFiles = fs
   .readdirSync(FOUNDATION_DIR)
   .filter(
@@ -36,11 +43,6 @@ const productionFiles = fs
       name !== 'di-v0-s4-global-kill-transition.ts', // Gate-6 operator-only GLOBAL kill transition (S4F-7AS); not app bootstrap
   )
   .map((name) => path.join(FOUNDATION_DIR, name));
-
-const importsOf = (source: string): string[] =>
-  [...source.matchAll(/(?:import|export)\s[^'"]*?from\s+'([^']+)'|require\('([^']+)'\)|import\('([^']+)'\)/g)].map(
-    (m) => m[1] ?? m[2] ?? m[3],
-  );
 
 const ALLOWED_IMPORTS = new Set([
   'crypto',
@@ -108,9 +110,12 @@ describe('DI V0 S4A dormant-by-construction audit', () => {
           continue;
         }
         const source = fs.readFileSync(file, 'utf8');
-        const importsFoundation = importsOf(source).some((spec) => /s4a-foundation|di-v0-s4a-/.test(spec));
-        const namesFoundation = /\b(DiV0S4WorkItemRepository|persistDiV0S4FencedS2Run)\b/.test(stripComments(source));
-        if (importsFoundation || namesFoundation) hits.push(file);
+        if (isP2TripSpeedQualityFile(file)) {
+          const p2Violations = collectP2S4aFenceViolations(file, source);
+          if (p2Violations.length > 0) hits.push(...p2Violations.map((v) => `${file}: ${v}`));
+          continue;
+        }
+        if (isUnauthorizedNonP2S4aImport(file, source)) hits.push(file);
       }
     }
     expect(hits).toEqual([]);
@@ -185,5 +190,35 @@ describe('DI V0 S4A dormant-by-construction audit', () => {
       if (/SET\s+status\s*=\s*\$\{/.test(code)) offending.push(`${path.basename(file)}: parameterised status`);
     }
     expect(offending).toEqual([]);
+  });
+
+  describe('P2 trip-speed-quality S4A import fence (negative guards)', () => {
+    it('P2 trip-speed-quality tree has no S4A fence violations', () => {
+      const violations: string[] = [];
+      for (const file of walk(P2_TRIP_SPEED_QUALITY_DIR, /\.ts$/)) {
+        violations.push(...collectP2S4aFenceViolations(file, fs.readFileSync(file, 'utf8')));
+      }
+      expect(violations).toEqual([]);
+      expect(Object.keys(P2_ALLOWED_PRODUCTION_S4A_IMPORTS).length).toBe(4);
+    });
+
+    it('detects synthetic unauthorized S4A import outside P2', () => {
+      const fakeFile = path.join(REPO_ROOT, 'backend/src/modules/vehicle-intelligence/driving-intelligence/speed-qc/fake.ts');
+      const fakeSource = `import { DiV0S4WorkItemRepository } from '../s4a-foundation/di-v0-s4a-work-item.repository';`;
+      expect(isUnauthorizedNonP2S4aImport(fakeFile, fakeSource)).toBe(true);
+      expect(collectP2S4aFenceViolations(fakeFile, fakeSource)).toEqual([]);
+    });
+
+    it('detects synthetic forbidden P2 S4A mutation import', () => {
+      const fakeP2 = path.join(P2_TRIP_SPEED_QUALITY_DIR, 'evil.ts');
+      const fakeSource = `import { persistDiV0S4FencedS2Run } from '../s4a-foundation/di-v0-s4a-s2-fenced-persistence';`;
+      expect(collectP2S4aFenceViolations(fakeP2, fakeSource).length).toBeGreaterThan(0);
+    });
+
+    it('detects synthetic disallowed P2 production S4A import', () => {
+      const fakeP2 = path.join(P2_TRIP_SPEED_QUALITY_DIR, 'di-v0-trip-speed-quality-projection.service.ts');
+      const fakeSource = `import { DiV0S4WorkItemRepository } from '../s4a-foundation/di-v0-s4a-work-item.repository';`;
+      expect(collectP2S4aFenceViolations(fakeP2, fakeSource).length).toBeGreaterThan(0);
+    });
   });
 });
