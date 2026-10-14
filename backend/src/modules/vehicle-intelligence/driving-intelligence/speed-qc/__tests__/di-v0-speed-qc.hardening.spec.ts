@@ -133,6 +133,23 @@ describe('DI_V0_SPEED_QC_POLICY_V1 pre-merge hardening', () => {
     expect(v.trustLevel).toBe('UNTRUSTED');
   });
 
+  it('POST_GAP_REACQUIRE is structurally overshadowed when L3_SUPPORT_CROSSES_GAP is set (compromised branch runs first)', () => {
+    const base = syntheticHighway130Input();
+    const absent = '2020-06-01T12:00:18Z';
+    const v = evaluateDiV0SpeedQcInterval({
+      ...base,
+      positions: base.positions.map((p) =>
+        p.bucketLabel === absent ? { bucketLabel: absent, availability: 'ROW_ABSENT' } : p,
+      ),
+      shadow: {
+        ...base.shadow,
+        sourceQualityFlags: ['L3_SUPPORT_CROSSES_GAP'],
+      },
+    });
+    expect(v.reasonCodes).toContain(DI_V0_SPEED_QC_REASON.SUPPORT_WINDOW_COMPROMISED);
+    expect(v.reasonCodes).not.toContain(DI_V0_SPEED_QC_REASON.POST_GAP_REACQUIRE);
+  });
+
   it('determinism holds across 20 repeated evaluations', () => {
     const input = syntheticHighway130Input();
     const first = evaluateDiV0SpeedQcInterval(input);
