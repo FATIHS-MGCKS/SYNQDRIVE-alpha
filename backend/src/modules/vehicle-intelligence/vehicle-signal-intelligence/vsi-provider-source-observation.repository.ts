@@ -10,6 +10,8 @@ const FETCH_OUTCOMES_FOR_ADVANCE = [
   'MONOTONIC_STALE_SKIPPED',
 ] as const;
 
+const FETCH_OUTCOMES_LOADED = [...FETCH_OUTCOMES_FOR_ADVANCE, 'PERSISTENCE_FAILED'] as const;
+
 @Injectable()
 export class VsiProviderSourceObservationRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -21,6 +23,21 @@ export class VsiProviderSourceObservationRepository {
     providerBindingScopeKey: string;
     providerTokenScopeKey: string;
   }): Promise<VsiFetchObservationContinuity> {
+    const continuityBlockers: string[] = [];
+
+    const counter = await this.prisma.vehicleProviderSourceObservationCounter.findUnique({
+      where: {
+        organizationId_vehicleId_provider_providerBindingScopeKey_providerTokenScopeKey: {
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+          provider: input.provider,
+          providerBindingScopeKey: input.providerBindingScopeKey,
+          providerTokenScopeKey: input.providerTokenScopeKey,
+        },
+      },
+      select: { nextObservationIndex: true },
+    });
+
     const fetchRows = await this.prisma.vehicleProviderSourceObservation.findMany({
       where: {
         organizationId: input.organizationId,
@@ -29,55 +46,96 @@ export class VsiProviderSourceObservationRepository {
         providerBindingScopeKey: input.providerBindingScopeKey,
         providerTokenScopeKey: input.providerTokenScopeKey,
         recordPhase: 'PROVIDER_FETCH',
-        observationOutcome: { in: [...FETCH_OUTCOMES_FOR_ADVANCE, 'PERSISTENCE_FAILED'] },
+        observationOutcome: { in: [...FETCH_OUTCOMES_LOADED] },
       },
       orderBy: [{ observationIndex: 'desc' }],
       take: 50,
       select: observationSelect,
     });
 
-    const latestSuccessful = fetchRows.find((r) =>
-      FETCH_OUTCOMES_FOR_ADVANCE.includes(
-        r.observationOutcome as (typeof FETCH_OUTCOMES_FOR_ADVANCE)[number],
-      ),
-    ) as VsiSourceObservationRow | undefined;
+    const headRow = fetchRows[0] as VsiSourceObservationRow | undefined;
 
-    if (!latestSuccessful) {
-      return {
-        latest: null,
-        previous: null,
-        continuityIntact: false,
-        latestVlsApplicationProven: false,
-      };
+    let allocatedHead: bigint | null = null;
+    if (counter) {
+      allocatedHead = counter.nextObservationIndex - 1n;
+      if (allocatedHead >= 1n) {
+        const headPersisted = await this.prisma.vehicleProviderSourceObservation.count({
+          where: {
+            organizationId: input.organizationId,
+            vehicleId: input.vehicleId,
+            provider: input.provider,
+            providerBindingScopeKey: input.providerBindingScopeKey,
+            providerTokenScopeKey: input.providerTokenScopeKey,
+            recordPhase: 'PROVIDER_FETCH',
+            observationIndex: allocatedHead,
+          },
+        });
+        if (headPersisted === 0) {
+          continuityBlockers.push('COUNTER_ALLOCATED_HEAD_MISSING_OBSERVATION');
+        }
+      }
     }
 
-    const previousSuccessful = fetchRows.find(
-      (r) =>
-        FETCH_OUTCOMES_FOR_ADVANCE.includes(
-          r.observationOutcome as (typeof FETCH_OUTCOMES_FOR_ADVANCE)[number],
-        ) && r.observationIndex < latestSuccessful.observationIndex,
-    ) as VsiSourceObservationRow | undefined;
+    if (headRow?.observationOutcome === 'PERSISTENCE_FAILED') {
+      continuityBlockers.push('NEWEST_FETCH_OBSERVATION_PERSISTENCE_FAILED');
+    }
 
-    const continuityIntact = await this.isContinuityIntact(
-      input,
-      previousSuccessful?.observationIndex ?? null,
-      latestSuccessful.observationIndex,
-    );
+    if (
+      headRow &&
+      allocatedHead != null &&
+      headRow.observationIndex < allocatedHead &&
+      !continuityBlockers.includes('COUNTER_ALLOCATED_HEAD_MISSING_OBSERVATION')
+    ) {
+      continuityBlockers.push('COUNTER_ALLOCATED_HEAD_MISSING_OBSERVATION');
+    }
 
-    const latestVlsApplicationProven = await this.isVlsApplicationProven(
-      latestSuccessful.fetchCorrelationId,
-      latestSuccessful.observationOutcome,
-    );
+    const maySelectSuccessfulPair =
+      continuityBlockers.length === 0 &&
+      headRow != null &&
+      FETCH_OUTCOMES_FOR_ADVANCE.includes(
+        headRow.observationOutcome as (typeof FETCH_OUTCOMES_FOR_ADVANCE)[number],
+      );
+
+    let latestSuccessful: VsiSourceObservationRow | null = null;
+    let previousSuccessful: VsiSourceObservationRow | null = null;
+
+    if (maySelectSuccessfulPair) {
+      latestSuccessful = headRow;
+      previousSuccessful =
+        (fetchRows.find(
+          (r) =>
+            FETCH_OUTCOMES_FOR_ADVANCE.includes(
+              r.observationOutcome as (typeof FETCH_OUTCOMES_FOR_ADVANCE)[number],
+            ) &&
+            r.observationIndex < latestSuccessful!.observationIndex,
+        ) as VsiSourceObservationRow | undefined) ?? null;
+    }
+
+    const continuityIntact =
+      continuityBlockers.length === 0 &&
+      latestSuccessful != null &&
+      previousSuccessful != null &&
+      (await this.isPairContinuityIntact(input, previousSuccessful.observationIndex, latestSuccessful.observationIndex));
+
+    const latestVlsApplicationProven =
+      latestSuccessful != null
+        ? await this.isVlsApplicationProven(
+            latestSuccessful.fetchCorrelationId,
+            latestSuccessful.observationOutcome,
+          )
+        : false;
 
     return {
       latest: latestSuccessful,
-      previous: previousSuccessful ?? null,
+      previous: previousSuccessful,
       continuityIntact,
       latestVlsApplicationProven,
+      continuityBlockers,
+      counterAllocatedHead: allocatedHead,
     };
   }
 
-  private async isContinuityIntact(
+  private async isPairContinuityIntact(
     input: {
       organizationId: string;
       vehicleId: string;
@@ -85,12 +143,9 @@ export class VsiProviderSourceObservationRepository {
       providerBindingScopeKey: string;
       providerTokenScopeKey: string;
     },
-    previousIndex: bigint | null,
+    previousIndex: bigint,
     latestIndex: bigint,
   ): Promise<boolean> {
-    if (previousIndex == null) {
-      return false;
-    }
     if (latestIndex - previousIndex !== 1n) {
       return false;
     }

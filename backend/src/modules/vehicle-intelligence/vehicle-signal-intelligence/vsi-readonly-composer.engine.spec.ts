@@ -316,6 +316,7 @@ describe('vsi-readonly-composer.engine', () => {
           classification: 'NOT_ADVANCED',
           strictSourceAdvanced: false,
           reasons: ['SOURCE_TIMESTAMP_UNCHANGED'],
+          advanceEvidenceScope: 'LATEST_RECORDED_OBSERVATION_PAIR',
         },
       },
       links: [{ id: LINK_TESLA, provider: 'DIMO', isActive: true, metadata: ciV2({}) }],

@@ -1,0 +1,75 @@
+name: VSI03 P2C PostgreSQL integration
+
+on:
+  pull_request:
+    paths:
+      - 'backend/src/modules/vehicle-intelligence/vehicle-signal-intelligence/**'
+      - 'backend/prisma/migrations/20261014200000_vsi03_p2c_provider_source_observations/**'
+      - 'backend/prisma/migrations/20261014210000_vsi03_p2c_r1_continuity_hardening/**'
+      - 'backend/prisma/schema.prisma'
+      - 'backend/scripts/test/vsi03-p2c-postgres-ci.sh'
+      - '.github/workflows/vsi03-p2c-postgres-integration.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  vsi03-p2c-postgres:
+    name: VSI03 P2C disposable PostgreSQL certification
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: synqdrive
+          POSTGRES_PASSWORD: synqdrive
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U synqdrive -d postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Generate Prisma client
+        working-directory: backend
+        run: npx prisma generate
+
+      - name: Run VSI03 P2C PostgreSQL certification
+        working-directory: backend
+        env:
+          VSI03_PG_HOST: 127.0.0.1
+          VSI03_PG_PORT: 5432
+          VSI03_PG_USER: synqdrive
+          VSI03_PG_PASSWORD: synqdrive
+          VSI03_PG_ADMIN_DB: postgres
+          VSI03_PG_DATABASE: vsi03_test_ci
+        run: bash scripts/test/vsi03-p2c-postgres-ci.sh
+
+      - name: Backend build
+        working-directory: backend
+        run: npm run build
+
+      - name: Typecheck
+        working-directory: backend
+        run: npx tsc -p tsconfig.build.json --noEmit

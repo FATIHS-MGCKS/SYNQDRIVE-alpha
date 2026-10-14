@@ -9,6 +9,7 @@ function unknownEvaluation(reasons: string[]): VsiStrictSourceAdvanceEvaluation 
     classification: 'UNKNOWN',
     strictSourceAdvanced: 'UNKNOWN',
     reasons,
+    advanceEvidenceScope: 'NONE',
   };
 }
 import type { VsiLatestStateSnapshot, VsiSourceLinkRow } from './vsi-readonly-composer.types';
@@ -56,6 +57,7 @@ export class VsiStrictSourceAdvanceService {
       previous: continuity.previous,
       continuityIntact: continuity.continuityIntact,
       latestVlsApplicationProven: continuity.latestVlsApplicationProven,
+      continuityBlockers: continuity.continuityBlockers,
     });
   }
 }

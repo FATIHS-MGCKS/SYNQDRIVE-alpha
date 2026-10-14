@@ -20,12 +20,15 @@ Table `vehicle_provider_source_observations` — append-only fetch evidence:
 
 `providerSourceTimestamp` is DIMO `lastSeen` only — never wall-clock or ClickHouse `recorded_at`.
 
-### Continuity (P2C-R1)
+### Continuity (P2C-R1 / R2)
 
-- `vehicle_provider_source_observation_counters` allocates monotonic `observationIndex` per scope (**committed before row insert**).
+- `vehicle_provider_source_observation_counters` allocates monotonic `observationIndex` per scope via **atomic PostgreSQL upsert** (committed before row insert).
 - A failed insert attempts a `PERSISTENCE_FAILED` tombstone at the reserved index.
-- **Strict advance** requires consecutive successful `PROVIDER_FETCH` indices (`latest - previous === 1`), no tombstones in range, VLS provenance complete, and `VLS_COMMITTED` row for the latest fetch (except stale-skip fetches).
-- **Contiguous persisted indices do not prove complete polling history** — only that no gap is visible in the durable observation ledger.
+- **Counter head gate:** `nextObservationIndex - 1` must have a `PROVIDER_FETCH` row; otherwise strict advance abstains (`COUNTER_ALLOCATED_HEAD_MISSING_OBSERVATION`). A newer `PERSISTENCE_FAILED` at the head also abstains — older successful pairs are not evaluated.
+- **Outage before allocation:** if the process dies before the counter transaction commits, that poll attempt leaves no ledger evidence and cannot be reconstructed retroactively.
+- **Strict advance evidence scope:** `LATEST_RECORDED_OBSERVATION_PAIR` only — advancement between two durable observations at the counter head. This is **not** latest actual provider-poll advancement and **not** proof of complete poll history.
+- **Strict advance** additionally requires consecutive successful head pair indices, VLS provenance complete, and `VLS_COMMITTED` for the latest fetch (except stale-skip fetches).
+- **ClickHouse `telemetry_snapshots` row counts are not successful poll counts** — descriptive/historical only for P2C strict advance.
 
 ### Idempotency
 

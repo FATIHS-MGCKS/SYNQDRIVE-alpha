@@ -10,7 +10,14 @@ function unknown(reasons: string[]): VsiStrictSourceAdvanceEvaluation {
     classification: 'UNKNOWN',
     strictSourceAdvanced: 'UNKNOWN',
     reasons,
+    advanceEvidenceScope: 'NONE',
   };
+}
+
+function recordedPairResult(
+  partial: Omit<VsiStrictSourceAdvanceEvaluation, 'advanceEvidenceScope'>,
+): VsiStrictSourceAdvanceEvaluation {
+  return { ...partial, advanceEvidenceScope: 'LATEST_RECORDED_OBSERVATION_PAIR' };
 }
 
 function timestampsEqual(a: Date | null | undefined, b: Date | null | undefined): boolean {
@@ -47,7 +54,8 @@ function validateLatestStateProvenance(
 }
 
 /**
- * Compare consecutive PROVIDER_FETCH observations only. Does not prove complete polling history.
+ * Compare consecutive durable PROVIDER_FETCH observations at the counter head only.
+ * Proves advancement between two recorded observations — not complete poll history or latest actual provider poll.
  */
 export function evaluateStrictSourceAdvanceFromObservations(input: {
   scopeProvider: string;
@@ -58,6 +66,7 @@ export function evaluateStrictSourceAdvanceFromObservations(input: {
   previous: VsiSourceObservationRow | null;
   continuityIntact: boolean;
   latestVlsApplicationProven: boolean;
+  continuityBlockers?: string[];
 }): VsiStrictSourceAdvanceEvaluation {
   const {
     latest,
@@ -68,7 +77,12 @@ export function evaluateStrictSourceAdvanceFromObservations(input: {
     scopeTokenReference,
     continuityIntact,
     latestVlsApplicationProven,
+    continuityBlockers,
   } = input;
+
+  if (continuityBlockers && continuityBlockers.length > 0) {
+    return unknown(continuityBlockers);
+  }
 
   const vlsIssues = validateLatestStateProvenance(latestState);
   if (vlsIssues.length > 0) {
@@ -178,30 +192,30 @@ export function evaluateStrictSourceAdvanceFromObservations(input: {
   }
 
   if (currentMs < priorMs) {
-    return {
+    return recordedPairResult({
       classification: 'REGRESSION_OR_CONFLICT',
       strictSourceAdvanced: false,
       reasons: ['SOURCE_TIMESTAMP_REGRESSION'],
       latestObservationIndex: latest.observationIndex,
       previousObservationIndex: previous.observationIndex,
-    };
+    });
   }
 
   if (currentMs === priorMs) {
-    return {
+    return recordedPairResult({
       classification: 'NOT_ADVANCED',
       strictSourceAdvanced: false,
       reasons: ['SOURCE_TIMESTAMP_UNCHANGED'],
       latestObservationIndex: latest.observationIndex,
       previousObservationIndex: previous.observationIndex,
-    };
+    });
   }
 
-  return {
+  return recordedPairResult({
     classification: 'ADVANCED',
     strictSourceAdvanced: true,
     reasons: [],
     latestObservationIndex: latest.observationIndex,
     previousObservationIndex: previous.observationIndex,
-  };
+  });
 }

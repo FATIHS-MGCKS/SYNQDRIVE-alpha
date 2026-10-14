@@ -9,12 +9,19 @@ export type VsiStrictSourceAdvanceClassification =
   | 'REGRESSION_OR_CONFLICT'
   | 'UNKNOWN';
 
+/** What durable evidence can support — not latest actual provider poll unless independently proven. */
+export type VsiStrictSourceAdvanceEvidenceScope =
+  | 'LATEST_RECORDED_OBSERVATION_PAIR'
+  | 'NONE';
+
 export type VsiStrictSourceAdvanceEvaluation = {
   classification: VsiStrictSourceAdvanceClassification;
   strictSourceAdvanced: boolean | 'UNKNOWN';
   reasons: string[];
   latestObservationIndex?: bigint;
   previousObservationIndex?: bigint;
+  /** Populated when P2C observation path is active; abstains when NONE. */
+  advanceEvidenceScope: VsiStrictSourceAdvanceEvidenceScope;
 };
 
 export type VsiSourceObservationRow = {
@@ -45,4 +52,7 @@ export type VsiFetchObservationContinuity = {
   previous: VsiSourceObservationRow | null;
   continuityIntact: boolean;
   latestVlsApplicationProven: boolean;
+  continuityBlockers: string[];
+  /** Last committed counter allocation (nextObservationIndex - 1), when counter row exists. */
+  counterAllocatedHead: bigint | null;
 };

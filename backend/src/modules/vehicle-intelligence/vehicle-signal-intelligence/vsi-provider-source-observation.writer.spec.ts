@@ -50,11 +50,11 @@ describe('VsiProviderSourceObservationWriterService', () => {
   it('13 persistence failure does not throw', async () => {
     process.env.VSI03_P2C_SOURCE_OBSERVATION_CAPTURE_ENABLED = 'true';
     const writer = new VsiProviderSourceObservationWriterService({
+      $queryRaw: jest.fn().mockResolvedValue([{ allocated: 1n }]),
       vehicleProviderSourceObservation: {
         findUnique: jest.fn().mockResolvedValue(null),
         create: jest.fn().mockRejectedValue(new Error('db down')),
       },
-      $transaction: jest.fn().mockRejectedValue(new Error('tx fail')),
     } as never);
     await expect(writer.recordProviderFetch(baseFetch)).resolves.toBeNull();
     delete process.env.VSI03_P2C_SOURCE_OBSERVATION_CAPTURE_ENABLED;

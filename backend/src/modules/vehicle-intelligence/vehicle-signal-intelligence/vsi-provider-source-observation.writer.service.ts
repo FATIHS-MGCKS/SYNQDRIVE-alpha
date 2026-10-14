@@ -6,9 +6,9 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../../../shared/database/prisma.service';
 import { isVsi03P2cSourceObservationCaptureEnabled } from './vsi03-p2c.config';
+import { allocateObservationIndexAtomic } from './vsi-provider-source-observation.counter-allocation';
 import {
   buildProviderSourceObservationScope,
-  counterScopeUniqueWhere,
   type VsiProviderSourceObservationScope,
 } from './vsi-provider-source-observation.scope';
 
@@ -51,30 +51,7 @@ export class VsiProviderSourceObservationWriterService {
    * Durable index allocation (committed before row insert). Failed inserts leave a PERSISTENCE_FAILED tombstone.
    */
   async allocateObservationIndex(scope: VsiProviderSourceObservationScope): Promise<bigint> {
-    return this.prisma.$transaction(async (tx) => {
-      const existing = await tx.vehicleProviderSourceObservationCounter.findUnique({
-        where: counterScopeUniqueWhere(scope),
-      });
-      if (!existing) {
-        await tx.vehicleProviderSourceObservationCounter.create({
-          data: {
-            organizationId: scope.organizationId,
-            vehicleId: scope.vehicleId,
-            provider: scope.provider,
-            providerBindingScopeKey: scope.providerBindingScopeKey,
-            providerTokenScopeKey: scope.providerTokenScopeKey,
-            nextObservationIndex: 2n,
-          },
-        });
-        return 1n;
-      }
-      const allocated = existing.nextObservationIndex;
-      await tx.vehicleProviderSourceObservationCounter.update({
-        where: counterScopeUniqueWhere(scope),
-        data: { nextObservationIndex: { increment: 1 } },
-      });
-      return allocated;
-    });
+    return allocateObservationIndexAtomic(this.prisma, scope);
   }
 
   async recordProviderFetch(

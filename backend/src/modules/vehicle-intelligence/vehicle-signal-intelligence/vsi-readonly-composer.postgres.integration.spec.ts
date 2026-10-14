@@ -71,6 +71,7 @@ async function cleanupOrg(prisma: PrismaClient, organizationId: string): Promise
         classification: 'UNKNOWN',
         strictSourceAdvanced: 'UNKNOWN',
         reasons: ['TEST_STUB'],
+        advanceEvidenceScope: 'NONE',
       }),
     } as never,
   );
