@@ -1978,3 +1978,11 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | Live Production-VPS replay via `synqdrive_exp021_p21_ro` + `exp021-p21-r3-forensic.ts`; artifact `exp021-p21-r3b-forensic.json`; evidence tables aligned to executed JSON |
 | FINDING | `transaction_read_only=on`, `transaction_isolation=repeatable read`; expected labels 1480; false missing label `2026-10-14T06:01:40Z`; internal gap intervals 6, edge 2; baseline 1480/691/763/26 reproduced |
 | NON_EFFECTS | No mutations; no provider calls |
+
+### EXP-021 P2.1 P1 V2 stationary semantics (2026-10-14)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Opt-in `DI_V0_SPEED_QC_POLICY_V2`; null stationary band → `TRUSTED_LIMITED` / `OK_STATIONARY_NULL_SPEED`; projection policy provenance; compare ops script; evidence `EXP021_P1_V2_STATIONARY_SEMANTICS.md` |
+| FINDING | Pinned trip: 118/144 stationary candidates accepted; 691 trusted numeric unchanged; 0 intervals changed outside stationary candidates |
+| NON_EFFECTS | Default V1; no S2/calibration change; no deploy or runtime activation |

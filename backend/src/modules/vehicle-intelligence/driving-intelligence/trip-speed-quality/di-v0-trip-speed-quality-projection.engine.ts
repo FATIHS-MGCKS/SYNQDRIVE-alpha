@@ -28,6 +28,8 @@ export interface DiV0TripSpeedQualityComputeInput {
   organizationId: string;
   tripId: string;
   workItemId: string;
+  /** Defaults to DI_V0_SPEED_QC_POLICY_V1. */
+  qcPolicyVersion?: string;
 }
 
 /**
@@ -131,6 +133,7 @@ export async function computeDiV0TripSpeedQualityProjectionV1ForWorkItem(
     snapshotVerified: true,
     evidence,
     shadowIntervals,
+    qcPolicyVersion: input.qcPolicyVersion,
   });
 }
 

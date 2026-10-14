@@ -1,5 +1,8 @@
 import type { DiV0S4SourceFamily } from '../s4a-foundation/di-v0-s4a-contract';
-import { DI_V0_SPEED_QC_POLICY_V1 } from '../speed-qc/di-v0-speed-qc-policy.version';
+import {
+  DI_V0_SPEED_QC_DEFAULT_POLICY_VERSION,
+  resolveDiV0SpeedQcPolicyVersion,
+} from '../speed-qc/di-v0-speed-qc-policy.version';
 import { DI_V0_SPEED_QC_REASON, type DiV0SpeedQcReasonCode } from '../speed-qc/di-v0-speed-qc-reason-codes';
 import type { DiV0SpeedQcShadowInterval } from '../speed-qc/di-v0-speed-qc.types';
 import { evaluateDiV0SpeedQcInterval } from '../speed-qc/evaluate-di-v0-speed-qc-interval';
@@ -104,7 +107,11 @@ export function buildDiV0TripSpeedQualityProjectionV1(input: {
   snapshotVerified: boolean;
   evidence: DiV0TripSpeedQualityEvidenceBundle;
   shadowIntervals: DiV0TripSpeedQualityShadowRow[];
+  qcPolicyVersion?: string;
 }): DiV0TripSpeedQualityProjectionV1 {
+  const qcPolicyVersion = resolveDiV0SpeedQcPolicyVersion(
+    input.qcPolicyVersion ?? DI_V0_SPEED_QC_DEFAULT_POLICY_VERSION,
+  );
   const reasonCodeBreakdown: Partial<Record<DiV0SpeedQcReasonCode, number>> = {};
   let numericSpeedCount = 0;
   let trustedNumericCount = 0;
@@ -138,6 +145,7 @@ export function buildDiV0TripSpeedQualityProjectionV1(input: {
       positions: input.evidence.positions,
       r1Obd: input.evidence.r1Obd,
       evidenceIdentity: { pinnedSnapshotHash: input.pinnedSnapshotHash },
+      qcPolicyVersion,
     });
     for (const code of verdict.reasonCodes) {
       incrementReason(reasonCodeBreakdown, code);
@@ -234,7 +242,7 @@ export function buildDiV0TripSpeedQualityProjectionV1(input: {
       shadowRunId: input.shadowRunId,
       pinnedSnapshotHash: input.pinnedSnapshotHash,
       boundaryFingerprint: input.boundaryFingerprint,
-      qcPolicyVersion: DI_V0_SPEED_QC_POLICY_V1,
+      qcPolicyVersion,
       projectionVersion: DI_V0_TRIP_SPEED_QUALITY_PROJECTION_V1,
     },
     quality,
@@ -243,7 +251,7 @@ export function buildDiV0TripSpeedQualityProjectionV1(input: {
     assessability,
     provenance: {
       sourceFamily: input.sourceFamily,
-      qcPolicyVersion: DI_V0_SPEED_QC_POLICY_V1,
+      qcPolicyVersion,
       projectionVersion: DI_V0_TRIP_SPEED_QUALITY_PROJECTION_V1,
       combinedInputIdentity: input.combinedInputIdentity,
       shadowInputEvidenceVersion: input.shadowInputEvidenceVersion,
