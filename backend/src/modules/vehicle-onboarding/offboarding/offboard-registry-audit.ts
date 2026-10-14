@@ -90,11 +90,11 @@ export function offboardAuditSemanticMatch(
   if (!parsed) return false;
   const noteMatches =
     (parsed.metadata.note ?? undefined) === (expected.note ?? undefined);
+  // Actor is recorded on first write; idempotency semantics align with billing outbox (reason/vehicle/org/note).
   return (
     parsed.metadata.vehicleId === expected.vehicleId &&
     parsed.metadata.organizationId === expected.organizationId &&
     parsed.metadata.reason === expected.reason &&
-    parsed.metadata.actorUserId === expected.actorUserId &&
     noteMatches
   );
 }
