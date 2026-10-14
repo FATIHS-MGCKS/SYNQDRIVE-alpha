@@ -3381,6 +3381,12 @@ export const en = {
   'master.cv.addVehicle.partialBaselineAreaTires': 'tires',
   'master.cv.addVehicle.partialBaselineAreaBattery': 'LV battery',
   'master.cv.addVehicle.partialBaselineAreaBrakes': 'brakes',
+  'master.cv.addVehicle.partialTireEnrichmentTitle':
+    'Vehicle registered — tire tread data was not saved',
+  'master.cv.addVehicle.partialTireEnrichmentBody':
+    'The vehicle is in your fleet. Open it from the vehicle list and complete tire measurements manually.',
+  'master.cv.addVehicle.partialTireEnrichmentBodyWithDetail':
+    'The vehicle is in your fleet. Tire enrichment failed: {{detail}}',
 
   // ─── Fleet Condition ───
   'fleetCondition.title': 'Fleet Condition',

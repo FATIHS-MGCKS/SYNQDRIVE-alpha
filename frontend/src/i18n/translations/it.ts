@@ -137,6 +137,12 @@ export const it = {
   'master.cv.addVehicle.partialBaselineAreaTires': 'pneumatici',
   'master.cv.addVehicle.partialBaselineAreaBattery': 'batteria LV',
   'master.cv.addVehicle.partialBaselineAreaBrakes': 'freni',
+  'master.cv.addVehicle.partialTireEnrichmentTitle':
+    'Veicolo registrato — profondità battistrada non salvata',
+  'master.cv.addVehicle.partialTireEnrichmentBody':
+    'Il veicolo è nella flotta. Aprilo dall’elenco veicoli e completa manualmente le misure degli pneumatici.',
+  'master.cv.addVehicle.partialTireEnrichmentBodyWithDetail':
+    'Il veicolo è nella flotta. Arricchimento pneumatici non riuscito: {{detail}}',
 
   'fleetCondition.title': 'Stato della flotta', 'fleetCondition.healthScore': 'Punteggio salute', 'fleetCondition.goodCondition': 'Buono', 'fleetCondition.warnings': 'Avvisi', 'fleetCondition.critical': 'Critico',
   'newBooking.title': 'Nuova prenotazione', 'newBooking.selectCustomer': 'Seleziona cliente', 'newBooking.selectVehicle': 'Seleziona veicolo', 'newBooking.timePeriod': 'Periodo e ritiro', 'newBooking.mileagePackages': 'Pacchetti chilometrici', 'newBooking.insurancePackages': 'Pacchetti assicurativi', 'newBooking.extras': 'Extra', 'newBooking.invoice': 'Fattura', 'newBooking.rentalContract': 'Contratto di noleggio', 'newBooking.createCustomer': 'Crea nuovo cliente', 'newBooking.bookingCreated': 'Prenotazione creata!',

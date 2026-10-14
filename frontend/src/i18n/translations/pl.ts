@@ -137,6 +137,12 @@ export const pl = {
   'master.cv.addVehicle.partialBaselineAreaTires': 'opony',
   'master.cv.addVehicle.partialBaselineAreaBattery': 'bateria LV',
   'master.cv.addVehicle.partialBaselineAreaBrakes': 'hamulce',
+  'master.cv.addVehicle.partialTireEnrichmentTitle':
+    'Pojazd zarejestrowany — głębokość bieżnika nie została zapisana',
+  'master.cv.addVehicle.partialTireEnrichmentBody':
+    'Pojazd jest w flocie. Otwórz go z listy pojazdów i uzupełnij pomiary opon ręcznie.',
+  'master.cv.addVehicle.partialTireEnrichmentBodyWithDetail':
+    'Pojazd jest w flocie. Uzupełnienie danych opon nie powiodło się: {{detail}}',
 
   'fleetCondition.title': 'Stan floty', 'fleetCondition.healthScore': 'Wynik zdrowia', 'fleetCondition.goodCondition': 'Dobry', 'fleetCondition.warnings': 'Ostrzezenia', 'fleetCondition.critical': 'Krytyczny',
   'newBooking.title': 'Nowa rezerwacja', 'newBooking.selectCustomer': 'Wybierz klienta', 'newBooking.selectVehicle': 'Wybierz pojazd', 'newBooking.timePeriod': 'Okres i odbior', 'newBooking.mileagePackages': 'Pakiety kilometrowe', 'newBooking.insurancePackages': 'Pakiety ubezpieczeniowe', 'newBooking.extras': 'Dodatki', 'newBooking.invoice': 'Faktura', 'newBooking.rentalContract': 'Umowa najmu', 'newBooking.createCustomer': 'Utworz nowego klienta', 'newBooking.bookingCreated': 'Rezerwacja utworzona!',

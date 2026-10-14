@@ -20,6 +20,7 @@ import { VehicleOffboardPreflightService } from './offboarding/vehicle-offboard-
 import { ProductionFailClosedReadinessAuthority } from './readiness/vehicle-onboarding-readiness-authority';
 import { VEHICLE_ONBOARDING_READINESS_AUTHORITY } from './readiness/vehicle-onboarding-readiness.tokens';
 import { VehicleOnboardingSourceAdoptionAuthority } from './source-adoption/vehicle-onboarding-source-adoption.authority';
+import { MasterDimoCanonicalRegistrationService } from './master-dimo/master-dimo-canonical-registration.service';
 
 @Module({
   imports: [AuthModule, DimoModule, ActivityLogModule],
@@ -47,6 +48,7 @@ import { VehicleOnboardingSourceAdoptionAuthority } from './source-adoption/vehi
     VehicleOnboardingOffboardService,
     MasterVehicleOffboardAdmissionGuard,
     MasterVehicleOffboardMfaGuard,
+    MasterDimoCanonicalRegistrationService,
   ],
   exports: [
     VehicleOnboardingCaseService,
@@ -55,6 +57,7 @@ import { VehicleOnboardingSourceAdoptionAuthority } from './source-adoption/vehi
     VehicleOnboardingCaptureService,
     VehicleOffboardingService,
     VehicleOnboardingOffboardService,
+    MasterDimoCanonicalRegistrationService,
   ],
 })
 export class VehicleOnboardingModule {}

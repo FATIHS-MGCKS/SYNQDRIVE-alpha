@@ -1,0 +1,95 @@
+import {
+  BatterySourceType,
+  EnrichmentJobType,
+  type Prisma,
+} from '@prisma/client';
+import type { MasterDimoRegistrationInput } from './master-dimo-registration.types';
+import { buildPostActivationVehiclePatch } from './master-dimo-registration.mapper';
+import type { MasterDimoActivationFinalizeInput } from './master-dimo-activation-extensions';
+import { applyMasterPostActivationVehicleScalarsInTransaction } from './master-dimo-post-activation.persistence';
+import { computeMasterDimoRegistrationPayloadFingerprint } from './master-dimo-registration-payload-fingerprint';
+
+export function buildMasterDimoActivationFinalizeInput(
+  input: MasterDimoRegistrationInput,
+): MasterDimoActivationFinalizeInput {
+  const patch = buildPostActivationVehiclePatch(input);
+  if (input.actorUserId) {
+    patch.createdByUserId = input.actorUserId;
+  }
+  return {
+    vehicleScalarPatch: patch,
+    lowVoltageBattery: input.manualSpecs?.battery ?? null,
+    payloadFingerprint: computeMasterDimoRegistrationPayloadFingerprint(input),
+  };
+}
+
+export async function applyMasterDimoActivationFinalizeInTransaction(
+  tx: Prisma.TransactionClient,
+  vehicleId: string,
+  finalize: MasterDimoActivationFinalizeInput,
+): Promise<void> {
+  await applyMasterPostActivationVehicleScalarsInTransaction(
+    tx,
+    vehicleId,
+    finalize.vehicleScalarPatch,
+  );
+  await applyLowVoltageBatterySpecIdempotentInTransaction(tx, vehicleId, finalize.lowVoltageBattery);
+  await enqueueBatteryEnrichmentJobIdempotentInTransaction(tx, vehicleId);
+}
+
+export async function applyIdempotentMasterRegistrationPostActivation(
+  tx: Prisma.TransactionClient,
+  input: MasterDimoRegistrationInput,
+  vehicleId: string,
+): Promise<void> {
+  const finalize = buildMasterDimoActivationFinalizeInput(input);
+  await applyMasterDimoActivationFinalizeInTransaction(tx, vehicleId, finalize);
+}
+
+async function applyLowVoltageBatterySpecIdempotentInTransaction(
+  tx: Prisma.TransactionClient,
+  vehicleId: string,
+  battery: MasterDimoActivationFinalizeInput['lowVoltageBattery'],
+): Promise<void> {
+  if (!battery) return;
+  const hasAny =
+    (battery.batteryType != null && String(battery.batteryType).trim() !== '') ||
+    battery.batteryAmpere != null ||
+    battery.batteryVolt != null;
+  if (!hasAny) return;
+
+  const existing = await tx.vehicleBatterySpec.findFirst({
+    where: { vehicleId },
+    select: { id: true },
+  });
+  if (existing) return;
+
+  await tx.vehicleBatterySpec.create({
+    data: {
+      vehicleId,
+      batteryType: battery.batteryType?.trim() || null,
+      batteryAmpere: battery.batteryAmpere ?? null,
+      batteryVolt: battery.batteryVolt ?? null,
+      sourceType: BatterySourceType.MANUAL,
+      sourceConfidence: 1,
+    },
+  });
+}
+
+async function enqueueBatteryEnrichmentJobIdempotentInTransaction(
+  tx: Prisma.TransactionClient,
+  vehicleId: string,
+): Promise<void> {
+  const existing = await tx.vehicleEnrichmentJob.findFirst({
+    where: { vehicleId, jobType: EnrichmentJobType.BATTERY },
+    select: { id: true },
+  });
+  if (existing) return;
+  await tx.vehicleEnrichmentJob.create({
+    data: {
+      vehicle: { connect: { id: vehicleId } },
+      jobType: EnrichmentJobType.BATTERY,
+      status: 'PENDING',
+    },
+  });
+}

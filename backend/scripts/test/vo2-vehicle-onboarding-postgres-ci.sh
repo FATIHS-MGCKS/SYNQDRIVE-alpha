@@ -70,4 +70,7 @@ export VO_SIG_01_CONN_IDENTITY_PG=1
 DATABASE_URL="${INT_DATABASE_URL}" npx jest vo-sig-01-connection-identity.postgres.integration --runInBand --forceExit
 DATABASE_URL="${INT_DATABASE_URL}" npx jest vo-sig-01-b1-legacy-reconciliation.postgres.integration --runInBand --forceExit
 
+export VO_SIG_P2_MASTER_DIMO_PG=1
+DATABASE_URL="${INT_DATABASE_URL}" npx jest vo-sig-p2-master-dimo-registration.postgres.integration --runInBand --forceExit
+
 log_ci "all gates passed"

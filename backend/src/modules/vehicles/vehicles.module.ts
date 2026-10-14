@@ -19,6 +19,7 @@ import { VehiclesOperationalService } from './vehicles-operational.service';
 import { RentalHealthModule } from '../rental-health/rental-health.module';
 import { FLEET_STATUS_DERIVATION } from './diagnostic/fleet-status-derivation.port';
 import { VehicleOperationalProjectionService } from './operational/projection/vehicle-operational-projection.service';
+import { VehicleOnboardingModule } from '../vehicle-onboarding/vehicle-onboarding.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { VehicleOperationalProjectionService } from './operational/projection/ve
     forwardRef(() => BillingModule),
     forwardRef(() => PlatformAdminModule),
     forwardRef(() => RentalHealthModule),
+    forwardRef(() => VehicleOnboardingModule),
   ],
   controllers: [VehiclesController],
   providers: [

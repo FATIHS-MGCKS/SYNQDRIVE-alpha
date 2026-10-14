@@ -55,8 +55,6 @@ export function buildVehicleExtraData(rv: RegisteredVehicle): Record<string, unk
     brakeForceFrontPercent: parseOptionalFloat(rv.brakeForceDistribution),
     frontToRearWeightDistribution: rv.frontToRearWeightDistribution || undefined,
     tankCapacityLiters: parseOptionalFloat(rv.tankCapacityLiters),
-    engineDisplacementCc: parseOptionalNumber(rv.engineDisplacementCc),
-    cylinderCount: parseOptionalNumber(rv.cylinderCount),
     serviceIntervalManufacturerKm: parseOptionalNumber(rv.serviceIntervalManufacturerKm),
     serviceIntervalManufacturerMonths: parseOptionalNumber(rv.serviceIntervalManufacturerMonths),
     oilChangeIntervalKm: parseOptionalNumber(rv.oilChangeIntervalKm),
@@ -133,10 +131,19 @@ export type ManualBaselineFailure = {
   message: string;
 };
 
+export type PostActivationEnrichmentResult = {
+  tireTread?: {
+    status: 'FAILED';
+    message: string;
+  };
+};
+
 export type PersistMasterVehicleResult = {
   vehicleId: string;
   /** Present when the vehicle was created but post-create baseline APIs failed (manual create only). */
   baselineFailures?: ManualBaselineFailure[];
+  /** Present when register-from-dimo succeeded but server-side tire enrichment failed. */
+  postActivationEnrichment?: PostActivationEnrichmentResult;
 };
 
 function baselineErrorMessage(error: unknown): string {
@@ -180,6 +187,12 @@ type ManualBatteryPayload = {
 export const MANUAL_CREATE_UNSUPPORTED_REGISTERED_VEHICLE_FIELDS = [
   'serviceHistory',
   'highMobilityActivation',
+] as const;
+
+/** Not persisted on register-from-dimo (no vehicle columns); use vehicle update after registration. */
+export const REGISTER_FROM_DIMO_UNSUPPORTED_EXTRA_FIELDS = [
+  'engineDisplacementCc',
+  'cylinderCount',
 ] as const;
 
 export async function applyManualBaselinesAfterCreate(
@@ -280,7 +293,13 @@ export async function persistMasterRegisteredVehicle(
     if (!vehicleId) {
       throw new Error('REGISTER_FROM_DIMO_NO_VEHICLE_ID');
     }
-    return { vehicleId: String(vehicleId) };
+    const postActivationEnrichment = created?.postActivationEnrichment as
+      | PostActivationEnrichmentResult
+      | undefined;
+    return {
+      vehicleId: String(vehicleId),
+      postActivationEnrichment,
+    };
   }
 
   const vin = rv.vin?.trim();

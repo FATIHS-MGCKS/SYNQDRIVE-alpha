@@ -5,7 +5,7 @@
 | **Sealed from** | VO-0A discovery audit |
 | **Repository anchor SHA** | `312d9f54a2b4c0b0740061d3e2b74897e78eacb0` |
 | **Authority status** | `AUDIT_IN_PROGRESS` — **not** `AUTHORITY_ACTIVE` |
-| **Last updated** | 2026-10-14 (VO-SIG-01 B1 production closure documentation) |
+| **Last updated** | 2026-10-14 (VO-SIG-01 B1 production closure + P2 canonical Master DIMO registration — repo only, not production-deployed) |
 
 ## Executive summary
 
@@ -40,8 +40,8 @@ SynqDrive today separates **provider mirrors** (`DimoVehicle`, `HighMobilityVehi
 - **VO-SIG-01 (2026-10-13):** Connection identity contract (`connection-identity/*`), readiness rule `VO-RDY-CONN-001`, HM activation persists `provider=HIGH_MOBILITY`; production read-only inventory — see [VO_SIG_01_CONNECTION_IDENTITY_AUDIT.md](./evidence/VO_SIG_01_CONNECTION_IDENTITY_AUDIT.md) and [VO_SIG_01_DATA_REPAIR_PLAN.md](./research/VO_SIG_01_DATA_REPAIR_PLAN.md).
 - **VO-SIG-01 P1 (2026-10-13):** Proposed vs verified modality separation, activation-time mirror revalidation + hardware device evidence, multi-provider per-ref identity, post-link snapshot parity; regression suite `vehicle-connection-identity.unit.spec.ts` (18 cases).
 - **VO-SIG-01 P1 closure (2026-10-13):** Device-binding assurance levels, link `metadata.connectionIdentity` persistence for VSI-03, PostgreSQL certification `vo-sig-01-connection-identity.postgres.integration.spec.ts`.
-- **VO-SIG-01 B1 (2026-10-13 code; 2026-10-14 production closure):** One-time legacy cohort reconciliation (`origin=LEGACY_RECONCILIATION`) for four DIMO source links — **operator-reported production execute completed 2026-10-14**; no repeat run required. Evidence: [VO_SIG_01_B1_LEGACY_CONNECTION_IDENTITY_RECONCILIATION.md](./evidence/VO_SIG_01_B1_LEGACY_CONNECTION_IDENTITY_RECONCILIATION.md). Draft PR #2018 (execute-admission hardening) **superseded** by operator SQL V3 path — closed without merge.
-- **VO-SIG-01 P2 (proposed, not started):** Master Admin `registerFromDimo` vs canonical activation `connectionIdentity` parity — Master still uses `VehiclesService.registerFromDimo`; canonical path writes verified `metadata.connectionIdentity` via `VehicleOnboardingActivationService` / `assertTelemetryConnectionIdentityForActivationTx`. Evaluation only; no implementation in B1 closure.
+- **VO-SIG-01 B1 (2026-10-13 code; 2026-10-14 production closure):** One-time legacy cohort reconciliation (`origin=LEGACY_RECONCILIATION`) for four DIMO source links — **operator-reported production execute completed 2026-10-14** (four links, four audits); **no repeat B1 backfill** required. Evidence: [VO_SIG_01_B1_LEGACY_CONNECTION_IDENTITY_RECONCILIATION.md](./evidence/VO_SIG_01_B1_LEGACY_CONNECTION_IDENTITY_RECONCILIATION.md). Draft PR #2018 **closed without merge** (superseded by operator SQL V3 execute path).
+- **VO-SIG-01 P2 (2026-10-14, implemented in repository — not production-deployed):** Master Admin `register-from-dimo` routes through canonical onboarding (`MasterDimoCanonicalRegistrationService` → capture/readiness/`VehicleOnboardingActivationService`); verified `metadata.connectionIdentity` via activation-time assertions; legacy inline vehicle create + `onVehicleProvisioned` hook **removed** from that HTTP path. Hardening: mandatory scalars + LV battery inside activation TX; **payload fingerprint bound atomically on case COMPLETED**; source-claim transaction lock + idempotent retry (changed payload → 409); entitlement-aware readiness (RENTAL/FLEET); single `VEHICLE_ACTIVATED` billing outbox per case; offboard/ARCHIVED suppression unchanged; Master UI surfaces tire post-activation enrichment failures without failing registration — see [VO_SIG_01_P2_MASTER_DIMO_CANONICAL_REGISTRATION.md](./evidence/VO_SIG_01_P2_MASTER_DIMO_CANONICAL_REGISTRATION.md) and [VO_SIG_01_P2_MASTER_DIMO_FIELD_PARITY.md](./evidence/VO_SIG_01_P2_MASTER_DIMO_FIELD_PARITY.md).
 
 ---
 
@@ -69,7 +69,7 @@ SynqDrive today separates **provider mirrors** (`DimoVehicle`, `HighMobilityVehi
 | Canonical PK | `Vehicle.id` (UUID) | `schema.prisma` `Vehicle` |
 | Tenant uniqueness | `@@unique([vin, organizationId])` | `schema.prisma` |
 | Global DIMO binding | Partial unique `vehicles.dimo_vehicle_id` WHERE NOT NULL | migration `20260726140000_vehicles_dimo_vehicle_id_partial_unique` |
-| VIN fallback | `dimoVehicle.vin \|\| \`DIMO-${externalId}\`` at register | `vehicles.service.ts` `registerFromDimo` |
+| VIN fallback | **Removed from Master register-from-dimo (P2)** — activation uses identity draft / provider VIN only | `MasterDimoCanonicalRegistrationService` |
 | License plate | Single nullable `Vehicle.licensePlate` | `schema.prisma` — no history table |
 
 ---
@@ -78,7 +78,7 @@ SynqDrive today separates **provider mirrors** (`DimoVehicle`, `HighMobilityVehi
 
 | Path | Entry | Backend |
 |------|-------|---------|
-| DIMO → tenant vehicle | Master `VehicleRegistrationModal` / Connected Vehicles | `POST organizations/:orgId/vehicles/register-from-dimo` → `VehiclesService.registerFromDimo` |
+| DIMO → tenant vehicle | Master `VehicleRegistrationModal` / Connected Vehicles | `POST …/register-from-dimo` → `VehiclesService.registerFromDimo` → `MasterDimoCanonicalRegistrationService` (VO-SIG P2) |
 | Manual create | Org fleet APIs | `POST organizations/:orgId/vehicles` → `VehiclesService.create` |
 | HM_ONLY | HM register API | `POST vehicles/register/hm-only` → `HighMobilityRegistrationService.registerHmOnlyVehicle` |
 | HM health add-on | Post-register | `activate-high-mobility-health`, `link-high-mobility-full-telemetry` (`high-mobility-vehicle-register.controller.ts`) |
@@ -113,7 +113,7 @@ SynqDrive today separates **provider mirrors** (`DimoVehicle`, `HighMobilityVehi
 ## G. Billing coupling
 
 - **Canonical activation:** `VEHICLE_ACTIVATED` outbox → `VehicleRegistryLifecycleOutboxProcessor` → `onVehicleProvisioned` (VO5B-AB1).
-- **Legacy:** `billingQuantity.onVehicleProvisioned` after `registerFromDimo` / `create` (`vehicles.service.ts`) — disjoint from canonical onboarding; cutover deferred.
+- **Legacy:** `billingQuantity.onVehicleProvisioned` after manual `create` only; Master `registerFromDimo` uses registry `VEHICLE_ACTIVATED` outbox (VO-SIG P2 cutover).
 - `onVehicleRemoved` on deregister.
 - Policy: `BillableVehiclesService` / `evaluateBillableVehiclePolicy` (`backend/src/modules/billing/billable-vehicles.service.ts`) — billing owns billable semantics.
 
