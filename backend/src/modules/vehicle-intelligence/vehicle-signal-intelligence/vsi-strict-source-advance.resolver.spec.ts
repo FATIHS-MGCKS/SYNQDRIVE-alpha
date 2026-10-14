@@ -249,6 +249,14 @@ describe('evaluateStrictSourceAdvanceFromObservations', () => {
     expect(r.reasons).toContain('OBSERVATION_CONTINUITY_NOT_PROVEN');
   });
 
+  it('18 counter authority missing UNKNOWN via blockers', () => {
+    const r = evaluate(obs({ observationIndex: 2n }), obs({ observationIndex: 1n }), {
+      continuityBlockers: ['OBSERVATION_COUNTER_AUTHORITY_MISSING'],
+    });
+    expect(r.classification).toBe('UNKNOWN');
+    expect(r.reasons).toContain('OBSERVATION_COUNTER_AUTHORITY_MISSING');
+  });
+
   it('17 counter head missing observation UNKNOWN via blockers', () => {
     const r = evaluate(obs({ observationIndex: 2n }), obs({ observationIndex: 1n }), {
       continuityBlockers: ['COUNTER_ALLOCATED_HEAD_MISSING_OBSERVATION'],

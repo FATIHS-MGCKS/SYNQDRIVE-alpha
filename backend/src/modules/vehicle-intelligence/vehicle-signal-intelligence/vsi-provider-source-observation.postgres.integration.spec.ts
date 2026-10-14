@@ -437,6 +437,105 @@ async function insertFetchRow(
     expect(evalResult.advanceEvidenceScope).toBe('NONE');
   });
 
+  it('14 missing counter authority with consecutive fetch rows abstains', async () => {
+    const f = await freshFixture();
+    const scopeKey = `no-counter-${Date.now()}`;
+    const token = `nc-${Date.now()}`;
+    await insertFetchRow(prisma, {
+      f,
+      scopeKey,
+      token,
+      observationIndex: 1n,
+      idempotencyKey: `nc-1-${Date.now()}`,
+      fetchCorrelationId: 'nc-1',
+      providerFetchedAt: new Date('2026-10-14T10:00:01.000Z'),
+      providerSourceTimestamp: new Date('2026-10-14T10:00:00.000Z'),
+      outcome: VehicleProviderSourceObservationOutcome.PROVIDER_FETCH_RECORDED,
+    });
+    await insertFetchRow(prisma, {
+      f,
+      scopeKey,
+      token,
+      observationIndex: 2n,
+      idempotencyKey: `nc-2-${Date.now()}`,
+      fetchCorrelationId: 'nc-2',
+      providerFetchedAt: new Date('2026-10-14T11:00:01.000Z'),
+      providerSourceTimestamp: new Date('2026-10-14T11:00:00.000Z'),
+      outcome: VehicleProviderSourceObservationOutcome.PROVIDER_FETCH_RECORDED,
+    });
+
+    const continuity = await repo.loadFetchObservationContinuity(continuityInput(f, scopeKey, token));
+    expect(continuity.continuityBlockers).toContain('OBSERVATION_COUNTER_AUTHORITY_MISSING');
+    expect(continuity.latest).toBeNull();
+    expect(continuity.previous).toBeNull();
+
+    const evalResult = evaluateStrictSourceAdvanceFromObservations({
+      scopeProvider: 'DIMO',
+      scopeBindingId: scopeKey,
+      scopeTokenReference: token,
+      latestState: {
+        providerBindingId: scopeKey,
+        providerSource: 'DIMO',
+        sourceTimestamp: new Date('2026-10-14T11:00:00.000Z'),
+        providerFetchedAt: new Date('2026-10-14T11:00:01.000Z'),
+      },
+      latest: continuity.latest,
+      previous: continuity.previous,
+      continuityIntact: continuity.continuityIntact,
+      latestVlsApplicationProven: false,
+      continuityBlockers: continuity.continuityBlockers,
+    });
+    expect(evalResult.classification).toBe('UNKNOWN');
+    expect(evalResult.reasons).toContain('OBSERVATION_COUNTER_AUTHORITY_MISSING');
+  });
+
+  it('14b deleted counter after durable writes abstains', async () => {
+    const f = await freshFixture();
+    const scopeKey = f.linkId;
+    const token = f.providerTokenReference;
+    await writer.recordProviderFetch({
+      organizationId: f.organizationId,
+      vehicleId: f.vehicleId,
+      provider: 'DIMO',
+      providerBindingId: scopeKey,
+      providerTokenReference: token,
+      pollJobId: `del-c1-${Date.now()}`,
+      bullmqAttemptNumber: 0,
+      fetchCorrelationId: 'del-c1',
+      idempotencyKey: buildDimoSnapshotFetchObservationIdempotencyKey(`del-c1-${Date.now()}`, 0),
+      providerFetchedAt: new Date('2026-10-14T10:00:01.000Z'),
+      providerSourceTimestamp: new Date('2026-10-14T10:00:00.000Z'),
+      monotonicStaleSkipped: false,
+    });
+    await writer.recordProviderFetch({
+      organizationId: f.organizationId,
+      vehicleId: f.vehicleId,
+      provider: 'DIMO',
+      providerBindingId: scopeKey,
+      providerTokenReference: token,
+      pollJobId: `del-c2-${Date.now()}`,
+      bullmqAttemptNumber: 0,
+      fetchCorrelationId: 'del-c2',
+      idempotencyKey: buildDimoSnapshotFetchObservationIdempotencyKey(`del-c2-${Date.now()}`, 0),
+      providerFetchedAt: new Date('2026-10-14T11:00:01.000Z'),
+      providerSourceTimestamp: new Date('2026-10-14T11:00:00.000Z'),
+      monotonicStaleSkipped: false,
+    });
+    await prisma.vehicleProviderSourceObservationCounter.deleteMany({
+      where: {
+        organizationId: f.organizationId,
+        vehicleId: f.vehicleId,
+        provider: 'DIMO',
+        providerBindingScopeKey: scopeKey,
+        providerTokenScopeKey: token,
+      },
+    });
+
+    const continuity = await repo.loadFetchObservationContinuity(continuityInput(f, scopeKey, token));
+    expect(continuity.continuityBlockers).toContain('OBSERVATION_COUNTER_AUTHORITY_MISSING');
+    expect(continuity.latest).toBeNull();
+  });
+
   it('10 pruning middle observation breaks pair continuity', async () => {
     const f = await freshFixture();
     const scopeKey = `prune-${Date.now()}`;
@@ -501,10 +600,29 @@ async function insertFetchRow(
       providerSourceTimestamp: new Date(),
       outcome: VehicleProviderSourceObservationOutcome.PROVIDER_FETCH_RECORDED,
     });
+    for (const [fixture, scopeKey] of [[fA, scopeA], [fB, scopeB]] as const) {
+      await prisma.vehicleProviderSourceObservationCounter.create({
+        data: {
+          organizationId: fixture.organizationId,
+          vehicleId: fixture.vehicleId,
+          provider: 'DIMO',
+          providerBindingScopeKey: scopeKey,
+          providerTokenScopeKey: sharedToken,
+          nextObservationIndex: 2n,
+        },
+      });
+    }
+    const crossLeak = await prisma.vehicleProviderSourceObservation.count({
+      where: { organizationId: fA.organizationId, providerBindingScopeKey: scopeB },
+    });
+    expect(crossLeak).toBe(0);
+
     const cA = await repo.loadFetchObservationContinuity(continuityInput(fA, scopeA, sharedToken));
     const cB = await repo.loadFetchObservationContinuity(continuityInput(fB, scopeB, sharedToken));
     expect(cA.latest?.organizationId).toBe(fA.organizationId);
     expect(cB.latest?.organizationId).toBe(fB.organizationId);
+    expect(cA.continuityBlockers).toHaveLength(0);
+    expect(cB.continuityBlockers).toHaveLength(0);
     expect(cA.previous).toBeNull();
     expect(cB.previous).toBeNull();
   });

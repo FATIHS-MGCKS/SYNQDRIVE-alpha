@@ -55,6 +55,10 @@ export class VsiProviderSourceObservationRepository {
 
     const headRow = fetchRows[0] as VsiSourceObservationRow | undefined;
 
+    if (fetchRows.length > 0 && !counter) {
+      continuityBlockers.push('OBSERVATION_COUNTER_AUTHORITY_MISSING');
+    }
+
     let allocatedHead: bigint | null = null;
     if (counter) {
       allocatedHead = counter.nextObservationIndex - 1n;

@@ -24,6 +24,7 @@ Table `vehicle_provider_source_observations` — append-only fetch evidence:
 
 - `vehicle_provider_source_observation_counters` allocates monotonic `observationIndex` per scope via **atomic PostgreSQL upsert** (committed before row insert).
 - A failed insert attempts a `PERSISTENCE_FAILED` tombstone at the reserved index.
+- **Counter authority:** fetch rows without a matching `vehicle_provider_source_observation_counters` row abstain (`OBSERVATION_COUNTER_AUTHORITY_MISSING`) — no counter, no proven continuity.
 - **Counter head gate:** `nextObservationIndex - 1` must have a `PROVIDER_FETCH` row; otherwise strict advance abstains (`COUNTER_ALLOCATED_HEAD_MISSING_OBSERVATION`). A newer `PERSISTENCE_FAILED` at the head also abstains — older successful pairs are not evaluated.
 - **Outage before allocation:** if the process dies before the counter transaction commits, that poll attempt leaves no ledger evidence and cannot be reconstructed retroactively.
 - **Strict advance evidence scope:** `LATEST_RECORDED_OBSERVATION_PAIR` only — advancement between two durable observations at the counter head. This is **not** latest actual provider-poll advancement and **not** proof of complete poll history.

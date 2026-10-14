@@ -55,6 +55,10 @@ jobs:
         working-directory: backend
         run: npx prisma generate
 
+      - name: VSI03 P2C postgres guard contract
+        working-directory: backend
+        run: bash scripts/test/vsi03-p2c-postgres-guard.contract.sh
+
       - name: Run VSI03 P2C PostgreSQL certification
         working-directory: backend
         env:
