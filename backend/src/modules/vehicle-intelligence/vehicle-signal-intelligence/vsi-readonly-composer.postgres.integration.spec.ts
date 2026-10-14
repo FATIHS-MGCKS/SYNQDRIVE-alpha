@@ -1,6 +1,8 @@
 /**
  * VSI-03 P1 read-only composer PostgreSQL integration.
- * Run: VSI03_READONLY_COMPOSER_PG=1 npx jest vsi-readonly-composer.postgres.integration --runInBand
+ * Run:
+ *   DATABASE_URL=postgresql://synqdrive:synqdrive@127.0.0.1:5432/vsi03_test_ci?schema=public \
+ *   VSI03_READONLY_COMPOSER_PG=1 npx jest vsi-readonly-composer.postgres.integration --runInBand
  */
 import { PrismaClient } from '@prisma/client';
 import { randomUUID } from 'node:crypto';

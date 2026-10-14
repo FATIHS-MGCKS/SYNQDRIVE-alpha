@@ -34,7 +34,7 @@ Provider catalog status remains `UNKNOWN` unless separate catalog evidence exist
 
 Latest-state attribution requires matching `providerBindingId` and consistent provider identity; null binding with active links does not cross-attribute state.
 
-PostgreSQL integration tests require `VSI03_READONLY_COMPOSER_PG=1` and refuse production-like `DATABASE_URL` hosts (see `vsi-readonly-composer.postgres-guard.ts`).
+PostgreSQL integration tests require `VSI03_READONLY_COMPOSER_PG=1`, a **local** database host (`127.0.0.1` / `localhost`), and an explicitly disposable database name matching `vsi03_test_*` (for example `vsi03_test_ci`). Production-like names such as `synqdrive` are rejected even on localhost. See `vsi-readonly-composer.postgres-guard.ts`.
 
 ## P2 follow-up (not P1)
 
