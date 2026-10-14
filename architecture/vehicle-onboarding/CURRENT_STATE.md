@@ -5,7 +5,7 @@
 | **Sealed from** | VO-0A discovery audit |
 | **Repository anchor SHA** | `312d9f54a2b4c0b0740061d3e2b74897e78eacb0` |
 | **Authority status** | `AUDIT_IN_PROGRESS` — **not** `AUTHORITY_ACTIVE` |
-| **Last updated** | 2026-10-14 (VO5C D4/D5 fleet registry status + offboard audit note) |
+| **Last updated** | 2026-10-14 (VO-SIG-01 B1 production closure documentation) |
 
 ## Executive summary
 
@@ -40,7 +40,8 @@ SynqDrive today separates **provider mirrors** (`DimoVehicle`, `HighMobilityVehi
 - **VO-SIG-01 (2026-10-13):** Connection identity contract (`connection-identity/*`), readiness rule `VO-RDY-CONN-001`, HM activation persists `provider=HIGH_MOBILITY`; production read-only inventory — see [VO_SIG_01_CONNECTION_IDENTITY_AUDIT.md](./evidence/VO_SIG_01_CONNECTION_IDENTITY_AUDIT.md) and [VO_SIG_01_DATA_REPAIR_PLAN.md](./research/VO_SIG_01_DATA_REPAIR_PLAN.md).
 - **VO-SIG-01 P1 (2026-10-13):** Proposed vs verified modality separation, activation-time mirror revalidation + hardware device evidence, multi-provider per-ref identity, post-link snapshot parity; regression suite `vehicle-connection-identity.unit.spec.ts` (18 cases).
 - **VO-SIG-01 P1 closure (2026-10-13):** Device-binding assurance levels, link `metadata.connectionIdentity` persistence for VSI-03, PostgreSQL certification `vo-sig-01-connection-identity.postgres.integration.spec.ts`.
-- **VO-SIG-01 B1 (2026-10-13):** Legacy reconciliation contract v2 (`LEGACY_RECONCILIATION`, honest null source ref), dry-run planner, guarded transactional executor + audit table; **no production execution** — see [VO_SIG_01_B1_LEGACY_CONNECTION_IDENTITY_RECONCILIATION.md](./evidence/VO_SIG_01_B1_LEGACY_CONNECTION_IDENTITY_RECONCILIATION.md).
+- **VO-SIG-01 B1 (2026-10-13 code; 2026-10-14 production closure):** One-time legacy cohort reconciliation (`origin=LEGACY_RECONCILIATION`) for four DIMO source links — **operator-reported production execute completed 2026-10-14**; no repeat run required. Evidence: [VO_SIG_01_B1_LEGACY_CONNECTION_IDENTITY_RECONCILIATION.md](./evidence/VO_SIG_01_B1_LEGACY_CONNECTION_IDENTITY_RECONCILIATION.md). Draft PR #2018 (execute-admission hardening) **superseded** by operator SQL V3 path — closed without merge.
+- **VO-SIG-01 P2 (proposed, not started):** Master Admin `registerFromDimo` vs canonical activation `connectionIdentity` parity — Master still uses `VehiclesService.registerFromDimo`; canonical path writes verified `metadata.connectionIdentity` via `VehicleOnboardingActivationService` / `assertTelemetryConnectionIdentityForActivationTx`. Evaluation only; no implementation in B1 closure.
 
 ---
 
