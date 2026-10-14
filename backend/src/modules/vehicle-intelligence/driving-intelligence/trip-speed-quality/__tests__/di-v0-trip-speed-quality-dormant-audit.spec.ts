@@ -102,6 +102,8 @@ describe('DI V0 P2 trip speed quality dormant-by-construction audit', () => {
     );
     expect(opsScript.includes('previewDiV0TripSpeedQualityForWorkItem')).toBe(true);
     expect(opsScript.includes('persistCurrentProjection')).toBe(false);
+    expect(opsScript.includes('process.exit(')).toBe(false);
+    expect(opsScript.includes('resolveDiV0P21PreviewScope')).toBe(true);
     const app = fs.readFileSync(path.join(REPO_ROOT, 'backend/src/app.module.ts'), 'utf8');
     expect(app.includes('di-v0-trip-speed-quality-preview')).toBe(false);
   });

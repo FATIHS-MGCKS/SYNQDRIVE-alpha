@@ -3,50 +3,72 @@
  * EXP-021 P2.1 — read-only trip speed quality preview (single work item).
  * Does NOT persist projections, mutate S4/S2, or call external providers.
  *
- * Required: DATABASE_URL (read-only credentials recommended).
+ * Required: DATABASE_URL (read-only DB role recommended for production previews — see authority doc).
  *
- * Usage:
- *   npx ts-node scripts/ops/di-v0-trip-speed-quality-preview.ts \
- *     --organizationId <uuid> --tripId <uuid> --workItemId <uuid>
+ * Scope input (exactly one path):
+ *   A) CLI flags: --organizationId <uuid> --tripId <uuid> --workItemId <uuid>
+ *   B) Env bundle: DI_V0_P21_ORGANIZATION_ID, DI_V0_P21_TRIP_ID, DI_V0_P21_WORK_ITEM_ID (all three)
+ *
+ * Generic ORGANIZATION_ID is intentionally NOT accepted.
  */
 import { PrismaClient } from '@prisma/client';
 import { previewDiV0TripSpeedQualityForWorkItem } from '../../src/modules/vehicle-intelligence/driving-intelligence/trip-speed-quality/di-v0-trip-speed-quality-preview';
+import {
+  DiV0P21PreviewScopeError,
+  exitCodeForPreviewOutcome,
+  resolveDiV0P21PreviewScope,
+} from '../../src/modules/vehicle-intelligence/driving-intelligence/trip-speed-quality/di-v0-trip-speed-quality-preview-cli.scope';
 
-function readArg(name: string): string | undefined {
-  const flag = `--${name}`;
-  const idx = process.argv.indexOf(flag);
-  if (idx >= 0 && process.argv[idx + 1]) return process.argv[idx + 1];
-  return undefined;
+function scopeExitCode(error: DiV0P21PreviewScopeError): number {
+  if (error.code === 'INVALID_UUID') return 4;
+  if (error.code === 'MIXED_INPUT_SOURCES' || error.code === 'AMBIGUOUS_ENV') return 5;
+  return 2;
 }
 
-async function main(): Promise<void> {
-  const organizationId =
-    readArg('organizationId') ?? process.env.DI_V0_P21_ORGANIZATION_ID ?? process.env.ORGANIZATION_ID;
-  const tripId = readArg('tripId') ?? process.env.DI_V0_P21_TRIP_ID;
-  const workItemId = readArg('workItemId') ?? process.env.DI_V0_P21_WORK_ITEM_ID;
+async function writeStdoutLine(line: string): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    process.stdout.write(`${line}\n`, (err) => (err ? reject(err) : resolve()));
+  });
+}
 
-  if (!organizationId || !tripId || !workItemId) {
-    console.error(
-      'Missing required scope: --organizationId, --tripId, --workItemId (or DI_V0_P21_* env vars)',
-    );
-    process.exit(2);
-  }
-
+/** Returns process exit code; never calls process.exit (caller disconnects Prisma first). */
+export async function runDiV0TripSpeedQualityPreviewCli(
+  argv: string[],
+  env: Record<string, string | undefined>,
+): Promise<number> {
+  const scope = resolveDiV0P21PreviewScope(argv, env);
   const prisma = new PrismaClient();
   try {
     const report = await previewDiV0TripSpeedQualityForWorkItem(prisma, {
-      organizationId,
-      tripId,
-      workItemId,
+      organizationId: scope.organizationId,
+      tripId: scope.tripId,
+      workItemId: scope.workItemId,
     });
-    console.log(JSON.stringify(report, null, 2));
-    process.exit(report.outcome === 'NOT_ASSESSABLE' ? 3 : 0);
+    await writeStdoutLine(JSON.stringify(report, null, 2));
+    return exitCodeForPreviewOutcome(report.outcome);
   } finally {
     await prisma.$disconnect();
   }
 }
 
-main().catch((err) => {
-  console.error(err instanceof Error ? err.message : String(err));
-  process.exit(1);
-});
+async function main(): Promise<number> {
+  try {
+    return await runDiV0TripSpeedQualityPreviewCli(process.argv, process.env);
+  } catch (error) {
+    if (error instanceof DiV0P21PreviewScopeError) {
+      console.error(error.message);
+      return scopeExitCode(error);
+    }
+    console.error(error instanceof Error ? error.message : String(error));
+    return 1;
+  }
+}
+
+main()
+  .then((code) => {
+    process.exitCode = code;
+  })
+  .catch((err) => {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exitCode = 1;
+  });
