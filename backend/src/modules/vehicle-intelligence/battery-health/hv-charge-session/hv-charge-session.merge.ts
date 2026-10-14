@@ -246,7 +246,11 @@ function resolveProviderObservedAt(input: {
   ) {
     return input.existing;
   }
-  return input.incoming;
+  let resolved = input.incoming;
+  if (input.endAt && resolved.getTime() < input.endAt.getTime()) {
+    resolved = input.endAt;
+  }
+  return resolved;
 }
 
 /**
@@ -298,6 +302,13 @@ export function mergeHvChargeSessionUpdate(input: {
   });
   const temporalAuthorityOk = chronology !== 'regressive';
 
+  /** DIMO mapper sets providerObservedAt = segment endAt; regressive observation clock vs ingested row is unsupported. */
+  const providerObservationAuthorityOk =
+    !existingCompleted ||
+    incoming.providerObservedAt == null ||
+    existing.providerObservedAt == null ||
+    incoming.providerObservedAt.getTime() >= existing.providerObservedAt.getTime();
+
   const snapshot = evaluateProviderSnapshotCoherence({
     existing: {
       endSocPercent: existing.endSocPercent,
@@ -325,8 +336,19 @@ export function mergeHvChargeSessionUpdate(input: {
   const completedRefreshAccepted =
     existingCompleted &&
     temporalAuthorityOk &&
+    providerObservationAuthorityOk &&
     snapshot.coherent &&
     (snapshot.progressive || nullFillOnlyProgress);
+
+  if (
+    existingCompleted &&
+    temporalAuthorityOk &&
+    snapshot.coherent &&
+    snapshot.progressive &&
+    !providerObservationAuthorityOk
+  ) {
+    return { update: null, changed: false, changeKind: 'no_op' };
+  }
 
   const allowEndFieldUpdates =
     !existingCompleted || completedRefreshAccepted;

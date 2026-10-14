@@ -456,6 +456,52 @@ describe('mergeHvChargeSessionUpdate — R16.1 mixed measurement & chronology ha
     expect(mergeHvChargeSessionUpdate({ existing, incoming, reconciledAt }).changed).toBe(false);
   });
 
+  it('R16.1 final gate — stale incoming providerObservedAt vs existing on coherent endAt extension', () => {
+    const existing = completedRow(VEH_A, ORG, {
+      endAt: new Date('2026-10-13T14:56:00.000Z'),
+      endSocPercent: 94.02,
+      energyAddedKwh: 5.14,
+      endEnergyKwh: 51.76,
+      deltaSocPercent: 10.02,
+      providerObservedAt: new Date('2026-10-13T15:00:00.000Z'),
+      quality: BatteryMeasurementQuality.SHADOW,
+    });
+    const incoming = incomingDraft(VEH_A, ORG, {
+      endAt: new Date('2026-10-13T16:12:09.193Z'),
+      endSocPercent: 100,
+      endEnergyKwh: 54.74,
+      energyAddedKwh: 8.64,
+      deltaSocPercent: 16,
+    });
+    incoming.quality = BatteryMeasurementQuality.SHADOW;
+    incoming.providerObservedAt = new Date('2026-10-13T14:30:00.000Z');
+
+    const merged = mergeHvChargeSessionUpdate({ existing, incoming, reconciledAt });
+    expect(merged.changed).toBe(false);
+    expect(merged.changeKind).toBe('no_op');
+  });
+
+  it('advances providerObservedAt with legitimate DIMO-shaped refresh (observed equals segment endAt)', () => {
+    const existing = completedRow(VEH_A, ORG, {
+      endAt: new Date('2026-10-13T14:56:00.000Z'),
+      endSocPercent: 94.02,
+      energyAddedKwh: 5.14,
+      providerObservedAt: new Date('2026-10-13T14:56:00.000Z'),
+    });
+    const incoming = incomingDraft(VEH_A, ORG, {
+      endAt: new Date('2026-10-13T16:12:09.193Z'),
+      endSocPercent: 100,
+      endEnergyKwh: 54.74,
+      energyAddedKwh: 8.64,
+      deltaSocPercent: 16,
+    });
+    incoming.providerObservedAt = new Date('2026-10-13T16:12:09.193Z');
+    const merged = mergeHvChargeSessionUpdate({ existing, incoming, reconciledAt });
+    expect(merged.changed).toBe(true);
+    expect(merged.update?.providerObservedAt).toEqual(incoming.providerObservedAt);
+    expect(merged.update?.endAt).toEqual(incoming.endAt);
+  });
+
   it('does not advance providerObservedAt when endAt extends but snapshot is incoherent', () => {
     const existing = completedRow(VEH_A, ORG, {
       endAt: new Date('2026-10-13T14:56:00.000Z'),

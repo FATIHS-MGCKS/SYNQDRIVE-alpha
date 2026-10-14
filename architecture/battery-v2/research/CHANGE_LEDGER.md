@@ -6,6 +6,17 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-14 — M3.3-HV-H4 R16.1b provider observation clock gate (PR #2017)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | Completed progressive merge could accept later `endAt`/energy while retaining `providerObservedAt` below both existing clock and new `endAt` when incoming observation regressed |
+| **OBSERVATION** | `mapRechargeSegmentToHvChargeSessionDraft` always sets `providerObservedAt = segment.endAt`; regressive observation vs stored row is not a DIMO mapper path |
+| **CHANGE** | `providerObservationAuthorityOk` on completed refresh; clamp resolved observation to accepted `endAt` when advancing |
+| **VALIDATION** | `hv-charge-session.merge.spec.ts` stale-incoming + DIMO-shaped positive cases |
+
+---
+
 ## 2026-10-14 — M3.3-HV-H4 R16.1 completed-session merge coherence hardening (PR #2017)
 
 | Field | Value |
