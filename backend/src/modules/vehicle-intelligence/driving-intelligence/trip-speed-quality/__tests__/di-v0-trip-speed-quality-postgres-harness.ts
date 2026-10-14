@@ -3,8 +3,8 @@ import type { PrismaClient } from '@prisma/client';
 import { CALIBRATION_UNSET_V0_BUNDLE, DEFAULT_DI_V0_VERSION_TUPLE } from '../../core';
 import {
   currentFingerprint,
-  seedS4aSnapshot,
   seedS4aTenant,
+  seedS4aVerifiablePinnedEvidenceBundle,
   type S4aTenant,
 } from '../../s4a-foundation/__tests__/di-v0-s4a-postgres-harness';
 import { buildDiV0TripSpeedQualityProjectionV1 } from '../build-di-v0-trip-speed-quality-projection.v1';
@@ -30,6 +30,30 @@ export async function cleanupP2Tenant(db: PrismaClient, tenant: S4aTenant): Prom
   await db.$executeRaw`DELETE FROM vehicles WHERE id = ${tenant.vehicleId}`;
   await db.$executeRaw`DELETE FROM organizations WHERE id = ${tenant.organizationId}`;
 }
+
+/**
+ * Breaks S4D scope binding for the pinned snapshot while keeping the work item row.
+ * (Deleting the snapshot cascades to work items via di_v0_s4_wi_pinned_snapshot_scope_fkey.)
+ */
+export async function driftP2PinnedSnapshotBoundaryFingerprint(
+  db: PrismaClient,
+  tenant: S4aTenant,
+  snapshotHash: string,
+  driftedBoundaryFingerprint: string,
+): Promise<void> {
+  await db.$executeRaw`
+    ALTER TABLE di_v0_s4_evidence_snapshots DISABLE TRIGGER di_v0_s4_evidence_snapshot_immutable_guard_trg`;
+  await db.$executeRaw`
+    UPDATE di_v0_s4_evidence_snapshots
+    SET boundary_fingerprint = ${driftedBoundaryFingerprint}
+    WHERE organization_id = ${tenant.organizationId}
+      AND trip_id = ${tenant.tripId}
+      AND snapshot_hash = ${snapshotHash}`;
+  await db.$executeRaw`
+    ALTER TABLE di_v0_s4_evidence_snapshots ENABLE TRIGGER di_v0_s4_evidence_snapshot_immutable_guard_trg`;
+}
+
+export const P2_DRIFTED_BOUNDARY_FINGERPRINT = `DI_V0_S4_BOUNDARY_FP_V1:sha256:${'d'.repeat(64)}`;
 
 export function buildSyntheticTripSpeedProjection(
   tenant: S4aTenant,
@@ -80,8 +104,9 @@ export function buildSyntheticTripSpeedProjection(
 
 export async function seedP2CompletedPrimaryFixture(db: PrismaClient): Promise<P2CompletedPrimaryFixture> {
   const tenant = await seedS4aTenant(db);
-  const snapshotHash = await seedS4aSnapshot(db, tenant, `p2-${randomUUID().slice(0, 6)}`);
-  const boundaryFingerprint = await currentFingerprint(db, tenant.tripId);
+  const evidence = await seedS4aVerifiablePinnedEvidenceBundle(db, tenant);
+  const snapshotHash = evidence.snapshotHash;
+  const boundaryFingerprint = evidence.boundaryFingerprint;
   const pipelineVersionKey = `DI_V0_S4_PIPELINE_V1:sha256:${'c'.repeat(64)}`;
   await db.$executeRaw`
     INSERT INTO di_v0_s4_pipeline_versions (pipeline_version_key, manifest, status)
@@ -99,21 +124,25 @@ export async function seedP2CompletedPrimaryFixture(db: PrismaClient): Promise<P
       ${v.structuralVersion}, ${v.estimatorVersion}, ${CALIBRATION_UNSET_V0_BUNDLE.calibrationVersion},
       ${v.sourceFamilyPolicyVersion}, 'p2-iev', ${randomUUID()}, 'COMPLETED', now()
     )`;
-  const ref = tenant.startTime;
-  await db.$executeRaw`
-    INSERT INTO di_v0_shadow_intervals (
-      id, shadow_run_id, organization_id, vehicle_id, trip_id, interval_start, interval_end, reference_time,
-      motion_state, position_state, causal_position_state, temporal_confidence, value_confidence, source_relation,
-      claim_level, derivation_method, derivation_version, structural_version, estimator_version, calibration_version,
-      source_family_policy_version, provenance, estimated_speed_kmh, speed_evidence_state
-    ) VALUES (
-      ${randomUUID()}, ${shadowRunId}, ${tenant.organizationId}, ${tenant.vehicleId}, ${tenant.tripId},
-      ${ref}, ${new Date(ref.getTime() + 60_000)}, ${ref},
-      'MOVING_SPEED_ESTIMATED', 'FRESH', 'FRESH', 'BUCKET_BOUNDED', 'HIGH', 'SUPPORTED',
-      'L1', 'L3_CENTERED_PATH', 'v0', ${v.structuralVersion}, ${v.estimatorVersion},
-      ${CALIBRATION_UNSET_V0_BUNDLE.calibrationVersion}, ${v.sourceFamilyPolicyVersion}, '{}'::jsonb, 40, 'NUMERIC_HIGH'
-    )`;
-  const combinedInputIdentity = `DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:${'d'.repeat(64)}`;
+  for (const interval of evidence.shadowIntervals) {
+    await db.$executeRaw`
+      INSERT INTO di_v0_shadow_intervals (
+        id, shadow_run_id, organization_id, vehicle_id, trip_id, interval_start, interval_end, reference_time,
+        motion_state, position_state, causal_position_state, temporal_confidence, value_confidence, source_relation,
+        claim_level, derivation_method, derivation_version, structural_version, estimator_version, calibration_version,
+        source_family_policy_version, provenance, estimated_speed_kmh, speed_evidence_state
+      ) VALUES (
+        ${randomUUID()}, ${shadowRunId}, ${tenant.organizationId}, ${tenant.vehicleId}, ${tenant.tripId},
+        ${interval.intervalStart}, ${interval.intervalEnd}, ${interval.referenceTime},
+        ${interval.motionState}, ${interval.positionState}, ${interval.causalPositionState},
+        ${interval.temporalConfidence}, ${interval.valueConfidence}, ${interval.sourceRelation},
+        ${interval.claimLevel}, ${interval.derivationMethod}, ${interval.derivationVersion},
+        ${v.structuralVersion}, ${v.estimatorVersion}, ${CALIBRATION_UNSET_V0_BUNDLE.calibrationVersion},
+        ${v.sourceFamilyPolicyVersion}, ${JSON.stringify(interval.provenance)}::jsonb,
+        ${interval.estimatedSpeedKmh}, ${interval.speedEvidenceState}
+      )`;
+  }
+  const combinedInputIdentity = evidence.combinedInputIdentity;
   const executionIdentity = `DI_V0_S4_EXECUTION_IDENTITY_V1:sha256:${'e'.repeat(64)}`;
   await db.$executeRaw`
     INSERT INTO di_v0_s4_work_items (
