@@ -594,8 +594,16 @@ export class ReferenceCaptureExp021MaturationShadowRepository {
   ): Promise<number> {
     const vehicle = await this.prisma.vehicle.findFirst({
       where: { id: vehicleId, organizationId },
-      select: { dimoVehicle: { select: { tokenId: true } } },
+      select: {
+        registryLifecycle: true,
+        dimoVehicle: { select: { tokenId: true } },
+      },
     });
+    if (vehicle?.registryLifecycle !== 'ACTIVE') {
+      throw new Exp021MaturationShadowFamilyIdentityError(
+        `Vehicle ${vehicleId} registry lifecycle ${vehicle?.registryLifecycle ?? 'UNKNOWN'} is not ACTIVE for maturation enrollment`,
+      );
+    }
     const authoritative = vehicle?.dimoVehicle?.tokenId;
     if (authoritative == null) {
       throw new Exp021MaturationShadowFamilyIdentityError(
