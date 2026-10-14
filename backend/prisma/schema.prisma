@@ -12366,6 +12366,32 @@ model DiV0S4WorkItem {
   @@map("di_v0_s4_work_items")
 }
 
+/// EXP-021 P2 internal trip speed quality projection (ops-only; runtime wiring OFF by default).
+model DiV0TripSpeedQualityProjectionV1 {
+  id                      String    @id
+  organizationId          String    @map("organization_id")
+  vehicleId               String    @map("vehicle_id")
+  tripId                  String    @map("trip_id")
+  workItemId              String    @map("work_item_id")
+  shadowRunId             String    @map("shadow_run_id")
+  pinnedSnapshotHash      String    @map("pinned_snapshot_hash")
+  boundaryFingerprint     String    @map("boundary_fingerprint")
+  qcPolicyVersion         String    @map("qc_policy_version")
+  projectionVersion       String    @map("projection_version")
+  idempotencyKey          String    @unique @map("idempotency_key")
+  contentFingerprint      String    @map("content_fingerprint")
+  lifecycleStatus         String    @map("lifecycle_status")
+  supersededByProjectionId String?  @map("superseded_by_projection_id")
+  supersededAt            DateTime? @map("superseded_at") @db.Timestamptz(6)
+  projectionJson          Json      @map("projection_json")
+  createdAt               DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([organizationId, tripId], map: "di_v0_tsqp_v1_org_trip_idx")
+  @@index([workItemId], map: "di_v0_tsqp_v1_work_item_idx")
+  @@map("di_v0_trip_speed_quality_projections_v1")
+}
+
 /// Materialized driver attribution snapshot per trip (Driving Intelligence V2 P54).
 model DriverAttribution {
   id               String                       @id @default(uuid())
