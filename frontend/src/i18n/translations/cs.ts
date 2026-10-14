@@ -59,6 +59,8 @@ export const cs = {
   'master.cv.registryLifecycle.filter.archived': 'Archivovane',
   'master.cv.registryLifecycle.filter.all': 'Vsechny cykly',
   'master.cv.registryLifecycle.filter.ariaLabel': 'Filtrovat podle zivotniho cyklu registru',
+  'master.cv.mapping.mirrorProvider': 'DIMO zrcadlo (poskytovatel)',
+  'master.cv.mapping.effectiveSynqDriveAccess': 'Pristup SynqDrive (efektivni)',
   'master.cv.offboard.action': 'Odebrat z aktivni flotily',
   'master.cv.offboard.dialog.title': 'Odebrat vozidlo z aktivni flotily',
   'master.cv.offboard.dialog.description': 'Vozidlo bude vyrazeno z aktivniho provozu SynqDrive. Kanonicky zaznam a historie zustanou.',

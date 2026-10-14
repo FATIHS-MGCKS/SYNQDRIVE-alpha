@@ -3292,6 +3292,8 @@ export const en = {
   'master.cv.registryLifecycle.filter.archived': 'Archived',
   'master.cv.registryLifecycle.filter.all': 'All lifecycles',
   'master.cv.registryLifecycle.filter.ariaLabel': 'Filter by registry lifecycle',
+  'master.cv.mapping.mirrorProvider': 'DIMO mirror (provider)',
+  'master.cv.mapping.effectiveSynqDriveAccess': 'SynqDrive access (effective)',
   'master.cv.offboard.action': 'Remove from active fleet',
   'master.cv.offboard.dialog.title': 'Remove vehicle from active fleet',
   'master.cv.offboard.dialog.description':

@@ -32,6 +32,7 @@ const CONNECTIVITY_RUNTIME_VEHICLE_SELECT = {
   // AVAILABLE/RENTED vehicles, so status is needed to tell "provider down"
   // apart from "never scheduled".
   status: true,
+  registryLifecycle: true,
   make: true,
   model: true,
   licensePlate: true,

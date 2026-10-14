@@ -3401,6 +3401,8 @@ export const de: Record<TranslationKey, string> = {
   'master.cv.registryLifecycle.filter.archived': 'Archiviert',
   'master.cv.registryLifecycle.filter.all': 'Alle Lebenszyklen',
   'master.cv.registryLifecycle.filter.ariaLabel': 'Registry-Lebenszyklus filtern',
+  'master.cv.mapping.mirrorProvider': 'DIMO-Spiegel (Provider)',
+  'master.cv.mapping.effectiveSynqDriveAccess': 'SynqDrive-Zugriff (effektiv)',
   'master.cv.offboard.action': 'Aus aktivem Bestand entfernen',
   'master.cv.offboard.dialog.title': 'Fahrzeug aus dem aktiven Bestand entfernen',
   'master.cv.offboard.dialog.description':

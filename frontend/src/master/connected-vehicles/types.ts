@@ -68,6 +68,8 @@ export interface VehicleOperationalDetailDto extends VehicleOperationalRowDto {
     dimoExternalId: string | null;
     tokenIdMasked: string | null;
     connectionStatus: string | null;
+    mirrorIntegrationConnectivity?: IntegrationConnectivity;
+    mirrorIntegrationConnectivityLabel?: string;
     syncedAt: string | null;
     deviceType: string | null;
   };
