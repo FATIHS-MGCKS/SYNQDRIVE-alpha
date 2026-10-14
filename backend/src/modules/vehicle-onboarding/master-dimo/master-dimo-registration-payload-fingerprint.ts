@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import type { Prisma } from '@prisma/client';
 import type { MasterDimoRegistrationInput } from './master-dimo-registration.types';
 
 const FINGERPRINT_V1_PREFIX = 'v1:';
@@ -47,23 +48,16 @@ export function readMasterDimoPayloadFingerprintFromReadinessSnapshot(
   return typeof fp === 'string' && fp.startsWith(FINGERPRINT_V1_PREFIX) ? fp : null;
 }
 
-export async function persistMasterDimoPayloadFingerprintOnCase(
-  prisma: { vehicleOnboardingCase: { findUniqueOrThrow: Function; update: Function } },
-  caseId: string,
+export function mergeMasterDimoPayloadFingerprintIntoReadinessSnapshot(
+  readinessSnapshotJson: unknown,
   fingerprint: string,
-): Promise<void> {
-  const row = await prisma.vehicleOnboardingCase.findUniqueOrThrow({
-    where: { id: caseId },
-    select: { readinessSnapshotJson: true },
-  });
-  const snap = row.readinessSnapshotJson;
+): Prisma.InputJsonValue {
   const base =
-    snap && typeof snap === 'object' && !Array.isArray(snap)
-      ? { ...(snap as Record<string, unknown>) }
+    readinessSnapshotJson &&
+    typeof readinessSnapshotJson === 'object' &&
+    !Array.isArray(readinessSnapshotJson)
+      ? { ...(readinessSnapshotJson as Record<string, unknown>) }
       : {};
   base.masterDimoPayloadFingerprintV1 = fingerprint;
-  await prisma.vehicleOnboardingCase.update({
-    where: { id: caseId },
-    data: { readinessSnapshotJson: base },
-  });
+  return base as Prisma.InputJsonValue;
 }

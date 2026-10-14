@@ -32,6 +32,7 @@ export function toVehicleOnboardingHttpException(error: unknown): HttpException 
     case 'PRIMARY_SOURCE_CONFLICT':
     case 'IDEMPOTENCY_KEY_REUSED_FOR_DIFFERENT_REQUEST':
     case 'MASTER_DIMO_REGISTRATION_PAYLOAD_MISMATCH':
+    case 'MASTER_DIMO_REGISTRATION_FINGERPRINT_MISSING':
     case 'SOURCE_REF_CONFLICT':
     case 'OFFBOARD_OPERATIONALLY_BLOCKED':
       return new ConflictException(body);

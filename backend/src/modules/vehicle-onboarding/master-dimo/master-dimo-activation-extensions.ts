@@ -8,4 +8,6 @@ export interface MasterDimoActivationFinalizeInput {
     batteryAmpere?: number | null;
     batteryVolt?: number | null;
   } | null;
+  /** Bound to case readiness snapshot inside the activation transaction. */
+  payloadFingerprint: string;
 }

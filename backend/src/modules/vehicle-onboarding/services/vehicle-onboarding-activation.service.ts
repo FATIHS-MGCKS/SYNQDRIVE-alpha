@@ -46,6 +46,7 @@ import {
 import { persistConnectionIdentityOnActiveSourceLinksTx } from '../connection-identity/source-link-connection-identity.metadata';
 import type { MasterDimoActivationFinalizeInput } from '../master-dimo/master-dimo-activation-extensions';
 import { applyMasterDimoActivationFinalizeInTransaction } from '../master-dimo/master-dimo-registration-artifacts';
+import { mergeMasterDimoPayloadFingerprintIntoReadinessSnapshot } from '../master-dimo/master-dimo-registration-payload-fingerprint';
 
 /** Integration-test fault injection only (not used in production HTTP). */
 export type Vo3ActivationFaultStage =
@@ -411,6 +412,14 @@ export class VehicleOnboardingActivationService {
         });
         assertPersistedSourceLinksMatchSnapshots(caseRow.sourceRefs, persistedLinks);
 
+        const readinessSnapshotJson =
+          input.masterRegistrationFinalize?.payloadFingerprint != null
+            ? mergeMasterDimoPayloadFingerprintIntoReadinessSnapshot(
+                caseRow.readinessSnapshotJson,
+                input.masterRegistrationFinalize.payloadFingerprint,
+              )
+            : undefined;
+
         const completed = await tx.vehicleOnboardingCase.update({
           where: { id: caseRow.id },
           data: {
@@ -418,6 +427,9 @@ export class VehicleOnboardingActivationService {
             vehicleId: vehicle.id,
             completedAt: activatedAt,
             lastActorUserId: input.actorUserId,
+            ...(readinessSnapshotJson != null
+              ? { readinessSnapshotJson }
+              : {}),
           },
         });
 

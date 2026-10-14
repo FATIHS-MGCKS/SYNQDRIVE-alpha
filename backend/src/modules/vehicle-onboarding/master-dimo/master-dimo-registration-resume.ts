@@ -94,7 +94,19 @@ export async function tryResumeMasterDimoRegistration(
     completedCase.readinessSnapshotJson,
   );
   const incomingFingerprint = computeMasterDimoRegistrationPayloadFingerprint(input);
-  if (storedFingerprint && storedFingerprint !== incomingFingerprint) {
+  if (!storedFingerprint) {
+    throw new VehicleOnboardingError(
+      'MASTER_DIMO_REGISTRATION_FINGERPRINT_MISSING',
+      'Completed Master DIMO registration is missing payload fingerprint; use vehicle update workflow or support reconciliation',
+      {
+        vehicleId: vehicle.id,
+        organizationId: vehicle.organizationId,
+        onboardingCaseId: completedCase.id,
+        useVehicleUpdateWorkflow: true,
+      },
+    );
+  }
+  if (storedFingerprint !== incomingFingerprint) {
     throw new VehicleOnboardingError(
       'MASTER_DIMO_REGISTRATION_PAYLOAD_MISMATCH',
       'DIMO vehicle is already registered; payload changes require the vehicle update workflow',
@@ -112,6 +124,7 @@ export async function tryResumeMasterDimoRegistration(
     result: {
       vehicle: fullVehicle,
       brakeRegistration: buildBrakeRegistrationResult(input, fullVehicle),
+      idempotentReplay: true,
     },
   };
 }

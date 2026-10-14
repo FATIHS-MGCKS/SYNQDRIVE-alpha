@@ -9,12 +9,14 @@ import {
 import { api } from '../../lib/api';
 
 const createMock = vi.fn();
+const registerFromDimoMock = vi.fn();
 const upsertTiresMock = vi.fn();
 
 vi.mock('../../lib/api', () => ({
   api: {
     vehicles: {
       create: (...args: unknown[]) => createMock(...args),
+      registerFromDimo: (...args: unknown[]) => registerFromDimoMock(...args),
       upsertTires: (...args: unknown[]) => upsertTiresMock(...args),
     },
     vehicleIntelligence: {
@@ -143,5 +145,36 @@ describe('master-vehicle-registration payloads', () => {
     expect(result.vehicleId).toBe('veh-partial-1');
     expect(result.baselineFailures?.some((f) => f.area === 'tires')).toBe(true);
     expect(createMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('persistMasterRegisteredVehicle propagates register-from-dimo full success', async () => {
+    registerFromDimoMock.mockResolvedValueOnce({
+      vehicle: { id: 'veh-dimo-1' },
+    });
+
+    const result = await persistMasterRegisteredVehicle(minimalRv(), {
+      dimoVehicleId: 'dimo-abc',
+    });
+
+    expect(result.vehicleId).toBe('veh-dimo-1');
+    expect(result.postActivationEnrichment).toBeUndefined();
+    expect(registerFromDimoMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('persistMasterRegisteredVehicle surfaces tire enrichment partial success from register-from-dimo', async () => {
+    registerFromDimoMock.mockResolvedValueOnce({
+      vehicle: { id: 'veh-dimo-2' },
+      postActivationEnrichment: {
+        tireTread: { status: 'FAILED', message: 'tire service unavailable' },
+      },
+    });
+
+    const result = await persistMasterRegisteredVehicle(minimalRv(), {
+      dimoVehicleId: 'dimo-xyz',
+    });
+
+    expect(result.vehicleId).toBe('veh-dimo-2');
+    expect(result.postActivationEnrichment?.tireTread?.status).toBe('FAILED');
+    expect(result.postActivationEnrichment?.tireTread?.message).toContain('unavailable');
   });
 });

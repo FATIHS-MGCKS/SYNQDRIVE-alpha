@@ -302,7 +302,16 @@ export function ConnectedVehiclesHub({
           if (area === 'battery') return t('master.cv.addVehicle.partialBaselineAreaBattery');
           return t('master.cv.addVehicle.partialBaselineAreaBrakes');
         };
-        if (result.baselineFailures?.length) {
+        const tireEnrichmentFailed =
+          result.postActivationEnrichment?.tireTread?.status === 'FAILED';
+        if (tireEnrichmentFailed) {
+          const detail = result.postActivationEnrichment?.tireTread?.message;
+          toast.warning(t('master.cv.addVehicle.partialTireEnrichmentTitle'), {
+            description: detail
+              ? t('master.cv.addVehicle.partialTireEnrichmentBodyWithDetail', { detail })
+              : t('master.cv.addVehicle.partialTireEnrichmentBody'),
+          });
+        } else if (result.baselineFailures?.length) {
           const failedAreas = result.baselineFailures.map((f) => baselineAreaLabel(f.area)).join(', ');
           toast.warning(t('master.cv.addVehicle.partialBaselineTitle'), {
             description: t('master.cv.addVehicle.partialBaselineBody', { areas: failedAreas }),

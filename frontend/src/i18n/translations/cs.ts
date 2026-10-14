@@ -137,6 +137,12 @@ export const cs = {
   'master.cv.addVehicle.partialBaselineAreaTires': 'pneumatiky',
   'master.cv.addVehicle.partialBaselineAreaBattery': 'LV baterie',
   'master.cv.addVehicle.partialBaselineAreaBrakes': 'brzdy',
+  'master.cv.addVehicle.partialTireEnrichmentTitle':
+    'Vozidlo zaregistrovano — hloubka dezenu nebyla ulozena',
+  'master.cv.addVehicle.partialTireEnrichmentBody':
+    'Vozidlo je ve flotile. Otevřete ho ze seznamu vozidel a doplňte měření pneumatik ručně.',
+  'master.cv.addVehicle.partialTireEnrichmentBodyWithDetail':
+    'Vozidlo je ve flotile. Doplnění dat pneumatik selhalo: {{detail}}',
 
   'fleetCondition.title': 'Stav flotily', 'fleetCondition.healthScore': 'Skore zdravi', 'fleetCondition.goodCondition': 'Dobry', 'fleetCondition.warnings': 'Varovani', 'fleetCondition.critical': 'Kriticky',
   'newBooking.title': 'Nova rezervace', 'newBooking.selectCustomer': 'Vybrat zakaznika', 'newBooking.selectVehicle': 'Vybrat vozidlo', 'newBooking.timePeriod': 'Obdobi a vyzvednuti', 'newBooking.mileagePackages': 'Kilometrove balicky', 'newBooking.insurancePackages': 'Pojistne balicky', 'newBooking.extras': 'Doplnky', 'newBooking.invoice': 'Faktura', 'newBooking.rentalContract': 'Najemni smlouva', 'newBooking.createCustomer': 'Vytvorit noveho zakaznika', 'newBooking.bookingCreated': 'Rezervace vytvorena!',

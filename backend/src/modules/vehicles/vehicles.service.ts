@@ -2289,6 +2289,7 @@ export class VehiclesService {
 
       let postActivationEnrichment: RegisterFromDimoResult['postActivationEnrichment'];
       if (
+        !result.idempotentReplay &&
         manualSpecs?.tires &&
         this.masterDimoCanonicalRegistration.masterManualSpecsNeedLegacyTireTreadPass({
           organizationId: orgId,

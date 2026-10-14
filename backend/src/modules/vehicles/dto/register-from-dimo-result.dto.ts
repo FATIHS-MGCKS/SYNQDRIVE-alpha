@@ -15,4 +15,6 @@ export interface RegisterFromDimoResult {
   brakeRegistration: VehicleRegistrationBrakeResult;
   /** Vehicle registration succeeded; optional post-activation enrichment did not. */
   postActivationEnrichment?: RegisterFromDimoPostActivationEnrichment;
+  /** True when canonical onboarding returned an already-completed registration (no new activation). */
+  idempotentReplay?: boolean;
 }

@@ -30,10 +30,6 @@ import { tryResumeMasterDimoRegistration } from './master-dimo-registration-resu
 import { resolveMasterDimoReadinessProduct } from './master-dimo-readiness-product';
 import { loadMasterRegistrationVehicleResult } from './master-dimo-vehicle-result.loader';
 import { assertMasterDimoRegistrationInputSupported } from './master-dimo-registration-input.policy';
-import {
-  computeMasterDimoRegistrationPayloadFingerprint,
-  persistMasterDimoPayloadFingerprintOnCase,
-} from './master-dimo-registration-payload-fingerprint';
 
 @Injectable()
 export class MasterDimoCanonicalRegistrationService {
@@ -168,9 +164,6 @@ export class MasterDimoCanonicalRegistrationService {
       }),
     );
 
-    const payloadFingerprint = computeMasterDimoRegistrationPayloadFingerprint(input);
-    await persistMasterDimoPayloadFingerprintOnCase(this.prisma, caseId, payloadFingerprint);
-
     const vehicle = await loadMasterRegistrationVehicleResult(
       this.prisma,
       activation.vehicleId,
@@ -184,7 +177,7 @@ export class MasterDimoCanonicalRegistrationService {
         })
       : buildNoBrakePayloadResult();
 
-    return { vehicle, brakeRegistration };
+    return { vehicle, brakeRegistration, idempotentReplay: false };
   }
 
   private async applyIdentityFuelOverrideIfNeeded(

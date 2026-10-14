@@ -1,5 +1,6 @@
 import {
   computeMasterDimoRegistrationPayloadFingerprint,
+  mergeMasterDimoPayloadFingerprintIntoReadinessSnapshot,
   readMasterDimoPayloadFingerprintFromReadinessSnapshot,
 } from '../master-dimo-registration-payload-fingerprint';
 import { assertMasterDimoRegistrationInputSupported } from '../master-dimo-registration-input.policy';
@@ -44,6 +45,16 @@ describe('master-dimo registration payload fingerprint', () => {
         masterDimoPayloadFingerprintV1: fp,
       }),
     ).toBe(fp);
+  });
+
+  it('merges fingerprint into existing readiness snapshot without dropping fields', () => {
+    const fp = computeMasterDimoRegistrationPayloadFingerprint({ ...base });
+    const merged = mergeMasterDimoPayloadFingerprintIntoReadinessSnapshot(
+      { decision: 'READY', blockingFailureCount: 0 },
+      fp,
+    ) as { decision?: string; masterDimoPayloadFingerprintV1?: string };
+    expect(merged.decision).toBe('READY');
+    expect(merged.masterDimoPayloadFingerprintV1).toBe(fp);
   });
 });
 

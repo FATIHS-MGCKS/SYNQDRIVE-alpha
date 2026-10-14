@@ -7,6 +7,7 @@ import type { MasterDimoRegistrationInput } from './master-dimo-registration.typ
 import { buildPostActivationVehiclePatch } from './master-dimo-registration.mapper';
 import type { MasterDimoActivationFinalizeInput } from './master-dimo-activation-extensions';
 import { applyMasterPostActivationVehicleScalarsInTransaction } from './master-dimo-post-activation.persistence';
+import { computeMasterDimoRegistrationPayloadFingerprint } from './master-dimo-registration-payload-fingerprint';
 
 export function buildMasterDimoActivationFinalizeInput(
   input: MasterDimoRegistrationInput,
@@ -18,6 +19,7 @@ export function buildMasterDimoActivationFinalizeInput(
   return {
     vehicleScalarPatch: patch,
     lowVoltageBattery: input.manualSpecs?.battery ?? null,
+    payloadFingerprint: computeMasterDimoRegistrationPayloadFingerprint(input),
   };
 }
 

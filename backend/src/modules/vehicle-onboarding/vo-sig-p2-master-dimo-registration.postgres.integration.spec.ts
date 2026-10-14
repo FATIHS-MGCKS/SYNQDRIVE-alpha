@@ -27,6 +27,10 @@ import { dimoOnboardingActor } from './testing/vehicle-onboarding-test.harness';
 import { buildPostActivationVehiclePatch } from './master-dimo/master-dimo-registration.mapper';
 import type { MasterDimoRegistrationInput } from './master-dimo/master-dimo-registration.types';
 import { buildMasterDimoActivationFinalizeInput } from './master-dimo/master-dimo-registration-artifacts';
+import {
+  computeMasterDimoRegistrationPayloadFingerprint,
+  readMasterDimoPayloadFingerprintFromReadinessSnapshot,
+} from './master-dimo/master-dimo-registration-payload-fingerprint';
 import { VEHICLE_ADMIN_BASELINE_DRAFT_VERSION } from './contracts/vo-document-versions';
 
 const run = process.env.VO_SIG_P2_MASTER_DIMO_PG === '1' || process.env.VO_SIG_01_CONN_IDENTITY_PG === '1';
@@ -377,6 +381,50 @@ function masterDimoHarness(prisma: PrismaClient) {
     });
     expect(retry.vehicle.id).toBe(first.vehicle.id);
     expect(retry.vehicle.mileageKm).toBe(9000);
+    const caseRow = await prisma.vehicleOnboardingCase.findFirstOrThrow({
+      where: { vehicleId: first.vehicle.id, status: 'COMPLETED' },
+    });
+    const expectedFp = computeMasterDimoRegistrationPayloadFingerprint({
+      organizationId: orgId,
+      stationId: null,
+      dimoVehicleId: dimoId,
+      extraData: { mileageKm: 9000 },
+      actorUserId: null,
+    });
+    expect(
+      readMasterDimoPayloadFingerprintFromReadinessSnapshot(caseRow.readinessSnapshotJson),
+    ).toBe(expectedFp);
+  });
+
+  it('rejects idempotent retry when completed case lacks payload fingerprint', async () => {
+    const orgId = await createOrg(prisma);
+    const dimoId = randomUUID();
+    await insertDimoMirrorForPostgresTests(prisma, {
+      id: dimoId,
+      externalId: `ext-${dimoId.slice(0, 8)}`,
+      vin: `VIN${randomUUID().replace(/-/g, '').slice(0, 14)}`,
+      rawJson: TESLA_RAW,
+    });
+    const input = {
+      organizationId: orgId,
+      stationId: null,
+      dimoVehicleId: dimoId,
+      extraData: { mileageKm: 5000 },
+      actorUserId: null,
+    };
+    await harness.masterRegistration.register(input);
+    const caseRow = await prisma.vehicleOnboardingCase.findFirstOrThrow({
+      where: { organizationId: orgId, status: 'COMPLETED' },
+    });
+    await prisma.vehicleOnboardingCase.update({
+      where: { id: caseRow.id },
+      data: {
+        readinessSnapshotJson: { decision: 'READY', blockingFailureCount: 0 },
+      },
+    });
+    await expect(harness.masterRegistration.register(input)).rejects.toMatchObject({
+      code: 'MASTER_DIMO_REGISTRATION_FINGERPRINT_MISSING',
+    });
   });
 
   it('rejects retry with changed payload after successful registration', async () => {
@@ -609,6 +657,13 @@ function masterDimoHarness(prisma: PrismaClient) {
     expect(await prisma.vehicle.count({ where: { organizationId: orgId } })).toBe(
       vehicleCountBefore,
     );
+    const caseAfter = await prisma.vehicleOnboardingCase.findUniqueOrThrow({
+      where: { id: caseRow.id },
+    });
+    expect(caseAfter.status).not.toBe('COMPLETED');
+    expect(
+      readMasterDimoPayloadFingerprintFromReadinessSnapshot(caseAfter.readinessSnapshotJson),
+    ).toBeNull();
   });
 
   it('does not duplicate VEHICLE_ACTIVATED outbox on idempotent retry', async () => {

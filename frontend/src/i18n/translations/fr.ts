@@ -518,6 +518,12 @@ export const fr = {
   'master.cv.addVehicle.partialBaselineAreaTires': 'pneus',
   'master.cv.addVehicle.partialBaselineAreaBattery': 'batterie LV',
   'master.cv.addVehicle.partialBaselineAreaBrakes': 'freins',
+  'master.cv.addVehicle.partialTireEnrichmentTitle':
+    'Véhicule enregistré — profondeur de sculpture non enregistrée',
+  'master.cv.addVehicle.partialTireEnrichmentBody':
+    'Le véhicule est dans votre flotte. Ouvrez-le depuis la liste et complétez les mesures de pneus manuellement.',
+  'master.cv.addVehicle.partialTireEnrichmentBodyWithDetail':
+    'Le véhicule est dans votre flotte. Enrichissement pneus échoué : {{detail}}',
 
   'fleetCondition.title': 'Etat de la flotte',
   'fleetCondition.healthScore': 'Score de sante',
