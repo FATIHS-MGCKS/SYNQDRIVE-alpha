@@ -36,4 +36,4 @@
 
 ## Expected closure counters (informational)
 
-First historical run: **13 534** intervals, **438** candidates, **328** accepted, **103** `SUPPORT_WINDOW_COMPROMISED`, **7** `CROSS_SOURCE_CONFLICT`. Closure re-run should match unless Production shadow data drifted; any delta must be explained in closure JSON.
+First historical run: **13 534** intervals, **438** candidates, **328** accepted, **103** `SUPPORT_WINDOW_COMPROMISED`, **7** `CROSS_SOURCE_CONFLICT`. Closure re-run (2026-10-14): **identical** counts; `releaseFrozenIntervalsObserved: 750`, `releaseFrozenV2Accepted: 0` (**NOT_OBSERVED** for unsafe accept on those centers).

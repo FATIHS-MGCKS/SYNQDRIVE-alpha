@@ -74,7 +74,7 @@ Unknown versions: rejected (`DiV0SpeedQcPolicyVersionError`). Projection `identi
 
 ## Multi-trip regression (EXP021_P1_V2_MULTI_TRIP_VALIDATION)
 
-Ten additional org trips (67 eligible, reference trip excluded): **PASS** — 13 534 intervals, **438** stationary candidates, **328** V2 accepts, **110** withheld, **0** outside-path changes, **0** numeric drift. Evidence: [EXP021_P1_V2_MULTI_TRIP_VALIDATION.md](./EXP021_P1_V2_MULTI_TRIP_VALIDATION.md); artifacts under `/opt/cursor/artifacts/EXP021_P1_V2_MULTI_TRIP_*.json`. Executed at merge SHA `f7a285b59fd1f70e57b5fd72c04406286e1b96f1`.
+Ten additional org trips: historical first run in [EXP021_P1_V2_MULTI_TRIP_VALIDATION.md](./EXP021_P1_V2_MULTI_TRIP_VALIDATION.md); **closure** with intervalwise comparator + frozen manifest in [EXP021_P1_V2_MULTI_TRIP_EVIDENCE_CLOSURE.md](./EXP021_P1_V2_MULTI_TRIP_EVIDENCE_CLOSURE.md) (`validationRunnerSha` `185ff1e15c…`, `policyImplementationSha` `f7a285b59f…`, **PASS**, same counters).
 
 ## Non-effects
 
