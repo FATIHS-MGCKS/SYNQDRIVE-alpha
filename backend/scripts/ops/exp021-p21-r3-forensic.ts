@@ -81,11 +81,14 @@ async function main(): Promise<void> {
       shadowIntervals: ctx.shadowIntervals,
       projection: ctx.projection,
       pinnedSnapshotHash: ctx.pinnedSnapshotHash,
+      dbTransactionReadOnly: ctx.dbTransactionReadOnly,
+      dbTransactionIsolation: ctx.dbTransactionIsolation,
     });
 
     const out = {
       ...report,
       consistentReadOnlyTransaction: true,
+      snapshotBoundToWorkItem: ctx.snapshotBoundToWorkItem,
       actualSnapshotMetadataVerified: true,
       shadowRunCalibrationVerified: true,
       qcCrossSourceConflictCount,

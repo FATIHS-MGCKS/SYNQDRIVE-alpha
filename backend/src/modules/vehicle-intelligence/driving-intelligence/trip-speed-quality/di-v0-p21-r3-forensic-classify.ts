@@ -1,3 +1,7 @@
+import {
+  buildExpectedBucketLabels,
+  validateDiV0PositionWindow,
+} from '../position-acquisition/di-v0-position-window';
 import { bucketLabelMinusSeconds, bucketLabelPlusSeconds, bucketLabelToMs } from '../speed-qc/di-v0-speed-qc-geo';
 import { isValidGeoCoordinate } from '../speed-qc/di-v0-speed-qc-position-index';
 import type { DiV0SpeedQcPositionSample } from '../speed-qc/di-v0-speed-qc.types';
@@ -5,6 +9,7 @@ import type { DiV0TripSpeedQualityShadowRow } from './build-di-v0-trip-speed-qua
 
 export type PositionBucketSample = DiV0SpeedQcPositionSample;
 
+/** Inclusive start, exclusive end — same contract as S3A `validateDiV0PositionWindow` / `[fromMs, toMs)`. */
 export type AcquisitionWindow = { startLabel: string; endLabel: string };
 
 export type PositionGapKind =
@@ -43,22 +48,18 @@ const FROZEN_OR_RELEASE = new Set([
   'RELEASE',
 ]);
 
+export function validatedAcquisitionWindow(window: AcquisitionWindow) {
+  return validateDiV0PositionWindow(window.startLabel, window.endLabel);
+}
+
 export function labelInAcquisitionWindow(label: string, window: AcquisitionWindow): boolean {
   const ms = bucketLabelToMs(label);
-  const start = bucketLabelToMs(window.startLabel);
-  const end = bucketLabelToMs(window.endLabel);
-  return ms >= start && ms <= end;
+  const { fromMs, toMs } = validatedAcquisitionWindow(window);
+  return ms >= fromMs && ms < toMs;
 }
 
 export function enumerateAcquisitionBucketLabels(window: AcquisitionWindow): string[] {
-  const labels: string[] = [];
-  let cur = window.startLabel;
-  const endMs = bucketLabelToMs(window.endLabel);
-  while (bucketLabelToMs(cur) <= endMs) {
-    labels.push(cur);
-    cur = bucketLabelPlusSeconds(cur, 1);
-  }
-  return labels;
+  return buildExpectedBucketLabels(validatedAcquisitionWindow(window));
 }
 
 export function diagnosePositionGapAtLabel(

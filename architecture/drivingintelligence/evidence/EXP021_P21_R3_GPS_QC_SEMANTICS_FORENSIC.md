@@ -131,7 +131,8 @@ Ops helper: `backend/scripts/ops/exp021-p21-r3-forensic.ts` (read-only aggregate
 
 ## R3A closure (2026-10-14)
 
-See [EXP021_P21_R3A_FORENSIC_CLOSURE.md](./EXP021_P21_R3A_FORENSIC_CLOSURE.md) for V2 diagnosis, 628 hold breakdown, 293 s segment analysis, read-only loader parity, and POST_GAP control-flow verdict.
+See [EXP021_P21_R3A_FORENSIC_CLOSURE.md](./EXP021_P21_R3A_FORENSIC_CLOSURE.md) for V2 diagnosis, 628 hold breakdown, 293 s segment analysis, read-only loader parity, and POST_GAP control-flow verdict.  
+See [EXP021_P21_R3B_DIAGNOSTIC_CORRECTNESS_FINAL.md](./EXP021_P21_R3B_DIAGNOSTIC_CORRECTNESS_FINAL.md) for acquisition-window correction, snapshot/work-item binding, transaction isolation reporting, and reference-group sum hygiene.
 
 ## Remaining uncertainty
 

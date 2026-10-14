@@ -1962,3 +1962,11 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | Read-only production replay for trip `d0af9cc7-ce0d-4e40-9854-2c1341e83bed`; disjoint 763 `NO_NUMERIC` taxonomy; 26 vs 38 conflict alignment; composed S1→P1 tests; ops script `exp021-p21-r3-forensic.ts`; evidence `EXP021_P21_R3_GPS_QC_SEMANTICS_FORENSIC.md` |
 | FINDING | Dominant NO_NUMERIC on first real trip is hold/frozen transition (`FROZEN_UNRESOLVED` center, incl. 293 s opening block); stationary band (144 s) is material but not the largest bucket; V1 lumped 8 position-gap s with hold — V2 splits; `missingEvidenceCount=0` does not imply gap-free GPS |
 | NON_EFFECTS | No S1/P1/P2 behavior change; no deploy; no provider calls; no other trips |
+
+### EXP-021 P2.1 R3B diagnostic correctness final (2026-10-14)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | End-exclusive acquisition window via `di-v0-position-window.ts`; S4D snapshot scope bound to work item; forensic transaction `RepeatableRead` + exposed `transaction_read_only` / `transaction_isolation`; reference groups A/B/C with sum assertions; evidence `EXP021_P21_R3B_DIAGNOSTIC_CORRECTNESS_FINAL.md` |
+| FINDING | R3A 1481 expected labels / 1 missing bucket was end-inclusive artifact; substantive 763 NO_NUMERIC / 501 s frozen / 26 conflicts unchanged on shadow replay |
+| NON_EFFECTS | No S1/P1/P2 product change; no deploy; scoped P1 stationary correction documented only |

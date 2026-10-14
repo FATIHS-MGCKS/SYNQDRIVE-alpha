@@ -1,6 +1,6 @@
 # EXP021 P2.1 R3A — Forensic closure (diagnosis V2, 628 breakdown, longest segment)
 
-**Status:** COMPLETE (read-only)  
+**Status:** COMPLETE (read-only) — **bucket grid counts superseded by diagnosis** in [EXP021_P21_R3B_DIAGNOSTIC_CORRECTNESS_FINAL.md](./EXP021_P21_R3B_DIAGNOSTIC_CORRECTNESS_FINAL.md)  
 **PR:** #2020  
 **Trip / WI:** same as [EXP021_P21_R3_GPS_QC_SEMANTICS_FORENSIC.md](./EXP021_P21_R3_GPS_QC_SEMANTICS_FORENSIC.md)  
 **Artifact:** `/opt/cursor/artifacts/exp021-p21-r3a-forensic.json`
@@ -9,7 +9,7 @@
 
 The **628** “transition/hold” seconds from R3 V1 were not one homogeneous bug: they are mostly **`FROZEN_UNRESOLVED` at the center** (501 s total across the trip), dominated by a **293 s opening block** (07:37:04–07:41:56 Europe/Berlin) where GPS coordinates barely change, S1 emits **`TRANSITION_UNCERTAIN` + `abstentionReason=POSITION_FROZEN`**, and numeric L3 speed is correctly withheld. R3 V1 **lumped** true position gaps (8 s) with hold geometry; **V2 splits** position gaps (8) from hold semantics (755).
 
-The **8** V1 `ROW_ABSENT_OR_SIGNAL_NULL_GAP` cases are **not** all provider outages: V2 finds **1** acquisition-window edge support second, **6** explicit `ROW_ABSENT`, **1** missing in-window bucket — at bucket level **4** `ROW_ABSENT` + **1** missing label** on a 1481-label grid vs **1480** S2 intervals.
+The **8** V1 `ROW_ABSENT_OR_SIGNAL_NULL_GAP` cases are **not** all provider outages: V2 finds **1** acquisition-window edge support second, **6** explicit `ROW_ABSENT`, **1** missing in-window bucket — at bucket level **4** `ROW_ABSENT` + **1** missing in-window label on a 1481-label grid vs **1480** S2 intervals.
 
 **POST_GAP_REACQUIRE:** not seen on this trip; policy analysis shows the branch is **structurally overshadowed** (`L3_SUPPORT_CROSSES_GAP` → `SUPPORT_WINDOW_COMPROMISED` before the POST_GAP check; leg-threshold checks duplicate `GEOMETRY_JUMP`).
 

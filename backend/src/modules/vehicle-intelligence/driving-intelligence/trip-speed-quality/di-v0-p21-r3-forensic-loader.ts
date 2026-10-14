@@ -1,4 +1,4 @@
-import type { PrismaClient } from '@prisma/client';
+import { Prisma, type PrismaClient } from '@prisma/client';
 import { verifyAndParseDiV0PinnedEvidenceSnapshot } from '../s4d-replay/di-v0-s4d-verified-snapshot';
 import type { DiV0S4SourceFamily } from '../s4a-foundation/di-v0-s4a-contract';
 import { buildDiV0TripSpeedQualityProjectionV1 } from './build-di-v0-trip-speed-quality-projection.v1';
@@ -31,6 +31,9 @@ export type P21ForensicLoadedContext = {
   projection: ReturnType<typeof buildDiV0TripSpeedQualityProjectionV1>;
   pinnedSnapshotHash: string;
   snapshotVerified: true;
+  snapshotBoundToWorkItem: true;
+  dbTransactionReadOnly: string;
+  dbTransactionIsolation: string;
 };
 
 export async function loadP21ForensicContextInReadOnlyTransaction(
@@ -41,15 +44,30 @@ export async function loadP21ForensicContextInReadOnlyTransaction(
     async (tx) => {
       await tx.$executeRawUnsafe(`SET LOCAL statement_timeout = ${FORENSIC_STATEMENT_TIMEOUT_MS}`);
       await tx.$executeRaw`SET LOCAL transaction_read_only = on`;
-      return loadP21ForensicContext(tx, input);
+      const [roRow, isoRow] = await Promise.all([
+        tx.$queryRaw<Array<{ v: string }>>`SELECT current_setting('transaction_read_only') AS v`,
+        tx.$queryRaw<Array<{ v: string }>>`SELECT current_setting('transaction_isolation') AS v`,
+      ]);
+      const ctx = await loadP21ForensicContext(tx, input, {
+        dbTransactionReadOnly: roRow[0]?.v ?? 'unknown',
+        dbTransactionIsolation: isoRow[0]?.v ?? 'unknown',
+      });
+      return ctx;
     },
-    { timeout: FORENSIC_STATEMENT_TIMEOUT_MS + 10_000 },
+    {
+      timeout: FORENSIC_STATEMENT_TIMEOUT_MS + 10_000,
+      isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
+    },
   );
 }
 
 export async function loadP21ForensicContext(
   db: DiV0TripSpeedQualityProjectionDb,
   input: { organizationId: string; tripId: string; workItemId: string },
+  txMeta: { dbTransactionReadOnly: string; dbTransactionIsolation: string } = {
+    dbTransactionReadOnly: 'not_in_transaction',
+    dbTransactionIsolation: 'not_in_transaction',
+  },
 ): Promise<P21ForensicLoadedContext> {
   const { organizationId, tripId, workItemId } = input;
   const wi = await loadWorkItem(db, workItemId);
@@ -99,10 +117,10 @@ export async function loadP21ForensicContext(
   }
 
   const verified = verifyAndParseDiV0PinnedEvidenceSnapshot(snapshot, {
-    organizationId: snapshot.organization_id,
-    vehicleId: snapshot.vehicle_id,
-    tripId: snapshot.trip_id,
-    boundaryFingerprint: snapshot.boundary_fingerprint,
+    organizationId: wi.organization_id,
+    vehicleId: wi.vehicle_id,
+    tripId: wi.trip_id,
+    boundaryFingerprint: wi.boundary_fingerprint,
     snapshotHash: wi.pinned_snapshot_hash,
     sourceFamily: wi.source_family as DiV0S4SourceFamily,
   });
@@ -182,5 +200,8 @@ export async function loadP21ForensicContext(
     projection,
     pinnedSnapshotHash: wi.pinned_snapshot_hash,
     snapshotVerified: true,
+    snapshotBoundToWorkItem: true,
+    dbTransactionReadOnly: txMeta.dbTransactionReadOnly,
+    dbTransactionIsolation: txMeta.dbTransactionIsolation,
   };
 }

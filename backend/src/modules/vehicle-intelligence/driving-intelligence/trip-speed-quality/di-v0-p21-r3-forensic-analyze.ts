@@ -17,6 +17,7 @@ import {
   crossTabKey,
   dateToBucketLabel,
   diagnosePositionGapAtLabel,
+  enumerateAcquisitionBucketLabels,
   isConsecutiveSecond,
   type AcquisitionWindow,
   type PositionBucketSample,
@@ -39,6 +40,8 @@ export function buildP21R3ForensicReport(input: {
   shadowIntervals: DiV0TripSpeedQualityShadowRow[];
   projection: DiV0TripSpeedQualityProjectionV1;
   pinnedSnapshotHash: string;
+  dbTransactionReadOnly?: string;
+  dbTransactionIsolation?: string;
 }): Record<string, unknown> {
   const posByLabel = new Map(input.evidence.positions.map((p) => [p.bucketLabel, p]));
   const window = input.acquisitionWindow;
@@ -153,7 +156,8 @@ export function buildP21R3ForensicReport(input: {
     if (verdict.reasonCodes.includes(DI_V0_SPEED_QC_REASON.POST_GAP_REACQUIRE)) {
       postGapReachable += 1;
     } else if (
-      r.sourceQualityFlags.includes('L3_SUPPORT_CROSSES_GAP') &&
+      Array.isArray(r.sourceQualityFlags) &&
+      r.sourceQualityFlags.map(String).includes('L3_SUPPORT_CROSSES_GAP') &&
       verdict.reasonCodes.includes(DI_V0_SPEED_QC_REASON.GEOMETRY_JUMP)
     ) {
       postGapOvershadowed += 1;
@@ -168,8 +172,27 @@ export function buildP21R3ForensicReport(input: {
   ).length;
   const movingUnknown33 = noNumericRows.filter((r) => r.motionState === 'MOVING_SPEED_UNKNOWN').length;
 
+  const holdDetailExcludingPosGap: Record<string, number> = {};
+  for (const r of noNumericRows) {
+    const g2 = classifyNoNumericDisjointV2(r, posByLabel, window);
+    if (g2.startsWith('POS_GAP_')) continue;
+    const hd = classifyHoldTransitionDetail(r, posByLabel);
+    holdDetailExcludingPosGap[hd] = (holdDetailExcludingPosGap[hd] ?? 0) + 1;
+  }
+
+  const referenceGroupChecks = verifyNoNumericReferenceGroupSums({
+    noNumericTotal: noNumericRows.length,
+    disjointV2: v2,
+    holdDetailAllNoNumeric: holdDetail,
+    holdDetailExcludingPosGap,
+  });
+
+  const missingLabelsInside = enumerateMissingLabelsInsideWindow(posByLabel, window);
+
   return {
-    schema: 'EXP021_P21_R3A_FORENSIC_V2',
+    schema: 'EXP021_P21_R3B_FORENSIC_V3',
+    diagnosisVersion: 'R3B',
+    acquisitionBoundary: 'START_INCLUSIVE_END_EXCLUSIVE',
     replayMode: input.replayMode,
     workItemStatus: input.workItemStatus,
     activePrimaryWorkItemId: input.activePrimaryWorkItemId,
@@ -188,6 +211,29 @@ export function buildP21R3ForensicReport(input: {
     noNumericDisjointV2: v2,
     noNumericDisjointV2Sum: Object.values(v2).reduce((a, b) => a + b, 0),
     holdTransitionDetailBreakdown: holdDetail,
+    holdTransitionDetailBreakdownExcludingPosGapIntervals: holdDetailExcludingPosGap,
+    referenceGroups: {
+      A_disjointV2Primary: {
+        description: 'Disjoint V2 classification over all NO_NUMERIC intervals',
+        denominator: noNumericRows.length,
+        counts: v2,
+        sum: Object.values(v2).reduce((a, b) => a + b, 0),
+      },
+      B_holdStateOnAllNoNumeric: {
+        description: 'Hold/transition state detail on all NO_NUMERIC intervals (not disjoint with A)',
+        denominator: noNumericRows.length,
+        counts: holdDetail,
+        sum: Object.values(holdDetail).reduce((a, b) => a + b, 0),
+      },
+      C_holdStateAfterPosGapExclusion: {
+        description: 'Hold/transition detail only on intervals where V2 is not POS_GAP_*',
+        denominator: Object.values(holdDetailExcludingPosGap).reduce((a, b) => a + b, 0),
+        counts: holdDetailExcludingPosGap,
+        sum: Object.values(holdDetailExcludingPosGap).reduce((a, b) => a + b, 0),
+      },
+    },
+    referenceGroupArithmeticVerified: referenceGroupChecks.ok,
+    referenceGroupArithmeticErrors: referenceGroupChecks.errors,
     holdTransitionDetailSegmentStats: holdSegments,
     noNumericV1SegmentStats: v1Segments,
     noNumericV2SegmentStats: v2Segments,
@@ -214,8 +260,52 @@ export function buildP21R3ForensicReport(input: {
           : 'OBSERVED',
     },
     acquisitionWindow: window,
+    expectedPositionLabelCount: bucketStats.expectedBuckets,
+    missingLabelsInsideWindow: missingLabelsInside,
     r1BucketCount: input.evidence.r1Obd.length,
+    dbSession: {
+      transactionReadOnly: input.dbTransactionReadOnly ?? null,
+      transactionIsolation: input.dbTransactionIsolation ?? null,
+      note:
+        'READ ONLY and REPEATABLE READ constrain the loader transaction; they do not by themselves imply a single MVCC snapshot across arbitrary follow-up queries outside this transaction.',
+    },
   };
+}
+
+export function verifyNoNumericReferenceGroupSums(input: {
+  noNumericTotal: number;
+  disjointV2: Record<string, number>;
+  holdDetailAllNoNumeric: Record<string, number>;
+  holdDetailExcludingPosGap: Record<string, number>;
+}): { ok: boolean; errors: string[] } {
+  const errors: string[] = [];
+  const sumV2 = Object.values(input.disjointV2).reduce((a, b) => a + b, 0);
+  const sumHoldAll = Object.values(input.holdDetailAllNoNumeric).reduce((a, b) => a + b, 0);
+  const sumHoldExGap = Object.values(input.holdDetailExcludingPosGap).reduce((a, b) => a + b, 0);
+  const posGapIntervals = input.noNumericTotal - sumHoldExGap;
+  if (sumV2 !== input.noNumericTotal) {
+    errors.push(`A_disjointV2 sum ${sumV2} !== noNumericTotal ${input.noNumericTotal}`);
+  }
+  if (sumHoldAll !== input.noNumericTotal) {
+    errors.push(`B_holdAll sum ${sumHoldAll} !== noNumericTotal ${input.noNumericTotal}`);
+  }
+  if (sumHoldExGap + posGapIntervals !== input.noNumericTotal) {
+    errors.push(
+      `C_holdExGap ${sumHoldExGap} + posGapIntervals ${posGapIntervals} !== noNumericTotal ${input.noNumericTotal}`,
+    );
+  }
+  return { ok: errors.length === 0, errors };
+}
+
+function enumerateMissingLabelsInsideWindow(
+  posByLabel: Map<string, PositionBucketSample>,
+  window: AcquisitionWindow,
+): string[] {
+  const missing: string[] = [];
+  for (const label of enumerateAcquisitionBucketLabels(window)) {
+    if (!posByLabel.has(label)) missing.push(label);
+  }
+  return missing;
 }
 
 function countBy<T>(rows: T[], fn: (r: T) => string): Record<string, number> {
@@ -245,7 +335,7 @@ function shadowToQc(r: DiV0TripSpeedQualityShadowRow, center: string) {
     sourceRelation: r.sourceRelation as never,
     motionState: r.motionState as never,
     positionState: r.positionState as never,
-    abstentionReason: r.abstentionReason,
+    abstentionReason: r.abstentionReason as never,
     sourceQualityFlags: Array.isArray(r.sourceQualityFlags) ? r.sourceQualityFlags.map(String) : [],
     evidenceSources: [],
   };

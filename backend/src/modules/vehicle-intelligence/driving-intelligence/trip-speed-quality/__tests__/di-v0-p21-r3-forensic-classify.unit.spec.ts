@@ -4,11 +4,14 @@ import {
   buildTimeSegmentStats,
   countPositionBucketAvailability,
   diagnosePositionGapAtLabel,
+  enumerateAcquisitionBucketLabels,
   isConsecutiveSecond,
+  labelInAcquisitionWindow,
 } from '../di-v0-p21-r3-forensic-classify';
 import type { DiV0TripSpeedQualityShadowRow } from '../build-di-v0-trip-speed-quality-projection.v1';
 
-const window = { startLabel: '2026-01-01T00:00:00Z', endLabel: '2026-01-01T00:00:02Z' };
+/** Canonical `[start, end)` — three 1 Hz labels 00, 01, 02. */
+const window = { startLabel: '2026-01-01T00:00:00Z', endLabel: '2026-01-01T00:00:03Z' };
 
 function shadowRow(
   ref: string,
@@ -32,6 +35,50 @@ function shadowRow(
 }
 
 describe('P21 R3 forensic classification', () => {
+  it('acquisition window [00:00:00, 00:00:03) has exactly labels 00, 01, 02; 03 is outside', () => {
+    const labels = enumerateAcquisitionBucketLabels(window);
+    expect(labels).toEqual([
+      '2026-01-01T00:00:00Z',
+      '2026-01-01T00:00:01Z',
+      '2026-01-01T00:00:02Z',
+    ]);
+    expect(labelInAcquisitionWindow('2026-01-01T00:00:03Z', window)).toBe(false);
+    expect(diagnosePositionGapAtLabel('2026-01-01T00:00:03Z', new Map(), window)).toBe(
+      'WINDOW_EDGE_OUTSIDE_ACQUISITION',
+    );
+  });
+
+  it('missing label 01 inside window is an internal raster gap, not an end-point artifact', () => {
+    const pos = new Map([
+      [
+        '2026-01-01T00:00:00Z',
+        {
+          bucketLabel: '2026-01-01T00:00:00Z',
+          availability: 'PRESENT' as const,
+          latitude: 52,
+          longitude: 9,
+          positionState: 'FRESH' as const,
+        },
+      ],
+      [
+        '2026-01-01T00:00:02Z',
+        {
+          bucketLabel: '2026-01-01T00:00:02Z',
+          availability: 'PRESENT' as const,
+          latitude: 52,
+          longitude: 9,
+          positionState: 'FRESH' as const,
+        },
+      ],
+    ]);
+    expect(diagnosePositionGapAtLabel('2026-01-01T00:00:01Z', pos, window)).toBe(
+      'MISSING_BUCKET_INSIDE_WINDOW',
+    );
+    const stats = countPositionBucketAvailability(pos, window);
+    expect(stats.missingInsideWindowBuckets).toBe(1);
+    expect(stats.expectedBuckets).toBe(3);
+  });
+
   it('V2 separates window edge from missing bucket inside window', () => {
     const pos = new Map([
       [
