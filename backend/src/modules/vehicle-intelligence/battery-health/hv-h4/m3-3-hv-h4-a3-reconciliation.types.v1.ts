@@ -15,6 +15,8 @@ export type M3_3HvH4A3ReconciliationRowClassificationV1 =
   | 'SOURCE_ALREADY_GONE'
   | 'BLOCKED_INTEGRITY'
   | 'BLOCKED_TENANT_INVARIANT'
+  | 'BLOCKED_COHORT_UNAUTHORIZED'
+  | 'SKIPPED_SESSION_ONGOING'
   | 'ERROR';
 
 export type M3_3HvH4A3ReconciliationPersistenceEffectV1 =
@@ -32,6 +34,7 @@ export type M3_3HvH4A3ReconciliationRowOutcomeV1 = M3_3HvH4A3ReconciliationRowCl
 
 export type M3_3HvH4A3ReconciliationTickResultV1 =
   | 'SKIPPED_FLAG_OFF'
+  | 'SKIPPED_COHORT_NOT_CONFIGURED'
   | 'CURSOR_UNAVAILABLE'
   | 'CURSOR_SAVE_FAILED'
   | 'COMPLETED';
@@ -45,6 +48,8 @@ export type M3_3HvH4A3ReconciliationTickOutcomeV1 = {
   sourceChangedCount: number;
   blockedIntegrityCount: number;
   blockedTenantCount: number;
+  blockedCohortCount: number;
+  skippedOngoingCount: number;
   errorCount: number;
   materializedOrRepairedCount: number;
   durationMs: number;
@@ -52,6 +57,7 @@ export type M3_3HvH4A3ReconciliationTickOutcomeV1 = {
 
 export type M3_3HvH4A3ReconciliationSchedulerTickResultV1 =
   | 'FLAG_OFF'
+  | 'COHORT_NOT_CONFIGURED'
   | 'NOT_LEADER'
   | 'OVERLAP'
   | 'COMPLETED'

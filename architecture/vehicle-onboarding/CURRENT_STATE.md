@@ -5,7 +5,7 @@
 | **Sealed from** | VO-0A discovery audit |
 | **Repository anchor SHA** | `312d9f54a2b4c0b0740061d3e2b74897e78eacb0` |
 | **Authority status** | `AUDIT_IN_PROGRESS` — **not** `AUTHORITY_ACTIVE` |
-| **Last updated** | 2026-10-08 (VO5C-P2B4-0 platform prune emergency containment; P2B3 merged) |
+| **Last updated** | 2026-10-14 (VO5C D4/D5 fleet registry status + offboard audit note) |
 
 ## Executive summary
 
@@ -30,11 +30,17 @@ SynqDrive today separates **provider mirrors** (`DimoVehicle`, `HighMobilityVehi
 - **VO5B-AB1 (2026-10-07):** Same outbox worker handles `VEHICLE_ACTIVATED` → `VEHICLE_CONNECTED` at `occurredAt` / `activatedAt`; event idempotency `vehicle-registry:<eventId>:billing-activate:v1`; legacy `registerFromDimo`/`create` billing hooks **unchanged** (see [VO5B_AB1_ACTIVATION_BILLING_BRIDGE.md](./evidence/VO5B_AB1_ACTIVATION_BILLING_BRIDGE.md)).
 - **VO5C-P1 (2026-10-07):** Master Admin safe offboard HTTP (`POST …/offboard`) with MFA, operational preflight, idempotency; calls `VehicleOffboardingService` only; **no** legacy deregister/tenant DELETE changes (see [VO5C_P1_MASTER_ADMIN_OFFBOARD_HTTP.md](./evidence/VO5C_P1_MASTER_ADMIN_OFFBOARD_HTTP.md)).
 - **VO5C-P4A (2026-10-09):** Default-OFF server admission gate (`SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_HTTP_ADMISSION_ENABLED`) + release attestation; dual frontend UI gate; HTTP+Postgres security matrix; operator runbook — **no** production activation (see [docs/runbooks/master-admin-vehicle-offboard-rollout-vo5c-p4a.md](../../docs/runbooks/master-admin-vehicle-offboard-rollout-vo5c-p4a.md)).
+- **VO5C owner MFA exception (2026-10-13):** Default-OFF, single verified owner user id, `ACTIVATED_AT` + `EXPIRES_AT` with hard 24h max window for canonical offboard HTTP only (`SYNQDRIVE_MASTER_VEHICLE_OFFBOARD_OWNER_MFA_EXCEPTION_*`); `MasterVehicleOffboardMfaGuard` delegates to global `MasterAdminMfaGuard` except when admission path is `OWNER_MFA_EXCEPTION`; removal planned after IAM MFA rollout (runbook track B′).
+- **VO5C D4/D5 (2026-10-14):** Fleet status derivation treats `registryLifecycle` OFFBOARDED/ARCHIVED as non-operational (does not overwrite persisted `Vehicle.status`); Master Admin offboard optional `note` persisted via `business_audit_outbox` (`VEHICLE_REGISTRY_OFFBOARDED`) in the same transaction as registry offboard — **billing** `VEHICLE_OFFBOARDED` outbox payload **v2 unchanged**.
 - **VO5C-P2A (2026-10-08):** Connected Vehicles UI cutover to P1 offboard HTTP; lifecycle visibility + server `registryLifecycle` filter; **no** legacy backend route removal (see [VO5C_P2A_FRONTEND_CUTOVER.md](./evidence/VO5C_P2A_FRONTEND_CUTOVER.md)).
 - **VO5C-P2B1 (2026-10-08):** `POST admin/vehicles/:vehicleId/deregister` retired with **409** `LEGACY_VEHICLE_DESTRUCTION_DISABLED` + `MASTER_ADMIN` + `MASTER_INTEGRATIONS` MFA; `VehiclesService.deregister` fail-closed; tenant DELETE + prune **unchanged** (see [VO5C_P2B1_LEGACY_DEREGISTER_LOCKDOWN.md](./evidence/VO5C_P2B1_LEGACY_DEREGISTER_LOCKDOWN.md)).
 - **VO5C-P2B2 (2026-10-08):** Removed `api.vehicles.deregister` frontend client; repo scan proves no active runtime caller; canonical `api.vehicleOnboarding.offboardVehicle` unchanged; org-scoped `api.vehicles.delete` wrapper retained for P2B3 (see [VO5C_P2B2_LEGACY_FRONTEND_CLIENT_RETIREMENT.md](./evidence/VO5C_P2B2_LEGACY_FRONTEND_CLIENT_RETIREMENT.md)).
 - **VO5C-P2B3 (2026-10-08):** `DELETE organizations/.../vehicles/...` and `DELETE vehicles/:vehicleId` fail-closed **409**; `VehiclesService.delete` retired; guards unchanged (see [VO5C_P2B3_VEHICLE_DELETE_LOCKDOWN.md](./evidence/VO5C_P2B3_VEHICLE_DELETE_LOCKDOWN.md)).
 - **VO5C-P2B4-0 (2026-10-08):** `POST /admin/prune`, `PlatformAdminService.pruneMasterData`, and `npm run prisma:prune` unconditionally fail-closed; recovery-grade prune **not implemented**; `SECURITY_REMEDIATION_IN_PROGRESS` (see [VO5C_P2B4_0_PRUNE_EMERGENCY_CONTAINMENT.md](./evidence/VO5C_P2B4_0_PRUNE_EMERGENCY_CONTAINMENT.md)).
+- **VO-SIG-01 (2026-10-13):** Connection identity contract (`connection-identity/*`), readiness rule `VO-RDY-CONN-001`, HM activation persists `provider=HIGH_MOBILITY`; production read-only inventory — see [VO_SIG_01_CONNECTION_IDENTITY_AUDIT.md](./evidence/VO_SIG_01_CONNECTION_IDENTITY_AUDIT.md) and [VO_SIG_01_DATA_REPAIR_PLAN.md](./research/VO_SIG_01_DATA_REPAIR_PLAN.md).
+- **VO-SIG-01 P1 (2026-10-13):** Proposed vs verified modality separation, activation-time mirror revalidation + hardware device evidence, multi-provider per-ref identity, post-link snapshot parity; regression suite `vehicle-connection-identity.unit.spec.ts` (18 cases).
+- **VO-SIG-01 P1 closure (2026-10-13):** Device-binding assurance levels, link `metadata.connectionIdentity` persistence for VSI-03, PostgreSQL certification `vo-sig-01-connection-identity.postgres.integration.spec.ts`.
+- **VO-SIG-01 B1 (2026-10-13):** Legacy reconciliation contract v2 (`LEGACY_RECONCILIATION`, honest null source ref), dry-run planner, guarded transactional executor + audit table; **no production execution** — see [VO_SIG_01_B1_LEGACY_CONNECTION_IDENTITY_RECONCILIATION.md](./evidence/VO_SIG_01_B1_LEGACY_CONNECTION_IDENTITY_RECONCILIATION.md).
 
 ---
 

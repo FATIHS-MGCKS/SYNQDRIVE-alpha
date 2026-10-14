@@ -116,22 +116,13 @@ jobs:
     name: Migration tests (PostgreSQL)
     needs: install-lockfile
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: public.ecr.aws/docker/library/postgres:16-alpine
-        env:
-          POSTGRES_USER: synqdrive
-          POSTGRES_PASSWORD: synqdrive
-          POSTGRES_DB: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U synqdrive"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      - name: Start PostgreSQL (ECR → GCR mirror → Docker Hub fallback)
+        run: bash backend/scripts/test/ci-start-postgres.sh
+        env:
+          CI_PG_CONTAINER: legal-docs-migration-ci-postgres
+          CI_PG_DB: postgres
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -163,31 +154,16 @@ jobs:
     name: Backend integration tests
     needs: install-lockfile
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: public.ecr.aws/docker/library/postgres:16-alpine
-        env:
-          POSTGRES_USER: synqdrive
-          POSTGRES_PASSWORD: synqdrive
-          POSTGRES_DB: synqdrive
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U synqdrive"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-      redis:
-        image: public.ecr.aws/docker/library/redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      - name: Start Redis (ECR → GCR mirror → Docker Hub fallback)
+        run: bash backend/scripts/test/ci-start-redis.sh
+        env:
+          CI_REDIS_CONTAINER: legal-docs-ci-redis
+      - name: Start PostgreSQL (ECR → GCR mirror → Docker Hub fallback)
+        run: bash backend/scripts/test/ci-start-postgres.sh
+        env:
+          CI_PG_CONTAINER: legal-docs-ci-postgres
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}

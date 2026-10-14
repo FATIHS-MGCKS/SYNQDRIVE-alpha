@@ -922,7 +922,10 @@
     ]
   },
   "settlement": {
-    "quietPeriodSeconds": 86400,
+    "quietPeriodSeconds": 600,
+    "quietPeriodSecondsMinimum": 300,
+    "quietPeriodSecondsMaximum": 86400,
+    "quietPeriodPolicyNote": "EXP021 owner decision: near-real-time post-trip analysis (~5–15 min product latency). Short buffer for trip-completion stability and late segment edges; not a 24h audit gate. T24 cutoff 2026-10-14T04:38:41Z is retrospective QA only — segment runtime metrics when changing this value during an active T24 window.",
     "anchor": "max(vehicle_trips.end_time, vehicle_trips.created_at, max(trip_repairs.applied_at WHERE status = 'APPLIED'))",
     "timeAuthority": {
       "naiveColumns": [

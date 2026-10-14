@@ -35,6 +35,8 @@ describe('BatteryHvH4A3ReconciliationScheduler', () => {
       sourceChangedCount: 0,
       blockedIntegrityCount: 0,
       blockedTenantCount: 0,
+      blockedCohortCount: 0,
+      skippedOngoingCount: 0,
       errorCount: 0,
       materializedOrRepairedCount: 0,
       durationMs: 1,
@@ -59,6 +61,26 @@ describe('BatteryHvH4A3ReconciliationScheduler', () => {
     }).compile();
 
     scheduler = moduleRef.get(BatteryHvH4A3ReconciliationScheduler);
+  });
+
+  it('cohort not configured — COHORT_NOT_CONFIGURED metric', async () => {
+    runBoundedReconciliationTick.mockResolvedValue({
+      result: 'SKIPPED_COHORT_NOT_CONFIGURED',
+      inspectedCount: 0,
+      createdCount: 0,
+      existingCount: 0,
+      ackRepairCount: 0,
+      sourceChangedCount: 0,
+      blockedIntegrityCount: 0,
+      blockedTenantCount: 0,
+      blockedCohortCount: 0,
+      skippedOngoingCount: 0,
+      errorCount: 0,
+      materializedOrRepairedCount: 0,
+      durationMs: 1,
+    });
+    await scheduler.reconcileHvH4A3Evidence();
+    expect(ticksInc).toHaveBeenCalledWith({ result: 'COHORT_NOT_CONFIGURED' });
   });
 
   it('flag OFF — no reconciliation work', async () => {

@@ -7,6 +7,7 @@ on:
       - 'backend/package.json'
       - 'backend/package-lock.json'
       - 'architecture/trip-detection-lifecycle/**'
+      - 'backend/scripts/test/ci-start-postgres.sh'
       - '.github/workflows/trip-fsm-production-readiness.yml'
   workflow_dispatch:
   push:
@@ -178,22 +179,12 @@ jobs:
     name: Backend Trip FSM shadow postgres+redis integration
     needs: install-lockfile
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: public.ecr.aws/docker/library/postgres:16-alpine
-        env:
-          POSTGRES_USER: synqdrive
-          POSTGRES_PASSWORD: synqdrive
-          POSTGRES_DB: synqdrive
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U synqdrive"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      - name: Start PostgreSQL (ECR → GCR mirror → Docker Hub fallback)
+        run: bash backend/scripts/test/ci-start-postgres.sh
+        env:
+          CI_PG_CONTAINER: trip-fsm-shadow-ci-postgres
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}

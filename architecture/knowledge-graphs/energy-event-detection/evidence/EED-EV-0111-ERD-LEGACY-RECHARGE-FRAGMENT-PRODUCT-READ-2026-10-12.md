@@ -1,6 +1,6 @@
 # EED-EV-0111 — ERD legacy RECHARGE fragment product-read collapse (Tesla Natural Test #1)
 
-**Status:** IMPLEMENTED (code PR; **flag OFF by default**; no production rollout)  
+**Status:** IMPLEMENTED (code on main; **default OFF** until operator env activation)  
 **Incident:** Tesla `68868291-5478-42cd-b0c4-cc77b2a78e21` — 2026-10-12 — 8 legacy VEE / 8 product rows / 1 `HvChargeSession`  
 **Production SHA at forensics:** `a4d06c602ff192aa7ba6688a6472100033417bca`
 
@@ -31,4 +31,6 @@ Incremental DIMO sliding-window recharge segments persist as separate legacy `Ve
 
 ## Operational truth
 
-Production continues to return **8** product RECHARGE cards until operators separately authorize enabling `ERD_RECHARGE_LEGACY_FRAGMENT_PRODUCT_READ_ENABLED`.
+- **Default (gate unset / not `1`/`true`):** product read returns one card per legacy DIMO fragment (Tesla Natural Test #1: **8** product RECHARGE rows).
+- **Production activation (2026-10-13):** owner-authorized global `ERD_RECHARGE_LEGACY_FRAGMENT_PRODUCT_READ_ENABLED=1` @ SHA `1bc3a3a1863abaa4feab7d242b0678f071e806b2` — see **EED-EV-0112** and prospective ledger **EED-NCA-LEDGER-2026-10-13.md**.
+- Raw `VehicleEnergyEvent` rows and write authority are unchanged by product-read collapse.

@@ -17,6 +17,7 @@ import { activationOutboxIdempotencyKey } from './services/vehicle-onboarding-ac
 import type { Vo3ActivationFaultStage } from './services/vehicle-onboarding-activation.service';
 import { DEFAULT_TENANT_SOURCE_ADOPTION } from './source-adoption/source-adoption.context';
 import { PLATFORM_TRUSTED_SOURCE_ADOPTION } from './source-adoption/platform-trusted-adoption.context';
+import { insertDimoMirrorForPostgresTests } from './testing/dimo-mirror-postgres.fixture';
 
 const run = process.env.VO3_ORCHESTRATOR_PG === '1';
 
@@ -37,24 +38,16 @@ async function createDimoMirror(
   dimoId: string,
   externalId: string,
   vin: string | null,
-  make = 'Audi',
-  model = 'A3',
+  _make = 'Audi',
+  _model = 'A3',
+  rawJson?: object,
 ) {
-  await prisma.$executeRaw`
-    INSERT INTO dimo_vehicles (id, external_id, vin, make, model, year, fuel_type, connection_status, created_at, updated_at)
-    VALUES (
-      ${dimoId},
-      ${externalId},
-      ${vin},
-      ${make},
-      ${model},
-      2021,
-      'GASOLINE',
-      'CONNECTED'::"DimoConnectionStatus",
-      NOW(),
-      NOW()
-    )
-  `;
+  await insertDimoMirrorForPostgresTests(prisma, {
+    id: dimoId,
+    externalId,
+    vin,
+    rawJson,
+  });
 }
 
 interface ActivationAttemptBaseline {
@@ -232,6 +225,7 @@ async function sealHmCaseReady(
         packageType: 'HEALTH',
         sourceMode: 'HM_ONLY',
         clearanceStatus: 'APPROVED',
+        hmVehicleReference: `hm-ref-${hmId.slice(0, 8)}`,
       },
     });
     const dimoId = randomUUID();
@@ -264,6 +258,7 @@ async function sealHmCaseReady(
         packageType: 'HEALTH',
         sourceMode: 'HM_ONLY',
         clearanceStatus: 'APPROVED',
+        hmVehicleReference: `hm-ref-${hmId.slice(0, 8)}`,
       },
     });
     const dimoId = randomUUID();
@@ -293,6 +288,7 @@ async function sealHmCaseReady(
         packageType: 'HEALTH',
         sourceMode: 'HM_ONLY',
         clearanceStatus: 'APPROVED',
+        hmVehicleReference: `hm-ref-${hmId.slice(0, 8)}`,
       },
     });
     const dimoId = randomUUID();
@@ -322,6 +318,7 @@ async function sealHmCaseReady(
         packageType: 'HEALTH',
         sourceMode: 'HM_ONLY',
         clearanceStatus: 'APPROVED',
+        hmVehicleReference: `hm-ref-${hmId.slice(0, 8)}`,
       },
     });
     const dimoId = randomUUID();
@@ -361,6 +358,7 @@ async function sealHmCaseReady(
         packageType: 'HEALTH',
         sourceMode: 'HM_ONLY',
         clearanceStatus: 'APPROVED',
+        hmVehicleReference: `hm-ref-${hmId.slice(0, 8)}`,
       },
     });
     const caseRow = await harness.caseService.openOrResumeFromDimo(
@@ -402,6 +400,7 @@ async function sealHmCaseReady(
         packageType: 'HEALTH',
         sourceMode: 'HM_ONLY',
         clearanceStatus: 'APPROVED',
+        hmVehicleReference: `hm-ref-${hmId.slice(0, 8)}`,
       },
     });
     const caseRow = await harness.caseService.openOrResumeFromDimo(
@@ -610,6 +609,7 @@ async function sealHmCaseReady(
           packageType: 'HEALTH',
           sourceMode: 'HM_ONLY',
           clearanceStatus: 'APPROVED',
+          hmVehicleReference: `hm-ref-${hmId.slice(0, 8)}`,
         },
       });
       const caseRow = await harness.caseService.openOrResumeFromHighMobility(

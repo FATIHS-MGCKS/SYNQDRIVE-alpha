@@ -331,6 +331,7 @@ export class VehicleOnboardingSourceAdoptionService {
           year: true,
           fuelType: true,
           updatedAt: true,
+          rawJson: true,
         },
       });
       if (!dimo) {

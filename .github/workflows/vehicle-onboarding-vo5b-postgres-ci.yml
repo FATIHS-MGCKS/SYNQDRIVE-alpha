@@ -11,6 +11,8 @@ on:
       - 'backend/src/modules/vehicles/registry/**'
       - 'backend/src/modules/vehicle-intelligence/trips/decision/**'
       - 'backend/scripts/test/vo5b-*'
+      - 'backend/scripts/test/vo5b-ci-start-postgres.sh'
+      - 'backend/scripts/test/ci-start-postgres.sh'
       - 'backend/package.json'
       - 'backend/package-lock.json'
       - '.github/workflows/vehicle-onboarding-vo5b-postgres-ci.yml'
@@ -35,22 +37,10 @@ jobs:
   vo5b-postgres:
     name: VO-5B registry billing PostgreSQL
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: public.ecr.aws/docker/library/postgres:16-alpine
-        env:
-          POSTGRES_USER: synqdrive
-          POSTGRES_PASSWORD: synqdrive
-          POSTGRES_DB: synqdrive
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U synqdrive"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      - name: Start PostgreSQL (ECR → GCR mirror → Docker Hub fallback)
+        run: bash backend/scripts/test/vo5b-ci-start-postgres.sh
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}

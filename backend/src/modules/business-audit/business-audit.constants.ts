@@ -44,6 +44,8 @@ export const BusinessAuditAction = {
   // E5C: sensitive person-level evaluations analytics access (audit evidence).
   EVALUATIONS_PERSON_ANALYTICS_ACCESSED: 'EVALUATIONS_PERSON_ANALYTICS_ACCESSED',
   EVALUATIONS_PERSON_ANALYTICS_DENIED: 'EVALUATIONS_PERSON_ANALYTICS_DENIED',
+  /** VO5C D5 — durable Master Admin offboard note + actor evidence (not billing outbox). */
+  VEHICLE_REGISTRY_OFFBOARDED: 'VEHICLE_REGISTRY_OFFBOARDED',
 } as const;
 
 export type BusinessAuditActionCode =

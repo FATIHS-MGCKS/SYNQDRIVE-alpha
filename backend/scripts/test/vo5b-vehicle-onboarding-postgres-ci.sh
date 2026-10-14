@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Vehicle onboarding registry lifecycle PostgreSQL CI gate (VO5A, VO5B, VO5B-AB1, VO5C-P1, VO4.9).
+# Vehicle onboarding registry lifecycle PostgreSQL CI gate (VO5A, VO5B, VO5B-AB1, VO5C-P1, VO5C-D4/D5, VO4.9).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -10,6 +10,7 @@ export VO5B_REGISTRY_BILLING_PG=1
 export VO5B_AB1_REGISTRY_BILLING_PG=1
 export VO5C_P1_OFFBOARD_PG=1
 export VO5C_P4A_OFFBOARD_HTTP_PG=1
+export VO5C_D4_D5_PG=1
 export VO49_SOURCE_ADOPTION_PG=1
 
 parse_database_url() {
@@ -55,4 +56,5 @@ npm run test:vehicle-onboarding:vo5b:postgres
 npm run test:vehicle-onboarding:vo5b-ab1:postgres
 npm run test:vehicle-onboarding:vo5c-p1:postgres
 npm run test:vehicle-onboarding:vo5c-p4a:offboard-http:postgres
+npm run test:vehicle-onboarding:vo5c-d4-d5:postgres
 npm run test:vehicle-onboarding:vo49:postgres

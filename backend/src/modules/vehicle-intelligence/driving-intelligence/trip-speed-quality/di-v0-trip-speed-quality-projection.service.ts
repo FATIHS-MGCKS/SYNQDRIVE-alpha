@@ -1,0 +1,101 @@
+import type { PrismaClient } from '@prisma/client';
+import { DI_V0_SPEED_QC_POLICY_V1 } from '../speed-qc/di-v0-speed-qc-policy.version';
+import { computeDiV0TripSpeedQualityProjectionV1ForWorkItem } from './di-v0-trip-speed-quality-projection.engine';
+import {
+  DiV0TripSpeedQualityProjectionError,
+  mapPersistAuthorityError,
+  DiV0TripSpeedQualityProjectionPersistenceError,
+} from './di-v0-trip-speed-quality-projection.errors';
+import {
+  DiV0TripSpeedQualityProjectionRepository,
+  type DiV0TripSpeedQualityPersistedRow,
+} from './di-v0-trip-speed-quality-projection.repository';
+import { DI_V0_TRIP_SPEED_QUALITY_PROJECTION_V1 } from './di-v0-trip-speed-quality-projection.version';
+
+export class DiV0TripSpeedQualityProjectionService {
+  private readonly repository: DiV0TripSpeedQualityProjectionRepository;
+
+  constructor(private readonly prisma: PrismaClient) {
+    this.repository = new DiV0TripSpeedQualityProjectionRepository(prisma);
+  }
+
+  /**
+   * Projects speed quality for a COMPLETED PRIMARY work item. Isolated from S4 T06 completion —
+   * callers must invoke explicitly (no scheduler wiring in P2).
+   */
+  async projectForWorkItem(
+    organizationId: string,
+    workItemId: string,
+  ): Promise<DiV0TripSpeedQualityPersistedRow> {
+    const wi = await this.prisma.$queryRaw<Array<{ trip_id: string }>>`
+      SELECT trip_id FROM di_v0_s4_work_items WHERE id = ${workItemId}`;
+    const tripId = wi[0]?.trip_id;
+    if (!tripId) {
+      throw new DiV0TripSpeedQualityProjectionError('WORK_ITEM_NOT_FOUND', workItemId);
+    }
+
+    const projection = await computeDiV0TripSpeedQualityProjectionV1ForWorkItem(this.prisma, {
+      organizationId,
+      tripId,
+      workItemId,
+    });
+
+    try {
+      return await this.repository.persistCurrentProjection(projection, {
+        organizationId: projection.identity.organizationId,
+        tripId: projection.identity.tripId,
+        workItemId: projection.identity.workItemId,
+        boundaryFingerprint: projection.identity.boundaryFingerprint,
+        pinnedSnapshotHash: projection.identity.pinnedSnapshotHash,
+        shadowRunId: projection.identity.shadowRunId,
+      });
+    } catch (error) {
+      if (error instanceof DiV0TripSpeedQualityProjectionPersistenceError) {
+        if (error.code === 'IDEMPOTENCY_CONTENT_MISMATCH') {
+          throw new DiV0TripSpeedQualityProjectionError('IDEMPOTENCY_CONTENT_MISMATCH', error.message);
+        }
+        throw mapPersistAuthorityError(error);
+      }
+      throw error;
+    }
+  }
+
+  async readCurrentOpsProjection(
+    organizationId: string,
+    tripId: string,
+  ): Promise<DiV0TripSpeedQualityPersistedRow | null> {
+    const row = await this.repository.readCurrentForTrip(
+      organizationId,
+      tripId,
+      DI_V0_SPEED_QC_POLICY_V1,
+      DI_V0_TRIP_SPEED_QUALITY_PROJECTION_V1,
+    );
+    if (!row) return null;
+    const activeRows = await this.prisma.$queryRaw<Array<{ id: string }>>`
+      SELECT id FROM di_v0_s4_work_items
+      WHERE organization_id = ${organizationId}
+        AND trip_id = ${tripId}
+        AND run_purpose = 'PRIMARY'
+        AND purpose_discriminator = 'PRIMARY'
+        AND status <> 'SUPERSEDED'
+      ORDER BY boundary_occurrence DESC, created_at DESC
+      LIMIT 1`;
+    const activeId = activeRows[0]?.id ?? null;
+    if (activeId !== row.workItemId) {
+      return null;
+    }
+    const wi = await this.prisma.$queryRaw<
+      Array<{ organization_id: string; trip_id: string; status: string; run_purpose: string; purpose_discriminator: string }>
+    >`
+      SELECT organization_id, trip_id, status, run_purpose::text AS run_purpose, purpose_discriminator
+      FROM di_v0_s4_work_items WHERE id = ${row.workItemId}`;
+    const workItem = wi[0];
+    if (!workItem || workItem.organization_id !== organizationId || workItem.trip_id !== tripId) {
+      return null;
+    }
+    if (workItem.status !== 'COMPLETED' || workItem.run_purpose !== 'PRIMARY' || workItem.purpose_discriminator !== 'PRIMARY') {
+      return null;
+    }
+    return row;
+  }
+}

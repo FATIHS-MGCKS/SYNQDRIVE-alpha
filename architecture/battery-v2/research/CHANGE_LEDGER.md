@@ -6,6 +6,70 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-14 — M3.3-HV-H4 R16.1b provider observation clock gate (PR #2017)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | Completed progressive merge could accept later `endAt`/energy while retaining `providerObservedAt` below both existing clock and new `endAt` when incoming observation regressed |
+| **OBSERVATION** | `mapRechargeSegmentToHvChargeSessionDraft` always sets `providerObservedAt = segment.endAt`; regressive observation vs stored row is not a DIMO mapper path |
+| **CHANGE** | `providerObservationAuthorityOk` on completed refresh; clamp resolved observation to accepted `endAt` when advancing |
+| **VALIDATION** | `hv-charge-session.merge.spec.ts` stale-incoming + DIMO-shaped positive cases |
+
+---
+
+## 2026-10-14 — M3.3-HV-H4 R16.1 completed-session merge coherence hardening (PR #2017)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | R16 allowed any single measurement progression to unlock full end-field replacement; completeness/quality could bypass regressive `endAt`; metadata could drift on rejected refreshes; cross-identity merge was not fail-closed in merge |
+| **CHANGE** | `evaluateProviderSnapshotCoherence` (coherent progressive snapshot required); temporal authority separate from quality/completeness; `allowEndExtension` only with extension + coherent progression; identity guard on org/vehicle/fingerprint; metadata/provenance/quality retention on rejected scalars; expanded `hv-charge-session.merge.spec.ts` + ERD fingerprint alignment |
+| **WHY** | Fail closed on contradictory provider snapshots while preserving legitimate later DIMO completion (Oct 13 5.14→8.64 kWh path) and A3.5 revision fingerprint semantics |
+| **VALIDATION** | 23 merge tests; persist + ERD location provenance; HV-H4 mirror/numeric-parity/reconciliation unit suites |
+| **NON_EFFECTS** | A3.5 scheduler/cohort; H4-A2 thresholds; native counter provenance; historical rewrites; deploy |
+| **REMAINING_GAPS** | Same as R16 |
+
+---
+
+## 2026-10-14 — M3.3-HV-H4 R16 completed-session provider progression merge
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | `mergeHvChargeSessionUpdate` could advance `endAt` on completed sessions while rejecting end SOC/energy updates when provider completeness scores tied |
+| **OBSERVATION** | Oct 13 Tesla session `795c7dcb` persisted 5.14 kWh / 94.02 % SOC while later DIMO segment refresh carried 8.64 kWh / 100 % to 16:12 UTC (R15 fixture) |
+| **CHANGE** | Provider chronology + monotonic end-measurement progression gate; block `endAt`-only extensions; preserve metadata/scalar coherence; regression tests in `hv-charge-session.merge.spec.ts` |
+| **WHY** | Prevent stale completed-session scalars with lengthened provider window; backwards-compatible refresh for genuine later segment completion |
+| **VALIDATION** | `hv-charge-session.merge.spec.ts`, `hv-charge-session-persist.service.spec.ts`, HV-H4 jest suites |
+| **NON_EFFECTS** | No native counter provenance; H4-A2 thresholds unchanged; no historical rewrite; no env flag change |
+| **REMAINING_GAPS** | Oct 12 HV 5.06 kWh still not DB-revision-replayed; trusted interval authority still separate |
+
+---
+
+## 2026-10-14 — M3.3-HV-H4 R15 native added-energy counter offline evaluator (no runtime wiring)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | R14 showed DIMO `signals(interval:"1m")` added-energy buckets vs HV session energy diverge (esp. Oct 13); no isolated scientific evaluator |
+| **CHANGE** | Sanitized fixture `r15-dimo-added-energy-interval.v1.fixture.json` (digest `137a1e3d…`); pure `evaluateM3_3HvH4AddedEnergyCounterOfflineV1`; audit `docs/audits/battery-v2-hv-r15-native-energy-counter-forensics-2026-10-14.md`; capture script `scripts/ops/capture-r15-dimo-interval-fixtures.cjs` |
+| **WHY** | Reproducible forensics + tested offline delta math without promoting production provenance or altering recharge ingestion |
+| **VALIDATION** | `m3-3-hv-h4-added-energy-counter-offline-evaluator.v1.spec.ts` (8 tests) |
+| **NON_EFFECTS** | Recharge normalizer/mapper/quality assessor unchanged; A3.5 unchanged; H4-A2 unchanged; no trusted `NATIVE_COUNTER_DELTA` production classification |
+| **REMAINING_GAPS** | HV 5.06 kWh Oct 12 exact write revision not DB-replayed; trusted source authority contract still blocked pending separate authorization |
+
+---
+
+## 2026-10-13 — M3.3-HV-H4-A3 R6 automatic reconciliation cohort gate
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | A3.5 reconciliation flag ON scanned fleet-wide `hv_charge_sessions` with no tenant/vehicle allowlist; ongoing sessions could be materialized |
+| **CHANGE** | `BATTERY_HV_H4_A3_RECONCILIATION_COHORT_JSON` fail-closed allowlist; tick `SKIPPED_COHORT_NOT_CONFIGURED` when missing/invalid; cohort-scoped fleet scan; row `BLOCKED_COHORT_UNAUTHORIZED` / `SKIPPED_SESSION_ONGOING`; ops doc `M3_3_HV_H4_A3_R6_AUTOMATIC_RECONCILIATION_OPERATIONS.md` |
+| **WHY** | R6 production readiness: continuous automatic evidence only for owner-authorized cohorts; prevent fleet-wide writes when flag is enabled without explicit scope |
+| **VALIDATION** | `m3-3-hv-h4-a3-reconciliation-cohort.config.spec.ts`, `m3-3-hv-h4-a3-reconciliation-r6.runtime.spec.ts`, updated A3.5 unit specs; `validate-h4-exposure-coverage-contracts.sh` |
+| **NON_EFFECTS** | Default `BATTERY_HV_H4_A3_RECONCILIATION_ENABLED` remains false; no production activation; no EED/LV/APDS changes; `H4_AUTOMATIC_RUNTIME_REACHABLE` unchanged; Phase-A P1 unchanged |
+| **REMAINING_GAPS** | Live Gate B-F empirical validation requires owner-authorized production enable + observed natural charge after deploy |
+
+---
+
 ## 2026-10-11 — G5C-N2 post-anchor trip-phase telemetry must not veto finalized-trip session arming
 
 | Field | Value |
