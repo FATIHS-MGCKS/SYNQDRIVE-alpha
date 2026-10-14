@@ -14,7 +14,8 @@ import { DiV0TripSpeedQualityProjectionService } from '../di-v0-trip-speed-quali
 import {
   buildSyntheticTripSpeedProjection,
   cleanupP2Tenant,
-  deleteP2PinnedSnapshotRow,
+  driftP2PinnedSnapshotBoundaryFingerprint,
+  P2_DRIFTED_BOUNDARY_FINGERPRINT,
   seedP2CompletedPrimaryFixture,
   type P2CompletedPrimaryFixture,
 } from './di-v0-trip-speed-quality-postgres-harness';
@@ -337,9 +338,14 @@ assertS4aPostgresCiEnv();
     });
   }, 120_000);
 
-  it('PG10 snapshot missing fails closed in service', async () => {
+  it('PG10 snapshot verification fails closed in service', async () => {
     await withFixture(async (fx) => {
-      await deleteP2PinnedSnapshotRow(db, fx.tenant, fx.snapshotHash);
+      await driftP2PinnedSnapshotBoundaryFingerprint(
+        db,
+        fx.tenant,
+        fx.snapshotHash,
+        P2_DRIFTED_BOUNDARY_FINGERPRINT,
+      );
       const svc = new DiV0TripSpeedQualityProjectionService(db);
       await expect(svc.projectForWorkItem(fx.tenant.organizationId, fx.workItemId)).rejects.toMatchObject({
         code: 'SNAPSHOT_VERIFICATION_FAILED',

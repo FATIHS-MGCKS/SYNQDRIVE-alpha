@@ -10,7 +10,8 @@ import {
 import { previewDiV0TripSpeedQualityForWorkItem } from '../di-v0-trip-speed-quality-preview';
 import {
   cleanupP2Tenant,
-  deleteP2PinnedSnapshotRow,
+  driftP2PinnedSnapshotBoundaryFingerprint,
+  P2_DRIFTED_BOUNDARY_FINGERPRINT,
   seedP2CompletedPrimaryFixture,
   type P2CompletedPrimaryFixture,
 } from './di-v0-trip-speed-quality-postgres-harness';
@@ -121,9 +122,14 @@ assertS4aPostgresCiEnv();
     });
   }, 120_000);
 
-  it('P21-6 missing snapshot row → NOT_ASSESSABLE', async () => {
+  it('P21-6 snapshot verification fails → NOT_ASSESSABLE', async () => {
     await withFixture(async (fx) => {
-      await deleteP2PinnedSnapshotRow(db, fx.tenant, fx.snapshotHash);
+      await driftP2PinnedSnapshotBoundaryFingerprint(
+        db,
+        fx.tenant,
+        fx.snapshotHash,
+        P2_DRIFTED_BOUNDARY_FINGERPRINT,
+      );
       const report = await previewDiV0TripSpeedQualityForWorkItem(db, {
         organizationId: fx.tenant.organizationId,
         tripId: fx.tenant.tripId,

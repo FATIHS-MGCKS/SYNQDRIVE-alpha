@@ -31,18 +31,29 @@ export async function cleanupP2Tenant(db: PrismaClient, tenant: S4aTenant): Prom
   await db.$executeRaw`DELETE FROM organizations WHERE id = ${tenant.organizationId}`;
 }
 
-/** Removes pinned snapshot row only (work item pin unchanged) — simulates missing evidence row. */
-export async function deleteP2PinnedSnapshotRow(
+/**
+ * Breaks S4D scope binding for the pinned snapshot while keeping the work item row.
+ * (Deleting the snapshot cascades to work items via di_v0_s4_wi_pinned_snapshot_scope_fkey.)
+ */
+export async function driftP2PinnedSnapshotBoundaryFingerprint(
   db: PrismaClient,
   tenant: S4aTenant,
   snapshotHash: string,
+  driftedBoundaryFingerprint: string,
 ): Promise<void> {
   await db.$executeRaw`
-    DELETE FROM di_v0_s4_evidence_snapshots
+    ALTER TABLE di_v0_s4_evidence_snapshots DISABLE TRIGGER di_v0_s4_evidence_snapshot_immutable_guard_trg`;
+  await db.$executeRaw`
+    UPDATE di_v0_s4_evidence_snapshots
+    SET boundary_fingerprint = ${driftedBoundaryFingerprint}
     WHERE organization_id = ${tenant.organizationId}
       AND trip_id = ${tenant.tripId}
       AND snapshot_hash = ${snapshotHash}`;
+  await db.$executeRaw`
+    ALTER TABLE di_v0_s4_evidence_snapshots ENABLE TRIGGER di_v0_s4_evidence_snapshot_immutable_guard_trg`;
 }
+
+export const P2_DRIFTED_BOUNDARY_FINGERPRINT = `DI_V0_S4_BOUNDARY_FP_V1:sha256:${'d'.repeat(64)}`;
 
 export function buildSyntheticTripSpeedProjection(
   tenant: S4aTenant,
