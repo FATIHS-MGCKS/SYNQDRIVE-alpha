@@ -64,7 +64,12 @@ Unknown versions: rejected (`DiV0SpeedQcPolicyVersionError`). Projection `identi
 **Executed tests (agent):** policy-v2, composed, hardening, golden, unit, projection unit; `validate-module-registry.sh`, `validate-docs.sh`; local `npm run build`, `tsc --noEmit`.
 
 **Pre-merge HEAD:** `5ad3961c2ceecc996f0346c34971c088ac40c95e`  
-**Replay at pre-merge HEAD:** not executed (VPS `exp021-p21-ro-db.secret` not readable from agent SSH; `di-r3a-run` tree root-owned). **Prior executed compare code SHA:** `f176d709528d7091f64067cdb399c91926b52888` — table above. Guards here do not alter numeric intervals; expected live delta **0** unless trip rows had non-finite speeds or shadow/center `FROZEN_STOP_SUPPORTED` mismatch.
+**Final closure (2026-10-14):**
+- **Import fence:** `di-v0-p21-r3-forensic-loader.ts` no longer imports `s4a-contract` directly; uses re-exported `DiV0S4SourceFamily` from `di-v0-trip-speed-quality-projection.types.ts` (allowlisted P2 edge).
+- **Live replay executed:** artifact `/opt/cursor/artifacts/exp021-p21-p1-v2-compare-final.json`; `transaction_read_only=on`, `transaction_isolation=repeatable read`; WI `bcfe842e-a022-4a16-9db9-e9603b712bfb` / trip `d0af9cc7-ce0d-4e40-9854-2c1341e83bed`.
+- **Replay code SHA (tarred `di-r3a-run` + closure commit):** `0a6f8de251` (QC/premerge logic equivalent to `e87b201` + fence-only delta).
+- **V1 reproduced on replay:** 1480 intervals, 691 trusted numeric, 763 `NO_NUMERIC`, 26 `CROSS_SOURCE_CONFLICT` reason rows, max **77.62** km/h, mean **36.6** km/h.
+- **V2 on same input:** 118 `OK_STATIONARY_NULL_SPEED`, 26 withheld (17 `SUPPORT_WINDOW_COMPROMISED`, 9 `CROSS_SOURCE_CONFLICT`), **0** changes outside 144 stationary candidates; numeric trusted count/coverage/max unchanged vs V1.
 
 ## Non-effects
 
