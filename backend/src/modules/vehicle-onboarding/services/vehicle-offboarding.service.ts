@@ -111,10 +111,6 @@ export class VehicleOffboardingService {
   }
 
   async offboardVehicle(input: OffboardVehicleInput): Promise<OffboardVehicleResult> {
-    if (!input.actorUserId) {
-      throw new VehicleOnboardingError('INVALID_CAPTURE_PAYLOAD', 'Authenticated actor is required');
-    }
-
     if (input.destinationOrganizationId) {
       throw new VehicleOnboardingError(
         'ORG_TRANSFER_NOT_SUPPORTED',
@@ -130,13 +126,6 @@ export class VehicleOffboardingService {
       reason: input.reason,
     });
     const actorUserId = input.actorUserId;
-    const expectedAuditSemantics = buildExpectedOffboardAuditSemantics({
-      vehicleId: input.vehicleId,
-      organizationId: input.organizationId,
-      reason: input.reason,
-      actorUserId,
-      note: input.note,
-    });
 
     return this.prisma.$transaction(async (tx) => {
       const lockedRows = await tx.$queryRaw<
@@ -262,16 +251,25 @@ export class VehicleOffboardingService {
         expectedSemantics,
       });
 
-      await ensureOffboardAuditRecord(tx, this.businessAuditOutbox, {
-        organizationId: input.organizationId,
-        vehicleId: input.vehicleId,
-        reason: input.reason,
-        actorUserId,
-        idempotencyKey: input.idempotencyKey,
-        offboardedAt,
-        note: input.note,
-        expectedSemantics: expectedAuditSemantics,
-      });
+      if (actorUserId) {
+        const expectedAuditSemantics = buildExpectedOffboardAuditSemantics({
+          vehicleId: input.vehicleId,
+          organizationId: input.organizationId,
+          reason: input.reason,
+          actorUserId,
+          note: input.note,
+        });
+        await ensureOffboardAuditRecord(tx, this.businessAuditOutbox, {
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+          reason: input.reason,
+          actorUserId,
+          idempotencyKey: input.idempotencyKey,
+          offboardedAt,
+          note: input.note,
+          expectedSemantics: expectedAuditSemantics,
+        });
+      }
 
       return {
         vehicleId: input.vehicleId,
