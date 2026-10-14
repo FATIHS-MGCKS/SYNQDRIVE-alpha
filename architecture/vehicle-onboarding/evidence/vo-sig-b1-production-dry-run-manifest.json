@@ -1,0 +1,312 @@
+{
+  "mode": "DRY_RUN",
+  "organizationId": "faa710c9-6d91-4079-a7d5-91fdccdec14a",
+  "manifestFingerprint": "f9f2a17be4c361be04dc88afd4e12bb3034a4b64e84a504641a999a06cddef73",
+  "rowCount": 4,
+  "rows": [
+    {
+      "sourceLinkId": "6fcca9d4-99d5-4be8-8985-e9369c53b7f6",
+      "vehicleId": "8c850ff1-4201-432b-af2e-2711dbc7ca48",
+      "organizationId": "faa710c9-6d91-4079-a7d5-91fdccdec14a",
+      "dimoTokenId": 187784,
+      "dimoExternalId": "187784",
+      "provider": "DIMO",
+      "sourceMirrorId": "623a3934-d75a-4b23-9830-ae970f49d55a",
+      "currentMetadataFingerprint": "53ebd44ce1a8fab5f2e5073c9667fef3b2ae948aa36d366c55c18e535d76bc6f",
+      "currentConnectionIdentity": "absent",
+      "eligibility": "ELIGIBLE",
+      "reasonCodes": [],
+      "proposedMetadataV2": {
+        "version": "vo-source-link-connection-identity-v2",
+        "contractVersion": "vo-connection-identity-v1",
+        "origin": "LEGACY_RECONCILIATION",
+        "preActivationScope": "LEGACY_NO_ONBOARDING_SOURCE_REF",
+        "preActivationProviderSourceRefId": null,
+        "providerSourceLinkId": "6fcca9d4-99d5-4be8-8985-e9369c53b7f6",
+        "provider": "DIMO",
+        "sourceMirrorId": "623a3934-d75a-4b23-9830-ae970f49d55a",
+        "providerVehicleReference": "187784",
+        "proposedModality": null,
+        "verifiedModality": "HARDWARE_DEVICE",
+        "modalityVerification": "VERIFIED_PROVIDER_EVIDENCE",
+        "physicalDeviceReference": "R1-865918076152229",
+        "deviceBindingAssurance": "PROVIDER_SERIAL_MIRROR_TOKEN_SCOPED",
+        "providerDeviceIdHash": "38a87ca065855fa3e45e5c566f9f1bd8",
+        "dimoTokenId": 187784,
+        "verificationEvidence": [
+          "DIMO_RAW_JSON:RUPTELA_R1",
+          "serial:R1-865918076152229"
+        ],
+        "verifiedAt": "2026-10-14T11:26:20.154Z",
+        "priorLinkLastVerifiedAt": "2026-08-25T18:52:48.114Z",
+        "organizationId": "faa710c9-6d91-4079-a7d5-91fdccdec14a",
+        "vehicleId": "8c850ff1-4201-432b-af2e-2711dbc7ca48",
+        "sourceEvidenceFingerprint": {
+          "rawJsonSha256": "05c3ee737aebde3e371bf0e5c948998dd2f5f289cfd4f4a13b92e49e14156758",
+          "externalId": "187784",
+          "tokenId": 187784,
+          "dimoMirrorId": "623a3934-d75a-4b23-9830-ae970f49d55a"
+        },
+        "physicalEpisodeAttestation": {
+          "independentlyProven": false,
+          "reason": "PROVIDER_MIRROR_ONLY_NOT_EPISODE_PROOF"
+        },
+        "reconciliationProvenance": {
+          "runId": "DRY_RUN",
+          "authorizationReference": "DRY_RUN",
+          "evidenceCheckedAt": "2026-10-14T11:26:20.154Z"
+        }
+      },
+      "proposedMetadataFingerprint": "864b6ebfd3ef9700b8b1cbdce1c12f9599e8edbfb83f46ce19c4d6392efe8ba1",
+      "evidenceClassification": "RUPTELA_R1",
+      "approvalManifestEntry": {
+        "sourceLinkId": "6fcca9d4-99d5-4be8-8985-e9369c53b7f6",
+        "organizationId": "faa710c9-6d91-4079-a7d5-91fdccdec14a",
+        "vehicleId": "8c850ff1-4201-432b-af2e-2711dbc7ca48",
+        "currentMetadataFingerprint": "53ebd44ce1a8fab5f2e5073c9667fef3b2ae948aa36d366c55c18e535d76bc6f",
+        "sourceEvidenceFingerprint": {
+          "rawJsonSha256": "05c3ee737aebde3e371bf0e5c948998dd2f5f289cfd4f4a13b92e49e14156758",
+          "externalId": "187784",
+          "tokenId": 187784,
+          "dimoMirrorId": "623a3934-d75a-4b23-9830-ae970f49d55a"
+        },
+        "verifiedModality": "HARDWARE_DEVICE",
+        "physicalDeviceReference": "R1-865918076152229",
+        "telemetrySourceFamily": "RUPTELA_R1",
+        "deviceBindingAssurance": "PROVIDER_SERIAL_MIRROR_TOKEN_SCOPED",
+        "providerDeviceIdHash": "38a87ca065855fa3e45e5c566f9f1bd8",
+        "dimoTokenId": 187784,
+        "dimoExternalId": "187784",
+        "sourceMirrorId": "623a3934-d75a-4b23-9830-ae970f49d55a"
+      }
+    },
+    {
+      "sourceLinkId": "9ff5e350-cd4b-4e3a-956a-4f1770b017f2",
+      "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+      "organizationId": "faa710c9-6d91-4079-a7d5-91fdccdec14a",
+      "dimoTokenId": 192922,
+      "dimoExternalId": "192922",
+      "provider": "DIMO",
+      "sourceMirrorId": "ded052d6-642d-4498-beed-3753afa7e36c",
+      "currentMetadataFingerprint": "5033337d03382a38fb99a9e01260b8038ed2f228353436d387d7967a90d257e5",
+      "currentConnectionIdentity": "absent",
+      "eligibility": "ELIGIBLE",
+      "reasonCodes": [],
+      "proposedMetadataV2": {
+        "version": "vo-source-link-connection-identity-v2",
+        "contractVersion": "vo-connection-identity-v1",
+        "origin": "LEGACY_RECONCILIATION",
+        "preActivationScope": "LEGACY_NO_ONBOARDING_SOURCE_REF",
+        "preActivationProviderSourceRefId": null,
+        "providerSourceLinkId": "9ff5e350-cd4b-4e3a-956a-4f1770b017f2",
+        "provider": "DIMO",
+        "sourceMirrorId": "ded052d6-642d-4498-beed-3753afa7e36c",
+        "providerVehicleReference": "192922",
+        "proposedModality": null,
+        "verifiedModality": "HARDWARE_DEVICE",
+        "modalityVerification": "VERIFIED_PROVIDER_EVIDENCE",
+        "physicalDeviceReference": "R1-865918076209847",
+        "deviceBindingAssurance": "PROVIDER_SERIAL_MIRROR_TOKEN_SCOPED",
+        "providerDeviceIdHash": "70140ef81550b3c4e7cbdc26a7f4f8a5",
+        "dimoTokenId": 192922,
+        "verificationEvidence": [
+          "DIMO_RAW_JSON:RUPTELA_R1",
+          "serial:R1-865918076209847"
+        ],
+        "verifiedAt": "2026-10-14T11:26:20.154Z",
+        "priorLinkLastVerifiedAt": "2026-08-25T18:52:48.354Z",
+        "organizationId": "faa710c9-6d91-4079-a7d5-91fdccdec14a",
+        "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+        "sourceEvidenceFingerprint": {
+          "rawJsonSha256": "9d8d09624ba6a091d53e38ae7768ae1e1da1b29775059378b15e050416f1f47c",
+          "externalId": "192922",
+          "tokenId": 192922,
+          "dimoMirrorId": "ded052d6-642d-4498-beed-3753afa7e36c"
+        },
+        "physicalEpisodeAttestation": {
+          "independentlyProven": false,
+          "reason": "PROVIDER_MIRROR_ONLY_NOT_EPISODE_PROOF"
+        },
+        "reconciliationProvenance": {
+          "runId": "DRY_RUN",
+          "authorizationReference": "DRY_RUN",
+          "evidenceCheckedAt": "2026-10-14T11:26:20.154Z"
+        }
+      },
+      "proposedMetadataFingerprint": "4afd2954b20ad8cb6f4656ee02d4567c982e51b5f494bd2b936e63358d532bbe",
+      "evidenceClassification": "RUPTELA_R1",
+      "approvalManifestEntry": {
+        "sourceLinkId": "9ff5e350-cd4b-4e3a-956a-4f1770b017f2",
+        "organizationId": "faa710c9-6d91-4079-a7d5-91fdccdec14a",
+        "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+        "currentMetadataFingerprint": "5033337d03382a38fb99a9e01260b8038ed2f228353436d387d7967a90d257e5",
+        "sourceEvidenceFingerprint": {
+          "rawJsonSha256": "9d8d09624ba6a091d53e38ae7768ae1e1da1b29775059378b15e050416f1f47c",
+          "externalId": "192922",
+          "tokenId": 192922,
+          "dimoMirrorId": "ded052d6-642d-4498-beed-3753afa7e36c"
+        },
+        "verifiedModality": "HARDWARE_DEVICE",
+        "physicalDeviceReference": "R1-865918076209847",
+        "telemetrySourceFamily": "RUPTELA_R1",
+        "deviceBindingAssurance": "PROVIDER_SERIAL_MIRROR_TOKEN_SCOPED",
+        "providerDeviceIdHash": "70140ef81550b3c4e7cbdc26a7f4f8a5",
+        "dimoTokenId": 192922,
+        "dimoExternalId": "192922",
+        "sourceMirrorId": "ded052d6-642d-4498-beed-3753afa7e36c"
+      }
+    },
+    {
+      "sourceLinkId": "805b271c-ba87-4776-9e39-23e24d595c53",
+      "vehicleId": "68868291-5478-42cd-b0c4-cc77b2a78e21",
+      "organizationId": "faa710c9-6d91-4079-a7d5-91fdccdec14a",
+      "dimoTokenId": 186946,
+      "dimoExternalId": "186946",
+      "provider": "DIMO",
+      "sourceMirrorId": "8ea6a3b5-36c5-474f-b962-3dc1013b40bc",
+      "currentMetadataFingerprint": "5ec4fb8e5a8060b6802104fc3e09bd8e148d70af4bc9869bfc94c66af8156e12",
+      "currentConnectionIdentity": "absent",
+      "eligibility": "ELIGIBLE",
+      "reasonCodes": [],
+      "proposedMetadataV2": {
+        "version": "vo-source-link-connection-identity-v2",
+        "contractVersion": "vo-connection-identity-v1",
+        "origin": "LEGACY_RECONCILIATION",
+        "preActivationScope": "LEGACY_NO_ONBOARDING_SOURCE_REF",
+        "preActivationProviderSourceRefId": null,
+        "providerSourceLinkId": "805b271c-ba87-4776-9e39-23e24d595c53",
+        "provider": "DIMO",
+        "sourceMirrorId": "8ea6a3b5-36c5-474f-b962-3dc1013b40bc",
+        "providerVehicleReference": "186946",
+        "proposedModality": null,
+        "verifiedModality": "SOFTWARE_INTEGRATION",
+        "modalityVerification": "VERIFIED_PROVIDER_EVIDENCE",
+        "physicalDeviceReference": "NOT_APPLICABLE",
+        "deviceBindingAssurance": null,
+        "providerDeviceIdHash": null,
+        "dimoTokenId": 186946,
+        "verificationEvidence": [
+          "DIMO_RAW_JSON:API_SYNTHETIC",
+          "externalId:186946"
+        ],
+        "verifiedAt": "2026-10-14T11:26:20.154Z",
+        "priorLinkLastVerifiedAt": "2026-08-25T18:52:48.215Z",
+        "organizationId": "faa710c9-6d91-4079-a7d5-91fdccdec14a",
+        "vehicleId": "68868291-5478-42cd-b0c4-cc77b2a78e21",
+        "sourceEvidenceFingerprint": {
+          "rawJsonSha256": "7f28c8a06cabd670a27ee22efccaa869d24c6c35f8834956317f2a8bec635e86",
+          "externalId": "186946",
+          "tokenId": 186946,
+          "dimoMirrorId": "8ea6a3b5-36c5-474f-b962-3dc1013b40bc"
+        },
+        "physicalEpisodeAttestation": {
+          "independentlyProven": false,
+          "reason": "PROVIDER_MIRROR_ONLY_NOT_EPISODE_PROOF"
+        },
+        "reconciliationProvenance": {
+          "runId": "DRY_RUN",
+          "authorizationReference": "DRY_RUN",
+          "evidenceCheckedAt": "2026-10-14T11:26:20.154Z"
+        }
+      },
+      "proposedMetadataFingerprint": "27dacf4c6ac09cb9c28c4659328d936c6e88f26d4e46e13b523b4138865adc0f",
+      "evidenceClassification": "API_SYNTHETIC",
+      "approvalManifestEntry": {
+        "sourceLinkId": "805b271c-ba87-4776-9e39-23e24d595c53",
+        "organizationId": "faa710c9-6d91-4079-a7d5-91fdccdec14a",
+        "vehicleId": "68868291-5478-42cd-b0c4-cc77b2a78e21",
+        "currentMetadataFingerprint": "5ec4fb8e5a8060b6802104fc3e09bd8e148d70af4bc9869bfc94c66af8156e12",
+        "sourceEvidenceFingerprint": {
+          "rawJsonSha256": "7f28c8a06cabd670a27ee22efccaa869d24c6c35f8834956317f2a8bec635e86",
+          "externalId": "186946",
+          "tokenId": 186946,
+          "dimoMirrorId": "8ea6a3b5-36c5-474f-b962-3dc1013b40bc"
+        },
+        "verifiedModality": "SOFTWARE_INTEGRATION",
+        "physicalDeviceReference": "NOT_APPLICABLE",
+        "telemetrySourceFamily": "API_SYNTHETIC",
+        "deviceBindingAssurance": null,
+        "providerDeviceIdHash": null,
+        "dimoTokenId": 186946,
+        "dimoExternalId": "186946",
+        "sourceMirrorId": "8ea6a3b5-36c5-474f-b962-3dc1013b40bc"
+      }
+    },
+    {
+      "sourceLinkId": "71b75519-3053-4836-8bcd-554680d592b2",
+      "vehicleId": "c10351f8-b6a2-4258-947f-631aeaa6d359",
+      "organizationId": "faa710c9-6d91-4079-a7d5-91fdccdec14a",
+      "dimoTokenId": 187361,
+      "dimoExternalId": "187361",
+      "provider": "DIMO",
+      "sourceMirrorId": "b41a6acf-d693-47cd-b5ce-07c55bbdd526",
+      "currentMetadataFingerprint": "3d1709fae07f81c8ed33ca9d497e8f6e60107e3b3b695ebe093941469e50eb64",
+      "currentConnectionIdentity": "absent",
+      "eligibility": "ELIGIBLE",
+      "reasonCodes": [],
+      "proposedMetadataV2": {
+        "version": "vo-source-link-connection-identity-v2",
+        "contractVersion": "vo-connection-identity-v1",
+        "origin": "LEGACY_RECONCILIATION",
+        "preActivationScope": "LEGACY_NO_ONBOARDING_SOURCE_REF",
+        "preActivationProviderSourceRefId": null,
+        "providerSourceLinkId": "71b75519-3053-4836-8bcd-554680d592b2",
+        "provider": "DIMO",
+        "sourceMirrorId": "b41a6acf-d693-47cd-b5ce-07c55bbdd526",
+        "providerVehicleReference": "187361",
+        "proposedModality": null,
+        "verifiedModality": "HARDWARE_DEVICE",
+        "modalityVerification": "VERIFIED_PROVIDER_EVIDENCE",
+        "physicalDeviceReference": "R1-861773070120068",
+        "deviceBindingAssurance": "PROVIDER_SERIAL_MIRROR_TOKEN_SCOPED",
+        "providerDeviceIdHash": "0086fe48384fb1c09aa97be36935f99a",
+        "dimoTokenId": 187361,
+        "verificationEvidence": [
+          "DIMO_RAW_JSON:RUPTELA_R1",
+          "serial:R1-861773070120068"
+        ],
+        "verifiedAt": "2026-10-14T11:26:20.154Z",
+        "priorLinkLastVerifiedAt": "2026-08-25T18:52:48.258Z",
+        "organizationId": "faa710c9-6d91-4079-a7d5-91fdccdec14a",
+        "vehicleId": "c10351f8-b6a2-4258-947f-631aeaa6d359",
+        "sourceEvidenceFingerprint": {
+          "rawJsonSha256": "c8c8fc45c68da72e287bf3a503c0c154e25522aaad8beb109d4106cc5f888ec0",
+          "externalId": "187361",
+          "tokenId": 187361,
+          "dimoMirrorId": "b41a6acf-d693-47cd-b5ce-07c55bbdd526"
+        },
+        "physicalEpisodeAttestation": {
+          "independentlyProven": false,
+          "reason": "PROVIDER_MIRROR_ONLY_NOT_EPISODE_PROOF"
+        },
+        "reconciliationProvenance": {
+          "runId": "DRY_RUN",
+          "authorizationReference": "DRY_RUN",
+          "evidenceCheckedAt": "2026-10-14T11:26:20.154Z"
+        }
+      },
+      "proposedMetadataFingerprint": "1449589a3b9abd05322831593874229e4b0df1c34d493e96fd5f4e2ef1497da4",
+      "evidenceClassification": "RUPTELA_R1",
+      "approvalManifestEntry": {
+        "sourceLinkId": "71b75519-3053-4836-8bcd-554680d592b2",
+        "organizationId": "faa710c9-6d91-4079-a7d5-91fdccdec14a",
+        "vehicleId": "c10351f8-b6a2-4258-947f-631aeaa6d359",
+        "currentMetadataFingerprint": "3d1709fae07f81c8ed33ca9d497e8f6e60107e3b3b695ebe093941469e50eb64",
+        "sourceEvidenceFingerprint": {
+          "rawJsonSha256": "c8c8fc45c68da72e287bf3a503c0c154e25522aaad8beb109d4106cc5f888ec0",
+          "externalId": "187361",
+          "tokenId": 187361,
+          "dimoMirrorId": "b41a6acf-d693-47cd-b5ce-07c55bbdd526"
+        },
+        "verifiedModality": "HARDWARE_DEVICE",
+        "physicalDeviceReference": "R1-861773070120068",
+        "telemetrySourceFamily": "RUPTELA_R1",
+        "deviceBindingAssurance": "PROVIDER_SERIAL_MIRROR_TOKEN_SCOPED",
+        "providerDeviceIdHash": "0086fe48384fb1c09aa97be36935f99a",
+        "dimoTokenId": 187361,
+        "dimoExternalId": "187361",
+        "sourceMirrorId": "b41a6acf-d693-47cd-b5ce-07c55bbdd526"
+      }
+    }
+  ]
+}
