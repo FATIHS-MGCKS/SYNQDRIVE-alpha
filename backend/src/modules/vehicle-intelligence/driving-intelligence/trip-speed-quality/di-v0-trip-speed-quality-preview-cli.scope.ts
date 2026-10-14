@@ -1,9 +1,15 @@
 /** EXP-021 P2.1 — CLI scope parsing (testable, no Prisma). */
 
+import {
+  DI_V0_SPEED_QC_DEFAULT_POLICY_VERSION,
+  resolveDiV0SpeedQcPolicyVersion,
+} from '../speed-qc/di-v0-speed-qc-policy.version';
+
 export const DI_V0_P21_PREVIEW_SCOPE_ENV = {
   organizationId: 'DI_V0_P21_ORGANIZATION_ID',
   tripId: 'DI_V0_P21_TRIP_ID',
   workItemId: 'DI_V0_P21_WORK_ITEM_ID',
+  qcPolicyVersion: 'DI_V0_P21_QC_POLICY_VERSION',
 } as const;
 
 const UUID_RE =
@@ -15,6 +21,8 @@ export interface DiV0P21PreviewScope {
   organizationId: string;
   tripId: string;
   workItemId: string;
+  /** Resolved QC policy; defaults to V1 when not specified. */
+  qcPolicyVersion: string;
   source: DiV0P21PreviewScopeSource;
 }
 
@@ -98,12 +106,25 @@ export function resolveDiV0P21PreviewScope(
     );
   }
 
+  const qcFromCli = readArgvFlag(argv, 'qcPolicyVersion');
+  const qcFromEnv = env[DI_V0_P21_PREVIEW_SCOPE_ENV.qcPolicyVersion];
+  if (qcFromCli && qcFromEnv) {
+    throw new DiV0P21PreviewScopeError(
+      'MIXED_INPUT_SOURCES',
+      'Use either --qcPolicyVersion or DI_V0_P21_QC_POLICY_VERSION — not both',
+    );
+  }
+  const qcPolicyVersion = resolveDiV0SpeedQcPolicyVersion(
+    qcFromCli ?? qcFromEnv ?? DI_V0_SPEED_QC_DEFAULT_POLICY_VERSION,
+  );
+
   let scope: DiV0P21PreviewScope;
   if (cliCount === 3) {
     scope = {
       organizationId: fromCli.organizationId!,
       tripId: fromCli.tripId!,
       workItemId: fromCli.workItemId!,
+      qcPolicyVersion,
       source: 'cli_flags',
     };
   } else if (envCount === 3) {
@@ -111,6 +132,7 @@ export function resolveDiV0P21PreviewScope(
       organizationId: fromEnv.organizationId!,
       tripId: fromEnv.tripId!,
       workItemId: fromEnv.workItemId!,
+      qcPolicyVersion,
       source: 'p21_env_bundle',
     };
   } else {

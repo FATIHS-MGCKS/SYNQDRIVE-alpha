@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import { DI_V0_SPEED_QC_POLICY_V2 } from '../../speed-qc/di-v0-speed-qc-policy.version';
 import {
   DiV0P21PreviewScopeError,
   exitCodeForPreviewOutcome,
@@ -63,5 +64,39 @@ describe('P2.1 preview CLI scope validation', () => {
   it('maps preview outcomes to exit codes', () => {
     expect(exitCodeForPreviewOutcome('ASSESSED')).toBe(0);
     expect(exitCodeForPreviewOutcome('NOT_ASSESSABLE')).toBe(3);
+  });
+
+  it('defaults qcPolicyVersion to V1', () => {
+    const scope = resolveDiV0P21PreviewScope(
+      ['--organizationId', ORG, '--tripId', TRIP, '--workItemId', WI],
+      {},
+    );
+    expect(scope.qcPolicyVersion).toBe('DI_V0_SPEED_QC_POLICY_V1');
+  });
+
+  it('accepts --qcPolicyVersion V2', () => {
+    const scope = resolveDiV0P21PreviewScope(
+      [
+        '--organizationId',
+        ORG,
+        '--tripId',
+        TRIP,
+        '--workItemId',
+        WI,
+        '--qcPolicyVersion',
+        DI_V0_SPEED_QC_POLICY_V2,
+      ],
+      {},
+    );
+    expect(scope.qcPolicyVersion).toBe(DI_V0_SPEED_QC_POLICY_V2);
+  });
+
+  it('rejects mixed qcPolicyVersion CLI and env', () => {
+    expect(() =>
+      resolveDiV0P21PreviewScope(
+        ['--organizationId', ORG, '--tripId', TRIP, '--workItemId', WI, '--qcPolicyVersion', DI_V0_SPEED_QC_POLICY_V2],
+        { DI_V0_P21_QC_POLICY_VERSION: DI_V0_SPEED_QC_POLICY_V2 },
+      ),
+    ).toThrow(DiV0P21PreviewScopeError);
   });
 });
