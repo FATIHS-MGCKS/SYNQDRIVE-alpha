@@ -12,6 +12,9 @@ import {
   authoritativeSessionLocationsEqual,
   mergeAuthoritativeSessionLocationMetadata,
 } from '@modules/vehicle-intelligence/energy-events/erd-recharge-location-provenance/erd-recharge-session-location.policy';
+import { HV_SESSION_ADDED_ENERGY_RESET_MIN_KWH } from './hv-charge-session-quality.assessor';
+
+const MEASUREMENT_PROGRESS_EPSILON = 0.001;
 
 export interface HvChargeSessionMergeResult {
   update: Record<string, unknown> | null;
@@ -53,12 +56,92 @@ function preferNullableNumber(
   return incoming;
 }
 
+function isAddedEnergyCounterReset(
+  existingKwh: number,
+  incomingKwh: number,
+): boolean {
+  return incomingKwh < existingKwh - HV_SESSION_ADDED_ENERGY_RESET_MIN_KWH;
+}
+
+function providerEndMeasurementsProgress(input: {
+  existing: {
+    endSocPercent: number | null;
+    endEnergyKwh: number | null;
+    energyAddedKwh: number | null;
+    deltaSocPercent: number | null;
+  };
+  incoming: {
+    endSocPercent: number | null;
+    endEnergyKwh: number | null;
+    energyAddedKwh: number | null;
+    deltaSocPercent: number | null;
+  };
+}): boolean {
+  const { existing, incoming } = input;
+  if (
+    incoming.energyAddedKwh != null &&
+    existing.energyAddedKwh != null &&
+    isAddedEnergyCounterReset(existing.energyAddedKwh, incoming.energyAddedKwh)
+  ) {
+    return false;
+  }
+
+  let progressed = false;
+  if (
+    incoming.endSocPercent != null &&
+    existing.endSocPercent != null &&
+    incoming.endSocPercent > existing.endSocPercent + MEASUREMENT_PROGRESS_EPSILON
+  ) {
+    progressed = true;
+  }
+  if (
+    incoming.endEnergyKwh != null &&
+    existing.endEnergyKwh != null &&
+    incoming.endEnergyKwh > existing.endEnergyKwh + MEASUREMENT_PROGRESS_EPSILON
+  ) {
+    progressed = true;
+  }
+  if (
+    incoming.energyAddedKwh != null &&
+    existing.energyAddedKwh != null &&
+    incoming.energyAddedKwh > existing.energyAddedKwh + MEASUREMENT_PROGRESS_EPSILON
+  ) {
+    progressed = true;
+  }
+  if (
+    incoming.deltaSocPercent != null &&
+    existing.deltaSocPercent != null &&
+    incoming.deltaSocPercent > existing.deltaSocPercent + MEASUREMENT_PROGRESS_EPSILON
+  ) {
+    progressed = true;
+  }
+  return progressed;
+}
+
+function resolveProviderChronology(input: {
+  existingEndAt: Date | null;
+  incomingEndAt: Date | null;
+}): 'extension' | 'same_instant' | 'regressive' | 'unknown' {
+  const { existingEndAt, incomingEndAt } = input;
+  if (!existingEndAt || !incomingEndAt) return 'unknown';
+  const deltaMs = incomingEndAt.getTime() - existingEndAt.getTime();
+  if (deltaMs > 0) return 'extension';
+  if (deltaMs === 0) return 'same_instant';
+  return 'regressive';
+}
+
 function mergeMetadata(
   existing: HvChargeSessionMetadata | null,
   incoming: HvChargeSessionMetadata,
   changeKind: HvChargeSessionChangeKind,
   reconciledAt: Date,
   sources: { existingSource: HvChargeSessionSource; incomingSource: HvChargeSessionSource },
+  scalarCoherence?: {
+    energyAddedKwh: number | null;
+    endSocPercent: number | null;
+    existingEnergyAddedKwh: number | null;
+    existingEndSocPercent: number | null;
+  },
 ): HvChargeSessionMetadata {
   const history = [...(existing?.changeHistory ?? [])];
   if (changeKind !== 'no_op') {
@@ -75,7 +158,7 @@ function mergeMetadata(
     incomingSource: sources.incomingSource,
   });
 
-  return {
+  const merged: HvChargeSessionMetadata = {
     ...incoming,
     ...locations,
     reconcileVersion: (existing?.reconcileVersion ?? 0) + (changeKind === 'no_op' ? 0 : 1),
@@ -85,6 +168,29 @@ function mergeMetadata(
         : reconciledAt.toISOString(),
     changeHistory: history,
   };
+
+  if (scalarCoherence) {
+    const energyUnchanged =
+      scalarCoherence.energyAddedKwh === scalarCoherence.existingEnergyAddedKwh;
+    const socUnchanged =
+      scalarCoherence.endSocPercent === scalarCoherence.existingEndSocPercent;
+    if (energyUnchanged && existing?.addedEnergyProvenance != null) {
+      merged.addedEnergyProvenance = existing.addedEnergyProvenance;
+    }
+    if (socUnchanged && existing?.socProvenance != null) {
+      merged.socProvenance = existing.socProvenance;
+    }
+    if (energyUnchanged && socUnchanged && existing?.qualityStatus != null) {
+      merged.qualityStatus = existing.qualityStatus;
+      merged.qualityReasonCodes = existing.qualityReasonCodes;
+      merged.capacityShadowEligible = existing.capacityShadowEligible;
+      merged.capacityValidationEligible = existing.capacityValidationEligible;
+      merged.durationSeconds = existing.durationSeconds;
+      merged.durationProvenance = existing.durationProvenance;
+    }
+  }
+
+  return merged;
 }
 
 /**
@@ -121,15 +227,47 @@ export function mergeHvChargeSessionUpdate(input: {
     dimoOverridesFallback || isBetterSessionQuality(incomingQuality, existingQuality);
   const completenessImproved = dimoOverridesFallback || incomingScore > existingScore;
 
-  let endAt = existing.endAt;
-  if (incoming.endAt) {
-    if (!existing.endAt || incoming.endAt.getTime() >= existing.endAt.getTime()) {
-      endAt = incoming.endAt;
-    }
-  }
+  const chronology = resolveProviderChronology({
+    existingEndAt: existing.endAt,
+    incomingEndAt: incoming.endAt,
+  });
+
+  const measurementProgress =
+    existingCompleted &&
+    (chronology === 'extension' || chronology === 'same_instant') &&
+    providerEndMeasurementsProgress({
+      existing: {
+        endSocPercent: existing.endSocPercent,
+        endEnergyKwh: existing.endEnergyKwh,
+        energyAddedKwh: existing.energyAddedKwh,
+        deltaSocPercent: existing.deltaSocPercent,
+      },
+      incoming: {
+        endSocPercent: incoming.endSocPercent,
+        endEnergyKwh: incoming.endEnergyKwh,
+        energyAddedKwh: incoming.energyAddedKwh,
+        deltaSocPercent: incoming.deltaSocPercent,
+      },
+    });
 
   const allowEndFieldUpdates =
-    !existingCompleted || completenessImproved || qualityImproved;
+    !existingCompleted ||
+    completenessImproved ||
+    qualityImproved ||
+    measurementProgress;
+
+  let endAt = existing.endAt;
+  if (incoming.endAt) {
+    if (!existing.endAt) {
+      endAt = incoming.endAt;
+    } else if (chronology === 'regressive') {
+      endAt = existing.endAt;
+    } else if (chronology === 'extension' && allowEndFieldUpdates) {
+      endAt = incoming.endAt;
+    } else if (chronology === 'same_instant') {
+      endAt = existing.endAt;
+    }
+  }
 
   const endSocPercent = preferNullableNumber(
     existing.endSocPercent,
@@ -166,17 +304,6 @@ export function mergeHvChargeSessionUpdate(input: {
       ? incomingQuality
       : existing.quality ?? incoming.quality;
 
-  const metadata = mergeMetadata(
-    existingMeta,
-    incoming.metadata,
-    'no_op',
-    reconciledAt,
-    {
-      existingSource: existing.source as HvChargeSessionSource,
-      incomingSource: incoming.source,
-    },
-  );
-
   const changedFields: Record<string, unknown> = {};
   const setIfChanged = (key: string, value: unknown, previous: unknown) => {
     const prevIso =
@@ -195,14 +322,48 @@ export function mergeHvChargeSessionUpdate(input: {
   setIfChanged('isOngoing', isOngoing, existing.isOngoing);
   setIfChanged('quality', quality, existing.quality);
   setIfChanged('dimoSegmentId', incoming.dimoSegmentId, existing.dimoSegmentId);
-  setIfChanged('providerObservedAt', incoming.providerObservedAt, existing.providerObservedAt);
+
+  const providerObservedAt =
+    allowEndFieldUpdates || !existingCompleted
+      ? incoming.providerObservedAt &&
+        existing.providerObservedAt &&
+        incoming.providerObservedAt.getTime() < existing.providerObservedAt.getTime()
+        ? existing.providerObservedAt
+        : incoming.providerObservedAt
+      : existing.providerObservedAt;
+  setIfChanged('providerObservedAt', providerObservedAt, existing.providerObservedAt);
+
+  const provisionalMetadata = mergeMetadata(
+    existingMeta,
+    incoming.metadata,
+    'no_op',
+    reconciledAt,
+    {
+      existingSource: existing.source as HvChargeSessionSource,
+      incomingSource: incoming.source,
+    },
+    {
+      energyAddedKwh,
+      endSocPercent,
+      existingEnergyAddedKwh: existing.energyAddedKwh,
+      existingEndSocPercent: existing.endSocPercent,
+    },
+  );
 
   const metadataChanged =
-    metadata.lastReconciledAt !== existingMeta?.lastReconciledAt ||
-    metadata.durationSeconds !== existingMeta?.durationSeconds ||
-    metadata.reconcileVersion !== existingMeta?.reconcileVersion ||
-    !authoritativeSessionLocationsEqual(existingMeta?.startLocation, metadata.startLocation) ||
-    !authoritativeSessionLocationsEqual(existingMeta?.endLocation, metadata.endLocation);
+    provisionalMetadata.lastReconciledAt !== existingMeta?.lastReconciledAt ||
+    provisionalMetadata.durationSeconds !== existingMeta?.durationSeconds ||
+    provisionalMetadata.reconcileVersion !== existingMeta?.reconcileVersion ||
+    provisionalMetadata.qualityStatus !== existingMeta?.qualityStatus ||
+    provisionalMetadata.addedEnergyProvenance !== existingMeta?.addedEnergyProvenance ||
+    !authoritativeSessionLocationsEqual(
+      existingMeta?.startLocation,
+      provisionalMetadata.startLocation,
+    ) ||
+    !authoritativeSessionLocationsEqual(
+      existingMeta?.endLocation,
+      provisionalMetadata.endLocation,
+    );
 
   if (Object.keys(changedFields).length === 0 && !metadataChanged) {
     return { update: null, changed: false, changeKind: 'no_op' };
@@ -225,6 +386,12 @@ export function mergeHvChargeSessionUpdate(input: {
     {
       existingSource: existing.source as HvChargeSessionSource,
       incomingSource: incoming.source,
+    },
+    {
+      energyAddedKwh,
+      endSocPercent,
+      existingEnergyAddedKwh: existing.energyAddedKwh,
+      existingEndSocPercent: existing.endSocPercent,
     },
   );
 

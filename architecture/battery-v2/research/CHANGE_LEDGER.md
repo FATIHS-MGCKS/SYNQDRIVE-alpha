@@ -6,6 +6,20 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-14 — M3.3-HV-H4 R16 completed-session provider progression merge
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | `mergeHvChargeSessionUpdate` could advance `endAt` on completed sessions while rejecting end SOC/energy updates when provider completeness scores tied |
+| **OBSERVATION** | Oct 13 Tesla session `795c7dcb` persisted 5.14 kWh / 94.02 % SOC while later DIMO segment refresh carried 8.64 kWh / 100 % to 16:12 UTC (R15 fixture) |
+| **CHANGE** | Provider chronology + monotonic end-measurement progression gate; block `endAt`-only extensions; preserve metadata/scalar coherence; regression tests in `hv-charge-session.merge.spec.ts` |
+| **WHY** | Prevent stale completed-session scalars with lengthened provider window; backwards-compatible refresh for genuine later segment completion |
+| **VALIDATION** | `hv-charge-session.merge.spec.ts`, `hv-charge-session-persist.service.spec.ts`, HV-H4 jest suites |
+| **NON_EFFECTS** | No native counter provenance; H4-A2 thresholds unchanged; no historical rewrite; no env flag change |
+| **REMAINING_GAPS** | Oct 12 HV 5.06 kWh still not DB-revision-replayed; trusted interval authority still separate |
+
+---
+
 ## 2026-10-14 — M3.3-HV-H4 R15 native added-energy counter offline evaluator (no runtime wiring)
 
 | Field | Value |
