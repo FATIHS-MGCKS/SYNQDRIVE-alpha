@@ -56,7 +56,7 @@ jobs:
               exit 1
               ;;
           esac
-      - name: Vehicle onboarding PostgreSQL gates (VO5A–VO5C D4/D5, VO4.9)
+      - name: Vehicle onboarding PostgreSQL gates (VO5A–VO5C-P1, VO4.9)
         working-directory: backend
         run: |
           npm ci
