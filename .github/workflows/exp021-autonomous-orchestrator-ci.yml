@@ -105,22 +105,15 @@ jobs:
   exp021-canary-live-window-postgres:
     name: EXP-021 canary live window PostgreSQL integration
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: public.ecr.aws/docker/library/postgres:16-alpine
-        env:
-          POSTGRES_USER: exp021_pr1649_test
-          POSTGRES_PASSWORD: exp021_pr1649_test_local
-          POSTGRES_DB: synqdrive_exp021_pr1649_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U exp021_pr1649_test -d synqdrive_exp021_pr1649_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      - name: Start PostgreSQL (ECR → GCR mirror → Docker Hub fallback)
+        run: bash backend/scripts/test/ci-start-postgres.sh
+        env:
+          CI_PG_CONTAINER: exp021-canary-ci-postgres
+          CI_PG_USER: ${{ env.EXP021_PG_USER }}
+          CI_PG_PASSWORD: ${{ env.EXP021_PG_PASSWORD }}
+          CI_PG_DB: ${{ env.EXP021_PG_DB }}
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -143,22 +136,15 @@ jobs:
   exp021-fleet-postgres-integration:
     name: EXP-021 PR-C fleet PostgreSQL integration
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: public.ecr.aws/docker/library/postgres:16-alpine
-        env:
-          POSTGRES_USER: exp021_pr1649_test
-          POSTGRES_PASSWORD: exp021_pr1649_test_local
-          POSTGRES_DB: synqdrive_exp021_pr1649_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U exp021_pr1649_test -d synqdrive_exp021_pr1649_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      - name: Start PostgreSQL (ECR → GCR mirror → Docker Hub fallback)
+        run: bash backend/scripts/test/ci-start-postgres.sh
+        env:
+          CI_PG_CONTAINER: exp021-fleet-ci-postgres
+          CI_PG_USER: ${{ env.EXP021_PG_USER }}
+          CI_PG_PASSWORD: ${{ env.EXP021_PG_PASSWORD }}
+          CI_PG_DB: ${{ env.EXP021_PG_DB }}
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -202,22 +188,15 @@ jobs:
   exp021-fleet-migration:
     name: EXP-021 PR-C fleet migration deploy
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: public.ecr.aws/docker/library/postgres:16-alpine
-        env:
-          POSTGRES_USER: exp021_pr1649_test
-          POSTGRES_PASSWORD: exp021_pr1649_test_local
-          POSTGRES_DB: synqdrive_exp021_pr1649_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U exp021_pr1649_test -d synqdrive_exp021_pr1649_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      - name: Start PostgreSQL (ECR → GCR mirror → Docker Hub fallback)
+        run: bash backend/scripts/test/ci-start-postgres.sh
+        env:
+          CI_PG_CONTAINER: exp021-fleet-migration-ci-postgres
+          CI_PG_USER: ${{ env.EXP021_PG_USER }}
+          CI_PG_PASSWORD: ${{ env.EXP021_PG_PASSWORD }}
+          CI_PG_DB: ${{ env.EXP021_PG_DB }}
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
