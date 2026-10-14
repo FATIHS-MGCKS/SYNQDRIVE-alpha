@@ -254,8 +254,17 @@ export async function seedS4aVerifiablePinnedEvidenceBundle(
   const boundaryFingerprint = await currentFingerprint(prisma, tenant.tripId);
   const fromUtc = utcIsoNoMs(tenant.startTime);
   const toUtc = utcIsoNoMs(tenant.endTime);
-  const providerRows = Array.from({ length: 12 }, (_, i) =>
-    row(utcIsoNoMs(new Date(tenant.startTime.getTime() + i * 1000)), 52 + i * 0.000_01, 9),
+  // ~130 km/h 1 Hz legs (aligned to trip window) — yields numeric shadow + assessable P2 preview.
+  const lat = 48;
+  const lon0 = 8;
+  const stepMetersEast = 36.1;
+  const mPerDegLon = 111_320 * Math.cos((lat * Math.PI) / 180);
+  const providerRows = [18, 19, 20, 21].map((offsetSec, i) =>
+    row(
+      utcIsoNoMs(new Date(tenant.startTime.getTime() + offsetSec * 1000)),
+      lat,
+      lon0 + (i * stepMetersEast) / mPerDegLon,
+    ),
   );
   const acquired = expectAcquired(
     await acquireDiV0HistoricalPositions(
