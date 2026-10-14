@@ -33,7 +33,7 @@ DATABASE_URL="${INT_DATABASE_URL}" PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 \
 
 cd "${BACKEND}"
 NODE_PATH="${BACKEND}/node_modules" DATABASE_URL="${INT_DATABASE_URL}" \
-  npx tsx "${ROOT}/architecture/vehicle-onboarding/evidence/scripts/vo-sig-b1-simple-repair-review-v2.ephemeral.test.ts" \
-  | tee "${EVIDENCE}/VO_SIG_B1_SIMPLE_REPAIR_V2_TEST_EVIDENCE.log"
+  npx tsx "${ROOT}/architecture/vehicle-onboarding/evidence/scripts/vo-sig-b1-simple-repair-review-v3.ephemeral.test.ts" \
+  | tee "${EVIDENCE}/VO_SIG_B1_SIMPLE_REPAIR_V3_TEST_EVIDENCE.log"
 
-echo "[vo-sig-b1-sql-v2] passed"
+echo "[vo-sig-b1-sql-v3] passed"
