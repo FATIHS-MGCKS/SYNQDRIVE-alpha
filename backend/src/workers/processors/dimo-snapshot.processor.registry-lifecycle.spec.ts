@@ -47,6 +47,7 @@ describe('DimoSnapshotProcessor — registry lifecycle gate', () => {
       undefined,
       undefined,
       undefined,
+      undefined,
     );
 
     const job = {
