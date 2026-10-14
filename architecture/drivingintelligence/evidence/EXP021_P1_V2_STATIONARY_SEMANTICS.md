@@ -72,6 +72,10 @@ Unknown versions: rejected (`DiV0SpeedQcPolicyVersionError`). Projection `identi
 - **V1 reproduced on replay:** 1480 intervals, 691 trusted numeric, 763 `NO_NUMERIC`, 26 `CROSS_SOURCE_CONFLICT` reason rows, max **77.62** km/h, mean **36.6** km/h.
 - **V2 on same input:** 118 `OK_STATIONARY_NULL_SPEED`, 26 withheld (17 `SUPPORT_WINDOW_COMPROMISED`, 9 `CROSS_SOURCE_CONFLICT`), **0** changes outside 144 stationary candidates; numeric trusted count/coverage/max unchanged vs V1.
 
+## Multi-trip regression (EXP021_P1_V2_MULTI_TRIP_VALIDATION)
+
+Ten additional org trips: historical first run in [EXP021_P1_V2_MULTI_TRIP_VALIDATION.md](./EXP021_P1_V2_MULTI_TRIP_VALIDATION.md); **closure** with intervalwise comparator + frozen manifest in [EXP021_P1_V2_MULTI_TRIP_EVIDENCE_CLOSURE.md](./EXP021_P1_V2_MULTI_TRIP_EVIDENCE_CLOSURE.md) (`validationRunnerSha` `185ff1e15c…`, `policyImplementationSha` `f7a285b59f…`, **PASS**, same counters).
+
 ## Non-effects
 
 - S2 rows unchanged; calibration unchanged; no deploy; no customer runtime flag; no provider calls.
