@@ -2,8 +2,8 @@
 
 | Field | Value |
 |-------|-------|
-| Status | `IMPLEMENTED_NOT_DEPLOYED` |
-| Production execution | **Not authorized** — dry-run + executor code only |
+| Status | `IMPLEMENTED_DEPLOYED_AWAITING_EXECUTE_ADMISSION` |
+| Production execution | **Not authorized** — requires owner-signed short-lived admission + runtime `SYNQDRIVE_RELEASE_GIT_SHA` (no committed per-release SHA registry) |
 | B0 baseline SHA | `6d68289018b65ce0c061dc5dbf8c66db7954ab29` |
 | Cohort | DIMO tokens `186946`, `187361`, `187784`, `192922` (single tenant) |
 
@@ -18,8 +18,10 @@ Activation parity: legacy v2 links fail closed with `LEGACY_RECONCILED_DIMO_LINK
 
 ## Ops
 
-- Dry-run: `npm run ops:vo-sig-b1:legacy-reconcile:dry-run` (env: `VO_SIG_B1_ORGANIZATION_ID`, optional `VO_SIG_B1_LINK_IDS`, `VO_SIG_B1_ALLOWLIST_LINK_IDS`).
-- Execute (non-production default): `applyLegacyConnectionIdentityReconciliation` requires `mode=EXECUTE`, operator admission HMAC (`VO_SIG_B1_OPERATOR_ADMISSION_SECRET`), committed trusted release registry, operator + tenant scope, exact cohort link IDs, allowlisted links, and **non-empty deterministic approval manifest** (`computeCohortApprovalManifestFingerprint` — stable across idempotent repeat execute).
+- Dry-run / CLI (default): `npm run ops:vo-sig-b1:legacy-reconcile:cli` (`VO_SIG_B1_CLI_MODE=DRY_RUN`).
+- Owner authorization issuer (offline): `npm run ops:vo-sig-b1:issue-owner-execute-authorization` → `VO_SIG_B1_OWNER_EXECUTE_AUTHORIZATION` token (short TTL; bound to exact release SHA, org, four link UUIDs, manifest).
+- Execute: `VO_SIG_B1_CLI_MODE=EXECUTE` + runtime `SYNQDRIVE_RELEASE_GIT_SHA` + operator HMAC + owner token; **fail-fast** partial batch policy (`PARTIAL_FAILURE_POLICY.md`).
+- Rollback: separate owner rollback token + operator rollback HMAC per audit id (`issue-owner-rollback-authorization`).
 - Approval manifest hashes immutable evidence + link/tenant scope + current metadata fingerprint (excludes execution timestamps / DRY_RUN provenance).
 
 ## Audit

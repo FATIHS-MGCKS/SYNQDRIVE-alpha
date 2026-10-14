@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vo-sig-01-b1-admission-hardening-2026-10-14',
+    version: '4.9.2243',
+    title: 'VO-SIG-01 B1 — one-time execute admission hardening (owner token + operator CLI)',
+    summary: [
+      'Production release SHA admitted via runtime SYNQDRIVE_RELEASE_GIT_SHA + short-lived owner HMAC token (org, four link UUIDs, manifest); CI registry keeps ephemeral test SHA only.',
+      'Operator CLI defaults to DRY_RUN; EXECUTE requires owner token + operator admission proof; issue scripts for execute/rollback authorization offline.',
+      'Fail-fast partial batch policy documented; rollback requires owner rollback token bound to audit id; no HTTP execute endpoint.',
+    ],
+    reason:
+      'Avoid self-referential trusted-release SHA commits; require independent human authorization for one-time legacy connection identity reconciliation on production.',
+    previousBehavior:
+      'Trusted registry test SHA only; execute admission relied on operator HMAC and optional ownerAuthorized boolean without signed owner binding.',
+    details:
+      'legacy-reconcile-owner-authorization.ts, legacy-reconcile-cli.lib.ts, vo-sig-01-legacy-connection-identity-reconcile-cli.ts, PARTIAL_FAILURE_POLICY.md, vo-sig-01-b1-legacy-reconciliation.postgres.integration.spec.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Onboarding',
+    createdAt: '2026-10-14T10:50:00.000Z',
+  },
+  {
     id: 'vo-sig-01-p1-connection-identity-2026-10-13',
     version: '4.9.2242',
     title: 'VO-SIG-01 P1 — verified connection modality + activation identity enforcement',

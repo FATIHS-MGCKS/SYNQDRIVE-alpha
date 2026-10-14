@@ -31,6 +31,7 @@ import {
   assertLegacyReconcileRollbackAuthorization,
   type LegacyReconcileRollbackAuthorization,
 } from './legacy-reconcile-authorization';
+import { LegacyReconcileFailFastError } from './legacy-reconcile-fail-fast';
 import { assertLegacyReconcileLinkGuards } from './legacy-reconcile-link-guards';
 import {
   resolveLinkMetadataStorageState,
@@ -514,7 +515,12 @@ export async function applyLegacyConnectionIdentityReconciliation(
 
   const appliedAudits = await loadAppliedAuditsByLink(prisma, linkIds);
   const manifestFingerprint = computeCohortApprovalManifestFingerprint(linkIds, plan, appliedAudits);
-  assertLegacyReconcileExecuteAuthorization(auth, { organizationId: input.organizationId, linkIds }, manifestFingerprint);
+  await assertLegacyReconcileExecuteAuthorization(
+    prisma,
+    auth,
+    { organizationId: input.organizationId, linkIds },
+    manifestFingerprint,
+  );
 
   const planById = new Map(plan.map((row) => [row.sourceLinkId, row]));
   const results: LegacyReconcileApplyResult[] = [];
@@ -528,24 +534,26 @@ export async function applyLegacyConnectionIdentityReconciliation(
 
     const row = planById.get(linkId)!;
     if (row.eligibility !== LEGACY_RECONCILE_ELIGIBILITY.ELIGIBLE || !row.proposedMetadataV2) {
+      const reasonCodes = row.reasonCodes.length ? row.reasonCodes : ['INELIGIBLE'];
       results.push({
         outcome: 'SKIPPED',
         sourceLinkId: row.sourceLinkId,
         eligibility: row.eligibility,
-        reasonCodes: row.reasonCodes,
+        reasonCodes,
       });
-      continue;
+      throw new LegacyReconcileFailFastError(row.sourceLinkId, reasonCodes, results);
     }
 
     const approvedEntry = row.approvalManifestEntry;
     if (!approvedEntry) {
+      const reasonCodes = ['APPROVED_MANIFEST_ENTRY_MISSING'];
       results.push({
         outcome: 'SKIPPED',
         sourceLinkId: row.sourceLinkId,
         eligibility: LEGACY_RECONCILE_ELIGIBILITY.CONCURRENT_CHANGE_RISK,
-        reasonCodes: ['APPROVED_MANIFEST_ENTRY_MISSING'],
+        reasonCodes,
       });
-      continue;
+      throw new LegacyReconcileFailFastError(row.sourceLinkId, reasonCodes, results);
     }
 
     const idempotencyKey = `legacy-ci-reconcile:${row.sourceLinkId}:v2`;
@@ -651,17 +659,21 @@ export async function applyLegacyConnectionIdentityReconciliation(
         afterFingerprint: applied.afterFingerprint,
       });
     } catch (err) {
+      const reasonCodes = [err instanceof Error ? err.message : 'UNKNOWN'];
       results.push({
         outcome: 'SKIPPED',
         sourceLinkId: row.sourceLinkId,
         eligibility: LEGACY_RECONCILE_ELIGIBILITY.CONCURRENT_CHANGE_RISK,
-        reasonCodes: [err instanceof Error ? err.message : 'UNKNOWN'],
+        reasonCodes,
       });
+      throw new LegacyReconcileFailFastError(row.sourceLinkId, reasonCodes, results);
     }
   }
 
   return results;
 }
+
+export { LegacyReconcileFailFastError } from './legacy-reconcile-fail-fast';
 
 function resolveRollbackBeforeSnapshot(audit: VehicleConnectionIdentityReconciliationAudit): LinkMetadataAuditSnapshot {
   const provenance = audit.evidenceProvenance as { beforeMetadataStorageState?: LinkMetadataStorageState };

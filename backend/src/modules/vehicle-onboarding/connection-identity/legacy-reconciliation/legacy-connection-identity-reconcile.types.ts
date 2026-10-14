@@ -38,7 +38,6 @@ export type LegacyReconcilePlanRow = {
 export type LegacyReconcileExecutionMode = 'DRY_RUN' | 'EXECUTE';
 
 export type LegacyReconcileAuthorization = {
-  ownerAuthorized: boolean;
   allowlistedLinkIds: ReadonlySet<string>;
   /** Required non-empty for EXECUTE — deterministic approval manifest over immutable evidence. */
   manifestFingerprint: string | null;
@@ -47,7 +46,9 @@ export type LegacyReconcileAuthorization = {
   operatorReference?: string | null;
   /** HMAC proof bound to manifest + run + authorization reference (operator admission boundary). */
   operatorAdmissionProof?: string | null;
+  /** Owner-issued, short-lived, signed execute authorization (independent of deployment). */
+  ownerExecuteAuthorizationToken: string;
   runId: string;
-  productionReleaseSha?: string | null;
+  productionReleaseSha: string;
   mode: LegacyReconcileExecutionMode;
 };

@@ -1,5 +1,8 @@
-/** Committed operator admission registry — not writable at runtime without code review. */
+/**
+ * CI / ephemeral PostgreSQL admission only.
+ * Production release SHA is **not** committed here (self-referential SHA problem).
+ * Production execute uses owner-issued authorization bound to runtime `SYNQDRIVE_RELEASE_GIT_SHA`.
+ */
 export const VO_SIG_B1_TRUSTED_RELEASE_SHA_REGISTRY: ReadonlySet<string> = new Set([
-  // PostgreSQL integration / CI admission (tests + VO-2 B1 gate).
-  'b1-pg-trusted-release-sha',
+  'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
 ]);
