@@ -58,6 +58,8 @@ export interface DiV0SpeedQcEvaluateInput {
   positions: DiV0SpeedQcPositionSample[];
   r1Obd?: DiV0SpeedQcR1Sample[];
   evidenceIdentity: DiV0SpeedQcEvidenceIdentity;
+  /** Defaults to DI_V0_SPEED_QC_POLICY_V1 when omitted. */
+  qcPolicyVersion?: string;
 }
 
 export interface DiV0SpeedQcSupportAssessment {

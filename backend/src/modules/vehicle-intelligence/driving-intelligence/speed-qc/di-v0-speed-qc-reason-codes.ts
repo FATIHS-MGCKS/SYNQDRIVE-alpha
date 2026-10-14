@@ -20,6 +20,8 @@ export const DI_V0_SPEED_QC_REASON = {
   INVALID_INPUT: 'INVALID_INPUT',
   OK: 'OK',
   OK_MODERATE: 'OK_MODERATE',
+  /** V2: null S1 speed accepted as trusted limited stationary (no numeric speed assigned). */
+  OK_STATIONARY_NULL_SPEED: 'OK_STATIONARY_NULL_SPEED',
 } as const;
 
 export type DiV0SpeedQcReasonCode = (typeof DI_V0_SPEED_QC_REASON)[keyof typeof DI_V0_SPEED_QC_REASON];

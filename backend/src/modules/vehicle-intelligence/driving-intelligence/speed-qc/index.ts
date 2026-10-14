@@ -1,4 +1,10 @@
-export { DI_V0_SPEED_QC_POLICY_V1 } from './di-v0-speed-qc-policy.version';
+export {
+  DI_V0_SPEED_QC_DEFAULT_POLICY_VERSION,
+  DI_V0_SPEED_QC_POLICY_V1,
+  DI_V0_SPEED_QC_POLICY_V2,
+  DiV0SpeedQcPolicyVersionError,
+  resolveDiV0SpeedQcPolicyVersion,
+} from './di-v0-speed-qc-policy.version';
 export { DI_V0_SPEED_QC_REASON, type DiV0SpeedQcReasonCode } from './di-v0-speed-qc-reason-codes';
 export { DI_V0_SPEED_QC_CALIBRATION_PROVISIONAL_V1 } from './di-v0-speed-qc-calibration';
 export { evaluateDiV0SpeedQcInterval } from './evaluate-di-v0-speed-qc-interval';

@@ -6,7 +6,11 @@ import {
   isValidGeoCoordinate,
   normalizeBucketLabelSafe,
 } from './di-v0-speed-qc-position-index';
-import { DI_V0_SPEED_QC_POLICY_V1 } from './di-v0-speed-qc-policy.version';
+import {
+  DI_V0_SPEED_QC_POLICY_V1,
+  DI_V0_SPEED_QC_POLICY_V2,
+  resolveDiV0SpeedQcPolicyVersion,
+} from './di-v0-speed-qc-policy.version';
 import { DI_V0_SPEED_QC_REASON, type DiV0SpeedQcReasonCode } from './di-v0-speed-qc-reason-codes';
 import {
   bucketLabelMinusSeconds,
@@ -85,9 +89,10 @@ function untrusted(
 export function evaluateDiV0SpeedQcInterval(input: DiV0SpeedQcEvaluateInput): DiV0SpeedQcIntervalVerdict {
   const cal = DI_V0_SPEED_QC_CALIBRATION_PROVISIONAL_V1;
   const { shadow, centerBucketLabel, evidenceIdentity } = input;
+  const qcPolicyVersion = resolveDiV0SpeedQcPolicyVersion(input.qcPolicyVersion);
 
   const basePartial = (): Omit<DiV0SpeedQcIntervalVerdict, 'trustLevel' | 'reasonCodes' | 'qcTrustedSpeedKmh'> => ({
-    qcPolicyVersion: DI_V0_SPEED_QC_POLICY_V1,
+    qcPolicyVersion,
     inputEvidenceIdentity: evidenceIdentity,
     originalEstimatedSpeedKmh: shadow.estimatedSpeedKmh,
     supportAssessment: {
@@ -182,7 +187,7 @@ export function evaluateDiV0SpeedQcInterval(input: DiV0SpeedQcEvaluateInput): Di
     reasonCodes: DiV0SpeedQcReasonCode[],
     qcSpeed: number | null,
   ): DiV0SpeedQcIntervalVerdict => ({
-    qcPolicyVersion: DI_V0_SPEED_QC_POLICY_V1,
+    qcPolicyVersion,
     trustLevel,
     reasonCodes,
     inputEvidenceIdentity: evidenceIdentity,
@@ -194,6 +199,24 @@ export function evaluateDiV0SpeedQcInterval(input: DiV0SpeedQcEvaluateInput): Di
   });
 
   const speed = shadow.estimatedSpeedKmh;
+  if (speed === null) {
+    if (qcPolicyVersion === DI_V0_SPEED_QC_POLICY_V2) {
+      const stationaryVerdict = attemptV2StationaryNullSpeedAcceptance({
+        shadow,
+        centerLabel,
+        prev,
+        center,
+        next,
+        posMap,
+        supportAssessment,
+        buildVerdict,
+      });
+      if (stationaryVerdict != null) {
+        return stationaryVerdict;
+      }
+    }
+    return buildVerdict('UNTRUSTED', [DI_V0_SPEED_QC_REASON.NO_NUMERIC], null);
+  }
   if (speed == null || !Number.isFinite(speed)) {
     return buildVerdict('UNTRUSTED', [DI_V0_SPEED_QC_REASON.NO_NUMERIC], null);
   }
@@ -321,4 +344,109 @@ export function evaluateDiV0SpeedQcInterval(input: DiV0SpeedQcEvaluateInput): Di
   }
 
   return buildVerdict('TRUSTED', [DI_V0_SPEED_QC_REASON.OK], speed);
+}
+
+type BuildVerdictFn = (
+  trustLevel: DiV0SpeedQcTrustLevel,
+  reasonCodes: DiV0SpeedQcReasonCode[],
+  qcSpeed: number | null,
+) => DiV0SpeedQcIntervalVerdict;
+
+/**
+ * V2 only: evaluate S1 stationary band with intentional null speed before NO_NUMERIC.
+ * Returns null to fall through to NO_NUMERIC.
+ */
+function attemptV2StationaryNullSpeedAcceptance(ctx: {
+  shadow: DiV0SpeedQcEvaluateInput['shadow'];
+  centerLabel: string;
+  prev: DiV0SpeedQcPositionSample | undefined;
+  center: DiV0SpeedQcPositionSample | undefined;
+  next: DiV0SpeedQcPositionSample | undefined;
+  posMap: Map<string, DiV0SpeedQcPositionSample>;
+  supportAssessment: DiV0SpeedQcIntervalVerdict['supportAssessment'];
+  buildVerdict: BuildVerdictFn;
+}): DiV0SpeedQcIntervalVerdict | null {
+  const { shadow, centerLabel, prev, center, next, buildVerdict } = ctx;
+
+  if (shadow.speedEvidenceState !== 'STATIONARY_BAND' || shadow.motionState !== 'STATIONARY_SUPPORTED') {
+    return null;
+  }
+
+  if (shadow.sourceRelation === 'CONFLICTING' || shadow.sourceRelation === 'CONFLICT_EXPLAINED') {
+    return buildVerdict('UNTRUSTED', [DI_V0_SPEED_QC_REASON.CROSS_SOURCE_CONFLICT], null);
+  }
+
+  if (shadow.positionState === 'FROZEN_UNRESOLVED' || shadow.positionState === 'RELEASE') {
+    return null;
+  }
+
+  const compromised = shadow.sourceQualityFlags.filter((f) => SUPPORT_COMPROMISED_FLAGS.has(f));
+  ctx.supportAssessment.supportQualityFlags = compromised;
+  if (compromised.length > 0) {
+    return buildVerdict('UNTRUSTED', [DI_V0_SPEED_QC_REASON.SUPPORT_WINDOW_COMPROMISED], null);
+  }
+
+  const centerPos = center ?? ctx.posMap.get(centerLabel);
+  if (
+    !centerPos ||
+    centerPos.availability !== 'PRESENT' ||
+    centerPos.latitude == null ||
+    centerPos.longitude == null ||
+    !isValidGeoCoordinate(centerPos.latitude, centerPos.longitude)
+  ) {
+    return buildVerdict('UNTRUSTED', [DI_V0_SPEED_QC_REASON.MISSING_POSITION_EVIDENCE], null);
+  }
+
+  if (shadow.abstentionReason != null && shadow.positionState !== 'FROZEN_STOP_SUPPORTED') {
+    return null;
+  }
+
+  if (shadow.positionState === 'FROZEN_STOP_SUPPORTED') {
+    const centerPs = centerPos.positionState ?? shadow.positionState;
+    if (centerPs !== 'FROZEN_STOP_SUPPORTED') {
+      return null;
+    }
+    return buildVerdict('TRUSTED_LIMITED', [DI_V0_SPEED_QC_REASON.OK_STATIONARY_NULL_SPEED], null);
+  }
+
+  if (!prev || !center || !next) {
+    return buildVerdict('UNTRUSTED', [DI_V0_SPEED_QC_REASON.MISSING_POSITION_EVIDENCE], null);
+  }
+
+  for (const row of [prev, center, next]) {
+    if (row.availability === 'ROW_ABSENT' || row.availability === 'SIGNAL_NULL') {
+      return buildVerdict('UNTRUSTED', [DI_V0_SPEED_QC_REASON.MISSING_POSITION_EVIDENCE], null);
+    }
+    if (row.latitude == null || row.longitude == null) {
+      return buildVerdict('UNTRUSTED', [DI_V0_SPEED_QC_REASON.MISSING_POSITION_EVIDENCE], null);
+    }
+    if (!isValidGeoCoordinate(row.latitude, row.longitude)) {
+      return buildVerdict('UNTRUSTED', [DI_V0_SPEED_QC_REASON.INVALID_GEO_COORDINATES], null);
+    }
+    const ps = row.positionState ?? shadow.positionState;
+    if (FROZEN_OR_RELEASE.has(ps)) {
+      return buildVerdict('UNTRUSTED', [DI_V0_SPEED_QC_REASON.FROZEN_OR_RELEASE_IN_SUPPORT], null);
+    }
+  }
+
+  const prevLabel = bucketLabelMinusSeconds(centerLabel, 1);
+  const nextLabel = bucketLabelPlusSeconds(centerLabel, 1);
+  const dPrev = haversineMeters(prev.latitude!, prev.longitude!, center.latitude!, center.longitude!);
+  const dNext = haversineMeters(center.latitude!, center.longitude!, next.latitude!, next.longitude!);
+  const dtPrev = (bucketLabelToMs(centerLabel) - bucketLabelToMs(prevLabel)) / 1000;
+  const dtNext = (bucketLabelToMs(nextLabel) - bucketLabelToMs(centerLabel)) / 1000;
+  if (dtPrev <= 0 || dtNext <= 0) {
+    return null;
+  }
+  const vPrevMps = legSpeedMps(dPrev, dtPrev);
+  const vNextMps = legSpeedMps(dNext, dtNext);
+  const maxStationaryMps = (STATIONARY_MAX_TRUSTED_SPEED_KMH * 1000) / 3600;
+  if (
+    (vPrevMps != null && vPrevMps > maxStationaryMps) ||
+    (vNextMps != null && vNextMps > maxStationaryMps)
+  ) {
+    return buildVerdict('UNTRUSTED', [DI_V0_SPEED_QC_REASON.STATIONARY_INCONSISTENT], null);
+  }
+
+  return buildVerdict('TRUSTED_LIMITED', [DI_V0_SPEED_QC_REASON.OK_STATIONARY_NULL_SPEED], null);
 }
