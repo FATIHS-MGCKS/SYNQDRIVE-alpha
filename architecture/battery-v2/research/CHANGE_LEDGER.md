@@ -6,6 +6,19 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-14 — M3.3-HV-H4 R16.1 completed-session merge coherence hardening (PR #2017)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | R16 allowed any single measurement progression to unlock full end-field replacement; completeness/quality could bypass regressive `endAt`; metadata could drift on rejected refreshes; cross-identity merge was not fail-closed in merge |
+| **CHANGE** | `evaluateProviderSnapshotCoherence` (coherent progressive snapshot required); temporal authority separate from quality/completeness; `allowEndExtension` only with extension + coherent progression; identity guard on org/vehicle/fingerprint; metadata/provenance/quality retention on rejected scalars; expanded `hv-charge-session.merge.spec.ts` + ERD fingerprint alignment |
+| **WHY** | Fail closed on contradictory provider snapshots while preserving legitimate later DIMO completion (Oct 13 5.14→8.64 kWh path) and A3.5 revision fingerprint semantics |
+| **VALIDATION** | 23 merge tests; persist + ERD location provenance; HV-H4 mirror/numeric-parity/reconciliation unit suites |
+| **NON_EFFECTS** | A3.5 scheduler/cohort; H4-A2 thresholds; native counter provenance; historical rewrites; deploy |
+| **REMAINING_GAPS** | Same as R16 |
+
+---
+
 ## 2026-10-14 — M3.3-HV-H4 R16 completed-session provider progression merge
 
 | Field | Value |
