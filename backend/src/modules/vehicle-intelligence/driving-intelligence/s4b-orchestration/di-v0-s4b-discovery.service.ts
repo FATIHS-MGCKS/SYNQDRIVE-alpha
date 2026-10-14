@@ -154,6 +154,7 @@ export class DiV0S4DiscoveryService {
       WHERE t.trip_status::text = 'COMPLETED'
         AND t.end_time IS NOT NULL
         AND t.end_time >= ${notBefore}
+        AND v.registry_lifecycle::text = 'ACTIVE'
         AND v.organization_id = ANY(${orgs}::text[])
         AND t.vehicle_id = ANY(${vehicles}::text[])
         AND a.anchor + make_interval(secs => ${DI_V0_S4_LIMITS.settlementQuietPeriodSeconds}::int) <= clock_timestamp()

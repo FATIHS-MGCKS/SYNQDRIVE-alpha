@@ -195,6 +195,7 @@ const PRIVATE_HELPERS = new Set([
   'requireHolder',
   'holderPredicate',
   'readTripScope',
+  'requirePrimaryVehicleRegistryActive',
   'fingerprintOf',
   'settlementAnchorSql',
   'requireReasonMatchesTrip',

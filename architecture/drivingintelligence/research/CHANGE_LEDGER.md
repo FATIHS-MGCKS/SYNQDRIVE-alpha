@@ -1945,3 +1945,12 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | Frozen quiet-period floor/ceiling in validator (N09B/N09C); `di-v0-s4-settlement-policy-segment.ts`; NR01–NR09 Postgres proofs; bootstrap strip re-applies near-realtime migration; CI Postgres image `mirror.gcr.io/library/postgres:16-alpine` |
 | EVIDENCE | Read-only prod audit: 0 active PENDING; 12 trips held only by 24h discovery gate (all 600s-eligible by anchor) |
 | NON_EFFECTS | No merge/deploy/kill/allowlist mutation |
+
+### VO5C D2-B registry lifecycle guard (2026-10-13)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | S4B discovery `registry_lifecycle=ACTIVE`; S4A T01 PRIMARY `vehicles` `FOR UPDATE` admission lock (serializes with VO5C offboarding); EXP021 maturation `resolveAuthoritativeTokenId` ACTIVE-only; concurrent Postgres race tests (barrier sync); evidence [EXP021_VO5C_D2B_REGISTRY_LIFECYCLE_GUARD.md](../evidence/EXP021_VO5C_D2B_REGISTRY_LIFECYCLE_GUARD.md) |
+| WHY | Post D2 cohort cleanup: fail-closed so OFFBOARDED/ARCHIVED vehicles cannot receive new regular PRIMARY work items (discovery race + enrollment) |
+| REPLAY | `RECALIBRATION_REPLAY` / `REACQUISITION` semantics explicitly unchanged |
+| NON_EFFECTS | No migrations; no Production env/kill/allowlist changes in this PR; frozen S4A transition/rejection contract unchanged |

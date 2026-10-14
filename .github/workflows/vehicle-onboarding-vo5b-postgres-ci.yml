@@ -12,6 +12,7 @@ on:
       - 'backend/src/modules/vehicle-intelligence/trips/decision/**'
       - 'backend/scripts/test/vo5b-*'
       - 'backend/scripts/test/vo5b-ci-start-postgres.sh'
+      - 'backend/scripts/test/ci-start-postgres.sh'
       - 'backend/package.json'
       - 'backend/package-lock.json'
       - '.github/workflows/vehicle-onboarding-vo5b-postgres-ci.yml'

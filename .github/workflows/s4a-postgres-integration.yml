@@ -20,6 +20,7 @@ on:
       - 'backend/src/modules/vehicle-intelligence/driving-intelligence/shadow-persistence/**'
       - 'backend/src/modules/vehicle-intelligence/driving-intelligence/trip-speed-quality/**'
       - 'backend/scripts/test/di-v0-s4a-*.sh'
+      - 'backend/scripts/test/ci-start-postgres.sh'
       - 'backend/scripts/test/di-v0-p2-trip-speed-quality-postgres-ci.sh'
       - 'backend/prisma/migrations/20261013180000_di_v0_trip_speed_quality_projection_v1/**'
       - 'backend/scripts/test/prisma-migrate-deploy-resilient.sh'
@@ -193,23 +194,17 @@ jobs:
     needs:
       - detect-s4a-changes
     if: needs.detect-s4a-changes.outputs.run_s4a == 'true'
-    services:
-      postgres:
-        image: public.ecr.aws/docker/library/postgres:16-alpine
-        env:
-          POSTGRES_USER: s4a_ci_test
-          POSTGRES_PASSWORD: s4a_ci_test_local
-          POSTGRES_DB: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U s4a_ci_test -d postgres"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 12
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Start PostgreSQL (ECR → GCR mirror → Docker Hub fallback)
+        run: bash backend/scripts/test/ci-start-postgres.sh
+        env:
+          CI_PG_CONTAINER: s4a-ci-postgres
+          CI_PG_USER: ${{ env.S4A_PG_USER }}
+          CI_PG_PASSWORD: ${{ env.S4A_PG_PASSWORD }}
+          CI_PG_DB: ${{ env.S4A_PG_DB }}
 
       - name: Fail closed on non-ephemeral admin URL
         run: |
