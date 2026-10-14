@@ -26,6 +26,7 @@ import {
 } from '@shared/auth/auth-session-claims.types';
 import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
+import { BusinessAuditOutboxRepository } from '@modules/business-audit/business-audit-outbox.repository';
 import { PrismaService } from '@shared/database/prisma.service';
 import { VehicleOnboardingOffboardController } from './controllers/vehicle-onboarding-offboard.controller';
 import { MasterVehicleOffboardAdmissionGuard } from './guards/master-vehicle-offboard-admission.guard';
@@ -196,6 +197,10 @@ function applyAdmittedOffboardEnvWithoutMfaRollout() {
         VehicleOnboardingOffboardService,
         VehicleOffboardingService,
         VehicleOffboardPreflightService,
+        {
+          provide: BusinessAuditOutboxRepository,
+          useFactory: () => new BusinessAuditOutboxRepository(prisma as never),
+        },
         { provide: PrismaService, useValue: prisma },
         { provide: IamMfaStepUpService, useValue: { validateGrant: stepUpValidate } },
         { provide: APP_GUARD, useClass: TestAuthGuard },

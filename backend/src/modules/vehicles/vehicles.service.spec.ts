@@ -378,3 +378,46 @@ describe('VehiclesService.deriveFleetStatusContext (V4.6.86)', () => {
     });
   });
 });
+
+describe('VehiclesService.deriveFleetStatusContext registry lifecycle (VO5C D4)', () => {
+  let service: VehiclesService;
+
+  beforeEach(() => {
+    service = makeService();
+  });
+
+  it('ACTIVE + AVAILABLE keeps normal rental semantics', () => {
+    const result = service.deriveFleetStatusContext({
+      vehicle: { id: 'v1', status: VehicleStatus.AVAILABLE, registryLifecycle: 'ACTIVE' },
+      state: null,
+      bookingCtx: null,
+      pickupOdoByBooking: new Map(),
+    });
+    expect(result.status).toBe('Available');
+    expect(result.operationalState.status).toBe('AVAILABLE');
+  });
+
+  it('OFFBOARDED + AVAILABLE is not bookable / available', () => {
+    const result = service.deriveFleetStatusContext({
+      vehicle: { id: 'v1', status: VehicleStatus.AVAILABLE, registryLifecycle: 'OFFBOARDED' },
+      state: null,
+      bookingCtx: null,
+      pickupOdoByBooking: new Map(),
+    });
+    expect(result.status).toBe('Offboarded');
+    expect(result.operationalState.status).toBe('UNKNOWN');
+    expect(result.operationalState.isReliable).toBe(false);
+    expect(result.bookingDto.activeBookingId).toBeNull();
+  });
+
+  it('ARCHIVED + AVAILABLE is not bookable / available', () => {
+    const result = service.deriveFleetStatusContext({
+      vehicle: { id: 'v1', status: VehicleStatus.AVAILABLE, registryLifecycle: 'ARCHIVED' },
+      state: null,
+      bookingCtx: null,
+      pickupOdoByBooking: new Map(),
+    });
+    expect(result.status).toBe('Archived');
+    expect(result.operationalState.status).toBe('UNKNOWN');
+  });
+});

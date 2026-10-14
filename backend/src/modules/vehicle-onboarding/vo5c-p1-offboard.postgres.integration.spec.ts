@@ -10,7 +10,7 @@ import {
   VehicleRegistryLifecycleOutboxStatus,
 } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
-import { VehicleOffboardingService } from './services/vehicle-offboarding.service';
+import { createVehicleOffboardingServiceForTests } from './testing/vehicle-offboarding-test.harness';
 import { VehicleOffboardPreflightService } from './offboarding/vehicle-offboard-preflight.service';
 import { VehicleOnboardingOffboardService } from './services/vehicle-onboarding-offboard.service';
 import { VehicleRegistryLifecycleOutboxProcessor } from './registry-lifecycle/vehicle-registry-lifecycle-outbox.processor';
@@ -161,7 +161,7 @@ async function createCustomer(prisma: PrismaClient, orgId: string) {
 }
 
 function buildOffboardStack(prisma: PrismaClient) {
-  const offboarding = new VehicleOffboardingService(prisma as any);
+  const offboarding = createVehicleOffboardingServiceForTests(prisma);
   const preflight = new VehicleOffboardPreflightService(prisma as any);
   const httpOffboard = new VehicleOnboardingOffboardService(preflight, offboarding);
   return { offboarding, preflight, httpOffboard };

@@ -156,6 +156,8 @@ export class BusinessAuditOutboxProcessorService {
       case BusinessAuditAction.MANUAL_APPROVAL_REQUESTED:
       case BusinessAuditAction.MANUAL_APPROVAL_EXPIRED:
         return 'WARN';
+      case BusinessAuditAction.VEHICLE_REGISTRY_OFFBOARDED:
+        return 'CRITICAL';
       default:
         return 'INFO';
     }

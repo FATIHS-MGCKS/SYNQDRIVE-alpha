@@ -9,7 +9,7 @@ import {
   assertVehicleRegistryActiveForOperationalAdmission,
   VEHICLE_REGISTRY_NOT_OPERATIONAL_CODE,
 } from '@modules/vehicles/registry/vehicle-registry-admission';
-import { VehicleOffboardingService } from './services/vehicle-offboarding.service';
+import { createVehicleOffboardingServiceForTests } from './testing/vehicle-offboarding-test.harness';
 import { VehicleOffboardPreflightService } from './offboarding/vehicle-offboard-preflight.service';
 import { VehicleOnboardingOffboardService } from './services/vehicle-onboarding-offboard.service';
 import { VehicleOnboardingError } from './errors/vehicle-onboarding.errors';
@@ -46,7 +46,7 @@ async function createActiveVehicle(prisma: PrismaClient, orgId: string) {
 (run ? describe : describe.skip)('VO-5C-P1.1 registry admission (PostgreSQL)', () => {
   jest.setTimeout(120_000);
   const prisma = new PrismaClient();
-  const offboarding = new VehicleOffboardingService(prisma as any);
+  const offboarding = createVehicleOffboardingServiceForTests(prisma);
   const tripEngine = new TripDecisionEngine(prisma as any);
 
   afterAll(async () => {
