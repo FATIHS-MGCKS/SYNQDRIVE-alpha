@@ -84,6 +84,8 @@ import { TireLifecycleService } from '@modules/vehicle-intelligence/tires/tire-l
 import { BrakeRegistrationService } from '@modules/vehicle-intelligence/brakes/brake-registration.service';
 import type { RegistrationBrakeManualSpec } from '@modules/vehicle-intelligence/brakes/register-brake-baseline';
 import type { RegisterFromDimoResult } from './dto/register-from-dimo-result.dto';
+import { MasterDimoCanonicalRegistrationService } from '@modules/vehicle-onboarding/master-dimo/master-dimo-canonical-registration.service';
+import { runVehicleOnboardingHttp } from '@modules/vehicle-onboarding/http/vehicle-onboarding-http.util';
 import { DataAuthorizationsService } from '@modules/data-authorizations/data-authorizations.service';
 import { DataAuthorizationEnforcementService } from '@modules/data-authorizations/data-authorization-enforcement.service';
 import { DeviceConnectionQueryService } from '@modules/dimo/device-connection-query.service';
@@ -347,6 +349,7 @@ export class VehiclesService {
     @Inject(dimoConfig.KEY) private readonly dimoConf: ConfigType<typeof dimoConfig>,
     private readonly tasksService: TasksService,
     private readonly fleetMapCache: FleetMapCacheService,
+    private readonly masterDimoCanonicalRegistration: MasterDimoCanonicalRegistrationService,
     @Optional()
     private readonly billingQuantity?: BillingQuantityVehicleIntegration,
     @Optional()
@@ -2272,254 +2275,109 @@ export class VehiclesService {
     },
     createdByUserId?: string | null,
   ): Promise<RegisterFromDimoResult> {
-    const dimoVehicle = await this.prisma.dimoVehicle.findUniqueOrThrow({
-      where: { id: dimoVehicleId },
-    });
-
-    const defaultFuel: FuelType =
-      dimoVehicle.fuelType &&
-      DIMO_FUEL_TYPE_MAP[dimoVehicle.fuelType.toUpperCase()]
-        ? DIMO_FUEL_TYPE_MAP[dimoVehicle.fuelType.toUpperCase()]
-        : FuelType.OTHER;
-
-    const fuelFromExtra = extraData?.fuelType
-      ? this.parseFuelType(extraData.fuelType, defaultFuel)
-      : defaultFuel;
-
-    const { fuelType: _f, vehicleType: _vt, ...restExtra } = extraData ?? {};
-    const vehicleTypeParsed = this.parseVehicleType(extraData?.vehicleType);
-
-    const createData: Prisma.VehicleCreateInput = {
-      organization: { connect: { id: orgId } },
-      dimoVehicle: { connect: { id: dimoVehicleId } },
-      vin: dimoVehicle.vin || `DIMO-${dimoVehicle.externalId}`,
-      make: dimoVehicle.make || 'Unknown',
-      model: dimoVehicle.model || 'Unknown',
-      year: dimoVehicle.year || new Date().getFullYear(),
-      fuelType: fuelFromExtra,
-      ...(vehicleTypeParsed && { vehicleType: vehicleTypeParsed }),
-      ...(stationId && {
-        homeStation: { connect: { id: stationId } },
-        currentStation: { connect: { id: stationId } },
-      }),
-      ...restExtra,
-    };
-
-    let vehicle: Vehicle;
     try {
-      vehicle = await this.prisma.$transaction(async (tx) => {
-        await acquirePgAdvisoryXactLock(tx, vehicleDimoBindingLockKey(dimoVehicleId));
+      const result = await runVehicleOnboardingHttp(() =>
+        this.masterDimoCanonicalRegistration.register({
+          organizationId: orgId,
+          stationId,
+          dimoVehicleId,
+          extraData,
+          manualSpecs,
+          actorUserId: createdByUserId ?? null,
+        }),
+      );
 
-        const existingBinding = await tx.vehicle.findFirst({
-          where: { dimoVehicleId },
-          select: { id: true, organizationId: true },
-        });
-        if (existingBinding) {
-          throw new ConflictException({
-            code: 'DIMO_VEHICLE_ALREADY_REGISTERED',
-            message: 'This DIMO vehicle is already linked to a fleet vehicle',
-            vehicleId: existingBinding.id,
-            organizationId: existingBinding.organizationId,
-          });
-        }
+      if (
+        manualSpecs?.tires &&
+        this.masterDimoCanonicalRegistration.masterManualSpecsNeedLegacyTireTreadPass({
+          organizationId: orgId,
+          stationId,
+          dimoVehicleId,
+          manualSpecs,
+          actorUserId: createdByUserId ?? null,
+        })
+      ) {
+        await this.applyRegisterFromDimoTireTreadEnrichment(orgId, result.vehicle.id, manualSpecs.tires);
+      }
 
-        try {
-          const created = await tx.vehicle.create({
-            data: {
-              ...createData,
-              ...(createdByUserId ? { createdByUserId } : {}),
-            },
-          });
+      this.capabilityLifecycle?.refreshOnNewIntegration(orgId, result.vehicle.id);
+      void this.batteryCapabilityRefresh?.enqueueForDimoVehicle(
+        orgId,
+        result.vehicle.id,
+        BatteryCapabilityRefreshTrigger.VEHICLE_REGISTRATION,
+      );
+      void this.dataAuthorizations.ensureDimoTelemetryAuthorization(orgId);
 
-          await this.dimoVehicleDataSourceLink.ensureDimoVehicleDataSourceLinkOrThrow(
-            {
-              organizationId: orgId,
-              vehicleId: created.id,
-              dimoVehicleId,
-              linkedByUserId: createdByUserId ?? null,
-              provenance: 'registration',
-            },
-            tx,
-          );
-
-          return created;
-        } catch (error) {
-          if (
-            isPrismaUniqueViolation(error, ['dimo_vehicle_id'])
-            || isPrismaUniqueViolation(error, ['vin', 'organizationId'])
-          ) {
-            throw new ConflictException({
-              code: 'DIMO_VEHICLE_ALREADY_REGISTERED',
-              message: 'This DIMO vehicle is already linked to a fleet vehicle',
-            });
-          }
-          throw error;
-        }
-      });
+      return result;
     } catch (error) {
       if (error instanceof ConflictException) {
-        throw error;
-      }
-      if (isPrismaUniqueViolation(error, ['dimo_vehicle_id'])) {
-        throw new ConflictException({
-          code: 'DIMO_VEHICLE_ALREADY_REGISTERED',
-          message: 'This DIMO vehicle is already linked to a fleet vehicle',
-        });
+        const body = error.getResponse();
+        if (
+          typeof body === 'object' &&
+          body &&
+          (body as { code?: string }).code === 'SOURCE_ALREADY_REGISTERED'
+        ) {
+          const details = (body as { details?: Record<string, unknown> }).details ?? {};
+          throw new ConflictException({
+            code: 'DIMO_VEHICLE_ALREADY_REGISTERED',
+            message:
+              (body as { message?: string }).message ??
+              'This DIMO vehicle is already linked to a fleet vehicle',
+            vehicleId: details.vehicleId,
+            organizationId: details.organizationId,
+          });
+        }
       }
       throw error;
     }
+  }
 
-    // Record DIMO provider consent grant (fire-and-forget — never blocks vehicle creation)
-    void this.providerConsent.recordDimoConsent({
-      vehicleId: vehicle.id,
-      organizationId: orgId,
-      dimoExternalId: dimoVehicle.externalId,
-      dimoTokenId: dimoVehicle.tokenId ?? null,
-      grantedByUserId: createdByUserId ?? null,
-      metadataJson: { registeredVin: vehicle.vin, dimoVehicleId },
+  private async applyRegisterFromDimoTireTreadEnrichment(
+    organizationId: string,
+    vehicleId: string,
+    tr: NonNullable<
+      Parameters<VehiclesService['registerFromDimo']>[4]
+    >['tires'],
+  ): Promise<void> {
+    if (!tr) return;
+    const result = await this.tireLifecycleService.upsertSetupAndMeasurement({
+      vehicleId,
+      organizationId,
+      frontDimension: tr.frontDimension ?? null,
+      rearDimension: tr.rearDimension ?? null,
+      brandModelFront: tr.brandModelFront ?? null,
+      brandModelRear: tr.brandModelRear ?? null,
+      tireSeason: tr.tireSeason ?? null,
+      loadIndexFront: tr.loadIndexFront ?? null,
+      speedIndexFront: tr.speedIndexFront ?? null,
+      loadIndexRear: tr.loadIndexRear ?? null,
+      speedIndexRear: tr.speedIndexRear ?? null,
+      dotCodeFront: tr.dotCodeFront ?? null,
+      dotCodeRear: tr.dotCodeRear ?? null,
+      treadFL: tr.treadFL ?? null,
+      treadFR: tr.treadFR ?? null,
+      treadBL: tr.treadBL ?? null,
+      treadBR: tr.treadBR ?? null,
+      tireCondition: tr.tireCondition ?? null,
+      source: 'manual_registration',
     });
 
-    this.capabilityLifecycle?.refreshOnNewIntegration(orgId, vehicle.id);
-    void this.batteryCapabilityRefresh?.enqueueForDimoVehicle(
-      orgId,
-      vehicle.id,
-      BatteryCapabilityRefreshTrigger.VEHICLE_REGISTRATION,
-    );
-
-    if (manualSpecs?.battery) {
-      const b = manualSpecs.battery;
-      const hasAny =
-        (b.batteryType != null && String(b.batteryType).trim() !== '') ||
-        b.batteryAmpere != null ||
-        b.batteryVolt != null;
-      if (hasAny) {
-        await this.prisma.vehicleBatterySpec.create({
-          data: {
-            vehicleId: vehicle.id,
-            batteryType: b.batteryType?.trim() || null,
-            batteryAmpere: b.batteryAmpere ?? null,
-            batteryVolt: b.batteryVolt ?? null,
-            sourceType: BatterySourceType.MANUAL,
-            sourceConfidence: 1,
-          },
-        });
-      }
+    if (result.setup?.id && (tr.initialTreadFrontMm != null || tr.initialTreadRearMm != null)) {
+      await this.prisma.vehicleTireSetup.update({
+        where: { id: result.setup.id },
+        data: {
+          initialTreadFrontMm: tr.initialTreadFrontMm ?? undefined,
+          initialTreadRearMm: tr.initialTreadRearMm ?? undefined,
+        },
+      });
     }
 
-    let brakeRegistration = this.brakeRegistrationService.noBrakePayloadResult();
-    if (manualSpecs?.brakes) {
-      const latestState = await this.prisma.vehicleLatestState.findUnique({
-        where: { vehicleId: vehicle.id },
-        select: { odometerKm: true },
+    if (tr.aiTireSpec && result.setup?.id) {
+      await this.prisma.vehicleTireSetup.update({
+        where: { id: result.setup.id },
+        data: { aiTireSpec: tr.aiTireSpec as Prisma.InputJsonValue },
       });
-      brakeRegistration = await this.brakeRegistrationService.processRegistrationBrakes({
-        vehicleId: vehicle.id,
-        organizationId: orgId,
-        brakes: manualSpecs.brakes,
-        registrationMileageKm: vehicle.mileageKm,
-        latestStateOdometerKm: latestState?.odometerKm ?? null,
-      });
-      if (brakeRegistration.initializationError) {
-        this.logger.warn(
-          `Brake registration outcome for vehicle ${vehicle.id}: ${brakeRegistration.brakeBaselineStatus} — ${brakeRegistration.initializationError}`,
-        );
-      }
     }
-
-    if (manualSpecs?.tires) {
-      const tr = manualSpecs.tires;
-      const hasTireInput = [
-        tr.frontDimension,
-        tr.rearDimension,
-        tr.brandModelFront,
-        tr.brandModelRear,
-        tr.tireSeason,
-        tr.loadIndexFront,
-        tr.speedIndexFront,
-        tr.loadIndexRear,
-        tr.speedIndexRear,
-        tr.dotCodeFront,
-        tr.dotCodeRear,
-        tr.tireCondition,
-        tr.initialTreadFrontMm,
-        tr.initialTreadRearMm,
-        tr.treadFL,
-        tr.treadFR,
-        tr.treadBL,
-        tr.treadBR,
-      ].some((v) => v != null && String(v).trim() !== '');
-
-      if (hasTireInput) {
-        const result = await this.tireLifecycleService.upsertSetupAndMeasurement({
-          vehicleId: vehicle.id,
-          organizationId: orgId,
-          frontDimension: tr.frontDimension ?? null,
-          rearDimension: tr.rearDimension ?? null,
-          brandModelFront: tr.brandModelFront ?? null,
-          brandModelRear: tr.brandModelRear ?? null,
-          tireSeason: tr.tireSeason ?? null,
-          loadIndexFront: tr.loadIndexFront ?? null,
-          speedIndexFront: tr.speedIndexFront ?? null,
-          loadIndexRear: tr.loadIndexRear ?? null,
-          speedIndexRear: tr.speedIndexRear ?? null,
-          dotCodeFront: tr.dotCodeFront ?? null,
-          dotCodeRear: tr.dotCodeRear ?? null,
-          treadFL: tr.treadFL ?? null,
-          treadFR: tr.treadFR ?? null,
-          treadBL: tr.treadBL ?? null,
-          treadBR: tr.treadBR ?? null,
-          tireCondition: tr.tireCondition ?? null,
-          source: 'manual_registration',
-        });
-
-        if (
-          result.setup?.id &&
-          (tr.initialTreadFrontMm != null || tr.initialTreadRearMm != null)
-        ) {
-          await this.prisma.vehicleTireSetup.update({
-            where: { id: result.setup.id },
-            data: {
-              initialTreadFrontMm: tr.initialTreadFrontMm ?? undefined,
-              initialTreadRearMm: tr.initialTreadRearMm ?? undefined,
-            },
-          });
-        }
-
-        if (tr.aiTireSpec && result.setup?.id) {
-          await this.prisma.vehicleTireSetup.update({
-            where: { id: result.setup.id },
-            data: { aiTireSpec: tr.aiTireSpec as any },
-          });
-        }
-      }
-    }
-
-    await this.prisma.vehicleEnrichmentJob.create({
-      data: {
-        vehicle: { connect: { id: vehicle.id } },
-        jobType: EnrichmentJobType.BATTERY,
-        status: 'PENDING',
-      },
-    });
-
-    void this.dataAuthorizations.ensureDimoTelemetryAuthorization(orgId);
-
-    void this.billingQuantity
-      ?.onVehicleProvisioned({
-        organizationId: orgId,
-        vehicleId: vehicle.id,
-        actorUserId: createdByUserId ?? null,
-      })
-      .catch((error) => {
-        this.logger.warn({
-          msg: 'billing.quantity.vehicle_provision_hook_failed',
-          organizationId: orgId,
-          vehicleId: vehicle.id,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      });
-
-    return { vehicle, brakeRegistration };
   }
 
   async getFleetConnectivity(
