@@ -70,10 +70,10 @@ export type VsiSourceLinkRow = {
   metadata: unknown;
   consentId?: string | null;
   /**
-   * When true, scoped org data authorization is ACTIVE for this link's consent.
-   * When false/undefined, provider telemetry authorization remains UNKNOWN.
+   * When true, vehicle provider consent is ACTIVE for this link (org eligibility only).
+   * Does not imply provider-side telemetry authorization in P1 descriptors.
    */
-  scopedTelemetryAuthorizationProven?: boolean;
+  scopedOrgProviderConsentValid?: boolean;
 };
 
 export type VsiPollLogRow = {

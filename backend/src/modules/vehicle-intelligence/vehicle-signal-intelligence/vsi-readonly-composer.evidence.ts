@@ -50,14 +50,21 @@ export function isRegistryNonOperational(
   return lifecycle === 'OFFBOARDED' || lifecycle === 'ARCHIVED';
 }
 
-/** Poll SUCCESS and link existence do not prove scoped telemetry authorization. */
-export function resolveScopedTelemetryAuthorization(input: {
-  scopedTelemetryAuthorizationProven?: boolean;
-}): VsiAuthorizationStatus {
-  if (input.scopedTelemetryAuthorizationProven === true) {
-    return VsiAuthorizationStatus.AUTHORIZED;
-  }
+/**
+ * P1: org/provider consent validity does not establish provider-side telemetry authorization.
+ * VSI-02 HTTP/telemetry proof paths are not available in read-only composer — remain UNKNOWN.
+ */
+export function resolveScopedTelemetryAuthorization(): VsiAuthorizationStatus {
   return VsiAuthorizationStatus.UNKNOWN;
+}
+
+export function orgProviderConsentAuthorizationLimitation(
+  scopedOrgProviderConsentValid?: boolean,
+): string | null {
+  if (scopedOrgProviderConsentValid === true) {
+    return 'ORG_PROVIDER_CONSENT_ACTIVE_NOT_PROVIDER_TELEMETRY_AUTHORIZATION_PROOF';
+  }
+  return null;
 }
 
 export function proveScopedTelemetryAuthorizationFromConsent(input: {

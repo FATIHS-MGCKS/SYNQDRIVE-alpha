@@ -125,10 +125,30 @@ describe('vsi-readonly-composer.engine', () => {
       { id: 'link-1', provider: 'DIMO', isActive: true, metadata: {} },
     ]);
     expect(projections[0].verifiedModality).toBe('UNRESOLVED');
-    expect(projections[0].confidenceLimitations).toContain('MISSING_CONNECTION_IDENTITY_METADATA');
+    expect(projections[0].confidenceLimitations).toContain(
+      'MISSING_OR_MALFORMED_CONNECTION_IDENTITY_METADATA',
+    );
   });
 
-  it('malformed connectionIdentity scope vs tenant adds limitations', () => {
+  it('malformed unsupported connection identity contract version is unresolved', () => {
+    const projections = projectConnectionIdentitiesFromLinks(
+      [
+        {
+          id: LINK_TESLA,
+          provider: 'DIMO',
+          isActive: true,
+          metadata: ciV2({ contractVersion: 'vo-connection-identity-v0' }),
+        },
+      ],
+      { organizationId: ORG, vehicleId: VEH },
+    );
+    expect(projections[0].verifiedModality).toBe('UNRESOLVED');
+    expect(projections[0].confidenceLimitations).toContain(
+      'UNSUPPORTED_CONNECTION_IDENTITY_CONTRACT_VERSION',
+    );
+  });
+
+  it('connectionIdentity scope mismatch fails closed to unresolved identity', () => {
     const projections = projectConnectionIdentitiesFromLinks(
       [
         {
@@ -140,6 +160,8 @@ describe('vsi-readonly-composer.engine', () => {
       ],
       { organizationId: ORG, vehicleId: VEH },
     );
+    expect(projections[0].verifiedModality).toBe('UNRESOLVED');
+    expect(projections[0].treatsAsPhysicalHardwareDevice).toBe(false);
     expect(projections[0].confidenceLimitations).toContain(
       'CONNECTION_IDENTITY_METADATA_ORG_MISMATCH',
     );
@@ -176,6 +198,39 @@ describe('vsi-readonly-composer.engine', () => {
     expect(lv?.confidenceLimitations).toContain('RAW_SNAPSHOT_KEY_NULL_VALUE_NOT_PHYSICAL_OBSERVATION');
     expect(lv?.capability.empiricalObservation).toBe(VsiEmpiricalObservationStatus.NEVER_OBSERVED);
     expect(lv?.capability.providerCatalog).toBe('UNKNOWN');
+    expect(lv?.catalogEvidence).toBeUndefined();
+  });
+
+  it('catalog evidence omitted when provider catalog is unknown', () => {
+    const result = composeReadonlyVehicleSignals({
+      organizationId: ORG,
+      vehicleId: VEH,
+      registryLifecycle: 'ACTIVE',
+      hardwareTypeLegacy: 'LTE_R1',
+      projectionAsOf,
+      links: [{ id: LINK_RUPTELA, provider: 'DIMO', isActive: true, metadata: ciV2({}) }],
+      latestState: {
+        vehicleId: VEH,
+        providerBindingId: LINK_RUPTELA,
+        providerSource: 'DIMO',
+        lvBatteryVoltage: 12.5,
+        evSoc: null,
+        online: true,
+        sourceTimestamp: projectionAsOf,
+        providerFetchedAt: projectionAsOf,
+        updatedAt: projectionAsOf,
+        rawPayloadJson: {
+          lowVoltageBatteryCurrentVoltage: {
+            timestamp: projectionAsOf.toISOString(),
+            value: 12.5,
+          },
+        },
+      },
+      pollLogs: [],
+    });
+    const lv = result.signals.find((s) => s.identity.canonicalSignalKey === 'lv_voltage');
+    expect(lv?.capability.providerCatalog).toBe('UNKNOWN');
+    expect(lv?.catalogEvidence).toBeUndefined();
   });
 
   it('two SUCCESS polls with one source timestamp and no prior observation => UNKNOWN strict advance', () => {
@@ -264,7 +319,7 @@ describe('vsi-readonly-composer.engine', () => {
     ).toBe(true);
   });
 
-  it('proven scoped consent yields AUTHORIZED without HTTP 200 inference', () => {
+  it('valid org consent does not imply provider telemetry authorization', () => {
     const result = composeReadonlyVehicleSignals({
       organizationId: ORG,
       vehicleId: VEH,
@@ -277,13 +332,16 @@ describe('vsi-readonly-composer.engine', () => {
           provider: 'DIMO',
           isActive: true,
           metadata: ciV2({}),
-          scopedTelemetryAuthorizationProven: true,
+          scopedOrgProviderConsentValid: true,
         },
       ],
       latestState: null,
       pollLogs: [],
     });
-    expect(result.signals[0].capability.authorization).toBe(VsiAuthorizationStatus.AUTHORIZED);
+    expect(result.signals[0].capability.authorization).toBe(VsiAuthorizationStatus.UNKNOWN);
+    expect(result.signals[0].confidenceLimitations).toContain(
+      'ORG_PROVIDER_CONSENT_ACTIVE_NOT_PROVIDER_TELEMETRY_AUTHORIZATION_PROOF',
+    );
   });
 
   it('missing provider binding prevents attribution to active links', () => {
@@ -421,6 +479,99 @@ describe('vsi-readonly-composer.engine', () => {
     expect(result.signals.length).toBeGreaterThan(0);
   });
 
+  it('aggregate latest-state timestamp does not substitute missing per-signal LV timestamp', () => {
+    const aggregate = projectionAsOf;
+    const result = composeReadonlyVehicleSignals({
+      organizationId: ORG,
+      vehicleId: VEH,
+      registryLifecycle: 'ACTIVE',
+      hardwareTypeLegacy: 'LTE_R1',
+      projectionAsOf,
+      links: [{ id: LINK_RUPTELA, provider: 'DIMO', isActive: true, metadata: ciV2({}) }],
+      latestState: {
+        vehicleId: VEH,
+        providerBindingId: LINK_RUPTELA,
+        providerSource: 'DIMO',
+        lvBatteryVoltage: 12.7,
+        evSoc: null,
+        online: true,
+        sourceTimestamp: aggregate,
+        providerFetchedAt: projectionAsOf,
+        updatedAt: projectionAsOf,
+        rawPayloadJson: {
+          lowVoltageBatteryCurrentVoltage: { value: 12.7 },
+        },
+      },
+      pollLogs: [],
+    });
+    const lv = result.signals.find((s) => s.identity.canonicalSignalKey === 'lv_voltage');
+    expect(lv?.timestamps.source).toBe('NOT_MEASURED');
+    expect(lv?.freshnessClassification).toBe('UNKNOWN');
+    expect(lv?.confidenceLimitations).toContain('SIGNAL_VALUE_WITHOUT_KNOWN_OBSERVATION_TIME');
+  });
+
+  it('HV physical SOC without signal timestamp stays freshness UNKNOWN', () => {
+    const result = composeReadonlyVehicleSignals({
+      organizationId: ORG,
+      vehicleId: VEH,
+      registryLifecycle: 'ACTIVE',
+      hardwareTypeLegacy: 'LTE_R1',
+      projectionAsOf,
+      links: [{ id: LINK_TESLA, provider: 'DIMO', isActive: true, metadata: ciV2({}) }],
+      latestState: {
+        vehicleId: VEH,
+        providerBindingId: LINK_TESLA,
+        providerSource: 'DIMO',
+        lvBatteryVoltage: null,
+        evSoc: null,
+        online: true,
+        sourceTimestamp: projectionAsOf,
+        providerFetchedAt: projectionAsOf,
+        updatedAt: projectionAsOf,
+        rawPayloadJson: {
+          powertrainTractionBatteryStateOfChargeCurrent: { value: 61 },
+        },
+      },
+      pollLogs: [],
+    });
+    const hv = result.signals.find((s) => s.identity.canonicalSignalKey === 'hv_battery_soc');
+    expect(hv?.timestamps.source).toBe('NOT_MEASURED');
+    expect(hv?.freshnessClassification).toBe('UNKNOWN');
+  });
+
+  it('future native signal timestamp is rejected for LV freshness', () => {
+    const future = new Date('2026-10-15T00:00:00Z');
+    const result = composeReadonlyVehicleSignals({
+      organizationId: ORG,
+      vehicleId: VEH,
+      registryLifecycle: 'ACTIVE',
+      hardwareTypeLegacy: 'LTE_R1',
+      projectionAsOf,
+      links: [{ id: LINK_RUPTELA, provider: 'DIMO', isActive: true, metadata: ciV2({}) }],
+      latestState: {
+        vehicleId: VEH,
+        providerBindingId: LINK_RUPTELA,
+        providerSource: 'DIMO',
+        lvBatteryVoltage: 12.8,
+        evSoc: null,
+        online: true,
+        sourceTimestamp: projectionAsOf,
+        providerFetchedAt: projectionAsOf,
+        updatedAt: projectionAsOf,
+        rawPayloadJson: {
+          lowVoltageBatteryCurrentVoltage: {
+            timestamp: future.toISOString(),
+            value: 12.8,
+          },
+        },
+      },
+      pollLogs: [],
+    });
+    const lv = result.signals.find((s) => s.identity.canonicalSignalKey === 'lv_voltage');
+    expect(lv?.confidenceLimitations).toContain('FUTURE_SIGNAL_TIMESTAMP_REJECTED');
+    expect(lv?.freshnessClassification).toBe('UNKNOWN');
+  });
+
   it('stale per-signal LV observation uses signal timestamp not aggregate when fresh', () => {
     const oldAggregate = new Date('2026-10-01T00:00:00Z');
     const freshSignal = new Date('2026-10-14T11:55:00Z');
@@ -452,6 +603,9 @@ describe('vsi-readonly-composer.engine', () => {
     });
     const lv = result.signals.find((s) => s.identity.canonicalSignalKey === 'lv_voltage');
     expect(lv?.freshnessClassification).toBe('FRESH');
+    expect(lv?.timestamps.source).toEqual(freshSignal);
+    const conn = result.signals.find((s) => s.identity.canonicalSignalKey === 'device_connectivity');
+    expect(conn?.freshnessClassification).toBe('STALE');
   });
 
   it('OFFBOARDED registry is non-operational without inventing consent revocation', () => {

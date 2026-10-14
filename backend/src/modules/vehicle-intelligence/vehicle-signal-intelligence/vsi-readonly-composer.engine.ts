@@ -8,6 +8,7 @@ import {
 } from './canonical-signal-keys';
 import {
   VSI_EVIDENCE_CONTRACT_VERSION,
+  VsiAuthorizationStatus,
   VsiEmpiricalObservationStatus,
   VsiProviderCatalogStatus,
   VsiSignalQualityStatus,
@@ -29,12 +30,15 @@ import { projectConnectionIdentitiesFromLinks } from './vsi-connection-identity-
 import {
   isLatestStateAttributedToLink,
   isRegistryNonOperational,
+  orgProviderConsentAuthorizationLimitation,
   resolveScopedTelemetryAuthorization,
   resolveStrictSourceAdvanceEvidence,
 } from './vsi-readonly-composer.evidence';
 import type { VehicleRegistryLifecycle } from '@prisma/client';
 
 type RawSignalNode = { timestamp?: string | number | null; value?: unknown };
+
+const FUTURE_TIMESTAMP_TOLERANCE_MS = 60_000;
 
 function readRawSignal(
   raw: unknown,
@@ -68,6 +72,39 @@ function mapFreshnessToDescriptor(
   if (freshness === 'live' || freshness === 'standby') return 'FRESH';
   if (freshness === 'signal_delayed' || freshness === 'offline') return 'STALE';
   return 'UNKNOWN';
+}
+
+function resolveSignalTimestampEvidence(input: {
+  signalSourceMs: number | null;
+  projectionAsOfMs: number;
+}): {
+  source: Date | 'NOT_MEASURED';
+  observed: Date | 'NOT_MEASURED';
+  freshness: 'FRESH' | 'STALE' | 'UNKNOWN';
+  limitations: string[];
+} {
+  const { signalSourceMs, projectionAsOfMs } = input;
+  if (signalSourceMs == null) {
+    return {
+      source: 'NOT_MEASURED',
+      observed: 'NOT_MEASURED',
+      freshness: 'UNKNOWN',
+      limitations: [],
+    };
+  }
+  if (signalSourceMs > projectionAsOfMs + FUTURE_TIMESTAMP_TOLERANCE_MS) {
+    return {
+      source: 'NOT_MEASURED',
+      observed: 'NOT_MEASURED',
+      freshness: 'UNKNOWN',
+      limitations: ['FUTURE_SIGNAL_TIMESTAMP_REJECTED'],
+    };
+  }
+  const at = new Date(signalSourceMs);
+  const freshness = mapFreshnessToDescriptor(
+    classifyTelemetryFreshness(at, projectionAsOfMs),
+  );
+  return { source: at, observed: at, freshness, limitations: [] };
 }
 
 function linkRef(linkId: string | 'UNRESOLVED', reason?: string): VsiProviderSourceLinkRef {
@@ -108,7 +145,7 @@ function baseDescriptor(input: {
     capability: {
       providerCatalog: VsiProviderCatalogStatus.UNKNOWN,
       empiricalObservation: VsiEmpiricalObservationStatus.NEVER_OBSERVED,
-      authorization: resolveScopedTelemetryAuthorization({}),
+      authorization: VsiAuthorizationStatus.UNKNOWN,
       signalQuality: VsiSignalQualityStatus.UNKNOWN,
     },
     freshnessClassification: 'UNKNOWN',
@@ -200,10 +237,14 @@ export function composeReadonlyVehicleSignals(input: {
     if (!identity.treatsAsPhysicalHardwareDevice && link.id !== 'UNRESOLVED') {
       limitations.push('PHYSICAL_DEVICE_PRESENCE_NOT_PROVEN');
     }
+    const consentLimitation = orgProviderConsentAuthorizationLimitation(
+      link.scopedOrgProviderConsentValid,
+    );
+    if (consentLimitation) {
+      limitations.push(consentLimitation);
+    }
 
-    const authorization = resolveScopedTelemetryAuthorization({
-      scopedTelemetryAuthorizationProven: link.scopedTelemetryAuthorizationProven,
-    });
+    const authorization = resolveScopedTelemetryAuthorization();
 
     for (const key of VSI_P1_SIGNAL_KEYS) {
       const signalLimitations = [...limitations];
@@ -227,9 +268,11 @@ export function composeReadonlyVehicleSignals(input: {
       if (input.latestState && stateAttributed) {
         descriptor.timestamps.persisted = input.latestState.updatedAt;
         descriptor.timestamps.received = input.latestState.providerFetchedAt ?? 'NOT_MEASURED';
-        descriptor.timestamps.observed =
-          input.latestState.sourceTimestamp ?? 'NOT_MEASURED';
-        descriptor.timestamps.source = input.latestState.sourceTimestamp ?? 'NOT_MEASURED';
+        if (key === 'provider_source_timestamp' || key === 'device_connectivity') {
+          descriptor.timestamps.observed =
+            input.latestState.sourceTimestamp ?? 'NOT_MEASURED';
+          descriptor.timestamps.source = input.latestState.sourceTimestamp ?? 'NOT_MEASURED';
+        }
       }
 
       if (key === 'provider_source_timestamp') {
@@ -296,23 +339,24 @@ export function composeReadonlyVehicleSignals(input: {
         const raw = readRawSignal(input.latestState.rawPayloadJson, rawName);
         const columnValue = input.latestState.lvBatteryVoltage;
         const value = columnValue ?? raw.value;
-        descriptor.catalogEvidence = {
-          listed: false,
-          providerNativeSignalName: rawName,
-          checkedAt: input.projectionAsOf,
-          evidenceOrigin: 'VEHICLE_LATEST_STATE',
-        };
-        descriptor.capability.providerCatalog = VsiProviderCatalogStatus.UNKNOWN;
         if (raw.keyPresent) {
           descriptor.confidenceLimitations = [
             ...descriptor.confidenceLimitations,
             'RAW_SNAPSHOT_KEY_PRESENT_NOT_PROVIDER_CATALOG_PROOF',
           ];
         }
-        const signalObservedMs = raw.sourceMs ?? input.latestState.sourceTimestamp?.getTime() ?? null;
-        if (signalObservedMs != null) {
-          const freshness = classifyTelemetryFreshness(new Date(signalObservedMs), nowMs);
-          descriptor.freshnessClassification = mapFreshnessToDescriptor(freshness);
+        const tsEvidence = resolveSignalTimestampEvidence({
+          signalSourceMs: raw.sourceMs,
+          projectionAsOfMs: nowMs,
+        });
+        descriptor.timestamps.source = tsEvidence.source;
+        descriptor.timestamps.observed = tsEvidence.observed;
+        descriptor.freshnessClassification = tsEvidence.freshness;
+        if (tsEvidence.limitations.length > 0) {
+          descriptor.confidenceLimitations = [
+            ...descriptor.confidenceLimitations,
+            ...tsEvidence.limitations,
+          ];
         }
         if (raw.keyPresent && value == null) {
           descriptor.capability.empiricalObservation =
@@ -325,6 +369,13 @@ export function composeReadonlyVehicleSignals(input: {
           descriptor.capability.empiricalObservation =
             VsiEmpiricalObservationStatus.OBSERVED;
           descriptor.capability.signalQuality = VsiSignalQualityStatus.VALID;
+          if (raw.sourceMs == null) {
+            descriptor.freshnessClassification = 'UNKNOWN';
+            descriptor.confidenceLimitations = [
+              ...descriptor.confidenceLimitations,
+              'SIGNAL_VALUE_WITHOUT_KNOWN_OBSERVATION_TIME',
+            ];
+          }
         }
       }
 
@@ -347,20 +398,28 @@ export function composeReadonlyVehicleSignals(input: {
         if (input.latestState.evSoc != null && physicalRaw.value == null) {
           hvLimitations.push('EV_SOC_COLUMN_NOT_PHYSICAL_BMS_PROVENANCE');
         }
-        descriptor.catalogEvidence = {
-          listed: false,
-          providerNativeSignalName: physicalName,
-          checkedAt: input.projectionAsOf,
-          evidenceOrigin: 'VEHICLE_LATEST_STATE',
-        };
-        descriptor.capability.providerCatalog = VsiProviderCatalogStatus.UNKNOWN;
         if (physicalRaw.keyPresent || displayRaw.keyPresent) {
           hvLimitations.push('RAW_SNAPSHOT_KEY_PRESENT_NOT_PROVIDER_CATALOG_PROOF');
+        }
+        const tsEvidence = resolveSignalTimestampEvidence({
+          signalSourceMs: physicalRaw.sourceMs,
+          projectionAsOfMs: nowMs,
+        });
+        descriptor.timestamps.source = tsEvidence.source;
+        descriptor.timestamps.observed = tsEvidence.observed;
+        descriptor.freshnessClassification =
+          usePhysical != null ? tsEvidence.freshness : 'UNKNOWN';
+        if (tsEvidence.limitations.length > 0) {
+          hvLimitations.push(...tsEvidence.limitations);
         }
         descriptor.capability.empiricalObservation =
           usePhysical != null
             ? VsiEmpiricalObservationStatus.OBSERVED
             : VsiEmpiricalObservationStatus.NEVER_OBSERVED;
+        if (usePhysical != null && physicalRaw.sourceMs == null) {
+          descriptor.freshnessClassification = 'UNKNOWN';
+          hvLimitations.push('SIGNAL_VALUE_WITHOUT_KNOWN_OBSERVATION_TIME');
+        }
         if (hvLimitations.length > 0) {
           descriptor.confidenceLimitations = [
             ...descriptor.confidenceLimitations,

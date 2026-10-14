@@ -36,6 +36,10 @@ Latest-state attribution requires matching `providerBindingId` and consistent pr
 
 PostgreSQL integration tests require `VSI03_READONLY_COMPOSER_PG=1` and refuse production-like `DATABASE_URL` hosts (see `vsi-readonly-composer.postgres-guard.ts`).
 
+## P2 follow-up (not P1)
+
+- Durable **prior aggregated provider source timestamp** loader for `strictSourceAdvanced` (independent observation history). P1 keeps `UNKNOWN` when no prior is supplied — no speculative advancement.
+
 ## Tenant security
 
 `composeVehicleSignals` requires matching `organizationId` + `vehicleId`. Source links are loaded with `vehicleId` only (max 10). Poll logs bounded (default 5, max 20).

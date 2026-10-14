@@ -90,7 +90,7 @@ export class VsiReadonlySignalComposerService {
         isActive: link.isActive,
         metadata: link.metadata,
         consentId: link.consentId,
-        scopedTelemetryAuthorizationProven: proveScopedTelemetryAuthorizationFromConsent({
+        scopedOrgProviderConsentValid: proveScopedTelemetryAuthorizationFromConsent({
           consent,
           organizationId: request.organizationId,
           vehicleId: request.vehicleId,
@@ -102,6 +102,18 @@ export class VsiReadonlySignalComposerService {
 
     const latestState = await this.prisma.vehicleLatestState.findUnique({
       where: { vehicleId: request.vehicleId },
+      select: {
+        vehicleId: true,
+        providerBindingId: true,
+        providerSource: true,
+        lvBatteryVoltage: true,
+        evSoc: true,
+        online: true,
+        sourceTimestamp: true,
+        providerFetchedAt: true,
+        updatedAt: true,
+        rawPayloadJson: true,
+      },
     });
 
     const pollLogs = await this.prisma.dimoPollLog.findMany({
