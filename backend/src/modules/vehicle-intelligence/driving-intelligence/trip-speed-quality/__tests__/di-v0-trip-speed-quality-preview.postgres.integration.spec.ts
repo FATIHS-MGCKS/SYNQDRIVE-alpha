@@ -3,6 +3,7 @@ import type { PrismaClient } from '@prisma/client';
 import {
   assertS4aPostgresCiEnv,
   changeTripBoundary,
+  currentFingerprint,
   newS4aClient,
   S4A_POSTGRES_LIVE,
 } from '../../s4a-foundation/__tests__/di-v0-s4a-postgres-harness';
@@ -134,6 +135,9 @@ assertS4aPostgresCiEnv();
 
   it('P21-7 non-active primary (pending successor) → NOT_ASSESSABLE', async () => {
     await withFixture(async (fx) => {
+      await changeTripBoundary(db, fx.tenant.tripId);
+      const successorBoundary = await currentFingerprint(db, fx.tenant.tripId);
+      expect(successorBoundary).not.toBe(fx.boundaryFingerprint);
       const successorId = randomUUID();
       const successorPipelineKey = `DI_V0_S4_PIPELINE_V1:sha256:${'b'.repeat(64)}`;
       await db.$executeRaw`
@@ -147,7 +151,7 @@ assertS4aPostgresCiEnv();
           next_attempt_at, settlement_anchor_at, eligible_at
         ) VALUES (
           ${successorId}, ${fx.tenant.organizationId}, ${fx.tenant.vehicleId}, ${fx.tenant.tripId}, 'API_SYNTHETIC',
-          'PRIMARY', 'PRIMARY', ${fx.boundaryFingerprint}, 1, ${successorPipelineKey}, '{}'::jsonb, 'PENDING',
+          'PRIMARY', 'PRIMARY', ${successorBoundary}, 1, ${successorPipelineKey}, '{}'::jsonb, 'PENDING',
           now(), now(), now() + interval '600 seconds'
         )`;
       const report = await previewDiV0TripSpeedQualityForWorkItem(db, {
@@ -157,6 +161,13 @@ assertS4aPostgresCiEnv();
       });
       expect(report.outcome).toBe('NOT_ASSESSABLE');
       expect(report.notAssessableReasonCode).toBe('NOT_ACTIVE_PRIMARY');
+      const successorPreview = await previewDiV0TripSpeedQualityForWorkItem(db, {
+        organizationId: fx.tenant.organizationId,
+        tripId: fx.tenant.tripId,
+        workItemId: successorId,
+      });
+      expect(successorPreview.outcome).toBe('NOT_ASSESSABLE');
+      expect(successorPreview.notAssessableReasonCode).toBe('WORK_ITEM_NOT_ELIGIBLE');
     });
   }, 120_000);
 });
