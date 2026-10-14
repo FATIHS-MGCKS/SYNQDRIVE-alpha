@@ -134,7 +134,7 @@ export async function computeDiV0TripSpeedQualityProjectionV1ForWorkItem(
   });
 }
 
-async function resolveActivePrimaryWorkItemId(
+export async function resolveActivePrimaryWorkItemId(
   db: DiV0TripSpeedQualityProjectionDb,
   organizationId: string,
   tripId: string,
@@ -151,7 +151,7 @@ async function resolveActivePrimaryWorkItemId(
   return rows[0]?.id ?? null;
 }
 
-async function loadWorkItem(db: DiV0TripSpeedQualityProjectionDb, workItemId: string) {
+export async function loadWorkItem(db: DiV0TripSpeedQualityProjectionDb, workItemId: string) {
   const rows = await db.$queryRaw<
     Array<{
       id: string;
@@ -176,7 +176,7 @@ async function loadWorkItem(db: DiV0TripSpeedQualityProjectionDb, workItemId: st
   return rows[0] ?? null;
 }
 
-async function loadShadowIntervals(
+export async function loadShadowIntervals(
   db: DiV0TripSpeedQualityProjectionDb,
   shadowRunId: string,
   organizationId: string,

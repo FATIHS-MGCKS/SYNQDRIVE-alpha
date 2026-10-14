@@ -1960,5 +1960,5 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | Event | Detail |
 |-------|--------|
 | CHANGE | Read-only production replay for trip `d0af9cc7-ce0d-4e40-9854-2c1341e83bed`; disjoint 763 `NO_NUMERIC` taxonomy; 26 vs 38 conflict alignment; composed S1→P1 tests; ops script `exp021-p21-r3-forensic.ts`; evidence `EXP021_P21_R3_GPS_QC_SEMANTICS_FORENSIC.md` |
-| FINDING | Stationary S1 null-speed + P1 early `NO_NUMERIC` dominates coverage gap; hold/transition abstention is bulk of remainder; `missingEvidenceCount=0` does not imply gap-free GPS |
+| FINDING | Dominant NO_NUMERIC on first real trip is hold/frozen transition (`FROZEN_UNRESOLVED` center, incl. 293 s opening block); stationary band (144 s) is material but not the largest bucket; V1 lumped 8 position-gap s with hold — V2 splits; `missingEvidenceCount=0` does not imply gap-free GPS |
 | NON_EFFECTS | No S1/P1/P2 behavior change; no deploy; no provider calls; no other trips |
