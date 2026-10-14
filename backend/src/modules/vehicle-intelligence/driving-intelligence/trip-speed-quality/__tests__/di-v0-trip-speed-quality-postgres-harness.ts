@@ -3,6 +3,7 @@ import type { PrismaClient } from '@prisma/client';
 import { CALIBRATION_UNSET_V0_BUNDLE, DEFAULT_DI_V0_VERSION_TUPLE } from '../../core';
 import {
   currentFingerprint,
+  s4aIntervals,
   seedS4aSnapshot,
   seedS4aTenant,
   type S4aTenant,
@@ -78,9 +79,15 @@ export function buildSyntheticTripSpeedProjection(
   });
 }
 
+const S4A_INTERVAL_EPOCH_MS = Date.parse('2026-01-01T00:00:00Z');
+
+function shiftS4aIntervalTime(date: Date, tenantStart: Date): Date {
+  return new Date(date.getTime() + tenantStart.getTime() - S4A_INTERVAL_EPOCH_MS);
+}
+
 export async function seedP2CompletedPrimaryFixture(db: PrismaClient): Promise<P2CompletedPrimaryFixture> {
   const tenant = await seedS4aTenant(db);
-  const snapshotHash = await seedS4aSnapshot(db, tenant, `p2-${randomUUID().slice(0, 6)}`);
+  const snapshotHash = await seedS4aSnapshot(db, tenant, `p2-${randomUUID()}`);
   const boundaryFingerprint = await currentFingerprint(db, tenant.tripId);
   const pipelineVersionKey = `DI_V0_S4_PIPELINE_V1:sha256:${'c'.repeat(64)}`;
   await db.$executeRaw`
@@ -99,20 +106,27 @@ export async function seedP2CompletedPrimaryFixture(db: PrismaClient): Promise<P
       ${v.structuralVersion}, ${v.estimatorVersion}, ${CALIBRATION_UNSET_V0_BUNDLE.calibrationVersion},
       ${v.sourceFamilyPolicyVersion}, 'p2-iev', ${randomUUID()}, 'COMPLETED', now()
     )`;
-  const ref = tenant.startTime;
-  await db.$executeRaw`
-    INSERT INTO di_v0_shadow_intervals (
-      id, shadow_run_id, organization_id, vehicle_id, trip_id, interval_start, interval_end, reference_time,
-      motion_state, position_state, causal_position_state, temporal_confidence, value_confidence, source_relation,
-      claim_level, derivation_method, derivation_version, structural_version, estimator_version, calibration_version,
-      source_family_policy_version, provenance, estimated_speed_kmh, speed_evidence_state
-    ) VALUES (
-      ${randomUUID()}, ${shadowRunId}, ${tenant.organizationId}, ${tenant.vehicleId}, ${tenant.tripId},
-      ${ref}, ${new Date(ref.getTime() + 60_000)}, ${ref},
-      'MOVING_SPEED_ESTIMATED', 'FRESH', 'FRESH', 'BUCKET_BOUNDED', 'HIGH', 'SUPPORTED',
-      'L1', 'L3_CENTERED_PATH', 'v0', ${v.structuralVersion}, ${v.estimatorVersion},
-      ${CALIBRATION_UNSET_V0_BUNDLE.calibrationVersion}, ${v.sourceFamilyPolicyVersion}, '{}'::jsonb, 40, 'NUMERIC_HIGH'
-    )`;
+  for (const interval of s4aIntervals()) {
+    const intervalStart = shiftS4aIntervalTime(interval.intervalStart, tenant.startTime);
+    const intervalEnd = shiftS4aIntervalTime(interval.intervalEnd, tenant.startTime);
+    const referenceTime = shiftS4aIntervalTime(interval.referenceTime, tenant.startTime);
+    await db.$executeRaw`
+      INSERT INTO di_v0_shadow_intervals (
+        id, shadow_run_id, organization_id, vehicle_id, trip_id, interval_start, interval_end, reference_time,
+        motion_state, position_state, causal_position_state, temporal_confidence, value_confidence, source_relation,
+        claim_level, derivation_method, derivation_version, structural_version, estimator_version, calibration_version,
+        source_family_policy_version, provenance, estimated_speed_kmh, speed_evidence_state
+      ) VALUES (
+        ${randomUUID()}, ${shadowRunId}, ${tenant.organizationId}, ${tenant.vehicleId}, ${tenant.tripId},
+        ${intervalStart}, ${intervalEnd}, ${referenceTime},
+        ${interval.motionState}, ${interval.positionState}, ${interval.causalPositionState},
+        ${interval.temporalConfidence}, ${interval.valueConfidence}, ${interval.sourceRelation},
+        ${interval.claimLevel}, ${interval.derivationMethod}, ${interval.derivationVersion},
+        ${v.structuralVersion}, ${v.estimatorVersion}, ${CALIBRATION_UNSET_V0_BUNDLE.calibrationVersion},
+        ${v.sourceFamilyPolicyVersion}, ${JSON.stringify(interval.provenance)}::jsonb,
+        ${interval.estimatedSpeedKmh}, ${interval.speedEvidenceState}
+      )`;
+  }
   const combinedInputIdentity = `DI_V0_COMBINED_INPUT_IDENTITY_V0_3:sha256:${'d'.repeat(64)}`;
   const executionIdentity = `DI_V0_S4_EXECUTION_IDENTITY_V1:sha256:${'e'.repeat(64)}`;
   await db.$executeRaw`

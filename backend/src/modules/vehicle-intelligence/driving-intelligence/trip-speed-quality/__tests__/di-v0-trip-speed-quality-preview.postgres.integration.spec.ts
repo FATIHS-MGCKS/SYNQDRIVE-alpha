@@ -55,6 +55,7 @@ assertS4aPostgresCiEnv();
       const after = await projectionRowCount(fx.tenant.tripId);
       expect(after).toBe(before);
       expect(report.mode).toBe('READ_ONLY_PREVIEW');
+      expect(report.outcome).toBe('ASSESSED');
       expect(report.snapshotVerified).toBe(true);
       expect(report.projection).not.toBeNull();
       expect(report.projection!.speed.qcTrustedMaxKmh).toBeGreaterThan(0);
@@ -134,6 +135,11 @@ assertS4aPostgresCiEnv();
   it('P21-7 non-active primary (pending successor) → NOT_ASSESSABLE', async () => {
     await withFixture(async (fx) => {
       const successorId = randomUUID();
+      const successorPipelineKey = `DI_V0_S4_PIPELINE_V1:sha256:${'b'.repeat(64)}`;
+      await db.$executeRaw`
+        INSERT INTO di_v0_s4_pipeline_versions (pipeline_version_key, manifest, status)
+        VALUES (${successorPipelineKey}, '{}'::jsonb, 'ACTIVE')
+        ON CONFLICT DO NOTHING`;
       await db.$executeRaw`
         INSERT INTO di_v0_s4_work_items (
           id, organization_id, vehicle_id, trip_id, source_family, run_purpose, purpose_discriminator,
@@ -141,7 +147,7 @@ assertS4aPostgresCiEnv();
           next_attempt_at, settlement_anchor_at, eligible_at
         ) VALUES (
           ${successorId}, ${fx.tenant.organizationId}, ${fx.tenant.vehicleId}, ${fx.tenant.tripId}, 'API_SYNTHETIC',
-          'PRIMARY', 'PRIMARY', ${fx.boundaryFingerprint}, 1, ${fx.pipelineVersionKey}, '{}'::jsonb, 'PENDING',
+          'PRIMARY', 'PRIMARY', ${fx.boundaryFingerprint}, 1, ${successorPipelineKey}, '{}'::jsonb, 'PENDING',
           now(), now(), now() + interval '600 seconds'
         )`;
       const report = await previewDiV0TripSpeedQualityForWorkItem(db, {
