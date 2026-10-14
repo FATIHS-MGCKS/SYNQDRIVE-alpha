@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import type { PrismaClient } from '@prisma/client';
 import {
   assertS4aPostgresCiEnv,
+  changeTripBoundary,
   newS4aClient,
   S4A_POSTGRES_LIVE,
 } from '../../s4a-foundation/__tests__/di-v0-s4a-postgres-harness';
@@ -119,10 +120,7 @@ assertS4aPostgresCiEnv();
 
   it('P21-6 missing snapshot row → NOT_ASSESSABLE', async () => {
     await withFixture(async (fx) => {
-      await db.$executeRaw`
-        UPDATE di_v0_s4_work_items
-        SET pinned_snapshot_hash = ${`DI_V0_S4_EVIDENCE_V1:sha256:${'f'.repeat(64)}`}
-        WHERE id = ${fx.workItemId}`;
+      await changeTripBoundary(db, fx.tenant.tripId);
       const report = await previewDiV0TripSpeedQualityForWorkItem(db, {
         organizationId: fx.tenant.organizationId,
         tripId: fx.tenant.tripId,
@@ -136,10 +134,6 @@ assertS4aPostgresCiEnv();
   it('P21-7 non-active primary (pending successor) → NOT_ASSESSABLE', async () => {
     await withFixture(async (fx) => {
       const successorId = randomUUID();
-      await db.$executeRaw`
-        UPDATE di_v0_s4_work_items
-        SET status = 'SUPERSEDED', superseded_reason = 'BOUNDARY_CHANGED', superseded_at = now()
-        WHERE id = ${fx.workItemId}`;
       await db.$executeRaw`
         INSERT INTO di_v0_s4_work_items (
           id, organization_id, vehicle_id, trip_id, source_family, run_purpose, purpose_discriminator,
@@ -156,7 +150,7 @@ assertS4aPostgresCiEnv();
         workItemId: fx.workItemId,
       });
       expect(report.outcome).toBe('NOT_ASSESSABLE');
-      expect(report.notAssessableReasonCode).toBe('WORK_ITEM_SUPERSEDED');
+      expect(report.notAssessableReasonCode).toBe('NOT_ACTIVE_PRIMARY');
     });
   }, 120_000);
 });
