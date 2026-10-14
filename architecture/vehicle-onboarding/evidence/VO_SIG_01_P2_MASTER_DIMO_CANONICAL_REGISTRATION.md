@@ -32,7 +32,8 @@ Legacy inline `VehiclesService.registerFromDimo` vehicle create + fire-and-forge
 ## Guards
 
 - Unverified DIMO modality → readiness `VO-RDY-CONN-001` FAIL (no vehicle row)
-- Session advisory lock per `dimoVehicleId` serializes parallel Master registrations; completed case + same idempotency key → **idempotent retry** (not conflict)
+- Parallel Master registrations serialize via **source-claim transaction locks** (`VehicleOnboardingSourceAdoptionService`) plus resume checkpoints; completed case + matching payload fingerprint → **idempotent retry** (no vehicle mutation)
+- Payload fingerprint stored on case `readinessSnapshotJson.masterDimoPayloadFingerprintV1`; mismatched retry → `MASTER_DIMO_REGISTRATION_PAYLOAD_MISMATCH`
 - `SOURCE_ALREADY_REGISTERED` for cross-org binding, incomplete prior attempt, **OFFBOARDED** / **ARCHIVED** rediscovery (explicit re-onboard required)
 - HTTP maps `SOURCE_ALREADY_REGISTERED` → `DIMO_VEHICLE_ALREADY_REGISTERED` for Master UI compatibility
 

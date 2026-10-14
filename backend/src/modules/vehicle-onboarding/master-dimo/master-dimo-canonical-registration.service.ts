@@ -1,11 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { FuelType, Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
-import {
-  acquirePgAdvisorySessionLock,
-  releasePgAdvisorySessionLock,
-  vehicleDimoBindingLockKey,
-} from '@shared/database/pg-advisory-lock.util';
 import { VehicleOnboardingSourceAdoptionService } from '../services/vehicle-onboarding-source-adoption.service';
 import { VehicleOnboardingCaptureService } from '../services/vehicle-onboarding-capture.service';
 import { VehicleOnboardingReadinessService } from '../services/vehicle-onboarding-readiness.service';
@@ -34,6 +29,11 @@ import { buildMasterDimoActivationFinalizeInput } from './master-dimo-registrati
 import { tryResumeMasterDimoRegistration } from './master-dimo-registration-resume';
 import { resolveMasterDimoReadinessProduct } from './master-dimo-readiness-product';
 import { loadMasterRegistrationVehicleResult } from './master-dimo-vehicle-result.loader';
+import { assertMasterDimoRegistrationInputSupported } from './master-dimo-registration-input.policy';
+import {
+  computeMasterDimoRegistrationPayloadFingerprint,
+  persistMasterDimoPayloadFingerprintOnCase,
+} from './master-dimo-registration-payload-fingerprint';
 
 @Injectable()
 export class MasterDimoCanonicalRegistrationService {
@@ -46,6 +46,8 @@ export class MasterDimoCanonicalRegistrationService {
   ) {}
 
   async register(input: MasterDimoRegistrationInput): Promise<RegisterFromDimoResult> {
+    assertMasterDimoRegistrationInputSupported(input);
+
     const resumed = await tryResumeMasterDimoRegistration(this.prisma, input);
     if (resumed.kind === 'IDEMPOTENT_SUCCESS') {
       return resumed.result;
@@ -54,28 +56,6 @@ export class MasterDimoCanonicalRegistrationService {
     const idempotencyKey = masterDimoRegistrationIdempotencyKey(
       input.organizationId,
       input.dimoVehicleId,
-    );
-
-    const dimoBindingLock = vehicleDimoBindingLockKey(input.dimoVehicleId);
-    await acquirePgAdvisorySessionLock(this.prisma, dimoBindingLock);
-    try {
-      const resumedAfterLock = await tryResumeMasterDimoRegistration(this.prisma, input);
-      if (resumedAfterLock.kind === 'IDEMPOTENT_SUCCESS') {
-        return resumedAfterLock.result;
-      }
-      return await this.registerUnderDimoBindingLock(input, idempotencyKey);
-    } finally {
-      await releasePgAdvisorySessionLock(this.prisma, dimoBindingLock);
-    }
-  }
-
-  private async registerUnderDimoBindingLock(
-    input: MasterDimoRegistrationInput,
-    idempotencyKey: string,
-  ): Promise<RegisterFromDimoResult> {
-    const selectedProduct = await resolveMasterDimoReadinessProduct(
-      this.prisma,
-      input.organizationId,
     );
 
     const adopted = await runVehicleOnboardingHttp(() =>
@@ -88,8 +68,34 @@ export class MasterDimoCanonicalRegistrationService {
       }),
     );
 
-    const caseId = adopted.id;
-    let concurrencyToken = adopted.concurrencyToken;
+    const resumedAfterClaim = await tryResumeMasterDimoRegistration(this.prisma, input);
+    if (resumedAfterClaim.kind === 'IDEMPOTENT_SUCCESS') {
+      return resumedAfterClaim.result;
+    }
+
+    return await this.registerUnderAdoptedCase(
+      input,
+      adopted.id,
+      adopted.concurrencyToken ?? '',
+    );
+  }
+
+  private async registerUnderAdoptedCase(
+    input: MasterDimoRegistrationInput,
+    caseId: string,
+    concurrencyToken: string,
+  ): Promise<RegisterFromDimoResult> {
+    const earlyResume = await tryResumeMasterDimoRegistration(this.prisma, input);
+    if (earlyResume.kind === 'IDEMPOTENT_SUCCESS') {
+      return earlyResume.result;
+    }
+
+    const selectedProduct = await resolveMasterDimoReadinessProduct(
+      this.prisma,
+      input.organizationId,
+    );
+
+    let token: string | null = concurrencyToken || null;
 
     const adminBody = buildAdminBaselineDraftFromMasterInput(input);
     const adminResult = await runVehicleOnboardingHttp(() =>
@@ -98,10 +104,10 @@ export class MasterDimoCanonicalRegistrationService {
         caseId,
         actorUserId: input.actorUserId,
         body: adminBody,
-        expectedConcurrencyToken: concurrencyToken,
+        expectedConcurrencyToken: token,
       }),
     );
-    concurrencyToken = adminResult.case.concurrencyToken;
+    token = adminResult.case.concurrencyToken;
 
     const technicalDraft = buildTechnicalBaselineDraftFromMasterManualSpecs(input);
     const hv = tryHvBatteryFromExtra(input.extraData);
@@ -115,12 +121,17 @@ export class MasterDimoCanonicalRegistrationService {
         caseId,
         actorUserId: input.actorUserId,
         body: technicalDraft,
-        expectedConcurrencyToken: concurrencyToken,
+        expectedConcurrencyToken: token,
       }),
     );
-    concurrencyToken = technicalResult.case.concurrencyToken;
+    token = technicalResult.case.concurrencyToken;
 
     await this.applyIdentityFuelOverrideIfNeeded(input, caseId);
+
+    const resumeBeforeReadiness = await tryResumeMasterDimoRegistration(this.prisma, input);
+    if (resumeBeforeReadiness.kind === 'IDEMPOTENT_SUCCESS') {
+      return resumeBeforeReadiness.result;
+    }
 
     const readinessSnapshot = await runVehicleOnboardingHttp(() =>
       this.readiness.evaluateAndSealReadiness({
@@ -143,6 +154,11 @@ export class MasterDimoCanonicalRegistrationService {
       );
     }
 
+    const resumeBeforeActivation = await tryResumeMasterDimoRegistration(this.prisma, input);
+    if (resumeBeforeActivation.kind === 'IDEMPOTENT_SUCCESS') {
+      return resumeBeforeActivation.result;
+    }
+
     const activation = await runVehicleOnboardingHttp(() =>
       this.activation.activateVehicle({
         organizationId: input.organizationId,
@@ -151,6 +167,9 @@ export class MasterDimoCanonicalRegistrationService {
         masterRegistrationFinalize: buildMasterDimoActivationFinalizeInput(input),
       }),
     );
+
+    const payloadFingerprint = computeMasterDimoRegistrationPayloadFingerprint(input);
+    await persistMasterDimoPayloadFingerprintOnCase(this.prisma, caseId, payloadFingerprint);
 
     const vehicle = await loadMasterRegistrationVehicleResult(
       this.prisma,

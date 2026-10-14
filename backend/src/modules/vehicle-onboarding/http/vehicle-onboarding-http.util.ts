@@ -31,6 +31,7 @@ export function toVehicleOnboardingHttpException(error: unknown): HttpException 
     case 'SOURCE_SET_REQUIRES_REVIEW':
     case 'PRIMARY_SOURCE_CONFLICT':
     case 'IDEMPOTENCY_KEY_REUSED_FOR_DIFFERENT_REQUEST':
+    case 'MASTER_DIMO_REGISTRATION_PAYLOAD_MISMATCH':
     case 'SOURCE_REF_CONFLICT':
     case 'OFFBOARD_OPERATIONALLY_BLOCKED':
       return new ConflictException(body);
@@ -38,6 +39,7 @@ export function toVehicleOnboardingHttpException(error: unknown): HttpException 
       return new ForbiddenException(body);
     case 'UNSUPPORTED_CONTRACT_VERSION':
     case 'INVALID_CAPTURE_PAYLOAD':
+    case 'UNSUPPORTED_MASTER_REGISTRATION_FIELDS':
     case 'SCHEMA_REQUIRED_FIELDS_MISSING':
     case 'STATION_SCOPE_MISMATCH':
     case 'TECHNICAL_BASELINE_EVIDENCE_SCOPE_MISMATCH':

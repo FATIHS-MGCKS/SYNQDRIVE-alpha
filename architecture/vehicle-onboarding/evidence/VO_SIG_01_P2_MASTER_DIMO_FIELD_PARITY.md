@@ -19,8 +19,8 @@ Canonical path: `MasterDimoCanonicalRegistrationService` + activation extensions
 | `brakeForceDistribution` | `extraData.brakeForceFrontPercent` | Activation TX SQL | |
 | `frontToRearWeightDistribution` | `extraData.frontToRearWeightDistribution` | Activation TX SQL `front_weight_distribution_pct` | |
 | `tankCapacityLiters` | `extraData.tankCapacityLiters` | Activation TX SQL | |
-| `engineDisplacementCc` | `extraData.engineDisplacementCc` | **No `vehicles` column** | Accepted in payload; explicitly not persisted on register-from-dimo (documented gap vs Master form) |
-| `cylinderCount` | `extraData.cylinderCount` | **No `vehicles` column** | Same as engine displacement |
+| `engineDisplacementCc` | — (stripped in Master `buildVehicleExtraData`) | **Not supported** on register-from-dimo | Backend `UNSUPPORTED_MASTER_REGISTRATION_FIELDS` if sent; update vehicle after registration |
+| `cylinderCount` | — (stripped in Master `buildVehicleExtraData`) | **Not supported** on register-from-dimo | Same as engine displacement |
 | `serviceIntervalManufacturerKm/Months` | `extraData.*` | Activation TX SQL `service_interval_manufacturer_*` | |
 | `oilChangeIntervalKm/Months` | `extraData.*` | Activation TX SQL `oil_change_interval_*` | |
 | `manualSpecs.battery` | `manualSpecs.battery` | Activation TX `vehicle_battery_specs` (idempotent) | 12V LV spec |

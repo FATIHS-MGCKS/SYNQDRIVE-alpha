@@ -309,7 +309,7 @@ function masterDimoHarness(prisma: PrismaClient) {
     expect(await prisma.vehicle.count({ where: { organizationId: orgId } })).toBe(vehicleCountBefore);
   });
 
-  it('serializes parallel master registrations for the same DIMO source', async () => {
+  it('serializes eight parallel master registrations to one vehicle and one outbox', async () => {
     const orgId = await createOrg(prisma);
     const dimoId = randomUUID();
     await insertDimoMirrorForPostgresTests(prisma, {
@@ -322,14 +322,110 @@ function masterDimoHarness(prisma: PrismaClient) {
       organizationId: orgId,
       stationId: null,
       dimoVehicleId: dimoId,
+      extraData: { mileageKm: 11_111 },
       actorUserId: null,
     };
-    const [a, b] = await Promise.all([
-      harness.masterRegistration.register(input),
-      harness.masterRegistration.register(input),
-    ]);
-    expect(a.vehicle.id).toBe(b.vehicle.id);
+    const firstWave = await Promise.allSettled(
+      Array.from({ length: 8 }, () => harness.masterRegistration.register(input)),
+    );
+    expect(firstWave.some((o) => o.status === 'fulfilled')).toBe(true);
+    for (const outcome of firstWave) {
+      if (outcome.status === 'rejected') {
+        await harness.masterRegistration.register(input);
+      }
+    }
+    const vehicle = await prisma.vehicle.findFirstOrThrow({ where: { dimoVehicleId: dimoId } });
     expect(await prisma.vehicle.count({ where: { dimoVehicleId: dimoId } })).toBe(1);
+    expect(vehicle.mileageKm).toBe(11_111);
+    const vehicleId = vehicle.id;
+    const caseRow = await prisma.vehicleOnboardingCase.findFirstOrThrow({
+      where: { vehicleId, status: 'COMPLETED' },
+    });
+    expect(
+      await prisma.vehicleRegistryLifecycleOutbox.count({
+        where: {
+          vehicleId,
+          eventType: 'VEHICLE_ACTIVATED',
+          idempotencyKey: activationOutboxIdempotencyKey(caseRow.id),
+        },
+      }),
+    ).toBe(1);
+  });
+
+  it('idempotent retry returns existing vehicle without applying payload mutations', async () => {
+    const orgId = await createOrg(prisma);
+    const dimoId = randomUUID();
+    await insertDimoMirrorForPostgresTests(prisma, {
+      id: dimoId,
+      externalId: `ext-${dimoId.slice(0, 8)}`,
+      vin: `VIN${randomUUID().replace(/-/g, '').slice(0, 14)}`,
+      rawJson: TESLA_RAW,
+    });
+    const first = await harness.masterRegistration.register({
+      organizationId: orgId,
+      stationId: null,
+      dimoVehicleId: dimoId,
+      extraData: { mileageKm: 9000 },
+      actorUserId: null,
+    });
+    const retry = await harness.masterRegistration.register({
+      organizationId: orgId,
+      stationId: null,
+      dimoVehicleId: dimoId,
+      extraData: { mileageKm: 9000 },
+      actorUserId: null,
+    });
+    expect(retry.vehicle.id).toBe(first.vehicle.id);
+    expect(retry.vehicle.mileageKm).toBe(9000);
+  });
+
+  it('rejects retry with changed payload after successful registration', async () => {
+    const orgId = await createOrg(prisma);
+    const dimoId = randomUUID();
+    await insertDimoMirrorForPostgresTests(prisma, {
+      id: dimoId,
+      externalId: `ext-${dimoId.slice(0, 8)}`,
+      vin: `VIN${randomUUID().replace(/-/g, '').slice(0, 14)}`,
+      rawJson: TESLA_RAW,
+    });
+    await harness.masterRegistration.register({
+      organizationId: orgId,
+      stationId: null,
+      dimoVehicleId: dimoId,
+      extraData: { mileageKm: 1000 },
+      actorUserId: null,
+    });
+    await expect(
+      harness.masterRegistration.register({
+        organizationId: orgId,
+        stationId: null,
+        dimoVehicleId: dimoId,
+        extraData: { mileageKm: 999_999 },
+        actorUserId: null,
+      }),
+    ).rejects.toMatchObject({ code: 'MASTER_DIMO_REGISTRATION_PAYLOAD_MISMATCH' });
+    const vehicle = await prisma.vehicle.findFirstOrThrow({ where: { dimoVehicleId: dimoId } });
+    expect(vehicle.mileageKm).toBe(1000);
+  });
+
+  it('rejects unsupported engine displacement and cylinder count on register-from-dimo', async () => {
+    const orgId = await createOrg(prisma);
+    const dimoId = randomUUID();
+    await insertDimoMirrorForPostgresTests(prisma, {
+      id: dimoId,
+      externalId: `ext-${dimoId.slice(0, 8)}`,
+      vin: `VIN${randomUUID().replace(/-/g, '').slice(0, 14)}`,
+      rawJson: TESLA_RAW,
+    });
+    await expect(
+      harness.masterRegistration.register({
+        organizationId: orgId,
+        stationId: null,
+        dimoVehicleId: dimoId,
+        extraData: { engineDisplacementCc: 1998 },
+        actorUserId: null,
+      }),
+    ).rejects.toMatchObject({ code: 'UNSUPPORTED_MASTER_REGISTRATION_FIELDS' });
   });
 
   it('persists full master form scalar parity inside activation transaction', async () => {

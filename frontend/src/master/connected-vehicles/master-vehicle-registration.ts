@@ -55,8 +55,6 @@ export function buildVehicleExtraData(rv: RegisteredVehicle): Record<string, unk
     brakeForceFrontPercent: parseOptionalFloat(rv.brakeForceDistribution),
     frontToRearWeightDistribution: rv.frontToRearWeightDistribution || undefined,
     tankCapacityLiters: parseOptionalFloat(rv.tankCapacityLiters),
-    engineDisplacementCc: parseOptionalNumber(rv.engineDisplacementCc),
-    cylinderCount: parseOptionalNumber(rv.cylinderCount),
     serviceIntervalManufacturerKm: parseOptionalNumber(rv.serviceIntervalManufacturerKm),
     serviceIntervalManufacturerMonths: parseOptionalNumber(rv.serviceIntervalManufacturerMonths),
     oilChangeIntervalKm: parseOptionalNumber(rv.oilChangeIntervalKm),
@@ -180,6 +178,12 @@ type ManualBatteryPayload = {
 export const MANUAL_CREATE_UNSUPPORTED_REGISTERED_VEHICLE_FIELDS = [
   'serviceHistory',
   'highMobilityActivation',
+] as const;
+
+/** Not persisted on register-from-dimo (no vehicle columns); use vehicle update after registration. */
+export const REGISTER_FROM_DIMO_UNSUPPORTED_EXTRA_FIELDS = [
+  'engineDisplacementCc',
+  'cylinderCount',
 ] as const;
 
 export async function applyManualBaselinesAfterCreate(

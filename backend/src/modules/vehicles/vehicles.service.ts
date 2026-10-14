@@ -2287,6 +2287,7 @@ export class VehiclesService {
         }),
       );
 
+      let postActivationEnrichment: RegisterFromDimoResult['postActivationEnrichment'];
       if (
         manualSpecs?.tires &&
         this.masterDimoCanonicalRegistration.masterManualSpecsNeedLegacyTireTreadPass({
@@ -2297,7 +2298,22 @@ export class VehiclesService {
           actorUserId: createdByUserId ?? null,
         })
       ) {
-        await this.applyRegisterFromDimoTireTreadEnrichment(orgId, result.vehicle.id, manualSpecs.tires);
+        try {
+          await this.applyRegisterFromDimoTireTreadEnrichment(
+            orgId,
+            result.vehicle.id,
+            manualSpecs.tires,
+          );
+        } catch (tireError) {
+          const message =
+            tireError instanceof Error ? tireError.message : 'Tire tread enrichment failed';
+          this.logger.warn(
+            `registerFromDimo tire tread enrichment failed vehicleId=${result.vehicle.id} orgId=${orgId}: ${message}`,
+          );
+          postActivationEnrichment = {
+            tireTread: { status: 'FAILED', message },
+          };
+        }
       }
 
       this.capabilityLifecycle?.refreshOnNewIntegration(orgId, result.vehicle.id);
@@ -2311,7 +2327,11 @@ export class VehiclesService {
       const vehicle = await this.prisma.vehicle.findUniqueOrThrow({
         where: { id: result.vehicle.id },
       });
-      return { vehicle, brakeRegistration: result.brakeRegistration };
+      return {
+        vehicle,
+        brakeRegistration: result.brakeRegistration,
+        postActivationEnrichment,
+      };
     } catch (error) {
       if (error instanceof ConflictException) {
         const body = error.getResponse();
@@ -2328,6 +2348,21 @@ export class VehiclesService {
               'This DIMO vehicle is already linked to a fleet vehicle',
             vehicleId: details.vehicleId,
             organizationId: details.organizationId,
+          });
+        }
+        if (
+          (body as { code?: string }).code === 'MASTER_DIMO_REGISTRATION_PAYLOAD_MISMATCH'
+        ) {
+          const mismatchDetails =
+            (body as { details?: Record<string, unknown> }).details ?? {};
+          throw new ConflictException({
+            code: 'DIMO_REGISTER_PAYLOAD_MISMATCH',
+            message:
+              (body as { message?: string }).message ??
+              'DIMO vehicle is already registered with a different payload',
+            vehicleId: mismatchDetails.vehicleId,
+            organizationId: mismatchDetails.organizationId,
+            useVehicleUpdateWorkflow: mismatchDetails.useVehicleUpdateWorkflow ?? true,
           });
         }
       }

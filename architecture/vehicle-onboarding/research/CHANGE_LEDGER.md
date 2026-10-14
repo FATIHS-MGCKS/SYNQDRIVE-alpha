@@ -48,6 +48,7 @@
 | 2026-10-14 | **VO5C D4/D5** — `deriveFleetStatusContext` registry lifecycle guard (OFFBOARDED/ARCHIVED not operationally available); offboard `note` → `business_audit_outbox` `VEHICLE_REGISTRY_OFFBOARDED` same TX as registry offboard; billing outbox v2 unchanged | Fleet/rental display + Master Admin audit evidence; no historical backfill |
 | 2026-10-14 | **VO-SIG-01 P2** — Master Admin `register-from-dimo` canonical cutover (`MasterDimoCanonicalRegistrationService`); readiness + connection identity parity; legacy inline create + `onVehicleProvisioned` removed from that path; PostgreSQL `vo-sig-p2-master-dimo-registration` | `AUDIT_IN_PROGRESS`; draft PR only — no production deploy |
 | 2026-10-14 | **VO-SIG-01 P2 hardening** — Activation TX finalize (mandatory scalars + LV battery + enrichment); session advisory lock + idempotent retry; entitlement-aware readiness product; full Prisma `Vehicle` response; field parity matrix; vehicles scalar bridge migration; 14-case PostgreSQL matrix | `AUDIT_IN_PROGRESS`; draft PR #2023 — no production deploy |
+| 2026-10-14 | **VO-SIG-01 P2 final safety** — Removed pool-unsafe session advisory locks (source-claim xact lock + resume checkpoints); payload fingerprint idempotent retry without mutation; `UNSUPPORTED_MASTER_REGISTRATION_FIELDS`; tire post-activation failure surface on `RegisterFromDimoResult`; 17-case PostgreSQL matrix | `AUDIT_IN_PROGRESS`; draft PR #2023 — no production deploy |
 
 ## VO-0B — REUSE-FIRST components (do not replace without VO-1+ proof)
 

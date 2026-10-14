@@ -13,8 +13,11 @@ import {
   type MasterDimoRegistrationInput,
   masterDimoRegistrationIdempotencyKey,
 } from './master-dimo-registration.types';
-import { applyIdempotentMasterRegistrationPostActivation } from './master-dimo-registration-artifacts';
 import { loadMasterRegistrationVehicleResult } from './master-dimo-vehicle-result.loader';
+import {
+  computeMasterDimoRegistrationPayloadFingerprint,
+  readMasterDimoPayloadFingerprintFromReadinessSnapshot,
+} from './master-dimo-registration-payload-fingerprint';
 
 export type MasterDimoResumeOutcome =
   | { kind: 'NOT_RESUMABLE' }
@@ -73,6 +76,10 @@ export async function tryResumeMasterDimoRegistration(
       status: 'COMPLETED',
       vehicleId: vehicle.id,
     },
+    select: {
+      id: true,
+      readinessSnapshotJson: true,
+    },
   });
 
   if (!completedCase) {
@@ -83,9 +90,21 @@ export async function tryResumeMasterDimoRegistration(
     );
   }
 
-  await prisma.$transaction(async (tx) => {
-    await applyIdempotentMasterRegistrationPostActivation(tx, input, vehicle.id);
-  });
+  const storedFingerprint = readMasterDimoPayloadFingerprintFromReadinessSnapshot(
+    completedCase.readinessSnapshotJson,
+  );
+  const incomingFingerprint = computeMasterDimoRegistrationPayloadFingerprint(input);
+  if (storedFingerprint && storedFingerprint !== incomingFingerprint) {
+    throw new VehicleOnboardingError(
+      'MASTER_DIMO_REGISTRATION_PAYLOAD_MISMATCH',
+      'DIMO vehicle is already registered; payload changes require the vehicle update workflow',
+      {
+        vehicleId: vehicle.id,
+        organizationId: vehicle.organizationId,
+        useVehicleUpdateWorkflow: true,
+      },
+    );
+  }
 
   const fullVehicle = await loadMasterRegistrationVehicleResult(prisma, vehicle.id);
   return {
