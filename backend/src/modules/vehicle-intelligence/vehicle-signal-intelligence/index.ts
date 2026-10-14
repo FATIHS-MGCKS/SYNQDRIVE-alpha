@@ -1,6 +1,5 @@
 /**
- * Vehicle Signal Intelligence — contract-only exports (VSI-02).
- * No Nest module registration; no runtime wiring.
+ * Vehicle Signal Intelligence — VSI-02 contracts + VSI-03 P1 read-only composer.
  */
 
 export {
@@ -53,3 +52,22 @@ export {
   type VsiProviderIdentity,
   type VsiAuthorizationHttpContext,
 } from './vehicle-signal-evidence.contract';
+
+export {
+  VSI_READONLY_COMPOSER_VERSION,
+  VSI_P1_SIGNAL_KEYS,
+  type VsiP1SignalKey,
+  type VsiReadonlyComposerRequest,
+  type VsiReadonlyComposerResult,
+  type VsiConnectionIdentityProjection,
+} from './vsi-readonly-composer.types';
+
+export { composeReadonlyVehicleSignals } from './vsi-readonly-composer.engine';
+export { projectConnectionIdentitiesFromLinks } from './vsi-connection-identity-projection';
+export { VsiReadonlySignalComposerService } from './vsi-readonly-composer.service';
+export { VsiReadonlySignalComposerModule } from './vsi-readonly-composer.module';
+export {
+  VSI_APDS_ADAPTER_CONTRACT_VERSION,
+  projectVsiEvidenceForApdsReadonlyCorrelation,
+  type VsiApdsReadonlyAdapterView,
+} from './vsi-apds-consumer.adapter.contract';
