@@ -25,6 +25,7 @@ import type {
   VsiReadonlyComposerResult,
   VsiSourceLinkRow,
 } from './vsi-readonly-composer.types';
+import type { VsiStrictSourceAdvanceEvaluation } from './vsi-strict-source-advance.types';
 import { VSI_READONLY_COMPOSER_VERSION, VSI_P1_SIGNAL_KEYS } from './vsi-readonly-composer.types';
 import { projectConnectionIdentitiesFromLinks } from './vsi-connection-identity-projection';
 import {
@@ -167,8 +168,14 @@ export function composeReadonlyVehicleSignals(input: {
   links: readonly VsiSourceLinkRow[];
   latestState: VsiLatestStateSnapshot | null;
   pollLogs: readonly VsiPollLogRow[];
-  /** Independently established prior aggregated provider source time (never from poll logs). */
+  /**
+   * P1 legacy prior (never from poll logs). Ignored when P2C observation evaluation is supplied for a link.
+   */
   priorAggregatedSourceTimestamp?: Date | null;
+  /** P2C per-link strict advance from durable observations (never ClickHouse). */
+  strictAdvanceEvaluations?: Readonly<
+    Record<string, VsiStrictSourceAdvanceEvaluation | undefined>
+  >;
   linksQueryCapReached?: boolean;
 }): VsiReadonlyComposerResult {
   const identityProjections = projectConnectionIdentitiesFromLinks(input.links, {
@@ -179,11 +186,6 @@ export function composeReadonlyVehicleSignals(input: {
   const nowMs = input.projectionAsOf.getTime();
   const registryNonOperational = isRegistryNonOperational(input.registryLifecycle);
   const activeLinkCount = input.links.filter((l) => l.isActive).length;
-
-  const strictAdvance = resolveStrictSourceAdvanceEvidence({
-    priorAggregatedSourceTimestamp: input.priorAggregatedSourceTimestamp,
-    currentAggregatedSourceTimestamp: input.latestState?.sourceTimestamp,
-  });
 
   const pollSuccessRecent = input.pollLogs.some((p) => p.status === 'SUCCESS');
 
@@ -246,6 +248,15 @@ export function composeReadonlyVehicleSignals(input: {
 
     const authorization = resolveScopedTelemetryAuthorization();
 
+    const p2cEvaluation = input.strictAdvanceEvaluations?.[link.id];
+    const strictAdvance =
+      p2cEvaluation != null
+        ? p2cEvaluation.strictSourceAdvanced
+        : resolveStrictSourceAdvanceEvidence({
+            priorAggregatedSourceTimestamp: input.priorAggregatedSourceTimestamp,
+            currentAggregatedSourceTimestamp: input.latestState?.sourceTimestamp,
+          });
+
     for (const key of VSI_P1_SIGNAL_KEYS) {
       const signalLimitations = [...limitations];
       if (!identity.treatsAsPhysicalHardwareDevice && key === 'lv_voltage') {
@@ -299,6 +310,20 @@ export function composeReadonlyVehicleSignals(input: {
             ...descriptor.confidenceLimitations,
             'STRICT_SOURCE_ADVANCE_EVIDENCE_UNAVAILABLE',
           ];
+        }
+        if (p2cEvaluation?.reasons.length) {
+          for (const reason of p2cEvaluation.reasons) {
+            if (
+              reason === 'OBSERVATION_SEQUENCE_GAP' ||
+              reason === 'LATEST_OBSERVATION_VLS_SOURCE_MISMATCH' ||
+              reason === 'LATEST_OBSERVATION_VLS_FETCH_MISMATCH'
+            ) {
+              descriptor.confidenceLimitations = [
+                ...descriptor.confidenceLimitations,
+                `STRICT_SOURCE_ADVANCE_${reason}`,
+              ];
+            }
+          }
         }
         descriptor.capability.empiricalObservation = src
           ? VsiEmpiricalObservationStatus.OBSERVED
