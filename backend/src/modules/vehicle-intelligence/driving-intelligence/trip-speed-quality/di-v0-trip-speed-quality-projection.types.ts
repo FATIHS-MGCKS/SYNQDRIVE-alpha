@@ -1,4 +1,7 @@
 import type { DiV0S4SourceFamily } from '../s4a-foundation/di-v0-s4a-contract';
+
+/** Re-export for P2 consumers that must not add direct s4a-foundation imports (P2 import fence). */
+export type { DiV0S4SourceFamily };
 import type { DiV0SpeedQcReasonCode } from '../speed-qc/di-v0-speed-qc-reason-codes';
 import type { DI_V0_TRIP_SPEED_QUALITY_PROJECTION_V1 } from './di-v0-trip-speed-quality-projection.version';
 

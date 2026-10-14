@@ -2,6 +2,7 @@
 
 | Date | Change | Authority impact |
 |------|--------|------------------|
+| 2026-10-14 | **VO-SIG-01 B1** — Document operator-reported production one-time execute (four-link cohort); SQL V3 review commit `81d5880` cited but not merged to `main`; close superseded draft PR #2018; propose P2 Master `registerFromDimo` parity | Documentation only; module remains `AUDIT_IN_PROGRESS`; no runtime change |
 | 2026-09-30 | **VO-0B** — Bootstrap module authority, registry `AUDIT_IN_PROGRESS`, CURRENT_STATE seal, VO-GAP register, authority boundaries, 16 open questions | Documentation only; runtime unchanged |
 | 2026-09-30 | **VO-1** — TARGET_ARCHITECTURE, VO-DEC-1-001, resolve VO-Q-001…016, gap disposition, 12 target invariants | Architecture only; runtime unchanged |
 | 2026-09-30 | **VO-1.1** — Consistency seal VO-DEC-1-002; pre-activation Vehicle NO; candidate suppression; transfer fail-closed; activation outbox | Architecture only |
@@ -50,6 +51,7 @@
 | 2026-10-14 | **VO-SIG-01 P2 hardening** — Activation TX finalize (mandatory scalars + LV battery + enrichment); session advisory lock + idempotent retry; entitlement-aware readiness product; full Prisma `Vehicle` response; field parity matrix; vehicles scalar bridge migration; 14-case PostgreSQL matrix | `AUDIT_IN_PROGRESS`; draft PR #2023 — no production deploy |
 | 2026-10-14 | **VO-SIG-01 P2 final safety** — Removed pool-unsafe session advisory locks (source-claim xact lock + resume checkpoints); payload fingerprint idempotent retry without mutation; `UNSUPPORTED_MASTER_REGISTRATION_FIELDS`; tire post-activation failure surface on `RegisterFromDimoResult`; 17-case PostgreSQL matrix | `AUDIT_IN_PROGRESS`; draft PR #2023 — no production deploy |
 | 2026-10-14 | **VO-SIG-01 P2 two-defect closure** — Payload fingerprint merged into activation TX (`readinessSnapshotJson` on case COMPLETED); `MASTER_DIMO_REGISTRATION_FINGERPRINT_MISSING` fail-closed; `idempotentReplay` skips duplicate tire enrichment; Master UI warning for tire partial success (9-locale keys); +2 PostgreSQL proofs | `AUDIT_IN_PROGRESS`; draft PR #2023 — no production deploy |
+| 2026-10-14 | **VO-SIG-01 P2 post-B1 sync** — Merged `main` @ B1 doc closure (`be379a35`); reconciled `CURRENT_STATE` + `CHANGE_LEDGER` (B1 production closure + P2 implementation narrative); no DI/VSI rollback | `AUDIT_IN_PROGRESS`; draft PR #2023 — no production deploy |
 
 ## VO-0B — REUSE-FIRST components (do not replace without VO-1+ proof)
 

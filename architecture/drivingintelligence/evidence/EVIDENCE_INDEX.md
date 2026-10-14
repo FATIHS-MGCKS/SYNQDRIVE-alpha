@@ -148,6 +148,12 @@ Detail: [reference-capture/REFERENCE_DRIVES.md](./reference-capture/REFERENCE_DR
 |----|------|-----|-------------|----------|-------|----------|----------|------------------|
 | DI-EVID-HTF-001 | AUDIT | 2026-09-06 | High-timeframe work status | `evidence/temporal-analytics/HIGH_TIMEFRAME_WORK.md` | — | CONFIRMED | Partial rolling aggregates exist | Dedicated time-series intelligence module |
 
+| DI-EVID-EXP021-P21-R3-001 | REFERENCE_DRIVE | 2026-10-14 | P2.1 R3 one-trip GPS/L3/P1 QC forensic (763 NO_NUMERIC + 26 conflicts) | `evidence/EXP021_P21_R3_GPS_QC_SEMANTICS_FORENSIC.md` | P2.1 R3 | CONFIRMED | Read-only DB + in-memory replay; disjoint taxonomy | Production behavior change; fleet-wide accuracy |
+| DI-EVID-EXP021-P21-R3A-001 | REFERENCE_DRIVE | 2026-10-14 | P2.1 R3A V2 gap taxonomy, 628 hold breakdown, 293 s segment, loader/POST_GAP closure | `evidence/EXP021_P21_R3A_FORENSIC_CLOSURE.md` | P2.1 R3A | CONFIRMED | V1→V2 reconciliation; composed S1→P1→P2 tests | Production behavior change |
+| DI-EVID-EXP021-P21-R3B-001 | REFERENCE_DRIVE | 2026-10-14 | P2.1 R3B acquisition `[start,end)`, WI snapshot bind, RR read, live RO replay artifact `exp021-p21-r3b-forensic.json` | `evidence/EXP021_P21_R3B_DIAGNOSTIC_CORRECTNESS_FINAL.md` | P2.1 R3B | CONFIRMED | Live `synqdrive_exp021_p21_ro` replay; gap reclassification 1 false internal → edge | Production behavior change; P1 implementation |
+| DI-EVID-EXP021-P1-V2-001 | REFERENCE_DRIVE | 2026-10-14 | P1 `DI_V0_SPEED_QC_POLICY_V2` stationary null-speed; 118/144 accepted on pinned trip | `evidence/EXP021_P1_V2_STATIONARY_SEMANTICS.md` | P2.1 P1 V2 | CONFIRMED | Live V1/V2 compare; trusted numeric unchanged | Production activation; default policy switch |
+| DI-TEST-P21-R3-COMPOSED-001 | TEST | 2026-10-14 | S1 output composed through P1 speed QC | `backend/.../di-v0-speed-qc-s1-p1-composed.spec.ts` | P2.1 R3 | CONFIRMED | Stationary null → NO_NUMERIC contract documented | Full S1 integration matrix |
+
 ---
 
 ## Cross-links
