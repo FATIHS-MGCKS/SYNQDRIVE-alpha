@@ -15,6 +15,15 @@
 - Canonical fixture: `backend/src/modules/vehicle-intelligence/battery-health/hv-h4/fixtures/r15-dimo-added-energy-interval.v1.fixture.json`
 - Regeneration (authorized read-only): `node backend/scripts/ops/capture-r15-dimo-interval-fixtures.cjs`
 
+## Evidence layers (do not conflate)
+
+| Layer | Role in this audit |
+|-------|-------------------|
+| **DIMO `signals(interval:"1m")` buckets** | Timestamped **aggregates** used for counter forensics (fixture JSON). Bucket labels are query boundaries, not certified raw sample instants. |
+| **DIMO `segments(mechanism: recharge)` envelope** | Provider-detected recharge window + **segment-level MIN/MAX** extrema (no per-signal timestamps in SynqDrive recharge query). |
+| **SynqDrive `HvChargeSession` (durable)** | Persisted session projection (`energyAddedKwh`, SOC bounds) — **not modified** in R15. |
+| **EED raw VEE / physical-episode fragments** | Separate energy-event detection path; **not** the source of the R15 fixture or segment envelopes above. Overlap with recharge segments must be analyzed explicitly; R15 Oct 12/13 episodes use **one** recharge segment each. |
+
 ## Counter semantics (provider)
 
 - Signal: `powertrainTractionBatteryChargingAddedEnergy` (kWh), session-cumulative counter.
