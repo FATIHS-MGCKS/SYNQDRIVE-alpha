@@ -63,7 +63,8 @@ Unknown versions: rejected (`DiV0SpeedQcPolicyVersionError`). Projection `identi
 
 **Executed tests (agent):** policy-v2, composed, hardening, golden, unit, projection unit; `validate-module-registry.sh`, `validate-docs.sh`; local `npm run build`, `tsc --noEmit`.
 
-**Replay:** Re-run `exp021-p21-p1-v2-policy-compare.ts` on pinned RO trip after push when VPS access available; prior compare at `f176d709` matched table above (118/26/691/77.62). Non-finite/center guards do not affect numeric intervals; live delta expected **0** outside contradictory frozen-stop rows (if any on trip).
+**Pre-merge HEAD:** `5ad3961c2ceecc996f0346c34971c088ac40c95e`  
+**Replay at pre-merge HEAD:** not executed (VPS `exp021-p21-ro-db.secret` not readable from agent SSH; `di-r3a-run` tree root-owned). **Prior executed compare code SHA:** `f176d709528d7091f64067cdb399c91926b52888` — table above. Guards here do not alter numeric intervals; expected live delta **0** unless trip rows had non-finite speeds or shadow/center `FROZEN_STOP_SUPPORTED` mismatch.
 
 ## Non-effects
 
