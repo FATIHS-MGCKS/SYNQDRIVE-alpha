@@ -1954,3 +1954,11 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | WHY | Post D2 cohort cleanup: fail-closed so OFFBOARDED/ARCHIVED vehicles cannot receive new regular PRIMARY work items (discovery race + enrollment) |
 | REPLAY | `RECALIBRATION_REPLAY` / `REACQUISITION` semantics explicitly unchanged |
 | NON_EFFECTS | No migrations; no Production env/kill/allowlist changes in this PR; frozen S4A transition/rejection contract unchanged |
+
+### EXP-021 P2.1 R3 GPS/QC semantics forensic (2026-10-14)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Read-only production replay for trip `d0af9cc7-ce0d-4e40-9854-2c1341e83bed`; disjoint 763 `NO_NUMERIC` taxonomy; 26 vs 38 conflict alignment; composed S1→P1 tests; ops script `exp021-p21-r3-forensic.ts`; evidence `EXP021_P21_R3_GPS_QC_SEMANTICS_FORENSIC.md` |
+| FINDING | Stationary S1 null-speed + P1 early `NO_NUMERIC` dominates coverage gap; hold/transition abstention is bulk of remainder; `missingEvidenceCount=0` does not imply gap-free GPS |
+| NON_EFFECTS | No S1/P1/P2 behavior change; no deploy; no provider calls; no other trips |

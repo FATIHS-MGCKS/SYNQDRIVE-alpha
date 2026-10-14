@@ -148,6 +148,9 @@ Detail: [reference-capture/REFERENCE_DRIVES.md](./reference-capture/REFERENCE_DR
 |----|------|-----|-------------|----------|-------|----------|----------|------------------|
 | DI-EVID-HTF-001 | AUDIT | 2026-09-06 | High-timeframe work status | `evidence/temporal-analytics/HIGH_TIMEFRAME_WORK.md` | — | CONFIRMED | Partial rolling aggregates exist | Dedicated time-series intelligence module |
 
+| DI-EVID-EXP021-P21-R3-001 | REFERENCE_DRIVE | 2026-10-14 | P2.1 R3 one-trip GPS/L3/P1 QC forensic (763 NO_NUMERIC + 26 conflicts) | `evidence/EXP021_P21_R3_GPS_QC_SEMANTICS_FORENSIC.md` | P2.1 R3 | CONFIRMED | Read-only DB + in-memory replay; disjoint taxonomy | Production behavior change; fleet-wide accuracy |
+| DI-TEST-P21-R3-COMPOSED-001 | TEST | 2026-10-14 | S1 output composed through P1 speed QC | `backend/.../di-v0-speed-qc-s1-p1-composed.spec.ts` | P2.1 R3 | CONFIRMED | Stationary null → NO_NUMERIC contract documented | Full S1 integration matrix |
+
 ---
 
 ## Cross-links
