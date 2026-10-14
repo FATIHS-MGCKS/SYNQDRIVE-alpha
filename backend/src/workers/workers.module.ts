@@ -18,6 +18,7 @@ import { BookingDocumentGenerationModule } from '@modules/documents/booking-docu
 
 import { SnapshotWakeModule } from './snapshot-wake/snapshot-wake.module';
 import { AdaptivePollingShadowModule } from './schedulers/snapshot-polling/adaptive-polling-shadow/adaptive-polling-shadow.module';
+import { VsiReadonlySignalComposerModule } from '@modules/vehicle-intelligence/vehicle-signal-intelligence/vsi-readonly-composer.module';
 
 import { DimoSnapshotProcessor } from './processors/dimo-snapshot.processor';
 import { SnapshotWakeHandoffProcessor } from './processors/snapshot-wake-handoff.processor';
@@ -115,6 +116,7 @@ import { VehicleRegistryLifecycleOutboxWorker } from '@modules/vehicle-onboardin
     DimoModule,
     SnapshotWakeModule,
     AdaptivePollingShadowModule,
+    VsiReadonlySignalComposerModule,
     VehicleIntelligenceModule,
     HighMobilityModule,
     NotificationsModule,

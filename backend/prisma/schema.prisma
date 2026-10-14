@@ -1656,6 +1656,7 @@ model Organization {
   stations                                                  Station[]
   vehicleStationTransfers                                   VehicleStationTransfer[]
   vehicles                                                  Vehicle[]
+  vehicleProviderSourceObservations                         VehicleProviderSourceObservation[]
   apdShadowReconciliationDecisions                          ApdShadowReconciliationDecision[]
   apdShadowActivationEpochs                                 ApdShadowActivationEpoch[]
   vehicleOnboardingCases                                    VehicleOnboardingCase[]
@@ -3035,6 +3036,7 @@ model Vehicle {
   positionUpdates                        VehiclePositionUpdate[]
   analyticsCacheEntries                  AnalyticsCache[]
   pollLogs                               DimoPollLog[]
+  vehicleProviderSourceObservations    VehicleProviderSourceObservation[]
   apdShadowReconciliationDecisions       ApdShadowReconciliationDecision[]
   bookings                               Booking[]
   handoverProtocols                      BookingHandoverProtocol[]
@@ -4412,6 +4414,45 @@ model DimoPollLog {
   // Admin dashboard paginates polls per vehicle by createdAt desc.
   @@index([vehicleId, createdAt])
   @@map("dimo_poll_logs")
+}
+
+/// VSI-03 P2C — append-only per-fetch aggregated provider source observations (not vehicle state).
+enum VehicleProviderSourceTimestampProvenance {
+  PROVIDER_LAST_SEEN
+  PROVIDER_MISSING
+}
+
+enum VehicleProviderSourceObservationOutcome {
+  VLS_APPLIED
+  MONOTONIC_STALE_SKIPPED
+}
+
+model VehicleProviderSourceObservation {
+  id                       String                                   @id @default(uuid())
+  organizationId           String                                   @map("organization_id")
+  vehicleId                String                                   @map("vehicle_id")
+  provider                 String
+  providerBindingId        String?                                  @map("provider_binding_id")
+  /// Stable scope key for sequencing (binding id or UNRESOLVED when null).
+  providerBindingScopeKey  String                                   @map("provider_binding_scope_key")
+  providerTokenReference     String?                                  @map("provider_token_reference")
+  providerTokenScopeKey      String                                   @map("provider_token_scope_key")
+  pollJobId                String                                   @map("poll_job_id")
+  idempotencyKey           String                                   @unique @map("idempotency_key")
+  observationIndex         BigInt                                   @map("observation_index")
+  providerFetchedAt        DateTime                                 @map("provider_fetched_at") @db.Timestamptz(3)
+  providerSourceTimestamp  DateTime?                                @map("provider_source_timestamp") @db.Timestamptz(3)
+  sourceTimestampProvenance VehicleProviderSourceTimestampProvenance @map("source_timestamp_provenance")
+  observationOutcome       VehicleProviderSourceObservationOutcome  @map("observation_outcome")
+  createdAt                DateTime                                 @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [organizationId, vehicleId], references: [organizationId, id], onDelete: Cascade)
+
+  @@unique([organizationId, vehicleId, provider, providerBindingScopeKey, providerTokenScopeKey, observationIndex], map: "vsi_p2c_obs_scope_index_key")
+  @@index([organizationId, vehicleId, providerBindingId, providerFetchedAt(sort: Desc)])
+  @@index([vehicleId, providerFetchedAt(sort: Desc)])
+  @@map("vehicle_provider_source_observations")
 }
 
 enum ApdShadowActivationEpochLifecycle {

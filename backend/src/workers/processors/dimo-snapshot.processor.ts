@@ -1,7 +1,11 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger, Optional } from '@nestjs/common';
 import { Job, UnrecoverableError } from 'bullmq';
-import { DimoPollJobType, DimoPollStatus } from '@prisma/client';
+import {
+  DimoPollJobType,
+  DimoPollStatus,
+  VehicleProviderSourceObservationOutcome,
+} from '@prisma/client';
 import { isVehicleRegistryOperationalActive } from '@modules/vehicle-onboarding/registry/vehicle-registry-operational.util';
 
 import { QUEUE_NAMES } from '../queues/queue-names';
@@ -45,6 +49,10 @@ import { TripDetectionState } from '@prisma/client';
 
 import { readWorkerConcurrency } from '@config/worker-concurrency.util';
 import { runWithDimoRequestContext } from '@modules/dimo/provider-budget/dimo-request-context';
+import {
+  buildDimoSnapshotSourceObservationIdempotencyKey,
+  VsiProviderSourceObservationWriterService,
+} from '@modules/vehicle-intelligence/vehicle-signal-intelligence/vsi-provider-source-observation.writer.service';
 
 export type { DimoSnapshotJobData };
 
@@ -87,6 +95,8 @@ export class DimoSnapshotProcessor extends WorkerHost {
     private readonly physicalAuthorityCutover?: PhysicalStateAuthorityCutoverService,
     @Optional()
     private readonly apdShadow?: AdaptivePollingShadowService,
+    @Optional()
+    private readonly vsiSourceObservationWriter?: VsiProviderSourceObservationWriterService,
   ) {
     super();
   }
@@ -349,11 +359,28 @@ export class DimoSnapshotProcessor extends WorkerHost {
         fetchedAt,
       );
 
+      const providerBindingId = vehicle.dataSourceLinks[0]?.id ?? null;
+      const monotonicStale =
+        previousState != null &&
+        !shouldApplyVlsTelemetryUpdate(normalized.lastSeenAt, previousState.sourceTimestamp);
+
+      await this.vsiSourceObservationWriter?.recordObservation({
+        organizationId: vehicle.organizationId,
+        vehicleId,
+        provider: 'DIMO',
+        providerBindingId,
+        providerTokenReference: String(dimoTokenId),
+        pollJobId: String(job.id),
+        idempotencyKey: buildDimoSnapshotSourceObservationIdempotencyKey(String(job.id)),
+        providerFetchedAt: fetchedAt,
+        providerSourceTimestamp: normalized.lastSeenAt ?? null,
+        observationOutcome: monotonicStale
+          ? VehicleProviderSourceObservationOutcome.MONOTONIC_STALE_SKIPPED
+          : VehicleProviderSourceObservationOutcome.VLS_APPLIED,
+      });
+
       // VW-F-008: skip stale provider snapshots (monotonic sourceTimestamp guard)
-      if (
-        previousState &&
-        !shouldApplyVlsTelemetryUpdate(normalized.lastSeenAt, previousState.sourceTimestamp)
-      ) {
+      if (monotonicStale) {
         afterCtx.staleMonotonicSkipped = true;
         afterCtx.snapshotSourceTimestamp = previousState.sourceTimestamp;
         const det = await this.prisma.vehicleTripDetectionState.findUnique({
