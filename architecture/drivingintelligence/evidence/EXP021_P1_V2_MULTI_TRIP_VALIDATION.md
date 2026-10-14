@@ -1,7 +1,8 @@
 # EXP021 P1 V2 — multi-trip stationary QC regression
 
-**Status:** EXECUTED (read-only; no production activation)  
-**Merged V2 implementation SHA:** `f7a285b59fd1f70e57b5fd72c04406286e1b96f1` (#2021)  
+**Status:** HISTORICAL (superseded for closure gates by [EXP021_P1_V2_MULTI_TRIP_EVIDENCE_CLOSURE.md](./EXP021_P1_V2_MULTI_TRIP_EVIDENCE_CLOSURE.md))  
+**POLICY_IMPLEMENTATION_SHA:** `f7a285b59fd1f70e57b5fd72c04406286e1b96f1` (#2021)  
+**First-run runner identity:** mislabeled as policy SHA; scripts were uncommitted scp — see closure doc  
 **Organization:** `faa710c9-6d91-4079-a7d5-91fdccdec14a`  
 **Reference trip excluded:** `d0af9cc7-ce0d-4e40-9854-2c1341e83bed` (single-trip closure in [EXP021_P1_V2_STATIONARY_SEMANTICS.md](./EXP021_P1_V2_STATIONARY_SEMANTICS.md))
 
