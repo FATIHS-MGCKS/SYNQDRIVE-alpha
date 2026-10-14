@@ -8,6 +8,7 @@ import { PrismaService } from '../../../shared/database/prisma.service';
 import { VsiReadonlySignalComposerService } from './vsi-readonly-composer.service';
 import { VO_SOURCE_LINK_CONNECTION_IDENTITY_V2_VERSION } from '../../vehicle-onboarding/connection-identity/legacy-reconciliation/connection-identity-metadata-v2';
 import { VehicleConnectionModality } from '../../vehicle-onboarding/connection-identity/vehicle-connection-identity.contract';
+import { assertVsi03DisposablePostgresTarget } from './vsi-readonly-composer.postgres-guard';
 
 const LIVE = process.env.VSI03_READONLY_COMPOSER_PG === '1';
 
@@ -63,9 +64,38 @@ function connectionIdentityMetadata(linkId: string, org: string, veh: string, mo
   };
 }
 
+async function cleanupOrg(prisma: PrismaClient, organizationId: string): Promise<void> {
+  const vehicles = await prisma.vehicle.findMany({
+    where: { organizationId },
+    select: { id: true },
+  });
+  const vehicleIds = vehicles.map((v) => v.id);
+  if (vehicleIds.length > 0) {
+    await prisma.vehicleLatestState.deleteMany({ where: { vehicleId: { in: vehicleIds } } });
+    await prisma.vehicleDataSourceLink.deleteMany({ where: { vehicleId: { in: vehicleIds } } });
+    await prisma.dimoPollLog.deleteMany({ where: { vehicleId: { in: vehicleIds } } });
+    await prisma.vehicle.deleteMany({ where: { id: { in: vehicleIds } } });
+  }
+  await prisma.organization.deleteMany({ where: { id: organizationId } });
+}
+
 (LIVE ? describe : describe.skip)('VsiReadonlySignalComposerService (PostgreSQL)', () => {
   const prisma = new PrismaClient();
   const service = new VsiReadonlySignalComposerService(prisma as unknown as PrismaService);
+  const orgIdsToCleanup: string[] = [];
+
+  beforeAll(() => {
+    assertVsi03DisposablePostgresTarget();
+  });
+
+  afterEach(async () => {
+    while (orgIdsToCleanup.length > 0) {
+      const orgId = orgIdsToCleanup.pop();
+      if (orgId) {
+        await cleanupOrg(prisma, orgId);
+      }
+    }
+  });
 
   afterAll(async () => {
     await prisma.$disconnect();
@@ -74,6 +104,7 @@ function connectionIdentityMetadata(linkId: string, org: string, veh: string, mo
   it('composes tenant-scoped signals with zero writes', async () => {
     const orgA = await createOrg(prisma);
     const orgB = await createOrg(prisma);
+    orgIdsToCleanup.push(orgA, orgB);
     const vehicleA = randomUUID();
     const vehicleB = randomUUID();
     await createVehicle(prisma, orgA, vehicleA);
@@ -132,6 +163,7 @@ function connectionIdentityMetadata(linkId: string, org: string, veh: string, mo
 
   it('Ruptela hardware link projects physical hardware identity', async () => {
     const org = await createOrg(prisma);
+    orgIdsToCleanup.push(org);
     const vehicleId = randomUUID();
     await createVehicle(prisma, org, vehicleId);
     const linkId = randomUUID();

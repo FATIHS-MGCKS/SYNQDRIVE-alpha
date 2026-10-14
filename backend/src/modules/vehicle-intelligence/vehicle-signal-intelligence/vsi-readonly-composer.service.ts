@@ -1,10 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { VehicleRegistryLifecycle } from '@prisma/client';
 import { PrismaService } from '../../../shared/database/prisma.service';
 import { composeReadonlyVehicleSignals } from './vsi-readonly-composer.engine';
+import { proveScopedTelemetryAuthorizationFromConsent } from './vsi-readonly-composer.evidence';
 import type {
   VsiReadonlyComposerRequest,
   VsiReadonlyComposerResult,
+  VsiSourceLinkRow,
 } from './vsi-readonly-composer.types';
 
 const MAX_SOURCE_LINKS = 10;
@@ -37,6 +38,7 @@ export class VsiReadonlySignalComposerService {
         organizationId: true,
         registryLifecycle: true,
         hardwareType: true,
+        dimoVehicle: { select: { externalId: true } },
       },
     });
     if (!vehicle) {
@@ -55,7 +57,47 @@ export class VsiReadonlySignalComposerService {
         provider: true,
         isActive: true,
         metadata: true,
+        consentId: true,
       },
+    });
+
+    const consentIds = links.map((l) => l.consentId).filter((id): id is string => Boolean(id));
+    const consents =
+      consentIds.length > 0
+        ? await this.prisma.vehicleProviderConsent.findMany({
+            where: { id: { in: consentIds } },
+            select: {
+              id: true,
+              vehicleId: true,
+              organizationId: true,
+              provider: true,
+              grantType: true,
+              status: true,
+              revokedAt: true,
+              expiresAt: true,
+              providerVehicleRef: true,
+            },
+          })
+        : [];
+    const consentById = new Map(consents.map((c) => [c.id, c]));
+    const dimoExternalId = vehicle.dimoVehicle?.externalId ?? null;
+
+    const linkRows: VsiSourceLinkRow[] = links.map((link) => {
+      const consent = link.consentId ? consentById.get(link.consentId) ?? null : null;
+      return {
+        id: link.id,
+        provider: link.provider,
+        isActive: link.isActive,
+        metadata: link.metadata,
+        consentId: link.consentId,
+        scopedTelemetryAuthorizationProven: proveScopedTelemetryAuthorizationFromConsent({
+          consent,
+          organizationId: request.organizationId,
+          vehicleId: request.vehicleId,
+          dimoExternalId,
+          now: projectionAsOf,
+        }),
+      };
     });
 
     const latestState = await this.prisma.vehicleLatestState.findUnique({
@@ -79,11 +121,12 @@ export class VsiReadonlySignalComposerService {
       registryLifecycle: vehicle.registryLifecycle,
       hardwareTypeLegacy: vehicle.hardwareType,
       projectionAsOf,
-      links,
+      links: linkRows,
       latestState: latestState
         ? {
             vehicleId: latestState.vehicleId,
             providerBindingId: latestState.providerBindingId,
+            providerSource: latestState.providerSource,
             lvBatteryVoltage: latestState.lvBatteryVoltage,
             evSoc: latestState.evSoc,
             online: latestState.online,
@@ -94,7 +137,7 @@ export class VsiReadonlySignalComposerService {
           }
         : null,
       pollLogs,
-      offboarded: vehicle.registryLifecycle === VehicleRegistryLifecycle.OFFBOARDED,
+      linksQueryCapReached: links.length >= MAX_SOURCE_LINKS,
     });
   }
 }

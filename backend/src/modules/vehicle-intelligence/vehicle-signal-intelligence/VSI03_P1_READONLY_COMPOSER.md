@@ -28,7 +28,13 @@ Uses `VehicleLatestState.sourceTimestamp` (provider source), `providerFetchedAt`
 
 Freshness for connectivity uses `classifyTelemetryFreshness` with `TELEMETRY_FRESH_THRESHOLD_MS` documented in descriptor limitations.
 
-Strict source advance uses `evaluateStrictSourceAdvance`; poll SUCCESS in `dimo_poll_logs` does not alone imply advance.
+Strict source advance uses `resolveStrictSourceAdvanceEvidence` with an **independently established** prior aggregated source timestamp. Poll SUCCESS in `dimo_poll_logs` does not establish source advance or scoped telemetry authorization.
+
+Provider catalog status remains `UNKNOWN` unless separate catalog evidence exists — raw snapshot keys are not catalog LISTED proof.
+
+Latest-state attribution requires matching `providerBindingId` and consistent provider identity; null binding with active links does not cross-attribute state.
+
+PostgreSQL integration tests require `VSI03_READONLY_COMPOSER_PG=1` and refuse production-like `DATABASE_URL` hosts (see `vsi-readonly-composer.postgres-guard.ts`).
 
 ## Tenant security
 

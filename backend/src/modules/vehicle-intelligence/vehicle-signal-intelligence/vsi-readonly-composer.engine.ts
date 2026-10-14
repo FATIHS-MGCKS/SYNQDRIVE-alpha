@@ -8,16 +8,11 @@ import {
 } from './canonical-signal-keys';
 import {
   VSI_EVIDENCE_CONTRACT_VERSION,
-  VsiAuthorizationRequestKind,
-  VsiAuthorizationStatus,
   VsiEmpiricalObservationStatus,
   VsiProviderCatalogStatus,
   VsiSignalQualityStatus,
   buildVsiEvidenceScopeKey,
-  deriveAuthorizationFromHttpStatus,
   deriveEmpiricalObservationFromSamples,
-  deriveProviderCatalogStatus,
-  evaluateStrictSourceAdvance,
   type VsiProviderSourceLinkRef,
   type VsiVehicleSignalEvidenceDescriptorV1,
 } from './vehicle-signal-evidence.contract';
@@ -31,6 +26,12 @@ import type {
 } from './vsi-readonly-composer.types';
 import { VSI_READONLY_COMPOSER_VERSION, VSI_P1_SIGNAL_KEYS } from './vsi-readonly-composer.types';
 import { projectConnectionIdentitiesFromLinks } from './vsi-connection-identity-projection';
+import {
+  isLatestStateAttributedToLink,
+  isRegistryNonOperational,
+  resolveScopedTelemetryAuthorization,
+  resolveStrictSourceAdvanceEvidence,
+} from './vsi-readonly-composer.evidence';
 import type { VehicleRegistryLifecycle } from '@prisma/client';
 
 type RawSignalNode = { timestamp?: string | number | null; value?: unknown };
@@ -38,16 +39,15 @@ type RawSignalNode = { timestamp?: string | number | null; value?: unknown };
 function readRawSignal(
   raw: unknown,
   signalName: string,
-): { listed: boolean; value: number | null; sourceMs: number | null } {
+): { keyPresent: boolean; value: number | null; sourceMs: number | null } {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-    return { listed: false, value: null, sourceMs: null };
+    return { keyPresent: false, value: null, sourceMs: null };
   }
   const root = raw as Record<string, unknown>;
   const node = root[signalName] as RawSignalNode | undefined;
   if (node == null) {
-    return { listed: false, value: null, sourceMs: null };
+    return { keyPresent: false, value: null, sourceMs: null };
   }
-  const listed = true;
   const valueRaw = node.value;
   const value =
     typeof valueRaw === 'number' && Number.isFinite(valueRaw) ? valueRaw : null;
@@ -59,7 +59,7 @@ function readRawSignal(
         : Date.parse(String(node.timestamp));
     sourceMs = Number.isFinite(ms) ? ms : null;
   }
-  return { listed, value, sourceMs };
+  return { keyPresent: true, value, sourceMs };
 }
 
 function mapFreshnessToDescriptor(
@@ -108,7 +108,7 @@ function baseDescriptor(input: {
     capability: {
       providerCatalog: VsiProviderCatalogStatus.UNKNOWN,
       empiricalObservation: VsiEmpiricalObservationStatus.NEVER_OBSERVED,
-      authorization: VsiAuthorizationStatus.UNKNOWN,
+      authorization: resolveScopedTelemetryAuthorization({}),
       signalQuality: VsiSignalQualityStatus.UNKNOWN,
     },
     freshnessClassification: 'UNKNOWN',
@@ -130,11 +130,25 @@ export function composeReadonlyVehicleSignals(input: {
   links: readonly VsiSourceLinkRow[];
   latestState: VsiLatestStateSnapshot | null;
   pollLogs: readonly VsiPollLogRow[];
-  offboarded?: boolean;
+  /** Independently established prior aggregated provider source time (never from poll logs). */
+  priorAggregatedSourceTimestamp?: Date | null;
+  linksQueryCapReached?: boolean;
 }): VsiReadonlyComposerResult {
-  const identityProjections = projectConnectionIdentitiesFromLinks(input.links);
+  const identityProjections = projectConnectionIdentitiesFromLinks(input.links, {
+    organizationId: input.organizationId,
+    vehicleId: input.vehicleId,
+  });
   const signals: VsiVehicleSignalEvidenceDescriptorV1[] = [];
   const nowMs = input.projectionAsOf.getTime();
+  const registryNonOperational = isRegistryNonOperational(input.registryLifecycle);
+  const activeLinkCount = input.links.filter((l) => l.isActive).length;
+
+  const strictAdvance = resolveStrictSourceAdvanceEvidence({
+    priorAggregatedSourceTimestamp: input.priorAggregatedSourceTimestamp,
+    currentAggregatedSourceTimestamp: input.latestState?.sourceTimestamp,
+  });
+
+  const pollSuccessRecent = input.pollLogs.some((p) => p.status === 'SUCCESS');
 
   const targetLinks =
     input.links.length > 0
@@ -167,47 +181,34 @@ export function composeReadonlyVehicleSignals(input: {
       'NO_ACTIVE_SOURCE_LINK',
     );
 
-    const bindingMatches =
-      input.latestState?.providerBindingId == null ||
-      link.id === 'UNRESOLVED' ||
-      input.latestState.providerBindingId === link.id;
+    const stateAttributed = isLatestStateAttributedToLink({
+      latestState: input.latestState,
+      link,
+      activeLinkCount: activeLinkCount || targetLinks.length,
+    });
 
-    const authStatus =
-      input.offboarded
-        ? VsiAuthorizationStatus.AUTH_BLOCKED
-        : bindingMatches
-          ? VsiAuthorizationStatus.UNKNOWN
-          : VsiAuthorizationStatus.UNKNOWN;
+    const limitations: string[] = [];
+    if (input.linksQueryCapReached) {
+      limitations.push('ACTIVE_SOURCE_LINK_QUERY_CAP_REACHED');
+    }
+    if (!stateAttributed && input.latestState && link.id !== 'UNRESOLVED') {
+      limitations.push('LATEST_STATE_NOT_ATTRIBUTED_TO_SOURCE_LINK');
+    }
+    if (registryNonOperational) {
+      limitations.push('VEHICLE_REGISTRY_NON_OPERATIONAL');
+    }
+    if (!identity.treatsAsPhysicalHardwareDevice && link.id !== 'UNRESOLVED') {
+      limitations.push('PHYSICAL_DEVICE_PRESENCE_NOT_PROVEN');
+    }
 
-    const pollSuccessRecent = input.pollLogs.some((p) => p.status === 'SUCCESS');
-    const lastPoll = input.pollLogs[0];
-    const pollHttpAuth = deriveAuthorizationFromHttpStatus(
-      lastPoll?.status === 'SUCCESS' ? 200 : lastPoll ? 500 : null,
-      {
-        requestKind: VsiAuthorizationRequestKind.TELEMETRY_FETCH,
-        sourceLinkProven: ref.kind === 'resolved' ? true : 'UNKNOWN',
-      },
-    );
-
-    const previousSourceMs =
-      input.pollLogs.length >= 2 && input.latestState?.sourceTimestamp
-        ? input.latestState.sourceTimestamp.getTime()
-        : null;
-    const strictAdvance = evaluateStrictSourceAdvance({
-      previousSourceMs,
-      latestSourceMs: input.latestState?.sourceTimestamp?.getTime() ?? null,
+    const authorization = resolveScopedTelemetryAuthorization({
+      scopedTelemetryAuthorizationProven: link.scopedTelemetryAuthorizationProven,
     });
 
     for (const key of VSI_P1_SIGNAL_KEYS) {
-      const limitations: string[] = [];
-      if (!bindingMatches) {
-        limitations.push('LATEST_STATE_PROVIDER_BINDING_MISMATCH');
-      }
-      if (input.offboarded) {
-        limitations.push('VEHICLE_REGISTRY_OFFBOARDED');
-      }
+      const signalLimitations = [...limitations];
       if (!identity.treatsAsPhysicalHardwareDevice && key === 'lv_voltage') {
-        limitations.push('LV_INTERPRETATION_REQUIRES_HARDWARE_OR_EXPLICIT_MAPPING');
+        signalLimitations.push('LV_INTERPRETATION_REQUIRES_HARDWARE_OR_EXPLICIT_MAPPING');
       }
 
       const descriptor = baseDescriptor({
@@ -218,14 +219,12 @@ export function composeReadonlyVehicleSignals(input: {
         linkRef: ref,
         canonicalSignalKey: key,
         identity,
-        limitations,
+        limitations: signalLimitations,
       });
 
-      descriptor.capability.authorization = input.offboarded
-        ? VsiAuthorizationStatus.AUTH_BLOCKED
-        : pollHttpAuth;
+      descriptor.capability.authorization = authorization;
 
-      if (input.latestState) {
+      if (input.latestState && stateAttributed) {
         descriptor.timestamps.persisted = input.latestState.updatedAt;
         descriptor.timestamps.received = input.latestState.providerFetchedAt ?? 'NOT_MEASURED';
         descriptor.timestamps.observed =
@@ -234,7 +233,7 @@ export function composeReadonlyVehicleSignals(input: {
       }
 
       if (key === 'provider_source_timestamp') {
-        const src = input.latestState?.sourceTimestamp;
+        const src = stateAttributed ? input.latestState?.sourceTimestamp : null;
         descriptor.providerNativeSignalName = 'provider_source_timestamp';
         descriptor.empiricalEvidence = {
           observationStatus: src
@@ -243,8 +242,8 @@ export function composeReadonlyVehicleSignals(input: {
           lastObservedAt: src ?? 'NOT_MEASURED',
           lastSourceTimestamp: src ?? 'NOT_MEASURED',
           strictSourceAdvanced: strictAdvance,
-          sampleCountInWindow: src ? 1 : 0,
-          evidenceOrigin: 'VEHICLE_LATEST_STATE',
+          sampleCountInWindow: 'NOT_MEASURED',
+          evidenceOrigin: stateAttributed ? 'VEHICLE_LATEST_STATE' : 'UNKNOWN',
         };
         if (pollSuccessRecent && strictAdvance === false) {
           descriptor.confidenceLimitations = [
@@ -252,18 +251,25 @@ export function composeReadonlyVehicleSignals(input: {
             'POLL_SUCCESS_WITHOUT_STRICT_SOURCE_ADVANCE',
           ];
         }
+        if (pollSuccessRecent && strictAdvance === 'UNKNOWN') {
+          descriptor.confidenceLimitations = [
+            ...descriptor.confidenceLimitations,
+            'STRICT_SOURCE_ADVANCE_EVIDENCE_UNAVAILABLE',
+          ];
+        }
         descriptor.capability.empiricalObservation = src
           ? VsiEmpiricalObservationStatus.OBSERVED
           : VsiEmpiricalObservationStatus.NEVER_OBSERVED;
       }
 
-      if (key === 'device_connectivity' && input.latestState) {
+      if (key === 'device_connectivity' && input.latestState && stateAttributed) {
         const observedMs = input.latestState.sourceTimestamp?.getTime() ?? null;
         const freshness =
           observedMs != null
             ? classifyTelemetryFreshness(new Date(observedMs), nowMs)
             : 'no_signal';
-        descriptor.freshnessClassification = mapFreshnessToDescriptor(freshness);
+        descriptor.freshnessClassification =
+          observedMs != null ? mapFreshnessToDescriptor(freshness) : 'UNKNOWN';
         descriptor.capability.empiricalObservation =
           observedMs != null
             ? deriveEmpiricalObservationFromSamples({ usableSampleCount: 1 })
@@ -273,35 +279,47 @@ export function composeReadonlyVehicleSignals(input: {
           lastObservedAt: input.latestState.sourceTimestamp ?? 'NOT_MEASURED',
           lastSourceTimestamp: input.latestState.sourceTimestamp ?? 'NOT_MEASURED',
           strictSourceAdvanced: strictAdvance,
-          sampleCountInWindow: observedMs != null ? 1 : 0,
+          sampleCountInWindow: 'NOT_MEASURED',
           evidenceOrigin: 'VEHICLE_LATEST_STATE',
           reference: input.latestState.online ? 'online=true' : 'online=false',
         };
         descriptor.confidenceLimitations = [
           ...descriptor.confidenceLimitations,
           `FRESHNESS_RULE=classifyTelemetryFreshness;LIVE_THRESHOLD_MS=${TELEMETRY_FRESH_THRESHOLD_MS}`,
+          'CONNECTIVITY_TELEMETRY_FRESHNESS_NOT_PHYSICAL_MODEM_PROOF',
         ];
       }
 
-      if (key === 'lv_voltage' && input.latestState && bindingMatches) {
+      if (key === 'lv_voltage' && input.latestState && stateAttributed) {
         const def = getVsiCanonicalSignalDefinition('lv_voltage');
         const rawName = def.primaryDimoSignalName ?? 'lowVoltageBatteryCurrentVoltage';
         const raw = readRawSignal(input.latestState.rawPayloadJson, rawName);
         const columnValue = input.latestState.lvBatteryVoltage;
         const value = columnValue ?? raw.value;
         descriptor.catalogEvidence = {
-          listed: raw.listed,
+          listed: false,
           providerNativeSignalName: rawName,
           checkedAt: input.projectionAsOf,
           evidenceOrigin: 'VEHICLE_LATEST_STATE',
         };
-        descriptor.capability.providerCatalog = deriveProviderCatalogStatus(raw.listed);
-        if (raw.listed && value == null) {
+        descriptor.capability.providerCatalog = VsiProviderCatalogStatus.UNKNOWN;
+        if (raw.keyPresent) {
+          descriptor.confidenceLimitations = [
+            ...descriptor.confidenceLimitations,
+            'RAW_SNAPSHOT_KEY_PRESENT_NOT_PROVIDER_CATALOG_PROOF',
+          ];
+        }
+        const signalObservedMs = raw.sourceMs ?? input.latestState.sourceTimestamp?.getTime() ?? null;
+        if (signalObservedMs != null) {
+          const freshness = classifyTelemetryFreshness(new Date(signalObservedMs), nowMs);
+          descriptor.freshnessClassification = mapFreshnessToDescriptor(freshness);
+        }
+        if (raw.keyPresent && value == null) {
           descriptor.capability.empiricalObservation =
             VsiEmpiricalObservationStatus.NEVER_OBSERVED;
           descriptor.confidenceLimitations = [
             ...descriptor.confidenceLimitations,
-            'CATALOG_LISTED_NOT_OBSERVED',
+            'RAW_SNAPSHOT_KEY_NULL_VALUE_NOT_PHYSICAL_OBSERVATION',
           ];
         } else if (value != null) {
           descriptor.capability.empiricalObservation =
@@ -310,46 +328,39 @@ export function composeReadonlyVehicleSignals(input: {
         }
       }
 
-      if (key === 'hv_battery_soc' && input.latestState && bindingMatches) {
+      if (key === 'hv_battery_soc' && input.latestState && stateAttributed) {
         const def = getVsiCanonicalSignalDefinition('hv_battery_soc');
         const physicalName = def.primaryDimoSignalName ?? 'powertrainTractionBatteryStateOfChargeCurrent';
         const displayAlias = 'powertrainTractionBatteryStateOfChargeDisplay';
         const aliasVerdict = evaluateCanonicalProviderNativeAlias('hv_battery_soc', displayAlias);
         const physicalRaw = readRawSignal(input.latestState.rawPayloadJson, physicalName);
         const displayRaw = readRawSignal(input.latestState.rawPayloadJson, displayAlias);
-        const columnSoc = input.latestState.evSoc;
 
         const hvLimitations: string[] = [];
-        if (aliasVerdict === 'ALIAS_CONFLICT_UNRESOLVED' && displayRaw.listed) {
+        if (aliasVerdict === 'ALIAS_CONFLICT_UNRESOLVED' && displayRaw.keyPresent) {
           hvLimitations.push('DISPLAY_SOC_ALIAS_CONFLICT_UNRESOLVED');
         }
-        const usePhysical =
-          physicalRaw.value != null
-            ? physicalRaw.value
-            : columnSoc != null && displayRaw.value == null
-              ? columnSoc
-              : null;
+        const usePhysical = physicalRaw.value;
         if (displayRaw.value != null && physicalRaw.value == null) {
           hvLimitations.push('HV_PHYSICAL_SOC_MISSING_DISPLAY_PRESENT');
         }
+        if (input.latestState.evSoc != null && physicalRaw.value == null) {
+          hvLimitations.push('EV_SOC_COLUMN_NOT_PHYSICAL_BMS_PROVENANCE');
+        }
         descriptor.catalogEvidence = {
-          listed: physicalRaw.listed || displayRaw.listed,
+          listed: false,
           providerNativeSignalName: physicalName,
           checkedAt: input.projectionAsOf,
           evidenceOrigin: 'VEHICLE_LATEST_STATE',
         };
-        descriptor.capability.providerCatalog = deriveProviderCatalogStatus(
-          physicalRaw.listed || displayRaw.listed,
-        );
+        descriptor.capability.providerCatalog = VsiProviderCatalogStatus.UNKNOWN;
+        if (physicalRaw.keyPresent || displayRaw.keyPresent) {
+          hvLimitations.push('RAW_SNAPSHOT_KEY_PRESENT_NOT_PROVIDER_CATALOG_PROOF');
+        }
         descriptor.capability.empiricalObservation =
           usePhysical != null
             ? VsiEmpiricalObservationStatus.OBSERVED
-            : physicalRaw.listed || displayRaw.listed
-              ? VsiEmpiricalObservationStatus.NEVER_OBSERVED
-              : VsiEmpiricalObservationStatus.NEVER_OBSERVED;
-        if (physicalRaw.listed && usePhysical == null) {
-          hvLimitations.push('CATALOG_LISTED_NOT_OBSERVED');
-        }
+            : VsiEmpiricalObservationStatus.NEVER_OBSERVED;
         if (hvLimitations.length > 0) {
           descriptor.confidenceLimitations = [
             ...descriptor.confidenceLimitations,
@@ -358,7 +369,6 @@ export function composeReadonlyVehicleSignals(input: {
         }
       }
 
-      // Scope key sanity (throws on invalid tenant scope in tests)
       buildVsiEvidenceScopeKey({
         organizationId: input.organizationId,
         vehicleId: input.vehicleId,

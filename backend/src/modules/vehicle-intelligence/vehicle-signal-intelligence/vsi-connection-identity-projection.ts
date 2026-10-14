@@ -22,13 +22,18 @@ export function treatsAsPhysicalHardwareDevice(input: {
     return false;
   }
   if (input.verifiedModality === VehicleConnectionModality.HARDWARE_DEVICE) {
-    return input.physicalDeviceReference !== 'NOT_APPLICABLE';
+    const ref = input.physicalDeviceReference;
+    if (ref === 'NOT_APPLICABLE' || ref === 'UNKNOWN' || ref === 'UNRESOLVED') {
+      return false;
+    }
+    return ref.trim().length > 0;
   }
   return false;
 }
 
 export function projectConnectionIdentitiesFromLinks(
   links: readonly VsiSourceLinkRow[],
+  scope?: { organizationId: string; vehicleId: string },
 ): VsiConnectionIdentityProjection[] {
   const projections: VsiConnectionIdentityProjection[] = [];
   const modalityByLink = new Map<string, string>();
@@ -59,6 +64,26 @@ export function projectConnectionIdentitiesFromLinks(
       record.verificationEvidence,
     );
     const limitations: string[] = [];
+    if (scope) {
+      if (record.organizationId && record.organizationId !== scope.organizationId) {
+        limitations.push('CONNECTION_IDENTITY_METADATA_ORG_MISMATCH');
+      }
+      if (record.vehicleId && record.vehicleId !== scope.vehicleId) {
+        limitations.push('CONNECTION_IDENTITY_METADATA_VEHICLE_MISMATCH');
+      }
+      if (record.providerSourceLinkId && record.providerSourceLinkId !== link.id) {
+        limitations.push('CONNECTION_IDENTITY_METADATA_LINK_ID_MISMATCH');
+      }
+      if (record.provider && link.provider && record.provider !== link.provider) {
+        limitations.push('CONNECTION_IDENTITY_METADATA_PROVIDER_MISMATCH');
+      }
+    }
+    if (
+      verifiedModality === VehicleConnectionModality.HARDWARE_DEVICE &&
+      (physicalDeviceReference === 'UNKNOWN' || physicalDeviceReference === 'UNRESOLVED')
+    ) {
+      limitations.push('HARDWARE_MODALITY_WITHOUT_PROVEN_PHYSICAL_DEVICE_REFERENCE');
+    }
     if (verifiedModality === VehicleConnectionModality.SOFTWARE_INTEGRATION) {
       limitations.push('VERIFIED_SOFTWARE_INTEGRATION_NOT_PHYSICAL_R1_DEVICE');
     }

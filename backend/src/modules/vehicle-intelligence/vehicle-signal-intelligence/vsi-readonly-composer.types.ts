@@ -53,6 +53,7 @@ export type VsiReadonlyComposerResult = {
 export type VsiLatestStateSnapshot = {
   vehicleId: string;
   providerBindingId: string | null;
+  providerSource: string | null;
   lvBatteryVoltage: number | null;
   evSoc: number | null;
   online: boolean;
@@ -67,6 +68,12 @@ export type VsiSourceLinkRow = {
   provider: string;
   isActive: boolean;
   metadata: unknown;
+  consentId?: string | null;
+  /**
+   * When true, scoped org data authorization is ACTIVE for this link's consent.
+   * When false/undefined, provider telemetry authorization remains UNKNOWN.
+   */
+  scopedTelemetryAuthorizationProven?: boolean;
 };
 
 export type VsiPollLogRow = {
