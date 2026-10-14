@@ -6,6 +6,19 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-14 — M3.3-HV-H4 R15 native added-energy counter offline evaluator (no runtime wiring)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | R14 showed DIMO `signals(interval:"1m")` added-energy buckets vs HV session energy diverge (esp. Oct 13); no isolated scientific evaluator |
+| **CHANGE** | Sanitized fixture `r15-dimo-added-energy-interval.v1.fixture.json` (digest `137a1e3d…`); pure `evaluateM3_3HvH4AddedEnergyCounterOfflineV1`; audit `docs/audits/battery-v2-hv-r15-native-energy-counter-forensics-2026-10-14.md`; capture script `scripts/ops/capture-r15-dimo-interval-fixtures.cjs` |
+| **WHY** | Reproducible forensics + tested offline delta math without promoting production provenance or altering recharge ingestion |
+| **VALIDATION** | `m3-3-hv-h4-added-energy-counter-offline-evaluator.v1.spec.ts` (8 tests) |
+| **NON_EFFECTS** | Recharge normalizer/mapper/quality assessor unchanged; A3.5 unchanged; H4-A2 unchanged; no trusted `NATIVE_COUNTER_DELTA` production classification |
+| **REMAINING_GAPS** | HV 5.06 kWh Oct 12 exact write revision not DB-replayed; trusted source authority contract still blocked pending separate authorization |
+
+---
+
 ## 2026-10-13 — M3.3-HV-H4-A3 R6 automatic reconciliation cohort gate
 
 | Field | Value |
