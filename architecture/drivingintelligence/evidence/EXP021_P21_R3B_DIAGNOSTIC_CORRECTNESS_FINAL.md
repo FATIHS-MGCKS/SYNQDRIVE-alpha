@@ -1,71 +1,115 @@
 # EXP021 P2.1 R3B — Diagnostic correctness final
 
-**Status:** COMPLETE (read-only diagnosis tooling; no product behavior change)  
+**Status:** COMPLETE (read-only diagnosis; **live DB replay executed**)  
 **PR:** #2020  
-**Supersedes diagnosis only:** [EXP021_P21_R3A_FORENSIC_CLOSURE.md](./EXP021_P21_R3A_FORENSIC_CLOSURE.md) (R3A counts preserved historically below)  
+**Analysis code SHA (executed):** `993f14fb0782bfad3076289b17f9b35494db8f00`  
+**Supersedes diagnosis only:** [EXP021_P21_R3A_FORENSIC_CLOSURE.md](./EXP021_P21_R3A_FORENSIC_CLOSURE.md) (R3A figures below are **historical**)  
 **Trip / WI:** same as [EXP021_P21_R3_GPS_QC_SEMANTICS_FORENSIC.md](./EXP021_P21_R3_GPS_QC_SEMANTICS_FORENSIC.md)
 
-## Plain language (what changed vs what did not)
+## Final replay (this run)
 
-**Corrected (diagnosis only):**
+| Field | Value |
+|-------|--------|
+| **Execution mode** | `LIVE_READONLY_DB` |
+| **Role** | `synqdrive_exp021_p21_ro` (password from `/opt/synqdrive/shared/exp021-p21-ro-db.secret` on Production VPS; composed into `DATABASE_URL` for `localhost:5432/synqdrive` — **not** writer credentials, **not** APDS replay URL) |
+| **Host** | Production VPS `~/di-r3a-run` + `exp021-p21-r3-forensic.ts` |
+| **Artifact** | `/opt/cursor/artifacts/exp021-p21-r3b-forensic.json` (aggregates only) |
+| **Observed `transaction_read_only`** | `on` |
+| **Observed `transaction_isolation`** | `repeatable read` |
+| **Snapshot bound to work item** | yes (`snapshotBoundToWorkItem: true`) |
 
-- **Acquisition grid:** Forensic bucket math now follows S3A **`[start, end)`** (`validateDiV0PositionWindow` / `buildExpectedBucketLabels`). R3A used an **inclusive end**, which invented a **1481st** expected label on a **1480 s** trip and counted that exclusive-end second as a false “missing inside window” bucket.
-- **Snapshot binding:** S4D verify now checks the DB snapshot row against **work-item scope** (`wi.organization_id`, `wi.vehicle_id`, `wi.trip_id`, `wi.boundary_fingerprint`, pinned hash, source family), not self-referential snapshot columns.
-- **Loader transaction:** Forensic load uses **`REPEATABLE READ`** + **`transaction_read_only = on`**; report exposes `transaction_read_only` and `transaction_isolation` separately from “snapshot consistency” wording.
-- **Report tables:** V2 disjoint totals vs hold-detail breakdown are labeled **A / B / C** with enforced sum checks (R3A “755 intervals” hold table was a **mis-denominator** — hold detail was summed over **763** NO_NUMERIC rows).
+## Plain language
 
-**Unchanged (substantive trip findings):**
+**Diagnosis corrections (this run confirms):** Position grid is **`[2026-10-14T05:37:00Z, 2026-10-14T06:01:40Z)`** → **1480** expected labels, **1480** present, **0** missing inside window. R3A’s single “missing inside window” label was the **exclusive end** `2026-10-14T06:01:40Z`, not a provider hole.
 
-- P1/P2 replay on pinned shadow intervals: **1480** intervals, **691** trusted numeric, **763** `NO_NUMERIC`, **26** `CROSS_SOURCE_CONFLICT`.
-- Dominant story: **~501 s** center **`FROZEN_UNRESOLVED`**, **293 s** opening frozen block, **144** stationary band as `NO_NUMERIC`, **26** numeric cross-source conflicts vs **38** shadow conflict markers.
-- No production writes, flags, calibration, or provider calls.
+**Unchanged on replay (P1/P2 V1 on pinned S2):** **1480** intervals, **691** trusted numeric, **763** `NO_NUMERIC`, **26** `CROSS_SOURCE_CONFLICT`, max **77.62 km/h**. Hold/frozen/stationary/conflict narrative unchanged.
 
-## R3A → R3B diagnosis delta
+## Position buckets (executed)
 
-| Measure | R3A (inclusive end bug) | R3B (`[start, end)`) | Explanation |
-|---------|------------------------:|---------------------:|-------------|
-| Expected 1 Hz position labels | 1481 | **1480** | Aligns with S2 interval count |
-| Missing label “inside window” | 1 | **0** | R3A missing label was the **exclusive end instant** mis-counted as in-window |
-| `ROW_ABSENT` / `SIGNAL_NULL` bucket counts | 4 / 0 | **unchanged** | Bucket classification logic unchanged |
-| V2 `POS_GAP_*` interval counts | 8 | **unchanged** | Interval taxonomy unchanged |
-| Hold / frozen / stationary interval story | 628 / 501 / 144 / 26 | **unchanged** | Shadow replay unchanged |
+| Measure | R3A (historical) | R3B (this run) |
+|---------|-----------------:|---------------:|
+| Expected 1 Hz labels | 1481 | **1480** |
+| Labels in pinned POSITION map | 1480 | **1480** |
+| Missing inside `[start, end)` | 1 | **0** |
+| `ROW_ABSENT` buckets | 4 | **4** |
+| `SIGNAL_NULL` buckets | 0 | **0** |
+| Valid coordinate buckets | 1476 | **1476** |
 
-Production replay with `synqdrive_exp021_p21_ro` was **not re-run in this agent session** (VPS: `DATABASE_URL` for RO role not available to the agent; APDS replay URL lacks `di_v0_s4_work_items`). Re-run locally:
+### Former false internal gap
 
-```bash
-# read-only role URL required
-EXP021_P21_ORG_ID=... EXP021_P21_TRIP_ID=... EXP021_P21_WORK_ITEM_ID=... \
-  npx ts-node --transpile-only backend/scripts/ops/exp021-p21-r3-forensic.ts \
-  > /opt/cursor/artifacts/exp021-p21-r3b-forensic.json
-```
+| Field | Value |
+|-------|--------|
+| **Label** | `2026-10-14T06:01:40Z` (snapshot `acquisition_window_end`; **exclusive** bound) |
+| **R3A class** | `POS_GAP_MISSING_BUCKET_INSIDE_WINDOW` (1 interval) + bucket-level “missing inside window” |
+| **R3B class** | Not in-window; support-window **edge** classification where applicable (`WINDOW_EDGE_OUTSIDE_ACQUISITION`) |
 
-## Reference groups (763 NO_NUMERIC)
+## Interval-level position gaps (executed, disjoint V2 view **A**)
 
-| View | Denominator | Meaning |
-|------|------------:|---------|
-| **A** `noNumericDisjointV2` | 763 | Disjoint primary V2 codes (`POS_GAP_*` vs `HOLD_TRANSITION_*`) |
-| **B** `holdTransitionDetailBreakdown` | 763 | State detail on **every** NO_NUMERIC row (not disjoint with A) |
-| **C** `holdTransitionDetailBreakdownExcludingPosGapIntervals` | 755 | Hold detail only where V2 is **not** `POS_GAP_*` (8 pos-gap rows excluded) |
+| V2 code | Intervals |
+|---------|----------:|
+| `POS_GAP_WINDOW_EDGE_OUTSIDE_ACQUISITION` | **2** |
+| `POS_GAP_ROW_ABSENT_EXPLICIT` | **6** |
+| `POS_GAP_MISSING_BUCKET_INSIDE_WINDOW` | **0** |
+| **Pos-gap subtotal** | **8** |
 
-**500 vs 501 `FROZEN_UNRESOLVED`:** **501** appears in view **B** (all NO_NUMERIC). View **C** can differ by **1** when a single NO_NUMERIC row is classified as `POS_GAP_*` at the V2 layer but still carries `FROZEN_UNRESOLVED` at center in the parallel hold slice — use the view label when citing counts.
+| Aggregated impact (from artifact) | Count |
+|-----------------------------------|------:|
+| Intervals with **internal** position-gap support (excludes window-edge-only) | **6** |
+| Intervals with **acquisition edge** support gap | **2** |
+
+R3A had **1** edge + **1** false internal missing + **6** row-absent; R3B has **2** edge + **0** internal missing + **6** row-absent — **8** pos-gap intervals total **unchanged** after reclassification.
+
+## NO_NUMERIC — view **A** (disjoint V2, sum **763**)
+
+| Code | Intervals |
+|------|----------:|
+| `HOLD_TRANSITION_CENTER_FROZEN_UNRESOLVED` | 500 |
+| `HOLD_TRANSITION_STATIONARY_SUPPORTED_BAND` | 144 |
+| `HOLD_TRANSITION_MOVING_SPEED_UNKNOWN` | 33 |
+| `HOLD_TRANSITION_TRANSITION_UNCERTAIN_FRESH_L3_SUPPORT` | 42 |
+| `HOLD_TRANSITION_NEIGHBOR_HOLD_OR_RELEASE_FRESH_CENTER` | 23 |
+| `HOLD_TRANSITION_CENTER_RELEASE` | 13 |
+| `POS_GAP_ROW_ABSENT_EXPLICIT` | 6 |
+| `POS_GAP_WINDOW_EDGE_OUTSIDE_ACQUISITION` | 2 |
+
+`referenceGroupArithmeticVerified: true`
+
+## NO_NUMERIC — view **B** (overlapping cause features, all 763 rows)
+
+`holdTransitionDetailBreakdown` (each NO_NUMERIC row counted once by **center state detail**, not disjoint with A):
+
+| Detail | Intervals |
+|--------|----------:|
+| `CENTER_FROZEN_UNRESOLVED` | 501 |
+| `STATIONARY_SUPPORTED_BAND` | 144 |
+| `MOVING_SPEED_UNKNOWN` | 33 |
+| `TRANSITION_UNCERTAIN_FRESH_L3_SUPPORT` | 42 |
+| `NEIGHBOR_HOLD_OR_RELEASE_FRESH_CENTER` | 23 |
+| `CENTER_RELEASE` | 13 |
+| `NO_MOTION_EVIDENCE` | 6 |
+| `OTHER_S1_DOCUMENTED` | 1 |
+
+**501 vs 500:** View **B** includes one NO_NUMERIC row that view **A** classifies as `POS_GAP_*` first (disjoint priority); view **C** (755 rows) shows **500** `CENTER_FROZEN_UNRESOLVED`.
+
+Overlapping support strings (e.g. `ROW_ABSENT_EXPLICIT+WINDOW_EDGE_OUTSIDE_ACQUISITION`) appear in `crossTabTop` — use for multi-cause visibility without replacing view **A**.
+
+## P1/P2 baseline (reproduced this run)
+
+| Metric | Value |
+|--------|------:|
+| Intervals | 1480 |
+| Trusted numeric | 691 |
+| `NO_NUMERIC` | 763 |
+| `CROSS_SOURCE_CONFLICT` | 26 |
+| `shadowRawMaxKmh` / `qcTrustedMaxKmh` | 77.62 |
 
 ## Engineering
 
-- `di-v0-p21-r3-forensic-classify.ts` — canonical `[start, end)` via `di-v0-position-window.ts`
-- `di-v0-p21-r3-forensic-loader.ts` — WI-bound S4D scope; `RepeatableRead` + RO session metadata
-- `di-v0-p21-r3-forensic-analyze.ts` — R3B schema, reference groups, sum verification
-- Tests: classify (window + gaps), analyze (sums), snapshot-bind (negative scope), composed S1→P1
+- `di-v0-p21-r3-forensic-classify.ts` — `[start, end)` via `di-v0-position-window.ts`
+- `di-v0-p21-r3-forensic-loader.ts` — WI-bound S4D scope; `RepeatableRead` + session metadata
+- `di-v0-p21-r3-forensic-analyze.ts` — reference groups A/B/C + sum checks
+- Ops: `backend/scripts/ops/exp021-p21-r3-forensic.ts`
 
 ## Scoped P1 stationary correction — proposal only (not implemented)
 
-**Goal:** Allow **fachliche** stationary assessment when `motionState=STATIONARY_SUPPORTED` and `speedEvidenceState=STATIONARY_BAND` **without** a numeric L3 speed — **without** changing GPS/L3 numeric outputs or inflating trusted-numeric coverage.
-
-| Principle | Proposal |
-|-----------|------------|
-| Versioning | New **`speedQcPolicyVersion`** (e.g. `DI_V0_SPEED_QC_POLICY_V2`) + shadow/projection **`qcSemanticsVersion`**; R3/R3A/R3B artifacts remain reproducible under **`V1`**. |
-| Stationary branch | After existing conflict / evidence / geometry gates, add **`TRUSTED_LIMITED`** (or assessability-only flag) **only** when stationary band predicates pass and **no** disqualifying flags (conflict, invalid evidence, `FROZEN_UNRESOLVED`, cross-gap compromise). |
-| No `null→0` | Do not coerce missing speed to zero. |
-| No conflict auto-trust | `CROSS_SOURCE_CONFLICT` and explained conflict paths stay **non-trusted**. |
-| `FROZEN_UNRESOLVED` | Remains **non-stationary** / non-trusted; not re-labeled as stop. |
-| Coverage metric | `trustedNumericCoveragePercent` **definition unchanged** (numeric trusted only). |
-| Smallest implementation | (1) Policy version gate in `evaluate-di-v0-speed-qc-interval` stationary section; (2) unit tests mirroring R3 **144** stationary seconds; (3) shadow re-run on pinned WI before any production flag. |
+Unchanged from R3B draft — see prior table in git history; next step is **versioned P1 policy** (`DI_V0_SPEED_QC_POLICY_V2`), not further general diagnosis.

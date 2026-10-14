@@ -1970,3 +1970,11 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | End-exclusive acquisition window via `di-v0-position-window.ts`; S4D snapshot scope bound to work item; forensic transaction `RepeatableRead` + exposed `transaction_read_only` / `transaction_isolation`; reference groups A/B/C with sum assertions; evidence `EXP021_P21_R3B_DIAGNOSTIC_CORRECTNESS_FINAL.md` |
 | FINDING | R3A 1481 expected labels / 1 missing bucket was end-inclusive artifact; substantive 763 NO_NUMERIC / 501 s frozen / 26 conflicts unchanged on shadow replay |
 | NON_EFFECTS | No S1/P1/P2 product change; no deploy; scoped P1 stationary correction documented only |
+
+### EXP-021 P2.1 R3B final replay (2026-10-14)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Live Production-VPS replay via `synqdrive_exp021_p21_ro` + `exp021-p21-r3-forensic.ts`; artifact `exp021-p21-r3b-forensic.json`; evidence tables aligned to executed JSON |
+| FINDING | `transaction_read_only=on`, `transaction_isolation=repeatable read`; expected labels 1480; false missing label `2026-10-14T06:01:40Z`; internal gap intervals 6, edge 2; baseline 1480/691/763/26 reproduced |
+| NON_EFFECTS | No mutations; no provider calls |
