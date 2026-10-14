@@ -10,7 +10,7 @@ import {
   VehicleRegistryLifecycleOutboxStatus,
 } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
-import { VehicleOffboardingService } from '@modules/vehicle-onboarding/services/vehicle-offboarding.service';
+import { createVehicleOffboardingServiceForTests } from '@modules/vehicle-onboarding/testing/vehicle-offboarding-test.harness';
 import { VehicleRegistryLifecycleOutboxProcessor } from '@modules/vehicle-onboarding/registry-lifecycle/vehicle-registry-lifecycle-outbox.processor';
 import { VehicleRegistryLifecycleOutboxRepository } from '@modules/vehicle-onboarding/registry-lifecycle/vehicle-registry-lifecycle-outbox.repository';
 import { BillingVehicleRegistryOffboardProjection } from './registry-lifecycle/billing-vehicle-registry-offboard.projection';
@@ -166,7 +166,7 @@ async function createActiveVehicle(prisma: PrismaClient, orgId: string) {
 (run ? describe : describe.skip)('VO-5B registry billing bridge (PostgreSQL)', () => {
   jest.setTimeout(120_000);
   const prisma = new PrismaClient();
-  const offboarding = new VehicleOffboardingService(prisma as any);
+  const offboarding = createVehicleOffboardingServiceForTests(prisma);
   const projection = new BillingVehicleRegistryOffboardProjection(
     prisma as any,
     new BillableVehiclesService(prisma as any),

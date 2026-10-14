@@ -4,7 +4,7 @@
 import { BusinessType, PrismaClient, ProductSlug, VehicleProviderConsentStatus } from '@prisma/client';
 import { DimoVehicleDataSourceLinkService } from '@modules/dimo/dimo-vehicle-data-source-link.service';
 import { randomUUID } from 'node:crypto';
-import { VehicleOffboardingService } from './services/vehicle-offboarding.service';
+import { createVehicleOffboardingServiceForTests } from './testing/vehicle-offboarding-test.harness';
 import { VehicleOnboardingProviderCandidateService } from './services/vehicle-onboarding-provider-candidate.service';
 import { VehicleOnboardingSourceAdoptionAuthority } from './source-adoption/vehicle-onboarding-source-adoption.authority';
 import { ensureOrganizationProductEntitlement } from './testing/org-product-test.harness';
@@ -52,7 +52,7 @@ async function createActiveVehicle(prisma: PrismaClient, orgId: string, dimoId?:
 (run ? describe : describe.skip)('VO-5A offboarding foundation (PostgreSQL)', () => {
   jest.setTimeout(120_000);
   const prisma = new PrismaClient();
-  const offboarding = new VehicleOffboardingService(prisma as any);
+  const offboarding = createVehicleOffboardingServiceForTests(prisma);
 
   afterAll(async () => {
     await prisma.$disconnect();
