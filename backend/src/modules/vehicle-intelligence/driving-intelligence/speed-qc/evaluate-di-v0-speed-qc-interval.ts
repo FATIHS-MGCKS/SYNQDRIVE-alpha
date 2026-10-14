@@ -199,7 +199,7 @@ export function evaluateDiV0SpeedQcInterval(input: DiV0SpeedQcEvaluateInput): Di
   });
 
   const speed = shadow.estimatedSpeedKmh;
-  if (speed == null || !Number.isFinite(speed)) {
+  if (speed === null) {
     if (qcPolicyVersion === DI_V0_SPEED_QC_POLICY_V2) {
       const stationaryVerdict = attemptV2StationaryNullSpeedAcceptance({
         shadow,
@@ -215,6 +215,9 @@ export function evaluateDiV0SpeedQcInterval(input: DiV0SpeedQcEvaluateInput): Di
         return stationaryVerdict;
       }
     }
+    return buildVerdict('UNTRUSTED', [DI_V0_SPEED_QC_REASON.NO_NUMERIC], null);
+  }
+  if (speed == null || !Number.isFinite(speed)) {
     return buildVerdict('UNTRUSTED', [DI_V0_SPEED_QC_REASON.NO_NUMERIC], null);
   }
 
@@ -399,6 +402,10 @@ function attemptV2StationaryNullSpeedAcceptance(ctx: {
   }
 
   if (shadow.positionState === 'FROZEN_STOP_SUPPORTED') {
+    const centerPs = centerPos.positionState ?? shadow.positionState;
+    if (centerPs !== 'FROZEN_STOP_SUPPORTED') {
+      return null;
+    }
     return buildVerdict('TRUSTED_LIMITED', [DI_V0_SPEED_QC_REASON.OK_STATIONARY_NULL_SPEED], null);
   }
 

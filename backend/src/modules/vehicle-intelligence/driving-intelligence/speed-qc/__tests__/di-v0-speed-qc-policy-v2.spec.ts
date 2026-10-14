@@ -83,6 +83,63 @@ describe('DI_V0_SPEED_QC_POLICY_V2 stationary semantics', () => {
     expect(v2.reasonCodes).not.toContain(DI_V0_SPEED_QC_REASON.NO_NUMERIC);
   });
 
+  it('V2 does not accept non-finite speeds via stationary null path', () => {
+    const step = 0.0000025;
+    const observations = [
+      presentObs('2026-01-01T00:00:00Z', 52, 9, 'API_SYNTHETIC'),
+      presentObs('2026-01-01T00:00:01Z', 52, 9 + step, 'API_SYNTHETIC'),
+      presentObs('2026-01-01T00:00:02Z', 52, 9 + step * 2, 'API_SYNTHETIC'),
+    ];
+    const center = '2026-01-01T00:00:01Z';
+    const base = {
+      centerBucketLabel: center,
+      shadow: freshStationaryShadow(center),
+      positions: positionsForQc(observations),
+      evidenceIdentity: { pinnedSnapshotHash: 'pin' },
+      qcPolicyVersion: DI_V0_SPEED_QC_POLICY_V2,
+    };
+    for (const badSpeed of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+      const v2 = evaluateDiV0SpeedQcInterval({
+        ...base,
+        shadow: { ...base.shadow, estimatedSpeedKmh: badSpeed },
+      });
+      expect(v2.trustLevel).toBe('UNTRUSTED');
+      expect(v2.reasonCodes).toContain(DI_V0_SPEED_QC_REASON.NO_NUMERIC);
+      expect(v2.reasonCodes).not.toContain(DI_V0_SPEED_QC_REASON.OK_STATIONARY_NULL_SPEED);
+      expect(v2.qcTrustedSpeedKmh).toBeNull();
+    }
+  });
+
+  it('V2 rejects FROZEN_STOP_SUPPORTED shadow when center positionState disagrees', () => {
+    const center = '2026-01-01T00:00:01Z';
+    const shadowFrozen = {
+      ...freshStationaryShadow(center),
+      positionState: 'FROZEN_STOP_SUPPORTED' as const,
+    };
+    const base = {
+      centerBucketLabel: center,
+      shadow: shadowFrozen,
+      evidenceIdentity: { pinnedSnapshotHash: 'pin' },
+      qcPolicyVersion: DI_V0_SPEED_QC_POLICY_V2,
+    };
+    for (const centerPs of ['FROZEN_UNRESOLVED', 'RELEASE'] as const) {
+      const v2 = evaluateDiV0SpeedQcInterval({
+        ...base,
+        positions: [
+          {
+            bucketLabel: center,
+            availability: 'PRESENT',
+            latitude: 52,
+            longitude: 9,
+            positionState: centerPs,
+          },
+        ],
+      });
+      expect(v2.reasonCodes).toContain(DI_V0_SPEED_QC_REASON.NO_NUMERIC);
+      expect(v2.reasonCodes).not.toContain(DI_V0_SPEED_QC_REASON.OK_STATIONARY_NULL_SPEED);
+    }
+  });
+
   it('V2 accepts FROZEN_STOP_SUPPORTED stationary band with valid center only', () => {
     const center = '2026-01-01T00:00:01Z';
     const v2 = evaluateDiV0SpeedQcInterval({
@@ -175,44 +232,34 @@ describe('DI_V0_SPEED_QC_POLICY_V2 stationary semantics', () => {
   });
 
   it('MOVING_SPEED_UNKNOWN stays NO_NUMERIC under V2', () => {
-    const s1 = computeDiV0TripIntervals(
-      {
-        sourceFamily: 'API_SYNTHETIC',
-        positions: [
-          presentObs('2026-01-01T00:00:00Z', 52, 9, 'API_SYNTHETIC'),
-          presentObs('2026-01-01T00:00:01Z', 52.001, 9, 'API_SYNTHETIC'),
-          presentObs('2026-01-01T00:00:02Z', 52.002, 9, 'API_SYNTHETIC'),
-        ],
-      },
-      s1Ctx,
-    );
+    const observations = pilotHoldThenRelease303m();
+    const s1 = computeDiV0TripIntervals({ sourceFamily: 'RUPTELA_R1', positions: observations }, s1Ctx);
     const row = s1.intervals.find((r) => r.motionState === 'MOVING_SPEED_UNKNOWN');
-    if (!row) return;
+    expect(row).toBeDefined();
+    expect(row!.estimatedSpeedKmh).toBeNull();
+    expect(row!.motionState).toBe('MOVING_SPEED_UNKNOWN');
     const v2 = evaluateDiV0SpeedQcInterval({
-      centerBucketLabel: row.referenceTime,
+      centerBucketLabel: row!.referenceTime,
       shadow: {
-        intervalStart: row.intervalStart,
-        intervalEnd: row.intervalEnd,
-        referenceTime: row.referenceTime,
-        estimatedSpeedKmh: row.estimatedSpeedKmh,
-        speedEvidenceState: row.speedEvidenceState,
-        valueConfidence: row.valueConfidence,
-        sourceRelation: row.sourceRelation,
-        motionState: row.motionState,
-        positionState: row.positionState,
-        abstentionReason: row.abstentionReason,
-        sourceQualityFlags: row.sourceQualityFlags,
-        evidenceSources: row.evidenceSources,
+        intervalStart: row!.intervalStart,
+        intervalEnd: row!.intervalEnd,
+        referenceTime: row!.referenceTime,
+        estimatedSpeedKmh: row!.estimatedSpeedKmh,
+        speedEvidenceState: row!.speedEvidenceState,
+        valueConfidence: row!.valueConfidence,
+        sourceRelation: row!.sourceRelation,
+        motionState: row!.motionState,
+        positionState: row!.positionState,
+        abstentionReason: row!.abstentionReason,
+        sourceQualityFlags: row!.sourceQualityFlags,
+        evidenceSources: row!.evidenceSources,
       },
-      positions: positionsForQc([
-        presentObs('2026-01-01T00:00:00Z', 52, 9, 'API_SYNTHETIC'),
-        presentObs('2026-01-01T00:00:01Z', 52.001, 9, 'API_SYNTHETIC'),
-        presentObs('2026-01-01T00:00:02Z', 52.002, 9, 'API_SYNTHETIC'),
-      ]),
+      positions: positionsForQc(observations),
       evidenceIdentity: { pinnedSnapshotHash: 'pin' },
       qcPolicyVersion: DI_V0_SPEED_QC_POLICY_V2,
     });
     expect(v2.reasonCodes).toContain(DI_V0_SPEED_QC_REASON.NO_NUMERIC);
+    expect(v2.reasonCodes).not.toContain(DI_V0_SPEED_QC_REASON.OK_STATIONARY_NULL_SPEED);
   });
 
   it('RELEASE path stays NO_NUMERIC under V2', () => {

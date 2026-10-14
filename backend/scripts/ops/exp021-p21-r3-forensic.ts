@@ -55,7 +55,7 @@ async function main(): Promise<void> {
           sourceRelation: r.sourceRelation as never,
           motionState: r.motionState as never,
           positionState: r.positionState as never,
-          abstentionReason: r.abstentionReason,
+          abstentionReason: r.abstentionReason as never,
           sourceQualityFlags: Array.isArray(r.sourceQualityFlags)
             ? r.sourceQualityFlags.map(String)
             : [],

@@ -50,6 +50,21 @@ Unknown versions: rejected (`DiV0SpeedQcPolicyVersionError`). Projection `identi
 - Ops compare: `backend/scripts/ops/exp021-p21-p1-v2-policy-compare.ts`
 - Tests: `di-v0-speed-qc-policy-v2.spec.ts`
 
+## Pre-merge correctness (EXP021_P1_V2_PREMERGE_CORRECTNESS)
+
+| Issue | Fix |
+|-------|-----|
+| V2 stationary path treated all non-finite like contractual `null` | Gate V2 acceptance on `estimatedSpeedKmh === null` only; `NaN` / `±Infinity` → `NO_NUMERIC` |
+| `FROZEN_STOP_SUPPORTED` without center state check | Require center `positionState === FROZEN_STOP_SUPPORTED` |
+| `MOVING_SPEED_UNKNOWN` test could skip | Deterministic `pilotHoldThenRelease303m` S1 fixture + hard asserts |
+| CI `nest build` / `tsc` on ops forensic script | `abstentionReason as never` in `exp021-p21-r3-forensic.ts` (same as analyze loader) |
+
+**S1→P1 `FROZEN_STOP_SUPPORTED` (real flags):** tiny hold-release fixture yields `STATIONARY_BAND` + `L3_SUPPORT_CROSSES_GAP`; V2 **withholds** `SUPPORT_WINDOW_COMPROMISED` (not `OK_STATIONARY_NULL_SPEED`) — hold protection not loosened.
+
+**Executed tests (agent):** policy-v2, composed, hardening, golden, unit, projection unit; `validate-module-registry.sh`, `validate-docs.sh`; local `npm run build`, `tsc --noEmit`.
+
+**Replay:** Re-run `exp021-p21-p1-v2-policy-compare.ts` on pinned RO trip after push when VPS access available; prior compare at `f176d709` matched table above (118/26/691/77.62). Non-finite/center guards do not affect numeric intervals; live delta expected **0** outside contradictory frozen-stop rows (if any on trip).
+
 ## Non-effects
 
 - S2 rows unchanged; calibration unchanged; no deploy; no customer runtime flag; no provider calls.

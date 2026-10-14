@@ -24,7 +24,8 @@ Returns `TRUSTED_LIMITED` with `OK_STATIONARY_NULL_SPEED` and `qcTrustedSpeedKmh
 - center position present with valid coordinates;
 - no support-compromised shadow flags;
 - **Fresh center:** complete t−1/t/t+ window, no `ROW_ABSENT`/`SIGNAL_NULL`, no frozen/release in support, leg speeds ≤ stationary band;
-- **FROZEN_STOP_SUPPORTED center:** valid center coordinates only (S1 stop-hold semantics).
+- **Intentional null only:** V2 stationary acceptance runs only when `estimatedSpeedKmh === null` (not `NaN` / `±Infinity` / missing).
+- **FROZEN_STOP_SUPPORTED:** shadow and center `positionState` must both be `FROZEN_STOP_SUPPORTED` with valid center coordinates.
 
 ## Withhold
 

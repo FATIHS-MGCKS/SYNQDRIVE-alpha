@@ -5,6 +5,7 @@ import {
   classifyPositionRows,
 } from '../../core/index';
 import { presentObs } from '../../core/__tests__/test-helpers';
+import { DI_V0_SPEED_QC_POLICY_V2 } from '../di-v0-speed-qc-policy.version';
 import { DI_V0_SPEED_QC_REASON } from '../di-v0-speed-qc-reason-codes';
 import { evaluateDiV0SpeedQcInterval } from '../evaluate-di-v0-speed-qc-interval';
 import type { DiV0SpeedQcPositionSample } from '../di-v0-speed-qc.types';
@@ -102,6 +103,54 @@ describe('S1 shadow output composed through P1 speed QC', () => {
     });
     expect(v.originalEstimatedSpeedKmh).toBe(36);
     expect(v.reasonCodes).toContain(DI_V0_SPEED_QC_REASON.CROSS_SOURCE_CONFLICT);
+  });
+
+  it('S1 FROZEN_STOP_SUPPORTED with real flags: V2 withholds SUPPORT_WINDOW_COMPROMISED', () => {
+    const lat = 51.3353783;
+    const lon = 9.506005;
+    const observations = [];
+    for (let s = 0; s < 5; s += 1) {
+      const label = new Date(Date.parse('2026-09-26T10:00:00Z') + s * 1000)
+        .toISOString()
+        .replace(/\.\d{3}Z$/, 'Z');
+      observations.push(presentObs(label, lat, lon, 'RUPTELA_R1'));
+    }
+    observations.push(presentObs('2026-09-26T10:00:05Z', lat + 1 / 111_320, lon, 'RUPTELA_R1'));
+    observations.push(presentObs('2026-09-26T10:00:06Z', lat + 2 / 111_320, lon, 'RUPTELA_R1'));
+    const s1 = computeDiV0TripIntervals({ sourceFamily: 'RUPTELA_R1', positions: observations }, s1Ctx);
+    const frozenStop = s1.intervals.find(
+      (r) =>
+        r.positionState === 'FROZEN_STOP_SUPPORTED' &&
+        r.motionState === 'STATIONARY_SUPPORTED' &&
+        r.speedEvidenceState === 'STATIONARY_BAND',
+    );
+    expect(frozenStop).toBeDefined();
+    expect(frozenStop!.estimatedSpeedKmh).toBeNull();
+    expect(frozenStop!.sourceQualityFlags).toContain('L3_SUPPORT_CROSSES_GAP');
+    const v1 = qcFromS1Interval(frozenStop!, positionsForQc(observations));
+    expect(v1.reasonCodes).toContain(DI_V0_SPEED_QC_REASON.NO_NUMERIC);
+    const v2 = evaluateDiV0SpeedQcInterval({
+      centerBucketLabel: frozenStop!.referenceTime,
+      shadow: {
+        intervalStart: frozenStop!.intervalStart,
+        intervalEnd: frozenStop!.intervalEnd,
+        referenceTime: frozenStop!.referenceTime,
+        estimatedSpeedKmh: frozenStop!.estimatedSpeedKmh,
+        speedEvidenceState: frozenStop!.speedEvidenceState,
+        valueConfidence: frozenStop!.valueConfidence,
+        sourceRelation: frozenStop!.sourceRelation,
+        motionState: frozenStop!.motionState,
+        positionState: frozenStop!.positionState,
+        abstentionReason: frozenStop!.abstentionReason,
+        sourceQualityFlags: frozenStop!.sourceQualityFlags,
+        evidenceSources: frozenStop!.evidenceSources,
+      },
+      positions: positionsForQc(observations),
+      evidenceIdentity: { pinnedSnapshotHash: 'pin-composed' },
+      qcPolicyVersion: DI_V0_SPEED_QC_POLICY_V2,
+    });
+    expect(v2.reasonCodes).toContain(DI_V0_SPEED_QC_REASON.SUPPORT_WINDOW_COMPROMISED);
+    expect(v2.reasonCodes).not.toContain(DI_V0_SPEED_QC_REASON.OK_STATIONARY_NULL_SPEED);
   });
 
   it('FROZEN hold path: S1 null speed → P1 NO_NUMERIC', () => {
