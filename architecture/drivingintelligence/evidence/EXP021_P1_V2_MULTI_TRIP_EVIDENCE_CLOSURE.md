@@ -8,7 +8,8 @@
 | Role | SHA / label | Notes |
 |------|-------------|--------|
 | **POLICY_IMPLEMENTATION_SHA** | `f7a285b59fd1f70e57b5fd72c04406286e1b96f1` | Main merge #2021 — V2 evaluator on Production `/opt/synqdrive/current` |
-| **VALIDATION_RUNNER_SHA (closure)** | see `validationRunnerSha` in closure result JSON | Git commit containing `exp021-p21-p1-v2-policy-compare.lib.ts` intervalwise audit + frozen manifest replay |
+| **VALIDATION_RUNNER_SHA (closure)** | `185ff1e15c7c3862c243a6e4415a6cbb503575d2` | PR #2025 branch head; comparator code in `4c511a0dd6` |
+| **Closure replay artifact** | `/opt/cursor/artifacts/EXP021_P1_V2_MULTI_TRIP_RESULT_CLOSURE.json` | `regressionVerdict: PASS`; counters match historical run |
 | **Historical first run** | `executedCodeSha: f7a285b…` in `/opt/cursor/artifacts/EXP021_P1_V2_MULTI_TRIP_RESULT.json` (schema V1) | **Mislabeled:** tagged policy SHA as runner; scripts were **uncommitted** scp to `~/di-r3a-run`; comparator used aggregate-only gates |
 | **Uncommitted historical files** | not reproducible by git SHA | VPS copies overwritten on closure scp; preserved as narrative + frozen manifest only |
 
