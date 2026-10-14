@@ -24,6 +24,5 @@
 | 2026-10-12 | R4.5 quality gate — docs-only branch off `09fd5d72…` (replaces mixed #1995); **DIM-DEF-002** reclassified P1→P2 + separated from R9 webhook exclusion; **DEF-004/005** wording (dimo channel ≠ freshness; lastSeen ≠ GPS timestamp); provider query inventory; A–F evidence packs; [PR_REFERENCE.md](../audit/PR_REFERENCE.md) | DIMO R4.5 | [../audit/DIMO_R45_AUDIT_CLOSURE.md](../audit/DIMO_R45_AUDIT_CLOSURE.md) |
 | 2026-10-12 | R9 T+24 read-only production evaluation @ `20:59:45Z` — wiring PASS; post-gate webhooks **0**; wake increase **0**; natural E2E **NOT_OBSERVED** | DIMO R4.5 Phase 3 | [../audit/evidence/R9_T24_EVALUATION.md](../audit/evidence/R9_T24_EVALUATION.md) |
 | 2026-10-12 | R4.5 final sign-off consistency — report/register/matrix aligned (13 / P1=4 / P2=9); 24h retrospective doc; **DIM-RISK-003** P3→P2; PR #1999 rebased docs-only | DIMO R4.5 gate | [../audit/DIMO_R45_FINAL_SIGNOFF_GATE.md](../audit/DIMO_R45_FINAL_SIGNOFF_GATE.md) |
-| 2026-10-14 | VO5C D1 — effective SynqDrive integration connectivity vs last-observed DIMO mirror (`synqdrive-dimo-access.util`); lifecycle priority over platform degradation; detail-only REVOKED via fleet `providerLinkState`; `providerPollEligible=false` for OFFBOARDED/ARCHIVED; mirror `connection_status` unchanged | VO5C D1 mirror consistency | `backend/src/modules/vehicles/synqdrive-dimo-access.util.ts` |
 
-No runtime code changes in governance correction commits (except VO5C D1 row above).
+No runtime code changes in governance correction commits.
