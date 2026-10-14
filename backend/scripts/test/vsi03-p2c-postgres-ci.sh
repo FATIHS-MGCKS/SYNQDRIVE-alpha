@@ -32,7 +32,8 @@ if command -v psql >/dev/null 2>&1; then
       -c "CREATE DATABASE \"${VSI03_DB}\""
 fi
 
-npx prisma migrate deploy
+export PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1
+bash scripts/test/prisma-migrate-deploy-resilient.sh
 
 npx jest \
   --runInBand \
