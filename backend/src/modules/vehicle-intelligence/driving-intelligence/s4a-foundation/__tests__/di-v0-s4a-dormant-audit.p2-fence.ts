@@ -6,7 +6,7 @@ export const P2_TRIP_SPEED_QUALITY_DIR = path.join(__dirname, '../../trip-speed-
 export const P2_ALLOWED_PRODUCTION_S4A_IMPORTS: Readonly<Record<string, readonly string[]>> = {
   'build-di-v0-trip-speed-quality-projection.v1.ts': ['../s4a-foundation/di-v0-s4a-contract'],
   'di-v0-trip-speed-quality-evidence.ts': ['../s4a-foundation/di-v0-s4a-evidence-container-parse'],
-  'di-v0-trip-speed-quality-projection.service.ts': ['../s4a-foundation/di-v0-s4a-contract'],
+  'di-v0-trip-speed-quality-projection.engine.ts': ['../s4a-foundation/di-v0-s4a-contract'],
   'di-v0-trip-speed-quality-projection.types.ts': ['../s4a-foundation/di-v0-s4a-contract'],
 };
 

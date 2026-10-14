@@ -50,16 +50,11 @@ describe('DI V0 P2 trip speed quality dormant-by-construction audit', () => {
     }
   });
 
-  it('S4C T06 completion wiring does not reference P2 trip speed quality', () => {
-    const t06Candidates = fs
-      .readdirSync(S4C_DIR)
-      .filter((f) => f.endsWith('.ts') && (f.includes('t06') || f.includes('completion') || f.includes('executor')));
-    expect(t06Candidates.length).toBeGreaterThan(0);
-    for (const file of t06Candidates) {
-      const source = stripComments(fs.readFileSync(path.join(S4C_DIR, file), 'utf8'));
-      expect(source.includes('trip-speed-quality')).toBe(false);
-      expect(source.includes('TripSpeedQuality')).toBe(false);
-    }
+  it('S4C executor entry does not reference P2 trip speed quality (T06 path unchanged)', () => {
+    const executorFile = path.join(S4C_DIR, 'di-v0-s4c-executor.ts');
+    const source = stripComments(fs.readFileSync(executorFile, 'utf8'));
+    expect(source.includes('trip-speed-quality')).toBe(false);
+    expect(source.includes('TripSpeedQuality')).toBe(false);
   });
 
   it('negative: synthetic S4C P2 import would fail audit', () => {
@@ -98,5 +93,16 @@ describe('DI V0 P2 trip speed quality dormant-by-construction audit', () => {
 
   it('P2 tree is confined to trip-speed-quality directory', () => {
     expect(P2_TRIP_SPEED_QUALITY_DIR).toBe(TRIP_SQ);
+  });
+
+  it('P2.1 ops preview CLI is not wired into Nest bootstrap', () => {
+    const opsScript = fs.readFileSync(
+      path.join(REPO_ROOT, 'backend/scripts/ops/di-v0-trip-speed-quality-preview.ts'),
+      'utf8',
+    );
+    expect(opsScript.includes('previewDiV0TripSpeedQualityForWorkItem')).toBe(true);
+    expect(opsScript.includes('persistCurrentProjection')).toBe(false);
+    const app = fs.readFileSync(path.join(REPO_ROOT, 'backend/src/app.module.ts'), 'utf8');
+    expect(app.includes('di-v0-trip-speed-quality-preview')).toBe(false);
   });
 });

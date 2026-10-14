@@ -6,6 +6,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
 EXPECTED_POSTGRES_TESTS=15
+EXPECTED_PREVIEW_POSTGRES_TESTS=7
 
 fail_closed_url() {
   local name="$1" url="$2"
@@ -53,4 +54,26 @@ if ! grep -qE "Tests:[[:space:]]+${EXPECTED_POSTGRES_TESTS} passed" "$LOG"; then
   exit 1
 fi
 
+PREVIEW_LOG="$(mktemp /tmp/di-v0-p2-tsq-preview-postgres-ci.XXXXXX.log)"
+trap 'rm -f "$LOG" "$PREVIEW_LOG"' EXIT
+
+set +e
+npx jest --runInBand --forceExit --verbose \
+  src/modules/vehicle-intelligence/driving-intelligence/trip-speed-quality/__tests__/di-v0-trip-speed-quality-preview.postgres.integration.spec.ts \
+  2>&1 | tee "$PREVIEW_LOG"
+preview_status=${PIPESTATUS[0]}
+set -e
+
+if [[ "$preview_status" -ne 0 ]]; then
+  echo "P2.1 preview Postgres jest suite failed (exit $preview_status)" >&2
+  exit "$preview_status"
+fi
+
+if ! grep -qE "Tests:[[:space:]]+${EXPECTED_PREVIEW_POSTGRES_TESTS} passed" "$PREVIEW_LOG"; then
+  echo "P2.1 preview Postgres CI expected exactly ${EXPECTED_PREVIEW_POSTGRES_TESTS} passing tests; output:" >&2
+  grep -E '^Tests:' "$PREVIEW_LOG" >&2 || true
+  exit 1
+fi
+
 echo "P2 trip speed quality Postgres CI OK (${EXPECTED_POSTGRES_TESTS}/${EXPECTED_POSTGRES_TESTS})"
+echo "P2.1 preview Postgres CI OK (${EXPECTED_PREVIEW_POSTGRES_TESTS}/${EXPECTED_PREVIEW_POSTGRES_TESTS})"
