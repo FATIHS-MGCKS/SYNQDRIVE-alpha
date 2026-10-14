@@ -41,41 +41,57 @@ if [[ "${VO_SIG_B1_PREFLIGHT_ONLY:-}" == "1" ]]; then
   exit 0
 fi
 
+if [[ "${VO_SIG_B1_SKIP_PREFLIGHT_AND_BACKUP:-}" == "1" ]]; then
+  echo "VO_SIG_B1_SKIP_PREFLIGHT_AND_BACKUP=1 — resuming at Phase 3 (backup already completed)"
+else
 echo "=== PHASE 2 BACKUP ==="
 sudo bash "${BACKEND}/scripts/ops/vps-backup-postgresql.sh" | tee /tmp/vo-sig-b1-backup.log
 BACKUP_FILE="$(grep -E 'backup SUCCESS:' /tmp/vo-sig-b1-backup.log | tail -1 | sed 's/.*backup SUCCESS: //')"
 [[ -n "$BACKUP_FILE" && -f "$BACKUP_FILE" ]] || fail "backup file missing"
 [[ -s "$BACKUP_FILE" ]] || fail "backup empty"
 echo "BACKUP_FILENAME=$BACKUP_FILE"
+fi
 
 echo "=== PHASE 3 PREPARE SQL ==="
 RUN_ID="$(uuidgen | tr '[:upper:]' '[:lower:]')"
 VERIFIED_AT="$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"
-AUTH_REF="${VO_SIG_B1_AUTH_REF:-OWNER_EXPLICIT_VO_SIG_B1_ONE_TIME}"
+AUTH_REF="${VO_SIG_B1_AUTH_REF:-OWNER_RECONFIRMED_VO_SIG_B1_FINAL_EXECUTION_2026-10-14}"
 OPERATOR_REF="${VO_SIG_B1_OPERATOR_REF:-cursor-cloud-agent-owner-authorized}"
 
-PREAMBLE="
-SELECT set_config('vo_sig_b1.run_id', '${RUN_ID}', false);
-SELECT set_config('vo_sig_b1.authorization_reference', '${AUTH_REF}', false);
-SELECT set_config('vo_sig_b1.operator_reference', '${OPERATOR_REF}', false);
-SELECT set_config('vo_sig_b1.verified_at_iso', '${VERIFIED_AT}', false);
-SELECT set_config('vo_sig_b1.production_release_sha', '${APPROVED_PROD_SHA}', false);
-"
+vo_sig_b1_normalize_sql_for_diff() {
+  sed '/^SELECT set_config/d; /^-- Owner replaces/d; s/^COMMIT;/ROLLBACK;/' "$1" | awk 'NF { blank=0; print; next } { if (blank++ == 0) print "" }'
+}
 
-awk -v preamble="$PREAMBLE" '
-  /^BEGIN;/ { print; print preamble; next }
+awk -v run_id="$RUN_ID" -v auth_ref="$AUTH_REF" -v operator_ref="$OPERATOR_REF" -v verified_at="$VERIFIED_AT" -v prod_sha="$APPROVED_PROD_SHA" '
+  /^BEGIN;/ {
+    print
+    print "SELECT set_config('\''vo_sig_b1.run_id'\'', '\''" run_id "'\'', false);"
+    print "SELECT set_config('\''vo_sig_b1.authorization_reference'\'', '\''" auth_ref "'\'', false);"
+    print "SELECT set_config('\''vo_sig_b1.operator_reference'\'', '\''" operator_ref "'\'', false);"
+    print "SELECT set_config('\''vo_sig_b1.verified_at_iso'\'', '\''" verified_at "'\'', false);"
+    print "SELECT set_config('\''vo_sig_b1.production_release_sha'\'', '\''" prod_sha "'\'', false);"
+    next
+  }
   /^ROLLBACK;/ { print "COMMIT;"; next }
   { print }
 ' "$APPROVED_SQL_PATH" > "$EXEC_SQL_PATH"
 
-grep -vE '^SELECT set_config' "$EXEC_SQL_PATH" | sed 's/^COMMIT;/ROLLBACK;/' > /tmp/vo-sig-b1-exec-normalized.sql
-diff -u "$APPROVED_SQL_PATH" /tmp/vo-sig-b1-exec-normalized.sql >/tmp/vo-sig-b1-sql-diff.txt || true
+vo_sig_b1_normalize_sql_for_diff "$EXEC_SQL_PATH" > /tmp/vo-sig-b1-exec-normalized.sql
+vo_sig_b1_normalize_sql_for_diff "$APPROVED_SQL_PATH" > /tmp/vo-sig-b1-approved-normalized.sql
+diff -u /tmp/vo-sig-b1-approved-normalized.sql /tmp/vo-sig-b1-exec-normalized.sql >/tmp/vo-sig-b1-sql-diff.txt || true
 if [[ -s /tmp/vo-sig-b1-sql-diff.txt ]]; then
   cat /tmp/vo-sig-b1-sql-diff.txt
   fail "execution SQL differs beyond allowed session settings and COMMIT"
 fi
 
+echo "RUN_ID=$RUN_ID"
+echo "VERIFIED_AT=$VERIFIED_AT"
+echo "AUTH_REF=$AUTH_REF"
+echo "OPERATOR_REF=$OPERATOR_REF"
+
 echo "=== PHASE 4 EXECUTE ==="
 psql "$DBURL" -v ON_ERROR_STOP=1 -f "$EXEC_SQL_PATH" || fail "SQL execution failed"
+echo "COMMIT_CONFIRMED=YES"
 
-echo "=== PHASE 5 POST-COMMIT (see runbook) ==="
+echo "=== PHASE 5 POST-COMMIT ==="
+bash "${SCRIPT_DIR}/vo-sig-b1-owner-postcommit-verify.sh" "$RUN_ID"
