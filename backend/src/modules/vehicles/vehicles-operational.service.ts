@@ -19,8 +19,10 @@ import {
   buildVehicleAttention,
   computeDisplayTitle,
   deriveIntegrityState,
+  buildOperationalDimoAccessContext,
   deriveIntegrationConnectivity,
   isSynqDriveDimoDataAccessBlocked,
+  mapProviderMirrorConnectionStatus,
   maskTokenId,
 } from './vehicle-attention.util';
 import {
@@ -93,15 +95,21 @@ export class VehiclesOperationalService {
       throw new NotFoundException('Vehicle not found');
     }
 
-    const pollLog = await this.loadLatestPollLog(vehicle.id);
-    const row = this.composeRegisteredRow(vehicle, now, platformCtx, pollLog);
-
-    const [auditEvents, connectivityDetail] = await Promise.all([
+    const [pollLog, auditEvents, connectivityDetail] = await Promise.all([
+      this.loadLatestPollLog(vehicle.id),
       this.loadAuditEvents(vehicle.id, vehicle.organizationId),
       this.vehiclesService
         .getFleetConnectivityDetail(vehicle.organizationId, vehicle.id)
         .catch(() => null),
     ]);
+
+    const row = this.composeRegisteredRow(
+      vehicle,
+      now,
+      platformCtx,
+      pollLog,
+      connectivityDetail?.providerLinkState ?? null,
+    );
 
     const moduleErrors: string[] = [];
     if (!connectivityDetail) {
@@ -136,6 +144,17 @@ export class VehiclesOperationalService {
         dimoExternalId: vehicle.dimoVehicle?.externalId ?? null,
         tokenIdMasked: maskTokenId(vehicle.dimoVehicle?.tokenId ?? null),
         connectionStatus: vehicle.dimoVehicle?.connectionStatus ?? null,
+        mirrorIntegrationConnectivity: mapProviderMirrorConnectionStatus(
+          vehicle.dimoVehicleId,
+          vehicle.dimoVehicle?.connectionStatus,
+        ),
+        mirrorIntegrationConnectivityLabel:
+          INTEGRATION_LABELS[
+            mapProviderMirrorConnectionStatus(
+              vehicle.dimoVehicleId,
+              vehicle.dimoVehicle?.connectionStatus,
+            )
+          ],
         syncedAt: vehicle.dimoVehicle?.syncedAt?.toISOString() ?? null,
         deviceType,
       },
@@ -158,10 +177,12 @@ export class VehiclesOperationalService {
         lastPollStatus: pollLog?.lastStatus ?? null,
         lastPollAt: pollLog?.lastAt ?? null,
         mappingConflict: row.dimoLinkStatus === 'conflict',
-        synqDriveDimoDataAccessActive:
-          !isSynqDriveDimoDataAccessBlocked({
-            registryLifecycle: vehicle.registryLifecycle ?? 'ACTIVE',
-          }),
+        synqDriveDimoDataAccessActive: !isSynqDriveDimoDataAccessBlocked(
+          buildOperationalDimoAccessContext(
+            vehicle.registryLifecycle ?? 'ACTIVE',
+            connectivityDetail?.providerLinkState ?? null,
+          ),
+        ),
       }).reasons,
       auditEvents,
       moduleErrors,
@@ -449,11 +470,13 @@ export class VehiclesOperationalService {
     now: number,
     platformCtx: { degraded: boolean },
     pollLog: { lastStatus: 'SUCCESS' | 'FAILURE' | 'TIMEOUT'; lastAt: string; lastSuccessAt: string | null } | null,
+    providerLinkState?: string | null,
   ): VehicleOperationalRowDto {
     const telemetry = this.resolveRowTelemetry(vehicle, now);
-    const synqDriveAccess = {
-      registryLifecycle: vehicle.registryLifecycle ?? 'ACTIVE',
-    };
+    const synqDriveAccess = buildOperationalDimoAccessContext(
+      vehicle.registryLifecycle ?? 'ACTIVE',
+      providerLinkState ?? null,
+    );
     const synqDriveDimoDataAccessActive = !isSynqDriveDimoDataAccessBlocked(synqDriveAccess);
     const integrationConnectivity = deriveIntegrationConnectivity(
       vehicle.dimoVehicleId,

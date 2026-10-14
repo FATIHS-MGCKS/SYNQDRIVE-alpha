@@ -23,11 +23,8 @@ export interface VehicleAttentionSummary {
   reasonCount: number;
 }
 
-export type IntegrationConnectivity =
-  | 'connected'
-  | 'disconnected'
-  | 'error'
-  | 'none';
+export type { IntegrationConnectivity } from './synqdrive-dimo-access.util';
+import type { IntegrationConnectivity } from './synqdrive-dimo-access.util';
 
 export type OwnershipState = 'assigned' | 'unassigned' | 'conflict';
 
@@ -183,9 +180,11 @@ export function deriveIntegrityState(attention: VehicleAttentionSummary): Integr
 }
 
 export {
+  buildOperationalDimoAccessContext,
   deriveIntegrationConnectivity,
   deriveMirrorIntegrationConnectivity,
   isSynqDriveDimoDataAccessBlocked,
+  mapProviderMirrorConnectionStatus,
   type SynqDriveDimoAccessContext,
 } from './synqdrive-dimo-access.util';
 

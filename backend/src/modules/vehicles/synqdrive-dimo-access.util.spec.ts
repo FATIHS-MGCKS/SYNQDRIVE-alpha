@@ -1,7 +1,10 @@
+import { ProviderLinkState } from './connectivity/domain/connectivity-domain.types';
 import {
+  buildOperationalDimoAccessContext,
   deriveIntegrationConnectivity,
   deriveMirrorIntegrationConnectivity,
   isSynqDriveDimoDataAccessBlocked,
+  mapProviderMirrorConnectionStatus,
 } from './synqdrive-dimo-access.util';
 import { buildVehicleAttention } from './vehicle-attention.util';
 
@@ -42,13 +45,39 @@ describe('synqdrive-dimo-access.util (VO5C D1)', () => {
       ).toBe('disconnected');
     });
 
-    it('REVOKED consent on ACTIVE registry surfaces auth error', () => {
+    it('REVOKED consent on ACTIVE registry surfaces auth error when context is supplied', () => {
       expect(
         deriveIntegrationConnectivity('d1', 'CONNECTED', false, {
           registryLifecycle: 'ACTIVE',
           synqDriveDimoAccessRevoked: true,
         }),
       ).toBe('error');
+    });
+
+    it('OFFBOARDED wins over DIMO platform degradation (no false auth error)', () => {
+      expect(
+        deriveIntegrationConnectivity('d1', 'CONNECTED', true, {
+          registryLifecycle: 'OFFBOARDED',
+        }),
+      ).toBe('disconnected');
+      expect(
+        deriveIntegrationConnectivity('d1', 'CONNECTED', true, {
+          registryLifecycle: 'ARCHIVED',
+        }),
+      ).toBe('disconnected');
+    });
+
+    it('ACTIVE fleet still surfaces platform degradation as error', () => {
+      expect(deriveIntegrationConnectivity('d1', 'CONNECTED', true, { registryLifecycle: 'ACTIVE' })).toBe(
+        'error',
+      );
+    });
+
+    it('mirror mapping ignores platform degradation', () => {
+      expect(mapProviderMirrorConnectionStatus('d1', 'CONNECTED')).toBe('connected');
+      expect(mapProviderMirrorConnectionStatus('d1', 'CONNECTED')).toBe(
+        deriveMirrorIntegrationConnectivity('d1', 'CONNECTED', false),
+      );
     });
 
     it('does not rewrite mirror to DISCONNECTED in storage — only effective read model', () => {
@@ -59,6 +88,18 @@ describe('synqdrive-dimo-access.util (VO5C D1)', () => {
         }),
       ).not.toBe('connected');
       expect(mirror).toBe('CONNECTED');
+    });
+  });
+
+  describe('buildOperationalDimoAccessContext', () => {
+    it('maps fleet connectivity REVOKED to synqDriveDimoAccessRevoked for ACTIVE only', () => {
+      expect(
+        buildOperationalDimoAccessContext('ACTIVE', ProviderLinkState.REVOKED).synqDriveDimoAccessRevoked,
+      ).toBe(true);
+      expect(
+        buildOperationalDimoAccessContext('OFFBOARDED', ProviderLinkState.REVOKED)
+          .synqDriveDimoAccessRevoked,
+      ).toBeUndefined();
     });
   });
 
