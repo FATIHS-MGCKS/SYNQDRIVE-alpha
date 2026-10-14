@@ -80,7 +80,9 @@ assertS4aPostgresCiEnv();
   it('P21-3 superseded work item → NOT_ASSESSABLE', async () => {
     await withFixture(async (fx) => {
       await db.$executeRaw`
-        UPDATE di_v0_s4_work_items SET status = 'SUPERSEDED' WHERE id = ${fx.workItemId}`;
+        UPDATE di_v0_s4_work_items
+        SET status = 'SUPERSEDED', superseded_reason = 'BOUNDARY_CHANGED', superseded_at = now()
+        WHERE id = ${fx.workItemId}`;
       const report = await previewDiV0TripSpeedQualityForWorkItem(db, {
         organizationId: fx.tenant.organizationId,
         tripId: fx.tenant.tripId,
@@ -118,8 +120,9 @@ assertS4aPostgresCiEnv();
   it('P21-6 missing snapshot row → NOT_ASSESSABLE', async () => {
     await withFixture(async (fx) => {
       await db.$executeRaw`
-        DELETE FROM di_v0_s4_evidence_snapshots
-        WHERE trip_id = ${fx.tenant.tripId} AND snapshot_hash = ${fx.snapshotHash}`;
+        UPDATE di_v0_s4_work_items
+        SET pinned_snapshot_hash = ${`DI_V0_S4_EVIDENCE_V1:sha256:${'f'.repeat(64)}`}
+        WHERE id = ${fx.workItemId}`;
       const report = await previewDiV0TripSpeedQualityForWorkItem(db, {
         organizationId: fx.tenant.organizationId,
         tripId: fx.tenant.tripId,
@@ -130,22 +133,22 @@ assertS4aPostgresCiEnv();
     });
   }, 120_000);
 
-  it('P21-7 non-active primary (successor exists) → NOT_ASSESSABLE', async () => {
+  it('P21-7 non-active primary (pending successor) → NOT_ASSESSABLE', async () => {
     await withFixture(async (fx) => {
       const successorId = randomUUID();
       await db.$executeRaw`
-        UPDATE di_v0_s4_work_items SET status = 'SUPERSEDED', boundary_occurrence = 0 WHERE id = ${fx.workItemId}`;
+        UPDATE di_v0_s4_work_items
+        SET status = 'SUPERSEDED', superseded_reason = 'BOUNDARY_CHANGED', superseded_at = now()
+        WHERE id = ${fx.workItemId}`;
       await db.$executeRaw`
         INSERT INTO di_v0_s4_work_items (
           id, organization_id, vehicle_id, trip_id, source_family, run_purpose, purpose_discriminator,
           boundary_fingerprint, boundary_occurrence, pipeline_version_key, pipeline_version_manifest, status,
-          shadow_run_id, pinned_snapshot_hash, combined_input_identity, execution_identity,
-          completed_at, next_attempt_at, settlement_anchor_at, eligible_at
+          next_attempt_at, settlement_anchor_at, eligible_at
         ) VALUES (
           ${successorId}, ${fx.tenant.organizationId}, ${fx.tenant.vehicleId}, ${fx.tenant.tripId}, 'API_SYNTHETIC',
           'PRIMARY', 'PRIMARY', ${fx.boundaryFingerprint}, 1, ${fx.pipelineVersionKey}, '{}'::jsonb, 'PENDING',
-          ${fx.shadowRunId}, ${fx.snapshotHash}, 'ci-2', 'ex-2',
-          NULL, now(), now(), now() + interval '600 seconds'
+          now(), now(), now() + interval '600 seconds'
         )`;
       const report = await previewDiV0TripSpeedQualityForWorkItem(db, {
         organizationId: fx.tenant.organizationId,
