@@ -7,8 +7,10 @@ import * as path from 'node:path';
 import { Prisma, PrismaClient } from '@prisma/client';
 import { loadP21ForensicContextInReadOnlyTransaction } from '../../src/modules/vehicle-intelligence/driving-intelligence/trip-speed-quality/di-v0-p21-r3-forensic-loader';
 import {
+  EXP021_P1_V2_POLICY_IMPLEMENTATION_SHA,
   EXP021_P21_MULTI_TRIP_SELECTION_RULE_V1,
   EXP021_P21_REFERENCE_TRIP_EXCLUDED,
+  computeMultiTripRegressionVerdict,
   type P21InventoryRow,
   runP21V1V2PolicyCompareOnLoadedContext,
   selectTripsForMultiCompare,
@@ -17,8 +19,23 @@ import {
 
 const ORG_DEFAULT = 'faa710c9-6d91-4079-a7d5-91fdccdec14a';
 
+type FrozenManifestTrip = {
+  tripId: string;
+  vehicleId: string;
+  workItemId: string;
+  shadowRunId: string;
+  pinnedSnapshotHash: string;
+};
+
 function reqOrg(): string {
   return process.env.EXP021_P21_ORG_ID ?? ORG_DEFAULT;
+}
+
+function loadFrozenManifest(filePath: string): FrozenManifestTrip[] {
+  const raw = JSON.parse(fs.readFileSync(filePath, 'utf8')) as {
+    selected: FrozenManifestTrip[];
+  };
+  return raw.selected;
 }
 
 async function loadInventory(prisma: PrismaClient, organizationId: string): Promise<P21InventoryRow[]> {
@@ -106,68 +123,127 @@ async function loadInventory(prisma: PrismaClient, organizationId: string): Prom
   );
 }
 
+function inventoryRowFromFrozen(
+  frozen: FrozenManifestTrip,
+  inventory: P21InventoryRow[],
+): P21InventoryRow | null {
+  return (
+    inventory.find(
+      (r) =>
+        r.trip_id === frozen.tripId &&
+        r.work_item_id === frozen.workItemId &&
+        r.shadow_run_id === frozen.shadowRunId &&
+        r.pinned_snapshot_hash === frozen.pinnedSnapshotHash,
+    ) ?? null
+  );
+}
+
 async function main(): Promise<void> {
   const organizationId = reqOrg();
-  const executedCodeSha = process.env.EXP021_EXECUTED_CODE_SHA ?? 'unknown';
+  const policyImplementationSha =
+    process.env.EXP021_POLICY_IMPLEMENTATION_SHA ?? EXP021_P1_V2_POLICY_IMPLEMENTATION_SHA;
+  const validationRunnerSha = process.env.EXP021_VALIDATION_RUNNER_SHA ?? 'unknown';
   const outDir = process.env.EXP021_P21_EVIDENCE_DIR ?? path.join(process.cwd(), 'tmp', 'exp021-p21-multi');
+  const fixedManifestPath = process.env.EXP021_P21_FIXED_MANIFEST_PATH;
   fs.mkdirSync(outDir, { recursive: true });
 
   const prisma = new PrismaClient();
   const excluded: Array<{ tripId: string; workItemId?: string; reason: string }> = [];
+  const manifestMismatches: Array<{ tripId: string; field: string; expected: string; actual: string }> = [];
 
   try {
     const inventory = await loadInventory(prisma, organizationId);
     const eligibleDistinctTrips = inventory.length;
-    const selected = selectTripsForMultiCompare(inventory, {
-      excludeTripIds: [EXP021_P21_REFERENCE_TRIP_EXCLUDED],
-      maxTrips: 10,
-    });
 
-    const manifest = {
-      schema: 'EXP021_P1_V2_MULTI_TRIP_SELECTION_MANIFEST_V1',
-      executedCodeSha,
-      organizationId,
-      selectionRule: EXP021_P21_MULTI_TRIP_SELECTION_RULE_V1,
-      referenceTripExcluded: EXP021_P21_REFERENCE_TRIP_EXCLUDED,
-      inventoryEligibleDistinctTrips: eligibleDistinctTrips,
-      selectedTripCount: selected.length,
-      selected: selected.map((r) => ({
+    let manifestTrips: FrozenManifestTrip[];
+    let selectionSource: 'FROZEN_MANIFEST' | 'LIVE_INVENTORY_GREEDY';
+
+    if (fixedManifestPath) {
+      manifestTrips = loadFrozenManifest(fixedManifestPath);
+      selectionSource = 'FROZEN_MANIFEST';
+    } else {
+      const selected = selectTripsForMultiCompare(inventory, {
+        excludeTripIds: [EXP021_P21_REFERENCE_TRIP_EXCLUDED],
+        maxTrips: 10,
+      });
+      manifestTrips = selected.map((r) => ({
         tripId: r.trip_id,
         vehicleId: r.vehicle_id,
         workItemId: r.work_item_id,
         shadowRunId: r.shadow_run_id,
         pinnedSnapshotHash: r.pinned_snapshot_hash,
-        tripDateUtc: tripUtcDateLabel(r.start_time),
-        durationMinutes: r.duration_minutes,
-        intervalCount: r.interval_count,
-        stationaryBandCount: r.stationary_band_count,
-      })),
-      inventorySummary: {
-        distinctVehicles: new Set(inventory.map((r) => r.vehicle_id)).size,
-        distinctTripDates: new Set(inventory.map((r) => tripUtcDateLabel(r.start_time))).size,
-      },
+      }));
+      selectionSource = 'LIVE_INVENTORY_GREEDY';
+    }
+
+    const manifest = {
+      schema: 'EXP021_P1_V2_MULTI_TRIP_SELECTION_MANIFEST_V2',
+      policyImplementationSha,
+      validationRunnerSha,
+      selectionSource,
+      organizationId,
+      selectionRule: EXP021_P21_MULTI_TRIP_SELECTION_RULE_V1,
+      referenceTripExcluded: EXP021_P21_REFERENCE_TRIP_EXCLUDED,
+      inventoryEligibleDistinctTrips: eligibleDistinctTrips,
+      selectedTripCount: manifestTrips.length,
+      selected: manifestTrips,
     };
     fs.writeFileSync(path.join(outDir, 'EXP021_P1_V2_MULTI_TRIP_SELECTION_MANIFEST.json'), JSON.stringify(manifest, null, 2));
 
     const tripResults: Array<ReturnType<typeof runP21V1V2PolicyCompareOnLoadedContext> & { tripDateUtc: string }> = [];
     let readOnlyObserved = true;
     let repeatableReadObserved = true;
+    let manifestIdentityOk = true;
 
-    for (const row of selected) {
+    for (const frozen of manifestTrips) {
+      const invRow = inventoryRowFromFrozen(frozen, inventory);
+      if (!invRow) {
+        manifestIdentityOk = false;
+        excluded.push({
+          tripId: frozen.tripId,
+          workItemId: frozen.workItemId,
+          reason: 'MANIFEST_ROW_NOT_IN_CURRENT_INVENTORY',
+        });
+        continue;
+      }
       try {
         const ctx = await loadP21ForensicContextInReadOnlyTransaction(prisma, {
           organizationId,
-          tripId: row.trip_id,
-          workItemId: row.work_item_id,
+          tripId: frozen.tripId,
+          workItemId: frozen.workItemId,
         });
         if (ctx.dbTransactionReadOnly !== 'on') readOnlyObserved = false;
         if (!ctx.dbTransactionIsolation.toLowerCase().includes('repeatable')) repeatableReadObserved = false;
+
+        const bindChecks: Array<[string, string, string]> = [
+          ['vehicleId', frozen.vehicleId, ctx.workItem!.vehicle_id],
+          ['shadowRunId', frozen.shadowRunId, ctx.shadowRun.id],
+          ['pinnedSnapshotHash', frozen.pinnedSnapshotHash, ctx.pinnedSnapshotHash],
+          ['tripId', frozen.tripId, ctx.workItem!.trip_id],
+          ['workItemId', frozen.workItemId, ctx.workItem!.id],
+        ];
+        for (const [field, expected, actual] of bindChecks) {
+          if (expected !== actual) {
+            manifestIdentityOk = false;
+            manifestMismatches.push({ tripId: frozen.tripId, field, expected, actual });
+          }
+        }
+        if (!ctx.snapshotVerified) {
+          manifestIdentityOk = false;
+          manifestMismatches.push({
+            tripId: frozen.tripId,
+            field: 'snapshotVerified',
+            expected: 'true',
+            actual: 'false',
+          });
+        }
+
         const result = runP21V1V2PolicyCompareOnLoadedContext(ctx);
-        tripResults.push({ ...result, tripDateUtc: tripUtcDateLabel(row.start_time) });
+        tripResults.push({ ...result, tripDateUtc: tripUtcDateLabel(invRow.start_time) });
       } catch (e) {
         excluded.push({
-          tripId: row.trip_id,
-          workItemId: row.work_item_id,
+          tripId: frozen.tripId,
+          workItemId: frozen.workItemId,
           reason: e instanceof Error ? e.message : String(e),
         });
       }
@@ -177,58 +253,86 @@ async function main(): Promise<void> {
       (acc, t) => {
         acc.intervals += t.intervalCount;
         acc.stationaryCandidates += t.stationaryCandidates;
+        acc.contractualNullPath += t.contractualNullPathIntervals;
         acc.v2Accepted += t.v2StationaryAccepted;
         acc.v2Withheld += t.v2StationaryWithheld;
         acc.changesOutside += t.changesOutsideAllowedPath;
         acc.nullToZero += t.nullToZeroConversions;
-        acc.unsafe += t.unsafePromotions;
+        acc.intervalwiseMismatches += t.intervalwiseQcSpeedMismatches;
+        acc.acceptanceContractViolations += t.acceptanceContractViolations;
+        acc.releaseFrozenObserved += t.releaseFrozenIntervalsObserved;
+        acc.releaseFrozenAccepted += t.releaseFrozenV2Accepted;
         for (const [k, v] of Object.entries(t.withheldReasonBreakdown)) {
           acc.withheld[k] = (acc.withheld[k] ?? 0) + v;
         }
-        if (!t.numericValuesUnchanged) acc.numericDriftTrips += 1;
-        if (!t.numericCoverageUnchanged) acc.coverageDriftTrips += 1;
+        if (!t.intervalwiseNumericComparisonComplete) acc.intervalwiseIncompleteTrips += 1;
         if (!t.regressionPass) acc.failingTrips += 1;
         return acc;
       },
       {
         intervals: 0,
         stationaryCandidates: 0,
+        contractualNullPath: 0,
         v2Accepted: 0,
         v2Withheld: 0,
         changesOutside: 0,
         nullToZero: 0,
-        unsafe: 0,
+        intervalwiseMismatches: 0,
+        acceptanceContractViolations: 0,
+        releaseFrozenObserved: 0,
+        releaseFrozenAccepted: 0,
         withheld: {} as Record<string, number>,
-        numericDriftTrips: 0,
-        coverageDriftTrips: 0,
+        intervalwiseIncompleteTrips: 0,
         failingTrips: 0,
       },
     );
 
     const vehiclesEvaluated = new Set(tripResults.map((t) => t.vehicleId)).size;
     const distinctDates = new Set(tripResults.map((t) => t.tripDateUtc)).size;
+    const allTripsRegressionPass = tripResults.length > 0 && tripResults.every((t) => t.regressionPass);
 
-    let regressionVerdict: 'PASS' | 'PARTIAL' | 'FAIL' | 'INSUFFICIENT_EXISTING_EVIDENCE' = 'PASS';
-    if (selected.length === 0 && eligibleDistinctTrips <= 1) {
-      regressionVerdict = 'INSUFFICIENT_EXISTING_EVIDENCE';
-    } else if (totals.failingTrips > 0 || excluded.length > 0) {
-      regressionVerdict = totals.failingTrips === tripResults.length ? 'FAIL' : 'PARTIAL';
-    }
+    const regressionVerdict = computeMultiTripRegressionVerdict({
+      manifestTripCount: manifestTrips.length,
+      evaluatedTripCount: tripResults.length,
+      excludedCount: excluded.length,
+      readOnlyObserved,
+      repeatableReadObserved,
+      manifestIdentityOk,
+      allTripsRegressionPass,
+    });
 
     const report = {
-      schema: 'EXP021_P1_V2_MULTI_TRIP_RESULT_V1',
-      executedCodeSha,
+      schema: 'EXP021_P1_V2_MULTI_TRIP_RESULT_V2',
+      policyImplementationSha,
+      validationRunnerSha,
+      selectionSource,
       organizationId,
       selectionRule: EXP021_P21_MULTI_TRIP_SELECTION_RULE_V1,
       eligibleDistinctTrips,
       additionalTripsEvaluated: tripResults.length,
+      manifestTripCount: manifestTrips.length,
       vehiclesEvaluated,
       distinctTripDates: distinctDates,
       excludedInputsAndReasons: excluded,
-      snapshotIdentitiesVerified: tripResults.every((t) => t.pinnedSnapshotHash.length > 0),
+      manifestIdentityMismatches: manifestMismatches,
+      snapshotIdentitiesVerified:
+        tripResults.length > 0 && manifestIdentityOk && manifestMismatches.length === 0,
       readOnlyObserved,
       repeatableReadObserved,
+      transactionAndIdentityGatesPass:
+        readOnlyObserved && repeatableReadObserved && manifestIdentityOk && tripResults.length === manifestTrips.length,
       totals,
+      releaseFrozenCaseCounts: {
+        intervalsObserved: totals.releaseFrozenObserved,
+        v2AcceptedOnReleaseOrFrozenCenter: totals.releaseFrozenAccepted,
+        acceptedViolationCount: totals.releaseFrozenAccepted,
+        scope:
+          'Counts shadow center positionState RELEASE or FROZEN_UNRESOLVED; violations only when V2 OK_STATIONARY_NULL_SPEED on those centers',
+        notObserved:
+          totals.releaseFrozenAccepted === 0
+            ? 'RELEASE_FROZEN_V2_ACCEPT'
+            : null,
+      },
       perTrip: tripResults.map((t) => ({
         tripId: t.tripId,
         vehicleId: t.vehicleId,
@@ -236,6 +340,7 @@ async function main(): Promise<void> {
         workItemId: t.workItemId,
         intervalCount: t.intervalCount,
         stationaryCandidates: t.stationaryCandidates,
+        contractualNullPathIntervals: t.contractualNullPathIntervals,
         v2StationaryAccepted: t.v2StationaryAccepted,
         v2StationaryWithheld: t.v2StationaryWithheld,
         withheldReasonBreakdown: t.withheldReasonBreakdown,
@@ -245,6 +350,7 @@ async function main(): Promise<void> {
         coverageV2: t.trustedNumericCoverageV2,
         maxV1: t.qcTrustedMaxV1,
         maxV2: t.qcTrustedMaxV2,
+        intervalwiseNumericComparisonComplete: t.intervalwiseNumericComparisonComplete,
         changesOutsideAllowedPath: t.changesOutsideAllowedPath,
         regressionPass: t.regressionPass,
         violationSample: t.violations.slice(0, 5),

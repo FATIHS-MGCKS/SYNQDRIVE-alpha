@@ -1,0 +1,82 @@
+{
+  "schema": "EXP021_P1_V2_MULTI_TRIP_SELECTION_MANIFEST_FROZEN_V1",
+  "historicalNote": "Frozen ten-trip binding from first multi-trip run (2026-10-14). Replays must use EXP021_P21_FIXED_MANIFEST_PATH pointing at this file.",
+  "policyImplementationSha": "f7a285b59fd1f70e57b5fd72c04406286e1b96f1",
+  "historicalValidationRunnerSha": "UNCOMMITTED_VPS_SCP",
+  "historicalValidationRunnerDetail": "Initial run used scp'd scripts to ~/di-r3a-run with EXP021_EXECUTED_CODE_SHA=f7a285b mislabeled as runner; comparator was weaker than closure revision.",
+  "organizationId": "faa710c9-6d91-4079-a7d5-91fdccdec14a",
+  "referenceTripExcluded": "d0af9cc7-ce0d-4e40-9854-2c1341e83bed",
+  "selectedTripCount": 10,
+  "selected": [
+    {
+      "tripId": "f502a4a0-02d2-421d-bb39-7c9af25ba38e",
+      "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+      "workItemId": "66fb6cdf-8682-4d3a-95a4-54d713a869fb",
+      "shadowRunId": "91bfb48b-9d1b-420d-afbf-98a219bb1cd9",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:a4e05e8a49dcada6c1733143877fb948efdd08fc72c240516cc65323b597dd2b"
+    },
+    {
+      "tripId": "24deb8af-d9fd-4341-8b10-1b43fca70e52",
+      "vehicleId": "c10351f8-b6a2-4258-947f-631aeaa6d359",
+      "workItemId": "105223d4-5059-4c60-a766-4bf47293125b",
+      "shadowRunId": "a2a93b08-0088-4d88-9558-13cc8c2fa308",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:182e756e2fcb837dbf9174d47b4ae490748bebbcc6dfea284575534905d2aefa"
+    },
+    {
+      "tripId": "0effed9d-0766-4e8e-a55f-62318e4ed636",
+      "vehicleId": "68868291-5478-42cd-b0c4-cc77b2a78e21",
+      "workItemId": "2c2d9897-5975-477d-b93f-be08f86d386c",
+      "shadowRunId": "a76693d6-8fde-456c-afca-f52e0156027b",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:a1403bb7619628960af11b3e581963c6095282726e14933b8a8ef92bd4e159c2"
+    },
+    {
+      "tripId": "3815920e-19f6-4af5-b5d5-172efe1ceb89",
+      "vehicleId": "8c850ff1-4201-432b-af2e-2711dbc7ca48",
+      "workItemId": "179fbdd6-45bf-4dfd-b768-266882651246",
+      "shadowRunId": "5cfaf653-6c9c-4f50-8e73-b9f6341b4b3a",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:c3ff233e4026b4e1dffb9c3ad2059f6f4b66d201f369ae3ff82d2c78274b7f6b"
+    },
+    {
+      "tripId": "08f2e58c-fb66-4c35-bb94-7a98e3a8a3aa",
+      "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+      "workItemId": "481ae014-27b0-4b2c-a2ea-08db90860acc",
+      "shadowRunId": "a1398dd8-db40-4e93-a595-a0bf1ba047f6",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:71fba7675a60740f14d58fdf4ee5de886fbb551025668476bfd0dc9b9206e09f"
+    },
+    {
+      "tripId": "be07d73f-91cf-4d1c-8aea-bd550e595b08",
+      "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+      "workItemId": "423cceef-89c8-4527-82aa-1d69370b992c",
+      "shadowRunId": "ffb0f1c7-1242-4c6c-99cf-083edfe83fc5",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:460be14c02ce5ca82c2901a551bb169e0e5ef7a6359f7051b324c7ff911ec7a7"
+    },
+    {
+      "tripId": "533b2bf8-fa07-4f0b-bc40-d540447a1542",
+      "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+      "workItemId": "339856c6-a4af-43f8-aecd-07baacec3d22",
+      "shadowRunId": "a76fe1b1-99fc-4513-a38a-25eaff2dad93",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:80a58405a68a2e9296e4a961303458b9b49e48562bf1a4ad4cbd554ee9699e61"
+    },
+    {
+      "tripId": "c26d3c13-867c-4be7-bb24-0704e4fd09fb",
+      "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+      "workItemId": "28852189-8bc3-4c69-944f-4c3fa9282907",
+      "shadowRunId": "1672342b-d251-493a-be85-2d779cf5e391",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:62e778dc3efd7e16fe64ffb1996c8f90992c7b6ca5af3ecb051f466493b5f90b"
+    },
+    {
+      "tripId": "c65e7b49-358c-4f9b-b34f-0354aa1f1949",
+      "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+      "workItemId": "e87fba4f-df00-4c23-b8a1-99a565064ef4",
+      "shadowRunId": "d8cb6525-bfa5-4448-a9d4-648eba1c1d94",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:fe44614afa87dbe6fcc24a48cb7a442f0c8ad555fb1b8ff7a2a188079d78f215"
+    },
+    {
+      "tripId": "c069cc9b-6665-4681-bd1a-875cdd4e1b36",
+      "vehicleId": "68868291-5478-42cd-b0c4-cc77b2a78e21",
+      "workItemId": "15e18363-2f7f-448e-8a69-c02dbc1ad2ee",
+      "shadowRunId": "62d7d6cd-416c-426a-aa53-6b41941756a1",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:aa64ba47eb42004f5b59725a9b074cf2690562dec95062c100e2f4252cfbaa35"
+    }
+  ]
+}
