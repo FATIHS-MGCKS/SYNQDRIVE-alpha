@@ -1,4 +1,10 @@
-import { buildAdminBaselineDraftFromMasterInput, buildTechnicalBaselineDraftFromMasterManualSpecs } from '../master-dimo-registration.mapper';
+import {
+  buildAdminBaselineDraftFromMasterInput,
+  buildPostActivationVehiclePatch,
+  buildTechnicalBaselineDraftFromMasterManualSpecs,
+  mapMasterFormDrivetrainToDriveType,
+} from '../master-dimo-registration.mapper';
+import { DriveType } from '@prisma/client';
 
 describe('master-dimo-registration.mapper', () => {
   it('maps admin baseline from Master extraData and stationId', () => {
@@ -31,5 +37,17 @@ describe('master-dimo-registration.mapper', () => {
     });
     expect(draft.brakeReference?.frontPadNominalThicknessMm).toBe(10);
     expect(draft.brakeReference?.rearPadNominalThicknessMm).toBe(9);
+  });
+
+  it('maps drivetrain form values to DriveType on post-activation patch', () => {
+    const patch = buildPostActivationVehiclePatch({
+      organizationId: 'org-1',
+      stationId: null,
+      dimoVehicleId: 'dimo-1',
+      extraData: { drivetrain: '4WD' },
+      actorUserId: null,
+    });
+    expect(patch.driveType).toBe(DriveType.FOUR_WD);
+    expect(mapMasterFormDrivetrainToDriveType('AWD')).toBe(DriveType.AWD);
   });
 });

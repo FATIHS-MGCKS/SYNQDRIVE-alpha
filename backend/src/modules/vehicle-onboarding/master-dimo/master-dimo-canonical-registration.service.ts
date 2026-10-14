@@ -1,15 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import {
-  BatterySourceType,
-  EnrichmentJobType,
-  FuelType,
-  Prisma,
-  ProductSlug,
-  type Vehicle,
-} from '@prisma/client';
+import { FuelType, Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
-  acquirePgAdvisoryXactLock,
+  acquirePgAdvisorySessionLock,
+  releasePgAdvisorySessionLock,
   vehicleDimoBindingLockKey,
 } from '@shared/database/pg-advisory-lock.util';
 import { VehicleOnboardingSourceAdoptionService } from '../services/vehicle-onboarding-source-adoption.service';
@@ -28,9 +22,7 @@ import {
 } from '@modules/vehicle-intelligence/brakes/registration-brake-outcome';
 import {
   buildAdminBaselineDraftFromMasterInput,
-  buildPostActivationVehiclePatch,
   buildTechnicalBaselineDraftFromMasterManualSpecs,
-  hasLowVoltageBatteryManualSpec,
   masterManualSpecsNeedLegacyTireTreadPass,
   tryHvBatteryFromExtra,
 } from './master-dimo-registration.mapper';
@@ -38,10 +30,10 @@ import {
   type MasterDimoRegistrationInput,
   masterDimoRegistrationIdempotencyKey,
 } from './master-dimo-registration.types';
-import {
-  applyMasterPostActivationVehicleScalarsRaw,
-  loadVehicleRowForMasterRegistrationResult,
-} from './master-dimo-post-activation.persistence';
+import { buildMasterDimoActivationFinalizeInput } from './master-dimo-registration-artifacts';
+import { tryResumeMasterDimoRegistration } from './master-dimo-registration-resume';
+import { resolveMasterDimoReadinessProduct } from './master-dimo-readiness-product';
+import { loadMasterRegistrationVehicleResult } from './master-dimo-vehicle-result.loader';
 
 @Injectable()
 export class MasterDimoCanonicalRegistrationService {
@@ -54,29 +46,37 @@ export class MasterDimoCanonicalRegistrationService {
   ) {}
 
   async register(input: MasterDimoRegistrationInput): Promise<RegisterFromDimoResult> {
+    const resumed = await tryResumeMasterDimoRegistration(this.prisma, input);
+    if (resumed.kind === 'IDEMPOTENT_SUCCESS') {
+      return resumed.result;
+    }
+
     const idempotencyKey = masterDimoRegistrationIdempotencyKey(
       input.organizationId,
       input.dimoVehicleId,
     );
 
-    await this.prisma.$transaction(async (tx) => {
-      await acquirePgAdvisoryXactLock(tx, vehicleDimoBindingLockKey(input.dimoVehicleId));
-      const existingBinding = await tx.vehicle.findFirst({
-        where: { dimoVehicleId: input.dimoVehicleId },
-        select: { id: true, organizationId: true, registryLifecycle: true },
-      });
-      if (existingBinding) {
-        throw new VehicleOnboardingError(
-          'SOURCE_ALREADY_REGISTERED',
-          'This DIMO vehicle is already linked to a fleet vehicle',
-          {
-            vehicleId: existingBinding.id,
-            organizationId: existingBinding.organizationId,
-            registryLifecycle: existingBinding.registryLifecycle,
-          },
-        );
+    const dimoBindingLock = vehicleDimoBindingLockKey(input.dimoVehicleId);
+    await acquirePgAdvisorySessionLock(this.prisma, dimoBindingLock);
+    try {
+      const resumedAfterLock = await tryResumeMasterDimoRegistration(this.prisma, input);
+      if (resumedAfterLock.kind === 'IDEMPOTENT_SUCCESS') {
+        return resumedAfterLock.result;
       }
-    });
+      return await this.registerUnderDimoBindingLock(input, idempotencyKey);
+    } finally {
+      await releasePgAdvisorySessionLock(this.prisma, dimoBindingLock);
+    }
+  }
+
+  private async registerUnderDimoBindingLock(
+    input: MasterDimoRegistrationInput,
+    idempotencyKey: string,
+  ): Promise<RegisterFromDimoResult> {
+    const selectedProduct = await resolveMasterDimoReadinessProduct(
+      this.prisma,
+      input.organizationId,
+    );
 
     const adopted = await runVehicleOnboardingHttp(() =>
       this.sourceAdoption.adoptProviderSource({
@@ -126,7 +126,7 @@ export class MasterDimoCanonicalRegistrationService {
       this.readiness.evaluateAndSealReadiness({
         organizationId: input.organizationId,
         onboardingCaseId: caseId,
-        selectedProduct: ProductSlug.RENTAL,
+        selectedProduct,
         actorUserId: input.actorUserId,
       }),
     );
@@ -138,6 +138,7 @@ export class MasterDimoCanonicalRegistrationService {
         {
           decision: readinessSnapshot.decision,
           blockingFailureCount: readinessSnapshot.blockingFailureCount,
+          selectedProduct,
         },
       );
     }
@@ -147,22 +148,14 @@ export class MasterDimoCanonicalRegistrationService {
         organizationId: input.organizationId,
         onboardingCaseId: caseId,
         actorUserId: input.actorUserId,
+        masterRegistrationFinalize: buildMasterDimoActivationFinalizeInput(input),
       }),
     );
 
-    const scalarPatch = buildPostActivationVehiclePatch(input);
-    await applyMasterPostActivationVehicleScalarsRaw(
-      this.prisma,
-      activation.vehicleId,
-      scalarPatch,
-    );
-    const vehicle = await loadVehicleRowForMasterRegistrationResult(
+    const vehicle = await loadMasterRegistrationVehicleResult(
       this.prisma,
       activation.vehicleId,
     );
-
-    await this.applyLowVoltageBatterySpecIfNeeded(input, vehicle.id);
-    await this.enqueueBatteryEnrichmentJob(vehicle.id);
 
     const brakeRegistration = input.manualSpecs?.brakes
       ? deriveRegistrationBrakeResult({
@@ -208,37 +201,7 @@ export class MasterDimoCanonicalRegistrationService {
     });
   }
 
-  private async applyLowVoltageBatterySpecIfNeeded(
-    input: MasterDimoRegistrationInput,
-    vehicleId: string,
-  ): Promise<void> {
-    if (!hasLowVoltageBatteryManualSpec(input)) {
-      return;
-    }
-    const b = input.manualSpecs!.battery!;
-    await this.prisma.vehicleBatterySpec.create({
-      data: {
-        vehicleId,
-        batteryType: b.batteryType?.trim() || null,
-        batteryAmpere: b.batteryAmpere ?? null,
-        batteryVolt: b.batteryVolt ?? null,
-        sourceType: BatterySourceType.MANUAL,
-        sourceConfidence: 1,
-      },
-    });
-  }
-
-  private async enqueueBatteryEnrichmentJob(vehicleId: string): Promise<void> {
-    await this.prisma.vehicleEnrichmentJob.create({
-      data: {
-        vehicle: { connect: { id: vehicleId } },
-        jobType: EnrichmentJobType.BATTERY,
-        status: 'PENDING',
-      },
-    });
-  }
-
-  /** Exposed for VehiclesService post-activation tire tread enrichment. */
+  /** Exposed for VehiclesService post-activation tire tread enrichment (idempotent). */
   masterManualSpecsNeedLegacyTireTreadPass(input: MasterDimoRegistrationInput): boolean {
     return masterManualSpecsNeedLegacyTireTreadPass(input);
   }

@@ -2308,7 +2308,10 @@ export class VehiclesService {
       );
       void this.dataAuthorizations.ensureDimoTelemetryAuthorization(orgId);
 
-      return result;
+      const vehicle = await this.prisma.vehicle.findUniqueOrThrow({
+        where: { id: result.vehicle.id },
+      });
+      return { vehicle, brakeRegistration: result.brakeRegistration };
     } catch (error) {
       if (error instanceof ConflictException) {
         const body = error.getResponse();

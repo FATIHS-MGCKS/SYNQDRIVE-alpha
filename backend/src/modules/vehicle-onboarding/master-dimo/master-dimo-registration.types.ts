@@ -11,6 +11,21 @@ export interface MasterDimoRegistrationInput {
     vehicleType?: VehicleType | string;
     mileageKm?: number | null;
     hardwareType?: string | null;
+    /** Master form drivetrain label (mapped to `vehicles.drive_type`). */
+    drivetrain?: string | null;
+    curbWeightKg?: number | null;
+    idleRpm?: number | null;
+    maxRpm?: number | null;
+    brakeForceFrontPercent?: number | null;
+    frontToRearWeightDistribution?: number | string | null;
+    tankCapacityLiters?: number | null;
+    engineDisplacementCc?: number | null;
+    cylinderCount?: number | null;
+    serviceIntervalManufacturerKm?: number | null;
+    serviceIntervalManufacturerMonths?: number | null;
+    oilChangeIntervalKm?: number | null;
+    oilChangeIntervalMonths?: number | null;
+    hvBatteryCapacityKwh?: number | null;
   };
   manualSpecs?: {
     battery?: {

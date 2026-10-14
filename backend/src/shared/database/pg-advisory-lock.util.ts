@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
-import type { Prisma } from '@prisma/client';
+import type { Prisma, PrismaClient } from '@prisma/client';
 
 type TxClient = Prisma.TransactionClient;
+type DbClient = Pick<PrismaClient, '$executeRaw'>;
 
 /** 64-bit advisory lock keys derived from a stable seed (two signed int4 keys). */
 export function pgAdvisoryLockKeysFromSeed(seed: string): [number, number] {
@@ -15,6 +16,21 @@ export async function acquirePgAdvisoryXactLock(
   lockKey: string,
 ): Promise<void> {
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
+}
+
+/** Session-scoped advisory lock (released explicitly or on connection drop). */
+export async function acquirePgAdvisorySessionLock(
+  db: DbClient,
+  lockKey: string,
+): Promise<void> {
+  await db.$executeRaw`SELECT pg_advisory_lock(hashtext(${lockKey}))`;
+}
+
+export async function releasePgAdvisorySessionLock(
+  db: DbClient,
+  lockKey: string,
+): Promise<void> {
+  await db.$executeRaw`SELECT pg_advisory_unlock(hashtext(${lockKey}))`;
 }
 
 /**

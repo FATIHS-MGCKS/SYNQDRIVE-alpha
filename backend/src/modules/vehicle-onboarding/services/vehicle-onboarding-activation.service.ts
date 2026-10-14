@@ -44,6 +44,8 @@ import {
   assertTelemetryConnectionIdentityForActivationTx,
 } from '../connection-identity/activation-connection-identity.assertions';
 import { persistConnectionIdentityOnActiveSourceLinksTx } from '../connection-identity/source-link-connection-identity.metadata';
+import type { MasterDimoActivationFinalizeInput } from '../master-dimo/master-dimo-activation-extensions';
+import { applyMasterDimoActivationFinalizeInTransaction } from '../master-dimo/master-dimo-registration-artifacts';
 
 /** Integration-test fault injection only (not used in production HTTP). */
 export type Vo3ActivationFaultStage =
@@ -60,6 +62,8 @@ export interface ActivateVehicleInput {
   actorUserId: string | null;
   faultAfterStage?: Vo3ActivationFaultStage;
   activationTestHooks?: ActivationTestHooks;
+  /** Master Admin register-from-dimo: mandatory scalars + LV battery + enrichment inside activation TX. */
+  masterRegistrationFinalize?: MasterDimoActivationFinalizeInput;
 }
 
 export interface ActivateVehicleResult {
@@ -195,6 +199,14 @@ export class VehicleOnboardingActivationService {
               input.activationTestHooks?.forceTechnicalBaselineMaterializationFailure,
           },
         });
+
+        if (input.masterRegistrationFinalize) {
+          await applyMasterDimoActivationFinalizeInTransaction(
+            tx,
+            vehicle.id,
+            input.masterRegistrationFinalize,
+          );
+        }
 
         if (input.faultAfterStage === 'AFTER_TECHNICAL_BASELINE') {
           logActivationRollback(input.onboardingCaseId, input.faultAfterStage);

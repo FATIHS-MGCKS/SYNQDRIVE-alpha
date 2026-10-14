@@ -47,6 +47,7 @@
 | 2026-10-09 | **VO5C-P4A role authority closure** — `MasterVehicleOffboardAdmissionGuard` requires `platformRole === MASTER_ADMIN`; membership-only cross-claim denied **403**; HTTP regression (admission OFF/ON, zero mutation) | `RolesGuard` membership OR semantics unchanged (follow-up) |
 | 2026-10-14 | **VO5C D4/D5** — `deriveFleetStatusContext` registry lifecycle guard (OFFBOARDED/ARCHIVED not operationally available); offboard `note` → `business_audit_outbox` `VEHICLE_REGISTRY_OFFBOARDED` same TX as registry offboard; billing outbox v2 unchanged | Fleet/rental display + Master Admin audit evidence; no historical backfill |
 | 2026-10-14 | **VO-SIG-01 P2** — Master Admin `register-from-dimo` canonical cutover (`MasterDimoCanonicalRegistrationService`); readiness + connection identity parity; legacy inline create + `onVehicleProvisioned` removed from that path; PostgreSQL `vo-sig-p2-master-dimo-registration` | `AUDIT_IN_PROGRESS`; draft PR only — no production deploy |
+| 2026-10-14 | **VO-SIG-01 P2 hardening** — Activation TX finalize (mandatory scalars + LV battery + enrichment); session advisory lock + idempotent retry; entitlement-aware readiness product; full Prisma `Vehicle` response; field parity matrix; vehicles scalar bridge migration; 14-case PostgreSQL matrix | `AUDIT_IN_PROGRESS`; draft PR #2023 — no production deploy |
 
 ## VO-0B — REUSE-FIRST components (do not replace without VO-1+ proof)
 

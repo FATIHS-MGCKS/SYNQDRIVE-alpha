@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client';
+import { DriveType, type Prisma } from '@prisma/client';
 import { VEHICLE_ADMIN_BASELINE_DRAFT_VERSION } from '../contracts/vo-document-versions';
 import { VEHICLE_TECHNICAL_BASELINE_DRAFT_VERSION_V2 } from '../contracts/vo-document-versions';
 import type { VehicleAdministrativeBaselineDraftV1 } from '../contracts/vehicle-admin-baseline-draft.v1';
@@ -116,15 +116,18 @@ export function buildPostActivationVehiclePatch(
     patch.vehicleType = vehicleType as Prisma.VehicleUpdateInput['vehicleType'];
   }
 
+  const drivetrainRaw = (extra as { drivetrain?: unknown }).drivetrain;
+  const driveType = mapMasterFormDrivetrainToDriveType(drivetrainRaw);
+  if (driveType) {
+    patch.driveType = driveType;
+  }
+
   const scalarKeys = [
-    'drivetrain',
     'curbWeightKg',
     'idleRpm',
     'maxRpm',
     'brakeForceFrontPercent',
     'tankCapacityLiters',
-    'engineDisplacementCc',
-    'cylinderCount',
     'serviceIntervalManufacturerKm',
     'serviceIntervalManufacturerMonths',
     'oilChangeIntervalKm',
@@ -148,6 +151,19 @@ export function buildPostActivationVehiclePatch(
   }
 
   return patch;
+}
+
+/** Maps Master form `drivetrain` strings to Prisma `DriveType` (vehicles.drive_type). */
+export function mapMasterFormDrivetrainToDriveType(raw: unknown): DriveType | null {
+  if (raw == null || String(raw).trim() === '') return null;
+  const normalized = String(raw).trim().toUpperCase().replace(/\s+/g, '_').replace(/-/g, '_');
+  if (normalized === '4WD' || normalized === '4X4' || normalized === 'FOUR_WD') {
+    return DriveType.FOUR_WD;
+  }
+  if (normalized === 'FWD') return DriveType.FWD;
+  if (normalized === 'RWD') return DriveType.RWD;
+  if (normalized === 'AWD') return DriveType.AWD;
+  return null;
 }
 
 export function masterManualSpecsNeedLegacyTireTreadPass(input: MasterDimoRegistrationInput): boolean {
