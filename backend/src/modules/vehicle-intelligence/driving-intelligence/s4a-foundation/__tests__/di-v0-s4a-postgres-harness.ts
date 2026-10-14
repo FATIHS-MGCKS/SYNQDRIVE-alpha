@@ -5,6 +5,23 @@ import { gzipSync } from 'zlib';
 import { PrismaClient } from '@prisma/client';
 import { CALIBRATION_UNSET_V0_BUNDLE, computeDiV0TripIntervals, DEFAULT_DI_V0_VERSION_TUPLE } from '../../core';
 import { presentObs } from '../../core/__tests__/test-helpers';
+import {
+  acquireDiV0HistoricalPositions,
+  toDiV0S1PositionInput,
+} from '../../position-acquisition/di-v0-position-acquisition';
+import {
+  API_SYNTHETIC_IDENTITY,
+  expectAcquired,
+  row,
+  signalsBody,
+  staticTransport,
+} from '../../position-acquisition/__tests__/position-acquisition-test-helpers';
+import { verifyAndParseDiV0PinnedEvidenceSnapshot } from '../../s4d-replay/di-v0-s4d-verified-snapshot';
+import {
+  buildDiV0S4cNativeChannelInput,
+  buildDiV0S4cPositionPresentChannel,
+  buildDiV0S4cR1ChannelInput,
+} from '../../s4c-executor/di-v0-s4c-evidence-channels';
 import { mapComputeOutputToPersistRows } from '../../shadow-persistence/di-v0-shadow-mapper';
 import type { DiV0ShadowPersistedIntervalInput } from '../../shadow-persistence/di-v0-shadow-types';
 import { DI_V0_S4_EVIDENCE_CONTAINER_VERSION, type DiV0S4PipelineManifest } from '../di-v0-s4a-contract';
@@ -214,6 +231,128 @@ export async function seedS4aSnapshot(prisma: PrismaClient, tenant: S4aTenant, l
       ${gzip.length}::int, ${raw.length}::int, now() + interval '90 days')
     ON CONFLICT (organization_id, snapshot_hash) DO NOTHING`;
   return serialized.snapshotHash;
+}
+
+const S4A_VERIFIABLE_EVIDENCE_DIMO_TOKEN_ID = 424_242;
+
+function utcIsoNoMs(date: Date): string {
+  return date.toISOString().replace(/\.\d{3}Z$/, 'Z');
+}
+
+export interface S4aVerifiablePinnedEvidenceBundle {
+  snapshotHash: string;
+  boundaryFingerprint: string;
+  combinedInputIdentity: string;
+  shadowIntervals: DiV0ShadowPersistedIntervalInput[];
+}
+
+/** S4D-verifiable pinned snapshot + S1 shadow rows for Postgres integration (P2/P2.1). */
+export async function seedS4aVerifiablePinnedEvidenceBundle(
+  prisma: PrismaClient,
+  tenant: S4aTenant,
+): Promise<S4aVerifiablePinnedEvidenceBundle> {
+  const boundaryFingerprint = await currentFingerprint(prisma, tenant.tripId);
+  const fromUtc = utcIsoNoMs(tenant.startTime);
+  const toUtc = utcIsoNoMs(tenant.endTime);
+  const providerRows = Array.from({ length: 12 }, (_, i) =>
+    row(utcIsoNoMs(new Date(tenant.startTime.getTime() + i * 1000)), 52 + i * 0.000_01, 9),
+  );
+  const acquired = expectAcquired(
+    await acquireDiV0HistoricalPositions(
+      {
+        organizationId: tenant.organizationId,
+        vehicleId: tenant.vehicleId,
+        tripId: tenant.tripId,
+        dimoTokenId: S4A_VERIFIABLE_EVIDENCE_DIMO_TOKEN_ID,
+        dimoDeviceIdentity: API_SYNTHETIC_IDENTITY,
+        fromUtc,
+        toUtc,
+      },
+      staticTransport(signalsBody(providerRows)),
+      {},
+    ),
+  );
+  const control = parseDiV0S4ControlPlaneConfig({
+    DI_V0_S4_MASTER_ENABLED: 'true',
+    DI_V0_S4_R1_ENABLED: 'false',
+  });
+  const serialized = serializeDiV0S4EvidenceContainer({
+    organizationId: tenant.organizationId,
+    vehicleId: tenant.vehicleId,
+    tripId: tenant.tripId,
+    boundaryFingerprint,
+    windowStart: tenant.startTime,
+    windowEnd: tenant.endTime,
+    channels: [
+      buildDiV0S4cNativeChannelInput(control, 'API_SYNTHETIC'),
+      buildDiV0S4cPositionPresentChannel(acquired),
+      buildDiV0S4cR1ChannelInput(
+        control,
+        'API_SYNTHETIC',
+        S4A_VERIFIABLE_EVIDENCE_DIMO_TOKEN_ID,
+        tenant.vehicleId,
+        null,
+        null,
+      ),
+    ],
+  });
+  const raw = Buffer.from(serialized.container, 'utf8');
+  const gzip = gzipSync(raw);
+  await prisma.$executeRaw`
+    INSERT INTO di_v0_s4_evidence_snapshots (id, organization_id, vehicle_id, trip_id, snapshot_hash, container_version,
+      boundary_fingerprint, acquisition_window_start, acquisition_window_end, channel_manifest, payload_gzip,
+      payload_bytes, uncompressed_bytes, retention_until)
+    VALUES (${randomUUID()}, ${tenant.organizationId}, ${tenant.vehicleId}, ${tenant.tripId}, ${serialized.snapshotHash},
+      ${DI_V0_S4_EVIDENCE_CONTAINER_VERSION}, ${boundaryFingerprint}, ${tenant.startTime.toISOString()}::timestamptz,
+      ${tenant.endTime.toISOString()}::timestamptz, ${JSON.stringify(serialized.channelManifest)}::jsonb, ${gzip},
+      ${gzip.length}::int, ${raw.length}::int, now() + interval '90 days')`;
+  const [snapshotRow] = await prisma.$queryRaw<
+    Array<{
+      organization_id: string;
+      vehicle_id: string;
+      trip_id: string;
+      boundary_fingerprint: string;
+      acquisition_window_start: Date;
+      acquisition_window_end: Date;
+      channel_manifest: unknown;
+      payload_gzip: Buffer;
+      uncompressed_bytes: number | bigint;
+    }>
+  >`
+    SELECT organization_id, vehicle_id, trip_id, boundary_fingerprint, acquisition_window_start,
+      acquisition_window_end, channel_manifest, payload_gzip, uncompressed_bytes
+    FROM di_v0_s4_evidence_snapshots
+    WHERE organization_id = ${tenant.organizationId} AND trip_id = ${tenant.tripId}
+      AND snapshot_hash = ${serialized.snapshotHash}
+    LIMIT 1`;
+  const verified = verifyAndParseDiV0PinnedEvidenceSnapshot(snapshotRow, {
+    organizationId: tenant.organizationId,
+    vehicleId: tenant.vehicleId,
+    tripId: tenant.tripId,
+    boundaryFingerprint,
+    snapshotHash: serialized.snapshotHash,
+    sourceFamily: 'API_SYNTHETIC',
+  });
+  if (!verified.ok) {
+    throw new Error(
+      `S4A verifiable snapshot failed S4D verify: ${verified.code}${verified.detail ? `:${verified.detail}` : ''}`,
+    );
+  }
+  const versions = DEFAULT_DI_V0_VERSION_TUPLE;
+  const computeOut = computeDiV0TripIntervals(toDiV0S1PositionInput(acquired), {
+    versions,
+    calibration: CALIBRATION_UNSET_V0_BUNDLE,
+  });
+  const shadowIntervals = mapComputeOutputToPersistRows(computeOut, versions);
+  if (shadowIntervals.length === 0) {
+    throw new Error('S4A verifiable evidence shadow interval compute produced no rows');
+  }
+  return {
+    snapshotHash: serialized.snapshotHash,
+    boundaryFingerprint,
+    combinedInputIdentity: serialized.combinedInputIdentity,
+    shadowIntervals,
+  };
 }
 
 // ── Operator / canonical simulation (test-only SQL) ────────────────────────

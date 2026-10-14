@@ -10,6 +10,7 @@ import {
 import { previewDiV0TripSpeedQualityForWorkItem } from '../di-v0-trip-speed-quality-preview';
 import {
   cleanupP2Tenant,
+  deleteP2PinnedSnapshotRow,
   seedP2CompletedPrimaryFixture,
   type P2CompletedPrimaryFixture,
 } from './di-v0-trip-speed-quality-postgres-harness';
@@ -122,7 +123,7 @@ assertS4aPostgresCiEnv();
 
   it('P21-6 missing snapshot row → NOT_ASSESSABLE', async () => {
     await withFixture(async (fx) => {
-      await changeTripBoundary(db, fx.tenant.tripId);
+      await deleteP2PinnedSnapshotRow(db, fx.tenant, fx.snapshotHash);
       const report = await previewDiV0TripSpeedQualityForWorkItem(db, {
         organizationId: fx.tenant.organizationId,
         tripId: fx.tenant.tripId,
