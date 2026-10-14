@@ -1,6 +1,6 @@
 import { Prisma, type PrismaClient } from '@prisma/client';
 import { verifyAndParseDiV0PinnedEvidenceSnapshot } from '../s4d-replay/di-v0-s4d-verified-snapshot';
-import type { DiV0S4SourceFamily } from '../s4a-foundation/di-v0-s4a-contract';
+import type { DiV0S4SourceFamily } from './di-v0-trip-speed-quality-projection.types';
 import { buildDiV0TripSpeedQualityProjectionV1 } from './build-di-v0-trip-speed-quality-projection.v1';
 import { resolveDiV0TripSpeedQualityCalibrationBundle } from './di-v0-trip-speed-quality-calibration';
 import { buildDiV0TripSpeedQualityEvidenceFromParsedContainer } from './di-v0-trip-speed-quality-evidence';
