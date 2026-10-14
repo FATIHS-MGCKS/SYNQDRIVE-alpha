@@ -25,9 +25,29 @@ function withinMs(a: Date, b: Date, toleranceMs: number): boolean {
   return Math.abs(a.getTime() - b.getTime()) <= toleranceMs;
 }
 
+function validateLatestStateProvenance(
+  latestState: VsiLatestStateProvenanceSlice | null,
+): string[] {
+  if (!latestState) {
+    return ['VLS_PROVENANCE_MISSING'];
+  }
+  if (!latestState.providerSource?.trim()) {
+    return ['VLS_PROVIDER_MISSING'];
+  }
+  if (!latestState.providerBindingId) {
+    return ['VLS_BINDING_MISSING'];
+  }
+  if (!latestState.providerFetchedAt) {
+    return ['VLS_FETCH_TIMESTAMP_MISSING'];
+  }
+  if (!latestState.sourceTimestamp) {
+    return ['VLS_SOURCE_TIMESTAMP_MISSING'];
+  }
+  return [];
+}
+
 /**
- * Compare the latest observation against its immediate predecessor by observationIndex.
- * Does not use historical ClickHouse or max(recorded_at) < current semantics.
+ * Compare consecutive PROVIDER_FETCH observations only. Does not prove complete polling history.
  */
 export function evaluateStrictSourceAdvanceFromObservations(input: {
   scopeProvider: string;
@@ -36,9 +56,24 @@ export function evaluateStrictSourceAdvanceFromObservations(input: {
   latestState: VsiLatestStateProvenanceSlice | null;
   latest: VsiSourceObservationRow | null;
   previous: VsiSourceObservationRow | null;
+  continuityIntact: boolean;
+  latestVlsApplicationProven: boolean;
 }): VsiStrictSourceAdvanceEvaluation {
-  const { latest, previous, latestState, scopeProvider, scopeBindingId, scopeTokenReference } =
-    input;
+  const {
+    latest,
+    previous,
+    latestState,
+    scopeProvider,
+    scopeBindingId,
+    scopeTokenReference,
+    continuityIntact,
+    latestVlsApplicationProven,
+  } = input;
+
+  const vlsIssues = validateLatestStateProvenance(latestState);
+  if (vlsIssues.length > 0) {
+    return unknown(vlsIssues);
+  }
 
   if (!latest) {
     return unknown(['NO_SOURCE_OBSERVATION']);
@@ -46,6 +81,18 @@ export function evaluateStrictSourceAdvanceFromObservations(input: {
 
   if (!previous) {
     return unknown(['INSUFFICIENT_OBSERVATION_HISTORY']);
+  }
+
+  if (!continuityIntact) {
+    return unknown(['OBSERVATION_CONTINUITY_NOT_PROVEN']);
+  }
+
+  if (!latestVlsApplicationProven) {
+    return unknown(['LATEST_VLS_APPLICATION_NOT_PROVEN']);
+  }
+
+  if (latest.recordPhase !== 'PROVIDER_FETCH' || previous.recordPhase !== 'PROVIDER_FETCH') {
+    return unknown(['OBSERVATION_PHASE_INVALID']);
   }
 
   if (latest.organizationId !== previous.organizationId || latest.vehicleId !== previous.vehicleId) {
@@ -85,30 +132,32 @@ export function evaluateStrictSourceAdvanceFromObservations(input: {
     return unknown(['OBSERVATION_SEQUENCE_GAP']);
   }
 
-  if (latestState) {
-    const providerMatch =
-      !latestState.providerSource ||
-      latestState.providerSource.toUpperCase() === latest.provider.toUpperCase();
-    if (!providerMatch) {
-      return unknown(['VLS_PROVIDER_MISMATCH']);
+  const state = latestState!;
+
+  if (state.providerSource!.trim().toUpperCase() !== latest.provider.toUpperCase()) {
+    return unknown(['VLS_PROVIDER_MISMATCH']);
+  }
+  if (state.providerBindingId !== scopeBindingId) {
+    return unknown(['VLS_BINDING_MISMATCH']);
+  }
+  if (
+    !withinMs(
+      latest.providerFetchedAt,
+      state.providerFetchedAt!,
+      VSI03_P2C_VLS_FETCH_ALIGNMENT_TOLERANCE_MS,
+    )
+  ) {
+    return unknown(['LATEST_OBSERVATION_VLS_FETCH_MISMATCH']);
+  }
+
+  if (latest.observationOutcome === 'PROVIDER_FETCH_RECORDED') {
+    if (!timestampsEqual(latest.providerSourceTimestamp, state.sourceTimestamp)) {
+      return unknown(['LATEST_OBSERVATION_VLS_SOURCE_MISMATCH']);
     }
-    if (latestState.providerBindingId !== scopeBindingId) {
-      return unknown(['VLS_BINDING_MISMATCH']);
-    }
-    if (
-      !withinMs(
-        latest.providerFetchedAt,
-        latestState.providerFetchedAt ?? latest.providerFetchedAt,
-        VSI03_P2C_VLS_FETCH_ALIGNMENT_TOLERANCE_MS,
-      )
-    ) {
-      return unknown(['LATEST_OBSERVATION_VLS_FETCH_MISMATCH']);
-    }
-    if (latest.observationOutcome === 'VLS_APPLIED') {
-      if (!timestampsEqual(latest.providerSourceTimestamp, latestState.sourceTimestamp)) {
-        return unknown(['LATEST_OBSERVATION_VLS_SOURCE_MISMATCH']);
-      }
-    }
+  }
+
+  if (latest.observationOutcome === 'PERSISTENCE_FAILED') {
+    return unknown(['LATEST_OBSERVATION_PERSISTENCE_FAILED']);
   }
 
   const priorTs = previous.providerSourceTimestamp;
@@ -122,6 +171,10 @@ export function evaluateStrictSourceAdvanceFromObservations(input: {
 
   if (!Number.isFinite(priorMs) || !Number.isFinite(currentMs)) {
     return unknown(['INVALID_PROVIDER_SOURCE_TIMESTAMP']);
+  }
+
+  if (latest.providerFetchedAt.getTime() < previous.providerFetchedAt.getTime()) {
+    return unknown(['OBSERVATION_FETCH_TIME_REGRESSION']);
   }
 
   if (currentMs < priorMs) {

@@ -1657,6 +1657,7 @@ model Organization {
   vehicleStationTransfers                                   VehicleStationTransfer[]
   vehicles                                                  Vehicle[]
   vehicleProviderSourceObservations                         VehicleProviderSourceObservation[]
+  vehicleProviderSourceObservationCounters                  VehicleProviderSourceObservationCounter[]
   apdShadowReconciliationDecisions                          ApdShadowReconciliationDecision[]
   apdShadowActivationEpochs                                 ApdShadowActivationEpoch[]
   vehicleOnboardingCases                                    VehicleOnboardingCase[]
@@ -3037,6 +3038,7 @@ model Vehicle {
   analyticsCacheEntries                  AnalyticsCache[]
   pollLogs                               DimoPollLog[]
   vehicleProviderSourceObservations    VehicleProviderSourceObservation[]
+  vehicleProviderSourceObservationCounters VehicleProviderSourceObservationCounter[]
   apdShadowReconciliationDecisions       ApdShadowReconciliationDecision[]
   bookings                               Booking[]
   handoverProtocols                      BookingHandoverProtocol[]
@@ -4422,9 +4424,32 @@ enum VehicleProviderSourceTimestampProvenance {
   PROVIDER_MISSING
 }
 
+enum VehicleProviderSourceObservationRecordPhase {
+  PROVIDER_FETCH
+  VLS_APPLICATION
+}
+
 enum VehicleProviderSourceObservationOutcome {
   VLS_APPLIED
   MONOTONIC_STALE_SKIPPED
+  PROVIDER_FETCH_RECORDED
+  VLS_COMMITTED
+  PERSISTENCE_FAILED
+}
+
+model VehicleProviderSourceObservationCounter {
+  organizationId           String @map("organization_id")
+  vehicleId                String @map("vehicle_id")
+  provider                 String
+  providerBindingScopeKey  String @map("provider_binding_scope_key")
+  providerTokenScopeKey    String @map("provider_token_scope_key")
+  nextObservationIndex     BigInt @default(2) @map("next_observation_index")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade, map: "vsi_p2c_obs_counters_org_fkey")
+  vehicle      Vehicle      @relation(fields: [organizationId, vehicleId], references: [organizationId, id], onDelete: Cascade, map: "vsi_p2c_obs_counters_vehicle_fkey")
+
+  @@id([organizationId, vehicleId, provider, providerBindingScopeKey, providerTokenScopeKey])
+  @@map("vehicle_provider_source_observation_counters")
 }
 
 model VehicleProviderSourceObservation {
@@ -4438,6 +4463,9 @@ model VehicleProviderSourceObservation {
   providerTokenReference     String?                                  @map("provider_token_reference")
   providerTokenScopeKey      String                                   @map("provider_token_scope_key")
   pollJobId                String                                   @map("poll_job_id")
+  bullmqAttemptNumber      Int                                      @default(0) @map("bullmq_attempt_number")
+  fetchCorrelationId       String?                                  @map("fetch_correlation_id")
+  recordPhase              VehicleProviderSourceObservationRecordPhase @default(PROVIDER_FETCH) @map("record_phase")
   idempotencyKey           String                                   @unique @map("idempotency_key")
   observationIndex         BigInt                                   @map("observation_index")
   providerFetchedAt        DateTime                                 @map("provider_fetched_at") @db.Timestamptz(3)
@@ -4449,9 +4477,10 @@ model VehicleProviderSourceObservation {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   vehicle      Vehicle      @relation(fields: [organizationId, vehicleId], references: [organizationId, id], onDelete: Cascade)
 
-  @@unique([organizationId, vehicleId, provider, providerBindingScopeKey, providerTokenScopeKey, observationIndex], map: "vsi_p2c_obs_scope_index_key")
+  @@unique([organizationId, vehicleId, provider, providerBindingScopeKey, providerTokenScopeKey, observationIndex, recordPhase], map: "vsi_p2c_obs_scope_index_phase_key")
   @@index([organizationId, vehicleId, providerBindingId, providerFetchedAt(sort: Desc)])
   @@index([vehicleId, providerFetchedAt(sort: Desc)])
+  @@index([fetchCorrelationId])
   @@map("vehicle_provider_source_observations")
 }
 

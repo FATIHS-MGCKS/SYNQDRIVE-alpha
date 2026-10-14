@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vsi-03-p2c-r1-observation-continuity-2026-10-14',
+    version: '4.9.2243',
+    title: 'VSI-03 P2C-R1 — durable poll observations + fail-closed strict advance',
+    summary: [
+      'Per-poll PROVIDER_FETCH rows use committed counter allocation; PERSISTENCE_FAILED tombstones preserve index gaps across restarts.',
+      'VLS_APPLICATION recorded only after successful VLS upsert; strict advance requires VLS provenance, continuity, and latest application proof (flags default OFF).',
+      'PostgreSQL concurrency integration tests for parallel indices and gap detection (disposable DB guard).',
+    ],
+    reason:
+      'MAX(index)+1 could hide failed polls; premature VLS_APPLIED and permissive VLS checks risked false ADVANCED verdicts for latest-poll advancement.',
+    previousBehavior:
+      'Observation index derived from MAX(persisted)+1; single-phase outcomes; strict resolver could accept missing VLS fetch timestamps via self-fallback.',
+    details:
+      'vehicle-signal-intelligence/*, migration 20261014210000_vsi03_p2c_r1_continuity_hardening, dimo-snapshot.processor.ts, VSI03_P2C_SOURCE_OBSERVATIONS.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-14T21:15:00.000Z',
+  },
+  {
     id: 'vo-sig-01-p1-connection-identity-2026-10-13',
     version: '4.9.2242',
     title: 'VO-SIG-01 P1 — verified connection modality + activation identity enforcement',

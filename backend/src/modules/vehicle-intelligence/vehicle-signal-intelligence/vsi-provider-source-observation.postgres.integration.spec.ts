@@ -3,10 +3,11 @@
  *   DATABASE_URL=postgresql://synqdrive:synqdrive@127.0.0.1:5432/vsi03_test_ci?schema=public \
  *   VSI03_READONLY_COMPOSER_PG=1 npx jest vsi-provider-source-observation.postgres.integration --runInBand
  */
-import { PrismaClient, VehicleProviderSourceObservationOutcome } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { assertVsi03DisposablePostgresTarget } from './vsi-readonly-composer.postgres-guard';
 import {
-  buildDimoSnapshotSourceObservationIdempotencyKey,
+  buildDimoSnapshotFetchObservationIdempotencyKey,
+  buildDimoSnapshotVlsApplicationIdempotencyKey,
   VsiProviderSourceObservationWriterService,
 } from './vsi-provider-source-observation.writer.service';
 
@@ -26,7 +27,7 @@ const LIVE = process.env.VSI03_READONLY_COMPOSER_PG === '1';
     await prisma.$disconnect();
   });
 
-  it('persists stale-skip and applied observations with monotonic observation_index', async () => {
+  it('records fetch then VLS application for same correlation', async () => {
     const org = await prisma.organization.findFirst({ select: { id: true } });
     const vehicle = await prisma.vehicle.findFirst({
       where: { organizationId: org!.id },
@@ -38,42 +39,43 @@ const LIVE = process.env.VSI03_READONLY_COMPOSER_PG === '1';
       where: { vehicleId: vehicle.id, isActive: true },
       select: { id: true },
     });
-    const jobA = `test-job-${Date.now()}-a`;
-    const jobB = `test-job-${Date.now()}-b`;
-    const t0 = new Date('2026-10-14T14:00:00.000Z');
-    const t1 = new Date('2026-10-14T15:00:00.000Z');
+    const correlation = `corr-${Date.now()}`;
+    const job = `test-job-${Date.now()}`;
 
-    await writer.recordObservation({
+    const fetch = await writer.recordProviderFetch({
       organizationId: vehicle.organizationId,
       vehicleId: vehicle.id,
       provider: 'DIMO',
       providerBindingId: link?.id ?? null,
       providerTokenReference: '999001',
-      pollJobId: jobA,
-      idempotencyKey: buildDimoSnapshotSourceObservationIdempotencyKey(jobA),
+      pollJobId: job,
+      bullmqAttemptNumber: 0,
+      fetchCorrelationId: correlation,
+      idempotencyKey: buildDimoSnapshotFetchObservationIdempotencyKey(job, 0),
       providerFetchedAt: new Date('2026-10-14T14:00:05.000Z'),
-      providerSourceTimestamp: t0,
-      observationOutcome: VehicleProviderSourceObservationOutcome.VLS_APPLIED,
+      providerSourceTimestamp: new Date('2026-10-14T14:00:00.000Z'),
+      monotonicStaleSkipped: false,
     });
-    await writer.recordObservation({
+    expect(fetch?.observationIndex).toBeDefined();
+
+    await writer.recordVlsApplication({
       organizationId: vehicle.organizationId,
       vehicleId: vehicle.id,
       provider: 'DIMO',
       providerBindingId: link?.id ?? null,
       providerTokenReference: '999001',
-      pollJobId: jobB,
-      idempotencyKey: buildDimoSnapshotSourceObservationIdempotencyKey(jobB),
-      providerFetchedAt: new Date('2026-10-14T15:00:05.000Z'),
-      providerSourceTimestamp: t1,
-      observationOutcome: VehicleProviderSourceObservationOutcome.VLS_APPLIED,
+      pollJobId: job,
+      fetchCorrelationId: correlation,
+      observationIndex: fetch!.observationIndex,
+      providerFetchedAt: new Date('2026-10-14T14:00:05.000Z'),
+      providerSourceTimestamp: new Date('2026-10-14T14:00:00.000Z'),
+      idempotencyKey: buildDimoSnapshotVlsApplicationIdempotencyKey(correlation),
     });
 
-    const rows = await prisma.vehicleProviderSourceObservation.findMany({
-      where: { vehicleId: vehicle.id, providerTokenReference: '999001' },
-      orderBy: { observationIndex: 'asc' },
+    const phases = await prisma.vehicleProviderSourceObservation.findMany({
+      where: { fetchCorrelationId: correlation },
+      orderBy: { recordPhase: 'asc' },
     });
-    expect(rows.length).toBeGreaterThanOrEqual(2);
-    const lastTwo = rows.slice(-2);
-    expect(lastTwo[1].observationIndex - lastTwo[0].observationIndex).toBe(1n);
+    expect(phases.map((p) => p.recordPhase)).toEqual(['PROVIDER_FETCH', 'VLS_APPLICATION']);
   });
 });

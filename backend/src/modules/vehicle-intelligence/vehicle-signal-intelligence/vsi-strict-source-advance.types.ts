@@ -1,4 +1,7 @@
-import type { VehicleProviderSourceObservationOutcome } from '@prisma/client';
+import type {
+  VehicleProviderSourceObservationOutcome,
+  VehicleProviderSourceObservationRecordPhase,
+} from '@prisma/client';
 
 export type VsiStrictSourceAdvanceClassification =
   | 'ADVANCED'
@@ -8,7 +11,6 @@ export type VsiStrictSourceAdvanceClassification =
 
 export type VsiStrictSourceAdvanceEvaluation = {
   classification: VsiStrictSourceAdvanceClassification;
-  /** Maps to composer strictSourceAdvanced when integrity proven. */
   strictSourceAdvanced: boolean | 'UNKNOWN';
   reasons: string[];
   latestObservationIndex?: bigint;
@@ -27,6 +29,8 @@ export type VsiSourceObservationRow = {
   providerFetchedAt: Date;
   providerSourceTimestamp: Date | null;
   observationOutcome: VehicleProviderSourceObservationOutcome;
+  recordPhase: VehicleProviderSourceObservationRecordPhase;
+  fetchCorrelationId: string | null;
 };
 
 export type VsiLatestStateProvenanceSlice = {
@@ -34,4 +38,11 @@ export type VsiLatestStateProvenanceSlice = {
   providerSource: string | null;
   sourceTimestamp: Date | null;
   providerFetchedAt: Date | null;
+};
+
+export type VsiFetchObservationContinuity = {
+  latest: VsiSourceObservationRow | null;
+  previous: VsiSourceObservationRow | null;
+  continuityIntact: boolean;
+  latestVlsApplicationProven: boolean;
 };

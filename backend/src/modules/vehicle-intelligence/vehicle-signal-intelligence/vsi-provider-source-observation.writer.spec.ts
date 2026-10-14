@@ -1,59 +1,68 @@
 import { VehicleProviderSourceObservationOutcome } from '@prisma/client';
 import {
-  buildDimoSnapshotSourceObservationIdempotencyKey,
+  buildDimoSnapshotFetchObservationIdempotencyKey,
   VsiProviderSourceObservationWriterService,
 } from './vsi-provider-source-observation.writer.service';
 
 describe('VsiProviderSourceObservationWriterService', () => {
-  const baseInput = {
+  const baseFetch = {
     organizationId: 'org',
     vehicleId: 'veh',
     provider: 'DIMO',
     providerBindingId: 'link',
     providerTokenReference: '123',
     pollJobId: 'job-1',
-    idempotencyKey: buildDimoSnapshotSourceObservationIdempotencyKey('job-1'),
+    bullmqAttemptNumber: 0,
+    fetchCorrelationId: 'corr-1',
+    idempotencyKey: buildDimoSnapshotFetchObservationIdempotencyKey('job-1', 0),
     providerFetchedAt: new Date('2026-10-14T12:00:00.000Z'),
     providerSourceTimestamp: new Date('2026-10-14T11:59:00.000Z'),
-    observationOutcome: VehicleProviderSourceObservationOutcome.VLS_APPLIED,
+    monotonicStaleSkipped: false,
   };
 
-  it('11 duplicate worker retry does not duplicate evidence', async () => {
+  it('7 duplicate retry same attempt is idempotent', async () => {
     process.env.VSI03_P2C_SOURCE_OBSERVATION_CAPTURE_ENABLED = 'true';
     const create = jest.fn();
     const findUnique = jest
       .fn()
       .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ id: 'existing' });
-    const aggregate = jest.fn().mockResolvedValue({ _max: { observationIndex: 0n } });
-    const prisma = {
-      $transaction: async (fn: (tx: unknown) => Promise<void>) =>
-        fn({ vehicleProviderSourceObservation: { findUnique, aggregate, create } }),
-    };
-    const writer = new VsiProviderSourceObservationWriterService(prisma as never);
-    await writer.recordObservation(baseInput);
-    await writer.recordObservation(baseInput);
+      .mockResolvedValueOnce({ observationIndex: 1n });
+    const allocate = jest.fn().mockResolvedValue(1n);
+    const writer = new VsiProviderSourceObservationWriterService({
+      vehicleProviderSourceObservation: { findUnique, create },
+      $transaction: jest.fn(async (fn) =>
+        fn({ vehicleProviderSourceObservationCounter: { findUnique: jest.fn(), create: jest.fn(), update: jest.fn() } }),
+      ),
+    } as never);
+    writer.allocateObservationIndex = allocate;
+    await writer.recordProviderFetch(baseFetch);
+    await writer.recordProviderFetch(baseFetch);
     expect(create).toHaveBeenCalledTimes(1);
     delete process.env.VSI03_P2C_SOURCE_OBSERVATION_CAPTURE_ENABLED;
   });
 
+  it('6 distinct BullMQ attempts use distinct idempotency keys', () => {
+    expect(buildDimoSnapshotFetchObservationIdempotencyKey('j', 0)).not.toBe(
+      buildDimoSnapshotFetchObservationIdempotencyKey('j', 1),
+    );
+  });
+
   it('13 persistence failure does not throw', async () => {
     process.env.VSI03_P2C_SOURCE_OBSERVATION_CAPTURE_ENABLED = 'true';
-    const prisma = {
-      $transaction: async () => {
-        throw new Error('db down');
+    const writer = new VsiProviderSourceObservationWriterService({
+      vehicleProviderSourceObservation: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockRejectedValue(new Error('db down')),
       },
-    };
-    const writer = new VsiProviderSourceObservationWriterService(prisma as never);
-    await expect(writer.recordObservation(baseInput)).resolves.toBeUndefined();
+      $transaction: jest.fn().mockRejectedValue(new Error('tx fail')),
+    } as never);
+    await expect(writer.recordProviderFetch(baseFetch)).resolves.toBeNull();
     delete process.env.VSI03_P2C_SOURCE_OBSERVATION_CAPTURE_ENABLED;
   });
 
-  it('15 capture flag off is no-op', async () => {
+  it('17 capture flag off is no-op', async () => {
     delete process.env.VSI03_P2C_SOURCE_OBSERVATION_CAPTURE_ENABLED;
-    const prisma = { $transaction: jest.fn() };
-    const writer = new VsiProviderSourceObservationWriterService(prisma as never);
-    await writer.recordObservation(baseInput);
-    expect(prisma.$transaction).not.toHaveBeenCalled();
+    const writer = new VsiProviderSourceObservationWriterService({} as never);
+    await expect(writer.recordProviderFetch(baseFetch)).resolves.toBeNull();
   });
 });

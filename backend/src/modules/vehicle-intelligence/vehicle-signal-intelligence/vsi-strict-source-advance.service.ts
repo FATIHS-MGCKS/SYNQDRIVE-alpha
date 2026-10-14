@@ -32,16 +32,13 @@ export class VsiStrictSourceAdvanceService {
     const bindingScopeKey = input.link.id === 'UNRESOLVED' ? 'UNRESOLVED' : input.link.id;
     const tokenScopeKey = input.dimoTokenReference ?? 'NONE';
 
-    const rows = await this.observations.loadLatestTwoForScope({
+    const continuity = await this.observations.loadFetchObservationContinuity({
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
       provider,
       providerBindingScopeKey: bindingScopeKey,
       providerTokenScopeKey: tokenScopeKey,
     });
-
-    const latest = rows[0] ?? null;
-    const previous = rows[1] ?? null;
 
     return evaluateStrictSourceAdvanceFromObservations({
       scopeProvider: provider,
@@ -55,8 +52,10 @@ export class VsiStrictSourceAdvanceService {
             providerFetchedAt: input.latestState.providerFetchedAt,
           }
         : null,
-      latest,
-      previous,
+      latest: continuity.latest,
+      previous: continuity.previous,
+      continuityIntact: continuity.continuityIntact,
+      latestVlsApplicationProven: continuity.latestVlsApplicationProven,
     });
   }
 }

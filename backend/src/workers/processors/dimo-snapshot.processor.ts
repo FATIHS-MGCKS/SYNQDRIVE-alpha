@@ -1,11 +1,8 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger, Optional } from '@nestjs/common';
 import { Job, UnrecoverableError } from 'bullmq';
-import {
-  DimoPollJobType,
-  DimoPollStatus,
-  VehicleProviderSourceObservationOutcome,
-} from '@prisma/client';
+import { randomUUID } from 'node:crypto';
+import { DimoPollJobType, DimoPollStatus } from '@prisma/client';
 import { isVehicleRegistryOperationalActive } from '@modules/vehicle-onboarding/registry/vehicle-registry-operational.util';
 
 import { QUEUE_NAMES } from '../queues/queue-names';
@@ -50,7 +47,8 @@ import { TripDetectionState } from '@prisma/client';
 import { readWorkerConcurrency } from '@config/worker-concurrency.util';
 import { runWithDimoRequestContext } from '@modules/dimo/provider-budget/dimo-request-context';
 import {
-  buildDimoSnapshotSourceObservationIdempotencyKey,
+  buildDimoSnapshotFetchObservationIdempotencyKey,
+  buildDimoSnapshotVlsApplicationIdempotencyKey,
   VsiProviderSourceObservationWriterService,
 } from '@modules/vehicle-intelligence/vehicle-signal-intelligence/vsi-provider-source-observation.writer.service';
 
@@ -364,19 +362,24 @@ export class DimoSnapshotProcessor extends WorkerHost {
         previousState != null &&
         !shouldApplyVlsTelemetryUpdate(normalized.lastSeenAt, previousState.sourceTimestamp);
 
-      await this.vsiSourceObservationWriter?.recordObservation({
+      const fetchCorrelationId = randomUUID();
+      const bullmqAttemptNumber = job.attemptsMade ?? 0;
+      const fetchRecord = await this.vsiSourceObservationWriter?.recordProviderFetch({
         organizationId: vehicle.organizationId,
         vehicleId,
         provider: 'DIMO',
         providerBindingId,
         providerTokenReference: String(dimoTokenId),
         pollJobId: String(job.id),
-        idempotencyKey: buildDimoSnapshotSourceObservationIdempotencyKey(String(job.id)),
+        bullmqAttemptNumber,
+        fetchCorrelationId,
+        idempotencyKey: buildDimoSnapshotFetchObservationIdempotencyKey(
+          String(job.id),
+          bullmqAttemptNumber,
+        ),
         providerFetchedAt: fetchedAt,
         providerSourceTimestamp: normalized.lastSeenAt ?? null,
-        observationOutcome: monotonicStale
-          ? VehicleProviderSourceObservationOutcome.MONOTONIC_STALE_SKIPPED
-          : VehicleProviderSourceObservationOutcome.VLS_APPLIED,
+        monotonicStaleSkipped: monotonicStale,
       });
 
       // VW-F-008: skip stale provider snapshots (monotonic sourceTimestamp guard)
@@ -433,6 +436,22 @@ export class DimoSnapshotProcessor extends WorkerHost {
           ...normalized,
         },
       });
+
+      if (fetchRecord) {
+        await this.vsiSourceObservationWriter?.recordVlsApplication({
+          organizationId: vehicle.organizationId,
+          vehicleId,
+          provider: 'DIMO',
+          providerBindingId,
+          providerTokenReference: String(dimoTokenId),
+          pollJobId: String(job.id),
+          fetchCorrelationId,
+          observationIndex: fetchRecord.observationIndex,
+          providerFetchedAt: fetchedAt,
+          providerSourceTimestamp: normalized.lastSeenAt ?? null,
+          idempotencyKey: buildDimoSnapshotVlsApplicationIdempotencyKey(fetchCorrelationId),
+        });
+      }
 
       await this.applyPhysicalSnapshotEvidence({
         organizationId: vehicle.organizationId,
