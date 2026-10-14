@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { Prisma, VehicleRegistryLifecycle } from '@prisma/client';
 import { VehicleProviderConsentStatus } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
+import { BusinessAuditOutboxRepository } from '@modules/business-audit/business-audit-outbox.repository';
 import { PrismaService } from '@shared/database/prisma.service';
 import { isPrismaUniqueViolation } from '@shared/database/prisma-error.util';
 import {
@@ -15,6 +16,11 @@ import {
   buildExpectedOffboardSemantics,
 } from '../offboarding/offboard-outbox-semantics';
 import { closeOpenOrganizationAssignmentForOffboard } from '../offboarding/offboard-organization-assignment';
+import {
+  assertOffboardAuditReplaySemantics,
+  buildExpectedOffboardAuditSemantics,
+  ensureOffboardAuditRecord,
+} from '../offboarding/offboard-registry-audit';
 
 export type OffboardVehicleInput = {
   organizationId: string;
@@ -22,6 +28,7 @@ export type OffboardVehicleInput = {
   reason: VehicleOffboardReasonCode;
   actorUserId: string | null;
   idempotencyKey: string;
+  note?: string;
   /** Fail-closed: organization transfer is not supported in VO-5A. */
   destinationOrganizationId?: string | null;
   /** Optional in-transaction gate (e.g. operational preflight recheck after row lock). */
@@ -42,7 +49,10 @@ function offboardOutboxIdempotencyKey(idempotencyKey: string): string {
 
 @Injectable()
 export class VehicleOffboardingService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly businessAuditOutbox: BusinessAuditOutboxRepository,
+  ) {}
 
   /**
    * Read-only idempotent replay resolution for completed offboards.
@@ -52,7 +62,7 @@ export class VehicleOffboardingService {
   async tryResolveIdempotentOffboardReplay(
     input: Pick<
       OffboardVehicleInput,
-      'organizationId' | 'vehicleId' | 'reason' | 'idempotencyKey'
+      'organizationId' | 'vehicleId' | 'reason' | 'idempotencyKey' | 'actorUserId' | 'note'
     >,
   ): Promise<OffboardVehicleResult | null> {
     const vehicle = await this.prisma.vehicle.findFirst({
@@ -78,6 +88,19 @@ export class VehicleOffboardingService {
     });
     assertOffboardOutboxSemanticMatch(existingOutbox, expectedSemantics);
 
+    if (input.actorUserId) {
+      await assertOffboardAuditReplaySemantics(this.prisma, {
+        idempotencyKey: input.idempotencyKey,
+        expectedSemantics: buildExpectedOffboardAuditSemantics({
+          vehicleId: input.vehicleId,
+          organizationId: input.organizationId,
+          reason: input.reason,
+          actorUserId: input.actorUserId,
+          note: input.note,
+        }),
+      });
+    }
+
     return {
       vehicleId: input.vehicleId,
       organizationId: input.organizationId,
@@ -102,6 +125,7 @@ export class VehicleOffboardingService {
       organizationId: input.organizationId,
       reason: input.reason,
     });
+    const actorUserId = input.actorUserId;
 
     return this.prisma.$transaction(async (tx) => {
       const lockedRows = await tx.$queryRaw<
@@ -226,6 +250,26 @@ export class VehicleOffboardingService {
         offboardedAt,
         expectedSemantics,
       });
+
+      if (actorUserId) {
+        const expectedAuditSemantics = buildExpectedOffboardAuditSemantics({
+          vehicleId: input.vehicleId,
+          organizationId: input.organizationId,
+          reason: input.reason,
+          actorUserId,
+          note: input.note,
+        });
+        await ensureOffboardAuditRecord(tx, this.businessAuditOutbox, {
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+          reason: input.reason,
+          actorUserId,
+          idempotencyKey: input.idempotencyKey,
+          offboardedAt,
+          note: input.note,
+          expectedSemantics: expectedAuditSemantics,
+        });
+      }
 
       return {
         vehicleId: input.vehicleId,

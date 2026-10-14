@@ -45,6 +45,7 @@
 | 2026-10-08 | **VO5C-P2B4-0** — Emergency containment: HTTP/CLI/service platform prune fail-closed `PLATFORM_PRUNE_DISABLED`; no env override; replacement prune not implemented | `AUDIT_IN_PROGRESS`; `SECURITY_REMEDIATION_IN_PROGRESS` |
 | 2026-10-09 | **VO5C-P4A** — Default-OFF server admission guard for canonical offboard HTTP; release SHA + route-verified attestation; requires `IAM_MFA_MASTER_ADMIN_ENABLED`; dual frontend UI gate; HTTP+Postgres security matrix; operator runbook | No production activation; `AUDIT_IN_PROGRESS` |
 | 2026-10-09 | **VO5C-P4A role authority closure** — `MasterVehicleOffboardAdmissionGuard` requires `platformRole === MASTER_ADMIN`; membership-only cross-claim denied **403**; HTTP regression (admission OFF/ON, zero mutation) | `RolesGuard` membership OR semantics unchanged (follow-up) |
+| 2026-10-14 | **VO5C D4/D5** — `deriveFleetStatusContext` registry lifecycle guard (OFFBOARDED/ARCHIVED not operationally available); offboard `note` → `business_audit_outbox` `VEHICLE_REGISTRY_OFFBOARDED` same TX as registry offboard; billing outbox v2 unchanged | Fleet/rental display + Master Admin audit evidence; no historical backfill |
 
 ## VO-0B — REUSE-FIRST components (do not replace without VO-1+ proof)
 

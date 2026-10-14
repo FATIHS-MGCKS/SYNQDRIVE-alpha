@@ -42,6 +42,8 @@ export class VehicleOnboardingOffboardService {
       vehicleId: input.vehicleId,
       reason: input.reason,
       idempotencyKey: input.idempotencyKey,
+      actorUserId: input.actorUserId,
+      note: input.note,
     });
     if (replay) {
       return {
@@ -78,6 +80,7 @@ export class VehicleOnboardingOffboardService {
       reason: input.reason,
       actorUserId: input.actorUserId,
       idempotencyKey: input.idempotencyKey,
+      note: input.note,
       operationalGate: (tx) => this.preflight.assertBlockingAbsentInTransaction(tx, gateContext),
     });
 

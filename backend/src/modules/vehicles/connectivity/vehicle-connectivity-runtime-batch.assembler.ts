@@ -25,6 +25,7 @@ import {
   VehicleConnectivityRuntimeStateBuilder,
   type BuildVehicleConnectivityRuntimeStateInput,
 } from './domain/vehicle-connectivity-runtime-state.builder';
+import { isRegistryLifecycleOperationallyBlocked } from '../synqdrive-dimo-access.util';
 
 export interface ConnectivityRuntimeVehicleRow {
   id: string;
@@ -37,6 +38,7 @@ export interface ConnectivityRuntimeVehicleRow {
    * rather than being guessed.
    */
   status?: string | null;
+  registryLifecycle?: string | null;
   dimoVehicleId: string | null;
   dimoVehicle: {
     connectionStatus: string;
@@ -117,8 +119,14 @@ const PROVIDER_POLLED_VEHICLE_STATUSES: ReadonlySet<string> = new Set([
  * Diagnostic-only: never an input to canonical freshness.
  */
 export function resolveProviderPollEligibility(
-  vehicle: Pick<ConnectivityRuntimeVehicleRow, 'status' | 'dimoVehicleId' | 'dimoVehicle'>,
+  vehicle: Pick<
+    ConnectivityRuntimeVehicleRow,
+    'status' | 'registryLifecycle' | 'dimoVehicleId' | 'dimoVehicle'
+  >,
 ): boolean | null {
+  if (isRegistryLifecycleOperationallyBlocked(vehicle.registryLifecycle)) {
+    return false;
+  }
   if (vehicle.status == null) return null;
   if (!PROVIDER_POLLED_VEHICLE_STATUSES.has(vehicle.status)) return false;
   if (vehicle.dimoVehicleId == null) return false;

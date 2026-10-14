@@ -10,7 +10,7 @@ import {
 } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { ACTIVATION_OUTBOX_PAYLOAD_VERSION } from '@modules/vehicle-onboarding/contracts/vo-document-versions';
-import { VehicleOffboardingService } from '@modules/vehicle-onboarding/services/vehicle-offboarding.service';
+import { createVehicleOffboardingServiceForTests } from '@modules/vehicle-onboarding/testing/vehicle-offboarding-test.harness';
 import { VehicleRegistryLifecycleOutboxProcessor } from '@modules/vehicle-onboarding/registry-lifecycle/vehicle-registry-lifecycle-outbox.processor';
 import { VehicleRegistryLifecycleOutboxRepository } from '@modules/vehicle-onboarding/registry-lifecycle/vehicle-registry-lifecycle-outbox.repository';
 import { BillingVehicleRegistryOffboardProjection } from './registry-lifecycle/billing-vehicle-registry-offboard.projection';
@@ -142,7 +142,7 @@ async function seedActivatedOutbox(
   jest.setTimeout(120_000);
   const prisma = new PrismaClient();
   const processor = buildProcessor(prisma);
-  const offboarding = new VehicleOffboardingService(prisma as any);
+  const offboarding = createVehicleOffboardingServiceForTests(prisma);
 
   afterAll(async () => {
     await prisma.$disconnect();

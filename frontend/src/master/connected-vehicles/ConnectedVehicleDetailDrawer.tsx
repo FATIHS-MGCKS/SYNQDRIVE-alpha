@@ -232,7 +232,24 @@ export function ConnectedVehicleDetailDrawer({
                   <dd className="mt-1 font-mono text-xs">{detail.mapping.tokenIdMasked ?? '—'}</dd>
                 </div>
                 <div className="rounded-xl border border-border p-3">
-                  <dt className="text-xs text-muted-foreground">Autorisierung</dt>
+                  <dt className="text-xs text-muted-foreground">{t('master.cv.mapping.mirrorProvider')}</dt>
+                  <dd className="mt-1 font-mono text-xs">{detail.mapping.connectionStatus ?? '—'}</dd>
+                  {detail.mapping.mirrorIntegrationConnectivity ? (
+                    <dd className="mt-2">
+                      <CvIntegrationChip
+                        label={
+                          detail.mapping.mirrorIntegrationConnectivityLabel ??
+                          detail.mapping.mirrorIntegrationConnectivity
+                        }
+                        state={detail.mapping.mirrorIntegrationConnectivity}
+                      />
+                    </dd>
+                  ) : null}
+                </div>
+                <div className="rounded-xl border border-border p-3">
+                  <dt className="text-xs text-muted-foreground">
+                    {t('master.cv.mapping.effectiveSynqDriveAccess')}
+                  </dt>
                   <dd className="mt-1">
                     <CvIntegrationChip
                       label={detail.integrationConnectivityLabel}

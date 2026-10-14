@@ -69,7 +69,11 @@ export interface VehicleOperationalDetailDto extends VehicleOperationalRowDto {
     dimoVehicleId: string | null;
     dimoExternalId: string | null;
     tokenIdMasked: string | null;
+    /** Raw `dimo_vehicles.connection_status` (last provider mirror observation). */
     connectionStatus: string | null;
+    /** Derived from mirror only — not SynqDrive effective access. */
+    mirrorIntegrationConnectivity?: IntegrationConnectivity;
+    mirrorIntegrationConnectivityLabel?: string;
     syncedAt: string | null;
     deviceType: string | null;
   };

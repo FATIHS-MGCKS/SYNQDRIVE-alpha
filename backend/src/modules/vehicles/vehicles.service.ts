@@ -14,6 +14,7 @@ import {
   FuelType,
   VehicleType,
   VehicleStatus,
+  VehicleRegistryLifecycle,
   HealthStatus,
   CleaningStatus,
   EnrichmentJobType,
@@ -51,6 +52,10 @@ import {
   type FleetBookingContextRow,
   type FleetVehicleBookingSupplementDto,
 } from './operational/fleet-booking-context.util';
+import {
+  buildRegistryLifecycleFleetOperationalState,
+  resolveRegistryLifecycleFleetBlock,
+} from './registry/fleet-registry-lifecycle-status';
 import {
   buildFleetOperationalStateDto,
   type FleetVehicleOperationalStateDto,
@@ -1042,6 +1047,7 @@ export class VehiclesService {
     vehicle: {
       id?: string;
       status: VehicleStatus | string | null | undefined;
+      registryLifecycle?: VehicleRegistryLifecycle | string | null;
       licensePlate?: string | null;
       tankCapacityLiters?: number | null;
     };
@@ -1067,6 +1073,40 @@ export class VehiclesService {
   } {
     const { vehicle, state, bookingCtx, pickupOdoByBooking, bookingContextLoadFailed } =
       input;
+
+    const registryBlock = resolveRegistryLifecycleFleetBlock(
+      vehicle.registryLifecycle as VehicleRegistryLifecycle | null | undefined,
+    );
+    if (registryBlock) {
+      const operationalState = buildRegistryLifecycleFleetOperationalState({
+        block: registryBlock,
+      });
+      const maintenanceCtx: FleetVehicleMaintenanceContextDto =
+        vehicle.status === VehicleStatus.IN_SERVICE ||
+        vehicle.status === VehicleStatus.OUT_OF_SERVICE
+          ? this.deriveMaintenanceContext(vehicle.status)
+          : {
+              maintenanceReason: null,
+              maintenanceReasonCode: null,
+              maintenanceUrgency: null,
+            };
+      return {
+        status: registryBlock.displayStatus,
+        operationalState,
+        maintenanceCtx,
+        bookingDto: VehiclesService.EMPTY_BOOKING_CONTEXT,
+        liveKmDriven: null,
+        odometerKm:
+          typeof state?.odometerKm === 'number' && Number.isFinite(state.odometerKm)
+            ? Math.floor(state.odometerKm)
+            : null,
+        fuelPercent: this.resolveFuelPercentOrNull(state, vehicle.tankCapacityLiters),
+        evSoc:
+          typeof state?.evSoc === 'number' && Number.isFinite(state.evSoc)
+            ? Math.min(100, Math.max(0, Math.ceil(state.evSoc)))
+            : null,
+      };
+    }
 
     if (bookingContextLoadFailed) {
       const operationalState = buildFleetOperationalStateDto({
@@ -1199,6 +1239,7 @@ export class VehiclesService {
     vehicles: Array<{
       id: string;
       status: VehicleStatus;
+      registryLifecycle?: VehicleRegistryLifecycle | string | null;
       licensePlate?: string | null;
       tankCapacityLiters?: number | null;
       latestState: {

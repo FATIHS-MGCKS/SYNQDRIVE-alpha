@@ -28,6 +28,8 @@ const EXACT_LEGACY_STATUS: Record<string, VehicleOperationalStatus> = {
   Blocked: VEHICLE_OPERATIONAL_STATUS.BLOCKED,
   Unknown: VEHICLE_OPERATIONAL_STATUS.UNKNOWN,
   Unavailable: VEHICLE_OPERATIONAL_STATUS.MAINTENANCE,
+  Offboarded: VEHICLE_OPERATIONAL_STATUS.UNKNOWN,
+  Archived: VEHICLE_OPERATIONAL_STATUS.UNKNOWN,
 };
 
 /** Prisma / backend enum tokens → canonical operational status. */

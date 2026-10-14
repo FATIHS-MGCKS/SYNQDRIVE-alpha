@@ -23,11 +23,8 @@ export interface VehicleAttentionSummary {
   reasonCount: number;
 }
 
-export type IntegrationConnectivity =
-  | 'connected'
-  | 'disconnected'
-  | 'error'
-  | 'none';
+export type { IntegrationConnectivity } from './synqdrive-dimo-access.util';
+import type { IntegrationConnectivity } from './synqdrive-dimo-access.util';
 
 export type OwnershipState = 'assigned' | 'unassigned' | 'conflict';
 
@@ -45,6 +42,11 @@ export interface VehicleAttentionInput {
   lastPollStatus: 'SUCCESS' | 'FAILURE' | 'TIMEOUT' | null;
   lastPollAt: string | null;
   mappingConflict: boolean;
+  /**
+   * When false, suppress DIMO/pipeline/telemetry attention that implies active
+   * SynqDrive data access (OFFBOARDED/ARCHIVED/revoked consent).
+   */
+  synqDriveDimoDataAccessActive?: boolean;
 }
 
 export const ATTENTION_REASON_LABELS: Record<string, string> = {
@@ -101,6 +103,8 @@ export function buildVehicleAttention(input: VehicleAttentionInput): VehicleAtte
     });
   };
 
+  const synqDriveDataAccessActive = input.synqDriveDimoDataAccessActive !== false;
+
   if (input.mappingConflict || input.ownership === 'conflict') {
     push('MAPPING_CONFLICT', 'critical', 'registration', 'mapping');
   }
@@ -109,48 +113,50 @@ export function buildVehicleAttention(input: VehicleAttentionInput): VehicleAtte
     push('MISSING_ORG_MAPPING', 'warning', 'dimo_mirror', 'import');
   }
 
-  if (input.integrationConnectivity === 'error') {
-    push('DIMO_AUTH_ERROR', 'critical', 'dimo_connection_status', 'connectivity');
-  } else if (
-    input.registrationState === 'registered' &&
-    input.integrationConnectivity === 'disconnected'
-  ) {
-    push('DIMO_DISCONNECTED', 'warning', 'dimo_connection_status', 'connectivity');
-  }
-
-  if (
-    input.registrationState === 'registered' &&
-    input.telemetryFreshness === 'offline' &&
-    input.telemetryAgeMs != null &&
-    input.telemetryAgeMs >= SEVEN_DAYS_MS
-  ) {
-    push('TELEMETRY_PERSISTENT_OFFLINE', 'warning', 'telemetry_resolver', 'telemetry');
-  }
-
-  if (
-    input.registrationState === 'registered' &&
-    input.telemetryFreshness === 'no_signal' &&
-    input.integrationConnectivity !== 'none'
-  ) {
-    push('TELEMETRY_NO_SIGNAL', 'info', 'telemetry_resolver', 'telemetry');
-  }
-
-  if (!input.platformDimoDegraded) {
-    if (input.lastPollStatus === 'FAILURE' || input.lastPollStatus === 'TIMEOUT') {
-      push(
-        'INGESTION_ERROR',
-        'critical',
-        'dimo_poll_log',
-        'pipeline',
-        null,
-        input.lastPollAt,
-      );
+  if (synqDriveDataAccessActive) {
+    if (input.integrationConnectivity === 'error') {
+      push('DIMO_AUTH_ERROR', 'critical', 'dimo_connection_status', 'connectivity');
     } else if (
-      input.lastPollAt &&
-      Date.now() - Date.parse(input.lastPollAt) > PIPELINE_STALE_MS &&
-      input.integrationConnectivity === 'connected'
+      input.registrationState === 'registered' &&
+      input.integrationConnectivity === 'disconnected'
     ) {
-      push('PIPELINE_STALE', 'warning', 'dimo_poll_log', 'pipeline', null, input.lastPollAt);
+      push('DIMO_DISCONNECTED', 'warning', 'dimo_connection_status', 'connectivity');
+    }
+
+    if (
+      input.registrationState === 'registered' &&
+      input.telemetryFreshness === 'offline' &&
+      input.telemetryAgeMs != null &&
+      input.telemetryAgeMs >= SEVEN_DAYS_MS
+    ) {
+      push('TELEMETRY_PERSISTENT_OFFLINE', 'warning', 'telemetry_resolver', 'telemetry');
+    }
+
+    if (
+      input.registrationState === 'registered' &&
+      input.telemetryFreshness === 'no_signal' &&
+      input.integrationConnectivity !== 'none'
+    ) {
+      push('TELEMETRY_NO_SIGNAL', 'info', 'telemetry_resolver', 'telemetry');
+    }
+
+    if (!input.platformDimoDegraded) {
+      if (input.lastPollStatus === 'FAILURE' || input.lastPollStatus === 'TIMEOUT') {
+        push(
+          'INGESTION_ERROR',
+          'critical',
+          'dimo_poll_log',
+          'pipeline',
+          null,
+          input.lastPollAt,
+        );
+      } else if (
+        input.lastPollAt &&
+        Date.now() - Date.parse(input.lastPollAt) > PIPELINE_STALE_MS &&
+        input.integrationConnectivity === 'connected'
+      ) {
+        push('PIPELINE_STALE', 'warning', 'dimo_poll_log', 'pipeline', null, input.lastPollAt);
+      }
     }
   }
 
@@ -173,18 +179,14 @@ export function deriveIntegrityState(attention: VehicleAttentionSummary): Integr
   return 'attention';
 }
 
-export function deriveIntegrationConnectivity(
-  dimoVehicleId: string | null,
-  connectionStatus: string | null | undefined,
-  platformDimoDegraded: boolean,
-): IntegrationConnectivity {
-  if (!dimoVehicleId) return 'none';
-  if (platformDimoDegraded) return 'error';
-  const status = (connectionStatus ?? '').toUpperCase();
-  if (status === 'CONNECTED') return 'connected';
-  if (status === 'DISCONNECTED') return 'disconnected';
-  return 'error';
-}
+export {
+  buildOperationalDimoAccessContext,
+  deriveIntegrationConnectivity,
+  deriveMirrorIntegrationConnectivity,
+  isSynqDriveDimoDataAccessBlocked,
+  mapProviderMirrorConnectionStatus,
+  type SynqDriveDimoAccessContext,
+} from './synqdrive-dimo-access.util';
 
 export function computeDisplayTitle(
   licensePlate: string | null | undefined,
