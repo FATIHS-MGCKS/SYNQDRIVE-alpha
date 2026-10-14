@@ -232,7 +232,7 @@ export function ConnectedVehicleDetailDrawer({
                   <dd className="mt-1 font-mono text-xs">{detail.mapping.tokenIdMasked ?? '—'}</dd>
                 </div>
                 <div className="rounded-xl border border-border p-3">
-                  <dt className="text-xs text-muted-foreground">DIMO-Spiegel (Provider)</dt>
+                  <dt className="text-xs text-muted-foreground">{t('master.cv.mapping.mirrorProvider')}</dt>
                   <dd className="mt-1 font-mono text-xs">{detail.mapping.connectionStatus ?? '—'}</dd>
                   {detail.mapping.mirrorIntegrationConnectivity ? (
                     <dd className="mt-2">
@@ -247,7 +247,9 @@ export function ConnectedVehicleDetailDrawer({
                   ) : null}
                 </div>
                 <div className="rounded-xl border border-border p-3">
-                  <dt className="text-xs text-muted-foreground">SynqDrive-Zugriff (effektiv)</dt>
+                  <dt className="text-xs text-muted-foreground">
+                    {t('master.cv.mapping.effectiveSynqDriveAccess')}
+                  </dt>
                   <dd className="mt-1">
                     <CvIntegrationChip
                       label={detail.integrationConnectivityLabel}
