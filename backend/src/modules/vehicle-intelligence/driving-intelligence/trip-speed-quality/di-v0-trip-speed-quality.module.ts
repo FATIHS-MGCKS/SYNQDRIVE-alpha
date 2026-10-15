@@ -8,6 +8,7 @@ import {
   DI_V0_P2_AUTO_PROJECTION_V2_BOOTSTRAP,
   DI_V0_P2_AUTO_PROJECTION_V2_CONFIG,
 } from './di-v0-p2-auto-projection-v2.tokens';
+import { DiV0TripSpeedQualityProductReadService } from './di-v0-trip-speed-quality-product-read.service';
 import { DiV0TripSpeedQualityProjectionService } from './di-v0-trip-speed-quality-projection.service';
 
 /**
@@ -18,6 +19,7 @@ import { DiV0TripSpeedQualityProjectionService } from './di-v0-trip-speed-qualit
   imports: [PrismaModule, SchedulerLeaderElectionModule],
   providers: [
     DiV0TripSpeedQualityProjectionService,
+    DiV0TripSpeedQualityProductReadService,
     {
       provide: DI_V0_P2_AUTO_PROJECTION_V2_BOOTSTRAP,
       useFactory: () => resolveDiV0P2AutoProjectionV2Bootstrap(),
@@ -29,6 +31,10 @@ import { DiV0TripSpeedQualityProjectionService } from './di-v0-trip-speed-qualit
     DiV0P2AutoProjectionV2Service,
     DiV0P2AutoProjectionV2Scheduler,
   ],
-  exports: [DiV0TripSpeedQualityProjectionService, DiV0P2AutoProjectionV2Service],
+  exports: [
+    DiV0TripSpeedQualityProjectionService,
+    DiV0TripSpeedQualityProductReadService,
+    DiV0P2AutoProjectionV2Service,
+  ],
 })
 export class DiV0TripSpeedQualityModule {}

@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'exp021-v2-product-read-path-2026-10-15',
+    version: '4.9.2245',
+    title: 'EXP021 — V2 GPS speed evaluation product read + trip detail panel (default OFF)',
+    summary: [
+      'GET /vehicles/:vehicleId/trips/:tripId/gps-speed-evaluation-v2 returns slim DiV0TripGpsSpeedEvaluationProductV1 from CURRENT V2 projection only (readCurrentOpsProjection + tenant/trip guards).',
+      'TripGpsSpeedEvaluationPanel in TripTimelineExpanded; separate gates DI_V0_TRIP_SPEED_QUALITY_V2_PRODUCT_READ_ENABLED and VITE_DI_V0_TRIP_SPEED_QUALITY_V2_PRODUCT_UI_ENABLED.',
+      'Null metrics stay “not available”; stationary intervals shown apart from numeric coverage; no V1-as-V2 or write/provider side effects.',
+    ],
+    reason:
+      'After merged P2 auto-projection (#2028), expose authorized trip-detail read/UI without enabling customer runtime or P2 writes.',
+    previousBehavior:
+      'V2 CURRENT rows ops-only; no customer API or trip detail surface for GPS speed QC.',
+    details:
+      'di-v0-trip-speed-quality-product-read.*, vehicle-intelligence.controller.ts, TripGpsSpeedEvaluationPanel.tsx, EXP021_V2_PRODUCT_READ_PATH.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-15T07:05:00.000Z',
+  },
+  {
     id: 'exp021-p2-auto-projection-v2-2026-10-15',
     version: '4.9.2244',
     title: 'EXP021 — P2 auto V2 trip speed QC after S4 completion (dormant default)',

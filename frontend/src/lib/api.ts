@@ -7286,6 +7286,10 @@ export const api = {
       get<TripRpmCandidatesResponse>(
         `/vehicles/${vehicleId}/trips/${tripId}/rpm-candidates`,
       ),
+    tripGpsSpeedEvaluationV2: (vehicleId: string, tripId: string) =>
+      get<TripGpsSpeedEvaluationProductV1>(
+        `/vehicles/${vehicleId}/trips/${tripId}/gps-speed-evaluation-v2`,
+      ),
     enrichTripBehavior: (vehicleId: string, tripId: string) =>
       post<any>(`/vehicles/${vehicleId}/trips/${tripId}/behavior-enrich`, {}),
     getVehicleDamages: (vehicleId: string) =>
@@ -10230,6 +10234,39 @@ export interface RpmCandidateView {
 export interface TripRpmCandidatesResponse {
   candidates: RpmCandidateView[];
   count: number;
+}
+
+export type TripGpsSpeedEvaluationAvailability =
+  | 'READY'
+  | 'PENDING'
+  | 'UNAVAILABLE'
+  | 'NOT_ASSESSABLE';
+
+export interface TripGpsSpeedEvaluationProductV1 {
+  contractVersion: string;
+  qcPolicyVersion: 'DI_V0_SPEED_QC_POLICY_V2';
+  availability: TripGpsSpeedEvaluationAvailability;
+  assessabilityLevel: 'FULL' | 'PARTIAL' | 'INSUFFICIENT' | 'UNASSESSABLE' | null;
+  limitedAssessability: boolean;
+  coverage: {
+    totalIntervalCount: number;
+    numericCoveragePercent: number | null;
+    trustedNumericCoveragePercent: number | null;
+    trustedLimitedCoveragePercent: number | null;
+    trustedNumericIntervalCount: number;
+    trustedLimitedStationaryIntervalCount: number;
+  } | null;
+  speed: {
+    maxKmh: number | null;
+    maxScope: 'TRUSTED_NUMERIC_INTERVALS' | 'TRUSTED_LIMITED_ONLY' | 'UNAVAILABLE';
+    maxAssessability: string;
+    meanKmh: number | null;
+    meanScope: 'TRUSTED_NUMERIC_INTERVALS_ONLY';
+  } | null;
+  motion: {
+    stationarySupportedIntervalCount: number;
+    movingEstimatedIntervalCount: number;
+  } | null;
 }
 
 export interface VehicleRpmWebhookSummary {

@@ -48,6 +48,7 @@ import { vendorsDirectoryDe } from './vendors.directory.de';
 import { rentalVehicleDocumentsDe } from './rental.vehicleDocuments.de';
 import { rentalDocumentIntakeDe } from './rental.documentIntake.de';
 import { rentalVehicleDamagesDe } from './rental.vehicleDamages.de';
+import { rentalTripGpsSpeedEvaluationDe } from './rental.tripGpsSpeedEvaluation.de';
 import { rentalIamMemberDe } from './rental.iamMember.de';
 import { rentalMisuseStressDe } from './rental.misuseStress.de';
 import { rentalHelpCenterDe } from './rental.helpCenter.de';
@@ -5949,6 +5950,7 @@ export const de: Record<TranslationKey, string> = {
   ...rentalVehicleDocumentsDe,
   ...rentalDocumentIntakeDe,
   ...rentalVehicleDamagesDe,
+  ...rentalTripGpsSpeedEvaluationDe,
   ...rentalIamMemberDe,
   ...rentalMisuseStressDe,
   ...rentalHelpCenterDe,
