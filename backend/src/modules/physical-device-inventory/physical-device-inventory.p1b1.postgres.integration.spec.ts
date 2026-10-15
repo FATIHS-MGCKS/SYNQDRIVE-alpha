@@ -92,7 +92,12 @@ describeLive('PhysicalDeviceInventory P1B.1 (PostgreSQL)', () => {
     orgId: string,
     vehicleId: string,
     serial: string,
-    options?: { inactive?: boolean; identitySerial?: string },
+    options?: {
+      inactive?: boolean;
+      identitySerial?: string;
+      verifiedModality?: string;
+      physicalDeviceReference?: string;
+    },
   ) {
     const dimoId = randomUUID();
     const linkId = randomUUID();
@@ -139,10 +144,11 @@ describeLive('PhysicalDeviceInventory P1B.1 (PostgreSQL)', () => {
             provider: 'DIMO',
             providerVehicleReference: externalId,
             sourceMirrorId: dimoId,
-            proposedModality: 'HARDWARE_DEVICE',
-            verifiedModality: 'HARDWARE_DEVICE',
+            proposedModality: options?.verifiedModality ?? 'HARDWARE_DEVICE',
+            verifiedModality: options?.verifiedModality ?? 'HARDWARE_DEVICE',
             modalityVerification: 'VERIFIED_PROVIDER_EVIDENCE',
-            physicalDeviceReference: options?.identitySerial ?? serial,
+            physicalDeviceReference:
+              options?.physicalDeviceReference ?? options?.identitySerial ?? serial,
             verificationEvidence: [],
             verifiedAt: new Date().toISOString(),
             organizationId: orgId,
@@ -445,6 +451,33 @@ describeLive('PhysicalDeviceInventory P1B.1 (PostgreSQL)', () => {
       response: {
         code: PHYSICAL_DEVICE_IDENTITY_EVIDENCE_INSUFFICIENT,
         reasonCode: 'PROVIDER_CONNECTION_IDENTITY_SERIAL_MISMATCH',
+      },
+    });
+  });
+
+  it('rejects R1 verification when mirror has SOFTWARE_INTEGRATION connection identity', async () => {
+    const serial = `R1-SW-${randomUUID().slice(0, 8)}`;
+    const org = await createOrg();
+    const vehicleId = await createActiveVehicle(org);
+    await attachActiveR1DimoProviderLink(org, vehicleId, serial, {
+      verifiedModality: 'SOFTWARE_INTEGRATION',
+      physicalDeviceReference: 'NOT_APPLICABLE',
+    });
+    const device = await intakeR1(serial, org);
+    await expect(
+      service.verifyIdentity(
+        device.id,
+        {
+          attestationKind: PhysicalDeviceIdentityAttestationKind.PROVIDER_DIMO_SERIAL_RECONCILIATION,
+          providerReconciliationVehicleId: vehicleId,
+          reviewerUserId: 'master-admin',
+        },
+        'master-admin',
+      ),
+    ).rejects.toMatchObject({
+      response: {
+        code: PHYSICAL_DEVICE_IDENTITY_EVIDENCE_INSUFFICIENT,
+        reasonCode: 'PROVIDER_CONNECTION_IDENTITY_MODALITY_NOT_HARDWARE',
       },
     });
   });
