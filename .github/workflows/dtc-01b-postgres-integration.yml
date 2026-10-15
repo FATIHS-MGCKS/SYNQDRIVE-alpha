@@ -22,6 +22,7 @@ permissions:
 
 env:
   NODE_VERSION: '20'
+  CI_PG_CONTAINER: dtc01b-ci-postgres
 
 jobs:
   dtc01b-postgres:
@@ -29,15 +30,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Start ephemeral PostgreSQL
-        run: bash backend/scripts/test/ci-start-postgres.sh
-        env:
-          CI_PG_CONTAINER: dtc01b-ci-postgres
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: backend/package-lock.json
       - name: DTC-01B/01C PostgreSQL integration
-        working-directory: backend
-        run: bash scripts/test/dtc-01b-postgres-ci.sh
+        run: bash backend/scripts/test/dtc-01b-postgres-ci.sh

@@ -5,7 +5,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "${ROOT}"
 
-PG_CONTAINER="${CI_PG_CONTAINER:-dtc01b-ci-postgres}"
+export CI_PG_CONTAINER="${CI_PG_CONTAINER:-dtc01b-ci-postgres}"
+PG_CONTAINER="${CI_PG_CONTAINER}"
 PG_USER="${CI_PG_USER:-synqdrive}"
 PG_PASSWORD="${CI_PG_PASSWORD:-synqdrive}"
 PG_PORT="${CI_PG_PORT:-5432}"
