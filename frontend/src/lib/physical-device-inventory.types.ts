@@ -67,6 +67,46 @@ export type ManualIntakePhysicalDeviceRequest = {
 
 export type ManualIntakePhysicalDeviceResponse = PhysicalDeviceListItemDto;
 
+export type PhysicalDeviceAssignmentHistoryItemDto = {
+  id: string;
+  assignmentKind: string;
+  vehicleId: string | null;
+  organizationId: string | null;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  actorUserId: string | null;
+};
+
+export type PhysicalDeviceAuditHistoryItemDto = {
+  id: string;
+  eventKind: string;
+  createdAt: string;
+  actorUserId: string | null;
+  evidenceSummary: string;
+};
+
+export type PhysicalDeviceDetailDto = PhysicalDeviceListItemDto & {
+  intakeNotes: string | null;
+  identityEvidenceSummary: string | null;
+  assignmentHistory: PhysicalDeviceAssignmentHistoryItemDto[];
+  auditHistory: PhysicalDeviceAuditHistoryItemDto[];
+};
+
+export type VerifyPhysicalDeviceIdentityRequest = {
+  attestationKind: 'PROVIDER_DIMO_SERIAL_RECONCILIATION';
+  providerReconciliationVehicleId?: string;
+  reviewerUserId: string;
+  reviewerNotes?: string;
+  idempotencyKey?: string;
+};
+
+export type InstallPhysicalDeviceRequest = {
+  vehicleId: string;
+  installConfirmation: boolean;
+  idempotencyKey?: string;
+  installNotes?: string;
+};
+
 export type ListPhysicalDevicesQuery = {
   search?: string;
   status?: PhysicalDeviceInventoryStatus;

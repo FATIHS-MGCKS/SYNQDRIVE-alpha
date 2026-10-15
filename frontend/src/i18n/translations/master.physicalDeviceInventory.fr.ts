@@ -42,4 +42,22 @@ export const masterPhysicalDeviceInventoryFr = {
   'master.physicalDeviceInventory.status.RETIRED': 'Retiré',
   'master.physicalDeviceInventory.identity.VERIFIED': 'Vérifié',
   'master.physicalDeviceInventory.identity.NEEDS_CLARIFICATION': 'À clarifier',
+  'master.physicalDeviceInventory.detailTitle': 'Détail de l’appareil',
+  'master.physicalDeviceInventory.currentVehicle': 'Véhicule installé',
+  'master.physicalDeviceInventory.noVehicle': 'Non installé',
+  'master.physicalDeviceInventory.historyTitle': 'Historique',
+  'master.physicalDeviceInventory.verifyTitle': 'Vérifier l’identité de l’appareil',
+  'master.physicalDeviceInventory.verifyDescription':
+    'La vérification exige l’alignement du n° de série avec le miroir DIMO d’un véhicule ACTIVE (R1). Le texte seul ne suffit pas.',
+  'master.physicalDeviceInventory.verifyReconcileVehicle': 'Véhicule de rapprochement fournisseur',
+  'master.physicalDeviceInventory.verifySubmit': 'Confirmer la vérification',
+  'master.physicalDeviceInventory.verifySuccess': 'Identité de l’appareil vérifiée',
+  'master.physicalDeviceInventory.verifyError': 'Échec de la vérification',
+  'master.physicalDeviceInventory.installTitle': 'Installation sur véhicule',
+  'master.physicalDeviceInventory.installVehicle': 'Véhicule cible (ACTIVE)',
+  'master.physicalDeviceInventory.installConfirmLabel':
+    'Je confirme l’installation physique sur ce véhicule',
+  'master.physicalDeviceInventory.installSubmit': 'Enregistrer l’installation',
+  'master.physicalDeviceInventory.installSuccess': 'Installation enregistrée',
+  'master.physicalDeviceInventory.installError': 'Impossible d’enregistrer l’installation',
 };

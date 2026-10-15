@@ -3584,6 +3584,26 @@ export const api = {
           '/admin/physical-device-inventory/devices/manual-intake',
           body,
         ),
+      getDevice: (deviceId: string) =>
+        get<import('./physical-device-inventory.types').PhysicalDeviceDetailDto>(
+          `/admin/physical-device-inventory/devices/${encodeURIComponent(deviceId)}`,
+        ),
+      verifyIdentity: (
+        deviceId: string,
+        body: import('./physical-device-inventory.types').VerifyPhysicalDeviceIdentityRequest,
+      ) =>
+        post<import('./physical-device-inventory.types').PhysicalDeviceListItemDto>(
+          `/admin/physical-device-inventory/devices/${encodeURIComponent(deviceId)}/verify-identity`,
+          body,
+        ),
+      installOnVehicle: (
+        deviceId: string,
+        body: import('./physical-device-inventory.types').InstallPhysicalDeviceRequest,
+      ) =>
+        post<import('./physical-device-inventory.types').PhysicalDeviceListItemDto>(
+          `/admin/physical-device-inventory/devices/${encodeURIComponent(deviceId)}/install`,
+          body,
+        ),
     },
     monitoring: {
       summary: (params?: { from?: string; to?: string }) =>

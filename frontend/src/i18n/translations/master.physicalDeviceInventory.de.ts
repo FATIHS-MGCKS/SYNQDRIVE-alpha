@@ -42,4 +42,22 @@ export const masterPhysicalDeviceInventoryDe = {
   'master.physicalDeviceInventory.status.RETIRED': 'Ausgemustert',
   'master.physicalDeviceInventory.identity.VERIFIED': 'Verifiziert',
   'master.physicalDeviceInventory.identity.NEEDS_CLARIFICATION': 'Klärungsbedarf',
+  'master.physicalDeviceInventory.detailTitle': 'Gerätedetails',
+  'master.physicalDeviceInventory.currentVehicle': 'Eingebautes Fahrzeug',
+  'master.physicalDeviceInventory.noVehicle': 'Nicht eingebaut',
+  'master.physicalDeviceInventory.historyTitle': 'Verlauf',
+  'master.physicalDeviceInventory.verifyTitle': 'Geräteidentität verifizieren',
+  'master.physicalDeviceInventory.verifyDescription':
+    'Verifizierung erfordert Abgleich der Seriennummer mit DIMO-Spiegeldaten eines ACTIVE-Fahrzeugs (R1). Freitext allein reicht nicht.',
+  'master.physicalDeviceInventory.verifyReconcileVehicle': 'Fahrzeug für Provider-Abgleich',
+  'master.physicalDeviceInventory.verifySubmit': 'Verifizierung bestätigen',
+  'master.physicalDeviceInventory.verifySuccess': 'Geräteidentität verifiziert',
+  'master.physicalDeviceInventory.verifyError': 'Verifizierung fehlgeschlagen',
+  'master.physicalDeviceInventory.installTitle': 'Einbau auf Fahrzeug',
+  'master.physicalDeviceInventory.installVehicle': 'Zielfahrzeug (ACTIVE)',
+  'master.physicalDeviceInventory.installConfirmLabel':
+    'Ich bestätige den physischen Einbau auf diesem Fahrzeug',
+  'master.physicalDeviceInventory.installSubmit': 'Einbau erfassen',
+  'master.physicalDeviceInventory.installSuccess': 'Physischer Einbau erfasst',
+  'master.physicalDeviceInventory.installError': 'Einbau konnte nicht erfasst werden',
 };
