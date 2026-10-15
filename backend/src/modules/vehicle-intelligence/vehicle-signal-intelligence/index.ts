@@ -1,5 +1,5 @@
 /**
- * Vehicle Signal Intelligence — VSI-02 contracts + VSI-03 P1 read-only composer.
+ * Vehicle Signal Intelligence — VSI-02 contracts, VSI-03 composer, P0+P1 signal profiles.
  */
 
 export {
@@ -71,3 +71,13 @@ export {
   projectVsiEvidenceForApdsReadonlyCorrelation,
   type VsiApdsReadonlyAdapterView,
 } from './vsi-apds-consumer.adapter.contract';
+
+export {
+  VSI_PROFILE_CONTRACT_VERSION,
+  VSI_PROFILE_MATERIALIZATION_KEYS,
+  type VsiProfileEvaluationResult,
+  type VsiProfileSignalSnapshotV1,
+} from './vsi-profile.types';
+export { VsiDeclaredCatalogResolver } from './vsi-declared-catalog.resolver';
+export { evaluateVsiSignalProfile } from './vsi-profile-evaluator';
+export { VsiSignalProfileMaterializationService } from './vsi-profile-materialization.service';

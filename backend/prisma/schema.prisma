@@ -1660,6 +1660,7 @@ model Organization {
   physicalDeviceAssignments                                 PhysicalDeviceAssignment[]
   vehicleProviderSourceObservations                         VehicleProviderSourceObservation[]
   vehicleProviderSourceObservationCounters                  VehicleProviderSourceObservationCounter[]
+  vehicleSignalCapabilityProfiles                           VehicleSignalCapabilityProfile[]
   apdShadowReconciliationDecisions                          ApdShadowReconciliationDecision[]
   apdShadowActivationEpochs                                 ApdShadowActivationEpoch[]
   vehicleOnboardingCases                                    VehicleOnboardingCase[]
@@ -3041,6 +3042,7 @@ model Vehicle {
   pollLogs                               DimoPollLog[]
   vehicleProviderSourceObservations    VehicleProviderSourceObservation[]
   vehicleProviderSourceObservationCounters VehicleProviderSourceObservationCounter[]
+  vehicleSignalCapabilityProfiles          VehicleSignalCapabilityProfile[]
   apdShadowReconciliationDecisions       ApdShadowReconciliationDecision[]
   bookings                               Booking[]
   handoverProtocols                      BookingHandoverProtocol[]
@@ -4485,6 +4487,37 @@ model VehicleProviderSourceObservation {
   @@index([vehicleId, providerFetchedAt(sort: Desc)])
   @@index([fetchCorrelationId])
   @@map("vehicle_provider_source_observations")
+}
+
+/// VSI P0+P1 — durable per-link signal capability profile (declared vs observed).
+model VehicleSignalCapabilityProfile {
+  id                              String    @id @default(uuid())
+  organizationId                  String    @map("organization_id")
+  vehicleId                       String    @map("vehicle_id")
+  providerSourceLinkId            String    @map("provider_source_link_id")
+  providerIdentity                String    @map("provider_identity")
+  verifiedModality                String?   @map("verified_modality")
+  telemetrySourceFamily           String?   @map("telemetry_source_family")
+  profileContractVersion          String    @map("profile_contract_version")
+  profileRevision                 Int       @default(1) @map("profile_revision")
+  contentFingerprint              String    @map("content_fingerprint")
+  evaluatedAt                     DateTime  @map("evaluated_at") @db.Timestamptz(3)
+  declaredCatalogCheckedAt        DateTime? @map("declared_catalog_checked_at") @db.Timestamptz(3)
+  lastMaterializedSourceTimestamp DateTime? @map("last_materialized_source_timestamp") @db.Timestamptz(3)
+  lastMaterializedProviderFetchAt DateTime? @map("last_materialized_provider_fetch_at") @db.Timestamptz(3)
+  lastProvenStrictSourceAdvanceAt DateTime? @map("last_proven_strict_source_advance_at") @db.Timestamptz(3)
+  signalsSnapshot                 Json      @map("signals_snapshot")
+  profileLimitations              Json      @default("[]") @map("profile_limitations")
+  createdAt                       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [organizationId, vehicleId], references: [organizationId, id], onDelete: Cascade)
+
+  @@unique([organizationId, vehicleId, providerSourceLinkId], map: "vehicle_signal_capability_profiles_scope_key")
+  @@index([organizationId, vehicleId])
+  @@index([vehicleId, evaluatedAt(sort: Desc)])
+  @@map("vehicle_signal_capability_profiles")
 }
 
 enum ApdShadowActivationEpochLifecycle {

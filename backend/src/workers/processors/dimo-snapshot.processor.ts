@@ -51,6 +51,7 @@ import {
   buildDimoSnapshotVlsApplicationIdempotencyKey,
   VsiProviderSourceObservationWriterService,
 } from '@modules/vehicle-intelligence/vehicle-signal-intelligence/vsi-provider-source-observation.writer.service';
+import { VsiSignalProfileMaterializationService } from '@modules/vehicle-intelligence/vehicle-signal-intelligence/vsi-profile-materialization.service';
 
 export type { DimoSnapshotJobData };
 
@@ -95,6 +96,8 @@ export class DimoSnapshotProcessor extends WorkerHost {
     private readonly apdShadow?: AdaptivePollingShadowService,
     @Optional()
     private readonly vsiSourceObservationWriter?: VsiProviderSourceObservationWriterService,
+    @Optional()
+    private readonly vsiProfileMaterialization?: VsiSignalProfileMaterializationService,
   ) {
     super();
   }
@@ -452,6 +455,21 @@ export class DimoSnapshotProcessor extends WorkerHost {
           idempotencyKey: buildDimoSnapshotVlsApplicationIdempotencyKey(fetchCorrelationId),
         });
       }
+
+      void this.vsiProfileMaterialization
+        ?.materializeFromPersistedEvidence({
+          organizationId: vehicle.organizationId,
+          vehicleId,
+          providerSourceLinkId: providerBindingId,
+          requireBindingMatch: true,
+        })
+        .catch((err) =>
+          this.logger.warn(
+            `VSI profile materialization failed vehicle=${vehicleId}: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          ),
+        );
 
       await this.applyPhysicalSnapshotEvidence({
         organizationId: vehicle.organizationId,
