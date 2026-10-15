@@ -4,10 +4,24 @@
 
 | Env | Purpose |
 |-----|---------|
-| `VSI03_P2C_SOURCE_OBSERVATION_CAPTURE_ENABLED=true` | Append observations from `DimoSnapshotProcessor` |
+| `VSI03_P2C_SOURCE_OBSERVATION_CAPTURE_ENABLED=true` | Master switch — required but **not sufficient** alone (P2D) |
+| `VSI03_P2C_CAPTURE_PILOT_ALLOWLIST_ENABLED=true` | Pilot allowlist gate — required with capture flag |
+| `VSI03_P2C_CAPTURE_PILOT_ALLOWLIST_JSON` | JSON document `{ "version": 1, "entries": [{ "organizationId", "vehicleId" }] }` |
 | `VSI03_P2C_STRICT_ADVANCE_FROM_OBSERVATIONS_ENABLED=true` | Composer reads observations for `strictSourceAdvanced` |
 
-Do not enable in production without owner approval and migration apply.
+### P2D fail-closed capture admission
+
+Capture writes occur only when **all** hold:
+
+1. `VSI03_P2C_SOURCE_OBSERVATION_CAPTURE_ENABLED=true`
+2. `VSI03_P2C_CAPTURE_PILOT_ALLOWLIST_ENABLED=true`
+3. Valid non-empty allowlist JSON (schema version `1`, UUID org+vehicle entries)
+4. Request `organizationId` + `vehicleId` is an exact allowlist pair
+5. Vehicle `registryLifecycle=ACTIVE` and an active, non-superseded `vehicle_data_source_links` row matches `providerBindingId`
+
+Malformed or missing allowlist configuration denies **all** vehicles even if the capture flag is true.
+
+Do not enable in production without owner approval, migration apply, and operator runbook (`docs/runbooks/vsi03-p2d-capture-pilot-activation.md`).
 
 ## Data model
 

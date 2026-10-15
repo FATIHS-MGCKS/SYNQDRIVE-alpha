@@ -5,7 +5,8 @@ import {
   VehicleProviderSourceTimestampProvenance,
 } from '@prisma/client';
 import { PrismaService } from '../../../shared/database/prisma.service';
-import { isVsi03P2cSourceObservationCaptureEnabled } from './vsi03-p2c.config';
+import { evaluateVsi03P2cCaptureAdmission } from './vsi03-p2c-capture-allowlist';
+import { assertVsi03P2cCaptureEligibility } from './vsi03-p2c-capture-eligibility';
 import { allocateObservationIndexAtomic } from './vsi-provider-source-observation.counter-allocation';
 import {
   buildProviderSourceObservationScope,
@@ -57,7 +58,24 @@ export class VsiProviderSourceObservationWriterService {
   async recordProviderFetch(
     input: RecordProviderFetchObservationInput,
   ): Promise<{ observationIndex: bigint } | null> {
-    if (!isVsi03P2cSourceObservationCaptureEnabled()) {
+    const admission = evaluateVsi03P2cCaptureAdmission({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+    });
+    if (!admission.admitted) {
+      return null;
+    }
+
+    const eligibility = await assertVsi03P2cCaptureEligibility(this.prisma, {
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      provider: input.provider,
+      providerBindingId: input.providerBindingId,
+    });
+    if (!eligibility.eligible) {
+      this.logger.debug(
+        `VSI P2C capture abstain eligibility=${eligibility.reason} vehicle=${input.vehicleId}`,
+      );
       return null;
     }
 
@@ -123,7 +141,21 @@ export class VsiProviderSourceObservationWriterService {
   }
 
   async recordVlsApplication(input: RecordVlsApplicationObservationInput): Promise<void> {
-    if (!isVsi03P2cSourceObservationCaptureEnabled()) {
+    const admission = evaluateVsi03P2cCaptureAdmission({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+    });
+    if (!admission.admitted) {
+      return;
+    }
+
+    const eligibility = await assertVsi03P2cCaptureEligibility(this.prisma, {
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      provider: input.provider,
+      providerBindingId: input.providerBindingId,
+    });
+    if (!eligibility.eligible) {
       return;
     }
 

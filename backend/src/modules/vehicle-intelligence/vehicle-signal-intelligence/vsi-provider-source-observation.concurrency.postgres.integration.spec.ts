@@ -14,6 +14,10 @@ import {
   cleanupVsiP2cObservationFixture,
   createVsiP2cObservationFixture,
 } from './vsi-p2c-postgres.fixture';
+import {
+  applyVsi03P2cCapturePilotEnv,
+  clearVsi03P2cCapturePilotEnv,
+} from './vsi03-p2c-capture-test-env';
 
 const LIVE = process.env.VSI03_READONLY_COMPOSER_PG === '1';
 
@@ -27,7 +31,6 @@ const LIVE = process.env.VSI03_READONLY_COMPOSER_PG === '1';
 
     beforeAll(() => {
       assertVsi03DisposablePostgresTarget();
-      process.env.VSI03_P2C_SOURCE_OBSERVATION_CAPTURE_ENABLED = 'true';
     });
 
     afterEach(async () => {
@@ -40,13 +43,17 @@ const LIVE = process.env.VSI03_READONLY_COMPOSER_PG === '1';
     });
 
     afterAll(async () => {
-      delete process.env.VSI03_P2C_SOURCE_OBSERVATION_CAPTURE_ENABLED;
+      clearVsi03P2cCapturePilotEnv();
       await prisma.$disconnect();
     });
 
     it('parallel recordProviderFetch on disposable fixture scope', async () => {
       const f = await createVsiP2cObservationFixture(prisma);
       orgIds.push(f.organizationId);
+      applyVsi03P2cCapturePilotEnv({
+        organizationId: f.organizationId,
+        vehicleId: f.vehicleId,
+      });
 
       const results = await Promise.all(
         [0, 1, 2, 3].map((attempt) =>

@@ -23,6 +23,10 @@ import {
 } from './vsi-p2c-postgres.fixture';
 import { evaluateStrictSourceAdvanceFromObservations } from './vsi-strict-source-advance.resolver';
 import { VsiStrictSourceAdvanceService } from './vsi-strict-source-advance.service';
+import {
+  applyVsi03P2cCapturePilotEnv,
+  clearVsi03P2cCapturePilotEnv,
+} from './vsi03-p2c-capture-test-env';
 
 const LIVE = process.env.VSI03_READONLY_COMPOSER_PG === '1';
 
@@ -88,7 +92,6 @@ async function insertFetchRow(
 
   beforeAll(() => {
     assertVsi03DisposablePostgresTarget();
-    process.env.VSI03_P2C_SOURCE_OBSERVATION_CAPTURE_ENABLED = 'true';
     process.env.VSI03_P2C_STRICT_ADVANCE_FROM_OBSERVATIONS_ENABLED = 'true';
   });
 
@@ -102,7 +105,7 @@ async function insertFetchRow(
   });
 
   afterAll(async () => {
-    delete process.env.VSI03_P2C_SOURCE_OBSERVATION_CAPTURE_ENABLED;
+    clearVsi03P2cCapturePilotEnv();
     delete process.env.VSI03_P2C_STRICT_ADVANCE_FROM_OBSERVATIONS_ENABLED;
     await prisma.$disconnect();
   });
@@ -110,6 +113,10 @@ async function insertFetchRow(
   async function freshFixture(): Promise<VsiP2cObservationFixture> {
     const f = await createVsiP2cObservationFixture(prisma);
     orgIds.push(f.organizationId);
+    applyVsi03P2cCapturePilotEnv({
+      organizationId: f.organizationId,
+      vehicleId: f.vehicleId,
+    });
     return f;
   }
 
@@ -688,7 +695,7 @@ async function insertFetchRow(
 
   it('13 capture flag OFF is runtime no-op', async () => {
     const f = await freshFixture();
-    delete process.env.VSI03_P2C_SOURCE_OBSERVATION_CAPTURE_ENABLED;
+    clearVsi03P2cCapturePilotEnv();
     const noopWriter = new VsiProviderSourceObservationWriterService(prisma as never);
     const result = await noopWriter.recordProviderFetch({
       organizationId: f.organizationId,
@@ -709,7 +716,10 @@ async function insertFetchRow(
       where: { vehicleId: f.vehicleId },
     });
     expect(count).toBe(0);
-    process.env.VSI03_P2C_SOURCE_OBSERVATION_CAPTURE_ENABLED = 'true';
+    applyVsi03P2cCapturePilotEnv({
+      organizationId: f.organizationId,
+      vehicleId: f.vehicleId,
+    });
   });
 
   it('records fetch then VLS application for same correlation', async () => {
