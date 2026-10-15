@@ -13,6 +13,12 @@ import { QUEUE_NAMES } from '../queues/queue-names';
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
 import { buildDtcPollVehicleJobId } from './dimo-dtc-queue.util';
 import { runWithDimoRequestContext } from '@modules/dimo/provider-budget/dimo-request-context';
+import { isDtc01aSafetyFoundationEnabled } from '@modules/vehicle-intelligence/dtc/snapshot/dtc-01a.config';
+import { DtcSnapshotApplyService } from '@modules/vehicle-intelligence/dtc/snapshot/dtc-snapshot-apply.service';
+import { evaluateDtcPollEligibility } from '@modules/vehicle-intelligence/dtc/snapshot/dtc-snapshot-eligibility';
+import { buildPollSignalsLatestProposal } from '@modules/vehicle-intelligence/dtc/snapshot/dtc-snapshot-proposal.builder';
+import { resolveActiveDimoBindingForVehicle } from '@modules/vehicle-intelligence/dtc/snapshot/dtc-snapshot-binding.util';
+import { requireDtcSnapshotApplyService } from '@modules/vehicle-intelligence/dtc/snapshot/dtc-fail-closed';
 
 // Supported job names on the DTC queue:
 //   dtc-poll         — legacy full-fleet scan (still works, but fans out)
@@ -32,6 +38,7 @@ export class DimoDtcProcessor extends WorkerHost {
     private readonly dtcService: DtcService,
     @InjectQueue(QUEUE_NAMES.DTC_POLL) private readonly queue: Queue,
     @Optional() private readonly notificationIngest?: NotificationProducerIngestService,
+    @Optional() private readonly dtcSnapshotApply?: DtcSnapshotApplyService,
   ) {
     super();
   }
@@ -51,29 +58,52 @@ export class DimoDtcProcessor extends WorkerHost {
       return;
     }
 
-    // Fan-out: enqueue one dtc-poll-vehicle job per vehicle instead of processing
-    // the full fleet inline. This keeps a single job from blocking the worker
-    // and allows BullMQ concurrency + retry to handle per-vehicle failures.
     if (!canEnqueueQueue(this.logger, 'dtc-poll-fanout')) return;
 
     this.logger.log('Starting DTC poll fan-out');
 
     const vehicles = await this.prisma.vehicle.findMany({
       where: { dimoVehicle: { isNot: null } },
-      select: { id: true, dimoVehicle: { select: { tokenId: true } } },
+      select: {
+        id: true,
+        registryLifecycle: true,
+        dimoVehicleId: true,
+        dimoVehicle: { select: { tokenId: true } },
+      },
     });
 
-    const pollBucket = Math.floor(Date.now() / (3 * 3600_000)); // 3h bucket aligned with scheduler
+    const pollBucket = Math.floor(Date.now() / (3 * 3600_000));
     let enqueued = 0;
+    const dtc01a = isDtc01aSafetyFoundationEnabled();
+
     for (const vehicle of vehicles) {
       const tokenId = vehicle.dimoVehicle?.tokenId;
       if (!tokenId) continue;
+
+      if (dtc01a) {
+        const link = await this.prisma.vehicleDataSourceLink.findFirst({
+          where: { vehicleId: vehicle.id, provider: 'DIMO', isActive: true },
+          select: { id: true, isActive: true, dimoVehicleId: true },
+        });
+        const eligibility = evaluateDtcPollEligibility({
+          registryLifecycle: vehicle.registryLifecycle,
+          dimoTokenId: tokenId,
+          activeDimoLink: link,
+          vehicleDimoVehicleId: vehicle.dimoVehicleId,
+        });
+        if (!eligibility.eligible) {
+          this.logger.debug(
+            `DTC fan-out skip vehicle=${vehicle.id} reason=${eligibility.reason}`,
+          );
+          continue;
+        }
+      }
+
       await this.queue.add(
         DTC_JOB_SINGLE,
         { vehicleId: vehicle.id, tokenId },
         {
           jobId: buildDtcPollVehicleJobId(vehicle.id, pollBucket),
-          // Per-vehicle retention so a single flaky vehicle doesn't fill Redis.
           removeOnComplete: { count: 100, age: 24 * 3600 },
           removeOnFail: { count: 500, age: 7 * 24 * 3600 },
         },
@@ -86,14 +116,143 @@ export class DimoDtcProcessor extends WorkerHost {
     );
   }
 
-  // ── Per-vehicle poll ───────────────────────────────────────────────
+  private async pollVehicleDtc(vehicleId: string, tokenId: number): Promise<void> {
+    const fetchObservedAt = new Date();
+    const auditRef = `dtc-poll:${vehicleId}:${fetchObservedAt.getTime()}`;
 
-  private async pollVehicleDtc(
+    if (isDtc01aSafetyFoundationEnabled()) {
+      await this.pollVehicleDtc01a(vehicleId, tokenId, fetchObservedAt, auditRef);
+      return;
+    }
+
+    await this.pollVehicleDtcLegacy(vehicleId, tokenId, fetchObservedAt);
+  }
+
+  private async pollVehicleDtc01a(
     vehicleId: string,
     tokenId: number,
+    fetchObservedAt: Date,
+    auditRef: string,
   ): Promise<void> {
-    const now = new Date();
+    const snapshotApply = requireDtcSnapshotApplyService(
+      this.dtcSnapshotApply,
+      'DimoDtcProcessor.pollVehicleDtc01a',
+    );
 
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: {
+        organizationId: true,
+        registryLifecycle: true,
+        dimoVehicleId: true,
+      },
+    });
+    if (!vehicle) return;
+
+    const link = await this.prisma.vehicleDataSourceLink.findFirst({
+      where: { vehicleId, provider: 'DIMO', isActive: true },
+      select: { id: true, isActive: true, dimoVehicleId: true },
+    });
+    const eligibility = evaluateDtcPollEligibility({
+      registryLifecycle: vehicle.registryLifecycle,
+      dimoTokenId: tokenId,
+      activeDimoLink: link,
+      vehicleDimoVehicleId: vehicle.dimoVehicleId,
+    });
+    if (!eligibility.eligible) {
+      await snapshotApply.recordSkippedPoll({
+        vehicleId,
+        organizationId: vehicle.organizationId,
+        fetchObservedAt,
+        reason: eligibility.reason,
+        auditRef,
+      });
+      return;
+    }
+
+    try {
+      const jwt = await this.auth.getVehicleJwt(tokenId);
+      if (!jwt) {
+        await snapshotApply.recordRejectedFetchMetadata({
+          vehicleId,
+          fetchObservedAt,
+          pollStatus: 'failure',
+          pollError: 'NO_VEHICLE_JWT',
+          auditRef,
+        });
+        return;
+      }
+
+      const query = `
+        query {
+          signalsLatest(tokenId: ${tokenId}) {
+            obdDTCList { timestamp value }
+          }
+        }
+      `;
+      const result = await this.telemetry.queryGraphQL(jwt, query, undefined, {
+        organizationId: vehicle.organizationId,
+        vehicleId,
+        tokenId,
+      });
+
+      const binding = await resolveActiveDimoBindingForVehicle(
+        this.prisma,
+        vehicleId,
+        tokenId,
+      );
+      if (!binding) {
+        await snapshotApply.recordRejectedFetchMetadata({
+          vehicleId,
+          fetchObservedAt,
+          pollStatus: 'failure',
+          pollError: 'NO_ACTIVE_DIMO_BINDING',
+          auditRef,
+        });
+        return;
+      }
+
+      const dtcSignal = result?.data?.signalsLatest?.obdDTCList ?? null;
+      const built = buildPollSignalsLatestProposal({
+        vehicleId,
+        organizationId: vehicle.organizationId,
+        binding,
+        fetchObservedAt,
+        auditRef,
+        obdDtcListSignal: dtcSignal,
+      });
+
+      if (!built.ok) {
+        await snapshotApply.recordRejectedFetchMetadata({
+          vehicleId,
+          fetchObservedAt,
+          pollStatus: 'rejected_snapshot',
+          pollError: `${built.outcome}:${built.reason}`,
+          auditRef,
+        });
+        return;
+      }
+
+      await snapshotApply.applyBuiltProposal(built);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      const is403 = errorMessage.includes('403');
+      await snapshotApply.recordRejectedFetchMetadata({
+        vehicleId,
+        fetchObservedAt,
+        pollStatus: is403 ? 'auth_denied' : 'failure',
+        pollError: errorMessage.slice(0, 500),
+        auditRef,
+      });
+      this.logger.warn(`DTC-01A poll failed vehicleId=${vehicleId} error=${errorMessage}`);
+    }
+  }
+
+  private async pollVehicleDtcLegacy(
+    vehicleId: string,
+    tokenId: number,
+    now: Date,
+  ): Promise<void> {
     try {
       const jwt = await this.auth.getVehicleJwt(tokenId);
       if (!jwt) {
@@ -106,7 +265,6 @@ export class DimoDtcProcessor extends WorkerHost {
         select: { organizationId: true },
       });
 
-      // Fetch latest obdDTCList signal via DIMO signalsLatest (SignalCollection format)
       const query = `
         query {
           signalsLatest(tokenId: ${tokenId}) {
@@ -120,13 +278,9 @@ export class DimoDtcProcessor extends WorkerHost {
         tokenId,
       });
 
-      // SignalCollection returns obdDTCList as { timestamp, value } object, not a row array
       const dtcSignal = result?.data?.signalsLatest?.obdDTCList ?? null;
-
-      // Normalize: DIMO may return a comma-joined string or an array
       const newCodes: string[] = normalizeDtcCodes(dtcSignal?.value);
 
-      // ── Diff against currently-active codes ──────────────────────
       const previousActive = await this.prisma.vehicleDtcEvent.findMany({
         where: { vehicleId, isActive: true },
         select: { dtcCode: true },
@@ -140,22 +294,17 @@ export class DimoDtcProcessor extends WorkerHost {
         organizationId: vehicle?.organizationId ?? null,
       };
 
-      // Upsert codes that are present in the new poll
       for (const code of newCodes) {
         await this.dtcService.upsertDtc(vehicleId, code, { producerContext });
       }
 
-      // Clear codes that were active but are no longer present
       for (const code of previousCodes) {
         if (!newCodeSet.has(code)) {
           await this.dtcService.clearDtc(vehicleId, code, { producerContext });
-          this.logger.log(
-            `DTC cleared: vehicleId=${vehicleId} code=${code}`,
-          );
+          this.logger.log(`DTC cleared: vehicleId=${vehicleId} code=${code}`);
         }
       }
 
-      // ── Update latest state — success path ───────────────────────
       await this.prisma.vehicleLatestState.updateMany({
         where: { vehicleId },
         data: {
@@ -173,15 +322,10 @@ export class DimoDtcProcessor extends WorkerHost {
         `DTC poll success: vehicleId=${vehicleId} active=${newCodes.length}`,
       );
     } catch (err: any) {
-      const errorMessage =
-        err instanceof Error ? err.message : String(err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
 
-      this.logger.warn(
-        `DTC poll failed: vehicleId=${vehicleId} error=${errorMessage}`,
-      );
+      this.logger.warn(`DTC poll failed: vehicleId=${vehicleId} error=${errorMessage}`);
 
-      // On failure: record poll metadata only.
-      // Do NOT touch DTC events or lastDtcSuccessfulCheckAt.
       await this.prisma.vehicleLatestState
         .updateMany({
           where: { vehicleId },
@@ -192,7 +336,8 @@ export class DimoDtcProcessor extends WorkerHost {
           },
         })
         .catch((secondaryErr) => {
-          const msg = secondaryErr instanceof Error ? secondaryErr.message : String(secondaryErr);
+          const msg =
+            secondaryErr instanceof Error ? secondaryErr.message : String(secondaryErr);
           this.logger.warn(
             `DTC poll-failure metadata update also failed: vehicleId=${vehicleId} error=${msg}`,
           );
@@ -255,5 +400,4 @@ export class DimoDtcProcessor extends WorkerHost {
       );
     }
   }
-
 }

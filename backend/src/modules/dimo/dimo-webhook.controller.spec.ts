@@ -53,6 +53,7 @@ function makeController(overrides?: {
     deviceConnectionInbox as never,
     rpmWebhookCandidate as never,
     snapshotWakeIntake as never,
+    undefined,
   );
   return { controller, prisma, deviceConnection, deviceConnectionInbox, rpmWebhookCandidate, snapshotWakeIntake, dtcService };
 }

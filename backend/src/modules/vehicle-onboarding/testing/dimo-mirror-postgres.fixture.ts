@@ -18,17 +18,20 @@ export async function insertDimoMirrorForPostgresTests(
     id: string;
     externalId: string;
     vin?: string | null;
+    tokenId?: number | null;
     rawJson?: object;
   },
 ): Promise<void> {
   const raw = JSON.stringify(input.rawJson ?? DEFAULT_DIMO_RAW_JSON);
+  const tokenId = input.tokenId ?? null;
   await prisma.$executeRaw`
     INSERT INTO dimo_vehicles (
-      id, external_id, vin, make, model, year, fuel_type, connection_status, raw_json, created_at, updated_at
+      id, external_id, token_id, vin, make, model, year, fuel_type, connection_status, raw_json, created_at, updated_at
     )
     VALUES (
       ${input.id}::uuid,
       ${input.externalId},
+      ${tokenId},
       ${input.vin ?? null},
       'Audi',
       'A3',

@@ -11,12 +11,18 @@ import {
   HttpCode,
   ServiceUnavailableException,
   Inject,
+  Optional,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { ConfigType } from '@nestjs/config';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DtcService } from '../vehicle-intelligence/dtc/dtc.service';
 import { normalizeDtcCodes } from '../vehicle-intelligence/dtc/dtc-code-normalizer.util';
+import { isDtc01aSafetyFoundationEnabled } from '../vehicle-intelligence/dtc/snapshot/dtc-01a.config';
+import { DtcSnapshotApplyService } from '../vehicle-intelligence/dtc/snapshot/dtc-snapshot-apply.service';
+import { buildWebhookObdDtcProposal } from '../vehicle-intelligence/dtc/snapshot/dtc-snapshot-proposal.builder';
+import { resolveActiveDimoBindingForVehicle } from '../vehicle-intelligence/dtc/snapshot/dtc-snapshot-binding.util';
+import { assertDtcSnapshotApplyWired } from '../vehicle-intelligence/dtc/snapshot/dtc-fail-closed';
 import { DeviceConnectionWebhookService } from './device-connection-webhook.service';
 import { DeviceConnectionWebhookInboxService } from './device-connection-webhook-inbox.service';
 import {
@@ -49,6 +55,7 @@ export class DimoWebhookController {
     private readonly deviceConnectionInbox: DeviceConnectionWebhookInboxService,
     private readonly rpmWebhookCandidate: RpmWebhookCandidateService,
     private readonly snapshotWakeIntake: SnapshotWakeIntakeService,
+    @Optional() private readonly dtcSnapshotApply?: DtcSnapshotApplyService,
   ) {
     if (!this.resolveVerificationToken() && !this.allowUnsignedInDev) {
       this.logger.error(
@@ -200,7 +207,7 @@ export class DimoWebhookController {
     }
 
     if (signalName === 'obdDTCList' && value) {
-      await this.handleDtcEvent(vehicle.id, value);
+      await this.handleDtcEvent(vehicle.id, tokenId, value, timestamp);
       return { status: 'processed', type: 'dtc' };
     }
 
@@ -281,7 +288,18 @@ export class DimoWebhookController {
     };
   }
 
-  private async handleDtcEvent(vehicleId: string, dtcValue: any) {
+  private async handleDtcEvent(
+    vehicleId: string,
+    tokenId: number,
+    dtcValue: unknown,
+    webhookTimestamp: string | null,
+  ) {
+    if (isDtc01aSafetyFoundationEnabled()) {
+      assertDtcSnapshotApplyWired(true, this.dtcSnapshotApply, 'DimoWebhookController.handleDtcEvent');
+      await this.handleDtcEvent01a(vehicleId, tokenId, dtcValue, webhookTimestamp);
+      return;
+    }
+
     const codes = normalizeDtcCodes(dtcValue);
     const newCodeSet = new Set(codes);
 
@@ -325,5 +343,64 @@ export class DimoWebhookController {
         dtcPollError: null,
       },
     });
+  }
+
+  private async handleDtcEvent01a(
+    vehicleId: string,
+    tokenId: number,
+    dtcValue: unknown,
+    webhookTimestamp: string | null,
+  ): Promise<void> {
+    const fetchObservedAt = new Date();
+    const auditRef = `dtc-webhook:${vehicleId}:${fetchObservedAt.getTime()}`;
+
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { organizationId: true, registryLifecycle: true },
+    });
+    if (!vehicle) return;
+    if ((vehicle.registryLifecycle ?? 'ACTIVE').toUpperCase() === 'OFFBOARDED') {
+      this.logger.log(`DTC webhook ignored offboarded vehicle=${vehicleId}`);
+      return;
+    }
+
+    const binding = await resolveActiveDimoBindingForVehicle(
+      this.prisma,
+      vehicleId,
+      tokenId,
+    );
+    if (!binding) {
+      await this.dtcSnapshotApply!.recordRejectedFetchMetadata({
+        vehicleId,
+        fetchObservedAt,
+        pollStatus: 'rejected_snapshot',
+        pollError: 'NO_ACTIVE_DIMO_BINDING',
+        auditRef,
+      });
+      return;
+    }
+
+    const built = buildWebhookObdDtcProposal({
+      vehicleId,
+      organizationId: vehicle.organizationId,
+      binding,
+      fetchObservedAt,
+      auditRef,
+      value: dtcValue,
+      webhookTimestamp,
+    });
+
+    if (!built.ok) {
+      await this.dtcSnapshotApply!.recordRejectedFetchMetadata({
+        vehicleId,
+        fetchObservedAt,
+        pollStatus: 'rejected_snapshot',
+        pollError: `${built.outcome}:${built.reason}`,
+        auditRef,
+      });
+      return;
+    }
+
+    await this.dtcSnapshotApply!.applyBuiltProposal(built);
   }
 }

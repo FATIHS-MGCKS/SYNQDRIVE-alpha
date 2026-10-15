@@ -1,0 +1,39 @@
+name: DTC-01B PostgreSQL integration
+
+on:
+  pull_request:
+    paths:
+      - 'backend/prisma/schema.prisma'
+      - 'backend/prisma/migrations/**'
+      - 'backend/src/modules/vehicle-intelligence/dtc/**'
+      - 'backend/scripts/test/dtc-01b-postgres-ci.sh'
+      - 'backend/scripts/test/ci-start-postgres.sh'
+      - 'backend/package.json'
+      - 'backend/package-lock.json'
+      - '.github/workflows/dtc-01b-postgres-integration.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: dtc-01b-postgres-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '20'
+  CI_PG_CONTAINER: dtc01b-ci-postgres
+
+jobs:
+  dtc01b-postgres:
+    name: DTC-01B disposable PostgreSQL certification
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: DTC-01B/01C PostgreSQL integration
+        run: bash backend/scripts/test/dtc-01b-postgres-ci.sh

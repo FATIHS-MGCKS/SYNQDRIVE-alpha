@@ -46,6 +46,7 @@ import { TireHealthReplayService } from './tires/tire-health-replay.service';
 import { ServiceEventsService } from './service-events/service-events.service';
 import { EnrichmentJobsService } from './enrichment-jobs/enrichment-jobs.service';
 import { DtcService } from './dtc/dtc.service';
+import { DtcSnapshotApplyService } from './dtc/snapshot/dtc-snapshot-apply.service';
 import { DtcKnowledgeService } from './dtc-knowledge/dtc-knowledge.service';
 import { DtcKnowledgeEnrichmentService } from './dtc-knowledge/dtc-knowledge-enrichment.service';
 import { DtcAiResearchService } from './dtc-knowledge/dtc-ai-research.service';
@@ -377,6 +378,7 @@ import { DiV0TripSpeedQualityModule } from './driving-intelligence/trip-speed-qu
     ServiceEventsService,
     EnrichmentJobsService,
     DtcService,
+    DtcSnapshotApplyService,
     FindingLifecycleService,
     FindingBridgeService,
     DtcKnowledgeService,
@@ -640,6 +642,7 @@ import { DiV0TripSpeedQualityModule } from './driving-intelligence/trip-speed-qu
     ServiceEventsService,
     EnrichmentJobsService,
     DtcService,
+    DtcSnapshotApplyService,
     FindingLifecycleService,
     FindingBridgeService,
     DtcKnowledgeService,
