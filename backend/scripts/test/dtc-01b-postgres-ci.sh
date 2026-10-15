@@ -30,9 +30,6 @@ npx prisma generate
 export PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1
 bash scripts/test/prisma-migrate-deploy-resilient.sh
 
-# Ephemeral CI DB may skip CONCURRENTLY migrations; align schema before DTC tests.
-npx prisma db push --accept-data-loss --skip-generate
-
 for mig in 20261015180000_vehicle_dtc_source_head_01b 20261015193000_vehicle_dtc_source_head_01c_partial; do
   applied_count="$(docker exec "${PG_CONTAINER}" psql -U "${PG_USER}" -d "${DISPOSABLE_DB}" -tAc \
     "SELECT COUNT(*)::text FROM _prisma_migrations WHERE migration_name = '${mig}' AND finished_at IS NOT NULL;")"
