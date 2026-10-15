@@ -6,6 +6,14 @@
 - Evidence: Production read-only baseline `evidence/PRODUCTION_BASELINE_2026-10-15.md`
 - Code (draft): cohort gate env, `REFRESH_SOURCE_WATERMARK` decision, downstream skip on identical codeset
 
+## 2026-10-15 — DTC-01F3 webhook cohort parity (draft PR #2042)
+
+- `evaluateDtcWebhookAdmission` aligned with poll fan-out; no legacy fallback for non-cohort when cohort ON.
+- Global OFF: legacy webhook only for eligible lifecycles (offboarded/archived skipped).
+- `DimoWebhookController`: admission before `normalizeDtcCodes` / legacy mutations; boot cohort invalid log on webhook module.
+- Tests: `dtc-01f-cohort-gate.spec.ts` parity matrix; `dimo-webhook.controller.spec.ts` DTC admission cases.
+- Contract: global rollout risk + dual-replica env symmetry.
+
 ## 2026-10-15 — DTC-01F2 pilot safety closure (draft PR #2042)
 
 - **Complete/partial reconciliation:** channel-specific watermarks; `last_accepted_codes_hash` only on confirmed complete; partial cannot overwrite complete hash; `needsEpisodeReconciliation` blocks unsafe `REFRESH_SOURCE_WATERMARK`; defer clears preserve VLS `obdDtcList` vs active episodes.

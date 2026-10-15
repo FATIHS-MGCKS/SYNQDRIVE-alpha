@@ -72,10 +72,10 @@ export function resolveDtc01fCohortGateConfig(
 }
 
 /**
- * When global DTC-01A is OFF → legacy path for all vehicles.
- * When cohort gate OFF → all eligible vehicles may use 01A path (global flag still required).
- * When cohort gate ON → only allowlisted, non-offboarded vehicles use 01A; others stay on legacy.
- * Invalid cohort config while gate ON → fail-closed (no vehicle uses 01A path).
+ * When global DTC-01A is OFF → legacy path for all vehicles (poll/webhook).
+ * When cohort gate OFF → all eligible vehicles use 01A path (global rollout; activation risk).
+ * When cohort gate ON → only allowlisted, non-offboarded vehicles use 01A; no legacy fallback.
+ * Invalid cohort config while gate ON → fail-closed (no DTC mutations on poll or webhook).
  */
 export function evaluateDtc01fSafetyPathAdmission(input: {
   vehicleId: string;
@@ -133,14 +133,84 @@ export type DtcPollJobAdmission =
  * Fan-out / worker admission for DIMO DTC poll jobs (pilot-safe).
  * OFFBOARDED/ARCHIVED never enqueued. Cohort ON → only allowlisted vehicles; no legacy fallback.
  */
+export type DtcWebhookAdmissionReason =
+  | 'REGISTRY_LIFECYCLE_EXCLUDED'
+  | 'COHORT_GATE_INVALID_CONFIG'
+  | 'NOT_IN_COHORT_ALLOWLIST'
+  | 'VEHICLE_NOT_FOUND';
+
+export type DtcWebhookAdmission =
+  | { mutate: true; runtimePath: 'legacy' | 'safety01a' }
+  | { mutate: false; reason: DtcWebhookAdmissionReason };
+
+function isRegistryLifecycleExcluded(registryLifecycle: string | null | undefined): boolean {
+  const lifecycle = (registryLifecycle ?? 'ACTIVE').toUpperCase();
+  return lifecycle === 'OFFBOARDED' || lifecycle === 'ARCHIVED';
+}
+
+/**
+ * Webhook DTC ingress admission — aligned with {@link evaluateDtcPollJobAdmission}.
+ * Global OFF → legacy mutations for eligible lifecycles only.
+ * Cohort ON → allowlisted safety01a only; non-cohort skips mutation (no legacy).
+ */
+export function evaluateDtcWebhookAdmission(input: {
+  vehicleId: string;
+  registryLifecycle: string | null | undefined;
+  env?: NodeJS.ProcessEnv;
+}): DtcWebhookAdmission {
+  const env = input.env ?? process.env;
+  if (isRegistryLifecycleExcluded(input.registryLifecycle)) {
+    return { mutate: false, reason: 'REGISTRY_LIFECYCLE_EXCLUDED' };
+  }
+
+  const config = resolveDtc01fCohortGateConfig(env);
+  if (config.mode === 'GLOBAL_OFF') {
+    return { mutate: true, runtimePath: 'legacy' };
+  }
+  if (config.mode === 'INVALID') {
+    return { mutate: false, reason: 'COHORT_GATE_INVALID_CONFIG' };
+  }
+  if (config.mode === 'OPEN') {
+    return { mutate: true, runtimePath: 'safety01a' };
+  }
+
+  const admission = evaluateDtc01fSafetyPathAdmission(input);
+  if (!admission.useDtc01aSafetyPath) {
+    return {
+      mutate: false,
+      reason:
+        admission.reason === 'NOT_IN_COHORT_ALLOWLIST'
+          ? 'NOT_IN_COHORT_ALLOWLIST'
+          : 'REGISTRY_LIFECYCLE_EXCLUDED',
+    };
+  }
+  return { mutate: true, runtimePath: 'safety01a' };
+}
+
+/** True when poll enqueue and webhook mutate decisions match for the same vehicle/config. */
+export function dtcPollWebhookAdmissionAligned(input: {
+  vehicleId: string;
+  registryLifecycle: string | null | undefined;
+  env?: NodeJS.ProcessEnv;
+}): boolean {
+  const poll = evaluateDtcPollJobAdmission(input);
+  const webhook = evaluateDtcWebhookAdmission(input);
+  if (poll.enqueue !== webhook.mutate) {
+    return false;
+  }
+  if (!poll.enqueue || !webhook.mutate) {
+    return true;
+  }
+  return poll.runtimePath === webhook.runtimePath;
+}
+
 export function evaluateDtcPollJobAdmission(input: {
   vehicleId: string;
   registryLifecycle: string | null | undefined;
   env?: NodeJS.ProcessEnv;
 }): DtcPollJobAdmission {
   const env = input.env ?? process.env;
-  const lifecycle = (input.registryLifecycle ?? 'ACTIVE').toUpperCase();
-  if (lifecycle === 'OFFBOARDED' || lifecycle === 'ARCHIVED') {
+  if (isRegistryLifecycleExcluded(input.registryLifecycle)) {
     return { enqueue: false, reason: 'REGISTRY_LIFECYCLE_EXCLUDED' };
   }
 
@@ -166,7 +236,7 @@ export function logDtc01fCohortConfigOnBoot(logger: { error: (msg: string) => vo
   const config = resolveDtc01fCohortGateConfig();
   if (config.mode === 'INVALID') {
     logger.error(
-      `DTC-01F cohort gate INVALID (${config.reason}): DTC poll fan-out fail-closed until config fixed`,
+      `DTC-01F cohort gate INVALID (${config.reason}): DTC poll fan-out and webhook DTC ingress fail-closed until config fixed (set identical env on all API replicas)`,
     );
   }
 }

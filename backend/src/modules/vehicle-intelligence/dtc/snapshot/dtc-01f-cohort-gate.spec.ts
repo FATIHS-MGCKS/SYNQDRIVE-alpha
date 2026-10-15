@@ -1,6 +1,8 @@
 import {
+  dtcPollWebhookAdmissionAligned,
   evaluateDtc01fSafetyPathAdmission,
   evaluateDtcPollJobAdmission,
+  evaluateDtcWebhookAdmission,
   parseDtc01fCohortVehicleAllowlist,
   resolveDtc01fCohortGateConfig,
 } from './dtc-01f-cohort-gate';
@@ -154,5 +156,95 @@ describe('dtc-01f-cohort-gate', () => {
     if (parsed.ok) {
       expect(parsed.allowlist.size).toBe(2);
     }
+  });
+
+  describe('webhook admission parity with poll fan-out', () => {
+    const scenarios: Array<{
+      name: string;
+      lifecycle: string;
+      env: NodeJS.ProcessEnv;
+      vehicleId?: string;
+    }> = [
+      { name: 'global off active', lifecycle: 'ACTIVE', env: {} },
+      { name: 'global off offboarded', lifecycle: 'OFFBOARDED', env: {} },
+      { name: 'global off archived', lifecycle: 'ARCHIVED', env: {} },
+      {
+        name: 'global on open rollout',
+        lifecycle: 'ACTIVE',
+        env: { DTC_01A_SAFETY_FOUNDATION_ENABLED: 'true' },
+      },
+      {
+        name: 'cohort invalid',
+        lifecycle: 'ACTIVE',
+        env: {
+          DTC_01A_SAFETY_FOUNDATION_ENABLED: 'true',
+          DTC_01F_COHORT_GATE_ENABLED: 'true',
+          DTC_01F_COHORT_VEHICLE_ALLOWLIST: 'bad',
+        },
+      },
+      {
+        name: 'cohort allowlisted',
+        lifecycle: 'ACTIVE',
+        env: {
+          DTC_01A_SAFETY_FOUNDATION_ENABLED: 'true',
+          DTC_01F_COHORT_GATE_ENABLED: 'true',
+          DTC_01F_COHORT_VEHICLE_ALLOWLIST: VID,
+        },
+      },
+      {
+        name: 'cohort non-allowlisted',
+        lifecycle: 'ACTIVE',
+        vehicleId: 'a60c0749-a7cd-494e-b5b9-dea3c6b97d63',
+        env: {
+          DTC_01A_SAFETY_FOUNDATION_ENABLED: 'true',
+          DTC_01F_COHORT_GATE_ENABLED: 'true',
+          DTC_01F_COHORT_VEHICLE_ALLOWLIST: VID,
+        },
+      },
+    ];
+
+    for (const s of scenarios) {
+      it(`poll/webhook aligned: ${s.name}`, () => {
+        const input = {
+          vehicleId: s.vehicleId ?? VID,
+          registryLifecycle: s.lifecycle,
+          env: s.env,
+        };
+        expect(dtcPollWebhookAdmissionAligned(input)).toBe(true);
+      });
+    }
+
+    it('webhook global off uses legacy mutations path', () => {
+      expect(evaluateDtcWebhookAdmission({ vehicleId: VID, registryLifecycle: 'ACTIVE', env: {} })).toEqual({
+        mutate: true,
+        runtimePath: 'legacy',
+      });
+    });
+
+    it('replica config: same env yields identical cohort resolution', () => {
+      const env = {
+        DTC_01A_SAFETY_FOUNDATION_ENABLED: 'true',
+        DTC_01F_COHORT_GATE_ENABLED: 'true',
+        DTC_01F_COHORT_VEHICLE_ALLOWLIST: VID,
+      };
+      const a = resolveDtc01fCohortGateConfig(env);
+      const b = resolveDtc01fCohortGateConfig({ ...env });
+      expect(a).toEqual(b);
+      expect(a.mode).toBe('COHORT');
+    });
+
+    it('webhook cohort on skips non-allowlisted without legacy', () => {
+      expect(
+        evaluateDtcWebhookAdmission({
+          vehicleId: 'a60c0749-a7cd-494e-b5b9-dea3c6b97d63',
+          registryLifecycle: 'ACTIVE',
+          env: {
+            DTC_01A_SAFETY_FOUNDATION_ENABLED: 'true',
+            DTC_01F_COHORT_GATE_ENABLED: 'true',
+            DTC_01F_COHORT_VEHICLE_ALLOWLIST: VID,
+          },
+        }),
+      ).toEqual({ mutate: false, reason: 'NOT_IN_COHORT_ALLOWLIST' });
+    });
   });
 });

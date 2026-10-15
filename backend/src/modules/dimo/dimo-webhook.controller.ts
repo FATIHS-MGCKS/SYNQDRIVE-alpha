@@ -18,8 +18,10 @@ import { ConfigType } from '@nestjs/config';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DtcService } from '../vehicle-intelligence/dtc/dtc.service';
 import { normalizeDtcCodes } from '../vehicle-intelligence/dtc/dtc-code-normalizer.util';
-import { isDtc01aSafetyFoundationEnabled } from '../vehicle-intelligence/dtc/snapshot/dtc-01a.config';
-import { shouldUseDtc01aSafetyPathForVehicle } from '../vehicle-intelligence/dtc/snapshot/dtc-01f-cohort-gate';
+import {
+  evaluateDtcWebhookAdmission,
+  logDtc01fCohortConfigOnBoot,
+} from '../vehicle-intelligence/dtc/snapshot/dtc-01f-cohort-gate';
 import { DtcSnapshotApplyService } from '../vehicle-intelligence/dtc/snapshot/dtc-snapshot-apply.service';
 import { buildWebhookObdDtcProposal } from '../vehicle-intelligence/dtc/snapshot/dtc-snapshot-proposal.builder';
 import { resolveActiveDimoBindingForVehicle } from '../vehicle-intelligence/dtc/snapshot/dtc-snapshot-binding.util';
@@ -63,6 +65,7 @@ export class DimoWebhookController {
         `DIMO_WEBHOOK_VERIFICATION_TOKEN is not set (NODE_ENV=${this.nodeEnv}). DIMO Vehicle Triggers cannot be verified and trigger payloads will be rejected until this is fixed.`,
       );
     }
+    logDtc01fCohortConfigOnBoot(this.logger);
   }
 
   /** Read at request time so PM2 --update-env picks up changes without stale ctor cache. */
@@ -295,16 +298,34 @@ export class DimoWebhookController {
     dtcValue: unknown,
     webhookTimestamp: string | null,
   ) {
-    if (isDtc01aSafetyFoundationEnabled()) {
-      const vehicle = await this.prisma.vehicle.findUnique({
-        where: { id: vehicleId },
-        select: { registryLifecycle: true },
-      });
-      if (shouldUseDtc01aSafetyPathForVehicle(vehicleId, vehicle?.registryLifecycle)) {
-        assertDtcSnapshotApplyWired(true, this.dtcSnapshotApply, 'DimoWebhookController.handleDtcEvent');
-        await this.handleDtcEvent01a(vehicleId, tokenId, dtcValue, webhookTimestamp);
-        return;
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { organizationId: true, registryLifecycle: true },
+    });
+    if (!vehicle) {
+      this.logger.warn(`DTC webhook fail-closed: unknown vehicle=${vehicleId} tokenId=${tokenId}`);
+      return;
+    }
+
+    const admission = evaluateDtcWebhookAdmission({
+      vehicleId,
+      registryLifecycle: vehicle.registryLifecycle,
+    });
+    if (!admission.mutate) {
+      if (admission.reason === 'COHORT_GATE_INVALID_CONFIG') {
+        this.logger.error(
+          `DTC webhook skipped vehicle=${vehicleId} reason=${admission.reason} (fix cohort env on all replicas)`,
+        );
+      } else {
+        this.logger.log(`DTC webhook skipped vehicle=${vehicleId} reason=${admission.reason}`);
       }
+      return;
+    }
+
+    if (admission.runtimePath === 'safety01a') {
+      assertDtcSnapshotApplyWired(true, this.dtcSnapshotApply, 'DimoWebhookController.handleDtcEvent');
+      await this.handleDtcEvent01a(vehicleId, tokenId, dtcValue, webhookTimestamp, vehicle);
+      return;
     }
 
     const codes = normalizeDtcCodes(dtcValue);
@@ -312,14 +333,10 @@ export class DimoWebhookController {
 
     this.logger.log(`DTC webhook for vehicle ${vehicleId}: ${codes.length} codes`);
 
-    const vehicle = await this.prisma.vehicle.findUnique({
-      where: { id: vehicleId },
-      select: { organizationId: true },
-    });
     const producerContext = {
       sourceProvider: 'DIMO' as const,
       sourceTimestamp: new Date(),
-      organizationId: vehicle?.organizationId ?? null,
+      organizationId: vehicle.organizationId ?? null,
     };
 
     const previousActive = await this.prisma.vehicleDtcEvent.findMany({
@@ -357,19 +374,10 @@ export class DimoWebhookController {
     tokenId: number,
     dtcValue: unknown,
     webhookTimestamp: string | null,
+    vehicle: { organizationId: string | null },
   ): Promise<void> {
     const fetchObservedAt = new Date();
     const auditRef = `dtc-webhook:${vehicleId}:${fetchObservedAt.getTime()}`;
-
-    const vehicle = await this.prisma.vehicle.findUnique({
-      where: { id: vehicleId },
-      select: { organizationId: true, registryLifecycle: true },
-    });
-    if (!vehicle) return;
-    if ((vehicle.registryLifecycle ?? 'ACTIVE').toUpperCase() === 'OFFBOARDED') {
-      this.logger.log(`DTC webhook ignored offboarded vehicle=${vehicleId}`);
-      return;
-    }
 
     const binding = await resolveActiveDimoBindingForVehicle(
       this.prisma,
