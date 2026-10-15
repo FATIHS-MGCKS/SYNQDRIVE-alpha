@@ -1,7 +1,7 @@
 import { enrichVsiProfileWithSignalFingerprints } from './vsi-signal-fingerprint.enricher';
 import { VSI_PROFILE_CONTRACT_VERSION } from './vsi-profile.types';
 import { VsiEmpiricalObservationStatus } from './vehicle-signal-evidence.contract';
-import type { VsiProfileEvaluationDraft } from './vsi-profile.types';
+import type { VsiProfileEvaluationDraft, VsiProfileSignalSnapshotV1 } from './vsi-profile.types';
 
 function draft(signals: VsiProfileEvaluationDraft['signals']): VsiProfileEvaluationDraft {
   return {
@@ -33,16 +33,16 @@ describe('vsi-signal-fingerprint.enricher', () => {
   };
 
   it('projects bundle cadence only onto provider_source_timestamp', () => {
-    const baseRow = {
+    const baseRow: Omit<VsiProfileSignalSnapshotV1, 'canonicalSignalKey'> = {
       providerNativeSignalName: 'x',
-      declaredSupport: 'LISTED' as const,
+      declaredSupport: 'LISTED',
       empiricalObservation: VsiEmpiricalObservationStatus.OBSERVED,
       lastValidObservationAt: '2026-10-15T12:00:00.000Z',
       lastSourceTimestamp: '2026-10-15T12:00:00.000Z',
       lastProviderFetchAt: null,
       lastProvenStrictSourceAdvanceAt: null,
-      strictSourceAdvanced: 'UNKNOWN' as const,
-      freshnessClassification: 'FRESH' as const,
+      strictSourceAdvanced: 'UNKNOWN',
+      freshnessClassification: 'FRESH',
       evidenceProvenance: ['VEHICLE_LATEST_STATE'],
       limitations: ['PER_SIGNAL_HISTORICAL_EVIDENCE_INSUFFICIENT'],
     };
