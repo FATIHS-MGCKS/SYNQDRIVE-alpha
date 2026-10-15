@@ -40,6 +40,60 @@ for mig in 20261015180000_vehicle_dtc_source_head_01b 20261015193000_vehicle_dtc
   fi
 done
 
+# Ephemeral disposable DB: Prisma schema may include columns not yet in the migration chain (VO/RFRF precedent).
+verify_dtc01b_prisma_schema() {
+  node <<'NODE'
+const { PrismaClient } = require('@prisma/client');
+(async () => {
+  const prisma = new PrismaClient();
+  try {
+    await prisma.$queryRaw`SELECT "powertrain_type" FROM "dimo_vehicles" LIMIT 0`;
+    await prisma.$queryRaw`SELECT "traction_battery_power_kw" FROM "vehicle_latest_states" LIMIT 0`;
+  } finally {
+    await prisma.$disconnect();
+  }
+  console.log('DTC-01B schema verification OK');
+})().catch((error) => {
+  console.error('DTC-01B schema verification failed:', error.message);
+  process.exit(1);
+});
+NODE
+}
+
+sync_schema_drift_if_needed() {
+  if verify_dtc01b_prisma_schema 2>/dev/null; then
+    echo "TEST_SCHEMA_DRIFT_SYNC=NONE"
+    return 0
+  fi
+
+  echo "TEST_SCHEMA_DRIFT_SYNC=DB_PUSH_TEST_ONLY"
+  local log
+  log="$(mktemp /tmp/dtc01b-dbpush.XXXXXX.log)"
+  set +e
+  npx prisma db push --accept-data-loss --skip-generate 2>&1 | tee "$log"
+  local db_push_exit=${PIPESTATUS[0]}
+  set -e
+
+  if verify_dtc01b_prisma_schema; then
+    if [[ "$db_push_exit" -ne 0 ]]; then
+      if grep -Eq 'already exists|duplicate' "$log"; then
+        echo "TEST_SCHEMA_DRIFT_SYNC_NOTE=db_push exit=${db_push_exit} with duplicate-object noise; schema resolved"
+      else
+        echo "db push failed and schema verification still failing (exit=${db_push_exit})" >&2
+        cat "$log" >&2
+        exit "$db_push_exit"
+      fi
+    fi
+    return 0
+  fi
+
+  echo "schema drift unresolved after db push (exit=${db_push_exit})" >&2
+  cat "$log" >&2
+  exit 1
+}
+
+sync_schema_drift_if_needed
+
 export DTC_01B_PG_INTEGRATION=1
 npm test -- --testPathPatterns=dtc-01b.postgres.integration.spec --runInBand
 
