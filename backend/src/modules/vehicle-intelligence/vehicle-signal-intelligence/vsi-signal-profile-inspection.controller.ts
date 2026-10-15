@@ -1,5 +1,5 @@
 import { Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
-import { Roles } from '@shared/auth/roles.decorator';
+import { Roles } from '@shared/decorators/roles.decorator';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { VsiSignalProfileMaterializationService } from './vsi-profile-materialization.service';
 
