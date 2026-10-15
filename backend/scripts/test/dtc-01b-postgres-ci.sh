@@ -25,6 +25,7 @@ docker exec "${PG_CONTAINER}" psql -U "${PG_USER}" -d "${BASE_DB}" -v ON_ERROR_S
 echo "DTC01B_DISPOSABLE_DATABASE=${DISPOSABLE_DB}"
 echo "DATABASE_URL=${DATABASE_URL}"
 
+npm ci
 npx prisma generate
 npx prisma migrate deploy
 
