@@ -171,10 +171,20 @@ export function TripGpsSpeedEvaluationPanel({ vehicleId, tripId }: TripGpsSpeedE
                 : notAvailable
             }
           />
-          {payload.motion != null ? (
+          {payload.coverage != null ? (
             <MetricRow
-              label={t('tripGpsSpeedEvaluation.stationaryIntervals')}
+              label={t('tripGpsSpeedEvaluation.stationaryIntervalsAccepted')}
+              value={String(payload.coverage.trustedLimitedStationaryIntervalCount)}
+              hint={t('tripGpsSpeedEvaluation.stationaryIntervalsAcceptedHint')}
+            />
+          ) : null}
+          {payload.motion != null &&
+          payload.motion.stationarySupportedIntervalCount !==
+            payload.coverage?.trustedLimitedStationaryIntervalCount ? (
+            <MetricRow
+              label={t('tripGpsSpeedEvaluation.stationaryIntervalsCandidates')}
               value={String(payload.motion.stationarySupportedIntervalCount)}
+              hint={t('tripGpsSpeedEvaluation.stationaryIntervalsCandidatesHint')}
             />
           ) : null}
         </dl>

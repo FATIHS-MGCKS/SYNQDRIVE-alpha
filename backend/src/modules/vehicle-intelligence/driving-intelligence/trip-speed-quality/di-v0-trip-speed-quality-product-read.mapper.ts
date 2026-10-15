@@ -5,6 +5,7 @@ import {
   DI_V0_TRIP_GPS_SPEED_EVALUATION_PRODUCT_CONTRACT_V1,
   type DiV0TripGpsSpeedEvaluationProductV1,
   type DiV0TripGpsSpeedMaxScope,
+  type DiV0TripGpsSpeedEvaluationUnavailableAvailability,
 } from './di-v0-trip-speed-quality-product-read.types';
 
 function mapMaxScope(assessability: DiV0TripSpeedMaxAssessability): DiV0TripGpsSpeedMaxScope {
@@ -71,7 +72,7 @@ export function toDiV0TripGpsSpeedEvaluationProductV1FromPersistedRow(
 }
 
 export function buildDiV0TripGpsSpeedEvaluationUnavailable(
-  availability: 'PENDING' | 'UNAVAILABLE' | 'NOT_ASSESSABLE',
+  availability: DiV0TripGpsSpeedEvaluationUnavailableAvailability,
   assessabilityLevel: DiV0TripGpsSpeedEvaluationProductV1['assessabilityLevel'] = null,
 ): DiV0TripGpsSpeedEvaluationProductV1 {
   return {

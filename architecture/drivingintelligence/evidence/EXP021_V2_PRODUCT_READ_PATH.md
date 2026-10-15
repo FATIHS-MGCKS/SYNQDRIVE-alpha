@@ -22,7 +22,19 @@
 - Null speed metrics render as “not available”, not `0`.
 - Stationary interval count is shown separately from numeric coverage percentages.
 
-## Validation
+## Validation (executed in CI / local)
 
-- Unit: `di-v0-trip-speed-quality-product-read.mapper.unit.spec.ts`, `di-v0-trip-speed-quality-product-read.service.unit.spec.ts`
-- Frontend: `trip-gps-speed-evaluation-ui.test.ts`, `TripGpsSpeedEvaluationPanel.test.tsx`
+- Backend unit: `di-v0-trip-speed-quality-product-read.{mapper,service,availability}.unit.spec.ts`
+- Backend HTTP: `trip-gps-speed-evaluation-v2.http-security.integration.spec.ts` (guards, feature OFF, tenant isolation, GET side-effect spies on projection read vs write / P2 `runPass`)
+- Frontend: `trip-gps-speed-evaluation-{ui,feature}.test.ts`, `TripGpsSpeedEvaluationPanel.test.tsx` (happy-dom rendered states)
+
+## UI stationary semantics
+
+- Panel primary count: `coverage.trustedLimitedStationaryIntervalCount` (V2 accepted).
+- Optional separate row: `motion.stationarySupportedIntervalCount` (S1 motion candidates) when it differs.
+- Numeric coverage percentages are unchanged by stationary acceptance counts.
+
+## i18n
+
+- Product keys live in `rental.tripGpsSpeedEvaluation.{en,de,pl,fr,cs,nl,es,it}.ts` only.
+- Turkish (`tr`) remains **fallback-only** per registry — no owned `tripGpsSpeedEvaluation.*` keys.

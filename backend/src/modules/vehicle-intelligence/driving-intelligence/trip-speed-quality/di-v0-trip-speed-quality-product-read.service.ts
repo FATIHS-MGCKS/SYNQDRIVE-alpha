@@ -2,18 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DI_V0_SPEED_QC_POLICY_V2 } from '../speed-qc/di-v0-speed-qc-policy.version';
 import type { DiV0P2AutoProjectionOutboxStatus } from './di-v0-p2-auto-projection-outbox.repository';
+import { resolveGpsSpeedEvaluationAvailabilityWithoutProjection } from './di-v0-trip-speed-quality-product-read.availability';
 import {
   buildDiV0TripGpsSpeedEvaluationUnavailable,
   toDiV0TripGpsSpeedEvaluationProductV1FromPersistedRow,
 } from './di-v0-trip-speed-quality-product-read.mapper';
 import type { DiV0TripGpsSpeedEvaluationProductV1 } from './di-v0-trip-speed-quality-product-read.types';
 import { DiV0TripSpeedQualityProjectionService } from './di-v0-trip-speed-quality-projection.service';
-
-const PENDING_OUTBOX_STATUSES = new Set<DiV0P2AutoProjectionOutboxStatus>([
-  'PENDING',
-  'PROCESSING',
-  'FAILED_RETRYABLE',
-]);
 
 @Injectable()
 export class DiV0TripSpeedQualityProductReadService {
@@ -52,24 +47,14 @@ export class DiV0TripSpeedQualityProductReadService {
     }
 
     const activeWorkItem = await this.resolveActivePrimaryWorkItem(organizationId, tripId);
-    if (!activeWorkItem) {
-      return buildDiV0TripGpsSpeedEvaluationUnavailable('UNAVAILABLE');
-    }
-
-    if (activeWorkItem.status !== 'COMPLETED') {
-      return buildDiV0TripGpsSpeedEvaluationUnavailable('PENDING');
-    }
-
-    const outboxStatus = await this.readOutboxStatus(activeWorkItem.id);
-    if (outboxStatus && PENDING_OUTBOX_STATUSES.has(outboxStatus)) {
-      return buildDiV0TripGpsSpeedEvaluationUnavailable('PENDING');
-    }
-
-    if (outboxStatus === 'SKIPPED_INELIGIBLE') {
-      return buildDiV0TripGpsSpeedEvaluationUnavailable('NOT_ASSESSABLE');
-    }
-
-    return buildDiV0TripGpsSpeedEvaluationUnavailable('UNAVAILABLE');
+    const outboxStatus = activeWorkItem
+      ? await this.readOutboxStatus(activeWorkItem.id)
+      : null;
+    const availability = resolveGpsSpeedEvaluationAvailabilityWithoutProjection(
+      activeWorkItem?.status ?? null,
+      outboxStatus,
+    );
+    return buildDiV0TripGpsSpeedEvaluationUnavailable(availability);
   }
 
   private async resolveActivePrimaryWorkItem(

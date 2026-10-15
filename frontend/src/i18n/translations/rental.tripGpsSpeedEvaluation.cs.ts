@@ -16,7 +16,12 @@ export const rentalTripGpsSpeedEvaluationCs = {
   'tripGpsSpeedEvaluation.coverage.numeric': 'Numerické pokrytí dat',
   'tripGpsSpeedEvaluation.coverage.trustedNumeric': 'Důvěryhodné numerické pokrytí',
   'tripGpsSpeedEvaluation.coverage.trustedLimited': 'Pokrytí s omezenou důvěrou',
-  'tripGpsSpeedEvaluation.stationaryIntervals': 'Intervaly stání (podporováno)',
+  'tripGpsSpeedEvaluation.stationaryIntervalsAccepted': 'Přijaté intervaly stání (V2)',
+  'tripGpsSpeedEvaluation.stationaryIntervalsAcceptedHint':
+    'Důvěryhodné omezené intervaly stání v pokrytí V2 — nejsou totéž co surové kandidáty pohybu.',
+  'tripGpsSpeedEvaluation.stationaryIntervalsCandidates': 'Kandidáti pohybu při stání (S1)',
+  'tripGpsSpeedEvaluation.stationaryIntervalsCandidatesHint':
+    'Širší evidence pohybu před V2 filtrem akceptace.',
   'tripGpsSpeedEvaluation.notAvailable': 'Není k dispozici',
   'tripGpsSpeedEvaluation.percentSuffix': '%',
   'tripGpsSpeedEvaluation.kmhSuffix': 'km/h',

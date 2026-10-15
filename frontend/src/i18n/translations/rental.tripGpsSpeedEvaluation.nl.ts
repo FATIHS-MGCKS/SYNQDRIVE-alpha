@@ -16,7 +16,12 @@ export const rentalTripGpsSpeedEvaluationNl = {
   'tripGpsSpeedEvaluation.coverage.numeric': 'Numerieke datadekking',
   'tripGpsSpeedEvaluation.coverage.trustedNumeric': 'Betrouwbare numerieke dekking',
   'tripGpsSpeedEvaluation.coverage.trustedLimited': 'Dekking met beperkt vertrouwen',
-  'tripGpsSpeedEvaluation.stationaryIntervals': 'Stilstaande intervallen (ondersteund)',
+  'tripGpsSpeedEvaluation.stationaryIntervalsAccepted': 'Geaccepteerde stilstaande intervallen (V2)',
+  'tripGpsSpeedEvaluation.stationaryIntervalsAcceptedHint':
+    'Betrouwbare beperkte stilstaande intervallen in V2-dekking — niet hetzelfde als ruwe bewegingskandidaten.',
+  'tripGpsSpeedEvaluation.stationaryIntervalsCandidates': 'Stilstaande bewegingskandidaten (S1)',
+  'tripGpsSpeedEvaluation.stationaryIntervalsCandidatesHint':
+    'Bredere bewegingsdata vóór V2-acceptatiefilter.',
   'tripGpsSpeedEvaluation.notAvailable': 'Niet beschikbaar',
   'tripGpsSpeedEvaluation.percentSuffix': '%',
   'tripGpsSpeedEvaluation.kmhSuffix': 'km/h',

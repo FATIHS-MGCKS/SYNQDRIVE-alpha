@@ -16,7 +16,12 @@ export const rentalTripGpsSpeedEvaluationEs = {
   'tripGpsSpeedEvaluation.coverage.numeric': 'Cobertura de datos numéricos',
   'tripGpsSpeedEvaluation.coverage.trustedNumeric': 'Cobertura numérica fiable',
   'tripGpsSpeedEvaluation.coverage.trustedLimited': 'Cobertura de confianza limitada',
-  'tripGpsSpeedEvaluation.stationaryIntervals': 'Intervalos en parada (admitidos)',
+  'tripGpsSpeedEvaluation.stationaryIntervalsAccepted': 'Intervalos en parada aceptados (V2)',
+  'tripGpsSpeedEvaluation.stationaryIntervalsAcceptedHint':
+    'Intervalos en parada de confianza limitada en la cobertura V2 — no son los candidatos brutos de movimiento.',
+  'tripGpsSpeedEvaluation.stationaryIntervalsCandidates': 'Candidatos de movimiento en parada (S1)',
+  'tripGpsSpeedEvaluation.stationaryIntervalsCandidatesHint':
+    'Evidencia de movimiento más amplia antes del filtro de aceptación V2.',
   'tripGpsSpeedEvaluation.notAvailable': 'No disponible',
   'tripGpsSpeedEvaluation.percentSuffix': '%',
   'tripGpsSpeedEvaluation.kmhSuffix': 'km/h',

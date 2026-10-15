@@ -45,4 +45,19 @@ describe('trip-gps-speed-evaluation-ui', () => {
       false,
     );
   });
+
+  it('keeps numeric coverage independent from stationary acceptance (118 accepted vs 144 candidates)', () => {
+    const payload = {
+      ...readyPayload,
+      coverage: {
+        ...readyPayload.coverage!,
+        numericCoveragePercent: 82,
+        trustedLimitedStationaryIntervalCount: 118,
+      },
+      motion: { stationarySupportedIntervalCount: 144, movingEstimatedIntervalCount: 10 },
+    };
+    expect(payload.coverage.numericCoveragePercent).toBe(82);
+    expect(payload.coverage.trustedLimitedStationaryIntervalCount).toBe(118);
+    expect(payload.motion.stationarySupportedIntervalCount).toBe(144);
+  });
 });

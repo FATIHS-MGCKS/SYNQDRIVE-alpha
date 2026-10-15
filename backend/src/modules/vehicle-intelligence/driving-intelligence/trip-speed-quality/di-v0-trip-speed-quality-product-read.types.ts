@@ -13,6 +13,11 @@ export type DiV0TripGpsSpeedEvaluationAvailability =
   | 'UNAVAILABLE'
   | 'NOT_ASSESSABLE';
 
+export type DiV0TripGpsSpeedEvaluationUnavailableAvailability = Exclude<
+  DiV0TripGpsSpeedEvaluationAvailability,
+  'READY'
+>;
+
 export type DiV0TripGpsSpeedMaxScope =
   | 'TRUSTED_NUMERIC_INTERVALS'
   | 'TRUSTED_LIMITED_ONLY'

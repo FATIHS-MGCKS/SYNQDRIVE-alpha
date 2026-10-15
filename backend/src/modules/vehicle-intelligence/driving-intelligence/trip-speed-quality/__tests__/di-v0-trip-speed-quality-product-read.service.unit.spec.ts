@@ -98,6 +98,27 @@ describe('DiV0TripSpeedQualityProductReadService', () => {
     expect(projectionService.readCurrentOpsProjection).not.toHaveBeenCalled();
   });
 
+  it('returns UNAVAILABLE when outbox SKIPPED_INELIGIBLE (not NOT_ASSESSABLE)', async () => {
+    projectionService.readCurrentOpsProjection.mockResolvedValue(null);
+    (prisma.$queryRaw as jest.Mock)
+      .mockResolvedValueOnce([{ id: workItemId, status: 'COMPLETED' }])
+      .mockResolvedValueOnce([{ status: 'SKIPPED_INELIGIBLE' }]);
+
+    const result = await svc.readForTrip(organizationId, vehicleId, tripId);
+    expect(result.availability).toBe('UNAVAILABLE');
+  });
+
+  it('returns UNAVAILABLE when S4 work item FAILED_TERMINAL', async () => {
+    projectionService.readCurrentOpsProjection.mockResolvedValue(null);
+    (prisma.$queryRaw as jest.Mock)
+      .mockResolvedValueOnce([{ id: workItemId, status: 'FAILED_TERMINAL' }])
+      .mockResolvedValueOnce([]);
+
+    const result = await svc.readForTrip(organizationId, vehicleId, tripId);
+    expect(result.availability).toBe('UNAVAILABLE');
+    expect(projectionService.readCurrentOpsProjection).toHaveBeenCalled();
+  });
+
   it('returns PENDING when outbox row is PROCESSING', async () => {
     projectionService.readCurrentOpsProjection.mockResolvedValue(null);
     (prisma.$queryRaw as jest.Mock)
