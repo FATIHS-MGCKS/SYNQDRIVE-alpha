@@ -75,7 +75,7 @@ if ! grep -qE "Tests:[[:space:]]+${EXPECTED_PREVIEW_POSTGRES_TESTS} passed" "$PR
   exit 1
 fi
 
-EXPECTED_AUTO_V2_TESTS=5
+EXPECTED_AUTO_V2_TESTS=12
 AUTO_LOG="$(mktemp /tmp/di-v0-p2-auto-v2-postgres-ci.XXXXXX.log)"
 trap 'rm -f "$LOG" "$PREVIEW_LOG" "$AUTO_LOG"' EXIT
 

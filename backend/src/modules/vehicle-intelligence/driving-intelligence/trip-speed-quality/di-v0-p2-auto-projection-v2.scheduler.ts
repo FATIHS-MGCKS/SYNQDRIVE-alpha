@@ -1,7 +1,8 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { SchedulerLeaderGuardService } from '@shared/scheduler-leader/scheduler-leader-guard.service';
-import { DiV0P2AutoProjectionV2ConfigError, parseDiV0P2AutoProjectionV2Config } from './di-v0-p2-auto-projection-v2.config';
 import { DiV0P2AutoProjectionV2Service } from './di-v0-p2-auto-projection-v2.service';
+import { DI_V0_P2_AUTO_PROJECTION_V2_BOOTSTRAP } from './di-v0-p2-auto-projection-v2.tokens';
+import type { DiV0P2AutoProjectionV2Bootstrap } from './di-v0-p2-auto-projection-v2.tokens';
 
 const LEADER_JOB = 'di_v0_p2_auto_projection_v2';
 
@@ -14,17 +15,13 @@ export class DiV0P2AutoProjectionV2Scheduler implements OnModuleInit, OnModuleDe
   constructor(
     private readonly autoProjection: DiV0P2AutoProjectionV2Service,
     private readonly leaderGuard: SchedulerLeaderGuardService,
+    @Inject(DI_V0_P2_AUTO_PROJECTION_V2_BOOTSTRAP) private readonly bootstrap: DiV0P2AutoProjectionV2Bootstrap,
   ) {}
 
   onModuleInit(): void {
-    try {
-      parseDiV0P2AutoProjectionV2Config();
-    } catch (error) {
-      if (error instanceof DiV0P2AutoProjectionV2ConfigError) {
-        this.logger.error(`P2 auto projection V2 config invalid — scheduler disabled: ${error.message}`);
-        return;
-      }
-      throw error;
+    if (this.bootstrap.disabledReason) {
+      this.logger.error(`P2 auto projection V2 config invalid — scheduler disabled: ${this.bootstrap.disabledReason}`);
+      return;
     }
     if (!this.autoProjection.isConfigured()) {
       this.logger.log('P2 auto projection V2 scheduler dormant (feature disabled)');
@@ -41,7 +38,7 @@ export class DiV0P2AutoProjectionV2Scheduler implements OnModuleInit, OnModuleDe
   }
 
   async tick(): Promise<void> {
-    if (this.running || !this.autoProjection.isConfigured()) return;
+    if (this.running || this.bootstrap.disabledReason || !this.autoProjection.isConfigured()) return;
     if (!this.leaderGuard.shouldRun(LEADER_JOB)) return;
     this.running = true;
     try {

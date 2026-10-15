@@ -1,13 +1,13 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { PrismaClient } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   DI_V0_P2_AUTO_PROJECTION_V2_TUNING,
   isDiV0P2AutoProjectionV2Configured,
-  parseDiV0P2AutoProjectionV2Config,
   type DiV0P2AutoProjectionV2Config,
 } from './di-v0-p2-auto-projection-v2.config';
 import { DiV0P2AutoProjectionOutboxRepository } from './di-v0-p2-auto-projection-outbox.repository';
+import { DI_V0_P2_AUTO_PROJECTION_V2_CONFIG } from './di-v0-p2-auto-projection-v2.tokens';
 import { DiV0TripSpeedQualityProjectionError } from './di-v0-trip-speed-quality-projection.errors';
 import { DiV0TripSpeedQualityProjectionService } from './di-v0-trip-speed-quality-projection.service';
 
@@ -26,20 +26,19 @@ export interface DiV0P2AutoProjectionV2PassResult {
   succeeded: number;
   skipped: number;
   failedRetryable: number;
+  staleAckIgnored: number;
 }
 
 @Injectable()
 export class DiV0P2AutoProjectionV2Service {
   private readonly logger = new Logger(DiV0P2AutoProjectionV2Service.name);
-  private readonly config: DiV0P2AutoProjectionV2Config;
   private readonly outbox: DiV0P2AutoProjectionOutboxRepository;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly projectionService: DiV0TripSpeedQualityProjectionService,
-    config?: DiV0P2AutoProjectionV2Config,
+    @Inject(DI_V0_P2_AUTO_PROJECTION_V2_CONFIG) private readonly config: DiV0P2AutoProjectionV2Config,
   ) {
-    this.config = config ?? parseDiV0P2AutoProjectionV2Config();
     this.outbox = new DiV0P2AutoProjectionOutboxRepository(this.prisma as PrismaClient);
   }
 
@@ -59,6 +58,7 @@ export class DiV0P2AutoProjectionV2Service {
       succeeded: 0,
       skipped: 0,
       failedRetryable: 0,
+      staleAckIgnored: 0,
     };
     if (!this.isConfigured() || !this.config.enabledSince) {
       return empty;
@@ -78,6 +78,7 @@ export class DiV0P2AutoProjectionV2Service {
       succeeded: 0,
       skipped: 0,
       failedRetryable: 0,
+      staleAckIgnored: 0,
     };
 
     for (const row of claimed) {
@@ -85,27 +86,40 @@ export class DiV0P2AutoProjectionV2Service {
         await this.projectionService.projectForWorkItem(row.organizationId, row.workItemId, {
           qcPolicyVersion: this.config.qcPolicyVersion,
         });
-        await this.outbox.markSucceeded(row.workItemId);
-        result.succeeded += 1;
+        const acked = await this.outbox.markSucceeded(row.workItemId, row.claimToken);
+        if (acked) {
+          result.succeeded += 1;
+        } else {
+          result.staleAckIgnored += 1;
+        }
       } catch (error) {
         const code = this.resolveErrorCode(error);
-        if (SKIP_ERROR_CODES.has(code)) {
-          await this.outbox.markSkipped(row.workItemId, code);
-          result.skipped += 1;
+        if (code !== 'UNKNOWN' && SKIP_ERROR_CODES.has(code)) {
+          const acked = await this.outbox.markSkipped(row.workItemId, row.claimToken, code);
+          if (acked) {
+            result.skipped += 1;
+          } else {
+            result.staleAckIgnored += 1;
+          }
           continue;
         }
         const nextAttempt = this.computeNextAttempt(row.attemptCount + 1, now);
-        await this.outbox.markFailedRetryable(row.workItemId, code, nextAttempt);
-        result.failedRetryable += 1;
-        this.logger.warn(
-          `P2 auto projection V2 failed workItemId=${row.workItemId} code=${code} nextAttemptAt=${nextAttempt.toISOString()}`,
-        );
+        const errCode = code === 'UNKNOWN' ? 'UNKNOWN' : code;
+        const acked = await this.outbox.markFailedRetryable(row.workItemId, row.claimToken, errCode, nextAttempt);
+        if (acked) {
+          result.failedRetryable += 1;
+          this.logger.warn(
+            `P2 auto projection V2 failed workItemId=${row.workItemId} code=${errCode} nextAttemptAt=${nextAttempt.toISOString()}`,
+          );
+        } else {
+          result.staleAckIgnored += 1;
+        }
       }
     }
 
     if (result.claimed > 0) {
       this.logger.log(
-        `P2 auto projection V2 pass discovered=${result.discovered} claimed=${result.claimed} ok=${result.succeeded} skipped=${result.skipped} retry=${result.failedRetryable}`,
+        `P2 auto projection V2 pass discovered=${result.discovered} claimed=${result.claimed} ok=${result.succeeded} skipped=${result.skipped} retry=${result.failedRetryable} staleAck=${result.staleAckIgnored}`,
       );
     }
 

@@ -42,7 +42,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'Durable outbox + leader-guarded scheduler enqueues eligible COMPLETED S4 PRIMARY work items and runs existing P2 projection with DI_V0_SPEED_QC_POLICY_V2.',
       'Feature OFF unless DI_V0_P2_AUTO_PROJECTION_V2_ENABLED + required ENABLED_SINCE (forward-only scope); S4C executor completion path unchanged.',
-      'Read path for next API/UI: readCurrentOpsProjection(..., { qcPolicyVersion: V2 }) and outbox status for backlog ops.',
+      'Read path for next API/UI: readCurrentOpsProjection(organizationId, tripId, DI_V0_SPEED_QC_POLICY_V2) and outbox status for backlog ops.',
     ],
     reason:
       'After #2027 policy passthrough on main, automate persisted V2 evaluation post-S4 without a second calculator or customer runtime activation.',

@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
+import { DI_V0_P2_AUTO_PROJECTION_V2_TUNING } from './di-v0-p2-auto-projection-v2.config';
 import { DI_V0_TRIP_SPEED_QUALITY_PROJECTION_V1 } from './di-v0-trip-speed-quality-projection.version';
 
 export type DiV0P2AutoProjectionOutboxStatus =
@@ -17,6 +18,7 @@ export interface DiV0P2AutoProjectionOutboxRow {
   attemptCount: number;
   nextAttemptAt: Date;
   lastErrorCode: string | null;
+  claimToken: string;
 }
 
 export class DiV0P2AutoProjectionOutboxRepository {
@@ -24,7 +26,7 @@ export class DiV0P2AutoProjectionOutboxRepository {
 
   /**
    * Enqueue durable work for eligible completed PRIMARY items missing a CURRENT V2 projection.
-   * Does not mutate S4 work items.
+   * Rows already present in the outbox (any status) are excluded before ORDER BY/LIMIT.
    */
   async discoverEligible(input: {
     qcPolicyVersion: string;
@@ -68,6 +70,10 @@ export class DiV0P2AutoProjectionOutboxRepository {
             AND p.projection_version = ${DI_V0_TRIP_SPEED_QUALITY_PROJECTION_V1}
             AND p.lifecycle_status = 'CURRENT'
         )
+        AND NOT EXISTS (
+          SELECT 1 FROM di_v0_trip_speed_quality_auto_projection_outbox_v1 o
+          WHERE o.work_item_id = wi.id
+        )
       ORDER BY wi.completed_at ASC
       LIMIT ${input.limit}
       ON CONFLICT (work_item_id) DO NOTHING
@@ -75,7 +81,8 @@ export class DiV0P2AutoProjectionOutboxRepository {
     return rows.length;
   }
 
-  async claimBatch(limit: number, now: Date): Promise<DiV0P2AutoProjectionOutboxRow[]> {
+  async claimBatch(limit: number, now: Date, leaseMs = DI_V0_P2_AUTO_PROJECTION_V2_TUNING.claimLeaseMs): Promise<DiV0P2AutoProjectionOutboxRow[]> {
+    const claimExpiresAt = new Date(now.getTime() + leaseMs);
     return this.prisma.$transaction(async (tx) => {
       const claimed = await tx.$queryRaw<
         Array<{
@@ -87,23 +94,33 @@ export class DiV0P2AutoProjectionOutboxRepository {
           attempt_count: number;
           next_attempt_at: Date;
           last_error_code: string | null;
+          claim_token: string;
         }>
       >`
-        SELECT work_item_id, organization_id, trip_id, qc_policy_version, status, attempt_count,
-          next_attempt_at, last_error_code
-        FROM di_v0_trip_speed_quality_auto_projection_outbox_v1
-        WHERE status IN ('PENDING', 'FAILED_RETRYABLE')
-          AND next_attempt_at <= ${now}
-        ORDER BY created_at ASC
-        LIMIT ${limit}
-        FOR UPDATE SKIP LOCKED`;
-      if (claimed.length === 0) return [];
-
-      const ids = claimed.map((r) => r.work_item_id);
-      await tx.$executeRaw`
-        UPDATE di_v0_trip_speed_quality_auto_projection_outbox_v1
-        SET status = 'PROCESSING', updated_at = clock_timestamp()
-        WHERE work_item_id = ANY(${ids}::text[])`;
+        WITH picked AS (
+          SELECT work_item_id
+          FROM di_v0_trip_speed_quality_auto_projection_outbox_v1
+          WHERE (
+            status IN ('PENDING', 'FAILED_RETRYABLE')
+            AND next_attempt_at <= ${now}
+          ) OR (
+            status = 'PROCESSING'
+            AND claim_expires_at IS NOT NULL
+            AND claim_expires_at <= ${now}
+          )
+          ORDER BY created_at ASC
+          LIMIT ${limit}
+          FOR UPDATE SKIP LOCKED
+        )
+        UPDATE di_v0_trip_speed_quality_auto_projection_outbox_v1 o
+        SET status = 'PROCESSING',
+          claim_token = gen_random_uuid()::text,
+          claim_expires_at = ${claimExpiresAt},
+          updated_at = clock_timestamp()
+        FROM picked p
+        WHERE o.work_item_id = p.work_item_id
+        RETURNING o.work_item_id, o.organization_id, o.trip_id, o.qc_policy_version, o.status,
+          o.attempt_count, o.next_attempt_at, o.last_error_code, o.claim_token`;
 
       return claimed.map((r) => ({
         workItemId: r.work_item_id,
@@ -114,34 +131,60 @@ export class DiV0P2AutoProjectionOutboxRepository {
         attemptCount: r.attempt_count,
         nextAttemptAt: r.next_attempt_at,
         lastErrorCode: r.last_error_code,
+        claimToken: r.claim_token,
       }));
     });
   }
 
-  async markSucceeded(workItemId: string): Promise<void> {
-    await this.prisma.$executeRaw`
+  async markSucceeded(workItemId: string, claimToken: string): Promise<boolean> {
+    const updated = await this.prisma.$executeRaw`
       UPDATE di_v0_trip_speed_quality_auto_projection_outbox_v1
-      SET status = 'SUCCEEDED', last_error_code = NULL, last_error_at = NULL, updated_at = clock_timestamp()
-      WHERE work_item_id = ${workItemId}`;
-  }
-
-  async markSkipped(workItemId: string, errorCode: string): Promise<void> {
-    await this.prisma.$executeRaw`
-      UPDATE di_v0_trip_speed_quality_auto_projection_outbox_v1
-      SET status = 'SKIPPED_INELIGIBLE', last_error_code = ${errorCode}, last_error_at = clock_timestamp(),
+      SET status = 'SUCCEEDED',
+        last_error_code = NULL,
+        last_error_at = NULL,
+        claim_token = NULL,
+        claim_expires_at = NULL,
         updated_at = clock_timestamp()
-      WHERE work_item_id = ${workItemId}`;
+      WHERE work_item_id = ${workItemId}
+        AND claim_token = ${claimToken}
+        AND status = 'PROCESSING'`;
+    return Number(updated) > 0;
   }
 
-  async markFailedRetryable(workItemId: string, errorCode: string, nextAttemptAt: Date): Promise<void> {
-    await this.prisma.$executeRaw`
+  async markSkipped(workItemId: string, claimToken: string, errorCode: string): Promise<boolean> {
+    const updated = await this.prisma.$executeRaw`
+      UPDATE di_v0_trip_speed_quality_auto_projection_outbox_v1
+      SET status = 'SKIPPED_INELIGIBLE',
+        last_error_code = ${errorCode},
+        last_error_at = clock_timestamp(),
+        claim_token = NULL,
+        claim_expires_at = NULL,
+        updated_at = clock_timestamp()
+      WHERE work_item_id = ${workItemId}
+        AND claim_token = ${claimToken}
+        AND status = 'PROCESSING'`;
+    return Number(updated) > 0;
+  }
+
+  async markFailedRetryable(
+    workItemId: string,
+    claimToken: string,
+    errorCode: string,
+    nextAttemptAt: Date,
+  ): Promise<boolean> {
+    const updated = await this.prisma.$executeRaw`
       UPDATE di_v0_trip_speed_quality_auto_projection_outbox_v1
       SET status = 'FAILED_RETRYABLE',
         attempt_count = attempt_count + 1,
         last_error_code = ${errorCode},
         last_error_at = clock_timestamp(),
         next_attempt_at = ${nextAttemptAt},
+        claim_token = NULL,
+        claim_expires_at = NULL,
         updated_at = clock_timestamp()
-      WHERE work_item_id = ${workItemId}`;
+      WHERE work_item_id = ${workItemId}
+        AND claim_token = ${claimToken}
+        AND status = 'PROCESSING'`;
+    return Number(updated) > 0;
   }
 }
