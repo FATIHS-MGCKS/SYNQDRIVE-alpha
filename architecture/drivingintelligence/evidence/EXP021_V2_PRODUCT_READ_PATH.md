@@ -65,3 +65,17 @@
 Product DTO fields matched persisted CURRENT V2 projection (max/mean, numeric + trusted numeric coverage, stationary limited count, assessability). Outbox rows unchanged across GETs; P2 scheduler pass log count delta 0 during GET window.
 
 **Interval-wise preview parity:** remains **N/A_STORED_AGGREGATE_ONLY** at persistence layer (aggregate product DTO only).
+
+## UI activation preparation (2026-10-15, not executed)
+
+| Item | Value |
+| --- | --- |
+| Proposed target SHA (minimal) | `a0dfaf2badac61eda280842981564e7ea160efc2` — panel + API client already in tree; CI gate **success** @ 2026-10-15T20:37:17Z |
+| Alternate SHA | `7de8f3ae2040a229f2a9c4b6a663117f1871fe55` (`main`) — adds **VSI P3** (#2041) + **PDI P1B.1** (#2043) + **2 Prisma migrations**; CI gate **success** on tip |
+| Production frontend release | `20261015204530_v4994` → static `backend/public/assets/index-Y0Z0oChY.js` (built ~2026-10-15T20:57Z) |
+| UI gate build config | `/opt/synqdrive/shared/frontend.env` — **`VITE_DI_V0_TRIP_SPEED_QUALITY_V2_PRODUCT_UI_ENABLED` absent** (not `true`) |
+| UI gate shipped bundle | Code + i18n strings present; Vite gate strict `=== 'true'` → **OFF** at last production build (no build-time `true`) |
+| Canonical deploy | **No frontend-only path** — `vps-deploy-release.sh` always `npm ci && npm run build` in `frontend/` (reads symlinked `frontend.env`) then promotes `backend/public`; owner path `CLOUD_AGENT_OWNER_DEPLOY_AUTHORIZED=1` + `cloud-agent-deploy.sh` + pinned SHA |
+| Pre-activation frontend artifact | `index-Y0Z0oChY.js` @ release `20261015204530_v4994` |
+| Browser check (post-activation) | Rental → vehicle detail → trip timeline expanded → section **GPS-based speed evaluation**; paths e.g. vehicle `8c850ff1-…` trip `9ead317c-…` and vehicle `68868291-…` trip `72617129-…` |
+| Rollback UI | Restore `frontend.env` backup (remove/ false Vite flag); redeploy **same SHA** to rebuild bundle; prior artifact `index-Y0Z0oChY.js` |
