@@ -19,7 +19,7 @@ describe('DiV0TripSpeedQuality motion counters', () => {
 
   it('rejects unknown motion states', () => {
     const counts = emptyDiV0TripSpeedQualityMotionCounts();
-    expect(() => incrementDiV0TripSpeedQualityMotionCounter('UNCERTAIN', counts)).toThrow(/UNSUPPORTED_MOTION_STATE/);
+    expect(() => incrementDiV0TripSpeedQualityMotionCounter('UNCERTAIN', counts)).toThrow(/UNKNOWN_MOTION_STATE/);
   });
 
   it('motion counter sum equals total intervals in projection build', () => {

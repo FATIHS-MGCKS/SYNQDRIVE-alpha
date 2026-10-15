@@ -376,7 +376,7 @@ import {
     expect(Number(v2n)).toBe(1);
   }, 120_000);
 
-  it('FAILED_RETRYABLE outbox row recovers on next pass without manual reset', async () => {
+  it('(synthetic) FAILED_RETRYABLE outbox row recovers on next pass without manual reset', async () => {
     const fx = trackFixture(await seedP2CompletedPrimaryFixture(db));
     const due = new Date(Date.now() - 60_000);
     await db.$executeRaw`

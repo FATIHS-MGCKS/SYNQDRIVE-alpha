@@ -13,6 +13,7 @@ import {
   DiV0TripSpeedQualityProjectionRepository,
   type DiV0TripSpeedQualityPersistedRow,
 } from './di-v0-trip-speed-quality-projection.repository';
+import { attachDiV0P2AutoProjectionFailureStep } from './di-v0-p2-auto-projection-failure-log';
 import { DI_V0_TRIP_SPEED_QUALITY_PROJECTION_V1 } from './di-v0-trip-speed-quality-projection.version';
 
 export interface DiV0TripSpeedQualityProjectForWorkItemOptions {
@@ -46,12 +47,17 @@ export class DiV0TripSpeedQualityProjectionService {
       throw new DiV0TripSpeedQualityProjectionError('WORK_ITEM_NOT_FOUND', workItemId);
     }
 
-    const projection = await computeDiV0TripSpeedQualityProjectionV1ForWorkItem(this.prisma, {
-      organizationId,
-      tripId,
-      workItemId,
-      qcPolicyVersion,
-    });
+    let projection;
+    try {
+      projection = await computeDiV0TripSpeedQualityProjectionV1ForWorkItem(this.prisma, {
+        organizationId,
+        tripId,
+        workItemId,
+        qcPolicyVersion,
+      });
+    } catch (error) {
+      throw attachDiV0P2AutoProjectionFailureStep(error, 'compute');
+    }
 
     try {
       return await this.repository.persistCurrentProjection(projection, {
@@ -65,11 +71,14 @@ export class DiV0TripSpeedQualityProjectionService {
     } catch (error) {
       if (error instanceof DiV0TripSpeedQualityProjectionPersistenceError) {
         if (error.code === 'IDEMPOTENCY_CONTENT_MISMATCH') {
-          throw new DiV0TripSpeedQualityProjectionError('IDEMPOTENCY_CONTENT_MISMATCH', error.message);
+          throw attachDiV0P2AutoProjectionFailureStep(
+            new DiV0TripSpeedQualityProjectionError('IDEMPOTENCY_CONTENT_MISMATCH', error.message),
+            'persist',
+          );
         }
-        throw mapPersistAuthorityError(error);
+        throw attachDiV0P2AutoProjectionFailureStep(mapPersistAuthorityError(error), 'persist');
       }
-      throw error;
+      throw attachDiV0P2AutoProjectionFailureStep(error, 'persist');
     }
   }
 

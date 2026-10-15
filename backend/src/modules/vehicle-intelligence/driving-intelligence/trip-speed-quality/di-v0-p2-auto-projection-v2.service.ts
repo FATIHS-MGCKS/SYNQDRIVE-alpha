@@ -8,9 +8,9 @@ import {
 } from './di-v0-p2-auto-projection-v2.config';
 import { DiV0P2AutoProjectionOutboxRepository } from './di-v0-p2-auto-projection-outbox.repository';
 import { DI_V0_P2_AUTO_PROJECTION_V2_CONFIG } from './di-v0-p2-auto-projection-v2.tokens';
+import { formatDiV0P2AutoProjectionFailureForLog } from './di-v0-p2-auto-projection-failure-log';
 import {
-  formatDiV0TripSpeedQualityProjectionErrorForLog,
-  resolveDiV0TripSpeedQualityProjectionErrorCode,
+  DiV0TripSpeedQualityProjectionError,
   type DiV0TripSpeedQualityProjectionErrorCode,
 } from './di-v0-trip-speed-quality-projection.errors';
 import { DiV0TripSpeedQualityProjectionService } from './di-v0-trip-speed-quality-projection.service';
@@ -101,9 +101,15 @@ export class DiV0P2AutoProjectionV2Service {
           result.succeeded += 1;
         } else {
           result.staleAckIgnored += 1;
+          this.logger.warn(
+            `P2 auto projection V2 outbox ack fenced workItemId=${row.workItemId} ${formatDiV0P2AutoProjectionFailureForLog(
+              new Error('claim_token_mismatch_or_status_not_processing'),
+              'outbox_ack',
+            )}`,
+          );
         }
       } catch (error) {
-        const code = resolveDiV0TripSpeedQualityProjectionErrorCode(error);
+        const code = this.resolveOutboxErrorCode(error);
         if (code !== 'UNKNOWN' && SKIP_ERROR_CODES.has(code)) {
           const acked = await this.outbox.markSkipped(row.workItemId, row.claimToken, code);
           if (acked) {
@@ -119,7 +125,7 @@ export class DiV0P2AutoProjectionV2Service {
         if (acked) {
           result.failedRetryable += 1;
           this.logger.warn(
-            `P2 auto projection V2 failed workItemId=${row.workItemId} code=${errCode} nextAttemptAt=${nextAttempt.toISOString()} detail=${formatDiV0TripSpeedQualityProjectionErrorForLog(error)}`,
+            `P2 auto projection V2 failed workItemId=${row.workItemId} outboxCode=${errCode} nextAttemptAt=${nextAttempt.toISOString()} ${formatDiV0P2AutoProjectionFailureForLog(error)}`,
           );
         } else {
           result.staleAckIgnored += 1;
@@ -134,6 +140,14 @@ export class DiV0P2AutoProjectionV2Service {
     }
 
     return result;
+  }
+
+  /** Outbox terminal-skip only for explicit projection eligibility codes (instanceof). */
+  private resolveOutboxErrorCode(error: unknown): DiV0TripSpeedQualityProjectionErrorCode | 'UNKNOWN' {
+    if (error instanceof DiV0TripSpeedQualityProjectionError) {
+      return error.code;
+    }
+    return 'UNKNOWN';
   }
 
   private computeNextAttempt(attemptCount: number, now: Date): Date {

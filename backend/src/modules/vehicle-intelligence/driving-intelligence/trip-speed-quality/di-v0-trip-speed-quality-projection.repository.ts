@@ -177,14 +177,7 @@ export class DiV0TripSpeedQualityProjectionRepository {
           SELECT id, organization_id, trip_id, work_item_id, idempotency_key, content_fingerprint,
             lifecycle_status, projection_json, created_at
           FROM di_v0_trip_speed_quality_projections_v1 WHERE id = ${newId}`;
-        const insertedRow = inserted[0];
-        if (!insertedRow) {
-          throw new DiV0TripSpeedQualityProjectionPersistenceError(
-            'CURRENT_SCOPE_CONFLICT',
-            'insert completed but projection row not readable',
-          );
-        }
-        return this.mapRow(insertedRow);
+        return this.mapRow(inserted[0]);
       });
     } catch (error) {
       if (error instanceof DiV0TripSpeedQualityProjectionPersistenceError) {
