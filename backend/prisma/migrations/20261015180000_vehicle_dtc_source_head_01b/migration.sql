@@ -1,8 +1,9 @@
 -- DTC-01B: isolated DTC source-head authority + durable side-effect outbox
+-- vehicle_id / organization_id use TEXT to match vehicles.id and organizations.id (Prisma String @db.Text).
 
 CREATE TABLE IF NOT EXISTS "vehicle_dtc_source_heads" (
-  "vehicle_id" UUID PRIMARY KEY,
-  "organization_id" UUID,
+  "vehicle_id" TEXT NOT NULL,
+  "organization_id" TEXT,
   "provider" TEXT NOT NULL DEFAULT 'DIMO',
   "provider_binding_id" TEXT NOT NULL,
   "binding_epoch" INTEGER NOT NULL DEFAULT 1,
@@ -19,6 +20,7 @@ CREATE TABLE IF NOT EXISTS "vehicle_dtc_source_heads" (
   "last_audit_ref" TEXT,
   "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT "vehicle_dtc_source_heads_pkey" PRIMARY KEY ("vehicle_id"),
   CONSTRAINT "vehicle_dtc_source_heads_vehicle_id_fkey"
     FOREIGN KEY ("vehicle_id") REFERENCES "vehicles"("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
@@ -27,14 +29,15 @@ CREATE INDEX IF NOT EXISTS "vehicle_dtc_source_heads_org_idx"
   ON "vehicle_dtc_source_heads" ("organization_id");
 
 CREATE TABLE IF NOT EXISTS "vehicle_dtc_snapshot_outbox" (
-  "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  "vehicle_id" UUID NOT NULL,
-  "organization_id" UUID NOT NULL,
+  "id" TEXT NOT NULL,
+  "vehicle_id" TEXT NOT NULL,
+  "organization_id" TEXT NOT NULL,
   "idempotency_key" TEXT NOT NULL,
   "payload" JSONB NOT NULL,
   "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   "processed_at" TIMESTAMPTZ,
   "last_error" TEXT,
+  CONSTRAINT "vehicle_dtc_snapshot_outbox_pkey" PRIMARY KEY ("id"),
   CONSTRAINT "vehicle_dtc_snapshot_outbox_vehicle_id_fkey"
     FOREIGN KEY ("vehicle_id") REFERENCES "vehicles"("id") ON DELETE CASCADE ON UPDATE CASCADE
 );

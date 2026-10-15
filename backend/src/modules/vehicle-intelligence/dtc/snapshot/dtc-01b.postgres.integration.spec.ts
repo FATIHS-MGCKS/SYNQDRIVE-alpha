@@ -35,7 +35,9 @@ const LIVE = process.env.DTC_01B_PG_INTEGRATION === '1';
       await prisma.vehicleLatestState.deleteMany({
         where: { vehicle: { organizationId: orgId } },
       });
-      await prisma.vehicleDataSourceLink.deleteMany({ where: { organizationId: orgId } });
+      await prisma.vehicleDataSourceLink.deleteMany({
+        where: { vehicle: { organizationId: orgId } },
+      });
       await prisma.dimoVehicle.deleteMany({
         where: { registeredVehicles: { some: { organizationId: orgId } } },
       });
@@ -70,16 +72,16 @@ const LIVE = process.env.DTC_01B_PG_INTEGRATION === '1';
         make: 'VW',
         model: 'Golf',
         year: 2024,
-        fuelType: 'PETROL',
+        fuelType: 'GASOLINE',
         status: 'AVAILABLE',
         dimoVehicleId: dimo.id,
       },
     });
     const link = await prisma.vehicleDataSourceLink.create({
       data: {
-        organizationId: org.id,
         vehicleId: vehicle.id,
         provider: 'DIMO',
+        sourceType: 'DIMO',
         isActive: true,
         dimoVehicleId: dimo.id,
         activatedAt: new Date(),
@@ -218,6 +220,38 @@ const LIVE = process.env.DTC_01B_PG_INTEGRATION === '1';
       where: { vehicleId: vehicle.id, processedAt: null },
     });
     expect(remaining).toBe(0);
+  });
+
+  it('startup recovery drains outbox without new DTC ingress', async () => {
+    const { org, vehicle, binding } = await fixture();
+    const built = buildPollSignalsLatestProposal({
+      vehicleId: vehicle.id,
+      organizationId: org.id,
+      binding,
+      fetchObservedAt: new Date('2026-10-15T15:00:00Z'),
+      auditRef: 'pg-startup-recovery',
+      obdDtcListSignal: { timestamp: '2026-10-15T14:00:00Z', value: ['P0420'] },
+    });
+
+    const crashApply = new DtcSnapshotApplyService(prisma as never, new DtcService(prisma as never));
+    const noopFlush = async () => ({ processed: 0, failed: 0 });
+    crashApply.recoverPendingOutbox = noopFlush;
+
+    await crashApply.applyBuiltProposal(built);
+    expect(
+      await prisma.vehicleDtcSnapshotOutbox.count({
+        where: { vehicleId: vehicle.id, processedAt: null },
+      }),
+    ).toBeGreaterThan(0);
+
+    const restarted = new DtcSnapshotApplyService(prisma as never, new DtcService(prisma as never));
+    const recovery = await restarted.recoverPendingOutbox();
+    expect(recovery.processed).toBeGreaterThan(0);
+    expect(
+      await prisma.vehicleDtcSnapshotOutbox.count({
+        where: { vehicleId: vehicle.id, processedAt: null },
+      }),
+    ).toBe(0);
   });
 
   it('concurrent apply leaves a single channel head', async () => {

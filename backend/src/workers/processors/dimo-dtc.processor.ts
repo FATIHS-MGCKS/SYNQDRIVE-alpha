@@ -18,7 +18,7 @@ import { DtcSnapshotApplyService } from '@modules/vehicle-intelligence/dtc/snaps
 import { evaluateDtcPollEligibility } from '@modules/vehicle-intelligence/dtc/snapshot/dtc-snapshot-eligibility';
 import { buildPollSignalsLatestProposal } from '@modules/vehicle-intelligence/dtc/snapshot/dtc-snapshot-proposal.builder';
 import { resolveActiveDimoBindingForVehicle } from '@modules/vehicle-intelligence/dtc/snapshot/dtc-snapshot-binding.util';
-import { assertDtcSnapshotApplyWired } from '@modules/vehicle-intelligence/dtc/snapshot/dtc-fail-closed';
+import { requireDtcSnapshotApplyService } from '@modules/vehicle-intelligence/dtc/snapshot/dtc-fail-closed';
 
 // Supported job names on the DTC queue:
 //   dtc-poll         — legacy full-fleet scan (still works, but fans out)
@@ -134,7 +134,10 @@ export class DimoDtcProcessor extends WorkerHost {
     fetchObservedAt: Date,
     auditRef: string,
   ): Promise<void> {
-    assertDtcSnapshotApplyWired(true, this.dtcSnapshotApply, 'DimoDtcProcessor.pollVehicleDtc01a');
+    const snapshotApply = requireDtcSnapshotApplyService(
+      this.dtcSnapshotApply,
+      'DimoDtcProcessor.pollVehicleDtc01a',
+    );
 
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: vehicleId },
@@ -157,7 +160,7 @@ export class DimoDtcProcessor extends WorkerHost {
       vehicleDimoVehicleId: vehicle.dimoVehicleId,
     });
     if (!eligibility.eligible) {
-      await this.dtcSnapshotApply!.recordSkippedPoll({
+      await snapshotApply.recordSkippedPoll({
         vehicleId,
         organizationId: vehicle.organizationId,
         fetchObservedAt,
@@ -170,7 +173,7 @@ export class DimoDtcProcessor extends WorkerHost {
     try {
       const jwt = await this.auth.getVehicleJwt(tokenId);
       if (!jwt) {
-        await this.dtcSnapshotApply.recordRejectedFetchMetadata({
+        await snapshotApply.recordRejectedFetchMetadata({
           vehicleId,
           fetchObservedAt,
           pollStatus: 'failure',
@@ -199,7 +202,7 @@ export class DimoDtcProcessor extends WorkerHost {
         tokenId,
       );
       if (!binding) {
-        await this.dtcSnapshotApply.recordRejectedFetchMetadata({
+        await snapshotApply.recordRejectedFetchMetadata({
           vehicleId,
           fetchObservedAt,
           pollStatus: 'failure',
@@ -220,7 +223,7 @@ export class DimoDtcProcessor extends WorkerHost {
       });
 
       if (!built.ok) {
-        await this.dtcSnapshotApply.recordRejectedFetchMetadata({
+        await snapshotApply.recordRejectedFetchMetadata({
           vehicleId,
           fetchObservedAt,
           pollStatus: 'rejected_snapshot',
@@ -230,11 +233,11 @@ export class DimoDtcProcessor extends WorkerHost {
         return;
       }
 
-      await this.dtcSnapshotApply.applyBuiltProposal(built);
+      await snapshotApply.applyBuiltProposal(built);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       const is403 = errorMessage.includes('403');
-      await this.dtcSnapshotApply.recordRejectedFetchMetadata({
+      await snapshotApply.recordRejectedFetchMetadata({
         vehicleId,
         fetchObservedAt,
         pollStatus: is403 ? 'auth_denied' : 'failure',

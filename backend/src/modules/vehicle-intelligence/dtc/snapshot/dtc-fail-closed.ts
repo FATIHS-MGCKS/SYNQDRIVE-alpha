@@ -20,3 +20,15 @@ export function assertDtcSnapshotApplyWired(
     );
   }
 }
+
+export function requireDtcSnapshotApplyService<T>(
+  applyService: T | undefined,
+  context: string,
+): T {
+  if (!applyService) {
+    throw new Dtc01aFailClosedError(
+      `${context}: DTC_01A_SAFETY_FOUNDATION_ENABLED but DtcSnapshotApplyService is not injected`,
+    );
+  }
+  return applyService;
+}

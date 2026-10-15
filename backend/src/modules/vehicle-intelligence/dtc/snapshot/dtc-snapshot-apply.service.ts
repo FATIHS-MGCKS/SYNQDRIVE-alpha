@@ -1,4 +1,4 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DtcService } from '../dtc.service';
@@ -15,6 +15,7 @@ import {
   flushDtcSnapshotOutbox,
 } from './dtc-snapshot-outbox.flush';
 import type { DtcSnapshotOutboxPayload } from './dtc-snapshot-outbox.types';
+import { isDtc01aSafetyFoundationEnabled } from './dtc-01a.config';
 
 export interface DtcSnapshotApplyResult {
   decision: DtcSnapshotDecision;
@@ -26,7 +27,7 @@ export interface DtcSnapshotApplyResult {
 type Tx = Prisma.TransactionClient;
 
 @Injectable()
-export class DtcSnapshotApplyService {
+export class DtcSnapshotApplyService implements OnModuleInit {
   private readonly logger = new Logger(DtcSnapshotApplyService.name);
 
   constructor(
@@ -34,6 +35,22 @@ export class DtcSnapshotApplyService {
     private readonly dtcService: DtcService,
     @Optional() private readonly notificationIngest?: NotificationProducerIngestService,
   ) {}
+
+  async onModuleInit(): Promise<void> {
+    if (!isDtc01aSafetyFoundationEnabled()) return;
+    try {
+      const { processed, failed } = await this.recoverPendingOutbox();
+      if (processed > 0 || failed > 0) {
+        this.logger.log(
+          `DTC outbox startup recovery processed=${processed} failed=${failed}`,
+        );
+      }
+    } catch (err) {
+      this.logger.warn(
+        `DTC outbox startup recovery skipped: ${(err as Error).message}`,
+      );
+    }
+  }
 
   async recordRejectedFetchMetadata(input: {
     vehicleId: string;
