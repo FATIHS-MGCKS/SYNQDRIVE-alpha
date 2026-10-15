@@ -58,6 +58,7 @@ import { supportOpsDe } from './support.ops.de';
 import { whatsappDe } from './whatsapp.de';
 import { rentalLegacyGapDE } from './rental-legacy-gap.de';
 import { masterPlatformOpsDiS4De } from './master.platformOps.diS4.de';
+import { masterPhysicalDeviceInventoryDe } from './master.physicalDeviceInventory.de';
 
 export const de: Record<TranslationKey, string> = {
   // ─── Navigation / Sidebar ───
@@ -5958,4 +5959,5 @@ export const de: Record<TranslationKey, string> = {
   ...rentalHostPresentationDe,
   ...rentalLegacyGapDE,
   ...masterPlatformOpsDiS4De,
+  ...masterPhysicalDeviceInventoryDe,
 } satisfies CompleteTranslationDictionary;

@@ -7,6 +7,7 @@ export type MasterView =
   | 'security-access'
   | 'users'
   | 'vehicles'
+  | 'device-inventory'
   | 'prospects'
   | 'billing'
   | 'activity-log'

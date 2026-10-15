@@ -2,6 +2,9 @@
 
 | Date | Change | Authority impact |
 |------|--------|------------------|
+| 2026-10-15 | **Physical Device Inventory P1A hardening** — canonical identifier normalization, manual-intake identity clarification only, idempotency payload binding, audit events, assignment `RESTRICT`, ephemeral PostgreSQL CI (chained in VO-2 postgres gate for i18n workflow firewall) | Inventory module only; no DIMO/VDC/VO link mutation |
+| 2026-10-15 | **Physical Device Inventory P1A CI repair** — shared frontend API DTO types, hub list-load tests, i18n hardcoded-copy drift reverted | No backend semantic change |
+| 2026-10-15 | **Physical Device Inventory P1A** — `PhysicalDevice` + assignment foundation; Master Admin manual intake; no DIMO/VDC/VO link mutation | New inventory persistence + admin API/UI; vehicle onboarding authority unchanged; VDC physical-state authority unchanged |
 | 2026-10-15 | **VO-SIG P2 boot hotfix** — `VehicleOnboardingModule` imports `forwardRef(() => DimoModule)` after VO-SIG P2 added `VehiclesModule ↔ VehicleOnboardingModule` into the existing Dimo ↔ VehicleIntelligence ↔ Vehicles cycle; production boot check at `9fe5b0623` failed with `imports[1]` undefined | Nest module graph only; no onboarding business-logic change; recovery candidate `c6c5b3e84` on top of authorized merge SHA |
 | 2026-10-15 | **VO-SIG-01 P2 production + next-phase audit (docs)** — Closure record @ `f5bb7bb0`; `CURRENT_STATE` / `KNOWLEDGE_GAPS` partial progress (no false close); `VO_NEXT_PHASE_REGISTRATION_PATH_AUDIT.md` | Documentation only; `NATURAL_E2E_PENDING`; module remains `AUDIT_IN_PROGRESS` |
 | 2026-10-14 | **VO-SIG-01 B1** — Document operator-reported production one-time execute (four-link cohort); SQL V3 review commit `81d5880` cited but not merged to `main`; close superseded draft PR #2018; propose P2 Master `registerFromDimo` parity | Documentation only; module remains `AUDIT_IN_PROGRESS`; no runtime change |

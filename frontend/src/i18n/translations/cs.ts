@@ -3,6 +3,7 @@ import { rentalLegacyGapCS } from './rental-legacy-gap.cs';
 import { rentalTripGpsSpeedEvaluationCs } from './rental.tripGpsSpeedEvaluation.cs';
 import { dimoWebhookHealthCs } from './dimo-webhook-health.cs';
 import { masterPlatformOpsDiS4Cs } from './master.platformOps.diS4.cs';
+import { masterPhysicalDeviceInventoryCs } from './master.physicalDeviceInventory.cs';
 
 export const cs = {
   'dashboard.welcomeBack': 'Vítejte zpět, {name}',
@@ -157,4 +158,5 @@ export const cs = {
   ...rentalTripGpsSpeedEvaluationCs,
   ...dimoWebhookHealthCs,
   ...masterPlatformOpsDiS4Cs,
+  ...masterPhysicalDeviceInventoryCs,
 } satisfies PartialTranslationDictionary;

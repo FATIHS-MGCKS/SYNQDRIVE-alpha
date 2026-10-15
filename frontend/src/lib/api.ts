@@ -3560,6 +3560,31 @@ export const api = {
     orgStats: () => get<any>('/admin/stats/organizations'),
     revenueStats: () => get<any>('/admin/stats/revenue'),
     prune: () => post<{ message: string }>('/admin/prune', {}),
+    physicalDeviceInventory: {
+      summary: () =>
+        get<import('./physical-device-inventory.types').PhysicalDeviceStockSummaryDto>(
+          '/admin/physical-device-inventory/summary',
+        ),
+      listDevices: (params?: import('./physical-device-inventory.types').ListPhysicalDevicesQuery) => {
+        const q = new URLSearchParams();
+        if (params?.search) q.set('search', params.search);
+        if (params?.status) q.set('status', params.status);
+        if (params?.modelCode) q.set('modelCode', params.modelCode);
+        if (params?.warehouseLocation) q.set('warehouseLocation', params.warehouseLocation);
+        if (params?.ownerOrganizationId) q.set('ownerOrganizationId', params.ownerOrganizationId);
+        if (params?.limit != null) q.set('limit', String(params.limit));
+        if (params?.offset != null) q.set('offset', String(params.offset));
+        const suffix = q.toString() ? `?${q.toString()}` : '';
+        return get<import('./physical-device-inventory.types').PhysicalDeviceListResponseDto>(
+          `/admin/physical-device-inventory/devices${suffix}`,
+        );
+      },
+      manualIntake: (body: import('./physical-device-inventory.types').ManualIntakePhysicalDeviceRequest) =>
+        post<import('./physical-device-inventory.types').ManualIntakePhysicalDeviceResponse>(
+          '/admin/physical-device-inventory/devices/manual-intake',
+          body,
+        ),
+    },
     monitoring: {
       summary: (params?: { from?: string; to?: string }) =>
         get<any>('/admin/monitoring/summary' + buildQuery(params)),
