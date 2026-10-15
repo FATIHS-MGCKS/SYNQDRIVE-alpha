@@ -1,4 +1,6 @@
+import { Inject, Injectable } from '@nestjs/common';
 import type { PrismaClient } from '@prisma/client';
+import { PrismaService } from '@shared/database/prisma.service';
 import {
   DI_V0_SPEED_QC_DEFAULT_POLICY_VERSION,
   resolveDiV0SpeedQcPolicyVersion,
@@ -21,10 +23,11 @@ export interface DiV0TripSpeedQualityProjectForWorkItemOptions {
   qcPolicyVersion?: string;
 }
 
+@Injectable()
 export class DiV0TripSpeedQualityProjectionService {
   private readonly repository: DiV0TripSpeedQualityProjectionRepository;
 
-  constructor(private readonly prisma: PrismaClient) {
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaClient) {
     this.repository = new DiV0TripSpeedQualityProjectionRepository(prisma);
   }
 

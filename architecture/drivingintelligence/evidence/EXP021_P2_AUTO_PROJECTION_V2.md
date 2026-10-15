@@ -69,12 +69,13 @@ GPS L3 / S1 / S2 / calibration / QC evaluator unchanged; no null→0; no extra p
 | Diagnosis probes (same day, ~14:20–14:29 UTC) | `137251770926839b8105ae42da762191411423d4` | Read-only compute + **diagnostic** persist probe (see below). |
 | Re-verification (this correction pass) | `9b355f7b62eb8e82ec6e5d73fceeb216653a4ea2` | Parallel workstream deploy; **do not roll back** to `13725177…`. Outbox still `UNKNOWN`; CURRENT V2 still `0` for affected trips. |
 
-### Confirmed facts (not root cause)
+### Confirmed facts (historical vs current)
 
-- `ORIGINAL_PRODUCTION_ROOT_CAUSE` = **UNKNOWN** (no captured stack / Prisma code / typed exception in available Production logs).
-- `ERROR_OBSERVABILITY_GAP` = **CONFIRMED** — outbox stores `last_error_code` only; P2 warn lines lacked `failureStep` + safe exception detail before PR #2037 diagnostic scope.
+- **Before deploy `3a7cc0cc34…`:** `ORIGINAL_PRODUCTION_ROOT_CAUSE` = **UNKNOWN** in logs (no `failureStep` / exception detail on Production).
+- **After deploy `3a7cc0cc34…` (read-only):** root cause **confirmed** — Nest did not inject `PrismaService` into `DiV0TripSpeedQualityProjectionService`; failure occurs **before** `compute` / `persist` on the first `this.prisma.$queryRaw` in `projectForWorkItem` (`failureStep=projection_pipeline`, `TypeError` on `$queryRaw`).
+- `ERROR_OBSERVABILITY_GAP` (initial) = **CONFIRMED** — outbox `last_error_code` only + legacy warn lines pre-#2037; **post-#2037** structured warns present when searching correct leader log (`synqdrive-b-out-*.log`).
 - Schema on Production matches repo migrations (`20261013180000_*`, `20261015103000_*`, `20261015120000_*`).
-- Read-only compute + `JSON.stringify` OK for work item `f9a2801f-…` on diagnosis SHA.
+- Read-only compute + `JSON.stringify` OK for work item `f9a2801f-…` on diagnosis SHA — **does not** prove the Nest scheduler auto-P2 path (manual/script `PrismaClient` bypasses broken DI).
 
 ### Production diagnostic persist probe (mutation — documented)
 
@@ -97,6 +98,8 @@ GPS L3 / S1 / S2 / calibration / QC evaluator unchanged; no null→0; no extra p
 - **Limitation:** DELETE removes the inserted row only; it does **not** prove absence of other side effects (e.g. brief CURRENT scope lock, sequence-like counters, or concurrent scheduler interaction). Outbox was not reset.
 
 `PRODUCTION_MUTATIONS=YES_DIAGNOSTIC_INSERT_AND_DELETE` — no further Production writes in this workstream.
+
+**Interpretation (2026-10-15 correction):** The manual persist probe exercised `compute` + `persist` with an explicit `PrismaClient` / repository construction. It is **not** evidence that the **Nest-wired** `DiV0P2AutoProjectionV2Service` → `DiV0TripSpeedQualityProjectionService` path could reach persist on Production; production failures occur earlier (missing `PrismaService` injection).
 
 ### PR #2037 scope (diagnostic only — not a root-cause fix claim)
 
@@ -125,3 +128,13 @@ GPS L3 / S1 / S2 / calibration / QC evaluator unchanged; no null→0; no extra p
 3. Preserve `DI_V0_P2_AUTO_PROJECTION_V2_ENABLED_SINCE` and existing outbox backoff (`next_attempt_at`, `attempt_count`).
 4. Read-only observe per retry: work item id, `attempt_count`, outbox `status` / `last_error_code`, logs for `failureStep=`; on `SUCCEEDED`, read-only verify projection row (`work_item_id`, `qc_policy_version`, `lifecycle_status=CURRENT`, idempotency/fingerprint fields only — no raw `projection_json` dump in ops notes).
 5. Report **DIAGNOSTIC_SUCCESS** and **PIPELINE_RECOVERY** separately (either, both, or neither).
+
+### 2026-10-15 — Post-deploy diagnostic + PR #2040 (Nest `PrismaService` injection)
+
+| Field | Value |
+|-------|--------|
+| Production deploy SHA | `3a7cc0cc34ab5e79781ae667b8b6c68637a70c8f` |
+| `DIAGNOSTIC_SUCCESS` | **YES** — structured log captures `TypeError` + `failureStep=projection_pipeline` (failure **before** compute/persist) |
+| `PIPELINE_RECOVERY` | **NO** until #2040 merge + owner deploy + natural retry proves `SUCCEEDED` + CURRENT V2 |
+| Fix | PR **#2040** — `@Injectable()` + `PrismaService` on `DiV0TripSpeedQualityProjectionService`; module unit regression via real `DiV0TripSpeedQualityModule` Nest DI |
+| Regression test | `di-v0-p2-auto-projection-v2.module.unit.spec.ts` — fails without fix (production `TypeError` on `$queryRaw`); passes with fix (`WORK_ITEM_NOT_FOUND` after stubbed first query) |
