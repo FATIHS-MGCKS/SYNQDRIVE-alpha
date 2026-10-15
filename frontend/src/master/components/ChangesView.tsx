@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'exp021-p1-v2-runtime-integration-readiness-2026-10-14',
+    version: '4.9.2243',
+    title: 'EXP021 — P1 V2 QC policy runtime integration readiness (ops opt-in)',
+    summary: [
+      'Documents end-to-end path: pinned S4 snapshot → shadow intervals → P1 QC (qcPolicyVersion) → P2 projection; persist/read remain ops-only (module not in AppModule).',
+      'DiV0TripSpeedQualityProjectionService forwards optional qcPolicyVersion on project/read (default V1); preview CLI adds --qcPolicyVersion / DI_V0_P21_QC_POLICY_VERSION.',
+      'Production release a4c3b1fc1d observed pre-V2; customer UI/API unchanged — V2 requires deploy + explicit ops policy selection.',
+    ],
+    reason:
+      'After #2020/#2021/#2025 on main, close the gap between merged V2 semantics and callable persist/preview paths without flipping customer defaults.',
+    previousBehavior:
+      'P2 engine/preview accepted qcPolicyVersion but persist service and preview CLI always implied V1; V2 only in forensic compare scripts.',
+    details:
+      'di-v0-trip-speed-quality-projection.service.ts, di-v0-trip-speed-quality-preview-cli.scope.ts, architecture/drivingintelligence/evidence/EXP021_P1_V2_RUNTIME_INTEGRATION_READINESS.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-14T21:50:00.000Z',
+  },
+  {
     id: 'vo-sig-01-p1-connection-identity-2026-10-13',
     version: '4.9.2242',
     title: 'VO-SIG-01 P1 — verified connection modality + activation identity enforcement',

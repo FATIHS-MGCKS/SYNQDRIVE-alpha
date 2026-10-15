@@ -1986,3 +1986,11 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | Opt-in `DI_V0_SPEED_QC_POLICY_V2`; null stationary band → `TRUSTED_LIMITED` / `OK_STATIONARY_NULL_SPEED`; projection policy provenance; compare ops script; evidence `EXP021_P1_V2_STATIONARY_SEMANTICS.md` |
 | FINDING | Pinned trip: 118/144 stationary candidates accepted; 691 trusted numeric unchanged; 0 intervals changed outside stationary candidates |
 | NON_EFFECTS | Default V1; no S2/calibration change; no deploy or runtime activation |
+
+### EXP-021 P1 V2 runtime integration readiness (2026-10-14)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Trace customer vs ops data path; Production read-only SHA; `projectForWorkItem` / `readCurrentOpsProjection` + preview CLI `qcPolicyVersion`; unit tests; evidence `EXP021_P1_V2_RUNTIME_INTEGRATION_READINESS.md` |
+| FINDING | V2 on main, not on Production `a4c3b1fc1d`; idempotency keys allow V1/V2 rows side by side; no product UI/API for trip speed QC |
+| NON_EFFECTS | No deploy, backfill, provider calls, or customer default policy flip |

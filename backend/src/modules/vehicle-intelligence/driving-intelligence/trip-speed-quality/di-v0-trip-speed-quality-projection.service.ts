@@ -1,5 +1,8 @@
 import type { PrismaClient } from '@prisma/client';
-import { DI_V0_SPEED_QC_POLICY_V1 } from '../speed-qc/di-v0-speed-qc-policy.version';
+import {
+  DI_V0_SPEED_QC_DEFAULT_POLICY_VERSION,
+  resolveDiV0SpeedQcPolicyVersion,
+} from '../speed-qc/di-v0-speed-qc-policy.version';
 import { computeDiV0TripSpeedQualityProjectionV1ForWorkItem } from './di-v0-trip-speed-quality-projection.engine';
 import {
   DiV0TripSpeedQualityProjectionError,
@@ -11,6 +14,11 @@ import {
   type DiV0TripSpeedQualityPersistedRow,
 } from './di-v0-trip-speed-quality-projection.repository';
 import { DI_V0_TRIP_SPEED_QUALITY_PROJECTION_V1 } from './di-v0-trip-speed-quality-projection.version';
+
+export interface DiV0TripSpeedQualityProjectForWorkItemOptions {
+  /** Defaults to DI_V0_SPEED_QC_POLICY_V1 when omitted. */
+  qcPolicyVersion?: string;
+}
 
 export class DiV0TripSpeedQualityProjectionService {
   private readonly repository: DiV0TripSpeedQualityProjectionRepository;
@@ -26,7 +34,11 @@ export class DiV0TripSpeedQualityProjectionService {
   async projectForWorkItem(
     organizationId: string,
     workItemId: string,
+    options?: DiV0TripSpeedQualityProjectForWorkItemOptions,
   ): Promise<DiV0TripSpeedQualityPersistedRow> {
+    const qcPolicyVersion = resolveDiV0SpeedQcPolicyVersion(
+      options?.qcPolicyVersion ?? DI_V0_SPEED_QC_DEFAULT_POLICY_VERSION,
+    );
     const wi = await this.prisma.$queryRaw<Array<{ trip_id: string }>>`
       SELECT trip_id FROM di_v0_s4_work_items WHERE id = ${workItemId}`;
     const tripId = wi[0]?.trip_id;
@@ -38,6 +50,7 @@ export class DiV0TripSpeedQualityProjectionService {
       organizationId,
       tripId,
       workItemId,
+      qcPolicyVersion,
     });
 
     try {
@@ -63,11 +76,15 @@ export class DiV0TripSpeedQualityProjectionService {
   async readCurrentOpsProjection(
     organizationId: string,
     tripId: string,
+    qcPolicyVersion?: string,
   ): Promise<DiV0TripSpeedQualityPersistedRow | null> {
+    const policy = resolveDiV0SpeedQcPolicyVersion(
+      qcPolicyVersion ?? DI_V0_SPEED_QC_DEFAULT_POLICY_VERSION,
+    );
     const row = await this.repository.readCurrentForTrip(
       organizationId,
       tripId,
-      DI_V0_SPEED_QC_POLICY_V1,
+      policy,
       DI_V0_TRIP_SPEED_QUALITY_PROJECTION_V1,
     );
     if (!row) return null;
