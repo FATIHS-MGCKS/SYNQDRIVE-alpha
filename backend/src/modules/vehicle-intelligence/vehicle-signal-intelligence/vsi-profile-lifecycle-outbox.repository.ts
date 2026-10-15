@@ -2,87 +2,152 @@ import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import {
   Prisma,
+  VsiProfileLifecycleOutbox,
   VsiProfileLifecycleOutboxEventType,
   VsiProfileLifecycleOutboxStatus,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
-import { VSI_PROFILE_LIFECYCLE_OUTBOX_MAX_ATTEMPTS } from './vsi-profile-lifecycle.constants';
+import {
+  VSI_PROFILE_LIFECYCLE_OUTBOX_CLAIM_LEASE_MS,
+  VSI_PROFILE_LIFECYCLE_OUTBOX_MAX_ATTEMPTS,
+} from './vsi-profile-lifecycle.constants';
 
 type DbClient = Prisma.TransactionClient | PrismaService;
+
+export type VsiProfileLifecycleClaimedRow = VsiProfileLifecycleOutbox & {
+  claimToken: string;
+};
 
 @Injectable()
 export class VsiProfileLifecycleOutboxRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async claimPendingBatch(limit: number, workerId: string) {
-    const now = new Date();
-    const candidates = await this.prisma.vsiProfileLifecycleOutbox.findMany({
-      where: {
-        status: VsiProfileLifecycleOutboxStatus.PENDING,
-        availableAt: { lte: now },
-        attempts: { lt: VSI_PROFILE_LIFECYCLE_OUTBOX_MAX_ATTEMPTS },
-      },
-      orderBy: [{ occurredAt: 'asc' }, { createdAt: 'asc' }],
-      take: limit,
-      select: { id: true },
-    });
+  /**
+   * Atomically claim a batch with PROCESSING lease + claim token.
+   * Stale PROCESSING rows (expired lease) are reclaimable.
+   */
+  async claimPendingBatch(
+    limit: number,
+    _workerId: string,
+    now = new Date(),
+  ): Promise<VsiProfileLifecycleClaimedRow[]> {
+    const leaseUntil = new Date(now.getTime() + VSI_PROFILE_LIFECYCLE_OUTBOX_CLAIM_LEASE_MS);
+    const claimed: VsiProfileLifecycleClaimedRow[] = [];
 
-    const claimed: string[] = [];
-    for (const row of candidates) {
-      const updated = await this.prisma.vsiProfileLifecycleOutbox.updateMany({
+    return this.prisma.$transaction(async (tx) => {
+      const candidates = await tx.vsiProfileLifecycleOutbox.findMany({
         where: {
-          id: row.id,
-          status: VsiProfileLifecycleOutboxStatus.PENDING,
+          attempts: { lt: VSI_PROFILE_LIFECYCLE_OUTBOX_MAX_ATTEMPTS },
+          OR: [
+            {
+              status: VsiProfileLifecycleOutboxStatus.PENDING,
+              availableAt: { lte: now },
+            },
+            {
+              status: VsiProfileLifecycleOutboxStatus.PROCESSING,
+              claimExpiresAt: { lte: now },
+            },
+          ],
         },
-        data: {
-          attempts: { increment: 1 },
-          updatedAt: now,
-        },
+        orderBy: [{ occurredAt: 'asc' }, { createdAt: 'asc' }],
+        take: limit,
       });
-      if (updated.count === 1) {
-        claimed.push(row.id);
+
+      for (const candidate of candidates) {
+        const claimToken = randomUUID();
+        const result = await tx.vsiProfileLifecycleOutbox.updateMany({
+          where: {
+            id: candidate.id,
+            OR: [
+              {
+                status: VsiProfileLifecycleOutboxStatus.PENDING,
+                availableAt: { lte: now },
+              },
+              {
+                status: VsiProfileLifecycleOutboxStatus.PROCESSING,
+                claimExpiresAt: { lte: now },
+              },
+            ],
+          },
+          data: {
+            status: VsiProfileLifecycleOutboxStatus.PROCESSING,
+            claimToken,
+            claimExpiresAt: leaseUntil,
+            attempts: { increment: 1 },
+            updatedAt: now,
+          },
+        });
+        if (result.count === 1) {
+          claimed.push({
+            ...candidate,
+            status: VsiProfileLifecycleOutboxStatus.PROCESSING,
+            claimToken,
+            claimExpiresAt: leaseUntil,
+            attempts: candidate.attempts + 1,
+          });
+        }
       }
-    }
-    if (claimed.length === 0) {
-      return [];
-    }
-    return this.prisma.vsiProfileLifecycleOutbox.findMany({
-      where: { id: { in: claimed } },
-      orderBy: { occurredAt: 'asc' },
+      return claimed;
     });
   }
 
-  async markCompleted(outboxId: string): Promise<void> {
-    await this.prisma.vsiProfileLifecycleOutbox.update({
-      where: { id: outboxId },
+  async markCompleted(outboxId: string, claimToken: string): Promise<boolean> {
+    const result = await this.prisma.vsiProfileLifecycleOutbox.updateMany({
+      where: {
+        id: outboxId,
+        status: VsiProfileLifecycleOutboxStatus.PROCESSING,
+        claimToken,
+      },
       data: {
         status: VsiProfileLifecycleOutboxStatus.COMPLETED,
         processedAt: new Date(),
         lastError: null,
+        claimToken: null,
+        claimExpiresAt: null,
       },
     });
+    return result.count === 1;
   }
 
-  async markRetry(outboxId: string, errorMessage: string, delayMs: number): Promise<void> {
-    await this.prisma.vsiProfileLifecycleOutbox.update({
-      where: { id: outboxId },
+  async markRetry(
+    outboxId: string,
+    claimToken: string,
+    errorMessage: string,
+    delayMs: number,
+  ): Promise<boolean> {
+    const result = await this.prisma.vsiProfileLifecycleOutbox.updateMany({
+      where: {
+        id: outboxId,
+        status: VsiProfileLifecycleOutboxStatus.PROCESSING,
+        claimToken,
+      },
       data: {
         status: VsiProfileLifecycleOutboxStatus.PENDING,
         lastError: errorMessage.slice(0, 2000),
         availableAt: new Date(Date.now() + delayMs),
+        claimToken: null,
+        claimExpiresAt: null,
       },
     });
+    return result.count === 1;
   }
 
-  async markFailed(outboxId: string, errorMessage: string): Promise<void> {
-    await this.prisma.vsiProfileLifecycleOutbox.update({
-      where: { id: outboxId },
+  async markFailed(outboxId: string, claimToken: string, errorMessage: string): Promise<boolean> {
+    const result = await this.prisma.vsiProfileLifecycleOutbox.updateMany({
+      where: {
+        id: outboxId,
+        status: VsiProfileLifecycleOutboxStatus.PROCESSING,
+        claimToken,
+      },
       data: {
         status: VsiProfileLifecycleOutboxStatus.FAILED,
         lastError: errorMessage.slice(0, 2000),
         processedAt: new Date(),
+        claimToken: null,
+        claimExpiresAt: null,
       },
     });
+    return result.count === 1;
   }
 
   async enqueue(

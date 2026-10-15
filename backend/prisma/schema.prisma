@@ -4532,6 +4532,7 @@ enum VsiProfileLifecycleOutboxEventType {
 
 enum VsiProfileLifecycleOutboxStatus {
   PENDING
+  PROCESSING
   COMPLETED
   FAILED
 }
@@ -4550,6 +4551,8 @@ model VsiProfileLifecycleOutbox {
   status               VsiProfileLifecycleOutboxStatus   @default(PENDING)
   attempts             Int                               @default(0)
   availableAt          DateTime                          @default(now()) @map("available_at") @db.Timestamptz(3)
+  claimToken           String?                           @map("claim_token")
+  claimExpiresAt       DateTime?                         @map("claim_expires_at") @db.Timestamptz(3)
   lastError            String?                           @map("last_error")
   processedAt          DateTime?                         @map("processed_at") @db.Timestamptz(3)
   createdAt            DateTime                          @default(now()) @map("created_at") @db.Timestamptz(3)

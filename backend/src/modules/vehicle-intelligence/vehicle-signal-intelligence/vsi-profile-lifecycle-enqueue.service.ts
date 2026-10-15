@@ -122,6 +122,26 @@ export class VsiProfileLifecycleEnqueueService {
     );
   }
 
+  async enqueueBackfillContinuation(input: {
+    organizationId: string;
+    vehicleId: string;
+    cursor: string;
+    occurredAt: Date;
+  }): Promise<void> {
+    await this.enqueue({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      providerSourceLinkId: null,
+      eventType: 'ACTIVE_VEHICLE_BACKFILL_RECONCILE',
+      occurredAt: input.occurredAt,
+      idempotencyKey: `vsi-p2:BACKFILL:${input.organizationId}:${input.cursor}`,
+      payload: {
+        organizationId: input.organizationId,
+        backfillCursor: input.cursor,
+      },
+    });
+  }
+
   async enqueueDeclaredCatalogAdvanced(
     input: {
       organizationId: string;

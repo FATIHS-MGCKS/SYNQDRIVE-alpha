@@ -8,6 +8,10 @@ import { fingerprintVsiProfileEvaluation } from './vsi-profile-fingerprint.util'
 import type { VsiProfileEvaluationResult } from './vsi-profile.types';
 import { VSI_PROFILE_CONTRACT_VERSION } from './vsi-profile.types';
 import type { VsiSourceLinkRow } from './vsi-readonly-composer.types';
+import {
+  VSI_PROFILE_LIFECYCLE_LIMITATION_SOURCE_LINK_INACTIVE,
+  VSI_PROFILE_LIFECYCLE_LIMITATION_SOURCE_LINK_SUPERSEDED,
+} from './vsi-profile-lifecycle.constants';
 
 const DEFAULT_POLL_LOG_LIMIT = 5;
 
@@ -116,12 +120,17 @@ export class VsiSignalProfileMaterializationService {
       },
     });
 
-    const strictBinding =
+    const boundLatestState =
+      latestState?.providerBindingId && latestState.providerBindingId !== providerSourceLinkId
+        ? null
+        : latestState;
+
+    const lifecycleScopedInit =
       input.lifecycleMode === 'SOURCE_LINK_ACTIVATED' ||
-      input.lifecycleMode === 'BACKFILL_RECONCILE' ||
-      input.lifecycleMode === 'DECLARED_CATALOG_ADVANCED'
-        ? false
-        : input.requireBindingMatch !== false;
+      input.lifecycleMode === 'BACKFILL_RECONCILE';
+    const strictBinding = lifecycleScopedInit
+      ? false
+      : input.requireBindingMatch !== false;
 
     if (
       strictBinding &&
@@ -145,9 +154,9 @@ export class VsiSignalProfileMaterializationService {
       existingProfile?.lastMaterializedSourceTimestamp ??
       null;
     if (
-      latestState?.sourceTimestamp &&
+      boundLatestState?.sourceTimestamp &&
       priorSource &&
-      latestState.sourceTimestamp.getTime() < priorSource.getTime()
+      boundLatestState.sourceTimestamp.getTime() < priorSource.getTime()
     ) {
       this.logger.debug(
         `VSI profile skip out-of-order source for vehicle=${vehicleId} link=${providerSourceLinkId}`,
@@ -188,12 +197,12 @@ export class VsiSignalProfileMaterializationService {
 
     if (
       existingProfile &&
-      latestState?.sourceTimestamp &&
-      latestState?.providerFetchedAt &&
+      boundLatestState?.sourceTimestamp &&
+      boundLatestState?.providerFetchedAt &&
       existingProfile.lastMaterializedSourceTimestamp?.getTime() ===
-        latestState.sourceTimestamp.getTime() &&
+        boundLatestState.sourceTimestamp.getTime() &&
       existingProfile.lastMaterializedProviderFetchAt?.getTime() ===
-        latestState.providerFetchedAt.getTime()
+        boundLatestState.providerFetchedAt.getTime()
     ) {
       const catalogAdvanced =
         declared.checkedAt &&
@@ -205,8 +214,8 @@ export class VsiSignalProfileMaterializationService {
     }
 
     const projectionAsOf =
-      latestState?.providerFetchedAt ??
-      latestState?.updatedAt ??
+      boundLatestState?.providerFetchedAt ??
+      boundLatestState?.updatedAt ??
       new Date();
 
     const evaluationDraft = evaluateVsiSignalProfile(
@@ -218,18 +227,18 @@ export class VsiSignalProfileMaterializationService {
         link: linkRow,
         identity,
         projectionAsOf,
-        latestState: latestState
+        latestState: boundLatestState
           ? {
-              vehicleId: latestState.vehicleId,
-              providerBindingId: latestState.providerBindingId,
-              providerSource: latestState.providerSource,
-              lvBatteryVoltage: latestState.lvBatteryVoltage,
-              evSoc: latestState.evSoc,
-              online: latestState.online,
-              sourceTimestamp: latestState.sourceTimestamp,
-              providerFetchedAt: latestState.providerFetchedAt,
-              updatedAt: latestState.updatedAt,
-              rawPayloadJson: latestState.rawPayloadJson,
+              vehicleId: boundLatestState.vehicleId,
+              providerBindingId: boundLatestState.providerBindingId,
+              providerSource: boundLatestState.providerSource,
+              lvBatteryVoltage: boundLatestState.lvBatteryVoltage,
+              evSoc: boundLatestState.evSoc,
+              online: boundLatestState.online,
+              sourceTimestamp: boundLatestState.sourceTimestamp,
+              providerFetchedAt: boundLatestState.providerFetchedAt,
+              updatedAt: boundLatestState.updatedAt,
+              rawPayloadJson: boundLatestState.rawPayloadJson,
             }
           : null,
         pollLogs,
@@ -241,6 +250,18 @@ export class VsiSignalProfileMaterializationService {
       },
       this.declaredCatalog,
     );
+
+    if (
+      link.isActive &&
+      (input.lifecycleMode === 'SOURCE_LINK_ACTIVATED' ||
+        input.lifecycleMode === 'BACKFILL_RECONCILE')
+    ) {
+      evaluationDraft.profileLimitations = evaluationDraft.profileLimitations.filter(
+        (limitation) =>
+          limitation !== VSI_PROFILE_LIFECYCLE_LIMITATION_SOURCE_LINK_INACTIVE &&
+          limitation !== VSI_PROFILE_LIFECYCLE_LIMITATION_SOURCE_LINK_SUPERSEDED,
+      );
+    }
 
     const fingerprint = fingerprintVsiProfileEvaluation(evaluationDraft);
     if (existingProfile?.contentFingerprint === fingerprint) {

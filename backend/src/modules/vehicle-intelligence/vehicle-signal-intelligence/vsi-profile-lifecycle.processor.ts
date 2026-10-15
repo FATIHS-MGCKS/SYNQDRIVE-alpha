@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { VsiProfileLifecycleOutboxEventType } from '@prisma/client';
+import { PrismaService } from '@shared/database/prisma.service';
 import { VsiProfileLifecycleOutboxRepository } from './vsi-profile-lifecycle-outbox.repository';
 import { VsiSignalProfileMaterializationService } from './vsi-profile-materialization.service';
 import {
@@ -8,8 +9,13 @@ import {
   VSI_PROFILE_LIFECYCLE_OUTBOX_BATCH_SIZE,
   VSI_PROFILE_LIFECYCLE_OUTBOX_MAX_ATTEMPTS,
 } from './vsi-profile-lifecycle.constants';
+import {
+  shouldApplySourceLinkActivatedEvent,
+  shouldApplySourceLinkDeactivatedEvent,
+} from './vsi-profile-lifecycle-ordering';
 import type { VsiProfileLifecycleOutboxPayloadV1 } from './vsi-profile-lifecycle.types';
 import { planActiveVehicleProfileBackfill } from './vsi-profile-lifecycle.backfill';
+import { VsiProfileLifecycleEnqueueService } from './vsi-profile-lifecycle-enqueue.service';
 
 export type VsiProfileLifecycleProcessOutcome =
   | 'completed'
@@ -22,8 +28,10 @@ export class VsiProfileLifecycleOutboxProcessor {
   private readonly logger = new Logger(VsiProfileLifecycleOutboxProcessor.name);
 
   constructor(
+    private readonly prisma: PrismaService,
     private readonly repository: VsiProfileLifecycleOutboxRepository,
     private readonly materialization: VsiSignalProfileMaterializationService,
+    private readonly enqueue: VsiProfileLifecycleEnqueueService,
   ) {}
 
   async processPendingBatch(
@@ -32,22 +40,26 @@ export class VsiProfileLifecycleOutboxProcessor {
     const rows = await this.repository.claimPendingBatch(limit, 'vsi-profile-lifecycle');
     const results: Array<{ outboxId: string; outcome: VsiProfileLifecycleProcessOutcome }> = [];
     for (const row of rows) {
-      results.push({ outboxId: row.id, outcome: await this.processRow(row) });
+      results.push({
+        outboxId: row.id,
+        outcome: await this.processRow(row),
+      });
     }
     return results;
   }
 
-  private async processRow(
-    row: {
-      id: string;
-      eventType: VsiProfileLifecycleOutboxEventType;
-      organizationId: string;
-      vehicleId: string;
-      providerSourceLinkId: string | null;
-      payload: unknown;
-      attempts: number;
-    },
-  ): Promise<VsiProfileLifecycleProcessOutcome> {
+  private async processRow(row: {
+    id: string;
+    eventType: VsiProfileLifecycleOutboxEventType;
+    organizationId: string;
+    vehicleId: string;
+    providerSourceLinkId: string | null;
+    payload: unknown;
+    attempts: number;
+    claimToken: string;
+    occurredAt: Date;
+  }): Promise<VsiProfileLifecycleProcessOutcome> {
+    const claimToken = row.claimToken;
     try {
       const payload = row.payload as VsiProfileLifecycleOutboxPayloadV1;
       switch (row.eventType) {
@@ -68,9 +80,13 @@ export class VsiProfileLifecycleOutboxProcessor {
           break;
         default:
           this.logger.warn(`VSI lifecycle unknown event type=${row.eventType}`);
+          await this.repository.markCompleted(row.id, claimToken);
           return 'skipped';
       }
-      await this.repository.markCompleted(row.id);
+      const completed = await this.repository.markCompleted(row.id, claimToken);
+      if (!completed) {
+        return 'skipped';
+      }
       return 'completed';
     } catch (error) {
       const message = error instanceof Error ? error.message : 'vsi_lifecycle_handler_failed';
@@ -78,21 +94,50 @@ export class VsiProfileLifecycleOutboxProcessor {
         `VSI lifecycle outbox failed id=${row.id} type=${row.eventType} attempts=${row.attempts}: ${message}`,
       );
       if (row.attempts >= VSI_PROFILE_LIFECYCLE_OUTBOX_MAX_ATTEMPTS) {
-        await this.repository.markFailed(row.id, message);
+        await this.repository.markFailed(row.id, claimToken, message);
         return 'failed';
       }
       const backoffMs = Math.min(60_000, 2_000 * row.attempts);
-      await this.repository.markRetry(row.id, message, backoffMs);
+      await this.repository.markRetry(row.id, claimToken, message, backoffMs);
       return 'retry';
     }
   }
 
+  private async loadScopedLink(
+    organizationId: string,
+    vehicleId: string,
+    linkId: string,
+  ) {
+    return this.prisma.vehicleDataSourceLink.findFirst({
+      where: {
+        id: linkId,
+        vehicleId,
+        vehicle: { organizationId },
+      },
+      select: {
+        id: true,
+        isActive: true,
+        activatedAt: true,
+        deactivatedAt: true,
+      },
+    });
+  }
+
   private async handleSourceLinkActivated(
-    row: { organizationId: string; vehicleId: string; providerSourceLinkId: string | null },
+    row: {
+      organizationId: string;
+      vehicleId: string;
+      providerSourceLinkId: string | null;
+      occurredAt: Date;
+    },
     payload: VsiProfileLifecycleOutboxPayloadV1,
   ): Promise<void> {
     const linkId = row.providerSourceLinkId ?? payload.providerSourceLinkId;
     if (!linkId) {
+      return;
+    }
+    const link = await this.loadScopedLink(row.organizationId, row.vehicleId, linkId);
+    if (!link || !shouldApplySourceLinkActivatedEvent(link, row.occurredAt)) {
       return;
     }
     await this.materialization.materializeFromPersistedEvidence({
@@ -104,12 +149,21 @@ export class VsiProfileLifecycleOutboxProcessor {
   }
 
   private async handleSourceLinkDeactivated(
-    row: { organizationId: string; vehicleId: string; providerSourceLinkId: string | null },
+    row: {
+      organizationId: string;
+      vehicleId: string;
+      providerSourceLinkId: string | null;
+      occurredAt: Date;
+    },
     payload: VsiProfileLifecycleOutboxPayloadV1,
     superseded: boolean,
   ): Promise<void> {
     const linkId = row.providerSourceLinkId ?? payload.providerSourceLinkId;
     if (!linkId) {
+      return;
+    }
+    const link = await this.loadScopedLink(row.organizationId, row.vehicleId, linkId);
+    if (!link || !shouldApplySourceLinkDeactivatedEvent(link, row.occurredAt)) {
       return;
     }
     const limitation = superseded
@@ -153,13 +207,22 @@ export class VsiProfileLifecycleOutboxProcessor {
   }
 
   private async handleBackfillBatch(
-    row: { organizationId: string },
+    row: { organizationId: string; vehicleId: string },
     payload: VsiProfileLifecycleOutboxPayloadV1,
   ): Promise<void> {
-    await planActiveVehicleProfileBackfill({
-      organizationId: row.organizationId,
+    const organizationId = payload.organizationId ?? row.organizationId;
+    const { nextCursor } = await planActiveVehicleProfileBackfill({
+      organizationId,
       materialization: this.materialization,
       cursor: payload.backfillCursor ?? null,
     });
+    if (nextCursor) {
+      await this.enqueue.enqueueBackfillContinuation({
+        organizationId,
+        vehicleId: row.vehicleId,
+        cursor: nextCursor,
+        occurredAt: new Date(),
+      });
+    }
   }
 }
