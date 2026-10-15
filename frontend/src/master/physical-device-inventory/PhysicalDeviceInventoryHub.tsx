@@ -32,6 +32,7 @@ import {
   type PhysicalDeviceModelCode,
   type PhysicalDeviceStockSummaryDto,
 } from '../../lib/physical-device-inventory.types';
+import { PhysicalDeviceDetailDialog } from './PhysicalDeviceDetailDialog';
 
 interface PhysicalDeviceInventoryHubProps {
   organizations: Organization[];
@@ -54,6 +55,8 @@ export function PhysicalDeviceInventoryHub({ organizations }: PhysicalDeviceInve
   const [intakeLocation, setIntakeLocation] = useState('');
   const [intakeOwnerOrgId, setIntakeOwnerOrgId] = useState<string>('platform');
   const [intakeNotes, setIntakeNotes] = useState('');
+  const [detailDeviceId, setDetailDeviceId] = useState<string | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -251,8 +254,23 @@ export function PhysicalDeviceInventoryHub({ organizations }: PhysicalDeviceInve
       ) : items.length === 0 ? (
         <EmptyState title={t('master.physicalDeviceInventory.empty')} />
       ) : (
-        <DataTable columns={columns} rows={items} getRowKey={(row) => row.id} />
+        <DataTable
+          columns={columns}
+          rows={items}
+          getRowKey={(row) => row.id}
+          onRowClick={(row) => {
+            setDetailDeviceId(row.id);
+            setDetailOpen(true);
+          }}
+        />
       )}
+
+      <PhysicalDeviceDetailDialog
+        deviceId={detailDeviceId}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        onUpdated={() => void load()}
+      />
 
       <Dialog open={intakeOpen} onOpenChange={setIntakeOpen}>
         <DialogContent className="max-w-lg">

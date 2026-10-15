@@ -42,4 +42,22 @@ export const masterPhysicalDeviceInventoryEs = {
   'master.physicalDeviceInventory.status.RETIRED': 'Retirado',
   'master.physicalDeviceInventory.identity.VERIFIED': 'Verificado',
   'master.physicalDeviceInventory.identity.NEEDS_CLARIFICATION': 'Requiere aclaración',
+  'master.physicalDeviceInventory.detailTitle': 'Detalle del dispositivo',
+  'master.physicalDeviceInventory.currentVehicle': 'Vehículo instalado',
+  'master.physicalDeviceInventory.noVehicle': 'No instalado',
+  'master.physicalDeviceInventory.historyTitle': 'Historial',
+  'master.physicalDeviceInventory.verifyTitle': 'Verificar identidad del dispositivo',
+  'master.physicalDeviceInventory.verifyDescription':
+    'La verificación requiere alinear el número de serie con el espejo DIMO de un vehículo ACTIVE (R1). El texto solo no basta.',
+  'master.physicalDeviceInventory.verifyReconcileVehicle': 'Vehículo de conciliación con proveedor',
+  'master.physicalDeviceInventory.verifySubmit': 'Confirmar verificación',
+  'master.physicalDeviceInventory.verifySuccess': 'Identidad del dispositivo verificada',
+  'master.physicalDeviceInventory.verifyError': 'Error en la verificación',
+  'master.physicalDeviceInventory.installTitle': 'Instalar en vehículo',
+  'master.physicalDeviceInventory.installVehicle': 'Vehículo objetivo (ACTIVE)',
+  'master.physicalDeviceInventory.installConfirmLabel':
+    'Confirmo la instalación física en este vehículo',
+  'master.physicalDeviceInventory.installSubmit': 'Registrar instalación',
+  'master.physicalDeviceInventory.installSuccess': 'Instalación registrada',
+  'master.physicalDeviceInventory.installError': 'No se pudo registrar la instalación',
 };

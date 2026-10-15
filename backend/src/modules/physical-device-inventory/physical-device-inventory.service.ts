@@ -27,6 +27,15 @@ import {
   type PhysicalDeviceStockSummaryDto,
 } from './physical-device-inventory.types';
 import type { ListPhysicalDevicesQueryDto } from './dto/list-physical-devices-query.dto';
+import type { VerifyPhysicalDeviceIdentityDto } from './dto/verify-physical-device-identity.dto';
+import type { InstallPhysicalDeviceDto } from './dto/install-physical-device.dto';
+import { isPhysicalDeviceInventoryP1b1WritesEnabled } from './physical-device-inventory.config';
+import {
+  installPhysicalDeviceOnVehicleTx,
+  verifyPhysicalDeviceIdentityTx,
+} from './physical-device-inventory-p1b1.writes';
+import { physicalDeviceNotFound, physicalDeviceP1b1WritesDisabled } from './physical-device-inventory.errors';
+import type { PhysicalDeviceDetailDto } from './physical-device-inventory.types';
 
 const MANUAL_INTAKE_IDENTITY_STATUS = PhysicalDeviceIdentityStatus.NEEDS_CLARIFICATION;
 
@@ -45,6 +54,15 @@ function readAssignmentPayloadFingerprint(metadataJson: unknown): string | null 
 @Injectable()
 export class PhysicalDeviceInventoryService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private assertP1b1WritesEnabled(): void {
+    if (!isPhysicalDeviceInventoryP1b1WritesEnabled()) {
+      throw physicalDeviceP1b1WritesDisabled();
+    }
+  }
+
+  private listItemMapper = (row: Parameters<PhysicalDeviceInventoryService['toListItem']>[0]) =>
+    this.toListItem(row);
 
   async listDevices(
     query: ListPhysicalDevicesQueryDto,
@@ -132,6 +150,81 @@ export class PhysicalDeviceInventoryService {
         count: row._count._all,
       })),
     };
+  }
+
+  async getDeviceDetail(deviceId: string): Promise<PhysicalDeviceDetailDto> {
+    const row = await this.prisma.physicalDevice.findUnique({
+      where: { id: deviceId },
+      include: {
+        assignments: { orderBy: { effectiveFrom: 'desc' }, take: 50 },
+        auditEvents: { orderBy: { createdAt: 'desc' }, take: 50 },
+      },
+    });
+    if (!row) {
+      throw physicalDeviceNotFound();
+    }
+    const activeAssignments = row.assignments.filter(
+      (a) => a.vehicleId && a.effectiveTo === null,
+    );
+    const list = this.toListItem({ ...row, assignments: activeAssignments });
+    const identityEvidence = row.identityEvidenceJson as Record<string, unknown> | null;
+    const verification = identityEvidence?.verification;
+    return {
+      ...list,
+      intakeNotes: row.intakeNotes,
+      identityEvidenceSummary:
+        verification && typeof verification === 'object'
+          ? String((verification as Record<string, unknown>).verificationMethod ?? 'pending')
+          : row.identityStatus === PhysicalDeviceIdentityStatus.VERIFIED
+            ? 'verified'
+            : null,
+      assignmentHistory: row.assignments.map((a) => ({
+        id: a.id,
+        assignmentKind: a.assignmentKind,
+        vehicleId: a.vehicleId,
+        organizationId: a.organizationId,
+        effectiveFrom: a.effectiveFrom.toISOString(),
+        effectiveTo: a.effectiveTo?.toISOString() ?? null,
+        actorUserId: a.actorUserId,
+      })),
+      auditHistory: row.auditEvents.map((e) => ({
+        id: e.id,
+        eventKind: e.eventKind,
+        createdAt: e.createdAt.toISOString(),
+        actorUserId: e.actorUserId,
+        evidenceSummary: e.eventKind,
+      })),
+    };
+  }
+
+  async verifyIdentity(
+    deviceId: string,
+    dto: VerifyPhysicalDeviceIdentityDto,
+    actorUserId: string | null,
+  ) {
+    this.assertP1b1WritesEnabled();
+    return verifyPhysicalDeviceIdentityTx(
+      this.prisma,
+      deviceId,
+      dto,
+      actorUserId,
+      this.listItemMapper,
+    );
+  }
+
+  async installOnVehicle(
+    deviceId: string,
+    dto: InstallPhysicalDeviceDto,
+    actorUserId: string | null,
+  ) {
+    this.assertP1b1WritesEnabled();
+    return installPhysicalDeviceOnVehicleTx(
+      this.prisma,
+      deviceId,
+      dto,
+      actorUserId,
+      this.listItemMapper,
+    );
   }
 
   async manualIntake(

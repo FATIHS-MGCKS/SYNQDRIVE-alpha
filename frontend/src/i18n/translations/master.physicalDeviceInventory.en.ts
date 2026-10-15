@@ -42,4 +42,22 @@ export const masterPhysicalDeviceInventoryEn = {
   'master.physicalDeviceInventory.status.RETIRED': 'Retired',
   'master.physicalDeviceInventory.identity.VERIFIED': 'Verified',
   'master.physicalDeviceInventory.identity.NEEDS_CLARIFICATION': 'Needs clarification',
+  'master.physicalDeviceInventory.detailTitle': 'Device detail',
+  'master.physicalDeviceInventory.currentVehicle': 'Installed vehicle',
+  'master.physicalDeviceInventory.noVehicle': 'Not installed',
+  'master.physicalDeviceInventory.historyTitle': 'History',
+  'master.physicalDeviceInventory.verifyTitle': 'Verify device identity',
+  'master.physicalDeviceInventory.verifyDescription':
+    'Verification requires DIMO mirror serial alignment on an ACTIVE vehicle (R1). Free text alone is not sufficient.',
+  'master.physicalDeviceInventory.verifyReconcileVehicle': 'Provider reconciliation vehicle',
+  'master.physicalDeviceInventory.verifySubmit': 'Confirm verification',
+  'master.physicalDeviceInventory.verifySuccess': 'Device identity verified',
+  'master.physicalDeviceInventory.verifyError': 'Identity verification failed',
+  'master.physicalDeviceInventory.installTitle': 'Install on vehicle',
+  'master.physicalDeviceInventory.installVehicle': 'Target vehicle (ACTIVE)',
+  'master.physicalDeviceInventory.installConfirmLabel':
+    'I confirm the physical install on this vehicle',
+  'master.physicalDeviceInventory.installSubmit': 'Record install',
+  'master.physicalDeviceInventory.installSuccess': 'Physical install recorded',
+  'master.physicalDeviceInventory.installError': 'Install could not be recorded',
 };

@@ -42,4 +42,22 @@ export const masterPhysicalDeviceInventoryNl = {
   'master.physicalDeviceInventory.status.RETIRED': 'Afgeschreven',
   'master.physicalDeviceInventory.identity.VERIFIED': 'Geverifieerd',
   'master.physicalDeviceInventory.identity.NEEDS_CLARIFICATION': 'Nadere controle nodig',
+  'master.physicalDeviceInventory.detailTitle': 'Apparaatdetails',
+  'master.physicalDeviceInventory.currentVehicle': 'Geïnstalleerd voertuig',
+  'master.physicalDeviceInventory.noVehicle': 'Niet geïnstalleerd',
+  'master.physicalDeviceInventory.historyTitle': 'Geschiedenis',
+  'master.physicalDeviceInventory.verifyTitle': 'Apparaatidentiteit verifiëren',
+  'master.physicalDeviceInventory.verifyDescription':
+    'Verificatie vereist serienummerafstemming met DIMO-spiegel op een ACTIVE-voertuig (R1). Alleen tekst is niet voldoende.',
+  'master.physicalDeviceInventory.verifyReconcileVehicle': 'Voertuig voor provider-afstemming',
+  'master.physicalDeviceInventory.verifySubmit': 'Verificatie bevestigen',
+  'master.physicalDeviceInventory.verifySuccess': 'Apparaatidentiteit geverifieerd',
+  'master.physicalDeviceInventory.verifyError': 'Verificatie mislukt',
+  'master.physicalDeviceInventory.installTitle': 'Installeren op voertuig',
+  'master.physicalDeviceInventory.installVehicle': 'Doelvoertuig (ACTIVE)',
+  'master.physicalDeviceInventory.installConfirmLabel':
+    'Ik bevestig de fysieke installatie op dit voertuig',
+  'master.physicalDeviceInventory.installSubmit': 'Installatie vastleggen',
+  'master.physicalDeviceInventory.installSuccess': 'Installatie vastgelegd',
+  'master.physicalDeviceInventory.installError': 'Installatie kon niet worden vastgelegd',
 };
