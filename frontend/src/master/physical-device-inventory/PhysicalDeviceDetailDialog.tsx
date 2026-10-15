@@ -53,7 +53,7 @@ export function PhysicalDeviceDetailDialog({
   const reviewerUserId = getStoredUser()?.id ?? '';
 
   const activeVehicles = useMemo(
-    () => vehicles.filter((v) => v.registryLifecycle === 'ACTIVE' || !v.registryLifecycle),
+    () => vehicles.filter((v) => v.registryLifecycle === 'ACTIVE'),
     [vehicles],
   );
 

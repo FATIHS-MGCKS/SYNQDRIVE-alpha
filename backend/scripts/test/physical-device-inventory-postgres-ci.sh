@@ -9,6 +9,7 @@ TEMP_DB="pdi_p1a_pg_${RANDOM}_$(date +%s)"
 PDI_MIGRATION_P1A="20261015143000_physical_device_inventory_p1a"
 PDI_MIGRATION_HARDENING="20261015170000_physical_device_inventory_p1a_hardening"
 PDI_MIGRATION_P1B1="20261015193000_physical_device_inventory_p1b1"
+PDI_MIGRATION_P1B1_HARDENING="20261015220000_pdi_p1b1_hardening_and_dimo_schema_sync"
 
 log() { printf '[physical-device-inventory-postgres-ci] %s\n' "$*"; }
 
@@ -64,7 +65,7 @@ DATABASE_URL="${MIGRATION_DATABASE_URL}" \
   PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1 \
   bash scripts/test/prisma-migrate-deploy-resilient.sh
 
-for mig in "${PDI_MIGRATION_P1A}" "${PDI_MIGRATION_HARDENING}" "${PDI_MIGRATION_P1B1}"; do
+for mig in "${PDI_MIGRATION_P1A}" "${PDI_MIGRATION_HARDENING}" "${PDI_MIGRATION_P1B1}" "${PDI_MIGRATION_P1B1_HARDENING}"; do
   applied_count="$(psql "${MIGRATION_DATABASE_URL%%\?*}" -tAc "
     SELECT COUNT(*)::text FROM _prisma_migrations
     WHERE migration_name = '${mig}' AND finished_at IS NOT NULL;

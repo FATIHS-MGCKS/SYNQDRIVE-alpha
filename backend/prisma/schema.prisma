@@ -16838,6 +16838,7 @@ model PhysicalDeviceInventoryAuditEvent {
   actorUserId        String?                              @map("actor_user_id")
   payloadFingerprint String                               @map("payload_fingerprint")
   evidenceJson       Json                                 @map("evidence_json")
+  idempotencyKey     String?                              @map("idempotency_key")
   createdAt          DateTime                             @default(now()) @map("created_at")
 
   physicalDevice PhysicalDevice @relation(fields: [physicalDeviceId], references: [id], onDelete: Restrict)

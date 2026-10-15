@@ -10,6 +10,7 @@ export function buildIdentityVerificationPayloadFingerprint(
     attestationKind: dto.attestationKind,
     providerReconciliationVehicleId: dto.providerReconciliationVehicleId ?? null,
     reviewerUserId: dto.reviewerUserId,
+    reviewerNotes: dto.reviewerNotes?.trim() || null,
   };
   return createHash('sha256').update(JSON.stringify(payload)).digest('hex');
 }

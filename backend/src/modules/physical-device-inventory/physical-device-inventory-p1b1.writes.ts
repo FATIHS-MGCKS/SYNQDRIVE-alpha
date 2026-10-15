@@ -19,6 +19,7 @@ import { buildIdentityVerificationPayloadFingerprint } from './physical-device-i
 import { evaluateIdentityVerification } from './physical-device-identity-verification.engine';
 import { normalizePhysicalDeviceSerial } from './physical-device-identifier.normalize';
 import { maskDeviceImei, maskDeviceSerial } from './physical-device-identifier.mask';
+import { assertProviderIdentityAuthorityForVerification } from './physical-device-identity-provider-authority';
 import { reconcileInventorySerialWithDimoMirror } from './physical-device-provider-reconciliation';
 import {
   physicalDeviceAlreadyInstalled,
@@ -34,14 +35,6 @@ import type { PhysicalDeviceListItemDto } from './physical-device-inventory.type
 
 type Tx = Prisma.TransactionClient;
 
-function readJsonIdempotencyKey(evidenceJson: unknown): string | null {
-  if (!evidenceJson || typeof evidenceJson !== 'object' || Array.isArray(evidenceJson)) {
-    return null;
-  }
-  const key = (evidenceJson as Record<string, unknown>).idempotencyKey;
-  return typeof key === 'string' ? key : null;
-}
-
 function readAssignmentPayloadFingerprint(metadataJson: unknown): string | null {
   if (!metadataJson || typeof metadataJson !== 'object' || Array.isArray(metadataJson)) {
     return null;
@@ -52,36 +45,116 @@ function readAssignmentPayloadFingerprint(metadataJson: unknown): string | null 
 
 export async function loadProviderReconciliationForVehicle(
   prisma: PrismaService | Tx,
-  vehicleId: string,
-  modelCode: PhysicalDeviceModelCode,
-  inventorySerial: string,
+  input: {
+    deviceId: string;
+    deviceOwnerOrganizationId: string | null;
+    vehicleId: string;
+    modelCode: PhysicalDeviceModelCode;
+    inventorySerial: string;
+  },
 ) {
   const vehicle = await prisma.vehicle.findUnique({
-    where: { id: vehicleId },
+    where: { id: input.vehicleId },
     select: {
       id: true,
       registryLifecycle: true,
       organizationId: true,
-      dimoVehicle: { select: { externalId: true, rawJson: true } },
+      dimoVehicleId: true,
+      dimoVehicle: { select: { id: true, externalId: true, rawJson: true } },
     },
   });
-  if (!vehicle?.dimoVehicle?.rawJson) {
+  if (!vehicle) {
+    return {
+      vehicle: null,
+      reconciliation: {
+        ok: false as const,
+        reasonCode: 'VEHICLE_NOT_FOUND',
+        evidence: ['vehicle:null'],
+      },
+    };
+  }
+
+  const authority = await assertProviderIdentityAuthorityForVerification(prisma, {
+    deviceId: input.deviceId,
+    deviceOwnerOrganizationId: input.deviceOwnerOrganizationId,
+    vehicle: {
+      id: vehicle.id,
+      organizationId: vehicle.organizationId,
+      dimoVehicleId: vehicle.dimoVehicleId,
+    },
+    modelCode: input.modelCode,
+    inventorySerial: input.inventorySerial,
+  });
+  if (!authority.ok) {
+    return {
+      vehicle,
+      reconciliation: {
+        ok: false as const,
+        reasonCode: authority.reasonCode,
+        evidence: authority.evidence,
+      },
+    };
+  }
+
+  if (!vehicle.dimoVehicle?.rawJson) {
     return {
       vehicle,
       reconciliation: {
         ok: false as const,
         reasonCode: 'DIMO_MIRROR_MISSING',
-        evidence: ['dimoVehicle:null'],
+        evidence: [...authority.evidence, 'dimoVehicle.rawJson:null'],
       },
     };
   }
   const reconciliation = reconcileInventorySerialWithDimoMirror({
-    modelCode,
-    inventorySerial,
+    modelCode: input.modelCode,
+    inventorySerial: input.inventorySerial,
     dimoRawJson: vehicle.dimoVehicle.rawJson,
     dimoExternalId: vehicle.dimoVehicle.externalId,
   });
-  return { vehicle, reconciliation };
+  if (!reconciliation.ok) {
+    return { vehicle, reconciliation };
+  }
+  return {
+    vehicle,
+    reconciliation: {
+      ...reconciliation,
+      evidence: [...authority.evidence, ...reconciliation.evidence],
+    },
+  };
+}
+
+async function replayIdentityVerificationByIdempotencyKey(
+  prisma: PrismaService,
+  deviceId: string,
+  idempotencyKey: string,
+  payloadFingerprint: string,
+  toListItem: (row: Parameters<typeof toListItemStub>[0]) => PhysicalDeviceListItemDto,
+) {
+  const prior = await prisma.physicalDeviceInventoryAuditEvent.findFirst({
+    where: {
+      idempotencyKey,
+      eventKind: PhysicalDeviceInventoryAuditEventKind.IDENTITY_VERIFICATION,
+    },
+    include: {
+      physicalDevice: {
+        include: {
+          assignments: {
+            where: { vehicleId: { not: null }, effectiveTo: null },
+            take: 1,
+          },
+        },
+      },
+    },
+  });
+  if (!prior?.physicalDevice) return null;
+  if (prior.physicalDeviceId !== deviceId) {
+    throw physicalDeviceIdempotencyPayloadMismatch();
+  }
+  if (prior.payloadFingerprint !== payloadFingerprint) {
+    throw physicalDeviceIdempotencyPayloadMismatch();
+  }
+  return toListItem(prior.physicalDevice);
 }
 
 export async function verifyPhysicalDeviceIdentityTx(
@@ -99,34 +172,18 @@ export async function verifyPhysicalDeviceIdentityTx(
   const idempotencyKey = dto.idempotencyKey?.trim() || null;
 
   if (idempotencyKey) {
-    const priorEvents = await prisma.physicalDeviceInventoryAuditEvent.findMany({
-      where: {
-        physicalDeviceId: deviceId,
-        eventKind: PhysicalDeviceInventoryAuditEventKind.IDENTITY_VERIFICATION,
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 20,
-    });
-    const prior = priorEvents.find((e) => readJsonIdempotencyKey(e.evidenceJson) === idempotencyKey);
-    if (prior) {
-      if (prior.payloadFingerprint !== payloadFingerprint) {
-        throw physicalDeviceIdempotencyPayloadMismatch();
-      }
-      const device = await prisma.physicalDevice.findUnique({
-        where: { id: deviceId },
-        include: {
-          assignments: {
-            where: { vehicleId: { not: null }, effectiveTo: null },
-            take: 1,
-          },
-        },
-      });
-      if (!device) throw physicalDeviceNotFound();
-      return toListItem(device);
-    }
+    const replay = await replayIdentityVerificationByIdempotencyKey(
+      prisma,
+      deviceId,
+      idempotencyKey,
+      payloadFingerprint,
+      toListItem,
+    );
+    if (replay) return replay;
   }
 
-  return prisma.$transaction(async (tx: Tx) => {
+  try {
+    return await prisma.$transaction(async (tx: Tx) => {
     await tx.$executeRaw`SELECT id FROM physical_devices WHERE id = ${deviceId} FOR UPDATE`;
 
     const device = await tx.physicalDevice.findUnique({
@@ -149,14 +206,18 @@ export async function verifyPhysicalDeviceIdentityTx(
       if (!dto.providerReconciliationVehicleId) {
         throw physicalDeviceIdentityEvidenceInsufficient('PROVIDER_RECONCILIATION_VEHICLE_REQUIRED');
       }
-      const { vehicle, reconciliation } = await loadProviderReconciliationForVehicle(
-        tx,
-        dto.providerReconciliationVehicleId,
-        device.modelCode,
-        device.serialNumber ?? '',
-      );
+      const { vehicle, reconciliation } = await loadProviderReconciliationForVehicle(tx, {
+        deviceId,
+        deviceOwnerOrganizationId: device.ownerOrganizationId,
+        vehicleId: dto.providerReconciliationVehicleId,
+        modelCode: device.modelCode,
+        inventorySerial: device.serialNumber ?? '',
+      });
       if (!vehicle || vehicle.registryLifecycle !== VehicleRegistryLifecycle.ACTIVE) {
         throw physicalDeviceVehicleNotEligible('RECONCILIATION_VEHICLE_NOT_ACTIVE');
+      }
+      if (!reconciliation.ok && reconciliation.reasonCode === 'DEVICE_VEHICLE_ORG_MISMATCH') {
+        throw physicalDeviceVehicleOrgMismatch();
       }
       providerReconciliation = reconciliation;
     }
@@ -182,6 +243,8 @@ export async function verifyPhysicalDeviceIdentityTx(
       reviewerNotes: dto.reviewerNotes?.trim() || null,
       providerReconciliationVehicleId: dto.providerReconciliationVehicleId ?? null,
       evidence: evaluation.evidence,
+      evidenceScope: 'INVENTORY_SERIAL_IDENTITY',
+      provesPhysicalInstall: false,
       serialNumberMasked: maskDeviceSerial(device.serialNumber),
       imeiMasked: maskDeviceImei(device.imei),
       idempotencyKey,
@@ -211,12 +274,26 @@ export async function verifyPhysicalDeviceIdentityTx(
         eventKind: PhysicalDeviceInventoryAuditEventKind.IDENTITY_VERIFICATION,
         actorUserId,
         payloadFingerprint,
+        idempotencyKey,
         evidenceJson: evidenceJson as Prisma.InputJsonValue,
       },
     });
 
     return toListItem(updated);
-  });
+    });
+  } catch (error) {
+    if (isPrismaUniqueViolation(error, ['idempotencyKey']) && idempotencyKey) {
+      const replay = await replayIdentityVerificationByIdempotencyKey(
+        prisma,
+        deviceId,
+        idempotencyKey,
+        payloadFingerprint,
+        toListItem,
+      );
+      if (replay) return replay;
+    }
+    throw error;
+  }
 }
 
 function toListItemStub(_row: unknown): PhysicalDeviceListItemDto {
