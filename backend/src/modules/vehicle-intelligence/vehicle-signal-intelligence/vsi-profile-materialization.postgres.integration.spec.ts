@@ -20,6 +20,48 @@ const RUPTELA_RAW_JSON = {
   syntheticDevice: null,
 };
 
+async function upsertVlsForTest(
+  prisma: PrismaClient,
+  input: {
+    vehicleId: string;
+    linkId: string;
+    sourceTimestamp: Date;
+    providerFetchedAt: Date;
+    lvBatteryVoltage?: number | null;
+    evSoc?: number | null;
+    rawPayloadJson: object;
+  },
+): Promise<void> {
+  const id = randomUUID();
+  const raw = JSON.stringify(input.rawPayloadJson);
+  await prisma.$executeRaw`
+    INSERT INTO vehicle_latest_states (
+      id, vehicle_id, online, lv_battery_voltage, ev_soc, source_timestamp,
+      provider_fetched_at, provider_binding_id, provider_source, raw_payload_json, updated_at
+    ) VALUES (
+      ${id}::uuid,
+      ${input.vehicleId},
+      true,
+      ${input.lvBatteryVoltage ?? null},
+      ${input.evSoc ?? null},
+      ${input.sourceTimestamp},
+      ${input.providerFetchedAt},
+      ${input.linkId},
+      'DIMO',
+      ${raw}::jsonb,
+      ${input.providerFetchedAt}
+    )
+    ON CONFLICT (vehicle_id) DO UPDATE SET
+      lv_battery_voltage = EXCLUDED.lv_battery_voltage,
+      ev_soc = EXCLUDED.ev_soc,
+      source_timestamp = EXCLUDED.source_timestamp,
+      provider_fetched_at = EXCLUDED.provider_fetched_at,
+      provider_binding_id = EXCLUDED.provider_binding_id,
+      raw_payload_json = EXCLUDED.raw_payload_json,
+      updated_at = EXCLUDED.updated_at
+  `;
+}
+
 async function cleanupProfiles(prisma: PrismaClient, organizationId: string) {
   const vehicles = await prisma.vehicle.findMany({
     where: { organizationId },
@@ -86,26 +128,15 @@ async function cleanupProfiles(prisma: PrismaClient, organizationId: string) {
       },
     });
 
-    const dimo = await prisma.dimoVehicle.findUnique({
-      where: { id: fixture.dimoId },
-      select: { tokenId: true },
-    });
-    const tokenId = dimo?.tokenId ?? 1;
-
     const ts = new Date('2026-10-15T12:00:00Z');
-    await prisma.vehicleLatestState.create({
-      data: {
-        vehicleId: fixture.vehicleId,
-        dimoTokenId: tokenId,
-        source: 'dimo',
-        providerSource: 'DIMO',
-        providerBindingId: fixture.linkId,
-        sourceTimestamp: ts,
-        providerFetchedAt: new Date('2026-10-15T12:00:01Z'),
-        lvBatteryVoltage: 12.5,
-        rawPayloadJson: {
-          lowVoltageBatteryCurrentVoltage: { value: 12.5, timestamp: ts.toISOString() },
-        },
+    await upsertVlsForTest(prisma, {
+      vehicleId: fixture.vehicleId,
+      linkId: fixture.linkId,
+      sourceTimestamp: ts,
+      providerFetchedAt: new Date('2026-10-15T12:00:01Z'),
+      lvBatteryVoltage: 12.5,
+      rawPayloadJson: {
+        lowVoltageBatteryCurrentVoltage: { value: 12.5, timestamp: ts.toISOString() },
       },
     });
 
@@ -184,26 +215,15 @@ async function cleanupProfiles(prisma: PrismaClient, organizationId: string) {
       })),
     });
 
-    const dimo = await prisma.dimoVehicle.findUnique({
-      where: { id: fixture.dimoId },
-      select: { tokenId: true },
-    });
-    const tokenId = dimo?.tokenId ?? 1;
-
     const ts = new Date('2026-10-15T14:00:00Z');
-    await prisma.vehicleLatestState.create({
-      data: {
-        vehicleId: fixture.vehicleId,
-        dimoTokenId: tokenId,
-        source: 'dimo',
-        providerSource: 'DIMO',
-        providerBindingId: fixture.linkId,
-        sourceTimestamp: ts,
-        providerFetchedAt: new Date('2026-10-15T14:00:01Z'),
-        evSoc: 80,
-        rawPayloadJson: {
-          powertrainTractionBatteryStateOfChargeCurrent: { value: 80, timestamp: ts.toISOString() },
-        },
+    await upsertVlsForTest(prisma, {
+      vehicleId: fixture.vehicleId,
+      linkId: fixture.linkId,
+      sourceTimestamp: ts,
+      providerFetchedAt: new Date('2026-10-15T14:00:01Z'),
+      evSoc: 80,
+      rawPayloadJson: {
+        powertrainTractionBatteryStateOfChargeCurrent: { value: 80, timestamp: ts.toISOString() },
       },
     });
 
@@ -244,28 +264,12 @@ async function cleanupProfiles(prisma: PrismaClient, organizationId: string) {
       externalId: `0x${randomUUID().replace(/-/g, '')}`,
       rawJson: RUPTELA_RAW_JSON,
     });
-    const link2 = randomUUID();
-    await prisma.vehicleDataSourceLink.create({
-      data: {
-        id: link2,
-        vehicleId: fixture.vehicleId,
-        provider: 'DIMO',
-        sourceType: 'TELEMETRY',
-        isActive: true,
-        activatedAt: new Date(),
-        metadata: {},
-      },
-    });
-
-    await prisma.vehicleLatestState.create({
-      data: {
-        vehicleId: fixture.vehicleId,
-        dimoTokenId: 1,
-        source: 'dimo',
-        providerBindingId: fixture.linkId,
-        sourceTimestamp: new Date(),
-        providerFetchedAt: new Date(),
-      },
+    await upsertVlsForTest(prisma, {
+      vehicleId: fixture.vehicleId,
+      linkId: fixture.linkId,
+      sourceTimestamp: new Date(),
+      providerFetchedAt: new Date(),
+      rawPayloadJson: {},
     });
 
     await expect(
@@ -277,12 +281,14 @@ async function cleanupProfiles(prisma: PrismaClient, organizationId: string) {
       vehicleId: fixture.vehicleId,
       providerSourceLinkId: fixture.linkId,
     });
-    await service.materializeFromPersistedEvidence({
+
+    const unbound = await service.materializeFromPersistedEvidence({
       organizationId,
       vehicleId: fixture.vehicleId,
-      providerSourceLinkId: link2,
+      providerSourceLinkId: randomUUID(),
       requireBindingMatch: true,
     });
+    expect(unbound).toBeNull();
 
     const profiles = await prisma.vehicleSignalCapabilityProfile.findMany({
       where: { organizationId, vehicleId: fixture.vehicleId },
@@ -302,15 +308,12 @@ async function cleanupProfiles(prisma: PrismaClient, organizationId: string) {
     });
 
     const newer = new Date('2026-10-16T00:00:00Z');
-    await prisma.vehicleLatestState.create({
-      data: {
-        vehicleId: fixture.vehicleId,
-        dimoTokenId: 1,
-        source: 'dimo',
-        providerBindingId: fixture.linkId,
-        sourceTimestamp: newer,
-        providerFetchedAt: newer,
-      },
+    await upsertVlsForTest(prisma, {
+      vehicleId: fixture.vehicleId,
+      linkId: fixture.linkId,
+      sourceTimestamp: newer,
+      providerFetchedAt: newer,
+      rawPayloadJson: {},
     });
     await service.materializeFromPersistedEvidence({
       organizationId,
@@ -318,12 +321,12 @@ async function cleanupProfiles(prisma: PrismaClient, organizationId: string) {
       providerSourceLinkId: fixture.linkId,
     });
 
-    await prisma.vehicleLatestState.update({
-      where: { vehicleId: fixture.vehicleId },
-      data: {
-        sourceTimestamp: new Date('2026-10-10T00:00:00Z'),
-        providerFetchedAt: new Date('2026-10-10T00:00:00Z'),
-      },
+    await upsertVlsForTest(prisma, {
+      vehicleId: fixture.vehicleId,
+      linkId: fixture.linkId,
+      sourceTimestamp: new Date('2026-10-10T00:00:00Z'),
+      providerFetchedAt: new Date('2026-10-10T00:00:00Z'),
+      rawPayloadJson: {},
     });
 
     const skipped = await service.materializeFromPersistedEvidence({
@@ -343,6 +346,54 @@ async function cleanupProfiles(prisma: PrismaClient, organizationId: string) {
       },
     });
     expect(row?.lastMaterializedSourceTimestamp?.toISOString()).toBe(newer.toISOString());
+
+    await cleanupProfiles(prisma, organizationId);
+  });
+
+  it('concurrent materialization keeps revision consistent', async () => {
+    const organizationId = await createLegacyReconcileOrg(prisma);
+    const fixture = await createLegacyDimoLinkFixture(prisma, {
+      organizationId,
+      externalId: `0x${randomUUID().replace(/-/g, '')}`,
+      rawJson: RUPTELA_RAW_JSON,
+    });
+
+    const ts = new Date('2026-10-17T08:00:00Z');
+    await upsertVlsForTest(prisma, {
+      vehicleId: fixture.vehicleId,
+      linkId: fixture.linkId,
+      sourceTimestamp: ts,
+      providerFetchedAt: ts,
+      lvBatteryVoltage: 12.1,
+      rawPayloadJson: {
+        lowVoltageBatteryCurrentVoltage: { value: 12.1, timestamp: ts.toISOString() },
+      },
+    });
+
+    await Promise.all([
+      service.materializeFromPersistedEvidence({
+        organizationId,
+        vehicleId: fixture.vehicleId,
+        providerSourceLinkId: fixture.linkId,
+      }),
+      service.materializeFromPersistedEvidence({
+        organizationId,
+        vehicleId: fixture.vehicleId,
+        providerSourceLinkId: fixture.linkId,
+      }),
+    ]);
+
+    const row = await prisma.vehicleSignalCapabilityProfile.findUnique({
+      where: {
+        organizationId_vehicleId_providerSourceLinkId: {
+          organizationId,
+          vehicleId: fixture.vehicleId,
+          providerSourceLinkId: fixture.linkId,
+        },
+      },
+    });
+    expect(row?.profileRevision).toBeGreaterThanOrEqual(1);
+    expect(row?.profileRevision).toBeLessThanOrEqual(2);
 
     await cleanupProfiles(prisma, organizationId);
   });

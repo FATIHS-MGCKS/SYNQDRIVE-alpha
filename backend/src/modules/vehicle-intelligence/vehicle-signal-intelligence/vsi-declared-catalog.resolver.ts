@@ -25,6 +25,20 @@ function readListedFlag(metadata: unknown): boolean | 'UNKNOWN' {
   return 'UNKNOWN';
 }
 
+function readPreflightReason(metadata: unknown): string | null {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+    return null;
+  }
+  const reason = (metadata as Record<string, unknown>).reason;
+  return typeof reason === 'string' ? reason : null;
+}
+
+/** Provider-backed NOT_LISTED — never infer from absent rows or generic UNSUPPORTED. */
+function isExplicitNotListedInAvailableSignals(metadata: unknown): boolean {
+  if (readListedFlag(metadata) === false) return true;
+  return readPreflightReason(metadata) === 'signal_not_in_availableSignals';
+}
+
 /**
  * Resolves provider-declared signal availability from persisted preflight rows only.
  * Does not call DIMO.
@@ -73,14 +87,12 @@ export class VsiDeclaredCatalogResolver {
         byNative.set(native, VsiProviderCatalogStatus.LISTED);
         continue;
       }
-      if (listed === false) {
+      if (isExplicitNotListedInAvailableSignals(row.metadata)) {
         byNative.set(native, VsiProviderCatalogStatus.NOT_LISTED);
         continue;
       }
       if (row.capabilityStatus === DrivingCapabilityStatus.SUPPORTED) {
         byNative.set(native, VsiProviderCatalogStatus.LISTED);
-      } else if (row.capabilityStatus === DrivingCapabilityStatus.UNSUPPORTED) {
-        byNative.set(native, VsiProviderCatalogStatus.NOT_LISTED);
       }
     }
 
@@ -106,6 +118,8 @@ export class VsiDeclaredCatalogResolver {
 
     if (drivingRows.length === 0 && batteryRows.length === 0) {
       limitations.push('NO_CACHED_PROVIDER_CATALOG_EVIDENCE');
+    } else {
+      limitations.push('DECLARED_CATALOG_VEHICLE_SCOPED_NOT_PER_SOURCE_LINK');
     }
 
     for (const key of VSI_PROFILE_MATERIALIZATION_KEYS) {

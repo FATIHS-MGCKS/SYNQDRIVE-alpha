@@ -162,6 +162,29 @@ export class VsiSignalProfileMaterializationService {
 
     const declared = await this.declaredCatalog.resolveForVehicle(organizationId, vehicleId);
 
+    if (
+      existingProfile &&
+      latestState?.sourceTimestamp &&
+      latestState?.providerFetchedAt &&
+      existingProfile.lastMaterializedSourceTimestamp?.getTime() ===
+        latestState.sourceTimestamp.getTime() &&
+      existingProfile.lastMaterializedProviderFetchAt?.getTime() ===
+        latestState.providerFetchedAt.getTime()
+    ) {
+      const catalogAdvanced =
+        declared.checkedAt &&
+        existingProfile.declaredCatalogCheckedAt &&
+        declared.checkedAt > existingProfile.declaredCatalogCheckedAt;
+      if (!catalogAdvanced) {
+        return null;
+      }
+    }
+
+    const projectionAsOf =
+      latestState?.providerFetchedAt ??
+      latestState?.updatedAt ??
+      new Date();
+
     const evaluationDraft = evaluateVsiSignalProfile(
       {
         organizationId,
@@ -170,6 +193,7 @@ export class VsiSignalProfileMaterializationService {
         hardwareTypeLegacy: vehicle.hardwareType,
         link: linkRow,
         identity,
+        projectionAsOf,
         latestState: latestState
           ? {
               vehicleId: latestState.vehicleId,
@@ -186,7 +210,8 @@ export class VsiSignalProfileMaterializationService {
           : null,
         pollLogs,
         declaredCatalog: declared,
-        priorAggregatedSourceTimestamp: priorSource,
+        priorAggregatedSourceTimestamp:
+          existingProfile?.lastProvenStrictSourceAdvanceAt ?? priorSource,
         priorProvenStrictSourceAdvanceAt:
           existingProfile?.lastProvenStrictSourceAdvanceAt ?? null,
       },
@@ -198,8 +223,38 @@ export class VsiSignalProfileMaterializationService {
       return evaluationDraft;
     }
 
-    await this.persistEvaluation(evaluationDraft, existingProfile);
+    await this.persistWithConcurrencyRetry(evaluationDraft);
     return evaluationDraft;
+  }
+
+  private async persistWithConcurrencyRetry(
+    evaluation: VsiProfileEvaluationResult,
+  ): Promise<void> {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const existingProfile = await this.prisma.vehicleSignalCapabilityProfile.findUnique({
+          where: {
+            organizationId_vehicleId_providerSourceLinkId: {
+              organizationId: evaluation.organizationId,
+              vehicleId: evaluation.vehicleId,
+              providerSourceLinkId: evaluation.providerSourceLinkId,
+            },
+          },
+        });
+        await this.persistEvaluation(evaluation, existingProfile);
+        return;
+      } catch (err) {
+        const code = (err as { code?: string })?.code;
+        const message = err instanceof Error ? err.message : '';
+        if (
+          (code === 'P2002' || message === 'VSI_PROFILE_REVISION_CONFLICT') &&
+          attempt < 2
+        ) {
+          continue;
+        }
+        throw err;
+      }
+    }
   }
 
   private async persistEvaluation(
@@ -245,14 +300,36 @@ export class VsiSignalProfileMaterializationService {
       };
 
       if (existing) {
-        await tx.vehicleSignalCapabilityProfile.update({
-          where: { id: existing.id },
+        const updated = await tx.vehicleSignalCapabilityProfile.updateMany({
+          where: {
+            id: existing.id,
+            profileRevision: existing.profileRevision,
+          },
           data,
         });
+        if (updated.count === 0) {
+          throw new Error('VSI_PROFILE_REVISION_CONFLICT');
+        }
         return;
       }
 
       await tx.vehicleSignalCapabilityProfile.create({ data });
     });
+  }
+
+  /**
+   * Recovery path when async snapshot hook logged a failure — re-reads VLS + cached catalog only.
+   */
+  async rematerializeForCertification(
+    input: VsiProfileMaterializeFromSnapshotInput,
+  ): Promise<VsiProfileEvaluationResult | null> {
+    try {
+      return await this.materializeFromPersistedEvidence(input);
+    } catch (err) {
+      if (err instanceof Error && err.message === 'VSI_PROFILE_REVISION_CONFLICT') {
+        return await this.materializeFromPersistedEvidence(input);
+      }
+      throw err;
+    }
   }
 }

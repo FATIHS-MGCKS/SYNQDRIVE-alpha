@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { Roles } from '@shared/auth/roles.decorator';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { VsiSignalProfileMaterializationService } from './vsi-profile-materialization.service';
@@ -33,5 +33,25 @@ export class VsiSignalProfileInspectionController {
       vehicleId,
     );
     return { profiles };
+  }
+
+  /**
+   * Re-materialize from persisted VLS + cached preflight (no DIMO calls).
+   * Use when the snapshot hook logged a materialization failure.
+   */
+  @Post('organizations/:organizationId/vehicles/:vehicleId/materialize')
+  @Roles('MASTER_ADMIN')
+  async rematerialize(
+    @Param('organizationId') organizationId: string,
+    @Param('vehicleId') vehicleId: string,
+    @Query('providerSourceLinkId') providerSourceLinkId: string,
+  ) {
+    const result = await this.materialization.rematerializeForCertification({
+      organizationId,
+      vehicleId,
+      providerSourceLinkId,
+      requireBindingMatch: true,
+    });
+    return { materialized: result != null, evaluation: result };
   }
 }
