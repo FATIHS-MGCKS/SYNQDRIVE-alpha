@@ -137,6 +137,24 @@ export class DiV0P2AutoProjectionOutboxRepository {
     });
   }
 
+  /** Extends PROCESSING lease before slow per-row work (sequential batch safety). */
+  async renewClaimLease(
+    workItemId: string,
+    claimToken: string,
+    now: Date,
+    leaseMs = DI_V0_P2_AUTO_PROJECTION_V2_TUNING.claimLeaseMs,
+  ): Promise<boolean> {
+    const claimExpiresAt = new Date(now.getTime() + leaseMs);
+    const rows = await this.prisma.$queryRaw<Array<{ work_item_id: string }>>`
+      UPDATE di_v0_trip_speed_quality_auto_projection_outbox_v1
+      SET claim_expires_at = ${claimExpiresAt}, updated_at = clock_timestamp()
+      WHERE work_item_id = ${workItemId}
+        AND claim_token = ${claimToken}
+        AND status = 'PROCESSING'
+      RETURNING work_item_id`;
+    return rows.length > 0;
+  }
+
   async markSucceeded(workItemId: string, claimToken: string): Promise<boolean> {
     const rows = await this.prisma.$queryRaw<Array<{ work_item_id: string }>>`
       UPDATE di_v0_trip_speed_quality_auto_projection_outbox_v1

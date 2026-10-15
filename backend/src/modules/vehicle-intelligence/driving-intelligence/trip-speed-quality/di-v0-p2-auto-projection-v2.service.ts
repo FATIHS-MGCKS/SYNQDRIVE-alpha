@@ -83,6 +83,11 @@ export class DiV0P2AutoProjectionV2Service {
     };
 
     for (const row of claimed) {
+      const leaseOk = await this.outbox.renewClaimLease(row.workItemId, row.claimToken, new Date());
+      if (!leaseOk) {
+        result.staleAckIgnored += 1;
+        continue;
+      }
       try {
         await this.projectionService.projectForWorkItem(row.organizationId, row.workItemId, {
           qcPolicyVersion: this.config.qcPolicyVersion,
