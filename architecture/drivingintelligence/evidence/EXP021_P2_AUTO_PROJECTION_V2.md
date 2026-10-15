@@ -125,3 +125,23 @@ GPS L3 / S1 / S2 / calibration / QC evaluator unchanged; no null→0; no extra p
 3. Preserve `DI_V0_P2_AUTO_PROJECTION_V2_ENABLED_SINCE` and existing outbox backoff (`next_attempt_at`, `attempt_count`).
 4. Read-only observe per retry: work item id, `attempt_count`, outbox `status` / `last_error_code`, logs for `failureStep=`; on `SUCCEEDED`, read-only verify projection row (`work_item_id`, `qc_policy_version`, `lifecycle_status=CURRENT`, idempotency/fingerprint fields only — no raw `projection_json` dump in ops notes).
 5. Report **DIAGNOSTIC_SUCCESS** and **PIPELINE_RECOVERY** separately (either, both, or neither).
+
+### 2026-10-15 — Post-merge preflight (#2037 merged; deploy not executed)
+
+| Field | Value |
+|-------|--------|
+| `PR2037_MERGE_SHA` | `e45421a703bc4ebfef427563783311c716f3b657` (on `origin/main`; merged 2026-10-15T16:24:51Z) |
+| `CURRENT_PRODUCTION_SHA` | `9b355f7b62eb8e82ec6e5d73fceeb216653a4ea2` (`/opt/synqdrive/releases/20261015140713_v4994`) |
+| `OBSERVABILITY_ALREADY_DEPLOYED` | **NO** — prod `dist` has 0 `failureStep` / `formatDiV0P2AutoProjectionFailure` symbols |
+| `PROPOSED_TARGET_SHA` | `c267ac23ec105f2573a42c9e50849f2dfb200a6e` (`main` tip: #2037 + #2038) |
+| `EXACT_TARGET_CI_GATE` | **PASS** — `deploy-ci-gate.mjs` / `CI gate (all critical jobs)` success on `c267ac23ec…` (2026-10-15 ~16:45 UTC) |
+| `RELEASE_DELTA_AND_MIGRATIONS` | `9b355f7b62…` → `c267ac23ec…`: 2 commits (#2037 observability, #2038 VSI P2 profile lifecycle); **new migrations** `20261015200000_vsi_p2_profile_lifecycle_outbox`, `20261015210000_vsi_p2_outbox_claim_lease` (**not applied** on Production `_prisma_migrations` at preflight) |
+| `CROSS_WORKSTREAM_CONFLICTS` | **#2038 bundled** — VSI profile lifecycle outbox worker (scheduler leader `vsi_profile_lifecycle_outbox`, 15s interval) + onboarding/offboarding enqueue hooks; no parallel deploy in flight (no newer release dir than `20261015140713_v4994`) |
+| Outbox (read-only DB) | `f9a2801f-…`: `FAILED_RETRYABLE` / `UNKNOWN`, `attempt_count=15`, `last_error_at=2026-10-15T16:29:57Z`; `74896a4d-…`: `FAILED_RETRYABLE` / `UNKNOWN`, `attempt_count=12`, `last_error_at=2026-10-15T16:24:57Z`; `globalCurrentV2=0` |
+| Natural retries / logs | PM2 warn lines still **legacy** (`code=UNKNOWN`, no `failureStep`); `failureStep` grep count **0** on replicas A/B |
+| `DIAGNOSTIC_SUCCESS` | **NO** (observability not deployed; original exception still not captured in structured logs) |
+| `PIPELINE_RECOVERY` | **NO** (no `SUCCEEDED` outbox; no CURRENT V2 rows for either work item) |
+| `READY_FOR_DEPLOY` | **YES** (CI gate on proposed SHA; owner `CLOUD_AGENT_OWNER_DEPLOY_AUTHORIZED=1` still required) |
+| `REMAINING_BLOCKERS` | Owner deploy authorization; accept bundled #2038 + migrate deploy; post-deploy read-only log/outbox watch (no outbox reset / no manual projection) |
+
+**Executable deploy (not run):** `CLOUD_AGENT_OWNER_DEPLOY_AUTHORIZED=1` + `CLOUD_AGENT_REQUESTED_DEPLOY_SHA=c267ac23ec105f2573a42c9e50849f2dfb200a6e` → `cloud-agent-deploy.sh` → VPS `vps-deploy-release.sh` (backup, `prisma migrate deploy`, rolling PM2 A/B). **Rollback:** `vps-rollback-production-release.sh` to release `20261015140713_v4994` / SHA `9b355f7b62…`.
