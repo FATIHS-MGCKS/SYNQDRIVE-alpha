@@ -13,8 +13,21 @@ import { assertDtc01bDisposablePostgresTarget } from './dtc-01b-postgres-guard';
 import { hashDtcCodesContent } from './dtc-snapshot-meta.util';
 import { randomUUID } from 'node:crypto';
 import { insertDimoMirrorForPostgresTests } from '../../../vehicle-onboarding/testing/dimo-mirror-postgres.fixture';
+import type { NotificationProducerIngestService } from '@modules/notifications/adapters/notification-producer.ingest.service';
 
 const LIVE = process.env.DTC_01B_PG_INTEGRATION === '1';
+
+const pgNotificationIngest: NotificationProducerIngestService = {
+  ingestVehicleHealthSources: async () => undefined,
+} as NotificationProducerIngestService;
+
+function makeApplyService(): DtcSnapshotApplyService {
+  return new DtcSnapshotApplyService(
+    prisma as never,
+    new DtcService(prisma as never),
+    pgNotificationIngest,
+  );
+}
 
 (LIVE ? describe : describe.skip)('DTC snapshot apply (PostgreSQL)', () => {
   const prisma = new PrismaClient();
@@ -23,7 +36,7 @@ const LIVE = process.env.DTC_01B_PG_INTEGRATION === '1';
 
   beforeAll(() => {
     assertDtc01bDisposablePostgresTarget();
-    apply = new DtcSnapshotApplyService(prisma as never, new DtcService(prisma as never));
+    apply = makeApplyService();
   });
 
   afterEach(async () => {
@@ -206,7 +219,7 @@ const LIVE = process.env.DTC_01B_PG_INTEGRATION === '1';
       obdDtcListSignal: { timestamp: '2026-10-15T13:00:00Z', value: ['P0301'] },
     });
 
-    const crashApply = new DtcSnapshotApplyService(prisma as never, new DtcService(prisma as never));
+    const crashApply = makeApplyService();
     const orig = crashApply.recoverPendingOutbox.bind(crashApply);
     crashApply.recoverPendingOutbox = async () => ({ processed: 0, failed: 0 });
 
@@ -236,7 +249,7 @@ const LIVE = process.env.DTC_01B_PG_INTEGRATION === '1';
       obdDtcListSignal: { timestamp: '2026-10-15T14:00:00Z', value: ['P0420'] },
     });
 
-    const crashApply = new DtcSnapshotApplyService(prisma as never, new DtcService(prisma as never));
+    const crashApply = makeApplyService();
     const noopFlush = async () => ({ processed: 0, failed: 0 });
     crashApply.recoverPendingOutbox = noopFlush;
 
@@ -247,7 +260,7 @@ const LIVE = process.env.DTC_01B_PG_INTEGRATION === '1';
       }),
     ).toBeGreaterThan(0);
 
-    const restarted = new DtcSnapshotApplyService(prisma as never, new DtcService(prisma as never));
+    const restarted = makeApplyService();
     const recovery = await restarted.recoverPendingOutbox();
     expect(recovery.processed).toBeGreaterThan(0);
     expect(
