@@ -111,9 +111,17 @@ GPS L3 / S1 / S2 / calibration / QC evaluator unchanged; no null→0; no extra p
 | `(synthetic) FAILED_RETRYABLE … recovers` (Postgres) | Happy-path retry after manual outbox seeding; **does not** reproduce Production `UNKNOWN`. |
 | Existing P2 Postgres suite | Regression on known-good fixture persist; **does not** model Production trip data. |
 
-### Diagnostic deploy plan (after owner approval — not executed in #2037)
+### Post-merge acceptance (two separate outcomes)
 
-1. Merge **only** the observability PR to `main` (no flag changes; API/UI OFF).
-2. Deploy to Production on top of current line (`9b355f7b62…` or newer); **no** rollback to `13725177…`.
-3. Read-only observe: outbox `status` / `last_error_code` / `attempt_count`; global CURRENT V2 count; PM2/backend logs for new `failureStep=` / `prismaCode=` lines on next natural retry (respect `next_attempt_at` backoff — **no outbox reset**).
-4. Success criteria: either (a) `SUCCEEDED` + CURRENT V2 row without manual reset, or (b) first non-`UNKNOWN` outbox code **plus** matching structured log identifying compute vs persist vs outbox_ack.
+| Outcome | Definition | Notes |
+|---------|------------|--------|
+| **DIAGNOSTIC_SUCCESS** | Original exception captured in backend logs with a **unique `failureStep`** (`compute` \| `persist` \| `outbox_ack`) tied to the executed operation. | Outbox `last_error_code` may remain **`UNKNOWN`**; diagnostic value is the log line (`errorKind`, optional `prismaCode`, clipped `message`). |
+| **PIPELINE_RECOVERY** | Natural scheduler retry (no outbox reset) yields outbox **`SUCCEEDED`** and a **`CURRENT`** V2 projection for the work item; identity + content verified **read-only** afterward. | Independent of whether `DIAGNOSTIC_SUCCESS` already occurred on an earlier attempt. |
+
+### Diagnostic deploy plan (after owner merge + authorized deploy — not executed in #2037)
+
+1. Merge PR **#2037** to `main` (observability only; no flag changes; API/UI OFF).
+2. Deploy target commit = merge commit on `main` that **contains** current Production `9b355f7b62…` **and** #2037; **no** rollback to `13725177…`.
+3. Preserve `DI_V0_P2_AUTO_PROJECTION_V2_ENABLED_SINCE` and existing outbox backoff (`next_attempt_at`, `attempt_count`).
+4. Read-only observe per retry: work item id, `attempt_count`, outbox `status` / `last_error_code`, logs for `failureStep=`; on `SUCCEEDED`, read-only verify projection row (`work_item_id`, `qc_policy_version`, `lifecycle_status=CURRENT`, idempotency/fingerprint fields only — no raw `projection_json` dump in ops notes).
+5. Report **DIAGNOSTIC_SUCCESS** and **PIPELINE_RECOVERY** separately (either, both, or neither).
