@@ -81,7 +81,9 @@ export type VsiCanonicalSignalKey =
   | 'tire_pressure'
   | 'warning_indicator'
   | 'provider_catalog_listing'
-  | 'provider_authorization_result';
+  | 'provider_authorization_result'
+  | 'accelerator_pedal_position'
+  | 'brake_pedal_position';
 
 export type VsiCanonicalSignalDefinition = {
   key: VsiCanonicalSignalKey;
@@ -308,6 +310,26 @@ export const VSI_CANONICAL_SIGNAL_DEFINITIONS: Readonly<
     valueCategory: VsiSignalValueCategory.PROVIDER_METADATA,
     semanticMeaning: 'Outcome of provider auth/entitlement for acquisition',
     canonicalUnit: VsiCanonicalUnit.NONE,
+  },
+  accelerator_pedal_position: {
+    key: 'accelerator_pedal_position',
+    contractVersion: VSI_CANONICAL_SIGNAL_CONTRACT_VERSION,
+    family: VsiSignalFamily.MOVEMENT,
+    valueCategory: VsiSignalValueCategory.PHYSICAL_MEASUREMENT,
+    semanticMeaning: 'Accelerator pedal position (provider-native scalar; not brake pedal)',
+    canonicalUnit: VsiCanonicalUnit.PERCENT,
+    primaryDimoSignalName: 'powertrainCombustionEngineAcceleratorPedalPosition',
+    prohibitedAutoAliases: ['brakePedalPosition', 'chassisBrakePedalPosition'],
+    semanticNotes: ['OEM naming varies — no cross-provider auto-alias'],
+  },
+  brake_pedal_position: {
+    key: 'brake_pedal_position',
+    contractVersion: VSI_CANONICAL_SIGNAL_CONTRACT_VERSION,
+    family: VsiSignalFamily.MOVEMENT,
+    valueCategory: VsiSignalValueCategory.PHYSICAL_MEASUREMENT,
+    semanticMeaning: 'Brake pedal / brake pressure logical family (registry only until domain mapper)',
+    canonicalUnit: VsiCanonicalUnit.PERCENT,
+    semanticNotes: ['Not materialized in P3 v1 — catalog/registry coverage only'],
   },
 };
 

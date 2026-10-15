@@ -15,7 +15,7 @@
 | **P0** | Declared vs observed discovery | **MERGED** (#2034) | Evaluator + declared catalog resolver |
 | **P1** | Durable signal profiles | **MERGED** (#2034) | `vehicle_signal_capability_profiles` + materialization |
 | **P2** | Automatic onboarding & lifecycle reconciliation | **IN PR #2038** (hardening + CI) | Outbox claim lease, ordering guards, link-scoped lifecycle init, backfill continuation, disposable PG suite |
-| **P3** | Signal fingerprint & quality intelligence | Planned | Cadence, reliability, quality dimensions |
+| **P3** | Signal fingerprint & quality intelligence | **IN PR #2041** (correctness hardening) | Profile v2, empirical VLS extractors, bundle vs per-signal separation, latest-window bundle history, registry coverage matrix |
 | **P4** | Capability resolver & validated fallback contracts | Planned | Consumer contracts, approved alternates registry |
 | **P5** | APDS read-only profile & consumer-demand integration | Planned | Read APIs + APDS consumer adapter (wired) |
 | **P6** | Controlled polling optimization | Planned | Closed-loop APDS with human gates |

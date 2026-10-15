@@ -5,6 +5,8 @@ import { projectConnectionIdentitiesFromLinks } from './vsi-connection-identity-
 import { VsiDeclaredCatalogResolver } from './vsi-declared-catalog.resolver';
 import { evaluateVsiSignalProfile } from './vsi-profile-evaluator';
 import { fingerprintVsiProfileEvaluation } from './vsi-profile-fingerprint.util';
+import { loadVsiBundleHistoricalEvidence } from './vsi-profile-historical-evidence.loader';
+import { enrichVsiProfileWithSignalFingerprints } from './vsi-signal-fingerprint.enricher';
 import type { VsiProfileEvaluationResult } from './vsi-profile.types';
 import { VSI_PROFILE_CONTRACT_VERSION } from './vsi-profile.types';
 import type { VsiSourceLinkRow } from './vsi-readonly-composer.types';
@@ -263,13 +265,24 @@ export class VsiSignalProfileMaterializationService {
       );
     }
 
-    const fingerprint = fingerprintVsiProfileEvaluation(evaluationDraft);
+    const bundleHistory = await loadVsiBundleHistoricalEvidence(this.prisma, {
+      organizationId,
+      vehicleId,
+      providerSourceLinkId,
+      provider: link.provider,
+    });
+    const evaluation = enrichVsiProfileWithSignalFingerprints(
+      evaluationDraft,
+      bundleHistory,
+    );
+
+    const fingerprint = fingerprintVsiProfileEvaluation(evaluation);
     if (existingProfile?.contentFingerprint === fingerprint) {
-      return evaluationDraft;
+      return evaluation;
     }
 
-    await this.persistWithConcurrencyRetry(evaluationDraft);
-    return evaluationDraft;
+    await this.persistWithConcurrencyRetry(evaluation);
+    return evaluation;
   }
 
   private async persistWithConcurrencyRetry(
