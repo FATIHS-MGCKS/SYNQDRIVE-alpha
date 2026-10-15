@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | **PRODUCTION_BACKEND_READ_ON** (UI gate still OFF) |
+| Status | **PRODUCTION_BACKEND_READ_ON** + **PRODUCTION_UI_ON** (joint deploy 2026-10-15) |
 | QC policy | `DI_V0_SPEED_QC_POLICY_V2` only |
 | API | `GET /api/v1/vehicles/:vehicleId/trips/:tripId/gps-speed-evaluation-v2` |
 | Backend gate | `DI_V0_TRIP_SPEED_QUALITY_V2_PRODUCT_READ_ENABLED` |
@@ -66,16 +66,26 @@ Product DTO fields matched persisted CURRENT V2 projection (max/mean, numeric + 
 
 **Interval-wise preview parity:** remains **N/A_STORED_AGGREGATE_ONLY** at persistence layer (aggregate product DTO only).
 
-## UI activation preparation (2026-10-15, not executed)
+## Joint production deploy — EXP021 UI + VSI P3 (#2041) + PDI P1B.1 (#2043) (2026-10-15)
 
-| Item | Value |
+| Field | Value |
 | --- | --- |
-| Proposed target SHA (minimal) | `a0dfaf2badac61eda280842981564e7ea160efc2` — panel + API client already in tree; CI gate **success** @ 2026-10-15T20:37:17Z |
-| Alternate SHA | `7de8f3ae2040a229f2a9c4b6a663117f1871fe55` (`main`) — adds **VSI P3** (#2041) + **PDI P1B.1** (#2043) + **2 Prisma migrations**; CI gate **success** on tip |
-| Production frontend release | `20261015204530_v4994` → static `backend/public/assets/index-Y0Z0oChY.js` (built ~2026-10-15T20:57Z) |
-| UI gate build config | `/opt/synqdrive/shared/frontend.env` — **`VITE_DI_V0_TRIP_SPEED_QUALITY_V2_PRODUCT_UI_ENABLED` absent** (not `true`) |
-| UI gate shipped bundle | Code + i18n strings present; Vite gate strict `=== 'true'` → **OFF** at last production build (no build-time `true`) |
-| Canonical deploy | **No frontend-only path** — `vps-deploy-release.sh` always `npm ci && npm run build` in `frontend/` (reads symlinked `frontend.env`) then promotes `backend/public`; owner path `CLOUD_AGENT_OWNER_DEPLOY_AUTHORIZED=1` + `cloud-agent-deploy.sh` + pinned SHA |
-| Pre-activation frontend artifact | `index-Y0Z0oChY.js` @ release `20261015204530_v4994` |
-| Browser check (post-activation) | Rental → vehicle detail → trip timeline expanded → section **GPS-based speed evaluation**; paths e.g. vehicle `8c850ff1-…` trip `9ead317c-…` and vehicle `68868291-…` trip `72617129-…` |
-| Rollback UI | Restore `frontend.env` backup (remove/ false Vite flag); redeploy **same SHA** to rebuild bundle; prior artifact `index-Y0Z0oChY.js` |
+| Owner authorization | YES — joint deploy + UI gate |
+| Production SHA before | `a0dfaf2badac61eda280842981564e7ea160efc2` (`20261015204530_v4994`) |
+| Deployed SHA | `7de8f3ae2040a229f2a9c4b6a663117f1871fe55` (`20261015220919_v4994`) |
+| CI gate | `deploy-ci-gate.mjs` **PASS** on exact target SHA |
+| Frontend env backup | `/opt/synqdrive/shared/frontend.env.bak-joint-exp021-ui-vsi-20261015220854` |
+| UI gate set | `VITE_DI_V0_TRIP_SPEED_QUALITY_V2_PRODUCT_UI_ENABLED=true` in `/opt/synqdrive/shared/frontend.env` |
+| Shipped bundle | `backend/public/assets/index-KkfX_jME.js` (Vite embeds `VITE_DI_V0_TRIP_SPEED_QUALITY_V2_PRODUCT_UI_ENABLED:"true"`) |
+| Backend flags preserved | `DI_V0_TRIP_SPEED_QUALITY_V2_PRODUCT_READ_ENABLED=true`; `DI_V0_P2_AUTO_PROJECTION_V2_ENABLED=true`; `DI_V0_P2_AUTO_PROJECTION_V2_ENABLED_SINCE=2026-10-15T10:29:51.000Z` |
+| DB backup (pre-deploy) | `/opt/synqdrive/shared/backups/db-pre-deploy-20261015220919.sql.gz` |
+| Migrations applied | `20261015193000_physical_device_inventory_p1b1`; `20261015220000_pdi_p1b1_hardening_and_dimo_schema_sync` |
+| Replicas | A `FOLLOWER` / B `LEADER`; SHA invariant; scheduler convergence **PASS**; public health **200** |
+| P4B16 attestation | `DEPLOYED_SHA=7de8f3ae2040` committed |
+| Deploy path | `CLOUD_AGENT_OWNER_DEPLOY_AUTHORIZED=1` + `CLOUD_AGENT_SKIP_GIT_PREFLIGHT=1` + `CLOUD_AGENT_REQUESTED_DEPLOY_SHA=7de8f3ae…` → `cloud-agent-deploy.sh` → `vps-deploy-release.sh` |
+
+**Post-deploy authenticated API proof (unchanged semantics):** both reference trips **HTTP 200**, product DTO match, outbox unchanged, P2 pass log delta **0** during GETs (`/tmp/exp021-product-read-http-verify.js` on VPS).
+
+**Browser UI QA:** not completed in-agent (computer-use executor unavailable / no Clerk session in cloud agent). Operators should verify rental trip panels manually on the two reference trips.
+
+**Rollback:** canonical `vps-rollback-production-release.sh` to `20261015204530_v4994` or restore `frontend.env` backup + redeploy; no down-migrations.
