@@ -19,6 +19,8 @@ import {
 import { VO_PG_DIMO_SOFTWARE_RAW_JSON } from '../../vehicle-onboarding/testing/dimo-mirror-postgres.fixture';
 import { DRIVING_CAPABILITY_PROVIDER } from '../driving-capability/vehicle-driving-capability.types';
 import { isVsiProfileSignalFingerprintV1 } from './vsi-signal-fingerprint.enricher';
+import { loadVsiBundleHistoricalEvidence } from './vsi-profile-historical-evidence.loader';
+import { VSI_LIMITATION_PER_SIGNAL_HISTORICAL_EVIDENCE_INSUFFICIENT } from './vsi-profile-empirical.constants';
 
 const LIVE = process.env.VSI03_READONLY_COMPOSER_PG === '1';
 
@@ -271,6 +273,115 @@ async function seedBundleHistory(
     const accel = result?.signals.find((s) => s.canonicalSignalKey === 'accelerator_pedal_position');
     expect(accel?.declaredSupport).toBe('LISTED');
     expect(accel?.qualityClassification).toBe('NEVER_OBSERVED');
+
+    await cleanupOrg(organizationId);
+  });
+
+  it('bundle history loader returns latest 64 timestamps not oldest', async () => {
+    const organizationId = await createLegacyReconcileOrg(prisma);
+    const fixture = await createLegacyDimoLinkFixture(prisma, {
+      organizationId,
+      externalId: `0x${randomUUID().replace(/-/g, '')}`,
+      rawJson: RUPTELA_RAW,
+    });
+    const base = new Date('2020-01-01T00:00:00.000Z');
+    const timestamps = Array.from({ length: 80 }, (_, i) => new Date(base.getTime() + i * 60_000));
+    await seedBundleHistory(prisma, {
+      organizationId,
+      vehicleId: fixture.vehicleId,
+      linkId: fixture.linkId,
+      timestamps,
+    });
+    const loaded = await loadVsiBundleHistoricalEvidence(prisma as never, {
+      organizationId,
+      vehicleId: fixture.vehicleId,
+      providerSourceLinkId: fixture.linkId,
+      provider: 'DIMO',
+    });
+    expect(loaded.bundleSourceTimestamps).toHaveLength(64);
+    expect(loaded.bundleSourceTimestamps[0]!.getTime()).toBe(base.getTime() + 16 * 60_000);
+    expect(loaded.bundleSourceTimestamps[63]!.getTime()).toBe(base.getTime() + 79 * 60_000);
+
+    await cleanupOrg(organizationId);
+  });
+
+  it('many bundle rows with one pedal observation keeps per-signal cadence null', async () => {
+    const organizationId = await createLegacyReconcileOrg(prisma);
+    const fixture = await createLegacyDimoLinkFixture(prisma, {
+      organizationId,
+      externalId: `0x${randomUUID().replace(/-/g, '')}`,
+      rawJson: RUPTELA_RAW,
+    });
+    const ts = new Date('2026-10-15T16:00:00.000Z');
+    await upsertVls(prisma, {
+      vehicleId: fixture.vehicleId,
+      linkId: fixture.linkId,
+      sourceTimestamp: ts,
+      providerFetchedAt: ts,
+      lv: 12.1,
+      rawPayloadJson: {
+        lowVoltageBatteryCurrentVoltage: { value: 12.1, timestamp: ts.toISOString() },
+        powertrainCombustionEngineAcceleratorPedalPosition: { value: 22, timestamp: ts.toISOString() },
+      },
+    });
+    await seedBundleHistory(prisma, {
+      organizationId,
+      vehicleId: fixture.vehicleId,
+      linkId: fixture.linkId,
+      timestamps: [
+        new Date('2026-10-15T15:00:00.000Z'),
+        new Date('2026-10-15T15:10:00.000Z'),
+        new Date('2026-10-15T15:20:00.000Z'),
+        ts,
+      ],
+    });
+    const result = await materialization.materializeFromPersistedEvidence({
+      organizationId,
+      vehicleId: fixture.vehicleId,
+      providerSourceLinkId: fixture.linkId,
+    });
+    const pedal = result?.signals.find((s) => s.canonicalSignalKey === 'accelerator_pedal_position');
+    const bundle = result?.signals.find((s) => s.canonicalSignalKey === 'provider_source_timestamp');
+    expect(pedal?.observedSamples).toBeNull();
+    expect(pedal?.limitations).toContain(VSI_LIMITATION_PER_SIGNAL_HISTORICAL_EVIDENCE_INSUFFICIENT);
+    expect(bundle?.provenSourceAdvances).toBeGreaterThan(0);
+
+    await cleanupOrg(organizationId);
+  });
+
+  it('GPS fresh with unchanged LV: position observed, LV empirical from composer', async () => {
+    const organizationId = await createLegacyReconcileOrg(prisma);
+    const fixture = await createLegacyDimoLinkFixture(prisma, {
+      organizationId,
+      externalId: `0x${randomUUID().replace(/-/g, '')}`,
+      rawJson: RUPTELA_RAW,
+    });
+    const gpsTs = new Date('2026-10-15T17:00:00.000Z');
+    const lvTs = new Date('2026-10-14T08:00:00.000Z');
+    await upsertVls(prisma, {
+      vehicleId: fixture.vehicleId,
+      linkId: fixture.linkId,
+      sourceTimestamp: gpsTs,
+      providerFetchedAt: gpsTs,
+      lv: 12.0,
+      rawPayloadJson: {
+        currentLocationCoordinates: {
+          value: { latitude: 48.1, longitude: 11.5 },
+          timestamp: gpsTs.toISOString(),
+        },
+        lowVoltageBatteryCurrentVoltage: { value: 12.0, timestamp: lvTs.toISOString() },
+      },
+    });
+    const result = await materialization.materializeFromPersistedEvidence({
+      organizationId,
+      vehicleId: fixture.vehicleId,
+      providerSourceLinkId: fixture.linkId,
+    });
+    const pos = result?.signals.find((s) => s.canonicalSignalKey === 'position_coordinates');
+    const lv = result?.signals.find((s) => s.canonicalSignalKey === 'lv_voltage');
+    expect(pos?.empiricalObservation).toBe('OBSERVED');
+    expect(lv?.empiricalObservation).toBe('OBSERVED');
+    expect(pos?.observedCadenceMedianSeconds).toBeNull();
 
     await cleanupOrg(organizationId);
   });

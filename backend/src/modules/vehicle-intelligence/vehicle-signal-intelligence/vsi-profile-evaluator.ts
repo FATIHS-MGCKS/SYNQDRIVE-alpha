@@ -13,8 +13,18 @@ import {
   VSI_PROFILE_MATERIALIZATION_KEYS,
   mapVsiCatalogToDeclaredSupport,
   type VsiProfileEvaluationDraft,
+  type VsiProfileMaterializationKey,
   type VsiProfileSignalSnapshotV1,
 } from './vsi-profile.types';
+import { VSI_P1_SIGNAL_KEYS } from './vsi-readonly-composer.types';
+import {
+  extractProfileSignalEmpirical,
+  isProfileEmpiricalExtractorImplemented,
+} from './vsi-profile-empirical-extractor';
+import {
+  VSI_LIMITATION_EMPIRICAL_EXTRACTOR_NOT_IMPLEMENTED,
+  VSI_LIMITATION_PER_SIGNAL_HISTORICAL_EVIDENCE_INSUFFICIENT,
+} from './vsi-profile-empirical.constants';
 import {
   resolveStrictSourceAdvanceEvidence,
   isLatestStateAttributedToLink,
@@ -48,10 +58,15 @@ function isoOrNull(
 }
 
 function mergeEmpiricalRow(
-  key: (typeof VSI_PROFILE_MATERIALIZATION_KEYS)[number],
+  key: VsiProfileMaterializationKey,
   composerSignals: ReturnType<typeof composeReadonlyVehicleSignals>['signals'],
   declaredCatalog: VsiDeclaredCatalogSnapshot,
   catalogResolver: Pick<VsiDeclaredCatalogResolver, 'catalogForCanonicalKey'>,
+  empiricalContext: {
+    latestState: VsiLatestStateSnapshot | null;
+    stateAttributed: boolean;
+    projectionAsOf: Date;
+  },
 ): VsiProfileSignalSnapshotV1 {
   const def = getVsiCanonicalSignalDefinition(key);
   const native = def.primaryDimoSignalName ?? key;
@@ -85,7 +100,7 @@ function mergeEmpiricalRow(
     ...(declaredCatalog.limitations ?? []),
   ];
 
-  return {
+  let row: VsiProfileSignalSnapshotV1 = {
     canonicalSignalKey: key,
     providerNativeSignalName: native,
     declaredSupport: declared,
@@ -99,6 +114,39 @@ function mergeEmpiricalRow(
     evidenceProvenance: [...provenance] as VsiProfileSignalSnapshotV1['evidenceProvenance'],
     limitations,
   };
+
+  const isP1 = (VSI_P1_SIGNAL_KEYS as readonly string[]).includes(key);
+  if (!isP1) {
+    const extracted = extractProfileSignalEmpirical({
+      key,
+      latestState: empiricalContext.latestState,
+      stateAttributed: empiricalContext.stateAttributed,
+      projectionAsOf: empiricalContext.projectionAsOf,
+    });
+    if (extracted) {
+      row = {
+        ...row,
+        providerNativeSignalName: extracted.providerNativeSignalName,
+        empiricalObservation: extracted.empiricalObservation,
+        lastValidObservationAt: extracted.lastValidObservationAt?.toISOString() ?? null,
+        lastSourceTimestamp: extracted.lastSourceTimestamp?.toISOString() ?? null,
+        freshnessClassification: extracted.freshnessClassification,
+        evidenceProvenance: [
+          ...new Set([...row.evidenceProvenance, ...extracted.evidenceProvenance]),
+        ] as VsiProfileSignalSnapshotV1['evidenceProvenance'],
+        limitations: [...new Set([...row.limitations, ...extracted.limitations])],
+      };
+      if (empiricalContext.stateAttributed && empiricalContext.latestState?.providerFetchedAt) {
+        row.lastProviderFetchAt =
+          empiricalContext.latestState.providerFetchedAt.toISOString();
+      }
+      row.limitations.push(VSI_LIMITATION_PER_SIGNAL_HISTORICAL_EVIDENCE_INSUFFICIENT);
+    } else if (!isProfileEmpiricalExtractorImplemented(key)) {
+      row.limitations.push(VSI_LIMITATION_EMPIRICAL_EXTRACTOR_NOT_IMPLEMENTED);
+    }
+  }
+
+  return row;
 }
 
 export function evaluateVsiSignalProfile(
@@ -154,7 +202,17 @@ export function evaluateVsiSignalProfile(
   }
 
   const signals = VSI_PROFILE_MATERIALIZATION_KEYS.map((key) => {
-    const row = mergeEmpiricalRow(key, linkScopedSignals, input.declaredCatalog, catalogResolver);
+    const row = mergeEmpiricalRow(
+      key,
+      linkScopedSignals,
+      input.declaredCatalog,
+      catalogResolver,
+      {
+        latestState: stateAttributed ? input.latestState : null,
+        stateAttributed,
+        projectionAsOf,
+      },
+    );
     if (key === 'provider_source_timestamp') {
       return {
         ...row,

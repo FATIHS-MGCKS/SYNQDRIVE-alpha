@@ -25,19 +25,22 @@ export const VsiSignalConfidenceLevel = {
 export type VsiSignalConfidenceLevel =
   (typeof VsiSignalConfidenceLevel)[keyof typeof VsiSignalConfidenceLevel];
 
-/** Minimum bundle source-timestamp samples before cadence / intermittency metrics. */
 export const VSI_SIGNAL_CADENCE_MIN_SAMPLES = 3;
 
 export type VsiBundleHistoricalEvidence = {
-  /** Monotonic provider bundle source times (not poll-success counts). */
   bundleSourceTimestamps: readonly Date[];
+};
+
+export type VsiBundleAdvanceFingerprint = {
+  provenSourceAdvances: number;
+  observedCadenceMedianSeconds: number | null;
+  observedCadenceSampleCount: number;
+  maxStaleIntervalSeconds: number | null;
 };
 
 export type VsiSignalQualityInput = {
   signal: VsiProfileSignalSnapshotV1;
-  bundleHistory: VsiBundleHistoricalEvidence;
   profileLimitations: readonly string[];
-  projectionAsOf: Date;
 };
 
 function hasAttributionBlocker(limitations: readonly string[]): boolean {
@@ -59,14 +62,10 @@ function medianSeconds(deltas: number[]): number | null {
     : sorted[mid];
 }
 
+/** Bundle-level source timestamp advancement (provider_source_timestamp only). */
 export function computeBundleSourceAdvanceStats(
   bundleSourceTimestamps: readonly Date[],
-): {
-  provenSourceAdvances: number;
-  observedCadenceMedianSeconds: number | null;
-  observedCadenceSampleCount: number;
-  maxStaleIntervalSeconds: number | null;
-} {
+): VsiBundleAdvanceFingerprint {
   const sorted = [...bundleSourceTimestamps].sort((a, b) => a.getTime() - b.getTime());
   let advances = 0;
   const deltas: number[] = [];
@@ -78,26 +77,19 @@ export function computeBundleSourceAdvanceStats(
       deltas.push((cur - prev) / 1000);
     }
   }
-  const sampleCount = deltas.length;
   return {
     provenSourceAdvances: advances,
     observedCadenceMedianSeconds: medianSeconds(deltas),
-    observedCadenceSampleCount: sampleCount,
+    observedCadenceSampleCount: deltas.length,
     maxStaleIntervalSeconds: deltas.length ? Math.max(...deltas) : null,
   };
 }
 
-function isIntermittentCadence(deltas: number[]): boolean {
-  if (deltas.length < VSI_SIGNAL_CADENCE_MIN_SAMPLES) return false;
-  const median = medianSeconds(deltas);
-  if (median == null || median <= 0) return false;
-  const max = Math.max(...deltas);
-  const min = Math.min(...deltas);
-  return max / median >= 4 && min / median <= 0.25;
-}
-
+/**
+ * Current-observation quality only. Historical regularity is not inferred from bundle ledger.
+ */
 export function classifyVsiSignalQuality(input: VsiSignalQualityInput): VsiSignalQualityClassification {
-  const { signal, bundleHistory, profileLimitations } = input;
+  const { signal, profileLimitations } = input;
 
   if (hasAttributionBlocker([...signal.limitations, ...profileLimitations])) {
     return VsiSignalQualityClassification.UNKNOWN;
@@ -107,51 +99,34 @@ export function classifyVsiSignalQuality(input: VsiSignalQualityInput): VsiSigna
     return VsiSignalQualityClassification.NEVER_OBSERVED;
   }
 
-  const stats = computeBundleSourceAdvanceStats(bundleHistory.bundleSourceTimestamps);
-  const deltas: number[] = [];
-  const sorted = [...bundleHistory.bundleSourceTimestamps].sort(
-    (a, b) => a.getTime() - b.getTime(),
-  );
-  for (let i = 1; i < sorted.length; i += 1) {
-    const prev = sorted[i - 1]!.getTime();
-    const cur = sorted[i]!.getTime();
-    if (cur > prev) deltas.push((cur - prev) / 1000);
+  if (signal.empiricalObservation === VsiEmpiricalObservationStatus.OBSERVED_STALE) {
+    return VsiSignalQualityClassification.OBSERVED_STALE;
+  }
+
+  if (signal.freshnessClassification === 'STALE') {
+    return VsiSignalQualityClassification.OBSERVED_STALE;
   }
 
   if (
     signal.empiricalObservation === VsiEmpiricalObservationStatus.OBSERVED &&
     signal.freshnessClassification === 'FRESH'
   ) {
-    if (isIntermittentCadence(deltas)) {
-      return VsiSignalQualityClassification.OBSERVED_INTERMITTENT;
-    }
     return VsiSignalQualityClassification.OBSERVED_FRESH;
-  }
-
-  if (
-    signal.empiricalObservation === VsiEmpiricalObservationStatus.OBSERVED_STALE ||
-    signal.freshnessClassification === 'STALE'
-  ) {
-    return VsiSignalQualityClassification.OBSERVED_STALE;
-  }
-
-  if (
-    signal.canonicalSignalKey === 'provider_source_timestamp' &&
-    stats.observedCadenceSampleCount < VSI_SIGNAL_CADENCE_MIN_SAMPLES
-  ) {
-    return VsiSignalQualityClassification.INSUFFICIENT_HISTORY;
   }
 
   if (signal.empiricalObservation === VsiEmpiricalObservationStatus.OBSERVED) {
-    if (stats.observedCadenceSampleCount < VSI_SIGNAL_CADENCE_MIN_SAMPLES) {
-      return VsiSignalQualityClassification.INSUFFICIENT_HISTORY;
-    }
-    if (isIntermittentCadence(deltas)) {
-      return VsiSignalQualityClassification.OBSERVED_INTERMITTENT;
-    }
-    return VsiSignalQualityClassification.OBSERVED_FRESH;
+    return VsiSignalQualityClassification.UNKNOWN;
   }
 
+  return VsiSignalQualityClassification.UNKNOWN;
+}
+
+export function classifyBundleHistoricalQuality(
+  bundle: VsiBundleAdvanceFingerprint,
+): VsiSignalQualityClassification {
+  if (bundle.observedCadenceSampleCount < VSI_SIGNAL_CADENCE_MIN_SAMPLES) {
+    return VsiSignalQualityClassification.INSUFFICIENT_HISTORY;
+  }
   return VsiSignalQualityClassification.UNKNOWN;
 }
 
@@ -163,16 +138,15 @@ export function resolveVsiSignalConfidence(
     return VsiSignalConfidenceLevel.UNKNOWN;
   }
   if (quality === VsiSignalQualityClassification.NEVER_OBSERVED) {
-    return signal.declaredSupport === 'LISTED'
-      ? VsiSignalConfidenceLevel.MEDIUM
-      : VsiSignalConfidenceLevel.LOW;
+    return VsiSignalConfidenceLevel.LOW;
   }
   if (quality === VsiSignalQualityClassification.INSUFFICIENT_HISTORY) {
     return VsiSignalConfidenceLevel.LOW;
   }
   if (
     quality === VsiSignalQualityClassification.OBSERVED_FRESH &&
-    signal.evidenceProvenance.includes('VEHICLE_LATEST_STATE')
+    signal.evidenceProvenance.includes('VEHICLE_LATEST_STATE') &&
+    signal.lastSourceTimestamp != null
   ) {
     return VsiSignalConfidenceLevel.HIGH;
   }

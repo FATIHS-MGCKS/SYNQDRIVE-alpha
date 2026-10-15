@@ -6,7 +6,7 @@ const BUNDLE_HISTORY_LIMIT = 64;
 const BUNDLE_OUTCOMES = ['PROVIDER_FETCH_RECORDED', 'MONOTONIC_STALE_SKIPPED'] as const;
 
 /**
- * Loads bounded bundle-level provider source timestamps from the VSI03 observation ledger.
+ * Loads the latest bounded bundle-level provider source timestamps from the VSI03 ledger.
  * Does not use poll SUCCESS counts as transmission cadence.
  */
 export async function loadVsiBundleHistoricalEvidence(
@@ -27,14 +27,15 @@ export async function loadVsiBundleHistoricalEvidence(
       observationOutcome: { in: [...BUNDLE_OUTCOMES] },
       providerSourceTimestamp: { not: null },
     },
-    orderBy: [{ providerSourceTimestamp: 'asc' }],
+    orderBy: [{ providerSourceTimestamp: 'desc' }, { observationIndex: 'desc' }],
     take: BUNDLE_HISTORY_LIMIT,
     select: { providerSourceTimestamp: true },
   });
 
   const bundleSourceTimestamps = rows
     .map((r) => r.providerSourceTimestamp)
-    .filter((ts): ts is Date => ts instanceof Date);
+    .filter((ts): ts is Date => ts instanceof Date)
+    .reverse();
 
   return { bundleSourceTimestamps };
 }

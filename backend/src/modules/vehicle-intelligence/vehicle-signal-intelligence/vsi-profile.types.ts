@@ -88,8 +88,17 @@ export type VsiProfileEvaluationDraft = {
   profileLimitations: string[];
 };
 
+export type VsiProfileBundleAdvanceFingerprint = {
+  provenSourceAdvances: number;
+  observedCadenceMedianSeconds: number | null;
+  observedCadenceSampleCount: number;
+  maxStaleIntervalSeconds: number | null;
+};
+
 export type VsiProfileEvaluationResult = Omit<VsiProfileEvaluationDraft, 'signals'> & {
   signals: VsiProfileSignalFingerprintV1[];
+  /** Bundle-level provider source timestamp history (not projected to physical signals). */
+  bundleAdvanceFingerprint?: VsiProfileBundleAdvanceFingerprint;
 };
 
 export function mapVsiCatalogToDeclaredSupport(

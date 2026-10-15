@@ -169,4 +169,89 @@ describe('evaluateVsiSignalProfile', () => {
     const lv = result.signals.find((s) => s.canonicalSignalKey === 'lv_voltage');
     expect(lv?.declaredSupport).toBe('UNKNOWN');
   });
+
+  it('GPS position observed while LV absent in same VLS snapshot', () => {
+    const ts = new Date('2026-10-15T10:00:00Z');
+    const declared = {
+      checkedAt: ts,
+      byNativeSignalName: new Map<string, VsiProviderCatalogStatus>(),
+      limitations: [],
+    };
+    const result = evaluateVsiSignalProfile(
+      {
+        organizationId: 'org-1',
+        vehicleId: 'veh-1',
+        registryLifecycle: 'ACTIVE',
+        hardwareTypeLegacy: 'LTE_R1',
+        link: baseLink,
+        identity: hardwareIdentity,
+        latestState: {
+          vehicleId: 'veh-1',
+          providerBindingId: 'link-1',
+          providerSource: 'DIMO',
+          lvBatteryVoltage: null,
+          evSoc: null,
+          online: true,
+          sourceTimestamp: ts,
+          providerFetchedAt: new Date(ts.getTime() + 1000),
+          updatedAt: ts,
+          rawPayloadJson: {
+            currentLocationCoordinates: {
+              value: { latitude: 50.1, longitude: 8.6 },
+              timestamp: ts.toISOString(),
+            },
+          },
+        },
+        pollLogs: [],
+        declaredCatalog: declared,
+        projectionAsOf: new Date('2026-10-15T10:00:30Z'),
+      },
+      catalogResolver,
+    );
+    const pos = result.signals.find((s) => s.canonicalSignalKey === 'position_coordinates');
+    const lv = result.signals.find((s) => s.canonicalSignalKey === 'lv_voltage');
+    expect(pos?.empiricalObservation).toBe(VsiEmpiricalObservationStatus.OBSERVED);
+    expect(lv?.empiricalObservation).toBe(VsiEmpiricalObservationStatus.NEVER_OBSERVED);
+    expect(pos?.limitations).toContain('PER_SIGNAL_HISTORICAL_EVIDENCE_INSUFFICIENT');
+  });
+
+  it('accelerator pedal zero observed via empirical extractor', () => {
+    const ts = new Date('2026-10-15T10:00:00Z');
+    const declared = {
+      checkedAt: ts,
+      byNativeSignalName: new Map<string, VsiProviderCatalogStatus>(),
+      limitations: [],
+    };
+    const result = evaluateVsiSignalProfile(
+      {
+        organizationId: 'org-1',
+        vehicleId: 'veh-1',
+        registryLifecycle: 'ACTIVE',
+        hardwareTypeLegacy: 'LTE_R1',
+        link: baseLink,
+        identity: hardwareIdentity,
+        latestState: {
+          vehicleId: 'veh-1',
+          providerBindingId: 'link-1',
+          providerSource: 'DIMO',
+          lvBatteryVoltage: 12.2,
+          evSoc: null,
+          online: true,
+          sourceTimestamp: ts,
+          providerFetchedAt: ts,
+          updatedAt: ts,
+          rawPayloadJson: {
+            lowVoltageBatteryCurrentVoltage: { value: 12.2, timestamp: ts.toISOString() },
+            powertrainCombustionEngineAcceleratorPedalPosition: { value: 0, timestamp: ts.toISOString() },
+          },
+        },
+        pollLogs: [],
+        declaredCatalog: declared,
+        projectionAsOf: new Date('2026-10-15T10:00:30Z'),
+      },
+      catalogResolver,
+    );
+    const accel = result.signals.find((s) => s.canonicalSignalKey === 'accelerator_pedal_position');
+    expect(accel?.empiricalObservation).toBe(VsiEmpiricalObservationStatus.OBSERVED);
+  });
 });

@@ -4,12 +4,12 @@ import type {
   VsiProfileEvaluationResult,
   VsiProfileSignalSnapshotV1,
 } from './vsi-profile.types';
-import { VsiEmpiricalObservationStatus } from './vehicle-signal-evidence.contract';
 import {
   VSI_SIGNAL_FINGERPRINT_CONTRACT_VERSION,
   classifyVsiSignalQuality,
   computeBundleSourceAdvanceStats,
   resolveVsiSignalConfidence,
+  VSI_SIGNAL_CADENCE_MIN_SAMPLES,
   type VsiBundleHistoricalEvidence,
 } from './vsi-signal-quality.classifier';
 import type { VsiProfileSignalFingerprintV1 } from './vsi-profile.types';
@@ -35,56 +35,58 @@ export function enrichVsiProfileWithSignalFingerprints(
   evaluation: VsiProfileEvaluationDraft,
   bundleHistory: VsiBundleHistoricalEvidence,
 ): VsiProfileEvaluationResult {
-  const stats = computeBundleSourceAdvanceStats(bundleHistory.bundleSourceTimestamps);
-  const observedSamples =
-    stats.observedCadenceSampleCount >= 1 ? stats.observedCadenceSampleCount + 1 : null;
+  const bundleStats = computeBundleSourceAdvanceStats(bundleHistory.bundleSourceTimestamps);
 
   const signals: VsiProfileSignalFingerprintV1[] = evaluation.signals.map((signal) => {
+    const isBundleTimestamp = signal.canonicalSignalKey === 'provider_source_timestamp';
+
     const quality = classifyVsiSignalQuality({
       signal,
-      bundleHistory,
       profileLimitations: evaluation.profileLimitations,
-      projectionAsOf: evaluation.evaluatedAt,
     });
-    const confidence = resolveVsiSignalConfidence(quality, signal);
 
-    const cadenceEligible =
-      signal.canonicalSignalKey === 'provider_source_timestamp' ||
-      quality === 'OBSERVED_INTERMITTENT' ||
-      quality === 'OBSERVED_FRESH' ||
-      quality === 'OBSERVED_STALE';
+    const confidence = resolveVsiSignalConfidence(quality, signal);
 
     const base: VsiProfileSignalFingerprintV1 = {
       ...signal,
       signalFingerprintContractVersion: VSI_SIGNAL_FINGERPRINT_CONTRACT_VERSION,
       qualityClassification: quality,
       confidenceLevel: confidence,
-      observedSamples:
-        signal.empiricalObservation === VsiEmpiricalObservationStatus.NEVER_OBSERVED
-          ? 0
-          : observedSamples,
-      provenSourceAdvances:
-        signal.canonicalSignalKey === 'provider_source_timestamp'
-          ? stats.provenSourceAdvances
-          : null,
+      observedSamples: isBundleTimestamp
+        ? bundleStats.observedCadenceSampleCount > 0
+          ? bundleStats.observedCadenceSampleCount + 1
+          : signal.empiricalObservation === 'NEVER_OBSERVED'
+            ? 0
+            : 1
+        : null,
+      provenSourceAdvances: isBundleTimestamp ? bundleStats.provenSourceAdvances : null,
       observedCadenceMedianSeconds:
-        cadenceEligible && stats.observedCadenceSampleCount >= 3
-          ? stats.observedCadenceMedianSeconds
+        isBundleTimestamp && bundleStats.observedCadenceSampleCount >= VSI_SIGNAL_CADENCE_MIN_SAMPLES
+          ? bundleStats.observedCadenceMedianSeconds
           : null,
-      observedCadenceSampleCount:
-        cadenceEligible && stats.observedCadenceSampleCount > 0
-          ? stats.observedCadenceSampleCount
-          : null,
+      observedCadenceSampleCount: isBundleTimestamp ? bundleStats.observedCadenceSampleCount : null,
       maxStaleIntervalSeconds:
-        cadenceEligible && stats.maxStaleIntervalSeconds != null
-          ? stats.maxStaleIntervalSeconds
+        isBundleTimestamp && bundleStats.maxStaleIntervalSeconds != null
+          ? bundleStats.maxStaleIntervalSeconds
           : null,
       contentFingerprint: '',
     };
+
+    if (isBundleTimestamp && signal.lastProvenStrictSourceAdvanceAt == null) {
+      base.lastProvenStrictSourceAdvanceAt =
+        bundleStats.provenSourceAdvances > 0
+          ? signal.lastSourceTimestamp
+          : signal.lastProvenStrictSourceAdvanceAt;
+    }
+
     return { ...base, contentFingerprint: fingerprintSignalRow(base) };
   });
 
-  return { ...evaluation, signals };
+  return {
+    ...evaluation,
+    signals,
+    bundleAdvanceFingerprint: bundleStats,
+  };
 }
 
 export function isVsiProfileSignalFingerprintV1(
