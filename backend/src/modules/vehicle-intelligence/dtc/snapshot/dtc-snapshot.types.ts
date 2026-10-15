@@ -14,12 +14,14 @@ export type DtcSnapshotCompletenessEvidence =
 export type DtcSnapshotDecisionOutcome =
   | 'APPLY_CONFIRMED_SNAPSHOT'
   | 'APPLY_WEBHOOK_PARTIAL'
+  | 'APPLY_BINDING_REBASELINE'
   | 'NOOP_ALREADY_APPLIED'
   | 'REJECT_INELIGIBLE_VEHICLE'
   | 'REJECT_BINDING_MISMATCH'
   | 'REJECT_MISSING_SIGNAL'
   | 'REJECT_INVALID_TIMESTAMP'
   | 'REJECT_INCOMPLETE_WEBHOOK'
+  | 'REJECT_PARTIAL_PAYLOAD'
   | 'REJECT_OUT_OF_ORDER_SOURCE'
   | 'REJECT_EQUAL_TIMESTAMP_CONFLICT'
   | 'REJECT_FETCH_WITHOUT_SIGNAL'
@@ -49,6 +51,9 @@ export interface DtcSnapshotStoredHead {
   lastAcceptedSourceAtMs: number | null;
   lastAcceptedCodesHash: string | null;
   lastAcceptedBindingId: string | null;
+  bindingEpoch: number;
+  dimoTokenId: number | null;
+  lastConfirmedCompleteSourceAtMs: number | null;
 }
 
 export interface DtcSnapshotDecision {

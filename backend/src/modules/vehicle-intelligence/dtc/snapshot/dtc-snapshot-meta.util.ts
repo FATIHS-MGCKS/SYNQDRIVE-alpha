@@ -1,10 +1,12 @@
 import { createHash } from 'crypto';
-import type { DtcSnapshotStoredHead } from './dtc-snapshot.types';
-
 const META_KEY = 'dtc01aSnapshot';
 
-export interface DtcSnapshotMetaV1 extends DtcSnapshotStoredHead {
+/** Legacy VLS rawPayloadJson meta (superseded by vehicle_dtc_source_heads in 01B). */
+export interface DtcSnapshotMetaV1 {
   version: 1;
+  lastAcceptedSourceAtMs: number | null;
+  lastAcceptedCodesHash: string | null;
+  lastAcceptedBindingId: string | null;
   lastFetchAtMs: number | null;
   lastDecisionOutcome: string | null;
   lastDecisionAtMs: number | null;

@@ -3080,6 +3080,8 @@ model Vehicle {
   brakeHealthAlerts                      BrakeHealthAlert[]
   brakeRecalculationAudits               BrakeRecalculationAudit[]
   dtcEvents                              VehicleDtcEvent[]
+  dtcSourceHead                          VehicleDtcSourceHead?
+  dtcSnapshotOutbox                      VehicleDtcSnapshotOutbox[]
   tripDrivingImpacts                     TripDrivingImpact[]
   drivingImpactCurrent                   VehicleDrivingImpactCurrent?
   damages                                VehicleDamage[]
@@ -10416,6 +10418,50 @@ model VehicleDtcEvent {
   @@index([vehicleId, lastSeenAt])
   @@index([vehicleId, isActive])
   @@map("vehicle_dtc_events")
+}
+
+/// DTC-01B — canonical monotonic source head (isolated from global VLS snapshot provenance).
+model VehicleDtcSourceHead {
+  vehicleId                    String    @id @map("vehicle_id")
+  organizationId               String?   @map("organization_id")
+  provider                     String    @default("DIMO")
+  providerBindingId            String    @map("provider_binding_id")
+  bindingEpoch                 Int       @default(1) @map("binding_epoch")
+  dimoTokenId                  Int?      @map("dimo_token_id")
+  lastAcceptedSourceAt         DateTime? @map("last_accepted_source_at")
+  lastAcceptedCodesHash        String?   @map("last_accepted_codes_hash")
+  lastConfirmedCompleteSourceAt DateTime? @map("last_confirmed_complete_source_at")
+  lastConfirmedCompleteFetchAt DateTime? @map("last_confirmed_complete_fetch_at")
+  confirmedObdCodes            Json?     @map("confirmed_obd_codes")
+  lastPollFetchAt              DateTime? @map("last_poll_fetch_at")
+  lastPollStatus               String?   @map("last_poll_status")
+  lastPollError                String?   @map("last_poll_error")
+  lastDecisionOutcome          String?   @map("last_decision_outcome")
+  lastAuditRef                 String?   @map("last_audit_ref")
+  createdAt                    DateTime  @default(now()) @map("created_at")
+  updatedAt                    DateTime  @updatedAt @map("updated_at")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("vehicle_dtc_source_heads")
+}
+
+/// Durable downstream side-effects for DTC snapshot apply (notifications, etc.).
+model VehicleDtcSnapshotOutbox {
+  id               String    @id @default(uuid())
+  vehicleId        String    @map("vehicle_id")
+  organizationId   String    @map("organization_id")
+  idempotencyKey   String    @unique @map("idempotency_key")
+  payload          Json
+  createdAt        DateTime  @default(now()) @map("created_at")
+  processedAt      DateTime? @map("processed_at")
+  lastError        String?   @map("last_error")
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([processedAt])
+  @@map("vehicle_dtc_snapshot_outbox")
 }
 
 // ------------------------------------------------

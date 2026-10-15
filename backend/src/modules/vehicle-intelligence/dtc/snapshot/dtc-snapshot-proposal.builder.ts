@@ -1,8 +1,8 @@
-import { normalizeDtcCodes } from '../dtc-code-normalizer.util';
 import {
-  hashDtcCodesContent,
-  parseProviderObservedAt,
-} from './dtc-snapshot-meta.util';
+  assessObdDtcValue,
+  assessProviderTimestamp,
+} from './dtc-payload-validation';
+import { hashDtcCodesContent } from './dtc-snapshot-meta.util';
 import type {
   DtcSnapshotBindingIdentity,
   DtcSnapshotCompletenessEvidence,
@@ -19,7 +19,8 @@ export type DtcSnapshotProposalBuildResult =
         | 'REJECT_MISSING_SIGNAL'
         | 'REJECT_INVALID_TIMESTAMP'
         | 'REJECT_FETCH_WITHOUT_SIGNAL'
-        | 'REJECT_INCOMPLETE_WEBHOOK';
+        | 'REJECT_INCOMPLETE_WEBHOOK'
+        | 'REJECT_PARTIAL_PAYLOAD';
     };
 
 export function buildPollSignalsLatestProposal(input: {
@@ -38,22 +39,41 @@ export function buildPollSignalsLatestProposal(input: {
       outcome: 'REJECT_FETCH_WITHOUT_SIGNAL',
     };
   }
-  const sourceObservedAt = parseProviderObservedAt(signal.timestamp);
-  if (!sourceObservedAt) {
+
+  const ts = assessProviderTimestamp(signal.timestamp, input.fetchObservedAt);
+  if (ts.class === 'MISSING' || ts.class === 'INVALID' || ts.class === 'FUTURE') {
     return {
       ok: false,
-      reason: 'OBD_DTC_LIST_TIMESTAMP_INVALID_OR_MISSING',
+      reason: `OBD_DTC_LIST_TIMESTAMP_${ts.class}`,
       outcome: 'REJECT_INVALID_TIMESTAMP',
     };
   }
-  if (signal.value === undefined) {
+
+  const payload = assessObdDtcValue(signal.value);
+  if (payload.valueClass === 'MISSING') {
     return {
       ok: false,
       reason: 'OBD_DTC_LIST_VALUE_UNDEFINED',
       outcome: 'REJECT_MISSING_SIGNAL',
     };
   }
-  const codes = normalizeDtcCodes(signal.value);
+  if (payload.valueClass === 'NULL') {
+    return {
+      ok: false,
+      reason: 'OBD_DTC_LIST_VALUE_NULL',
+      outcome: 'REJECT_MISSING_SIGNAL',
+    };
+  }
+  if (payload.valueClass === 'PARTIAL') {
+    return {
+      ok: false,
+      reason: 'OBD_DTC_LIST_ALL_TOKENS_INVALID',
+      outcome: 'REJECT_PARTIAL_PAYLOAD',
+    };
+  }
+
+  const codes = payload.codes;
+  const sourceObservedAt = ts.class === 'VALID' ? ts.observedAt : new Date(0);
   return {
     ok: true,
     proposal: assembleProposal({
@@ -79,22 +99,32 @@ export function buildWebhookObdDtcProposal(input: {
   value: unknown;
   webhookTimestamp: string | null;
 }): DtcSnapshotProposalBuildResult {
-  if (input.value === undefined || input.value === null) {
+  const payload = assessObdDtcValue(input.value);
+  if (payload.valueClass === 'MISSING' || payload.valueClass === 'NULL') {
     return {
       ok: false,
       reason: 'WEBHOOK_VALUE_MISSING',
       outcome: 'REJECT_INCOMPLETE_WEBHOOK',
     };
   }
-  const sourceObservedAt = parseProviderObservedAt(input.webhookTimestamp);
-  if (!sourceObservedAt) {
+  if (payload.valueClass === 'PARTIAL') {
     return {
       ok: false,
-      reason: 'WEBHOOK_TIMESTAMP_INVALID_OR_MISSING',
+      reason: 'WEBHOOK_ALL_TOKENS_INVALID',
+      outcome: 'REJECT_PARTIAL_PAYLOAD',
+    };
+  }
+
+  const ts = assessProviderTimestamp(input.webhookTimestamp, input.fetchObservedAt);
+  if (ts.class === 'MISSING' || ts.class === 'INVALID' || ts.class === 'FUTURE') {
+    return {
+      ok: false,
+      reason: `WEBHOOK_TIMESTAMP_${ts.class}`,
       outcome: 'REJECT_INVALID_TIMESTAMP',
     };
   }
-  const codes = normalizeDtcCodes(input.value);
+
+  const sourceObservedAt = ts.class === 'VALID' ? ts.observedAt : new Date(0);
   return {
     ok: true,
     proposal: assembleProposal({
@@ -104,7 +134,7 @@ export function buildWebhookObdDtcProposal(input: {
       completeness: 'webhook_partial_upsert_only',
       binding: input.binding,
       sourceObservedAt,
-      codes,
+      codes: payload.codes,
       fetchObservedAt: input.fetchObservedAt,
       auditRef: input.auditRef,
     }),

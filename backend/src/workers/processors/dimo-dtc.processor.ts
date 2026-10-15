@@ -18,6 +18,7 @@ import { DtcSnapshotApplyService } from '@modules/vehicle-intelligence/dtc/snaps
 import { evaluateDtcPollEligibility } from '@modules/vehicle-intelligence/dtc/snapshot/dtc-snapshot-eligibility';
 import { buildPollSignalsLatestProposal } from '@modules/vehicle-intelligence/dtc/snapshot/dtc-snapshot-proposal.builder';
 import { resolveActiveDimoBindingForVehicle } from '@modules/vehicle-intelligence/dtc/snapshot/dtc-snapshot-binding.util';
+import { assertDtcSnapshotApplyWired } from '@modules/vehicle-intelligence/dtc/snapshot/dtc-fail-closed';
 
 // Supported job names on the DTC queue:
 //   dtc-poll         — legacy full-fleet scan (still works, but fans out)
@@ -133,10 +134,7 @@ export class DimoDtcProcessor extends WorkerHost {
     fetchObservedAt: Date,
     auditRef: string,
   ): Promise<void> {
-    if (!this.dtcSnapshotApply) {
-      this.logger.warn('DTC-01A enabled but DtcSnapshotApplyService missing — skipping poll');
-      return;
-    }
+    assertDtcSnapshotApplyWired(true, this.dtcSnapshotApply, 'DimoDtcProcessor.pollVehicleDtc01a');
 
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: vehicleId },
@@ -159,8 +157,9 @@ export class DimoDtcProcessor extends WorkerHost {
       vehicleDimoVehicleId: vehicle.dimoVehicleId,
     });
     if (!eligibility.eligible) {
-      await this.dtcSnapshotApply.recordSkippedPoll({
+      await this.dtcSnapshotApply!.recordSkippedPoll({
         vehicleId,
+        organizationId: vehicle.organizationId,
         fetchObservedAt,
         reason: eligibility.reason,
         auditRef,

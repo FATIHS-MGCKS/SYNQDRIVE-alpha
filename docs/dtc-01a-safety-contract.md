@@ -31,6 +31,24 @@ Increments only on **new active episode** (row create). Re-seen codes within the
 
 Stale monitoring still applies to **confirmed** state, but last-known active codes remain visible with `faultConfirmation: last_known_unconfirmed`.
 
-## Transaction boundary
+## DTC-01B hardening (same flag)
 
-Event mutations and `vehicle_latest_states` updates are sequential (no single DB transaction across `DtcService` and VLS). Partial failure may require reconciliation — logged via `syncJobRef` and `rawPayloadJson.dtc01aSnapshot`.
+When `DTC_01A_SAFETY_FOUNDATION_ENABLED=true`:
+
+1. **Source head authority** — `vehicle_dtc_source_heads` holds binding epoch, accepted source hash, and confirmed-complete watermarks. DTC apply **must not** write `vehicle_latest_states.sourceTimestamp`, `providerFetchedAt`, `providerBindingId`, `syncJobRef`, or `rawPayloadJson`.
+2. **VLS DTC columns only** — `obdDtcList`, `lastDtcPollAt`, `lastDtcSuccessfulCheckAt` (complete snapshot evidence only), `dtcPollStatus`, `dtcPollError`.
+3. **Transactional apply** — `pg_advisory_xact_lock` per vehicle; events + head + VLS DTC patch + notification outbox in one transaction; downstream brakes/findings/rental-health after commit.
+4. **Payload classes** — `MISSING`, `NULL`, `INVALID`, `PARTIAL`, `VALID_EMPTY`, `VALID_NONEMPTY`. `PARTIAL` / invalid payloads never trigger confirmed clear.
+5. **Webhook** — partial ingress never advances `lastDtcSuccessfulCheckAt` or confirmed `confirmedObdCodes` on the head.
+6. **Binding rotation** — same `dimoTokenId`, new link id → `APPLY_BINDING_REBASELINE` (epoch++); different token → `REJECT_BINDING_MISMATCH`.
+7. **Fail-closed** — flag on without `DtcSnapshotApplyService` injection throws `DTC_01A_FAIL_CLOSED` (no legacy fallback).
+
+## Transaction boundary (01A legacy note)
+
+Pre-01B documentation referenced `rawPayloadJson.dtc01aSnapshot`; 01B replaces that with `vehicle_dtc_source_heads` + `vehicle_dtc_snapshot_outbox`.
+
+## CI / integration
+
+- Unit: `npm test -- dtc-snapshot dtc-payload-validation dtc.service.spec dimo-webhook.controller.spec`
+- Optional PostgreSQL: `DTC_01B_PG_INTEGRATION=1` with disposable DB name `dtc01b_test_*` — `dtc-01b.postgres.integration.spec.ts`
+- Full repo gate: latest `CI gate (all critical jobs)` success on merge SHA (no bypass).

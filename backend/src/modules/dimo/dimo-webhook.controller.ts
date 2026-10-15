@@ -22,6 +22,7 @@ import { isDtc01aSafetyFoundationEnabled } from '../vehicle-intelligence/dtc/sna
 import { DtcSnapshotApplyService } from '../vehicle-intelligence/dtc/snapshot/dtc-snapshot-apply.service';
 import { buildWebhookObdDtcProposal } from '../vehicle-intelligence/dtc/snapshot/dtc-snapshot-proposal.builder';
 import { resolveActiveDimoBindingForVehicle } from '../vehicle-intelligence/dtc/snapshot/dtc-snapshot-binding.util';
+import { assertDtcSnapshotApplyWired } from '../vehicle-intelligence/dtc/snapshot/dtc-fail-closed';
 import { DeviceConnectionWebhookService } from './device-connection-webhook.service';
 import { DeviceConnectionWebhookInboxService } from './device-connection-webhook-inbox.service';
 import {
@@ -293,7 +294,8 @@ export class DimoWebhookController {
     dtcValue: unknown,
     webhookTimestamp: string | null,
   ) {
-    if (isDtc01aSafetyFoundationEnabled() && this.dtcSnapshotApply) {
+    if (isDtc01aSafetyFoundationEnabled()) {
+      assertDtcSnapshotApplyWired(true, this.dtcSnapshotApply, 'DimoWebhookController.handleDtcEvent');
       await this.handleDtcEvent01a(vehicleId, tokenId, dtcValue, webhookTimestamp);
       return;
     }
