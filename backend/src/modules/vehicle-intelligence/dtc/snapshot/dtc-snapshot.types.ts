@@ -13,6 +13,7 @@ export type DtcSnapshotCompletenessEvidence =
 
 export type DtcSnapshotDecisionOutcome =
   | 'APPLY_CONFIRMED_SNAPSHOT'
+  | 'APPLY_CONFIRMED_SNAPSHOT_DEFER_CLEARS'
   | 'APPLY_WEBHOOK_PARTIAL'
   | 'APPLY_BINDING_REBASELINE'
   | 'NOOP_ALREADY_APPLIED'
@@ -25,7 +26,8 @@ export type DtcSnapshotDecisionOutcome =
   | 'REJECT_OUT_OF_ORDER_SOURCE'
   | 'REJECT_EQUAL_TIMESTAMP_CONFLICT'
   | 'REJECT_FETCH_WITHOUT_SIGNAL'
-  | 'REJECT_PROVIDER_AUTH';
+  | 'REJECT_PROVIDER_AUTH'
+  | 'REJECT_BINDING_VERIFICATION';
 
 export interface DtcSnapshotBindingIdentity {
   provider: 'DIMO';
@@ -54,6 +56,8 @@ export interface DtcSnapshotStoredHead {
   bindingEpoch: number;
   dimoTokenId: number | null;
   lastConfirmedCompleteSourceAtMs: number | null;
+  lastPartialWebhookSourceAtMs: number | null;
+  lastPartialWebhookCodesHash: string | null;
 }
 
 export interface DtcSnapshotDecision {

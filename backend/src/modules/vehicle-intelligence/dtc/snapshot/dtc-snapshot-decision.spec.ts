@@ -14,6 +14,8 @@ const emptyHead: DtcSnapshotStoredHead = {
   bindingEpoch: 0,
   dimoTokenId: null,
   lastConfirmedCompleteSourceAtMs: null,
+  lastPartialWebhookSourceAtMs: null,
+  lastPartialWebhookCodesHash: null,
 };
 
 function head(
@@ -53,6 +55,7 @@ describe('evaluateDtcSnapshotDecision', () => {
       head({
         lastAcceptedSourceAtMs: 2000,
         lastAcceptedCodesHash: 'a',
+        lastConfirmedCompleteSourceAtMs: 2000,
         lastAcceptedBindingId: 'link-1',
         bindingEpoch: 1,
         dimoTokenId: 1,
@@ -68,6 +71,7 @@ describe('evaluateDtcSnapshotDecision', () => {
       head({
         lastAcceptedSourceAtMs: 2000,
         lastAcceptedCodesHash: 'same',
+        lastConfirmedCompleteSourceAtMs: 2000,
         lastAcceptedBindingId: 'link-1',
         bindingEpoch: 1,
         dimoTokenId: 1,
@@ -83,6 +87,7 @@ describe('evaluateDtcSnapshotDecision', () => {
       head({
         lastAcceptedSourceAtMs: 2000,
         lastAcceptedCodesHash: 'a',
+        lastConfirmedCompleteSourceAtMs: 2000,
         lastAcceptedBindingId: 'link-1',
         bindingEpoch: 1,
         dimoTokenId: 1,
@@ -125,6 +130,28 @@ describe('evaluateDtcSnapshotDecision', () => {
       proposal({ sourceMs: 2000, hash: 'b' }),
     );
     expect(d.outcome).toBe('REJECT_BINDING_MISMATCH');
+  });
+
+  it('defers clears when complete snapshot is older than partial webhook watermark', () => {
+    const d = evaluateDtcSnapshotDecision(
+      head({
+        lastConfirmedCompleteSourceAtMs: 1000,
+        lastPartialWebhookSourceAtMs: 3000,
+        lastPartialWebhookCodesHash: 'wh',
+        lastAcceptedSourceAtMs: 3000,
+        lastAcceptedCodesHash: 'wh',
+        lastAcceptedBindingId: 'link-1',
+        bindingEpoch: 1,
+        dimoTokenId: 1,
+      }),
+      {
+        ...proposal({ sourceMs: 2500, hash: 'c', codes: [] }),
+        completeness: 'signals_latest_complete',
+      },
+    );
+    expect(d.apply).toBe(true);
+    expect(d.outcome).toBe('APPLY_CONFIRMED_SNAPSHOT_DEFER_CLEARS');
+    expect(d.allowClears).toBe(false);
   });
 
   it('rebaseline when binding id changes but token matches', () => {

@@ -43,6 +43,13 @@ When `DTC_01A_SAFETY_FOUNDATION_ENABLED=true`:
 6. **Binding rotation** — same `dimoTokenId`, new link id → `APPLY_BINDING_REBASELINE` (epoch++); different token → `REJECT_BINDING_MISMATCH`.
 7. **Fail-closed** — flag on without `DtcSnapshotApplyService` injection throws `DTC_01A_FAIL_CLOSED` (no legacy fallback).
 
+## DTC-01C closure (same flag)
+
+1. **Stricter payload typing** — reject object/number/boolean, ambiguous empty strings, malformed JSON, mixed valid/invalid arrays (`PARTIAL`/`INVALID`); only explicit `VALID_EMPTY` may drive confirmed clear.
+2. **Durable downstream** — brakes/findings/rental-health + notifications enqueued in `vehicle_dtc_snapshot_outbox` inside the apply transaction; `recoverPendingOutbox()` idempotent flush after apply or restart.
+3. **Split watermarks** — `last_partial_webhook_source_at` vs `last_confirmed_complete_source_at`; complete snapshot older than partial defers clears (`APPLY_CONFIRMED_SNAPSHOT_DEFER_CLEARS`) without blocking reconciliation upserts.
+4. **Binding verification** — ingress `tokenId` must match registered `DimoVehicle.tokenId`; active link `dimoVehicleId` must match vehicle binding.
+
 ## Transaction boundary (01A legacy note)
 
 Pre-01B documentation referenced `rawPayloadJson.dtc01aSnapshot`; 01B replaces that with `vehicle_dtc_source_heads` + `vehicle_dtc_snapshot_outbox`.

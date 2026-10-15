@@ -10432,6 +10432,8 @@ model VehicleDtcSourceHead {
   lastAcceptedCodesHash        String?   @map("last_accepted_codes_hash")
   lastConfirmedCompleteSourceAt DateTime? @map("last_confirmed_complete_source_at")
   lastConfirmedCompleteFetchAt DateTime? @map("last_confirmed_complete_fetch_at")
+  lastPartialWebhookSourceAt   DateTime? @map("last_partial_webhook_source_at")
+  lastPartialWebhookCodesHash  String?   @map("last_partial_webhook_codes_hash")
   confirmedObdCodes            Json?     @map("confirmed_obd_codes")
   lastPollFetchAt              DateTime? @map("last_poll_fetch_at")
   lastPollStatus               String?   @map("last_poll_status")

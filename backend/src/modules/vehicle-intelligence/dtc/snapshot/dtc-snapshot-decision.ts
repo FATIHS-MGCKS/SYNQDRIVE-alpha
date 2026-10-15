@@ -35,6 +35,23 @@ function bindingRotation(
   return 'rebaseline';
 }
 
+function channelWatermark(
+  head: DtcSnapshotStoredHead,
+  proposal: DtcSnapshotProposal,
+): { prevMs: number | null; prevHash: string | null } {
+  if (proposal.completeness === 'webhook_partial_upsert_only') {
+    return {
+      prevMs: head.lastPartialWebhookSourceAtMs,
+      prevHash: head.lastPartialWebhookCodesHash,
+    };
+  }
+  return {
+    prevMs: head.lastConfirmedCompleteSourceAtMs,
+    prevHash:
+      head.lastConfirmedCompleteSourceAtMs != null ? head.lastAcceptedCodesHash : null,
+  };
+}
+
 /**
  * Pure fail-closed decision for a single DTC snapshot proposal vs stored head.
  */
@@ -54,31 +71,37 @@ export function evaluateDtcSnapshotDecision(
   }
 
   const sourceMs = proposal.sourceObservedAt.getTime();
-  const prevMs = head.lastAcceptedSourceAtMs;
+  const { prevMs, prevHash } = channelWatermark(head, proposal);
 
   if (prevMs != null) {
     if (sourceMs < prevMs) {
       return reject('REJECT_OUT_OF_ORDER_SOURCE', [
         'SOURCE_OBSERVED_AT_REGRESSED',
+        `channel=${proposal.completeness}`,
         `incoming=${sourceMs}`,
         `stored=${prevMs}`,
         `epoch=${head.bindingEpoch}`,
       ]);
     }
     if (sourceMs === prevMs) {
-      if (head.lastAcceptedCodesHash === proposal.codesContentHash) {
+      const hashForChannel =
+        proposal.completeness === 'webhook_partial_upsert_only'
+          ? prevHash
+          : prevHash ?? head.lastAcceptedCodesHash;
+      if (hashForChannel === proposal.codesContentHash) {
         return {
           outcome: 'NOOP_ALREADY_APPLIED',
           apply: false,
           allowClears: false,
           allowUpserts: false,
-          reasons: ['IDENTICAL_SOURCE_HEAD'],
+          reasons: ['IDENTICAL_CHANNEL_HEAD'],
         };
       }
       return reject('REJECT_EQUAL_TIMESTAMP_CONFLICT', [
         'SAME_SOURCE_TIMESTAMP_DIFFERENT_CONTENT',
+        `channel=${proposal.completeness}`,
         `hash_incoming=${proposal.codesContentHash}`,
-        `hash_stored=${head.lastAcceptedCodesHash ?? 'null'}`,
+        `hash_stored=${hashForChannel ?? 'null'}`,
       ]);
     }
   }
@@ -86,48 +109,37 @@ export function evaluateDtcSnapshotDecision(
   const isWebhookPartial = proposal.completeness === 'webhook_partial_upsert_only';
   const isComplete = proposal.completeness === 'signals_latest_complete';
 
-  if (rotation === 'rebaseline') {
-    if (isWebhookPartial) {
-      return {
-        outcome: 'APPLY_BINDING_REBASELINE',
-        apply: true,
-        allowClears: false,
-        allowUpserts: true,
-        reasons: [
-          'BINDING_ROTATION_REBASELINE',
-          'WEBHOOK_UPSERT_ONLY_NO_CLEAR',
-          `epoch_next=${head.bindingEpoch + 1}`,
-        ],
-      };
-    }
-    return {
-      outcome: 'APPLY_BINDING_REBASELINE',
-      apply: true,
-      allowClears: isComplete,
-      allowUpserts: true,
-      reasons: [
-        'BINDING_ROTATION_REBASELINE',
-        'SIGNALS_LATEST_COMPLETE_SNAPSHOT',
-        `epoch_next=${head.bindingEpoch + 1}`,
-      ],
-    };
+  let allowClears = isComplete;
+  let outcome: DtcSnapshotDecision['outcome'] = isComplete
+    ? 'APPLY_CONFIRMED_SNAPSHOT'
+    : 'APPLY_WEBHOOK_PARTIAL';
+  const reasons: string[] = isComplete
+    ? ['SIGNALS_LATEST_COMPLETE_SNAPSHOT']
+    : ['WEBHOOK_UPSERT_ONLY_NO_CLEAR'];
+
+  if (
+    isComplete &&
+    head.lastPartialWebhookSourceAtMs != null &&
+    sourceMs < head.lastPartialWebhookSourceAtMs
+  ) {
+    allowClears = false;
+    outcome = 'APPLY_CONFIRMED_SNAPSHOT_DEFER_CLEARS';
+    reasons.push('DEFER_CLEARS_NEWER_PARTIAL_WEBHOOK');
   }
 
-  if (isWebhookPartial) {
-    return {
-      outcome: 'APPLY_WEBHOOK_PARTIAL',
-      apply: true,
-      allowClears: false,
-      allowUpserts: true,
-      reasons: ['WEBHOOK_UPSERT_ONLY_NO_CLEAR'],
-    };
+  if (rotation === 'rebaseline') {
+    outcome = 'APPLY_BINDING_REBASELINE';
+    reasons.unshift('BINDING_ROTATION_REBASELINE', `epoch_next=${head.bindingEpoch + 1}`);
+    if (isWebhookPartial) {
+      allowClears = false;
+    }
   }
 
   return {
-    outcome: 'APPLY_CONFIRMED_SNAPSHOT',
+    outcome,
     apply: true,
-    allowClears: true,
+    allowClears,
     allowUpserts: true,
-    reasons: ['SIGNALS_LATEST_COMPLETE_SNAPSHOT'],
+    reasons,
   };
 }

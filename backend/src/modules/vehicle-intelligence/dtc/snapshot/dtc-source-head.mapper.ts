@@ -10,6 +10,8 @@ export function mapSourceHeadRow(row: VehicleDtcSourceHead | null): DtcSnapshotS
       bindingEpoch: 0,
       dimoTokenId: null,
       lastConfirmedCompleteSourceAtMs: null,
+      lastPartialWebhookSourceAtMs: null,
+      lastPartialWebhookCodesHash: null,
     };
   }
   return {
@@ -23,5 +25,9 @@ export function mapSourceHeadRow(row: VehicleDtcSourceHead | null): DtcSnapshotS
     lastConfirmedCompleteSourceAtMs: row.lastConfirmedCompleteSourceAt
       ? row.lastConfirmedCompleteSourceAt.getTime()
       : null,
+    lastPartialWebhookSourceAtMs: row.lastPartialWebhookSourceAt
+      ? row.lastPartialWebhookSourceAt.getTime()
+      : null,
+    lastPartialWebhookCodesHash: row.lastPartialWebhookCodesHash,
   };
 }

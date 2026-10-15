@@ -1,4 +1,4 @@
-import { normalizeDtcCodes, sanitizeDtcCode } from '../dtc-code-normalizer.util';
+import { sanitizeDtcCode } from '../dtc-code-normalizer.util';
 import { parseProviderObservedAt } from './dtc-snapshot-meta.util';
 
 /** Strict OBD DTC payload classification for fail-closed apply. */
@@ -21,49 +21,66 @@ export interface ObdDtcPayloadAssessment {
 
 const DEFAULT_MAX_FUTURE_SKEW_MS = 2 * 60_000;
 
-function countRawTokens(value: unknown): { tokens: string[]; invalid: number } {
-  if (value === null || value === undefined) {
-    return { tokens: [], invalid: 0 };
-  }
-  let source: unknown = value;
-  if (typeof source === 'string') {
-    const trimmed = source.trim();
-    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
-      try {
-        source = JSON.parse(trimmed);
-      } catch {
-        // comma-split below
-      }
+function uniqueValidCodes(tokens: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const token of tokens) {
+    const code = sanitizeDtcCode(token);
+    if (code && !seen.has(code)) {
+      seen.add(code);
+      out.push(code);
     }
   }
-  const tokens: string[] = Array.isArray(source)
-    ? source.map((c) => (typeof c === 'string' ? c : String(c)))
-    : typeof source === 'string'
-      ? source.split(',')
-      : [];
-  let invalid = 0;
-  for (const token of tokens) {
-    if (!sanitizeDtcCode(token)) invalid++;
-  }
-  return { tokens, invalid };
+  return out;
 }
 
-export function assessObdDtcValue(value: unknown): ObdDtcPayloadAssessment {
-  if (value === undefined) {
-    return { valueClass: 'MISSING', codes: [], rawTokenCount: 0, invalidTokenCount: 0 };
+function tokenizeString(value: string): { tokens: string[]; jsonParseFailed: boolean } {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return { tokens: [], jsonParseFailed: false };
   }
-  if (value === null) {
-    return { valueClass: 'NULL', codes: [], rawTokenCount: 0, invalidTokenCount: 0 };
+  if (trimmed.startsWith('[')) {
+    if (!trimmed.endsWith(']')) {
+      return { tokens: [], jsonParseFailed: true };
+    }
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (!Array.isArray(parsed)) {
+        return { tokens: [], jsonParseFailed: true };
+      }
+      return {
+        tokens: parsed.map((c) => (typeof c === 'string' ? c : String(c))),
+        jsonParseFailed: false,
+      };
+    } catch {
+      return { tokens: [], jsonParseFailed: true };
+    }
   }
-  const { tokens, invalid } = countRawTokens(value);
-  const codes = normalizeDtcCodes(value);
-  const rawTokenCount = tokens.filter((t) => t.trim().length > 0).length;
+  return { tokens: trimmed.split(','), jsonParseFailed: false };
+}
+
+function classifyTokens(tokens: string[]): ObdDtcPayloadAssessment {
+  const nonEmpty = tokens.filter((t) => t.trim().length > 0);
+  const rawTokenCount = nonEmpty.length;
+  let invalidTokenCount = 0;
+  for (const token of nonEmpty) {
+    if (!sanitizeDtcCode(token)) invalidTokenCount++;
+  }
+  const codes = uniqueValidCodes(nonEmpty);
   if (rawTokenCount > 0 && codes.length === 0) {
     return {
       valueClass: 'PARTIAL',
       codes: [],
       rawTokenCount,
-      invalidTokenCount: invalid,
+      invalidTokenCount,
+    };
+  }
+  if (rawTokenCount > 0 && invalidTokenCount > 0 && codes.length > 0) {
+    return {
+      valueClass: 'PARTIAL',
+      codes: [],
+      rawTokenCount,
+      invalidTokenCount,
     };
   }
   if (codes.length === 0) {
@@ -71,15 +88,50 @@ export function assessObdDtcValue(value: unknown): ObdDtcPayloadAssessment {
       valueClass: 'VALID_EMPTY',
       codes: [],
       rawTokenCount,
-      invalidTokenCount: invalid,
+      invalidTokenCount,
     };
   }
   return {
     valueClass: 'VALID_NONEMPTY',
     codes,
     rawTokenCount,
-    invalidTokenCount: invalid,
+    invalidTokenCount,
   };
+}
+
+/**
+ * Fail-closed OBD DTC value classification. Only explicit empty arrays / empty
+ * comma-less payloads classify as VALID_EMPTY (eligible for confirmed clear).
+ */
+export function assessObdDtcValue(value: unknown): ObdDtcPayloadAssessment {
+  if (value === undefined) {
+    return { valueClass: 'MISSING', codes: [], rawTokenCount: 0, invalidTokenCount: 0 };
+  }
+  if (value === null) {
+    return { valueClass: 'NULL', codes: [], rawTokenCount: 0, invalidTokenCount: 0 };
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return { valueClass: 'INVALID', codes: [], rawTokenCount: 0, invalidTokenCount: 0 };
+  }
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    return { valueClass: 'INVALID', codes: [], rawTokenCount: 0, invalidTokenCount: 0 };
+  }
+  if (Array.isArray(value)) {
+    const tokens = value.map((c) => (typeof c === 'string' ? c : String(c)));
+    return classifyTokens(tokens);
+  }
+  if (typeof value === 'string') {
+    const { tokens, jsonParseFailed } = tokenizeString(value);
+    if (jsonParseFailed) {
+      return { valueClass: 'INVALID', codes: [], rawTokenCount: 0, invalidTokenCount: 0 };
+    }
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return { valueClass: 'INVALID', codes: [], rawTokenCount: 0, invalidTokenCount: 0 };
+    }
+    return classifyTokens(tokens);
+  }
+  return { valueClass: 'INVALID', codes: [], rawTokenCount: 0, invalidTokenCount: 0 };
 }
 
 export function assessProviderTimestamp(

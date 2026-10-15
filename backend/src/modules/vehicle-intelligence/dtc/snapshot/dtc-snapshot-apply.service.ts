@@ -10,6 +10,11 @@ import { dtcSnapshotAdvisoryLockKey } from './dtc-advisory-lock.util';
 import { mapSourceHeadRow } from './dtc-source-head.mapper';
 import type { DtcSnapshotDecision, DtcSnapshotProposal } from './dtc-snapshot.types';
 import type { DtcSnapshotProposalBuildResult } from './dtc-snapshot-proposal.builder';
+import {
+  enqueueDtcSnapshotOutbox,
+  flushDtcSnapshotOutbox,
+} from './dtc-snapshot-outbox.flush';
+import type { DtcSnapshotOutboxPayload } from './dtc-snapshot-outbox.types';
 
 export interface DtcSnapshotApplyResult {
   decision: DtcSnapshotDecision;
@@ -19,13 +24,6 @@ export interface DtcSnapshotApplyResult {
 }
 
 type Tx = Prisma.TransactionClient;
-
-interface NotificationOutboxPayload {
-  kind: 'vehicle_health';
-  organizationId: string;
-  auditRef: string;
-  sources: VehicleHealthAdapterSource[];
-}
 
 @Injectable()
 export class DtcSnapshotApplyService {
@@ -101,15 +99,9 @@ export class DtcSnapshotApplyService {
   }
 
   async applyProposal(proposal: DtcSnapshotProposal): Promise<DtcSnapshotApplyResult> {
-    const deferred: Array<
-      | { kind: 'upsert'; code: string; eventId: string }
-      | { kind: 'clear'; code: string }
-    > = [];
     let decision!: DtcSnapshotDecision;
     let upserted: string[] = [];
     let cleared: string[] = [];
-    let notificationPayload: NotificationOutboxPayload | null = null;
-
     await this.prisma.$transaction(async (tx) => {
       await this.acquireVehicleLock(tx, proposal.vehicleId);
 
@@ -162,6 +154,7 @@ export class DtcSnapshotApplyService {
       upserted = [];
       cleared = [];
 
+      const upsertedEvents: Array<{ code: string; eventId: string }> = [];
       for (const code of proposal.codes) {
         const event = await this.dtcService.upsertDtc(proposal.vehicleId, code, {
           producerContext,
@@ -171,7 +164,7 @@ export class DtcSnapshotApplyService {
           deferDownstreamSideEffects: true,
         });
         upserted.push(code);
-        deferred.push({ kind: 'upsert', code, eventId: event.id });
+        upsertedEvents.push({ code, eventId: event.id });
       }
 
       if (decision.allowClears) {
@@ -183,7 +176,6 @@ export class DtcSnapshotApplyService {
               deferDownstreamSideEffects: true,
             });
             cleared.push(code);
-            deferred.push({ kind: 'clear', code });
           }
         }
       }
@@ -196,7 +188,10 @@ export class DtcSnapshotApplyService {
       const isConfirmedComplete =
         proposal.completeness === 'signals_latest_complete' &&
         (decision.outcome === 'APPLY_CONFIRMED_SNAPSHOT' ||
+          decision.outcome === 'APPLY_CONFIRMED_SNAPSHOT_DEFER_CLEARS' ||
           decision.outcome === 'APPLY_BINDING_REBASELINE');
+
+      const isPartialWebhook = proposal.completeness === 'webhook_partial_upsert_only';
 
       await tx.vehicleDtcSourceHead.upsert({
         where: { vehicleId: proposal.vehicleId },
@@ -216,6 +211,12 @@ export class DtcSnapshotApplyService {
             ? proposal.fetchObservedAt
             : headRow?.lastConfirmedCompleteFetchAt ?? null,
           ...(isConfirmedComplete ? { confirmedObdCodes: proposal.codes } : {}),
+          ...(isPartialWebhook
+            ? {
+                lastPartialWebhookSourceAt: proposal.sourceObservedAt,
+                lastPartialWebhookCodesHash: proposal.codesContentHash,
+              }
+            : {}),
           lastPollFetchAt: proposal.fetchObservedAt,
           lastPollStatus: 'success',
           lastPollError: null,
@@ -234,6 +235,12 @@ export class DtcSnapshotApplyService {
                 lastConfirmedCompleteSourceAt: proposal.sourceObservedAt,
                 lastConfirmedCompleteFetchAt: proposal.fetchObservedAt,
                 confirmedObdCodes: proposal.codes,
+              }
+            : {}),
+          ...(isPartialWebhook
+            ? {
+                lastPartialWebhookSourceAt: proposal.sourceObservedAt,
+                lastPartialWebhookCodesHash: proposal.codesContentHash,
               }
             : {}),
           lastPollFetchAt: proposal.fetchObservedAt,
@@ -263,101 +270,77 @@ export class DtcSnapshotApplyService {
         data: vlsPatch,
       });
 
-      if (proposal.organizationId && (cleared.length > 0 || upserted.length > 0)) {
-        notificationPayload = await this.buildNotificationPayload(
-          tx,
-          proposal,
-          previousCodes,
-          newCodeSet,
-          cleared,
-        );
-        if (notificationPayload) {
-          await tx.vehicleDtcSnapshotOutbox.create({
-            data: {
-              vehicleId: proposal.vehicleId,
-              organizationId: proposal.organizationId,
-              idempotencyKey: `dtc01b:${proposal.auditRef}:${decision.outcome}`,
-              payload: notificationPayload as unknown as Prisma.InputJsonValue,
-            },
-          });
-        }
+      if (!proposal.organizationId) {
+        return;
+      }
+
+      for (const { code, eventId } of upsertedEvents) {
+        await enqueueDtcSnapshotOutbox(tx, {
+          vehicleId: proposal.vehicleId,
+          organizationId: proposal.organizationId,
+          idempotencyKey: `dtc01c:downstream:${proposal.auditRef}:upsert:${code}`,
+          payload: {
+            kind: 'downstream_episode',
+            vehicleId: proposal.vehicleId,
+            dtcCode: code,
+            episodeKind: 'upsert',
+            eventId,
+            producerContext,
+          },
+        });
+      }
+
+      for (const code of cleared) {
+        await enqueueDtcSnapshotOutbox(tx, {
+          vehicleId: proposal.vehicleId,
+          organizationId: proposal.organizationId,
+          idempotencyKey: `dtc01c:downstream:${proposal.auditRef}:clear:${code}`,
+          payload: {
+            kind: 'downstream_episode',
+            vehicleId: proposal.vehicleId,
+            dtcCode: code,
+            episodeKind: 'clear',
+            producerContext,
+          },
+        });
+      }
+
+      const notificationPayload = await this.buildNotificationPayload(
+        tx,
+        proposal,
+        previousCodes,
+        newCodeSet,
+        cleared,
+        upserted,
+      );
+      if (notificationPayload) {
+        await enqueueDtcSnapshotOutbox(tx, {
+          vehicleId: proposal.vehicleId,
+          organizationId: proposal.organizationId,
+          idempotencyKey: `dtc01c:notify:${proposal.auditRef}:${decision.outcome}`,
+          payload: notificationPayload,
+        });
       }
     });
 
-    const producerContext = {
-      sourceProvider: 'DIMO' as const,
-      sourceTimestamp: proposal.sourceObservedAt,
-      organizationId: proposal.organizationId,
-    };
-    for (const item of deferred) {
-      if (item.kind === 'upsert') {
-        const event = await this.prisma.vehicleDtcEvent.findUnique({
-          where: { id: item.eventId },
-        });
-        await this.dtcService.runEpisodeSideEffectsAfterCommit(
-          proposal.vehicleId,
-          item.code,
-          'upsert',
-          producerContext,
-          event ?? undefined,
-        );
-      } else {
-        await this.dtcService.runEpisodeSideEffectsAfterCommit(
-          proposal.vehicleId,
-          item.code,
-          'clear',
-          producerContext,
-        );
-      }
-    }
-
-    await this.flushOutboxForVehicle(proposal.vehicleId);
+    await this.recoverPendingOutbox(proposal.vehicleId);
 
     this.logger.log(
-      `DTC-01B applied vehicle=${proposal.vehicleId} outcome=${decision.outcome} upserts=${upserted.length} clears=${cleared.length} ref=${proposal.auditRef}`,
+      `DTC-01C applied vehicle=${proposal.vehicleId} outcome=${decision.outcome} upserts=${upserted.length} clears=${cleared.length} ref=${proposal.auditRef}`,
     );
 
     return { decision, upserted, cleared };
   }
 
-  async flushOutboxForVehicle(vehicleId: string): Promise<void> {
-    if (!this.notificationIngest) return;
-
-    const pending = await this.prisma.vehicleDtcSnapshotOutbox.findMany({
-      where: { vehicleId, processedAt: null },
-      orderBy: { createdAt: 'asc' },
-      take: 20,
+  /** Idempotent delivery for downstream + notification intents (crash/restart safe). */
+  async recoverPendingOutbox(vehicleId?: string): Promise<{ processed: number; failed: number }> {
+    return flushDtcSnapshotOutbox({
+      prisma: this.prisma,
+      dtcService: this.dtcService,
+      notificationIngest: this.notificationIngest,
+      vehicleId,
+      logger: this.logger,
     });
-
-    for (const row of pending) {
-      const payload = row.payload as unknown as NotificationOutboxPayload;
-      if (payload?.kind !== 'vehicle_health') {
-        await this.prisma.vehicleDtcSnapshotOutbox.update({
-          where: { id: row.id },
-          data: { processedAt: new Date(), lastError: 'UNKNOWN_PAYLOAD_KIND' },
-        });
-        continue;
-      }
-      try {
-        await this.notificationIngest.ingestVehicleHealthSources(
-          payload.organizationId,
-          payload.auditRef,
-          payload.sources,
-        );
-        await this.prisma.vehicleDtcSnapshotOutbox.update({
-          where: { id: row.id },
-          data: { processedAt: new Date(), lastError: null },
-        });
-      } catch (err) {
-        await this.prisma.vehicleDtcSnapshotOutbox.update({
-          where: { id: row.id },
-          data: { lastError: (err as Error).message.slice(0, 500) },
-        });
-        this.logger.warn(
-          `DTC-01B outbox flush failed vehicle=${vehicleId}: ${(err as Error).message}`,
-        );
-      }
-    }
   }
 
   private async acquireVehicleLock(tx: Tx, vehicleId: string): Promise<void> {
@@ -426,7 +409,12 @@ export class DtcSnapshotApplyService {
     previousCodes: Set<string>,
     newCodeSet: Set<string>,
     cleared: string[],
-  ): Promise<NotificationOutboxPayload | null> {
+    upserted: string[],
+  ): Promise<DtcSnapshotOutboxPayload | null> {
+    const newCodes = upserted.filter((c) => !previousCodes.has(c));
+    if (cleared.length === 0 && newCodes.length === 0) {
+      return null;
+    }
     const vehicle = await tx.vehicle.findUnique({
       where: { id: proposal.vehicleId },
       select: { organizationId: true, licensePlate: true, make: true, model: true },
@@ -465,13 +453,6 @@ export class DtcSnapshotApplyService {
       });
     }
 
-    if (cleared.length === 0 && previousCodes.size === newCodeSet.size) {
-      const same = [...previousCodes].every((c) => newCodeSet.has(c));
-      if (same && upsertedOnlyNew(previousCodes, newCodeSet).length === 0) {
-        return null;
-      }
-    }
-
     return {
       kind: 'vehicle_health',
       organizationId: vehicle.organizationId,
@@ -479,8 +460,4 @@ export class DtcSnapshotApplyService {
       sources,
     };
   }
-}
-
-function upsertedOnlyNew(previous: Set<string>, next: Set<string>): string[] {
-  return [...next].filter((c) => !previous.has(c));
 }

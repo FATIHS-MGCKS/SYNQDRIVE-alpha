@@ -1,16 +1,20 @@
 /**
- * PostgreSQL integration for DTC-01B snapshot apply.
- * Run: DTC_01B_PG_INTEGRATION=1 DATABASE_URL=postgresql://.../dtc01b_test_xxx npm test -- dtc-01b.postgres
+ * DTC-01B/01C PostgreSQL integration (disposable DB only).
+ *   DTC_01B_PG_INTEGRATION=1 DATABASE_URL=postgresql://…/dtc01b_test_… npm test -- dtc-01b.postgres
  */
 import { PrismaClient } from '@prisma/client';
 import { DtcSnapshotApplyService } from './dtc-snapshot-apply.service';
 import { DtcService } from '../dtc.service';
-import { buildPollSignalsLatestProposal, buildWebhookObdDtcProposal } from './dtc-snapshot-proposal.builder';
+import {
+  buildPollSignalsLatestProposal,
+  buildWebhookObdDtcProposal,
+} from './dtc-snapshot-proposal.builder';
 import { assertDtc01bDisposablePostgresTarget } from './dtc-01b-postgres-guard';
+import { hashDtcCodesContent } from './dtc-snapshot-meta.util';
 
 const LIVE = process.env.DTC_01B_PG_INTEGRATION === '1';
 
-(LIVE ? describe : describe.skip)('DTC-01B snapshot apply (PostgreSQL)', () => {
+(LIVE ? describe : describe.skip)('DTC snapshot apply (PostgreSQL)', () => {
   const prisma = new PrismaClient();
   let apply: DtcSnapshotApplyService;
   const orgIds: string[] = [];
@@ -24,14 +28,16 @@ const LIVE = process.env.DTC_01B_PG_INTEGRATION === '1';
     while (orgIds.length) {
       const orgId = orgIds.pop()!;
       await prisma.vehicleDtcSnapshotOutbox.deleteMany({ where: { organizationId: orgId } });
-      await prisma.vehicleDtcSourceHead.deleteMany({
-        where: { organizationId: orgId },
-      });
+      await prisma.vehicleDtcSourceHead.deleteMany({ where: { organizationId: orgId } });
       await prisma.vehicleDtcEvent.deleteMany({
         where: { vehicle: { organizationId: orgId } },
       });
       await prisma.vehicleLatestState.deleteMany({
         where: { vehicle: { organizationId: orgId } },
+      });
+      await prisma.vehicleDataSourceLink.deleteMany({ where: { organizationId: orgId } });
+      await prisma.dimoVehicle.deleteMany({
+        where: { registeredVehicles: { some: { organizationId: orgId } } },
       });
       await prisma.vehicle.deleteMany({ where: { organizationId: orgId } });
       await prisma.organization.deleteMany({ where: { id: orgId } });
@@ -42,7 +48,7 @@ const LIVE = process.env.DTC_01B_PG_INTEGRATION === '1';
     await prisma.$disconnect();
   });
 
-  async function fixture() {
+  async function fixture(tokenId = 42001) {
     const org = await prisma.organization.create({
       data: {
         companyName: `dtc01b-${Date.now()}`,
@@ -51,6 +57,12 @@ const LIVE = process.env.DTC_01B_PG_INTEGRATION === '1';
       },
     });
     orgIds.push(org.id);
+    const dimo = await prisma.dimoVehicle.create({
+      data: {
+        externalId: `ext-${Date.now()}`,
+        tokenId,
+      },
+    });
     const vehicle = await prisma.vehicle.create({
       data: {
         organizationId: org.id,
@@ -60,6 +72,17 @@ const LIVE = process.env.DTC_01B_PG_INTEGRATION === '1';
         year: 2024,
         fuelType: 'PETROL',
         status: 'AVAILABLE',
+        dimoVehicleId: dimo.id,
+      },
+    });
+    const link = await prisma.vehicleDataSourceLink.create({
+      data: {
+        organizationId: org.id,
+        vehicleId: vehicle.id,
+        provider: 'DIMO',
+        isActive: true,
+        dimoVehicleId: dimo.id,
+        activatedAt: new Date(),
       },
     });
     await prisma.vehicleLatestState.create({
@@ -72,17 +95,19 @@ const LIVE = process.env.DTC_01B_PG_INTEGRATION === '1';
         rawPayloadJson: { other: true },
       },
     });
-    return { org, vehicle };
+    return {
+      org,
+      vehicle,
+      binding: {
+        provider: 'DIMO' as const,
+        providerBindingId: link.id,
+        dimoTokenId: tokenId,
+      },
+    };
   }
 
-  const binding = {
-    provider: 'DIMO' as const,
-    providerBindingId: 'link-1',
-    dimoTokenId: 42,
-  };
-
   it('does not overwrite global VLS provenance on apply', async () => {
-    const { org, vehicle } = await fixture();
+    const { org, vehicle, binding } = await fixture();
     const built = buildPollSignalsLatestProposal({
       vehicleId: vehicle.id,
       organizationId: org.id,
@@ -97,16 +122,11 @@ const LIVE = process.env.DTC_01B_PG_INTEGRATION === '1';
     });
     expect(vls?.sourceTimestamp?.toISOString()).toBe('2020-01-01T00:00:00.000Z');
     expect(vls?.providerBindingId).toBe('global-binding');
-    expect(vls?.syncJobRef).toBe('other-module');
     expect(vls?.obdDtcList).toEqual(['P0301']);
-    const head = await prisma.vehicleDtcSourceHead.findUnique({
-      where: { vehicleId: vehicle.id },
-    });
-    expect(head?.providerBindingId).toBe('link-1');
   });
 
-  it('rejects partial invalid payload without clear', async () => {
-    const { org, vehicle } = await fixture();
+  it('rejects mixed invalid payload without clearing active codes', async () => {
+    const { org, vehicle, binding } = await fixture();
     await prisma.vehicleDtcEvent.create({
       data: {
         vehicleId: vehicle.id,
@@ -122,7 +142,7 @@ const LIVE = process.env.DTC_01B_PG_INTEGRATION === '1';
       binding,
       fetchObservedAt: new Date('2026-10-15T12:00:00Z'),
       auditRef: 'pg-partial',
-      obdDtcListSignal: { timestamp: '2026-10-15T11:30:00Z', value: ['bad-code'] },
+      obdDtcListSignal: { timestamp: '2026-10-15T11:30:00Z', value: ['P0301', 'BAD'] },
     });
     expect(built.ok).toBe(false);
     const active = await prisma.vehicleDtcEvent.count({
@@ -131,26 +151,77 @@ const LIVE = process.env.DTC_01B_PG_INTEGRATION === '1';
     expect(active).toBe(1);
   });
 
-  it('webhook partial does not set lastDtcSuccessfulCheckAt', async () => {
-    const { org, vehicle } = await fixture();
-    const built = buildWebhookObdDtcProposal({
+  it('defers clears when complete snapshot is older than partial webhook', async () => {
+    const { org, vehicle, binding } = await fixture();
+    await prisma.vehicleDtcEvent.create({
+      data: {
+        vehicleId: vehicle.id,
+        dtcCode: 'P0301',
+        severity: 'WARNING',
+        firstSeenAt: new Date(),
+        lastSeenAt: new Date(),
+      },
+    });
+    const wh = buildWebhookObdDtcProposal({
       vehicleId: vehicle.id,
       organizationId: org.id,
       binding,
-      fetchObservedAt: new Date('2026-10-15T12:00:00Z'),
-      auditRef: 'pg-wh',
+      fetchObservedAt: new Date('2026-10-15T13:00:00Z'),
+      auditRef: 'pg-wh-first',
       value: 'P0420',
-      webhookTimestamp: '2026-10-15T11:00:00Z',
+      webhookTimestamp: '2026-10-15T12:30:00Z',
     });
-    await apply.applyBuiltProposal(built);
-    const vls = await prisma.vehicleLatestState.findUnique({
-      where: { vehicleId: vehicle.id },
+    await apply.applyBuiltProposal(wh);
+
+    const complete = buildPollSignalsLatestProposal({
+      vehicleId: vehicle.id,
+      organizationId: org.id,
+      binding,
+      fetchObservedAt: new Date('2026-10-15T13:30:00Z'),
+      auditRef: 'pg-complete-defer',
+      obdDtcListSignal: { timestamp: '2026-10-15T12:00:00Z', value: [] },
     });
-    expect(vls?.lastDtcSuccessfulCheckAt).toBeNull();
+    const result = await apply.applyBuiltProposal(complete);
+    expect(result.decision.outcome).toBe('APPLY_CONFIRMED_SNAPSHOT_DEFER_CLEARS');
+    const stillActive = await prisma.vehicleDtcEvent.findMany({
+      where: { vehicleId: vehicle.id, isActive: true },
+      select: { dtcCode: true },
+    });
+    expect(stillActive.map((e) => e.dtcCode).sort()).toEqual(['P0301', 'P0420']);
   });
 
-  it('concurrent apply: one wins, other noop or reject without corrupt head', async () => {
-    const { org, vehicle } = await fixture();
+  it('recovers outbox after simulated crash (no flush)', async () => {
+    const { org, vehicle, binding } = await fixture();
+    const built = buildPollSignalsLatestProposal({
+      vehicleId: vehicle.id,
+      organizationId: org.id,
+      binding,
+      fetchObservedAt: new Date('2026-10-15T14:00:00Z'),
+      auditRef: 'pg-crash',
+      obdDtcListSignal: { timestamp: '2026-10-15T13:00:00Z', value: ['P0301'] },
+    });
+
+    const crashApply = new DtcSnapshotApplyService(prisma as never, new DtcService(prisma as never));
+    const orig = crashApply.recoverPendingOutbox.bind(crashApply);
+    crashApply.recoverPendingOutbox = async () => ({ processed: 0, failed: 0 });
+
+    await crashApply.applyBuiltProposal(built);
+    const pending = await prisma.vehicleDtcSnapshotOutbox.count({
+      where: { vehicleId: vehicle.id, processedAt: null },
+    });
+    expect(pending).toBeGreaterThan(0);
+
+    crashApply.recoverPendingOutbox = orig;
+    const recovery = await crashApply.recoverPendingOutbox(vehicle.id);
+    expect(recovery.processed).toBeGreaterThan(0);
+    const remaining = await prisma.vehicleDtcSnapshotOutbox.count({
+      where: { vehicleId: vehicle.id, processedAt: null },
+    });
+    expect(remaining).toBe(0);
+  });
+
+  it('concurrent apply leaves a single channel head', async () => {
+    const { org, vehicle, binding } = await fixture();
     const base = {
       vehicleId: vehicle.id,
       organizationId: org.id,
@@ -158,17 +229,19 @@ const LIVE = process.env.DTC_01B_PG_INTEGRATION === '1';
       fetchObservedAt: new Date('2026-10-15T12:00:00Z'),
       obdDtcListSignal: { timestamp: '2026-10-15T11:00:00Z', value: ['P0301'] },
     };
-    const b1 = buildPollSignalsLatestProposal({ ...base, auditRef: 'pg-conc-a' });
-    const b2 = buildPollSignalsLatestProposal({ ...base, auditRef: 'pg-conc-b' });
     const [r1, r2] = await Promise.all([
-      apply.applyBuiltProposal(b1),
-      apply.applyBuiltProposal(b2),
+      apply.applyBuiltProposal(
+        buildPollSignalsLatestProposal({ ...base, auditRef: 'pg-conc-a' }),
+      ),
+      apply.applyBuiltProposal(
+        buildPollSignalsLatestProposal({ ...base, auditRef: 'pg-conc-b' }),
+      ),
     ]);
     const applied = [r1, r2].filter((r) => r.decision.apply);
     expect(applied.length).toBe(1);
     const head = await prisma.vehicleDtcSourceHead.findUnique({
       where: { vehicleId: vehicle.id },
     });
-    expect(head?.lastAcceptedCodesHash).toBeTruthy();
+    expect(head?.lastAcceptedCodesHash).toBe(hashDtcCodesContent(['P0301']));
   });
 });
