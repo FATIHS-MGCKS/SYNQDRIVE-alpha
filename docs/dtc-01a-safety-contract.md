@@ -54,6 +54,15 @@ When `DTC_01A_SAFETY_FOUNDATION_ENABLED=true`:
 
 Pre-01B documentation referenced `rawPayloadJson.dtc01aSnapshot`; 01B replaces that with `vehicle_dtc_source_heads` + `vehicle_dtc_snapshot_outbox`.
 
+## DTC-01F pilot cohort + watermark refresh (same global flag)
+
+1. **Global flag OFF** — poll fan-out uses **legacy** (`enqueue: true`, `runtimePath: legacy`) for eligible lifecycles. Webhook DTC uses the same admission (`evaluateDtcWebhookAdmission` → legacy mutations). `OFFBOARDED` / `ARCHIVED` → **no poll enqueue** and **no webhook DTC mutations**.
+2. **Global ON, cohort gate OFF (global rollout)** — **activation risk**: every eligible vehicle uses 01A on **both** poll and webhook (`runtimePath: safety01a`). Requires `DtcSnapshotApplyService` wired on all API replicas; misconfiguration fails closed at apply time. Operators must set `DTC_01A_SAFETY_FOUNDATION_ENABLED` identically on **both** production API replicas (ports 3001/3002).
+3. **Cohort gate ON (pilot)** — `DTC_01F_COHORT_VEHICLE_ALLOWLIST` restricts poll and webhook via the same matrix as `evaluateDtcPollJobAdmission` / `evaluateDtcWebhookAdmission`. Allowlisted → 01A. Non-allowlisted → **skip** (no poll job, **no webhook DTC mutation**, **no legacy fallback**). Invalid/empty allowlist → fail-closed skip + boot/request error log. Unknown/deleted vehicle on webhook → fail-closed before any DTC code path.
+4. **Complete vs partial head authority** — `last_accepted_codes_hash` on `vehicle_dtc_source_heads` advances only on **confirmed complete** snapshots. Partial webhooks update `last_partial_webhook_*` only and must not replace the canonical complete codes hash.
+5. **Defer clears** — `APPLY_CONFIRMED_SNAPSHOT_DEFER_CLEARS` keeps `vehicle_latest_states.obdDtcList` aligned with **active episodes** (not an empty proposal) when a newer partial blocks clear.
+6. **Watermark refresh** — newer provider `sourceObservedAt` with identical **channel** codes hash → `REFRESH_SOURCE_WATERMARK` only when episode reconciliation is not required (active DB codes match proposal; no newer partial blocking empty complete). Updates source head + VLS poll metadata; **no** `upsertDtc`, **no** occurrence bump, **no** downstream outbox.
+
 ## CI / integration
 
 - Unit: `npm test -- dtc-snapshot dtc-payload-validation dtc.service.spec dimo-webhook.controller.spec`

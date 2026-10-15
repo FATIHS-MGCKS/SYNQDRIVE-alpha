@@ -270,6 +270,150 @@ const LIVE = process.env.DTC_01B_PG_INTEGRATION === '1';
     ).toBe(0);
   });
 
+  async function readDtcTruth(vehicleId: string) {
+    const head = await prisma.vehicleDtcSourceHead.findUnique({
+      where: { vehicleId },
+    });
+    const vls = await prisma.vehicleLatestState.findUnique({
+      where: { vehicleId },
+      select: { obdDtcList: true },
+    });
+    const active = await prisma.vehicleDtcEvent.findMany({
+      where: { vehicleId, isActive: true },
+      select: { dtcCode: true, occurrenceCount: true },
+      orderBy: { dtcCode: 'asc' },
+    });
+    const outbox = await prisma.vehicleDtcSnapshotOutbox.count({
+      where: { vehicleId },
+    });
+    return { head, vls, active, outbox };
+  }
+
+  it('T100 complete → T200 partial → T150 defer → T250 clear (head, VLS, events agree)', async () => {
+    const { org, vehicle, binding } = await fixture();
+    const emptyHash = hashDtcCodesContent([]);
+    const p0301Hash = hashDtcCodesContent(['P0301']);
+    const ms = (n: number) => new Date(n).toISOString();
+
+    const t100 = buildPollSignalsLatestProposal({
+      vehicleId: vehicle.id,
+      organizationId: org.id,
+      binding,
+      fetchObservedAt: new Date(110),
+      auditRef: 'pg-timeline-t100',
+      obdDtcListSignal: { timestamp: ms(100), value: [] },
+    });
+    const r100 = await apply.applyBuiltProposal(t100);
+    expect(r100.decision.outcome).toBe('APPLY_CONFIRMED_SNAPSHOT');
+    let truth = await readDtcTruth(vehicle.id);
+    expect(truth.head?.lastAcceptedCodesHash).toBe(emptyHash);
+    expect(truth.head?.lastConfirmedCompleteSourceAt?.getTime()).toBe(100);
+    expect(truth.head?.lastPartialWebhookSourceAt).toBeNull();
+    expect(truth.vls?.obdDtcList).toEqual([]);
+    expect(truth.active).toEqual([]);
+    const outboxAfter100 = truth.outbox;
+
+    const t200 = buildWebhookObdDtcProposal({
+      vehicleId: vehicle.id,
+      organizationId: org.id,
+      binding,
+      fetchObservedAt: new Date(210),
+      auditRef: 'pg-timeline-t200',
+      value: 'P0301',
+      webhookTimestamp: ms(200),
+    });
+    const r200 = await apply.applyBuiltProposal(t200);
+    expect(r200.decision.outcome).toBe('APPLY_WEBHOOK_PARTIAL');
+    expect(r200.upserted).toEqual(['P0301']);
+    truth = await readDtcTruth(vehicle.id);
+    expect(truth.head?.lastAcceptedCodesHash).toBe(emptyHash);
+    expect(truth.head?.lastPartialWebhookSourceAt?.getTime()).toBe(200);
+    expect(truth.head?.lastPartialWebhookCodesHash).toBe(p0301Hash);
+    expect(truth.vls?.obdDtcList).toEqual(['P0301']);
+    expect(truth.active).toEqual([{ dtcCode: 'P0301', occurrenceCount: 1 }]);
+    expect(truth.outbox).toBeGreaterThan(outboxAfter100);
+
+    const t150 = buildPollSignalsLatestProposal({
+      vehicleId: vehicle.id,
+      organizationId: org.id,
+      binding,
+      fetchObservedAt: new Date(160),
+      auditRef: 'pg-timeline-t150',
+      obdDtcListSignal: { timestamp: ms(150), value: [] },
+    });
+    const r150 = await apply.applyBuiltProposal(t150);
+    expect(r150.decision.outcome).toBe('APPLY_CONFIRMED_SNAPSHOT_DEFER_CLEARS');
+    expect(r150.cleared).toEqual([]);
+    truth = await readDtcTruth(vehicle.id);
+    expect(truth.head?.lastAcceptedCodesHash).toBe(emptyHash);
+    expect(truth.head?.lastConfirmedCompleteSourceAt?.getTime()).toBe(150);
+    expect(truth.vls?.obdDtcList).toEqual(['P0301']);
+    expect(truth.active).toEqual([{ dtcCode: 'P0301', occurrenceCount: 1 }]);
+
+    const t250 = buildPollSignalsLatestProposal({
+      vehicleId: vehicle.id,
+      organizationId: org.id,
+      binding,
+      fetchObservedAt: new Date(260),
+      auditRef: 'pg-timeline-t250',
+      obdDtcListSignal: { timestamp: ms(250), value: [] },
+    });
+    const r250 = await apply.applyBuiltProposal(t250);
+    expect(r250.decision.outcome).toBe('APPLY_CONFIRMED_SNAPSHOT');
+    expect(r250.cleared).toEqual(['P0301']);
+    truth = await readDtcTruth(vehicle.id);
+    expect(truth.head?.lastAcceptedCodesHash).toBe(emptyHash);
+    expect(truth.head?.lastConfirmedCompleteSourceAt?.getTime()).toBe(250);
+    expect(truth.vls?.obdDtcList).toEqual([]);
+    expect(truth.active).toEqual([]);
+    const clearedOnce = await prisma.vehicleDtcEvent.count({
+      where: { vehicleId: vehicle.id, dtcCode: 'P0301', isActive: false },
+    });
+    expect(clearedOnce).toBe(1);
+  });
+
+  it('does not bump occurrence or outbox on newer timestamp with same active codes', async () => {
+    const { org, vehicle, binding } = await fixture();
+    const first = buildPollSignalsLatestProposal({
+      vehicleId: vehicle.id,
+      organizationId: org.id,
+      binding,
+      fetchObservedAt: new Date('2026-10-15T16:00:00Z'),
+      auditRef: 'pg-watermark-1',
+      obdDtcListSignal: { timestamp: '2026-10-15T15:00:00Z', value: ['P0301'] },
+    });
+    await apply.applyBuiltProposal(first);
+    const eventAfterFirst = await prisma.vehicleDtcEvent.findFirst({
+      where: { vehicleId: vehicle.id, dtcCode: 'P0301', isActive: true },
+    });
+    expect(eventAfterFirst?.occurrenceCount).toBe(1);
+    const outboxAfterFirst = await prisma.vehicleDtcSnapshotOutbox.count({
+      where: { vehicleId: vehicle.id },
+    });
+
+    const second = buildPollSignalsLatestProposal({
+      vehicleId: vehicle.id,
+      organizationId: org.id,
+      binding,
+      fetchObservedAt: new Date('2026-10-15T17:00:00Z'),
+      auditRef: 'pg-watermark-2',
+      obdDtcListSignal: { timestamp: '2026-10-15T16:00:00Z', value: ['P0301'] },
+    });
+    const result = await apply.applyBuiltProposal(second);
+    expect(result.decision.outcome).toBe('REFRESH_SOURCE_WATERMARK');
+    expect(result.upserted).toEqual([]);
+
+    const eventAfterSecond = await prisma.vehicleDtcEvent.findFirst({
+      where: { vehicleId: vehicle.id, dtcCode: 'P0301', isActive: true },
+    });
+    expect(eventAfterSecond?.id).toBe(eventAfterFirst?.id);
+    expect(eventAfterSecond?.occurrenceCount).toBe(1);
+    const outboxAfterSecond = await prisma.vehicleDtcSnapshotOutbox.count({
+      where: { vehicleId: vehicle.id },
+    });
+    expect(outboxAfterSecond).toBe(outboxAfterFirst);
+  });
+
   it('concurrent apply leaves a single channel head', async () => {
     const { org, vehicle, binding } = await fixture();
     const base = {

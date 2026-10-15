@@ -5,7 +5,7 @@ export function mapSourceHeadRow(row: VehicleDtcSourceHead | null): DtcSnapshotS
   if (!row) {
     return {
       lastAcceptedSourceAtMs: null,
-      lastAcceptedCodesHash: null,
+      lastConfirmedCompleteCodesHash: null,
       lastAcceptedBindingId: null,
       bindingEpoch: 0,
       dimoTokenId: null,
@@ -18,7 +18,9 @@ export function mapSourceHeadRow(row: VehicleDtcSourceHead | null): DtcSnapshotS
     lastAcceptedSourceAtMs: row.lastAcceptedSourceAt
       ? row.lastAcceptedSourceAt.getTime()
       : null,
-    lastAcceptedCodesHash: row.lastAcceptedCodesHash,
+    lastConfirmedCompleteCodesHash: row.lastConfirmedCompleteSourceAt
+      ? row.lastAcceptedCodesHash
+      : null,
     lastAcceptedBindingId: row.providerBindingId,
     bindingEpoch: row.bindingEpoch,
     dimoTokenId: row.dimoTokenId,

@@ -17,6 +17,7 @@ export type DtcSnapshotDecisionOutcome =
   | 'APPLY_WEBHOOK_PARTIAL'
   | 'APPLY_BINDING_REBASELINE'
   | 'NOOP_ALREADY_APPLIED'
+  | 'REFRESH_SOURCE_WATERMARK'
   | 'REJECT_INELIGIBLE_VEHICLE'
   | 'REJECT_BINDING_MISMATCH'
   | 'REJECT_MISSING_SIGNAL'
@@ -51,7 +52,8 @@ export interface DtcSnapshotProposal {
 
 export interface DtcSnapshotStoredHead {
   lastAcceptedSourceAtMs: number | null;
-  lastAcceptedCodesHash: string | null;
+  /** Hash of last **confirmed complete** snapshot only (not partial webhook). */
+  lastConfirmedCompleteCodesHash: string | null;
   lastAcceptedBindingId: string | null;
   bindingEpoch: number;
   dimoTokenId: number | null;
