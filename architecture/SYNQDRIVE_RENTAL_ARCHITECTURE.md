@@ -6,7 +6,7 @@
 
 **Central registry validator:** `bash architecture/scripts/validate-module-registry.sh`
 
-**Last updated:** 2026-10-11 (DSRG P4B16 R0 release attestation audit — design PR; DSRG `AUTHORITY_ACTIVE`)
+**Last updated:** 2026-10-15 (VSI product charter + master roadmap; registry entry documents)
 
 ---
 
@@ -78,7 +78,7 @@ Canonical overview of known modules. **Every row includes module name, mini desc
 | Vehicle & Device Connectivity | Provider-neutral vehicle and connectivity-device lifecycle, hardware/provider freshness, standby/disconnect/reconnect semantics, physical/device evidence, fault classification, and connectivity-state projection across DIMO hardware and OEM/cloud providers. | `AUDIT_IN_PROGRESS` | Phase 1–3 complete (2026-09-11): repo audit, Production LTE_R1 forensics, reconciliation/decisions/backlog · promotion deferred | [`architecture/vehicle-device-connectivity/`](vehicle-device-connectivity/) |
 | Vehicle Health Summary | Aggregated vehicle health summary, dashboard warning lights, and AI health-care projection layer. | `NOT_STARTED` | N/A — inventory only | — |
 | Vehicle Onboarding / Vehicle Registry | Governed path from provider discovery to canonical tenant `Vehicle`; identity, provider mappings, org/station baseline, onboarding readiness (VO-1 target). | `AUDIT_IN_PROGRESS` | VO-1 target architecture (2026-09-30) · VO-0B seal · VO-0A evidence | [`architecture/vehicle-onboarding/`](vehicle-onboarding/) |
-| Vehicle Signal Intelligence (VSI) | Per-link signal capability profiles: provider-declared catalog vs empirical VLS/snapshot evidence; stratified by connection identity; APDS read consumer (future). | `AUDIT_IN_PROGRESS` | P0+P1 profile foundation (2026-10-15) | [`architecture/vehicle-signal-intelligence/`](vehicle-signal-intelligence/) |
+| Vehicle Signal Intelligence (VSI) | Per-link signal capability profiles: declared vs observed reconciliation, fingerprints, continuous capability maintenance; charter + P0–P7 roadmap. | `AUDIT_IN_PROGRESS` | P0+P1 **merged** #2034 · charter/roadmap 2026-10-15 | [`architecture/vehicle-signal-intelligence/`](vehicle-signal-intelligence/) |
 | Vehicles (Fleet Operations) | Core vehicle CRUD, fleet map, connectivity consent, and operational vehicle projections. | `NOT_STARTED` | N/A — inventory only | — |
 | Vendors | Third-party vendor and workshop directory including geocoding helpers for fleet operations. | `NOT_STARTED` | N/A — inventory only | — |
 | Voice Assistant Platform | Voice agent control plane, webhook ingestion, call orchestration, MCP gateway, billing, and protection. | `NOT_STARTED` | N/A — inventory only | — |
@@ -443,6 +443,19 @@ Update this file when:
 
 ---
 
+## Vehicle Signal Intelligence (VSI) — authority entry (AUDIT_IN_PROGRESS)
+
+| Field | Value |
+|-------|-------|
+| **Registry coverage** | `AUDIT_IN_PROGRESS` |
+| **Scope** | Signal capability discovery, per-link profiles, declared vs observed reconciliation, fingerprints, future APDS read consumer |
+| **Boundaries** | Does not own trip boundaries, APDS shadow activation, or domain health algorithms — see cross-workstream contracts |
+| **Mandatory entry documents** | [`VSI_PRODUCT_CHARTER.md`](vehicle-signal-intelligence/VSI_PRODUCT_CHARTER.md), [`VSI_MASTER_ROADMAP.md`](vehicle-signal-intelligence/VSI_MASTER_ROADMAP.md), [`VSI_CROSS_WORKSTREAM_CONTRACTS.md`](vehicle-signal-intelligence/VSI_CROSS_WORKSTREAM_CONTRACTS.md), [`CURRENT_STATE.md`](vehicle-signal-intelligence/CURRENT_STATE.md) |
+| **Validation** | `bash architecture/scripts/validate-module-registry.sh`; backend `npm test -- --testPathPattern=vehicle-signal-intelligence/vsi-profile` |
+| **P0+P1 merge** | PR #2034 @ `eb5f1f2ee` on `main` — **MERGED ≠ DEPLOYED** |
+
+---
+
 ## Cross-authority quick reference
 
 ```
@@ -451,6 +464,7 @@ Station identified?  → Tankstellenerkennung (after REFUEL event exists)
 Trip enrichment?     → KG-ATE
 Driving behavior & impact? → Driving Intelligence (consumes trip boundaries; does not own Trip Detection/DIMO Segments, EED, or Tankstellenerkennung)
 Battery health?      → Battery V2
+Signal capability per link? → Vehicle Signal Intelligence (declared vs observed profiles; not polling policy)
 Multi-replica/scale? → Scaling Process
 ```
 
