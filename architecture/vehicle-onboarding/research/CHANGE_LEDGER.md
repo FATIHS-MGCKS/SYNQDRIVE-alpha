@@ -2,6 +2,7 @@
 
 | Date | Change | Authority impact |
 |------|--------|------------------|
+| 2026-10-15 | **VO-SIG P2 boot hotfix** — `VehicleOnboardingModule` imports `forwardRef(() => DimoModule)` after VO-SIG P2 added `VehiclesModule ↔ VehicleOnboardingModule` into the existing Dimo ↔ VehicleIntelligence ↔ Vehicles cycle; production boot check at `9fe5b0623` failed with `imports[1]` undefined | Nest module graph only; no onboarding business-logic change; recovery candidate `c6c5b3e84` on top of authorized merge SHA |
 | 2026-10-14 | **VO-SIG-01 B1** — Document operator-reported production one-time execute (four-link cohort); SQL V3 review commit `81d5880` cited but not merged to `main`; close superseded draft PR #2018; propose P2 Master `registerFromDimo` parity | Documentation only; module remains `AUDIT_IN_PROGRESS`; no runtime change |
 | 2026-09-30 | **VO-0B** — Bootstrap module authority, registry `AUDIT_IN_PROGRESS`, CURRENT_STATE seal, VO-GAP register, authority boundaries, 16 open questions | Documentation only; runtime unchanged |
 | 2026-09-30 | **VO-1** — TARGET_ARCHITECTURE, VO-DEC-1-001, resolve VO-Q-001…016, gap disposition, 12 target invariants | Architecture only; runtime unchanged |
