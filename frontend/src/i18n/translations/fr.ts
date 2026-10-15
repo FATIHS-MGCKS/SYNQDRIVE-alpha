@@ -1,5 +1,6 @@
 import type { PartialTranslationDictionary } from '../dictionary-types';
 import { rentalLegacyGapFR } from './rental-legacy-gap.fr';
+import { rentalTripGpsSpeedEvaluationFr } from './rental.tripGpsSpeedEvaluation.fr';
 import { dimoWebhookHealthFr } from './dimo-webhook-health.fr';
 import { masterPlatformOpsDiS4Fr } from './master.platformOps.diS4.fr';
 
@@ -894,6 +895,7 @@ export const fr = {
   'support.supportTeam': 'Support SYNQDRIVE',
   'support.replyPlaceholder': 'Tapez votre reponse...',
   ...rentalLegacyGapFR,
+  ...rentalTripGpsSpeedEvaluationFr,
   ...dimoWebhookHealthFr,
   ...masterPlatformOpsDiS4Fr,
 } satisfies PartialTranslationDictionary;

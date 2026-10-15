@@ -48,6 +48,7 @@ import { whatsappEn } from './whatsapp.en';
 import { rentalVehicleDocumentsEn } from './rental.vehicleDocuments.en';
 import { rentalDocumentIntakeEn } from './rental.documentIntake.en';
 import { rentalVehicleDamagesEn } from './rental.vehicleDamages.en';
+import { rentalTripGpsSpeedEvaluationEn } from './rental.tripGpsSpeedEvaluation.en';
 import { rentalIamMemberEn } from './rental.iamMember.en';
 import { rentalMisuseStressEn } from './rental.misuseStress.en';
 import { rentalHelpCenterEn } from './rental.helpCenter.en';
@@ -5939,6 +5940,7 @@ export const en = {
   ...rentalVehicleDocumentsEn,
   ...rentalDocumentIntakeEn,
   ...rentalVehicleDamagesEn,
+  ...rentalTripGpsSpeedEvaluationEn,
   ...rentalIamMemberEn,
   ...rentalMisuseStressEn,
   ...rentalHelpCenterEn,

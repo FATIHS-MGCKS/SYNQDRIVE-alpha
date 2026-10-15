@@ -125,6 +125,8 @@ import {
 import { serializeUnifiedBehaviorEvent } from './trips/unified-behavior-event.dto';
 import { resolveTelemetrySourceFamily } from './telemetry-source-family';
 import { resolveDriverFilterQuery } from './tenant/vehicle-intelligence-tenant.scope';
+import { DiV0TripSpeedQualityProductReadService } from './driving-intelligence/trip-speed-quality/di-v0-trip-speed-quality-product-read.service';
+import { isDiV0TripSpeedQualityV2ProductReadEnabled } from './driving-intelligence/trip-speed-quality/di-v0-trip-speed-quality-product-read.config';
 
 @Controller('vehicles/:vehicleId')
 @UseGuards(RolesGuard, VehicleOwnershipGuard, VehicleIntelligencePermissionGuard)
@@ -181,6 +183,7 @@ export class VehicleIntelligenceController {
     private readonly drivingAssessmentQuality: DrivingAssessmentDeviceQualityService,
     private readonly drivingImpactService: DrivingImpactService,
     private readonly capabilityLifecycle: VehicleDrivingCapabilityLifecycleService,
+    private readonly tripSpeedQualityProductRead: DiV0TripSpeedQualityProductReadService,
   ) {}
 
   @Get('driving-assessment-quality')
@@ -1489,6 +1492,26 @@ export class VehicleIntelligenceController {
       vehicleId,
       tripId,
     );
+  }
+
+  @Get('trips/:tripId/gps-speed-evaluation-v2')
+  async getTripGpsSpeedEvaluationV2(
+    @Param('vehicleId') vehicleId: string,
+    @Param('tripId') tripId: string,
+    @Req() req: { user?: { organizationId?: string; platformRole?: string } },
+  ) {
+    if (!isDiV0TripSpeedQualityV2ProductReadEnabled()) {
+      throw new NotFoundException({
+        code: 'DI_V0_TRIP_SPEED_QUALITY_V2_PRODUCT_READ_DISABLED',
+        message: 'GPS speed evaluation V2 product read is not enabled',
+      });
+    }
+    const organizationId = await this.resolveOrganizationId(req, vehicleId);
+    const trip = await this.tripsService.findById(organizationId, tripId);
+    if (!trip || trip.vehicleId !== vehicleId) {
+      throw new NotFoundException('Trip not found');
+    }
+    return this.tripSpeedQualityProductRead.readForTrip(organizationId, vehicleId, tripId);
   }
 
   @Get('trips/:tripId/rpm-candidates')

@@ -2003,6 +2003,14 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | WHY | Close gap between durable S4 PRIMARY completion and persisted V2 QC projection without coupling S4C T06 or enabling customer defaults |
 | NON_EFFECTS | No S4C import; no provider calls; no production flag flip; no unbounded enable backfill; V1 CURRENT rows preserved |
 
+### EXP-021 V2 GPS speed evaluation product read + trip detail UI (2026-10-15)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `GET …/trips/:tripId/gps-speed-evaluation-v2`; `DiV0TripSpeedQualityProductReadService` + product DTO; `TripGpsSpeedEvaluationPanel`; gates `DI_V0_TRIP_SPEED_QUALITY_V2_PRODUCT_READ_ENABLED` + `VITE_DI_V0_TRIP_SPEED_QUALITY_V2_PRODUCT_UI_ENABLED` (default OFF); evidence `EXP021_V2_PRODUCT_READ_PATH.md` |
+| WHY | Expose persisted V2 CURRENT projection on authorized trip detail read path without V1 aliasing or write side effects |
+| NON_EFFECTS | No P2 auto-write enablement; no production config flip; no provider calls; no speed curve invention |
+
 ### EXP-021 P2 auto V2 projection — claim lease + discovery fix (2026-10-15)
 
 | Event | Detail |
