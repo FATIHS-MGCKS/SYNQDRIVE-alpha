@@ -58,3 +58,15 @@ GPS L3 / S1 / S2 / calibration / QC evaluator unchanged; no null→0; no extra p
 
 - Unit: config + module bootstrap specs
 - Postgres: `di-v0-p2-auto-projection-v2.postgres.integration.spec.ts` (claim lease, discovery starvation, concurrency)
+
+## 2026-10-15 — Production P2 V2 persist UNKNOWN (read-only diagnosis + fix)
+
+| Field | Observation |
+|-------|-------------|
+| Production SHA | `137251770926839b8105ae42da762191411423d4` |
+| Symptom | Post-`ENABLED_SINCE` eligible PRIMARY completions enqueued; outbox `FAILED_RETRYABLE` / `last_error_code=UNKNOWN`; preview `ASSESSED`; CURRENT V2 count `0` (work items `f9a2801f-…`, `74896a4d-…`). |
+| Schema | `di_v0_trip_speed_quality_projections_v1` columns + migrations `20261013180000_*`, `20261015103000_*`, `20261015120000_*` present on Production (read-only `information_schema` check). |
+| Compute path | Read-only `computeDiV0TripSpeedQualityProjectionV1ForWorkItem` + `JSON.stringify` OK on Production for failing work item. |
+| Persist path | Same SHA: `persistCurrentProjection` succeeds when invoked with app `DATABASE_URL` (diagnostic row removed immediately after probe). Scheduler failures therefore align with **unmapped error classification** in `DiV0P2AutoProjectionV2Service` (formerly `instanceof`-only → `UNKNOWN`), not a missing table/migration. |
+| Fix | `resolveDiV0TripSpeedQualityProjectionErrorCode` (duck-type + Prisma + message prefix); structured P2 warn logs; motion counter throws `DiV0TripSpeedQualityProjectionError`; persist insert missing-row guard → `CURRENT_SCOPE_CONFLICT`; Postgres test for `FAILED_RETRYABLE` recovery without outbox reset. |
+| Post-deploy expectation | Existing `FAILED_RETRYABLE` rows retry with preserved `attempt_count` / `ENABLED_SINCE`; no manual outbox reset required. |

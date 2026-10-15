@@ -1,4 +1,5 @@
 import type { MotionState } from '../core/types';
+import { DiV0TripSpeedQualityProjectionError } from './di-v0-trip-speed-quality-projection.errors';
 import type { DiV0TripSpeedQualityProjectionMotionV1 } from './di-v0-trip-speed-quality-projection.types';
 
 export const CANONICAL_DI_V0_MOTION_STATES: readonly MotionState[] = [
@@ -24,7 +25,7 @@ export function incrementDiV0TripSpeedQualityMotionCounter(
   motionCounts: DiV0TripSpeedQualityProjectionMotionV1,
 ): void {
   if (!(motion in MOTION_TO_COUNTER)) {
-    throw new Error(`DI_V0_TRIP_SPEED_QUALITY:UNKNOWN_MOTION_STATE:${motion}`);
+    throw new DiV0TripSpeedQualityProjectionError('UNSUPPORTED_MOTION_STATE', motion);
   }
   const key = MOTION_TO_COUNTER[motion as MotionState];
   motionCounts[key] += 1;

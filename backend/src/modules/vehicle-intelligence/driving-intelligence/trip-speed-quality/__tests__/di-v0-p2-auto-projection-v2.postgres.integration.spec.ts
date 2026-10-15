@@ -376,6 +376,23 @@ import {
     expect(Number(v2n)).toBe(1);
   }, 120_000);
 
+  it('FAILED_RETRYABLE outbox row recovers on next pass without manual reset', async () => {
+    const fx = trackFixture(await seedP2CompletedPrimaryFixture(db));
+    const due = new Date(Date.now() - 60_000);
+    await db.$executeRaw`
+      INSERT INTO di_v0_trip_speed_quality_auto_projection_outbox_v1 (
+        work_item_id, organization_id, trip_id, qc_policy_version, status,
+        attempt_count, next_attempt_at, last_error_code, last_error_at
+      ) VALUES (
+        ${fx.workItemId}, ${fx.tenant.organizationId}, ${fx.tenant.tripId}, ${DI_V0_SPEED_QC_POLICY_V2},
+        'FAILED_RETRYABLE', 4, ${due}, 'UNKNOWN', ${due}
+      )`;
+    const pass = await mkSvc(enabledConfig()).runPass();
+    expect(pass.succeeded).toBe(1);
+    expect(await outboxStatus(fx.workItemId)).toBe('SUCCEEDED');
+    expect(await currentV2ProjectionCount(fx.tenant.tripId)).toBe(1);
+  }, 120_000);
+
   it('snapshot scope drift → FAILED_RETRYABLE without mutating S4 COMPLETED', async () => {
     const fx = trackFixture(await seedP2CompletedPrimaryFixture(db));
     await driftP2PinnedSnapshotBoundaryFingerprint(db, fx.tenant, fx.snapshotHash, P2_DRIFTED_BOUNDARY_FINGERPRINT);

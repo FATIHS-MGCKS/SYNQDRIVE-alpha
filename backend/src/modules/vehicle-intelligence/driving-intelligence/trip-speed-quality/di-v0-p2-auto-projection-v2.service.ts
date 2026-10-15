@@ -8,10 +8,14 @@ import {
 } from './di-v0-p2-auto-projection-v2.config';
 import { DiV0P2AutoProjectionOutboxRepository } from './di-v0-p2-auto-projection-outbox.repository';
 import { DI_V0_P2_AUTO_PROJECTION_V2_CONFIG } from './di-v0-p2-auto-projection-v2.tokens';
-import { DiV0TripSpeedQualityProjectionError } from './di-v0-trip-speed-quality-projection.errors';
+import {
+  formatDiV0TripSpeedQualityProjectionErrorForLog,
+  resolveDiV0TripSpeedQualityProjectionErrorCode,
+  type DiV0TripSpeedQualityProjectionErrorCode,
+} from './di-v0-trip-speed-quality-projection.errors';
 import { DiV0TripSpeedQualityProjectionService } from './di-v0-trip-speed-quality-projection.service';
 
-const SKIP_ERROR_CODES = new Set<DiV0TripSpeedQualityProjectionError['code']>([
+const SKIP_ERROR_CODES = new Set<DiV0TripSpeedQualityProjectionErrorCode>([
   'NOT_ACTIVE_PRIMARY',
   'WORK_ITEM_SUPERSEDED',
   'WORK_ITEM_NOT_ELIGIBLE',
@@ -99,7 +103,7 @@ export class DiV0P2AutoProjectionV2Service {
           result.staleAckIgnored += 1;
         }
       } catch (error) {
-        const code = this.resolveErrorCode(error);
+        const code = resolveDiV0TripSpeedQualityProjectionErrorCode(error);
         if (code !== 'UNKNOWN' && SKIP_ERROR_CODES.has(code)) {
           const acked = await this.outbox.markSkipped(row.workItemId, row.claimToken, code);
           if (acked) {
@@ -115,7 +119,7 @@ export class DiV0P2AutoProjectionV2Service {
         if (acked) {
           result.failedRetryable += 1;
           this.logger.warn(
-            `P2 auto projection V2 failed workItemId=${row.workItemId} code=${errCode} nextAttemptAt=${nextAttempt.toISOString()}`,
+            `P2 auto projection V2 failed workItemId=${row.workItemId} code=${errCode} nextAttemptAt=${nextAttempt.toISOString()} detail=${formatDiV0TripSpeedQualityProjectionErrorForLog(error)}`,
           );
         } else {
           result.staleAckIgnored += 1;
@@ -130,13 +134,6 @@ export class DiV0P2AutoProjectionV2Service {
     }
 
     return result;
-  }
-
-  private resolveErrorCode(error: unknown): DiV0TripSpeedQualityProjectionError['code'] | 'UNKNOWN' {
-    if (error instanceof DiV0TripSpeedQualityProjectionError) {
-      return error.code;
-    }
-    return 'UNKNOWN';
   }
 
   private computeNextAttempt(attemptCount: number, now: Date): Date {
