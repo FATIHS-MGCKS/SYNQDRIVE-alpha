@@ -82,6 +82,24 @@ describe('evaluateDtcSnapshotDecision', () => {
     expect(d.apply).toBe(false);
   });
 
+  it('refreshes watermark without upserts when timestamp advances with same codes hash', () => {
+    const d = evaluateDtcSnapshotDecision(
+      head({
+        lastAcceptedSourceAtMs: 2000,
+        lastAcceptedCodesHash: 'same',
+        lastConfirmedCompleteSourceAtMs: 2000,
+        lastAcceptedBindingId: 'link-1',
+        bindingEpoch: 1,
+        dimoTokenId: 1,
+      }),
+      proposal({ sourceMs: 3000, hash: 'same' }),
+    );
+    expect(d.outcome).toBe('REFRESH_SOURCE_WATERMARK');
+    expect(d.apply).toBe(true);
+    expect(d.allowUpserts).toBe(false);
+    expect(d.allowClears).toBe(false);
+  });
+
   it('conflict on same timestamp different content', () => {
     const d = evaluateDtcSnapshotDecision(
       head({

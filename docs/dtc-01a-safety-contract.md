@@ -54,6 +54,11 @@ When `DTC_01A_SAFETY_FOUNDATION_ENABLED=true`:
 
 Pre-01B documentation referenced `rawPayloadJson.dtc01aSnapshot`; 01B replaces that with `vehicle_dtc_source_heads` + `vehicle_dtc_snapshot_outbox`.
 
+## DTC-01F pilot cohort + watermark refresh (same global flag)
+
+1. **Cohort gate (default OFF)** — `DTC_01F_COHORT_GATE_ENABLED=true` restricts the 01A safety path to `DTC_01F_COHORT_VEHICLE_ALLOWLIST` (comma-separated vehicle UUIDs). Invalid or empty allowlist while gate is on → **fail-closed** (no vehicle uses 01A path). `OFFBOARDED` / `ARCHIVED` never admitted. Vehicles **not** on the allowlist keep the **legacy** poll/webhook path even when the global flag is on.
+2. **Watermark refresh** — newer provider `sourceObservedAt` with identical channel codes hash → `REFRESH_SOURCE_WATERMARK`: update source head + VLS poll metadata only; **no** `upsertDtc`, **no** occurrence bump, **no** downstream outbox episodes/notifications.
+
 ## CI / integration
 
 - Unit: `npm test -- dtc-snapshot dtc-payload-validation dtc.service.spec dimo-webhook.controller.spec`

@@ -172,16 +172,18 @@ export class DtcSnapshotApplyService implements OnModuleInit {
       cleared = [];
 
       const upsertedEvents: Array<{ code: string; eventId: string }> = [];
-      for (const code of proposal.codes) {
-        const event = await this.dtcService.upsertDtc(proposal.vehicleId, code, {
-          producerContext,
-          episodeOccurrenceSemantics: true,
-          sourceObservedAt: proposal.sourceObservedAt,
-          prisma: tx,
-          deferDownstreamSideEffects: true,
-        });
-        upserted.push(code);
-        upsertedEvents.push({ code, eventId: event.id });
+      if (decision.allowUpserts) {
+        for (const code of proposal.codes) {
+          const event = await this.dtcService.upsertDtc(proposal.vehicleId, code, {
+            producerContext,
+            episodeOccurrenceSemantics: true,
+            sourceObservedAt: proposal.sourceObservedAt,
+            prisma: tx,
+            deferDownstreamSideEffects: true,
+          });
+          upserted.push(code);
+          upsertedEvents.push({ code, eventId: event.id });
+        }
       }
 
       if (decision.allowClears) {

@@ -14,6 +14,7 @@ import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
 import { buildDtcPollVehicleJobId } from './dimo-dtc-queue.util';
 import { runWithDimoRequestContext } from '@modules/dimo/provider-budget/dimo-request-context';
 import { isDtc01aSafetyFoundationEnabled } from '@modules/vehicle-intelligence/dtc/snapshot/dtc-01a.config';
+import { shouldUseDtc01aSafetyPathForVehicle } from '@modules/vehicle-intelligence/dtc/snapshot/dtc-01f-cohort-gate';
 import { DtcSnapshotApplyService } from '@modules/vehicle-intelligence/dtc/snapshot/dtc-snapshot-apply.service';
 import { evaluateDtcPollEligibility } from '@modules/vehicle-intelligence/dtc/snapshot/dtc-snapshot-eligibility';
 import { buildPollSignalsLatestProposal } from '@modules/vehicle-intelligence/dtc/snapshot/dtc-snapshot-proposal.builder';
@@ -80,7 +81,9 @@ export class DimoDtcProcessor extends WorkerHost {
       const tokenId = vehicle.dimoVehicle?.tokenId;
       if (!tokenId) continue;
 
-      if (dtc01a) {
+      const use01aPath =
+        dtc01a && shouldUseDtc01aSafetyPathForVehicle(vehicle.id, vehicle.registryLifecycle);
+      if (use01aPath) {
         const link = await this.prisma.vehicleDataSourceLink.findFirst({
           where: { vehicleId: vehicle.id, provider: 'DIMO', isActive: true },
           select: { id: true, isActive: true, dimoVehicleId: true },
@@ -121,8 +124,14 @@ export class DimoDtcProcessor extends WorkerHost {
     const auditRef = `dtc-poll:${vehicleId}:${fetchObservedAt.getTime()}`;
 
     if (isDtc01aSafetyFoundationEnabled()) {
-      await this.pollVehicleDtc01a(vehicleId, tokenId, fetchObservedAt, auditRef);
-      return;
+      const vehicle = await this.prisma.vehicle.findUnique({
+        where: { id: vehicleId },
+        select: { registryLifecycle: true },
+      });
+      if (shouldUseDtc01aSafetyPathForVehicle(vehicleId, vehicle?.registryLifecycle)) {
+        await this.pollVehicleDtc01a(vehicleId, tokenId, fetchObservedAt, auditRef);
+        return;
+      }
     }
 
     await this.pollVehicleDtcLegacy(vehicleId, tokenId, fetchObservedAt);

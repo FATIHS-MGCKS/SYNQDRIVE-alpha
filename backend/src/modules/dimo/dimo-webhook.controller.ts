@@ -19,6 +19,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { DtcService } from '../vehicle-intelligence/dtc/dtc.service';
 import { normalizeDtcCodes } from '../vehicle-intelligence/dtc/dtc-code-normalizer.util';
 import { isDtc01aSafetyFoundationEnabled } from '../vehicle-intelligence/dtc/snapshot/dtc-01a.config';
+import { shouldUseDtc01aSafetyPathForVehicle } from '../vehicle-intelligence/dtc/snapshot/dtc-01f-cohort-gate';
 import { DtcSnapshotApplyService } from '../vehicle-intelligence/dtc/snapshot/dtc-snapshot-apply.service';
 import { buildWebhookObdDtcProposal } from '../vehicle-intelligence/dtc/snapshot/dtc-snapshot-proposal.builder';
 import { resolveActiveDimoBindingForVehicle } from '../vehicle-intelligence/dtc/snapshot/dtc-snapshot-binding.util';
@@ -295,9 +296,15 @@ export class DimoWebhookController {
     webhookTimestamp: string | null,
   ) {
     if (isDtc01aSafetyFoundationEnabled()) {
-      assertDtcSnapshotApplyWired(true, this.dtcSnapshotApply, 'DimoWebhookController.handleDtcEvent');
-      await this.handleDtcEvent01a(vehicleId, tokenId, dtcValue, webhookTimestamp);
-      return;
+      const vehicle = await this.prisma.vehicle.findUnique({
+        where: { id: vehicleId },
+        select: { registryLifecycle: true },
+      });
+      if (shouldUseDtc01aSafetyPathForVehicle(vehicleId, vehicle?.registryLifecycle)) {
+        assertDtcSnapshotApplyWired(true, this.dtcSnapshotApply, 'DimoWebhookController.handleDtcEvent');
+        await this.handleDtcEvent01a(vehicleId, tokenId, dtcValue, webhookTimestamp);
+        return;
+      }
     }
 
     const codes = normalizeDtcCodes(dtcValue);

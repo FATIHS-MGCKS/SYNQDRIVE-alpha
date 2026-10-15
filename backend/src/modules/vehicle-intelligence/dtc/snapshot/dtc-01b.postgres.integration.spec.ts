@@ -270,6 +270,48 @@ const LIVE = process.env.DTC_01B_PG_INTEGRATION === '1';
     ).toBe(0);
   });
 
+  it('does not bump occurrence or outbox on newer timestamp with same active codes', async () => {
+    const { org, vehicle, binding } = await fixture();
+    const first = buildPollSignalsLatestProposal({
+      vehicleId: vehicle.id,
+      organizationId: org.id,
+      binding,
+      fetchObservedAt: new Date('2026-10-15T16:00:00Z'),
+      auditRef: 'pg-watermark-1',
+      obdDtcListSignal: { timestamp: '2026-10-15T15:00:00Z', value: ['P0301'] },
+    });
+    await apply.applyBuiltProposal(first);
+    const eventAfterFirst = await prisma.vehicleDtcEvent.findFirst({
+      where: { vehicleId: vehicle.id, dtcCode: 'P0301', isActive: true },
+    });
+    expect(eventAfterFirst?.occurrenceCount).toBe(1);
+    const outboxAfterFirst = await prisma.vehicleDtcSnapshotOutbox.count({
+      where: { vehicleId: vehicle.id },
+    });
+
+    const second = buildPollSignalsLatestProposal({
+      vehicleId: vehicle.id,
+      organizationId: org.id,
+      binding,
+      fetchObservedAt: new Date('2026-10-15T17:00:00Z'),
+      auditRef: 'pg-watermark-2',
+      obdDtcListSignal: { timestamp: '2026-10-15T16:00:00Z', value: ['P0301'] },
+    });
+    const result = await apply.applyBuiltProposal(second);
+    expect(result.decision.outcome).toBe('REFRESH_SOURCE_WATERMARK');
+    expect(result.upserted).toEqual([]);
+
+    const eventAfterSecond = await prisma.vehicleDtcEvent.findFirst({
+      where: { vehicleId: vehicle.id, dtcCode: 'P0301', isActive: true },
+    });
+    expect(eventAfterSecond?.id).toBe(eventAfterFirst?.id);
+    expect(eventAfterSecond?.occurrenceCount).toBe(1);
+    const outboxAfterSecond = await prisma.vehicleDtcSnapshotOutbox.count({
+      where: { vehicleId: vehicle.id },
+    });
+    expect(outboxAfterSecond).toBe(outboxAfterFirst);
+  });
+
   it('concurrent apply leaves a single channel head', async () => {
     const { org, vehicle, binding } = await fixture();
     const base = {

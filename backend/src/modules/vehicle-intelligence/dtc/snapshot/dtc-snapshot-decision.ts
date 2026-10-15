@@ -104,6 +104,20 @@ export function evaluateDtcSnapshotDecision(
         `hash_stored=${hashForChannel ?? 'null'}`,
       ]);
     }
+
+    const hashForChannel =
+      proposal.completeness === 'webhook_partial_upsert_only'
+        ? prevHash
+        : prevHash ?? head.lastAcceptedCodesHash;
+    if (hashForChannel === proposal.codesContentHash) {
+      return {
+        outcome: 'REFRESH_SOURCE_WATERMARK',
+        apply: true,
+        allowClears: false,
+        allowUpserts: false,
+        reasons: ['NEWER_TIMESTAMP_SAME_CODESET'],
+      };
+    }
   }
 
   const isWebhookPartial = proposal.completeness === 'webhook_partial_upsert_only';
