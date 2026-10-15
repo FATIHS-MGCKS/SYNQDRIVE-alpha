@@ -12,7 +12,14 @@
 - **VO-SIG-01 B1:** Four existing DIMO connections reconciled (legacy connection-identity cohort); one-time execute — **no repeat B1 backfill**.
 - **VO-SIG-01 P2:** Master Admin `register-from-dimo` canonical onboarding path (`MasterDimoCanonicalRegistrationService` → adoption → capture → readiness → activation + connection identity + `VEHICLE_ACTIVATED` outbox).
 - **Replicas:** Operator deployment report — both production backend replicas healthy post-release.
-- **Schema:** Migration `20261014183000_vo_sig_p2_vehicles_registration_scalar_bridge` applied as part of release (additive `IF NOT EXISTS` bridge).
+
+### Prisma migration `20261014183000_vo_sig_p2_vehicles_registration_scalar_bridge`
+
+| Fact | Evidence |
+|------|----------|
+| **Ledger** | Migration **`20261014183000_vo_sig_p2_vehicles_registration_scalar_bridge`** is recorded as **applied** in the production `_prisma_migrations` ledger (additive `ADD COLUMN IF NOT EXISTS` bridge). |
+| **Recovery deploy @ `f5bb7bb0`** | Operator recovery deployment on release SHA `f5bb7bb0b35ca2ca1ccd69a24e73038d968761fb` reported **`No pending migrations to apply`** — deploy-time `prisma migrate deploy` did not apply any new migration on that run. |
+| **Not claimed** | **No** documented proof of the **original** first-apply timestamp or earlier deploy step for this migration; closure does not infer that timing without operator evidence. |
 
 ## Open evidence (non-blocking)
 
