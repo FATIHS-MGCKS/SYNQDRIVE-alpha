@@ -291,10 +291,13 @@ import { VehicleFindingsModule } from './findings/findings.module';
 import { FindingLifecycleService } from './findings/finding-lifecycle.service';
 import { FindingBridgeService } from './findings/finding-bridge.service';
 import { DiV0S4RuntimeModule } from './driving-intelligence/s4-runtime/di-v0-s4-runtime.module';
+import { VsiReadonlySignalComposerModule } from './vehicle-signal-intelligence/vsi-readonly-composer.module';
+import { VsiSignalProfileInspectionController } from './vehicle-signal-intelligence/vsi-signal-profile-inspection.controller';
 
 @Module({
   imports: [
     forwardRef(() => DimoModule),
+    VsiReadonlySignalComposerModule,
     DiV0S4RuntimeModule,
     forwardRef(() => AiModule),
     forwardRef(() => MisuseCasesModule),
@@ -325,7 +328,7 @@ import { DiV0S4RuntimeModule } from './driving-intelligence/s4-runtime/di-v0-s4-
       { name: QUEUE_NAMES.REFERENCE_CAPTURE_EXP021_MATURATION_SHADOW },
     ),
   ],
-  controllers: [VehicleIntelligenceController, DamagesOrgController, DrivingDecisionsController, VehicleBatteryReferenceCapacityController, HvCapacityShadowEvaluationController, BatteryShadowValidationController, ReferenceCaptureController],
+  controllers: [VehicleIntelligenceController, DamagesOrgController, DrivingDecisionsController, VehicleBatteryReferenceCapacityController, HvCapacityShadowEvaluationController, BatteryShadowValidationController, ReferenceCaptureController, VsiSignalProfileInspectionController],
   providers: [
     VehicleIntelligencePermissionGuard,
     BatteryService,
