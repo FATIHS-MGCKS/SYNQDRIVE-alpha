@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { DimoModule } from '@modules/dimo/dimo.module';
 import { AuthModule } from '@shared/auth/auth.module';
@@ -23,7 +23,7 @@ import { VehicleOnboardingSourceAdoptionAuthority } from './source-adoption/vehi
 import { MasterDimoCanonicalRegistrationService } from './master-dimo/master-dimo-canonical-registration.service';
 
 @Module({
-  imports: [AuthModule, DimoModule, ActivityLogModule],
+  imports: [AuthModule, forwardRef(() => DimoModule), ActivityLogModule],
   controllers: [
     VehicleOnboardingCaptureController,
     VehicleOnboardingSourceAdoptionController,
