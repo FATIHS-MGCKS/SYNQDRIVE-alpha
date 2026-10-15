@@ -6,6 +6,7 @@ import { MasterDashboardView } from './components/MasterDashboardView';
 import { OrganizationsView } from './components/OrganizationsView';
 import { OrganizationDetailView } from './components/OrganizationDetailView';
 import { ConnectedVehiclesHub } from './connected-vehicles/ConnectedVehiclesHub';
+import { PhysicalDeviceInventoryHub } from './physical-device-inventory/PhysicalDeviceInventoryHub';
 import { BillingControlCenter } from './components/billing/BillingControlCenter';
 import { SupportView } from './components/SupportView';
 import { PlatformIntegrationsHub } from './platform-integrations/PlatformIntegrationsHub';
@@ -452,6 +453,12 @@ export default function App() {
               }}
               onOpenPlatformHealth={() => handleMasterNavigate('platform-ops')}
             />
+          </PageContainer>
+        )}
+
+        {currentView === 'device-inventory' && (
+          <PageContainer variant="wide">
+            <PhysicalDeviceInventoryHub organizations={organizations} />
           </PageContainer>
         )}
 

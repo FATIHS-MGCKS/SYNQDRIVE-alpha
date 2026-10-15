@@ -1656,6 +1656,8 @@ model Organization {
   stations                                                  Station[]
   vehicleStationTransfers                                   VehicleStationTransfer[]
   vehicles                                                  Vehicle[]
+  physicalDevices                                           PhysicalDevice[]
+  physicalDeviceAssignments                                 PhysicalDeviceAssignment[]
   vehicleProviderSourceObservations                         VehicleProviderSourceObservation[]
   vehicleProviderSourceObservationCounters                  VehicleProviderSourceObservationCounter[]
   apdShadowReconciliationDecisions                          ApdShadowReconciliationDecision[]
@@ -3088,6 +3090,7 @@ model Vehicle {
   brakingEventLedgerEntries              BrakingEventLedger[]
   dimoDeviceConnectionEvents             DimoDeviceConnectionEvent[]
   deviceConnectionEpisodes               DeviceConnectionEpisode[]
+  physicalDeviceAssignments              PhysicalDeviceAssignment[]
   deviceConnectionPhysicalStates         DeviceConnectionPhysicalState[]
   deviceConnectionPhysicalStateTransitions DeviceConnectionPhysicalStateTransition[]
   deviceConnectionPhysicalAuthorityCutovers DeviceConnectionPhysicalAuthorityCutover[]
@@ -16605,6 +16608,91 @@ model VehicleConnectionIdentityReconciliationAudit {
   @@index([sourceLinkId])
   @@index([runId])
   @@map("vehicle_connection_identity_reconciliation_audits")
+}
+
+// ------------------------------------------------
+// PHYSICAL DEVICE INVENTORY (Master Admin — Phase 1A)
+// ------------------------------------------------
+
+enum PhysicalDeviceModelCode {
+  RUPTELA_R1
+  RUPTELA_AIR_ONE
+  SMART5
+  OTHER
+}
+
+enum PhysicalDeviceInventoryStatus {
+  AVAILABLE
+  RESERVED
+  INSTALLED
+  DEFECTIVE
+  LOST
+  RETIRED
+}
+
+enum PhysicalDeviceIdentityStatus {
+  VERIFIED
+  NEEDS_CLARIFICATION
+}
+
+enum PhysicalDeviceIntakeSource {
+  MANUAL_MASTER_ADMIN
+}
+
+enum PhysicalDeviceAssignmentKind {
+  INVENTORY_INTAKE
+}
+
+model PhysicalDevice {
+  id                      String                       @id @default(uuid())
+  internalInventoryNumber String                       @unique @map("internal_inventory_number")
+  manufacturer            String
+  modelCode               PhysicalDeviceModelCode      @map("model_code")
+  serialNumber            String?                      @map("serial_number")
+  imei                    String?                      @map("imei")
+  ownerOrganizationId     String?                      @map("owner_organization_id")
+  warehouseLocation       String                       @map("warehouse_location")
+  status                  PhysicalDeviceInventoryStatus
+  identityStatus          PhysicalDeviceIdentityStatus @map("identity_status")
+  recordedAt              DateTime                     @map("recorded_at")
+  intakeSource            PhysicalDeviceIntakeSource   @map("intake_source")
+  identityEvidenceJson    Json?                        @map("identity_evidence_json")
+  intakeNotes             String?                      @map("intake_notes")
+  createdByUserId         String?                      @map("created_by_user_id")
+  createdAt               DateTime                     @default(now()) @map("created_at")
+  updatedAt               DateTime                     @updatedAt @map("updated_at")
+
+  ownerOrganization Organization?              @relation(fields: [ownerOrganizationId], references: [id], onDelete: SetNull)
+  assignments       PhysicalDeviceAssignment[]
+
+  @@index([ownerOrganizationId])
+  @@index([warehouseLocation])
+  @@index([status])
+  @@index([modelCode])
+  @@map("physical_devices")
+}
+
+model PhysicalDeviceAssignment {
+  id               String                      @id @default(uuid())
+  physicalDeviceId String                      @map("physical_device_id")
+  organizationId   String?                     @map("organization_id")
+  vehicleId        String?                     @map("vehicle_id")
+  assignmentKind   PhysicalDeviceAssignmentKind @map("assignment_kind")
+  effectiveFrom    DateTime                    @map("effective_from")
+  effectiveTo      DateTime?                   @map("effective_to")
+  idempotencyKey   String?                     @unique @map("idempotency_key")
+  actorUserId      String?                     @map("actor_user_id")
+  metadataJson     Json?                       @map("metadata_json")
+  createdAt        DateTime                    @default(now()) @map("created_at")
+
+  physicalDevice PhysicalDevice @relation(fields: [physicalDeviceId], references: [id], onDelete: Cascade)
+  organization   Organization?  @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  vehicle        Vehicle?       @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+
+  @@index([physicalDeviceId, effectiveFrom])
+  @@index([vehicleId])
+  @@index([organizationId])
+  @@map("physical_device_assignments")
 }
 
 // ------------------------------------------------

@@ -3,6 +3,7 @@ import { rentalLegacyGapES } from './rental-legacy-gap.es';
 import { rentalTripGpsSpeedEvaluationEs } from './rental.tripGpsSpeedEvaluation.es';
 import { dimoWebhookHealthEs } from './dimo-webhook-health.es';
 import { masterPlatformOpsDiS4Es } from './master.platformOps.diS4.es';
+import { masterPhysicalDeviceInventoryEs } from './master.physicalDeviceInventory.es';
 
 export const es = {
   'dashboard.welcomeBack': 'Bienvenido de nuevo, {name}',
@@ -157,4 +158,5 @@ export const es = {
   ...rentalTripGpsSpeedEvaluationEs,
   ...dimoWebhookHealthEs,
   ...masterPlatformOpsDiS4Es,
+  ...masterPhysicalDeviceInventoryEs,
 } satisfies PartialTranslationDictionary;

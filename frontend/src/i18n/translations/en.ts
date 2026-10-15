@@ -56,6 +56,7 @@ import { rentalMicroChromeEn } from './rental.microChrome.en';
 import { rentalHostPresentationEn } from './rental.hostPresentation.en';
 import { rentalLegacyGapEN } from './rental-legacy-gap.en';
 import { masterPlatformOpsDiS4En } from './master.platformOps.diS4.en';
+import { masterPhysicalDeviceInventoryEn } from './master.physicalDeviceInventory.en';
 
 export const en = {
   // ─── Navigation / Sidebar ───
@@ -5948,6 +5949,7 @@ export const en = {
   ...rentalHostPresentationEn,
   ...rentalLegacyGapEN,
   ...masterPlatformOpsDiS4En,
+  ...masterPhysicalDeviceInventoryEn,
 } as const;
 
 export type TranslationKey = keyof typeof en;

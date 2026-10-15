@@ -16,6 +16,7 @@ import {
   Code2,
   FileText,
   Battery,
+  Boxes,
 } from 'lucide-react';
 import type { MasterNavGroupConfig, MasterNavItemConfig } from './master-nav.types';
 
@@ -25,6 +26,7 @@ export const MASTER_NAV_ITEMS: MasterNavItemConfig[] = [
   { id: 'prospects', labelKey: 'master.nav.prospects', icon: Target, permissions: ['MASTER_ADMIN'] },
   { id: 'security-access', labelKey: 'master.nav.securityAccess', icon: ShieldCheck, permissions: ['MASTER_ADMIN'], badge: 'security-attention', mobilePrimary: true },
   { id: 'vehicles', labelKey: 'master.nav.vehicles', icon: Car, permissions: ['MASTER_ADMIN'], badge: 'connectivity-warning', mobilePrimary: true },
+  { id: 'device-inventory', labelKey: 'master.nav.deviceInventory', icon: Boxes, permissions: ['MASTER_ADMIN'] },
   { id: 'vehicle-logbook', labelKey: 'master.nav.vehicleLogbook', icon: BookOpen, permissions: ['MASTER_ADMIN'] },
   { id: 'billing', labelKey: 'master.nav.billing', icon: CreditCard, permissions: ['MASTER_ADMIN', 'master-billing'], badge: 'billing-anomaly' },
   { id: 'platform-integrations', labelKey: 'master.nav.platformIntegrations', icon: Plug, permissions: ['MASTER_ADMIN'], badge: 'integration-attention', mobilePrimary: true },
@@ -46,7 +48,7 @@ export const MASTER_NAV_ITEM_BY_ID = Object.fromEntries(
 export const MASTER_NAV_GROUPS: MasterNavGroupConfig[] = [
   { id: 'overview', labelKey: 'master.nav.group.overview', collapsible: false, defaultExpanded: true, items: ['dashboard'] },
   { id: 'tenants', labelKey: 'master.nav.group.tenants', collapsible: false, defaultExpanded: true, items: ['organizations', 'prospects', 'security-access'] },
-  { id: 'fleet', labelKey: 'master.nav.group.fleet', collapsible: false, defaultExpanded: true, items: ['vehicles', 'vehicle-logbook'] },
+  { id: 'fleet', labelKey: 'master.nav.group.fleet', collapsible: false, defaultExpanded: true, items: ['vehicles', 'device-inventory', 'vehicle-logbook'] },
   { id: 'commerce', labelKey: 'master.nav.group.commerce', collapsible: false, defaultExpanded: true, items: ['billing'] },
   { id: 'connectivity', labelKey: 'master.nav.group.connectivity', collapsible: true, defaultExpanded: true, items: ['platform-integrations', 'high-mobility'] },
   { id: 'partners', labelKey: 'master.nav.group.partners', collapsible: true, defaultExpanded: true, items: ['parts-accessories', 'insurances', 'voice-assistant'] },

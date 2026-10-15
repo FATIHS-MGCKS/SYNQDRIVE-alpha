@@ -3,6 +3,7 @@ import { rentalLegacyGapPL } from './rental-legacy-gap.pl';
 import { rentalTripGpsSpeedEvaluationPl } from './rental.tripGpsSpeedEvaluation.pl';
 import { dimoWebhookHealthPl } from './dimo-webhook-health.pl';
 import { masterPlatformOpsDiS4Pl } from './master.platformOps.diS4.pl';
+import { masterPhysicalDeviceInventoryPl } from './master.physicalDeviceInventory.pl';
 
 export const pl = {
   'dashboard.welcomeBack': 'Witaj ponownie, {name}',
@@ -157,4 +158,5 @@ export const pl = {
   ...rentalTripGpsSpeedEvaluationPl,
   ...dimoWebhookHealthPl,
   ...masterPlatformOpsDiS4Pl,
+  ...masterPhysicalDeviceInventoryPl,
 } satisfies PartialTranslationDictionary;
