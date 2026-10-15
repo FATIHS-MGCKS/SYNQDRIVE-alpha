@@ -27,7 +27,8 @@ echo "DATABASE_URL=${DATABASE_URL}"
 
 npm ci
 npx prisma generate
-npx prisma migrate deploy
+export PRISMA_MIGRATE_EPHEMERAL_RECOVERY=1
+bash scripts/test/prisma-migrate-deploy-resilient.sh
 
 export DTC_01B_PG_INTEGRATION=1
 npm test -- --testPathPatterns=dtc-01b.postgres.integration.spec --runInBand
