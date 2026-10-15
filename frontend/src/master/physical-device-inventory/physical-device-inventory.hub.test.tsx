@@ -1,20 +1,71 @@
-import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { en } from '../../i18n/translations/en';
+// @vitest-environment happy-dom
+import { act, createElement } from 'react';
+import { createRoot } from 'react-dom/client';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { LanguageProvider } from '../../i18n/LanguageContext';
+import { PhysicalDeviceInventoryHub } from './PhysicalDeviceInventoryHub';
+import {
+  physicalDeviceListFixture,
+  physicalDeviceSummaryFixture,
+} from '../../lib/physical-device-inventory.fixtures';
 
-const hubPath = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
-  'PhysicalDeviceInventoryHub.tsx',
-);
+const { summaryMock, listDevicesMock } = vi.hoisted(() => ({
+  summaryMock: vi.fn(async () => physicalDeviceSummaryFixture),
+  listDevicesMock: vi.fn(async () => physicalDeviceListFixture),
+}));
 
-describe('PhysicalDeviceInventoryHub (P1A)', () => {
-  it('uses platform i18n keys and masked serial fields from API', () => {
-    const source = readFileSync(hubPath, 'utf8');
-    expect(source).toContain('serialNumberMasked');
-    expect(source).toContain('api.admin.physicalDeviceInventory');
-    expect(en['master.physicalDeviceInventory.title']).toBeTruthy();
-    expect(en['master.physicalDeviceInventory.intakeButton']).toBeTruthy();
+vi.mock('sonner', () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+  },
+}));
+
+vi.mock('../../lib/api', () => ({
+  api: {
+    admin: {
+      physicalDeviceInventory: {
+        summary: summaryMock,
+        listDevices: listDevicesMock,
+        manualIntake: vi.fn(),
+      },
+    },
+  },
+}));
+
+describe('PhysicalDeviceInventoryHub', () => {
+  let container: HTMLDivElement;
+  let root: ReturnType<typeof createRoot>;
+
+  beforeEach(() => {
+    summaryMock.mockClear();
+    listDevicesMock.mockClear();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+  });
+
+  afterEach(() => {
+    act(() => root.unmount());
+    container.remove();
+  });
+
+  it('loads inventory list from API and renders masked serial', async () => {
+    await act(async () => {
+      root.render(
+        createElement(LanguageProvider, {
+          children: createElement(PhysicalDeviceInventoryHub, { organizations: [] }),
+        }),
+      );
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(summaryMock).toHaveBeenCalled();
+    expect(listDevicesMock).toHaveBeenCalled();
+    expect(container.textContent).toContain('R1-1***0068');
+    expect(container.textContent).toContain('PDI-CONTRACT-001');
   });
 });

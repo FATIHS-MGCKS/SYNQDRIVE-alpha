@@ -3562,21 +3562,10 @@ export const api = {
     prune: () => post<{ message: string }>('/admin/prune', {}),
     physicalDeviceInventory: {
       summary: () =>
-        get<{
-          total: number;
-          byStatus: Record<string, number>;
-          byModel: Record<string, number>;
-          byWarehouseLocation: Array<{ warehouseLocation: string; count: number }>;
-        }>('/admin/physical-device-inventory/summary'),
-      listDevices: (params?: {
-        search?: string;
-        status?: string;
-        modelCode?: string;
-        warehouseLocation?: string;
-        ownerOrganizationId?: string;
-        limit?: number;
-        offset?: number;
-      }) => {
+        get<import('./physical-device-inventory.types').PhysicalDeviceStockSummaryDto>(
+          '/admin/physical-device-inventory/summary',
+        ),
+      listDevices: (params?: import('./physical-device-inventory.types').ListPhysicalDevicesQuery) => {
         const q = new URLSearchParams();
         if (params?.search) q.set('search', params.search);
         if (params?.status) q.set('status', params.status);
@@ -3586,39 +3575,15 @@ export const api = {
         if (params?.limit != null) q.set('limit', String(params.limit));
         if (params?.offset != null) q.set('offset', String(params.offset));
         const suffix = q.toString() ? `?${q.toString()}` : '';
-        return get<{
-          items: Array<{
-            id: string;
-            internalInventoryNumber: string;
-            manufacturer: string;
-            modelCode: string;
-            serialNumberMasked: string | null;
-            imeiMasked: string | null;
-            ownerOrganizationId: string | null;
-            warehouseLocation: string;
-            status: string;
-            identityStatus: string;
-            recordedAt: string;
-            currentVehicleId: string | null;
-          }>;
-          total: number;
-        }>(`/admin/physical-device-inventory/devices${suffix}`);
+        return get<import('./physical-device-inventory.types').PhysicalDeviceListResponseDto>(
+          `/admin/physical-device-inventory/devices${suffix}`,
+        );
       },
-      manualIntake: (body: {
-        modelCode: string;
-        serialNumber?: string;
-        imei?: string;
-        warehouseLocation: string;
-        ownerOrganizationId?: string | null;
-        intakeNotes?: string;
-        idempotencyKey?: string;
-      }) =>
-        post<{
-          id: string;
-          internalInventoryNumber: string;
-          modelCode: string;
-          status: string;
-        }>('/admin/physical-device-inventory/devices/manual-intake', body),
+      manualIntake: (body: import('./physical-device-inventory.types').ManualIntakePhysicalDeviceRequest) =>
+        post<import('./physical-device-inventory.types').ManualIntakePhysicalDeviceResponse>(
+          '/admin/physical-device-inventory/devices/manual-intake',
+          body,
+        ),
     },
     monitoring: {
       summary: (params?: { from?: string; to?: string }) =>

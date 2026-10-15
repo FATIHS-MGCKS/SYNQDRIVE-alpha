@@ -23,39 +23,15 @@ import {
   SelectValue,
 } from '../../components/ui/select';
 import type { Organization } from '../data/platform-data';
-
-type DeviceStatus =
-  | 'AVAILABLE'
-  | 'RESERVED'
-  | 'INSTALLED'
-  | 'DEFECTIVE'
-  | 'LOST'
-  | 'RETIRED';
-type ModelCode = 'RUPTELA_R1' | 'RUPTELA_AIR_ONE' | 'SMART5' | 'OTHER';
-
-const MODEL_CODES: ModelCode[] = ['RUPTELA_R1', 'RUPTELA_AIR_ONE', 'SMART5', 'OTHER'];
-const STATUSES: DeviceStatus[] = [
-  'AVAILABLE',
-  'RESERVED',
-  'INSTALLED',
-  'DEFECTIVE',
-  'LOST',
-  'RETIRED',
-];
-
-type PhysicalDeviceListItem = {
-  id: string;
-  internalInventoryNumber: string;
-  manufacturer: string;
-  modelCode: ModelCode;
-  serialNumberMasked: string | null;
-  imeiMasked: string | null;
-  ownerOrganizationId: string | null;
-  warehouseLocation: string;
-  status: DeviceStatus;
-  identityStatus: 'VERIFIED' | 'NEEDS_CLARIFICATION';
-  recordedAt: string;
-};
+import {
+  isPhysicalDeviceInventoryStatus,
+  isPhysicalDeviceModelCode,
+  PHYSICAL_DEVICE_INVENTORY_STATUSES,
+  PHYSICAL_DEVICE_MODEL_CODES,
+  type PhysicalDeviceListItemDto,
+  type PhysicalDeviceModelCode,
+  type PhysicalDeviceStockSummaryDto,
+} from '../../lib/physical-device-inventory.types';
 
 interface PhysicalDeviceInventoryHubProps {
   organizations: Organization[];
@@ -64,17 +40,15 @@ interface PhysicalDeviceInventoryHubProps {
 export function PhysicalDeviceInventoryHub({ organizations }: PhysicalDeviceInventoryHubProps) {
   const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
-  const [summary, setSummary] = useState<{ total: number; byStatus: Record<DeviceStatus, number> } | null>(
-    null,
-  );
-  const [items, setItems] = useState<PhysicalDeviceListItem[]>([]);
+  const [summary, setSummary] = useState<PhysicalDeviceStockSummaryDto | null>(null);
+  const [items, setItems] = useState<PhysicalDeviceListItemDto[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [modelFilter, setModelFilter] = useState<string>('all');
   const [locationFilter, setLocationFilter] = useState('');
   const [intakeOpen, setIntakeOpen] = useState(false);
   const [intakeSubmitting, setIntakeSubmitting] = useState(false);
-  const [intakeModel, setIntakeModel] = useState<ModelCode>('RUPTELA_R1');
+  const [intakeModel, setIntakeModel] = useState<PhysicalDeviceModelCode>('RUPTELA_R1');
   const [intakeSerial, setIntakeSerial] = useState('');
   const [intakeImei, setIntakeImei] = useState('');
   const [intakeLocation, setIntakeLocation] = useState('');
@@ -88,8 +62,14 @@ export function PhysicalDeviceInventoryHub({ organizations }: PhysicalDeviceInve
         api.admin.physicalDeviceInventory.summary(),
         api.admin.physicalDeviceInventory.listDevices({
           search: search.trim() || undefined,
-          status: statusFilter === 'all' ? undefined : statusFilter,
-          modelCode: modelFilter === 'all' ? undefined : modelFilter,
+          status:
+            statusFilter !== 'all' && isPhysicalDeviceInventoryStatus(statusFilter)
+              ? statusFilter
+              : undefined,
+          modelCode:
+            modelFilter !== 'all' && isPhysicalDeviceModelCode(modelFilter)
+              ? modelFilter
+              : undefined,
           warehouseLocation: locationFilter.trim() || undefined,
         }),
       ]);
@@ -144,45 +124,45 @@ export function PhysicalDeviceInventoryHub({ organizations }: PhysicalDeviceInve
       {
         key: 'internalInventoryNumber',
         header: t('master.physicalDeviceInventory.col.inventoryNumber'),
-        cell: (row: PhysicalDeviceListItem) => row.internalInventoryNumber,
+        cell: (row: PhysicalDeviceListItemDto) => row.internalInventoryNumber,
       },
       {
         key: 'modelCode',
         header: t('master.physicalDeviceInventory.col.model'),
-        cell: (row: PhysicalDeviceListItem) =>
+        cell: (row: PhysicalDeviceListItemDto) =>
           t(`master.physicalDeviceInventory.model.${row.modelCode}`),
       },
       {
         key: 'serialNumberMasked',
         header: t('master.physicalDeviceInventory.col.serial'),
-        cell: (row: PhysicalDeviceListItem) => row.serialNumberMasked ?? '—',
+        cell: (row: PhysicalDeviceListItemDto) => row.serialNumberMasked ?? '—',
       },
       {
         key: 'imeiMasked',
         header: t('master.physicalDeviceInventory.col.imei'),
-        cell: (row: PhysicalDeviceListItem) => row.imeiMasked ?? '—',
+        cell: (row: PhysicalDeviceListItemDto) => row.imeiMasked ?? '—',
       },
       {
         key: 'warehouseLocation',
         header: t('master.physicalDeviceInventory.col.location'),
-        cell: (row: PhysicalDeviceListItem) => row.warehouseLocation,
+        cell: (row: PhysicalDeviceListItemDto) => row.warehouseLocation,
       },
       {
         key: 'status',
         header: t('master.physicalDeviceInventory.col.status'),
-        cell: (row: PhysicalDeviceListItem) =>
+        cell: (row: PhysicalDeviceListItemDto) =>
           t(`master.physicalDeviceInventory.status.${row.status}`),
       },
       {
         key: 'identityStatus',
         header: t('master.physicalDeviceInventory.col.identity'),
-        cell: (row: PhysicalDeviceListItem) =>
+        cell: (row: PhysicalDeviceListItemDto) =>
           t(`master.physicalDeviceInventory.identity.${row.identityStatus}`),
       },
       {
         key: 'ownerOrganizationId',
         header: t('master.physicalDeviceInventory.ownerOrg'),
-        cell: (row: PhysicalDeviceListItem) =>
+        cell: (row: PhysicalDeviceListItemDto) =>
           row.ownerOrganizationId
             ? orgNameById.get(row.ownerOrganizationId) ?? row.ownerOrganizationId
             : t('master.physicalDeviceInventory.ownerPlatform'),
@@ -236,7 +216,7 @@ export function PhysicalDeviceInventoryHub({ organizations }: PhysicalDeviceInve
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t('master.physicalDeviceInventory.filter.all')}</SelectItem>
-            {STATUSES.map((s) => (
+            {PHYSICAL_DEVICE_INVENTORY_STATUSES.map((s) => (
               <SelectItem key={s} value={s}>
                 {t(`master.physicalDeviceInventory.status.${s}`)}
               </SelectItem>
@@ -249,7 +229,7 @@ export function PhysicalDeviceInventoryHub({ organizations }: PhysicalDeviceInve
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t('master.physicalDeviceInventory.filter.all')}</SelectItem>
-            {MODEL_CODES.map((m) => (
+            {PHYSICAL_DEVICE_MODEL_CODES.map((m) => (
               <SelectItem key={m} value={m}>
                 {t(`master.physicalDeviceInventory.model.${m}`)}
               </SelectItem>
@@ -282,12 +262,17 @@ export function PhysicalDeviceInventoryHub({ organizations }: PhysicalDeviceInve
           <div className="space-y-4 py-2">
             <div>
               <Label>{t('master.physicalDeviceInventory.filter.model')}</Label>
-              <Select value={intakeModel} onValueChange={(v) => setIntakeModel(v as ModelCode)}>
+              <Select
+                value={intakeModel}
+                onValueChange={(v) => {
+                  if (isPhysicalDeviceModelCode(v)) setIntakeModel(v);
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {MODEL_CODES.map((m) => (
+                  {PHYSICAL_DEVICE_MODEL_CODES.map((m) => (
                     <SelectItem key={m} value={m}>
                       {t(`master.physicalDeviceInventory.model.${m}`)}
                     </SelectItem>
