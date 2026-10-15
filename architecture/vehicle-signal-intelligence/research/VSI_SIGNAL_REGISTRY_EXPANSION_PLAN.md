@@ -2,9 +2,9 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | DESIGN — no runtime expansion in P2 PR |
-| **Contract version today** | `vsi-canonical-signal-v1` |
-| **Materialized keys today (P0+P1)** | `lv_voltage`, `hv_battery_soc`, `provider_source_timestamp`, `device_connectivity`, `provider_last_successful_fetch`, `vehicle_speed`, `odometer`, `fuel_level_relative`, `diagnostic_trouble_code` |
+| **Status** | P3 v1 — bounded materialization expansion + fingerprint contract |
+| **Profile contract** | `vsi-signal-profile-v2` + `vsi-signal-fingerprint-v1` per signal |
+| **Materialized keys (P3)** | P0+P1 nine keys plus `position_coordinates`, `accelerator_pedal_position` |
 | **Last updated** | 2026-10-15 |
 
 ## Purpose
@@ -23,8 +23,8 @@ P2 delivers **lifecycle automation** for the existing materialization keys only.
 | Fuel | `fuel_level_relative` | `powertrainFuelSystemRelativeLevel` | Materialized |
 | DTC | `diagnostic_trouble_code` | DTC payloads | Materialized (declared/empirical rules) |
 | Connectivity | `device_connectivity`, `provider_*` | online / fetch metadata | Materialized |
-| Position | `position_coordinates` | `location` / GNSS fields | **Catalog only** — not in P0+P1 materialization keys |
-| Pedals / brakes | — | `acceleratorPedalPosition`, brake-related signals | **Not in v1 materialization set** |
+| Position | `position_coordinates` | `currentLocationCoordinates` | **Materialized (P3)** — empirical via composer when VLS bound |
+| Pedals / brakes | `accelerator_pedal_position` (materialized), `brake_pedal_position` (registry only) | DIMO OEM-specific names | Accelerator declared via preflight; brake family awaits domain mapper |
 | Charging | `hv_charging_active` (catalog) | HV charge power / plug state | **Catalog only** |
 | Climate / tires / warnings | partial catalog entries | various | **Catalog only** |
 

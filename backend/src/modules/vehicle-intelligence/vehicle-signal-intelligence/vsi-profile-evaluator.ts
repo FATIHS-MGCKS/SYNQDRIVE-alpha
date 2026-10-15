@@ -12,7 +12,7 @@ import {
   VSI_PROFILE_CONTRACT_VERSION,
   VSI_PROFILE_MATERIALIZATION_KEYS,
   mapVsiCatalogToDeclaredSupport,
-  type VsiProfileEvaluationResult,
+  type VsiProfileEvaluationDraft,
   type VsiProfileSignalSnapshotV1,
 } from './vsi-profile.types';
 import {
@@ -104,7 +104,7 @@ function mergeEmpiricalRow(
 export function evaluateVsiSignalProfile(
   input: VsiProfileEvaluatorInput,
   catalogResolver: VsiDeclaredCatalogResolver,
-): VsiProfileEvaluationResult {
+): VsiProfileEvaluationDraft {
   const projectionAsOf = input.projectionAsOf ?? new Date();
   const profileLimitations: string[] = [...input.declaredCatalog.limitations];
 

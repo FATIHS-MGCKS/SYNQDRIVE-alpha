@@ -5,7 +5,10 @@ import type {
   VsiProviderCatalogStatus,
 } from './vehicle-signal-evidence.contract';
 
-export const VSI_PROFILE_CONTRACT_VERSION = 'vsi-signal-profile-v1' as const;
+export const VSI_PROFILE_CONTRACT_VERSION = 'vsi-signal-profile-v2' as const;
+
+/** Prior contract without per-signal quality fingerprint dimensions. */
+export const VSI_PROFILE_CONTRACT_VERSION_V1 = 'vsi-signal-profile-v1' as const;
 
 /** Canonical keys materialized in P0+P1 (P1 composer keys plus common DIMO telemetry). */
 export const VSI_PROFILE_MATERIALIZATION_KEYS = [
@@ -18,6 +21,8 @@ export const VSI_PROFILE_MATERIALIZATION_KEYS = [
   'odometer',
   'fuel_level_relative',
   'diagnostic_trouble_code',
+  'position_coordinates',
+  'accelerator_pedal_position',
 ] as const satisfies readonly VsiCanonicalSignalKey[];
 
 export type VsiProfileMaterializationKey = (typeof VSI_PROFILE_MATERIALIZATION_KEYS)[number];
@@ -42,7 +47,31 @@ export type VsiProfileSignalSnapshotV1 = {
   limitations: string[];
 };
 
-export type VsiProfileEvaluationResult = {
+export type VsiSignalQualityClassification =
+  | 'OBSERVED_FRESH'
+  | 'OBSERVED_STALE'
+  | 'OBSERVED_INTERMITTENT'
+  | 'NEVER_OBSERVED'
+  | 'INSUFFICIENT_HISTORY'
+  | 'UNKNOWN';
+
+export type VsiSignalConfidenceLevel = 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN';
+
+export type VsiProfileSignalFingerprintV1 = VsiProfileSignalSnapshotV1 & {
+  signalFingerprintContractVersion: 'vsi-signal-fingerprint-v1';
+  qualityClassification: VsiSignalQualityClassification;
+  confidenceLevel: VsiSignalConfidenceLevel;
+  /** Count of usable bundle or signal samples; 0 when never observed. */
+  observedSamples: number | null;
+  /** Bundle-level strict source advances (per-signal only when provable). */
+  provenSourceAdvances: number | null;
+  observedCadenceMedianSeconds: number | null;
+  observedCadenceSampleCount: number | null;
+  maxStaleIntervalSeconds: number | null;
+  contentFingerprint: string;
+};
+
+export type VsiProfileEvaluationDraft = {
   contractVersion: typeof VSI_PROFILE_CONTRACT_VERSION;
   organizationId: string;
   vehicleId: string;
@@ -57,6 +86,10 @@ export type VsiProfileEvaluationResult = {
   lastProvenStrictSourceAdvanceAt: Date | null;
   signals: VsiProfileSignalSnapshotV1[];
   profileLimitations: string[];
+};
+
+export type VsiProfileEvaluationResult = Omit<VsiProfileEvaluationDraft, 'signals'> & {
+  signals: VsiProfileSignalFingerprintV1[];
 };
 
 export function mapVsiCatalogToDeclaredSupport(
