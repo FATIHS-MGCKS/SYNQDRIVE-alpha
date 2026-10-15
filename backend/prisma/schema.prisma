@@ -16769,10 +16769,13 @@ enum PhysicalDeviceIntakeSource {
 
 enum PhysicalDeviceAssignmentKind {
   INVENTORY_INTAKE
+  INSTALL
 }
 
 enum PhysicalDeviceInventoryAuditEventKind {
   MANUAL_INTAKE
+  IDENTITY_VERIFICATION
+  INSTALL
 }
 
 model PhysicalDevice {

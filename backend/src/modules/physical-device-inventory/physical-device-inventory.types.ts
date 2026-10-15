@@ -34,3 +34,28 @@ export type PhysicalDeviceStockSummaryDto = {
   byModel: Record<PhysicalDeviceModelCode, number>;
   byWarehouseLocation: Array<{ warehouseLocation: string; count: number }>;
 };
+
+export type PhysicalDeviceAssignmentHistoryItemDto = {
+  id: string;
+  assignmentKind: string;
+  vehicleId: string | null;
+  organizationId: string | null;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  actorUserId: string | null;
+};
+
+export type PhysicalDeviceAuditHistoryItemDto = {
+  id: string;
+  eventKind: string;
+  createdAt: string;
+  actorUserId: string | null;
+  evidenceSummary: string;
+};
+
+export type PhysicalDeviceDetailDto = PhysicalDeviceListItemDto & {
+  intakeNotes: string | null;
+  identityEvidenceSummary: string | null;
+  assignmentHistory: PhysicalDeviceAssignmentHistoryItemDto[];
+  auditHistory: PhysicalDeviceAuditHistoryItemDto[];
+};

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
@@ -9,6 +9,8 @@ import { ActivityAction, ActivityEntity } from '@prisma/client';
 import { ManualIntakePhysicalDeviceDto } from './dto/manual-intake-physical-device.dto';
 import { ListPhysicalDevicesQueryDto } from './dto/list-physical-devices-query.dto';
 import { PhysicalDeviceInventoryService } from './physical-device-inventory.service';
+import { VerifyPhysicalDeviceIdentityDto } from './dto/verify-physical-device-identity.dto';
+import { InstallPhysicalDeviceDto } from './dto/install-physical-device.dto';
 
 @Controller('admin/physical-device-inventory')
 @UseGuards(RolesGuard, MasterAdminMfaGuard)
@@ -28,6 +30,49 @@ export class PhysicalDeviceInventoryController {
   @Get('devices')
   async listDevices(@Query() query: ListPhysicalDevicesQueryDto) {
     return this.inventory.listDevices(query);
+  }
+
+  @Get('devices/:deviceId')
+  async getDevice(@Param('deviceId') deviceId: string) {
+    return this.inventory.getDeviceDetail(deviceId);
+  }
+
+  @Post('devices/:deviceId/verify-identity')
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_INTEGRATIONS)
+  async verifyIdentity(
+    @Param('deviceId') deviceId: string,
+    @Body() body: VerifyPhysicalDeviceIdentityDto,
+    @Req() req: any,
+  ) {
+    const actorUserId = req?.user?.id ?? req?.user?.userId ?? null;
+    const result = await this.inventory.verifyIdentity(deviceId, body, actorUserId);
+    void this.audit.record({
+      ...AuditService.contextFromRequest(req),
+      action: ActivityAction.UPDATE,
+      entity: ActivityEntity.ADMIN_OPERATION,
+      description: `Physical device identity verified ${result.internalInventoryNumber}`,
+      changeSummary: `deviceId=${deviceId}`,
+    });
+    return result;
+  }
+
+  @Post('devices/:deviceId/install')
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_INTEGRATIONS)
+  async installOnVehicle(
+    @Param('deviceId') deviceId: string,
+    @Body() body: InstallPhysicalDeviceDto,
+    @Req() req: any,
+  ) {
+    const actorUserId = req?.user?.id ?? req?.user?.userId ?? null;
+    const result = await this.inventory.installOnVehicle(deviceId, body, actorUserId);
+    void this.audit.record({
+      ...AuditService.contextFromRequest(req),
+      action: ActivityAction.UPDATE,
+      entity: ActivityEntity.ADMIN_OPERATION,
+      description: `Physical device installed ${result.internalInventoryNumber}`,
+      changeSummary: `vehicleId=${body.vehicleId}`,
+    });
+    return result;
   }
 
   @Post('devices/manual-intake')
