@@ -50,11 +50,11 @@ export class DimoWebhookController {
     @Inject(dimoConfig.KEY) private readonly dimoConf: ConfigType<typeof dimoConfig>,
     private readonly prisma: PrismaService,
     private readonly dtcService: DtcService,
-    @Optional() private readonly dtcSnapshotApply?: DtcSnapshotApplyService,
     private readonly deviceConnection: DeviceConnectionWebhookService,
     private readonly deviceConnectionInbox: DeviceConnectionWebhookInboxService,
     private readonly rpmWebhookCandidate: RpmWebhookCandidateService,
     private readonly snapshotWakeIntake: SnapshotWakeIntakeService,
+    @Optional() private readonly dtcSnapshotApply?: DtcSnapshotApplyService,
   ) {
     if (!this.resolveVerificationToken() && !this.allowUnsignedInDev) {
       this.logger.error(
