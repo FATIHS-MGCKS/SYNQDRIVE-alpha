@@ -11,6 +11,8 @@ import {
 } from './dtc-snapshot-proposal.builder';
 import { assertDtc01bDisposablePostgresTarget } from './dtc-01b-postgres-guard';
 import { hashDtcCodesContent } from './dtc-snapshot-meta.util';
+import { randomUUID } from 'node:crypto';
+import { insertDimoMirrorForPostgresTests } from '../../../vehicle-onboarding/testing/dimo-mirror-postgres.fixture';
 
 const LIVE = process.env.DTC_01B_PG_INTEGRATION === '1';
 
@@ -59,11 +61,12 @@ const LIVE = process.env.DTC_01B_PG_INTEGRATION === '1';
       },
     });
     orgIds.push(org.id);
-    const dimo = await prisma.dimoVehicle.create({
-      data: {
-        externalId: `ext-${Date.now()}`,
-        tokenId,
-      },
+    const dimoId = randomUUID();
+    const externalId = `ext-${Date.now()}`;
+    await insertDimoMirrorForPostgresTests(prisma, {
+      id: dimoId,
+      externalId,
+      tokenId,
     });
     const vehicle = await prisma.vehicle.create({
       data: {
@@ -74,7 +77,7 @@ const LIVE = process.env.DTC_01B_PG_INTEGRATION === '1';
         year: 2024,
         fuelType: 'GASOLINE',
         status: 'AVAILABLE',
-        dimoVehicleId: dimo.id,
+        dimoVehicleId: dimoId,
       },
     });
     const link = await prisma.vehicleDataSourceLink.create({
@@ -83,7 +86,7 @@ const LIVE = process.env.DTC_01B_PG_INTEGRATION === '1';
         provider: 'DIMO',
         sourceType: 'DIMO',
         isActive: true,
-        dimoVehicleId: dimo.id,
+        dimoVehicleId: dimoId,
         activatedAt: new Date(),
       },
     });
