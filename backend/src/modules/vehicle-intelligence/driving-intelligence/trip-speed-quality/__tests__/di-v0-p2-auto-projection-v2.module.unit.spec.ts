@@ -8,6 +8,7 @@ import { DiV0P2AutoProjectionV2Scheduler } from '../di-v0-p2-auto-projection-v2.
 import { DiV0P2AutoProjectionV2Service } from '../di-v0-p2-auto-projection-v2.service';
 import { DiV0TripSpeedQualityModule } from '../di-v0-trip-speed-quality.module';
 import { DI_V0_P2_AUTO_PROJECTION_V2_BOOTSTRAP } from '../di-v0-p2-auto-projection-v2.tokens';
+import { DiV0TripSpeedQualityProjectionService } from '../di-v0-trip-speed-quality-projection.service';
 
 describe('DiV0TripSpeedQualityModule bootstrap', () => {
   const envBackup: Record<string, string | undefined> = {};
@@ -33,6 +34,7 @@ describe('DiV0TripSpeedQualityModule bootstrap', () => {
   class FakeInfraModule {}
 
   beforeEach(() => {
+    jest.clearAllMocks();
     for (const key of ['DI_V0_P2_AUTO_PROJECTION_V2_ENABLED', 'DI_V0_P2_AUTO_PROJECTION_V2_ENABLED_SINCE']) {
       envBackup[key] = process.env[key];
     }
@@ -67,6 +69,24 @@ describe('DiV0TripSpeedQualityModule bootstrap', () => {
     try {
       expect(moduleRef.get(DiV0P2AutoProjectionV2Service).isConfigured()).toBe(false);
       expect(moduleRef.get(DI_V0_P2_AUTO_PROJECTION_V2_BOOTSTRAP).disabledReason).toBeNull();
+    } finally {
+      await moduleRef.close();
+    }
+  });
+
+  it('resolves projection service via Nest DI for the P2 auto path (first $queryRaw uses PrismaService)', async () => {
+    delete process.env.DI_V0_P2_AUTO_PROJECTION_V2_ENABLED;
+    delete process.env.DI_V0_P2_AUTO_PROJECTION_V2_ENABLED_SINCE;
+    const moduleRef = await compileModule();
+    try {
+      const autoP2 = moduleRef.get(DiV0P2AutoProjectionV2Service);
+      const projection = moduleRef.get(DiV0TripSpeedQualityProjectionService);
+      expect(Reflect.get(autoP2 as object, 'projectionService')).toBe(projection);
+      prismaStub.$queryRaw.mockResolvedValueOnce([]);
+      await expect(
+        projection.projectForWorkItem('org-1', 'wi-1', { qcPolicyVersion: 'DI_V0_SPEED_QC_POLICY_V2' }),
+      ).rejects.toMatchObject({ code: 'WORK_ITEM_NOT_FOUND' });
+      expect(prismaStub.$queryRaw).toHaveBeenCalledTimes(1);
     } finally {
       await moduleRef.close();
     }
