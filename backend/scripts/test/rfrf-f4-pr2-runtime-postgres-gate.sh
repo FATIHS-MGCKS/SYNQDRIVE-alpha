@@ -41,6 +41,7 @@ const { PrismaClient } = require('@prisma/client');
     await prisma.$queryRaw`SELECT 1 FROM "raw_refuel_candidates" LIMIT 0`;
     await prisma.$queryRaw`SELECT "detection_source" FROM "vehicle_energy_events" LIMIT 0`;
     await prisma.$queryRaw`SELECT "front_weight_distribution_pct" FROM "vehicles" LIMIT 0`;
+    await prisma.$queryRaw`SELECT "powertrain_type" FROM "dimo_vehicles" LIMIT 0`;
   } finally {
     await prisma.$disconnect();
   }
