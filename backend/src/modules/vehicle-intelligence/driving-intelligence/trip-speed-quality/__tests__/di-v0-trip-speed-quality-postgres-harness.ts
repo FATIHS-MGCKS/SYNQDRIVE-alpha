@@ -21,6 +21,7 @@ export interface P2CompletedPrimaryFixture {
 }
 
 export async function cleanupP2Tenant(db: PrismaClient, tenant: S4aTenant): Promise<void> {
+  await db.$executeRaw`DELETE FROM di_v0_trip_speed_quality_auto_projection_outbox_v1 WHERE trip_id = ${tenant.tripId}`;
   await db.$executeRaw`DELETE FROM di_v0_trip_speed_quality_projections_v1 WHERE trip_id = ${tenant.tripId}`;
   await db.$executeRaw`DELETE FROM di_v0_s4_work_items WHERE trip_id = ${tenant.tripId}`;
   await db.$executeRaw`DELETE FROM di_v0_s4_evidence_snapshots WHERE trip_id = ${tenant.tripId}`;

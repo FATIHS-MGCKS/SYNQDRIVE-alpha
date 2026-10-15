@@ -12462,6 +12462,27 @@ model DiV0TripSpeedQualityProjectionV1 {
   @@map("di_v0_trip_speed_quality_projections_v1")
 }
 
+/// Durable post-S4 completion queue for P2 auto projection (feature OFF by default).
+model DiV0TripSpeedQualityAutoProjectionOutboxV1 {
+  workItemId       String   @id @map("work_item_id")
+  organizationId   String   @map("organization_id")
+  tripId           String   @map("trip_id")
+  qcPolicyVersion  String   @map("qc_policy_version")
+  status           String   @map("status")
+  attemptCount     Int      @default(0) @map("attempt_count")
+  nextAttemptAt    DateTime @map("next_attempt_at") @db.Timestamptz(6)
+  claimToken       String?  @map("claim_token")
+  claimExpiresAt   DateTime? @map("claim_expires_at") @db.Timestamptz(6)
+  lastErrorCode    String?  @map("last_error_code")
+  lastErrorAt      DateTime? @map("last_error_at") @db.Timestamptz(6)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([status, nextAttemptAt, createdAt], map: "di_v0_p2_auto_outbox_claim_idx")
+  @@index([organizationId, tripId], map: "di_v0_p2_auto_outbox_org_trip_idx")
+  @@map("di_v0_trip_speed_quality_auto_projection_outbox_v1")
+}
+
 /// Materialized driver attribution snapshot per trip (Driving Intelligence V2 P54).
 model DriverAttribution {
   id               String                       @id @default(uuid())

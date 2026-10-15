@@ -291,11 +291,13 @@ import { VehicleFindingsModule } from './findings/findings.module';
 import { FindingLifecycleService } from './findings/finding-lifecycle.service';
 import { FindingBridgeService } from './findings/finding-bridge.service';
 import { DiV0S4RuntimeModule } from './driving-intelligence/s4-runtime/di-v0-s4-runtime.module';
+import { DiV0TripSpeedQualityModule } from './driving-intelligence/trip-speed-quality/di-v0-trip-speed-quality.module';
 
 @Module({
   imports: [
     forwardRef(() => DimoModule),
     DiV0S4RuntimeModule,
+    DiV0TripSpeedQualityModule,
     forwardRef(() => AiModule),
     forwardRef(() => MisuseCasesModule),
     forwardRef(() => InvoicesModule),
