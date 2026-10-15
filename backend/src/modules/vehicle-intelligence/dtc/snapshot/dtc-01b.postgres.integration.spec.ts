@@ -17,22 +17,22 @@ import type { NotificationProducerIngestService } from '@modules/notifications/a
 
 const LIVE = process.env.DTC_01B_PG_INTEGRATION === '1';
 
-const pgNotificationIngest: NotificationProducerIngestService = {
-  ingestVehicleHealthSources: async () => undefined,
-} as NotificationProducerIngestService;
-
-function makeApplyService(): DtcSnapshotApplyService {
-  return new DtcSnapshotApplyService(
-    prisma as never,
-    new DtcService(prisma as never),
-    pgNotificationIngest,
-  );
-}
-
 (LIVE ? describe : describe.skip)('DTC snapshot apply (PostgreSQL)', () => {
   const prisma = new PrismaClient();
   let apply: DtcSnapshotApplyService;
   const orgIds: string[] = [];
+
+  const pgNotificationIngest = {
+    ingestVehicleHealthSources: async () => undefined,
+  } as unknown as NotificationProducerIngestService;
+
+  function makeApplyService(): DtcSnapshotApplyService {
+    return new DtcSnapshotApplyService(
+      prisma as never,
+      new DtcService(prisma as never),
+      pgNotificationIngest,
+    );
+  }
 
   beforeAll(() => {
     assertDtc01bDisposablePostgresTarget();
