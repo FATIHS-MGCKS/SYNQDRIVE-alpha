@@ -4,6 +4,11 @@ import type {
   DtcSnapshotStoredHead,
 } from './dtc-snapshot.types';
 
+export interface DtcSnapshotDecisionContext {
+  /** Active DTC codes before apply (DB truth). */
+  activeDtcCodes: ReadonlySet<string>;
+}
+
 function reject(
   outcome: DtcSnapshotDecision['outcome'],
   reasons: string[],
@@ -47,9 +52,43 @@ function channelWatermark(
   }
   return {
     prevMs: head.lastConfirmedCompleteSourceAtMs,
-    prevHash:
-      head.lastConfirmedCompleteSourceAtMs != null ? head.lastAcceptedCodesHash : null,
+    prevHash: head.lastConfirmedCompleteCodesHash,
   };
+}
+
+function setsEqual(a: ReadonlySet<string>, b: ReadonlySet<string>): boolean {
+  if (a.size !== b.size) return false;
+  for (const x of a) {
+    if (!b.has(x)) return false;
+  }
+  return true;
+}
+
+function proposalCodeSet(proposal: DtcSnapshotProposal): Set<string> {
+  return new Set(proposal.codes);
+}
+
+/** True when DB episodes differ from proposal or a newer partial still blocks confirmed reconciliation. */
+export function needsEpisodeReconciliation(
+  head: DtcSnapshotStoredHead,
+  proposal: DtcSnapshotProposal,
+  activeDtcCodes: ReadonlySet<string>,
+): boolean {
+  const proposed = proposalCodeSet(proposal);
+  if (!setsEqual(activeDtcCodes, proposed)) {
+    return true;
+  }
+  if (
+    proposal.completeness === 'signals_latest_complete' &&
+    head.lastPartialWebhookSourceAtMs != null &&
+    head.lastConfirmedCompleteSourceAtMs != null &&
+    head.lastPartialWebhookSourceAtMs > head.lastConfirmedCompleteSourceAtMs &&
+    activeDtcCodes.size > 0 &&
+    proposed.size === 0
+  ) {
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -58,6 +97,7 @@ function channelWatermark(
 export function evaluateDtcSnapshotDecision(
   head: DtcSnapshotStoredHead,
   proposal: DtcSnapshotProposal,
+  context: DtcSnapshotDecisionContext = { activeDtcCodes: new Set() },
 ): DtcSnapshotDecision {
   const rotation = bindingRotation(head, proposal);
   if (rotation === 'reject') {
@@ -72,6 +112,7 @@ export function evaluateDtcSnapshotDecision(
 
   const sourceMs = proposal.sourceObservedAt.getTime();
   const { prevMs, prevHash } = channelWatermark(head, proposal);
+  const activeDtcCodes = context.activeDtcCodes;
 
   if (prevMs != null) {
     if (sourceMs < prevMs) {
@@ -84,11 +125,7 @@ export function evaluateDtcSnapshotDecision(
       ]);
     }
     if (sourceMs === prevMs) {
-      const hashForChannel =
-        proposal.completeness === 'webhook_partial_upsert_only'
-          ? prevHash
-          : prevHash ?? head.lastAcceptedCodesHash;
-      if (hashForChannel === proposal.codesContentHash) {
+      if (prevHash === proposal.codesContentHash) {
         return {
           outcome: 'NOOP_ALREADY_APPLIED',
           apply: false,
@@ -101,22 +138,20 @@ export function evaluateDtcSnapshotDecision(
         'SAME_SOURCE_TIMESTAMP_DIFFERENT_CONTENT',
         `channel=${proposal.completeness}`,
         `hash_incoming=${proposal.codesContentHash}`,
-        `hash_stored=${hashForChannel ?? 'null'}`,
+        `hash_stored=${prevHash ?? 'null'}`,
       ]);
     }
 
-    const hashForChannel =
-      proposal.completeness === 'webhook_partial_upsert_only'
-        ? prevHash
-        : prevHash ?? head.lastAcceptedCodesHash;
-    if (hashForChannel === proposal.codesContentHash) {
-      return {
-        outcome: 'REFRESH_SOURCE_WATERMARK',
-        apply: true,
-        allowClears: false,
-        allowUpserts: false,
-        reasons: ['NEWER_TIMESTAMP_SAME_CODESET'],
-      };
+    if (prevHash === proposal.codesContentHash) {
+      if (!needsEpisodeReconciliation(head, proposal, activeDtcCodes)) {
+        return {
+          outcome: 'REFRESH_SOURCE_WATERMARK',
+          apply: true,
+          allowClears: false,
+          allowUpserts: false,
+          reasons: ['NEWER_TIMESTAMP_SAME_CODESET'],
+        };
+      }
     }
   }
 

@@ -1,4 +1,8 @@
-import { evaluateDtcSnapshotDecision } from './dtc-snapshot-decision';
+import {
+  evaluateDtcSnapshotDecision,
+  needsEpisodeReconciliation,
+} from './dtc-snapshot-decision';
+import { hashDtcCodesContent } from './dtc-snapshot-meta.util';
 import type { DtcSnapshotProposal, DtcSnapshotStoredHead } from './dtc-snapshot.types';
 
 const binding = {
@@ -9,7 +13,7 @@ const binding = {
 
 const emptyHead: DtcSnapshotStoredHead = {
   lastAcceptedSourceAtMs: null,
-  lastAcceptedCodesHash: null,
+  lastConfirmedCompleteCodesHash: null,
   lastAcceptedBindingId: null,
   bindingEpoch: 0,
   dimoTokenId: null,
@@ -54,7 +58,7 @@ describe('evaluateDtcSnapshotDecision', () => {
     const d = evaluateDtcSnapshotDecision(
       head({
         lastAcceptedSourceAtMs: 2000,
-        lastAcceptedCodesHash: 'a',
+        lastConfirmedCompleteCodesHash: 'a',
         lastConfirmedCompleteSourceAtMs: 2000,
         lastAcceptedBindingId: 'link-1',
         bindingEpoch: 1,
@@ -70,7 +74,7 @@ describe('evaluateDtcSnapshotDecision', () => {
     const d = evaluateDtcSnapshotDecision(
       head({
         lastAcceptedSourceAtMs: 2000,
-        lastAcceptedCodesHash: 'same',
+        lastConfirmedCompleteCodesHash: 'same',
         lastConfirmedCompleteSourceAtMs: 2000,
         lastAcceptedBindingId: 'link-1',
         bindingEpoch: 1,
@@ -86,13 +90,14 @@ describe('evaluateDtcSnapshotDecision', () => {
     const d = evaluateDtcSnapshotDecision(
       head({
         lastAcceptedSourceAtMs: 2000,
-        lastAcceptedCodesHash: 'same',
+        lastConfirmedCompleteCodesHash: 'same',
         lastConfirmedCompleteSourceAtMs: 2000,
         lastAcceptedBindingId: 'link-1',
         bindingEpoch: 1,
         dimoTokenId: 1,
       }),
-      proposal({ sourceMs: 3000, hash: 'same' }),
+      proposal({ sourceMs: 3000, hash: 'same', codes: ['P0301'] }),
+      { activeDtcCodes: new Set(['P0301']) },
     );
     expect(d.outcome).toBe('REFRESH_SOURCE_WATERMARK');
     expect(d.apply).toBe(true);
@@ -104,7 +109,7 @@ describe('evaluateDtcSnapshotDecision', () => {
     const d = evaluateDtcSnapshotDecision(
       head({
         lastAcceptedSourceAtMs: 2000,
-        lastAcceptedCodesHash: 'a',
+        lastConfirmedCompleteCodesHash: 'a',
         lastConfirmedCompleteSourceAtMs: 2000,
         lastAcceptedBindingId: 'link-1',
         bindingEpoch: 1,
@@ -120,7 +125,7 @@ describe('evaluateDtcSnapshotDecision', () => {
     const d = evaluateDtcSnapshotDecision(
       head({
         lastAcceptedSourceAtMs: 1000,
-        lastAcceptedCodesHash: 'a',
+        lastConfirmedCompleteCodesHash: 'a',
         lastAcceptedBindingId: 'link-1',
         bindingEpoch: 1,
         dimoTokenId: 1,
@@ -140,7 +145,7 @@ describe('evaluateDtcSnapshotDecision', () => {
     const d = evaluateDtcSnapshotDecision(
       head({
         lastAcceptedSourceAtMs: 1000,
-        lastAcceptedCodesHash: 'a',
+        lastConfirmedCompleteCodesHash: 'a',
         lastAcceptedBindingId: 'other-link',
         bindingEpoch: 1,
         dimoTokenId: 99,
@@ -157,7 +162,7 @@ describe('evaluateDtcSnapshotDecision', () => {
         lastPartialWebhookSourceAtMs: 3000,
         lastPartialWebhookCodesHash: 'wh',
         lastAcceptedSourceAtMs: 3000,
-        lastAcceptedCodesHash: 'wh',
+        lastConfirmedCompleteCodesHash: 'empty',
         lastAcceptedBindingId: 'link-1',
         bindingEpoch: 1,
         dimoTokenId: 1,
@@ -172,11 +177,89 @@ describe('evaluateDtcSnapshotDecision', () => {
     expect(d.allowClears).toBe(false);
   });
 
+  it('T100→T200→T150→T250 complete/partial reconciliation timeline', () => {
+    const emptyHash = hashDtcCodesContent([]);
+    const p0301Hash = hashDtcCodesContent(['P0301']);
+
+    const afterT100 = head({
+      lastConfirmedCompleteSourceAtMs: 100,
+      lastConfirmedCompleteCodesHash: emptyHash,
+      lastAcceptedSourceAtMs: 100,
+      lastAcceptedBindingId: 'link-1',
+      bindingEpoch: 1,
+      dimoTokenId: 1,
+    });
+
+    const t200Partial = evaluateDtcSnapshotDecision(
+      afterT100,
+      {
+        ...proposal({ sourceMs: 200, hash: p0301Hash, codes: ['P0301'] }),
+        channel: 'webhook_obd_dtc_list',
+        completeness: 'webhook_partial_upsert_only',
+      },
+      { activeDtcCodes: new Set() },
+    );
+    expect(t200Partial.outcome).toBe('APPLY_WEBHOOK_PARTIAL');
+
+    const afterT200 = head({
+      ...afterT100,
+      lastPartialWebhookSourceAtMs: 200,
+      lastPartialWebhookCodesHash: p0301Hash,
+      lastAcceptedSourceAtMs: 200,
+    });
+
+    const t150Complete = evaluateDtcSnapshotDecision(
+      afterT200,
+      {
+        ...proposal({ sourceMs: 150, hash: emptyHash, codes: [] }),
+        completeness: 'signals_latest_complete',
+      },
+      { activeDtcCodes: new Set(['P0301']) },
+    );
+    expect(t150Complete.outcome).toBe('APPLY_CONFIRMED_SNAPSHOT_DEFER_CLEARS');
+    expect(t150Complete.allowClears).toBe(false);
+
+    const t250Complete = evaluateDtcSnapshotDecision(
+      afterT200,
+      {
+        ...proposal({ sourceMs: 250, hash: emptyHash, codes: [] }),
+        completeness: 'signals_latest_complete',
+      },
+      { activeDtcCodes: new Set(['P0301']) },
+    );
+    expect(t250Complete.outcome).toBe('APPLY_CONFIRMED_SNAPSHOT');
+    expect(t250Complete.allowClears).toBe(true);
+
+    expect(
+      needsEpisodeReconciliation(afterT200, proposal({ sourceMs: 250, hash: emptyHash, codes: [] }), new Set(['P0301'])),
+    ).toBe(true);
+  });
+
+  it('does not REFRESH complete empty hash while partial reconciliation pending', () => {
+    const emptyHash = hashDtcCodesContent([]);
+    const h = head({
+      lastConfirmedCompleteSourceAtMs: 100,
+      lastConfirmedCompleteCodesHash: emptyHash,
+      lastPartialWebhookSourceAtMs: 200,
+      lastPartialWebhookCodesHash: hashDtcCodesContent(['P0301']),
+      lastAcceptedBindingId: 'link-1',
+      bindingEpoch: 1,
+      dimoTokenId: 1,
+    });
+    const d = evaluateDtcSnapshotDecision(
+      h,
+      proposal({ sourceMs: 250, hash: emptyHash, codes: [] }),
+      { activeDtcCodes: new Set(['P0301']) },
+    );
+    expect(d.outcome).not.toBe('REFRESH_SOURCE_WATERMARK');
+    expect(d.allowClears).toBe(true);
+  });
+
   it('rebaseline when binding id changes but token matches', () => {
     const d = evaluateDtcSnapshotDecision(
       head({
         lastAcceptedSourceAtMs: 1000,
-        lastAcceptedCodesHash: 'a',
+        lastConfirmedCompleteCodesHash: 'a',
         lastAcceptedBindingId: 'old-link',
         bindingEpoch: 2,
         dimoTokenId: 1,

@@ -52,7 +52,8 @@ export interface DtcSnapshotProposal {
 
 export interface DtcSnapshotStoredHead {
   lastAcceptedSourceAtMs: number | null;
-  lastAcceptedCodesHash: string | null;
+  /** Hash of last **confirmed complete** snapshot only (not partial webhook). */
+  lastConfirmedCompleteCodesHash: string | null;
   lastAcceptedBindingId: string | null;
   bindingEpoch: number;
   dimoTokenId: number | null;

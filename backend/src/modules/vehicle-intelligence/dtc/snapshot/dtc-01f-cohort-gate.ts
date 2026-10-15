@@ -116,3 +116,57 @@ export function shouldUseDtc01aSafetyPathForVehicle(
   return evaluateDtc01fSafetyPathAdmission({ vehicleId, registryLifecycle, env })
     .useDtc01aSafetyPath;
 }
+
+export type DtcPollJobAdmissionReason =
+  | 'GLOBAL_FLAG_OFF_LEGACY'
+  | 'SAFETY_01A_PATH'
+  | 'REGISTRY_LIFECYCLE_EXCLUDED'
+  | 'COHORT_GATE_INVALID_CONFIG'
+  | 'NOT_IN_COHORT_ALLOWLIST'
+  | 'COHORT_PILOT_NO_LEGACY_FALLBACK';
+
+export type DtcPollJobAdmission =
+  | { enqueue: true; runtimePath: 'legacy' | 'safety01a' }
+  | { enqueue: false; reason: DtcPollJobAdmissionReason };
+
+/**
+ * Fan-out / worker admission for DIMO DTC poll jobs (pilot-safe).
+ * OFFBOARDED/ARCHIVED never enqueued. Cohort ON → only allowlisted vehicles; no legacy fallback.
+ */
+export function evaluateDtcPollJobAdmission(input: {
+  vehicleId: string;
+  registryLifecycle: string | null | undefined;
+  env?: NodeJS.ProcessEnv;
+}): DtcPollJobAdmission {
+  const env = input.env ?? process.env;
+  const lifecycle = (input.registryLifecycle ?? 'ACTIVE').toUpperCase();
+  if (lifecycle === 'OFFBOARDED' || lifecycle === 'ARCHIVED') {
+    return { enqueue: false, reason: 'REGISTRY_LIFECYCLE_EXCLUDED' };
+  }
+
+  const config = resolveDtc01fCohortGateConfig(env);
+  if (config.mode === 'GLOBAL_OFF') {
+    return { enqueue: true, runtimePath: 'legacy' };
+  }
+  if (config.mode === 'INVALID') {
+    return { enqueue: false, reason: 'COHORT_GATE_INVALID_CONFIG' };
+  }
+  if (config.mode === 'OPEN') {
+    return { enqueue: true, runtimePath: 'safety01a' };
+  }
+
+  const admission = evaluateDtc01fSafetyPathAdmission(input);
+  if (!admission.useDtc01aSafetyPath) {
+    return { enqueue: false, reason: 'NOT_IN_COHORT_ALLOWLIST' };
+  }
+  return { enqueue: true, runtimePath: 'safety01a' };
+}
+
+export function logDtc01fCohortConfigOnBoot(logger: { error: (msg: string) => void }): void {
+  const config = resolveDtc01fCohortGateConfig();
+  if (config.mode === 'INVALID') {
+    logger.error(
+      `DTC-01F cohort gate INVALID (${config.reason}): DTC poll fan-out fail-closed until config fixed`,
+    );
+  }
+}

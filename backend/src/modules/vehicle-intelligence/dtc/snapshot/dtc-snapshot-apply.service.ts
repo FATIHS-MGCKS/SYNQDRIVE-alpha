@@ -125,8 +125,16 @@ export class DtcSnapshotApplyService implements OnModuleInit {
       const headRow = await tx.vehicleDtcSourceHead.findUnique({
         where: { vehicleId: proposal.vehicleId },
       });
+      const previousActive = await tx.vehicleDtcEvent.findMany({
+        where: { vehicleId: proposal.vehicleId, isActive: true },
+        select: { dtcCode: true },
+      });
+      const previousCodes = new Set(previousActive.map((e) => e.dtcCode));
+
       const head = mapSourceHeadRow(headRow);
-      decision = evaluateDtcSnapshotDecision(head, proposal);
+      decision = evaluateDtcSnapshotDecision(head, proposal, {
+        activeDtcCodes: previousCodes,
+      });
 
       if (!decision.apply) {
         await this.touchHeadPollMeta(tx, {
@@ -155,11 +163,6 @@ export class DtcSnapshotApplyService implements OnModuleInit {
         return;
       }
 
-      const previousActive = await tx.vehicleDtcEvent.findMany({
-        where: { vehicleId: proposal.vehicleId, isActive: true },
-        select: { dtcCode: true },
-      });
-      const previousCodes = new Set(previousActive.map((e) => e.dtcCode));
       const newCodeSet = new Set(proposal.codes);
 
       const producerContext = {
@@ -208,9 +211,12 @@ export class DtcSnapshotApplyService implements OnModuleInit {
         proposal.completeness === 'signals_latest_complete' &&
         (decision.outcome === 'APPLY_CONFIRMED_SNAPSHOT' ||
           decision.outcome === 'APPLY_CONFIRMED_SNAPSHOT_DEFER_CLEARS' ||
-          decision.outcome === 'APPLY_BINDING_REBASELINE');
+          decision.outcome === 'APPLY_BINDING_REBASELINE' ||
+          decision.outcome === 'REFRESH_SOURCE_WATERMARK');
 
       const isPartialWebhook = proposal.completeness === 'webhook_partial_upsert_only';
+      const isDeferClears = decision.outcome === 'APPLY_CONFIRMED_SNAPSHOT_DEFER_CLEARS';
+      const isWatermarkRefresh = decision.outcome === 'REFRESH_SOURCE_WATERMARK';
 
       await tx.vehicleDtcSourceHead.upsert({
         where: { vehicleId: proposal.vehicleId },
@@ -222,7 +228,9 @@ export class DtcSnapshotApplyService implements OnModuleInit {
           bindingEpoch: nextEpoch,
           dimoTokenId: proposal.binding.dimoTokenId,
           lastAcceptedSourceAt: proposal.sourceObservedAt,
-          lastAcceptedCodesHash: proposal.codesContentHash,
+          ...(isConfirmedComplete
+            ? { lastAcceptedCodesHash: proposal.codesContentHash }
+            : {}),
           lastConfirmedCompleteSourceAt: isConfirmedComplete
             ? proposal.sourceObservedAt
             : headRow?.lastConfirmedCompleteSourceAt ?? null,
@@ -248,9 +256,9 @@ export class DtcSnapshotApplyService implements OnModuleInit {
           bindingEpoch: nextEpoch,
           dimoTokenId: proposal.binding.dimoTokenId,
           lastAcceptedSourceAt: proposal.sourceObservedAt,
-          lastAcceptedCodesHash: proposal.codesContentHash,
           ...(isConfirmedComplete
             ? {
+                lastAcceptedCodesHash: proposal.codesContentHash,
                 lastConfirmedCompleteSourceAt: proposal.sourceObservedAt,
                 lastConfirmedCompleteFetchAt: proposal.fetchObservedAt,
                 confirmedObdCodes: proposal.codes,
@@ -275,9 +283,13 @@ export class DtcSnapshotApplyService implements OnModuleInit {
         dtcPollStatus: 'success',
         dtcPollError: null,
       };
-      if (isConfirmedComplete) {
+      if (isConfirmedComplete && !isDeferClears) {
         vlsPatch.obdDtcList = proposal.codes;
         vlsPatch.lastDtcSuccessfulCheckAt = proposal.fetchObservedAt;
+      } else if (isDeferClears) {
+        vlsPatch.obdDtcList = [...previousCodes];
+      } else if (isWatermarkRefresh) {
+        // Poll metadata only — preserve operational DTC list.
       } else if (upserted.length > 0) {
         const merged = new Set([...previousCodes, ...upserted]);
         for (const c of cleared) merged.delete(c);

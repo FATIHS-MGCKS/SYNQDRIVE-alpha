@@ -14,7 +14,10 @@ import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
 import { buildDtcPollVehicleJobId } from './dimo-dtc-queue.util';
 import { runWithDimoRequestContext } from '@modules/dimo/provider-budget/dimo-request-context';
 import { isDtc01aSafetyFoundationEnabled } from '@modules/vehicle-intelligence/dtc/snapshot/dtc-01a.config';
-import { shouldUseDtc01aSafetyPathForVehicle } from '@modules/vehicle-intelligence/dtc/snapshot/dtc-01f-cohort-gate';
+import {
+  evaluateDtcPollJobAdmission,
+  logDtc01fCohortConfigOnBoot,
+} from '@modules/vehicle-intelligence/dtc/snapshot/dtc-01f-cohort-gate';
 import { DtcSnapshotApplyService } from '@modules/vehicle-intelligence/dtc/snapshot/dtc-snapshot-apply.service';
 import { evaluateDtcPollEligibility } from '@modules/vehicle-intelligence/dtc/snapshot/dtc-snapshot-eligibility';
 import { buildPollSignalsLatestProposal } from '@modules/vehicle-intelligence/dtc/snapshot/dtc-snapshot-proposal.builder';
@@ -42,6 +45,7 @@ export class DimoDtcProcessor extends WorkerHost {
     @Optional() private readonly dtcSnapshotApply?: DtcSnapshotApplyService,
   ) {
     super();
+    logDtc01fCohortConfigOnBoot(this.logger);
   }
 
   async process(job: Job): Promise<void> {
@@ -75,15 +79,23 @@ export class DimoDtcProcessor extends WorkerHost {
 
     const pollBucket = Math.floor(Date.now() / (3 * 3600_000));
     let enqueued = 0;
-    const dtc01a = isDtc01aSafetyFoundationEnabled();
 
     for (const vehicle of vehicles) {
       const tokenId = vehicle.dimoVehicle?.tokenId;
       if (!tokenId) continue;
 
-      const use01aPath =
-        dtc01a && shouldUseDtc01aSafetyPathForVehicle(vehicle.id, vehicle.registryLifecycle);
-      if (use01aPath) {
+      const admission = evaluateDtcPollJobAdmission({
+        vehicleId: vehicle.id,
+        registryLifecycle: vehicle.registryLifecycle,
+      });
+      if (!admission.enqueue) {
+        this.logger.debug(
+          `DTC fan-out skip vehicle=${vehicle.id} reason=${admission.reason}`,
+        );
+        continue;
+      }
+
+      if (admission.runtimePath === 'safety01a') {
         const link = await this.prisma.vehicleDataSourceLink.findFirst({
           where: { vehicleId: vehicle.id, provider: 'DIMO', isActive: true },
           select: { id: true, isActive: true, dimoVehicleId: true },
@@ -123,15 +135,23 @@ export class DimoDtcProcessor extends WorkerHost {
     const fetchObservedAt = new Date();
     const auditRef = `dtc-poll:${vehicleId}:${fetchObservedAt.getTime()}`;
 
-    if (isDtc01aSafetyFoundationEnabled()) {
-      const vehicle = await this.prisma.vehicle.findUnique({
-        where: { id: vehicleId },
-        select: { registryLifecycle: true },
-      });
-      if (shouldUseDtc01aSafetyPathForVehicle(vehicleId, vehicle?.registryLifecycle)) {
-        await this.pollVehicleDtc01a(vehicleId, tokenId, fetchObservedAt, auditRef);
-        return;
-      }
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { registryLifecycle: true },
+    });
+    const admission = evaluateDtcPollJobAdmission({
+      vehicleId,
+      registryLifecycle: vehicle?.registryLifecycle,
+    });
+    if (!admission.enqueue) {
+      this.logger.warn(
+        `DTC poll skip vehicle=${vehicleId} reason=${admission.reason} auditRef=${auditRef}`,
+      );
+      return;
+    }
+    if (admission.runtimePath === 'safety01a') {
+      await this.pollVehicleDtc01a(vehicleId, tokenId, fetchObservedAt, auditRef);
+      return;
     }
 
     await this.pollVehicleDtcLegacy(vehicleId, tokenId, fetchObservedAt);

@@ -56,8 +56,12 @@ Pre-01B documentation referenced `rawPayloadJson.dtc01aSnapshot`; 01B replaces t
 
 ## DTC-01F pilot cohort + watermark refresh (same global flag)
 
-1. **Cohort gate (default OFF)** — `DTC_01F_COHORT_GATE_ENABLED=true` restricts the 01A safety path to `DTC_01F_COHORT_VEHICLE_ALLOWLIST` (comma-separated vehicle UUIDs). Invalid or empty allowlist while gate is on → **fail-closed** (no vehicle uses 01A path). `OFFBOARDED` / `ARCHIVED` never admitted. Vehicles **not** on the allowlist keep the **legacy** poll/webhook path even when the global flag is on.
-2. **Watermark refresh** — newer provider `sourceObservedAt` with identical channel codes hash → `REFRESH_SOURCE_WATERMARK`: update source head + VLS poll metadata only; **no** `upsertDtc`, **no** occurrence bump, **no** downstream outbox episodes/notifications.
+1. **Global flag OFF** — all DIMO DTC poll fan-out uses the **legacy** runtime path (`enqueue: true`, `runtimePath: legacy`). Webhook/poll ingress uses legacy upsert/clear semantics. `OFFBOARDED` / `ARCHIVED` are never enqueued for new poll jobs.
+2. **Global ON, cohort gate OFF** — eligible vehicles use the 01A safety path on poll (`runtimePath: safety01a`) and webhook when admitted by lifecycle rules.
+3. **Cohort gate ON** — `DTC_01F_COHORT_VEHICLE_ALLOWLIST` (comma-separated vehicle UUIDs) restricts **both** safety-path admission and poll fan-out. Invalid or empty allowlist → **fail-closed** (`enqueue: false` for fan-out; no vehicle uses 01A path). Allowlisted vehicles only: **no legacy poll fallback** for non-cohort vehicles (they are skipped, not silently treated as safe legacy). Webhook path: non-cohort vehicles remain on **legacy** webhook handling.
+4. **Complete vs partial head authority** — `last_accepted_codes_hash` on `vehicle_dtc_source_heads` advances only on **confirmed complete** snapshots. Partial webhooks update `last_partial_webhook_*` only and must not replace the canonical complete codes hash.
+5. **Defer clears** — `APPLY_CONFIRMED_SNAPSHOT_DEFER_CLEARS` keeps `vehicle_latest_states.obdDtcList` aligned with **active episodes** (not an empty proposal) when a newer partial blocks clear.
+6. **Watermark refresh** — newer provider `sourceObservedAt` with identical **channel** codes hash → `REFRESH_SOURCE_WATERMARK` only when episode reconciliation is not required (active DB codes match proposal; no newer partial blocking empty complete). Updates source head + VLS poll metadata; **no** `upsertDtc`, **no** occurrence bump, **no** downstream outbox.
 
 ## CI / integration
 

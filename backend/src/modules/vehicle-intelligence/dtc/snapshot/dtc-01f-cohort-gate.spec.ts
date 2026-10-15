@@ -1,5 +1,6 @@
 import {
   evaluateDtc01fSafetyPathAdmission,
+  evaluateDtcPollJobAdmission,
   parseDtc01fCohortVehicleAllowlist,
   resolveDtc01fCohortGateConfig,
 } from './dtc-01f-cohort-gate';
@@ -75,6 +76,76 @@ describe('dtc-01f-cohort-gate', () => {
         env,
       }).reason,
     ).toBe('NOT_IN_COHORT_ALLOWLIST');
+  });
+
+  it('poll fan-out: global off uses legacy path', () => {
+    const r = evaluateDtcPollJobAdmission({
+      vehicleId: VID,
+      registryLifecycle: 'ACTIVE',
+      env: {},
+    });
+    expect(r).toEqual({ enqueue: true, runtimePath: 'legacy' });
+  });
+
+  it('poll fan-out: offboarded never enqueued', () => {
+    const r = evaluateDtcPollJobAdmission({
+      vehicleId: VID,
+      registryLifecycle: 'OFFBOARDED',
+      env: { DTC_01A_SAFETY_FOUNDATION_ENABLED: 'true' },
+    });
+    expect(r).toEqual({ enqueue: false, reason: 'REGISTRY_LIFECYCLE_EXCLUDED' });
+  });
+
+  it('poll fan-out: archived never enqueued', () => {
+    const r = evaluateDtcPollJobAdmission({
+      vehicleId: VID,
+      registryLifecycle: 'ARCHIVED',
+      env: { DTC_01A_SAFETY_FOUNDATION_ENABLED: 'true' },
+    });
+    expect(r).toEqual({ enqueue: false, reason: 'REGISTRY_LIFECYCLE_EXCLUDED' });
+  });
+
+  it('poll fan-out: global on + cohort off enqueues safety01a path', () => {
+    const r = evaluateDtcPollJobAdmission({
+      vehicleId: VID,
+      registryLifecycle: 'ACTIVE',
+      env: { DTC_01A_SAFETY_FOUNDATION_ENABLED: 'true' },
+    });
+    expect(r).toEqual({ enqueue: true, runtimePath: 'safety01a' });
+  });
+
+  it('poll fan-out: invalid cohort config fail-closed', () => {
+    const r = evaluateDtcPollJobAdmission({
+      vehicleId: VID,
+      registryLifecycle: 'ACTIVE',
+      env: {
+        DTC_01A_SAFETY_FOUNDATION_ENABLED: 'true',
+        DTC_01F_COHORT_GATE_ENABLED: 'true',
+        DTC_01F_COHORT_VEHICLE_ALLOWLIST: 'bad',
+      },
+    });
+    expect(r).toEqual({ enqueue: false, reason: 'COHORT_GATE_INVALID_CONFIG' });
+  });
+
+  it('poll fan-out: cohort on skips non-allowlisted (no legacy fallback)', () => {
+    const env = {
+      DTC_01A_SAFETY_FOUNDATION_ENABLED: 'true',
+      DTC_01F_COHORT_GATE_ENABLED: 'true',
+      DTC_01F_COHORT_VEHICLE_ALLOWLIST: VID,
+    };
+    const admitted = evaluateDtcPollJobAdmission({
+      vehicleId: VID,
+      registryLifecycle: 'ACTIVE',
+      env,
+    });
+    expect(admitted).toEqual({ enqueue: true, runtimePath: 'safety01a' });
+    expect(
+      evaluateDtcPollJobAdmission({
+        vehicleId: 'a60c0749-a7cd-494e-b5b9-dea3c6b97d63',
+        registryLifecycle: 'ACTIVE',
+        env,
+      }),
+    ).toEqual({ enqueue: false, reason: 'NOT_IN_COHORT_ALLOWLIST' });
   });
 
   it('parses comma-separated allowlist', () => {
