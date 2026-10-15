@@ -1,14 +1,18 @@
 /**
- * Physical Device Inventory — PostgreSQL authority (serial uniqueness, concurrency, stock counts).
+ * Physical Device Inventory — PostgreSQL authority (serial uniqueness, concurrency, audit, idempotency).
  */
 import { BusinessType, PhysicalDeviceModelCode, PrismaClient } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { PhysicalDeviceInventoryService } from './physical-device-inventory.service';
 import { PrismaService } from '@shared/database/prisma.service';
-import { PHYSICAL_DEVICE_SERIAL_CONFLICT } from './physical-device-inventory.errors';
+import {
+  PHYSICAL_DEVICE_IDEMPOTENCY_PAYLOAD_MISMATCH,
+  PHYSICAL_DEVICE_SERIAL_CONFLICT,
+} from './physical-device-inventory.errors';
 
 const LIVE =
   process.env.PHYSICAL_DEVICE_INVENTORY_POSTGRES_INTEGRATION === '1' && !!process.env.DATABASE_URL;
+const REQUIRED = process.env.PHYSICAL_DEVICE_INVENTORY_POSTGRES_REQUIRED === '1';
 
 const describeLive = LIVE ? describe : describe.skip;
 
@@ -37,23 +41,26 @@ describeLive('PhysicalDeviceInventoryService (PostgreSQL)', () => {
     return id;
   }
 
-  it('enforces unique serial numbers and supports idempotent intake', async () => {
+  it('enforces case-insensitive serial uniqueness and idempotent intake replay', async () => {
     const serial = `R1-TEST-${randomUUID().slice(0, 8)}`;
     const idempotencyKey = `pdi-${randomUUID()}`;
 
     const first = await service.manualIntake(
       {
         modelCode: PhysicalDeviceModelCode.RUPTELA_R1,
-        serialNumber: serial,
+        serialNumber: serial.toLowerCase(),
         warehouseLocation: 'WH-EU-01',
         idempotencyKey,
       },
       'master-user',
     );
+    expect(first.identityStatus).toBe('NEEDS_CLARIFICATION');
+    expect(first.installEligible).toBe(false);
+
     const replay = await service.manualIntake(
       {
         modelCode: PhysicalDeviceModelCode.RUPTELA_R1,
-        serialNumber: serial,
+        serialNumber: serial.toUpperCase(),
         warehouseLocation: 'WH-EU-01',
         idempotencyKey,
       },
@@ -65,13 +72,40 @@ describeLive('PhysicalDeviceInventoryService (PostgreSQL)', () => {
       service.manualIntake(
         {
           modelCode: PhysicalDeviceModelCode.RUPTELA_R1,
-          serialNumber: serial,
+          serialNumber: serial.toUpperCase(),
           warehouseLocation: 'WH-EU-02',
         },
         'master-user',
       ),
     ).rejects.toMatchObject({
       response: { code: PHYSICAL_DEVICE_SERIAL_CONFLICT },
+    });
+  });
+
+  it('rejects idempotency key reuse with different payload', async () => {
+    const idempotencyKey = `pdi-mismatch-${randomUUID()}`;
+    const serial = `R1-IDEM-${randomUUID().slice(0, 8)}`;
+    await service.manualIntake(
+      {
+        modelCode: PhysicalDeviceModelCode.RUPTELA_R1,
+        serialNumber: serial,
+        warehouseLocation: 'WH-A',
+        idempotencyKey,
+      },
+      null,
+    );
+    await expect(
+      service.manualIntake(
+        {
+          modelCode: PhysicalDeviceModelCode.RUPTELA_R1,
+          serialNumber: serial,
+          warehouseLocation: 'WH-B',
+          idempotencyKey,
+        },
+        null,
+      ),
+    ).rejects.toMatchObject({
+      response: { code: PHYSICAL_DEVICE_IDEMPOTENCY_PAYLOAD_MISMATCH },
     });
   });
 
@@ -109,7 +143,7 @@ describeLive('PhysicalDeviceInventoryService (PostgreSQL)', () => {
     expect(summary.byStatus.AVAILABLE).toBeGreaterThanOrEqual(2);
   });
 
-  it('records assignment foundation row on intake', async () => {
+  it('records assignment foundation and durable audit rows on intake', async () => {
     const serial = `R1-ASN-${randomUUID().slice(0, 8)}`;
     const device = await service.manualIntake(
       {
@@ -125,6 +159,12 @@ describeLive('PhysicalDeviceInventoryService (PostgreSQL)', () => {
     expect(assignments).toHaveLength(1);
     expect(assignments[0].assignmentKind).toBe('INVENTORY_INTAKE');
     expect(assignments[0].vehicleId).toBeNull();
+
+    const audits = await prisma.physicalDeviceInventoryAuditEvent.findMany({
+      where: { physicalDeviceId: device.id },
+    });
+    expect(audits).toHaveLength(1);
+    expect(audits[0].eventKind).toBe('MANUAL_INTAKE');
   });
 
   it('handles concurrent intake with one winner for the same serial', async () => {
@@ -135,7 +175,7 @@ describeLive('PhysicalDeviceInventoryService (PostgreSQL)', () => {
         null,
       ),
       service.manualIntake(
-        { modelCode: PhysicalDeviceModelCode.RUPTELA_R1, serialNumber: serial, warehouseLocation: 'WH-RACE' },
+        { modelCode: PhysicalDeviceModelCode.RUPTELA_R1, serialNumber: serial.toLowerCase(), warehouseLocation: 'WH-RACE' },
         null,
       ),
     ]);
@@ -144,4 +184,23 @@ describeLive('PhysicalDeviceInventoryService (PostgreSQL)', () => {
     expect(fulfilled).toHaveLength(1);
     expect(rejected).toHaveLength(1);
   });
+
+  it('prevents deleting a device while assignment history exists', async () => {
+    const serial = `R1-DEL-${randomUUID().slice(0, 8)}`;
+    const device = await service.manualIntake(
+      {
+        modelCode: PhysicalDeviceModelCode.RUPTELA_R1,
+        serialNumber: serial,
+        warehouseLocation: 'WH-DEL',
+      },
+      null,
+    );
+    await expect(
+      prisma.physicalDevice.delete({ where: { id: device.id } }),
+    ).rejects.toBeTruthy();
+  });
 });
+
+if (REQUIRED && !LIVE) {
+  throw new Error('PHYSICAL_DEVICE_INVENTORY_POSTGRES_REQUIRED=1 but integration suite is not live');
+}

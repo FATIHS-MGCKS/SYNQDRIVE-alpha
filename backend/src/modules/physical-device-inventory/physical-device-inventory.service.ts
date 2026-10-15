@@ -3,6 +3,7 @@ import {
   PhysicalDeviceAssignmentKind,
   PhysicalDeviceIdentityStatus,
   PhysicalDeviceIntakeSource,
+  PhysicalDeviceInventoryAuditEventKind,
   PhysicalDeviceInventoryStatus,
   PhysicalDeviceModelCode,
   Prisma,
@@ -11,7 +12,10 @@ import { randomUUID } from 'node:crypto';
 import { PrismaService } from '@shared/database/prisma.service';
 import { isPrismaUniqueViolation } from '@shared/database/prisma-error.util';
 import type { ManualIntakePhysicalDeviceDto } from './dto/manual-intake-physical-device.dto';
+import { buildManualIntakePayloadFingerprint } from './physical-device-intake.fingerprint';
+import { normalizePhysicalDeviceIdentifiers } from './physical-device-identifier.normalize';
 import {
+  physicalDeviceIdempotencyPayloadMismatch,
   physicalDeviceImeiConflict,
   physicalDeviceOwnerOrgNotFound,
   physicalDeviceSerialConflict,
@@ -22,51 +26,29 @@ import {
   type PhysicalDeviceListItemDto,
   type PhysicalDeviceStockSummaryDto,
 } from './physical-device-inventory.types';
+import type { ListPhysicalDevicesQueryDto } from './dto/list-physical-devices-query.dto';
 
-function normalizeSerial(value: string | undefined): string | null {
-  if (!value?.trim()) return null;
-  return value.trim();
-}
-
-function normalizeImei(value: string | undefined): string | null {
-  if (!value?.trim()) return null;
-  const digits = value.replace(/\D/g, '');
-  return digits.length ? digits : null;
-}
-
-function resolveIdentityStatus(input: {
-  modelCode: PhysicalDeviceModelCode;
-  serialNumber: string | null;
-  imei: string | null;
-}): PhysicalDeviceIdentityStatus {
-  if (!input.serialNumber && !input.imei) {
-    return PhysicalDeviceIdentityStatus.NEEDS_CLARIFICATION;
-  }
-  if (input.modelCode === PhysicalDeviceModelCode.RUPTELA_R1 && input.serialNumber) {
-    if (!input.serialNumber.startsWith('R1-')) {
-      return PhysicalDeviceIdentityStatus.NEEDS_CLARIFICATION;
-    }
-  }
-  return PhysicalDeviceIdentityStatus.VERIFIED;
-}
+const MANUAL_INTAKE_IDENTITY_STATUS = PhysicalDeviceIdentityStatus.NEEDS_CLARIFICATION;
 
 function allocateInternalInventoryNumber(): string {
   return `PDI-${randomUUID().replace(/-/g, '').slice(0, 12).toUpperCase()}`;
+}
+
+function readAssignmentPayloadFingerprint(metadataJson: unknown): string | null {
+  if (!metadataJson || typeof metadataJson !== 'object' || Array.isArray(metadataJson)) {
+    return null;
+  }
+  const value = (metadataJson as Record<string, unknown>).payloadFingerprint;
+  return typeof value === 'string' ? value : null;
 }
 
 @Injectable()
 export class PhysicalDeviceInventoryService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listDevices(query: {
-    search?: string;
-    status?: PhysicalDeviceInventoryStatus;
-    modelCode?: PhysicalDeviceModelCode;
-    warehouseLocation?: string;
-    ownerOrganizationId?: string;
-    limit?: number;
-    offset?: number;
-  }): Promise<{ items: PhysicalDeviceListItemDto[]; total: number }> {
+  async listDevices(
+    query: ListPhysicalDevicesQueryDto,
+  ): Promise<{ items: PhysicalDeviceListItemDto[]; total: number }> {
     const where: Prisma.PhysicalDeviceWhereInput = {};
     if (query.status) where.status = query.status;
     if (query.modelCode) where.modelCode = query.modelCode;
@@ -156,9 +138,19 @@ export class PhysicalDeviceInventoryService {
     dto: ManualIntakePhysicalDeviceDto,
     actorUserId: string | null,
   ): Promise<PhysicalDeviceListItemDto> {
-    if (dto.idempotencyKey?.trim()) {
-      const existing = await this.prisma.physicalDeviceAssignment.findUnique({
-        where: { idempotencyKey: dto.idempotencyKey.trim() },
+    const payloadFingerprint = buildManualIntakePayloadFingerprint(dto);
+    const normalized = normalizePhysicalDeviceIdentifiers({
+      modelCode: dto.modelCode,
+      serialNumber: dto.serialNumber,
+      imei: dto.imei,
+    });
+    const warehouseLocation = dto.warehouseLocation.trim();
+    const ownerOrganizationId = dto.ownerOrganizationId ?? null;
+    const idempotencyKey = dto.idempotencyKey?.trim() || null;
+
+    if (idempotencyKey) {
+      const existingAssignment = await this.prisma.physicalDeviceAssignment.findUnique({
+        where: { idempotencyKey },
         include: {
           physicalDevice: {
             include: {
@@ -170,14 +162,14 @@ export class PhysicalDeviceInventoryService {
           },
         },
       });
-      if (existing?.physicalDevice) {
-        return this.toListItem(existing.physicalDevice);
+      if (existingAssignment?.physicalDevice) {
+        const storedFingerprint = readAssignmentPayloadFingerprint(existingAssignment.metadataJson);
+        if (storedFingerprint && storedFingerprint !== payloadFingerprint) {
+          throw physicalDeviceIdempotencyPayloadMismatch();
+        }
+        return this.toListItem(existingAssignment.physicalDevice);
       }
     }
-
-    const serialNumber = normalizeSerial(dto.serialNumber);
-    const imei = normalizeImei(dto.imei);
-    const ownerOrganizationId = dto.ownerOrganizationId ?? null;
 
     if (ownerOrganizationId) {
       const org = await this.prisma.organization.findUnique({
@@ -185,17 +177,21 @@ export class PhysicalDeviceInventoryService {
         select: { id: true },
       });
       if (!org) {
-        throw physicalDeviceOwnerOrgNotFound(ownerOrganizationId);
+        throw physicalDeviceOwnerOrgNotFound();
       }
     }
 
-    const identityStatus = resolveIdentityStatus({
-      modelCode: dto.modelCode,
-      serialNumber,
-      imei,
-    });
     const recordedAt = new Date();
     const manufacturer = PHYSICAL_DEVICE_MANUFACTURER_BY_MODEL[dto.modelCode];
+    const identityEvidenceJson = {
+      intakeKind: 'MANUAL_MASTER_ADMIN',
+      confirmationLevel: 'MANUAL_INTAKE_UNVERIFIED',
+      recordedAt: recordedAt.toISOString(),
+      actorUserId,
+      serialClarificationReason: normalized.serialClarificationReason,
+      imeiClarificationReason: normalized.imeiClarificationReason,
+      payloadFingerprint,
+    };
 
     try {
       const created = await this.prisma.$transaction(async (tx) => {
@@ -204,19 +200,15 @@ export class PhysicalDeviceInventoryService {
             internalInventoryNumber: allocateInternalInventoryNumber(),
             manufacturer,
             modelCode: dto.modelCode,
-            serialNumber,
-            imei,
+            serialNumber: normalized.serialNumber,
+            imei: normalized.imei,
             ownerOrganizationId,
-            warehouseLocation: dto.warehouseLocation.trim(),
+            warehouseLocation,
             status: PhysicalDeviceInventoryStatus.AVAILABLE,
-            identityStatus,
+            identityStatus: MANUAL_INTAKE_IDENTITY_STATUS,
             recordedAt,
             intakeSource: PhysicalDeviceIntakeSource.MANUAL_MASTER_ADMIN,
-            identityEvidenceJson: {
-              intakeKind: 'MANUAL_MASTER_ADMIN',
-              recordedAt: recordedAt.toISOString(),
-              actorUserId,
-            } as Prisma.InputJsonValue,
+            identityEvidenceJson: identityEvidenceJson as Prisma.InputJsonValue,
             intakeNotes: dto.intakeNotes?.trim() || null,
             createdByUserId: actorUserId,
           },
@@ -229,11 +221,28 @@ export class PhysicalDeviceInventoryService {
             vehicleId: null,
             assignmentKind: PhysicalDeviceAssignmentKind.INVENTORY_INTAKE,
             effectiveFrom: recordedAt,
-            idempotencyKey: dto.idempotencyKey?.trim() || null,
+            idempotencyKey,
             actorUserId,
             metadataJson: {
-              warehouseLocation: dto.warehouseLocation.trim(),
-              identityStatus,
+              warehouseLocation,
+              identityStatus: MANUAL_INTAKE_IDENTITY_STATUS,
+              payloadFingerprint,
+            } as Prisma.InputJsonValue,
+          },
+        });
+
+        await tx.physicalDeviceInventoryAuditEvent.create({
+          data: {
+            physicalDeviceId: device.id,
+            eventKind: PhysicalDeviceInventoryAuditEventKind.MANUAL_INTAKE,
+            actorUserId,
+            payloadFingerprint,
+            evidenceJson: {
+              ...identityEvidenceJson,
+              internalInventoryNumber: device.internalInventoryNumber,
+              modelCode: dto.modelCode,
+              serialNumberMasked: maskDeviceSerial(normalized.serialNumber),
+              imeiMasked: maskDeviceImei(normalized.imei),
             } as Prisma.InputJsonValue,
           },
         });
@@ -243,18 +252,22 @@ export class PhysicalDeviceInventoryService {
 
       return this.toListItem({ ...created, assignments: [] });
     } catch (error) {
-      if (isPrismaUniqueViolation(error, ['serialNumber'])) {
-        throw physicalDeviceSerialConflict(serialNumber ?? '');
+      if (isPrismaUniqueViolation(error) && normalized.serialNumber) {
+        throw physicalDeviceSerialConflict();
       }
-      if (isPrismaUniqueViolation(error, ['imei'])) {
-        throw physicalDeviceImeiConflict(imei ?? '');
+      if (isPrismaUniqueViolation(error) && normalized.imei) {
+        throw physicalDeviceImeiConflict();
       }
-      if (isPrismaUniqueViolation(error, ['idempotencyKey']) && dto.idempotencyKey?.trim()) {
+      if (isPrismaUniqueViolation(error, ['idempotencyKey']) && idempotencyKey) {
         const replay = await this.prisma.physicalDeviceAssignment.findUnique({
-          where: { idempotencyKey: dto.idempotencyKey.trim() },
+          where: { idempotencyKey },
           include: { physicalDevice: { include: { assignments: { take: 0 } } } },
         });
         if (replay?.physicalDevice) {
+          const storedFingerprint = readAssignmentPayloadFingerprint(replay.metadataJson);
+          if (storedFingerprint && storedFingerprint !== payloadFingerprint) {
+            throw physicalDeviceIdempotencyPayloadMismatch();
+          }
           return this.toListItem({ ...replay.physicalDevice, assignments: [] });
         }
       }
@@ -280,6 +293,9 @@ export class PhysicalDeviceInventoryService {
   ): PhysicalDeviceListItemDto {
     const currentVehicleId =
       row.assignments?.find((a) => a.vehicleId)?.vehicleId ?? null;
+    const installEligible =
+      row.identityStatus === PhysicalDeviceIdentityStatus.VERIFIED &&
+      row.status === PhysicalDeviceInventoryStatus.AVAILABLE;
     return {
       id: row.id,
       internalInventoryNumber: row.internalInventoryNumber,
@@ -293,6 +309,7 @@ export class PhysicalDeviceInventoryService {
       identityStatus: row.identityStatus,
       recordedAt: row.recordedAt.toISOString(),
       currentVehicleId,
+      installEligible,
     };
   }
 }

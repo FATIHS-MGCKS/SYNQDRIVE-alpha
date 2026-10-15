@@ -24,6 +24,8 @@ export type PhysicalDeviceListItemDto = {
   identityStatus: PhysicalDeviceIdentityStatus;
   recordedAt: string;
   currentVehicleId: string | null;
+  /** False for manual intake until independent identity confirmation exists (P1A). */
+  installEligible: boolean;
 };
 
 export type PhysicalDeviceStockSummaryDto = {

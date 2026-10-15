@@ -16643,6 +16643,10 @@ enum PhysicalDeviceAssignmentKind {
   INVENTORY_INTAKE
 }
 
+enum PhysicalDeviceInventoryAuditEventKind {
+  MANUAL_INTAKE
+}
+
 model PhysicalDevice {
   id                      String                       @id @default(uuid())
   internalInventoryNumber String                       @unique @map("internal_inventory_number")
@@ -16662,8 +16666,9 @@ model PhysicalDevice {
   createdAt               DateTime                     @default(now()) @map("created_at")
   updatedAt               DateTime                     @updatedAt @map("updated_at")
 
-  ownerOrganization Organization?              @relation(fields: [ownerOrganizationId], references: [id], onDelete: SetNull)
+  ownerOrganization Organization?                    @relation(fields: [ownerOrganizationId], references: [id], onDelete: SetNull)
   assignments       PhysicalDeviceAssignment[]
+  auditEvents       PhysicalDeviceInventoryAuditEvent[]
 
   @@index([ownerOrganizationId])
   @@index([warehouseLocation])
@@ -16685,7 +16690,7 @@ model PhysicalDeviceAssignment {
   metadataJson     Json?                       @map("metadata_json")
   createdAt        DateTime                    @default(now()) @map("created_at")
 
-  physicalDevice PhysicalDevice @relation(fields: [physicalDeviceId], references: [id], onDelete: Cascade)
+  physicalDevice PhysicalDevice @relation(fields: [physicalDeviceId], references: [id], onDelete: Restrict)
   organization   Organization?  @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   vehicle        Vehicle?       @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
 
@@ -16693,6 +16698,21 @@ model PhysicalDeviceAssignment {
   @@index([vehicleId])
   @@index([organizationId])
   @@map("physical_device_assignments")
+}
+
+model PhysicalDeviceInventoryAuditEvent {
+  id                 String                               @id @default(uuid())
+  physicalDeviceId   String                               @map("physical_device_id")
+  eventKind          PhysicalDeviceInventoryAuditEventKind @map("event_kind")
+  actorUserId        String?                              @map("actor_user_id")
+  payloadFingerprint String                               @map("payload_fingerprint")
+  evidenceJson       Json                                 @map("evidence_json")
+  createdAt          DateTime                             @default(now()) @map("created_at")
+
+  physicalDevice PhysicalDevice @relation(fields: [physicalDeviceId], references: [id], onDelete: Restrict)
+
+  @@index([physicalDeviceId, createdAt])
+  @@map("physical_device_inventory_audit_events")
 }
 
 // ------------------------------------------------

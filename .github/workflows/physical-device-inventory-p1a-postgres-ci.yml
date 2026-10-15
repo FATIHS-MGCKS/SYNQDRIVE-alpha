@@ -1,0 +1,36 @@
+name: Physical Device Inventory P1A PostgreSQL
+
+on:
+  pull_request:
+    paths:
+      - 'backend/src/modules/physical-device-inventory/**'
+      - 'backend/prisma/migrations/20261015143000_physical_device_inventory_p1a/**'
+      - 'backend/prisma/migrations/20261015170000_physical_device_inventory_p1a_hardening/**'
+      - 'backend/prisma/schema.prisma'
+      - 'backend/scripts/test/physical-device-inventory-postgres-ci.sh'
+      - '.github/workflows/physical-device-inventory-p1a-postgres-ci.yml'
+
+concurrency:
+  group: physical-device-inventory-p1a-postgres-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  postgres-certification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+      - name: Generate Prisma client
+        working-directory: backend
+        run: npx prisma generate
+      - name: Physical Device Inventory PostgreSQL certification
+        working-directory: backend
+        run: bash scripts/test/physical-device-inventory-postgres-ci.sh

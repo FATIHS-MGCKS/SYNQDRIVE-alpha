@@ -1,8 +1,4 @@
 import { Body, Controller, Get, Post, Query, Req, UseGuards } from '@nestjs/common';
-import {
-  PhysicalDeviceInventoryStatus,
-  PhysicalDeviceModelCode,
-} from '@prisma/client';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
@@ -11,6 +7,7 @@ import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { ActivityAction, ActivityEntity } from '@prisma/client';
 import { ManualIntakePhysicalDeviceDto } from './dto/manual-intake-physical-device.dto';
+import { ListPhysicalDevicesQueryDto } from './dto/list-physical-devices-query.dto';
 import { PhysicalDeviceInventoryService } from './physical-device-inventory.service';
 
 @Controller('admin/physical-device-inventory')
@@ -29,24 +26,8 @@ export class PhysicalDeviceInventoryController {
   }
 
   @Get('devices')
-  async listDevices(
-    @Query('search') search?: string,
-    @Query('status') status?: PhysicalDeviceInventoryStatus,
-    @Query('modelCode') modelCode?: PhysicalDeviceModelCode,
-    @Query('warehouseLocation') warehouseLocation?: string,
-    @Query('ownerOrganizationId') ownerOrganizationId?: string,
-    @Query('limit') limit?: string,
-    @Query('offset') offset?: string,
-  ) {
-    return this.inventory.listDevices({
-      search,
-      status,
-      modelCode,
-      warehouseLocation,
-      ownerOrganizationId,
-      limit: limit ? Number(limit) : undefined,
-      offset: offset ? Number(offset) : undefined,
-    });
+  async listDevices(@Query() query: ListPhysicalDevicesQueryDto) {
+    return this.inventory.listDevices(query);
   }
 
   @Post('devices/manual-intake')
