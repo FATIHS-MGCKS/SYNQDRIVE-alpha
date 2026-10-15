@@ -36,6 +36,8 @@ import {
   normalizeDtcSeverityBand,
   type DtcSeverityBand,
 } from './dtc-severity.util';
+import { isDtc01aSafetyFoundationEnabled } from './snapshot/dtc-01a.config';
+import type { DtcFaultConfirmation } from './snapshot/dtc-snapshot.types';
 
 function isDataStale(lastSuccessfulCheckAt: Date | null | undefined): boolean {
   if (!lastSuccessfulCheckAt) return true;
@@ -43,6 +45,10 @@ function isDataStale(lastSuccessfulCheckAt: Date | null | undefined): boolean {
     Date.now() - new Date(lastSuccessfulCheckAt).getTime() >
     DTC_STALE_THRESHOLD_MS
   );
+}
+
+function resolveFaultConfirmation(isStale: boolean): DtcFaultConfirmation {
+  return isStale ? 'last_known_unconfirmed' : 'confirmed';
 }
 
 // ── Service ────────────────────────────────────────────────────────────────────
@@ -118,6 +124,7 @@ export class DtcService {
    * IMPORTANT: 'clean' is NEVER returned when data is stale.
    */
   async getSummary(vehicleId: string) {
+    const dtc01a = isDtc01aSafetyFoundationEnabled();
     const [latestState, previewFaults] = await Promise.all([
       this.prisma.vehicleLatestState.findUnique({
         where: { vehicleId },
@@ -125,6 +132,7 @@ export class DtcService {
           lastDtcPollAt: true,
           lastDtcSuccessfulCheckAt: true,
           dtcPollStatus: true,
+          sourceTimestamp: true,
         },
       }),
       this.prisma.vehicleDtcEvent.findMany({
@@ -141,14 +149,15 @@ export class DtcService {
 
     // Count real active faults (only meaningful when fresh)
     const activeFaults =
-      stale || hasNeverBeenChecked
-        ? []
-        : await this.prisma.vehicleDtcEvent.findMany({
+      dtc01a || (!stale && !hasNeverBeenChecked)
+        ? await this.prisma.vehicleDtcEvent.findMany({
             where: { vehicleId, isActive: true },
             select: { severity: true },
-          });
+          })
+        : [];
 
     const activeFaultCount = activeFaults.length;
+    const faultConfirmation = dtc01a ? resolveFaultConfirmation(stale) : undefined;
 
     const severityBands = activeFaults.map((f) =>
       normalizeDtcSeverityBand(f.severity),
@@ -164,7 +173,10 @@ export class DtcService {
       message = 'No DTC check has been performed yet';
     } else if (stale) {
       status = 'stale';
-      message = 'DTC monitoring status is outdated';
+      message =
+        dtc01a && activeFaultCount > 0
+          ? 'DTC monitoring outdated — showing last known faults (unconfirmed)'
+          : 'DTC monitoring status is outdated';
     } else if (activeFaultCount > 0) {
       status = 'active_faults';
       message = `${activeFaultCount} active fault code${activeFaultCount > 1 ? 's' : ''} detected`;
@@ -177,7 +189,7 @@ export class DtcService {
       status,
       activeFaultCount,
       activeFaultPreview:
-        status === 'active_faults'
+        status === 'active_faults' || (dtc01a && stale && activeFaultCount > 0)
           ? previewFaults.map((f) => ({
               code: f.dtcCode,
               label: f.description ?? `DTC ${f.dtcCode}`,
@@ -185,14 +197,21 @@ export class DtcService {
               severity: getSeverityDisplay(f.severity),
               severityRaw: f.severity ?? null,
               severityBand: normalizeDtcSeverityBand(f.severity),
+              ...(dtc01a
+                ? { faultConfirmation: resolveFaultConfirmation(stale) }
+                : {}),
             }))
           : [],
       worstSeverityBand:
-        status === 'active_faults' ? worstSeverityBand : ('unknown' as DtcSeverityBand),
+        status === 'active_faults' || (dtc01a && stale && activeFaultCount > 0)
+          ? worstSeverityBand
+          : ('unknown' as DtcSeverityBand),
       lastCheckedAt: lastCheckedAt?.toISOString() ?? null,
       lastSuccessfulCheckAt: lastSuccessfulCheckAt?.toISOString() ?? null,
+      lastSourceObservedAt: latestState?.sourceTimestamp?.toISOString() ?? null,
       isStale: stale,
       message,
+      ...(dtc01a ? { faultConfirmation, dtc01aEnabled: true } : {}),
     };
   }
 
@@ -205,6 +224,7 @@ export class DtcService {
    *  • monitoring     — poll metadata for Section C of the modal
    */
   async getDetail(vehicleId: string) {
+    const dtc01a = isDtc01aSafetyFoundationEnabled();
     const [activeFaults, allEvents, latestState] = await Promise.all([
       this.prisma.vehicleDtcEvent.findMany({
         where: { vehicleId, isActive: true },
@@ -224,12 +244,16 @@ export class DtcService {
           lastDtcSuccessfulCheckAt: true,
           dtcPollStatus: true,
           dtcPollError: true,
+          sourceTimestamp: true,
+          providerFetchedAt: true,
         },
       }),
     ]);
 
     const lastSuccessfulCheckAt = latestState?.lastDtcSuccessfulCheckAt ?? null;
     const stale = isDataStale(lastSuccessfulCheckAt);
+
+    const faultConfirmation = dtc01a ? resolveFaultConfirmation(stale) : undefined;
 
     const toDto = (e: {
       id: string;
@@ -252,7 +276,12 @@ export class DtcService {
       firstSeenAt: e.firstSeenAt?.toISOString() ?? null,
       lastSeenAt: e.lastSeenAt?.toISOString() ?? null,
       clearedAt: e.clearedAt?.toISOString() ?? null,
+      /**
+       * Legacy column: under DTC-01A this counts fault *episodes* (first activation per active row),
+       * not poll observations. Historical rows may still reflect pre-01A poll-increment semantics.
+       */
       occurrenceCount: e.occurrenceCount ?? 1,
+      ...(dtc01a && e.isActive ? { faultConfirmation } : {}),
     });
 
     type CurrentStatus = 'clean' | 'active_faults' | 'stale' | 'unavailable';
@@ -267,12 +296,15 @@ export class DtcService {
       currentStatus = 'clean';
     }
 
+    const exposeActiveWhenStale = dtc01a && stale && activeFaults.length > 0;
+
     return {
       currentFaults: {
         status: currentStatus,
         isStale: stale,
-        // Never expose active faults when data is stale — prevents false clean/active display
-        activeFaults: stale ? [] : activeFaults.map(toDto),
+        activeFaults:
+          stale && !exposeActiveWhenStale ? [] : activeFaults.map(toDto),
+        ...(dtc01a ? { faultConfirmation, dtc01aEnabled: true } : {}),
       },
       history: allEvents.map(toDto),
       monitoring: {
@@ -280,10 +312,13 @@ export class DtcService {
         staleThresholdHours: 6,
         lastCheckedAt: latestState?.lastDtcPollAt?.toISOString() ?? null,
         lastSuccessfulCheckAt: lastSuccessfulCheckAt?.toISOString() ?? null,
+        lastSourceObservedAt: latestState?.sourceTimestamp?.toISOString() ?? null,
+        lastProviderFetchAt: latestState?.providerFetchedAt?.toISOString() ?? null,
         pollStatus: latestState?.dtcPollStatus ?? null,
         pollError: latestState?.dtcPollError ?? null,
         isStale: stale,
         signalSource: 'obdDTCList',
+        ...(dtc01a ? { dtc01aEnabled: true } : {}),
       },
     };
   }
@@ -292,8 +327,8 @@ export class DtcService {
 
   /**
    * Upsert a DTC code for a vehicle.
-   * If the code is already active: update lastSeenAt and increment occurrenceCount.
-   * If the code is new (or was previously cleared): create a fresh active row.
+   * If the code is already active: update lastSeenAt; increment occurrenceCount only in legacy mode.
+   * If the code is new (or was previously cleared): create a fresh active row (occurrenceCount = 1).
    */
   async upsertDtc(
     vehicleId: string,
@@ -302,9 +337,13 @@ export class DtcService {
       description?: string;
       severity?: DtcSeverity;
       producerContext?: BrakeDtcProducerContext;
+      /** DTC-01A: count episodes, not poll observations. */
+      episodeOccurrenceSemantics?: boolean;
+      sourceObservedAt?: Date;
     },
   ) {
-    const now = new Date();
+    const now = options?.sourceObservedAt ?? new Date();
+    const legacyIncrement = !options?.episodeOccurrenceSemantics;
     const existing = await this.prisma.vehicleDtcEvent.findFirst({
       where: { vehicleId, dtcCode, isActive: true },
     });
@@ -315,7 +354,7 @@ export class DtcService {
         where: { id: existing.id },
         data: {
           lastSeenAt: now,
-          occurrenceCount: { increment: 1 },
+          ...(legacyIncrement ? { occurrenceCount: { increment: 1 } } : {}),
           ...(options?.description ? { description: options.description } : {}),
           ...(options?.severity ? { severity: options.severity } : {}),
         },
@@ -346,7 +385,7 @@ export class DtcService {
             where: { id: raced.id },
             data: {
               lastSeenAt: now,
-              occurrenceCount: { increment: 1 },
+              ...(legacyIncrement ? { occurrenceCount: { increment: 1 } } : {}),
               ...(options?.description ? { description: options.description } : {}),
               ...(options?.severity ? { severity: options.severity } : {}),
             },
