@@ -1,4 +1,5 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
+import { VsiProfileLifecycleEnqueueService } from '@modules/vehicle-intelligence/vehicle-signal-intelligence/vsi-profile-lifecycle-enqueue.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { Prisma, type VehicleOnboardingCase } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
@@ -88,6 +89,8 @@ export class VehicleOnboardingActivationService {
     private readonly dimoLinkService: DimoVehicleDataSourceLinkService,
     @Inject(VEHICLE_ONBOARDING_READINESS_AUTHORITY)
     private readonly readinessAuthority: VehicleOnboardingReadinessAuthority,
+    @Optional()
+    private readonly vsiProfileLifecycleEnqueue?: VsiProfileLifecycleEnqueueService,
   ) {}
 
   async activateVehicle(input: ActivateVehicleInput): Promise<ActivateVehicleResult> {
@@ -315,7 +318,7 @@ export class VehicleOnboardingActivationService {
             },
           });
           if (!existingHmLink) {
-            await tx.vehicleDataSourceLink.create({
+            const hmLink = await tx.vehicleDataSourceLink.create({
               data: {
                 vehicleId: vehicle.id,
                 provider: HIGH_MOBILITY_DATA_SOURCE_PROVIDER,
@@ -332,6 +335,16 @@ export class VehicleOnboardingActivationService {
                 },
               },
             });
+            await this.vsiProfileLifecycleEnqueue?.enqueueSourceLinkActivated(
+              {
+                organizationId: input.organizationId,
+                vehicleId: vehicle.id,
+                providerSourceLinkId: hmLink.id,
+                occurredAt: activatedAt,
+                reason: 'hm_onboarding_activation',
+              },
+              tx,
+            );
           } else if (!existingHmLink.consentId) {
             await tx.vehicleDataSourceLink.update({
               where: { id: existingHmLink.id },

@@ -4,7 +4,7 @@
 |-------|-------|
 | **Registry coverage status** | `AUDIT_IN_PROGRESS` |
 | **Product focus** | Per-vehicle, per-provider-source-link **signal capability profiles** (declared vs observed) |
-| **Last updated** | 2026-10-15 |
+| **Last updated** | 2026-10-15 (P2 lifecycle hardening — PR #2038) |
 | **Product charter** | [`VSI_PRODUCT_CHARTER.md`](VSI_PRODUCT_CHARTER.md) |
 | **Master roadmap** | [`VSI_MASTER_ROADMAP.md`](VSI_MASTER_ROADMAP.md) |
 | **P0+P1 on `main`** | Merged PR #2034 @ `eb5f1f2ee` — **not** equivalent to Production deploy ([evidence](evidence/VSI_P0P1_MERGE_BASELINE_2026-10-15.md)) |
@@ -29,9 +29,19 @@
 - **Recovery** — `POST .../materialize?providerSourceLinkId=` re-reads VLS + cached preflight when the snapshot hook logged failure (no DIMO calls).
 - **Catalog scope** — Declared `availableSignals` evidence is **vehicle-scoped** from preflight tables (limitation `DECLARED_CATALOG_VEHICLE_SCOPED_NOT_PER_SOURCE_LINK`). When **more than one active** `VehicleDataSourceLink` exists, or the target link `provider !== DIMO`, materialization sets declared axes to **UNKNOWN** with `MULTI_ACTIVE_SOURCE_LINK_DECLARED_CATALOG_AMBIGUOUS` or `PROVIDER_IDENTITY_MISMATCH_DECLARED_CATALOG_DIMO_ONLY` (never LISTED/NOT_LISTED per link without provenance). Empirical axes remain link-scoped via VLS `providerBindingId`.
 
+## Implemented (P2 — in PR #2038, not deployed)
+
+- **Lifecycle outbox** — `vsi_profile_lifecycle_outbox` with `PROCESSING` claim lease + `claimToken` (stale lease reclaim; completion/retry/fail gated on token).
+- **Ordering guards** — `vsi-profile-lifecycle-ordering.ts` drops stale activate/deactivate events vs authoritative link `activatedAt` / `deactivatedAt` / `isActive` (historical `signalsSnapshot` preserved).
+- **Link-scoped lifecycle init** — lifecycle materialization ignores foreign VLS `providerBindingId` (no cross-link empirical / idempotency bleed); `requireBindingMatch` relaxed only for `SOURCE_LINK_ACTIVATED` / `BACKFILL_RECONCILE`.
+- **Onboarding trigger** — `SOURCE_LINK_ACTIVATED` enqueued from DIMO link create/reactivate and HM onboarding link create (same transaction).
+- **Deactivation reconciliation** — `SOURCE_LINK_DEACTIVATED` / `SUPERSEDED` append `SOURCE_LINK_*` limitations without deleting historical `signalsSnapshot`.
+- **Catalog advancement** — `DECLARED_CATALOG_ADVANCED` enqueued from driving-capability preflight upsert (vehicle-scoped; fan-out per active link in processor).
+- **Backfill** — bounded `planActiveVehicleProfileBackfill` + `ACTIVE_VEHICLE_BACKFILL_RECONCILE` with durable `enqueueBackfillContinuation` when `nextCursor` is set (operator/CLI only; not auto-run in production).
+- **Signal registry expansion** — design doc only: [`research/VSI_SIGNAL_REGISTRY_EXPANSION_PLAN.md`](research/VSI_SIGNAL_REGISTRY_EXPANSION_PLAN.md).
+
 ## Explicit non-goals (this slice)
 
-- Vehicle Onboarding activation hook (P2).
 - APDS shadow wiring (P3).
 - VSI03 capture / strict-advance read flags.
 - Fleet UI surfacing.
@@ -40,6 +50,6 @@
 
 ```bash
 cd backend && npm test -- --testPathPattern=vehicle-signal-intelligence/vsi-profile
-VSI03_READONLY_COMPOSER_PG=1 npx jest vsi-profile-materialization.postgres.integration --runInBand
+VSI03_READONLY_COMPOSER_PG=1 bash scripts/test/vsi03-p2c-postgres-ci.sh
 bash architecture/scripts/validate-module-registry.sh
 ```

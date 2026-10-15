@@ -21,9 +21,15 @@ import { ProductionFailClosedReadinessAuthority } from './readiness/vehicle-onbo
 import { VEHICLE_ONBOARDING_READINESS_AUTHORITY } from './readiness/vehicle-onboarding-readiness.tokens';
 import { VehicleOnboardingSourceAdoptionAuthority } from './source-adoption/vehicle-onboarding-source-adoption.authority';
 import { MasterDimoCanonicalRegistrationService } from './master-dimo/master-dimo-canonical-registration.service';
+import { VsiReadonlySignalComposerModule } from '@modules/vehicle-intelligence/vehicle-signal-intelligence/vsi-readonly-composer.module';
 
 @Module({
-  imports: [AuthModule, forwardRef(() => DimoModule), ActivityLogModule],
+  imports: [
+    AuthModule,
+    forwardRef(() => DimoModule),
+    ActivityLogModule,
+    VsiReadonlySignalComposerModule,
+  ],
   controllers: [
     VehicleOnboardingCaptureController,
     VehicleOnboardingSourceAdoptionController,
