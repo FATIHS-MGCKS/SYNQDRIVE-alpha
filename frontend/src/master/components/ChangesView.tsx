@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'exp021-p2-auto-projection-v2-2026-10-15',
+    version: '4.9.2244',
+    title: 'EXP021 — P2 auto V2 trip speed QC after S4 completion (dormant default)',
+    summary: [
+      'Durable outbox + leader-guarded scheduler enqueues eligible COMPLETED S4 PRIMARY work items and runs existing P2 projection with DI_V0_SPEED_QC_POLICY_V2.',
+      'Feature OFF unless DI_V0_P2_AUTO_PROJECTION_V2_ENABLED + required ENABLED_SINCE (forward-only scope); S4C executor completion path unchanged.',
+      'Read path for next API/UI: readCurrentOpsProjection(..., { qcPolicyVersion: V2 }) and outbox status for backlog ops.',
+    ],
+    reason:
+      'After #2027 policy passthrough on main, automate persisted V2 evaluation post-S4 without a second calculator or customer runtime activation.',
+    previousBehavior:
+      'V2 projection required explicit ops persist/CLI; no durable post-S4 follow-up scheduler.',
+    details:
+      'di-v0-p2-auto-projection-v2.*, di-v0-p2-auto-projection-outbox.repository.ts, migration di_v0_trip_speed_quality_auto_projection_outbox_v1, EXP021_P2_AUTO_PROJECTION_V2.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-15T05:00:00.000Z',
+  },
+  {
     id: 'exp021-p1-v2-runtime-integration-readiness-2026-10-14',
     version: '4.9.2243',
     title: 'EXP021 — P1 V2 QC policy runtime integration readiness (ops opt-in)',
