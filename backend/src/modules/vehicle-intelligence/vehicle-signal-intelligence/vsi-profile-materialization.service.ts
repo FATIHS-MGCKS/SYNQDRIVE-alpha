@@ -11,12 +11,24 @@ import type { VsiSourceLinkRow } from './vsi-readonly-composer.types';
 
 const DEFAULT_POLL_LOG_LIMIT = 5;
 
+export type VsiProfileLifecycleMaterializationMode =
+  | 'SNAPSHOT_HOOK'
+  | 'SOURCE_LINK_ACTIVATED'
+  | 'DECLARED_CATALOG_ADVANCED'
+  | 'BACKFILL_RECONCILE'
+  | 'MANUAL_RECOVERY';
+
 export type VsiProfileMaterializeFromSnapshotInput = {
   organizationId: string;
   vehicleId: string;
   providerSourceLinkId: string | null;
   /** When true, skip when VLS binding does not match the target link. */
   requireBindingMatch?: boolean;
+  /**
+   * P2 lifecycle modes allow declared-only initialization without VLS binding match.
+   * Snapshot hook keeps strict binding semantics by default.
+   */
+  lifecycleMode?: VsiProfileLifecycleMaterializationMode;
 };
 
 @Injectable()
@@ -104,8 +116,15 @@ export class VsiSignalProfileMaterializationService {
       },
     });
 
+    const strictBinding =
+      input.lifecycleMode === 'SOURCE_LINK_ACTIVATED' ||
+      input.lifecycleMode === 'BACKFILL_RECONCILE' ||
+      input.lifecycleMode === 'DECLARED_CATALOG_ADVANCED'
+        ? false
+        : input.requireBindingMatch !== false;
+
     if (
-      input.requireBindingMatch !== false &&
+      strictBinding &&
       latestState?.providerBindingId &&
       latestState.providerBindingId !== providerSourceLinkId
     ) {
@@ -329,12 +348,123 @@ export class VsiSignalProfileMaterializationService {
     input: VsiProfileMaterializeFromSnapshotInput,
   ): Promise<VsiProfileEvaluationResult | null> {
     try {
-      return await this.materializeFromPersistedEvidence(input);
+      return await this.materializeFromPersistedEvidence({
+        ...input,
+        lifecycleMode: input.lifecycleMode ?? 'MANUAL_RECOVERY',
+      });
     } catch (err) {
       if (err instanceof Error && err.message === 'VSI_PROFILE_REVISION_CONFLICT') {
-        return await this.materializeFromPersistedEvidence(input);
+        return await this.materializeFromPersistedEvidence({
+          ...input,
+          lifecycleMode: input.lifecycleMode ?? 'MANUAL_RECOVERY',
+        });
       }
       throw err;
     }
+  }
+
+  async listActiveProviderLinksForVehicle(organizationId: string, vehicleId: string) {
+    return this.prisma.vehicleDataSourceLink.findMany({
+      where: { vehicleId, isActive: true, vehicle: { organizationId } },
+      select: { id: true, provider: true },
+      orderBy: { activatedAt: 'asc' },
+    });
+  }
+
+  async listActiveLinksMissingProfiles(input: {
+    organizationId?: string;
+    afterLinkId?: string | null;
+    limit: number;
+  }) {
+    const links = await this.prisma.vehicleDataSourceLink.findMany({
+      where: {
+        isActive: true,
+        ...(input.organizationId
+          ? { vehicle: { organizationId: input.organizationId, registryLifecycle: 'ACTIVE' } }
+          : { vehicle: { registryLifecycle: 'ACTIVE' } }),
+        ...(input.afterLinkId ? { id: { gt: input.afterLinkId } } : {}),
+      },
+      orderBy: { id: 'asc' },
+      take: input.limit,
+      select: {
+        id: true,
+        vehicleId: true,
+        vehicle: { select: { organizationId: true } },
+      },
+    });
+
+    const missing: Array<{ id: string; vehicleId: string; organizationId: string }> = [];
+    for (const link of links) {
+      const profile = await this.prisma.vehicleSignalCapabilityProfile.findUnique({
+        where: {
+          organizationId_vehicleId_providerSourceLinkId: {
+            organizationId: link.vehicle.organizationId,
+            vehicleId: link.vehicleId,
+            providerSourceLinkId: link.id,
+          },
+        },
+        select: { id: true },
+      });
+      if (!profile) {
+        missing.push({
+          id: link.id,
+          vehicleId: link.vehicleId,
+          organizationId: link.vehicle.organizationId,
+        });
+      }
+    }
+    return missing;
+  }
+
+  /**
+   * Lifecycle deactivation/supersession — preserve historical signals snapshot; append limitations only.
+   */
+  async appendLifecycleLimitations(input: {
+    organizationId: string;
+    vehicleId: string;
+    providerSourceLinkId: string;
+    limitations: string[];
+    reason?: string;
+  }): Promise<void> {
+    const existing = await this.prisma.vehicleSignalCapabilityProfile.findUnique({
+      where: {
+        organizationId_vehicleId_providerSourceLinkId: {
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+          providerSourceLinkId: input.providerSourceLinkId,
+        },
+      },
+    });
+    if (!existing) {
+      return;
+    }
+
+    const current = Array.isArray(existing.profileLimitations)
+      ? (existing.profileLimitations as string[])
+      : [];
+    const merged = [...new Set([...current, ...input.limitations])];
+    if (merged.length === current.length) {
+      return;
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      const row = await tx.vehicleSignalCapabilityProfile.findUnique({
+        where: { id: existing.id },
+      });
+      if (!row) {
+        return;
+      }
+      const updated = await tx.vehicleSignalCapabilityProfile.updateMany({
+        where: { id: row.id, profileRevision: row.profileRevision },
+        data: {
+          profileLimitations: merged as unknown as Prisma.InputJsonValue,
+          profileRevision: row.profileRevision + 1,
+          evaluatedAt: new Date(),
+        },
+      });
+      if (updated.count === 0) {
+        throw new Error('VSI_PROFILE_REVISION_CONFLICT');
+      }
+    });
   }
 }

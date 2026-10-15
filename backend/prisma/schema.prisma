@@ -1661,6 +1661,7 @@ model Organization {
   vehicleProviderSourceObservations                         VehicleProviderSourceObservation[]
   vehicleProviderSourceObservationCounters                  VehicleProviderSourceObservationCounter[]
   vehicleSignalCapabilityProfiles                           VehicleSignalCapabilityProfile[]
+  vsiProfileLifecycleOutbox                                 VsiProfileLifecycleOutbox[]
   apdShadowReconciliationDecisions                          ApdShadowReconciliationDecision[]
   apdShadowActivationEpochs                                 ApdShadowActivationEpoch[]
   vehicleOnboardingCases                                    VehicleOnboardingCase[]
@@ -3043,6 +3044,7 @@ model Vehicle {
   vehicleProviderSourceObservations    VehicleProviderSourceObservation[]
   vehicleProviderSourceObservationCounters VehicleProviderSourceObservationCounter[]
   vehicleSignalCapabilityProfiles          VehicleSignalCapabilityProfile[]
+  vsiProfileLifecycleOutbox                VsiProfileLifecycleOutbox[]
   apdShadowReconciliationDecisions       ApdShadowReconciliationDecision[]
   bookings                               Booking[]
   handoverProtocols                      BookingHandoverProtocol[]
@@ -4518,6 +4520,48 @@ model VehicleSignalCapabilityProfile {
   @@index([organizationId, vehicleId])
   @@index([vehicleId, evaluatedAt(sort: Desc)])
   @@map("vehicle_signal_capability_profiles")
+}
+
+enum VsiProfileLifecycleOutboxEventType {
+  SOURCE_LINK_ACTIVATED
+  SOURCE_LINK_DEACTIVATED
+  SOURCE_LINK_SUPERSEDED
+  DECLARED_CATALOG_ADVANCED
+  ACTIVE_VEHICLE_BACKFILL_RECONCILE
+}
+
+enum VsiProfileLifecycleOutboxStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+/// VSI P2 — async profile initialization and lifecycle reconciliation (non-blocking onboarding).
+model VsiProfileLifecycleOutbox {
+  id                   String                            @id @default(uuid())
+  organizationId       String                            @map("organization_id")
+  vehicleId            String                            @map("vehicle_id")
+  providerSourceLinkId String?                           @map("provider_source_link_id")
+  eventType            VsiProfileLifecycleOutboxEventType @map("event_type")
+  idempotencyKey       String                            @unique @map("idempotency_key")
+  payloadVersion       Int                               @default(1) @map("payload_version")
+  payload              Json
+  occurredAt           DateTime                          @map("occurred_at") @db.Timestamptz(3)
+  status               VsiProfileLifecycleOutboxStatus   @default(PENDING)
+  attempts             Int                               @default(0)
+  availableAt          DateTime                          @default(now()) @map("available_at") @db.Timestamptz(3)
+  lastError            String?                           @map("last_error")
+  processedAt          DateTime?                         @map("processed_at") @db.Timestamptz(3)
+  createdAt            DateTime                          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime                          @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([status, availableAt])
+  @@index([organizationId, vehicleId, occurredAt])
+  @@index([providerSourceLinkId])
+  @@map("vsi_profile_lifecycle_outbox")
 }
 
 enum ApdShadowActivationEpochLifecycle {

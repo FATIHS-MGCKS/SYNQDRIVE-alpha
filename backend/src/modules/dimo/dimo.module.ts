@@ -48,6 +48,7 @@ import { DimoVehicleDataSourceLinkService } from './dimo-vehicle-data-source-lin
 import { DimoProviderBudgetModule } from './provider-budget/dimo-provider-budget.module';
 import { SnapshotWakeModule } from '@workers/snapshot-wake/snapshot-wake.module';
 import { DeviceConnectionPhysicalStateModule } from './device-connection-physical-state/device-connection-physical-state.module';
+import { VsiReadonlySignalComposerModule } from '../vehicle-intelligence/vehicle-signal-intelligence/vsi-readonly-composer.module';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { DeviceConnectionPhysicalStateModule } from './device-connection-physica
     SnapshotWakeModule,
     DimoConnectivityLifecycleDiModule,
     DeviceConnectionPhysicalStateModule,
+    VsiReadonlySignalComposerModule,
     EventTripAssociationModule,
     ActivityLogModule,
     SharedGuardsModule,

@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Prisma, type PrismaClient } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { VsiProfileLifecycleEnqueueService } from '@modules/vehicle-intelligence/vehicle-signal-intelligence/vsi-profile-lifecycle-enqueue.service';
 import { ConnectivityObservabilityService } from './connectivity/connectivity-observability.service';
 import {
   DIMO_DATA_SOURCE_PROVIDER,
@@ -39,6 +40,8 @@ export class DimoVehicleDataSourceLinkService {
     private readonly prisma: PrismaService,
     @Optional()
     private readonly connectivityObservability?: ConnectivityObservabilityService,
+    @Optional()
+    private readonly vsiProfileLifecycleEnqueue?: VsiProfileLifecycleEnqueueService,
   ) {}
 
   /**
@@ -267,6 +270,16 @@ export class DimoVehicleDataSourceLinkService {
       this.logger.log(
         `DIMO link reactivated vehicle=${input.vehicleId} link=${updated.id} provenance=${input.provenance ?? 'unknown'}`,
       );
+      await this.vsiProfileLifecycleEnqueue?.enqueueSourceLinkActivated(
+        {
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+          providerSourceLinkId: updated.id,
+          occurredAt: now,
+          reason: input.provenance ?? 'dimo_link_reactivated',
+        },
+        client,
+      );
       return {
         action: 'REACTIVATE',
         linkId: updated.id,
@@ -316,6 +329,16 @@ export class DimoVehicleDataSourceLinkService {
     this.observeBinding('created', input.provenance);
     this.logger.log(
       `DIMO link created vehicle=${input.vehicleId} link=${created.id} provenance=${input.provenance ?? 'unknown'}`,
+    );
+    await this.vsiProfileLifecycleEnqueue?.enqueueSourceLinkActivated(
+      {
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        providerSourceLinkId: created.id,
+        occurredAt: now,
+        reason: input.provenance ?? 'dimo_link_created',
+      },
+      client,
     );
     return {
       action: 'CREATE',

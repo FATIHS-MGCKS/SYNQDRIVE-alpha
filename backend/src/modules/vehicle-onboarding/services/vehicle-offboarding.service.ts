@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
+import { VsiProfileLifecycleEnqueueService } from '@modules/vehicle-intelligence/vehicle-signal-intelligence/vsi-profile-lifecycle-enqueue.service';
 import type { Prisma, VehicleRegistryLifecycle } from '@prisma/client';
 import { VehicleProviderConsentStatus } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
@@ -52,6 +53,8 @@ export class VehicleOffboardingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly businessAuditOutbox: BusinessAuditOutboxRepository,
+    @Optional()
+    private readonly vsiProfileLifecycleEnqueue?: VsiProfileLifecycleEnqueueService,
   ) {}
 
   /**
@@ -207,6 +210,11 @@ export class VehicleOffboardingService {
         offboardedAt,
       });
 
+      const activeLinks = await tx.vehicleDataSourceLink.findMany({
+        where: { vehicleId: input.vehicleId, isActive: true },
+        select: { id: true },
+      });
+
       await tx.vehicleDataSourceLink.updateMany({
         where: { vehicleId: input.vehicleId, isActive: true },
         data: {
@@ -215,6 +223,19 @@ export class VehicleOffboardingService {
           deactivationReason: 'VEHICLE_OFFBOARDED',
         },
       });
+
+      for (const link of activeLinks) {
+        await this.vsiProfileLifecycleEnqueue?.enqueueSourceLinkDeactivated(
+          {
+            organizationId: input.organizationId,
+            vehicleId: input.vehicleId,
+            providerSourceLinkId: link.id,
+            occurredAt: offboardedAt,
+            reason: 'VEHICLE_OFFBOARDED',
+          },
+          tx,
+        );
+      }
 
       await tx.vehicleProviderConsent.updateMany({
         where: {

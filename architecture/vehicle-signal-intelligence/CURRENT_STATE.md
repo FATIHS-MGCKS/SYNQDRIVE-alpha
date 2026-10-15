@@ -4,7 +4,7 @@
 |-------|-------|
 | **Registry coverage status** | `AUDIT_IN_PROGRESS` |
 | **Product focus** | Per-vehicle, per-provider-source-link **signal capability profiles** (declared vs observed) |
-| **Last updated** | 2026-10-15 |
+| **Last updated** | 2026-10-15 (P2 lifecycle implementation PR) |
 | **Product charter** | [`VSI_PRODUCT_CHARTER.md`](VSI_PRODUCT_CHARTER.md) |
 | **Master roadmap** | [`VSI_MASTER_ROADMAP.md`](VSI_MASTER_ROADMAP.md) |
 | **P0+P1 on `main`** | Merged PR #2034 @ `eb5f1f2ee` — **not** equivalent to Production deploy ([evidence](evidence/VSI_P0P1_MERGE_BASELINE_2026-10-15.md)) |
@@ -29,9 +29,17 @@
 - **Recovery** — `POST .../materialize?providerSourceLinkId=` re-reads VLS + cached preflight when the snapshot hook logged failure (no DIMO calls).
 - **Catalog scope** — Declared `availableSignals` evidence is **vehicle-scoped** from preflight tables (limitation `DECLARED_CATALOG_VEHICLE_SCOPED_NOT_PER_SOURCE_LINK`). When **more than one active** `VehicleDataSourceLink` exists, or the target link `provider !== DIMO`, materialization sets declared axes to **UNKNOWN** with `MULTI_ACTIVE_SOURCE_LINK_DECLARED_CATALOG_AMBIGUOUS` or `PROVIDER_IDENTITY_MISMATCH_DECLARED_CATALOG_DIMO_ONLY` (never LISTED/NOT_LISTED per link without provenance). Empirical axes remain link-scoped via VLS `providerBindingId`.
 
+## Implemented (P2 — in PR, not deployed)
+
+- **Lifecycle outbox** — `vsi_profile_lifecycle_outbox` with durable retry (`VsiProfileLifecycleOutboxWorker`).
+- **Onboarding trigger** — `SOURCE_LINK_ACTIVATED` enqueued from DIMO link create/reactivate and HM onboarding link create (same transaction).
+- **Deactivation reconciliation** — `SOURCE_LINK_DEACTIVATED` / `SUPERSEDED` append `SOURCE_LINK_*` limitations without deleting historical `signalsSnapshot`.
+- **Catalog advancement** — `DECLARED_CATALOG_ADVANCED` enqueued from driving-capability preflight upsert (vehicle-scoped; fan-out per active link in processor).
+- **Backfill** — bounded `planActiveVehicleProfileBackfill` + `ACTIVE_VEHICLE_BACKFILL_RECONCILE` event type (operator/CLI only; not auto-run in production).
+- **Signal registry expansion** — design doc only: [`research/VSI_SIGNAL_REGISTRY_EXPANSION_PLAN.md`](research/VSI_SIGNAL_REGISTRY_EXPANSION_PLAN.md).
+
 ## Explicit non-goals (this slice)
 
-- Vehicle Onboarding activation hook (P2).
 - APDS shadow wiring (P3).
 - VSI03 capture / strict-advance read flags.
 - Fleet UI surfacing.

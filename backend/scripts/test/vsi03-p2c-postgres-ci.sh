@@ -40,4 +40,5 @@ npx jest \
   --verbose \
   vsi-provider-source-observation.postgres.integration \
   vsi-provider-source-observation.concurrency.postgres.integration \
-  vsi-profile-materialization.postgres.integration
+  vsi-profile-materialization.postgres.integration \
+  vsi-profile-lifecycle.postgres.integration
