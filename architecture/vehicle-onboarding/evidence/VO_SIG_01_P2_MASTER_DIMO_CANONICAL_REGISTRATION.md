@@ -1,7 +1,8 @@
 # VO-SIG-01 P2 — Master Admin DIMO canonical registration
 
-**Status:** IMPLEMENTED (draft PR; no production cutover in this slice)  
-**Date:** 2026-10-14
+**Status:** **PRODUCTION** (`DEPLOYED_TECHNICALLY_VERIFIED` / `NATURAL_E2E_PENDING`)  
+**Production SHA:** `f5bb7bb0b35ca2ca1ccd69a24e73038d968761fb`  
+**Date:** 2026-10-14 (implementation) · 2026-10-15 (production closure record)
 
 ## Decision
 
@@ -45,8 +46,11 @@ Legacy inline `VehiclesService.registerFromDimo` vehicle create + fire-and-forge
 - Schema bridge migration `20261014183000_vo_sig_p2_vehicles_registration_scalar_bridge` aligns Prisma `Vehicle` registration scalars for CI/response contract
 - Frontend: `master-vehicle-registration.test.ts` (payload builders unchanged)
 
-## Non-goals (this PR)
+## Production closure
 
-- No production deploy, no new prod vehicle registrations
+See [VO_SIG_01_P2_PRODUCTION_DEPLOYMENT_CLOSURE.md](./VO_SIG_01_P2_PRODUCTION_DEPLOYMENT_CLOSURE.md). Natural E2E on production remains **pending** (owner has no spare vehicle; **do not** create synthetic prod registrations).
+
+## Non-goals (unchanged after deploy)
+
 - No legacy `onVehicleProvisioned` billing hook on this path (registry `VEHICLE_ACTIVATED` outbox only)
-- HM-only / manual create paths unchanged
+- HM-only / manual create paths unchanged (next-phase audit: [VO_NEXT_PHASE_REGISTRATION_PATH_AUDIT.md](../research/VO_NEXT_PHASE_REGISTRATION_PATH_AUDIT.md))

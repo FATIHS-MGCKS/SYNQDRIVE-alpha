@@ -5,7 +5,8 @@
 | **Sealed from** | VO-0A discovery audit |
 | **Repository anchor SHA** | `312d9f54a2b4c0b0740061d3e2b74897e78eacb0` |
 | **Authority status** | `AUDIT_IN_PROGRESS` — **not** `AUTHORITY_ACTIVE` |
-| **Last updated** | 2026-10-14 (VO-SIG-01 B1 production closure + P2 canonical Master DIMO registration — repo only, not production-deployed) |
+| **Last updated** | 2026-10-15 (VO-SIG-01 B1 + P2 production closure; natural E2E registration evidence pending) |
+| **Production release (VO-SIG P2)** | `f5bb7bb0b35ca2ca1ccd69a24e73038d968761fb` — see [VO_SIG_01_P2_PRODUCTION_DEPLOYMENT_CLOSURE.md](./evidence/VO_SIG_01_P2_PRODUCTION_DEPLOYMENT_CLOSURE.md) |
 
 ## Executive summary
 
@@ -19,7 +20,7 @@ SynqDrive today separates **provider mirrors** (`DimoVehicle`, `HighMobilityVehi
 - **DIMO mirror:** `DimoVehicle` (`dimo_vehicles`) — global per developer license sync, not tenant-scoped.
 - **HM provider state:** `HighMobilityVehicle` (`high_mobility_vehicles`) — clearance, streaming, optional `synqdriveVehicleId`.
 - **Provider-neutral bindings:** `VehicleDataSourceLink`, `VehicleProviderConsent` (schema comments designate extensible provider binding).
-- **VO-3 (2026-09-30):** `VehicleOnboardingModule` — internal case orchestration + atomic activation; legacy `registerFromDimo` / HM_ONLY / manual create **unchanged** (see [VO3_ORCHESTRATOR_ACTIVATION.md](./evidence/VO3_ORCHESTRATOR_ACTIVATION.md)).
+- **VO-3 (2026-09-30):** `VehicleOnboardingModule` — internal case orchestration + atomic activation (see [VO3_ORCHESTRATOR_ACTIVATION.md](./evidence/VO3_ORCHESTRATOR_ACTIVATION.md)). **VO-SIG P2 (2026-10-15 prod):** Master `register-from-dimo` **cut over** to this stack; **HM_ONLY** and **manual** `create` remain **legacy parallel** paths (see [research/VO_NEXT_PHASE_REGISTRATION_PATH_AUDIT.md](./research/VO_NEXT_PHASE_REGISTRATION_PATH_AUDIT.md)).
 - **VO-3.2 (2026-09-30):** Governed `attachDimoSource` / `attachHighMobilitySource` only (no public arbitrary snapshot attach); DIMO cutover auth invariant `VO-INV-DIMO-CUTOVER-AUTH-001` (see [VO3_2_FINAL_RUNTIME_SEAL.md](./evidence/VO3_2_FINAL_RUNTIME_SEAL.md)).
 - **VO-4 / VO-4.1 (2026-09-30):** `VehicleOnboardingReadinessService` + snapshot V2 + explicit `ProductSlug` entitlement + fingerprint v1.1 (incl. source evidence); HM source refresh; shared readiness mutation lock (see [VO4_READINESS_AUTHORITY.md](./evidence/VO4_READINESS_AUTHORITY.md)).
 - **VO-4.8 (2026-09-30):** Tenant-scoped authenticated capture HTTP (`VehicleOnboardingCaptureController`) — see [VO48_AUTHENTICATED_CAPTURE_API.md](./evidence/VO48_AUTHENTICATED_CAPTURE_API.md).
@@ -41,7 +42,7 @@ SynqDrive today separates **provider mirrors** (`DimoVehicle`, `HighMobilityVehi
 - **VO-SIG-01 P1 (2026-10-13):** Proposed vs verified modality separation, activation-time mirror revalidation + hardware device evidence, multi-provider per-ref identity, post-link snapshot parity; regression suite `vehicle-connection-identity.unit.spec.ts` (18 cases).
 - **VO-SIG-01 P1 closure (2026-10-13):** Device-binding assurance levels, link `metadata.connectionIdentity` persistence for VSI-03, PostgreSQL certification `vo-sig-01-connection-identity.postgres.integration.spec.ts`.
 - **VO-SIG-01 B1 (2026-10-13 code; 2026-10-14 production closure):** One-time legacy cohort reconciliation (`origin=LEGACY_RECONCILIATION`) for four DIMO source links — **operator-reported production execute completed 2026-10-14** (four links, four audits); **no repeat B1 backfill** required. Evidence: [VO_SIG_01_B1_LEGACY_CONNECTION_IDENTITY_RECONCILIATION.md](./evidence/VO_SIG_01_B1_LEGACY_CONNECTION_IDENTITY_RECONCILIATION.md). Draft PR #2018 **closed without merge** (superseded by operator SQL V3 execute path).
-- **VO-SIG-01 P2 (2026-10-14, implemented in repository — not production-deployed):** Master Admin `register-from-dimo` routes through canonical onboarding (`MasterDimoCanonicalRegistrationService` → capture/readiness/`VehicleOnboardingActivationService`); verified `metadata.connectionIdentity` via activation-time assertions; legacy inline vehicle create + `onVehicleProvisioned` hook **removed** from that HTTP path. Hardening: mandatory scalars + LV battery inside activation TX; **payload fingerprint bound atomically on case COMPLETED**; source-claim transaction lock + idempotent retry (changed payload → 409); entitlement-aware readiness (RENTAL/FLEET); single `VEHICLE_ACTIVATED` billing outbox per case; offboard/ARCHIVED suppression unchanged; Master UI surfaces tire post-activation enrichment failures without failing registration — see [VO_SIG_01_P2_MASTER_DIMO_CANONICAL_REGISTRATION.md](./evidence/VO_SIG_01_P2_MASTER_DIMO_CANONICAL_REGISTRATION.md) and [VO_SIG_01_P2_MASTER_DIMO_FIELD_PARITY.md](./evidence/VO_SIG_01_P2_MASTER_DIMO_FIELD_PARITY.md).
+- **VO-SIG-01 P2 (2026-10-14 code; 2026-10-15 production):** Master Admin `register-from-dimo` routes through canonical onboarding (`MasterDimoCanonicalRegistrationService` → capture/readiness/`VehicleOnboardingActivationService`); verified `metadata.connectionIdentity` via activation-time assertions; legacy inline vehicle create + `onVehicleProvisioned` hook **removed** from that HTTP path. Hardening: mandatory scalars + LV battery inside activation TX; **payload fingerprint bound atomically on case COMPLETED**; source-claim transaction lock + idempotent retry (changed payload → 409); entitlement-aware readiness (RENTAL/FLEET); single `VEHICLE_ACTIVATED` billing outbox per case; offboard/ARCHIVED suppression unchanged; Master UI surfaces tire post-activation enrichment failures without failing registration. **Deploy:** `f5bb7bb0b35ca2ca1ccd69a24e73038d968761fb`; operator replicas healthy; **natural E2E registration on production still pending** (no spare vehicle; do not create synthetic prod vehicles). Evidence: [VO_SIG_01_P2_PRODUCTION_DEPLOYMENT_CLOSURE.md](./evidence/VO_SIG_01_P2_PRODUCTION_DEPLOYMENT_CLOSURE.md), [VO_SIG_01_P2_MASTER_DIMO_CANONICAL_REGISTRATION.md](./evidence/VO_SIG_01_P2_MASTER_DIMO_CANONICAL_REGISTRATION.md), [VO_SIG_01_P2_MASTER_DIMO_FIELD_PARITY.md](./evidence/VO_SIG_01_P2_MASTER_DIMO_FIELD_PARITY.md).
 
 ---
 
@@ -113,7 +114,7 @@ SynqDrive today separates **provider mirrors** (`DimoVehicle`, `HighMobilityVehi
 ## G. Billing coupling
 
 - **Canonical activation:** `VEHICLE_ACTIVATED` outbox → `VehicleRegistryLifecycleOutboxProcessor` → `onVehicleProvisioned` (VO5B-AB1).
-- **Legacy:** `billingQuantity.onVehicleProvisioned` after manual `create` only; Master `registerFromDimo` uses registry `VEHICLE_ACTIVATED` outbox (VO-SIG P2 cutover).
+- **Legacy:** `billingQuantity.onVehicleProvisioned` after manual `create` only; Master `registerFromDimo` uses registry `VEHICLE_ACTIVATED` outbox only (VO-SIG P2 production cutover). HM_ONLY register path uses **neither** (billing gap — see next-phase audit).
 - `onVehicleRemoved` on deregister.
 - Policy: `BillableVehiclesService` / `evaluateBillableVehiclePolicy` (`backend/src/modules/billing/billable-vehicles.service.ts`) — billing owns billable semantics.
 
@@ -169,3 +170,7 @@ No unified onboarding lifecycle enum or readiness record.
 ## M. Open gaps
 
 See [contradictions/KNOWLEDGE_GAPS.md](./contradictions/KNOWLEDGE_GAPS.md) (`VO-GAP-001` … `VO-GAP-015`). VO-1 must not implement until authorized.
+
+**VO-SIG P2 production evidence gap (non-blocking):** live Master DIMO registration on production not yet executed — [VO_SIG_01_P2_PRODUCTION_DEPLOYMENT_CLOSURE.md](./evidence/VO_SIG_01_P2_PRODUCTION_DEPLOYMENT_CLOSURE.md).
+
+**Next-phase registration audit (read-only):** [research/VO_NEXT_PHASE_REGISTRATION_PATH_AUDIT.md](./research/VO_NEXT_PHASE_REGISTRATION_PATH_AUDIT.md).
