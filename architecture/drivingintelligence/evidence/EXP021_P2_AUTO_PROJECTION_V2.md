@@ -58,3 +58,70 @@ GPS L3 / S1 / S2 / calibration / QC evaluator unchanged; no null→0; no extra p
 
 - Unit: config + module bootstrap specs
 - Postgres: `di-v0-p2-auto-projection-v2.postgres.integration.spec.ts` (claim lease, discovery starvation, concurrency)
+
+## 2026-10-15 — Production P2 V2 `UNKNOWN` (diagnosis; root cause still open)
+
+### Timeline / SHA separation
+
+| When | SHA | Role |
+|------|-----|------|
+| Initial symptom window (deploy anchor) | `137251770926839b8105ae42da762191411423d4` | P2 active; outbox `FAILED_RETRYABLE` / `UNKNOWN`; preview `ASSESSED`; CURRENT V2 `0`. |
+| Diagnosis probes (same day, ~14:20–14:29 UTC) | `137251770926839b8105ae42da762191411423d4` | Read-only compute + **diagnostic** persist probe (see below). |
+| Re-verification (this correction pass) | `9b355f7b62eb8e82ec6e5d73fceeb216653a4ea2` | Parallel workstream deploy; **do not roll back** to `13725177…`. Outbox still `UNKNOWN`; CURRENT V2 still `0` for affected trips. |
+
+### Confirmed facts (not root cause)
+
+- `ORIGINAL_PRODUCTION_ROOT_CAUSE` = **UNKNOWN** (no captured stack / Prisma code / typed exception in available Production logs).
+- `ERROR_OBSERVABILITY_GAP` = **CONFIRMED** — outbox stores `last_error_code` only; P2 warn lines lacked `failureStep` + safe exception detail before PR #2037 diagnostic scope.
+- Schema on Production matches repo migrations (`20261013180000_*`, `20261015103000_*`, `20261015120000_*`).
+- Read-only compute + `JSON.stringify` OK for work item `f9a2801f-…` on diagnosis SHA.
+
+### Production diagnostic persist probe (mutation — documented)
+
+| Item | Value |
+|------|--------|
+| Time (approx.) | 2026-10-15 ~14:20–14:29 UTC (during Cloud Agent investigation on SHA `13725177…`) |
+| Path | `computeDiV0TripSpeedQualityProjectionV1ForWorkItem` → `DiV0TripSpeedQualityProjectionRepository.persistCurrentProjection` (full app `DATABASE_URL`, **not** nested outer transaction) |
+| Work item | `f9a2801f-a623-48ee-9337-33fe5e6cc155` |
+| Tables | `di_v0_trip_speed_quality_projections_v1` |
+| Transaction boundary | Repository-internal `prisma.$transaction` (advisory lock + supersede + INSERT + SELECT by `newId`) |
+| Committed effects | INSERT one row `id=d3ec591a-508f-48b9-b584-7930e5b0a43c`, `lifecycle_status=CURRENT`, `qc_policy_version=DI_V0_SPEED_QC_POLICY_V2` |
+| Follow-up | Separate `DELETE FROM di_v0_trip_speed_quality_projections_v1 WHERE id = d3ec591a-…` (same session; not provably same DB transaction as INSERT) |
+
+**Probe side-effect audit (read-only on SHA `9b355f7b62…`, 2026-10-15 ~14:50 UTC):**
+
+- Residual probe row `d3ec591a-…`: **not present** (`rowsFound=0`).
+- Projections for `f9a2801f-…` and `74896a4d-…`: **0 rows** (no CURRENT/SUPERSEDED audit trail from probe).
+- Global CURRENT V2 count: **0**.
+- Outbox unchanged by probe (scheduler continued retries: attempt counts 11 / 8; still `FAILED_RETRYABLE` / `UNKNOWN`).
+- **Limitation:** DELETE removes the inserted row only; it does **not** prove absence of other side effects (e.g. brief CURRENT scope lock, sequence-like counters, or concurrent scheduler interaction). Outbox was not reset.
+
+`PRODUCTION_MUTATIONS=YES_DIAGNOSTIC_INSERT_AND_DELETE` — no further Production writes in this workstream.
+
+### PR #2037 scope (diagnostic only — not a root-cause fix claim)
+
+- Structured, data-sparse P2 logs: `failureStep` ∈ `compute` \| `persist` \| `outbox_ack`, explicit projection codes via `instanceof` only for outbox terminal skip; Prisma **code string only** (no `meta`).
+- Does **not** claim to fix the original Production failure; goal is to capture the **first original exception** on a future deploy while natural retries run (`ENABLED_SINCE` / outbox backoff preserved).
+
+### Tests (honest scope)
+
+| Test | What it proves |
+|------|----------------|
+| `di-v0-p2-auto-projection-failure-log.unit.spec.ts` | Log shape + failureStep attachment; **not** Production failure reproduction. |
+| `(synthetic) FAILED_RETRYABLE … recovers` (Postgres) | Happy-path retry after manual outbox seeding; **does not** reproduce Production `UNKNOWN`. |
+| Existing P2 Postgres suite | Regression on known-good fixture persist; **does not** model Production trip data. |
+
+### Post-merge acceptance (two separate outcomes)
+
+| Outcome | Definition | Notes |
+|---------|------------|--------|
+| **DIAGNOSTIC_SUCCESS** | Original exception captured in backend logs with a **unique `failureStep`** (`compute` \| `persist` \| `outbox_ack`) tied to the executed operation. | Outbox `last_error_code` may remain **`UNKNOWN`**; diagnostic value is the log line (`errorKind`, optional `prismaCode`, clipped `message`). |
+| **PIPELINE_RECOVERY** | Natural scheduler retry (no outbox reset) yields outbox **`SUCCEEDED`** and a **`CURRENT`** V2 projection for the work item; identity + content verified **read-only** afterward. | Independent of whether `DIAGNOSTIC_SUCCESS` already occurred on an earlier attempt. |
+
+### Diagnostic deploy plan (after owner merge + authorized deploy — not executed in #2037)
+
+1. Merge PR **#2037** to `main` (observability only; no flag changes; API/UI OFF).
+2. Deploy target commit = merge commit on `main` that **contains** current Production `9b355f7b62…` **and** #2037; **no** rollback to `13725177…`.
+3. Preserve `DI_V0_P2_AUTO_PROJECTION_V2_ENABLED_SINCE` and existing outbox backoff (`next_attempt_at`, `attempt_count`).
+4. Read-only observe per retry: work item id, `attempt_count`, outbox `status` / `last_error_code`, logs for `failureStep=`; on `SUCCEEDED`, read-only verify projection row (`work_item_id`, `qc_policy_version`, `lifecycle_status=CURRENT`, idempotency/fingerprint fields only — no raw `projection_json` dump in ops notes).
+5. Report **DIAGNOSTIC_SUCCESS** and **PIPELINE_RECOVERY** separately (either, both, or neither).
