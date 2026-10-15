@@ -36,6 +36,7 @@ import { EnergyEventsObservabilityModule } from '@modules/energy-events-observab
 import { EvaluationsApiObservabilityInterceptor } from '@modules/evaluations-observability/evaluations-api.interceptor';
 import { DimoModule } from '@modules/dimo/dimo.module';
 import { VehicleOnboardingModule } from '@modules/vehicle-onboarding/vehicle-onboarding.module';
+import { PhysicalDeviceInventoryModule } from '@modules/physical-device-inventory/physical-device-inventory.module';
 import { AiModule } from '@modules/ai/ai.module';
 import { IntegrationsModule } from '@modules/integrations/integrations.module';
 import { BillingModule } from '@modules/billing/billing.module';
@@ -240,6 +241,7 @@ export class AppModule {
         VehicleIntelligenceModule,
         DimoModule,
         VehicleOnboardingModule,
+        PhysicalDeviceInventoryModule,
         AiModule,
         IntegrationsModule,
         BillingModule,

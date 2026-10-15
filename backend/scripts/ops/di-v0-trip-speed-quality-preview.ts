@@ -9,6 +9,8 @@
  *   A) CLI flags: --organizationId <uuid> --tripId <uuid> --workItemId <uuid>
  *   B) Env bundle: DI_V0_P21_ORGANIZATION_ID, DI_V0_P21_TRIP_ID, DI_V0_P21_WORK_ITEM_ID (all three)
  *
+ * Optional QC policy (defaults V1): --qcPolicyVersion or DI_V0_P21_QC_POLICY_VERSION
+ *
  * Generic ORGANIZATION_ID is intentionally NOT accepted.
  */
 import { PrismaClient } from '@prisma/client';
@@ -43,6 +45,7 @@ export async function runDiV0TripSpeedQualityPreviewCli(
       organizationId: scope.organizationId,
       tripId: scope.tripId,
       workItemId: scope.workItemId,
+      qcPolicyVersion: scope.qcPolicyVersion,
     });
     await writeStdoutLine(JSON.stringify(report, null, 2));
     return exitCodeForPreviewOutcome(report.outcome);

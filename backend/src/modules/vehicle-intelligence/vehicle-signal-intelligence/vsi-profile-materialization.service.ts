@@ -160,7 +160,12 @@ export class VsiSignalProfileMaterializationService {
       return null;
     }
 
-    const declared = await this.declaredCatalog.resolveForVehicle(organizationId, vehicleId);
+    const declared = await this.declaredCatalog.resolveForMaterialization(
+      organizationId,
+      vehicleId,
+      providerSourceLinkId,
+      link.provider,
+    );
 
     if (
       existingProfile &&

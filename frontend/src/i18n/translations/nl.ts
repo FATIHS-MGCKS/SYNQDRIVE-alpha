@@ -1,7 +1,9 @@
 import type { PartialTranslationDictionary } from '../dictionary-types';
 import { rentalLegacyGapNL } from './rental-legacy-gap.nl';
+import { rentalTripGpsSpeedEvaluationNl } from './rental.tripGpsSpeedEvaluation.nl';
 import { dimoWebhookHealthNl } from './dimo-webhook-health.nl';
 import { masterPlatformOpsDiS4Nl } from './master.platformOps.diS4.nl';
+import { masterPhysicalDeviceInventoryNl } from './master.physicalDeviceInventory.nl';
 
 // Dutch translations - start with English as base, override with Dutch
 export const nl = {
@@ -154,6 +156,8 @@ export const nl = {
   'documents.vehicleDocuments': 'Voertuigdocumenten', 'documents.monthlyFixedCosts': 'Maandelijkse vaste kosten',
   'customerDetail.title': 'Klantdetails', 'customerDetail.customerDocuments': 'Klantdocumenten', 'customerDetail.customerAlerts': 'Klantwaarschuwingen', 'customerDetail.customerNotes': 'Klantnotities',   'customerDetail.drivingScore': 'Rijscore',
   ...rentalLegacyGapNL,
+  ...rentalTripGpsSpeedEvaluationNl,
   ...dimoWebhookHealthNl,
   ...masterPlatformOpsDiS4Nl,
+  ...masterPhysicalDeviceInventoryNl,
 } satisfies PartialTranslationDictionary;

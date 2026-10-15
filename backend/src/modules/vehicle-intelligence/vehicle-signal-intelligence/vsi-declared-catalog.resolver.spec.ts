@@ -1,5 +1,9 @@
 import { DrivingCapabilityStatus } from '@prisma/client';
-import { VsiDeclaredCatalogResolver } from './vsi-declared-catalog.resolver';
+import {
+  VsiDeclaredCatalogResolver,
+  VSI_DECLARED_CATALOG_MULTI_ACTIVE_LINK_LIMITATION,
+  VSI_DECLARED_CATALOG_PROVIDER_MISMATCH_LIMITATION,
+} from './vsi-declared-catalog.resolver';
 import { VsiProviderCatalogStatus } from './vehicle-signal-evidence.contract';
 
 describe('VsiDeclaredCatalogResolver', () => {
@@ -47,5 +51,89 @@ describe('VsiDeclaredCatalogResolver', () => {
     expect(snapshot.byNativeSignalName.get('chassisBrakeIsPedalPressed')).toBe(
       VsiProviderCatalogStatus.NOT_LISTED,
     );
+  });
+
+  it('resolveForMaterialization forces UNKNOWN when multiple active source links exist', async () => {
+    const prisma = {
+      vehicleDrivingCapability: {
+        findMany: async () => [
+          {
+            signalName: 'lowVoltageBatteryCurrentVoltage',
+            capabilityStatus: DrivingCapabilityStatus.SUPPORTED,
+            checkedAt: new Date(),
+            metadata: { listedInAvailableSignals: true },
+          },
+        ],
+      },
+      vehicleBatteryCapability: { findMany: async () => [] },
+      vehicleDataSourceLink: { count: async () => 2 },
+    };
+    const resolver = new VsiDeclaredCatalogResolver(prisma as never);
+    const snapshot = await resolver.resolveForMaterialization(
+      'org',
+      'veh',
+      'link-a',
+      'DIMO',
+    );
+    expect(snapshot.limitations).toContain(VSI_DECLARED_CATALOG_MULTI_ACTIVE_LINK_LIMITATION);
+    expect(
+      resolver.catalogForCanonicalKey(snapshot, 'lv_voltage'),
+    ).toBe(VsiProviderCatalogStatus.UNKNOWN);
+  });
+
+  it('resolveForMaterialization forces UNKNOWN for non-DIMO link provider', async () => {
+    const prisma = {
+      vehicleDrivingCapability: {
+        findMany: async () => [
+          {
+            signalName: 'lowVoltageBatteryCurrentVoltage',
+            capabilityStatus: DrivingCapabilityStatus.SUPPORTED,
+            checkedAt: new Date(),
+            metadata: { listedInAvailableSignals: true },
+          },
+        ],
+      },
+      vehicleBatteryCapability: { findMany: async () => [] },
+      vehicleDataSourceLink: { count: async () => 1 },
+    };
+    const resolver = new VsiDeclaredCatalogResolver(prisma as never);
+    const snapshot = await resolver.resolveForMaterialization(
+      'org',
+      'veh',
+      'link-a',
+      'HIGH_MOBILITY',
+    );
+    expect(snapshot.limitations).toContain(VSI_DECLARED_CATALOG_PROVIDER_MISMATCH_LIMITATION);
+    expect(
+      resolver.catalogForCanonicalKey(snapshot, 'lv_voltage'),
+    ).toBe(VsiProviderCatalogStatus.UNKNOWN);
+  });
+
+  it('resolveForMaterialization preserves LISTED for single DIMO link', async () => {
+    const prisma = {
+      vehicleDrivingCapability: {
+        findMany: async () => [
+          {
+            signalName: 'lowVoltageBatteryCurrentVoltage',
+            capabilityStatus: DrivingCapabilityStatus.SUPPORTED,
+            checkedAt: new Date(),
+            metadata: { listedInAvailableSignals: true },
+          },
+        ],
+      },
+      vehicleBatteryCapability: { findMany: async () => [] },
+      vehicleDataSourceLink: { count: async () => 1 },
+    };
+    const resolver = new VsiDeclaredCatalogResolver(prisma as never);
+    const snapshot = await resolver.resolveForMaterialization(
+      'org',
+      'veh',
+      'link-a',
+      'DIMO',
+    );
+    expect(snapshot.limitations).not.toContain(VSI_DECLARED_CATALOG_MULTI_ACTIVE_LINK_LIMITATION);
+    expect(
+      resolver.catalogForCanonicalKey(snapshot, 'lv_voltage'),
+    ).toBe(VsiProviderCatalogStatus.LISTED);
   });
 });

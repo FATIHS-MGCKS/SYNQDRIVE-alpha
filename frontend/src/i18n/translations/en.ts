@@ -48,6 +48,7 @@ import { whatsappEn } from './whatsapp.en';
 import { rentalVehicleDocumentsEn } from './rental.vehicleDocuments.en';
 import { rentalDocumentIntakeEn } from './rental.documentIntake.en';
 import { rentalVehicleDamagesEn } from './rental.vehicleDamages.en';
+import { rentalTripGpsSpeedEvaluationEn } from './rental.tripGpsSpeedEvaluation.en';
 import { rentalIamMemberEn } from './rental.iamMember.en';
 import { rentalMisuseStressEn } from './rental.misuseStress.en';
 import { rentalHelpCenterEn } from './rental.helpCenter.en';
@@ -55,6 +56,7 @@ import { rentalMicroChromeEn } from './rental.microChrome.en';
 import { rentalHostPresentationEn } from './rental.hostPresentation.en';
 import { rentalLegacyGapEN } from './rental-legacy-gap.en';
 import { masterPlatformOpsDiS4En } from './master.platformOps.diS4.en';
+import { masterPhysicalDeviceInventoryEn } from './master.physicalDeviceInventory.en';
 
 export const en = {
   // ─── Navigation / Sidebar ───
@@ -5939,6 +5941,7 @@ export const en = {
   ...rentalVehicleDocumentsEn,
   ...rentalDocumentIntakeEn,
   ...rentalVehicleDamagesEn,
+  ...rentalTripGpsSpeedEvaluationEn,
   ...rentalIamMemberEn,
   ...rentalMisuseStressEn,
   ...rentalHelpCenterEn,
@@ -5946,6 +5949,7 @@ export const en = {
   ...rentalHostPresentationEn,
   ...rentalLegacyGapEN,
   ...masterPlatformOpsDiS4En,
+  ...masterPhysicalDeviceInventoryEn,
 } as const;
 
 export type TranslationKey = keyof typeof en;

@@ -15,6 +15,14 @@ export type VsiDeclaredCatalogSnapshot = {
   limitations: string[];
 };
 
+/** Limitation when multiple active source links make vehicle-scoped preflight non-attributable. */
+export const VSI_DECLARED_CATALOG_MULTI_ACTIVE_LINK_LIMITATION =
+  'MULTI_ACTIVE_SOURCE_LINK_DECLARED_CATALOG_AMBIGUOUS';
+
+/** Limitation when DIMO-only cached preflight cannot be attributed to a non-DIMO link identity. */
+export const VSI_DECLARED_CATALOG_PROVIDER_MISMATCH_LIMITATION =
+  'PROVIDER_IDENTITY_MISMATCH_DECLARED_CATALOG_DIMO_ONLY';
+
 function readListedFlag(metadata: unknown): boolean | 'UNKNOWN' {
   if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
     return 'UNKNOWN';
@@ -130,6 +138,60 @@ export class VsiDeclaredCatalogResolver {
     }
 
     return { checkedAt, byNativeSignalName: byNative, limitations };
+  }
+
+  /**
+   * Per-link materialization view: never maps vehicle-scoped DIMO preflight to a specific
+   * providerSourceLinkId when attribution is ambiguous (multi active link or provider mismatch).
+   */
+  async resolveForMaterialization(
+    organizationId: string,
+    vehicleId: string,
+    providerSourceLinkId: string,
+    linkProvider: string,
+  ): Promise<VsiDeclaredCatalogSnapshot> {
+    const activeLinkCount = await this.prisma.vehicleDataSourceLink.count({
+      where: { vehicleId, isActive: true },
+    });
+
+    const base = await this.resolveForVehicle(organizationId, vehicleId);
+    const limitations = [...base.limitations];
+
+    if (linkProvider !== 'DIMO') {
+      limitations.push(VSI_DECLARED_CATALOG_PROVIDER_MISMATCH_LIMITATION);
+      return this.withDeclaredCatalogUnknown(base, limitations);
+    }
+
+    if (activeLinkCount > 1) {
+      limitations.push(VSI_DECLARED_CATALOG_MULTI_ACTIVE_LINK_LIMITATION);
+      return this.withDeclaredCatalogUnknown(base, limitations);
+    }
+
+    return { ...base, limitations };
+  }
+
+  private withDeclaredCatalogUnknown(
+    base: VsiDeclaredCatalogSnapshot,
+    limitations: string[],
+  ): VsiDeclaredCatalogSnapshot {
+    const byNative = new Map<string, VsiProviderCatalogStatus>();
+    for (const key of VSI_PROFILE_MATERIALIZATION_KEYS) {
+      const def = getVsiCanonicalSignalDefinition(key);
+      const native = def.primaryDimoSignalName;
+      if (native) {
+        byNative.set(native, VsiProviderCatalogStatus.UNKNOWN);
+      }
+    }
+    for (const native of base.byNativeSignalName.keys()) {
+      if (!byNative.has(native)) {
+        byNative.set(native, VsiProviderCatalogStatus.UNKNOWN);
+      }
+    }
+    return {
+      checkedAt: base.checkedAt,
+      byNativeSignalName: byNative,
+      limitations,
+    };
   }
 
   catalogForCanonicalKey(

@@ -1986,3 +1986,35 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | Opt-in `DI_V0_SPEED_QC_POLICY_V2`; null stationary band → `TRUSTED_LIMITED` / `OK_STATIONARY_NULL_SPEED`; projection policy provenance; compare ops script; evidence `EXP021_P1_V2_STATIONARY_SEMANTICS.md` |
 | FINDING | Pinned trip: 118/144 stationary candidates accepted; 691 trusted numeric unchanged; 0 intervals changed outside stationary candidates |
 | NON_EFFECTS | Default V1; no S2/calibration change; no deploy or runtime activation |
+
+### EXP-021 P1 V2 runtime integration readiness (2026-10-14)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Trace customer vs ops data path; Production read-only SHA; `projectForWorkItem` / `readCurrentOpsProjection` + preview CLI `qcPolicyVersion`; unit tests; evidence `EXP021_P1_V2_RUNTIME_INTEGRATION_READINESS.md` |
+| FINDING | V2 on main, not on Production `a4c3b1fc1d`; idempotency keys allow V1/V2 rows side by side; no product UI/API for trip speed QC |
+| NON_EFFECTS | No deploy, backfill, provider calls, or customer default policy flip |
+
+### EXP-021 P2 auto V2 projection after S4 completion (2026-10-15)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `di_v0_trip_speed_quality_auto_projection_outbox_v1`; `DiV0P2AutoProjectionV2Service` + leader scheduler; reuses `DiV0TripSpeedQualityProjectionService`; env `DI_V0_P2_AUTO_PROJECTION_V2_*` (default OFF); Postgres + unit tests; evidence `EXP021_P2_AUTO_PROJECTION_V2.md` |
+| WHY | Close gap between durable S4 PRIMARY completion and persisted V2 QC projection without coupling S4C T06 or enabling customer defaults |
+| NON_EFFECTS | No S4C import; no provider calls; no production flag flip; no unbounded enable backfill; V1 CURRENT rows preserved |
+
+### EXP-021 V2 GPS speed evaluation product read + trip detail UI (2026-10-15)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `GET …/trips/:tripId/gps-speed-evaluation-v2`; `DiV0TripSpeedQualityProductReadService` + product DTO; `TripGpsSpeedEvaluationPanel`; gates `DI_V0_TRIP_SPEED_QUALITY_V2_PRODUCT_READ_ENABLED` + `VITE_DI_V0_TRIP_SPEED_QUALITY_V2_PRODUCT_UI_ENABLED` (default OFF); evidence `EXP021_V2_PRODUCT_READ_PATH.md` |
+| WHY | Expose persisted V2 CURRENT projection on authorized trip detail read path without V1 aliasing or write side effects |
+| NON_EFFECTS | No P2 auto-write enablement; no production config flip; no provider calls; no speed curve invention |
+
+### EXP-021 P2 auto V2 projection — claim lease + discovery fix (2026-10-15)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Outbox `claim_token`/`claim_expires_at`; fenced acks; expired PROCESSING reclaim; discovery excludes existing outbox rows; Nest bootstrap `resolveDiV0P2AutoProjectionV2Bootstrap`; scheduler registry `di_v0_p2_auto_projection_v2`; expanded Postgres/module tests |
+| WHY | PR #2028 review: PROCESSING crash recovery, discovery starvation, invalid env must not block backend boot |
+| NON_EFFECTS | QC V2 semantics unchanged; no production activation |

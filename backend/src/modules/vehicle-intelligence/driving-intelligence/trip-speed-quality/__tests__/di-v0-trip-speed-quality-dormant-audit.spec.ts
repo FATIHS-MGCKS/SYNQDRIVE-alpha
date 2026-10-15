@@ -26,13 +26,12 @@ function walkTs(dir: string, acc: string[] = []): string[] {
 }
 
 describe('DI V0 P2 trip speed quality dormant-by-construction audit', () => {
-  it('trip-speed-quality module is not imported by AppModule or VehicleIntelligenceModule', () => {
+  it('trip-speed-quality module is not imported by AppModule (wired via VehicleIntelligenceModule only)', () => {
     const app = fs.readFileSync(path.join(REPO_ROOT, 'backend/src/app.module.ts'), 'utf8');
     const vi = fs.readFileSync(path.join(REPO_ROOT, 'backend/src/modules/vehicle-intelligence/vehicle-intelligence.module.ts'), 'utf8');
     expect(app.includes('trip-speed-quality')).toBe(false);
-    expect(vi.includes('trip-speed-quality')).toBe(false);
     expect(app.includes('DiV0TripSpeedQualityModule')).toBe(false);
-    expect(vi.includes('DiV0TripSpeedQualityModule')).toBe(false);
+    expect(vi.includes('DiV0TripSpeedQualityModule')).toBe(true);
   });
 
   it('negative: synthetic AppModule P2 registration would fail audit', () => {
@@ -69,6 +68,9 @@ describe('DI V0 P2 trip speed quality dormant-by-construction audit', () => {
         (f) =>
           f === 'index.ts' ||
           f.startsWith('di-v0-trip-speed-quality') ||
+          f.startsWith('di-v0-p2-auto-projection') ||
+          f.startsWith('di-v0-p21-') ||
+          f.startsWith('exp021-p21-') ||
           f.startsWith('build-di-v0-trip-speed'),
       ),
     ).toBe(true);

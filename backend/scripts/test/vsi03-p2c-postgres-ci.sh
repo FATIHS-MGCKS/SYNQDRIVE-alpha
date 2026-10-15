@@ -39,4 +39,5 @@ npx jest \
   --runInBand \
   --verbose \
   vsi-provider-source-observation.postgres.integration \
-  vsi-provider-source-observation.concurrency.postgres.integration
+  vsi-provider-source-observation.concurrency.postgres.integration \
+  vsi-profile-materialization.postgres.integration

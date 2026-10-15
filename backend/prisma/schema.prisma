@@ -1656,6 +1656,8 @@ model Organization {
   stations                                                  Station[]
   vehicleStationTransfers                                   VehicleStationTransfer[]
   vehicles                                                  Vehicle[]
+  physicalDevices                                           PhysicalDevice[]
+  physicalDeviceAssignments                                 PhysicalDeviceAssignment[]
   vehicleProviderSourceObservations                         VehicleProviderSourceObservation[]
   vehicleProviderSourceObservationCounters                  VehicleProviderSourceObservationCounter[]
   vehicleSignalCapabilityProfiles                           VehicleSignalCapabilityProfile[]
@@ -3090,6 +3092,7 @@ model Vehicle {
   brakingEventLedgerEntries              BrakingEventLedger[]
   dimoDeviceConnectionEvents             DimoDeviceConnectionEvent[]
   deviceConnectionEpisodes               DeviceConnectionEpisode[]
+  physicalDeviceAssignments              PhysicalDeviceAssignment[]
   deviceConnectionPhysicalStates         DeviceConnectionPhysicalState[]
   deviceConnectionPhysicalStateTransitions DeviceConnectionPhysicalStateTransition[]
   deviceConnectionPhysicalAuthorityCutovers DeviceConnectionPhysicalAuthorityCutover[]
@@ -12495,6 +12498,27 @@ model DiV0TripSpeedQualityProjectionV1 {
   @@map("di_v0_trip_speed_quality_projections_v1")
 }
 
+/// Durable post-S4 completion queue for P2 auto projection (feature OFF by default).
+model DiV0TripSpeedQualityAutoProjectionOutboxV1 {
+  workItemId       String   @id @map("work_item_id")
+  organizationId   String   @map("organization_id")
+  tripId           String   @map("trip_id")
+  qcPolicyVersion  String   @map("qc_policy_version")
+  status           String   @map("status")
+  attemptCount     Int      @default(0) @map("attempt_count")
+  nextAttemptAt    DateTime @map("next_attempt_at") @db.Timestamptz(6)
+  claimToken       String?  @map("claim_token")
+  claimExpiresAt   DateTime? @map("claim_expires_at") @db.Timestamptz(6)
+  lastErrorCode    String?  @map("last_error_code")
+  lastErrorAt      DateTime? @map("last_error_at") @db.Timestamptz(6)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([status, nextAttemptAt, createdAt], map: "di_v0_p2_auto_outbox_claim_idx")
+  @@index([organizationId, tripId], map: "di_v0_p2_auto_outbox_org_trip_idx")
+  @@map("di_v0_trip_speed_quality_auto_projection_outbox_v1")
+}
+
 /// Materialized driver attribution snapshot per trip (Driving Intelligence V2 P54).
 model DriverAttribution {
   id               String                       @id @default(uuid())
@@ -16617,6 +16641,111 @@ model VehicleConnectionIdentityReconciliationAudit {
   @@index([sourceLinkId])
   @@index([runId])
   @@map("vehicle_connection_identity_reconciliation_audits")
+}
+
+// ------------------------------------------------
+// PHYSICAL DEVICE INVENTORY (Master Admin — Phase 1A)
+// ------------------------------------------------
+
+enum PhysicalDeviceModelCode {
+  RUPTELA_R1
+  RUPTELA_AIR_ONE
+  SMART5
+  OTHER
+}
+
+enum PhysicalDeviceInventoryStatus {
+  AVAILABLE
+  RESERVED
+  INSTALLED
+  DEFECTIVE
+  LOST
+  RETIRED
+}
+
+enum PhysicalDeviceIdentityStatus {
+  VERIFIED
+  NEEDS_CLARIFICATION
+}
+
+enum PhysicalDeviceIntakeSource {
+  MANUAL_MASTER_ADMIN
+}
+
+enum PhysicalDeviceAssignmentKind {
+  INVENTORY_INTAKE
+}
+
+enum PhysicalDeviceInventoryAuditEventKind {
+  MANUAL_INTAKE
+}
+
+model PhysicalDevice {
+  id                      String                       @id @default(uuid())
+  internalInventoryNumber String                       @unique @map("internal_inventory_number")
+  manufacturer            String
+  modelCode               PhysicalDeviceModelCode      @map("model_code")
+  serialNumber            String?                      @map("serial_number")
+  imei                    String?                      @map("imei")
+  ownerOrganizationId     String?                      @map("owner_organization_id")
+  warehouseLocation       String                       @map("warehouse_location")
+  status                  PhysicalDeviceInventoryStatus
+  identityStatus          PhysicalDeviceIdentityStatus @map("identity_status")
+  recordedAt              DateTime                     @map("recorded_at")
+  intakeSource            PhysicalDeviceIntakeSource   @map("intake_source")
+  identityEvidenceJson    Json?                        @map("identity_evidence_json")
+  intakeNotes             String?                      @map("intake_notes")
+  createdByUserId         String?                      @map("created_by_user_id")
+  createdAt               DateTime                     @default(now()) @map("created_at")
+  updatedAt               DateTime                     @updatedAt @map("updated_at")
+
+  ownerOrganization Organization?                    @relation(fields: [ownerOrganizationId], references: [id], onDelete: SetNull)
+  assignments       PhysicalDeviceAssignment[]
+  auditEvents       PhysicalDeviceInventoryAuditEvent[]
+
+  @@index([ownerOrganizationId])
+  @@index([warehouseLocation])
+  @@index([status])
+  @@index([modelCode])
+  @@map("physical_devices")
+}
+
+model PhysicalDeviceAssignment {
+  id               String                      @id @default(uuid())
+  physicalDeviceId String                      @map("physical_device_id")
+  organizationId   String?                     @map("organization_id")
+  vehicleId        String?                     @map("vehicle_id")
+  assignmentKind   PhysicalDeviceAssignmentKind @map("assignment_kind")
+  effectiveFrom    DateTime                    @map("effective_from")
+  effectiveTo      DateTime?                   @map("effective_to")
+  idempotencyKey   String?                     @unique @map("idempotency_key")
+  actorUserId      String?                     @map("actor_user_id")
+  metadataJson     Json?                       @map("metadata_json")
+  createdAt        DateTime                    @default(now()) @map("created_at")
+
+  physicalDevice PhysicalDevice @relation(fields: [physicalDeviceId], references: [id], onDelete: Restrict)
+  organization   Organization?  @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  vehicle        Vehicle?       @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+
+  @@index([physicalDeviceId, effectiveFrom])
+  @@index([vehicleId])
+  @@index([organizationId])
+  @@map("physical_device_assignments")
+}
+
+model PhysicalDeviceInventoryAuditEvent {
+  id                 String                               @id @default(uuid())
+  physicalDeviceId   String                               @map("physical_device_id")
+  eventKind          PhysicalDeviceInventoryAuditEventKind @map("event_kind")
+  actorUserId        String?                              @map("actor_user_id")
+  payloadFingerprint String                               @map("payload_fingerprint")
+  evidenceJson       Json                                 @map("evidence_json")
+  createdAt          DateTime                             @default(now()) @map("created_at")
+
+  physicalDevice PhysicalDevice @relation(fields: [physicalDeviceId], references: [id], onDelete: Restrict)
+
+  @@index([physicalDeviceId, createdAt])
+  @@map("physical_device_inventory_audit_events")
 }
 
 // ------------------------------------------------

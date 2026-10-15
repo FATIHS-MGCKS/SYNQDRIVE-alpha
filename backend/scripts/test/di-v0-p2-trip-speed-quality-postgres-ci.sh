@@ -75,5 +75,28 @@ if ! grep -qE "Tests:[[:space:]]+${EXPECTED_PREVIEW_POSTGRES_TESTS} passed" "$PR
   exit 1
 fi
 
+EXPECTED_AUTO_V2_TESTS=14
+AUTO_LOG="$(mktemp /tmp/di-v0-p2-auto-v2-postgres-ci.XXXXXX.log)"
+trap 'rm -f "$LOG" "$PREVIEW_LOG" "$AUTO_LOG"' EXIT
+
+set +e
+npx jest --runInBand --forceExit --verbose \
+  src/modules/vehicle-intelligence/driving-intelligence/trip-speed-quality/__tests__/di-v0-p2-auto-projection-v2.postgres.integration.spec.ts \
+  2>&1 | tee "$AUTO_LOG"
+auto_status=${PIPESTATUS[0]}
+set -e
+
+if [[ "$auto_status" -ne 0 ]]; then
+  echo "P2 auto projection V2 Postgres jest suite failed (exit $auto_status)" >&2
+  exit "$auto_status"
+fi
+
+if ! grep -qE "Tests:[[:space:]]+${EXPECTED_AUTO_V2_TESTS} passed" "$AUTO_LOG"; then
+  echo "P2 auto V2 Postgres CI expected exactly ${EXPECTED_AUTO_V2_TESTS} passing tests; output:" >&2
+  grep -E '^Tests:' "$AUTO_LOG" >&2 || true
+  exit 1
+fi
+
 echo "P2 trip speed quality Postgres CI OK (${EXPECTED_POSTGRES_TESTS}/${EXPECTED_POSTGRES_TESTS})"
 echo "P2.1 preview Postgres CI OK (${EXPECTED_PREVIEW_POSTGRES_TESTS}/${EXPECTED_PREVIEW_POSTGRES_TESTS})"
+echo "P2 auto projection V2 Postgres CI OK (${EXPECTED_AUTO_V2_TESTS}/${EXPECTED_AUTO_V2_TESTS})"

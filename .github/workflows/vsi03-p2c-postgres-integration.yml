@@ -6,6 +6,7 @@ on:
       - 'backend/src/modules/vehicle-intelligence/vehicle-signal-intelligence/**'
       - 'backend/prisma/migrations/20261014200000_vsi03_p2c_provider_source_observations/**'
       - 'backend/prisma/migrations/20261014210000_vsi03_p2c_r1_continuity_hardening/**'
+      - 'backend/prisma/migrations/20261015120000_vsi_signal_capability_profiles/**'
       - 'backend/prisma/schema.prisma'
       - 'backend/scripts/test/vsi03-p2c-postgres-ci.sh'
       - '.github/workflows/vsi03-p2c-postgres-integration.yml'

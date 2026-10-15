@@ -19,6 +19,7 @@ import { resolveBehaviorEventCount } from './trip-assessment-copy';
 import { TripEvidencePanel } from './TripEvidencePanel';
 import { TripDeviceConnectionEvidence } from './TripDeviceConnectionEvidence';
 import { TripRpmCandidatesList } from './TripRpmCandidatesList';
+import { TripGpsSpeedEvaluationPanel } from './TripGpsSpeedEvaluationPanel';
 import { TIMELINE_COPY, RENTAL_COPY, TRIPS_COPY, tv } from './trips-view-ui';
 import type { TripRentalContextView } from './utils/tripRentalContext';
 import type { TripBehaviorEvent, TripTimelineTrip } from './timeline.types';
@@ -222,6 +223,8 @@ export function TripTimelineExpanded({
         <TripDeviceConnectionEvidence vehicleId={vehicleId} tripId={trip.id} />
 
         <TripRpmCandidatesList vehicleId={vehicleId} tripId={trip.id} />
+
+        <TripGpsSpeedEvaluationPanel vehicleId={vehicleId} tripId={trip.id} />
 
         <TimelineSection title={TIMELINE_COPY.sectionBehavior}>
           <TripBehaviorPanel

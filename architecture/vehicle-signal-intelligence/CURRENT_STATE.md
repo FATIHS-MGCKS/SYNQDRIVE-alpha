@@ -24,7 +24,7 @@
 - **Materialization** — non-blocking post-VLS upsert hook in `dimo-snapshot.processor.ts`.
 - **Inspection** — `GET api/v1/internal/vsi/signal-profiles/organizations/:organizationId/vehicles/:vehicleId` (`MASTER_ADMIN`).
 - **Recovery** — `POST .../materialize?providerSourceLinkId=` re-reads VLS + cached preflight when the snapshot hook logged failure (no DIMO calls).
-- **Catalog scope** — Declared `availableSignals` evidence is **vehicle-scoped** from preflight tables (limitation `DECLARED_CATALOG_VEHICLE_SCOPED_NOT_PER_SOURCE_LINK`); empirical axes remain link-attributed via VLS `providerBindingId`.
+- **Catalog scope** — Declared `availableSignals` evidence is **vehicle-scoped** from preflight tables (limitation `DECLARED_CATALOG_VEHICLE_SCOPED_NOT_PER_SOURCE_LINK`). When **more than one active** `VehicleDataSourceLink` exists, or the target link `provider !== DIMO`, materialization sets declared axes to **UNKNOWN** with `MULTI_ACTIVE_SOURCE_LINK_DECLARED_CATALOG_AMBIGUOUS` or `PROVIDER_IDENTITY_MISMATCH_DECLARED_CATALOG_DIMO_ONLY` (never LISTED/NOT_LISTED per link without provenance). Empirical axes remain link-scoped via VLS `providerBindingId`.
 
 ## Explicit non-goals (this slice)
 

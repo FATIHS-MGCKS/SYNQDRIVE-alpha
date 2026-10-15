@@ -36,6 +36,63 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'exp021-v2-product-read-path-2026-10-15',
+    version: '4.9.2245',
+    title: 'EXP021 — V2 GPS speed evaluation product read + trip detail panel (default OFF)',
+    summary: [
+      'GET /vehicles/:vehicleId/trips/:tripId/gps-speed-evaluation-v2 returns slim DiV0TripGpsSpeedEvaluationProductV1 from CURRENT V2 projection only (readCurrentOpsProjection + tenant/trip guards).',
+      'TripGpsSpeedEvaluationPanel in TripTimelineExpanded; separate gates DI_V0_TRIP_SPEED_QUALITY_V2_PRODUCT_READ_ENABLED and VITE_DI_V0_TRIP_SPEED_QUALITY_V2_PRODUCT_UI_ENABLED.',
+      'Null metrics stay “not available”; stationary intervals shown apart from numeric coverage; no V1-as-V2 or write/provider side effects.',
+    ],
+    reason:
+      'After merged P2 auto-projection (#2028), expose authorized trip-detail read/UI without enabling customer runtime or P2 writes.',
+    previousBehavior:
+      'V2 CURRENT rows ops-only; no customer API or trip detail surface for GPS speed QC.',
+    details:
+      'di-v0-trip-speed-quality-product-read.*, vehicle-intelligence.controller.ts, TripGpsSpeedEvaluationPanel.tsx, EXP021_V2_PRODUCT_READ_PATH.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-15T07:05:00.000Z',
+  },
+  {
+    id: 'exp021-p2-auto-projection-v2-2026-10-15',
+    version: '4.9.2244',
+    title: 'EXP021 — P2 auto V2 trip speed QC after S4 completion (dormant default)',
+    summary: [
+      'Durable outbox + leader-guarded scheduler enqueues eligible COMPLETED S4 PRIMARY work items and runs existing P2 projection with DI_V0_SPEED_QC_POLICY_V2.',
+      'Feature OFF unless DI_V0_P2_AUTO_PROJECTION_V2_ENABLED + required ENABLED_SINCE (forward-only scope); S4C executor completion path unchanged.',
+      'Read path for next API/UI: readCurrentOpsProjection(organizationId, tripId, DI_V0_SPEED_QC_POLICY_V2) and outbox status for backlog ops.',
+    ],
+    reason:
+      'After #2027 policy passthrough on main, automate persisted V2 evaluation post-S4 without a second calculator or customer runtime activation.',
+    previousBehavior:
+      'V2 projection required explicit ops persist/CLI; no durable post-S4 follow-up scheduler.',
+    details:
+      'di-v0-p2-auto-projection-v2.*, di-v0-p2-auto-projection-outbox.repository.ts, migration di_v0_trip_speed_quality_auto_projection_outbox_v1, EXP021_P2_AUTO_PROJECTION_V2.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-15T05:00:00.000Z',
+  },
+  {
+    id: 'exp021-p1-v2-runtime-integration-readiness-2026-10-14',
+    version: '4.9.2243',
+    title: 'EXP021 — P1 V2 QC policy runtime integration readiness (ops opt-in)',
+    summary: [
+      'Documents end-to-end path: pinned S4 snapshot → shadow intervals → P1 QC (qcPolicyVersion) → P2 projection; persist/read remain ops-only (module not in AppModule).',
+      'DiV0TripSpeedQualityProjectionService forwards optional qcPolicyVersion on project/read (default V1); preview CLI adds --qcPolicyVersion / DI_V0_P21_QC_POLICY_VERSION.',
+      'Production release a4c3b1fc1d observed pre-V2; customer UI/API unchanged — V2 requires deploy + explicit ops policy selection.',
+    ],
+    reason:
+      'After #2020/#2021/#2025 on main, close the gap between merged V2 semantics and callable persist/preview paths without flipping customer defaults.',
+    previousBehavior:
+      'P2 engine/preview accepted qcPolicyVersion but persist service and preview CLI always implied V1; V2 only in forensic compare scripts.',
+    details:
+      'di-v0-trip-speed-quality-projection.service.ts, di-v0-trip-speed-quality-preview-cli.scope.ts, architecture/drivingintelligence/evidence/EXP021_P1_V2_RUNTIME_INTEGRATION_READINESS.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-14T21:50:00.000Z',
+  },
+  {
     id: 'vo-sig-01-p1-connection-identity-2026-10-13',
     version: '4.9.2242',
     title: 'VO-SIG-01 P1 — verified connection modality + activation identity enforcement',

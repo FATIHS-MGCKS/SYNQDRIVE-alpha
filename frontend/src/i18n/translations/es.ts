@@ -1,7 +1,9 @@
 import type { PartialTranslationDictionary } from '../dictionary-types';
 import { rentalLegacyGapES } from './rental-legacy-gap.es';
+import { rentalTripGpsSpeedEvaluationEs } from './rental.tripGpsSpeedEvaluation.es';
 import { dimoWebhookHealthEs } from './dimo-webhook-health.es';
 import { masterPlatformOpsDiS4Es } from './master.platformOps.diS4.es';
+import { masterPhysicalDeviceInventoryEs } from './master.physicalDeviceInventory.es';
 
 export const es = {
   'dashboard.welcomeBack': 'Bienvenido de nuevo, {name}',
@@ -153,6 +155,8 @@ export const es = {
   'documents.vehicleDocuments': 'Documentos del vehiculo', 'documents.monthlyFixedCosts': 'Costes fijos mensuales',
   'customerDetail.title': 'Detalles del cliente', 'customerDetail.customerDocuments': 'Documentos del cliente', 'customerDetail.customerAlerts': 'Alertas del cliente', 'customerDetail.customerNotes': 'Notas del cliente',   'customerDetail.drivingScore': 'Puntuacion de conduccion',
   ...rentalLegacyGapES,
+  ...rentalTripGpsSpeedEvaluationEs,
   ...dimoWebhookHealthEs,
   ...masterPlatformOpsDiS4Es,
+  ...masterPhysicalDeviceInventoryEs,
 } satisfies PartialTranslationDictionary;

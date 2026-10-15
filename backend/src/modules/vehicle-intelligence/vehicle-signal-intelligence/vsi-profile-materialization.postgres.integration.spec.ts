@@ -9,6 +9,7 @@ import { VsiSignalProfileMaterializationService } from './vsi-profile-materializ
 import {
   createLegacyDimoLinkFixture,
   createLegacyReconcileOrg,
+  insertDimoMirrorRaw,
 } from '../../vehicle-onboarding/connection-identity/legacy-reconciliation/legacy-reconciliation-postgres.fixture';
 import { VO_PG_DIMO_SOFTWARE_RAW_JSON } from '../../vehicle-onboarding/testing/dimo-mirror-postgres.fixture';
 import { DRIVING_CAPABILITY_PROVIDER } from '../driving-capability/vehicle-driving-capability.types';
@@ -346,6 +347,102 @@ async function cleanupProfiles(prisma: PrismaClient, organizationId: string) {
       },
     });
     expect(row?.lastMaterializedSourceTimestamp?.toISOString()).toBe(newer.toISOString());
+
+    await cleanupProfiles(prisma, organizationId);
+  });
+
+  it('declared catalog UNKNOWN when vehicle has multiple active source links', async () => {
+    const organizationId = await createLegacyReconcileOrg(prisma);
+    const fixture = await createLegacyDimoLinkFixture(prisma, {
+      organizationId,
+      externalId: `0x${randomUUID().replace(/-/g, '')}`,
+      rawJson: RUPTELA_RAW_JSON,
+    });
+
+    const secondDimoId = randomUUID();
+    const secondExternalId = `0x${randomUUID().replace(/-/g, '')}`;
+    await insertDimoMirrorRaw(prisma, {
+      id: secondDimoId,
+      externalId: secondExternalId,
+      rawJson: RUPTELA_RAW_JSON,
+    });
+    const secondConsentId = randomUUID();
+    await prisma.vehicleProviderConsent.create({
+      data: {
+        id: secondConsentId,
+        vehicleId: fixture.vehicleId,
+        organizationId,
+        provider: 'DIMO',
+        grantType: 'DIMO_DIRECT',
+        status: 'ACTIVE',
+        scopes: [],
+      },
+    });
+    const secondLinkId = randomUUID();
+    await prisma.vehicleDataSourceLink.create({
+      data: {
+        id: secondLinkId,
+        vehicleId: fixture.vehicleId,
+        provider: 'DIMO',
+        sourceType: 'DIMO',
+        sourceSubtype: 'TEST_SECOND_ACTIVE_LINK',
+        dimoVehicleId: secondDimoId,
+        consentId: secondConsentId,
+        isActive: true,
+        metadata: { provenance: 'test-second-link' },
+      },
+    });
+
+    await prisma.vehicleDrivingCapability.create({
+      data: {
+        organizationId,
+        vehicleId: fixture.vehicleId,
+        hardwareProfile: 'LTE_R1',
+        providerSource: DRIVING_CAPABILITY_PROVIDER.DIMO_TELEMETRY,
+        signalName: 'lowVoltageBatteryCurrentVoltage',
+        capabilityKey: 'lowVoltageBatteryCurrentVoltage',
+        capabilityStatus: DrivingCapabilityStatus.SUPPORTED,
+        firstSeenAt: new Date(),
+        lastSeenAt: new Date(),
+        checkedAt: new Date(),
+        capabilityVersion: 'test',
+        metadata: { listedInAvailableSignals: true },
+      },
+    });
+
+    const ts = new Date('2026-10-18T10:00:00Z');
+    await upsertVlsForTest(prisma, {
+      vehicleId: fixture.vehicleId,
+      linkId: fixture.linkId,
+      sourceTimestamp: ts,
+      providerFetchedAt: ts,
+      lvBatteryVoltage: 12.4,
+      rawPayloadJson: {
+        lowVoltageBatteryCurrentVoltage: { value: 12.4, timestamp: ts.toISOString() },
+      },
+    });
+
+    await service.materializeFromPersistedEvidence({
+      organizationId,
+      vehicleId: fixture.vehicleId,
+      providerSourceLinkId: fixture.linkId,
+    });
+
+    const row = await prisma.vehicleSignalCapabilityProfile.findUnique({
+      where: {
+        organizationId_vehicleId_providerSourceLinkId: {
+          organizationId,
+          vehicleId: fixture.vehicleId,
+          providerSourceLinkId: fixture.linkId,
+        },
+      },
+    });
+    const lv = (row?.signalsSnapshot as { canonicalSignalKey: string; declaredSupport: string }[]).find(
+      (s) => s.canonicalSignalKey === 'lv_voltage',
+    );
+    expect(lv?.declaredSupport).toBe('UNKNOWN');
+    const limitations = row?.profileLimitations as string[];
+    expect(limitations).toContain('MULTI_ACTIVE_SOURCE_LINK_DECLARED_CATALOG_AMBIGUOUS');
 
     await cleanupProfiles(prisma, organizationId);
   });

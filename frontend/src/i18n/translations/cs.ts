@@ -1,7 +1,9 @@
 import type { PartialTranslationDictionary } from '../dictionary-types';
 import { rentalLegacyGapCS } from './rental-legacy-gap.cs';
+import { rentalTripGpsSpeedEvaluationCs } from './rental.tripGpsSpeedEvaluation.cs';
 import { dimoWebhookHealthCs } from './dimo-webhook-health.cs';
 import { masterPlatformOpsDiS4Cs } from './master.platformOps.diS4.cs';
+import { masterPhysicalDeviceInventoryCs } from './master.physicalDeviceInventory.cs';
 
 export const cs = {
   'dashboard.welcomeBack': 'Vítejte zpět, {name}',
@@ -153,6 +155,8 @@ export const cs = {
   'documents.vehicleDocuments': 'Dokumenty vozidla', 'documents.monthlyFixedCosts': 'Mesicni fixni naklady',
   'customerDetail.title': 'Detail zakaznika', 'customerDetail.customerDocuments': 'Dokumenty zakaznika', 'customerDetail.customerAlerts': 'Upozorneni zakaznika', 'customerDetail.customerNotes': 'Poznamky zakaznika',   'customerDetail.drivingScore': 'Skore jizdy',
   ...rentalLegacyGapCS,
+  ...rentalTripGpsSpeedEvaluationCs,
   ...dimoWebhookHealthCs,
   ...masterPlatformOpsDiS4Cs,
+  ...masterPhysicalDeviceInventoryCs,
 } satisfies PartialTranslationDictionary;

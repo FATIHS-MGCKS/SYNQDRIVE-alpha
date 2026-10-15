@@ -61,6 +61,7 @@ export const SINGLETON_GLOBAL_SCHEDULER_NAMES = [
   'di_v0_s4_discovery',
   'di_v0_s4_drift_watcher',
   'di_v0_s4_maintenance_reaper',
+  'di_v0_p2_auto_projection_v2',
 ] as const;
 
 export type SingletonGlobalSchedulerName =
