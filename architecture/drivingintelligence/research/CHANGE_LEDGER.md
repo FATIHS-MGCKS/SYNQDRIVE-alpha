@@ -2002,3 +2002,11 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | `di_v0_trip_speed_quality_auto_projection_outbox_v1`; `DiV0P2AutoProjectionV2Service` + leader scheduler; reuses `DiV0TripSpeedQualityProjectionService`; env `DI_V0_P2_AUTO_PROJECTION_V2_*` (default OFF); Postgres + unit tests; evidence `EXP021_P2_AUTO_PROJECTION_V2.md` |
 | WHY | Close gap between durable S4 PRIMARY completion and persisted V2 QC projection without coupling S4C T06 or enabling customer defaults |
 | NON_EFFECTS | No S4C import; no provider calls; no production flag flip; no unbounded enable backfill; V1 CURRENT rows preserved |
+
+### EXP-021 P2 auto V2 projection — claim lease + discovery fix (2026-10-15)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | Outbox `claim_token`/`claim_expires_at`; fenced acks; expired PROCESSING reclaim; discovery excludes existing outbox rows; Nest bootstrap `resolveDiV0P2AutoProjectionV2Bootstrap`; scheduler registry `di_v0_p2_auto_projection_v2`; expanded Postgres/module tests |
+| WHY | PR #2028 review: PROCESSING crash recovery, discovery starvation, invalid env must not block backend boot |
+| NON_EFFECTS | QC V2 semantics unchanged; no production activation |

@@ -106,6 +106,7 @@ import {
       qcPolicyVersion: DI_V0_SPEED_QC_POLICY_V2,
       enabledSince: new Date(Date.now() - 120_000),
       limit: 10,
+      now: new Date(),
     });
     const expired = new Date(Date.now() - 1_000);
     await db.$executeRaw`
@@ -172,6 +173,7 @@ import {
       qcPolicyVersion: DI_V0_SPEED_QC_POLICY_V2,
       enabledSince: new Date(Date.now() - 120_000),
       limit: 5,
+      now: new Date(),
     });
     expect(discovered).toBe(1);
     await cleanupP2Tenant(db, fx.tenant);
@@ -220,13 +222,13 @@ import {
         shadow_run_id, pinned_snapshot_hash, pinned_at, pinned_epoch, combined_input_identity, execution_identity,
         now(), NULL, settlement_anchor_at, eligible_at
       FROM di_v0_s4_work_items WHERE id = ${olderId}`;
-    await db.$executeRaw`
-      INSERT INTO di_v0_trip_speed_quality_auto_projection_outbox_v1 (
-        work_item_id, organization_id, trip_id, qc_policy_version, status, next_attempt_at
-      ) VALUES (${olderId}, ${fx.tenant.organizationId}, ${fx.tenant.tripId}, ${DI_V0_SPEED_QC_POLICY_V2}, 'PENDING', now())`;
     const passNew = await mkSvc(enabledConfig()).runPass();
     expect(passNew.succeeded).toBe(1);
     expect(await currentV2ProjectionCount(fx.tenant.tripId)).toBe(1);
+    await db.$executeRaw`
+      INSERT INTO di_v0_trip_speed_quality_auto_projection_outbox_v1 (
+        work_item_id, organization_id, trip_id, qc_policy_version, status, next_attempt_at
+      ) VALUES (${olderId}, ${fx.tenant.organizationId}, ${fx.tenant.tripId}, ${DI_V0_SPEED_QC_POLICY_V2}, 'PENDING', ${new Date()})`;
     const passOld = await mkSvc(enabledConfig()).runPass();
     expect(passOld.skipped).toBe(1);
     const [{ n }] = await db.$queryRaw<Array<{ n: bigint }>>`

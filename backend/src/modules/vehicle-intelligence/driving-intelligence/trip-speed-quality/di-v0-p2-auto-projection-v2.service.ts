@@ -68,6 +68,7 @@ export class DiV0P2AutoProjectionV2Service {
       qcPolicyVersion: this.config.qcPolicyVersion,
       enabledSince: this.config.enabledSince,
       limit: this.config.batchLimit * 5,
+      now,
     });
 
     const claimed = await this.outbox.claimBatch(this.config.batchLimit, now);

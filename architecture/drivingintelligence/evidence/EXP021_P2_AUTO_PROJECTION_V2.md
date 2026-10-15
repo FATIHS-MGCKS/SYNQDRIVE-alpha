@@ -13,7 +13,7 @@ After a **durable, successful** S4 PRIMARY completion (pinned snapshot + shadow 
 ## Trigger and durability
 
 1. **Discovery** (leader scheduler tick): eligible completed PRIMARY work items **without any outbox row yet** and without CURRENT V2 → `INSERT … ON CONFLICT DO NOTHING` (existing retry/backlog rows are excluded before `ORDER BY`/`LIMIT`).
-2. **Processing**: `FOR UPDATE SKIP LOCKED` claim assigns `claim_token` + `claim_expires_at` (bounded lease). Expired `PROCESSING` rows are reclaimable. `projectForWorkItem` → outbox ack only when `claim_token` matches (stale workers cannot overwrite).
+2. **Processing**: `FOR UPDATE SKIP LOCKED` claim assigns `claim_token` + `claim_expires_at` (bounded lease). Expired `PROCESSING` rows are reclaimable. `projectForWorkItem` → outbox ack only when `claim_token` matches (stale workers cannot overwrite). Discovery sets `next_attempt_at` from the same pass `now` as claim (avoids DB vs app clock skew on PENDING rows).
 3. **Scheduler**: `DiV0P2AutoProjectionV2Scheduler` in `DiV0TripSpeedQualityModule` (via `VehicleIntelligenceModule`), job `di_v0_p2_auto_projection_v2`. Invalid auto-projection env → bootstrap `disabledReason` + scheduler off; **Nest bootstrap continues**.
 
 **Tested recovery paths:** expired `PROCESSING` before projection; expired `PROCESSING` after persist (idempotent re-project + ack); fenced stale ack.

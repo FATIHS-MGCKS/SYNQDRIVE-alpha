@@ -32,6 +32,7 @@ export class DiV0P2AutoProjectionOutboxRepository {
     qcPolicyVersion: string;
     enabledSince: Date;
     limit: number;
+    now: Date;
   }): Promise<number> {
     const rows = await this.prisma.$queryRaw<Array<{ work_item_id: string }>>`
       WITH active_primary AS (
@@ -46,7 +47,7 @@ export class DiV0P2AutoProjectionOutboxRepository {
       INSERT INTO di_v0_trip_speed_quality_auto_projection_outbox_v1 (
         work_item_id, organization_id, trip_id, qc_policy_version, status, next_attempt_at
       )
-      SELECT wi.id, wi.organization_id, wi.trip_id, ${input.qcPolicyVersion}, 'PENDING', clock_timestamp()
+      SELECT wi.id, wi.organization_id, wi.trip_id, ${input.qcPolicyVersion}, 'PENDING', ${input.now}
       FROM di_v0_s4_work_items wi
       INNER JOIN active_primary ap
         ON ap.id = wi.id AND ap.organization_id = wi.organization_id AND ap.trip_id = wi.trip_id
@@ -137,7 +138,7 @@ export class DiV0P2AutoProjectionOutboxRepository {
   }
 
   async markSucceeded(workItemId: string, claimToken: string): Promise<boolean> {
-    const updated = await this.prisma.$executeRaw`
+    const rows = await this.prisma.$queryRaw<Array<{ work_item_id: string }>>`
       UPDATE di_v0_trip_speed_quality_auto_projection_outbox_v1
       SET status = 'SUCCEEDED',
         last_error_code = NULL,
@@ -147,12 +148,13 @@ export class DiV0P2AutoProjectionOutboxRepository {
         updated_at = clock_timestamp()
       WHERE work_item_id = ${workItemId}
         AND claim_token = ${claimToken}
-        AND status = 'PROCESSING'`;
-    return Number(updated) > 0;
+        AND status = 'PROCESSING'
+      RETURNING work_item_id`;
+    return rows.length > 0;
   }
 
   async markSkipped(workItemId: string, claimToken: string, errorCode: string): Promise<boolean> {
-    const updated = await this.prisma.$executeRaw`
+    const rows = await this.prisma.$queryRaw<Array<{ work_item_id: string }>>`
       UPDATE di_v0_trip_speed_quality_auto_projection_outbox_v1
       SET status = 'SKIPPED_INELIGIBLE',
         last_error_code = ${errorCode},
@@ -162,8 +164,9 @@ export class DiV0P2AutoProjectionOutboxRepository {
         updated_at = clock_timestamp()
       WHERE work_item_id = ${workItemId}
         AND claim_token = ${claimToken}
-        AND status = 'PROCESSING'`;
-    return Number(updated) > 0;
+        AND status = 'PROCESSING'
+      RETURNING work_item_id`;
+    return rows.length > 0;
   }
 
   async markFailedRetryable(
@@ -172,7 +175,7 @@ export class DiV0P2AutoProjectionOutboxRepository {
     errorCode: string,
     nextAttemptAt: Date,
   ): Promise<boolean> {
-    const updated = await this.prisma.$executeRaw`
+    const rows = await this.prisma.$queryRaw<Array<{ work_item_id: string }>>`
       UPDATE di_v0_trip_speed_quality_auto_projection_outbox_v1
       SET status = 'FAILED_RETRYABLE',
         attempt_count = attempt_count + 1,
@@ -184,7 +187,8 @@ export class DiV0P2AutoProjectionOutboxRepository {
         updated_at = clock_timestamp()
       WHERE work_item_id = ${workItemId}
         AND claim_token = ${claimToken}
-        AND status = 'PROCESSING'`;
-    return Number(updated) > 0;
+        AND status = 'PROCESSING'
+      RETURNING work_item_id`;
+    return rows.length > 0;
   }
 }
