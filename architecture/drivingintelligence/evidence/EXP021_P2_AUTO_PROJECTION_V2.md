@@ -58,3 +58,17 @@ GPS L3 / S1 / S2 / calibration / QC evaluator unchanged; no null→0; no extra p
 
 - Unit: config + module bootstrap specs
 - Postgres: `di-v0-p2-auto-projection-v2.postgres.integration.spec.ts` (claim lease, discovery starvation, concurrency)
+
+## Production activation record (append-only)
+
+| Field | Value |
+|-------|-------|
+| When (UTC) | 2026-10-15T10:29:51.000Z |
+| Deploy SHA | `137251770926839b8105ae42da762191411423d4` |
+| `DI_V0_P2_AUTO_PROJECTION_V2_ENABLED` | `true` (shared `backend.env`, rolling PM2 restart A→B) |
+| `DI_V0_P2_AUTO_PROJECTION_V2_ENABLED_SINCE` | `2026-10-15T10:29:51.000Z` (forward-only `completed_at` filter) |
+| `DI_V0_P2_AUTO_PROJECTION_V2_BATCH_LIMIT` | unset → default **20** |
+| Pre-activation DB | Both outbox migrations applied; outbox table + claim lease columns + expected indexes present |
+| Post-activation (~10 min observe) | `NEW_ELIGIBLE_COMPLETIONS_SINCE=0`; outbox empty; CURRENT V2 count 0 — **waiting for first post-SINCE S4 PRIMARY completion** |
+| Product read / UI / VSI capture | unchanged OFF |
+| Env backup | `/opt/synqdrive/shared/backups/backend-env-pre-exp021-p2v2-activate-20261015102951.env` |
