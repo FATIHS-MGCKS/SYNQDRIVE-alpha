@@ -2,6 +2,9 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../shared/database/prisma.service';
 import { composeReadonlyVehicleSignals } from './vsi-readonly-composer.engine';
 import { proveScopedTelemetryAuthorizationFromConsent } from './vsi-readonly-composer.evidence';
+import { isVsi03P2cStrictAdvanceReadEnabled } from './vsi03-p2c.config';
+import { VsiStrictSourceAdvanceService } from './vsi-strict-source-advance.service';
+import type { VsiStrictSourceAdvanceEvaluation } from './vsi-strict-source-advance.types';
 import type {
   VsiReadonlyComposerRequest,
   VsiReadonlyComposerResult,
@@ -17,7 +20,10 @@ const MAX_POLL_LOG_LIMIT = 20;
  */
 @Injectable()
 export class VsiReadonlySignalComposerService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly strictSourceAdvance: VsiStrictSourceAdvanceService,
+  ) {}
 
   async composeVehicleSignals(
     request: VsiReadonlyComposerRequest,
@@ -38,7 +44,7 @@ export class VsiReadonlySignalComposerService {
         organizationId: true,
         registryLifecycle: true,
         hardwareType: true,
-        dimoVehicle: { select: { externalId: true } },
+        dimoVehicle: { select: { externalId: true, tokenId: true } },
       },
     });
     if (!vehicle) {
@@ -127,6 +133,36 @@ export class VsiReadonlySignalComposerService {
       },
     });
 
+    const strictAdvanceEvaluations: Record<string, VsiStrictSourceAdvanceEvaluation | undefined> =
+      {};
+    if (isVsi03P2cStrictAdvanceReadEnabled()) {
+      const tokenRef =
+        vehicle.dimoVehicle?.tokenId != null ? String(vehicle.dimoVehicle.tokenId) : null;
+      const latestSnapshot = latestState
+        ? {
+            vehicleId: latestState.vehicleId,
+            providerBindingId: latestState.providerBindingId,
+            providerSource: latestState.providerSource,
+            lvBatteryVoltage: latestState.lvBatteryVoltage,
+            evSoc: latestState.evSoc,
+            online: latestState.online,
+            sourceTimestamp: latestState.sourceTimestamp,
+            providerFetchedAt: latestState.providerFetchedAt,
+            updatedAt: latestState.updatedAt,
+            rawPayloadJson: latestState.rawPayloadJson,
+          }
+        : null;
+      for (const link of linkRows) {
+        strictAdvanceEvaluations[link.id] = await this.strictSourceAdvance.evaluateForLink({
+          organizationId: request.organizationId,
+          vehicleId: request.vehicleId,
+          link,
+          latestState: latestSnapshot,
+          dimoTokenReference: tokenRef,
+        });
+      }
+    }
+
     return composeReadonlyVehicleSignals({
       organizationId: request.organizationId,
       vehicleId: request.vehicleId,
@@ -149,6 +185,9 @@ export class VsiReadonlySignalComposerService {
           }
         : null,
       pollLogs,
+      strictAdvanceEvaluations: isVsi03P2cStrictAdvanceReadEnabled()
+        ? strictAdvanceEvaluations
+        : undefined,
       linksQueryCapReached: links.length >= MAX_SOURCE_LINKS,
     });
   }

@@ -44,6 +44,9 @@ import {
   assertTelemetryConnectionIdentityForActivationTx,
 } from '../connection-identity/activation-connection-identity.assertions';
 import { persistConnectionIdentityOnActiveSourceLinksTx } from '../connection-identity/source-link-connection-identity.metadata';
+import type { MasterDimoActivationFinalizeInput } from '../master-dimo/master-dimo-activation-extensions';
+import { applyMasterDimoActivationFinalizeInTransaction } from '../master-dimo/master-dimo-registration-artifacts';
+import { mergeMasterDimoPayloadFingerprintIntoReadinessSnapshot } from '../master-dimo/master-dimo-registration-payload-fingerprint';
 
 /** Integration-test fault injection only (not used in production HTTP). */
 export type Vo3ActivationFaultStage =
@@ -60,6 +63,8 @@ export interface ActivateVehicleInput {
   actorUserId: string | null;
   faultAfterStage?: Vo3ActivationFaultStage;
   activationTestHooks?: ActivationTestHooks;
+  /** Master Admin register-from-dimo: mandatory scalars + LV battery + enrichment inside activation TX. */
+  masterRegistrationFinalize?: MasterDimoActivationFinalizeInput;
 }
 
 export interface ActivateVehicleResult {
@@ -195,6 +200,14 @@ export class VehicleOnboardingActivationService {
               input.activationTestHooks?.forceTechnicalBaselineMaterializationFailure,
           },
         });
+
+        if (input.masterRegistrationFinalize) {
+          await applyMasterDimoActivationFinalizeInTransaction(
+            tx,
+            vehicle.id,
+            input.masterRegistrationFinalize,
+          );
+        }
 
         if (input.faultAfterStage === 'AFTER_TECHNICAL_BASELINE') {
           logActivationRollback(input.onboardingCaseId, input.faultAfterStage);
@@ -399,6 +412,14 @@ export class VehicleOnboardingActivationService {
         });
         assertPersistedSourceLinksMatchSnapshots(caseRow.sourceRefs, persistedLinks);
 
+        const readinessSnapshotJson =
+          input.masterRegistrationFinalize?.payloadFingerprint != null
+            ? mergeMasterDimoPayloadFingerprintIntoReadinessSnapshot(
+                caseRow.readinessSnapshotJson,
+                input.masterRegistrationFinalize.payloadFingerprint,
+              )
+            : undefined;
+
         const completed = await tx.vehicleOnboardingCase.update({
           where: { id: caseRow.id },
           data: {
@@ -406,6 +427,9 @@ export class VehicleOnboardingActivationService {
             vehicleId: vehicle.id,
             completedAt: activatedAt,
             lastActorUserId: input.actorUserId,
+            ...(readinessSnapshotJson != null
+              ? { readinessSnapshotJson }
+              : {}),
           },
         });
 

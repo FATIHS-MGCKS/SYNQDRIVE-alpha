@@ -90,6 +90,7 @@ describe('DimoSnapshotProcessor — trip start isolation', () => {
       undefined, // snapshotPhysicalEvidenceOrchestrator
       undefined, // physicalAuthorityCutover
       undefined, // apdShadow
+      undefined, // vsiSourceObservationWriter
     );
 
     const job = {

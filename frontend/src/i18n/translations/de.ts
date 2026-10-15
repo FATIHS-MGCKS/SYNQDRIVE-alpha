@@ -3490,6 +3490,12 @@ export const de: Record<TranslationKey, string> = {
   'master.cv.addVehicle.partialBaselineAreaTires': 'Reifen',
   'master.cv.addVehicle.partialBaselineAreaBattery': 'LV-Batterie',
   'master.cv.addVehicle.partialBaselineAreaBrakes': 'Bremsen',
+  'master.cv.addVehicle.partialTireEnrichmentTitle':
+    'Fahrzeug registriert — Reifenprofiltiefe wurde nicht gespeichert',
+  'master.cv.addVehicle.partialTireEnrichmentBody':
+    'Das Fahrzeug ist in Ihrer Flotte. Öffnen Sie es in der Fahrzeugliste und pflegen Sie die Reifenmessungen manuell nach.',
+  'master.cv.addVehicle.partialTireEnrichmentBodyWithDetail':
+    'Das Fahrzeug ist in Ihrer Flotte. Reifen-Nachbearbeitung fehlgeschlagen: {{detail}}',
 
   // ─── Fleet Condition ───
   'fleetCondition.title': 'Flottenzustand',

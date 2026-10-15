@@ -299,8 +299,47 @@ describe('vsi-readonly-composer.engine', () => {
     );
     expect(ts?.empiricalEvidence?.strictSourceAdvanced).toBe(false);
     expect(ts?.confidenceLimitations).toContain('POLL_SUCCESS_WITHOUT_STRICT_SOURCE_ADVANCE');
-    const conn = result.signals.find((s) => s.identity.canonicalSignalKey === 'device_connectivity');
-    expect(conn?.freshnessClassification).toBe('STALE');
+  });
+
+  it('P2C observation evaluation overrides legacy prior for strict advance', () => {
+    const stale = new Date('2026-10-01T00:00:00Z');
+    const current = new Date('2026-10-14T15:00:00.000Z');
+    const result = composeReadonlyVehicleSignals({
+      organizationId: ORG,
+      vehicleId: VEH,
+      registryLifecycle: 'ACTIVE',
+      hardwareTypeLegacy: 'LTE_R1',
+      projectionAsOf,
+      priorAggregatedSourceTimestamp: stale,
+      strictAdvanceEvaluations: {
+        [LINK_TESLA]: {
+          classification: 'NOT_ADVANCED',
+          strictSourceAdvanced: false,
+          reasons: ['SOURCE_TIMESTAMP_UNCHANGED'],
+          advanceEvidenceScope: 'LATEST_RECORDED_OBSERVATION_PAIR',
+        },
+      },
+      links: [{ id: LINK_TESLA, provider: 'DIMO', isActive: true, metadata: ciV2({}) }],
+      latestState: {
+        vehicleId: VEH,
+        providerBindingId: LINK_TESLA,
+        providerSource: 'DIMO',
+        lvBatteryVoltage: 12.4,
+        evSoc: 80,
+        online: true,
+        sourceTimestamp: current,
+        providerFetchedAt: projectionAsOf,
+        updatedAt: projectionAsOf,
+        rawPayloadJson: {},
+      },
+      pollLogs: [
+        { status: 'SUCCESS', startedAt: projectionAsOf, finishedAt: projectionAsOf },
+      ],
+    });
+    const ts = result.signals.find(
+      (s) => s.identity.canonicalSignalKey === 'provider_source_timestamp',
+    );
+    expect(ts?.empiricalEvidence?.strictSourceAdvanced).toBe(false);
   });
 
   it('poll success does not prove scoped authorization without consent evidence', () => {

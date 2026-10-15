@@ -138,6 +138,12 @@ export const nl = {
   'master.cv.addVehicle.partialBaselineAreaTires': 'banden',
   'master.cv.addVehicle.partialBaselineAreaBattery': 'LV-accu',
   'master.cv.addVehicle.partialBaselineAreaBrakes': 'remmen',
+  'master.cv.addVehicle.partialTireEnrichmentTitle':
+    'Voertuig geregistreerd — profieldiepte banden niet opgeslagen',
+  'master.cv.addVehicle.partialTireEnrichmentBody':
+    'Het voertuig staat in uw vloot. Open het via de voertuigenlijst en vul bandmetingen handmatig aan.',
+  'master.cv.addVehicle.partialTireEnrichmentBodyWithDetail':
+    'Het voertuig staat in uw vloot. Bandverrijking mislukt: {{detail}}',
 
   'fleetCondition.title': 'Vlootstatus', 'fleetCondition.healthScore': 'Gezondheidsscore', 'fleetCondition.goodCondition': 'Goed', 'fleetCondition.warnings': 'Waarschuwingen', 'fleetCondition.critical': 'Kritiek',
   'newBooking.title': 'Nieuwe boeking', 'newBooking.selectCustomer': 'Klant selecteren', 'newBooking.selectVehicle': 'Voertuig selecteren', 'newBooking.timePeriod': 'Periode en ophaling', 'newBooking.mileagePackages': 'Kilometerpakketten', 'newBooking.insurancePackages': 'Verzekeringspakketten', 'newBooking.extras': 'Extra\'s', 'newBooking.invoice': 'Factuur', 'newBooking.rentalContract': 'Huurovereenkomst', 'newBooking.createCustomer': 'Nieuwe klant aanmaken', 'newBooking.bookingCreated': 'Boeking aangemaakt!',

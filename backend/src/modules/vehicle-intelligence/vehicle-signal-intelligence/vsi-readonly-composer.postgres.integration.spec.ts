@@ -64,7 +64,17 @@ async function cleanupOrg(prisma: PrismaClient, organizationId: string): Promise
 
 (LIVE ? describe : describe.skip)('VsiReadonlySignalComposerService (PostgreSQL)', () => {
   const prisma = new PrismaClient();
-  const service = new VsiReadonlySignalComposerService(prisma as unknown as PrismaService);
+  const service = new VsiReadonlySignalComposerService(
+    prisma as unknown as PrismaService,
+    {
+      evaluateForLink: async () => ({
+        classification: 'UNKNOWN',
+        strictSourceAdvanced: 'UNKNOWN',
+        reasons: ['TEST_STUB'],
+        advanceEvidenceScope: 'NONE',
+      }),
+    } as never,
+  );
   const orgIdsToCleanup: string[] = [];
 
   beforeAll(() => {

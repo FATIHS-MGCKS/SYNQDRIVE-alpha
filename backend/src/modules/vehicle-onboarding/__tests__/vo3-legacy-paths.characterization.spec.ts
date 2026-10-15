@@ -5,12 +5,13 @@ import { join } from 'node:path';
  * VO-3 non-cutover characterization — legacy paths remain unchanged in this slice.
  */
 describe('VO-3 legacy registration path characterization', () => {
-  it('registerFromDimo still contains known synthetic VIN debt', () => {
+  it('registerFromDimo routes through canonical master DIMO registration (VO-SIG P2)', () => {
     const src = readFileSync(
       join(__dirname, '../../vehicles/vehicles.service.ts'),
       'utf8',
     );
-    expect(src).toContain('dimoVehicle.vin || `DIMO-${dimoVehicle.externalId}`');
+    expect(src).toContain('masterDimoCanonicalRegistration.register');
+    expect(src).not.toContain('dimoVehicle.vin || `DIMO-${dimoVehicle.externalId}`');
   });
 
   it('registerHmOnlyVehicle entry still exists', () => {

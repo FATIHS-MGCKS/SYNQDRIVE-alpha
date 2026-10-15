@@ -36,9 +36,14 @@ Latest-state attribution requires matching `providerBindingId` and consistent pr
 
 PostgreSQL integration tests require `VSI03_READONLY_COMPOSER_PG=1`, a **local** database host (`127.0.0.1` / `localhost`), and an explicitly disposable database name matching `vsi03_test_*` (for example `vsi03_test_ci`). Production-like names such as `synqdrive` are rejected even on localhost. See `vsi-readonly-composer.postgres-guard.ts`.
 
-## P2 follow-up (not P1)
+## P2C — per-poll source observations (see `VSI03_P2C_SOURCE_OBSERVATIONS.md`)
 
-- Durable **prior aggregated provider source timestamp** loader for `strictSourceAdvanced` (independent observation history). P1 keeps `UNKNOWN` when no prior is supplied — no speculative advancement.
+- Append-only `vehicle_provider_source_observations` + default-OFF capture/read flags.
+- `strictSourceAdvanced` uses consecutive observation pairs — not ClickHouse historical priors.
+
+## P2 legacy note
+
+- P1 keeps `UNKNOWN` when no prior is supplied. Do not use `MAX(CH.recorded_at) < VLS.source` for strict advance (rejected P2B-R1).
 
 ## Tenant security
 
