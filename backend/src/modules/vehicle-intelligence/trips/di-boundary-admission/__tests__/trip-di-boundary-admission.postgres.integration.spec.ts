@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import type { PrismaClient } from '@prisma/client';
 import { DiV0S4WorkItemRepository } from '../../../driving-intelligence/s4a-foundation/di-v0-s4a-work-item.repository';
 import {
   S4A_POSTGRES_LIVE,
@@ -14,9 +15,14 @@ import { TripDiBoundaryAdmissionService } from '../trip-di-boundary-admission.se
 import { readTripDiBoundaryAdmissionV1 } from '../trip-di-boundary-admission';
 
 (S4A_POSTGRES_LIVE ? describe : describe.skip)('Trip DI boundary admission (PostgreSQL)', () => {
-  const admin = newS4aClient();
-  const admission = new TripDiBoundaryAdmissionService(admin as never);
+  let admin: PrismaClient;
+  let admission: TripDiBoundaryAdmissionService;
   const tenants: S4aTenant[] = [];
+
+  beforeAll(() => {
+    admin = newS4aClient();
+    admission = new TripDiBoundaryAdmissionService(admin as never);
+  });
 
   afterAll(async () => {
     for (const t of tenants.splice(0)) {
