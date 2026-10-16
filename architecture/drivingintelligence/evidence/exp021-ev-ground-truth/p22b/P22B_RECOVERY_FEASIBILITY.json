@@ -1,0 +1,368 @@
+{
+  "schema": "EXP021_P22B_RECOVERY_FEASIBILITY_V1",
+  "observedAtUtc": "2026-10-16T19:16:49.641Z",
+  "prNumber": 2051,
+  "headSha": "f15a458c26ab20fb3e0fc59c18495bb305e9cff2",
+  "p22bResult": "PARTIAL_RECOVERY_FEASIBLE_INDEPENDENT_VALIDATION_BLOCKED",
+  "v0_2": {
+    "parameterSnapshotHash": "dc4339e7b3687ef613b59e3ee9fe75b7a3d885dce5f5884735421e58a46d4ab7",
+    "unchangedInP22B": true
+  },
+  "rd003": {
+    "sessionId": "0fa040aa-6105-4872-9b2c-f8ad477009b8",
+    "referenceDriveId": "DIMO_LTE_R1_REFERENCE_DRIVE_003",
+    "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+    "synqDriveTripId": null,
+    "ingestionAuthority": "EXTERNAL_OWNER_PLUS_CHATGPT_MANUAL_VISUAL_REVIEW",
+    "groundTruthValidated": false,
+    "clips": [
+      {
+        "clipId": "RD003_GT_CLIP_001",
+        "fileName": "IMG_2803.mp4",
+        "videoDurationSeconds": 60,
+        "negativeControl": false,
+        "behavioralSummary": "STOP → LAUNCH → STRONG_ACCELERATION → HIGH_RPM_SHIFT → LONG_GENTLE_DECELERATION",
+        "videoClockDisplayed": "21:03 → 21:04",
+        "candidateStartUtc": "2026-09-02T19:03:49.400Z",
+        "candidateUtcUncertaintySeconds": 30,
+        "clockStatus": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY",
+        "observationCount": 26,
+        "speedSampleCount": 25,
+        "tachoZeroLabeledSeconds": 3,
+        "speedMinKmh": 0,
+        "speedMaxKmh": 80,
+        "observationProvenance": "EXTERNAL_OWNER_PLUS_CHATGPT_MANUAL_VISUAL_REVIEW",
+        "originalVideoInRepository": false,
+        "alignmentStatus": "INSUFFICIENT_GROUND_TRUTH",
+        "matchCoverageRatio": 0.32
+      },
+      {
+        "clipId": "RD003_GT_CLIP_002",
+        "fileName": "IMG_2804.mp4",
+        "videoDurationSeconds": 36.9,
+        "negativeControl": true,
+        "behavioralSummary": "STABLE_CRUISE negative-control baseline ~64–69 km/h",
+        "videoClockDisplayed": "21:06",
+        "candidateStartUtc": null,
+        "candidateUtcUncertaintySeconds": null,
+        "clockStatus": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY",
+        "observationCount": 9,
+        "speedSampleCount": 8,
+        "tachoZeroLabeledSeconds": 0,
+        "speedMinKmh": 64,
+        "speedMaxKmh": 69,
+        "observationProvenance": "EXTERNAL_OWNER_PLUS_CHATGPT_MANUAL_VISUAL_REVIEW",
+        "originalVideoInRepository": false,
+        "alignmentStatus": "INSUFFICIENT_GROUND_TRUTH",
+        "matchCoverageRatio": 0.625
+      },
+      {
+        "clipId": "RD003_GT_CLIP_003",
+        "fileName": "IMG_2805.mp4",
+        "videoDurationSeconds": 24.3,
+        "negativeControl": false,
+        "behavioralSummary": "ROLLING_CRUISE → STRONG_ACCELERATION → HIGH_RPM_SHIFT → CONTROLLED_DECELERATION",
+        "videoClockDisplayed": "21:08 → 21:09",
+        "candidateStartUtc": "2026-09-02T19:08:37.300Z",
+        "candidateUtcUncertaintySeconds": 30,
+        "clockStatus": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY",
+        "observationCount": 21,
+        "speedSampleCount": 20,
+        "tachoZeroLabeledSeconds": 0,
+        "speedMinKmh": 38,
+        "speedMaxKmh": 90,
+        "observationProvenance": "EXTERNAL_OWNER_PLUS_CHATGPT_MANUAL_VISUAL_REVIEW",
+        "originalVideoInRepository": false,
+        "alignmentStatus": "INSUFFICIENT_GROUND_TRUTH",
+        "matchCoverageRatio": 0.25
+      },
+      {
+        "clipId": "RD003_GT_CLIP_004",
+        "fileName": "IMG_2806.mp4",
+        "videoDurationSeconds": 35.3,
+        "negativeControl": false,
+        "behavioralSummary": "MILD_PROGRESSIVE_ACCELERATION → NEAR_STEADY → MODERATE_STRONG_ACCELERATION",
+        "videoClockDisplayed": "21:09 → 21:10",
+        "candidateStartUtc": "2026-09-02T19:09:50.200Z",
+        "candidateUtcUncertaintySeconds": 30,
+        "clockStatus": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY",
+        "observationCount": 18,
+        "speedSampleCount": 17,
+        "tachoZeroLabeledSeconds": 0,
+        "speedMinKmh": 70,
+        "speedMaxKmh": 103,
+        "observationProvenance": "EXTERNAL_OWNER_PLUS_CHATGPT_MANUAL_VISUAL_REVIEW",
+        "originalVideoInRepository": false,
+        "alignmentStatus": "INSUFFICIENT_GROUND_TRUTH",
+        "matchCoverageRatio": 0.6470588235294118
+      },
+      {
+        "clipId": "RD003_GT_CLIP_005",
+        "fileName": "IMG_2807.mp4",
+        "videoDurationSeconds": 61.2,
+        "negativeControl": false,
+        "behavioralSummary": "DECELERATION → STOP → STRONG_ACCELERATION → INTERMEDIATE_DYNAMICS → CRUISE",
+        "videoClockDisplayed": "21:12 → 21:13",
+        "candidateStartUtc": "2026-09-02T19:12:10.300Z",
+        "candidateUtcUncertaintySeconds": 30,
+        "clockStatus": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY",
+        "observationCount": 18,
+        "speedSampleCount": 16,
+        "tachoZeroLabeledSeconds": 1,
+        "speedMinKmh": 0,
+        "speedMaxKmh": 67,
+        "observationProvenance": "EXTERNAL_OWNER_PLUS_CHATGPT_MANUAL_VISUAL_REVIEW",
+        "originalVideoInRepository": false,
+        "alignmentStatus": "INSUFFICIENT_GROUND_TRUTH",
+        "matchCoverageRatio": 0.8125
+      },
+      {
+        "clipId": "RD003_GT_CLIP_006",
+        "fileName": "IMG_2808.mp4",
+        "videoDurationSeconds": 45.8,
+        "negativeControl": false,
+        "behavioralSummary": "STOP → PROGRESSIVE_ACCELERATION → STRONGER_ACCELERATION → PLATEAU → LONG_CONTROLLED_DECELERATION",
+        "videoClockDisplayed": "21:21",
+        "candidateStartUtc": null,
+        "candidateUtcUncertaintySeconds": null,
+        "clockStatus": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY",
+        "observationCount": 44,
+        "speedSampleCount": 43,
+        "tachoZeroLabeledSeconds": 4,
+        "speedMinKmh": 0,
+        "speedMaxKmh": 87,
+        "observationProvenance": "EXTERNAL_OWNER_PLUS_CHATGPT_MANUAL_VISUAL_REVIEW",
+        "originalVideoInRepository": false,
+        "alignmentStatus": "INSUFFICIENT_GROUND_TRUTH",
+        "matchCoverageRatio": 0.5581395348837209
+      },
+      {
+        "clipId": "RD003_GT_CLIP_007",
+        "fileName": "IMG_2809.mp4",
+        "videoDurationSeconds": 31.5,
+        "negativeControl": true,
+        "behavioralSummary": "STABLE_CRUISE → CONTROLLED_DECELERATION (negative-control segment in early cruise)",
+        "videoClockDisplayed": "21:22 → 21:23",
+        "candidateStartUtc": "2026-09-02T19:22:30.450Z",
+        "candidateUtcUncertaintySeconds": 30,
+        "clockStatus": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY",
+        "observationCount": 20,
+        "speedSampleCount": 18,
+        "tachoZeroLabeledSeconds": 0,
+        "speedMinKmh": 45,
+        "speedMaxKmh": 61,
+        "observationProvenance": "EXTERNAL_OWNER_PLUS_CHATGPT_MANUAL_VISUAL_REVIEW",
+        "originalVideoInRepository": false,
+        "alignmentStatus": "INSUFFICIENT_GROUND_TRUTH",
+        "matchCoverageRatio": 0.9444444444444444
+      },
+      {
+        "clipId": "RD003_GT_CLIP_008",
+        "fileName": "IMG_2810.mp4",
+        "videoDurationSeconds": 21.4,
+        "negativeControl": false,
+        "behavioralSummary": "STRONG_ACCELERATION → EXPLICIT_VISIBLE_SHIFT (S2→S3 ~t=9.5–9.6s) → CONTROLLED_DECELERATION",
+        "videoClockDisplayed": "21:23",
+        "candidateStartUtc": null,
+        "candidateUtcUncertaintySeconds": null,
+        "clockStatus": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY",
+        "observationCount": 13,
+        "speedSampleCount": 10,
+        "tachoZeroLabeledSeconds": 0,
+        "speedMinKmh": 48,
+        "speedMaxKmh": 91,
+        "observationProvenance": "EXTERNAL_OWNER_PLUS_CHATGPT_MANUAL_VISUAL_REVIEW",
+        "originalVideoInRepository": false,
+        "alignmentStatus": "INSUFFICIENT_GROUND_TRUTH",
+        "matchCoverageRatio": 1
+      },
+      {
+        "clipId": "RD003_GT_CLIP_009",
+        "fileName": "IMG_2811.mp4",
+        "videoDurationSeconds": 34.3,
+        "negativeControl": false,
+        "behavioralSummary": "FORWARD → DECELERATION → NEAR_STOP → REVERSE → STOP → R_TO_D → FORWARD_LAUNCH",
+        "videoClockDisplayed": "21:24 → 21:25",
+        "candidateStartUtc": null,
+        "candidateUtcUncertaintySeconds": null,
+        "clockStatus": "CANDIDATE_VIDEO_CLOCK_INTERPRETATION_ONLY",
+        "observationCount": 29,
+        "speedSampleCount": 25,
+        "tachoZeroLabeledSeconds": 1,
+        "speedMinKmh": 0,
+        "speedMaxKmh": 50,
+        "observationProvenance": "EXTERNAL_OWNER_PLUS_CHATGPT_MANUAL_VISUAL_REVIEW",
+        "originalVideoInRepository": false,
+        "alignmentStatus": "INSUFFICIENT_GROUND_TRUTH",
+        "matchCoverageRatio": 0.68
+      }
+    ],
+    "tripBinding": {
+      "synqDriveTripId": null,
+      "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+      "sessionId": "0fa040aa-6105-4872-9b2c-f8ad477009b8",
+      "referenceDriveId": "DIMO_LTE_R1_REFERENCE_DRIVE_003",
+      "uniqueUtcTripWindowPossible": "NO_VALIDATED_GLOBAL_CHRONOLOGY",
+      "note": "Reference-capture session; no trip_id in DI-EV-0027 capture report. P21 forensic loader expects trip+workItem pin."
+    },
+    "independence": {
+      "usedInRetrospectiveHaltV02Code": false,
+      "usedInExp021TransferabilityOrP22A": "INVENTORY_ONLY",
+      "usedInDiArchitectureCadence": true,
+      "contaminationClassForV02": "NOT_USED_PARAMETER_SELECTION",
+      "notes": [
+        "No RD003 imports in exp021-retrospective-halt-prototype*.ts or v2 lib (repo grep 2026-10-16).",
+        "RD003 informs DI cadence / signal-quality architecture, not v0_2 composite halt scores.",
+        "Tesla EV-GT remains EXP021 halt development material; RD003 is separate reference-capture lineage."
+      ]
+    }
+  },
+  "rd004VideoGroundTruth": {
+    "sessionId": "f1e81e78-f96b-44ee-80c2-ca5270f21248",
+    "vehicleId": "a60c0749-a7cd-494e-b5b9-dea3c6b97d63",
+    "synqDriveTripId": null,
+    "haltVideoGroundTruthValidated": false,
+    "lateBucketEventsAreGroundTruth": false,
+    "stopTimingValidated": false,
+    "videoAnchorsPresent": true,
+    "notes": [
+      "Segment B documents HF late arrival and watermark recovery — not per-second halt labels for v0_2.",
+      "rd004-b-stop-timing.json: STOP_TIMING_VALIDATED=NO; provider timeline cannot validate its own alignment.",
+      "Segment A: VIDEO_PROVIDER_ALIGNMENT_CLASS=INSUFFICIENT_EVIDENCE (rd004-a-findings.md)."
+    ]
+  },
+  "recoveryMatrix": [
+    {
+      "caseType": "HALT_WITHOUT_SIGNAL",
+      "recoveryClass": "PARTIALLY_RECOVERABLE",
+      "existingVideo": [
+        "RD003 IMG_2803/2807/2808 (stop segments, sparse 0 km/h labels)",
+        "Tesla E02/E04–E06 (development only)"
+      ],
+      "existingTelemetry": [
+        "RD003 session HF speed ~2s + GPS slow path",
+        "Tesla P21 pin 358d0158… (dev)"
+      ],
+      "syncAnchors": "RD003 ±30s video-clock candidate; no validated provider offset; Tesla visible Berlin clock without sub-second UTC",
+      "blockers": [
+        "No SynqDrive trip_id for RD003 session in capture report.",
+        "GROUND_TRUTH_VALIDATED=NO; clip alignments INSUFFICIENT_GROUND_TRUTH / low MATCH_COVERAGE.",
+        "Tesla cannot serve independent holdout."
+      ],
+      "captureProtocolIfNew": "Parked/stop away from signalized intersection; dashcam + fixed UTC reference (NTP/phone network time photo at start); 60s include full stop with readable speed; passenger operates camera before drive."
+    },
+    {
+      "caseType": "SLOW_ROLL_NO_FULL_HALT",
+      "recoveryClass": "NEW_CAPTURE_REQUIRED",
+      "existingVideo": [
+        "RD003 clip 002/007 are cruise/decel controls, not slow-roll-through",
+        "Tesla E03 decel to 8 km/h (dev)"
+      ],
+      "existingTelemetry": [
+        "RD003 session",
+        "Tesla pin"
+      ],
+      "syncAnchors": "Same as above",
+      "blockers": [
+        "No archived clip labeled as sustained 1–5 km/h roll without full 0 km/h stop tied to P21 gaps."
+      ],
+      "captureProtocolIfNew": "Approach junction or yield; maintain 2–5 km/h for ≥15s without complete stop; single continuous clip; UTC sync at start; avoid camera handling while rolling."
+    },
+    {
+      "caseType": "STOP_AND_GO",
+      "recoveryClass": "PARTIALLY_RECOVERABLE",
+      "existingVideo": [
+        "RD003 clips 001, 005, 006 (behavioral STOP→LAUNCH)",
+        "Tesla stop-and-go segments (dev)"
+      ],
+      "existingTelemetry": [
+        "RD003 sealed session telemetry",
+        "Tesla shadow intervals"
+      ],
+      "syncAnchors": "RD003 sparse 1 Hz video-time speed labels only; alignment workbench candidates not VALIDATED",
+      "blockers": [
+        "Cannot bind to v0_2 gap windows without validated UTC↔telemetry map and P21 pin."
+      ],
+      "captureProtocolIfNew": "Two full stop→go cycles in one clip; visible speed display; honk/mark at stop line optional; UTC reference at clip start; post-drive only review."
+    },
+    {
+      "caseType": "MOVEMENT_DURING_GAP",
+      "recoveryClass": "PARTIALLY_RECOVERABLE",
+      "existingVideo": [
+        "Tesla E06/E07 gap + accel (dev)",
+        "RD004 video exists but stop-in-gap NOT validated"
+      ],
+      "existingTelemetry": [
+        "Tesla ROW_ABSENT gaps",
+        "RD004 HF replay diagnostics only"
+      ],
+      "syncAnchors": "Tesla partial; RD004 STOP_TIMING_VALIDATED=NO",
+      "blockers": [
+        "RD004 late-bucket/watermark events are capture artifacts, not independent movement GT.",
+        "Independent case needs position gap with video proving continued motion."
+      ],
+      "captureProtocolIfNew": "Drive through area with known GPS drop-out or sparse uplink segment; continuous video showing speed >0 throughout gap; log clip start against UTC; do not use map-only inference."
+    },
+    {
+      "caseType": "MANEUVER_RETURN_SAME_POINT",
+      "recoveryClass": "PARTIALLY_RECOVERABLE",
+      "existingVideo": [
+        "RD003 clip 009 REVERSE sequence",
+        "Tesla E01 reverse departure + E12 parking (dev)"
+      ],
+      "existingTelemetry": [
+        "RD003 session GPS",
+        "Tesla pin geometry"
+      ],
+      "syncAnchors": "RD003 clip 009 candidate UTC window 19:24:29Z±3s only",
+      "blockers": [
+        "v0_2 chord metric cannot validate return-to-same-point without path GT; alignment unvalidated."
+      ],
+      "captureProtocolIfNew": "Low-speed forward-reverse-forward in open lot; GPS visible on secondary logging if available; mark UTC at maneuver start; passenger sets camera before maneuver."
+    }
+  ],
+  "recoverableCases": [],
+  "partiallyRecoverableCases": [
+    "HALT_WITHOUT_SIGNAL",
+    "STOP_AND_GO",
+    "MOVEMENT_DURING_GAP",
+    "MANEUVER_RETURN_SAME_POINT"
+  ],
+  "newCaptureRequiredCases": [
+    "SLOW_ROLL_NO_FULL_HALT"
+  ],
+  "utcSyncPrecision": {
+    "rd003": "±30s candidate clip start (video instrument clock); multi-clock model PENDING; no CLOCK_BOUNDARY_ELIGIBLE_CLIPS",
+    "teslaEvGt": "1s visible Berlin labels; sub-second absolute offset not established (kompakt Bericht)",
+    "rd004SegmentA": "Video UTC anchored at t=0 via Time.is; providerTimestamp offset INSUFFICIENT_EVIDENCE",
+    "rd004SegmentB": "Video anchors HIGH confidence at sparse points; stop timing vs HF NOT validated"
+  },
+  "independentValidationPossibleNow": false,
+  "minimumNewCapturePlan": {
+    "principle": "One new independent drive with documented UTC sync, P21 PRIMARY pin, and pre-declared holdout clips before any v0_2 threshold work.",
+    "cases": [
+      {
+        "caseType": "HALT_WITHOUT_SIGNAL",
+        "protocol": "Parked/stop away from signalized intersection; dashcam + fixed UTC reference (NTP/phone network time photo at start); 60s include full stop with readable speed; passenger operates camera before drive."
+      },
+      {
+        "caseType": "SLOW_ROLL_NO_FULL_HALT",
+        "protocol": "Approach junction or yield; maintain 2–5 km/h for ≥15s without complete stop; single continuous clip; UTC sync at start; avoid camera handling while rolling."
+      },
+      {
+        "caseType": "STOP_AND_GO",
+        "protocol": "Two full stop→go cycles in one clip; visible speed display; honk/mark at stop line optional; UTC reference at clip start; post-drive only review."
+      },
+      {
+        "caseType": "MOVEMENT_DURING_GAP",
+        "protocol": "Drive through area with known GPS drop-out or sparse uplink segment; continuous video showing speed >0 throughout gap; log clip start against UTC; do not use map-only inference."
+      },
+      {
+        "caseType": "MANEUVER_RETURN_SAME_POINT",
+        "protocol": "Low-speed forward-reverse-forward in open lot; GPS visible on secondary logging if available; mark UTC at maneuver start; passenger sets camera before maneuver."
+      }
+    ]
+  },
+  "productionMutations": "NONE",
+  "nextSafeAction": "Offline: complete RD003 clip-alignment review to VALIDATED status OR schedule single new capture per protocols; then bind P21 pin and replay frozen v0_2 without tuning."
+}
