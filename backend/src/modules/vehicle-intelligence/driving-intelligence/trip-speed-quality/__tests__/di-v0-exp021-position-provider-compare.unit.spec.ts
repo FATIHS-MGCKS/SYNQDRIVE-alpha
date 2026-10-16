@@ -68,7 +68,7 @@ describe('di-v0-exp021-position-provider-compare', () => {
         coordinateStatus: 'NOT_APPLICABLE',
         provenance: 'EXPECTED_GRID_ROW_ABSENT',
       },
-    ] as DiV0AcquiredPositionBucket[];
+    ] as unknown as DiV0AcquiredPositionBucket[];
     const out = comparePinToProviderBuckets({
       pinPositions,
       providerBuckets,
