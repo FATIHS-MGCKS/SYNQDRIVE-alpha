@@ -90,6 +90,25 @@ const COPY: Record<string, string> = {
   'master.batteryV2Shadow.lvMeasured.d4Title': 'D3 / D4 longitudinal summary (bounded)',
   'master.batteryV2Shadow.lvMeasured.episodeCompareTitle': 'REST episode comparison (MEASURED vs DERIVED summary)',
   'master.batteryV2Shadow.lvMeasured.loadError': 'LV measured intelligence could not be loaded.',
+  'master.batteryV2Shadow.lvMeasured.provenanceFooter':
+    'NOT_ASSESSED · publication OFF · E3 inactive · F6 OFF · dedup: {{deduplicationPolicy}}',
+  'master.batteryV2Shadow.lvMeasured.metric.measuredV': 'MEASURED V',
+  'master.batteryV2Shadow.lvMeasured.metric.providerTime': 'Provider time',
+  'master.batteryV2Shadow.lvMeasured.metric.context': 'Context',
+  'master.batteryV2Shadow.lvMeasured.metric.openProviderGaps': 'Open provider gaps',
+  'master.batteryV2Shadow.lvMeasured.metric.derivedMedian': 'DERIVED median',
+  'master.batteryV2Shadow.lvMeasured.metric.derivedSlope': 'DERIVED slope',
+  'master.batteryV2Shadow.lvMeasured.metric.minMax': 'Min / max',
+  'master.batteryV2Shadow.lvMeasured.metric.c3RetentionPts': 'C3 retention pts',
+  'master.batteryV2Shadow.lvMeasured.chart.restHoursAxis': 'Rest hours',
+  'master.batteryV2Shadow.lvMeasured.tooltip.measuredSeries': 'MEASURED',
+  'master.batteryV2Shadow.lvMeasured.contextLimitedPrefix': 'CONTEXT_LIMITED:',
+  'master.batteryV2Shadow.lvMeasured.d4AckCount':
+    ' · ACK count on latest revision: {{count}} (not full D4 verification)',
+  'master.batteryV2Shadow.lvMeasured.d4AckUnavailable': ' · ACK unavailable',
+  'master.batteryV2Shadow.lvMeasured.table.opened': 'Opened',
+  'master.batteryV2Shadow.lvMeasured.table.status': 'Status',
+  'master.batteryV2Shadow.lvMeasured.table.measuredPts': 'MEASURED pts',
 };
 
 export function resolveBatteryV2ShadowCopy(key: string, params?: Record<string, string | number>): string {

@@ -65,7 +65,9 @@ export function LvMeasuredIntelligenceSection({ data, selectedRestSessionId }: P
         </p>
         <p>{resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.boundaryBody')}</p>
         <p className="text-muted-foreground">
-          NOT_ASSESSED · publication OFF · E3 inactive · F6 OFF · dedup: {data.provenance.deduplicationPolicy}
+          {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.provenanceFooter', {
+            deduplicationPolicy: data.provenance.deduplicationPolicy,
+          })}
         </p>
       </div>
 
@@ -73,11 +75,15 @@ export function LvMeasuredIntelligenceSection({ data, selectedRestSessionId }: P
         {data.latestMeasured ? (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
             <div className="rounded-lg border border-border/60 p-2.5">
-              <p className="text-[11px] text-muted-foreground">MEASURED V</p>
+              <p className="text-[11px] text-muted-foreground">
+                {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.metric.measuredV')}
+              </p>
               <p className="font-medium tabular-nums">{data.latestMeasured.voltageV.toFixed(3)} V</p>
             </div>
             <div className="rounded-lg border border-border/60 p-2.5">
-              <p className="text-[11px] text-muted-foreground">Provider time</p>
+              <p className="text-[11px] text-muted-foreground">
+                {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.metric.providerTime')}
+              </p>
               <p className="font-medium text-xs">
                 {data.latestMeasured.providerObservationAt
                   ? new Date(data.latestMeasured.providerObservationAt).toLocaleString()
@@ -85,13 +91,17 @@ export function LvMeasuredIntelligenceSection({ data, selectedRestSessionId }: P
               </p>
             </div>
             <div className="rounded-lg border border-border/60 p-2.5">
-              <p className="text-[11px] text-muted-foreground">Context</p>
+              <p className="text-[11px] text-muted-foreground">
+                {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.metric.context')}
+              </p>
               <span className={`inline-block rounded px-2 py-0.5 text-xs ${contextBadgeClass(data.latestMeasured.operationalContext)}`}>
                 {data.latestMeasured.operationalContext}
               </span>
             </div>
             <div className="rounded-lg border border-border/60 p-2.5">
-              <p className="text-[11px] text-muted-foreground">Open provider gaps</p>
+              <p className="text-[11px] text-muted-foreground">
+                {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.metric.openProviderGaps')}
+              </p>
               <p className="font-medium tabular-nums">{data.provenance.openProviderObservabilityGapCount}</p>
             </div>
           </div>
@@ -120,7 +130,10 @@ export function LvMeasuredIntelligenceSection({ data, selectedRestSessionId }: P
                   labelFormatter={(_, payload) =>
                     payload?.[0]?.payload?.label ? String(payload[0].payload.label) : ''
                   }
-                  formatter={(value) => [`${Number(value ?? 0).toFixed(3)} V`, 'MEASURED']}
+                  formatter={(value) => [
+                    `${Number(value ?? 0).toFixed(3)} V`,
+                    resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.tooltip.measuredSeries'),
+                  ]}
                 />
                 <Line type="monotone" dataKey="v" stroke="hsl(var(--primary))" dot={false} strokeWidth={2} />
               </LineChart>
@@ -138,28 +151,37 @@ export function LvMeasuredIntelligenceSection({ data, selectedRestSessionId }: P
         <MasterPageSection title={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.sessionTitle')}>
           {selectedEpisode.contextLimitedReason && (
             <p className="text-xs text-amber-800 dark:text-amber-200 mb-2">
-              CONTEXT_LIMITED: {selectedEpisode.contextLimitedReason}
+              {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.contextLimitedPrefix')}{' '}
+              {selectedEpisode.contextLimitedReason}
             </p>
           )}
           {selectedEpisode.derivedFeatures && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4 text-sm">
               <div className="rounded-lg border border-border/60 p-2.5">
-                <p className="text-[11px] text-muted-foreground">DERIVED median</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.metric.derivedMedian')}
+                </p>
                 <p className="font-medium">{formatMillivolts(selectedEpisode.derivedFeatures.medianRestVoltageMv)}</p>
               </div>
               <div className="rounded-lg border border-border/60 p-2.5">
-                <p className="text-[11px] text-muted-foreground">DERIVED slope</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.metric.derivedSlope')}
+                </p>
                 <p className="font-medium">{formatSlope(selectedEpisode.derivedFeatures.robustRestSlopeMvPerHour)}</p>
               </div>
               <div className="rounded-lg border border-border/60 p-2.5">
-                <p className="text-[11px] text-muted-foreground">Min / max</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.metric.minMax')}
+                </p>
                 <p className="font-medium text-xs">
                   {formatMillivolts(selectedEpisode.derivedFeatures.minimumRestVoltageMv)} ·{' '}
                   {formatMillivolts(selectedEpisode.derivedFeatures.maximumRestVoltageMv)}
                 </p>
               </div>
               <div className="rounded-lg border border-border/60 p-2.5">
-                <p className="text-[11px] text-muted-foreground">C3 retention pts</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.metric.c3RetentionPts')}
+                </p>
                 <p className="font-medium tabular-nums">{selectedEpisode.derivedFeatures.retentionPointCount}</p>
               </div>
             </div>
@@ -172,11 +194,19 @@ export function LvMeasuredIntelligenceSection({ data, selectedRestSessionId }: P
                   <XAxis
                     dataKey="restHours"
                     tick={{ fontSize: 10 }}
-                    label={{ value: 'Rest hours', position: 'insideBottom', offset: -2, fontSize: 10 }}
+                    label={{
+                      value: resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.chart.restHoursAxis'),
+                      position: 'insideBottom',
+                      offset: -2,
+                      fontSize: 10,
+                    }}
                   />
                   <YAxis domain={['auto', 'auto']} tick={{ fontSize: 10 }} />
                   <Tooltip
-                    formatter={(value) => [`${Number(value ?? 0).toFixed(3)} V`, 'MEASURED']}
+                    formatter={(value) => [
+                      `${Number(value ?? 0).toFixed(3)} V`,
+                      resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.tooltip.measuredSeries'),
+                    ]}
                     labelFormatter={(_, items) => {
                       const row = items?.[0]?.payload;
                       if (!row) return '';
@@ -199,8 +229,10 @@ export function LvMeasuredIntelligenceSection({ data, selectedRestSessionId }: P
         <p className="text-xs text-muted-foreground mb-2">
           {data.longitudinalD4.epistemicBand}: {data.longitudinalD4.note}
           {data.longitudinalD4.sourceEvidenceAckCountOnLatest != null
-            ? ` · ACK count on latest revision: ${data.longitudinalD4.sourceEvidenceAckCountOnLatest} (not full D4 verification)`
-            : ' · ACK unavailable'}
+            ? resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.d4AckCount', {
+                count: data.longitudinalD4.sourceEvidenceAckCountOnLatest,
+              })
+            : resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.d4AckUnavailable')}
         </p>
       </MasterPageSection>
 
@@ -209,11 +241,21 @@ export function LvMeasuredIntelligenceSection({ data, selectedRestSessionId }: P
           <table className="w-full text-xs">
             <thead>
               <tr className="text-left text-muted-foreground border-b border-border">
-                <th className="py-2 pr-2">Opened</th>
-                <th className="py-2 pr-2">Status</th>
-                <th className="py-2 pr-2">MEASURED pts</th>
-                <th className="py-2 pr-2">DERIVED median</th>
-                <th className="py-2 pr-2">DERIVED slope</th>
+                <th className="py-2 pr-2">
+                  {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.table.opened')}
+                </th>
+                <th className="py-2 pr-2">
+                  {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.table.status')}
+                </th>
+                <th className="py-2 pr-2">
+                  {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.table.measuredPts')}
+                </th>
+                <th className="py-2 pr-2">
+                  {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.metric.derivedMedian')}
+                </th>
+                <th className="py-2 pr-2">
+                  {resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.metric.derivedSlope')}
+                </th>
               </tr>
             </thead>
             <tbody>
