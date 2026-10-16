@@ -10,6 +10,7 @@ import {
   BatteryRestSessionStatus,
   Prisma,
   PrismaClient,
+  TripStatus,
 } from '@prisma/client';
 import { getBatteryRest60mDelayMs, getBatteryRest6hDelayMs } from '@config/battery-health-v2.config';
 import { BatteryMeasurementRepository } from '../battery-measurement.repository';
@@ -25,6 +26,22 @@ import { probePostgresDatabase } from '../provider-observability-gap/provider-ob
 const LIVE =
   process.env.BATTERY_V2_G5C_N7_POSTGRES_INTEGRATION === '1' &&
   Boolean(process.env.DATABASE_URL);
+
+function assertIsolatedDatabaseUrl(): void {
+  const url = process.env.DATABASE_URL ?? '';
+  const lower = url.toLowerCase();
+  if (!lower.includes('127.0.0.1') && !lower.includes('localhost')) {
+    throw new Error('DATABASE_URL must target isolated CI-local PostgreSQL');
+  }
+  if (
+    lower.includes('srv1374778') ||
+    lower.includes('app.synqdrive') ||
+    lower.includes('hstgr.cloud') ||
+    lower.includes('mein-vps')
+  ) {
+    throw new Error('DATABASE_URL must not reference production hosts');
+  }
+}
 
 async function createVehicle(
   prisma: PrismaClient,
@@ -63,9 +80,14 @@ async function createVehicle(
     let evaluation: BatteryRestTargetEvaluationService;
     let measurements: BatteryMeasurementService;
     let handoff: LvRestAssessmentHandoffService;
-    let jobProducer: { enqueue: jest.Mock; hasLiveAssessJobForVehicle: jest.Mock };
+    let jobProducer: {
+      enqueue: jest.Mock;
+      hasLiveAssessJobForVehicle: jest.Mock;
+      hasAssessDispatchConflict: jest.Mock;
+    };
 
     beforeAll(async () => {
+      assertIsolatedDatabaseUrl();
       if (!process.env.DATABASE_URL) {
         throw new Error('DATABASE_URL required for G5C-N7 postgres integration');
       }
@@ -107,11 +129,15 @@ async function createVehicle(
       jobProducer = {
         enqueue: jest.fn().mockResolvedValue('job-1'),
         hasLiveAssessJobForVehicle: jest.fn().mockResolvedValue(false),
+        hasAssessDispatchConflict: jest.fn().mockResolvedValue(false),
       };
       handoff = new LvRestAssessmentHandoffService(
         prisma as never,
         jobProducer as never,
-        { clearDeadLetter: jest.fn() } as never,
+        {
+          clearDeadLetter: jest.fn(),
+          isDeadLetter: jest.fn().mockResolvedValue(false),
+        } as never,
       );
     }, 120_000);
 
@@ -132,12 +158,40 @@ async function createVehicle(
       jest.clearAllMocks();
     });
 
+    async function seedTrip(input: {
+      vehicleId: string;
+      tripId: string;
+      startTime: Date;
+      endTime?: Date;
+    }) {
+      return prisma.vehicleTrip.create({
+        data: {
+          id: input.tripId,
+          vehicleId: input.vehicleId,
+          tripStatus: TripStatus.COMPLETED,
+          startTime: input.startTime,
+          endTime: input.endTime ?? new Date(input.startTime.getTime() + 3_600_000),
+          startLatitude: 51.1,
+          startLongitude: 9.1,
+          endLatitude: 51.11,
+          endLongitude: 9.11,
+          rawDetectionMeta: {},
+        },
+      });
+    }
+
     async function seedRestSession(input: {
       vehicleId: string;
       tripId: string;
       anchorAt: Date;
       sessionStatus?: BatteryRestSessionStatus;
     }) {
+      await seedTrip({
+        vehicleId: input.vehicleId,
+        tripId: input.tripId,
+        startTime: new Date(input.anchorAt.getTime() - 1_800_000),
+        endTime: input.anchorAt,
+      });
       return prisma.batteryRestSession.create({
         data: {
           organizationId,
@@ -158,6 +212,17 @@ async function createVehicle(
       startedAt: Date;
       sessionId?: string;
     }) {
+      const existingTrip = await prisma.vehicleTrip.findUnique({
+        where: { id: input.tripId },
+      });
+      if (!existingTrip) {
+        await seedTrip({
+          vehicleId: input.vehicleId,
+          tripId: input.tripId,
+          startTime: new Date(input.startedAt.getTime() - 1_800_000),
+          endTime: input.startedAt,
+        });
+      }
       return prisma.batteryMeasurementSession.create({
         data: {
           id: input.sessionId,
@@ -253,8 +318,43 @@ async function createVehicle(
       expect(jobProducer.enqueue).toHaveBeenCalledWith(
         'BATTERY_ASSESSMENT_RECOMPUTE',
         expect.objectContaining({ inputVersion: row.id }),
-        expect.any(Object),
       );
+    });
+
+    it('ENDED canonical session still reconciles VALID REST_60M when target was reached', async () => {
+      const suffix = randomUUID().slice(0, 8);
+      const vehicleId = await createVehicle(prisma, organizationId, suffix);
+      const tripId = randomUUID();
+      const canonicalAnchor = new Date('2026-10-15T08:00:00.000Z');
+      const sessionStart = new Date('2026-10-15T08:04:00.000Z');
+      await seedRestSession({
+        vehicleId,
+        tripId,
+        anchorAt: canonicalAnchor,
+        sessionStatus: BatteryRestSessionStatus.ENDED,
+      });
+      const lvSession = await seedLvSession({ vehicleId, tripId, startedAt: sessionStart });
+      const validAt = new Date(canonicalAnchor.getTime() + getBatteryRest60mDelayMs() + 15_000);
+      await seedLiveVoltage({
+        vehicleId,
+        sessionId: lvSession.id,
+        observedAt: validAt,
+        numericValue: 12.46,
+        suffix,
+      });
+      const result = await evaluation.evaluateAndPersist({
+        organizationId,
+        vehicleId,
+        session: lvSession,
+        restTargetType: 'REST_60M',
+        now: new Date(validAt.getTime() + 60_000),
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      const row = await prisma.batteryMeasurement.findUniqueOrThrow({
+        where: { id: result.measurementId },
+      });
+      expect(row.quality).toBe(BatteryMeasurementQuality.VALID);
     });
 
     it('forensic short-rest does not produce VALID REST_60M', async () => {

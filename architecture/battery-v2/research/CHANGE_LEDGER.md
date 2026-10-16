@@ -12,6 +12,7 @@ Append-only scientific record. Newest entries first.
 |-------|-------|
 | **CHANGE** | Trip-first canonical binding (no temporal cross-trip match when trip linked); ambiguous → session anchor fallback; invalidated sessions excluded; ordered Prisma candidate load; scheduling/reconciliation use `resolveRestWindowStartedAt` |
 | **VALIDATION** | Extended policy specs + `lv-rest-canonical-target-anchor.g5c-n7.postgres.integration.spec.ts` (opt-in `BATTERY_V2_G5C_N7_POSTGRES_INTEGRATION=1`) |
+| **G5C-N7-H2** | `battery-g5c-n7-postgres-ci.sh`, workflow `battery-v2-g5c-n7-postgres-ci.yml`, assessment consumer postgres spec (real `BatteryAssessmentRecomputeHandler`), session continuity + ENDED reconciliation postgres cases, wake-flank unit gate |
 
 ---
 

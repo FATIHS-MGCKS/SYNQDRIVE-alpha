@@ -215,6 +215,35 @@ describe('G5C-N7 canonical REST target anchor bridge', () => {
     }
   });
 
+  it('G: early CHARGING_DETECTED shape — later clean 60m sample is not VALID (wake flank)', async () => {
+    const target60m = restTargetAt(
+      CANONICAL_ANCHOR,
+      'REST_60M',
+      getBatteryRest60mDelayMs(),
+      getBatteryRest6hDelayMs(),
+    );
+    prisma.batteryMeasurement.findMany.mockResolvedValue([
+      restingLive('parked-pre-charge', new Date('2026-10-13T17:12:00.000Z'), 12.512),
+      restingLive('charging-wake', new Date('2026-10-13T17:20:29.000Z'), 14.118, {
+        ignitionOn: true,
+        isLvCharging: true,
+      }),
+      restingLive('clean-after-end', target60m, 12.48),
+    ]);
+    const { restEval, measurements } = buildRestEval(prisma);
+    const result = await restEval.evaluateAndPersist({
+      organizationId: ORG,
+      vehicleId: VEH,
+      session: sessionRow(MISALIGNED_SESSION_START) as never,
+      restTargetType: 'REST_60M',
+      now: new Date(target60m.getTime() + 45 * 60_000),
+    });
+    expect(result.quality).not.toBe(BatteryMeasurementQuality.VALID);
+    expect(isCanonicalRestAssessmentHandoffEligible(measurements.create.mock.calls[0]?.[0])).toBe(
+      false,
+    );
+  });
+
   it('E: wake / charging contamination rejected for REST_60M', async () => {
     const target60m = restTargetAt(
       CANONICAL_ANCHOR,
