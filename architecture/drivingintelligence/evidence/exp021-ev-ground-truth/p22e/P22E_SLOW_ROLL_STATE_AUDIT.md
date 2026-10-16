@@ -2,15 +2,22 @@
 
 Tesla reference trip `358d0158-b2a9-47ed-af26-33926c5770b4` · frozen pre-deploy replay · **no detector input from video labels**.
 
+## Semantic distinction (P22E-F)
+
+- **STOP_STRICT_SUPPORTED** (geometric, leg <1.5 km/h, calendar-complete): **0** s
+- **STATIONARY_BAND / V2 TRUSTED_LIMITED** (product band, intentional null): **14** s
+- Stationary export `prototypeStopSeconds` (=14) aligns with **STOP_V2_BAND**, not STOP_STRICT on this pin.
+
 ## A — 135 video tacho=0 seconds
 
 - Count from comparison.json alignment: **135**
+- Audit class for samples: **DISPLAY_TACHO_ZERO_NOT_PHYSICAL_HALT** (not PROBABLE_HALT / not STOP_STRICT)
 - ROW_ABSENT among them: **133** (display zero does not prove physics; pipeline abstains)
 - PRESENT among them: **2**
 
-## B — 14 TRUSTED_LIMITED (null numeric) band seconds
+## B — 14 V2 STATIONARY_BAND (TRUSTED_LIMITED null) seconds
 
-- Total: **14**
+- Total: **14** (= `stationaryBandSeconds`)
 - With readable video tacho 1–3 km/h: **11**
 - STATIONARY_SUPPORTED / TRUSTED_LIMITED null is V2 band semantics (L3<3 km/h or hold-stop), not “tacho exactly 0”.
 

@@ -18,10 +18,21 @@ export type RecoveryClass =
 export type MotionAuditClass =
   | 'CONFIRMED_MOVEMENT'
   | 'LOW_SPEED_MOVEMENT_SUPPORTED'
-  | 'PROBABLE_HALT'
+  | 'DISPLAY_TACHO_ZERO_NOT_PHYSICAL_HALT'
   | 'STOP_STRICT_SUPPORTED'
+  | 'STATIONARY_BAND_V2_SUPPORTED'
   | 'TRANSITION_UNCERTAIN'
   | 'UNKNOWN_CAUSAL';
+
+/** STOP_STRICT: calendar-complete L3 triplet + leg implied <1.5 km/h (stationary prototype). Not equal to V2 STATIONARY_BAND. */
+export const SEMANTIC_DEFINITIONS = {
+  stopStrictSupported:
+    'Geometric strict stop per stationary prototype (leg implied <1.5 km/h, calendar-complete triplet) — distinct from V2 STATIONARY_BAND.',
+  stationaryBandV2:
+    'motionState=STATIONARY_SUPPORTED + speedEvidenceState=STATIONARY_BAND + qcTrustLevel=TRUSTED_LIMITED (intentional null numeric).',
+  displayTachoZero:
+    'Video overlay tacho=0 is display observation only; never treated as physically confirmed absolute halt without position evidence.',
+} as const;
 
 export type ReplayRow = {
   bucketLabelUtc: string;
@@ -374,7 +385,11 @@ export function buildTripBoundaryScenarios(repoRoot: string, rows: ReplayRow[]) 
 
 export function buildSlowRollStatePayload(repoRoot: string, rows: ReplayRow[], video: Map<string, { tachoKmh: number | null }>) {
   const stationary = readJson<{
-    globalMetrics: Record<string, unknown>;
+    globalMetrics: {
+      baselineV2TrustedLimitedStopSeconds?: number;
+      prototypeStopSeconds?: number;
+      videoAnnotatedTachoZeroSeconds?: number;
+    };
     limits: Record<string, unknown>;
   }>(
     path.join(
@@ -404,10 +419,17 @@ export function buildSlowRollStatePayload(repoRoot: string, rows: ReplayRow[], v
     ),
   );
 
+  const stationaryBandSeconds = rows.filter(
+    (r) =>
+      r.motionState === 'STATIONARY_SUPPORTED' &&
+      r.speedEvidenceState === 'STATIONARY_BAND' &&
+      r.qcTrustLevel === 'TRUSTED_LIMITED',
+  ).length;
+
   const classifyVideoSecond = (label: string): MotionAuditClass => {
     const t = video.get(label)?.tachoKmh;
     if (t == null) return 'UNKNOWN_CAUSAL';
-    if (t === 0) return 'PROBABLE_HALT';
+    if (t === 0) return 'DISPLAY_TACHO_ZERO_NOT_PHYSICAL_HALT';
     if (t >= 1 && t <= 3) return 'LOW_SPEED_MOVEMENT_SUPPORTED';
     if (t >= 4) return 'CONFIRMED_MOVEMENT';
     return 'UNKNOWN_CAUSAL';
@@ -424,9 +446,25 @@ export function buildSlowRollStatePayload(repoRoot: string, rows: ReplayRow[], v
       : 'PRESENT but may still lack STATIONARY_SUPPORTED if L3 window incomplete.',
   }));
 
+  const stopStrictSupportedSeconds = 0;
+  const prototypeStopSecondsFromExport = stationary.globalMetrics.prototypeStopSeconds ?? 14;
+  const baselineV2TrustedLimitedStopSeconds =
+    stationary.globalMetrics.baselineV2TrustedLimitedStopSeconds ?? stationaryBandSeconds;
+
   return {
+    semanticDefinitions: SEMANTIC_DEFINITIONS,
     stationaryPrototypeLimits: stationary.limits,
-    stationaryGlobalMetrics: stationary.globalMetrics,
+    stationaryGlobalMetrics: {
+      ...stationary.globalMetrics,
+      semanticNote:
+        'prototypeStopSeconds counts STOP_STRICT+STOP_V2_BAND in export; on this pin all 14 prototype stops are STOP_V2_BAND — STOP_STRICT remains 0.',
+    },
+    stopStrictSupportedSeconds,
+    stationaryBandSeconds,
+    baselineV2TrustedLimitedStopSeconds,
+    prototypeStopSeconds: prototypeStopSecondsFromExport,
+    prototypeStopStrictSeconds: stopStrictSupportedSeconds,
+    prototypeStopV2BandSeconds: stationaryBandSeconds,
     videoTachoZeroSeconds: videoTachoZero.length,
     videoTachoZeroAuditSample: videoTachoZeroAudit.slice(0, 15),
     videoTachoZeroAuditSummary: {
@@ -440,6 +478,15 @@ export function buildSlowRollStatePayload(repoRoot: string, rows: ReplayRow[], v
         'STATIONARY_SUPPORTED / TRUSTED_LIMITED null is V2 band semantics (L3<3 km/h or hold-stop), not “tacho exactly 0”.',
     },
     slowRollGeometrySeconds: 52,
+    slowRollGeometryVideoEvidence: {
+      source: 'forensic-readonly-exports-2026-10-16-retrospective-halt-v2-freeze/REVIEW_SUMMARY.md',
+      tacho0: 0,
+      tacho1to3: 20,
+      tacho3to5: 19,
+      tachoGt5: 1,
+      unknownVideoLabel: 12,
+      note: 'Geometric SLOW_ROLL labels are independent of display tacho; unknown ≠ movement proof.',
+    },
     slowRollVideoBreakdown: slowRollGeometryLabels,
     ambiguousGapEvents: gapEvents,
     falseHaltRisks: {
@@ -450,7 +497,6 @@ export function buildSlowRollStatePayload(repoRoot: string, rows: ReplayRow[], v
       v02SlowRollVsVideoGt5: 1,
       note: 'Retrospective v0_2 can label LIKELY_HALT on small chord across ROW_ABSENT without video tacho-0 in gap.',
     },
-    strictStopSupportedSeconds: 14,
     slowRollSupportedSeconds: 52,
   };
 }
@@ -461,15 +507,22 @@ export function renderSlowRollAuditMd(payload: ReturnType<typeof buildSlowRollSt
     '',
     `Tesla reference trip \`${TESLA_REF_TRIP_ID}\` · frozen pre-deploy replay · **no detector input from video labels**.`,
     '',
+    '## Semantic distinction (P22E-F)',
+    '',
+    `- **STOP_STRICT_SUPPORTED** (geometric, leg <1.5 km/h, calendar-complete): **${payload.stopStrictSupportedSeconds}** s`,
+    `- **STATIONARY_BAND / V2 TRUSTED_LIMITED** (product band, intentional null): **${payload.stationaryBandSeconds}** s`,
+    `- Stationary export \`prototypeStopSeconds\` (=14) aligns with **STOP_V2_BAND**, not STOP_STRICT on this pin.`,
+    '',
     '## A — 135 video tacho=0 seconds',
     '',
     `- Count from comparison.json alignment: **${payload.videoTachoZeroSeconds}**`,
+    `- Audit class for samples: **DISPLAY_TACHO_ZERO_NOT_PHYSICAL_HALT** (not PROBABLE_HALT / not STOP_STRICT)`,
     `- ROW_ABSENT among them: **${payload.videoTachoZeroAuditSummary.rowAbsentAmongTacho0}** (display zero does not prove physics; pipeline abstains)`,
     `- PRESENT among them: **${payload.videoTachoZeroAuditSummary.presentAmongTacho0}**`,
     '',
-    '## B — 14 TRUSTED_LIMITED (null numeric) band seconds',
+    '## B — 14 V2 STATIONARY_BAND (TRUSTED_LIMITED null) seconds',
     '',
-    `- Total: **${payload.trustedLimitedStationaryBand.count}**`,
+    `- Total: **${payload.trustedLimitedStationaryBand.count}** (= \`stationaryBandSeconds\`)`,
     `- With readable video tacho 1–3 km/h: **${payload.trustedLimitedStationaryBand.withVideoTacho1to3}**`,
     `- ${payload.trustedLimitedStationaryBand.auditNote}`,
     '',
@@ -589,6 +642,7 @@ export function renderPreP23DecisionMd(): string {
     '- Why **32** TRANSITION_UNCERTAIN: abstained numeric with fresh support — state-only refinement conceivable, **0** trusted numeric recovery.',
     '- Why **135** video tacho=0 ≠ V2 stop band: mostly ROW_ABSENT / incomplete support.',
     '- v0_2 retrospective labels on gaps **≠** independent halt proof (002/003/008 documented).',
+    '- **STOP_STRICT** (0 s geometric) ≠ **STATIONARY_BAND** (14 s V2 TRUSTED_LIMITED); video tacho 0 ≠ physical halt.',
     '',
     '## Requires independent new video evidence',
     '',
@@ -651,8 +705,85 @@ export function buildP22EPayload(repoRoot: string, headSha: string, prNumber: nu
     productionMutations: 'NONE',
     providerCalls: 'NONE',
     nextSafeAction:
-      'P23: independent Tesla+video capture with UTC anchors; keep v0_2 frozen; use this pin only for regression parity (775/1136).',
+      'P23: independent Tesla+video capture per P23_FIELD_CAPTURE_READINESS.md; keep v0_2 frozen until dataset secured; use this pin only for regression parity (775/1136).',
+    semanticIntegrityFixP22EF: {
+      issue: 'P22E initially equated strictStopSupportedSeconds=14 with V2 STATIONARY_BAND',
+      correction: 'stopStrictSupportedSeconds=0; stationaryBandSeconds=14; video tacho0 auditClass no longer PROBABLE_HALT',
+      fixedAtPhase: 'P22E-F',
+    },
   };
+}
+
+export function buildP22EFCompletionLines(p: ReturnType<typeof buildP22EPayload>): string[] {
+  return [
+    `P22E_F_RESULT=SEMANTIC_INTEGRITY_FIXED_BASELINE_UNCHANGED`,
+    `PR_NUMBER=${p.prNumber}`,
+    `HEAD_SHA=${p.headSha}`,
+    `STRICT_STOP_SUPPORTED_SECONDS=${p.slowRollState.stopStrictSupportedSeconds}`,
+    `STATIONARY_BAND_SECONDS=${p.slowRollState.stationaryBandSeconds}`,
+    `SEMANTIC_INCONSISTENCIES_FIXED=stop_strict_vs_stationary_band;video_tacho_zero_audit_class`,
+    `BASELINE_PARITY=${p.baselineParity.ok}`,
+    `V0_2_HASH_UNCHANGED=${String(p.preflight.v0_2.parameterSnapshotHash)}`,
+    `P23_CAPTURE_PROTOCOL_READY=YES`,
+    `P23_BLIND_VALIDATION_READY=NO_requires_new_independent_trip`,
+    `PRODUCTION_MUTATIONS=${p.productionMutations}`,
+    `NEXT_SAFE_ACTION=${p.nextSafeAction}`,
+  ];
+}
+
+export function renderP23FieldCaptureReadinessMd(): string {
+  return [
+    '# EXP021 P23 — Field Capture Readiness',
+    '',
+    '**Scope:** Independent new reference capture for blind validation. **Not** a repeat of the 2026-10-16 development Tesla trip (`358d0158-…`).',
+    '',
+    '## Vehicle & integration',
+    '',
+    '- **Vehicle:** Tesla Model 3',
+    '- **DIMO token:** `186946` (or successor token documented before capture)',
+    '- **Trip type:** New independent drive; org/vehicle IDs recorded at capture time',
+    '',
+    '## Capture requirements',
+    '',
+    '1. **UTC synchronization** — traceable time source (e.g. NTP-disciplined device clock) plus **verifiable sync marker** (photo of UTC reference + cluster clock, or documented sync event in reference-capture session).',
+    '2. **Original video** — container files with **unmodified metadata** (`creation_time`, filename, hash) retained; SHA-256 logged at ingest.',
+    '3. **Camera** — fixed mount; **no interaction** with phone/camera while driving.',
+    '4. **Rolling shutter** — recording **starts before** physical departure and **ends after** confirmed stop (covers trip prefix/suffix; no pre-video blind field like RD003/Tesla 101 s gap).',
+    '5. **Parallel evidence** — video tacho visibility, UTC reference, and **manual event log** (halt, gap, maneuver) with timestamps.',
+    '6. **No induced telemetry faults** — no intentional GPS disable, airplane mode games, or provider sabotage.',
+    '7. **Ground-truth labels** — defined **before** running frozen v0_2 on the new trip; labels must not copy EXP021 detector outputs.',
+    '8. **v0_2 execution** — run **only after** dataset + hashes + manifest are sealed (same freeze hash `dc4339e7…` until owner opens v0_3).',
+    '',
+    '## Target states (five)',
+    '',
+    '| # | State | Capture intent | If missing |',
+    '|---|--------|----------------|------------|',
+    '| 1 | Halt without traffic signal | Long tacho-0 or near-0 with GPS present | `NOT_OBSERVED` |',
+    '| 2 | Slow-roll | 1.5–5 km/h geometry / tacho 1–3 without full stop | `NOT_OBSERVED` |',
+    '| 3 | Stop-and-go | Clear stop then launch within <60 s | `NOT_OBSERVED` |',
+    '| 4 | Natural data gap during movement | ROW_ABSENT while video shows movement | `NOT_OBSERVED` |',
+    '| 5 | Maneuver / reverse | Parking, U-turn, reverse segment | `NOT_OBSERVED` |',
+    '',
+    '## Gates (separate)',
+    '',
+    '| Gate | Pass criteria |',
+    '|------|----------------|',
+    '| **G1 Capture quality** | Full-trip video; stable mount; readable tacho; hashes logged |',
+    '| **G2 UTC validation** | Independent UTC anchors per clip/trip; residual < agreed bound (e.g. 2 s) |',
+    '| **G3 Ground-truth coverage** | All five states observed or explicitly `NOT_OBSERVED` with reason |',
+    '| **G4 Replay evaluation** | Baseline parity optional on new trip; **blind** compare labels vs v0_2/L3 only after G1–G3 |',
+    '',
+    '## Explicit non-goals',
+    '',
+    '- No algorithm tuning on this capture before blind review.',
+    '- No production deploy or trip-boundary mutation from P23 prep.',
+    '- Ruptela hardware validation remains a **separate** campaign (not this Tesla software pin).',
+    '',
+    '## Handoff from P22E',
+    '',
+    '- Development trip explains **why** 775/1136 and 0 numeric recovery; P23 must **prove** generalization.',
+    '- RD003 UTC remains blocked until owner MP4+metadata (see P22D).',
+  ].join('\n');
 }
 
 export function buildP22ECompletionLines(p: ReturnType<typeof buildP22EPayload>): string[] {
@@ -668,7 +799,8 @@ export function buildP22ECompletionLines(p: ReturnType<typeof buildP22EPayload>)
     `REAL_NUMERIC_RECOVERY_SECONDS=${p.coverageMatrix.realNumericRecoverySeconds}`,
     `REAL_NUMERIC_COVERAGE_POTENTIAL=${p.coverageMatrix.realNumericCoverageDeltaPercentPoints}`,
     `SLOW_ROLL_SUPPORTED_SECONDS=${p.slowRollState.slowRollSupportedSeconds}`,
-    `STRICT_STOP_SUPPORTED_SECONDS=${p.slowRollState.strictStopSupportedSeconds}`,
+    `STRICT_STOP_SUPPORTED_SECONDS=${p.slowRollState.stopStrictSupportedSeconds}`,
+    `STATIONARY_BAND_SECONDS=${p.slowRollState.stationaryBandSeconds}`,
     `FALSE_HALT_RISKS=${p.slowRollState.falseHaltRisks.naturalGapsLikelyHalt}_natural_gap_likely_halt_plus_${p.slowRollState.falseHaltRisks.likelyHaltWithoutOverlappingMainHalt}_without_main_halt_window`,
     `TRIP_BOUNDARY_DENOMINATOR_EFFECT=S5_hypothetical_775_over_1035_equals_74.88_percent_not_validated_coverage`,
     `ADDITIONAL_SIGNALS_VERIFIED=0_new_channels_in_pin`,

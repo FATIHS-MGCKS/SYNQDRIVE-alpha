@@ -7,6 +7,7 @@
 - Why **32** TRANSITION_UNCERTAIN: abstained numeric with fresh support — state-only refinement conceivable, **0** trusted numeric recovery.
 - Why **135** video tacho=0 ≠ V2 stop band: mostly ROW_ABSENT / incomplete support.
 - v0_2 retrospective labels on gaps **≠** independent halt proof (002/003/008 documented).
+- **STOP_STRICT** (0 s geometric) ≠ **STATIONARY_BAND** (14 s V2 TRUSTED_LIMITED); video tacho 0 ≠ physical halt.
 
 ## Requires independent new video evidence
 

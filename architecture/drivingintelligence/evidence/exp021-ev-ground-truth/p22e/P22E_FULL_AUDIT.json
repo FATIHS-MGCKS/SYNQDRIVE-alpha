@@ -1,8 +1,8 @@
 {
   "schema": "EXP021_P22E_PRE_P23_AUDIT_V1",
-  "observedAtUtc": "2026-10-16T20:45:34.057Z",
+  "observedAtUtc": "2026-10-16T21:19:08.075Z",
   "prNumber": 2051,
-  "headSha": "26c2c4426e70b2874dcf98ddc285871aee402bd7",
+  "headSha": "e3a79ee2c599dc39b0592abd8f05db073dc80ef7",
   "p22eResult": "BASELINE_PARITY_OK_COVERAGE_RECOVERY_BLOCKED",
   "preflight": {
     "tripId": "358d0158-b2a9-47ed-af26-33926c5770b4",
@@ -851,6 +851,11 @@
     "tripBoundaryDenominatorEffect": "Changing denominator without new trusted numerators inflates % only (S5). No independent physical trip-end dispute on this pin."
   },
   "slowRollState": {
+    "semanticDefinitions": {
+      "stopStrictSupported": "Geometric strict stop per stationary prototype (leg implied <1.5 km/h, calendar-complete triplet) — distinct from V2 STATIONARY_BAND.",
+      "stationaryBandV2": "motionState=STATIONARY_SUPPORTED + speedEvidenceState=STATIONARY_BAND + qcTrustLevel=TRUSTED_LIMITED (intentional null numeric).",
+      "displayTachoZero": "Video overlay tacho=0 is display observation only; never treated as physically confirmed absolute halt without position evidence."
+    },
     "stationaryPrototypeLimits": {
       "strictStopMaxLegImpliedKmh": 1.5,
       "creepBandMaxKmh": 5,
@@ -872,8 +877,15 @@
       "numericCoverageSeparate": {
         "numericL3": 776,
         "trustedNumeric": 775
-      }
+      },
+      "semanticNote": "prototypeStopSeconds counts STOP_STRICT+STOP_V2_BAND in export; on this pin all 14 prototype stops are STOP_V2_BAND — STOP_STRICT remains 0."
     },
+    "stopStrictSupportedSeconds": 0,
+    "stationaryBandSeconds": 14,
+    "baselineV2TrustedLimitedStopSeconds": 14,
+    "prototypeStopSeconds": 14,
+    "prototypeStopStrictSeconds": 0,
+    "prototypeStopV2BandSeconds": 14,
     "videoTachoZeroSeconds": 135,
     "videoTachoZeroAuditSample": [
       {
@@ -881,7 +893,7 @@
         "baselineMotion": "NO_MOTION_EVIDENCE",
         "baselineQc": "UNTRUSTED",
         "positionAvailability": "ROW_ABSENT",
-        "auditClass": "PROBABLE_HALT",
+        "auditClass": "DISPLAY_TACHO_ZERO_NOT_PHYSICAL_HALT",
         "note": "Tacho display 0 ≠ physics proof; ROW_ABSENT prevents STATIONARY_BAND."
       },
       {
@@ -889,7 +901,7 @@
         "baselineMotion": "NO_MOTION_EVIDENCE",
         "baselineQc": "UNTRUSTED",
         "positionAvailability": "ROW_ABSENT",
-        "auditClass": "PROBABLE_HALT",
+        "auditClass": "DISPLAY_TACHO_ZERO_NOT_PHYSICAL_HALT",
         "note": "Tacho display 0 ≠ physics proof; ROW_ABSENT prevents STATIONARY_BAND."
       },
       {
@@ -897,7 +909,7 @@
         "baselineMotion": "NO_MOTION_EVIDENCE",
         "baselineQc": "UNTRUSTED",
         "positionAvailability": "ROW_ABSENT",
-        "auditClass": "PROBABLE_HALT",
+        "auditClass": "DISPLAY_TACHO_ZERO_NOT_PHYSICAL_HALT",
         "note": "Tacho display 0 ≠ physics proof; ROW_ABSENT prevents STATIONARY_BAND."
       },
       {
@@ -905,7 +917,7 @@
         "baselineMotion": "NO_MOTION_EVIDENCE",
         "baselineQc": "UNTRUSTED",
         "positionAvailability": "ROW_ABSENT",
-        "auditClass": "PROBABLE_HALT",
+        "auditClass": "DISPLAY_TACHO_ZERO_NOT_PHYSICAL_HALT",
         "note": "Tacho display 0 ≠ physics proof; ROW_ABSENT prevents STATIONARY_BAND."
       },
       {
@@ -913,7 +925,7 @@
         "baselineMotion": "NO_MOTION_EVIDENCE",
         "baselineQc": "UNTRUSTED",
         "positionAvailability": "ROW_ABSENT",
-        "auditClass": "PROBABLE_HALT",
+        "auditClass": "DISPLAY_TACHO_ZERO_NOT_PHYSICAL_HALT",
         "note": "Tacho display 0 ≠ physics proof; ROW_ABSENT prevents STATIONARY_BAND."
       },
       {
@@ -921,7 +933,7 @@
         "baselineMotion": "NO_MOTION_EVIDENCE",
         "baselineQc": "UNTRUSTED",
         "positionAvailability": "ROW_ABSENT",
-        "auditClass": "PROBABLE_HALT",
+        "auditClass": "DISPLAY_TACHO_ZERO_NOT_PHYSICAL_HALT",
         "note": "Tacho display 0 ≠ physics proof; ROW_ABSENT prevents STATIONARY_BAND."
       },
       {
@@ -929,7 +941,7 @@
         "baselineMotion": "NO_MOTION_EVIDENCE",
         "baselineQc": "UNTRUSTED",
         "positionAvailability": "ROW_ABSENT",
-        "auditClass": "PROBABLE_HALT",
+        "auditClass": "DISPLAY_TACHO_ZERO_NOT_PHYSICAL_HALT",
         "note": "Tacho display 0 ≠ physics proof; ROW_ABSENT prevents STATIONARY_BAND."
       },
       {
@@ -937,7 +949,7 @@
         "baselineMotion": "NO_MOTION_EVIDENCE",
         "baselineQc": "UNTRUSTED",
         "positionAvailability": "ROW_ABSENT",
-        "auditClass": "PROBABLE_HALT",
+        "auditClass": "DISPLAY_TACHO_ZERO_NOT_PHYSICAL_HALT",
         "note": "Tacho display 0 ≠ physics proof; ROW_ABSENT prevents STATIONARY_BAND."
       },
       {
@@ -945,7 +957,7 @@
         "baselineMotion": "NO_MOTION_EVIDENCE",
         "baselineQc": "UNTRUSTED",
         "positionAvailability": "ROW_ABSENT",
-        "auditClass": "PROBABLE_HALT",
+        "auditClass": "DISPLAY_TACHO_ZERO_NOT_PHYSICAL_HALT",
         "note": "Tacho display 0 ≠ physics proof; ROW_ABSENT prevents STATIONARY_BAND."
       },
       {
@@ -953,7 +965,7 @@
         "baselineMotion": "NO_MOTION_EVIDENCE",
         "baselineQc": "UNTRUSTED",
         "positionAvailability": "ROW_ABSENT",
-        "auditClass": "PROBABLE_HALT",
+        "auditClass": "DISPLAY_TACHO_ZERO_NOT_PHYSICAL_HALT",
         "note": "Tacho display 0 ≠ physics proof; ROW_ABSENT prevents STATIONARY_BAND."
       },
       {
@@ -961,7 +973,7 @@
         "baselineMotion": "NO_MOTION_EVIDENCE",
         "baselineQc": "UNTRUSTED",
         "positionAvailability": "ROW_ABSENT",
-        "auditClass": "PROBABLE_HALT",
+        "auditClass": "DISPLAY_TACHO_ZERO_NOT_PHYSICAL_HALT",
         "note": "Tacho display 0 ≠ physics proof; ROW_ABSENT prevents STATIONARY_BAND."
       },
       {
@@ -969,7 +981,7 @@
         "baselineMotion": "NO_MOTION_EVIDENCE",
         "baselineQc": "UNTRUSTED",
         "positionAvailability": "ROW_ABSENT",
-        "auditClass": "PROBABLE_HALT",
+        "auditClass": "DISPLAY_TACHO_ZERO_NOT_PHYSICAL_HALT",
         "note": "Tacho display 0 ≠ physics proof; ROW_ABSENT prevents STATIONARY_BAND."
       },
       {
@@ -977,7 +989,7 @@
         "baselineMotion": "NO_MOTION_EVIDENCE",
         "baselineQc": "UNTRUSTED",
         "positionAvailability": "ROW_ABSENT",
-        "auditClass": "PROBABLE_HALT",
+        "auditClass": "DISPLAY_TACHO_ZERO_NOT_PHYSICAL_HALT",
         "note": "Tacho display 0 ≠ physics proof; ROW_ABSENT prevents STATIONARY_BAND."
       },
       {
@@ -985,7 +997,7 @@
         "baselineMotion": "NO_MOTION_EVIDENCE",
         "baselineQc": "UNTRUSTED",
         "positionAvailability": "ROW_ABSENT",
-        "auditClass": "PROBABLE_HALT",
+        "auditClass": "DISPLAY_TACHO_ZERO_NOT_PHYSICAL_HALT",
         "note": "Tacho display 0 ≠ physics proof; ROW_ABSENT prevents STATIONARY_BAND."
       },
       {
@@ -993,7 +1005,7 @@
         "baselineMotion": "NO_MOTION_EVIDENCE",
         "baselineQc": "UNTRUSTED",
         "positionAvailability": "ROW_ABSENT",
-        "auditClass": "PROBABLE_HALT",
+        "auditClass": "DISPLAY_TACHO_ZERO_NOT_PHYSICAL_HALT",
         "note": "Tacho display 0 ≠ physics proof; ROW_ABSENT prevents STATIONARY_BAND."
       }
     ],
@@ -1007,6 +1019,15 @@
       "auditNote": "STATIONARY_SUPPORTED / TRUSTED_LIMITED null is V2 band semantics (L3<3 km/h or hold-stop), not “tacho exactly 0”."
     },
     "slowRollGeometrySeconds": 52,
+    "slowRollGeometryVideoEvidence": {
+      "source": "forensic-readonly-exports-2026-10-16-retrospective-halt-v2-freeze/REVIEW_SUMMARY.md",
+      "tacho0": 0,
+      "tacho1to3": 20,
+      "tacho3to5": 19,
+      "tachoGt5": 1,
+      "unknownVideoLabel": 12,
+      "note": "Geometric SLOW_ROLL labels are independent of display tacho; unknown ≠ movement proof."
+    },
     "slowRollVideoBreakdown": {
       "v02OnThisTripTraceable": [
         "10 Positionslücken ≥3 s als Kandidaten; 5 annotierte Tacho-0-Abschnitte (LONG_HALT_*) mit überlappender Lücke.",
@@ -1434,7 +1455,6 @@
       "v02SlowRollVsVideoGt5": 1,
       "note": "Retrospective v0_2 can label LIKELY_HALT on small chord across ROW_ABSENT without video tacho-0 in gap."
     },
-    "strictStopSupportedSeconds": 14,
     "slowRollSupportedSeconds": 52
   },
   "optimizationPriorities": [
@@ -1503,5 +1523,10 @@
   ],
   "productionMutations": "NONE",
   "providerCalls": "NONE",
-  "nextSafeAction": "P23: independent Tesla+video capture with UTC anchors; keep v0_2 frozen; use this pin only for regression parity (775/1136)."
+  "nextSafeAction": "P23: independent Tesla+video capture per P23_FIELD_CAPTURE_READINESS.md; keep v0_2 frozen until dataset secured; use this pin only for regression parity (775/1136).",
+  "semanticIntegrityFixP22EF": {
+    "issue": "P22E initially equated strictStopSupportedSeconds=14 with V2 STATIONARY_BAND",
+    "correction": "stopStrictSupportedSeconds=0; stationaryBandSeconds=14; video tacho0 auditClass no longer PROBABLE_HALT",
+    "fixedAtPhase": "P22E-F"
+  }
 }

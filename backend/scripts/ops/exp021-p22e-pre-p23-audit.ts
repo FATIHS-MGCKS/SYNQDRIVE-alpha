@@ -7,10 +7,12 @@ import * as path from 'node:path';
 import { execSync } from 'node:child_process';
 import {
   buildP22ECompletionLines,
+  buildP22EFCompletionLines,
   buildP22EPayload,
   loadFrozenReplay,
   renderOptimizationMd,
   renderPreP23DecisionMd,
+  renderP23FieldCaptureReadinessMd,
   renderSlowRollAuditMd,
   buildSlowRollStatePayload,
   loadVideoComparison,
@@ -53,6 +55,8 @@ async function main(): Promise<void> {
   fs.writeFileSync(path.join(outDir, 'P22E_PRE_P23_DECISION.md'), renderPreP23DecisionMd());
   fs.writeFileSync(path.join(outDir, 'P22E_FULL_AUDIT.json'), JSON.stringify(payload, null, 2));
   fs.writeFileSync(path.join(outDir, 'P22E_RESULT.txt'), completionLines.join('\n') + '\n');
+  fs.writeFileSync(path.join(outDir, 'P22E_F_RESULT.txt'), buildP22EFCompletionLines(payload).join('\n') + '\n');
+  fs.writeFileSync(path.join(outDir, 'P23_FIELD_CAPTURE_READINESS.md'), renderP23FieldCaptureReadinessMd());
 
   console.log(
     JSON.stringify(
