@@ -56,6 +56,7 @@ export type PhysicalDeviceAuditHistoryItemDto = {
 export type PhysicalDeviceDetailDto = PhysicalDeviceListItemDto & {
   intakeNotes: string | null;
   identityEvidenceSummary: string | null;
+  activeInstallAssignmentId: string | null;
   assignmentHistory: PhysicalDeviceAssignmentHistoryItemDto[];
   auditHistory: PhysicalDeviceAuditHistoryItemDto[];
 };

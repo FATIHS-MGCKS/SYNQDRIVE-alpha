@@ -16753,6 +16753,7 @@ enum PhysicalDeviceInventoryStatus {
   AVAILABLE
   RESERVED
   INSTALLED
+  PENDING_RETURN
   DEFECTIVE
   LOST
   RETIRED
@@ -16776,6 +16777,11 @@ enum PhysicalDeviceInventoryAuditEventKind {
   MANUAL_INTAKE
   IDENTITY_VERIFICATION
   INSTALL
+  UNINSTALL
+  RETURN_TO_STOCK
+  MARK_DEFECTIVE
+  MARK_LOST
+  RETIRE
 }
 
 model PhysicalDevice {
