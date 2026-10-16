@@ -56,7 +56,7 @@ async function main(): Promise<void> {
         >`
           SELECT provider, source_type, is_active, dimo_vehicle_id, activated_at
           FROM vehicle_data_source_links
-          WHERE vehicle_id = ${VEHICLE}::uuid
+          WHERE vehicle_id = ${VEHICLE}
           ORDER BY activated_at DESC`;
         const snapRows = await tx.$queryRaw<
           Array<{

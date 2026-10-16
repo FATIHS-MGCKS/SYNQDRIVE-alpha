@@ -80,7 +80,8 @@ Artifact: `/opt/cursor/artifacts/exp021-position-gap-forensic.json`
 | Intervals with **center** bucket gap | 3040 (neighbor-only: 0) |
 | `POS_GAP_ROW_ABSENT_EXPLICIT` interval-seconds | 3040 |
 | Bucket stages (acquisition grid) | `ROW_ABSENT_EXPLICIT` **2966**; `PRESENT_VALID_COORDINATES` 1728; map-missing 0 |
-| Longest POSITION_GAP run | **1570 s** UTC `2026-10-14T14:55:43Z` → `2026-10-14T15:21:52Z`; dominant center stage `ROW_ABSENT_EXPLICIT` |
+| POSITION_GAP interval breakdown | **2966** center `ROW_ABSENT` + **74** center `PRESENT` with t±1 `ROW_ABSENT` (see `EXP021_BUCKET_INTERVAL_ALIGNMENT_2026-10-16.md`) |
+| Longest POSITION_GAP run | **1570 s** UTC `2026-10-14T14:55:43Z` → `2026-10-14T15:21:52Z`; half-open end `15:21:53Z`; pin window **1550** `ROW_ABSENT` / **20** valid coords |
 | Persisted CURRENT V2 | **None** for this WI |
 
 **Longest-gap explanation:** The 1570 s block is a **contiguous run of evaluation intervals** classified `POSITION_GAP` because the **center** normalized position bucket in the **pinned snapshot** is `ROW_ABSENT_EXPLICIT` (explicit absent row — not “missing from map”). It is **not** a separate raw-provider proof; it is **proven through pin → normalized buckets → L3 support → V2 QC**. Not hold-priority override (no center gap → hold reclassification on these seconds).
