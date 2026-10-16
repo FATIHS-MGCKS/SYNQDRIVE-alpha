@@ -8,7 +8,7 @@ import * as path from 'node:path';
 import { Prisma, PrismaClient } from '@prisma/client';
 import { DI_V0_SPEED_QC_POLICY_V2 } from '../../src/modules/vehicle-intelligence/driving-intelligence/speed-qc/di-v0-speed-qc-policy.version';
 import { DI_V0_TRIP_SPEED_QUALITY_PROJECTION_V1 } from '../../src/modules/vehicle-intelligence/driving-intelligence/trip-speed-quality/di-v0-trip-speed-quality-projection.version';
-import { DI_V0_SPEED_QC_POLICY_V2 } from '../../src/modules/vehicle-intelligence/driving-intelligence/speed-qc/di-v0-speed-qc-policy.version';
+import { evaluateExp021PersistedAggregateReplayMatch } from '../../src/modules/vehicle-intelligence/driving-intelligence/trip-speed-quality/exp021-persisted-aggregate-replay-match';
 import { buildDiV0TripSpeedQualityProjectionV1 } from '../../src/modules/vehicle-intelligence/driving-intelligence/trip-speed-quality/build-di-v0-trip-speed-quality-projection.v1';
 import {
   partitionTripIntervalsV2,
@@ -277,36 +277,15 @@ async function main(): Promise<void> {
       });
       const accel = summarizeAccelBrakeReadiness(ctx.shadowIntervals, partitioned.intervals);
       const persisted = await loadPersistedCurrentV2(prisma, organizationId, pick.trip_id, pick.work_item_id);
-      const persistedQuality = (persisted?.projection_json as { quality?: Record<string, unknown> } | undefined)
-        ?.quality;
-      const replayMatch =
-        persisted != null && persistedQuality != null
-          ? {
-              projectionId: persisted.id,
-              qcPolicyVersion: persisted.qc_policy_version,
-              projectionVersion: persisted.projection_version,
-              lifecycleStatus: persisted.lifecycle_status,
-              createdAtUtc: persisted.created_at.toISOString(),
-              trustedNumericCoveragePercent:
-                persistedQuality.trustedNumericCoveragePercent ===
-                replayProjection.quality.trustedNumericCoveragePercent,
-              numericCoveragePercent:
-                persistedQuality.numericCoveragePercent === replayProjection.quality.numericCoveragePercent,
-              trustedLimitedStationaryCount:
-                persistedQuality.trustedLimitedStationaryCount ===
-                replayProjection.quality.trustedLimitedStationaryCount,
-              qcTrustedMaxKmh: (persisted.projection_json as { speed?: { qcTrustedMaxKmh?: number } })?.speed
-                ?.qcTrustedMaxKmh === replayProjection.speed.qcTrustedMaxKmh,
-              allFieldsMatch:
-                persistedQuality.trustedNumericCoveragePercent ===
-                  replayProjection.quality.trustedNumericCoveragePercent &&
-                persistedQuality.numericCoveragePercent === replayProjection.quality.numericCoveragePercent &&
-                persistedQuality.trustedLimitedStationaryCount ===
-                  replayProjection.quality.trustedLimitedStationaryCount &&
-                (persisted.projection_json as { speed?: { qcTrustedMaxKmh?: number } })?.speed?.qcTrustedMaxKmh ===
-                  replayProjection.speed.qcTrustedMaxKmh,
-            }
-          : { note: 'NO_PERSISTED_CURRENT_V2_ROW' };
+      const replayMatch = evaluateExp021PersistedAggregateReplayMatch({
+        persisted,
+        replay: {
+          trustedNumericCoveragePercent: replayProjection.quality.trustedNumericCoveragePercent,
+          numericCoveragePercent: replayProjection.quality.numericCoveragePercent,
+          trustedLimitedStationaryCount: replayProjection.quality.trustedLimitedStationaryCount,
+          qcTrustedMaxKmh: replayProjection.speed.qcTrustedMaxKmh,
+        },
+      });
 
       const invRow = inventoryRaw.find((r) => r.trip_id === pick.trip_id);
       tripReports.push({
@@ -337,6 +316,19 @@ async function main(): Promise<void> {
       tripReports.map((t) => ({ summary: (t as { partition: ReturnType<typeof partitionTripIntervalsV2>['summary'] }).partition })),
     );
 
+    const persistedStatuses = tripReports.map(
+      (t) => (t as { persistedAggregateReplayMatch: { status: string } }).persistedAggregateReplayMatch.status,
+    );
+    const persistedAggregateSummary = {
+      analyzedTrips: tripReports.length,
+      withPersistedCurrentV2Row: persistedStatuses.filter((s) => s === 'PASS' || s === 'FAIL').length,
+      aggregateMatchPass: persistedStatuses.filter((s) => s === 'PASS').length,
+      aggregateMatchFail: persistedStatuses.filter((s) => s === 'FAIL').length,
+      aggregateMatchNa: persistedStatuses.filter((s) => s === 'N/A').length,
+      wrongProjectionVersionFilterImpact:
+        'Selection and partition/replay use inventory + pinned snapshot only; erroneous projection_version=V2 filter affected only legacy persistedAggregateReplayMatch comparison (never PASS on empty set).',
+    };
+
     const report = {
       kind: 'EXP021_COVERAGE_DIAGNOSTIC_V1',
       observedAtUtc,
@@ -353,6 +345,7 @@ async function main(): Promise<void> {
       greedyTripIds: selection.greedyIncluded,
       vehicleConnectivity: connectivity,
       fleetTimeWeighted: fleet,
+      persistedAggregateSummary,
       trips: tripReports,
       productionMutations: 'NONE',
       intervalStorageNote: 'Persisted interval arrays N/A; compute-interval partition from shadow replay only.',
