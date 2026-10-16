@@ -140,11 +140,15 @@ describe('LvRestWindowIngestionBridgeService FSM integration', () => {
     jest.clearAllMocks();
 
     const { LvRestWindowStateMachineService } = await import('./lv-rest-window.service');
+    const canonicalAnchorResolver = {
+      resolveRestWindowStartedAt: jest.fn(async (session: { startedAt: Date }) => session.startedAt),
+    };
     realFsm = new LvRestWindowStateMachineService(
       prisma as any,
       sessionRepo as any,
       policyProfiles as any,
       restTargetProducer as any,
+      canonicalAnchorResolver as any,
       undefined,
     );
 

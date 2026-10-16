@@ -220,11 +220,15 @@ describe('LvRestWindowSessionArmingService (finalized-trip liveness fix)', () =>
     ];
     latestStates = new Map([[VEHICLE, frozenAtAnchorLatestState()]]);
 
+    const canonicalAnchorResolver = {
+      resolveRestWindowStartedAt: jest.fn(async (session: { startedAt: Date }) => session.startedAt),
+    };
     const fsm = new LvRestWindowStateMachineService(
       prisma as any,
       sessionRepo as any,
       policyProfiles as any,
       restTargetProducer as any,
+      canonicalAnchorResolver as any,
       undefined,
     );
 

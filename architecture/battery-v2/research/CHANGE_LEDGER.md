@@ -6,6 +6,29 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-16 — G5C-N7-H1 pre-merge hardening (anchor safety + scheduling alignment)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Trip-first canonical binding (no temporal cross-trip match when trip linked); ambiguous → session anchor fallback; invalidated sessions excluded; ordered Prisma candidate load; scheduling/reconciliation use `resolveRestWindowStartedAt` |
+| **VALIDATION** | Extended policy specs + `lv-rest-canonical-target-anchor.g5c-n7.postgres.integration.spec.ts` (opt-in `BATTERY_V2_G5C_N7_POSTGRES_INTEGRATION=1`) |
+| **G5C-N7-H2** | `battery-g5c-n7-postgres-ci.sh`, workflow `battery-v2-g5c-n7-postgres-ci.yml`, assessment consumer postgres spec (real `BatteryAssessmentRecomputeHandler`), session continuity + ENDED reconciliation postgres cases, wake-flank unit gate |
+
+---
+
+## 2026-10-16 — G5C-N7 canonical REST session anchor bridge for REST_60M/REST_6H evaluation
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | `BatteryRestTargetEvaluationService` anchored REST temporal targets on `BatteryMeasurementSession.startedAt` only; canonical `battery_rest_sessions.anchorAt` could diverge (trip-linked forensic CASE E) so quality windows and trip-after-anchor gates misaligned |
+| **CHANGE** | `resolveLvRestCanonicalTargetAnchor` + evaluation-time binding via ±120s anchor tolerance and trip `confirmedTripId`/`candidateTripId` linkage; persist `canonicalRestSessionId` provenance on REST target measurements |
+| **WHY** | Smallest safe bridge from canonical REST recognition to existing VALID measurement + `LvRestAssessmentHandoffService` path without second evaluator authority |
+| **VALIDATION** | `lv-rest-canonical-target-anchor.policy.spec.ts`, `battery-rest-target-evaluation-canonical-anchor.g5c-n7.spec.ts`, existing handoff/recompute handlers unchanged |
+| **NON_EFFECTS** | No `PARKED_REST_CANDIDATE` auto-promotion; no publication enablement; no production flag changes; shadow `evidenceEligible` fail-closed semantics preserved |
+| **REMAINING_GAPS** | REST target job schedule delay still keyed to measurement session `startedAt` when misaligned — evaluation uses canonical anchor at persist time |
+
+---
+
 ## 2026-10-14 — M3.3-HV-H4 R16.1b provider observation clock gate (PR #2017)
 
 | Field | Value |

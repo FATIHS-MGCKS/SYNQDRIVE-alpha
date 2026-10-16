@@ -108,6 +108,9 @@ function buildReconciliationHarness(sessionMetadata: Record<string, unknown>) {
     { reconcilePeriodic: jest.fn().mockResolvedValue(0) } as never,
     assessmentHandoff,
     { reconcilePublicationHandoff: jest.fn().mockResolvedValue(0) } as never,
+    {
+      resolveRestWindowStartedAt: jest.fn(async (s: { startedAt: Date }) => s.startedAt),
+    } as never,
   );
 
   return { reconciliation, jobProducer, sessionMetadata, deadLetters };
