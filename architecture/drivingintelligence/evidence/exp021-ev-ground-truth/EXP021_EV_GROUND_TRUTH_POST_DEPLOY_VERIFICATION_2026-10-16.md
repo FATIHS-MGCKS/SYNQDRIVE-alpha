@@ -24,7 +24,7 @@ Trip boundaries: `2026-10-16T03:36:00.000Z` → `2026-10-16T03:54:55.989Z`. FSM 
 
 - `raw_detection_meta.diV0BoundaryAdmissionV1`: **still absent** (`ADMISSION_RECORD_MISSING`).
 - `evaluateTripDiProductReadBoundaryGate`: **fail** `ADMISSION_NOT_SATISFIED` (same as pre-deploy).
-- `readCurrentOpsProjection(..., DI_V0_SPEED_QC_POLICY_V2)` would return the CURRENT row, but `DiV0TripSpeedQualityProductReadService.readForTrip` **does not expose** it without admission (returns unavailable product envelope).
+- On **`c1013265`**, `readCurrentOpsProjection` **also** calls `evaluateTripDiProductReadBoundaryGate` and returns **`null`** without admission (same gate as product read). **DB CURRENT ≠ ops/product-visible.** See [scoped recovery runbook](./EXP021_EV_GROUND_TRUTH_SCOPED_ADMISSION_RECOVERY_RUNBOOK_2026-10-16.md) §8.
 - Authenticated HTTP product GET: **NOT_VERIFIED** (no clerk session in this run).
 
 ## Reconciliation scheduler trace (post-deploy)

@@ -1,0 +1,152 @@
+{
+  "schema": "EXP021_CURRENT_V2_AUTOMATIC_REACHABILITY_V1",
+  "observedAtUtc": "2026-10-16T16:30:00.000Z",
+  "productionSha": "c1013265bc10af7ac5fe7e86ff372772373acd36",
+  "tierRules": {
+    "fast": "start_time in [now-45m, now) on leader fast tick; recent-active vehicle cohort",
+    "warm": "start_time in [now-12h, now) on leader warm tick; all DIMO-token vehicles",
+    "cold": "start_time in [now-7d, now) on leader daily 03:00 UTC cron; all DIMO-token vehicles",
+    "step4Selection": "COMPLETED, end_time set, start in [from,to), end_detection_mode != MID_TRIP_GAP_SPLIT"
+  },
+  "rows": [
+    {
+      "tripId": "9ead317c-8725-4373-b9ac-8bb84d5549be",
+      "projectionId": "3281cef1-40a6-4ed4-876f-8ee06bf5bc10",
+      "vehicleId": "8c850ff1-4201-432b-af2e-2711dbc7ca48",
+      "startUtc": "2026-10-15T11:34:00.000Z",
+      "fsmState": "RESTING",
+      "automaticStep4": "trip_reconciliation_cold @ 2026-10-17T03:00:00Z",
+      "admissionAfterScan": "eligible",
+      "category": "AUTOMATIC_COLD_ONLY"
+    },
+    {
+      "tripId": "72617129-0b33-4ef7-92ae-33ce1c4feffc",
+      "projectionId": "cf8c2cae-a002-4beb-8f47-213676d15c2d",
+      "vehicleId": "68868291-5478-42cd-b0c4-cc77b2a78e21",
+      "startUtc": "2026-10-15T12:33:00.000Z",
+      "fsmState": "RESTING",
+      "automaticStep4": "trip_reconciliation_cold @ 2026-10-17T03:00:00Z",
+      "admissionAfterScan": "eligible",
+      "category": "AUTOMATIC_COLD_ONLY"
+    },
+    {
+      "tripId": "84b14b8a-e0d3-4430-a0e9-89a050b919e6",
+      "projectionId": "f32e3590-7768-43bc-bb0f-226868b53d32",
+      "vehicleId": "c10351f8-b6a2-4258-947f-631aeaa6d359",
+      "startUtc": "2026-10-15T17:29:00.000Z",
+      "fsmState": "ACTIVE_TRIP",
+      "automaticStep4": "trip_reconciliation_cold @ 2026-10-17T03:00:00Z",
+      "admissionAfterScan": "blocked_fsm_not_resting",
+      "category": "AUTOMATIC_COLD_ONLY"
+    },
+    {
+      "tripId": "65fc1342-5c2d-4b97-a861-0cd4b55b09c2",
+      "projectionId": "3e493e04-048b-4caa-85bc-0986a0a34cce",
+      "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+      "startUtc": "2026-10-15T17:55:00.000Z",
+      "fsmState": "RESTING",
+      "automaticStep4": "trip_reconciliation_cold @ 2026-10-17T03:00:00Z",
+      "admissionAfterScan": "eligible",
+      "category": "AUTOMATIC_COLD_ONLY"
+    },
+    {
+      "tripId": "14976b7b-ddf3-4e1f-9348-1cb56acb7779",
+      "projectionId": "4fc72f72-fa1b-406b-978f-cfa2d57e098d",
+      "vehicleId": "68868291-5478-42cd-b0c4-cc77b2a78e21",
+      "startUtc": "2026-10-15T21:12:00.000Z",
+      "fsmState": "RESTING",
+      "automaticStep4": "trip_reconciliation_cold @ 2026-10-17T03:00:00Z",
+      "admissionAfterScan": "eligible",
+      "category": "AUTOMATIC_COLD_ONLY"
+    },
+    {
+      "tripId": "358d0158-b2a9-47ed-af26-33926c5770b4",
+      "projectionId": "567c3dc2-d514-447a-97d5-bc294c8c6c12",
+      "vehicleId": "68868291-5478-42cd-b0c4-cc77b2a78e21",
+      "startUtc": "2026-10-16T03:36:00.000Z",
+      "fsmState": "RESTING",
+      "automaticStep4": "outside fast/warm at anchor; cold @ 2026-10-17T03:00:00Z OR scoped reconcileWindow",
+      "admissionAfterScan": "eligible",
+      "category": "OUTSIDE_FAST_WARM_UNTIL_COLD_OR_SCOPED"
+    },
+    {
+      "tripId": "a30cac06-bf29-4d74-a73e-2e5a9947c8e9",
+      "projectionId": "cacfdb91-18e5-4050-9a72-7dac8b5537b6",
+      "vehicleId": "c10351f8-b6a2-4258-947f-631aeaa6d359",
+      "startUtc": "2026-10-16T05:39:00.000Z",
+      "fsmState": "ACTIVE_TRIP",
+      "automaticStep4": "trip_reconciliation_warm each 4h while start in last 12h",
+      "admissionAfterScan": "blocked_fsm_not_resting",
+      "category": "AUTOMATIC_WARM_AND_COLD"
+    },
+    {
+      "tripId": "b23e8161-a6db-4778-a960-9a1a59f087b0",
+      "projectionId": "36d0b4a2-8c1b-4507-a1ba-59afd9080f1a",
+      "vehicleId": "c10351f8-b6a2-4258-947f-631aeaa6d359",
+      "startUtc": "2026-10-16T08:00:00.000Z",
+      "fsmState": "ACTIVE_TRIP",
+      "automaticStep4": "trip_reconciliation_warm each 4h while start in last 12h",
+      "admissionAfterScan": "blocked_fsm_not_resting",
+      "category": "AUTOMATIC_WARM_AND_COLD"
+    },
+    {
+      "tripId": "168567f4-7eee-4614-a889-161d5c44d3fe",
+      "projectionId": "e6338114-38ee-429d-8c0d-1ee3b0aa7cd4",
+      "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+      "startUtc": "2026-10-16T09:32:00.000Z",
+      "fsmState": "RESTING",
+      "automaticStep4": "trip_reconciliation_warm each 4h while start in last 12h",
+      "admissionAfterScan": "eligible",
+      "category": "AUTOMATIC_WARM_AND_COLD"
+    },
+    {
+      "tripId": "c0ec3b30-d798-4324-b78e-86e305a00b83",
+      "projectionId": "7e2e0ff0-41ed-4111-8800-2619f6b995d7",
+      "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+      "startUtc": "2026-10-16T09:55:00.000Z",
+      "fsmState": "RESTING",
+      "automaticStep4": "trip_reconciliation_warm each 4h while start in last 12h",
+      "admissionAfterScan": "eligible",
+      "category": "AUTOMATIC_WARM_AND_COLD"
+    },
+    {
+      "tripId": "3fb1938f-0add-4d4c-ad3e-3b8a0b493260",
+      "projectionId": "398995e9-0a5f-4d50-8485-067cede50194",
+      "vehicleId": "68868291-5478-42cd-b0c4-cc77b2a78e21",
+      "startUtc": "2026-10-16T12:33:00.000Z",
+      "fsmState": "RESTING",
+      "automaticStep4": "trip_reconciliation_warm each 4h while start in last 12h",
+      "admissionAfterScan": "eligible",
+      "category": "AUTOMATIC_WARM_AND_COLD"
+    },
+    {
+      "tripId": "abbd40f0-cbe2-4a70-926d-ce7477e8e9e9",
+      "projectionId": "eea88d4b-37fa-4270-a26f-e1b00ee0ffef",
+      "vehicleId": "c10351f8-b6a2-4258-947f-631aeaa6d359",
+      "startUtc": "2026-10-16T13:03:00.000Z",
+      "fsmState": "ACTIVE_TRIP",
+      "automaticStep4": "trip_reconciliation_warm each 4h while start in last 12h",
+      "admissionAfterScan": "blocked_fsm_not_resting",
+      "category": "AUTOMATIC_WARM_AND_COLD"
+    },
+    {
+      "tripId": "613a969d-00b3-459c-b393-2dda5fff9414",
+      "projectionId": "51f983d6-f056-4ca2-a008-7f8c64e3eb82",
+      "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+      "startUtc": "2026-10-16T14:29:00.000Z",
+      "fsmState": "RESTING",
+      "automaticStep4": "trip_reconciliation_warm each 4h while start in last 12h",
+      "admissionAfterScan": "eligible",
+      "category": "AUTOMATIC_WARM_AND_COLD"
+    }
+  ],
+  "summary": {
+    "automaticWarmAndCold": 7,
+    "automaticColdOnly": 5,
+    "outsideFastWarmUntilColdOrScoped": 1,
+    "unknown": 0,
+    "admissionBlockedDespiteScan_vehicleFsm": 4
+  },
+  "productionMutations": "NONE",
+  "providerCalls": 0
+}

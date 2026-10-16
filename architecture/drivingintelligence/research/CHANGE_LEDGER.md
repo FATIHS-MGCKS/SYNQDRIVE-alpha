@@ -2042,3 +2042,11 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | `EXP021_EV_GROUND_TRUTH_POST_DEPLOY_VERIFICATION_2026-10-16.md`; `post-deploy/POST_DEPLOY_BASELINE_MANIFEST.json` + inventory; ops `exp021-current-v2-readability-inventory.ts`; Production @ `c1013265…` |
 | WHY | Close post-#2052 deploy read-only loop: reconciliation window exclusion explains missing admission; 13/13 CURRENT V2 still gate-blocked |
 | NON_EFFECTS | No admission writes; no scoped reconcile executed; full replay on VPS shared evidence only |
+
+### EXP-021 EV Ground Truth — scoped admission recovery runbook (2026-10-16)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `EXP021_EV_GROUND_TRUTH_SCOPED_ADMISSION_RECOVERY_RUNBOOK_2026-10-16.md`; `post-deploy/CURRENT_V2_AUTOMATIC_REACHABILITY_2026-10-16.json`; ops/product read gate correction on `c1013265` |
+| WHY | Execution-ready single-vehicle reconcileWindow without batch release; classify 13 CURRENT V2 periodic reachability |
+| NON_EFFECTS | No production reconcile executed; no provider calls |
