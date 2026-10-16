@@ -7,6 +7,8 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { Prisma, PrismaClient } from '@prisma/client';
 import { DI_V0_SPEED_QC_POLICY_V2 } from '../../src/modules/vehicle-intelligence/driving-intelligence/speed-qc/di-v0-speed-qc-policy.version';
+import { DI_V0_TRIP_SPEED_QUALITY_PROJECTION_V1 } from '../../src/modules/vehicle-intelligence/driving-intelligence/trip-speed-quality/di-v0-trip-speed-quality-projection.version';
+import { DI_V0_SPEED_QC_POLICY_V2 } from '../../src/modules/vehicle-intelligence/driving-intelligence/speed-qc/di-v0-speed-qc-policy.version';
 import { buildDiV0TripSpeedQualityProjectionV1 } from '../../src/modules/vehicle-intelligence/driving-intelligence/trip-speed-quality/build-di-v0-trip-speed-quality-projection.v1';
 import {
   partitionTripIntervalsV2,
@@ -163,15 +165,25 @@ async function loadPersistedCurrentV2(
     async (tx) => {
       await tx.$executeRaw`SET LOCAL transaction_read_only = on`;
       const rows = await tx.$queryRaw<
-        Array<{ projection_json: unknown; content_fingerprint: string; qc_policy_version: string }>
+        Array<{
+          id: string;
+          projection_json: unknown;
+          content_fingerprint: string;
+          qc_policy_version: string;
+          projection_version: string;
+          lifecycle_status: string;
+          created_at: Date;
+        }>
       >`
-        SELECT projection_json, content_fingerprint, qc_policy_version
+        SELECT id, projection_json, content_fingerprint, qc_policy_version, projection_version,
+               lifecycle_status, created_at
         FROM di_v0_trip_speed_quality_projections_v1
         WHERE organization_id = ${organizationId}
           AND trip_id = ${tripId}
           AND work_item_id = ${workItemId}
           AND lifecycle_status = 'CURRENT'
-          AND projection_version = 'V2'
+          AND qc_policy_version = ${DI_V0_SPEED_QC_POLICY_V2}
+          AND projection_version = ${DI_V0_TRIP_SPEED_QUALITY_PROJECTION_V1}
         LIMIT 1`;
       return rows[0] ?? null;
     },
@@ -268,8 +280,13 @@ async function main(): Promise<void> {
       const persistedQuality = (persisted?.projection_json as { quality?: Record<string, unknown> } | undefined)
         ?.quality;
       const replayMatch =
-        persistedQuality != null
+        persisted != null && persistedQuality != null
           ? {
+              projectionId: persisted.id,
+              qcPolicyVersion: persisted.qc_policy_version,
+              projectionVersion: persisted.projection_version,
+              lifecycleStatus: persisted.lifecycle_status,
+              createdAtUtc: persisted.created_at.toISOString(),
               trustedNumericCoveragePercent:
                 persistedQuality.trustedNumericCoveragePercent ===
                 replayProjection.quality.trustedNumericCoveragePercent,
@@ -278,10 +295,18 @@ async function main(): Promise<void> {
               trustedLimitedStationaryCount:
                 persistedQuality.trustedLimitedStationaryCount ===
                 replayProjection.quality.trustedLimitedStationaryCount,
-              qcTrustedMaxKmh: (persisted?.projection_json as { speed?: { qcTrustedMaxKmh?: number } })?.speed
+              qcTrustedMaxKmh: (persisted.projection_json as { speed?: { qcTrustedMaxKmh?: number } })?.speed
                 ?.qcTrustedMaxKmh === replayProjection.speed.qcTrustedMaxKmh,
+              allFieldsMatch:
+                persistedQuality.trustedNumericCoveragePercent ===
+                  replayProjection.quality.trustedNumericCoveragePercent &&
+                persistedQuality.numericCoveragePercent === replayProjection.quality.numericCoveragePercent &&
+                persistedQuality.trustedLimitedStationaryCount ===
+                  replayProjection.quality.trustedLimitedStationaryCount &&
+                (persisted.projection_json as { speed?: { qcTrustedMaxKmh?: number } })?.speed?.qcTrustedMaxKmh ===
+                  replayProjection.speed.qcTrustedMaxKmh,
             }
-          : { note: 'NO_PERSISTED_CURRENT_V2' };
+          : { note: 'NO_PERSISTED_CURRENT_V2_ROW' };
 
       const invRow = inventoryRaw.find((r) => r.trip_id === pick.trip_id);
       tripReports.push({
