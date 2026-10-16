@@ -29,12 +29,32 @@ import {
 import type { ListPhysicalDevicesQueryDto } from './dto/list-physical-devices-query.dto';
 import type { VerifyPhysicalDeviceIdentityDto } from './dto/verify-physical-device-identity.dto';
 import type { InstallPhysicalDeviceDto } from './dto/install-physical-device.dto';
-import { isPhysicalDeviceInventoryP1b1WritesEnabled } from './physical-device-inventory.config';
+import {
+  isPhysicalDeviceInventoryP1b1WritesEnabled,
+  isPhysicalDeviceInventoryP1b2WritesEnabled,
+} from './physical-device-inventory.config';
 import {
   installPhysicalDeviceOnVehicleTx,
   verifyPhysicalDeviceIdentityTx,
 } from './physical-device-inventory-p1b1.writes';
-import { physicalDeviceNotFound, physicalDeviceP1b1WritesDisabled } from './physical-device-inventory.errors';
+import {
+  markPhysicalDeviceDefectiveTx,
+  markPhysicalDeviceLostTx,
+  retirePhysicalDeviceTx,
+  returnPhysicalDeviceToStockTx,
+  selectActiveVehicleInstallAssignment,
+  uninstallPhysicalDeviceTx,
+} from './physical-device-inventory-p1b2.writes';
+import type { MarkPhysicalDeviceDefectiveDto } from './dto/mark-physical-device-defective.dto';
+import type { MarkPhysicalDeviceLostDto } from './dto/mark-physical-device-lost.dto';
+import type { RetirePhysicalDeviceDto } from './dto/retire-physical-device.dto';
+import type { ReturnPhysicalDeviceToStockDto } from './dto/return-physical-device-to-stock.dto';
+import type { UninstallPhysicalDeviceDto } from './dto/uninstall-physical-device.dto';
+import {
+  physicalDeviceNotFound,
+  physicalDeviceP1b1WritesDisabled,
+  physicalDeviceP1b2WritesDisabled,
+} from './physical-device-inventory.errors';
 import type { PhysicalDeviceDetailDto } from './physical-device-inventory.types';
 
 const MANUAL_INTAKE_IDENTITY_STATUS = PhysicalDeviceIdentityStatus.NEEDS_CLARIFICATION;
@@ -58,6 +78,12 @@ export class PhysicalDeviceInventoryService {
   private assertP1b1WritesEnabled(): void {
     if (!isPhysicalDeviceInventoryP1b1WritesEnabled()) {
       throw physicalDeviceP1b1WritesDisabled();
+    }
+  }
+
+  private assertP1b2WritesEnabled(): void {
+    if (!isPhysicalDeviceInventoryP1b2WritesEnabled()) {
+      throw physicalDeviceP1b2WritesDisabled();
     }
   }
 
@@ -163,14 +189,14 @@ export class PhysicalDeviceInventoryService {
     if (!row) {
       throw physicalDeviceNotFound();
     }
-    const activeAssignments = row.assignments.filter(
-      (a) => a.vehicleId && a.effectiveTo === null,
-    );
+    const activeInstall = selectActiveVehicleInstallAssignment(row.assignments);
+    const activeAssignments = activeInstall ? [activeInstall] : [];
     const list = this.toListItem({ ...row, assignments: activeAssignments });
     const identityEvidence = row.identityEvidenceJson as Record<string, unknown> | null;
     const verification = identityEvidence?.verification;
     return {
       ...list,
+      activeInstallAssignmentId: activeInstall?.id ?? null,
       intakeNotes: row.intakeNotes,
       identityEvidenceSummary:
         verification && typeof verification === 'object'
@@ -219,6 +245,73 @@ export class PhysicalDeviceInventoryService {
   ) {
     this.assertP1b1WritesEnabled();
     return installPhysicalDeviceOnVehicleTx(
+      this.prisma,
+      deviceId,
+      dto,
+      actorUserId,
+      this.listItemMapper,
+    );
+  }
+
+  async uninstallFromVehicle(
+    deviceId: string,
+    dto: UninstallPhysicalDeviceDto,
+    actorUserId: string | null,
+  ) {
+    this.assertP1b2WritesEnabled();
+    return uninstallPhysicalDeviceTx(
+      this.prisma,
+      deviceId,
+      dto,
+      actorUserId,
+      this.listItemMapper,
+    );
+  }
+
+  async returnToStock(
+    deviceId: string,
+    dto: ReturnPhysicalDeviceToStockDto,
+    actorUserId: string | null,
+  ) {
+    this.assertP1b2WritesEnabled();
+    return returnPhysicalDeviceToStockTx(
+      this.prisma,
+      deviceId,
+      dto,
+      actorUserId,
+      this.listItemMapper,
+    );
+  }
+
+  async markDefective(
+    deviceId: string,
+    dto: MarkPhysicalDeviceDefectiveDto,
+    actorUserId: string | null,
+  ) {
+    this.assertP1b2WritesEnabled();
+    return markPhysicalDeviceDefectiveTx(
+      this.prisma,
+      deviceId,
+      dto,
+      actorUserId,
+      this.listItemMapper,
+    );
+  }
+
+  async markLost(deviceId: string, dto: MarkPhysicalDeviceLostDto, actorUserId: string | null) {
+    this.assertP1b2WritesEnabled();
+    return markPhysicalDeviceLostTx(
+      this.prisma,
+      deviceId,
+      dto,
+      actorUserId,
+      this.listItemMapper,
+    );
+  }
+
+  async retire(deviceId: string, dto: RetirePhysicalDeviceDto, actorUserId: string | null) {
+    this.assertP1b2WritesEnabled();
+    return retirePhysicalDeviceTx(
       this.prisma,
       deviceId,
       dto,

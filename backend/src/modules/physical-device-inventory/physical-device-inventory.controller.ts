@@ -11,6 +11,11 @@ import { ListPhysicalDevicesQueryDto } from './dto/list-physical-devices-query.d
 import { PhysicalDeviceInventoryService } from './physical-device-inventory.service';
 import { VerifyPhysicalDeviceIdentityDto } from './dto/verify-physical-device-identity.dto';
 import { InstallPhysicalDeviceDto } from './dto/install-physical-device.dto';
+import { UninstallPhysicalDeviceDto } from './dto/uninstall-physical-device.dto';
+import { ReturnPhysicalDeviceToStockDto } from './dto/return-physical-device-to-stock.dto';
+import { MarkPhysicalDeviceDefectiveDto } from './dto/mark-physical-device-defective.dto';
+import { MarkPhysicalDeviceLostDto } from './dto/mark-physical-device-lost.dto';
+import { RetirePhysicalDeviceDto } from './dto/retire-physical-device.dto';
 
 @Controller('admin/physical-device-inventory')
 @UseGuards(RolesGuard, MasterAdminMfaGuard)
@@ -71,6 +76,101 @@ export class PhysicalDeviceInventoryController {
       entity: ActivityEntity.ADMIN_OPERATION,
       description: `Physical device installed ${result.internalInventoryNumber}`,
       changeSummary: `vehicleId=${body.vehicleId}`,
+    });
+    return result;
+  }
+
+  @Post('devices/:deviceId/uninstall')
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_INTEGRATIONS)
+  async uninstallFromVehicle(
+    @Param('deviceId') deviceId: string,
+    @Body() body: UninstallPhysicalDeviceDto,
+    @Req() req: any,
+  ) {
+    const actorUserId = req?.user?.id ?? req?.user?.userId ?? null;
+    const result = await this.inventory.uninstallFromVehicle(deviceId, body, actorUserId);
+    void this.audit.record({
+      ...AuditService.contextFromRequest(req),
+      action: ActivityAction.UPDATE,
+      entity: ActivityEntity.ADMIN_OPERATION,
+      description: `Physical device uninstalled ${result.internalInventoryNumber}`,
+      changeSummary: `vehicleId=${body.vehicleId}`,
+    });
+    return result;
+  }
+
+  @Post('devices/:deviceId/return-to-stock')
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_INTEGRATIONS)
+  async returnToStock(
+    @Param('deviceId') deviceId: string,
+    @Body() body: ReturnPhysicalDeviceToStockDto,
+    @Req() req: any,
+  ) {
+    const actorUserId = req?.user?.id ?? req?.user?.userId ?? null;
+    const result = await this.inventory.returnToStock(deviceId, body, actorUserId);
+    void this.audit.record({
+      ...AuditService.contextFromRequest(req),
+      action: ActivityAction.UPDATE,
+      entity: ActivityEntity.ADMIN_OPERATION,
+      description: `Physical device returned to stock ${result.internalInventoryNumber}`,
+      changeSummary: `warehouse=${body.warehouseLocation}`,
+    });
+    return result;
+  }
+
+  @Post('devices/:deviceId/mark-defective')
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_INTEGRATIONS)
+  async markDefective(
+    @Param('deviceId') deviceId: string,
+    @Body() body: MarkPhysicalDeviceDefectiveDto,
+    @Req() req: any,
+  ) {
+    const actorUserId = req?.user?.id ?? req?.user?.userId ?? null;
+    const result = await this.inventory.markDefective(deviceId, body, actorUserId);
+    void this.audit.record({
+      ...AuditService.contextFromRequest(req),
+      action: ActivityAction.UPDATE,
+      entity: ActivityEntity.ADMIN_OPERATION,
+      description: `Physical device marked defective ${result.internalInventoryNumber}`,
+      changeSummary: `deviceId=${deviceId}`,
+    });
+    return result;
+  }
+
+  @Post('devices/:deviceId/mark-lost')
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_INTEGRATIONS)
+  async markLost(
+    @Param('deviceId') deviceId: string,
+    @Body() body: MarkPhysicalDeviceLostDto,
+    @Req() req: any,
+  ) {
+    const actorUserId = req?.user?.id ?? req?.user?.userId ?? null;
+    const result = await this.inventory.markLost(deviceId, body, actorUserId);
+    void this.audit.record({
+      ...AuditService.contextFromRequest(req),
+      action: ActivityAction.UPDATE,
+      entity: ActivityEntity.ADMIN_OPERATION,
+      description: `Physical device marked lost ${result.internalInventoryNumber}`,
+      changeSummary: `deviceId=${deviceId}`,
+    });
+    return result;
+  }
+
+  @Post('devices/:deviceId/retire')
+  @RequireMasterAdminMfa(STEP_UP_ACTION.MASTER_INTEGRATIONS)
+  async retire(
+    @Param('deviceId') deviceId: string,
+    @Body() body: RetirePhysicalDeviceDto,
+    @Req() req: any,
+  ) {
+    const actorUserId = req?.user?.id ?? req?.user?.userId ?? null;
+    const result = await this.inventory.retire(deviceId, body, actorUserId);
+    void this.audit.record({
+      ...AuditService.contextFromRequest(req),
+      action: ActivityAction.UPDATE,
+      entity: ActivityEntity.ADMIN_OPERATION,
+      description: `Physical device retired ${result.internalInventoryNumber}`,
+      changeSummary: `deviceId=${deviceId}`,
     });
     return result;
   }
