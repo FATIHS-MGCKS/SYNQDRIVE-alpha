@@ -6,6 +6,19 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-16 — G5C-N7-N7 Nest DI boot recovery (joint deploy abort)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | `LvRestWindowStateMachineService` + `LvRestWindowSessionArmingService` registered in both `VehicleIntelligenceModule` and `BatteryV2JobsProducerModule`; VI-local FSM ctor required `LvRestCanonicalTargetAnchorResolverService` at index `[4]` but resolver was only a producer-internal provider (not exported) |
+| **OBSERVATION** | Production deploy to `d3a9360160` aborted at `SYNQDRIVE_BOOT_CHECK=1`; `/opt/synqdrive/current` remained `a0ce01f192d888974e49c2558ee05e534f3dfeea` |
+| **CHANGE** | Single ownership: producer module exports `LvRestWindowStateMachineService`, `LvRestWindowSessionArmingService`, `LvRestCanonicalTargetAnchorResolverService`; removed duplicate FSM/arming providers from `VehicleIntelligenceModule` (VI keeps bridge + `BatteryRestTargetEvaluationService`) |
+| **WHY** | Avoid duplicate FSM instances and fix Nest injection context without adding a second resolver registration in VI |
+| **VALIDATION** | `lv-rest-window-g5c-n7.nest-di.spec.ts` (metadata + producer-graph compile), `battery-g5c-n7-postgres-ci.sh` DI step, local `SYNQDRIVE_BOOT_CHECK=1` compiled boot |
+| **NON_EFFECTS** | No G5C anchor policy, EXP021, VSI, PDI, or production flag changes |
+
+---
+
 ## 2026-10-16 — G5C-N7-H1 pre-merge hardening (anchor safety + scheduling alignment)
 
 | Field | Value |
