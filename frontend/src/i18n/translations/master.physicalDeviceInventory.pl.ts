@@ -37,6 +37,7 @@ export const masterPhysicalDeviceInventoryPl = {
   'master.physicalDeviceInventory.status.AVAILABLE': 'Dostępne',
   'master.physicalDeviceInventory.status.RESERVED': 'Zarezerwowane',
   'master.physicalDeviceInventory.status.INSTALLED': 'Zainstalowane',
+  'master.physicalDeviceInventory.status.PENDING_RETURN': 'Oczekuje na zwrot do magazynu',
   'master.physicalDeviceInventory.status.DEFECTIVE': 'Uszkodzone',
   'master.physicalDeviceInventory.status.LOST': 'Zagubione',
   'master.physicalDeviceInventory.status.RETIRED': 'Wycofane',
@@ -71,6 +72,8 @@ export const masterPhysicalDeviceInventoryPl = {
   'master.physicalDeviceInventory.uninstallSubmit': 'Zapisz demontaż',
   'master.physicalDeviceInventory.uninstallSuccess': 'Demontaż zapisany',
   'master.physicalDeviceInventory.uninstallError': 'Nie udało się zapisać demontażu',
+  'master.physicalDeviceInventory.pendingReturnHint':
+    'Device was uninstalled but not yet confirmed in warehouse stock.',
   'master.physicalDeviceInventory.returnTitle': 'Zwrot na stan magazynowy',
   'master.physicalDeviceInventory.returnConfirmLabel': 'Potwierdzam fizyczne przyjęcie w magazynie',
   'master.physicalDeviceInventory.returnSubmit': 'Zapisz zwrot',

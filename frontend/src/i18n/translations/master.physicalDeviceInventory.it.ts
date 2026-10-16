@@ -37,6 +37,7 @@ export const masterPhysicalDeviceInventoryIt = {
   'master.physicalDeviceInventory.status.AVAILABLE': 'Disponibile',
   'master.physicalDeviceInventory.status.RESERVED': 'Riservato',
   'master.physicalDeviceInventory.status.INSTALLED': 'Installato',
+  'master.physicalDeviceInventory.status.PENDING_RETURN': 'Pending warehouse return',
   'master.physicalDeviceInventory.status.DEFECTIVE': 'Difettoso',
   'master.physicalDeviceInventory.status.LOST': 'Perso',
   'master.physicalDeviceInventory.status.RETIRED': 'Ritirato',
@@ -72,6 +73,8 @@ export const masterPhysicalDeviceInventoryIt = {
   'master.physicalDeviceInventory.uninstallSubmit': 'Registra rimozione',
   'master.physicalDeviceInventory.uninstallSuccess': 'Rimozione registrata',
   'master.physicalDeviceInventory.uninstallError': 'Impossibile registrare la rimozione',
+  'master.physicalDeviceInventory.pendingReturnHint':
+    'Device was uninstalled but not yet confirmed in warehouse stock.',
   'master.physicalDeviceInventory.returnTitle': 'Rientro in magazzino',
   'master.physicalDeviceInventory.returnConfirmLabel': 'Confermo la ricezione fisica in magazzino',
   'master.physicalDeviceInventory.returnSubmit': 'Registra rientro',

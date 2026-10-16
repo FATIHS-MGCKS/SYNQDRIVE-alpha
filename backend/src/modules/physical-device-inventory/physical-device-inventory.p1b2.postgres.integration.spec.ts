@@ -167,6 +167,26 @@ describeLive('PhysicalDeviceInventory P1B.2 (PostgreSQL)', () => {
     expect(billingAfter).toBe(billingBefore);
   });
 
+  it('uninstall without physical return sets PENDING_RETURN not AVAILABLE', async () => {
+    const org = await createOrg();
+    const vehicle = await createActiveVehicle(org);
+    const { device, assignmentId } = await installOnVehicle(org, vehicle);
+    const out = await service.uninstallFromVehicle(
+      device.id,
+      {
+        vehicleId: vehicle,
+        assignmentId,
+        physicalUninstallConfirmed: true,
+        uninstallReason: 'Awaiting courier',
+        deviceConditionAfterUninstall: PhysicalDeviceUninstallCondition.FUNCTIONAL,
+        physicalReturnConfirmed: false,
+      },
+      'master-admin',
+    );
+    expect(out.status).toBe('PENDING_RETURN');
+    expect(out.warehouseLocation).toBe('WH-P1B2');
+  });
+
   it('uninstall as defective without warehouse update', async () => {
     const org = await createOrg();
     const vehicle = await createActiveVehicle(org);
@@ -239,16 +259,109 @@ describeLive('PhysicalDeviceInventory P1B.2 (PostgreSQL)', () => {
     const second = await service.uninstallFromVehicle(device.id, payload, 'master-admin');
     expect(second.id).toBe(first.id);
 
-    const org2 = await createOrg();
-    const vehicle2 = await createActiveVehicle(org2);
-    const installed2 = await installOnVehicle(org2, vehicle2);
     await expect(
       service.uninstallFromVehicle(
-        installed2.device.id,
-        { ...payload, vehicleId: vehicle2, assignmentId: installed2.assignmentId, uninstallReason: 'other' },
+        device.id,
+        { ...payload, uninstallReason: 'different payload' },
         'master-admin',
       ),
     ).rejects.toMatchObject({ response: { code: PHYSICAL_DEVICE_IDEMPOTENCY_PAYLOAD_MISMATCH } });
+  });
+
+  it('parallel uninstall requests yield one transition and one replay', async () => {
+    const org = await createOrg();
+    const vehicle = await createActiveVehicle(org);
+    const { device, assignmentId } = await installOnVehicle(org, vehicle);
+    const key = `parallel-uninstall-${randomUUID()}`;
+    const body = {
+      vehicleId: vehicle,
+      assignmentId,
+      physicalUninstallConfirmed: true,
+      uninstallReason: 'parallel',
+      deviceConditionAfterUninstall: PhysicalDeviceUninstallCondition.FUNCTIONAL,
+      physicalReturnConfirmed: false,
+      idempotencyKey: key,
+    };
+    const [a, b] = await Promise.all([
+      service.uninstallFromVehicle(device.id, body, 'master-admin'),
+      service.uninstallFromVehicle(device.id, body, 'master-admin'),
+    ]);
+    expect(a.id).toBe(b.id);
+    expect(a.status).toBe('PENDING_RETURN');
+    const auditCount = await prisma.physicalDeviceInventoryAuditEvent.count({
+      where: { physicalDeviceId: device.id, eventKind: 'UNINSTALL', idempotencyKey: key },
+    });
+    expect(auditCount).toBe(1);
+  });
+
+  it('fails closed on duplicate active install assignments', async () => {
+    const org = await createOrg();
+    const vehicle = await createActiveVehicle(org);
+    const { device, assignmentId } = await installOnVehicle(org, vehicle);
+    await prisma.physicalDeviceAssignment.create({
+      data: {
+        physicalDeviceId: device.id,
+        organizationId: org,
+        vehicleId: vehicle,
+        assignmentKind: PhysicalDeviceAssignmentKind.INSTALL,
+        effectiveFrom: new Date(),
+      },
+    });
+    await expect(
+      service.uninstallFromVehicle(
+        device.id,
+        {
+          vehicleId: vehicle,
+          assignmentId,
+          physicalUninstallConfirmed: true,
+          uninstallReason: 'x',
+          deviceConditionAfterUninstall: PhysicalDeviceUninstallCondition.FUNCTIONAL,
+          physicalReturnConfirmed: false,
+        },
+        'master-admin',
+      ),
+    ).rejects.toMatchObject({ response: { code: 'PHYSICAL_DEVICE_ASSIGNMENT_INTEGRITY_CONFLICT' } });
+  });
+
+  it('rejects mark lost when status INSTALLED without active assignment', async () => {
+    const org = await createOrg();
+    const vehicle = await createActiveVehicle(org);
+    const { device, assignmentId } = await installOnVehicle(org, vehicle);
+    await prisma.physicalDeviceAssignment.update({
+      where: { id: assignmentId },
+      data: { effectiveTo: new Date() },
+    });
+    await expect(
+      service.markLost(
+        device.id,
+        {
+          lossAttestationKind: PhysicalDeviceLossAttestationKind.MASTER_ADMIN_LOSS_CONFIRMATION,
+          lossEvidenceNotes: 'Inconsistent row',
+        },
+        'master-admin',
+      ),
+    ).rejects.toMatchObject({ response: { code: 'PHYSICAL_DEVICE_STATUS_ASSIGNMENT_INCONSISTENT' } });
+  });
+
+  it('rejects uninstall for foreign organization vehicle', async () => {
+    const orgA = await createOrg();
+    const orgB = await createOrg();
+    const vehicleB = await createActiveVehicle(orgB);
+    const { device, assignmentId } = await installOnVehicle(orgA, await createActiveVehicle(orgA));
+    await expect(
+      service.uninstallFromVehicle(
+        device.id,
+        {
+          vehicleId: vehicleB,
+          assignmentId,
+          physicalUninstallConfirmed: true,
+          uninstallReason: 'wrong org',
+          deviceConditionAfterUninstall: PhysicalDeviceUninstallCondition.FUNCTIONAL,
+          physicalReturnConfirmed: false,
+        },
+        'master-admin',
+      ),
+    ).rejects.toMatchObject({ response: { code: PHYSICAL_DEVICE_ASSIGNMENT_MISMATCH } });
   });
 
   it('rejects stale assignment and wrong vehicle on uninstall', async () => {

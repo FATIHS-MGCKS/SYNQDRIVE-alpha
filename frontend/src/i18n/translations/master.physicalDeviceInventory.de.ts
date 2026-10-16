@@ -37,6 +37,7 @@ export const masterPhysicalDeviceInventoryDe = {
   'master.physicalDeviceInventory.status.AVAILABLE': 'Verfügbar',
   'master.physicalDeviceInventory.status.RESERVED': 'Reserviert',
   'master.physicalDeviceInventory.status.INSTALLED': 'Eingebaut',
+  'master.physicalDeviceInventory.status.PENDING_RETURN': 'Rücknahme ausstehend',
   'master.physicalDeviceInventory.status.DEFECTIVE': 'Defekt',
   'master.physicalDeviceInventory.status.LOST': 'Verloren',
   'master.physicalDeviceInventory.status.RETIRED': 'Ausgemustert',
@@ -72,6 +73,8 @@ export const masterPhysicalDeviceInventoryDe = {
   'master.physicalDeviceInventory.uninstallSubmit': 'Ausbau erfassen',
   'master.physicalDeviceInventory.uninstallSuccess': 'Ausbau erfasst',
   'master.physicalDeviceInventory.uninstallError': 'Ausbau konnte nicht erfasst werden',
+  'master.physicalDeviceInventory.pendingReturnHint':
+    'Gerät wurde ausgebaut, aber noch nicht physisch im Lager bestätigt.',
   'master.physicalDeviceInventory.returnTitle': 'Rücknahme ins Lager',
   'master.physicalDeviceInventory.returnConfirmLabel': 'Ich bestätige den physischen Wareneingang',
   'master.physicalDeviceInventory.returnSubmit': 'Rücknahme erfassen',

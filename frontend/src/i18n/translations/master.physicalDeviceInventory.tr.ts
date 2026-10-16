@@ -37,6 +37,7 @@ export const masterPhysicalDeviceInventoryTr = {
   'master.physicalDeviceInventory.status.AVAILABLE': 'Müsait',
   'master.physicalDeviceInventory.status.RESERVED': 'Rezerve',
   'master.physicalDeviceInventory.status.INSTALLED': 'Kurulu',
+  'master.physicalDeviceInventory.status.PENDING_RETURN': 'Pending warehouse return',
   'master.physicalDeviceInventory.status.DEFECTIVE': 'Arızalı',
   'master.physicalDeviceInventory.status.LOST': 'Kayıp',
   'master.physicalDeviceInventory.status.RETIRED': 'Hurda',
@@ -71,6 +72,8 @@ export const masterPhysicalDeviceInventoryTr = {
   'master.physicalDeviceInventory.uninstallSubmit': 'Sökmeyi kaydet',
   'master.physicalDeviceInventory.uninstallSuccess': 'Sökme kaydedildi',
   'master.physicalDeviceInventory.uninstallError': 'Sökme kaydedilemedi',
+  'master.physicalDeviceInventory.pendingReturnHint':
+    'Device was uninstalled but not yet confirmed in warehouse stock.',
   'master.physicalDeviceInventory.returnTitle': 'Depoya iade',
   'master.physicalDeviceInventory.returnConfirmLabel': 'Depoda fiziksel teslim almayı onaylıyorum',
   'master.physicalDeviceInventory.returnSubmit': 'İadeyi kaydet',

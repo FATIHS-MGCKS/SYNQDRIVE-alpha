@@ -23,15 +23,22 @@ import {
   buildUninstallPayloadFingerprint,
 } from './physical-device-lifecycle.fingerprint';
 import {
+  assertDeviceInstallStatusConsistency,
+  assertNoActiveVehicleInstall,
+  assertOwnerOrganizationMatchesVehicle,
+  requireActiveVehicleInstallAssignment,
+} from './physical-device-lifecycle.consistency';
+import {
   physicalDeviceActiveVehicleAssignment,
   physicalDeviceAssignmentMismatch,
   physicalDeviceIdempotencyPayloadMismatch,
   physicalDeviceLifecycleNotEligible,
   physicalDeviceLossEvidenceInsufficient,
   physicalDeviceNotFound,
-  physicalDeviceNotInstalled,
   physicalDeviceNotUninstallEligible,
 } from './physical-device-inventory.errors';
+
+export { selectActiveVehicleInstallAssignment } from './physical-device-lifecycle.consistency';
 import type { PhysicalDeviceListItemDto } from './physical-device-inventory.types';
 
 type Tx = Prisma.TransactionClient;
@@ -53,21 +60,12 @@ type ListItemRow = Parameters<
   }) => PhysicalDeviceListItemDto
 >[0];
 
-export function selectActiveVehicleInstallAssignment<
-  T extends {
-    assignmentKind: PhysicalDeviceAssignmentKind;
-    vehicleId: string | null;
-    effectiveTo: Date | null;
-  },
->(assignments: T[]): T | null {
-  const active = assignments.filter(
-    (a) =>
-      a.assignmentKind === PhysicalDeviceAssignmentKind.INSTALL &&
-      a.vehicleId != null &&
-      a.effectiveTo == null,
-  );
-  if (active.length !== 1) return active[0] ?? null;
-  return active[0];
+function assertNonEmptyText(value: string | undefined | null, code: string): string {
+  const trimmed = value?.trim() ?? '';
+  if (!trimmed) {
+    throw physicalDeviceLifecycleNotEligible(code);
+  }
+  return trimmed;
 }
 
 async function observeActiveProviderLinks(tx: Tx, vehicleId: string) {
@@ -83,7 +81,7 @@ async function observeActiveProviderLinks(tx: Tx, vehicleId: string) {
 }
 
 async function replayLifecycleAudit(
-  prisma: PrismaService,
+  prisma: PrismaService | Tx,
   deviceId: string,
   eventKind: PhysicalDeviceInventoryAuditEventKind,
   idempotencyKey: string,
@@ -91,7 +89,7 @@ async function replayLifecycleAudit(
   toListItem: (row: ListItemRow) => PhysicalDeviceListItemDto,
 ) {
   const prior = await prisma.physicalDeviceInventoryAuditEvent.findFirst({
-    where: { idempotencyKey, eventKind },
+    where: { physicalDeviceId: deviceId, idempotencyKey, eventKind },
     include: {
       physicalDevice: {
         include: {
@@ -113,16 +111,17 @@ async function replayLifecycleAudit(
   return toListItem(prior.physicalDevice);
 }
 
-function assertNoActiveVehicleInstall(
+function assertOffVehicleLifecycleEligible(
+  status: PhysicalDeviceInventoryStatus,
   assignments: Array<{
     assignmentKind: PhysicalDeviceAssignmentKind;
     vehicleId: string | null;
     effectiveTo: Date | null;
-    id?: string;
+    organizationId?: string | null;
   }>,
-) {
-  const active = selectActiveVehicleInstallAssignment(assignments);
-  if (active) {
+): void {
+  assertDeviceInstallStatusConsistency(status, assignments);
+  if (status === PhysicalDeviceInventoryStatus.INSTALLED) {
     throw physicalDeviceActiveVehicleAssignment();
   }
 }
@@ -149,15 +148,12 @@ export async function uninstallPhysicalDeviceTx(
     if (replay) return replay;
   }
 
+  const uninstallReason = assertNonEmptyText(dto.uninstallReason, 'UNINSTALL_REASON_REQUIRED');
   if (dto.deviceConditionAfterUninstall === PhysicalDeviceUninstallCondition.DEFECTIVE) {
-    if (!dto.defectDescription?.trim()) {
-      throw physicalDeviceNotUninstallEligible('DEFECT_DESCRIPTION_REQUIRED');
-    }
+    assertNonEmptyText(dto.defectDescription, 'DEFECT_DESCRIPTION_REQUIRED');
   }
   if (dto.physicalReturnConfirmed) {
-    if (!dto.warehouseLocation?.trim()) {
-      throw physicalDeviceNotUninstallEligible('WAREHOUSE_REQUIRED_FOR_RETURN');
-    }
+    assertNonEmptyText(dto.warehouseLocation, 'WAREHOUSE_REQUIRED_FOR_RETURN');
   }
 
   try {
@@ -170,22 +166,44 @@ export async function uninstallPhysicalDeviceTx(
       });
       if (!device) throw physicalDeviceNotFound();
       if (device.status !== PhysicalDeviceInventoryStatus.INSTALLED) {
+        if (idempotencyKey) {
+          const replay = await replayLifecycleAudit(
+            tx,
+            deviceId,
+            PhysicalDeviceInventoryAuditEventKind.UNINSTALL,
+            idempotencyKey,
+            payloadFingerprint,
+            toListItem,
+          );
+          if (replay) return replay;
+        }
         throw physicalDeviceNotUninstallEligible(`STATUS_${device.status}`);
       }
 
-      const activeInstall = selectActiveVehicleInstallAssignment(device.assignments);
-      if (!activeInstall) {
-        throw physicalDeviceNotInstalled();
-      }
+      assertDeviceInstallStatusConsistency(device.status, device.assignments);
+      const activeInstall = requireActiveVehicleInstallAssignment(device.assignments);
       if (activeInstall.id !== dto.assignmentId || activeInstall.vehicleId !== dto.vehicleId) {
         throw physicalDeviceAssignmentMismatch();
       }
 
+      const vehicle = await tx.vehicle.findUnique({
+        where: { id: dto.vehicleId },
+        select: { id: true, organizationId: true },
+      });
+      if (!vehicle) {
+        throw physicalDeviceAssignmentMismatch();
+      }
+      assertOwnerOrganizationMatchesVehicle(device.ownerOrganizationId, vehicle.organizationId);
+
       const effectiveTo = new Date();
-      const nextStatus =
-        dto.deviceConditionAfterUninstall === PhysicalDeviceUninstallCondition.DEFECTIVE
-          ? PhysicalDeviceInventoryStatus.DEFECTIVE
-          : PhysicalDeviceInventoryStatus.AVAILABLE;
+      let nextStatus: PhysicalDeviceInventoryStatus;
+      if (dto.deviceConditionAfterUninstall === PhysicalDeviceUninstallCondition.DEFECTIVE) {
+        nextStatus = PhysicalDeviceInventoryStatus.DEFECTIVE;
+      } else if (dto.physicalReturnConfirmed) {
+        nextStatus = PhysicalDeviceInventoryStatus.AVAILABLE;
+      } else {
+        nextStatus = PhysicalDeviceInventoryStatus.PENDING_RETURN;
+      }
 
       const providerObservation = await observeActiveProviderLinks(tx, dto.vehicleId);
 
@@ -224,7 +242,7 @@ export async function uninstallPhysicalDeviceTx(
             vehicleId: dto.vehicleId,
             assignmentId: dto.assignmentId,
             effectiveTo: effectiveTo.toISOString(),
-            uninstallReason: dto.uninstallReason.trim(),
+            uninstallReason,
             deviceConditionAfterUninstall: dto.deviceConditionAfterUninstall,
             physicalReturnConfirmed: dto.physicalReturnConfirmed,
             warehouseLocationApplied: warehouseUpdate ?? null,
@@ -285,21 +303,19 @@ export async function returnPhysicalDeviceToStockTx(
         include: { assignments: true },
       });
       if (!device) throw physicalDeviceNotFound();
-      assertNoActiveVehicleInstall(device.assignments);
+      assertOffVehicleLifecycleEligible(device.status, device.assignments);
 
-      if (
-        device.status !== PhysicalDeviceInventoryStatus.AVAILABLE &&
-        device.status !== PhysicalDeviceInventoryStatus.RESERVED
-      ) {
+      if (device.status !== PhysicalDeviceInventoryStatus.PENDING_RETURN) {
         throw physicalDeviceLifecycleNotEligible(`STATUS_${device.status}`);
       }
 
+      const warehouseLocation = assertNonEmptyText(dto.warehouseLocation, 'WAREHOUSE_REQUIRED');
       const returnedAt = new Date();
       const updated = await tx.physicalDevice.update({
         where: { id: deviceId },
         data: {
           status: PhysicalDeviceInventoryStatus.AVAILABLE,
-          warehouseLocation: dto.warehouseLocation.trim(),
+          warehouseLocation,
         },
         include: {
           assignments: {
@@ -318,7 +334,7 @@ export async function returnPhysicalDeviceToStockTx(
           idempotencyKey,
           evidenceJson: {
             returnedAt: returnedAt.toISOString(),
-            warehouseLocation: dto.warehouseLocation.trim(),
+            warehouseLocation,
             returnNotes: dto.returnNotes?.trim() ?? null,
             providerBindingMutated: false,
           } as Prisma.InputJsonValue,
@@ -374,15 +390,22 @@ export async function markPhysicalDeviceDefectiveTx(
         include: { assignments: true },
       });
       if (!device) throw physicalDeviceNotFound();
-      assertNoActiveVehicleInstall(device.assignments);
-
+      assertOffVehicleLifecycleEligible(device.status, device.assignments);
+      if (device.status === PhysicalDeviceInventoryStatus.DEFECTIVE) {
+        throw physicalDeviceLifecycleNotEligible('ALREADY_DEFECTIVE');
+      }
       if (
-        device.status === PhysicalDeviceInventoryStatus.INSTALLED ||
-        device.status === PhysicalDeviceInventoryStatus.LOST ||
-        device.status === PhysicalDeviceInventoryStatus.RETIRED
+        device.status !== PhysicalDeviceInventoryStatus.AVAILABLE &&
+        device.status !== PhysicalDeviceInventoryStatus.RESERVED &&
+        device.status !== PhysicalDeviceInventoryStatus.PENDING_RETURN
       ) {
         throw physicalDeviceLifecycleNotEligible(`STATUS_${device.status}`);
       }
+
+      const defectDescription = assertNonEmptyText(
+        dto.defectDescription,
+        'DEFECT_DESCRIPTION_REQUIRED',
+      );
 
       const updated = await tx.physicalDevice.update({
         where: { id: deviceId },
@@ -403,7 +426,7 @@ export async function markPhysicalDeviceDefectiveTx(
           payloadFingerprint,
           idempotencyKey,
           evidenceJson: {
-            defectDescription: dto.defectDescription.trim(),
+            defectDescription,
             installEligibleAfter: false,
             providerBindingMutated: false,
           } as Prisma.InputJsonValue,
@@ -466,11 +489,26 @@ export async function markPhysicalDeviceLostTx(
         include: { assignments: true },
       });
       if (!device) throw physicalDeviceNotFound();
-      assertNoActiveVehicleInstall(device.assignments);
-
+      assertOffVehicleLifecycleEligible(device.status, device.assignments);
+      if (device.status === PhysicalDeviceInventoryStatus.LOST) {
+        throw physicalDeviceLifecycleNotEligible('ALREADY_LOST');
+      }
       if (device.status === PhysicalDeviceInventoryStatus.RETIRED) {
         throw physicalDeviceLifecycleNotEligible('STATUS_RETIRED');
       }
+      if (
+        device.status !== PhysicalDeviceInventoryStatus.AVAILABLE &&
+        device.status !== PhysicalDeviceInventoryStatus.RESERVED &&
+        device.status !== PhysicalDeviceInventoryStatus.PENDING_RETURN &&
+        device.status !== PhysicalDeviceInventoryStatus.DEFECTIVE
+      ) {
+        throw physicalDeviceLifecycleNotEligible(`STATUS_${device.status}`);
+      }
+
+      const lossEvidenceNotes = assertNonEmptyText(
+        dto.lossEvidenceNotes,
+        'LOSS_EVIDENCE_REQUIRED',
+      );
 
       const updated = await tx.physicalDevice.update({
         where: { id: deviceId },
@@ -492,7 +530,7 @@ export async function markPhysicalDeviceLostTx(
           idempotencyKey,
           evidenceJson: {
             lossAttestationKind: dto.lossAttestationKind,
-            lossEvidenceNotes: dto.lossEvidenceNotes.trim(),
+            lossEvidenceNotes,
             telemetryDerivedLossRejected: true,
             providerBindingMutated: false,
           } as Prisma.InputJsonValue,
@@ -548,14 +586,23 @@ export async function retirePhysicalDeviceTx(
         include: { assignments: true },
       });
       if (!device) throw physicalDeviceNotFound();
-      assertNoActiveVehicleInstall(device.assignments);
-
+      assertOffVehicleLifecycleEligible(device.status, device.assignments);
       if (device.status === PhysicalDeviceInventoryStatus.RETIRED) {
         throw physicalDeviceLifecycleNotEligible('ALREADY_RETIRED');
       }
-      if (device.status === PhysicalDeviceInventoryStatus.INSTALLED) {
-        throw physicalDeviceLifecycleNotEligible('STATUS_INSTALLED');
+      if (device.status === PhysicalDeviceInventoryStatus.LOST) {
+        throw physicalDeviceLifecycleNotEligible('STATUS_LOST');
       }
+      if (
+        device.status !== PhysicalDeviceInventoryStatus.AVAILABLE &&
+        device.status !== PhysicalDeviceInventoryStatus.RESERVED &&
+        device.status !== PhysicalDeviceInventoryStatus.PENDING_RETURN &&
+        device.status !== PhysicalDeviceInventoryStatus.DEFECTIVE
+      ) {
+        throw physicalDeviceLifecycleNotEligible(`STATUS_${device.status}`);
+      }
+
+      const retireReason = assertNonEmptyText(dto.retireReason, 'RETIRE_REASON_REQUIRED');
 
       const updated = await tx.physicalDevice.update({
         where: { id: deviceId },
@@ -576,7 +623,7 @@ export async function retirePhysicalDeviceTx(
           payloadFingerprint,
           idempotencyKey,
           evidenceJson: {
-            retireReason: dto.retireReason.trim(),
+            retireReason,
             automaticRetirement: false,
             providerBindingMutated: false,
           } as Prisma.InputJsonValue,

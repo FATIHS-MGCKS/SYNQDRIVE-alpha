@@ -116,6 +116,10 @@ export const PHYSICAL_DEVICE_LIFECYCLE_NOT_ELIGIBLE = 'PHYSICAL_DEVICE_LIFECYCLE
 export const PHYSICAL_DEVICE_LOSS_EVIDENCE_INSUFFICIENT = 'PHYSICAL_DEVICE_LOSS_EVIDENCE_INSUFFICIENT';
 export const PHYSICAL_DEVICE_ACTIVE_VEHICLE_ASSIGNMENT =
   'PHYSICAL_DEVICE_ACTIVE_VEHICLE_ASSIGNMENT';
+export const PHYSICAL_DEVICE_ASSIGNMENT_INTEGRITY_CONFLICT =
+  'PHYSICAL_DEVICE_ASSIGNMENT_INTEGRITY_CONFLICT';
+export const PHYSICAL_DEVICE_STATUS_ASSIGNMENT_INCONSISTENT =
+  'PHYSICAL_DEVICE_STATUS_ASSIGNMENT_INCONSISTENT';
 
 export function physicalDeviceP1b2WritesDisabled() {
   return new ForbiddenException({
@@ -166,5 +170,20 @@ export function physicalDeviceActiveVehicleAssignment() {
   return new UnprocessableEntityException({
     code: PHYSICAL_DEVICE_ACTIVE_VEHICLE_ASSIGNMENT,
     message: 'Resolve the active vehicle installation before this lifecycle action',
+  });
+}
+
+export function physicalDeviceAssignmentIntegrityConflict() {
+  return new ConflictException({
+    code: PHYSICAL_DEVICE_ASSIGNMENT_INTEGRITY_CONFLICT,
+    message: 'Multiple active vehicle installations detected for one physical device',
+  });
+}
+
+export function physicalDeviceStatusAssignmentInconsistent(reasonCode: string) {
+  return new ConflictException({
+    code: PHYSICAL_DEVICE_STATUS_ASSIGNMENT_INCONSISTENT,
+    message: 'Physical device status does not match assignment state',
+    reasonCode,
   });
 }

@@ -37,6 +37,7 @@ export const masterPhysicalDeviceInventoryCs = {
   'master.physicalDeviceInventory.status.AVAILABLE': 'Dostupné',
   'master.physicalDeviceInventory.status.RESERVED': 'Rezervované',
   'master.physicalDeviceInventory.status.INSTALLED': 'Instalované',
+  'master.physicalDeviceInventory.status.PENDING_RETURN': 'Pending warehouse return',
   'master.physicalDeviceInventory.status.DEFECTIVE': 'Poruchové',
   'master.physicalDeviceInventory.status.LOST': 'Ztracené',
   'master.physicalDeviceInventory.status.RETIRED': 'Vyřazené',
@@ -71,6 +72,8 @@ export const masterPhysicalDeviceInventoryCs = {
   'master.physicalDeviceInventory.uninstallSubmit': 'Zaznamenat vyjmutí',
   'master.physicalDeviceInventory.uninstallSuccess': 'Vyjmutí zaznamenáno',
   'master.physicalDeviceInventory.uninstallError': 'Vyjmutí nelze zaznamenat',
+  'master.physicalDeviceInventory.pendingReturnHint':
+    'Device was uninstalled but not yet confirmed in warehouse stock.',
   'master.physicalDeviceInventory.returnTitle': 'Návrat na sklad',
   'master.physicalDeviceInventory.returnConfirmLabel': 'Potvrzuji fyzické přijetí ve skladu',
   'master.physicalDeviceInventory.returnSubmit': 'Zaznamenat návrat',

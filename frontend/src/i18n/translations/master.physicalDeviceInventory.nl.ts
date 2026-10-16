@@ -37,6 +37,7 @@ export const masterPhysicalDeviceInventoryNl = {
   'master.physicalDeviceInventory.status.AVAILABLE': 'Beschikbaar',
   'master.physicalDeviceInventory.status.RESERVED': 'Gereserveerd',
   'master.physicalDeviceInventory.status.INSTALLED': 'Geïnstalleerd',
+  'master.physicalDeviceInventory.status.PENDING_RETURN': 'Pending warehouse return',
   'master.physicalDeviceInventory.status.DEFECTIVE': 'Defect',
   'master.physicalDeviceInventory.status.LOST': 'Verloren',
   'master.physicalDeviceInventory.status.RETIRED': 'Afgeschreven',
@@ -72,6 +73,8 @@ export const masterPhysicalDeviceInventoryNl = {
   'master.physicalDeviceInventory.uninstallSubmit': 'Verwijdering vastleggen',
   'master.physicalDeviceInventory.uninstallSuccess': 'Verwijdering vastgelegd',
   'master.physicalDeviceInventory.uninstallError': 'Verwijdering kon niet worden vastgelegd',
+  'master.physicalDeviceInventory.pendingReturnHint':
+    'Device was uninstalled but not yet confirmed in warehouse stock.',
   'master.physicalDeviceInventory.returnTitle': 'Terug naar voorraad',
   'master.physicalDeviceInventory.returnConfirmLabel': 'Ik bevestig fysieke ontvangst in magazijn',
   'master.physicalDeviceInventory.returnSubmit': 'Retour vastleggen',

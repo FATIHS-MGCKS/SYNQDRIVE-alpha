@@ -37,6 +37,7 @@ export const masterPhysicalDeviceInventoryEn = {
   'master.physicalDeviceInventory.status.AVAILABLE': 'Available',
   'master.physicalDeviceInventory.status.RESERVED': 'Reserved',
   'master.physicalDeviceInventory.status.INSTALLED': 'Installed',
+  'master.physicalDeviceInventory.status.PENDING_RETURN': 'Pending warehouse return',
   'master.physicalDeviceInventory.status.DEFECTIVE': 'Defective',
   'master.physicalDeviceInventory.status.LOST': 'Lost',
   'master.physicalDeviceInventory.status.RETIRED': 'Retired',
@@ -72,6 +73,8 @@ export const masterPhysicalDeviceInventoryEn = {
   'master.physicalDeviceInventory.uninstallSubmit': 'Record uninstall',
   'master.physicalDeviceInventory.uninstallSuccess': 'Uninstall recorded',
   'master.physicalDeviceInventory.uninstallError': 'Uninstall could not be recorded',
+  'master.physicalDeviceInventory.pendingReturnHint':
+    'Device was uninstalled but not yet confirmed in warehouse stock.',
   'master.physicalDeviceInventory.returnTitle': 'Return to stock',
   'master.physicalDeviceInventory.returnConfirmLabel': 'I confirm physical receipt in warehouse',
   'master.physicalDeviceInventory.returnSubmit': 'Record stock return',

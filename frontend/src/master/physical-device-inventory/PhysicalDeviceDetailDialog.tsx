@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '../../i18n/LanguageContext';
@@ -62,6 +62,11 @@ export function PhysicalDeviceDetailDialog({
   const [retireReason, setRetireReason] = useState('');
   const [retireConfirm, setRetireConfirm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const uninstallIdempotencyKey = useRef(crypto.randomUUID());
+  const returnIdempotencyKey = useRef(crypto.randomUUID());
+  const defectiveIdempotencyKey = useRef(crypto.randomUUID());
+  const lostIdempotencyKey = useRef(crypto.randomUUID());
+  const retireIdempotencyKey = useRef(crypto.randomUUID());
 
   const reviewerUserId = getStoredUser()?.id ?? '';
 
@@ -139,6 +144,7 @@ export function PhysicalDeviceDetailDialog({
         physicalReturnConfirmed: uninstallReturn,
         warehouseLocation: uninstallReturn ? uninstallWarehouse.trim() : undefined,
         defectDescription: uninstallDefective ? defectDescription.trim() : undefined,
+        idempotencyKey: uninstallIdempotencyKey.current,
       });
       toast.success(t('master.physicalDeviceInventory.uninstallSuccess'));
       await loadDetail();
@@ -157,6 +163,7 @@ export function PhysicalDeviceDetailDialog({
       await api.admin.physicalDeviceInventory.returnToStock(deviceId, {
         warehouseLocation: returnWarehouse.trim(),
         physicalReturnConfirmed: true,
+        idempotencyKey: returnIdempotencyKey.current,
       });
       toast.success(t('master.physicalDeviceInventory.returnSuccess'));
       await loadDetail();
@@ -175,6 +182,7 @@ export function PhysicalDeviceDetailDialog({
       await api.admin.physicalDeviceInventory.markDefective(deviceId, {
         defectDescription: defectDescription.trim(),
         physicalInspectionConfirmed: true,
+        idempotencyKey: defectiveIdempotencyKey.current,
       });
       toast.success(t('master.physicalDeviceInventory.defectiveSuccess'));
       await loadDetail();
@@ -193,6 +201,7 @@ export function PhysicalDeviceDetailDialog({
       await api.admin.physicalDeviceInventory.markLost(deviceId, {
         lossAttestationKind: 'MASTER_ADMIN_LOSS_CONFIRMATION',
         lossEvidenceNotes: lostEvidence.trim(),
+        idempotencyKey: lostIdempotencyKey.current,
       });
       toast.success(t('master.physicalDeviceInventory.lostSuccess'));
       await loadDetail();
@@ -211,6 +220,7 @@ export function PhysicalDeviceDetailDialog({
       await api.admin.physicalDeviceInventory.retire(deviceId, {
         retireReason: retireReason.trim(),
         retirementConfirmation: true,
+        idempotencyKey: retireIdempotencyKey.current,
       });
       toast.success(t('master.physicalDeviceInventory.retireSuccess'));
       await loadDetail();
@@ -358,9 +368,12 @@ export function PhysicalDeviceDetailDialog({
                 </Button>
               </div>
             )}
-            {detail.status === 'AVAILABLE' && !detail.currentVehicleId && (
+            {detail.status === 'PENDING_RETURN' && !detail.currentVehicleId && (
               <div className="space-y-3 rounded-lg border p-4">
                 <p className="font-medium text-sm">{t('master.physicalDeviceInventory.returnTitle')}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t('master.physicalDeviceInventory.pendingReturnHint')}
+                </p>
                 <Label>{t('master.physicalDeviceInventory.returnWarehouse')}</Label>
                 <Input value={returnWarehouse} onChange={(e) => setReturnWarehouse(e.target.value)} />
                 <div className="flex items-center gap-2">
