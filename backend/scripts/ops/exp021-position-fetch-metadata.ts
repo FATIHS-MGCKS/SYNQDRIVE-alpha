@@ -192,7 +192,7 @@ async function main(): Promise<void> {
           },
         };
       },
-      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead, timeout: 120_000 },
     );
 
     fs.writeFileSync(out, JSON.stringify({ kind: 'EXP021_POSITION_FETCH_METADATA_V1', ...report }, null, 2));
