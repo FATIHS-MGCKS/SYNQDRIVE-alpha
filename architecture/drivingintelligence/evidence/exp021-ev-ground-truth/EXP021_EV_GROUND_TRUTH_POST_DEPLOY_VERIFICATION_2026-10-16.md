@@ -72,19 +72,7 @@ Unchanged (same projection row and boundaries):
 
 ## Scoped follow-up (prepared, **not executed**)
 
-**Goal:** Admit reference trip only after step-4 boundary scan.
-
-**Call (leader process only):**
-
-`TripReconciliationService.reconcileWindow(vehicleId='68868291-5478-42cd-b0c4-cc77b2a78e21', from='2026-10-16T03:30:00.000Z', to='2026-10-16T04:00:00.000Z', tier='cold', { useDimoSegmentFallback: true })`
-
-**Prerequisites:** Scheduler leader replica; deployed SHA includes #2047 admission writer; trip remains COMPLETED + RESTING + no PROPOSED repairs.
-
-**Expected effects:** Step 4 adds trip to `boundaryScannedTripIds`; `tryReleaseForTripTransactional` jsonb_sets `diV0BoundaryAdmissionV1` with revision = live boundary FP; no manual admission write.
-
-**Provider risk:** Step 2 missing-trip path may call DIMO when `useDimoSegmentFallback: true` and token present — for this window/trip, expect **no** missing-trip repair (trip already exists). Owner may set `useDimoSegmentFallback: false` for minimal provider surface.
-
-**Out of scope:** blanket cold backlog, outbox reset, reprojection, operator HTTP without auth.
+See [EXP021_EV_GROUND_TRUTH_SCOPED_ADMISSION_RECOVERY_RUNBOOK_2026-10-16.md](./EXP021_EV_GROUND_TRUTH_SCOPED_ADMISSION_RECOVERY_RUNBOOK_2026-10-16.md) — `reconcileWindow` with `useDimoSegmentFallback: false`; public `POST …/trips/reconcile` is **not** suitable (forces DIMO fallback true).
 
 ## CI note (Trip FSM run 38919698025)
 
