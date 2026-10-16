@@ -97,6 +97,19 @@ async function createVehicle(
     let policyProfiles: BatteryPolicyProfileService;
     const originalShadow = process.env[BATTERY_V2_REST_SHADOW_ENABLED_ENV];
     const originalPublication = process.env[BATTERY_V2_PUBLICATION_ENABLED_ENV];
+    const policyFixture = {
+      driveProfile: BatteryDriveProfile.ICE,
+      chemistry: 'LEAD_ACID',
+      lvAssessmentAllowed: true,
+      supportedMeasurementTypes: [
+        BatteryMeasurementType.LIVE_VOLTAGE,
+        BatteryMeasurementType.REST_60M,
+        BatteryMeasurementType.REST_6H,
+      ],
+      forbiddenMeasurementTypes: [],
+      restingBands: { maxRestingV: 13.2 },
+      minimumContext: { restRequiresEngineOff: true },
+    };
 
     function wireAssessmentJobProducer(): void {
       jobProducer.enqueue.mockImplementation(
@@ -125,20 +138,8 @@ async function createVehicle(
       }
       prisma = new PrismaClient();
       const measurementRepo = new BatteryMeasurementRepository(prisma as never);
-      const policyProfiles = {
-        resolveForVehicle: jest.fn().mockResolvedValue({
-          driveProfile: BatteryDriveProfile.ICE,
-          chemistry: 'LEAD_ACID',
-          lvAssessmentAllowed: true,
-          supportedMeasurementTypes: [
-            BatteryMeasurementType.LIVE_VOLTAGE,
-            BatteryMeasurementType.REST_60M,
-            BatteryMeasurementType.REST_6H,
-          ],
-          forbiddenMeasurementTypes: [],
-          restingBands: { maxRestingV: 13.2 },
-          minimumContext: { restRequiresEngineOff: true },
-        }),
+      policyProfiles = {
+        resolveForVehicle: jest.fn().mockResolvedValue(policyFixture),
       } as unknown as BatteryPolicyProfileService;
       measurements = new BatteryMeasurementService(
         prisma as never,
@@ -211,19 +212,9 @@ async function createVehicle(
       process.env[BATTERY_V2_REST_SHADOW_ENABLED_ENV] = 'true';
       process.env[BATTERY_V2_PUBLICATION_ENABLED_ENV] = 'false';
       publicationEnqueuePayloads = [];
-      jest.mocked(policyProfiles.resolveForVehicle).mockResolvedValue({
-        driveProfile: BatteryDriveProfile.ICE,
-        chemistry: 'LEAD_ACID',
-        lvAssessmentAllowed: true,
-        supportedMeasurementTypes: [
-          BatteryMeasurementType.LIVE_VOLTAGE,
-          BatteryMeasurementType.REST_60M,
-          BatteryMeasurementType.REST_6H,
-        ],
-        forbiddenMeasurementTypes: [],
-        restingBands: { maxRestingV: 13.2 },
-        minimumContext: { restRequiresEngineOff: true },
-      });
+      jest
+        .mocked(policyProfiles.resolveForVehicle)
+        .mockResolvedValue(policyFixture as never);
       jobProducer.hasLiveAssessJobForVehicle.mockResolvedValue(false);
       jobProducer.hasAssessDispatchConflict.mockResolvedValue(false);
       jobProducer.hasLiveJob.mockResolvedValue(false);
