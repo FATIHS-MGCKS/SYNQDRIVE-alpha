@@ -1,7 +1,7 @@
 # EXP021 P22A — Gate Report
 
 **Result:** `BLOCKED_INSUFFICIENT_GROUND_TRUTH`  
-**PR:** #2051 · **HEAD:** `122b38b644d99973198128b6c76663b4f559dd50`  
+**PR:** #2051 · **HEAD:** `4a5e5a221255cd689a8e1e2393a5d6606961d832`  
 **v0_2 parameter hash unchanged:** YES (`dc4339e7b3687ef613b59e3ee9fe75b7a3d885dce5f5884735421e58a46d4ab7`)
 
 ## Verdict

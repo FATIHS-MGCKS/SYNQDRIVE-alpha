@@ -1,8 +1,8 @@
 {
   "schema": "EXP021_P22A_INDEPENDENT_VALIDATION_V1",
-  "observedAtUtc": "2026-10-16T19:10:38.563Z",
+  "observedAtUtc": "2026-10-16T19:11:42.511Z",
   "prNumber": 2051,
-  "headSha": "122b38b644d99973198128b6c76663b4f559dd50",
+  "headSha": "4a5e5a221255cd689a8e1e2393a5d6606961d832",
   "v0_2": {
     "version": "EXP021_RETROSPECTIVE_HALT_PROTOTYPE_V0_2",
     "parameterSnapshotHash": "dc4339e7b3687ef613b59e3ee9fe75b7a3d885dce5f5884735421e58a46d4ab7",
@@ -51,8 +51,8 @@
       "datasetPartition": "DEVELOPMENT_TESLA_EV_GT",
       "tripId": "358d0158-b2a9-47ed-af26-33926c5770b4",
       "utcWindow": {
-        "from": "UNMAPPED_BERLIN_05:41:42",
-        "to": "UNMAPPED_BERLIN_05:41:47",
+        "from": "2026-10-16T03:41:42Z",
+        "to": "2026-10-16T03:41:47Z",
         "note": "Berlin CEST → UTC via fixed Oct-16 offset table in audit lib"
       },
       "videoSource": "TC_00063.MOV",
@@ -75,8 +75,8 @@
       "datasetPartition": "DEVELOPMENT_TESLA_EV_GT",
       "tripId": "358d0158-b2a9-47ed-af26-33926c5770b4",
       "utcWindow": {
-        "from": "UNMAPPED_BERLIN_05:44:36",
-        "to": "UNMAPPED_BERLIN_05:44:41",
+        "from": "2026-10-16T03:44:36Z",
+        "to": "2026-10-16T03:44:41Z",
         "note": "Berlin CEST → UTC via fixed Oct-16 offset table in audit lib"
       },
       "videoSource": "TC_00064.MOV",
@@ -124,8 +124,8 @@
       "datasetPartition": "DEVELOPMENT_TESLA_EV_GT",
       "tripId": "358d0158-b2a9-47ed-af26-33926c5770b4",
       "utcWindow": {
-        "from": "UNMAPPED_BERLIN_05:37:41",
-        "to": "UNMAPPED_BERLIN_05:37:47",
+        "from": "2026-10-16T03:37:41Z",
+        "to": "2026-10-16T03:37:47Z",
         "note": "Berlin CEST → UTC via fixed Oct-16 offset table in audit lib"
       },
       "videoSource": "TC_00062.MOV",
