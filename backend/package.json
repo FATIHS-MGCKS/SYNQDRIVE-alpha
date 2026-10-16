@@ -236,6 +236,7 @@
     "exp021:retrospective-halt-transferability": "ts-node -r tsconfig-paths/register scripts/ops/exp021-retrospective-halt-transferability.ts",
     "exp021:p22a-evidence-audit": "ts-node -r tsconfig-paths/register scripts/ops/exp021-p22a-evidence-audit.ts",
     "exp021:p22b-feasibility-audit": "ts-node -r tsconfig-paths/register scripts/ops/exp021-p22b-feasibility-audit.ts",
+    "exp021:p22c-rd003-session-trip-audit": "ts-node -r tsconfig-paths/register scripts/ops/exp021-p22c-rd003-session-trip-audit.ts",
     "test:exp021:cohort-study-enrollment:bootstrap:postgres": "REFERENCE_CAPTURE_POSTGRES_INTEGRATION=1 jest reference-capture-exp021-cohort-study-enrollment-bootstrap.postgres.integration reference-capture-exp021-cohort-study-enrollment-arm-chain.postgres.integration --runInBand",
     "test:exp021:cohort-study-enrollment:bootstrap:postgres:ci": "REFERENCE_CAPTURE_POSTGRES_INTEGRATION=1 REFERENCE_CAPTURE_POSTGRES_REQUIRED=1 jest reference-capture-exp021-cohort-study-enrollment-bootstrap.postgres.integration reference-capture-exp021-cohort-study-enrollment-arm-chain.postgres.integration --runInBand --verbose",
     "test:exp021:maturation-shadow:migration": "bash scripts/test/exp021-maturation-shadow-migration-test.sh all",
