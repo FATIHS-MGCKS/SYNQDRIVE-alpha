@@ -1,0 +1,607 @@
+{
+  "schema": "EXP021_P22D_RD003_UTC_ANCHOR_RECOVERY_V1",
+  "observedAtUtc": "2026-10-16T19:38:44.998Z",
+  "prNumber": 2051,
+  "headSha": "12843920f0b8d533e0db45053f5087fe9dc5b30b",
+  "p22dResult": "UTC_RECOVERY_BLOCKED",
+  "v0_2": {
+    "parameterSnapshotHash": "dc4339e7b3687ef613b59e3ee9fe75b7a3d885dce5f5884735421e58a46d4ab7",
+    "unchanged": true
+  },
+  "originalSourcesAudit": {
+    "videoContainerMetadataInRepository": false,
+    "videoCreationTimestampsInRepository": false,
+    "originalFilenames": [
+      "IMG_2803.mp4",
+      "IMG_2804.mp4",
+      "IMG_2805.mp4",
+      "IMG_2806.mp4",
+      "IMG_2807.mp4",
+      "IMG_2808.mp4",
+      "IMG_2809.mp4",
+      "IMG_2810.mp4",
+      "IMG_2811.mp4"
+    ],
+    "sessionBounds": {
+      "fromSealedSummary": {
+        "startedAt": "2026-09-02T18:59:15.695Z",
+        "stoppedAt": "2026-09-02T19:36:22.970Z"
+      },
+      "fromP22cTripBinding": "fe40356a-4605-4481-8280-cb44858cacc1"
+    },
+    "sealedExportSha256": "81534484cdd0fa6224d9efbcf97bb445cfbe8af1fdb8ef29e9bb8204f09c32e4",
+    "externalGtSha256": "ea0d78ee71b5c83f104e8de31056ccfccc7b476733b676da5bf8828badc9592e",
+    "syncMarkerJsonOnSession": null,
+    "groundTruthVideoRefOnSession": null,
+    "note": "IMG_2803–2811.mp4 not stored in git; no committed container creation_time / QuickTime metadata."
+  },
+  "anchors": {
+    "all": [
+      {
+        "anchorId": "RC_SESSION_STARTED_AT",
+        "clipId": null,
+        "source": "dimo-lte-r1-reference-drive-003-session-summary.json + reference_capture_sessions (P22C)",
+        "originalTimestamp": "2026-09-02T18:59:15.695Z",
+        "utcValue": "2026-09-02T18:59:15.695Z",
+        "utcEarliest": null,
+        "utcLatest": null,
+        "uncertaintySeconds": null,
+        "provenance": "Reference-capture runtime session clock at FAST GO (not video container metadata)",
+        "dependsOnGpsDimoExp021": "DIMO reference-capture session lifecycle only; not GPS-fit",
+        "suitableForIndependentGt": false,
+        "anchorClass": "SESSION_RUNTIME"
+      },
+      {
+        "anchorId": "RC_SESSION_STOPPED_AT",
+        "clipId": null,
+        "source": "sealed session summary",
+        "originalTimestamp": "2026-09-02T19:36:22.970Z",
+        "utcValue": "2026-09-02T19:36:22.970Z",
+        "utcEarliest": null,
+        "utcLatest": null,
+        "uncertaintySeconds": null,
+        "provenance": "Session stop timestamp",
+        "dependsOnGpsDimoExp021": "DIMO reference-capture only",
+        "suitableForIndependentGt": false,
+        "anchorClass": "SESSION_RUNTIME"
+      },
+      {
+        "anchorId": "RD003_GT_CLIP_001_CANDIDATE_START_CEST_ASSUMED",
+        "clipId": "RD003_GT_CLIP_001",
+        "source": "rd003-video-ground-truth-observations.json candidateAbsoluteTime",
+        "originalTimestamp": "21:03 → 21:04",
+        "utcValue": "2026-09-02T19:03:49.400Z",
+        "utcEarliest": "2026-09-02T19:03:49.400Z",
+        "utcLatest": "2026-09-02T19:03:49.400Z",
+        "uncertaintySeconds": 30,
+        "provenance": "Visible vehicle clock interpreted as CEST",
+        "dependsOnGpsDimoExp021": "None; depends on CEST timezone hypothesis",
+        "suitableForIndependentGt": false,
+        "anchorClass": "ORIGINAL_VISUAL_ASSUMED_TZ"
+      },
+      {
+        "anchorId": "RD003_GT_CLIP_001_MINUTE_TRANSITION_21:03_to_21:04",
+        "clipId": "RD003_GT_CLIP_001",
+        "source": "DIRECT_VISUAL CLOCK_MINUTE_TRANSITION in GT observations",
+        "originalTimestamp": "21:03→21:04 at videoT=10.55s",
+        "utcValue": null,
+        "utcEarliest": null,
+        "utcLatest": null,
+        "uncertaintySeconds": 0.1,
+        "provenance": "Original frame review — ties video timeline to minute boundary only",
+        "dependsOnGpsDimoExp021": "None",
+        "suitableForIndependentGt": false,
+        "anchorClass": "ORIGINAL_INDEPENDENT"
+      },
+      {
+        "anchorId": "RD003_GT_CLIP_002_VISIBLE_MINUTE_WINDOW",
+        "clipId": "RD003_GT_CLIP_002",
+        "source": "visible minute + clip duration constraint",
+        "originalTimestamp": "21:06",
+        "utcValue": null,
+        "utcEarliest": "2026-09-02T19:06:00.000Z",
+        "utcLatest": "2026-09-02T19:06:23.100Z",
+        "uncertaintySeconds": null,
+        "provenance": "21:06 visible throughout ~36.9 s clip with no 21:07 transition — latest start constrained by clip duration within minute (CEST)",
+        "dependsOnGpsDimoExp021": "None",
+        "suitableForIndependentGt": false,
+        "anchorClass": "ORIGINAL_VISUAL_ASSUMED_TZ"
+      },
+      {
+        "anchorId": "RD003_GT_CLIP_003_CANDIDATE_START_CEST_ASSUMED",
+        "clipId": "RD003_GT_CLIP_003",
+        "source": "rd003-video-ground-truth-observations.json candidateAbsoluteTime",
+        "originalTimestamp": "21:08 → 21:09",
+        "utcValue": "2026-09-02T19:08:37.300Z",
+        "utcEarliest": "2026-09-02T19:08:37.300Z",
+        "utcLatest": "2026-09-02T19:08:37.300Z",
+        "uncertaintySeconds": 30,
+        "provenance": "Visible vehicle clock interpreted as CEST",
+        "dependsOnGpsDimoExp021": "None; depends on CEST timezone hypothesis",
+        "suitableForIndependentGt": false,
+        "anchorClass": "ORIGINAL_VISUAL_ASSUMED_TZ"
+      },
+      {
+        "anchorId": "RD003_GT_CLIP_003_MINUTE_TRANSITION_21:08_to_21:09",
+        "clipId": "RD003_GT_CLIP_003",
+        "source": "DIRECT_VISUAL CLOCK_MINUTE_TRANSITION in GT observations",
+        "originalTimestamp": "21:08→21:09 at videoT=22.72s",
+        "utcValue": null,
+        "utcEarliest": null,
+        "utcLatest": null,
+        "uncertaintySeconds": 0.1,
+        "provenance": "Original frame review — ties video timeline to minute boundary only",
+        "dependsOnGpsDimoExp021": "None",
+        "suitableForIndependentGt": false,
+        "anchorClass": "ORIGINAL_INDEPENDENT"
+      },
+      {
+        "anchorId": "RD003_GT_CLIP_004_CANDIDATE_START_CEST_ASSUMED",
+        "clipId": "RD003_GT_CLIP_004",
+        "source": "rd003-video-ground-truth-observations.json candidateAbsoluteTime",
+        "originalTimestamp": "21:09 → 21:10",
+        "utcValue": "2026-09-02T19:09:50.200Z",
+        "utcEarliest": "2026-09-02T19:09:50.200Z",
+        "utcLatest": "2026-09-02T19:09:50.200Z",
+        "uncertaintySeconds": 30,
+        "provenance": "Visible vehicle clock interpreted as CEST",
+        "dependsOnGpsDimoExp021": "None; depends on CEST timezone hypothesis",
+        "suitableForIndependentGt": false,
+        "anchorClass": "ORIGINAL_VISUAL_ASSUMED_TZ"
+      },
+      {
+        "anchorId": "RD003_GT_CLIP_004_MINUTE_TRANSITION_21:09_to_21:10",
+        "clipId": "RD003_GT_CLIP_004",
+        "source": "DIRECT_VISUAL CLOCK_MINUTE_TRANSITION in GT observations",
+        "originalTimestamp": "21:09→21:10 at videoT=9.75s",
+        "utcValue": null,
+        "utcEarliest": null,
+        "utcLatest": null,
+        "uncertaintySeconds": 0.1,
+        "provenance": "Original frame review — ties video timeline to minute boundary only",
+        "dependsOnGpsDimoExp021": "None",
+        "suitableForIndependentGt": false,
+        "anchorClass": "ORIGINAL_INDEPENDENT"
+      },
+      {
+        "anchorId": "RD003_GT_CLIP_005_CANDIDATE_START_CEST_ASSUMED",
+        "clipId": "RD003_GT_CLIP_005",
+        "source": "rd003-video-ground-truth-observations.json candidateAbsoluteTime",
+        "originalTimestamp": "21:12 → 21:13",
+        "utcValue": "2026-09-02T19:12:10.300Z",
+        "utcEarliest": "2026-09-02T19:12:10.300Z",
+        "utcLatest": "2026-09-02T19:12:10.300Z",
+        "uncertaintySeconds": 30,
+        "provenance": "Visible vehicle clock interpreted as CEST",
+        "dependsOnGpsDimoExp021": "None; depends on CEST timezone hypothesis",
+        "suitableForIndependentGt": false,
+        "anchorClass": "ORIGINAL_VISUAL_ASSUMED_TZ"
+      },
+      {
+        "anchorId": "RD003_GT_CLIP_005_MINUTE_TRANSITION_21:12_to_21:13",
+        "clipId": "RD003_GT_CLIP_005",
+        "source": "DIRECT_VISUAL CLOCK_MINUTE_TRANSITION in GT observations",
+        "originalTimestamp": "21:12→21:13 at videoT=49.65s",
+        "utcValue": null,
+        "utcEarliest": null,
+        "utcLatest": null,
+        "uncertaintySeconds": 0.1,
+        "provenance": "Original frame review — ties video timeline to minute boundary only",
+        "dependsOnGpsDimoExp021": "None",
+        "suitableForIndependentGt": false,
+        "anchorClass": "ORIGINAL_INDEPENDENT"
+      },
+      {
+        "anchorId": "RD003_GT_CLIP_006_VISIBLE_MINUTE_WINDOW",
+        "clipId": "RD003_GT_CLIP_006",
+        "source": "visible minute + clip duration constraint",
+        "originalTimestamp": "21:21",
+        "utcValue": null,
+        "utcEarliest": "2026-09-02T19:21:00.000Z",
+        "utcLatest": "2026-09-02T19:21:14.000Z",
+        "uncertaintySeconds": null,
+        "provenance": "Candidate region ~19:21:00Z–19:21:14Z; exact second unresolved",
+        "dependsOnGpsDimoExp021": "None",
+        "suitableForIndependentGt": false,
+        "anchorClass": "ORIGINAL_VISUAL_ASSUMED_TZ"
+      },
+      {
+        "anchorId": "RD003_GT_CLIP_007_CANDIDATE_START_CEST_ASSUMED",
+        "clipId": "RD003_GT_CLIP_007",
+        "source": "rd003-video-ground-truth-observations.json candidateAbsoluteTime",
+        "originalTimestamp": "21:22 → 21:23",
+        "utcValue": "2026-09-02T19:22:30.450Z",
+        "utcEarliest": "2026-09-02T19:22:30.450Z",
+        "utcLatest": "2026-09-02T19:22:30.450Z",
+        "uncertaintySeconds": 30,
+        "provenance": "Visible vehicle clock interpreted as CEST",
+        "dependsOnGpsDimoExp021": "None; depends on CEST timezone hypothesis",
+        "suitableForIndependentGt": false,
+        "anchorClass": "ORIGINAL_VISUAL_ASSUMED_TZ"
+      },
+      {
+        "anchorId": "RD003_GT_CLIP_007_MINUTE_TRANSITION_21:22_to_21:23",
+        "clipId": "RD003_GT_CLIP_007",
+        "source": "DIRECT_VISUAL CLOCK_MINUTE_TRANSITION in GT observations",
+        "originalTimestamp": "21:22→21:23 at videoT=29.55s",
+        "utcValue": null,
+        "utcEarliest": null,
+        "utcLatest": null,
+        "uncertaintySeconds": 0.1,
+        "provenance": "Original frame review — ties video timeline to minute boundary only",
+        "dependsOnGpsDimoExp021": "None",
+        "suitableForIndependentGt": false,
+        "anchorClass": "ORIGINAL_INDEPENDENT"
+      },
+      {
+        "anchorId": "RD003_GT_CLIP_008_VISIBLE_MINUTE_WINDOW",
+        "clipId": "RD003_GT_CLIP_008",
+        "source": "visible minute + clip duration constraint",
+        "originalTimestamp": "21:23",
+        "utcValue": null,
+        "utcEarliest": "2026-09-02T19:23:00.000Z",
+        "utcLatest": "2026-09-02T19:23:38.600Z",
+        "uncertaintySeconds": null,
+        "provenance": "21:23 visible throughout ~21.4 s clip with no 21:24 transition — latest start constrained by clip duration within minute (CEST)",
+        "dependsOnGpsDimoExp021": "None",
+        "suitableForIndependentGt": false,
+        "anchorClass": "ORIGINAL_VISUAL_ASSUMED_TZ"
+      },
+      {
+        "anchorId": "RD003_GT_CLIP_009_VISIBLE_MINUTE_WINDOW",
+        "clipId": "RD003_GT_CLIP_009",
+        "source": "visible minute + clip duration constraint",
+        "originalTimestamp": "21:24 → 21:25",
+        "utcValue": null,
+        "utcEarliest": "2026-09-02T19:24:29.000Z",
+        "utcLatest": "2026-09-02T19:24:32.000Z",
+        "uncertaintySeconds": null,
+        "provenance": "Candidate region ~19:24:29Z–19:24:32Z",
+        "dependsOnGpsDimoExp021": "None",
+        "suitableForIndependentGt": false,
+        "anchorClass": "ORIGINAL_VISUAL_ASSUMED_TZ"
+      },
+      {
+        "anchorId": "RD003_GT_CLIP_009_MINUTE_TRANSITION_21:24_to_21:25",
+        "clipId": "RD003_GT_CLIP_009",
+        "source": "DIRECT_VISUAL CLOCK_MINUTE_TRANSITION in GT observations",
+        "originalTimestamp": "21:24→21:25 at videoT=nulls",
+        "utcValue": null,
+        "utcEarliest": null,
+        "utcLatest": null,
+        "uncertaintySeconds": 0.1,
+        "provenance": "Original frame review — ties video timeline to minute boundary only",
+        "dependsOnGpsDimoExp021": "None",
+        "suitableForIndependentGt": false,
+        "anchorClass": "ORIGINAL_INDEPENDENT"
+      },
+      {
+        "anchorId": "RD003_GT_CLIP_001_HF_SPEED_FIT_START",
+        "clipId": "RD003_GT_CLIP_001",
+        "source": "clip-alignments.json HF_HISTORICAL bestCandidate",
+        "originalTimestamp": "2026-09-02T19:04:08.400Z",
+        "utcValue": "2026-09-02T19:04:08.400Z",
+        "utcEarliest": null,
+        "utcLatest": null,
+        "uncertaintySeconds": null,
+        "provenance": "Telemetry speed alignment fit — NOT independent",
+        "dependsOnGpsDimoExp021": "HF_HISTORICAL speed vs video labels",
+        "suitableForIndependentGt": false,
+        "anchorClass": "TELEMETRY_DERIVED"
+      },
+      {
+        "anchorId": "RD003_GT_CLIP_002_HF_SPEED_FIT_START",
+        "clipId": "RD003_GT_CLIP_002",
+        "source": "clip-alignments.json HF_HISTORICAL bestCandidate",
+        "originalTimestamp": "2026-09-02T19:06:20.000Z",
+        "utcValue": "2026-09-02T19:06:20.000Z",
+        "utcEarliest": null,
+        "utcLatest": null,
+        "uncertaintySeconds": null,
+        "provenance": "Telemetry speed alignment fit — NOT independent",
+        "dependsOnGpsDimoExp021": "HF_HISTORICAL speed vs video labels",
+        "suitableForIndependentGt": false,
+        "anchorClass": "TELEMETRY_DERIVED"
+      },
+      {
+        "anchorId": "RD003_GT_CLIP_003_HF_SPEED_FIT_START",
+        "clipId": "RD003_GT_CLIP_003",
+        "source": "clip-alignments.json HF_HISTORICAL bestCandidate",
+        "originalTimestamp": "2026-09-02T19:08:07.800Z",
+        "utcValue": "2026-09-02T19:08:07.800Z",
+        "utcEarliest": null,
+        "utcLatest": null,
+        "uncertaintySeconds": null,
+        "provenance": "Telemetry speed alignment fit — NOT independent",
+        "dependsOnGpsDimoExp021": "HF_HISTORICAL speed vs video labels",
+        "suitableForIndependentGt": false,
+        "anchorClass": "TELEMETRY_DERIVED"
+      },
+      {
+        "anchorId": "RD003_GT_CLIP_004_HF_SPEED_FIT_START",
+        "clipId": "RD003_GT_CLIP_004",
+        "source": "clip-alignments.json HF_HISTORICAL bestCandidate",
+        "originalTimestamp": "2026-09-02T19:10:10.700Z",
+        "utcValue": "2026-09-02T19:10:10.700Z",
+        "utcEarliest": null,
+        "utcLatest": null,
+        "uncertaintySeconds": null,
+        "provenance": "Telemetry speed alignment fit — NOT independent",
+        "dependsOnGpsDimoExp021": "HF_HISTORICAL speed vs video labels",
+        "suitableForIndependentGt": false,
+        "anchorClass": "TELEMETRY_DERIVED"
+      },
+      {
+        "anchorId": "RD003_GT_CLIP_005_HF_SPEED_FIT_START",
+        "clipId": "RD003_GT_CLIP_005",
+        "source": "clip-alignments.json HF_HISTORICAL bestCandidate",
+        "originalTimestamp": "2026-09-02T19:11:42.300Z",
+        "utcValue": "2026-09-02T19:11:42.300Z",
+        "utcEarliest": null,
+        "utcLatest": null,
+        "uncertaintySeconds": null,
+        "provenance": "Telemetry speed alignment fit — NOT independent",
+        "dependsOnGpsDimoExp021": "HF_HISTORICAL speed vs video labels",
+        "suitableForIndependentGt": false,
+        "anchorClass": "TELEMETRY_DERIVED"
+      },
+      {
+        "anchorId": "RD003_GT_CLIP_006_HF_SPEED_FIT_START",
+        "clipId": "RD003_GT_CLIP_006",
+        "source": "clip-alignments.json HF_HISTORICAL bestCandidate",
+        "originalTimestamp": "2026-09-02T19:21:05.500Z",
+        "utcValue": "2026-09-02T19:21:05.500Z",
+        "utcEarliest": null,
+        "utcLatest": null,
+        "uncertaintySeconds": null,
+        "provenance": "Telemetry speed alignment fit — NOT independent",
+        "dependsOnGpsDimoExp021": "HF_HISTORICAL speed vs video labels",
+        "suitableForIndependentGt": false,
+        "anchorClass": "TELEMETRY_DERIVED"
+      },
+      {
+        "anchorId": "RD003_GT_CLIP_007_HF_SPEED_FIT_START",
+        "clipId": "RD003_GT_CLIP_007",
+        "source": "clip-alignments.json HF_HISTORICAL bestCandidate",
+        "originalTimestamp": "2026-09-02T19:22:53.450Z",
+        "utcValue": "2026-09-02T19:22:53.450Z",
+        "utcEarliest": null,
+        "utcLatest": null,
+        "uncertaintySeconds": null,
+        "provenance": "Telemetry speed alignment fit — NOT independent",
+        "dependsOnGpsDimoExp021": "HF_HISTORICAL speed vs video labels",
+        "suitableForIndependentGt": false,
+        "anchorClass": "TELEMETRY_DERIVED"
+      },
+      {
+        "anchorId": "RD003_GT_CLIP_008_HF_SPEED_FIT_START",
+        "clipId": "RD003_GT_CLIP_008",
+        "source": "clip-alignments.json HF_HISTORICAL bestCandidate",
+        "originalTimestamp": "2026-09-02T19:23:08.500Z",
+        "utcValue": "2026-09-02T19:23:08.500Z",
+        "utcEarliest": null,
+        "utcLatest": null,
+        "uncertaintySeconds": null,
+        "provenance": "Telemetry speed alignment fit — NOT independent",
+        "dependsOnGpsDimoExp021": "HF_HISTORICAL speed vs video labels",
+        "suitableForIndependentGt": false,
+        "anchorClass": "TELEMETRY_DERIVED"
+      },
+      {
+        "anchorId": "RD003_GT_CLIP_009_HF_SPEED_FIT_START",
+        "clipId": "RD003_GT_CLIP_009",
+        "source": "clip-alignments.json HF_HISTORICAL bestCandidate",
+        "originalTimestamp": "2026-09-02T19:24:32.000Z",
+        "utcValue": "2026-09-02T19:24:32.000Z",
+        "utcEarliest": null,
+        "utcLatest": null,
+        "uncertaintySeconds": null,
+        "provenance": "Telemetry speed alignment fit — NOT independent",
+        "dependsOnGpsDimoExp021": "HF_HISTORICAL speed vs video labels",
+        "suitableForIndependentGt": false,
+        "anchorClass": "TELEMETRY_DERIVED"
+      }
+    ],
+    "independentUtcAnchors": 6,
+    "independentMinuteTransitionAnchors": 6,
+    "independentUtcAnchorsSuitableForGt": 0,
+    "telemetryDerivedAnchors": 9,
+    "visualAssumedTimezoneAnchors": 9
+  },
+  "clips": [
+    {
+      "clipId": "RD003_GT_CLIP_001",
+      "fileName": "IMG_2803.mp4",
+      "durationSeconds": 60,
+      "earliestUtcStart": "2026-09-02T19:03:19Z",
+      "latestUtcStart": "2026-09-02T19:04:19Z",
+      "bestIndependentUtcStart": null,
+      "utcUncertaintySeconds": 30,
+      "clockDriftAssessment": "UNRESOLVED_INDEPENDENT_OF_RELATIVE_MODEL",
+      "validationStatus": "BLOCKED",
+      "independentAnchorsUsed": [
+        "MINUTE_TRANSITION",
+        "CEST_ASSUMED_POINT"
+      ],
+      "telemetryDerivedStart": "2026-09-02T19:04:08.400Z"
+    },
+    {
+      "clipId": "RD003_GT_CLIP_002",
+      "fileName": "IMG_2804.mp4",
+      "durationSeconds": 36.9,
+      "earliestUtcStart": "2026-09-02T19:06:00.000Z",
+      "latestUtcStart": "2026-09-02T19:06:23.100Z",
+      "bestIndependentUtcStart": null,
+      "utcUncertaintySeconds": null,
+      "clockDriftAssessment": "UNRESOLVED_INDEPENDENT_OF_RELATIVE_MODEL",
+      "validationStatus": "BLOCKED",
+      "independentAnchorsUsed": [
+        "VISIBLE_MINUTE_WINDOW_CEST"
+      ],
+      "telemetryDerivedStart": "2026-09-02T19:06:20.000Z"
+    },
+    {
+      "clipId": "RD003_GT_CLIP_003",
+      "fileName": "IMG_2805.mp4",
+      "durationSeconds": 24.3,
+      "earliestUtcStart": "2026-09-02T19:08:07Z",
+      "latestUtcStart": "2026-09-02T19:09:07Z",
+      "bestIndependentUtcStart": null,
+      "utcUncertaintySeconds": 30,
+      "clockDriftAssessment": "UNRESOLVED_INDEPENDENT_OF_RELATIVE_MODEL",
+      "validationStatus": "BLOCKED",
+      "independentAnchorsUsed": [
+        "MINUTE_TRANSITION",
+        "CEST_ASSUMED_POINT"
+      ],
+      "telemetryDerivedStart": "2026-09-02T19:08:07.800Z"
+    },
+    {
+      "clipId": "RD003_GT_CLIP_004",
+      "fileName": "IMG_2806.mp4",
+      "durationSeconds": 35.3,
+      "earliestUtcStart": "2026-09-02T19:09:20Z",
+      "latestUtcStart": "2026-09-02T19:10:20Z",
+      "bestIndependentUtcStart": null,
+      "utcUncertaintySeconds": 30,
+      "clockDriftAssessment": "UNRESOLVED_INDEPENDENT_OF_RELATIVE_MODEL",
+      "validationStatus": "BLOCKED",
+      "independentAnchorsUsed": [
+        "MINUTE_TRANSITION",
+        "CEST_ASSUMED_POINT"
+      ],
+      "telemetryDerivedStart": "2026-09-02T19:10:10.700Z"
+    },
+    {
+      "clipId": "RD003_GT_CLIP_005",
+      "fileName": "IMG_2807.mp4",
+      "durationSeconds": 61.2,
+      "earliestUtcStart": "2026-09-02T19:11:40Z",
+      "latestUtcStart": "2026-09-02T19:12:40Z",
+      "bestIndependentUtcStart": null,
+      "utcUncertaintySeconds": 30,
+      "clockDriftAssessment": "UNRESOLVED_INDEPENDENT_OF_RELATIVE_MODEL",
+      "validationStatus": "BLOCKED",
+      "independentAnchorsUsed": [
+        "MINUTE_TRANSITION",
+        "CEST_ASSUMED_POINT"
+      ],
+      "telemetryDerivedStart": "2026-09-02T19:11:42.300Z"
+    },
+    {
+      "clipId": "RD003_GT_CLIP_006",
+      "fileName": "IMG_2808.mp4",
+      "durationSeconds": 45.8,
+      "earliestUtcStart": "2026-09-02T19:21:00.000Z",
+      "latestUtcStart": "2026-09-02T19:21:14.000Z",
+      "bestIndependentUtcStart": null,
+      "utcUncertaintySeconds": null,
+      "clockDriftAssessment": "UNRESOLVED_INDEPENDENT_OF_RELATIVE_MODEL",
+      "validationStatus": "BLOCKED",
+      "independentAnchorsUsed": [
+        "VISIBLE_MINUTE_WINDOW_CEST"
+      ],
+      "telemetryDerivedStart": "2026-09-02T19:21:05.500Z"
+    },
+    {
+      "clipId": "RD003_GT_CLIP_007",
+      "fileName": "IMG_2809.mp4",
+      "durationSeconds": 31.5,
+      "earliestUtcStart": "2026-09-02T19:22:00Z",
+      "latestUtcStart": "2026-09-02T19:23:00Z",
+      "bestIndependentUtcStart": null,
+      "utcUncertaintySeconds": 30,
+      "clockDriftAssessment": "UNRESOLVED_INDEPENDENT_OF_RELATIVE_MODEL",
+      "validationStatus": "BLOCKED",
+      "independentAnchorsUsed": [
+        "MINUTE_TRANSITION",
+        "CEST_ASSUMED_POINT"
+      ],
+      "telemetryDerivedStart": "2026-09-02T19:22:53.450Z"
+    },
+    {
+      "clipId": "RD003_GT_CLIP_008",
+      "fileName": "IMG_2810.mp4",
+      "durationSeconds": 21.4,
+      "earliestUtcStart": "2026-09-02T19:23:00.000Z",
+      "latestUtcStart": "2026-09-02T19:23:38.600Z",
+      "bestIndependentUtcStart": null,
+      "utcUncertaintySeconds": null,
+      "clockDriftAssessment": "UNRESOLVED_INDEPENDENT_OF_RELATIVE_MODEL",
+      "validationStatus": "BLOCKED",
+      "independentAnchorsUsed": [
+        "VISIBLE_MINUTE_WINDOW_CEST"
+      ],
+      "telemetryDerivedStart": "2026-09-02T19:23:08.500Z"
+    },
+    {
+      "clipId": "RD003_GT_CLIP_009",
+      "fileName": "IMG_2811.mp4",
+      "durationSeconds": 34.3,
+      "earliestUtcStart": "2026-09-02T19:24:29.000Z",
+      "latestUtcStart": "2026-09-02T19:24:32.000Z",
+      "bestIndependentUtcStart": null,
+      "utcUncertaintySeconds": null,
+      "clockDriftAssessment": "UNRESOLVED_INDEPENDENT_OF_RELATIVE_MODEL",
+      "validationStatus": "BLOCKED",
+      "independentAnchorsUsed": [
+        "MINUTE_TRANSITION",
+        "VISIBLE_MINUTE_WINDOW_CEST"
+      ],
+      "telemetryDerivedStart": "2026-09-02T19:24:32.000Z"
+    }
+  ],
+  "qualityGates": {
+    "A_tripIdentity": {
+      "status": "UNIQUE_CANDIDATE",
+      "tripId": "fe40356a-4605-4481-8280-cb44858cacc1",
+      "note": "P22C temporal containment — does not validate per-clip UTC"
+    },
+    "B_clipUtcSynchronization": {
+      "status": "BLOCKED",
+      "clipsWithValidatedUtc": 0,
+      "jointlyConsistentStrongCandidates": 0
+    },
+    "C_independentVideoMotionLabels": {
+      "status": "PARTIAL",
+      "note": "198 sparse SPEED observations (visual review); not full-frame coverage; VALIDATED ≠ telemetry alignment"
+    },
+    "D_frozenV02ReplayReadiness": {
+      "status": "NOT_READY",
+      "reasons": [
+        "No VALIDATED clip UTC",
+        "No P21 work item pin on trip fe40356a…"
+      ]
+    }
+  },
+  "recoveryBlockers": [
+    "No original video files or container creation timestamps in repository",
+    "CEST timezone for instrument clock NOT VALIDATED (discovery v2)",
+    "JOINTLY_CONSISTENT_STRONG_CANDIDATE_COUNT=0",
+    "IMG_2807 and IMG_2810 strong basins mutually incompatible (−130.8s chronology conflict)",
+    "HF alignment starts are telemetry-derived — cannot count as independent UTC",
+    "CROSS_CLIP_CLOCK_MODEL eligibleClipCount=0"
+  ],
+  "productionMutations": "NONE",
+  "nextSafeAction": "Obtain owner-provided original MP4s with verifiable creation metadata OR paired UTC sync marker at recording; re-ingest per-clip creation_time; then re-run alignment without using v0_2.",
+  "sessionId": "0fa040aa-6105-4872-9b2c-f8ad477009b8",
+  "vehicleId": "19fedd4b-c4e8-4de8-a125-dab293326e7e",
+  "completionLines": [
+    "P22D_RESULT=UTC_RECOVERY_BLOCKED",
+    "PR_NUMBER=2051",
+    "HEAD_SHA=12843920f0b8d533e0db45053f5087fe9dc5b30b",
+    "ORIGINAL_VIDEO_TIMESTAMPS_FOUND=false",
+    "INDEPENDENT_UTC_ANCHORS=0",
+    "TELEMETRY_DERIVED_ANCHORS=9",
+    "CLIPS_WITH_VALIDATED_UTC=0",
+    "BEST_UTC_PRECISION=NONE_VALIDATED; visual_minute_transitions_without_validated_timezone; CEST_windows_±30s_or_minute_boundaries_only",
+    "CLOCK_DRIFT_ASSESSMENT=JOINTLY_CONSISTENT_STRONG_CANDIDATE_COUNT=0; cross_clip_incompatible_basins_IMG_2807_vs_IMG_2810",
+    "TRIP_BINDING_STATUS=UNIQUE_CANDIDATE_fe40356a-4605-4481-8280-cb44858cacc1",
+    "VIDEO_LABEL_VALIDATION=PARTIAL_198_sparse_speed_observations_not_telemetry_aligned",
+    "INDEPENDENT_REPLAY_READY=NO",
+    "RECOVERY_BLOCKERS=6_documented_in_P22D_UTC_ANCHOR_RECOVERY.json",
+    "V0_2_HASH_UNCHANGED=dc4339e7b3687ef613b59e3ee9fe75b7a3d885dce5f5884735421e58a46d4ab7",
+    "PRODUCTION_MUTATIONS=NONE",
+    "NEXT_SAFE_ACTION=Obtain owner-provided original MP4s with verifiable creation metadata OR paired UTC sync marker at recording; re-ingest per-clip creation_time; then re-run alignment without using v0_2."
+  ]
+}
