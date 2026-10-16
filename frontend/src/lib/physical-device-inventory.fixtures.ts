@@ -31,6 +31,7 @@ export const physicalDeviceSummaryFixture: PhysicalDeviceStockSummaryDto = {
     AVAILABLE: 1,
     RESERVED: 0,
     INSTALLED: 0,
+    PENDING_RETURN: 0,
     DEFECTIVE: 0,
     LOST: 0,
     RETIRED: 0,

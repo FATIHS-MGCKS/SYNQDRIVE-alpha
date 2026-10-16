@@ -107,3 +107,83 @@ export function physicalDeviceReviewerMismatch() {
     message: 'Reviewer attestation must match the authenticated master admin',
   });
 }
+
+export const PHYSICAL_DEVICE_P1B2_WRITES_DISABLED = 'PHYSICAL_DEVICE_P1B2_WRITES_DISABLED';
+export const PHYSICAL_DEVICE_NOT_UNINSTALL_ELIGIBLE = 'PHYSICAL_DEVICE_NOT_UNINSTALL_ELIGIBLE';
+export const PHYSICAL_DEVICE_ASSIGNMENT_MISMATCH = 'PHYSICAL_DEVICE_ASSIGNMENT_MISMATCH';
+export const PHYSICAL_DEVICE_NOT_INSTALLED = 'PHYSICAL_DEVICE_NOT_INSTALLED';
+export const PHYSICAL_DEVICE_LIFECYCLE_NOT_ELIGIBLE = 'PHYSICAL_DEVICE_LIFECYCLE_NOT_ELIGIBLE';
+export const PHYSICAL_DEVICE_LOSS_EVIDENCE_INSUFFICIENT = 'PHYSICAL_DEVICE_LOSS_EVIDENCE_INSUFFICIENT';
+export const PHYSICAL_DEVICE_ACTIVE_VEHICLE_ASSIGNMENT =
+  'PHYSICAL_DEVICE_ACTIVE_VEHICLE_ASSIGNMENT';
+export const PHYSICAL_DEVICE_ASSIGNMENT_INTEGRITY_CONFLICT =
+  'PHYSICAL_DEVICE_ASSIGNMENT_INTEGRITY_CONFLICT';
+export const PHYSICAL_DEVICE_STATUS_ASSIGNMENT_INCONSISTENT =
+  'PHYSICAL_DEVICE_STATUS_ASSIGNMENT_INCONSISTENT';
+
+export function physicalDeviceP1b2WritesDisabled() {
+  return new ForbiddenException({
+    code: PHYSICAL_DEVICE_P1B2_WRITES_DISABLED,
+    message: 'Physical device inventory P1B.2 lifecycle write workflows are disabled',
+  });
+}
+
+export function physicalDeviceNotUninstallEligible(reasonCode: string) {
+  return new UnprocessableEntityException({
+    code: PHYSICAL_DEVICE_NOT_UNINSTALL_ELIGIBLE,
+    message: 'Physical device is not eligible for uninstall',
+    reasonCode,
+  });
+}
+
+export function physicalDeviceAssignmentMismatch() {
+  return new ConflictException({
+    code: PHYSICAL_DEVICE_ASSIGNMENT_MISMATCH,
+    message: 'Assignment or vehicle does not match the active installation',
+  });
+}
+
+export function physicalDeviceNotInstalled() {
+  return new UnprocessableEntityException({
+    code: PHYSICAL_DEVICE_NOT_INSTALLED,
+    message: 'Physical device has no active vehicle installation',
+  });
+}
+
+export function physicalDeviceLifecycleNotEligible(reasonCode: string) {
+  return new UnprocessableEntityException({
+    code: PHYSICAL_DEVICE_LIFECYCLE_NOT_ELIGIBLE,
+    message: 'Physical device lifecycle transition is not allowed',
+    reasonCode,
+  });
+}
+
+export function physicalDeviceLossEvidenceInsufficient(reasonCode: string) {
+  return new UnprocessableEntityException({
+    code: PHYSICAL_DEVICE_LOSS_EVIDENCE_INSUFFICIENT,
+    message: 'Loss attestation evidence is insufficient',
+    reasonCode,
+  });
+}
+
+export function physicalDeviceActiveVehicleAssignment() {
+  return new UnprocessableEntityException({
+    code: PHYSICAL_DEVICE_ACTIVE_VEHICLE_ASSIGNMENT,
+    message: 'Resolve the active vehicle installation before this lifecycle action',
+  });
+}
+
+export function physicalDeviceAssignmentIntegrityConflict() {
+  return new ConflictException({
+    code: PHYSICAL_DEVICE_ASSIGNMENT_INTEGRITY_CONFLICT,
+    message: 'Multiple active vehicle installations detected for one physical device',
+  });
+}
+
+export function physicalDeviceStatusAssignmentInconsistent(reasonCode: string) {
+  return new ConflictException({
+    code: PHYSICAL_DEVICE_STATUS_ASSIGNMENT_INCONSISTENT,
+    message: 'Physical device status does not match assignment state',
+    reasonCode,
+  });
+}
