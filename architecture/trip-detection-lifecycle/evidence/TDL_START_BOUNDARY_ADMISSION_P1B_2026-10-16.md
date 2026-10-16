@@ -6,6 +6,32 @@
 | **Decision status** | `PROPOSED` / `VALIDATED` (shadow only — no cutover) |
 | **Predecessor** | P1A offline resolver (PR #2055) |
 | **Related trip** | `358d0158-b2a9-47ed-af26-33926c5770b4` (Tesla token `186946`) |
+| **EXP021 evidence anchor (read-only)** | PR **#2051** @ `4b387d43b7fcb2df54edf71f8b45a26af9f4f032` — frozen exports; **do not mutate** |
+
+## EXP021 anchor (P22E_F — semantic integrity)
+
+| Field | Value |
+|-------|-------|
+| **P22E_F outcome** | `SEMANTIC_INTEGRITY_FIXED_BASELINE_UNCHANGED` |
+| **BASELINE_PARITY** | `true` |
+| **V0_2_HASH_UNCHANGED** | `dc4339e7b3687ef613b59e3ee9fe75b7a3d885dce5f5884735421e58a46d4ab7` |
+| **P23_BLIND_VALIDATION_READY** | `NO` — requires new independent trip |
+
+P23 independent capture is **not** a prerequisite for P1B runtime-shadow wiring. Any future **canonical writer cutover** (P1C/P2) must **not** rely on this Tesla reference alone; P23 / new independent starts belong in the pre-cutover validation set.
+
+## Reference trip — trip-start semantics (governance)
+
+| Term | Value / rule |
+|------|----------------|
+| Persisted legacy start | `2026-10-16T03:36:00.000Z` |
+| FSM `candidateStartAt` | `2026-10-16T03:38:26.989Z` |
+| First visible video clock label | `2026-10-16T03:37:41Z` (context / uncertainty only) |
+| First physical motion instant | **UNKNOWN** |
+| Video in runtime | **MUST NOT** participate in boundary selection (offline EXP021 only) |
+| Fixed 101 s correction | **Not assumed** |
+| `candidateStartAt` = physical movement | **Not assumed** |
+
+Offline P1A may use `departureReviewAnchorAt` for uncertainty narrative; P1B runtime shadow **does not** ingest video or departure-review anchors.
 
 ## Decision register
 
@@ -27,14 +53,16 @@
 
 Provider segment existence may establish candidate trip context, but physical start-boundary authority requires temporally localized movement corroboration. Shadow comparison does **not** assert physical correctness of proposed start — it surfaces corroboration gaps vs legacy.
 
-## Tesla reference (offline replay via P1B tests)
+## P1B expected reference shadow (admission result — not physical truth)
 
-| Axis | Value |
-|------|-------|
-| Legacy canonical | `2026-10-16T03:36:00.000Z` |
-| Shadow proposed | `2026-10-16T03:38:26.989Z` |
-| Delta | `+146989 ms` |
-| Decision | `PROVIDER_START_UNCORROBORATED` |
+| Field | Value |
+|-------|-------|
+| `LEGACY_START` | `2026-10-16T03:36:00.000Z` |
+| `SHADOW_DECISION` | `PROVIDER_START_UNCORROBORATED` |
+| `SHADOW_PROPOSED_START` | `2026-10-16T03:38:26.989Z` |
+| `DELTA_MS` | `+146989` |
+
+This is an **admission / shadow** outcome: it does **not** claim `03:38:26.989Z` is the true physical trip start. Offline replay is covered by `trip-start-boundary-admission-p1b.spec.ts` (Tesla reference case).
 
 ## Integration modality
 
