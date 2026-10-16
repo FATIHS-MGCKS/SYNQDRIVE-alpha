@@ -1,0 +1,189 @@
+[
+  {
+    "bucketLabelUtc": "2026-10-16T03:37:56Z",
+    "videoTachoKmh": 2,
+    "prototypeLabel": "STOP_V2_BAND",
+    "prototypeReasons": [
+      "V2_STATIONARY_BAND_TRUSTED_LIMITED"
+    ],
+    "maxLegImpliedKmh": {
+      "prevToCenter": null,
+      "centerToNext": null
+    },
+    "qcSupportCalendarComplete": true,
+    "positionGapDiagnosis": "PRESENT_OK",
+    "holdTransitionDetail": "STATIONARY_SUPPORTED_BAND",
+    "noNumericDisjointV2": "HOLD_TRANSITION_STATIONARY_SUPPORTED_BAND",
+    "decisionOrderNote": "V2 band checked after CREEP/STOP_STRICT in v0_2; these seconds are V2 low-speed band by design, not STOP_STRICT."
+  },
+  {
+    "bucketLabelUtc": "2026-10-16T03:38:00Z",
+    "videoTachoKmh": 2,
+    "prototypeLabel": "STOP_V2_BAND",
+    "prototypeReasons": [
+      "V2_STATIONARY_BAND_TRUSTED_LIMITED"
+    ],
+    "maxLegImpliedKmh": {
+      "prevToCenter": null,
+      "centerToNext": null
+    },
+    "qcSupportCalendarComplete": true,
+    "positionGapDiagnosis": "PRESENT_OK",
+    "holdTransitionDetail": "STATIONARY_SUPPORTED_BAND",
+    "noNumericDisjointV2": "HOLD_TRANSITION_STATIONARY_SUPPORTED_BAND",
+    "decisionOrderNote": "V2 band checked after CREEP/STOP_STRICT in v0_2; these seconds are V2 low-speed band by design, not STOP_STRICT."
+  },
+  {
+    "bucketLabelUtc": "2026-10-16T03:38:01Z",
+    "videoTachoKmh": 3,
+    "prototypeLabel": "STOP_V2_BAND",
+    "prototypeReasons": [
+      "V2_STATIONARY_BAND_TRUSTED_LIMITED"
+    ],
+    "maxLegImpliedKmh": {
+      "prevToCenter": null,
+      "centerToNext": null
+    },
+    "qcSupportCalendarComplete": true,
+    "positionGapDiagnosis": "PRESENT_OK",
+    "holdTransitionDetail": "STATIONARY_SUPPORTED_BAND",
+    "noNumericDisjointV2": "HOLD_TRANSITION_STATIONARY_SUPPORTED_BAND",
+    "decisionOrderNote": "V2 band checked after CREEP/STOP_STRICT in v0_2; these seconds are V2 low-speed band by design, not STOP_STRICT."
+  },
+  {
+    "bucketLabelUtc": "2026-10-16T03:38:13Z",
+    "videoTachoKmh": 3,
+    "prototypeLabel": "STOP_V2_BAND",
+    "prototypeReasons": [
+      "V2_STATIONARY_BAND_TRUSTED_LIMITED"
+    ],
+    "maxLegImpliedKmh": {
+      "prevToCenter": null,
+      "centerToNext": null
+    },
+    "qcSupportCalendarComplete": true,
+    "positionGapDiagnosis": "PRESENT_OK",
+    "holdTransitionDetail": "STATIONARY_SUPPORTED_BAND",
+    "noNumericDisjointV2": "HOLD_TRANSITION_STATIONARY_SUPPORTED_BAND",
+    "decisionOrderNote": "V2 band checked after CREEP/STOP_STRICT in v0_2; these seconds are V2 low-speed band by design, not STOP_STRICT."
+  },
+  {
+    "bucketLabelUtc": "2026-10-16T03:38:14Z",
+    "videoTachoKmh": 3,
+    "prototypeLabel": "STOP_V2_BAND",
+    "prototypeReasons": [
+      "V2_STATIONARY_BAND_TRUSTED_LIMITED"
+    ],
+    "maxLegImpliedKmh": {
+      "prevToCenter": null,
+      "centerToNext": null
+    },
+    "qcSupportCalendarComplete": true,
+    "positionGapDiagnosis": "PRESENT_OK",
+    "holdTransitionDetail": "STATIONARY_SUPPORTED_BAND",
+    "noNumericDisjointV2": "HOLD_TRANSITION_STATIONARY_SUPPORTED_BAND",
+    "decisionOrderNote": "V2 band checked after CREEP/STOP_STRICT in v0_2; these seconds are V2 low-speed band by design, not STOP_STRICT."
+  },
+  {
+    "bucketLabelUtc": "2026-10-16T03:38:15Z",
+    "videoTachoKmh": 2,
+    "prototypeLabel": "STOP_V2_BAND",
+    "prototypeReasons": [
+      "V2_STATIONARY_BAND_TRUSTED_LIMITED"
+    ],
+    "maxLegImpliedKmh": {
+      "prevToCenter": null,
+      "centerToNext": null
+    },
+    "qcSupportCalendarComplete": true,
+    "positionGapDiagnosis": "PRESENT_OK",
+    "holdTransitionDetail": "STATIONARY_SUPPORTED_BAND",
+    "noNumericDisjointV2": "HOLD_TRANSITION_STATIONARY_SUPPORTED_BAND",
+    "decisionOrderNote": "V2 band checked after CREEP/STOP_STRICT in v0_2; these seconds are V2 low-speed band by design, not STOP_STRICT."
+  },
+  {
+    "bucketLabelUtc": "2026-10-16T03:38:16Z",
+    "videoTachoKmh": 2,
+    "prototypeLabel": "STOP_V2_BAND",
+    "prototypeReasons": [
+      "V2_STATIONARY_BAND_TRUSTED_LIMITED"
+    ],
+    "maxLegImpliedKmh": {
+      "prevToCenter": null,
+      "centerToNext": null
+    },
+    "qcSupportCalendarComplete": true,
+    "positionGapDiagnosis": "PRESENT_OK",
+    "holdTransitionDetail": "STATIONARY_SUPPORTED_BAND",
+    "noNumericDisjointV2": "HOLD_TRANSITION_STATIONARY_SUPPORTED_BAND",
+    "decisionOrderNote": "V2 band checked after CREEP/STOP_STRICT in v0_2; these seconds are V2 low-speed band by design, not STOP_STRICT."
+  },
+  {
+    "bucketLabelUtc": "2026-10-16T03:38:17Z",
+    "videoTachoKmh": 3,
+    "prototypeLabel": "STOP_V2_BAND",
+    "prototypeReasons": [
+      "V2_STATIONARY_BAND_TRUSTED_LIMITED"
+    ],
+    "maxLegImpliedKmh": {
+      "prevToCenter": null,
+      "centerToNext": null
+    },
+    "qcSupportCalendarComplete": true,
+    "positionGapDiagnosis": "PRESENT_OK",
+    "holdTransitionDetail": "STATIONARY_SUPPORTED_BAND",
+    "noNumericDisjointV2": "HOLD_TRANSITION_STATIONARY_SUPPORTED_BAND",
+    "decisionOrderNote": "V2 band checked after CREEP/STOP_STRICT in v0_2; these seconds are V2 low-speed band by design, not STOP_STRICT."
+  },
+  {
+    "bucketLabelUtc": "2026-10-16T03:43:41Z",
+    "videoTachoKmh": 2,
+    "prototypeLabel": "STOP_V2_BAND",
+    "prototypeReasons": [
+      "V2_STATIONARY_BAND_TRUSTED_LIMITED"
+    ],
+    "maxLegImpliedKmh": {
+      "prevToCenter": null,
+      "centerToNext": null
+    },
+    "qcSupportCalendarComplete": true,
+    "positionGapDiagnosis": "PRESENT_OK",
+    "holdTransitionDetail": "STATIONARY_SUPPORTED_BAND",
+    "noNumericDisjointV2": "HOLD_TRANSITION_STATIONARY_SUPPORTED_BAND",
+    "decisionOrderNote": "V2 band checked after CREEP/STOP_STRICT in v0_2; these seconds are V2 low-speed band by design, not STOP_STRICT."
+  },
+  {
+    "bucketLabelUtc": "2026-10-16T03:54:40Z",
+    "videoTachoKmh": 3,
+    "prototypeLabel": "STOP_V2_BAND",
+    "prototypeReasons": [
+      "V2_STATIONARY_BAND_TRUSTED_LIMITED"
+    ],
+    "maxLegImpliedKmh": {
+      "prevToCenter": null,
+      "centerToNext": null
+    },
+    "qcSupportCalendarComplete": true,
+    "positionGapDiagnosis": "PRESENT_OK",
+    "holdTransitionDetail": "STATIONARY_SUPPORTED_BAND",
+    "noNumericDisjointV2": "HOLD_TRANSITION_STATIONARY_SUPPORTED_BAND",
+    "decisionOrderNote": "V2 band checked after CREEP/STOP_STRICT in v0_2; these seconds are V2 low-speed band by design, not STOP_STRICT."
+  },
+  {
+    "bucketLabelUtc": "2026-10-16T03:54:41Z",
+    "videoTachoKmh": 1,
+    "prototypeLabel": "STOP_V2_BAND",
+    "prototypeReasons": [
+      "V2_STATIONARY_BAND_TRUSTED_LIMITED"
+    ],
+    "maxLegImpliedKmh": {
+      "prevToCenter": null,
+      "centerToNext": null
+    },
+    "qcSupportCalendarComplete": true,
+    "positionGapDiagnosis": "PRESENT_OK",
+    "holdTransitionDetail": "STATIONARY_SUPPORTED_BAND",
+    "noNumericDisjointV2": "HOLD_TRANSITION_STATIONARY_SUPPORTED_BAND",
+    "decisionOrderNote": "V2 band checked after CREEP/STOP_STRICT in v0_2; these seconds are V2 low-speed band by design, not STOP_STRICT."
+  }
+]

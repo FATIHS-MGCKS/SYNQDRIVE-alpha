@@ -65,11 +65,11 @@ Pro Sekunde (gepinnt, read-only): `positionAvailability`, `positionState` (Fresh
 - **Hold:** Wiederholte Koordinaten in Hold-Runs zählen **nicht** als neue Stillstandsbelege (Prototyp-Regel).
 - **Video:** nur Bewertung, **kein** Detektor-Eingang.
 
-**Provider-Vergleich:** Supplement v2 Plan für `ROW_ABSENT` — **nicht ausgeführt** (keine offene Stillstandsfrage, die nur Provider klären würde); Ergebnisse blieben getrennt vom Pin.
+**Provider-Vergleich:** **Ausgeführt** (2026-10-16, ein Abruf) — [`forensic-readonly-exports-2026-10-16-provider-comparison/`](./forensic-readonly-exports-2026-10-16-provider-comparison/). Pin unverändert. Zusammenfassung: [`EXP021_STATIONARY_SHARPENING_2026-10-16.md`](./EXP021_STATIONARY_SHARPENING_2026-10-16.md) §4.
 
 ---
 
-## 4. Offline-Prototyp `EXP021_STATIONARY_OFFLINE_PROTOTYPE_V0_1`
+## 4. Offline-Prototyp `EXP021_STATIONARY_OFFLINE_PROTOTYPE_V0_1` (Baseline)
 
 Code: `backend/scripts/ops/exp021-stationary-offline-prototype.{ts,lib.ts}`  
 Regenerieren: `npm run exp021:stationary-offline-prototype`
@@ -88,9 +88,18 @@ Regenerieren: `npm run exp021:stationary-offline-prototype`
 
 **Dev/Validierung:** 80/20-Zeitsplit nur dokumentiert (`devHoldout`); **keine** Schwellen an dieser Fahrt gefittet.
 
+### v0_2 Nachschärfung
+
+Code: `exp021-stationary-offline-prototype-v2.{ts,lib.ts}`, `exp021-stationary-halt-forensic.lib.ts`  
+Export: [`forensic-readonly-exports-2026-10-16-stationary-v2/`](./forensic-readonly-exports-2026-10-16-stationary-v2/) · Doku: [`EXP021_STATIONARY_SHARPENING_2026-10-16.md`](./EXP021_STATIONARY_SHARPENING_2026-10-16.md)
+
+- CREEP **vor** `STOP_V2_BAND`; CREEP bleibt **0** wegen fehlender Bein-Geometrie/L3-Triplets, nicht wegen Band-Reihenfolge.
+- Video-Kreuztabelle pro Prototyp-Label (0 / 1–3 / &gt;3 / unbekannt); **11** Band-Sekunden mit Tacho 1–3 als Display-Konflikt sichtbar.
+- Fünf Haupthalt-Forensik + Provider-Integration.
+
 ---
 
-## 5. Bewertung vs. unveränderte Baseline
+## 5. Bewertung vs. unveränderte Baseline (v0_1 Snapshot)
 
 Global (Export `2026-10-16T17:00:52Z`):
 
@@ -127,4 +136,4 @@ Global (Export `2026-10-16T17:00:52Z`):
 
 ## Nicht-Ziele (dieser Auftrag)
 
-Keine produktive Aktivierung, kein Deploy, keine Admission-Recovery, keine künstlichen Nullen, kein Provider-Fetch, keine Beschleunigungslogik.
+Keine produktive Aktivierung, kein Deploy, keine Admission-Recovery, keine künstlichen Nullen, keine Beschleunigungslogik. Provider-Fetch nur als **separat versionierter** Vergleich (nicht Pin-Überschreibung).

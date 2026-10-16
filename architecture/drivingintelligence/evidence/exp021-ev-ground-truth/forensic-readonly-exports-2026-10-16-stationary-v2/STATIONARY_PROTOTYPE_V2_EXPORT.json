@@ -1,0 +1,2295 @@
+{
+  "schema": "EXP021_STATIONARY_OFFLINE_PROTOTYPE_V0_2",
+  "observedAtUtc": "2026-10-16T17:36:50.550Z",
+  "creepZeroRootCause": {
+    "v1OrderBug": "CREEP was unreachable when v2Band returned first (fixed in v0_2).",
+    "v1AfterFix": {
+      "creepSeconds": 0,
+      "creepWouldHaveBeenV2BandIfOldOrder": 0,
+      "dominantMissReason": "ROW_ABSENT / incomplete L3 ±1s on video-Tacho-0 windows (not missing CREEP threshold on band seconds)."
+    },
+    "epistemic": "CONFIRMED"
+  },
+  "evaluation": {
+    "videoCrossTabByPrototypeLabel": {
+      "UNKNOWN_GAP": {
+        "VIDEO_TACHO_0": 135,
+        "VIDEO_TACHO_1_3": 21,
+        "VIDEO_TACHO_GT_3": 33,
+        "VIDEO_UNKNOWN": 125
+      },
+      "TRANSITION": {
+        "VIDEO_TACHO_0": 0,
+        "VIDEO_TACHO_1_3": 7,
+        "VIDEO_TACHO_GT_3": 17,
+        "VIDEO_UNKNOWN": 8
+      },
+      "STOP_V2_BAND": {
+        "VIDEO_TACHO_0": 0,
+        "VIDEO_TACHO_1_3": 11,
+        "VIDEO_TACHO_GT_3": 0,
+        "VIDEO_UNKNOWN": 3
+      },
+      "MOVING": {
+        "VIDEO_TACHO_0": 0,
+        "VIDEO_TACHO_1_3": 1,
+        "VIDEO_TACHO_GT_3": 748,
+        "VIDEO_UNKNOWN": 27
+      }
+    },
+    "strictStopSeconds": 0,
+    "v2LowSpeedBandSeconds": 14,
+    "strictStopConflictVsVideoTacho1to3": 0,
+    "strictStopConflictVsVideoTachoGt3": 0,
+    "v2BandWithVideoTacho0": 0,
+    "v2BandWithVideoTacho1to3": 11,
+    "v2BandDisplayConflictTacho1to3": 11,
+    "v2BandDisplayConflictNote": "V2 band is slow-movement semantics, not strict standstill; 1–3 km/h on video tachometer is a display conflict with a strict stop reading, not automatic proof of physical motion error.",
+    "strictStopSecondsNote": "STOP_STRICT requires leg geometry; none qualified on this replay.",
+    "note": "STOP_V2_BAND = slow-movement band (existing V2 semantics). STOP_STRICT = stricter offline claim. Tacho display ≠ proven physics."
+  },
+  "bandSecondsWithVideoTacho1to3": [
+    {
+      "bucketLabelUtc": "2026-10-16T03:37:56Z",
+      "videoTachoKmh": 2,
+      "prototypeLabel": "STOP_V2_BAND",
+      "prototypeReasons": [
+        "V2_STATIONARY_BAND_TRUSTED_LIMITED"
+      ],
+      "maxLegImpliedKmh": {
+        "prevToCenter": null,
+        "centerToNext": null
+      },
+      "qcSupportCalendarComplete": true,
+      "positionGapDiagnosis": "PRESENT_OK",
+      "holdTransitionDetail": "STATIONARY_SUPPORTED_BAND",
+      "noNumericDisjointV2": "HOLD_TRANSITION_STATIONARY_SUPPORTED_BAND",
+      "decisionOrderNote": "V2 band checked after CREEP/STOP_STRICT in v0_2; these seconds are V2 low-speed band by design, not STOP_STRICT."
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:38:00Z",
+      "videoTachoKmh": 2,
+      "prototypeLabel": "STOP_V2_BAND",
+      "prototypeReasons": [
+        "V2_STATIONARY_BAND_TRUSTED_LIMITED"
+      ],
+      "maxLegImpliedKmh": {
+        "prevToCenter": null,
+        "centerToNext": null
+      },
+      "qcSupportCalendarComplete": true,
+      "positionGapDiagnosis": "PRESENT_OK",
+      "holdTransitionDetail": "STATIONARY_SUPPORTED_BAND",
+      "noNumericDisjointV2": "HOLD_TRANSITION_STATIONARY_SUPPORTED_BAND",
+      "decisionOrderNote": "V2 band checked after CREEP/STOP_STRICT in v0_2; these seconds are V2 low-speed band by design, not STOP_STRICT."
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:38:01Z",
+      "videoTachoKmh": 3,
+      "prototypeLabel": "STOP_V2_BAND",
+      "prototypeReasons": [
+        "V2_STATIONARY_BAND_TRUSTED_LIMITED"
+      ],
+      "maxLegImpliedKmh": {
+        "prevToCenter": null,
+        "centerToNext": null
+      },
+      "qcSupportCalendarComplete": true,
+      "positionGapDiagnosis": "PRESENT_OK",
+      "holdTransitionDetail": "STATIONARY_SUPPORTED_BAND",
+      "noNumericDisjointV2": "HOLD_TRANSITION_STATIONARY_SUPPORTED_BAND",
+      "decisionOrderNote": "V2 band checked after CREEP/STOP_STRICT in v0_2; these seconds are V2 low-speed band by design, not STOP_STRICT."
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:38:13Z",
+      "videoTachoKmh": 3,
+      "prototypeLabel": "STOP_V2_BAND",
+      "prototypeReasons": [
+        "V2_STATIONARY_BAND_TRUSTED_LIMITED"
+      ],
+      "maxLegImpliedKmh": {
+        "prevToCenter": null,
+        "centerToNext": null
+      },
+      "qcSupportCalendarComplete": true,
+      "positionGapDiagnosis": "PRESENT_OK",
+      "holdTransitionDetail": "STATIONARY_SUPPORTED_BAND",
+      "noNumericDisjointV2": "HOLD_TRANSITION_STATIONARY_SUPPORTED_BAND",
+      "decisionOrderNote": "V2 band checked after CREEP/STOP_STRICT in v0_2; these seconds are V2 low-speed band by design, not STOP_STRICT."
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:38:14Z",
+      "videoTachoKmh": 3,
+      "prototypeLabel": "STOP_V2_BAND",
+      "prototypeReasons": [
+        "V2_STATIONARY_BAND_TRUSTED_LIMITED"
+      ],
+      "maxLegImpliedKmh": {
+        "prevToCenter": null,
+        "centerToNext": null
+      },
+      "qcSupportCalendarComplete": true,
+      "positionGapDiagnosis": "PRESENT_OK",
+      "holdTransitionDetail": "STATIONARY_SUPPORTED_BAND",
+      "noNumericDisjointV2": "HOLD_TRANSITION_STATIONARY_SUPPORTED_BAND",
+      "decisionOrderNote": "V2 band checked after CREEP/STOP_STRICT in v0_2; these seconds are V2 low-speed band by design, not STOP_STRICT."
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:38:15Z",
+      "videoTachoKmh": 2,
+      "prototypeLabel": "STOP_V2_BAND",
+      "prototypeReasons": [
+        "V2_STATIONARY_BAND_TRUSTED_LIMITED"
+      ],
+      "maxLegImpliedKmh": {
+        "prevToCenter": null,
+        "centerToNext": null
+      },
+      "qcSupportCalendarComplete": true,
+      "positionGapDiagnosis": "PRESENT_OK",
+      "holdTransitionDetail": "STATIONARY_SUPPORTED_BAND",
+      "noNumericDisjointV2": "HOLD_TRANSITION_STATIONARY_SUPPORTED_BAND",
+      "decisionOrderNote": "V2 band checked after CREEP/STOP_STRICT in v0_2; these seconds are V2 low-speed band by design, not STOP_STRICT."
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:38:16Z",
+      "videoTachoKmh": 2,
+      "prototypeLabel": "STOP_V2_BAND",
+      "prototypeReasons": [
+        "V2_STATIONARY_BAND_TRUSTED_LIMITED"
+      ],
+      "maxLegImpliedKmh": {
+        "prevToCenter": null,
+        "centerToNext": null
+      },
+      "qcSupportCalendarComplete": true,
+      "positionGapDiagnosis": "PRESENT_OK",
+      "holdTransitionDetail": "STATIONARY_SUPPORTED_BAND",
+      "noNumericDisjointV2": "HOLD_TRANSITION_STATIONARY_SUPPORTED_BAND",
+      "decisionOrderNote": "V2 band checked after CREEP/STOP_STRICT in v0_2; these seconds are V2 low-speed band by design, not STOP_STRICT."
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:38:17Z",
+      "videoTachoKmh": 3,
+      "prototypeLabel": "STOP_V2_BAND",
+      "prototypeReasons": [
+        "V2_STATIONARY_BAND_TRUSTED_LIMITED"
+      ],
+      "maxLegImpliedKmh": {
+        "prevToCenter": null,
+        "centerToNext": null
+      },
+      "qcSupportCalendarComplete": true,
+      "positionGapDiagnosis": "PRESENT_OK",
+      "holdTransitionDetail": "STATIONARY_SUPPORTED_BAND",
+      "noNumericDisjointV2": "HOLD_TRANSITION_STATIONARY_SUPPORTED_BAND",
+      "decisionOrderNote": "V2 band checked after CREEP/STOP_STRICT in v0_2; these seconds are V2 low-speed band by design, not STOP_STRICT."
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:43:41Z",
+      "videoTachoKmh": 2,
+      "prototypeLabel": "STOP_V2_BAND",
+      "prototypeReasons": [
+        "V2_STATIONARY_BAND_TRUSTED_LIMITED"
+      ],
+      "maxLegImpliedKmh": {
+        "prevToCenter": null,
+        "centerToNext": null
+      },
+      "qcSupportCalendarComplete": true,
+      "positionGapDiagnosis": "PRESENT_OK",
+      "holdTransitionDetail": "STATIONARY_SUPPORTED_BAND",
+      "noNumericDisjointV2": "HOLD_TRANSITION_STATIONARY_SUPPORTED_BAND",
+      "decisionOrderNote": "V2 band checked after CREEP/STOP_STRICT in v0_2; these seconds are V2 low-speed band by design, not STOP_STRICT."
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:54:40Z",
+      "videoTachoKmh": 3,
+      "prototypeLabel": "STOP_V2_BAND",
+      "prototypeReasons": [
+        "V2_STATIONARY_BAND_TRUSTED_LIMITED"
+      ],
+      "maxLegImpliedKmh": {
+        "prevToCenter": null,
+        "centerToNext": null
+      },
+      "qcSupportCalendarComplete": true,
+      "positionGapDiagnosis": "PRESENT_OK",
+      "holdTransitionDetail": "STATIONARY_SUPPORTED_BAND",
+      "noNumericDisjointV2": "HOLD_TRANSITION_STATIONARY_SUPPORTED_BAND",
+      "decisionOrderNote": "V2 band checked after CREEP/STOP_STRICT in v0_2; these seconds are V2 low-speed band by design, not STOP_STRICT."
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:54:41Z",
+      "videoTachoKmh": 1,
+      "prototypeLabel": "STOP_V2_BAND",
+      "prototypeReasons": [
+        "V2_STATIONARY_BAND_TRUSTED_LIMITED"
+      ],
+      "maxLegImpliedKmh": {
+        "prevToCenter": null,
+        "centerToNext": null
+      },
+      "qcSupportCalendarComplete": true,
+      "positionGapDiagnosis": "PRESENT_OK",
+      "holdTransitionDetail": "STATIONARY_SUPPORTED_BAND",
+      "noNumericDisjointV2": "HOLD_TRANSITION_STATIONARY_SUPPORTED_BAND",
+      "decisionOrderNote": "V2 band checked after CREEP/STOP_STRICT in v0_2; these seconds are V2 low-speed band by design, not STOP_STRICT."
+    }
+  ],
+  "holdoutAssessment": {
+    "developmentFraction": 0.8,
+    "holdoutFromUtc": "2026-10-16T03:51:08Z",
+    "holdoutSeconds": 228,
+    "videoTachoZeroInHoldout": 4,
+    "v2BandInHoldout": 2,
+    "verdict": "HOLDOUT_NOT_SUITABLE_FOR_STOP_VALIDATION — majority of annotated stops lie in development prefix; do not claim blind holdout validation."
+  },
+  "mainHaltForensics": [
+    {
+      "haltId": "LONG_HALT_1",
+      "window": {
+        "fromUtc": "2026-10-16T03:40:19Z",
+        "toUtc": "2026-10-16T03:40:49Z"
+      },
+      "withinHaltCounts": {
+        "present": 0,
+        "rowAbsent": 31,
+        "signalNull": 0,
+        "totalSeconds": 31
+      },
+      "pinnedPresentDisplacement": {
+        "maxConsecutivePresentSpanM": 0,
+        "firstToLastPresentDisplacementM": null,
+        "interpretation": "Equal coords across gap do not prove continuous standstill; unobserved motion inside ROW_ABSENT runs remains possible."
+      },
+      "lastPresentBeforeHalt": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:11Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 12.018695141236488,
+          "coordRounded": {
+            "lat": 51.33065,
+            "lon": 9.51212
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:12Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 9.97782778934861,
+          "coordRounded": {
+            "lat": 51.33063,
+            "lon": 9.51226
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:13Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 9.790189772505363,
+          "coordRounded": {
+            "lat": 51.33062,
+            "lon": 9.5124
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:14Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 8.628799174172206,
+          "coordRounded": {
+            "lat": 51.3306,
+            "lon": 9.51252
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:15Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 6.351069607411187,
+          "coordRounded": {
+            "lat": 51.33059,
+            "lon": 9.51261
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:16Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 4.98891958164242,
+          "coordRounded": {
+            "lat": 51.33058,
+            "lon": 9.51268
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:17Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 2.7790994036491625,
+          "coordRounded": {
+            "lat": 51.33058,
+            "lon": 9.51272
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:18Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 0.6947748508814447,
+          "coordRounded": {
+            "lat": 51.33058,
+            "lon": 9.51273
+          }
+        }
+      ],
+      "firstPresentAfterHalt": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:51Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": null,
+          "coordRounded": {
+            "lat": 51.33057,
+            "lon": 9.51274
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:52Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 2.779100009622673,
+          "coordRounded": {
+            "lat": 51.33057,
+            "lon": 9.51278
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:53Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 3.6474979648886605,
+          "coordRounded": {
+            "lat": 51.33056,
+            "lon": 9.51283
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:54Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 4.863426077755862,
+          "coordRounded": {
+            "lat": 51.33056,
+            "lon": 9.5129
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:55Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 6.351074978028187,
+          "coordRounded": {
+            "lat": 51.33055,
+            "lon": 9.51299
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:56Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 6.35107632082032,
+          "coordRounded": {
+            "lat": 51.33054,
+            "lon": 9.51308
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:57Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 7.087147092608334,
+          "coordRounded": {
+            "lat": 51.33051,
+            "lon": 9.51317
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:58Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 6.095949665089704,
+          "coordRounded": {
+            "lat": 51.33047,
+            "lon": 9.51323
+          }
+        }
+      ],
+      "withinHaltSample": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:19Z",
+          "pinnedAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "freshProviderAvailability": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:24Z",
+          "pinnedAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "freshProviderAvailability": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:29Z",
+          "pinnedAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "freshProviderAvailability": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:34Z",
+          "pinnedAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "freshProviderAvailability": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:39Z",
+          "pinnedAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "freshProviderAvailability": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:44Z",
+          "pinnedAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "freshProviderAvailability": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:49Z",
+          "pinnedAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "freshProviderAvailability": "ROW_ABSENT"
+        }
+      ]
+    },
+    {
+      "haltId": "LONG_HALT_2",
+      "window": {
+        "fromUtc": "2026-10-16T03:41:50Z",
+        "toUtc": "2026-10-16T03:42:29Z"
+      },
+      "withinHaltCounts": {
+        "present": 0,
+        "rowAbsent": 40,
+        "signalNull": 0,
+        "totalSeconds": 40
+      },
+      "pinnedPresentDisplacement": {
+        "maxConsecutivePresentSpanM": 0,
+        "firstToLastPresentDisplacementM": null,
+        "interpretation": "Equal coords across gap do not prove continuous standstill; unobserved motion inside ROW_ABSENT runs remains possible."
+      },
+      "lastPresentBeforeHalt": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:41:42Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 15.582790411463835,
+          "coordRounded": {
+            "lat": 51.32408,
+            "lon": 9.51296
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:41:43Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 14.472032277572985,
+          "coordRounded": {
+            "lat": 51.32395,
+            "lon": 9.51295
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:41:44Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 12.251164213117443,
+          "coordRounded": {
+            "lat": 51.32384,
+            "lon": 9.51294
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:41:45Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 8.895594131227933,
+          "coordRounded": {
+            "lat": 51.32376,
+            "lon": 9.51294
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:41:46Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 6.70778491622592,
+          "coordRounded": {
+            "lat": 51.3237,
+            "lon": 9.51293
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:41:47Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 4.501750339729178,
+          "coordRounded": {
+            "lat": 51.32366,
+            "lon": 9.51292
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:41:48Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 1.111949266008448,
+          "coordRounded": {
+            "lat": 51.32365,
+            "lon": 9.51292
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:41:49Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 1.1119492667985356,
+          "coordRounded": {
+            "lat": 51.32364,
+            "lon": 9.51292
+          }
+        }
+      ],
+      "firstPresentAfterHalt": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:31Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": null,
+          "coordRounded": {
+            "lat": 51.32362,
+            "lon": 9.51292
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:32Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 3.3358477988154314,
+          "coordRounded": {
+            "lat": 51.32359,
+            "lon": 9.51292
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:33Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 4.50175059696354,
+          "coordRounded": {
+            "lat": 51.32355,
+            "lon": 9.51291
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:34Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 6.814907566697199,
+          "coordRounded": {
+            "lat": 51.32349,
+            "lon": 9.51289
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:35Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 8.05797036614632,
+          "coordRounded": {
+            "lat": 51.32342,
+            "lon": 9.51286
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:36Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 10.222362694489986,
+          "coordRounded": {
+            "lat": 51.32333,
+            "lon": 9.51283
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:37Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 9.319734136390977,
+          "coordRounded": {
+            "lat": 51.32325,
+            "lon": 9.51279
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:38Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 10.59351732599172,
+          "coordRounded": {
+            "lat": 51.32316,
+            "lon": 9.51274
+          }
+        }
+      ],
+      "withinHaltSample": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:41:50Z",
+          "pinnedAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "freshProviderAvailability": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:41:55Z",
+          "pinnedAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "freshProviderAvailability": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:00Z",
+          "pinnedAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "freshProviderAvailability": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:05Z",
+          "pinnedAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "freshProviderAvailability": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:10Z",
+          "pinnedAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "freshProviderAvailability": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:15Z",
+          "pinnedAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "freshProviderAvailability": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:20Z",
+          "pinnedAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "freshProviderAvailability": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:25Z",
+          "pinnedAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "freshProviderAvailability": "ROW_ABSENT"
+        }
+      ]
+    },
+    {
+      "haltId": "LONG_HALT_3",
+      "window": {
+        "fromUtc": "2026-10-16T03:42:50Z",
+        "toUtc": "2026-10-16T03:42:57Z"
+      },
+      "withinHaltCounts": {
+        "present": 1,
+        "rowAbsent": 7,
+        "signalNull": 0,
+        "totalSeconds": 8
+      },
+      "pinnedPresentDisplacement": {
+        "maxConsecutivePresentSpanM": 0,
+        "firstToLastPresentDisplacementM": null,
+        "interpretation": "Equal coords across gap do not prove continuous standstill; unobserved motion inside ROW_ABSENT runs remains possible."
+      },
+      "lastPresentBeforeHalt": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:41Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 9.824205509084218,
+          "coordRounded": {
+            "lat": 51.32291,
+            "lon": 9.51256
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:42Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 8.523906708485594,
+          "coordRounded": {
+            "lat": 51.32284,
+            "lon": 9.51251
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:43Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 7.5221947968412275,
+          "coordRounded": {
+            "lat": 51.32278,
+            "lon": 9.51246
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:44Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 5.244895301187332,
+          "coordRounded": {
+            "lat": 51.32274,
+            "lon": 9.51242
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:45Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 3.6137778689448417,
+          "coordRounded": {
+            "lat": 51.32271,
+            "lon": 9.5124
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:46Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 2.6224486140733267,
+          "coordRounded": {
+            "lat": 51.32269,
+            "lon": 9.51238
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:47Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 1.3112244278107237,
+          "coordRounded": {
+            "lat": 51.32268,
+            "lon": 9.51237
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:48Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 1.3112245074988262,
+          "coordRounded": {
+            "lat": 51.32267,
+            "lon": 9.51236
+          }
+        }
+      ],
+      "firstPresentAfterHalt": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:58Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": null,
+          "coordRounded": {
+            "lat": 51.32266,
+            "lon": 9.51236
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:59Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 1.7798727509442829,
+          "coordRounded": {
+            "lat": 51.32265,
+            "lon": 9.51234
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:00Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 3.9336744872180214,
+          "coordRounded": {
+            "lat": 51.32262,
+            "lon": 9.51231
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:01Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 5.937735367108026,
+          "coordRounded": {
+            "lat": 51.32257,
+            "lon": 9.51228
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:02Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 6.707786783991192,
+          "coordRounded": {
+            "lat": 51.32251,
+            "lon": 9.51227
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:03Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 7.814602365956927,
+          "coordRounded": {
+            "lat": 51.32244,
+            "lon": 9.51228
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:04Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 8.52392122131343,
+          "coordRounded": {
+            "lat": 51.32237,
+            "lon": 9.51233
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:05Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 9.144684530479111,
+          "coordRounded": {
+            "lat": 51.32231,
+            "lon": 9.51242
+          }
+        }
+      ],
+      "withinHaltSample": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:50Z",
+          "pinnedAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "freshProviderAvailability": "PRESENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:55Z",
+          "pinnedAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "freshProviderAvailability": "ROW_ABSENT"
+        }
+      ]
+    },
+    {
+      "haltId": "LONG_HALT_4",
+      "window": {
+        "fromUtc": "2026-10-16T03:43:43Z",
+        "toUtc": "2026-10-16T03:44:02Z"
+      },
+      "withinHaltCounts": {
+        "present": 0,
+        "rowAbsent": 20,
+        "signalNull": 0,
+        "totalSeconds": 20
+      },
+      "pinnedPresentDisplacement": {
+        "maxConsecutivePresentSpanM": 0,
+        "firstToLastPresentDisplacementM": null,
+        "interpretation": "Equal coords across gap do not prove continuous standstill; unobserved motion inside ROW_ABSENT runs remains possible."
+      },
+      "lastPresentBeforeHalt": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:35Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 7.814606757235855,
+          "coordRounded": {
+            "lat": 51.31918,
+            "lon": 9.51531
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:36Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 7.814606852332412,
+          "coordRounded": {
+            "lat": 51.31911,
+            "lon": 9.5153
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:37Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 5.603011102331831,
+          "coordRounded": {
+            "lat": 51.31906,
+            "lon": 9.51529
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:38Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 4.501761190526034,
+          "coordRounded": {
+            "lat": 51.31902,
+            "lon": 9.51528
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:39Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 3.335847799605519,
+          "coordRounded": {
+            "lat": 51.31899,
+            "lon": 9.51528
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:40Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 2.3299530097090373,
+          "coordRounded": {
+            "lat": 51.31897,
+            "lon": 9.51527
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:41Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 1.1119492667985356,
+          "coordRounded": {
+            "lat": 51.31896,
+            "lon": 9.51527
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:42Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 1.111949266008448,
+          "coordRounded": {
+            "lat": 51.31895,
+            "lon": 9.51527
+          }
+        }
+      ],
+      "firstPresentAfterHalt": [],
+      "withinHaltSample": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:43Z",
+          "pinnedAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "freshProviderAvailability": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:48Z",
+          "pinnedAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "freshProviderAvailability": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:53Z",
+          "pinnedAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "freshProviderAvailability": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:58Z",
+          "pinnedAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "freshProviderAvailability": "ROW_ABSENT"
+        }
+      ]
+    },
+    {
+      "haltId": "LONG_HALT_5",
+      "window": {
+        "fromUtc": "2026-10-16T03:44:10Z",
+        "toUtc": "2026-10-16T03:44:35Z"
+      },
+      "withinHaltCounts": {
+        "present": 0,
+        "rowAbsent": 26,
+        "signalNull": 0,
+        "totalSeconds": 26
+      },
+      "pinnedPresentDisplacement": {
+        "maxConsecutivePresentSpanM": 0,
+        "firstToLastPresentDisplacementM": null,
+        "interpretation": "Equal coords across gap do not prove continuous standstill; unobserved motion inside ROW_ABSENT runs remains possible."
+      },
+      "lastPresentBeforeHalt": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:40Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": null,
+          "coordRounded": {
+            "lat": 51.31897,
+            "lon": 9.51527
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:41Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 1.1119492667985356,
+          "coordRounded": {
+            "lat": 51.31896,
+            "lon": 9.51527
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:42Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 1.111949266008448,
+          "coordRounded": {
+            "lat": 51.31895,
+            "lon": 9.51527
+          }
+        }
+      ],
+      "firstPresentAfterHalt": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:37Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": null,
+          "coordRounded": {
+            "lat": 51.31894,
+            "lon": 9.51527
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:38Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 3.3358477988154314,
+          "coordRounded": {
+            "lat": 51.31891,
+            "lon": 9.51527
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:39Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 5.559746332412501,
+          "coordRounded": {
+            "lat": 51.31886,
+            "lon": 9.51527
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:40Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 6.8149365488428035,
+          "coordRounded": {
+            "lat": 51.3188,
+            "lon": 9.51529
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:41Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 9.319816015983863,
+          "coordRounded": {
+            "lat": 51.31872,
+            "lon": 9.51533
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:42Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 12.137062979659605,
+          "coordRounded": {
+            "lat": 51.31862,
+            "lon": 9.5154
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:43Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 12.183899703335817,
+          "coordRounded": {
+            "lat": 51.31853,
+            "lon": 9.5155
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:44Z",
+          "deltaSecondsFromAnchor": 0,
+          "availability": "PRESENT",
+          "positionState": "FRESH",
+          "distanceMFromPreviousPresent": 13.493780366800644,
+          "coordRounded": {
+            "lat": 51.31843,
+            "lon": 9.51561
+          }
+        }
+      ],
+      "withinHaltSample": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:10Z",
+          "pinnedAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "freshProviderAvailability": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:15Z",
+          "pinnedAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "freshProviderAvailability": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:20Z",
+          "pinnedAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "freshProviderAvailability": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:25Z",
+          "pinnedAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "freshProviderAvailability": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:30Z",
+          "pinnedAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "freshProviderAvailability": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:35Z",
+          "pinnedAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "freshProviderAvailability": "ROW_ABSENT"
+        }
+      ]
+    }
+  ],
+  "providerComparisonIntegrated": true,
+  "providerComparisonSummary": {
+    "observedAtUtc": "2026-10-16T17:35:15.230Z",
+    "acquisition": {
+      "providerRowCount": 867,
+      "presentCount": 867,
+      "rowAbsentCount": 269,
+      "signalNullCount": 0,
+      "qualityFlags": [],
+      "rejectedProviderRowCount": 0
+    },
+    "haltWindowLabelAnalysis": {
+      "labelsInFiveMainHalts": 125,
+      "freshProviderPresentInHalts": 1,
+      "freshProviderRowAbsentInHalts": 124,
+      "perLabel": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:19Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:20Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:21Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:22Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:23Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:24Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:25Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:26Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:27Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:28Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:29Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:30Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:31Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:32Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:33Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:34Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:35Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:36Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:37Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:38Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:39Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:40Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:41Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:42Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:43Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:44Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:45Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:46Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:47Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:48Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:49Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:41:50Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:41:51Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:41:52Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:41:53Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:41:54Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:41:55Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:41:56Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:41:57Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:41:58Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:41:59Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:00Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:01Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:02Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:03Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:04Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:05Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:06Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:07Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:08Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:09Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:10Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:11Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:12Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:13Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:14Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:15Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:16Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:17Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:18Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:19Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:20Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:21Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:22Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:23Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:24Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:25Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:26Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:27Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:28Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:29Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:50Z",
+          "pinnedSnapshotAvailability": "PRESENT",
+          "freshProviderBucket": {
+            "availability": "PRESENT",
+            "providerRowCount": 1
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:51Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:52Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:53Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:54Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:55Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:56Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:57Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:43Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:44Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:45Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:46Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:47Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:48Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:49Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:50Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:51Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:52Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:53Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:54Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:55Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:56Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:57Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:58Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:59Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:00Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:01Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:02Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:10Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:11Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:12Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:13Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:14Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:15Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:16Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:17Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:18Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:19Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:20Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:21Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:22Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:23Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:24Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:25Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:26Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:27Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:28Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:29Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:30Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:31Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:32Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:33Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:34Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:35Z",
+          "pinnedSnapshotAvailability": "ROW_ABSENT",
+          "freshProviderBucket": {
+            "availability": "ROW_ABSENT",
+            "providerRowCount": 0
+          }
+        }
+      ]
+    },
+    "interpretation": "Pin ROW_ABSENT on halt labels aligns with fresh provider ROW_ABSENT (124/125); not pin-time processing loss alone.",
+    "epistemic": "CONFIRMED"
+  },
+  "nextSolutionAttempt": {
+    "path": "B_MISSING_AT_PROVIDER",
+    "rule": "Halt-window position gaps are absent in fresh DIMO historical AVG 1s as well; offline stop/creep rules cannot invent geometry. Next lever is denser/alternate telemetry (not gap fill).",
+    "measurableTarget": "Zero additional STOP_STRICT/CREEP seconds expected from provider-only replay on this trip unless a new signal path is added.",
+    "epistemic": "CONFIRMED"
+  }
+}
