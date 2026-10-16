@@ -162,5 +162,6 @@ Across sample: trusted-numeric runs exist but **adjacent 1 s TRUSTED samples sha
 | **Trip context** | Gap lies mainly **between** canonical trips (`533b2bf8` ends 14:58:31; next trip from 15:21:16) inside S4 acquisition window |
 | **Open cause** | Upstream ingest/provider/storage vs pin-time absence — **not** closed without forward reference drive or independent historical provider audit |
 | **Deprioritized** | Further raster/threshold QC research while multi-minute gaps dominate |
+| **FSM / denominator** | Pinned acquisition end **16:05:19Z** = trip end at S4 (not quiet padding). **INTRA_TRIP_GAP_SPLIT** after pin → canonical trip shortened; **4694** vs **687** bucket counterfactual → [`EXP021_FSM_ACQUISITION_BOUNDARY_GAP_2026-10-16.md`](EXP021_FSM_ACQUISITION_BOUNDARY_GAP_2026-10-16.md) |
 | **Next measurement** | Owner **reference drive** → [`EXP021_OWNER_REFERENCE_DRIVE_PROTOCOL_2026-10-16.md`](EXP021_OWNER_REFERENCE_DRIVE_PROTOCOL_2026-10-16.md); gap pin correlation → [`EXP021_LARGEST_GAP_SIGNAL_CORRELATION_2026-10-16.md`](EXP021_LARGEST_GAP_SIGNAL_CORRELATION_2026-10-16.md) |
 | **Provider calls / prod** | **0** / **NONE** |

@@ -23,9 +23,12 @@
 
 ## After the drive
 
-1. Wait for **natural S4 work-item completion** on that trip (no manual reprocessing unless ops runbook says so).
-2. Record **trip id**, **WI id**, **pinned snapshot hash** from ops/evidence export (same fields as EXP021 forensics).
-3. Secure **video file** + optional GNSS export; store SHA256 / filename in evidence ticket.
+1. Record **actual stop** time (UTC): engine off / park / ignition — separate from video stop.
+2. Wait for **natural FSM trip finalization** — do not trigger artificial reconnect cycles to “force” end.
+3. Wait for **natural S4 work-item completion** (no manual reprocessing unless ops runbook says so).
+4. Record **trip id**, **WI id**, **pinned snapshot hash**, `vehicle_trips.start_time` / `end_time`, `settlement_anchor_at`, `eligible_at`, `acquisition_window_end` from snapshot.
+5. Compare: **observed stop** vs **trip.end_time** vs **settlement_anchor** vs **acquisition_window_end** (expect quiet **600 s** between anchor and eligible, not inside acquisition window).
+6. Secure **video file** + optional GNSS export; store SHA256 / filename in evidence ticket.
 
 ## What we will compare (pre-declared)
 

@@ -156,6 +156,7 @@ Detail: [reference-capture/REFERENCE_DRIVES.md](./reference-capture/REFERENCE_DR
 | DI-EVID-EXP021-GAP-CORR-001 | AUDIT | 2026-10-16 | Largest POSITION gap stored-signal correlation (pin POSITION+R1, trips, connectivity); provider calls 0 | `evidence/EXP021_LARGEST_GAP_SIGNAL_CORRELATION_2026-10-16.md` | EXP021 PR #2046 | CONFIRMED | Multi-signal absent in gap interior; inter-trip window; no connectivity events | Motion inside gap; provider root cause |
 | DI-EVID-EXP021-REF-DRIVE-001 | REFERENCE_DRIVE | 2026-10-16 | Owner reference drive protocol (forward recurrence test, tacho video, S4 identity) | `evidence/EXP021_OWNER_REFERENCE_DRIVE_PROTOCOL_2026-10-16.md` | EXP021 PR #2046 | PROPOSED | Repeatable owner procedure | Retroactive explanation of 2026-10-14 gap |
 | DI-EVID-EXP021-TIMING-001 | AUDIT | 2026-10-16 | Missing-run count reconciliation (61 total / 13 >10s) + DIMO signals contract + spacing JSON | `evidence/EXP021_POSITION_TIMING_AND_QUERY_LIMITS_2026-10-16.md` | EXP021 PR #2046 | CONFIRMED | Grid vs returned-row spacing; 1365 vs 1364 | Device physical sampling rate |
+| DI-EVID-EXP021-FSM-BOUNDARY-001 | AUDIT | 2026-10-16 | FSM/trip/S4 acquisition timeline; quiet 600s; post-split boundary drift vs pin; counterfactual denominator | `evidence/EXP021_FSM_ACQUISITION_BOUNDARY_GAP_2026-10-16.md` | EXP021 PR #2046 | CONFIRMED | Acquisition end from trip end at S4; split after pin | Upstream POSITION outage root cause |
 
 ---
 
