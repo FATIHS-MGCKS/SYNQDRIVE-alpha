@@ -76,7 +76,9 @@ VSI and APDS documentation must treat **provider call cost** as orthogonal to **
 | VSI → APDS | Emit read-only events (profile revision changed) | Enabling shadow or production polling flags |
 | Shadow epoch | APDS logs profile snapshot id at decision time | Changing `WORKER_APD_SHADOW_ENABLED` in VSI PRs without VDC/APDS authority |
 
-Reference: VDC change ledger APDS-9.x evidence; `vsi-apds-consumer.adapter.contract.ts` (unwired).
+Reference: VDC change ledger APDS-9.x evidence; `vsi-apds-consumer.adapter.contract.ts`; P5A implementation [`research/VSI_P5_APDS_INTEGRATION.md`](research/VSI_P5_APDS_INTEGRATION.md) (shadow service **not** wired — P5B gate default OFF).
+
+**P4 internal resolver routing (operational):** production may expose `/api/v1/api/v1/internal/vsi/capability-resolver/...` (double prefix). Document-only in P5; do not alter working route without gateway contract review.
 
 ---
 
