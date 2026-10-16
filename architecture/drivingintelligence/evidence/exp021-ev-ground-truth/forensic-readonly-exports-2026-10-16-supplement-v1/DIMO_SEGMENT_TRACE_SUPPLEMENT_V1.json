@@ -1,6 +1,6 @@
 {
   "schema": "EXP021_EV_GT_DIMO_SEGMENT_TRACE_V1",
-  "observedAtUtc": "2026-10-16T16:23:00.099Z",
+  "observedAtUtc": "2026-10-16T16:23:49.416Z",
   "persistedFacts": {
     "dimoSegmentId": {
       "value": "dimo-seg-186946-1792121760000",
