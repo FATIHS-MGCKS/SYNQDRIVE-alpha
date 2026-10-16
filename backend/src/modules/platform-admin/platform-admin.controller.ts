@@ -35,6 +35,7 @@ import { MasterAdminMfaGuard } from '@shared/auth/master-admin-mfa.guard';
 import { RequireMasterAdminMfa } from '@shared/decorators/require-master-admin-mfa.decorator';
 import { STEP_UP_ACTION } from '@modules/iam-mfa/iam-mfa.policy';
 import { BatteryV2RestSessionFeatureInspectionAdminService } from './battery-v2-rest-session-feature-inspection.admin.service';
+import { BatteryV2LvMeasuredIntelligenceAdminService } from './battery-v2-lv-measured-intelligence.admin.service';
 import { DimoR9WebhookHealthService } from './dimo-r9-webhook-health/dimo-r9-webhook-health.service';
 import {
   PLATFORM_PRUNE_DISABLED_CODE,
@@ -61,6 +62,7 @@ export class PlatformAdminController {
     private readonly batteryShadowValidation: BatteryShadowValidationService,
     private readonly platformOpsService: PlatformOpsService,
     private readonly batteryV2RestSessionFeatureInspection: BatteryV2RestSessionFeatureInspectionAdminService,
+    private readonly batteryV2LvMeasuredIntelligence: BatteryV2LvMeasuredIntelligenceAdminService,
     private readonly dimoR9WebhookHealthService: DimoR9WebhookHealthService,
   ) {}
 
@@ -497,6 +499,41 @@ export class PlatformAdminController {
       },
     });
     return inspection;
+  }
+
+  // GET /admin/battery-v2/lv-measured-intelligence — G5C-N13 bounded LV read model (Master Admin).
+  @Get('battery-v2/lv-measured-intelligence')
+  async getBatteryV2LvMeasuredIntelligence(
+    @Query('organizationId') organizationId?: string,
+    @Query('vehicleId') vehicleId?: string,
+    @Query('sessionLimit') sessionLimit?: string,
+    @Query('observationLimit') observationLimit?: string,
+    @Req() req?: any,
+  ) {
+    if (!organizationId || !vehicleId) {
+      throw new BadRequestException('organizationId and vehicleId are required');
+    }
+    const parsedSessionLimit = sessionLimit ? Number(sessionLimit) : undefined;
+    const parsedObservationLimit = observationLimit ? Number(observationLimit) : undefined;
+    const result = await this.batteryV2LvMeasuredIntelligence.getVehicleMeasuredIntelligence({
+      organizationId,
+      vehicleId,
+      sessionLimit: Number.isFinite(parsedSessionLimit) ? parsedSessionLimit : undefined,
+      observationLimit: Number.isFinite(parsedObservationLimit) ? parsedObservationLimit : undefined,
+    });
+    void this.audit.record({
+      ...AuditService.contextFromRequest(req),
+      action: ActivityAction.ADMIN_OVERRIDE,
+      entity: ActivityEntity.ADMIN_OPERATION,
+      description: 'Master Admin Battery V2 LV measured intelligence read (G5C-N13)',
+      metaJson: {
+        organizationId,
+        vehicleId,
+        sessionCount: result.restSessionEpisodes.length,
+        historicalPointCount: result.historicalMeasured.length,
+      },
+    });
+    return result;
   }
 
   // GET /admin/battery-shadow-validation-report

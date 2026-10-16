@@ -6,6 +6,17 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-16 — G5C-N13 LV measured intelligence V1 (internal Master Admin read model)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Bounded `LV_MEASURED_INTELLIGENCE_V1` read service over generalized-evidence LV rows, canonical REST sessions, C3 canonical FINAL features, and latest D3/D4 ack summary; Master Admin `GET /admin/battery-v2/lv-measured-intelligence`; C5B UI charts (MEASURED vs DERIVED boundaries, no SOH %) |
+| **WHY** | Operator-visible forensic read path for natural R1 REST ladder measurements without second scoring pipeline or publication |
+| **VALIDATION** | Unit dedup/context specs; opt-in postgres `BATTERY_V2_LV_MEASURED_INTELLIGENCE_INTEGRATION=1`; C5B security spec route registration |
+| **NON_EFFECTS** | No E3 activation; no F6/customer publication; no REST_WAKE promotion; read-only (no DB writes); no new schedulers |
+
+---
+
 ## 2026-10-16 — G5C-N7-N7 Nest DI boot recovery (joint deploy abort)
 
 | Field | Value |
