@@ -87,6 +87,7 @@ const COPY: Record<string, string> = {
   'master.batteryV2Shadow.lvMeasured.truncatedHistory': 'Historical window truncated at server limit — older points omitted.',
   'master.batteryV2Shadow.lvMeasured.sessionTitle': 'Selected REST session — measured rest-hours curve',
   'master.batteryV2Shadow.lvMeasured.noSessionPoints': 'No deduped measured points linked to this session.',
+  'master.batteryV2Shadow.lvMeasured.d4Title': 'D3 / D4 longitudinal summary (bounded)',
   'master.batteryV2Shadow.lvMeasured.episodeCompareTitle': 'REST episode comparison (MEASURED vs DERIVED summary)',
   'master.batteryV2Shadow.lvMeasured.loadError': 'LV measured intelligence could not be loaded.',
 };

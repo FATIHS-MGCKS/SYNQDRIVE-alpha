@@ -5,6 +5,13 @@ export type LvDedupableObservationRow = {
   createdAt: Date;
 };
 
+/** Deterministic dedup key: real measurement id, else stable observation id (never collapse unrelated rows). */
+export function dedupeKeyForObservationRow(row: LvDedupableObservationRow): string {
+  const trimmed = row.sourceMeasurementId?.trim();
+  if (trimmed) return `measurement:${trimmed}`;
+  return `observation:${row.id}`;
+}
+
 /**
  * One row per source measurement — latest GE row wins (C3/D3 revisions must not double-count).
  */
@@ -13,16 +20,17 @@ export function dedupeObservationsBySourceMeasurementId<T extends LvDedupableObs
 ): T[] {
   const bySource = new Map<string, T>();
   for (const row of rows) {
-    const existing = bySource.get(row.sourceMeasurementId);
+    const key = dedupeKeyForObservationRow(row);
+    const existing = bySource.get(key);
     if (!existing) {
-      bySource.set(row.sourceMeasurementId, row);
+      bySource.set(key, row);
       continue;
     }
     const rowAt = row.voltageObservedAt?.getTime() ?? row.createdAt.getTime();
     const existingAt =
       existing.voltageObservedAt?.getTime() ?? existing.createdAt.getTime();
     if (rowAt > existingAt || (rowAt === existingAt && row.createdAt > existing.createdAt)) {
-      bySource.set(row.sourceMeasurementId, row);
+      bySource.set(key, row);
     }
   }
   return [...bySource.values()].sort((a, b) => {

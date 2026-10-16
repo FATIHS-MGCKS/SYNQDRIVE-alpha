@@ -120,7 +120,7 @@ export function LvMeasuredIntelligenceSection({ data, selectedRestSessionId }: P
                   labelFormatter={(_, payload) =>
                     payload?.[0]?.payload?.label ? String(payload[0].payload.label) : ''
                   }
-                  formatter={(value: number) => [`${value.toFixed(3)} V`, 'MEASURED']}
+                  formatter={(value) => [`${Number(value ?? 0).toFixed(3)} V`, 'MEASURED']}
                 />
                 <Line type="monotone" dataKey="v" stroke="hsl(var(--primary))" dot={false} strokeWidth={2} />
               </LineChart>
@@ -176,7 +176,7 @@ export function LvMeasuredIntelligenceSection({ data, selectedRestSessionId }: P
                   />
                   <YAxis domain={['auto', 'auto']} tick={{ fontSize: 10 }} />
                   <Tooltip
-                    formatter={(value: number) => [`${value.toFixed(3)} V`, 'MEASURED']}
+                    formatter={(value) => [`${Number(value ?? 0).toFixed(3)} V`, 'MEASURED']}
                     labelFormatter={(_, items) => {
                       const row = items?.[0]?.payload;
                       if (!row) return '';
@@ -194,6 +194,15 @@ export function LvMeasuredIntelligenceSection({ data, selectedRestSessionId }: P
           )}
         </MasterPageSection>
       )}
+
+      <MasterPageSection title={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.d4Title')}>
+        <p className="text-xs text-muted-foreground mb-2">
+          {data.longitudinalD4.epistemicBand}: {data.longitudinalD4.note}
+          {data.longitudinalD4.sourceEvidenceAckCountOnLatest != null
+            ? ` · ACK count on latest revision: ${data.longitudinalD4.sourceEvidenceAckCountOnLatest} (not full D4 verification)`
+            : ' · ACK unavailable'}
+        </p>
+      </MasterPageSection>
 
       <MasterPageSection title={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.episodeCompareTitle')}>
         <div className="overflow-x-auto">
