@@ -93,6 +93,25 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-10-14T21:50:00.000Z',
   },
   {
+    id: 'battery-v2-g5c-n13-lv-measured-intelligence-v1-2026-10-16',
+    version: '4.9.2243',
+    title: 'Battery V2 G5C-N13 — LV measured intelligence V1 (Master Admin read model)',
+    summary: [
+      'Bounded LV_MEASURED_INTELLIGENCE_V1 read path over generalized-evidence voltages, REST sessions, canonical C3 features, and latest D3/D4 ack summary — deduped by sourceMeasurementId.',
+      'GET /admin/battery-v2/lv-measured-intelligence (MASTER_ADMIN); C5B UI voltage timelines and REST episode comparison with MEASURED vs DERIVED boundaries (no SOH %).',
+      'Read-only: no publication, E3, F6, REST_WAKE promotion, or new schedulers.',
+    ],
+    reason:
+      'Operators need vehicle-level visibility into natural R1 REST ladder measurements from stored shadow data without a competing scoring pipeline.',
+    previousBehavior:
+      'C5B exposed per-session C5A inspection only; no vehicle-level deduped LV timeline or episode comparison read model.',
+    details:
+      'lv-measured-intelligence/*, battery-v2-lv-measured-intelligence.admin.service.ts, LvMeasuredIntelligenceSection.tsx, CHANGE_LEDGER G5C-N13',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-16T17:30:00.000Z',
+  },
+  {
     id: 'vo-sig-01-p1-connection-identity-2026-10-13',
     version: '4.9.2242',
     title: 'VO-SIG-01 P1 — verified connection modality + activation identity enforcement',

@@ -17,6 +17,7 @@ import { LongitudinalReconciliationCandidateRepository } from './rest-session-fe
 import { LongitudinalReconciliationService } from './rest-session-features/longitudinal/longitudinal-reconciliation.service';
 import { LongitudinalSourceEvidenceAckRepository } from './rest-session-features/longitudinal/longitudinal-source-evidence-ack.repository';
 import { LongitudinalProfileRevisionInspectionService } from './rest-session-features/longitudinal/longitudinal-profile-revision-inspection.service';
+import { LvMeasuredIntelligenceReadService } from './lv-measured-intelligence/lv-measured-intelligence-read.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 
@@ -28,6 +29,7 @@ import { TripMetricsService } from '@modules/observability/trip-metrics.service'
     RestSessionFeatureComputationService,
     RestSessionFeatureShadowTriggerService,
     RestSessionFeatureShadowInspectionService,
+    LvMeasuredIntelligenceReadService,
     LongitudinalInputReaderService,
     {
       provide: LongitudinalProfileMaterializationRepository,
@@ -98,6 +100,7 @@ import { TripMetricsService } from '@modules/observability/trip-metrics.service'
     LateTripAssociationService,
     GeneralizedEvidenceCaptureService,
     RestSessionFeatureShadowInspectionService,
+    LvMeasuredIntelligenceReadService,
     LongitudinalInputReaderService,
     LongitudinalProfileMaterializationRuntimeService,
     LongitudinalReconciliationService,

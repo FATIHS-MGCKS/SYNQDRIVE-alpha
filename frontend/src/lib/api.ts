@@ -3851,6 +3851,22 @@ export const api = {
           `/admin/battery-v2/rest-session-feature-inspection?${q.toString()}`,
         );
       },
+      getLvMeasuredIntelligence: (params: {
+        organizationId: string;
+        vehicleId: string;
+        sessionLimit?: number;
+        observationLimit?: number;
+      }) => {
+        const q = new URLSearchParams({
+          organizationId: params.organizationId,
+          vehicleId: params.vehicleId,
+        });
+        if (params.sessionLimit != null) q.set('sessionLimit', String(params.sessionLimit));
+        if (params.observationLimit != null) q.set('observationLimit', String(params.observationLimit));
+        return get<import('../master/battery-v2-shadow-inspection/lv-measured-intelligence.types').LvMeasuredIntelligenceV1>(
+          `/admin/battery-v2/lv-measured-intelligence?${q.toString()}`,
+        );
+      },
     },
     vehicleLogbook: {
       list: () => get<any[]>('/admin/vehicle-logbook'),
