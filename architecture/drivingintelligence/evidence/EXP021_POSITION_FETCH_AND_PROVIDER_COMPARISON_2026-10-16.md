@@ -85,7 +85,7 @@ Artifact: `/opt/cursor/artifacts/exp021-position-fetch-metadata.json` (read-only
 | **Sub-window** `[14:55:43Z, 15:21:53Z)` | `PIN_ABSENT_PROVIDER_ABSENT` **1550**, `PIN_PRESENT_PROVIDER_PRESENT` **20** |
 | **Completeness** | HTTP 200, **1728** provider rows vs **4694** expected buckets → `SPARSE_PROVIDER_ROWS_HTTP_OK` (same sparsity as pin) |
 | **Raw signals** | **1728** rows, **0** duplicate timestamps, **0** rejected normalization rows |
-| **Longest absent run (pin & provider)** | **1364 s** `[14:58:36Z, 15:21:20Z)` (61 runs) |
+| **Longest absent run (pin & provider)** | **1364 s** `[14:58:36Z, 15:21:20Z)` (**61** total missing runs on grid; **13** runs >10 s) |
 | **Artifacts** | `/opt/cursor/artifacts/exp021-provider-position-compare-533b2bf8.json`, raw signals at VPS `/tmp/…raw.json` (coordinates only; no auth) |
 
 **Interpretation (per experiment rules):** Today's DIMO replay **does not** show extra coordinates in pin-`ROW_ABSENT` buckets (`PIN_ABSENT_PROVIDER_PRESENT=0`). Pin and provider agree on the same sparse grid on **2026-10-16**; this neither proves an original fetch fault nor disproves later data availability — it shows **reproducible sparse delivery** for this window at both acquisition time (pin) and replay.

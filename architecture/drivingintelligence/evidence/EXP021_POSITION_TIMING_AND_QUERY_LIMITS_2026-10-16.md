@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| PR | [#2046](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2046) @ `7db19a8870` |
+| PR | [#2046](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha/pull/2046) @ `9f15d18c8a` |
 | Provider calls this workstream | **0** (analysis only) |
 | Inputs | `exp021-provider-position-compare-533b2bf8.json`, sealed pin metadata `exp021-position-fetch-metadata.json`, raw `signals[]` from compare run |
 
@@ -50,7 +50,29 @@ Source: **1728** `timestamp` labels in compare raw JSON (same set as pin present
 **C — mixture:**
 
 - **Among rows the API returns**, consecutive labels are almost always **1s apart** (regular spacing *within* the returned subsequence).
-- **On the fixed 1s acquisition grid**, **2966** / **4694** seconds (**63.2%**) have **no** returned row — dominated by **long contiguous absent runs** (61 runs; longest **1364s**; **2847s** absent seconds lie in runs **>10s**, i.e. **96.0%** of all absent seconds).
+- **On the fixed 1s acquisition grid**, **2966** / **4694** seconds (**63.2%**) have **no** returned row — dominated by **long contiguous absent runs**.
+
+### Missing-run counts (fixed 1s grid — label clearly)
+
+| Metric | Count or seconds |
+| --- | ---: |
+| **All missing runs** (contiguous `ROW_ABSENT` runs) | **61** |
+| Missing runs with duration **>10 s** | **13** |
+| Missing runs with duration **≤10 s** | **48** |
+| Absent seconds in runs **>10 s** | **2847** |
+| Absent seconds in runs **≤10 s** | **119** |
+| Longest single missing run | **1364 s** (`[14:58:36Z, 15:21:20Z)` on grid) |
+
+**Not claimed:** “61 long runs” — **61** is the **total** missing-run count; only **13** exceed 10 s.
+
+### Point spacing vs absent grid seconds (largest gap)
+
+| Measure | Seconds | Definition |
+| --- | ---: | --- |
+| **1365** | Between consecutive **returned** POSITION labels `14:58:35Z` → `15:21:20Z` |
+| **1364** | Interior 1 s buckets strictly inside `(14:58:35, 15:21:20)` with no row |
+
+Follow-on pin correlation (stored data only): [`EXP021_LARGEST_GAP_SIGNAL_CORRELATION_2026-10-16.md`](EXP021_LARGEST_GAP_SIGNAL_CORRELATION_2026-10-16.md).
 
 This measures **spacing of returned `signals[]` rows only**, not proven physical GPS cadence.
 

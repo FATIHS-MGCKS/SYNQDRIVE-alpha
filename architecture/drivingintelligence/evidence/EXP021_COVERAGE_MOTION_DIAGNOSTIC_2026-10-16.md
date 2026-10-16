@@ -153,3 +153,14 @@ Across sample: trusted-numeric runs exist but **adjacent 1 s TRUSTED samples sha
 
 - `di-v0-exp021-coverage-interval-partition.unit.spec.ts` — disjoint primary partition sums.
 - `exp021-coverage-diagnostic-selection.unit.spec.ts` — forced trip inclusion.
+
+## Diagnostic phase closure (2026-10-16, PR #2046 @ `9f15d18c8a`)
+
+| Topic | Outcome |
+| --- | --- |
+| **Confirmed** | Pin ≡ provider sparsity on full-window compare (4694/4694); **61** total missing runs on grid (**13** >10 s, **48** ≤10 s); **1365 s** label gap vs **1364** interior absent buckets; largest gap interior = **100%** POSITION + sealed R1 speed/RPM absent in pin; **no** stored connectivity events in window |
+| **Trip context** | Gap lies mainly **between** canonical trips (`533b2bf8` ends 14:58:31; next trip from 15:21:16) inside S4 acquisition window |
+| **Open cause** | Upstream ingest/provider/storage vs pin-time absence — **not** closed without forward reference drive or independent historical provider audit |
+| **Deprioritized** | Further raster/threshold QC research while multi-minute gaps dominate |
+| **Next measurement** | Owner **reference drive** → [`EXP021_OWNER_REFERENCE_DRIVE_PROTOCOL_2026-10-16.md`](EXP021_OWNER_REFERENCE_DRIVE_PROTOCOL_2026-10-16.md); gap pin correlation → [`EXP021_LARGEST_GAP_SIGNAL_CORRELATION_2026-10-16.md`](EXP021_LARGEST_GAP_SIGNAL_CORRELATION_2026-10-16.md) |
+| **Provider calls / prod** | **0** / **NONE** |

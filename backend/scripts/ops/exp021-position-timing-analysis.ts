@@ -76,8 +76,10 @@ function main(): void {
   if (run > 0) absentRuns.push({ startSec: runStart, durationSec: run });
 
   const longRuns = absentRuns.filter((r) => r.durationSec > 10);
+  const shortRuns = absentRuns.filter((r) => r.durationSec <= 10);
   const absentSeconds = expectedBuckets - presentSec.size;
   const secondsInLongAbsentRuns = longRuns.reduce((s, r) => s + r.durationSec, 0);
+  const secondsInShortAbsentRuns = shortRuns.reduce((s, r) => s + r.durationSec, 0);
 
   const longGaps = gaps
     .map((g, i) => ({
@@ -119,10 +121,25 @@ function main(): void {
     leadingGapSeconds: leadingGapS,
     trailingGapSeconds: trailingGapS,
     absentSecondsOnFixedGrid: absentSeconds,
+    missingRunCountsReconciled: {
+      allMissingRunsOnFixedGrid: absentRuns.length,
+      missingRunsDurationGt10s: longRuns.length,
+      missingRunsDurationLte10s: shortRuns.length,
+      absentSecondsInRunsGt10s: secondsInLongAbsentRuns,
+      absentSecondsInRunsLte10s: secondsInShortAbsentRuns,
+      note:
+        '61 = total contiguous ROW_ABSENT runs on the 1s grid, not "61 long runs". 13 runs exceed 10s (2847 absent seconds); 48 runs are ≤10s (119 absent seconds).',
+    },
     absentRunCount: absentRuns.length,
     longestAbsentRunSeconds: absentRuns.reduce((m, r) => Math.max(m, r.durationSec), 0),
     secondsInAbsentRunsLongerThan10s: secondsInLongAbsentRuns,
     shareOfAbsentSecondsInRunsLongerThan10s: absentSeconds ? secondsInLongAbsentRuns / absentSeconds : null,
+    pointToPointVsAbsentGridSeconds: {
+      exampleBoundaryLabels: ['2026-10-14T14:58:35Z', '2026-10-14T15:21:20Z'],
+      secondsBetweenReturnedPositionLabels: 1365,
+      absentGridBucketsStrictlyInsideBoundaries: 1364,
+      note: '1365s is label-to-label spacing among returned rows; 1364 is interior 1s buckets with no row.',
+    },
     longGapsBetweenReturnedRows: longGaps,
     samplingPatternClass: 'MIXED_LONG_OUTAGES_AND_1S_SPACING_WHEN_PRESENT',
     problemWindowHalfOpen: {
