@@ -271,9 +271,7 @@ import { BatteryCapabilityPreflightRepository } from './battery-health/capabilit
 import { BatteryCapabilityPreflightService } from './battery-health/capability-preflight/battery-capability-preflight.service';
 import { BatteryCapabilityRefreshService } from './battery-health/capability-preflight/battery-capability-refresh.service';
 import { BatteryCapabilityMeasurementGateService } from './battery-health/capability-preflight/battery-capability-measurement-gate.service';
-import { LvRestWindowStateMachineService } from './battery-health/lv-rest-window/lv-rest-window.service';
 import { LvRestWindowIngestionBridgeService } from './battery-health/lv-rest-window/lv-rest-window-ingestion-bridge.service';
-import { LvRestWindowSessionArmingService } from './battery-health/lv-rest-window/lv-rest-window-session-arming.service';
 import { BatteryRestTargetEvaluationService } from './battery-health/lv-rest-window/battery-rest-target-evaluation.service';
 import { LvRestShadowSummaryService } from './battery-health/lv-rest-window/lv-rest-shadow-summary.service';
 import { LvStartProxyDiagnosticService } from './battery-health/lv-start-proxy/lv-start-proxy-diagnostic.service';
@@ -483,9 +481,7 @@ import { DiV0TripSpeedQualityModule } from './driving-intelligence/trip-speed-qu
     BatteryCapabilityPreflightService,
     BatteryCapabilityRefreshService,
     BatteryCapabilityMeasurementGateService,
-    LvRestWindowStateMachineService,
     LvRestWindowIngestionBridgeService,
-    LvRestWindowSessionArmingService,
     BatteryRestTargetEvaluationService,
     LvRestShadowSummaryService,
     LvStartProxyDiagnosticService,
@@ -735,9 +731,7 @@ import { DiV0TripSpeedQualityModule } from './driving-intelligence/trip-speed-qu
     BatteryCapabilityPreflightService,
     BatteryCapabilityRefreshService,
     BatteryCapabilityMeasurementGateService,
-    LvRestWindowStateMachineService,
     LvRestWindowIngestionBridgeService,
-    LvRestWindowSessionArmingService,
     BatteryRestTargetEvaluationService,
     LvRestShadowSummaryService,
     LvStartProxyDiagnosticService,

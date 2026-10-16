@@ -75,7 +75,9 @@ async function bootstrap() {
   if (process.env.SYNQDRIVE_BOOT_CHECK === '1') {
     logger.log('Boot check OK — module graph and providers resolved');
     await app.close();
-    return;
+    // Deploy gate must terminate the process: Bull/Redis/Prisma handles keep the
+    // event loop alive after app.close(), which would make `timeout 120` fail (124).
+    process.exit(0);
   }
 
   app.useStaticAssets(join(process.cwd(), 'uploads'), { prefix: '/uploads/' });
@@ -154,4 +156,8 @@ async function bootstrap() {
   logger.log(`Active log levels: [${logLevels.join(', ')}]`);
 }
 
-bootstrap();
+bootstrap().catch((err) => {
+  // eslint-disable-next-line no-console
+  console.error(err);
+  process.exit(1);
+});

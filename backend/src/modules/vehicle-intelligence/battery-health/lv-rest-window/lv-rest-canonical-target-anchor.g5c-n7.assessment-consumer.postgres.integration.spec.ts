@@ -94,8 +94,38 @@ async function createVehicle(
       hasLiveJob: jest.Mock;
     };
     let publicationEnqueuePayloads: unknown[] = [];
+    let policyProfiles: BatteryPolicyProfileService;
     const originalShadow = process.env[BATTERY_V2_REST_SHADOW_ENABLED_ENV];
     const originalPublication = process.env[BATTERY_V2_PUBLICATION_ENABLED_ENV];
+    const policyFixture = {
+      driveProfile: BatteryDriveProfile.ICE,
+      chemistry: 'LEAD_ACID',
+      lvAssessmentAllowed: true,
+      supportedMeasurementTypes: [
+        BatteryMeasurementType.LIVE_VOLTAGE,
+        BatteryMeasurementType.REST_60M,
+        BatteryMeasurementType.REST_6H,
+      ],
+      forbiddenMeasurementTypes: [],
+      restingBands: { maxRestingV: 13.2 },
+      minimumContext: { restRequiresEngineOff: true },
+    };
+
+    function wireAssessmentJobProducer(): void {
+      jobProducer.enqueue.mockImplementation(
+        async (jobType: string, payload: BatteryAssessmentRecomputePayload) => {
+          if (jobType === 'BATTERY_ASSESSMENT_RECOMPUTE') {
+            await assessHandler.handle(payload);
+            return `assess-${payload.inputVersion}`;
+          }
+          if (jobType === 'BATTERY_PUBLICATION_UPDATE') {
+            publicationEnqueuePayloads.push(payload);
+            return 'pub-job-skipped';
+          }
+          return null;
+        },
+      );
+    }
 
     beforeAll(async () => {
       assertIsolatedDatabaseUrl();
@@ -108,20 +138,8 @@ async function createVehicle(
       }
       prisma = new PrismaClient();
       const measurementRepo = new BatteryMeasurementRepository(prisma as never);
-      const policyProfiles = {
-        resolveForVehicle: jest.fn().mockResolvedValue({
-          driveProfile: BatteryDriveProfile.ICE,
-          chemistry: 'LEAD_ACID',
-          lvAssessmentAllowed: true,
-          supportedMeasurementTypes: [
-            BatteryMeasurementType.LIVE_VOLTAGE,
-            BatteryMeasurementType.REST_60M,
-            BatteryMeasurementType.REST_6H,
-          ],
-          forbiddenMeasurementTypes: [],
-          restingBands: { maxRestingV: 13.2 },
-          minimumContext: { restRequiresEngineOff: true },
-        }),
+      policyProfiles = {
+        resolveForVehicle: jest.fn().mockResolvedValue(policyFixture),
       } as unknown as BatteryPolicyProfileService;
       measurements = new BatteryMeasurementService(
         prisma as never,
@@ -167,19 +185,7 @@ async function createVehicle(
         publicationHandoff,
       );
 
-      jobProducer.enqueue.mockImplementation(
-        async (jobType: string, payload: BatteryAssessmentRecomputePayload) => {
-          if (jobType === 'BATTERY_ASSESSMENT_RECOMPUTE') {
-            await assessHandler.handle(payload);
-            return `assess-${payload.inputVersion}`;
-          }
-          if (jobType === 'BATTERY_PUBLICATION_UPDATE') {
-            publicationEnqueuePayloads.push(payload);
-            return 'pub-job-skipped';
-          }
-          return null;
-        },
-      );
+      wireAssessmentJobProducer();
 
       handoff = new LvRestAssessmentHandoffService(
         prisma as never,
@@ -206,7 +212,13 @@ async function createVehicle(
       process.env[BATTERY_V2_REST_SHADOW_ENABLED_ENV] = 'true';
       process.env[BATTERY_V2_PUBLICATION_ENABLED_ENV] = 'false';
       publicationEnqueuePayloads = [];
-      jest.clearAllMocks();
+      jest
+        .mocked(policyProfiles.resolveForVehicle)
+        .mockResolvedValue(policyFixture as never);
+      jobProducer.hasLiveAssessJobForVehicle.mockResolvedValue(false);
+      jobProducer.hasAssessDispatchConflict.mockResolvedValue(false);
+      jobProducer.hasLiveJob.mockResolvedValue(false);
+      wireAssessmentJobProducer();
     });
 
     async function seedOrg(): Promise<string> {
@@ -226,8 +238,13 @@ async function createVehicle(
       const suffix = randomUUID().slice(0, 8);
       const vehicleId = await createVehicle(prisma, organizationId, suffix);
       const tripId = randomUUID();
-      const canonicalAnchor = new Date('2026-10-14T10:00:00.000Z');
-      const sessionStart = new Date('2026-10-14T10:05:00.000Z');
+      // Assessment consumer uses wall-clock `now` during evidence freshness (48h REST window).
+      // Fixed historical anchors fall stale in CI; anchor the fixture to the handoff instant.
+      const assessmentNow = new Date();
+      const canonicalAnchor = new Date(
+        assessmentNow.getTime() - getBatteryRest60mDelayMs() - 180_000,
+      );
+      const sessionStart = new Date(canonicalAnchor.getTime() + 300_000);
       await prisma.vehicleTrip.create({
         data: {
           id: tripId,
@@ -269,7 +286,8 @@ async function createVehicle(
         },
       });
       const validAt = new Date(canonicalAnchor.getTime() + getBatteryRest60mDelayMs() + 30_000);
-      const now = new Date(validAt.getTime() + 120_000);
+      const now = assessmentNow;
+      expect(now.getTime()).toBeGreaterThan(validAt.getTime());
       await measurements.create({
         organizationId,
         vehicleId,
@@ -302,6 +320,25 @@ async function createVehicle(
       expect(evalResult.ok).toBe(true);
       if (!evalResult.ok) return;
 
+      const restSession = await prisma.batteryRestSession.findFirst({
+        where: { organizationId, vehicleId, confirmedTripId: tripId },
+      });
+      expect(restSession).not.toBeNull();
+
+      const restMeasurement = await prisma.batteryMeasurement.findUnique({
+        where: { id: evalResult.measurementId },
+      });
+      expect(restMeasurement).toMatchObject({
+        organizationId,
+        vehicleId,
+        sessionId: lvSession.id,
+        type: BatteryMeasurementType.REST_60M,
+        quality: BatteryMeasurementQuality.VALID,
+      });
+      expect((restMeasurement!.provenance as Record<string, unknown>).canonicalRestSessionId).toBe(
+        restSession!.id,
+      );
+
       const handoffResult = await handoff.ensureAssessmentHandoff({
         organizationId,
         vehicleId,
@@ -328,6 +365,12 @@ async function createVehicle(
       const coverage = (telemetry!.inputSummary as Record<string, unknown>)
         .measurementCoverage as { restMeasurementCount?: number };
       expect(coverage.restMeasurementCount).toBeGreaterThanOrEqual(1);
+      const selectedIds = (
+        (telemetry!.inputSummary as Record<string, unknown>).selectedMeasurementIds as
+          | string[]
+          | undefined
+      ) ?? [];
+      expect(selectedIds).toContain(evalResult.measurementId);
 
       const publications = await prisma.batteryPublication.findMany({
         where: { organizationId, vehicleId },

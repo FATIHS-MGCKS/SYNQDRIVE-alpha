@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -eu -o pipefail
 
 DEPLOY_EXECUTOR_OPS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEPLOY_EXECUTOR_ROOT="$(cd "${DEPLOY_EXECUTOR_OPS_DIR}/../../.." && pwd)"
@@ -85,7 +85,17 @@ if [[ "$DISK_USE_PCT" -ge 85 ]]; then
   echo "!! WARN: root filesystem ${DISK_USE_PCT}% full"
 fi
 
-sudo -u postgres pg_dump synqdrive | gzip > "${BACKUP_DIR}/db-pre-deploy-${TS}.sql.gz"
+BACKUP_FILE="${BACKUP_DIR}/db-pre-deploy-${TS}.sql.gz"
+sudo -u postgres pg_dump synqdrive | gzip > "${BACKUP_FILE}"
+if [[ ! -s "${BACKUP_FILE}" ]]; then
+  echo "!! ABORT: pre-deploy backup missing or empty (${BACKUP_FILE})" >&2
+  exit 1
+fi
+if ! gzip -t "${BACKUP_FILE}"; then
+  echo "!! ABORT: pre-deploy backup failed gzip integrity check (${BACKUP_FILE})" >&2
+  exit 1
+fi
+echo "Pre-deploy backup OK: ${BACKUP_FILE} ($(stat -c%s "${BACKUP_FILE}") bytes)"
 if [[ -x /opt/synqdrive/current/backend/scripts/ops/vps-backup-status-textfile.sh ]]; then
   bash /opt/synqdrive/current/backend/scripts/ops/vps-backup-status-textfile.sh "$(date +%s)" || true
 fi

@@ -4,6 +4,8 @@ import { BatteryV2JobProducerService } from './battery-v2-job-producer.service';
 import { BatteryV2SnapshotObservationProducer } from './battery-v2-snapshot-observation.producer';
 import { BatteryV2TripStartProducer } from './battery-v2-trip-start.producer';
 import { BatteryV2JobObservabilityService } from './battery-v2-job-observability.service';
+import { LvRestWindowStateMachineService } from '../lv-rest-window/lv-rest-window.service';
+import { LvRestCanonicalTargetAnchorResolverService } from '../lv-rest-window/lv-rest-canonical-target-anchor.resolver.service';
 
 describe('BatteryV2JobsProducerModule', () => {
   it('registers producer services', () => {
@@ -13,5 +15,12 @@ describe('BatteryV2JobsProducerModule', () => {
     expect(providers).toContain(BatteryV2SnapshotObservationProducer);
     expect(providers).toContain(BatteryV2TripStartProducer);
     expect(providers).toContain(BatteryV2JobObservabilityService);
+  });
+
+  it('exports G5C-N7 LV REST graph tokens for VehicleIntelligenceModule consumers', () => {
+    const exports: unknown[] =
+      Reflect.getMetadata(MODULE_METADATA.EXPORTS, BatteryV2JobsProducerModule) ?? [];
+    expect(exports).toContain(LvRestWindowStateMachineService);
+    expect(exports).toContain(LvRestCanonicalTargetAnchorResolverService);
   });
 });
