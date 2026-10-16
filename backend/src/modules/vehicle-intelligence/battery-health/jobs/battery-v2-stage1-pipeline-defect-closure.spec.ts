@@ -198,6 +198,9 @@ describe('Battery V2 Stage 1 pipeline defect closure', () => {
           { reconcilePeriodic: jest.fn().mockResolvedValue(0) } as any,
           { ensureAssessmentHandoff: jest.fn().mockResolvedValue({ enqueued: false, skipped: true }) } as any,
           { reconcilePublicationHandoff: jest.fn(), touchReconciliationFairness: jest.fn() } as any,
+          {
+            resolveRestWindowStartedAt: jest.fn(async (s: { startedAt: Date }) => s.startedAt),
+          } as any,
         ),
         sessionArming,
         lvRestSessionProducer,

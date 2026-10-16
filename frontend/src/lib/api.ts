@@ -3604,6 +3604,46 @@ export const api = {
           `/admin/physical-device-inventory/devices/${encodeURIComponent(deviceId)}/install`,
           body,
         ),
+      uninstallFromVehicle: (
+        deviceId: string,
+        body: import('./physical-device-inventory.types').UninstallPhysicalDeviceRequest,
+      ) =>
+        post<import('./physical-device-inventory.types').PhysicalDeviceListItemDto>(
+          `/admin/physical-device-inventory/devices/${encodeURIComponent(deviceId)}/uninstall`,
+          body,
+        ),
+      returnToStock: (
+        deviceId: string,
+        body: import('./physical-device-inventory.types').ReturnPhysicalDeviceToStockRequest,
+      ) =>
+        post<import('./physical-device-inventory.types').PhysicalDeviceListItemDto>(
+          `/admin/physical-device-inventory/devices/${encodeURIComponent(deviceId)}/return-to-stock`,
+          body,
+        ),
+      markDefective: (
+        deviceId: string,
+        body: import('./physical-device-inventory.types').MarkPhysicalDeviceDefectiveRequest,
+      ) =>
+        post<import('./physical-device-inventory.types').PhysicalDeviceListItemDto>(
+          `/admin/physical-device-inventory/devices/${encodeURIComponent(deviceId)}/mark-defective`,
+          body,
+        ),
+      markLost: (
+        deviceId: string,
+        body: import('./physical-device-inventory.types').MarkPhysicalDeviceLostRequest,
+      ) =>
+        post<import('./physical-device-inventory.types').PhysicalDeviceListItemDto>(
+          `/admin/physical-device-inventory/devices/${encodeURIComponent(deviceId)}/mark-lost`,
+          body,
+        ),
+      retire: (
+        deviceId: string,
+        body: import('./physical-device-inventory.types').RetirePhysicalDeviceRequest,
+      ) =>
+        post<import('./physical-device-inventory.types').PhysicalDeviceListItemDto>(
+          `/admin/physical-device-inventory/devices/${encodeURIComponent(deviceId)}/retire`,
+          body,
+        ),
     },
     monitoring: {
       summary: (params?: { from?: string; to?: string }) =>

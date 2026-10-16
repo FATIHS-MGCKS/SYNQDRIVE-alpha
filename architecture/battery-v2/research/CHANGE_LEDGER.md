@@ -17,6 +17,43 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-16 — G5C-N7-N7 Nest DI boot recovery (joint deploy abort)
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | `LvRestWindowStateMachineService` + `LvRestWindowSessionArmingService` registered in both `VehicleIntelligenceModule` and `BatteryV2JobsProducerModule`; VI-local FSM ctor required `LvRestCanonicalTargetAnchorResolverService` at index `[4]` but resolver was only a producer-internal provider (not exported) |
+| **OBSERVATION** | Production deploy to `d3a9360160` aborted at `SYNQDRIVE_BOOT_CHECK=1`; `/opt/synqdrive/current` remained `a0ce01f192d888974e49c2558ee05e534f3dfeea` |
+| **CHANGE** | Single ownership: producer module exports `LvRestWindowStateMachineService`, `LvRestWindowSessionArmingService`, `LvRestCanonicalTargetAnchorResolverService`; removed duplicate FSM/arming providers from `VehicleIntelligenceModule` (VI keeps bridge + `BatteryRestTargetEvaluationService`) |
+| **WHY** | Avoid duplicate FSM instances and fix Nest injection context without adding a second resolver registration in VI |
+| **VALIDATION** | `lv-rest-window-g5c-n7.nest-di.spec.ts` (metadata + producer-graph compile), `battery-g5c-n7-postgres-ci.sh` DI step, local `SYNQDRIVE_BOOT_CHECK=1` compiled boot |
+| **CHANGE (follow-up)** | `main.ts` calls `process.exit(0)` after boot-check `app.close()` so deploy `timeout 120` is not defeated by Redis/Bull event-loop handles; `vps-deploy-release.sh` requires non-empty gzip backup + `gzip -t` before migrations |
+| **NON_EFFECTS** | No G5C anchor policy, EXP021, VSI, PDI, or production flag changes |
+
+---
+
+## 2026-10-16 — G5C-N7-H1 pre-merge hardening (anchor safety + scheduling alignment)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Trip-first canonical binding (no temporal cross-trip match when trip linked); ambiguous → session anchor fallback; invalidated sessions excluded; ordered Prisma candidate load; scheduling/reconciliation use `resolveRestWindowStartedAt` |
+| **VALIDATION** | Extended policy specs + `lv-rest-canonical-target-anchor.g5c-n7.postgres.integration.spec.ts` (opt-in `BATTERY_V2_G5C_N7_POSTGRES_INTEGRATION=1`) |
+| **G5C-N7-H2** | `battery-g5c-n7-postgres-ci.sh`, workflow `battery-v2-g5c-n7-postgres-ci.yml`, assessment consumer postgres spec (real `BatteryAssessmentRecomputeHandler`), session continuity + ENDED reconciliation postgres cases, wake-flank unit gate |
+
+---
+
+## 2026-10-16 — G5C-N7 canonical REST session anchor bridge for REST_60M/REST_6H evaluation
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | `BatteryRestTargetEvaluationService` anchored REST temporal targets on `BatteryMeasurementSession.startedAt` only; canonical `battery_rest_sessions.anchorAt` could diverge (trip-linked forensic CASE E) so quality windows and trip-after-anchor gates misaligned |
+| **CHANGE** | `resolveLvRestCanonicalTargetAnchor` + evaluation-time binding via ±120s anchor tolerance and trip `confirmedTripId`/`candidateTripId` linkage; persist `canonicalRestSessionId` provenance on REST target measurements |
+| **WHY** | Smallest safe bridge from canonical REST recognition to existing VALID measurement + `LvRestAssessmentHandoffService` path without second evaluator authority |
+| **VALIDATION** | `lv-rest-canonical-target-anchor.policy.spec.ts`, `battery-rest-target-evaluation-canonical-anchor.g5c-n7.spec.ts`, existing handoff/recompute handlers unchanged |
+| **NON_EFFECTS** | No `PARKED_REST_CANDIDATE` auto-promotion; no publication enablement; no production flag changes; shadow `evidenceEligible` fail-closed semantics preserved |
+| **REMAINING_GAPS** | REST target job schedule delay still keyed to measurement session `startedAt` when misaligned — evaluation uses canonical anchor at persist time |
+
+---
+
 ## 2026-10-14 — M3.3-HV-H4 R16.1b provider observation clock gate (PR #2017)
 
 | Field | Value |

@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **Companion** | [`VSI_PRODUCT_CHARTER.md`](VSI_PRODUCT_CHARTER.md) |
-| **Last updated** | 2026-10-15 |
+| **Last updated** | 2026-10-16 |
 | **Legend** | **MERGED** = on `main` · **DEPLOYED** = production runtime proven separately |
 
 ---
@@ -16,8 +16,8 @@
 | **P1** | Durable signal profiles | **MERGED** (#2034) | `vehicle_signal_capability_profiles` + materialization |
 | **P2** | Automatic onboarding & lifecycle reconciliation | **IN PR #2038** (hardening + CI) | Outbox claim lease, ordering guards, link-scoped lifecycle init, backfill continuation, disposable PG suite |
 | **P3** | Signal fingerprint & quality intelligence | **IN PR #2041** (correctness hardening) | Profile v2, empirical VLS extractors, bundle vs per-signal separation, latest-window bundle history, registry coverage matrix |
-| **P4** | Capability resolver & validated fallback contracts | **IN PR (v1 resolver)** | Read-only resolver engine, consumer requirements registry, fallback approval registry, internal API |
-| **P5** | APDS read-only profile & consumer-demand integration | Planned | Read APIs + APDS consumer adapter (wired) |
+| **P4** | Capability resolver & validated fallback contracts | **MERGED** (#2045 @ `a0ce01f19`) | Read-only resolver engine, consumer requirements registry, internal API |
+| **P5** | APDS read-only profile & consumer-demand integration | **IN PR (P5A + P5B gate)** | Read-only adapter, demand vector, shadow correlation engine; P5B flag default OFF |
 | **P6** | Controlled polling optimization | Planned | Closed-loop APDS with human gates |
 | **P7** | Continuous learning & drift detection | Planned | Drift dashboards, alerts, reconciliation jobs |
 
@@ -231,9 +231,9 @@
 
 ### Deliverables
 
-- Wire `vsi-apds-consumer.adapter` (today contract-only) to read profiles + limitations.
-- APDS shadow compares polling decisions against profile-declared needs (read-only).
-- Demand vector: which canonical signals consumers currently require per vehicle/link.
+- **P5A (this PR):** `vsi-apds-p5-readonly-v1` adapter, consumer demand vector, pure shadow correlation engine, observability summaries, unit + disposable PG certification.
+- **P5B (boundary only):** `VSI_P5_APDS_CORRELATION_ENABLED` gate — default OFF; no automatic enable when APDS shadow is on; optional future post-decision evidence attach (separate APDS/VDC approval).
+- Demand vector: domain approval semantics, assessability vs executable demand, per-link attribution.
 
 ### Dependencies
 

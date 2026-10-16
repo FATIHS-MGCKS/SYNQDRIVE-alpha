@@ -24,6 +24,7 @@
     "test:battery:v2": "jest --testPathPatterns='battery-health|dimo-battery-signal|drive-profile-resolver|battery-policy-profile|lv-battery-chemistry|battery-v2|battery-critical\\.detector' --testPathIgnorePatterns=integration",
     "test:battery:v2:integration": "jest battery-provider-observation.integration && BATTERY_V2_RETENTION_INTEGRATION=1 jest battery-v2-retention.integration",
     "test:battery:v2:provider-gap:postgres": "bash scripts/test/battery-provider-gap-postgres-ci.sh",
+    "test:battery:v2:g5c-n7:postgres:ci": "bash scripts/test/battery-g5c-n7-postgres-ci.sh",
     "test:battery:v2:rest-session-feature:migration": "bash scripts/test/battery-rest-session-feature-migration-ci.sh",
     "test:di:s4a": "jest s4a-foundation --testPathIgnorePatterns=postgres.integration",
     "test:di:s4a:postgres": "bash scripts/test/di-v0-s4a-postgres-ci.sh",

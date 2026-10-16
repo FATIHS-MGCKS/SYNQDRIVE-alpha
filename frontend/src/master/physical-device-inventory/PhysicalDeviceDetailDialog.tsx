@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '../../i18n/LanguageContext';
@@ -25,6 +25,8 @@ import {
   SelectValue,
 } from '../../components/ui/select';
 import { Checkbox } from '../../components/ui/checkbox';
+import { Input } from '../../components/ui/input';
+import { Textarea } from '../../components/ui/textarea';
 
 type VehicleOption = { id: string; label: string; registryLifecycle?: string };
 
@@ -48,7 +50,23 @@ export function PhysicalDeviceDetailDialog({
   const [reconcileVehicleId, setReconcileVehicleId] = useState('');
   const [installVehicleId, setInstallVehicleId] = useState('');
   const [installConfirm, setInstallConfirm] = useState(false);
+  const [uninstallReason, setUninstallReason] = useState('');
+  const [uninstallConfirm, setUninstallConfirm] = useState(false);
+  const [uninstallReturn, setUninstallReturn] = useState(true);
+  const [uninstallWarehouse, setUninstallWarehouse] = useState('');
+  const [uninstallDefective, setUninstallDefective] = useState(false);
+  const [defectDescription, setDefectDescription] = useState('');
+  const [returnWarehouse, setReturnWarehouse] = useState('');
+  const [returnConfirm, setReturnConfirm] = useState(false);
+  const [lostEvidence, setLostEvidence] = useState('');
+  const [retireReason, setRetireReason] = useState('');
+  const [retireConfirm, setRetireConfirm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const uninstallIdempotencyKey = useRef(crypto.randomUUID());
+  const returnIdempotencyKey = useRef(crypto.randomUUID());
+  const defectiveIdempotencyKey = useRef(crypto.randomUUID());
+  const lostIdempotencyKey = useRef(crypto.randomUUID());
+  const retireIdempotencyKey = useRef(crypto.randomUUID());
 
   const reviewerUserId = getStoredUser()?.id ?? '';
 
@@ -105,6 +123,110 @@ export function PhysicalDeviceDetailDialog({
       onUpdated();
     } catch {
       toast.error(t('master.physicalDeviceInventory.verifyError'));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleUninstall = async () => {
+    if (!deviceId || !detail?.currentVehicleId || !detail.activeInstallAssignmentId) return;
+    if (!uninstallConfirm || !uninstallReason.trim()) return;
+    if (uninstallReturn && !uninstallWarehouse.trim()) return;
+    if (uninstallDefective && !defectDescription.trim()) return;
+    setSubmitting(true);
+    try {
+      await api.admin.physicalDeviceInventory.uninstallFromVehicle(deviceId, {
+        vehicleId: detail.currentVehicleId,
+        assignmentId: detail.activeInstallAssignmentId,
+        physicalUninstallConfirmed: true,
+        uninstallReason: uninstallReason.trim(),
+        deviceConditionAfterUninstall: uninstallDefective ? 'DEFECTIVE' : 'FUNCTIONAL',
+        physicalReturnConfirmed: uninstallReturn,
+        warehouseLocation: uninstallReturn ? uninstallWarehouse.trim() : undefined,
+        defectDescription: uninstallDefective ? defectDescription.trim() : undefined,
+        idempotencyKey: uninstallIdempotencyKey.current,
+      });
+      toast.success(t('master.physicalDeviceInventory.uninstallSuccess'));
+      await loadDetail();
+      onUpdated();
+    } catch {
+      toast.error(t('master.physicalDeviceInventory.uninstallError'));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleReturnToStock = async () => {
+    if (!deviceId || !returnWarehouse.trim() || !returnConfirm) return;
+    setSubmitting(true);
+    try {
+      await api.admin.physicalDeviceInventory.returnToStock(deviceId, {
+        warehouseLocation: returnWarehouse.trim(),
+        physicalReturnConfirmed: true,
+        idempotencyKey: returnIdempotencyKey.current,
+      });
+      toast.success(t('master.physicalDeviceInventory.returnSuccess'));
+      await loadDetail();
+      onUpdated();
+    } catch {
+      toast.error(t('master.physicalDeviceInventory.returnError'));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleMarkDefective = async () => {
+    if (!deviceId || !defectDescription.trim()) return;
+    setSubmitting(true);
+    try {
+      await api.admin.physicalDeviceInventory.markDefective(deviceId, {
+        defectDescription: defectDescription.trim(),
+        physicalInspectionConfirmed: true,
+        idempotencyKey: defectiveIdempotencyKey.current,
+      });
+      toast.success(t('master.physicalDeviceInventory.defectiveSuccess'));
+      await loadDetail();
+      onUpdated();
+    } catch {
+      toast.error(t('master.physicalDeviceInventory.defectiveError'));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleMarkLost = async () => {
+    if (!deviceId || !lostEvidence.trim()) return;
+    setSubmitting(true);
+    try {
+      await api.admin.physicalDeviceInventory.markLost(deviceId, {
+        lossAttestationKind: 'MASTER_ADMIN_LOSS_CONFIRMATION',
+        lossEvidenceNotes: lostEvidence.trim(),
+        idempotencyKey: lostIdempotencyKey.current,
+      });
+      toast.success(t('master.physicalDeviceInventory.lostSuccess'));
+      await loadDetail();
+      onUpdated();
+    } catch {
+      toast.error(t('master.physicalDeviceInventory.lostError'));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRetire = async () => {
+    if (!deviceId || !retireReason.trim() || !retireConfirm) return;
+    setSubmitting(true);
+    try {
+      await api.admin.physicalDeviceInventory.retire(deviceId, {
+        retireReason: retireReason.trim(),
+        retirementConfirmation: true,
+        idempotencyKey: retireIdempotencyKey.current,
+      });
+      toast.success(t('master.physicalDeviceInventory.retireSuccess'));
+      await loadDetail();
+      onUpdated();
+    } catch {
+      toast.error(t('master.physicalDeviceInventory.retireError'));
     } finally {
       setSubmitting(false);
     }
@@ -180,6 +302,152 @@ export function PhysicalDeviceDetailDialog({
                   onClick={() => void handleVerify()}
                 >
                   {t('master.physicalDeviceInventory.verifySubmit')}
+                </Button>
+              </div>
+            )}
+            {detail.status === 'INSTALLED' && detail.activeInstallAssignmentId && detail.currentVehicleId && (
+              <div className="space-y-3 rounded-lg border border-amber-500/30 p-4">
+                <p className="font-medium text-sm">{t('master.physicalDeviceInventory.uninstallTitle')}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t('master.physicalDeviceInventory.uninstallVehicleHint', {
+                    vehicleId: detail.currentVehicleId,
+                    serial: detail.serialNumberMasked ?? '—',
+                  })}
+                </p>
+                <Label>{t('master.physicalDeviceInventory.uninstallReason')}</Label>
+                <Textarea value={uninstallReason} onChange={(e) => setUninstallReason(e.target.value)} rows={2} />
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="uninstall-defective"
+                    checked={uninstallDefective}
+                    onCheckedChange={(v) => setUninstallDefective(v === true)}
+                  />
+                  <Label htmlFor="uninstall-defective" className="font-normal">
+                    {t('master.physicalDeviceInventory.uninstallDefectiveLabel')}
+                  </Label>
+                </div>
+                {uninstallDefective && (
+                  <>
+                    <Label>{t('master.physicalDeviceInventory.defectDescription')}</Label>
+                    <Textarea value={defectDescription} onChange={(e) => setDefectDescription(e.target.value)} rows={2} />
+                  </>
+                )}
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="uninstall-return"
+                    checked={uninstallReturn}
+                    onCheckedChange={(v) => setUninstallReturn(v === true)}
+                  />
+                  <Label htmlFor="uninstall-return" className="font-normal">
+                    {t('master.physicalDeviceInventory.uninstallReturnLabel')}
+                  </Label>
+                </div>
+                {uninstallReturn && (
+                  <>
+                    <Label>{t('master.physicalDeviceInventory.returnWarehouse')}</Label>
+                    <Input value={uninstallWarehouse} onChange={(e) => setUninstallWarehouse(e.target.value)} />
+                  </>
+                )}
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="uninstall-confirm"
+                    checked={uninstallConfirm}
+                    onCheckedChange={(v) => setUninstallConfirm(v === true)}
+                  />
+                  <Label htmlFor="uninstall-confirm" className="font-normal">
+                    {t('master.physicalDeviceInventory.uninstallConfirmLabel')}
+                  </Label>
+                </div>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  disabled={submitting || !uninstallConfirm || !uninstallReason.trim()}
+                  onClick={() => void handleUninstall()}
+                >
+                  {t('master.physicalDeviceInventory.uninstallSubmit')}
+                </Button>
+              </div>
+            )}
+            {detail.status === 'PENDING_RETURN' && !detail.currentVehicleId && (
+              <div className="space-y-3 rounded-lg border p-4">
+                <p className="font-medium text-sm">{t('master.physicalDeviceInventory.returnTitle')}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t('master.physicalDeviceInventory.pendingReturnHint')}
+                </p>
+                <Label>{t('master.physicalDeviceInventory.returnWarehouse')}</Label>
+                <Input value={returnWarehouse} onChange={(e) => setReturnWarehouse(e.target.value)} />
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="return-confirm"
+                    checked={returnConfirm}
+                    onCheckedChange={(v) => setReturnConfirm(v === true)}
+                  />
+                  <Label htmlFor="return-confirm" className="font-normal">
+                    {t('master.physicalDeviceInventory.returnConfirmLabel')}
+                  </Label>
+                </div>
+                <Button
+                  size="sm"
+                  disabled={submitting || !returnConfirm || !returnWarehouse.trim()}
+                  onClick={() => void handleReturnToStock()}
+                >
+                  {t('master.physicalDeviceInventory.returnSubmit')}
+                </Button>
+              </div>
+            )}
+            {(detail.status === 'AVAILABLE' || detail.status === 'RESERVED') && !detail.currentVehicleId && (
+              <div className="space-y-3 rounded-lg border p-4">
+                <p className="font-medium text-sm">{t('master.physicalDeviceInventory.defectiveTitle')}</p>
+                <Label>{t('master.physicalDeviceInventory.defectDescription')}</Label>
+                <Textarea value={defectDescription} onChange={(e) => setDefectDescription(e.target.value)} rows={2} />
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={submitting || !defectDescription.trim()}
+                  onClick={() => void handleMarkDefective()}
+                >
+                  {t('master.physicalDeviceInventory.defectiveSubmit')}
+                </Button>
+              </div>
+            )}
+            {detail.status !== 'LOST' && detail.status !== 'RETIRED' && !detail.currentVehicleId && (
+              <div className="space-y-3 rounded-lg border p-4">
+                <p className="font-medium text-sm">{t('master.physicalDeviceInventory.lostTitle')}</p>
+                <p className="text-xs text-muted-foreground">{t('master.physicalDeviceInventory.lostHint')}</p>
+                <Label>{t('master.physicalDeviceInventory.lostEvidence')}</Label>
+                <Textarea value={lostEvidence} onChange={(e) => setLostEvidence(e.target.value)} rows={2} />
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={submitting || !lostEvidence.trim()}
+                  onClick={() => void handleMarkLost()}
+                >
+                  {t('master.physicalDeviceInventory.lostSubmit')}
+                </Button>
+              </div>
+            )}
+            {detail.status !== 'RETIRED' && detail.status !== 'INSTALLED' && !detail.currentVehicleId && (
+              <div className="space-y-3 rounded-lg border p-4">
+                <p className="font-medium text-sm">{t('master.physicalDeviceInventory.retireTitle')}</p>
+                <Label>{t('master.physicalDeviceInventory.retireReason')}</Label>
+                <Textarea value={retireReason} onChange={(e) => setRetireReason(e.target.value)} rows={2} />
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="retire-confirm"
+                    checked={retireConfirm}
+                    onCheckedChange={(v) => setRetireConfirm(v === true)}
+                  />
+                  <Label htmlFor="retire-confirm" className="font-normal">
+                    {t('master.physicalDeviceInventory.retireConfirmLabel')}
+                  </Label>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={submitting || !retireConfirm || !retireReason.trim()}
+                  onClick={() => void handleRetire()}
+                >
+                  {t('master.physicalDeviceInventory.retireSubmit')}
                 </Button>
               </div>
             )}

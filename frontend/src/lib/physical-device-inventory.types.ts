@@ -16,6 +16,7 @@ export const PHYSICAL_DEVICE_INVENTORY_STATUSES = [
   'AVAILABLE',
   'RESERVED',
   'INSTALLED',
+  'PENDING_RETURN',
   'DEFECTIVE',
   'LOST',
   'RETIRED',
@@ -88,6 +89,7 @@ export type PhysicalDeviceAuditHistoryItemDto = {
 export type PhysicalDeviceDetailDto = PhysicalDeviceListItemDto & {
   intakeNotes: string | null;
   identityEvidenceSummary: string | null;
+  activeInstallAssignmentId: string | null;
   assignmentHistory: PhysicalDeviceAssignmentHistoryItemDto[];
   auditHistory: PhysicalDeviceAuditHistoryItemDto[];
 };
@@ -105,6 +107,43 @@ export type InstallPhysicalDeviceRequest = {
   installConfirmation: boolean;
   idempotencyKey?: string;
   installNotes?: string;
+};
+
+export type UninstallPhysicalDeviceRequest = {
+  vehicleId: string;
+  assignmentId: string;
+  physicalUninstallConfirmed: boolean;
+  uninstallReason: string;
+  deviceConditionAfterUninstall: 'FUNCTIONAL' | 'DEFECTIVE';
+  physicalReturnConfirmed: boolean;
+  warehouseLocation?: string;
+  defectDescription?: string;
+  idempotencyKey?: string;
+};
+
+export type ReturnPhysicalDeviceToStockRequest = {
+  warehouseLocation: string;
+  physicalReturnConfirmed: boolean;
+  returnNotes?: string;
+  idempotencyKey?: string;
+};
+
+export type MarkPhysicalDeviceDefectiveRequest = {
+  defectDescription: string;
+  physicalInspectionConfirmed: boolean;
+  idempotencyKey?: string;
+};
+
+export type MarkPhysicalDeviceLostRequest = {
+  lossAttestationKind: 'MASTER_ADMIN_LOSS_CONFIRMATION';
+  lossEvidenceNotes: string;
+  idempotencyKey?: string;
+};
+
+export type RetirePhysicalDeviceRequest = {
+  retireReason: string;
+  retirementConfirmation: boolean;
+  idempotencyKey?: string;
 };
 
 export type ListPhysicalDevicesQuery = {

@@ -245,6 +245,9 @@ describe('BatteryV2ReconciliationService', () => {
       rechargeReconcileProducer as any,
       assessmentHandoff as any,
       { reconcilePublicationHandoff: jest.fn(), touchReconciliationFairness: jest.fn() } as any,
+      {
+        resolveRestWindowStartedAt: jest.fn(async (s: { startedAt: Date }) => s.startedAt),
+      } as any,
     );
   });
 

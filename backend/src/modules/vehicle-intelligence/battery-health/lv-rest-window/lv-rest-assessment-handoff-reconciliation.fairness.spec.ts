@@ -227,6 +227,9 @@ function buildFairnessHarness(
       { reconcilePeriodic: jest.fn().mockResolvedValue(0) } as never,
       assessmentHandoff,
       { reconcilePublicationHandoff: jest.fn(), touchReconciliationFairness: jest.fn() } as never,
+      {
+        resolveRestWindowStartedAt: jest.fn(async (s: { startedAt: Date }) => s.startedAt),
+      } as never,
     );
 
   return {

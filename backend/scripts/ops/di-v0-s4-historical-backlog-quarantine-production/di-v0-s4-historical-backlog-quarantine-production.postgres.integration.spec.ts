@@ -7,6 +7,7 @@ import {
   s4aConfigFor,
   s4aManifestFor,
   seedS4aTenant,
+  seedS4aTripDiBoundaryAdmission,
   setKillState,
   type S4aTenant,
   S4A_POSTGRES_LIVE,
@@ -65,6 +66,7 @@ describePg('S4P9B historical backlog quarantine (postgres)', () => {
       tenant.endTime.toISOString(),
       `seg-${randomUUID()}`,
     );
+    await seedS4aTripDiBoundaryAdmission(prisma, { ...tenant, tripId });
     return tripId;
   }
 

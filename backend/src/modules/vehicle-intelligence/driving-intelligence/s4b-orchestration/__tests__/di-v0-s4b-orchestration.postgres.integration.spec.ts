@@ -18,6 +18,7 @@ import {
   retireRegistryStatusOnly,
   S4A_POSTGRES_LIVE,
   seedS4aTenant,
+  seedS4aTripDiBoundaryAdmission,
   setKillState,
   type S4aTenant,
 } from '../../s4a-foundation/__tests__/di-v0-s4a-postgres-harness';
@@ -183,6 +184,7 @@ type FakeExecute = (ctx: DiV0S4ExecutionContext) => Promise<DiV0S4ExecutionOutco
       end.toISOString(),
       `seg-${randomUUID()}`,
     );
+    await seedS4aTripDiBoundaryAdmission(admin, { ...t, tripId: id });
     return id;
   }
 
@@ -376,6 +378,7 @@ type FakeExecute = (ctx: DiV0S4ExecutionContext) => Promise<DiV0S4ExecutionOutco
     const repo = new DiV0S4WorkItemRepository(client(), config);
     const lease = await repo.claim({ leaseOwner: 's4b-d12', pipelineManifest: pipeline.manifest });
     await changeTripBoundary(admin, t.tripId);
+    await seedS4aTripDiBoundaryAdmission(admin, t);
     await repo.holderSupersede(lease, 'BOUNDARY_CHANGED');
     await expect(service.runDiscoveryPass()).resolves.toMatchObject({ created: 1 });
     const [superseded, successor] = await items(t);
@@ -727,6 +730,7 @@ type FakeExecute = (ctx: DiV0S4ExecutionContext) => Promise<DiV0S4ExecutionOutco
       await admin.$executeRaw`
         UPDATE trip_repairs SET applied_at = applied_at - interval '25 hours', created_at = created_at - interval '25 hours'
         WHERE trip_id = ${t.tripId} AND status = 'APPLIED'`;
+      await seedS4aTripDiBoundaryAdmission(admin, t);
       await discovery(config).service.runDiscoveryPass();
       const rows = await items(t);
       expect(rows.filter((r) => r.status !== 'SUPERSEDED')).toHaveLength(1);

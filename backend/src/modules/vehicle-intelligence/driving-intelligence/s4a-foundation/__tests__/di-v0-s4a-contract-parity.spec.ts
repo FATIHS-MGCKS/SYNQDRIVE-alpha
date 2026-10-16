@@ -31,6 +31,8 @@ const PUBLIC_READ_ONLY_REPOSITORY_METHODS = [
   'readExecutionPostcondition',
   'readReplayRoutingContext',
   'readVerifiedPinnedEvidence',
+  'readTripAdmissionScope',
+  'requireTripDiBoundaryAdmissionReleased',
 ] as const;
 
 const REPOSITORY_SOURCE = fs.readFileSync(
@@ -134,7 +136,7 @@ describe('DI V0 S4A contract parity (TS mirror == s4a-contract.v2.json)', () => 
 
     const writeMapMethods = Object.keys(DI_V0_S4_REPOSITORY_WRITE_MAP);
     const readOnlyMethods = [...PUBLIC_READ_ONLY_REPOSITORY_METHODS];
-    expect(readOnlyMethods).toHaveLength(4);
+    expect(readOnlyMethods).toHaveLength(6);
 
     for (const m of readOnlyMethods) {
       expect(writeMapMethods).not.toContain(m);

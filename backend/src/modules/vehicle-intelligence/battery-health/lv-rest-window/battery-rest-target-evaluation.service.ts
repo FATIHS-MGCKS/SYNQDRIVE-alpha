@@ -38,6 +38,8 @@ import {
   LV_REST_TARGET_TYPES,
   type LvRestTargetType,
 } from './lv-rest-window-target.metadata';
+import type { ResolveLvRestCanonicalTargetAnchorResult } from './lv-rest-canonical-target-anchor.policy';
+import { LvRestCanonicalTargetAnchorResolverService } from './lv-rest-canonical-target-anchor.resolver.service';
 
 function withLvRestShadowContextIfActive<T extends Record<string, unknown>>(
   context: T,
@@ -51,6 +53,7 @@ export class BatteryRestTargetEvaluationService {
     private readonly prisma: PrismaService,
     private readonly measurements: BatteryMeasurementService,
     private readonly policyProfiles: BatteryPolicyProfileService,
+    private readonly canonicalAnchorResolver: LvRestCanonicalTargetAnchorResolverService,
   ) {}
 
   async listLvVoltageCandidates(input: {
@@ -122,6 +125,23 @@ export class BatteryRestTargetEvaluationService {
     return trips.map((trip) => trip.startTime);
   }
 
+  private buildCanonicalAnchorProvenance(
+    anchor: ResolveLvRestCanonicalTargetAnchorResult,
+  ): Record<string, unknown> {
+    if (anchor.kind !== 'CANONICAL_REST_SESSION') {
+      if (anchor.kind === 'SESSION_ANCHOR' && anchor.reason !== 'no_match') {
+        return { canonicalAnchorFallbackReason: anchor.reason };
+      }
+      return {};
+    }
+    return {
+      canonicalRestSessionId: anchor.restSessionId,
+      measurementSessionAnchorAt: anchor.measurementSessionStartedAt.toISOString(),
+      canonicalAnchorDeltaMs: anchor.anchorDeltaMs,
+      canonicalAnchorAssociation: anchor.association,
+    };
+  }
+
   async resolveExcludedSourceObservationIds(
     organizationId: string,
     sessionId: string,
@@ -177,6 +197,13 @@ export class BatteryRestTargetEvaluationService {
       input.vehicleId,
     );
     const measurementType = measurementTypeForRestTarget(input.restTargetType);
+    const anchorResolution =
+      await this.canonicalAnchorResolver.resolveForMeasurementSession(
+        input.session,
+      );
+    const restWindowStartedAt = anchorResolution.restWindowStartedAt;
+    const canonicalAnchorProvenance =
+      this.buildCanonicalAnchorProvenance(anchorResolution);
 
     if (!isMeasurementAllowedForPolicy(resolvedPolicy, measurementType)) {
       const unsupported = classifyLvRestSessionOutcome({ unsupportedProfile: true });
@@ -184,13 +211,15 @@ export class BatteryRestTargetEvaluationService {
         organizationId: input.organizationId,
         vehicleId: input.vehicleId,
         session: input.session,
+        restWindowStartedAt,
         restTargetType: input.restTargetType,
         targetAt: restTargetAt(
-          input.session.startedAt,
+          restWindowStartedAt,
           input.restTargetType,
           getBatteryRest60mDelayMs(),
           getBatteryRest6hDelayMs(),
         ),
+        canonicalAnchorProvenance,
         quality: unsupported.quality,
         reasonCode: unsupported.reasonCode,
         reasonLabel: unsupported.reasonLabel,
@@ -210,7 +239,7 @@ export class BatteryRestTargetEvaluationService {
     const qualityWindowMs = getRestTargetQualityWindowMs(input.restTargetType);
     const retryGraceMs = getBatteryRestTargetRetryGraceMs();
     const targetAt = restTargetAt(
-      input.session.startedAt,
+      restWindowStartedAt,
       input.restTargetType,
       getBatteryRest60mDelayMs(),
       getBatteryRest6hDelayMs(),
@@ -219,7 +248,7 @@ export class BatteryRestTargetEvaluationService {
     const candidates = await this.listLvVoltageCandidates({
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
-      restWindowStartedAt: input.session.startedAt,
+      restWindowStartedAt,
       restTargetType: input.restTargetType,
     });
     const excludedSourceObservationIds =
@@ -230,7 +259,7 @@ export class BatteryRestTargetEvaluationService {
       );
     const tripStartsAfterAnchor = await this.resolveTripStartsAfterAnchor(
       input.vehicleId,
-      input.session.startedAt,
+      restWindowStartedAt,
       new Date(targetAt.getTime() + qualityWindowMs + retryGraceMs),
     );
 
@@ -293,12 +322,13 @@ export class BatteryRestTargetEvaluationService {
           ),
           driveProfile: resolvedPolicy.driveProfile,
           chemistry: resolvedPolicy.chemistry,
+          ...canonicalAnchorProvenance,
           ...(isLvRestShadowModeActive() ? { shadowMode: true } : {}),
         },
         context: withLvRestShadowContextIfActive({
           restTargetType: input.restTargetType,
           targetAt: targetAt.toISOString(),
-          restWindowStartedAt: input.session.startedAt.toISOString(),
+          restWindowStartedAt: restWindowStartedAt.toISOString(),
           qualityReasonCode: outcome.reasonCode,
           qualityReasonLabel: outcome.reasonLabel,
           sourceObservationContext: selected.context ?? {},
@@ -320,6 +350,8 @@ export class BatteryRestTargetEvaluationService {
         organizationId: input.organizationId,
         vehicleId: input.vehicleId,
         session: input.session,
+        restWindowStartedAt,
+        canonicalAnchorProvenance,
         restTargetType: input.restTargetType,
         targetAt,
         qualityWindowMs,
@@ -354,6 +386,8 @@ export class BatteryRestTargetEvaluationService {
     organizationId: string;
     vehicleId: string;
     session: BatteryMeasurementSession;
+    restWindowStartedAt: Date;
+    canonicalAnchorProvenance: Record<string, unknown>;
     restTargetType: Extract<LvRestTargetType, 'REST_60M' | 'REST_6H'>;
     targetAt: Date;
     quality: BatteryMeasurementQuality;
@@ -385,12 +419,13 @@ export class BatteryRestTargetEvaluationService {
         publicationEligible: resolveLvRestShadowPublicationEligible(),
         driveProfile: input.driveProfile,
         chemistry: input.chemistry,
+        ...input.canonicalAnchorProvenance,
         ...(isLvRestShadowModeActive() ? { shadowMode: true } : {}),
       },
       context: withLvRestShadowContextIfActive({
         restTargetType: input.restTargetType,
         targetAt: input.targetAt.toISOString(),
-        restWindowStartedAt: input.session.startedAt.toISOString(),
+        restWindowStartedAt: input.restWindowStartedAt.toISOString(),
         qualityReasonCode: input.reasonCode,
         qualityReasonLabel: input.reasonLabel,
       }),
@@ -401,6 +436,8 @@ export class BatteryRestTargetEvaluationService {
     organizationId: string;
     vehicleId: string;
     session: BatteryMeasurementSession;
+    restWindowStartedAt: Date;
+    canonicalAnchorProvenance: Record<string, unknown>;
     restTargetType: Extract<LvRestTargetType, 'REST_60M' | 'REST_6H'>;
     targetAt: Date;
     qualityWindowMs: number;
@@ -436,12 +473,13 @@ export class BatteryRestTargetEvaluationService {
         driveProfile: input.driveProfile,
         chemistry: input.chemistry,
         candidateCount: input.candidateCount,
+        ...input.canonicalAnchorProvenance,
         ...(isLvRestShadowModeActive() ? { shadowMode: true } : {}),
       },
       context: withLvRestShadowContextIfActive({
         restTargetType: input.restTargetType,
         targetAt: input.targetAt.toISOString(),
-        restWindowStartedAt: input.session.startedAt.toISOString(),
+        restWindowStartedAt: input.restWindowStartedAt.toISOString(),
         qualityReasonCode: input.reasonCode,
         qualityReasonLabel: input.reasonLabel,
         tripStartsAfterAnchor: input.tripStartsAfterAnchor.map((d) =>

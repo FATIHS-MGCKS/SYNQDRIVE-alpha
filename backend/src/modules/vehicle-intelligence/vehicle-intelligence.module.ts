@@ -237,6 +237,7 @@ import { QUEUE_NAMES } from '../../workers/queues/queue-names';
 import { TripDecisionEngine } from './trips/decision/trip-decision.engine';
 import { TripDetectionPolicyResolver } from './trips/policy/trip-detection-policy.resolver';
 import { TripReconciliationService } from './trips/reconciliation/trip-reconciliation.service';
+import { TripDiBoundaryAdmissionService } from './trips/di-boundary-admission/trip-di-boundary-admission.service';
 import { DetectorRegistry } from './trips/detectors/detector.registry';
 import { SnapshotEvidenceEvaluator } from './trips/detectors/snapshot-evidence.evaluator';
 import { StartConfirmationDetector } from './trips/detectors/start-confirmation.detector';
@@ -270,9 +271,7 @@ import { BatteryCapabilityPreflightRepository } from './battery-health/capabilit
 import { BatteryCapabilityPreflightService } from './battery-health/capability-preflight/battery-capability-preflight.service';
 import { BatteryCapabilityRefreshService } from './battery-health/capability-preflight/battery-capability-refresh.service';
 import { BatteryCapabilityMeasurementGateService } from './battery-health/capability-preflight/battery-capability-measurement-gate.service';
-import { LvRestWindowStateMachineService } from './battery-health/lv-rest-window/lv-rest-window.service';
 import { LvRestWindowIngestionBridgeService } from './battery-health/lv-rest-window/lv-rest-window-ingestion-bridge.service';
-import { LvRestWindowSessionArmingService } from './battery-health/lv-rest-window/lv-rest-window-session-arming.service';
 import { BatteryRestTargetEvaluationService } from './battery-health/lv-rest-window/battery-rest-target-evaluation.service';
 import { LvRestShadowSummaryService } from './battery-health/lv-rest-window/lv-rest-shadow-summary.service';
 import { LvStartProxyDiagnosticService } from './battery-health/lv-start-proxy/lv-start-proxy-diagnostic.service';
@@ -297,6 +296,7 @@ import { VsiSignalProfileInspectionController } from './vehicle-signal-intellige
 import { VsiCapabilityResolverController } from './vehicle-signal-intelligence/vsi-capability-resolver.controller';
 import { VsiCapabilityResolverService } from './vehicle-signal-intelligence/vsi-capability-resolver.service';
 import { VsiCapabilityResolverRepository } from './vehicle-signal-intelligence/vsi-capability-resolver.repository';
+import { VsiApdsP5ReadonlyService } from './vehicle-signal-intelligence/vsi-apds-p5.service';
 import { DiV0TripSpeedQualityModule } from './driving-intelligence/trip-speed-quality/di-v0-trip-speed-quality.module';
 
 @Module({
@@ -337,6 +337,7 @@ import { DiV0TripSpeedQualityModule } from './driving-intelligence/trip-speed-qu
   controllers: [VehicleIntelligenceController, DamagesOrgController, DrivingDecisionsController, VehicleBatteryReferenceCapacityController, HvCapacityShadowEvaluationController, BatteryShadowValidationController, ReferenceCaptureController, VsiSignalProfileInspectionController, VsiCapabilityResolverController],
   providers: [
     VsiCapabilityResolverRepository,
+    VsiApdsP5ReadonlyService,
     VsiCapabilityResolverService,
     VehicleIntelligencePermissionGuard,
     BatteryService,
@@ -480,9 +481,7 @@ import { DiV0TripSpeedQualityModule } from './driving-intelligence/trip-speed-qu
     BatteryCapabilityPreflightService,
     BatteryCapabilityRefreshService,
     BatteryCapabilityMeasurementGateService,
-    LvRestWindowStateMachineService,
     LvRestWindowIngestionBridgeService,
-    LvRestWindowSessionArmingService,
     BatteryRestTargetEvaluationService,
     LvRestShadowSummaryService,
     LvStartProxyDiagnosticService,
@@ -588,6 +587,7 @@ import { DiV0TripSpeedQualityModule } from './driving-intelligence/trip-speed-qu
     TripDecisionEngine,
     TripDetectionPolicyResolver,
     TripReconciliationService,
+    TripDiBoundaryAdmissionService,
     // Detector instances (all implement TripDetector interface)
     SnapshotEvidenceEvaluator,
     StartConfirmationDetector,
@@ -731,9 +731,7 @@ import { DiV0TripSpeedQualityModule } from './driving-intelligence/trip-speed-qu
     BatteryCapabilityPreflightService,
     BatteryCapabilityRefreshService,
     BatteryCapabilityMeasurementGateService,
-    LvRestWindowStateMachineService,
     LvRestWindowIngestionBridgeService,
-    LvRestWindowSessionArmingService,
     BatteryRestTargetEvaluationService,
     LvRestShadowSummaryService,
     LvStartProxyDiagnosticService,

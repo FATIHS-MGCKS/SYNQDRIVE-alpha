@@ -78,6 +78,8 @@ import {
   type BatteryV2ReconciliationCategory,
 } from '../observability/battery-v2-prometheus.metrics';
 import { formatBatteryV2PipelineLog } from '../observability/battery-v2-pipeline-observability.util';
+import { LvRestCanonicalTargetAnchorResolverService } from '../lv-rest-window/lv-rest-canonical-target-anchor.resolver.service';
+import { LV_REST_CANONICAL_MEASUREMENT_SESSION_SCHEDULE_SKEW_MS } from '../lv-rest-window/lv-rest-canonical-target-anchor.policy';
 import { LateTripAssociationService } from '../generalized-evidence/late-trip-association.service';
 
 const TRIP_LOOKBACK_MS = 7 * 24 * 3600_000;
@@ -116,6 +118,7 @@ export class BatteryV2ReconciliationService {
     private readonly rechargeReconcileProducer: HvRechargeSessionReconcileProducerService,
     private readonly assessmentHandoff: LvRestAssessmentHandoffService,
     private readonly publicationHandoff: LvPublicationHandoffService,
+    private readonly canonicalAnchorResolver: LvRestCanonicalTargetAnchorResolverService,
     @Optional() private readonly lateTripAssociation?: LateTripAssociationService,
     @Optional() private readonly metrics?: TripMetricsService,
   ) {}
@@ -465,7 +468,12 @@ export class BatteryV2ReconciliationService {
             BatteryMeasurementSessionStatus.COMPLETED,
           ],
         },
-        startedAt: { lte: dueBefore60m },
+        startedAt: {
+          lte: new Date(
+            dueBefore60m.getTime() +
+              LV_REST_CANONICAL_MEASUREMENT_SESSION_SCHEDULE_SKEW_MS,
+          ),
+        },
       },
       take: batch,
       select: {
@@ -476,6 +484,9 @@ export class BatteryV2ReconciliationService {
         idempotencyKey: true,
         metadata: true,
         status: true,
+        tripId: true,
+        sourceEntityType: true,
+        sourceEntityId: true,
       },
     });
 
@@ -496,10 +507,13 @@ export class BatteryV2ReconciliationService {
         LV_REST_TARGET_TYPES.REST_6H,
       ] as const;
 
+      const effectiveRestWindowStartedAt =
+        await this.canonicalAnchorResolver.resolveRestWindowStartedAt(session);
+
       for (const targetType of targetTypes) {
         const dueBefore =
           targetType === LV_REST_TARGET_TYPES.REST_6H ? dueBefore6h : dueBefore60m;
-        if (session.startedAt.getTime() > dueBefore.getTime()) {
+        if (effectiveRestWindowStartedAt.getTime() > dueBefore.getTime()) {
           continue;
         }
         if (isLvRestTargetTerminal(sessionMetadata, targetType)) {
@@ -547,7 +561,7 @@ export class BatteryV2ReconciliationService {
                 vehicleId: session.vehicleId,
                 sessionId: session.id,
                 restWindowId: session.idempotencyKey,
-                restWindowStartedAt: session.startedAt,
+                restWindowStartedAt: effectiveRestWindowStartedAt,
                 now: new Date(now),
                 recovery: true,
               })
@@ -556,7 +570,7 @@ export class BatteryV2ReconciliationService {
                 vehicleId: session.vehicleId,
                 sessionId: session.id,
                 restWindowId: session.idempotencyKey,
-                restWindowStartedAt: session.startedAt,
+                restWindowStartedAt: effectiveRestWindowStartedAt,
                 now: new Date(now),
                 recovery: true,
               });
@@ -632,6 +646,9 @@ export class BatteryV2ReconciliationService {
           startedAt: true,
           metadata: true,
           status: true,
+          tripId: true,
+          sourceEntityType: true,
+          sourceEntityId: true,
         },
       });
       if (!session) {
@@ -648,11 +665,20 @@ export class BatteryV2ReconciliationService {
         continue;
       }
 
+      const effectiveRestWindowStartedAt =
+        await this.canonicalAnchorResolver.resolveRestWindowStartedAt(session);
+
       const targets: Array<'REST_60M' | 'REST_6H'> = [];
-      if (!row.rest60mCapturedAt && now - startedAt.getTime() >= REST_60M_MS) {
+      if (
+        !row.rest60mCapturedAt &&
+        now - effectiveRestWindowStartedAt.getTime() >= REST_60M_MS
+      ) {
         targets.push('REST_60M');
       }
-      if (!row.rest6hCapturedAt && now - startedAt.getTime() >= REST_6H_MS) {
+      if (
+        !row.rest6hCapturedAt &&
+        now - effectiveRestWindowStartedAt.getTime() >= REST_6H_MS
+      ) {
         targets.push('REST_6H');
       }
 
@@ -709,7 +735,7 @@ export class BatteryV2ReconciliationService {
                 vehicleId: session.vehicleId,
                 sessionId: session.id,
                 restWindowId,
-                restWindowStartedAt: session.startedAt,
+                restWindowStartedAt: effectiveRestWindowStartedAt,
                 now: new Date(now),
               })
             : await this.restTargetProducer.scheduleRest6h({
@@ -717,7 +743,7 @@ export class BatteryV2ReconciliationService {
                 vehicleId: session.vehicleId,
                 sessionId: session.id,
                 restWindowId,
-                restWindowStartedAt: session.startedAt,
+                restWindowStartedAt: effectiveRestWindowStartedAt,
                 now: new Date(now),
               });
         if (scheduleResult.scheduled || scheduleResult.bullJobId) {
