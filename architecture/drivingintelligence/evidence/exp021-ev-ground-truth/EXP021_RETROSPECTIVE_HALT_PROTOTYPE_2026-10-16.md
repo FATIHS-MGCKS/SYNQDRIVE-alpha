@@ -93,4 +93,6 @@ Parameter in `exp021-retrospective-halt-prototype.lib.ts` (`GEOMETRY_THRESHOLDS`
 | **Karte B** | Overpass **POST** + `User-Agent` (406 ohne UA); 658 Signale im BBOX — Klassifikation unverändert, Kontext in `mapContextVariantB` |
 | **Gegenprüfung** | Alle natürlichen Lücken + synthetische 6s/12s-Masken (`SYNTHETIC_GAP_BATTERY.json`) |
 
-**Referenzlauf (v0_2):** 5/5 Kandidatenabdeckung, **5/5** video-konsistente Halt-/Slow-roll-Klassifikation der Haupthalte; kein Anspruch auf Blindvalidierung.
+**Referenzlauf (v0_2):** 5/5 Kandidatenabdeckung; ehrliche Nachbewertung siehe eingefrorene Review (`forensic-readonly-exports-2026-10-16-retrospective-halt-v2-freeze/`) — keine Sammelkategorie „5/5 korrekt“.
+
+**Freeze-Review:** `npm run exp021:retrospective-halt-v0-2-freeze-review -- --out-dir …/retrospective-halt-v2-freeze` · Parameter-Hash in `V0_2_FREEZE_MANIFEST.json`.
