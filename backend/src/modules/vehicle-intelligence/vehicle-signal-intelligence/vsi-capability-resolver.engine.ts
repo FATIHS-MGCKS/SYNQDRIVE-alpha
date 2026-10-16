@@ -3,7 +3,8 @@ import {
   VSI_PROFILE_CONTRACT_VERSION_V1,
 } from './vsi-profile.types';
 import {
-  isConsumerRequirementDomainApproved,
+  isConsumerRequirementDesignContractOnly,
+  isConsumerRequirementRuntimeApproved,
   listConsumerRequirements,
 } from './vsi-consumer-requirements.registry';
 import {
@@ -104,7 +105,33 @@ function evaluateRequirement(
   const reasons: VsiCapabilityResolverReasonCode[] = [];
   const evaluations: VsiCapabilitySignalEvaluationV1[] = [];
 
-  if (!isConsumerRequirementDomainApproved(req.domainApprovalStatus)) {
+  if (isConsumerRequirementDesignContractOnly(req.domainApprovalStatus)) {
+    const designReason = VsiCapabilityResolverReasonCode.REQUIREMENT_RUNTIME_APPROVAL_ABSENT;
+    return {
+      evaluations: req.canonicalSignalKeys.map((key) => {
+        const signalRow = ctx.signals.find((s) => s.canonicalSignalKey === key);
+        const freshnessAtEvaluation = computeSignalFreshnessAtEvaluation({
+          lastSourceTimestamp: signalRow?.lastSourceTimestamp ?? null,
+          evaluationTimeMs,
+        });
+        return {
+          canonicalSignalKey: key,
+          satisfied: false,
+          empiricalObservation: signalRow?.empiricalObservation ?? null,
+          freshnessAtEvaluation,
+          qualityClassification: signalRow?.qualityClassification ?? null,
+          confidenceLevel: signalRow?.confidenceLevel ?? null,
+          lastSourceTimestamp: signalRow?.lastSourceTimestamp ?? null,
+          limitations: signalRow ? [...signalRow.limitations] : [],
+          reasonCodes: [designReason],
+        };
+      }),
+      satisfied: false,
+      reasons: [designReason],
+    };
+  }
+
+  if (!isConsumerRequirementRuntimeApproved(req.domainApprovalStatus)) {
     return {
       evaluations: req.canonicalSignalKeys.map((key) => ({
         canonicalSignalKey: key,
@@ -397,6 +424,16 @@ export function resolveVsiCapabilities(
     ) {
       missingRequirementIds.push(req.requirementId);
       reasonCodes.push(...outcome.reasons);
+      allEligible = false;
+      continue;
+    }
+
+    if (
+      outcome.reasons.includes(VsiCapabilityResolverReasonCode.REQUIREMENT_RUNTIME_APPROVAL_ABSENT)
+    ) {
+      missingRequirementIds.push(req.requirementId);
+      reasonCodes.push(...outcome.reasons);
+      limitations.push('DESIGN_CONTRACT_ONLY_NO_RUNTIME_ELIGIBILITY');
       allEligible = false;
       continue;
     }

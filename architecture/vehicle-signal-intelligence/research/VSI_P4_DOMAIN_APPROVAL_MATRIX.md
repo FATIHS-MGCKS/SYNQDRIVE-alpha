@@ -10,7 +10,7 @@
 | `di.brake_pedal_position.observed` | driving_intelligence | behavior_brake_evidence | driving_intelligence | **PENDING** | — | `brake_pedal_position` not materialized in profile v2 |
 | `trip.provider_source_timestamp.fresh` | trip_detection | trip_boundary_support_signals | trip_detection | **PENDING** | — | Trip FSM owns boundaries |
 | `dtc.diagnostic_trouble_code.observed_or_empty` | dtc_diagnostics | dtc_snapshot_readiness | dtc_diagnostics | **PENDING** | — | No DTC algorithm change |
-| `apds.profile_revision.correlation` | apds | shadow_demand_profile_read | apds | **APPROVED_DESIGN_CONTRACT** | — | Adapter/design sign-off only; **no APDS shadow runtime wiring**; **no polling changes** in P4 |
+| `apds.profile_revision.correlation` | apds | shadow_demand_profile_read | apds | **APPROVED_DESIGN_CONTRACT** | — | Design/contract inspection only — resolver returns **NOT_ASSESSABLE** (`REQUIREMENT_RUNTIME_APPROVAL_ABSENT`); **never runtime ELIGIBLE** without separate `APPROVED` |
 
 ## Remaining sign-off obligations (production runtime)
 

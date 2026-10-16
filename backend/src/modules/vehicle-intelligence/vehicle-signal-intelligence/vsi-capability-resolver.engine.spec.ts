@@ -573,7 +573,7 @@ describe('vsi-capability-resolver.engine', () => {
     );
   });
 
-  it('APDS design contract can assess without runtime domain thresholds', () => {
+  it('APDS design approved + fresh signal → NOT_ASSESSABLE for runtime eligibility', () => {
     const evalAt = new Date('2026-10-16T12:00:00.000Z');
     const result = resolveVsiCapabilities(
       {
@@ -594,6 +594,57 @@ describe('vsi-capability-resolver.engine', () => {
         activeSourceLinkCount: 1,
       },
     );
+    expect(result.resolutionStatus).toBe(VsiCapabilityResolutionStatus.NOT_ASSESSABLE);
+    expect(result.reasonCodes).toContain(
+      VsiCapabilityResolverReasonCode.REQUIREMENT_RUNTIME_APPROVAL_ABSENT,
+    );
+    expect(result.signalEvaluations[0]?.empiricalObservation).toBe('OBSERVED');
+  });
+
+  it('runtime-approved test requirement → ELIGIBLE when evidence passes', () => {
+    const evalAt = new Date('2026-10-16T12:00:00.000Z');
+    const result = resolveVsiCapabilities(
+      {
+        ...baseInput,
+        consumerModule: VsiConsumerModuleId.APDS,
+        featureId: 'fixture_runtime_eligible',
+        evaluationTime: evalAt,
+      },
+      {
+        profile: v2Profile([
+          signal('provider_source_timestamp', {
+            lastSourceTimestamp: evalAt.toISOString(),
+          }),
+        ]),
+        linkActive: true,
+        linkSuperseded: false,
+        tenantMatch: true,
+        activeSourceLinkCount: 1,
+      },
+      testRegistry,
+    );
     expect(result.resolutionStatus).toBe(VsiCapabilityResolutionStatus.ELIGIBLE);
+  });
+
+  it('PENDING_DOMAIN_APPROVAL never ELIGIBLE', () => {
+    const result = resolveVsiCapabilities(
+      {
+        ...baseInput,
+        consumerModule: VsiConsumerModuleId.BATTERY_V2,
+        featureId: 'lv_measurement_gate',
+        evaluationTime: new Date(),
+      },
+      {
+        profile: v2Profile([signal('lv_voltage')]),
+        linkActive: true,
+        linkSuperseded: false,
+        tenantMatch: true,
+        activeSourceLinkCount: 1,
+      },
+    );
+    expect(result.resolutionStatus).not.toBe(VsiCapabilityResolutionStatus.ELIGIBLE);
+    expect(result.reasonCodes).toContain(
+      VsiCapabilityResolverReasonCode.REQUIREMENT_PENDING_DOMAIN_APPROVAL,
+    );
   });
 });

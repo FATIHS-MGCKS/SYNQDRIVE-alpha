@@ -8,13 +8,17 @@ import {
 
 const pending = VsiDomainApprovalStatus.PENDING_DOMAIN_APPROVAL;
 
-export function isConsumerRequirementDomainApproved(
+/** Production runtime ELIGIBLE gate — design-contract-only specs are excluded. */
+export function isConsumerRequirementRuntimeApproved(
   status: VsiDomainApprovalStatus,
 ): boolean {
-  return (
-    status === VsiDomainApprovalStatus.APPROVED ||
-    status === VsiDomainApprovalStatus.APPROVED_DESIGN_CONTRACT
-  );
+  return status === VsiDomainApprovalStatus.APPROVED;
+}
+
+export function isConsumerRequirementDesignContractOnly(
+  status: VsiDomainApprovalStatus,
+): boolean {
+  return status === VsiDomainApprovalStatus.APPROVED_DESIGN_CONTRACT;
 }
 
 /** Versioned registry — do not invent domain thresholds; null maxSignalAgeMs ⇒ pending. */
