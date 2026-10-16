@@ -294,6 +294,9 @@ import { FindingBridgeService } from './findings/finding-bridge.service';
 import { DiV0S4RuntimeModule } from './driving-intelligence/s4-runtime/di-v0-s4-runtime.module';
 import { VsiReadonlySignalComposerModule } from './vehicle-signal-intelligence/vsi-readonly-composer.module';
 import { VsiSignalProfileInspectionController } from './vehicle-signal-intelligence/vsi-signal-profile-inspection.controller';
+import { VsiCapabilityResolverController } from './vehicle-signal-intelligence/vsi-capability-resolver.controller';
+import { VsiCapabilityResolverService } from './vehicle-signal-intelligence/vsi-capability-resolver.service';
+import { VsiCapabilityResolverRepository } from './vehicle-signal-intelligence/vsi-capability-resolver.repository';
 import { DiV0TripSpeedQualityModule } from './driving-intelligence/trip-speed-quality/di-v0-trip-speed-quality.module';
 
 @Module({
@@ -331,8 +334,10 @@ import { DiV0TripSpeedQualityModule } from './driving-intelligence/trip-speed-qu
       { name: QUEUE_NAMES.REFERENCE_CAPTURE_EXP021_MATURATION_SHADOW },
     ),
   ],
-  controllers: [VehicleIntelligenceController, DamagesOrgController, DrivingDecisionsController, VehicleBatteryReferenceCapacityController, HvCapacityShadowEvaluationController, BatteryShadowValidationController, ReferenceCaptureController, VsiSignalProfileInspectionController],
+  controllers: [VehicleIntelligenceController, DamagesOrgController, DrivingDecisionsController, VehicleBatteryReferenceCapacityController, HvCapacityShadowEvaluationController, BatteryShadowValidationController, ReferenceCaptureController, VsiSignalProfileInspectionController, VsiCapabilityResolverController],
   providers: [
+    VsiCapabilityResolverRepository,
+    VsiCapabilityResolverService,
     VehicleIntelligencePermissionGuard,
     BatteryService,
     TiresService,

@@ -91,7 +91,7 @@ Reference: VDC change ledger APDS-9.x evidence; `vsi-apds-consumer.adapter.contr
 ## Driving Intelligence ↔ VSI
 
 - EXP021 speed QC and trip projections consume trip boundaries from Trip Detection / DIMO Segments — not VSI.
-- VSI may later supply **device capability** context for assessability (e.g. GPS numeric availability) via P4 resolver — not in P0+P1.
+- **P4 (in PR):** read-only capability resolver supplies assessability context per link (`vsi-capability-resolver`); does not change EXP021 speed QC algorithms or trip boundaries.
 
 ---
 
