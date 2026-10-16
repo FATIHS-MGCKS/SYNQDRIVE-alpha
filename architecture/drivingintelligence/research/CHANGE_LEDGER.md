@@ -2026,3 +2026,11 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | `evidence/exp021-ev-ground-truth/` protocol + evaluation + video ingest procedure; ops CLI `exp021:ev-ground-truth:baseline`; frozen `pre-deploy/` manifest + 1136-row per-second replay (Tesla trip `358d0158-…`, Production `a0ce01f…`) |
 | WHY | Durable owner-confirmed EV reference for speed/accel/regen evaluation **after** joint deploy; separate from deploy scope |
 | NON_EFFECTS | No algorithm/QC/gate changes; no deploy; no admission writes; no video analysis; no provider calls |
+
+### EXP-021 EV Ground Truth — trip-start forensic (2026-10-16, read-only)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `EXP021_EV_GROUND_TRUTH_TRIP_START_FORENSIC_2026-10-16.md`; owner `TC_00062.MOV` overlay **05:37:41** Berlin vs persisted `03:36:00Z`; replay milestone table; coverage sensitivity if start at overlay |
+| WHY | Owner confirmed reverse-at-video-start; quantify early-start effect on 1136 s grid / 68.2% trusted coverage without boundary mutation |
+| NON_EFFECTS | `pre-deploy/` SHA256SUMS unchanged; no fetch/deploy/tuning; `VIDEO_RECEIVED_AND_ANALYZED` still NO |

@@ -27,6 +27,7 @@ Owner-reported window (Berlin): `2026-10-16T05:36:00+02:00` → `2026-10-16T05:5
 | [EXP021_EV_GROUND_TRUTH_EVALUATION_SCHEMA.md](./EXP021_EV_GROUND_TRUTH_EVALUATION_SCHEMA.md) | Metrics and comparison schema vs baselines |
 | [EXP021_EV_GROUND_TRUTH_VIDEO_PROTOCOL.md](./EXP021_EV_GROUND_TRUTH_VIDEO_PROTOCOL.md) | Video ingest + sync (not executed until file received) |
 | [EXP021_EV_GROUND_TRUTH_PRE_DEPLOY_BASELINE.md](./EXP021_EV_GROUND_TRUTH_PRE_DEPLOY_BASELINE.md) | Pre-deploy read-only baseline summary |
+| [EXP021_EV_GROUND_TRUTH_TRIP_START_FORENSIC_2026-10-16.md](./EXP021_EV_GROUND_TRUTH_TRIP_START_FORENSIC_2026-10-16.md) | Trip-start read-only forensic (`TC_00062.MOV` owner context; frozen replay) |
 | [POST_DEPLOY_VERIFICATION_PLAN.md](./POST_DEPLOY_VERIFICATION_PLAN.md) | Post-deploy read-only checklist (pending) |
 
 ## Frozen baseline artifacts (`pre-deploy/`)
@@ -54,7 +55,7 @@ npm run exp021:ev-ground-truth:baseline -- --out-dir ../architecture/drivinginte
 
 | Flag | Value |
 |------|--------|
-| `VIDEO_RECEIVED_AND_ANALYZED` | **NO** (owner holds video; not in repo) |
+| `VIDEO_RECEIVED_AND_ANALYZED` | **NO** (owner holds `TC_00062.MOV`; not in repo; trip-start forensic uses owner clock overlay **05:37:41** Berlin) |
 | `VIDEO_PROTOCOL_READY` | **YES** |
 | `POST_DEPLOY_VERIFICATION` | **NOT_RUN** |
 | `PRODUCTION_MUTATIONS` | **NONE** |
