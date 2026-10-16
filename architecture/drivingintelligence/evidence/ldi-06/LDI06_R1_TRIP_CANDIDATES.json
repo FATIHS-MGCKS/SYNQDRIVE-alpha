@@ -1,0 +1,936 @@
+{
+  "schema": "LDI06_R1_TRIP_CANDIDATES_V1",
+  "headSha": "c1013265bc10af7ac5fe7e86ff372772373acd36",
+  "targetVehicleId": "8c850ff1-4201-432b-af2e-2711dbc7ca48",
+  "rankingCriteria": [
+    "both_accel_and_brake",
+    "gps_l3_trusted",
+    "hf_obd_numeric",
+    "temporal_overlap"
+  ],
+  "candidateCount": 45,
+  "candidates": [
+    {
+      "tripId": "a682d3df-545a-4a8a-aa14-d45c23fae985",
+      "tripStartUtc": "2026-07-21T13:47:54.000Z",
+      "tripEndUtc": "2026-07-21T14:46:31.000Z",
+      "nativeEventCount": 6,
+      "harshAccelerationCount": 4,
+      "harshBrakingCount": 1,
+      "harshCorneringCount": 1,
+      "hasBothAccelAndBrake": true,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 45
+    },
+    {
+      "tripId": "0a8ef26c-b346-4e4a-a6d2-2900c3b683b0",
+      "tripStartUtc": "2026-07-21T12:47:00.000Z",
+      "tripEndUtc": "2026-07-21T13:38:20.000Z",
+      "nativeEventCount": 5,
+      "harshAccelerationCount": 2,
+      "harshBrakingCount": 3,
+      "harshCorneringCount": 0,
+      "hasBothAccelAndBrake": true,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 44
+    },
+    {
+      "tripId": "3ce45be6-d0c6-4286-baed-b514f5e78091",
+      "tripStartUtc": "2026-07-18T18:18:00.000Z",
+      "tripEndUtc": "2026-07-18T19:57:00.000Z",
+      "nativeEventCount": 2,
+      "harshAccelerationCount": 1,
+      "harshBrakingCount": 1,
+      "harshCorneringCount": 0,
+      "hasBothAccelAndBrake": true,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 43
+    },
+    {
+      "tripId": "1215ac53-0607-43cc-9c8b-7b9034abe5a4",
+      "tripStartUtc": "2026-07-19T11:16:00.000Z",
+      "tripEndUtc": "2026-07-19T12:39:00.000Z",
+      "nativeEventCount": 2,
+      "harshAccelerationCount": 1,
+      "harshBrakingCount": 1,
+      "harshCorneringCount": 0,
+      "hasBothAccelAndBrake": true,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 42
+    },
+    {
+      "tripId": "f3e1fa83-d1e3-46b9-9ab8-14b4676ec5c9",
+      "tripStartUtc": "2026-10-13T15:53:00.431Z",
+      "tripEndUtc": "2026-10-13T15:59:01.241Z",
+      "nativeEventCount": 2,
+      "harshAccelerationCount": 0,
+      "harshBrakingCount": 0,
+      "harshCorneringCount": 2,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": "31820150-03b7-4019-8e3d-84c2b1d0b8a5",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:79635496216a2588666db3f1be87609f803d073421db6ebc64e65f7c88b264fa",
+      "coverage": {
+        "shadowIntervalCount": 362,
+        "gpsL3TrustedFraction": 0.8121546961325967,
+        "hfRpmOrThrottleFraction": 0.1685082872928177,
+        "obdNumericFraction": 0.1685082872928177,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 41
+    },
+    {
+      "tripId": "7b3fe123-15a1-4c19-bb78-20ef986b8e7b",
+      "tripStartUtc": "2026-10-13T17:19:00.000Z",
+      "tripEndUtc": "2026-10-13T17:29:42.000Z",
+      "nativeEventCount": 1,
+      "harshAccelerationCount": 0,
+      "harshBrakingCount": 0,
+      "harshCorneringCount": 1,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": "fc77b9e9-f724-48e7-9d41-b6fa31ac01e8",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:a11ed443d619464dcf157a8235898f99ddfce78342b050632d3a1903a756f946",
+      "coverage": {
+        "shadowIntervalCount": 642,
+        "gpsL3TrustedFraction": 0.6697819314641744,
+        "hfRpmOrThrottleFraction": 0.14797507788161993,
+        "obdNumericFraction": 0.14797507788161993,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 40
+    },
+    {
+      "tripId": "12bc216b-a593-4c5f-a8fb-0e934fa77a32",
+      "tripStartUtc": "2026-10-13T16:10:00.000Z",
+      "tripEndUtc": "2026-10-13T16:40:00.000Z",
+      "nativeEventCount": 3,
+      "harshAccelerationCount": 0,
+      "harshBrakingCount": 0,
+      "harshCorneringCount": 3,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": "f6990fa3-defb-4085-a40a-a1d8e1061b6f",
+      "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:b99bc048135c21fe40f301138e93aebca8d2fb1bf3fc8379c2576e55b5a50360",
+      "coverage": {
+        "shadowIntervalCount": 603,
+        "gpsL3TrustedFraction": 0.49087893864013266,
+        "hfRpmOrThrottleFraction": 0.13432835820895522,
+        "obdNumericFraction": 0.13432835820895522,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 39
+    },
+    {
+      "tripId": "074a1ae2-9523-4f59-b26f-b916f1926adc",
+      "tripStartUtc": "2026-08-08T06:52:00.000Z",
+      "tripEndUtc": "2026-08-08T08:16:19.510Z",
+      "nativeEventCount": 28,
+      "harshAccelerationCount": 0,
+      "harshBrakingCount": 0,
+      "harshCorneringCount": 28,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 38
+    },
+    {
+      "tripId": "2b3231d0-2279-40ef-8176-be5ab5ab473c",
+      "tripStartUtc": "2026-07-20T14:01:00.000Z",
+      "tripEndUtc": "2026-07-20T15:38:06.000Z",
+      "nativeEventCount": 15,
+      "harshAccelerationCount": 1,
+      "harshBrakingCount": 0,
+      "harshCorneringCount": 14,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 37
+    },
+    {
+      "tripId": "2a410e21-c30d-4caa-9357-b531dfd6c698",
+      "tripStartUtc": "2026-08-08T08:35:39.640Z",
+      "tripEndUtc": "2026-08-08T10:28:46.000Z",
+      "nativeEventCount": 10,
+      "harshAccelerationCount": 0,
+      "harshBrakingCount": 2,
+      "harshCorneringCount": 8,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 36
+    },
+    {
+      "tripId": "0a5814f6-7fc8-4f3e-990d-5ff79013d3e1",
+      "tripStartUtc": "2026-07-03T13:09:35.849Z",
+      "tripEndUtc": "2026-07-03T13:42:48.712Z",
+      "nativeEventCount": 6,
+      "harshAccelerationCount": 0,
+      "harshBrakingCount": 0,
+      "harshCorneringCount": 6,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 35
+    },
+    {
+      "tripId": "02621979-19c0-4f82-8ae6-bb28dcb88f1f",
+      "tripStartUtc": "2026-10-03T14:35:00.000Z",
+      "tripEndUtc": "2026-10-03T14:57:05.000Z",
+      "nativeEventCount": 5,
+      "harshAccelerationCount": 0,
+      "harshBrakingCount": 0,
+      "harshCorneringCount": 5,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 34
+    },
+    {
+      "tripId": "5ef6eb71-c77b-4e76-9ff7-cf9392f7bffb",
+      "tripStartUtc": "2026-10-02T09:12:00.000Z",
+      "tripEndUtc": "2026-10-02T09:21:22.000Z",
+      "nativeEventCount": 4,
+      "harshAccelerationCount": 0,
+      "harshBrakingCount": 0,
+      "harshCorneringCount": 4,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 33
+    },
+    {
+      "tripId": "d88bd462-c46d-47ad-85ea-5d5201dbe386",
+      "tripStartUtc": "2026-10-02T10:23:00.000Z",
+      "tripEndUtc": "2026-10-02T10:40:46.000Z",
+      "nativeEventCount": 4,
+      "harshAccelerationCount": 0,
+      "harshBrakingCount": 0,
+      "harshCorneringCount": 4,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 32
+    },
+    {
+      "tripId": "905272c1-2473-42ab-8c77-3bb7d25a7891",
+      "tripStartUtc": "2026-07-03T10:04:00.000Z",
+      "tripEndUtc": "2026-07-03T10:27:38.192Z",
+      "nativeEventCount": 3,
+      "harshAccelerationCount": 0,
+      "harshBrakingCount": 0,
+      "harshCorneringCount": 3,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 31
+    },
+    {
+      "tripId": "e0afa33e-3e74-4a39-8f4f-0e6cc9e10996",
+      "tripStartUtc": "2026-07-03T21:41:00.000Z",
+      "tripEndUtc": "2026-07-03T21:55:08.817Z",
+      "nativeEventCount": 2,
+      "harshAccelerationCount": 0,
+      "harshBrakingCount": 0,
+      "harshCorneringCount": 2,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 30
+    },
+    {
+      "tripId": "3b4d89dd-9039-4250-b5cb-882176ef0bff",
+      "tripStartUtc": "2026-07-06T07:30:05.472Z",
+      "tripEndUtc": "2026-07-06T07:38:23.485Z",
+      "nativeEventCount": 2,
+      "harshAccelerationCount": 0,
+      "harshBrakingCount": 0,
+      "harshCorneringCount": 2,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 29
+    },
+    {
+      "tripId": "3c8d65f7-331f-4ffd-9879-08941f84bfef",
+      "tripStartUtc": "2026-07-10T08:42:00.000Z",
+      "tripEndUtc": "2026-07-10T08:54:56.000Z",
+      "nativeEventCount": 2,
+      "harshAccelerationCount": 0,
+      "harshBrakingCount": 0,
+      "harshCorneringCount": 2,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 28
+    },
+    {
+      "tripId": "dcd1e535-79d2-4da6-bb81-9024abd5cb70",
+      "tripStartUtc": "2026-07-19T13:26:00.000Z",
+      "tripEndUtc": "2026-07-19T14:56:53.000Z",
+      "nativeEventCount": 2,
+      "harshAccelerationCount": 2,
+      "harshBrakingCount": 0,
+      "harshCorneringCount": 0,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 27
+    },
+    {
+      "tripId": "481e6b3f-fbef-496a-98bc-2ed93a72bc86",
+      "tripStartUtc": "2026-07-19T23:57:13.000Z",
+      "tripEndUtc": "2026-07-20T02:07:52.000Z",
+      "nativeEventCount": 2,
+      "harshAccelerationCount": 0,
+      "harshBrakingCount": 2,
+      "harshCorneringCount": 0,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 26
+    },
+    {
+      "tripId": "3edeefdd-1c24-4de4-a180-ef866db96aae",
+      "tripStartUtc": "2026-07-20T18:33:16.410Z",
+      "tripEndUtc": "2026-07-20T18:56:16.116Z",
+      "nativeEventCount": 2,
+      "harshAccelerationCount": 2,
+      "harshBrakingCount": 0,
+      "harshCorneringCount": 0,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 25
+    },
+    {
+      "tripId": "f078bf80-7fab-404c-b532-7efb34d3c38b",
+      "tripStartUtc": "2026-07-20T23:16:03.586Z",
+      "tripEndUtc": "2026-07-20T23:34:55.092Z",
+      "nativeEventCount": 2,
+      "harshAccelerationCount": 0,
+      "harshBrakingCount": 2,
+      "harshCorneringCount": 0,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 24
+    },
+    {
+      "tripId": "c02f91ae-7cc1-4aeb-858c-ebac5697218c",
+      "tripStartUtc": "2026-07-21T08:36:07.374Z",
+      "tripEndUtc": "2026-07-21T10:17:16.000Z",
+      "nativeEventCount": 2,
+      "harshAccelerationCount": 2,
+      "harshBrakingCount": 0,
+      "harshCorneringCount": 0,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 23
+    },
+    {
+      "tripId": "70e50371-d439-489a-a7bc-939593831a17",
+      "tripStartUtc": "2026-08-08T12:49:15.007Z",
+      "tripEndUtc": "2026-08-08T13:44:29.000Z",
+      "nativeEventCount": 2,
+      "harshAccelerationCount": 0,
+      "harshBrakingCount": 0,
+      "harshCorneringCount": 2,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 22
+    },
+    {
+      "tripId": "32254ba2-9072-4966-9f25-94f540745c6c",
+      "tripStartUtc": "2026-08-14T06:11:00.000Z",
+      "tripEndUtc": "2026-08-14T07:15:50.067Z",
+      "nativeEventCount": 2,
+      "harshAccelerationCount": 0,
+      "harshBrakingCount": 0,
+      "harshCorneringCount": 2,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 21
+    },
+    {
+      "tripId": "ee0bb644-31f3-47bd-ac72-358db4315ff3",
+      "tripStartUtc": "2026-09-06T15:32:00.000Z",
+      "tripEndUtc": "2026-09-06T15:42:16.000Z",
+      "nativeEventCount": 2,
+      "harshAccelerationCount": 0,
+      "harshBrakingCount": 1,
+      "harshCorneringCount": 1,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 20
+    },
+    {
+      "tripId": "6b362df7-28cd-42d7-abfc-d570fcf30516",
+      "tripStartUtc": "2026-09-27T23:39:00.000Z",
+      "tripEndUtc": "2026-09-28T00:07:06.000Z",
+      "nativeEventCount": 2,
+      "harshAccelerationCount": 0,
+      "harshBrakingCount": 0,
+      "harshCorneringCount": 2,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 19
+    },
+    {
+      "tripId": "1698898d-fcd6-43f2-b43d-558a186857b6",
+      "tripStartUtc": "2026-10-01T11:27:00.000Z",
+      "tripEndUtc": "2026-10-01T11:54:00.000Z",
+      "nativeEventCount": 2,
+      "harshAccelerationCount": 0,
+      "harshBrakingCount": 0,
+      "harshCorneringCount": 2,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 18
+    },
+    {
+      "tripId": "a8f05867-4bf1-4a5d-9995-8394f1bc6aad",
+      "tripStartUtc": "2026-10-01T16:26:00.000Z",
+      "tripEndUtc": "2026-10-01T16:38:57.000Z",
+      "nativeEventCount": 2,
+      "harshAccelerationCount": 0,
+      "harshBrakingCount": 0,
+      "harshCorneringCount": 2,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 17
+    },
+    {
+      "tripId": "93e64fae-c379-4e6f-98e0-5590122575c6",
+      "tripStartUtc": "2026-07-18T16:17:00.000Z",
+      "tripEndUtc": "2026-07-18T17:44:00.000Z",
+      "nativeEventCount": 1,
+      "harshAccelerationCount": 0,
+      "harshBrakingCount": 1,
+      "harshCorneringCount": 0,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 16
+    },
+    {
+      "tripId": "aaaf7848-ab30-4ea9-859d-c99cb18f18d5",
+      "tripStartUtc": "2026-07-21T11:16:00.000Z",
+      "tripEndUtc": "2026-07-21T12:03:20.020Z",
+      "nativeEventCount": 1,
+      "harshAccelerationCount": 0,
+      "harshBrakingCount": 1,
+      "harshCorneringCount": 0,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 15
+    },
+    {
+      "tripId": "e9de6347-71d3-4844-aba7-fd7d6e4cd799",
+      "tripStartUtc": "2026-07-21T12:08:13.459Z",
+      "tripEndUtc": "2026-07-21T12:29:19.090Z",
+      "nativeEventCount": 1,
+      "harshAccelerationCount": 1,
+      "harshBrakingCount": 0,
+      "harshCorneringCount": 0,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 14
+    },
+    {
+      "tripId": "c9fb0dc9-6efb-493a-a141-d3aa33e24549",
+      "tripStartUtc": "2026-07-23T09:25:51.604Z",
+      "tripEndUtc": "2026-07-23T09:53:28.000Z",
+      "nativeEventCount": 1,
+      "harshAccelerationCount": 1,
+      "harshBrakingCount": 0,
+      "harshCorneringCount": 0,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 13
+    },
+    {
+      "tripId": "f654890f-1feb-47bd-94c7-6e4cd82edfcd",
+      "tripStartUtc": "2026-07-23T14:19:00.000Z",
+      "tripEndUtc": "2026-07-23T14:45:36.000Z",
+      "nativeEventCount": 1,
+      "harshAccelerationCount": 0,
+      "harshBrakingCount": 1,
+      "harshCorneringCount": 0,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 12
+    },
+    {
+      "tripId": "18269c17-08be-4b2e-8ea4-d9e5d4a4a309",
+      "tripStartUtc": "2026-07-28T08:21:00.000Z",
+      "tripEndUtc": "2026-07-28T08:36:59.000Z",
+      "nativeEventCount": 1,
+      "harshAccelerationCount": 0,
+      "harshBrakingCount": 0,
+      "harshCorneringCount": 1,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 11
+    },
+    {
+      "tripId": "8f88b0de-1df0-439c-85ce-7c70dd6478d2",
+      "tripStartUtc": "2026-08-08T10:55:00.000Z",
+      "tripEndUtc": "2026-08-08T12:43:49.294Z",
+      "nativeEventCount": 1,
+      "harshAccelerationCount": 1,
+      "harshBrakingCount": 0,
+      "harshCorneringCount": 0,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 10
+    },
+    {
+      "tripId": "d65ab22f-5acd-4dc8-9683-d53f31a27f1f",
+      "tripStartUtc": "2026-08-22T14:36:00.000Z",
+      "tripEndUtc": "2026-08-22T15:05:46.544Z",
+      "nativeEventCount": 1,
+      "harshAccelerationCount": 0,
+      "harshBrakingCount": 0,
+      "harshCorneringCount": 1,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 9
+    },
+    {
+      "tripId": "9a57cfd6-2756-4374-bab0-c8e71c4d5d36",
+      "tripStartUtc": "2026-08-25T16:27:00.000Z",
+      "tripEndUtc": "2026-08-25T16:42:57.939Z",
+      "nativeEventCount": 1,
+      "harshAccelerationCount": 0,
+      "harshBrakingCount": 0,
+      "harshCorneringCount": 1,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 8
+    },
+    {
+      "tripId": "1039e929-a326-46aa-a178-6785ab7fe29d",
+      "tripStartUtc": "2026-08-29T12:35:00.000Z",
+      "tripEndUtc": "2026-08-29T13:09:50.000Z",
+      "nativeEventCount": 1,
+      "harshAccelerationCount": 0,
+      "harshBrakingCount": 0,
+      "harshCorneringCount": 1,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 7
+    },
+    {
+      "tripId": "ef366747-22ed-48f1-91f0-d42e40231657",
+      "tripStartUtc": "2026-08-29T14:34:00.000Z",
+      "tripEndUtc": "2026-08-29T14:59:23.318Z",
+      "nativeEventCount": 1,
+      "harshAccelerationCount": 0,
+      "harshBrakingCount": 0,
+      "harshCorneringCount": 1,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 6
+    },
+    {
+      "tripId": "395f13fa-1dc2-4d07-bf0d-ada86a5380ec",
+      "tripStartUtc": "2026-08-29T15:02:47.389Z",
+      "tripEndUtc": "2026-08-29T15:15:23.034Z",
+      "nativeEventCount": 1,
+      "harshAccelerationCount": 0,
+      "harshBrakingCount": 0,
+      "harshCorneringCount": 1,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 5
+    },
+    {
+      "tripId": "7a52b718-10ef-43b7-a3be-aa8c94b64b3d",
+      "tripStartUtc": "2026-09-29T10:39:00.000Z",
+      "tripEndUtc": "2026-09-29T10:44:28.520Z",
+      "nativeEventCount": 1,
+      "harshAccelerationCount": 0,
+      "harshBrakingCount": 0,
+      "harshCorneringCount": 1,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 4
+    },
+    {
+      "tripId": "23ca3368-eb92-4e33-a7fa-843377b623f7",
+      "tripStartUtc": "2026-10-01T12:28:00.000Z",
+      "tripEndUtc": "2026-10-01T12:51:53.000Z",
+      "nativeEventCount": 1,
+      "harshAccelerationCount": 1,
+      "harshBrakingCount": 0,
+      "harshCorneringCount": 0,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 3
+    },
+    {
+      "tripId": "15942494-8ca8-45a2-b9fd-6118c464020b",
+      "tripStartUtc": "2026-10-02T11:09:00.000Z",
+      "tripEndUtc": "2026-10-02T11:15:18.000Z",
+      "nativeEventCount": 1,
+      "harshAccelerationCount": 0,
+      "harshBrakingCount": 0,
+      "harshCorneringCount": 1,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 2
+    },
+    {
+      "tripId": "aebe64e2-4c7b-401f-b80b-0b5bc121c2c7",
+      "tripStartUtc": "2026-10-04T10:30:00.000Z",
+      "tripEndUtc": "2026-10-04T10:40:29.215Z",
+      "nativeEventCount": 1,
+      "harshAccelerationCount": 0,
+      "harshBrakingCount": 0,
+      "harshCorneringCount": 1,
+      "hasBothAccelAndBrake": false,
+      "diWorkItemId": null,
+      "pinnedSnapshotHash": null,
+      "coverage": {
+        "shadowIntervalCount": 0,
+        "gpsL3TrustedFraction": 0,
+        "hfRpmOrThrottleFraction": 0,
+        "obdNumericFraction": 0,
+        "nativeEventsOnTrustedOverlapBuckets": 0
+      },
+      "rankScore": 1
+    }
+  ],
+  "selectedTripId": "a682d3df-545a-4a8a-aa14-d45c23fae985",
+  "fusionCapableAlternateTripId": "f3e1fa83-d1e3-46b9-9ab8-14b4676ec5c9",
+  "fusionCapableAlternate": {
+    "tripId": "f3e1fa83-d1e3-46b9-9ab8-14b4676ec5c9",
+    "tripStartUtc": "2026-10-13T15:53:00.431Z",
+    "tripEndUtc": "2026-10-13T15:59:01.241Z",
+    "nativeEventCount": 2,
+    "harshAccelerationCount": 0,
+    "harshBrakingCount": 0,
+    "harshCorneringCount": 2,
+    "hasBothAccelAndBrake": false,
+    "diWorkItemId": "31820150-03b7-4019-8e3d-84c2b1d0b8a5",
+    "pinnedSnapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:79635496216a2588666db3f1be87609f803d073421db6ebc64e65f7c88b264fa",
+    "coverage": {
+      "shadowIntervalCount": 362,
+      "gpsL3TrustedFraction": 0.8121546961325967,
+      "hfRpmOrThrottleFraction": 0.1685082872928177,
+      "obdNumericFraction": 0.1685082872928177,
+      "nativeEventsOnTrustedOverlapBuckets": 0
+    },
+    "rankScore": 41
+  }
+}
