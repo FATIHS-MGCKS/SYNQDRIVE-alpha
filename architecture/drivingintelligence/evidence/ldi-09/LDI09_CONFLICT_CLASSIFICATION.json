@@ -1,0 +1,515 @@
+{
+  "headSha": "fe4e0409edc9fb6b673959ce240051c677777ae2",
+  "tripId": "f3e1fa83-d1e3-46b9-9ab8-14b4676ec5c9",
+  "schema": "LDI09_CONFLICT_CLASSIFICATION_V1",
+  "conflictRule": "LDI03_documented: abs(obd-l3) >= max(5 km/h, 25% of L3)",
+  "total": 11,
+  "explained": 11,
+  "unresolved": 0,
+  "notComparable": 0,
+  "conflicts": [
+    {
+      "conflictId": "CF_001",
+      "evaluationIndexUtc": "2026-10-13T15:53:16Z",
+      "l3": {
+        "speedKmh": 22.37654230622294,
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "CROSS_SOURCE_CONFLICT"
+        ],
+        "sourceRelation": "CONFLICTING",
+        "originalTimestampUtc": "2026-10-13T15:53:16Z"
+      },
+      "obd": {
+        "speedKmh": 14,
+        "originalTimestampUtc": "2026-10-13T15:53:16Z",
+        "temporalSemantics": "INTERVAL_ONLY"
+      },
+      "deltaKmh": 8.376542306222941,
+      "temporalSeparationMs": 0,
+      "samplingIntervalMs": {
+        "prevObdGap": 2000,
+        "nextObdGap": 1000
+      },
+      "dataAgeFreshness": "NOT_IN_PIN — acquisition freshness not exported in LDI03 row",
+      "disagreementThresholdKmh": 10,
+      "corroborationBandKmh": 5,
+      "possibleTimeShiftCause": [
+        "R1_OBD_INTERVAL_ONLY_bucket_label_not_point_instant",
+        "sparse_obd_cadence_prev_gap_2000ms"
+      ],
+      "possiblePhysicalDeviationCause": [
+        "speed_source_divergence_gps_haversine_vs_obd_ecu"
+      ],
+      "disposition": "EXPLAINED",
+      "dispositionRationale": "Speed QC already marked CROSS_SOURCE_CONFLICT — disagreement is expected; not a fusion tie-break surface",
+      "hfAvailable": true,
+      "hfSpeedKmh": 14,
+      "temporalAlignmentUncertainty": "INTERVAL_ONLY_OBD_bucket_label; calendar co-index not point-synchronous",
+      "resolvableWithoutInterpolation": "YES_without_interpolation",
+      "possibleCauseSummary": [
+        "R1_OBD_INTERVAL_ONLY_bucket_label_not_point_instant",
+        "sparse_obd_cadence_prev_gap_2000ms",
+        "speed_source_divergence_gps_haversine_vs_obd_ecu"
+      ]
+    },
+    {
+      "conflictId": "CF_002",
+      "evaluationIndexUtc": "2026-10-13T15:53:27Z",
+      "l3": {
+        "speedKmh": 27.5564776088443,
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "CROSS_SOURCE_CONFLICT"
+        ],
+        "sourceRelation": "CONFLICTING",
+        "originalTimestampUtc": "2026-10-13T15:53:27Z"
+      },
+      "obd": {
+        "speedKmh": 20,
+        "originalTimestampUtc": "2026-10-13T15:53:27Z",
+        "temporalSemantics": "INTERVAL_ONLY"
+      },
+      "deltaKmh": 7.5564776088443,
+      "temporalSeparationMs": 0,
+      "samplingIntervalMs": {
+        "prevObdGap": 2000,
+        "nextObdGap": 1000
+      },
+      "dataAgeFreshness": "NOT_IN_PIN — acquisition freshness not exported in LDI03 row",
+      "disagreementThresholdKmh": 10,
+      "corroborationBandKmh": 5,
+      "possibleTimeShiftCause": [
+        "R1_OBD_INTERVAL_ONLY_bucket_label_not_point_instant",
+        "sparse_obd_cadence_prev_gap_2000ms"
+      ],
+      "possiblePhysicalDeviationCause": [
+        "speed_source_divergence_gps_haversine_vs_obd_ecu"
+      ],
+      "disposition": "EXPLAINED",
+      "dispositionRationale": "Speed QC already marked CROSS_SOURCE_CONFLICT — disagreement is expected; not a fusion tie-break surface",
+      "hfAvailable": true,
+      "hfSpeedKmh": 20,
+      "temporalAlignmentUncertainty": "INTERVAL_ONLY_OBD_bucket_label; calendar co-index not point-synchronous",
+      "resolvableWithoutInterpolation": "YES_without_interpolation",
+      "possibleCauseSummary": [
+        "R1_OBD_INTERVAL_ONLY_bucket_label_not_point_instant",
+        "sparse_obd_cadence_prev_gap_2000ms",
+        "speed_source_divergence_gps_haversine_vs_obd_ecu"
+      ]
+    },
+    {
+      "conflictId": "CF_003",
+      "evaluationIndexUtc": "2026-10-13T15:53:28Z",
+      "l3": {
+        "speedKmh": 32.84738541658913,
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "CROSS_SOURCE_CONFLICT"
+        ],
+        "sourceRelation": "CONFLICTING",
+        "originalTimestampUtc": "2026-10-13T15:53:28Z"
+      },
+      "obd": {
+        "speedKmh": 23,
+        "originalTimestampUtc": "2026-10-13T15:53:28Z",
+        "temporalSemantics": "INTERVAL_ONLY"
+      },
+      "deltaKmh": 9.847385416589127,
+      "temporalSeparationMs": 0,
+      "samplingIntervalMs": {
+        "prevObdGap": 1000,
+        "nextObdGap": 5000
+      },
+      "dataAgeFreshness": "NOT_IN_PIN — acquisition freshness not exported in LDI03 row",
+      "disagreementThresholdKmh": 10,
+      "corroborationBandKmh": 5,
+      "possibleTimeShiftCause": [
+        "R1_OBD_INTERVAL_ONLY_bucket_label_not_point_instant",
+        "sparse_obd_cadence_next_gap_5000ms"
+      ],
+      "possiblePhysicalDeviationCause": [
+        "speed_source_divergence_gps_haversine_vs_obd_ecu"
+      ],
+      "disposition": "EXPLAINED",
+      "dispositionRationale": "Speed QC already marked CROSS_SOURCE_CONFLICT — disagreement is expected; not a fusion tie-break surface",
+      "hfAvailable": true,
+      "hfSpeedKmh": 23,
+      "temporalAlignmentUncertainty": "INTERVAL_ONLY_OBD_bucket_label; calendar co-index not point-synchronous",
+      "resolvableWithoutInterpolation": "YES_without_interpolation",
+      "possibleCauseSummary": [
+        "R1_OBD_INTERVAL_ONLY_bucket_label_not_point_instant",
+        "sparse_obd_cadence_next_gap_5000ms",
+        "speed_source_divergence_gps_haversine_vs_obd_ecu"
+      ]
+    },
+    {
+      "conflictId": "CF_004",
+      "evaluationIndexUtc": "2026-10-13T15:54:09Z",
+      "l3": {
+        "speedKmh": 39.65706242433433,
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "CROSS_SOURCE_CONFLICT"
+        ],
+        "sourceRelation": "CONFLICT_EXPLAINED",
+        "originalTimestampUtc": "2026-10-13T15:54:09Z"
+      },
+      "obd": {
+        "speedKmh": 27,
+        "originalTimestampUtc": "2026-10-13T15:54:09Z",
+        "temporalSemantics": "INTERVAL_ONLY"
+      },
+      "deltaKmh": 12.657062424334327,
+      "temporalSeparationMs": 0,
+      "samplingIntervalMs": {
+        "prevObdGap": 1000,
+        "nextObdGap": 19000
+      },
+      "dataAgeFreshness": "NOT_IN_PIN — acquisition freshness not exported in LDI03 row",
+      "disagreementThresholdKmh": 10,
+      "corroborationBandKmh": 5,
+      "possibleTimeShiftCause": [
+        "R1_OBD_INTERVAL_ONLY_bucket_label_not_point_instant",
+        "sparse_obd_cadence_next_gap_19000ms"
+      ],
+      "possiblePhysicalDeviationCause": [
+        "speed_source_divergence_gps_haversine_vs_obd_ecu"
+      ],
+      "disposition": "EXPLAINED",
+      "dispositionRationale": "Speed QC already marked CROSS_SOURCE_CONFLICT — disagreement is expected; not a fusion tie-break surface",
+      "hfAvailable": true,
+      "hfSpeedKmh": 27,
+      "temporalAlignmentUncertainty": "INTERVAL_ONLY_OBD_bucket_label; calendar co-index not point-synchronous",
+      "resolvableWithoutInterpolation": "YES_without_interpolation",
+      "possibleCauseSummary": [
+        "R1_OBD_INTERVAL_ONLY_bucket_label_not_point_instant",
+        "sparse_obd_cadence_next_gap_19000ms",
+        "speed_source_divergence_gps_haversine_vs_obd_ecu"
+      ]
+    },
+    {
+      "conflictId": "CF_005",
+      "evaluationIndexUtc": "2026-10-13T15:54:38Z",
+      "l3": {
+        "speedKmh": 39.50603238492114,
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "CROSS_SOURCE_CONFLICT"
+        ],
+        "sourceRelation": "CONFLICT_EXPLAINED",
+        "originalTimestampUtc": "2026-10-13T15:54:38Z"
+      },
+      "obd": {
+        "speedKmh": 26,
+        "originalTimestampUtc": "2026-10-13T15:54:38Z",
+        "temporalSemantics": "INTERVAL_ONLY"
+      },
+      "deltaKmh": 13.506032384921141,
+      "temporalSeparationMs": 0,
+      "samplingIntervalMs": {
+        "prevObdGap": 1000,
+        "nextObdGap": 1000
+      },
+      "dataAgeFreshness": "NOT_IN_PIN — acquisition freshness not exported in LDI03 row",
+      "disagreementThresholdKmh": 10,
+      "corroborationBandKmh": 5,
+      "possibleTimeShiftCause": [
+        "R1_OBD_INTERVAL_ONLY_bucket_label_not_point_instant"
+      ],
+      "possiblePhysicalDeviationCause": [
+        "speed_source_divergence_gps_haversine_vs_obd_ecu"
+      ],
+      "disposition": "EXPLAINED",
+      "dispositionRationale": "Speed QC already marked CROSS_SOURCE_CONFLICT — disagreement is expected; not a fusion tie-break surface",
+      "hfAvailable": true,
+      "hfSpeedKmh": 26,
+      "temporalAlignmentUncertainty": "INTERVAL_ONLY_OBD_bucket_label; calendar co-index not point-synchronous",
+      "resolvableWithoutInterpolation": "YES_without_interpolation",
+      "possibleCauseSummary": [
+        "R1_OBD_INTERVAL_ONLY_bucket_label_not_point_instant",
+        "speed_source_divergence_gps_haversine_vs_obd_ecu"
+      ]
+    },
+    {
+      "conflictId": "CF_006",
+      "evaluationIndexUtc": "2026-10-13T15:54:39Z",
+      "l3": {
+        "speedKmh": 43.10578318538609,
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "CROSS_SOURCE_CONFLICT"
+        ],
+        "sourceRelation": "CONFLICT_EXPLAINED",
+        "originalTimestampUtc": "2026-10-13T15:54:39Z"
+      },
+      "obd": {
+        "speedKmh": 28,
+        "originalTimestampUtc": "2026-10-13T15:54:39Z",
+        "temporalSemantics": "INTERVAL_ONLY"
+      },
+      "deltaKmh": 15.105783185386088,
+      "temporalSeparationMs": 0,
+      "samplingIntervalMs": {
+        "prevObdGap": 1000,
+        "nextObdGap": 4000
+      },
+      "dataAgeFreshness": "NOT_IN_PIN — acquisition freshness not exported in LDI03 row",
+      "disagreementThresholdKmh": 10.776445796346522,
+      "corroborationBandKmh": 5,
+      "possibleTimeShiftCause": [
+        "R1_OBD_INTERVAL_ONLY_bucket_label_not_point_instant",
+        "sparse_obd_cadence_next_gap_4000ms"
+      ],
+      "possiblePhysicalDeviationCause": [
+        "speed_source_divergence_gps_haversine_vs_obd_ecu"
+      ],
+      "disposition": "EXPLAINED",
+      "dispositionRationale": "Speed QC already marked CROSS_SOURCE_CONFLICT — disagreement is expected; not a fusion tie-break surface",
+      "hfAvailable": true,
+      "hfSpeedKmh": 28,
+      "temporalAlignmentUncertainty": "INTERVAL_ONLY_OBD_bucket_label; calendar co-index not point-synchronous",
+      "resolvableWithoutInterpolation": "YES_without_interpolation",
+      "possibleCauseSummary": [
+        "R1_OBD_INTERVAL_ONLY_bucket_label_not_point_instant",
+        "sparse_obd_cadence_next_gap_4000ms",
+        "speed_source_divergence_gps_haversine_vs_obd_ecu"
+      ]
+    },
+    {
+      "conflictId": "CF_007",
+      "evaluationIndexUtc": "2026-10-13T15:58:31Z",
+      "l3": {
+        "speedKmh": 5.270347246750029,
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "CROSS_SOURCE_CONFLICT"
+        ],
+        "sourceRelation": "CONFLICT_EXPLAINED",
+        "originalTimestampUtc": "2026-10-13T15:58:31Z"
+      },
+      "obd": {
+        "speedKmh": 17,
+        "originalTimestampUtc": "2026-10-13T15:58:31Z",
+        "temporalSemantics": "INTERVAL_ONLY"
+      },
+      "deltaKmh": 11.72965275324997,
+      "temporalSeparationMs": 0,
+      "samplingIntervalMs": {
+        "prevObdGap": 3000,
+        "nextObdGap": 3000
+      },
+      "dataAgeFreshness": "NOT_IN_PIN — acquisition freshness not exported in LDI03 row",
+      "disagreementThresholdKmh": 10,
+      "corroborationBandKmh": 5,
+      "possibleTimeShiftCause": [
+        "R1_OBD_INTERVAL_ONLY_bucket_label_not_point_instant",
+        "sparse_obd_cadence_prev_gap_3000ms",
+        "sparse_obd_cadence_next_gap_3000ms"
+      ],
+      "possiblePhysicalDeviationCause": [
+        "speed_source_divergence_gps_haversine_vs_obd_ecu"
+      ],
+      "disposition": "EXPLAINED",
+      "dispositionRationale": "Speed QC already marked CROSS_SOURCE_CONFLICT — disagreement is expected; not a fusion tie-break surface",
+      "hfAvailable": true,
+      "hfSpeedKmh": 17,
+      "temporalAlignmentUncertainty": "INTERVAL_ONLY_OBD_bucket_label; calendar co-index not point-synchronous",
+      "resolvableWithoutInterpolation": "YES_without_interpolation",
+      "possibleCauseSummary": [
+        "R1_OBD_INTERVAL_ONLY_bucket_label_not_point_instant",
+        "sparse_obd_cadence_prev_gap_3000ms",
+        "sparse_obd_cadence_next_gap_3000ms",
+        "speed_source_divergence_gps_haversine_vs_obd_ecu"
+      ]
+    },
+    {
+      "conflictId": "CF_008",
+      "evaluationIndexUtc": "2026-10-13T15:58:41Z",
+      "l3": {
+        "speedKmh": 5.071339893754495,
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "CROSS_SOURCE_CONFLICT"
+        ],
+        "sourceRelation": "CONFLICTING",
+        "originalTimestampUtc": "2026-10-13T15:58:41Z"
+      },
+      "obd": {
+        "speedKmh": 13,
+        "originalTimestampUtc": "2026-10-13T15:58:41Z",
+        "temporalSemantics": "INTERVAL_ONLY"
+      },
+      "deltaKmh": 7.928660106245505,
+      "temporalSeparationMs": 0,
+      "samplingIntervalMs": {
+        "prevObdGap": 2000,
+        "nextObdGap": 1000
+      },
+      "dataAgeFreshness": "NOT_IN_PIN — acquisition freshness not exported in LDI03 row",
+      "disagreementThresholdKmh": 10,
+      "corroborationBandKmh": 5,
+      "possibleTimeShiftCause": [
+        "R1_OBD_INTERVAL_ONLY_bucket_label_not_point_instant",
+        "sparse_obd_cadence_prev_gap_2000ms"
+      ],
+      "possiblePhysicalDeviationCause": [
+        "speed_source_divergence_gps_haversine_vs_obd_ecu"
+      ],
+      "disposition": "EXPLAINED",
+      "dispositionRationale": "Speed QC already marked CROSS_SOURCE_CONFLICT — disagreement is expected; not a fusion tie-break surface",
+      "hfAvailable": true,
+      "hfSpeedKmh": 13,
+      "temporalAlignmentUncertainty": "INTERVAL_ONLY_OBD_bucket_label; calendar co-index not point-synchronous",
+      "resolvableWithoutInterpolation": "YES_without_interpolation",
+      "possibleCauseSummary": [
+        "R1_OBD_INTERVAL_ONLY_bucket_label_not_point_instant",
+        "sparse_obd_cadence_prev_gap_2000ms",
+        "speed_source_divergence_gps_haversine_vs_obd_ecu"
+      ]
+    },
+    {
+      "conflictId": "CF_009",
+      "evaluationIndexUtc": "2026-10-13T15:58:44Z",
+      "l3": {
+        "speedKmh": 6.504482887068332,
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "CROSS_SOURCE_CONFLICT"
+        ],
+        "sourceRelation": "CONFLICTING",
+        "originalTimestampUtc": "2026-10-13T15:58:44Z"
+      },
+      "obd": {
+        "speedKmh": 0,
+        "originalTimestampUtc": "2026-10-13T15:58:44Z",
+        "temporalSemantics": "INTERVAL_ONLY"
+      },
+      "deltaKmh": 6.504482887068332,
+      "temporalSeparationMs": 0,
+      "samplingIntervalMs": {
+        "prevObdGap": 2000,
+        "nextObdGap": 3000
+      },
+      "dataAgeFreshness": "NOT_IN_PIN — acquisition freshness not exported in LDI03 row",
+      "disagreementThresholdKmh": 10,
+      "corroborationBandKmh": 5,
+      "possibleTimeShiftCause": [
+        "R1_OBD_INTERVAL_ONLY_bucket_label_not_point_instant",
+        "sparse_obd_cadence_prev_gap_2000ms",
+        "sparse_obd_cadence_next_gap_3000ms"
+      ],
+      "possiblePhysicalDeviationCause": [
+        "obd_wheel_speed_zero_while_gps_l3_nonzero",
+        "possible_stop_start_or_gps_dominant_crawl"
+      ],
+      "disposition": "EXPLAINED",
+      "dispositionRationale": "OBD speed 0 at bucket while GPS-L3 non-zero — wheel-speed vs path-speed split under INTERVAL_ONLY sparse sampling; explains QC CROSS_SOURCE_CONFLICT without preferring either channel",
+      "hfAvailable": true,
+      "hfSpeedKmh": 0,
+      "temporalAlignmentUncertainty": "INTERVAL_ONLY_OBD_bucket_label; calendar co-index not point-synchronous",
+      "resolvableWithoutInterpolation": "YES_without_interpolation",
+      "possibleCauseSummary": [
+        "R1_OBD_INTERVAL_ONLY_bucket_label_not_point_instant",
+        "sparse_obd_cadence_prev_gap_2000ms",
+        "sparse_obd_cadence_next_gap_3000ms",
+        "obd_wheel_speed_zero_while_gps_l3_nonzero",
+        "possible_stop_start_or_gps_dominant_crawl"
+      ]
+    },
+    {
+      "conflictId": "CF_010",
+      "evaluationIndexUtc": "2026-10-13T15:58:47Z",
+      "l3": {
+        "speedKmh": 7.557942080878618,
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "CROSS_SOURCE_CONFLICT"
+        ],
+        "sourceRelation": "CONFLICTING",
+        "originalTimestampUtc": "2026-10-13T15:58:47Z"
+      },
+      "obd": {
+        "speedKmh": 2,
+        "originalTimestampUtc": "2026-10-13T15:58:47Z",
+        "temporalSemantics": "INTERVAL_ONLY"
+      },
+      "deltaKmh": 5.557942080878618,
+      "temporalSeparationMs": 0,
+      "samplingIntervalMs": {
+        "prevObdGap": 3000,
+        "nextObdGap": 2000
+      },
+      "dataAgeFreshness": "NOT_IN_PIN — acquisition freshness not exported in LDI03 row",
+      "disagreementThresholdKmh": 10,
+      "corroborationBandKmh": 5,
+      "possibleTimeShiftCause": [
+        "R1_OBD_INTERVAL_ONLY_bucket_label_not_point_instant",
+        "sparse_obd_cadence_prev_gap_3000ms",
+        "sparse_obd_cadence_next_gap_2000ms"
+      ],
+      "possiblePhysicalDeviationCause": [
+        "speed_source_divergence_gps_haversine_vs_obd_ecu"
+      ],
+      "disposition": "EXPLAINED",
+      "dispositionRationale": "Speed QC already marked CROSS_SOURCE_CONFLICT — disagreement is expected; not a fusion tie-break surface",
+      "hfAvailable": true,
+      "hfSpeedKmh": 2,
+      "temporalAlignmentUncertainty": "INTERVAL_ONLY_OBD_bucket_label; calendar co-index not point-synchronous",
+      "resolvableWithoutInterpolation": "YES_without_interpolation",
+      "possibleCauseSummary": [
+        "R1_OBD_INTERVAL_ONLY_bucket_label_not_point_instant",
+        "sparse_obd_cadence_prev_gap_3000ms",
+        "sparse_obd_cadence_next_gap_2000ms",
+        "speed_source_divergence_gps_haversine_vs_obd_ecu"
+      ]
+    },
+    {
+      "conflictId": "CF_011",
+      "evaluationIndexUtc": "2026-10-13T15:58:52Z",
+      "l3": {
+        "speedKmh": 5.128721412495344,
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "CROSS_SOURCE_CONFLICT"
+        ],
+        "sourceRelation": "CONFLICTING",
+        "originalTimestampUtc": "2026-10-13T15:58:52Z"
+      },
+      "obd": {
+        "speedKmh": 0,
+        "originalTimestampUtc": "2026-10-13T15:58:52Z",
+        "temporalSemantics": "INTERVAL_ONLY"
+      },
+      "deltaKmh": 5.128721412495344,
+      "temporalSeparationMs": 0,
+      "samplingIntervalMs": {
+        "prevObdGap": 1000,
+        "nextObdGap": 2000
+      },
+      "dataAgeFreshness": "NOT_IN_PIN — acquisition freshness not exported in LDI03 row",
+      "disagreementThresholdKmh": 10,
+      "corroborationBandKmh": 5,
+      "possibleTimeShiftCause": [
+        "R1_OBD_INTERVAL_ONLY_bucket_label_not_point_instant",
+        "sparse_obd_cadence_next_gap_2000ms"
+      ],
+      "possiblePhysicalDeviationCause": [
+        "obd_wheel_speed_zero_while_gps_l3_nonzero",
+        "possible_stop_start_or_gps_dominant_crawl"
+      ],
+      "disposition": "EXPLAINED",
+      "dispositionRationale": "OBD speed 0 at bucket while GPS-L3 non-zero — wheel-speed vs path-speed split under INTERVAL_ONLY sparse sampling; explains QC CROSS_SOURCE_CONFLICT without preferring either channel",
+      "hfAvailable": true,
+      "hfSpeedKmh": 0,
+      "temporalAlignmentUncertainty": "INTERVAL_ONLY_OBD_bucket_label; calendar co-index not point-synchronous",
+      "resolvableWithoutInterpolation": "YES_without_interpolation",
+      "possibleCauseSummary": [
+        "R1_OBD_INTERVAL_ONLY_bucket_label_not_point_instant",
+        "sparse_obd_cadence_next_gap_2000ms",
+        "obd_wheel_speed_zero_while_gps_l3_nonzero",
+        "possible_stop_start_or_gps_dominant_crawl"
+      ]
+    }
+  ]
+}

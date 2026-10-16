@@ -1,0 +1,2567 @@
+{
+  "headSha": "fe4e0409edc9fb6b673959ce240051c677777ae2",
+  "tripId": "f3e1fa83-d1e3-46b9-9ab8-14b4676ec5c9",
+  "vehicleId": "8c850ff1-4201-432b-af2e-2711dbc7ca48",
+  "schema": "LDI09_ACCEL_DECEL_FORENSICS_V1",
+  "candidateCount": 75,
+  "accelerationCount": 40,
+  "decelerationCount": 35,
+  "highConfidenceAcceleration": 24,
+  "highConfidenceDeceleration": 35,
+  "candidates": [
+    {
+      "id": "L3_ACCEL_1",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:53:06Z",
+      "endUtc": "2026-10-13T15:53:07Z",
+      "speedStartKmh": 15.68159285839468,
+      "speedEndKmh": 22.75075336782798,
+      "deltaKmh": 7.069160509433299,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": 7.069160509433299,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 1.9636556970648054,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 18.1324074104533
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_2",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:53:07Z",
+      "endUtc": "2026-10-13T15:53:08Z",
+      "speedStartKmh": 22.75075336782798,
+      "speedEndKmh": 29.71845374003237,
+      "deltaKmh": 6.967700372204391,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": 6.967700372204391,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 1.9354723256123307,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 27.369099325202647
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_1",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:53:10Z",
+      "endUtc": "2026-10-13T15:53:11Z",
+      "speedStartKmh": 30.13228995795328,
+      "speedEndKmh": 26.1081315488506,
+      "deltaKmh": -4.024158409102679,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -4.024158409102679,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -1.1178217803062995,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 27.391745923631138
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_2",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:53:11Z",
+      "endUtc": "2026-10-13T15:53:12Z",
+      "speedStartKmh": 26.1081315488506,
+      "speedEndKmh": 21.08138972684894,
+      "deltaKmh": -5.026741822001661,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -5.026741822001661,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -1.396317172778239,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 24.824517174070056
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_3",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:53:12Z",
+      "endUtc": "2026-10-13T15:53:13Z",
+      "speedStartKmh": 21.08138972684894,
+      "speedEndKmh": 15.56033086311674,
+      "deltaKmh": -5.5210588637322005,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -5.5210588637322005,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -1.5336274621478334,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 17.338262279627823
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_3",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:53:14Z",
+      "endUtc": "2026-10-13T15:53:15Z",
+      "speedStartKmh": 14.86096950727662,
+      "speedEndKmh": 18.21366965105763,
+      "deltaKmh": 3.352700143781009,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": 3.352700143781009,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 0.9313055954947247,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 15.939539567947568
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_4",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:53:15Z",
+      "endUtc": "2026-10-13T15:53:16Z",
+      "speedStartKmh": 18.21366965105763,
+      "speedEndKmh": 22.37654230622294,
+      "deltaKmh": 4.162872655165312,
+      "bothEndsTrustedL3": false,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "UNTRUSTED",
+      "kinematics": {
+        "deltaVKmh": 4.162872655165312,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 1.156353515323698,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "UNTRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 20.48779973416768
+      },
+      "confidenceTier": "CONFLICTED",
+      "confidenceRationale": [
+        "l3_cross_source_conflict_at_end"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_5",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:53:16Z",
+      "endUtc": "2026-10-13T15:53:17Z",
+      "speedStartKmh": 22.37654230622294,
+      "speedEndKmh": 25.86988025975725,
+      "deltaKmh": 3.493337953534308,
+      "bothEndsTrustedL3": false,
+      "qcTrustStart": "UNTRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": 3.493337953534308,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 0.9703716537595299,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "UNTRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 24.265284878278205
+      },
+      "confidenceTier": "CONFLICTED",
+      "confidenceRationale": [
+        "l3_cross_source_conflict_at_start"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_6",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:53:17Z",
+      "endUtc": "2026-10-13T15:53:18Z",
+      "speedStartKmh": 25.86988025975725,
+      "speedEndKmh": 29.158754114208,
+      "deltaKmh": 3.2888738544507525,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": 3.2888738544507525,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 0.9135760706807645,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 27.474475641236285
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_7",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:53:18Z",
+      "endUtc": "2026-10-13T15:53:19Z",
+      "speedStartKmh": 29.158754114208,
+      "speedEndKmh": 32.52711304372985,
+      "deltaKmh": 3.368358929521847,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": 3.368358929521847,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 0.935655258200513,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 30.843032587179717
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_4",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:53:22Z",
+      "endUtc": "2026-10-13T15:53:23Z",
+      "speedStartKmh": 34.34216273672313,
+      "speedEndKmh": 28.7586486191348,
+      "deltaKmh": -5.583514117588333,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -5.583514117588333,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -1.5509761437745369,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 32.08848896600295
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_5",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:53:23Z",
+      "endUtc": "2026-10-13T15:53:24Z",
+      "speedStartKmh": 28.7586486191348,
+      "speedEndKmh": 22.90096696559001,
+      "deltaKmh": -5.857681653544791,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -5.857681653544791,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -1.6271337926513307,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 25.428808272266654
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_8",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:53:26Z",
+      "endUtc": "2026-10-13T15:53:27Z",
+      "speedStartKmh": 22.51415051122485,
+      "speedEndKmh": 27.5564776088443,
+      "deltaKmh": 5.042327097619449,
+      "bothEndsTrustedL3": false,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "UNTRUSTED",
+      "kinematics": {
+        "deltaVKmh": 5.042327097619449,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 1.4006464160054024,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "UNTRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 24.169884220900318
+      },
+      "confidenceTier": "CONFLICTED",
+      "confidenceRationale": [
+        "l3_cross_source_conflict_at_end"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_9",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:53:27Z",
+      "endUtc": "2026-10-13T15:53:28Z",
+      "speedStartKmh": 27.5564776088443,
+      "speedEndKmh": 32.84738541658913,
+      "deltaKmh": 5.290907807744826,
+      "bothEndsTrustedL3": false,
+      "qcTrustStart": "UNTRUSTED",
+      "qcTrustEnd": "UNTRUSTED",
+      "kinematics": {
+        "deltaVKmh": 5.290907807744826,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 1.4696966132624518,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "UNTRUSTED",
+        "endQc": "UNTRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 30.943070996788276
+      },
+      "confidenceTier": "CONFLICTED",
+      "confidenceRationale": [
+        "l3_cross_source_conflict_at_start",
+        "l3_cross_source_conflict_at_end"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_10",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:53:28Z",
+      "endUtc": "2026-10-13T15:53:29Z",
+      "speedStartKmh": 32.84738541658913,
+      "speedEndKmh": 35.86579351787941,
+      "deltaKmh": 3.0184081012902837,
+      "bothEndsTrustedL3": false,
+      "qcTrustStart": "UNTRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": 3.0184081012902837,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 0.8384466948028566,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "UNTRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 34.75169983638999
+      },
+      "confidenceTier": "CONFLICTED",
+      "confidenceRationale": [
+        "l3_cross_source_conflict_at_start"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_11",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:53:38Z",
+      "endUtc": "2026-10-13T15:53:39Z",
+      "speedStartKmh": 30.81337000694906,
+      "speedEndKmh": 35.44561364916952,
+      "deltaKmh": 4.6322436422204625,
+      "bothEndsTrustedL3": false,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "UNTRUSTED",
+      "kinematics": {
+        "deltaVKmh": 4.6322436422204625,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 1.2867343450612396,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "UNTRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 33.053457945161504
+      },
+      "confidenceTier": "CONFLICTED",
+      "confidenceRationale": [
+        "l3_cross_source_conflict_at_end"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_12",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:53:39Z",
+      "endUtc": "2026-10-13T15:53:40Z",
+      "speedStartKmh": 35.44561364916952,
+      "speedEndKmh": 38.86142950781184,
+      "deltaKmh": 3.4158158586423184,
+      "bothEndsTrustedL3": false,
+      "qcTrustStart": "UNTRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": 3.4158158586423184,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 0.9488377385117551,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "UNTRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 37.83776935317752
+      },
+      "confidenceTier": "CONFLICTED",
+      "confidenceRationale": [
+        "l3_cross_source_conflict_at_start"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_6",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:53:45Z",
+      "endUtc": "2026-10-13T15:53:46Z",
+      "speedStartKmh": 38.04521152365421,
+      "speedEndKmh": 34.71918001844113,
+      "deltaKmh": -3.3260315052130807,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -3.3260315052130807,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -0.9238976403369669,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 36.42620762166104
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_7",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:53:46Z",
+      "endUtc": "2026-10-13T15:53:47Z",
+      "speedStartKmh": 34.71918001844113,
+      "speedEndKmh": 29.88266933113977,
+      "deltaKmh": -4.8365106873013595,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -4.8365106873013595,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -1.3434751909170444,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 33.0121524152212
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_8",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:53:47Z",
+      "endUtc": "2026-10-13T15:53:48Z",
+      "speedStartKmh": 29.88266933113977,
+      "speedEndKmh": 24.90853396882618,
+      "deltaKmh": -4.974135362313589,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -4.974135362313589,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -1.3817042673093303,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 26.75318624705833
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_13",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:53:50Z",
+      "endUtc": "2026-10-13T15:53:51Z",
+      "speedStartKmh": 24.69612611240841,
+      "speedEndKmh": 30.67617280264242,
+      "deltaKmh": 5.980046690234008,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": 5.980046690234008,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 1.6611240806205578,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 26.96214881976646
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_14",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:53:51Z",
+      "endUtc": "2026-10-13T15:53:52Z",
+      "speedStartKmh": 30.67617280264242,
+      "speedEndKmh": 36.43067714968225,
+      "deltaKmh": 5.754504347039834,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": 5.754504347039834,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 1.5984734297332872,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 34.39019678551839
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_9",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:53:55Z",
+      "endUtc": "2026-10-13T15:53:56Z",
+      "speedStartKmh": 36.56431190951881,
+      "speedEndKmh": 30.91543744357054,
+      "deltaKmh": -5.648874465948268,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -5.648874465948268,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -1.569131796096741,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 34.528381388969485
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_10",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:53:56Z",
+      "endUtc": "2026-10-13T15:53:57Z",
+      "speedStartKmh": 30.91543744357054,
+      "speedEndKmh": 23.17261564961591,
+      "deltaKmh": -7.742821793954629,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -7.742821793954629,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -2.1507838316540635,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 27.30249349817159
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_11",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:53:57Z",
+      "endUtc": "2026-10-13T15:53:58Z",
+      "speedStartKmh": 23.17261564961591,
+      "speedEndKmh": 14.81133598101723,
+      "deltaKmh": -8.36127966859868,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -8.36127966859868,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -2.3225776857218556,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 19.04273780106022
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_15",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:54:05Z",
+      "endUtc": "2026-10-13T15:54:06Z",
+      "speedStartKmh": 13.70749000182446,
+      "speedEndKmh": 20.83174406495309,
+      "deltaKmh": 7.124254063128628,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": 7.124254063128628,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 1.9789594619801745,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 16.718496880655845
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_16",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:54:06Z",
+      "endUtc": "2026-10-13T15:54:07Z",
+      "speedStartKmh": 20.83174406495309,
+      "speedEndKmh": 28.74305963009661,
+      "deltaKmh": 7.911315565143521,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": 7.911315565143521,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 2.1975876569843114,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 24.94499124925033
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_17",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:54:07Z",
+      "endUtc": "2026-10-13T15:54:08Z",
+      "speedStartKmh": 28.74305963009661,
+      "speedEndKmh": 35.5457827589182,
+      "deltaKmh": 6.80272312882159,
+      "bothEndsTrustedL3": false,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "UNTRUSTED",
+      "kinematics": {
+        "deltaVKmh": 6.80272312882159,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 1.8896453135615527,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "UNTRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 32.54112801094288
+      },
+      "confidenceTier": "CONFLICTED",
+      "confidenceRationale": [
+        "l3_cross_source_conflict_at_end"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_18",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:54:08Z",
+      "endUtc": "2026-10-13T15:54:09Z",
+      "speedStartKmh": 35.5457827589182,
+      "speedEndKmh": 39.65706242433433,
+      "deltaKmh": 4.111279665416127,
+      "bothEndsTrustedL3": false,
+      "qcTrustStart": "UNTRUSTED",
+      "qcTrustEnd": "UNTRUSTED",
+      "kinematics": {
+        "deltaVKmh": 4.111279665416127,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 1.1420221292822574,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "UNTRUSTED",
+        "endQc": "UNTRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 38.55043750689352
+      },
+      "confidenceTier": "CONFLICTED",
+      "confidenceRationale": [
+        "l3_cross_source_conflict_at_start",
+        "l3_cross_source_conflict_at_end"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_19",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:54:14Z",
+      "endUtc": "2026-10-13T15:54:15Z",
+      "speedStartKmh": 40.0935108395671,
+      "speedEndKmh": 43.80417969885823,
+      "deltaKmh": 3.7106688592911254,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": 3.7106688592911254,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 1.0307413498030904,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 41.34658766105598
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_20",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:54:15Z",
+      "endUtc": "2026-10-13T15:54:16Z",
+      "speedStartKmh": 43.80417969885823,
+      "speedEndKmh": 47.84729064951079,
+      "deltaKmh": 4.0431109506525615,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": 4.0431109506525615,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 1.123086375181267,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 46.2617717366605
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_12",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:54:33Z",
+      "endUtc": "2026-10-13T15:54:34Z",
+      "speedStartKmh": 31.70512541607216,
+      "speedEndKmh": 28.38652035011717,
+      "deltaKmh": -3.3186050659549906,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -3.3186050659549906,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -0.9218347405430529,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 30.036960288822932
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_21",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:54:36Z",
+      "endUtc": "2026-10-13T15:54:37Z",
+      "speedStartKmh": 28.00286593485928,
+      "speedEndKmh": 33.48517349556024,
+      "deltaKmh": 5.48230756070096,
+      "bothEndsTrustedL3": false,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "UNTRUSTED",
+      "kinematics": {
+        "deltaVKmh": 5.48230756070096,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 1.5228632113058223,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "UNTRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 30.307453319087895
+      },
+      "confidenceTier": "CONFLICTED",
+      "confidenceRationale": [
+        "l3_cross_source_conflict_at_end"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_22",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:54:37Z",
+      "endUtc": "2026-10-13T15:54:38Z",
+      "speedStartKmh": 33.48517349556024,
+      "speedEndKmh": 39.50603238492114,
+      "deltaKmh": 6.020858889360902,
+      "bothEndsTrustedL3": false,
+      "qcTrustStart": "UNTRUSTED",
+      "qcTrustEnd": "UNTRUSTED",
+      "kinematics": {
+        "deltaVKmh": 6.020858889360902,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 1.6724608026002505,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "UNTRUSTED",
+        "endQc": "UNTRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 36.66289367203258
+      },
+      "confidenceTier": "CONFLICTED",
+      "confidenceRationale": [
+        "l3_cross_source_conflict_at_start",
+        "l3_cross_source_conflict_at_end"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_23",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:54:38Z",
+      "endUtc": "2026-10-13T15:54:39Z",
+      "speedStartKmh": 39.50603238492114,
+      "speedEndKmh": 43.10578318538609,
+      "deltaKmh": 3.599750800464946,
+      "bothEndsTrustedL3": false,
+      "qcTrustStart": "UNTRUSTED",
+      "qcTrustEnd": "UNTRUSTED",
+      "kinematics": {
+        "deltaVKmh": 3.599750800464946,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 0.9999307779069294,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "UNTRUSTED",
+        "endQc": "UNTRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 42.34917109780971
+      },
+      "confidenceTier": "CONFLICTED",
+      "confidenceRationale": [
+        "l3_cross_source_conflict_at_start",
+        "l3_cross_source_conflict_at_end"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_13",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:55:30Z",
+      "endUtc": "2026-10-13T15:55:31Z",
+      "speedStartKmh": 46.87206563662043,
+      "speedEndKmh": 43.42172178286768,
+      "deltaKmh": -3.4503438537527487,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -3.4503438537527487,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -0.9584288482646524,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 45.91804477832768
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_14",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:55:31Z",
+      "endUtc": "2026-10-13T15:55:32Z",
+      "speedStartKmh": 43.42172178286768,
+      "speedEndKmh": 38.05245922081009,
+      "deltaKmh": -5.369262562057585,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -5.369262562057585,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -1.4914618227937737,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 40.92539878740765
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_15",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:55:32Z",
+      "endUtc": "2026-10-13T15:55:33Z",
+      "speedStartKmh": 38.05245922081009,
+      "speedEndKmh": 32.46793155535174,
+      "deltaKmh": -5.584527665458353,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -5.584527665458353,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -1.5512576848495425,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 35.179519654212534
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_16",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:55:33Z",
+      "endUtc": "2026-10-13T15:55:34Z",
+      "speedStartKmh": 32.46793155535174,
+      "speedEndKmh": 28.12183966351427,
+      "deltaKmh": -4.346091891837471,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -4.346091891837471,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -1.2072477477326309,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 29.75634345649094
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_17",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:55:55Z",
+      "endUtc": "2026-10-13T15:55:56Z",
+      "speedStartKmh": 22.26521204882516,
+      "speedEndKmh": 19.1823534417853,
+      "deltaKmh": -3.08285860703986,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -3.08285860703986,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -0.8563496130666277,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 20.276850587909564
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_18",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:56:21Z",
+      "endUtc": "2026-10-13T15:56:22Z",
+      "speedStartKmh": 28.54511881773472,
+      "speedEndKmh": 23.16327765645895,
+      "deltaKmh": -5.381841161275773,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -5.381841161275773,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -1.494955878132159,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 26.757697596455596
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_24",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:56:23Z",
+      "endUtc": "2026-10-13T15:56:24Z",
+      "speedStartKmh": 20.31792315113556,
+      "speedEndKmh": 24.16102577182262,
+      "deltaKmh": 3.843102620687059,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": 3.843102620687059,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 1.0675285057464052,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 21.06698858580882
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_25",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:56:24Z",
+      "endUtc": "2026-10-13T15:56:25Z",
+      "speedStartKmh": 24.16102577182262,
+      "speedEndKmh": 30.51466485126159,
+      "deltaKmh": 6.35363907943897,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": 6.35363907943897,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 1.7648997442886027,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 27.25506295783641
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_26",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:56:25Z",
+      "endUtc": "2026-10-13T15:56:26Z",
+      "speedStartKmh": 30.51466485126159,
+      "speedEndKmh": 35.84143051960846,
+      "deltaKmh": 5.326765668346869,
+      "bothEndsTrustedL3": false,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "UNTRUSTED",
+      "kinematics": {
+        "deltaVKmh": 5.326765668346869,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 1.4796571300963526,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "UNTRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 33.77426674468677
+      },
+      "confidenceTier": "CONFLICTED",
+      "confidenceRationale": [
+        "l3_cross_source_conflict_at_end"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_19",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:56:29Z",
+      "endUtc": "2026-10-13T15:56:30Z",
+      "speedStartKmh": 40.18482306867904,
+      "speedEndKmh": 36.44944263326013,
+      "deltaKmh": -3.735380435418911,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -3.735380435418911,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -1.037605676505253,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 39.981591813695445
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_20",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:56:30Z",
+      "endUtc": "2026-10-13T15:56:31Z",
+      "speedStartKmh": 36.44944263326013,
+      "speedEndKmh": 27.89674557122332,
+      "deltaKmh": -8.552697062036806,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -8.552697062036806,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -2.3757491838991127,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 32.91729345282482
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_21",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:56:31Z",
+      "endUtc": "2026-10-13T15:56:32Z",
+      "speedStartKmh": 27.89674557122332,
+      "speedEndKmh": 19.76693282898798,
+      "deltaKmh": -8.129812742235341,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -8.129812742235341,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -2.2582813172875946,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 22.876197689621822
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_27",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:56:34Z",
+      "endUtc": "2026-10-13T15:56:35Z",
+      "speedStartKmh": 18.32435100256082,
+      "speedEndKmh": 23.59480706998575,
+      "deltaKmh": 5.270456067424931,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": 5.270456067424931,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 1.464015574284703,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 19.59144979741115
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_28",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:56:35Z",
+      "endUtc": "2026-10-13T15:56:36Z",
+      "speedStartKmh": 23.59480706998575,
+      "speedEndKmh": 30.09878826117076,
+      "deltaKmh": 6.503981191185009,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": 6.503981191185009,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 1.8066614419958358,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 27.598164342560356
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_29",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:56:36Z",
+      "endUtc": "2026-10-13T15:56:37Z",
+      "speedStartKmh": 30.09878826117076,
+      "speedEndKmh": 34.88002450942327,
+      "deltaKmh": 4.781236248252512,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": 4.781236248252512,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 1.328121180070142,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 32.599412179781176
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_22",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:56:42Z",
+      "endUtc": "2026-10-13T15:56:43Z",
+      "speedStartKmh": 37.76960053524903,
+      "speedEndKmh": 31.8939389933528,
+      "deltaKmh": -5.875661541896232,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -5.875661541896232,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -1.6321282060822866,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 35.77503748909869
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_23",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:56:43Z",
+      "endUtc": "2026-10-13T15:56:44Z",
+      "speedStartKmh": 31.8939389933528,
+      "speedEndKmh": 26.17384775940475,
+      "deltaKmh": -5.72009123394805,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -5.72009123394805,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -1.5889142316522362,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 28.012840497606906
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_30",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:56:46Z",
+      "endUtc": "2026-10-13T15:56:47Z",
+      "speedStartKmh": 26.91248028857381,
+      "speedEndKmh": 31.16147801082919,
+      "deltaKmh": 4.248997722255378,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": 4.248997722255378,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 1.1802771450709384,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 28.704993891939083
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_31",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:56:47Z",
+      "endUtc": "2026-10-13T15:56:48Z",
+      "speedStartKmh": 31.16147801082919,
+      "speedEndKmh": 35.00857275872599,
+      "deltaKmh": 3.8470947478968007,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": 3.8470947478968007,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 1.0686374299713335,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 33.61796212971929
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_24",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:56:50Z",
+      "endUtc": "2026-10-13T15:56:51Z",
+      "speedStartKmh": 34.58042298521137,
+      "speedEndKmh": 31.28037434945735,
+      "deltaKmh": -3.3000486357540204,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -3.3000486357540204,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -0.916680176598339,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 33.147058414908386
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_32",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:56:53Z",
+      "endUtc": "2026-10-13T15:56:54Z",
+      "speedStartKmh": 29.23944616118931,
+      "speedEndKmh": 32.42556103074906,
+      "deltaKmh": 3.1861148695597485,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": 3.1861148695597485,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 0.8850319082110413,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 30.233054702721795
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_33",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:56:54Z",
+      "endUtc": "2026-10-13T15:56:55Z",
+      "speedStartKmh": 32.42556103074906,
+      "speedEndKmh": 36.73800351902802,
+      "deltaKmh": 4.312442488278961,
+      "bothEndsTrustedL3": false,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "UNTRUSTED",
+      "kinematics": {
+        "deltaVKmh": 4.312442488278961,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 1.1979006911886003,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "UNTRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 34.61806735877632
+      },
+      "confidenceTier": "CONFLICTED",
+      "confidenceRationale": [
+        "l3_cross_source_conflict_at_end"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_34",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:56:56Z",
+      "endUtc": "2026-10-13T15:56:57Z",
+      "speedStartKmh": 39.3806652105221,
+      "speedEndKmh": 42.75127149351698,
+      "deltaKmh": 3.3706062829948777,
+      "bothEndsTrustedL3": false,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "UNTRUSTED",
+      "kinematics": {
+        "deltaVKmh": 3.3706062829948777,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 0.9362795230541326,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "UNTRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 39.90339074176448
+      },
+      "confidenceTier": "CONFLICTED",
+      "confidenceRationale": [
+        "l3_cross_source_conflict_at_end"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_35",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:56:57Z",
+      "endUtc": "2026-10-13T15:56:58Z",
+      "speedStartKmh": 42.75127149351698,
+      "speedEndKmh": 47.30818281058259,
+      "deltaKmh": 4.556911317065612,
+      "bothEndsTrustedL3": false,
+      "qcTrustStart": "UNTRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": 4.556911317065612,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 1.2658086991848922,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "UNTRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 45.59915224526946
+      },
+      "confidenceTier": "CONFLICTED",
+      "confidenceRationale": [
+        "l3_cross_source_conflict_at_start"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_25",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:57:04Z",
+      "endUtc": "2026-10-13T15:57:05Z",
+      "speedStartKmh": 48.37646478529513,
+      "speedEndKmh": 43.36992999992185,
+      "deltaKmh": -5.006534785373276,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -5.006534785373276,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -1.3907041070481323,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 47.355695358146534
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_26",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:57:05Z",
+      "endUtc": "2026-10-13T15:57:06Z",
+      "speedStartKmh": 43.36992999992185,
+      "speedEndKmh": 37.39643054524652,
+      "deltaKmh": -5.973499454675334,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -5.973499454675334,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -1.6593054040764816,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 39.38416464169716
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_27",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:57:06Z",
+      "endUtc": "2026-10-13T15:57:07Z",
+      "speedStartKmh": 37.39643054524652,
+      "speedEndKmh": 30.04094871852587,
+      "deltaKmh": -7.3554818267206485,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -7.3554818267206485,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -2.0431893963112913,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 35.40869644879587
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_28",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:57:07Z",
+      "endUtc": "2026-10-13T15:57:08Z",
+      "speedStartKmh": 30.04094871852587,
+      "speedEndKmh": 23.22617208857812,
+      "deltaKmh": -6.8147766299477475,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -6.8147766299477475,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -1.8929935083188187,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 24.673200988255868
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_36",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:57:13Z",
+      "endUtc": "2026-10-13T15:57:14Z",
+      "speedStartKmh": 23.39430016785373,
+      "speedEndKmh": 27.26988376847678,
+      "deltaKmh": 3.8755836006230524,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": 3.8755836006230524,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 1.07655100017307,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 23.1209479722702
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_37",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:57:14Z",
+      "endUtc": "2026-10-13T15:57:15Z",
+      "speedStartKmh": 27.26988376847678,
+      "speedEndKmh": 31.51934223582861,
+      "deltaKmh": 4.249458467351829,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": 4.249458467351829,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 1.1804051298199525,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 31.418819564683364
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_29",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:57:17Z",
+      "endUtc": "2026-10-13T15:57:18Z",
+      "speedStartKmh": 34.98025244068968,
+      "speedEndKmh": 31.63908239271639,
+      "deltaKmh": -3.341170047973293,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -3.341170047973293,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -0.9281027911036924,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 33.644647834149524
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_30",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:57:18Z",
+      "endUtc": "2026-10-13T15:57:19Z",
+      "speedStartKmh": 31.63908239271639,
+      "speedEndKmh": 27.04361322677169,
+      "deltaKmh": -4.595469165944699,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -4.595469165944699,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -1.2765192127624165,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 29.63351695128324
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_31",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:57:19Z",
+      "endUtc": "2026-10-13T15:57:20Z",
+      "speedStartKmh": 27.04361322677169,
+      "speedEndKmh": 23.9209416426777,
+      "deltaKmh": -3.1226715840939896,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -3.1226715840939896,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -0.8674087733594416,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 24.453709502260125
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_32",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:57:26Z",
+      "endUtc": "2026-10-13T15:57:27Z",
+      "speedStartKmh": 22.79439279967193,
+      "speedEndKmh": 17.59862938406969,
+      "deltaKmh": -5.19576341560224,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -5.19576341560224,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -1.4432676154450668,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 20.476201896914834
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_33",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:57:27Z",
+      "endUtc": "2026-10-13T15:57:28Z",
+      "speedStartKmh": 17.59862938406969,
+      "speedEndKmh": 13.06792390889749,
+      "deltaKmh": -4.5307054751722,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -4.5307054751722,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -1.2585292986589443,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 14.721056871224542
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_34",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:57:29Z",
+      "endUtc": "2026-10-13T15:57:30Z",
+      "speedStartKmh": 10.09093277816898,
+      "speedEndKmh": 6.903931360765319,
+      "deltaKmh": -3.1870014174036614,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -3.1870014174036614,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -0.8852781715010171,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 8.767074609767512
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_38",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:57:31Z",
+      "endUtc": "2026-10-13T15:57:32Z",
+      "speedStartKmh": 7.348158897817711,
+      "speedEndKmh": 12.78774287546462,
+      "deltaKmh": 5.439583977646909,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": 5.439583977646909,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 1.5109955493463636,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 9.655529683872293
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_39",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:57:32Z",
+      "endUtc": "2026-10-13T15:57:33Z",
+      "speedStartKmh": 12.78774287546462,
+      "speedEndKmh": 16.92683181154806,
+      "deltaKmh": 4.139088936083439,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": 4.139088936083439,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 1.1497469266898441,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 15.919956067056935
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_DECEL_35",
+      "kind": "DECELERATION",
+      "startUtc": "2026-10-13T15:57:39Z",
+      "endUtc": "2026-10-13T15:57:40Z",
+      "speedStartKmh": 10.9200539667996,
+      "speedEndKmh": 6.678424272231664,
+      "deltaKmh": -4.241629694567936,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": -4.241629694567936,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": -1.1782304707133155,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 9.131174519597277
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    },
+    {
+      "id": "L3_ACCEL_40",
+      "kind": "ACCELERATION",
+      "startUtc": "2026-10-13T15:57:44Z",
+      "endUtc": "2026-10-13T15:57:45Z",
+      "speedStartKmh": 11.3656145601573,
+      "speedEndKmh": 16.6107235908303,
+      "deltaKmh": 5.2451090306729995,
+      "bothEndsTrustedL3": true,
+      "qcTrustStart": "TRUSTED",
+      "qcTrustEnd": "TRUSTED",
+      "kinematics": {
+        "deltaVKmh": 5.2451090306729995,
+        "deltaTMs": 1000,
+        "deltaTSources": "evaluationIndexUtc_calendar_seconds",
+        "longitudinalAccelMs2": 1.4569747307424998,
+        "note": "Longitudinal accel from L3 speed delta over bucket interval — not brake pedal or regen"
+      },
+      "qcCompatibility": {
+        "consecutiveValidSamples": true,
+        "startQc": "TRUSTED",
+        "endQc": "TRUSTED"
+      },
+      "gpsJumpScreening": {
+        "suspected": false,
+        "impliedPathSpeedKmh": 15.12371175267856
+      },
+      "confidenceTier": "HIGH_CONFIDENCE",
+      "confidenceRationale": [
+        "both_endpoints_TRUSTED_consecutive_1s"
+      ],
+      "notBrakePedalApplication": true,
+      "notRegenInference": true
+    }
+  ]
+}

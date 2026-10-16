@@ -247,6 +247,7 @@
     "ldi06:r1-event-selection": "ts-node -r tsconfig-paths/register scripts/ops/ldi06-r1-event-selection.ts",
     "ldi07:historical-s4-reconstruction": "ts-node -r tsconfig-paths/register scripts/ops/ldi07-historical-s4-reconstruction.ts",
     "ldi08:r1-fusion-replay": "ts-node -r tsconfig-paths/register scripts/ops/ldi08-r1-fusion-replay.ts",
+    "ldi09:accel-decel-signal-forensics": "ts-node -r tsconfig-paths/register scripts/ops/ldi09-accel-decel-signal-forensics.ts",
     "test:exp021:cohort-study-enrollment:bootstrap:postgres": "REFERENCE_CAPTURE_POSTGRES_INTEGRATION=1 jest reference-capture-exp021-cohort-study-enrollment-bootstrap.postgres.integration reference-capture-exp021-cohort-study-enrollment-arm-chain.postgres.integration --runInBand",
     "test:exp021:cohort-study-enrollment:bootstrap:postgres:ci": "REFERENCE_CAPTURE_POSTGRES_INTEGRATION=1 REFERENCE_CAPTURE_POSTGRES_REQUIRED=1 jest reference-capture-exp021-cohort-study-enrollment-bootstrap.postgres.integration reference-capture-exp021-cohort-study-enrollment-arm-chain.postgres.integration --runInBand --verbose",
     "test:exp021:maturation-shadow:migration": "bash scripts/test/exp021-maturation-shadow-migration-test.sh all",
