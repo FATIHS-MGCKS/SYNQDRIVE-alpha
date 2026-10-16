@@ -1,0 +1,268 @@
+[
+  {
+    "startUtc": "2026-10-16T03:36:00Z",
+    "endUtcInclusive": "2026-10-16T03:38:08Z",
+    "seconds": 129,
+    "tachoZeroSamples": 4,
+    "tachoPositiveSamples": 14,
+    "positionAvailability": {
+      "ROW_ABSENT": 104,
+      "PRESENT": 25
+    },
+    "positionStates": {
+      "ROW_ABSENT": 104,
+      "FRESH": 25
+    }
+  },
+  {
+    "startUtc": "2026-10-16T03:38:11Z",
+    "endUtcInclusive": "2026-10-16T03:38:22Z",
+    "seconds": 12,
+    "tachoZeroSamples": 2,
+    "tachoPositiveSamples": 9,
+    "positionAvailability": {
+      "PRESENT": 9,
+      "ROW_ABSENT": 3
+    },
+    "positionStates": {
+      "FRESH": 9,
+      "ROW_ABSENT": 3
+    }
+  },
+  {
+    "startUtc": "2026-10-16T03:38:58Z",
+    "endUtcInclusive": "2026-10-16T03:39:01Z",
+    "seconds": 4,
+    "tachoZeroSamples": 0,
+    "tachoPositiveSamples": 4,
+    "positionAvailability": {
+      "PRESENT": 4
+    },
+    "positionStates": {
+      "FRESH": 4
+    }
+  },
+  {
+    "startUtc": "2026-10-16T03:39:47Z",
+    "endUtcInclusive": "2026-10-16T03:39:48Z",
+    "seconds": 2,
+    "tachoZeroSamples": 0,
+    "tachoPositiveSamples": 2,
+    "positionAvailability": {
+      "PRESENT": 2
+    },
+    "positionStates": {
+      "FRESH": 2
+    }
+  },
+  {
+    "startUtc": "2026-10-16T03:40:18Z",
+    "endUtcInclusive": "2026-10-16T03:40:51Z",
+    "seconds": 34,
+    "tachoZeroSamples": 31,
+    "tachoPositiveSamples": 2,
+    "positionAvailability": {
+      "PRESENT": 2,
+      "ROW_ABSENT": 32
+    },
+    "positionStates": {
+      "FRESH": 2,
+      "ROW_ABSENT": 32
+    }
+  },
+  {
+    "startUtc": "2026-10-16T03:41:48Z",
+    "endUtcInclusive": "2026-10-16T03:42:31Z",
+    "seconds": 44,
+    "tachoZeroSamples": 40,
+    "tachoPositiveSamples": 4,
+    "positionAvailability": {
+      "PRESENT": 3,
+      "ROW_ABSENT": 41
+    },
+    "positionStates": {
+      "FRESH": 3,
+      "ROW_ABSENT": 41
+    }
+  },
+  {
+    "startUtc": "2026-10-16T03:42:47Z",
+    "endUtcInclusive": "2026-10-16T03:42:58Z",
+    "seconds": 12,
+    "tachoZeroSamples": 8,
+    "tachoPositiveSamples": 4,
+    "positionAvailability": {
+      "PRESENT": 4,
+      "ROW_ABSENT": 8
+    },
+    "positionStates": {
+      "FRESH": 4,
+      "ROW_ABSENT": 8
+    }
+  },
+  {
+    "startUtc": "2026-10-16T03:43:41Z",
+    "endUtcInclusive": "2026-10-16T03:44:37Z",
+    "seconds": 57,
+    "tachoZeroSamples": 46,
+    "tachoPositiveSamples": 4,
+    "positionAvailability": {
+      "PRESENT": 3,
+      "ROW_ABSENT": 54
+    },
+    "positionStates": {
+      "FRESH": 3,
+      "ROW_ABSENT": 54
+    }
+  },
+  {
+    "startUtc": "2026-10-16T03:45:50Z",
+    "endUtcInclusive": "2026-10-16T03:45:55Z",
+    "seconds": 6,
+    "tachoZeroSamples": 0,
+    "tachoPositiveSamples": 3,
+    "positionAvailability": {
+      "PRESENT": 5,
+      "ROW_ABSENT": 1
+    },
+    "positionStates": {
+      "FRESH": 5,
+      "ROW_ABSENT": 1
+    }
+  },
+  {
+    "startUtc": "2026-10-16T03:47:51Z",
+    "endUtcInclusive": "2026-10-16T03:47:53Z",
+    "seconds": 3,
+    "tachoZeroSamples": 0,
+    "tachoPositiveSamples": 3,
+    "positionAvailability": {
+      "PRESENT": 2,
+      "ROW_ABSENT": 1
+    },
+    "positionStates": {
+      "FRESH": 2,
+      "ROW_ABSENT": 1
+    }
+  },
+  {
+    "startUtc": "2026-10-16T03:49:01Z",
+    "endUtcInclusive": "2026-10-16T03:49:03Z",
+    "seconds": 3,
+    "tachoZeroSamples": 0,
+    "tachoPositiveSamples": 3,
+    "positionAvailability": {
+      "PRESENT": 2,
+      "ROW_ABSENT": 1
+    },
+    "positionStates": {
+      "FRESH": 2,
+      "ROW_ABSENT": 1
+    }
+  },
+  {
+    "startUtc": "2026-10-16T03:50:02Z",
+    "endUtcInclusive": "2026-10-16T03:50:04Z",
+    "seconds": 3,
+    "tachoZeroSamples": 0,
+    "tachoPositiveSamples": 2,
+    "positionAvailability": {
+      "PRESENT": 2,
+      "ROW_ABSENT": 1
+    },
+    "positionStates": {
+      "FRESH": 2,
+      "ROW_ABSENT": 1
+    }
+  },
+  {
+    "startUtc": "2026-10-16T03:50:20Z",
+    "endUtcInclusive": "2026-10-16T03:50:22Z",
+    "seconds": 3,
+    "tachoZeroSamples": 0,
+    "tachoPositiveSamples": 3,
+    "positionAvailability": {
+      "PRESENT": 2,
+      "ROW_ABSENT": 1
+    },
+    "positionStates": {
+      "FRESH": 2,
+      "ROW_ABSENT": 1
+    }
+  },
+  {
+    "startUtc": "2026-10-16T03:51:03Z",
+    "endUtcInclusive": "2026-10-16T03:51:05Z",
+    "seconds": 3,
+    "tachoZeroSamples": 0,
+    "tachoPositiveSamples": 3,
+    "positionAvailability": {
+      "PRESENT": 2,
+      "ROW_ABSENT": 1
+    },
+    "positionStates": {
+      "FRESH": 2,
+      "ROW_ABSENT": 1
+    }
+  },
+  {
+    "startUtc": "2026-10-16T03:51:23Z",
+    "endUtcInclusive": "2026-10-16T03:51:25Z",
+    "seconds": 3,
+    "tachoZeroSamples": 0,
+    "tachoPositiveSamples": 3,
+    "positionAvailability": {
+      "PRESENT": 2,
+      "ROW_ABSENT": 1
+    },
+    "positionStates": {
+      "FRESH": 2,
+      "ROW_ABSENT": 1
+    }
+  },
+  {
+    "startUtc": "2026-10-16T03:51:30Z",
+    "endUtcInclusive": "2026-10-16T03:51:32Z",
+    "seconds": 3,
+    "tachoZeroSamples": 0,
+    "tachoPositiveSamples": 3,
+    "positionAvailability": {
+      "PRESENT": 2,
+      "ROW_ABSENT": 1
+    },
+    "positionStates": {
+      "FRESH": 2,
+      "ROW_ABSENT": 1
+    }
+  },
+  {
+    "startUtc": "2026-10-16T03:51:44Z",
+    "endUtcInclusive": "2026-10-16T03:51:46Z",
+    "seconds": 3,
+    "tachoZeroSamples": 0,
+    "tachoPositiveSamples": 3,
+    "positionAvailability": {
+      "PRESENT": 2,
+      "ROW_ABSENT": 1
+    },
+    "positionStates": {
+      "FRESH": 2,
+      "ROW_ABSENT": 1
+    }
+  },
+  {
+    "startUtc": "2026-10-16T03:54:20Z",
+    "endUtcInclusive": "2026-10-16T03:54:55Z",
+    "seconds": 36,
+    "tachoZeroSamples": 4,
+    "tachoPositiveSamples": 20,
+    "positionAvailability": {
+      "PRESENT": 18,
+      "ROW_ABSENT": 18
+    },
+    "positionStates": {
+      "FRESH": 18,
+      "ROW_ABSENT": 18
+    }
+  }
+]

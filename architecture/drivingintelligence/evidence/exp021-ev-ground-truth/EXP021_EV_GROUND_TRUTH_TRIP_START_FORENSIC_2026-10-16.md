@@ -43,16 +43,27 @@ On trip creation the orchestration path is:
 
 **Second-aligned `03:36:00.000Z` is consistent with a DIMO segment boundary timestamp**, not sub-second route refinement.
 
-### Missing evidence (not in frozen `pre-deploy/` package)
+### Production read-only export (2026-10-16, post-baseline)
+
+**CONFIRMED** trip-specific fields (see [`EXP021_EV_GROUND_TRUTH_BOUNDARY_PROVENANCE_2026-10-16.md`](./EXP021_EV_GROUND_TRUTH_BOUNDARY_PROVENANCE_2026-10-16.md) + [`forensic-readonly-exports-2026-10-16/TRIP_BOUNDARY_PROVENANCE_EXPORT.json`](./forensic-readonly-exports-2026-10-16/TRIP_BOUNDARY_PROVENANCE_EXPORT.json)):
+
+| Field | Value |
+|-------|--------|
+| `dimo_segment_id` | `dimo-seg-186946-1792121760000` → start **`03:36:00.000Z`** (epoch in id) |
+| `lifecycleRecovery.startEpisode.candidateStartAt` | `2026-10-16T03:38:26.989Z` |
+| `lifecycleRecovery.startEpisode.effectiveStartAt` | `2026-10-16T03:36:00.000Z` (segment-aligned) |
+| `start_detection_mode` | `FREQUENCY_FALLBACK` |
+| `trip_created_at` | `2026-10-16T03:38:31.690Z` |
+
+**Conclusion (epistemic):** Persisted start matches **canonical DIMO segment boundary**, with lifecycle backdating from a **later candidate** to segment `effectiveStartAt`. **Physical** alignment with owner video (`03:37:41Z` overlay) remains **unresolved** — external kompakt review documents **101 s** grid prefix before overlay clock.
+
+### Remaining gaps
 
 | Gap | Why it matters |
 |-----|----------------|
-| `vehicle_trips.dimo_segment_id` | Would name the canonical segment whose `startTime` likely equals persisted start |
-| `raw_detection_meta` / `lastEvidenceSummary` | Would carry `confirmedStartAt`, `confirmedStartSource`, `startCandidateAt`, FSM processing instants |
-| DIMO segment payload for this window | Would show provider segment start vs telemetry motion |
-| Video sync table | Owner clock vs telemetry — **pending** ChatGPT / ingest protocol |
-
-**Conclusion (epistemic):** Persisted start was **rule-confirmed** into `vehicle_trips.start_time` and propagated to S4 acquisition + boundary fingerprint. **Physical video verification was not part of admission** (`ADMISSION_RECORD_MISSING` on this SHA). The **specific signal row** (segment id vs refined activity) is **INFERRED** as DIMO-segment-first, not **CONFIRMED** without `raw_detection_meta` export.
+| DIMO segment payload at capture | Provider API not fetched in this task |
+| Ingest receive timestamps | Not in pinned S4 export |
+| `tripFsmForensics.start.boundarySource` | Null in DB meta despite segment id present |
 
 ---
 

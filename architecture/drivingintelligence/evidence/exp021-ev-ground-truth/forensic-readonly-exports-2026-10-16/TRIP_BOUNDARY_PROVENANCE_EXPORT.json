@@ -1,0 +1,516 @@
+{
+  "schema": "EXP021_EV_GT_BOUNDARY_PROVENANCE_V1",
+  "observedAtUtc": "2026-10-16T16:09:08.498Z",
+  "productionSha": "a0ce01f192d888974e49c2558ee05e534f3dfeea",
+  "analysisCodeSha": "518fc3dd676fd910f6d6d148bc3ff3852a0ebe0a",
+  "tripId": "358d0158-b2a9-47ed-af26-33926c5770b4",
+  "vehicleId": "68868291-5478-42cd-b0c4-cc77b2a78e21",
+  "organizationId": "faa710c9-6d91-4079-a7d5-91fdccdec14a",
+  "persisted": {
+    "startUtc": "2026-10-16T03:36:00.000Z",
+    "endUtc": "2026-10-16T03:54:55.989Z",
+    "tripStatus": "COMPLETED",
+    "dimoSegmentId": "dimo-seg-186946-1792121760000",
+    "mergeParentTripId": null,
+    "isRepaired": false,
+    "boundaryRepairGeneration": null,
+    "tripCreatedAtUtc": "2026-10-16T03:38:31.690Z",
+    "startDetectionModeOnTripRow": "FREQUENCY_FALLBACK",
+    "possibleStartAtOnTripRowUtc": null,
+    "firstActivityAtUtc": null
+  },
+  "externalVideoAnchor": {
+    "firstVisibleClockUtc": "2026-10-16T03:37:41Z",
+    "offsetSecondsPersistedStartToVideoAnchor": 101,
+    "note": "Owner: physical reverse maneuver at video t=0; no earlier video file."
+  },
+  "detectionStateAtExport": {
+    "state": "RESTING",
+    "activeTripId": null,
+    "possibleStartAtUtc": null,
+    "possibleStartEnteredAtUtc": null,
+    "startDetectionMode": null,
+    "startConfidence": null,
+    "detectionStateUpdatedAtUtc": "2026-10-16T14:44:47.369Z"
+  },
+  "lastEvidenceSummaryTripFields": {},
+  "resolvedStartForensicProvenance": {
+    "startCandidateAtUtc": null,
+    "startCandidateEnteredAtUtc": null,
+    "startRecognizedAtUtc": null,
+    "startEpisodeCanonicalAtUtc": "2026-10-16T03:36:00.000Z",
+    "tripCanonicalStartAtUtc": "2026-10-16T03:36:00.000Z",
+    "startCandidateClockSource": null,
+    "startBoundarySource": null,
+    "startEvidencePath": null,
+    "startBoundaryAdjustedMs": null
+  },
+  "rawDetectionMetaSlices": {
+    "tripFsmForensics": {
+      "end": {
+        "confidence": "MEDIUM",
+        "candidateAt": "2026-10-16T03:54:55.989Z",
+        "recognizedAt": "2026-10-16T03:58:01.050Z",
+        "detectionMode": "CLICKHOUSE_END_ASSIST",
+        "boundarySource": "clickhouse_segment_end",
+        "candidateClock": "EVENT_TIME",
+        "recognizedClock": "WORKER_TIME",
+        "candidateEnteredAt": "2026-10-16T03:55:59.864Z",
+        "canonicalBoundaryAt": "2026-10-16T03:54:55.989Z",
+        "boundaryAdjustmentMs": 0,
+        "candidateClockSource": "PROVIDER_EVENT_TIME",
+        "candidateEnteredClock": "WORKER_TIME",
+        "canonicalBoundaryClock": "EVENT_TIME"
+      },
+      "start": {
+        "candidateAt": null,
+        "evidencePath": null,
+        "recognizedAt": null,
+        "boundarySource": null,
+        "candidateClock": "EVENT_TIME",
+        "recognizedClock": "WORKER_TIME",
+        "candidateEnteredAt": null,
+        "canonicalBoundaryAt": "2026-10-16T03:36:00.000Z",
+        "boundaryAdjustmentMs": null,
+        "candidateClockSource": null,
+        "tripCanonicalStartAt": null,
+        "candidateEnteredClock": "WORKER_TIME",
+        "canonicalBoundaryClock": "EVENT_TIME"
+      },
+      "version": "R8_V1"
+    },
+    "diV0BoundaryAdmissionV1": null,
+    "lifecycleRecovery": {
+      "startEpisode": {
+        "type": "start_episode",
+        "version": "r2a-v1",
+        "episodeId": "68868291-5478-42cd-b0c4-cc77b2a78e21:1792121906989",
+        "dimoSegmentId": "dimo-seg-186946-1792121760000",
+        "candidateStartAt": "2026-10-16T03:38:26.989Z",
+        "effectiveStartAt": "2026-10-16T03:36:00.000Z"
+      }
+    },
+    "startEpisode": {
+      "type": "start_episode",
+      "version": "r2a-v1",
+      "episodeId": "68868291-5478-42cd-b0c4-cc77b2a78e21:1792121906989",
+      "dimoSegmentId": "dimo-seg-186946-1792121760000",
+      "candidateStartAt": "2026-10-16T03:38:26.989Z",
+      "effectiveStartAt": "2026-10-16T03:36:00.000Z"
+    }
+  },
+  "tripFsmForensicsResolved": {
+    "end": {
+      "confidence": "MEDIUM",
+      "candidateAt": "2026-10-16T03:54:55.989Z",
+      "recognizedAt": "2026-10-16T03:58:01.050Z",
+      "detectionMode": "CLICKHOUSE_END_ASSIST",
+      "boundarySource": "clickhouse_segment_end",
+      "candidateClock": "EVENT_TIME",
+      "recognizedClock": "WORKER_TIME",
+      "candidateEnteredAt": "2026-10-16T03:55:59.864Z",
+      "canonicalBoundaryAt": "2026-10-16T03:54:55.989Z",
+      "boundaryAdjustmentMs": 0,
+      "candidateClockSource": "PROVIDER_EVENT_TIME",
+      "candidateEnteredClock": "WORKER_TIME",
+      "canonicalBoundaryClock": "EVENT_TIME"
+    },
+    "start": {
+      "candidateAt": null,
+      "evidencePath": null,
+      "recognizedAt": null,
+      "boundarySource": null,
+      "candidateClock": "EVENT_TIME",
+      "recognizedClock": "WORKER_TIME",
+      "candidateEnteredAt": null,
+      "canonicalBoundaryAt": "2026-10-16T03:36:00.000Z",
+      "boundaryAdjustmentMs": null,
+      "candidateClockSource": null,
+      "tripCanonicalStartAt": null,
+      "candidateEnteredClock": "WORKER_TIME",
+      "canonicalBoundaryClock": "EVENT_TIME"
+    },
+    "version": "R8_V1"
+  },
+  "repairHistory": [
+    {
+      "id": "b893f141-8f88-a34e-ccdd-87fbca3fc261",
+      "repairType": "PARTIAL_TRIP_BOUNDARY_EXTENSION",
+      "status": "SUPPRESSED",
+      "reason": "End extension below minimum repair span — treated as exact match",
+      "windowFromUtc": "2026-10-16T03:36:00.000Z",
+      "windowToUtc": "2026-10-16T03:57:00.000Z",
+      "appliedAtUtc": null,
+      "createdAtUtc": "2026-10-16T04:07:00.309Z"
+    }
+  ],
+  "trackingRunSummaries": [
+    {
+      "id": "43999cf3-1b76-4836-88be-6b58f362fc58",
+      "runType": "ACTIVE_TRACKING",
+      "stateAtRun": "ACTIVE_TRIP",
+      "resultState": "ACTIVE_TRIP",
+      "requestedFromUtc": "2026-10-16T03:38:01.237Z",
+      "requestedToUtc": "2026-10-16T03:39:01.877Z",
+      "createdAtUtc": "2026-10-16T03:39:02.737Z",
+      "resultSummaryStartFields": {}
+    },
+    {
+      "id": "02515c56-be76-4887-a13c-ec9ab4cfad25",
+      "runType": "ACTIVE_TRACKING",
+      "stateAtRun": "ACTIVE_TRIP",
+      "resultState": "ACTIVE_TRIP",
+      "requestedFromUtc": "2026-10-16T03:38:31.877Z",
+      "requestedToUtc": "2026-10-16T03:39:32.847Z",
+      "createdAtUtc": "2026-10-16T03:39:33.682Z",
+      "resultSummaryStartFields": {}
+    },
+    {
+      "id": "8deb873f-e916-4859-b5dd-e91eb8908575",
+      "runType": "ACTIVE_TRACKING",
+      "stateAtRun": "ACTIVE_TRIP",
+      "resultState": "ACTIVE_TRIP",
+      "requestedFromUtc": "2026-10-16T03:39:02.847Z",
+      "requestedToUtc": "2026-10-16T03:39:59.858Z",
+      "createdAtUtc": "2026-10-16T03:40:00.426Z",
+      "resultSummaryStartFields": {}
+    },
+    {
+      "id": "de8168de-1b90-48b3-ba12-9e44078e481b",
+      "runType": "ACTIVE_TRACKING",
+      "stateAtRun": "ACTIVE_TRIP",
+      "resultState": "ACTIVE_TRIP",
+      "requestedFromUtc": "2026-10-16T03:39:29.858Z",
+      "requestedToUtc": "2026-10-16T03:40:30.434Z",
+      "createdAtUtc": "2026-10-16T03:40:30.730Z",
+      "resultSummaryStartFields": {}
+    },
+    {
+      "id": "dbef0f05-ec15-4b50-982f-abca5941d1b0",
+      "runType": "ACTIVE_TRACKING",
+      "stateAtRun": "ACTIVE_TRIP",
+      "resultState": "ACTIVE_TRIP",
+      "requestedFromUtc": "2026-10-16T03:40:00.434Z",
+      "requestedToUtc": "2026-10-16T03:41:00.860Z",
+      "createdAtUtc": "2026-10-16T03:41:01.161Z",
+      "resultSummaryStartFields": {}
+    },
+    {
+      "id": "9eaf2fce-2f7c-4370-91b0-5ef33054bab6",
+      "runType": "ACTIVE_TRACKING",
+      "stateAtRun": "ACTIVE_TRIP",
+      "resultState": "ACTIVE_TRIP",
+      "requestedFromUtc": "2026-10-16T03:40:30.860Z",
+      "requestedToUtc": "2026-10-16T03:41:59.934Z",
+      "createdAtUtc": "2026-10-16T03:42:00.564Z",
+      "resultSummaryStartFields": {}
+    },
+    {
+      "id": "0ff610f6-a131-4db6-bb70-1e5caf481fbf",
+      "runType": "ACTIVE_TRACKING",
+      "stateAtRun": "ACTIVE_TRIP",
+      "resultState": "ACTIVE_TRIP",
+      "requestedFromUtc": "2026-10-16T03:41:29.934Z",
+      "requestedToUtc": "2026-10-16T03:42:30.648Z",
+      "createdAtUtc": "2026-10-16T03:42:31.006Z",
+      "resultSummaryStartFields": {}
+    },
+    {
+      "id": "e8c7f7c4-fa5f-44f0-a95a-596f20034f14",
+      "runType": "ACTIVE_TRACKING",
+      "stateAtRun": "ACTIVE_TRIP",
+      "resultState": "ACTIVE_TRIP",
+      "requestedFromUtc": "2026-10-16T03:42:00.648Z",
+      "requestedToUtc": "2026-10-16T03:43:01.034Z",
+      "createdAtUtc": "2026-10-16T03:43:01.726Z",
+      "resultSummaryStartFields": {}
+    },
+    {
+      "id": "1b7b743a-2d5c-40d2-a241-5eaffbd23220",
+      "runType": "ACTIVE_TRACKING",
+      "stateAtRun": "ACTIVE_TRIP",
+      "resultState": "ACTIVE_TRIP",
+      "requestedFromUtc": "2026-10-16T03:42:31.034Z",
+      "requestedToUtc": "2026-10-16T03:43:59.866Z",
+      "createdAtUtc": "2026-10-16T03:44:00.445Z",
+      "resultSummaryStartFields": {}
+    },
+    {
+      "id": "107b9314-ed48-42c2-bd87-cae41be6cf07",
+      "runType": "ACTIVE_TRACKING",
+      "stateAtRun": "ACTIVE_TRIP",
+      "resultState": "ACTIVE_TRIP",
+      "requestedFromUtc": "2026-10-16T03:43:29.866Z",
+      "requestedToUtc": "2026-10-16T03:44:30.558Z",
+      "createdAtUtc": "2026-10-16T03:44:30.914Z",
+      "resultSummaryStartFields": {}
+    },
+    {
+      "id": "84c2e9a6-54ef-4eb0-9a05-3f5ea8330fe8",
+      "runType": "ACTIVE_TRACKING",
+      "stateAtRun": "ACTIVE_TRIP",
+      "resultState": "ACTIVE_TRIP",
+      "requestedFromUtc": "2026-10-16T03:44:00.558Z",
+      "requestedToUtc": "2026-10-16T03:45:00.972Z",
+      "createdAtUtc": "2026-10-16T03:45:02.630Z",
+      "resultSummaryStartFields": {}
+    },
+    {
+      "id": "9e1e0fbf-f121-48cd-beac-d767fefa92e9",
+      "runType": "ACTIVE_TRACKING",
+      "stateAtRun": "ACTIVE_TRIP",
+      "resultState": "ACTIVE_TRIP",
+      "requestedFromUtc": "2026-10-16T03:44:30.972Z",
+      "requestedToUtc": "2026-10-16T03:45:59.880Z",
+      "createdAtUtc": "2026-10-16T03:46:00.303Z",
+      "resultSummaryStartFields": {}
+    },
+    {
+      "id": "363ad816-dba0-487d-8753-42da16db857c",
+      "runType": "ACTIVE_TRACKING",
+      "stateAtRun": "ACTIVE_TRIP",
+      "resultState": "ACTIVE_TRIP",
+      "requestedFromUtc": "2026-10-16T03:45:29.880Z",
+      "requestedToUtc": "2026-10-16T03:46:30.356Z",
+      "createdAtUtc": "2026-10-16T03:46:30.817Z",
+      "resultSummaryStartFields": {}
+    },
+    {
+      "id": "6b9c9c67-7359-4a71-9a25-4c217531e05b",
+      "runType": "ACTIVE_TRACKING",
+      "stateAtRun": "ACTIVE_TRIP",
+      "resultState": "ACTIVE_TRIP",
+      "requestedFromUtc": "2026-10-16T03:46:00.356Z",
+      "requestedToUtc": "2026-10-16T03:47:00.882Z",
+      "createdAtUtc": "2026-10-16T03:47:01.408Z",
+      "resultSummaryStartFields": {}
+    },
+    {
+      "id": "96ee91a3-f24a-4dd9-8c1a-f6d82e7a16c4",
+      "runType": "ACTIVE_TRACKING",
+      "stateAtRun": "ACTIVE_TRIP",
+      "resultState": "ACTIVE_TRIP",
+      "requestedFromUtc": "2026-10-16T03:46:30.882Z",
+      "requestedToUtc": "2026-10-16T03:47:59.904Z",
+      "createdAtUtc": "2026-10-16T03:48:00.694Z",
+      "resultSummaryStartFields": {}
+    },
+    {
+      "id": "d1abae46-43c6-4289-8046-2f5ed4860e01",
+      "runType": "ACTIVE_TRACKING",
+      "stateAtRun": "ACTIVE_TRIP",
+      "resultState": "ACTIVE_TRIP",
+      "requestedFromUtc": "2026-10-16T03:47:29.904Z",
+      "requestedToUtc": "2026-10-16T03:48:30.742Z",
+      "createdAtUtc": "2026-10-16T03:48:31.252Z",
+      "resultSummaryStartFields": {}
+    },
+    {
+      "id": "b12ab009-f991-49a6-a49f-5c0fc1d3e92e",
+      "runType": "ACTIVE_TRACKING",
+      "stateAtRun": "ACTIVE_TRIP",
+      "resultState": "ACTIVE_TRIP",
+      "requestedFromUtc": "2026-10-16T03:48:00.742Z",
+      "requestedToUtc": "2026-10-16T03:49:01.363Z",
+      "createdAtUtc": "2026-10-16T03:49:02.337Z",
+      "resultSummaryStartFields": {}
+    },
+    {
+      "id": "84379d13-bee7-4f61-8f6c-3e54e6230fcb",
+      "runType": "ACTIVE_TRACKING",
+      "stateAtRun": "ACTIVE_TRIP",
+      "resultState": "ACTIVE_TRIP",
+      "requestedFromUtc": "2026-10-16T03:48:31.363Z",
+      "requestedToUtc": "2026-10-16T03:49:59.870Z",
+      "createdAtUtc": "2026-10-16T03:50:00.242Z",
+      "resultSummaryStartFields": {}
+    },
+    {
+      "id": "5316444e-a4e7-4955-ad8d-64947e467027",
+      "runType": "ACTIVE_TRACKING",
+      "stateAtRun": "ACTIVE_TRIP",
+      "resultState": "ACTIVE_TRIP",
+      "requestedFromUtc": "2026-10-16T03:49:29.870Z",
+      "requestedToUtc": "2026-10-16T03:50:30.379Z",
+      "createdAtUtc": "2026-10-16T03:50:30.918Z",
+      "resultSummaryStartFields": {}
+    },
+    {
+      "id": "00504a44-b80f-483e-af14-6929e664c415",
+      "runType": "ACTIVE_TRACKING",
+      "stateAtRun": "ACTIVE_TRIP",
+      "resultState": "ACTIVE_TRIP",
+      "requestedFromUtc": "2026-10-16T03:50:00.379Z",
+      "requestedToUtc": "2026-10-16T03:51:01.092Z",
+      "createdAtUtc": "2026-10-16T03:51:01.515Z",
+      "resultSummaryStartFields": {}
+    },
+    {
+      "id": "18f482e3-6481-41b2-bc66-a7daadd00156",
+      "runType": "ACTIVE_TRACKING",
+      "stateAtRun": "ACTIVE_TRIP",
+      "resultState": "ACTIVE_TRIP",
+      "requestedFromUtc": "2026-10-16T03:50:31.092Z",
+      "requestedToUtc": "2026-10-16T03:51:59.962Z",
+      "createdAtUtc": "2026-10-16T03:52:00.809Z",
+      "resultSummaryStartFields": {}
+    },
+    {
+      "id": "7446cd27-b3e9-4f09-bf83-31b039343462",
+      "runType": "ACTIVE_TRACKING",
+      "stateAtRun": "ACTIVE_TRIP",
+      "resultState": "ACTIVE_TRIP",
+      "requestedFromUtc": "2026-10-16T03:51:29.962Z",
+      "requestedToUtc": "2026-10-16T03:52:30.873Z",
+      "createdAtUtc": "2026-10-16T03:52:31.348Z",
+      "resultSummaryStartFields": {}
+    },
+    {
+      "id": "3b80d22c-c0b7-4b51-9bd4-ccc8e63deb14",
+      "runType": "ACTIVE_TRACKING",
+      "stateAtRun": "ACTIVE_TRIP",
+      "resultState": "ACTIVE_TRIP",
+      "requestedFromUtc": "2026-10-16T03:52:00.873Z",
+      "requestedToUtc": "2026-10-16T03:53:01.378Z",
+      "createdAtUtc": "2026-10-16T03:53:01.752Z",
+      "resultSummaryStartFields": {}
+    },
+    {
+      "id": "57b7e363-08b3-4749-8e81-02fdbcaddf3c",
+      "runType": "ACTIVE_TRACKING",
+      "stateAtRun": "ACTIVE_TRIP",
+      "resultState": "ACTIVE_TRIP",
+      "requestedFromUtc": "2026-10-16T03:52:31.378Z",
+      "requestedToUtc": "2026-10-16T03:53:59.880Z",
+      "createdAtUtc": "2026-10-16T03:54:00.484Z",
+      "resultSummaryStartFields": {}
+    },
+    {
+      "id": "69cb74f3-3e27-43fd-b463-cc18c37aa554",
+      "runType": "ACTIVE_TRACKING",
+      "stateAtRun": "ACTIVE_TRIP",
+      "resultState": "ACTIVE_TRIP",
+      "requestedFromUtc": "2026-10-16T03:53:29.880Z",
+      "requestedToUtc": "2026-10-16T03:54:30.498Z",
+      "createdAtUtc": "2026-10-16T03:54:30.815Z",
+      "resultSummaryStartFields": {}
+    },
+    {
+      "id": "75ea3889-7ce5-4b67-8b85-72754dc50d02",
+      "runType": "ACTIVE_TRACKING",
+      "stateAtRun": "ACTIVE_TRIP",
+      "resultState": "ACTIVE_TRIP",
+      "requestedFromUtc": "2026-10-16T03:54:00.498Z",
+      "requestedToUtc": "2026-10-16T03:55:00.919Z",
+      "createdAtUtc": "2026-10-16T03:55:01.840Z",
+      "resultSummaryStartFields": {}
+    },
+    {
+      "id": "74c38d4a-bc5f-4ab5-a0b0-e8a92ff7db22",
+      "runType": "ACTIVE_TRACKING",
+      "stateAtRun": "ACTIVE_TRIP",
+      "resultState": "POSSIBLE_END",
+      "requestedFromUtc": "2026-10-16T03:54:30.919Z",
+      "requestedToUtc": "2026-10-16T03:55:59.864Z",
+      "createdAtUtc": "2026-10-16T03:56:00.417Z",
+      "resultSummaryStartFields": {}
+    },
+    {
+      "id": "9912bafb-d072-4bcb-9dd4-e5f1cf836c58",
+      "runType": "POSSIBLE_END_CHECK",
+      "stateAtRun": "POSSIBLE_END",
+      "resultState": "POSSIBLE_END",
+      "requestedFromUtc": null,
+      "requestedToUtc": null,
+      "createdAtUtc": "2026-10-16T03:58:00.385Z",
+      "resultSummaryStartFields": {}
+    },
+    {
+      "id": "30de463f-cc80-4046-a091-e351050e28a8",
+      "runType": "END_VALIDATION",
+      "stateAtRun": "POSSIBLE_END",
+      "resultState": "RESTING",
+      "requestedFromUtc": null,
+      "requestedToUtc": null,
+      "createdAtUtc": "2026-10-16T03:58:00.776Z",
+      "resultSummaryStartFields": {}
+    },
+    {
+      "id": "8bb6f536-510d-418a-ae02-3a13a9b1a661",
+      "runType": "FINALIZATION_CHECK",
+      "stateAtRun": "POSSIBLE_END",
+      "resultState": "RESTING",
+      "requestedFromUtc": null,
+      "requestedToUtc": null,
+      "createdAtUtc": "2026-10-16T03:58:02.586Z",
+      "resultSummaryStartFields": {}
+    }
+  ],
+  "eventTimeline": [
+    {
+      "role": "PERSISTED_TRIP_START",
+      "atUtc": "2026-10-16T03:36:00.000Z",
+      "sourceField": "vehicle_trips.start_time",
+      "epistemic": "CONFIRMED"
+    },
+    {
+      "role": "DIMO_SEGMENT_ID_LINK",
+      "atUtc": "2026-10-16T03:36:00.000Z",
+      "segmentId": "dimo-seg-186946-1792121760000",
+      "sourceField": "vehicle_trips.dimo_segment_id",
+      "epistemic": "CONFIRMED"
+    },
+    {
+      "role": "S4_ACQUISITION_GRID_START",
+      "atUtc": "2026-10-16T03:36:00Z",
+      "sourceField": "di_v0_s4_evidence_snapshots.acquisition_window_start",
+      "epistemic": "CONFIRMED"
+    },
+    {
+      "role": "FSM_START_CANDIDATE",
+      "atUtc": null,
+      "sourceField": "last_evidence_summary.startCandidateAt | possible_start_at",
+      "epistemic": "UNKNOWN"
+    },
+    {
+      "role": "FSM_START_RECOGNIZED",
+      "atUtc": null,
+      "sourceField": "last_evidence_summary.startRecognizedAt",
+      "epistemic": "UNKNOWN"
+    },
+    {
+      "role": "CONFIRMED_START_BOUNDARY",
+      "atUtc": "2026-10-16T03:36:00.000Z",
+      "boundarySource": null,
+      "adjustedMs": null,
+      "sourceField": "confirmedStartAt | lifecycleRecovery.startEpisode",
+      "epistemic": "CONFIRMED"
+    },
+    {
+      "role": "EXTERNAL_VIDEO_OVERLAY_CLOCK",
+      "atUtc": "2026-10-16T03:37:41Z",
+      "sourceField": "owner_video_TC_00062_first_frame",
+      "epistemic": "CONFIRMED_EXTERNAL_REVIEW"
+    }
+  ],
+  "provenanceGaps": [
+    {
+      "field": "provider_segment_start_time_payload",
+      "reason": "DIMO segment timestamps not stored in frozen pre-deploy bundle; requires provider API or segment cache row export (not fetched in this task)."
+    },
+    {
+      "field": "telemetry_ingest_receive_time",
+      "reason": "Not exported in pinned S4 snapshot or per-second replay."
+    },
+    {
+      "field": "fsm_worker_processing_instant_at_trip_create",
+      "reason": "Requires raw_detection_meta / tracking run payload — partial export above; empty if fields were never persisted."
+    }
+  ],
+  "codePathReference": {
+    "resolveConfirmedStartBoundary": "backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts — DIMO segment preferred over route/core refinement",
+    "tripStartBoundaryMaxLookbackMs": "env TRIP_START_BOUNDARY_MAX_LOOKBACK_MS (default 35 min) — not re-read from Production in this export"
+  },
+  "productionMutations": "NONE",
+  "providerCalls": "NONE"
+}
