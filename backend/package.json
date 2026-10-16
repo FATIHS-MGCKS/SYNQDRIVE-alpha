@@ -230,6 +230,7 @@
     "exp021:stationary-offline-prototype": "ts-node -r tsconfig-paths/register scripts/ops/exp021-stationary-offline-prototype.ts",
     "exp021:stationary-offline-prototype-v2": "ts-node -r tsconfig-paths/register scripts/ops/exp021-stationary-offline-prototype-v2.ts",
     "exp021:dimo-provider-position-comparison-fetch": "ts-node -r tsconfig-paths/register scripts/ops/exp021-dimo-provider-position-comparison-fetch.ts",
+    "exp021:stationary-evidence-surface": "ts-node -r tsconfig-paths/register scripts/ops/exp021-stationary-evidence-surface.ts",
     "test:exp021:cohort-study-enrollment:bootstrap:postgres": "REFERENCE_CAPTURE_POSTGRES_INTEGRATION=1 jest reference-capture-exp021-cohort-study-enrollment-bootstrap.postgres.integration reference-capture-exp021-cohort-study-enrollment-arm-chain.postgres.integration --runInBand",
     "test:exp021:cohort-study-enrollment:bootstrap:postgres:ci": "REFERENCE_CAPTURE_POSTGRES_INTEGRATION=1 REFERENCE_CAPTURE_POSTGRES_REQUIRED=1 jest reference-capture-exp021-cohort-study-enrollment-bootstrap.postgres.integration reference-capture-exp021-cohort-study-enrollment-arm-chain.postgres.integration --runInBand --verbose",
     "test:exp021:maturation-shadow:migration": "bash scripts/test/exp021-maturation-shadow-migration-test.sh all",

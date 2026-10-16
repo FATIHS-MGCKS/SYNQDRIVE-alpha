@@ -1,0 +1,191 @@
+{
+  "hypothesis": "Use pinned R1_OBD numeric speed as independent witness when POSITION is ROW_ABSENT (no new fetch).",
+  "thresholdsKmh": {
+    "standstill": 1,
+    "slowMax": 5
+  },
+  "totals": {
+    "positionRowAbsentInHalts": 124,
+    "withNumericR1": 0,
+    "causalClass": {
+      "standstill": 0,
+      "slow": 0,
+      "moving": 0,
+      "unknown": 124
+    }
+  },
+  "perHaltSamples": {
+    "LONG_HALT_1": {
+      "sampleAbsentSeconds": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:19Z",
+          "r1SpeedKmh": null,
+          "causalClass": "UNKNOWN"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:20Z",
+          "r1SpeedKmh": null,
+          "causalClass": "UNKNOWN"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:21Z",
+          "r1SpeedKmh": null,
+          "causalClass": "UNKNOWN"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:22Z",
+          "r1SpeedKmh": null,
+          "causalClass": "UNKNOWN"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:23Z",
+          "r1SpeedKmh": null,
+          "causalClass": "UNKNOWN"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:24Z",
+          "r1SpeedKmh": null,
+          "causalClass": "UNKNOWN"
+        }
+      ]
+    },
+    "LONG_HALT_2": {
+      "sampleAbsentSeconds": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:41:50Z",
+          "r1SpeedKmh": null,
+          "causalClass": "UNKNOWN"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:41:51Z",
+          "r1SpeedKmh": null,
+          "causalClass": "UNKNOWN"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:41:52Z",
+          "r1SpeedKmh": null,
+          "causalClass": "UNKNOWN"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:41:53Z",
+          "r1SpeedKmh": null,
+          "causalClass": "UNKNOWN"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:41:54Z",
+          "r1SpeedKmh": null,
+          "causalClass": "UNKNOWN"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:41:55Z",
+          "r1SpeedKmh": null,
+          "causalClass": "UNKNOWN"
+        }
+      ]
+    },
+    "LONG_HALT_3": {
+      "sampleAbsentSeconds": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:51Z",
+          "r1SpeedKmh": null,
+          "causalClass": "UNKNOWN"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:52Z",
+          "r1SpeedKmh": null,
+          "causalClass": "UNKNOWN"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:53Z",
+          "r1SpeedKmh": null,
+          "causalClass": "UNKNOWN"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:54Z",
+          "r1SpeedKmh": null,
+          "causalClass": "UNKNOWN"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:55Z",
+          "r1SpeedKmh": null,
+          "causalClass": "UNKNOWN"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:56Z",
+          "r1SpeedKmh": null,
+          "causalClass": "UNKNOWN"
+        }
+      ]
+    },
+    "LONG_HALT_4": {
+      "sampleAbsentSeconds": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:43Z",
+          "r1SpeedKmh": null,
+          "causalClass": "UNKNOWN"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:44Z",
+          "r1SpeedKmh": null,
+          "causalClass": "UNKNOWN"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:45Z",
+          "r1SpeedKmh": null,
+          "causalClass": "UNKNOWN"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:46Z",
+          "r1SpeedKmh": null,
+          "causalClass": "UNKNOWN"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:47Z",
+          "r1SpeedKmh": null,
+          "causalClass": "UNKNOWN"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:48Z",
+          "r1SpeedKmh": null,
+          "causalClass": "UNKNOWN"
+        }
+      ]
+    },
+    "LONG_HALT_5": {
+      "sampleAbsentSeconds": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:10Z",
+          "r1SpeedKmh": null,
+          "causalClass": "UNKNOWN"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:11Z",
+          "r1SpeedKmh": null,
+          "causalClass": "UNKNOWN"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:12Z",
+          "r1SpeedKmh": null,
+          "causalClass": "UNKNOWN"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:13Z",
+          "r1SpeedKmh": null,
+          "causalClass": "UNKNOWN"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:14Z",
+          "r1SpeedKmh": null,
+          "causalClass": "UNKNOWN"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:15Z",
+          "r1SpeedKmh": null,
+          "causalClass": "UNKNOWN"
+        }
+      ]
+    }
+  },
+  "epistemic": "INFERRED — R1 is interval/bucket witness not proven physical standstill; video remains evaluation only.",
+  "retrospectiveBracketNote": "Bracket displacement before/after gap is reported separately in halt forensics — not used in this causal per-second experiment."
+}

@@ -106,3 +106,5 @@ npm run exp021:dimo-provider-position-comparison-fetch -- --out-dir ../architect
 ```
 
 Siehe auch [`EXP021_STATIONARY_CREEP_GAP_FOCUS.md`](./EXP021_STATIONARY_CREEP_GAP_FOCUS.md) (Abschnitt v0_2 ergänzt).
+
+**Vertiefung (Evidenzoberfläche, kein zweiter Provider-Abruf):** [`EXP021_STATIONARY_EVIDENCE_SURFACE_2026-10-16.md`](./EXP021_STATIONARY_EVIDENCE_SURFACE_2026-10-16.md)
