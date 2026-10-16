@@ -30,6 +30,19 @@
 Production extract script: `backend/scripts/ops/exp021-position-fetch-metadata.ts`  
 Artifact: `/opt/cursor/artifacts/exp021-position-fetch-metadata.json` (read-only VPS run)
 
+### Production extract (`533b2bf8…`, verified pin)
+
+| Field | Value |
+| --- | --- |
+| `workItemCompletedAtUtc` | `2026-10-14T16:22:44.138Z` (fetch instant proxy — **not** wire timestamp) |
+| `dimoTokenId` (sealed) | **192922** |
+| POSITION window | `[2026-10-14T14:47:05Z, 2026-10-14T16:05:19Z)` → **4694** buckets |
+| Provider rows matched | **1728** (`sum(providerRowCount)`) |
+| Pin availability | **2966** `ROW_ABSENT`, **1728** present, **0** `SIGNAL_NULL` |
+| Rejected provider rows | **0** (this trip) |
+| `providerSignalsNull` | **false** |
+| S4 `source_family` | `RUPTELA_R1` (envelope label; POSITION query still DIMO `currentLocationCoordinates`) |
+
 ## Pagination & completeness (from code + pin counters)
 
 | Topic | Finding |
