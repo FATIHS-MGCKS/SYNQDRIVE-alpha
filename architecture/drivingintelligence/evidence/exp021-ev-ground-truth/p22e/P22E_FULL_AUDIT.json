@@ -1,8 +1,8 @@
 {
   "schema": "EXP021_P22E_PRE_P23_AUDIT_V1",
-  "observedAtUtc": "2026-10-16T21:19:08.075Z",
+  "observedAtUtc": "2026-10-16T21:19:26.341Z",
   "prNumber": 2051,
-  "headSha": "e3a79ee2c599dc39b0592abd8f05db073dc80ef7",
+  "headSha": "7b37f9e9c17c55848aaacfc7c56bb1b3a28521e2",
   "p22eResult": "BASELINE_PARITY_OK_COVERAGE_RECOVERY_BLOCKED",
   "preflight": {
     "tripId": "358d0158-b2a9-47ed-af26-33926c5770b4",
