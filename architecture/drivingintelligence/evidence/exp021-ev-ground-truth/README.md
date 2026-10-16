@@ -32,7 +32,10 @@ Owner-reported window (Berlin): `2026-10-16T05:36:00+02:00` → `2026-10-16T05:5
 | [EXP021_EV_GROUND_TRUTH_BOUNDARY_PROVENANCE_2026-10-16.md](./EXP021_EV_GROUND_TRUTH_BOUNDARY_PROVENANCE_2026-10-16.md) | Auftrag 1 — DIMO segment + lifecycle meta (Production read-only export) |
 | [EXP021_EV_GROUND_TRUTH_STOP_CREEP_FORENSIC_2026-10-16.md](./EXP021_EV_GROUND_TRUTH_STOP_CREEP_FORENSIC_2026-10-16.md) | Auftrag 2 — stop/creep/gap windows + baseline parity |
 | [external-video-review-kompakt-2026-10-16/](./external-video-review-kompakt-2026-10-16/) | Kompakt external video review (no JPEG frames; metrics reproducible from annotations) |
-| [forensic-readonly-exports-2026-10-16/](./forensic-readonly-exports-2026-10-16/) | JSON exports for Auftrag 1+2 (`npm run exp021:ev-ground-truth:forensic-export`) |
+| [forensic-readonly-exports-2026-10-16/](./forensic-readonly-exports-2026-10-16/) | JSON exports for Auftrag 1+2 (`npm run exp021:ev-ground-truth:forensic-export`) — **frozen** |
+| [EXP021_EV_GROUND_TRUTH_FORENSIC_SUPPLEMENT_V1.md](./EXP021_EV_GROUND_TRUTH_FORENSIC_SUPPLEMENT_V1.md) | Additive supplement v1 (segment trace, video anchor, ROW_ABSENT 135/125, version SHA) |
+| [forensic-readonly-exports-2026-10-16-supplement-v1/](./forensic-readonly-exports-2026-10-16-supplement-v1/) | Supplement JSON (`npm run exp021:ev-ground-truth:forensic-supplement-v1`) |
+| [EXP021_VIDEO_ANCHOR_SEMANTICS_ADDENDUM.md](./EXP021_VIDEO_ANCHOR_SEMANTICS_ADDENDUM.md) | Clarifies clock label vs PTS=0 vs owner maneuver (Bericht hash preserved) |
 | [POST_DEPLOY_VERIFICATION_PLAN.md](./POST_DEPLOY_VERIFICATION_PLAN.md) | Post-deploy read-only checklist (pending) |
 =======
 | [POST_DEPLOY_VERIFICATION_PLAN.md](./POST_DEPLOY_VERIFICATION_PLAN.md) | Post-deploy read-only checklist |

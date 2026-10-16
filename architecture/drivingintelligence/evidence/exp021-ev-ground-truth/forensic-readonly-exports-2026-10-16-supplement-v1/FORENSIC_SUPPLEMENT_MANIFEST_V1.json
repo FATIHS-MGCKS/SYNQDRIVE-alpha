@@ -1,0 +1,26 @@
+{
+  "schema": "EXP021_EV_GT_FORENSIC_SUPPLEMENT_MANIFEST_V1",
+  "supplementVersion": "v1",
+  "observedAtUtc": "2026-10-16T16:23:00.099Z",
+  "priorExportPreserved": "../forensic-readonly-exports-2026-10-16/",
+  "artifacts": {
+    "segmentTrace": {
+      "path": "DIMO_SEGMENT_TRACE_SUPPLEMENT_V1.json",
+      "sha256": "695f126a2b1d47e5767ce3befd5089b4f6a229cb0c71ee2f520c3161db69338f"
+    },
+    "videoAnchor": {
+      "path": "VIDEO_ANCHOR_SEMANTICS_SUPPLEMENT_V1.json",
+      "sha256": "e809c2d0ca5218797b5d929fda97dfce121388e518ed7836dfb3add12f200cae"
+    },
+    "rowAbsent": {
+      "path": "ROW_ABSENT_CHAIN_SUPPLEMENT_V1.json",
+      "sha256": "481e346b0952b19643bc11ce94037b2acce8d3909f76bcb756c8f7b787860bc9"
+    },
+    "versionProvenance": {
+      "path": "VERSION_PROVENANCE_SUPPLEMENT_V1.json",
+      "sha256": "4667ba3889582ad7d9930b91f62bc6a69a2473bebf811230ed87903db73599c4"
+    }
+  },
+  "productionMutations": "NONE",
+  "providerCalls": "NONE"
+}

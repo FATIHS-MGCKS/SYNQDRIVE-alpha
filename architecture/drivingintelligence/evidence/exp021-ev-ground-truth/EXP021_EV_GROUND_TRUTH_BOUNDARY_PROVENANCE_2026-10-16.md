@@ -53,6 +53,11 @@ This does **not** prove the segment itself matches physical departure (reverse m
 | Ingest receive timestamps for first positions | Not in pinned S4 export |
 | Exact FSM `confirmedStartSource` string | Null in `tripFsmForensics.start`; candidate/start episode meta partially fills |
 
+## Supplement v1 (segment trace + epistemic labels)
+
+Extended trace (persisted facts vs code path vs gaps; no provider fetch):  
+[`EXP021_EV_GROUND_TRUTH_FORENSIC_SUPPLEMENT_V1.md`](./EXP021_EV_GROUND_TRUTH_FORENSIC_SUPPLEMENT_V1.md) · [`DIMO_SEGMENT_TRACE_SUPPLEMENT_V1.json`](./forensic-readonly-exports-2026-10-16-supplement-v1/DIMO_SEGMENT_TRACE_SUPPLEMENT_V1.json)
+
 ## Non-effects
 
-`PRODUCTION_MUTATIONS=NONE`, `PROVIDER_CALLS=NONE`, pre-deploy `SHA256SUMS` **unchanged**, boundaries **not** modified, coverage **not** re-labelled.
+`PRODUCTION_MUTATIONS=NONE`, `PROVIDER_CALLS=NONE`, pre-deploy `SHA256SUMS` **unchanged**, boundaries **not** modified, coverage **not** re-labelled. Prior export dir [`forensic-readonly-exports-2026-10-16/`](./forensic-readonly-exports-2026-10-16/) **byte-stable**.

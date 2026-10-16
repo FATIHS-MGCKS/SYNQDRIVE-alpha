@@ -1,0 +1,59 @@
+{
+  "schema": "EXP021_EV_GT_VERSION_PROVENANCE_V1",
+  "observedAtUtc": "2026-10-16T16:23:00.099Z",
+  "baselineExecutionSha": {
+    "value": "a0ce01f192d888974e49c2558ee05e534f3dfeea",
+    "epistemic": "CONFIRMED",
+    "source": "pre-deploy/PRE_DEPLOY_BASELINE_MANIFEST.json productionSha / frozen replay capture",
+    "role": "Code+DB state used to build immutable pre-deploy replay (unchanged)."
+  },
+  "productionShaEnvReference": {
+    "value": "a0ce01f192d888974e49c2558ee05e534f3dfeea",
+    "epistemic": "CONFIRMED",
+    "source": "EXP021_EV_GT_PRODUCTION_SHA env at export invocation",
+    "role": "Reference label only — NOT independent proof of live runtime revision."
+  },
+  "exporterCode": {
+    "exporterGitHeadSha": {
+      "value": "012283731d51bd2c2724e6031a9d2492404019f8",
+      "epistemic": "CONFIRMED",
+      "source": "git rev-parse HEAD at export time"
+    },
+    "exporterWorkingTreePorcelain": {
+      "value": "M backend/package.json\n?? backend/scripts/ops/exp021-ev-ground-truth-forensic-supplement-v1.lib.ts\n?? backend/scripts/ops/exp021-ev-ground-truth-forensic-supplement-v1.ts",
+      "epistemic": "CONFIRMED",
+      "source": "git status --porcelain at export time"
+    },
+    "exporterScriptContentSha256": {
+      "value": {
+        "backend/scripts/ops/exp021-ev-ground-truth-forensic-supplement-v1.ts": "4f50cb5c5f37e5f47ed8275de1667e0bbad2821e7ee8e521ebd56b08acbc3946",
+        "backend/scripts/ops/exp021-ev-ground-truth-forensic-supplement-v1.lib.ts": "b3e864f5274d5194e59b697f3722de2cfe097675840989a67c1cea93d350a548",
+        "backend/scripts/ops/exp021-ev-ground-truth-forensic-export.ts": "4ccf0ca42f7665db3d606c3e785954b83bdfaed02c035ceeb6f02f6a82c77e68",
+        "backend/scripts/ops/exp021-ev-ground-truth-forensic-export.lib.ts": "cddf9b5ea303ac9c27f6126cac9f2b7a350213e4cce35151eccff571bcc96e29"
+      },
+      "epistemic": "CONFIRMED",
+      "source": "sha256 of exporter script files on disk at export time"
+    }
+  },
+  "runtimeObservation": {
+    "observedRuntimeDeployedGitSha": {
+      "value": "c1013265bc10af7ac5fe7e86ff372772373acd36",
+      "epistemic": "CONFIRMED",
+      "source": "Production VPS backend.env SYNQDRIVE_DEPLOYED_GIT_SHA (read-only SSH)"
+    },
+    "observedRuntimeDeployGitShaAlt": {
+      "value": "30c90e40f476d800f6cb10e9add5f52fab23216f",
+      "epistemic": "CONFIRMED",
+      "source": "Production VPS backend.env SYNQDRIVE_DEPLOY_GIT_SHA (read-only SSH)"
+    },
+    "publicHealthEndpointGitSha": {
+      "value": null,
+      "epistemic": "UNKNOWN",
+      "source": "https://app.synqdrive.eu/api/v1/health returns no git sha field (checked 2026-10-16)"
+    }
+  },
+  "priorExportArtifactsUnchanged": {
+    "epistemic": "CONFIRMED",
+    "source": "forensic-readonly-exports-2026-10-16/ left byte-stable; this supplement is additive"
+  }
+}

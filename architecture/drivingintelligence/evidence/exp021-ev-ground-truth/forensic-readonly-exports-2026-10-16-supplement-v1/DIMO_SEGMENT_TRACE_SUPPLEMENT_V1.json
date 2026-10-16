@@ -1,0 +1,155 @@
+{
+  "schema": "EXP021_EV_GT_DIMO_SEGMENT_TRACE_V1",
+  "observedAtUtc": "2026-10-16T16:23:00.099Z",
+  "persistedFacts": {
+    "dimoSegmentId": {
+      "value": "dimo-seg-186946-1792121760000",
+      "epistemic": "CONFIRMED",
+      "source": "vehicle_trips.dimo_segment_id (Production read-only)"
+    },
+    "tripStartUtc": {
+      "value": "2026-10-16T03:36:00.000Z",
+      "epistemic": "CONFIRMED",
+      "source": "vehicle_trips.start_time"
+    },
+    "tripEndUtc": {
+      "value": "2026-10-16T03:54:55.989Z",
+      "epistemic": "CONFIRMED",
+      "source": "vehicle_trips.end_time"
+    },
+    "startDetectionMode": {
+      "value": "FREQUENCY_FALLBACK",
+      "epistemic": "CONFIRMED",
+      "source": "vehicle_trips.start_detection_mode"
+    },
+    "tripCreatedAtUtc": {
+      "value": "2026-10-16T03:38:31.690Z",
+      "epistemic": "CONFIRMED",
+      "source": "vehicle_trips.created_at"
+    },
+    "cusumSegmentStartUtc": {
+      "value": "2026-10-16T03:36:00.000Z",
+      "epistemic": "CONFIRMED",
+      "source": "vehicle_trips.raw_detection_meta.cusumSegmentStart"
+    },
+    "lifecycleStartEpisode": {
+      "value": {
+        "startEpisode": {
+          "type": "start_episode",
+          "version": "r2a-v1",
+          "episodeId": "68868291-5478-42cd-b0c4-cc77b2a78e21:1792121906989",
+          "dimoSegmentId": "dimo-seg-186946-1792121760000",
+          "candidateStartAt": "2026-10-16T03:38:26.989Z",
+          "effectiveStartAt": "2026-10-16T03:36:00.000Z"
+        }
+      },
+      "epistemic": "CONFIRMED",
+      "source": "vehicle_trips.raw_detection_meta.lifecycleRecovery"
+    },
+    "decodedSegmentId": {
+      "value": {
+        "tokenId": 186946,
+        "startMs": 1792121760000,
+        "startUtc": "2026-10-16T03:36:00.000Z"
+      },
+      "epistemic": "CONFIRMED",
+      "source": "regex decode of dimo-seg-{tokenId}-{epochMs} per DimoSegmentsService.buildSegmentId"
+    }
+  },
+  "codePath": {
+    "epistemic": "CONFIRMED",
+    "source": "repository:backend/src/modules/dimo/dimo-segments.service.ts",
+    "buildSegmentId": "dimo-seg-${tokenId}-${new Date(startTimestamp).getTime()}",
+    "parseTripSegment": "segmentId assigned from provider segment.start.timestamp via buildSegmentId (GraphQL TripSegments query at trip creation time — payload not re-fetched in this task).",
+    "selectConfirmedStartSegment": "repository:backend/src/modules/vehicle-intelligence/trips/start-boundary-window.util.ts — chooses segment overlapping candidate..confirmed window; rejects startedBeforeRange when true.",
+    "resolveConfirmedStartBoundary": "repository:backend/src/modules/vehicle-intelligence/trips/trip-detection-orchestration.service.ts — DIMO segment preferred over route/core refinement."
+  },
+  "conclusions": [
+    {
+      "statement": "Persisted dimo_segment_id epoch matches vehicle_trips.start_time to the second.",
+      "epistemic": "CONFIRMED",
+      "basis": [
+        "persistedFacts.decodedSegmentId",
+        "persistedFacts.tripStartUtc"
+      ]
+    },
+    {
+      "statement": "Segment id format matches repository buildSegmentId(tokenId, providerStartTimestamp) — id is a deterministic function of DIMO segment start timestamp, not an independent UUID.",
+      "epistemic": "INFERRED",
+      "basis": [
+        "codePath.buildSegmentId",
+        "persistedFacts.dimoSegmentId"
+      ]
+    },
+    {
+      "statement": "Original DIMO GraphQL segment payload (start/end signals, mechanism, startedBeforeRange) for this trip is NOT present in pinned S4 snapshot or driving_evidence for this trip.",
+      "epistemic": "CONFIRMED",
+      "basis": [
+        "driving_evidence query: 1 row, no dimo-seg-validate idempotency key",
+        "pinned S4 POSITION channel only (no segment payload channel)"
+      ]
+    },
+    {
+      "statement": "lifecycleRecovery.startEpisode.candidateStartAt MUST NOT be read as calibrated physical departure or pure FSM recognition delay without independent timing evidence.",
+      "epistemic": "CONFIRMED",
+      "basis": [
+        "owner video protocol",
+        "missing payload / cross-sensor sync"
+      ]
+    }
+  ],
+  "cacheIngestEvidenceReadOnly": {
+    "clickhouseTripSegmentCandidates": {
+      "epistemic": "UNKNOWN",
+      "source": "clickhouse-client unavailable on Production VPS shell during export; no row exported",
+      "note": "Ignition repair candidates table exists in schema but was not queried successfully."
+    },
+    "drivingEvidenceDimoSegmentValidation": {
+      "epistemic": "CONFIRMED",
+      "source": "driving_evidence WHERE trip_id",
+      "value": "No dimo-seg-validate:* idempotency row for this trip (segment validation diagnostic not persisted or disabled)."
+    },
+    "pinnedS4Snapshot": {
+      "epistemic": "CONFIRMED",
+      "source": "di_v0_s4_evidence_snapshots",
+      "snapshotHash": "DI_V0_S4_EVIDENCE_V1:sha256:c703e9c41e5e65ab643f9416c469818d88a0fbfa93218885d7c5beb6fa284503",
+      "positionBucketCount": 1136,
+      "channelManifest": [
+        {
+          "channel": "NATIVE_EVENT",
+          "outcome": "DISABLED",
+          "reasonCode": "FLAG_OFF",
+          "formatVersion": null,
+          "payloadSha256": null,
+          "attestationRef": null,
+          "channelEvidenceHash": null
+        },
+        {
+          "channel": "POSITION",
+          "outcome": "PRESENT",
+          "reasonCode": null,
+          "formatVersion": "DI_V0_POSITION_EVIDENCE_SNAPSHOT_V0_1",
+          "payloadSha256": "2dbcf7c6eebea5cda15482efa4dde3297e4b39672c9d42529916cee1a76a45e2",
+          "attestationRef": null,
+          "channelEvidenceHash": "DI_V0_POSITION_EVIDENCE_SNAPSHOT_V0_1:sha256:2dbcf7c6eebea5cda15482efa4dde3297e4b39672c9d42529916cee1a76a45e2"
+        },
+        {
+          "channel": "R1_OBD",
+          "outcome": "NOT_APPLICABLE",
+          "reasonCode": "SOURCE_FAMILY",
+          "formatVersion": null,
+          "payloadSha256": null,
+          "attestationRef": null,
+          "channelEvidenceHash": null
+        }
+      ]
+    }
+  },
+  "remainingGaps": [
+    "Provider segment GraphQL JSON at trip-create instant (requires authorized DIMO fetch — not done).",
+    "Telemetry ingest receive-time per first position row (not in pinned export).",
+    "ClickHouse trip_segment_candidates rows for this vehicle/window (tooling gap on VPS)."
+  ],
+  "productionMutations": "NONE",
+  "providerCalls": "NONE"
+}

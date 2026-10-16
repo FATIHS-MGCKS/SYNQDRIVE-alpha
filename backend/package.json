@@ -224,6 +224,7 @@
     "exp021:cohort:study-enrollment:bootstrap": "ts-node -r tsconfig-paths/register scripts/ops/reference-capture-exp021-cohort-study-enrollment-bootstrap.ts",
     "exp021:ev-ground-truth:baseline": "ts-node -r tsconfig-paths/register scripts/ops/exp021-ev-ground-truth-baseline.ts",
     "exp021:ev-ground-truth:forensic-export": "ts-node -r tsconfig-paths/register scripts/ops/exp021-ev-ground-truth-forensic-export.ts",
+    "exp021:ev-ground-truth:forensic-supplement-v1": "ts-node -r tsconfig-paths/register scripts/ops/exp021-ev-ground-truth-forensic-supplement-v1.ts",
     "test:exp021:cohort-study-enrollment:bootstrap:postgres": "REFERENCE_CAPTURE_POSTGRES_INTEGRATION=1 jest reference-capture-exp021-cohort-study-enrollment-bootstrap.postgres.integration reference-capture-exp021-cohort-study-enrollment-arm-chain.postgres.integration --runInBand",
     "test:exp021:cohort-study-enrollment:bootstrap:postgres:ci": "REFERENCE_CAPTURE_POSTGRES_INTEGRATION=1 REFERENCE_CAPTURE_POSTGRES_REQUIRED=1 jest reference-capture-exp021-cohort-study-enrollment-bootstrap.postgres.integration reference-capture-exp021-cohort-study-enrollment-arm-chain.postgres.integration --runInBand --verbose",
     "test:exp021:maturation-shadow:migration": "bash scripts/test/exp021-maturation-shadow-migration-test.sh all",

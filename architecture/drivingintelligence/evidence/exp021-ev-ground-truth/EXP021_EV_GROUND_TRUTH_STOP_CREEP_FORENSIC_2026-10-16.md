@@ -66,6 +66,17 @@ Uses `diagnosePositionGapAtLabel` + `classifyNoNumericDisjointV2` on pinned snap
 
 No missing seconds were filled with `0`.
 
+## Supplement v1 — all 135 annotated tacho-zero seconds
+
+| Set | Seconds | Replay ROW_ABSENT | Replay PRESENT |
+|-----|--------:|------------------:|---------------:|
+| ALL_135 | 135 | 133 | 2 |
+| SUBSET_125 (five main halt windows) | 125 | 124 | 1 |
+| EXTRA_10 (outside 125) | 10 | 9 | 1 |
+
+ROW_ABSENT chain to earliest **S3A grid** layer where proven in pin — **not** provider outage.  
+[`ROW_ABSENT_CHAIN_SUPPLEMENT_V1.json`](./forensic-readonly-exports-2026-10-16-supplement-v1/ROW_ABSENT_CHAIN_SUPPLEMENT_V1.json)
+
 ## Non-effects
 
-`PRODUCTION_MUTATIONS=NONE`, `PROVIDER_CALLS=NONE`, algorithm unchanged, pre-deploy hashes **unchanged**.
+`PRODUCTION_MUTATIONS=NONE`, `PROVIDER_CALLS=NONE`, algorithm unchanged, pre-deploy hashes **unchanged**. Prior [`forensic-readonly-exports-2026-10-16/`](./forensic-readonly-exports-2026-10-16/) **unchanged**.
