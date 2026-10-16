@@ -309,6 +309,8 @@ See [contradictions/OPEN_CONTRADICTIONS.md](contradictions/OPEN_CONTRADICTIONS.m
 - R10/R11/R12 decisions are **VALIDATED** (code + CI + deploy evidence), **not** `PRODUCTION_VALIDATED` for every natural end-path branch
 - _Removed 2026-09-26 (Phase 5):_ "Promotion to `AUTHORITY_ACTIVE`" and "Complete machine-readable FSM graph" non-claims — both now satisfied (TDL-DEC-PHASE5-001)
 - Resolved DIMO Integration vs trip reconciliation ownership — **TDL-OQ-006 / DIM-GAP-001 RESOLVED** (TDL-EVID-OQ006-BOUNDARY-001); TDL-CX-006 DI registry wording remains open
+- **P1A** start boundary admission offline resolver — evidence [TDL_START_BOUNDARY_ADMISSION_P1A_2026-10-16.md](evidence/TDL_START_BOUNDARY_ADMISSION_P1A_2026-10-16.md) (PR #2055 merged)
+- **P1B** runtime shadow wiring at start confirmation — legacy canonical writer preserved; gate `TRIP_START_BOUNDARY_ADMISSION_SHADOW_ENABLED` default OFF — [TDL_START_BOUNDARY_ADMISSION_P1B_2026-10-16.md](evidence/TDL_START_BOUNDARY_ADMISSION_P1B_2026-10-16.md)
 
 ---
 
