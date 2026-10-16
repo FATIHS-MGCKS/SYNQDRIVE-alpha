@@ -1,0 +1,13 @@
+{
+  "schema": "EXP021_SUPPLEMENT_V3_SUMMARY",
+  "observedAtUtc": "2026-10-16T16:42:46.916Z",
+  "cohort45_abc": {
+    "A": 45,
+    "B": 0,
+    "C": 0
+  },
+  "rowAbsentCount": 269,
+  "comparisonFetchPrepared": true,
+  "comparisonFetchExecuted": false,
+  "preDeployAndPriorSupplementsUnchanged": true
+}

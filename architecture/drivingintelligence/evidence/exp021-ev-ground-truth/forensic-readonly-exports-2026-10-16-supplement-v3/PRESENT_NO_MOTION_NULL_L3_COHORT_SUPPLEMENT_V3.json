@@ -1,0 +1,5095 @@
+{
+  "schema": "EXP021_PRESENT_NO_MOTION_NULL_L3_COHORT_V3",
+  "observedAtUtc": "2026-10-16T16:42:46.916Z",
+  "selectionCriteria": {
+    "positionAvailability": "PRESENT",
+    "motionState": "NO_MOTION_EVIDENCE",
+    "l3SpeedKmh": null
+  },
+  "cohortCount": 45,
+  "baselineParityCheck": {
+    "ok": true,
+    "rowCount": 1136,
+    "numericCount": 776,
+    "trustedNumericCount": 775,
+    "trustedLimitedCount": 14,
+    "trustedMaxKmh": 129.7885665128692,
+    "trustedMeanKmh": 66.08511361500203,
+    "mismatches": []
+  },
+  "abcSummary": {
+    "A": 45,
+    "B": 0,
+    "C": 0
+  },
+  "contiguousGapEvents": [
+    {
+      "eventId": "GAP_EVT_1",
+      "fromUtc": "2026-10-16T03:36:06Z",
+      "toUtc": "2026-10-16T03:36:06Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT+ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_2",
+      "fromUtc": "2026-10-16T03:36:56Z",
+      "toUtc": "2026-10-16T03:36:56Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT+ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_3",
+      "fromUtc": "2026-10-16T03:36:58Z",
+      "toUtc": "2026-10-16T03:36:58Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT+ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_4",
+      "fromUtc": "2026-10-16T03:37:45Z",
+      "toUtc": "2026-10-16T03:37:45Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_5",
+      "fromUtc": "2026-10-16T03:37:53Z",
+      "toUtc": "2026-10-16T03:37:53Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_6",
+      "fromUtc": "2026-10-16T03:37:55Z",
+      "toUtc": "2026-10-16T03:37:55Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_7",
+      "fromUtc": "2026-10-16T03:37:57Z",
+      "toUtc": "2026-10-16T03:37:57Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_8",
+      "fromUtc": "2026-10-16T03:37:59Z",
+      "toUtc": "2026-10-16T03:37:59Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_9",
+      "fromUtc": "2026-10-16T03:38:18Z",
+      "toUtc": "2026-10-16T03:38:18Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_10",
+      "fromUtc": "2026-10-16T03:38:22Z",
+      "toUtc": "2026-10-16T03:38:22Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_11",
+      "fromUtc": "2026-10-16T03:40:18Z",
+      "toUtc": "2026-10-16T03:40:18Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_12",
+      "fromUtc": "2026-10-16T03:40:51Z",
+      "toUtc": "2026-10-16T03:40:51Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_13",
+      "fromUtc": "2026-10-16T03:41:49Z",
+      "toUtc": "2026-10-16T03:41:49Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_14",
+      "fromUtc": "2026-10-16T03:42:31Z",
+      "toUtc": "2026-10-16T03:42:31Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_15",
+      "fromUtc": "2026-10-16T03:42:48Z",
+      "toUtc": "2026-10-16T03:42:48Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_16",
+      "fromUtc": "2026-10-16T03:42:50Z",
+      "toUtc": "2026-10-16T03:42:50Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT+ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_17",
+      "fromUtc": "2026-10-16T03:42:58Z",
+      "toUtc": "2026-10-16T03:42:58Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_18",
+      "fromUtc": "2026-10-16T03:43:42Z",
+      "toUtc": "2026-10-16T03:43:42Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_19",
+      "fromUtc": "2026-10-16T03:44:37Z",
+      "toUtc": "2026-10-16T03:44:37Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_20",
+      "fromUtc": "2026-10-16T03:45:53Z",
+      "toUtc": "2026-10-16T03:45:53Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_21",
+      "fromUtc": "2026-10-16T03:45:55Z",
+      "toUtc": "2026-10-16T03:45:55Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_22",
+      "fromUtc": "2026-10-16T03:47:51Z",
+      "toUtc": "2026-10-16T03:47:51Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_23",
+      "fromUtc": "2026-10-16T03:47:53Z",
+      "toUtc": "2026-10-16T03:47:53Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_24",
+      "fromUtc": "2026-10-16T03:49:01Z",
+      "toUtc": "2026-10-16T03:49:01Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_25",
+      "fromUtc": "2026-10-16T03:49:03Z",
+      "toUtc": "2026-10-16T03:49:03Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_26",
+      "fromUtc": "2026-10-16T03:50:02Z",
+      "toUtc": "2026-10-16T03:50:02Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_27",
+      "fromUtc": "2026-10-16T03:50:04Z",
+      "toUtc": "2026-10-16T03:50:04Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_28",
+      "fromUtc": "2026-10-16T03:50:20Z",
+      "toUtc": "2026-10-16T03:50:20Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_29",
+      "fromUtc": "2026-10-16T03:50:22Z",
+      "toUtc": "2026-10-16T03:50:22Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_30",
+      "fromUtc": "2026-10-16T03:51:03Z",
+      "toUtc": "2026-10-16T03:51:03Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_31",
+      "fromUtc": "2026-10-16T03:51:05Z",
+      "toUtc": "2026-10-16T03:51:05Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_32",
+      "fromUtc": "2026-10-16T03:51:23Z",
+      "toUtc": "2026-10-16T03:51:23Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_33",
+      "fromUtc": "2026-10-16T03:51:25Z",
+      "toUtc": "2026-10-16T03:51:25Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_34",
+      "fromUtc": "2026-10-16T03:51:30Z",
+      "toUtc": "2026-10-16T03:51:30Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_35",
+      "fromUtc": "2026-10-16T03:51:32Z",
+      "toUtc": "2026-10-16T03:51:32Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_36",
+      "fromUtc": "2026-10-16T03:51:44Z",
+      "toUtc": "2026-10-16T03:51:44Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_37",
+      "fromUtc": "2026-10-16T03:51:46Z",
+      "toUtc": "2026-10-16T03:51:46Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_38",
+      "fromUtc": "2026-10-16T03:54:21Z",
+      "toUtc": "2026-10-16T03:54:21Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_39",
+      "fromUtc": "2026-10-16T03:54:25Z",
+      "toUtc": "2026-10-16T03:54:25Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_40",
+      "fromUtc": "2026-10-16T03:54:30Z",
+      "toUtc": "2026-10-16T03:54:30Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_41",
+      "fromUtc": "2026-10-16T03:54:32Z",
+      "toUtc": "2026-10-16T03:54:32Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_42",
+      "fromUtc": "2026-10-16T03:54:34Z",
+      "toUtc": "2026-10-16T03:54:34Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_43",
+      "fromUtc": "2026-10-16T03:54:37Z",
+      "toUtc": "2026-10-16T03:54:37Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_44",
+      "fromUtc": "2026-10-16T03:54:42Z",
+      "toUtc": "2026-10-16T03:54:42Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "eventId": "GAP_EVT_45",
+      "fromUtc": "2026-10-16T03:54:44Z",
+      "toUtc": "2026-10-16T03:54:44Z",
+      "seconds": 1,
+      "signature": "ROW_ABSENT_EXPLICIT+ROW_ABSENT_EXPLICIT"
+    }
+  ],
+  "perSecond": [
+    {
+      "bucketLabelUtc": "2026-10-16T03:36:06Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:36:05Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:36:06Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:36:07Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:36:06Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT+ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": null,
+        "videoClock": null,
+        "videoSamplesThisClockSecond": 0,
+        "uncertainty": "NO_VIDEO_SAMPLE",
+        "epistemic": "CONFIRMED",
+        "note": "Kein lesbarer Video-Tacho in kompakt-Annotation für diese Sekunde."
+      },
+      "gapEventId": "GAP_EVT_1",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT+ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:36:56Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:36:55Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:36:56Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:36:57Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:36:56Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT+ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": null,
+        "videoClock": null,
+        "videoSamplesThisClockSecond": 0,
+        "uncertainty": "NO_VIDEO_SAMPLE",
+        "epistemic": "CONFIRMED",
+        "note": "Kein lesbarer Video-Tacho in kompakt-Annotation für diese Sekunde."
+      },
+      "gapEventId": "GAP_EVT_2",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT+ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:36:58Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:36:57Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:36:58Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:36:59Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:36:58Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT+ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": null,
+        "videoClock": null,
+        "videoSamplesThisClockSecond": 0,
+        "uncertainty": "NO_VIDEO_SAMPLE",
+        "epistemic": "CONFIRMED",
+        "note": "Kein lesbarer Video-Tacho in kompakt-Annotation für diese Sekunde."
+      },
+      "gapEventId": "GAP_EVT_3",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT+ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:37:45Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:37:44Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:37:45Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:37:46Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "TRANSITION_UNCERTAIN",
+          "l3SpeedKmh": null,
+          "abstentionReason": null
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:37:45Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": null,
+        "videoClock": "05:37:45",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED",
+        "note": "Kein lesbarer Video-Tacho in kompakt-Annotation für diese Sekunde."
+      },
+      "gapEventId": "GAP_EVT_4",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:37:53Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:37:52Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "STATIONARY_SUPPORTED",
+          "l3SpeedKmh": null,
+          "abstentionReason": null
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:37:53Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:37:54Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:37:53Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": null,
+        "videoClock": "05:37:53",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED",
+        "note": "Kein lesbarer Video-Tacho in kompakt-Annotation für diese Sekunde."
+      },
+      "gapEventId": "GAP_EVT_5",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:37:55Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:37:54Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:37:55Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:37:56Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "STATIONARY_SUPPORTED",
+          "l3SpeedKmh": null,
+          "abstentionReason": null
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:37:55Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 3,
+        "videoClock": "05:37:55",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_6",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:37:57Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:37:56Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "STATIONARY_SUPPORTED",
+          "l3SpeedKmh": null,
+          "abstentionReason": null
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:37:57Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:37:58Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:37:57Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 1,
+        "videoClock": "05:37:57",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_7",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:37:59Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:37:58Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:37:59Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:38:00Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "STATIONARY_SUPPORTED",
+          "l3SpeedKmh": null,
+          "abstentionReason": null
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:37:59Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 2,
+        "videoClock": "05:37:59",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_8",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:38:18Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:38:17Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "STATIONARY_SUPPORTED",
+          "l3SpeedKmh": null,
+          "abstentionReason": null
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:38:18Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:38:19Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:38:18Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 2,
+        "videoClock": "05:38:18",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_9",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:38:22Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:38:21Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:38:22Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:38:23Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "MOVING_SPEED_ESTIMATED",
+          "l3SpeedKmh": 9.768956628632328,
+          "abstentionReason": null
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:38:22Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 8,
+        "videoClock": "05:38:22",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_10",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:40:18Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:17Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "MOVING_SPEED_ESTIMATED",
+          "l3SpeedKmh": 5.101907095063161,
+          "abstentionReason": null
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:18Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:19Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:40:18Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 1,
+        "videoClock": "05:40:18",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_11",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:40:51Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:50Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:51Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:40:52Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "MOVING_SPEED_ESTIMATED",
+          "l3SpeedKmh": 11.30899974584118,
+          "abstentionReason": null
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:40:51Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": null,
+        "videoClock": "05:40:51",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED",
+        "note": "Kein lesbarer Video-Tacho in kompakt-Annotation für diese Sekunde."
+      },
+      "gapEventId": "GAP_EVT_12",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:41:49Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:41:48Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "TRANSITION_UNCERTAIN",
+          "l3SpeedKmh": null,
+          "abstentionReason": null
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:41:49Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:41:50Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:41:49Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 1,
+        "videoClock": "05:41:49",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_13",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:42:31Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:30Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:31Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:32Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "MOVING_SPEED_ESTIMATED",
+          "l3SpeedKmh": 14.70419117703299,
+          "abstentionReason": null
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:42:31Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 11,
+        "videoClock": "05:42:31",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_14",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:42:48Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:47Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "TRANSITION_UNCERTAIN",
+          "l3SpeedKmh": null,
+          "abstentionReason": null
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:48Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:49Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:42:48Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 1,
+        "videoClock": "05:42:48",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_15",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:42:50Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:49Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:50Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:51Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:42:50Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT+ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 0,
+        "videoClock": "05:42:50",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_16",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT+ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:42:58Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:57Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:58Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:42:59Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "MOVING_SPEED_ESTIMATED",
+          "l3SpeedKmh": 11.18549238808422,
+          "abstentionReason": null
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:42:58Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 7,
+        "videoClock": "05:42:58",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_17",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:43:42Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:41Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "STATIONARY_SUPPORTED",
+          "l3SpeedKmh": null,
+          "abstentionReason": null
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:42Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:43:43Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:43:42Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 1,
+        "videoClock": "05:43:42",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_18",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:44:37Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:36Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:37Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:44:38Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "MOVING_SPEED_ESTIMATED",
+          "l3SpeedKmh": 15.22041372313729,
+          "abstentionReason": null
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:44:37Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 12,
+        "videoClock": "05:44:37",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_19",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:45:53Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:45:52Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "STATIONARY_SUPPORTED",
+          "l3SpeedKmh": null,
+          "abstentionReason": null
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:45:53Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:45:54Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:45:53Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": null,
+        "videoClock": "05:45:53",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED",
+        "note": "Kein lesbarer Video-Tacho in kompakt-Annotation für diese Sekunde."
+      },
+      "gapEventId": "GAP_EVT_20",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:45:55Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:45:54Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:45:55Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:45:56Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "MOVING_SPEED_ESTIMATED",
+          "l3SpeedKmh": 13.49729944014566,
+          "abstentionReason": null
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:45:55Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 11,
+        "videoClock": "05:45:55",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_21",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:47:51Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:47:50Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "MOVING_SPEED_ESTIMATED",
+          "l3SpeedKmh": 96.85523274066195,
+          "abstentionReason": null
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:47:51Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:47:52Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:47:51Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 100,
+        "videoClock": "05:47:51",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_22",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:47:53Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:47:52Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:47:53Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:47:54Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "MOVING_SPEED_ESTIMATED",
+          "l3SpeedKmh": 97.88992852040322,
+          "abstentionReason": null
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:47:53Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 101,
+        "videoClock": "05:47:53",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_23",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:49:01Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:49:00Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "MOVING_SPEED_ESTIMATED",
+          "l3SpeedKmh": 86.20918886891975,
+          "abstentionReason": null
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:49:01Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:49:02Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:49:01Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 89,
+        "videoClock": "05:49:01",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_24",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:49:03Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:49:02Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:49:03Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:49:04Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "MOVING_SPEED_ESTIMATED",
+          "l3SpeedKmh": 86.8227819670035,
+          "abstentionReason": null
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:49:03Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 89,
+        "videoClock": "05:49:03",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_25",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:50:02Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:50:01Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "MOVING_SPEED_ESTIMATED",
+          "l3SpeedKmh": 111.7080703875249,
+          "abstentionReason": null
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:50:02Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:50:03Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:50:02Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 115,
+        "videoClock": "05:50:02",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_26",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:50:04Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:50:03Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:50:04Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:50:05Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "MOVING_SPEED_ESTIMATED",
+          "l3SpeedKmh": 109.1908468743022,
+          "abstentionReason": null
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:50:04Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 115,
+        "videoClock": "05:50:04",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_27",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:50:20Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:50:19Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "MOVING_SPEED_ESTIMATED",
+          "l3SpeedKmh": 129.4269803300345,
+          "abstentionReason": null
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:50:20Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:50:21Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:50:20Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 133,
+        "videoClock": "05:50:20",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_28",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:50:22Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:50:21Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:50:22Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:50:23Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "MOVING_SPEED_ESTIMATED",
+          "l3SpeedKmh": 191.4429317601504,
+          "abstentionReason": null
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:50:22Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 132,
+        "videoClock": "05:50:22",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_29",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:51:03Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:51:02Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "MOVING_SPEED_ESTIMATED",
+          "l3SpeedKmh": 118.0599953595313,
+          "abstentionReason": null
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:51:03Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:51:04Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:51:03Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 121,
+        "videoClock": "05:51:03",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_30",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:51:05Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:51:04Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:51:05Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:51:06Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "MOVING_SPEED_ESTIMATED",
+          "l3SpeedKmh": 111.8577466987424,
+          "abstentionReason": null
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:51:05Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 117,
+        "videoClock": "05:51:05",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_31",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:51:23Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:51:22Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "MOVING_SPEED_ESTIMATED",
+          "l3SpeedKmh": 126.362546285716,
+          "abstentionReason": null
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:51:23Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:51:24Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:51:23Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 130,
+        "videoClock": "05:51:23",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_32",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:51:25Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:51:24Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:51:25Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:51:26Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "MOVING_SPEED_ESTIMATED",
+          "l3SpeedKmh": 123.4661444835775,
+          "abstentionReason": null
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:51:25Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 128,
+        "videoClock": "05:51:25",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_33",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:51:30Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:51:29Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "MOVING_SPEED_ESTIMATED",
+          "l3SpeedKmh": 114.9630315228698,
+          "abstentionReason": null
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:51:30Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:51:31Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:51:30Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 115,
+        "videoClock": "05:51:30",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_34",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:51:32Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:51:31Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:51:32Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:51:33Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "MOVING_SPEED_ESTIMATED",
+          "l3SpeedKmh": 107.76490578143,
+          "abstentionReason": null
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:51:32Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 107,
+        "videoClock": "05:51:32",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_35",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:51:44Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:51:43Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "MOVING_SPEED_ESTIMATED",
+          "l3SpeedKmh": 126.8168604924626,
+          "abstentionReason": null
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:51:44Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:51:45Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:51:44Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 130,
+        "videoClock": "05:51:44",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_36",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:51:46Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:51:45Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:51:46Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:51:47Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "MOVING_SPEED_ESTIMATED",
+          "l3SpeedKmh": 128.3357099494646,
+          "abstentionReason": null
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:51:46Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 131,
+        "videoClock": "05:51:46",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_37",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:54:21Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:54:20Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "TRANSITION_UNCERTAIN",
+          "l3SpeedKmh": null,
+          "abstentionReason": null
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:54:21Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:54:22Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:54:21Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 1,
+        "videoClock": "05:54:21",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_38",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:54:25Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:54:24Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:54:25Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:54:26Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "TRANSITION_UNCERTAIN",
+          "l3SpeedKmh": null,
+          "abstentionReason": null
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:54:25Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 4,
+        "videoClock": "05:54:25",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_39",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:54:30Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:54:29Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "TRANSITION_UNCERTAIN",
+          "l3SpeedKmh": null,
+          "abstentionReason": null
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:54:30Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:54:31Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:54:30Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 1,
+        "videoClock": "05:54:30",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_40",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:54:32Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:54:31Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:54:32Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:54:33Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "TRANSITION_UNCERTAIN",
+          "l3SpeedKmh": null,
+          "abstentionReason": null
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:54:32Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 6,
+        "videoClock": "05:54:32",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_41",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:54:34Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:54:33Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "TRANSITION_UNCERTAIN",
+          "l3SpeedKmh": null,
+          "abstentionReason": null
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:54:34Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:54:35Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:54:34Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 1,
+        "videoClock": "05:54:34",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_42",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:54:37Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:54:36Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:54:37Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:54:38Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "TRANSITION_UNCERTAIN",
+          "l3SpeedKmh": null,
+          "abstentionReason": null
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:54:37Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 4,
+        "videoClock": "05:54:37",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_43",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:54:42Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:54:41Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "STATIONARY_SUPPORTED",
+          "l3SpeedKmh": null,
+          "abstentionReason": null
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:54:42Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:54:43Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:54:42Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 2,
+        "videoClock": "05:54:42",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_44",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:54:44Z",
+      "epistemic": "CONFIRMED",
+      "source": "pinned S4 replay + shadow intervals (Production read-only)",
+      "classificationGroup": "A",
+      "classificationRationale": "Enthaltung erforderlich: L3-Unterstützungsfenster (±1s) oder S1-Abstention zeigt Positionslücke/kompromittierte Evidenz trotz PRESENT am Mittelpunkt.",
+      "classificationEpistemic": "CONFIRMED",
+      "l3SupportTriplet": [
+        {
+          "bucketLabelUtc": "2026-10-16T03:54:43Z",
+          "deltaSecondsFromCenter": -1,
+          "role": "PREV",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:54:44Z",
+          "deltaSecondsFromCenter": 0,
+          "role": "CENTER",
+          "positionAvailability": "PRESENT",
+          "positionState": "FRESH",
+          "positionGapDiagnosis": "PRESENT_OK",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        },
+        {
+          "bucketLabelUtc": "2026-10-16T03:54:45Z",
+          "deltaSecondsFromCenter": 1,
+          "role": "NEXT",
+          "positionAvailability": "ROW_ABSENT",
+          "positionState": "ROW_ABSENT",
+          "positionGapDiagnosis": "ROW_ABSENT_EXPLICIT",
+          "motionState": "NO_MOTION_EVIDENCE",
+          "l3SpeedKmh": null,
+          "abstentionReason": "ROW_ABSENT"
+        }
+      ],
+      "centerForensics": {
+        "bucketLabelUtc": "2026-10-16T03:54:44Z",
+        "positionAvailability": "PRESENT",
+        "positionState": "FRESH",
+        "positionGapDiagnosis": "PRESENT_OK",
+        "r1SpeedKmh": null,
+        "l3SpeedKmh": null,
+        "motionState": "NO_MOTION_EVIDENCE",
+        "speedEvidenceState": "NONE",
+        "sourceRelation": "UNASSESSABLE",
+        "abstentionReason": "ROW_ABSENT",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ],
+        "noNumericDisjointV2": "POS_GAP_ROW_ABSENT_EXPLICIT",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "freshnessHoldRelease": {
+        "centerPositionState": "FRESH",
+        "holdTransitionDetail": "NO_MOTION_EVIDENCE",
+        "sourceQualityFlags": [
+          "L3_SUPPORT_CROSSES_GAP"
+        ]
+      },
+      "qcProtection": {
+        "qcTrustLevel": "UNTRUSTED",
+        "qcReasonCodes": [
+          "NO_NUMERIC"
+        ],
+        "qcSupportCalendarComplete": true,
+        "qcLegDistancesM": {
+          "prevToCenter": null,
+          "centerToNext": null
+        },
+        "qcLegImpliedSpeedMps": {
+          "prevToCenter": null,
+          "centerToNext": null
+        }
+      },
+      "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT+ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC",
+      "videoTacho": {
+        "tachoKmh": 0,
+        "videoClock": "05:54:44",
+        "videoSamplesThisClockSecond": 1,
+        "uncertainty": "CLOCK_QUANTIZED_1S_AND_UNKNOWN_SENSOR_LATENCY",
+        "epistemic": "CONFIRMED"
+      },
+      "gapEventId": "GAP_EVT_45",
+      "gapEventSignature": "ROW_ABSENT_EXPLICIT+ROW_ABSENT_EXPLICIT"
+    }
+  ],
+  "groupBExperimentHypothesis": {
+    "status": "NOT_TRIGGERED_FOR_COHORT",
+    "cohortSecondsWithFullTripletPresent": 0,
+    "hypothesis": "Offline: L3-Geschwindigkeit aus den beiden benachbarten PRESENT-GPS-Beinen (prev→center, center→next) mit festem 1s-Raster re-schätzen; Zeitbezug = Bucket-Mittelpunkt (DIMO 1s-Label, nicht physische Messzeit).",
+    "usableGpsPoints": "Nur Buckets mit PRESENT_OK und gültiger Koordinate im gepinnten Snapshot (Koordinaten absichtlich nicht in Export — nur Availability/Gap-Diagnose).",
+    "temporalReference": "Geschwindigkeit wäre implizit bucket-zentriert (±1s Nachbarn), analog bestehendem QC-Leg-Assessment, nicht Video-PTS.",
+    "risks": [
+      "Falsche Bewegung bei eingefrorenem/hold-kompromittierten Nachbarn",
+      "Überschreitung Stop/Moving-Bänder ohne STATIONARY_BAND-Schutz",
+      "Verwechslung Bucket-Label vs. physische Observation",
+      "Aufweichen von ROW_GAP_IN_SUPPORT-Enthaltung"
+    ],
+    "explicitNonGoals": [
+      "Keine produktive Freigabe",
+      "Keine Lockerung QC-Schutzgrenzen",
+      "Keine künstlichen Nullen"
+    ],
+    "epistemic": "INFERRED"
+  }
+}

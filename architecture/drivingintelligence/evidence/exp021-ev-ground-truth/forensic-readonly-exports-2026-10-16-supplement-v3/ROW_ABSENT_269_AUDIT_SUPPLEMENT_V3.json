@@ -1,0 +1,42 @@
+{
+  "schema": "EXP021_ROW_ABSENT_269_AUDIT_V3",
+  "rowAbsentBucketCount": 269,
+  "epistemic": "CONFIRMED",
+  "source": "Pinned POSITION snapshot buckets with availability ROW_ABSENT",
+  "acquisitionSummary": {
+    "rejectedProviderRowsInSnapshot": 0,
+    "sumProviderRowCountOnRowAbsentBuckets": 0,
+    "interpretation": "ROW_ABSENT buckets tragen providerRowCount=0 im Snapshot; keine rejected rows in v2 — fehlende Rasterzeile in S3A, kein Sensor-Ausfall-Beweis."
+  },
+  "comparisonFetchPlan": {
+    "executed": false,
+    "provider": "DIMO",
+    "queryFamily": "TELEMETRY_SIGNALS_HISTORICAL",
+    "signal": "currentLocationCoordinates",
+    "interval": "1s",
+    "coordinateAggregation": "AVG",
+    "proposedWindowUtc": {
+      "fromInclusive": "2026-10-16T03:36:00Z",
+      "toInclusive": "2026-10-16T03:54:55Z",
+      "note": "Eng gefasst auf min/max ROW_ABSENT label; alternative: volles Trip-Fenster 03:36–03:54:56Z."
+    },
+    "maxProviderCalls": 1,
+    "callShape": "Single historical signals query for currentLocationCoordinates with 1s AVG over proposedWindowUtc (same family as DI_V0_POSITION_QUERY_SPEC_V0_1).",
+    "learningGoal": "Prüfen ob Provider-Zeilen für ROW_ABSENT-Labels außerhalb des gepinnten Snapshots existieren (Cache/Replay-Lücke) vs. konsistente Abwesenheit im Abfragefenster.",
+    "risks": [
+      "Provider rate limits",
+      "Nicht-äquivalentes Fenster vs. Pin",
+      "Keine automatische Produktübernahme"
+    ],
+    "ownerAuthorizationRequired": true
+  },
+  "overlapWithCohort45": {
+    "cohortLabelsInsideRowAbsent": 0,
+    "note": "Cohort requires PRESENT center — must be 0 overlap."
+  },
+  "overlapWithVideoTachoZero135": {
+    "count": 133,
+    "epistemic": "CONFIRMED",
+    "source": "comparison.json tachoKmh===0"
+  }
+}
