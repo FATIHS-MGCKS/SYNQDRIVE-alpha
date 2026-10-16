@@ -7,6 +7,7 @@ import type {
   VsiApdsP5b1RateV1,
   VsiApdsP5b1ScientificProductMetricsV1,
 } from './vsi-apds-p5b1.types';
+import type { VsiApdsRequirementDemandRowV1 } from './vsi-apds-p5.types';
 
 function rate(numerator: number, denominator: number): VsiApdsP5b1RateV1 {
   return { numerator, denominator };
@@ -23,6 +24,15 @@ function bumpRate(
     current.numerator += 1;
   }
   map[key] = current;
+}
+
+function isDomainApprovedAssessable(
+  demand: VsiApdsRequirementDemandRowV1,
+): boolean {
+  return (
+    demand.demandClassification === VsiApdsDemandClassification.DOMAIN_APPROVED_REQUIREMENT &&
+    (demand.assessmentStatus === 'SATISFIED' || demand.assessmentStatus === 'INSUFFICIENT')
+  );
 }
 
 export function buildP5b1OfflineCoverage(
@@ -85,16 +95,15 @@ export function buildP5b1ScientificProductMetrics(
   let unattributable = 0;
   let verifiedHistoricalDecisions = 0;
   let currentProfileOnlyDecisions = 0;
-  let approvedDemandHits = 0;
-  let approvedDemandTotal = 0;
-  let pendingDemandHits = 0;
+
+  let domainApprovedSatisfied = 0;
+  let domainApprovedAssessableTotal = 0;
+  let declaredSatisfied = 0;
+  let declaredTotal = 0;
   let pendingDemandTotal = 0;
-  let designOnlyHits = 0;
   let designOnlyTotal = 0;
-  let insufficientHits = 0;
-  let insufficientTotal = 0;
-  let notAssessableHits = 0;
-  let notAssessableTotal = 0;
+  let notAssessableApprovedTotal = 0;
+  let unknownAssessmentTotal = 0;
 
   for (const row of rows) {
     const policy = row.decisionIdentity.policyVersion;
@@ -142,30 +151,34 @@ export function buildP5b1ScientificProductMetrics(
     for (const demand of row.observation?.consumerDemand ?? []) {
       if (demand.demandClassification === VsiApdsDemandClassification.PENDING_DOMAIN_APPROVAL) {
         pendingDemandTotal += 1;
-        pendingDemandHits += 1;
         continue;
       }
       if (demand.demandClassification === VsiApdsDemandClassification.DESIGN_CONTRACT_ONLY) {
         designOnlyTotal += 1;
-        designOnlyHits += 1;
         continue;
       }
-      if (
-        demand.demandClassification === VsiApdsDemandClassification.DOMAIN_APPROVED_REQUIREMENT ||
-        demand.demandClassification === VsiApdsDemandClassification.DECLARED_REQUIREMENT
-      ) {
-        approvedDemandTotal += 1;
+      if (demand.demandClassification === VsiApdsDemandClassification.DECLARED_REQUIREMENT) {
+        declaredTotal += 1;
         if (demand.assessmentStatus === 'SATISFIED') {
-          approvedDemandHits += 1;
+          declaredSatisfied += 1;
         }
-        if (demand.assessmentStatus === 'INSUFFICIENT') {
-          insufficientTotal += 1;
-          insufficientHits += 1;
-          bumpRate(genuineInsufficientCapability, demand.consumerModule, true);
-        }
-        if (demand.assessmentStatus === 'NOT_ASSESSABLE') {
-          notAssessableTotal += 1;
-          notAssessableHits += 1;
+        continue;
+      }
+      if (demand.demandClassification === VsiApdsDemandClassification.DOMAIN_APPROVED_REQUIREMENT) {
+        if (isDomainApprovedAssessable(demand)) {
+          domainApprovedAssessableTotal += 1;
+          if (demand.assessmentStatus === 'SATISFIED') {
+            domainApprovedSatisfied += 1;
+          }
+          bumpRate(
+            genuineInsufficientCapability,
+            demand.consumerModule,
+            demand.assessmentStatus === 'INSUFFICIENT',
+          );
+        } else if (demand.assessmentStatus === 'NOT_ASSESSABLE') {
+          notAssessableApprovedTotal += 1;
+        } else if (demand.assessmentStatus === 'UNKNOWN') {
+          unknownAssessmentTotal += 1;
         }
       }
     }
@@ -181,11 +194,16 @@ export function buildP5b1ScientificProductMetrics(
     empiricalSignalCoverage,
     verifiedHistoricalSignalEvidence,
     currentProfileOnlySignalObservations,
-    approvedConsumerDemand: rate(approvedDemandHits, approvedDemandTotal),
-    pendingConsumerDemand: rate(pendingDemandHits, pendingDemandTotal),
-    designOnlyContracts: rate(designOnlyHits, designOnlyTotal),
+    domainApprovedConsumerDemand: rate(domainApprovedSatisfied, domainApprovedAssessableTotal),
+    declaredConsumerDemand: rate(declaredSatisfied, declaredTotal),
+    pendingConsumerDemand: rate(pendingDemandTotal, pendingDemandTotal),
+    designOnlyContracts: rate(designOnlyTotal, designOnlyTotal),
     genuineInsufficientCapability,
-    notAssessableDueToApprovalOrEvidence: rate(notAssessableHits, notAssessableTotal),
+    notAssessableDueToApprovalOrEvidence: rate(
+      notAssessableApprovedTotal,
+      notAssessableApprovedTotal,
+    ),
+    unknownConsumerDemandAssessment: rate(unknownAssessmentTotal, unknownAssessmentTotal),
     policyVersionCounts,
     apdsReasonCodeCounts,
   };
@@ -212,8 +230,8 @@ export function buildP5b1ProductMetrics(
     unknownOrMissingProvenance:
       scientific.decisionsTotal - scientific.verifiedHistoricalProfileDecisions.numerator,
     signalCoverageByCanonicalKey,
-    pendingConsumerRequirements: scientific.pendingConsumerDemand.numerator,
-    approvedConsumerRequirements: scientific.approvedConsumerDemand.numerator,
+    pendingConsumerRequirements: scientific.pendingConsumerDemand.denominator,
+    approvedConsumerRequirements: scientific.domainApprovedConsumerDemand.numerator,
     capabilityGapsByDomain,
     policyVersionCounts: scientific.policyVersionCounts,
     apdsReasonCodeCounts: scientific.apdsReasonCodeCounts,

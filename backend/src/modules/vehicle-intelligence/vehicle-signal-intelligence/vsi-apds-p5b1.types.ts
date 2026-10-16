@@ -86,11 +86,16 @@ export type VsiApdsP5b1ScientificProductMetricsV1 = {
   empiricalSignalCoverage: Record<string, VsiApdsP5b1RateV1>;
   verifiedHistoricalSignalEvidence: Record<string, VsiApdsP5b1RateV1>;
   currentProfileOnlySignalObservations: Record<string, VsiApdsP5b1RateV1>;
-  approvedConsumerDemand: VsiApdsP5b1RateV1;
+  /** DOMAIN_APPROVED_REQUIREMENT only — runtime-approved consumer demand. */
+  domainApprovedConsumerDemand: VsiApdsP5b1RateV1;
+  /** DECLARED_REQUIREMENT only — not counted as runtime-approved. */
+  declaredConsumerDemand: VsiApdsP5b1RateV1;
   pendingConsumerDemand: VsiApdsP5b1RateV1;
   designOnlyContracts: VsiApdsP5b1RateV1;
+  /** Per consumerModule: INSUFFICIENT / assessable domain-approved requirements. */
   genuineInsufficientCapability: Record<string, VsiApdsP5b1RateV1>;
   notAssessableDueToApprovalOrEvidence: VsiApdsP5b1RateV1;
+  unknownConsumerDemandAssessment: VsiApdsP5b1RateV1;
   policyVersionCounts: Record<string, number>;
   apdsReasonCodeCounts: Record<string, number>;
 };

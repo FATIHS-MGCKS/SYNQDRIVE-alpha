@@ -144,6 +144,94 @@ describe('vsi-apds-p5b1 hardening', () => {
     );
   });
 
+  it('separates declared from domain-approved demand and capability gap denominators', () => {
+    const demandRow = (
+      classification: (typeof VsiApdsDemandClassification)[keyof typeof VsiApdsDemandClassification],
+      assessment: 'SATISFIED' | 'INSUFFICIENT' | 'NOT_ASSESSABLE' | 'UNKNOWN',
+      id: string,
+    ) => ({
+      requirementId: id,
+      consumerModule: 'battery',
+      featureId: 'lv',
+      canonicalSignalKeys: ['lv_voltage'],
+      domainApprovalStatus: 'APPROVED',
+      demandClassification: classification,
+      assessmentStatus: assessment,
+      discrepancyReasons: [],
+    });
+    const baseRow = {
+      contractVersion: VSI_APDS_P5B1_OFFLINE_CONTRACT_VERSION,
+      decisionIdentity: {
+        organizationId: 'org',
+        vehicleId: 'veh',
+        opportunityId: 'opp',
+        policyVersion: P25_APD_B4_V1,
+        decisionAt: '2026-10-16T06:00:00.000Z',
+        activationEpochId: null,
+        shadowExecutionVersion: null,
+      },
+      originalApdsDecision: 'HOLD',
+      originalApdsReason: 'r',
+      sourceLinkAttribution: {
+        status: 'UNIQUE_ATTRIBUTED' as const,
+        providerSourceLinkId: 'link',
+        historicalActiveLinkCountAtDecision: 1,
+        reasons: [],
+      },
+      correlation: null,
+      investigationHints: [],
+      processingStatus: 'CORRELATED' as const,
+      errorCode: null,
+      skippedReason: null,
+      observation: {
+        contractVersion: 'vsi-apds-p5-readonly-v1' as const,
+        organizationId: 'org',
+        vehicleId: 'veh',
+        providerSourceLinkId: 'link',
+        shadowOpportunityId: 'opp',
+        shadowDecisionAt: '2026-10-16T06:00:00.000Z',
+        policyVersion: P25_APD_B4_V1,
+        activationEpochId: null,
+        requirementsContractVersion: 'vsi-consumer-requirements-v1' as const,
+        correlationAnalysisMode: 'VERIFIED_SHADOW_CORRELATION' as const,
+        authoritativePersistedDecision: null,
+        historicalLinkActiveAtDecision: true,
+        currentActiveSourceLinkCount: 1,
+        historicalActiveLinkCountAtDecision: 1,
+        historicalLinkUniquenessEvidenceComplete: true,
+        providerIdentity: 'DIMO',
+        verifiedModality: null,
+        telemetrySourceFamily: null,
+        profileEvidenceInterpretation: 'VERIFIED_DECISION_TIME_SNAPSHOT' as const,
+        decisionTimeRetrospectiveAssessable: true,
+        profileContractVersion: 'vsi-signal-profile-v2',
+        profileRevision: 1,
+        profileContentFingerprint: 'fp',
+        profileLimitations: [],
+        signals: [],
+        consumerDemand: [
+          demandRow(VsiApdsDemandClassification.DECLARED_REQUIREMENT, 'SATISFIED', 'declared-1'),
+          demandRow(VsiApdsDemandClassification.DOMAIN_APPROVED_REQUIREMENT, 'INSUFFICIENT', 'appr-1'),
+          demandRow(VsiApdsDemandClassification.DOMAIN_APPROVED_REQUIREMENT, 'NOT_ASSESSABLE', 'appr-2'),
+          demandRow(VsiApdsDemandClassification.PENDING_DOMAIN_APPROVAL, 'UNKNOWN', 'pend-1'),
+        ],
+        evidenceLimitations: [],
+        attributionStatus: 'RESOLVED' as const,
+        shadowBindingStatus: 'MATCHED' as const,
+        shadowBindingReasons: [],
+      },
+    };
+    const metrics = buildP5b1ScientificProductMetrics([baseRow]);
+    expect(metrics.declaredConsumerDemand).toEqual({ numerator: 1, denominator: 1 });
+    expect(metrics.domainApprovedConsumerDemand).toEqual({ numerator: 0, denominator: 1 });
+    expect(metrics.genuineInsufficientCapability.battery).toEqual({
+      numerator: 1,
+      denominator: 1,
+    });
+    expect(metrics.notAssessableDueToApprovalOrEvidence.denominator).toBe(1);
+    expect(metrics.pendingConsumerDemand.denominator).toBe(1);
+  });
+
   it('does not count NOT_ASSESSABLE as genuine insufficient capability', () => {
     const row = {
       contractVersion: VSI_APDS_P5B1_OFFLINE_CONTRACT_VERSION,
