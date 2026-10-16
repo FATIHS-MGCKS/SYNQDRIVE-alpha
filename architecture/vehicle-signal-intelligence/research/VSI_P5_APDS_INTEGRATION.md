@@ -3,7 +3,8 @@
 | Field | Value |
 |-------|-------|
 | **Contract** | `vsi-apds-p5-readonly-v1` (`VSI_APDS_P5_CONTRACT_VERSION`) |
-| **Merge baseline** | `a0ce01f192d888974e49c2558ee05e534f3dfeea` (P4 on `main` at P5 branch cut) |
+| **P5A merge** | PR #2049 @ `f480705080e8bbffe34113162e2ee61b36c532b3` on `main` |
+| **P5B.1 offline** | See [`VSI_P5B1_OFFLINE_CORRELATION.md`](VSI_P5B1_OFFLINE_CORRELATION.md) — not APDS policy modification |
 | **P5B runtime flag** | `VSI_P5_APDS_CORRELATION_ENABLED` — **default OFF**, independent of `WORKER_APD_SHADOW_ENABLED` |
 | **APDS shadow hook** | **Not wired** in this PR (P5B gate only; separate APDS/VDC approval required) |
 

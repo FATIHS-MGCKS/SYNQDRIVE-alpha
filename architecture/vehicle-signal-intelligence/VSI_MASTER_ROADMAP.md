@@ -17,7 +17,7 @@
 | **P2** | Automatic onboarding & lifecycle reconciliation | **IN PR #2038** (hardening + CI) | Outbox claim lease, ordering guards, link-scoped lifecycle init, backfill continuation, disposable PG suite |
 | **P3** | Signal fingerprint & quality intelligence | **IN PR #2041** (correctness hardening) | Profile v2, empirical VLS extractors, bundle vs per-signal separation, latest-window bundle history, registry coverage matrix |
 | **P4** | Capability resolver & validated fallback contracts | **MERGED** (#2045 @ `a0ce01f19`) | Read-only resolver engine, consumer requirements registry, internal API |
-| **P5** | APDS read-only profile & consumer-demand integration | **IN PR (P5A + P5B gate)** | Read-only adapter, demand vector, shadow correlation engine; P5B flag default OFF |
+| **P5** | APDS read-only profile & consumer-demand integration | **MERGED P5A (#2049)** · **P5B.1 offline in PR** | P5A adapter + correlation; P5B live gate OFF; P5B.1 offline replay observer |
 | **P6** | Controlled polling optimization | Planned | Closed-loop APDS with human gates |
 | **P7** | Continuous learning & drift detection | Planned | Drift dashboards, alerts, reconciliation jobs |
 

@@ -4,7 +4,7 @@
 |-------|-------|
 | **Registry coverage status** | `AUDIT_IN_PROGRESS` |
 | **Product focus** | Per-vehicle, per-provider-source-link **signal capability profiles** (declared vs observed) |
-| **Last updated** | 2026-10-16 (P4 merged #2045; P5 read-only APDS — in PR) |
+| **Last updated** | 2026-10-16 (P5A merged #2049; P5B.1 offline replay in PR) |
 | **Product charter** | [`VSI_PRODUCT_CHARTER.md`](VSI_PRODUCT_CHARTER.md) |
 | **Master roadmap** | [`VSI_MASTER_ROADMAP.md`](VSI_MASTER_ROADMAP.md) |
 | **P0+P1 on `main`** | Merged PR #2034 @ `eb5f1f2ee` — **not** equivalent to Production deploy ([evidence](evidence/VSI_P0P1_MERGE_BASELINE_2026-10-15.md)) |
@@ -61,16 +61,26 @@
 - **Consumer adapter contracts** — DI, Battery V2, Trip/DTC, APDS read-only requirement surfaces (no runtime wiring).
 - **Operational note** — internal resolver may be reached via double-prefixed path `/api/v1/api/v1/internal/vsi/capability-resolver/...` (non-blocking; do not change working prod route in read-only PRs).
 
-## Implemented (P5 — in PR, P5B default OFF)
+## Implemented (P5A — merged #2049 @ `f48070508`, P5B runtime OFF)
 
 - **P5A read-only adapter** — `buildVsiApdsReadonlyCapabilityObservation`, demand vector from `VSI_CONSUMER_REQUIREMENTS_V1`, pure `correlateApdsShadowWithVsiCapability`.
-- **P5B gate** — `VSI_P5_APDS_CORRELATION_ENABLED` (default false); independent of `WORKER_APD_SHADOW_ENABLED`; **not** wired into `adaptive-polling-shadow` in this PR.
+- **P5B gate** — `VSI_P5_APDS_CORRELATION_ENABLED` (default false); independent of `WORKER_APD_SHADOW_ENABLED`; **not** wired into `adaptive-polling-shadow`.
+- **Production deploy** — attested Production release `c1013265b` (2026-10-16 read-only VPS check) includes P5A code path on disk; P5B/P5B.1 runtime flags absent → correlation remains OFF.
 - **Service** — `VsiApdsP5ReadonlyService` (profile + link load only; no VSI write-back, no DIMO).
+- **Evidence-time** — `VERIFIED_DECISION_TIME_SNAPSHOT` vs `CURRENT_PROFILE_REVIEW` vs `HISTORICAL_PROFILE_UNAVAILABLE` (no profile history table; fail closed).
+- **APDS binding** — validates durable shadow row identity; vehicle-level decisions → `UNKNOWN` when multi-active links.
+- **P4 parity** — demand assessments via shared `evaluateVsiConsumerRequirement`.
 - **Evidence** — [`research/VSI_P5_APDS_INTEGRATION.md`](research/VSI_P5_APDS_INTEGRATION.md).
+
+## Implemented (P5B.1 — offline observer, in PR)
+
+- **Offline replay** — `VsiApdsP5b1OfflineReplayService` + ops CLI; `dryRun: true` only; bounded pagination over persisted APDS decisions.
+- **Evidence store design** — additive `vsi_apds_p5_correlation_evidence` migration; append-only revisions; write gate `VSI_P5B1_EVIDENCE_STORE_WRITE_ENABLED` default OFF (hard-blocked on production `NODE_ENV`).
+- **Evidence** — [`research/VSI_P5B1_OFFLINE_CORRELATION.md`](research/VSI_P5B1_OFFLINE_CORRELATION.md).
 
 ## Explicit non-goals (this slice)
 
-- APDS shadow runtime hook / correlation persistence (P5B activation).
+- APDS shadow runtime hook / live P5B correlation persistence activation.
 - VSI03 capture / strict-advance read flags.
 - Fleet UI surfacing.
 
