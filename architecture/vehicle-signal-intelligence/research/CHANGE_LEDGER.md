@@ -20,3 +20,4 @@ Append-only architecture change record.
 | 2026-10-16 | **P5A historical source-link uniqueness** — lifecycle-based active-link count at `shadowDecisionAt`; current active count observability-only | P5 | `vsi-apds-historical-link-uniqueness.ts` |
 | 2026-10-16 | **P5A repository historical attribution** — tenant-scoped link listing, selected-link identity gate, PG service tests | P5 | `vsi-apds-p5-historical-attribution.postgres.integration.spec.ts` |
 | 2026-10-16 | **P5B.1 offline correlation replay** — bounded batch runner, metrics, append-only evidence store design (write OFF) | P5B.1 | `vsi-apds-p5b1-offline-replay.service.ts`, [`VSI_P5B1_OFFLINE_CORRELATION.md`](VSI_P5B1_OFFLINE_CORRELATION.md) |
+| 2026-10-16 | **P5B.1 operator hardening** — mandatory scope gate, scientific metrics, fingerprint completeness, per-row error isolation, transactional evidence append | P5B.1 | `vsi-apds-p5b1-operator-scope.ts`, `vsi-apds-p5b1-hardening.spec.ts` |

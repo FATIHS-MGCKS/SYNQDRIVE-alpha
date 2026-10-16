@@ -17,6 +17,18 @@ export type VsiApdsP5b1DecisionIdentityV1 = {
   shadowExecutionVersion: string | null;
 };
 
+export type VsiApdsP5b1RowProcessingStatus =
+  | 'SKIPPED_NO_ATTRIBUTABLE_LINK'
+  | 'PROFILE_NOT_ASSESSABLE'
+  | 'CORRELATION_ERROR'
+  | 'CORRELATED'
+  | 'VERIFIED_CORRELATION';
+
+export type VsiApdsP5b1RateV1 = {
+  numerator: number;
+  denominator: number;
+};
+
 export type VsiApdsP5b1SourceLinkAttributionV1 = {
   status: 'UNIQUE_ATTRIBUTED' | 'AMBIGUOUS' | 'NONE_AT_DECISION' | 'UNPROVEN';
   providerSourceLinkId: string | null;
@@ -33,6 +45,9 @@ export type VsiApdsP5b1OfflineCorrelationRowV1 = {
   observation: VsiApdsReadonlyCapabilityObservationV1 | null;
   correlation: VsiApdsShadowCorrelationResultV1 | null;
   investigationHints: string[];
+  processingStatus: VsiApdsP5b1RowProcessingStatus;
+  errorCode: string | null;
+  /** @deprecated Use processingStatus */
   skippedReason: string | null;
 };
 
@@ -58,7 +73,26 @@ export type VsiApdsP5b1OfflineReplayCoverageV1 = {
   skippedNoAttributableLink: number;
   skippedErrors: number;
   verifiedHistoricalProfile: number;
+  verifiedCorrelation: number;
   unknownProvenance: number;
+};
+
+export type VsiApdsP5b1ScientificProductMetricsV1 = {
+  decisionsTotal: number;
+  unattributableApdsDecisions: VsiApdsP5b1RateV1;
+  verifiedHistoricalProfileDecisions: VsiApdsP5b1RateV1;
+  currentProfileOnlyDecisions: VsiApdsP5b1RateV1;
+  declaredSignalCoverage: Record<string, VsiApdsP5b1RateV1>;
+  empiricalSignalCoverage: Record<string, VsiApdsP5b1RateV1>;
+  verifiedHistoricalSignalEvidence: Record<string, VsiApdsP5b1RateV1>;
+  currentProfileOnlySignalObservations: Record<string, VsiApdsP5b1RateV1>;
+  approvedConsumerDemand: VsiApdsP5b1RateV1;
+  pendingConsumerDemand: VsiApdsP5b1RateV1;
+  designOnlyContracts: VsiApdsP5b1RateV1;
+  genuineInsufficientCapability: Record<string, VsiApdsP5b1RateV1>;
+  notAssessableDueToApprovalOrEvidence: VsiApdsP5b1RateV1;
+  policyVersionCounts: Record<string, number>;
+  apdsReasonCodeCounts: Record<string, number>;
 };
 
 export type VsiApdsP5b1OfflineProductMetricsV1 = {
@@ -80,7 +114,15 @@ export type VsiApdsP5b1OfflineReplayResultV1 = {
   dryRun: true;
   readOnly: true;
   replayRunId: string;
+  operatorScope: {
+    organizationId: string;
+    decisionAtFrom: string;
+    decisionAtTo: string;
+    batchLimit: number;
+    maxTotalDecisions: number;
+  };
   coverage: VsiApdsP5b1OfflineReplayCoverageV1;
+  scientificMetrics: VsiApdsP5b1ScientificProductMetricsV1;
   productMetrics: VsiApdsP5b1OfflineProductMetricsV1;
   rows: VsiApdsP5b1OfflineCorrelationRowV1[];
   nextCursor: { decisionAt: string; id: string } | null;

@@ -67,6 +67,8 @@ describe('vsi-apds-p5b1 offline replay', () => {
       observation: null,
       correlation: null,
       investigationHints: [],
+      processingStatus: 'SKIPPED_NO_ATTRIBUTABLE_LINK' as const,
+      errorCode: null,
       skippedReason: null,
     };
     expect(buildP5b1CorrelationEvidenceFingerprint(row)).toEqual(

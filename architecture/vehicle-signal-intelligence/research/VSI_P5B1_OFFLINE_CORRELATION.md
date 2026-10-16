@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **Mode** | Operator-invoked offline observer |
-| **Runtime gates** | `VSI_P5_APDS_CORRELATION_ENABLED` default OFF (P5B live hook not wired); `VSI_P5B1_EVIDENCE_STORE_WRITE_ENABLED` default OFF |
+| **Runtime gates** | `VSI_P5_APDS_CORRELATION_ENABLED` default OFF; evidence writes require `VSI_P5B1_EVIDENCE_STORE_WRITE_AUTHORIZED=1` + matching `VSI_P5B1_EVIDENCE_STORE_DATABASE_FINGERPRINT` + `VSI_P5B1_EVIDENCE_STORE_WRITE_ENABLED=1` |
 | **P5A on main** | Merged PR #2049 @ `f48070508` |
 | **Contract** | `vsi-apds-p5b1-offline-v1` |
 
@@ -16,7 +16,8 @@
 ## Offline replay
 
 - Service: `VsiApdsP5b1OfflineReplayService.runOfflineReplayBatch` (`dryRun: true` only).
-- CLI: `backend/scripts/ops/vsi-p5b1-offline-correlation-replay.ts`.
+- CLI: `backend/scripts/ops/vsi-p5b1-offline-correlation-replay.ts` (requires `organizationId`, bounded `decisionAtFrom`/`decisionAtTo`, `batchLimit`, `maxTotalDecisions`).
+- Production SELECT audit template: [`evidence/VSI_P5B1_PRODUCTION_READONLY_AUDIT_TEMPLATE.md`](../evidence/VSI_P5B1_PRODUCTION_READONLY_AUDIT_TEMPLATE.md) (not executed in code PR).
 - No APDS worker, no DIMO HTTP, no profile rematerialization, no polling mutation.
 
 ## Evidence store (design)

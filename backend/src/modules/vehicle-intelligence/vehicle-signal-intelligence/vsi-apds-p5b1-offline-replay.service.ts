@@ -9,14 +9,25 @@ import {
   type VsiApdsP5b1PersistedShadowDecisionRow,
 } from './vsi-apds-p5b1-decision.repository';
 import { VsiApdsP5b1EvidenceWriter } from './vsi-apds-p5b1-evidence.writer';
-import { buildP5b1OfflineCoverage, buildP5b1ProductMetrics } from './vsi-apds-p5b1-metrics';
+import {
+  buildP5b1OfflineCoverage,
+  buildP5b1ProductMetrics,
+  buildP5b1ScientificProductMetrics,
+} from './vsi-apds-p5b1-metrics';
 import { isVsiP5b1OfflineReplayDisabled } from './vsi-apds-p5b1.config';
 import { VSI_APDS_P5B1_OFFLINE_CONTRACT_VERSION } from './vsi-apds-p5b1.contract';
+import {
+  parseP5b1OperatorScope,
+  resolveBoundedBatchLimit,
+} from './vsi-apds-p5b1-operator-scope';
+import { VsiApdsProfileEvidenceInterpretation } from './vsi-apds-profile-evidence-time';
+import { VsiApdsShadowBindingStatus } from './vsi-apds-shadow-opportunity-binding';
 import type {
   VsiApdsP5b1OfflineCorrelationRowV1,
   VsiApdsP5b1OfflineReplayFilterV1,
   VsiApdsP5b1OfflineReplayPaginationV1,
   VsiApdsP5b1OfflineReplayResultV1,
+  VsiApdsP5b1RowProcessingStatus,
 } from './vsi-apds-p5b1.types';
 
 @Injectable()
@@ -31,6 +42,8 @@ export class VsiApdsP5b1OfflineReplayService {
   async runOfflineReplayBatch(input: {
     filter: VsiApdsP5b1OfflineReplayFilterV1;
     pagination?: VsiApdsP5b1OfflineReplayPaginationV1;
+    maxTotalDecisions?: number;
+    decisionsProcessedSoFar?: number;
     dryRun?: boolean;
     replayRunId?: string;
   }): Promise<VsiApdsP5b1OfflineReplayResultV1> {
@@ -42,33 +55,68 @@ export class VsiApdsP5b1OfflineReplayService {
       throw new Error('P5B1_OFFLINE_REPLAY_REQUIRES_DRY_RUN_TRUE');
     }
 
+    const scope = parseP5b1OperatorScope({
+      filter: input.filter,
+      pagination: input.pagination,
+      maxTotalDecisions: input.maxTotalDecisions,
+    });
+    const decisionsProcessedSoFar = input.decisionsProcessedSoFar ?? 0;
+    const batchLimit = resolveBoundedBatchLimit({ scope, decisionsProcessedSoFar });
+    if (batchLimit === 0) {
+      return this.emptyResult(scope, input.replayRunId ?? randomUUID());
+    }
+
     const replayRunId = input.replayRunId ?? randomUUID();
     const { rows: decisionRows, hasMore } = await this.decisions.loadShadowDecisionsPage({
-      filter: input.filter,
+      filter: {
+        organizationId: scope.organizationId,
+        vehicleId: scope.vehicleId,
+        opportunityId: scope.opportunityId,
+        activationEpochId: scope.activationEpochId,
+        policyVersions: scope.policyVersions,
+        decisionAtFrom: scope.decisionAtFrom,
+        decisionAtTo: scope.decisionAtTo,
+      },
       cursorDecisionAt: input.pagination?.cursorDecisionAt,
       cursorId: input.pagination?.cursorId,
-      limit: input.pagination?.limit,
+      limit: batchLimit,
     });
 
     const rows: VsiApdsP5b1OfflineCorrelationRowV1[] = [];
     for (const decision of decisionRows) {
-      rows.push(await this.correlateOneDecision(decision));
+      try {
+        rows.push(await this.correlateOneDecision(decision));
+      } catch {
+        rows.push(this.correlationErrorRow(decision, 'CORRELATION_EXCEPTION'));
+      }
     }
 
     const coverage = buildP5b1OfflineCoverage(rows);
+    const scientificMetrics = buildP5b1ScientificProductMetrics(rows);
     const productMetrics = buildP5b1ProductMetrics(rows);
     const last = decisionRows[decisionRows.length - 1];
+    const moreWithinCap =
+      hasMore &&
+      decisionsProcessedSoFar + decisionRows.length < scope.maxTotalDecisions;
 
     return {
       contractVersion: VSI_APDS_P5B1_OFFLINE_CONTRACT_VERSION,
       dryRun: true,
       readOnly: true,
       replayRunId,
+      operatorScope: {
+        organizationId: scope.organizationId,
+        decisionAtFrom: scope.decisionAtFrom.toISOString(),
+        decisionAtTo: scope.decisionAtTo.toISOString(),
+        batchLimit: scope.batchLimit,
+        maxTotalDecisions: scope.maxTotalDecisions,
+      },
       coverage,
+      scientificMetrics,
       productMetrics,
       rows,
       nextCursor:
-        hasMore && last
+        moreWithinCap && last
           ? { decisionAt: last.decisionAt.toISOString(), id: last.id }
           : null,
       evidenceStoreWriteAttempted: false,
@@ -76,7 +124,32 @@ export class VsiApdsP5b1OfflineReplayService {
     };
   }
 
-  /** Optional evidence persistence — separate from default dry-run output path. */
+  private emptyResult(
+    scope: ReturnType<typeof parseP5b1OperatorScope>,
+    replayRunId: string,
+  ): VsiApdsP5b1OfflineReplayResultV1 {
+    return {
+      contractVersion: VSI_APDS_P5B1_OFFLINE_CONTRACT_VERSION,
+      dryRun: true,
+      readOnly: true,
+      replayRunId,
+      operatorScope: {
+        organizationId: scope.organizationId,
+        decisionAtFrom: scope.decisionAtFrom.toISOString(),
+        decisionAtTo: scope.decisionAtTo.toISOString(),
+        batchLimit: scope.batchLimit,
+        maxTotalDecisions: scope.maxTotalDecisions,
+      },
+      coverage: buildP5b1OfflineCoverage([]),
+      scientificMetrics: buildP5b1ScientificProductMetrics([]),
+      productMetrics: buildP5b1ProductMetrics([]),
+      rows: [],
+      nextCursor: null,
+      evidenceStoreWriteAttempted: false,
+      evidenceStoreRowsAppended: 0,
+    };
+  }
+
   async persistEvidenceForRows(input: {
     replayRunId: string;
     rows: readonly VsiApdsP5b1OfflineCorrelationRowV1[];
@@ -92,10 +165,32 @@ export class VsiApdsP5b1OfflineReplayService {
     return appended;
   }
 
-  private async correlateOneDecision(
+  private correlationErrorRow(
     decision: VsiApdsP5b1PersistedShadowDecisionRow,
-  ): Promise<VsiApdsP5b1OfflineCorrelationRowV1> {
-    const decisionIdentity = {
+    errorCode: string,
+  ): VsiApdsP5b1OfflineCorrelationRowV1 {
+    return {
+      contractVersion: VSI_APDS_P5B1_OFFLINE_CONTRACT_VERSION,
+      decisionIdentity: this.decisionIdentity(decision),
+      originalApdsDecision: decision.decision,
+      originalApdsReason: decision.reason,
+      sourceLinkAttribution: {
+        status: 'UNPROVEN',
+        providerSourceLinkId: null,
+        historicalActiveLinkCountAtDecision: null,
+        reasons: [errorCode],
+      },
+      observation: null,
+      correlation: null,
+      investigationHints: [],
+      processingStatus: 'CORRELATION_ERROR',
+      errorCode,
+      skippedReason: errorCode,
+    };
+  }
+
+  private decisionIdentity(decision: VsiApdsP5b1PersistedShadowDecisionRow) {
+    return {
       organizationId: decision.organizationId,
       vehicleId: decision.vehicleId,
       opportunityId: decision.opportunityId,
@@ -104,7 +199,36 @@ export class VsiApdsP5b1OfflineReplayService {
       activationEpochId: decision.activationEpochId,
       shadowExecutionVersion: decision.shadowExecutionVersion,
     };
+  }
 
+  private resolveProcessingStatus(input: {
+    attributionStatus: VsiApdsP5b1OfflineCorrelationRowV1['sourceLinkAttribution']['status'];
+    profileInterpretation: string | undefined;
+    shadowBindingStatus: string | undefined;
+    matchedVehicleLink: boolean;
+  }): VsiApdsP5b1RowProcessingStatus {
+    if (input.attributionStatus !== 'UNIQUE_ATTRIBUTED') {
+      return 'SKIPPED_NO_ATTRIBUTABLE_LINK';
+    }
+    if (
+      input.profileInterpretation !==
+      VsiApdsProfileEvidenceInterpretation.VERIFIED_DECISION_TIME_SNAPSHOT
+    ) {
+      return 'PROFILE_NOT_ASSESSABLE';
+    }
+    if (
+      input.matchedVehicleLink &&
+      input.shadowBindingStatus === VsiApdsShadowBindingStatus.MATCHED
+    ) {
+      return 'VERIFIED_CORRELATION';
+    }
+    return 'CORRELATED';
+  }
+
+  private async correlateOneDecision(
+    decision: VsiApdsP5b1PersistedShadowDecisionRow,
+  ): Promise<VsiApdsP5b1OfflineCorrelationRowV1> {
+    const decisionIdentity = this.decisionIdentity(decision);
     const decisionAtMs = decision.decisionAt.getTime();
     const linkRows = await this.profiles.listVehicleSourceLinksForHistoricalAttribution({
       organizationId: decision.organizationId,
@@ -127,6 +251,8 @@ export class VsiApdsP5b1OfflineReplayService {
         observation: null,
         correlation: null,
         investigationHints: ['OFFLINE_CORRELATION_SKIPPED_NO_ATTRIBUTABLE_SOURCE_LINK'],
+        processingStatus: 'SKIPPED_NO_ATTRIBUTABLE_LINK',
+        errorCode: null,
         skippedReason: 'NO_ATTRIBUTABLE_SOURCE_LINK',
       };
     }
@@ -155,6 +281,13 @@ export class VsiApdsP5b1OfflineReplayService {
       observation,
     });
 
+    const processingStatus = this.resolveProcessingStatus({
+      attributionStatus: attribution.status,
+      profileInterpretation: observation.profileEvidenceInterpretation,
+      shadowBindingStatus: observation.shadowBindingStatus,
+      matchedVehicleLink: correlation.matchedVehicleLink,
+    });
+
     return {
       contractVersion: VSI_APDS_P5B1_OFFLINE_CONTRACT_VERSION,
       decisionIdentity,
@@ -164,6 +297,8 @@ export class VsiApdsP5b1OfflineReplayService {
       observation,
       correlation,
       investigationHints: [...correlation.investigationHints],
+      processingStatus,
+      errorCode: null,
       skippedReason: null,
     };
   }

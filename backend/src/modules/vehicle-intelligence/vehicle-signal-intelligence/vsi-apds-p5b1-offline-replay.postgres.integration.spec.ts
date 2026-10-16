@@ -128,7 +128,15 @@ async function upsertVls(
     }
 
     const result = await replay.runOfflineReplayBatch({
-      filter: { organizationId, vehicleId: fixture.vehicleId, opportunityId },
+      filter: {
+        organizationId,
+        vehicleId: fixture.vehicleId,
+        opportunityId,
+        decisionAtFrom: new Date('2026-10-16T00:00:00.000Z'),
+        decisionAtTo: new Date('2026-10-17T00:00:00.000Z'),
+      },
+      pagination: { limit: 50 },
+      maxTotalDecisions: 500,
       dryRun: true,
     });
     expect(result.rows).toHaveLength(2);
@@ -179,7 +187,13 @@ async function upsertVls(
     });
 
     const result = await replay.runOfflineReplayBatch({
-      filter: { organizationId: otherOrg },
+      filter: {
+        organizationId: otherOrg,
+        decisionAtFrom: new Date('2026-10-16T00:00:00.000Z'),
+        decisionAtTo: new Date('2026-10-17T00:00:00.000Z'),
+      },
+      pagination: { limit: 50 },
+      maxTotalDecisions: 500,
       dryRun: true,
     });
     expect(result.rows).toHaveLength(0);
