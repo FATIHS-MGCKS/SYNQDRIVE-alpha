@@ -28,11 +28,20 @@ Owner-reported window (Berlin): `2026-10-16T05:36:00+02:00` → `2026-10-16T05:5
 | [EXP021_EV_GROUND_TRUTH_VIDEO_PROTOCOL.md](./EXP021_EV_GROUND_TRUTH_VIDEO_PROTOCOL.md) | Video ingest + sync (not executed until file received) |
 | [EXP021_EV_GROUND_TRUTH_PRE_DEPLOY_BASELINE.md](./EXP021_EV_GROUND_TRUTH_PRE_DEPLOY_BASELINE.md) | Pre-deploy read-only baseline summary |
 | [EXP021_EV_GROUND_TRUTH_TRIP_START_FORENSIC_2026-10-16.md](./EXP021_EV_GROUND_TRUTH_TRIP_START_FORENSIC_2026-10-16.md) | Trip-start read-only forensic (`TC_00062.MOV` owner context; frozen replay) |
+<<<<<<< HEAD
 | [EXP021_EV_GROUND_TRUTH_BOUNDARY_PROVENANCE_2026-10-16.md](./EXP021_EV_GROUND_TRUTH_BOUNDARY_PROVENANCE_2026-10-16.md) | Auftrag 1 — DIMO segment + lifecycle meta (Production read-only export) |
 | [EXP021_EV_GROUND_TRUTH_STOP_CREEP_FORENSIC_2026-10-16.md](./EXP021_EV_GROUND_TRUTH_STOP_CREEP_FORENSIC_2026-10-16.md) | Auftrag 2 — stop/creep/gap windows + baseline parity |
 | [external-video-review-kompakt-2026-10-16/](./external-video-review-kompakt-2026-10-16/) | Kompakt external video review (no JPEG frames; metrics reproducible from annotations) |
 | [forensic-readonly-exports-2026-10-16/](./forensic-readonly-exports-2026-10-16/) | JSON exports for Auftrag 1+2 (`npm run exp021:ev-ground-truth:forensic-export`) |
 | [POST_DEPLOY_VERIFICATION_PLAN.md](./POST_DEPLOY_VERIFICATION_PLAN.md) | Post-deploy read-only checklist (pending) |
+=======
+| [POST_DEPLOY_VERIFICATION_PLAN.md](./POST_DEPLOY_VERIFICATION_PLAN.md) | Post-deploy read-only checklist |
+| [EXP021_EV_GROUND_TRUTH_POST_DEPLOY_VERIFICATION_2026-10-16.md](./EXP021_EV_GROUND_TRUTH_POST_DEPLOY_VERIFICATION_2026-10-16.md) | Post-deploy admission + reconciliation evidence @ `c1013265…` |
+
+## ChatGPT review bundle (`chatgpt-review-bundle/`)
+
+CSV + JSON copies of the 1136 s replay, manifest, and projection excerpt for external tools ([README](./chatgpt-review-bundle/README.md) with raw GitHub URLs).
+>>>>>>> 3010b21cbb (docs(exp021): post-deploy admission verification and CURRENT V2 inventory)
 
 ## Frozen baseline artifacts (`pre-deploy/`)
 
@@ -61,6 +70,6 @@ npm run exp021:ev-ground-truth:baseline -- --out-dir ../architecture/drivinginte
 |------|--------|
 | `VIDEO_RECEIVED_AND_ANALYZED` | **PARTIAL** — kompakt review in [`external-video-review-kompakt-2026-10-16/`](./external-video-review-kompakt-2026-10-16/) (annotations + Bericht; **no** full JPEG frame set in git). MOV originals not in repo. |
 | `VIDEO_PROTOCOL_READY` | **YES** |
-| `POST_DEPLOY_VERIFICATION` | **NOT_RUN** |
+| `POST_DEPLOY_VERIFICATION` | **COMPLETE** (read-only; admission still missing — cold-tier path) |
 | `PRODUCTION_MUTATIONS` | **NONE** |
 | `PROVIDER_CALLS` | **NONE** |

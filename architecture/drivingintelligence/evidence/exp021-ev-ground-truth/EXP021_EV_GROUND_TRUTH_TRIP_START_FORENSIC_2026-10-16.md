@@ -121,15 +121,10 @@ Verified V2 summary on full window: **trusted numeric coverage 68.2%** (775 trus
 
 ---
 
-## ChatGPT / external review bundle (copies, baseline bytes unchanged)
+## ChatGPT / external review bundle (GitHub)
 
-| Artifact | Location |
-|----------|----------|
-| 1136-row second table (JSON) | [`pre-deploy/PRE_DEPLOY_PER_SECOND_REPLAY.json`](./pre-deploy/PRE_DEPLOY_PER_SECOND_REPLAY.json) |
-| 1136-row CSV (same data) | `/opt/cursor/artifacts/exp021-ev-ground-truth-chatgpt/PRE_DEPLOY_PER_SECOND_REPLAY.csv` |
-| Projection excerpt (full `projection_json` **not** frozen) | `/opt/cursor/artifacts/exp021-ev-ground-truth-chatgpt/PRE_DEPLOY_PROJECTION_EXCERPT.json` |
-| Package provenance | [`pre-deploy/PROVENANCE.json`](./pre-deploy/PROVENANCE.json) + artifact copy |
-| Manifest | [`pre-deploy/PRE_DEPLOY_BASELINE_MANIFEST.json`](./pre-deploy/PRE_DEPLOY_BASELINE_MANIFEST.json) |
+Committed for public/raw URL access: [`chatgpt-review-bundle/`](./chatgpt-review-bundle/) (see `README.md` for `raw.githubusercontent.com` links).  
+Frozen [`pre-deploy/`](./pre-deploy/) `SHA256SUMS` unchanged.
 
 ### Milestone buckets (from frozen replay)
 

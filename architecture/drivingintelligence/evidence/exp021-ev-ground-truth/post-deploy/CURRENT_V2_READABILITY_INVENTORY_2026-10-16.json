@@ -1,0 +1,19 @@
+{
+  "schema": "EXP021_CURRENT_V2_READABILITY_INVENTORY_V1",
+  "observedAtUtc": "2026-10-16T16:15:35.100Z",
+  "qcPolicyVersion": "DI_V0_SPEED_QC_POLICY_V2",
+  "productionSha": "c1013265bc10af7ac5fe7e86ff372772373acd36",
+  "categories": {
+    "totalCurrentV2": 13,
+    "productReadWouldSucceed": 0,
+    "admissionValidRevisionMatch": 0,
+    "admissionMissing": 13,
+    "admissionRevisionMismatch": 0,
+    "releasePreconditionBlocked": 0,
+    "boundaryFingerprintMismatchVsWorkItem": 0,
+    "tripOpenOrMissingEnd": 0
+  },
+  "note": "Single consistent DB snapshot on Production. CURRENT rows exist; product read gate would block all 13 until reconciliation step-4 scan + release.",
+  "productionMutations": "NONE",
+  "providerCalls": 0
+}

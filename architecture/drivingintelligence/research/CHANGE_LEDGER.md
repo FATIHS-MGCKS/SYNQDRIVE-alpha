@@ -2034,3 +2034,11 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | `EXP021_EV_GROUND_TRUTH_TRIP_START_FORENSIC_2026-10-16.md`; owner `TC_00062.MOV` overlay **05:37:41** Berlin vs persisted `03:36:00Z`; replay milestone table; coverage sensitivity if start at overlay |
 | WHY | Owner confirmed reverse-at-video-start; quantify early-start effect on 1136 s grid / 68.2% trusted coverage without boundary mutation |
 | NON_EFFECTS | `pre-deploy/` SHA256SUMS unchanged; no fetch/deploy/tuning; `VIDEO_RECEIVED_AND_ANALYZED` still NO |
+
+### EXP-021 EV Ground Truth — post-deploy admission verification (2026-10-16, read-only)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `EXP021_EV_GROUND_TRUTH_POST_DEPLOY_VERIFICATION_2026-10-16.md`; `post-deploy/POST_DEPLOY_BASELINE_MANIFEST.json` + inventory; ops `exp021-current-v2-readability-inventory.ts`; Production @ `c1013265…` |
+| WHY | Close post-#2052 deploy read-only loop: reconciliation window exclusion explains missing admission; 13/13 CURRENT V2 still gate-blocked |
+| NON_EFFECTS | No admission writes; no scoped reconcile executed; full replay on VPS shared evidence only |

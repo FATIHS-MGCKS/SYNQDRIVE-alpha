@@ -1,7 +1,7 @@
 # EXP021 EV Ground Truth — post-deploy verification plan
 
-**Status:** `POST_DEPLOY_VERIFICATION_STATUS=NOT_RUN_PENDING_JOINT_DEPLOY`  
-**Trigger:** Owner-authorized joint deploy completed; **do not** run from pre-deploy PR.
+**Status:** `POST_DEPLOY_VERIFICATION_STATUS=COMPLETE_READ_ONLY_2026-10-16`  
+**Trigger:** Owner-authorized joint deploy @ `c1013265bc10af7ac5fe7e86ff372772373acd36` — see [EXP021_EV_GROUND_TRUTH_POST_DEPLOY_VERIFICATION_2026-10-16.md](./EXP021_EV_GROUND_TRUTH_POST_DEPLOY_VERIFICATION_2026-10-16.md).
 
 ## Read-only checklist
 
