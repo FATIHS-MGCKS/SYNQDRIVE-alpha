@@ -4668,6 +4668,30 @@ model ApdShadowReconciliationDecision {
   @@map("apd_shadow_reconciliation_decisions")
 }
 
+/// P5B.1 append-only offline VSI↔APDS correlation evidence (write runtime OFF by default).
+model VsiApdsP5CorrelationEvidence {
+  id                         String   @id @default(uuid())
+  organizationId             String   @map("organization_id")
+  vehicleId                  String   @map("vehicle_id")
+  providerSourceLinkId       String?  @map("provider_source_link_id")
+  opportunityId              String   @map("opportunity_id")
+  policyVersion              String   @map("policy_version")
+  activationEpochId          String?  @map("activation_epoch_id")
+  shadowExecutionVersion     String?  @map("shadow_execution_version")
+  decisionAt                 DateTime @map("decision_at") @db.Timestamptz(3)
+  p5CorrelationContractVersion String @map("p5_correlation_contract_version")
+  correlationFingerprint     String   @map("correlation_fingerprint")
+  evidenceRevision           Int      @map("evidence_revision")
+  replayRunId                String   @map("replay_run_id")
+  payloadJson                Json     @map("payload_json")
+  createdAt                  DateTime @default(now()) @map("created_at")
+
+  @@unique([organizationId, vehicleId, opportunityId, policyVersion, decisionAt, p5CorrelationContractVersion, correlationFingerprint], map: "vsi_apds_p5_corr_evidence_fingerprint_key")
+  @@unique([organizationId, vehicleId, opportunityId, policyVersion, decisionAt, p5CorrelationContractVersion, evidenceRevision], map: "vsi_apds_p5_corr_evidence_rev_key")
+  @@index([organizationId, decisionAt], map: "vsi_apds_p5_corr_evidence_org_decision_idx")
+  @@map("vsi_apds_p5_correlation_evidence")
+}
+
 // ------------------------------------------------
 // INTEGRATIONS
 // ------------------------------------------------

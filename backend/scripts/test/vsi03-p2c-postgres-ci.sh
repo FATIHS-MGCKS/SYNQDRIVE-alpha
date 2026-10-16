@@ -46,4 +46,5 @@ npx jest \
   vsi-capability-resolver.postgres.integration \
   vsi-apds-p5.postgres.integration \
   vsi-apds-p5-binding.postgres.integration \
-  vsi-apds-p5-historical-attribution.postgres.integration
+  vsi-apds-p5-historical-attribution.postgres.integration \
+  vsi-apds-p5b1-offline-replay.postgres.integration
