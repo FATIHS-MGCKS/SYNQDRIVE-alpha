@@ -2018,3 +2018,11 @@ Granular scientific evolution record for the 2026-08-30 → 2026-09-06 workstrea
 | CHANGE | Outbox `claim_token`/`claim_expires_at`; fenced acks; expired PROCESSING reclaim; discovery excludes existing outbox rows; Nest bootstrap `resolveDiV0P2AutoProjectionV2Bootstrap`; scheduler registry `di_v0_p2_auto_projection_v2`; expanded Postgres/module tests |
 | WHY | PR #2028 review: PROCESSING crash recovery, discovery starvation, invalid env must not block backend boot |
 | NON_EFFECTS | QC V2 semantics unchanged; no production activation |
+
+### EXP-021 EV Ground Truth reference campaign — pre-deploy baseline (2026-10-16)
+
+| Event | Detail |
+|-------|--------|
+| CHANGE | `evidence/exp021-ev-ground-truth/` protocol + evaluation + video ingest procedure; ops CLI `exp021:ev-ground-truth:baseline`; frozen `pre-deploy/` manifest + 1136-row per-second replay (Tesla trip `358d0158-…`, Production `a0ce01f…`) |
+| WHY | Durable owner-confirmed EV reference for speed/accel/regen evaluation **after** joint deploy; separate from deploy scope |
+| NON_EFFECTS | No algorithm/QC/gate changes; no deploy; no admission writes; no video analysis; no provider calls |
