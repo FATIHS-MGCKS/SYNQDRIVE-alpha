@@ -5,6 +5,7 @@ import {
   BatteryMeasurementType,
 } from '@prisma/client';
 import { BatteryRestTargetEvaluationService } from '../lv-rest-window/battery-rest-target-evaluation.service';
+import { LvRestCanonicalTargetAnchorResolverService } from '../lv-rest-window/lv-rest-canonical-target-anchor.resolver.service';
 import { LvLiveVoltageIngestionService } from './lv-live-voltage-ingestion.service';
 import { BatteryProviderLastStoredLiveVoltageResolver } from '../battery-provider-last-stored-live-voltage.resolver';
 
@@ -76,6 +77,7 @@ describe('LIVE_VOLTAGE → REST target evaluation chain', () => {
         create: (cmd: unknown) => measurements.create(cmd),
       } as never,
       policyProfiles as never,
+      new LvRestCanonicalTargetAnchorResolverService(prisma as never),
     );
 
     prisma.batteryMeasurement.findFirst.mockResolvedValue(null);

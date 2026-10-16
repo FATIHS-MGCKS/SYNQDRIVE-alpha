@@ -32,6 +32,7 @@ import {
 } from './lv-rest-window-target.metadata';
 import type { LvRestWindowEvent, LvRestWindowSignalContext } from './lv-rest-window.types';
 import { isLvRestShadowModeActive } from './lv-rest-shadow.policy';
+import { LvRestCanonicalTargetAnchorResolverService } from './lv-rest-canonical-target-anchor.resolver.service';
 
 @Injectable()
 export class LvRestWindowStateMachineService {
@@ -40,6 +41,7 @@ export class LvRestWindowStateMachineService {
     private readonly sessions: BatteryMeasurementSessionRepository,
     private readonly policyProfiles: BatteryPolicyProfileService,
     private readonly restTargetProducer: BatteryV2RestTargetProducer,
+    private readonly canonicalAnchorResolver: LvRestCanonicalTargetAnchorResolverService,
     @Optional() private readonly metrics?: TripMetricsService,
   ) {}
 
@@ -115,12 +117,16 @@ export class LvRestWindowStateMachineService {
     }
 
     if (transition.reason === 'candidate_promoted_to_resting') {
+      const effectiveRestWindowStartedAt =
+        await this.canonicalAnchorResolver.resolveRestWindowStartedAt(
+          persistedSession,
+        );
       metadata = await this.scheduleRestTargets({
         organizationId,
         vehicleId,
         session: persistedSession,
         restWindowId: next.windowId,
-        restWindowStartedAt: next.startedAt,
+        restWindowStartedAt: effectiveRestWindowStartedAt,
         existingMetadata: metadata,
       });
     } else if (

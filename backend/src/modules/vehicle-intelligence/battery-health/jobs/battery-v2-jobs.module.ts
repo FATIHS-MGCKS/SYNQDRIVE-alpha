@@ -12,6 +12,7 @@ import { BatteryGeneralizedEvidenceModule } from '../generalized-evidence/genera
 import { LvLiveVoltageIngestionService } from '../lv-live-voltage/lv-live-voltage-ingestion.service';
 import { ShutdownEvidenceCaptureService } from '../shutdown-evidence/shutdown-evidence-capture.service';
 import { BatteryRestTargetEvaluationService } from '../lv-rest-window/battery-rest-target-evaluation.service';
+import { LvRestCanonicalTargetAnchorResolverService } from '../lv-rest-window/lv-rest-canonical-target-anchor.resolver.service';
 import { LvRestAssessmentHandoffService } from '../lv-rest-window/lv-rest-assessment-handoff.service';
 import { LvPublicationHandoffService } from '../lv-assessment/lv-publication-handoff.service';
 import { BatteryObservationClassifyHandler } from './handlers/battery-observation-classify.handler';
@@ -68,6 +69,7 @@ const BATTERY_V2_JOB_HANDLERS = [
     BatteryV2SnapshotIngestionService,
     LvLiveVoltageIngestionService,
     BatteryRestTargetEvaluationService,
+    LvRestCanonicalTargetAnchorResolverService,
     LvRestAssessmentHandoffService,
     LvPublicationHandoffService,
     BatteryStartProxyExtractService,

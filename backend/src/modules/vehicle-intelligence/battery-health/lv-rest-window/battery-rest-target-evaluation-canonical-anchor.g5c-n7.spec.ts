@@ -6,6 +6,7 @@ import {
 } from '@prisma/client';
 import { getBatteryRest60mDelayMs, getBatteryRest6hDelayMs } from '@config/battery-health-v2.config';
 import { BatteryRestTargetEvaluationService } from './battery-rest-target-evaluation.service';
+import { LvRestCanonicalTargetAnchorResolverService } from './lv-rest-canonical-target-anchor.resolver.service';
 import { restTargetAt } from './battery-rest-target-evaluation';
 import {
   isCanonicalRestAssessmentHandoffEligible,
@@ -70,10 +71,14 @@ function buildRestEval(prisma: Record<string, unknown>) {
     }),
   };
   const measurements = { create: jest.fn().mockResolvedValue({ id: 'rest-out-1' }) };
+  const canonicalAnchorResolver = new LvRestCanonicalTargetAnchorResolverService(
+    prisma as never,
+  );
   const restEval = new BatteryRestTargetEvaluationService(
     prisma as never,
     measurements as never,
     policyProfiles as never,
+    canonicalAnchorResolver,
   );
   return { restEval, measurements, policyProfiles };
 }
@@ -108,6 +113,7 @@ describe('G5C-N7 canonical REST target anchor bridge', () => {
         organizationId: ORG,
         vehicleId: VEH,
         anchorAt: CANONICAL_ANCHOR,
+        sessionStatus: 'RESTING',
         confirmedTripId: FORENSIC_TRIP,
         candidateTripId: null,
       },

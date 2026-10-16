@@ -38,11 +38,8 @@ import {
   LV_REST_TARGET_TYPES,
   type LvRestTargetType,
 } from './lv-rest-window-target.metadata';
-import { TRIP_ASSOCIATION_ANCHOR_TOLERANCE_MS } from '../generalized-evidence/generalized-evidence.constants';
-import {
-  resolveLvRestCanonicalTargetAnchor,
-  type ResolveLvRestCanonicalTargetAnchorResult,
-} from './lv-rest-canonical-target-anchor.policy';
+import type { ResolveLvRestCanonicalTargetAnchorResult } from './lv-rest-canonical-target-anchor.policy';
+import { LvRestCanonicalTargetAnchorResolverService } from './lv-rest-canonical-target-anchor.resolver.service';
 
 function withLvRestShadowContextIfActive<T extends Record<string, unknown>>(
   context: T,
@@ -56,6 +53,7 @@ export class BatteryRestTargetEvaluationService {
     private readonly prisma: PrismaService,
     private readonly measurements: BatteryMeasurementService,
     private readonly policyProfiles: BatteryPolicyProfileService,
+    private readonly canonicalAnchorResolver: LvRestCanonicalTargetAnchorResolverService,
   ) {}
 
   async listLvVoltageCandidates(input: {
@@ -127,75 +125,20 @@ export class BatteryRestTargetEvaluationService {
     return trips.map((trip) => trip.startTime);
   }
 
-  private resolveLinkedTripId(
-    session: BatteryMeasurementSession,
-  ): string | null {
-    if (session.tripId) {
-      return session.tripId;
-    }
-    if (session.sourceEntityType === 'trip' && session.sourceEntityId) {
-      return session.sourceEntityId;
-    }
-    return null;
-  }
-
-  private async resolveRestWindowAnchor(input: {
-    organizationId: string;
-    vehicleId: string;
-    measurementSessionStartedAt: Date;
-    session: BatteryMeasurementSession;
-  }): Promise<ResolveLvRestCanonicalTargetAnchorResult> {
-    const toleranceMs = TRIP_ASSOCIATION_ANCHOR_TOLERANCE_MS;
-    const anchorMs = input.measurementSessionStartedAt.getTime();
-    const linkedTripId = this.resolveLinkedTripId(input.session);
-    const rows = await this.prisma.batteryRestSession.findMany({
-      where: {
-        organizationId: input.organizationId,
-        vehicleId: input.vehicleId,
-        OR: [
-          {
-            anchorAt: {
-              gte: new Date(anchorMs - toleranceMs),
-              lte: new Date(anchorMs + toleranceMs),
-            },
-          },
-          ...(linkedTripId
-            ? [
-                { confirmedTripId: linkedTripId },
-                { candidateTripId: linkedTripId },
-              ]
-            : []),
-        ],
-      },
-      select: {
-        id: true,
-        organizationId: true,
-        vehicleId: true,
-        anchorAt: true,
-        confirmedTripId: true,
-        candidateTripId: true,
-      },
-      take: 20,
-    });
-    return resolveLvRestCanonicalTargetAnchor({
-      organizationId: input.organizationId,
-      vehicleId: input.vehicleId,
-      measurementSessionStartedAt: input.measurementSessionStartedAt,
-      linkedTripId,
-      candidates: rows,
-    });
-  }
-
   private buildCanonicalAnchorProvenance(
     anchor: ResolveLvRestCanonicalTargetAnchorResult,
   ): Record<string, unknown> {
     if (anchor.kind !== 'CANONICAL_REST_SESSION') {
+      if (anchor.kind === 'SESSION_ANCHOR' && anchor.reason !== 'no_match') {
+        return { canonicalAnchorFallbackReason: anchor.reason };
+      }
       return {};
     }
     return {
       canonicalRestSessionId: anchor.restSessionId,
       measurementSessionAnchorAt: anchor.measurementSessionStartedAt.toISOString(),
       canonicalAnchorDeltaMs: anchor.anchorDeltaMs,
+      canonicalAnchorAssociation: anchor.association,
     };
   }
 
@@ -254,12 +197,10 @@ export class BatteryRestTargetEvaluationService {
       input.vehicleId,
     );
     const measurementType = measurementTypeForRestTarget(input.restTargetType);
-    const anchorResolution = await this.resolveRestWindowAnchor({
-      organizationId: input.organizationId,
-      vehicleId: input.vehicleId,
-      measurementSessionStartedAt: input.session.startedAt,
-      session: input.session,
-    });
+    const anchorResolution =
+      await this.canonicalAnchorResolver.resolveForMeasurementSession(
+        input.session,
+      );
     const restWindowStartedAt = anchorResolution.restWindowStartedAt;
     const canonicalAnchorProvenance =
       this.buildCanonicalAnchorProvenance(anchorResolution);

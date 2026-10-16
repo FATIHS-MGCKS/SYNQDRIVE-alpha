@@ -6,6 +6,15 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-16 — G5C-N7-H1 pre-merge hardening (anchor safety + scheduling alignment)
+
+| Field | Value |
+|-------|-------|
+| **CHANGE** | Trip-first canonical binding (no temporal cross-trip match when trip linked); ambiguous → session anchor fallback; invalidated sessions excluded; ordered Prisma candidate load; scheduling/reconciliation use `resolveRestWindowStartedAt` |
+| **VALIDATION** | Extended policy specs + `lv-rest-canonical-target-anchor.g5c-n7.postgres.integration.spec.ts` (opt-in `BATTERY_V2_G5C_N7_POSTGRES_INTEGRATION=1`) |
+
+---
+
 ## 2026-10-16 — G5C-N7 canonical REST session anchor bridge for REST_60M/REST_6H evaluation
 
 | Field | Value |
