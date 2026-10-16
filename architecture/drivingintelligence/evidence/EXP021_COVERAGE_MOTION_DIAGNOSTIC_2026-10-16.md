@@ -4,7 +4,7 @@
 | --- | --- |
 | Status | **READ_ONLY_ANALYSIS** (no QC/flag/deploy changes) |
 | Production SHA (verified) | `7de8f3ae2040a229f2a9c4b6a663117f1871fe55` |
-| Analysis code SHA | workspace branch `cursor/exp021-coverage-diagnostic-7d78` (partition + ops CLI) |
+| Analysis code SHA | `3d3b22541e` on branch `cursor/exp021-coverage-diagnostic-7d78` (see also POSITION_GAP forensics child note) |
 | Org | `faa710c9-6d91-4079-a7d5-91fdccdec14a` |
 | Observed at (UTC) | 2026-10-16 (report `observedAtUtc` in JSON artifact) |
 | Grid assumption | One shadow row ≈ one UTC second when consecutive `reference_time` steps are 1 s |
@@ -13,14 +13,20 @@
 
 ## Repro (read-only)
 
-On Production VPS (uses shared `backend.env`, no writes):
+**Do not copy scripts into `/opt/synqdrive/current`.** Use `/tmp` workdir + release `node_modules` (see `EXP021_POSITION_GAP_FORENSIC_2026-10-16.md`).
+
+On Production VPS (uses shared `backend.env`, no DB writes):
 
 ```bash
-cd /opt/synqdrive/current/backend
+RELEASE=/opt/synqdrive/current/backend
+ROOT=/tmp/exp021-coverage-run
+# populate ROOT/backend from tarball of repo scripts + rsync $RELEASE/src/
+cd "$RELEASE"
 sudo bash -c 'set -a; source /opt/synqdrive/shared/backend.env; set +a; \
+  export NODE_PATH=$RELEASE/node_modules; \
   export GIT_SHA=7de8f3ae2040a229f2a9c4b6a663117f1871fe55; \
   export EXP021_COVERAGE_OUT=/tmp/exp021-coverage-diagnostic-report.json; \
-  npx ts-node --transpile-only scripts/ops/exp021-coverage-diagnostic.ts'
+  npx ts-node --project tsconfig.json --transpile-only $ROOT/backend/scripts/ops/exp021-coverage-diagnostic.ts'
 ```
 
 Artifact copy: `/opt/cursor/artifacts/exp021-coverage-diagnostic-report.json`
@@ -45,7 +51,7 @@ Artifact copy: `/opt/cursor/artifacts/exp021-coverage-diagnostic-report.json`
 
 | Partition | Seconds | % of trip time |
 | --- | ---: | ---: |
-| TRUSTED_NUMERIC | 11 072 | **48.4%** |
+| TRUSTED_NUMERIC | 11 072 | **48.4%** *(sample time-weighted; not fleet-wide)* |
 | NUMERIC_QC_WITHHELD | 366 | 1.6% |
 | ACCEPTED_STATIONARY_NULL | 707 | 3.1% |
 | NO_NUMERIC_SPEED | 10 713 | 46.9% |
@@ -75,7 +81,7 @@ Overlap diagnostic flags (non-disjoint): e.g. `SHADOW_SOURCE_CONFLICT_MARKED` co
 | `9ead317c…` | RUPTELA_R1 | 76.6 | 79.6 | 59 s (MIXED) |
 | `72617129…` | API_SYNTHETIC | 60.3 | 60.3 | 291 s (MIXED) |
 
-Persisted CURRENT V2 aggregate vs replay: **match** on all 20 trips (coverage %, max, stationary counts).
+Persisted CURRENT V2 aggregate vs replay: **2/20** sample trips have a CURRENT row (`qc_policy_version = DI_V0_SPEED_QC_POLICY_V2`, `projection_version = DI_V0_TRIP_SPEED_QUALITY_PROJECTION_V1`) — both reference trips; **both match replay**. Initial report used an incorrect `projection_version = 'V2'` filter (false `NO_PERSISTED`). See `EXP021_POSITION_GAP_FORENSIC_2026-10-16.md`.
 
 ## Longest unassessable segments (examples)
 
