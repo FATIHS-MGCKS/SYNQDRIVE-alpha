@@ -1,0 +1,272 @@
+{
+  "knownHalts": [
+    {
+      "knownHaltId": "LONG_HALT_1",
+      "window": {
+        "id": "LONG_HALT_1",
+        "fromUtc": "2026-10-16T03:40:19Z",
+        "toUtc": "2026-10-16T03:40:49Z"
+      },
+      "detectorEventsOverlapping": [
+        {
+          "eventId": "GAP_EVT_005",
+          "kind": "POSITION_GAP",
+          "classification": "LIKELY_MOVING_WITH_GAP"
+        }
+      ],
+      "videoTacho0Seconds": 31,
+      "foundAsGapOrSlowEvent": true
+    },
+    {
+      "knownHaltId": "LONG_HALT_2",
+      "window": {
+        "id": "LONG_HALT_2",
+        "fromUtc": "2026-10-16T03:41:50Z",
+        "toUtc": "2026-10-16T03:42:29Z"
+      },
+      "detectorEventsOverlapping": [
+        {
+          "eventId": "GAP_EVT_006",
+          "kind": "POSITION_GAP",
+          "classification": "LIKELY_MOVING_WITH_GAP"
+        }
+      ],
+      "videoTacho0Seconds": 40,
+      "foundAsGapOrSlowEvent": true
+    },
+    {
+      "knownHaltId": "LONG_HALT_3",
+      "window": {
+        "id": "LONG_HALT_3",
+        "fromUtc": "2026-10-16T03:42:50Z",
+        "toUtc": "2026-10-16T03:42:57Z"
+      },
+      "detectorEventsOverlapping": [
+        {
+          "eventId": "GAP_EVT_007",
+          "kind": "POSITION_GAP",
+          "classification": "LIKELY_MOVING_WITH_GAP"
+        }
+      ],
+      "videoTacho0Seconds": 8,
+      "foundAsGapOrSlowEvent": true
+    },
+    {
+      "knownHaltId": "LONG_HALT_4",
+      "window": {
+        "id": "LONG_HALT_4",
+        "fromUtc": "2026-10-16T03:43:43Z",
+        "toUtc": "2026-10-16T03:44:02Z"
+      },
+      "detectorEventsOverlapping": [
+        {
+          "eventId": "GAP_EVT_008",
+          "kind": "POSITION_GAP",
+          "classification": "LIKELY_MOVING_WITH_GAP"
+        }
+      ],
+      "videoTacho0Seconds": 20,
+      "foundAsGapOrSlowEvent": true
+    },
+    {
+      "knownHaltId": "LONG_HALT_5",
+      "window": {
+        "id": "LONG_HALT_5",
+        "fromUtc": "2026-10-16T03:44:10Z",
+        "toUtc": "2026-10-16T03:44:35Z"
+      },
+      "detectorEventsOverlapping": [
+        {
+          "eventId": "GAP_EVT_008",
+          "kind": "POSITION_GAP",
+          "classification": "LIKELY_MOVING_WITH_GAP"
+        }
+      ],
+      "videoTacho0Seconds": 26,
+      "foundAsGapOrSlowEvent": true
+    }
+  ],
+  "knownHaltsFoundCount": 5,
+  "knownHaltsTotal": 5,
+  "haltClassificationVsVideo": [
+    {
+      "knownHaltId": "LONG_HALT_1",
+      "videoTacho0Seconds": 31,
+      "detectorClassifications": [
+        "LIKELY_MOVING_WITH_GAP"
+      ],
+      "videoConflictNote": "Video annotates stop (tacho 0) but gap metrics favor moving-with-gap — slow roll / stop-go not ruled out."
+    },
+    {
+      "knownHaltId": "LONG_HALT_2",
+      "videoTacho0Seconds": 40,
+      "detectorClassifications": [
+        "LIKELY_MOVING_WITH_GAP"
+      ],
+      "videoConflictNote": "Video annotates stop (tacho 0) but gap metrics favor moving-with-gap — slow roll / stop-go not ruled out."
+    },
+    {
+      "knownHaltId": "LONG_HALT_3",
+      "videoTacho0Seconds": 8,
+      "detectorClassifications": [
+        "LIKELY_MOVING_WITH_GAP"
+      ],
+      "videoConflictNote": "Video annotates stop (tacho 0) but gap metrics favor moving-with-gap — slow roll / stop-go not ruled out."
+    },
+    {
+      "knownHaltId": "LONG_HALT_4",
+      "videoTacho0Seconds": 20,
+      "detectorClassifications": [
+        "LIKELY_MOVING_WITH_GAP"
+      ],
+      "videoConflictNote": "Video annotates stop (tacho 0) but gap metrics favor moving-with-gap — slow roll / stop-go not ruled out."
+    },
+    {
+      "knownHaltId": "LONG_HALT_5",
+      "videoTacho0Seconds": 26,
+      "detectorClassifications": [
+        "LIKELY_MOVING_WITH_GAP"
+      ],
+      "videoConflictNote": "Video annotates stop (tacho 0) but gap metrics favor moving-with-gap — slow roll / stop-go not ruled out."
+    }
+  ],
+  "extraCandidatesCount": 17,
+  "extraCandidatesSample": [
+    {
+      "eventId": "GAP_EVT_001",
+      "window": {
+        "from": "2026-10-16T03:36:00Z",
+        "to": "2026-10-16T03:36:05Z"
+      },
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "videoNote": "Evaluate tacho overlay post-hoc only"
+    },
+    {
+      "eventId": "GAP_EVT_002",
+      "window": {
+        "from": "2026-10-16T03:36:07Z",
+        "to": "2026-10-16T03:36:55Z"
+      },
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "videoNote": "Evaluate tacho overlay post-hoc only"
+    },
+    {
+      "eventId": "GAP_EVT_003",
+      "window": {
+        "from": "2026-10-16T03:36:59Z",
+        "to": "2026-10-16T03:37:44Z"
+      },
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "videoNote": "Evaluate tacho overlay post-hoc only"
+    },
+    {
+      "eventId": "GAP_EVT_004",
+      "window": {
+        "from": "2026-10-16T03:38:19Z",
+        "to": "2026-10-16T03:38:21Z"
+      },
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "videoNote": "Evaluate tacho overlay post-hoc only"
+    },
+    {
+      "eventId": "GAP_EVT_009",
+      "window": {
+        "from": "2026-10-16T03:54:22Z",
+        "to": "2026-10-16T03:54:24Z"
+      },
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "videoNote": "Evaluate tacho overlay post-hoc only"
+    },
+    {
+      "eventId": "GAP_EVT_010",
+      "window": {
+        "from": "2026-10-16T03:54:45Z",
+        "to": "2026-10-16T03:54:55Z"
+      },
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "videoNote": "Evaluate tacho overlay post-hoc only"
+    },
+    {
+      "eventId": "SLOW_EVT_001",
+      "window": {
+        "from": "2026-10-16T03:37:45Z",
+        "to": "2026-10-16T03:37:51Z"
+      },
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "videoNote": "Evaluate tacho overlay post-hoc only"
+    },
+    {
+      "eventId": "SLOW_EVT_002",
+      "window": {
+        "from": "2026-10-16T03:37:55Z",
+        "to": "2026-10-16T03:37:56Z"
+      },
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "videoNote": "Evaluate tacho overlay post-hoc only"
+    },
+    {
+      "eventId": "SLOW_EVT_003",
+      "window": {
+        "from": "2026-10-16T03:38:00Z",
+        "to": "2026-10-16T03:38:08Z"
+      },
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "videoNote": "Evaluate tacho overlay post-hoc only"
+    },
+    {
+      "eventId": "SLOW_EVT_004",
+      "window": {
+        "from": "2026-10-16T03:38:11Z",
+        "to": "2026-10-16T03:38:14Z"
+      },
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "videoNote": "Evaluate tacho overlay post-hoc only"
+    },
+    {
+      "eventId": "SLOW_EVT_005",
+      "window": {
+        "from": "2026-10-16T03:38:57Z",
+        "to": "2026-10-16T03:39:01Z"
+      },
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "videoNote": "Evaluate tacho overlay post-hoc only"
+    },
+    {
+      "eventId": "SLOW_EVT_006",
+      "window": {
+        "from": "2026-10-16T03:39:47Z",
+        "to": "2026-10-16T03:39:47Z"
+      },
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "videoNote": "Evaluate tacho overlay post-hoc only"
+    },
+    {
+      "eventId": "SLOW_EVT_007",
+      "window": {
+        "from": "2026-10-16T03:41:48Z",
+        "to": "2026-10-16T03:41:49Z"
+      },
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "videoNote": "Evaluate tacho overlay post-hoc only"
+    },
+    {
+      "eventId": "SLOW_EVT_008",
+      "window": {
+        "from": "2026-10-16T03:42:47Z",
+        "to": "2026-10-16T03:42:48Z"
+      },
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "videoNote": "Evaluate tacho overlay post-hoc only"
+    },
+    {
+      "eventId": "SLOW_EVT_009",
+      "window": {
+        "from": "2026-10-16T03:43:41Z",
+        "to": "2026-10-16T03:43:41Z"
+      },
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "videoNote": "Evaluate tacho overlay post-hoc only"
+    }
+  ],
+  "developmentMaterialDisclaimer": "This trip is tuning/evaluation material for PR #2051 — not a blind holdout."
+}

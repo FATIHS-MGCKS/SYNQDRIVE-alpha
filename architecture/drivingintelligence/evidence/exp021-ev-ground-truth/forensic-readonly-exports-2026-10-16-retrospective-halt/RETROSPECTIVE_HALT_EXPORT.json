@@ -1,0 +1,1590 @@
+{
+  "schema": "EXP021_RETROSPECTIVE_HALT_PROTOTYPE_V0_1",
+  "observedAtUtc": "2026-10-16T18:16:26.658Z",
+  "tripScope": {
+    "organizationId": "faa710c9-6d91-4079-a7d5-91fdccdec14a",
+    "tripId": "358d0158-b2a9-47ed-af26-33926c5770b4",
+    "workItemId": "99fe9d1b-5cb6-4cbb-ba0c-e5f27a5cd50a"
+  },
+  "geometryClassificationSummary": {
+    "nearStop": 4,
+    "slowRoll": 52,
+    "moving": 795,
+    "scatter": 16
+  },
+  "geometryPerSecondSample": [
+    {
+      "bucketLabelUtc": "2026-10-16T03:36:06Z",
+      "geometryClass": "INCONCLUSIVE_SCATTER",
+      "maxLegKmh": null,
+      "legs": {
+        "prevToCenter": null,
+        "centerToNext": null
+      },
+      "legBasis": "PRESENT_CHAIN"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:38:04Z",
+      "geometryClass": "SLOW_ROLL_GEOMETRY",
+      "maxLegKmh": 3.755861972985848,
+      "legs": {
+        "prevToCenter": 3.594177369661578,
+        "centerToNext": 3.755861972985848
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:38:27Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 24.472334966413513,
+      "legs": {
+        "prevToCenter": 20.820394711989405,
+        "centerToNext": 24.472334966413513
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:38:47Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 12.878469989631023,
+      "legs": {
+        "prevToCenter": 12.878469989631023,
+        "centerToNext": 11.242780760941518
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:39:07Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 27.199122254097478,
+      "legs": {
+        "prevToCenter": 22.042988642052368,
+        "centerToNext": 27.199122254097478
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:39:27Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 45.94578014317023,
+      "legs": {
+        "prevToCenter": 45.00665123289531,
+        "centerToNext": 45.94578014317023
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:39:47Z",
+      "geometryClass": "SLOW_ROLL_GEOMETRY",
+      "maxLegKmh": 4.126147476110231,
+      "legs": {
+        "prevToCenter": 4.126147476110231,
+        "centerToNext": null
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:40:07Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 48.52462039769726,
+      "legs": {
+        "prevToCenter": 48.279490947620936,
+        "centerToNext": 48.52462039769726
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:40:59Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 29.92594523660385,
+      "legs": {
+        "prevToCenter": 26.01855334379984,
+        "centerToNext": 29.92594523660385
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:41:19Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 62.087595429309005,
+      "legs": {
+        "prevToCenter": 62.087595429309005,
+        "centerToNext": 62.07902937786057
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:41:39Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 59.67852164595468,
+      "legs": {
+        "prevToCenter": 59.67852164595468,
+        "centerToNext": 58.463322925344954
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:42:40Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 37.0888930697115,
+      "legs": {
+        "prevToCenter": 37.0888930697115,
+        "centerToNext": 35.367140249550985
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:43:08Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 47.514605166205634,
+      "legs": {
+        "prevToCenter": 44.342548882746,
+        "centerToNext": 47.514605166205634
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:43:28Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 54.61497918470208,
+      "legs": {
+        "prevToCenter": 54.61497918470208,
+        "centerToNext": 52.553454911918955
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:44:42Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 44.9113530454223,
+      "legs": {
+        "prevToCenter": 40.672894571466394,
+        "centerToNext": 44.9113530454223
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:45:02Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 62.79213116103211,
+      "legs": {
+        "prevToCenter": 62.79213116103211,
+        "centerToNext": 61.326244745676526
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:45:22Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 59.81965302481488,
+      "legs": {
+        "prevToCenter": 57.0487813413962,
+        "centerToNext": 59.81965302481488
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:45:42Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 46.90223788733547,
+      "legs": {
+        "prevToCenter": 46.90223788733547,
+        "centerToNext": 43.083342897939495
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:46:03Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 52.87575619331264,
+      "legs": {
+        "prevToCenter": 48.880527880499365,
+        "centerToNext": 52.87575619331264
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:46:23Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 65.13740360057247,
+      "legs": {
+        "prevToCenter": 62.16998438210804,
+        "centerToNext": 65.13740360057247
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:46:43Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 67.41356971817801,
+      "legs": {
+        "prevToCenter": 67.41356971817801,
+        "centerToNext": 66.99853088026974
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:47:03Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 71.81688443981136,
+      "legs": {
+        "prevToCenter": 69.97381000105972,
+        "centerToNext": 71.81688443981136
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:47:23Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 85.98694804020053,
+      "legs": {
+        "prevToCenter": 85.98694804020053,
+        "centerToNext": 85.26441901884691
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:47:43Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 92.46102760970808,
+      "legs": {
+        "prevToCenter": 92.03793683837189,
+        "centerToNext": 92.46102760970808
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:48:04Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 91.1219888197198,
+      "legs": {
+        "prevToCenter": 91.1219888197198,
+        "centerToNext": 89.36600482792777
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:48:24Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 13.82058320080092,
+      "legs": {
+        "prevToCenter": 13.820579201348703,
+        "centerToNext": 13.82058320080092
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:48:44Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 67.28737356291015,
+      "legs": {
+        "prevToCenter": 65.1571475522381,
+        "centerToNext": 67.28737356291015
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:49:05Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 88.42846604200047,
+      "legs": {
+        "prevToCenter": 87.5656634222676,
+        "centerToNext": 88.42846604200047
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:49:25Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 120.84766573414696,
+      "legs": {
+        "prevToCenter": 120.71608874716972,
+        "centerToNext": 120.84766573414696
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:49:45Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 110.7566427527718,
+      "legs": {
+        "prevToCenter": 110.7566427527718,
+        "centerToNext": 110.69129043405302
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:50:06Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 108.42362964952359,
+      "legs": {
+        "prevToCenter": 108.42362964952359,
+        "centerToNext": 107.41676866561778
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:50:27Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 124.51767722013139,
+      "legs": {
+        "prevToCenter": 124.51767722013139,
+        "centerToNext": 123.56466219805802
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:50:47Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 123.5265572081466,
+      "legs": {
+        "prevToCenter": 122.98058295677441,
+        "centerToNext": 123.5265572081466
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:51:08Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 110.25861149232547,
+      "legs": {
+        "prevToCenter": 110.25861149232547,
+        "centerToNext": 110.22858176161492
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:51:29Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 116.85138638947305,
+      "legs": {
+        "prevToCenter": 116.85138638947305,
+        "centerToNext": 113.07467665626645
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:51:51Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 128.9061931796106,
+      "legs": {
+        "prevToCenter": 128.3071243141439,
+        "centerToNext": 128.9061931796106
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:52:11Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 121.03906992887025,
+      "legs": {
+        "prevToCenter": 121.00836845480711,
+        "centerToNext": 121.03906992887025
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:52:31Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 62.53678969166097,
+      "legs": {
+        "prevToCenter": 62.06508020851495,
+        "centerToNext": 62.53678969166097
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:52:51Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 62.583247298318064,
+      "legs": {
+        "prevToCenter": 57.24038015816016,
+        "centerToNext": 62.583247298318064
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:53:11Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 67.52502286026956,
+      "legs": {
+        "prevToCenter": 67.52502286026956,
+        "centerToNext": 65.43331237399401
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:53:31Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 39.1334656708204,
+      "legs": {
+        "prevToCenter": 38.57282745238695,
+        "centerToNext": 39.1334656708204
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:53:51Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 30.84954222610844,
+      "legs": {
+        "prevToCenter": 30.84954222610844,
+        "centerToNext": 27.142217398152642
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:54:11Z",
+      "geometryClass": "MOVING_GEOMETRY",
+      "maxLegKmh": 31.065333858229184,
+      "legs": {
+        "prevToCenter": 29.98608545941233,
+        "centerToNext": 31.065333858229184
+      },
+      "legBasis": "CALENDAR_1S"
+    },
+    {
+      "bucketLabelUtc": "2026-10-16T03:54:37Z",
+      "geometryClass": "SLOW_ROLL_GEOMETRY",
+      "maxLegKmh": 3.7780331921960317,
+      "legs": {
+        "prevToCenter": 1.2170910771132517,
+        "centerToNext": 3.7780331921960317
+      },
+      "legBasis": "PRESENT_CHAIN"
+    }
+  ],
+  "gapRunsTotal": 26,
+  "events": [
+    {
+      "eventId": "GAP_EVT_001",
+      "kind": "POSITION_GAP",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:36:00Z",
+        "to": "2026-10-16T03:36:05Z"
+      },
+      "gapDurationSec": 6,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Gap length known; standstill duration NOT inferred from gap alone.",
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "rulesApplied": [
+        "BRACKET_MEAN_LEG_GEOMETRY",
+        "ENDPOINT_CHORD_NOT_PATH_LENGTH",
+        "MIN_DISPLACEMENT_M_FOR_ANY_INFERENCE=0.68"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION coordinates",
+        "optional R1_OBD at labels"
+      ],
+      "supportingAndContradicting": [
+        {
+          "tier": "WEAK_SUPPORTS",
+          "text": "Path length before+after exceeds chord — possible stop-and-go or loop (not chord distance alone).",
+          "epistemic": "INFERRED"
+        }
+      ],
+      "metrics": {
+        "endpointDisplacementM": null,
+        "approachMeanLegKmh": null,
+        "departMeanLegKmh": 3.2431212876040383,
+        "pathBeforeM": 0,
+        "pathAfterM": 8.254704816753364,
+        "impliedChordKmh": null
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:37:51Z",
+      "mapContextVariantB": {
+        "available": false,
+        "reason": "no_signals_in_bbox"
+      }
+    },
+    {
+      "eventId": "GAP_EVT_002",
+      "kind": "POSITION_GAP",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:36:07Z",
+        "to": "2026-10-16T03:36:55Z"
+      },
+      "gapDurationSec": 49,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Gap length known; standstill duration NOT inferred from gap alone.",
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "rulesApplied": [
+        "BRACKET_MEAN_LEG_GEOMETRY",
+        "ENDPOINT_CHORD_NOT_PATH_LENGTH",
+        "MIN_DISPLACEMENT_M_FOR_ANY_INFERENCE=0.68"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION coordinates",
+        "optional R1_OBD at labels"
+      ],
+      "supportingAndContradicting": [
+        {
+          "tier": "NEUTRAL",
+          "text": "Bearing change across gap ~312° (route turn possible).",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "SUPPORTS",
+          "text": "Endpoint chord 0.5 m over 49s gap (small vs gap length).",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "WEAK_SUPPORTS",
+          "text": "Path length before+after exceeds chord — possible stop-and-go or loop (not chord distance alone).",
+          "epistemic": "INFERRED"
+        }
+      ],
+      "metrics": {
+        "endpointDisplacementM": 0.4815928532581046,
+        "approachMeanLegKmh": null,
+        "departMeanLegKmh": 3.2431212876040383,
+        "pathBeforeM": 0,
+        "pathAfterM": 8.329086596894527,
+        "impliedChordKmh": 0.035382332076105645
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:37:52Z",
+      "mapContextVariantB": {
+        "available": false,
+        "reason": "no_signals_in_bbox"
+      }
+    },
+    {
+      "eventId": "GAP_EVT_003",
+      "kind": "POSITION_GAP",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:36:59Z",
+        "to": "2026-10-16T03:37:44Z"
+      },
+      "gapDurationSec": 46,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Gap length known; standstill duration NOT inferred from gap alone.",
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "rulesApplied": [
+        "BRACKET_MEAN_LEG_GEOMETRY",
+        "ENDPOINT_CHORD_NOT_PATH_LENGTH",
+        "MIN_DISPLACEMENT_M_FOR_ANY_INFERENCE=0.68"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION coordinates",
+        "optional R1_OBD at labels"
+      ],
+      "supportingAndContradicting": [
+        {
+          "tier": "NEUTRAL",
+          "text": "Bearing change across gap ~83° (route turn possible).",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "SUPPORTS",
+          "text": "Endpoint chord 0.8 m over 46s gap (small vs gap length).",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "WEAK_SUPPORTS",
+          "text": "Path length before+after exceeds chord — possible stop-and-go or loop (not chord distance alone).",
+          "epistemic": "INFERRED"
+        }
+      ],
+      "metrics": {
+        "endpointDisplacementM": 0.8255875621342117,
+        "approachMeanLegKmh": null,
+        "departMeanLegKmh": 3.7731020865178913,
+        "pathBeforeM": 1.1406137770893332,
+        "pathAfterM": 7.8473800819392645,
+        "impliedChordKmh": 0.06461120051485135
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:37:55Z",
+      "mapContextVariantB": {
+        "available": false,
+        "reason": "no_signals_in_bbox"
+      }
+    },
+    {
+      "eventId": "GAP_EVT_004",
+      "kind": "POSITION_GAP",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:38:19Z",
+        "to": "2026-10-16T03:38:21Z"
+      },
+      "gapDurationSec": 3,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Gap length known; standstill duration NOT inferred from gap alone.",
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "rulesApplied": [
+        "BRACKET_MEAN_LEG_GEOMETRY",
+        "ENDPOINT_CHORD_NOT_PATH_LENGTH",
+        "MIN_DISPLACEMENT_M_FOR_ANY_INFERENCE=0.68"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION coordinates",
+        "optional R1_OBD at labels"
+      ],
+      "supportingAndContradicting": [
+        {
+          "tier": "NEUTRAL",
+          "text": "Bearing change across gap ~132° (route turn possible).",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "CONTRADICTS",
+          "text": "Depart bracket mean leg 20.5 km/h ≥ moving threshold.",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "WEAK_SUPPORTS",
+          "text": "Path length before+after exceeds chord — possible stop-and-go or loop (not chord distance alone).",
+          "epistemic": "INFERRED"
+        }
+      ],
+      "metrics": {
+        "endpointDisplacementM": 1.6041966980236546,
+        "approachMeanLegKmh": 4.349769186275963,
+        "departMeanLegKmh": 20.47749710423737,
+        "pathBeforeM": 7.866048996929808,
+        "pathAfterM": 51.19374276059341,
+        "impliedChordKmh": 1.9250360376283855
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:38:31Z",
+      "mapContextVariantB": {
+        "available": false,
+        "reason": "no_signals_in_bbox"
+      }
+    },
+    {
+      "eventId": "GAP_EVT_005",
+      "kind": "POSITION_GAP",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:40:19Z",
+        "to": "2026-10-16T03:40:50Z"
+      },
+      "gapDurationSec": 32,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Gap length known; standstill duration NOT inferred from gap alone.",
+      "classification": "LIKELY_MOVING_WITH_GAP",
+      "rulesApplied": [
+        "BRACKET_MEAN_LEG_GEOMETRY",
+        "ENDPOINT_CHORD_NOT_PATH_LENGTH",
+        "MIN_DISPLACEMENT_M_FOR_ANY_INFERENCE=0.68"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION coordinates",
+        "optional R1_OBD at labels"
+      ],
+      "supportingAndContradicting": [
+        {
+          "tier": "NEUTRAL",
+          "text": "Bearing change across gap ~3° (route turn possible).",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "CONTRADICTS",
+          "text": "Approach bracket mean leg 29.9 km/h ≥ moving threshold.",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "CONTRADICTS",
+          "text": "Depart bracket mean leg 21.0 km/h ≥ moving threshold.",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "SUPPORTS",
+          "text": "Endpoint chord 1.1 m over 32s gap (small vs gap length).",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "WEAK_SUPPORTS",
+          "text": "Path length before+after exceeds chord — possible stop-and-go or loop (not chord distance alone).",
+          "epistemic": "INFERRED"
+        }
+      ],
+      "metrics": {
+        "endpointDisplacementM": 1.1336668274961743,
+        "approachMeanLegKmh": 29.94720306170606,
+        "departMeanLegKmh": 20.99314432442428,
+        "pathBeforeM": 67.04823218311945,
+        "pathAfterM": 52.48286081106069,
+        "impliedChordKmh": 0.12753751809331962
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:41:00Z",
+      "mapContextVariantB": {
+        "available": false,
+        "reason": "no_signals_in_bbox"
+      }
+    },
+    {
+      "eventId": "GAP_EVT_006",
+      "kind": "POSITION_GAP",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:41:50Z",
+        "to": "2026-10-16T03:42:30Z"
+      },
+      "gapDurationSec": 41,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Gap length known; standstill duration NOT inferred from gap alone.",
+      "classification": "LIKELY_MOVING_WITH_GAP",
+      "rulesApplied": [
+        "BRACKET_MEAN_LEG_GEOMETRY",
+        "ENDPOINT_CHORD_NOT_PATH_LENGTH",
+        "MIN_DISPLACEMENT_M_FOR_ANY_INFERENCE=0.68"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION coordinates",
+        "optional R1_OBD at labels"
+      ],
+      "supportingAndContradicting": [
+        {
+          "tier": "NEUTRAL",
+          "text": "Bearing change across gap ~5° (route turn possible).",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "CONTRADICTS",
+          "text": "Approach bracket mean leg 32.6 km/h ≥ moving threshold.",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "CONTRADICTS",
+          "text": "Depart bracket mean leg 29.5 km/h ≥ moving threshold.",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "SUPPORTS",
+          "text": "Endpoint chord 2.1 m over 41s gap (small vs gap length).",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "WEAK_SUPPORTS",
+          "text": "Path length before+after exceeds chord — possible stop-and-go or loop (not chord distance alone).",
+          "epistemic": "INFERRED"
+        }
+      ],
+      "metrics": {
+        "endpointDisplacementM": 2.12296344489598,
+        "approachMeanLegKmh": 32.5509772236924,
+        "departMeanLegKmh": 29.45725424786391,
+        "pathBeforeM": 81.377443059231,
+        "pathAfterM": 73.64313561965977,
+        "impliedChordKmh": 0.18640654638111046
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:42:40Z",
+      "mapContextVariantB": {
+        "available": false,
+        "reason": "no_signals_in_bbox"
+      }
+    },
+    {
+      "eventId": "GAP_EVT_007",
+      "kind": "POSITION_GAP",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:42:51Z",
+        "to": "2026-10-16T03:42:57Z"
+      },
+      "gapDurationSec": 7,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Gap length known; standstill duration NOT inferred from gap alone.",
+      "classification": "LIKELY_MOVING_WITH_GAP",
+      "rulesApplied": [
+        "BRACKET_MEAN_LEG_GEOMETRY",
+        "ENDPOINT_CHORD_NOT_PATH_LENGTH",
+        "MIN_DISPLACEMENT_M_FOR_ANY_INFERENCE=0.68"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION coordinates",
+        "optional R1_OBD at labels"
+      ],
+      "supportingAndContradicting": [
+        {
+          "tier": "NEUTRAL",
+          "text": "Bearing change across gap ~3° (route turn possible).",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "CONTRADICTS",
+          "text": "Approach bracket mean leg 17.8 km/h ≥ moving threshold.",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "CONTRADICTS",
+          "text": "Depart bracket mean leg 26.3 km/h ≥ moving threshold.",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "SUPPORTS",
+          "text": "Endpoint chord 0.5 m over 7s gap (small vs gap length).",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "WEAK_SUPPORTS",
+          "text": "Path length before+after exceeds chord — possible stop-and-go or loop (not chord distance alone).",
+          "epistemic": "INFERRED"
+        }
+      ],
+      "metrics": {
+        "endpointDisplacementM": 0.4912108229850152,
+        "approachMeanLegKmh": 17.801260610341114,
+        "departMeanLegKmh": 26.347055953654458,
+        "pathBeforeM": 39.9517242774668,
+        "pathAfterM": 65.86763988413615,
+        "impliedChordKmh": 0.25262270896372213
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:43:07Z",
+      "mapContextVariantB": {
+        "available": false,
+        "reason": "no_signals_in_bbox"
+      }
+    },
+    {
+      "eventId": "GAP_EVT_008",
+      "kind": "POSITION_GAP",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:43:43Z",
+        "to": "2026-10-16T03:44:36Z"
+      },
+      "gapDurationSec": 54,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Gap length known; standstill duration NOT inferred from gap alone.",
+      "classification": "LIKELY_MOVING_WITH_GAP",
+      "rulesApplied": [
+        "BRACKET_MEAN_LEG_GEOMETRY",
+        "ENDPOINT_CHORD_NOT_PATH_LENGTH",
+        "MIN_DISPLACEMENT_M_FOR_ANY_INFERENCE=0.68"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION coordinates",
+        "optional R1_OBD at labels"
+      ],
+      "supportingAndContradicting": [
+        {
+          "tier": "NEUTRAL",
+          "text": "Bearing change across gap ~1° (route turn possible).",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "CONTRADICTS",
+          "text": "Approach bracket mean leg 18.7 km/h ≥ moving threshold.",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "CONTRADICTS",
+          "text": "Depart bracket mean leg 37.4 km/h ≥ moving threshold.",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "SUPPORTS",
+          "text": "Endpoint chord 1.7 m over 54s gap (small vs gap length).",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "WEAK_SUPPORTS",
+          "text": "Path length before+after exceeds chord — possible stop-and-go or loop (not chord distance alone).",
+          "epistemic": "INFERRED"
+        }
+      ],
+      "metrics": {
+        "endpointDisplacementM": 1.6693710515541964,
+        "approachMeanLegKmh": 18.74644024905476,
+        "departMeanLegKmh": 37.44714801557601,
+        "pathBeforeM": 42.10353581525594,
+        "pathAfterM": 93.61787003894004,
+        "impliedChordKmh": 0.11129140343694642
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:44:46Z",
+      "mapContextVariantB": {
+        "available": false,
+        "reason": "no_signals_in_bbox"
+      }
+    },
+    {
+      "eventId": "GAP_EVT_009",
+      "kind": "POSITION_GAP",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:54:22Z",
+        "to": "2026-10-16T03:54:24Z"
+      },
+      "gapDurationSec": 3,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Gap length known; standstill duration NOT inferred from gap alone.",
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "rulesApplied": [
+        "BRACKET_MEAN_LEG_GEOMETRY",
+        "ENDPOINT_CHORD_NOT_PATH_LENGTH",
+        "MIN_DISPLACEMENT_M_FOR_ANY_INFERENCE=0.68"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION coordinates",
+        "optional R1_OBD at labels"
+      ],
+      "supportingAndContradicting": [
+        {
+          "tier": "NEUTRAL",
+          "text": "Bearing change across gap ~171° (route turn possible).",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "CONTRADICTS",
+          "text": "Approach bracket mean leg 19.2 km/h ≥ moving threshold.",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "WEAK_SUPPORTS",
+          "text": "Path length before+after exceeds chord — possible stop-and-go or loop (not chord distance alone).",
+          "epistemic": "INFERRED"
+        }
+      ],
+      "metrics": {
+        "endpointDisplacementM": 1.1832203079417392,
+        "approachMeanLegKmh": 19.154713371032727,
+        "departMeanLegKmh": 3.776961831166992,
+        "pathBeforeM": 47.88678342758182,
+        "pathAfterM": 10.2327230637843,
+        "impliedChordKmh": 1.419864369530087
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:54:37Z",
+      "mapContextVariantB": {
+        "available": false,
+        "reason": "no_signals_in_bbox"
+      }
+    },
+    {
+      "eventId": "GAP_EVT_010",
+      "kind": "POSITION_GAP",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:54:45Z",
+        "to": "2026-10-16T03:54:55Z"
+      },
+      "gapDurationSec": 11,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Gap length known; standstill duration NOT inferred from gap alone.",
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "rulesApplied": [
+        "BRACKET_MEAN_LEG_GEOMETRY",
+        "ENDPOINT_CHORD_NOT_PATH_LENGTH",
+        "MIN_DISPLACEMENT_M_FOR_ANY_INFERENCE=0.68"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION coordinates",
+        "optional R1_OBD at labels"
+      ],
+      "supportingAndContradicting": [
+        {
+          "tier": "WEAK_SUPPORTS",
+          "text": "Path length before+after exceeds chord — possible stop-and-go or loop (not chord distance alone).",
+          "epistemic": "INFERRED"
+        }
+      ],
+      "metrics": {
+        "endpointDisplacementM": null,
+        "approachMeanLegKmh": 3.439194721631342,
+        "departMeanLegKmh": null,
+        "pathBeforeM": 7.598102549176779,
+        "pathAfterM": 0,
+        "impliedChordKmh": null
+      },
+      "retrospectiveStatementPossibleAtUtc": null,
+      "mapContextVariantB": {
+        "available": false,
+        "reason": "no_signals_in_bbox"
+      }
+    },
+    {
+      "eventId": "SLOW_EVT_001",
+      "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:37:45Z",
+        "to": "2026-10-16T03:37:51Z"
+      },
+      "gapDurationSec": null,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Measured present-second span; not video standstill claim.",
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "rulesApplied": [
+        "LEG_GEOMETRY_1_5_TO_5_KMH",
+        "SCATTER_FILTER"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION leg geometry"
+      ],
+      "supportingAndContradicting": [],
+      "metrics": {
+        "segmentSeconds": 7
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:37:51Z",
+      "mapContextVariantB": null
+    },
+    {
+      "eventId": "SLOW_EVT_002",
+      "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:37:55Z",
+        "to": "2026-10-16T03:37:56Z"
+      },
+      "gapDurationSec": null,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Measured present-second span; not video standstill claim.",
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "rulesApplied": [
+        "LEG_GEOMETRY_1_5_TO_5_KMH",
+        "SCATTER_FILTER"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION leg geometry"
+      ],
+      "supportingAndContradicting": [],
+      "metrics": {
+        "segmentSeconds": 2
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:37:56Z",
+      "mapContextVariantB": null
+    },
+    {
+      "eventId": "SLOW_EVT_003",
+      "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:38:00Z",
+        "to": "2026-10-16T03:38:08Z"
+      },
+      "gapDurationSec": null,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Measured present-second span; not video standstill claim.",
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "rulesApplied": [
+        "LEG_GEOMETRY_1_5_TO_5_KMH",
+        "SCATTER_FILTER"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION leg geometry"
+      ],
+      "supportingAndContradicting": [],
+      "metrics": {
+        "segmentSeconds": 9
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:38:08Z",
+      "mapContextVariantB": null
+    },
+    {
+      "eventId": "SLOW_EVT_004",
+      "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:38:11Z",
+        "to": "2026-10-16T03:38:14Z"
+      },
+      "gapDurationSec": null,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Measured present-second span; not video standstill claim.",
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "rulesApplied": [
+        "LEG_GEOMETRY_1_5_TO_5_KMH",
+        "SCATTER_FILTER"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION leg geometry"
+      ],
+      "supportingAndContradicting": [],
+      "metrics": {
+        "segmentSeconds": 4
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:38:14Z",
+      "mapContextVariantB": null
+    },
+    {
+      "eventId": "SLOW_EVT_005",
+      "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:38:57Z",
+        "to": "2026-10-16T03:39:01Z"
+      },
+      "gapDurationSec": null,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Measured present-second span; not video standstill claim.",
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "rulesApplied": [
+        "LEG_GEOMETRY_1_5_TO_5_KMH",
+        "SCATTER_FILTER"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION leg geometry"
+      ],
+      "supportingAndContradicting": [],
+      "metrics": {
+        "segmentSeconds": 5
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:39:01Z",
+      "mapContextVariantB": null
+    },
+    {
+      "eventId": "SLOW_EVT_006",
+      "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:39:47Z",
+        "to": "2026-10-16T03:39:47Z"
+      },
+      "gapDurationSec": null,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Measured present-second span; not video standstill claim.",
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "rulesApplied": [
+        "LEG_GEOMETRY_1_5_TO_5_KMH",
+        "SCATTER_FILTER"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION leg geometry"
+      ],
+      "supportingAndContradicting": [],
+      "metrics": {
+        "segmentSeconds": 1
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:39:47Z",
+      "mapContextVariantB": null
+    },
+    {
+      "eventId": "SLOW_EVT_007",
+      "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:41:48Z",
+        "to": "2026-10-16T03:41:49Z"
+      },
+      "gapDurationSec": null,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Measured present-second span; not video standstill claim.",
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "rulesApplied": [
+        "LEG_GEOMETRY_1_5_TO_5_KMH",
+        "SCATTER_FILTER"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION leg geometry"
+      ],
+      "supportingAndContradicting": [],
+      "metrics": {
+        "segmentSeconds": 2
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:41:49Z",
+      "mapContextVariantB": null
+    },
+    {
+      "eventId": "SLOW_EVT_008",
+      "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:42:47Z",
+        "to": "2026-10-16T03:42:48Z"
+      },
+      "gapDurationSec": null,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Measured present-second span; not video standstill claim.",
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "rulesApplied": [
+        "LEG_GEOMETRY_1_5_TO_5_KMH",
+        "SCATTER_FILTER"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION leg geometry"
+      ],
+      "supportingAndContradicting": [],
+      "metrics": {
+        "segmentSeconds": 2
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:42:48Z",
+      "mapContextVariantB": null
+    },
+    {
+      "eventId": "SLOW_EVT_009",
+      "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:43:41Z",
+        "to": "2026-10-16T03:43:41Z"
+      },
+      "gapDurationSec": null,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Measured present-second span; not video standstill claim.",
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "rulesApplied": [
+        "LEG_GEOMETRY_1_5_TO_5_KMH",
+        "SCATTER_FILTER"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION leg geometry"
+      ],
+      "supportingAndContradicting": [],
+      "metrics": {
+        "segmentSeconds": 1
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:43:41Z",
+      "mapContextVariantB": null
+    },
+    {
+      "eventId": "SLOW_EVT_010",
+      "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:45:50Z",
+        "to": "2026-10-16T03:45:53Z"
+      },
+      "gapDurationSec": null,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Measured present-second span; not video standstill claim.",
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "rulesApplied": [
+        "LEG_GEOMETRY_1_5_TO_5_KMH",
+        "SCATTER_FILTER"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION leg geometry"
+      ],
+      "supportingAndContradicting": [],
+      "metrics": {
+        "segmentSeconds": 4
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:45:53Z",
+      "mapContextVariantB": null
+    },
+    {
+      "eventId": "SLOW_EVT_011",
+      "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:54:20Z",
+        "to": "2026-10-16T03:54:40Z"
+      },
+      "gapDurationSec": null,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Measured present-second span; not video standstill claim.",
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "rulesApplied": [
+        "LEG_GEOMETRY_1_5_TO_5_KMH",
+        "SCATTER_FILTER"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION leg geometry"
+      ],
+      "supportingAndContradicting": [],
+      "metrics": {
+        "segmentSeconds": 15
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:54:40Z",
+      "mapContextVariantB": null
+    }
+  ],
+  "abComparison": {
+    "variantA": {
+      "label": "geometry + brackets only",
+      "classificationCounts": {
+        "LIKELY_SLOW_ROLL_STOP_GO": 6,
+        "LIKELY_MOVING_WITH_GAP": 4
+      }
+    },
+    "variantB": {
+      "label": "A + OSM traffic_signals proximity (context only; classification unchanged in v0_1)",
+      "classificationCounts": {
+        "LIKELY_SLOW_ROLL_STOP_GO": 6,
+        "LIKELY_MOVING_WITH_GAP": 4
+      },
+      "signalsInBbox": 0,
+      "eventsWithSignalWithin30m": 0,
+      "osmFetch": {
+        "source": "OpenStreetMap Overpass API (highway=traffic_signals)",
+        "fetchedAtUtc": "2026-10-16T18:16:29.946Z",
+        "error": "HTTP 406"
+      }
+    },
+    "measurableDifference": "v0_1: core explanation unchanged; B adds nearest-signal distance and count of halt-plausible contexts near signals."
+  },
+  "videoEvaluation": {
+    "knownHalts": [
+      {
+        "knownHaltId": "LONG_HALT_1",
+        "window": {
+          "id": "LONG_HALT_1",
+          "fromUtc": "2026-10-16T03:40:19Z",
+          "toUtc": "2026-10-16T03:40:49Z"
+        },
+        "detectorEventsOverlapping": [
+          {
+            "eventId": "GAP_EVT_005",
+            "kind": "POSITION_GAP",
+            "classification": "LIKELY_MOVING_WITH_GAP"
+          }
+        ],
+        "videoTacho0Seconds": 31,
+        "foundAsGapOrSlowEvent": true
+      },
+      {
+        "knownHaltId": "LONG_HALT_2",
+        "window": {
+          "id": "LONG_HALT_2",
+          "fromUtc": "2026-10-16T03:41:50Z",
+          "toUtc": "2026-10-16T03:42:29Z"
+        },
+        "detectorEventsOverlapping": [
+          {
+            "eventId": "GAP_EVT_006",
+            "kind": "POSITION_GAP",
+            "classification": "LIKELY_MOVING_WITH_GAP"
+          }
+        ],
+        "videoTacho0Seconds": 40,
+        "foundAsGapOrSlowEvent": true
+      },
+      {
+        "knownHaltId": "LONG_HALT_3",
+        "window": {
+          "id": "LONG_HALT_3",
+          "fromUtc": "2026-10-16T03:42:50Z",
+          "toUtc": "2026-10-16T03:42:57Z"
+        },
+        "detectorEventsOverlapping": [
+          {
+            "eventId": "GAP_EVT_007",
+            "kind": "POSITION_GAP",
+            "classification": "LIKELY_MOVING_WITH_GAP"
+          }
+        ],
+        "videoTacho0Seconds": 8,
+        "foundAsGapOrSlowEvent": true
+      },
+      {
+        "knownHaltId": "LONG_HALT_4",
+        "window": {
+          "id": "LONG_HALT_4",
+          "fromUtc": "2026-10-16T03:43:43Z",
+          "toUtc": "2026-10-16T03:44:02Z"
+        },
+        "detectorEventsOverlapping": [
+          {
+            "eventId": "GAP_EVT_008",
+            "kind": "POSITION_GAP",
+            "classification": "LIKELY_MOVING_WITH_GAP"
+          }
+        ],
+        "videoTacho0Seconds": 20,
+        "foundAsGapOrSlowEvent": true
+      },
+      {
+        "knownHaltId": "LONG_HALT_5",
+        "window": {
+          "id": "LONG_HALT_5",
+          "fromUtc": "2026-10-16T03:44:10Z",
+          "toUtc": "2026-10-16T03:44:35Z"
+        },
+        "detectorEventsOverlapping": [
+          {
+            "eventId": "GAP_EVT_008",
+            "kind": "POSITION_GAP",
+            "classification": "LIKELY_MOVING_WITH_GAP"
+          }
+        ],
+        "videoTacho0Seconds": 26,
+        "foundAsGapOrSlowEvent": true
+      }
+    ],
+    "knownHaltsFoundCount": 5,
+    "knownHaltsTotal": 5,
+    "haltClassificationVsVideo": [
+      {
+        "knownHaltId": "LONG_HALT_1",
+        "videoTacho0Seconds": 31,
+        "detectorClassifications": [
+          "LIKELY_MOVING_WITH_GAP"
+        ],
+        "videoConflictNote": "Video annotates stop (tacho 0) but gap metrics favor moving-with-gap — slow roll / stop-go not ruled out."
+      },
+      {
+        "knownHaltId": "LONG_HALT_2",
+        "videoTacho0Seconds": 40,
+        "detectorClassifications": [
+          "LIKELY_MOVING_WITH_GAP"
+        ],
+        "videoConflictNote": "Video annotates stop (tacho 0) but gap metrics favor moving-with-gap — slow roll / stop-go not ruled out."
+      },
+      {
+        "knownHaltId": "LONG_HALT_3",
+        "videoTacho0Seconds": 8,
+        "detectorClassifications": [
+          "LIKELY_MOVING_WITH_GAP"
+        ],
+        "videoConflictNote": "Video annotates stop (tacho 0) but gap metrics favor moving-with-gap — slow roll / stop-go not ruled out."
+      },
+      {
+        "knownHaltId": "LONG_HALT_4",
+        "videoTacho0Seconds": 20,
+        "detectorClassifications": [
+          "LIKELY_MOVING_WITH_GAP"
+        ],
+        "videoConflictNote": "Video annotates stop (tacho 0) but gap metrics favor moving-with-gap — slow roll / stop-go not ruled out."
+      },
+      {
+        "knownHaltId": "LONG_HALT_5",
+        "videoTacho0Seconds": 26,
+        "detectorClassifications": [
+          "LIKELY_MOVING_WITH_GAP"
+        ],
+        "videoConflictNote": "Video annotates stop (tacho 0) but gap metrics favor moving-with-gap — slow roll / stop-go not ruled out."
+      }
+    ],
+    "extraCandidatesCount": 17,
+    "extraCandidatesSample": [
+      {
+        "eventId": "GAP_EVT_001",
+        "window": {
+          "from": "2026-10-16T03:36:00Z",
+          "to": "2026-10-16T03:36:05Z"
+        },
+        "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+        "videoNote": "Evaluate tacho overlay post-hoc only"
+      },
+      {
+        "eventId": "GAP_EVT_002",
+        "window": {
+          "from": "2026-10-16T03:36:07Z",
+          "to": "2026-10-16T03:36:55Z"
+        },
+        "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+        "videoNote": "Evaluate tacho overlay post-hoc only"
+      },
+      {
+        "eventId": "GAP_EVT_003",
+        "window": {
+          "from": "2026-10-16T03:36:59Z",
+          "to": "2026-10-16T03:37:44Z"
+        },
+        "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+        "videoNote": "Evaluate tacho overlay post-hoc only"
+      },
+      {
+        "eventId": "GAP_EVT_004",
+        "window": {
+          "from": "2026-10-16T03:38:19Z",
+          "to": "2026-10-16T03:38:21Z"
+        },
+        "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+        "videoNote": "Evaluate tacho overlay post-hoc only"
+      },
+      {
+        "eventId": "GAP_EVT_009",
+        "window": {
+          "from": "2026-10-16T03:54:22Z",
+          "to": "2026-10-16T03:54:24Z"
+        },
+        "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+        "videoNote": "Evaluate tacho overlay post-hoc only"
+      },
+      {
+        "eventId": "GAP_EVT_010",
+        "window": {
+          "from": "2026-10-16T03:54:45Z",
+          "to": "2026-10-16T03:54:55Z"
+        },
+        "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+        "videoNote": "Evaluate tacho overlay post-hoc only"
+      },
+      {
+        "eventId": "SLOW_EVT_001",
+        "window": {
+          "from": "2026-10-16T03:37:45Z",
+          "to": "2026-10-16T03:37:51Z"
+        },
+        "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+        "videoNote": "Evaluate tacho overlay post-hoc only"
+      },
+      {
+        "eventId": "SLOW_EVT_002",
+        "window": {
+          "from": "2026-10-16T03:37:55Z",
+          "to": "2026-10-16T03:37:56Z"
+        },
+        "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+        "videoNote": "Evaluate tacho overlay post-hoc only"
+      },
+      {
+        "eventId": "SLOW_EVT_003",
+        "window": {
+          "from": "2026-10-16T03:38:00Z",
+          "to": "2026-10-16T03:38:08Z"
+        },
+        "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+        "videoNote": "Evaluate tacho overlay post-hoc only"
+      },
+      {
+        "eventId": "SLOW_EVT_004",
+        "window": {
+          "from": "2026-10-16T03:38:11Z",
+          "to": "2026-10-16T03:38:14Z"
+        },
+        "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+        "videoNote": "Evaluate tacho overlay post-hoc only"
+      },
+      {
+        "eventId": "SLOW_EVT_005",
+        "window": {
+          "from": "2026-10-16T03:38:57Z",
+          "to": "2026-10-16T03:39:01Z"
+        },
+        "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+        "videoNote": "Evaluate tacho overlay post-hoc only"
+      },
+      {
+        "eventId": "SLOW_EVT_006",
+        "window": {
+          "from": "2026-10-16T03:39:47Z",
+          "to": "2026-10-16T03:39:47Z"
+        },
+        "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+        "videoNote": "Evaluate tacho overlay post-hoc only"
+      },
+      {
+        "eventId": "SLOW_EVT_007",
+        "window": {
+          "from": "2026-10-16T03:41:48Z",
+          "to": "2026-10-16T03:41:49Z"
+        },
+        "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+        "videoNote": "Evaluate tacho overlay post-hoc only"
+      },
+      {
+        "eventId": "SLOW_EVT_008",
+        "window": {
+          "from": "2026-10-16T03:42:47Z",
+          "to": "2026-10-16T03:42:48Z"
+        },
+        "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+        "videoNote": "Evaluate tacho overlay post-hoc only"
+      },
+      {
+        "eventId": "SLOW_EVT_009",
+        "window": {
+          "from": "2026-10-16T03:43:41Z",
+          "to": "2026-10-16T03:43:41Z"
+        },
+        "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+        "videoNote": "Evaluate tacho overlay post-hoc only"
+      }
+    ],
+    "developmentMaterialDisclaimer": "This trip is tuning/evaluation material for PR #2051 — not a blind holdout."
+  },
+  "syntheticGapStress": {
+    "epistemic": "CONFIRMED",
+    "synthetic": true,
+    "label": "SYNTHETIC_STRESS_MASK_IN_MOVING_SECTION",
+    "injectedGap": {
+      "fromUtc": "2026-10-16T03:45:15Z",
+      "toUtc": "2026-10-16T03:45:20Z",
+      "durationSec": 6,
+      "labels": [
+        "2026-10-16T03:45:15Z",
+        "2026-10-16T03:45:16Z",
+        "2026-10-16T03:45:17Z",
+        "2026-10-16T03:45:18Z",
+        "2026-10-16T03:45:19Z",
+        "2026-10-16T03:45:20Z"
+      ]
+    },
+    "expectedNotHalt": true,
+    "classification": "LIKELY_MOVING_WITH_GAP",
+    "pass": true
+  },
+  "mapArtifact": {
+    "htmlFile": "MAP_REVIEW.html",
+    "osm": {
+      "error": "HTTP 406"
+    },
+    "coordinateRounding": "4 decimal degrees in HTML payload"
+  },
+  "rulesFrozenNote": "Parameters fixed for this reference trip; re-validate on other drives before production use."
+}

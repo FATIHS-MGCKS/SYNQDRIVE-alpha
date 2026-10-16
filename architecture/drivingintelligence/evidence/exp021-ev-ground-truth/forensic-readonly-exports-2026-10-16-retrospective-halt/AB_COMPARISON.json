@@ -1,0 +1,24 @@
+{
+  "variantA": {
+    "label": "geometry + brackets only",
+    "classificationCounts": {
+      "LIKELY_SLOW_ROLL_STOP_GO": 6,
+      "LIKELY_MOVING_WITH_GAP": 4
+    }
+  },
+  "variantB": {
+    "label": "A + OSM traffic_signals proximity (context only; classification unchanged in v0_1)",
+    "classificationCounts": {
+      "LIKELY_SLOW_ROLL_STOP_GO": 6,
+      "LIKELY_MOVING_WITH_GAP": 4
+    },
+    "signalsInBbox": 0,
+    "eventsWithSignalWithin30m": 0,
+    "osmFetch": {
+      "source": "OpenStreetMap Overpass API (highway=traffic_signals)",
+      "fetchedAtUtc": "2026-10-16T18:16:29.946Z",
+      "error": "HTTP 406"
+    }
+  },
+  "measurableDifference": "v0_1: core explanation unchanged; B adds nearest-signal distance and count of halt-plausible contexts near signals."
+}
