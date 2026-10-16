@@ -243,6 +243,7 @@
     "ldi02:fusion-feasibility": "ts-node -r tsconfig-paths/register scripts/ops/ldi02-fusion-feasibility.ts",
     "ldi03:ruptela-combined-pin": "ts-node -r tsconfig-paths/register scripts/ops/ldi03-ruptela-combined-pin.ts",
     "ldi04:fusion-forensics": "ts-node -r tsconfig-paths/register scripts/ops/ldi04-fusion-forensics.ts",
+    "ldi05:historical-event-audit": "ts-node -r tsconfig-paths/register scripts/ops/ldi05-historical-event-audit.ts",
     "test:exp021:cohort-study-enrollment:bootstrap:postgres": "REFERENCE_CAPTURE_POSTGRES_INTEGRATION=1 jest reference-capture-exp021-cohort-study-enrollment-bootstrap.postgres.integration reference-capture-exp021-cohort-study-enrollment-arm-chain.postgres.integration --runInBand",
     "test:exp021:cohort-study-enrollment:bootstrap:postgres:ci": "REFERENCE_CAPTURE_POSTGRES_INTEGRATION=1 REFERENCE_CAPTURE_POSTGRES_REQUIRED=1 jest reference-capture-exp021-cohort-study-enrollment-bootstrap.postgres.integration reference-capture-exp021-cohort-study-enrollment-arm-chain.postgres.integration --runInBand --verbose",
     "test:exp021:maturation-shadow:migration": "bash scripts/test/exp021-maturation-shadow-migration-test.sh all",
