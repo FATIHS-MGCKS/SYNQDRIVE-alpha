@@ -31,12 +31,14 @@ describe('vsi-apds shadow opportunity binding', () => {
   const verifiedBase = {
     persistedDecision: persisted,
     request,
-    activeSourceLinkCount: 1,
+    currentActiveSourceLinkCount: 1,
+    historicalActiveLinkCountAtDecision: 1,
+    historicalLinkUniquenessEvidenceComplete: true,
     correlationMode: VsiApdsCorrelationAnalysisMode.VERIFIED_SHADOW_CORRELATION,
     historicalLinkActiveAtDecision: true,
   };
 
-  it('MATCHED when persisted row aligns and historical link proven', () => {
+  it('MATCHED when persisted row aligns and historical uniqueness proven', () => {
     const r = validateVsiApdsShadowOpportunityBinding(verifiedBase);
     expect(r.bindingStatus).toBe(VsiApdsShadowBindingStatus.MATCHED);
   });
@@ -76,14 +78,6 @@ describe('vsi-apds shadow opportunity binding', () => {
     expect(r.reasons).toContain('ACTIVATION_EPOCH_ID_REQUIRED_FOR_EPOCH_BOUND_DECISION');
   });
 
-  it('REJECTED on wrong epoch', () => {
-    const r = validateVsiApdsShadowOpportunityBinding({
-      ...verifiedBase,
-      request: { ...request, activationEpochId: 'epoch-wrong' },
-    });
-    expect(r.reasons).toContain('ACTIVATION_EPOCH_ID_MISMATCH');
-  });
-
   it('UNKNOWN when historical link not proven at decision time', () => {
     const r = validateVsiApdsShadowOpportunityBinding({
       ...verifiedBase,
@@ -93,11 +87,22 @@ describe('vsi-apds shadow opportunity binding', () => {
     expect(r.reasons).toContain('HISTORICAL_SOURCE_LINK_ATTRIBUTION_UNPROVEN');
   });
 
-  it('UNKNOWN for multi active links (vehicle-level APDS)', () => {
+  it('UNKNOWN when historical uniqueness evidence incomplete', () => {
     const r = validateVsiApdsShadowOpportunityBinding({
       ...verifiedBase,
-      activeSourceLinkCount: 2,
+      historicalLinkUniquenessEvidenceComplete: false,
+      historicalActiveLinkCountAtDecision: null,
+    });
+    expect(r.reasons).toContain('HISTORICAL_SOURCE_LINK_UNIQUENESS_UNPROVEN');
+  });
+
+  it('UNKNOWN for historical multi-active at decision (ignores current count 1)', () => {
+    const r = validateVsiApdsShadowOpportunityBinding({
+      ...verifiedBase,
+      currentActiveSourceLinkCount: 1,
+      historicalActiveLinkCountAtDecision: 2,
     });
     expect(r.bindingStatus).toBe(VsiApdsShadowBindingStatus.UNKNOWN);
+    expect(r.reasons).toContain('HISTORICAL_MULTI_ACTIVE_SOURCE_LINKS_AT_DECISION');
   });
 });

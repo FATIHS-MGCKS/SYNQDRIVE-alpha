@@ -8,6 +8,7 @@ import type {
   VsiApdsShadowDecisionSnapshotV1,
 } from './vsi-apds-p5.types';
 import { VsiCapabilityResolverRepository } from './vsi-capability-resolver.repository';
+import { resolveHistoricalActiveSourceLinkUniqueness } from './vsi-apds-historical-link-uniqueness';
 import {
   isProviderSourceLinkActiveAtDecision,
   VsiApdsCorrelationAnalysisMode,
@@ -46,7 +47,13 @@ export class VsiApdsP5ReadonlyService {
       vehicleId: adapter.vehicleId,
       providerSourceLinkId: adapter.providerSourceLinkId,
     });
-    const activeSourceLinkCount = await this.profiles.countActiveSourceLinks(adapter.vehicleId);
+    const currentActiveSourceLinkCount = await this.profiles.countActiveSourceLinks(
+      adapter.vehicleId,
+    );
+    const vehicleLinks = await this.profiles.listVehicleSourceLinksForHistoricalAttribution({
+      organizationId: adapter.organizationId,
+      vehicleId: adapter.vehicleId,
+    });
     const persistedRow = await this.profiles.loadPersistedApdsShadowDecision({
       organizationId: adapter.organizationId,
       vehicleId: adapter.vehicleId,
@@ -64,6 +71,10 @@ export class VsiApdsP5ReadonlyService {
         supersededAt: link.supersededAt,
         decisionAtMs,
       });
+    const historicalUniqueness = resolveHistoricalActiveSourceLinkUniqueness({
+      links: vehicleLinks,
+      decisionAtMs,
+    });
     const persisted = persistedRow
       ? {
           organizationId: persistedRow.organizationId,
@@ -85,7 +96,9 @@ export class VsiApdsP5ReadonlyService {
       linkActive: link?.isActive ?? false,
       linkSuperseded: link?.supersededAt != null,
       tenantMatch,
-      activeSourceLinkCount,
+      currentActiveSourceLinkCount,
+      historicalActiveLinkCountAtDecision: historicalUniqueness.historicalActiveLinkCount,
+      historicalLinkUniquenessEvidenceComplete: historicalUniqueness.evidenceComplete,
       persistedShadowDecision: persisted,
       historicalLinkActiveAtDecision,
       correlationAnalysisMode:

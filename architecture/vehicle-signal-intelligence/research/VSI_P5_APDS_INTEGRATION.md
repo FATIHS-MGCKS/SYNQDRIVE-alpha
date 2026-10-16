@@ -71,7 +71,7 @@ There is **no** versioned profile history table in P5 — retrospective claims f
 
 ## APDS opportunity binding
 
-Verified correlation **requires** a persisted `ApdShadowReconciliationDecision` row (`MISSING_PERSISTED_DECISION` otherwise — never `MATCHED`). Validates `organizationId`, `vehicleId`, `opportunityId`, `policyVersion`, `decisionAt`, `activationEpochId` (strict for epoch-bound rows; legacy null-epoch only when both sides null), and baseline `decision`. Historical provider-link activity at `decisionAt` is required (`activatedAt`/`deactivatedAt`); current single active link does not prove historical attribution. Offline hypotheticals use `UNVERIFIED_ANALYSIS` mode — not verified shadow correlation.
+Verified correlation **requires** a persisted `ApdShadowReconciliationDecision` row (`MISSING_PERSISTED_DECISION` otherwise — never `MATCHED`). Validates `organizationId`, `vehicleId`, `opportunityId`, `policyVersion`, `decisionAt`, `activationEpochId` (strict for epoch-bound rows; legacy null-epoch only when both sides null), and baseline `decision`. Historical provider-link activity at `decisionAt` is required (`activatedAt`/`deactivatedAt`); **historical active-link count** at `decisionAt` is computed from lifecycle timestamps (`resolveHistoricalActiveSourceLinkUniqueness`) — current `isActive` count is observability-only. `MATCHED` requires exactly one historically active link at decision time with complete lifecycle evidence. Offline hypotheticals use `UNVERIFIED_ANALYSIS` mode — not verified shadow correlation.
 
 ## P4 assessability parity
 

@@ -102,7 +102,10 @@ function validateEpochIdentity(
 export function validateVsiApdsShadowOpportunityBinding(input: {
   persistedDecision: VsiApdsPersistedShadowDecisionV1 | null;
   request: VsiApdsShadowCorrelationRequestV1;
-  activeSourceLinkCount: number;
+  /** Current-state count — observability only; not used for verified MATCHED. */
+  currentActiveSourceLinkCount: number;
+  historicalActiveLinkCountAtDecision: number | null;
+  historicalLinkUniquenessEvidenceComplete: boolean;
   correlationMode: VsiApdsCorrelationAnalysisMode;
   historicalLinkActiveAtDecision: boolean;
 }): { bindingStatus: VsiApdsShadowBindingStatus; reasons: string[] } {
@@ -167,13 +170,24 @@ export function validateVsiApdsShadowOpportunityBinding(input: {
     return { bindingStatus: VsiApdsShadowBindingStatus.UNKNOWN, reasons };
   }
 
-  if (input.activeSourceLinkCount > 1) {
-    reasons.push('APDS_VEHICLE_LEVEL_DECISION_MULTI_ACTIVE_SOURCE_LINKS');
+  if (!input.historicalLinkUniquenessEvidenceComplete) {
+    reasons.push('HISTORICAL_SOURCE_LINK_UNIQUENESS_UNPROVEN');
     return { bindingStatus: VsiApdsShadowBindingStatus.UNKNOWN, reasons };
   }
 
-  if (input.activeSourceLinkCount === 0) {
-    reasons.push('NO_ACTIVE_SOURCE_LINK_FOR_ATTRIBUTION');
+  const historicalCount = input.historicalActiveLinkCountAtDecision;
+  if (historicalCount == null) {
+    reasons.push('HISTORICAL_SOURCE_LINK_UNIQUENESS_UNPROVEN');
+    return { bindingStatus: VsiApdsShadowBindingStatus.UNKNOWN, reasons };
+  }
+
+  if (historicalCount > 1) {
+    reasons.push('HISTORICAL_MULTI_ACTIVE_SOURCE_LINKS_AT_DECISION');
+    return { bindingStatus: VsiApdsShadowBindingStatus.UNKNOWN, reasons };
+  }
+
+  if (historicalCount === 0) {
+    reasons.push('NO_HISTORICAL_ACTIVE_SOURCE_LINK_AT_DECISION');
     return { bindingStatus: VsiApdsShadowBindingStatus.UNKNOWN, reasons };
   }
 

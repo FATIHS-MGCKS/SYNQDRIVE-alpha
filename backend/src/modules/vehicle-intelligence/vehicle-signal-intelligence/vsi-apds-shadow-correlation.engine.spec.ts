@@ -89,7 +89,9 @@ function obsInput(
     linkActive: true,
     linkSuperseded: false,
     tenantMatch: true,
-    activeSourceLinkCount: 1,
+    currentActiveSourceLinkCount: 1,
+    historicalActiveLinkCountAtDecision: 1,
+    historicalLinkUniquenessEvidenceComplete: true,
     persistedShadowDecision: persistedDecision,
     historicalLinkActiveAtDecision: true,
     correlationAnalysisMode: VsiApdsCorrelationAnalysisMode.VERIFIED_SHADOW_CORRELATION,
@@ -212,7 +214,8 @@ describe('vsi-apds P5 read-only', () => {
         [{ canonicalSignalKey: 'lv_voltage' }],
         ['MULTI_ACTIVE_SOURCE_LINK_DECLARED_CATALOG_AMBIGUOUS'],
       ),
-      activeSourceLinkCount: 2,
+      currentActiveSourceLinkCount: 1,
+      historicalActiveLinkCountAtDecision: 2,
     });
     expect(obs.attributionStatus).toBe('UNKNOWN');
     expect(obs.shadowBindingStatus).toBe(VsiApdsShadowBindingStatus.UNKNOWN);

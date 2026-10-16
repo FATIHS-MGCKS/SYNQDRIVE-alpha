@@ -59,7 +59,9 @@ export function buildVsiApdsReadonlyCapabilityObservation(input: {
   linkActive: boolean;
   linkSuperseded: boolean;
   tenantMatch: boolean;
-  activeSourceLinkCount: number;
+  currentActiveSourceLinkCount: number;
+  historicalActiveLinkCountAtDecision: number | null;
+  historicalLinkUniquenessEvidenceComplete: boolean;
   persistedShadowDecision: VsiApdsPersistedShadowDecisionV1 | null;
   historicalLinkActiveAtDecision: boolean;
   correlationAnalysisMode?: VsiApdsCorrelationAnalysisMode;
@@ -97,7 +99,9 @@ export function buildVsiApdsReadonlyCapabilityObservation(input: {
       activationEpochId: input.adapter.activationEpochId ?? null,
       baselineDecision: input.persistedShadowDecision?.decision ?? null,
     },
-    activeSourceLinkCount: input.activeSourceLinkCount,
+    currentActiveSourceLinkCount: input.currentActiveSourceLinkCount,
+    historicalActiveLinkCountAtDecision: input.historicalActiveLinkCountAtDecision,
+    historicalLinkUniquenessEvidenceComplete: input.historicalLinkUniquenessEvidenceComplete,
     correlationMode: correlationAnalysisMode,
     historicalLinkActiveAtDecision: input.historicalLinkActiveAtDecision,
   });
@@ -177,6 +181,9 @@ export function buildVsiApdsReadonlyCapabilityObservation(input: {
     correlationAnalysisMode,
     authoritativePersistedDecision: input.persistedShadowDecision,
     historicalLinkActiveAtDecision: input.historicalLinkActiveAtDecision,
+    currentActiveSourceLinkCount: input.currentActiveSourceLinkCount,
+    historicalActiveLinkCountAtDecision: input.historicalActiveLinkCountAtDecision,
+    historicalLinkUniquenessEvidenceComplete: input.historicalLinkUniquenessEvidenceComplete,
     providerIdentity: failClosed ? null : input.trustedProviderIdentity,
     verifiedModality: failClosed ? null : input.trustedVerifiedModality,
     telemetrySourceFamily: failClosed ? null : input.trustedTelemetrySourceFamily,

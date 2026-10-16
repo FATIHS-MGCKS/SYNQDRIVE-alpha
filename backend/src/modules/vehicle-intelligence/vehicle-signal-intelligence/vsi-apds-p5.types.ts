@@ -69,6 +69,9 @@ export type VsiApdsReadonlyCapabilityObservationV1 = {
   correlationAnalysisMode: VsiApdsCorrelationAnalysisMode;
   authoritativePersistedDecision: VsiApdsPersistedShadowDecisionV1 | null;
   historicalLinkActiveAtDecision: boolean;
+  currentActiveSourceLinkCount: number;
+  historicalActiveLinkCountAtDecision: number | null;
+  historicalLinkUniquenessEvidenceComplete: boolean;
   providerIdentity: string | null;
   verifiedModality: string | null;
   telemetrySourceFamily: string | null;
