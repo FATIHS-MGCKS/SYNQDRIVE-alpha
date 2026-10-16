@@ -11,6 +11,7 @@ import {
   S4A_POSTGRES_LIVE,
   seedS4aSnapshot,
   seedS4aTenant,
+  seedS4aTripDiBoundaryAdmission,
   settle,
   setKillState,
   waitForVehicleRowLockWaiter,
@@ -72,21 +73,23 @@ assertS4aPostgresCiEnv();
       );
     }
 
-    async function insertCompletedTrip(vehicleId: string): Promise<string> {
+    async function insertCompletedTrip(tenant: S4aTenant): Promise<string> {
       const tripId = randomUUID();
       const start = new Date(Date.now() - 4 * 86_400_000);
       const end = new Date(start.getTime() + 20 * 60_000);
+      const dimoSegmentId = `seg-${randomUUID()}`;
       await admin.$executeRawUnsafe(
         `INSERT INTO vehicle_trips (id, vehicle_id, trip_status, start_time, end_time, dimo_segment_id, created_at,
            start_latitude, start_longitude, distance_km, max_speed_kmh, avg_speed_kmh, harsh_brake_count, driving_score)
          VALUES ($1, $2, 'COMPLETED', ($3::timestamptz AT TIME ZONE 'UTC'), ($4::timestamptz AT TIME ZONE 'UTC'), $5,
            ($4::timestamptz AT TIME ZONE 'UTC'), 52, 9, 12, 77, 45, 2, 88)`,
         tripId,
-        vehicleId,
+        tenant.vehicleId,
         start.toISOString(),
         end.toISOString(),
-        `seg-${randomUUID()}`,
+        dimoSegmentId,
       );
+      await seedS4aTripDiBoundaryAdmission(admin, { ...tenant, tripId, dimoSegmentId, startTime: start, endTime: end });
       return tripId;
     }
 
@@ -179,7 +182,7 @@ assertS4aPostgresCiEnv();
       const first = await discovery.runDiscoveryPass({ limit: 5 });
       expect(first.created).toBe(1);
       await setRegistryLifecycle(t.vehicleId, 'OFFBOARDED');
-      const trip2 = await insertCompletedTrip(t.vehicleId);
+      const trip2 = await insertCompletedTrip(t);
       await expect(
         repository.createWorkItem({
           tripId: trip2,
@@ -196,7 +199,7 @@ assertS4aPostgresCiEnv();
 
     it('concurrent order A: offboard holds vehicles FOR UPDATE then T01 PRIMARY cannot commit', async () => {
       const t = await tenant();
-      const trip2 = await insertCompletedTrip(t.vehicleId);
+      const trip2 = await insertCompletedTrip(t);
       const { repository, pipeline } = stack(t);
       const offboardConn = client();
       const observer = client();
@@ -243,7 +246,7 @@ assertS4aPostgresCiEnv();
       'concurrent order B: T01 acquires vehicles row lock while ACTIVE then offboard follows',
       async () => {
         const t = await tenant();
-        const trip2 = await insertCompletedTrip(t.vehicleId);
+        const trip2 = await insertCompletedTrip(t);
         const { repository, pipeline } = stack(t);
         const gateConn = client();
         const observer = client();

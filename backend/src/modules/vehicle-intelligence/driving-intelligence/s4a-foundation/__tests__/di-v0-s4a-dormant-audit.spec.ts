@@ -19,6 +19,7 @@ const S4D_DIR = path.join(__dirname, '../../s4d-replay');
 const S4E_DIR = path.join(__dirname, '../../s4e-drift-watcher');
 const S4F_DIR = path.join(__dirname, '../../s4f-observability');
 const S4_RUNTIME_DIR = path.join(__dirname, '../../s4-runtime');
+const TRIPS_DI_BOUNDARY_ADMISSION_DIR = path.join(__dirname, '../../../trips/di-boundary-admission');
 
 function walk(dir: string, pattern: RegExp, acc: string[] = []): string[] {
   if (!fs.existsSync(dir)) return acc;
@@ -50,6 +51,7 @@ const ALLOWED_IMPORTS = new Set([
   '@prisma/client',
   '@shared/database/prisma.service',
   '../../trips/boundary-repair.state.util',
+  '../../trips/di-boundary-admission/trip-di-boundary-admission',
   '../core/versions',
   '../shadow-persistence/di-v0-shadow-completion',
   '../shadow-persistence/di-v0-shadow-idempotency',
@@ -98,6 +100,7 @@ describe('DI V0 S4A dormant-by-construction audit', () => {
           file.startsWith(S4E_DIR + path.sep) ||
           file.startsWith(S4F_DIR + path.sep) ||
           file.startsWith(S4_RUNTIME_DIR + path.sep) ||
+          file.startsWith(TRIPS_DI_BOUNDARY_ADMISSION_DIR + path.sep) ||
           file.endsWith('backend/scripts/ops/di-v0-s4-initialize-global-kill-row.ts') ||
           file.includes(`${path.sep}di-v0-s4-global-kill-init-production${path.sep}`) ||
           file.includes(`${path.sep}di-v0-s4-tiny-staging-production${path.sep}`) ||

@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import { gunzipSync, gzipSync } from 'zlib';
 import { Prisma, type PrismaClient } from '@prisma/client';
 import { readCurrentBoundaryRepairGeneration } from '../../trips/boundary-repair.state.util';
+import { evaluateTripDiBoundaryAdmission, type TripDiBoundaryAdmissionScope } from '../../trips/di-boundary-admission/trip-di-boundary-admission';
 import type { DiV0VersionTuple } from '../core/versions';
 import type { DiV0ShadowPersistedIntervalInput } from '../shadow-persistence/di-v0-shadow-types';
 import {
@@ -233,6 +234,7 @@ export class DiV0S4WorkItemRepository {
         this.enablement('DISCOVERY', scope.organization_id, scope.vehicle_id, scope.organization_id, kill),
       );
       if (scope.trip_status !== 'COMPLETED' || scope.end_time == null) reject(tid, 'TRIP_NOT_COMPLETED');
+      await this.requireTripDiBoundaryAdmissionReleased(db, tid, scope.trip_id);
       const boundaryFingerprint = this.fingerprintOf(scope);
 
       if (purpose.runPurpose === 'RECALIBRATION_REPLAY') {
@@ -444,6 +446,7 @@ export class DiV0S4WorkItemRepository {
         return reject(tid, 'TENANT_SCOPE_INVALID');
       }
       if (this.fingerprintOf(scope) !== row.boundary_fingerprint) reject(tid, 'BOUNDARY_FINGERPRINT_CHANGED');
+      await this.requireTripDiBoundaryAdmissionReleased(db, tid, row.trip_id);
 
       const pins = await this.loadPinnedSnapshotPins(db, tid, row, row.pinned_snapshot_hash);
       if (evaluateDiV0S4ChannelRun(this.config, pins, row.source_family) !== 'RUNNABLE') reject(tid, 'CHANNEL_SET_NOT_RUNNABLE');
@@ -772,7 +775,13 @@ export class DiV0S4WorkItemRepository {
     if (!scope) return { kind: 'LEASE_LOST', code: 'TENANT_SCOPE_INVALID' };
 
     const current = this.fingerprintOf(scope);
-    if (current === row.boundary_fingerprint) return { kind: 'CURRENT' };
+    if (current === row.boundary_fingerprint) {
+      const admissionScope = await this.readTripAdmissionScope(this.prisma, row.trip_id);
+      if (admissionScope == null || !evaluateTripDiBoundaryAdmission(admissionScope).ok) {
+        return { kind: 'SUPERSEDE', reason: 'BOUNDARY_CHANGED' };
+      }
+      return { kind: 'CURRENT' };
+    }
 
     let reason: DiV0S4SupersededReason = 'BOUNDARY_CHANGED';
     if (scope.trip_status === 'CANCELLED') reason = 'TRIP_CANCELLED';
@@ -1104,6 +1113,63 @@ export class DiV0S4WorkItemRepository {
       FROM vehicle_trips t JOIN vehicles v ON v.id = t.vehicle_id
       WHERE t.id = ${tripId}`;
     return rows[0] ?? null;
+  }
+
+  private async readTripAdmissionScope(db: Db, tripId: string): Promise<TripDiBoundaryAdmissionScope | null> {
+    const rows = await db.$queryRaw<
+      Array<{
+        organization_id: string;
+        vehicle_id: string;
+        trip_id: string;
+        trip_status: string;
+        start_time: Date;
+        end_time: Date | null;
+        dimo_segment_id: string | null;
+        merge_parent_trip_id: string | null;
+        raw_detection_meta: unknown;
+        detection_state: string | null;
+        active_trip_id: string | null;
+        proposed_repairs: bigint;
+      }>
+    >`
+      SELECT v.organization_id, t.vehicle_id, t.id AS trip_id, t.trip_status::text AS trip_status,
+        t.start_time AT TIME ZONE 'UTC' AS start_time, t.end_time AT TIME ZONE 'UTC' AS end_time,
+        t.dimo_segment_id, t.merge_parent_trip_id, t.raw_detection_meta,
+        dts.state::text AS detection_state, dts.active_trip_id::text AS active_trip_id,
+        (SELECT count(*)::bigint FROM trip_repairs r
+         WHERE r.trip_id = t.id AND r.status = 'PROPOSED') AS proposed_repairs
+      FROM vehicle_trips t
+      JOIN vehicles v ON v.id = t.vehicle_id
+      LEFT JOIN vehicle_trip_detection_states dts ON dts.vehicle_id = t.vehicle_id
+      WHERE t.id = ${tripId}
+      LIMIT 1`;
+    const row = rows[0];
+    if (!row) return null;
+    return {
+      organizationId: row.organization_id,
+      vehicleId: row.vehicle_id,
+      tripId: row.trip_id,
+      tripStatus: row.trip_status,
+      startTime: row.start_time,
+      endTime: row.end_time,
+      dimoSegmentId: row.dimo_segment_id,
+      mergeParentTripId: row.merge_parent_trip_id,
+      rawDetectionMeta: row.raw_detection_meta,
+      detectionState: row.detection_state,
+      activeTripId: row.active_trip_id,
+      proposedBoundaryRepairCount: Number(row.proposed_repairs),
+    };
+  }
+
+  private async requireTripDiBoundaryAdmissionReleased(
+    db: Db,
+    tid: DiV0S4TransitionId,
+    tripId: string,
+  ): Promise<void> {
+    const scope = await this.readTripAdmissionScope(db, tripId);
+    if (!scope || !evaluateTripDiBoundaryAdmission(scope).ok) {
+      reject(tid, 'TRIP_BOUNDARY_NOT_RELEASED');
+    }
   }
 
   private fingerprintOf(scope: TripScopeRow): string {

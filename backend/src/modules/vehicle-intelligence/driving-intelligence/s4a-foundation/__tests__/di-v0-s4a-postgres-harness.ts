@@ -33,6 +33,10 @@ import {
   serializeDiV0S4EvidenceContainer,
   type DiV0S4EvidenceChannelInput,
 } from '../di-v0-s4a-identity';
+import {
+  buildTripDiBoundaryAdmissionPatch,
+  buildTripDiBoundaryRevisionKey,
+} from '../../../trips/di-boundary-admission/trip-di-boundary-admission';
 
 /**
  * Test-only harness for the S4A Postgres specs. Requires a disposable database with the S4A
@@ -72,6 +76,7 @@ export interface S4aTenant {
   tripId: string;
   startTime: Date;
   endTime: Date;
+  dimoSegmentId: string;
 }
 
 export async function seedS4aTenant(prisma: PrismaClient, ageSeconds = 3 * 86_400): Promise<S4aTenant> {
@@ -79,6 +84,7 @@ export async function seedS4aTenant(prisma: PrismaClient, ageSeconds = 3 * 86_40
   const organizationId = randomUUID();
   const vehicleId = randomUUID();
   const tripId = randomUUID();
+  const dimoSegmentId = `seg-${randomUUID()}`;
   const now = Date.now();
   const startTime = new Date(Math.floor((now - ageSeconds * 1000) / 1000) * 1000);
   const endTime = new Date(startTime.getTime() + 20 * 60_000);
@@ -107,9 +113,59 @@ export async function seedS4aTenant(prisma: PrismaClient, ageSeconds = 3 * 86_40
     vehicleId,
     startTime.toISOString(),
     endTime.toISOString(),
-    `seg-${randomUUID()}`,
+    dimoSegmentId,
   );
-  return { organizationId, vehicleId, tripId, startTime, endTime };
+  const tenant = { organizationId, vehicleId, tripId, startTime, endTime, dimoSegmentId };
+  await seedS4aTripDiBoundaryAdmission(prisma, tenant);
+  return tenant;
+}
+
+/** Simulates reconciliation release: RESTING FSM + revision-bound admission on completed trips. */
+export async function seedS4aTripDiBoundaryAdmission(prisma: PrismaClient, tenant: S4aTenant): Promise<void> {
+  const now = new Date();
+  await prisma.$executeRawUnsafe(
+    `INSERT INTO vehicle_trip_detection_states (id, organization_id, vehicle_id, state, active_trip_id, created_at, updated_at)
+     VALUES ($1, $2, $3, 'RESTING', NULL, $4, $4)
+     ON CONFLICT (vehicle_id) DO UPDATE SET state = 'RESTING', active_trip_id = NULL, updated_at = $4`,
+    randomUUID(),
+    tenant.organizationId,
+    tenant.vehicleId,
+    now,
+  );
+  const tripRows = await prisma.$queryRaw<
+    Array<{
+      start_time: Date;
+      end_time: Date | null;
+      dimo_segment_id: string | null;
+      merge_parent_trip_id: string | null;
+      raw_detection_meta: unknown;
+    }>
+  >`
+    SELECT start_time AT TIME ZONE 'UTC' AS start_time,
+           end_time AT TIME ZONE 'UTC' AS end_time,
+           dimo_segment_id, merge_parent_trip_id, raw_detection_meta
+    FROM vehicle_trips WHERE id = ${tenant.tripId}`;
+  const tripRow = tripRows[0];
+  if (!tripRow?.end_time) return;
+  const revisionKey = buildTripDiBoundaryRevisionKey({
+    organizationId: tenant.organizationId,
+    vehicleId: tenant.vehicleId,
+    tripId: tenant.tripId,
+    tripStatus: 'COMPLETED',
+    startTime: tripRow.start_time,
+    endTime: tripRow.end_time,
+    dimoSegmentId: tripRow.dimo_segment_id ?? tenant.dimoSegmentId,
+    mergeParentTripId: tripRow.merge_parent_trip_id,
+    rawDetectionMeta: tripRow.raw_detection_meta,
+  });
+  const patch = buildTripDiBoundaryAdmissionPatch(revisionKey, 'RECONCILIATION', now);
+  await prisma.$executeRawUnsafe(
+    `UPDATE vehicle_trips
+     SET raw_detection_meta = COALESCE(raw_detection_meta, '{}'::jsonb) || $1::jsonb
+     WHERE id = $2`,
+    JSON.stringify(patch),
+    tenant.tripId,
+  );
 }
 
 export function s4aConfigFor(

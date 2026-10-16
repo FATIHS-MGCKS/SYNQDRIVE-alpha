@@ -9,6 +9,7 @@ import {
 } from './di-v0-trip-speed-quality-product-read.mapper';
 import type { DiV0TripGpsSpeedEvaluationProductV1 } from './di-v0-trip-speed-quality-product-read.types';
 import { DiV0TripSpeedQualityProjectionService } from './di-v0-trip-speed-quality-projection.service';
+import { evaluateTripDiProductReadBoundaryGate } from '../../trips/di-boundary-admission/trip-di-boundary-admission-product-read.guard';
 
 @Injectable()
 export class DiV0TripSpeedQualityProductReadService {
@@ -43,6 +44,17 @@ export class DiV0TripSpeedQualityProductReadService {
       DI_V0_SPEED_QC_POLICY_V2,
     );
     if (current) {
+      const wiFp = await this.readWorkItemBoundaryFingerprint(current.workItemId);
+      const gate = await evaluateTripDiProductReadBoundaryGate(this.prisma, tripId, wiFp ?? '');
+      if (!gate.ok) {
+        const activeWorkItem = await this.resolveActivePrimaryWorkItem(organizationId, tripId);
+        const outboxStatus = activeWorkItem ? await this.readOutboxStatus(activeWorkItem.id) : null;
+        const availability = resolveGpsSpeedEvaluationAvailabilityWithoutProjection(
+          activeWorkItem?.status ?? null,
+          outboxStatus,
+        );
+        return buildDiV0TripGpsSpeedEvaluationUnavailable(availability);
+      }
       return toDiV0TripGpsSpeedEvaluationProductV1FromPersistedRow(current);
     }
 
@@ -72,6 +84,12 @@ export class DiV0TripSpeedQualityProductReadService {
       ORDER BY boundary_occurrence DESC, created_at DESC
       LIMIT 1`;
     return rows[0] ?? null;
+  }
+
+  private async readWorkItemBoundaryFingerprint(workItemId: string): Promise<string | null> {
+    const rows = await this.prisma.$queryRaw<Array<{ boundary_fingerprint: string }>>`
+      SELECT boundary_fingerprint FROM di_v0_s4_work_items WHERE id = ${workItemId} LIMIT 1`;
+    return rows[0]?.boundary_fingerprint ?? null;
   }
 
   private async readOutboxStatus(workItemId: string): Promise<DiV0P2AutoProjectionOutboxStatus | null> {
