@@ -6,6 +6,19 @@ Append-only scientific record. Newest entries first.
 
 ---
 
+## 2026-10-16 — G5C-N7 canonical REST session anchor bridge for REST_60M/REST_6H evaluation
+
+| Field | Value |
+|-------|-------|
+| **BEFORE** | `BatteryRestTargetEvaluationService` anchored REST temporal targets on `BatteryMeasurementSession.startedAt` only; canonical `battery_rest_sessions.anchorAt` could diverge (trip-linked forensic CASE E) so quality windows and trip-after-anchor gates misaligned |
+| **CHANGE** | `resolveLvRestCanonicalTargetAnchor` + evaluation-time binding via ±120s anchor tolerance and trip `confirmedTripId`/`candidateTripId` linkage; persist `canonicalRestSessionId` provenance on REST target measurements |
+| **WHY** | Smallest safe bridge from canonical REST recognition to existing VALID measurement + `LvRestAssessmentHandoffService` path without second evaluator authority |
+| **VALIDATION** | `lv-rest-canonical-target-anchor.policy.spec.ts`, `battery-rest-target-evaluation-canonical-anchor.g5c-n7.spec.ts`, existing handoff/recompute handlers unchanged |
+| **NON_EFFECTS** | No `PARKED_REST_CANDIDATE` auto-promotion; no publication enablement; no production flag changes; shadow `evidenceEligible` fail-closed semantics preserved |
+| **REMAINING_GAPS** | REST target job schedule delay still keyed to measurement session `startedAt` when misaligned — evaluation uses canonical anchor at persist time |
+
+---
+
 ## 2026-10-14 — M3.3-HV-H4 R16.1b provider observation clock gate (PR #2017)
 
 | Field | Value |
