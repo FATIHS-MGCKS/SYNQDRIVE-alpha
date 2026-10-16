@@ -8,6 +8,7 @@ import { PlatformAdminController } from './platform-admin.controller';
 const ROUTES = {
   listSessions: 'listBatteryV2RestSessions',
   inspect: 'getBatteryV2RestSessionFeatureInspection',
+  lvMeasuredIntelligence: 'getBatteryV2LvMeasuredIntelligence',
 } as const;
 
 function contextFor(user: unknown, route: keyof typeof ROUTES): ExecutionContext {

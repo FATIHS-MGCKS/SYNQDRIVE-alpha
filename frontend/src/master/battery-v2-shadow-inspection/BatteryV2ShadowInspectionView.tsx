@@ -6,7 +6,9 @@ import { MasterEmptyState, MasterErrorState, MasterLoadingState } from '../shell
 import { MasterPageHeader, MasterPageSection } from '../shell';
 import { resolveBatteryV2ShadowCopy } from './battery-v2-shadow-inspection.copy';
 import { RetentionPointsTable } from './RetentionPointsTable';
+import { LvMeasuredIntelligenceSection } from './LvMeasuredIntelligenceSection';
 import { fetchOrgVehiclesForBatteryV2Inspection } from './vehicle-selection';
+import type { LvMeasuredIntelligenceV1 } from './lv-measured-intelligence.types';
 import {
   formatMillivolts,
   formatSlope,
@@ -153,6 +155,8 @@ export default function BatteryV2ShadowInspectionView({ organizations }: Props) 
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [restSessionId, setRestSessionId] = useState('');
   const [inspection, setInspection] = useState<RestSessionFeatureShadowInspectionV1 | null>(null);
+  const [lvMeasured, setLvMeasured] = useState<LvMeasuredIntelligenceV1 | null>(null);
+  const [lvMeasuredLoading, setLvMeasuredLoading] = useState(false);
   const [phase, setPhase] = useState<LoadPhase>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -211,9 +215,36 @@ export default function BatteryV2ShadowInspectionView({ organizations }: Props) 
   useEffect(() => {
     setRestSessionId('');
     setInspection(null);
+    setLvMeasured(null);
     setPhase('idle');
     void loadSessions();
   }, [loadSessions]);
+
+  const loadLvMeasuredIntelligence = useCallback(async () => {
+    if (!organizationId || !vehicleId) {
+      setLvMeasured(null);
+      return;
+    }
+    setLvMeasuredLoading(true);
+    try {
+      const data = await api.admin.batteryV2.getLvMeasuredIntelligence({
+        organizationId,
+        vehicleId,
+        sessionLimit: 40,
+        observationLimit: 300,
+      });
+      setLvMeasured(data);
+    } catch {
+      setLvMeasured(null);
+      setErrorMessage(resolveBatteryV2ShadowCopy('master.batteryV2Shadow.lvMeasured.loadError'));
+    } finally {
+      setLvMeasuredLoading(false);
+    }
+  }, [organizationId, vehicleId]);
+
+  useEffect(() => {
+    void loadLvMeasuredIntelligence();
+  }, [loadLvMeasuredIntelligence]);
 
   const runInspection = useCallback(async () => {
     if (!organizationId || !vehicleId || !restSessionId) {
@@ -255,7 +286,10 @@ export default function BatteryV2ShadowInspectionView({ organizations }: Props) 
             type="button"
             variant="ghost"
             size="icon"
-            onClick={() => void runInspection()}
+            onClick={() => {
+              void loadLvMeasuredIntelligence();
+              void runInspection();
+            }}
             aria-label={resolveBatteryV2ShadowCopy('master.batteryV2Shadow.refreshAria')}
           >
             <RefreshCw className="w-4 h-4" />
@@ -326,6 +360,15 @@ export default function BatteryV2ShadowInspectionView({ organizations }: Props) 
           </label>
         </div>
       </MasterPageSection>
+
+      {organizationId && vehicleId && (
+        <>
+          {lvMeasuredLoading && !lvMeasured ? <MasterLoadingState variant="card" count={1} /> : null}
+          {lvMeasured ? (
+            <LvMeasuredIntelligenceSection data={lvMeasured} selectedRestSessionId={restSessionId} />
+          ) : null}
+        </>
+      )}
 
       {!organizationId || !vehicleId ? (
         <MasterEmptyState

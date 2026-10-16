@@ -78,6 +78,37 @@ const COPY: Record<string, string> = {
   'master.batteryV2Shadow.canonicalTag': 'canonical',
   'master.batteryV2Shadow.digestValid': 'valid',
   'master.batteryV2Shadow.digestMismatch': 'MISMATCH',
+  'master.batteryV2Shadow.lvMeasured.boundaryTitle': 'LV measured intelligence (G5C-N13)',
+  'master.batteryV2Shadow.lvMeasured.boundaryBody':
+    'MEASURED = stored LV voltage observations. DERIVED = C3/D3 features from those series. No SOH %, no GOOD/BAD labels, no customer publication.',
+  'master.batteryV2Shadow.lvMeasured.latestTitle': 'Latest measured LV',
+  'master.batteryV2Shadow.lvMeasured.noMeasurements': 'No stored LV generalized-evidence voltage rows for this vehicle.',
+  'master.batteryV2Shadow.lvMeasured.vehicleTimelineTitle': 'Vehicle voltage timeline (deduped MEASURED)',
+  'master.batteryV2Shadow.lvMeasured.truncatedHistory': 'Historical window truncated at server limit — older points omitted.',
+  'master.batteryV2Shadow.lvMeasured.sessionTitle': 'Selected REST session — measured rest-hours curve',
+  'master.batteryV2Shadow.lvMeasured.noSessionPoints': 'No deduped measured points linked to this session.',
+  'master.batteryV2Shadow.lvMeasured.d4Title': 'D3 / D4 longitudinal summary (bounded)',
+  'master.batteryV2Shadow.lvMeasured.episodeCompareTitle': 'REST episode comparison (MEASURED vs DERIVED summary)',
+  'master.batteryV2Shadow.lvMeasured.loadError': 'LV measured intelligence could not be loaded.',
+  'master.batteryV2Shadow.lvMeasured.provenanceFooter':
+    'NOT_ASSESSED · publication OFF · E3 inactive · F6 OFF · dedup: {{deduplicationPolicy}}',
+  'master.batteryV2Shadow.lvMeasured.metric.measuredV': 'MEASURED V',
+  'master.batteryV2Shadow.lvMeasured.metric.providerTime': 'Provider time',
+  'master.batteryV2Shadow.lvMeasured.metric.context': 'Context',
+  'master.batteryV2Shadow.lvMeasured.metric.openProviderGaps': 'Open provider gaps',
+  'master.batteryV2Shadow.lvMeasured.metric.derivedMedian': 'DERIVED median',
+  'master.batteryV2Shadow.lvMeasured.metric.derivedSlope': 'DERIVED slope',
+  'master.batteryV2Shadow.lvMeasured.metric.minMax': 'Min / max',
+  'master.batteryV2Shadow.lvMeasured.metric.c3RetentionPts': 'C3 retention pts',
+  'master.batteryV2Shadow.lvMeasured.chart.restHoursAxis': 'Rest hours',
+  'master.batteryV2Shadow.lvMeasured.tooltip.measuredSeries': 'MEASURED',
+  'master.batteryV2Shadow.lvMeasured.contextLimitedPrefix': 'CONTEXT_LIMITED:',
+  'master.batteryV2Shadow.lvMeasured.d4AckCount':
+    ' · ACK count on latest revision: {{count}} (not full D4 verification)',
+  'master.batteryV2Shadow.lvMeasured.d4AckUnavailable': ' · ACK unavailable',
+  'master.batteryV2Shadow.lvMeasured.table.opened': 'Opened',
+  'master.batteryV2Shadow.lvMeasured.table.status': 'Status',
+  'master.batteryV2Shadow.lvMeasured.table.measuredPts': 'MEASURED pts',
 };
 
 export function resolveBatteryV2ShadowCopy(key: string, params?: Record<string, string | number>): string {

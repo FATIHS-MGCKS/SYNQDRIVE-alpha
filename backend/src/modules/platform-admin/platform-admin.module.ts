@@ -30,6 +30,7 @@ import { PlatformIntegrationsController } from './platform-integrations.controll
 import { PlatformIntegrationsService } from './platform-integrations.service';
 import { BatteryGeneralizedEvidenceModule } from '../vehicle-intelligence/battery-health/generalized-evidence/generalized-evidence.module';
 import { BatteryV2RestSessionFeatureInspectionAdminService } from './battery-v2-rest-session-feature-inspection.admin.service';
+import { BatteryV2LvMeasuredIntelligenceAdminService } from './battery-v2-lv-measured-intelligence.admin.service';
 import { DimoR9WebhookHealthService } from './dimo-r9-webhook-health/dimo-r9-webhook-health.service';
 
 @Module({
@@ -62,6 +63,7 @@ import { DimoR9WebhookHealthService } from './dimo-r9-webhook-health/dimo-r9-web
     PlatformOpsInfrastructureService,
     PlatformOpsDiS4Service,
     BatteryV2RestSessionFeatureInspectionAdminService,
+    BatteryV2LvMeasuredIntelligenceAdminService,
     DimoR9WebhookHealthService,
   ],
   exports: [PlatformAdminService, PlatformDashboardService, PlatformConnectivitySummaryService],
