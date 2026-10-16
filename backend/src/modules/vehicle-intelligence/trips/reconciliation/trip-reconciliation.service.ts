@@ -66,6 +66,7 @@ import { ReconciliationExecutionMutexService } from '@shared/reconciliation-exec
 import { buildIntraTripGapSplitRepairAuditId } from './intra-trip-gap-split-repair-id.util';
 import { acquirePgAdvisoryXactLock64 } from '@shared/database/pg-advisory-lock.util';
 import type { SplitTripAtGapResult } from '../decision/decision.types';
+import { TripDiBoundaryAdmissionService } from '../di-boundary-admission/trip-di-boundary-admission.service';
 
 interface ReconciliationOptions {
   useDimoSegmentFallback?: boolean;
@@ -179,6 +180,8 @@ export class TripReconciliationService {
     @Optional() private readonly boundaryRefreshLifecycle?: BoundaryRefreshLifecycleService,
     @Optional()
     private readonly reconciliationMutex?: ReconciliationExecutionMutexService,
+    @Optional()
+    private readonly diBoundaryAdmission?: TripDiBoundaryAdmissionService,
   ) {
     this.maxSameTripQualifiedStopMs =
       this.configService?.get<number>('worker.tripSameTripMaxQualifiedStopMs') ??
@@ -357,6 +360,16 @@ export class TripReconciliationService {
         } catch (err: unknown) {
           this.logger.warn(
             `Event trip association sweep failed for vehicle ${vehicleId}: ${(err as Error).message}`,
+          );
+        }
+      }
+
+      if (this.diBoundaryAdmission) {
+        try {
+          await this.diBoundaryAdmission.releaseCompletedTripsInWindow(vehicleId, from, to);
+        } catch (err: unknown) {
+          this.logger.warn(
+            `DI boundary admission release failed for vehicle ${vehicleId}: ${(err as Error).message}`,
           );
         }
       }

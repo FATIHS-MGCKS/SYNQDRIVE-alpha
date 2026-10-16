@@ -237,6 +237,7 @@ import { QUEUE_NAMES } from '../../workers/queues/queue-names';
 import { TripDecisionEngine } from './trips/decision/trip-decision.engine';
 import { TripDetectionPolicyResolver } from './trips/policy/trip-detection-policy.resolver';
 import { TripReconciliationService } from './trips/reconciliation/trip-reconciliation.service';
+import { TripDiBoundaryAdmissionService } from './trips/di-boundary-admission/trip-di-boundary-admission.service';
 import { DetectorRegistry } from './trips/detectors/detector.registry';
 import { SnapshotEvidenceEvaluator } from './trips/detectors/snapshot-evidence.evaluator';
 import { StartConfirmationDetector } from './trips/detectors/start-confirmation.detector';
@@ -588,6 +589,7 @@ import { DiV0TripSpeedQualityModule } from './driving-intelligence/trip-speed-qu
     TripDecisionEngine,
     TripDetectionPolicyResolver,
     TripReconciliationService,
+    TripDiBoundaryAdmissionService,
     // Detector instances (all implement TripDetector interface)
     SnapshotEvidenceEvaluator,
     StartConfirmationDetector,

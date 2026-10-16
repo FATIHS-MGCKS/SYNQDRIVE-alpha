@@ -31,7 +31,11 @@ interface DiscoveryCandidateRow {
 }
 
 /** Per-trip refusals that leave the rest of the batch valid. */
-const SKIP_CODES: readonly DiV0S4RejectionCode[] = ['TRIP_NOT_COMPLETED', 'TENANT_SCOPE_INVALID'];
+const SKIP_CODES: readonly DiV0S4RejectionCode[] = [
+  'TRIP_NOT_COMPLETED',
+  'TRIP_BOUNDARY_NOT_RELEASED',
+  'TENANT_SCOPE_INVALID',
+];
 
 /**
  * S4B PRIMARY discovery. Candidate selection is a read-only hint; every guard (kill row, scope,
@@ -144,6 +148,7 @@ export class DiV0S4DiscoveryService {
       FROM vehicle_trips t
       JOIN vehicles v ON v.id = t.vehicle_id
       LEFT JOIN dimo_vehicles d ON d.id = v.dimo_vehicle_id
+      LEFT JOIN vehicle_trip_detection_states dts ON dts.vehicle_id = t.vehicle_id
       CROSS JOIN LATERAL (
         SELECT GREATEST(
           t.end_time AT TIME ZONE 'UTC',
@@ -158,6 +163,13 @@ export class DiV0S4DiscoveryService {
         AND v.organization_id = ANY(${orgs}::text[])
         AND t.vehicle_id = ANY(${vehicles}::text[])
         AND a.anchor + make_interval(secs => ${DI_V0_S4_LIMITS.settlementQuietPeriodSeconds}::int) <= clock_timestamp()
+        AND (dts.state::text = 'RESTING' OR dts.state IS NULL)
+        AND (dts.active_trip_id IS NULL OR dts.active_trip_id::text <> t.id::text)
+        AND NOT EXISTS (
+          SELECT 1 FROM trip_repairs r
+          WHERE r.trip_id = t.id AND r.status = 'PROPOSED'
+        )
+        AND (t.raw_detection_meta->'diV0BoundaryAdmissionV1'->>'revisionKey') IS NOT NULL
         AND NOT EXISTS (
           SELECT 1 FROM di_v0_s4_work_items w
           WHERE w.organization_id = v.organization_id AND w.trip_id = t.id
