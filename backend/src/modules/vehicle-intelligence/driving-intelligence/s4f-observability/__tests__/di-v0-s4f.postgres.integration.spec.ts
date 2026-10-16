@@ -19,6 +19,7 @@ import {
   s4aChannels,
   seedS4aSnapshot,
   seedS4aTenant,
+  seedS4aTripDiBoundaryAdmission,
   setKillState,
   type S4aTenant,
 } from '../../s4a-foundation/__tests__/di-v0-s4a-postgres-harness';
@@ -306,7 +307,9 @@ const BEYOND_HORIZON_AGE_SECONDS = 11 * 86_400;
       SET end_time = (${endIso}::timestamptz AT TIME ZONE 'UTC'),
           created_at = (${endIso}::timestamptz AT TIME ZONE 'UTC')
       WHERE id = ${t.tripId}`;
-    return t;
+    const endTime = new Date(endIso);
+    await seedS4aTripDiBoundaryAdmission(admin, { ...t, endTime });
+    return { ...t, endTime };
   }
 
   it('H2-A late insert behind cursor but after scan watermark excluded until next traversal', async () => {
