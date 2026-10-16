@@ -74,3 +74,23 @@ Siehe `VIDEO_EVALUATION.json` · `haltClassificationVsVideo`:
 Parameter in `exp021-retrospective-halt-prototype.lib.ts` (`GEOMETRY_THRESHOLDS`, Bracket-Größe, min Gap 3 s) — nur für diese Referenzfahrt kalibriert/validiert; vor weiteren Fahrten nicht blind übernehmen.
 
 **Entwicklungs-/Prüfmaterial** — kein Blindtest.
+
+---
+
+## v0_2 (Rückblick-Halt Halt / Fehlklassifikationen)
+
+**Ausführen:** `npm run exp021:retrospective-halt-prototype -- --out-dir …/forensic-readonly-exports-2026-10-16-retrospective-halt-v2`  
+(Legacy v0_1: `--v0-1` + v0_1 Exportordner)
+
+**Neue Artefakte:** `MAIN_HALT_CLASSIFICATION_TABLE.json`, `NATURAL_GAP_EVALUATION.json`, `SLOW_ROLL_VIDEO_CROSS_TAB.json`, `SYNTHETIC_GAP_BATTERY.json`
+
+| Thema | v0_2 Änderung |
+|--------|----------------|
+| **5/5 Overlap** | Getrennt: **Kandidatenabdeckung** vs. **Klassifikation** (`VIDEO_EVALUATION.json` + Haupttabelle mit 31/40/8/20/26 s) |
+| **LIKELY_MOVING_WITH_GAP** | Ursache dokumentiert: v0_1 Bracket-Mittel + Chord-Kontradikt; v0_2 Kalender-Kanten + Composite Halt+Abfahrt |
+| **0,68 m** | `HOLD_NOISE_DISPLACEMENT_DOCUMENTATION` im Export — SynqDrive `holdNoiseDisplacementM`, nicht allgemeine GPS-Genauigkeit |
+| **Present-Kette** | `presentChainSpanSec` / `aggregateEligible` — Langsam-Roll-Aggregat nur Kalender-1s, Kette ≤2 s |
+| **Karte B** | Overpass **POST** + `User-Agent` (406 ohne UA); 658 Signale im BBOX — Klassifikation unverändert, Kontext in `mapContextVariantB` |
+| **Gegenprüfung** | Alle natürlichen Lücken + synthetische 6s/12s-Masken (`SYNTHETIC_GAP_BATTERY.json`) |
+
+**Referenzlauf (v0_2):** 5/5 Kandidatenabdeckung, **5/5** video-konsistente Halt-/Slow-roll-Klassifikation der Haupthalte; kein Anspruch auf Blindvalidierung.

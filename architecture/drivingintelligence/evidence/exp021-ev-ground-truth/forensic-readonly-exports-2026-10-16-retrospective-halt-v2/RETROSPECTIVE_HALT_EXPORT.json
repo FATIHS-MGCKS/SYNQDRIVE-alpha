@@ -1,0 +1,6016 @@
+{
+  "schema": "EXP021_RETROSPECTIVE_HALT_PROTOTYPE_V0_2",
+  "observedAtUtc": "2026-10-16T18:25:50.015Z",
+  "tripScope": {
+    "organizationId": "faa710c9-6d91-4079-a7d5-91fdccdec14a",
+    "tripId": "358d0158-b2a9-47ed-af26-33926c5770b4",
+    "workItemId": "99fe9d1b-5cb6-4cbb-ba0c-e5f27a5cd50a"
+  },
+  "geometryDocumentation": {
+    "valueM": 0.68,
+    "source": "SynqDrive DI_V0 calibration bundle CALIBRATION_UNSET_V0_BUNDLE.holdNoiseDisplacementM (hold-release scatter filter; provisional pilot bundle — not a universal GPS accuracy specification).",
+    "codeRef": "backend/src/modules/vehicle-intelligence/driving-intelligence/core/calibration/CALIBRATION_UNSET_V0.ts",
+    "usedAs": "MIN_DISPLACEMENT_M_FOR_ANY_INFERENCE in this offline prototype only"
+  },
+  "v01MisclassificationRootCause": {
+    "summary": "v0_1 treated bracket mean leg speeds (10 present points) and chord-implied average speed as contradicting halt; post-halt departure and pre-halt approach therefore forced LIKELY_MOVING_WITH_GAP when contradicts>=2.",
+    "rulesRetired": [
+      "CONTRADICTS on approach/depart bracket mean >= movingMinKmh",
+      "LIKELY_MOVING_WITH_GAP when contradicts>=2 or impliedChordKmh>=8",
+      "Chord-implied km/h as CONTRADICTS standstill"
+    ],
+    "rulesV02": [
+      "Calendar-adjacent present seconds at gap edges for motion inference",
+      "Bracket means reported as distant context only",
+      "Composite halt+departure vs slow-roll-through vs moving-with-gap scoring",
+      "Chord average labeled NEUTRAL (not locus of standstill duration)"
+    ]
+  },
+  "geometryClassificationSummary": {
+    "nearStop": 4,
+    "slowRoll": 52,
+    "slowRollAggregateEligible": 41,
+    "presentChainSlowRoll": 11,
+    "moving": 795,
+    "scatter": 16
+  },
+  "gapRunsTotal": 26,
+  "events": [
+    {
+      "eventId": "GAP_EVT_001",
+      "kind": "POSITION_GAP",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:36:00Z",
+        "to": "2026-10-16T03:36:05Z"
+      },
+      "gapDurationSec": 6,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Gap length known; standstill duration NOT inferred from gap alone.",
+      "classification": "NOT_DISTINGUISHABLE",
+      "rulesApplied": [
+        "V0_2_COMPOSITE_HYPOTHESIS",
+        "CALENDAR_ADJACENT_GAP_EDGES",
+        "DISTANT_CONTEXT_REPORTED_SEPARATELY",
+        "MIN_DISPLACEMENT_M=0.68"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION coordinates",
+        "optional R1_OBD at labels"
+      ],
+      "supportingAndContradicting": [
+        {
+          "tier": "NEUTRAL",
+          "text": "Distant depart context mean leg 3.3 km/h (includes post-halt driving).",
+          "epistemic": "INFERRED"
+        }
+      ],
+      "metrics": {
+        "endpointDisplacementM": null,
+        "impliedChordKmh": null,
+        "legIntoGapKmh": null,
+        "legOutOfGapKmh": null,
+        "legIntoGapClass": null,
+        "legOutOfGapClass": null,
+        "distantBeforeMeanKmh": null,
+        "distantAfterMeanKmh": 3.314766397760526
+      },
+      "hypothesisScores": {
+        "LIKELY_HALT": 0,
+        "LIKELY_SLOW_ROLL_STOP_GO": 0,
+        "LIKELY_MOVING_WITH_GAP": 0
+      },
+      "decisiveFeatures": [],
+      "bracketStructure": {
+        "calendarAdjacentBefore": null,
+        "calendarAdjacentAfter": "2026-10-16T03:36:06Z",
+        "calendarBracketBeforeLabels": [],
+        "calendarBracketAfterLabels": [
+          "2026-10-16T03:36:06Z"
+        ],
+        "distantContextBeforeLabels": [],
+        "distantContextAfterLabels": [
+          "2026-10-16T03:36:56Z",
+          "2026-10-16T03:36:58Z",
+          "2026-10-16T03:37:45Z",
+          "2026-10-16T03:37:46Z",
+          "2026-10-16T03:37:47Z",
+          "2026-10-16T03:37:48Z",
+          "2026-10-16T03:37:49Z",
+          "2026-10-16T03:37:50Z"
+        ]
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:36:06Z",
+      "mapContextVariantB": {
+        "available": true,
+        "osmMeta": {
+          "fetchedAtUtc": "2026-10-16T18:25:53.520Z",
+          "source": "OpenStreetMap Overpass API (highway=traffic_signals, POST interpreter)",
+          "requestMethod": "POST"
+        },
+        "nearestTrafficSignalM": 507.76968071263406,
+        "nearestTrafficSignalId": 3861337111,
+        "travelBearingDeg": null,
+        "bearingToNearestSignalDeg": 91.68120119694163,
+        "bearingDeltaDeg": null,
+        "roadAssociation": "not_resolved_v0_2",
+        "note": "Proximity + bearing hint only; no red-phase knowledge; street graph not joined in v0_2.",
+        "epistemic": "INFERRED"
+      }
+    },
+    {
+      "eventId": "GAP_EVT_002",
+      "kind": "POSITION_GAP",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:36:07Z",
+        "to": "2026-10-16T03:36:55Z"
+      },
+      "gapDurationSec": 49,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Gap length known; standstill duration NOT inferred from gap alone.",
+      "classification": "LIKELY_HALT",
+      "rulesApplied": [
+        "V0_2_COMPOSITE_HYPOTHESIS",
+        "CALENDAR_ADJACENT_GAP_EDGES",
+        "DISTANT_CONTEXT_REPORTED_SEPARATELY",
+        "MIN_DISPLACEMENT_M=0.68"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION coordinates",
+        "optional R1_OBD at labels"
+      ],
+      "supportingAndContradicting": [
+        {
+          "tier": "NEUTRAL",
+          "text": "Chord-implied 0.0 km/h averages displacement over entire 49s gap — compatible with halt+departure inside gap.",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "SUPPORTS",
+          "text": "Small endpoint chord 0.5 m across 49s gap.",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "NEUTRAL",
+          "text": "Distant depart context mean leg 3.8 km/h (includes post-halt driving).",
+          "epistemic": "INFERRED"
+        }
+      ],
+      "metrics": {
+        "endpointDisplacementM": 0.4815928532581046,
+        "impliedChordKmh": 0.035382332076105645,
+        "legIntoGapKmh": null,
+        "legOutOfGapKmh": null,
+        "legIntoGapClass": null,
+        "legOutOfGapClass": "INCONCLUSIVE_SCATTER",
+        "distantBeforeMeanKmh": null,
+        "distantAfterMeanKmh": 3.7731020865178913
+      },
+      "hypothesisScores": {
+        "LIKELY_HALT": 3,
+        "LIKELY_SLOW_ROLL_STOP_GO": 0,
+        "LIKELY_MOVING_WITH_GAP": 0
+      },
+      "decisiveFeatures": [
+        {
+          "feature": "endpointChordM",
+          "value": 0.4815928532581046,
+          "role": "gap endpoints (calendar-adjacent present)"
+        },
+        {
+          "feature": "gapDurationSec",
+          "value": 49,
+          "role": "ROW_ABSENT span"
+        },
+        {
+          "feature": "impliedChordKmh",
+          "value": 0,
+          "role": "average over gap — not standstill duration"
+        },
+        {
+          "feature": "legOutOfGapKmh",
+          "value": null,
+          "role": "calendar leg 2026-10-16T03:36:56Z→2026-10-16T03:36:58Z"
+        }
+      ],
+      "bracketStructure": {
+        "calendarAdjacentBefore": "2026-10-16T03:36:06Z",
+        "calendarAdjacentAfter": "2026-10-16T03:36:56Z",
+        "calendarBracketBeforeLabels": [
+          "2026-10-16T03:36:06Z"
+        ],
+        "calendarBracketAfterLabels": [
+          "2026-10-16T03:36:56Z",
+          "2026-10-16T03:36:58Z"
+        ],
+        "distantContextBeforeLabels": [],
+        "distantContextAfterLabels": [
+          "2026-10-16T03:37:45Z",
+          "2026-10-16T03:37:46Z",
+          "2026-10-16T03:37:47Z",
+          "2026-10-16T03:37:48Z",
+          "2026-10-16T03:37:49Z",
+          "2026-10-16T03:37:50Z",
+          "2026-10-16T03:37:51Z",
+          "2026-10-16T03:37:52Z"
+        ]
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:36:58Z",
+      "mapContextVariantB": {
+        "available": true,
+        "osmMeta": {
+          "fetchedAtUtc": "2026-10-16T18:25:53.520Z",
+          "source": "OpenStreetMap Overpass API (highway=traffic_signals, POST interpreter)",
+          "requestMethod": "POST"
+        },
+        "nearestTrafficSignalM": 507.76968071263406,
+        "nearestTrafficSignalId": 3861337111,
+        "travelBearingDeg": 313.84181438520704,
+        "bearingToNearestSignalDeg": 91.68120119694163,
+        "bearingDeltaDeg": 137.83938681173458,
+        "roadAssociation": "not_resolved_v0_2",
+        "note": "Proximity + bearing hint only; no red-phase knowledge; street graph not joined in v0_2.",
+        "epistemic": "INFERRED"
+      }
+    },
+    {
+      "eventId": "GAP_EVT_003",
+      "kind": "POSITION_GAP",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:36:59Z",
+        "to": "2026-10-16T03:37:44Z"
+      },
+      "gapDurationSec": 46,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Gap length known; standstill duration NOT inferred from gap alone.",
+      "classification": "LIKELY_HALT",
+      "rulesApplied": [
+        "V0_2_COMPOSITE_HYPOTHESIS",
+        "CALENDAR_ADJACENT_GAP_EDGES",
+        "DISTANT_CONTEXT_REPORTED_SEPARATELY",
+        "MIN_DISPLACEMENT_M=0.68"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION coordinates",
+        "optional R1_OBD at labels"
+      ],
+      "supportingAndContradicting": [
+        {
+          "tier": "NEUTRAL",
+          "text": "Chord-implied 0.1 km/h averages displacement over entire 46s gap — compatible with halt+departure inside gap.",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "SUPPORTS",
+          "text": "Small endpoint chord 0.8 m across 46s gap.",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "WEAK_SUPPORTS",
+          "text": "Slow-roll geometry adjacent to gap.",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "NEUTRAL",
+          "text": "Distant depart context mean leg 2.9 km/h (includes post-halt driving).",
+          "epistemic": "INFERRED"
+        }
+      ],
+      "metrics": {
+        "endpointDisplacementM": 0.8255875621342117,
+        "impliedChordKmh": 0.06461120051485135,
+        "legIntoGapKmh": null,
+        "legOutOfGapKmh": 4.292107187655675,
+        "legIntoGapClass": "INCONCLUSIVE_SCATTER",
+        "legOutOfGapClass": "SLOW_ROLL_GEOMETRY",
+        "distantBeforeMeanKmh": null,
+        "distantAfterMeanKmh": 2.8926835099894204
+      },
+      "hypothesisScores": {
+        "LIKELY_HALT": 3,
+        "LIKELY_SLOW_ROLL_STOP_GO": 0,
+        "LIKELY_MOVING_WITH_GAP": 0
+      },
+      "decisiveFeatures": [
+        {
+          "feature": "endpointChordM",
+          "value": 0.8255875621342117,
+          "role": "gap endpoints (calendar-adjacent present)"
+        },
+        {
+          "feature": "gapDurationSec",
+          "value": 46,
+          "role": "ROW_ABSENT span"
+        },
+        {
+          "feature": "impliedChordKmh",
+          "value": 0.1,
+          "role": "average over gap — not standstill duration"
+        },
+        {
+          "feature": "legIntoGapKmh",
+          "value": null,
+          "role": "calendar leg 2026-10-16T03:36:56Z→2026-10-16T03:36:58Z"
+        },
+        {
+          "feature": "legOutOfGapKmh",
+          "value": 4.3,
+          "role": "calendar leg 2026-10-16T03:37:45Z→2026-10-16T03:37:46Z"
+        }
+      ],
+      "bracketStructure": {
+        "calendarAdjacentBefore": "2026-10-16T03:36:58Z",
+        "calendarAdjacentAfter": "2026-10-16T03:37:45Z",
+        "calendarBracketBeforeLabels": [
+          "2026-10-16T03:36:56Z",
+          "2026-10-16T03:36:58Z"
+        ],
+        "calendarBracketAfterLabels": [
+          "2026-10-16T03:37:45Z",
+          "2026-10-16T03:37:46Z",
+          "2026-10-16T03:37:47Z",
+          "2026-10-16T03:37:48Z",
+          "2026-10-16T03:37:49Z"
+        ],
+        "distantContextBeforeLabels": [
+          "2026-10-16T03:36:06Z"
+        ],
+        "distantContextAfterLabels": [
+          "2026-10-16T03:37:50Z",
+          "2026-10-16T03:37:51Z",
+          "2026-10-16T03:37:52Z",
+          "2026-10-16T03:37:53Z",
+          "2026-10-16T03:37:55Z",
+          "2026-10-16T03:37:56Z",
+          "2026-10-16T03:37:57Z",
+          "2026-10-16T03:37:59Z"
+        ]
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:37:49Z",
+      "mapContextVariantB": {
+        "available": true,
+        "osmMeta": {
+          "fetchedAtUtc": "2026-10-16T18:25:53.520Z",
+          "source": "OpenStreetMap Overpass API (highway=traffic_signals, POST interpreter)",
+          "requestMethod": "POST"
+        },
+        "nearestTrafficSignalM": 508.6263588152617,
+        "nearestTrafficSignalId": 3861337111,
+        "travelBearingDeg": 216.08784985827404,
+        "bearingToNearestSignalDeg": 91.76608027488084,
+        "bearingDeltaDeg": 124.3217695833932,
+        "roadAssociation": "not_resolved_v0_2",
+        "note": "Proximity + bearing hint only; no red-phase knowledge; street graph not joined in v0_2.",
+        "epistemic": "INFERRED"
+      }
+    },
+    {
+      "eventId": "GAP_EVT_004",
+      "kind": "POSITION_GAP",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:38:19Z",
+        "to": "2026-10-16T03:38:21Z"
+      },
+      "gapDurationSec": 3,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Gap length known; standstill duration NOT inferred from gap alone.",
+      "classification": "NOT_DISTINGUISHABLE",
+      "rulesApplied": [
+        "V0_2_COMPOSITE_HYPOTHESIS",
+        "CALENDAR_ADJACENT_GAP_EDGES",
+        "DISTANT_CONTEXT_REPORTED_SEPARATELY",
+        "MIN_DISPLACEMENT_M=0.68"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION coordinates",
+        "optional R1_OBD at labels"
+      ],
+      "supportingAndContradicting": [
+        {
+          "tier": "NEUTRAL",
+          "text": "Chord-implied 1.9 km/h averages displacement over entire 3s gap — compatible with halt+departure inside gap.",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "SUPPORTS",
+          "text": "Post-gap calendar leg shows departure while chord remains small — halt-then-depart pattern.",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "NEUTRAL",
+          "text": "Distant approach context mean leg 4.6 km/h (not gap-edge).",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "NEUTRAL",
+          "text": "Distant depart context mean leg 29.7 km/h (includes post-halt driving).",
+          "epistemic": "INFERRED"
+        }
+      ],
+      "metrics": {
+        "endpointDisplacementM": 1.6041966980236546,
+        "impliedChordKmh": 1.9250360376283855,
+        "legIntoGapKmh": null,
+        "legOutOfGapKmh": 8.284087429500955,
+        "legIntoGapClass": "INCONCLUSIVE_SCATTER",
+        "legOutOfGapClass": "MOVING_GEOMETRY",
+        "distantBeforeMeanKmh": 4.645190311263927,
+        "distantAfterMeanKmh": 29.657949022550888
+      },
+      "hypothesisScores": {
+        "LIKELY_HALT": 2,
+        "LIKELY_SLOW_ROLL_STOP_GO": 0,
+        "LIKELY_MOVING_WITH_GAP": 0
+      },
+      "decisiveFeatures": [
+        {
+          "feature": "endpointChordM",
+          "value": 1.6041966980236546,
+          "role": "gap endpoints (calendar-adjacent present)"
+        },
+        {
+          "feature": "gapDurationSec",
+          "value": 3,
+          "role": "ROW_ABSENT span"
+        },
+        {
+          "feature": "impliedChordKmh",
+          "value": 1.9,
+          "role": "average over gap — not standstill duration"
+        },
+        {
+          "feature": "legIntoGapKmh",
+          "value": null,
+          "role": "calendar leg 2026-10-16T03:38:17Z→2026-10-16T03:38:18Z"
+        },
+        {
+          "feature": "legOutOfGapKmh",
+          "value": 8.3,
+          "role": "calendar leg 2026-10-16T03:38:22Z→2026-10-16T03:38:23Z"
+        }
+      ],
+      "bracketStructure": {
+        "calendarAdjacentBefore": "2026-10-16T03:38:18Z",
+        "calendarAdjacentAfter": "2026-10-16T03:38:22Z",
+        "calendarBracketBeforeLabels": [
+          "2026-10-16T03:38:14Z",
+          "2026-10-16T03:38:15Z",
+          "2026-10-16T03:38:16Z",
+          "2026-10-16T03:38:17Z",
+          "2026-10-16T03:38:18Z"
+        ],
+        "calendarBracketAfterLabels": [
+          "2026-10-16T03:38:22Z",
+          "2026-10-16T03:38:23Z",
+          "2026-10-16T03:38:24Z",
+          "2026-10-16T03:38:25Z",
+          "2026-10-16T03:38:26Z"
+        ],
+        "distantContextBeforeLabels": [
+          "2026-10-16T03:38:06Z",
+          "2026-10-16T03:38:07Z",
+          "2026-10-16T03:38:08Z",
+          "2026-10-16T03:38:09Z",
+          "2026-10-16T03:38:10Z",
+          "2026-10-16T03:38:11Z",
+          "2026-10-16T03:38:12Z",
+          "2026-10-16T03:38:13Z"
+        ],
+        "distantContextAfterLabels": [
+          "2026-10-16T03:38:27Z",
+          "2026-10-16T03:38:28Z",
+          "2026-10-16T03:38:29Z",
+          "2026-10-16T03:38:30Z",
+          "2026-10-16T03:38:31Z",
+          "2026-10-16T03:38:32Z",
+          "2026-10-16T03:38:33Z",
+          "2026-10-16T03:38:34Z"
+        ]
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:38:26Z",
+      "mapContextVariantB": {
+        "available": true,
+        "osmMeta": {
+          "fetchedAtUtc": "2026-10-16T18:25:53.520Z",
+          "source": "OpenStreetMap Overpass API (highway=traffic_signals, POST interpreter)",
+          "requestMethod": "POST"
+        },
+        "nearestTrafficSignalM": 499.9865677365863,
+        "nearestTrafficSignalId": 3861337111,
+        "travelBearingDeg": 245.4246239945657,
+        "bearingToNearestSignalDeg": 89.6811785479336,
+        "bearingDeltaDeg": 155.7434454466321,
+        "roadAssociation": "not_resolved_v0_2",
+        "note": "Proximity + bearing hint only; no red-phase knowledge; street graph not joined in v0_2.",
+        "epistemic": "INFERRED"
+      }
+    },
+    {
+      "eventId": "GAP_EVT_005",
+      "kind": "POSITION_GAP",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:40:19Z",
+        "to": "2026-10-16T03:40:50Z"
+      },
+      "gapDurationSec": 32,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Gap length known; standstill duration NOT inferred from gap alone.",
+      "classification": "LIKELY_HALT",
+      "rulesApplied": [
+        "V0_2_COMPOSITE_HYPOTHESIS",
+        "CALENDAR_ADJACENT_GAP_EDGES",
+        "DISTANT_CONTEXT_REPORTED_SEPARATELY",
+        "MIN_DISPLACEMENT_M=0.68"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION coordinates",
+        "optional R1_OBD at labels"
+      ],
+      "supportingAndContradicting": [
+        {
+          "tier": "NEUTRAL",
+          "text": "Chord-implied 0.1 km/h averages displacement over entire 32s gap — compatible with halt+departure inside gap.",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "SUPPORTS",
+          "text": "Small endpoint chord 1.1 m across 32s gap.",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "SUPPORTS",
+          "text": "Post-gap calendar leg shows departure while chord remains small — halt-then-depart pattern.",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "NEUTRAL",
+          "text": "Distant approach context mean leg 43.3 km/h (not gap-edge).",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "NEUTRAL",
+          "text": "Distant depart context mean leg 33.0 km/h (includes post-halt driving).",
+          "epistemic": "INFERRED"
+        }
+      ],
+      "metrics": {
+        "endpointDisplacementM": 1.1336668274961743,
+        "impliedChordKmh": 0.12753751809331962,
+        "legIntoGapKmh": null,
+        "legOutOfGapKmh": 9.391902453217165,
+        "legIntoGapClass": "INCONCLUSIVE_SCATTER",
+        "legOutOfGapClass": "MOVING_GEOMETRY",
+        "distantBeforeMeanKmh": 43.347097377281045,
+        "distantAfterMeanKmh": 33.0141574130635
+      },
+      "hypothesisScores": {
+        "LIKELY_HALT": 5,
+        "LIKELY_SLOW_ROLL_STOP_GO": 0,
+        "LIKELY_MOVING_WITH_GAP": 0
+      },
+      "decisiveFeatures": [
+        {
+          "feature": "endpointChordM",
+          "value": 1.1336668274961743,
+          "role": "gap endpoints (calendar-adjacent present)"
+        },
+        {
+          "feature": "gapDurationSec",
+          "value": 32,
+          "role": "ROW_ABSENT span"
+        },
+        {
+          "feature": "impliedChordKmh",
+          "value": 0.1,
+          "role": "average over gap — not standstill duration"
+        },
+        {
+          "feature": "legIntoGapKmh",
+          "value": null,
+          "role": "calendar leg 2026-10-16T03:40:17Z→2026-10-16T03:40:18Z"
+        },
+        {
+          "feature": "legOutOfGapKmh",
+          "value": 9.4,
+          "role": "calendar leg 2026-10-16T03:40:51Z→2026-10-16T03:40:52Z"
+        }
+      ],
+      "bracketStructure": {
+        "calendarAdjacentBefore": "2026-10-16T03:40:18Z",
+        "calendarAdjacentAfter": "2026-10-16T03:40:51Z",
+        "calendarBracketBeforeLabels": [
+          "2026-10-16T03:40:14Z",
+          "2026-10-16T03:40:15Z",
+          "2026-10-16T03:40:16Z",
+          "2026-10-16T03:40:17Z",
+          "2026-10-16T03:40:18Z"
+        ],
+        "calendarBracketAfterLabels": [
+          "2026-10-16T03:40:51Z",
+          "2026-10-16T03:40:52Z",
+          "2026-10-16T03:40:53Z",
+          "2026-10-16T03:40:54Z",
+          "2026-10-16T03:40:55Z"
+        ],
+        "distantContextBeforeLabels": [
+          "2026-10-16T03:40:06Z",
+          "2026-10-16T03:40:07Z",
+          "2026-10-16T03:40:08Z",
+          "2026-10-16T03:40:09Z",
+          "2026-10-16T03:40:10Z",
+          "2026-10-16T03:40:11Z",
+          "2026-10-16T03:40:12Z",
+          "2026-10-16T03:40:13Z"
+        ],
+        "distantContextAfterLabels": [
+          "2026-10-16T03:40:56Z",
+          "2026-10-16T03:40:57Z",
+          "2026-10-16T03:40:58Z",
+          "2026-10-16T03:40:59Z",
+          "2026-10-16T03:41:00Z",
+          "2026-10-16T03:41:01Z",
+          "2026-10-16T03:41:02Z",
+          "2026-10-16T03:41:03Z"
+        ]
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:40:55Z",
+      "mapContextVariantB": {
+        "available": true,
+        "osmMeta": {
+          "fetchedAtUtc": "2026-10-16T18:25:53.520Z",
+          "source": "OpenStreetMap Overpass API (highway=traffic_signals, POST interpreter)",
+          "requestMethod": "POST"
+        },
+        "nearestTrafficSignalM": 18.120133772154297,
+        "nearestTrafficSignalId": 1975690266,
+        "travelBearingDeg": 101.31299276605023,
+        "bearingToNearestSignalDeg": 102.0067548605657,
+        "bearingDeltaDeg": 0.6937620945154777,
+        "roadAssociation": "not_resolved_v0_2",
+        "note": "Proximity + bearing hint only; no red-phase knowledge; street graph not joined in v0_2.",
+        "epistemic": "INFERRED"
+      }
+    },
+    {
+      "eventId": "GAP_EVT_006",
+      "kind": "POSITION_GAP",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:41:50Z",
+        "to": "2026-10-16T03:42:30Z"
+      },
+      "gapDurationSec": 41,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Gap length known; standstill duration NOT inferred from gap alone.",
+      "classification": "LIKELY_HALT",
+      "rulesApplied": [
+        "V0_2_COMPOSITE_HYPOTHESIS",
+        "CALENDAR_ADJACENT_GAP_EDGES",
+        "DISTANT_CONTEXT_REPORTED_SEPARATELY",
+        "MIN_DISPLACEMENT_M=0.68"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION coordinates",
+        "optional R1_OBD at labels"
+      ],
+      "supportingAndContradicting": [
+        {
+          "tier": "NEUTRAL",
+          "text": "Chord-implied 0.2 km/h averages displacement over entire 41s gap — compatible with halt+departure inside gap.",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "SUPPORTS",
+          "text": "Small endpoint chord 2.1 m across 41s gap.",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "SUPPORTS",
+          "text": "Post-gap calendar leg shows departure while chord remains small — halt-then-depart pattern.",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "WEAK_SUPPORTS",
+          "text": "Slow-roll geometry adjacent to gap.",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "NEUTRAL",
+          "text": "Distant approach context mean leg 55.8 km/h (not gap-edge).",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "NEUTRAL",
+          "text": "Distant depart context mean leg 34.3 km/h (includes post-halt driving).",
+          "epistemic": "INFERRED"
+        }
+      ],
+      "metrics": {
+        "endpointDisplacementM": 2.12296344489598,
+        "impliedChordKmh": 0.18640654638111046,
+        "legIntoGapKmh": 2.8021121500568564,
+        "legOutOfGapKmh": 11.651795603477284,
+        "legIntoGapClass": "SLOW_ROLL_GEOMETRY",
+        "legOutOfGapClass": "MOVING_GEOMETRY",
+        "distantBeforeMeanKmh": 55.793949495098545,
+        "distantAfterMeanKmh": 34.332789179661134
+      },
+      "hypothesisScores": {
+        "LIKELY_HALT": 6,
+        "LIKELY_SLOW_ROLL_STOP_GO": 1,
+        "LIKELY_MOVING_WITH_GAP": 0
+      },
+      "decisiveFeatures": [
+        {
+          "feature": "endpointChordM",
+          "value": 2.12296344489598,
+          "role": "gap endpoints (calendar-adjacent present)"
+        },
+        {
+          "feature": "gapDurationSec",
+          "value": 41,
+          "role": "ROW_ABSENT span"
+        },
+        {
+          "feature": "impliedChordKmh",
+          "value": 0.2,
+          "role": "average over gap — not standstill duration"
+        },
+        {
+          "feature": "legIntoGapKmh",
+          "value": 2.8,
+          "role": "calendar leg 2026-10-16T03:41:48Z→2026-10-16T03:41:49Z"
+        },
+        {
+          "feature": "legOutOfGapKmh",
+          "value": 11.7,
+          "role": "calendar leg 2026-10-16T03:42:31Z→2026-10-16T03:42:32Z"
+        }
+      ],
+      "bracketStructure": {
+        "calendarAdjacentBefore": "2026-10-16T03:41:49Z",
+        "calendarAdjacentAfter": "2026-10-16T03:42:31Z",
+        "calendarBracketBeforeLabels": [
+          "2026-10-16T03:41:45Z",
+          "2026-10-16T03:41:46Z",
+          "2026-10-16T03:41:47Z",
+          "2026-10-16T03:41:48Z",
+          "2026-10-16T03:41:49Z"
+        ],
+        "calendarBracketAfterLabels": [
+          "2026-10-16T03:42:31Z",
+          "2026-10-16T03:42:32Z",
+          "2026-10-16T03:42:33Z",
+          "2026-10-16T03:42:34Z",
+          "2026-10-16T03:42:35Z"
+        ],
+        "distantContextBeforeLabels": [
+          "2026-10-16T03:41:37Z",
+          "2026-10-16T03:41:38Z",
+          "2026-10-16T03:41:39Z",
+          "2026-10-16T03:41:40Z",
+          "2026-10-16T03:41:41Z",
+          "2026-10-16T03:41:42Z",
+          "2026-10-16T03:41:43Z",
+          "2026-10-16T03:41:44Z"
+        ],
+        "distantContextAfterLabels": [
+          "2026-10-16T03:42:36Z",
+          "2026-10-16T03:42:37Z",
+          "2026-10-16T03:42:38Z",
+          "2026-10-16T03:42:39Z",
+          "2026-10-16T03:42:40Z",
+          "2026-10-16T03:42:41Z",
+          "2026-10-16T03:42:42Z",
+          "2026-10-16T03:42:43Z"
+        ]
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:42:35Z",
+      "mapContextVariantB": {
+        "available": true,
+        "osmMeta": {
+          "fetchedAtUtc": "2026-10-16T18:25:53.520Z",
+          "source": "OpenStreetMap Overpass API (highway=traffic_signals, POST interpreter)",
+          "requestMethod": "POST"
+        },
+        "nearestTrafficSignalM": 5.195960089979623,
+        "nearestTrafficSignalId": 3580338394,
+        "travelBearingDeg": 185.63523177697877,
+        "bearingToNearestSignalDeg": 212.976880707784,
+        "bearingDeltaDeg": 27.341648930805235,
+        "roadAssociation": "not_resolved_v0_2",
+        "note": "Proximity + bearing hint only; no red-phase knowledge; street graph not joined in v0_2.",
+        "epistemic": "INFERRED"
+      }
+    },
+    {
+      "eventId": "GAP_EVT_007",
+      "kind": "POSITION_GAP",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:42:51Z",
+        "to": "2026-10-16T03:42:57Z"
+      },
+      "gapDurationSec": 7,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Gap length known; standstill duration NOT inferred from gap alone.",
+      "classification": "LIKELY_HALT",
+      "rulesApplied": [
+        "V0_2_COMPOSITE_HYPOTHESIS",
+        "CALENDAR_ADJACENT_GAP_EDGES",
+        "DISTANT_CONTEXT_REPORTED_SEPARATELY",
+        "MIN_DISPLACEMENT_M=0.68"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION coordinates",
+        "optional R1_OBD at labels"
+      ],
+      "supportingAndContradicting": [
+        {
+          "tier": "NEUTRAL",
+          "text": "Chord-implied 0.3 km/h averages displacement over entire 7s gap — compatible with halt+departure inside gap.",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "SUPPORTS",
+          "text": "Small endpoint chord 0.5 m across 7s gap.",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "SUPPORTS",
+          "text": "Post-gap calendar leg shows departure while chord remains small — halt-then-depart pattern.",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "NEUTRAL",
+          "text": "Distant approach context mean leg 28.6 km/h (not gap-edge).",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "NEUTRAL",
+          "text": "Distant depart context mean leg 40.7 km/h (includes post-halt driving).",
+          "epistemic": "INFERRED"
+        }
+      ],
+      "metrics": {
+        "endpointDisplacementM": 0.4912108229850152,
+        "impliedChordKmh": 0.25262270896372213,
+        "legIntoGapKmh": null,
+        "legOutOfGapKmh": 8.242512023287304,
+        "legIntoGapClass": "INCONCLUSIVE_SCATTER",
+        "legOutOfGapClass": "MOVING_GEOMETRY",
+        "distantBeforeMeanKmh": 28.622061255227106,
+        "distantAfterMeanKmh": 40.714330248900964
+      },
+      "hypothesisScores": {
+        "LIKELY_HALT": 5,
+        "LIKELY_SLOW_ROLL_STOP_GO": 0,
+        "LIKELY_MOVING_WITH_GAP": 0
+      },
+      "decisiveFeatures": [
+        {
+          "feature": "endpointChordM",
+          "value": 0.4912108229850152,
+          "role": "gap endpoints (calendar-adjacent present)"
+        },
+        {
+          "feature": "gapDurationSec",
+          "value": 7,
+          "role": "ROW_ABSENT span"
+        },
+        {
+          "feature": "impliedChordKmh",
+          "value": 0.3,
+          "role": "average over gap — not standstill duration"
+        },
+        {
+          "feature": "legIntoGapKmh",
+          "value": null,
+          "role": "calendar leg 2026-10-16T03:42:48Z→2026-10-16T03:42:50Z"
+        },
+        {
+          "feature": "legOutOfGapKmh",
+          "value": 8.2,
+          "role": "calendar leg 2026-10-16T03:42:58Z→2026-10-16T03:42:59Z"
+        }
+      ],
+      "bracketStructure": {
+        "calendarAdjacentBefore": "2026-10-16T03:42:50Z",
+        "calendarAdjacentAfter": "2026-10-16T03:42:58Z",
+        "calendarBracketBeforeLabels": [
+          "2026-10-16T03:42:46Z",
+          "2026-10-16T03:42:47Z",
+          "2026-10-16T03:42:48Z",
+          "2026-10-16T03:42:50Z"
+        ],
+        "calendarBracketAfterLabels": [
+          "2026-10-16T03:42:58Z",
+          "2026-10-16T03:42:59Z",
+          "2026-10-16T03:43:00Z",
+          "2026-10-16T03:43:01Z",
+          "2026-10-16T03:43:02Z"
+        ],
+        "distantContextBeforeLabels": [
+          "2026-10-16T03:42:38Z",
+          "2026-10-16T03:42:39Z",
+          "2026-10-16T03:42:40Z",
+          "2026-10-16T03:42:41Z",
+          "2026-10-16T03:42:42Z",
+          "2026-10-16T03:42:43Z",
+          "2026-10-16T03:42:44Z",
+          "2026-10-16T03:42:45Z"
+        ],
+        "distantContextAfterLabels": [
+          "2026-10-16T03:43:03Z",
+          "2026-10-16T03:43:04Z",
+          "2026-10-16T03:43:05Z",
+          "2026-10-16T03:43:06Z",
+          "2026-10-16T03:43:07Z",
+          "2026-10-16T03:43:08Z",
+          "2026-10-16T03:43:09Z",
+          "2026-10-16T03:43:10Z"
+        ]
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:43:02Z",
+      "mapContextVariantB": {
+        "available": true,
+        "osmMeta": {
+          "fetchedAtUtc": "2026-10-16T18:25:53.520Z",
+          "source": "OpenStreetMap Overpass API (highway=traffic_signals, POST interpreter)",
+          "requestMethod": "POST"
+        },
+        "nearestTrafficSignalM": 6.475673681682689,
+        "nearestTrafficSignalId": 2528191467,
+        "travelBearingDeg": 205.11250632555925,
+        "bearingToNearestSignalDeg": 251.1665973941237,
+        "bearingDeltaDeg": 46.054091068564446,
+        "roadAssociation": "not_resolved_v0_2",
+        "note": "Proximity + bearing hint only; no red-phase knowledge; street graph not joined in v0_2.",
+        "epistemic": "INFERRED"
+      }
+    },
+    {
+      "eventId": "GAP_EVT_008",
+      "kind": "POSITION_GAP",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:43:43Z",
+        "to": "2026-10-16T03:44:36Z"
+      },
+      "gapDurationSec": 54,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Gap length known; standstill duration NOT inferred from gap alone.",
+      "classification": "LIKELY_HALT",
+      "rulesApplied": [
+        "V0_2_COMPOSITE_HYPOTHESIS",
+        "CALENDAR_ADJACENT_GAP_EDGES",
+        "DISTANT_CONTEXT_REPORTED_SEPARATELY",
+        "MIN_DISPLACEMENT_M=0.68"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION coordinates",
+        "optional R1_OBD at labels"
+      ],
+      "supportingAndContradicting": [
+        {
+          "tier": "NEUTRAL",
+          "text": "Chord-implied 0.1 km/h averages displacement over entire 54s gap — compatible with halt+departure inside gap.",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "SUPPORTS",
+          "text": "Small endpoint chord 1.7 m across 54s gap.",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "SUPPORTS",
+          "text": "Post-gap calendar leg shows departure while chord remains small — halt-then-depart pattern.",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "NEUTRAL",
+          "text": "Distant approach context mean leg 33.0 km/h (not gap-edge).",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "NEUTRAL",
+          "text": "Distant depart context mean leg 54.8 km/h (includes post-halt driving).",
+          "epistemic": "INFERRED"
+        }
+      ],
+      "metrics": {
+        "endpointDisplacementM": 1.6693710515541964,
+        "impliedChordKmh": 0.11129140343694642,
+        "legIntoGapKmh": null,
+        "legOutOfGapKmh": 12.011657798081133,
+        "legIntoGapClass": "INCONCLUSIVE_SCATTER",
+        "legOutOfGapClass": "MOVING_GEOMETRY",
+        "distantBeforeMeanKmh": 32.96369947505117,
+        "distantAfterMeanKmh": 54.78875706359889
+      },
+      "hypothesisScores": {
+        "LIKELY_HALT": 5,
+        "LIKELY_SLOW_ROLL_STOP_GO": 0,
+        "LIKELY_MOVING_WITH_GAP": 0
+      },
+      "decisiveFeatures": [
+        {
+          "feature": "endpointChordM",
+          "value": 1.6693710515541964,
+          "role": "gap endpoints (calendar-adjacent present)"
+        },
+        {
+          "feature": "gapDurationSec",
+          "value": 54,
+          "role": "ROW_ABSENT span"
+        },
+        {
+          "feature": "impliedChordKmh",
+          "value": 0.1,
+          "role": "average over gap — not standstill duration"
+        },
+        {
+          "feature": "legIntoGapKmh",
+          "value": null,
+          "role": "calendar leg 2026-10-16T03:43:41Z→2026-10-16T03:43:42Z"
+        },
+        {
+          "feature": "legOutOfGapKmh",
+          "value": 12,
+          "role": "calendar leg 2026-10-16T03:44:37Z→2026-10-16T03:44:38Z"
+        }
+      ],
+      "bracketStructure": {
+        "calendarAdjacentBefore": "2026-10-16T03:43:42Z",
+        "calendarAdjacentAfter": "2026-10-16T03:44:37Z",
+        "calendarBracketBeforeLabels": [
+          "2026-10-16T03:43:38Z",
+          "2026-10-16T03:43:39Z",
+          "2026-10-16T03:43:40Z",
+          "2026-10-16T03:43:41Z",
+          "2026-10-16T03:43:42Z"
+        ],
+        "calendarBracketAfterLabels": [
+          "2026-10-16T03:44:37Z",
+          "2026-10-16T03:44:38Z",
+          "2026-10-16T03:44:39Z",
+          "2026-10-16T03:44:40Z",
+          "2026-10-16T03:44:41Z"
+        ],
+        "distantContextBeforeLabels": [
+          "2026-10-16T03:43:30Z",
+          "2026-10-16T03:43:31Z",
+          "2026-10-16T03:43:32Z",
+          "2026-10-16T03:43:33Z",
+          "2026-10-16T03:43:34Z",
+          "2026-10-16T03:43:35Z",
+          "2026-10-16T03:43:36Z",
+          "2026-10-16T03:43:37Z"
+        ],
+        "distantContextAfterLabels": [
+          "2026-10-16T03:44:42Z",
+          "2026-10-16T03:44:43Z",
+          "2026-10-16T03:44:44Z",
+          "2026-10-16T03:44:45Z",
+          "2026-10-16T03:44:46Z",
+          "2026-10-16T03:44:47Z",
+          "2026-10-16T03:44:48Z",
+          "2026-10-16T03:44:49Z"
+        ]
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:44:41Z",
+      "mapContextVariantB": {
+        "available": true,
+        "osmMeta": {
+          "fetchedAtUtc": "2026-10-16T18:25:53.520Z",
+          "source": "OpenStreetMap Overpass API (highway=traffic_signals, POST interpreter)",
+          "requestMethod": "POST"
+        },
+        "nearestTrafficSignalM": 5.798457777403979,
+        "nearestTrafficSignalId": 3199787347,
+        "travelBearingDeg": 177.61411438343077,
+        "bearingToNearestSignalDeg": 208.10019912924025,
+        "bearingDeltaDeg": 30.486084745809478,
+        "roadAssociation": "not_resolved_v0_2",
+        "note": "Proximity + bearing hint only; no red-phase knowledge; street graph not joined in v0_2.",
+        "epistemic": "INFERRED"
+      }
+    },
+    {
+      "eventId": "GAP_EVT_009",
+      "kind": "POSITION_GAP",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:54:22Z",
+        "to": "2026-10-16T03:54:24Z"
+      },
+      "gapDurationSec": 3,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Gap length known; standstill duration NOT inferred from gap alone.",
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "rulesApplied": [
+        "V0_2_COMPOSITE_HYPOTHESIS",
+        "CALENDAR_ADJACENT_GAP_EDGES",
+        "DISTANT_CONTEXT_REPORTED_SEPARATELY",
+        "MIN_DISPLACEMENT_M=0.68"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION coordinates",
+        "optional R1_OBD at labels"
+      ],
+      "supportingAndContradicting": [
+        {
+          "tier": "NEUTRAL",
+          "text": "Chord-implied 1.4 km/h averages displacement over entire 3s gap — compatible with halt+departure inside gap.",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "WEAK_SUPPORTS",
+          "text": "Slow-roll geometry adjacent to gap.",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "NEUTRAL",
+          "text": "Distant approach context mean leg 28.8 km/h (not gap-edge).",
+          "epistemic": "INFERRED"
+        },
+        {
+          "tier": "NEUTRAL",
+          "text": "Distant depart context mean leg 3.3 km/h (includes post-halt driving).",
+          "epistemic": "INFERRED"
+        }
+      ],
+      "metrics": {
+        "endpointDisplacementM": 1.1832203079417392,
+        "impliedChordKmh": 1.419864369530087,
+        "legIntoGapKmh": 2.7851248372039907,
+        "legOutOfGapKmh": 3.945659601797485,
+        "legIntoGapClass": "SLOW_ROLL_GEOMETRY",
+        "legOutOfGapClass": "SLOW_ROLL_GEOMETRY",
+        "distantBeforeMeanKmh": 28.787298070071405,
+        "distantAfterMeanKmh": 3.2934604263128207
+      },
+      "hypothesisScores": {
+        "LIKELY_HALT": 1,
+        "LIKELY_SLOW_ROLL_STOP_GO": 4,
+        "LIKELY_MOVING_WITH_GAP": 0
+      },
+      "decisiveFeatures": [
+        {
+          "feature": "endpointChordM",
+          "value": 1.1832203079417392,
+          "role": "gap endpoints (calendar-adjacent present)"
+        },
+        {
+          "feature": "gapDurationSec",
+          "value": 3,
+          "role": "ROW_ABSENT span"
+        },
+        {
+          "feature": "impliedChordKmh",
+          "value": 1.4,
+          "role": "average over gap — not standstill duration"
+        },
+        {
+          "feature": "legIntoGapKmh",
+          "value": 2.8,
+          "role": "calendar leg 2026-10-16T03:54:20Z→2026-10-16T03:54:21Z"
+        },
+        {
+          "feature": "legOutOfGapKmh",
+          "value": 3.9,
+          "role": "calendar leg 2026-10-16T03:54:25Z→2026-10-16T03:54:26Z"
+        }
+      ],
+      "bracketStructure": {
+        "calendarAdjacentBefore": "2026-10-16T03:54:21Z",
+        "calendarAdjacentAfter": "2026-10-16T03:54:25Z",
+        "calendarBracketBeforeLabels": [
+          "2026-10-16T03:54:17Z",
+          "2026-10-16T03:54:18Z",
+          "2026-10-16T03:54:19Z",
+          "2026-10-16T03:54:20Z",
+          "2026-10-16T03:54:21Z"
+        ],
+        "calendarBracketAfterLabels": [
+          "2026-10-16T03:54:25Z",
+          "2026-10-16T03:54:26Z",
+          "2026-10-16T03:54:27Z",
+          "2026-10-16T03:54:28Z",
+          "2026-10-16T03:54:29Z"
+        ],
+        "distantContextBeforeLabels": [
+          "2026-10-16T03:54:09Z",
+          "2026-10-16T03:54:10Z",
+          "2026-10-16T03:54:11Z",
+          "2026-10-16T03:54:12Z",
+          "2026-10-16T03:54:13Z",
+          "2026-10-16T03:54:14Z",
+          "2026-10-16T03:54:15Z",
+          "2026-10-16T03:54:16Z"
+        ],
+        "distantContextAfterLabels": [
+          "2026-10-16T03:54:30Z",
+          "2026-10-16T03:54:32Z",
+          "2026-10-16T03:54:33Z",
+          "2026-10-16T03:54:34Z",
+          "2026-10-16T03:54:37Z",
+          "2026-10-16T03:54:38Z",
+          "2026-10-16T03:54:39Z",
+          "2026-10-16T03:54:40Z"
+        ]
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:54:29Z",
+      "mapContextVariantB": {
+        "available": true,
+        "osmMeta": {
+          "fetchedAtUtc": "2026-10-16T18:25:53.520Z",
+          "source": "OpenStreetMap Overpass API (highway=traffic_signals, POST interpreter)",
+          "requestMethod": "POST"
+        },
+        "nearestTrafficSignalM": 571.9393027784093,
+        "nearestTrafficSignalId": 3762563160,
+        "travelBearingDeg": 270.0000066275928,
+        "bearingToNearestSignalDeg": 183.8940941180379,
+        "bearingDeltaDeg": 86.10591250955491,
+        "roadAssociation": "not_resolved_v0_2",
+        "note": "Proximity + bearing hint only; no red-phase knowledge; street graph not joined in v0_2.",
+        "epistemic": "INFERRED"
+      }
+    },
+    {
+      "eventId": "GAP_EVT_010",
+      "kind": "POSITION_GAP",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:54:45Z",
+        "to": "2026-10-16T03:54:55Z"
+      },
+      "gapDurationSec": 11,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Gap length known; standstill duration NOT inferred from gap alone.",
+      "classification": "NOT_DISTINGUISHABLE",
+      "rulesApplied": [
+        "V0_2_COMPOSITE_HYPOTHESIS",
+        "CALENDAR_ADJACENT_GAP_EDGES",
+        "DISTANT_CONTEXT_REPORTED_SEPARATELY",
+        "MIN_DISPLACEMENT_M=0.68"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION coordinates",
+        "optional R1_OBD at labels"
+      ],
+      "supportingAndContradicting": [
+        {
+          "tier": "NEUTRAL",
+          "text": "Distant approach context mean leg 3.3 km/h (not gap-edge).",
+          "epistemic": "INFERRED"
+        }
+      ],
+      "metrics": {
+        "endpointDisplacementM": null,
+        "impliedChordKmh": null,
+        "legIntoGapKmh": null,
+        "legOutOfGapKmh": null,
+        "legIntoGapClass": "INCONCLUSIVE_SCATTER",
+        "legOutOfGapClass": null,
+        "distantBeforeMeanKmh": 3.3123808727775983,
+        "distantAfterMeanKmh": null
+      },
+      "hypothesisScores": {
+        "LIKELY_HALT": 0,
+        "LIKELY_SLOW_ROLL_STOP_GO": 0,
+        "LIKELY_MOVING_WITH_GAP": 0
+      },
+      "decisiveFeatures": [
+        {
+          "feature": "legIntoGapKmh",
+          "value": null,
+          "role": "calendar leg 2026-10-16T03:54:42Z→2026-10-16T03:54:44Z"
+        }
+      ],
+      "bracketStructure": {
+        "calendarAdjacentBefore": "2026-10-16T03:54:44Z",
+        "calendarAdjacentAfter": null,
+        "calendarBracketBeforeLabels": [
+          "2026-10-16T03:54:40Z",
+          "2026-10-16T03:54:41Z",
+          "2026-10-16T03:54:42Z",
+          "2026-10-16T03:54:44Z"
+        ],
+        "calendarBracketAfterLabels": [],
+        "distantContextBeforeLabels": [
+          "2026-10-16T03:54:29Z",
+          "2026-10-16T03:54:30Z",
+          "2026-10-16T03:54:32Z",
+          "2026-10-16T03:54:33Z",
+          "2026-10-16T03:54:34Z",
+          "2026-10-16T03:54:37Z",
+          "2026-10-16T03:54:38Z",
+          "2026-10-16T03:54:39Z"
+        ],
+        "distantContextAfterLabels": []
+      },
+      "retrospectiveStatementPossibleAtUtc": null,
+      "mapContextVariantB": {
+        "available": true,
+        "osmMeta": {
+          "fetchedAtUtc": "2026-10-16T18:25:53.520Z",
+          "source": "OpenStreetMap Overpass API (highway=traffic_signals, POST interpreter)",
+          "requestMethod": "POST"
+        },
+        "nearestTrafficSignalM": 567.127653111242,
+        "nearestTrafficSignalId": 3762563160,
+        "travelBearingDeg": null,
+        "bearingToNearestSignalDeg": 183.32822261655645,
+        "bearingDeltaDeg": null,
+        "roadAssociation": "not_resolved_v0_2",
+        "note": "Proximity + bearing hint only; no red-phase knowledge; street graph not joined in v0_2.",
+        "epistemic": "INFERRED"
+      }
+    },
+    {
+      "eventId": "SLOW_EVT_001",
+      "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:37:46Z",
+        "to": "2026-10-16T03:37:51Z"
+      },
+      "gapDurationSec": null,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Calendar 1s leg basis only; present-chain span>2 excluded.",
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "rulesApplied": [
+        "LEG_GEOMETRY_1_5_TO_5_KMH",
+        "SCATTER_FILTER",
+        "V0_2_NO_CHAIN_SPAN_AGGREGATE"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION leg geometry"
+      ],
+      "supportingAndContradicting": [],
+      "metrics": {
+        "segmentSeconds": 6
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:37:51Z",
+      "mapContextVariantB": null
+    },
+    {
+      "eventId": "SLOW_EVT_002",
+      "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:37:56Z",
+        "to": "2026-10-16T03:37:56Z"
+      },
+      "gapDurationSec": null,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Calendar 1s leg basis only; present-chain span>2 excluded.",
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "rulesApplied": [
+        "LEG_GEOMETRY_1_5_TO_5_KMH",
+        "SCATTER_FILTER",
+        "V0_2_NO_CHAIN_SPAN_AGGREGATE"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION leg geometry"
+      ],
+      "supportingAndContradicting": [],
+      "metrics": {
+        "segmentSeconds": 1
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:37:56Z",
+      "mapContextVariantB": null
+    },
+    {
+      "eventId": "SLOW_EVT_003",
+      "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:38:00Z",
+        "to": "2026-10-16T03:38:08Z"
+      },
+      "gapDurationSec": null,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Calendar 1s leg basis only; present-chain span>2 excluded.",
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "rulesApplied": [
+        "LEG_GEOMETRY_1_5_TO_5_KMH",
+        "SCATTER_FILTER",
+        "V0_2_NO_CHAIN_SPAN_AGGREGATE"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION leg geometry"
+      ],
+      "supportingAndContradicting": [],
+      "metrics": {
+        "segmentSeconds": 9
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:38:08Z",
+      "mapContextVariantB": null
+    },
+    {
+      "eventId": "SLOW_EVT_004",
+      "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:38:11Z",
+        "to": "2026-10-16T03:38:14Z"
+      },
+      "gapDurationSec": null,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Calendar 1s leg basis only; present-chain span>2 excluded.",
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "rulesApplied": [
+        "LEG_GEOMETRY_1_5_TO_5_KMH",
+        "SCATTER_FILTER",
+        "V0_2_NO_CHAIN_SPAN_AGGREGATE"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION leg geometry"
+      ],
+      "supportingAndContradicting": [],
+      "metrics": {
+        "segmentSeconds": 4
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:38:14Z",
+      "mapContextVariantB": null
+    },
+    {
+      "eventId": "SLOW_EVT_005",
+      "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:38:57Z",
+        "to": "2026-10-16T03:39:01Z"
+      },
+      "gapDurationSec": null,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Calendar 1s leg basis only; present-chain span>2 excluded.",
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "rulesApplied": [
+        "LEG_GEOMETRY_1_5_TO_5_KMH",
+        "SCATTER_FILTER",
+        "V0_2_NO_CHAIN_SPAN_AGGREGATE"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION leg geometry"
+      ],
+      "supportingAndContradicting": [],
+      "metrics": {
+        "segmentSeconds": 5
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:39:01Z",
+      "mapContextVariantB": null
+    },
+    {
+      "eventId": "SLOW_EVT_006",
+      "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:39:47Z",
+        "to": "2026-10-16T03:39:47Z"
+      },
+      "gapDurationSec": null,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Calendar 1s leg basis only; present-chain span>2 excluded.",
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "rulesApplied": [
+        "LEG_GEOMETRY_1_5_TO_5_KMH",
+        "SCATTER_FILTER",
+        "V0_2_NO_CHAIN_SPAN_AGGREGATE"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION leg geometry"
+      ],
+      "supportingAndContradicting": [],
+      "metrics": {
+        "segmentSeconds": 1
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:39:47Z",
+      "mapContextVariantB": null
+    },
+    {
+      "eventId": "SLOW_EVT_007",
+      "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:41:48Z",
+        "to": "2026-10-16T03:41:48Z"
+      },
+      "gapDurationSec": null,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Calendar 1s leg basis only; present-chain span>2 excluded.",
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "rulesApplied": [
+        "LEG_GEOMETRY_1_5_TO_5_KMH",
+        "SCATTER_FILTER",
+        "V0_2_NO_CHAIN_SPAN_AGGREGATE"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION leg geometry"
+      ],
+      "supportingAndContradicting": [],
+      "metrics": {
+        "segmentSeconds": 1
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:41:48Z",
+      "mapContextVariantB": null
+    },
+    {
+      "eventId": "SLOW_EVT_008",
+      "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:42:47Z",
+        "to": "2026-10-16T03:42:47Z"
+      },
+      "gapDurationSec": null,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Calendar 1s leg basis only; present-chain span>2 excluded.",
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "rulesApplied": [
+        "LEG_GEOMETRY_1_5_TO_5_KMH",
+        "SCATTER_FILTER",
+        "V0_2_NO_CHAIN_SPAN_AGGREGATE"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION leg geometry"
+      ],
+      "supportingAndContradicting": [],
+      "metrics": {
+        "segmentSeconds": 1
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:42:47Z",
+      "mapContextVariantB": null
+    },
+    {
+      "eventId": "SLOW_EVT_009",
+      "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:43:41Z",
+        "to": "2026-10-16T03:43:41Z"
+      },
+      "gapDurationSec": null,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Calendar 1s leg basis only; present-chain span>2 excluded.",
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "rulesApplied": [
+        "LEG_GEOMETRY_1_5_TO_5_KMH",
+        "SCATTER_FILTER",
+        "V0_2_NO_CHAIN_SPAN_AGGREGATE"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION leg geometry"
+      ],
+      "supportingAndContradicting": [],
+      "metrics": {
+        "segmentSeconds": 1
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:43:41Z",
+      "mapContextVariantB": null
+    },
+    {
+      "eventId": "SLOW_EVT_010",
+      "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:45:50Z",
+        "to": "2026-10-16T03:45:52Z"
+      },
+      "gapDurationSec": null,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Calendar 1s leg basis only; present-chain span>2 excluded.",
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "rulesApplied": [
+        "LEG_GEOMETRY_1_5_TO_5_KMH",
+        "SCATTER_FILTER",
+        "V0_2_NO_CHAIN_SPAN_AGGREGATE"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION leg geometry"
+      ],
+      "supportingAndContradicting": [],
+      "metrics": {
+        "segmentSeconds": 3
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:45:52Z",
+      "mapContextVariantB": null
+    },
+    {
+      "eventId": "SLOW_EVT_011",
+      "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:54:20Z",
+        "to": "2026-10-16T03:54:20Z"
+      },
+      "gapDurationSec": null,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Calendar 1s leg basis only; present-chain span>2 excluded.",
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "rulesApplied": [
+        "LEG_GEOMETRY_1_5_TO_5_KMH",
+        "SCATTER_FILTER",
+        "V0_2_NO_CHAIN_SPAN_AGGREGATE"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION leg geometry"
+      ],
+      "supportingAndContradicting": [],
+      "metrics": {
+        "segmentSeconds": 1
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:54:20Z",
+      "mapContextVariantB": null
+    },
+    {
+      "eventId": "SLOW_EVT_012",
+      "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:54:26Z",
+        "to": "2026-10-16T03:54:29Z"
+      },
+      "gapDurationSec": null,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Calendar 1s leg basis only; present-chain span>2 excluded.",
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "rulesApplied": [
+        "LEG_GEOMETRY_1_5_TO_5_KMH",
+        "SCATTER_FILTER",
+        "V0_2_NO_CHAIN_SPAN_AGGREGATE"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION leg geometry"
+      ],
+      "supportingAndContradicting": [],
+      "metrics": {
+        "segmentSeconds": 4
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:54:29Z",
+      "mapContextVariantB": null
+    },
+    {
+      "eventId": "SLOW_EVT_013",
+      "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:54:33Z",
+        "to": "2026-10-16T03:54:33Z"
+      },
+      "gapDurationSec": null,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Calendar 1s leg basis only; present-chain span>2 excluded.",
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "rulesApplied": [
+        "LEG_GEOMETRY_1_5_TO_5_KMH",
+        "SCATTER_FILTER",
+        "V0_2_NO_CHAIN_SPAN_AGGREGATE"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION leg geometry"
+      ],
+      "supportingAndContradicting": [],
+      "metrics": {
+        "segmentSeconds": 1
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:54:33Z",
+      "mapContextVariantB": null
+    },
+    {
+      "eventId": "SLOW_EVT_014",
+      "kind": "SLOW_ROLL_GEOMETRY_SEGMENT",
+      "consideredWindowUtc": {
+        "from": "2026-10-16T03:54:38Z",
+        "to": "2026-10-16T03:54:40Z"
+      },
+      "gapDurationSec": null,
+      "standstillDurationSec": null,
+      "durationUncertainty": "Calendar 1s leg basis only; present-chain span>2 excluded.",
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "rulesApplied": [
+        "LEG_GEOMETRY_1_5_TO_5_KMH",
+        "SCATTER_FILTER",
+        "V0_2_NO_CHAIN_SPAN_AGGREGATE"
+      ],
+      "measurementsUsed": [
+        "pinned POSITION leg geometry"
+      ],
+      "supportingAndContradicting": [],
+      "metrics": {
+        "segmentSeconds": 3
+      },
+      "retrospectiveStatementPossibleAtUtc": "2026-10-16T03:54:40Z",
+      "mapContextVariantB": null
+    }
+  ],
+  "abComparison": {
+    "variantA": {
+      "label": "geometry + calendar-adjacent brackets (v0_2)",
+      "classificationCounts": {
+        "NOT_DISTINGUISHABLE": 3,
+        "LIKELY_HALT": 6,
+        "LIKELY_SLOW_ROLL_STOP_GO": 1
+      }
+    },
+    "variantB": {
+      "label": "A + OSM traffic_signals proximity/bearing (classification unchanged)",
+      "classificationCounts": {
+        "NOT_DISTINGUISHABLE": 3,
+        "LIKELY_HALT": 6,
+        "LIKELY_SLOW_ROLL_STOP_GO": 1
+      },
+      "signalsInBbox": 658,
+      "eventsWithSignalWithin30m": 4,
+      "osmFetch": {
+        "source": "OpenStreetMap Overpass API (highway=traffic_signals, POST interpreter)",
+        "fetchedAtUtc": "2026-10-16T18:25:53.520Z",
+        "requestMethod": "POST",
+        "httpStatus": 200,
+        "error": null
+      }
+    },
+    "measurableDifference": "v0_2: core explanation unchanged; B adds signal proximity + bearing delta metadata."
+  },
+  "videoEvaluation": {
+    "disclaimer": "knownHaltsFoundCount is CANDIDATE COVERAGE (overlap), not classification accuracy.",
+    "knownHaltsTotal": 5,
+    "knownHaltsCandidateCoverageCount": 5,
+    "knownHaltsClassificationAlignedCount": 5,
+    "mainHaltRows": [
+      {
+        "knownHaltId": "LONG_HALT_1",
+        "videoWindowUtc": {
+          "from": "2026-10-16T03:40:19Z",
+          "to": "2026-10-16T03:40:49Z"
+        },
+        "videoTachoZeroDurationSec": 31,
+        "candidateCoverage": {
+          "overlappingEventIds": [
+            "GAP_EVT_005"
+          ],
+          "overlapMeansCandidateFound": true,
+          "classificationCorrect": true
+        },
+        "matchedCandidateWindow": {
+          "from": "2026-10-16T03:40:19Z",
+          "to": "2026-10-16T03:40:50Z",
+          "eventId": "GAP_EVT_005",
+          "classification": "LIKELY_HALT"
+        },
+        "predictedClass": "LIKELY_HALT",
+        "decisiveFeatures": [
+          {
+            "feature": "endpointChordM",
+            "value": 1.1336668274961743,
+            "role": "gap endpoints (calendar-adjacent present)"
+          },
+          {
+            "feature": "gapDurationSec",
+            "value": 32,
+            "role": "ROW_ABSENT span"
+          },
+          {
+            "feature": "impliedChordKmh",
+            "value": 0.1,
+            "role": "average over gap — not standstill duration"
+          },
+          {
+            "feature": "legIntoGapKmh",
+            "value": null,
+            "role": "calendar leg 2026-10-16T03:40:17Z→2026-10-16T03:40:18Z"
+          },
+          {
+            "feature": "legOutOfGapKmh",
+            "value": 9.4,
+            "role": "calendar leg 2026-10-16T03:40:51Z→2026-10-16T03:40:52Z"
+          }
+        ],
+        "supportingEvidence": [
+          "Small endpoint chord 1.1 m across 32s gap.",
+          "Post-gap calendar leg shows departure while chord remains small — halt-then-depart pattern."
+        ],
+        "contradictingEvidence": [],
+        "videoComparisonOutcome": "ALIGNED_HALT_CLASS",
+        "v01MisclassificationNote": "v0_1 used bracket mean speeds + chord contradicts; v0_2 uses calendar-adjacent legs and composite halt+departure scoring."
+      },
+      {
+        "knownHaltId": "LONG_HALT_2",
+        "videoWindowUtc": {
+          "from": "2026-10-16T03:41:50Z",
+          "to": "2026-10-16T03:42:29Z"
+        },
+        "videoTachoZeroDurationSec": 40,
+        "candidateCoverage": {
+          "overlappingEventIds": [
+            "GAP_EVT_006"
+          ],
+          "overlapMeansCandidateFound": true,
+          "classificationCorrect": true
+        },
+        "matchedCandidateWindow": {
+          "from": "2026-10-16T03:41:50Z",
+          "to": "2026-10-16T03:42:30Z",
+          "eventId": "GAP_EVT_006",
+          "classification": "LIKELY_HALT"
+        },
+        "predictedClass": "LIKELY_HALT",
+        "decisiveFeatures": [
+          {
+            "feature": "endpointChordM",
+            "value": 2.12296344489598,
+            "role": "gap endpoints (calendar-adjacent present)"
+          },
+          {
+            "feature": "gapDurationSec",
+            "value": 41,
+            "role": "ROW_ABSENT span"
+          },
+          {
+            "feature": "impliedChordKmh",
+            "value": 0.2,
+            "role": "average over gap — not standstill duration"
+          },
+          {
+            "feature": "legIntoGapKmh",
+            "value": 2.8,
+            "role": "calendar leg 2026-10-16T03:41:48Z→2026-10-16T03:41:49Z"
+          },
+          {
+            "feature": "legOutOfGapKmh",
+            "value": 11.7,
+            "role": "calendar leg 2026-10-16T03:42:31Z→2026-10-16T03:42:32Z"
+          }
+        ],
+        "supportingEvidence": [
+          "Small endpoint chord 2.1 m across 41s gap.",
+          "Post-gap calendar leg shows departure while chord remains small — halt-then-depart pattern.",
+          "Slow-roll geometry adjacent to gap."
+        ],
+        "contradictingEvidence": [],
+        "videoComparisonOutcome": "ALIGNED_HALT_CLASS",
+        "v01MisclassificationNote": "v0_1 used bracket mean speeds + chord contradicts; v0_2 uses calendar-adjacent legs and composite halt+departure scoring."
+      },
+      {
+        "knownHaltId": "LONG_HALT_3",
+        "videoWindowUtc": {
+          "from": "2026-10-16T03:42:50Z",
+          "to": "2026-10-16T03:42:57Z"
+        },
+        "videoTachoZeroDurationSec": 8,
+        "candidateCoverage": {
+          "overlappingEventIds": [
+            "GAP_EVT_007"
+          ],
+          "overlapMeansCandidateFound": true,
+          "classificationCorrect": true
+        },
+        "matchedCandidateWindow": {
+          "from": "2026-10-16T03:42:51Z",
+          "to": "2026-10-16T03:42:57Z",
+          "eventId": "GAP_EVT_007",
+          "classification": "LIKELY_HALT"
+        },
+        "predictedClass": "LIKELY_HALT",
+        "decisiveFeatures": [
+          {
+            "feature": "endpointChordM",
+            "value": 0.4912108229850152,
+            "role": "gap endpoints (calendar-adjacent present)"
+          },
+          {
+            "feature": "gapDurationSec",
+            "value": 7,
+            "role": "ROW_ABSENT span"
+          },
+          {
+            "feature": "impliedChordKmh",
+            "value": 0.3,
+            "role": "average over gap — not standstill duration"
+          },
+          {
+            "feature": "legIntoGapKmh",
+            "value": null,
+            "role": "calendar leg 2026-10-16T03:42:48Z→2026-10-16T03:42:50Z"
+          },
+          {
+            "feature": "legOutOfGapKmh",
+            "value": 8.2,
+            "role": "calendar leg 2026-10-16T03:42:58Z→2026-10-16T03:42:59Z"
+          }
+        ],
+        "supportingEvidence": [
+          "Small endpoint chord 0.5 m across 7s gap.",
+          "Post-gap calendar leg shows departure while chord remains small — halt-then-depart pattern."
+        ],
+        "contradictingEvidence": [],
+        "videoComparisonOutcome": "ALIGNED_HALT_CLASS",
+        "v01MisclassificationNote": "v0_1 used bracket mean speeds + chord contradicts; v0_2 uses calendar-adjacent legs and composite halt+departure scoring."
+      },
+      {
+        "knownHaltId": "LONG_HALT_4",
+        "videoWindowUtc": {
+          "from": "2026-10-16T03:43:43Z",
+          "to": "2026-10-16T03:44:02Z"
+        },
+        "videoTachoZeroDurationSec": 20,
+        "candidateCoverage": {
+          "overlappingEventIds": [
+            "GAP_EVT_008"
+          ],
+          "overlapMeansCandidateFound": true,
+          "classificationCorrect": true
+        },
+        "matchedCandidateWindow": {
+          "from": "2026-10-16T03:43:43Z",
+          "to": "2026-10-16T03:44:36Z",
+          "eventId": "GAP_EVT_008",
+          "classification": "LIKELY_HALT"
+        },
+        "predictedClass": "LIKELY_HALT",
+        "decisiveFeatures": [
+          {
+            "feature": "endpointChordM",
+            "value": 1.6693710515541964,
+            "role": "gap endpoints (calendar-adjacent present)"
+          },
+          {
+            "feature": "gapDurationSec",
+            "value": 54,
+            "role": "ROW_ABSENT span"
+          },
+          {
+            "feature": "impliedChordKmh",
+            "value": 0.1,
+            "role": "average over gap — not standstill duration"
+          },
+          {
+            "feature": "legIntoGapKmh",
+            "value": null,
+            "role": "calendar leg 2026-10-16T03:43:41Z→2026-10-16T03:43:42Z"
+          },
+          {
+            "feature": "legOutOfGapKmh",
+            "value": 12,
+            "role": "calendar leg 2026-10-16T03:44:37Z→2026-10-16T03:44:38Z"
+          }
+        ],
+        "supportingEvidence": [
+          "Small endpoint chord 1.7 m across 54s gap.",
+          "Post-gap calendar leg shows departure while chord remains small — halt-then-depart pattern."
+        ],
+        "contradictingEvidence": [],
+        "videoComparisonOutcome": "ALIGNED_HALT_CLASS",
+        "v01MisclassificationNote": "v0_1 used bracket mean speeds + chord contradicts; v0_2 uses calendar-adjacent legs and composite halt+departure scoring."
+      },
+      {
+        "knownHaltId": "LONG_HALT_5",
+        "videoWindowUtc": {
+          "from": "2026-10-16T03:44:10Z",
+          "to": "2026-10-16T03:44:35Z"
+        },
+        "videoTachoZeroDurationSec": 26,
+        "candidateCoverage": {
+          "overlappingEventIds": [
+            "GAP_EVT_008"
+          ],
+          "overlapMeansCandidateFound": true,
+          "classificationCorrect": true
+        },
+        "matchedCandidateWindow": {
+          "from": "2026-10-16T03:43:43Z",
+          "to": "2026-10-16T03:44:36Z",
+          "eventId": "GAP_EVT_008",
+          "classification": "LIKELY_HALT"
+        },
+        "predictedClass": "LIKELY_HALT",
+        "decisiveFeatures": [
+          {
+            "feature": "endpointChordM",
+            "value": 1.6693710515541964,
+            "role": "gap endpoints (calendar-adjacent present)"
+          },
+          {
+            "feature": "gapDurationSec",
+            "value": 54,
+            "role": "ROW_ABSENT span"
+          },
+          {
+            "feature": "impliedChordKmh",
+            "value": 0.1,
+            "role": "average over gap — not standstill duration"
+          },
+          {
+            "feature": "legIntoGapKmh",
+            "value": null,
+            "role": "calendar leg 2026-10-16T03:43:41Z→2026-10-16T03:43:42Z"
+          },
+          {
+            "feature": "legOutOfGapKmh",
+            "value": 12,
+            "role": "calendar leg 2026-10-16T03:44:37Z→2026-10-16T03:44:38Z"
+          }
+        ],
+        "supportingEvidence": [
+          "Small endpoint chord 1.7 m across 54s gap.",
+          "Post-gap calendar leg shows departure while chord remains small — halt-then-depart pattern."
+        ],
+        "contradictingEvidence": [],
+        "videoComparisonOutcome": "ALIGNED_HALT_CLASS",
+        "v01MisclassificationNote": "v0_1 used bracket mean speeds + chord contradicts; v0_2 uses calendar-adjacent legs and composite halt+departure scoring."
+      }
+    ],
+    "referenceDurationsSec": [
+      31,
+      40,
+      8,
+      20,
+      26
+    ],
+    "referenceDurationsNote": "Per-window tacho-0 second counts from video overlay (not a single 31–40s band)."
+  },
+  "naturalMovementGapEvaluation": [
+    {
+      "eventId": "GAP_EVT_001",
+      "window": {
+        "from": "2026-10-16T03:36:00Z",
+        "to": "2026-10-16T03:36:05Z"
+      },
+      "classification": "NOT_DISTINGUISHABLE",
+      "videoInGap": {
+        "tacho0": 0,
+        "tacho1to3": 0,
+        "tachoGt3": 0,
+        "unknown": 6
+      }
+    },
+    {
+      "eventId": "GAP_EVT_002",
+      "window": {
+        "from": "2026-10-16T03:36:07Z",
+        "to": "2026-10-16T03:36:55Z"
+      },
+      "classification": "LIKELY_HALT",
+      "videoInGap": {
+        "tacho0": 0,
+        "tacho1to3": 0,
+        "tachoGt3": 0,
+        "unknown": 49
+      }
+    },
+    {
+      "eventId": "GAP_EVT_003",
+      "window": {
+        "from": "2026-10-16T03:36:59Z",
+        "to": "2026-10-16T03:37:44Z"
+      },
+      "classification": "LIKELY_HALT",
+      "videoInGap": {
+        "tacho0": 3,
+        "tacho1to3": 0,
+        "tachoGt3": 0,
+        "unknown": 43
+      }
+    },
+    {
+      "eventId": "GAP_EVT_004",
+      "window": {
+        "from": "2026-10-16T03:38:19Z",
+        "to": "2026-10-16T03:38:21Z"
+      },
+      "classification": "NOT_DISTINGUISHABLE",
+      "videoInGap": {
+        "tacho0": 2,
+        "tacho1to3": 1,
+        "tachoGt3": 0,
+        "unknown": 0
+      }
+    },
+    {
+      "eventId": "GAP_EVT_005",
+      "window": {
+        "from": "2026-10-16T03:40:19Z",
+        "to": "2026-10-16T03:40:50Z"
+      },
+      "classification": "LIKELY_HALT",
+      "videoInGap": {
+        "tacho0": 31,
+        "tacho1to3": 1,
+        "tachoGt3": 0,
+        "unknown": 0
+      }
+    },
+    {
+      "eventId": "GAP_EVT_006",
+      "window": {
+        "from": "2026-10-16T03:41:50Z",
+        "to": "2026-10-16T03:42:30Z"
+      },
+      "classification": "LIKELY_HALT",
+      "videoInGap": {
+        "tacho0": 40,
+        "tacho1to3": 0,
+        "tachoGt3": 1,
+        "unknown": 0
+      }
+    },
+    {
+      "eventId": "GAP_EVT_007",
+      "window": {
+        "from": "2026-10-16T03:42:51Z",
+        "to": "2026-10-16T03:42:57Z"
+      },
+      "classification": "LIKELY_HALT",
+      "videoInGap": {
+        "tacho0": 7,
+        "tacho1to3": 0,
+        "tachoGt3": 0,
+        "unknown": 0
+      }
+    },
+    {
+      "eventId": "GAP_EVT_008",
+      "window": {
+        "from": "2026-10-16T03:43:43Z",
+        "to": "2026-10-16T03:44:36Z"
+      },
+      "classification": "LIKELY_HALT",
+      "videoInGap": {
+        "tacho0": 46,
+        "tacho1to3": 0,
+        "tachoGt3": 1,
+        "unknown": 7
+      }
+    },
+    {
+      "eventId": "GAP_EVT_009",
+      "window": {
+        "from": "2026-10-16T03:54:22Z",
+        "to": "2026-10-16T03:54:24Z"
+      },
+      "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+      "videoInGap": {
+        "tacho0": 2,
+        "tacho1to3": 1,
+        "tachoGt3": 0,
+        "unknown": 0
+      }
+    },
+    {
+      "eventId": "GAP_EVT_010",
+      "window": {
+        "from": "2026-10-16T03:54:45Z",
+        "to": "2026-10-16T03:54:55Z"
+      },
+      "classification": "NOT_DISTINGUISHABLE",
+      "videoInGap": {
+        "tacho0": 0,
+        "tacho1to3": 0,
+        "tachoGt3": 0,
+        "unknown": 11
+      }
+    }
+  ],
+  "slowRollVideoCrossTab": {
+    "totalSlowRollGeometrySeconds": 52,
+    "aggregateEligibleSeconds": 41,
+    "presentChainSpanGt2SecCount": 3,
+    "videoCrossTabAllSlowRoll": {
+      "tacho_0": 0,
+      "tacho_1_3": 20,
+      "tacho_gt_3": 20,
+      "tacho_unknown": 12
+    },
+    "videoCrossTabAggregateEligibleOnly": {
+      "tacho_0": 0,
+      "tacho_1_3": 14,
+      "tacho_gt_3": 17,
+      "tacho_unknown": 10
+    },
+    "perSecondSample": [
+      {
+        "label": "2026-10-16T03:37:45Z",
+        "bucket": "tacho_unknown",
+        "tacho": null,
+        "legBasis": "PRESENT_CHAIN",
+        "chainSpanSec": 47,
+        "aggregateEligible": false
+      },
+      {
+        "label": "2026-10-16T03:37:46Z",
+        "bucket": "tacho_unknown",
+        "tacho": null,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:37:47Z",
+        "bucket": "tacho_unknown",
+        "tacho": null,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:37:48Z",
+        "bucket": "tacho_unknown",
+        "tacho": null,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:37:49Z",
+        "bucket": "tacho_unknown",
+        "tacho": null,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:37:50Z",
+        "bucket": "tacho_unknown",
+        "tacho": null,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:37:51Z",
+        "bucket": "tacho_unknown",
+        "tacho": null,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:37:55Z",
+        "bucket": "tacho_1_3",
+        "tacho": 3,
+        "legBasis": "PRESENT_CHAIN",
+        "chainSpanSec": 2,
+        "aggregateEligible": false
+      },
+      {
+        "label": "2026-10-16T03:37:56Z",
+        "bucket": "tacho_1_3",
+        "tacho": 2,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:38:00Z",
+        "bucket": "tacho_1_3",
+        "tacho": 2,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:38:01Z",
+        "bucket": "tacho_1_3",
+        "tacho": 3,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:38:02Z",
+        "bucket": "tacho_1_3",
+        "tacho": 3,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:38:03Z",
+        "bucket": "tacho_1_3",
+        "tacho": 3,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:38:04Z",
+        "bucket": "tacho_gt_3",
+        "tacho": 4,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:38:05Z",
+        "bucket": "tacho_gt_3",
+        "tacho": 4,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:38:06Z",
+        "bucket": "tacho_gt_3",
+        "tacho": 5,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:38:07Z",
+        "bucket": "tacho_gt_3",
+        "tacho": 4,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:38:08Z",
+        "bucket": "tacho_gt_3",
+        "tacho": 5,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:38:11Z",
+        "bucket": "tacho_unknown",
+        "tacho": null,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:38:12Z",
+        "bucket": "tacho_1_3",
+        "tacho": 3,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:38:13Z",
+        "bucket": "tacho_1_3",
+        "tacho": 3,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:38:14Z",
+        "bucket": "tacho_1_3",
+        "tacho": 3,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:38:57Z",
+        "bucket": "tacho_gt_3",
+        "tacho": 5,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:38:58Z",
+        "bucket": "tacho_gt_3",
+        "tacho": 4,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:38:59Z",
+        "bucket": "tacho_gt_3",
+        "tacho": 4,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:39:00Z",
+        "bucket": "tacho_gt_3",
+        "tacho": 4,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:39:01Z",
+        "bucket": "tacho_gt_3",
+        "tacho": 4,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:39:47Z",
+        "bucket": "tacho_1_3",
+        "tacho": 2,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:41:48Z",
+        "bucket": "tacho_1_3",
+        "tacho": 3,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:41:49Z",
+        "bucket": "tacho_1_3",
+        "tacho": 1,
+        "legBasis": "PRESENT_CHAIN",
+        "chainSpanSec": 1,
+        "aggregateEligible": false
+      },
+      {
+        "label": "2026-10-16T03:42:47Z",
+        "bucket": "tacho_1_3",
+        "tacho": 3,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:42:48Z",
+        "bucket": "tacho_1_3",
+        "tacho": 1,
+        "legBasis": "PRESENT_CHAIN",
+        "chainSpanSec": 1,
+        "aggregateEligible": false
+      },
+      {
+        "label": "2026-10-16T03:43:41Z",
+        "bucket": "tacho_1_3",
+        "tacho": 2,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:45:50Z",
+        "bucket": "tacho_1_3",
+        "tacho": 3,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:45:51Z",
+        "bucket": "tacho_unknown",
+        "tacho": null,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:45:52Z",
+        "bucket": "tacho_unknown",
+        "tacho": null,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:45:53Z",
+        "bucket": "tacho_unknown",
+        "tacho": null,
+        "legBasis": "PRESENT_CHAIN",
+        "chainSpanSec": 1,
+        "aggregateEligible": false
+      },
+      {
+        "label": "2026-10-16T03:54:20Z",
+        "bucket": "tacho_unknown",
+        "tacho": null,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:54:21Z",
+        "bucket": "tacho_1_3",
+        "tacho": 1,
+        "legBasis": "PRESENT_CHAIN",
+        "chainSpanSec": 1,
+        "aggregateEligible": false
+      },
+      {
+        "label": "2026-10-16T03:54:25Z",
+        "bucket": "tacho_gt_3",
+        "tacho": 4,
+        "legBasis": "PRESENT_CHAIN",
+        "chainSpanSec": 4,
+        "aggregateEligible": false
+      },
+      {
+        "label": "2026-10-16T03:54:26Z",
+        "bucket": "tacho_gt_3",
+        "tacho": 4,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:54:27Z",
+        "bucket": "tacho_gt_3",
+        "tacho": 4,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:54:28Z",
+        "bucket": "tacho_gt_3",
+        "tacho": 4,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:54:29Z",
+        "bucket": "tacho_gt_3",
+        "tacho": 4,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:54:30Z",
+        "bucket": "tacho_1_3",
+        "tacho": 1,
+        "legBasis": "PRESENT_CHAIN",
+        "chainSpanSec": 1,
+        "aggregateEligible": false
+      },
+      {
+        "label": "2026-10-16T03:54:32Z",
+        "bucket": "tacho_gt_3",
+        "tacho": 6,
+        "legBasis": "PRESENT_CHAIN",
+        "chainSpanSec": 2,
+        "aggregateEligible": false
+      },
+      {
+        "label": "2026-10-16T03:54:33Z",
+        "bucket": "tacho_gt_3",
+        "tacho": 5,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:54:34Z",
+        "bucket": "tacho_1_3",
+        "tacho": 1,
+        "legBasis": "PRESENT_CHAIN",
+        "chainSpanSec": 1,
+        "aggregateEligible": false
+      },
+      {
+        "label": "2026-10-16T03:54:37Z",
+        "bucket": "tacho_gt_3",
+        "tacho": 4,
+        "legBasis": "PRESENT_CHAIN",
+        "chainSpanSec": 3,
+        "aggregateEligible": false
+      },
+      {
+        "label": "2026-10-16T03:54:38Z",
+        "bucket": "tacho_gt_3",
+        "tacho": 4,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:54:39Z",
+        "bucket": "tacho_gt_3",
+        "tacho": 4,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      },
+      {
+        "label": "2026-10-16T03:54:40Z",
+        "bucket": "tacho_1_3",
+        "tacho": 3,
+        "legBasis": "CALENDAR_1S",
+        "chainSpanSec": 1,
+        "aggregateEligible": true
+      }
+    ],
+    "perSecondFullFile": "SLOW_ROLL_VIDEO_CROSS_TAB.json",
+    "note": "Unknown tacho not counted as hits in aggregate scoring; chain-span>2s legs excluded from slow-roll aggregate."
+  },
+  "syntheticGapBattery": {
+    "natural": false,
+    "cases": [
+      {
+        "id": "SYN_MOVING_MASK_6S",
+        "context": "steady moving section",
+        "synthetic": true,
+        "injectedGap": {
+          "fromUtc": "2026-10-16T03:47:33Z",
+          "toUtc": "2026-10-16T03:47:38Z",
+          "durationSec": 6,
+          "labels": [
+            "2026-10-16T03:47:33Z",
+            "2026-10-16T03:47:34Z",
+            "2026-10-16T03:47:35Z",
+            "2026-10-16T03:47:36Z",
+            "2026-10-16T03:47:37Z",
+            "2026-10-16T03:47:38Z"
+          ]
+        },
+        "classification": "LIKELY_MOVING_WITH_GAP",
+        "hypothesisScores": {
+          "LIKELY_HALT": 0,
+          "LIKELY_SLOW_ROLL_STOP_GO": 0,
+          "LIKELY_MOVING_WITH_GAP": 4
+        },
+        "expectation": "should not be LIKELY_HALT",
+        "pass": true
+      },
+      {
+        "id": "SYN_MOVING_MASK_12S",
+        "context": "steady moving section",
+        "synthetic": true,
+        "injectedGap": {
+          "fromUtc": "2026-10-16T03:47:33Z",
+          "toUtc": "2026-10-16T03:47:44Z",
+          "durationSec": 12,
+          "labels": [
+            "2026-10-16T03:47:33Z",
+            "2026-10-16T03:47:34Z",
+            "2026-10-16T03:47:35Z",
+            "2026-10-16T03:47:36Z",
+            "2026-10-16T03:47:37Z",
+            "2026-10-16T03:47:38Z",
+            "2026-10-16T03:47:39Z",
+            "2026-10-16T03:47:40Z",
+            "2026-10-16T03:47:41Z",
+            "2026-10-16T03:47:42Z",
+            "2026-10-16T03:47:43Z",
+            "2026-10-16T03:47:44Z"
+          ]
+        },
+        "classification": "LIKELY_MOVING_WITH_GAP",
+        "hypothesisScores": {
+          "LIKELY_HALT": 0,
+          "LIKELY_SLOW_ROLL_STOP_GO": 0,
+          "LIKELY_MOVING_WITH_GAP": 4
+        },
+        "expectation": "should not be LIKELY_HALT",
+        "pass": true
+      },
+      {
+        "id": "SYN_SLOW_ROLL_MASK_8S",
+        "context": "slow roll geometry",
+        "synthetic": true,
+        "injectedGap": {
+          "fromUtc": "2026-10-16T03:37:47Z",
+          "toUtc": "2026-10-16T03:38:02Z",
+          "durationSec": 8,
+          "labels": [
+            "2026-10-16T03:37:47Z",
+            "2026-10-16T03:37:48Z",
+            "2026-10-16T03:37:49Z",
+            "2026-10-16T03:37:50Z",
+            "2026-10-16T03:37:51Z",
+            "2026-10-16T03:37:56Z",
+            "2026-10-16T03:38:01Z",
+            "2026-10-16T03:38:02Z"
+          ]
+        },
+        "classification": "NOT_DISTINGUISHABLE",
+        "hypothesisScores": {
+          "LIKELY_HALT": 4,
+          "LIKELY_SLOW_ROLL_STOP_GO": 4,
+          "LIKELY_MOVING_WITH_GAP": 0
+        },
+        "expectation": "not LIKELY_HALT on masked moving labels",
+        "pass": true
+      },
+      {
+        "id": "NATURAL_GAP_REPLAY_0",
+        "context": "first natural gap replay",
+        "synthetic": false,
+        "injectedGap": {
+          "fromUtc": "2026-10-16T03:36:00Z",
+          "toUtc": "2026-10-16T03:36:05Z",
+          "durationSec": 6,
+          "labels": [
+            "2026-10-16T03:36:00Z",
+            "2026-10-16T03:36:01Z",
+            "2026-10-16T03:36:02Z",
+            "2026-10-16T03:36:03Z",
+            "2026-10-16T03:36:04Z",
+            "2026-10-16T03:36:05Z"
+          ]
+        },
+        "classification": "NOT_DISTINGUISHABLE",
+        "hypothesisScores": {
+          "LIKELY_HALT": 0,
+          "LIKELY_SLOW_ROLL_STOP_GO": 0,
+          "LIKELY_MOVING_WITH_GAP": 0
+        },
+        "expectation": "document natural classification",
+        "pass": true
+      }
+    ]
+  },
+  "mapArtifact": {
+    "htmlFile": "MAP_REVIEW.html",
+    "osm": {
+      "signalCount": 658,
+      "signals": [
+        {
+          "id": 12449813,
+          "lat": 51.3064439,
+          "lon": 9.4379578
+        },
+        {
+          "id": 25765084,
+          "lat": 51.3254251,
+          "lon": 9.4786724
+        },
+        {
+          "id": 25766011,
+          "lat": 51.3190165,
+          "lon": 9.5083923
+        },
+        {
+          "id": 32864622,
+          "lat": 51.314472,
+          "lon": 9.4876457
+        },
+        {
+          "id": 42408999,
+          "lat": 51.326085,
+          "lon": 9.4623652
+        },
+        {
+          "id": 202612920,
+          "lat": 51.3001588,
+          "lon": 9.4314128
+        },
+        {
+          "id": 207458671,
+          "lat": 51.2817824,
+          "lon": 9.4640732
+        },
+        {
+          "id": 208540920,
+          "lat": 51.2614427,
+          "lon": 9.4373823
+        },
+        {
+          "id": 220158393,
+          "lat": 51.2775311,
+          "lon": 9.4482515
+        },
+        {
+          "id": 229805091,
+          "lat": 51.2929221,
+          "lon": 9.4540124
+        },
+        {
+          "id": 246057849,
+          "lat": 51.315849,
+          "lon": 9.4736366
+        },
+        {
+          "id": 248462950,
+          "lat": 51.303704,
+          "lon": 9.4261744
+        },
+        {
+          "id": 266860234,
+          "lat": 51.3105859,
+          "lon": 9.4936311
+        },
+        {
+          "id": 273509284,
+          "lat": 51.2728205,
+          "lon": 9.5053292
+        },
+        {
+          "id": 322528005,
+          "lat": 51.2830764,
+          "lon": 9.4966197
+        },
+        {
+          "id": 330140439,
+          "lat": 51.2716085,
+          "lon": 9.4576145
+        },
+        {
+          "id": 389706327,
+          "lat": 51.3109152,
+          "lon": 9.4310064
+        },
+        {
+          "id": 430266356,
+          "lat": 51.3150705,
+          "lon": 9.4295482
+        },
+        {
+          "id": 431517985,
+          "lat": 51.3113852,
+          "lon": 9.513132
+        },
+        {
+          "id": 431672316,
+          "lat": 51.3041088,
+          "lon": 9.484191
+        },
+        {
+          "id": 431672379,
+          "lat": 51.2999395,
+          "lon": 9.4815833
+        },
+        {
+          "id": 431672449,
+          "lat": 51.3038675,
+          "lon": 9.47283
+        },
+        {
+          "id": 431672576,
+          "lat": 51.2950814,
+          "lon": 9.4785843
+        },
+        {
+          "id": 443458228,
+          "lat": 51.3105045,
+          "lon": 9.5123501
+        },
+        {
+          "id": 445341127,
+          "lat": 51.3186205,
+          "lon": 9.5154688
+        },
+        {
+          "id": 449540791,
+          "lat": 51.3001117,
+          "lon": 9.4311235
+        },
+        {
+          "id": 461938596,
+          "lat": 51.3106003,
+          "lon": 9.4466293
+        },
+        {
+          "id": 491381966,
+          "lat": 51.2963419,
+          "lon": 9.4791867
+        },
+        {
+          "id": 612606147,
+          "lat": 51.3365738,
+          "lon": 9.4908278
+        },
+        {
+          "id": 618003850,
+          "lat": 51.3232739,
+          "lon": 9.5127699
+        },
+        {
+          "id": 659062042,
+          "lat": 51.3035445,
+          "lon": 9.5169104
+        },
+        {
+          "id": 733107434,
+          "lat": 51.3108048,
+          "lon": 9.4932724
+        },
+        {
+          "id": 733107601,
+          "lat": 51.3108058,
+          "lon": 9.4938399
+        },
+        {
+          "id": 735143091,
+          "lat": 51.321291,
+          "lon": 9.5020805
+        },
+        {
+          "id": 735143092,
+          "lat": 51.3211122,
+          "lon": 9.502603
+        },
+        {
+          "id": 741532216,
+          "lat": 51.3105091,
+          "lon": 9.4468353
+        },
+        {
+          "id": 766011773,
+          "lat": 51.3188248,
+          "lon": 9.5155505
+        },
+        {
+          "id": 768880072,
+          "lat": 51.3133317,
+          "lon": 9.4978913
+        },
+        {
+          "id": 856297312,
+          "lat": 51.2859349,
+          "lon": 9.497805
+        },
+        {
+          "id": 856297367,
+          "lat": 51.2857933,
+          "lon": 9.4974809
+        },
+        {
+          "id": 858161044,
+          "lat": 51.2861698,
+          "lon": 9.4691571
+        },
+        {
+          "id": 864443925,
+          "lat": 51.324565,
+          "lon": 9.5128083
+        },
+        {
+          "id": 864443958,
+          "lat": 51.3244766,
+          "lon": 9.5131108
+        },
+        {
+          "id": 913002882,
+          "lat": 51.2726019,
+          "lon": 9.5055835
+        },
+        {
+          "id": 922007068,
+          "lat": 51.2954519,
+          "lon": 9.4783732
+        },
+        {
+          "id": 926470578,
+          "lat": 51.3082318,
+          "lon": 9.4538542
+        },
+        {
+          "id": 972433180,
+          "lat": 51.3088302,
+          "lon": 9.5188993
+        },
+        {
+          "id": 972433192,
+          "lat": 51.3086272,
+          "lon": 9.5186478
+        },
+        {
+          "id": 1156257255,
+          "lat": 51.3076188,
+          "lon": 9.44488
+        },
+        {
+          "id": 1217826371,
+          "lat": 51.2842997,
+          "lon": 9.469193
+        },
+        {
+          "id": 1217826449,
+          "lat": 51.2858711,
+          "lon": 9.4687705
+        },
+        {
+          "id": 1225104582,
+          "lat": 51.3122009,
+          "lon": 9.4963672
+        },
+        {
+          "id": 1225104589,
+          "lat": 51.3122265,
+          "lon": 9.4967116
+        },
+        {
+          "id": 1300020304,
+          "lat": 51.3106468,
+          "lon": 9.5133221
+        },
+        {
+          "id": 1320922957,
+          "lat": 51.3132334,
+          "lon": 9.4484053
+        },
+        {
+          "id": 1322336175,
+          "lat": 51.3112162,
+          "lon": 9.5120321
+        },
+        {
+          "id": 1374237374,
+          "lat": 51.3093268,
+          "lon": 9.4287987
+        },
+        {
+          "id": 1380491826,
+          "lat": 51.3180745,
+          "lon": 9.4997777
+        },
+        {
+          "id": 1395994929,
+          "lat": 51.2665147,
+          "lon": 9.43279
+        },
+        {
+          "id": 1402609633,
+          "lat": 51.3104951,
+          "lon": 9.4469714
+        },
+        {
+          "id": 1425002932,
+          "lat": 51.2793178,
+          "lon": 9.4643957
+        },
+        {
+          "id": 1589307763,
+          "lat": 51.2759504,
+          "lon": 9.4527486
+        },
+        {
+          "id": 1738471700,
+          "lat": 51.3133705,
+          "lon": 9.4477686
+        },
+        {
+          "id": 1779574139,
+          "lat": 51.3151072,
+          "lon": 9.4297052
+        },
+        {
+          "id": 1779574152,
+          "lat": 51.3151251,
+          "lon": 9.4297821
+        },
+        {
+          "id": 1779574162,
+          "lat": 51.3151413,
+          "lon": 9.4298518
+        },
+        {
+          "id": 1779574172,
+          "lat": 51.3151577,
+          "lon": 9.4299219
+        },
+        {
+          "id": 1779574177,
+          "lat": 51.3151801,
+          "lon": 9.4300182
+        },
+        {
+          "id": 1779574218,
+          "lat": 51.3152645,
+          "lon": 9.4291358
+        },
+        {
+          "id": 1779574224,
+          "lat": 51.3152796,
+          "lon": 9.4292002
+        },
+        {
+          "id": 1779574432,
+          "lat": 51.3163468,
+          "lon": 9.4285747
+        },
+        {
+          "id": 1916338387,
+          "lat": 51.3129559,
+          "lon": 9.4533734
+        },
+        {
+          "id": 1942029941,
+          "lat": 51.3198861,
+          "lon": 9.4540356
+        },
+        {
+          "id": 1946846259,
+          "lat": 51.3153142,
+          "lon": 9.4776488
+        },
+        {
+          "id": 1953539735,
+          "lat": 51.3181272,
+          "lon": 9.4954397
+        },
+        {
+          "id": 1962534336,
+          "lat": 51.2616016,
+          "lon": 9.4369123
+        },
+        {
+          "id": 1962534352,
+          "lat": 51.2622231,
+          "lon": 9.4259231
+        },
+        {
+          "id": 1962534362,
+          "lat": 51.2623669,
+          "lon": 9.4255757
+        },
+        {
+          "id": 1962572601,
+          "lat": 51.2661184,
+          "lon": 9.4318005
+        },
+        {
+          "id": 1962638701,
+          "lat": 51.2730145,
+          "lon": 9.442099
+        },
+        {
+          "id": 1962638704,
+          "lat": 51.2730728,
+          "lon": 9.4425685
+        },
+        {
+          "id": 1962638716,
+          "lat": 51.2735505,
+          "lon": 9.4434677
+        },
+        {
+          "id": 1964888965,
+          "lat": 51.3208885,
+          "lon": 9.451638
+        },
+        {
+          "id": 1964919938,
+          "lat": 51.2978139,
+          "lon": 9.4807099
+        },
+        {
+          "id": 1965706983,
+          "lat": 51.2851351,
+          "lon": 9.4488996
+        },
+        {
+          "id": 1967402731,
+          "lat": 51.2610458,
+          "lon": 9.4365028
+        },
+        {
+          "id": 1967402772,
+          "lat": 51.261149,
+          "lon": 9.4362815
+        },
+        {
+          "id": 1967402793,
+          "lat": 51.2611712,
+          "lon": 9.4365316
+        },
+        {
+          "id": 1967402911,
+          "lat": 51.2613928,
+          "lon": 9.4370699
+        },
+        {
+          "id": 1967402997,
+          "lat": 51.2615045,
+          "lon": 9.4367438
+        },
+        {
+          "id": 1968329490,
+          "lat": 51.3154462,
+          "lon": 9.4781943
+        },
+        {
+          "id": 1968622479,
+          "lat": 51.3090713,
+          "lon": 9.4688668
+        },
+        {
+          "id": 1968628979,
+          "lat": 51.3076786,
+          "lon": 9.4484148
+        },
+        {
+          "id": 1975662222,
+          "lat": 51.3306098,
+          "lon": 9.5135892
+        },
+        {
+          "id": 1975690240,
+          "lat": 51.3235385,
+          "lon": 9.5132755
+        },
+        {
+          "id": 1975690266,
+          "lat": 51.3305421,
+          "lon": 9.5129801
+        },
+        {
+          "id": 1994297090,
+          "lat": 51.3120776,
+          "lon": 9.4649017
+        },
+        {
+          "id": 1994297098,
+          "lat": 51.3123005,
+          "lon": 9.4657832
+        },
+        {
+          "id": 1994297105,
+          "lat": 51.3124268,
+          "lon": 9.4665244
+        },
+        {
+          "id": 1994297139,
+          "lat": 51.3125673,
+          "lon": 9.4666799
+        },
+        {
+          "id": 1994297162,
+          "lat": 51.3127097,
+          "lon": 9.4664594
+        },
+        {
+          "id": 1994367438,
+          "lat": 51.3131933,
+          "lon": 9.4538505
+        },
+        {
+          "id": 2098264143,
+          "lat": 51.3136193,
+          "lon": 9.4684605
+        },
+        {
+          "id": 2104795819,
+          "lat": 51.2725604,
+          "lon": 9.5051181
+        },
+        {
+          "id": 2104795820,
+          "lat": 51.2728632,
+          "lon": 9.5057537
+        },
+        {
+          "id": 2104818648,
+          "lat": 51.2718467,
+          "lon": 9.5022485
+        },
+        {
+          "id": 2104825144,
+          "lat": 51.2638087,
+          "lon": 9.5105551
+        },
+        {
+          "id": 2162876680,
+          "lat": 51.288957,
+          "lon": 9.5012808
+        },
+        {
+          "id": 2168967837,
+          "lat": 51.274866,
+          "lon": 9.4420243
+        },
+        {
+          "id": 2307700334,
+          "lat": 51.3303928,
+          "lon": 9.4571552
+        },
+        {
+          "id": 2315033940,
+          "lat": 51.3134787,
+          "lon": 9.4984401
+        },
+        {
+          "id": 2317692564,
+          "lat": 51.2925252,
+          "lon": 9.4814376
+        },
+        {
+          "id": 2317692579,
+          "lat": 51.2929097,
+          "lon": 9.4814932
+        },
+        {
+          "id": 2317699342,
+          "lat": 51.2963291,
+          "lon": 9.4820247
+        },
+        {
+          "id": 2317759939,
+          "lat": 51.3137119,
+          "lon": 9.5003638
+        },
+        {
+          "id": 2317759940,
+          "lat": 51.313961,
+          "lon": 9.5007179
+        },
+        {
+          "id": 2317791676,
+          "lat": 51.3176728,
+          "lon": 9.4912205
+        },
+        {
+          "id": 2317791696,
+          "lat": 51.3175411,
+          "lon": 9.4907953
+        },
+        {
+          "id": 2317795450,
+          "lat": 51.3105237,
+          "lon": 9.4469579
+        },
+        {
+          "id": 2319438134,
+          "lat": 51.3188179,
+          "lon": 9.5156958
+        },
+        {
+          "id": 2319455611,
+          "lat": 51.3161716,
+          "lon": 9.5055953
+        },
+        {
+          "id": 2319455612,
+          "lat": 51.3157746,
+          "lon": 9.5057001
+        },
+        {
+          "id": 2319455613,
+          "lat": 51.3156886,
+          "lon": 9.5052546
+        },
+        {
+          "id": 2319468610,
+          "lat": 51.313616,
+          "lon": 9.5179696
+        },
+        {
+          "id": 2319468611,
+          "lat": 51.3132868,
+          "lon": 9.5177591
+        },
+        {
+          "id": 2319468613,
+          "lat": 51.3135714,
+          "lon": 9.5180612
+        },
+        {
+          "id": 2319468615,
+          "lat": 51.3137141,
+          "lon": 9.5174634
+        },
+        {
+          "id": 2360170298,
+          "lat": 51.3206625,
+          "lon": 9.5146842
+        },
+        {
+          "id": 2377436479,
+          "lat": 51.3134433,
+          "lon": 9.4485915
+        },
+        {
+          "id": 2406654492,
+          "lat": 51.318288,
+          "lon": 9.4983057
+        },
+        {
+          "id": 2415394712,
+          "lat": 51.3078685,
+          "lon": 9.4450841
+        },
+        {
+          "id": 2435580596,
+          "lat": 51.2420392,
+          "lon": 9.4367202
+        },
+        {
+          "id": 2435580597,
+          "lat": 51.242042,
+          "lon": 9.4372109
+        },
+        {
+          "id": 2447426334,
+          "lat": 51.2435014,
+          "lon": 9.4314697
+        },
+        {
+          "id": 2447426343,
+          "lat": 51.2437307,
+          "lon": 9.4316074
+        },
+        {
+          "id": 2510955532,
+          "lat": 51.3092455,
+          "lon": 9.4691989
+        },
+        {
+          "id": 2510955535,
+          "lat": 51.3092701,
+          "lon": 9.4685649
+        },
+        {
+          "id": 2510955540,
+          "lat": 51.3094219,
+          "lon": 9.4689553
+        },
+        {
+          "id": 2510955558,
+          "lat": 51.311602,
+          "lon": 9.4829686
+        },
+        {
+          "id": 2510955559,
+          "lat": 51.3117357,
+          "lon": 9.4831124
+        },
+        {
+          "id": 2510955561,
+          "lat": 51.3118198,
+          "lon": 9.491466
+        },
+        {
+          "id": 2510955563,
+          "lat": 51.3118303,
+          "lon": 9.4919593
+        },
+        {
+          "id": 2510955570,
+          "lat": 51.3120599,
+          "lon": 9.473869
+        },
+        {
+          "id": 2510955571,
+          "lat": 51.3120636,
+          "lon": 9.4912606
+        },
+        {
+          "id": 2510955572,
+          "lat": 51.3121028,
+          "lon": 9.4710378
+        },
+        {
+          "id": 2510955573,
+          "lat": 51.3121999,
+          "lon": 9.473992
+        },
+        {
+          "id": 2510955574,
+          "lat": 51.31222,
+          "lon": 9.4708071
+        },
+        {
+          "id": 2510955576,
+          "lat": 51.3123166,
+          "lon": 9.4715753
+        },
+        {
+          "id": 2510955578,
+          "lat": 51.312465,
+          "lon": 9.4713149
+        },
+        {
+          "id": 2510955589,
+          "lat": 51.3137911,
+          "lon": 9.4889168
+        },
+        {
+          "id": 2510955590,
+          "lat": 51.3137744,
+          "lon": 9.4892464
+        },
+        {
+          "id": 2510955592,
+          "lat": 51.314121,
+          "lon": 9.4883927
+        },
+        {
+          "id": 2510955594,
+          "lat": 51.3142786,
+          "lon": 9.4891549
+        },
+        {
+          "id": 2510955597,
+          "lat": 51.3144644,
+          "lon": 9.4857526
+        },
+        {
+          "id": 2510955599,
+          "lat": 51.3146085,
+          "lon": 9.4855045
+        },
+        {
+          "id": 2510955600,
+          "lat": 51.3145814,
+          "lon": 9.4860278
+        },
+        {
+          "id": 2512003635,
+          "lat": 51.3070627,
+          "lon": 9.4874131
+        },
+        {
+          "id": 2512003646,
+          "lat": 51.307282,
+          "lon": 9.4871239
+        },
+        {
+          "id": 2512003649,
+          "lat": 51.3074842,
+          "lon": 9.487868
+        },
+        {
+          "id": 2512003728,
+          "lat": 51.3125627,
+          "lon": 9.4966548
+        },
+        {
+          "id": 2512003733,
+          "lat": 51.3131467,
+          "lon": 9.4978757
+        },
+        {
+          "id": 2512003741,
+          "lat": 51.3136028,
+          "lon": 9.4987163
+        },
+        {
+          "id": 2513163548,
+          "lat": 51.3196682,
+          "lon": 9.4537446
+        },
+        {
+          "id": 2514240335,
+          "lat": 51.296019,
+          "lon": 9.4824027
+        },
+        {
+          "id": 2514240337,
+          "lat": 51.2960365,
+          "lon": 9.4822629
+        },
+        {
+          "id": 2514240341,
+          "lat": 51.2962081,
+          "lon": 9.4793277
+        },
+        {
+          "id": 2514240346,
+          "lat": 51.2962381,
+          "lon": 9.4825021
+        },
+        {
+          "id": 2514240376,
+          "lat": 51.2981563,
+          "lon": 9.4811648
+        },
+        {
+          "id": 2514240383,
+          "lat": 51.2984783,
+          "lon": 9.4810918
+        },
+        {
+          "id": 2514240387,
+          "lat": 51.2984923,
+          "lon": 9.4805076
+        },
+        {
+          "id": 2514240408,
+          "lat": 51.2986752,
+          "lon": 9.4808489
+        },
+        {
+          "id": 2514240420,
+          "lat": 51.2994225,
+          "lon": 9.4815897
+        },
+        {
+          "id": 2514240448,
+          "lat": 51.2995675,
+          "lon": 9.4813585
+        },
+        {
+          "id": 2514240451,
+          "lat": 51.2999138,
+          "lon": 9.4790461
+        },
+        {
+          "id": 2514240463,
+          "lat": 51.3010252,
+          "lon": 9.4773316
+        },
+        {
+          "id": 2514240465,
+          "lat": 51.3010291,
+          "lon": 9.477561
+        },
+        {
+          "id": 2514240478,
+          "lat": 51.3038605,
+          "lon": 9.472624
+        },
+        {
+          "id": 2527274347,
+          "lat": 51.3131757,
+          "lon": 9.5094041
+        },
+        {
+          "id": 2527274366,
+          "lat": 51.3149302,
+          "lon": 9.5036151
+        },
+        {
+          "id": 2527274371,
+          "lat": 51.3151213,
+          "lon": 9.5037496
+        },
+        {
+          "id": 2527274385,
+          "lat": 51.3161292,
+          "lon": 9.4925814
+        },
+        {
+          "id": 2527274444,
+          "lat": 51.3163986,
+          "lon": 9.4930324
+        },
+        {
+          "id": 2527274457,
+          "lat": 51.3164581,
+          "lon": 9.4923767
+        },
+        {
+          "id": 2527274473,
+          "lat": 51.3165728,
+          "lon": 9.4929381
+        },
+        {
+          "id": 2527274504,
+          "lat": 51.3173379,
+          "lon": 9.4908576
+        },
+        {
+          "id": 2527274513,
+          "lat": 51.317378,
+          "lon": 9.4913943
+        },
+        {
+          "id": 2527274582,
+          "lat": 51.3179913,
+          "lon": 9.4915605
+        },
+        {
+          "id": 2527274589,
+          "lat": 51.3180198,
+          "lon": 9.500687
+        },
+        {
+          "id": 2527274631,
+          "lat": 51.3181955,
+          "lon": 9.4917032
+        },
+        {
+          "id": 2527274645,
+          "lat": 51.3182211,
+          "lon": 9.491375
+        },
+        {
+          "id": 2527274666,
+          "lat": 51.3183124,
+          "lon": 9.5003096
+        },
+        {
+          "id": 2527274670,
+          "lat": 51.3182979,
+          "lon": 9.4981493
+        },
+        {
+          "id": 2527274689,
+          "lat": 51.3185407,
+          "lon": 9.4985448
+        },
+        {
+          "id": 2527274705,
+          "lat": 51.3186911,
+          "lon": 9.4959397
+        },
+        {
+          "id": 2527274723,
+          "lat": 51.3188906,
+          "lon": 9.495405
+        },
+        {
+          "id": 2528020411,
+          "lat": 51.3181604,
+          "lon": 9.4956594
+        },
+        {
+          "id": 2528020415,
+          "lat": 51.3182956,
+          "lon": 9.4953416
+        },
+        {
+          "id": 2528020417,
+          "lat": 51.3185149,
+          "lon": 9.4979024
+        },
+        {
+          "id": 2528020421,
+          "lat": 51.318987,
+          "lon": 9.4964178
+        },
+        {
+          "id": 2528020424,
+          "lat": 51.3192456,
+          "lon": 9.4959893
+        },
+        {
+          "id": 2528020430,
+          "lat": 51.3200315,
+          "lon": 9.492484
+        },
+        {
+          "id": 2528020431,
+          "lat": 51.3200229,
+          "lon": 9.4930543
+        },
+        {
+          "id": 2528020435,
+          "lat": 51.320181,
+          "lon": 9.4929057
+        },
+        {
+          "id": 2528020437,
+          "lat": 51.3205392,
+          "lon": 9.4970566
+        },
+        {
+          "id": 2528020438,
+          "lat": 51.3206673,
+          "lon": 9.4969695
+        },
+        {
+          "id": 2528104506,
+          "lat": 51.3165118,
+          "lon": 9.4934847
+        },
+        {
+          "id": 2528104508,
+          "lat": 51.3167853,
+          "lon": 9.4933046
+        },
+        {
+          "id": 2528104519,
+          "lat": 51.3211638,
+          "lon": 9.4975248
+        },
+        {
+          "id": 2528104525,
+          "lat": 51.321876,
+          "lon": 9.4981729
+        },
+        {
+          "id": 2528104528,
+          "lat": 51.3219798,
+          "lon": 9.4985578
+        },
+        {
+          "id": 2528104536,
+          "lat": 51.322134,
+          "lon": 9.4979418
+        },
+        {
+          "id": 2528104542,
+          "lat": 51.3230587,
+          "lon": 9.4905074
+        },
+        {
+          "id": 2528104550,
+          "lat": 51.3232356,
+          "lon": 9.4899031
+        },
+        {
+          "id": 2528104553,
+          "lat": 51.3233103,
+          "lon": 9.4906423
+        },
+        {
+          "id": 2528191408,
+          "lat": 51.3186808,
+          "lon": 9.5086814
+        },
+        {
+          "id": 2528191410,
+          "lat": 51.3188902,
+          "lon": 9.5091722
+        },
+        {
+          "id": 2528191414,
+          "lat": 51.3191709,
+          "lon": 9.5089102
+        },
+        {
+          "id": 2528191421,
+          "lat": 51.3202361,
+          "lon": 9.5055389
+        },
+        {
+          "id": 2528191422,
+          "lat": 51.320272,
+          "lon": 9.5057165
+        },
+        {
+          "id": 2528191432,
+          "lat": 51.3207391,
+          "lon": 9.502248
+        },
+        {
+          "id": 2528191439,
+          "lat": 51.3210171,
+          "lon": 9.5025521
+        },
+        {
+          "id": 2528191442,
+          "lat": 51.3210372,
+          "lon": 9.5018452
+        },
+        {
+          "id": 2528191460,
+          "lat": 51.3221693,
+          "lon": 9.5121465
+        },
+        {
+          "id": 2528191461,
+          "lat": 51.3222942,
+          "lon": 9.512479
+        },
+        {
+          "id": 2528191463,
+          "lat": 51.3224798,
+          "lon": 9.5118913
+        },
+        {
+          "id": 2528191467,
+          "lat": 51.3226492,
+          "lon": 9.5122718
+        },
+        {
+          "id": 2528191472,
+          "lat": 51.323113,
+          "lon": 9.5130103
+        },
+        {
+          "id": 2528191481,
+          "lat": 51.3243844,
+          "lon": 9.5009524
+        },
+        {
+          "id": 2528191482,
+          "lat": 51.324451,
+          "lon": 9.5007308
+        },
+        {
+          "id": 2528191483,
+          "lat": 51.3246376,
+          "lon": 9.5131741
+        },
+        {
+          "id": 2528191484,
+          "lat": 51.3248124,
+          "lon": 9.5129742
+        },
+        {
+          "id": 2531002528,
+          "lat": 51.3210843,
+          "lon": 9.4513784
+        },
+        {
+          "id": 2531002530,
+          "lat": 51.3208337,
+          "lon": 9.4511675
+        },
+        {
+          "id": 2537035560,
+          "lat": 51.3113741,
+          "lon": 9.5119811
+        },
+        {
+          "id": 2537126428,
+          "lat": 51.3107906,
+          "lon": 9.5136842
+        },
+        {
+          "id": 2537126488,
+          "lat": 51.3136549,
+          "lon": 9.5174465
+        },
+        {
+          "id": 2537126490,
+          "lat": 51.3137009,
+          "lon": 9.5170462
+        },
+        {
+          "id": 2653331904,
+          "lat": 51.287307,
+          "lon": 9.4702625
+        },
+        {
+          "id": 2687172715,
+          "lat": 51.3209611,
+          "lon": 9.4515516
+        },
+        {
+          "id": 2687390450,
+          "lat": 51.3145129,
+          "lon": 9.4703323
+        },
+        {
+          "id": 2698628222,
+          "lat": 51.2753329,
+          "lon": 9.5080191
+        },
+        {
+          "id": 2698628223,
+          "lat": 51.2754446,
+          "lon": 9.5083736
+        },
+        {
+          "id": 2698628226,
+          "lat": 51.2815415,
+          "lon": 9.5149231
+        },
+        {
+          "id": 2698628233,
+          "lat": 51.2874198,
+          "lon": 9.4701589
+        },
+        {
+          "id": 2713975215,
+          "lat": 51.3035935,
+          "lon": 9.426667
+        },
+        {
+          "id": 2713975234,
+          "lat": 51.3038679,
+          "lon": 9.4269145
+        },
+        {
+          "id": 2713975253,
+          "lat": 51.3039819,
+          "lon": 9.4263777
+        },
+        {
+          "id": 2713975325,
+          "lat": 51.3074868,
+          "lon": 9.4453156
+        },
+        {
+          "id": 2713975344,
+          "lat": 51.307711,
+          "lon": 9.4455484
+        },
+        {
+          "id": 2713975368,
+          "lat": 51.3078254,
+          "lon": 9.4491361
+        },
+        {
+          "id": 2713975401,
+          "lat": 51.3079481,
+          "lon": 9.4486195
+        },
+        {
+          "id": 2713975604,
+          "lat": 51.3107026,
+          "lon": 9.4470374
+        },
+        {
+          "id": 2713975610,
+          "lat": 51.3108043,
+          "lon": 9.446821
+        },
+        {
+          "id": 2714604137,
+          "lat": 51.3082043,
+          "lon": 9.453718
+        },
+        {
+          "id": 2714604192,
+          "lat": 51.3089561,
+          "lon": 9.4604814
+        },
+        {
+          "id": 2714604195,
+          "lat": 51.3089592,
+          "lon": 9.4603361
+        },
+        {
+          "id": 2715501301,
+          "lat": 51.309162,
+          "lon": 9.4655394
+        },
+        {
+          "id": 2715501306,
+          "lat": 51.3091685,
+          "lon": 9.4656586
+        },
+        {
+          "id": 2715501411,
+          "lat": 51.3124458,
+          "lon": 9.4654938
+        },
+        {
+          "id": 2715501428,
+          "lat": 51.3124968,
+          "lon": 9.4648393
+        },
+        {
+          "id": 2715501433,
+          "lat": 51.3125334,
+          "lon": 9.4643088
+        },
+        {
+          "id": 2715501440,
+          "lat": 51.3126248,
+          "lon": 9.4656449
+        },
+        {
+          "id": 2715501443,
+          "lat": 51.3126798,
+          "lon": 9.4644307
+        },
+        {
+          "id": 2715501444,
+          "lat": 51.3127194,
+          "lon": 9.4606627
+        },
+        {
+          "id": 2715501449,
+          "lat": 51.3127885,
+          "lon": 9.4589831
+        },
+        {
+          "id": 2715501451,
+          "lat": 51.3128416,
+          "lon": 9.4612082
+        },
+        {
+          "id": 2715501453,
+          "lat": 51.3128626,
+          "lon": 9.4608608
+        },
+        {
+          "id": 2715501459,
+          "lat": 51.3129073,
+          "lon": 9.4566711
+        },
+        {
+          "id": 2715501460,
+          "lat": 51.3129392,
+          "lon": 9.4591304
+        },
+        {
+          "id": 2715501462,
+          "lat": 51.3130503,
+          "lon": 9.4568339
+        },
+        {
+          "id": 2715501469,
+          "lat": 51.3131078,
+          "lon": 9.4529622
+        },
+        {
+          "id": 2715501473,
+          "lat": 51.3133901,
+          "lon": 9.4534096
+        },
+        {
+          "id": 2715501477,
+          "lat": 51.3133188,
+          "lon": 9.4445705
+        },
+        {
+          "id": 2715501479,
+          "lat": 51.3133543,
+          "lon": 9.448103
+        },
+        {
+          "id": 2715501485,
+          "lat": 51.3134783,
+          "lon": 9.4478819
+        },
+        {
+          "id": 2715501492,
+          "lat": 51.3135594,
+          "lon": 9.4454423
+        },
+        {
+          "id": 2715501494,
+          "lat": 51.3135612,
+          "lon": 9.4439451
+        },
+        {
+          "id": 2715501497,
+          "lat": 51.3136453,
+          "lon": 9.4450815
+        },
+        {
+          "id": 2715501506,
+          "lat": 51.3137658,
+          "lon": 9.4446721
+        },
+        {
+          "id": 2715501510,
+          "lat": 51.3141545,
+          "lon": 9.4505336
+        },
+        {
+          "id": 2715501514,
+          "lat": 51.314225,
+          "lon": 9.4503052
+        },
+        {
+          "id": 2715501518,
+          "lat": 51.3144006,
+          "lon": 9.4458622
+        },
+        {
+          "id": 2715501520,
+          "lat": 51.3144676,
+          "lon": 9.4456825
+        },
+        {
+          "id": 2715501523,
+          "lat": 51.3146568,
+          "lon": 9.4458376
+        },
+        {
+          "id": 2824419766,
+          "lat": 51.3072976,
+          "lon": 9.426165
+        },
+        {
+          "id": 2824419767,
+          "lat": 51.3073586,
+          "lon": 9.426215
+        },
+        {
+          "id": 2824419772,
+          "lat": 51.3092791,
+          "lon": 9.4287321
+        },
+        {
+          "id": 2824419778,
+          "lat": 51.3105805,
+          "lon": 9.4305558
+        },
+        {
+          "id": 2824419780,
+          "lat": 51.3107481,
+          "lon": 9.4304568
+        },
+        {
+          "id": 2824419785,
+          "lat": 51.3139008,
+          "lon": 9.4343768
+        },
+        {
+          "id": 2824419790,
+          "lat": 51.3140363,
+          "lon": 9.4341525
+        },
+        {
+          "id": 2824419793,
+          "lat": 51.3140914,
+          "lon": 9.4350813
+        },
+        {
+          "id": 2824419796,
+          "lat": 51.3141961,
+          "lon": 9.4347302
+        },
+        {
+          "id": 2933281625,
+          "lat": 51.3055431,
+          "lon": 9.4344724
+        },
+        {
+          "id": 2933281629,
+          "lat": 51.3054062,
+          "lon": 9.4344173
+        },
+        {
+          "id": 2983768180,
+          "lat": 51.3089171,
+          "lon": 9.518195
+        },
+        {
+          "id": 2983768181,
+          "lat": 51.3090591,
+          "lon": 9.5188506
+        },
+        {
+          "id": 3088909017,
+          "lat": 51.3175197,
+          "lon": 9.4747853
+        },
+        {
+          "id": 3088909031,
+          "lat": 51.3176128,
+          "lon": 9.4751103
+        },
+        {
+          "id": 3088909033,
+          "lat": 51.3176458,
+          "lon": 9.4745673
+        },
+        {
+          "id": 3088909049,
+          "lat": 51.3177549,
+          "lon": 9.4749281
+        },
+        {
+          "id": 3119367471,
+          "lat": 51.3145665,
+          "lon": 9.4753665
+        },
+        {
+          "id": 3199787328,
+          "lat": 51.3130874,
+          "lon": 9.5098052
+        },
+        {
+          "id": 3199787329,
+          "lat": 51.3132445,
+          "lon": 9.5098196
+        },
+        {
+          "id": 3199787331,
+          "lat": 51.3134009,
+          "lon": 9.5091886
+        },
+        {
+          "id": 3199787332,
+          "lat": 51.3134321,
+          "lon": 9.509464
+        },
+        {
+          "id": 3199787333,
+          "lat": 51.3135555,
+          "lon": 9.5087579
+        },
+        {
+          "id": 3199787334,
+          "lat": 51.3136447,
+          "lon": 9.5092578
+        },
+        {
+          "id": 3199787335,
+          "lat": 51.3137467,
+          "lon": 9.5088515
+        },
+        {
+          "id": 3199787337,
+          "lat": 51.3159997,
+          "lon": 9.5168386
+        },
+        {
+          "id": 3199787339,
+          "lat": 51.3161293,
+          "lon": 9.5163576
+        },
+        {
+          "id": 3199787340,
+          "lat": 51.3162126,
+          "lon": 9.5169931
+        },
+        {
+          "id": 3199787342,
+          "lat": 51.3163397,
+          "lon": 9.5165414
+        },
+        {
+          "id": 3199787344,
+          "lat": 51.3186708,
+          "lon": 9.5150207
+        },
+        {
+          "id": 3199787347,
+          "lat": 51.318906,
+          "lon": 9.5152307
+        },
+        {
+          "id": 3199787348,
+          "lat": 51.3191018,
+          "lon": 9.5151847
+        },
+        {
+          "id": 3224219862,
+          "lat": 51.288958,
+          "lon": 9.4785485
+        },
+        {
+          "id": 3224219864,
+          "lat": 51.2891134,
+          "lon": 9.478237
+        },
+        {
+          "id": 3224219867,
+          "lat": 51.2893911,
+          "lon": 9.4784839
+        },
+        {
+          "id": 3224219870,
+          "lat": 51.2924878,
+          "lon": 9.4815319
+        },
+        {
+          "id": 3224219871,
+          "lat": 51.2926371,
+          "lon": 9.4818066
+        },
+        {
+          "id": 3454986819,
+          "lat": 51.3125615,
+          "lon": 9.490829
+        },
+        {
+          "id": 3454986820,
+          "lat": 51.3125898,
+          "lon": 9.4902804
+        },
+        {
+          "id": 3454986821,
+          "lat": 51.3126826,
+          "lon": 9.4902965
+        },
+        {
+          "id": 3454986822,
+          "lat": 51.3127106,
+          "lon": 9.4908087
+        },
+        {
+          "id": 3565930473,
+          "lat": 51.3308615,
+          "lon": 9.4985759
+        },
+        {
+          "id": 3565930474,
+          "lat": 51.3306803,
+          "lon": 9.4985316
+        },
+        {
+          "id": 3565930475,
+          "lat": 51.3309212,
+          "lon": 9.4981057
+        },
+        {
+          "id": 3565930476,
+          "lat": 51.3312636,
+          "lon": 9.497866
+        },
+        {
+          "id": 3565961050,
+          "lat": 51.3304229,
+          "lon": 9.513447
+        },
+        {
+          "id": 3565961051,
+          "lat": 51.3308729,
+          "lon": 9.5132464
+        },
+        {
+          "id": 3575825424,
+          "lat": 51.322203,
+          "lon": 9.4514896
+        },
+        {
+          "id": 3575825429,
+          "lat": 51.3207909,
+          "lon": 9.451453
+        },
+        {
+          "id": 3575825435,
+          "lat": 51.3221781,
+          "lon": 9.4520815
+        },
+        {
+          "id": 3575825443,
+          "lat": 51.3206936,
+          "lon": 9.4513593
+        },
+        {
+          "id": 3575825445,
+          "lat": 51.3223504,
+          "lon": 9.451723
+        },
+        {
+          "id": 3575825474,
+          "lat": 51.3220401,
+          "lon": 9.4518685
+        },
+        {
+          "id": 3575825475,
+          "lat": 51.3208844,
+          "lon": 9.4510501
+        },
+        {
+          "id": 3575859127,
+          "lat": 51.3199083,
+          "lon": 9.4540163
+        },
+        {
+          "id": 3575859132,
+          "lat": 51.3198137,
+          "lon": 9.4536932
+        },
+        {
+          "id": 3575873403,
+          "lat": 51.3196746,
+          "lon": 9.4541124
+        },
+        {
+          "id": 3575873410,
+          "lat": 51.3198766,
+          "lon": 9.453759
+        },
+        {
+          "id": 3575923494,
+          "lat": 51.3139474,
+          "lon": 9.5004419
+        },
+        {
+          "id": 3575923503,
+          "lat": 51.3137067,
+          "lon": 9.4985379
+        },
+        {
+          "id": 3580338394,
+          "lat": 51.3235998,
+          "lon": 9.5128823
+        },
+        {
+          "id": 3580344796,
+          "lat": 51.3247319,
+          "lon": 9.5133552
+        },
+        {
+          "id": 3580349893,
+          "lat": 51.3243704,
+          "lon": 9.5148565
+        },
+        {
+          "id": 3580349894,
+          "lat": 51.3242686,
+          "lon": 9.5148245
+        },
+        {
+          "id": 3580386680,
+          "lat": 51.3188289,
+          "lon": 9.4484411
+        },
+        {
+          "id": 3580386681,
+          "lat": 51.3187355,
+          "lon": 9.4479433
+        },
+        {
+          "id": 3580386686,
+          "lat": 51.3185929,
+          "lon": 9.4480682
+        },
+        {
+          "id": 3581126668,
+          "lat": 51.3088462,
+          "lon": 9.5182706
+        },
+        {
+          "id": 3581228732,
+          "lat": 51.2915017,
+          "lon": 9.4535448
+        },
+        {
+          "id": 3581228752,
+          "lat": 51.2914955,
+          "lon": 9.4542292
+        },
+        {
+          "id": 3581228767,
+          "lat": 51.2916541,
+          "lon": 9.4539196
+        },
+        {
+          "id": 3581290643,
+          "lat": 51.2984522,
+          "lon": 9.4812764
+        },
+        {
+          "id": 3581408336,
+          "lat": 51.2911104,
+          "lon": 9.448642
+        },
+        {
+          "id": 3581408338,
+          "lat": 51.2911536,
+          "lon": 9.4481949
+        },
+        {
+          "id": 3581408354,
+          "lat": 51.2908672,
+          "lon": 9.448564
+        },
+        {
+          "id": 3585649405,
+          "lat": 51.2998828,
+          "lon": 9.4793283
+        },
+        {
+          "id": 3585723005,
+          "lat": 51.3055392,
+          "lon": 9.4854659
+        },
+        {
+          "id": 3585723015,
+          "lat": 51.3054253,
+          "lon": 9.4855992
+        },
+        {
+          "id": 3585741558,
+          "lat": 51.3039259,
+          "lon": 9.4842642
+        },
+        {
+          "id": 3610468328,
+          "lat": 51.2856941,
+          "lon": 9.4693124
+        },
+        {
+          "id": 3610468329,
+          "lat": 51.2848068,
+          "lon": 9.4689306
+        },
+        {
+          "id": 3610468330,
+          "lat": 51.2845434,
+          "lon": 9.469432
+        },
+        {
+          "id": 3610474114,
+          "lat": 51.2905909,
+          "lon": 9.4735333
+        },
+        {
+          "id": 3610474115,
+          "lat": 51.2903522,
+          "lon": 9.4730828
+        },
+        {
+          "id": 3631580660,
+          "lat": 51.313901,
+          "lon": 9.4985973
+        },
+        {
+          "id": 3658340439,
+          "lat": 51.2905094,
+          "lon": 9.4730047
+        },
+        {
+          "id": 3658340440,
+          "lat": 51.2900575,
+          "lon": 9.4727827
+        },
+        {
+          "id": 3658340444,
+          "lat": 51.2911221,
+          "lon": 9.4736446
+        },
+        {
+          "id": 3704989181,
+          "lat": 51.289194,
+          "lon": 9.4782864
+        },
+        {
+          "id": 3708242494,
+          "lat": 51.324485,
+          "lon": 9.4876579
+        },
+        {
+          "id": 3708242495,
+          "lat": 51.3245379,
+          "lon": 9.4876346
+        },
+        {
+          "id": 3708242497,
+          "lat": 51.3244615,
+          "lon": 9.4874053
+        },
+        {
+          "id": 3708242498,
+          "lat": 51.3242409,
+          "lon": 9.4878175
+        },
+        {
+          "id": 3719290133,
+          "lat": 51.3263929,
+          "lon": 9.5002637
+        },
+        {
+          "id": 3719290134,
+          "lat": 51.3264048,
+          "lon": 9.4996734
+        },
+        {
+          "id": 3719290135,
+          "lat": 51.3265606,
+          "lon": 9.5003615
+        },
+        {
+          "id": 3719290136,
+          "lat": 51.3267108,
+          "lon": 9.4998979
+        },
+        {
+          "id": 3726346752,
+          "lat": 51.3151462,
+          "lon": 9.5036513
+        },
+        {
+          "id": 3729567032,
+          "lat": 51.2761749,
+          "lon": 9.4532376
+        },
+        {
+          "id": 3729567034,
+          "lat": 51.2795276,
+          "lon": 9.454316
+        },
+        {
+          "id": 3729567035,
+          "lat": 51.2794887,
+          "lon": 9.4544294
+        },
+        {
+          "id": 3729567041,
+          "lat": 51.2797529,
+          "lon": 9.4538928
+        },
+        {
+          "id": 3729567042,
+          "lat": 51.2727636,
+          "lon": 9.4423403
+        },
+        {
+          "id": 3729567043,
+          "lat": 51.2728319,
+          "lon": 9.4423806
+        },
+        {
+          "id": 3729567044,
+          "lat": 51.2724085,
+          "lon": 9.4420362
+        },
+        {
+          "id": 3729567045,
+          "lat": 51.2723162,
+          "lon": 9.4418977
+        },
+        {
+          "id": 3729567051,
+          "lat": 51.2716686,
+          "lon": 9.4408903
+        },
+        {
+          "id": 3729567052,
+          "lat": 51.2719828,
+          "lon": 9.4413513
+        },
+        {
+          "id": 3729567060,
+          "lat": 51.2692902,
+          "lon": 9.4382163
+        },
+        {
+          "id": 3729567061,
+          "lat": 51.2695382,
+          "lon": 9.4386207
+        },
+        {
+          "id": 3729567067,
+          "lat": 51.2851517,
+          "lon": 9.4532561
+        },
+        {
+          "id": 3729567068,
+          "lat": 51.2851616,
+          "lon": 9.4526756
+        },
+        {
+          "id": 3729567069,
+          "lat": 51.2849604,
+          "lon": 9.4529632
+        },
+        {
+          "id": 3729567070,
+          "lat": 51.2853342,
+          "lon": 9.45294
+        },
+        {
+          "id": 3729567071,
+          "lat": 51.2913162,
+          "lon": 9.4501826
+        },
+        {
+          "id": 3729567072,
+          "lat": 51.2913003,
+          "lon": 9.4500132
+        },
+        {
+          "id": 3729567073,
+          "lat": 51.2914122,
+          "lon": 9.4518617
+        },
+        {
+          "id": 3729567074,
+          "lat": 51.2914191,
+          "lon": 9.4519791
+        },
+        {
+          "id": 3730445825,
+          "lat": 51.3125148,
+          "lon": 9.4962444
+        },
+        {
+          "id": 3730445826,
+          "lat": 51.3136969,
+          "lon": 9.5007007
+        },
+        {
+          "id": 3730445834,
+          "lat": 51.3184679,
+          "lon": 9.5113533
+        },
+        {
+          "id": 3730445835,
+          "lat": 51.3185402,
+          "lon": 9.5114875
+        },
+        {
+          "id": 3733582706,
+          "lat": 51.3341949,
+          "lon": 9.4940082
+        },
+        {
+          "id": 3733582707,
+          "lat": 51.3345036,
+          "lon": 9.4939136
+        },
+        {
+          "id": 3733582708,
+          "lat": 51.3342757,
+          "lon": 9.4945608
+        },
+        {
+          "id": 3733582709,
+          "lat": 51.3333853,
+          "lon": 9.492174
+        },
+        {
+          "id": 3733582710,
+          "lat": 51.3334503,
+          "lon": 9.4922682
+        },
+        {
+          "id": 3733582711,
+          "lat": 51.3333514,
+          "lon": 9.4928356
+        },
+        {
+          "id": 3733582712,
+          "lat": 51.3335786,
+          "lon": 9.4927662
+        },
+        {
+          "id": 3733582713,
+          "lat": 51.3338099,
+          "lon": 9.4952541
+        },
+        {
+          "id": 3737963982,
+          "lat": 51.2636341,
+          "lon": 9.5105583
+        },
+        {
+          "id": 3737963983,
+          "lat": 51.2639308,
+          "lon": 9.5111786
+        },
+        {
+          "id": 3737963984,
+          "lat": 51.2638063,
+          "lon": 9.5106689
+        },
+        {
+          "id": 3737963985,
+          "lat": 51.263561,
+          "lon": 9.5107938
+        },
+        {
+          "id": 3737963986,
+          "lat": 51.2637571,
+          "lon": 9.5108881
+        },
+        {
+          "id": 3744494152,
+          "lat": 51.3156384,
+          "lon": 9.5052807
+        },
+        {
+          "id": 3762563159,
+          "lat": 51.2435108,
+          "lon": 9.4317706
+        },
+        {
+          "id": 3762563160,
+          "lat": 51.2437583,
+          "lon": 9.431324
+        },
+        {
+          "id": 3762563161,
+          "lat": 51.2421549,
+          "lon": 9.4365376
+        },
+        {
+          "id": 3762563162,
+          "lat": 51.2422259,
+          "lon": 9.4365983
+        },
+        {
+          "id": 3762563163,
+          "lat": 51.2422572,
+          "lon": 9.4370531
+        },
+        {
+          "id": 3766239161,
+          "lat": 51.3072233,
+          "lon": 9.4871451
+        },
+        {
+          "id": 3797121664,
+          "lat": 51.2851346,
+          "lon": 9.4480357
+        },
+        {
+          "id": 3809714499,
+          "lat": 51.2624463,
+          "lon": 9.4258491
+        },
+        {
+          "id": 3827829582,
+          "lat": 51.3159669,
+          "lon": 9.5049717
+        },
+        {
+          "id": 3834915387,
+          "lat": 51.2855973,
+          "lon": 9.497762
+        },
+        {
+          "id": 3834915388,
+          "lat": 51.2858487,
+          "lon": 9.4975188
+        },
+        {
+          "id": 3834915394,
+          "lat": 51.2835321,
+          "lon": 9.4965633
+        },
+        {
+          "id": 3834915395,
+          "lat": 51.2833165,
+          "lon": 9.4968725
+        },
+        {
+          "id": 3861337111,
+          "lat": 51.3352228,
+          "lon": 9.513448
+        },
+        {
+          "id": 3861337112,
+          "lat": 51.3351603,
+          "lon": 9.5136518
+        },
+        {
+          "id": 3861337113,
+          "lat": 51.3335823,
+          "lon": 9.5135605
+        },
+        {
+          "id": 3861337114,
+          "lat": 51.3336464,
+          "lon": 9.513388
+        },
+        {
+          "id": 3861337115,
+          "lat": 51.3278622,
+          "lon": 9.5131807
+        },
+        {
+          "id": 3861337116,
+          "lat": 51.3278001,
+          "lon": 9.5133968
+        },
+        {
+          "id": 3890072562,
+          "lat": 51.2822312,
+          "lon": 9.4639758
+        },
+        {
+          "id": 3898730584,
+          "lat": 51.3154561,
+          "lon": 9.4776073
+        },
+        {
+          "id": 3898730592,
+          "lat": 51.3153506,
+          "lon": 9.4780197
+        },
+        {
+          "id": 3898730595,
+          "lat": 51.3155234,
+          "lon": 9.4780019
+        },
+        {
+          "id": 3899194288,
+          "lat": 51.3147262,
+          "lon": 9.4858917
+        },
+        {
+          "id": 3914519724,
+          "lat": 51.3163816,
+          "lon": 9.5046894
+        },
+        {
+          "id": 3914519730,
+          "lat": 51.3163201,
+          "lon": 9.5043738
+        },
+        {
+          "id": 3950115451,
+          "lat": 51.30334,
+          "lon": 9.5167725
+        },
+        {
+          "id": 3950115452,
+          "lat": 51.303596,
+          "lon": 9.5165862
+        },
+        {
+          "id": 3999740467,
+          "lat": 51.3186454,
+          "lon": 9.4484944
+        },
+        {
+          "id": 4009979173,
+          "lat": 51.3003501,
+          "lon": 9.4309739
+        },
+        {
+          "id": 4009980136,
+          "lat": 51.288628,
+          "lon": 9.4513021
+        },
+        {
+          "id": 4009980137,
+          "lat": 51.2887805,
+          "lon": 9.4511181
+        },
+        {
+          "id": 4009980142,
+          "lat": 51.285787,
+          "lon": 9.4528847
+        },
+        {
+          "id": 4009980143,
+          "lat": 51.2856425,
+          "lon": 9.4529034
+        },
+        {
+          "id": 4041770910,
+          "lat": 51.3187455,
+          "lon": 9.4983563
+        },
+        {
+          "id": 4088793777,
+          "lat": 51.3133336,
+          "lon": 9.5171274
+        },
+        {
+          "id": 4122186905,
+          "lat": 51.325745,
+          "lon": 9.4733279
+        },
+        {
+          "id": 4122186906,
+          "lat": 51.3259333,
+          "lon": 9.4736727
+        },
+        {
+          "id": 4122186909,
+          "lat": 51.3257877,
+          "lon": 9.473932
+        },
+        {
+          "id": 4123814937,
+          "lat": 51.3305308,
+          "lon": 9.4813664
+        },
+        {
+          "id": 4123814938,
+          "lat": 51.3302799,
+          "lon": 9.4814662
+        },
+        {
+          "id": 4123814939,
+          "lat": 51.3304304,
+          "lon": 9.4818851
+        },
+        {
+          "id": 4123814940,
+          "lat": 51.3302402,
+          "lon": 9.4819146
+        },
+        {
+          "id": 4159737596,
+          "lat": 51.3049527,
+          "lon": 9.4456766
+        },
+        {
+          "id": 4159737597,
+          "lat": 51.3051345,
+          "lon": 9.4453917
+        },
+        {
+          "id": 4159737598,
+          "lat": 51.3053097,
+          "lon": 9.4456717
+        },
+        {
+          "id": 4241695927,
+          "lat": 51.3208422,
+          "lon": 9.5143232
+        },
+        {
+          "id": 4264494642,
+          "lat": 51.3208192,
+          "lon": 9.5147977
+        },
+        {
+          "id": 4264494644,
+          "lat": 51.3209485,
+          "lon": 9.514434
+        },
+        {
+          "id": 4264494647,
+          "lat": 51.3212828,
+          "lon": 9.5138818
+        },
+        {
+          "id": 4264494648,
+          "lat": 51.3214109,
+          "lon": 9.5142186
+        },
+        {
+          "id": 4264494649,
+          "lat": 51.3214445,
+          "lon": 9.5139434
+        },
+        {
+          "id": 4264494651,
+          "lat": 51.3214923,
+          "lon": 9.5144405
+        },
+        {
+          "id": 4266973437,
+          "lat": 51.3135432,
+          "lon": 9.4459457
+        },
+        {
+          "id": 4338340565,
+          "lat": 51.3251505,
+          "lon": 9.4790289
+        },
+        {
+          "id": 4338340566,
+          "lat": 51.3252151,
+          "lon": 9.4793343
+        },
+        {
+          "id": 4340557844,
+          "lat": 51.3312765,
+          "lon": 9.5003235
+        },
+        {
+          "id": 4340557848,
+          "lat": 51.33131,
+          "lon": 9.5004041
+        },
+        {
+          "id": 4362091611,
+          "lat": 51.2905309,
+          "lon": 9.4732699
+        },
+        {
+          "id": 4362102351,
+          "lat": 51.2712905,
+          "lon": 9.462683
+        },
+        {
+          "id": 4362102354,
+          "lat": 51.27106,
+          "lon": 9.4619867
+        },
+        {
+          "id": 4362102355,
+          "lat": 51.2713894,
+          "lon": 9.4621596
+        },
+        {
+          "id": 4362103097,
+          "lat": 51.2716362,
+          "lon": 9.4581905
+        },
+        {
+          "id": 4362103098,
+          "lat": 51.2717039,
+          "lon": 9.4578759
+        },
+        {
+          "id": 4362103099,
+          "lat": 51.2713978,
+          "lon": 9.458215
+        },
+        {
+          "id": 4379553858,
+          "lat": 51.3370555,
+          "lon": 9.490026
+        },
+        {
+          "id": 4379553865,
+          "lat": 51.3371207,
+          "lon": 9.4902547
+        },
+        {
+          "id": 4450801157,
+          "lat": 51.2936881,
+          "lon": 9.4763746
+        },
+        {
+          "id": 4450801159,
+          "lat": 51.2935484,
+          "lon": 9.4764964
+        },
+        {
+          "id": 4899414879,
+          "lat": 51.3063758,
+          "lon": 9.4689215
+        },
+        {
+          "id": 4899414880,
+          "lat": 51.3064931,
+          "lon": 9.4685605
+        },
+        {
+          "id": 4899414882,
+          "lat": 51.3065387,
+          "lon": 9.4690754
+        },
+        {
+          "id": 4899414883,
+          "lat": 51.3066436,
+          "lon": 9.4687985
+        },
+        {
+          "id": 4937657644,
+          "lat": 51.2719529,
+          "lon": 9.5027683
+        },
+        {
+          "id": 4937657645,
+          "lat": 51.2717346,
+          "lon": 9.5024002
+        },
+        {
+          "id": 4937657646,
+          "lat": 51.2717431,
+          "lon": 9.5027495
+        },
+        {
+          "id": 4937657647,
+          "lat": 51.2719571,
+          "lon": 9.5023812
+        },
+        {
+          "id": 4939136681,
+          "lat": 51.2816677,
+          "lon": 9.5148716
+        },
+        {
+          "id": 4939136682,
+          "lat": 51.281557,
+          "lon": 9.5146335
+        },
+        {
+          "id": 4939136683,
+          "lat": 51.2813286,
+          "lon": 9.5149678
+        },
+        {
+          "id": 4939136975,
+          "lat": 51.2813708,
+          "lon": 9.5146424
+        },
+        {
+          "id": 4941200059,
+          "lat": 51.288574,
+          "lon": 9.5013926
+        },
+        {
+          "id": 4941200060,
+          "lat": 51.2886504,
+          "lon": 9.5013727
+        },
+        {
+          "id": 4941200061,
+          "lat": 51.2886853,
+          "lon": 9.5016851
+        },
+        {
+          "id": 4941200062,
+          "lat": 51.2889327,
+          "lon": 9.5016421
+        },
+        {
+          "id": 4941200080,
+          "lat": 51.2954752,
+          "lon": 9.5113771
+        },
+        {
+          "id": 4941200081,
+          "lat": 51.2952027,
+          "lon": 9.5114728
+        },
+        {
+          "id": 4941200082,
+          "lat": 51.2953237,
+          "lon": 9.5117185
+        },
+        {
+          "id": 4951720518,
+          "lat": 51.3198673,
+          "lon": 9.4928332
+        },
+        {
+          "id": 5057324044,
+          "lat": 51.3319368,
+          "lon": 9.4503339
+        },
+        {
+          "id": 5057324045,
+          "lat": 51.3319253,
+          "lon": 9.450409
+        },
+        {
+          "id": 5057324046,
+          "lat": 51.3333432,
+          "lon": 9.4473649
+        },
+        {
+          "id": 5057324047,
+          "lat": 51.3333886,
+          "lon": 9.4472954
+        },
+        {
+          "id": 5057324063,
+          "lat": 51.3334724,
+          "lon": 9.4407775
+        },
+        {
+          "id": 5057324064,
+          "lat": 51.3333143,
+          "lon": 9.4406287
+        },
+        {
+          "id": 5057324065,
+          "lat": 51.3333151,
+          "lon": 9.4410223
+        },
+        {
+          "id": 5057324066,
+          "lat": 51.333194,
+          "lon": 9.440877
+        },
+        {
+          "id": 5057324068,
+          "lat": 51.3361008,
+          "lon": 9.4408657
+        },
+        {
+          "id": 5057324069,
+          "lat": 51.3359257,
+          "lon": 9.4415216
+        },
+        {
+          "id": 5057324070,
+          "lat": 51.3362428,
+          "lon": 9.441211
+        },
+        {
+          "id": 5057324071,
+          "lat": 51.3357743,
+          "lon": 9.4411875
+        },
+        {
+          "id": 5057324078,
+          "lat": 51.3369122,
+          "lon": 9.4387661
+        },
+        {
+          "id": 5057324079,
+          "lat": 51.3368678,
+          "lon": 9.4384666
+        },
+        {
+          "id": 5057324080,
+          "lat": 51.3365315,
+          "lon": 9.4386662
+        },
+        {
+          "id": 5057324081,
+          "lat": 51.3366583,
+          "lon": 9.439087
+        },
+        {
+          "id": 5068868845,
+          "lat": 51.2951577,
+          "lon": 9.453048
+        },
+        {
+          "id": 5068868846,
+          "lat": 51.2952112,
+          "lon": 9.452671
+        },
+        {
+          "id": 5068868849,
+          "lat": 51.2954395,
+          "lon": 9.4528576
+        },
+        {
+          "id": 5237865475,
+          "lat": 51.3228745,
+          "lon": 9.4511571
+        },
+        {
+          "id": 5368472792,
+          "lat": 51.3115882,
+          "lon": 9.4320143
+        },
+        {
+          "id": 5635909314,
+          "lat": 51.2792308,
+          "lon": 9.455746
+        },
+        {
+          "id": 5635909315,
+          "lat": 51.2792459,
+          "lon": 9.4556274
+        },
+        {
+          "id": 6629635654,
+          "lat": 51.3091874,
+          "lon": 9.4629353
+        },
+        {
+          "id": 6629635655,
+          "lat": 51.3090474,
+          "lon": 9.4633624
+        },
+        {
+          "id": 6629635656,
+          "lat": 51.3090037,
+          "lon": 9.4625376
+        },
+        {
+          "id": 7379243351,
+          "lat": 51.2802853,
+          "lon": 9.446395
+        },
+        {
+          "id": 7379243352,
+          "lat": 51.2803199,
+          "lon": 9.4466084
+        },
+        {
+          "id": 7397715077,
+          "lat": 51.2836981,
+          "lon": 9.4406568
+        },
+        {
+          "id": 7397715078,
+          "lat": 51.2836021,
+          "lon": 9.4410634
+        },
+        {
+          "id": 7413437674,
+          "lat": 51.2745686,
+          "lon": 9.4481464
+        },
+        {
+          "id": 7413437675,
+          "lat": 51.2745365,
+          "lon": 9.4480379
+        },
+        {
+          "id": 7413437680,
+          "lat": 51.2755223,
+          "lon": 9.4461039
+        },
+        {
+          "id": 7413437681,
+          "lat": 51.2755977,
+          "lon": 9.4465735
+        },
+        {
+          "id": 7425712269,
+          "lat": 51.2737569,
+          "lon": 9.443589
+        },
+        {
+          "id": 7425712270,
+          "lat": 51.2736508,
+          "lon": 9.4437841
+        },
+        {
+          "id": 7452225706,
+          "lat": 51.3117934,
+          "lon": 9.4819114
+        },
+        {
+          "id": 7452225707,
+          "lat": 51.3116746,
+          "lon": 9.4817741
+        },
+        {
+          "id": 7476783471,
+          "lat": 51.3114197,
+          "lon": 9.4411882
+        },
+        {
+          "id": 7477139662,
+          "lat": 51.2797827,
+          "lon": 9.4582932
+        },
+        {
+          "id": 7640859323,
+          "lat": 51.3261538,
+          "lon": 9.4442916
+        },
+        {
+          "id": 7640859324,
+          "lat": 51.3260897,
+          "lon": 9.4443693
+        },
+        {
+          "id": 7640859325,
+          "lat": 51.3258366,
+          "lon": 9.4446928
+        },
+        {
+          "id": 7640859326,
+          "lat": 51.3257864,
+          "lon": 9.4447569
+        },
+        {
+          "id": 7640859329,
+          "lat": 51.3356935,
+          "lon": 9.4955745
+        },
+        {
+          "id": 7640859330,
+          "lat": 51.3356047,
+          "lon": 9.4956653
+        },
+        {
+          "id": 7640859331,
+          "lat": 51.3188798,
+          "lon": 9.4557947
+        },
+        {
+          "id": 7640859332,
+          "lat": 51.3188732,
+          "lon": 9.4559057
+        },
+        {
+          "id": 7640859333,
+          "lat": 51.2964278,
+          "lon": 9.4414658
+        },
+        {
+          "id": 7640859334,
+          "lat": 51.2963885,
+          "lon": 9.4415595
+        },
+        {
+          "id": 7640859336,
+          "lat": 51.2913365,
+          "lon": 9.4625764
+        },
+        {
+          "id": 7640859339,
+          "lat": 51.2699111,
+          "lon": 9.5009705
+        },
+        {
+          "id": 7640859340,
+          "lat": 51.2698495,
+          "lon": 9.5010324
+        },
+        {
+          "id": 7640859346,
+          "lat": 51.2756543,
+          "lon": 9.5080925
+        },
+        {
+          "id": 7640859353,
+          "lat": 51.2756044,
+          "lon": 9.5076852
+        },
+        {
+          "id": 7640859354,
+          "lat": 51.2756458,
+          "lon": 9.5082641
+        },
+        {
+          "id": 7640859360,
+          "lat": 51.2751452,
+          "lon": 9.4497576
+        },
+        {
+          "id": 7640859361,
+          "lat": 51.2751745,
+          "lon": 9.4498321
+        },
+        {
+          "id": 7660230869,
+          "lat": 51.2953374,
+          "lon": 9.4779937
+        },
+        {
+          "id": 7660230871,
+          "lat": 51.2950836,
+          "lon": 9.4782545
+        },
+        {
+          "id": 7660295738,
+          "lat": 51.2928536,
+          "lon": 9.4540275
+        },
+        {
+          "id": 7660324907,
+          "lat": 51.3085065,
+          "lon": 9.4443953
+        },
+        {
+          "id": 7660324908,
+          "lat": 51.3086471,
+          "lon": 9.4444989
+        },
+        {
+          "id": 7660324909,
+          "lat": 51.3084982,
+          "lon": 9.4446463
+        },
+        {
+          "id": 7747644726,
+          "lat": 51.3142191,
+          "lon": 9.43119
+        },
+        {
+          "id": 7747644727,
+          "lat": 51.3142236,
+          "lon": 9.4310895
+        },
+        {
+          "id": 7764997172,
+          "lat": 51.3133609,
+          "lon": 9.5171074
+        },
+        {
+          "id": 7774313278,
+          "lat": 51.2821767,
+          "lon": 9.4643117
+        },
+        {
+          "id": 7774313279,
+          "lat": 51.281839,
+          "lon": 9.4641774
+        },
+        {
+          "id": 7774313280,
+          "lat": 51.2818708,
+          "lon": 9.4637002
+        },
+        {
+          "id": 7790667618,
+          "lat": 51.2739771,
+          "lon": 9.4450695
+        },
+        {
+          "id": 7790667619,
+          "lat": 51.2739571,
+          "lon": 9.4449853
+        },
+        {
+          "id": 7814146318,
+          "lat": 51.3166649,
+          "lon": 9.4887655
+        },
+        {
+          "id": 7814146319,
+          "lat": 51.3166729,
+          "lon": 9.4886516
+        },
+        {
+          "id": 7814146322,
+          "lat": 51.3172872,
+          "lon": 9.4798129
+        },
+        {
+          "id": 7814146323,
+          "lat": 51.3172805,
+          "lon": 9.4799072
+        },
+        {
+          "id": 7881194944,
+          "lat": 51.3306896,
+          "lon": 9.5111904
+        },
+        {
+          "id": 7881194945,
+          "lat": 51.3306924,
+          "lon": 9.5112925
+        },
+        {
+          "id": 8017483657,
+          "lat": 51.2695615,
+          "lon": 9.4381889
+        },
+        {
+          "id": 8018016620,
+          "lat": 51.2773625,
+          "lon": 9.4488474
+        },
+        {
+          "id": 8090448987,
+          "lat": 51.3304839,
+          "lon": 9.4570633
+        },
+        {
+          "id": 9409917318,
+          "lat": 51.2682525,
+          "lon": 9.4365736
+        },
+        {
+          "id": 9409917319,
+          "lat": 51.2685009,
+          "lon": 9.4367018
+        },
+        {
+          "id": 9409917320,
+          "lat": 51.2682972,
+          "lon": 9.4362647
+        },
+        {
+          "id": 9490569076,
+          "lat": 51.2986562,
+          "lon": 9.4500631
+        },
+        {
+          "id": 9490569077,
+          "lat": 51.2986008,
+          "lon": 9.449877
+        },
+        {
+          "id": 9490569080,
+          "lat": 51.2985202,
+          "lon": 9.4503046
+        },
+        {
+          "id": 9490569081,
+          "lat": 51.2986243,
+          "lon": 9.4502386
+        },
+        {
+          "id": 9566696943,
+          "lat": 51.3212466,
+          "lon": 9.5141437
+        },
+        {
+          "id": 10019267522,
+          "lat": 51.3172802,
+          "lon": 9.49105
+        },
+        {
+          "id": 10138849393,
+          "lat": 51.3176416,
+          "lon": 9.4910486
+        },
+        {
+          "id": 10138849401,
+          "lat": 51.3163222,
+          "lon": 9.4924347
+        },
+        {
+          "id": 10671818919,
+          "lat": 51.3308107,
+          "lon": 9.5134596
+        },
+        {
+          "id": 10692771517,
+          "lat": 51.3366575,
+          "lon": 9.4906927
+        },
+        {
+          "id": 10692771518,
+          "lat": 51.3367125,
+          "lon": 9.4909382
+        },
+        {
+          "id": 11247858618,
+          "lat": 51.2909989,
+          "lon": 9.473215
+        },
+        {
+          "id": 11296498796,
+          "lat": 51.3209836,
+          "lon": 9.5109862
+        },
+        {
+          "id": 11296498797,
+          "lat": 51.3211125,
+          "lon": 9.510865
+        },
+        {
+          "id": 11299700629,
+          "lat": 51.3235432,
+          "lon": 9.448262
+        },
+        {
+          "id": 11299700630,
+          "lat": 51.3235816,
+          "lon": 9.4481531
+        },
+        {
+          "id": 11299701481,
+          "lat": 51.3185468,
+          "lon": 9.4611103
+        },
+        {
+          "id": 11299701482,
+          "lat": 51.3185899,
+          "lon": 9.460393
+        },
+        {
+          "id": 11299701483,
+          "lat": 51.3185534,
+          "lon": 9.4610016
+        },
+        {
+          "id": 11310816379,
+          "lat": 51.2499824,
+          "lon": 9.4863502
+        },
+        {
+          "id": 11310816383,
+          "lat": 51.2500361,
+          "lon": 9.4864068
+        },
+        {
+          "id": 11310816399,
+          "lat": 51.2937511,
+          "lon": 9.4450846
+        },
+        {
+          "id": 11310816400,
+          "lat": 51.2938083,
+          "lon": 9.445019
+        },
+        {
+          "id": 11310816416,
+          "lat": 51.2871663,
+          "lon": 9.4657567
+        },
+        {
+          "id": 11310816417,
+          "lat": 51.2871571,
+          "lon": 9.4656559
+        },
+        {
+          "id": 11310816419,
+          "lat": 51.3118671,
+          "lon": 9.4324262
+        },
+        {
+          "id": 11310816420,
+          "lat": 51.3119153,
+          "lon": 9.4324986
+        },
+        {
+          "id": 11310816427,
+          "lat": 51.3224329,
+          "lon": 9.4490555
+        },
+        {
+          "id": 11310816428,
+          "lat": 51.3224536,
+          "lon": 9.4489619
+        },
+        {
+          "id": 11310816429,
+          "lat": 51.3228831,
+          "lon": 9.4510123
+        },
+        {
+          "id": 11310816430,
+          "lat": 51.3268053,
+          "lon": 9.4611655
+        },
+        {
+          "id": 11310816431,
+          "lat": 51.3270028,
+          "lon": 9.4611439
+        },
+        {
+          "id": 11310816432,
+          "lat": 51.3269981,
+          "lon": 9.4608504
+        },
+        {
+          "id": 11310816435,
+          "lat": 51.3094676,
+          "lon": 9.5172429
+        },
+        {
+          "id": 11310816436,
+          "lat": 51.3093503,
+          "lon": 9.5170657
+        },
+        {
+          "id": 11310816437,
+          "lat": 51.3155785,
+          "lon": 9.4780098
+        },
+        {
+          "id": 11310816438,
+          "lat": 51.3178298,
+          "lon": 9.4729368
+        },
+        {
+          "id": 11310816439,
+          "lat": 51.317839,
+          "lon": 9.4728319
+        },
+        {
+          "id": 11310816441,
+          "lat": 51.3181193,
+          "lon": 9.4680223
+        },
+        {
+          "id": 11310816442,
+          "lat": 51.3181278,
+          "lon": 9.4678878
+        },
+        {
+          "id": 11310816443,
+          "lat": 51.3171279,
+          "lon": 9.4666366
+        },
+        {
+          "id": 11310816444,
+          "lat": 51.3170941,
+          "lon": 9.4667233
+        },
+        {
+          "id": 11310816445,
+          "lat": 51.3147563,
+          "lon": 9.4728874
+        },
+        {
+          "id": 11310816446,
+          "lat": 51.3145143,
+          "lon": 9.4730102
+        },
+        {
+          "id": 11310816447,
+          "lat": 51.3145253,
+          "lon": 9.4724214
+        },
+        {
+          "id": 11310816448,
+          "lat": 51.314383,
+          "lon": 9.4726191
+        },
+        {
+          "id": 11310898617,
+          "lat": 51.2913406,
+          "lon": 9.46248
+        },
+        {
+          "id": 11310898621,
+          "lat": 51.2912155,
+          "lon": 9.4667212
+        },
+        {
+          "id": 11310898622,
+          "lat": 51.2912111,
+          "lon": 9.4668614
+        },
+        {
+          "id": 11310898651,
+          "lat": 51.3138018,
+          "lon": 9.4401033
+        },
+        {
+          "id": 11310898652,
+          "lat": 51.313807,
+          "lon": 9.4400033
+        },
+        {
+          "id": 11310898653,
+          "lat": 51.3295865,
+          "lon": 9.44214
+        },
+        {
+          "id": 11310898654,
+          "lat": 51.3295069,
+          "lon": 9.4421837
+        },
+        {
+          "id": 11310898655,
+          "lat": 51.3251117,
+          "lon": 9.4706766
+        },
+        {
+          "id": 11310898656,
+          "lat": 51.3251716,
+          "lon": 9.4708485
+        },
+        {
+          "id": 11310898658,
+          "lat": 51.3145363,
+          "lon": 9.4704261
+        },
+        {
+          "id": 11310898659,
+          "lat": 51.3136569,
+          "lon": 9.4685381
+        },
+        {
+          "id": 11514435273,
+          "lat": 51.2716805,
+          "lon": 9.4412544
+        },
+        {
+          "id": 11514435278,
+          "lat": 51.272176,
+          "lon": 9.441668
+        },
+        {
+          "id": 12747346314,
+          "lat": 51.3181281,
+          "lon": 9.4913129
+        },
+        {
+          "id": 12821264959,
+          "lat": 51.3150876,
+          "lon": 9.4296224
+        },
+        {
+          "id": 12909491085,
+          "lat": 51.3174182,
+          "lon": 9.4779592
+        },
+        {
+          "id": 13016359162,
+          "lat": 51.3079625,
+          "lon": 9.4524072
+        },
+        {
+          "id": 13841708270,
+          "lat": 51.3162735,
+          "lon": 9.5167683
+        },
+        {
+          "id": 13841711790,
+          "lat": 51.3162399,
+          "lon": 9.5165378
+        }
+      ],
+      "source": "OpenStreetMap Overpass API (highway=traffic_signals, POST interpreter)",
+      "fetchedAtUtc": "2026-10-16T18:25:53.520Z",
+      "requestMethod": "POST",
+      "httpStatus": 200
+    },
+    "coordinateRounding": "4 decimal degrees in HTML payload"
+  },
+  "rulesFrozenNote": "Parameters fixed for this reference trip; re-validate on other drives before production use."
+}

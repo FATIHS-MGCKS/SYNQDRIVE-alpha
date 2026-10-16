@@ -1,0 +1,117 @@
+{
+  "natural": false,
+  "cases": [
+    {
+      "id": "SYN_MOVING_MASK_6S",
+      "context": "steady moving section",
+      "synthetic": true,
+      "injectedGap": {
+        "fromUtc": "2026-10-16T03:47:33Z",
+        "toUtc": "2026-10-16T03:47:38Z",
+        "durationSec": 6,
+        "labels": [
+          "2026-10-16T03:47:33Z",
+          "2026-10-16T03:47:34Z",
+          "2026-10-16T03:47:35Z",
+          "2026-10-16T03:47:36Z",
+          "2026-10-16T03:47:37Z",
+          "2026-10-16T03:47:38Z"
+        ]
+      },
+      "classification": "LIKELY_MOVING_WITH_GAP",
+      "hypothesisScores": {
+        "LIKELY_HALT": 0,
+        "LIKELY_SLOW_ROLL_STOP_GO": 0,
+        "LIKELY_MOVING_WITH_GAP": 4
+      },
+      "expectation": "should not be LIKELY_HALT",
+      "pass": true
+    },
+    {
+      "id": "SYN_MOVING_MASK_12S",
+      "context": "steady moving section",
+      "synthetic": true,
+      "injectedGap": {
+        "fromUtc": "2026-10-16T03:47:33Z",
+        "toUtc": "2026-10-16T03:47:44Z",
+        "durationSec": 12,
+        "labels": [
+          "2026-10-16T03:47:33Z",
+          "2026-10-16T03:47:34Z",
+          "2026-10-16T03:47:35Z",
+          "2026-10-16T03:47:36Z",
+          "2026-10-16T03:47:37Z",
+          "2026-10-16T03:47:38Z",
+          "2026-10-16T03:47:39Z",
+          "2026-10-16T03:47:40Z",
+          "2026-10-16T03:47:41Z",
+          "2026-10-16T03:47:42Z",
+          "2026-10-16T03:47:43Z",
+          "2026-10-16T03:47:44Z"
+        ]
+      },
+      "classification": "LIKELY_MOVING_WITH_GAP",
+      "hypothesisScores": {
+        "LIKELY_HALT": 0,
+        "LIKELY_SLOW_ROLL_STOP_GO": 0,
+        "LIKELY_MOVING_WITH_GAP": 4
+      },
+      "expectation": "should not be LIKELY_HALT",
+      "pass": true
+    },
+    {
+      "id": "SYN_SLOW_ROLL_MASK_8S",
+      "context": "slow roll geometry",
+      "synthetic": true,
+      "injectedGap": {
+        "fromUtc": "2026-10-16T03:37:47Z",
+        "toUtc": "2026-10-16T03:38:02Z",
+        "durationSec": 8,
+        "labels": [
+          "2026-10-16T03:37:47Z",
+          "2026-10-16T03:37:48Z",
+          "2026-10-16T03:37:49Z",
+          "2026-10-16T03:37:50Z",
+          "2026-10-16T03:37:51Z",
+          "2026-10-16T03:37:56Z",
+          "2026-10-16T03:38:01Z",
+          "2026-10-16T03:38:02Z"
+        ]
+      },
+      "classification": "NOT_DISTINGUISHABLE",
+      "hypothesisScores": {
+        "LIKELY_HALT": 4,
+        "LIKELY_SLOW_ROLL_STOP_GO": 4,
+        "LIKELY_MOVING_WITH_GAP": 0
+      },
+      "expectation": "not LIKELY_HALT on masked moving labels",
+      "pass": true
+    },
+    {
+      "id": "NATURAL_GAP_REPLAY_0",
+      "context": "first natural gap replay",
+      "synthetic": false,
+      "injectedGap": {
+        "fromUtc": "2026-10-16T03:36:00Z",
+        "toUtc": "2026-10-16T03:36:05Z",
+        "durationSec": 6,
+        "labels": [
+          "2026-10-16T03:36:00Z",
+          "2026-10-16T03:36:01Z",
+          "2026-10-16T03:36:02Z",
+          "2026-10-16T03:36:03Z",
+          "2026-10-16T03:36:04Z",
+          "2026-10-16T03:36:05Z"
+        ]
+      },
+      "classification": "NOT_DISTINGUISHABLE",
+      "hypothesisScores": {
+        "LIKELY_HALT": 0,
+        "LIKELY_SLOW_ROLL_STOP_GO": 0,
+        "LIKELY_MOVING_WITH_GAP": 0
+      },
+      "expectation": "document natural classification",
+      "pass": true
+    }
+  ]
+}

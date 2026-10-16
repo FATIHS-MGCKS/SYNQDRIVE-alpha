@@ -1,0 +1,142 @@
+[
+  {
+    "eventId": "GAP_EVT_001",
+    "window": {
+      "from": "2026-10-16T03:36:00Z",
+      "to": "2026-10-16T03:36:05Z"
+    },
+    "classification": "NOT_DISTINGUISHABLE",
+    "videoInGap": {
+      "tacho0": 0,
+      "tacho1to3": 0,
+      "tachoGt3": 0,
+      "unknown": 6
+    }
+  },
+  {
+    "eventId": "GAP_EVT_002",
+    "window": {
+      "from": "2026-10-16T03:36:07Z",
+      "to": "2026-10-16T03:36:55Z"
+    },
+    "classification": "LIKELY_HALT",
+    "videoInGap": {
+      "tacho0": 0,
+      "tacho1to3": 0,
+      "tachoGt3": 0,
+      "unknown": 49
+    }
+  },
+  {
+    "eventId": "GAP_EVT_003",
+    "window": {
+      "from": "2026-10-16T03:36:59Z",
+      "to": "2026-10-16T03:37:44Z"
+    },
+    "classification": "LIKELY_HALT",
+    "videoInGap": {
+      "tacho0": 3,
+      "tacho1to3": 0,
+      "tachoGt3": 0,
+      "unknown": 43
+    }
+  },
+  {
+    "eventId": "GAP_EVT_004",
+    "window": {
+      "from": "2026-10-16T03:38:19Z",
+      "to": "2026-10-16T03:38:21Z"
+    },
+    "classification": "NOT_DISTINGUISHABLE",
+    "videoInGap": {
+      "tacho0": 2,
+      "tacho1to3": 1,
+      "tachoGt3": 0,
+      "unknown": 0
+    }
+  },
+  {
+    "eventId": "GAP_EVT_005",
+    "window": {
+      "from": "2026-10-16T03:40:19Z",
+      "to": "2026-10-16T03:40:50Z"
+    },
+    "classification": "LIKELY_HALT",
+    "videoInGap": {
+      "tacho0": 31,
+      "tacho1to3": 1,
+      "tachoGt3": 0,
+      "unknown": 0
+    }
+  },
+  {
+    "eventId": "GAP_EVT_006",
+    "window": {
+      "from": "2026-10-16T03:41:50Z",
+      "to": "2026-10-16T03:42:30Z"
+    },
+    "classification": "LIKELY_HALT",
+    "videoInGap": {
+      "tacho0": 40,
+      "tacho1to3": 0,
+      "tachoGt3": 1,
+      "unknown": 0
+    }
+  },
+  {
+    "eventId": "GAP_EVT_007",
+    "window": {
+      "from": "2026-10-16T03:42:51Z",
+      "to": "2026-10-16T03:42:57Z"
+    },
+    "classification": "LIKELY_HALT",
+    "videoInGap": {
+      "tacho0": 7,
+      "tacho1to3": 0,
+      "tachoGt3": 0,
+      "unknown": 0
+    }
+  },
+  {
+    "eventId": "GAP_EVT_008",
+    "window": {
+      "from": "2026-10-16T03:43:43Z",
+      "to": "2026-10-16T03:44:36Z"
+    },
+    "classification": "LIKELY_HALT",
+    "videoInGap": {
+      "tacho0": 46,
+      "tacho1to3": 0,
+      "tachoGt3": 1,
+      "unknown": 7
+    }
+  },
+  {
+    "eventId": "GAP_EVT_009",
+    "window": {
+      "from": "2026-10-16T03:54:22Z",
+      "to": "2026-10-16T03:54:24Z"
+    },
+    "classification": "LIKELY_SLOW_ROLL_STOP_GO",
+    "videoInGap": {
+      "tacho0": 2,
+      "tacho1to3": 1,
+      "tachoGt3": 0,
+      "unknown": 0
+    }
+  },
+  {
+    "eventId": "GAP_EVT_010",
+    "window": {
+      "from": "2026-10-16T03:54:45Z",
+      "to": "2026-10-16T03:54:55Z"
+    },
+    "classification": "NOT_DISTINGUISHABLE",
+    "videoInGap": {
+      "tacho0": 0,
+      "tacho1to3": 0,
+      "tachoGt3": 0,
+      "unknown": 11
+    }
+  }
+]

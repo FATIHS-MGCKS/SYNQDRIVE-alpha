@@ -1,0 +1,28 @@
+{
+  "variantA": {
+    "label": "geometry + calendar-adjacent brackets (v0_2)",
+    "classificationCounts": {
+      "NOT_DISTINGUISHABLE": 3,
+      "LIKELY_HALT": 6,
+      "LIKELY_SLOW_ROLL_STOP_GO": 1
+    }
+  },
+  "variantB": {
+    "label": "A + OSM traffic_signals proximity/bearing (classification unchanged)",
+    "classificationCounts": {
+      "NOT_DISTINGUISHABLE": 3,
+      "LIKELY_HALT": 6,
+      "LIKELY_SLOW_ROLL_STOP_GO": 1
+    },
+    "signalsInBbox": 658,
+    "eventsWithSignalWithin30m": 4,
+    "osmFetch": {
+      "source": "OpenStreetMap Overpass API (highway=traffic_signals, POST interpreter)",
+      "fetchedAtUtc": "2026-10-16T18:25:53.520Z",
+      "requestMethod": "POST",
+      "httpStatus": 200,
+      "error": null
+    }
+  },
+  "measurableDifference": "v0_2: core explanation unchanged; B adds signal proximity + bearing delta metadata."
+}
