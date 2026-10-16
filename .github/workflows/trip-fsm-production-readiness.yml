@@ -16,9 +16,15 @@ on:
       - 'cursor/trip-fsm-*'
       - 'trip-fsm/**'
 
+# Concurrency (GitHub Actions):
+# - Same group per ref (`trip-fsm-ci-${{ github.ref }}`).
+# - `main` (`refs/heads/main`): cancel-in-progress=false — a new push queues; the in-flight run
+#   (including long R11/R12 postgres+redis and BASE/HEAD red-proof) is not cancelled. At most one
+#   pending run waits; a newer main push replaces that pending slot (in-progress still protected).
+# - PRs and feature-branch pushes: cancel-in-progress=true — supersede stale runs on the same ref.
 concurrency:
   group: trip-fsm-ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
