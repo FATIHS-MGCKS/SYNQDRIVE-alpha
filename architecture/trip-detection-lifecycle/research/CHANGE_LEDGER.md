@@ -100,6 +100,7 @@ Append-only record for this authority directory.
 | 2026-10-16 | **P1A.1** semantic hardening — `TripStartIntegrationModality` vs segment detection mechanism; no hardware aggregate exact-start admission; min(core,route) earliest movement; exact provenance; `departureReviewAnchorAt` | PR #2055 | same evidence doc + 15 unit tests |
 | 2026-10-16 | **P1B** runtime shadow wiring at start confirmation — legacy canonical writer preserved; env gate default OFF; observability `shadowStartBoundaryAdmission` | PR (P1B) | [TDL_START_BOUNDARY_ADMISSION_P1B_2026-10-16.md](../evidence/TDL_START_BOUNDARY_ADMISSION_P1B_2026-10-16.md) |
 | 2026-10-16 | **P1B** EXP021 anchor PR #2051 @ `4b387d43…` (P22E_F semantic integrity); reference shadow semantics; P23 not blocking P1B; video excluded from runtime | Docs | same P1B evidence |
+| 2026-10-16 | **P1B.1** shadow-OFF legacy-only — gate before modality DB read; orchestration wiring tests; metric property `tripStartBoundaryAdmissionShadowDeltaSeconds` | PR #2057 | same P1B evidence |
 
 ## Standard 1.0 phases
 

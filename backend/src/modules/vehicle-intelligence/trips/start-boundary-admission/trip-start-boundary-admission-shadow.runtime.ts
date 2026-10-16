@@ -76,7 +76,7 @@ function recordShadowMetrics(
     legacy_source: labels.legacySource,
     evidence_coverage: labels.evidenceCoverage,
   });
-  tripMetrics.tripStartBoundaryAdmissionShadowDeltaMs.observe(
+  tripMetrics.tripStartBoundaryAdmissionShadowDeltaSeconds.observe(
     {
       integration_modality: labels.integrationModality,
       decision: labels.decision,

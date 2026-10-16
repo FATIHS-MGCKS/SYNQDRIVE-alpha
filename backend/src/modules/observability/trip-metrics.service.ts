@@ -346,7 +346,7 @@ export class TripMetricsService implements OnModuleInit {
   readonly tripStartBoundaryAdjustment: Histogram<string>;
   readonly tripStartBoundaryAdmissionShadowComparisons: Counter<string>;
   readonly tripStartBoundaryAdmissionShadowErrors: Counter<string>;
-  readonly tripStartBoundaryAdmissionShadowDeltaMs: Histogram<string>;
+  readonly tripStartBoundaryAdmissionShadowDeltaSeconds: Histogram<string>;
   readonly tripEndCandidateLatency: Histogram<string>;
   readonly tripEndRecognitionLatency: Histogram<string>;
   readonly tripEndBoundaryAdjustment: Histogram<string>;
@@ -1037,7 +1037,7 @@ export class TripMetricsService implements OnModuleInit {
       registers: [this.registry],
     });
 
-    this.tripStartBoundaryAdmissionShadowDeltaMs = new Histogram({
+    this.tripStartBoundaryAdmissionShadowDeltaSeconds = new Histogram({
       name: 'synqdrive_trip_start_boundary_admission_shadow_delta_seconds',
       help:
         'Absolute seconds between legacy canonical start and P1A shadow-proposed start at confirmation.',

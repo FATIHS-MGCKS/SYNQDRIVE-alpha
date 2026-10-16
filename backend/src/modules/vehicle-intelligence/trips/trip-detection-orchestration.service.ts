@@ -80,6 +80,7 @@ import {
   computePossibleStartCoreFetchFrom,
   computeStartBoundaryWindowFrom,
 } from './start-boundary-window.util';
+import { isTripStartBoundaryAdmissionShadowEnabled } from './start-boundary-admission/trip-start-boundary-admission-shadow.config';
 import {
   mergeShadowStartBoundaryIntoEvidenceSummary,
   runStartBoundaryAdmissionShadow,
@@ -1394,45 +1395,47 @@ export class TripDetectionOrchestrationService {
           clickhouseAssistedStart: analyticsStartDecision.evidencePath !== 'DIMO_ONLY',
           startConfirmationSummary: analyticsStartDecision.summary,
         };
-        try {
-          const integrationModality = await resolveTripStartIntegrationModality(
-            this.prisma,
-            vehicleId,
-          );
-          const shadowSummary = await runStartBoundaryAdmissionShadow({
-            vehicleId,
-            dimoTokenId,
-            organizationId,
-            candidateStartAt: startAt,
-            confirmedAt: now,
-            corePoints,
-            profile: profileStr,
-            integrationModality,
-            legacy: {
-              startAt: effectiveStartAt,
-              source: resolvedStart.source,
-              dimoSegmentId: resolvedStart.dimoSegmentId,
-            },
-            evidence: boundaryResolution.evidence,
-            segments: this.segments,
-            providerContext: this.dimoProviderContext(
-              dimoTokenId,
+        if (isTripStartBoundaryAdmissionShadowEnabled()) {
+          try {
+            const integrationModality = await resolveTripStartIntegrationModality(
+              this.prisma,
               vehicleId,
+            );
+            const shadowSummary = await runStartBoundaryAdmissionShadow({
+              vehicleId,
+              dimoTokenId,
               organizationId,
-            ),
-            tripMetrics: this.tripMetrics,
-            logger: this.logger,
-          });
-          startEvidenceSummary = mergeShadowStartBoundaryIntoEvidenceSummary(
-            startEvidenceSummary,
-            shadowSummary,
-          );
-        } catch (err) {
-          this.logger.warn(
-            `Start boundary admission shadow wiring failed (non-blocking): vehicle=${vehicleId} ${
-              err instanceof Error ? err.message : String(err)
-            }`,
-          );
+              candidateStartAt: startAt,
+              confirmedAt: now,
+              corePoints,
+              profile: profileStr,
+              integrationModality,
+              legacy: {
+                startAt: effectiveStartAt,
+                source: resolvedStart.source,
+                dimoSegmentId: resolvedStart.dimoSegmentId,
+              },
+              evidence: boundaryResolution.evidence,
+              segments: this.segments,
+              providerContext: this.dimoProviderContext(
+                dimoTokenId,
+                vehicleId,
+                organizationId,
+              ),
+              tripMetrics: this.tripMetrics,
+              logger: this.logger,
+            });
+            startEvidenceSummary = mergeShadowStartBoundaryIntoEvidenceSummary(
+              startEvidenceSummary,
+              shadowSummary,
+            );
+          } catch (err) {
+            this.logger.warn(
+              `Start boundary admission shadow wiring failed (non-blocking): vehicle=${vehicleId} ${
+                err instanceof Error ? err.message : String(err)
+              }`,
+            );
+          }
         }
         runTripObservabilitySafely(this.logger, 'start_confirmation_evidence', () => {
           this.tripMetrics?.tripEvidencePaths.inc({

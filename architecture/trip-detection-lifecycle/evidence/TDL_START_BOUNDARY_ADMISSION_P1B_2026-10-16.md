@@ -46,7 +46,7 @@ Offline P1A may use `departureReviewAnchorAt` for uncertainty narrative; P1B run
 - Legacy remains canonical writer for `confirmedStartAt`, `startBoundaryAdjustedMs`, `createTrip.startTime`, merge/recovery boundaries.
 - P1A shadow proposes boundaries only under `shadowStartBoundaryAdmission` observability.
 - No `VehicleTrip` mutation from shadow deltas.
-- Env gate `TRIP_START_BOUNDARY_ADMISSION_SHADOW_ENABLED` default **OFF**.
+- Env gate `TRIP_START_BOUNDARY_ADMISSION_SHADOW_ENABLED` default **OFF** — when OFF, orchestration performs **no** modality DB lookup and **no** shadow work (P1B.1).
 - Optional shadow-only route fetch: `TRIP_START_BOUNDARY_ADMISSION_SHADOW_ROUTE_FETCH_ENABLED` default **OFF** (no extra provider budget when legacy had segment match).
 
 ## Core principle (unchanged from P1A)
