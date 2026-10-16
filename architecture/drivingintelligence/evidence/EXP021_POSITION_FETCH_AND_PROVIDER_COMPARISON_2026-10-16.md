@@ -122,3 +122,5 @@ Artifact: `/opt/cursor/artifacts/exp021-position-fetch-metadata.json` (read-only
 ## Ops script
 
 `backend/scripts/ops/exp021-position-provider-compare.ts` — Nest `AppModule.forRootAsync()` + DIMO gateway (`POST_TRIP_ENRICHMENT` / `BACKGROUND`), budget preflight probe, max **3** HTTP attempts (`DIMO_GLOBAL_MAX_RETRIES=2`). VPS: `SYNQDRIVE_RELEASE_BACKEND` + `EXP021_OVERLAY_ROOT` for PR-only compare modules.
+
+**Follow-on (no provider calls):** spacing / query-limit analysis → [`EXP021_POSITION_TIMING_AND_QUERY_LIMITS_2026-10-16.md`](EXP021_POSITION_TIMING_AND_QUERY_LIMITS_2026-10-16.md), `backend/scripts/ops/exp021-position-timing-analysis.ts`.
