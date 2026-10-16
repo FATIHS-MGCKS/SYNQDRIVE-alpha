@@ -297,6 +297,7 @@ import { VsiSignalProfileInspectionController } from './vehicle-signal-intellige
 import { VsiCapabilityResolverController } from './vehicle-signal-intelligence/vsi-capability-resolver.controller';
 import { VsiCapabilityResolverService } from './vehicle-signal-intelligence/vsi-capability-resolver.service';
 import { VsiCapabilityResolverRepository } from './vehicle-signal-intelligence/vsi-capability-resolver.repository';
+import { VsiApdsP5ReadonlyService } from './vehicle-signal-intelligence/vsi-apds-p5.service';
 import { DiV0TripSpeedQualityModule } from './driving-intelligence/trip-speed-quality/di-v0-trip-speed-quality.module';
 
 @Module({
@@ -337,6 +338,7 @@ import { DiV0TripSpeedQualityModule } from './driving-intelligence/trip-speed-qu
   controllers: [VehicleIntelligenceController, DamagesOrgController, DrivingDecisionsController, VehicleBatteryReferenceCapacityController, HvCapacityShadowEvaluationController, BatteryShadowValidationController, ReferenceCaptureController, VsiSignalProfileInspectionController, VsiCapabilityResolverController],
   providers: [
     VsiCapabilityResolverRepository,
+    VsiApdsP5ReadonlyService,
     VsiCapabilityResolverService,
     VehicleIntelligencePermissionGuard,
     BatteryService,

@@ -43,4 +43,5 @@ npx jest \
   vsi-profile-materialization.postgres.integration \
   vsi-profile-lifecycle.postgres.integration \
   vsi-profile-fingerprint.postgres.integration \
-  vsi-capability-resolver.postgres.integration
+  vsi-capability-resolver.postgres.integration \
+  vsi-apds-p5.postgres.integration
