@@ -9,14 +9,24 @@
       "from": "2026-10-16T03:36:00Z",
       "to": "2026-10-16T03:36:05Z"
     },
-    "decisionWithoutMap": "NOT_DISTINGUISHABLE",
-    "decisionWithMapHypothesisV1": "NOT_DISTINGUISHABLE",
-    "mapChange": false,
-    "mapChangeReason": null,
-    "video": "unbekannt (keine Annotation)",
-    "videoDualAxis": {
-      "haltSomewhereInWindow": "UNKNOWN",
-      "standstillEntireLabeledWindow": "UNKNOWN",
+    "timeLabelNote": "05:xx Europe/Berlin = 03:xx UTC (CEST)",
+    "movementEventV02": "unbekannt",
+    "decisionV02Frozen": "NOT_DISTINGUISHABLE",
+    "possibleCauseContext": "other_or_distant",
+    "mapContextMetrics": {
+      "alongRouteM": 504.51804166198735,
+      "euclideanM": 504.51804166198735,
+      "bearingDeltaDeg": null
+    },
+    "mapDecisionV1": {
+      "status": "REJECTED",
+      "effectiveOnClassification": false,
+      "note": "MAP_DECISION_HYPOTHESIS_V1 not applied; see EXP021_MAP_DECISION_HYPOTHESIS_V1_REJECTED.md"
+    },
+    "videoAxesABC": {
+      "A_tachoZeroSectionInPredictedWindow": "NOT_OBSERVABLE",
+      "B_entireWindowContinuousTachoZero": "CANNOT_PROVE",
+      "C_haltBeginEndDurationDetermined": "NOT_DETERMINED",
       "breakdown": {
         "tacho0": 0,
         "tacho1to3": 0,
@@ -25,9 +35,14 @@
         "unknown": 6,
         "totalLabeledSeconds": 6
       },
-      "ruleBook": "Axis A: ≥3s or any tacho0 in gap window. Axis B: all known seconds tacho0 and ≥5 known seconds. Unknown seconds excluded from B and do not count as hit or error. Post-hoc verdict (SUPPORTED/…) compares detector class to both axes — not “no contradict = proof”."
+      "rules": {
+        "A": "Mindestens 1 s mit annotiertem Tacho 0 im vorhergesagten Lückenfenster.",
+        "B": "Alle gelabelten Sekunden Tacho 0; unbekannte Sekunden verhindern den Beweis von B (CANNOT_PROVE), löschen A nicht.",
+        "C": "Retrospektiver Lücken-Detektor liefert keine Halt-Ein-/Ausfahrt oder Stillstandsdauer."
+      }
     },
-    "videoPostHocRule": "Axis A: ≥3s or any tacho0 in gap window. Axis B: all known seconds tacho0 and ≥5 known seconds. Unknown seconds excluded from B and do not count as hit or error. Post-hoc verdict (SUPPORTED/…) compares detector class to both axes — not “no contradict = proof”."
+    "videoSummary": "unbekannt",
+    "videoValidatable": "BEFORE_EXISTING_VIDEO"
   },
   {
     "eventId": "GAP_EVT_002",
@@ -39,14 +54,24 @@
       "from": "2026-10-16T03:36:07Z",
       "to": "2026-10-16T03:36:55Z"
     },
-    "decisionWithoutMap": "LIKELY_HALT",
-    "decisionWithMapHypothesisV1": "NOT_DISTINGUISHABLE",
-    "mapChange": true,
-    "mapChangeReason": "V1_DOWNGRADE_HALT_FAR_FROM_SIGNAL",
-    "video": "unbekannt (keine Annotation)",
-    "videoDualAxis": {
-      "haltSomewhereInWindow": "UNKNOWN",
-      "standstillEntireLabeledWindow": "UNKNOWN",
+    "timeLabelNote": "05:xx Europe/Berlin = 03:xx UTC (CEST)",
+    "movementEventV02": "wahrscheinlicher_Halt",
+    "decisionV02Frozen": "LIKELY_HALT",
+    "possibleCauseContext": "other_or_distant",
+    "mapContextMetrics": {
+      "alongRouteM": 504.51804166198735,
+      "euclideanM": 504.51804166198735,
+      "bearingDeltaDeg": 138.1383271302583
+    },
+    "mapDecisionV1": {
+      "status": "REJECTED",
+      "effectiveOnClassification": false,
+      "note": "MAP_DECISION_HYPOTHESIS_V1 not applied; see EXP021_MAP_DECISION_HYPOTHESIS_V1_REJECTED.md"
+    },
+    "videoAxesABC": {
+      "A_tachoZeroSectionInPredictedWindow": "NOT_OBSERVABLE",
+      "B_entireWindowContinuousTachoZero": "CANNOT_PROVE",
+      "C_haltBeginEndDurationDetermined": "NOT_DETERMINED",
       "breakdown": {
         "tacho0": 0,
         "tacho1to3": 0,
@@ -55,9 +80,14 @@
         "unknown": 49,
         "totalLabeledSeconds": 49
       },
-      "ruleBook": "Axis A: ≥3s or any tacho0 in gap window. Axis B: all known seconds tacho0 and ≥5 known seconds. Unknown seconds excluded from B and do not count as hit or error. Post-hoc verdict (SUPPORTED/…) compares detector class to both axes — not “no contradict = proof”."
+      "rules": {
+        "A": "Mindestens 1 s mit annotiertem Tacho 0 im vorhergesagten Lückenfenster.",
+        "B": "Alle gelabelten Sekunden Tacho 0; unbekannte Sekunden verhindern den Beweis von B (CANNOT_PROVE), löschen A nicht.",
+        "C": "Retrospektiver Lücken-Detektor liefert keine Halt-Ein-/Ausfahrt oder Stillstandsdauer."
+      }
     },
-    "videoPostHocRule": "Axis A: ≥3s or any tacho0 in gap window. Axis B: all known seconds tacho0 and ≥5 known seconds. Unknown seconds excluded from B and do not count as hit or error. Post-hoc verdict (SUPPORTED/…) compares detector class to both axes — not “no contradict = proof”."
+    "videoSummary": "unbekannt",
+    "videoValidatable": "BEFORE_EXISTING_VIDEO"
   },
   {
     "eventId": "GAP_EVT_003",
@@ -69,14 +99,24 @@
       "from": "2026-10-16T03:36:59Z",
       "to": "2026-10-16T03:37:44Z"
     },
-    "decisionWithoutMap": "LIKELY_HALT",
-    "decisionWithMapHypothesisV1": "NOT_DISTINGUISHABLE",
-    "mapChange": true,
-    "mapChangeReason": "V1_DOWNGRADE_HALT_FAR_FROM_SIGNAL",
-    "video": "nicht entscheidbar",
-    "videoDualAxis": {
-      "haltSomewhereInWindow": "YES",
-      "standstillEntireLabeledWindow": "NO",
+    "timeLabelNote": "05:xx Europe/Berlin = 03:xx UTC (CEST)",
+    "movementEventV02": "wahrscheinlicher_Halt",
+    "decisionV02Frozen": "LIKELY_HALT",
+    "possibleCauseContext": "other_or_distant",
+    "mapContextMetrics": {
+      "alongRouteM": 506.5192505583819,
+      "euclideanM": 505.3786367812925,
+      "bearingDeltaDeg": 124.02279131561184
+    },
+    "mapDecisionV1": {
+      "status": "REJECTED",
+      "effectiveOnClassification": false,
+      "note": "MAP_DECISION_HYPOTHESIS_V1 not applied; see EXP021_MAP_DECISION_HYPOTHESIS_V1_REJECTED.md"
+    },
+    "videoAxesABC": {
+      "A_tachoZeroSectionInPredictedWindow": "YES",
+      "B_entireWindowContinuousTachoZero": "CANNOT_PROVE",
+      "C_haltBeginEndDurationDetermined": "NOT_DETERMINED",
       "breakdown": {
         "tacho0": 3,
         "tacho1to3": 0,
@@ -85,9 +125,14 @@
         "unknown": 43,
         "totalLabeledSeconds": 46
       },
-      "ruleBook": "Axis A: ≥3s or any tacho0 in gap window. Axis B: all known seconds tacho0 and ≥5 known seconds. Unknown seconds excluded from B and do not count as hit or error. Post-hoc verdict (SUPPORTED/…) compares detector class to both axes — not “no contradict = proof”."
+      "rules": {
+        "A": "Mindestens 1 s mit annotiertem Tacho 0 im vorhergesagten Lückenfenster.",
+        "B": "Alle gelabelten Sekunden Tacho 0; unbekannte Sekunden verhindern den Beweis von B (CANNOT_PROVE), löschen A nicht.",
+        "C": "Retrospektiver Lücken-Detektor liefert keine Halt-Ein-/Ausfahrt oder Stillstandsdauer."
+      }
     },
-    "videoPostHocRule": "Axis A: ≥3s or any tacho0 in gap window. Axis B: all known seconds tacho0 and ≥5 known seconds. Unknown seconds excluded from B and do not count as hit or error. Post-hoc verdict (SUPPORTED/…) compares detector class to both axes — not “no contradict = proof”."
+    "videoSummary": "Abschnitt_ja_ganzes_Fenster_nein",
+    "videoValidatable": "MOSTLY_BEFORE_EXISTING_VIDEO"
   },
   {
     "eventId": "GAP_EVT_004",
@@ -99,14 +144,24 @@
       "from": "2026-10-16T03:38:19Z",
       "to": "2026-10-16T03:38:21Z"
     },
-    "decisionWithoutMap": "NOT_DISTINGUISHABLE",
-    "decisionWithMapHypothesisV1": "NOT_DISTINGUISHABLE",
-    "mapChange": false,
-    "mapChangeReason": null,
-    "video": "nicht entscheidbar",
-    "videoDualAxis": {
-      "haltSomewhereInWindow": "YES",
-      "standstillEntireLabeledWindow": "NO",
+    "timeLabelNote": "05:xx Europe/Berlin = 03:xx UTC (CEST)",
+    "movementEventV02": "unbekannt",
+    "decisionV02Frozen": "NOT_DISTINGUISHABLE",
+    "possibleCauseContext": "other_or_distant",
+    "mapContextMetrics": {
+      "alongRouteM": 524.1385737102667,
+      "euclideanM": 496.64455372482115,
+      "bearingDeltaDeg": 155.45307119229727
+    },
+    "mapDecisionV1": {
+      "status": "REJECTED",
+      "effectiveOnClassification": false,
+      "note": "MAP_DECISION_HYPOTHESIS_V1 not applied; see EXP021_MAP_DECISION_HYPOTHESIS_V1_REJECTED.md"
+    },
+    "videoAxesABC": {
+      "A_tachoZeroSectionInPredictedWindow": "YES",
+      "B_entireWindowContinuousTachoZero": "NO",
+      "C_haltBeginEndDurationDetermined": "NOT_DETERMINED",
       "breakdown": {
         "tacho0": 2,
         "tacho1to3": 1,
@@ -115,9 +170,14 @@
         "unknown": 0,
         "totalLabeledSeconds": 3
       },
-      "ruleBook": "Axis A: ≥3s or any tacho0 in gap window. Axis B: all known seconds tacho0 and ≥5 known seconds. Unknown seconds excluded from B and do not count as hit or error. Post-hoc verdict (SUPPORTED/…) compares detector class to both axes — not “no contradict = proof”."
+      "rules": {
+        "A": "Mindestens 1 s mit annotiertem Tacho 0 im vorhergesagten Lückenfenster.",
+        "B": "Alle gelabelten Sekunden Tacho 0; unbekannte Sekunden verhindern den Beweis von B (CANNOT_PROVE), löschen A nicht.",
+        "C": "Retrospektiver Lücken-Detektor liefert keine Halt-Ein-/Ausfahrt oder Stillstandsdauer."
+      }
     },
-    "videoPostHocRule": "Axis A: ≥3s or any tacho0 in gap window. Axis B: all known seconds tacho0 and ≥5 known seconds. Unknown seconds excluded from B and do not count as hit or error. Post-hoc verdict (SUPPORTED/…) compares detector class to both axes — not “no contradict = proof”."
+    "videoSummary": "teilweise_gestuetzt",
+    "videoValidatable": "WITHIN_EXISTING_VIDEO"
   },
   {
     "eventId": "GAP_EVT_005",
@@ -129,14 +189,24 @@
       "from": "2026-10-16T03:40:19Z",
       "to": "2026-10-16T03:40:50Z"
     },
-    "decisionWithoutMap": "LIKELY_HALT",
-    "decisionWithMapHypothesisV1": "NOT_DISTINGUISHABLE",
-    "mapChange": true,
-    "mapChangeReason": "V1_DOWNGRADE_HALT_FAR_FROM_SIGNAL",
-    "video": "gestützt",
-    "videoDualAxis": {
-      "haltSomewhereInWindow": "YES",
-      "standstillEntireLabeledWindow": "NO",
+    "timeLabelNote": "05:xx Europe/Berlin = 03:xx UTC (CEST)",
+    "movementEventV02": "wahrscheinlicher_Halt",
+    "decisionV02Frozen": "LIKELY_HALT",
+    "possibleCauseContext": "other_or_distant",
+    "mapContextMetrics": {
+      "alongRouteM": 619.5278891310899,
+      "euclideanM": 20.891815475945243,
+      "bearingDeltaDeg": 12.546923345734967
+    },
+    "mapDecisionV1": {
+      "status": "REJECTED",
+      "effectiveOnClassification": false,
+      "note": "MAP_DECISION_HYPOTHESIS_V1 not applied; see EXP021_MAP_DECISION_HYPOTHESIS_V1_REJECTED.md"
+    },
+    "videoAxesABC": {
+      "A_tachoZeroSectionInPredictedWindow": "YES",
+      "B_entireWindowContinuousTachoZero": "NO",
+      "C_haltBeginEndDurationDetermined": "NOT_DETERMINED",
       "breakdown": {
         "tacho0": 31,
         "tacho1to3": 1,
@@ -145,9 +215,15 @@
         "unknown": 0,
         "totalLabeledSeconds": 32
       },
-      "ruleBook": "Axis A: ≥3s or any tacho0 in gap window. Axis B: all known seconds tacho0 and ≥5 known seconds. Unknown seconds excluded from B and do not count as hit or error. Post-hoc verdict (SUPPORTED/…) compares detector class to both axes — not “no contradict = proof”."
+      "rules": {
+        "A": "Mindestens 1 s mit annotiertem Tacho 0 im vorhergesagten Lückenfenster.",
+        "B": "Alle gelabelten Sekunden Tacho 0; unbekannte Sekunden verhindern den Beweis von B (CANNOT_PROVE), löschen A nicht.",
+        "C": "Retrospektiver Lücken-Detektor liefert keine Halt-Ein-/Ausfahrt oder Stillstandsdauer."
+      },
+      "exampleNote": "Beispiel 006: viele Tacho-0-Sekunden stützen A, mindestens eine Bewegungssekunde widerspricht B; C bleibt offen."
     },
-    "videoPostHocRule": "Axis A: ≥3s or any tacho0 in gap window. Axis B: all known seconds tacho0 and ≥5 known seconds. Unknown seconds excluded from B and do not count as hit or error. Post-hoc verdict (SUPPORTED/…) compares detector class to both axes — not “no contradict = proof”."
+    "videoSummary": "teilweise_gestuetzt",
+    "videoValidatable": "WITHIN_EXISTING_VIDEO"
   },
   {
     "eventId": "GAP_EVT_006",
@@ -159,14 +235,24 @@
       "from": "2026-10-16T03:41:50Z",
       "to": "2026-10-16T03:42:30Z"
     },
-    "decisionWithoutMap": "LIKELY_HALT",
-    "decisionWithMapHypothesisV1": "NOT_DISTINGUISHABLE",
-    "mapChange": true,
-    "mapChangeReason": "V1_DOWNGRADE_HALT_FAR_FROM_SIGNAL",
-    "video": "nicht entscheidbar",
-    "videoDualAxis": {
-      "haltSomewhereInWindow": "YES",
-      "standstillEntireLabeledWindow": "NO",
+    "timeLabelNote": "05:xx Europe/Berlin = 03:xx UTC (CEST)",
+    "movementEventV02": "wahrscheinlicher_Halt",
+    "decisionV02Frozen": "LIKELY_HALT",
+    "possibleCauseContext": "other_or_distant",
+    "mapContextMetrics": {
+      "alongRouteM": 802.4094318631994,
+      "euclideanM": 4.621735645686611,
+      "bearingDeltaDeg": 14.595792610413753
+    },
+    "mapDecisionV1": {
+      "status": "REJECTED",
+      "effectiveOnClassification": false,
+      "note": "MAP_DECISION_HYPOTHESIS_V1 not applied; see EXP021_MAP_DECISION_HYPOTHESIS_V1_REJECTED.md"
+    },
+    "videoAxesABC": {
+      "A_tachoZeroSectionInPredictedWindow": "YES",
+      "B_entireWindowContinuousTachoZero": "NO",
+      "C_haltBeginEndDurationDetermined": "NOT_DETERMINED",
       "breakdown": {
         "tacho0": 40,
         "tacho1to3": 0,
@@ -175,9 +261,15 @@
         "unknown": 0,
         "totalLabeledSeconds": 41
       },
-      "ruleBook": "Axis A: ≥3s or any tacho0 in gap window. Axis B: all known seconds tacho0 and ≥5 known seconds. Unknown seconds excluded from B and do not count as hit or error. Post-hoc verdict (SUPPORTED/…) compares detector class to both axes — not “no contradict = proof”."
+      "rules": {
+        "A": "Mindestens 1 s mit annotiertem Tacho 0 im vorhergesagten Lückenfenster.",
+        "B": "Alle gelabelten Sekunden Tacho 0; unbekannte Sekunden verhindern den Beweis von B (CANNOT_PROVE), löschen A nicht.",
+        "C": "Retrospektiver Lücken-Detektor liefert keine Halt-Ein-/Ausfahrt oder Stillstandsdauer."
+      },
+      "exampleNote": "Beispiel 006: viele Tacho-0-Sekunden stützen A, mindestens eine Bewegungssekunde widerspricht B; C bleibt offen."
     },
-    "videoPostHocRule": "Axis A: ≥3s or any tacho0 in gap window. Axis B: all known seconds tacho0 and ≥5 known seconds. Unknown seconds excluded from B and do not count as hit or error. Post-hoc verdict (SUPPORTED/…) compares detector class to both axes — not “no contradict = proof”."
+    "videoSummary": "teilweise_gestuetzt",
+    "videoValidatable": "WITHIN_EXISTING_VIDEO"
   },
   {
     "eventId": "GAP_EVT_007",
@@ -189,14 +281,24 @@
       "from": "2026-10-16T03:42:51Z",
       "to": "2026-10-16T03:42:57Z"
     },
-    "decisionWithoutMap": "LIKELY_HALT",
-    "decisionWithMapHypothesisV1": "NOT_DISTINGUISHABLE",
-    "mapChange": true,
-    "mapChangeReason": "V1_DOWNGRADE_HALT_FAR_FROM_SIGNAL",
-    "video": "gestützt",
-    "videoDualAxis": {
-      "haltSomewhereInWindow": "YES",
-      "standstillEntireLabeledWindow": "YES",
+    "timeLabelNote": "05:xx Europe/Berlin = 03:xx UTC (CEST)",
+    "movementEventV02": "wahrscheinlicher_Halt",
+    "decisionV02Frozen": "LIKELY_HALT",
+    "possibleCauseContext": "other_or_distant",
+    "mapContextMetrics": {
+      "alongRouteM": 122.2294551873531,
+      "euclideanM": 8.634595290226542,
+      "bearingDeltaDeg": 3.7604138345745923
+    },
+    "mapDecisionV1": {
+      "status": "REJECTED",
+      "effectiveOnClassification": false,
+      "note": "MAP_DECISION_HYPOTHESIS_V1 not applied; see EXP021_MAP_DECISION_HYPOTHESIS_V1_REJECTED.md"
+    },
+    "videoAxesABC": {
+      "A_tachoZeroSectionInPredictedWindow": "YES",
+      "B_entireWindowContinuousTachoZero": "YES",
+      "C_haltBeginEndDurationDetermined": "NOT_DETERMINED",
       "breakdown": {
         "tacho0": 7,
         "tacho1to3": 0,
@@ -205,9 +307,14 @@
         "unknown": 0,
         "totalLabeledSeconds": 7
       },
-      "ruleBook": "Axis A: ≥3s or any tacho0 in gap window. Axis B: all known seconds tacho0 and ≥5 known seconds. Unknown seconds excluded from B and do not count as hit or error. Post-hoc verdict (SUPPORTED/…) compares detector class to both axes — not “no contradict = proof”."
+      "rules": {
+        "A": "Mindestens 1 s mit annotiertem Tacho 0 im vorhergesagten Lückenfenster.",
+        "B": "Alle gelabelten Sekunden Tacho 0; unbekannte Sekunden verhindern den Beweis von B (CANNOT_PROVE), löschen A nicht.",
+        "C": "Retrospektiver Lücken-Detektor liefert keine Halt-Ein-/Ausfahrt oder Stillstandsdauer."
+      }
     },
-    "videoPostHocRule": "Axis A: ≥3s or any tacho0 in gap window. Axis B: all known seconds tacho0 and ≥5 known seconds. Unknown seconds excluded from B and do not count as hit or error. Post-hoc verdict (SUPPORTED/…) compares detector class to both axes — not “no contradict = proof”."
+    "videoSummary": "gestützt_ganzes_Fenster",
+    "videoValidatable": "WITHIN_EXISTING_VIDEO"
   },
   {
     "eventId": "GAP_EVT_008",
@@ -219,14 +326,24 @@
       "from": "2026-10-16T03:43:43Z",
       "to": "2026-10-16T03:44:36Z"
     },
-    "decisionWithoutMap": "LIKELY_HALT",
-    "decisionWithMapHypothesisV1": "NOT_DISTINGUISHABLE",
-    "mapChange": true,
-    "mapChangeReason": "V1_DOWNGRADE_HALT_FAR_FROM_SIGNAL",
-    "video": "nicht entscheidbar",
-    "videoDualAxis": {
-      "haltSomewhereInWindow": "YES",
-      "standstillEntireLabeledWindow": "NO",
+    "timeLabelNote": "05:xx Europe/Berlin = 03:xx UTC (CEST)",
+    "movementEventV02": "wahrscheinlicher_Halt",
+    "decisionV02Frozen": "LIKELY_HALT",
+    "possibleCauseContext": "other_or_distant",
+    "mapContextMetrics": {
+      "alongRouteM": 508.4670969526456,
+      "euclideanM": 7.556322875611007,
+      "bearingDeltaDeg": 42.46067812131619
+    },
+    "mapDecisionV1": {
+      "status": "REJECTED",
+      "effectiveOnClassification": false,
+      "note": "MAP_DECISION_HYPOTHESIS_V1 not applied; see EXP021_MAP_DECISION_HYPOTHESIS_V1_REJECTED.md"
+    },
+    "videoAxesABC": {
+      "A_tachoZeroSectionInPredictedWindow": "YES",
+      "B_entireWindowContinuousTachoZero": "CANNOT_PROVE",
+      "C_haltBeginEndDurationDetermined": "NOT_DETERMINED",
       "breakdown": {
         "tacho0": 46,
         "tacho1to3": 0,
@@ -235,9 +352,15 @@
         "unknown": 7,
         "totalLabeledSeconds": 54
       },
-      "ruleBook": "Axis A: ≥3s or any tacho0 in gap window. Axis B: all known seconds tacho0 and ≥5 known seconds. Unknown seconds excluded from B and do not count as hit or error. Post-hoc verdict (SUPPORTED/…) compares detector class to both axes — not “no contradict = proof”."
+      "rules": {
+        "A": "Mindestens 1 s mit annotiertem Tacho 0 im vorhergesagten Lückenfenster.",
+        "B": "Alle gelabelten Sekunden Tacho 0; unbekannte Sekunden verhindern den Beweis von B (CANNOT_PROVE), löschen A nicht.",
+        "C": "Retrospektiver Lücken-Detektor liefert keine Halt-Ein-/Ausfahrt oder Stillstandsdauer."
+      },
+      "exampleNote": "Beispiel 006: viele Tacho-0-Sekunden stützen A, mindestens eine Bewegungssekunde widerspricht B; C bleibt offen."
     },
-    "videoPostHocRule": "Axis A: ≥3s or any tacho0 in gap window. Axis B: all known seconds tacho0 and ≥5 known seconds. Unknown seconds excluded from B and do not count as hit or error. Post-hoc verdict (SUPPORTED/…) compares detector class to both axes — not “no contradict = proof”."
+    "videoSummary": "Abschnitt_ja_ganzes_Fenster_nein",
+    "videoValidatable": "WITHIN_EXISTING_VIDEO"
   },
   {
     "eventId": "GAP_EVT_009",
@@ -249,14 +372,24 @@
       "from": "2026-10-16T03:54:22Z",
       "to": "2026-10-16T03:54:24Z"
     },
-    "decisionWithoutMap": "LIKELY_SLOW_ROLL_STOP_GO",
-    "decisionWithMapHypothesisV1": "LIKELY_SLOW_ROLL_STOP_GO",
-    "mapChange": false,
-    "mapChangeReason": null,
-    "video": "nicht entscheidbar",
-    "videoDualAxis": {
-      "haltSomewhereInWindow": "YES",
-      "standstillEntireLabeledWindow": "NO",
+    "timeLabelNote": "05:xx Europe/Berlin = 03:xx UTC (CEST)",
+    "movementEventV02": "Rollen_Stop_and_go",
+    "decisionV02Frozen": "LIKELY_SLOW_ROLL_STOP_GO",
+    "possibleCauseContext": "other_or_distant",
+    "mapContextMetrics": {
+      "alongRouteM": 1103.3481509782218,
+      "euclideanM": 567.4300797869707,
+      "bearingDeltaDeg": 85.90581960185963
+    },
+    "mapDecisionV1": {
+      "status": "REJECTED",
+      "effectiveOnClassification": false,
+      "note": "MAP_DECISION_HYPOTHESIS_V1 not applied; see EXP021_MAP_DECISION_HYPOTHESIS_V1_REJECTED.md"
+    },
+    "videoAxesABC": {
+      "A_tachoZeroSectionInPredictedWindow": "YES",
+      "B_entireWindowContinuousTachoZero": "NO",
+      "C_haltBeginEndDurationDetermined": "NOT_DETERMINED",
       "breakdown": {
         "tacho0": 2,
         "tacho1to3": 1,
@@ -265,9 +398,14 @@
         "unknown": 0,
         "totalLabeledSeconds": 3
       },
-      "ruleBook": "Axis A: ≥3s or any tacho0 in gap window. Axis B: all known seconds tacho0 and ≥5 known seconds. Unknown seconds excluded from B and do not count as hit or error. Post-hoc verdict (SUPPORTED/…) compares detector class to both axes — not “no contradict = proof”."
+      "rules": {
+        "A": "Mindestens 1 s mit annotiertem Tacho 0 im vorhergesagten Lückenfenster.",
+        "B": "Alle gelabelten Sekunden Tacho 0; unbekannte Sekunden verhindern den Beweis von B (CANNOT_PROVE), löschen A nicht.",
+        "C": "Retrospektiver Lücken-Detektor liefert keine Halt-Ein-/Ausfahrt oder Stillstandsdauer."
+      }
     },
-    "videoPostHocRule": "Axis A: ≥3s or any tacho0 in gap window. Axis B: all known seconds tacho0 and ≥5 known seconds. Unknown seconds excluded from B and do not count as hit or error. Post-hoc verdict (SUPPORTED/…) compares detector class to both axes — not “no contradict = proof”."
+    "videoSummary": "teilweise_gestuetzt",
+    "videoValidatable": "WITHIN_EXISTING_VIDEO"
   },
   {
     "eventId": "GAP_EVT_010",
@@ -279,14 +417,24 @@
       "from": "2026-10-16T03:54:45Z",
       "to": "2026-10-16T03:54:55Z"
     },
-    "decisionWithoutMap": "NOT_DISTINGUISHABLE",
-    "decisionWithMapHypothesisV1": "NOT_DISTINGUISHABLE",
-    "mapChange": false,
-    "mapChangeReason": null,
-    "video": "unbekannt (keine Annotation)",
-    "videoDualAxis": {
-      "haltSomewhereInWindow": "UNKNOWN",
-      "standstillEntireLabeledWindow": "UNKNOWN",
+    "timeLabelNote": "05:xx Europe/Berlin = 03:xx UTC (CEST)",
+    "movementEventV02": "unbekannt",
+    "decisionV02Frozen": "NOT_DISTINGUISHABLE",
+    "possibleCauseContext": "other_or_distant",
+    "mapContextMetrics": {
+      "alongRouteM": 818.7086324034692,
+      "euclideanM": 562.5989558254728,
+      "bearingDeltaDeg": null
+    },
+    "mapDecisionV1": {
+      "status": "REJECTED",
+      "effectiveOnClassification": false,
+      "note": "MAP_DECISION_HYPOTHESIS_V1 not applied; see EXP021_MAP_DECISION_HYPOTHESIS_V1_REJECTED.md"
+    },
+    "videoAxesABC": {
+      "A_tachoZeroSectionInPredictedWindow": "NOT_OBSERVABLE",
+      "B_entireWindowContinuousTachoZero": "CANNOT_PROVE",
+      "C_haltBeginEndDurationDetermined": "NOT_DETERMINED",
       "breakdown": {
         "tacho0": 0,
         "tacho1to3": 0,
@@ -295,8 +443,13 @@
         "unknown": 11,
         "totalLabeledSeconds": 11
       },
-      "ruleBook": "Axis A: ≥3s or any tacho0 in gap window. Axis B: all known seconds tacho0 and ≥5 known seconds. Unknown seconds excluded from B and do not count as hit or error. Post-hoc verdict (SUPPORTED/…) compares detector class to both axes — not “no contradict = proof”."
+      "rules": {
+        "A": "Mindestens 1 s mit annotiertem Tacho 0 im vorhergesagten Lückenfenster.",
+        "B": "Alle gelabelten Sekunden Tacho 0; unbekannte Sekunden verhindern den Beweis von B (CANNOT_PROVE), löschen A nicht.",
+        "C": "Retrospektiver Lücken-Detektor liefert keine Halt-Ein-/Ausfahrt oder Stillstandsdauer."
+      }
     },
-    "videoPostHocRule": "Axis A: ≥3s or any tacho0 in gap window. Axis B: all known seconds tacho0 and ≥5 known seconds. Unknown seconds excluded from B and do not count as hit or error. Post-hoc verdict (SUPPORTED/…) compares detector class to both axes — not “no contradict = proof”."
+    "videoSummary": "unbekannt",
+    "videoValidatable": "WITHIN_EXISTING_VIDEO"
   }
 ]

@@ -8,8 +8,12 @@
         "value": 1.1336668274961743
       },
       {
-        "feature": "impliedChordKmh_avg",
+        "feature": "netDisplacementRateKmh",
         "value": 0.12753751809331962
+      },
+      {
+        "feature": "geometrySemantics",
+        "value": "mittlere Netto-Ortsveränderung = chordM / gapDurationSec (nur für Bericht oft als km/h umgerechnet)"
       },
       {
         "feature": "legOutOfGapKmh_departure",
@@ -40,8 +44,12 @@
         "value": 2.12296344489598
       },
       {
-        "feature": "impliedChordKmh_avg",
+        "feature": "netDisplacementRateKmh",
         "value": 0.18640654638111046
+      },
+      {
+        "feature": "geometrySemantics",
+        "value": "mittlere Netto-Ortsveränderung = chordM / gapDurationSec (nur für Bericht oft als km/h umgerechnet)"
       },
       {
         "feature": "legOutOfGapKmh_departure",
@@ -76,8 +84,12 @@
         "value": 0.4912108229850152
       },
       {
-        "feature": "impliedChordKmh_avg",
+        "feature": "netDisplacementRateKmh",
         "value": 0.25262270896372213
+      },
+      {
+        "feature": "geometrySemantics",
+        "value": "mittlere Netto-Ortsveränderung = chordM / gapDurationSec (nur für Bericht oft als km/h umgerechnet)"
       },
       {
         "feature": "legOutOfGapKmh_departure",
@@ -108,8 +120,12 @@
         "value": 1.6693710515541964
       },
       {
-        "feature": "impliedChordKmh_avg",
+        "feature": "netDisplacementRateKmh",
         "value": 0.11129140343694642
+      },
+      {
+        "feature": "geometrySemantics",
+        "value": "mittlere Netto-Ortsveränderung = chordM / gapDurationSec (nur für Bericht oft als km/h umgerechnet)"
       },
       {
         "feature": "legOutOfGapKmh_departure",

@@ -1,0 +1,97 @@
+[
+  {
+    "eventId": "GAP_EVT_005",
+    "movementEventV02": "wahrscheinlicher_Halt",
+    "videoAxes": {
+      "A_tachoZeroSectionInPredictedWindow": "YES",
+      "B_entireWindowContinuousTachoZero": "NO",
+      "C_haltBeginEndDurationDetermined": "NOT_DETERMINED",
+      "breakdown": {
+        "tacho0": 31,
+        "tacho1to3": 1,
+        "tacho3to5": 0,
+        "tachoGt5": 0,
+        "unknown": 0,
+        "totalLabeledSeconds": 32
+      },
+      "rules": {
+        "A": "Mindestens 1 s mit annotiertem Tacho 0 im vorhergesagten Lückenfenster.",
+        "B": "Alle gelabelten Sekunden Tacho 0; unbekannte Sekunden verhindern den Beweis von B (CANNOT_PROVE), löschen A nicht.",
+        "C": "Retrospektiver Lücken-Detektor liefert keine Halt-Ein-/Ausfahrt oder Stillstandsdauer."
+      },
+      "exampleNote": "Beispiel 006: viele Tacho-0-Sekunden stützen A, mindestens eine Bewegungssekunde widerspricht B; C bleibt offen."
+    },
+    "videoCoverage": "WITHIN_EXISTING_VIDEO"
+  },
+  {
+    "eventId": "GAP_EVT_006",
+    "movementEventV02": "wahrscheinlicher_Halt",
+    "videoAxes": {
+      "A_tachoZeroSectionInPredictedWindow": "YES",
+      "B_entireWindowContinuousTachoZero": "NO",
+      "C_haltBeginEndDurationDetermined": "NOT_DETERMINED",
+      "breakdown": {
+        "tacho0": 40,
+        "tacho1to3": 0,
+        "tacho3to5": 1,
+        "tachoGt5": 0,
+        "unknown": 0,
+        "totalLabeledSeconds": 41
+      },
+      "rules": {
+        "A": "Mindestens 1 s mit annotiertem Tacho 0 im vorhergesagten Lückenfenster.",
+        "B": "Alle gelabelten Sekunden Tacho 0; unbekannte Sekunden verhindern den Beweis von B (CANNOT_PROVE), löschen A nicht.",
+        "C": "Retrospektiver Lücken-Detektor liefert keine Halt-Ein-/Ausfahrt oder Stillstandsdauer."
+      },
+      "exampleNote": "Beispiel 006: viele Tacho-0-Sekunden stützen A, mindestens eine Bewegungssekunde widerspricht B; C bleibt offen."
+    },
+    "videoCoverage": "WITHIN_EXISTING_VIDEO"
+  },
+  {
+    "eventId": "GAP_EVT_007",
+    "movementEventV02": "wahrscheinlicher_Halt",
+    "videoAxes": {
+      "A_tachoZeroSectionInPredictedWindow": "YES",
+      "B_entireWindowContinuousTachoZero": "YES",
+      "C_haltBeginEndDurationDetermined": "NOT_DETERMINED",
+      "breakdown": {
+        "tacho0": 7,
+        "tacho1to3": 0,
+        "tacho3to5": 0,
+        "tachoGt5": 0,
+        "unknown": 0,
+        "totalLabeledSeconds": 7
+      },
+      "rules": {
+        "A": "Mindestens 1 s mit annotiertem Tacho 0 im vorhergesagten Lückenfenster.",
+        "B": "Alle gelabelten Sekunden Tacho 0; unbekannte Sekunden verhindern den Beweis von B (CANNOT_PROVE), löschen A nicht.",
+        "C": "Retrospektiver Lücken-Detektor liefert keine Halt-Ein-/Ausfahrt oder Stillstandsdauer."
+      }
+    },
+    "videoCoverage": "WITHIN_EXISTING_VIDEO"
+  },
+  {
+    "eventId": "GAP_EVT_008",
+    "movementEventV02": "wahrscheinlicher_Halt",
+    "videoAxes": {
+      "A_tachoZeroSectionInPredictedWindow": "YES",
+      "B_entireWindowContinuousTachoZero": "CANNOT_PROVE",
+      "C_haltBeginEndDurationDetermined": "NOT_DETERMINED",
+      "breakdown": {
+        "tacho0": 46,
+        "tacho1to3": 0,
+        "tacho3to5": 0,
+        "tachoGt5": 1,
+        "unknown": 7,
+        "totalLabeledSeconds": 54
+      },
+      "rules": {
+        "A": "Mindestens 1 s mit annotiertem Tacho 0 im vorhergesagten Lückenfenster.",
+        "B": "Alle gelabelten Sekunden Tacho 0; unbekannte Sekunden verhindern den Beweis von B (CANNOT_PROVE), löschen A nicht.",
+        "C": "Retrospektiver Lücken-Detektor liefert keine Halt-Ein-/Ausfahrt oder Stillstandsdauer."
+      },
+      "exampleNote": "Beispiel 006: viele Tacho-0-Sekunden stützen A, mindestens eine Bewegungssekunde widerspricht B; C bleibt offen."
+    },
+    "videoCoverage": "WITHIN_EXISTING_VIDEO"
+  }
+]

@@ -489,6 +489,181 @@ export function videoCoverageStatus(
   return 'WITHIN_EXISTING_VIDEO';
 }
 
+export const GEOMETRY_NET_DISPLACEMENT_SEMANTICS = {
+  endpointChordM: {
+    name: 'Endpunkt-Abstand (Kalender-benachbarte PRESENT-Punkte über die Lücke)',
+    not: ['gemessene Weglänge', 'tatsächliche Fahrgeschwindigkeit', 'mittlere Fahrgeschwindigkeit entlang der Strecke'],
+    is: 'mittlere Netto-Ortsveränderung = chordM / gapDurationSec (nur für Bericht oft als km/h umgerechnet)',
+    uncertainty:
+      'Unbekannte Trajektorie innerhalb ROW_ABSENT; Werte allein belegen weder Stillstandsdauer noch Bewegung durch die ganze Lücke.',
+  },
+  separateFields: ['endpointDisplacementM', 'gapDurationSec', 'netDisplacementRateKmh (derived)'],
+} as const;
+
+export type VideoAxisAnswer = 'YES' | 'NO' | 'CANNOT_PROVE' | 'NOT_OBSERVABLE' | 'NOT_DETERMINED';
+
+export type VideoAxesABC = {
+  A_tachoZeroSectionInPredictedWindow: VideoAxisAnswer;
+  B_entireWindowContinuousTachoZero: VideoAxisAnswer;
+  C_haltBeginEndDurationDetermined: VideoAxisAnswer;
+  breakdown: VideoTachoBreakdown;
+  rules: {
+    A: string;
+    B: string;
+    C: string;
+  };
+  exampleNote?: string;
+};
+
+export function evaluateVideoAxesABC(video: VideoTachoBreakdown): VideoAxesABC {
+  const known = video.totalLabeledSeconds - video.unknown;
+  let A: VideoAxisAnswer = 'NOT_OBSERVABLE';
+  if (known === 0) A = 'NOT_OBSERVABLE';
+  else A = video.tacho0 >= 1 ? 'YES' : 'NO';
+
+  let B: VideoAxisAnswer = 'CANNOT_PROVE';
+  if (known === 0) B = 'CANNOT_PROVE';
+  else if (video.unknown > 0) B = 'CANNOT_PROVE';
+  else if (
+    video.tacho0 === known &&
+    video.tacho1to3 === 0 &&
+    video.tacho3to5 === 0 &&
+    video.tachoGt5 === 0
+  ) {
+    B = 'YES';
+  } else B = 'NO';
+
+  const C: VideoAxisAnswer = 'NOT_DETERMINED';
+
+  const exampleNote =
+    video.tacho0 >= 5 && (video.tacho1to3 + video.tacho3to5 + video.tachoGt5) >= 1
+      ? 'Beispiel 006: viele Tacho-0-Sekunden stützen A, mindestens eine Bewegungssekunde widerspricht B; C bleibt offen.'
+      : undefined;
+
+  return {
+    A_tachoZeroSectionInPredictedWindow: A,
+    B_entireWindowContinuousTachoZero: B,
+    C_haltBeginEndDurationDetermined: C,
+    breakdown: video,
+    rules: {
+      A: 'Mindestens 1 s mit annotiertem Tacho 0 im vorhergesagten Lückenfenster.',
+      B: 'Alle gelabelten Sekunden Tacho 0; unbekannte Sekunden verhindern den Beweis von B (CANNOT_PROVE), löschen A nicht.',
+      C: 'Retrospektiver Lücken-Detektor liefert keine Halt-Ein-/Ausfahrt oder Stillstandsdauer.',
+    },
+    exampleNote,
+  };
+}
+
+export function movementEventLabel(classification: RetrospectiveExplanation): string {
+  switch (classification) {
+    case 'LIKELY_HALT':
+      return 'wahrscheinlicher_Halt';
+    case 'LIKELY_SLOW_ROLL_STOP_GO':
+      return 'Rollen_Stop_and_go';
+    case 'LIKELY_MOVING_WITH_GAP':
+      return 'Fahrt_mit_Luecke';
+    default:
+      return 'unbekannt';
+  }
+}
+
+export function classifyPossibleCauseContext(
+  mapAnalysis: import('./exp021-retrospective-halt-map-hypothesis-v1.lib').MapAssociationAnalysis,
+): {
+  context: 'possibly_near_signal' | 'possibly_intersection_unresolved' | 'other_or_distant' | 'unknown_no_map';
+  alongRouteM: number | null;
+  euclideanM: number | null;
+  bearingDeltaDeg: number | null;
+  disclaimers: string[];
+} {
+  const n = mapAnalysis.nearestAlongRoute;
+  const disclaimers = [
+    'Kein Beweis für Rotphase oder Halt.',
+    'Nur Einordnung möglicher Ursache — nicht entscheidungswirksam (MAP V1 verworfen).',
+  ];
+  if (!n || mapAnalysis.missingData.includes('no_osm_traffic_signals_in_frozen_export')) {
+    return {
+      context: 'unknown_no_map',
+      alongRouteM: null,
+      euclideanM: null,
+      bearingDeltaDeg: null,
+      disclaimers,
+    };
+  }
+  if (n.alongRouteM <= 40) {
+    return {
+      context: 'possibly_near_signal',
+      alongRouteM: n.alongRouteM,
+      euclideanM: n.euclideanM,
+      bearingDeltaDeg: n.bearingDeltaDeg,
+      disclaimers,
+    };
+  }
+  if (n.alongRouteM <= 80) {
+    return {
+      context: 'possibly_intersection_unresolved',
+      alongRouteM: n.alongRouteM,
+      euclideanM: n.euclideanM,
+      bearingDeltaDeg: n.bearingDeltaDeg,
+      disclaimers,
+    };
+  }
+  return {
+    context: 'other_or_distant',
+    alongRouteM: n.alongRouteM,
+    euclideanM: n.euclideanM,
+    bearingDeltaDeg: n.bearingDeltaDeg,
+    disclaimers,
+  };
+}
+
+export function buildVideoABC005to008(tenEvents: ReturnType<typeof buildTenEventReview>) {
+  return tenEvents
+    .filter((e) => ['GAP_EVT_005', 'GAP_EVT_006', 'GAP_EVT_007', 'GAP_EVT_008'].includes(e.eventId))
+    .map((e) => ({
+      eventId: e.eventId,
+      movementEventV02: movementEventLabel(e.classificationV02),
+      videoAxes: evaluateVideoAxesABC(e.videoInGapWindow),
+      videoCoverage: videoCoverageStatus(e, VIDEO_ANCHOR.firstVisibleClockLabelUtc),
+    }));
+}
+
+export function buildDevelopmentStatusConsolidated(args: {
+  natural: ReturnType<typeof naturalGapCounterReport>;
+  synthetic: ReturnType<typeof syntheticCounterReport>;
+  tenEvents: ReturnType<typeof buildTenEventReview>;
+}) {
+  const haltOnMain = args.tenEvents.filter(
+    (e) => e.overlappingAnnotatedMainHalts.length > 0 && e.classificationV02 === 'LIKELY_HALT',
+  );
+  return {
+    v02OnThisTripTraceable: [
+      '10 Positionslücken ≥3 s als Kandidaten; 5 annotierte Tacho-0-Abschnitte (LONG_HALT_*) mit überlappender Lücke.',
+      'v0_2 klassifiziert überlappende Haupthalt-Lücken überwiegend als LIKELY_HALT bei kleiner Endpunkt-Chord + Abfahrt-Muster (ohne Halt-Lokalisierung).',
+      'Frühe Lücken 002/003: LIKELY_HALT aus Geometrie, Video nicht vollständig prüfbar — Fehlalarm-Risiko.',
+      'Geometrie: Netto-Ortsveränderung über Lücke, nicht gemessene Weglänge (siehe GEOMETRY_NET_DISPLACEMENT_SEMANTICS).',
+    ],
+    counterCasesPassed: [
+      `Synthetisch: ${args.synthetic.syntheticPassCount}/${args.synthetic.syntheticCaseCount} (kein LIKELY_HALT in maskierter Fahrt; ${JSON.stringify(args.synthetic.syntheticByClass)}).`,
+      'Natürlich: keine v0_2 LIKELY_MOVING_WITH_GAP auf den fünf Referenz-Tacho-0-Lücken (v0_1-Fehlmuster behoben).',
+      'MAP_DECISION_HYPOTHESIS_V1 verworfen — kein produktives Karten-Veto.',
+    ],
+    remainingFalseAlarmRisks: [
+      `${args.natural.falseHaltSignals.likelyHaltWithoutOverlappingMainHaltWindow} LIKELY_HALT ohne LONG_HALT-Overlap (002/003).`,
+      'Chord-kleine lange Lücken können LIKELY_HALT auslösen ohne Video-Tacho-0 im Lückenfenster.',
+      'GAP_EVT_008: ein Kandidat für zwei annotierte Tacho-0-Abschnitte — physische Ereignisanzahl ungeklärt.',
+      '52 SLOW_ROLL-Geometrie-Sekunden vs. Video oft >3 km/h — Rollen/Halt-Verwechslung bei dichten PRESENT-Ketten.',
+    ],
+    nextIndependentReferenceCasesNeeded: [
+      'Weitere Fahrten mit unabhängigem Video + unterschiedliche Lückenprofile (kurz/lang, innerorts/außerorts).',
+      'Fahrten mit vollständiger Videoabdeckung der gesamten Trip-Zeit (kein Vor-Anker-Blindfeld).',
+      'Explizite Gegenfälle: Rollen an Ampel ohne Halt, Halt ohne OSM-Signal in Reichweite, Durchfahrt mit ROW_ABSENT.',
+      'Blind gehaltene Halte (nicht in dieser Tesla-Referenzfahrt tunen).',
+    ],
+    noFurtherTuningOnTheseFourHaltRegions: true,
+  };
+}
+
 export function buildPositiveHaltIndications005to008(
   tenEvents: ReturnType<typeof buildTenEventReview>,
 ): Array<{
@@ -511,8 +686,15 @@ export function buildPositiveHaltIndications005to008(
         positives.push({ feature: 'gapDurationSec', value: Number(m.gapDurationSec) });
       }
       if (m.impliedChordKmh != null) {
-        positives.push({ feature: 'impliedChordKmh_avg', value: Number(m.impliedChordKmh) });
+        positives.push({
+          feature: 'netDisplacementRateKmh',
+          value: Number(m.impliedChordKmh),
+        });
       }
+      positives.push({
+        feature: 'geometrySemantics',
+        value: GEOMETRY_NET_DISPLACEMENT_SEMANTICS.endpointChordM.is,
+      });
       if (m.legOutOfGapKmh != null) {
         positives.push({ feature: 'legOutOfGapKmh_departure', value: Number(m.legOutOfGapKmh) });
       }
@@ -608,37 +790,49 @@ export function clipRequestsForVideoChat(
 
 export function buildPerEventDecisionRows(args: {
   tenEvents: ReturnType<typeof buildTenEventReview>;
-  mapResults: Array<{
-    eventId: string;
-    classificationWithMapV1: RetrospectiveExplanation;
-    changed: boolean;
-    ruleFired: string | null;
-    mapAnalysis: import('./exp021-retrospective-halt-map-hypothesis-v1.lib').MapAssociationAnalysis;
-  }>;
+  mapContextByEvent: Map<
+    string,
+    ReturnType<typeof classifyPossibleCauseContext> & {
+      mapAnalysis: import('./exp021-retrospective-halt-map-hypothesis-v1.lib').MapAssociationAnalysis;
+    }
+  >;
 }): Array<Record<string, unknown>> {
-  const mapById = new Map(args.mapResults.map((m) => [m.eventId, m]));
   return args.tenEvents.map((e) => {
-    const m = mapById.get(e.eventId);
-    const v = e.videoPostHocVerdict.verdict;
-    const videoLabel =
-      v === 'SUPPORTED'
-        ? 'gestützt'
-        : v === 'CONTRADICTED'
-          ? 'widersprochen'
-          : v === 'UNKNOWN_COVERAGE'
-            ? 'unbekannt (keine Annotation)'
-            : 'nicht entscheidbar';
+    const axes = evaluateVideoAxesABC(e.videoInGapWindow);
+    const ctx = args.mapContextByEvent.get(e.eventId);
+    const videoSummary =
+      axes.A_tachoZeroSectionInPredictedWindow === 'NOT_OBSERVABLE'
+        ? 'unbekannt'
+        : axes.A_tachoZeroSectionInPredictedWindow === 'YES' && axes.B_entireWindowContinuousTachoZero === 'NO'
+          ? 'teilweise_gestuetzt'
+          : axes.B_entireWindowContinuousTachoZero === 'YES'
+            ? 'gestützt_ganzes_Fenster'
+            : axes.A_tachoZeroSectionInPredictedWindow === 'YES'
+              ? 'Abschnitt_ja_ganzes_Fenster_nein'
+              : 'widersprochen_kein_Tacho0';
     return {
       eventId: e.eventId,
       windowBerlin: e.windowBerlin,
       windowUtc: e.windowUtc,
-      decisionWithoutMap: e.classificationV02,
-      decisionWithMapHypothesisV1: m?.classificationWithMapV1 ?? e.classificationV02,
-      mapChange: m?.changed ?? false,
-      mapChangeReason: m?.ruleFired ?? null,
-      video: videoLabel,
-      videoDualAxis: e.videoDualAxis,
-      videoPostHocRule: e.videoDualAxis.ruleBook,
+      timeLabelNote: '05:xx Europe/Berlin = 03:xx UTC (CEST)',
+      movementEventV02: movementEventLabel(e.classificationV02),
+      decisionV02Frozen: e.classificationV02,
+      possibleCauseContext: ctx?.context ?? 'unknown_no_map',
+      mapContextMetrics: ctx
+        ? {
+            alongRouteM: ctx.alongRouteM,
+            euclideanM: ctx.euclideanM,
+            bearingDeltaDeg: ctx.bearingDeltaDeg,
+          }
+        : null,
+      mapDecisionV1: {
+        status: 'REJECTED',
+        effectiveOnClassification: false,
+        note: 'MAP_DECISION_HYPOTHESIS_V1 not applied; see EXP021_MAP_DECISION_HYPOTHESIS_V1_REJECTED.md',
+      },
+      videoAxesABC: axes,
+      videoSummary,
+      videoValidatable: videoCoverageStatus(e, VIDEO_ANCHOR.firstVisibleClockLabelUtc),
     };
   });
 }

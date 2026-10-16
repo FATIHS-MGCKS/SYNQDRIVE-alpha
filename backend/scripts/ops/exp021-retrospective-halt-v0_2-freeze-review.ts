@@ -13,13 +13,17 @@ import { loadVideoComparisonByLabel } from './exp021-ev-ground-truth-forensic-su
 import { collectPresentPoints, findGapRuns } from './exp021-retrospective-halt-prototype.lib';
 import { buildGapEventsV2 } from './exp021-retrospective-halt-prototype-v2.lib';
 import {
+  buildDevelopmentStatusConsolidated,
   buildFreezeManifest,
   buildMainHaltHonestReview,
   buildPerEventDecisionRows,
   buildPositiveHaltIndications005to008,
   buildReviewMarkdownTable,
   buildTenEventReview,
+  buildVideoABC005to008,
+  classifyPossibleCauseContext,
   clipRequestsForVideoChat,
+  GEOMETRY_NET_DISPLACEMENT_SEMANTICS,
   inputStandHash,
   naturalGapCounterReport,
   REFERENCE_LONG_HALT_SEMANTICS,
@@ -29,8 +33,7 @@ import {
 } from './exp021-retrospective-halt-v0_2-freeze-review.lib';
 import {
   analyzeMapAssociation,
-  applyMapDecisionHypothesisV1,
-  MAP_DECISION_HYPOTHESIS_V1_RULES,
+  MAP_DECISION_HYPOTHESIS_V1_STATUS,
 } from './exp021-retrospective-halt-map-hypothesis-v1.lib';
 import { buildGapBrackets } from './exp021-retrospective-halt-prototype-v2.lib';
 
@@ -130,9 +133,14 @@ async function main(): Promise<void> {
     );
     const osmSignals = fs.existsSync(mapHtmlPath) ? loadSignalsFromMapReviewHtml(mapHtmlPath) : [];
 
-    const mapResults = gaps.map((g, idx) => {
+    const mapContextByEvent = new Map<
+      string,
+      ReturnType<typeof classifyPossibleCauseContext> & {
+        mapAnalysis: ReturnType<typeof analyzeMapAssociation>;
+      }
+    >();
+    const mapContextOnlyResults = gaps.map((g, idx) => {
       const eventId = `GAP_EVT_${String(idx + 1).padStart(3, '0')}`;
-      const ev = tenEvents.find((x) => x.eventId === eventId)!;
       const brackets = buildGapBrackets(g, presentPoints, posByLabel);
       const mapAnalysis = analyzeMapAssociation({
         gapFromUtc: g.fromUtc,
@@ -141,23 +149,34 @@ async function main(): Promise<void> {
         presentPoints,
         signals: osmSignals,
       });
-      const metrics = ev.decisiveMetricsV02 as Record<string, unknown>;
-      const applied = applyMapDecisionHypothesisV1({
-        classificationV02: ev.classificationV02,
-        map: mapAnalysis,
-        legIntoGapClass: (metrics.legIntoGapClass as string) ?? null,
-        legOutOfGapClass: (metrics.legOutOfGapClass as string) ?? null,
-      });
-      return { eventId, ...applied, mapAnalysis };
+      const causeContext = classifyPossibleCauseContext(mapAnalysis);
+      mapContextByEvent.set(eventId, { ...causeContext, mapAnalysis });
+      return { eventId, causeContext, mapAnalysis };
     });
 
-    const perEventDecisions = buildPerEventDecisionRows({ tenEvents, mapResults });
+    const perEventDecisions = buildPerEventDecisionRows({ tenEvents, mapContextByEvent });
+    const videoABC005to008 = buildVideoABC005to008(tenEvents);
+    const developmentStatus = buildDevelopmentStatusConsolidated({ natural, synthetic, tenEvents });
+
     const perEventTableMd = [
-      '| Evt | v0_2 | Map-Hyp V1 | Δ | Video |',
-      '|-----|------|------------|---|-------|',
-      ...perEventDecisions.map(
+      '| Evt | Bewegung (v0_2) | Kontext Ursache | A Tacho-0-Abschnitt | B ganzes Fenster 0 | C Zeit bestimmt | Video prüfbar |',
+      '|-----|-----------------|-----------------|---------------------|-------------------|-----------------|---------------|',
+      ...perEventDecisions.map((r) => {
+        const ax = r.videoAxesABC as {
+          A_tachoZeroSectionInPredictedWindow: string;
+          B_entireWindowContinuousTachoZero: string;
+          C_haltBeginEndDurationDetermined: string;
+        };
+        return `| ${r.eventId} | ${r.movementEventV02} | ${r.possibleCauseContext} | ${ax.A_tachoZeroSectionInPredictedWindow} | ${ax.B_entireWindowContinuousTachoZero} | ${ax.C_haltBeginEndDurationDetermined} | ${r.videoValidatable} |`;
+      }),
+    ].join('\n');
+
+    const videoAbcTableMd = [
+      '| Evt | A | B | C |',
+      '|-----|---|---|---|',
+      ...videoABC005to008.map(
         (r) =>
-          `| ${r.eventId} | ${r.decisionWithoutMap} | ${r.decisionWithMapHypothesisV1} | ${r.mapChange ? r.mapChangeReason : '—'} | ${r.video} |`,
+          `| ${r.eventId} | ${r.videoAxes.A_tachoZeroSectionInPredictedWindow} | ${r.videoAxes.B_entireWindowContinuousTachoZero} | ${r.videoAxes.C_haltBeginEndDurationDetermined} |`,
       ),
     ].join('\n');
 
@@ -180,17 +199,15 @@ async function main(): Promise<void> {
         decisionRuleIncludesMap: false,
         label: 'Kartenanreicherung (reine Kontextanzeige in MAP_REVIEW.html / mapContextVariantB)',
       },
-      offlineMapDecisionHypothesisV1: {
-        ...MAP_DECISION_HYPOTHESIS_V1_RULES,
-        signalsLoadedFrom: 'frozen MAP_REVIEW.html trafficSignals (no new Overpass in this step)',
+      mapDecisionHypothesisV1: {
+        ...MAP_DECISION_HYPOTHESIS_V1_STATUS,
+        rejectionDoc: 'architecture/drivingintelligence/evidence/exp021-ev-ground-truth/EXP021_MAP_DECISION_HYPOTHESIS_V1_REJECTED.md',
+        appliedToClassificationInThisExport: false,
+      },
+      mapCauseContextEnrichment: {
+        signalsLoadedFrom: 'frozen MAP_REVIEW.html trafficSignals',
         signalCount: osmSignals.length,
-        eventsChanged: mapResults.filter((m) => m.changed).length,
-        changedEvents: mapResults.filter((m) => m.changed).map((m) => ({
-          eventId: m.eventId,
-          from: tenEvents.find((e) => e.eventId === m.eventId)?.classificationV02,
-          to: m.classificationWithMapV1,
-          rule: m.ruleFired,
-        })),
+        perEvent: mapContextOnlyResults,
       },
     };
 
@@ -212,8 +229,10 @@ async function main(): Promise<void> {
       syntheticGapCounter: synthetic,
       slowRollVideo: slowRoll,
       referenceLongHaltSemantics: REFERENCE_LONG_HALT_SEMANTICS,
+      geometryNetDisplacementSemantics: GEOMETRY_NET_DISPLACEMENT_SEMANTICS,
       mapContribution,
-      mapHypothesisV1PerEvent: mapResults,
+      videoAxesABC005to008: videoABC005to008,
+      developmentStatusConsolidated: developmentStatus,
       haltPositiveIndications005to008: haltIndications005to008,
       perEventDecisions,
       videoClipRequestsForAnalysisChat: clips,
@@ -233,8 +252,13 @@ ${REFERENCE_LONG_HALT_SEMANTICS.definition}
 Zeit: **05:xx Berlin = 03:xx UTC** (CEST). H4/H5 Annotationslücke 05:44:03–05:44:09 — physische Ereignisanzahl ungeklärt.
 
 ## Karte
-v0_2: **reine Kontextanzeige** (keine Entscheidungsregel).  
-Separater Offline-Versuch **MAP_DECISION_HYPOTHESIS_V1**: ${mapResults.filter((m) => m.changed).length} von 10 Ereignissen geändert — siehe \`PER_EVENT_DECISIONS.md\`.
+v0_2: **reine Kontextanzeige**. **MAP_DECISION_HYPOTHESIS_V1 verworfen** (kein Karten-Veto). Kontext nur „mögliche Ursache“ in \`PER_EVENT_DECISIONS.md\`.
+
+## Video ABC (005–008)
+${videoAbcTableMd}
+
+## Entwicklungsstand
+Siehe \`DEVELOPMENT_STATUS_CONSOLIDATED.md\`
 
 ## Zehn Lückenereignisse
 
@@ -295,9 +319,15 @@ ${clips.map((c) => `- **${c.id}** [${c.action}] ${c.berlinFrom} – ${c.berlinTo
         .join('\n'),
       'PER_EVENT_DECISIONS.json': JSON.stringify(perEventDecisions, null, 2),
       'PER_EVENT_DECISIONS.md': perEventTableMd,
+      'VIDEO_ABC_005_008.md': videoAbcTableMd,
+      'VIDEO_ABC_005_008.json': JSON.stringify(videoABC005to008, null, 2),
       'HALT_INDICATIONS_005_008.json': JSON.stringify(haltIndications005to008, null, 2),
-      'MAP_HYPOTHESIS_V1_RESULTS.json': JSON.stringify(mapResults, null, 2),
+      'MAP_CAUSE_CONTEXT_ONLY.json': JSON.stringify(mapContextOnlyResults, null, 2),
+      'MAP_HYPOTHESIS_V1_REJECTED.json': JSON.stringify(MAP_DECISION_HYPOTHESIS_V1_STATUS, null, 2),
       'REFERENCE_SEMANTICS.json': JSON.stringify(REFERENCE_LONG_HALT_SEMANTICS, null, 2),
+      'GEOMETRY_SEMANTICS.json': JSON.stringify(GEOMETRY_NET_DISPLACEMENT_SEMANTICS, null, 2),
+      'DEVELOPMENT_STATUS_CONSOLIDATED.md': `# EXP021 Entwicklungsstand (konsolidiert)\n\n${developmentStatus.v02OnThisTripTraceable.map((x) => `- ${x}`).join('\n')}\n\n## Gegenfälle bestanden\n${developmentStatus.counterCasesPassed.map((x) => `- ${x}`).join('\n')}\n\n## Fehlalarm-Risiken\n${developmentStatus.remainingFalseAlarmRisks.map((x) => `- ${x}`).join('\n')}\n\n## Nächste unabhängige Referenzfälle\n${developmentStatus.nextIndependentReferenceCasesNeeded.map((x) => `- ${x}`).join('\n')}\n`,
+      'DEVELOPMENT_STATUS_CONSOLIDATED.json': JSON.stringify(developmentStatus, null, 2),
     };
 
     for (const [name, body] of Object.entries(files)) {

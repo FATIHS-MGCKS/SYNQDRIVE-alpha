@@ -1,6 +1,9 @@
 /**
- * EXP021 offline map decision hypothesis V1 — separate from frozen v0_2 classifier.
- * Proximity alone never creates LIKELY_HALT.
+ * EXP021 offline map decision hypothesis V1 — **REJECTED** (2026-10-16).
+ * Retained for audit only. Do not use applyMapDecisionHypothesisV1 for classification.
+ * Rejection: V1_DOWNGRADE_HALT_FAR_FROM_SIGNAL vetoes halt evidence when signals are
+ * missing/distant — unsuitable for general halt detection and contrary to EXP021 scope.
+ * See architecture/.../EXP021_MAP_DECISION_HYPOTHESIS_V1_REJECTED.md
  */
 import { haversineMeters } from '../../src/modules/vehicle-intelligence/driving-intelligence/core/geo/haversine';
 import { bucketLabelToMs } from '../../src/modules/vehicle-intelligence/driving-intelligence/speed-qc/di-v0-speed-qc-geo';
@@ -9,6 +12,16 @@ import type { GapBracketStructure } from './exp021-retrospective-halt-prototype-
 import type { PresentPoint } from './exp021-retrospective-halt-prototype.lib';
 
 export const MAP_DECISION_HYPOTHESIS_V1_ID = 'EXP021_MAP_DECISION_HYPOTHESIS_V1';
+
+export const MAP_DECISION_HYPOTHESIS_V1_STATUS = {
+  status: 'REJECTED',
+  rejectedAtUtc: '2026-10-16',
+  primaryReason:
+    'V1_DOWNGRADE_HALT_FAR_FROM_SIGNAL treats distant/missing OSM signals as veto over geometry/video halt indicia — rejected.',
+  v02BaselineUnchanged: true,
+  retuneMapThresholdsToRestoreHits: false,
+  decisionEffectiveUseRequires: 'Separate future hypothesis with explicit proof; map context is enrichment-only until then.',
+} as const;
 
 /** Frozen before evaluation — do not tune on this trip after seeing outcomes. */
 export const MAP_DECISION_HYPOTHESIS_V1_RULES = {

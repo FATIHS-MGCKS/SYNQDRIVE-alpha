@@ -9,8 +9,18 @@ LONG_HALT_1–5 are contiguous readable tacho-zero display segments from video o
 Zeit: **05:xx Berlin = 03:xx UTC** (CEST). H4/H5 Annotationslücke 05:44:03–05:44:09 — physische Ereignisanzahl ungeklärt.
 
 ## Karte
-v0_2: **reine Kontextanzeige** (keine Entscheidungsregel).  
-Separater Offline-Versuch **MAP_DECISION_HYPOTHESIS_V1**: 6 von 10 Ereignissen geändert — siehe `PER_EVENT_DECISIONS.md`.
+v0_2: **reine Kontextanzeige**. **MAP_DECISION_HYPOTHESIS_V1 verworfen** (kein Karten-Veto). Kontext nur „mögliche Ursache“ in `PER_EVENT_DECISIONS.md`.
+
+## Video ABC (005–008)
+| Evt | A | B | C |
+|-----|---|---|---|
+| GAP_EVT_005 | YES | NO | NOT_DETERMINED |
+| GAP_EVT_006 | YES | NO | NOT_DETERMINED |
+| GAP_EVT_007 | YES | YES | NOT_DETERMINED |
+| GAP_EVT_008 | YES | CANNOT_PROVE | NOT_DETERMINED |
+
+## Entwicklungsstand
+Siehe `DEVELOPMENT_STATUS_CONSOLIDATED.md`
 
 ## Zehn Lückenereignisse
 

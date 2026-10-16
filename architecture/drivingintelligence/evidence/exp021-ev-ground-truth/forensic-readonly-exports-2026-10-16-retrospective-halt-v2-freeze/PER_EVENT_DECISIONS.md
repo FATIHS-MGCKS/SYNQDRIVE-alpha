@@ -1,12 +1,12 @@
-| Evt | v0_2 | Map-Hyp V1 | Δ | Video |
-|-----|------|------------|---|-------|
-| GAP_EVT_001 | NOT_DISTINGUISHABLE | NOT_DISTINGUISHABLE | — | unbekannt (keine Annotation) |
-| GAP_EVT_002 | LIKELY_HALT | NOT_DISTINGUISHABLE | V1_DOWNGRADE_HALT_FAR_FROM_SIGNAL | unbekannt (keine Annotation) |
-| GAP_EVT_003 | LIKELY_HALT | NOT_DISTINGUISHABLE | V1_DOWNGRADE_HALT_FAR_FROM_SIGNAL | nicht entscheidbar |
-| GAP_EVT_004 | NOT_DISTINGUISHABLE | NOT_DISTINGUISHABLE | — | nicht entscheidbar |
-| GAP_EVT_005 | LIKELY_HALT | NOT_DISTINGUISHABLE | V1_DOWNGRADE_HALT_FAR_FROM_SIGNAL | gestützt |
-| GAP_EVT_006 | LIKELY_HALT | NOT_DISTINGUISHABLE | V1_DOWNGRADE_HALT_FAR_FROM_SIGNAL | nicht entscheidbar |
-| GAP_EVT_007 | LIKELY_HALT | NOT_DISTINGUISHABLE | V1_DOWNGRADE_HALT_FAR_FROM_SIGNAL | gestützt |
-| GAP_EVT_008 | LIKELY_HALT | NOT_DISTINGUISHABLE | V1_DOWNGRADE_HALT_FAR_FROM_SIGNAL | nicht entscheidbar |
-| GAP_EVT_009 | LIKELY_SLOW_ROLL_STOP_GO | LIKELY_SLOW_ROLL_STOP_GO | — | nicht entscheidbar |
-| GAP_EVT_010 | NOT_DISTINGUISHABLE | NOT_DISTINGUISHABLE | — | unbekannt (keine Annotation) |
+| Evt | Bewegung (v0_2) | Kontext Ursache | A Tacho-0-Abschnitt | B ganzes Fenster 0 | C Zeit bestimmt | Video prüfbar |
+|-----|-----------------|-----------------|---------------------|-------------------|-----------------|---------------|
+| GAP_EVT_001 | unbekannt | other_or_distant | NOT_OBSERVABLE | CANNOT_PROVE | NOT_DETERMINED | BEFORE_EXISTING_VIDEO |
+| GAP_EVT_002 | wahrscheinlicher_Halt | other_or_distant | NOT_OBSERVABLE | CANNOT_PROVE | NOT_DETERMINED | BEFORE_EXISTING_VIDEO |
+| GAP_EVT_003 | wahrscheinlicher_Halt | other_or_distant | YES | CANNOT_PROVE | NOT_DETERMINED | MOSTLY_BEFORE_EXISTING_VIDEO |
+| GAP_EVT_004 | unbekannt | other_or_distant | YES | NO | NOT_DETERMINED | WITHIN_EXISTING_VIDEO |
+| GAP_EVT_005 | wahrscheinlicher_Halt | other_or_distant | YES | NO | NOT_DETERMINED | WITHIN_EXISTING_VIDEO |
+| GAP_EVT_006 | wahrscheinlicher_Halt | other_or_distant | YES | NO | NOT_DETERMINED | WITHIN_EXISTING_VIDEO |
+| GAP_EVT_007 | wahrscheinlicher_Halt | other_or_distant | YES | YES | NOT_DETERMINED | WITHIN_EXISTING_VIDEO |
+| GAP_EVT_008 | wahrscheinlicher_Halt | other_or_distant | YES | CANNOT_PROVE | NOT_DETERMINED | WITHIN_EXISTING_VIDEO |
+| GAP_EVT_009 | Rollen_Stop_and_go | other_or_distant | YES | NO | NOT_DETERMINED | WITHIN_EXISTING_VIDEO |
+| GAP_EVT_010 | unbekannt | other_or_distant | NOT_OBSERVABLE | CANNOT_PROVE | NOT_DETERMINED | WITHIN_EXISTING_VIDEO |
