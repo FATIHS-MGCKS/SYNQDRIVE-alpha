@@ -9,6 +9,7 @@ import {
   s4aManifestFor,
   seedS4aTenant,
   seedS4aTripDiBoundaryAdmission,
+  setKillState,
   type S4aTenant,
 } from '../../../driving-intelligence/s4a-foundation/__tests__/di-v0-s4a-postgres-harness';
 import { TripDiBoundaryAdmissionService } from '../trip-di-boundary-admission.service';
@@ -19,9 +20,10 @@ import { readTripDiBoundaryAdmissionV1 } from '../trip-di-boundary-admission';
   let admission: TripDiBoundaryAdmissionService;
   const tenants: S4aTenant[] = [];
 
-  beforeAll(() => {
+  beforeAll(async () => {
     admin = newS4aClient();
     admission = new TripDiBoundaryAdmissionService(admin as never);
+    await setKillState(admin, 'NOT_KILLED').catch(() => undefined);
   });
 
   afterAll(async () => {

@@ -215,7 +215,7 @@ function buildGapSplitHarness(options?: {
     .spyOn(service as any, 'enqueueRepairEnrichment')
     .mockResolvedValue(undefined);
 
-  const runSingleSplit = () => {
+  const runSingleSplit = (boundaryScannedTripIds = new Set<string>()) => {
     gapCallCount = 0;
     return (
       service as never as {
@@ -223,9 +223,10 @@ function buildGapSplitHarness(options?: {
           trip: typeof parentTrip,
           vehicleId: string,
           tier: 'warm',
+          boundaryScannedTripIds: Set<string>,
         ) => Promise<{ proposed: number; applied: number; rejected: number }>;
       }
-    ).splitCompletedTripRecursively(parentTrip, VEHICLE_ID, 'warm');
+    ).splitCompletedTripRecursively(parentTrip, VEHICLE_ID, 'warm', boundaryScannedTripIds);
   };
 
   const runWarmReplay = () =>
@@ -236,7 +237,12 @@ function buildGapSplitHarness(options?: {
           from: Date,
           to: Date,
           tier: 'warm',
-        ) => Promise<{ proposed: number; applied: number; rejected: number }>;
+        ) => Promise<{
+          proposed: number;
+          applied: number;
+          rejected: number;
+          boundaryScannedTripIds: string[];
+        }>;
       }
     ).repairIntraTripGapSplits(VEHICLE_ID, at(-60 * 60_000), at(2 * 60 * 60_000), 'warm');
 
@@ -541,5 +547,28 @@ describe('INTRA_TRIP_GAP_SPLIT idempotency (INC-07)', () => {
     });
     expect(outcome).toBe('COMMIT_STATE_ALREADY_APPLIED');
     expect(h.prisma.tripRepair.updateMany).not.toHaveBeenCalled();
+  });
+});
+
+describe('DI boundary admission — step-4 scan gate (EXP021 #2047)', () => {
+  it('records trip id only after findWaypointGapForSplit completes (no gap still counts as scanned)', async () => {
+    const h = buildGapSplitHarness({ gapSequence: [null] });
+    jest.spyOn(h.service as any, 'findWaypointGapForSplit').mockResolvedValue(null);
+    const scanned = new Set<string>();
+    await h.runSingleSplit(scanned);
+    expect([...scanned]).toEqual([PARENT_TRIP_ID]);
+  });
+
+  it('repairIntraTripGapSplits omits trip when per-trip scan throws (no false release list)', async () => {
+    const h = buildGapSplitHarness({ gapSequence: [null] });
+    jest.spyOn(h.service as any, 'findWaypointGapForSplit').mockRejectedValue(new Error('waypoint read failed'));
+    const result = await h.runWarmReplay();
+    expect(result.boundaryScannedTripIds).toEqual([]);
+  });
+
+  it('warm replay includes scanned trip ids for release in the same reconcile pass', async () => {
+    const h = buildGapSplitHarness({ gapSequence: [null] });
+    const result = await h.runWarmReplay();
+    expect(result.boundaryScannedTripIds).toContain(PARENT_TRIP_ID);
   });
 });

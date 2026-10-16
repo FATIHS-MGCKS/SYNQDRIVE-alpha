@@ -126,7 +126,11 @@ export class DiV0TripSpeedQualityProjectionService {
     if (workItem.status !== 'COMPLETED' || workItem.run_purpose !== 'PRIMARY' || workItem.purpose_discriminator !== 'PRIMARY') {
       return null;
     }
-    const gate = await evaluateTripDiProductReadBoundaryGate(this.prisma, tripId, row.boundaryFingerprint);
+    const fpRows = await this.prisma.$queryRaw<Array<{ boundary_fingerprint: string }>>`
+      SELECT boundary_fingerprint FROM di_v0_s4_work_items WHERE id = ${row.workItemId} LIMIT 1`;
+    const boundaryFingerprint = fpRows[0]?.boundary_fingerprint;
+    if (!boundaryFingerprint) return null;
+    const gate = await evaluateTripDiProductReadBoundaryGate(this.prisma, tripId, boundaryFingerprint);
     if (!gate.ok) return null;
     return row;
   }

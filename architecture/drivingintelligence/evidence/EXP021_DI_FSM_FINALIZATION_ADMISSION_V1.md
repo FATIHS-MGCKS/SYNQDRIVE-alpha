@@ -31,6 +31,23 @@ Persisted on `vehicle_trips.raw_detection_meta`:
 
 **Writer:** `TripDiBoundaryAdmissionService.tryReleaseForTripTransactional`, invoked only for trip IDs returned from the intra-trip gap **boundary scan** in the same successful `reconcileWindow` pass (`releaseForBoundaryScannedTripIds`). Window-wide blanket release is intentionally disabled.
 
+### Reconciliation steps 2–3 vs release (not a separate optional path)
+
+`OPTIONAL_EXPLICIT_RELEASE_AFTER_STEPS_2_3_REPAIRS` meant: **do not** release immediately after step 2 (`detectAndRepairMissingTrips`) or step 3 (`repairMissingEnds`). Those repairs can change canonical boundaries; release waits until **step 4** (`repairIntraTripGapSplits`) has run `findWaypointGapForSplit` for each eligible COMPLETED trip in the window.
+
+| Step | Repair path | Changes fachliche Fahrtgrenzen? | Releases admission? |
+|------|-------------|----------------------------------|---------------------|
+| 2 | Missing-trip detection / create | Can create or reshape trips in window | **No** |
+| 3 | Missing-end repair | Can complete or move `end_time` / end coords | **No** |
+| 4 | Intra-trip gap split scan (+ optional split) | Split applies new segments; scan runs first per trip | **Only** trip IDs added to `boundaryScannedTripIds` after a successful gap probe |
+| After 4 | `releaseForBoundaryScannedTripIds` | No further boundary mutation in this hook | **Yes**, transactional + `canRelease` (no PROPOSED repairs, FSM RESTING) |
+
+**No premature release:** Steps 1–3 never call the admission writer. If the outer `executeReconcileWindow` try-block throws before step 4 completes, release does not run. S4 / product read remain gated on admission.
+
+**No permanent wait:** Tiered reconciliation re-runs the same window. Step 4 retries; per-trip scan failures are logged and omit that trip from the release list until a later pass succeeds. Open `PROPOSED` repairs block `tryRelease` until applied/rejected. Post-release boundary drift invalidates admission via `revisionKey` / S4 supersede.
+
+**Executable tests:** `trip-reconciliation.intra-trip-gap-split-idempotency.spec.ts` (DI boundary admission — step-4 scan gate); `trip-di-boundary-admission*.spec.ts`; `exp021-533b2bf8-finalization-admission.unit.spec.ts`.
+
 **Concurrency:** Release runs in a single DB transaction with `FOR UPDATE` on the trip row, re-checks PROPOSED repairs + FSM preconditions, and merges admission via `raw_detection_meta || patch` (sibling keys preserved). `contractVersion: 1` required.
 
 **Product read:** `evaluateTripDiProductReadBoundaryGate` — CURRENT V2 / READY requires live admission + fingerprint match (V1 ops read uses the same projection service gate).

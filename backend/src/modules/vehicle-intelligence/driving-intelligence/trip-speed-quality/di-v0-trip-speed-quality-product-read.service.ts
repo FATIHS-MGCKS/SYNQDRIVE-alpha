@@ -44,11 +44,8 @@ export class DiV0TripSpeedQualityProductReadService {
       DI_V0_SPEED_QC_POLICY_V2,
     );
     if (current) {
-      const gate = await evaluateTripDiProductReadBoundaryGate(
-        this.prisma,
-        tripId,
-        current.boundaryFingerprint,
-      );
+      const wiFp = await this.readWorkItemBoundaryFingerprint(current.workItemId);
+      const gate = await evaluateTripDiProductReadBoundaryGate(this.prisma, tripId, wiFp ?? '');
       if (!gate.ok) {
         const activeWorkItem = await this.resolveActivePrimaryWorkItem(organizationId, tripId);
         const outboxStatus = activeWorkItem ? await this.readOutboxStatus(activeWorkItem.id) : null;
@@ -87,6 +84,12 @@ export class DiV0TripSpeedQualityProductReadService {
       ORDER BY boundary_occurrence DESC, created_at DESC
       LIMIT 1`;
     return rows[0] ?? null;
+  }
+
+  private async readWorkItemBoundaryFingerprint(workItemId: string): Promise<string | null> {
+    const rows = await this.prisma.$queryRaw<Array<{ boundary_fingerprint: string }>>`
+      SELECT boundary_fingerprint FROM di_v0_s4_work_items WHERE id = ${workItemId} LIMIT 1`;
+    return rows[0]?.boundary_fingerprint ?? null;
   }
 
   private async readOutboxStatus(workItemId: string): Promise<DiV0P2AutoProjectionOutboxStatus | null> {

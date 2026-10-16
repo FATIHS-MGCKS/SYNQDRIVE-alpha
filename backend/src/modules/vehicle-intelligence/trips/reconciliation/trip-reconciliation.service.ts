@@ -283,8 +283,6 @@ export class TripReconciliationService {
     let repairsProposed = 0;
     let repairsApplied = 0;
     let repairsRejected = 0;
-    let boundaryScannedTripIds: string[] = [];
-
     try {
       // ── Step 1: Fix stale ongoing trips in this window ──────────────────
       await this.repairStaleOngoingTrips(vehicleId, to);
