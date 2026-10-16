@@ -1,0 +1,16 @@
+{
+  "schema": "LDI03_EVENT_OVERLAP_V1",
+  "overlap": [
+    {
+      "overlapId": "OVL_NONE",
+      "nativeEventId": null,
+      "nativeType": null,
+      "hfBrakeId": "HF_BRAKE_1",
+      "l3DecelId": "L3_DECEL_1",
+      "verdict": "INSUFFICIENT_EVIDENCE",
+      "notes": [
+        "No native harsh events on trip; hfBrakeSegments=1; l3DecelWindows=45"
+      ]
+    }
+  ]
+}
