@@ -1,6 +1,6 @@
 {
   "freezeId": "EXP021_RETROSPECTIVE_HALT_V0_2_FROZEN_REVIEW_2026-10-16",
-  "frozenAtUtc": "2026-10-16T18:32:41.588Z",
+  "frozenAtUtc": "2026-10-16T18:44:34.713Z",
   "fileHashes": {
     "scripts/ops/exp021-retrospective-halt-prototype-v2.lib.ts": "c3d8f64fc852bbd86832b8ccdc97da6953fdb79e1a84c2c638c4b97ffca19645",
     "scripts/ops/exp021-retrospective-halt-prototype.lib.ts": "dbdab821250ac20d7b486c4328ac1a0ffc2ef20615d576dad856633760a32350",

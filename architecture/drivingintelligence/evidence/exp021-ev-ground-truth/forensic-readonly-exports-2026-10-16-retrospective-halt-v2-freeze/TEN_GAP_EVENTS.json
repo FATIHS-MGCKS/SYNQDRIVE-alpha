@@ -50,11 +50,25 @@
     },
     "overlappingAnnotatedMainHalts": [],
     "videoPostHocVerdict": {
-      "verdict": "NOT_DECISIVE",
+      "verdict": "UNKNOWN_COVERAGE",
       "rationale": "Keine bekannte Video-Tacho-Annotation im Lückenfenster (unbekannt zählt nicht als Treffer/Fehler)."
     },
+    "videoDualAxis": {
+      "haltSomewhereInWindow": "UNKNOWN",
+      "standstillEntireLabeledWindow": "UNKNOWN",
+      "breakdown": {
+        "tacho0": 0,
+        "tacho1to3": 0,
+        "tacho3to5": 0,
+        "tachoGt5": 0,
+        "unknown": 6,
+        "totalLabeledSeconds": 6
+      },
+      "ruleBook": "Axis A: ≥3s or any tacho0 in gap window. Axis B: all known seconds tacho0 and ≥5 known seconds. Unknown seconds excluded from B and do not count as hit or error. Post-hoc verdict (SUPPORTED/…) compares detector class to both axes — not “no contradict = proof”."
+    },
+    "timeLabelNote": "Berlin times are Europe/Berlin CEST (UTC+2); UTC = Berlin − 2h on this trip date.",
     "mapContext": {
-      "role": "ENRICHMENT_ONLY_NOT_CLASSIFIER",
+      "role": "DISPLAY_CONTEXT_ONLY_NOT_CLASSIFIER",
       "payload": {
         "available": true,
         "osmMeta": {
@@ -157,11 +171,25 @@
     },
     "overlappingAnnotatedMainHalts": [],
     "videoPostHocVerdict": {
-      "verdict": "NOT_DECISIVE",
+      "verdict": "UNKNOWN_COVERAGE",
       "rationale": "Keine bekannte Video-Tacho-Annotation im Lückenfenster (unbekannt zählt nicht als Treffer/Fehler)."
     },
+    "videoDualAxis": {
+      "haltSomewhereInWindow": "UNKNOWN",
+      "standstillEntireLabeledWindow": "UNKNOWN",
+      "breakdown": {
+        "tacho0": 0,
+        "tacho1to3": 0,
+        "tacho3to5": 0,
+        "tachoGt5": 0,
+        "unknown": 49,
+        "totalLabeledSeconds": 49
+      },
+      "ruleBook": "Axis A: ≥3s or any tacho0 in gap window. Axis B: all known seconds tacho0 and ≥5 known seconds. Unknown seconds excluded from B and do not count as hit or error. Post-hoc verdict (SUPPORTED/…) compares detector class to both axes — not “no contradict = proof”."
+    },
+    "timeLabelNote": "Berlin times are Europe/Berlin CEST (UTC+2); UTC = Berlin − 2h on this trip date.",
     "mapContext": {
-      "role": "ENRICHMENT_ONLY_NOT_CLASSIFIER",
+      "role": "DISPLAY_CONTEXT_ONLY_NOT_CLASSIFIER",
       "payload": {
         "available": true,
         "osmMeta": {
@@ -277,8 +305,22 @@
       "verdict": "NOT_DECISIVE",
       "rationale": "LIKELY_HALT aus Geometrie/Chord, aber Video liefert keinen klaren Stillstand im Lückenfenster (kein Widerspruch ≠ Haltbeleg)."
     },
+    "videoDualAxis": {
+      "haltSomewhereInWindow": "YES",
+      "standstillEntireLabeledWindow": "NO",
+      "breakdown": {
+        "tacho0": 3,
+        "tacho1to3": 0,
+        "tacho3to5": 0,
+        "tachoGt5": 0,
+        "unknown": 43,
+        "totalLabeledSeconds": 46
+      },
+      "ruleBook": "Axis A: ≥3s or any tacho0 in gap window. Axis B: all known seconds tacho0 and ≥5 known seconds. Unknown seconds excluded from B and do not count as hit or error. Post-hoc verdict (SUPPORTED/…) compares detector class to both axes — not “no contradict = proof”."
+    },
+    "timeLabelNote": "Berlin times are Europe/Berlin CEST (UTC+2); UTC = Berlin − 2h on this trip date.",
     "mapContext": {
-      "role": "ENRICHMENT_ONLY_NOT_CLASSIFIER",
+      "role": "DISPLAY_CONTEXT_ONLY_NOT_CLASSIFIER",
       "payload": {
         "available": true,
         "osmMeta": {
@@ -394,8 +436,22 @@
       "verdict": "NOT_DECISIVE",
       "rationale": "Detektor unentscheidbar oder dünne Videoabdeckung."
     },
+    "videoDualAxis": {
+      "haltSomewhereInWindow": "YES",
+      "standstillEntireLabeledWindow": "NO",
+      "breakdown": {
+        "tacho0": 2,
+        "tacho1to3": 1,
+        "tacho3to5": 0,
+        "tachoGt5": 0,
+        "unknown": 0,
+        "totalLabeledSeconds": 3
+      },
+      "ruleBook": "Axis A: ≥3s or any tacho0 in gap window. Axis B: all known seconds tacho0 and ≥5 known seconds. Unknown seconds excluded from B and do not count as hit or error. Post-hoc verdict (SUPPORTED/…) compares detector class to both axes — not “no contradict = proof”."
+    },
+    "timeLabelNote": "Berlin times are Europe/Berlin CEST (UTC+2); UTC = Berlin − 2h on this trip date.",
     "mapContext": {
-      "role": "ENRICHMENT_ONLY_NOT_CLASSIFIER",
+      "role": "DISPLAY_CONTEXT_ONLY_NOT_CLASSIFIER",
       "payload": {
         "available": true,
         "osmMeta": {
@@ -518,8 +574,22 @@
       "verdict": "SUPPORTED",
       "rationale": "31s Tacho 0 im Fenster, kein Tacho >3."
     },
+    "videoDualAxis": {
+      "haltSomewhereInWindow": "YES",
+      "standstillEntireLabeledWindow": "NO",
+      "breakdown": {
+        "tacho0": 31,
+        "tacho1to3": 1,
+        "tacho3to5": 0,
+        "tachoGt5": 0,
+        "unknown": 0,
+        "totalLabeledSeconds": 32
+      },
+      "ruleBook": "Axis A: ≥3s or any tacho0 in gap window. Axis B: all known seconds tacho0 and ≥5 known seconds. Unknown seconds excluded from B and do not count as hit or error. Post-hoc verdict (SUPPORTED/…) compares detector class to both axes — not “no contradict = proof”."
+    },
+    "timeLabelNote": "Berlin times are Europe/Berlin CEST (UTC+2); UTC = Berlin − 2h on this trip date.",
     "mapContext": {
-      "role": "ENRICHMENT_ONLY_NOT_CLASSIFIER",
+      "role": "DISPLAY_CONTEXT_ONLY_NOT_CLASSIFIER",
       "payload": {
         "available": true,
         "osmMeta": {
@@ -647,8 +717,22 @@
       "verdict": "NOT_DECISIVE",
       "rationale": "Gemischtes Fenster (Tacho 0 und >3) — kleine Chord allein ist kein positiver Haltbeleg."
     },
+    "videoDualAxis": {
+      "haltSomewhereInWindow": "YES",
+      "standstillEntireLabeledWindow": "NO",
+      "breakdown": {
+        "tacho0": 40,
+        "tacho1to3": 0,
+        "tacho3to5": 1,
+        "tachoGt5": 0,
+        "unknown": 0,
+        "totalLabeledSeconds": 41
+      },
+      "ruleBook": "Axis A: ≥3s or any tacho0 in gap window. Axis B: all known seconds tacho0 and ≥5 known seconds. Unknown seconds excluded from B and do not count as hit or error. Post-hoc verdict (SUPPORTED/…) compares detector class to both axes — not “no contradict = proof”."
+    },
+    "timeLabelNote": "Berlin times are Europe/Berlin CEST (UTC+2); UTC = Berlin − 2h on this trip date.",
     "mapContext": {
-      "role": "ENRICHMENT_ONLY_NOT_CLASSIFIER",
+      "role": "DISPLAY_CONTEXT_ONLY_NOT_CLASSIFIER",
       "payload": {
         "available": true,
         "osmMeta": {
@@ -771,8 +855,22 @@
       "verdict": "SUPPORTED",
       "rationale": "7s Tacho 0 im Fenster, kein Tacho >3."
     },
+    "videoDualAxis": {
+      "haltSomewhereInWindow": "YES",
+      "standstillEntireLabeledWindow": "YES",
+      "breakdown": {
+        "tacho0": 7,
+        "tacho1to3": 0,
+        "tacho3to5": 0,
+        "tachoGt5": 0,
+        "unknown": 0,
+        "totalLabeledSeconds": 7
+      },
+      "ruleBook": "Axis A: ≥3s or any tacho0 in gap window. Axis B: all known seconds tacho0 and ≥5 known seconds. Unknown seconds excluded from B and do not count as hit or error. Post-hoc verdict (SUPPORTED/…) compares detector class to both axes — not “no contradict = proof”."
+    },
+    "timeLabelNote": "Berlin times are Europe/Berlin CEST (UTC+2); UTC = Berlin − 2h on this trip date.",
     "mapContext": {
-      "role": "ENRICHMENT_ONLY_NOT_CLASSIFIER",
+      "role": "DISPLAY_CONTEXT_ONLY_NOT_CLASSIFIER",
       "payload": {
         "available": true,
         "osmMeta": {
@@ -896,8 +994,22 @@
       "verdict": "NOT_DECISIVE",
       "rationale": "Gemischtes Fenster (Tacho 0 und >3) — kleine Chord allein ist kein positiver Haltbeleg."
     },
+    "videoDualAxis": {
+      "haltSomewhereInWindow": "YES",
+      "standstillEntireLabeledWindow": "NO",
+      "breakdown": {
+        "tacho0": 46,
+        "tacho1to3": 0,
+        "tacho3to5": 0,
+        "tachoGt5": 1,
+        "unknown": 7,
+        "totalLabeledSeconds": 54
+      },
+      "ruleBook": "Axis A: ≥3s or any tacho0 in gap window. Axis B: all known seconds tacho0 and ≥5 known seconds. Unknown seconds excluded from B and do not count as hit or error. Post-hoc verdict (SUPPORTED/…) compares detector class to both axes — not “no contradict = proof”."
+    },
+    "timeLabelNote": "Berlin times are Europe/Berlin CEST (UTC+2); UTC = Berlin − 2h on this trip date.",
     "mapContext": {
-      "role": "ENRICHMENT_ONLY_NOT_CLASSIFIER",
+      "role": "DISPLAY_CONTEXT_ONLY_NOT_CLASSIFIER",
       "payload": {
         "available": true,
         "osmMeta": {
@@ -1013,8 +1125,22 @@
       "verdict": "NOT_DECISIVE",
       "rationale": "Video nicht eindeutig für Slow-roll."
     },
+    "videoDualAxis": {
+      "haltSomewhereInWindow": "YES",
+      "standstillEntireLabeledWindow": "NO",
+      "breakdown": {
+        "tacho0": 2,
+        "tacho1to3": 1,
+        "tacho3to5": 0,
+        "tachoGt5": 0,
+        "unknown": 0,
+        "totalLabeledSeconds": 3
+      },
+      "ruleBook": "Axis A: ≥3s or any tacho0 in gap window. Axis B: all known seconds tacho0 and ≥5 known seconds. Unknown seconds excluded from B and do not count as hit or error. Post-hoc verdict (SUPPORTED/…) compares detector class to both axes — not “no contradict = proof”."
+    },
+    "timeLabelNote": "Berlin times are Europe/Berlin CEST (UTC+2); UTC = Berlin − 2h on this trip date.",
     "mapContext": {
-      "role": "ENRICHMENT_ONLY_NOT_CLASSIFIER",
+      "role": "DISPLAY_CONTEXT_ONLY_NOT_CLASSIFIER",
       "payload": {
         "available": true,
         "osmMeta": {
@@ -1092,11 +1218,25 @@
     },
     "overlappingAnnotatedMainHalts": [],
     "videoPostHocVerdict": {
-      "verdict": "NOT_DECISIVE",
+      "verdict": "UNKNOWN_COVERAGE",
       "rationale": "Keine bekannte Video-Tacho-Annotation im Lückenfenster (unbekannt zählt nicht als Treffer/Fehler)."
     },
+    "videoDualAxis": {
+      "haltSomewhereInWindow": "UNKNOWN",
+      "standstillEntireLabeledWindow": "UNKNOWN",
+      "breakdown": {
+        "tacho0": 0,
+        "tacho1to3": 0,
+        "tacho3to5": 0,
+        "tachoGt5": 0,
+        "unknown": 11,
+        "totalLabeledSeconds": 11
+      },
+      "ruleBook": "Axis A: ≥3s or any tacho0 in gap window. Axis B: all known seconds tacho0 and ≥5 known seconds. Unknown seconds excluded from B and do not count as hit or error. Post-hoc verdict (SUPPORTED/…) compares detector class to both axes — not “no contradict = proof”."
+    },
+    "timeLabelNote": "Berlin times are Europe/Berlin CEST (UTC+2); UTC = Berlin − 2h on this trip date.",
     "mapContext": {
-      "role": "ENRICHMENT_ONLY_NOT_CLASSIFIER",
+      "role": "DISPLAY_CONTEXT_ONLY_NOT_CLASSIFIER",
       "payload": {
         "available": true,
         "osmMeta": {

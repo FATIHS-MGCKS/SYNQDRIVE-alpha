@@ -1,0 +1,21 @@
+{
+  "definition": "LONG_HALT_1–5 are contiguous readable tacho-zero display segments from video overlay — not five proven independent physical halt events.",
+  "numericWindowsUnchanged": true,
+  "physicalProof": "NOT_CLAIMED",
+  "timeZoneNote": "Europe/Berlin 05:xx on 2026-10-16 (CEST) = UTC 03:xx.",
+  "videoAnchorUtc": "2026-10-16T03:37:41Z",
+  "h4h5AnnotationGap": {
+    "utc": {
+      "from": "2026-10-16T03:44:03Z",
+      "to": "2026-10-16T03:44:09Z"
+    },
+    "berlin": {
+      "from": "2026-10-16 05:44:03",
+      "to": "2026-10-16 05:44:09"
+    },
+    "tacho": "unknown",
+    "physicalEventCountH4H5": "UNCLEAR_NOT_INFERRED_FROM_GAP",
+    "note": "No restart inferred from unknown tacho alone; GAP_EVT_008 spans one position gap, not erroneous merge of halts."
+  },
+  "docPath": "architecture/drivingintelligence/evidence/exp021-ev-ground-truth/EXP021_REFERENCE_SEMANTICS_LONG_HALT.md"
+}

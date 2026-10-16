@@ -1,0 +1,134 @@
+[
+  {
+    "eventId": "GAP_EVT_005",
+    "classificationV02": "LIKELY_HALT",
+    "positiveIndications": [
+      {
+        "feature": "endpointChordM",
+        "value": 1.1336668274961743
+      },
+      {
+        "feature": "impliedChordKmh_avg",
+        "value": 0.12753751809331962
+      },
+      {
+        "feature": "legOutOfGapKmh_departure",
+        "value": 9.391902453217165
+      },
+      {
+        "feature": "hypothesisScore_LIKELY_HALT",
+        "value": 5
+      }
+    ],
+    "supportingEvidenceLines": [
+      "Small endpoint chord 1.1 m across 32s gap.",
+      "Post-gap calendar leg shows departure while chord remains small — halt-then-depart pattern."
+    ],
+    "explicitNonProof": [
+      "Small chord supports “little net displacement across gap”, not standstill duration.",
+      "Post-gap moving leg supports halt-then-depart composite, not halt localized in gap.",
+      "Empty contradictingEvidence list is not a positive halt proof.",
+      "Video axis “halt somewhere” and detector LIKELY_HALT are separate claims."
+    ]
+  },
+  {
+    "eventId": "GAP_EVT_006",
+    "classificationV02": "LIKELY_HALT",
+    "positiveIndications": [
+      {
+        "feature": "endpointChordM",
+        "value": 2.12296344489598
+      },
+      {
+        "feature": "impliedChordKmh_avg",
+        "value": 0.18640654638111046
+      },
+      {
+        "feature": "legOutOfGapKmh_departure",
+        "value": 11.651795603477284
+      },
+      {
+        "feature": "legIntoGapKmh",
+        "value": 2.8021121500568564
+      },
+      {
+        "feature": "hypothesisScore_LIKELY_HALT",
+        "value": 6
+      }
+    ],
+    "supportingEvidenceLines": [
+      "Small endpoint chord 2.1 m across 41s gap.",
+      "Post-gap calendar leg shows departure while chord remains small — halt-then-depart pattern."
+    ],
+    "explicitNonProof": [
+      "Small chord supports “little net displacement across gap”, not standstill duration.",
+      "Post-gap moving leg supports halt-then-depart composite, not halt localized in gap.",
+      "Empty contradictingEvidence list is not a positive halt proof.",
+      "Video axis “halt somewhere” and detector LIKELY_HALT are separate claims."
+    ]
+  },
+  {
+    "eventId": "GAP_EVT_007",
+    "classificationV02": "LIKELY_HALT",
+    "positiveIndications": [
+      {
+        "feature": "endpointChordM",
+        "value": 0.4912108229850152
+      },
+      {
+        "feature": "impliedChordKmh_avg",
+        "value": 0.25262270896372213
+      },
+      {
+        "feature": "legOutOfGapKmh_departure",
+        "value": 8.242512023287304
+      },
+      {
+        "feature": "hypothesisScore_LIKELY_HALT",
+        "value": 5
+      }
+    ],
+    "supportingEvidenceLines": [
+      "Small endpoint chord 0.5 m across 7s gap.",
+      "Post-gap calendar leg shows departure while chord remains small — halt-then-depart pattern."
+    ],
+    "explicitNonProof": [
+      "Small chord supports “little net displacement across gap”, not standstill duration.",
+      "Post-gap moving leg supports halt-then-depart composite, not halt localized in gap.",
+      "Empty contradictingEvidence list is not a positive halt proof.",
+      "Video axis “halt somewhere” and detector LIKELY_HALT are separate claims."
+    ]
+  },
+  {
+    "eventId": "GAP_EVT_008",
+    "classificationV02": "LIKELY_HALT",
+    "positiveIndications": [
+      {
+        "feature": "endpointChordM",
+        "value": 1.6693710515541964
+      },
+      {
+        "feature": "impliedChordKmh_avg",
+        "value": 0.11129140343694642
+      },
+      {
+        "feature": "legOutOfGapKmh_departure",
+        "value": 12.011657798081133
+      },
+      {
+        "feature": "hypothesisScore_LIKELY_HALT",
+        "value": 5
+      }
+    ],
+    "supportingEvidenceLines": [
+      "Small endpoint chord 1.7 m across 54s gap.",
+      "Post-gap calendar leg shows departure while chord remains small — halt-then-depart pattern."
+    ],
+    "explicitNonProof": [
+      "Small chord supports “little net displacement across gap”, not standstill duration.",
+      "Post-gap moving leg supports halt-then-depart composite, not halt localized in gap.",
+      "Empty contradictingEvidence list is not a positive halt proof.",
+      "Video axis “halt somewhere” and detector LIKELY_HALT are separate claims."
+    ]
+  }
+]

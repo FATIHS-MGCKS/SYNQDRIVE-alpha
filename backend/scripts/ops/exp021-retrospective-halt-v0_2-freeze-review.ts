@@ -15,15 +15,37 @@ import { buildGapEventsV2 } from './exp021-retrospective-halt-prototype-v2.lib';
 import {
   buildFreezeManifest,
   buildMainHaltHonestReview,
+  buildPerEventDecisionRows,
+  buildPositiveHaltIndications005to008,
   buildReviewMarkdownTable,
   buildTenEventReview,
   clipRequestsForVideoChat,
   inputStandHash,
   naturalGapCounterReport,
+  REFERENCE_LONG_HALT_SEMANTICS,
   slowRollVideoNumbers,
   syntheticCounterReport,
   V0_2_FREEZE_ID,
 } from './exp021-retrospective-halt-v0_2-freeze-review.lib';
+import {
+  analyzeMapAssociation,
+  applyMapDecisionHypothesisV1,
+  MAP_DECISION_HYPOTHESIS_V1_RULES,
+} from './exp021-retrospective-halt-map-hypothesis-v1.lib';
+import { buildGapBrackets } from './exp021-retrospective-halt-prototype-v2.lib';
+
+function loadSignalsFromMapReviewHtml(htmlPath: string): Array<{ id: number; lat: number; lon: number }> {
+  const html = fs.readFileSync(htmlPath, 'utf8');
+  const start = html.indexOf('const payload = ');
+  if (start < 0) return [];
+  const jsonStart = start + 'const payload = '.length;
+  const jsonEnd = html.indexOf(';\n', jsonStart);
+  if (jsonEnd < 0) return [];
+  const payload = JSON.parse(html.slice(jsonStart, jsonEnd)) as {
+    trafficSignals?: Array<{ id: number; lat: number; lon: number }>;
+  };
+  return payload.trafficSignals ?? [];
+}
 
 function parseOutDir(argv: string[]): string {
   const i = argv.indexOf('--out-dir');
@@ -99,7 +121,45 @@ async function main(): Promise<void> {
     const synthetic = syntheticCounterReport(presentPoints, sortedLabels, posByLabel);
     const slowRoll = slowRollVideoNumbers(presentPoints, ctx.evidence.positions, videoByLabel);
     const clips = clipRequestsForVideoChat(mainHalts, tenEvents);
+    const haltIndications005to008 = buildPositiveHaltIndications005to008(tenEvents);
     const reviewTableMd = buildReviewMarkdownTable(tenEvents);
+
+    const mapHtmlPath = path.join(
+      repoRoot,
+      'architecture/drivingintelligence/evidence/exp021-ev-ground-truth/forensic-readonly-exports-2026-10-16-retrospective-halt-v2/MAP_REVIEW.html',
+    );
+    const osmSignals = fs.existsSync(mapHtmlPath) ? loadSignalsFromMapReviewHtml(mapHtmlPath) : [];
+
+    const mapResults = gaps.map((g, idx) => {
+      const eventId = `GAP_EVT_${String(idx + 1).padStart(3, '0')}`;
+      const ev = tenEvents.find((x) => x.eventId === eventId)!;
+      const brackets = buildGapBrackets(g, presentPoints, posByLabel);
+      const mapAnalysis = analyzeMapAssociation({
+        gapFromUtc: g.fromUtc,
+        gapToUtc: g.toUtc,
+        brackets,
+        presentPoints,
+        signals: osmSignals,
+      });
+      const metrics = ev.decisiveMetricsV02 as Record<string, unknown>;
+      const applied = applyMapDecisionHypothesisV1({
+        classificationV02: ev.classificationV02,
+        map: mapAnalysis,
+        legIntoGapClass: (metrics.legIntoGapClass as string) ?? null,
+        legOutOfGapClass: (metrics.legOutOfGapClass as string) ?? null,
+      });
+      return { eventId, ...applied, mapAnalysis };
+    });
+
+    const perEventDecisions = buildPerEventDecisionRows({ tenEvents, mapResults });
+    const perEventTableMd = [
+      '| Evt | v0_2 | Map-Hyp V1 | Δ | Video |',
+      '|-----|------|------------|---|-------|',
+      ...perEventDecisions.map(
+        (r) =>
+          `| ${r.eventId} | ${r.decisionWithoutMap} | ${r.decisionWithMapHypothesisV1} | ${r.mapChange ? r.mapChangeReason : '—'} | ${r.video} |`,
+      ),
+    ].join('\n');
 
     const likelyHaltAudit = tenEvents
       .filter((e) => e.classificationV02 === 'LIKELY_HALT')
@@ -116,10 +176,22 @@ async function main(): Promise<void> {
       }));
 
     const mapContribution = {
-      decisionRuleIncludesMap: false,
-      label: 'Kartenanreicherung (Anzeige/Protokoll), kein Wirksamkeitsvergleich zweier Detektoren',
-      evidence: 'applyMapContextVariantBEnhanced mutiert nur mapContextVariantB; gapEventsA/B classificationCounts identisch in v0_2 export.',
-      signalCountInBbox: gapEventsV02[0]?.mapContextVariantB?.available ? 'see per-event mapContext' : 'varies',
+      v0_2FrozenClassifier: {
+        decisionRuleIncludesMap: false,
+        label: 'Kartenanreicherung (reine Kontextanzeige in MAP_REVIEW.html / mapContextVariantB)',
+      },
+      offlineMapDecisionHypothesisV1: {
+        ...MAP_DECISION_HYPOTHESIS_V1_RULES,
+        signalsLoadedFrom: 'frozen MAP_REVIEW.html trafficSignals (no new Overpass in this step)',
+        signalCount: osmSignals.length,
+        eventsChanged: mapResults.filter((m) => m.changed).length,
+        changedEvents: mapResults.filter((m) => m.changed).map((m) => ({
+          eventId: m.eventId,
+          from: tenEvents.find((e) => e.eventId === m.eventId)?.classificationV02,
+          to: m.classificationWithMapV1,
+          rule: m.ruleFired,
+        })),
+      },
     };
 
     const payload = {
@@ -139,8 +211,13 @@ async function main(): Promise<void> {
       naturalGapCounter: natural,
       syntheticGapCounter: synthetic,
       slowRollVideo: slowRoll,
+      referenceLongHaltSemantics: REFERENCE_LONG_HALT_SEMANTICS,
       mapContribution,
+      mapHypothesisV1PerEvent: mapResults,
+      haltPositiveIndications005to008: haltIndications005to008,
+      perEventDecisions,
       videoClipRequestsForAnalysisChat: clips,
+      videoVerdictRuleBook: tenEvents[0]?.videoDualAxis?.ruleBook,
       evaluationDisclaimer:
         'Post-hoc video tacho overlay only — no visual review performed in this export. Unknown seconds are neither hits nor errors.',
     };
@@ -151,8 +228,13 @@ async function main(): Promise<void> {
 **Parameter-Hash:** \`${freeze.parameterSnapshotHash}\`  
 **Input-Stand-Hash:** \`${inputHash}\`
 
+## Referenz LONG_HALT
+${REFERENCE_LONG_HALT_SEMANTICS.definition}  
+Zeit: **05:xx Berlin = 03:xx UTC** (CEST). H4/H5 Annotationslücke 05:44:03–05:44:09 — physische Ereignisanzahl ungeklärt.
+
 ## Karte
-${mapContribution.label}. \`decisionRuleIncludesMap: false\`
+v0_2: **reine Kontextanzeige** (keine Entscheidungsregel).  
+Separater Offline-Versuch **MAP_DECISION_HYPOTHESIS_V1**: ${mapResults.filter((m) => m.changed).length} von 10 Ereignissen geändert — siehe \`PER_EVENT_DECISIONS.md\`.
 
 ## Zehn Lückenereignisse
 
@@ -188,8 +270,14 @@ Video nachträglich: gestützt ${natural.videoPostHoc.supported}, widersprochen 
 Alle: ${JSON.stringify(slowRoll.videoCrossTabAllSeconds)}  
 Aggregat-fähig: ${JSON.stringify(slowRoll.videoCrossTabAggregateEligibleSeconds)}
 
-## Clip-Anfragen (Video-Chat, keine visuelle Prüfung hier)
-${clips.map((c) => `- **${c.id}** ${c.berlinFrom}–${c.berlinTo} (${c.utcFrom} … ${c.utcTo}): ${c.reason}`).join('\n')}
+## Haltindizien 005–008
+Siehe \`HALT_INDICATIONS_005_008.json\` (Werte + explizit kein Beweis allein aus „keine Gegenargumente“).
+
+## Video-Bewertungsregel
+${tenEvents[0]?.videoDualAxis?.ruleBook ?? ''}
+
+## Clip-Anfragen / Nicht prüfbar
+${clips.map((c) => `- **${c.id}** [${c.action}] ${c.berlinFrom} – ${c.berlinTo}: ${c.reason}`).join('\n')}
 `;
 
     const files: Record<string, string> = {
@@ -199,7 +287,17 @@ ${clips.map((c) => `- **${c.id}** ${c.berlinFrom}–${c.berlinTo} (${c.utcFrom} 
       'MAIN_HALTS_HONEST.json': JSON.stringify(payload.fiveMainHaltsHonest, null, 2),
       'REVIEW_TABLE.md': reviewTableMd,
       'REVIEW_SUMMARY.md': summary,
-      'VIDEO_CLIP_REQUESTS.md': clips.map((c) => `## ${c.id}\n- Berlin: ${c.berlinFrom} – ${c.berlinTo}\n- UTC: ${c.utcFrom} – ${c.utcTo}\n- ${c.reason}\n`).join('\n'),
+      'VIDEO_CLIP_REQUESTS.md': clips
+        .map(
+          (c) =>
+            `## ${c.id} (${c.action})\n- Berlin / UTC: ${c.berlinFrom} – ${c.berlinTo}\n- ${c.reason}\n`,
+        )
+        .join('\n'),
+      'PER_EVENT_DECISIONS.json': JSON.stringify(perEventDecisions, null, 2),
+      'PER_EVENT_DECISIONS.md': perEventTableMd,
+      'HALT_INDICATIONS_005_008.json': JSON.stringify(haltIndications005to008, null, 2),
+      'MAP_HYPOTHESIS_V1_RESULTS.json': JSON.stringify(mapResults, null, 2),
+      'REFERENCE_SEMANTICS.json': JSON.stringify(REFERENCE_LONG_HALT_SEMANTICS, null, 2),
     };
 
     for (const [name, body] of Object.entries(files)) {
