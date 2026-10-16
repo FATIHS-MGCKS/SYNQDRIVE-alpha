@@ -24,6 +24,8 @@ export function describeVsiApdsReadonlyRequirementsContract(): VsiApdsReadonlyRe
     limitations: [
       'NOT_WIRED_TO_APDS_SHADOW_DECISION_PATH',
       'NO_POLLING_POLICY_CHANGES_IN_P4',
+      'P5A_READONLY_ADAPTER_vsi-apds-p5-readonly-v1',
+      'P5B_RUNTIME_GATE_VSI_P5_APDS_CORRELATION_ENABLED_DEFAULT_OFF',
     ],
   };
 }

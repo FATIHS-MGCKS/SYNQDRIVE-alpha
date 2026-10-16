@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vsi-p5-apds-readonly-correlation-2026-10-16',
+    version: '4.9.2246',
+    title: 'VSI P5 — read-only APDS capability/demand correlation (P5B gate default OFF)',
+    summary: [
+      'P5A: vsi-apds-p5-readonly-v1 adapter, consumer demand vector from P4 registry, pure shadow correlation engine (not an APDS decision input).',
+      'P5B boundary: VSI_P5_APDS_CORRELATION_ENABLED independent of WORKER_APD_SHADOW_ENABLED — not wired into adaptive-polling-shadow in this PR.',
+      'No VSI write-back, no DIMO calls, no polling or shadow epoch changes; disposable PG + unit certification.',
+    ],
+    reason:
+      'Integrate signal profiles and consumer demand with APDS shadow decisions as observation-only analytics before P6 polling optimization.',
+    previousBehavior:
+      'APDS consumer adapter contract-only; no structured profile↔demand↔shadow correlation layer.',
+    details:
+      'vsi-apds-*.ts, VSI_P5_APDS_INTEGRATION.md; operational note: internal resolver double-prefix /api/v1/api/v1/internal/vsi/capability-resolver/',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-16T07:20:00.000Z',
+  },
+  {
     id: 'exp021-v2-product-read-path-2026-10-15',
     version: '4.9.2245',
     title: 'EXP021 — V2 GPS speed evaluation product read + trip detail panel (default OFF)',

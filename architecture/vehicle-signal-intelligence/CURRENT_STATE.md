@@ -4,7 +4,7 @@
 |-------|-------|
 | **Registry coverage status** | `AUDIT_IN_PROGRESS` |
 | **Product focus** | Per-vehicle, per-provider-source-link **signal capability profiles** (declared vs observed) |
-| **Last updated** | 2026-10-16 (P4 capability resolver v1 — in PR) |
+| **Last updated** | 2026-10-16 (P4 merged #2045; P5 read-only APDS — in PR) |
 | **Product charter** | [`VSI_PRODUCT_CHARTER.md`](VSI_PRODUCT_CHARTER.md) |
 | **Master roadmap** | [`VSI_MASTER_ROADMAP.md`](VSI_MASTER_ROADMAP.md) |
 | **P0+P1 on `main`** | Merged PR #2034 @ `eb5f1f2ee` — **not** equivalent to Production deploy ([evidence](evidence/VSI_P0P1_MERGE_BASELINE_2026-10-15.md)) |
@@ -50,7 +50,8 @@
 - **Backfill** — bounded `planActiveVehicleProfileBackfill` + `ACTIVE_VEHICLE_BACKFILL_RECONCILE` with durable `enqueueBackfillContinuation` when `nextCursor` is set (operator/CLI only; not auto-run in production).
 - **Signal registry expansion** — design doc only: [`research/VSI_SIGNAL_REGISTRY_EXPANSION_PLAN.md`](research/VSI_SIGNAL_REGISTRY_EXPANSION_PLAN.md).
 
-## Implemented (P4 — in PR, not deployed)
+## Implemented (P4 — merged #2045 @ `a0ce01f19`, deploy baseline per ops)
+
 
 - **Capability resolver v1** — deterministic read-only engine (`vsi-capability-resolver.engine.ts`) over persisted capability profiles; recomputes freshness at `evaluationTime`.
 - **Consumer requirements registry** — versioned `vsi-consumer-requirements-v1` with domain approval matrix ([`research/VSI_P4_DOMAIN_APPROVAL_MATRIX.md`](research/VSI_P4_DOMAIN_APPROVAL_MATRIX.md)); pending thresholds fail closed.
@@ -58,10 +59,18 @@
 - **P4 hardening** — strict EMPIRICAL_OBSERVED gate, fail-closed `FRESH_AT_EVALUATION`, invalid/future timestamps rejected; APDS `APPROVED_DESIGN_CONTRACT` is design-only (`REQUIREMENT_RUNTIME_APPROVAL_ABSENT`, not runtime ELIGIBLE).
 - **Internal API** — `GET api/v1/internal/vsi/capability-resolver/.../resolve` (MASTER_ADMIN, no DIMO, no profile mutation).
 - **Consumer adapter contracts** — DI, Battery V2, Trip/DTC, APDS read-only requirement surfaces (no runtime wiring).
+- **Operational note** — internal resolver may be reached via double-prefixed path `/api/v1/api/v1/internal/vsi/capability-resolver/...` (non-blocking; do not change working prod route in read-only PRs).
+
+## Implemented (P5 — in PR, P5B default OFF)
+
+- **P5A read-only adapter** — `buildVsiApdsReadonlyCapabilityObservation`, demand vector from `VSI_CONSUMER_REQUIREMENTS_V1`, pure `correlateApdsShadowWithVsiCapability`.
+- **P5B gate** — `VSI_P5_APDS_CORRELATION_ENABLED` (default false); independent of `WORKER_APD_SHADOW_ENABLED`; **not** wired into `adaptive-polling-shadow` in this PR.
+- **Service** — `VsiApdsP5ReadonlyService` (profile + link load only; no VSI write-back, no DIMO).
+- **Evidence** — [`research/VSI_P5_APDS_INTEGRATION.md`](research/VSI_P5_APDS_INTEGRATION.md).
 
 ## Explicit non-goals (this slice)
 
-- APDS shadow wiring (P3).
+- APDS shadow runtime hook / correlation persistence (P5B activation).
 - VSI03 capture / strict-advance read flags.
 - Fleet UI surfacing.
 

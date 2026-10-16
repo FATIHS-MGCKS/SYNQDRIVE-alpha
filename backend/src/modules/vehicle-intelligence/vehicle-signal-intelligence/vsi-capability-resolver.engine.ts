@@ -97,7 +97,8 @@ function hasP3QualityFields(signal: VsiCapabilityResolverProfileContext['signals
   );
 }
 
-function evaluateRequirement(
+/** Shared P4 requirement evaluation — reused by P5 demand vector (no divergence). */
+export function evaluateVsiConsumerRequirement(
   req: VsiConsumerRequirementSpecV1,
   ctx: VsiCapabilityResolverProfileContext,
   evaluationTimeMs: number,
@@ -416,7 +417,7 @@ export function resolveVsiCapabilities(
       continue;
     }
 
-    const outcome = evaluateRequirement(req, profile, evaluationTimeMs);
+    const outcome = evaluateVsiConsumerRequirement(req, profile, evaluationTimeMs);
     signalEvaluations.push(...outcome.evaluations);
 
     if (
