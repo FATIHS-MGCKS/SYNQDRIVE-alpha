@@ -35,7 +35,11 @@ Owner-reported window (Berlin): `2026-10-16T05:36:00+02:00` → `2026-10-16T05:5
 | [EXP021_EV_GROUND_TRUTH_FORENSIC_SUPPLEMENT_V1.md](./EXP021_EV_GROUND_TRUTH_FORENSIC_SUPPLEMENT_V1.md) | Additive supplement v1 (segment trace, video anchor, ROW_ABSENT 135/125, version SHA) |
 | [forensic-readonly-exports-2026-10-16-supplement-v1/](./forensic-readonly-exports-2026-10-16-supplement-v1/) | Supplement JSON (`npm run exp021:ev-ground-truth:forensic-supplement-v1`) — **frozen** |
 | [EXP021_EV_GROUND_TRUTH_FORENSIC_SUPPLEMENT_V2.md](./EXP021_EV_GROUND_TRUTH_FORENSIC_SUPPLEMENT_V2.md) | Additive supplement v2 (rejected vs missing input, ClickHouse segments, post-deploy live read) |
-| [forensic-readonly-exports-2026-10-16-supplement-v2/](./forensic-readonly-exports-2026-10-16-supplement-v2/) | Supplement v2 JSON (`npm run exp021:ev-ground-truth:forensic-supplement-v2`) |
+| [forensic-readonly-exports-2026-10-16-supplement-v2/](./forensic-readonly-exports-2026-10-16-supplement-v2/) | Supplement v2 JSON (`npm run exp021:ev-ground-truth:forensic-supplement-v2`) — **frozen** |
+| [EXP021_EV_GROUND_TRUTH_FORENSIC_SUPPLEMENT_V3.md](./EXP021_EV_GROUND_TRUTH_FORENSIC_SUPPLEMENT_V3.md) | Supplement v3 — 45s PRESENT/NO_MOTION/null L3 + 269 ROW_ABSENT audit |
+| [forensic-readonly-exports-2026-10-16-supplement-v3/](./forensic-readonly-exports-2026-10-16-supplement-v3/) | Supplement v3 JSON (`npm run exp021:ev-ground-truth:forensic-supplement-v3`) |
+| [EXP021_STATIONARY_CREEP_GAP_FOCUS.md](./EXP021_STATIONARY_CREEP_GAP_FOCUS.md) | Stillstand/Kriechen/Lücken — Ursache, Offline-Prototyp, Baseline-Vergleich |
+| [forensic-readonly-exports-2026-10-16-stationary-prototype/](./forensic-readonly-exports-2026-10-16-stationary-prototype/) | Offline-Prototyp-Export (`npm run exp021:stationary-offline-prototype`) |
 | [EXP021_VIDEO_ANCHOR_SEMANTICS_ADDENDUM.md](./EXP021_VIDEO_ANCHOR_SEMANTICS_ADDENDUM.md) | Clarifies clock label vs PTS=0 vs owner maneuver (Bericht hash preserved) |
 | [POST_DEPLOY_VERIFICATION_PLAN.md](./POST_DEPLOY_VERIFICATION_PLAN.md) | Post-deploy read-only checklist |
 | [EXP021_EV_GROUND_TRUTH_POST_DEPLOY_VERIFICATION_2026-10-16.md](./EXP021_EV_GROUND_TRUTH_POST_DEPLOY_VERIFICATION_2026-10-16.md) | Post-deploy admission + reconciliation evidence @ `c1013265…` |
