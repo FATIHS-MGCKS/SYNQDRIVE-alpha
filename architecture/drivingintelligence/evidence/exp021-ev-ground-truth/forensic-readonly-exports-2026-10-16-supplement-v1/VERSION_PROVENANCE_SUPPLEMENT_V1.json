@@ -1,6 +1,6 @@
 {
   "schema": "EXP021_EV_GT_VERSION_PROVENANCE_V1",
-  "observedAtUtc": "2026-10-16T16:23:49.416Z",
+  "observedAtUtc": "2026-10-16T16:23:00.099Z",
   "baselineExecutionSha": {
     "value": "a0ce01f192d888974e49c2558ee05e534f3dfeea",
     "epistemic": "CONFIRMED",
@@ -20,7 +20,7 @@
       "source": "git rev-parse HEAD at export time"
     },
     "exporterWorkingTreePorcelain": {
-      "value": "M  architecture/drivingintelligence/evidence/exp021-ev-ground-truth/EXP021_EV_GROUND_TRUTH_BOUNDARY_PROVENANCE_2026-10-16.md\nA  architecture/drivingintelligence/evidence/exp021-ev-ground-truth/EXP021_EV_GROUND_TRUTH_FORENSIC_SUPPLEMENT_V1.md\nM  architecture/drivingintelligence/evidence/exp021-ev-ground-truth/EXP021_EV_GROUND_TRUTH_STOP_CREEP_FORENSIC_2026-10-16.md\nA  architecture/drivingintelligence/evidence/exp021-ev-ground-truth/EXP021_VIDEO_ANCHOR_SEMANTICS_ADDENDUM.md\nM  architecture/drivingintelligence/evidence/exp021-ev-ground-truth/README.md\nA  architecture/drivingintelligence/evidence/exp021-ev-ground-truth/forensic-readonly-exports-2026-10-16-supplement-v1/DIMO_SEGMENT_TRACE_SUPPLEMENT_V1.json\nA  architecture/drivingintelligence/evidence/exp021-ev-ground-truth/forensic-readonly-exports-2026-10-16-supplement-v1/FORENSIC_SUPPLEMENT_MANIFEST_V1.json\nA  architecture/drivingintelligence/evidence/exp021-ev-ground-truth/forensic-readonly-exports-2026-10-16-supplement-v1/ROW_ABSENT_CHAIN_SUPPLEMENT_V1.json\nA  architecture/drivingintelligence/evidence/exp021-ev-ground-truth/forensic-readonly-exports-2026-10-16-supplement-v1/SHA256SUMS\nA  architecture/drivingintelligence/evidence/exp021-ev-ground-truth/forensic-readonly-exports-2026-10-16-supplement-v1/VERSION_PROVENANCE_SUPPLEMENT_V1.json\nA  architecture/drivingintelligence/evidence/exp021-ev-ground-truth/forensic-readonly-exports-2026-10-16-supplement-v1/VIDEO_ANCHOR_SEMANTICS_SUPPLEMENT_V1.json\nM  backend/package.json\nA  backend/scripts/ops/exp021-ev-ground-truth-forensic-supplement-v1.lib.ts\nA  backend/scripts/ops/exp021-ev-ground-truth-forensic-supplement-v1.ts",
+      "value": "M backend/package.json\n?? backend/scripts/ops/exp021-ev-ground-truth-forensic-supplement-v1.lib.ts\n?? backend/scripts/ops/exp021-ev-ground-truth-forensic-supplement-v1.ts",
       "epistemic": "CONFIRMED",
       "source": "git status --porcelain at export time"
     },

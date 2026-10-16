@@ -1,12 +1,12 @@
 {
   "schema": "EXP021_EV_GT_FORENSIC_SUPPLEMENT_MANIFEST_V1",
   "supplementVersion": "v1",
-  "observedAtUtc": "2026-10-16T16:23:49.416Z",
+  "observedAtUtc": "2026-10-16T16:23:00.099Z",
   "priorExportPreserved": "../forensic-readonly-exports-2026-10-16/",
   "artifacts": {
     "segmentTrace": {
       "path": "DIMO_SEGMENT_TRACE_SUPPLEMENT_V1.json",
-      "sha256": "da253bb1929eb3eced9463bf42c3cb825fe0ffa4c44a3b8d4519e3d23d360b1c"
+      "sha256": "695f126a2b1d47e5767ce3befd5089b4f6a229cb0c71ee2f520c3161db69338f"
     },
     "videoAnchor": {
       "path": "VIDEO_ANCHOR_SEMANTICS_SUPPLEMENT_V1.json",
@@ -14,11 +14,11 @@
     },
     "rowAbsent": {
       "path": "ROW_ABSENT_CHAIN_SUPPLEMENT_V1.json",
-      "sha256": "3ac7db66b6bbe8c1afda78596693c18087d321456a11e9034c90bf2c929147eb"
+      "sha256": "481e346b0952b19643bc11ce94037b2acce8d3909f76bcb756c8f7b787860bc9"
     },
     "versionProvenance": {
       "path": "VERSION_PROVENANCE_SUPPLEMENT_V1.json",
-      "sha256": "05f79da940b326aaee256faf349cfc3474b6aa3e0a46e18cb12609cdcf206f02"
+      "sha256": "4667ba3889582ad7d9930b91f62bc6a69a2473bebf811230ed87903db73599c4"
     }
   },
   "productionMutations": "NONE",

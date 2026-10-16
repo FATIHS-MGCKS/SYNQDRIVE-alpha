@@ -1,6 +1,6 @@
 {
   "schema": "EXP021_EV_GT_ROW_ABSENT_CHAIN_V1",
-  "observedAtUtc": "2026-10-16T16:23:49.416Z",
+  "observedAtUtc": "2026-10-16T16:23:00.099Z",
   "tachoZeroAnnotationCoverage": {
     "all135Seconds": {
       "subsetTag": "ALL_135",
