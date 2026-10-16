@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -eu -o pipefail
 
 DEPLOY_EXECUTOR_OPS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEPLOY_EXECUTOR_ROOT="$(cd "${DEPLOY_EXECUTOR_OPS_DIR}/../../.." && pwd)"
