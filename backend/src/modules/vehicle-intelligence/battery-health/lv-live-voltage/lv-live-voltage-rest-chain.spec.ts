@@ -27,6 +27,9 @@ describe('LIVE_VOLTAGE → REST target evaluation chain', () => {
     vehicleTrip: {
       findMany: jest.fn().mockResolvedValue([]),
     },
+    batteryRestSession: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
   };
 
   const measurementRepo = {
