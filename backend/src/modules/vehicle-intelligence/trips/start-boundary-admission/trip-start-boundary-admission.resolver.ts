@@ -1,17 +1,16 @@
-import type {
-  DimoTripSegment,
-  RoutePoint,
-  TripCoreDataPoint,
-} from '../../../dimo/dimo-segments.service';
-import { refineTripStartBoundary } from '../trip-evidence.helpers';
-import { selectConfirmedStartSegment } from '../start-boundary-window.util';
+import type { DimoTripSegment } from '../../../dimo/dimo-segments.service';
+import {
+  deriveTripStartBoundaryMaxLookbackMs,
+  selectConfirmedStartSegment,
+} from '../start-boundary-window.util';
+import { findEarliestTrustedMovementInWindow } from './trip-start-boundary-admission.movement';
 import type {
   EvidenceBackedStartBoundaryResult,
   MovementEvidenceCoverageState,
   MovementEvidenceSource,
   ResolveEvidenceBackedStartBoundaryInput,
-  TripStartProviderMechanism,
 } from './trip-start-boundary-admission.types';
+import { normalizeSegmentDetectionMechanism } from './trip-start-boundary-admission.types';
 
 const CLOCK_QUANTIZATION_NOTE =
   'Burned-in phone clock is second-quantized; overlay may lag container PTS by an unknown offset.';
@@ -27,42 +26,7 @@ function filterPointsInWindow<T extends { timestamp: string }>(
   });
 }
 
-/**
- * Earliest trusted movement inside [windowFrom, windowTo] using the same
- * thresholds as `refineTripStartBoundary`. NO_DATA != STATIONARY.
- */
-export function findEarliestTrustedMovementInWindow(
-  windowFrom: Date,
-  windowTo: Date,
-  corePoints: TripCoreDataPoint[],
-  routePoints: RoutePoint[],
-  profile: string,
-): { at: Date | null; sources: MovementEvidenceSource[] } {
-  const fromMs = windowFrom.getTime();
-  const toMs = windowTo.getTime();
-  const core = filterPointsInWindow(corePoints, fromMs, toMs);
-  const route = filterPointsInWindow(routePoints, fromMs, toMs);
-
-  if (core.length === 0 && route.length === 0) {
-    return { at: null, sources: ['NONE'] };
-  }
-
-  const refined = refineTripStartBoundary(windowTo, core, route, profile);
-  if (refined.source === 'SNAPSHOT_CANDIDATE') {
-    return { at: null, sources: ['NONE'] };
-  }
-
-  const sources: MovementEvidenceSource[] = [];
-  if (refined.source === 'ROUTE_ACTIVITY') {
-    sources.push('ROUTE_POSITION', 'ROUTE_SPEED');
-  } else if (refined.source === 'CORE_ACTIVITY') {
-    sources.push('CORE_SPEED', 'CORE_ODOMETER');
-  }
-
-  return { at: refined.startAt, sources };
-}
-
-function segmentHardwareMovementCorroboration(
+function segmentAggregateActivitySources(
   segment: DimoTripSegment,
 ): MovementEvidenceSource[] {
   const sources: MovementEvidenceSource[] = [];
@@ -84,12 +48,14 @@ function segmentHardwareMovementCorroboration(
 
 function classifyCoverage(
   prefixMovementAt: Date | null,
-  segmentHardwareSources: MovementEvidenceSource[],
+  segmentAggregateSources: MovementEvidenceSource[],
   coreRouteCount: number,
-  providerMechanism: TripStartProviderMechanism,
 ): MovementEvidenceCoverageState {
-  if (prefixMovementAt != null || segmentHardwareSources.length > 0) {
+  if (prefixMovementAt != null) {
     return 'TRUSTED_MOVEMENT_PRESENT';
+  }
+  if (segmentAggregateSources.length > 0) {
+    return 'SEGMENT_AGGREGATE_ACTIVITY_ONLY';
   }
   if (coreRouteCount > 0) {
     return 'FREQUENCY_ONLY';
@@ -101,19 +67,10 @@ function resolveProviderPrefixAdmission(input: {
   providerSegmentStartAt: Date;
   candidateStartAt: Date;
   prefixMovementAt: Date | null;
-  segmentHardwareSources: MovementEvidenceSource[];
-  providerMechanism: TripStartProviderMechanism;
 }):
   | { kind: 'ADMIT_PROVIDER' }
   | { kind: 'BOUND_EARLY'; at: Date }
   | { kind: 'UNCORROBORATED' } {
-  if (
-    input.providerMechanism === 'HARDWARE_DEVICE' &&
-    input.segmentHardwareSources.length > 0
-  ) {
-    return { kind: 'ADMIT_PROVIDER' };
-  }
-
   if (input.prefixMovementAt == null) {
     return { kind: 'UNCORROBORATED' };
   }
@@ -140,66 +97,71 @@ export function resolveEvidenceBackedStartBoundary(
     input.confirmedAt,
   );
 
-  const globalMovement = refineTripStartBoundary(
-    input.candidateStartAt,
+  const lookbackMs = deriveTripStartBoundaryMaxLookbackMs();
+  const globalWindowFrom = new Date(
+    input.candidateStartAt.getTime() - lookbackMs,
+  );
+  const globalMovement = findEarliestTrustedMovementInWindow(
+    globalWindowFrom,
+    input.confirmedAt,
     input.corePoints,
     input.routePoints,
     input.profile,
   );
-  const earliestSupportedMovementAt =
-    globalMovement.source === 'SNAPSHOT_CANDIDATE'
-      ? null
-      : globalMovement.startAt;
+  const earliestSupportedMovementAt = globalMovement.at;
+
+  const uncertaintyBase = {
+    departureReviewAnchorAt: input.departureReviewAnchorAt ?? null,
+    uncorroboratedPrefixFromAt: null as Date | null,
+    uncorroboratedPrefixToAt: null as Date | null,
+    clockQuantizationNote: CLOCK_QUANTIZATION_NOTE,
+  };
 
   if (!matchingSegment) {
     const decision =
       earliestSupportedMovementAt != null
         ? 'MOVEMENT_BOUNDARY_SELECTED'
         : 'CANDIDATE_BOUNDARY_FALLBACK';
+    const canonicalStartAt =
+      earliestSupportedMovementAt ?? input.candidateStartAt;
     return {
       providerSegmentStartAt: null,
       earliestSupportedMovementAt,
       candidateStartAt: input.candidateStartAt,
-      canonicalStartAt: globalMovement.startAt,
+      canonicalStartAt,
       decision,
       matchingSegment: null,
       provenance: {
-        providerMechanism: input.providerMechanism,
+        integrationModality: input.integrationModality,
         providerSegmentId: null,
         providerSegmentDetectionMechanism: null,
-        movementEvidenceSources: earliestSupportedMovementAt
-          ? ['CORE_SPEED', 'ROUTE_POSITION']
-          : ['NONE'],
+        segmentDetectionMechanismIndependentlyProven:
+          input.segmentDetectionMechanismIndependentlyProven ?? false,
+        segmentAggregateActivitySources: [],
+        movementEvidenceSources: globalMovement.sources,
         movementEvidenceCoverage:
           earliestSupportedMovementAt != null
             ? 'TRUSTED_MOVEMENT_PRESENT'
             : 'NO_DATA_IN_WINDOW',
         boundaryDecision: decision,
         boundaryAdjustmentMs:
-          globalMovement.startAt.getTime() - input.candidateStartAt.getTime(),
+          canonicalStartAt.getTime() - input.candidateStartAt.getTime(),
         legacyWouldHaveUsedProviderSegment: false,
       },
-      uncertainty: {
-        lastConfirmedStationaryUpperBoundAt:
-          input.departureReviewWindowStartAt ?? null,
-        uncorroboratedPrefixFromAt: null,
-        uncorroboratedPrefixToAt: null,
-        clockQuantizationNote: CLOCK_QUANTIZATION_NOTE,
-      },
+      uncertainty: uncertaintyBase,
     };
   }
 
   const providerSegmentStartAt = new Date(matchingSegment.startTime);
-  const prefixWindowEnd = input.confirmedAt;
   const prefixCore = filterPointsInWindow(
     input.corePoints,
     providerSegmentStartAt.getTime(),
-    prefixWindowEnd.getTime(),
+    input.candidateStartAt.getTime(),
   );
   const prefixRoute = filterPointsInWindow(
     input.routePoints,
     providerSegmentStartAt.getTime(),
-    prefixWindowEnd.getTime(),
+    input.candidateStartAt.getTime(),
   );
 
   const prefixMovement = findEarliestTrustedMovementInWindow(
@@ -210,43 +172,39 @@ export function resolveEvidenceBackedStartBoundary(
     input.profile,
   );
 
-  const segmentHardwareSources = segmentHardwareMovementCorroboration(
-    matchingSegment,
-  );
+  const segmentAggregates = segmentAggregateActivitySources(matchingSegment);
   const coverage = classifyCoverage(
     prefixMovement.at,
-    segmentHardwareSources,
+    segmentAggregates,
     prefixCore.length + prefixRoute.length,
-    input.providerMechanism,
   );
-
-  const movementSources = [
-    ...new Set([...prefixMovement.sources, ...segmentHardwareSources]),
-  ].filter((s) => s !== 'NONE');
 
   const prefixAdmission = resolveProviderPrefixAdmission({
     providerSegmentStartAt,
     candidateStartAt: input.candidateStartAt,
     prefixMovementAt: prefixMovement.at,
-    segmentHardwareSources,
-    providerMechanism: input.providerMechanism,
   });
 
   let decision: EvidenceBackedStartBoundaryResult['decision'];
   let canonicalStartAt: Date;
+  let movementSources: MovementEvidenceSource[] = prefixMovement.sources;
 
   if (prefixAdmission.kind === 'ADMIT_PROVIDER') {
     decision = 'PROVIDER_START_ADMITTED';
     canonicalStartAt = providerSegmentStartAt;
+    movementSources = prefixMovement.sources;
   } else if (prefixAdmission.kind === 'BOUND_EARLY') {
     decision = 'PROVIDER_START_BOUNDED';
     canonicalStartAt = prefixAdmission.at;
+    movementSources = prefixMovement.sources;
   } else if (earliestSupportedMovementAt != null) {
     decision = 'MOVEMENT_BOUNDARY_SELECTED';
     canonicalStartAt = earliestSupportedMovementAt;
+    movementSources = globalMovement.sources;
   } else {
     decision = 'PROVIDER_START_UNCORROBORATED';
     canonicalStartAt = input.candidateStartAt;
+    movementSources = ['NONE'];
   }
 
   const uncorroboratedPrefixToAt =
@@ -263,9 +221,14 @@ export function resolveEvidenceBackedStartBoundary(
     decision,
     matchingSegment,
     provenance: {
-      providerMechanism: input.providerMechanism,
+      integrationModality: input.integrationModality,
       providerSegmentId: matchingSegment.segmentId,
-      providerSegmentDetectionMechanism: matchingSegment.mechanism,
+      providerSegmentDetectionMechanism: normalizeSegmentDetectionMechanism(
+        matchingSegment.mechanism,
+      ),
+      segmentDetectionMechanismIndependentlyProven:
+        input.segmentDetectionMechanismIndependentlyProven ?? false,
+      segmentAggregateActivitySources: segmentAggregates,
       movementEvidenceSources:
         movementSources.length > 0 ? movementSources : ['NONE'],
       movementEvidenceCoverage: coverage,
@@ -275,15 +238,16 @@ export function resolveEvidenceBackedStartBoundary(
       legacyWouldHaveUsedProviderSegment: true,
     },
     uncertainty: {
-      lastConfirmedStationaryUpperBoundAt:
-        input.departureReviewWindowStartAt ?? null,
+      ...uncertaintyBase,
       uncorroboratedPrefixFromAt:
         decision === 'PROVIDER_START_UNCORROBORATED' ||
         decision === 'PROVIDER_START_BOUNDED'
           ? providerSegmentStartAt
           : null,
       uncorroboratedPrefixToAt,
-      clockQuantizationNote: CLOCK_QUANTIZATION_NOTE,
     },
   };
 }
+
+// Re-export for tests
+export { findEarliestTrustedMovementInWindow } from './trip-start-boundary-admission.movement';

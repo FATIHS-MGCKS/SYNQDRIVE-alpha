@@ -1,10 +1,16 @@
 import type { DimoTripSegment } from '../../../dimo/dimo-segments.service';
 import type { RoutePoint, TripCoreDataPoint } from '../../../dimo/dimo-segments.service';
 
-/** DIMO vehicle integration class — not the segment detection mechanism. */
-export type TripStartProviderMechanism =
+/** Vehicle integration modality (connection identity) — not DIMO segment detection mechanism. */
+export type TripStartIntegrationModality =
   | 'SOFTWARE_INTEGRATION'
   | 'HARDWARE_DEVICE'
+  | 'UNKNOWN';
+
+export type DimoSegmentDetectionMechanism =
+  | 'changePointDetection'
+  | 'frequencyAnalysis'
+  | 'ignitionDetection'
   | 'UNKNOWN';
 
 export type EvidenceBackedStartBoundaryDecision =
@@ -27,24 +33,34 @@ export type MovementEvidenceSource =
 export type MovementEvidenceCoverageState =
   | 'TRUSTED_MOVEMENT_PRESENT'
   | 'PREFIX_GAP_NO_TRUSTED_MOVEMENT'
+  | 'SEGMENT_AGGREGATE_ACTIVITY_ONLY'
   | 'NO_DATA_IN_WINDOW'
   | 'FREQUENCY_ONLY';
 
 export interface EvidenceBackedStartBoundaryUncertainty {
-  /** Inclusive lower bound where vehicle is still plausibly stationary (external review, not GPS). */
-  lastConfirmedStationaryUpperBoundAt: Date | null;
-  /** Inclusive start of provider prefix without trusted movement corroboration. */
+  /**
+   * EXP021 departure-review / maneuver context anchor (e.g. video PTS 0).
+   * NOT exact physical movement; NOT guaranteed stationary; does not set canonical start.
+   */
+  departureReviewAnchorAt: Date | null;
   uncorroboratedPrefixFromAt: Date | null;
-  /** Exclusive end of uncorroborated prefix (first trusted movement or candidate). */
   uncorroboratedPrefixToAt: Date | null;
-  /** Quantized overlay clock / display latency — not used as canonical time. */
   clockQuantizationNote: string;
 }
 
 export interface EvidenceBackedStartBoundaryProvenance {
-  providerMechanism: TripStartProviderMechanism;
+  integrationModality: TripStartIntegrationModality;
   providerSegmentId: string | null;
-  providerSegmentDetectionMechanism: string | null;
+  /** Mechanism from segment payload when a segment is matched. */
+  providerSegmentDetectionMechanism: DimoSegmentDetectionMechanism | null;
+  /**
+   * True only when historical evidence independently proves the detection mechanism
+   * for this trip (not inferred from integration modality).
+   */
+  segmentDetectionMechanismIndependentlyProven: boolean;
+  /** Segment-level aggregates — trip activity context, not timestamped start proof. */
+  segmentAggregateActivitySources: MovementEvidenceSource[];
+  /** Timestamp-winning movement source(s) for the chosen boundary (exact, not synthetic). */
   movementEvidenceSources: MovementEvidenceSource[];
   movementEvidenceCoverage: MovementEvidenceCoverageState;
   boundaryDecision: EvidenceBackedStartBoundaryDecision;
@@ -59,12 +75,9 @@ export interface ResolveEvidenceBackedStartBoundaryInput {
   corePoints: TripCoreDataPoint[];
   routePoints: RoutePoint[];
   profile: string;
-  providerMechanism: TripStartProviderMechanism;
-  /**
-   * Optional external departure-review anchor (e.g. EXP021 video PTS 0).
-   * Does NOT assert exact physical movement — only tightens uncertainty interval.
-   */
-  departureReviewWindowStartAt?: Date | null;
+  integrationModality: TripStartIntegrationModality;
+  departureReviewAnchorAt?: Date | null;
+  segmentDetectionMechanismIndependentlyProven?: boolean;
 }
 
 export interface EvidenceBackedStartBoundaryResult {
@@ -92,5 +105,18 @@ export interface StartBoundaryAdmissionShadowComparison {
   decision: EvidenceBackedStartBoundaryDecision;
   evidenceSources: MovementEvidenceSource[];
   uncertainty: EvidenceBackedStartBoundaryUncertainty;
-  providerMechanism: TripStartProviderMechanism;
+  integrationModality: TripStartIntegrationModality;
+}
+
+export function normalizeSegmentDetectionMechanism(
+  mechanism: string | null | undefined,
+): DimoSegmentDetectionMechanism {
+  if (
+    mechanism === 'changePointDetection' ||
+    mechanism === 'frequencyAnalysis' ||
+    mechanism === 'ignitionDetection'
+  ) {
+    return mechanism;
+  }
+  return 'UNKNOWN';
 }

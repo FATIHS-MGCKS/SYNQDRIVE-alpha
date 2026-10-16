@@ -36,6 +36,6 @@ export function compareStartBoundaryAdmissionShadow(
     decision: proposed.decision,
     evidenceSources: proposed.provenance.movementEvidenceSources,
     uncertainty: proposed.uncertainty,
-    providerMechanism: input.providerMechanism,
+    integrationModality: input.integrationModality,
   };
 }
