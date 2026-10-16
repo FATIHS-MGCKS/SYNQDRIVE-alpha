@@ -2,31 +2,13 @@
 /**
  * EXP021 bounded historical POSITION provider compare (read-only product state).
  * Uses Nest DIMO gateway + budget; max 3 HTTP attempts; artifacts outside release tree.
+ *
+ * VPS: set SYNQDRIVE_RELEASE_BACKEND=/opt/synqdrive/current/backend and run from release cwd
+ * with tsconfig-paths; overlay EXP021-only modules via EXP021_OVERLAY_ROOT (optional).
  */
 import { createHash } from 'crypto';
 import * as fssync from 'fs';
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from '../../src/app.module';
-import { DimoAuthService } from '../../src/modules/dimo/dimo-auth.service';
-import { DimoTelemetryService, type DimoGraphQLIngressTimingResult } from '../../src/modules/dimo/dimo-telemetry.service';
-import { DimoProviderBudgetService } from '../../src/modules/dimo/provider-budget/dimo-provider-budget.service';
-import { DimoProviderBudgetError } from '../../src/modules/dimo/provider-budget/dimo-http-error.util';
-import { runWithDimoRequestContext } from '../../src/modules/dimo/provider-budget/dimo-request-context';
-import { buildDimoProviderRequestContext } from '../../src/modules/dimo/provider/dimo-provider-request-context.util';
-import { PrismaService } from '@shared/database/prisma.service';
-import { buildDiV0HistoricalPositionQuery } from '../../src/modules/vehicle-intelligence/driving-intelligence/position-acquisition/di-v0-position-query';
-import {
-  validateDiV0PositionAcquisitionRequest,
-  validateDiV0PositionWindow,
-} from '../../src/modules/vehicle-intelligence/driving-intelligence/position-acquisition/di-v0-position-window';
-import { normalizeDiV0PositionResponse } from '../../src/modules/vehicle-intelligence/driving-intelligence/position-acquisition/di-v0-position-normalizer';
-import { resolveDiV0SourceFamily } from '../../src/modules/vehicle-intelligence/driving-intelligence/position-acquisition/di-v0-position-source-family';
-import { loadP21ForensicContextInReadOnlyTransaction } from '../../src/modules/vehicle-intelligence/driving-intelligence/trip-speed-quality/di-v0-p21-r3-forensic-loader';
-import {
-  comparePinToProviderBuckets,
-  sha256CanonicalJson,
-} from '../../src/modules/vehicle-intelligence/driving-intelligence/trip-speed-quality/di-v0-exp021-position-provider-compare';
-import { DI_V0_S4C_DIMO_REQUEST_CONTEXT } from '../../src/modules/vehicle-intelligence/driving-intelligence/s4c-executor/di-v0-s4c-dimo-ports';
+import * as path from 'path';
 
 const ORG = 'faa710c9-6d91-4079-a7d5-91fdccdec14a';
 const TRIP = '533b2bf8-fa07-4f0b-bc40-d540447a1542';
@@ -53,7 +35,24 @@ function countRawSignalDuplicates(rows: Array<{ timestamp?: unknown }>): {
   return { uniqueTimestampLabels: counts.size, duplicateRows: dup };
 }
 
+function overlayModule<T>(overlayRoot: string | undefined, relativePath: string, fallback: () => T): T {
+  if (!overlayRoot) return fallback();
+  const candidate = path.join(overlayRoot, relativePath);
+  if (fssync.existsSync(candidate)) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require(candidate) as T;
+  }
+  return fallback();
+}
+
 async function main(): Promise<void> {
+  const releaseBackend =
+    process.env.SYNQDRIVE_RELEASE_BACKEND || '/opt/synqdrive/current/backend';
+  const overlayRoot = process.env.EXP021_OVERLAY_ROOT;
+  process.chdir(releaseBackend);
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require('tsconfig-paths/register');
+
   process.env.DIMO_GLOBAL_MAX_RETRIES = String(MAX_HTTP_ATTEMPTS - 1);
   const executedAtUtc = new Date().toISOString();
   const analysisSha = process.env.EXP021_ANALYSIS_GIT_SHA ?? 'workspace';
@@ -62,7 +61,47 @@ async function main(): Promise<void> {
   const outRaw =
     process.env.EXP021_PROVIDER_COMPARE_RAW ?? '/tmp/exp021-provider-position-compare-533b2bf8.raw.json';
 
-  const app = await NestFactory.createApplicationContext(AppModule, { logger: ['error', 'warn'] });
+  const { NestFactory } = await import('@nestjs/core');
+  const { AppModule } = await import(path.join(releaseBackend, 'src/app.module'));
+  const { DimoAuthService } = await import('@modules/dimo/dimo-auth.service');
+  const { DimoTelemetryService } = await import('@modules/dimo/dimo-telemetry.service');
+  const { DimoProviderBudgetService } = await import('@modules/dimo/provider-budget/dimo-provider-budget.service');
+  const { DimoProviderBudgetError } = await import('@modules/dimo/provider-budget/dimo-http-error.util');
+  const { runWithDimoRequestContext } = await import('@modules/dimo/provider-budget/dimo-request-context');
+  const { buildDimoProviderRequestContext } = await import('@modules/dimo/provider/dimo-provider-request-context.util');
+  const { PrismaService } = await import('@shared/database/prisma.service');
+  const { buildDiV0HistoricalPositionQuery } = await import(
+    '@modules/vehicle-intelligence/driving-intelligence/position-acquisition/di-v0-position-query'
+  );
+  const { validateDiV0PositionAcquisitionRequest, validateDiV0PositionWindow } = await import(
+    '@modules/vehicle-intelligence/driving-intelligence/position-acquisition/di-v0-position-window'
+  );
+  const { normalizeDiV0PositionResponse } = await import(
+    '@modules/vehicle-intelligence/driving-intelligence/position-acquisition/di-v0-position-normalizer'
+  );
+  const { resolveDiV0SourceFamily } = await import(
+    '@modules/vehicle-intelligence/driving-intelligence/position-acquisition/di-v0-position-source-family'
+  );
+  const { DI_V0_S4C_DIMO_REQUEST_CONTEXT } = await import(
+    '@modules/vehicle-intelligence/driving-intelligence/s4c-executor/di-v0-s4c-dimo-ports'
+  );
+
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const forensic = require('@modules/vehicle-intelligence/driving-intelligence/trip-speed-quality/di-v0-p21-r3-forensic-loader');
+  const compareLib = overlayModule(
+    overlayRoot,
+    'src/modules/vehicle-intelligence/driving-intelligence/trip-speed-quality/di-v0-exp021-position-provider-compare.ts',
+    () =>
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require('@modules/vehicle-intelligence/driving-intelligence/trip-speed-quality/di-v0-exp021-position-provider-compare'),
+  );
+  const { loadP21ForensicContextInReadOnlyTransaction } = forensic;
+  const { comparePinToProviderBuckets, sha256CanonicalJson } = compareLib;
+
+  type DimoGraphQLIngressTimingResult = import('@modules/dimo/dimo-telemetry.service').DimoGraphQLIngressTimingResult;
+
+  const appModule = await AppModule.forRootAsync();
+  const app = await NestFactory.createApplicationContext(appModule, { logger: ['error', 'warn'] });
   const prisma = app.get(PrismaService);
   const auth = app.get(DimoAuthService);
   const telemetry = app.get(DimoTelemetryService);
@@ -71,6 +110,7 @@ async function main(): Promise<void> {
     kind: 'EXP021_POSITION_PROVIDER_COMPARE_V1',
     executedAtUtc,
     analysisGitSha: analysisSha,
+    releaseBackendRoot: releaseBackend,
     scope: { org: ORG, trip: TRIP, workItem: WI, vehicle: VEHICLE, tokenId: TOKEN_ID, from: FROM, to: TO },
   };
 
@@ -238,7 +278,8 @@ async function main(): Promise<void> {
     }
 
     const ingressResult = ingress;
-    const signals = ingressResult.result?.data?.signals;
+    const gqlEnvelope = ingressResult.result;
+    const signals = gqlEnvelope?.data?.signals;
     const signalRows = Array.isArray(signals) ? (signals as Array<Record<string, unknown>>) : [];
     const rawDup = countRawSignalDuplicates(signalRows);
     const redactedRaw = {
@@ -249,15 +290,15 @@ async function main(): Promise<void> {
             r.currentLocationCoordinates != null && typeof r.currentLocationCoordinates === 'object',
         })),
       },
-      errors: ingressResult.result?.errors ?? null,
+      errors: gqlEnvelope?.errors ?? null,
     };
-    fssync.writeFileSync(outRaw, JSON.stringify(ingressResult.result?.data ?? ingressResult.result, null, 2));
+    fssync.writeFileSync(outRaw, JSON.stringify(gqlEnvelope?.data ?? gqlEnvelope, null, 2));
     const rawHash = sha256CanonicalJson(redactedRaw);
 
     const normalized = normalizeDiV0PositionResponse({
       request: validatedRequest,
       sourceFamilyResolution,
-      responseBody: ingressResult.result?.data ?? ingressResult.result,
+      responseBody: gqlEnvelope,
       acquiredAt: new Date(),
     });
 
@@ -280,9 +321,9 @@ async function main(): Promise<void> {
     comparison.providerRejectedRows = normalized.result.rejectedProviderRows.length;
 
     const matrixSum = Object.values(comparison.matrix).reduce((a, b) => a + b, 0);
-    const pinPresent =
-      ctx.evidence.positions.filter((p) => p.availability !== 'ROW_ABSENT' && p.availability !== 'SIGNAL_NULL')
-        .length;
+    const pinPresent = ctx.evidence.positions.filter(
+      (p) => p.availability !== 'ROW_ABSENT' && p.availability !== 'SIGNAL_NULL',
+    ).length;
     const completeness =
       normalized.result.providerRowCount < normalized.result.expectedBucketCount
         ? 'SPARSE_PROVIDER_ROWS_HTTP_OK'
@@ -294,7 +335,7 @@ async function main(): Promise<void> {
     report.responseCompletenessStatus = {
       httpSuccess: true,
       graphqlErrorsPresent:
-        Array.isArray(ingressResult.result?.errors) && ingressResult.result.errors.length > 0,
+        Array.isArray(gqlEnvelope?.errors) && gqlEnvelope.errors.length > 0,
       providerRowCount: normalized.result.providerRowCount,
       expectedBucketCount: normalized.result.expectedBucketCount,
       completenessInterpretation: completeness,

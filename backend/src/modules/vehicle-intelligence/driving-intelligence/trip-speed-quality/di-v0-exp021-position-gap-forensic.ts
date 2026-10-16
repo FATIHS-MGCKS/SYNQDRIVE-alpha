@@ -1,10 +1,10 @@
-import { DI_V0_SPEED_QC_POLICY_V2 } from '../speed-qc/di-v0-speed-qc-policy.version';
-import { evaluateDiV0SpeedQcInterval } from '../speed-qc/evaluate-di-v0-speed-qc-interval';
-import type { DiV0TripSpeedQualityShadowRow } from './build-di-v0-trip-speed-quality-projection.v1';
+import { DI_V0_SPEED_QC_POLICY_V2 } from '@modules/vehicle-intelligence/driving-intelligence/speed-qc/di-v0-speed-qc-policy.version';
+import { evaluateDiV0SpeedQcInterval } from '@modules/vehicle-intelligence/driving-intelligence/speed-qc/evaluate-di-v0-speed-qc-interval';
+import type { DiV0TripSpeedQualityShadowRow } from '@modules/vehicle-intelligence/driving-intelligence/trip-speed-quality/build-di-v0-trip-speed-quality-projection.v1';
 import {
   bucketLabelMinusSeconds,
   bucketLabelPlusSeconds,
-} from '../speed-qc/di-v0-speed-qc-geo';
+} from '@modules/vehicle-intelligence/driving-intelligence/speed-qc/di-v0-speed-qc-geo';
 import {
   classifyNoNumericDisjointV2,
   classifySupportWindowGaps,
@@ -15,9 +15,9 @@ import {
   type AcquisitionWindow,
   type PositionBucketSample,
   type PositionGapKind,
-} from './di-v0-p21-r3-forensic-classify';
-import { DI_V0_SPEED_QC_REASON } from '../speed-qc/di-v0-speed-qc-reason-codes';
-import { classifyHoldTransitionDetail } from './di-v0-p21-r3-forensic-classify';
+} from '@modules/vehicle-intelligence/driving-intelligence/trip-speed-quality/di-v0-p21-r3-forensic-classify';
+import { DI_V0_SPEED_QC_REASON } from '@modules/vehicle-intelligence/driving-intelligence/speed-qc/di-v0-speed-qc-reason-codes';
+import { classifyHoldTransitionDetail } from '@modules/vehicle-intelligence/driving-intelligence/trip-speed-quality/di-v0-p21-r3-forensic-classify';
 
 /** Mirrors coverage diagnostic `mapUnassessableCause` priority: conflict → SWC → POS_GAP* → hold → movement. */
 export function mapUnassessableCauseFromVerdict(

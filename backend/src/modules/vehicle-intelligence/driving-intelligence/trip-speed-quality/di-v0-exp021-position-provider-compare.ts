@@ -1,11 +1,14 @@
 import { createHash } from 'crypto';
-import type { DiV0SpeedQcPositionSample } from '../speed-qc/di-v0-speed-qc.types';
-import { isValidGeoCoordinate } from '../speed-qc/di-v0-speed-qc-position-index';
+import type { DiV0SpeedQcPositionSample } from '@modules/vehicle-intelligence/driving-intelligence/speed-qc/di-v0-speed-qc.types';
+import { isValidGeoCoordinate } from '@modules/vehicle-intelligence/driving-intelligence/speed-qc/di-v0-speed-qc-position-index';
 import { halfOpenWindowFromInclusiveEnd } from './di-v0-exp021-bucket-interval-alignment';
-import { bucketLabelPlusSeconds } from '../speed-qc/di-v0-speed-qc-geo';
-import { enumerateAcquisitionBucketLabels, type AcquisitionWindow } from './di-v0-p21-r3-forensic-classify';
+import { bucketLabelPlusSeconds } from '@modules/vehicle-intelligence/driving-intelligence/speed-qc/di-v0-speed-qc-geo';
+import {
+  enumerateAcquisitionBucketLabels,
+  type AcquisitionWindow,
+} from '@modules/vehicle-intelligence/driving-intelligence/trip-speed-quality/di-v0-p21-r3-forensic-classify';
 import { classifyBucketStage, type PositionBucketStage } from './di-v0-exp021-position-gap-forensic';
-import type { DiV0AcquiredPositionBucket } from '../position-acquisition/di-v0-position-acquisition.types';
+import type { DiV0AcquiredPositionBucket } from '@modules/vehicle-intelligence/driving-intelligence/position-acquisition/di-v0-position-acquisition.types';
 
 export type BucketPresence = 'ABSENT' | 'PRESENT_VALID' | 'NULL_OR_INVALID';
 

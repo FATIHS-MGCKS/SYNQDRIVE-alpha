@@ -1,5 +1,8 @@
-import type { DiV0TripSpeedQualityShadowRow } from './build-di-v0-trip-speed-quality-projection.v1';
-import { bucketLabelMinusSeconds, bucketLabelPlusSeconds } from '../speed-qc/di-v0-speed-qc-geo';
+import type { DiV0TripSpeedQualityShadowRow } from '@modules/vehicle-intelligence/driving-intelligence/trip-speed-quality/build-di-v0-trip-speed-quality-projection.v1';
+import {
+  bucketLabelMinusSeconds,
+  bucketLabelPlusSeconds,
+} from '@modules/vehicle-intelligence/driving-intelligence/speed-qc/di-v0-speed-qc-geo';
 import {
   classifySupportWindowGaps,
   dateToBucketLabel,
@@ -8,15 +11,15 @@ import {
   labelInAcquisitionWindow,
   type AcquisitionWindow,
   type PositionBucketSample,
-} from './di-v0-p21-r3-forensic-classify';
+} from '@modules/vehicle-intelligence/driving-intelligence/trip-speed-quality/di-v0-p21-r3-forensic-classify';
 import {
   type IntervalPositionGapDetail,
   mapUnassessableCauseFromVerdict,
   classifyBucketStage,
 } from './di-v0-exp021-position-gap-forensic';
-import { evaluateDiV0SpeedQcInterval } from '../speed-qc/evaluate-di-v0-speed-qc-interval';
-import { DI_V0_SPEED_QC_POLICY_V2 } from '../speed-qc/di-v0-speed-qc-policy.version';
-import { classifyNoNumericDisjointV2 } from './di-v0-p21-r3-forensic-classify';
+import { evaluateDiV0SpeedQcInterval } from '@modules/vehicle-intelligence/driving-intelligence/speed-qc/evaluate-di-v0-speed-qc-interval';
+import { DI_V0_SPEED_QC_POLICY_V2 } from '@modules/vehicle-intelligence/driving-intelligence/speed-qc/di-v0-speed-qc-policy.version';
+import { classifyNoNumericDisjointV2 } from '@modules/vehicle-intelligence/driving-intelligence/trip-speed-quality/di-v0-p21-r3-forensic-classify';
 
 export const EXP021_ROW_ABSENT_CREATION_RULE = {
   stage: 'S3A_position_normalization_at_acquisition',
