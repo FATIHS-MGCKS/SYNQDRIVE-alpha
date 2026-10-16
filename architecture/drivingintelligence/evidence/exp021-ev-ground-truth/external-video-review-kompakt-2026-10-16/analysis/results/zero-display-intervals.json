@@ -1,0 +1,101 @@
+[
+  {
+    "startUtc": "2026-10-16T03:37:41Z",
+    "endUtcInclusive": "2026-10-16T03:37:43Z",
+    "sampleSeconds": 3,
+    "description": "Tacho displays 0; physical sub-display-resolution motion not excluded",
+    "diStates": {
+      "NO_MOTION_EVIDENCE": 3
+    }
+  },
+  {
+    "startUtc": "2026-10-16T03:37:58Z",
+    "endUtcInclusive": "2026-10-16T03:37:58Z",
+    "sampleSeconds": 1,
+    "description": "Tacho displays 0; physical sub-display-resolution motion not excluded",
+    "diStates": {
+      "NO_MOTION_EVIDENCE": 1
+    }
+  },
+  {
+    "startUtc": "2026-10-16T03:38:19Z",
+    "endUtcInclusive": "2026-10-16T03:38:20Z",
+    "sampleSeconds": 2,
+    "description": "Tacho displays 0; physical sub-display-resolution motion not excluded",
+    "diStates": {
+      "NO_MOTION_EVIDENCE": 2
+    }
+  },
+  {
+    "startUtc": "2026-10-16T03:40:19Z",
+    "endUtcInclusive": "2026-10-16T03:40:49Z",
+    "sampleSeconds": 31,
+    "description": "Tacho displays 0; physical sub-display-resolution motion not excluded",
+    "diStates": {
+      "NO_MOTION_EVIDENCE": 31
+    }
+  },
+  {
+    "startUtc": "2026-10-16T03:41:50Z",
+    "endUtcInclusive": "2026-10-16T03:42:29Z",
+    "sampleSeconds": 40,
+    "description": "Tacho displays 0; physical sub-display-resolution motion not excluded",
+    "diStates": {
+      "NO_MOTION_EVIDENCE": 40
+    }
+  },
+  {
+    "startUtc": "2026-10-16T03:42:50Z",
+    "endUtcInclusive": "2026-10-16T03:42:57Z",
+    "sampleSeconds": 8,
+    "description": "Tacho displays 0; physical sub-display-resolution motion not excluded",
+    "diStates": {
+      "NO_MOTION_EVIDENCE": 8
+    }
+  },
+  {
+    "startUtc": "2026-10-16T03:43:43Z",
+    "endUtcInclusive": "2026-10-16T03:44:02Z",
+    "sampleSeconds": 20,
+    "description": "Tacho displays 0; physical sub-display-resolution motion not excluded",
+    "diStates": {
+      "NO_MOTION_EVIDENCE": 20
+    }
+  },
+  {
+    "startUtc": "2026-10-16T03:44:10Z",
+    "endUtcInclusive": "2026-10-16T03:44:35Z",
+    "sampleSeconds": 26,
+    "description": "Tacho displays 0; physical sub-display-resolution motion not excluded",
+    "diStates": {
+      "NO_MOTION_EVIDENCE": 26
+    }
+  },
+  {
+    "startUtc": "2026-10-16T03:54:22Z",
+    "endUtcInclusive": "2026-10-16T03:54:23Z",
+    "sampleSeconds": 2,
+    "description": "Tacho displays 0; physical sub-display-resolution motion not excluded",
+    "diStates": {
+      "NO_MOTION_EVIDENCE": 2
+    }
+  },
+  {
+    "startUtc": "2026-10-16T03:54:35Z",
+    "endUtcInclusive": "2026-10-16T03:54:35Z",
+    "sampleSeconds": 1,
+    "description": "Tacho displays 0; physical sub-display-resolution motion not excluded",
+    "diStates": {
+      "NO_MOTION_EVIDENCE": 1
+    }
+  },
+  {
+    "startUtc": "2026-10-16T03:54:44Z",
+    "endUtcInclusive": "2026-10-16T03:54:44Z",
+    "sampleSeconds": 1,
+    "description": "Tacho displays 0; physical sub-display-resolution motion not excluded",
+    "diStates": {
+      "NO_MOTION_EVIDENCE": 1
+    }
+  }
+]

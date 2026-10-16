@@ -1,0 +1,32 @@
+{
+  "schema": "EXP021_EV_GT_FORENSIC_EXPORT_MANIFEST_V1",
+  "observedAtUtc": "2026-10-16T16:09:08.498Z",
+  "productionSha": "a0ce01f192d888974e49c2558ee05e534f3dfeea",
+  "tripId": "358d0158-b2a9-47ed-af26-33926c5770b4",
+  "organizationId": "faa710c9-6d91-4079-a7d5-91fdccdec14a",
+  "workItemId": "99fe9d1b-5cb6-4cbb-ba0c-e5f27a5cd50a",
+  "generationCommand": "cd backend && npm run exp021:ev-ground-truth:forensic-export -- --out-dir <dir>",
+  "artifacts": {
+    "tripBoundaryProvenance": {
+      "path": "TRIP_BOUNDARY_PROVENANCE_EXPORT.json",
+      "sha256": "09da436e26e32acd44f90cdbeddc6c75cfddfd27ae38acd89950ce285355d68f"
+    },
+    "stopCreepDataGap": {
+      "path": "STOP_CREEP_DATA_GAP_FORENSIC_EXPORT.json",
+      "sha256": "82859dcb67a3002bb00dc0f1d02b38fcb09951fa00b0ed410efac90b029fef2e"
+    }
+  },
+  "baselineParity": {
+    "ok": true,
+    "rowCount": 1136,
+    "numericCount": 776,
+    "trustedNumericCount": 775,
+    "trustedLimitedCount": 14,
+    "trustedMaxKmh": 129.7885665128692,
+    "trustedMeanKmh": 66.08511361500203,
+    "mismatches": []
+  },
+  "frozenPreDeployPackageUnchanged": true,
+  "productionMutations": "NONE",
+  "providerCalls": "NONE"
+}

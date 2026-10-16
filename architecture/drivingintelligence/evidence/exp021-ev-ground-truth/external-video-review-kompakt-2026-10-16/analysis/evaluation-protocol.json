@@ -1,0 +1,11 @@
+{
+  "baseline": "UNCHANGED",
+  "split_defined_before_tuning": true,
+  "holdout_clips": [
+    "TC_00063.MOV",
+    "TC_00066.MOV"
+  ],
+  "buffer_seconds": 10,
+  "holdout_policy": "Full baseline audit allowed; no candidate selection or parameter tuning on holdout. Before any optimization freeze hypotheses and measures; if inspected findings drive a hypothesis these clips cannot serve as blind validation for it. Independent future drives remain necessary.",
+  "uncertainty": "No absolute clock calibration yet; displayed second is a quantized clock, not exact sensor measurement time."
+}
