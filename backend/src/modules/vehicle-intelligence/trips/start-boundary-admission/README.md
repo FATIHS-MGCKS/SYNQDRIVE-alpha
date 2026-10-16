@@ -2,7 +2,7 @@
 
 Pure resolver + shadow comparison for evidence-backed live start boundaries.
 
-**Not production-wired.** `TripDetectionOrchestrationService.resolveConfirmedStartBoundary` is unchanged.
+**P1B:** Optional runtime shadow at start confirmation (`TRIP_START_BOUNDARY_ADMISSION_SHADOW_ENABLED`, default OFF). Legacy `resolveConfirmedStartBoundary` remains the **canonical writer**; shadow results land under `shadowStartBoundaryAdmission` in FSM evidence summary only.
 
 ## Principle
 

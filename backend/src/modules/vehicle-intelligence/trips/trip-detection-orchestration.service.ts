@@ -79,8 +79,16 @@ import { isClickHouseTripAssistEnabled } from '@modules/clickhouse/clickhouse-en
 import {
   computePossibleStartCoreFetchFrom,
   computeStartBoundaryWindowFrom,
-  selectConfirmedStartSegment,
 } from './start-boundary-window.util';
+import {
+  mergeShadowStartBoundaryIntoEvidenceSummary,
+  runStartBoundaryAdmissionShadow,
+} from './start-boundary-admission/trip-start-boundary-admission-shadow.runtime';
+import { resolveTripStartIntegrationModality } from './start-boundary-admission/trip-start-boundary-integration-modality';
+import {
+  resolveLegacyConfirmedStartBoundary,
+  type StartBoundaryEvidenceContext,
+} from './start-boundary-admission/trip-start-boundary-legacy-resolution';
 import {
   clearPossibleEndClockFields,
   clearPossibleStartClockFields,
@@ -1348,7 +1356,7 @@ export class TripDetectionOrchestrationService {
             : confirmConfidence === 'MEDIUM'
               ? DetectionConfidence.MEDIUM
               : DetectionConfidence.LOW;
-        const resolvedStart = await this.resolveConfirmedStartBoundary({
+        const boundaryResolution = await this.resolveConfirmedStartBoundary({
           dimoTokenId,
           vehicleId,
           organizationId,
@@ -1357,6 +1365,7 @@ export class TripDetectionOrchestrationService {
           corePoints,
           profile: profileStr,
         });
+        const resolvedStart = boundaryResolution.legacy;
         const effectiveStartAt = resolvedStart.startAt;
         const startRouteFetchFrom = new Date(
           Math.max(
@@ -1364,7 +1373,7 @@ export class TripDetectionOrchestrationService {
             now.getTime() - this.tripStartBoundaryMaxLookbackMs,
           ),
         );
-        const startEvidenceSummary = {
+        let startEvidenceSummary = {
           ...(((det.lastEvidenceSummary as Record<string, unknown> | null) ?? {})),
           startCandidateAt: startAt.toISOString(),
           startCandidateObservedAt:
@@ -1385,6 +1394,46 @@ export class TripDetectionOrchestrationService {
           clickhouseAssistedStart: analyticsStartDecision.evidencePath !== 'DIMO_ONLY',
           startConfirmationSummary: analyticsStartDecision.summary,
         };
+        try {
+          const integrationModality = await resolveTripStartIntegrationModality(
+            this.prisma,
+            vehicleId,
+          );
+          const shadowSummary = await runStartBoundaryAdmissionShadow({
+            vehicleId,
+            dimoTokenId,
+            organizationId,
+            candidateStartAt: startAt,
+            confirmedAt: now,
+            corePoints,
+            profile: profileStr,
+            integrationModality,
+            legacy: {
+              startAt: effectiveStartAt,
+              source: resolvedStart.source,
+              dimoSegmentId: resolvedStart.dimoSegmentId,
+            },
+            evidence: boundaryResolution.evidence,
+            segments: this.segments,
+            providerContext: this.dimoProviderContext(
+              dimoTokenId,
+              vehicleId,
+              organizationId,
+            ),
+            tripMetrics: this.tripMetrics,
+            logger: this.logger,
+          });
+          startEvidenceSummary = mergeShadowStartBoundaryIntoEvidenceSummary(
+            startEvidenceSummary,
+            shadowSummary,
+          );
+        } catch (err) {
+          this.logger.warn(
+            `Start boundary admission shadow wiring failed (non-blocking): vehicle=${vehicleId} ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          );
+        }
         runTripObservabilitySafely(this.logger, 'start_confirmation_evidence', () => {
           this.tripMetrics?.tripEvidencePaths.inc({
             phase: 'start_confirmation',
@@ -5107,12 +5156,19 @@ export class TripDetectionOrchestrationService {
     corePoints: Awaited<ReturnType<DimoSegmentsService['fetchRawTripCoreData']>>;
     profile: string;
   }): Promise<{
-    startAt: Date;
-    source: 'DIMO_SEGMENT' | 'ROUTE_ACTIVITY' | 'CORE_ACTIVITY' | 'SNAPSHOT_CANDIDATE';
-    startLatitude: number | null;
-    startLongitude: number | null;
-    adjustedMs: number;
-    dimoSegmentId: string | null;
+    legacy: {
+      startAt: Date;
+      source:
+        | 'DIMO_SEGMENT'
+        | 'ROUTE_ACTIVITY'
+        | 'CORE_ACTIVITY'
+        | 'SNAPSHOT_CANDIDATE';
+      startLatitude: number | null;
+      startLongitude: number | null;
+      adjustedMs: number;
+      dimoSegmentId: string | null;
+    };
+    evidence: StartBoundaryEvidenceContext;
   }> {
     const boundaryWindowFrom = computeStartBoundaryWindowFrom(
       input.candidateStartAt,
@@ -5124,47 +5180,50 @@ export class TripDetectionOrchestrationService {
       input.vehicleId,
       input.organizationId,
     );
-    const matchingSegment = selectConfirmedStartSegment(
-      await this.segments.fetchTripSegments(
-        input.dimoTokenId,
-        boundaryWindowFrom,
-        input.confirmedAt,
-        undefined,
-        providerContext,
-      ),
-      input.candidateStartAt,
-      input.confirmedAt,
-    );
-
-    if (matchingSegment) {
-      const startAt = new Date(matchingSegment.startTime);
-      return {
-        startAt,
-        source: 'DIMO_SEGMENT',
-        startLatitude: matchingSegment.startLatitude,
-        startLongitude: matchingSegment.startLongitude,
-        adjustedMs: startAt.getTime() - input.candidateStartAt.getTime(),
-        dimoSegmentId: matchingSegment.segmentId,
-      };
-    }
-
-    const routePoints = await this.segments.fetchRouteEnrichment(
+    const segments = await this.segments.fetchTripSegments(
       input.dimoTokenId,
       boundaryWindowFrom,
       input.confirmedAt,
+      undefined,
       providerContext,
     );
-    const refined = refineTripStartBoundary(
-      input.candidateStartAt,
-      input.corePoints,
-      routePoints,
-      input.profile,
-    );
 
-    return {
-      ...refined,
-      dimoSegmentId: null,
-    };
+    let routePoints: Awaited<
+      ReturnType<DimoSegmentsService['fetchRouteEnrichment']>
+    > = [];
+    let legacyRouteFetchPerformed = false;
+
+    const preMatch = resolveLegacyConfirmedStartBoundary({
+      boundaryWindowFrom,
+      candidateStartAt: input.candidateStartAt,
+      confirmedAt: input.confirmedAt,
+      corePoints: input.corePoints,
+      profile: input.profile,
+      segments,
+      routePoints: [],
+      legacyRouteFetchPerformed: false,
+    });
+
+    if (!preMatch.evidence.matchingSegment) {
+      routePoints = await this.segments.fetchRouteEnrichment(
+        input.dimoTokenId,
+        boundaryWindowFrom,
+        input.confirmedAt,
+        providerContext,
+      );
+      legacyRouteFetchPerformed = true;
+    }
+
+    return resolveLegacyConfirmedStartBoundary({
+      boundaryWindowFrom,
+      candidateStartAt: input.candidateStartAt,
+      confirmedAt: input.confirmedAt,
+      corePoints: input.corePoints,
+      profile: input.profile,
+      segments,
+      routePoints,
+      legacyRouteFetchPerformed,
+    });
   }
 
   private async fetchAndStoreStartTemperature(

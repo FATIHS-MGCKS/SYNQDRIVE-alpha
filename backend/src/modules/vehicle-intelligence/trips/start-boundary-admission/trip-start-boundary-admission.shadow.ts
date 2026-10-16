@@ -35,6 +35,7 @@ export function compareStartBoundaryAdmissionShadow(
       proposed.canonicalStartAt.getTime() - legacyCanonicalStartAt.getTime(),
     decision: proposed.decision,
     evidenceSources: proposed.provenance.movementEvidenceSources,
+    movementEvidenceCoverage: proposed.provenance.movementEvidenceCoverage,
     uncertainty: proposed.uncertainty,
     integrationModality: input.integrationModality,
   };
