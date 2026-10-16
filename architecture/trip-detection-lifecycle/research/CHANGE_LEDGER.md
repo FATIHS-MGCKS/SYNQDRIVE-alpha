@@ -97,6 +97,7 @@ Append-only record for this authority directory.
 | 2026-09-26 | **Phase 5** Production baseline refresh @ `2b54a357…` / `20260926094359_v4994` (read-only); CX-004 `HISTORICAL_NON_BLOCKING`; CX-005/006 + GAP-005/008/013/014/015 `EXPLICIT_NON_BLOCKING_LIMITATION`; HYP-001 CONFIRMED, HYP-002 superseded | Docs-only audit | TDL-EVID-PHASE5-PROD-BASELINE-001 |
 | 2026-09-26 | **Phase 5** Gate A 17/17 PASS — registry coverage **`AUDIT_IN_PROGRESS` → `AUTHORITY_ACTIVE`** | Docs-only governance | [TDL_PHASE_5_AUTHORITY_PROMOTION_AUDIT_2026-09-26.md](../evidence/TDL_PHASE_5_AUTHORITY_PROMOTION_AUDIT_2026-09-26.md) |
 | 2026-10-16 | **P1A** offline trip start boundary admission resolver + shadow (Tesla `358d0158…` defect reproduced); production writer unchanged; OQ-006 live-path drift documented | Backend pure module + TDL evidence | [TDL_START_BOUNDARY_ADMISSION_P1A_2026-10-16.md](../evidence/TDL_START_BOUNDARY_ADMISSION_P1A_2026-10-16.md) |
+| 2026-10-16 | **P1A.1** semantic hardening — `TripStartIntegrationModality` vs segment detection mechanism; no hardware aggregate exact-start admission; min(core,route) earliest movement; exact provenance; `departureReviewAnchorAt` | PR #2055 | same evidence doc + 15 unit tests |
 
 ## Standard 1.0 phases
 
