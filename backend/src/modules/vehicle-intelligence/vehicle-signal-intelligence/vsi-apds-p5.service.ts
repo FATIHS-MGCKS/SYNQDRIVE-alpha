@@ -17,8 +17,13 @@ export class VsiApdsP5ReadonlyService {
   constructor(private readonly profiles: VsiCapabilityResolverRepository) {}
 
   async buildObservation(
-    input: Omit<VsiApdsReadonlyAdapterInputV1, 'requirementsContractVersion'> & {
+    input: Omit<
+      VsiApdsReadonlyAdapterInputV1,
+      'requirementsContractVersion' | 'policyVersion'
+    > & {
       requirementsContractVersion?: typeof VSI_CONSUMER_REQUIREMENTS_CONTRACT_VERSION;
+      policyVersion: string;
+      activationEpochId?: string | null;
     },
   ) {
     const adapter: VsiApdsReadonlyAdapterInputV1 = {
@@ -31,18 +36,41 @@ export class VsiApdsP5ReadonlyService {
       vehicleId: adapter.vehicleId,
       providerSourceLinkId: adapter.providerSourceLinkId,
     });
-    const profile = await this.profiles.loadProfileContext({
+    const profileBundle = await this.profiles.loadProfileContextWithTemporal({
       organizationId: adapter.organizationId,
       vehicleId: adapter.vehicleId,
       providerSourceLinkId: adapter.providerSourceLinkId,
     });
+    const activeSourceLinkCount = await this.profiles.countActiveSourceLinks(adapter.vehicleId);
+    const persistedRow = await this.profiles.loadPersistedApdsShadowDecision({
+      organizationId: adapter.organizationId,
+      vehicleId: adapter.vehicleId,
+      opportunityId: adapter.shadowOpportunityId,
+      policyVersion: adapter.policyVersion,
+    });
     const tenantMatch = link?.organizationId === adapter.organizationId;
     return buildVsiApdsReadonlyCapabilityObservation({
       adapter,
-      profile,
+      profile: profileBundle?.profile ?? null,
+      profileTemporal: profileBundle?.temporal ?? null,
+      trustedProviderIdentity: profileBundle?.trustedProviderIdentity ?? null,
+      trustedVerifiedModality: profileBundle?.trustedVerifiedModality ?? null,
+      trustedTelemetrySourceFamily: profileBundle?.trustedTelemetrySourceFamily ?? null,
       linkActive: link?.isActive ?? false,
       linkSuperseded: link?.supersededAt != null,
       tenantMatch,
+      activeSourceLinkCount,
+      persistedShadowDecision: persistedRow
+        ? {
+            organizationId: persistedRow.organizationId,
+            vehicleId: persistedRow.vehicleId,
+            opportunityId: persistedRow.opportunityId,
+            decisionAt: persistedRow.decisionAt,
+            policyVersion: persistedRow.policyVersion,
+            activationEpochId: persistedRow.activationEpochId,
+            decision: persistedRow.decision,
+          }
+        : null,
     });
   }
 

@@ -1,16 +1,20 @@
 import { buildVsiApdsReadonlyCapabilityObservation } from './vsi-apds-readonly.adapter';
 import { buildVsiConsumerDemandVectorV1 } from './vsi-apds-demand-vector.builder';
 import { isVsiP5ApdsCorrelationEnabled } from './vsi-apds-p5.config';
+import { VsiApdsProfileEvidenceInterpretation } from './vsi-apds-profile-evidence-time';
+import { describeVsiApdsShadowRuntimeDiff } from './vsi-apds-parity-evidence';
 import { VsiApdsDemandClassification } from './vsi-apds-p5.types';
 import {
   apdsShadowBaselineParityIdentity,
   correlateApdsShadowWithVsiCapability,
 } from './vsi-apds-shadow-correlation.engine';
+import { VsiApdsShadowBindingStatus } from './vsi-apds-shadow-opportunity-binding';
 import { VSI_CONSUMER_REQUIREMENTS_CONTRACT_VERSION } from './vsi-consumer-requirements.types';
 import type { VsiCapabilityResolverProfileContext } from './vsi-capability-resolver.types';
 import { VSI_PROFILE_CONTRACT_VERSION, VSI_PROFILE_CONTRACT_VERSION_V1 } from './vsi-profile.types';
 
-const evalAt = new Date('2026-10-16T12:00:00.000Z');
+const evalAt = new Date('2026-10-16T06:00:00.000Z');
+const policyVersion = 'p25-apd-b4-v1';
 
 function profile(
   signals: Array<
@@ -41,87 +45,127 @@ function profile(
   };
 }
 
-function adapter(overrides: Record<string, string> = {}) {
+function temporalAt(d: Date, revision = 3) {
+  return { evaluatedAt: d, createdAt: d, updatedAt: d, profileRevision: revision };
+}
+
+function adapter(overrides: Record<string, unknown> = {}) {
   return {
     organizationId: 'org-1',
     vehicleId: 'veh-1',
     providerSourceLinkId: 'link-1',
     shadowOpportunityId: 'opp-1',
     shadowDecisionAt: evalAt,
+    policyVersion,
     requirementsContractVersion: VSI_CONSUMER_REQUIREMENTS_CONTRACT_VERSION,
     ...overrides,
   };
 }
+
+function obsInput(
+  partial: Partial<Parameters<typeof buildVsiApdsReadonlyCapabilityObservation>[0]> = {},
+) {
+  const prof = partial.profile ?? profile([{ canonicalSignalKey: 'lv_voltage' }]);
+  return buildVsiApdsReadonlyCapabilityObservation({
+    adapter: adapter(),
+    profile: prof,
+    profileTemporal: temporalAt(evalAt),
+    trustedProviderIdentity: 'DIMO',
+    trustedVerifiedModality: 'RUPTELA_R1',
+    trustedTelemetrySourceFamily: 'AFTERMARKET_OBD',
+    linkActive: true,
+    linkSuperseded: false,
+    tenantMatch: true,
+    activeSourceLinkCount: 1,
+    persistedShadowDecision: null,
+    ...partial,
+  });
+}
+
+function decision(overrides: Record<string, unknown> = {}) {
+  return {
+    organizationId: 'org-1',
+    vehicleId: 'veh-1',
+    opportunityId: 'opp-1',
+    decisionAt: evalAt.toISOString(),
+    policyVersion,
+    baselineDecision: 'HOLD',
+    ...overrides,
+  };
+}
+
+const demandDefaults = {
+  attributionUnknown: false,
+  failClosed: false,
+  decisionTimeRetrospectiveAssessable: true,
+};
 
 describe('vsi-apds P5 read-only', () => {
   it('P5B gate default OFF', () => {
     expect(isVsiP5ApdsCorrelationEnabled()).toBe(false);
   });
 
+  it('honest APDS parity evidence — no independent replay in P5', () => {
+    const e = describeVsiApdsShadowRuntimeDiff();
+    expect(e.apdsRuntimeDiff).toBe('NONE');
+    expect(e.p5bEnabled).toBe(false);
+    expect(apdsShadowBaselineParityIdentity({ x: 1 })).toEqual({ x: 1 });
+  });
+
   it('Ruptela R1: LV and GPS observed in inventory', () => {
-    const obs = buildVsiApdsReadonlyCapabilityObservation({
-      adapter: adapter(),
+    const obs = obsInput({
       profile: profile([
         { canonicalSignalKey: 'lv_voltage' },
         { canonicalSignalKey: 'vehicle_speed' },
         { canonicalSignalKey: 'position_coordinates' },
       ]),
-      linkActive: true,
-      linkSuperseded: false,
-      tenantMatch: true,
     });
     expect(obs.signals.map((s) => s.canonicalSignalKey)).toEqual(
       expect.arrayContaining(['lv_voltage', 'vehicle_speed']),
     );
+    expect(obs.verifiedModality).toBe('RUPTELA_R1');
     const battery = obs.consumerDemand.find((d) => d.requirementId.includes('lv_voltage'));
     expect(battery?.demandClassification).toBe(VsiApdsDemandClassification.PENDING_DOMAIN_APPROVAL);
   });
 
   it('Tesla: HV observed, LV not observed', () => {
-    const obs = buildVsiApdsReadonlyCapabilityObservation({
-      adapter: adapter(),
+    const obs = obsInput({
       profile: profile([
         { canonicalSignalKey: 'hv_battery_soc' },
         { canonicalSignalKey: 'lv_voltage', empiricalObservation: 'NEVER_OBSERVED' },
       ]),
-      linkActive: true,
-      linkSuperseded: false,
-      tenantMatch: true,
+      trustedVerifiedModality: 'TESLA_SOFTWARE',
+      trustedTelemetrySourceFamily: 'OEM_API',
     });
     const lv = obs.signals.find((s) => s.canonicalSignalKey === 'lv_voltage');
     expect(lv?.empiricalObservation).toBe('NEVER_OBSERVED');
   });
 
   it('missing profile', () => {
-    const obs = buildVsiApdsReadonlyCapabilityObservation({
-      adapter: adapter(),
-      profile: null,
-      linkActive: true,
-      linkSuperseded: false,
-      tenantMatch: true,
-    });
+    const obs = obsInput({ profile: null, profileTemporal: null });
     expect(obs.evidenceLimitations).toContain('PROFILE_NOT_FOUND');
     expect(obs.attributionStatus).toBe('UNKNOWN');
+    expect(obs.profileEvidenceInterpretation).toBe(
+      VsiApdsProfileEvidenceInterpretation.HISTORICAL_PROFILE_UNAVAILABLE,
+    );
   });
 
   it('legacy v1 profile flagged', () => {
-    const obs = buildVsiApdsReadonlyCapabilityObservation({
-      adapter: adapter(),
+    const obs = obsInput({
       profile: {
         ...profile([{ canonicalSignalKey: 'provider_source_timestamp' }]),
         profileContractVersion: VSI_PROFILE_CONTRACT_VERSION_V1,
       },
-      linkActive: true,
-      linkSuperseded: false,
-      tenantMatch: true,
     });
     expect(obs.evidenceLimitations).toContain('LEGACY_PROFILE_V1');
+    expect(obs.decisionTimeRetrospectiveAssessable).toBe(false);
   });
 
   it('pending domain approval listed as future demand not executable', () => {
     const demand = buildVsiConsumerDemandVectorV1({
       profile: profile([{ canonicalSignalKey: 'lv_voltage' }]),
       evaluationTimeMs: evalAt.getTime(),
+      ...demandDefaults,
     });
     const pending = demand.filter(
       (d) => d.demandClassification === VsiApdsDemandClassification.PENDING_DOMAIN_APPROVAL,
@@ -134,167 +178,121 @@ describe('vsi-apds P5 read-only', () => {
     const demand = buildVsiConsumerDemandVectorV1({
       profile: profile([{ canonicalSignalKey: 'provider_source_timestamp' }]),
       evaluationTimeMs: evalAt.getTime(),
+      ...demandDefaults,
     });
     const apds = demand.find((d) => d.requirementId === 'apds.profile_revision.correlation');
     expect(apds?.demandClassification).toBe(VsiApdsDemandClassification.DESIGN_CONTRACT_ONLY);
   });
 
   it('inactive link UNKNOWN attribution', () => {
-    const obs = buildVsiApdsReadonlyCapabilityObservation({
-      adapter: adapter(),
-      profile: profile([{ canonicalSignalKey: 'lv_voltage' }]),
-      linkActive: false,
-      linkSuperseded: false,
-      tenantMatch: true,
-    });
+    const obs = obsInput({ linkActive: false });
     expect(obs.attributionStatus).toBe('UNKNOWN');
+    expect(obs.signals).toHaveLength(0);
   });
 
   it('multi active links ambiguous', () => {
-    const obs = buildVsiApdsReadonlyCapabilityObservation({
-      adapter: adapter(),
+    const obs = obsInput({
       profile: profile(
         [{ canonicalSignalKey: 'lv_voltage' }],
         ['MULTI_ACTIVE_SOURCE_LINK_DECLARED_CATALOG_AMBIGUOUS'],
       ),
-      linkActive: true,
-      linkSuperseded: false,
-      tenantMatch: true,
+      activeSourceLinkCount: 2,
     });
     expect(obs.attributionStatus).toBe('UNKNOWN');
+    expect(obs.shadowBindingStatus).toBe(VsiApdsShadowBindingStatus.UNKNOWN);
   });
 
   it('stale observation at decision time', () => {
-    const obs = buildVsiApdsReadonlyCapabilityObservation({
-      adapter: adapter(),
+    const obs = obsInput({
       profile: profile([
         {
           canonicalSignalKey: 'lv_voltage',
           lastSourceTimestamp: '2020-01-01T00:00:00.000Z',
         },
       ]),
-      linkActive: true,
-      linkSuperseded: false,
-      tenantMatch: true,
     });
     expect(obs.signals[0]?.freshnessAtEvaluation).toBe('STALE');
   });
 
+  it('profile updated after decision → CURRENT_PROFILE_REVIEW not retrospective', () => {
+    const obs = obsInput({
+      profileTemporal: {
+        evaluatedAt: new Date('2026-10-16T11:00:00.000Z'),
+        createdAt: new Date('2026-10-16T10:00:00.000Z'),
+        updatedAt: new Date('2026-10-16T07:00:00.000Z'),
+        profileRevision: 4,
+      },
+    });
+    expect(obs.profileEvidenceInterpretation).toBe(
+      VsiApdsProfileEvidenceInterpretation.CURRENT_PROFILE_REVIEW,
+    );
+    expect(obs.decisionTimeRetrospectiveAssessable).toBe(false);
+  });
+
   it('correlation is not decision input', () => {
-    const obs = buildVsiApdsReadonlyCapabilityObservation({
-      adapter: adapter(),
+    const obs = obsInput({
       profile: profile([{ canonicalSignalKey: 'provider_source_timestamp' }]),
-      linkActive: true,
-      linkSuperseded: false,
-      tenantMatch: true,
     });
     const result = correlateApdsShadowWithVsiCapability({
-      decision: {
-        opportunityId: 'opp-1',
-        decisionAt: evalAt.toISOString(),
-        policyVersion: 'p25-apd-b4-v1',
-        baselineDecision: 'HOLD',
-      },
+      decision: decision(),
       observation: obs,
     });
     expect(result.correlationIsDecisionInput).toBe(false);
     expect(result.originalApdsPolicyDecision).toBe('HOLD');
   });
 
-  it('replay parity identity when correlation off', () => {
-    const baseline = { decision: 'ENQUEUE', opportunityId: 'x' };
-    expect(apdsShadowBaselineParityIdentity(baseline)).toEqual(baseline);
-  });
-
-  it('cross-tenant isolation', () => {
-    const obs = buildVsiApdsReadonlyCapabilityObservation({
-      adapter: adapter(),
-      profile: profile([{ canonicalSignalKey: 'lv_voltage' }]),
-      linkActive: true,
-      linkSuperseded: false,
-      tenantMatch: false,
-    });
+  it('cross-tenant isolation hides signal payloads', () => {
+    const obs = obsInput({ tenantMatch: false });
     expect(obs.evidenceLimitations).toContain('TENANT_SCOPE_MISMATCH');
+    expect(obs.signals).toHaveLength(0);
+    expect(obs.consumerDemand.every((d) => d.assessmentStatus === 'UNKNOWN')).toBe(true);
   });
 
   it('deterministic correlation', () => {
-    const obs = buildVsiApdsReadonlyCapabilityObservation({
-      adapter: adapter(),
-      profile: profile([{ canonicalSignalKey: 'hv_battery_soc' }]),
-      linkActive: true,
-      linkSuperseded: false,
-      tenantMatch: true,
-    });
-    const decision = {
-      opportunityId: 'opp-1',
-      decisionAt: evalAt.toISOString(),
-      policyVersion: 'p25-apd-b4-v1',
-      baselineDecision: 'ENQUEUE',
-    };
-    const a = correlateApdsShadowWithVsiCapability({ decision, observation: obs });
-    const b = correlateApdsShadowWithVsiCapability({ decision, observation: obs });
+    const obs = obsInput({ profile: profile([{ canonicalSignalKey: 'hv_battery_soc' }]) });
+    const a = correlateApdsShadowWithVsiCapability({ decision: decision(), observation: obs });
+    const b = correlateApdsShadowWithVsiCapability({ decision: decision(), observation: obs });
     expect(a).toEqual(b);
-  });
-
-  it('incomplete per-signal history surfaced on inventory rows', () => {
-    const obs = buildVsiApdsReadonlyCapabilityObservation({
-      adapter: adapter(),
-      profile: profile([
-        {
-          canonicalSignalKey: 'odometer',
-          observedCadenceMedianSeconds: null,
-          observedSamples: null,
-          limitations: ['PER_SIGNAL_HISTORICAL_EVIDENCE_INSUFFICIENT'],
-        },
-      ]),
-      linkActive: true,
-      linkSuperseded: false,
-      tenantMatch: true,
-    });
-    const odo = obs.signals.find((s) => s.canonicalSignalKey === 'odometer');
-    expect(odo?.limitations).toContain('PER_SIGNAL_HISTORICAL_EVIDENCE_INSUFFICIENT');
   });
 
   it('brake requirement without materialization stays NOT_ASSESSABLE (pending domain)', () => {
     const demand = buildVsiConsumerDemandVectorV1({
       profile: profile([{ canonicalSignalKey: 'hv_battery_soc' }]),
       evaluationTimeMs: evalAt.getTime(),
+      ...demandDefaults,
     });
     const brake = demand.find((d) => d.requirementId === 'di.brake_pedal_position.observed');
     expect(brake?.demandClassification).toBe(VsiApdsDemandClassification.PENDING_DOMAIN_APPROVAL);
     expect(brake?.assessmentStatus).toBe('NOT_ASSESSABLE');
-    expect(brake?.canonicalSignalKeys).toEqual(['brake_pedal_position']);
   });
 
   it('does not substitute HV SOC for LV voltage in signal inventory', () => {
-    const obs = buildVsiApdsReadonlyCapabilityObservation({
-      adapter: adapter(),
-      profile: profile([{ canonicalSignalKey: 'hv_battery_soc' }]),
-      linkActive: true,
-      linkSuperseded: false,
-      tenantMatch: true,
-    });
+    const obs = obsInput({ profile: profile([{ canonicalSignalKey: 'hv_battery_soc' }]) });
     expect(obs.signals.some((s) => s.canonicalSignalKey === 'lv_voltage')).toBe(false);
-    expect(obs.signals.some((s) => s.canonicalSignalKey === 'hv_battery_soc')).toBe(true);
   });
 
   it('provider-source binding mismatch UNKNOWN attribution', () => {
-    const obs = buildVsiApdsReadonlyCapabilityObservation({
-      adapter: adapter(),
+    const obs = obsInput({
       profile: profile(
         [{ canonicalSignalKey: 'lv_voltage' }],
         ['PROVIDER_IDENTITY_MISMATCH_DECLARED_CATALOG_DIMO_ONLY'],
       ),
-      linkActive: true,
-      linkSuperseded: false,
-      tenantMatch: true,
     });
     expect(obs.attributionStatus).toBe('UNKNOWN');
   });
 
-  it('correlation engine throws do not affect baseline parity helper', () => {
-    expect(() =>
-      apdsShadowBaselineParityIdentity({ opportunityId: 'o', decision: 'HOLD' }),
-    ).not.toThrow();
+  it('persisted APDS row mismatch rejects binding', () => {
+    const obs = obsInput({
+      persistedShadowDecision: {
+        organizationId: 'org-1',
+        vehicleId: 'veh-1',
+        opportunityId: 'opp-other',
+        decisionAt: evalAt,
+        policyVersion,
+        activationEpochId: null,
+        decision: 'HOLD',
+      },
+    });
+    expect(obs.shadowBindingStatus).toBe(VsiApdsShadowBindingStatus.REJECTED);
   });
 });

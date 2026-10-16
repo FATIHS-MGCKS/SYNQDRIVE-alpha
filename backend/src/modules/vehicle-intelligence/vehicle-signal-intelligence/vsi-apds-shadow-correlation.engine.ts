@@ -5,6 +5,9 @@ import {
   type VsiApdsShadowCorrelationResultV1,
   type VsiApdsShadowDecisionSnapshotV1,
 } from './vsi-apds-p5.types';
+import { VsiApdsProfileEvidenceInterpretation } from './vsi-apds-profile-evidence-time';
+import { VsiApdsShadowBindingStatus } from './vsi-apds-shadow-opportunity-binding';
+import { describeVsiApdsShadowRuntimeDiff } from './vsi-apds-parity-evidence';
 
 /**
  * Pure correlation — never mutates APDS decisions or polling state.
@@ -15,9 +18,13 @@ export function correlateApdsShadowWithVsiCapability(input: {
 }): VsiApdsShadowCorrelationResultV1 {
   const { decision, observation } = input;
   const matchedVehicleLink =
+    observation.shadowBindingStatus === VsiApdsShadowBindingStatus.MATCHED &&
     observation.attributionStatus === 'RESOLVED' &&
     observation.evidenceLimitations.every(
-      (l) => l !== 'TENANT_SCOPE_MISMATCH' && l !== 'SOURCE_LINK_INACTIVE',
+      (l) =>
+        l !== 'TENANT_SCOPE_MISMATCH' &&
+        l !== 'SOURCE_LINK_INACTIVE' &&
+        l !== 'SOURCE_LINK_SUPERSEDED',
     );
 
   const matchingCapabilities: string[] = [];
@@ -25,6 +32,15 @@ export function correlateApdsShadowWithVsiCapability(input: {
   const observedVersusDemandedDifferences: string[] = [];
   const investigationHints: string[] = [];
   const evidenceLimitations = [...observation.evidenceLimitations];
+
+  if (
+    observation.profileEvidenceInterpretation !==
+    VsiApdsProfileEvidenceInterpretation.VERIFIED_DECISION_TIME_SNAPSHOT
+  ) {
+    investigationHints.push(
+      `PROFILE_EVIDENCE_INTERPRETATION:${observation.profileEvidenceInterpretation}`,
+    );
+  }
 
   for (const row of observation.consumerDemand) {
     if (row.demandClassification === VsiApdsDemandClassification.PENDING_DOMAIN_APPROVAL) {
@@ -36,7 +52,14 @@ export function correlateApdsShadowWithVsiCapability(input: {
       continue;
     }
     if (row.assessmentStatus === 'SATISFIED') {
-      matchingCapabilities.push(row.requirementId);
+      if (
+        observation.profileEvidenceInterpretation ===
+        VsiApdsProfileEvidenceInterpretation.VERIFIED_DECISION_TIME_SNAPSHOT
+      ) {
+        matchingCapabilities.push(row.requirementId);
+      } else {
+        investigationHints.push(`CURRENT_PROFILE_ONLY_SATISFIED:${row.requirementId}`);
+      }
     } else if (row.assessmentStatus === 'INSUFFICIENT') {
       missingCapabilities.push(row.requirementId);
       observedVersusDemandedDifferences.push(
@@ -60,6 +83,8 @@ export function correlateApdsShadowWithVsiCapability(input: {
   return {
     contractVersion: VSI_APDS_P5_CONTRACT_VERSION,
     matchedVehicleLink,
+    shadowBindingStatus: observation.shadowBindingStatus,
+    profileEvidenceInterpretation: observation.profileEvidenceInterpretation,
     opportunityId: decision.opportunityId,
     decisionAt: decision.decisionAt,
     originalApdsPolicyDecision: decision.baselineDecision,
@@ -75,7 +100,12 @@ export function correlateApdsShadowWithVsiCapability(input: {
   };
 }
 
-/** Baseline parity: correlation disabled yields no side effects (identity on decision). */
+/**
+ * Compile-time no-op when P5B is disabled — does **not** certify APDS durable replay parity.
+ * See `describeVsiApdsShadowRuntimeDiff()` and APDS shadow CI suites for runtime diff evidence.
+ */
 export function apdsShadowBaselineParityIdentity<T>(baseline: T): T {
   return baseline;
 }
+
+export { describeVsiApdsShadowRuntimeDiff };

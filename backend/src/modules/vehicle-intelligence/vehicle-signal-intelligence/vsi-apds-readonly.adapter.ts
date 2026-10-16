@@ -1,5 +1,14 @@
 import { buildVsiConsumerDemandVectorV1 } from './vsi-apds-demand-vector.builder';
 import {
+  classifyVsiApdsProfileEvidenceInterpretation,
+  type VsiApdsProfileTemporalAuthorityV1,
+} from './vsi-apds-profile-evidence-time';
+import {
+  validateVsiApdsShadowOpportunityBinding,
+  VsiApdsShadowBindingStatus,
+  type VsiApdsPersistedShadowDecisionV1,
+} from './vsi-apds-shadow-opportunity-binding';
+import {
   VSI_APDS_P5_CONTRACT_VERSION,
   type VsiApdsCanonicalSignalRowV1,
   type VsiApdsReadonlyAdapterInputV1,
@@ -42,15 +51,24 @@ function mapSignals(
 export function buildVsiApdsReadonlyCapabilityObservation(input: {
   adapter: VsiApdsReadonlyAdapterInputV1;
   profile: VsiCapabilityResolverProfileContext | null;
+  profileTemporal: VsiApdsProfileTemporalAuthorityV1 | null;
+  trustedProviderIdentity: string | null;
+  trustedVerifiedModality: string | null;
+  trustedTelemetrySourceFamily: string | null;
   linkActive: boolean;
   linkSuperseded: boolean;
   tenantMatch: boolean;
+  activeSourceLinkCount: number;
+  persistedShadowDecision: VsiApdsPersistedShadowDecisionV1 | null;
 }): VsiApdsReadonlyCapabilityObservationV1 {
   const evaluationTimeMs = input.adapter.shadowDecisionAt.getTime();
   const limitations: string[] = [
     'NOT_AN_APDS_DECISION_INPUT',
     'POLL_SUCCESS_DOES_NOT_IMPLY_SIGNAL_EVIDENCE',
   ];
+
+  const failClosed =
+    !input.tenantMatch || !input.linkActive || input.linkSuperseded;
 
   if (!input.tenantMatch) {
     limitations.push('TENANT_SCOPE_MISMATCH');
@@ -62,8 +80,31 @@ export function buildVsiApdsReadonlyCapabilityObservation(input: {
     limitations.push('SOURCE_LINK_SUPERSEDED');
   }
 
+  const binding = validateVsiApdsShadowOpportunityBinding({
+    persistedDecision: input.persistedShadowDecision,
+    request: {
+      organizationId: input.adapter.organizationId,
+      vehicleId: input.adapter.vehicleId,
+      providerSourceLinkId: input.adapter.providerSourceLinkId,
+      opportunityId: input.adapter.shadowOpportunityId,
+      decisionAt: input.adapter.shadowDecisionAt,
+      policyVersion: input.adapter.policyVersion,
+      activationEpochId: input.adapter.activationEpochId ?? null,
+    },
+    activeSourceLinkCount: input.activeSourceLinkCount,
+    requirePersistedDecision: false,
+  });
+  limitations.push(...binding.reasons.map((r) => `SHADOW_BINDING:${r}`));
+
+  const evidenceTime = classifyVsiApdsProfileEvidenceInterpretation({
+    profile: input.profile,
+    temporal: input.profileTemporal,
+    shadowDecisionAt: input.adapter.shadowDecisionAt,
+  });
+  limitations.push(...evidenceTime.limitations);
+
   let attributionStatus: 'RESOLVED' | 'UNKNOWN' = 'RESOLVED';
-  const profile = input.profile;
+  const profile = failClosed ? null : input.profile;
 
   if (profile) {
     limitations.push(...profile.profileLimitations);
@@ -77,21 +118,31 @@ export function buildVsiApdsReadonlyCapabilityObservation(input: {
     if (profile.profileContractVersion === VSI_PROFILE_CONTRACT_VERSION_V1) {
       limitations.push('LEGACY_PROFILE_V1');
     }
-  } else {
+  } else if (!failClosed) {
     limitations.push('PROFILE_NOT_FOUND');
     attributionStatus = 'UNKNOWN';
   }
 
-  if (!input.tenantMatch || !input.linkActive || input.linkSuperseded) {
+  if (
+    failClosed ||
+    binding.bindingStatus !== VsiApdsShadowBindingStatus.MATCHED ||
+    attributionStatus === 'UNKNOWN'
+  ) {
     attributionStatus = 'UNKNOWN';
   }
 
-  const signals = profile ? mapSignals(profile, evaluationTimeMs) : [];
+  const attributionUnknown = attributionStatus === 'UNKNOWN';
+
+  const signals =
+    profile && !failClosed ? mapSignals(profile, evaluationTimeMs) : [];
 
   const consumerDemand = buildVsiConsumerDemandVectorV1({
     profile,
     evaluationTimeMs,
     profileLimitations: profile?.profileLimitations,
+    attributionUnknown,
+    failClosed,
+    decisionTimeRetrospectiveAssessable: evidenceTime.decisionTimeRetrospectiveAssessable,
   });
 
   return {
@@ -102,8 +153,11 @@ export function buildVsiApdsReadonlyCapabilityObservation(input: {
     shadowOpportunityId: input.adapter.shadowOpportunityId,
     shadowDecisionAt: input.adapter.shadowDecisionAt.toISOString(),
     requirementsContractVersion: input.adapter.requirementsContractVersion,
-    providerIdentity: input.adapter.verifiedModality ?? null,
-    telemetrySourceFamily: input.adapter.telemetrySourceFamily ?? null,
+    providerIdentity: failClosed ? null : input.trustedProviderIdentity,
+    verifiedModality: failClosed ? null : input.trustedVerifiedModality,
+    telemetrySourceFamily: failClosed ? null : input.trustedTelemetrySourceFamily,
+    profileEvidenceInterpretation: evidenceTime.interpretation,
+    decisionTimeRetrospectiveAssessable: evidenceTime.decisionTimeRetrospectiveAssessable,
     profileContractVersion: profile?.profileContractVersion ?? null,
     profileRevision: profile?.profileRevision ?? null,
     profileContentFingerprint: profile?.contentFingerprint ?? null,
@@ -112,5 +166,7 @@ export function buildVsiApdsReadonlyCapabilityObservation(input: {
     consumerDemand,
     evidenceLimitations: limitations,
     attributionStatus,
+    shadowBindingStatus: binding.bindingStatus,
+    shadowBindingReasons: binding.reasons,
   };
 }

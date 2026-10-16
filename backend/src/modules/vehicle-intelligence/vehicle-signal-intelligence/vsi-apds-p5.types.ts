@@ -1,5 +1,7 @@
 import type { VsiConsumerRequirementSpecV1 } from './vsi-consumer-requirements.types';
 import { VSI_CONSUMER_REQUIREMENTS_CONTRACT_VERSION } from './vsi-consumer-requirements.types';
+import type { VsiApdsProfileEvidenceInterpretation } from './vsi-apds-profile-evidence-time';
+import type { VsiApdsShadowBindingStatus } from './vsi-apds-shadow-opportunity-binding';
 
 export const VSI_APDS_P5_CONTRACT_VERSION = 'vsi-apds-p5-readonly-v1' as const;
 
@@ -22,9 +24,9 @@ export type VsiApdsReadonlyAdapterInputV1 = {
   providerSourceLinkId: string;
   shadowOpportunityId: string;
   shadowDecisionAt: Date;
+  policyVersion: string;
+  activationEpochId?: string | null;
   requirementsContractVersion: typeof VSI_CONSUMER_REQUIREMENTS_CONTRACT_VERSION;
-  verifiedModality?: string | null;
-  telemetrySourceFamily?: string | null;
 };
 
 export type VsiApdsCanonicalSignalRowV1 = {
@@ -59,7 +61,10 @@ export type VsiApdsReadonlyCapabilityObservationV1 = {
   shadowDecisionAt: string;
   requirementsContractVersion: typeof VSI_CONSUMER_REQUIREMENTS_CONTRACT_VERSION;
   providerIdentity: string | null;
+  verifiedModality: string | null;
   telemetrySourceFamily: string | null;
+  profileEvidenceInterpretation: VsiApdsProfileEvidenceInterpretation;
+  decisionTimeRetrospectiveAssessable: boolean;
   profileContractVersion: string | null;
   profileRevision: number | null;
   profileContentFingerprint: string | null;
@@ -68,12 +73,17 @@ export type VsiApdsReadonlyCapabilityObservationV1 = {
   consumerDemand: VsiApdsRequirementDemandRowV1[];
   evidenceLimitations: string[];
   attributionStatus: 'RESOLVED' | 'UNKNOWN';
+  shadowBindingStatus: VsiApdsShadowBindingStatus;
+  shadowBindingReasons: string[];
 };
 
 export type VsiApdsShadowDecisionSnapshotV1 = {
+  organizationId: string;
+  vehicleId: string;
   opportunityId: string;
   decisionAt: string;
   policyVersion: string;
+  activationEpochId?: string | null;
   baselineDecision: string;
   overlayDecision?: string | null;
   executionVersion?: string | null;
@@ -82,6 +92,8 @@ export type VsiApdsShadowDecisionSnapshotV1 = {
 export type VsiApdsShadowCorrelationResultV1 = {
   contractVersion: typeof VSI_APDS_P5_CONTRACT_VERSION;
   matchedVehicleLink: boolean;
+  shadowBindingStatus: VsiApdsShadowBindingStatus;
+  profileEvidenceInterpretation: VsiApdsProfileEvidenceInterpretation;
   opportunityId: string;
   decisionAt: string;
   originalApdsPolicyDecision: string;

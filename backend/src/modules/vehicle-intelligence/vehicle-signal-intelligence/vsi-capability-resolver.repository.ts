@@ -49,6 +49,26 @@ export class VsiCapabilityResolverRepository {
     vehicleId: string;
     providerSourceLinkId: string;
   }): Promise<VsiCapabilityResolverProfileContext | null> {
+    const bundle = await this.loadProfileContextWithTemporal(input);
+    return bundle?.profile ?? null;
+  }
+
+  async loadProfileContextWithTemporal(input: {
+    organizationId: string;
+    vehicleId: string;
+    providerSourceLinkId: string;
+  }): Promise<{
+    profile: VsiCapabilityResolverProfileContext;
+    temporal: {
+      evaluatedAt: Date;
+      createdAt: Date;
+      updatedAt: Date;
+      profileRevision: number;
+    };
+    trustedProviderIdentity: string;
+    trustedVerifiedModality: string | null;
+    trustedTelemetrySourceFamily: string | null;
+  } | null> {
     const row = await this.prisma.vehicleSignalCapabilityProfile.findFirst({
       where: {
         organizationId: input.organizationId,
@@ -61,6 +81,12 @@ export class VsiCapabilityResolverRepository {
         contentFingerprint: true,
         profileLimitations: true,
         signalsSnapshot: true,
+        evaluatedAt: true,
+        createdAt: true,
+        updatedAt: true,
+        providerIdentity: true,
+        verifiedModality: true,
+        telemetrySourceFamily: true,
       },
     });
     if (!row) {
@@ -74,12 +100,49 @@ export class VsiCapabilityResolverRepository {
       ? (signalsRaw as VsiCapabilityResolverProfileContext['signals'])
       : [];
 
-    return {
+    const profile: VsiCapabilityResolverProfileContext = {
       profileContractVersion: row.profileContractVersion,
       profileRevision: row.profileRevision,
       contentFingerprint: row.contentFingerprint,
       profileLimitations: limitations,
       signals,
     };
+    return {
+      profile,
+      temporal: {
+        evaluatedAt: row.evaluatedAt,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+        profileRevision: row.profileRevision,
+      },
+      trustedProviderIdentity: row.providerIdentity,
+      trustedVerifiedModality: row.verifiedModality,
+      trustedTelemetrySourceFamily: row.telemetrySourceFamily,
+    };
+  }
+
+  async loadPersistedApdsShadowDecision(input: {
+    organizationId: string;
+    vehicleId: string;
+    opportunityId: string;
+    policyVersion: string;
+  }) {
+    return this.prisma.apdShadowReconciliationDecision.findFirst({
+      where: {
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        opportunityId: input.opportunityId,
+        policyVersion: input.policyVersion,
+      },
+      select: {
+        organizationId: true,
+        vehicleId: true,
+        opportunityId: true,
+        decisionAt: true,
+        policyVersion: true,
+        activationEpochId: true,
+        decision: true,
+      },
+    });
   }
 }

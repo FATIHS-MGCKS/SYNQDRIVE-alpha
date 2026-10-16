@@ -59,6 +59,24 @@ Do **not** change the working production route in a P5 read-only PR. Treat as AP
 - Unit: `vsi-apds-shadow-correlation.engine.spec.ts` (Ruptela/Tesla-style fixtures, parity, tenant, multi-link, stale, brake NOT_ASSESSABLE).
 - Disposable PG: `vsi-apds-p5.postgres.integration.spec.ts` via `vsi03-p2c-postgres-ci.sh`.
 
+## Evidence-time semantics (P5A hardening)
+
+| Interpretation | Meaning |
+|----------------|---------|
+| `VERIFIED_DECISION_TIME_SNAPSHOT` | Profile row `evaluatedAt`/`updatedAt`/`createdAt` and all signal `lastSourceTimestamp` values are ≤ `shadowDecisionAt` (no future evidence). |
+| `CURRENT_PROFILE_REVIEW` | Latest profile exists but is **not** provably authoritative at decision time (e.g. created/updated after decision, signal observed after decision). Inventory may still be shown; runtime `SATISFIED` assessments are blocked. |
+| `HISTORICAL_PROFILE_UNAVAILABLE` | No profile row. |
+
+There is **no** versioned profile history table in P5 — retrospective claims fail closed without reconstruction.
+
+## APDS opportunity binding
+
+Correlation validates durable `ApdShadowReconciliationDecision` identity when loaded (`organizationId`, `vehicleId`, `opportunityId`, `policyVersion`, `decisionAt`, optional `activationEpochId`). APDS rows are **vehicle-scoped**; multi-active-link vehicles yield `UNKNOWN` binding unless per-link provenance exists elsewhere.
+
+## P4 assessability parity
+
+P5 demand rows call shared `evaluateVsiConsumerRequirement` from the P4 engine — no duplicated threshold logic.
+
 ## Replay evidence
 
-With P5B **disabled**, APDS shadow execution paths are unchanged (no VSI imports in shadow service). Future P5B wiring may only append correlation evidence **after** baseline decision persistence, with failures non-blocking.
+With P5B **disabled**, APDS shadow execution paths are unchanged (no VSI imports in shadow service). `apdsShadowBaselineParityIdentity` is a no-op guard only — **not** durable replay certification. APDS shadow unit/CI suites provide runtime diff evidence (`APDS_RUNTIME_DIFF=NONE` by construction in P5 PR).

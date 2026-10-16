@@ -3,17 +3,15 @@ import {
   isConsumerRequirementDesignContractOnly,
   isConsumerRequirementRuntimeApproved,
 } from './vsi-consumer-requirements.registry';
+import { evaluateVsiConsumerRequirement } from './vsi-capability-resolver.engine';
+import { VsiCapabilityResolverReasonCode } from './vsi-capability-resolver.types';
 import { VsiDomainApprovalStatus } from './vsi-consumer-requirements.types';
-import { VSI_PROFILE_MATERIALIZATION_KEYS } from './vsi-profile.types';
-import { computeSignalFreshnessAtEvaluation } from './vsi-capability-resolver.freshness';
-import { isQualifyingEmpiricalObservation } from './vsi-capability-resolver.empirical';
 import {
   VsiApdsDemandClassification,
   type VsiApdsRequirementDemandRowV1,
 } from './vsi-apds-p5.types';
 import type { VsiCapabilityResolverProfileContext } from './vsi-capability-resolver.types';
-
-const MATERIALIZED = new Set<string>(VSI_PROFILE_MATERIALIZATION_KEYS);
+import { VSI_PROFILE_CONTRACT_VERSION, VSI_PROFILE_CONTRACT_VERSION_V1 } from './vsi-profile.types';
 
 const ATTRIBUTION_UNKNOWN = new Set([
   'LATEST_STATE_NOT_ATTRIBUTED_TO_SOURCE_LINK',
@@ -39,93 +37,148 @@ function classifyRequirementDemand(
   return VsiApdsDemandClassification.UNKNOWN_CAPABILITY;
 }
 
-function assessRequirementAgainstProfile(
-  req: (typeof VSI_CONSUMER_REQUIREMENTS_V1)[number],
-  profile: VsiCapabilityResolverProfileContext | null,
-  evaluationTimeMs: number,
-  attributionUnknown: boolean,
-): Pick<VsiApdsRequirementDemandRowV1, 'assessmentStatus' | 'discrepancyReasons'> {
-  const reasons: string[] = [];
-  if (attributionUnknown) {
-    return { assessmentStatus: 'UNKNOWN', discrepancyReasons: ['SOURCE_LINK_ATTRIBUTION_UNKNOWN'] };
-  }
-  if (!profile) {
-    return { assessmentStatus: 'NOT_ASSESSABLE', discrepancyReasons: ['PROFILE_NOT_FOUND'] };
-  }
-  if (isConsumerRequirementDesignContractOnly(req.domainApprovalStatus)) {
+function mapP4OutcomeToP5Assessment(input: {
+  satisfied: boolean;
+  reasons: VsiCapabilityResolverReasonCode[];
+}): Pick<VsiApdsRequirementDemandRowV1, 'assessmentStatus' | 'discrepancyReasons'> {
+  if (
+    input.reasons.includes(VsiCapabilityResolverReasonCode.REQUIREMENT_PENDING_DOMAIN_APPROVAL) ||
+    input.reasons.includes(VsiCapabilityResolverReasonCode.REQUIREMENT_RUNTIME_APPROVAL_ABSENT)
+  ) {
     return {
       assessmentStatus: 'NOT_ASSESSABLE',
-      discrepancyReasons: ['DESIGN_CONTRACT_ONLY_NOT_RUNTIME_DEMAND'],
+      discrepancyReasons: input.reasons.map(String),
     };
   }
-  if (!isConsumerRequirementRuntimeApproved(req.domainApprovalStatus)) {
-    return {
-      assessmentStatus: 'NOT_ASSESSABLE',
-      discrepancyReasons: ['PENDING_DOMAIN_APPROVAL_NOT_EXECUTABLE_DEMAND'],
-    };
-  }
-
-  let allSatisfied = true;
-  for (const key of req.canonicalSignalKeys) {
-    if (!MATERIALIZED.has(key)) {
-      reasons.push(`UNMATERIALIZED_SIGNAL:${key}`);
-      allSatisfied = false;
-      continue;
-    }
-    const row = profile.signals.find((s) => s.canonicalSignalKey === key);
-    if (!row) {
-      reasons.push(`SIGNAL_ABSENT:${key}`);
-      allSatisfied = false;
-      continue;
-    }
-    if (req.minimumEvidence === 'EMPIRICAL_OBSERVED' && !isQualifyingEmpiricalObservation(row.empiricalObservation)) {
-      reasons.push(`EMPIRICAL_INSUFFICIENT:${key}`);
-      allSatisfied = false;
-    }
-    if (req.minimumQuality === 'FRESH_AT_EVALUATION') {
-      const fresh = computeSignalFreshnessAtEvaluation({
-        lastSourceTimestamp: row.lastSourceTimestamp,
-        evaluationTimeMs,
-      });
-      if (fresh !== 'FRESH') {
-        reasons.push(`NOT_FRESH_AT_EVALUATION:${key}`);
-        allSatisfied = false;
-      }
-    }
-    if (
-      req.historicalReliability === 'PER_SIGNAL_CADENCE_PROVEN' &&
-      (row.observedCadenceMedianSeconds == null || row.observedSamples == null)
-    ) {
-      reasons.push(`INSUFFICIENT_HISTORY:${key}`);
-      allSatisfied = false;
-    }
-  }
-
-  if (allSatisfied) {
+  if (input.satisfied) {
     return { assessmentStatus: 'SATISFIED', discrepancyReasons: [] };
   }
-  if (reasons.some((r) => r.startsWith('INSUFFICIENT_HISTORY'))) {
-    return { assessmentStatus: 'INSUFFICIENT', discrepancyReasons: reasons };
+  if (
+    input.reasons.includes(VsiCapabilityResolverReasonCode.HISTORICAL_RELIABILITY_UNAVAILABLE) ||
+    input.reasons.some((r) => r === VsiCapabilityResolverReasonCode.EMPIRICAL_OBSERVATION_INSUFFICIENT)
+  ) {
+    return { assessmentStatus: 'INSUFFICIENT', discrepancyReasons: input.reasons.map(String) };
   }
-  return { assessmentStatus: 'INSUFFICIENT', discrepancyReasons: reasons };
+  return { assessmentStatus: 'INSUFFICIENT', discrepancyReasons: input.reasons.map(String) };
 }
 
 export function buildVsiConsumerDemandVectorV1(input: {
   profile: VsiCapabilityResolverProfileContext | null;
   evaluationTimeMs: number;
   profileLimitations?: string[];
+  attributionUnknown: boolean;
+  failClosed: boolean;
+  decisionTimeRetrospectiveAssessable: boolean;
+  requirements?: readonly (typeof VSI_CONSUMER_REQUIREMENTS_V1)[number][];
 }): VsiApdsRequirementDemandRowV1[] {
   const limitations = input.profileLimitations ?? input.profile?.profileLimitations ?? [];
-  const attributionUnknown = limitations.some((l) => ATTRIBUTION_UNKNOWN.has(l));
+  const attributionBlocked =
+    input.attributionUnknown || limitations.some((l) => ATTRIBUTION_UNKNOWN.has(l));
+  const requirements = input.requirements ?? VSI_CONSUMER_REQUIREMENTS_V1;
 
-  return VSI_CONSUMER_REQUIREMENTS_V1.map((req) => {
+  return requirements.map((req) => {
     const demandClassification = classifyRequirementDemand(req);
-    const assessment = assessRequirementAgainstProfile(
-      req,
-      input.profile,
-      input.evaluationTimeMs,
-      attributionUnknown,
-    );
+    if (input.failClosed) {
+      return {
+        requirementId: req.requirementId,
+        consumerModule: req.consumerModule,
+        featureId: req.featureId,
+        canonicalSignalKeys: req.canonicalSignalKeys,
+        domainApprovalStatus: req.domainApprovalStatus,
+        demandClassification,
+        assessmentStatus: 'UNKNOWN',
+        discrepancyReasons: ['FAIL_CLOSED_DATA_PROTECTION'],
+      };
+    }
+    if (attributionBlocked) {
+      return {
+        requirementId: req.requirementId,
+        consumerModule: req.consumerModule,
+        featureId: req.featureId,
+        canonicalSignalKeys: req.canonicalSignalKeys,
+        domainApprovalStatus: req.domainApprovalStatus,
+        demandClassification,
+        assessmentStatus: 'UNKNOWN',
+        discrepancyReasons: ['SOURCE_LINK_ATTRIBUTION_UNKNOWN'],
+      };
+    }
+    if (!input.profile) {
+      return {
+        requirementId: req.requirementId,
+        consumerModule: req.consumerModule,
+        featureId: req.featureId,
+        canonicalSignalKeys: req.canonicalSignalKeys,
+        domainApprovalStatus: req.domainApprovalStatus,
+        demandClassification,
+        assessmentStatus: 'NOT_ASSESSABLE',
+        discrepancyReasons: ['PROFILE_NOT_FOUND'],
+      };
+    }
+    if (input.profile.profileContractVersion === VSI_PROFILE_CONTRACT_VERSION_V1) {
+      return {
+        requirementId: req.requirementId,
+        consumerModule: req.consumerModule,
+        featureId: req.featureId,
+        canonicalSignalKeys: req.canonicalSignalKeys,
+        domainApprovalStatus: req.domainApprovalStatus,
+        demandClassification,
+        assessmentStatus: 'NOT_ASSESSABLE',
+        discrepancyReasons: ['LEGACY_PROFILE_V1'],
+      };
+    }
+    if (input.profile.profileContractVersion !== VSI_PROFILE_CONTRACT_VERSION) {
+      return {
+        requirementId: req.requirementId,
+        consumerModule: req.consumerModule,
+        featureId: req.featureId,
+        canonicalSignalKeys: req.canonicalSignalKeys,
+        domainApprovalStatus: req.domainApprovalStatus,
+        demandClassification,
+        assessmentStatus: 'NOT_ASSESSABLE',
+        discrepancyReasons: ['UNSUPPORTED_PROFILE_CONTRACT_VERSION'],
+      };
+    }
+    if (!input.decisionTimeRetrospectiveAssessable) {
+      const baseReason =
+        demandClassification === VsiApdsDemandClassification.PENDING_DOMAIN_APPROVAL ||
+        demandClassification === VsiApdsDemandClassification.DESIGN_CONTRACT_ONLY
+          ? []
+          : ['DECISION_TIME_PROFILE_EVIDENCE_NOT_VERIFIED'];
+      return {
+        requirementId: req.requirementId,
+        consumerModule: req.consumerModule,
+        featureId: req.featureId,
+        canonicalSignalKeys: req.canonicalSignalKeys,
+        domainApprovalStatus: req.domainApprovalStatus,
+        demandClassification,
+        assessmentStatus: 'NOT_ASSESSABLE',
+        discrepancyReasons:
+          baseReason.length > 0
+            ? baseReason
+            : mapP4OutcomeToP5Assessment({
+                satisfied: false,
+                reasons: [VsiCapabilityResolverReasonCode.REQUIREMENT_PENDING_DOMAIN_APPROVAL],
+              }).discrepancyReasons,
+      };
+    }
+
+    const outcome = evaluateVsiConsumerRequirement(req, input.profile, input.evaluationTimeMs);
+    const assessment = mapP4OutcomeToP5Assessment(outcome);
+    if (
+      assessment.assessmentStatus === 'SATISFIED' &&
+      !isConsumerRequirementRuntimeApproved(req.domainApprovalStatus)
+    ) {
+      return {
+        requirementId: req.requirementId,
+        consumerModule: req.consumerModule,
+        featureId: req.featureId,
+        canonicalSignalKeys: req.canonicalSignalKeys,
+        domainApprovalStatus: req.domainApprovalStatus,
+        demandClassification,
+        assessmentStatus: 'NOT_ASSESSABLE',
+        discrepancyReasons: ['RUNTIME_APPROVAL_ABSENT'],
+      };
+    }
     return {
       requirementId: req.requirementId,
       consumerModule: req.consumerModule,

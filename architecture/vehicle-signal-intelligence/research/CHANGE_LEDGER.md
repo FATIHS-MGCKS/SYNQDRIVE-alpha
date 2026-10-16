@@ -15,3 +15,4 @@ Append-only architecture change record.
 | 2026-10-16 | **P4 design vs runtime approval** — `APPROVED_DESIGN_CONTRACT` cannot yield runtime ELIGIBLE; `REQUIREMENT_RUNTIME_APPROVAL_ABSENT` | P4 | `vsi-consumer-requirements.registry.ts`, resolver engine |
 | 2026-10-16 | **P4 merged** — capability resolver v1 (#2045 @ `a0ce01f19`) | P4 | GitHub #2045 |
 | 2026-10-16 | **P5A read-only APDS correlation** — adapter, demand vector, pure correlation engine, P5B config gate (default OFF), no `adaptive-polling-shadow` hook | P5 | `vsi-apds-p5.*`, [`VSI_P5_APDS_INTEGRATION.md`](VSI_P5_APDS_INTEGRATION.md) |
+| 2026-10-16 | **P5A correctness hardening** — evidence-time semantics, APDS opportunity binding, P4-shared requirement evaluation, fail-closed tenant/link protection, honest replay parity wording | P5 | `vsi-apds-profile-evidence-time.ts`, `vsi-apds-shadow-opportunity-binding.ts`, `evaluateVsiConsumerRequirement` export |

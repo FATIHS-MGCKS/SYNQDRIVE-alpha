@@ -72,7 +72,7 @@ async function upsertVls(
       externalId: `0x${randomUUID().replace(/-/g, '')}`,
       rawJson: RUPTELA_RAW,
     });
-    const ts = new Date('2026-10-16T10:00:00.000Z');
+    const ts = new Date(Date.now() - 60 * 60 * 1000);
     await upsertVls(prisma, {
       vehicleId: fixture.vehicleId,
       linkId: fixture.linkId,
@@ -89,13 +89,17 @@ async function upsertVls(
       providerSourceLinkId: fixture.linkId,
     });
 
+    const shadowDecisionAt = new Date();
     const obs = await service.buildObservation({
       organizationId,
       vehicleId: fixture.vehicleId,
       providerSourceLinkId: fixture.linkId,
       shadowOpportunityId: 'opp-p5-test',
-      shadowDecisionAt: ts,
+      shadowDecisionAt,
+      policyVersion: 'p25-apd-b4-v1',
     });
+    expect(obs.profileEvidenceInterpretation).toBe('VERIFIED_DECISION_TIME_SNAPSHOT');
+    expect(obs.decisionTimeRetrospectiveAssessable).toBe(true);
     expect(obs.profileContractVersion).toBe('vsi-signal-profile-v2');
     expect(obs.signals.some((s) => s.canonicalSignalKey === 'lv_voltage')).toBe(true);
     expect(obs.consumerDemand.length).toBeGreaterThan(0);
