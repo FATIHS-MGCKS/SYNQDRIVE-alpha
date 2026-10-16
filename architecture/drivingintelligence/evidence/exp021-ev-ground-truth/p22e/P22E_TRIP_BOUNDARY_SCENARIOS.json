@@ -1,0 +1,70 @@
+{
+  "schema": "EXP021_P22E_TRIP_BOUNDARY_SCENARIOS_V1",
+  "tripId": "358d0158-b2a9-47ed-af26-33926c5770b4",
+  "boundaries": {
+    "officialPersisted": {
+      "startUtc": "2026-10-16T03:36:00.000Z",
+      "endUtc": "2026-10-16T03:54:55.989Z"
+    },
+    "dimoSegmentStartUtc": "2026-10-16T03:36:00.000Z",
+    "fsmStartCandidateUtc": "2026-10-16T03:38:26.989Z",
+    "firstVideoAnchorUtc": "2026-10-16T03:37:41Z",
+    "prefixSecondsBeforeVideo": 101
+  },
+  "scenarios": [
+    {
+      "id": "S1_OFFICIAL_PERSISTED_GRID",
+      "description": "Official stored trip boundary + 1s acquisition grid (production denominator)",
+      "startUtc": "2026-10-16T03:36:00.000Z",
+      "endUtc": "2026-10-16T03:54:55.989Z",
+      "denominatorSeconds": 1136,
+      "trustedNumericNumerator": 775,
+      "trustedNumericCoveragePercent": 68.2218,
+      "validatedGroundTruth": true,
+      "note": "Canonical EXP021 baseline — unchanged."
+    },
+    {
+      "id": "S2_DIMO_SEGMENT_START",
+      "description": "DIMO segment start 03:36:00Z (matches persisted start on this trip)",
+      "startUtc": "2026-10-16T03:36:00.000Z",
+      "endUtc": "2026-10-16T03:54:55.989Z",
+      "denominatorSeconds": 1136,
+      "trustedNumericNumerator": 775,
+      "trustedNumericCoveragePercent": 68.2218,
+      "validatedGroundTruth": false,
+      "note": "Diagnostic only — identical to S1 for this pin."
+    },
+    {
+      "id": "S3_FSM_START_CANDIDATE",
+      "description": "FSM / lifecycleRecovery startEpisode candidate (not applied as trip start)",
+      "startUtc": "2026-10-16T03:38:26.989Z",
+      "endUtc": "2026-10-16T03:54:55.989Z",
+      "denominatorSeconds": 989,
+      "trustedNumericNumerator": 769,
+      "validatedGroundTruth": false,
+      "note": "Shorter denominator if grid were re-cut — not implemented; counts from frozen replay slice."
+    },
+    {
+      "id": "S4_VIDEO_FIRST_ANCHOR",
+      "description": "First video-visible clock anchor",
+      "startUtc": "2026-10-16T03:37:41Z",
+      "endUtc": "2026-10-16T03:54:55.989Z",
+      "denominatorSeconds": 1035,
+      "trustedNumericNumerator": 775,
+      "validatedGroundTruth": false,
+      "note": "Video-observable movement begins here; does not retroactively fix ROW_ABSENT prefix."
+    },
+    {
+      "id": "S5_HYPOTHETICAL_PREFIX_EXCLUDE_101S",
+      "description": "Hypothetical exclude 101s before video anchor (NOT validated new coverage)",
+      "startUtc": "2026-10-16T03:37:41Z",
+      "endUtc": "2026-10-16T03:54:55.989Z",
+      "denominatorSeconds": 1035,
+      "trustedNumericNumerator": 775,
+      "trustedNumericCoveragePercent": 74.88,
+      "validatedGroundTruth": false,
+      "note": "775/1035 = 74.88% arithmetic only — numerator still includes seconds before video; not a product metric."
+    }
+  ],
+  "tripBoundaryDenominatorEffect": "Changing denominator without new trusted numerators inflates % only (S5). No independent physical trip-end dispute on this pin."
+}

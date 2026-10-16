@@ -1,0 +1,1507 @@
+{
+  "schema": "EXP021_P22E_PRE_P23_AUDIT_V1",
+  "observedAtUtc": "2026-10-16T20:45:17.773Z",
+  "prNumber": 2051,
+  "headSha": "7cd58ccdc794980f66be3d78d0ffdb018d1970cc",
+  "p22eResult": "BASELINE_PARITY_OK_COVERAGE_RECOVERY_BLOCKED",
+  "preflight": {
+    "tripId": "358d0158-b2a9-47ed-af26-33926c5770b4",
+    "dimoTokenId": "186946",
+    "vehicleLabel": "Tesla Model 3",
+    "pathsSeparated": {
+      "productiveL3Qc": "pre-deploy PRE_DEPLOY_PER_SECOND_REPLAY + DI_V0_SPEED_QC_POLICY_V2",
+      "stationaryOfflinePrototype": "forensic-readonly-exports-2026-10-16-stationary-prototype/",
+      "retrospectiveHaltV02": "forensic-readonly-exports-2026-10-16-retrospective-halt-v2-freeze/"
+    },
+    "v0_2": {
+      "parameterSnapshotHash": "dc4339e7b3687ef613b59e3ee9fe75b7a3d885dce5f5884735421e58a46d4ab7",
+      "unchanged": true
+    }
+  },
+  "baselineParity": {
+    "ok": true,
+    "mismatches": [],
+    "rowCount": 1136,
+    "trustedNumericCount": 775,
+    "trustedNumericCoveragePercent": 68.2218,
+    "trustedNumericCoveragePercentRounded": 68.2218,
+    "trustedLimitedCount": 14,
+    "numericCount": 776,
+    "untrustedNumericOutliers": [
+      {
+        "bucketLabelUtc": "2026-10-16T03:50:23Z",
+        "l3SpeedKmh": 191.4429317601504,
+        "qcReasonCodes": [
+          "GEOMETRY_JUMP"
+        ]
+      }
+    ],
+    "rowAbsentCount": 269,
+    "presentNoMotionNullCount": 45,
+    "transitionUncertainCount": 32
+  },
+  "disjointPartition": {
+    "counts": {
+      "TRUSTED_NUMERIC": 775,
+      "TRUSTED_LIMITED_STATIONARY_NULL": 14,
+      "NUMERIC_QC_OUTLIER": 1,
+      "ROW_ABSENT": 269,
+      "PRESENT_NO_MOTION_NULL_L3": 45,
+      "TRANSITION_UNCERTAIN": 32,
+      "OTHER_MOTION_OR_EVIDENCE": 0
+    },
+    "sumMatchesRowCount": true,
+    "sum": 1136,
+    "rowCount": 1136
+  },
+  "coverageMatrix": {
+    "schema": "EXP021_P22E_COVERAGE_RECOVERY_MATRIX_V1",
+    "tripId": "358d0158-b2a9-47ed-af26-33926c5770b4",
+    "baselineTrustedNumeric": 775,
+    "baselineDenominatorSeconds": 1136,
+    "abcSummaryFromSupplementV3": {
+      "A": 45,
+      "B": 0,
+      "C": 0
+    },
+    "groupBExperimentStatus": "NOT_TRIGGERED_FOR_COHORT",
+    "presentSupportGapSeconds": [
+      {
+        "bucketLabelUtc": "2026-10-16T03:36:06Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": null,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT+ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:36:56Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": null,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT+ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:36:58Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": null,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT+ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:37:45Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": null,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:37:53Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": null,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:37:55Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 3,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:37:57Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 1,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:37:59Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 2,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:38:18Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 2,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:38:22Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 8,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:18Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 1,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:51Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": null,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:41:49Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 1,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:31Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 11,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:48Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 1,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:50Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 0,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT+ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:58Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 7,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:43:42Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 1,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:44:37Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 12,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:45:53Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": null,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:45:55Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 11,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:47:51Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 100,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:47:53Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 101,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:49:01Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 89,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:49:03Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 89,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:50:02Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 115,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:50:04Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 115,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:50:20Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 133,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:50:22Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 132,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:51:03Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 121,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:51:05Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 117,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:51:23Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 130,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:51:25Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 128,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:51:30Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 115,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:51:32Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 107,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:51:44Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 130,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:51:46Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 131,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:54:21Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 1,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:54:25Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 4,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:54:30Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 1,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:54:32Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 6,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:54:34Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 1,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:54:37Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 4,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:54:42Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 2,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:54:44Z",
+        "cohort": "PRESENT_NO_MOTION_NULL_L3",
+        "abcGroup": "A",
+        "recoveryClass": "NO_RECOVERY",
+        "recoveryNote": "L3 ±1s calendar support broken (ROW_ABSENT / L3_SUPPORT_CROSSES_GAP) — numeric emission correctly withheld.",
+        "videoTachoKmh": 0,
+        "noNumericSpeedExplanation": "speedEvidenceState=NONE; abstentionReason=ROW_ABSENT; noNumericDisjointV2=POS_GAP_ROW_ABSENT_EXPLICIT; holdTransitionDetail=NO_MOTION_EVIDENCE; supportCondition=ROW_ABSENT_EXPLICIT+ROW_ABSENT_EXPLICIT; qcReasonCodes=NO_NUMERIC"
+      }
+    ],
+    "transitionUncertainSeconds": [
+      {
+        "bucketLabelUtc": "2026-10-16T03:37:46Z",
+        "cohort": "TRANSITION_UNCERTAIN",
+        "recoveryClass": "STATE_CLASSIFICATION_ONLY",
+        "recoveryNote": "Fresh L3 support with abstained numeric (speedEvidenceState=ABSTAINED). Possible motion-state refinement only; no REAL_NUMERIC without QC/policy change.",
+        "speedEvidenceState": "ABSTAINED",
+        "qcTrustLevel": "UNTRUSTED",
+        "positionState": "FRESH"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:37:47Z",
+        "cohort": "TRANSITION_UNCERTAIN",
+        "recoveryClass": "STATE_CLASSIFICATION_ONLY",
+        "recoveryNote": "Fresh L3 support with abstained numeric (speedEvidenceState=ABSTAINED). Possible motion-state refinement only; no REAL_NUMERIC without QC/policy change.",
+        "speedEvidenceState": "ABSTAINED",
+        "qcTrustLevel": "UNTRUSTED",
+        "positionState": "FRESH"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:37:48Z",
+        "cohort": "TRANSITION_UNCERTAIN",
+        "recoveryClass": "STATE_CLASSIFICATION_ONLY",
+        "recoveryNote": "Fresh L3 support with abstained numeric (speedEvidenceState=ABSTAINED). Possible motion-state refinement only; no REAL_NUMERIC without QC/policy change.",
+        "speedEvidenceState": "ABSTAINED",
+        "qcTrustLevel": "UNTRUSTED",
+        "positionState": "FRESH"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:37:49Z",
+        "cohort": "TRANSITION_UNCERTAIN",
+        "recoveryClass": "STATE_CLASSIFICATION_ONLY",
+        "recoveryNote": "Fresh L3 support with abstained numeric (speedEvidenceState=ABSTAINED). Possible motion-state refinement only; no REAL_NUMERIC without QC/policy change.",
+        "speedEvidenceState": "ABSTAINED",
+        "qcTrustLevel": "UNTRUSTED",
+        "positionState": "FRESH"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:37:50Z",
+        "cohort": "TRANSITION_UNCERTAIN",
+        "recoveryClass": "STATE_CLASSIFICATION_ONLY",
+        "recoveryNote": "Fresh L3 support with abstained numeric (speedEvidenceState=ABSTAINED). Possible motion-state refinement only; no REAL_NUMERIC without QC/policy change.",
+        "speedEvidenceState": "ABSTAINED",
+        "qcTrustLevel": "UNTRUSTED",
+        "positionState": "FRESH"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:38:02Z",
+        "cohort": "TRANSITION_UNCERTAIN",
+        "recoveryClass": "STATE_CLASSIFICATION_ONLY",
+        "recoveryNote": "Fresh L3 support with abstained numeric (speedEvidenceState=ABSTAINED). Possible motion-state refinement only; no REAL_NUMERIC without QC/policy change.",
+        "speedEvidenceState": "ABSTAINED",
+        "qcTrustLevel": "UNTRUSTED",
+        "positionState": "FRESH"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:38:03Z",
+        "cohort": "TRANSITION_UNCERTAIN",
+        "recoveryClass": "STATE_CLASSIFICATION_ONLY",
+        "recoveryNote": "Fresh L3 support with abstained numeric (speedEvidenceState=ABSTAINED). Possible motion-state refinement only; no REAL_NUMERIC without QC/policy change.",
+        "speedEvidenceState": "ABSTAINED",
+        "qcTrustLevel": "UNTRUSTED",
+        "positionState": "FRESH"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:38:04Z",
+        "cohort": "TRANSITION_UNCERTAIN",
+        "recoveryClass": "STATE_CLASSIFICATION_ONLY",
+        "recoveryNote": "Fresh L3 support with abstained numeric (speedEvidenceState=ABSTAINED). Possible motion-state refinement only; no REAL_NUMERIC without QC/policy change.",
+        "speedEvidenceState": "ABSTAINED",
+        "qcTrustLevel": "UNTRUSTED",
+        "positionState": "FRESH"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:38:05Z",
+        "cohort": "TRANSITION_UNCERTAIN",
+        "recoveryClass": "STATE_CLASSIFICATION_ONLY",
+        "recoveryNote": "Fresh L3 support with abstained numeric (speedEvidenceState=ABSTAINED). Possible motion-state refinement only; no REAL_NUMERIC without QC/policy change.",
+        "speedEvidenceState": "ABSTAINED",
+        "qcTrustLevel": "UNTRUSTED",
+        "positionState": "FRESH"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:38:06Z",
+        "cohort": "TRANSITION_UNCERTAIN",
+        "recoveryClass": "STATE_CLASSIFICATION_ONLY",
+        "recoveryNote": "Fresh L3 support with abstained numeric (speedEvidenceState=ABSTAINED). Possible motion-state refinement only; no REAL_NUMERIC without QC/policy change.",
+        "speedEvidenceState": "ABSTAINED",
+        "qcTrustLevel": "UNTRUSTED",
+        "positionState": "FRESH"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:38:07Z",
+        "cohort": "TRANSITION_UNCERTAIN",
+        "recoveryClass": "STATE_CLASSIFICATION_ONLY",
+        "recoveryNote": "Fresh L3 support with abstained numeric (speedEvidenceState=ABSTAINED). Possible motion-state refinement only; no REAL_NUMERIC without QC/policy change.",
+        "speedEvidenceState": "ABSTAINED",
+        "qcTrustLevel": "UNTRUSTED",
+        "positionState": "FRESH"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:38:08Z",
+        "cohort": "TRANSITION_UNCERTAIN",
+        "recoveryClass": "STATE_CLASSIFICATION_ONLY",
+        "recoveryNote": "Fresh L3 support with abstained numeric (speedEvidenceState=ABSTAINED). Possible motion-state refinement only; no REAL_NUMERIC without QC/policy change.",
+        "speedEvidenceState": "ABSTAINED",
+        "qcTrustLevel": "UNTRUSTED",
+        "positionState": "FRESH"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:38:11Z",
+        "cohort": "TRANSITION_UNCERTAIN",
+        "recoveryClass": "STATE_CLASSIFICATION_ONLY",
+        "recoveryNote": "Fresh L3 support with abstained numeric (speedEvidenceState=ABSTAINED). Possible motion-state refinement only; no REAL_NUMERIC without QC/policy change.",
+        "speedEvidenceState": "ABSTAINED",
+        "qcTrustLevel": "UNTRUSTED",
+        "positionState": "FRESH"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:38:12Z",
+        "cohort": "TRANSITION_UNCERTAIN",
+        "recoveryClass": "STATE_CLASSIFICATION_ONLY",
+        "recoveryNote": "Fresh L3 support with abstained numeric (speedEvidenceState=ABSTAINED). Possible motion-state refinement only; no REAL_NUMERIC without QC/policy change.",
+        "speedEvidenceState": "ABSTAINED",
+        "qcTrustLevel": "UNTRUSTED",
+        "positionState": "FRESH"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:38:58Z",
+        "cohort": "TRANSITION_UNCERTAIN",
+        "recoveryClass": "STATE_CLASSIFICATION_ONLY",
+        "recoveryNote": "Fresh L3 support with abstained numeric (speedEvidenceState=ABSTAINED). Possible motion-state refinement only; no REAL_NUMERIC without QC/policy change.",
+        "speedEvidenceState": "ABSTAINED",
+        "qcTrustLevel": "UNTRUSTED",
+        "positionState": "FRESH"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:38:59Z",
+        "cohort": "TRANSITION_UNCERTAIN",
+        "recoveryClass": "STATE_CLASSIFICATION_ONLY",
+        "recoveryNote": "Fresh L3 support with abstained numeric (speedEvidenceState=ABSTAINED). Possible motion-state refinement only; no REAL_NUMERIC without QC/policy change.",
+        "speedEvidenceState": "ABSTAINED",
+        "qcTrustLevel": "UNTRUSTED",
+        "positionState": "FRESH"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:39:00Z",
+        "cohort": "TRANSITION_UNCERTAIN",
+        "recoveryClass": "STATE_CLASSIFICATION_ONLY",
+        "recoveryNote": "Fresh L3 support with abstained numeric (speedEvidenceState=ABSTAINED). Possible motion-state refinement only; no REAL_NUMERIC without QC/policy change.",
+        "speedEvidenceState": "ABSTAINED",
+        "qcTrustLevel": "UNTRUSTED",
+        "positionState": "FRESH"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:39:01Z",
+        "cohort": "TRANSITION_UNCERTAIN",
+        "recoveryClass": "STATE_CLASSIFICATION_ONLY",
+        "recoveryNote": "Fresh L3 support with abstained numeric (speedEvidenceState=ABSTAINED). Possible motion-state refinement only; no REAL_NUMERIC without QC/policy change.",
+        "speedEvidenceState": "ABSTAINED",
+        "qcTrustLevel": "UNTRUSTED",
+        "positionState": "FRESH"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:39:47Z",
+        "cohort": "TRANSITION_UNCERTAIN",
+        "recoveryClass": "STATE_CLASSIFICATION_ONLY",
+        "recoveryNote": "Fresh L3 support with abstained numeric (speedEvidenceState=ABSTAINED). Possible motion-state refinement only; no REAL_NUMERIC without QC/policy change.",
+        "speedEvidenceState": "ABSTAINED",
+        "qcTrustLevel": "UNTRUSTED",
+        "positionState": "FRESH"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:39:48Z",
+        "cohort": "TRANSITION_UNCERTAIN",
+        "recoveryClass": "STATE_CLASSIFICATION_ONLY",
+        "recoveryNote": "Fresh L3 support with abstained numeric (speedEvidenceState=ABSTAINED). Possible motion-state refinement only; no REAL_NUMERIC without QC/policy change.",
+        "speedEvidenceState": "ABSTAINED",
+        "qcTrustLevel": "UNTRUSTED",
+        "positionState": "FRESH"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:41:48Z",
+        "cohort": "TRANSITION_UNCERTAIN",
+        "recoveryClass": "STATE_CLASSIFICATION_ONLY",
+        "recoveryNote": "Fresh L3 support with abstained numeric (speedEvidenceState=ABSTAINED). Possible motion-state refinement only; no REAL_NUMERIC without QC/policy change.",
+        "speedEvidenceState": "ABSTAINED",
+        "qcTrustLevel": "UNTRUSTED",
+        "positionState": "FRESH"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:42:47Z",
+        "cohort": "TRANSITION_UNCERTAIN",
+        "recoveryClass": "STATE_CLASSIFICATION_ONLY",
+        "recoveryNote": "Fresh L3 support with abstained numeric (speedEvidenceState=ABSTAINED). Possible motion-state refinement only; no REAL_NUMERIC without QC/policy change.",
+        "speedEvidenceState": "ABSTAINED",
+        "qcTrustLevel": "UNTRUSTED",
+        "positionState": "FRESH"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:45:50Z",
+        "cohort": "TRANSITION_UNCERTAIN",
+        "recoveryClass": "STATE_CLASSIFICATION_ONLY",
+        "recoveryNote": "Fresh L3 support with abstained numeric (speedEvidenceState=ABSTAINED). Possible motion-state refinement only; no REAL_NUMERIC without QC/policy change.",
+        "speedEvidenceState": "ABSTAINED",
+        "qcTrustLevel": "UNTRUSTED",
+        "positionState": "FRESH"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:45:51Z",
+        "cohort": "TRANSITION_UNCERTAIN",
+        "recoveryClass": "STATE_CLASSIFICATION_ONLY",
+        "recoveryNote": "Fresh L3 support with abstained numeric (speedEvidenceState=ABSTAINED). Possible motion-state refinement only; no REAL_NUMERIC without QC/policy change.",
+        "speedEvidenceState": "ABSTAINED",
+        "qcTrustLevel": "UNTRUSTED",
+        "positionState": "FRESH"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:54:20Z",
+        "cohort": "TRANSITION_UNCERTAIN",
+        "recoveryClass": "STATE_CLASSIFICATION_ONLY",
+        "recoveryNote": "Fresh L3 support with abstained numeric (speedEvidenceState=ABSTAINED). Possible motion-state refinement only; no REAL_NUMERIC without QC/policy change.",
+        "speedEvidenceState": "ABSTAINED",
+        "qcTrustLevel": "UNTRUSTED",
+        "positionState": "FRESH"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:54:26Z",
+        "cohort": "TRANSITION_UNCERTAIN",
+        "recoveryClass": "STATE_CLASSIFICATION_ONLY",
+        "recoveryNote": "Fresh L3 support with abstained numeric (speedEvidenceState=ABSTAINED). Possible motion-state refinement only; no REAL_NUMERIC without QC/policy change.",
+        "speedEvidenceState": "ABSTAINED",
+        "qcTrustLevel": "UNTRUSTED",
+        "positionState": "FRESH"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:54:27Z",
+        "cohort": "TRANSITION_UNCERTAIN",
+        "recoveryClass": "STATE_CLASSIFICATION_ONLY",
+        "recoveryNote": "Fresh L3 support with abstained numeric (speedEvidenceState=ABSTAINED). Possible motion-state refinement only; no REAL_NUMERIC without QC/policy change.",
+        "speedEvidenceState": "ABSTAINED",
+        "qcTrustLevel": "UNTRUSTED",
+        "positionState": "FRESH"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:54:28Z",
+        "cohort": "TRANSITION_UNCERTAIN",
+        "recoveryClass": "STATE_CLASSIFICATION_ONLY",
+        "recoveryNote": "Fresh L3 support with abstained numeric (speedEvidenceState=ABSTAINED). Possible motion-state refinement only; no REAL_NUMERIC without QC/policy change.",
+        "speedEvidenceState": "ABSTAINED",
+        "qcTrustLevel": "UNTRUSTED",
+        "positionState": "FRESH"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:54:29Z",
+        "cohort": "TRANSITION_UNCERTAIN",
+        "recoveryClass": "STATE_CLASSIFICATION_ONLY",
+        "recoveryNote": "Fresh L3 support with abstained numeric (speedEvidenceState=ABSTAINED). Possible motion-state refinement only; no REAL_NUMERIC without QC/policy change.",
+        "speedEvidenceState": "ABSTAINED",
+        "qcTrustLevel": "UNTRUSTED",
+        "positionState": "FRESH"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:54:33Z",
+        "cohort": "TRANSITION_UNCERTAIN",
+        "recoveryClass": "STATE_CLASSIFICATION_ONLY",
+        "recoveryNote": "Fresh L3 support with abstained numeric (speedEvidenceState=ABSTAINED). Possible motion-state refinement only; no REAL_NUMERIC without QC/policy change.",
+        "speedEvidenceState": "ABSTAINED",
+        "qcTrustLevel": "UNTRUSTED",
+        "positionState": "FRESH"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:54:38Z",
+        "cohort": "TRANSITION_UNCERTAIN",
+        "recoveryClass": "STATE_CLASSIFICATION_ONLY",
+        "recoveryNote": "Fresh L3 support with abstained numeric (speedEvidenceState=ABSTAINED). Possible motion-state refinement only; no REAL_NUMERIC without QC/policy change.",
+        "speedEvidenceState": "ABSTAINED",
+        "qcTrustLevel": "UNTRUSTED",
+        "positionState": "FRESH"
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:54:39Z",
+        "cohort": "TRANSITION_UNCERTAIN",
+        "recoveryClass": "STATE_CLASSIFICATION_ONLY",
+        "recoveryNote": "Fresh L3 support with abstained numeric (speedEvidenceState=ABSTAINED). Possible motion-state refinement only; no REAL_NUMERIC without QC/policy change.",
+        "speedEvidenceState": "ABSTAINED",
+        "qcTrustLevel": "UNTRUSTED",
+        "positionState": "FRESH"
+      }
+    ],
+    "recoverySummary": {
+      "REAL_NUMERIC_RECOVERY": 0,
+      "STATE_CLASSIFICATION_ONLY": 32,
+      "DENOMINATOR_ONLY": 0,
+      "UNSAFE_OR_UNPROVEN": 0,
+      "NO_RECOVERY": 45
+    },
+    "realNumericRecoverySeconds": 0,
+    "realNumericCoverageDeltaPercentPoints": 0,
+    "presentSupportGapRecoverableNumeric": 0,
+    "transitionRecoverableNumeric": 0,
+    "additionalSignalsInPinnedManifest": {
+      "POSITION": "PRESENT",
+      "R1_OBD": "NOT_APPLICABLE",
+      "NATIVE_EVENT": "DISABLED",
+      "note": "No verified Tesla wheel/park/gear speed in pinned S4 manifest — do not assume."
+    }
+  },
+  "tripBoundaryScenarios": {
+    "schema": "EXP021_P22E_TRIP_BOUNDARY_SCENARIOS_V1",
+    "tripId": "358d0158-b2a9-47ed-af26-33926c5770b4",
+    "boundaries": {
+      "officialPersisted": {
+        "startUtc": "2026-10-16T03:36:00.000Z",
+        "endUtc": "2026-10-16T03:54:55.989Z"
+      },
+      "dimoSegmentStartUtc": "2026-10-16T03:36:00.000Z",
+      "fsmStartCandidateUtc": "2026-10-16T03:38:26.989Z",
+      "firstVideoAnchorUtc": "2026-10-16T03:37:41Z",
+      "prefixSecondsBeforeVideo": 101
+    },
+    "scenarios": [
+      {
+        "id": "S1_OFFICIAL_PERSISTED_GRID",
+        "description": "Official stored trip boundary + 1s acquisition grid (production denominator)",
+        "startUtc": "2026-10-16T03:36:00.000Z",
+        "endUtc": "2026-10-16T03:54:55.989Z",
+        "denominatorSeconds": 1136,
+        "trustedNumericNumerator": 775,
+        "trustedNumericCoveragePercent": 68.2218,
+        "validatedGroundTruth": true,
+        "note": "Canonical EXP021 baseline — unchanged."
+      },
+      {
+        "id": "S2_DIMO_SEGMENT_START",
+        "description": "DIMO segment start 03:36:00Z (matches persisted start on this trip)",
+        "startUtc": "2026-10-16T03:36:00.000Z",
+        "endUtc": "2026-10-16T03:54:55.989Z",
+        "denominatorSeconds": 1136,
+        "trustedNumericNumerator": 775,
+        "trustedNumericCoveragePercent": 68.2218,
+        "validatedGroundTruth": false,
+        "note": "Diagnostic only — identical to S1 for this pin."
+      },
+      {
+        "id": "S3_FSM_START_CANDIDATE",
+        "description": "FSM / lifecycleRecovery startEpisode candidate (not applied as trip start)",
+        "startUtc": "2026-10-16T03:38:26.989Z",
+        "endUtc": "2026-10-16T03:54:55.989Z",
+        "denominatorSeconds": 989,
+        "trustedNumericNumerator": 769,
+        "validatedGroundTruth": false,
+        "note": "Shorter denominator if grid were re-cut — not implemented; counts from frozen replay slice."
+      },
+      {
+        "id": "S4_VIDEO_FIRST_ANCHOR",
+        "description": "First video-visible clock anchor",
+        "startUtc": "2026-10-16T03:37:41Z",
+        "endUtc": "2026-10-16T03:54:55.989Z",
+        "denominatorSeconds": 1035,
+        "trustedNumericNumerator": 775,
+        "validatedGroundTruth": false,
+        "note": "Video-observable movement begins here; does not retroactively fix ROW_ABSENT prefix."
+      },
+      {
+        "id": "S5_HYPOTHETICAL_PREFIX_EXCLUDE_101S",
+        "description": "Hypothetical exclude 101s before video anchor (NOT validated new coverage)",
+        "startUtc": "2026-10-16T03:37:41Z",
+        "endUtc": "2026-10-16T03:54:55.989Z",
+        "denominatorSeconds": 1035,
+        "trustedNumericNumerator": 775,
+        "trustedNumericCoveragePercent": 74.88,
+        "validatedGroundTruth": false,
+        "note": "775/1035 = 74.88% arithmetic only — numerator still includes seconds before video; not a product metric."
+      }
+    ],
+    "tripBoundaryDenominatorEffect": "Changing denominator without new trusted numerators inflates % only (S5). No independent physical trip-end dispute on this pin."
+  },
+  "slowRollState": {
+    "stationaryPrototypeLimits": {
+      "strictStopMaxLegImpliedKmh": 1.5,
+      "creepBandMaxKmh": 5,
+      "v2StationaryBandMaxKmh": 3,
+      "maxGapSecondsWithoutDowngradeToUnknown": 2,
+      "videoTachoZeroIsDisplayNotPhysics": true
+    },
+    "stationaryGlobalMetrics": {
+      "tripSeconds": 1136,
+      "videoAnnotatedTachoZeroSeconds": 135,
+      "baselineV2TrustedLimitedStopSeconds": 14,
+      "prototypeStopSeconds": 14,
+      "missedStopVsVideoAnnotatedZero": 135,
+      "falseStopVsVideoTachoGte4": 0,
+      "falseStopVsBaselineNumericGte5": 0,
+      "unknownOrGapSeconds": 314,
+      "creepSeconds": 0,
+      "rowAbsentSeconds": 269,
+      "numericCoverageSeparate": {
+        "numericL3": 776,
+        "trustedNumeric": 775
+      }
+    },
+    "videoTachoZeroSeconds": 135,
+    "videoTachoZeroAuditSample": [
+      {
+        "bucketLabelUtc": "2026-10-16T03:37:41Z",
+        "baselineMotion": "NO_MOTION_EVIDENCE",
+        "baselineQc": "UNTRUSTED",
+        "positionAvailability": "ROW_ABSENT",
+        "auditClass": "PROBABLE_HALT",
+        "note": "Tacho display 0 ≠ physics proof; ROW_ABSENT prevents STATIONARY_BAND."
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:37:42Z",
+        "baselineMotion": "NO_MOTION_EVIDENCE",
+        "baselineQc": "UNTRUSTED",
+        "positionAvailability": "ROW_ABSENT",
+        "auditClass": "PROBABLE_HALT",
+        "note": "Tacho display 0 ≠ physics proof; ROW_ABSENT prevents STATIONARY_BAND."
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:37:43Z",
+        "baselineMotion": "NO_MOTION_EVIDENCE",
+        "baselineQc": "UNTRUSTED",
+        "positionAvailability": "ROW_ABSENT",
+        "auditClass": "PROBABLE_HALT",
+        "note": "Tacho display 0 ≠ physics proof; ROW_ABSENT prevents STATIONARY_BAND."
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:37:58Z",
+        "baselineMotion": "NO_MOTION_EVIDENCE",
+        "baselineQc": "UNTRUSTED",
+        "positionAvailability": "ROW_ABSENT",
+        "auditClass": "PROBABLE_HALT",
+        "note": "Tacho display 0 ≠ physics proof; ROW_ABSENT prevents STATIONARY_BAND."
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:38:19Z",
+        "baselineMotion": "NO_MOTION_EVIDENCE",
+        "baselineQc": "UNTRUSTED",
+        "positionAvailability": "ROW_ABSENT",
+        "auditClass": "PROBABLE_HALT",
+        "note": "Tacho display 0 ≠ physics proof; ROW_ABSENT prevents STATIONARY_BAND."
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:38:20Z",
+        "baselineMotion": "NO_MOTION_EVIDENCE",
+        "baselineQc": "UNTRUSTED",
+        "positionAvailability": "ROW_ABSENT",
+        "auditClass": "PROBABLE_HALT",
+        "note": "Tacho display 0 ≠ physics proof; ROW_ABSENT prevents STATIONARY_BAND."
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:19Z",
+        "baselineMotion": "NO_MOTION_EVIDENCE",
+        "baselineQc": "UNTRUSTED",
+        "positionAvailability": "ROW_ABSENT",
+        "auditClass": "PROBABLE_HALT",
+        "note": "Tacho display 0 ≠ physics proof; ROW_ABSENT prevents STATIONARY_BAND."
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:20Z",
+        "baselineMotion": "NO_MOTION_EVIDENCE",
+        "baselineQc": "UNTRUSTED",
+        "positionAvailability": "ROW_ABSENT",
+        "auditClass": "PROBABLE_HALT",
+        "note": "Tacho display 0 ≠ physics proof; ROW_ABSENT prevents STATIONARY_BAND."
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:21Z",
+        "baselineMotion": "NO_MOTION_EVIDENCE",
+        "baselineQc": "UNTRUSTED",
+        "positionAvailability": "ROW_ABSENT",
+        "auditClass": "PROBABLE_HALT",
+        "note": "Tacho display 0 ≠ physics proof; ROW_ABSENT prevents STATIONARY_BAND."
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:22Z",
+        "baselineMotion": "NO_MOTION_EVIDENCE",
+        "baselineQc": "UNTRUSTED",
+        "positionAvailability": "ROW_ABSENT",
+        "auditClass": "PROBABLE_HALT",
+        "note": "Tacho display 0 ≠ physics proof; ROW_ABSENT prevents STATIONARY_BAND."
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:23Z",
+        "baselineMotion": "NO_MOTION_EVIDENCE",
+        "baselineQc": "UNTRUSTED",
+        "positionAvailability": "ROW_ABSENT",
+        "auditClass": "PROBABLE_HALT",
+        "note": "Tacho display 0 ≠ physics proof; ROW_ABSENT prevents STATIONARY_BAND."
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:24Z",
+        "baselineMotion": "NO_MOTION_EVIDENCE",
+        "baselineQc": "UNTRUSTED",
+        "positionAvailability": "ROW_ABSENT",
+        "auditClass": "PROBABLE_HALT",
+        "note": "Tacho display 0 ≠ physics proof; ROW_ABSENT prevents STATIONARY_BAND."
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:25Z",
+        "baselineMotion": "NO_MOTION_EVIDENCE",
+        "baselineQc": "UNTRUSTED",
+        "positionAvailability": "ROW_ABSENT",
+        "auditClass": "PROBABLE_HALT",
+        "note": "Tacho display 0 ≠ physics proof; ROW_ABSENT prevents STATIONARY_BAND."
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:26Z",
+        "baselineMotion": "NO_MOTION_EVIDENCE",
+        "baselineQc": "UNTRUSTED",
+        "positionAvailability": "ROW_ABSENT",
+        "auditClass": "PROBABLE_HALT",
+        "note": "Tacho display 0 ≠ physics proof; ROW_ABSENT prevents STATIONARY_BAND."
+      },
+      {
+        "bucketLabelUtc": "2026-10-16T03:40:27Z",
+        "baselineMotion": "NO_MOTION_EVIDENCE",
+        "baselineQc": "UNTRUSTED",
+        "positionAvailability": "ROW_ABSENT",
+        "auditClass": "PROBABLE_HALT",
+        "note": "Tacho display 0 ≠ physics proof; ROW_ABSENT prevents STATIONARY_BAND."
+      }
+    ],
+    "videoTachoZeroAuditSummary": {
+      "rowAbsentAmongTacho0": 133,
+      "presentAmongTacho0": 2
+    },
+    "trustedLimitedStationaryBand": {
+      "count": 14,
+      "withVideoTacho1to3": 11,
+      "auditNote": "STATIONARY_SUPPORTED / TRUSTED_LIMITED null is V2 band semantics (L3<3 km/h or hold-stop), not “tacho exactly 0”."
+    },
+    "slowRollGeometrySeconds": 52,
+    "slowRollVideoBreakdown": {
+      "v02OnThisTripTraceable": [
+        "10 Positionslücken ≥3 s als Kandidaten; 5 annotierte Tacho-0-Abschnitte (LONG_HALT_*) mit überlappender Lücke.",
+        "v0_2 klassifiziert überlappende Haupthalt-Lücken überwiegend als LIKELY_HALT bei kleiner Endpunkt-Chord + Abfahrt-Muster (ohne Halt-Lokalisierung).",
+        "Frühe Lücken 002/003: LIKELY_HALT aus Geometrie, Video nicht vollständig prüfbar — Fehlalarm-Risiko.",
+        "Geometrie: Netto-Ortsveränderung über Lücke, nicht gemessene Weglänge (siehe GEOMETRY_NET_DISPLACEMENT_SEMANTICS)."
+      ],
+      "counterCasesPassed": [
+        "Synthetisch: 3/3 (kein LIKELY_HALT in maskierter Fahrt; {\"LIKELY_MOVING_WITH_GAP\":2,\"NOT_DISTINGUISHABLE\":1}).",
+        "Natürlich: keine v0_2 LIKELY_MOVING_WITH_GAP auf den fünf Referenz-Tacho-0-Lücken (v0_1-Fehlmuster behoben).",
+        "MAP_DECISION_HYPOTHESIS_V1 verworfen — kein produktives Karten-Veto."
+      ],
+      "remainingFalseAlarmRisks": [
+        "2 LIKELY_HALT ohne LONG_HALT-Overlap (002/003).",
+        "Chord-kleine lange Lücken können LIKELY_HALT auslösen ohne Video-Tacho-0 im Lückenfenster.",
+        "GAP_EVT_008: ein Kandidat für zwei annotierte Tacho-0-Abschnitte — physische Ereignisanzahl ungeklärt.",
+        "52 SLOW_ROLL-Geometrie-Sekunden vs. Video oft >3 km/h — Rollen/Halt-Verwechslung bei dichten PRESENT-Ketten."
+      ],
+      "nextIndependentReferenceCasesNeeded": [
+        "Weitere Fahrten mit unabhängigem Video + unterschiedliche Lückenprofile (kurz/lang, innerorts/außerorts).",
+        "Fahrten mit vollständiger Videoabdeckung der gesamten Trip-Zeit (kein Vor-Anker-Blindfeld).",
+        "Explizite Gegenfälle: Rollen an Ampel ohne Halt, Halt ohne OSM-Signal in Reichweite, Durchfahrt mit ROW_ABSENT.",
+        "Blind gehaltene Halte (nicht in dieser Tesla-Referenzfahrt tunen)."
+      ],
+      "noFurtherTuningOnTheseFourHaltRegions": true
+    },
+    "ambiguousGapEvents": [
+      {
+        "eventId": "GAP_EVT_002",
+        "windowUtc": {
+          "from": "2026-10-16T03:36:07Z",
+          "to": "2026-10-16T03:36:55Z"
+        },
+        "windowBerlin": {
+          "from": "16.10.2026, 05:36:07",
+          "to": "16.10.2026, 05:36:55"
+        },
+        "gapDurationSec": 49,
+        "classificationV01": "LIKELY_SLOW_ROLL_STOP_GO",
+        "classificationV02": "LIKELY_HALT",
+        "decisiveMetricsV02": {
+          "endpointDisplacementM": 0.4815928532581046,
+          "impliedChordKmh": 0.035382332076105645,
+          "legIntoGapKmh": null,
+          "legOutOfGapKmh": null,
+          "legIntoGapClass": null,
+          "legOutOfGapClass": "INCONCLUSIVE_SCATTER",
+          "distantBeforeMeanKmh": null,
+          "distantAfterMeanKmh": 3.7731020865178913
+        },
+        "hypothesisScoresV02": {
+          "LIKELY_HALT": 3,
+          "LIKELY_SLOW_ROLL_STOP_GO": 0,
+          "LIKELY_MOVING_WITH_GAP": 0
+        },
+        "rulesV02": [
+          "V0_2_COMPOSITE_HYPOTHESIS",
+          "CALENDAR_ADJACENT_GAP_EDGES",
+          "DISTANT_CONTEXT_REPORTED_SEPARATELY"
+        ],
+        "decisiveFeaturesV02": [
+          {
+            "feature": "endpointChordM",
+            "value": 0.4815928532581046,
+            "role": "gap endpoints (calendar-adjacent present)"
+          },
+          {
+            "feature": "gapDurationSec",
+            "value": 49,
+            "role": "ROW_ABSENT span"
+          },
+          {
+            "feature": "impliedChordKmh",
+            "value": 0,
+            "role": "average over gap — not standstill duration"
+          },
+          {
+            "feature": "legOutOfGapKmh",
+            "value": null,
+            "role": "calendar leg 2026-10-16T03:36:56Z→2026-10-16T03:36:58Z"
+          }
+        ],
+        "evidenceV02": [
+          {
+            "tier": "NEUTRAL",
+            "text": "Chord-implied 0.0 km/h averages displacement over entire 49s gap — compatible with halt+departure inside gap.",
+            "epistemic": "INFERRED"
+          },
+          {
+            "tier": "SUPPORTS",
+            "text": "Small endpoint chord 0.5 m across 49s gap.",
+            "epistemic": "INFERRED"
+          },
+          {
+            "tier": "NEUTRAL",
+            "text": "Distant depart context mean leg 3.8 km/h (includes post-halt driving).",
+            "epistemic": "INFERRED"
+          }
+        ],
+        "videoInGapWindow": {
+          "tacho0": 0,
+          "tacho1to3": 0,
+          "tacho3to5": 0,
+          "tachoGt5": 0,
+          "unknown": 49,
+          "totalLabeledSeconds": 49
+        },
+        "overlappingAnnotatedMainHalts": [],
+        "videoPostHocVerdict": {
+          "verdict": "UNKNOWN_COVERAGE",
+          "rationale": "Keine bekannte Video-Tacho-Annotation im Lückenfenster (unbekannt zählt nicht als Treffer/Fehler)."
+        },
+        "videoDualAxis": {
+          "haltSomewhereInWindow": "UNKNOWN",
+          "standstillEntireLabeledWindow": "UNKNOWN",
+          "breakdown": {
+            "tacho0": 0,
+            "tacho1to3": 0,
+            "tacho3to5": 0,
+            "tachoGt5": 0,
+            "unknown": 49,
+            "totalLabeledSeconds": 49
+          },
+          "ruleBook": "Axis A: ≥3s or any tacho0 in gap window. Axis B: all known seconds tacho0 and ≥5 known seconds. Unknown seconds excluded from B and do not count as hit or error. Post-hoc verdict (SUPPORTED/…) compares detector class to both axes — not “no contradict = proof”."
+        },
+        "timeLabelNote": "Berlin times are Europe/Berlin CEST (UTC+2); UTC = Berlin − 2h on this trip date.",
+        "mapContext": {
+          "role": "DISPLAY_CONTEXT_ONLY_NOT_CLASSIFIER",
+          "payload": {
+            "available": true,
+            "osmMeta": {
+              "fetchedAtUtc": "2026-10-16T18:25:53.520Z",
+              "source": "OpenStreetMap Overpass API (highway=traffic_signals, POST interpreter)",
+              "requestMethod": "POST"
+            },
+            "nearestTrafficSignalM": 507.76968071263406,
+            "nearestTrafficSignalId": 3861337111,
+            "travelBearingDeg": 313.84181438520704,
+            "bearingToNearestSignalDeg": 91.68120119694163,
+            "bearingDeltaDeg": 137.83938681173458,
+            "roadAssociation": "not_resolved_v0_2",
+            "note": "Proximity + bearing hint only; no red-phase knowledge; street graph not joined in v0_2.",
+            "epistemic": "INFERRED"
+          },
+          "classificationWouldChange": false
+        },
+        "haltLocalizationClaimed": false
+      },
+      {
+        "eventId": "GAP_EVT_003",
+        "windowUtc": {
+          "from": "2026-10-16T03:36:59Z",
+          "to": "2026-10-16T03:37:44Z"
+        },
+        "windowBerlin": {
+          "from": "16.10.2026, 05:36:59",
+          "to": "16.10.2026, 05:37:44"
+        },
+        "gapDurationSec": 46,
+        "classificationV01": "LIKELY_SLOW_ROLL_STOP_GO",
+        "classificationV02": "LIKELY_HALT",
+        "decisiveMetricsV02": {
+          "endpointDisplacementM": 0.8255875621342117,
+          "impliedChordKmh": 0.06461120051485135,
+          "legIntoGapKmh": null,
+          "legOutOfGapKmh": 4.292107187655675,
+          "legIntoGapClass": "INCONCLUSIVE_SCATTER",
+          "legOutOfGapClass": "SLOW_ROLL_GEOMETRY",
+          "distantBeforeMeanKmh": null,
+          "distantAfterMeanKmh": 2.8926835099894204
+        },
+        "hypothesisScoresV02": {
+          "LIKELY_HALT": 3,
+          "LIKELY_SLOW_ROLL_STOP_GO": 0,
+          "LIKELY_MOVING_WITH_GAP": 0
+        },
+        "rulesV02": [
+          "V0_2_COMPOSITE_HYPOTHESIS",
+          "CALENDAR_ADJACENT_GAP_EDGES",
+          "DISTANT_CONTEXT_REPORTED_SEPARATELY"
+        ],
+        "decisiveFeaturesV02": [
+          {
+            "feature": "endpointChordM",
+            "value": 0.8255875621342117,
+            "role": "gap endpoints (calendar-adjacent present)"
+          },
+          {
+            "feature": "gapDurationSec",
+            "value": 46,
+            "role": "ROW_ABSENT span"
+          },
+          {
+            "feature": "impliedChordKmh",
+            "value": 0.1,
+            "role": "average over gap — not standstill duration"
+          },
+          {
+            "feature": "legIntoGapKmh",
+            "value": null,
+            "role": "calendar leg 2026-10-16T03:36:56Z→2026-10-16T03:36:58Z"
+          },
+          {
+            "feature": "legOutOfGapKmh",
+            "value": 4.3,
+            "role": "calendar leg 2026-10-16T03:37:45Z→2026-10-16T03:37:46Z"
+          }
+        ],
+        "evidenceV02": [
+          {
+            "tier": "NEUTRAL",
+            "text": "Chord-implied 0.1 km/h averages displacement over entire 46s gap — compatible with halt+departure inside gap.",
+            "epistemic": "INFERRED"
+          },
+          {
+            "tier": "SUPPORTS",
+            "text": "Small endpoint chord 0.8 m across 46s gap.",
+            "epistemic": "INFERRED"
+          },
+          {
+            "tier": "WEAK_SUPPORTS",
+            "text": "Slow-roll geometry adjacent to gap.",
+            "epistemic": "INFERRED"
+          },
+          {
+            "tier": "NEUTRAL",
+            "text": "Distant depart context mean leg 2.9 km/h (includes post-halt driving).",
+            "epistemic": "INFERRED"
+          }
+        ],
+        "videoInGapWindow": {
+          "tacho0": 3,
+          "tacho1to3": 0,
+          "tacho3to5": 0,
+          "tachoGt5": 0,
+          "unknown": 43,
+          "totalLabeledSeconds": 46
+        },
+        "overlappingAnnotatedMainHalts": [],
+        "videoPostHocVerdict": {
+          "verdict": "NOT_DECISIVE",
+          "rationale": "LIKELY_HALT aus Geometrie/Chord, aber Video liefert keinen klaren Stillstand im Lückenfenster (kein Widerspruch ≠ Haltbeleg)."
+        },
+        "videoDualAxis": {
+          "haltSomewhereInWindow": "YES",
+          "standstillEntireLabeledWindow": "NO",
+          "breakdown": {
+            "tacho0": 3,
+            "tacho1to3": 0,
+            "tacho3to5": 0,
+            "tachoGt5": 0,
+            "unknown": 43,
+            "totalLabeledSeconds": 46
+          },
+          "ruleBook": "Axis A: ≥3s or any tacho0 in gap window. Axis B: all known seconds tacho0 and ≥5 known seconds. Unknown seconds excluded from B and do not count as hit or error. Post-hoc verdict (SUPPORTED/…) compares detector class to both axes — not “no contradict = proof”."
+        },
+        "timeLabelNote": "Berlin times are Europe/Berlin CEST (UTC+2); UTC = Berlin − 2h on this trip date.",
+        "mapContext": {
+          "role": "DISPLAY_CONTEXT_ONLY_NOT_CLASSIFIER",
+          "payload": {
+            "available": true,
+            "osmMeta": {
+              "fetchedAtUtc": "2026-10-16T18:25:53.520Z",
+              "source": "OpenStreetMap Overpass API (highway=traffic_signals, POST interpreter)",
+              "requestMethod": "POST"
+            },
+            "nearestTrafficSignalM": 508.6263588152617,
+            "nearestTrafficSignalId": 3861337111,
+            "travelBearingDeg": 216.08784985827404,
+            "bearingToNearestSignalDeg": 91.76608027488084,
+            "bearingDeltaDeg": 124.3217695833932,
+            "roadAssociation": "not_resolved_v0_2",
+            "note": "Proximity + bearing hint only; no red-phase knowledge; street graph not joined in v0_2.",
+            "epistemic": "INFERRED"
+          },
+          "classificationWouldChange": false
+        },
+        "haltLocalizationClaimed": false
+      },
+      {
+        "eventId": "GAP_EVT_008",
+        "windowUtc": {
+          "from": "2026-10-16T03:43:43Z",
+          "to": "2026-10-16T03:44:36Z"
+        },
+        "windowBerlin": {
+          "from": "16.10.2026, 05:43:43",
+          "to": "16.10.2026, 05:44:36"
+        },
+        "gapDurationSec": 54,
+        "classificationV01": "LIKELY_MOVING_WITH_GAP",
+        "classificationV02": "LIKELY_HALT",
+        "decisiveMetricsV02": {
+          "endpointDisplacementM": 1.6693710515541964,
+          "impliedChordKmh": 0.11129140343694642,
+          "legIntoGapKmh": null,
+          "legOutOfGapKmh": 12.011657798081133,
+          "legIntoGapClass": "INCONCLUSIVE_SCATTER",
+          "legOutOfGapClass": "MOVING_GEOMETRY",
+          "distantBeforeMeanKmh": 32.96369947505117,
+          "distantAfterMeanKmh": 54.78875706359889
+        },
+        "hypothesisScoresV02": {
+          "LIKELY_HALT": 5,
+          "LIKELY_SLOW_ROLL_STOP_GO": 0,
+          "LIKELY_MOVING_WITH_GAP": 0
+        },
+        "rulesV02": [
+          "V0_2_COMPOSITE_HYPOTHESIS",
+          "CALENDAR_ADJACENT_GAP_EDGES",
+          "DISTANT_CONTEXT_REPORTED_SEPARATELY"
+        ],
+        "decisiveFeaturesV02": [
+          {
+            "feature": "endpointChordM",
+            "value": 1.6693710515541964,
+            "role": "gap endpoints (calendar-adjacent present)"
+          },
+          {
+            "feature": "gapDurationSec",
+            "value": 54,
+            "role": "ROW_ABSENT span"
+          },
+          {
+            "feature": "impliedChordKmh",
+            "value": 0.1,
+            "role": "average over gap — not standstill duration"
+          },
+          {
+            "feature": "legIntoGapKmh",
+            "value": null,
+            "role": "calendar leg 2026-10-16T03:43:41Z→2026-10-16T03:43:42Z"
+          },
+          {
+            "feature": "legOutOfGapKmh",
+            "value": 12,
+            "role": "calendar leg 2026-10-16T03:44:37Z→2026-10-16T03:44:38Z"
+          }
+        ],
+        "evidenceV02": [
+          {
+            "tier": "NEUTRAL",
+            "text": "Chord-implied 0.1 km/h averages displacement over entire 54s gap — compatible with halt+departure inside gap.",
+            "epistemic": "INFERRED"
+          },
+          {
+            "tier": "SUPPORTS",
+            "text": "Small endpoint chord 1.7 m across 54s gap.",
+            "epistemic": "INFERRED"
+          },
+          {
+            "tier": "SUPPORTS",
+            "text": "Post-gap calendar leg shows departure while chord remains small — halt-then-depart pattern.",
+            "epistemic": "INFERRED"
+          },
+          {
+            "tier": "NEUTRAL",
+            "text": "Distant approach context mean leg 33.0 km/h (not gap-edge).",
+            "epistemic": "INFERRED"
+          },
+          {
+            "tier": "NEUTRAL",
+            "text": "Distant depart context mean leg 54.8 km/h (includes post-halt driving).",
+            "epistemic": "INFERRED"
+          }
+        ],
+        "videoInGapWindow": {
+          "tacho0": 46,
+          "tacho1to3": 0,
+          "tacho3to5": 0,
+          "tachoGt5": 1,
+          "unknown": 7,
+          "totalLabeledSeconds": 54
+        },
+        "overlappingAnnotatedMainHalts": [
+          "LONG_HALT_4",
+          "LONG_HALT_5"
+        ],
+        "videoPostHocVerdict": {
+          "verdict": "NOT_DECISIVE",
+          "rationale": "Gemischtes Fenster (Tacho 0 und >3) — kleine Chord allein ist kein positiver Haltbeleg."
+        },
+        "videoDualAxis": {
+          "haltSomewhereInWindow": "YES",
+          "standstillEntireLabeledWindow": "NO",
+          "breakdown": {
+            "tacho0": 46,
+            "tacho1to3": 0,
+            "tacho3to5": 0,
+            "tachoGt5": 1,
+            "unknown": 7,
+            "totalLabeledSeconds": 54
+          },
+          "ruleBook": "Axis A: ≥3s or any tacho0 in gap window. Axis B: all known seconds tacho0 and ≥5 known seconds. Unknown seconds excluded from B and do not count as hit or error. Post-hoc verdict (SUPPORTED/…) compares detector class to both axes — not “no contradict = proof”."
+        },
+        "timeLabelNote": "Berlin times are Europe/Berlin CEST (UTC+2); UTC = Berlin − 2h on this trip date.",
+        "mapContext": {
+          "role": "DISPLAY_CONTEXT_ONLY_NOT_CLASSIFIER",
+          "payload": {
+            "available": true,
+            "osmMeta": {
+              "fetchedAtUtc": "2026-10-16T18:25:53.520Z",
+              "source": "OpenStreetMap Overpass API (highway=traffic_signals, POST interpreter)",
+              "requestMethod": "POST"
+            },
+            "nearestTrafficSignalM": 5.798457777403979,
+            "nearestTrafficSignalId": 3199787347,
+            "travelBearingDeg": 177.61411438343077,
+            "bearingToNearestSignalDeg": 208.10019912924025,
+            "bearingDeltaDeg": 30.486084745809478,
+            "roadAssociation": "not_resolved_v0_2",
+            "note": "Proximity + bearing hint only; no red-phase knowledge; street graph not joined in v0_2.",
+            "epistemic": "INFERRED"
+          },
+          "classificationWouldChange": false
+        },
+        "haltLocalizationClaimed": false
+      }
+    ],
+    "falseHaltRisks": {
+      "source": "forensic-readonly-exports-2026-10-16-retrospective-halt-v2-freeze/REVIEW_SUMMARY.md",
+      "naturalGapsLikelyHalt": 6,
+      "likelyHaltWithoutOverlappingMainHalt": 2,
+      "likelyHaltWithVideoContradictionOrNoStopEvidence": 1,
+      "v02SlowRollVsVideoGt5": 1,
+      "note": "Retrospective v0_2 can label LIKELY_HALT on small chord across ROW_ABSENT without video tacho-0 in gap."
+    },
+    "strictStopSupportedSeconds": 14,
+    "slowRollSupportedSeconds": 52
+  },
+  "optimizationPriorities": [
+    {
+      "rank": 1,
+      "title": "Independent RD003 / new Tesla capture with UTC + video sync",
+      "category": "NOT_SOLVABLE_FROM_CURRENT_PIN",
+      "expectedNumericCoverageGainSeconds": 0,
+      "motionStateGain": "Enables blind validation of halt/slow-roll/gap cases",
+      "dataAvailability": "LOW in git pin",
+      "falseHaltRisk": "LOW if UTC+video independent",
+      "effort": "HIGH (field capture)",
+      "dependencies": [
+        "Owner MP4+metadata",
+        "P23 protocol"
+      ],
+      "independentValidationRequired": true,
+      "suitableForP23": true
+    },
+    {
+      "rank": 2,
+      "title": "Document / enforce STATIONARY_BAND vs display-tacho semantics in UX & reports",
+      "category": "SAFE_IMPROVEMENT",
+      "expectedNumericCoverageGainSeconds": 0,
+      "motionStateGain": "Reduces mis-read of 14 TRUSTED_LIMITED + 135 tacho-0 seconds",
+      "dataAvailability": "HIGH (existing exports)",
+      "falseHaltRisk": "LOW",
+      "effort": "LOW",
+      "dependencies": [
+        "Product copy / DI reporting only"
+      ],
+      "independentValidationRequired": false,
+      "suitableForP23": false
+    },
+    {
+      "rank": 3,
+      "title": "Leg-resynthesis numeric from PRESENT neighbors (Group B experiment)",
+      "category": "RESEARCH_HYPOTHESIS",
+      "expectedNumericCoverageGainSeconds": 0,
+      "motionStateGain": "Unclear; risks false motion at holds",
+      "dataAvailability": "0 cohort seconds triggered in supplement v3",
+      "falseHaltRisk": "HIGH",
+      "effort": "MEDIUM",
+      "dependencies": [
+        "QC policy review",
+        "v0_3 design only"
+      ],
+      "independentValidationRequired": true,
+      "suitableForP23": false
+    },
+    {
+      "rank": 4,
+      "title": "Trip prefix denominator trim (101s before video)",
+      "category": "DENOMINATOR_ONLY",
+      "expectedNumericCoverageGainSeconds": 0,
+      "motionStateGain": "None",
+      "dataAvailability": "N/A",
+      "falseHaltRisk": "MEDIUM (misleading KPI)",
+      "effort": "LOW",
+      "dependencies": [
+        "Must not ship as coverage fix"
+      ],
+      "independentValidationRequired": false,
+      "suitableForP23": false
+    }
+  ],
+  "productionMutations": "NONE",
+  "providerCalls": "NONE",
+  "nextSafeAction": "P23: independent Tesla+video capture with UTC anchors; keep v0_2 frozen; use this pin only for regression parity (775/1136)."
+}
