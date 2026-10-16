@@ -1,7 +1,11 @@
 import type { VsiConsumerRequirementSpecV1 } from './vsi-consumer-requirements.types';
 import { VSI_CONSUMER_REQUIREMENTS_CONTRACT_VERSION } from './vsi-consumer-requirements.types';
 import type { VsiApdsProfileEvidenceInterpretation } from './vsi-apds-profile-evidence-time';
-import type { VsiApdsShadowBindingStatus } from './vsi-apds-shadow-opportunity-binding';
+import type {
+  VsiApdsCorrelationAnalysisMode,
+  VsiApdsPersistedShadowDecisionV1,
+  VsiApdsShadowBindingStatus,
+} from './vsi-apds-shadow-opportunity-binding';
 
 export const VSI_APDS_P5_CONTRACT_VERSION = 'vsi-apds-p5-readonly-v1' as const;
 
@@ -59,7 +63,12 @@ export type VsiApdsReadonlyCapabilityObservationV1 = {
   providerSourceLinkId: string;
   shadowOpportunityId: string;
   shadowDecisionAt: string;
+  policyVersion: string;
+  activationEpochId: string | null;
   requirementsContractVersion: typeof VSI_CONSUMER_REQUIREMENTS_CONTRACT_VERSION;
+  correlationAnalysisMode: VsiApdsCorrelationAnalysisMode;
+  authoritativePersistedDecision: VsiApdsPersistedShadowDecisionV1 | null;
+  historicalLinkActiveAtDecision: boolean;
   providerIdentity: string | null;
   verifiedModality: string | null;
   telemetrySourceFamily: string | null;

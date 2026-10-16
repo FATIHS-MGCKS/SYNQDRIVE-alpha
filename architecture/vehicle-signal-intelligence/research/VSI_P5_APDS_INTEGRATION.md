@@ -71,7 +71,7 @@ There is **no** versioned profile history table in P5 — retrospective claims f
 
 ## APDS opportunity binding
 
-Correlation validates durable `ApdShadowReconciliationDecision` identity when loaded (`organizationId`, `vehicleId`, `opportunityId`, `policyVersion`, `decisionAt`, optional `activationEpochId`). APDS rows are **vehicle-scoped**; multi-active-link vehicles yield `UNKNOWN` binding unless per-link provenance exists elsewhere.
+Verified correlation **requires** a persisted `ApdShadowReconciliationDecision` row (`MISSING_PERSISTED_DECISION` otherwise — never `MATCHED`). Validates `organizationId`, `vehicleId`, `opportunityId`, `policyVersion`, `decisionAt`, `activationEpochId` (strict for epoch-bound rows; legacy null-epoch only when both sides null), and baseline `decision`. Historical provider-link activity at `decisionAt` is required (`activatedAt`/`deactivatedAt`); current single active link does not prove historical attribution. Offline hypotheticals use `UNVERIFIED_ANALYSIS` mode — not verified shadow correlation.
 
 ## P4 assessability parity
 

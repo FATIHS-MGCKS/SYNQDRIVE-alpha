@@ -8,7 +8,10 @@ import {
   apdsShadowBaselineParityIdentity,
   correlateApdsShadowWithVsiCapability,
 } from './vsi-apds-shadow-correlation.engine';
-import { VsiApdsShadowBindingStatus } from './vsi-apds-shadow-opportunity-binding';
+import {
+  VsiApdsCorrelationAnalysisMode,
+  VsiApdsShadowBindingStatus,
+} from './vsi-apds-shadow-opportunity-binding';
 import { VSI_CONSUMER_REQUIREMENTS_CONTRACT_VERSION } from './vsi-consumer-requirements.types';
 import type { VsiCapabilityResolverProfileContext } from './vsi-capability-resolver.types';
 import { VSI_PROFILE_CONTRACT_VERSION, VSI_PROFILE_CONTRACT_VERSION_V1 } from './vsi-profile.types';
@@ -62,12 +65,22 @@ function adapter(overrides: Record<string, unknown> = {}) {
   };
 }
 
+const persistedDecision = {
+  organizationId: 'org-1',
+  vehicleId: 'veh-1',
+  opportunityId: 'opp-1',
+  decisionAt: evalAt,
+  policyVersion,
+  activationEpochId: 'epoch-1',
+  decision: 'HOLD',
+};
+
 function obsInput(
   partial: Partial<Parameters<typeof buildVsiApdsReadonlyCapabilityObservation>[0]> = {},
 ) {
   const prof = partial.profile ?? profile([{ canonicalSignalKey: 'lv_voltage' }]);
   return buildVsiApdsReadonlyCapabilityObservation({
-    adapter: adapter(),
+    adapter: adapter({ activationEpochId: 'epoch-1' }),
     profile: prof,
     profileTemporal: temporalAt(evalAt),
     trustedProviderIdentity: 'DIMO',
@@ -77,7 +90,9 @@ function obsInput(
     linkSuperseded: false,
     tenantMatch: true,
     activeSourceLinkCount: 1,
-    persistedShadowDecision: null,
+    persistedShadowDecision: persistedDecision,
+    historicalLinkActiveAtDecision: true,
+    correlationAnalysisMode: VsiApdsCorrelationAnalysisMode.VERIFIED_SHADOW_CORRELATION,
     ...partial,
   });
 }
@@ -89,6 +104,7 @@ function decision(overrides: Record<string, unknown> = {}) {
     opportunityId: 'opp-1',
     decisionAt: evalAt.toISOString(),
     policyVersion,
+    activationEpochId: 'epoch-1',
     baselineDecision: 'HOLD',
     ...overrides,
   };
@@ -281,18 +297,30 @@ describe('vsi-apds P5 read-only', () => {
     expect(obs.attributionStatus).toBe('UNKNOWN');
   });
 
+  it('missing persisted APDS decision never MATCHED', () => {
+    const obs = obsInput({ persistedShadowDecision: null });
+    expect(obs.shadowBindingStatus).toBe(
+      VsiApdsShadowBindingStatus.MISSING_PERSISTED_DECISION,
+    );
+  });
+
   it('persisted APDS row mismatch rejects binding', () => {
     const obs = obsInput({
       persistedShadowDecision: {
-        organizationId: 'org-1',
-        vehicleId: 'veh-1',
+        ...persistedDecision,
         opportunityId: 'opp-other',
-        decisionAt: evalAt,
-        policyVersion,
-        activationEpochId: null,
-        decision: 'HOLD',
       },
     });
     expect(obs.shadowBindingStatus).toBe(VsiApdsShadowBindingStatus.REJECTED);
+  });
+
+  it('correlation pair mismatch rejects matchedVehicleLink', () => {
+    const obs = obsInput();
+    const result = correlateApdsShadowWithVsiCapability({
+      decision: decision({ opportunityId: 'opp-wrong', baselineDecision: 'HOLD' }),
+      observation: obs,
+    });
+    expect(result.matchedVehicleLink).toBe(false);
+    expect(result.shadowBindingStatus).toBe(VsiApdsShadowBindingStatus.REJECTED);
   });
 });

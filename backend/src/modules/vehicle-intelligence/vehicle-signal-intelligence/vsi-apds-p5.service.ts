@@ -8,6 +8,10 @@ import type {
   VsiApdsShadowDecisionSnapshotV1,
 } from './vsi-apds-p5.types';
 import { VsiCapabilityResolverRepository } from './vsi-capability-resolver.repository';
+import {
+  isProviderSourceLinkActiveAtDecision,
+  VsiApdsCorrelationAnalysisMode,
+} from './vsi-apds-shadow-opportunity-binding';
 
 /**
  * P5A read-only orchestration — no APDS shadow wiring (P5B gate default OFF elsewhere).
@@ -24,6 +28,7 @@ export class VsiApdsP5ReadonlyService {
       requirementsContractVersion?: typeof VSI_CONSUMER_REQUIREMENTS_CONTRACT_VERSION;
       policyVersion: string;
       activationEpochId?: string | null;
+      correlationAnalysisMode?: VsiApdsCorrelationAnalysisMode;
     },
   ) {
     const adapter: VsiApdsReadonlyAdapterInputV1 = {
@@ -49,6 +54,27 @@ export class VsiApdsP5ReadonlyService {
       policyVersion: adapter.policyVersion,
     });
     const tenantMatch = link?.organizationId === adapter.organizationId;
+    const decisionAtMs = adapter.shadowDecisionAt.getTime();
+    const historicalLinkActiveAtDecision =
+      link != null &&
+      Number.isFinite(decisionAtMs) &&
+      isProviderSourceLinkActiveAtDecision({
+        activatedAt: link.activatedAt,
+        deactivatedAt: link.deactivatedAt,
+        supersededAt: link.supersededAt,
+        decisionAtMs,
+      });
+    const persisted = persistedRow
+      ? {
+          organizationId: persistedRow.organizationId,
+          vehicleId: persistedRow.vehicleId,
+          opportunityId: persistedRow.opportunityId,
+          decisionAt: persistedRow.decisionAt,
+          policyVersion: persistedRow.policyVersion,
+          activationEpochId: persistedRow.activationEpochId,
+          decision: persistedRow.decision,
+        }
+      : null;
     return buildVsiApdsReadonlyCapabilityObservation({
       adapter,
       profile: profileBundle?.profile ?? null,
@@ -60,17 +86,10 @@ export class VsiApdsP5ReadonlyService {
       linkSuperseded: link?.supersededAt != null,
       tenantMatch,
       activeSourceLinkCount,
-      persistedShadowDecision: persistedRow
-        ? {
-            organizationId: persistedRow.organizationId,
-            vehicleId: persistedRow.vehicleId,
-            opportunityId: persistedRow.opportunityId,
-            decisionAt: persistedRow.decisionAt,
-            policyVersion: persistedRow.policyVersion,
-            activationEpochId: persistedRow.activationEpochId,
-            decision: persistedRow.decision,
-          }
-        : null,
+      persistedShadowDecision: persisted,
+      historicalLinkActiveAtDecision,
+      correlationAnalysisMode:
+        input.correlationAnalysisMode ?? VsiApdsCorrelationAnalysisMode.VERIFIED_SHADOW_CORRELATION,
     });
   }
 

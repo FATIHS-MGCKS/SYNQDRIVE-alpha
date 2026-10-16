@@ -57,6 +57,18 @@ export function classifyVsiApdsProfileEvidenceInterpretation(input: {
   const createdMs = createdAt.getTime();
   const updatedMs = updatedAt.getTime();
 
+  if (
+    !Number.isFinite(evaluatedMs) ||
+    !Number.isFinite(createdMs) ||
+    !Number.isFinite(updatedMs)
+  ) {
+    return {
+      interpretation: VsiApdsProfileEvidenceInterpretation.HISTORICAL_PROFILE_UNAVAILABLE,
+      limitations: ['INVALID_PROFILE_TEMPORAL_AUTHORITY'],
+      decisionTimeRetrospectiveAssessable: false,
+    };
+  }
+
   if (input.profile.profileContractVersion === VSI_PROFILE_CONTRACT_VERSION_V1) {
     limitations.push('LEGACY_PROFILE_V1');
   }
@@ -67,6 +79,11 @@ export function classifyVsiApdsProfileEvidenceInterpretation(input: {
     if (ts != null && ts > decisionMs) {
       futureSignalEvidence = true;
       limitations.push(`SIGNAL_EVIDENCE_AFTER_DECISION:${signal.canonicalSignalKey}`);
+    }
+    const validAt = parseSignalTimestampMs(signal.lastValidObservationAt);
+    if (validAt != null && validAt > decisionMs) {
+      futureSignalEvidence = true;
+      limitations.push(`LAST_VALID_OBSERVATION_AFTER_DECISION:${signal.canonicalSignalKey}`);
     }
   }
 

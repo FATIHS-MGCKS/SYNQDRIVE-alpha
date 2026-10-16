@@ -1,3 +1,4 @@
+import { validateVsiApdsCorrelationDecisionObservationPair } from './vsi-apds-correlation-consistency';
 import {
   VSI_APDS_P5_CONTRACT_VERSION,
   VsiApdsDemandClassification,
@@ -6,8 +7,11 @@ import {
   type VsiApdsShadowDecisionSnapshotV1,
 } from './vsi-apds-p5.types';
 import { VsiApdsProfileEvidenceInterpretation } from './vsi-apds-profile-evidence-time';
-import { VsiApdsShadowBindingStatus } from './vsi-apds-shadow-opportunity-binding';
 import { describeVsiApdsShadowRuntimeDiff } from './vsi-apds-parity-evidence';
+import {
+  VsiApdsCorrelationAnalysisMode,
+  VsiApdsShadowBindingStatus,
+} from './vsi-apds-shadow-opportunity-binding';
 
 /**
  * Pure correlation — never mutates APDS decisions or polling state.
@@ -17,8 +21,25 @@ export function correlateApdsShadowWithVsiCapability(input: {
   observation: VsiApdsReadonlyCapabilityObservationV1;
 }): VsiApdsShadowCorrelationResultV1 {
   const { decision, observation } = input;
-  const matchedVehicleLink =
+  const pair = validateVsiApdsCorrelationDecisionObservationPair({
+    decision,
+    observation,
+    authoritativePersistedDecision: observation.authoritativePersistedDecision,
+  });
+
+  const evidenceLimitations = [...observation.evidenceLimitations];
+  if (!pair.consistent) {
+    evidenceLimitations.push(...pair.reasons.map((r) => `CORRELATION_PAIR:${r}`));
+  }
+
+  const verifiedBinding =
+    observation.correlationAnalysisMode ===
+      VsiApdsCorrelationAnalysisMode.VERIFIED_SHADOW_CORRELATION &&
     observation.shadowBindingStatus === VsiApdsShadowBindingStatus.MATCHED &&
+    pair.consistent;
+
+  const matchedVehicleLink =
+    verifiedBinding &&
     observation.attributionStatus === 'RESOLVED' &&
     observation.evidenceLimitations.every(
       (l) =>
@@ -31,7 +52,6 @@ export function correlateApdsShadowWithVsiCapability(input: {
   const missingCapabilities: string[] = [];
   const observedVersusDemandedDifferences: string[] = [];
   const investigationHints: string[] = [];
-  const evidenceLimitations = [...observation.evidenceLimitations];
 
   if (
     observation.profileEvidenceInterpretation !==
@@ -52,13 +72,10 @@ export function correlateApdsShadowWithVsiCapability(input: {
       continue;
     }
     if (row.assessmentStatus === 'SATISFIED') {
-      if (
-        observation.profileEvidenceInterpretation ===
-        VsiApdsProfileEvidenceInterpretation.VERIFIED_DECISION_TIME_SNAPSHOT
-      ) {
+      if (matchedVehicleLink && verifiedBinding) {
         matchingCapabilities.push(row.requirementId);
       } else {
-        investigationHints.push(`CURRENT_PROFILE_ONLY_SATISFIED:${row.requirementId}`);
+        investigationHints.push(`NOT_VERIFIED_CORRELATION_SATISFIED:${row.requirementId}`);
       }
     } else if (row.assessmentStatus === 'INSUFFICIENT') {
       missingCapabilities.push(row.requirementId);
@@ -80,14 +97,19 @@ export function correlateApdsShadowWithVsiCapability(input: {
     investigationHints.push('CAPABILITY_GAP_MAY_WARRANT_FUTURE_APDS_REVIEW');
   }
 
+  const authoritativeDecision =
+    observation.authoritativePersistedDecision?.decision ?? decision.baselineDecision;
+
   return {
     contractVersion: VSI_APDS_P5_CONTRACT_VERSION,
     matchedVehicleLink,
-    shadowBindingStatus: observation.shadowBindingStatus,
+    shadowBindingStatus: pair.consistent
+      ? observation.shadowBindingStatus
+      : VsiApdsShadowBindingStatus.REJECTED,
     profileEvidenceInterpretation: observation.profileEvidenceInterpretation,
     opportunityId: decision.opportunityId,
     decisionAt: decision.decisionAt,
-    originalApdsPolicyDecision: decision.baselineDecision,
+    originalApdsPolicyDecision: authoritativeDecision,
     vsiProfileRevision: observation.profileRevision,
     vsiProfileContentFingerprint: observation.profileContentFingerprint,
     consumerDemandContractVersion: observation.requirementsContractVersion,
@@ -102,7 +124,6 @@ export function correlateApdsShadowWithVsiCapability(input: {
 
 /**
  * Compile-time no-op when P5B is disabled — does **not** certify APDS durable replay parity.
- * See `describeVsiApdsShadowRuntimeDiff()` and APDS shadow CI suites for runtime diff evidence.
  */
 export function apdsShadowBaselineParityIdentity<T>(baseline: T): T {
   return baseline;

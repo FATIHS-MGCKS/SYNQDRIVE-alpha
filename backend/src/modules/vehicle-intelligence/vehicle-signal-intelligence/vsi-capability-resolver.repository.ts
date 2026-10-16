@@ -20,6 +20,7 @@ export class VsiCapabilityResolverRepository {
         id: true,
         vehicleId: true,
         isActive: true,
+        activatedAt: true,
         deactivatedAt: true,
         supersededByLinkId: true,
         vehicle: { select: { organizationId: true } },
@@ -33,6 +34,8 @@ export class VsiCapabilityResolverRepository {
       id: link.id,
       vehicleId: link.vehicleId,
       isActive: link.isActive && !superseded,
+      activatedAt: link.activatedAt,
+      deactivatedAt: link.deactivatedAt,
       supersededAt: superseded ? link.deactivatedAt : null,
       organizationId: link.vehicle.organizationId,
     };

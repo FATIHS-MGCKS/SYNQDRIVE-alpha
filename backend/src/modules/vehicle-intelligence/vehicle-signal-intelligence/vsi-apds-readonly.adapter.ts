@@ -5,6 +5,7 @@ import {
 } from './vsi-apds-profile-evidence-time';
 import {
   validateVsiApdsShadowOpportunityBinding,
+  VsiApdsCorrelationAnalysisMode,
   VsiApdsShadowBindingStatus,
   type VsiApdsPersistedShadowDecisionV1,
 } from './vsi-apds-shadow-opportunity-binding';
@@ -60,7 +61,11 @@ export function buildVsiApdsReadonlyCapabilityObservation(input: {
   tenantMatch: boolean;
   activeSourceLinkCount: number;
   persistedShadowDecision: VsiApdsPersistedShadowDecisionV1 | null;
+  historicalLinkActiveAtDecision: boolean;
+  correlationAnalysisMode?: VsiApdsCorrelationAnalysisMode;
 }): VsiApdsReadonlyCapabilityObservationV1 {
+  const correlationAnalysisMode =
+    input.correlationAnalysisMode ?? VsiApdsCorrelationAnalysisMode.VERIFIED_SHADOW_CORRELATION;
   const evaluationTimeMs = input.adapter.shadowDecisionAt.getTime();
   const limitations: string[] = [
     'NOT_AN_APDS_DECISION_INPUT',
@@ -90,9 +95,11 @@ export function buildVsiApdsReadonlyCapabilityObservation(input: {
       decisionAt: input.adapter.shadowDecisionAt,
       policyVersion: input.adapter.policyVersion,
       activationEpochId: input.adapter.activationEpochId ?? null,
+      baselineDecision: input.persistedShadowDecision?.decision ?? null,
     },
     activeSourceLinkCount: input.activeSourceLinkCount,
-    requirePersistedDecision: false,
+    correlationMode: correlationAnalysisMode,
+    historicalLinkActiveAtDecision: input.historicalLinkActiveAtDecision,
   });
   limitations.push(...binding.reasons.map((r) => `SHADOW_BINDING:${r}`));
 
@@ -102,6 +109,13 @@ export function buildVsiApdsReadonlyCapabilityObservation(input: {
     shadowDecisionAt: input.adapter.shadowDecisionAt,
   });
   limitations.push(...evidenceTime.limitations);
+
+  if (
+    correlationAnalysisMode === VsiApdsCorrelationAnalysisMode.VERIFIED_SHADOW_CORRELATION &&
+    binding.bindingStatus === VsiApdsShadowBindingStatus.MISSING_PERSISTED_DECISION
+  ) {
+    limitations.push('VERIFIED_CORRELATION_REQUIRES_PERSISTED_APDS_DECISION');
+  }
 
   let attributionStatus: 'RESOLVED' | 'UNKNOWN' = 'RESOLVED';
   const profile = failClosed ? null : input.profile;
@@ -121,6 +135,11 @@ export function buildVsiApdsReadonlyCapabilityObservation(input: {
   } else if (!failClosed) {
     limitations.push('PROFILE_NOT_FOUND');
     attributionStatus = 'UNKNOWN';
+  }
+
+  if (!input.historicalLinkActiveAtDecision) {
+    attributionStatus = 'UNKNOWN';
+    limitations.push('HISTORICAL_SOURCE_LINK_ATTRIBUTION_UNPROVEN');
   }
 
   if (
@@ -152,7 +171,12 @@ export function buildVsiApdsReadonlyCapabilityObservation(input: {
     providerSourceLinkId: input.adapter.providerSourceLinkId,
     shadowOpportunityId: input.adapter.shadowOpportunityId,
     shadowDecisionAt: input.adapter.shadowDecisionAt.toISOString(),
+    policyVersion: input.adapter.policyVersion,
+    activationEpochId: input.adapter.activationEpochId ?? null,
     requirementsContractVersion: input.adapter.requirementsContractVersion,
+    correlationAnalysisMode,
+    authoritativePersistedDecision: input.persistedShadowDecision,
+    historicalLinkActiveAtDecision: input.historicalLinkActiveAtDecision,
     providerIdentity: failClosed ? null : input.trustedProviderIdentity,
     verifiedModality: failClosed ? null : input.trustedVerifiedModality,
     telemetrySourceFamily: failClosed ? null : input.trustedTelemetrySourceFamily,

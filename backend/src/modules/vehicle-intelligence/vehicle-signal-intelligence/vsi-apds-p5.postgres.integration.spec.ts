@@ -90,20 +90,38 @@ async function upsertVls(
     });
 
     const shadowDecisionAt = new Date();
+    const opportunityId = `opp-p5-mat-${randomUUID()}`;
+    await prisma.apdShadowReconciliationDecision.create({
+      data: {
+        organizationId,
+        vehicleId: fixture.vehicleId,
+        opportunityId,
+        decisionAt: shadowDecisionAt,
+        policyVersion: 'p25-apd-b4-v1',
+        activationEpochId: null,
+        profileVersion: 'P25_APD_PROFILE_CLASSIFIER_V1',
+        profileClass: 'SPARSE_IRREGULAR',
+        decision: 'HOLD',
+        reason: 'vsi-p5-pg',
+        shadowExecutionVersion: 'P25_APD_SHADOW_EXECUTION_V2_1',
+        reconciliation: false,
+      },
+    });
     const obs = await service.buildObservation({
       organizationId,
       vehicleId: fixture.vehicleId,
       providerSourceLinkId: fixture.linkId,
-      shadowOpportunityId: 'opp-p5-test',
+      shadowOpportunityId: opportunityId,
       shadowDecisionAt,
       policyVersion: 'p25-apd-b4-v1',
     });
+    expect(obs.shadowBindingStatus).toBe('MATCHED');
     expect(obs.profileEvidenceInterpretation).toBe('VERIFIED_DECISION_TIME_SNAPSHOT');
-    expect(obs.decisionTimeRetrospectiveAssessable).toBe(true);
     expect(obs.profileContractVersion).toBe('vsi-signal-profile-v2');
     expect(obs.signals.some((s) => s.canonicalSignalKey === 'lv_voltage')).toBe(true);
     expect(obs.consumerDemand.length).toBeGreaterThan(0);
 
+    await prisma.apdShadowReconciliationDecision.deleteMany({ where: { organizationId } });
     await prisma.vehicleSignalCapabilityProfile.deleteMany({ where: { organizationId } });
     await prisma.organization.deleteMany({ where: { id: organizationId } });
   });

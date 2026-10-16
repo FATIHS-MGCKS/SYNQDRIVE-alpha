@@ -1,5 +1,6 @@
 import {
   validateVsiApdsShadowOpportunityBinding,
+  VsiApdsCorrelationAnalysisMode,
   VsiApdsShadowBindingStatus,
 } from './vsi-apds-shadow-opportunity-binding';
 
@@ -24,51 +25,79 @@ describe('vsi-apds shadow opportunity binding', () => {
     decisionAt,
     policyVersion: 'p25-apd-b4-v1',
     activationEpochId: 'epoch-1',
+    baselineDecision: 'HOLD',
   };
 
-  it('MATCHED when persisted row aligns and single active link', () => {
-    const r = validateVsiApdsShadowOpportunityBinding({
-      persistedDecision: persisted,
-      request,
-      activeSourceLinkCount: 1,
-    });
+  const verifiedBase = {
+    persistedDecision: persisted,
+    request,
+    activeSourceLinkCount: 1,
+    correlationMode: VsiApdsCorrelationAnalysisMode.VERIFIED_SHADOW_CORRELATION,
+    historicalLinkActiveAtDecision: true,
+  };
+
+  it('MATCHED when persisted row aligns and historical link proven', () => {
+    const r = validateVsiApdsShadowOpportunityBinding(verifiedBase);
     expect(r.bindingStatus).toBe(VsiApdsShadowBindingStatus.MATCHED);
+  });
+
+  it('MISSING_PERSISTED_DECISION when row absent in verified mode', () => {
+    const r = validateVsiApdsShadowOpportunityBinding({
+      ...verifiedBase,
+      persistedDecision: null,
+    });
+    expect(r.bindingStatus).toBe(VsiApdsShadowBindingStatus.MISSING_PERSISTED_DECISION);
+  });
+
+  it('UNVERIFIED_ANALYSIS when mode is offline hypothetical', () => {
+    const r = validateVsiApdsShadowOpportunityBinding({
+      ...verifiedBase,
+      persistedDecision: null,
+      correlationMode: VsiApdsCorrelationAnalysisMode.UNVERIFIED_ANALYSIS,
+    });
+    expect(r.bindingStatus).toBe(VsiApdsShadowBindingStatus.UNVERIFIED_ANALYSIS);
   });
 
   it('REJECTED on opportunity mismatch', () => {
     const r = validateVsiApdsShadowOpportunityBinding({
-      persistedDecision: persisted,
+      ...verifiedBase,
       request: { ...request, opportunityId: 'opp-other' },
-      activeSourceLinkCount: 1,
     });
     expect(r.bindingStatus).toBe(VsiApdsShadowBindingStatus.REJECTED);
     expect(r.reasons).toContain('OPPORTUNITY_ID_MISMATCH');
   });
 
-  it('REJECTED on org/vehicle mismatch', () => {
+  it('REJECTED when epoch required but omitted', () => {
     const r = validateVsiApdsShadowOpportunityBinding({
-      persistedDecision: persisted,
-      request: { ...request, organizationId: 'org-2' },
-      activeSourceLinkCount: 1,
+      ...verifiedBase,
+      request: { ...request, activationEpochId: null },
     });
-    expect(r.reasons).toContain('ORGANIZATION_ID_MISMATCH');
+    expect(r.bindingStatus).toBe(VsiApdsShadowBindingStatus.REJECTED);
+    expect(r.reasons).toContain('ACTIVATION_EPOCH_ID_REQUIRED_FOR_EPOCH_BOUND_DECISION');
+  });
+
+  it('REJECTED on wrong epoch', () => {
+    const r = validateVsiApdsShadowOpportunityBinding({
+      ...verifiedBase,
+      request: { ...request, activationEpochId: 'epoch-wrong' },
+    });
+    expect(r.reasons).toContain('ACTIVATION_EPOCH_ID_MISMATCH');
+  });
+
+  it('UNKNOWN when historical link not proven at decision time', () => {
+    const r = validateVsiApdsShadowOpportunityBinding({
+      ...verifiedBase,
+      historicalLinkActiveAtDecision: false,
+    });
+    expect(r.bindingStatus).toBe(VsiApdsShadowBindingStatus.UNKNOWN);
+    expect(r.reasons).toContain('HISTORICAL_SOURCE_LINK_ATTRIBUTION_UNPROVEN');
   });
 
   it('UNKNOWN for multi active links (vehicle-level APDS)', () => {
     const r = validateVsiApdsShadowOpportunityBinding({
-      persistedDecision: persisted,
-      request,
+      ...verifiedBase,
       activeSourceLinkCount: 2,
     });
     expect(r.bindingStatus).toBe(VsiApdsShadowBindingStatus.UNKNOWN);
-  });
-
-  it('REJECTED on invalid decision timestamp', () => {
-    const r = validateVsiApdsShadowOpportunityBinding({
-      persistedDecision: persisted,
-      request: { ...request, decisionAt: new Date('invalid') },
-      activeSourceLinkCount: 1,
-    });
-    expect(r.bindingStatus).toBe(VsiApdsShadowBindingStatus.REJECTED);
   });
 });

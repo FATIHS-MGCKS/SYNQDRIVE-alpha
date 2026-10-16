@@ -121,6 +121,8 @@ export type VsiCapabilityResolverLinkContext = {
   id: string;
   vehicleId: string;
   isActive: boolean;
+  activatedAt: Date;
+  deactivatedAt: Date | null;
   supersededAt: Date | null;
   organizationId: string;
 };
