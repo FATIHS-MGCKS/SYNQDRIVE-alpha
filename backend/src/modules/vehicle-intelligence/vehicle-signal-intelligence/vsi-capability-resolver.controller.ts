@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { VsiCapabilityResolverService } from './vsi-capability-resolver.service';
@@ -34,7 +34,7 @@ export class VsiCapabilityResolverController {
     if (!featureId) {
       return { error: 'FEATURE_ID_REQUIRED' };
     }
-    const evalAt = evaluationTime ? new Date(evaluationTime) : new Date();
+    const evalAt = parseCapabilityResolverEvaluationTime(evaluationTime);
     return this.resolver.resolve({
       organizationId,
       vehicleId,
@@ -44,4 +44,20 @@ export class VsiCapabilityResolverController {
       evaluationTime: evalAt,
     });
   }
+}
+
+const EVALUATION_TIME_FUTURE_TOLERANCE_MS = 5_000;
+
+export function parseCapabilityResolverEvaluationTime(evaluationTime?: string): Date {
+  if (evaluationTime == null || evaluationTime === '') {
+    return new Date();
+  }
+  const evalAt = new Date(evaluationTime);
+  if (Number.isNaN(evalAt.getTime())) {
+    throw new BadRequestException('Invalid evaluationTime');
+  }
+  if (evalAt.getTime() > Date.now() + EVALUATION_TIME_FUTURE_TOLERANCE_MS) {
+    throw new BadRequestException('evaluationTime must not be in the future');
+  }
+  return evalAt;
 }

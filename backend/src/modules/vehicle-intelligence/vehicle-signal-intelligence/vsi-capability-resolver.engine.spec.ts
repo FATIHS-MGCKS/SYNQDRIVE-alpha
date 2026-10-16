@@ -4,11 +4,20 @@ import {
   VsiConsumerModuleId,
 } from './vsi-consumer-requirements.types';
 import {
+  VSI_CAPABILITY_RESOLVER_TEST_FALLBACK_CHAINS,
+  VSI_CAPABILITY_RESOLVER_TEST_REQUIREMENTS,
+} from './vsi-capability-resolver.test-registry';
+import {
   VsiCapabilityResolutionStatus,
   VsiCapabilityResolverReasonCode,
   type VsiCapabilityResolverProfileContext,
 } from './vsi-capability-resolver.types';
 import { VSI_PROFILE_CONTRACT_VERSION, VSI_PROFILE_CONTRACT_VERSION_V1 } from './vsi-profile.types';
+
+const testRegistry = {
+  requirements: VSI_CAPABILITY_RESOLVER_TEST_REQUIREMENTS,
+  fallbackChains: VSI_CAPABILITY_RESOLVER_TEST_FALLBACK_CHAINS,
+};
 
 function v2Profile(
   signals: VsiCapabilityResolverProfileContext['signals'],
@@ -121,6 +130,59 @@ describe('vsi-capability-resolver.engine', () => {
     );
   });
 
+  it('LISTED alone does not satisfy EMPIRICAL_OBSERVED (malformed empirical)', () => {
+    const result = resolveVsiCapabilities(
+      {
+        ...baseInput,
+        consumerModule: VsiConsumerModuleId.DRIVING_INTELLIGENCE,
+        featureId: 'fixture_approved_fallback',
+        evaluationTime: new Date('2026-10-16T12:00:00.000Z'),
+      },
+      {
+        profile: v2Profile([
+          signal('accelerator_pedal_position', {
+            empiricalObservation: 'UNKNOWN_AXIS',
+            declaredSupport: 'LISTED',
+          }),
+        ]),
+        linkActive: true,
+        linkSuperseded: false,
+        tenantMatch: true,
+        activeSourceLinkCount: 1,
+      },
+      testRegistry,
+    );
+    expect(result.signalEvaluations[0]?.reasonCodes).toContain(
+      VsiCapabilityResolverReasonCode.EMPIRICAL_OBSERVATION_INSUFFICIENT,
+    );
+  });
+
+  it('OBSERVED_STALE does not satisfy EMPIRICAL_OBSERVED', () => {
+    const result = resolveVsiCapabilities(
+      {
+        ...baseInput,
+        consumerModule: VsiConsumerModuleId.DRIVING_INTELLIGENCE,
+        featureId: 'fixture_approved_fallback',
+        evaluationTime: new Date('2026-10-16T12:00:00.000Z'),
+      },
+      {
+        profile: v2Profile([
+          signal('accelerator_pedal_position', {
+            empiricalObservation: 'OBSERVED_STALE',
+          }),
+        ]),
+        linkActive: true,
+        linkSuperseded: false,
+        tenantMatch: true,
+        activeSourceLinkCount: 1,
+      },
+      testRegistry,
+    );
+    expect(result.signalEvaluations[0]?.reasonCodes).toContain(
+      VsiCapabilityResolverReasonCode.EMPIRICAL_OBSERVATION_STALE,
+    );
+  });
+
   it('brake requirement: domain pending (brake key not materialized in profile)', () => {
     const result = resolveVsiCapabilities(
       {
@@ -165,6 +227,31 @@ describe('vsi-capability-resolver.engine', () => {
     );
   });
 
+  it('unsupported profile contract version', () => {
+    const result = resolveVsiCapabilities(
+      {
+        ...baseInput,
+        consumerModule: VsiConsumerModuleId.APDS,
+        featureId: 'shadow_demand_profile_read',
+        evaluationTime: new Date(),
+      },
+      {
+        profile: {
+          ...v2Profile([signal('provider_source_timestamp')]),
+          profileContractVersion: 'vsi-signal-profile-v99',
+        },
+        linkActive: true,
+        linkSuperseded: false,
+        tenantMatch: true,
+        activeSourceLinkCount: 1,
+      },
+    );
+    expect(result.resolutionStatus).toBe(VsiCapabilityResolutionStatus.NOT_ASSESSABLE);
+    expect(result.reasonCodes).toContain(
+      VsiCapabilityResolverReasonCode.UNSUPPORTED_PROFILE_CONTRACT_VERSION,
+    );
+  });
+
   it('missing profile', () => {
     const result = resolveVsiCapabilities(
       {
@@ -201,6 +288,90 @@ describe('vsi-capability-resolver.engine', () => {
       },
     );
     expect(result.resolutionStatus).toBe(VsiCapabilityResolutionStatus.UNKNOWN);
+  });
+
+  it('inactive link UNKNOWN', () => {
+    const result = resolveVsiCapabilities(
+      {
+        ...baseInput,
+        consumerModule: VsiConsumerModuleId.APDS,
+        featureId: 'shadow_demand_profile_read',
+        evaluationTime: new Date(),
+      },
+      {
+        profile: v2Profile([signal('provider_source_timestamp')]),
+        linkActive: false,
+        linkSuperseded: false,
+        tenantMatch: true,
+        activeSourceLinkCount: 1,
+      },
+    );
+    expect(result.resolutionStatus).toBe(VsiCapabilityResolutionStatus.UNKNOWN);
+    expect(result.reasonCodes).toContain(VsiCapabilityResolverReasonCode.LINK_INACTIVE);
+  });
+
+  it('superseded link UNKNOWN', () => {
+    const result = resolveVsiCapabilities(
+      {
+        ...baseInput,
+        consumerModule: VsiConsumerModuleId.APDS,
+        featureId: 'shadow_demand_profile_read',
+        evaluationTime: new Date(),
+      },
+      {
+        profile: v2Profile([signal('provider_source_timestamp')]),
+        linkActive: true,
+        linkSuperseded: true,
+        tenantMatch: true,
+        activeSourceLinkCount: 1,
+      },
+    );
+    expect(result.reasonCodes).toContain(VsiCapabilityResolverReasonCode.LINK_SUPERSEDED);
+  });
+
+  it('multi active links with declared catalog ambiguous', () => {
+    const result = resolveVsiCapabilities(
+      {
+        ...baseInput,
+        consumerModule: VsiConsumerModuleId.APDS,
+        featureId: 'shadow_demand_profile_read',
+        evaluationTime: new Date(),
+      },
+      {
+        profile: v2Profile(
+          [signal('provider_source_timestamp')],
+          ['MULTI_ACTIVE_SOURCE_LINK_DECLARED_CATALOG_AMBIGUOUS'],
+        ),
+        linkActive: true,
+        linkSuperseded: false,
+        tenantMatch: true,
+        activeSourceLinkCount: 2,
+      },
+    );
+    expect(result.resolutionStatus).toBe(VsiCapabilityResolutionStatus.UNKNOWN);
+    expect(result.reasonCodes).toContain(VsiCapabilityResolverReasonCode.DECLARED_CATALOG_AMBIGUOUS);
+  });
+
+  it('requirements version mismatch', () => {
+    const result = resolveVsiCapabilities(
+      {
+        ...baseInput,
+        requirementsVersion: 'vsi-consumer-requirements-v99' as typeof VSI_CONSUMER_REQUIREMENTS_CONTRACT_VERSION,
+        consumerModule: VsiConsumerModuleId.APDS,
+        featureId: 'shadow_demand_profile_read',
+        evaluationTime: new Date(),
+      },
+      {
+        profile: v2Profile([signal('provider_source_timestamp')]),
+        linkActive: true,
+        linkSuperseded: false,
+        tenantMatch: true,
+        activeSourceLinkCount: 1,
+      },
+    );
+    expect(result.reasonCodes).toContain(
+      VsiCapabilityResolverReasonCode.REQUIREMENTS_VERSION_MISMATCH,
+    );
   });
 
   it('unapproved fallback denied', () => {
@@ -251,9 +422,29 @@ describe('vsi-capability-resolver.engine', () => {
         tenantMatch: true,
         activeSourceLinkCount: 1,
       },
+      testRegistry,
     );
     expect(result.fallbackPlan?.chainId).toBe('vsi-fallback-fixture-domain-approved');
     expect(result.fallbackPlan?.executable).toBe(false);
+  });
+
+  it('production registry has no fixture fallback chain', () => {
+    const result = resolveVsiCapabilities(
+      {
+        ...baseInput,
+        consumerModule: VsiConsumerModuleId.DRIVING_INTELLIGENCE,
+        featureId: 'fixture_approved_fallback',
+        evaluationTime: new Date(),
+      },
+      {
+        profile: v2Profile([signal('accelerator_pedal_position')]),
+        linkActive: true,
+        linkSuperseded: false,
+        tenantMatch: true,
+        activeSourceLinkCount: 1,
+      },
+    );
+    expect(result.limitations).toContain('NO_REQUIREMENTS_FOR_FEATURE');
   });
 
   it('deterministic: same inputs yield same decision', () => {
@@ -293,9 +484,116 @@ describe('vsi-capability-resolver.engine', () => {
         tenantMatch: true,
         activeSourceLinkCount: 1,
       },
+      testRegistry,
     );
     expect(result.signalEvaluations[0]?.reasonCodes).toContain(
       VsiCapabilityResolverReasonCode.SIGNAL_STALE_AT_EVALUATION,
     );
+  });
+
+  it('future-dated signal timestamp rejected for FRESH_AT_EVALUATION', () => {
+    const result = resolveVsiCapabilities(
+      {
+        ...baseInput,
+        consumerModule: VsiConsumerModuleId.DRIVING_INTELLIGENCE,
+        featureId: 'fixture_approved_fallback',
+        evaluationTime: new Date('2026-10-16T12:00:00.000Z'),
+      },
+      {
+        profile: v2Profile([
+          signal('accelerator_pedal_position', {
+            lastSourceTimestamp: '2030-01-01T00:00:00.000Z',
+          }),
+        ]),
+        linkActive: true,
+        linkSuperseded: false,
+        tenantMatch: true,
+        activeSourceLinkCount: 1,
+      },
+      testRegistry,
+    );
+    expect(result.signalEvaluations[0]?.reasonCodes).toContain(
+      VsiCapabilityResolverReasonCode.INVALID_SIGNAL_TIMESTAMP,
+    );
+  });
+
+  it('partial multi-signal requirement fails closed', () => {
+    const evalAt = new Date('2026-10-16T12:00:00.000Z');
+    const result = resolveVsiCapabilities(
+      {
+        ...baseInput,
+        consumerModule: VsiConsumerModuleId.DRIVING_INTELLIGENCE,
+        featureId: 'fixture_multi_signal',
+        evaluationTime: evalAt,
+      },
+      {
+        profile: v2Profile([
+          signal('vehicle_speed', { lastSourceTimestamp: evalAt.toISOString() }),
+          signal('accelerator_pedal_position', {
+            empiricalObservation: 'NEVER_OBSERVED',
+            lastSourceTimestamp: evalAt.toISOString(),
+          }),
+        ]),
+        linkActive: true,
+        linkSuperseded: false,
+        tenantMatch: true,
+        activeSourceLinkCount: 1,
+      },
+      testRegistry,
+    );
+    expect(result.resolutionStatus).toBe(
+      VsiCapabilityResolutionStatus.INSUFFICIENT_EVIDENCE,
+    );
+  });
+
+  it('missing P3 quality fields on required signal (pending domain feature)', () => {
+    const result = resolveVsiCapabilities(
+      {
+        ...baseInput,
+        consumerModule: VsiConsumerModuleId.BATTERY_V2,
+        featureId: 'lv_measurement_gate',
+        evaluationTime: new Date(),
+      },
+      {
+        profile: v2Profile([
+          {
+            ...signal('lv_voltage'),
+            qualityClassification: undefined,
+            confidenceLevel: undefined,
+          },
+        ]),
+        linkActive: true,
+        linkSuperseded: false,
+        tenantMatch: true,
+        activeSourceLinkCount: 1,
+      },
+    );
+    expect(result.reasonCodes).toContain(
+      VsiCapabilityResolverReasonCode.LEGACY_PROFILE_MISSING_P3_QUALITY,
+    );
+  });
+
+  it('APDS design contract can assess without runtime domain thresholds', () => {
+    const evalAt = new Date('2026-10-16T12:00:00.000Z');
+    const result = resolveVsiCapabilities(
+      {
+        ...baseInput,
+        consumerModule: VsiConsumerModuleId.APDS,
+        featureId: 'shadow_demand_profile_read',
+        evaluationTime: evalAt,
+      },
+      {
+        profile: v2Profile([
+          signal('provider_source_timestamp', {
+            lastSourceTimestamp: evalAt.toISOString(),
+          }),
+        ]),
+        linkActive: true,
+        linkSuperseded: false,
+        tenantMatch: true,
+        activeSourceLinkCount: 1,
+      },
+    );
+    expect(result.resolutionStatus).toBe(VsiCapabilityResolutionStatus.ELIGIBLE);
   });
 });

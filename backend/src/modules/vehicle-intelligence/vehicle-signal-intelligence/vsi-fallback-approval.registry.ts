@@ -23,19 +23,10 @@ export type VsiFallbackChainSpecV1 = {
 };
 
 /**
- * P4 V1: all production chains inactive until explicit domain sign-off.
- * `vsi-fallback-fixture-domain-approved` exists for unit/integration fixtures only.
+ * P4 V1 production registry — no PRODUCTION_VALIDATED chains.
+ * Fixture chains live in `vsi-capability-resolver.test-registry.ts` for unit tests only.
  */
 export const VSI_FALLBACK_APPROVAL_CHAINS: readonly VsiFallbackChainSpecV1[] = [
-  {
-    chainId: 'vsi-fallback-fixture-domain-approved',
-    fromCanonicalSignalKey: 'accelerator_pedal_position',
-    toCanonicalSignalKey: 'vehicle_speed',
-    status: VsiFallbackApprovalStatus.PRODUCTION_VALIDATED,
-    domainOwner: 'VSI_TEST_FIXTURE_ONLY',
-    evidenceReference: 'vsi-capability-resolver.postgres.integration.spec.ts',
-    semanticNotes: ['Fixture-only — not authorized for production consumer substitution'],
-  },
   {
     chainId: 'di-gps-speed-for-accelerator-proposed',
     fromCanonicalSignalKey: 'accelerator_pedal_position',
@@ -60,9 +51,7 @@ export function findFallbackChain(chainId: string): VsiFallbackChainSpecV1 | und
   return VSI_FALLBACK_APPROVAL_CHAINS.find((c) => c.chainId === chainId);
 }
 
-export function isFallbackChainExecutable(status: VsiFallbackApprovalStatus): boolean {
-  return (
-    status === VsiFallbackApprovalStatus.VALIDATED ||
-    status === VsiFallbackApprovalStatus.PRODUCTION_VALIDATED
-  );
+/** P4 V1 never executes fallback substitution — registry match / audit only. */
+export function isFallbackChainExecutable(_status: VsiFallbackApprovalStatus): boolean {
+  return false;
 }

@@ -14,7 +14,10 @@ export type VsiConsumerModuleId =
   (typeof VsiConsumerModuleId)[keyof typeof VsiConsumerModuleId];
 
 export const VsiDomainApprovalStatus = {
+  /** Domain signed off on resolver requirement spec (thresholds may still be pending). */
   APPROVED: 'APPROVED',
+  /** Design/adapter contract only — not production runtime consumer activation. */
+  APPROVED_DESIGN_CONTRACT: 'APPROVED_DESIGN_CONTRACT',
   PENDING_DOMAIN_APPROVAL: 'PENDING_DOMAIN_APPROVAL',
   REJECTED: 'REJECTED',
 } as const;

@@ -1,14 +1,35 @@
 import { classifyTelemetryFreshness } from '../../vehicles/vehicle-state-interpreter';
 
+export function parseSignalTimestampMs(
+  lastSourceTimestamp: string | null,
+): number | null {
+  if (!lastSourceTimestamp) {
+    return null;
+  }
+  const ms = Date.parse(lastSourceTimestamp);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+export function isSignalTimestampValidAtEvaluation(
+  lastSourceTimestamp: string | null,
+  evaluationTimeMs: number,
+): boolean {
+  const ms = parseSignalTimestampMs(lastSourceTimestamp);
+  if (ms == null) {
+    return false;
+  }
+  return ms <= evaluationTimeMs;
+}
+
 export function computeSignalFreshnessAtEvaluation(input: {
   lastSourceTimestamp: string | null;
   evaluationTimeMs: number;
 }): 'FRESH' | 'STALE' | 'UNKNOWN' {
-  if (!input.lastSourceTimestamp) {
+  const ms = parseSignalTimestampMs(input.lastSourceTimestamp);
+  if (ms == null) {
     return 'UNKNOWN';
   }
-  const ms = Date.parse(input.lastSourceTimestamp);
-  if (!Number.isFinite(ms)) {
+  if (ms > input.evaluationTimeMs) {
     return 'UNKNOWN';
   }
   const bucket = classifyTelemetryFreshness(new Date(ms), input.evaluationTimeMs);

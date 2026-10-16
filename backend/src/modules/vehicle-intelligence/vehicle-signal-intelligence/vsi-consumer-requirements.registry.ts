@@ -7,7 +7,15 @@ import {
 } from './vsi-consumer-requirements.types';
 
 const pending = VsiDomainApprovalStatus.PENDING_DOMAIN_APPROVAL;
-const approved = VsiDomainApprovalStatus.APPROVED;
+
+export function isConsumerRequirementDomainApproved(
+  status: VsiDomainApprovalStatus,
+): boolean {
+  return (
+    status === VsiDomainApprovalStatus.APPROVED ||
+    status === VsiDomainApprovalStatus.APPROVED_DESIGN_CONTRACT
+  );
+}
 
 /** Versioned registry — do not invent domain thresholds; null maxSignalAgeMs ⇒ pending. */
 export const VSI_CONSUMER_REQUIREMENTS_V1: readonly VsiConsumerRequirementSpecV1[] = [
@@ -170,27 +178,9 @@ export const VSI_CONSUMER_REQUIREMENTS_V1: readonly VsiConsumerRequirementSpecV1
     requireAllSignalsTogether: false,
     fallbackChainId: null,
     domainOwner: 'apds',
-    domainApprovalStatus: approved,
-    evidenceReference: 'vsi-apds-consumer.adapter.contract.ts — read-only design P4',
-  },
-  /** Fixture requirement for approved-fallback engine test only. */
-  {
-    contractVersion: VSI_CONSUMER_REQUIREMENTS_CONTRACT_VERSION,
-    consumerModule: ModuleId.DRIVING_INTELLIGENCE,
-    featureId: 'fixture_approved_fallback',
-    requirementId: 'di.fixture.accelerator_with_approved_fallback',
-    canonicalSignalKeys: ['accelerator_pedal_position'],
-    providerSourceLinkScoped: true,
-    minimumEvidence: 'EMPIRICAL_OBSERVED',
-    maxSignalAgeMs: 15 * 60 * 1000,
-    minimumQuality: 'FRESH_AT_EVALUATION',
-    historicalReliability: 'NONE',
-    declaredOnlySufficient: false,
-    requireAllSignalsTogether: false,
-    fallbackChainId: 'vsi-fallback-fixture-domain-approved',
-    domainOwner: 'VSI_TEST_FIXTURE_ONLY',
-    domainApprovalStatus: approved,
-    evidenceReference: 'Test fixture — not production authorization',
+    domainApprovalStatus: VsiDomainApprovalStatus.APPROVED_DESIGN_CONTRACT,
+    evidenceReference:
+      'vsi-apds-consumer.adapter.contract.ts — design/contract approval only; no APDS shadow wiring in P4',
   },
 ];
 

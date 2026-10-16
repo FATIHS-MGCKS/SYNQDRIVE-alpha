@@ -1,15 +1,31 @@
-import { VSI_PROFILE_CONTRACT_VERSION_V1 } from './vsi-profile.types';
-import { listConsumerRequirements } from './vsi-consumer-requirements.registry';
 import {
+  VSI_PROFILE_CONTRACT_VERSION,
+  VSI_PROFILE_CONTRACT_VERSION_V1,
+} from './vsi-profile.types';
+import {
+  isConsumerRequirementDomainApproved,
+  listConsumerRequirements,
+} from './vsi-consumer-requirements.registry';
+import {
+  VSI_CONSUMER_REQUIREMENTS_CONTRACT_VERSION,
   VsiDomainApprovalStatus,
   type VsiConsumerRequirementSpecV1,
 } from './vsi-consumer-requirements.types';
 import {
   findFallbackChain,
   isFallbackChainExecutable,
+  type VsiFallbackChainSpecV1,
   VsiFallbackApprovalStatus,
 } from './vsi-fallback-approval.registry';
-import { computeSignalFreshnessAtEvaluation } from './vsi-capability-resolver.freshness';
+import {
+  computeSignalFreshnessAtEvaluation,
+  isSignalTimestampValidAtEvaluation,
+  parseSignalTimestampMs,
+} from './vsi-capability-resolver.freshness';
+import {
+  empiricalObservationFailureReason,
+  isQualifyingEmpiricalObservation,
+} from './vsi-capability-resolver.empirical';
 import {
   VSI_CAPABILITY_RESOLVER_CONTRACT_VERSION,
   VsiCapabilityResolutionStatus,
@@ -29,6 +45,11 @@ const ATTRIBUTION_LIMITATIONS = new Set([
   'PROVIDER_IDENTITY_MISMATCH_DECLARED_CATALOG_DIMO_ONLY',
 ]);
 
+export type VsiCapabilityResolverRegistryOverrides = {
+  requirements?: readonly VsiConsumerRequirementSpecV1[];
+  fallbackChains?: readonly VsiFallbackChainSpecV1[];
+};
+
 export type VsiCapabilityResolverEngineContext = {
   profile: VsiCapabilityResolverProfileContext | null;
   linkActive: boolean;
@@ -36,6 +57,33 @@ export type VsiCapabilityResolverEngineContext = {
   tenantMatch: boolean;
   activeSourceLinkCount: number;
 };
+
+function resolveRequirements(
+  input: VsiCapabilityResolverInput,
+  overrides?: VsiCapabilityResolverRegistryOverrides,
+): VsiConsumerRequirementSpecV1[] {
+  if (overrides?.requirements) {
+    return overrides.requirements.filter(
+      (r) =>
+        r.consumerModule === input.consumerModule && r.featureId === input.featureId,
+    );
+  }
+  return listConsumerRequirements({
+    consumerModule: input.consumerModule,
+    featureId: input.featureId,
+    requirementsVersion: input.requirementsVersion,
+  });
+}
+
+function resolveFallbackChain(
+  chainId: string,
+  overrides?: VsiCapabilityResolverRegistryOverrides,
+): VsiFallbackChainSpecV1 | undefined {
+  if (overrides?.fallbackChains) {
+    return overrides.fallbackChains.find((c) => c.chainId === chainId);
+  }
+  return findFallbackChain(chainId);
+}
 
 function isLegacyProfile(ctx: VsiCapabilityResolverProfileContext): boolean {
   return ctx.profileContractVersion === VSI_PROFILE_CONTRACT_VERSION_V1;
@@ -56,7 +104,7 @@ function evaluateRequirement(
   const reasons: VsiCapabilityResolverReasonCode[] = [];
   const evaluations: VsiCapabilitySignalEvaluationV1[] = [];
 
-  if (req.domainApprovalStatus === VsiDomainApprovalStatus.PENDING_DOMAIN_APPROVAL) {
+  if (!isConsumerRequirementDomainApproved(req.domainApprovalStatus)) {
     return {
       evaluations: req.canonicalSignalKeys.map((key) => ({
         canonicalSignalKey: key,
@@ -137,27 +185,40 @@ function evaluateRequirement(
     });
 
     if (req.minimumEvidence === 'EMPIRICAL_OBSERVED') {
-      if (signal.empiricalObservation === 'NEVER_OBSERVED') {
-        rowReasons.push(VsiCapabilityResolverReasonCode.SIGNAL_NEVER_OBSERVED);
+      if (!isQualifyingEmpiricalObservation(signal.empiricalObservation)) {
+        rowReasons.push(empiricalObservationFailureReason(signal.empiricalObservation));
       }
     }
 
-    if (
-      req.minimumEvidence === 'DECLARED_LISTED' &&
-      signal.declaredSupport !== 'LISTED' &&
-      !req.declaredOnlySufficient
-    ) {
-      rowReasons.push(VsiCapabilityResolverReasonCode.SIGNAL_DECLARED_ONLY);
+    if (req.minimumEvidence === 'DECLARED_LISTED') {
+      if (signal.declaredSupport !== 'LISTED') {
+        rowReasons.push(VsiCapabilityResolverReasonCode.SIGNAL_DECLARED_ONLY);
+      }
     }
 
-    if (req.maxSignalAgeMs != null && signal.lastSourceTimestamp) {
-      const ageMs =
-        evaluationTimeMs - Date.parse(signal.lastSourceTimestamp);
-      if (Number.isFinite(ageMs) && ageMs > req.maxSignalAgeMs) {
+    const timestampMs = parseSignalTimestampMs(signal.lastSourceTimestamp);
+    const timestampValid = isSignalTimestampValidAtEvaluation(
+      signal.lastSourceTimestamp,
+      evaluationTimeMs,
+    );
+
+    if (req.minimumQuality === 'FRESH_AT_EVALUATION') {
+      if (!timestampValid || timestampMs == null) {
+        rowReasons.push(VsiCapabilityResolverReasonCode.INVALID_SIGNAL_TIMESTAMP);
+      } else if (freshnessAtEvaluation !== 'FRESH') {
         rowReasons.push(VsiCapabilityResolverReasonCode.SIGNAL_STALE_AT_EVALUATION);
       }
-    } else if (req.minimumQuality === 'FRESH_AT_EVALUATION' && freshnessAtEvaluation === 'STALE') {
-      rowReasons.push(VsiCapabilityResolverReasonCode.SIGNAL_STALE_AT_EVALUATION);
+    }
+
+    if (req.maxSignalAgeMs != null) {
+      if (!timestampValid || timestampMs == null) {
+        rowReasons.push(VsiCapabilityResolverReasonCode.INVALID_SIGNAL_TIMESTAMP);
+      } else {
+        const ageMs = evaluationTimeMs - timestampMs;
+        if (ageMs > req.maxSignalAgeMs) {
+          rowReasons.push(VsiCapabilityResolverReasonCode.SIGNAL_STALE_AT_EVALUATION);
+        }
+      }
     }
 
     if (req.minimumQuality === 'QUALITY_OBSERVED_FRESH') {
@@ -208,8 +269,24 @@ function evaluateRequirement(
 export function resolveVsiCapabilities(
   input: VsiCapabilityResolverInput,
   engineContext: VsiCapabilityResolverEngineContext,
+  registryOverrides?: VsiCapabilityResolverRegistryOverrides,
 ): VsiCapabilityResolverResultV1 {
   const evaluationTimeMs = input.evaluationTime.getTime();
+  if (!Number.isFinite(evaluationTimeMs)) {
+    return baseResult(input, {
+      resolutionStatus: VsiCapabilityResolutionStatus.NOT_ASSESSABLE,
+      reasonCodes: [VsiCapabilityResolverReasonCode.INVALID_EVALUATION_TIME],
+      limitations: ['INVALID_EVALUATION_TIME'],
+    });
+  }
+
+  if (input.requirementsVersion !== VSI_CONSUMER_REQUIREMENTS_CONTRACT_VERSION) {
+    return baseResult(input, {
+      resolutionStatus: VsiCapabilityResolutionStatus.NOT_ASSESSABLE,
+      reasonCodes: [VsiCapabilityResolverReasonCode.REQUIREMENTS_VERSION_MISMATCH],
+      limitations: ['REQUIREMENTS_VERSION_UNSUPPORTED'],
+    });
+  }
   const limitations: string[] = [];
   const reasonCodes: VsiCapabilityResolverReasonCode[] = [];
   const missingRequirementIds: string[] = [];
@@ -260,6 +337,15 @@ export function resolveVsiCapabilities(
     });
   }
 
+  if (profile.profileContractVersion !== VSI_PROFILE_CONTRACT_VERSION) {
+    return baseResult(input, {
+      resolutionStatus: VsiCapabilityResolutionStatus.NOT_ASSESSABLE,
+      profile,
+      reasonCodes: [VsiCapabilityResolverReasonCode.UNSUPPORTED_PROFILE_CONTRACT_VERSION],
+      limitations: [...limitations, 'UNSUPPORTED_PROFILE_CONTRACT_VERSION'],
+    });
+  }
+
   if (
     profile.profileLimitations.some((l) => ATTRIBUTION_LIMITATIONS.has(l)) ||
     profile.signals.some((s) => s.limitations.some((l) => ATTRIBUTION_LIMITATIONS.has(l)))
@@ -281,11 +367,7 @@ export function resolveVsiCapabilities(
     limitations.push('MULTI_ACTIVE_SOURCE_LINKS_PRESENT');
   }
 
-  const requirements = listConsumerRequirements({
-    consumerModule: input.consumerModule,
-    featureId: input.featureId,
-    requirementsVersion: input.requirementsVersion,
-  });
+  const requirements = resolveRequirements(input, registryOverrides);
 
   if (requirements.length === 0) {
     return baseResult(input, {
@@ -328,7 +410,7 @@ export function resolveVsiCapabilities(
       reasonCodes.push(...outcome.reasons);
 
       if (req.fallbackChainId) {
-        const chain = findFallbackChain(req.fallbackChainId);
+        const chain = resolveFallbackChain(req.fallbackChainId, registryOverrides);
         if (!chain) {
           reasonCodes.push(VsiCapabilityResolverReasonCode.FALLBACK_NOT_APPROVED);
         } else if (

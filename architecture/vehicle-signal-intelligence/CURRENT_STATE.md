@@ -54,7 +54,8 @@
 
 - **Capability resolver v1** — deterministic read-only engine (`vsi-capability-resolver.engine.ts`) over persisted capability profiles; recomputes freshness at `evaluationTime`.
 - **Consumer requirements registry** — versioned `vsi-consumer-requirements-v1` with domain approval matrix ([`research/VSI_P4_DOMAIN_APPROVAL_MATRIX.md`](research/VSI_P4_DOMAIN_APPROVAL_MATRIX.md)); pending thresholds fail closed.
-- **Fallback approval registry** — inactive proposed/rejected chains; fixture-only validated chain for tests; **no fallback execution** in P4 V1.
+- **Fallback approval registry** — production chains PROPOSED/REJECTED only; test chains in `vsi-capability-resolver.test-registry.ts`; `isFallbackChainExecutable()` always false in P4 V1.
+- **P4 hardening** — strict EMPIRICAL_OBSERVED gate, fail-closed `FRESH_AT_EVALUATION`, invalid/future timestamps rejected; APDS `APPROVED_DESIGN_CONTRACT` (no shadow wiring).
 - **Internal API** — `GET api/v1/internal/vsi/capability-resolver/.../resolve` (MASTER_ADMIN, no DIMO, no profile mutation).
 - **Consumer adapter contracts** — DI, Battery V2, Trip/DTC, APDS read-only requirement surfaces (no runtime wiring).
 
