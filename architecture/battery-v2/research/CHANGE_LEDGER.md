@@ -15,6 +15,7 @@ Append-only scientific record. Newest entries first.
 | **CHANGE** | Single ownership: producer module exports `LvRestWindowStateMachineService`, `LvRestWindowSessionArmingService`, `LvRestCanonicalTargetAnchorResolverService`; removed duplicate FSM/arming providers from `VehicleIntelligenceModule` (VI keeps bridge + `BatteryRestTargetEvaluationService`) |
 | **WHY** | Avoid duplicate FSM instances and fix Nest injection context without adding a second resolver registration in VI |
 | **VALIDATION** | `lv-rest-window-g5c-n7.nest-di.spec.ts` (metadata + producer-graph compile), `battery-g5c-n7-postgres-ci.sh` DI step, local `SYNQDRIVE_BOOT_CHECK=1` compiled boot |
+| **CHANGE (follow-up)** | `main.ts` calls `process.exit(0)` after boot-check `app.close()` so deploy `timeout 120` is not defeated by Redis/Bull event-loop handles; `vps-deploy-release.sh` requires non-empty gzip backup + `gzip -t` before migrations |
 | **NON_EFFECTS** | No G5C anchor policy, EXP021, VSI, PDI, or production flag changes |
 
 ---

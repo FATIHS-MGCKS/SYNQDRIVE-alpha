@@ -37,6 +37,7 @@ assert_ephemeral_database_url
 log "G5C-N7 Nest DI ownership regression (unit)"
 npx jest --runTestsByPath \
   src/modules/vehicle-intelligence/battery-health/lv-rest-window/lv-rest-window-g5c-n7.nest-di.spec.ts \
+  scripts/test/synqdrive-boot-check-exit.contract.spec.ts \
   --runInBand
 
 log "prisma migrate deploy (resilient)"
