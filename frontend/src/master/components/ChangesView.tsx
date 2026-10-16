@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-g5c-n7-nest-di-boot-fix-2026-10-16',
+    version: '4.9.2247',
+    title: 'Battery V2 G5C-N7 — Nest DI boot fix (LV REST FSM producer ownership)',
+    summary: [
+      'Joint deploy boot-check failed: VehicleIntelligenceModule registered LvRestWindowStateMachineService without LvRestCanonicalTargetAnchorResolverService in the same Nest context.',
+      'BatteryV2JobsProducerModule now exports FSM, session arming, and canonical anchor resolver; duplicate VI providers removed.',
+      'lv-rest-window-g5c-n7.nest-di.spec.ts wired into G5C-N7 postgres CI script.',
+    ],
+    reason:
+      'Production release abort at SYNQDRIVE_BOOT_CHECK=1 (d3a936); running code remained a0ce01f with P1B.2 schema already applied.',
+    previousBehavior:
+      'Duplicate FSM registration across VI and producer module; resolver not exported for VI-local FSM construction.',
+    details:
+      'battery-v2-jobs-producer.module.ts, vehicle-intelligence.module.ts, lv-rest-window-g5c-n7.nest-di.spec.ts',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-16T12:45:00.000Z',
+  },
+  {
     id: 'vsi-p5-apds-readonly-correlation-2026-10-16',
     version: '4.9.2246',
     title: 'VSI P5 — read-only APDS capability/demand correlation (P5B gate default OFF)',
