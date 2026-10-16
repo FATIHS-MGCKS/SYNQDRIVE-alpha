@@ -9,6 +9,7 @@ import {
 } from './di-v0-trip-speed-quality-product-read.mapper';
 import type { DiV0TripGpsSpeedEvaluationProductV1 } from './di-v0-trip-speed-quality-product-read.types';
 import { DiV0TripSpeedQualityProjectionService } from './di-v0-trip-speed-quality-projection.service';
+import { evaluateTripDiProductReadBoundaryGate } from '../../trips/di-boundary-admission/trip-di-boundary-admission-product-read.guard';
 
 @Injectable()
 export class DiV0TripSpeedQualityProductReadService {
@@ -43,6 +44,20 @@ export class DiV0TripSpeedQualityProductReadService {
       DI_V0_SPEED_QC_POLICY_V2,
     );
     if (current) {
+      const gate = await evaluateTripDiProductReadBoundaryGate(
+        this.prisma,
+        tripId,
+        current.boundaryFingerprint,
+      );
+      if (!gate.ok) {
+        const activeWorkItem = await this.resolveActivePrimaryWorkItem(organizationId, tripId);
+        const outboxStatus = activeWorkItem ? await this.readOutboxStatus(activeWorkItem.id) : null;
+        const availability = resolveGpsSpeedEvaluationAvailabilityWithoutProjection(
+          activeWorkItem?.status ?? null,
+          outboxStatus,
+        );
+        return buildDiV0TripGpsSpeedEvaluationUnavailable(availability);
+      }
       return toDiV0TripGpsSpeedEvaluationProductV1FromPersistedRow(current);
     }
 

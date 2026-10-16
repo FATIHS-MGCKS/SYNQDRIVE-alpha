@@ -10,8 +10,10 @@ import {
 } from '../boundary-repair.state.util';
 
 export const TRIP_DI_BOUNDARY_ADMISSION_V1_KEY = 'diV0BoundaryAdmissionV1';
+export const TRIP_DI_BOUNDARY_ADMISSION_CONTRACT_VERSION = 1;
 
 export interface TripDiBoundaryAdmissionV1 {
+  contractVersion: number;
   revisionKey: string;
   releasedAtUtc: string;
   releasedBy: 'RECONCILIATION' | 'OPERATOR';
@@ -69,11 +71,13 @@ export function readTripDiBoundaryAdmissionV1(raw: unknown): TripDiBoundaryAdmis
   const record = (raw as Record<string, unknown>)[TRIP_DI_BOUNDARY_ADMISSION_V1_KEY];
   if (record == null || typeof record !== 'object' || Array.isArray(record)) return null;
   const r = record as Record<string, unknown>;
+  const contractVersion = typeof r.contractVersion === 'number' ? r.contractVersion : 1;
+  if (contractVersion !== TRIP_DI_BOUNDARY_ADMISSION_CONTRACT_VERSION) return null;
   const revisionKey = typeof r.revisionKey === 'string' ? r.revisionKey : '';
   const releasedAtUtc = typeof r.releasedAtUtc === 'string' ? r.releasedAtUtc : '';
   const releasedBy = r.releasedBy === 'RECONCILIATION' || r.releasedBy === 'OPERATOR' ? r.releasedBy : null;
   if (!revisionKey || !releasedAtUtc || !releasedBy) return null;
-  return { revisionKey, releasedAtUtc, releasedBy };
+  return { contractVersion, revisionKey, releasedAtUtc, releasedBy };
 }
 
 export function buildTripDiBoundaryAdmissionPatch(
@@ -83,6 +87,7 @@ export function buildTripDiBoundaryAdmissionPatch(
 ): Record<string, unknown> {
   return {
     [TRIP_DI_BOUNDARY_ADMISSION_V1_KEY]: {
+      contractVersion: TRIP_DI_BOUNDARY_ADMISSION_CONTRACT_VERSION,
       revisionKey,
       releasedAtUtc: now.toISOString(),
       releasedBy,

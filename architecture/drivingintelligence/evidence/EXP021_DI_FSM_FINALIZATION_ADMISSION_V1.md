@@ -29,7 +29,11 @@ Persisted on `vehicle_trips.raw_detection_meta`:
 
 **S4 admission** (`evaluateTripDiBoundaryAdmission`): release preconditions hold **and** admission record exists with `revisionKey` matching current fingerprint.
 
-**Writer:** `TripDiBoundaryAdmissionService.tryReleaseForTrip` / `releaseCompletedTripsInWindow`, invoked at end of `TripReconciliationService.reconcileWindow` after repair passes.
+**Writer:** `TripDiBoundaryAdmissionService.tryReleaseForTripTransactional`, invoked only for trip IDs returned from the intra-trip gap **boundary scan** in the same successful `reconcileWindow` pass (`releaseForBoundaryScannedTripIds`). Window-wide blanket release is intentionally disabled.
+
+**Concurrency:** Release runs in a single DB transaction with `FOR UPDATE` on the trip row, re-checks PROPOSED repairs + FSM preconditions, and merges admission via `raw_detection_meta || patch` (sibling keys preserved). `contractVersion: 1` required.
+
+**Product read:** `evaluateTripDiProductReadBoundaryGate` — CURRENT V2 / READY requires live admission + fingerprint match (V1 ops read uses the same projection service gate).
 
 ## S4 enforcement surfaces
 
@@ -46,13 +50,15 @@ Existing `BOUNDARY_FINGERPRINT_CHANGED` / supersede paths cover post-release cor
 
 Acquisition window remains **trip `start_time` / `end_time`** at execution (second-aligned enclosing window). Finalization wait affects **enqueue/claim only**; it does not extend the coverage denominator.
 
-## Historical scope (read-only)
+## Historical scope (read-only inventory categories)
 
-Trips with S4 work items created **before** this contract may lack `diV0BoundaryAdmissionV1` or have pins on superseded boundaries. Remediation plan (not executed here):
+| Category | Discovery / S4 effect | Notes |
+|----------|----------------------|--------|
+| A — Unchanged legacy | No `diV0BoundaryAdmissionV1` | Not discovered until reconciliation **scans** the trip in gap-split pass and releases |
+| B — Boundary drift | Admission revision mismatch or `BOUNDARY_FINGERPRINT_CHANGED` | S4E drift / T11 supersede; product read hides stale CURRENT |
+| C — Waiting new revision | COMPLETED, admission missing, scan not yet run | PENDING/UNAVAILABLE on product read; no provider fetch |
 
-1. Inventory WIs where `boundary_fingerprint` ≠ current trip fingerprint or admission missing.
-2. Operator-approved re-release via reconciliation pass + optional supersede / re-discovery.
-3. No automatic provider re-fetch or projection overwrite in this change set.
+Remediation plan (not executed here): operator-scoped reconcile windows + optional supersede/re-discovery; no blanket `releaseCompletedTripsInWindow` on deploy.
 
 ## Code
 

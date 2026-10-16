@@ -132,16 +132,31 @@ export async function seedS4aTripDiBoundaryAdmission(prisma: PrismaClient, tenan
     tenant.vehicleId,
     now,
   );
+  const tripRows = await prisma.$queryRaw<
+    Array<{
+      start_time: Date;
+      end_time: Date | null;
+      dimo_segment_id: string | null;
+      merge_parent_trip_id: string | null;
+      raw_detection_meta: unknown;
+    }>
+  >`
+    SELECT start_time AT TIME ZONE 'UTC' AS start_time,
+           end_time AT TIME ZONE 'UTC' AS end_time,
+           dimo_segment_id, merge_parent_trip_id, raw_detection_meta
+    FROM vehicle_trips WHERE id = ${tenant.tripId}`;
+  const tripRow = tripRows[0];
+  if (!tripRow?.end_time) return;
   const revisionKey = buildTripDiBoundaryRevisionKey({
     organizationId: tenant.organizationId,
     vehicleId: tenant.vehicleId,
     tripId: tenant.tripId,
     tripStatus: 'COMPLETED',
-    startTime: tenant.startTime,
-    endTime: tenant.endTime,
-    dimoSegmentId: tenant.dimoSegmentId,
-    mergeParentTripId: null,
-    rawDetectionMeta: null,
+    startTime: tripRow.start_time,
+    endTime: tripRow.end_time,
+    dimoSegmentId: tripRow.dimo_segment_id ?? tenant.dimoSegmentId,
+    mergeParentTripId: tripRow.merge_parent_trip_id,
+    rawDetectionMeta: tripRow.raw_detection_meta,
   });
   const patch = buildTripDiBoundaryAdmissionPatch(revisionKey, 'RECONCILIATION', now);
   await prisma.$executeRawUnsafe(

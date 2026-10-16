@@ -17,6 +17,7 @@ import {
 } from './di-v0-trip-speed-quality-projection.repository';
 import { attachDiV0P2AutoProjectionFailureStep } from './di-v0-p2-auto-projection-failure-log';
 import { DI_V0_TRIP_SPEED_QUALITY_PROJECTION_V1 } from './di-v0-trip-speed-quality-projection.version';
+import { evaluateTripDiProductReadBoundaryGate } from '../../trips/di-boundary-admission/trip-di-boundary-admission-product-read.guard';
 
 export interface DiV0TripSpeedQualityProjectForWorkItemOptions {
   /** Defaults to DI_V0_SPEED_QC_POLICY_V1 when omitted. */
@@ -125,6 +126,8 @@ export class DiV0TripSpeedQualityProjectionService {
     if (workItem.status !== 'COMPLETED' || workItem.run_purpose !== 'PRIMARY' || workItem.purpose_discriminator !== 'PRIMARY') {
       return null;
     }
+    const gate = await evaluateTripDiProductReadBoundaryGate(this.prisma, tripId, row.boundaryFingerprint);
+    if (!gate.ok) return null;
     return row;
   }
 }

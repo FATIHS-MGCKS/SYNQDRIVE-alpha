@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   buildTripDiBoundaryAdmissionPatch,
@@ -7,7 +8,6 @@ import {
   readTripDiBoundaryAdmissionV1,
   type TripDiBoundaryAdmissionScope,
 } from './trip-di-boundary-admission';
-import { readRawDetectionMeta as readMeta } from '../boundary-repair.state.util';
 
 @Injectable()
 export class TripDiBoundaryAdmissionService {
@@ -45,6 +45,122 @@ export class TripDiBoundaryAdmissionService {
       LIMIT 1`;
     const row = rows[0];
     if (!row) return null;
+    return this.rowToScope(row);
+  }
+
+  /**
+   * Release admission only for trips whose intra-trip boundary repair scan completed in the
+   * same reconciliation run. Does not blanket-release all COMPLETED trips in the window.
+   */
+  async releaseForBoundaryScannedTripIds(tripIds: readonly string[]): Promise<{ released: number; skipped: number }> {
+    const unique = [...new Set(tripIds.filter((id) => id.length > 0))];
+    let released = 0;
+    let skipped = 0;
+    for (const tripId of unique) {
+      try {
+        const ok = await this.tryReleaseForTripTransactional(tripId, 'RECONCILIATION');
+        if (ok) released += 1;
+        else skipped += 1;
+      } catch (err) {
+        skipped += 1;
+        this.logger.warn(
+          `DI boundary admission release failed trip=${tripId}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+    return { released, skipped };
+  }
+
+  /**
+   * Idempotent transactional release: row lock, re-validate preconditions, jsonb_set admission only.
+   */
+  async tryReleaseForTripTransactional(
+    tripId: string,
+    releasedBy: 'RECONCILIATION' | 'OPERATOR' = 'RECONCILIATION',
+  ): Promise<boolean> {
+    return this.prisma.$transaction(async (tx) => {
+      const rows = await tx.$queryRaw<
+        Array<{
+          organization_id: string;
+          vehicle_id: string;
+          trip_id: string;
+          trip_status: string;
+          start_time: Date;
+          end_time: Date | null;
+          dimo_segment_id: string | null;
+          merge_parent_trip_id: string | null;
+          raw_detection_meta: unknown;
+          detection_state: string | null;
+          active_trip_id: string | null;
+          proposed_repairs: bigint;
+        }>
+      >`
+        SELECT v.organization_id, t.vehicle_id, t.id AS trip_id, t.trip_status::text AS trip_status,
+               t.start_time AT TIME ZONE 'UTC' AS start_time, t.end_time AT TIME ZONE 'UTC' AS end_time,
+               t.dimo_segment_id, t.merge_parent_trip_id, t.raw_detection_meta,
+               d.state::text AS detection_state, d.active_trip_id::text AS active_trip_id,
+               (SELECT count(*)::bigint FROM trip_repairs r
+                WHERE r.trip_id = t.id AND r.status = 'PROPOSED') AS proposed_repairs
+        FROM vehicle_trips t
+        JOIN vehicles v ON v.id = t.vehicle_id
+        LEFT JOIN vehicle_trip_detection_states d ON d.vehicle_id = t.vehicle_id
+        WHERE t.id = ${tripId}
+        FOR UPDATE OF t
+        LIMIT 1`;
+      const row = rows[0];
+      if (!row) return false;
+      const scope = this.rowToScope(row);
+      const block = canReleaseTripDiBoundaryAdmission(scope);
+      if (block != null) return false;
+
+      const revisionKey = buildTripDiBoundaryRevisionKey({
+        organizationId: scope.organizationId,
+        vehicleId: scope.vehicleId,
+        tripId: scope.tripId,
+        tripStatus: scope.tripStatus,
+        startTime: scope.startTime,
+        endTime: scope.endTime,
+        dimoSegmentId: scope.dimoSegmentId,
+        mergeParentTripId: scope.mergeParentTripId,
+        rawDetectionMeta: scope.rawDetectionMeta,
+      });
+      const existing = readTripDiBoundaryAdmissionV1(scope.rawDetectionMeta);
+      if (existing?.revisionKey === revisionKey) return true;
+
+      const patch = buildTripDiBoundaryAdmissionPatch(revisionKey, releasedBy);
+      const updated = await tx.$executeRaw`
+        UPDATE vehicle_trips t
+        SET raw_detection_meta = COALESCE(t.raw_detection_meta, '{}'::jsonb) || ${JSON.stringify(patch)}::jsonb
+        WHERE t.id = ${tripId}
+          AND t.trip_status::text = 'COMPLETED'
+          AND t.end_time IS NOT NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM trip_repairs r
+            WHERE r.trip_id = t.id AND r.status = 'PROPOSED'
+          )`;
+      return updated === 1;
+    });
+  }
+
+  /** @deprecated Use releaseForBoundaryScannedTripIds — window batch release is not reconciliation-proven. */
+  async releaseCompletedTripsInWindow(_vehicleId: string, _from: Date, _to: Date): Promise<number> {
+    return 0;
+  }
+
+  private rowToScope(row: {
+    organization_id: string;
+    vehicle_id: string;
+    trip_id: string;
+    trip_status: string;
+    start_time: Date;
+    end_time: Date | null;
+    dimo_segment_id: string | null;
+    merge_parent_trip_id: string | null;
+    raw_detection_meta: unknown;
+    detection_state: string | null;
+    active_trip_id: string | null;
+    proposed_repairs: bigint;
+  }): TripDiBoundaryAdmissionScope {
     return {
       organizationId: row.organization_id,
       vehicleId: row.vehicle_id,
@@ -59,65 +175,5 @@ export class TripDiBoundaryAdmissionService {
       activeTripId: row.active_trip_id,
       proposedBoundaryRepairCount: Number(row.proposed_repairs),
     };
-  }
-
-  /**
-   * Idempotent: writes admission only when release preconditions hold and revision changed or missing.
-   */
-  async tryReleaseForTrip(tripId: string, releasedBy: 'RECONCILIATION' | 'OPERATOR' = 'RECONCILIATION'): Promise<boolean> {
-    const scope = await this.loadScope(tripId);
-    if (!scope) return false;
-    const block = canReleaseTripDiBoundaryAdmission(scope);
-    if (block != null) return false;
-    const revisionKey = buildTripDiBoundaryRevisionKey({
-      organizationId: scope.organizationId,
-      vehicleId: scope.vehicleId,
-      tripId: scope.tripId,
-      tripStatus: scope.tripStatus,
-      startTime: scope.startTime,
-      endTime: scope.endTime,
-      dimoSegmentId: scope.dimoSegmentId,
-      mergeParentTripId: scope.mergeParentTripId,
-      rawDetectionMeta: scope.rawDetectionMeta,
-    });
-    const patch = buildTripDiBoundaryAdmissionPatch(revisionKey, releasedBy);
-    const prior = readMeta(scope.rawDetectionMeta);
-    const existing = readTripDiBoundaryAdmissionV1(scope.rawDetectionMeta);
-    if (existing?.revisionKey === revisionKey) return true;
-
-    await this.prisma.vehicleTrip.update({
-      where: { id: tripId },
-      data: {
-        rawDetectionMeta: {
-          ...prior,
-          ...patch,
-        },
-      },
-    });
-    return true;
-  }
-
-  async releaseCompletedTripsInWindow(vehicleId: string, from: Date, to: Date): Promise<number> {
-    const trips = await this.prisma.vehicleTrip.findMany({
-      where: {
-        vehicleId,
-        tripStatus: 'COMPLETED',
-        endTime: { not: null },
-        startTime: { gte: from, lt: to },
-      },
-      select: { id: true },
-      orderBy: { startTime: 'asc' },
-    });
-    let released = 0;
-    for (const t of trips) {
-      try {
-        if (await this.tryReleaseForTrip(t.id, 'RECONCILIATION')) released += 1;
-      } catch (err) {
-        this.logger.warn(
-          `DI boundary admission release failed trip=${t.id}: ${err instanceof Error ? err.message : String(err)}`,
-        );
-      }
-    }
-    return released;
   }
 }

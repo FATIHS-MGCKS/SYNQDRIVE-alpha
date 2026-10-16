@@ -33,6 +33,7 @@ import {
   s4aManifestFor,
   seedS4aSnapshot,
   seedS4aTenant,
+  seedS4aTripDiBoundaryAdmission,
   setKillMalformed,
   setKillState,
   settle,
@@ -173,6 +174,9 @@ interface ScenarioResult {
       const [op, , arg] = step;
       if ((op === 'supersede' || op === 'holderSupersede') && arg === 'fp-2') await ensureBoundaryChanged();
       if (op === 'create' && step[2] === 'RECALIBRATION_REPLAY') await snapshotFor(String(step[3]));
+      if (op === 'create' && boundaryChanged) {
+        await seedS4aTripDiBoundaryAdmission(admin, tenant);
+      }
     };
 
     const execute = async (step: Step): Promise<unknown> => {

@@ -283,6 +283,7 @@ export class TripReconciliationService {
     let repairsProposed = 0;
     let repairsApplied = 0;
     let repairsRejected = 0;
+    let boundaryScannedTripIds: string[] = [];
 
     try {
       // ── Step 1: Fix stale ongoing trips in this window ──────────────────
@@ -325,6 +326,7 @@ export class TripReconciliationService {
       repairsProposed += intraTripGapRepairs.proposed;
       repairsApplied += intraTripGapRepairs.applied;
       repairsRejected += intraTripGapRepairs.rejected;
+      const boundaryScannedTripIds = intraTripGapRepairs.boundaryScannedTripIds;
 
       // ── Step 5: Detect refuel / recharge events in the same window ─────
       // Purely additive: runs on the identical window but writes to the
@@ -364,9 +366,9 @@ export class TripReconciliationService {
         }
       }
 
-      if (this.diBoundaryAdmission) {
+      if (this.diBoundaryAdmission && boundaryScannedTripIds.length > 0) {
         try {
-          await this.diBoundaryAdmission.releaseCompletedTripsInWindow(vehicleId, from, to);
+          await this.diBoundaryAdmission.releaseForBoundaryScannedTripIds(boundaryScannedTripIds);
         } catch (err: unknown) {
           this.logger.warn(
             `DI boundary admission release failed for vehicle ${vehicleId}: ${(err as Error).message}`,
@@ -2037,10 +2039,11 @@ export class TripReconciliationService {
     from: Date,
     to: Date,
     tier: ReconciliationTier,
-  ): Promise<{ proposed: number; applied: number; rejected: number }> {
+  ): Promise<{ proposed: number; applied: number; rejected: number; boundaryScannedTripIds: string[] }> {
     let proposed = 0;
     let applied = 0;
     let rejected = 0;
+    const boundaryScannedTripIds = new Set<string>();
 
     // Only scan completed trips — ongoing trips are owned by the live FSM
     // which has its own mid-gap split detection in processActiveTick.
@@ -2073,6 +2076,7 @@ export class TripReconciliationService {
           trip as IntraGapTripRow,
           vehicleId,
           tier,
+          boundaryScannedTripIds,
         );
         proposed += counts.proposed;
         applied += counts.applied;
@@ -2084,7 +2088,7 @@ export class TripReconciliationService {
       }
     }
 
-    return { proposed, applied, rejected };
+    return { proposed, applied, rejected, boundaryScannedTripIds: [...boundaryScannedTripIds] };
   }
 
   /**
@@ -2097,6 +2101,7 @@ export class TripReconciliationService {
     trip: IntraGapTripRow,
     vehicleId: string,
     tier: ReconciliationTier,
+    boundaryScannedTripIds: Set<string>,
   ): Promise<{ proposed: number; applied: number; rejected: number }> {
     let proposed = 0;
     let applied = 0;
@@ -2105,6 +2110,7 @@ export class TripReconciliationService {
     let current: IntraGapTripRow = trip;
     for (let iter = 0; iter < this.TRIP_MID_GAP_MAX_SPLITS_PER_TRIP; iter++) {
       const gap = await this.findWaypointGapForSplit(current);
+      boundaryScannedTripIds.add(current.id);
       if (!gap) break;
 
       proposed++;
