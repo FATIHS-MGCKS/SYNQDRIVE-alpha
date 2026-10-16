@@ -8,8 +8,8 @@ import { Prisma, PrismaClient } from '@prisma/client';
 import { parseDiV0PositionSnapshot } from '../../src/modules/vehicle-intelligence/driving-intelligence/position-acquisition/di-v0-position-snapshot-parse';
 import { buildDiV0HistoricalPositionQuery } from '../../src/modules/vehicle-intelligence/driving-intelligence/position-acquisition/di-v0-position-query';
 import { DI_V0_POSITION_ACQUISITION_ADAPTER_V0_1 } from '../../src/modules/vehicle-intelligence/driving-intelligence/position-acquisition/di-v0-position-acquisition.versions';
-import { verifyAndParseDiV0PinnedEvidenceSnapshot } from '../../src/modules/vehicle-intelligence/driving-intelligence/s4d-replay/di-v0-s4d-verified-snapshot';
 import { DI_V0_POSITION_EVIDENCE_SNAPSHOT_V0_1 } from '../../src/modules/vehicle-intelligence/driving-intelligence/position-acquisition/di-v0-position-acquisition.versions';
+import { verifyAndParseDiV0PinnedEvidenceSnapshot } from '../../src/modules/vehicle-intelligence/driving-intelligence/s4d-replay/di-v0-s4d-verified-snapshot';
 import type { DiV0S4SourceFamily } from '../../src/modules/vehicle-intelligence/driving-intelligence/trip-speed-quality/di-v0-trip-speed-quality-projection.types';
 
 const ORG = process.env.EXP021_FETCH_ORG ?? 'faa710c9-6d91-4079-a7d5-91fdccdec14a';
@@ -54,10 +54,12 @@ async function main(): Promise<void> {
             activated_at: Date;
           }>
         >`
-          SELECT provider, source_type, is_active, dimo_vehicle_id, activated_at
-          FROM vehicle_data_source_links
-          WHERE vehicle_id = ${VEHICLE}
-          ORDER BY activated_at DESC`;
+          SELECT vdl.provider, vdl.source_type, vdl.is_active, vdl.dimo_vehicle_id, vdl.activated_at
+          FROM vehicle_data_source_links vdl
+          INNER JOIN vehicles v ON v.id = vdl.vehicle_id
+          WHERE v.organization_id = ${ORG}
+            AND vdl.vehicle_id::text = ${VEHICLE}
+          ORDER BY vdl.activated_at DESC`;
         const snapRows = await tx.$queryRaw<
           Array<{
             snapshot_hash: string;
@@ -65,18 +67,19 @@ async function main(): Promise<void> {
             acquisition_window_end: Date;
             channel_manifest: unknown;
             payload_gzip: Buffer;
+            uncompressed_bytes: number | bigint;
             created_at: Date;
           }>
         >`
           SELECT snapshot_hash, acquisition_window_start, acquisition_window_end, channel_manifest,
-                 payload_gzip, created_at
+                 payload_gzip, uncompressed_bytes, created_at
           FROM di_v0_s4_evidence_snapshots
           WHERE organization_id = ${ORG} AND trip_id = ${TRIP} AND snapshot_hash = ${wi.pinned_snapshot_hash}
           LIMIT 1`;
         const snap = snapRows[0];
         if (!snap) throw new Error('SNAPSHOT_NOT_FOUND');
 
-        const verified = verifyAndParseDiV0PinnedEvidenceSnapshot(
+        const verifiedPayload = verifyAndParseDiV0PinnedEvidenceSnapshot(
           {
             organization_id: ORG,
             vehicle_id: wi.vehicle_id,
@@ -86,7 +89,7 @@ async function main(): Promise<void> {
             acquisition_window_end: snap.acquisition_window_end,
             channel_manifest: snap.channel_manifest,
             payload_gzip: snap.payload_gzip,
-            uncompressed_bytes: 0,
+            uncompressed_bytes: snap.uncompressed_bytes,
           },
           {
             organizationId: ORG,
@@ -97,12 +100,16 @@ async function main(): Promise<void> {
             sourceFamily: wi.source_family as DiV0S4SourceFamily,
           },
         );
-        if (!verified.ok) {
-          return { ok: false, verifyError: verified.code, wi, snapshotHash: wi.pinned_snapshot_hash };
+        if (!verifiedPayload?.ok) {
+          return {
+            ok: false,
+            verifyError: verifiedPayload && !verifiedPayload.ok ? verifiedPayload.code : 'SNAPSHOT_PARSE_FAILED',
+            wi,
+            snapshotHash: wi.pinned_snapshot_hash,
+          };
         }
-
-        const posEntry = verified.parsed.channelManifest.find((c) => c.channel === 'POSITION');
-        const payload = verified.parsed.channelPayloads.POSITION;
+        const posEntry = verifiedPayload.parsed.channelManifest.find((c) => c.channel === 'POSITION');
+        const payload = verifiedPayload.parsed.channelPayloads.POSITION;
         if (!payload || posEntry?.formatVersion !== DI_V0_POSITION_EVIDENCE_SNAPSHOT_V0_1) {
           return { ok: false, reason: 'POSITION_CHANNEL_MISSING', posEntry, wi };
         }
