@@ -123,13 +123,15 @@ export type BucketIntervalReconciliation = {
   rowAbsentBucketsInAcquisitionWindow: number;
   positionGapIntervalSeconds: number;
   uniqueCenterLabelsAmongPositionGapIntervals: number;
+  positionGapIntervalsWithCenterRowAbsent: number;
+  positionGapIntervalsWithPresentCenterNeighborRowAbsent: number;
+  positionGapIntervalsWithPresentCenterOtherNeighborGap: number;
   duplicateIntervalRowsOnRowAbsentCenters: number;
   rowAbsentBucketsWithZeroPositionGapIntervals: number;
   rowAbsentBucketsWithMultiplePositionGapIntervals: number;
   maxPositionGapIntervalsPerRowAbsentBucket: number;
   positionGapIntervalsWithCenterOutsideAcquisition: number;
-  exactReconciliationFormula:
-    'positionGapIntervalSeconds = sum_over_row_absent_buckets(interval_rows_per_label) + intervals_on_non_row_absent_centers_classified_POSITION_GAP';
+  exactReconciliationFormula: string;
   provenMechanismFor2966Vs3040: string | null;
 };
 
@@ -299,16 +301,37 @@ export function buildBucketIntervalAlignmentReport(input: {
   const positionGapIntervalSeconds = positionGapIntervalExports.length;
   const uniqueCenters = gapCenterLabels.size;
 
+  let withCenterRowAbsent = 0;
+  let withPresentCenterNeighborRowAbsent = 0;
+  let withPresentCenterOtherNeighborGap = 0;
+  for (const g of positionGapIntervalExports) {
+    if (g.centerAvailabilityInPin === 'ROW_ABSENT') {
+      withCenterRowAbsent += 1;
+      continue;
+    }
+    const neighborKinds = new Set([...g.prevGapKinds, ...g.nextGapKinds]);
+    if (neighborKinds.has('ROW_ABSENT_EXPLICIT')) withPresentCenterNeighborRowAbsent += 1;
+    else if (g.centerAvailabilityInPin === 'PRESENT') withPresentCenterOtherNeighborGap += 1;
+  }
+
   let proven: string | null = null;
   if (
-    positionGapIntervalSeconds > rowAbsentBucketsInAcquisitionWindow &&
-    duplicateOnRowAbsent > 0 &&
-    duplicateOnRowAbsent === positionGapIntervalSeconds - uniqueCenters
+    positionGapIntervalSeconds === withCenterRowAbsent + withPresentCenterNeighborRowAbsent + withPresentCenterOtherNeighborGap &&
+    withPresentCenterNeighborRowAbsent > 0 &&
+    positionGapIntervalSeconds - rowAbsentBucketsInAcquisitionWindow === withPresentCenterNeighborRowAbsent
   ) {
-    proven = `Extra POSITION_GAP interval-rows (${positionGapIntervalSeconds - uniqueCenters}) equal duplicate shadow rows sharing a ROW_ABSENT center label (${duplicateOnRowAbsent} extra rows on ${bucketsWithMulti} bucket labels).`;
+    proven = `POSITION_GAP interval-seconds (${positionGapIntervalSeconds}) = center ROW_ABSENT intervals (${withCenterRowAbsent}) + intervals whose center bucket is PRESENT but t±1 support includes ROW_ABSENT (${withPresentCenterNeighborRowAbsent}). ROW_ABSENT acquisition buckets (${rowAbsentBucketsInAcquisitionWindow}) count grid labels only; they do not include neighbor-support-only POSITION_GAP seconds.`;
+  } else if (
+    positionGapIntervalSeconds > rowAbsentBucketsInAcquisitionWindow &&
+    duplicateOnRowAbsent > 0
+  ) {
+    proven = `Extra POSITION_GAP interval-rows include ${duplicateOnRowAbsent} duplicate shadow rows on ROW_ABSENT center labels.`;
   } else if (positionGapIntervalSeconds === rowAbsentBucketsInAcquisitionWindow) {
-    proven = 'One shadow interval per ROW_ABSENT acquisition bucket for POSITION_GAP seconds.';
+    proven = 'One POSITION_GAP shadow interval per ROW_ABSENT acquisition bucket.';
   }
+
+  const exactReconciliationFormula =
+    'positionGapIntervalSeconds = intervals(centerAvailability=ROW_ABSENT) + intervals(center=PRESENT ∧ neighbor ROW_ABSENT in L3 support) + other POSITION_GAP (edge/null/invalid neighbor support)';
 
   return {
     shadowGrid: {
@@ -328,13 +351,15 @@ export function buildBucketIntervalAlignmentReport(input: {
       rowAbsentBucketsInAcquisitionWindow,
       positionGapIntervalSeconds,
       uniqueCenterLabelsAmongPositionGapIntervals: uniqueCenters,
+      positionGapIntervalsWithCenterRowAbsent: withCenterRowAbsent,
+      positionGapIntervalsWithPresentCenterNeighborRowAbsent: withPresentCenterNeighborRowAbsent,
+      positionGapIntervalsWithPresentCenterOtherNeighborGap: withPresentCenterOtherNeighborGap,
       duplicateIntervalRowsOnRowAbsentCenters: duplicateOnRowAbsent,
       rowAbsentBucketsWithZeroPositionGapIntervals: bucketsWithZero,
       rowAbsentBucketsWithMultiplePositionGapIntervals: bucketsWithMulti,
       maxPositionGapIntervalsPerRowAbsentBucket: maxPerBucket,
       positionGapIntervalsWithCenterOutsideAcquisition: gapOutsideAcq,
-      exactReconciliationFormula:
-        'positionGapIntervalSeconds = sum_over_row_absent_buckets(interval_rows_per_label) + intervals_on_non_row_absent_centers_classified_POSITION_GAP',
+      exactReconciliationFormula,
       provenMechanismFor2966Vs3040: proven,
     },
     positionGapIntervalExports,

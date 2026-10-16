@@ -46,6 +46,25 @@ describe('buildBucketIntervalAlignmentReport', () => {
     expect(report.reconciliation.duplicateIntervalRowsOnRowAbsentCenters).toBe(1);
     expect(report.shadowGrid.duplicateCenterLabelExtraRows).toBe(1);
   });
+
+  it('counts POSITION_GAP with PRESENT center when neighbor bucket is ROW_ABSENT', () => {
+    const positions = [
+      { bucketLabel: '2026-01-01T00:00:01Z', availability: 'ROW_ABSENT' as const, positionState: 'ROW_ABSENT' as const },
+      { bucketLabel: '2026-01-01T00:00:02Z', availability: 'PRESENT' as const, latitude: 52.5, longitude: 13.4, positionState: 'FRESH' as const },
+      { bucketLabel: '2026-01-01T00:00:03Z', availability: 'PRESENT' as const, latitude: 52.5, longitude: 13.41, positionState: 'FRESH' as const },
+    ];
+    const shadowIntervals = [shadowRow('2026-01-01T00:00:02.000Z')];
+    const report = buildBucketIntervalAlignmentReport({
+      shadowIntervals,
+      positions,
+      r1Obd: [],
+      pinnedSnapshotHash: 'pin',
+      acquisitionWindow: window,
+    });
+    expect(report.reconciliation.positionGapIntervalSeconds).toBe(1);
+    expect(report.reconciliation.positionGapIntervalsWithPresentCenterNeighborRowAbsent).toBe(1);
+    expect(report.reconciliation.rowAbsentBucketsInAcquisitionWindow).toBe(1);
+  });
 });
 
 describe('countPinPositionStatesInWindow', () => {

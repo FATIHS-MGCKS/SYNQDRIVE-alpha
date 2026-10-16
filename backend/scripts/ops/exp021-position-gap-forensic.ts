@@ -16,10 +16,7 @@ import {
 } from '../../src/modules/vehicle-intelligence/driving-intelligence/trip-speed-quality/di-v0-exp021-bucket-interval-alignment';
 import { loadP21ForensicContextInReadOnlyTransaction } from '../../src/modules/vehicle-intelligence/driving-intelligence/trip-speed-quality/di-v0-p21-r3-forensic-loader';
 import { evaluateExp021PersistedAggregateReplayMatch } from '../../src/modules/vehicle-intelligence/driving-intelligence/trip-speed-quality/exp021-persisted-aggregate-replay-match';
-import { verifyAndParseDiV0PinnedEvidenceSnapshot } from '../../src/modules/vehicle-intelligence/driving-intelligence/s4d-replay/di-v0-s4d-verified-snapshot';
-import { parseDiV0PositionSnapshot } from '../../src/modules/vehicle-intelligence/driving-intelligence/position-acquisition/di-v0-position-snapshot-parse';
-import { DI_V0_POSITION_EVIDENCE_SNAPSHOT_V0_1 } from '../../src/modules/vehicle-intelligence/driving-intelligence/position-acquisition/di-v0-position-acquisition.versions';
-import type { DiV0S4SourceFamily } from '../../src/modules/vehicle-intelligence/driving-intelligence/trip-speed-quality/di-v0-trip-speed-quality-projection.types';
+import { countPositionBucketAvailability } from '../../src/modules/vehicle-intelligence/driving-intelligence/trip-speed-quality/di-v0-p21-r3-forensic-classify';
 
 const ORG = 'faa710c9-6d91-4079-a7d5-91fdccdec14a';
 
@@ -80,77 +77,19 @@ async function loadPersistedRow(
   return rows[0] ?? null;
 }
 
-async function loadPositionChannelMetadata(
-  prisma: PrismaClient,
-  organizationId: string,
-  tripId: string,
-  pinnedSnapshotHash: string,
-  sourceFamily: DiV0S4SourceFamily,
-  boundaryFingerprint: string,
-  vehicleId: string,
+function summarizePinnedPositionEvidenceBundle(
+  positions: { availability: string }[],
+  acquisitionWindow: { startLabel: string; endLabel: string },
 ) {
-  const snapshotRows = await prisma.$queryRaw<
-    Array<{
-      acquisition_window_start: Date;
-      acquisition_window_end: Date;
-      channel_manifest: unknown;
-      payload_gzip: Buffer;
-    }>
-  >`
-    SELECT acquisition_window_start, acquisition_window_end, channel_manifest, payload_gzip
-    FROM di_v0_s4_evidence_snapshots
-    WHERE organization_id = ${organizationId}
-      AND trip_id = ${tripId}
-      AND snapshot_hash = ${pinnedSnapshotHash}
-    LIMIT 1`;
-  const snapshot = snapshotRows[0];
-  if (!snapshot) return null;
-  const verified = verifyAndParseDiV0PinnedEvidenceSnapshot(
-    {
-      organization_id: organizationId,
-      vehicle_id: vehicleId,
-      trip_id: tripId,
-      boundary_fingerprint: boundaryFingerprint,
-      acquisition_window_start: snapshot.acquisition_window_start,
-      acquisition_window_end: snapshot.acquisition_window_end,
-      channel_manifest: snapshot.channel_manifest,
-      payload_gzip: snapshot.payload_gzip,
-      uncompressed_bytes: 0,
-    },
-    {
-      organizationId,
-      vehicleId,
-      tripId,
-      boundaryFingerprint,
-      snapshotHash: pinnedSnapshotHash,
-      sourceFamily,
-    },
-  );
-  if (!verified.ok) return { error: verified.code };
-  const positionEntry = verified.parsed.channelManifest.find((c) => c.channel === 'POSITION');
-  if (positionEntry?.formatVersion !== DI_V0_POSITION_EVIDENCE_SNAPSHOT_V0_1 || !verified.parsed.channelPayloads.POSITION) {
-    return { positionChannel: positionEntry ?? null };
-  }
-  const material = parseDiV0PositionSnapshot(verified.parsed.channelPayloads.POSITION);
-  let rowAbsent = 0;
-  let present = 0;
-  let signalNull = 0;
-  for (const b of material.buckets) {
-    if (b.availability === 'ROW_ABSENT') rowAbsent += 1;
-    else if (b.availability === 'SIGNAL_NULL') signalNull += 1;
-    else present += 1;
-  }
+  const posByLabel = new Map(positions.map((p) => [(p as { bucketLabel: string }).bucketLabel, p]));
+  const counts = countPositionBucketAvailability(posByLabel as never, acquisitionWindow);
   return {
-    positionQuerySpec: material.window,
-    providerSignalsNull: material.providerSignalsNull,
-    rejectedProviderRowCount: material.rejectedProviderRows.length,
-    bucketTotalsInPin: {
-      expectedBuckets: material.buckets.length,
-      rowAbsent,
-      signalNull,
-      presentOrOther: present,
-    },
+    source: 'verified_pinned_snapshot_via_loadP21ForensicContext (POSITION channel → evidence.positions)',
+    acquisitionWindow,
+    bucketTotalsInPin: counts,
     rowAbsentCreationRule: EXP021_ROW_ABSENT_CREATION_RULE,
+    note:
+      'Fetch/pagination metadata lives in sealed POSITION snapshot lines; this summary counts normalized buckets already bound to the pin.',
   };
 }
 
@@ -208,14 +147,9 @@ async function main(): Promise<void> {
           qcTrustedMaxKmh: replay.speed.qcTrustedMaxKmh,
         },
       });
-      const positionPinMeta = await loadPositionChannelMetadata(
-        prisma,
-        ORG,
-        c.tripId,
-        ctx.pinnedSnapshotHash,
-        ctx.workItem!.source_family as DiV0S4SourceFamily,
-        ctx.workItem!.boundary_fingerprint,
-        c.vehicleId,
+      const positionPinMeta = summarizePinnedPositionEvidenceBundle(
+        ctx.evidence.positions,
+        ctx.acquisitionWindow,
       );
       const longestPinCounts =
         c.longestGapWindowInclusive != null
