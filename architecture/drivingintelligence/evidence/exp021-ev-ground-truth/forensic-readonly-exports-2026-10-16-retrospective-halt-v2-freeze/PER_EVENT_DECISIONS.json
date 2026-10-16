@@ -37,7 +37,7 @@
       },
       "rules": {
         "A": "Mindestens 1 s mit annotiertem Tacho 0 im vorhergesagten Lückenfenster.",
-        "B": "Alle gelabelten Sekunden Tacho 0; unbekannte Sekunden verhindern den Beweis von B (CANNOT_PROVE), löschen A nicht.",
+        "B": "Alle gelabelten Sekunden Tacho 0 → YES; mindestens eine gelabelte Bewegungssekunde → NO (auch bei weiteren unbekannten Sekunden); nur unbekannte ohne gelabelte Bewegung → CANNOT_PROVE.",
         "C": "Retrospektiver Lücken-Detektor liefert keine Halt-Ein-/Ausfahrt oder Stillstandsdauer."
       }
     },
@@ -82,7 +82,7 @@
       },
       "rules": {
         "A": "Mindestens 1 s mit annotiertem Tacho 0 im vorhergesagten Lückenfenster.",
-        "B": "Alle gelabelten Sekunden Tacho 0; unbekannte Sekunden verhindern den Beweis von B (CANNOT_PROVE), löschen A nicht.",
+        "B": "Alle gelabelten Sekunden Tacho 0 → YES; mindestens eine gelabelte Bewegungssekunde → NO (auch bei weiteren unbekannten Sekunden); nur unbekannte ohne gelabelte Bewegung → CANNOT_PROVE.",
         "C": "Retrospektiver Lücken-Detektor liefert keine Halt-Ein-/Ausfahrt oder Stillstandsdauer."
       }
     },
@@ -127,7 +127,7 @@
       },
       "rules": {
         "A": "Mindestens 1 s mit annotiertem Tacho 0 im vorhergesagten Lückenfenster.",
-        "B": "Alle gelabelten Sekunden Tacho 0; unbekannte Sekunden verhindern den Beweis von B (CANNOT_PROVE), löschen A nicht.",
+        "B": "Alle gelabelten Sekunden Tacho 0 → YES; mindestens eine gelabelte Bewegungssekunde → NO (auch bei weiteren unbekannten Sekunden); nur unbekannte ohne gelabelte Bewegung → CANNOT_PROVE.",
         "C": "Retrospektiver Lücken-Detektor liefert keine Halt-Ein-/Ausfahrt oder Stillstandsdauer."
       }
     },
@@ -172,7 +172,7 @@
       },
       "rules": {
         "A": "Mindestens 1 s mit annotiertem Tacho 0 im vorhergesagten Lückenfenster.",
-        "B": "Alle gelabelten Sekunden Tacho 0; unbekannte Sekunden verhindern den Beweis von B (CANNOT_PROVE), löschen A nicht.",
+        "B": "Alle gelabelten Sekunden Tacho 0 → YES; mindestens eine gelabelte Bewegungssekunde → NO (auch bei weiteren unbekannten Sekunden); nur unbekannte ohne gelabelte Bewegung → CANNOT_PROVE.",
         "C": "Retrospektiver Lücken-Detektor liefert keine Halt-Ein-/Ausfahrt oder Stillstandsdauer."
       }
     },
@@ -217,7 +217,7 @@
       },
       "rules": {
         "A": "Mindestens 1 s mit annotiertem Tacho 0 im vorhergesagten Lückenfenster.",
-        "B": "Alle gelabelten Sekunden Tacho 0; unbekannte Sekunden verhindern den Beweis von B (CANNOT_PROVE), löschen A nicht.",
+        "B": "Alle gelabelten Sekunden Tacho 0 → YES; mindestens eine gelabelte Bewegungssekunde → NO (auch bei weiteren unbekannten Sekunden); nur unbekannte ohne gelabelte Bewegung → CANNOT_PROVE.",
         "C": "Retrospektiver Lücken-Detektor liefert keine Halt-Ein-/Ausfahrt oder Stillstandsdauer."
       },
       "exampleNote": "Beispiel 006: viele Tacho-0-Sekunden stützen A, mindestens eine Bewegungssekunde widerspricht B; C bleibt offen."
@@ -263,7 +263,7 @@
       },
       "rules": {
         "A": "Mindestens 1 s mit annotiertem Tacho 0 im vorhergesagten Lückenfenster.",
-        "B": "Alle gelabelten Sekunden Tacho 0; unbekannte Sekunden verhindern den Beweis von B (CANNOT_PROVE), löschen A nicht.",
+        "B": "Alle gelabelten Sekunden Tacho 0 → YES; mindestens eine gelabelte Bewegungssekunde → NO (auch bei weiteren unbekannten Sekunden); nur unbekannte ohne gelabelte Bewegung → CANNOT_PROVE.",
         "C": "Retrospektiver Lücken-Detektor liefert keine Halt-Ein-/Ausfahrt oder Stillstandsdauer."
       },
       "exampleNote": "Beispiel 006: viele Tacho-0-Sekunden stützen A, mindestens eine Bewegungssekunde widerspricht B; C bleibt offen."
@@ -309,7 +309,7 @@
       },
       "rules": {
         "A": "Mindestens 1 s mit annotiertem Tacho 0 im vorhergesagten Lückenfenster.",
-        "B": "Alle gelabelten Sekunden Tacho 0; unbekannte Sekunden verhindern den Beweis von B (CANNOT_PROVE), löschen A nicht.",
+        "B": "Alle gelabelten Sekunden Tacho 0 → YES; mindestens eine gelabelte Bewegungssekunde → NO (auch bei weiteren unbekannten Sekunden); nur unbekannte ohne gelabelte Bewegung → CANNOT_PROVE.",
         "C": "Retrospektiver Lücken-Detektor liefert keine Halt-Ein-/Ausfahrt oder Stillstandsdauer."
       }
     },
@@ -342,7 +342,7 @@
     },
     "videoAxesABC": {
       "A_tachoZeroSectionInPredictedWindow": "YES",
-      "B_entireWindowContinuousTachoZero": "CANNOT_PROVE",
+      "B_entireWindowContinuousTachoZero": "NO",
       "C_haltBeginEndDurationDetermined": "NOT_DETERMINED",
       "breakdown": {
         "tacho0": 46,
@@ -354,12 +354,12 @@
       },
       "rules": {
         "A": "Mindestens 1 s mit annotiertem Tacho 0 im vorhergesagten Lückenfenster.",
-        "B": "Alle gelabelten Sekunden Tacho 0; unbekannte Sekunden verhindern den Beweis von B (CANNOT_PROVE), löschen A nicht.",
+        "B": "Alle gelabelten Sekunden Tacho 0 → YES; mindestens eine gelabelte Bewegungssekunde → NO (auch bei weiteren unbekannten Sekunden); nur unbekannte ohne gelabelte Bewegung → CANNOT_PROVE.",
         "C": "Retrospektiver Lücken-Detektor liefert keine Halt-Ein-/Ausfahrt oder Stillstandsdauer."
       },
       "exampleNote": "Beispiel 006: viele Tacho-0-Sekunden stützen A, mindestens eine Bewegungssekunde widerspricht B; C bleibt offen."
     },
-    "videoSummary": "Abschnitt_ja_ganzes_Fenster_nein",
+    "videoSummary": "teilweise_gestuetzt",
     "videoValidatable": "WITHIN_EXISTING_VIDEO"
   },
   {
@@ -400,7 +400,7 @@
       },
       "rules": {
         "A": "Mindestens 1 s mit annotiertem Tacho 0 im vorhergesagten Lückenfenster.",
-        "B": "Alle gelabelten Sekunden Tacho 0; unbekannte Sekunden verhindern den Beweis von B (CANNOT_PROVE), löschen A nicht.",
+        "B": "Alle gelabelten Sekunden Tacho 0 → YES; mindestens eine gelabelte Bewegungssekunde → NO (auch bei weiteren unbekannten Sekunden); nur unbekannte ohne gelabelte Bewegung → CANNOT_PROVE.",
         "C": "Retrospektiver Lücken-Detektor liefert keine Halt-Ein-/Ausfahrt oder Stillstandsdauer."
       }
     },
@@ -445,7 +445,7 @@
       },
       "rules": {
         "A": "Mindestens 1 s mit annotiertem Tacho 0 im vorhergesagten Lückenfenster.",
-        "B": "Alle gelabelten Sekunden Tacho 0; unbekannte Sekunden verhindern den Beweis von B (CANNOT_PROVE), löschen A nicht.",
+        "B": "Alle gelabelten Sekunden Tacho 0 → YES; mindestens eine gelabelte Bewegungssekunde → NO (auch bei weiteren unbekannten Sekunden); nur unbekannte ohne gelabelte Bewegung → CANNOT_PROVE.",
         "C": "Retrospektiver Lücken-Detektor liefert keine Halt-Ein-/Ausfahrt oder Stillstandsdauer."
       }
     },

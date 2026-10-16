@@ -7,6 +7,6 @@
 | GAP_EVT_005 | wahrscheinlicher_Halt | other_or_distant | YES | NO | NOT_DETERMINED | WITHIN_EXISTING_VIDEO |
 | GAP_EVT_006 | wahrscheinlicher_Halt | other_or_distant | YES | NO | NOT_DETERMINED | WITHIN_EXISTING_VIDEO |
 | GAP_EVT_007 | wahrscheinlicher_Halt | other_or_distant | YES | YES | NOT_DETERMINED | WITHIN_EXISTING_VIDEO |
-| GAP_EVT_008 | wahrscheinlicher_Halt | other_or_distant | YES | CANNOT_PROVE | NOT_DETERMINED | WITHIN_EXISTING_VIDEO |
+| GAP_EVT_008 | wahrscheinlicher_Halt | other_or_distant | YES | NO | NOT_DETERMINED | WITHIN_EXISTING_VIDEO |
 | GAP_EVT_009 | Rollen_Stop_and_go | other_or_distant | YES | NO | NOT_DETERMINED | WITHIN_EXISTING_VIDEO |
 | GAP_EVT_010 | unbekannt | other_or_distant | NOT_OBSERVABLE | CANNOT_PROVE | NOT_DETERMINED | WITHIN_EXISTING_VIDEO |

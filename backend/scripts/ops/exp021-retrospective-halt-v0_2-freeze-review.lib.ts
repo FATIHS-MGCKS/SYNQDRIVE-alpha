@@ -522,16 +522,20 @@ export function evaluateVideoAxesABC(video: VideoTachoBreakdown): VideoAxesABC {
   else A = video.tacho0 >= 1 ? 'YES' : 'NO';
 
   let B: VideoAxisAnswer = 'CANNOT_PROVE';
-  if (known === 0) B = 'CANNOT_PROVE';
-  else if (video.unknown > 0) B = 'CANNOT_PROVE';
-  else if (
-    video.tacho0 === known &&
-    video.tacho1to3 === 0 &&
-    video.tacho3to5 === 0 &&
-    video.tachoGt5 === 0
-  ) {
+  const knownPositiveTacho =
+    video.tacho1to3 + video.tacho3to5 + video.tachoGt5;
+  if (known === 0) {
+    B = 'CANNOT_PROVE';
+  } else if (knownPositiveTacho >= 1) {
+    // Any annotated non-zero tacho falsifies "entire window continuously tacho 0".
+    B = 'NO';
+  } else if (video.unknown > 0) {
+    B = 'CANNOT_PROVE';
+  } else if (video.tacho0 === known) {
     B = 'YES';
-  } else B = 'NO';
+  } else {
+    B = 'NO';
+  }
 
   const C: VideoAxisAnswer = 'NOT_DETERMINED';
 
@@ -547,7 +551,8 @@ export function evaluateVideoAxesABC(video: VideoTachoBreakdown): VideoAxesABC {
     breakdown: video,
     rules: {
       A: 'Mindestens 1 s mit annotiertem Tacho 0 im vorhergesagten Lückenfenster.',
-      B: 'Alle gelabelten Sekunden Tacho 0; unbekannte Sekunden verhindern den Beweis von B (CANNOT_PROVE), löschen A nicht.',
+      B:
+        'Alle gelabelten Sekunden Tacho 0 → YES; mindestens eine gelabelte Bewegungssekunde → NO (auch bei weiteren unbekannten Sekunden); nur unbekannte ohne gelabelte Bewegung → CANNOT_PROVE.',
       C: 'Retrospektiver Lücken-Detektor liefert keine Halt-Ein-/Ausfahrt oder Stillstandsdauer.',
     },
     exampleNote,
