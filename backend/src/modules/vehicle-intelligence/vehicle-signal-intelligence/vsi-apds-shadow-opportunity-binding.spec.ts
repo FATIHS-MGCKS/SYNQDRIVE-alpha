@@ -33,6 +33,7 @@ describe('vsi-apds shadow opportunity binding', () => {
     request,
     currentActiveSourceLinkCount: 1,
     historicalActiveLinkCountAtDecision: 1,
+    historicalActiveLinkIds: ['link-1'],
     historicalLinkUniquenessEvidenceComplete: true,
     correlationMode: VsiApdsCorrelationAnalysisMode.VERIFIED_SHADOW_CORRELATION,
     historicalLinkActiveAtDecision: true,
@@ -101,8 +102,19 @@ describe('vsi-apds shadow opportunity binding', () => {
       ...verifiedBase,
       currentActiveSourceLinkCount: 1,
       historicalActiveLinkCountAtDecision: 2,
+      historicalActiveLinkIds: ['link-1', 'link-2'],
     });
     expect(r.bindingStatus).toBe(VsiApdsShadowBindingStatus.UNKNOWN);
     expect(r.reasons).toContain('HISTORICAL_MULTI_ACTIVE_SOURCE_LINKS_AT_DECISION');
+  });
+
+  it('UNKNOWN when sole historical link id does not match selected providerSourceLinkId', () => {
+    const r = validateVsiApdsShadowOpportunityBinding({
+      ...verifiedBase,
+      historicalActiveLinkCountAtDecision: 1,
+      historicalActiveLinkIds: ['link-other'],
+    });
+    expect(r.bindingStatus).toBe(VsiApdsShadowBindingStatus.UNKNOWN);
+    expect(r.reasons).toContain('SELECTED_SOURCE_LINK_NOT_UNIQUELY_ATTRIBUTABLE_AT_DECISION');
   });
 });

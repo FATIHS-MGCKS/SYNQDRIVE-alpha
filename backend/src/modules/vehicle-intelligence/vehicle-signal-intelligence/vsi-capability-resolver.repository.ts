@@ -4,6 +4,10 @@ import type {
   VsiCapabilityResolverLinkContext,
   VsiCapabilityResolverProfileContext,
 } from './vsi-capability-resolver.types';
+import {
+  VSI_APDS_MAX_VEHICLE_SOURCE_LINKS_HISTORICAL_ATTRIBUTION,
+  type VsiApdsVehicleSourceLinkLifecycleRow,
+} from './vsi-apds-historical-link-uniqueness';
 
 @Injectable()
 export class VsiCapabilityResolverRepository {
@@ -45,6 +49,36 @@ export class VsiCapabilityResolverRepository {
     return this.prisma.vehicleDataSourceLink.count({
       where: { vehicleId, isActive: true },
     });
+  }
+
+  /**
+   * All provider-source links for historical attribution at a decision timestamp (not `isActive` filtered).
+   */
+  async listVehicleSourceLinksForHistoricalAttribution(input: {
+    organizationId: string;
+    vehicleId: string;
+  }): Promise<{
+    links: VsiApdsVehicleSourceLinkLifecycleRow[];
+    rowLimitExceeded: boolean;
+  }> {
+    const cap = VSI_APDS_MAX_VEHICLE_SOURCE_LINKS_HISTORICAL_ATTRIBUTION;
+    const rows = await this.prisma.vehicleDataSourceLink.findMany({
+      where: {
+        vehicleId: input.vehicleId,
+        vehicle: { organizationId: input.organizationId },
+      },
+      select: {
+        id: true,
+        activatedAt: true,
+        deactivatedAt: true,
+        supersededByLinkId: true,
+      },
+      orderBy: { activatedAt: 'asc' },
+      take: cap + 1,
+    });
+    const rowLimitExceeded = rows.length > cap;
+    const links = rowLimitExceeded ? rows.slice(0, cap) : rows;
+    return { links, rowLimitExceeded };
   }
 
   async loadProfileContext(input: {

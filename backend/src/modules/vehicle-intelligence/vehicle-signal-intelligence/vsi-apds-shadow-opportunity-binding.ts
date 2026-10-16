@@ -105,6 +105,7 @@ export function validateVsiApdsShadowOpportunityBinding(input: {
   /** Current-state count — observability only; not used for verified MATCHED. */
   currentActiveSourceLinkCount: number;
   historicalActiveLinkCountAtDecision: number | null;
+  historicalActiveLinkIds: readonly string[];
   historicalLinkUniquenessEvidenceComplete: boolean;
   correlationMode: VsiApdsCorrelationAnalysisMode;
   historicalLinkActiveAtDecision: boolean;
@@ -188,6 +189,15 @@ export function validateVsiApdsShadowOpportunityBinding(input: {
 
   if (historicalCount === 0) {
     reasons.push('NO_HISTORICAL_ACTIVE_SOURCE_LINK_AT_DECISION');
+    return { bindingStatus: VsiApdsShadowBindingStatus.UNKNOWN, reasons };
+  }
+
+  const soleHistoricalId = input.historicalActiveLinkIds[0];
+  if (
+    soleHistoricalId == null ||
+    soleHistoricalId !== input.request.providerSourceLinkId
+  ) {
+    reasons.push('SELECTED_SOURCE_LINK_NOT_UNIQUELY_ATTRIBUTABLE_AT_DECISION');
     return { bindingStatus: VsiApdsShadowBindingStatus.UNKNOWN, reasons };
   }
 

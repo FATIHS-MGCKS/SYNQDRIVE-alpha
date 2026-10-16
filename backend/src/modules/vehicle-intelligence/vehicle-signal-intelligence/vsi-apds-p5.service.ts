@@ -50,7 +50,7 @@ export class VsiApdsP5ReadonlyService {
     const currentActiveSourceLinkCount = await this.profiles.countActiveSourceLinks(
       adapter.vehicleId,
     );
-    const vehicleLinks = await this.profiles.listVehicleSourceLinksForHistoricalAttribution({
+    const historicalLinkRows = await this.profiles.listVehicleSourceLinksForHistoricalAttribution({
       organizationId: adapter.organizationId,
       vehicleId: adapter.vehicleId,
     });
@@ -72,8 +72,9 @@ export class VsiApdsP5ReadonlyService {
         decisionAtMs,
       });
     const historicalUniqueness = resolveHistoricalActiveSourceLinkUniqueness({
-      links: vehicleLinks,
+      links: historicalLinkRows.links,
       decisionAtMs,
+      attributionRowLimitExceeded: historicalLinkRows.rowLimitExceeded,
     });
     const persisted = persistedRow
       ? {
@@ -98,6 +99,7 @@ export class VsiApdsP5ReadonlyService {
       tenantMatch,
       currentActiveSourceLinkCount,
       historicalActiveLinkCountAtDecision: historicalUniqueness.historicalActiveLinkCount,
+      historicalActiveLinkIds: historicalUniqueness.historicalActiveLinkIds,
       historicalLinkUniquenessEvidenceComplete: historicalUniqueness.evidenceComplete,
       persistedShadowDecision: persisted,
       historicalLinkActiveAtDecision,

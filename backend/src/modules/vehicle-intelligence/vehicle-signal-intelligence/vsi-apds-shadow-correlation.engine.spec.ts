@@ -91,6 +91,7 @@ function obsInput(
     tenantMatch: true,
     currentActiveSourceLinkCount: 1,
     historicalActiveLinkCountAtDecision: 1,
+    historicalActiveLinkIds: ['link-1'],
     historicalLinkUniquenessEvidenceComplete: true,
     persistedShadowDecision: persistedDecision,
     historicalLinkActiveAtDecision: true,
@@ -216,6 +217,7 @@ describe('vsi-apds P5 read-only', () => {
       ),
       currentActiveSourceLinkCount: 1,
       historicalActiveLinkCountAtDecision: 2,
+      historicalActiveLinkIds: ['link-1', 'link-2'],
     });
     expect(obs.attributionStatus).toBe('UNKNOWN');
     expect(obs.shadowBindingStatus).toBe(VsiApdsShadowBindingStatus.UNKNOWN);

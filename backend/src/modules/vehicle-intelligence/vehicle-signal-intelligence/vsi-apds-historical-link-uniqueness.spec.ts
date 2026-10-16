@@ -95,6 +95,7 @@ describe('vsi-apds historical link uniqueness', () => {
       },
       currentActiveSourceLinkCount: 1,
       historicalActiveLinkCountAtDecision: 2,
+      historicalActiveLinkIds: ['link-a', 'link-b'],
       historicalLinkUniquenessEvidenceComplete: true,
       correlationMode: VsiApdsCorrelationAnalysisMode.VERIFIED_SHADOW_CORRELATION,
       historicalLinkActiveAtDecision: true,

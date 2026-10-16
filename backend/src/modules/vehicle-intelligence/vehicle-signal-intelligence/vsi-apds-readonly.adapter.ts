@@ -61,6 +61,7 @@ export function buildVsiApdsReadonlyCapabilityObservation(input: {
   tenantMatch: boolean;
   currentActiveSourceLinkCount: number;
   historicalActiveLinkCountAtDecision: number | null;
+  historicalActiveLinkIds: readonly string[];
   historicalLinkUniquenessEvidenceComplete: boolean;
   persistedShadowDecision: VsiApdsPersistedShadowDecisionV1 | null;
   historicalLinkActiveAtDecision: boolean;
@@ -101,6 +102,7 @@ export function buildVsiApdsReadonlyCapabilityObservation(input: {
     },
     currentActiveSourceLinkCount: input.currentActiveSourceLinkCount,
     historicalActiveLinkCountAtDecision: input.historicalActiveLinkCountAtDecision,
+    historicalActiveLinkIds: input.historicalActiveLinkIds,
     historicalLinkUniquenessEvidenceComplete: input.historicalLinkUniquenessEvidenceComplete,
     correlationMode: correlationAnalysisMode,
     historicalLinkActiveAtDecision: input.historicalLinkActiveAtDecision,

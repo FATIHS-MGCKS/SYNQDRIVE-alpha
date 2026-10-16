@@ -18,11 +18,17 @@ export type VsiApdsHistoricalLinkUniquenessResult = {
  * Counts provider-source links that were active at `decisionAtMs` using lifecycle timestamps only.
  * Does not infer exclusivity from current `isActive` flags.
  */
+export const VSI_APDS_MAX_VEHICLE_SOURCE_LINKS_HISTORICAL_ATTRIBUTION = 64;
+
 export function resolveHistoricalActiveSourceLinkUniqueness(input: {
   links: readonly VsiApdsVehicleSourceLinkLifecycleRow[];
   decisionAtMs: number;
+  attributionRowLimitExceeded?: boolean;
 }): VsiApdsHistoricalLinkUniquenessResult {
   const reasons: string[] = [];
+  if (input.attributionRowLimitExceeded) {
+    reasons.push('VEHICLE_SOURCE_LINK_ROW_LIMIT_EXCEEDED');
+  }
   if (!Number.isFinite(input.decisionAtMs)) {
     return {
       historicalActiveLinkCount: null,
