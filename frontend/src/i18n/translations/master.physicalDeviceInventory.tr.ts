@@ -37,7 +37,7 @@ export const masterPhysicalDeviceInventoryTr = {
   'master.physicalDeviceInventory.status.AVAILABLE': 'Müsait',
   'master.physicalDeviceInventory.status.RESERVED': 'Rezerve',
   'master.physicalDeviceInventory.status.INSTALLED': 'Kurulu',
-  'master.physicalDeviceInventory.status.PENDING_RETURN': 'Pending warehouse return',
+  'master.physicalDeviceInventory.status.PENDING_RETURN': 'Depo iadesi bekleniyor',
   'master.physicalDeviceInventory.status.DEFECTIVE': 'Arızalı',
   'master.physicalDeviceInventory.status.LOST': 'Kayıp',
   'master.physicalDeviceInventory.status.RETIRED': 'Hurda',

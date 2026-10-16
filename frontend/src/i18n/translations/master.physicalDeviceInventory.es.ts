@@ -37,7 +37,7 @@ export const masterPhysicalDeviceInventoryEs = {
   'master.physicalDeviceInventory.status.AVAILABLE': 'Disponible',
   'master.physicalDeviceInventory.status.RESERVED': 'Reservado',
   'master.physicalDeviceInventory.status.INSTALLED': 'Instalado',
-  'master.physicalDeviceInventory.status.PENDING_RETURN': 'Pending warehouse return',
+  'master.physicalDeviceInventory.status.PENDING_RETURN': 'Devolución a almacén pendiente',
   'master.physicalDeviceInventory.status.DEFECTIVE': 'Defectuoso',
   'master.physicalDeviceInventory.status.LOST': 'Perdido',
   'master.physicalDeviceInventory.status.RETIRED': 'Retirado',

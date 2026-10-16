@@ -37,7 +37,7 @@ export const masterPhysicalDeviceInventoryNl = {
   'master.physicalDeviceInventory.status.AVAILABLE': 'Beschikbaar',
   'master.physicalDeviceInventory.status.RESERVED': 'Gereserveerd',
   'master.physicalDeviceInventory.status.INSTALLED': 'Geïnstalleerd',
-  'master.physicalDeviceInventory.status.PENDING_RETURN': 'Pending warehouse return',
+  'master.physicalDeviceInventory.status.PENDING_RETURN': 'Magazijnretour in afwachting',
   'master.physicalDeviceInventory.status.DEFECTIVE': 'Defect',
   'master.physicalDeviceInventory.status.LOST': 'Verloren',
   'master.physicalDeviceInventory.status.RETIRED': 'Afgeschreven',

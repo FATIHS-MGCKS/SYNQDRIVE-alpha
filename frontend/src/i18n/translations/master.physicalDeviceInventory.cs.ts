@@ -37,7 +37,7 @@ export const masterPhysicalDeviceInventoryCs = {
   'master.physicalDeviceInventory.status.AVAILABLE': 'Dostupné',
   'master.physicalDeviceInventory.status.RESERVED': 'Rezervované',
   'master.physicalDeviceInventory.status.INSTALLED': 'Instalované',
-  'master.physicalDeviceInventory.status.PENDING_RETURN': 'Pending warehouse return',
+  'master.physicalDeviceInventory.status.PENDING_RETURN': 'Čeká na vrácení do skladu',
   'master.physicalDeviceInventory.status.DEFECTIVE': 'Poruchové',
   'master.physicalDeviceInventory.status.LOST': 'Ztracené',
   'master.physicalDeviceInventory.status.RETIRED': 'Vyřazené',

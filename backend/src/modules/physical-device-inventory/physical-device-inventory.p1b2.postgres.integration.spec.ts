@@ -34,13 +34,62 @@ const describeLive = LIVE ? describe : describe.skip;
 describeLive('PhysicalDeviceInventory P1B.2 (PostgreSQL)', () => {
   let prisma: PrismaClient;
   let service: PhysicalDeviceInventoryService;
+  let activeInstallAssignmentUniqueIndexPresent = false;
   const priorB1 = process.env.PHYSICAL_DEVICE_INVENTORY_P1B1_WRITES_ENABLED;
   const priorB2 = process.env.PHYSICAL_DEVICE_INVENTORY_P1B2_WRITES_ENABLED;
 
-  beforeAll(() => {
+  async function ensurePartialUniqueIndex(
+    indexName: string,
+    createSql: string,
+  ): Promise<boolean> {
+    const existing = await prisma.$queryRawUnsafe<{ indexname: string }[]>(
+      `SELECT indexname FROM pg_indexes WHERE indexname = $1`,
+      indexName,
+    );
+    if (existing.length > 0) {
+      return true;
+    }
+    try {
+      await prisma.$executeRawUnsafe(createSql);
+      return true;
+    } catch (error) {
+      if (REQUIRED) {
+        throw error;
+      }
+      return false;
+    }
+  }
+
+  beforeAll(async () => {
     process.env.PHYSICAL_DEVICE_INVENTORY_P1B1_WRITES_ENABLED = '1';
     process.env.PHYSICAL_DEVICE_INVENTORY_P1B2_WRITES_ENABLED = '1';
     prisma = new PrismaClient();
+    activeInstallAssignmentUniqueIndexPresent = await ensurePartialUniqueIndex(
+      'physical_device_assignments_one_active_vehicle_per_device',
+      `
+        CREATE UNIQUE INDEX "physical_device_assignments_one_active_vehicle_per_device"
+          ON "physical_device_assignments" ("physical_device_id")
+          WHERE "effective_to" IS NULL AND "vehicle_id" IS NOT NULL
+      `,
+    );
+    await prisma.$executeRawUnsafe(
+      `ALTER TYPE "PhysicalDeviceInventoryStatus" ADD VALUE IF NOT EXISTS 'PENDING_RETURN'`,
+    );
+    await ensurePartialUniqueIndex(
+      'physical_device_inventory_audit_lifecycle_idempotency_key_uq',
+      `
+        CREATE UNIQUE INDEX "physical_device_inventory_audit_lifecycle_idempotency_key_uq"
+          ON "physical_device_inventory_audit_events" ("physical_device_id", "event_kind", "idempotency_key")
+          WHERE "event_kind" IN (
+            'UNINSTALL',
+            'RETURN_TO_STOCK',
+            'MARK_DEFECTIVE',
+            'MARK_LOST',
+            'RETIRE'
+          )
+          AND "idempotency_key" IS NOT NULL
+      `,
+    );
     service = new PhysicalDeviceInventoryService(prisma as unknown as PrismaService);
   });
 
@@ -294,33 +343,29 @@ describeLive('PhysicalDeviceInventory P1B.2 (PostgreSQL)', () => {
     expect(auditCount).toBe(1);
   });
 
-  it('fails closed on duplicate active install assignments', async () => {
+  it('database blocks a second active vehicle install assignment per device', async () => {
+    if (!activeInstallAssignmentUniqueIndexPresent) {
+      if (REQUIRED) {
+        throw new Error(
+          'P1B.1 partial unique index physical_device_assignments_one_active_vehicle_per_device is missing',
+        );
+      }
+      return;
+    }
     const org = await createOrg();
     const vehicle = await createActiveVehicle(org);
-    const { device, assignmentId } = await installOnVehicle(org, vehicle);
-    await prisma.physicalDeviceAssignment.create({
-      data: {
-        physicalDeviceId: device.id,
-        organizationId: org,
-        vehicleId: vehicle,
-        assignmentKind: PhysicalDeviceAssignmentKind.INSTALL,
-        effectiveFrom: new Date(),
-      },
-    });
+    const { device } = await installOnVehicle(org, vehicle);
     await expect(
-      service.uninstallFromVehicle(
-        device.id,
-        {
+      prisma.physicalDeviceAssignment.create({
+        data: {
+          physicalDeviceId: device.id,
+          organizationId: org,
           vehicleId: vehicle,
-          assignmentId,
-          physicalUninstallConfirmed: true,
-          uninstallReason: 'x',
-          deviceConditionAfterUninstall: PhysicalDeviceUninstallCondition.FUNCTIONAL,
-          physicalReturnConfirmed: false,
+          assignmentKind: PhysicalDeviceAssignmentKind.INSTALL,
+          effectiveFrom: new Date(),
         },
-        'master-admin',
-      ),
-    ).rejects.toMatchObject({ response: { code: 'PHYSICAL_DEVICE_ASSIGNMENT_INTEGRITY_CONFLICT' } });
+      }),
+    ).rejects.toMatchObject({ code: 'P2002' });
   });
 
   it('rejects mark lost when status INSTALLED without active assignment', async () => {
