@@ -1,0 +1,17 @@
+{
+  "schema": "LDI10D_PHASE3E9_METRICS_BEFORE_AFTER_V1",
+  "headSha": "39185bae69eb8053911f1dcfe688abbf24d82f56",
+  "phase38Frozen": {},
+  "afterQualityGate": {
+    "gatedRowCount": 387,
+    "dimoIphonePairs": 334,
+    "medianM": 1.556728973043897,
+    "p95M": 33.34860173766781,
+    "note": "After gate: fully-readable, not 3E8 freeze-point, dimoH≤500m, implied speed <200 km/h"
+  },
+  "beforeSetA": {
+    "dimoIphonePairs": 698,
+    "medianM": 2.780741518443654,
+    "p95M": 64.33454953607401
+  }
+}

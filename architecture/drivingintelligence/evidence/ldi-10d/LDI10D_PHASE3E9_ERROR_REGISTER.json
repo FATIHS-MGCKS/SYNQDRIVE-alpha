@@ -1,0 +1,998 @@
+{
+  "schema": "LDI10D_PHASE3E9_ERRORS_V1",
+  "headSha": "39185bae69eb8053911f1dcfe688abbf24d82f56",
+  "errors": [
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "62:50"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "62:53"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "62:58"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "62:61"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "62:64"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "62:66"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "62:89"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "62:92"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "62:99"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "62:101"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "62:104"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "62:108"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "62:111"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "62:113"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "62:116"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "62:119"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "62:121"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "62:124"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "62:126"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "62:132"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "62:134"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "62:138"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "62:144"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "62:150"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "62:152"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "62:154"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:20"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:22"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:24"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:26"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:28"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:36"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:43"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:45"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:47"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:50"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:53"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:57"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:59"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:61"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:63"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:66"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:77"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:78"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:80"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:81"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:82"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:90"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:93"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:95"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:96"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:99"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:113"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:115"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:118"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:151"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:153"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:160"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:162"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:164"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:169"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:173"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "63:178"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "64:53"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "64:60"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "64:63"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "64:68"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "64:72"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "64:74"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "64:76"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "64:80"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "64:94"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "64:96"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "64:98"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "64:100"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "64:103"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "64:107"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "64:115"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "64:124"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "64:127"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "64:147"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "64:151"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "64:153"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "64:169"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "64:178"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:8"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:10"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:17"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:23"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:25"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:27"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:33"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:35"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:38"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:50"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:52"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:57"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:59"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:62"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:65"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:70"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:73"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:78"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:80"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:82"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:91"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:93"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:100"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:102"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:107"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:115"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:117"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:119"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:122"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:134"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:136"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:138"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:140"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:142"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:145"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:147"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:153"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:157"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:160"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:164"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:167"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:173"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "65:177"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:4"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:6"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:12"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:14"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:16"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:18"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:21"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:29"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:31"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:33"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:38"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:41"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:47"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:49"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:51"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:73"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:77"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:84"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:94"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:97"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:100"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:103"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:107"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:110"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:113"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:120"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:124"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:126"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:129"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:131"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:134"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:137"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:140"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:143"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:145"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:148"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:151"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:154"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:162"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:167"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:169"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:172"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "66:179"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "67:4"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "67:9"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "67:11"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "67:13"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "67:15"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "67:17"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "67:19"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "67:22"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "67:24"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "67:27"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "67:30"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "67:32"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "67:34"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "67:41"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "67:46"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "67:57"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "67:59"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "67:61"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "67:66"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "67:78"
+    },
+    {
+      "code": "FREEZE_OCR_STALE",
+      "ref": "67:84"
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "65:46",
+      "dimoM": 75612.77250843684
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "65:48",
+      "dimoM": 75442.08868464813
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "65:65",
+      "dimoM": 71891.07927143456
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "65:86",
+      "dimoM": 68224.98483439961
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "65:85",
+      "dimoM": 68212.52775066411
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "65:119",
+      "dimoM": 66299.3090875841
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "65:142",
+      "dimoM": 64774.162464083456
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "65:177",
+      "dimoM": 61932.01847112807
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "66:73",
+      "dimoM": 46850.2236013208
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "66:84",
+      "dimoM": 44292.84307114622
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "66:124",
+      "dimoM": 34510.25150416773
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "66:137",
+      "dimoM": 30708.487556690194
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "65:14",
+      "dimoM": 30357.994118733954
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "67:53",
+      "dimoM": 28161.45237616605
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "67:74",
+      "dimoM": 27498.171775208266
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "67:91",
+      "dimoM": 26863.806074829503
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "67:90",
+      "dimoM": 26860.357680926827
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "67:114",
+      "dimoM": 26714.358751744992
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "67:115",
+      "dimoM": 26714.358751744992
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "67:113",
+      "dimoM": 26713.469213167893
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "67:104",
+      "dimoM": 26707.131113995463
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "67:100",
+      "dimoM": 26706.797488797434
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "67:101",
+      "dimoM": 26706.797488797434
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "67:102",
+      "dimoM": 26706.79748726369
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "67:103",
+      "dimoM": 26706.79748726369
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "67:106",
+      "dimoM": 26706.686286924098
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "67:105",
+      "dimoM": 26705.685547471465
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "67:117",
+      "dimoM": 26696.12278378598
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "67:116",
+      "dimoM": 26695.233238363468
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "67:108",
+      "dimoM": 26691.4526108618
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "67:109",
+      "dimoM": 26691.4526108618
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "67:107",
+      "dimoM": 26691.007841717324
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "67:110",
+      "dimoM": 26690.2294984474
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "67:111",
+      "dimoM": 26688.67281281327
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "67:122",
+      "dimoM": 26678.99875714462
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "67:123",
+      "dimoM": 26678.99875714462
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "67:124",
+      "dimoM": 26678.99875714462
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "67:120",
+      "dimoM": 26678.776372981065
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "67:121",
+      "dimoM": 26678.776372981065
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "67:119",
+      "dimoM": 26678.331600589943
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "67:118",
+      "dimoM": 26677.99802475184
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "63:10",
+      "dimoM": 5560.747296412014
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "63:176",
+      "dimoM": 3341.296350742937
+    },
+    {
+      "code": "SPATIAL_OCR_COORD",
+      "ref": "62:27",
+      "dimoM": 1954.7005133237856
+    },
+    {
+      "code": "FRAME_RESAMPLE_MISMATCH_RATE",
+      "value": 0.02040816326530612
+    }
+  ]
+}

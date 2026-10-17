@@ -1,0 +1,612 @@
+{
+  "schema": "LDI10D_PHASE3E9_OUTLIER_V1",
+  "headSha": "39185bae69eb8053911f1dcfe688abbf24d82f56",
+  "p95ThresholdM": 64.33454953607401,
+  "topOutliers": [
+    {
+      "videoNum": "65",
+      "secondIndex": 43,
+      "syncUtc": "2026-10-16T03:47:24Z",
+      "lat": 51.98347,
+      "lon": 9.512902,
+      "dimoHaversineM": 76183.20248496441,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "IPHONE_GPS_JUMP",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 76183.20248496441,
+      "notes": [
+        "Large implied displacement between OCR seconds"
+      ]
+    },
+    {
+      "videoNum": "65",
+      "secondIndex": 46,
+      "syncUtc": "2026-10-16T03:47:27Z",
+      "lat": 51.97777,
+      "lon": 9.51248,
+      "dimoHaversineM": 75612.77250843684,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "OCR_COORD_ERROR",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 75612.77250843684,
+      "notes": [
+        "OCR class OCR_AMBIGUOUS"
+      ]
+    },
+    {
+      "videoNum": "65",
+      "secondIndex": 48,
+      "syncUtc": "2026-10-16T03:47:29Z",
+      "lat": 51.97585,
+      "lon": 9.512357,
+      "dimoHaversineM": 75442.08868464813,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "OCR_COORD_ERROR",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 75442.08868464813,
+      "notes": [
+        "OCR class OCR_AMBIGUOUS"
+      ]
+    },
+    {
+      "videoNum": "65",
+      "secondIndex": 63,
+      "syncUtc": "2026-10-16T03:47:44Z",
+      "lat": 51.94248,
+      "lon": 9.510793,
+      "dimoHaversineM": 72081.88880801116,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "IPHONE_GPS_JUMP",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 72081.88880801116,
+      "notes": [
+        "Large implied displacement between OCR seconds"
+      ]
+    },
+    {
+      "videoNum": "65",
+      "secondIndex": 65,
+      "syncUtc": "2026-10-16T03:47:46Z",
+      "lat": 51.94034,
+      "lon": 9.51064,
+      "dimoHaversineM": 71891.07927143456,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "OCR_COORD_ERROR",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 71891.07927143456,
+      "notes": [
+        "OCR class OCR_AMBIGUOUS"
+      ]
+    },
+    {
+      "videoNum": "65",
+      "secondIndex": 64,
+      "syncUtc": "2026-10-16T03:47:45Z",
+      "lat": 51.94034,
+      "lon": 9.51064,
+      "dimoHaversineM": 71867.72737906271,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "IPHONE_GPS_JUMP",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 71867.72737906271,
+      "notes": [
+        "Large implied displacement between OCR seconds"
+      ]
+    },
+    {
+      "videoNum": "65",
+      "secondIndex": 71,
+      "syncUtc": "2026-10-16T03:47:52Z",
+      "lat": 51.92587,
+      "lon": 9.50928,
+      "dimoHaversineM": 70397.17614296911,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "IPHONE_GPS_JUMP",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 70397.17614296911,
+      "notes": [
+        "Large implied displacement between OCR seconds"
+      ]
+    },
+    {
+      "videoNum": "65",
+      "secondIndex": 86,
+      "syncUtc": "2026-10-16T03:48:07Z",
+      "lat": 51.90382,
+      "lon": 9.505374,
+      "dimoHaversineM": 68224.98483439961,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "OCR_COORD_ERROR",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 68224.98483439961,
+      "notes": [
+        "OCR class OCR_AMBIGUOUS"
+      ]
+    },
+    {
+      "videoNum": "65",
+      "secondIndex": 85,
+      "syncUtc": "2026-10-16T03:48:06Z",
+      "lat": 51.90382,
+      "lon": 9.505374,
+      "dimoHaversineM": 68212.52775066411,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "OCR_COORD_ERROR",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 68212.52775066411,
+      "notes": [
+        "OCR class OCR_AMBIGUOUS"
+      ]
+    },
+    {
+      "videoNum": "65",
+      "secondIndex": 95,
+      "syncUtc": "2026-10-16T03:48:16Z",
+      "lat": 51.89486,
+      "lon": 9.50288,
+      "dimoHaversineM": 67323.30303202265,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "IPHONE_GPS_JUMP",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 67323.30303202265,
+      "notes": [
+        "Large implied displacement between OCR seconds"
+      ]
+    },
+    {
+      "videoNum": "65",
+      "secondIndex": 97,
+      "syncUtc": "2026-10-16T03:48:18Z",
+      "lat": 51.89361,
+      "lon": 9.502556,
+      "dimoHaversineM": 67195.65056010823,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "IPHONE_GPS_JUMP",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 67195.65056010823,
+      "notes": [
+        "Large implied displacement between OCR seconds"
+      ]
+    },
+    {
+      "videoNum": "65",
+      "secondIndex": 98,
+      "syncUtc": "2026-10-16T03:48:19Z",
+      "lat": 51.8928,
+      "lon": 9.502356,
+      "dimoHaversineM": 67109.58527445978,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "IPHONE_GPS_JUMP",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 67109.58527445978,
+      "notes": [
+        "Large implied displacement between OCR seconds"
+      ]
+    },
+    {
+      "videoNum": "65",
+      "secondIndex": 105,
+      "syncUtc": "2026-10-16T03:48:26Z",
+      "lat": 51.89152,
+      "lon": 9.50205,
+      "dimoHaversineM": 66983.82387654814,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "IPHONE_GPS_JUMP",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 66983.82387654814,
+      "notes": [
+        "Large implied displacement between OCR seconds"
+      ]
+    },
+    {
+      "videoNum": "65",
+      "secondIndex": 111,
+      "syncUtc": "2026-10-16T03:48:32Z",
+      "lat": 51.88982,
+      "lon": 9.501678,
+      "dimoHaversineM": 66811.3604794926,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "IPHONE_GPS_JUMP",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 66811.3604794926,
+      "notes": [
+        "Large implied displacement between OCR seconds"
+      ]
+    },
+    {
+      "videoNum": "65",
+      "secondIndex": 119,
+      "syncUtc": "2026-10-16T03:48:40Z",
+      "lat": 51.88458,
+      "lon": 9.500614,
+      "dimoHaversineM": 66299.3090875841,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "OCR_COORD_ERROR",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 66299.3090875841,
+      "notes": [
+        "OCR class OCR_AMBIGUOUS"
+      ]
+    },
+    {
+      "videoNum": "65",
+      "secondIndex": 118,
+      "syncUtc": "2026-10-16T03:48:39Z",
+      "lat": 51.88458,
+      "lon": 9.500614,
+      "dimoHaversineM": 66286.74281587143,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "IPHONE_GPS_JUMP",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 66286.74281587143,
+      "notes": [
+        "Large implied displacement between OCR seconds"
+      ]
+    },
+    {
+      "videoNum": "65",
+      "secondIndex": 123,
+      "syncUtc": "2026-10-16T03:48:44Z",
+      "lat": 51.87918,
+      "lon": 9.499644,
+      "dimoHaversineM": 65746.0018873112,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "IPHONE_GPS_JUMP",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 65746.0018873112,
+      "notes": [
+        "Large implied displacement between OCR seconds"
+      ]
+    },
+    {
+      "videoNum": "65",
+      "secondIndex": 126,
+      "syncUtc": "2026-10-16T03:48:47Z",
+      "lat": 51.87748,
+      "lon": 9.499172,
+      "dimoHaversineM": 65584.43813811529,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "IPHONE_GPS_JUMP",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 65584.43813811529,
+      "notes": [
+        "Large implied displacement between OCR seconds"
+      ]
+    },
+    {
+      "videoNum": "65",
+      "secondIndex": 131,
+      "syncUtc": "2026-10-16T03:48:52Z",
+      "lat": 51.87371,
+      "lon": 9.497419,
+      "dimoHaversineM": 65199.03404325743,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "IPHONE_GPS_JUMP",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 65199.03404325743,
+      "notes": [
+        "Large implied displacement between OCR seconds"
+      ]
+    },
+    {
+      "videoNum": "65",
+      "secondIndex": 142,
+      "syncUtc": "2026-10-16T03:49:03Z",
+      "lat": 51.86943,
+      "lon": 9.494314,
+      "dimoHaversineM": 64774.162464083456,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "OCR_COORD_ERROR",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 64774.162464083456,
+      "notes": [
+        "OCR class OCR_AMBIGUOUS"
+      ]
+    },
+    {
+      "videoNum": "65",
+      "secondIndex": 141,
+      "syncUtc": "2026-10-16T03:49:02Z",
+      "lat": 51.86943,
+      "lon": 9.494314,
+      "dimoHaversineM": 64766.823500019855,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "IPHONE_GPS_JUMP",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 64766.823500019855,
+      "notes": [
+        "Large implied displacement between OCR seconds"
+      ]
+    },
+    {
+      "videoNum": "65",
+      "secondIndex": 149,
+      "syncUtc": "2026-10-16T03:49:10Z",
+      "lat": 51.8666,
+      "lon": 9.491462,
+      "dimoHaversineM": 64487.38651628748,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "IPHONE_GPS_JUMP",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 64487.38651628748,
+      "notes": [
+        "Large implied displacement between OCR seconds"
+      ]
+    },
+    {
+      "videoNum": "65",
+      "secondIndex": 155,
+      "syncUtc": "2026-10-16T03:49:16Z",
+      "lat": 51.86485,
+      "lon": 9.489383,
+      "dimoHaversineM": 64315.375680562815,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "IPHONE_GPS_JUMP",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 64315.375680562815,
+      "notes": [
+        "Large implied displacement between OCR seconds"
+      ]
+    },
+    {
+      "videoNum": "65",
+      "secondIndex": 161,
+      "syncUtc": "2026-10-16T03:49:22Z",
+      "lat": 51.8633,
+      "lon": 9.486176,
+      "dimoHaversineM": 64158.24953343949,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "IPHONE_GPS_JUMP",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 64158.24953343949,
+      "notes": [
+        "Large implied displacement between OCR seconds"
+      ]
+    },
+    {
+      "videoNum": "65",
+      "secondIndex": 162,
+      "syncUtc": "2026-10-16T03:49:23Z",
+      "lat": 51.86279,
+      "lon": 9.485704,
+      "dimoHaversineM": 64107.099866477096,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "IPHONE_GPS_JUMP",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 64107.099866477096,
+      "notes": [
+        "Large implied displacement between OCR seconds"
+      ]
+    },
+    {
+      "videoNum": "65",
+      "secondIndex": 169,
+      "syncUtc": "2026-10-16T03:49:30Z",
+      "lat": 51.85641,
+      "lon": 9.483002,
+      "dimoHaversineM": 63485.97117339199,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "IPHONE_GPS_JUMP",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 63485.97117339199,
+      "notes": [
+        "Large implied displacement between OCR seconds"
+      ]
+    },
+    {
+      "videoNum": "65",
+      "secondIndex": 177,
+      "syncUtc": "2026-10-16T03:49:38Z",
+      "lat": 51.8408,
+      "lon": 9.480304,
+      "dimoHaversineM": 61932.01847112807,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "OCR_COORD_ERROR",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 61932.01847112807,
+      "notes": [
+        "OCR class OCR_AMBIGUOUS"
+      ]
+    },
+    {
+      "videoNum": "65",
+      "secondIndex": 176,
+      "syncUtc": "2026-10-16T03:49:37Z",
+      "lat": 51.8408,
+      "lon": 9.480304,
+      "dimoHaversineM": 61905.77390102621,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "IPHONE_GPS_JUMP",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 61905.77390102621,
+      "notes": [
+        "Large implied displacement between OCR seconds"
+      ]
+    },
+    {
+      "videoNum": "66",
+      "secondIndex": 7,
+      "syncUtc": "2026-10-16T03:49:49Z",
+      "lat": 51.81229,
+      "lon": 9.478496,
+      "dimoHaversineM": 59081.42377407797,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "IPHONE_GPS_JUMP",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 59081.42377407797,
+      "notes": [
+        "Large implied displacement between OCR seconds"
+      ]
+    },
+    {
+      "videoNum": "66",
+      "secondIndex": 73,
+      "syncUtc": "2026-10-16T03:50:55Z",
+      "lat": 51.68986,
+      "lon": 9.456289,
+      "dimoHaversineM": 46850.2236013208,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "OCR_COORD_ERROR",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 46850.2236013208,
+      "notes": [
+        "OCR class OCR_AMBIGUOUS"
+      ]
+    },
+    {
+      "videoNum": "66",
+      "secondIndex": 72,
+      "syncUtc": "2026-10-16T03:50:54Z",
+      "lat": 51.68986,
+      "lon": 9.456289,
+      "dimoHaversineM": 46824.967055704736,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "IPHONE_GPS_JUMP",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 46824.967055704736,
+      "notes": [
+        "Large implied displacement between OCR seconds"
+      ]
+    },
+    {
+      "videoNum": "66",
+      "secondIndex": 75,
+      "syncUtc": "2026-10-16T03:50:57Z",
+      "lat": 51.68304,
+      "lon": 9.455338,
+      "dimoHaversineM": 46142.45228652454,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "IPHONE_GPS_JUMP",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 46142.45228652454,
+      "notes": [
+        "Large implied displacement between OCR seconds"
+      ]
+    },
+    {
+      "videoNum": "66",
+      "secondIndex": 84,
+      "syncUtc": "2026-10-16T03:51:06Z",
+      "lat": 51.66428,
+      "lon": 9.453018,
+      "dimoHaversineM": 44292.84307114622,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "OCR_COORD_ERROR",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 44292.84307114622,
+      "notes": [
+        "OCR class OCR_AMBIGUOUS"
+      ]
+    },
+    {
+      "videoNum": "66",
+      "secondIndex": 83,
+      "syncUtc": "2026-10-16T03:51:05Z",
+      "lat": 51.66428,
+      "lon": 9.453018,
+      "dimoHaversineM": 44266.25848539811,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "IPHONE_GPS_JUMP",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 44266.25848539811,
+      "notes": [
+        "Large implied displacement between OCR seconds"
+      ]
+    },
+    {
+      "videoNum": "66",
+      "secondIndex": 85,
+      "syncUtc": "2026-10-16T03:51:07Z",
+      "lat": 51.65949,
+      "lon": 9.452536,
+      "dimoHaversineM": 43786.89665175492,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "IPHONE_GPS_JUMP",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 43786.89665175492,
+      "notes": [
+        "Large implied displacement between OCR seconds"
+      ]
+    },
+    {
+      "videoNum": "66",
+      "secondIndex": 90,
+      "syncUtc": "2026-10-16T03:51:12Z",
+      "lat": 51.64752,
+      "lon": 9.451494,
+      "dimoHaversineM": 42587.32492984362,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "IPHONE_GPS_JUMP",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 42587.32492984362,
+      "notes": [
+        "Large implied displacement between OCR seconds"
+      ]
+    },
+    {
+      "videoNum": "66",
+      "secondIndex": 91,
+      "syncUtc": "2026-10-16T03:51:13Z",
+      "lat": 51.64526,
+      "lon": 9.451305,
+      "dimoHaversineM": 42360.48704877907,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "IPHONE_GPS_JUMP",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 42360.48704877907,
+      "notes": [
+        "Large implied displacement between OCR seconds"
+      ]
+    },
+    {
+      "videoNum": "66",
+      "secondIndex": 98,
+      "syncUtc": "2026-10-16T03:51:20Z",
+      "lat": 51.62823,
+      "lon": 9.44994,
+      "dimoHaversineM": 40662.20851838842,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "IPHONE_GPS_JUMP",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 40662.20851838842,
+      "notes": [
+        "Large implied displacement between OCR seconds"
+      ]
+    },
+    {
+      "videoNum": "66",
+      "secondIndex": 108,
+      "syncUtc": "2026-10-16T03:51:30Z",
+      "lat": 51.60233,
+      "lon": 9.447264,
+      "dimoHaversineM": 38064.807596920095,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "IPHONE_GPS_JUMP",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 38064.807596920095,
+      "notes": [
+        "Large implied displacement between OCR seconds"
+      ]
+    },
+    {
+      "videoNum": "66",
+      "secondIndex": 114,
+      "syncUtc": "2026-10-16T03:51:36Z",
+      "lat": 51.58933,
+      "lon": 9.445673,
+      "dimoHaversineM": 36765.050532234374,
+      "ocrClass": "OCR_AMBIGUOUS",
+      "cause": "IPHONE_GPS_JUMP",
+      "bestShiftSec": 0,
+      "distanceAtBestShiftM": 36765.050532234374,
+      "notes": [
+        "Large implied displacement between OCR seconds"
+      ]
+    }
+  ],
+  "causeCounts": {
+    "IPHONE_GPS_JUMP": 57,
+    "OCR_COORD_ERROR": 44,
+    "TEMPORAL_MISALIGNMENT": 30
+  }
+}
