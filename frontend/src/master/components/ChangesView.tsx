@@ -36,6 +36,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vsi-p5h1-profile-revision-history-2026-10-17',
+    version: '4.9.2247',
+    title: 'VSI P5-H1 — immutable signal profile revision history (capture gate default OFF)',
+    summary: [
+      'Additive table vehicle_signal_capability_profile_revisions with atomic same-transaction capture on profile revision commits.',
+      'Feature gate VSI_P5H1_PROFILE_REVISION_HISTORY_ENABLED default false; no production backfill; P5B.1 offline replay behavior unchanged.',
+      'Read-only as-of resolver contract for future decision-time evidence; disposable PostgreSQL certification.',
+    ],
+    reason:
+      'Close P5B.1 R2 gap: mutable current profiles cannot prove decision-time APDS correlation without durable immutable revisions.',
+    previousBehavior:
+      'Only vehicle_signal_capability_profiles current row; no persisted revision history for shadow replay.',
+    details:
+      'vsi-profile-revision-history.*, vsi-profile-revision-as-of.resolver.ts, migration 20261017120000_vsi_profile_revision_history',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-10-17T07:30:00.000Z',
+  },
+  {
     id: 'vsi-p5-apds-readonly-correlation-2026-10-16',
     version: '4.9.2246',
     title: 'VSI P5 — read-only APDS capability/demand correlation (P5B gate default OFF)',

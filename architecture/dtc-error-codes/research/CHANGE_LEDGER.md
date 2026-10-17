@@ -1,5 +1,11 @@
 # DTC / Error Codes — change ledger (append-only)
 
+## 2026-10-17 — DTC-02 P1 observability (draft, not deployed)
+
+- Added `synqdrive_dtc02_*` Prometheus metrics on existing DTC scheduler fan-out, poll, webhook, and source-trust DB snapshots (no cadence/semantics/clear behavior changes).
+- Documented occurrenceCount legacy vs 01A semantics (`docs/dtc-02-occurrence-count-semantics.md`).
+- Evidence: `evidence/DTC02_P1_OBSERVABILITY.md` (offboarded eligibility read-only finding).
+
 ## 2026-10-15 — DTC-01F1 authority bootstrap + pilot prep (draft)
 
 - Registry: `NOT_STARTED` → `AUDIT_IN_PROGRESS`

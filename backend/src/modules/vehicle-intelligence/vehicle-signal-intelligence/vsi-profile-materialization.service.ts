@@ -14,6 +14,9 @@ import {
   VSI_PROFILE_LIFECYCLE_LIMITATION_SOURCE_LINK_INACTIVE,
   VSI_PROFILE_LIFECYCLE_LIMITATION_SOURCE_LINK_SUPERSEDED,
 } from './vsi-profile-lifecycle.constants';
+import { isVsiP5h1ProfileRevisionHistoryCaptureEnabled } from './vsi-p5h1-profile-revision-history.config';
+import type { VsiProfileRevisionMaterializationTrigger } from './vsi-profile-revision-history.types';
+import { appendVsiProfileRevisionHistoryInTransaction } from './vsi-profile-revision-history.writer';
 
 const DEFAULT_POLL_LOG_LIMIT = 5;
 
@@ -281,12 +284,16 @@ export class VsiSignalProfileMaterializationService {
       return evaluation;
     }
 
-    await this.persistWithConcurrencyRetry(evaluation);
+    await this.persistWithConcurrencyRetry(
+      evaluation,
+      input.lifecycleMode ?? 'SNAPSHOT_HOOK',
+    );
     return evaluation;
   }
 
   private async persistWithConcurrencyRetry(
     evaluation: VsiProfileEvaluationResult,
+    materializationTrigger: VsiProfileRevisionMaterializationTrigger,
   ): Promise<void> {
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
@@ -299,7 +306,7 @@ export class VsiSignalProfileMaterializationService {
             },
           },
         });
-        await this.persistEvaluation(evaluation, existingProfile);
+        await this.persistEvaluation(evaluation, existingProfile, materializationTrigger);
         return;
       } catch (err) {
         const code = (err as { code?: string })?.code;
@@ -322,8 +329,10 @@ export class VsiSignalProfileMaterializationService {
       profileRevision: number;
       contentFingerprint: string;
     } | null,
+    materializationTrigger: VsiProfileRevisionMaterializationTrigger,
   ): Promise<void> {
     const fingerprint = fingerprintVsiProfileEvaluation(evaluation);
+    const historyEnabled = isVsiP5h1ProfileRevisionHistoryCaptureEnabled();
 
     await this.prisma.$transaction(async (tx) => {
       const existing = await tx.vehicleSignalCapabilityProfile.findUnique({
@@ -333,6 +342,21 @@ export class VsiSignalProfileMaterializationService {
             vehicleId: evaluation.vehicleId,
             providerSourceLinkId: evaluation.providerSourceLinkId,
           },
+        },
+      });
+
+      const link = await tx.vehicleDataSourceLink.findFirst({
+        where: {
+          id: evaluation.providerSourceLinkId,
+          vehicleId: evaluation.vehicleId,
+          vehicle: { organizationId: evaluation.organizationId },
+        },
+        select: {
+          id: true,
+          isActive: true,
+          activatedAt: true,
+          deactivatedAt: true,
+          supersededByLinkId: true,
         },
       });
 
@@ -368,10 +392,29 @@ export class VsiSignalProfileMaterializationService {
         if (updated.count === 0) {
           throw new Error('VSI_PROFILE_REVISION_CONFLICT');
         }
-        return;
+      } else {
+        await tx.vehicleSignalCapabilityProfile.create({ data });
       }
 
-      await tx.vehicleSignalCapabilityProfile.create({ data });
+      if (historyEnabled) {
+        if (!link) {
+          throw new Error('VSI_PROFILE_REVISION_HISTORY_LINK_CONTEXT_MISSING');
+        }
+        await appendVsiProfileRevisionHistoryInTransaction(tx, {
+          ...data,
+          profileLimitations: evaluation.profileLimitations,
+          signalsSnapshot: evaluation.signals,
+          materializationTrigger,
+          sourceLinkLifecycleContext: {
+            version: 'vsi-profile-revision-link-context-v1',
+            linkId: link.id,
+            isActive: link.isActive,
+            activatedAt: link.activatedAt.toISOString(),
+            deactivatedAt: link.deactivatedAt?.toISOString() ?? null,
+            supersededByLinkId: link.supersededByLinkId,
+          },
+        });
+      }
     });
   }
 
@@ -481,6 +524,8 @@ export class VsiSignalProfileMaterializationService {
       return;
     }
 
+    const historyEnabled = isVsiP5h1ProfileRevisionHistoryCaptureEnabled();
+
     await this.prisma.$transaction(async (tx) => {
       const row = await tx.vehicleSignalCapabilityProfile.findUnique({
         where: { id: existing.id },
@@ -488,16 +533,67 @@ export class VsiSignalProfileMaterializationService {
       if (!row) {
         return;
       }
+      const nextRevision = row.profileRevision + 1;
+      const evaluatedAt = new Date();
       const updated = await tx.vehicleSignalCapabilityProfile.updateMany({
         where: { id: row.id, profileRevision: row.profileRevision },
         data: {
           profileLimitations: merged as unknown as Prisma.InputJsonValue,
-          profileRevision: row.profileRevision + 1,
-          evaluatedAt: new Date(),
+          profileRevision: nextRevision,
+          evaluatedAt,
         },
       });
       if (updated.count === 0) {
         throw new Error('VSI_PROFILE_REVISION_CONFLICT');
+      }
+
+      if (historyEnabled) {
+        const link = await tx.vehicleDataSourceLink.findFirst({
+          where: {
+            id: input.providerSourceLinkId,
+            vehicleId: input.vehicleId,
+            vehicle: { organizationId: input.organizationId },
+          },
+          select: {
+            id: true,
+            isActive: true,
+            activatedAt: true,
+            deactivatedAt: true,
+            supersededByLinkId: true,
+          },
+        });
+        if (!link) {
+          throw new Error('VSI_PROFILE_REVISION_HISTORY_LINK_CONTEXT_MISSING');
+        }
+        const added = input.limitations.filter((l) => !current.includes(l));
+        await appendVsiProfileRevisionHistoryInTransaction(tx, {
+          organizationId: row.organizationId,
+          vehicleId: row.vehicleId,
+          providerSourceLinkId: row.providerSourceLinkId,
+          profileRevision: nextRevision,
+          profileContractVersion: row.profileContractVersion,
+          contentFingerprint: row.contentFingerprint,
+          providerIdentity: row.providerIdentity,
+          verifiedModality: row.verifiedModality,
+          telemetrySourceFamily: row.telemetrySourceFamily,
+          evaluatedAt,
+          declaredCatalogCheckedAt: row.declaredCatalogCheckedAt,
+          lastMaterializedSourceTimestamp: row.lastMaterializedSourceTimestamp,
+          lastMaterializedProviderFetchAt: row.lastMaterializedProviderFetchAt,
+          lastProvenStrictSourceAdvanceAt: row.lastProvenStrictSourceAdvanceAt,
+          signalsSnapshot: row.signalsSnapshot,
+          profileLimitations: merged,
+          materializationTrigger: 'SOURCE_LINK_LIFECYCLE',
+          sourceLinkLifecycleContext: {
+            version: 'vsi-profile-revision-link-context-v1',
+            linkId: link.id,
+            isActive: link.isActive,
+            activatedAt: link.activatedAt.toISOString(),
+            deactivatedAt: link.deactivatedAt?.toISOString() ?? null,
+            supersededByLinkId: link.supersededByLinkId,
+            lifecycleLimitationsAppended: added,
+          },
+        });
       }
     });
   }
