@@ -3,11 +3,15 @@
  */
 import { Prisma, PrismaClient, DrivingCapabilityStatus } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
+import { Client } from 'pg';
 import { assertVsi03DisposablePostgresTarget } from './vsi-readonly-composer.postgres-guard';
 import { VsiDeclaredCatalogResolver } from './vsi-declared-catalog.resolver';
 import { VsiSignalProfileMaterializationService } from './vsi-profile-materialization.service';
 import { VsiProfileRevisionHistoryRepository } from './vsi-profile-revision-history.repository';
-import { VsiProfileRevisionAsOfAuthority } from './vsi-profile-revision-as-of.types';
+import {
+  VsiProfileRevisionAsOfAuthority,
+  VsiProfileRevisionAsOfQueryCompleteness,
+} from './vsi-profile-revision-as-of.types';
 import { appendVsiProfileRevisionHistoryInTransaction } from './vsi-profile-revision-history.writer';
 import { VSI_PROFILE_CONTRACT_VERSION } from './vsi-profile.types';
 import {
@@ -614,6 +618,171 @@ async function cleanupOrg(prisma: PrismaClient, organizationId: string) {
       where: { organizationId, vehicleId: fixture.vehicleId },
     });
     expect(historyCount).toBe(1);
+
+    await cleanupOrg(prisma, organizationId);
+  });
+
+  async function insertEligibleRevisionRow(input: {
+    organizationId: string;
+    vehicleId: string;
+    linkId: string;
+    profileRevision: number;
+    evaluatedAt: Date;
+    recordedAt: Date;
+  }) {
+    await prisma.vehicleSignalCapabilityProfileRevision.create({
+      data: {
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        providerSourceLinkId: input.linkId,
+        profileRevision: input.profileRevision,
+        profileContractVersion: VSI_PROFILE_CONTRACT_VERSION,
+        contentFingerprint: `fp-${input.profileRevision}`,
+        providerIdentity: 'DIMO',
+        verifiedModality: 'HARDWARE_DEVICE',
+        telemetrySourceFamily: 'RUPTELA_R1',
+        evaluatedAt: input.evaluatedAt,
+        recordedAt: input.recordedAt,
+        signalsSnapshot: [
+          {
+            canonicalSignalKey: 'lowVoltageBatteryCurrentVoltage',
+            declaredSupport: 'SUPPORTED',
+            empiricalObservation: 'OBSERVED',
+            lastSourceTimestamp: input.evaluatedAt.toISOString(),
+            lastValidObservationAt: input.evaluatedAt.toISOString(),
+            freshnessClassification: 'FRESH',
+            limitations: [],
+          },
+        ],
+        profileLimitations: [],
+        materializationTrigger: 'SNAPSHOT_HOOK',
+        sourceLinkLifecycleContext: {
+          version: 'vsi-profile-revision-link-context-v1',
+          linkId: input.linkId,
+          isActive: true,
+          activatedAt: '2026-08-01T00:00:00.000Z',
+          deactivatedAt: null,
+          supersededByLinkId: null,
+        },
+        sourceProvenance: {
+          version: 'vsi-profile-revision-provenance-v1',
+          declaredCatalogCheckedAt: null,
+          lastMaterializedSourceTimestamp: input.evaluatedAt.toISOString(),
+          lastMaterializedProviderFetchAt: input.evaluatedAt.toISOString(),
+          lastProvenStrictSourceAdvanceAt: null,
+        },
+      },
+    });
+  }
+
+  it('keeps repeatable-read snapshot when revision commits between count and findFirst', async () => {
+    const { organizationId, fixture } = await seedFixture();
+    const decisionAt = new Date('2026-10-25T12:00:00.000Z');
+    const eligibleAt = new Date('2026-10-20T10:00:00.000Z');
+    const databaseUrl = process.env.DATABASE_URL;
+    expect(databaseUrl).toBeTruthy();
+
+    const pg = new Client({ connectionString: databaseUrl });
+    await pg.connect();
+    try {
+      await pg.query('BEGIN ISOLATION LEVEL REPEATABLE READ');
+      const countResult = await pg.query<{ c: number }>(
+        `SELECT COUNT(*)::int AS c
+         FROM vehicle_signal_capability_profile_revisions
+         WHERE organization_id = $1
+           AND vehicle_id = $2
+           AND provider_source_link_id = $3
+           AND recorded_at <= $4
+           AND evaluated_at <= $4`,
+        [organizationId, fixture.vehicleId, fixture.linkId, decisionAt],
+      );
+      expect(countResult.rows[0]?.c).toBe(0);
+
+      await insertEligibleRevisionRow({
+        organizationId,
+        vehicleId: fixture.vehicleId,
+        linkId: fixture.linkId,
+        profileRevision: 1,
+        evaluatedAt: eligibleAt,
+        recordedAt: eligibleAt,
+      });
+
+      const bestResult = await pg.query(
+        `SELECT profile_revision
+         FROM vehicle_signal_capability_profile_revisions
+         WHERE organization_id = $1
+           AND vehicle_id = $2
+           AND provider_source_link_id = $3
+           AND recorded_at <= $4
+           AND evaluated_at <= $4
+         ORDER BY profile_revision DESC, recorded_at DESC, id DESC
+         LIMIT 1`,
+        [organizationId, fixture.vehicleId, fixture.linkId, decisionAt],
+      );
+      expect(bestResult.rows.length).toBe(0);
+      await pg.query('COMMIT');
+    } finally {
+      await pg.end();
+    }
+
+    const loaded = await historyRepo.loadDecisionTimeRevisionEvidence({
+      organizationId,
+      vehicleId: fixture.vehicleId,
+      providerSourceLinkId: fixture.linkId,
+      decisionAt,
+    });
+    expect(loaded.queryEvidence.completeness).toBe(VsiProfileRevisionAsOfQueryCompleteness.COMPLETE);
+    expect(loaded.queryEvidence.eligibleRevisionCountExact).toBe(1);
+    expect(loaded.bestRevision?.profileRevision).toBe(1);
+
+    const resolved = await historyRepo.resolveRevisionAsOf({
+      organizationId,
+      vehicleId: fixture.vehicleId,
+      providerSourceLinkId: fixture.linkId,
+      decisionAt,
+      historicalLinkAttributionProven: true,
+    });
+    expect(resolved.authority).not.toBe(VsiProfileRevisionAsOfAuthority.NO_PRIOR_REVISION);
+    expect(resolved.limitations).toContain('PERSISTENCE_COMMIT_VISIBILITY_UNPROVEN');
+
+    await cleanupOrg(prisma, organizationId);
+  });
+
+  it('never maps contradictory query snapshot to NO_PRIOR_REVISION under concurrent insert', async () => {
+    const { organizationId, fixture } = await seedFixture();
+    const decisionAt = new Date('2026-10-26T12:00:00.000Z');
+    const eligibleAt = new Date('2026-10-21T10:00:00.000Z');
+
+    const [resolved] = await Promise.all([
+      historyRepo.resolveRevisionAsOf({
+        organizationId,
+        vehicleId: fixture.vehicleId,
+        providerSourceLinkId: fixture.linkId,
+        decisionAt,
+        historicalLinkAttributionProven: true,
+      }),
+      insertEligibleRevisionRow({
+        organizationId,
+        vehicleId: fixture.vehicleId,
+        linkId: fixture.linkId,
+        profileRevision: 1,
+        evaluatedAt: eligibleAt,
+        recordedAt: eligibleAt,
+      }),
+    ]);
+
+    if (resolved.selectedRevision != null) {
+      expect(resolved.authority).not.toBe(VsiProfileRevisionAsOfAuthority.NO_PRIOR_REVISION);
+      expect(resolved.queryEvidence.eligibleRevisionCountExact).toBeGreaterThan(0);
+    } else if (
+      resolved.queryEvidence.completeness === VsiProfileRevisionAsOfQueryCompleteness.COMPLETE &&
+      resolved.queryEvidence.eligibleRevisionCountExact === 0
+    ) {
+      expect(resolved.authority).toBe(VsiProfileRevisionAsOfAuthority.NO_PRIOR_REVISION);
+    } else {
+      expect(resolved.authority).toBe(VsiProfileRevisionAsOfAuthority.UNPROVEN_TEMPORAL_AUTHORITY);
+      expect(resolved.limitations).toContain('AS_OF_QUERY_INCOMPLETE');
+    }
 
     await cleanupOrg(prisma, organizationId);
   });
